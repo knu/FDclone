@@ -159,10 +159,10 @@ char *path;
 	int i;
 
 	cwd = getwd2();
-	if (chdir(path) < 0) path = NULL;
+	if (_chdir2(path) < 0) path = NULL;
 	else {
 		path = getwd2();
-		if (chdir(cwd) < 0) error(cwd);
+		if (_chdir2(cwd) < 0) error(cwd);
 	}
 	i = (path) ? !strcmp(cwd, path) : 0;
 	free(cwd);
@@ -181,12 +181,12 @@ int underhome()
 			if (pwd = getpwuid(getuid())) homedir = pwd -> pw_dir;
 			else return(-1);
 		}
-		if (chdir(homedir) < 0) {
+		if (_chdir2(homedir) < 0) {
 			homedir = NULL;
 			return(-1);
 		}
 		homedir = getwd2();
-		if (chdir(fullpath) < 0) error(fullpath);
+		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
 	cp = getwd2();
 	i = strncmp(cp, homedir, strlen(homedir));
@@ -232,7 +232,7 @@ int max, tr;
 		return(0);
 	}
 	destpath = (tr) ? tree(1) : getdistdir(COPYD_K);
-	if (!destpath) return((tr) ? 3 : 1);
+	if (!destpath) return((tr) ? 2 : 1);
 	copypolicy = (iscurdir(destpath)) ? 2 : 0;
 	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
 	else if (isdir(&list[filepos]) && !islink(&list[filepos]))
@@ -248,7 +248,7 @@ namelist *list;
 int max, tr;
 {
 	destpath = (tr) ? tree(1) : getdistdir(MOVED_K);
-	if (!destpath || iscurdir(destpath)) return((tr) ? 3 : 1);
+	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
 	copypolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
 	else if (mvfile(list[filepos].name) < 0)

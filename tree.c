@@ -150,7 +150,7 @@ int level, *maxp, *maxentp;
 	else len = (cp = strchr(subdir, '/')) ? cp - subdir : strlen(subdir);
 
 	*maxp = *maxentp = 0;
-	i = chdir(dir);
+	i = _chdir2(dir);
 	free(dir);
 	if (i < 0 || !(dirp = opendir("."))) return(NULL);
 
@@ -189,9 +189,9 @@ int level, *maxp, *maxentp;
 	if (sorttree && sorton) qsort(list, *maxp, sizeof(treelist), cmptree);
 
 	if (*path == '/') {
-		if (chdir(fullpath) < 0) error(fullpath);
+		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
-	else if (chdir("..") < 0) error("..");
+	else if (_chdir2("..") < 0) error("..");
 	return(list);
 }
 
@@ -321,7 +321,7 @@ char *path;
 		for (i = 1; i < list -> max; i++) free(list -> next[i].name);
 	}
 
-	if (chdir(path) < 0) {
+	if (_chdir2(path) < 0) {
 		if (list -> next) error(path);
 		list -> max = list -> maxent = 0;
 		return(1);
@@ -329,7 +329,7 @@ char *path;
 	for (cp = path, i = 0; cp = strchr(cp, '/'); cp++, i++);
 	lptmp = maketree(".", list -> next, i,
 		&(list -> max), &(list -> maxent));
-	if (chdir(fullpath) < 0) error(fullpath);
+	if (_chdir2(fullpath) < 0) error(fullpath);
 	if (list -> max < 0) {
 		if (list -> next) {
 			list -> max = 2;

@@ -10,6 +10,7 @@
 #include "kctype.h"
 #include "kanji.h"
 
+#include <fcntl.h>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
@@ -41,6 +42,7 @@ extern char *findpattern;
 
 #define	BUFUNIT		32
 
+static char *realpath2();
 static assoclist *_getenv2();
 static long gettimezone();
 
@@ -135,29 +137,46 @@ struct stat *buf;
 	return(0);
 }
 
-static VOID _chdir2(path)
-char *path;
+static char *realpath2(path, resolved)
+char *path, *resolved;
 {
 	char *cp;
 
 	if (!*path || !strcmp(path, ".")) return;
 	else if (cp = strchr(path, '/')) {
-		*cp = 0;
-		_chdir2(path);
+		*cp = '\0';
+		realpath2(path, resolved);
 		*(cp++) = '/';
-		_chdir2(cp);
+		realpath2(cp, resolved);
 		return;
 	}
 
 	if (!strcmp(path, "..")) {
-		cp = strrchr(fullpath, '/');
-		if (cp && cp != fullpath) *cp = '\0';
-		else strcpy(fullpath, "/");
+		cp = strrchr(resolved, '/');
+		if (cp && cp != resolved) *cp = '\0';
+		else strcpy(resolved, "/");
 	}
 	else {
-		if (strcmp(fullpath, "/")) strcat(fullpath, "/");
-		strcat(fullpath, path);
+		if (strcmp(resolved, "/")) strcat(resolved, "/");
+		strcat(resolved, path);
 	}
+	return(resolved);
+}
+
+int _chdir2(path)
+char *path;
+{
+	char cwd[MAXPATHLEN + 1];
+	int fd;
+
+	if (!getcwd(cwd, MAXPATHLEN)) strcpy(cwd, "/");
+	if (chdir(path) < 0) return(-1);
+	if ((fd = open(".", O_RDONLY, 0600)) < 0) {
+		if (chdir(cwd) < 0) error(cwd);
+		return(-1);
+	}
+	close(fd);
+	return(0);
 }
 
 int chdir2(path)
@@ -168,14 +187,14 @@ char *path;
 #endif
 	char cwd[MAXPATHLEN + 1];
 
-	if (access(path, R_OK | X_OK) < 0 || chdir(path) < 0) return(-1);
+	if (_chdir2(path) < 0) return(-1);
 
 	strcpy(cwd, fullpath);
 	if (*path == '/') strcpy(fullpath, "/");
-	_chdir2(path);
+	realpath2(path, fullpath);
 
-	if (chdir(fullpath) < 0) {
-		if (chdir(cwd) < 0) error(cwd);
+	if (_chdir2(fullpath) < 0) {
+		if (_chdir2(cwd) < 0) error(cwd);
 		strcpy(fullpath, cwd);
 		return(-1);
 	}

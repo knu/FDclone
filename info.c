@@ -521,13 +521,13 @@ mnt_t *mntbuf;
 
 	dir = NULL;
 	if (!strncmp(path, "/dev/", 4)) {
-		if (chdir(path) < 0) dir = path;
+		if (_chdir2(path) < 0) dir = path;
 	}
-	else if (chdir(path) < 0) return(0);
+	else if (_chdir2(path) < 0) return(0);
 
 	if (!dir) {
 		dir = getwd2();
-		if (chdir(fullpath) < 0) error(fullpath);
+		if (_chdir2(fullpath) < 0) error(fullpath);
 		match = 0;
 
 		fp = setmntent(MOUNTED, "r");

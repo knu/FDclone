@@ -495,7 +495,7 @@ namelist *list;
 int *maxp;
 {
 	dispmode ^= F_FILETYPE;
-	return(3);
+	return(2);
 }
 
 /*ARGSUSED*/
@@ -673,7 +673,7 @@ int *maxp;
 		free(dupl);
 		chgorder = 1;
 	}
-	return(3);
+	return(2);
 }
 
 /*ARGSUSED*/
@@ -714,7 +714,7 @@ namelist *list;
 int *maxp;
 {
 	help(archivefile != NULL);
-	return(3);
+	return(2);
 }
 
 /*ARGSUSED*/
@@ -1054,8 +1054,7 @@ int *maxp;
 		locate(0, LINFO);
 		putterm(l_clear);
 		kanjiputs(ATTRM_K);
-		if (selectstr(&flag, 2, 35, str, val) == ESC)
-			return(1);
+		if (selectstr(&flag, 2, 35, str, val) == ESC) return(1);
 	}
 	else {
 		if (islink(&list[filepos])) {
@@ -1067,7 +1066,7 @@ int *maxp;
 	}
 
 	while ((n = inputattr(&list[i], flag)) < 0) warning(0, ILTMS_K);
-	if (!n) return(3);
+	if (!n) return(2);
 
 	if (mark > 0) applyfile(list, *maxp, setattr, NULL);
 	else if (setattr(list[filepos].name) < 0)
@@ -1082,11 +1081,11 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = tree(0))) return(3);
+	if (!(path = tree(0))) return(2);
 	if (chdir2(path) < 0) {
 		warning(-1, path);
 		free(path);
-		return(3);
+		return(2);
 	}
 	free(path);
 	if (findpattern) free(findpattern);

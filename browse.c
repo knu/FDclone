@@ -669,7 +669,7 @@ char *cur;
 		cp = evalpath(strdup2(cur));
 		if (*cp == '/') *fullpath = '\0';
 		else strcat(fullpath, "/");
-		if (chdir(cp) >= 0) {
+		if (_chdir2(cp) >= 0) {
 			strcat(fullpath, cp);
 			free(cp);
 			cp = fullpath + strlen(fullpath) - 1;
@@ -680,10 +680,10 @@ char *cur;
 			if (def) {
 				*def = '\0';
 				if (def++ == cp) {
-					if (chdir("/") < 0) error("/");
+					if (_chdir2("/") < 0) error("/");
 					else strcpy(fullpath, "/");
 				}
-				else if (chdir(cp) >= 0) strcat(fullpath, cp);
+				else if (_chdir2(cp) >= 0) strcat(fullpath, cp);
 				else {
 					warning(-1, cp);
 					def = NULL;
@@ -738,6 +738,6 @@ char *cur;
 	}
 
 	free(filelist);
-	if (chdir(origpath) < 0) error(origpath);
+	if (_chdir2(origpath) < 0) error(origpath);
 	free(origpath);
 }

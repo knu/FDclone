@@ -33,6 +33,7 @@ extern int unlink2();
 extern int rmdir2();
 extern int rename2();
 extern int stat2();
+extern int _chdir2();
 extern int chdir2();
 extern char *chdir3();
 extern int mkdir2();

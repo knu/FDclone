@@ -550,7 +550,7 @@ int max;
 			strcat(fullpath, "/");
 			strcat(fullpath, archivedir);
 		}
-		if (chdir(fullpath) < 0) error(fullpath);
+		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
 	duparchivefile = archivefile;
 	duparchivedir = archivedir;
@@ -640,7 +640,7 @@ int max, tr;
 		free(dir);
 	}
 
-	if (chdir(path) < 0) {
+	if (_chdir2(path) < 0) {
 		warning(-1, path);
 		return(0);
 	}
@@ -651,10 +651,10 @@ int max, tr;
 	waitmes();
 	if (execmacro(archivelist[i].u_comm, path, list, max, -1, 1) < 0) {
 		warning(E2BIG, archivelist[i].u_comm);
-		if (chdir(fullpath) < 0) error(fullpath);
+		if (_chdir2(fullpath) < 0) error(fullpath);
 		return(0);
 	}
-	if (chdir(fullpath) < 0) error(fullpath);
+	if (_chdir2(fullpath) < 0) error(fullpath);
 	return(1);
 }
 
@@ -678,11 +678,11 @@ int max;
 	i = unpack(archivefile, path, list, max, 0);
 	mark = dupmark;
 
-	if (chdir(path) < 0) error(path);
+	if (_chdir2(path) < 0) error(path);
 	cp = strdup2(path);
 	if (i < 0) putterm(t_bell);
 	else if (i > 0) {
-		if (*archivedir && chdir(archivedir) < 0)
+		if (*archivedir && _chdir2(archivedir) < 0)
 			warning(-1, archivedir);
 		else if (access(list[filepos].name, F_OK) < 0)
 			warning(-1, list[filepos].name);
@@ -699,7 +699,7 @@ char *dir, *file;
 
 	if (file && unlink(file) < 0) error(file);
 	if (*archivedir) {
-		if (chdir(dir) < 0) error(dir);
+		if (_chdir2(dir) < 0) error(dir);
 		dupdir = strdup2(archivedir);
 		cp = dupdir + strlen(dupdir);
 		for (;;) {
@@ -714,7 +714,7 @@ char *dir, *file;
 		}
 		free(dupdir);
 	}
-	if (chdir(fullpath) < 0) error(fullpath);
+	if (_chdir2(fullpath) < 0) error(fullpath);
 	if (rmdir(dir) < 0) error(dir);
 	free(dir);
 }
