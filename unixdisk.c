@@ -2083,6 +2083,7 @@ u_short mode;
 	if (!(mode & S_IREAD)) attr |= DS_IHIDDEN;
 	if (!(mode & S_IWRITE)) attr |= DS_IRDONLY;
 	if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
+	else if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
 
 	return(attr);
 }

@@ -104,6 +104,9 @@ functable funclist[] = {
 	_TBL_(next_window,	"NEXT_WINDOW",	NXWN_H,	000111000),
 #endif
 	_TBL_(help_message,	"HELP_MESSAGE",	HELP_H,	000110110),
+#ifndef	_NOCUSTOMIZE
+	_TBL_(edit_runcom,	"EDIT_RUNCOM",	EDRC_H,	000111110),
+#endif
 	_TBL_(quit_system,	"QUIT_SYSTEM",	QUIT_H,	000111000),
 	_TBL_(warning_bell,	"WARNING_BELL",	NULL_H,	000110000),
 	_TBL_(no_operation,	"NO_OPERATION",	NULL_H,	000110000)

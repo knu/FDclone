@@ -70,6 +70,9 @@ static VOID NEAR restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir = NULL;
+#if	!MSDOS && !defined (_NOEXTRACOPY)
+int inheritcopy = 0;
+#endif
 
 #ifndef	_NODOSDRIVE
 static int dosdrv = -1;
@@ -590,6 +593,10 @@ struct stat *stp1, *stp2;
 	}
 #if	MSDOS
 	if (touchfile(dest, stp1) < 0) return(-1);
+#else
+# ifndef	_NOEXTRACOPY
+	if (inheritcopy && touchfile(dest, stp1) < 0) return(-1);
+# endif
 #endif
 	return(0);
 }

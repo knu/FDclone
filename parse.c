@@ -30,6 +30,9 @@ extern int sorttree;
 #ifndef	_NOWRITEFS
 extern int writefs;
 #endif
+#ifndef	_NOEXTRACOPY
+extern int inheritcopy;
+#endif
 #if	!MSDOS
 extern int adjtty;
 #endif
@@ -614,6 +617,10 @@ VOID evalenv(VOID_A)
 #endif
 #ifndef	_NOWRITEFS
 	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
+#endif
+#ifndef	_NOEXTRACOPY
+	if ((inheritcopy = evalbool(getenv2("FD_INHERITCOPY"))) < 0)
+		inheritcopy = INHERITCOPY;
 #endif
 #if	!MSDOS
 	if ((adjtty = evalbool(getenv2("FD_ADJTTY"))) < 0) adjtty = ADJTTY;

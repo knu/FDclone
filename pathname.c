@@ -155,13 +155,14 @@ static VOID NEAR rmhash __P_((char *, int));
 #if	MSDOS
 static int NEAR extaccess __P_((char *, char *, int));
 #endif
-#if	!defined (FDSH) && !defined (_NOCOMPLETE)
+#ifndef	_NOCOMPLETE
 # if	!MSDOS
 static int NEAR completeuser __P_((char *, int, char ***));
 # endif
 static int NEAR completefile __P_((char *, char *, int, int, int, char ***));
 static int NEAR completeexe __P_((char *, int, char ***));
 #endif
+static int NEAR addmeta __P_((char *, char *, int, int));
 static char *NEAR evalshellparam __P_((int, int));
 static int NEAR replacevar __P_((char *, char **, int, int, int, int));
 static char *NEAR insertarg __P_((char *, int, char *, int, int));
@@ -223,6 +224,7 @@ char **(*getarglistfunc)__P_((VOID_A)) = NULL;
 char *(*getflagfunc)__P_((VOID_A)) = NULL;
 int (*checkundeffunc)__P_((char *, char *, int)) = NULL;
 VOID (*exitfunc)__P_((VOID_A)) = NULL;
+char *(*backquotefunc)__P_((char *)) = NULL;
 #if	!MSDOS
 int pathignorecase = 0;
 #endif	/* !MSDOS */
@@ -529,7 +531,6 @@ int d;
 }
 #endif	/* MSDOS || (FD && !_NODOSDRIVE) */
 
-#ifndef	FDSH
 char *strrdelim2(s, eol)
 char *s, *eol;
 {
@@ -569,7 +570,6 @@ int ptr;
 	return(1);
 #endif
 }
-#endif	/* !FDSH */
 
 char *strcatdelim(s)
 char *s;
@@ -1661,7 +1661,7 @@ char *path;
 #endif
 }
 
-#if	!defined (FDSH) && !defined (_NOCOMPLETE)
+#ifndef	_NOCOMPLETE
 char *finddupl(target, argc, argv)
 char *target;
 int argc;
@@ -1825,9 +1825,9 @@ char **argv;
 	}
 	return(common);
 }
-#endif	/* !FDSH && !_NOCOMPLETE */
+#endif	/* !_NOCOMPLETE */
 
-int addmeta(s1, s2, stripm, quoted)
+static int NEAR addmeta(s1, s2, stripm, quoted)
 char *s1, *s2;
 int stripm, quoted;
 {
@@ -1965,7 +1965,7 @@ int s, len, vlen, mode;
 
 	val = malloc2(vlen + 1);
 	strncpy2(val, arg + s, vlen);
-	*cpp = evalarg(val, (mode == '=' || mode == '?'));
+	*cpp = evalarg(val, (mode == '=' || mode == '?'), 0);
 	free(val);
 	if (!(*cpp)) return(-1);
 
@@ -1979,7 +1979,7 @@ int s, len, vlen, mode;
 		free(*cpp);
 		val = malloc2(vlen + 1);
 		strncpy2(val, arg + s, vlen);
-		*cpp = evalarg(val, 0);
+		*cpp = evalarg(val, 0, 0);
 		free(val);
 		if (!(*cpp)) return(-1);
 #endif
@@ -2234,56 +2234,94 @@ char **argp;
 	return(ptr);
 }
 
-char *evalarg(arg, stripq)
+char *evalarg(arg, stripq, backq)
 char *arg;
-int stripq;
+int stripq, backq;
 {
-	char *cp, *buf;
-	int i, prev, quote;
+	char *cp, *buf, *bbuf;
+	int i, j, prev, quote;
 
-	buf = malloc2(strlen(arg) + 1);
+	i = strlen(arg) + 1;
+	buf = malloc2(i);
+	bbuf = (backq) ? malloc2(i) : NULL;
 	prev = quote = '\0';
 	i = 0;
+	j = -1;
 	for (cp = arg; *cp; prev = *(cp++)) {
 		if (*cp == quote) {
 			quote = '\0';
-			if (!stripq) buf[i++] = *cp;
+			if (j >= 0) bbuf[j++] = *cp;
+			else if (!stripq) buf[i++] = *cp;
 			continue;
 		}
 #ifdef	CODEEUC
-		else if (isekana(cp, 0)) buf[i++] = *(cp++);
+		else if (isekana(cp, 0)) {
+			if (j >= 0) bbuf[j++] = *cp;
+			else buf[i++] = *cp;
+			cp++;
+		}
 #endif
-		else if (iskanji1(cp, 0)) buf[i++] = *(cp++);
+		else if (iskanji1(cp, 0)) {
+			if (j >= 0) bbuf[j++] = *cp;
+			buf[i++] = *cp;
+			cp++;
+		}
 		else if (quote == '\'');
-		else if (*cp == '$' && *(cp + 1)) {
+		else if (*cp == '$' && *(cp + 1) && j < 0) {
 #ifdef	FAKEMETA
-			if (*(cp + 1) == '$' || *(cp + 1) == '~') {
-				buf[i++] = *(++cp);
-				continue;
-			}
+			if (*(cp + 1) == '$' || *(cp + 1) == '~') cp++;
+			else
 #endif
-			if ((i = evalvar(&buf, i, &cp, quote)) < 0) {
+			if ((i = evalvar(&buf, i, &cp, quote)) >= 0) continue;
+			else {
+				if (bbuf) free(bbuf);
 				free(buf);
 				if (i < -1) *arg = '\0';
 				return(NULL);
 			}
+		}
+		else if (ismeta(cp, 0, quote)) {
+			if (j >= 0);
+			else buf[i++] = *cp;
+			cp++;
+		}
+		else if (backq && backquotefunc && *cp == '`') {
+			if (j < 0) j = 0;
+			else if (j) {
+				char *tmp;
+				int size;
+
+				bbuf[j] = '\0';
+				tmp = (*backquotefunc)(bbuf);
+				if (tmp) {
+					j = addmeta(NULL, tmp, 1, 0);
+					size = i + j + strlen(cp + 1) + 1;
+					buf = realloc2(buf, size);
+					addmeta(&(buf[i]), tmp, 1, 0);
+					i += j;
+					free(tmp);
+				}
+				j = -1;
+			}
 			continue;
 		}
-		else if (ismeta(cp, 0, quote)) buf[i++] = *(cp++);
 		else if (quote);
 		else if (*cp == '\'' || *cp == '"') {
 			quote = *cp;
-			if (!stripq) buf[i++] = *cp;
+			if (j >= 0) bbuf[j++] = *cp;
+			else if (!stripq) buf[i++] = *cp;
 			continue;
 		}
-		else if (*cp == '~'
+		else if (*cp == '~' && j < 0
 		&& (!prev || prev == ':' || prev == '=')) {
 			i = evalhome(&buf, i, &cp);
 			continue;
 		}
 
-		buf[i++] = *cp;
+		if (j >= 0) bbuf[j++] = *cp;
+		else buf[i++] = *cp;
 	}
+	if (bbuf) free(bbuf);
 	buf[i] = '\0';
 	return(buf);
 }
@@ -2310,9 +2348,20 @@ int iscom;
 			|| (*argvp)[n][i] == '"')
 				quote = (*argvp)[n][i];
 			else if (strchr(ifs, (*argvp)[n][i])) {
-				(*argvp)[n][i++] = '\0';
-				if (!(*argvp)[n][i]) break;
-				cp = strdup2(&((*argvp)[n][i]));
+				for (j = i + 1; (*argvp)[n][j]; j++)
+					if (!strchr(ifs, (*argvp)[n][j]))
+						break;
+				if (!i) {
+					for (i = 0; (*argvp)[n][i + j]; i++)
+						(*argvp)[n][i] =
+							(*argvp)[n][i + j];
+					(*argvp)[n][i] = '\0';
+					i = -1;
+					continue;
+				}
+				(*argvp)[n][i] = '\0';
+				if (!(*argvp)[n][j]) break;
+				cp = strdup2(&((*argvp)[n][j]));
 				*argvp = (char **)realloc2(*argvp,
 					(argc + 2) * sizeof(char *));
 				for (j = argc; j > n; j--)
@@ -2365,8 +2414,8 @@ int iscom;
 			}
 			else if (ismeta((*argvp)[n], i, quote)) {
 				i++;
-				if (quote && (*argvp)[n][i] != quote
-				&& (*argvp)[n][i] != PMETA)
+				if (quote
+				&& !strchr(DQ_METACHAR, (*argvp)[n][i]))
 					cp[j++] = PMETA;
 			}
 			else if (quote);
@@ -2458,7 +2507,6 @@ char *arg;
 	return(arg);
 }
 
-#ifndef	FDSH
 char *_evalpath(path, eol, uniqdelim, evalq)
 char *path, *eol;
 int uniqdelim, evalq;
@@ -2475,7 +2523,7 @@ int uniqdelim, evalq;
 	cp = malloc2(i + 1);
 	strncpy2(cp, path, i);
 
-	if (!(tmp = evalarg(cp, 0))) {
+	if (!(tmp = evalarg(cp, 0, 0))) {
 		*cp = '\0';
 		return(cp);
 	}
@@ -2540,4 +2588,3 @@ int uniqdelim;
 	free(path);
 	return(cp);
 }
-#endif	/* !FDSH */

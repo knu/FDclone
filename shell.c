@@ -240,7 +240,7 @@ int ignorelist;
 		if (flags & (F_NOEXT | F_TOSFN));
 		else if (c == '%') c = command[++i];
 		else {
-			line[j++] = c;
+			line[j++] = command[i];
 #if	!MSDOS
 			if (command[i] == META && command[i + 1]
 			&& uneval != '\'')
@@ -254,8 +254,7 @@ int ignorelist;
 			continue;
 		}
 
-		setflag = 0;
-		len = 0;
+		len = setflag = 0;
 		switch (toupper2(c)) {
 			case '\0':
 				i--;

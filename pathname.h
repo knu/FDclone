@@ -11,13 +11,16 @@
 #if	!MSDOS
 #define	PATHDELIM	':'
 #define	PMETA		META
+#define	DQ_METACHAR	"\"$\\`"
 #else
 #define	PATHDELIM	';'
 # ifdef	_NOORIGGLOB
 # define	FAKEMETA
 # define	PMETA		'$'
+# define	DQ_METACHAR	"\"$"
 # else
 # define	PMETA		'%'
+# define	DQ_METACHAR	"\"$%`"
 # endif
 #endif
 
@@ -96,10 +99,8 @@ extern char *strrdelim __P_((char *, int));
 #define	strdelim(s, d)	strchr(s, _SC_)
 #define	strrdelim(s, d)	strrchr(s, _SC_)
 #endif
-#ifndef	FDSH
 extern char *strrdelim2 __P_((char *, char *));
 extern int isdelim __P_((char *, int));
-#endif
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
 #if	MSDOS
@@ -122,21 +123,18 @@ hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, char *));
 extern char *searchpath __P_((char *));
-#if	!defined (FDSH) && !defined (_NOCOMPLETE)
+#ifndef	_NOCOMPLETE
 extern char *finddupl __P_((char *, int, char **));
 extern int completepath __P_((char *, int, int, char ***));
 extern char *findcommon __P_((int, char **));
 #endif
-extern int addmeta __P_((char *, char *, int, int));
 extern char *gethomedir __P_((VOID_A));
-extern char *evalarg __P_((char *, int));
+extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, char *, int));
 extern int evalglob __P_((int, char ***, int));
 extern char *stripquote __P_((char *));
-#ifndef	FDSH
 extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));
-#endif
 
 #ifndef	_NOUSEHASH
 extern hashlist **hashtable;
@@ -149,6 +147,7 @@ extern char **(*getarglistfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));
 extern int (*checkundeffunc)__P_((char *, char *, int));
 extern VOID (*exitfunc)__P_((VOID_A));
+extern char *(*backquotefunc)__P_((char *));
 #if	!MSDOS
 extern int pathignorecase;
 #endif

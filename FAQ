@@ -434,6 +434,9 @@ A3-17.	ANSI.SYS が組込まれていますか？Windows の DOS プロン
 	ANSI.SYS そのものを用意しておくことも忘れずに。例え
 	ば Windows95 の場合、環境変数 WINDIR で指し示される
 	ディレクトリの下にあります。
+	WindowsNT/2000 の場合、\WINNT\SYSTEM32\CONFIG.NT に
+	devicehigh=%SystemRoot%\system32\ansi.sys を追加し
+	ます。
 
 Q3-18.	Fujitsu UXP/DS で、tar ファイルがアーカイブブラウザ
 	で見られません。

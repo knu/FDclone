@@ -45,8 +45,8 @@ extern char *strstr2 __P_((char *, char *));
 
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
-static VOID NEAR sjis2jis __P_((char *, u_char *));
-static VOID NEAR jis2sjis __P_((char *, u_char *));
+static VOID NEAR sj2j __P_((char *, u_char *));
+static VOID NEAR j2sj __P_((char *, u_char *));
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 static int NEAR toenglish __P_((char *, u_char *, int));
@@ -301,6 +301,7 @@ int kanjiconv __P_((char *, char *, int, int, int));
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 char *kanjiconv2 __P_((char *, char *, int, int, int));
 #endif
+int kanjifputs __P_((char *, FILE *));
 int kanjiputs __P_((char *));
 int kanjiprintf __P_((CONST char *, ...));
 int kanjiputs2 __P_((char *, int, int));
@@ -390,7 +391,7 @@ char *jpn, *eng;
 
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
-static VOID NEAR sjis2jis(buf, s)
+static VOID NEAR sj2j(buf, s)
 char *buf;
 u_char *s;
 {
@@ -422,7 +423,7 @@ u_char *s;
 	buf[1] = j2;
 }
 
-static VOID NEAR jis2sjis(buf, s)
+static VOID NEAR j2sj(buf, s)
 char *buf;
 u_char *s;
 {
@@ -463,7 +464,7 @@ int max;
 			buf[j] = s[i];
 		}
 		else if (issjis1(s[i]) && issjis2(s[i + 1])) {
-			sjis2jis(&(buf[j]), &(s[i++]));
+			sj2j(&(buf[j]), &(s[i++]));
 			buf[j++] |= 0x80;
 			buf[j] |= 0x80;
 		}
@@ -481,7 +482,7 @@ int max;
 
 	for (i = j = 0; s[i] && j < max - 1; i++, j++) {
 		if (isekana(s, i)) buf[j] = s[++i];
-		else if (iseuc(s[i])) jis2sjis(&(buf[j++]), &(s[i++]));
+		else if (iseuc(s[i])) j2sj(&(buf[j++]), &(s[i++]));
 		else buf[j] = s[i];
 	}
 	return(j);
@@ -548,7 +549,7 @@ int max, knj, asc;
 			buf[j++] = s[i++] & ~0x80;
 			buf[j] = s[i] & ~0x80;
 # else
-			sjis2jis(&(buf[j++]), &(s[i++]));
+			sj2j(&(buf[j++]), &(s[i++]));
 # endif
 		}
 		else {
@@ -621,7 +622,7 @@ int max, knj, asc;
 
 					tmp[0] = s[i++];
 					tmp[1] = s[i];
-					jis2sjis(&(buf[j]), tmp);
+					j2sj(&(buf[j]), tmp);
 					j += 2;
 # endif
 				}
@@ -666,7 +667,7 @@ int max, knj, asc;
 			buf[j++] = s[i++] & ~0x80;
 			buf[j] = s[i] & ~0x80;
 # else
-			sjis2jis(&(buf[j++]), &(s[i++]));
+			sj2j(&(buf[j++]), &(s[i++]));
 # endif
 		}
 		else {
@@ -723,7 +724,7 @@ int max, knj, asc;
 
 					tmp[0] = s[i++];
 					tmp[1] = s[i];
-					jis2sjis(&(buf[j]), tmp);
+					j2sj(&(buf[j]), tmp);
 					j += 2;
 # endif
 				}
@@ -774,7 +775,7 @@ int max, knj, asc;
 			buf[j++] = s[i++] & ~0x80;
 			buf[j] = s[i] & ~0x80;
 # else
-			sjis2jis(&(buf[j++]), &(s[i++]));
+			sj2j(&(buf[j++]), &(s[i++]));
 # endif
 		}
 		else {
@@ -847,7 +848,7 @@ int max, knj, asc;
 
 					tmp[0] = s[i];
 					tmp[1] = s[i];
-					jis2sjis(&(buf[j]), tmp);
+					j2sj(&(buf[j]), tmp);
 					j += 2;
 # endif
 				}
@@ -884,7 +885,7 @@ int max;
 		else if (iseuc(s[i])) {
 			u_char tmp[2];
 
-			jis2sjis(tmp, &(s[i++]));
+			j2sj(tmp, &(s[i++]));
 			j += bin2hex(&(buf[j]), tmp[0]);
 			j += bin2hex(&(buf[j]), tmp[1]) - 1;
 		}
@@ -935,7 +936,7 @@ int max;
 
 					tmp[0] = c1;
 					tmp[1] = c2;
-					sjis2jis(&(buf[j]), tmp);
+					sj2j(&(buf[j]), tmp);
 					buf[j++] |= 0x80;
 					buf[j] |= 0x80;
 # else
@@ -979,7 +980,7 @@ int max;
 		else if (iseuc(s[i])) {
 			u_char tmp[2];
 
-			jis2sjis(tmp, &(s[i++]));
+			j2sj(tmp, &(s[i++]));
 			j += bin2cap(&(buf[j]), tmp[0]);
 			j += bin2cap(&(buf[j]), tmp[1]) - 1;
 		}
@@ -1030,7 +1031,7 @@ int max;
 
 					tmp[0] = c1;
 					tmp[1] = c2;
-					sjis2jis(&(buf[j]), tmp);
+					sj2j(&(buf[j]), tmp);
 					buf[j++] |= 0x80;
 					buf[j] |= 0x80;
 # else
@@ -1173,6 +1174,29 @@ int max, in, out;
 	return(cp);
 }
 #endif	/* !MSDOS && !_NOKANJIFCONV */
+
+int kanjifputs(s, fp)
+char *s;
+FILE *fp;
+{
+#if	MSDOS || defined (_NOKANJICONV)
+	return(fputs(s, fp));
+#else
+	char *buf;
+	int len, max;
+
+	len = strlen(s);
+	max = len * 2 + 3;
+	buf = malloc2(max + 1);
+	if (_kanjiconv(buf, s, max, DEFCODE, outputkcode, &len) == buf) {
+		buf[len] = '\0';
+		s = buf;
+	}
+	if (fputs(s, fp) < 0) len = -1;
+	free(buf);
+	return(len);
+#endif
+}
 
 int kanjiputs(s)
 char *s;

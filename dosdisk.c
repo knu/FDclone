@@ -2901,6 +2901,9 @@ u_char attr;
 	u_short mode;
 
 	mode = 0;
+#if	MSDOS
+	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
+#endif
 	if (!(attr & DS_IHIDDEN)) mode |= S_IREAD;
 	if (!(attr & DS_IRDONLY)) mode |= S_IWRITE;
 	mode |= (mode >> 3) | (mode >> 6);
@@ -2917,12 +2920,20 @@ u_short mode;
 {
 	u_char attr;
 
-	attr = DS_IARCHIVE;
+	attr = 0;
+#if	MSDOS
+	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
+#endif
 	if (!(mode & S_IREAD)) attr |= DS_IHIDDEN;
 	if (!(mode & S_IWRITE)) attr |= DS_IRDONLY;
 	if ((mode & S_IFMT) == S_IFDIR) attr |= DS_IFDIR;
-	else if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
-	else if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
+	else {
+#if	!MSDOS
+		attr |= DS_IARCHIVE;
+#endif
+		if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
+		else if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
+	}
 
 	return(attr);
 }
@@ -3823,7 +3834,7 @@ int mode;
 
 	memset((char *)dentp, 0, sizeof(dent_t));
 	memcpy(dentp -> name, fname, 8 + 3);
-	dentp -> attr = putdosmode(mode);
+	dentp -> attr = putdosmode(mode) | DS_IARCHIVE;
 	i = putdostime(dentp -> time, -1);
 	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
 		dentp -> checksum = i / 10;
@@ -4488,6 +4499,7 @@ int mode;
 
 	fd -= DOSFDOFFSET;
 	dosflist[fd]._dent.attr |= DS_IFDIR;
+	dosflist[fd]._dent.attr &= ~DS_IARCHIVE;
 	memcpy((char *)&(dent[0]), (char *)&(dosflist[fd]._dent),
 		sizeof(dent_t));
 	memset(dent[0].name, ' ', 8 + 3);

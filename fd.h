@@ -21,6 +21,8 @@
 
 #define	_NOSPLITWIN
 #define	_NOPRECEDE
+#define	_NOCUSTOMIZE
+#define	_NOEXTRACOPY
 #define	_NOUSEHASH
 #define	_NOORIGGLOB
 #define	_NOKANJIFCONV
@@ -38,13 +40,11 @@ extern char *_mtrace_file;
 #define	HISTORYFILE	"~\\fd.hst"
 #define	CMDLINE_DELIM	"\t ;<>|"
 #define	METACHAR	" \"'*,;<=>?[]|"
-#define	DQ_METACHAR	"\"$"
 #else
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
 #define	CMDLINE_DELIM	"\t !&:;()<>|"
 #define	METACHAR	" \"#$&'()*:;<=>?[\\]^`|"
-#define	DQ_METACHAR	"\"$\\`"
 #endif
 
 /****************************************************************
@@ -63,7 +63,10 @@ extern char *_mtrace_file;
 #define	DISPLAYMODE	0
 #define	SORTTREE	0
 #define	WRITEFS		0
+#define	IGNORECASE	0
+#define	INHERITCOPY	0
 #define	ADJTTY		0
+#define	USEGETCURSOR	0
 #define	WINDOWS		1
 #define	COLUMNS		2
 #define	MINFILENAME	12

@@ -43,6 +43,9 @@ extern char archivedir[];
 #endif
 extern int win_x;
 extern int win_y;
+#ifndef	_NOCUSTOMIZE
+extern int custno;
+#endif
 
 static VOID NEAR pathbar __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
@@ -296,7 +299,7 @@ static VOID NEAR sizebar(VOID_A)
 	char buf[14 + 1];
 	long total, fre;
 
-	if (!sizeinfo) return;
+	if (!sizeinfo || !*fullpath) return;
 
 	locate(0, LSIZE);
 	putterm(l_clear);
@@ -416,7 +419,7 @@ static VOID NEAR infobar(VOID_A)
 	int i;
 #endif
 
-	if (!filelist) return;
+	if (!filelist || maxfile <= 0) return;
 	locate(0, LINFO);
 
 	if (filelist[filepos].st_nlink < 0) {
@@ -869,7 +872,6 @@ u_char fstat;
 VOID rewritefile(all)
 int all;
 {
-	if (!*fullpath) return;
 	if (all > 0) {
 		title();
 		helpbar();
@@ -888,11 +890,18 @@ int all;
 		if (treepath) rewritetree();
 		else
 #endif
-#ifdef	_NOSPLITWIN
-		listupfile(filelist, maxfile, filelist[filepos].name);
-#else
-		listupwin(filelist[filepos].name);
+#ifndef	_NOCUSTOMIZE
+		if (custno >= 0) rewritecust(all);
+		else
 #endif
+		if (filelist) {
+#ifdef	_NOSPLITWIN
+			listupfile(filelist, maxfile, filelist[filepos].name);
+#else
+			listupwin(filelist[filepos].name);
+#endif
+		}
+		tflush();
 	}
 }
 
@@ -1248,6 +1257,7 @@ char *file, *def;
 		free(filelist[i].name);
 		filelist[i].name = NULL;
 	}
+	maxfile = filepos = 0;
 #ifndef	_NOPRECEDE
 	if (haste && !sorton) sorton = dupsorton;
 #endif
@@ -1260,6 +1270,41 @@ char *cur;
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
 	char *cp, *tmp, *def;
 	int i, ischgdir;
+
+	for (i = 0; i < MAXWINDOWS; i++) {
+#ifndef	_NOSPLITWIN
+		win = i;
+		winvar[i].v_fullpath = NULL;
+# ifndef	_NOARCHIVE
+		winvar[i].v_archivedir = NULL;
+# endif
+#endif
+#ifndef	_NOARCHIVE
+		archduplp = NULL;
+		archivefile = NULL;
+		archtmpdir = NULL;
+		launchp = NULL;
+		arcflist = NULL;
+		maxarcf = 0;
+# ifndef	_NODOSDRIVE
+		archdrive = 0;
+# endif
+#endif
+#ifndef	_NOTREE
+		treepath = NULL;
+#endif
+		findpattern = NULL;
+		filelist = NULL;
+		maxfile = maxent = filepos = sorton = dispmode = 0;
+	}
+#ifndef	_NOSPLITWIN
+	win = 0;
+#endif
+
+	strcpy(file, ".");
+	sorton = sorttype % 100;
+	dispmode = displaymode;
+	columns = defcolumns;
 
 	def = NULL;
 	if (cur) {
@@ -1276,9 +1321,9 @@ char *cur;
 		tmp = strcatdelim(fullpath);
 #else	/* !MSDOS */
 		if (
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 		_dospath(cp) ||
-#endif
+# endif
 		*cp == _SC_) *(tmp = fullpath) = '\0';
 		else tmp = strcatdelim(fullpath);
 #endif	/* !MSDOS */
@@ -1324,41 +1369,6 @@ char *cur;
 #if	MSDOS
 	_chdir2(fullpath);
 #endif
-
-	for (i = 0; i < MAXWINDOWS; i++) {
-#ifndef	_NOSPLITWIN
-		win = i;
-		winvar[i].v_fullpath = NULL;
-# ifndef	_NOARCHIVE
-		winvar[i].v_archivedir = NULL;
-# endif
-#endif
-#ifndef	_NOARCHIVE
-		archduplp = NULL;
-		archivefile = NULL;
-		archtmpdir = NULL;
-		launchp = NULL;
-		arcflist = NULL;
-		maxarcf = 0;
-# ifndef	_NODOSDRIVE
-		archdrive = 0;
-# endif
-#endif
-#ifndef	_NOTREE
-		treepath = NULL;
-#endif
-		findpattern = NULL;
-		filelist = NULL;
-		maxfile = maxent = filepos = sorton = dispmode = 0;
-	}
-#ifndef	_NOSPLITWIN
-	win = 0;
-#endif
-
-	strcpy(file, ".");
-	sorton = sorttype % 100;
-	dispmode = displaymode;
-	columns = defcolumns;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {

@@ -39,9 +39,20 @@ extern int mark;
 #ifdef	HAVEFLAGS
 extern u_long flaglist[];
 #endif
+#if	!MSDOS && !defined (_NOEXTRACOPY)
+extern int inheritcopy;
+#endif
 
 #ifndef	EISDIR
 #define	EISDIR	EACCES
+#endif
+
+#ifdef	_NOEXTRACOPY
+#define	MAXCOPYITEM	4
+#define	FLAG_SAMEDIR	0
+#else
+#define	MAXCOPYITEM	5
+#define	FLAG_SAMEDIR	8
 #endif
 
 static int NEAR issamedir __P_((char *, char *));
@@ -54,6 +65,9 @@ static int safecopy __P_((char *));
 static int safemove __P_((char *));
 static int cpdir __P_((char *));
 static int touchdir __P_((char *));
+#ifndef	_NOEXTRACOPY
+static int mvdir __P_((char *));
+#endif
 static VOID NEAR showattr __P_((namelist *, attr_t *, int y));
 static char **NEAR getdirtree __P_((char *, char **, int *, int));
 static int NEAR _applydir __P_((char *, int (*)(char *),
@@ -71,8 +85,14 @@ static time_t attrtime = 0;
 static char *destdir = NULL;
 static time_t destmtime = (time_t)-1;
 static time_t destatime = (time_t)-1;
+#ifndef	_NOEXTRACOPY
+static char *forwardpath = NULL;
+#endif
 #ifndef	_NODOSDRIVE
 static int destdrive = -1;
+#endif
+#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+static int forwarddrive = -1;
 #endif
 
 
@@ -220,8 +240,14 @@ static int NEAR checkdupl(file, dest, stp1, stp2)
 char *file, *dest;
 struct stat *stp1, *stp2;
 {
-	char *cp, *tmp, *str[4];
-	int i, n, val[4];
+	char *cp, *tmp, *str[MAXCOPYITEM];
+	int i, n, val[MAXCOPYITEM];
+#ifndef	_NOEXTRACOPY
+	char path[MAXPATHLEN];
+#endif
+#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+	int dupdestdrive;
+#endif
 
 	if (getdestpath(file, dest, stp1) < 0) return(-1);
 	if (Xlstat(dest, stp2) < 0) {
@@ -230,9 +256,18 @@ struct stat *stp1, *stp2;
 		warning(-1, dest);
 		return(-1);
 	}
-	if ((stp2 -> st_mode & S_IFMT) != S_IFDIR) n = copypolicy;
+	if ((stp2 -> st_mode & S_IFMT) != S_IFDIR)
+		n = (copypolicy & ~FLAG_SAMEDIR);
 	else if ((stp1 -> st_mode & S_IFMT) != S_IFDIR) n = 2;
+#ifdef	_NOEXTRACOPY
 	else return(1);
+#else
+	else if (!(copypolicy & FLAG_SAMEDIR)) return(1);
+	else {
+		n = (copypolicy &= ~FLAG_SAMEDIR);
+		copypolicy = 0;
+	}
+#endif
 
 	for (;;) {
 		if (!n || n == 2) {
@@ -245,15 +280,47 @@ struct stat *stp1, *stp2;
 		}
 		if (!n) {
 			str[0] = UPDAT_K;
-			str[1] = RENAM_K;
-			str[2] = OVERW_K;
-			str[3] = NOCPY_K;
 			val[0] = 1;
+			str[1] = RENAM_K;
 			val[1] = 2;
+			str[2] = OVERW_K;
 			val[2] = 3;
+			str[3] = NOCPY_K;
 			val[3] = 4;
+#ifndef	_NOEXTRACOPY
+			str[4] = FORWD_K;
+			val[4] = 5;
+#endif
 			i = 1;
-			if (selectstr(&i, 4, 0, str, val) == ESC) return(-1);
+			if (selectstr(&i, MAXCOPYITEM, 0, str, val) == ESC)
+				return(-1);
+#ifndef	_NOEXTRACOPY
+			if (i == 5) {
+				str[0] = UPDAT_K;
+				str[1] = OVERW_K;
+				val[0] = 5;
+				val[1] = 6;
+				if (selectstr(&i, 2, 0, str, val) == ESC)
+					continue;
+# ifndef	_NODOSDRIVE
+				dupdestdrive = destdrive;
+# endif
+
+				if (!(tmp = getdestdir(FRWDD_K, NULL)))
+					continue;
+# ifndef	_NODOSDRIVE
+				forwarddrive = destdrive;
+				destdrive = dupdestdrive;
+# endif
+				if (issamedir(tmp, NULL)
+				|| issamedir(tmp, destpath)) {
+					warning(EINVAL, tmp);
+					free(tmp);
+					continue;
+				}
+				forwardpath = tmp;
+			}
+#endif	/* !_NOEXTRACOPY */
 			copypolicy = n = i;
 		}
 		switch (n) {
@@ -286,6 +353,28 @@ struct stat *stp1, *stp2;
 				return(2);
 /*NOTREACHED*/
 				break;
+#ifndef	_NOEXTRACOPY
+			case 5:
+				if (stp1 -> st_mtime < stp2 -> st_mtime)
+					return(-1);
+			case 6:
+				strcatdelim2(path, forwardpath, file);
+				cp = strrdelim(path, 0);
+				*cp = '\0';
+				if (mkdir2(path, 0777) < 0
+				&& errno != EEXIST) {
+					warning(-1, path);
+					return(-1);
+				}
+				*cp = _SC_;
+				if (safemvfile(dest, path, stp2, NULL) < 0) {
+					warning(-1, path);
+					return(-1);
+				}
+				return(2);
+/*NOTREACHED*/
+				break;
+#endif	/* !_NOEXTRACOPY */
 			default:
 				return(-1);
 /*NOTREACHED*/
@@ -435,7 +524,27 @@ char *path;
 static int touchdir(path)
 char *path;
 {
-#if	MSDOS
+#if	MSDOS || !defined (_NOEXTRACOPY)
+	char dest[MAXPATHLEN];
+	struct stat st;
+
+# if	!MSDOS
+	if (!inheritcopy) return(0);
+# endif
+	if (getdestpath(path, dest, &st) < 0) return(-2);
+	if (destmtime != (time_t)-1 || destatime != (time_t)-1) {
+		st.st_mtime = destmtime;
+		st.st_atime = destatime;
+	}
+	if (touchfile(dest, &st) < 0) return(-1);
+#endif	/* MSDOS || !_NOEXTRACOPY */
+	return(0);
+}
+
+#ifndef	_NOEXTRACOPY
+static int mvdir(path)
+char *path;
+{
 	char dest[MAXPATHLEN];
 	struct stat st;
 
@@ -445,9 +554,10 @@ char *path;
 		st.st_atime = destatime;
 	}
 	if (touchfile(dest, &st) < 0) return(-1);
-#endif	/* MSDOS */
-	return(0);
+	if (checkrmv(path, R_OK | W_OK | X_OK) < 0) return(1);
+	return(Xrmdir(path));
 }
+#endif	/* !_NOEXTRACOPY */
 
 int rmvfile(path)
 char *path;
@@ -1002,18 +1112,20 @@ int tr;
 
 	if (!destpath) return((tr) ? 2 : 1);
 	destdir = NULL;
-	copypolicy = (issamedir(destpath, NULL)) ? 2 : 0;
+	copypolicy = (issamedir(destpath, NULL)) ? (FLAG_SAMEDIR | 2) : 0;
 #ifndef	_NODOSDRIVE
 	if (dospath3("")) waitmes();
 #endif
 	if (mark > 0) applyfile(safecopy, ENDCP_K);
 	else if (isdir(&(filelist[filepos]))
 	&& !islink(&(filelist[filepos]))) {
+#ifdef	_NOEXTRACOPY
 		if (copypolicy) {
 			warning(EEXIST, filelist[filepos].name);
 			free(destpath);
 			return((tr) ? 2 : 1);
 		}
+#endif
 		applydir(filelist[filepos].name, safecopy, cpdir, touchdir,
 			(islowerdir(destpath, filelist[filepos].name)) ? 2 : 1,
 			ENDCP_K);
@@ -1022,8 +1134,16 @@ int tr;
 		warning(-1, filelist[filepos].name);
 	free(destpath);
 	if (destdir) free(destdir);
+#ifndef	_NOEXTRACOPY
+	if (forwardpath) free(forwardpath);
+	forwardpath = NULL;
+#endif
 #ifndef	_NODOSDRIVE
 	if (destdrive >= 0) shutdrv(destdrive);
+#endif
+#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+	if (forwarddrive >= 0) shutdrv(forwarddrive);
+	forwarddrive = -1;
 #endif
 	return(4);
 }
@@ -1055,14 +1175,34 @@ int tr;
 	if (mark > 0) filepos = applyfile(safemove, ENDMV_K);
 	else if (islowerdir(destpath, filelist[filepos].name))
 		warning(EINVAL, filelist[filepos].name);
-	else if ((i = safemove(filelist[filepos].name)) < 0)
+	else if ((i = safemove(filelist[filepos].name)) < 0) {
+#ifdef	_NOEXTRACOPY
 		warning(-1, filelist[filepos].name);
+#else
+		if (errno != EXDEV
+		|| !isdir(&(filelist[filepos]))
+		|| islink(&(filelist[filepos])))
+			warning(-1, filelist[filepos].name);
+		else if (applydir(filelist[filepos].name,
+			safemove, cpdir, mvdir,
+			(islowerdir(destpath, filelist[filepos].name)) ? 2 : 1,
+			ENDMV_K) >= 0) filepos++;
+#endif
+	}
 	else if (!i) filepos++;
 	if (filepos >= maxfile) filepos = maxfile - 1;
 	free(destpath);
 	if (destdir) free(destdir);
+#ifndef	_NOEXTRACOPY
+	if (forwardpath) free(forwardpath);
+	forwardpath = NULL;
+#endif
 #ifndef	_NODOSDRIVE
 	if (destdrive >= 0) shutdrv(destdrive);
+#endif
+#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+	if (forwarddrive >= 0) shutdrv(forwarddrive);
+	forwarddrive = -1;
 #endif
 	return(4);
 }

@@ -87,6 +87,9 @@ static int write_dir __P_((char *));
 #endif
 static int reread_dir __P_((char *));
 static int help_message __P_((char *));
+#ifndef	_NOCUSTOMIZE
+static int edit_runcom __P_((char *));
+#endif
 static int quit_system __P_((char *));
 static int make_dir __P_((char *));
 static int copy_file __P_((char *));
@@ -240,6 +243,9 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{'C',		COPY_TREE,	255},
 #endif
 	{'D',		DELETE_DIR,	255},
+#ifndef	_NOCUSTOMIZE
+	{'E',		EDIT_RUNCOM,	255},
+#endif
 	{'F',		FIND_DIR,	255},
 	{'H',		DOTFILE_MODE,	255},
 #ifndef	_NOTREE
@@ -954,6 +960,16 @@ char *arg;
 #endif
 	return(4);
 }
+
+#ifndef	_NOCUSTOMIZE
+/*ARGSUSED*/
+static int edit_runcom(arg)
+char *arg;
+{
+	if (customize() >= 0) evalenv();
+	return(4);
+}
+#endif
 
 /*ARGSUSED*/
 static int help_message(arg)

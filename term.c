@@ -1763,7 +1763,7 @@ int sig;
 	} while (!key);
 
 	key = ch = getch2();
-	p = keyseqtree;
+	if (!(p = keyseqtree)) return(key);
 
 	if (key == ESC) {
 		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
