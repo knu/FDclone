@@ -14,9 +14,19 @@
 #define	SJIS	3
 #define	EUC	4
 
-static int fputs2();
-static char *convert();
-static int output();
+#ifdef	__STDC__
+#define	__P_(args)	args
+#define	VOID		void
+#else
+#define	__P_(args)	()
+#define	VOID
+#endif
+
+extern VOID exit __P_((int));
+
+static int fputs2 __P_((char *, FILE *));
+static char *convert __P_((int, int));
+static int output __P_((FILE *, int, int));
 
 static int msboff = 0;
 static int prefix = 0;
@@ -66,8 +76,7 @@ int j1, j2;
 
 static int output(fp, c, mode)
 FILE *fp;
-int c;
-int mode;
+int c, mode;
 {
 	static unsigned char buf[2];
 	static int kanji1 = 0;

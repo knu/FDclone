@@ -27,6 +27,12 @@
 #include <time.h>
 #endif
 
+#ifdef	NOVOID
+#define	VOID
+#else
+#define	VOID	void
+#endif
+
 #if	MSDOS
 #include "unixemu.h"
 #else
@@ -62,9 +68,9 @@ extern int errno;
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
 
 #ifdef	FD
-extern int toupper2();
-extern int strcasecmp2();
-extern time_t timelocal2();
+extern int toupper2 __P_((int));
+extern int strcasecmp2 __P_((char *, char *));
+extern time_t timelocal2 __P_((struct tm *));
 #else
 #ifndef	NOTZFILEH
 #include <tzfile.h>
@@ -80,60 +86,60 @@ extern time_t timelocal2();
 			| (((u_char *)cp)[2] << (CHAR_BIT * 1)) \
 			| (((u_char *)cp)[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)cp)[0] << (CHAR_BIT * 3)) )
-static int toupper2();
-static int strcasecmp2();
-static int tmcmp();
-static long gettimezone();
-static time_t timelocal2();
+static int toupper2 __P_((int));
+static int strcasecmp2 __P_((char *, char *));
+static int tmcmp __P_((struct tm *, struct tm *));
+static long gettimezone __P_((struct tm *, time_t));
+static time_t timelocal2 __P_((struct tm *));
 #endif
 
-static int shiftcache();
-static int savecache();
-static int loadcache();
-static int sectseek();
-static int sectread();
-static int sectwrite();
-static int readfat();
-static int writefat();
-static u_char *getfatofs();
-static long getfat();
-static int putfat();
-static long clust2sect();
-static long newclust();
-static long clustread();
-static long clustwrite();
-static long clustexpand();
-static int clustfree();
-static int readbpb();
-static int opendev();
-static int closedev();
-static int checksum();
-static u_short lfnencode();
-static u_short lfndecode();
-static int transchar();
-static int detranschar();
-static int transname();
-static int cmpdospath();
-static char *getdosname();
-static char *putdosname();
-static u_short getdosmode();
-static u_char putdosmode();
-static time_t getdostime();
-static u_char *putdostime();
-static int getdrive();
-static int parsepath();
-static int seekdent();
-static int readdent();
-static struct dirent *_dosreaddir();
-static struct dirent *finddir();
-static dosDIR *splitpath();
-static int getdent();
-static int writedent();
-static int expanddent();
-static int creatdent();
-static int unlinklfn();
-static int dosfilbuf();
-static int dosflsbuf();
+static int sectseek __P_((devstat *, long));
+static int shiftcache __P_((int));
+static int savecache __P_((devstat *, long, u_char *));
+static int loadcache __P_((devstat *, long, u_char *));
+static int sectread __P_((devstat *, long, u_char *, int));
+static int sectwrite __P_((devstat *, long, u_char *, int));
+static int readfat __P_((devstat *));
+static int writefat __P_((devstat *));
+static u_char *getfatofs __P_((devstat *, long));
+static long getfat __P_((devstat *, long));
+static int putfat __P_((devstat *, long, long));
+static long clust2sect __P_((devstat *, long));
+static long newclust __P_((devstat *));
+static long clustread __P_((devstat *, u_char *, long));
+static long clustwrite __P_((devstat *, u_char *, long));
+static long clustexpand __P_((devstat *, long, int));
+static int clustfree __P_((devstat *, long));
+static int readbpb __P_((devstat *, bpb_t *));
+static int opendev __P_((int));
+static int closedev __P_((int));
+static int checksum __P_((char *));
+static u_short lfnencode __P_((u_char, u_char));
+static u_short lfndecode __P_((u_char, u_char));
+static int transchar __P_((int));
+static int detranschar __P_((int));
+static int transname __P_((char *, char *, int));
+static int cmpdospath __P_((char *, char *, int, int));
+static char *getdosname __P_((char *, char *, char *));
+static char *putdosname __P_((char *, char *, int));
+static u_short getdosmode __P_((u_char));
+static u_char putdosmode __P_((u_short));
+static time_t getdostime __P_((u_short, u_short));
+static u_char *putdostime __P_((u_char *, time_t));
+static int getdrive __P_((char *));
+static int parsepath __P_((char *, char *, int));
+static int seekdent __P_((dosDIR *, dent_t *, long, u_short));
+static int readdent __P_((dosDIR *, dent_t *, int));
+static struct dirent *_dosreaddir __P_((dosDIR *, int));
+static struct dirent *finddir __P_((dosDIR *, char *, int));
+static dosDIR *splitpath __P_((char **));
+static int getdent __P_((char *, int *));
+static int writedent __P_((int));
+static int expanddent __P_((int));
+static int creatdent __P_((char *, int));
+static int unlinklfn __P_((int, long, u_short, int));
+static int dosfilbuf __P_((int, int));
+static int dosflsbuf __P_((int));
 
 devinfo fdtype[MAXDRIVEENTRY] = {
 #if	defined (SOLARIS)
@@ -250,7 +256,7 @@ static dosFILE dosflist[DOSNOFILE];
 static int maxdosf = 0;
 static u_char cachedrive[SECTCACHESIZE];
 static long sectno[SECTCACHESIZE];
-static char *sectcache[SECTCACHESIZE];
+static u_char *sectcache[SECTCACHESIZE];
 static int maxsectcache = 0;
 static long lfn_clust = -1;
 static u_short lfn_offset;
@@ -466,7 +472,7 @@ long sect;
 static int shiftcache(n)
 int n;
 {
-	char *cp;
+	u_char *cp;
 	long no;
 	int i, drive;
 
@@ -495,18 +501,18 @@ int n;
 static int savecache(devp, sect, buf)
 devstat *devp;
 long sect;
-char *buf;
+u_char *buf;
 {
-	char *cp;
+	u_char *cp;
 	int i;
 
 	for (i = 0; i < maxsectcache; i++)
 	if (devp -> drive == cachedrive[i] && sect == sectno[i]) {
-		memcpy(sectcache[i], buf, devp -> sectsize);
+		memcpy((char *)sectcache[i], (char *)buf, devp -> sectsize);
 		shiftcache(i);
 		return(1);
 	}
-	if (!(cp = (char *)malloc(devp -> sectsize))) return(-1);
+	if (!(cp = (u_char *)malloc(devp -> sectsize))) return(-1);
 	if (i < SECTCACHESIZE) maxsectcache = i + 1;
 	else {
 		i--;
@@ -522,7 +528,7 @@ char *buf;
 static int loadcache(devp, sect, buf)
 devstat *devp;
 long sect;
-char *buf;
+u_char *buf;
 {
 	int i;
 
@@ -538,7 +544,7 @@ char *buf;
 static int sectread(devp, sect, buf, n)
 devstat *devp;
 long sect;
-char *buf;
+u_char *buf;
 int n;
 {
 	int i, tmp;
@@ -562,7 +568,7 @@ int n;
 static int sectwrite(devp, sect, buf, n)
 devstat *devp;
 long sect;
-char *buf;
+u_char *buf;
 int n;
 {
 	int i, tmp;
@@ -732,7 +738,7 @@ long clust;
 
 static long clustwrite(devp, buf, prev)
 devstat *devp;
-char *buf;
+u_char *buf;
 long prev;
 {
 	long sect, clust;
@@ -755,14 +761,14 @@ devstat *devp;
 long clust;
 int fill;
 {
-	char *buf;
+	u_char *buf;
 	long new, size;
 
 	if (!fill) buf = NULL;
 	else {
 		size = (devp -> clustsize) * (devp -> sectsize);
-		if (!(buf = (char *)malloc(size))) return(-1);
-		memset(buf, 0, size);
+		if (!(buf = (u_char *)malloc(size))) return(-1);
+		memset((char *)buf, 0, size);
 	}
 	new = clustwrite(devp, buf, clust);
 	if (buf) free(buf);
@@ -976,7 +982,7 @@ int dd;
 
 int preparedrv(drive, func)
 int drive;
-int (*func)();
+VOID (*func)__P_((VOID));
 {
 	int i;
 
@@ -2507,7 +2513,7 @@ int mode;
 	dent[1].clust[0] = clust & 0xff;
 	dent[1].clust[1] = (clust >> 8) & 0xff;
 
-	if (doswrite(fd + DOSFDOFFSET, &dent[0], sizeof(dent_t) * 2) < 0) {
+	if (doswrite(fd + DOSFDOFFSET, (char *)dent, sizeof(dent_t) * 2) < 0) {
 		tmp = errno;
 		if (clust = byte2word(dosflist[fd]._dent.clust))
 			clustfree(fd2devp(fd), clust);
@@ -2538,7 +2544,7 @@ char *path;
 	clust = lfn_clust;
 	offset = lfn_offset;
 
-	while (dp = _dosreaddir((DIR *)xdirp, 0))
+	while (dp = _dosreaddir(xdirp, 0))
 		if (strcmp(dp -> d_name, ".") && strcmp(dp -> d_name, "..")) {
 			dosclosedir((DIR *)xdirp);
 			errno = ENOTEMPTY;
@@ -2778,7 +2784,7 @@ FILE *stream;
 	return(0);
 }
 
-int dosallclose()
+int dosallclose(VOID)
 {
 	int i, ret;
 

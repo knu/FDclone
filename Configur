@@ -96,7 +96,7 @@ USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF \
-USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME SIGARGINT
+USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME SIGARGINT SIGFNCINT
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -351,9 +351,13 @@ fi
 if isexist "mktime(0)" time; then
 	echo "#define	USEMKTIME"
 fi
-if isexist "uname(0)" sys/utsname; then
+if noexist "gethostname(0,0)"\
+&& isexist "uname(0)" sys/utsname; then
 	echo "#define	USEUNAME"
 fi
 if inheader 'int.*[^a-zA-Z_]signal' signal; then
 	echo "#define	SIGARGINT"
+fi
+if inheader 'signal.*[^a-zA-Z_](.*( *int *) *)' signal; then
+	echo "#define	SIGFNCINT"
 fi

@@ -13,9 +13,14 @@
 #include <time.h>
 #endif
 
+#if	MSDOS || defined (__STDC__)
+#include <stdarg.h>
+#else
+#include <varargs.h>
+#endif
+
 #if	MSDOS
 #include <dos.h>
-#include <stdarg.h>
 # ifdef	__GNUC__
 # include <dpmi.h>
 # include <go32.h>
@@ -30,10 +35,8 @@
 # include <sys/types.h>
 # include <sys/timeb.h>
 # endif	/* !__GNUC__ */
-extern int initdir();
 #define	TTYNAME		""
 #else	/* !MSDOS */
-#include <varargs.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/file.h>
@@ -79,17 +82,24 @@ typedef	struct sgttyb	termioctl_t;
 #include <stdlib.h>
 #endif
 
+#ifdef	NOVOID
+#define	VOID
+#else
+#define	VOID	void
+#endif
+
 #include "term.h"
 
 #define	MAXPRINTBUF	255
 #define	SIZEFMT		"\033[%d;%dR"
 
 #if	!MSDOS
-extern int tgetent();
-extern int tgetnum();
-extern int tgetflag();
-extern char *tgetstr();
-extern char *tgoto();
+extern int tgetent __P_((char *, char *));
+extern int tgetnum __P_((char *));
+extern int tgetflag __P_((char *));
+extern char *tgetstr __P_((char *, char **));
+extern char *tgoto __P_((char *, int, int));
+extern int tputs __P_((char *, int, int (*)__P_((int))));
 
 #define	STDIN		0
 #define	STDOUT		1
@@ -136,17 +146,23 @@ typedef struct fd_set {
 #endif
 #endif	/* !MSDOS */
 
-static int err2();
-static int defaultterm();
-static int getxy();
+static int err2 __P_((char *));
+static int defaultterm __P_((VOID));
+static int getxy __P_((char *, char *, int *, int *));
 #if	MSDOS
 # ifndef	__GNUC__
-static int dosgettime();
+static int dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
-static int tgetstr2();
-static int tgetstr3();
-static int sortkeyseq();
+# ifdef	USESGTTY
+static int ttymode __P_((int, u_short, u_short, u_short, u_short));
+# else
+static int ttymode __P_((int, u_short, u_short, u_short, u_short,
+		u_short, u_short, int, int));
+# endif
+static int tgetstr2 __P_((char **, char *));
+static int tgetstr3 __P_((char **, char *, char *));
+static int sortkeyseq __P_((VOID));
 #endif	/* !MSDOS */
 
 short ospeed;
@@ -239,52 +255,52 @@ int reset;
 	return(0);
 }
 
-int cooked2()
+int cooked2(VOID)
 {
 	return(0);
 }
 
-int cbreak2()
+int cbreak2(VOID)
 {
 	return(0);
 }
 
-int raw2()
+int raw2(VOID)
 {
 	return(0);
 }
 
-int echo2()
+int echo2(VOID)
 {
 	return(0);
 }
 
-int noecho2()
+int noecho2(VOID)
 {
 	return(0);
 }
 
-int nl2()
+int nl2(VOID)
 {
 	return(0);
 }
 
-int nonl2()
+int nonl2(VOID)
 {
 	return(0);
 }
 
-int tabs()
+int tabs(VOID)
 {
 	return(0);
 }
 
-int notabs()
+int notabs(VOID)
 {
 	return(0);
 }
 
-int keyflush()
+int keyflush(VOID)
 {
 #ifdef	PC98
 # ifdef	__GNUC__
@@ -370,7 +386,7 @@ int min, time;
 	return(0);
 }
 
-int cooked2()
+int cooked2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, 0, ~(CBREAK | RAW), 0, ~(LLITOUT | LPENDIN));
@@ -382,7 +398,7 @@ int cooked2()
 	return(0);
 }
 
-int cbreak2()
+int cbreak2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
@@ -393,7 +409,7 @@ int cbreak2()
 	return(0);
 }
 
-int raw2()
+int raw2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, RAW, 0, LLITOUT, 0);
@@ -403,7 +419,7 @@ int raw2()
 	return(0);
 }
 
-int echo2()
+int echo2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
@@ -414,7 +430,7 @@ int echo2()
 	return(0);
 }
 
-int noecho2()
+int noecho2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, 0, ~ECHO, 0, ~(LCRTBS | LCRTERA));
@@ -424,7 +440,7 @@ int noecho2()
 	return(0);
 }
 
-int nl2()
+int nl2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, CRMOD, 0, 0, 0);
@@ -434,7 +450,7 @@ int nl2()
 	return(0);
 }
 
-int nonl2()
+int nonl2(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, 0, ~CRMOD, 0, 0);
@@ -444,7 +460,7 @@ int nonl2()
 	return(0);
 }
 
-int tabs()
+int tabs(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, 0, ~XTABS, 0, 0);
@@ -454,7 +470,7 @@ int tabs()
 	return(0);
 }
 
-int notabs()
+int notabs(VOID)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, XTABS, 0, 0, 0);
@@ -464,7 +480,7 @@ int notabs()
 	return(0);
 }
 
-int keyflush()
+int keyflush(VOID)
 {
 #ifdef	USESGTTY
 	int i = FREAD;
@@ -504,7 +520,7 @@ char *mes;
 	return(0);
 }
 
-static int defaultterm()
+static int defaultterm(VOID)
 {
 #if	!MSDOS
 	int i;
@@ -667,7 +683,7 @@ int *yp, *xp;
 }
 
 #if	MSDOS
-int getterment()
+int getterment(VOID)
 {
 	defaultterm();
 	termflags |= F_TERMENT;
@@ -708,7 +724,7 @@ char *str1, *str2;
 	return(0);
 }
 
-static int sortkeyseq()
+static int sortkeyseq(VOID)
 {
 	int i, j, tmp;
 	char *str;
@@ -730,7 +746,7 @@ static int sortkeyseq()
 	return(0);
 }
 
-int getterment()
+int getterment(VOID)
 {
 	char *cp, buf[1024];
 	int i;
@@ -889,7 +905,7 @@ int n;
 }
 #endif	/* !MSDOS */
 
-int initterm()
+int initterm(VOID)
 {
 	if (!(termflags & F_TERMENT)) getterment();
 #if	MSDOS && defined (__GNUC__)
@@ -902,7 +918,7 @@ int initterm()
 	return(0);
 }
 
-int endterm()
+int endterm(VOID)
 {
 	if (!(termflags & F_INITTERM)) return(0);
 	putterms(t_nokeypad);
@@ -952,18 +968,6 @@ char *s;
 	return(0);
 }
 
-/*VARARGS1*/
-int cprintf2(const char *fmt, ...)
-{
-	va_list args;
-	char buf[MAXPRINTBUF + 1];
-
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-	return(cputs2(buf));
-}
-
 /*ARGSUSED*/
 int kbhit2(usec)
 u_long usec;
@@ -992,7 +996,7 @@ u_long usec;
 #endif
 }
 
-int getch2()
+int getch2(VOID)
 {
 #ifdef	PC98
 	union REGS regs;
@@ -1156,7 +1160,7 @@ int x, y;
 	return(0);
 }
 
-int tflush()
+int tflush(VOID)
 {
 	return(0);
 }
@@ -1181,31 +1185,6 @@ char *str;
 	return(fputs(str, ttyout));
 }
 
-#ifndef	NOVSPRINTF
-/*VARARGS1*/
-int cprintf2(fmt, va_alist)
-char *fmt;
-va_dcl
-{
-	va_list args;
-	char buf[MAXPRINTBUF + 1];
-
-	va_start(args);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-#else
-int cprintf2(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
-char *fmt;
-{
-	char buf[MAXPRINTBUF + 1];
-
-	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-#endif
-
-	fputs(buf, ttyout);
-	return(strlen(buf));
-}
-
 int kbhit2(usec)
 u_long usec;
 {
@@ -1224,7 +1203,7 @@ u_long usec;
 #endif
 }
 
-int getch2()
+int getch2(VOID)
 {
 	u_char ch;
 
@@ -1293,7 +1272,7 @@ int x, y;
 	return(0);
 }
 
-int tflush()
+int tflush(VOID)
 {
 	fflush(ttyout);
 	return(0);
@@ -1358,6 +1337,42 @@ int xmax, ymax;
 	return(0);
 }
 #endif	/* !MSDOS */
+
+#if	MSDOS || defined (__STDC__)
+/*VARARGS1*/
+int cprintf2(CONST char *fmt, ...)
+{
+	va_list args;
+	char buf[MAXPRINTBUF + 1];
+
+	va_start(args, fmt);
+	vsprintf(buf, fmt, args);
+	va_end(args);
+#else	/* !MSDOS && !__STDC__ */
+# ifndef	NOVSPRINTF
+/*VARARGS1*/
+int cprintf2(fmt, va_alist)
+char *fmt;
+va_dcl
+{
+	va_list args;
+	char buf[MAXPRINTBUF + 1];
+
+	va_start(args);
+	vsprintf(buf, fmt, args);
+	va_end(args);
+# else	/* NOVSPRINTF */
+int cprintf2(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
+char *fmt;
+{
+	char buf[MAXPRINTBUF + 1];
+
+	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
+# endif	/* NOVSPRINTF */
+#endif	/* !MSDOS && !__STDC__ */
+	return(cputs2(buf));
+}
+
 
 int chgcolor(color, reverse)
 int color, reverse;

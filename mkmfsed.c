@@ -7,13 +7,22 @@
 #include <stdio.h>
 #include "machine.h"
 
+#ifdef	NOVOID
+#define	VOID
+#else
+#define	VOID	void
+#endif
+
+#ifdef	USEMANLANG
+extern char *getenv __P_((char *));
+#endif
+extern VOID exit __P_((int));
 
 int main (argc, argv)
 int argc;
 char *argv[];
 {
 #ifdef	USEMANLANG
-	extern char *getenv();
 	char *cp;
 #endif
 

@@ -35,6 +35,12 @@ typedef union REGS	__dpmi_regs;
 
 #include "unixemu.h"
 
+#ifdef	NOVOID
+#define	VOID
+#else
+#define	VOID	void
+#endif
+
 #define	DATETIMEFORMAT	1
 #define	DS_IRDONLY	001
 #define	DS_IHIDDEN	002
@@ -67,14 +73,14 @@ struct lfnfind_t {
 	char	alias[14] __attribute__ ((packed));
 };
 
-extern int getcurdrv();
-extern int setcurdrv();
-extern int supportLFN();
-extern char *shortname();
-extern char *unixrealpath();
-extern char *preparefile();
+extern int getcurdrv __P_((VOID));
+extern int setcurdrv __P_((int));
+extern int supportLFN __P_((char *));
+extern char *shortname __P_((char *, char *));
+extern char *unixrealpath __P_((char *, char *));
+extern char *preparefile __P_((char *, char *, int));
 #ifdef	__GNUC__
-extern char *adjustfname();
+extern char *adjustfname __P_((char *));
 #endif
 #ifdef	NOLFNEMU
 #define	unixopendir		opendir
@@ -84,13 +90,13 @@ extern char *adjustfname();
 #define	unixrename		rename
 #define	unixmkdir		mkdir
 #else	/* !NOLFNEMU */
-extern DIR *unixopendir();
-extern int unixclosedir();
-extern struct dirent *unixreaddir();
-extern int unixseekdir();
-extern int unixrename();
-extern int unixmkdir();
+extern DIR *unixopendir __P_((char *));
+extern int unixclosedir __P_((DIR *));
+extern struct dirent *unixreaddir __P_((DIR *));
+extern int unixseekdir __P_((DIR *, long));
+extern int unixrename __P_((char *, char *));
+extern int unixmkdir __P_((char *, int));
 #endif	/* !NOLFNEMU */
-extern char *unixgetcwd();
-extern int unixstat();
-extern int unixchmod();
+extern char *unixgetcwd __P_((char *, int));
+extern int unixstat __P_((char *, struct stat *));
+extern int unixchmod __P_((char *, int));

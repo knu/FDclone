@@ -12,13 +12,23 @@
 #define	MAXFUNCNO	32
 #define	MAXARGS		10
 
-static char *isfunction();
-static int entryfunc();
-static char *checkhere();
-static int getargs();
-static char *expargs();
-static int evalline();
-static char *getline();
+#ifdef	__STDC__
+#define	__P_(args)	args
+#define	VOID		void
+#else
+#define	__P_(args)	()
+#define	VOID
+#endif
+
+extern VOID exit __P_((int));
+
+static char *isfunction __P_((char *));
+static int entryfunc __P_((char *));
+static char *checkhere __P_((char *));
+static int getargs __P_((char **, char *[]));
+static char *expargs __P_((char *, char *[]));
+static int evalline __P_((char *, char *[]));
+static char *getline __P_((FILE *));
 
 int funcno;
 char *func[MAXFUNCNO];

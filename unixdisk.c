@@ -7,21 +7,21 @@
 #include "machine.h"
 #include "unixdisk.h"
 
-static int seterrno();
+static int seterrno __P_((u_short));
 #ifdef	DJGPP
-static int dos_putpath();
+static int dos_putpath __P_((char *, int));
 #endif
 #ifndef	NOLFNEMU
-static long int21call();
-static int dos_findfirst();
-static int dos_findnext();
-static u_short lfn_findfirst();
-static int lfn_findnext();
-static int lfn_findclose();
+static long int21call __P_((__dpmi_regs *, struct SREGS *));
+static int dos_findfirst __P_((char *, struct dosfind_t *));
+static int dos_findnext __P_((struct dosfind_t *));
+static u_short lfn_findfirst __P_((char *, struct lfnfind_t *));
+static int lfn_findnext __P_((u_short, struct lfnfind_t *));
+static int lfn_findclose __P_((u_short));
 #endif
-static u_short getdosmode();
-static u_char putdosmode();
-static time_t getdostime();
+static u_short getdosmode __P_((u_char));
+static u_char putdosmode __P_((u_short));
+static time_t getdostime __P_((u_short, u_short));
 
 static u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
@@ -74,7 +74,7 @@ struct SREGS *segsp;
 }
 #endif	/* !NOLFNEMU */
 
-int getcurdrv()
+int getcurdrv(VOID)
 {
 	return((u_char)bdos(0x19, 0, 0) + ((dos7access) ? 'a' : 'A'));
 }

@@ -7,8 +7,18 @@
 #include <stdio.h>
 #include <string.h>
 
-static int fgetc2();
-static int readfunctable();
+#ifdef	__STDC__
+#define	__P_(args)	args
+#define	VOID		void
+#else
+#define	__P_(args)	()
+#define	VOID
+#endif
+
+extern VOID exit __P_((int));
+
+static int fgetc2 __P_((FILE *));
+static int readfunctable __P_((FILE *, FILE *));
 
 
 static int fgetc2(fp)

@@ -7,7 +7,7 @@
 #if	(MSDOS || defined (_NOKANJICONV)) && defined (_NOENGMES)
 #define	mesconv(jpn, eng)	(jpn)
 #else
-extern char *mesconv();
+extern char *mesconv __P_((char *, char *));
 #endif
 
 #ifdef	_NOENGMES

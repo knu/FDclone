@@ -12,9 +12,7 @@
 #include <sys/utsname.h>
 #endif
 
-#if	MSDOS
-#include "unixemu.h"
-#else
+#if	!MSDOS
 # ifdef	_NODOSDRIVE
 # include <sys/param.h>
 # else
@@ -248,7 +246,7 @@ char *name;
 #endif
 
 #ifndef	_NOROCKRIDGE
-	name = detransfile(name, tmp);
+	name = detransfile(name, tmp, 0);
 #endif
 	for (cp = name, i = 0; *cp; cp++, i++) {
 #ifndef	CODEEUC
@@ -262,7 +260,7 @@ char *name;
 	return(strdup2(buf));
 }
 
-VOID adjustpath()
+VOID adjustpath(VOID)
 {
 	char *cp, *path;
 
@@ -360,7 +358,7 @@ u_char *fp, *dp, *wp;
 }
 #endif
 
-char *evalprompt()
+char *evalprompt(VOID)
 {
 #ifdef	USEUNAME
 	struct utsname uts;
@@ -437,7 +435,7 @@ char *cp;
 	return(1);
 }
 
-VOID evalenv()
+VOID evalenv(VOID)
 {
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
 	if ((sorttype < 0 || (sorttype & 7) > 5)

@@ -13,17 +13,11 @@
 #include "kanji.h"
 #include "version.h"
 
-#ifdef	USETIMEH
-#include <time.h>
-#endif
-
 #if	MSDOS
-#include "unixemu.h"
 # ifdef	__GNUC__
-extern char *adjustfname();
+extern char *adjustfname __P_((char *));
 # endif
-#else	/* !MSDOS */
-#include <sys/time.h>
+#else
 # ifdef	_NODOSDRIVE
 # include <sys/param.h>
 # else
@@ -35,6 +29,16 @@ extern char *adjustfname();
 #define	sigarg_t	int
 #else
 #define	sigarg_t	void
+#endif
+
+#ifdef	SIGFNCINT
+#define	sigfnc_t	int
+#else
+# ifdef	NOVOID
+# define	sigfnc_t
+# else
+# define	sigfnc_t	void
+# endif
 #endif
 
 #ifndef	_NOARCHIVE
@@ -73,67 +77,67 @@ extern char *deftmpdir;
 #define	SIGIOT	SIGABRT
 #endif
 
-static VOID signalexit();
+static VOID signalexit __P_((int));
 #ifdef	SIGALRM
-static sigarg_t ignore_alrm();
+static sigarg_t ignore_alrm __P_((VOID));
 #endif
 #ifdef	SIGWINCH
-static sigarg_t ignore_winch();
+static sigarg_t ignore_winch __P_((VOID));
 #endif
 #ifdef	SIGINT
-static sigarg_t ignore_int();
+static sigarg_t ignore_int __P_((VOID));
 #endif
 #ifdef	SIGQUIT
-static sigarg_t ignore_quit();
+static sigarg_t ignore_quit __P_((VOID));
 #endif
 #ifdef	SIGHUP
-static sigarg_t hangup();
+static sigarg_t hangup __P_((VOID));
 #endif
 #ifdef	SIGILL
-static sigarg_t illerror();
+static sigarg_t illerror __P_((VOID));
 #endif
 #ifdef	SIGTRAP
-static sigarg_t traperror();
+static sigarg_t traperror __P_((VOID));
 #endif
 #ifdef	SIGIOT
-static sigarg_t ioerror();
+static sigarg_t ioerror __P_((VOID));
 #endif
 #ifdef	SIGEMT
-static sigarg_t emuerror();
+static sigarg_t emuerror __P_((VOID));
 #endif
 #ifdef	SIGFPE
-static sigarg_t floaterror();
+static sigarg_t floaterror __P_((VOID));
 #endif
 #ifdef	SIGBUS
-static sigarg_t buserror();
+static sigarg_t buserror __P_((VOID));
 #endif
 #ifdef	SIGSEGV
-static sigarg_t segerror();
+static sigarg_t segerror __P_((VOID));
 #endif
 #ifdef	SIGSYS
-static sigarg_t syserror();
+static sigarg_t syserror __P_((VOID));
 #endif
 #ifdef	SIGPIPE
-static sigarg_t pipeerror();
+static sigarg_t pipeerror __P_((VOID));
 #endif
 #ifdef	SIGTERM
-static sigarg_t terminate();
+static sigarg_t terminate __P_((VOID));
 #endif
 #ifdef	SIGXCPU
-static sigarg_t xcpuerror();
+static sigarg_t xcpuerror __P_((VOID));
 #endif
 #ifdef	SIGXFSZ
-static sigarg_t xsizerror();
+static sigarg_t xsizerror __P_((VOID));
 #endif
 #ifdef	SIGWINCH
-static sigarg_t wintr();
+static sigarg_t wintr __P_((VOID));
 #endif
 #ifdef	SIGALRM
-static sigarg_t printtime();
+static sigarg_t printtime __P_((VOID));
 #endif
-static int getoption();
-static VOID setexecname();
-static VOID setexecpath();
+static int getoption __P_((int, char *[]));
+static VOID setexecname __P_((char *));
+static VOID setexecpath __P_((char *));
 
 char *origpath;
 char *progpath = NULL;
@@ -173,126 +177,126 @@ int sig;
 }
 
 #ifdef	SIGALRM
-static sigarg_t ignore_alrm()
+static sigarg_t ignore_alrm(VOID)
 {
-	signal(SIGALRM, (sigarg_t (*)())ignore_alrm);
+	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))ignore_alrm);
 }
 #endif
 
 #ifdef	SIGWINCH
-static sigarg_t ignore_winch()
+static sigarg_t ignore_winch(VOID)
 {
-	signal(SIGWINCH, (sigarg_t (*)())ignore_winch);
+	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))ignore_winch);
 }
 #endif
 
 #ifdef	SIGINT
-static sigarg_t ignore_int()
+static sigarg_t ignore_int(VOID)
 {
-	signal(SIGINT, (sigarg_t (*)())ignore_int);
+	signal(SIGINT, (sigarg_t (*)__P_((sigfnc_t)))ignore_int);
 }
 #endif
 
 #ifdef	SIGQUIT
-static sigarg_t ignore_quit()
+static sigarg_t ignore_quit(VOID)
 {
-	signal(SIGQUIT, (sigarg_t (*)())ignore_quit);
+	signal(SIGQUIT, (sigarg_t (*)__P_((sigfnc_t)))ignore_quit);
 }
 #endif
 
 #ifdef	SIGHUP
-static sigarg_t hangup()
+static sigarg_t hangup(VOID)
 {
 	signalexit(SIGHUP);
 }
 #endif
 
 #ifdef	SIGILL
-static sigarg_t illerror()
+static sigarg_t illerror(VOID)
 {
 	signalexit(SIGILL);
 }
 #endif
 
 #ifdef	SIGTRAP
-static sigarg_t traperror()
+static sigarg_t traperror(VOID)
 {
 	signalexit(SIGTRAP);
 }
 #endif
 
 #ifdef	SIGIOT
-static sigarg_t ioerror()
+static sigarg_t ioerror(VOID)
 {
 	signalexit(SIGIOT);
 }
 #endif
 
 #ifdef	SIGEMT
-static sigarg_t emuerror()
+static sigarg_t emuerror(VOID)
 {
 	signalexit(SIGEMT);
 }
 #endif
 
 #ifdef	SIGFPE
-static sigarg_t floaterror()
+static sigarg_t floaterror(VOID)
 {
 	signalexit(SIGFPE);
 }
 #endif
 
 #ifdef	SIGBUS
-static sigarg_t buserror()
+static sigarg_t buserror(VOID)
 {
 	signalexit(SIGBUS);
 }
 #endif
 
 #ifdef	SIGSEGV
-static sigarg_t segerror()
+static sigarg_t segerror(VOID)
 {
 	signalexit(SIGSEGV);
 }
 #endif
 
 #ifdef	SIGSYS
-static sigarg_t syserror()
+static sigarg_t syserror(VOID)
 {
 	signalexit(SIGSYS);
 }
 #endif
 
 #ifdef	SIGPIPE
-static sigarg_t pipeerror()
+static sigarg_t pipeerror(VOID)
 {
 	signalexit(SIGPIPE);
 }
 #endif
 
 #ifdef	SIGTERM
-static sigarg_t terminate()
+static sigarg_t terminate(VOID)
 {
 	signalexit(SIGTERM);
 }
 #endif
 
 #ifdef	SIGXCPU
-static sigarg_t xcpuerror()
+static sigarg_t xcpuerror(VOID)
 {
 	signalexit(SIGXCPU);
 }
 #endif
 
 #ifdef	SIGXFSZ
-static sigarg_t xsizerror()
+static sigarg_t xsizerror(VOID)
 {
 	signalexit(SIGXFSZ);
 }
 #endif
 
 #ifdef	SIGWINCH
-static sigarg_t wintr()
+static sigarg_t wintr(VOID)
 {
 	signal(SIGWINCH, SIG_IGN);
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
@@ -303,12 +307,12 @@ static sigarg_t wintr()
 #endif
 	rewritefile(1);
 	if (subwindow) ungetch2(CTRL('L'));
-	signal(SIGWINCH, (sigarg_t (*)())wintr);
+	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))wintr);
 }
 #endif
 
 #ifdef	SIGALRM
-static sigarg_t printtime()
+static sigarg_t printtime(VOID)
 {
 	static time_t now;
 	struct tm *tm;
@@ -341,38 +345,38 @@ static sigarg_t printtime()
 		tflush();
 	}
 	timersec--;
-	signal(SIGALRM, (sigarg_t (*)())printtime);
+	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))printtime);
 }
 #endif
 
-VOID sigvecset()
+VOID sigvecset(VOID)
 {
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
 #ifdef	SIGALRM
-	signal(SIGALRM, (sigarg_t (*)())printtime);
+	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))printtime);
 #endif
 #ifdef	SIGTSTP
 	signal(SIGTSTP, SIG_IGN);
 #endif
 #ifdef	SIGWINCH
-	signal(SIGWINCH, (sigarg_t (*)())wintr);
+	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))wintr);
 #endif
 }
 
-VOID sigvecreset()
+VOID sigvecreset(VOID)
 {
 #ifdef	SIGALRM
-	signal(SIGALRM, (sigarg_t (*)())ignore_alrm);
+	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))ignore_alrm);
 #endif
 #ifdef	SIGTSTP
 	signal(SIGTSTP, SIG_DFL);
 #endif
 #ifdef	SIGWINCH
-	signal(SIGWINCH, (sigarg_t (*)())ignore_winch);
+	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))ignore_winch);
 #endif
 }
 
-VOID title()
+VOID title(VOID)
 {
 	char *cp, *eol;
 
@@ -564,49 +568,49 @@ char *argv[];
 	sigvecreset();
 
 #ifdef	SIGHUP
-	signal(SIGHUP, (sigarg_t (*)())hangup);
+	signal(SIGHUP, (sigarg_t (*)__P_((sigfnc_t)))hangup);
 #endif
 #ifdef	SIGINT
-	signal(SIGINT, (sigarg_t (*)())ignore_int);
+	signal(SIGINT, (sigarg_t (*)__P_((sigfnc_t)))ignore_int);
 #endif
 #ifdef	SIGQUIT
-	signal(SIGQUIT, (sigarg_t (*)())ignore_quit);
+	signal(SIGQUIT, (sigarg_t (*)__P_((sigfnc_t)))ignore_quit);
 #endif
 #ifdef	SIGILL
-	signal(SIGILL, (sigarg_t (*)())illerror);
+	signal(SIGILL, (sigarg_t (*)__P_((sigfnc_t)))illerror);
 #endif
 #ifdef	SIGTRAP
-	signal(SIGTRAP, (sigarg_t (*)())traperror);
+	signal(SIGTRAP, (sigarg_t (*)__P_((sigfnc_t)))traperror);
 #endif
 #ifdef	SIGIOT
-	signal(SIGIOT, (sigarg_t (*)())ioerror);
+	signal(SIGIOT, (sigarg_t (*)__P_((sigfnc_t)))ioerror);
 #endif
 #ifdef	SIGEMT
-	signal(SIGEMT, (sigarg_t (*)())emuerror);
+	signal(SIGEMT, (sigarg_t (*)__P_((sigfnc_t)))emuerror);
 #endif
 #ifdef	SIGFPE
-	signal(SIGFPE, (sigarg_t (*)())floaterror);
+	signal(SIGFPE, (sigarg_t (*)__P_((sigfnc_t)))floaterror);
 #endif
 #ifdef	SIGBUS
-	signal(SIGBUS, (sigarg_t (*)())buserror);
+	signal(SIGBUS, (sigarg_t (*)__P_((sigfnc_t)))buserror);
 #endif
 #ifdef	SIGSEGV
-	signal(SIGSEGV, (sigarg_t (*)())segerror);
+	signal(SIGSEGV, (sigarg_t (*)__P_((sigfnc_t)))segerror);
 #endif
 #ifdef	SIGSYS
-	signal(SIGSYS, (sigarg_t (*)())syserror);
+	signal(SIGSYS, (sigarg_t (*)__P_((sigfnc_t)))syserror);
 #endif
 #ifdef	SIGPIPE
-	signal(SIGPIPE, (sigarg_t (*)())pipeerror);
+	signal(SIGPIPE, (sigarg_t (*)__P_((sigfnc_t)))pipeerror);
 #endif
 #ifdef	SIGTERM
-	signal(SIGTERM, (sigarg_t (*)())terminate);
+	signal(SIGTERM, (sigarg_t (*)__P_((sigfnc_t)))terminate);
 #endif
 #ifdef	SIGXCPU
-	signal(SIGXCPU, (sigarg_t (*)())xcpuerror);
+	signal(SIGXCPU, (sigarg_t (*)__P_((sigfnc_t)))xcpuerror);
 #endif
 #ifdef	SIGXFSZ
-	signal(SIGXFSZ, (sigarg_t (*)())xsizerror);
+	signal(SIGXFSZ, (sigarg_t (*)__P_((sigfnc_t)))xsizerror);
 #endif
 
 #ifndef	_NOARCHIVE

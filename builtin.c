@@ -11,9 +11,7 @@
 #include "funcno.h"
 #include "kanji.h"
 
-#if	MSDOS
-#include "unixemu.h"
-#else
+#if	!MSDOS
 # ifdef	_NODOSDRIVE
 # include <sys/param.h>
 # else
@@ -44,38 +42,38 @@ extern short histno[];
 extern char *helpindex[];
 
 #ifndef	_NOARCHIVE
-static char *getext();
-static int setlaunch();
-static int setarch();
-static VOID printext();
-static int extcmp();
-static int printlaunch();
-static int printarch();
+static char *getext __P_((char *));
+static int setlaunch __P_((int, char *[], int));
+static int setarch __P_((int, char *[], int));
+static VOID printext __P_((char *));
+static int extcmp __P_((char *, char *));
+static int printlaunch __P_((int, char *[], int));
+static int printarch __P_((int, char *[], int));
 #endif
-static int getcommand();
-static int getkeycode();
-static int freemacro();
-static int setkeybind();
-static VOID printmacro();
-static int printbind();
-static int setalias();
-static int unalias();
+static int getcommand __P_((char *));
+static int getkeycode __P_((char *));
+static int freemacro __P_((int));
+static int setkeybind __P_((int, char *[], int));
+static VOID printmacro __P_((int));
+static int printbind __P_((int, char *[], int));
+static int setalias __P_((int, char *[], int));
+static int unalias __P_((int, char *[], int));
 #if	!MSDOS && !defined (_NODOSDRIVE)
-static int _setdrive();
-static int setdrive();
-static int unsetdrive();
-static int printdrive();
+static int _setdrive __P_((int, char *[], int));
+static int setdrive __P_((int, char *[], int));
+static int unsetdrive __P_((int, char *[], int));
+static int printdrive __P_((int, char *[], int));
 #endif
-static int setuserfunc();
+static int setuserfunc __P_((int, char *[], int));
 #if	!MSDOS && !defined (_NOKEYMAP)
-static int setkeymap();
-static int keytest();
+static int setkeymap __P_((int, char *[], int));
+static int keytest __P_((int, char *[], int));
 #endif
-static int exportenv();
-static int dochdir();
-static int loadsource();
-static int printhist();
-static int isinternal();
+static int exportenv __P_((int, char *[], int));
+static int dochdir __P_((int, char *[], int));
+static int loadsource __P_((int, char *[], int));
+static int printhist __P_((int, char *[], int));
+static int isinternal __P_((int, char *[], int));
 
 static builtintable builtinlist[] = {
 	{printenv, "printenv"},
@@ -227,7 +225,7 @@ int comline;
 
 	if (argc <= 3) launchlist[i].topskip = 255;
 	else {
-		cp = tmp = catargs(argc - 3, &argv[3], 0);
+		cp = tmp = catargs(argc - 3, &argv[3], '\0');
 		launchlist[i].topskip = atoi(cp);
 		if (*(cp = skipnumeric(cp, 0)) != ',') {
 			free(ext);
@@ -764,7 +762,7 @@ int set;
 
 	if (argc <= 3) return(-1);
 	drive = toupper2(argv[1][0]);
-	cp = tmp = catargs(argc - 3, &argv[3], 0);
+	cp = tmp = catargs(argc - 3, &argv[3], '\0');
 
 	head = atoi(cp);
 	if (head <= 0 || *(cp = skipnumeric(cp, 1)) != ',') {
@@ -1131,7 +1129,7 @@ int comline;
 #endif
 
 	if (argc <= 1) return(-1);
-	tmp = line = catargs(argc - 1, &argv[1]);
+	tmp = line = catargs(argc - 1, &argv[1], '\0');
 	if ((cp = getenvval(&tmp)) == (char *)-1) {
 		free(line);
 		return(-1);

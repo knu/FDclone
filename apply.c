@@ -10,19 +10,9 @@
 #include "func.h"
 #include "kanji.h"
 
-#ifdef	USETIMEH
-#include <time.h>
-#endif
-
-#if	MSDOS
-#include "unixemu.h"
-#else
+#if	!MSDOS
 #include <sys/file.h>
-#include <sys/time.h>
 #include <sys/param.h>
-# ifdef	USEUTIME
-# include <utime.h>
-# endif
 #endif
 
 extern int filepos;
@@ -30,9 +20,9 @@ extern reg_t *findregexp;
 extern int subwindow;
 extern int sizeinfo;
 
-static long judgecopy();
-static VOID showattr();
-static int touchfile();
+static long judgecopy __P_((char *, char *, time_t *, time_t *));
+static VOID showattr __P_((namelist *, u_short, char [2][9], int y));
+static int touchfile __P_((char *, time_t, time_t));
 
 int copypolicy = 0;
 char *destpath = NULL;
@@ -505,7 +495,7 @@ char *path;
 int applyfile(list, max, func, endmes)
 namelist *list;
 int max;
-int (*func)();
+int (*func)__P_((char *));
 char *endmes;
 {
 	int i, ret, tmp, old;
@@ -531,16 +521,15 @@ char *endmes;
 
 int applydir(dir, funcf, funcd1, funcd2, endmes)
 char *dir;
-int (*funcf)();
-int (*funcd1)();
-int (*funcd2)();
+int (*funcf)__P_((char *));
+int (*funcd1)__P_((char *));
+int (*funcd2)__P_((char *));
 char *endmes;
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat status;
-	char *cp, *fname, path[MAXPATHLEN + 1];
-	char **dirlist;
+	char *cp, *fname, path[MAXPATHLEN + 1], **dirlist;
 	int i, ndir, max;
 
 	if (!(dirp = Xopendir(dir))) {

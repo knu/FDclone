@@ -10,9 +10,7 @@
 
 #ifndef	_NOROCKRIDGE
 
-#if	MSDOS
-#include "unixemu.h"
-#else
+#if	!MSDOS
 #include <sys/param.h>
 #endif
 
@@ -27,11 +25,11 @@ char *rockridgepath;
 #define	RR_VERNO	004
 #define	RR_HYPHN	010
 
-static int isrockridge();
-static char *getorgname();
-static assoclist *readtranstbl();
-static VOID freetranstbl();
-static char *_detransfile();
+static int isrockridge __P_((char *));
+static char *getorgname __P_((char *, u_char));
+static assoclist *readtranstbl __P_((void));
+static VOID freetranstbl __P_((assoclist *));
+static char *_detransfile __P_((char *, char *, int));
 
 static assoclist *rr_curtbl = NULL;
 static char *rr_cwd = NULL;
@@ -80,7 +78,7 @@ u_char stat;
 	return(strdup2(buf));
 }
 
-static assoclist *readtranstbl()
+static assoclist *readtranstbl __P_((void))
 {
 	assoclist *top, **bottom, *new;
 	FILE *fp;

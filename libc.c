@@ -11,23 +11,17 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#ifdef	USETIMEH
-#include <time.h>
-#endif
-
 #ifndef	NOTZFILEH
 #include <tzfile.h>
 #endif
 
 #if	MSDOS
 #include <sys/timeb.h>
-#include "unixemu.h"
-extern int setcurdrv();
+extern int setcurdrv __P_((int));
 #else
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
-#include <sys/time.h>
 #include <sys/param.h>
 #endif
 
@@ -53,11 +47,11 @@ extern char *findpattern;
 			| (((u_char *)cp)[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)cp)[0] << (CHAR_BIT * 3)) )
 
-static char *_realpath2();
-static assoclist *_getenv2();
-static int tmcmp();
+static char *_realpath2 __P_((char *, char *));
+static assoclist *_getenv2 __P_((char *));
+static int tmcmp __P_((struct tm *, struct tm *));
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long gettimezone();
+static long gettimezone __P_((struct tm *, time_t));
 #endif
 
 static assoclist *environ2 = NULL;
@@ -709,7 +703,7 @@ int noconf;
 	return(status);
 }
 
-char *getwd2()
+char *getwd2(VOID)
 {
 	char cwd[MAXPATHLEN + 1];
 

@@ -11,9 +11,8 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 #include <stdarg.h>
-#include "unixemu.h"
 #else
 #include <varargs.h>
 #endif
@@ -35,26 +34,28 @@ extern int sizeinfo;
 extern char *sys_errlist[];
 #endif
 
-static int trquote();
-static VOID setcursor();
-static int rightchar();
-static int leftchar();
-static VOID insertchar();
-static VOID deletechar();
-static VOID truncline();
-static VOID displaystr();
-static int insertstr();
+static int trquote __P_((char *, int));
+static VOID setcursor __P_((int, int, int, int, int));
+static int rightchar __P_((char *, int, int, int, int, int, int));
+static int leftchar __P_((char *, int, int, int, int, int, int));
+static VOID insertchar __P_((char *, int, int, int, int, int, int, int));
+static VOID deletechar __P_((char *, int, int, int, int, int, int, int));
+static VOID truncline __P_((int, int, int, int, int, int));
+static VOID displaystr __P_((char *, int, int, int, int, int, int));
+static int insertstr __P_((char *, int, int, int, int, int, int, char *, int));
 #ifndef	_NOCOMPLETE
-static VOID selectfile();
-static int completestr();
+static VOID selectfile __P_((char *, int));
+static int completestr __P_((char *, int, int, int, int, int, int, int, int));
 #endif
-static int _inputstr_up();
-static int _inputstr_down();
-static int _inputstr_input();
-static int _inputstr();
-static char *truncstr();
-static VOID yesnomes();
-static int selectmes();
+static int _inputstr_up __P_((char *, int, int, int *, int, int, int,
+		int *, int, char **));
+static int _inputstr_down __P_((char *, int, int, int *, int, int, int,
+		int *, int, char **));
+static int _inputstr_input __P_((char *, int, int, int *, int, int, int, int));
+static int _inputstr __P_((char *, int, int, int, int, int, int, int));
+static char *truncstr __P_((char *));
+static VOID yesnomes __P_((char *));
+static int selectmes __P_((int, int, int, char *[], int [], int []));
 
 int subwindow;
 char *curfilename;
@@ -890,8 +891,8 @@ int x, plen, max, linemax, def, comline, h;
 				break;
 			case K_BEG:
 				keyflush();
-				locate(x, LCMDLINE);
 				cx = 0;
+				setcursor(x, cx, plen, max, linemax);
 				break;
 			case K_EOL:
 				keyflush();
@@ -1117,9 +1118,9 @@ char *mes;
 	tflush();
 }
 
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 /*VARARGS1*/
-int yesno(const char *fmt, ...)
+int yesno(CONST char *fmt, ...)
 {
 	va_list args;
 	int len, ch, ret = 1;
@@ -1129,8 +1130,8 @@ int yesno(const char *fmt, ...)
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else	/* !MSDOS */
-#ifndef	NOVSPRINTF
+#else	/* !MSDOS && !__STDC__ */
+# ifndef	NOVSPRINTF
 /*VARARGS1*/
 int yesno(fmt, va_alist)
 char *fmt;
@@ -1144,7 +1145,7 @@ va_dcl
 	va_start(args);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else	/* !NOVSPRINTF */
+# else	/* NOVSPRINTF */
 int yesno(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
@@ -1153,8 +1154,8 @@ char *fmt;
 
 	subwindow = 1;
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-#endif	/* !NOVSPRINTF */
-#endif	/* !MSDOS */
+# endif	/* NOVSPRINTF */
+#endif	/* !MSDOS  && !__STDC__ */
 #ifndef	_NOEDITMODE
 	Xgetkey(-1);
 #endif

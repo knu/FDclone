@@ -13,9 +13,7 @@
 
 #include <signal.h>
 
-#if	MSDOS
-#include "unixemu.h"
-#else
+#if	!MSDOS
 #include <sys/param.h>
 #endif
 
@@ -36,21 +34,21 @@ extern int sizeinfo;
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
 #define	bufptr(buf, y)	(&buf[(y - WHEADER - 1) * (TREEFIELD + 1)])
 
-static int evaldir();
-static treelist *maketree();
-static int _showtree();
-static VOID showtree();
-static treelist *_searchtree();
-static treelist *searchtree();
-static int expandtree();
-static int expandall();
-static treelist *checkmisc();
-static treelist *treeup();
-static treelist *treedown();
-static VOID freetree();
-static treelist *_tree_search();
-static int _tree_input();
-static char *_tree();
+static int evaldir __P_((char *, int));
+static treelist *maketree __P_((char *, treelist *, int, int *, int *));
+static int _showtree __P_((char *, treelist *, int, int, int));
+static VOID showtree __P_((char *, char *, treelist *, int, int));
+static treelist *_searchtree __P_((char *, treelist *, int, int));
+static treelist *searchtree __P_((char *, treelist *, int, int));
+static int expandtree __P_((treelist *, char *));
+static int expandall __P_((treelist *, char *));
+static treelist *checkmisc __P_((treelist *, treelist *, char *));
+static treelist *treeup __P_((char *, treelist *));
+static treelist *treedown __P_((char *, treelist *));
+static VOID freetree __P_((treelist *, int));
+static treelist *_tree_search __P_((char *, treelist *, treelist *));
+static int _tree_input __P_((char *, char **, treelist *, treelist **));
+static char *_tree __P_((VOID));
 
 int sorttree;
 int dircountlimit;
@@ -656,7 +654,7 @@ treelist *list, **lpp;
 	return(ch);
 }
 
-static char *_tree()
+static char *_tree(VOID)
 {
 	treelist *list, *lp;
 	char *cp, *cwd, path[MAXPATHLEN + 1];

@@ -6,7 +6,6 @@
 
 extern char *archivefile;
 
-#include <time.h>
 #include <signal.h>
 #include "fd.h"
 #include "term.h"
@@ -15,9 +14,8 @@ extern char *archivefile;
 #include "kanji.h"
 
 #if	MSDOS
-#include "unixemu.h"
-extern int getcurdrv();
-extern int setcurdrv();
+extern int getcurdrv __P_((VOID));
+extern int setcurdrv __P_((int));
 #else
 #include <sys/file.h>
 #include <sys/param.h>
@@ -32,14 +30,14 @@ extern int writefs;
 extern char *curfilename;
 extern char *origpath;
 
-static VOID pathbar();
-static VOID stackbar();
+static VOID pathbar __P_((VOID));
+static VOID stackbar __P_((VOID));
 #if	!MSDOS
-static char *putowner();
-static char *putgroup();
+static char *putowner __P_((char *, uid_t));
+static char *putgroup __P_((char *, gid_t));
 #endif
-static VOID calclocate();
-static int browsedir();
+static VOID calclocate __P_((int));
+static int browsedir __P_((char *, char *));
 
 int columns;
 int minfilename;
@@ -89,7 +87,7 @@ static u_char colorlist[] = {
 #endif
 
 
-static VOID pathbar()
+static VOID pathbar(VOID)
 {
 	char *path;
 
@@ -107,7 +105,7 @@ static VOID pathbar()
 	tflush();
 }
 
-VOID helpbar()
+VOID helpbar(VOID)
 {
 	char *buf;
 	int i, j, width, len, ofs;
@@ -193,7 +191,7 @@ int max;
 	tflush();
 }
 
-static VOID stackbar()
+static VOID stackbar(VOID)
 {
 #ifndef	_NOCOLOR
 	int j, color;
@@ -234,7 +232,7 @@ static VOID stackbar()
 	tflush();
 }
 
-VOID sizebar()
+VOID sizebar(VOID)
 {
 	char buf[16];
 	long total, fre;
@@ -395,7 +393,7 @@ int no;
 	tflush();
 }
 
-VOID waitmes()
+VOID waitmes(VOID)
 {
 	helpbar();
 	locate(0, LMESLINE);
@@ -423,7 +421,7 @@ int i;
 #define	WIDTH2	(WTIME + 1 + WDATE + 1)
 #define	WIDTH3	(WSIZE + 1)
 
-int calcwidth()
+int calcwidth(VOID)
 {
 	int width;
 

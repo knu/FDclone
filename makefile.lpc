@@ -52,7 +52,7 @@ OBJ2	= unixemu.obj unixdisk.obj \
 OBJ3	= kanji.obj file.obj apply.obj archive.obj \
 	tree.obj command.obj browse.obj
 
-LDFLAGS	=   -lintlib -ltinymain.obj -k'-M -s 5000'
+LDFLAGS	=   -lintlib -ltinymain.obj -m -k'-s 5000'
 CFLAGS	= -DFD -DDOSV -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O
 
 .SUFFIXES: .h .c .obj .exe

@@ -11,9 +11,7 @@
 #include "funcno.h"
 #include "kanji.h"
 
-#if	MSDOS
-#include "unixemu.h"
-#else
+#if	!MSDOS
 #include <sys/file.h>
 #endif
 
@@ -40,85 +38,86 @@ extern char *destpath;
 extern int savehist;
 extern int sizeinfo;
 
+static VOID replacefname __P_((namelist *, int *, char *));
+static int cur_up __P_((namelist *, int *, char *));
+static int cur_down __P_((namelist *, int *, char *));
+static int cur_right __P_((namelist *, int *, char *));
+static int cur_left __P_((namelist *, int *, char *));
+static int roll_up __P_((namelist *, int *, char *));
+static int roll_down __P_((namelist *, int *, char *));
+static int cur_top __P_((namelist *, int *, char *));
+static int cur_bottom __P_((namelist *, int *, char *));
+static int in_dir __P_((namelist *, int *, char *));
+static int out_dir __P_((namelist *, int *, char *));
+static int one_column __P_((namelist *, int *, char *));
+static int two_columns __P_((namelist *, int *, char *));
+static int three_columns __P_((namelist *, int *, char *));
+static int five_columns __P_((namelist *, int *, char *));
+static int fname_right __P_((namelist *, int *, char *));
+static int fname_left __P_((namelist *, int *, char *));
+static VOID markcount __P_((VOID));
+static int mark_file __P_((namelist *, int *, char *));
+static int mark_file2 __P_((namelist *, int *, char *));
+static int mark_file3 __P_((namelist *, int *, char *));
+static int mark_all __P_((namelist *, int *, char *));
+static int mark_reverse __P_((namelist *, int *, char *));
+static reg_t *prepareregexp __P_((char *, char *));
+static int mark_find __P_((namelist *, int *, char *));
+static int push_file __P_((namelist *, int *, char *));
+static int pop_file __P_((namelist *, int *, char *));
+static int symlink_mode __P_((namelist *, int *, char *));
+static int filetype_mode __P_((namelist *, int *, char *));
+static int dotfile_mode __P_((namelist *, int *, char *));
+static int log_dir __P_((namelist *, int *, char *));
+static int log_top __P_((namelist *, int *, char *));
 #ifndef	PAGER
-static VOID dump();
+static VOID dump __P_((char *));
 #endif
-static int cur_up();
-static int cur_down();
-static int cur_right();
-static int cur_left();
-static int roll_up();
-static int roll_down();
-static int cur_top();
-static int cur_bottom();
-static int in_dir();
-static int out_dir();
-static int one_column();
-static int two_columns();
-static int three_columns();
-static int five_columns();
-static int fname_right();
-static int fname_left();
-static VOID markcount();
-static int mark_file();
-static int mark_file2();
-static int mark_file3();
-static int mark_all();
-static int mark_reverse();
-static reg_t *prepareregexp();
-static int mark_find();
-static int push_file();
-static int pop_file();
-static int symlink_mode();
-static int filetype_mode();
-static int dotfile_mode();
-static int log_dir();
-static int log_top();
-static int view_file();
-static int edit_file();
-static int sort_dir();
+static int view_file __P_((namelist *, int *, char *));
+static int edit_file __P_((namelist *, int *, char *));
+static int sort_dir __P_((namelist *, int *, char *));
 #ifndef	_NOWRITEFS
-static int write_dir();
+static int write_dir __P_((namelist *, int *, char *));
 #endif
-static int reread_dir();
-static int help_message();
-static int quit_system();
-static int make_dir();
-static int copy_file();
+static int reread_dir __P_((namelist *, int *, char *));
+static int help_message __P_((namelist *, int *, char *));
+static int quit_system __P_((namelist *, int *, char *));
+static int make_dir __P_((namelist *, int *, char *));
+static int copy_file __P_((namelist *, int *, char *));
 #ifndef	_NOTREE
-static int copy_tree();
+static int copy_tree __P_((namelist *, int *, char *));
 #endif
-static int move_file();
+static int move_file __P_((namelist *, int *, char *));
 #ifndef	_NOTREE
-static int move_tree();
+static int move_tree __P_((namelist *, int *, char *));
 #endif
-static int rename_file();
-static int delete_file();
-static int delete_dir();
-static int find_file();
-static int find_dir();
-static int execute_sh();
-static int execute_file();
+static int rename_file __P_((namelist *, int *, char *));
+static int delete_file __P_((namelist *, int *, char *));
+static int delete_dir __P_((namelist *, int *, char *));
+static int find_file __P_((namelist *, int *, char *));
+static int find_dir __P_((namelist *, int *, char *));
+static int execute_sh __P_((namelist *, int *, char *));
+static int execute_file __P_((namelist *, int *, char *));
 #ifndef	_NOARCHIVE
-static int launch_file();
-static int pack_file();
-static int unpack_file();
+static int launch_file __P_((namelist *, int *, char *));
+static int pack_file __P_((namelist *, int *, char *));
+static int unpack_file __P_((namelist *, int *, char *));
 #ifndef	_NOTREE
-static int unpack_tree();
+static int unpack_tree __P_((namelist *, int *, char *));
 #endif
 #endif	/* !_NOARCHIVE */
-static int info_filesys();
-static int attr_file();
+static int info_filesys __P_((namelist *, int *, char *));
+static int attr_file __P_((namelist *, int *, char *));
 #ifndef	_NOTREE
-static int tree_dir();
+static int tree_dir __P_((namelist *, int *, char *));
 #endif
 #ifndef	_NOARCHIVE
-static int backup_tape();
+static int backup_tape __P_((namelist *, int *, char *));
 #endif
-static int search_forw();
-static int search_back();
-static int warning_bell();
-static int no_operation();
+static int search_forw __P_((namelist *, int *, char *));
+static int search_back __P_((namelist *, int *, char *));
+static int warning_bell __P_((namelist *, int *, char *));
+static int no_operation __P_((namelist *, int *, char *));
 
 #include "functabl.h"
 
@@ -254,6 +253,17 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{-1,		NO_OPERATION,	255}
 };
 
+
+static VOID replacefname(list, maxp, name)
+namelist *list;
+int *maxp;
+char *name;
+{
+	if (filepos < *maxp) free(list[filepos].name);
+	else for (*maxp = 0; *maxp < filepos; (*maxp)++)
+		if (!list[*maxp].name) list[*maxp].name = strdup2("");
+	list[filepos].name = (name) ? name : strdup2("..");
+}
 
 /*ARGSUSED*/
 static int cur_up(list, maxp, arg)
@@ -397,10 +407,7 @@ char *arg;
 	if (archivefile) filepos = -1;
 	else
 #endif
-	{
-		free(list[filepos].name);
-		list[filepos].name = strdup2("..");
-	}
+	replacefname(list, maxp, NULL);
 	return(5);
 }
 
@@ -479,7 +486,7 @@ char *arg;
 	return(2);
 }
 
-static VOID markcount()
+static VOID markcount(VOID)
 {
 	char buf[16];
 
@@ -705,8 +712,7 @@ char *arg;
 		return(1);
 	}
 	free(path);
-	free(list[filepos].name);
-	list[filepos].name = strdup2("..");
+	replacefname(list, maxp, NULL);
 	return(4);
 }
 
@@ -722,8 +728,7 @@ char *arg;
 	if (chdir2(path) < 0) error(path);
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
-	free(list[filepos].name);
-	list[filepos].name = path;
+	replacefname(list, maxp, path);
 	return(4);
 }
 
@@ -1061,12 +1066,11 @@ char *arg;
 		free(file);
 		return(1);
 	}
-	free(list[filepos].name);
-	if (!strchr(file, _SC_)) list[filepos].name = file;
-	else {
+	if (strchr(file, _SC_)) {
 		free(file);
-		list[filepos].name = strdup2("..");
+		file = strdup2("..");
 	}
+	replacefname(list, maxp, file);
 	return(4);
 }
 
@@ -1165,8 +1169,7 @@ char *arg;
 	}
 	else cp = destpath;
 
-	free(list[filepos].name);
-	list[filepos].name = strdup2(cp);
+	replacefname(list, maxp, strdup2(cp));
 	free(destpath);
 	return(4);
 }
@@ -1403,8 +1406,7 @@ char *arg;
 	free(path);
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
-	free(list[filepos].name);
-	list[filepos].name = strdup2("..");
+	replacefname(list, maxp, NULL);
 	return(4);
 }
 #endif	/* !_NOTREE */

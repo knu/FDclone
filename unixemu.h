@@ -92,6 +92,6 @@ struct utimbuf {
 	time_t	modtime;
 };
 
-extern	int utime();
+extern	int utime __P_((CONST char *, CONST struct utimbuf *));
 
 #endif	/* !_UNIXEMU_H */

@@ -12,9 +12,8 @@
 #include "kanji.h"
 
 #if	MSDOS
-#include "unixemu.h"
 # ifndef	NOLFNEMU
-extern char *shortname();
+extern char *shortname __P_((char *, char *));
 # endif
 #else
 #include <sys/param.h>
@@ -31,13 +30,14 @@ extern char *archivedir;
 #endif
 extern functable funclist[];
 
-static int setarg();
-static int setargs();
-static int insertarg();
-static char *addoption();
-static int dosystem();
-static char *evalargs();
-static char *evalalias();
+static int setarg __P_((char *, int, char *, char *, int));
+static int setargs __P_((char *, int, namelist *, int, int));
+static int insertarg __P_((char *, char *, char *, int));
+static char *addoption __P_((char *, char *, namelist *, int,
+		int, macrostat *));
+static int dosystem __P_((char *, namelist *, int *, int));
+static char *evalargs __P_((char *, int, char *[]));
+static char *evalalias __P_((char *));
 
 aliastable aliaslist[MAXALIASTABLE];
 int maxalias = 0;
@@ -130,8 +130,7 @@ int max, noext;
 }
 
 static int insertarg(buf, format, arg, needmark)
-char *buf, *format;
-char *arg;
+char *buf, *format, *arg;
 int needmark;
 {
 	char *cp, *src, *body;
@@ -472,7 +471,7 @@ char *env, *arg;
 	return(1);
 }
 
-int execshell()
+int execshell(VOID)
 {
 	char *sh;
 	int status;
@@ -707,7 +706,7 @@ int *maxp;
 		warning(0, HITKY_K);
 		return(0);
 	}
-	tmp = catargs(argc - 1, &argv[1]);
+	tmp = catargs(argc - 1, &argv[1], ' ');
 	if (!tmp) cp = strdup2(history[0][n]);
 	else {
 		cp = (char *)malloc2(strlen(history[0][n]) + strlen(tmp) + 2);

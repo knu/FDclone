@@ -14,26 +14,20 @@
 
 #ifndef	_NOARCHIVE
 
-#ifdef	USETIMEH
-#include <time.h>
-#endif
-
 #if	MSDOS
-extern FILE *Xpopen();
-extern int Xpclose();
-#include "unixemu.h"
+extern FILE *Xpopen __P_((char *, char *));
+extern int Xpclose __P_((FILE *));
 #else
 #define	Xpopen		popen
 #define	Xpclose		pclose
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
-#include <sys/time.h>
 #include <sys/param.h>
 #endif
 
 #if	!MSDOS && !defined(_NODOSDRIVE)
-extern int shutdrv();
+extern int shutdrv __P_((int));
 #endif
 
 extern bindtable bindlist[];
@@ -87,13 +81,15 @@ extern int sizeinfo;
 #endif
 #endif	/* !MSDOS */
 
-static int countfield();
-static char *getfield();
-static int readfileent();
-static VOID archbar();
-static char *pseudodir();
-static int readarchive();
-static int archbrowse();
+static int countfield __P_((char *, u_char [], int, int *));
+static char *getfield __P_((char *, char *, int, launchtable *, int));
+static int readfileent __P_((namelist *, char *, launchtable *, int));
+static VOID archbar __P_((char *, char *));
+static int dircmp __P_((char *, char *));
+static int dirmatchlen __P_((char *, char *));
+static char *pseudodir __P_((namelist *, namelist *, int));
+static int readarchive __P_((char *, launchtable *));
+static int archbrowse __P_((char *, int));
 
 char *archivefile = NULL;
 char *archivedir;
@@ -233,7 +229,7 @@ int max;
 	getfield(buf, line, skip, list, F_NAME);
 	if (!*buf) return(-1);
 #if	MSDOS
-	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[j] = _SC_;
+	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[i] = _SC_;
 #endif
 	if (buf[(i = (int)strlen(buf) - 1)] == _SC_) {
 		if (i > 0) buf[i] = '\0';
@@ -342,6 +338,35 @@ char *file, *dir;
 	tflush();
 }
 
+static int dircmp(s1, s2)
+char *s1, *s2;
+{
+	int i, j;
+
+	for (i = j = 0; s2[j]; i++, j++) {
+		if (s1[i] == s2[j]) continue;
+		if (s1[i] != _SC_ || s2[j] != _SC_) return(s1[i] - s2[j]);
+		while (s1[i + 1] == _SC_) i++;
+		while (s2[j + 1] == _SC_) j++;
+	}
+	return(s1[i]);
+}
+
+static int dirmatchlen(s1, s2)
+char *s1, *s2;
+{
+	int i, j;
+
+	for (i = j = 0; s1[i]; i++, j++) {
+		if (s1[i] == s2[j]) continue;
+		if (s1[i] != _SC_ || s2[j] != _SC_) return(0);
+		while (s1[i + 1] == _SC_) i++;
+		while (s2[j + 1] == _SC_) j++;
+	}
+	if (i) while (s2[j + 1] == _SC_) j++;
+	return(j);
+}
+
 static char *pseudodir(namep, list, max)
 namelist *namep, *list;
 int max;
@@ -355,18 +380,24 @@ int max;
 		if (!*(tmp + 1)) break;
 		len = tmp - (namep -> name);
 		for (i = 0; i < max; i++) {
-			if (isdir(&list[i]) && len == strlen(list[i].name)
-			&& !strncmp(list[i].name, namep -> name, len)) break;
+			if (isdir(&list[i])
+			&& len == dirmatchlen(list[i].name, namep -> name))
+				break;
 		}
 		if (i >= max) {
 			tmp = (char *)malloc2(len + 1);
 			strncpy2(tmp, namep -> name, len);
 			return(tmp);
 		}
+		if (strncmp(list[i].name, namep -> name, len)) {
+			free(list[i].name);
+			list[i].name = (char *)malloc2(len + 1);
+			strncpy2(list[i].name, namep -> name, len);
+		}
 		cp = tmp + 1;
 	}
 	if (isdir(namep)) for (i = 0; i < max; i++) {
-		if (isdir(&list[i]) && !strcmp(list[i].name, namep -> name)) {
+		if (isdir(&list[i]) && !dircmp(list[i].name, namep -> name)) {
 			memcpy(&(list[i].st_mode), &(namep -> st_mode),
 				sizeof(namelist)
 				- sizeof(char *) - sizeof(u_short));
@@ -504,20 +535,23 @@ int max;
 		free(cp);
 	}
 
-	maxarcf = (len = strlen(archivedir)) ? 1 : 0;
+	maxarcf = (*archivedir) ? 1 : 0;
 	buf[0] = '\0';
 
 	for (i = 1; i < max; i++) {
-		if (strncmp(archivedir, filelist[i].name, len)) continue;
+		if (!*archivedir) len = 0;
+		else if (!(len = dirmatchlen(archivedir, filelist[i].name)))
+			continue;
 
 		cp = filelist[i].name + len;
 		if (len > 0) cp++;
-		if (len == strlen(filelist[i].name)) {
+		if (!filelist[i].name[len]) {
 			memcpy(&arcflist[0], &filelist[i], sizeof(namelist));
 			arcflist[0].name = filelist[0].name;
+			continue;
 		}
-		else if ((!(tmp = strchr(cp, _SC_)) || !*(tmp + 1))
-		&& (!re || regexp_exec(re, cp))) {
+		if (tmp = strchr(cp, _SC_)) while (*(++tmp) == _SC_);
+		if ((!tmp || !*tmp) && (!re || regexp_exec(re, cp))) {
 			memcpy(&arcflist[maxarcf], &filelist[i],
 				sizeof(namelist));
 			arcflist[maxarcf].name = cp;

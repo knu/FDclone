@@ -9,9 +9,8 @@
 #include "func.h"
 #include "kctype.h"
 
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 #include <stdarg.h>
-#include "unixemu.h"
 #else
 #include <varargs.h>
 #endif
@@ -73,6 +72,7 @@ int in;
 #endif	/* !MSDOS && !_NOKANJICONV */
 	return(ret);
 }
+#endif	/* (!MSDOS && !_NOKANJICONV) || !_NOENGMES */
 
 #ifndef	_NOENGMES
 char *mesconv(jpn, eng)
@@ -81,7 +81,6 @@ char *jpn, *eng;
 	return((outputkcode == ENG) ? eng : jpn);
 }
 #endif
-#endif	/* (!MSDOS && !_NOKANJICONV) || !_NOENGMES */
 
 #if	!MSDOS && !defined (_NOKANJICONV) 
 int jis7(buf, str, incode)
@@ -232,9 +231,9 @@ char *str;
 #endif
 }
 
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 /*VARARGS1*/
-int kanjiprintf(const char *fmt, ...)
+int kanjiprintf(CONST char *fmt, ...)
 {
 	va_list args;
 	char buf[MAXLINESTR + 1];
@@ -242,8 +241,8 @@ int kanjiprintf(const char *fmt, ...)
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else	/* !MSDOS */
-#ifndef	NOVSPRINTF
+#else	/* !MSDOS && !__STDC__ */
+# ifndef	NOVSPRINTF
 /*VARARGS1*/
 int kanjiprintf(fmt, va_alist)
 char *fmt;
@@ -255,15 +254,15 @@ va_dcl
 	va_start(args);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else	/* !NOVSPRINTF */
+# else	/* NOVSPRINTF */
 int kanjiprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
 	char buf[MAXLINESTR + 1];
 
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-#endif	/* !NOVSPRINTF */
-#endif	/* !MSDOS */
+# endif	/* NOVSPRINTF */
+#endif	/* !MSDOS && !__STDC__ */
 	return(kanjiputs(buf));
 }
 

@@ -106,7 +106,7 @@ extern char *c_left;
 
 #if	MSDOS
 # ifdef	__GNUC__
-extern int putterm();
+extern int putterm __P_((char *));
 #define	putterms(str)	putterm(str)
 # else
 #define	putterm(str)	cputs(str)
@@ -117,40 +117,40 @@ extern int putterm();
 #define	putterms(str)	tputs(str, n_line, putch2)
 #endif
 
-extern int inittty();
-extern int cooked2();
-extern int cbreak2();
-extern int raw2();
-extern int echo2();
-extern int noecho2();
-extern int nl2();
-extern int nonl2();
-extern int tabs();
-extern int notabs();
-extern int keyflush();
-extern int exit2();
-extern int getterment();
+extern int inittty __P_((int));
+extern int cooked2 __P_((VOID));
+extern int cbreak2 __P_((VOID));
+extern int raw2 __P_((VOID));
+extern int echo2 __P_((VOID));
+extern int noecho2 __P_((VOID));
+extern int nl2 __P_((VOID));
+extern int nonl2 __P_((VOID));
+extern int tabs __P_((VOID));
+extern int notabs __P_((VOID));
+extern int keyflush __P_((VOID));
+extern int exit2 __P_((int));
+extern int getterment __P_((VOID));
 #if	!MSDOS
-extern int setkeyseq();
-extern char *getkeyseq();
+extern int setkeyseq __P_((int, char *));
+extern char *getkeyseq __P_((int));
 #endif
-extern int initterm();
-extern int endterm();
-extern int putch2();
-extern int cputs2();
+extern int initterm __P_((VOID));
+extern int endterm __P_((VOID));
+extern int putch2 __P_((int));
+extern int cputs2 __P_((char *));
 #if	MSDOS
-extern int cprintf2(const char *, ...);
+extern int cprintf2(CONST char *, ...);
 #else
-extern int cprintf2();
+extern int cprintf2 __P_((CONST char *, ...));
 #endif
-extern int kbhit2();
-extern int getch2();
-extern int getkey2();
-extern int ungetch2();
-extern int locate();
-extern int tflush();
-extern int getwsize();
-extern int chgcolor();
+extern int kbhit2 __P_((u_long));
+extern int getch2 __P_((VOID));
+extern int getkey2 __P_((int));
+extern int ungetch2 __P_((u_char));
+extern int locate __P_((int, int));
+extern int tflush __P_((VOID));
+extern int getwsize __P_((int, int));
+extern int chgcolor __P_((int, int));
 
 #ifndef	SENSEPERSEC
 #define	SENSEPERSEC	50

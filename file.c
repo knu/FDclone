@@ -11,16 +11,15 @@
 #include "kanji.h"
 
 #if	MSDOS
-#include "unixemu.h"
-extern char *preparefile();
+extern char *preparefile __P_((char *, char *, int));
 #else
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
 #include <sys/param.h>
 # ifndef	_NODOSDRIVE
-extern int preparedrv();
-extern int shutdrv();
+extern int preparedrv __P_((int, VOID (*)__P_((VOID))));
+extern int shutdrv __P_((int));
 # endif
 #endif
 
@@ -45,17 +44,17 @@ extern char *tmpfilename;
 				: 	((((ent) - dirsize)\
 					& ~(boundary - 1)) - 1))
 
-static int iscurdir();
-static char *getdestdir();
+static int iscurdir __P_((char *));
+static char *getdestdir __P_((char *, char *));
 #ifndef	_NOWRITEFS
-static int k_strlen();
-static VOID touch();
-static int nofile();
-static char *maketmpfile();
+static int k_strlen __P_((char *));
+static VOID touch __P_((char *));
+static int nofile __P_((char *));
+static char *maketmpfile __P_((int, int, char *));
 #if	!MSDOS
-static char *getentnum();
+static char *getentnum __P_((char *, int, int));
 #endif
-static VOID restorefile();
+static VOID restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir;
@@ -153,43 +152,54 @@ char *name;
 	return(0);
 }
 
-int cmplist(listp1, listp2)
-namelist *listp1, *listp2;
+int cmplist(vp1, vp2)
+CONST VOID_P vp1;
+CONST VOID_P vp2;
 {
 	char *cp1, *cp2;
 	long tmp;
 
-	if (!sorton) return(listp1 -> ent - listp2 -> ent);
-	if (!isdir(listp1) && isdir(listp2)) return(1);
-	if (isdir(listp1) && !isdir(listp2)) return(-1);
+	if (!sorton)
+		return(((namelist *)vp1) -> ent - ((namelist *)vp2) -> ent);
+	if (!isdir((namelist *)vp1) && isdir((namelist *)vp2)) return(1);
+	if (isdir((namelist *)vp1) && !isdir((namelist *)vp2)) return(-1);
 
-	if (listp1 -> name[0] == '.' && listp1 -> name[1] == '\0') return(-1);
-	if (listp2 -> name[0] == '.' && listp2 -> name[1] == '\0') return(1);
-	if (listp1 -> name[0] == '.' && listp1 -> name[1] == '.'
-	&& listp1 -> name[2] == '\0') return(-1);
-	if (listp2 -> name[0] == '.' && listp2 -> name[1] == '.'
-	&& listp2 -> name[2] == '\0') return(1);
+	if (((namelist *)vp1) -> name[0] == '.'
+	&& ((namelist *)vp1) -> name[1] == '\0') return(-1);
+	if (((namelist *)vp2) -> name[0] == '.'
+	&& ((namelist *)vp2) -> name[1] == '\0') return(1);
+	if (((namelist *)vp1) -> name[0] == '.'
+	&& ((namelist *)vp1) -> name[1] == '.'
+	&& ((namelist *)vp1) -> name[2] == '\0') return(-1);
+	if (((namelist *)vp2) -> name[0] == '.'
+	&& ((namelist *)vp2) -> name[1] == '.'
+	&& ((namelist *)vp2) -> name[2] == '\0') return(1);
 
 	switch (sorton & 7) {
 		case 5:
-			tmp = strlen(listp1 -> name) - strlen(listp2 -> name);
+			tmp = strlen(((namelist *)vp1) -> name)
+				- strlen(((namelist *)vp2) -> name);
 			if (tmp != 0) break;
 		case 1:
-			tmp = strpathcmp(listp1 -> name, listp2 -> name);
+			tmp = strpathcmp(((namelist *)vp1) -> name,
+				((namelist *)vp2) -> name);
 			break;
 		case 2:
-			if (cp1 = strrchr(listp1 -> name, '.')) cp1++;
+			if (cp1 = strrchr(((namelist *)vp1) -> name, '.'))
+				cp1++;
 			else cp1 = "";
-			if (cp2 = strrchr(listp2 -> name, '.')) cp2++;
+			if (cp2 = strrchr(((namelist *)vp2) -> name, '.'))
+				cp2++;
 			else cp2 = "";
 			tmp = strpathcmp(cp1, cp2);
 			break;
 		case 3:
-			tmp = (long)(listp1 -> st_size)
-				- (long)(listp2 -> st_size);
+			tmp = (long)(((namelist *)vp1) -> st_size)
+				- (long)(((namelist *)vp2) -> st_size);
 			break;
 		case 4:
-			tmp = listp1 -> st_mtim - listp2 -> st_mtim;
+			tmp = ((namelist *)vp1) -> st_mtim
+				- ((namelist *)vp2) -> st_mtim;
 			break;
 		default:
 			tmp = 0;
@@ -197,30 +207,34 @@ namelist *listp1, *listp2;
 	}
 
 	if (sorton > 7) tmp = -tmp;
-	if (!tmp) tmp = listp1 -> ent - listp2 -> ent;
+	if (!tmp) tmp = ((namelist *)vp1) -> ent - ((namelist *)vp2) -> ent;
 
-	if (tmp > 0) tmp = 1;
-	else if (tmp < 0) tmp = -1;
-	return((int)tmp);
+	if (tmp > 0) return(1);
+	if (tmp < 0) return(-1);
+	return(0);
 }
 
 #ifndef	_NOTREE
-int cmptree(listp1, listp2)
-treelist *listp1, *listp2;
+int cmptree(vp1, vp2)
+CONST VOID_P vp1;
+CONST VOID_P vp2;
 {
 	char *cp1, *cp2;
 	int tmp;
 
-	if (!strcmp(listp1 -> name, "...")) return(1);
-	if (!strcmp(listp2 -> name, "...")) return(-1);
+	if (!strcmp(((treelist *)vp1) -> name, "...")) return(1);
+	if (!strcmp(((treelist *)vp2) -> name, "...")) return(-1);
 	switch (sorton & 7) {
 		case 1:
-			tmp = strpathcmp(listp1 -> name, listp2 -> name);
+			tmp = strpathcmp(((treelist *)vp1) -> name,
+				((treelist *)vp2) -> name);
 			break;
 		case 2:
-			if (cp1 = strrchr(listp1 -> name, '.')) cp1++;
+			if (cp1 = strrchr(((treelist *)vp1) -> name, '.'))
+				cp1++;
 			else cp1 = "";
-			if (cp2 = strrchr(listp2 -> name, '.')) cp2++;
+			if (cp2 = strrchr(((treelist *)vp2) -> name, '.'))
+				cp2++;
 			else cp2 = "";
 			tmp = strpathcmp(cp1, cp2);
 			break;

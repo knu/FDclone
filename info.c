@@ -20,7 +20,7 @@
 #include <dos.h>
 #include <errno.h>
 #include "unixemu.h"
-extern int supportLFN();
+extern int supportLFN __P_((char *));
 #else
 #include <sys/param.h>
 #include <sys/file.h>
@@ -70,8 +70,8 @@ typedef struct _mnt_t {
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
-static FILE *setmntent();
-static mnt_t *getmntent2();
+static FILE *setmntent __P_((char *, char *));
+static mnt_t *getmntent2 __P_((FILE *, mnt_t *));
 #define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
 #if	defined(USEMNTINFO) || defined(USEGETMNT)
 #define	endmntent(fp)
@@ -164,25 +164,21 @@ typedef struct _statfs_t {
 	long	f_bavail;
 	long	f_files;
 } statfs_t;
-static int statfs2();
+static int statfs2 __P_((char *, statfs_t *));
 #define	blocksize(fs)	(fs).f_bsize
 #endif
 
-extern VOID error();
-extern char *getwd2();
-extern VOID warning();
+extern VOID error __P_((char *));
+extern char *getwd2 __P_((VOID));
+extern VOID warning __P_((int, char *));
 #if	MSDOS || !defined (_NODOSDRIVE)
-extern int dospath();
+extern int dospath __P_((char *, char *));
 #endif
-extern char *strstr2();
-extern int kanjiputs();
-extern int kanjiputs2();
-extern int Xaccess();
-#if	MSDOS
-extern int kanjiprintf(const char *, ...);
-#else
-extern int kanjiprintf();
-#endif
+extern char *strstr2 __P_((char *, char *));
+extern int kanjiputs __P_((char *));
+extern int kanjiputs2 __P_((char *, int, int));
+extern int Xaccess __P_((char *, int));
+extern int kanjiprintf __P_((CONST char *, ...));
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -228,12 +224,12 @@ extern char *distributor;
 #define	MNTTYPE_DOS7	"dos7"	/* MS-DOS on Win95 */
 #endif
 
-static int code2str();
-static int checkline();
-static int getfsinfo();
-static int info1line();
+static int code2str __P_((char *, int));
+static int checkline __P_((int));
+static int getfsinfo __P_((char *, statfs_t *, mnt_t *));
+static int info1line __P_((int, char *, long, char *, char *));
 #ifndef	USEFSDATA
-static long calcKB();
+static long calcKB __P_((long, long));
 #endif
 
 static int keycodelist[] = {
@@ -557,7 +553,7 @@ mnt_t *mntp;
 #endif	/* USEGETMNT */
 
 #if	MSDOS
-int statfs2(path, buf)
+static int statfs2(path, buf)
 char *path;
 statfs_t *buf;
 {

@@ -9,15 +9,6 @@
 #include "kctype.h"
 #include "dosdisk.h"
 
-#if	MSDOS
-#include "unixemu.h"
-#else
-#include <sys/time.h>
-# ifdef	USEUTIME
-# include <utime.h>
-# endif
-#endif
-
 #ifndef	_NODOSDRIVE
 static char pseudocwd[MAXPATHLEN + 1] = "";
 int lastdrv = -1;

@@ -45,16 +45,16 @@ extern int errno;
 #endif
 
 #ifdef	FD
-extern char *getenv2();
-extern DIR *Xopendir();
-extern int Xclosedir();
-extern struct dirent *Xreaddir();
-extern int Xstat();
-extern int Xaccess();
+extern char *getenv2 __P_((char *));
+extern DIR *Xopendir __P_((char *));
+extern int Xclosedir __P_((DIR *));
+extern struct dirent *Xreaddir __P_((DIR *));
+extern int Xstat __P_((char *, struct stat *));
+extern int Xaccess __P_((char *, int));
 # ifdef	NOVOID
-extern error();
+extern error __P_((char *));
 # else
-extern void error();
+extern void error __P_((char *));
 # endif
 extern char *progpath;
 #else
@@ -68,11 +68,11 @@ extern char *progpath;
 #endif
 
 #if	!MSDOS
-static int completeuser();
+static int completeuser __P_((char *, int, char **));
 #endif
 #if	!MSDOS || !defined (_NOCOMPLETE)
-static DIR *opennextpath();
-static struct dirent *readnextpath();
+static DIR *opennextpath __P_((char **, char *, char**));
+static struct dirent *readnextpath __P_((DIR **, char **, char *, char**));
 #endif
 
 static int skipdotfile;
@@ -254,8 +254,8 @@ int exceptdot;
 }
 
 #ifdef	USERE_COMP
-extern char *re_comp();
-extern int re_exec();
+extern char *re_comp __P_((char *));
+extern int re_exec __P_((char *));
 
 reg_t *regexp_init(s)
 char *s;
@@ -321,8 +321,8 @@ reg_t *re;
 }
 
 #  ifdef	USEREGCMP
-extern char *regcmp();
-extern char *regex();
+extern char *regcmp(char *, int);
+extern char *regex(char *, char *);
 
 reg_t *regexp_init(s)
 char *s;

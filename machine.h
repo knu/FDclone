@@ -19,6 +19,8 @@
 # ifdef	__GNUC__
 #  ifndef	DJGPP
 #  define	DJGPP	1
+#  else
+#  define	SIGFNCINT
 #  endif
 # else	/* !__GNUC__ */
 # define	NOUID_T
@@ -544,7 +546,8 @@ typedef unsigned long	u_long;
 /* #define USETIMELOCAL	/* have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	/* use mktime() instead of timelocal() */
 /* #define USEUNAME	/* use uname() instead of gethostname() */
-/* #define SIGARGINT	/* signal() needs the 2nd argument as int */
+/* #define SIGARGINT	/* the 2nd argument function of signal() returns int */
+/* #define SIGFNCINT	/* the 2nd argument function of signal() needs int */
 
 /* #define SENSEPERSEC	/* ratio of key sense per 1 second */
 /* #define WAITKEYPAD	/* interval to wait after getting input of ESC [ms] */
@@ -572,6 +575,14 @@ typedef unsigned long	u_long;
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
+#endif
+
+#ifdef	__STDC__
+#define	__P_(args)	args
+#define	CONST		const
+#else
+#define	__P_(args)	()
+#define	CONST
 #endif
 
 #if	defined (USEREGCMP) && !defined (REGEXPLIB)

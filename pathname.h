@@ -11,17 +11,17 @@ typedef regex_t reg_t;
 typedef char reg_t;
 #endif
 
-extern char *_evalpath();
-extern char *evalpath();
-extern char *cnvregexp();
-extern reg_t *regexp_init();
-extern int regexp_exec();
-extern int regexp_free();
+extern char *_evalpath __P_((char *, char *, int));
+extern char *evalpath __P_((char *));
+extern char *cnvregexp __P_((char *, int));
+extern reg_t *regexp_init __P_((char *));
+extern int regexp_exec __P_((reg_t *, char *));
+extern int regexp_free __P_((reg_t *));
 #if	!MSDOS || !defined (_NOCOMPLETE)
-extern char *lastpointer();
-extern char *finddupl();
-extern int completepath();
+extern char *lastpointer __P_((char *, int));
+extern char *finddupl __P_((char *, int, char *));
+extern int completepath __P_((char *, int, char **, int, int));
 #endif
 #ifndef	_NOCOMPLETE
-extern char *findcommon();
+extern char *findcommon __P_((char *, int));
 #endif

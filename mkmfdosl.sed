@@ -16,7 +16,7 @@ s:__CPP__:cpp:
 s:__CCOPTIONS__:-O:
 s:__TERMLIBS__::
 s:__REGLIBS__::
-s:__OTHERLIBS__:-lintlib -ltinymain.obj -k'-M -s 5000':
+s:__OTHERLIBS__:-lintlib -ltinymain.obj -m -k'-s 5000':
 s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
 s:__PREFIXOPTION__::

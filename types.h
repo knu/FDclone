@@ -114,7 +114,7 @@ typedef struct _bindtable {
 } bindtable;
 
 typedef struct _functable {
-	int (*func)();
+	int (*func)__P_((namelist *, int *, char *));
 	char *ident;
 	char *hmes;
 #ifndef	_NOENGMES
@@ -192,7 +192,7 @@ typedef struct _userfunctable {
 } userfunctable;
 
 typedef struct _builtintable {
-	int (*func)();
+	int (*func)__P_((int, char *[], int));
 	char *ident;
 } builtintable;
 
