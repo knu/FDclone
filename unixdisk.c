@@ -684,8 +684,8 @@ char *dir;
 	}
 # endif
 
-	i = strlen(dir);
-	strcpy(path, dir);
+	if (!unixrealpath(dir, path)) return(NULL);
+	i = strlen(path);
 	if (i && path[i - 1] != _SC_) strcat(path, _SS_);
 
 	if (!(dirp = (DIR *)malloc(sizeof(DIR)))) return(NULL);
@@ -699,7 +699,8 @@ char *dir;
 			free(dirp);
 			return(NULL);
 		}
-		i = dos_findfirst(path,
+		if (i > 3) i = -1;
+		else i = dos_findfirst(path,
 			(struct dosfind_t *)dirp -> dd_buf, DS_IFLABEL);
 		if (i >= 0) dirp -> dd_id |= DID_IFLABEL;
 		else i = dos_findfirst(path,
@@ -714,7 +715,8 @@ char *dir;
 			free(dirp);
 			return(NULL);
 		}
-		i = dos_findfirst(path,
+		if (i > 3) i = -1;
+		else i = dos_findfirst(path,
 			(struct dosfind_t *)dirp -> dd_buf, DS_IFLABEL);
 		if (i >= 0) dirp -> dd_id |= DID_IFLABEL;
 		else {
@@ -805,7 +807,7 @@ DIR *dirp;
 			strcpy(path + i, "*.*");
 			i = dos_findfirst(path,
 				(struct dosfind_t *)dirp -> dd_buf,
-				(SEARCHATTRS | DS_IFLABEL));
+				SEARCHATTRS);
 		}
 		else {
 			strcpy(path + i, "*");

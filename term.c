@@ -39,9 +39,14 @@
 #define	TTYNAME		""
 #else	/* !MSDOS */
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/time.h>
+
+#ifdef	NOERRNO
+extern int errno;
+#endif
 
 #ifdef	USETERMIOS
 # ifdef	USETERMIO
@@ -112,6 +117,9 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 
 #ifndef	PENDIN
 #define	PENDIN		0
+#endif
+#ifndef	IEXTEN
+#define	IEXTEN		0
 #endif
 #ifndef	ECHOCTL
 #define	ECHOCTL		0
@@ -434,7 +442,7 @@ int cooked2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, 0, not(CBREAK | RAW), LPASS8, not(LLITOUT | LPENDIN));
 #else
-	ttymode(ttyio, ISIG | ICANON, not(PENDIN),
+	ttymode(ttyio, ISIG | ICANON | IEXTEN, not(PENDIN),
 		BRKINT | IXON, not(IGNBRK | ISTRIP),
 # if (VEOF == VMIN) || (VEOL == VTIME)
 		OPOST, 0, '\004', 255);
@@ -450,8 +458,8 @@ int cbreak2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, ISIG | ICANON, 0, BRKINT, not(IXON | IGNBRK),
-		0, not(OPOST), 1, 0);
+	ttymode(ttyio, ISIG | IEXTEN, not(ICANON),
+		BRKINT | IXON, not(IGNBRK), OPOST, 0, 1, 0);
 #endif
 	return(0);
 }
@@ -461,8 +469,8 @@ int raw2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, RAW, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, 0, not(ISIG | ICANON), IGNBRK, not(IXON),
-		0, not(OPOST), 1, 0);
+	ttymode(ttyio, 0, not(ISIG | ICANON | IEXTEN),
+		IGNBRK, not(BRKINT | IXON), 0, not(OPOST), 1, 0);
 #endif
 	return(0);
 }
@@ -1222,8 +1230,10 @@ u_long usec;
 int getch2(VOID_A)
 {
 	u_char ch;
+	int i;
 
-	read(ttyio, &ch, sizeof(u_char));
+	while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
+	if (i < sizeof(u_char)) return(EOF);
 	return((int)ch);
 }
 

@@ -94,8 +94,14 @@ $(PROGRAM).$(MANSEC)c: kanjicnv.exe $(MANCAT) machine.h config.h
 $(PROGRAM).doc: kanjicnv.exe $(MANCAT) machine.h config.h
 	.\kanjicnv.exe -s -b $(MANCAT) $@
 
-history.doc: kanjicnv.exe HISTORY machine.h config.h
+README.doc: kanjicnv.exe README machine.h config.h
+	.\kanjicnv.exe -s README $@
+
+HISTORY.doc: kanjicnv.exe HISTORY machine.h config.h
 	.\kanjicnv.exe -s HISTORY $@
+
+FAQ.doc: kanjicnv.exe FAQ machine.h config.h
+	.\kanjicnv.exe -s FAQ $@
 
 kanjicnv.exe: kanjicnv.c
 	$(CC) $(CFLAGS) -o $@ kanjicnv.c

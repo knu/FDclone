@@ -559,6 +559,9 @@ int uniq;
 	if (uniq) {
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
+#if	MSDOS
+			if (*str != *(history[n][i])) continue;
+#endif
 			if (!strpathcmp(str, history[n][i])) break;
 		}
 		if (i < size) size = i;
