@@ -328,7 +328,7 @@ char *str;
 int cx, len, plen, max, linemax, ins;
 {
 	char dupl[MAXLINESTR + 1];
-	int dy, i, j, l, f1, ptr;
+	int dx, dy, i, j, l, f1, ptr;
 #if	!MSDOS
 	int f2;
 #endif
@@ -411,7 +411,7 @@ int cx, len, plen, max, linemax, ins;
 		while (j--) putch2(' ');
 		j = 0;
 		l = i - cx - ins;
-		f2 = (cx + ins + plen) % linemax;
+		dx = (cx + ins + plen) % linemax;
 
 		while (i < len) {
 			ptr = i - 1 - cx;
@@ -423,7 +423,7 @@ int cx, len, plen, max, linemax, ins;
 					putterm(c_scrollforw);
 					ypos--;
 				}
-				Xlocate(f2, dy);
+				Xlocate(dx, dy);
 			}
 			if ((l += f1) > 0) kanjiputs2(dupl, l, j);
 			if (!f1) putch2(' ');
@@ -444,7 +444,7 @@ int cx, len, plen, max, linemax, ins;
 			if (ptr + l > len - ins - cx) l = len - ins - cx - ptr;
 			j = ptr;
 			i += linemax;
-			f2 = 0;
+			dx = 0;
 		}
 
 		l = len - ins - cx - j;
@@ -1455,7 +1455,7 @@ int h;
 		}
 		input[j] = '\0';
 	}
-	i = n_column - 1 - len + (n_column - 1) * (WCMDLINE - 1);
+	i = (n_column - 1) * WCMDLINE - len;
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
 	ch = _inputstr(input, len, i, n_column - 1, ptr, h == 0, h);

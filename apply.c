@@ -322,7 +322,7 @@ u_short flag;
 {
 	struct tm *tm;
 	char buf[WMODE + 1], timestr[2][9];
-	u_short tmp;
+	u_short tmp, tmpmode;
 	int i, ch, x, y, yy, ymin, ymax;
 
 	subwindow = 1;
@@ -332,13 +332,13 @@ u_short flag;
 	yy = WHEADER;
 	while (n_line - yy < 7) yy--;
 
-	attrmode = listp -> st_mode;
+	tmpmode = listp -> st_mode;
 	tm = localtime(&(listp -> st_mtim));
 	sprintf(timestr[0], "%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	sprintf(timestr[1], "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-	showattr(listp, attrmode, timestr, yy);
+	showattr(listp, tmpmode, timestr, yy);
 	y = ymin = (flag & 1) ? 0 : 1;
 	ymax = (flag & 2) ? 2 : 0;
 	x = 0;
@@ -423,30 +423,30 @@ u_short flag;
 				else if (x > 0) x--;
 				break;
 			case CTRL('L'):
-				showattr(listp, attrmode, timestr, yy);
+				showattr(listp, tmpmode, timestr, yy);
 				break;
 			case ' ':
 				if (y) break;
 #if	MSDOS
 				if (x == 2) break;
-				else if (x == 3) attrmode ^= S_ISVTX;
+				else if (x == 3) tmpmode ^= S_ISVTX;
 				else {
 					tmp = 1;
 					for (i = 8; i > x; i--) tmp <<= 1;
-					attrmode ^= tmp;
+					tmpmode ^= tmp;
 				}
 #else
 				tmp = 1;
 				for (i = 8; i > x; i--) tmp <<= 1;
-				if (!((x + 1) % 3) && (attrmode & tmp)) {
+				if (!((x + 1) % 3) && (tmpmode & tmp)) {
 					i = (x * 2) / 3 + 4;
-					if (!(attrmode & (tmp << i))) tmp <<= i;
-					else attrmode ^= (tmp << i);
+					if (!(tmpmode & (tmp << i))) tmp <<= i;
+					else tmpmode ^= (tmp << i);
 				}
-				attrmode ^= tmp;
+				tmpmode ^= tmp;
 #endif
 				locate(n_column / 2 + 10, yy + y + 2);
-				putmode(buf, attrmode);
+				putmode(buf, tmpmode);
 				cputs2(buf + 1);
 				break;
 			default:
@@ -475,7 +475,8 @@ u_short flag;
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 59)
 		return(-1);
 
-	attrtime = timelocal2(tm);
+	attrmode = (flag & 1) ? tmpmode : 0xffff;
+	attrtime = (flag & 2) ? timelocal2(tm) : (time_t)-1;
 	return(1);
 }
 
@@ -509,12 +510,20 @@ char *path;
 	if (Xlstat(path, &status) < 0) return(-1);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(1);
 
-	mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);
 #if	MSDOS
-	if (!(status.st_mode & S_IWRITE)) Xchmod(path, (mode | S_IWRITE));
+	if (!(status.st_mode & S_IWRITE))
+		Xchmod(path, (status.st_mode | S_IWRITE));
 #endif
-	if (touchfile(path, status.st_atime, attrtime) < 0
-	|| Xchmod(path, mode) < 0) return(-1);
+	if (attrtime != (time_t)-1) {
+		if (touchfile(path, status.st_atime, attrtime) < 0) return(-1);
+	}
+	if (attrmode != 0xffff) {
+		mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);
+		if (Xchmod(path, mode) < 0) return(-1);
+	}
+#if	MSDOS
+	else if (!(status.st_mode & S_IWRITE)) Xchmod(path, status.st_mode);
+#endif
 	return(0);
 }
 

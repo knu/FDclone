@@ -37,6 +37,7 @@ static char *addoption __P_((char *, char *, namelist *, int,
 		int, macrostat *));
 static int dosystem __P_((char *, namelist *, int *, int));
 static char *evalargs __P_((char *, int, char *[]));
+static char *histfgets __P_((char *, int, FILE *));
 static char *evalalias __P_((char *));
 
 aliastable aliaslist[MAXALIASTABLE];
@@ -385,7 +386,7 @@ int *maxp, noconf, argset;
 	st.flags = (argset) ? F_ARGSET : 0;
 	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-1);
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
-	i = (n_column - 4) * WCMDLINE;
+	i = (n_column - 1) * WCMDLINE - (evalprompt(NULL, MAXLINESTR) + 1);
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
 	st.flags |= F_ARGSET;
@@ -573,6 +574,26 @@ int uniq;
 	return(1);
 }
 
+static char *histfgets(s, n, fp)
+char *s;
+int n;
+FILE *fp;
+{
+	int i, c;
+
+	for (i = 0; i < n - 1; i++) {
+		if ((c = fgetc(fp)) == EOF) {
+			if (!i) return(NULL);
+			break;
+		}
+		else if (c == '\n') break;
+		else if (!c) c = '\n';
+		s[i] = c;
+	}
+	s[i] = '\0';
+	return(s);
+}
+
 int loadhistory(n, file)
 int n;
 char *file;
@@ -592,8 +613,7 @@ char *file;
 	histno[n] = 0;
 
 	i = 0;
-	while (fgets(line, MAXLINESTR, fp)) {
-		if ((cp = strchr(line, '\n'))) *cp = '\0';
+	while (histfgets(line, MAXLINESTR, fp)) {
 		if (histno[n]++ >=
 		~(short)(1L << (BITSPERBYTE * sizeof(short) - 1)))
 			histno[n] = 0;
@@ -612,7 +632,7 @@ int n;
 char *file;
 {
 	FILE *fp;
-	char *cp;
+	char *cp, *nl;
 	int i, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
@@ -623,7 +643,11 @@ char *file;
 
 	size = (savehist > histsize[n]) ? histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
-		fputs(history[n][i], fp);
+		for (cp = history[n][i]; (nl = strchr(cp, '\n')); cp = nl) {
+			fwrite(cp, sizeof(char), nl++ - cp, fp);
+			fputc('\0', fp);
+		}
+		fputs(cp, fp);
 		fputc('\n', fp);
 	}
 	fclose(fp);

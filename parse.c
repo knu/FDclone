@@ -414,7 +414,10 @@ int max;
 				break;
 			case '~':
 				if (underhome(line)) {
-					if (j < max) prompt[j++] = '~';
+					if (j < max) {
+						if (prompt) prompt[j] = '~';
+						j++;
+					}
 					if (!unprint) len++;
 				}
 				else cp = fullpath;
@@ -448,7 +451,7 @@ int max;
 				break;
 		}
 		if (!cp) cp = line;
-		while (*cp && j < max) {
+		if (prompt) while (*cp && j < max) {
 			if (unprint) prompt[j] = *cp;
 #ifdef	CODEEUC
 			else if (isekana(cp, 0)) {
@@ -473,8 +476,26 @@ int max;
 			cp++;
 			j++;
 		}
+		else while (*cp && j < max) {
+			if (unprint);
+#ifdef	CODEEUC
+			else if (isekana(cp, 0)) {
+				j++;
+				cp++;
+				len++;
+			}
+#endif
+			else if (((u_char)(*cp) >= ' ' && *cp != C_DEL)
+			|| j + 1 >= max) len++;
+			else {
+				j++;
+				len += 2;
+			}
+			cp++;
+			j++;
+		}
 	}
-	prompt[j] = '\0';
+	if (prompt) prompt[j] = '\0';
 	return(len);
 }
 
