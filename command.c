@@ -1209,7 +1209,7 @@ char *arg;
 	int drive = 0;
 #endif
 
-	len = (isexec(&list[filepos])) ? strlen2(list[filepos].name) + 1 : 0;
+	len = (isexec(&list[filepos])) ? strlen(list[filepos].name) + 1 : 0;
 	if (!(com = inputstr(NULL, 0, len, list[filepos].name, 0)))
 		return(1);
 	if (!*com) {
@@ -1360,7 +1360,7 @@ char *arg;
 
 	if (mark > 0) {
 		for (i = 0; i < *maxp; i++) if (ismark(&list[i])) break;
-		if (i < *maxp) i = filepos;
+		if (i >= *maxp) i = filepos;
 		flag = 1;
 		locate(0, LINFO);
 		putterm(l_clear);

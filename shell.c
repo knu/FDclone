@@ -332,8 +332,8 @@ macrostat *stp;
 		if (i >= len) return(command);
 
 		free(command);
-		if (p < 0) p = strlen2(line);
-		cp = inputstr(NULL, 0, p, line, 0);
+		if (p < 0) p = strlen(line);
+		cp = inputstr("", 0, p, line, 0);
 		if (!cp || !*cp) return(NULL);
 		command = evalcommand(cp, arg, list, max, stp);
 		if (!command) return((char *)-1);

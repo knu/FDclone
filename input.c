@@ -1165,7 +1165,7 @@ int h;
 	locate(0, LCMDLINE);
 	putch2(' ');
 	putterm(t_standout);
-	if (prompt) {
+	if (prompt && *prompt) {
 		kanjiputs(prompt);
 		len = strlen(prompt) + 1;
 	}
@@ -1182,25 +1182,34 @@ int h;
 	else {
 		j = 0;
 		ch = '\0';
-		for (i = 0; def[i]; i++)
-			if ((u_char)(def[i]) < ' ' || def[i] == C_DEL
-			|| strchr(METACHAR, def[i])) break;
-		if (def[i]) {
-			input[j++] = ch = '"';
-			if (ptr) ptr += 2;
+		if (!prompt) {
+			for (i = 0; def[i]; i++)
+				if ((u_char)(def[i]) < ' ' || def[i] == C_DEL
+				|| strchr(METACHAR, def[i])) break;
+			if (def[i]) {
+				input[j++] = ch = '"';
+				if (ptr) ptr++;
+			}
 		}
 		for (i = 0; def[i]; i++, j++) {
-			if ((u_char)(def[i]) < ' ' || def[i] == C_DEL)
+			if ((u_char)(def[i]) < ' ' || def[i] == C_DEL) {
 				input[j++] = QUOTE;
-			else if (strchr(DQ_METACHAR, def[i])) 
+				if (ptr >= j) ptr++;
+			}
+			else if (!prompt && strchr(DQ_METACHAR, def[i]))  {
 #if	MSDOS
 				input[j++] = def[i];
 #else
 				input[j++] = '\\';
 #endif
+				if (ptr >= j) ptr++;
+			}
 			input[j] = def[i];
 		}
-		if (ch) input[j++] = ch;
+		if (ch) {
+			input[j++] = ch;
+			if (ptr >= j) ptr++;
+		}
 		input[j] = '\0';
 	}
 	i = n_column - 1 - len + (n_column - 1) * (WCMDLINE - 1);

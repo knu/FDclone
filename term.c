@@ -243,7 +243,7 @@ u_char cc_eol = 255;
 #define	KEYBUFWORKSEG	0x40
 #define	KEYBUFWORKOFF	0x124
 static int nextchar = '\0';
-static u_char specialkey[] = ":=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
+static u_char specialkey[] = "\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
 #else
 #define	KEYBUFWORKSEG	0x40
 #define	KEYBUFWORKOFF	0x80
@@ -1003,14 +1003,19 @@ char *s;
 			putch2(s[i]);
 			continue;
 		}
+		bdos(0x0c, 0x00, 0);
 		putch2('\033');
 		putch2('[');
 		putch2('6');
 		putch2('n');
 		size = SIZEFMT;
-			
-		for (x = 0; (buf[x] = bdos(0x07, 0x00, 0)) != '\r'; x++);
-		buf[x] = '\0';
+
+		for (x = 0; x < sizeof(buf) - 1; x++) {
+			buf[x] = bdos(0x07, 0x00, 0);
+			if (buf[x] == size[sizeof(SIZEFMT) - 2]) break;
+		}
+		bdos(0x0c, 0x00, 0);
+		buf[++x] = '\0';
 		if (getxy(buf, size, &y, &x) != 2) x = 1;
 		do {
 			putch2(' ');
@@ -1178,9 +1183,14 @@ int xmax, ymax;
 
 	size = SIZEFMT;
 
+	bdos(0x0c, 0x00, 0);
 	for (i = 0; i < sizeof(GETSIZE) - 1; i++) putch2(GETSIZE[i]);
-	for (i = 0; (buf[i] = bdos(0x07, 0x00, 0)) != '\r'; i++);
-	buf[i] = '\0';
+	for (i = 0; i < sizeof(buf) - 1; i++) {
+		buf[i] = bdos(0x07, 0x00, 0);
+		if (buf[i] == size[sizeof(SIZEFMT) - 2]) break;
+	}
+	bdos(0x0c, 0x00, 0);
+	buf[++i] = '\0';
 	if (getxy(buf, size, &y, &x) != 2) x = y = -1;
 
 	if (x > 0) {
