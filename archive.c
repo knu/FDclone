@@ -366,8 +366,11 @@ char *s1, *s2;
 		while (s1[i + 1] == _SC_) i++;
 		while (s2[j + 1] == _SC_) j++;
 	}
-	if (s2[j] && s2[j] != _SC_) return(0);
-	if (i) while (s2[j + 1] == _SC_) j++;
+	if (s2[j] && s2[j] != _SC_) {
+		for (j = 0; s1[j] == _SC_; j++);
+		return((i == j) ? 1 : 0);
+	}
+	if (i && s2[j]) while (s2[j + 1] == _SC_) j++;
 	return(j);
 }
 
@@ -383,6 +386,7 @@ int max;
 		while (*(tmp + 1) == _SC_) tmp++;
 		if (!*(tmp + 1)) break;
 		len = tmp - (namep -> name);
+		if (!len) len++;
 		for (i = 0; i < max; i++) {
 			if (isdir(&list[i])
 			&& len == dirmatchlen(list[i].name, namep -> name))
@@ -559,7 +563,7 @@ int max;
 			continue;
 
 		cp = filelist[i].name + len;
-		if (len > 0) cp++;
+		if (len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
 		if (!filelist[i].name[len]) {
 			memcpy(&arcflist[0], &filelist[i], sizeof(namelist));
 			arcflist[0].name = filelist[0].name;
@@ -653,7 +657,8 @@ int max;
 
 	if (no <= 4) strcpy(file, arcflist[filepos].name);
 	else if (filepos >= 0 && strcmp(arcflist[filepos].name, "..")) {
-		if (*archivedir) strcat(archivedir, _SS_);
+		if (*archivedir && (*archivedir != _SC_ || *(archivedir + 1)))
+			strcat(archivedir, _SS_);
 		strcat(archivedir, arcflist[filepos].name);
 		*file = '\0';
 	}
@@ -925,7 +930,7 @@ char *tmpunpack(list, max)
 namelist *list;
 int max;
 {
-	char path[MAXPATHLEN + 1];
+	char *subdir, path[MAXPATHLEN + 1];
 	int i, dupmark;
 
 	sprintf(path, "L%d", launchlevel);
@@ -940,17 +945,20 @@ int max;
 	mark = dupmark;
 
 	if (_chdir2(path) < 0) error(path);
+	subdir = archivedir;
+	if (*subdir == _SC_) subdir++;
 	if (i < 0) putterm(t_bell);
 	else if (i > 0) {
-		if (*archivedir && _chdir2(archivedir) < 0) {
-			warning(-1, archivedir);
-			*path = '\0';
+		if (*subdir && _chdir2(subdir) < 0) {
+			warning(-1, subdir);
+			i = 0;
 		}
 		else if (Xaccess(list[filepos].name, F_OK) < 0)
 			warning(-1, list[filepos].name);
 		else return(strdup2(path));
 	}
-	removetmp(path, archivedir, (i > 0) ? list[filepos].name : NULL);
+	if (i > 0) removetmp(path, subdir, list[filepos].name);
+	else removetmp(path, NULL, NULL);
 	return(NULL);
 }
 

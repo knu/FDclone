@@ -529,7 +529,7 @@ char *endmes;
 	ret = tmp = old = filepos;
 	helpbar();
 	for (filepos = 0; filepos < max; filepos++) {
-		if (kbhit2(0) && getkey2(0) == cc_intr) {
+		if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
 			warning(0, INTR_K);
 			endmes = NULL;
 			break;
@@ -563,7 +563,7 @@ char *endmes;
 	char *cp, *fname, path[MAXPATHLEN + 1], **dirlist;
 	int i, ndir, max;
 
-	if (kbhit2(0) && getkey2(0) == cc_intr) {
+	if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
 		warning(0, INTR_K);
 		return(-2);
 	}
@@ -626,7 +626,7 @@ char *endmes;
 	free(dirlist);
 
 	while ((dp = Xreaddir(dirp))) {
-		if (kbhit2(0) && getkey2(0) == cc_intr) {
+		if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
 			warning(0, INTR_K);
 			return(-2);
 		}

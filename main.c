@@ -19,7 +19,7 @@
 extern char *adjustfname __P_((char *));
 # endif
 # ifdef	__TURBOC__
-extern unsigned _stklen = 16384;
+extern unsigned _stklen = 0x6000;
 # endif
 #else
 # ifdef	_NODOSDRIVE

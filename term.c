@@ -1034,7 +1034,7 @@ u_long usec;
 
 	regs.h.ah = 0x01;
 	int86(0x16, &regs, &regs);
-	return((regs.x.flags & 0x01) != 0);
+	return((regs.x.flags & 0x40) ? 0 : 1);
 # endif
 #endif
 }

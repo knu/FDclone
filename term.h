@@ -59,9 +59,10 @@
 #define	K_HELP	0553
 #define	K_MAX	K_HELP
 
-#ifndef	CTRL
-#define	CTRL(c)	((c) & 037)
+#ifdef	CTRL
+#undef	CTRL
 #endif
+#define	CTRL(c)	((c) & 037)
 
 extern int n_column;
 extern int n_lastcolumn;

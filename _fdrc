@@ -46,23 +46,23 @@ ADJTTY		=	0
 COLUMNS		=	2
 
 # minimum columns of filename field
-#	default: 12
+#	Default: 12
 MINFILENAME	=	12
 
 # history size of sh mode
-#	default: 50
+#	Default: 50
 HISTSIZE	=	50
 
 # history size of path input
-#	default: 50
+#	Default: 50
 DIRHIST		=	50
 
 # size of saved history
-#	default: 50
+#	Default: 50
 SAVEHIST	=	50
 
 # limit of counting file in directory, on tree mode
-#	default: 50
+#	Default: 50
 DIRCOUNTLIMIT	=	50
 
 # whether if display the second hand of clock
@@ -94,19 +94,19 @@ ANSICOLOR	=	0
 EDITMODE	=	emacs
 
 # temporary directory where archive file is unpacked
-#	default: /tmp
+#	Default: /tmp
 TMPDIR		=	/tmp
 
 # mount point of CD-ROM with iso-9660 rock ridge format
-#	default: none
+#	Default: none
 RRPATH		=	""
 
 # shell prompt strings
-#	default: "sh#"
+#	Default: "sh#"
 PROMPT		=	"sh#"
 
 # language code type to display
-#	default: No convert
+#	Default: No convert
 #	jis, JIS: 7bit JIS
 #	euc, EUC: EUC
 #	sjis, SJIS: Shift JIS
@@ -120,14 +120,14 @@ PROMPT		=	"sh#"
 #export	LANG=C
 
 # launcher definition
-#(default)
+#(Default)
 #launch ".lzh"	"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8:10
 #launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".tar.Z"\
 #		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#(examples)
+#(Examples)
 #launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
@@ -136,31 +136,57 @@ PROMPT		=	"sh#"
 #launch ".Z"	"zcat %C|$PAGER"
 #launch ".gz"	"gzip -cd %C|$PAGER"
 
-# example for SVR4 (or GNU tar)
+# examples for SVR4 (or GNU tar)
 #launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tar.Z"\
 #		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".taz"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 
+# examples for GNU tar >1.12
+#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#launch ".tar.Z"\
+#		"tar tvfZ -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#launch ".tar.gz"\
+#		"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#launch ".taZ"	"tar tvfZ -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#launch ".taz"	"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#launch ".tgz"	"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+
+# example for LHa >1.14
+#launch ".lzh"	"lha -lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
+
+# examples for MS-DOS
+#launch ".lzh"	"lha l %S"		5,2:0,0,0,3,6-'-',6'-'-'-',6[7],7,2:2
+#launch ".lzh"	"lha v %S"		5,2:0,0,0,2,5-'-',5'-'-'-',5[7],6,1::2
+#launch ".tar.Z"\
+#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar.gz"\
+#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+
 # archiver definition
-#(default)
+#(Default)
 #arch ".lzh"	"lha aq %C %TA"			"lha xq %C %TA"
 #arch ".tar"	"tar cf %C %T"			"tar xf %C %TA"
 #arch ".tar.Z"	"tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
 #arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %C|tar xf - %TA"
-#(examples)
+#(Examples)
 #arch ".taZ"	"maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
-#arch ".taz"	"maketaz compress Z taz"	"zcat %C|tar xf - %TA"
+#arch ".taz"	"maketaz gzip gz taz"		"gzip -cd %C|tar xf - %TA"
 #arch ".tgz"	"maketaz gzip gz tgz"		"gzip -cd %C|tar xf - %TA"
 #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
 #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
 
+# examples for MS-DOS
+#arch ".lzh"	"lha a %C %TA"			"lha x %S %TA"
+#arch ".tar.Z"	"tar cf %X %T; compress %X"	"gzip -cd %S|tar xf - %TA"
+#arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %S|tar xf - %TA"
+
 # key bind definition
-#(examples)
+#(Examples)
 #bind 'I'	"dir -d %C"
 #bind 'g'	"gzip %C%K"	WARNING_BELL
 #bind 'G'	"gzip -d %C%K"	WARNING_BELL
@@ -171,7 +197,7 @@ PROMPT		=	"sh#"
 #bind 'F1'	"man fd%N%K"	;Manual
 
 # function definition
-#(example1)
+#(Example1)
 #function rename() {\
 #	MARK_ALL 0;\
 #	MARK_FIND $1;\
@@ -179,7 +205,7 @@ PROMPT		=	"sh#"
 #	mv %M $2%K;\
 #}
 #
-#(example2: used in archiver definition)
+#(Example2: used in archiver definition)
 #function maketaz() {\
 #	tar cf %X.tar %T;\
 #	$1 %X.tar;\
@@ -187,13 +213,13 @@ PROMPT		=	"sh#"
 #}
 
 # MS-DOS drive definition
-#(example)
+#(Example)
 #setdrv B	"/dev/rfd00a"	2, 18, 80
 
 # alias definition
-#(example)
+#(Example)
 #alias dir "ls -laF"
 
 # keymap definition
-#(example)
+#(Example)
 #keymap DEL	"\033[3~"

@@ -53,7 +53,7 @@ OBJ2	= dosdisk.obj unixemu.obj unixdisk.obj \
 OBJ3	= kanji.obj file.obj apply.obj archive.obj \
 	tree.obj command.obj browse.obj
 
-LDFLAGS	=   -lintlib -ltinymain.obj -ml -k'-s 5000'
+LDFLAGS	=   -lintlib -ltinymain.obj -ml -h -k'-s 6000'
 CFLAGS	= -DFD=1 -DPC98=1 -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O
 
 .SUFFIXES: .h .c .obj .exe

@@ -139,7 +139,12 @@ int level, *maxp, *maxentp;
 	char *cp, *dir, *subdir;
 	int i, len;
 
-	if ((level + 1) * DIRFIELD + 2 > TREEFIELD || kbhit2(0)) {
+	if ((level + 1) * DIRFIELD + 2 > TREEFIELD) {
+		*maxp = -1;
+		return(NULL);
+	}
+	if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
+		warning(0, INTR_K);
 		*maxp = -1;
 		return(NULL);
 	}

@@ -522,6 +522,7 @@ char *dir, *subdir, *file;
 		*dir = '\0';
 		subdir = file = NULL;
 	}
+	if (subdir && *subdir == _SC_) subdir++;
 	if (subdir && *subdir && _chdir2(subdir) < 0) {
 		warning(-1, subdir);
 		subdir = file = NULL;
@@ -560,6 +561,7 @@ char *dir, *file;
 	char buf[MAXPATHLEN + 1];
 	int i, len;
 
+	if (!dir || !*dir || !file || !*file) return(0);
 	for (i = 0; dir[i]; i++) buf[i] = dir[i];
 	len = i;
 	buf[len++] = _SC_;

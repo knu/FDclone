@@ -54,7 +54,7 @@ OBJ3	= kanji.obj file.obj apply.obj archive.obj \
 	tree.obj command.obj browse.obj
 
 LDFLAGS	=   
-CFLAGS	= -DFD=1 -DDOSV=1 -DDEFRUNCOM=\"$(DOSRC)\" -O -ml -w-par -w-pia
+CFLAGS	= -DFD=1 -DDOSV=1 -DDEFRUNCOM=\"$(DOSRC)\" -O -N -ml -w-par -w-pia
 
 .SUFFIXES: .h .c .obj .exe
 
