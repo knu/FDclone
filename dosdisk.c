@@ -1693,7 +1693,7 @@ time_t clock;
 #endif
 	struct tm *tm;
 	time_t tmp;
-	int d, t;
+	u_short d, t;
 
 	if (clock >= 0) tmp = clock;
 	else {
@@ -2734,6 +2734,7 @@ int mode;
 	closedev(dd);
 	return(ret);
 }
+#endif	/* !MSDOS */
 
 #ifdef	USEUTIME
 int dosutime(path, times)
@@ -2756,7 +2757,6 @@ struct timeval tvp[2];
 	closedev(dd);
 	return(ret);
 }
-#endif	/* !MSDOS */
 
 int dosunlink(path)
 char *path;

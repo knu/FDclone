@@ -205,27 +205,23 @@ int Xutime(path, times)
 char *path;
 struct utimbuf *times;
 {
+#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
-#ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
-	else
 #endif
-	if (!(path = preparefile(path, buf, 0))) return(-1);
-	return((utime(path, times) != 0) ? -1 : 0);
+	return(unixutime(path, times));
 #else
 int Xutimes(path, tvp)
 char *path;
 struct timeval tvp[2];
 {
+#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
-#ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
-	else
 #endif
-	if (!(path = preparefile(path, buf, 0))) return(-1);
-	return((utimes(path, tvp) != 0) ? -1 : 0);
+	return(unixutimes(path, tvp));
 #endif
 }
 

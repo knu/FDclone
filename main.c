@@ -471,7 +471,7 @@ VOID title(VOID_A)
 		eol++;
 	}
 	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
-		n_column - 32 - (int)(eol - cp), " (c)1995-97 T.Shirai  ");
+		n_column - 32 - (int)(eol - cp), " (c)1995-98 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 #ifdef	SIGALRM

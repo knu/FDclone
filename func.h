@@ -246,7 +246,7 @@ extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
 #ifndef	_NOTREE
 extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
 #endif
-extern struct dirent *searchdir __P_((DIR *, reg_t *));
+extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
 extern int underhome __P_((char *));
 extern int preparedir __P_((char *));
 extern int copyfile __P_((namelist *, int, char *, int));
@@ -280,6 +280,7 @@ extern int pack __P_((char *, namelist *, int));
 extern int unpack __P_((char *, char *, namelist *, int, char *, int));
 extern char *tmpunpack __P_((namelist *, int));
 extern int backup __P_((char *, namelist *, int));
+extern int searcharc __P_((char *, namelist *, int, int));
 #endif
 
 /* tree.c */

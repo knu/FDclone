@@ -580,14 +580,22 @@ int max;
 {
 	reg_t *re;
 	u_char fstat;
-	char *cp, *tmp, buf[MAXNAMLEN + 1];
+	char *cp, *tmp, *arcre, buf[MAXNAMLEN + 1];
 	int ch, i, no, len, old;
 
-	if (!findpattern) re = NULL;
+	if (!findpattern) {
+		re = NULL;
+		arcre = NULL;
+	}
+	else if (*findpattern == '/') {
+		re = NULL;
+		arcre = cnvregexp(findpattern + 1, 1);
+	}
 	else {
 		cp = cnvregexp(findpattern, 1);
 		re = regexp_init(cp);
 		free(cp);
+		arcre = NULL;
 	}
 
 	maxarcf = (*archivedir) ? 1 : 0;
@@ -606,7 +614,9 @@ int max;
 			continue;
 		}
 		if ((tmp = strdelim(cp))) while (*(++tmp) == _SC_);
-		if ((!tmp || !*tmp) && (!re || regexp_exec(re, cp))) {
+		if ((!tmp || !*tmp)
+		&& (!re || regexp_exec(re, cp))
+		&& (!arcre || searcharc(arcre, filelist, max, i))) {
 			memcpy(&arcflist[maxarcf], &filelist[i],
 				sizeof(namelist));
 			arcflist[maxarcf].name = cp;
@@ -614,6 +624,7 @@ int max;
 		}
 	}
 	if (re) regexp_free(re);
+	if (arcre) free(arcre);
 	if (!maxarcf) {
 		arcflist[0].name = NOFIL_K;
 		arcflist[0].st_nlink = -1;
@@ -691,8 +702,14 @@ int max;
 		}
 	}
 
-	if (no <= 4) strcpy(file, arcflist[filepos].name);
-	else if (filepos >= 0 && strcmp(arcflist[filepos].name, "..")) {
+	if (no <= 4) {
+		strcpy(file, arcflist[filepos].name);
+		return(no);
+	}
+
+	if (findpattern) free(findpattern);
+	findpattern = NULL;
+	if (filepos >= 0 && strcmp(arcflist[filepos].name, "..")) {
 		if (*archivedir && (*archivedir != _SC_ || *(archivedir + 1)))
 			strcat(archivedir, _SS_);
 		strcat(archivedir, arcflist[filepos].name);
@@ -860,7 +877,7 @@ int max;
 
 	for (i = 0; i < maxarchive; i++) {
 		re = regexp_init(archivelist[i].ext);
-		if (regexp_exec(re, arc) && archivelist[i].p_comm) break;
+		if (archivelist[i].p_comm && regexp_exec(re, arc)) break;
 		regexp_free(re);
 	}
 	if (i >= maxarchive) return(-1);
@@ -871,7 +888,7 @@ int max;
 	return(1);
 }
 
-/* ARGSUSED */
+/*ARGSUSED*/
 int unpack(arc, dir, list, max, arg, tr)
 char *arc, *dir;
 namelist *list;
@@ -891,7 +908,7 @@ int tr;
 
 	for (i = 0; i < maxarchive; i++) {
 		re = regexp_init(archivelist[i].ext);
-		if (regexp_exec(re, arc) && archivelist[i].u_comm) break;
+		if (archivelist[i].u_comm && regexp_exec(re, arc)) break;
 		regexp_free(re);
 	}
 	if (i >= maxarchive) return(-1);
@@ -1028,5 +1045,109 @@ int max;
 	}
 	for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
 	return(1);
+}
+
+int searcharc(regstr, flist, maxf, n)
+char *regstr;
+namelist *flist;
+int maxf, n;
+{
+	namelist tmp;
+	launchtable *list;
+	reg_t *re;
+	FILE *fp;
+	char *cp, *buf, *dir, *file, line[MAXLINESTR + 1];
+	int i, c, no, max, match, dupfilepos;
+
+	if (n < 0) {
+		file = flist -> name;
+		if (getstatus(flist, 0, file) < 0 || isdir(flist)) return(0);
+	}
+	else {
+		file = flist[n].name;
+		if (isdir(&flist[n])) return(0);
+	}
+
+	for (i = 0; i < maxlaunch; i++) {
+		re = regexp_init(launchlist[i].ext);
+		if (launchlist[i].topskip < 255 && regexp_exec(re, file))
+			break;
+		regexp_free(re);
+	}
+	if (i >= maxlaunch) return(0);
+	regexp_free(re);
+	list = &(launchlist[i]);
+
+	if (n >= 0) {
+		dupfilepos = filepos;
+		filepos = n;
+		dir = tmpunpack(flist, maxf);
+		filepos = dupfilepos;
+		if (!dir) return(0);
+	}
+
+	if (!(cp = evalcommand(list -> comm, file, NULL, 0, NULL))) {
+		if (n >= 0) removetmp(dir, NULL, file);
+		return(0);
+	}
+	fp = Xpopen(cp, "r");
+	free(cp);
+
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	putterm(t_standout);
+	kanjiputs(SEACH_K);
+	putterm(end_standout);
+	kanjiputs(file);
+	tflush();
+
+	max = 0;
+	for (i = 0; i < MAXLAUNCHFIELD; i++)
+		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
+			max = (int)(list -> field[i]);
+
+	for (i = 0; i < (int)(list -> topskip); i++)
+		if (!fgets(line, MAXLINESTR, fp)) break;
+	i = no = match = 0;
+	if (list -> lines == 1) buf = line;
+	else buf = (char *)malloc2(list -> lines * sizeof(line));
+
+	re = regexp_init(regstr);
+	while (fgets(line, MAXLINESTR, fp)) {
+		if (match && match <= no - (int)(list -> bottomskip)) break;
+		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
+			Xpclose(fp);
+			warning(0, INTR_K);
+			if (buf != line) free(buf);
+			regexp_free(re);
+			if (n >= 0) removetmp(dir, NULL, file);
+			return(-1);
+		}
+		no++;
+		if ((cp = strchr(line, '\n'))) *cp = '\0';
+		if (list -> lines > 1) {
+			if (!(i++)) {
+				strcpy(buf, line);
+				continue;
+			}
+			else {
+				strcat(buf, "\t");
+				strcat(buf, line);
+				if (i < list -> lines) continue;
+			}
+			i = 0;
+		}
+		if (readfileent(&tmp, buf, list, max) < 0) continue;
+		if (regexp_exec(re, tmp.name)) match = no;
+		free(tmp.name);
+	}
+	if (buf != line) free(buf);
+	regexp_free(re);
+	if (n >= 0) removetmp(dir, NULL, file);
+
+	if (Xpclose(fp) < 0) return(0);
+	if (match > no - (int)(list -> bottomskip)) match = 0;
+
+	return(match);
 }
 #endif	/* !_NOARCHIVE */

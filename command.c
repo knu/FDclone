@@ -1137,7 +1137,12 @@ char *arg;
 
 	if (arg && *arg) wild = strdup2(arg);
 	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", -1))) return(1);
-	if (strdelim(wild)) {
+
+	if (
+#ifndef	_NOARCHIVE
+	*wild != '/' &&
+#endif
+	strdelim(wild)) {
 		warning(ENOENT, wild);
 		free(wild);
 		return(1);

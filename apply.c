@@ -478,6 +478,10 @@ u_short flag;
 
 	attrmode = (flag & 1) ? tmpmode : 0xffff;
 	attrtime = (flag & 2) ? timelocal2(tm) : (time_t)-1;
+	if (flag == 3) {
+		if (attrmode == listp -> st_mode) attrmode = 0xffff;
+		if (attrtime == listp -> st_mtim) attrtime = (time_t)-1;
+	}
 	return(1);
 }
 
@@ -507,6 +511,7 @@ char *path;
 {
 	struct stat status;
 	u_short mode;
+	int ret;
 
 	if (Xlstat(path, &status) < 0) return(-1);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(1);
@@ -515,17 +520,18 @@ char *path;
 	if (!(status.st_mode & S_IWRITE))
 		Xchmod(path, (status.st_mode | S_IWRITE));
 #endif
+	ret = 0;
 	if (attrtime != (time_t)-1) {
-		if (touchfile(path, status.st_atime, attrtime) < 0) return(-1);
+		if (touchfile(path, status.st_atime, attrtime) < 0) ret = -1;
 	}
 	if (attrmode != 0xffff) {
 		mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);
-		if (Xchmod(path, mode) < 0) return(-1);
+		if (Xchmod(path, mode) < 0) ret = -1;
 	}
 #if	MSDOS
 	else if (!(status.st_mode & S_IWRITE)) Xchmod(path, status.st_mode);
 #endif
-	return(0);
+	return(ret);
 }
 
 int applyfile(list, max, func, endmes)
@@ -634,7 +640,7 @@ char *endmes;
 		putch2(']');
 		tflush();
 	}
-	free(dirlist);
+	if (dirlist) free(dirlist);
 
 	if (order == 2 && (i = (*funcd)(dir)) < 0) {
 		if (i == -1) warning(-1, dir);

@@ -14,6 +14,10 @@
 #include <time.h>
 #include <dos.h>
 
+#ifndef	USEUTIME
+#include <sys/time.h>
+#endif
+
 #ifdef	__GNUC__
 #include <dpmi.h>
 #include <go32.h>
@@ -114,3 +118,8 @@ extern int unixmkdir __P_((char *, int));
 extern char *unixgetcwd __P_((char *, int));
 extern int unixstat __P_((char *, struct stat *));
 extern int unixchmod __P_((char *, int));
+#ifdef	USEUTIME
+extern int unixutime __P_((char *, struct utimbuf *));
+#else
+extern int unixutimes __P_((char *, struct timeval []));
+#endif

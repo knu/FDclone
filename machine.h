@@ -4,6 +4,9 @@
  *	Definition of Machine Depended Identifier
  */
 
+#ifndef	__MACHINE_H_
+#define	__MACHINE_H_
+
 #ifdef	MSDOS
 #undef	MSDOS
 #endif
@@ -751,3 +754,5 @@ typedef	long	off_t;
 #ifndef	GETTODARGS
 #define	GETTODARGS	2
 #endif
+
+#endif	/* __MACHINE_H_ */

@@ -4,6 +4,9 @@
  *	Function Prototype Declaration for "pathname.c"
  */
 
+#ifndef	__PATHNAME_H_
+#define	__PATHNAME_H_
+
 #ifdef	USEREGCOMP
 #include <regex.h>
 typedef regex_t reg_t;
@@ -34,3 +37,5 @@ extern int completepath __P_((char *, int, char **, int, int));
 #ifndef	_NOCOMPLETE
 extern char *findcommon __P_((char *, int));
 #endif
+
+#endif	/* __PATHNAME_H_ */

@@ -4,6 +4,9 @@
  *	Variables for TERMCAP
  */
 
+#ifndef	__TERM_H_
+#define	__TERM_H_
+
 #define	CR	'\r'
 #define	ESC	'\033'
 
@@ -103,6 +106,10 @@ extern char *c_up;
 extern char *c_down;
 extern char *c_right;
 extern char *c_left;
+extern char *c_nup;
+extern char *c_ndown;
+extern char *c_nright;
+extern char *c_nleft;
 extern u_char cc_intr;
 extern u_char cc_quit;
 extern u_char cc_eof;
@@ -128,6 +135,7 @@ extern int tabs __P_((VOID_A));
 extern int notabs __P_((VOID_A));
 extern int keyflush __P_((VOID_A));
 extern int exit2 __P_((int));
+extern char *tparamstr __P_((char *, int, int));
 extern int getterment __P_((VOID_A));
 #if	!MSDOS
 extern int setkeyseq __P_((int, char *));
@@ -169,3 +177,5 @@ extern int chgcolor __P_((int, int));
 #define	ANSI_WHITE	7
 #define	ANSI_NORMAL	30
 #define	ANSI_REVERSE	40
+
+#endif	/* __TERM_H_ */

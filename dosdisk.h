@@ -217,12 +217,12 @@ extern int dosaccess __P_((char *, int));
 extern int dossymlink __P_((char *, char *));
 extern int dosreadlink __P_((char *, char *, int));
 extern int doschmod __P_((char *, int));
+#endif	/* !MSDOS */
 #ifdef	USEUTIME
 extern int dosutime __P_((char *, struct utimbuf *));
 #else
 extern int dosutimes __P_((char *, struct timeval []));
 #endif
-#endif	/* !MSDOS */
 extern int dosunlink __P_((char *));
 extern int dosrename __P_((char *, char *));
 extern int dosopen __P_((char *, int, int));

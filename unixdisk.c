@@ -48,6 +48,7 @@ static int lfn_findclose __P_((u_short));
 static u_short getdosmode __P_((u_char));
 static u_char putdosmode __P_((u_short));
 static time_t getdostime __P_((u_short, u_short));
+static int putdostime __P_((u_short *, u_short *, time_t));
 
 #ifndef	_NODOSDRIVE
 int dosdrive = 0;
@@ -1058,9 +1059,7 @@ u_short mode;
 	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
 	if (!(mode & S_IREAD)) attr |= DS_IHIDDEN;
 	if (!(mode & S_IWRITE)) attr |= DS_IRDONLY;
-	if ((mode & S_IFMT) == S_IFDIR) attr |= DS_IFDIR;
-	else if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
-	else if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
+	if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
 
 	return(attr);
 }
@@ -1080,6 +1079,23 @@ u_short date, time;
 	tm.tm_isdst = -1;
 
 	return(mktime(&tm));
+}
+
+static int putdostime(dp, tp, clock)
+u_short *dp, *tp;
+time_t clock;
+{
+	struct tm *tm;
+
+	tm = localtime(&clock);
+	*dp = (((tm -> tm_year - 80) & 0x7f) << 9)
+		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
+		+ (tm -> tm_mday & 0x1f);
+	*tp = ((tm -> tm_hour & 0x1f) << 11)
+		+ ((tm -> tm_min & 0x3f) << 5)
+		+ ((tm -> tm_sec & 0x3e) >> 1);
+
+	return(*tp);
 }
 
 int unixstat(path, status)
@@ -1186,23 +1202,95 @@ int mode;
 	return(0);
 #else	/* !NOLFNEMU */
 	struct SREGS sreg;
-# ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN + 1];
-	int i;
-# endif
 
 	path = duplpath(path);
-# ifndef	_NODOSDRIVE
-	if ((i = supportLFN(path)) == -1) path = preparefile(path, buf, 0);
-	if (i <= 0) reg.x.ax = 0x4301;
-# else	/* !_NODOSDRIVE */
-	if (supportLFN(path) <= 0) reg.x.ax = 0x4301;
-# endif	/* !_NODOSDRIVE */
+	if (supportLFN(path) <= 0) {
+		path = preparefile(path, buf, 0);
+		reg.x.ax = 0x4301;
+	}
 	else {
 		reg.x.ax = 0x7143;
 		reg.h.bl = 0x01;
 	}
 	reg.x.cx = putdosmode(mode);
+# ifdef	DJGPP
+	dos_putpath(path, 0);
+	sreg.ds = __tb_segment;
+	reg.x.dx = __tb_offset;
+# else
+	sreg.ds = FP_SEG(path);
+	reg.x.dx = FP_OFF(path);
+# endif
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
+#endif	/* !NOLFNEMU */
+}
+
+#ifdef	NOLFNEMU
+#ifdef	USEUTIME
+int unixutime(path, times)
+char *path;
+struct utimbuf *times;
+{
+	char buf[MAXPATHLEN + 1];
+
+	path = preparefile(path, buf, 0);
+	return(utime(path, times));
+#else
+int unixutimes(path, tvp)
+char *path;
+struct timeval tvp[2];
+{
+	char buf[MAXPATHLEN + 1];
+
+	path = preparefile(path, buf, 0);
+	return(utimes(path, tvp));
+#endif
+#else	/* !NOLFNEMU */
+#ifdef	USEUTIME
+int unixutime(path, times)
+char *path;
+struct utimbuf *times;
+{
+	time_t clock = times -> modtime;
+	__dpmi_regs reg;
+	struct SREGS sreg;
+	char buf[MAXPATHLEN + 1];
+	int i;
+
+	path = duplpath(path);
+	i = supportLFN(path);
+# ifndef	_NODOSDRIVE
+	if (i == -1) return(dosutime(regpath(path, buf), times));
+# endif
+	if (i <= 0) {
+		path = preparefile(path, buf, 0);
+		return(utime(path, times));
+	}
+#else	/* !USEUTIME */
+int unixutimes(path, tvp)
+char *path;
+struct timeval tvp[2];
+{
+	time_t clock = tvp[1].tv_sec;
+	__dpmi_regs reg;
+	struct SREGS sreg;
+	char buf[MAXPATHLEN + 1];
+	int i;
+
+	path = duplpath(path);
+	i = supportLFN(path);
+# ifndef	_NODOSDRIVE
+	if (i == -1) return(dosutimes(regpath(path, buf), tvp));
+# endif
+	if (i <= 0) {
+		path = preparefile(path, buf, 0);
+		return(utimes(path, tvp));
+	}
+#endif	/* !USEUTIME */
+	reg.x.ax = 0x7143;
+	reg.h.bl = 0x03;
+	putdostime(&(reg.x.di), &(reg.x.cx), clock);
 # ifdef	DJGPP
 	dos_putpath(path, 0);
 	sreg.ds = __tb_segment;

@@ -267,16 +267,30 @@ CONST VOID_P vp2;
 }
 #endif
 
-struct dirent *searchdir(dirp, regexp)
+/*ARGSUSED*/
+struct dirent *searchdir(dirp, regexp, arcregstr)
 DIR *dirp;
 reg_t *regexp;
+char *arcregstr;
 {
 	struct dirent *dp;
+#ifndef	_NOARCHIVE
+	namelist tmp;
+	int i;
+#endif
 
-	if (!regexp) dp = Xreaddir(dirp);
-	else while ((dp = Xreaddir(dirp))) {
+	if (regexp) while ((dp = Xreaddir(dirp))) {
 		if (regexp_exec(regexp, dp -> d_name)) break;
 	}
+#ifndef	_NOARCHIVE
+	else if (arcregstr) while ((dp = Xreaddir(dirp))) {
+		tmp.name = dp -> d_name;
+		i = searcharc(arcregstr, &tmp, 1, -1);
+		if (i < 0) return(NULL);
+		if (i) break;
+	}
+#endif
+	else dp = Xreaddir(dirp);
 	return(dp);
 }
 
@@ -448,7 +462,7 @@ char *mes, *arg;
 	return(dir);
 }
 
-/* ARGSUSED */
+/*ARGSUSED*/
 int copyfile(list, max, arg, tr)
 namelist *list;
 int max;
@@ -490,7 +504,7 @@ int tr;
 	return(4);
 }
 
-/* ARGSUSED */
+/*ARGSUSED*/
 int movefile(list, max, arg, tr)
 namelist *list;
 int max;

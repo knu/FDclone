@@ -23,7 +23,6 @@ extern int filepos;
 extern int mark;
 extern long marksize;
 extern char fullpath[];
-extern char *findpattern;
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 extern char *archivedir;
@@ -168,6 +167,12 @@ macrostat *stp;
 #if	MSDOS && !defined (NOLFNEMU)
 	char buf[MAXPATHLEN + 1];
 #endif
+#if	!MSDOS && !defined (_NOKANJICONV)
+	char tmpkanji[MAXCOMMSTR + 1];
+	int cnvcode = NOCNV;
+	int tmpcode;
+	int cnvptr = -1;
+#endif
 	macrostat st;
 	char *cp, line[MAXCOMMSTR + 1];
 	int i, j, len, noext, argset, uneval;
@@ -256,6 +261,39 @@ macrostat *stp;
 				noext = 0;
 				break;
 #endif
+#if	!MSDOS && !defined (_NOKANJICONV)
+			case 'J':
+				if (toupper2(command[i + 1]) == 'S')
+					tmpcode = SJIS;
+				else if (toupper2(command[i + 1]) == 'E'
+				|| toupper2(command[i + 1]) == 'U')
+					tmpcode = EUC;
+				else if (toupper2(command[i + 1]) == 'J')
+					tmpcode = JIS7;
+				else {
+					line[j++] = command[i];
+					noext = 0;
+					break;
+				}
+
+				i++;
+				if (cnvcode && cnvptr >= 0) {
+					memcpy(tmpkanji, line + cnvptr,
+						j - cnvptr);
+					tmpkanji[j - cnvptr] = '\0';
+					j = kanjiconv(line + cnvptr, tmpkanji,
+						DEFCODE, cnvcode) + cnvptr;
+					if (cnvcode == tmpcode) {
+						cnvcode = NOCNV;
+						cnvptr = -1;
+						break;
+					}
+				}
+				cnvcode = tmpcode;
+				cnvptr = j;
+				noext = 0;
+				break;
+#endif
 			default:
 				line[j++] = command[i];
 				noext = 0;
@@ -276,6 +314,15 @@ macrostat *stp;
 		}
 	}
 	if (command[i]) return(NULL);
+
+#if	!MSDOS && !defined (_NOKANJICONV)
+	if (cnvcode && cnvptr >= 0) {
+		memcpy(tmpkanji, line + cnvptr, j - cnvptr);
+		tmpkanji[j - cnvptr] = '\0';
+		j = kanjiconv(line + cnvptr, tmpkanji, DEFCODE, cnvcode)
+			+ cnvptr;
+	}
+#endif
 
 	if (!argset) {
 		line[j++] = ' ';

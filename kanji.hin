@@ -63,6 +63,7 @@ extern char *mesconv __P_((char *, char *));
 #define	FINDD_K	mesconv("再帰検索するファイル名:", "Filename to find recursively:")
 #define	FOUND_K	mesconv("ファイルが見つかりました. カレントディレクトリを変更しますか ?", "File found. Change current directory ?")
 #define	NOFND_K	mesconv("指定のファイルは見つかりませんでした. 何かキーを押して下さい.", "File not found. Hit any key.")
+#define	SEACH_K	mesconv("ファイル検索中:", "Searching:")
 #define	SHEXT_K	mesconv("`exit' で FD に戻ります.\n", "do `exit' to return FD.\n")
 #define	PACK_K	mesconv("書庫ファイル名:", "Archive file:")
 #define	UNPAC_K	mesconv("展開先のディレクトリ名:", "Directory to unpack:")

@@ -184,7 +184,7 @@ char *path;
 	return(_Xchdir(path));
 }
 
-/* ARGSUSED */
+/*ARGSUSED*/
 char *Xgetcwd(path, size)
 char *path;
 int size;

@@ -97,7 +97,7 @@ typedef	struct sgttyb	termioctl_t;
 #include "term.h"
 
 #define	MAXPRINTBUF	255
-#define	GETSIZE		"\033[0;999H\033[999B\033[6n"
+#define	GETSIZE		"\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 
 #if	!MSDOS
@@ -107,6 +107,9 @@ extern int tgetflag __P_((char *));
 extern char *tgetstr __P_((char *, char **));
 extern char *tgoto __P_((char *, int, int));
 extern int tputs __P_((char *, int, int (*)__P_((int))));
+
+#define	BUFUNIT		16
+#define	TERMCAPSIZE	2048
 
 #define	STDIN		0
 #define	STDOUT		1
@@ -170,7 +173,8 @@ typedef struct fd_set {
 
 static int err2 __P_((char *));
 static int defaultterm __P_((VOID_A));
-static int getxy __P_((char *, char *, int *, int *));
+static int maxlocate __P_((VOID_A));
+static int getxy __P_((int *, int *));
 #if	MSDOS
 # ifndef	__GNUC__
 static int dosgettime __P_((u_char []));
@@ -234,6 +238,10 @@ char *c_up = NULL;
 char *c_down = NULL;
 char *c_right = NULL;
 char *c_left = NULL;
+char *c_nup = NULL;
+char *c_ndown = NULL;
+char *c_nright = NULL;
+char *c_nleft = NULL;
 u_char cc_intr = CTRL('c');
 u_char cc_quit = CTRL('\\');
 u_char cc_eof = CTRL('d');
@@ -667,6 +675,10 @@ static int defaultterm(VOID_A)
 	c_down = "\012";
 	c_right = "\033[C";
 	c_left = "\010";
+	c_nup = "\033[%dA";
+	c_ndown = "\033[%dB";
+	c_nright = "\033[%dC";
+	c_nleft = "\033[%dD";
 
 #if	!MSDOS
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i] = NULL;
@@ -738,32 +750,85 @@ static int defaultterm(VOID_A)
 	return(0);
 }
 
-static int getxy(s, format, yp, xp)
-char *s, *format;
+static int maxlocate(VOID_A)
+{
+#if	MSDOS
+	char *cp;
+	int i;
+
+	if ((cp = tparamstr(c_locate, 0, 999))) {
+		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
+		free(cp);
+	}
+	if ((cp = tparamstr(c_ndown, 999, 999))) {
+		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
+		free(cp);
+	}
+#else
+	locate(998, 998);
+#endif
+	return(0);
+}
+
+static int getxy(yp, xp)
 int *yp, *xp;
 {
-	char *cp;
-	int i, j, tmp, count, *val[2];
+	char *format, buf[sizeof(SIZEFMT) + 4];
+	int i, j, k, tmp, count, *val[2];
+
+	format = SIZEFMT;
+#if	MSDOS
+	for (i = 0; i < sizeof(GETSIZE) - 1; i++) bdos(0x06, GETSIZE[i], 0);
+#else
+	write(ttyio, GETSIZE, sizeof(GETSIZE) - 1);
+#endif
+
+	for (i = 0; i < sizeof(buf) - 1; i++) {
+#if	MSDOS
+		buf[i] = bdos(0x07, 0x00, 0);
+#else
+		buf[i] = getch2();
+#endif
+		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
+	}
+#if	MSDOS
+	bdos(0x0c, 0x00, 0);
+#endif
+	buf[++i] = '\0';
 
 	count = 0;
 	val[0] = yp;
 	val[1] = xp;
 
-	for (i = 0, j = 0; s[i] && format[j]; i++, j++) {
-		if (format[j] == '%' && format[++j] == 'd') {
-			for (cp = &s[i]; *cp && *cp >= '0' && *cp <= '9'; cp++);
-			if (cp == &s[i]) break;
-			tmp = *cp;
-			*cp = '\0';
-			*val[count++] = atoi(&s[i]);
-			*cp = tmp;
+	for (i = j = 0; format[i] && buf[j]; i++) {
+		if (format[i] == '%' && format[++i] == 'd' && count < 2) {
+			tmp = 0;
+			k = j;
+			for (; buf[j]; j++) {
+				if (!buf[j] || buf[j] == format[i + 1]) break;
+				tmp = tmp * 10 + buf[j] - '0';
+			}
+			if (j == k) break;
+			*val[count++] = tmp;
 		}
-		else if (s[i] != format[j]) j--;
+		else if (format[i] != buf[j++]) break;
 	}
 	return(count);
 }
 
 #if	MSDOS
+char *tparamstr(str, arg1, arg2)
+char *str;
+int arg1, arg2;
+{
+	char *cp, buf[MAXPRINTBUF + 1];
+
+	sprintf(buf, str, arg1, arg2);
+	if (!(cp = (char *)malloc(strlen(buf) + 1))) err2(NULL);
+	strcpy(cp, buf);
+	return(cp);
+}
+
 int getterment(VOID_A)
 {
 	defaultterm();
@@ -773,11 +838,96 @@ int getterment(VOID_A)
 
 #else	/* !MSDOS */
 
+char *tparamstr(str, arg1, arg2)
+char *str;
+int arg1, arg2;
+{
+	char *buf;
+	int i, j, n, s, size, args[2];
+
+	if (!str) return(NULL);
+	if (!(buf = (char *)malloc(size = BUFUNIT))) err2(NULL);
+	args[0] = arg1;
+	args[1] = arg2;
+
+	for (i = j = n = 0; str[i]; i++) {
+		if (j + 5 >= size) {
+			size += BUFUNIT;
+			if (!(buf = (char *)realloc(buf, size))) err2(NULL);
+		}
+		if (str[i] != '%') buf[j++] = str[i];
+		else if (str[++i] == '%') buf[j++] = '%';
+		else if (n >= 2) {
+			free(buf);
+			return(NULL);
+		}
+		else switch (str[i]) {
+			case 'd':
+				sprintf(buf + j, "%d", args[n++]);
+				j += strlen(buf + j);
+				break;
+			case '2':
+				sprintf(buf + j, "%2d", args[n++]);
+				j += 2;
+				break;
+			case '3':
+				sprintf(buf + j, "%3d", args[n++]);
+				j += 3;
+				break;
+			case '.':
+				sprintf(buf + (j++), "%c", args[n++]);
+				break;
+			case '+':
+				if (!str[++i]) {
+					free(buf);
+					return(NULL);
+				}
+				sprintf(buf + (j++), "%c", args[n++] + str[i]);
+				break;
+			case '>':
+				if (!str[++i] || !str[i + 1]) {
+					free(buf);
+					return(NULL);
+				}
+				if (args[n] > str[i++]) args[n] += str[i];
+				break;
+			case 'r':
+				s = args[0];
+				args[0] = args[1];
+				args[1] = s;
+				break;
+			case 'i':
+				args[0]++;
+				args[1]++;
+				break;
+			case 'n':
+				args[0] ^= 0140;
+				args[1] ^= 0140;
+				break;
+			case 'B':
+				args[n] = ((args[n] / 10) << 4)
+					| (args[n] % 10);
+				break;
+			case 'D':
+				args[n] -= 2 * (args[n] % 16);
+				break;
+			default:
+				free(buf);
+				return(NULL);
+/*NOTREACHED*/
+				break;
+		}
+	}
+
+	buf[j] = '\0';
+	return(buf);
+}
+
 static int tgetstr2(term, str)
 char **term;
 char *str;
 {
-	char strbuf[1024];
+	char strbuf[TERMCAPSIZE];
 	char *p, *cp;
 
 	p = strbuf;
@@ -792,13 +942,13 @@ static int tgetstr3(term, str1, str2)
 char **term;
 char *str1, *str2;
 {
-	char strbuf[1024];
+	char strbuf[TERMCAPSIZE];
 	char *p, *cp;
 
 	p = strbuf;
-	if (!(cp = tgetstr(str1, &p)) && (cp = tgetstr(str2, &p)))
-		cp = tgoto(cp, 1, 1);
-	if (cp) {
+	if (!(cp = tgetstr(str1, &p))
+	&& (cp = tparamstr(tgetstr(str2, &p), 1, 1))) *term = cp;
+	else if (cp || (cp = *term)) {
 		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
 		strcpy(*term, cp);
 	}
@@ -829,7 +979,7 @@ static int sortkeyseq(VOID_A)
 
 int getterment(VOID_A)
 {
-	char *cp, buf[1024];
+	char *cp, buf[TERMCAPSIZE];
 	int i;
 
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
@@ -884,10 +1034,14 @@ int getterment(VOID_A)
 	tgetstr2(&c_newline, "nl");
 	tgetstr2(&c_scrollforw, "sf");
 	tgetstr2(&c_scrollrev, "sr");
-	tgetstr2(&c_up, "up");
-	tgetstr2(&c_down, "do");
-	tgetstr2(&c_right, "nd");
-	tgetstr2(&c_left, "le");
+	tgetstr3(&c_up, "up", "UP");
+	tgetstr3(&c_down, "do", "DO");
+	tgetstr3(&c_right, "nd", "RI");
+	tgetstr3(&c_left, "le", "LE");
+	tgetstr2(&c_nup, "UP");
+	tgetstr2(&c_ndown, "DO");
+	tgetstr2(&c_nright, "RI");
+	tgetstr2(&c_nleft, "LE");
 
 	tgetstr2(&keyseq[K_UP - K_MIN], "ku");
 	tgetstr2(&keyseq[K_DOWN - K_MIN], "kd");
@@ -994,7 +1148,6 @@ int initterm(VOID_A)
 	if (!(termflags & F_TERMENT)) getterment();
 	putterms(t_keypad);
 	putterms(t_init);
-	setscroll(-1, -1);
 	tflush();
 	termflags |= F_INITTERM;
 	return(0);
@@ -1022,30 +1175,18 @@ int c;
 int cputs2(s)
 char *s;
 {
-	char *size, buf[sizeof(SIZEFMT) + 4];
 	int i, x, y;
 
 	for (i = 0; s[i]; i++) {
 		if (s[i] != '\t') {
-			putch2(s[i]);
+			bdos(0x06, s[i], 0);
 			continue;
 		}
-		bdos(0x0c, 0x00, 0);
-		putch2('\033');
-		putch2('[');
-		putch2('6');
-		putch2('n');
-		size = SIZEFMT;
 
-		for (x = 0; x < sizeof(buf) - 1; x++) {
-			buf[x] = bdos(0x07, 0x00, 0);
-			if (buf[x] == size[sizeof(SIZEFMT) - 2]) break;
-		}
 		bdos(0x0c, 0x00, 0);
-		buf[++x] = '\0';
-		if (getxy(buf, size, &y, &x) != 2) x = 1;
+		if (getxy(&y, &x) != 2) x = 1;
 		do {
-			putch2(' ');
+			bdos(0x06, ' ', 0);
 		} while (x++ % 8);
 	}
 	return(0);
@@ -1212,20 +1353,11 @@ int tflush(VOID_A)
 int getwsize(xmax, ymax)
 int xmax, ymax;
 {
-	char *size, buf[sizeof(SIZEFMT) + 4];
-	int i, x, y;
-
-	size = SIZEFMT;
+	int x, y;
 
 	bdos(0x0c, 0x00, 0);
-	for (i = 0; i < sizeof(GETSIZE) - 1; i++) putch2(GETSIZE[i]);
-	for (i = 0; i < sizeof(buf) - 1; i++) {
-		buf[i] = bdos(0x07, 0x00, 0);
-		if (buf[i] == size[sizeof(SIZEFMT) - 2]) break;
-	}
-	bdos(0x0c, 0x00, 0);
-	buf[++i] = '\0';
-	if (getxy(buf, size, &y, &x) != 2) x = y = -1;
+	maxlocate();
+	if (getxy(&y, &x) != 2) x = y = -1;
 
 	if (x > 0) {
 		n_lastcolumn = (n_lastcolumn < n_column) ? x - 1 : x;
@@ -1338,7 +1470,12 @@ u_char c;
 int setscroll(s, e)
 int s, e;
 {
-	if (t_scroll) putterms(tgoto(t_scroll, s, e));
+	char *cp;
+
+	if ((cp = tparamstr(t_scroll, s, e))) {
+		putterms(cp);
+		free(cp);
+	}
 	return(0);
 }
 
@@ -1358,8 +1495,7 @@ int tflush(VOID_A)
 int getwsize(xmax, ymax)
 int xmax, ymax;
 {
-	char *size, buf[sizeof(SIZEFMT) + 4];
-	int i, x, y;
+	int x, y;
 #ifdef	TIOCGWINSZ
 	struct winsize ws;
 #else
@@ -1369,7 +1505,6 @@ int xmax, ymax;
 #endif
 
 	x = y = -1;
-
 #ifdef	TIOCGWINSZ
 	if (ioctl(ttyio, TIOCGWINSZ, &ws) >= 0) {
 		if (ws.ws_col > 0) x = ws.ws_col;
@@ -1385,15 +1520,9 @@ int xmax, ymax;
 #endif
 
 	if (x < 0 || y < 0) {
-		size = SIZEFMT;
-
 		setscroll(-1, -1);
-		write(ttyio, GETSIZE, sizeof(GETSIZE) - 1);
-		for (i = 0; (buf[i] = getch2()) != size[sizeof(SIZEFMT) - 2];
-			i++);
-		buf[++i] = '\0';
-
-		if (getxy(buf, size, &y, &x) != 2) x = y = -1;
+		maxlocate();
+		if (getxy(&y, &x) != 2) x = y = -1;
 	}
 
 	if (x > 0) {
@@ -1405,6 +1534,7 @@ int xmax, ymax;
 	if (n_column < xmax) err2("Column size too small");
 	if (n_line < ymax) err2("Line size too small");
 
+	setscroll(-1, n_line - 1);
 	return(0);
 }
 #endif	/* !MSDOS */

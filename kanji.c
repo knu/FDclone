@@ -52,7 +52,7 @@ int ptr;
 }
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
-/* ARGSUSED */
+/*ARGSUSED*/
 int getlang(str, in)
 char *str;
 int in;
@@ -62,7 +62,8 @@ int in;
 	if (!str) ret = NOCNV;
 #if	!MSDOS && !defined (_NOKANJICONV) 
 	else if (strstr2(str, "SJIS") || strstr2(str, "sjis")) ret = SJIS;
-	else if (strstr2(str, "EUC") || strstr2(str, "euc")) ret = EUC;
+	else if (strstr2(str, "EUC") || strstr2(str, "euc")
+	|| strstr2(str, "UJIS") || strstr2(str, "ujis")) ret = EUC;
 	else if (strstr2(str, "JIS") || strstr2(str, "jis")) ret = JIS7;
 #endif
 #ifndef	_NOENGMES

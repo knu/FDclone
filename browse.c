@@ -684,7 +684,7 @@ char *buf;
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 		if (ch == (int)(bindlist[i].key)) break;
 	if (ch == K_BS) {
-		if (!len) pos = -1;
+		if (!len) isearch = 0;
 		else buf[--len] = '\0';
 	}
 	else if (len && bindlist[i].f_func == SEARCH_FORW) {
@@ -699,15 +699,14 @@ char *buf;
 	}
 	else {
 		if (n == 1) buf[len = 0] = '\0';
-		if (ch < ' ' || ch == C_DEL || ch >= K_MIN) pos = -1;
+		if (ch < ' ' || ch == C_DEL || ch >= K_MIN) isearch = 0;
 		else if (len < MAXNAMLEN - 1) {
 			buf[len++] = ch;
 			buf[len] = '\0';
 		}
 	}
 
-	if (pos < 0 || pos >= max) {
-		isearch = 0;
+	if (!isearch) {
 		helpbar();
 		if (ch == CR) return(-1);
 		else if (ch != ESC) putterm(t_bell);
@@ -721,7 +720,7 @@ char *buf;
 	str[3] = SEABF_K;
 
 	i = 0;
-	for (;;) {
+	if (pos >= 0 && pos < max) for (;;) {
 		if (!strnpathcmp(list[pos].name, buf, len)) {
 			i = 1;
 			break;
@@ -765,13 +764,23 @@ char *file, *def;
 	fnameofs = 0;
 	waitmes();
 
-	if (!findpattern) re = NULL;
+	if (!findpattern) {
+		re = NULL;
+		cp = NULL;
+	}
+#ifndef	_NOARCHIVE
+	else if (*findpattern == '/') {
+		re = NULL;
+		cp = cnvregexp(findpattern + 1, 1);
+	}
+#endif
 	else {
 		cp = cnvregexp(findpattern, 1);
 		re = regexp_init(cp);
 		free(cp);
+		cp = NULL;
 	}
-	while ((dp = searchdir(dirp, re))) {
+	while ((dp = searchdir(dirp, re, cp))) {
 		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
 		&& !isdotdir(dp -> d_name)) continue;
 		strcpy(file, dp -> d_name);
@@ -792,6 +801,9 @@ char *file, *def;
 	}
 	Xclosedir(dirp);
 	if (re) regexp_free(re);
+#ifndef	_NOARCHIVE
+	if (cp) free(cp);
+#endif
 
 	if (!maxfile) {
 		filelist = (namelist *)addlist(filelist, 0,
