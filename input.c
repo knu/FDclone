@@ -577,6 +577,7 @@ char *mes;
 	tflush();
 }
 
+#ifndef	NOVSPRINTF
 int yesno(fmt, va_alist)
 char *fmt;
 va_dcl
@@ -589,6 +590,16 @@ va_dcl
 	va_start(args);
 	vsprintf(buf, fmt, args);
 	va_end(args);
+#else
+int yesno(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
+char *fmt;
+{
+	int len, ch, ret = 1;
+	char buf[MAXLINESTR + 1];
+
+	subwindow = 1;
+	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
+#endif
 	truncstr(buf);
 
 	len = strlen(buf);

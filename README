@@ -4,7 +4,7 @@
 #
 #       Takashi SHIRAI, Nintendo Co. Ltd.
 #       <shirai@red.nintendo.co.jp>
-#       Jul 24, 1995
+#       Jul 31, 1995
 #
 ############################################################
 
@@ -43,9 +43,9 @@ HISTORY		これまでの改定履歴
 FAQ		Q&A 集 (Frequently Asked Question)
 TECHKNOW	テクニカルノウハウ
 Install		fd のインストール方法のドキュメント
+Configure	環境設定用ヘッダの自動生成プログラム (Makefile内で実行)
 Makefile	メイクファイル
 Makefile.in	メイクファイル本体 (雛型)
-NoExecMe	環境設定用ヘッダの自動生成プログラム (Makefile内で実行)
 fd.man		man ページ用 roff ファイル (JIS版)
 
 mkmf.sed.c	メイクファイル加工用の sed スクリプト (雛型)

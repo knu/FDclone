@@ -22,23 +22,8 @@ mkmf.sed: mkmf.sed.c machine.h config.h
 config.h: config.h.in
 	cp config.h.in config.h
 
-install: Makefile.tmp
-	$(MAKE) -f Makefile.tmp install
-
-depend: Makefile.tmp
-	$(MAKE) -f Makefile.tmp depend
-
-config: Makefile.tmp
-	$(MAKE) -f Makefile.tmp config
-
-tar: Makefile.tmp
-	$(MAKE) -f Makefile.tmp tar
-
-lzh: Makefile.tmp
-	$(MAKE) -f Makefile.tmp lzh
-
-shar: Makefile.tmp
-	$(MAKE) -f Makefile.tmp shar
+install depend config tar lzh shar: Makefile.tmp
+	$(MAKE) -f Makefile.tmp $@
 
 clean: Makefile.tmp
 	$(MAKE) -f Makefile.tmp clean

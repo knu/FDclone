@@ -182,6 +182,7 @@ char *str;
 	return(strlen(cp));
 }
 
+#ifndef	NOVSPRINTF
 int kanjiprintf(fmt, va_alist)
 char *fmt;
 va_dcl
@@ -192,7 +193,14 @@ va_dcl
 	va_start(args);
 	vsprintf(buf, fmt, args);
 	va_end(args);
+#else
+int kanjiprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
+char *fmt;
+{
+	char buf[MAXLINESTR + 1];
 
+	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
+#endif
 	return(kanjiputs(buf));
 }
 

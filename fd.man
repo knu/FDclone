@@ -3,9 +3,9 @@
 .\" Copyright (c) 1995 Takashi SHIRAI
 .\"                    <shirai@red.nintendo.co.jp>
 .\"
-.\" @(#)fd.1   1.00 07/24/95
+.\" @(#)fd.1   1.00 07/31/95
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 24, 1995"
+.TH FD 1 "July 31, 1995"
 .de sh
 .br
 .PP
@@ -845,7 +845,7 @@ SYMLINK_MODE	DOTFILE_MODE
 \fIf5\fR	ファイル作成年を表す数値文字列範囲の記述
 \fIf6\fR	ファイル作成月を表す文字列範囲の記述
 	(表示は数値でも英字 3 文字表記でもどちらでも可。)
-\fIf7\fR	ファイル作成日を表す数値文字列範囲の記述
+\fIf7\fR	ファイル作成日を表す数値文字列範囲の記述
 \fIf8\fR	ファイル作成時間を表す文字列範囲の記述
 	(表示は "HH:MM:SS" 形式。分や秒はなくても可。)
 \fIf9\fR	ファイル名を表す文字列範囲の記述

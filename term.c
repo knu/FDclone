@@ -628,6 +628,7 @@ char *str;
 	return(fputs(str, stdout));
 }
 
+#ifndef	NOVSPRINTF
 int cprintf(fmt, va_alist)
 char *fmt;
 va_dcl
@@ -637,8 +638,17 @@ va_dcl
 	char buf[MAXPRINTBUF + 1];
 
 	va_start(args);
-	len = vsprintf(buf, (char *)fmt, args);
+	len = vsprintf(buf, fmt, args);
 	va_end(args);
+#else
+int cprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
+char *fmt;
+{
+	int len;
+	char buf[MAXPRINTBUF + 1];
+
+	len = sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
+#endif
 
 	fputs(buf, stdout);
 	return(len);

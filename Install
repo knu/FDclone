@@ -14,7 +14,7 @@
    以下の OS では、これ以外の変更の必要は特にありません。次
    のステップに進んで下さい。
 	Sun	SunOS		(4.1.x, 5.x)
-	SONY	NEWS-OS		(3.3, 4.x, 6.x)
+	SONY	NEWS-OS		(3.x, 4.x, 6.x)
 	SGI	IRIX		(R4.0.5, R5.x)
 	HP	HP-UX		(9.x)
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)

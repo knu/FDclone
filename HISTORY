@@ -1,3 +1,7 @@
+Ver. 0.99n	vsprintf() のない OS に対応。
+ (07/27/95)	NoExecMe の名前が混乱の元なので Configure に改名。
+		Configure の強化。
+
 Ver. 0.99m	NoExecMe の Bugfix。
  (07/25/95)	expfunc.c でサブシェルで実現していた箇所を {} に変更。
 		その他 Bugfix。

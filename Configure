@@ -1,4 +1,6 @@
 #!/bin/sh
+echo "Don't exec me!"
+exit 0
 
 CC=cc
 CPP="$CC -E"
@@ -91,7 +93,7 @@ USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USERE_COMP USEREGCOMP USEREGCMP \
-USERAND48 USESETENV NOSELECT NOSTRSTR USEUTIME USEGETWD SIGARGINT
+USERAND48 USESETENV NOSELECT NOSTRSTR NOVSPRINTF USEUTIME USEGETWD SIGARGINT
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -108,16 +110,20 @@ if [ "$LANG" = "ja_JP.EUC" ]; then
 	echo "#define	CODEEUC"
 fi
 
-echo "Checking for tar(1)..." 1>&2
-touch $TMPSRC
-$TAR cf $TMPEXE $TMPSRC
-if $TAR tvf $TMPEXE |
-(read mode other; echo $mode | egrep '/' 2>&1 > /dev/null); then
-	:
-else
-	echo "#define	TARUSESPACE"
+me=`whoami`
+uidlen=`egrep "^$me:" /etc/passwd | awk -F: '{print length($3)}'`
+if expr $uidlen \> 2 > /dev/null; then
+	echo "Checking for tar(1)..." 1>&2
+	touch $TMPSRC
+	$TAR cf $TMPEXE $TMPSRC
+	if $TAR tvf $TMPEXE | \
+	(read mode other; echo $mode | egrep '/' 2>&1 > /dev/null); then
+		:
+	else
+		echo "#define	TARUSESPACE"
+	fi
+	rm -f $TMPEXE
 fi
-rm -f $TMPEXE
 
 echo "Checking for cpp(1)..." 1>&2
 echo '#define test "01"' | tr '01' '\376\376' > $TMPSRC
@@ -307,6 +313,9 @@ if noexist "select(0,0,0,0,0)"; then
 fi
 if noexist "strstr(0,0)"; then
 	echo "#define	NOSTRSTR"
+fi
+if noexist "vsprintf(0,0,0)" "stdio varargs"; then
+	echo "#define	NOVSPRINTF"
 fi
 if noexist "utimes(0,0)"; then
 	echo "#define	USEUTIME"

@@ -50,6 +50,7 @@
 #   define	NOUNISTDH
 #   define	NOSTDLIBH
 #   define	USEDIRECT
+#   define	NOVSPRINTF
 #   define	USEGETWD
 #   endif
 #  endif
@@ -108,10 +109,10 @@
 #define	CODEEUC
 #define	EXTENDCCOPT		"-O -Zs"
 #define	TERMCAPLIB		"-lcurses"
+#define	REGEXPLIB		"-lc -lPW"
 #define	UNKNOWNFS
 #define	NOVOID
 #define	NOUID_T
-#define	PWNEEDERROR
 #define	NOFILEMODE
 #define	NOSTDLIBH
 #define	USETIMEH
@@ -374,6 +375,7 @@
 /* #define USESETENV	/* use setenv() instead of putenv() */
 /* #define NOSELECT	/* have not select() */
 /* #define NOSTRSTR	/* have not strstr() */
+/* #define NOVSPRINTF	/* have not vsprintf() */
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
 /* #define SIGARGINT	/* signal() needs the 2nd argument as int */
