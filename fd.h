@@ -48,6 +48,9 @@
 #define	HISTSIZE	50
 #define	SAVEHIST	50
 #define	DIRCOUNTLIMIT	50
+#define	SECOND		0
+#define	DOSDRIVE	0
+#define	EDITMODE	"emacs"
 #define	TMPDIR		"/tmp"
 
 

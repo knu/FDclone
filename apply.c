@@ -25,9 +25,9 @@
 
 extern int filepos;
 extern reg_t *findregexp;
+extern int subwindow;
 
 static int judgecopy();
-static int _cpfile();
 static VOID showattr();
 static int touchfile();
 
@@ -49,10 +49,10 @@ time_t *atimep, *mtimep;
 	strcpy(dest, destpath);
 	strcat(dest, "/");
 	strcat(dest, file);
-	if (lstat(file, &status1) < 0) error(file);
+	if (Xlstat(file, &status1) < 0) error(file);
 	*atimep = status1.st_atime;
 	*mtimep = status1.st_mtime;
-	if (lstat(dest, &status2) < 0) {
+	if (Xlstat(dest, &status2) < 0) {
 		if (errno != ENOENT) error(dest);
 		return((int)status1.st_mode);
 	}
@@ -89,7 +89,7 @@ time_t *atimep, *mtimep;
 					-1, NULL, NULL))) return(-1);
 				strcpy(cp, tmp);
 				free(tmp);
-			} while (lstat(dest, &status2) >= 0
+			} while (Xlstat(dest, &status2) >= 0
 			&& (putterm(t_bell) || 1));
 			if (errno != ENOENT) error(dest);
 			break;
@@ -103,7 +103,7 @@ time_t *atimep, *mtimep;
 	return((int)status1.st_mode);
 }
 
-static int _cpfile(src, dest, mode)
+int _cpfile(src, dest, mode)
 char *src, *dest;
 int mode;
 {
@@ -111,26 +111,26 @@ int mode;
 	int i, fd1, fd2;
 
 	if ((mode & S_IFMT) == S_IFLNK) {
-		if ((i = readlink(src, buf, BUFSIZ)) < 0) return(-1);
+		if ((i = Xreadlink(src, buf, BUFSIZ)) < 0) return(-1);
 		buf[i] = '\0';
-		return(symlink(buf, dest) < 0);
+		return(Xsymlink(buf, dest) < 0);
 	}
-	if ((fd1 = open(src, O_RDONLY, mode)) < 0) return(-1);
-	if ((fd2 = open(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
-		close(fd1);
+	if ((fd1 = Xopen(src, O_RDONLY, mode)) < 0) return(-1);
+	if ((fd2 = Xopen(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
+		Xclose(fd1);
 		return(-1);
 	}
 
 	for (;;) {
-		while ((i = read(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
+		while ((i = Xread(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
 		if (i < BUFSIZ) break;
-		if (write(fd2, buf, BUFSIZ) < 0 && errno != EINTR) error(dest);
+		if (Xwrite(fd2, buf, BUFSIZ) < 0 && errno != EINTR) error(dest);
 	}
 	if (i < 0) error(src);
-	if (i > 0 && write(fd2, buf, i) < 0 && errno != EINTR) error(dest);
+	if (i > 0 && Xwrite(fd2, buf, i) < 0 && errno != EINTR) error(dest);
 
-	close(fd2);
-	close(fd1);
+	Xclose(fd2);
+	Xclose(fd1);
 	return(0);
 }
 
@@ -151,11 +151,11 @@ char *path;
 	int mode, atime, mtime;
 
 	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
-	if (rename(path, dest) < 0) {
+	if (Xrename(path, dest) < 0) {
 		if (errno != EXDEV || (mode & S_IFMT) == S_IFDIR) return(-1);
 		if (access2(path, W_OK) < 0) return(1);
 		if (_cpfile(path, dest, mode) < 0
-		|| unlink(path) < 0) return(-1);
+		|| Xunlink(path) < 0) return(-1);
 		if ((mode & S_IFMT) != S_IFLNK
 		&& touchfile(dest, atime, mtime) < 0) return(-1);
 	}
@@ -170,7 +170,7 @@ char *path;
 	strcpy(dest, destpath);
 	strcat(dest, "/");
 	strcat(dest, path);
-	if (mkdir(dest, 0777) < 0 && errno != EEXIST) return(-1);
+	if (Xmkdir(dest, 0777) < 0 && errno != EEXIST) return(-1);
 	return(0);
 }
 
@@ -283,6 +283,8 @@ u_short flag;
 	u_short tmp;
 	int i, ch, x, y, yy, ymin, ymax;
 
+	subwindow = 1;
+	getkey2(-1);
 	yy = WHEADER;
 	while (n_line - yy < 7) yy--;
 
@@ -293,24 +295,21 @@ u_short flag;
 	sprintf(timestr[1], "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(listp, attrmode, timestr, yy);
-	yy += 2;
 	y = ymin = (flag & 1) ? 0 : 1;
 	ymax = (flag & 2) ? 2 : 0;
 	x = 0;
 
 	do {
-		locate(n_column / 2 + 10 + x, yy + y);
+		locate(n_column / 2 + 10 + x, yy + y + 2);
 		tflush();
 
 		keyflush();
-		switch (ch = getkey(0)) {
-			case CTRL_P:
+		switch (ch = getkey2(0)) {
 			case K_UP:
 				if (y > ymin) y--;
 				else y = ymax;
 				if (y && x >= 8) x = 7;
 				break;
-			case CTRL_N:
 			case K_DOWN:
 				if (y < ymax) y++;
 				else y = ymin;
@@ -347,7 +346,6 @@ u_short flag;
 				if (!y) break;
 				putch(ch);
 				timestr[y - 1][x] = ch;
-			case CTRL_F:
 			case K_RIGHT:
 				if (y) {
 					if (x >= 7) {
@@ -362,7 +360,6 @@ u_short flag;
 				}
 				else if (x < 8) x++;
 				break;
-			case CTRL_B:
 			case K_LEFT:
 				if (y) {
 					if (x <= 0) {
@@ -377,7 +374,7 @@ u_short flag;
 				}
 				else if (x > 0) x--;
 				break;
-			case CTRL_L:
+			case CTRL('L'):
 				showattr(listp, attrmode, timestr, yy);
 				break;
 			case ' ':
@@ -390,7 +387,7 @@ u_short flag;
 					else attrmode ^= (tmp << i);
 				}
 				attrmode ^= tmp;
-				locate(n_column / 2 + 10, yy + y);
+				locate(n_column / 2 + 10, yy + y + 2);
 				putmode(buf, attrmode);
 				cputs(buf + 1);
 				break;
@@ -398,6 +395,9 @@ u_short flag;
 				break;
 		}
 	} while (ch != ESC && ch != CR);
+
+	subwindow = 0;
+	getkey2(-1);
 
 	if (ch == ESC) return(0);
 
@@ -428,7 +428,7 @@ time_t atime, mtime;
 
 	times.actime = atime;
 	times.modtime = mtime;
-	return(utime(path, &times));
+	return(Xutime(path, &times));
 #else
 	struct timeval tvp[2];
 
@@ -436,7 +436,7 @@ time_t atime, mtime;
 	tvp[0].tv_usec = 0;
 	tvp[1].tv_sec = mtime;
 	tvp[1].tv_usec = 0;
-	return(utimes(path, tvp));
+	return(Xutimes(path, tvp));
 #endif
 }
 
@@ -446,12 +446,12 @@ char *path;
 	struct stat status;
 	u_short mode;
 
-	if (lstat(path, &status) < 0) error(path);
+	if (Xlstat(path, &status) < 0) error(path);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(1);
 
 	mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);
 	if (touchfile(path, status.st_atime, attrtime) < 0
-	|| chmod(path, mode) < 0) return(-1);
+	|| Xchmod(path, mode) < 0) return(-1);
 	return(0);
 }
 
@@ -495,7 +495,7 @@ char *endmes;
 	char *cp, path[MAXPATHLEN + 1];
 	int i;
 
-	if (!(dirp = opendir(dir))) {
+	if (!(dirp = Xopendir(dir))) {
 		warning(-1, dir);
 		return(-1);
 	}
@@ -513,7 +513,7 @@ char *endmes;
 		return(i);
 	}
 
-	while (dp = readdir(dirp)) {
+	while (dp = Xreaddir(dirp)) {
 		if (!strcmp(dp -> d_name, ".")
 		|| !strcmp(dp -> d_name, "..")) continue;
 
@@ -521,7 +521,7 @@ char *endmes;
 		strcat(path, "/");
 		strcat(path, dp -> d_name);
 
-		if (lstat(path, &status) < 0) warning(-1, path);
+		if (Xlstat(path, &status) < 0) warning(-1, path);
 		else if ((status.st_mode & S_IFMT) == S_IFDIR) {
 			if ((i = applydir(path,
 				funcf, funcd1, funcd2, NULL)) < -1) return(i);
@@ -537,7 +537,7 @@ char *endmes;
 			else return(i);
 		}
 	}
-	closedir(dirp);
+	Xclosedir(dirp);
 
 	if (funcd2 && (i = (*funcd2)(dir)) == -1) warning(-1, dir);
 	if (endmes) warning(0, endmes);

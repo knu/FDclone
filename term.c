@@ -4,6 +4,7 @@
  *	Terminal Module
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <varargs.h>
@@ -11,8 +12,6 @@
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/time.h>
-#include "machine.h"
-#include "term.h"
 
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
@@ -27,6 +26,8 @@
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
+
+#include "term.h"
 
 extern int tgetent();
 extern int tgetnum();
@@ -327,9 +328,11 @@ static int defaultterm()
 	int i;
 
 	BC = "\010";
-	UP = "\033[A";
+	UP = "2\033[A";
 	n_column = n_lastcolumn = 80;
 	n_line = 24;
+	t_init = "";
+	t_end = "";
 	t_keypad = "\033[?1h\033=";
 	t_nokeypad = "\033[?1l\033>";
 	t_normalcursor = "\033[?25h";
@@ -339,17 +342,17 @@ static int defaultterm()
 	t_resetcursor = "\0338";
 	t_bell = "\007";
 	t_vbell = "\007";
-	t_clear = "\033[2J";
-	t_normal = "\033[m";
-	t_bold = "\033[1m";
-	t_reverse = "\033[7m";
-	t_dim = "\033[2m";
-	t_blink = "\033[5m";
-	t_standout = "\033[7m";
-	t_underline = "\033[4m";
-	end_standout = "\033[m";
-	end_underline = "\033[m";
-	l_clear = "\033[K";
+	t_clear = "50\033[;H\033[2J";
+	t_normal = "2\033[m";
+	t_bold = "2\033[1m";
+	t_reverse = "2\033[7m";
+	t_dim = "2\033[2m";
+	t_blink = "2\033[5m";
+	t_standout = "2\033[7m";
+	t_underline = "2\033[4m";
+	end_standout = "2\033[m";
+	end_underline = "2\033[m";
+	l_clear = "3\033[K";
 	l_insert = "\033[L";
 	l_delete = "\033[M";
 	c_insert = "";
@@ -357,12 +360,12 @@ static int defaultterm()
 	c_store = "\033[s";
 	c_restore = "\033[u";
 	c_home = "\033[H";
-	c_locate = "\033[%d;%dH";
+	c_locate = "5\033[%i%d;%dH";
 	c_return = "\r";
 	c_newline = "\n";
-	c_up = "\033[A";
+	c_up = "2\033[A";
 	c_down = "\012";
-	c_right = "\033[C";
+	c_right = "2\033[C";
 	c_left = "\010";
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i] = NULL;
@@ -370,6 +373,7 @@ static int defaultterm()
 	keyseq[K_DOWN - K_MIN] = "\033OB";
 	keyseq[K_RIGHT - K_MIN] = "\033OC";
 	keyseq[K_LEFT - K_MIN] = "\033OD";
+	keyseq[K_HOME - K_MIN] = "\033[1~";
 	keyseq[K_BS - K_MIN] = "\010";
 	keyseq[K_F(1) - K_MIN] = "\033[11~";
 	keyseq[K_F(2) - K_MIN] = "\033[12~";
@@ -420,10 +424,15 @@ static int defaultterm()
 	keyseq[K_F('9') - K_MIN] = "\033Oy";
 	keyseq[K_F('=') - K_MIN] = "\033OX";
 	keyseq[K_F('?') - K_MIN] = "\033OM";
+	keyseq[K_DL - K_MIN] = "";
+	keyseq[K_IL - K_MIN] = "";
 	keyseq[K_DC - K_MIN] = "\177";
 	keyseq[K_IC - K_MIN] = "\033[2~";
+	keyseq[K_CLR - K_MIN] = "";
 	keyseq[K_PPAGE - K_MIN] = "\033[5~";
 	keyseq[K_NPAGE - K_MIN] = "\033[6~";
+	keyseq[K_ENTER - K_MIN] = "\033[9~";
+	keyseq[K_END - K_MIN] = "\033[4~";
 }
 
 static int tgetstr2(term, str)
@@ -561,6 +570,7 @@ int getterment()
 	tgetstr2(&keyseq[K_DOWN - K_MIN], "kd");
 	tgetstr2(&keyseq[K_RIGHT - K_MIN], "kr");
 	tgetstr2(&keyseq[K_LEFT - K_MIN], "kl");
+	tgetstr2(&keyseq[K_HOME - K_MIN], "kh");
 	tgetstr2(&keyseq[K_BS - K_MIN], "kb");
 	tgetstr2(&keyseq[K_F(1) - K_MIN], "l1");
 	tgetstr2(&keyseq[K_F(2) - K_MIN], "l2");
@@ -582,9 +592,17 @@ int getterment()
 	tgetstr2(&keyseq[K_F(28) - K_MIN], "k8");
 	tgetstr2(&keyseq[K_F(29) - K_MIN], "k9");
 	tgetstr2(&keyseq[K_F(30) - K_MIN], "k0");
+	tgetstr2(&keyseq[K_DL - K_MIN], "kL");
+	tgetstr2(&keyseq[K_IL - K_MIN], "kA");
 	tgetstr2(&keyseq[K_DC - K_MIN], "kD");
+	tgetstr2(&keyseq[K_IC - K_MIN], "kI");
+	tgetstr2(&keyseq[K_CLR - K_MIN], "kC");
+	tgetstr2(&keyseq[K_EOL - K_MIN], "kE");
 	tgetstr2(&keyseq[K_PPAGE - K_MIN], "kP");
 	tgetstr2(&keyseq[K_NPAGE - K_MIN], "kN");
+	tgetstr2(&keyseq[K_ENTER - K_MIN], "@8");
+	tgetstr2(&keyseq[K_BEG - K_MIN], "@1");
+	tgetstr2(&keyseq[K_END - K_MIN], "@7");
 	sortkeyseq();
 
 	termflags |= F_TERMENT;

@@ -171,6 +171,9 @@ extern char fullpath[];
 #ifndef	MNTTYPE_DGUX
 #define	MNTTYPE_DGUX	"dg/ux"	/* DG/UX */
 #endif
+#ifndef	MNTTYPE_PC
+#define	MNTTYPE_PC	"pc"	/* MS-DOS */
+#endif
 
 static int code2str();
 static int checkline();
@@ -216,6 +219,12 @@ int code;
 			case K_BS:
 				cp = "Bs";
 				break;
+			case K_DL:
+				cp = "DelLin";
+				break;
+			case K_IL:
+				cp = "InsLin";
+				break;
 			case K_DC:
 				cp = "Del";
 				break;
@@ -225,11 +234,23 @@ int code;
 			case K_CLR:
 				cp = "Clr";
 				break;
+			case K_EOL:
+				cp = "Eol";
+				break;
 			case K_NPAGE:
 				cp = "PageDn";
 				break;
 			case K_PPAGE:
 				cp = "PageUp";
+				break;
+			case K_ENTER:
+				cp = "Enter";
+				break;
+			case K_BEG:
+				cp = "Beg";
+				break;
+			case K_END:
+				cp = "End";
 				break;
 			default:
 				return(0);
@@ -523,7 +544,7 @@ mnt_t *mntbuf;
 	if (!strncmp(path, "/dev/", 4)) {
 		if (_chdir2(path) < 0) dir = path;
 	}
-	else if (_chdir2(path) < 0) return(0);
+	else if (dospath(path, NULL) || _chdir2(path) < 0) return(0);
 
 	if (!dir) {
 		dir = getwd2();
@@ -564,6 +585,7 @@ char *path;
 	statfs_t fsbuf;
 	mnt_t mntbuf;
 
+	if (dospath(path, NULL)) return(0);
 	if (access(path, R_OK | W_OK | X_OK) < 0) return(-1);
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
 	|| hasmntopt(&mntbuf, "ro")) return(0);

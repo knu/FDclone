@@ -22,14 +22,13 @@ extern char *findpattern;
 extern int sorttype;
 extern int writefs;
 extern int minfilename;
+extern char *curfilename;
 
 static VOID pathbar();
 static VOID stackbar();
 static char *putowner();
 static char *putgroup();
-static VOID infobar();
 static VOID calclocate();
-static VOID putname();
 static int browsedir();
 
 int columns;
@@ -42,7 +41,6 @@ int chgorder;
 int stackdepth = 0;
 namelist filestack[MAXSTACK];
 char fullpath[MAXPATHLEN + 1];
-char *lastpath = NULL;
 char *origpath;
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
@@ -51,8 +49,9 @@ char *helpindex[10] = {
 	"Sort", "Find", "Tree", "Editor", "Unpack"
 };
 
-static namelist *filelist;
-static int maxfile;
+namelist *filelist;
+int maxfile;
+int maxent;
 
 
 static VOID pathbar()
@@ -241,7 +240,7 @@ gid_t gid;
 	return(buf);
 }
 
-static VOID infobar(list, no)
+VOID infobar(list, no)
 namelist *list;
 int no;
 {
@@ -297,7 +296,7 @@ int no;
 		}
 		if (len < n_lastcolumn) {
 			width = n_lastcolumn - len;
-			readlink(list[no].name, buf + len, width);
+			Xreadlink(list[no].name, buf + len, width);
 		}
 	}
 
@@ -340,10 +339,9 @@ int calcwidth()
 	return(width);
 }
 
-static VOID putname(list, no, standout)
+VOID putname(list, no, standout)
 namelist *list;
-int no;
-int standout;
+int no, standout;
 {
 	char buf[MAXLINESTR + 1];
 	struct tm *tm;
@@ -502,20 +500,23 @@ u_char fstat;
 	infobar(list, filepos);
 }
 
-VOID rewritefile()
+VOID rewritefile(all)
+int all;
 {
 	pathbar();
-	helpbar();
+	if (all) {
+		helpbar();
+		infobar(filelist, filepos);
+	}
 	statusbar(maxfile);
 	stackbar();
-	movepos(filelist, maxfile, filepos, LISTUP);
+	listupfile(filelist, maxfile, filelist[filepos].name);
 	locate(0, 0);
 	tflush();
 }
 
-static int browsedir(file, def, maxentp)
+static int browsedir(file, def)
 char *file, *def;
-int *maxentp;
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -528,7 +529,7 @@ int *maxentp;
 	chgorder = 0;
 	if (sorttype < 100) sorton = sorttype;
 
-	if (!(dirp = opendir("."))) error(".");
+	if (!(dirp = Xopendir("."))) error(".");
 	fnameofs = 0;
 	waitmes();
 
@@ -548,18 +549,18 @@ int *maxentp;
 		if (i < stackdepth) continue;
 
 		filelist = (namelist *)addlist(filelist, maxfile,
-			maxentp, sizeof(namelist));
+			&maxent, sizeof(namelist));
 		if (getstatus(filelist, maxfile, file) < 0) continue;
 		filelist[maxfile].name = strdup2(file);
 		filelist[maxfile].ent = maxfile;
 		maxfile++;
 	}
-	closedir(dirp);
+	Xclosedir(dirp);
 	if (re) regexp_free(re);
 
 	if (!maxfile) {
 		filelist = (namelist *)addlist(filelist, 0,
-			maxentp, sizeof(namelist));
+			&maxent, sizeof(namelist));
 		filelist[0].name = NOFIL_K;
 		filelist[0].st_nlink = -1;
 	}
@@ -581,7 +582,9 @@ int *maxentp;
 		if (no) movepos(filelist, maxfile, old, fstat);
 		locate(0, 0);
 		tflush();
-		ch = getkey(SIGALRM);
+		getkey2(-1);
+		ch = getkey2(SIGALRM);
+		getkey2(-1);
 
 		old = filepos;
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
@@ -618,6 +621,7 @@ int *maxentp;
 #endif
 		}
 
+		curfilename = filelist[filepos].name;
 		if (maxfile <= 0 && !(fstat & NO_FILE)) no = 0;
 		else if (no <= NO_OPERATION)
 			no = (*funclist[no].func)(filelist, &maxfile);
@@ -659,7 +663,7 @@ char *cur;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
 	char *cp, *def;
-	int ischgdir, maxent;
+	int i, ischgdir;
 
 	origpath = getwd2();
 	strcpy(fullpath, origpath);
@@ -667,19 +671,20 @@ char *cur;
 	findpattern = def = NULL;
 	if (cur) {
 		cp = evalpath(strdup2(cur));
-		if (*cp == '/') *fullpath = '\0';
+		if (_dospath(cp) || *cp == '/') *fullpath = '\0';
 		else strcat(fullpath, "/");
 		if (_chdir2(cp) >= 0) {
 			strcat(fullpath, cp);
 			free(cp);
 			cp = fullpath + strlen(fullpath) - 1;
-			if (cp > fullpath && *cp == '/') *cp = '\0';
 		}
 		else {
 			def = strrchr(cp, '/');
+			if (!def && _dospath(cp)) def = &cp[2];
 			if (def) {
+				i = *def;
 				*def = '\0';
-				if (def++ == cp) {
+				if (def == cp) {
 					if (_chdir2("/") < 0) error("/");
 					else strcpy(fullpath, "/");
 				}
@@ -689,6 +694,7 @@ char *cur;
 					def = NULL;
 					strcpy(fullpath, origpath);
 				}
+				if (def && (*def = i) == '/') def++;
 			}
 			else def = cp;
 
@@ -698,6 +704,7 @@ char *cur;
 			}
 			free(cp);
 		}
+		realpath2(fullpath, fullpath);
 	}
 
 	filelist = NULL;
@@ -727,7 +734,7 @@ char *cur;
 			}
 		}
 
-		ischgdir = browsedir(file, def, &maxent);
+		ischgdir = browsedir(file, def);
 		if (ischgdir < 0) break;
 		if (ischgdir) def = NULL;
 		else {

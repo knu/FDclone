@@ -273,7 +273,8 @@ elif isexist "getmntinfo_r(0,0,0,0)"; then
 	echo "#define	USEMNTINFOR"
 elif isexist "getmntinfo(0,0)"; then {
 	echo "#define	USEMNTINFO"
-	if isexist "struct statfs f; return(*(f.f_fstypename));" sys/mount; then
+	if isexist "struct statfs f; return(*(f.f_fstypename));" \
+	"sys/param sys/mount"; then
 		echo "#define	USEFFSTYPE"
 	fi
 }

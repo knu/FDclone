@@ -11,6 +11,7 @@
 #include "kanji.h"
 #include "funcno.h"
 #include "version.h"
+#include "dosdisk.h"
 
 #include <signal.h>
 #include <sys/time.h>
@@ -35,12 +36,15 @@ extern aliastable aliaslist[];
 extern int maxalias;
 extern bindtable bindlist[];
 extern functable funclist[];
+extern devinfo fdtype[];
 extern char *archivefile;
 extern char **sh_history;
 extern char *helpindex[];
 extern int subwindow;
 extern int columns;
 extern int dispmode;
+extern int dosdrive;
+extern char *editmode;
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -98,6 +102,7 @@ static int getlaunch();
 static int getcommand();
 static int getkeybind();
 static int getalias();
+static int getdosdrive();
 static int unalias();
 static int loadruncom();
 static VOID printext();
@@ -110,6 +115,7 @@ int minfilename;
 int histsize;
 int savehist;
 int dircountlimit;
+int showsecond;
 char *deftmpdir;
 char *tmpfilename;
 char *language;
@@ -127,6 +133,7 @@ char *str;
 	fputc('\007', stderr);
 	perror(str);
 	forcecleandir(deftmpdir, tmpfilename);
+	dosallclose();
 	exit(127);
 }
 
@@ -136,6 +143,7 @@ int sig;
 	signal(sig, SIG_IGN);
 	inittty(1);
 	forcecleandir(deftmpdir, tmpfilename);
+	dosallclose();
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);
 }
@@ -240,32 +248,39 @@ static sigarg_t wintr()
 	signal(SIGWINCH, SIG_IGN);
 	getwsize(80, WHEADER + WFOOTER + 2);
 	title();
-	if (archivefile) rewritearc();
-	else rewritefile();
-	if (subwindow) ungetch2(CTRL_L);
+	if (archivefile) rewritearc(1);
+	else rewritefile(1);
+	if (subwindow) ungetch2(CTRL('L'));
 	signal(SIGWINCH, (sigarg_t (*)())wintr);
 }
 
 static sigarg_t printtime()
 {
+	static long now;
 	struct timeval t;
 	struct timezone tz;
 	struct tm *tm;
 
 	signal(SIGALRM, SIG_IGN);
-	if (!timersec) {
+	if (timersec) now++;
+	else {
 		gettimeofday(&t, &tz);
-		tm = localtime(&(t.tv_sec));
-
-		locate(n_column - 16, LTITLE);
+		now = t.tv_sec;
+		timersec = CLOCKUPDATE;
+	}
+	if (showsecond || timersec == CLOCKUPDATE) {
+		tm = localtime(&now);
+		locate(n_column - 16 - ((showsecond) ? 3 : 0), LTITLE);
 		putterm(t_standout);
-		cprintf("%02d-%02d-%02d %02d:%02d",
+		if (showsecond) cprintf("%02d-%02d-%02d %02d:%02d:%02d",
+			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
+			tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
+		else cprintf("%02d-%02d-%02d %02d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		putterm(end_standout);
 		locate(0, 0);
 		tflush();
-		timersec = CLOCKUPDATE;
 	}
 	timersec--;
 	signal(SIGALRM, (sigarg_t (*)())printtime);
@@ -392,8 +407,9 @@ char *line;
 		free(tmp);
 		tmp = ext;
 		ext = (char *)malloc2(strlen(tmp) + 3);
+		*ext = *tmp;
 		strcpy(ext + 2, tmp);
-		memcpy(ext, "^.*", 3);
+		memcpy(ext + 1, "^.*", 3);
 	}
 	free(tmp);
 
@@ -660,6 +676,48 @@ char *line;
 	return((n) ? 0 : -1);
 }
 
+static int getdosdrive(line)
+char *line;
+{
+	char *cp, *tmp;
+	int i, drive, head, sect, cyl;
+
+	for (i = 0; fdtype[i].name; i++);
+	if (i >= MAXDRIVEENTRY - 1) return(-1);
+	drive = (islower(*line)) ? *line + 'A' - 'a' : *line;
+	cp = skipspace(line + 2);
+	if (!*(tmp = geteostr(&cp))) {
+		free(tmp);
+		return(-1);
+	}
+	cp = skipspace(cp);
+	head = atoi(cp);
+	if (head <= 0 || !(cp = strchr(cp, ','))) {
+		free(tmp);
+		return(-1);
+	}
+	cp = skipspace(cp + 1);
+	sect = atoi(cp);
+	if (sect <= 0 || !(cp = strchr(cp, ','))) {
+		free(tmp);
+		return(-1);
+	}
+	cp = skipspace(cp + 1);
+	cyl = atoi(cp);
+	if (cyl <= 0) {
+		free(tmp);
+		return(-1);
+	}
+
+	fdtype[i].drive = drive;
+	fdtype[i].name = tmp;
+	fdtype[i].head = head;
+	fdtype[i].sect = sect;
+	fdtype[i].cyl = cyl;
+
+	return(0);
+}
+
 int evalconfigline(line)
 char *line;
 {
@@ -694,6 +752,7 @@ char *line;
 		if (cp = strpbrk(tmp, " \t")) *cp = '\0';
 		loadruncom(tmp);
 	}
+	else if (isalpha(*line) && *(line + 1) == ':') getdosdrive(line);
 	else if (isalpha(*line) || *line == '_') {
 		if (setenv2(line, cp = getenvval(line), 1) < 0) error(line);
 		if (cp) free(cp);
@@ -758,7 +817,7 @@ char *ext;
 {
 	char *cp;
 
-	for (cp = ext; *cp; cp++) {
+	for (cp = ext + 1; *cp; cp++) {
 		if (*cp == '\\') {
 			if (!*(++cp)) break;
 			putch((int)(*(u_char *)cp));
@@ -812,6 +871,20 @@ int printalias()
 	return(n);
 }
 
+int printdrive()
+{
+	int i, n;
+
+	n = 0;
+	for (i = 0; fdtype[i].drive; i++) {
+		kanjiprintf("%c:\t\"%s\"\t(%1d,%3d,%3d)\r\n",
+			fdtype[i].drive, fdtype[i].name,
+			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl);
+		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
+	}
+	return(n);
+}
+
 int printhist()
 {
 	int i, n;
@@ -844,6 +917,9 @@ VOID evalenv()
 		minfilename = MINFILENAME;
 	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
 		dircountlimit = DIRCOUNTLIMIT;
+	if ((showsecond = atoi2(getenv2("FD_SECOND"))) < 0) showsecond = SECOND;
+	if ((dosdrive = atoi2(getenv2("FD_DOSDRIVE"))) < 0) dosdrive = DOSDRIVE;
+	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
 	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
 	deftmpdir = evalpath(strdup2(deftmpdir));
 	language = getenv2("FD_LANGUAGE");
@@ -983,6 +1059,7 @@ char *argv[];
 	title();
 
 	main_fd(argv[i]);
+	dosallclose();
 
 	exit2(0);
 }

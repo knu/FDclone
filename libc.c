@@ -28,6 +28,7 @@
 
 #ifdef	USEGETWD
 #define	getcwd(buf, size)	getwd(buf)
+#define	Xgetcwd(buf, size)	Xgetwd(buf)
 #endif
 
 #ifdef	PWNEEDERROR
@@ -36,17 +37,18 @@ char Error[1024];
 
 extern int copypolicy;
 extern char fullpath[];
-extern char *lastpath;
 extern char *origpath;
 extern char *findpattern;
 
 #define	BUFUNIT		32
 
-static char *realpath2();
+static char *_realpath2();
 static assoclist *_getenv2();
 static long gettimezone();
 
 static assoclist *environ2 = NULL;
+static char *lastpath = NULL;
+static char *unixpath = NULL;
 
 
 int access2(path, mode)
@@ -57,6 +59,7 @@ int mode;
 	char *cp, *name, dir[MAXPATHLEN + 1], *str[4];
 	int val[4];
 
+	if (dospath(path, NULL)) return(Xaccess(path, mode));
 	if (lstat(path, &status) < 0) error(path);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
 
@@ -102,21 +105,21 @@ int unlink2(path)
 char *path;
 {
 	if (access2(path, W_OK) < 0) return(1);
-	return(unlink(path));
+	return(Xunlink(path));
 }
 
 int rmdir2(path)
 char *path;
 {
 	if (access2(path, R_OK | W_OK | X_OK) < 0) return(1);
-	return(rmdir(path));
+	return(Xrmdir(path));
 }
 
 int rename2(from, to)
 char *from, *to;
 {
 	if (!strcmp(from, to)) return(0);
-	return(rename(from, to));
+	return(Xrename(from, to));
 }
 
 int stat2(path, buf)
@@ -125,7 +128,8 @@ struct stat *buf;
 {
 	int tmperr;
 
-	if (stat(path, buf) < 0) {
+	if (Xstat(path, buf) < 0) {
+		if (dospath(path, NULL)) return(-1);
 		tmperr = errno;
 		if (lstat(path, buf) < 0
 		|| (buf -> st_mode & S_IFMT) != S_IFLNK) {
@@ -137,30 +141,57 @@ struct stat *buf;
 	return(0);
 }
 
-static char *realpath2(path, resolved)
+static char *_realpath2(path, resolved)
 char *path, *resolved;
 {
 	char *cp;
+	int drive;
 
 	if (!*path || !strcmp(path, ".")) return(resolved);
 	else if (cp = strchr(path, '/')) {
 		*cp = '\0';
-		realpath2(path, resolved);
+		_realpath2(path, resolved);
 		*(cp++) = '/';
-		realpath2(cp, resolved);
+		_realpath2(cp, resolved);
 		return(resolved);
 	}
 
 	if (!strcmp(path, "..")) {
 		cp = strrchr(resolved, '/');
-		if (cp && cp != resolved) *cp = '\0';
-		else strcpy(resolved, "/");
+		if (drive = _dospath(resolved)) {
+			if (cp && cp != &resolved[2]) *cp = '\0';
+			else sprintf(resolved, "%c:/", toupper2(drive));
+		}
+		else {
+			if (cp && cp != resolved) *cp = '\0';
+			else strcpy(resolved, "/");
+		}
 	}
 	else {
-		if (strcmp(resolved, "/")) strcat(resolved, "/");
+		if (*resolved && resolved[strlen(resolved) - 1] != '/')
+			strcat(resolved, "/");
 		strcat(resolved, path);
 	}
 	return(resolved);
+}
+
+char *realpath2(path, resolved)
+char *path, *resolved;
+{
+	char tmp[MAXPATHLEN + 1];
+
+	if (path == resolved) {
+		strcpy(tmp, path);
+		path = tmp;
+	}
+
+	if (*path == '/') strcpy(resolved, "/");
+	else if (_dospath(path)) {
+		sprintf(resolved, "%c:/", toupper2(*path));
+		path += 2;
+	}
+	else if (resolved != fullpath) strcpy(resolved, fullpath);
+	return(_realpath2(path, resolved));
 }
 
 int _chdir2(path)
@@ -169,13 +200,15 @@ char *path;
 	char cwd[MAXPATHLEN + 1];
 	int fd;
 
-	if (!getcwd(cwd, MAXPATHLEN)) strcpy(cwd, "/");
-	if (chdir(path) < 0) return(-1);
-	if ((fd = open(".", O_RDONLY, 0600)) < 0) {
-		if (chdir(cwd) < 0) error(cwd);
-		return(-1);
+	if (!Xgetcwd(cwd, MAXPATHLEN)) strcpy(cwd, "/");
+	if (Xchdir(path) < 0) return(-1);
+	if (!dospath("", NULL)) {
+		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
+			if (chdir(cwd) < 0) error(cwd);
+			return(-1);
+		}
+		close(fd);
 	}
-	close(fd);
 	return(0);
 }
 
@@ -190,7 +223,6 @@ char *path;
 	if (_chdir2(path) < 0) return(-1);
 
 	strcpy(cwd, fullpath);
-	if (*path == '/') strcpy(fullpath, "/");
 	realpath2(path, fullpath);
 
 	if (_chdir2(fullpath) < 0) {
@@ -200,6 +232,18 @@ char *path;
 	}
 	if (lastpath) free(lastpath);
 	lastpath = strdup2(cwd);
+	if (_dospath(fullpath)) {
+		if (!_dospath(cwd)) {
+			if (unixpath) free(unixpath);
+			unixpath = strdup2(cwd);
+		}
+		if (Xgetcwd(cwd, MAXPATHLEN)) strcpy(fullpath, cwd);
+	}
+	else {
+		if (unixpath) free(unixpath);
+		unixpath = NULL;
+	}
+
 	if (getenv("PWD")) {
 #ifdef	USESETENV
 		setenv("PWD", fullpath, 1);
@@ -223,6 +267,10 @@ char *path;
 	else if (!strcmp(path, "-")) {
 		if (!lastpath) return(".");
 		path = lastpath;
+	}
+	else if (!strcmp(path, "@")) {
+		if (!unixpath) return(".");
+		path = unixpath;
 	}
 	if (chdir2(path) < 0) return(NULL);
 	if (!cwd) {
@@ -251,7 +299,7 @@ int mode;
 	cp1 = ++eol;
 	cp2 = strrchr(path, '/');
 	for (;;) {
-		if (mkdir(path, mode) >= 0) break;
+		if (Xmkdir(path, mode) >= 0) break;
 		if (errno != ENOENT || !cp2 || cp2 <= path) return(-1);
 		*cp2 = '\0';
 		if (cp1 < eol) *cp1 = '/';
@@ -263,7 +311,7 @@ int mode;
 		cp2 = strchr(cp1 + 1, '/');
 		*cp1 = '/';
 		if (cp2) *cp2 = '\0';
-		if (mkdir(path, mode) < 0 && errno != EEXIST) return(-1);
+		if (Xmkdir(path, mode) < 0 && errno != EEXIST) return(-1);
 		cp1 = cp2;
 	}
 	return(0);
@@ -553,7 +601,7 @@ char *getwd2()
 {
 	char cwd[MAXPATHLEN + 1];
 
-	if (!getcwd(cwd, MAXPATHLEN)) error(NULL);
+	if (!Xgetcwd(cwd, MAXPATHLEN)) error(NULL);
 	return(strdup2(cwd));
 }
 

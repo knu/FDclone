@@ -417,7 +417,7 @@ char *file;
 {
 	FILE *fp;
 	char *cp, line[MAXLINESTR + 1], **hist;
-	int i, j;
+	int i, j, len;
 
 	cp = evalpath(strdup2(file));
 	fp = fopen(cp, "r");
@@ -431,7 +431,15 @@ char *file;
 	while (fgets(line, MAXLINESTR, fp)) {
 		if (cp = strchr(line, '\n')) *cp = '\0';
 		for (j = i; j > 1; j--) hist[j] = hist[j - 1];
-		hist[1] = strdup2(line);
+		for (j = len = 0; line[j]; j++, len++)
+			if (line[j] < ' ' || line[j] == C_DEL) len++;
+		hist[1] = (char *)malloc2(len + 1);
+		for (j = len = 0; line[j]; j++, len++) {
+			if (line[j] < ' ' || line[j] == C_DEL)
+				hist[1][len++] = QUOTE;
+			hist[1][len] = line[j];
+		}
+		hist[1][len] = '\0';
 		if (i < histsize) i++;
 	}
 	fclose(fp);
@@ -444,8 +452,8 @@ int savehistory(hist, file)
 char **hist, *file;
 {
 	FILE *fp;
-	char *cp;
-	int i, size;
+	char *cp, line[MAXLINESTR + 1];
+	int i, j, len, size;
 
 	if (!hist || !hist[1]) return(-1);
 	cp = evalpath(strdup2(file));
@@ -455,7 +463,10 @@ char **hist, *file;
 
 	size = (histsize < savehist) ? histsize : savehist;
 	for (i = size; i >= 1; i--) if (hist[i] && *hist[i]) {
-		fputs(hist[i], fp);
+		for (j = 0, len = 0; hist[i][j]; j++)
+			if (hist[i][j] != QUOTE) line[len++] = hist[i][j];
+		line[len] = '\0';
+		fputs(line, fp);
 		fputc('\n', fp);
 	}
 	fclose(fp);
@@ -532,6 +543,7 @@ char *command;
 	else if (!strcmp(command, "printlaunch")) i = printlaunch();
 	else if (!strcmp(command, "printarch")) i = printarch();
 	else if (!strcmp(command, "alias")) i = printalias();
+	else if (!strcmp(command, "printdrive")) i = printdrive();
 	else if (!strcmp(command, "history")) i = printhist();
 	else if (!strncmp(command, "cd", cp - command)) {
 		while (*cp == ' ' || *cp == '\t') cp++;
@@ -587,24 +599,24 @@ char *command;
 	return(cp);
 }
 
-int completealias(com, match)
-char *com, *match;
+int completealias(com, matchno, matchp)
+char *com;
+int matchno;
+char **matchp;
 {
-	int i, j, len, matchno;
+	int i, len, ptr, size;
 
 	if (strchr(com, '/')) return(0);
 
-	matchno = 0;
+	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
 	for (i = 0; i < maxalias; i++) {
 		if (strncmp(com, aliaslist[i].alias, len)) continue;
-		if (!matchno++) strcpy(match, aliaslist[i].alias);
-		else {
-			for (j = 0; match[j]; j++)
-				if (match[j] != aliaslist[i].alias[j]) break;
-			match[j] = '\0';
-		}
+		ptr = size;
+		size += strlen(aliaslist[i].alias) + 1;
+		*matchp = (char *)realloc2(*matchp, size);
+		strcpy(*matchp + ptr, aliaslist[i].alias);
+		matchno++;
 	}
-	if (!matchno) *match = '\0';
 	return(matchno);
 }

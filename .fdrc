@@ -59,6 +59,22 @@ SAVEHIST	=	0
 #	default: 50
 DIRCOUNTLIMIT	=	0
 
+# whether if display the second hand of clock
+#	0 or ""(null): not display
+#	>= 1: display
+SECOND		=	1
+
+# whether if make MS-DOS drive effective
+#	0 or ""(null): not use
+#	>= 1: effective
+DOSDRIVE	=	1
+
+# select edit mode with your favorite editor type
+#	emacs: ^P, ^N, ^F, ^B, ...
+#	wordstar ^E, ^X, ^D, ^S, ...
+#	vi: k, j, l, h, ...
+EDITMODE	=	emacs
+
 # temporary directory where archive file is unpacked
 #	default: /tmp
 TMPDIR		=	/usr/tmp

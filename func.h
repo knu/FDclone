@@ -28,8 +28,52 @@ extern int printmacro();
 extern int printlaunch();
 extern int printarch();
 extern int printalias();
+extern int printdrive();
 extern int printhist();
 extern VOID evalenv();
+
+/* dosemu.c */
+extern int _dospath();
+extern int dospath();
+extern DIR *Xopendir();
+extern int Xclosedir();
+extern struct dirent *Xreaddir();
+extern int Xchdir();
+#ifdef	USEGETWD
+extern char *Xgetwd();
+#else
+extern char *Xgetcwd();
+#endif
+extern int Xstat();
+extern int Xlstat();
+extern int Xaccess();
+extern int Xsymlink();
+extern int Xreadlink();
+extern int Xchmod();
+#ifdef	USEUTIME
+extern int Xutime();
+#else
+extern int Xutimes();
+#endif
+extern int Xunlink();
+extern int Xrename();
+extern int Xopen();
+extern int Xclose();
+extern int Xread();
+extern int Xwrite();
+extern int Xlseek();
+extern int Xmkdir();
+extern int Xrmdir();
+extern FILE *Xfopen();
+extern int Xfclose();
+extern int Xfread();
+extern int Xfwrite();
+extern int Xfflush();
+extern int Xfgetc();
+extern int Xfputc();
+extern char *Xfgets();
+extern int Xfputs();
+extern char *tmpdosdupl();
 
 /* libc.c */
 extern int access2();
@@ -37,6 +81,7 @@ extern int unlink2();
 extern int rmdir2();
 extern int rename2();
 extern int stat2();
+extern char *realpath2();
 extern int _chdir2();
 extern int chdir2();
 extern char *chdir3();
@@ -68,6 +113,7 @@ extern char *getgrgid2();
 extern time_t timelocal2();
 
 /* input.c */
+extern int getkey2();
 extern char *inputstr2();
 extern int yesno();
 extern VOID warning();
@@ -114,6 +160,7 @@ extern int forcecleandir();
 extern VOID arrangedir();
 
 /* apply.c */
+extern int _cpfile();
 extern int cpfile();
 extern int mvfile();
 extern int cpdir();
@@ -141,8 +188,10 @@ extern char *tree();
 /* browse.c */
 extern VOID helpbar();
 extern VOID statusbar();
+extern VOID infobar();
 extern VOID waitmes();
 extern int calcwidth();
+extern VOID putname();
 extern int listupfile();
 extern VOID rewritefile();
 extern VOID movepos();

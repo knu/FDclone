@@ -24,8 +24,8 @@ extern int chgorder;
 extern int stackdepth;
 extern int copypolicy;
 extern namelist filestack[];
-extern char fullpath[];
 extern char *archivefile;
+extern char *archivedir;
 extern char *destpath;
 extern int writefs;
 extern int savehist;
@@ -175,17 +175,11 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{'S',		SYMLINK_MODE,	255},
 	{'T',		FILETYPE_MODE,	255},
 	{'U',		UNPACK_TREE,	255},
-	{CTRL_A,	CUR_TOP,	255},
-	{CTRL_B,	CUR_LEFT,	255},
-	{CTRL_C,	ROLL_UP,	255},
-	{CTRL_E,	CUR_BOTTOM,	255},
-	{CTRL_F,	CUR_RIGHT,	255},
-	{CTRL_L,	REREAD_DIR,	255},
-	{CTRL_N,	CUR_DOWN,	255},
-	{CTRL_P,	CUR_UP,		255},
-	{CTRL_R,	ROLL_DOWN,	255},
-	{CTRL_V,	ROLL_UP,	255},
-	{CTRL_Y,	ROLL_DOWN,	255},
+	{K_HOME,	CUR_TOP,	255},
+	{K_END,		CUR_BOTTOM,	255},
+	{K_BEG,		CUR_TOP,	255},
+	{K_EOL,		CUR_BOTTOM,	255},
+	{CTRL('L'),	REREAD_DIR,	255},
 	{-1,		NO_OPERATION,	255}
 };
 
@@ -295,8 +289,11 @@ static int out_dir(list, maxp)
 namelist *list;
 int *maxp;
 {
-	free(list[filepos].name);
-	list[filepos].name = strdup2("..");
+	if (archivefile) filepos = -1;
+	else {
+		free(list[filepos].name);
+		list[filepos].name = strdup2("..");
+	}
 	return(5);
 }
 
@@ -361,7 +358,7 @@ int *maxp;
 		|| (list[filepos].st_mode & S_IFMT) == S_IFLNK
 		|| (list[filepos].st_mode & S_IFMT) == S_IFSOCK
 		|| (list[filepos].st_mode & S_IFMT) == S_IFIFO
-		|| access(list[filepos].name, X_OK) >= 0)) i--;
+		|| Xaccess(list[filepos].name, X_OK) >= 0)) i--;
 	}
 	if (fnameofs + i >= strlen(list[filepos].name)) return(0);
 	fnameofs++;
@@ -594,9 +591,13 @@ namelist *list;
 int *maxp;
 {
 	char *dir;
+	int drive;
 
+	drive = 0;
 	if (isdir(&list[filepos])
-	|| (archivefile && !(dir = tmpunpack(list, *maxp)))) return(1);
+	|| (archivefile && !(dir = tmpunpack(list, *maxp)))
+	|| ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
+	list[filepos].name, list[filepos].st_mode)))) return(1);
 	if (!execenv("FD_PAGER", list[filepos].name)) {
 #ifdef	PAGER
 		execmacro(PAGER, list[filepos].name, NULL, 0, 1, 0);
@@ -606,7 +607,8 @@ int *maxp;
 		} while(!yesno(PEND_K));
 #endif
 	}
-	if (archivefile) removetmp(dir, list[filepos].name);
+	if (drive) removetmp(dir, NULL, list[filepos].name);
+	else if (archivefile) removetmp(dir, archivedir, list[filepos].name);
 	return(2);
 }
 
@@ -787,14 +789,14 @@ int *maxp;
 		if (!(file = inputstr2(NEWNM_K, 0, list[filepos].name, NULL)))
 			return(1);
 		file = evalpath(file);
-		if (lstat(file, &status) < 0) {
+		if (Xlstat(file, &status) < 0) {
 			if (errno == ENOENT) break;
 			warning(-1, file);
 		}
 		else warning(0, WRONG_K);
 		free(file);
 	}
-	if (rename(list[filepos].name, file) < 0) {
+	if (Xrename(list[filepos].name, file) < 0) {
 		warning(-1, file);
 		free(file);
 		return(1);
@@ -931,9 +933,9 @@ namelist *list;
 int *maxp;
 {
 	char *com, *dir;
-	int len;
+	int len, drive;
 
-	len = (access(list[filepos].name, X_OK) >= 0) ?
+	len = (Xaccess(list[filepos].name, X_OK) >= 0) ?
 		strlen(list[filepos].name) + 1 : 0;
 	if (!(com = inputstr2("sh#", len, list[filepos].name, &sh_history)))
 		return(1);
@@ -942,15 +944,23 @@ int *maxp;
 		free(com);
 		return(4);
 	}
-	if (archivefile && !(dir = tmpunpack(list, *maxp))) {
+
+	drive = 0;
+	if ((archivefile && !(dir = tmpunpack(list, *maxp)))
+	|| ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
+	list[filepos].name, list[filepos].st_mode)))) {
 		free(com);
 		return(1);
 	}
-	if (!archivefile) execmacro(com, list[filepos].name, list, *maxp, 0, 1);
-	else {
+	if (drive) {
 		execmacro(com, list[filepos].name, NULL, 0, 0, 1);
-		removetmp(dir, list[filepos].name);
+		removetmp(dir, NULL, list[filepos].name);
 	}
+	else if (archivefile) {
+		execmacro(com, list[filepos].name, NULL, 0, 0, 1);
+		removetmp(dir, archivedir, list[filepos].name);
+	}
+	else execmacro(com, list[filepos].name, list, *maxp, 0, 1);
 	free(com);
 	return(4);
 }
@@ -988,7 +998,8 @@ static int unpack_file(list, maxp)
 namelist *list;
 int *maxp;
 {
-	int i;
+	char *dir;
+	int i, drive;
 
 	if (isdir(&list[filepos])) return(warning_bell(list, maxp));
 	if (archivefile) i = unpack(archivefile, NULL, list, *maxp, 0);
@@ -1081,7 +1092,7 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = tree(0))) return(2);
+	if (!(path = tree(0, NULL))) return(2);
 	if (chdir2(path) < 0) {
 		warning(-1, path);
 		free(path);

@@ -15,6 +15,9 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
+extern int preparedrv();
+extern int shutdrv();
+
 extern int filepos;
 extern int mark;
 extern int dispmode;
@@ -37,6 +40,8 @@ static char *maketmpfile();
 static char *getentnum();
 static VOID restorefile();
 
+static int distdrive = -1;
+
 
 int getstatus(list, i, file)
 namelist *list;
@@ -45,7 +50,7 @@ char *file;
 {
 	struct stat status, lstatus;
 
-	if (lstat(file, &lstatus) < 0) return(-1);
+	if (Xlstat(file, &lstatus) < 0) return(-1);
 	if (stat2(file, &status) < 0) error(file);
 	list[i].st_mode = lstatus.st_mode;
 	list[i].flags = 0;
@@ -74,14 +79,12 @@ namelist *listp1, *listp2;
 	if (!isdir(listp1) && isdir(listp2)) return(1);
 	if (isdir(listp1) && !isdir(listp2)) return(-1);
 
-	if (listp1 -> name[0] == '.'
-		&& (listp1 -> name[1] == '\0'
-		|| (listp1 -> name[1] == '.' && listp1 -> name[2] == '\0')))
-			return(-1);
-	if (listp2 -> name[0] == '.'
-		&& (listp2 -> name[1] == '\0'
-		|| (listp2 -> name[1] == '.' && listp2 -> name[2] == '\0')))
-			return(1);
+	if (listp1 -> name[0] == '.' && listp1 -> name[1] == '\0') return(-1);
+	if (listp2 -> name[0] == '.' && listp2 -> name[1] == '\0') return(1);
+	if (listp1 -> name[0] == '.' && listp1 -> name[1] == '.'
+	&& listp1 -> name[2] == '\0') return(-1);
+	if (listp2 -> name[0] == '.' && listp2 -> name[1] == '.'
+	&& listp2 -> name[2] == '\0') return(1);
 
 	switch (sorton & 7) {
 		case 1:
@@ -147,8 +150,8 @@ reg_t *regexp;
 {
 	struct dirent *dp;
 
-	if (!regexp) dp = readdir(dirp);
-	else while (dp = readdir(dirp)) {
+	if (!regexp) dp = Xreaddir(dirp);
+	else while (dp = Xreaddir(dirp)) {
 		if (regexp_exec(regexp, dp -> d_name)) break;
 	}
 	return(dp);
@@ -161,6 +164,7 @@ char *path;
 	int i;
 
 	cwd = getwd2();
+	if (dospath(path, NULL) != dospath(cwd, NULL)) return(0);
 	if (_chdir2(path) < 0) path = NULL;
 	else {
 		path = getwd2();
@@ -183,7 +187,7 @@ int underhome()
 			if (pwd = getpwuid(getuid())) homedir = pwd -> pw_dir;
 			else return(-1);
 		}
-		if (_chdir2(homedir) < 0) {
+		if (dospath(homedir, NULL) || _chdir2(homedir) < 0) {
 			homedir = NULL;
 			return(-1);
 		}
@@ -201,6 +205,7 @@ char *mes;
 {
 	struct stat status;
 	char *dir;
+	int drive;
 
 	if (!(dir = inputstr2(mes, -1, NULL, NULL))) return(NULL);
 	if (!*(dir = evalpath(dir))) {
@@ -208,10 +213,13 @@ char *mes;
 		dir = strdup2(".");
 	}
 
+	distdrive = -1;
+	if (drive = dospath(dir, NULL)) distdrive = preparedrv(drive, waitmes);
 	if (stat2(dir, &status) < 0) {
-		if (errno != ENOENT || mkdir(dir, 0777) < 0) {
+		if (errno != ENOENT || Xmkdir(dir, 0777) < 0) {
 			warning(-1, dir);
 			free(dir);
+			if (distdrive >= 0) shutdrv(distdrive);
 			return(NULL);
 		}
 		if (stat2(dir, &status) < 0) error(dir);
@@ -219,6 +227,7 @@ char *mes;
 	if ((status.st_mode & S_IFMT) != S_IFDIR) {
 		warning(ENOTDIR, dir);
 		free(dir);
+		if (distdrive >= 0) shutdrv(distdrive);
 		return(NULL);
 	}
 	return(dir);
@@ -233,7 +242,7 @@ int max, tr;
 		putterm(t_bell);
 		return(0);
 	}
-	destpath = (tr) ? tree(1) : getdistdir(COPYD_K);
+	destpath = (tr) ? tree(1, &distdrive) : getdistdir(COPYD_K);
 	if (!destpath) return((tr) ? 2 : 1);
 	copypolicy = (iscurdir(destpath)) ? 2 : 0;
 	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
@@ -242,6 +251,7 @@ int max, tr;
 	else if (cpfile(list[filepos].name) < 0)
 		warning(-1, list[filepos].name);
 	free(destpath);
+	if (distdrive >= 0) shutdrv(distdrive);
 	return(4);
 }
 
@@ -254,7 +264,7 @@ int max, tr;
 		putterm(t_bell);
 		return(0);
 	}
-	destpath = (tr) ? tree(1) : getdistdir(MOVED_K);
+	destpath = (tr) ? tree(1, &distdrive) : getdistdir(MOVED_K);
 	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
 	copypolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
@@ -263,6 +273,7 @@ int max, tr;
 	else filepos++;
 	if (filepos >= max) filepos = max - 1;
 	free(destpath);
+	if (distdrive >= 0) shutdrv(distdrive);
 	return(4);
 }
 

@@ -39,17 +39,29 @@ extern int errno;
 
 #ifdef	FD
 extern char *getenv2();
+extern DIR *Xopendir();
+extern int Xclosedir();
+extern struct dirent *Xreaddir();
+extern int Xstat();
+extern int Xaccess();
 # ifdef	NOVOID
 extern error();
 # else
 extern void error();
 # endif
 #else
-#define	getenv2 (char *)getenv
-#define	error return
+#define	getenv2		(char *)getenv
+#define Xopendir	opendir
+#define Xclosedir	closedir
+#define Xreaddir	readdir
+#define Xstat		stat
+#define Xaccess		access
+#define	error		return
 #endif
 
-static char *completeuser();
+static int completeuser();
+
+static int skipdotfile;
 
 
 char *_evalpath(path, eol)
@@ -144,17 +156,19 @@ int exceptdot;
 	int i, flag;
 
 	if (!*str) str = "*";
-	if (!(pattern = (char *)malloc(strlen(str) * 2 + 6 + 3))) error(NULL);
-	i = 0;
+	if (!(pattern = (char *)malloc(1 + strlen(str) * 2 + 3))) error(NULL);
+	pattern[0] =  (exceptdot && (*str == '*' || *str == '?')) ? '.' : ' ';
+	i = 1;
 	pattern[i++] = '^';
-#if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
-	if (exceptdot && (*str == '*' || *str == '?')) {
-		strcpy(&pattern[i], "[^\\.]*");
-		i += 6;
-	}
-#endif
 	flag = 0;
 	for (cp = str; *cp; cp++) {
+#if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
+		if (flag) {
+			if (*cp == ']') flag = 0;
+			pattern[i++] = *cp;
+			continue;
+		}
+#endif
 		switch (*cp) {
 			case '\\':
 				if (!*(cp + 1)) break;
@@ -173,16 +187,8 @@ int exceptdot;
 				flag = 1;
 				pattern[i++] = *cp;
 				break;
-			case ']':
-				flag = 0;
-				pattern[i++] = *cp;
-				break;
 #endif
 			case '^':
-				if (flag) {
-					pattern[i++] = *cp;
-					break;
-				}
 			case '$':
 			case '.':
 				pattern[i++] = '\\';
@@ -204,7 +210,8 @@ extern int re_exec();
 reg_t *regexp_init(s)
 char *s;
 {
-	re_comp(s);
+	skipdotfile = (*s == '.');
+	re_comp(s + 1);
 	return((reg_t *)1);
 }
 
@@ -213,6 +220,7 @@ int regexp_exec(re, s)
 reg_t *re;
 char *s;
 {
+	if (skipdotfile && *s == '.') return(0);
 	return(re_exec(s) > 0);
 }
 
@@ -231,8 +239,9 @@ char *s;
 {
 	reg_t *re;
 
+	skipdotfile = (*s == '.');
 	if (!(re = (reg_t *)malloc(sizeof(reg_t)))) error(NULL);
-	if (regcomp(re, s, REG_EXTENDED)) {
+	if (regcomp(re, s + 1, REG_EXTENDED)) {
 		free(re);
 		return(NULL);
 	}
@@ -243,7 +252,7 @@ int regexp_exec(re, s)
 reg_t *re;
 char *s;
 {
-	if (!re) return(0);
+	if (!re || (skipdotfile && *s == '.')) return(0);
 	return(!regexec(re, s, 0, NULL, 0));
 }
 
@@ -268,14 +277,15 @@ extern char *regex();
 reg_t *regexp_init(s)
 char *s;
 {
-	return(regcmp(s, 0));
+	skipdotfile = (*s == '.');
+	return(regcmp(s + 1, 0));
 }
 
 int regexp_exec(re, s)
 reg_t *re;
 char *s;
 {
-	if (!re) return(0);
+	if (!re || (skipdotfile && *s == '.')) return(0);
 	return(regex(re, s) ? 1 : 0);
 }
 
@@ -286,8 +296,9 @@ char *s;
 {
 	reg_t *re;
 
-	if (!(re = malloc(strlen(s) + 1))) error(NULL);
-	strcpy(re, s);
+	skipdotfile = (*s == '.');
+	if (!(re = malloc(strlen(s + 1) + 1))) error(NULL);
+	strcpy(re, s + 1);
 	return(re);
 }
 
@@ -300,6 +311,7 @@ char *re, *s;
 	cp2 = s;
 	bank1 = NULL;
 
+	if (skipdotfile && *s == '.') return(0);
 	while (cp1 && *cp1) {
 		switch (*cp1) {
 			case '^':
@@ -343,90 +355,98 @@ char *re, *s;
 # endif		/* USEREGCOMP */
 #endif		/* USERE_COMP */
 
-static char *completeuser(name)
+char *lastpointer(buf, n)
+char *buf;
+int n;
+{
+	int i;
+
+	for (i = 0; i < n; i++) buf += strlen(buf) + 1;
+	return(buf);
+}
+
+static int completeuser(name, matchno, matchp)
 char *name;
+int matchno;
+char **matchp;
 {
 	struct passwd *pwd;
-	char *cp, match[MAXNAMLEN + 1];
-	int i, len, matchno;
+	int len, ptr, size;
 
-	matchno = 0;
-	*match = '~';
+	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(name);
 	setpwent();
 	while (pwd =getpwent()) {
 		if (strncmp(name, pwd -> pw_name, len)) continue;
-		if (!matchno++) strcpy(match + 1, pwd -> pw_name);
-		else {
-			for (i = 0; match[i]; i++)
-				if (match[i + 1] != pwd -> pw_name[i]) break;
-			match[++i] = '\0';
-		}
+		ptr = size;
+		size += 1 + strlen(pwd -> pw_name) + 1 + 1;
+		*matchp = (*matchp) ? (char *)realloc(*matchp, size)
+			: (char *)malloc(size);
+		if (!*matchp) error(NULL);
+
+		*(*matchp + (ptr++)) = '~';
+		strcpy(*matchp + ptr, pwd -> pw_name);
+		strcat(*matchp + ptr, "/");
+		matchno++;
 	}
 	endpwent();
-	if (!matchno) return(NULL);
-	if (matchno == 1) strcat(match, "/");
-
-	if (!(cp = (char *)malloc(strlen(match) + 1))) error(NULL);
-	strcpy(cp, match);
-	return(cp);
+	return(matchno);
 }
 
-char *completepath(path, exe, matchno, prematch)
+int completepath(path, exe, matchno, matchp)
 char *path;
 int exe, matchno;
-char *prematch;
+char **matchp;
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat status;
-	char *cp, *ptr, *next, dir[MAXPATHLEN + 1], match[MAXNAMLEN + 1];
-	int i, len;
+	char *cp, *file, *next, dir[MAXPATHLEN + 1];
+	int len, ptr, size, dirflag;
 
-	if (matchno) strcpy(match, prematch);
+	size = lastpointer(*matchp, matchno) - *matchp;
 	next = NULL;
-	if (cp = strrchr(path, '/')) {
-		if (cp == path) strcpy(dir, "/");
+	if (file = strrchr(path, '/')) {
+		if (file == path) strcpy(dir, "/");
 		else {
-			strncpy(dir, path, cp - path);
-			dir[cp - path] = '\0';
+			strncpy(dir, path, file - path);
+			dir[file - path] = '\0';
 		}
-		cp++;
+		file++;
 	}
-	else if (*path == '~') return(completeuser(path + 1));
+	else if (*path == '~') return(completeuser(path + 1, matchno, matchp));
 	else if (exe) {
-		ptr = (char *)getenv("PATH");
-		if (!(next = strchr(ptr, ':'))) strcpy(dir, ptr);
+		cp = (char *)getenv("PATH");
+		if (!(next = strchr(cp, ':'))) strcpy(dir, cp);
 		else {
-			strncpy(dir, ptr, next - ptr);
-			dir[(next++) - ptr] = '\0';
+			strncpy(dir, cp, next - cp);
+			dir[(next++) - cp] = '\0';
 		}
-		cp = path;
+		file = path;
 	}
 	else {
 		strcpy(dir, ".");
-		cp = path;
+		file = path;
 	}
-	len = strlen(cp);
+	len = strlen(file);
 
-	if (!(dirp = opendir(dir))) return(NULL);
-	ptr = dir + strlen(dir);
-	strcpy(ptr++, "/");
-	while ((dp = readdir(dirp)) || next) {
+	if (!(dirp = Xopendir(dir))) return(matchno);
+	cp = dir + strlen(dir);
+	if (strcmp(dir, "/")) strcpy(cp++, "/");
+	while ((dp = Xreaddir(dirp)) || next) {
 		while (!dp && next) {
 			do {
-				if (dirp) closedir(dirp);
-				ptr = next;
-				if (!(next = strchr(ptr, ':')))
-					strcpy(dir, ptr);
+				if (dirp) Xclosedir(dirp);
+				cp = next;
+				if (!(next = strchr(cp, ':'))) strcpy(dir, cp);
 				else {
-					strncpy(dir, ptr, next - ptr);
-					dir[(next++) - ptr] = '\0';
+					strncpy(dir, cp, next - cp);
+					dir[(next++) - cp] = '\0';
 				}
-			} while (!(dirp = opendir(dir)) && next);
-			ptr = dir + strlen(dir);
-			strcpy(ptr++, "/");
-			dp = readdir(dirp);
+			} while (!(dirp = Xopendir(dir)) && next);
+			cp = dir + strlen(dir);
+			if (strcmp(dir, "/")) strcpy(cp++, "/");
+			dp = Xreaddir(dirp);
 		}
 		if (!dp) break;
 
@@ -434,33 +454,50 @@ char *prematch;
 			if (!strcmp(dp -> d_name, ".")
 			|| !strcmp(dp -> d_name, "..")) continue;
 		}
-		else if (strncmp(cp, dp -> d_name, len)) continue;
-		else if (exe) {
-			strcpy(ptr, dp -> d_name);
-			if (access(dir, X_OK) < 0
-			|| (stat(dir, &status) >= 0
-			&& (status.st_mode & S_IFMT) == S_IFDIR)) continue;
-		}
-		if (!matchno++) strcpy(match, dp -> d_name);
-		else {
-			for (i = 0; match[i]; i++)
-				if (match[i] != dp -> d_name[i]) break;
-			match[i] = '\0';
-		}
-	}
-	if (dirp) closedir(dirp);
-	if (!matchno) return(NULL);
+		if (strncmp(file, dp -> d_name, len)) continue;
 
-	len = cp - path;
-	strncpy(dir, path, len);
-	strcpy(dir + len, match);
-	if (matchno == 1) {
-		if (stat(dir, &status) == 0
-		&& (status.st_mode & S_IFMT) == S_IFDIR) strcat(dir, "/");
-		else strcat(dir, " ");
+		strcpy(cp, dp -> d_name);
+		dirflag = (Xstat(dir, &status) >= 0
+		&& (status.st_mode & S_IFMT) == S_IFDIR) ? 1 : 0;
+		if (exe && (dirflag || Xaccess(dir, X_OK) < 0)) continue;
+		ptr = size;
+		size += strlen(dp -> d_name) + dirflag + 1;
+		*matchp = (*matchp) ? (char *)realloc(*matchp, size)
+			: (char *)malloc(size);
+		if (!*matchp) error(NULL);
+
+		strcpy(*matchp + ptr, dp -> d_name);
+		if (dirflag) strcat(*matchp + ptr, "/");
+		matchno++;
+	}
+	if (dirp) Xclosedir(dirp);
+
+	return(matchno);
+}
+
+char *findcommon(strs, max)
+char *strs;
+int max;
+{
+	char *cp, common[MAXNAMLEN + 1];
+	int i, j;
+
+	cp = strs;
+	strcpy(common, cp);
+
+	for (i = 1; i < max; i++) {
+		cp += strlen(cp) + 1;
+		for (j = 0; common[j]; j++) if (common[j] != cp[j]) break;
+		common[j] = '\0';
+	}
+	if (max == 1
+	&& (cp = common + strlen(common) - 1) >= common && *cp != '/') {
+		*(++cp) = ' ';
+		*(++cp) = '\0';
 	}
 
-	if (!(cp = (char *)malloc(strlen(dir) + 1))) error(NULL);
-	strcpy(cp, dir);
+	if (!*common) return(NULL);
+	if (!(cp = (char *)malloc(strlen(common) + 1))) error(NULL);
+	strcpy(cp, common);
 	return(cp);
 }

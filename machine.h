@@ -281,12 +281,12 @@
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
-#define	USEFFSTYPE
 #define	USEMNTINFO
+#define	USEFFSTYPE
 #define	USERE_COMP
 #define	USESETENV
 #include <sys/param.h>
-# if (NetBSD1_0 <= 1)
+# if (NetBSD1_0 < 1)
 # define	USEFFSIZE
 # endif
 #endif
@@ -306,6 +306,18 @@
 # if (BSD4_4 != 1)
 # define	USEFFSIZE
 # endif
+#endif
+
+#if defined (__386BSD__) && defined (__BSD_NET2) && !defined (OSTYPE)
+#define	BSD43
+#define	OSTYPE			"BOW"
+#define	TARUSESPACE
+#define	TERMCAPLIB	"-ltermcap"
+#define	DECLERRLIST
+#define	USEMOUNTH
+#define	USEMNTINFO
+#define	USEREGCOMP
+#define	USESETENV
 #endif
 
 /****************************************************************
@@ -343,6 +355,7 @@
 /*	FREEBSD		/* 4.4BSD-Lite (JCC) or FreeBSD */
 /*	NETBSD		/* NetBSD */
 /*	BSDOS		/* BSD/OS (BSDI) */
+/*	BOW		/* BSD on Windows (ASCII) */
 
 /* #define CODEEUC	/* kanji code type is EUC */
 /* #define TARUSESPACE	/* tar(1) uses space to devide file mode from UID */

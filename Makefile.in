@@ -12,9 +12,11 @@ CHMOD	= chmod
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
+	dosdisk.c dosemu.c\
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c\
 	kanjicnv.c mkfuncno.c expfunc.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
+	dosdisk.h\
 	func.h functable.h
 
 DOC	= README HISTORY FAQ TECHKNOW Install
@@ -31,6 +33,7 @@ CC	= __CC__
 SED	= sed
 PROGRAM	= fd
 OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
+	dosdisk.o dosemu.o\
 	kanji.o file.o apply.o archive.o tree.o command.o browse.o
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
@@ -120,7 +123,7 @@ config: Configure expfunc.c
 # for programer's maintenance
 
 GETVER	= HEAD="`tail -1 version.h`";\
-	VER=`expr "$$HEAD" : '.*\([0-9][0-9]*\.[0-9a-z]*\).*'`
+	VER=`expr "$$HEAD" : '.*\([0-9][0-9]*\.[0-9a-z\-]*\).*'`
 
 tar: $(SOURCES)
 	($(GETVER);\
@@ -149,7 +152,8 @@ main.o: func.h kctype.h
 main.o: kanji.h funcno.h version.h 
 term.o: machine.h
 term.o: config.h term.h 
-pathname.o: machine.h config.h pathname.h 
+pathname.o: machine.h config.h 
+pathname.o: pathname.h
 libc.o: fd.h machine.h config.h 
 libc.o: types.h pathname.h term.h
 libc.o: func.h kctype.h
@@ -165,6 +169,12 @@ shell.o: kanji.h
 info.o: fd.h machine.h config.h 
 info.o: types.h pathname.h term.h
 info.o: funcno.h kanji.h 
+dosdisk.o: machine.h config.h 
+dosdisk.o: dosdisk.h
+dosemu.o: fd.h machine.h config.h 
+dosemu.o: types.h pathname.h
+dosemu.o: func.h 
+dosemu.o: dosdisk.h
 kanji.o: fd.h machine.h config.h 
 kanji.o: types.h pathname.h
 kanji.o: term.h func.h 

@@ -143,3 +143,6 @@ typedef struct _aliastable {
 #define	isdisplnk(n)		((n) & F_SYMLINK)
 #define	isdisptyp(n)		((n) & F_FILETYPE)
 #define	ishidedot(n)		((n) & F_DOTFILE)
+
+#define	QUOTE	('^' - '@')
+#define	C_DEL	'\177'
