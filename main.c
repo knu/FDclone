@@ -685,7 +685,7 @@ char *line;
 
 	for (i = 0; fdtype[i].name; i++);
 	if (i >= MAXDRIVEENTRY - 1) return(-1);
-	drive = (islower(*line)) ? *line + 'A' - 'a' : *line;
+	drive = toupper2(*line);
 	cp = skipspace(line + 2);
 	if (!*(tmp = geteostr(&cp))) {
 		free(tmp);

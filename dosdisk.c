@@ -54,9 +54,21 @@ extern int errno;
 			|| (0xe0 <= (c) && (c) <= 0xfc))
 #endif
 
-extern time_t timelocal2();
-
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
+
+#ifdef	FD
+extern int toupper2();
+extern int strcasecmp2();
+extern time_t timelocal2();
+#else
+#ifdef	USELEAPCNT
+#include <tzfile.h>
+#endif
+static int toupper2();
+static int strcasecmp2();
+static time_t timelocal2();
+static long gettimezone();
+#endif
 
 static int shiftcache();
 static int savecache();
@@ -78,8 +90,13 @@ static int clustfree();
 static int readbpb();
 static int opendev();
 static int closedev();
+static int checksum();
+static u_short uniencode();
+static u_short unidecode();
 static int transchar();
+static int detranschar();
 static int transname();
+static int cmpdospath();
 static char *getdosname();
 static char *putdosname();
 static u_short getdosmode();
@@ -88,11 +105,16 @@ static time_t getdostime();
 static u_char *putdostime();
 static int getdrive();
 static int parsepath();
-static int _dosreaddir();
-static dosDIR *splitpath();
+static int seekdent();
 static int readdent();
+static struct dirent *_dosreaddir();
+static struct dirent *finddir();
+static dosDIR *splitpath();
+static int getdent();
 static int writedent();
+static int expanddent();
 static int creatdent();
+static int unlinklfn();
 static int dosfilbuf();
 static int dosflsbuf();
 
@@ -111,7 +133,7 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
 #endif
-#if defined (NEWS_OS3) || defined (NEWS_OS4) || defined (NEWS_OS41)
+#if defined (NEWS_OS3) || defined (NEWS_OS4)
 # if defined (news800) || defined (news900) \
 || defined (news1800) || defined (news1900) || defined (news3800)
 	{'A', "/dev/rfh0a", 2, 18, 80},
@@ -212,7 +234,104 @@ static u_char cachedrive[SECTCACHESIZE];
 static long sectno[SECTCACHESIZE];
 static char *sectcache[SECTCACHESIZE];
 static int maxsectcache = 0;
+static long lfn_clust = -1;
+static u_short lfn_offset;
 
+
+#ifndef	FD
+static int toupper2(c)
+int c;
+{
+	return(islower(c) ? c - 'a' + 'A' : c);
+}
+
+static int strcasecmp2(s1, s2)
+char *s1, *s2;
+{
+	int c1, c2;
+
+	while ((c1 = toupper2(*s1)) == (c2 = toupper2(*(s2++))))
+		if (!*(s1++)) return(0);
+	return(c1 - c2);
+}
+
+static long gettimezone()
+{
+#ifdef	USELEAPCNT
+	struct tzhead buf;
+	FILE *fp;
+	char path[MAXPATHLEN + 1];
+#endif
+	long tz;
+#ifdef	HAVETIMEZONE
+	extern time_t timezone;
+
+	tzset();
+	tz = timezone;
+#else
+# ifdef	NOTMGMTOFF
+	struct timeval t_val;
+	struct timezone t_zone;
+
+	gettimeofday(&t_val, &t_zone);
+	tz = t_zone.tz_minuteswest * 60L;
+# else
+	tz = time(0);
+	tz = -(localtime(&tz) -> tm_gmtoff);
+# endif
+#endif
+#ifdef	USELEAPCNT
+	if (TZDEFAULT[0] == '/') strcpy(path, TZDEFAULT);
+	else {
+		strcpy(path, TZDIR);
+		strcat(path, "/");
+		strcat(path, TZDEFAULT);
+	}
+	if (fp = fopen(path, "r")) {
+		if (fread(&buf, sizeof(struct tzhead), 1, fp) == 1)
+			tz += *((long *)(buf.tzh_leapcnt));
+		fclose(fp);
+	}
+#endif
+	return(tz);
+}
+
+static time_t timelocal2(tm)
+struct tm *tm;
+{
+	int i, date, time;
+
+	if (tm -> tm_year < 1900) tm -> tm_year += 1900;
+
+	date = (tm -> tm_year - 1970) * 365;
+	date += ((tm -> tm_year - 1 - 1968) / 4)
+		- ((tm -> tm_year - 1 - 1900) / 100)
+		+ ((tm -> tm_year - 1 - 1600) / 400);
+	for (i = 1; i < tm -> tm_mon + 1; i++) {
+		switch (i) {
+			case 2:
+				if (!(tm -> tm_year % 4)
+				&& ((tm -> tm_year % 100)
+				|| !(tm -> tm_year % 400))) date++;
+				date += 28;
+				break;
+			case 4:
+			case 6:
+			case 9:
+			case 11:
+				date += 30;
+				break;
+			default:
+				date += 31;
+				break;
+		}
+	}
+	date += tm -> tm_mday - 1;
+	time = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
+
+	return(((time_t)date * 60 * 60 * 24) + (time_t)time + gettimezone());
+}
+#endif
 
 static int sectseek(devp, sect)
 devstat *devp;
@@ -600,7 +719,7 @@ int drive;
 	bpb_t bpb;
 	devstat dev;
 	char *cp;
-	int i, ret;
+	int i, ret, drv;
 
 	if (!drive) {
 		errno = ENODEV;
@@ -610,9 +729,10 @@ int drive;
 		errno = EMFILE;
 		return(-1);
 	}
+	drv = toupper2(drive);
 
 	for (i = maxdev - 1; i >= 0; i--) {
-		if (drive == (int)devlist[i].drive) {
+		if (drv == (int)devlist[i].drive) {
 			memcpy(&dev, &devlist[i], sizeof(devstat));
 			dev.flags |= F_DUPL;
 			dev.flags &= ~(F_CACHE | F_WRFAT);
@@ -623,7 +743,7 @@ int drive;
 	if (i < 0) {
 		cp = NULL;
 		for (i = 0; fdtype[i].name; i++) {
-			if (drive != (int)fdtype[i].drive) continue;
+			if (drv != (int)fdtype[i].drive) continue;
 			if (!cp || strcmp(cp, fdtype[i].name)) {
 				bpb.nfat = 0;
 				memset(&dev, 0, sizeof(devstat));
@@ -647,6 +767,8 @@ int drive;
 			return(-1);
 		}
 	}
+	if (islower(drive)) dev.flags |= F_VFAT;
+	else dev.flags &= ~F_VFAT;
 
 	memcpy(&devlist[maxdev], &dev, sizeof(devstat));
 	return(maxdev++);
@@ -710,7 +832,8 @@ int (*func)();
 	int i;
 
 	for (i = maxdev - 1; i >= 0; i--)
-		if (drive == (int)devlist[i].drive) return(DOSNOFILE + i);
+		if (toupper2(drive) == (int)devlist[i].drive)
+			return(DOSNOFILE + i);
 	if (func) (*func)();
 	return(opendev(drive));
 }
@@ -722,30 +845,98 @@ int dd;
 	return(closedev(dd));
 }
 
+static int checksum(name)
+char *name;
+{
+	int i, sum;
+
+	for (i = sum = 0; i < 8 + 3; i++) {
+		sum = (((sum & 0x01) << 7) | ((sum & 0xfe) >> 1));
+		sum += name[i];
+	}
+	return(sum & 0xff);
+}
+
+static u_short uniencode(c1, c2)
+u_char c1, c2;
+{
+	u_short kanji;
+
+	if (!c1) {
+		if (strchr(NOTINLFN, c2)) return('_');
+		if (c2 < 0x80) return(c2);
+		if (c2 > 0xa0 && c2 <= 0xdf) return(0xff00 | (c2 - 0x40));
+	}
+	else {
+		kanji = (c1 << 8) | c2;
+		if (kanji >= 0x8260 && kanji <= 0x8279)
+			return(0xff00 | (kanji - 0x8260 + 0x21));
+		if (kanji >= 0x8281 && kanji <= 0x829a)
+			return(0xff00 | (kanji - 0x8281 + 0x41));
+	}
+
+	return(0xff00);
+}
+
+static u_short unidecode(c1, c2)
+u_char c1, c2;
+{
+	switch (c1) {
+		case 0:
+			if (c2 < 0x80) return(c2);
+			break;
+		case 0xff:
+			if (c2 > 0x20 && c2 <= 0x3a) return(c2 + 0x8260 - 0x21);
+			if (c2 > 0x40 && c2 <= 0x5a) return(c2 + 0x8281 - 0x41);
+			if (c2 > 0x60 && c2 <= 0x9f) return(c2 + 0x40);
+			break;
+		default:
+			break;
+	}
+	return('?');
+}
+
 static int transchar(c)
 int c;
 {
-	if (islower(c)) return(c + 'A' - 'a');
 	if (c == '+') return('`');
 	if (c == ',') return('\'');
 	if (c == '[') return('&');
 	if (c == '.') return('$');
-	return(c);
+	if (strchr(NOTINLFN, c) || strchr(NOTINALIAS, c)) return('_');
+	return(toupper2(c));
+}
+
+static int detranschar(c)
+int c;
+{
+	if (c == '`') return('+');
+	if (c == '\'') return(',');
+	if (c == '&') return('[');
+	if (c == '$') return('.');
+	return(isupper(c) ? c + 'a' - 'A' : c);
 }
 
 static int transname(buf, path, len)
-u_char *buf, *path;
+char *buf, *path;
 int len;
 {
-	u_char *cp;
+	char *cp;
 	int i, j;
 
-	for (i = len - 1; i >= 0; i--) if (path[i] == '.') break;
+	if (len <= 0) len = strlen(path);
+	if (path[0] == '.' && (len == 1 || (len == 2 && path[1] == '.'))) {
+		strncpy(buf, path, len);
+		buf[len] = '\0';
+		return(len);
+	}
+
+	for (i = len - 1; i > 0; i--) if (path[i] == '.') break;
 	if (i <= 0) i = len;
 	cp = &path[i];
 
 	for (i = 0, j = 0; i < 8 && &path[j] < cp; i++, j++) {
-		if (!issjis1(path[j])) buf[i] = transchar(path[j]);
+		if (!issjis1((u_char)(path[j]))) buf[i] = transchar(path[j]);
 		else {
 			buf[i++] = path[j++];
 			buf[i] = path[j];
@@ -756,7 +947,8 @@ int len;
 		j = cp - path;
 		if (len - j > 3) len = j + 3;
 		for (; j < len; i++, j++) {
-			if (!issjis1(path[j])) buf[i] = transchar(path[j]);
+			if (!issjis1((u_char)(path[j])))
+				buf[i] = transchar(path[j]);
 			else {
 				buf[i++] = path[j++];
 				buf[i] = path[j];
@@ -765,6 +957,41 @@ int len;
 	}
 	buf[i] = '\0';
 	return(i);
+}
+
+static int cmpdospath(path1, path2, len, drive)
+char *path1, *path2;
+int len, drive;
+{
+	int i, c1, c2, kanji2;
+
+	kanji2 = 0;
+	if (len < 0) len = strlen(path1) + 1;
+	c1 = path1[0];
+	c2 = path2[0];
+	if (isupper(drive)) for (i = 0; i < len; i++) {
+		c1 = path1[i];
+		c2 = path2[i];
+		if (!c1 || !c2) break;
+		if (!kanji2 && c1 != '/' && c1 != '\\') {
+			c1 = transchar(c1);
+			c2 = transchar(c2);
+		}
+		if (c1 != c2) break;
+		if (issjis1((u_char)(path1[i]))) kanji2 = 1;
+	}
+	else for (i = 0; i < len; i++) {
+		c1 = path1[i];
+		c2 = path2[i];
+		if (!c1 || !c2) break;
+		if (!kanji2 && c1 != '/' && c1 != '\\') {
+			if (strchr(NOTINLFN, c1)) c1 = '_';
+			if (strchr(NOTINLFN, c2)) c2 = '_';
+		}
+		if (c1 != c2) break;
+		if (issjis1((u_char)(path1[i]))) kanji2 = 1;
+	}
+	return(c1 - c2);
 }
 
 static char *getdosname(buf, name, ext)
@@ -780,39 +1007,49 @@ char *buf, *name, *ext;
 		len += i;
 	}
 	buf[len] = '\0';
-	if (((u_char *)buf)[0] == 0x05) ((u_char *)buf)[0] = 0xe5;
+	if (buf[0] == 0x05) ((u_char *)buf)[0] = 0xe5;
 
 	return(buf);
 }
 
-static char *putdosname(buf, file)
-u_char *buf, *file;
+static char *putdosname(buf, file, vol)
+char *buf, *file;
+int vol;
 {
-	u_char *cp;
-	int i;
+	char *cp, num[9];
+	int i, j;
 
-	if ((cp = (u_char *)strrchr((char *)file, '.')) == file) cp = NULL;
+	if ((cp = strrchr(file, '.')) == file) cp = NULL;
+
 	for (i = 0; i < 8; i++) {
 		if (file == cp || !*file) buf[i] = ' ';
-		else if (!issjis1(*file)) buf[i] = transchar(*(file++));
+		else if (!issjis1((u_char)(*file)))
+			buf[i] = transchar(*(file++));
 		else {
 			buf[i++] = *(file++);
 			buf[i] = *(file++);
 		}
 	}
+	if (vol > 1 || (vol > 0 && *file)) {
+		sprintf(num, "%d", vol);
+		for (i = 7 - (int)strlen(num); i > 0; i--)
+			if (buf[i - 1] != ' ') break;
+		buf[i++] = '~';
+		for (j = 0; num[j]; j++) buf[i++] = num[j];
+	}
 	if (cp) cp++;
-	for (; i < 11; i++) {
+	for (i = 8; i < 11; i++) {
 		if (!cp || !*cp) buf[i] = ' ';
-		else if (!issjis1(*cp)) buf[i] = transchar(*(cp++));
+		else if (!issjis1((u_char)(*cp))) buf[i] = transchar(*(cp++));
 		else {
 			buf[i++] = *(cp++);
 			buf[i] = *(cp++);
 		}
 	}
 	buf[i] = '\0';
-	if (((u_char *)buf)[0] == 0xe5) ((u_char *)buf)[0] = 0x05;
+	if (((u_char *)buf)[0] == 0xe5) buf[0] = 0x05;
 
-	return((char *)buf);
+	return(buf);
 }
 
 static u_short getdosmode(attr)
@@ -905,7 +1142,7 @@ char *path;
 {
 	int i, drive;
 
-	if (islower(drive = *(path++))) drive += 'A' - 'a';
+	drive = *(path++);
 	if (!isalpha(drive) || *(path++) != ':') {
 		errno = ENOENT;
 		return(-1);
@@ -923,23 +1160,24 @@ char *path;
 }
 
 static int parsepath(buf, path, class)
-u_char *buf, *path;
+char *buf, *path;
 int class;
 {
-	u_char *cp;
+	char *cp;
 	int i, len, drive;
 
 	cp = buf;
 	if ((drive = getdrive(path)) < 0) return(-1);
+	i = toupper2(drive) - 'A';
 	path += 2;
-	if (*path != '/' && *path != '\\' && curdir[drive - 'A']) {
-		strcpy((char *)buf, curdir[drive - 'A']);
-		cp += strlen((char *)buf);
+	if (*path != '/' && *path != '\\' && curdir[i]) {
+		strcpy(buf, curdir[i]);
+		cp += strlen(buf);
 	}
 
 	while (*path) {
 		for (i = 0; path[i] && path[i] != '/' && path[i] != '\\'; i++)
-			if (issjis1(path[i])) i++;
+			if (issjis1((u_char)(path[i]))) i++;
 		if (class && !path[i]) {
 			*(cp++) = '/';
 			if (i == 1 && *path == '.') *(cp++) = '.';
@@ -948,8 +1186,8 @@ int class;
 				*(cp++) = '.';
 			}
 			else {
-				len = transname(cp, path, i);
-				cp += len;
+				strncpy(cp, path, i);
+				cp += i;
 			}
 		}
 		else if (!i || (i == 1 && *path == '.'));
@@ -959,8 +1197,8 @@ int class;
 		}
 		else {
 			*(cp++) = '/';
-			len = transname(cp, path, i);
-			cp += len;
+			strncpy(cp, path, i);
+			cp += i;
 		}
 		if (*(path += i)) path++;
 	}
@@ -978,7 +1216,7 @@ char *path;
 	struct dirent *dp;
 	dent_t *dentp;
 	cache_t *cache;
-	char *cp, *cachepath, tmp[13], buf[MAXPATHLEN + 1];
+	char *cp, *cachepath, *tmp, buf[MAXPATHLEN + 1];
 	int len, dd, drive;
 
 	if ((drive = parsepath(buf, path, 0)) < 0
@@ -1013,7 +1251,7 @@ char *path;
 
 	if (cp && (len = strlen(cp)) > 0) {
 		if (cp[len - 1] == '/') len--;
-		if (!strncmp(cp, path, len)
+		if (!cmpdospath(cp, path, len, drive)
 		&& (!path[len] || path[len] == '/')) {
 			xdirp -> dd_off = byte2word(cache -> dent.clust);
 			memcpy(devlist[dd].dircache, cache, sizeof(cache_t));
@@ -1027,25 +1265,19 @@ char *path;
 
 	while (*path) {
 		if (!(cp = strchr(path, '/'))) cp = path + strlen(path);
-		if (cp > path + 8 + 1 + 3) {
-			dosclosedir((DIR *)xdirp);
-			errno = ENAMETOOLONG;
-			return(NULL);
-		}
-		strncpy(tmp, path, cp - path);
-		tmp[cp - path] = '\0';
+		len = cp - path;
+		tmp = path;
 		path = (*cp) ? cp + 1 : cp;
-		if (!*tmp || !strcmp(tmp, ".")) continue;
+		if (!len || (len == 1 && *tmp == '.')) continue;
 
-		while (dp = dosreaddir((DIR *)xdirp))
-			if (!strcmp(tmp, dp -> d_name)) break;
-		if (!dp) {
+		if (!(dp = finddir(xdirp, tmp, len))) {
 			dosclosedir((DIR *)xdirp);
 			if (!errno) errno = ENOENT;
 			return(NULL);
 		}
 
 		dentp = (dent_t *)&(xdirp -> dd_buf[dp -> d_fileno]);
+		xdirp -> dd_top =
 		xdirp -> dd_off = byte2word(dentp -> clust);
 		xdirp -> dd_loc = 0;
 		cachepath += strlen(tmp);
@@ -1075,9 +1307,34 @@ DIR *dirp;
 	return(ret);
 }
 
-static int _dosreaddir(xdirp, dentp)
+static int seekdent(xdirp, dentp, clust, offset)
+dosDIR *xdirp;
+long clust;
+u_short offset;
+{
+	long next;
+
+	if (xdirp -> dd_id != -1) {
+		errno = EINVAL;
+		return(-1);
+	}
+	xdirp -> dd_off = clust;
+	if ((next = clustread(&devlist[xdirp -> dd_fd],
+	xdirp -> dd_buf, xdirp -> dd_off)) < 0) return(-1);
+	dd2clust(xdirp -> dd_fd) = xdirp -> dd_off;
+	xdirp -> dd_off = next;
+	dd2offset(xdirp -> dd_fd) = xdirp -> dd_loc = offset;
+	if (dentp) memcpy(dentp, (dent_t *)&(xdirp -> dd_buf[xdirp -> dd_loc]),
+		sizeof(dent_t));
+	xdirp -> dd_loc += DOSDIRENT;
+	if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0;
+	return(0);
+}
+
+static int readdent(xdirp, dentp, force)
 dosDIR *xdirp;
 dent_t *dentp;
+int force;
 {
 	long next;
 
@@ -1095,40 +1352,97 @@ dent_t *dentp;
 	dd2offset(xdirp -> dd_fd) = xdirp -> dd_loc;
 	memcpy(dentp, (dent_t *)&(xdirp -> dd_buf[xdirp -> dd_loc]),
 		sizeof(dent_t));
-	if (dentp -> name[0]) {
+	if (force || dentp -> name[0]) {
 		xdirp -> dd_loc += DOSDIRENT;
 		if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0;
 	}
 	return(0);
 }
 
-struct dirent *dosreaddir(dirp)
-DIR *dirp;
+static struct dirent *_dosreaddir(xdirp, all)
+dosDIR *xdirp;
+int all;
 {
-	dosDIR *xdirp;
+	dent_t *dentp;
 #ifdef	NODNAMLEN
 	static char d[sizeof(struct dirent) + MAXNAMLEN];
 #else
 	static struct dirent d;
 #endif
 	struct dirent *dp;
-	char *cp;
-	long loc;
+	char *cp, buf[LFNENTSIZ * 2 + 1];
+	long loc, clust;
+	u_short ch, offset;
+	int i, j, cnt, sum;
 
 	dp = (struct dirent *)(&d);
-	xdirp = (dosDIR *)dirp;
+	dentp = dd2dentp(xdirp -> dd_fd);
 	errno = 0;
+	dp -> d_name[0] = '\0';
+	dp -> d_reclen = DOSDIRENT;
+	cnt = -1;
 	for (;;) {
 		loc = xdirp -> dd_loc;
-		if (_dosreaddir(xdirp, dd2dentp(xdirp -> dd_fd)) < 0)
-			return(NULL);
-		if (!(dd2dentp(xdirp -> dd_fd) -> name[0])) return(NULL);
-		else if (dd2dentp(xdirp -> dd_fd) -> name[0] != 0xe5) break;
+		if (readdent(xdirp, dentp, 0) < 0) return(NULL);
+		if (!(dentp -> name[0])) return(NULL);
+		if (dentp -> name[0] == 0xe5) {
+			dp -> d_name[0] = '\0';
+			dp -> d_reclen = DOSDIRENT;
+			cnt = -1;
+			continue;
+		}
+		if (dentp -> attr != DS_IFLFN) break;
+
+		cp = (char *)dentp;
+		if (cnt < 0) {
+			if ((cnt = *cp - '@') < 0) continue;
+			lfn_clust = dd2clust(xdirp -> dd_fd);
+			lfn_offset = dd2offset(xdirp -> dd_fd);
+			sum = dentp -> dummy[1];
+		}
+		else if (!cnt || cnt != *cp + 1 || sum != dentp -> dummy[1]) {
+			cnt = -1;
+			dp -> d_name[0] = '\0';
+			dp -> d_reclen = DOSDIRENT;
+			continue;
+		}
+		else cnt--;
+
+		if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) continue;
+
+		dp -> d_reclen += DOSDIRENT;
+		for (i = 1, j = 0; i < DOSDIRENT; i += 2, j++) {
+			if (cp + i == (char *)&(dentp -> attr)) i += 3;
+			else if (cp + i == (char *)(dentp -> clust)) i += 2;
+			if (!(ch = unidecode(cp[i + 1], cp[i]))) break;
+			if (ch & 0xff00) buf[j++] = (ch >> 8) & 0xff;
+			buf[j] = ch & 0xff;
+		}
+		i = strlen(dp -> d_name);
+		if (i + j > MAXNAMLEN && (j = MAXNAMLEN - i) < 0) j = 0;
+		buf[j] = '\0';
+		if (j > 0) {
+			for (i = strlen(dp -> d_name); i >= 0; i--)
+				dp -> d_name[i + j] = dp -> d_name[i];
+			memcpy(dp -> d_name, buf, j);
+		}
+		clust = xdirp -> dd_off;
+		offset = xdirp -> dd_loc;
 	}
 	dp -> d_fileno = loc;
-	dp -> d_reclen = DOSDIRENT;
-	getdosname(dp -> d_name, dd2dentp(xdirp -> dd_fd) -> name,
-		dd2dentp(xdirp -> dd_fd) -> ext);
+	if (cnt != 1) dp -> d_name[0] = '\0';
+	else if (sum != checksum(dd2dentp(xdirp -> dd_fd) -> name)) {
+		cnt = -1;
+		dp -> d_name[0] = '\0';
+	}
+	if (cnt <= 0) lfn_clust = -1;
+	if (!dp -> d_name[0])
+		getdosname(dp -> d_name, dd2dentp(xdirp -> dd_fd) -> name,
+			dd2dentp(xdirp -> dd_fd) -> ext);
+	else if (all) {
+		xdirp -> dd_off = clust;
+		xdirp -> dd_loc = offset;
+	}
 	if (cp = strrchr(dd2path(xdirp -> dd_fd), '/')) cp++;
 	else cp = dd2path(xdirp -> dd_fd);
 	strcpy(cp, dp -> d_name);
@@ -1136,32 +1450,83 @@ DIR *dirp;
 	return(dp);
 }
 
+struct dirent *dosreaddir(dirp)
+DIR *dirp;
+{
+	dosDIR *xdirp;
+	struct dirent *dp;
+	int i;
+
+	xdirp = (dosDIR *)dirp;
+	if (!(dp = _dosreaddir(xdirp, 0))) return(NULL);
+	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
+		for (i = 0; dp -> d_name[i]; i++) {
+			if (issjis1((u_char)(dp -> d_name[i]))) i++;
+			else dp -> d_name[i] = detranschar(dp -> d_name[i]);
+		}
+	}
+	return(dp);
+}
+
+static struct dirent *finddir(xdirp, fname, len)
+dosDIR *xdirp;
+char *fname;
+int len;
+{
+	struct dirent *dp;
+	char tmp[8 + 1 + 3 + 1];
+
+	if (len <= 0) len = strlen(fname);
+	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
+		while (dp = _dosreaddir(xdirp, 1))
+			if (!strncmp(fname, dp -> d_name, len)
+			&& !(dp -> d_name[len])) return(dp);
+	}
+	else {
+		transname(tmp, fname, len);
+		while (dp = _dosreaddir(xdirp, 1))
+			if (!strcmp(tmp, dp -> d_name)) return(dp);
+	}
+	return(NULL);
+}
+
+int dosrewinddir(dirp)
+DIR *dirp;
+{
+	dosDIR *xdirp;
+
+	xdirp = (dosDIR *)dirp;
+	if (xdirp -> dd_id != -1) return;
+	xdirp -> dd_loc = 0;
+	xdirp -> dd_off = xdirp -> dd_top;
+}
+
 int doschdir(path)
 char *path;
 {
 	DIR *dirp;
 	char *tmp, buf[MAXPATHLEN + 1];
-	int drive;
+	int drv, drive;
 
 	buf[1] = ':';
 	if ((drive = parsepath(buf + 2, path, 0)) < 0) return(-1);
 	buf[0] = drive;
+	drv = toupper2(drive);
 
 	if (!(dirp = dosopendir(buf))) {
 		if ((path[2] != '/' && path[2] != '\\')
-		|| !(tmp = curdir[drive - 'A'])) return(-1);
-		curdir[drive - 'A'] = NULL;
-		if (!(dirp = dosopendir(buf))) {
-			curdir[drive - 'A'] = tmp;
-			return(-1);
-		}
-		free(tmp);
+		|| !(tmp = curdir[drv - 'A'])) return(-1);
+		curdir[drv - 'A'] = NULL;
+		dirp = dosopendir(buf);
+		curdir[drv - 'A'] = tmp;
+		if (!dirp) return(-1);
 	}
 	dosclosedir(dirp);
 
-	if (curdir[drive - 'A']) free(curdir[drive - 'A']);
-	curdir[drive - 'A'] = (char *)malloc(strlen(buf + 2) + 1);
-	strcpy(curdir[drive - 'A'], buf + 2);
+	if (!(tmp = (char *)malloc(strlen(buf + 2) + 1))) return(-1);
+	if (curdir[drv - 'A']) free(curdir[drv - 'A']);
+	curdir[drv - 'A'] = tmp;
+	strcpy(curdir[drv - 'A'], buf + 2);
 	lastdrive = drive;
 	return(0);
 }
@@ -1170,38 +1535,43 @@ char *path;
 char *dosgetwd(pathname)
 char *pathname;
 {
+	int i;
 	int size = MAXPATHLEN;
 #else
 char *dosgetcwd(pathname, size)
 char *pathname;
 int size;
 {
+	int i;
+
 	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
 #endif
-	if (lastdrive < 0 || !curdir[lastdrive - 'A']) {
+
+	i = toupper2(lastdrive) - 'A';
+	if (lastdrive < 0 || !curdir[i]) {
 		errno = EFAULT;
 		return(NULL);
 	}
 
-	if (strlen(curdir[lastdrive - 'A']) > size) {
+	if (strlen(curdir[i]) > size) {
 		errno = ERANGE;
 		return(NULL);
 	}
 	pathname[0] = lastdrive;
 	pathname[1] = ':';
-	strcpy(pathname + 2, curdir[lastdrive - 'A']);
+	strcpy(pathname + 2, curdir[i]);
 	return(pathname);
 }
 
 static dosDIR *splitpath(pathp)
 char **pathp;
 {
-	u_char dir[MAXPATHLEN + 1];
+	char dir[MAXPATHLEN + 1];
 	int i, j;
 
-	strcpy((char *)dir, *pathp);
+	strcpy(dir, *pathp);
 	for (i = 1, j = 2; dir[j]; j++) {
-		if (issjis1(dir[j])) j++;
+		if (issjis1((u_char)(dir[j]))) j++;
 		else if (dir[j] == '/' || dir[j] == '\\') i = j;
 	}
 
@@ -1212,7 +1582,7 @@ char **pathp;
 	return((dosDIR *)dosopendir(dir));
 }
 
-static int readdent(path, ddp)
+static int getdent(path, ddp)
 char *path;
 int *ddp;
 {
@@ -1223,9 +1593,9 @@ int *ddp;
 
 	buf[1] = ':';
 	if ((drive = parsepath(buf + 2, path, 1)) < 0
-	|| (dd = opendev(drive)) < 0) return(NULL);
-	if (devlist[dd].dircache && !strcmp(dd2path(dd), buf + 2))
-		return(dd);
+	|| (dd = opendev(drive)) < 0) return(-1);
+	if (devlist[dd].dircache
+	&& !cmpdospath(dd2path(dd), buf + 3, -1, drive)) return(dd);
 	buf[0] = drive;
 
 	path = buf;
@@ -1249,9 +1619,7 @@ int *ddp;
 		dd2dentp(dd) -> attr |= DS_IFDIR;
 		return(dd);
 	}
-	while (dp = dosreaddir((DIR *)xdirp))
-		if (!strcmp(path, dp -> d_name)) break;
-	if (!dp) {
+	if (!(dp = finddir(xdirp, path, 0))) {
 		dosclosedir((DIR *)xdirp);
 		if (ddp && !errno) *ddp = dd;
 		else closedev(dd);
@@ -1290,14 +1658,33 @@ int dd;
 	return(ret);
 }
 
+static int expanddent(dd)
+int dd;
+{
+	long prev;
+
+	prev = dd2clust(dd);
+	if (!prev || prev > 0xffff) {
+		errno = ENOSPC;
+		return(-1);
+	}
+	if ((dd2clust(dd) = clustexpand(&devlist[dd], prev, 1)) < 0) return(-1);
+	memset(dd2dentp(dd), 0, sizeof(dent_t));
+	dd2offset(dd) = 0;
+	return(0);
+}
+
 static int creatdent(path, mode)
 char *path;
 int mode;
 {
 	dosDIR *xdirp;
-	char *file, tmp[13];
-	long prev;
-	int ret;
+	dent_t *dentp;
+	u_char *cp, longfname[DOSMAXNAMLEN + 1];
+	char *file, tmp[8 + 1 + 3 + 1], fname[8 + 3];
+	long clust;
+	u_short uni, offset;
+	int i, j, n, len, cnt, sum, ret;
 
 	file = path;
 	if (!(xdirp = splitpath(&file))) {
@@ -1309,44 +1696,106 @@ int mode;
 		errno = EEXIST;
 		return(-1);
 	}
+	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
+		n = 0;
+		cnt = 1;
+	}
+	else {
+		n = 1;
+		for (i = j = 0; file[i]; i++, j += 2) {
+			if (!issjis1((u_char)(file[i])))
+				uni = uniencode(0, file[i]);
+			else {
+				uni = uniencode(file[i], file[i + 1]);
+				i++;
+			}
+			longfname[j] = uni & 0xff;
+			longfname[j + 1] = (uni >> 8) & 0xff;
+		}
+		cnt = j / (LFNENTSIZ * 2) + 2;
+		longfname[j] = longfname[j + 1] = '\0';
+		len = j + 2;
+	}
+
+	dentp = dd2dentp(xdirp -> dd_fd);
+	putdosname(fname, file, n);
+	if (!n || !strncmp(getdosname(tmp, fname, fname + 8), file, 8 + 3))
+		cnt = 1;
+	else sum = checksum(fname);
+
+	i = j = 0;
+	clust = -1;
 	for (;;) {
-		if (_dosreaddir(xdirp, dd2dentp(xdirp -> dd_fd)) < 0) {
-			if (errno) {
+		if (readdent(xdirp, dentp, 1) < 0) {
+			if (clust >= 0) break;
+			if (errno || expanddent(xdirp -> dd_fd) < 0) {
 				dosclosedir((DIR *)xdirp);
 				return(-1);
 			}
-			prev = dd2clust(xdirp -> dd_fd);
-			if (!prev || prev > 0xffff) {
-				dosclosedir((DIR *)xdirp);
-				errno = ENOSPC;
-				return(-1);
-			}
-			dd2clust(xdirp -> dd_fd) =
-				clustexpand(&devlist[xdirp -> dd_fd], prev, 1);
-			if (dd2clust(xdirp -> dd_fd) < 0) {
-				dosclosedir((DIR *)xdirp);
-				return(-1);
-			}
-			memset(dd2dentp(xdirp -> dd_fd), 0, sizeof(dent_t));
-			dd2offset(xdirp -> dd_fd) = 0;
 			break;
 		}
-		if (!(dd2dentp(xdirp -> dd_fd) -> name[0])
-		|| dd2dentp(xdirp -> dd_fd) -> name[0] == 0xe5) break;
+		if (!(dentp -> name[0])) break;
+		if (dentp -> name[0] == 0xe5) {
+			i++;
+			if (clust < 0) {
+				clust = dd2clust(xdirp -> dd_fd);
+				offset = dd2offset(xdirp -> dd_fd);
+			}
+			continue;
+		}
+		if (j < i) j = i;
+		if (j < cnt) clust = -1;
+		i = 0;
+		if (dentp -> attr == DS_IFLFN) continue;
 
-		getdosname(tmp, dd2dentp(xdirp -> dd_fd) -> name,
-			dd2dentp(xdirp -> dd_fd) -> ext);
-		if (!strcmp(file, tmp)) {
+		if (!strncmp(dentp -> name, fname, 8 + 3)) {
+			if (!n) {
+				dosclosedir((DIR *)xdirp);
+				errno = EEXIST;
+				return(-1);
+			}
+			n++;
+			putdosname(fname, file, n);
+			sum = checksum(fname);
+			i = j = 0;
+			clust = -1;
+			dosrewinddir((DIR *)xdirp);
+		}
+	}
+
+	if (clust >= 0 && seekdent(xdirp, NULL, clust, offset) < 0) {
+		dosclosedir((DIR *)xdirp);
+		return(-1);
+	}
+	cp = (u_char *)dentp;
+	while (--cnt > 0) {
+		memset(dentp, 0, sizeof(dent_t));
+		cp[0] = cnt;
+		n = (cnt - 1) * (LFNENTSIZ * 2);
+		if (n + (LFNENTSIZ * 2) >= len) cp[0] += '@';
+		dentp -> dummy[1] = sum;
+		dentp -> attr = DS_IFLFN;
+		for (i = 1, j = 0; i < DOSDIRENT; i += 2, j += 2) {
+			if (cp + i == (u_char *)&(dentp -> attr)) i += 3;
+			else if (cp + i == (u_char *)(dentp -> clust)) i += 2;
+			if (n + j >= len) cp[i] = cp[i + 1] = (char)0xff;
+			else {
+				cp[i] = longfname[n + j];
+				cp[i + 1] = longfname[n + j + 1];
+			}
+		}
+		if (writedent(xdirp -> dd_fd) < 0
+		|| (readdent(xdirp, dentp, 1) < 0
+		&& (errno || expanddent(xdirp -> dd_fd) < 0))) {
 			dosclosedir((DIR *)xdirp);
-			errno = EEXIST;
 			return(-1);
 		}
 	}
 
-	memset(dd2dentp(xdirp -> dd_fd), 0, sizeof(dent_t));
-	putdosname(dd2dentp(xdirp -> dd_fd) -> name, file);
-	dd2dentp(xdirp -> dd_fd) -> attr = putdosmode(mode);
-	putdostime(dd2dentp(xdirp -> dd_fd) -> time, -1);
+	memset(dentp, 0, sizeof(dent_t));
+	memcpy(dentp -> name, fname, 8 + 3);
+	dentp -> attr = putdosmode(mode);
+	putdostime(dentp -> time, -1);
 	ret = (writedent(xdirp -> dd_fd) < 0
 	|| writefat(&devlist[xdirp -> dd_fd]) < 0) ? -1 : xdirp -> dd_fd;
 	free(xdirp -> dd_buf);
@@ -1354,14 +1803,53 @@ int mode;
 	return(ret);
 }
 
+static int unlinklfn(dd, clust, offset, sum)
+int dd;
+long clust;
+u_short offset;
+int sum;
+{
+	dosDIR xdir;
+	struct dirent *dp;
+	long dupclust;
+	u_short dupoffset;
+	int i;
+
+	if (clust < 0) return(0);
+	dupclust = dd2clust(dd);
+	dupoffset = dd2offset(dd);
+	sum &= 0xff;
+	xdir.dd_id = -1;
+	xdir.dd_fd = dd;
+	xdir.dd_loc = 0;
+	xdir.dd_size = (devlist[dd].clustsize) * (devlist[dd].sectsize);
+	xdir.dd_top =
+	xdir.dd_off = clust;
+	if (!(xdir.dd_buf = (char *)malloc(xdir.dd_size))) return(-1);
+
+	seekdent(&xdir, dd2dentp(dd), clust, offset);
+	*(dd2dentp(dd) -> name) = 0xe5;
+	writedent(dd);
+	while (readdent(&xdir, dd2dentp(dd), 0) >= 0) {
+		if (!dd2dentp(dd) -> name[0] || dd2dentp(dd) -> name[0] == 0xe5
+		|| (dd2clust(dd) == dupclust && dd2offset(dd) == dupoffset)
+		|| dd2dentp(dd) -> attr != 0x0f
+		|| dd2dentp(dd) -> dummy[1] != sum) break;
+		*(dd2dentp(dd) -> name) = 0xe5;
+		writedent(dd);
+	}
+	free(xdir.dd_buf);
+	return(0);
+}
+
 int dosstat(path, buf)
 char *path;
 struct stat *buf;
 {
-	char *cp, ext[4];
+	char *cp;
 	int dd;
 
-	if ((dd = readdent(path, NULL)) < 0) return(-1);
+	if ((dd = getdent(path, NULL)) < 0) return(-1);
 	buf -> st_dev = dd;
 	buf -> st_ino = byte2word(dd2dentp(dd) -> clust);
 	buf -> st_mode = getdosmode(dd2dentp(dd) -> attr);
@@ -1378,10 +1866,8 @@ struct stat *buf;
 
 	if ((buf -> st_mode & S_IFMT) == S_IFDIR) buf -> st_mode |= S_IEXEC_ALL;
 	else if ((cp = strrchr(path, '.')) && strlen(++cp) == 3) {
-		strcpy(ext, cp);
-		for (cp = ext; *cp; cp++) if (islower(*cp)) (*cp) += 'A' - 'a';
-		if (!strcmp(ext, "BAT") || !strcmp(ext, "COM")
-		|| !strcmp(ext, "EXE")) buf -> st_mode |= S_IEXEC_ALL;
+		if (!strcasecmp2(cp, "BAT") || !strcasecmp2(cp, "COM")
+		|| !strcasecmp2(cp, "EXE")) buf -> st_mode |= S_IEXEC_ALL;
 	}
 	return(0);
 }
@@ -1433,7 +1919,7 @@ int mode;
 {
 	int dd, ret;
 
-	if ((dd = readdent(path, NULL)) < 0) return(-1);
+	if ((dd = getdent(path, NULL)) < 0) return(-1);
 	dd2dentp(dd) -> attr = putdosmode(mode);
 	ret = (writedent(dd) < 0);
 	closedev(dd);
@@ -1455,7 +1941,7 @@ struct timeval tvp[2];
 #endif
 	int dd, ret;
 
-	if ((dd = readdent(path, NULL)) < 0) return(-1);
+	if ((dd = getdent(path, NULL)) < 0) return(-1);
 	putdostime(dd2dentp(dd) -> time, clock);
 	ret = (writedent(dd) < 0);
 	closedev(dd);
@@ -1465,16 +1951,18 @@ struct timeval tvp[2];
 int dosunlink(path)
 char *path;
 {
-	int dd, ret;
+	int dd, sum, ret;
 
-	if ((dd = readdent(path, NULL)) < 0) return(-1);
+	if ((dd = getdent(path, NULL)) < 0) return(-1);
 	if (dd2dentp(dd) -> attr & DS_IFDIR) {
 		errno = EPERM;
 		return(-1);
 	}
+	sum = checksum(dd2dentp(dd) -> name);
 	*(dd2dentp(dd) -> name) = 0xe5;
 	ret = (writedent(dd) < 0
 	|| clustfree(&devlist[dd], byte2word(dd2dentp(dd) -> clust)) < 0
+	|| unlinklfn(dd, lfn_clust, lfn_offset, sum) < 0
 	|| writefat(&devlist[dd]) < 0) ? -1 : 0;
 	closedev(dd);
 	return(ret);
@@ -1484,17 +1972,22 @@ int dosrename(from, to)
 char *from, *to;
 {
 	char buf[MAXPATHLEN + 1];
-	int i, dd, fd, ret;
+	long clust;
+	u_short offset;
+	int i, dd, fd, sum, ret;
 
 	if ((i = parsepath(buf, to, 0)) < 0) return(-1);
-	if (i != getdrive(from)) {
+	if ((i & 027) != (getdrive(from) & 027)) {
 		errno = EXDEV;
 		return(-1);
 	}
-	if ((dd = readdent(from, NULL)) < 0) return(-1);
-	
+	if ((dd = getdent(from, NULL)) < 0) return(-1);
+
+	clust = lfn_clust;
+	offset = lfn_offset;
+
 	i = strlen(dd2path(dd));
-	if (!strncmp(dd2path(dd), buf + 1, i)
+	if (!cmpdospath(dd2path(dd), buf + 1, i, *from)
 	&& (!buf[i + 1] || buf[i + 1] == '/')) {
 		closedev(dd);
 		errno = EINVAL;
@@ -1504,6 +1997,7 @@ char *from, *to;
 		closedev(dd);
 		return (-1);
 	}
+	sum = checksum(dd2dentp(dd) -> name);
 	memcpy(&(fd2dentp(fd) -> attr) , &(dd2dentp(dd) -> attr),
 		sizeof(dent_t) - (8 + 3));
 	*(dd2dentp(dd) -> name) = 0xe5;
@@ -1515,6 +2009,7 @@ char *from, *to;
 	fd2offset(fd) = dosflist[fd]._offset;
 
 	ret = (writedent(dosflist[fd]._file) < 0 || writedent(dd) < 0
+	|| unlinklfn(dd, clust, offset, sum) < 0
 	|| writefat(&devlist[dd]) < 0) ? -1 : 0;
 	closedev(dosflist[fd]._file);
 	closedev(dd);
@@ -1533,7 +2028,7 @@ int flags, mode;
 		return(-1);
 	}
 
-	if ((dd = readdent(path, &dummy)) < 0) {
+	if ((dd = getdent(path, &dummy)) < 0) {
 		if (errno != ENOENT || dummy < 0 || !(flags & O_CREAT)
 		|| (dd = creatdent(path, mode)) < 0) {
 			if (dummy >= 0) closedev(dummy);
@@ -1631,7 +2126,7 @@ int fd;
 			(dosflist[fd]._size >> 16) & 0xff;
 		dosflist[fd]._dent.size_h[1] =
 			(dosflist[fd]._size >> 24) & 0xff;
-		
+
 		if (!(dosflist[fd]._dent.attr & DS_IFDIR))
 			putdostime(dosflist[fd]._dent.time, -1);
 		memcpy(fd2dentp(fd), &(dosflist[fd]._dent), sizeof(dent_t));
@@ -1648,7 +2143,8 @@ int fd;
 static int dosfilbuf(fd, wrt)
 int fd, wrt;
 {
-	int size, new, prev;
+	long new, prev;
+	int size;
 
 	size = (wrt) ? dosflist[fd]._bufsize :
 		dosflist[fd]._size - dosflist[fd]._loc;
@@ -1822,7 +2318,7 @@ int mode;
 		return(-1);
 	}
 	dent[0].clust[0] = clust & 0xff;
-	dent[0].clust[1] = (clust << 8) & 0xff;
+	dent[0].clust[1] = (clust >> 8) & 0xff;
 
 	memcpy(&dent[1], &(dosflist[fd]._dent), sizeof(dent_t));
 	memset(dent[1].name, ' ', 8 + 3);
@@ -1830,7 +2326,7 @@ int mode;
 	dent[1].name[1] = '.';
 	clust = fd2clust(fd);
 	dent[1].clust[0] = clust & 0xff;
-	dent[1].clust[1] = (clust << 8) & 0xff;
+	dent[1].clust[1] = (clust >> 8) & 0xff;
 
 	if (doswrite(fd + DOSFDOFFSET, &dent[0], sizeof(dent_t) * 2) < 0) {
 		tmp = errno;
@@ -1853,12 +2349,17 @@ char *path;
 	dosDIR *xdirp;
 	struct dirent *dp;
 	cache_t cache;
-	int ret;
+	long clust;
+	u_short offset;
+	int sum, ret;
 
 	if (!(xdirp = (dosDIR *)dosopendir(path))) return(-1);
 	memcpy(&cache, devlist[xdirp -> dd_fd].dircache, sizeof(cache_t));
 
-	while (dp = dosreaddir((DIR *)xdirp))
+	clust = lfn_clust;
+	offset = lfn_offset;
+
+	while (dp = _dosreaddir((DIR *)xdirp, 0))
 		if (strcmp(dp -> d_name, ".") && strcmp(dp -> d_name, "..")) {
 			dosclosedir((DIR *)xdirp);
 			errno = ENOTEMPTY;
@@ -1868,10 +2369,12 @@ char *path;
 	else {
 		memcpy(devlist[xdirp -> dd_fd].dircache, &cache,
 			sizeof(cache_t));
+		sum = checksum(dd2dentp(xdirp -> dd_fd) -> name);
 		*(dd2dentp(xdirp -> dd_fd) -> name) = 0xe5;
 		ret = (writedent(xdirp -> dd_fd) < 0
 		|| clustfree(&devlist[xdirp -> dd_fd],
 			byte2word(dd2dentp(xdirp -> dd_fd) -> clust)) < 0
+		|| unlinklfn(xdirp -> dd_fd, clust, offset, sum) < 0
 		|| writefat(&devlist[xdirp -> dd_fd]) < 0) ? -1 : 0;
 	}
 	dosclosedir((DIR *)xdirp);

@@ -11,6 +11,11 @@
 #define	SECTSIZE	512
 #define	MAX12BIT	(0xff0 - 0x002)
 
+#define	NOTINLFN	"\\/:*?\"<>|"
+#define	NOTINALIAS	" +,;=[]"
+#define	LFNENTSIZ	13
+#define	DOSMAXNAMLEN	255
+
 #define	MAXDRIVEENTRY	32
 #define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
 #ifdef	NOFILE
@@ -78,6 +83,7 @@ typedef struct _dent_t {
 #define	DS_IHIDDEN	002
 #define	DS_IFSYSTEM	004
 #define	DS_IFLABEL	010
+#define	DS_IFLFN	017
 #define	DS_IFDIR	020
 #define	DS_IARCHIVE	040
 
@@ -116,6 +122,7 @@ typedef struct _devstat {
 #define	F_DUPL	010
 #define	F_CACHE	020
 #define	F_WRFAT	040
+#define	F_VFAT	0100
 
 #define	ch_name	fatbuf
 #define	ch_head	clustsize
@@ -162,7 +169,7 @@ typedef struct _dosdirdesc {
 	int dd_fd;
 	long dd_loc;
 	long dd_size;
-	long dd_bsize;
+	long dd_top;
 	long dd_off;
 	char *dd_buf;
 } dosDIR;
@@ -172,6 +179,7 @@ extern int shutdrv();
 extern DIR *dosopendir();
 extern int dosclosedir();
 extern struct dirent *dosreaddir();
+extern int dosrewinddir();
 extern int doschdir();
 #ifdef	USEGETWD
 extern char *dosgetwd();
@@ -195,6 +203,7 @@ extern int dosopen();
 extern int dosclose();
 extern int dosread();
 extern int doswrite();
+extern int doslseek();
 extern int dosmkdir();
 extern int dosrmdir();
 extern int stream2fd();

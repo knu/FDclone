@@ -58,7 +58,13 @@ int mode;
 	char *cp, *name, dir[MAXPATHLEN + 1], *str[4];
 	int val[4];
 
-	if (dospath(path, NULL)) return(Xaccess(path, mode));
+	if (dospath(path, NULL)) {
+		if (Xaccess(path, mode) < 0) {
+			warning(-1, path);
+			return(-1);
+		}
+		return(0);
+	}
 	if (lstat(path, &status) < 0) error(path);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
 
@@ -82,7 +88,7 @@ int mode;
 			putterm(l_clear);
 			putch('[');
 			cp = DELPM_K;
-			kanjiputs2(path, n_column - strlen(cp) - 1, -1);
+			kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
 			kanjiputs(cp);
 			str[0] = ANYES_K;
 			str[1] = ANNO_K;
@@ -159,7 +165,7 @@ char *path, *resolved;
 		cp = strrchr(resolved, '/');
 		if (drive = _dospath(resolved)) {
 			if (cp && cp != &resolved[2]) *cp = '\0';
-			else sprintf(resolved, "%c:/", toupper2(drive));
+			else sprintf(resolved, "%c:/", drive);
 		}
 		else {
 			if (cp && cp != resolved) *cp = '\0';
@@ -167,7 +173,7 @@ char *path, *resolved;
 		}
 	}
 	else {
-		if (*resolved && resolved[strlen(resolved) - 1] != '/')
+		if (*resolved && resolved[(int)strlen(resolved) - 1] != '/')
 			strcat(resolved, "/");
 		strcat(resolved, path);
 	}
@@ -178,6 +184,7 @@ char *realpath2(path, resolved)
 char *path, *resolved;
 {
 	char tmp[MAXPATHLEN + 1];
+	int drv;
 
 	if (path == resolved) {
 		strcpy(tmp, path);
@@ -185,8 +192,8 @@ char *path, *resolved;
 	}
 
 	if (*path == '/') strcpy(resolved, "/");
-	else if (_dospath(path)) {
-		sprintf(resolved, "%c:/", toupper2(*path));
+	else if (drv = _dospath(path)) {
+		sprintf(resolved, "%c:/", drv);
 		path += 2;
 	}
 	else if (resolved != fullpath) strcpy(resolved, fullpath);
@@ -291,7 +298,7 @@ int mode;
 {
 	char *cp1, *cp2, *eol;
 
-	for (eol = path + strlen(path) - 1; eol > path; eol--) {
+	for (eol = path + (int)strlen(path) - 1; eol > path; eol--) {
 		if (*eol != '/') break;
 		*eol = '\0';
 	}
@@ -369,30 +376,30 @@ int c;
 }
 
 char *strchr2(s, c)
-u_char *s;
-u_char c;
+char *s;
+int c;
 {
 	int i, len;
 
-	len = strlen((char *)s);
+	len = strlen(s);
 	for (i = 0; i < len; i++) {
-		if (s[i] == c) return((char *)&s[i]);
+		if (s[i] == c) return(&s[i]);
 		if (iskanji1(s[i])) i++;
 	}
 	return(NULL);
 }
 
 char *strrchr2(s, c)
-u_char *s;
-u_char c;
+char *s;
+int c;
 {
 	int i, len;
 	char *cp;
 
 	cp = NULL;
-	len = strlen((char *)s);
+	len = strlen(s);
 	for (i = 0; i < len; i++) {
-		if (s[i] == c) cp = (char *)&s[i];
+		if (s[i] == c) cp = &s[i];
 		if (iskanji1(s[i])) i++;
 	}
 	return(cp);
@@ -417,12 +424,12 @@ int len, ptr;
 
 	cp = s1;
 	l = len;
-	if (ptr && onkanji1((u_char *)s2, ptr - 1)) {
+	if (ptr && onkanji1(s2, ptr - 1)) {
 		*(cp++) = ' ';
 		ptr++;
 		l--;
 	}
-	if (l < strlen(s2 + ptr) && onkanji1((u_char *)s2, ptr + l - 1)) {
+	if (l < strlen(s2 + ptr) && onkanji1(s2, ptr + l - 1)) {
 		strncpy2(cp, s2 + ptr, --l);
 		strcat(cp, " ");
 		len--;
@@ -436,8 +443,17 @@ int len, ptr;
 	return(len);
 }
 
-#ifdef	NOSTRSTR
-char *strstr(s1, s2)
+int strcasecmp2(s1, s2)
+char *s1, *s2;
+{
+	int c1, c2;
+
+	while ((c1 = toupper2(*s1)) == (c2 = toupper2(*(s2++))))
+		if (!*(s1++)) return(0);
+	return(c1 - c2);
+}
+
+char *strstr2(s1, s2)
 char *s1, *s2;
 {
 	char *cp;
@@ -448,7 +464,6 @@ char *s1, *s2;
 		if (!strncmp(cp, s2, len)) return(cp);
 	return(NULL);
 }
-#endif
 
 int atoi2(str)
 char *str;

@@ -252,22 +252,22 @@ int sig;
 }
 
 static int trquote(str, cx)
-u_char *str;
+char *str;
 int cx;
 {
 	if (str[cx] == QUOTE) return('^');
 	else if (cx > 0 && (str[cx - 1] == QUOTE))
-		return((str[cx] == C_DEL) ? '?' : (int)str[cx] + '@');
-	else return((int)str[cx]);
+		return((str[cx] == C_DEL) ? '?' : str[cx] + '@');
+	else return(str[cx]);
 }
 
 static int rightchar(str, x, cx, len, linemax, max)
-u_char *str;
+char *str;
 int x, cx, len, linemax, max;
 {
 	int i;
 
-	if (iskanji1((int)str[cx])) {
+	if (iskanji1(str[cx])) {
 		if (cx + 1 >= len) {
 			putterm(t_bell);
 			return(cx);
@@ -297,7 +297,7 @@ int x, cx, len, linemax, max;
 
 /*ARGSUSED*/
 static int leftchar(str, x, cx, len, linemax, max)
-u_char *str;
+char *str;
 int x, cx, len, linemax, max;
 {
 	int i;
@@ -327,10 +327,10 @@ int x, cx, len, linemax, max;
 }
 
 static VOID insertchar(str, x, cx, len, linemax, ins)
-u_char *str;
+char *str;
 int x, cx, len, linemax, ins;
 {
-	u_char dupl[MAXLINESTR + 1];
+	char dupl[MAXLINESTR + 1];
 	int dy, i, j, l, f1, f2, ptr;
 
 	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
@@ -416,10 +416,10 @@ int x, cx, len, linemax, ins;
 }
 
 static VOID deletechar(str, x, cx, len, linemax, del)
-u_char *str;
+char *str;
 int x, cx, len, linemax, del;
 {
-	u_char dupl[MAXLINESTR + 1];
+	char dupl[MAXLINESTR + 1];
 	int dy, i, j, l, f1, f2, ptr;
 
 	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
@@ -511,15 +511,15 @@ int x, cx, len, linemax;
 }
 
 static VOID displaystr(str, x, cx, len, max, linemax)
-u_char *str;
+char *str;
 int x, cx, len, max, linemax;
 {
-	u_char *dupl;
+	char *dupl;
 	int i, y, width;
 
 	locate(x, LCMDLINE);
 	str[len] = '\0';
-	dupl = (u_char *)malloc2(strlen((char *)str) + 1);
+	dupl = (char *)malloc2(strlen(str) + 1);
 	for (i = 0; str[i]; i++) dupl[i] = trquote(str, i);
 	dupl[i] = '\0';
 	width = linemax;
@@ -534,7 +534,7 @@ int x, cx, len, max, linemax;
 	}
 	putterm(l_clear);
 	if (stable_standout) putterm(end_standout);
-	kanjiputs((char *)dupl + i);
+	kanjiputs(dupl + i);
 	for (; y * linemax < max; y++) {
 		locate(x - 1, LCMDLINE + y);
 		putterm(l_clear);
@@ -545,9 +545,9 @@ int x, cx, len, max, linemax;
 }
 
 static int insertstr(str, x, cx, len, linemax, max, insstr, ins)
-u_char *str;
+char *str;
 int x, cx, len, linemax, max;
-u_char *insstr;
+char *insstr;
 int ins;
 {
 	char dupl[MAXLINESTR + 1];
@@ -630,7 +630,7 @@ int max;
 }
 
 static int completestr(str, x, cx, len, linemax, max, comline, cont)
-u_char *str;
+char *str;
 int x, cx, len, linemax, max, comline, cont;
 {
 	char *cp1, *cp2, *match;
@@ -645,7 +645,7 @@ int x, cx, len, linemax, max, comline, cont;
 	}
 
 	for (i = cx; i > 0; i--)
-		if (strchr(CMDLINE_DELIM, (char)str[i - 1])) break;
+		if (strchr(CMDLINE_DELIM, str[i - 1])) break;
 	if (i == cx) {
 		putterm(t_bell);
 		return(0);
@@ -653,7 +653,7 @@ int x, cx, len, linemax, max, comline, cont;
 	if (i > 0) comline = 0;
 
 	cp1 = (char *)malloc2(cx - i + 1);
-	strncpy2(cp1, (char *)str + i, cx - i);
+	strncpy2(cp1, str + i, cx - i);
 	cp2 = evalpath(cp1);
 
 	if (selectlist && cont < 0) {
@@ -693,7 +693,7 @@ int x, cx, len, linemax, max, comline, cont;
 		return(0);
 	}
 
-	cp2 = cp1 + strlen(cp1) - ins;
+	cp2 = cp1 + (int)strlen(cp1) - ins;
 	insertstr(str, x, cx, len, linemax, max, cp2, ins);
 
 	free(cp1);
@@ -701,7 +701,7 @@ int x, cx, len, linemax, max, comline, cont;
 }
 
 static int _inputstr(str, x, max, linemax, def, comline, hist)
-u_char *str;
+char *str;
 int x, max, linemax, def, comline;
 char *hist[];
 {
@@ -711,7 +711,7 @@ char *hist[];
 	subwindow = 1;
 	getkey2(-1);
 	tmpfilepos = -1;
-	cx = len = strlen((char *)str);
+	cx = len = strlen(str);
 	if (def >= 0 && def < linemax) {
 		while (def > len) str[len++] = ' ';
 		cx = def;
@@ -748,7 +748,7 @@ char *hist[];
 					ch = '?';
 				}
 				else {
-					str[cx++] = (u_char)ch;
+					str[cx++] = ch;
 					ch += '@';
 				}
 				putch((int)ch);
@@ -801,7 +801,7 @@ char *hist[];
 					break;
 				}
 				if (str[cx] != QUOTE
-				&& !iskanji1((int)str[cx])) i = 1;
+				&& !iskanji1(str[cx])) i = 1;
 				else {
 					i = 2;
 					if (cx + 1 >= len) {
@@ -838,10 +838,10 @@ char *hist[];
 					}
 					if (!tmphist) {
 						str[len] = '\0';
-						tmphist = strdup2((char *)str);
+						tmphist = strdup2(str);
 					}
-					strcpy((char *)str, hist[histno]);
-					len = strlen((char *)str);
+					strcpy(str, hist[histno]);
+					len = strlen(str);
 					cx = len;
 					displaystr(str, x, cx,
 						len, max, linemax);
@@ -862,14 +862,14 @@ char *hist[];
 						putterm(t_bell);
 						break;
 					}
-					if (--histno > 1) strcpy((char *)str,
-						hist[histno - 1]);
+					if (--histno > 1)
+						strcpy(str, hist[histno - 1]);
 					else {
-						strcpy((char *)str, tmphist);
+						strcpy(str, tmphist);
 						free(tmphist);
 						tmphist = NULL;
 					}
-					len = strlen((char *)str);
+					len = strlen(str);
 					cx = len;
 					displaystr(str, x, cx,
 						len, max, linemax);
@@ -920,7 +920,7 @@ char *hist[];
 				keyflush();
 				break;
 			default:
-				if (isinkanji1((int)ch)) {
+				if (isinkanji1(ch)) {
 					ch2 = getkey(0);
 					if (len + 1 >= max) {
 						putterm(t_bell);
@@ -954,7 +954,7 @@ char *hist[];
 					}
 					insertchar(str, x, cx, len, linemax, 1);
 					len++;
-					str[cx++] = (u_char)ch;
+					str[cx++] = ch;
 					putch((int)ch);
 					if (!(cx % linemax) && len < max)
 						locate(x, LCMDLINE
@@ -1039,12 +1039,12 @@ char *str;
 
 	if ((len = (int)strlen(str) + 5 - n_lastcolumn) <= 0
 	|| !(cp1 = strchr2(str, '['))
-	|| !(cp2 = strchr2((u_char *)cp1, ']'))) return(str);
+	|| !(cp2 = strchr2(cp1, ']'))) return(str);
 
 	cp1++;
 	len = cp2 - cp1 - len;
 	if (len < 0) len = 0;
-	else if (onkanji1((u_char *)cp1, len - 1)) len--;
+	else if (onkanji1(cp1, len - 1)) len--;
 	strcpy(cp1 + len, cp2);
 	return(str);
 }
@@ -1147,7 +1147,7 @@ char *str;
 		str = NULL;
 	}
 	else {
-		len = n_lastcolumn - strlen(err) - 3;
+		len = n_lastcolumn - (int)strlen(err) - 3;
 		tmp = (char *)malloc2(strlen(str) + strlen(err) + 3);
 		strcpy(tmp, str);
 		if (strlen(str) > len) {

@@ -95,7 +95,7 @@ USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
-USERAND48 USESETENV NOSELECT NOSTRSTR NOVSPRINTF USEUTIME USEGETWD SIGARGINT
+USERAND48 USESETENV NOSELECT NOVSPRINTF USEUTIME USEGETWD SIGARGINT
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -329,9 +329,6 @@ if isexist "setenv(0,0,0)"; then
 fi
 if noexist "select(0,0,0,0,0)"; then
 	echo "#define	NOSELECT"
-fi
-if noexist "strstr(0,0)"; then
-	echo "#define	NOSTRSTR"
 fi
 if noexist "vsprintf(0,0,0)" "stdio varargs"; then
 	echo "#define	NOVSPRINTF"

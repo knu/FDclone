@@ -25,7 +25,11 @@ int _dospath(path)
 char *path;
 {
 	if (!dosdrive) return(0);
+#ifdef	UNICODE
 	return((isalpha(*path) && *(path + 1) == ':') ? *path : 0);
+#else
+	return((isalpha(*path) && *(path + 1) == ':') ? toupper2(*path) : 0);
+#endif
 }
 
 int dospath(path, buf)
@@ -40,13 +44,18 @@ char *path, *buf;
 	else cp = pseudocwd;
 
 	drive = *cp;
-	if (islower(drive)) drive += 'A' - 'a';
+#ifndef	UNICODE
+	drive = toupper2(drive);
+#endif
 	if (!buf) return(drive);
 
 #ifdef	CODEEUC
 	buf[ujis2sjis(buf, cp)] = '\0';
 #else
 	strcpy(buf, cp);
+#endif
+#ifndef	UNICODE
+	*buf = toupper2(*buf);
 #endif
 	if (cp != path && *path) {
 		if (*buf && buf[strlen(buf) - 1] != '/') strcat(buf, "/");
@@ -88,22 +97,7 @@ DIR *dirp;
 	int i;
 
 	if (*((int *)dirp) >= 0) dp = readdir(dirp);
-	else {
-		dp = dosreaddir(dirp);
-		if (dp) for (i = 0; dp -> d_name[i]; i++) {
-			if (issjis1((u_char)(dp -> d_name[i]))) i++;
-			else if (isupper(dp -> d_name[i]))
-				dp -> d_name[i] += 'a' - 'A';
-			else if (dp -> d_name[i] == '`')
-				dp -> d_name[i] = '+';
-			else if (dp -> d_name[i] == '\'')
-				dp -> d_name[i] = ',';
-			else if (dp -> d_name[i] == '&')
-				dp -> d_name[i] = '[';
-			else if (dp -> d_name[i] == '$')
-				dp -> d_name[i] = '.';
-		}
-	}
+	else dp = dosreaddir(dirp);
 	if (!dp) return(NULL);
 	memcpy(&buf, dp, sizeof(buf));
 #ifdef	CODEEUC
@@ -113,6 +107,13 @@ DIR *dirp;
 	}
 #endif
 	return((struct dirent *)(&buf));
+}
+
+VOID Xrewinddir(dirp)
+DIR *dirp;
+{
+	if (*((int *)dirp) < 0) dosrewinddir(dirp);
+	else rewinddir(dirp);
 }
 
 int Xchdir(path)
@@ -157,7 +158,7 @@ char *path;
 #endif
 	int i;
 
-	if (lastdrv < 0) return(getwd(path));
+	if (lastdrv < 0) return((char *)getwd(path));
 	else if (!dosgetwd(path)) return(NULL);
 #else
 char *Xgetcwd(path, size)
@@ -169,10 +170,10 @@ int size;
 #endif
 	int i;
 
-	if (lastdrv < 0) return(getcwd(path, size));
+	if (lastdrv < 0) return((char *)getcwd(path, size));
 	else if (!dosgetcwd(path, size)) return(NULL);
 #endif
-	for (i = 0; path[i]; i++) {
+	if (isupper(path[0])) for (i = 2; path[i]; i++) {
 		if (issjis1((u_char)(path[i]))) i++;
 		else if (isupper(path[i])) path[i] += 'a' - 'A';
 	}
@@ -343,7 +344,7 @@ char *path, *type;
 int Xfclose(stream)
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ? dosfclose(stream) : fclose(stream));
+	return(stream2fd(stream) >= 0 ? dosfclose(stream) : fclose(stream));
 }
 
 int Xfread(buf, size, nitems, stream)
@@ -351,7 +352,7 @@ char *buf;
 int size, nitems;
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ?
+	return(stream2fd(stream) >= 0 ?
 		dosfread(buf, size, nitems, stream) :
 		fread(buf, size, nitems, stream));
 }
@@ -361,7 +362,7 @@ char *buf;
 int size, nitems;
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ?
+	return(stream2fd(stream) >= 0 ?
 		dosfwrite(buf, size, nitems, stream) :
 		fwrite(buf, size, nitems, stream));
 }
@@ -369,20 +370,20 @@ FILE *stream;
 int Xfflush(stream)
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ? dosfflush(stream) : fflush(stream));
+	return(stream2fd(stream) >= 0 ? dosfflush(stream) : fflush(stream));
 }
 
 int Xfgetc(stream)
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ? dosfgetc(stream) : fgetc(stream));
+	return(stream2fd(stream) >= 0 ? dosfgetc(stream) : fgetc(stream));
 }
 
 int Xfputc(c, stream)
 int c;
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ? dosfputc(c, stream) : fputc(c, stream));
+	return(stream2fd(stream) >= 0 ? dosfputc(c, stream) : fputc(c, stream));
 }
 
 char *Xfgets(s, n, stream)
@@ -390,7 +391,7 @@ char *s;
 int n;
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ?
+	return(stream2fd(stream) >= 0 ?
 		dosfgets(s, n, stream) : fgets(s, n, stream));
 }
 
@@ -398,7 +399,7 @@ int Xfputs(s, stream)
 char *s;
 FILE *stream;
 {
-	return(stream2fd(stream) < 0 ?
+	return(stream2fd(stream) >= 0 ?
 		dosfputs(s, stream) : fputs(s, stream));
 }
 

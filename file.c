@@ -251,8 +251,13 @@ int max, tr;
 	if (!destpath) return((tr) ? 2 : 1);
 	copypolicy = (iscurdir(destpath)) ? 2 : 0;
 	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
-	else if (isdir(&list[filepos]) && !islink(&list[filepos]))
+	else if (isdir(&list[filepos]) && !islink(&list[filepos])) {
+		if (copypolicy) {
+			warning(EEXIST, list[filepos].name);
+			return((tr) ? 2 : 1);
+		}
 		applydir(list[filepos].name, cpfile, cpdir, NULL, ENDCP_K);
+	}
 	else if (cpfile(list[filepos].name) < 0)
 		warning(-1, list[filepos].name);
 	free(destpath);

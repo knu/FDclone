@@ -821,7 +821,6 @@ static int rename_file(list, maxp)
 namelist *list;
 int *maxp;
 {
-	struct stat status;
 	char *file;
 
 	if (!strcmp(list[filepos].name, ".")
@@ -830,7 +829,7 @@ int *maxp;
 		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, NULL)))
 			return(1);
 		file = evalpath(file);
-		if (Xlstat(file, &status) < 0) {
+		if (Xaccess(file, F_OK) < 0) {
 			if (errno == ENOENT) break;
 			warning(-1, file);
 		}

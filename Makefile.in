@@ -189,7 +189,7 @@ input.o: kctype.h kanji.h
 shell.o: fd.h machine.h config.h 
 shell.o: types.h pathname.h
 shell.o: term.h func.h 
-shell.o: kanji.h
+shell.o: kctype.h kanji.h
 info.o: fd.h machine.h config.h 
 info.o: types.h pathname.h term.h
 info.o: funcno.h kanji.h 
@@ -198,6 +198,7 @@ dosdisk.o: dosdisk.h
 dosemu.o: fd.h machine.h config.h 
 dosemu.o: types.h pathname.h
 dosemu.o: func.h dosdisk.h
+dosemu.o: kctype.h 
 kanji.o: fd.h machine.h config.h 
 kanji.o: types.h pathname.h
 kanji.o: term.h func.h 

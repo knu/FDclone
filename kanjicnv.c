@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "machine.h"
 
 #define	ASCII	0
 #define	KANA	1
@@ -16,7 +15,7 @@
 #define	EUC	4
 
 static int fputs2();
-static unsigned char *convert();
+static char *convert();
 static int output();
 
 static int msboff = 0;
@@ -39,7 +38,7 @@ FILE *fp;
 	return(0);
 }
 
-static unsigned char *convert(j1, j2)
+static char *convert(j1, j2)
 int j1, j2;
 {
 	static unsigned char cnv[4];
@@ -62,7 +61,7 @@ int j1, j2;
 		cnv[0] = j2 | 0x80;
 		cnv[1] = '\0';
 	}
-	return(cnv);
+	return((char *)cnv);
 }
 
 static int output(fp, c, mode)
@@ -77,12 +76,12 @@ int mode;
 	if (!fp) bufp = kanji1 = 0;
 
 	if (bufp > 1) {
-		fputs2((char *)convert(buf[0], buf[1]), fp);
+		fputs2(convert(buf[0], buf[1]), fp);
 		bufp = 0;
 		kanji1 = mode;
 	}
 	else if (bufp > 0 && !(kanji1 & KANJI)) {
-		if (kanji1 & KANA) fputs2((char *)convert(0, buf[0]), fp);
+		if (kanji1 & KANA) fputs2(convert(0, buf[0]), fp);
 		else fputc(buf[0], fp);
 		bufp = 0;
 		kanji1 = mode;

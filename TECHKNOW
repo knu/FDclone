@@ -27,7 +27,7 @@ CODEEUC	漢字コードとして、EUC(Extended Unix Code) を用います。
 	未定義の場合は ShiftJIS になります。インストール後の
 	man ページや、ファイル名として用いる漢字コード等に影
 	響します。
-	画面表示に関しては、コンパイル後に動的に変更可能です。
+	出入力に関しては、コンパイル後に動的に変更可能です。
 TARUSESPACE
 	tar(1) の t オプションの出力の際に、各行のファイルモ
 	ード文字列 (Ex:rw-rw-rw-) の直後に必ず空白が入ってい
@@ -187,8 +187,6 @@ USESETENV
 	環境変数設定用関数として setenv(3) が使えます。
 NOSELECT
 	低レベル入出力関数 select(2) を使うことができません。
-NOSTRSTR
-	文字列関数 strstr(3) を使うことができません。
 NOVSPRINTF
 	書式付出力関数 vsprintf(3) を使うことができません。
 USEUTIME

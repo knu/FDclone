@@ -38,6 +38,7 @@ extern int dospath();
 extern DIR *Xopendir();
 extern int Xclosedir();
 extern struct dirent *Xreaddir();
+extern VOID Xrewinddir();
 extern int Xchdir();
 #ifdef	USEGETWD
 extern char *Xgetwd();
@@ -96,9 +97,8 @@ extern char *strchr2();
 extern char *strrchr2();
 extern char *strncpy2();
 extern int strncpy3();
-#ifdef	NOSTRSTR
-extern char *strstr();
-#endif
+extern int strcasecmp2();
+extern char *strstr2();
 extern int atoi2();
 #ifndef	USESETENV
 extern int putenv2();

@@ -679,7 +679,7 @@ char *cur;
 		if (_chdir2(cp) >= 0) {
 			strcat(fullpath, cp);
 			free(cp);
-			cp = fullpath + strlen(fullpath) - 1;
+			cp = fullpath + (int)strlen(fullpath) - 1;
 		}
 		else {
 			def = strrchr(cp, '/');

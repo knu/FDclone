@@ -196,7 +196,7 @@ char *args[];
 					len += strlen(args[i]);
 					buf = (char *)realloc(buf, len + 1);
 					if (!buf) exit(-1);
-					k = len - strlen(buf);
+					k = len - (int)strlen(buf);
 					cp += k;
 					if (k > 0) for (j = len; j >= cp; j--)
 						buf[j] = buf[j - k];
@@ -251,7 +251,7 @@ FILE *fp;
 	for (;;) {
 		*buf = '\0';
 		if (!fgets(buf, MAXLINEBUF, fp)) return(NULL);
-		if (*(cp = buf + strlen(buf) - 1) == '\n') *(cp--) = '\0';
+		if (*(cp = buf + (int)strlen(buf) - 1) == '\n') *(cp--) = '\0';
 		for (cp = buf; *cp == ' ' || *cp == '\t'; cp++);
 		if (*cp == '#') fprintf(stdout, "%s\n", buf);
 		else break;

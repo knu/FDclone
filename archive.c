@@ -183,7 +183,7 @@ int max;
 	getfield(buf, line, list -> field[F_NAME], skip,
 		list -> delim[F_NAME], list -> width[F_NAME], list -> sep);
 	if (!*buf) return(-1);
-	if (buf[(i = strlen(buf) - 1)] == '/') {
+	if (buf[(i = (int)strlen(buf) - 1)] == '/') {
 		buf[i] = '\0';
 		tmp -> st_mode |= S_IFDIR;
 		tmp -> flags |= F_ISDIR;
@@ -287,7 +287,7 @@ char *file, *dir;
 	arch = (char *)malloc2(strlen(fullpath)
 		+ strlen(file) + strlen(dir) + 3);
 	strcpy(arch, fullpath);
-	if (!*fullpath || fullpath[strlen(fullpath) - 1] != '/')
+	if (!*fullpath || fullpath[(int)strlen(fullpath) - 1] != '/')
 		strcat(arch, "/");
 	strcat(arch, file);
 	strcat(arch, ":");

@@ -30,7 +30,7 @@ typedef struct mntent	mnt_t;
 typedef struct mnttab	mnt_t;
 #define	setmntent		fopen
 #define	getmntent2(fp, mntp)	(getmntent(fp, mntp) ? NULL : mntp)
-#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_mntopts, opt)
+#define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_mntopts, opt)
 #define	endmntent		fclose
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
@@ -63,7 +63,7 @@ typedef struct _mnt_t {
 } mnt_t;
 static FILE *setmntent();
 static mnt_t *getmntent2();
-#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
+#define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
 #define	endmntent(fp)		{ if (fp) free(fp); }
 static int mnt_ptr;
 static int mnt_size;
@@ -74,7 +74,7 @@ static int mnt_size;
 typedef struct fstab	mnt_t;
 #define	setmntent(file, mode)	(FILE *)(setfsent(), NULL)
 #define	getmntent2(fp, mntp)	getfsent()
-#define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
+#define	hasmntopt(mntp, opt)	strstr2((mntp) -> fs_mntops, opt)
 #define	endmntent(fp)		endfsent()
 #define	mnt_dir		fs_file
 #define	mnt_fsname	fs_spec

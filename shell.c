@@ -61,7 +61,7 @@ char *path;
 			cp = next;
 		}
 		epath = (char *)realloc2(epath,
-			len + strlen(tmp) + next - cp + 1);
+			len + strlen(tmp) + (next - cp) + 1);
 		strcpy(epath + len, tmp);
 		len += strlen(tmp);
 		free(tmp);
@@ -76,25 +76,26 @@ char *path;
 static char *killmeta(name)
 char *name;
 {
-	u_char *cp, *buf;
+	char *cp, *buf;
 	int i;
 #ifndef	CODEEUC
 	int sjis;
 
-	sjis = (!strcmp((char *)getenv("LANG"), "C")) ? 0 : 1;
+	cp = (char *)getenv("LANG");
+	sjis = (toupper2(*cp) == 'J' && strchr("AP", toupper2(*(cp + 1))));
 #endif
 
-	buf = (u_char *)malloc2(strlen(name) * 2 + 1);
-	for (cp = (u_char *)name, i = 0; *cp; cp++, i++) {
+	buf = (char *)malloc2(strlen(name) * 2 + 1);
+	for (cp = name, i = 0; *cp; cp++, i++) {
 #ifndef	CODEEUC
-		if (sjis && iskanji1((int)(*cp))) buf[i++] = *(cp++);
+		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
 		else
 #endif
-		if (strchr(METACHAR, (int)(*cp))) buf[i++] = '\\';
+		if (strchr(METACHAR, *cp)) buf[i++] = '\\';
 		buf[i] = *cp;
 	}
 	buf[i] = '\0';
-	return((char *)buf);
+	return(buf);
 }
 
 static int setarg(buf, ptr, dir, arg, noext)
@@ -427,8 +428,7 @@ char **loadhistory(file)
 char *file;
 {
 	FILE *fp;
-	u_char line[MAXLINESTR + 1];
-	char *cp, **hist;
+	char *cp, **hist, line[MAXLINESTR + 1];
 	int i, j, len;
 
 	cp = evalpath(strdup2(file));
@@ -440,16 +440,16 @@ char *file;
 	hist[0] = (char *)histsize;
 
 	i = 1;
-	while (fgets((char *)line, MAXLINESTR, fp)) {
-		if (cp = strchr((char *)line, '\n')) *cp = '\0';
+	while (fgets(line, MAXLINESTR, fp)) {
+		if (cp = strchr(line, '\n')) *cp = '\0';
 		for (j = i; j > 1; j--) hist[j] = hist[j - 1];
 		for (j = len = 0; line[j]; j++, len++)
-			if (line[j] < ' ' || line[j] == C_DEL) len++;
+			if ((u_char)line[j] < ' ' || line[j] == C_DEL) len++;
 		hist[1] = (char *)malloc2(len + 1);
 		for (j = len = 0; line[j]; j++, len++) {
-			if (line[j] < ' ' || line[j] == C_DEL)
+			if ((u_char)line[j] < ' ' || line[j] == C_DEL)
 				hist[1][len++] = QUOTE;
-			hist[1][len] = (char)(line[j]);
+			hist[1][len] = line[j];
 		}
 		hist[1][len] = '\0';
 		if (i < histsize) i++;
@@ -546,7 +546,7 @@ char *command;
 	tflush();
 
 	while (*command == ' ' || *command == '\t') command++;
-	for (cp = command + strlen(command) - 1;
+	for (cp = command + (int)strlen(command) - 1;
 		cp >= command && (*cp == ' ' || *cp == '\t'); cp--);
 	*(cp + 1) = '\0';
 	if (!(cp = strpbrk(command, " \t"))) cp = command + strlen(command);
@@ -604,7 +604,7 @@ char *command;
 		&& !aliaslist[i].alias[len]) break;
 	if (i >= maxalias) return(NULL);
 
-	cp = (char *)malloc2(strlen(command) - len
+	cp = (char *)malloc2((int)strlen(command) - len
 		+ strlen(aliaslist[i].comm) + 1);
 	strcpy(cp, aliaslist[i].comm);
 	strcat(cp, command + len);

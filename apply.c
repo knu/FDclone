@@ -50,8 +50,8 @@ time_t *atimep, *mtimep;
 	strcat(dest, "/");
 	strcat(dest, file);
 	if (Xlstat(file, &status1) < 0) error(file);
-	*atimep = status1.st_atime;
-	*mtimep = status1.st_mtime;
+	if (atimep) *atimep = status1.st_atime;
+	if (mtimep) *mtimep = status1.st_mtime;
 	if (Xlstat(dest, &status2) < 0) {
 		if (errno != ENOENT) error(dest);
 		return((int)status1.st_mode);
@@ -62,7 +62,7 @@ time_t *atimep, *mtimep;
 		putterm(l_clear);
 		putch('[');
 		cp = SAMEF_K;
-		kanjiputs2(dest, n_column - strlen(cp) - 1, -1);
+		kanjiputs2(dest, n_column - (int)strlen(cp) - 1, -1);
 		kanjiputs(cp);
 	}
 	if (!copypolicy) {
@@ -138,9 +138,9 @@ int cpfile(path)
 char *path;
 {
 	char dest[MAXPATHLEN + 1];
-	int mode, atime, mtime;
+	int mode;
 
-	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
+	if ((mode = judgecopy(path, dest, NULL, NULL)) < 0) return(0);
 	return(_cpfile(path, dest, mode));
 }
 
@@ -492,8 +492,9 @@ char *endmes;
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat status;
-	char *cp, path[MAXPATHLEN + 1];
-	int i;
+	char *cp, *fname, path[MAXPATHLEN + 1];
+	char **dirlist;
+	int i, ndir, max;
 
 	if (!(dirp = Xopendir(dir))) {
 		warning(-1, dir);
@@ -508,30 +509,56 @@ char *endmes;
 	putch(']');
 	tflush();
 
+	strcpy(path, dir);
+	fname = path + strlen(path);
+	*(fname++) = '/';
+
+	ndir = max = 0;
+	dirlist = NULL;
+	while (dp = Xreaddir(dirp)) {
+		if (!strcmp(dp -> d_name, ".")
+		|| !strcmp(dp -> d_name, "..")) continue;
+
+		strcpy(fname, dp -> d_name);
+
+		if (Xlstat(path, &status) >= 0
+		&& (status.st_mode & S_IFMT) == S_IFDIR) {
+			dirlist = (char **)addlist(dirlist, ndir,
+				&max, sizeof(char *));
+			dirlist[ndir++] = strdup2(dp -> d_name);
+		}
+	}
+	Xrewinddir(dirp);
+
 	if (funcd1 && (i = (*funcd1)(dir)) < 0) {
 		if (i == -1) warning(-1, dir);
 		return(i);
 	}
 
+	max = ndir;
+	for (ndir = 0; ndir < max; ndir++) {
+		strcpy(fname, dirlist[ndir]);
+		free(dirlist[ndir]);
+
+		if ((i = applydir(path,
+			funcf, funcd1, funcd2, NULL)) < -1) return(i);
+		locate(0, LCMDLINE);
+		putterm(l_clear);
+		putch('[');
+		kanjiputs2(cp, n_column - 2, -1);
+		putch(']');
+		tflush();
+	}
+	free(dirlist);
+
 	while (dp = Xreaddir(dirp)) {
 		if (!strcmp(dp -> d_name, ".")
 		|| !strcmp(dp -> d_name, "..")) continue;
 
-		strcpy(path, dir);
-		strcat(path, "/");
-		strcat(path, dp -> d_name);
+		strcpy(fname, dp -> d_name);
 
 		if (Xlstat(path, &status) < 0) warning(-1, path);
-		else if ((status.st_mode & S_IFMT) == S_IFDIR) {
-			if ((i = applydir(path,
-				funcf, funcd1, funcd2, NULL)) < -1) return(i);
-			locate(0, LCMDLINE);
-			putterm(l_clear);
-			putch('[');
-			kanjiputs2(cp, n_column - 2, -1);
-			putch(']');
-			tflush();
-		}
+		else if ((status.st_mode & S_IFMT) == S_IFDIR) continue;
 		else if ((i = (*funcf)(path)) < 0) {
 			if (i == -1) warning(-1, path);
 			else return(i);

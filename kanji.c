@@ -26,11 +26,11 @@ int in;
 	int ret;
 
 	if (!str) ret = NOCNV;
-	else if (strstr(str, "SJIS") || strstr(str, "sjis")) ret = SJIS;
-	else if (strstr(str, "EUC") || strstr(str, "euc")) ret = EUC;
-	else if (strstr(str, "JIS") || strstr(str, "jis")) ret = JIS7;
-	else if (strstr(str, "ENG") || strstr(str, "eng") || !strcmp(str, "C"))
-		ret = ENG;
+	else if (strstr2(str, "SJIS") || strstr2(str, "sjis")) ret = SJIS;
+	else if (strstr2(str, "EUC") || strstr2(str, "euc")) ret = EUC;
+	else if (strstr2(str, "JIS") || strstr2(str, "jis")) ret = JIS7;
+	else if (strstr2(str, "ENG") || strstr2(str, "eng")
+	|| !strcmp(str, "C")) ret = ENG;
 	else ret = NOCNV;
 
 	if (in) {
@@ -50,17 +50,17 @@ char *jpn, *eng;
 }
 
 int onkanji1(s, ptr)
-u_char *s;
+char *s;
 int ptr;
 {
 	int i;
 
 	if (ptr < 0) return(0);
-	if (!ptr) return(iskanji1((int)s[0]));
+	if (!ptr) return(iskanji1(s[0]));
 
-	for (i = 0; i < ptr; i++) if (iskanji1((int)s[i])) i++;
+	for (i = 0; i < ptr; i++) if (iskanji1(s[i])) i++;
 	if (i > ptr) return(0);
-	return(iskanji1((int)s[ptr]));
+	return(iskanji1(s[ptr]));
 }
 
 int jis7(buf, str, incode)
@@ -168,23 +168,22 @@ u_char *str;
 }
 
 int kanjiconv(buf, str, in, out)
-char *buf;
-u_char *str;
+char *buf, *str;
 int in, out;
 {
 	int len;
 
-	len = strlen((char *)str);
+	len = strlen(str);
 	switch (out) {
 		case JIS7:
-			len = jis7(buf, str, in);
+			len = jis7(buf, (u_char *)str, in);
 			break;
 		case SJIS:
-			if (in == EUC) len = ujis2sjis(buf, str);
+			if (in == EUC) len = ujis2sjis(buf, (u_char *)str);
 			else memcpy(buf, str, len);
 			break;
 		case EUC:
-			if (in == SJIS) len = sjis2ujis(buf, str);
+			if (in == SJIS) len = sjis2ujis(buf, (u_char *)str);
 			else memcpy(buf, str, len);
 			break;
 		default:
@@ -246,7 +245,7 @@ int len, ptr;
 	else {
 		memcpy(dupl, s + ptr, len);
 		dupl[len] = '\0';
-		if (onkanji1((u_char *)dupl, len - 1)) dupl[len - 1] = ' ';
+		if (onkanji1(dupl, len - 1)) dupl[len - 1] = ' ';
 		kanjiputs(dupl);
 	}
 	return(len);

@@ -491,7 +491,7 @@ int max;
 		common[j] = '\0';
 	}
 	if (max == 1
-	&& (cp = common + strlen(common) - 1) >= common && *cp != '/') {
+	&& (cp = common + (int)strlen(common) - 1) >= common && *cp != '/') {
 		*(++cp) = ' ';
 		*(++cp) = '\0';
 	}

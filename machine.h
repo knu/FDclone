@@ -42,21 +42,15 @@
 #  define	OSTYPE		"NEWS_OS4"
 #  define	USESETENV
 #  else
-#   define	NOSTRSTR
-#   if !defined (bsd43)
-#   define	OSTYPE		"NEWS_OS41"
-#   define	USESETENV
-#   else
-#   define	OSTYPE		"NEWS_OS3"
-#   define	NOERRNO
-#   define	NOFILEMODE
-#   define	NOUNISTDH
-#   define	NOSTDLIBH
-#   define	USEDIRECT
-#   define	NOTMGMTOFF
-#   define	NOVSPRINTF
-#   define	USEGETWD
-#   endif
+#  define	OSTYPE		"NEWS_OS3"
+#  define	NOERRNO
+#  define	NOFILEMODE
+#  define	NOUNISTDH
+#  define	NOSTDLIBH
+#  define	USEDIRECT
+#  define	NOTMGMTOFF
+#  define	NOVSPRINTF
+#  define	USEGETWD
 #  endif
 # endif
 #endif
@@ -126,7 +120,6 @@
 #define	HAVETIMEZONE
 #define	SYSVDIRENT
 #define	USEREGCMP
-#define	NOSTRSTR
 #define	WAITKEYPAD		720
 #endif
 
@@ -140,7 +133,6 @@
 #define	USEDIRECT
 #define	USERE_COMP
 #define	USESETENV
-#define	NOSTRSTR
 #define	NOVSPRINTF
 #define	USEGETWD
 #define	SIGARGINT
@@ -155,12 +147,11 @@
 #define	USEDIRECT
 #define	USERE_COMP
 #define	USESETENV
-#define	NOSTRSTR
 #define	USEGETWD
 #define	SIGARGINT
 #endif
 
-#if defined (__alpha) || defined (alpha)
+#if (defined (__alpha) || defined (alpha)) && !defined(linux)
 #define	CODEEUC
 #define	TARUSESPACE
 # if defined (SYSTYPE_BSD)
@@ -258,9 +249,19 @@
 #define	USEDIRECT
 #define	USERE_COMP
 #define	USESETENV
-#define	NOSTRSTR
 #define	USEGETWD
 #define	SIGARGINT
+#endif
+
+#if defined (NeXT)
+#define	BSD43
+#define	OSTYPE			"NEXTSTEP"
+#define	CODEEUC
+#define	NOFILEMODE
+#define	NOUNISTDH
+#define	USEDIRECT
+#define	USERE_COMP
+#define	USEGETWD
 #endif
 
 #if defined (linux)
@@ -268,7 +269,11 @@
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
 #define	TERMCAPLIB		"-ltermcap"
-#define	USERE_COMP
+# if defined (__alpha)
+# define	USERE_COMP
+# else
+# define	USEREGCOMP
+# endif
 #endif
 
 #if defined (__FreeBSD__) && defined (__powerpc__)
@@ -373,7 +378,6 @@
 /*	SUN_OS		/* older SunOS 4.1 (Sun) */
 /*	NEWS_OS6	/* newer NEWS-OS R6.0 (SONY) */
 /*	NEWS_OS4	/* newer NEWS-OS R4.2 (SONY) */
-/*	NEWS_OS41	/* NEWS-OS R4.1 (SONY) */
 /*	NEWS_OS3	/* older NEWS-OS R3.3 (SONY) */
 /*	IRIX		/* IRIX (SGI) */
 /*	HPUX		/* HP-UX (HP) */
@@ -389,6 +393,7 @@
 /*	DGUX		/* DG/UX AViiON (DG) */
 /*	UXPM		/* UXP/M (Fujitsu) */
 /*	MIPS		/* RISC/os (MIPS) */
+/*	NEXTSTEP	/* NEXTSTEP (NeXT) */
 /*	LINUX		/* Linux */
 /*	JCCBSD		/* 4.4BSD-Lite (JCC) */
 /*	FREEBSD		/* FreeBSD */
@@ -459,7 +464,6 @@
 /* #define USERAND48	/* use rand48() family instead of random() */
 /* #define USESETENV	/* use setenv() instead of putenv() */
 /* #define NOSELECT	/* have not select() */
-/* #define NOSTRSTR	/* have not strstr() */
 /* #define NOVSPRINTF	/* have not vsprintf() */
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
