@@ -1,3 +1,7 @@
+Ver. 0.99m	NoExecMe の Bugfix。
+ (07/25/95)	expfunc.c でサブシェルで実現していた箇所を {} に変更。
+		その他 Bugfix。
+
 Ver. 0.99l	NoExecMe の強化。
  (07/20/95)	その他 Bugfix。
 

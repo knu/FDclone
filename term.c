@@ -34,8 +34,12 @@ extern int tgetflag();
 extern char *tgetstr();
 extern char *tgoto();
 
+#ifndef	SENSEPERSEC
 #define	SENSEPERSEC	50
+#endif
+#ifndef	WAITKEYPAD
 #define	WAITKEYPAD	360		/* msec */
+#endif
 #define	MAXPRINTBUF	255
 #define	STDIN		0
 #define	STDOUT		1

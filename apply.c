@@ -115,12 +115,16 @@ int mode;
 		return(symlink(buf, dest) < 0);
 	}
 	if ((fd1 = open(src, O_RDONLY, mode)) < 0) return(-1);
-	if ((fd2 = open(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) return(-1);
+	if ((fd2 = open(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
+		close(fd1);
+		return(-1);
+	}
 
 	while ((i = read(fd1, buf, BUFSIZ)) >= BUFSIZ) {
 		if (write(fd2, buf, BUFSIZ) < 0) error(dest);
 	}
-	if (write(fd2, buf, i) < 0) error(dest);
+	if (i < 0) error(src);
+	if (i > 0 && write(fd2, buf, i) < 0) error(dest);
 
 	close(fd2);
 	close(fd1);

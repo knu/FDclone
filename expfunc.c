@@ -18,6 +18,7 @@ static char *checkhere();
 static int getargs();
 static char *expargs();
 static int evalline();
+static char *getline();
 
 int funcno;
 char *func[MAXFUNCNO];
@@ -71,11 +72,11 @@ char *line;
 		}
 	}
 	len = strlen(line);
-	if (!i) len += 2;
+	if (!i) len += 3;
 	if (!funcbody[funcno]) {
 		funcbody[funcno] = (char *)malloc(len + 2 + 1);
 		if (!funcbody[funcno]) exit(-1);
-		strcpy(funcbody[funcno], "( ");
+		strcpy(funcbody[funcno], "{ ");
 	}
 	else {
 		len += strlen(funcbody[funcno]);
@@ -84,7 +85,7 @@ char *line;
 		if (*line) strcat(funcbody[funcno], "\n");
 	}
 	strcat(funcbody[funcno], line);
-	if (!i) strcat(funcbody[funcno++], " )");
+	if (!i) strcat(funcbody[funcno++], "; }");
 	return(i);
 }
 
@@ -118,23 +119,31 @@ static int getargs(linep, args)
 char **linep;
 char *args[];
 {
-	char *cp;
+	char *cp, *new;
 	int i, c;
 
 	for (i = 0; i < MAXARGS; i++) args[i] = NULL;
 	for (i = 0; i < MAXARGS; i++) {
+		new = NULL;
 		while (**linep == ' ' || **linep == '\t') (*linep)++;
 		c = '\0';
-		for (cp = *linep; **linep; (*linep)++) {
+		for (cp = *linep; **linep; ) {
 			if (**linep == '\\') {
-				if (!*(*linep + 1) || *(*linep + 1) == '\n')
-					break;
-				else (*linep)++;
+				if (*(*linep + 1) == '\n') break;
+				else if (*(*linep + 1)) (*linep)++;
+				else {
+					new = getline(stdin);
+					if (cp > *linep) break;
+					cp = *linep = new;
+					new = NULL;
+					continue;
+				}
 			}
 			else if (**linep == c) c = '\0';
 			else if ((**linep == '\'' || **linep == '"') && !c)
 				c = **linep;
 			else if (!c && strchr(" \t\n!&);<>`|}", **linep)) break;
+			(*linep)++;
 		}
 		c = *linep - cp;
 		if (*cp == '"') {
@@ -148,7 +157,10 @@ char *args[];
 			strncpy(args[i], cp, c);
 			args[i][c] = '\0';
 		}
-		if (**linep != ' ' && **linep != '\t') return(i + 1);
+		if (new) *linep = new;
+		else if (**linep == '\\' && *(*linep + 1) == '\n')
+			(*linep) += 2;
+		else if (**linep != ' ' && **linep != '\t') return(i + 1);
 	}
 	return(i);
 }
@@ -231,24 +243,38 @@ char *args[];
 	return(i);
 }
 
+static char *getline(fp)
+FILE *fp;
+{
+	static char buf[MAXLINEBUF + 1];
+	char *cp;
+
+	for (;;) {
+		*buf = '\0';
+		if (!fgets(buf, MAXLINEBUF, fp)) return(NULL);
+		if (*(cp = buf + strlen(buf) - 1) == '\n') *(cp--) = '\0';
+		for (cp = buf; *cp == ' ' || *cp == '\t'; cp++);
+		if (*cp == '#') fprintf(stdout, "%s\n", buf);
+		else break;
+	}
+	return(buf);
+}
+
 int main(argc, argv)
 int argc;
 char *argv[];
 {
-	char *cp, *heredoc, line[MAXLINEBUF + 1];
+	char *cp, *heredoc, *line;
 	int infunc;
 
 	infunc = 0;
 	heredoc = NULL;
 	func[0] = "return";
-	funcbody[0] = "exit $1";
+	funcbody[0] = "(exit $1)";
 	funcno = 1;
 
-	while (fgets(line, MAXLINEBUF, stdin)) {
-		if (cp = strchr(line, '\n')) *cp = '\0';
-		for (cp = line; *cp == ' ' || *cp == '\t'; cp++);
-		if (*cp == '#') fprintf(stdout, "%s\n", line);
-		else if (heredoc) {
+	while (line = getline(stdin)) {
+		if (heredoc) {
 			fprintf(stdout, "%s\n", line);
 			if (!strcmp(line, heredoc)) {
 				free(heredoc);

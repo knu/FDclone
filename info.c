@@ -64,7 +64,7 @@ typedef struct _mnt_t {
 static FILE *setmntent();
 static mnt_t *getmntent2();
 #define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
-#define	endmntent(fp)		((fp) && (free(fp), 1))
+#define	endmntent(fp)		{ if (fp) free(fp); }
 static int mnt_ptr;
 static int mnt_size;
 #endif

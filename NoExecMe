@@ -18,10 +18,11 @@ testcpp='$CPP $TMPSRC $INCLUDEDIR 2>&1 > /dev/null'
 
 setheader() {
 	echo "" > $TMPSRC
-	if [ -z "$1" ]; then return; fi
-	for i in $1""; do
-		echo "#include <${i}.h>" >> $TMPSRC
-	done;
+	if [ -n "$1" ]; then
+		for i in $1""; do
+			echo "#include <${i}.h>" >> $TMPSRC
+		done;
+	fi
 }
 
 compile() {
@@ -102,6 +103,10 @@ echo " *	OS Oriented Definitions"
 echo " */"
 echo
 
+
+if [ "$LANG" = "ja_JP.EUC" ]; then
+	echo "#define	CODEEUC"
+fi
 
 echo "Checking for tar(1)..." 1>&2
 touch $TMPSRC
@@ -207,8 +212,8 @@ if noinheader ' *0*x*[0-9a-fA-F ]* *' sys/param DEV_BSIZE \
 && inheader ' *0*x*[0-9a-fA-F ]* *' sys/dir DEV_BSIZE; then
 	echo "#define	USESYSDIRH"
 fi
-if inheader "struct.*[^a-zA-Z_]tm[^a-zA-Z_]" "sys/types sys/time time" \
-&& noinheader "struct.*[^a-zA-Z_]tm[^a-zA-Z_]" "sys/types sys/time"; then
+if inheader 'struct.*[^a-zA-Z_]tm[^a-zA-Z_]' "sys/types sys/time time" \
+&& noinheader 'struct.*[^a-zA-Z_]tm[^a-zA-Z_]' "sys/types sys/time"; then
 	echo "#define	USETIMEH"
 fi
 if noheader sgtty \
@@ -220,8 +225,10 @@ if noheader dirent; then
 elif noexist "struct dirent d; d.d_namlen" "sys/types dirent"; then
 	echo "#define	SYSVDIRENT"
 fi
-if inheader 'extern.*[^a-zA-Z_]timezone' sys/time \
-&& isexist "extern time_t timezone; timezone" "sys/types sys/time"; then
+if (inheader 'extern.*[^a-zA-Z_]timezone' sys/time \
+&& isexist "extern time_t timezone; timezone" "sys/types sys/time") \
+|| (inheader 'extern.*[^a-zA-Z_]timezone' time \
+&& isexist "extern time_t timezone; timezone" "sys/types time"); then
 	echo "#define	HAVETIMEZONE"
 fi
 
@@ -238,9 +245,9 @@ elif inheader 'struct.*[^a-zA-Z_]statfs' sys/mount; then {
 	elif isexist "statfs(0,0,0)" sys/mount; then arg=3; fi
 }
 elif inheader 'struct.*[^a-zA-Z_]statfs' sys/statfs \
-&& (isexist "struct statfs f; statfs(0,&f)" sys/statfs \
-|| (isexist "struct statfs f; statfs(0,&f,0,0)" sys/statfs \
-&& arg=4)); then
+&& { isexist "struct statfs f; statfs(0,&f)" sys/statfs \
+|| { isexist "struct statfs f; statfs(0,&f,0,0)" sys/statfs \
+&& arg=4; }; }; then
 	echo "#define	USESTATFSH"
 elif inheader 'struct.*[^a-zA-Z_]statvfs' sys/statvfs; then
 	echo "#define	USESTATVFSH"
@@ -253,14 +260,14 @@ if isexist "getmntent(0)" "stdio mntent"; then
 	echo "#define	USEMNTENTH"
 elif isexist "getmntent(0,0)" "stdio sys/mnttab"; then
 	echo "#define	USEMNTTABH"
-elif isexist "getfsstat(0,0,0)"; then
-	echo "#define	USEFSSTAT"
 elif isexist "mntctl(0,0,0)"; then
 	echo "#define	USEMNTCTL"
 elif isexist "getmntinfo_r(0,0,0,0)"; then
 	echo "#define	USEMNTINFOR"
 elif isexist "getmntinfo(0,0)"; then
 	echo "#define	USEMNTINFO"
+elif isexist "getfsstat(0,0,0)"; then
+	echo "#define	USEFSSTAT"
 elif isexist "getmnt(0,0,0,0,0)"; then
 	echo "#define	USEGETMNT"
 elif isexist "getfsent()" \
@@ -271,18 +278,16 @@ fi
 
 lib=
 if isexist "extern char *re_comp(); re_comp(0)" ctype \
-|| (havelib compat "extern char *re_comp(); re_comp(0)" ctype \
-&& lib=-lcompat); then
+|| { havelib compat "extern char *re_comp(); re_comp(0)" ctype \
+&& lib=-lcompat; }; then
 	echo "#define	USERE_COMP"
 elif isexist "regex_t *re; regfree(re)" "sys/types regex"; then
 	echo "#define	USEREGCOMP"
 elif isexist "extern char *regcmp(); regcmp(0,0)" ctype \
-|| (havelib gen "extern char *regcmp(); regcmp(0,0)" ctype \
-&& lib=-lgen) \
-|| (havelib PW "extern char *regcmp(); regcmp(0,0)" ctype \
-&& lib=-lPW) \
-|| (havelib PW "extern char *regcmp(); regcmp(0,0)" ctype "char Error[1024];" \
-&& lib=-lPW && echo "#define	PWNEEDERROR"); then
+|| { havelib gen "extern char *regcmp(); regcmp(0,0)" ctype && lib=-lgen; } \
+|| { havelib PW "extern char *regcmp(); regcmp(0,0)" ctype && lib=-lPW; } \
+|| { havelib PW "extern char *regcmp(); regcmp(0,0)" ctype "char Error[1024];" \
+&& lib=-lPW && echo "#define	PWNEEDERROR"; }; then
 	echo "#define	USEREGCMP"
 fi
 if [ -n "$lib" ]; then
@@ -297,9 +302,7 @@ fi
 if isexist "setenv(0,0,0)"; then
 	echo "#define	USESETENV"
 fi
-if noexist "select(0,0,0,0,0)" \
-|| (noinheader 'struct.*[^a-zA-Z_]fd_set' sys/types \
-&& noinheader 'struct.*[^a-zA-Z_]fd_set' sys/select); then
+if noexist "select(0,0,0,0,0)"; then
 	echo "#define	NOSELECT"
 fi
 if noexist "strstr(0,0)"; then

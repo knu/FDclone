@@ -111,12 +111,15 @@
 #define	UNKNOWNFS
 #define	NOVOID
 #define	NOUID_T
+#define	PWNEEDERROR
 #define	NOFILEMODE
 #define	NOSTDLIBH
 #define	USETIMEH
 #define	USETERMIO
-#define	NOSELECT
+#define	HAVETIMEZONE
+#define	USEREGCMP
 #define	NOSTRSTR
+#define	WAITKEYPAD		720
 #endif
 
 #if defined (luna88k)
@@ -130,6 +133,7 @@
 #define	USESETENV
 #define	NOSTRSTR
 #define	USEGETWD
+#define	SIGARGINT
 #endif
 
 #if defined (__alpha) || defined (alpha)
@@ -248,6 +252,7 @@
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USERE_COMP
+#define	USESETENV
 #endif
 
 #if defined (__NetBSD__)
@@ -268,7 +273,7 @@
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
-#define	USEGETFSINFO
+#define	USEMNTINFO
 #define	USERE_COMP
 #define	USESETENV
 #include <sys/param.h>
@@ -372,6 +377,9 @@
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
 /* #define SIGARGINT	/* signal() needs the 2nd argument as int */
+
+/* #define SENSEPERSEC	/* ratio of key sense per 1 second */
+/* #define WAITKEYPAD	/* interval to wait after getting input of ESC [ms] */
 
 #include "config.h"
 

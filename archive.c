@@ -424,7 +424,6 @@ int *maxarcentp;
 		}
 		free(tmp);
 	}
-	pclose(fp);
 	if (re) regexp_free(re);
 	for (i = 0; i < (int)(list -> bottomskip); i++) {
 		if (maxarcf < 1
@@ -442,6 +441,12 @@ int *maxarcentp;
 	}
 	for (i = 0; i < dmax; i++) free(dirlist[i]);
 	if (dirlist) free(dirlist);
+
+	if (pclose(fp)) {
+		warning(0, HITKY_K);
+		for (i = 0; i < maxarcf; i++) free(arcflist[i].name);
+		return(-1);
+	}
 
 	if (stable_standout) putterms(t_clear);
 	title();
