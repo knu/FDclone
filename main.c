@@ -68,11 +68,15 @@ static sigarg_t ioerror();
 static sigarg_t oldabort();
 # endif
 #endif
+#ifdef	SIGEMT
 static sigarg_t emuerror();
+#endif
 static sigarg_t floaterror();
 static sigarg_t buserror();
 static sigarg_t segerror();
+#ifdef	SIGSYS
 static sigarg_t syserror();
+#endif
 static sigarg_t terminate();
 #ifdef	SIGXCPU
 static sigarg_t xcpuerror();
@@ -175,11 +179,13 @@ static sigarg_t oldabort()
 # endif
 #endif
 
+#ifdef	SIGEMT
 static sigarg_t emuerror()
 {
 	signal(SIGEMT, SIG_IGN);
 	signalexit("EMT trap");
 }
+#endif
 
 static sigarg_t floaterror()
 {
@@ -199,11 +205,13 @@ static sigarg_t segerror()
 	signalexit("Segmemtation fault");
 }
 
+#ifdef	SIGSYS
 static sigarg_t syserror()
 {
 	signal(SIGSYS, SIG_IGN);
 	signalexit("Bad system call");
 }
+#endif
 
 static sigarg_t terminate()
 {
@@ -892,14 +900,18 @@ char *argv[];
 	signal(SIGIOT, (sigarg_t (*)())ioerror);
 # else
 # ifdef	SIGABRT
-	signal(SIGABORT, (sigarg_t (*)())oldabort);
+	signal(SIGABRT, (sigarg_t (*)())oldabort);
 # endif
 #endif
+#ifdef	SIGEMT
 	signal(SIGEMT, (sigarg_t (*)())emuerror);
+#endif
 	signal(SIGFPE, (sigarg_t (*)())floaterror);
 	signal(SIGBUS, (sigarg_t (*)())buserror);
 	signal(SIGSEGV, (sigarg_t (*)())segerror);
+#ifdef	SIGSYS
 	signal(SIGSYS, (sigarg_t (*)())syserror);
+#endif
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTERM, (sigarg_t (*)())terminate);
 	signal(SIGTSTP, SIG_IGN);

@@ -397,7 +397,7 @@ char *file, *mode;
 	return((FILE *)buf);
 }
 
-#ifdef	USEMNTINFOR
+#if !defined(MNT_RDONLY) && defined(M_RDONLY)
 #define	MNT_RDONLY	M_RDONLY
 #endif
 

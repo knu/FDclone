@@ -5,7 +5,6 @@
  */
 
 #include "machine.h"
-#include "pathname.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +30,8 @@
 #else
 #include <dirent.h>
 #endif
+
+#include "pathname.h"
 
 #ifdef	NOERRNO
 extern int errno;

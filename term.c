@@ -48,6 +48,16 @@ extern char *tgoto();
 #define	GETSIZE		"\0337\033[r\033[999;999H\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 
+#ifndef	PENDIN
+#define	PENDIN		0
+#endif
+#ifndef	ECHOCTL
+#define	ECHOCTL		0
+#endif
+#ifndef	ECHOKE
+#define	ECHOKE		0
+#endif
+
 #ifndef FD_SET
 typedef struct fd_set {
 	int fds_bits[1];
@@ -160,7 +170,7 @@ int reset;
 static int ttymode(d, set, reset, iset, ireset, oset, oreset, min, time)
 int d;
 u_short set, reset, iset, ireset, oset, oreset;
-cc_t min, time;
+int min, time;
 {
 	struct termio tty;
 

@@ -20,7 +20,7 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
 DOC	= README HISTORY FAQ TECHKNOW Install
 MANSRC	= fd.man
 MANSEC	= 1
-RUNCOM	= .fdrc
+RUNCOM	= fdrc
 
 JSRCS	= $(DOC) kanji.h.in $(MANSRC)
 ESRCS	= Configure Makefile Makefile.in $(SRC) $(HEADER)\
