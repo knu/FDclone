@@ -38,6 +38,7 @@
 #endif	/* FD < 2 */
 
 #include "printf.h"
+#include "kctype.h"
 #include "pathname.h"
 #include "term.h"
 #include "types.h"
@@ -181,6 +182,7 @@ extern char *_mtrace_file;
 #define	MAXSELECTSTRS	16
 #define	MAXSTACK	5
 #define	MAXWINDOWS	2
+#define	MAXHISTNO	MAXTYPE(short)
 
 #ifdef	_NOSPLITWIN
 #undef	MAXWINDOWS

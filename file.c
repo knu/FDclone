@@ -7,7 +7,6 @@
 #include <fcntl.h>
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	ENOSPC

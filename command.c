@@ -7,7 +7,6 @@
 #include "fd.h"
 #include "func.h"
 #include "funcno.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	_NOORIGSHELL
@@ -846,7 +845,7 @@ char *file;
 {
 	FILE *fp;
 	char *buf, *prompt;
-	int i;
+	int i, len;
 
 	if (!(fp = Xfopen(file, "r"))) {
 		warning(-1, file);
@@ -856,8 +855,8 @@ char *file;
 	tflush();
 	buf = NEXT_K;
 	i = strlen3(file);
-	if (i + strlen(buf) > n_lastcolumn)
-		i = n_lastcolumn - (int)strlen(buf);
+	len = strlen2(buf);
+	if (i + len > n_lastcolumn) i = n_lastcolumn - len;
 	prompt = malloc2(i * KANAWID + strlen(buf) + 1);
 	strncpy3(prompt, file, &i, 0);
 	strcat(prompt, buf);
@@ -1263,7 +1262,7 @@ char *arg;
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 		cp = DELFL_K;
-		len = (int)strlen(cp) - (sizeof("%.*s") - 1);
+		len = strlen2(cp) - (sizeof("%.*s") - 1);
 		if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 			return(1);
 		filepos = applyfile(rmvfile, NULL);
@@ -1281,7 +1280,7 @@ char *arg;
 	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
 		return(warning_bell(arg));
 	cp = DELDR_K;
-	len = (int)strlen(cp) - (sizeof("%.*s") - 1);
+	len = strlen2(cp) - (sizeof("%.*s") - 1);
 	if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name)) return(1);
 	removepolicy = 0;
 #ifndef	NOSYMLINK

@@ -486,7 +486,7 @@ clean:
 main__OBJ__: fd.h
 main__OBJ__: machine.h config.h
 main__OBJ__: printf.h
-main__OBJ__: pathname.h term.h types.h func.h
+main__OBJ__: kctype.h pathname.h term.h types.h func.h
 main__OBJ__: dosdisk.h kanji.h
 main__OBJ__: version.h system.h
 printf__OBJ__: machine.h config.h printf.h
@@ -496,136 +496,149 @@ term__OBJ__: printf.h term.h
 pathname__OBJ__: fd.h
 pathname__OBJ__: machine.h config.h
 pathname__OBJ__: printf.h
+pathname__OBJ__: kctype.h
 pathname__OBJ__: pathname.h term.h types.h
 system__OBJ__: fd.h
 system__OBJ__: machine.h config.h
-system__OBJ__: printf.h pathname.h
-system__OBJ__: term.h types.h kctype.h
+system__OBJ__: printf.h kctype.h
+system__OBJ__: pathname.h term.h
+system__OBJ__: types.h
 system__OBJ__: system.h
 posixsh__OBJ__: fd.h
 posixsh__OBJ__: machine.h config.h
 posixsh__OBJ__: printf.h
-posixsh__OBJ__: pathname.h term.h types.h kctype.h
+posixsh__OBJ__: kctype.h
+posixsh__OBJ__: pathname.h term.h types.h
 posixsh__OBJ__: system.h
 doscom__OBJ__: fd.h
 doscom__OBJ__: machine.h config.h
-doscom__OBJ__: printf.h pathname.h
-doscom__OBJ__: term.h types.h kctype.h
+doscom__OBJ__: printf.h kctype.h
+doscom__OBJ__: pathname.h term.h
+doscom__OBJ__: types.h
 doscom__OBJ__: system.h
 dosdisk__OBJ__: machine.h config.h
 dosdisk__OBJ__: dosdisk.h
+dosdisk__OBJ__: kctype.h
 dosemu__OBJ__: fd.h
 dosemu__OBJ__: machine.h config.h
-dosemu__OBJ__: printf.h pathname.h
-dosemu__OBJ__: term.h types.h func.h
-dosemu__OBJ__: dosdisk.h kctype.h
+dosemu__OBJ__: printf.h kctype.h
+dosemu__OBJ__: pathname.h term.h
+dosemu__OBJ__: types.h func.h
+dosemu__OBJ__: dosdisk.h
 mkunitbl__OBJ__: machine.h config.h
 unixdisk__OBJ__: machine.h config.h
 unixdisk__OBJ__: unixdisk.h
 unixdisk__OBJ__: unixemu.h
 unixdisk__OBJ__: dosdisk.h
+unixdisk__OBJ__: kctype.h
 unixemu__OBJ__: fd.h
 unixemu__OBJ__: machine.h config.h
 unixemu__OBJ__: printf.h
+unixemu__OBJ__: kctype.h
 unixemu__OBJ__: pathname.h term.h types.h func.h
 unixemu__OBJ__: dosdisk.h unixdisk.h
 unixemu__OBJ__: unixemu.h
 libc__OBJ__: fd.h
 libc__OBJ__: machine.h config.h
-libc__OBJ__: printf.h pathname.h
-libc__OBJ__: term.h types.h func.h
-libc__OBJ__: dosdisk.h kctype.h
-libc__OBJ__: kanji.h system.h
+libc__OBJ__: printf.h kctype.h
+libc__OBJ__: pathname.h term.h
+libc__OBJ__: types.h func.h
+libc__OBJ__: dosdisk.h kanji.h system.h
 file__OBJ__: fd.h
 file__OBJ__: machine.h config.h
-file__OBJ__: printf.h pathname.h
-file__OBJ__: term.h types.h func.h
-file__OBJ__: dosdisk.h kctype.h
-file__OBJ__: kanji.h
+file__OBJ__: printf.h kctype.h
+file__OBJ__: pathname.h term.h
+file__OBJ__: types.h func.h
+file__OBJ__: dosdisk.h kanji.h
 apply__OBJ__: fd.h
 apply__OBJ__: machine.h config.h
-apply__OBJ__: printf.h pathname.h
-apply__OBJ__: term.h types.h func.h
+apply__OBJ__: printf.h kctype.h
+apply__OBJ__: pathname.h term.h
+apply__OBJ__: types.h func.h
 apply__OBJ__: dosdisk.h kanji.h
 parse__OBJ__: fd.h
 parse__OBJ__: machine.h config.h
-parse__OBJ__: printf.h pathname.h
-parse__OBJ__: term.h types.h func.h
-parse__OBJ__: dosdisk.h kctype.h
-parse__OBJ__: system.h
+parse__OBJ__: printf.h kctype.h
+parse__OBJ__: pathname.h term.h
+parse__OBJ__: types.h func.h
+parse__OBJ__: dosdisk.h system.h
 builtin__OBJ__: fd.h
 builtin__OBJ__: machine.h config.h
 builtin__OBJ__: printf.h
+builtin__OBJ__: kctype.h
 builtin__OBJ__: pathname.h term.h types.h func.h
-builtin__OBJ__: dosdisk.h kctype.h
-builtin__OBJ__: funcno.h kanji.h system.h
+builtin__OBJ__: dosdisk.h funcno.h kanji.h system.h
 shell__OBJ__: fd.h
 shell__OBJ__: machine.h config.h
-shell__OBJ__: printf.h pathname.h
-shell__OBJ__: term.h types.h func.h
-shell__OBJ__: dosdisk.h kctype.h
-shell__OBJ__: kanji.h system.h
+shell__OBJ__: printf.h kctype.h
+shell__OBJ__: pathname.h term.h
+shell__OBJ__: types.h func.h
+shell__OBJ__: dosdisk.h kanji.h system.h
 kanji__OBJ__: fd.h
 kanji__OBJ__: machine.h config.h
-kanji__OBJ__: printf.h pathname.h
-kanji__OBJ__: term.h types.h kctype.h
-kanji__OBJ__: func.h
+kanji__OBJ__: printf.h kctype.h
+kanji__OBJ__: pathname.h term.h
+kanji__OBJ__: types.h func.h
 kanji__OBJ__: dosdisk.h
 input__OBJ__: fd.h
 input__OBJ__: machine.h config.h
-input__OBJ__: printf.h pathname.h
-input__OBJ__: term.h types.h func.h
-input__OBJ__: dosdisk.h kctype.h
-input__OBJ__: kanji.h system.h
+input__OBJ__: printf.h kctype.h
+input__OBJ__: pathname.h term.h
+input__OBJ__: types.h func.h
+input__OBJ__: dosdisk.h kanji.h
+input__OBJ__: system.h
 info__OBJ__: fd.h
 info__OBJ__: machine.h
 info__OBJ__: config.h
-info__OBJ__: printf.h pathname.h
-info__OBJ__: term.h types.h funcno.h kctype.h
-info__OBJ__: kanji.h
+info__OBJ__: printf.h kctype.h
+info__OBJ__: pathname.h term.h
+info__OBJ__: types.h funcno.h kanji.h
 rockridg__OBJ__: fd.h
 rockridg__OBJ__: machine.h config.h
 rockridg__OBJ__: printf.h
-rockridg__OBJ__: pathname.h term.h types.h func.h
+rockridg__OBJ__: kctype.h pathname.h term.h types.h func.h
 rockridg__OBJ__: dosdisk.h
 archive__OBJ__: fd.h
 archive__OBJ__: machine.h config.h
 archive__OBJ__: printf.h
+archive__OBJ__: kctype.h
 archive__OBJ__: pathname.h term.h types.h func.h
-archive__OBJ__: dosdisk.h kctype.h
-archive__OBJ__: kanji.h system.h
+archive__OBJ__: dosdisk.h kanji.h system.h
 tree__OBJ__: fd.h
 tree__OBJ__: machine.h config.h
 tree__OBJ__: printf.h
-tree__OBJ__: pathname.h term.h types.h func.h
+tree__OBJ__: kctype.h pathname.h term.h types.h func.h
 tree__OBJ__: dosdisk.h kanji.h
 custom__OBJ__: fd.h
 custom__OBJ__: machine.h config.h
-custom__OBJ__: printf.h pathname.h
-custom__OBJ__: term.h types.h func.h
+custom__OBJ__: printf.h kctype.h
+custom__OBJ__: pathname.h term.h
+custom__OBJ__: types.h func.h
 custom__OBJ__: dosdisk.h funcno.h
-custom__OBJ__: kctype.h kanji.h
-custom__OBJ__: system.h
+custom__OBJ__: kanji.h system.h
 command__OBJ__: fd.h
 command__OBJ__: machine.h config.h
 command__OBJ__: printf.h
+command__OBJ__: kctype.h
 command__OBJ__: pathname.h term.h types.h func.h
-command__OBJ__: dosdisk.h funcno.h kctype.h
-command__OBJ__: kanji.h system.h
+command__OBJ__: dosdisk.h funcno.h kanji.h system.h
 command__OBJ__: functabl.h
 browse__OBJ__: fd.h
 browse__OBJ__: machine.h config.h
-browse__OBJ__: printf.h pathname.h
-browse__OBJ__: term.h types.h func.h
+browse__OBJ__: printf.h kctype.h
+browse__OBJ__: pathname.h term.h
+browse__OBJ__: types.h func.h
 browse__OBJ__: dosdisk.h funcno.h
-browse__OBJ__: kctype.h kanji.h
+browse__OBJ__: kanji.h
 kanjicnv__OBJ__: machine.h config.h
 mkfuncno__OBJ__: fd.h
 mkfuncno__OBJ__: machine.h config.h
 mkfuncno__OBJ__: printf.h
+mkfuncno__OBJ__: kctype.h
 mkfuncno__OBJ__: pathname.h term.h types.h functabl.h
 expfunc__OBJ__: machine.h config.h
 mkmfsed__OBJ__: fd.h
 mkmfsed__OBJ__: machine.h config.h
 mkmfsed__OBJ__: printf.h
+mkmfsed__OBJ__: kctype.h
 mkmfsed__OBJ__: pathname.h term.h types.h

@@ -7,7 +7,6 @@
 #include "fd.h"
 #include "func.h"
 #include "funcno.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #if	MSDOS
@@ -299,7 +298,7 @@ VOID helpbar(VOID_A)
 
 	for (i = 0; i < 10; i++) {
 		locate(ofs + (width + 1) * i + (i / 5) * gap, L_HELP);
-		len = (width - (int)strlen(helpindex[i])) / 2;
+		len = (width - strlen2(helpindex[i])) / 2;
 		if (len < 0) len = 0;
 		putterm(t_standout);
 		for (j = 0; j < len; j++) putch2(' ');
@@ -1045,7 +1044,7 @@ char *def;
 		putch2(' ');
 		putterm(t_standout);
 		cp = NOFIL_K;
-		if (i <= (int)strlen(cp)) cp = "NoFiles";
+		if (i <= strlen2(cp)) cp = "NoFiles";
 		cprintf2("%-*.*k", i, i, cp);
 		putterm(end_standout);
 		win_x = i + 2;

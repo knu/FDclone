@@ -6,7 +6,6 @@
 
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	_NOARCHIVE
@@ -582,14 +581,12 @@ static char *NEAR readfname(s, len)
 char *s;
 int len;
 {
-	char buf[MAXPATHLEN];
+	char *cp, *tmp;
 
-	s = strndup2(s, len);
-	if (kanjiconv2(buf, s, MAXPATHLEN - 1, fnamekcode, DEFCODE) != s) {
-		free(s);
-		s = strdup2(buf);
-	}
-	return(s);
+	cp = strndup2(s, len);
+	tmp = newkanjiconv(cp, fnamekcode, DEFCODE, L_FNAME);
+	if (tmp != cp) free(cp);
+	return(tmp);
 }
 # endif	/* !_NOKANJIFCONV */
 

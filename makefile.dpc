@@ -486,7 +486,7 @@ clean:
 main.o: fd.h
 main.o: machine.h config.h
 main.o: printf.h
-main.o: pathname.h term.h types.h func.h
+main.o: kctype.h pathname.h term.h types.h func.h
 main.o: dosdisk.h kanji.h
 main.o: version.h system.h
 printf.o: machine.h config.h printf.h
@@ -496,136 +496,149 @@ term.o: printf.h term.h
 pathname.o: fd.h
 pathname.o: machine.h config.h
 pathname.o: printf.h
+pathname.o: kctype.h
 pathname.o: pathname.h term.h types.h
 system.o: fd.h
 system.o: machine.h config.h
-system.o: printf.h pathname.h
-system.o: term.h types.h kctype.h
+system.o: printf.h kctype.h
+system.o: pathname.h term.h
+system.o: types.h
 system.o: system.h
 posixsh.o: fd.h
 posixsh.o: machine.h config.h
 posixsh.o: printf.h
-posixsh.o: pathname.h term.h types.h kctype.h
+posixsh.o: kctype.h
+posixsh.o: pathname.h term.h types.h
 posixsh.o: system.h
 doscom.o: fd.h
 doscom.o: machine.h config.h
-doscom.o: printf.h pathname.h
-doscom.o: term.h types.h kctype.h
+doscom.o: printf.h kctype.h
+doscom.o: pathname.h term.h
+doscom.o: types.h
 doscom.o: system.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
+dosdisk.o: kctype.h
 dosemu.o: fd.h
 dosemu.o: machine.h config.h
-dosemu.o: printf.h pathname.h
-dosemu.o: term.h types.h func.h
-dosemu.o: dosdisk.h kctype.h
+dosemu.o: printf.h kctype.h
+dosemu.o: pathname.h term.h
+dosemu.o: types.h func.h
+dosemu.o: dosdisk.h
 mkunitbl.o: machine.h config.h
 unixdisk.o: machine.h config.h
 unixdisk.o: unixdisk.h
 unixdisk.o: unixemu.h
 unixdisk.o: dosdisk.h
+unixdisk.o: kctype.h
 unixemu.o: fd.h
 unixemu.o: machine.h config.h
 unixemu.o: printf.h
+unixemu.o: kctype.h
 unixemu.o: pathname.h term.h types.h func.h
 unixemu.o: dosdisk.h unixdisk.h
 unixemu.o: unixemu.h
 libc.o: fd.h
 libc.o: machine.h config.h
-libc.o: printf.h pathname.h
-libc.o: term.h types.h func.h
-libc.o: dosdisk.h kctype.h
-libc.o: kanji.h system.h
+libc.o: printf.h kctype.h
+libc.o: pathname.h term.h
+libc.o: types.h func.h
+libc.o: dosdisk.h kanji.h system.h
 file.o: fd.h
 file.o: machine.h config.h
-file.o: printf.h pathname.h
-file.o: term.h types.h func.h
-file.o: dosdisk.h kctype.h
-file.o: kanji.h
+file.o: printf.h kctype.h
+file.o: pathname.h term.h
+file.o: types.h func.h
+file.o: dosdisk.h kanji.h
 apply.o: fd.h
 apply.o: machine.h config.h
-apply.o: printf.h pathname.h
-apply.o: term.h types.h func.h
+apply.o: printf.h kctype.h
+apply.o: pathname.h term.h
+apply.o: types.h func.h
 apply.o: dosdisk.h kanji.h
 parse.o: fd.h
 parse.o: machine.h config.h
-parse.o: printf.h pathname.h
-parse.o: term.h types.h func.h
-parse.o: dosdisk.h kctype.h
-parse.o: system.h
+parse.o: printf.h kctype.h
+parse.o: pathname.h term.h
+parse.o: types.h func.h
+parse.o: dosdisk.h system.h
 builtin.o: fd.h
 builtin.o: machine.h config.h
 builtin.o: printf.h
+builtin.o: kctype.h
 builtin.o: pathname.h term.h types.h func.h
-builtin.o: dosdisk.h kctype.h
-builtin.o: funcno.h kanji.h system.h
+builtin.o: dosdisk.h funcno.h kanji.h system.h
 shell.o: fd.h
 shell.o: machine.h config.h
-shell.o: printf.h pathname.h
-shell.o: term.h types.h func.h
-shell.o: dosdisk.h kctype.h
-shell.o: kanji.h system.h
+shell.o: printf.h kctype.h
+shell.o: pathname.h term.h
+shell.o: types.h func.h
+shell.o: dosdisk.h kanji.h system.h
 kanji.o: fd.h
 kanji.o: machine.h config.h
-kanji.o: printf.h pathname.h
-kanji.o: term.h types.h kctype.h
-kanji.o: func.h
+kanji.o: printf.h kctype.h
+kanji.o: pathname.h term.h
+kanji.o: types.h func.h
 kanji.o: dosdisk.h
 input.o: fd.h
 input.o: machine.h config.h
-input.o: printf.h pathname.h
-input.o: term.h types.h func.h
-input.o: dosdisk.h kctype.h
-input.o: kanji.h system.h
+input.o: printf.h kctype.h
+input.o: pathname.h term.h
+input.o: types.h func.h
+input.o: dosdisk.h kanji.h
+input.o: system.h
 info.o: fd.h
 info.o: machine.h
 info.o: config.h
-info.o: printf.h pathname.h
-info.o: term.h types.h funcno.h kctype.h
-info.o: kanji.h
+info.o: printf.h kctype.h
+info.o: pathname.h term.h
+info.o: types.h funcno.h kanji.h
 rockridg.o: fd.h
 rockridg.o: machine.h config.h
 rockridg.o: printf.h
-rockridg.o: pathname.h term.h types.h func.h
+rockridg.o: kctype.h pathname.h term.h types.h func.h
 rockridg.o: dosdisk.h
 archive.o: fd.h
 archive.o: machine.h config.h
 archive.o: printf.h
+archive.o: kctype.h
 archive.o: pathname.h term.h types.h func.h
-archive.o: dosdisk.h kctype.h
-archive.o: kanji.h system.h
+archive.o: dosdisk.h kanji.h system.h
 tree.o: fd.h
 tree.o: machine.h config.h
 tree.o: printf.h
-tree.o: pathname.h term.h types.h func.h
+tree.o: kctype.h pathname.h term.h types.h func.h
 tree.o: dosdisk.h kanji.h
 custom.o: fd.h
 custom.o: machine.h config.h
-custom.o: printf.h pathname.h
-custom.o: term.h types.h func.h
+custom.o: printf.h kctype.h
+custom.o: pathname.h term.h
+custom.o: types.h func.h
 custom.o: dosdisk.h funcno.h
-custom.o: kctype.h kanji.h
-custom.o: system.h
+custom.o: kanji.h system.h
 command.o: fd.h
 command.o: machine.h config.h
 command.o: printf.h
+command.o: kctype.h
 command.o: pathname.h term.h types.h func.h
-command.o: dosdisk.h funcno.h kctype.h
-command.o: kanji.h system.h
+command.o: dosdisk.h funcno.h kanji.h system.h
 command.o: functabl.h
 browse.o: fd.h
 browse.o: machine.h config.h
-browse.o: printf.h pathname.h
-browse.o: term.h types.h func.h
+browse.o: printf.h kctype.h
+browse.o: pathname.h term.h
+browse.o: types.h func.h
 browse.o: dosdisk.h funcno.h
-browse.o: kctype.h kanji.h
+browse.o: kanji.h
 kanjicnv.o: machine.h config.h
 mkfuncno.o: fd.h
 mkfuncno.o: machine.h config.h
 mkfuncno.o: printf.h
+mkfuncno.o: kctype.h
 mkfuncno.o: pathname.h term.h types.h functabl.h
 expfunc.o: machine.h config.h
 mkmfsed.o: fd.h
 mkmfsed.o: machine.h config.h
 mkmfsed.o: printf.h
+mkmfsed.o: kctype.h
 mkmfsed.o: pathname.h term.h types.h

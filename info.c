@@ -7,7 +7,6 @@
 #include <errno.h>
 #include "fd.h"
 #include "funcno.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifdef	NOERRNO
@@ -201,12 +200,6 @@ extern VOID warning __P_((int, char *));
 extern int dospath __P_((char *, char *));
 #endif
 #if	MSDOS && !defined (_NOUSELFN)
-# ifdef	LSI_C
-# define	toupper2	toupper
-# else	/* !LSI_C */
-# define	toupper2(c)	(uppercase[(u_char)(c)])
-extern u_char uppercase[256];
-# endif	/* !LSI_C */
 extern int supportLFN __P_((char *));
 # ifndef	_NODOSDRIVE
 extern int checkdrive __P_((int));

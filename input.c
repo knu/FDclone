@@ -7,7 +7,6 @@
 #include <signal.h>
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	_NOORIGSHELL
@@ -437,16 +436,15 @@ int len, ptr;
 	char *buf;
 	int n;
 
-	if (len >= 0) buf = malloc2(len * KANAWID + 1);
-	else if (ptr < 0) buf = malloc2(strlen(s) + 1);
-	else buf = malloc2(strlen(&(s[ptr])) + 1);
+	n = (len >= 0) ? len * KANAWID : strlen3((ptr < 0) ? s : &(s[ptr]));
+	buf = malloc2(n + 1);
 	strncpy3(buf, s, &len, ptr);
 #ifdef	_NOKANJICONV
 	cputs2(buf);
+	n = strlen2(buf);
 #else
-	kanjiputs(buf);
+	n = kanjiputs(buf);
 #endif
-	n = strlen3(buf);
 	free(buf);
 	return(n);
 }
@@ -567,8 +565,7 @@ int cx, cx2, len, plen, linemax;
 	else {
 		ocx = rlen(s, ocx2);
 		dupl = trquote(&(s[ocx]), cx - ocx, NULL);
-		kanjiputs(dupl);
-		win_x += strlen3(dupl);
+		win_x += kanjiputs(dupl);
 		free(dupl);
 	}
 }
@@ -1457,7 +1454,7 @@ char **argv;
 			selectlist[i].name = strdup2(argv[i]);
 			selectlist[i].flags = (F_ISRED | F_ISWRI);
 			selectlist[i].tmpflags = F_STAT;
-			len = strlen3(argv[i]);
+			len = strlen2(argv[i]);
 			if (maxlen < len) maxlen = len;
 		}
 		dupsorton = sorton;
@@ -2606,16 +2603,14 @@ int set;
 #endif
 	locate(xpos, ypos);
 	if (prompt && *prompt) {
-		len = strlen3(prompt);
 #ifndef	_NOORIGSHELL
-		if (dumbmode || shellmode) kanjiputs(prompt);
+		if (dumbmode || shellmode) len = kanjiputs(prompt);
 		else
 #endif
 		{
 			putch2(' ');
-			len++;
 			putterm(t_standout);
-			kanjiputs(prompt);
+			len = 1 + kanjiputs(prompt);
 			putterm(end_standout);
 		}
 	}
@@ -2793,7 +2788,7 @@ char *s;
 	int len;
 	char *cp, *tmp;
 
-	if ((len = (int)strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
+	if ((len = strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
 	|| !(cp = strchr2(s, '[')) || !(tmp = strchr2(cp, ']'))) return(s);
 
 	cp++;
@@ -2882,7 +2877,7 @@ va_dcl
 	win_y = ypos;
 
 	truncstr(buf);
-	len = strlen3(buf);
+	len = strlen2(buf);
 	ret = yesnomes(buf);
 	if (ret < len) len = ret;
 	if (win_x >= n_column) win_x = n_column - 1;
@@ -2981,8 +2976,8 @@ char *s;
 	tmp = NULL;
 	if (!s) s = err;
 	else if (no) {
-		len = n_lastcolumn - (int)strlen(err) - 3;
-		tmp = malloc2(strlen2(s) + strlen(err) + 3);
+		len = n_lastcolumn - strlen2(err) - 3;
+		tmp = malloc2(n_lastcolumn * KANAWID + 1);
 		strncpy3(tmp, s, &len, -1);
 		strcat(tmp, ": ");
 		strcat(tmp, err);
@@ -3035,7 +3030,7 @@ int multi;
 	int i, len;
 
 	for (i = len = 0; i < max; i++) if (str[i]) {
-		len += strlen(str[i]) + 1;
+		len += strlen2(str[i]) + 1;
 		if (multi) len++;
 	}
 	return(len);
@@ -3091,7 +3086,7 @@ int xx[], multi;
 			xx[i + 1] = xx[i];
 			continue;
 		}
-		xx[i + 1] = xx[i] + strlen3(tmpstr[i]) + 1;
+		xx[i + 1] = xx[i] + strlen2(tmpstr[i]) + 1;
 		if (multi) (xx[i + 1])++;
 	}
 
@@ -3231,7 +3226,7 @@ int val[];
 			if (!tmpstr[i]) continue;
 			locate(tmpx + xx[i] + 1, L_MESLINE);
 			if (i == new) kanjiputs(tmpstr[i]);
-			else cprintf2("%*s", strlen3(tmpstr[i]), "");
+			else cprintf2("%*s", strlen2(tmpstr[i]), "");
 		}
 	}
 	else {
@@ -3245,7 +3240,7 @@ int val[];
 			locate(tmpx + xx[i] + 1, L_MESLINE);
 			putch2(' ');
 			if (val[i]) kanjiputs(tmpstr[i]);
-			else cprintf2("%*s", strlen3(tmpstr[i]), "");
+			else cprintf2("%*s", strlen2(tmpstr[i]), "");
 		}
 	}
 	locate(win_x, win_y);

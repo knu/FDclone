@@ -4,6 +4,8 @@
  *	Kanji Convert Function
  */
 
+#define	K_EXTERN
+
 #include <fcntl.h>
 #ifdef	FD
 #include "fd.h"
@@ -11,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "machine.h"
+#include "kctype.h"
 #include "pathname.h"
 #include "term.h"
 
@@ -33,8 +36,6 @@
 #ifdef	USETIMEH
 #include <time.h>
 #endif
-
-#include "kctype.h"
 
 #if	MSDOS
 #include <io.h>
@@ -141,15 +142,7 @@ static char *NEAR _kanjiconv __P_((char *, char *, int, int, int, int *, int));
 #endif	/* !_NOKANJICONV */
 
 int noconv = 0;
-#ifndef	_NOKANJICONV
-int inputkcode = 0;
-#endif
-#if	!defined (_NOKANJICONV) \
-|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
-int outputkcode = 0;
-#endif
 #ifndef	_NOKANJIFCONV
-int fnamekcode = 0;
 int nokanjifconv = 0;
 char *sjispath = NULL;
 char *eucpath = NULL;
@@ -169,42 +162,6 @@ char *noconvpath = NULL;
 char *unitblpath = NULL;
 int unicodebuffer = 0;
 #endif
-#ifndef	LSI_C
-u_char kctypetable[256] = {
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,	/* 0x00 */
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,	/* 0x10 */
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,
-	   0, 0060, 0060, 0060, 0060, 0060, 0060, 0060,	/* 0x20 */
-	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,
-	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,	/* 0x30 */
-	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,	/* 0x40 */
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,	/* 0x50 */
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,
-	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x60 */
-	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,
-	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x70 */
-	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0200,
-	0002, 0003, 0003, 0003, 0003, 0003, 0003, 0003,	/* 0x80 */
-	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,
-	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,	/* 0x90 */
-	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,
-	0002, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xa0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xb0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xc0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xd0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,	/* 0xe0 */
-	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,
-	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,	/* 0xf0 */
-	0013, 0013, 0013, 0013, 0013, 0010, 0010,    0
-};
-#endif	/* !LSI_C */
 
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 static u_char *unitblbuf = NULL;
@@ -457,9 +414,8 @@ u_int cnvunicode __P_((u_int, int));
 #endif
 #ifndef	_NOKANJICONV
 int kanjiconv __P_((char *, char *, int, int, int, int));
-# ifndef	_NOKANJIFCONV
-char *kanjiconv2 __P_((char *, char *, int, int, int));
-# endif
+char *kanjiconv2 __P_((char *, char *, int, int, int, int));
+char *newkanjiconv __P_((char *, int, int, int));
 #endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
 int getkcode __P_((char *));
@@ -1875,19 +1831,33 @@ int max, in, out, io;
 	return(len);
 }
 
-# ifndef	_NOKANJIFCONV
-char *kanjiconv2(buf, s, max, in, out)
+char *kanjiconv2(buf, s, max, in, out, io)
 char *buf, *s;
-int max, in, out;
+int max, in, out, io;
 {
 	int len;
 
-	if (_kanjiconv(buf, s, max, in, out, &len, L_FNAME) != buf)
-		return(s);
+	if (_kanjiconv(buf, s, max, in, out, &len, io) != buf) return(s);
 	buf[len] = '\0';
 	return(buf);
 }
-# endif	/* !_NOKANJIFCONV */
+
+char *newkanjiconv(s, in, out, io)
+char *s;
+int in, out, io;
+{
+	char *buf;
+	int len;
+
+	if (!s) return(NULL);
+	len = strlen(s) * 3 + 3;
+	buf = malloc2(len + 1);
+	if (kanjiconv2(buf, s, len, in, out, io) != buf) {
+		free(buf);
+		return(s);
+	}
+	return(buf);
+}
 #endif	/* !_NOKANJICONV */
 
 #ifndef	_NOKANJIFCONV
@@ -1942,7 +1912,7 @@ int dos;
 #endif	/* FD && _USEDOSEMU */
 #ifndef	_NOKANJIFCONV
 	if (fgetok) cp = kanjiconv2(buf, cp,
-		MAXPATHLEN - 1, getkcode(cp), DEFCODE);
+		MAXPATHLEN - 1, getkcode(cp), DEFCODE, L_FNAME);
 #endif
 #if	defined (FD) && !defined (_NOROCKRIDGE)
 	if (cp == rbuf) {
@@ -2029,7 +1999,7 @@ int *codep;
 
 		c = getkcode(cp);
 		if (codep) *codep = c;
-		cp = kanjiconv2(kbuf, cp, MAXPATHLEN - 1, DEFCODE, c);
+		cp = kanjiconv2(kbuf, cp, MAXPATHLEN - 1, DEFCODE, c, L_FNAME);
 	}
 #endif
 #if	defined (FD) && !defined (_NOROCKRIDGE)

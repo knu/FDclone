@@ -15,22 +15,10 @@
 #endif
 
 #include "printf.h"
+#include "kctype.h"
 
-#define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
-#define	MAXCOLSCOMMA(d)	(MAXLONGWIDTH + (MAXLONGWIDTH / (d)))
 #define	BUFUNIT		16
 #define	THDIGIT		3
-#define	VF_PLUS		00001
-#define	VF_MINUS	00002
-#define	VF_SPACE	00004
-#define	VF_ZERO		00010
-#define	VF_LONG		00020
-#define	VF_OFFT		00040
-#define	VF_PIDT		00100
-#define	VF_LOFFT	00200
-#define	VF_UNSIGNED	00400
-#define	VF_THOUSAND	01000
-#define	VF_STRICTWIDTH	02000
 
 #ifdef	__STDC__
 typedef long long		long_t;
@@ -58,24 +46,15 @@ typedef off_t		l_off_t;
 
 #ifdef	FD
 # ifndef	_NOKANJICONV
-#include "kctype.h"
-extern char *malloc2 __P_((ALLOC_T));
-extern int kanjiconv __P_((char *, char *, int, int, int, int));
+extern char *newkanjiconv __P_((char *, int, int, int));
 # endif
 extern char *restorearg __P_((char *));
 #endif
 
 static int NEAR getnum __P_((CONST char *, int *));
-static char *NEAR setint __P_((long_t, int,
-		char *, int *, int *, int, int, int, int));
-#ifdef	FD
-static char *NEAR setstr __P_((char *,
-		char *, int *, int *, int, int, int, int, int));
-#else
-static char *NEAR setstr __P_((char *,
-		char *, int *, int *, int, int, int, int));
-#endif
-static char *NEAR commonprintf __P_((char *, int *, CONST char *, va_list));
+static int NEAR setint __P_((long_t, int, printbuf_t *, int, int));
+static int NEAR setstr __P_((char *, printbuf_t *, int, int));
+static int NEAR commonprintf __P_((printbuf_t *, CONST char *, va_list));
 
 
 static int NEAR getnum(s, ptrp)
@@ -91,104 +70,115 @@ int *ptrp;
 	return(n);
 }
 
-char *setchar(n, buf, ptrp, sizep, new)
+int setchar(n, pbufp)
 int n;
-char *buf;
-int *ptrp, *sizep, new;
+printbuf_t *pbufp;
 {
 	char *tmp;
 
-	if (buf && new < 0) {
-		if (fputc(n, (FILE *)buf) == EOF) return(NULL);
-		(*ptrp)++;
-		return(buf);
+	if (pbufp -> buf && (pbufp -> flags & VF_FILE)) {
+		if (fputc(n, (FILE *)(pbufp -> buf)) == EOF) return(-1);
+		(pbufp -> ptr)++;
+		return(1);
 	}
 
-	if (*ptrp + 1 >= *sizep) {
-		if (!new) {
-			if (*ptrp + 1 == *sizep) buf[(*ptrp)++] = n;
-			buf[*ptrp] = '\0';
-			return(NULL);
+	if (pbufp -> ptr + 1 >= pbufp -> size) {
+		if (!(pbufp -> flags & VF_NEW)) {
+			if (pbufp -> ptr < pbufp -> size)
+				pbufp -> buf[pbufp -> ptr] = '\0';
+			return(1);
 		}
-		*sizep += BUFUNIT;
-		if ((tmp = (char *)realloc(buf, *sizep))) buf = tmp;
+		pbufp -> size += BUFUNIT;
+		if ((tmp = (char *)realloc(pbufp -> buf, pbufp -> size)))
+			pbufp -> buf = tmp;
 		else {
-			free(buf);
-			return(NULL);
+			free(pbufp -> buf);
+			pbufp -> buf = NULL;
+			return(-1);
 		}
 	}
-	buf[(*ptrp)++] = n;
-	return(buf);
+	pbufp -> buf[(pbufp -> ptr)++] = n;
+	return(1);
 }
 
-static char *NEAR setint(n, base, buf, ptrp, sizep, flags, width, prec, new)
+static int NEAR setint(n, base, pbufp, width, prec)
 long_t n;
 int base;
-char *buf;
-int *ptrp, *sizep, flags, width, prec, new;
+printbuf_t *pbufp;
+int width, prec;
 {
 #ifndef	MINIMUMSHELL
 	int cap;
 #endif
 	char num[MAXCOLSCOMMA(THDIGIT) + 1];
 	u_long_t u;
-	int i, c, len, sign, bit;
+	int i, c, len, ptr, sign, bit;
 
-#ifndef	MINIMUMSHELL
+	u = (u_long_t)n;
+	bit = 0;
+
+#ifdef	MINIMUMSHELL
+	if (base != 10) {
+		sign = 0;
+		for (i = 1; i < base; i <<= 1) bit++;
+		base--;
+	}
+	else if (n >= 0) sign = 0;
+#else	/* !MINIMUMSHELL */
 	cap = 0;
 	if (base >= 256) {
 		cap++;
 		base -= 256;
 	}
-#endif
 
-	u = (u_long_t)n;
-	bit = 0;
-	if (base != 10) {
+	if (base != 10 || (pbufp -> flags & VF_UNSIGNED)) {
 		sign = 0;
-#ifndef	MINIMUMSHELL
-		flags &= ~(VF_PLUS | VF_SPACE);
-#endif
-		for (i = 1; i < base; i <<= 1) bit++;
-		base--;
+		pbufp -> flags &= ~(VF_PLUS | VF_SPACE);
+		if (base != 10) {
+			for (i = 1; i < base; i <<= 1) bit++;
+			base--;
+		}
 	}
-#ifdef	MINIMUMSHELL
-	else if (n >= 0) sign = 0;
-#else
-	else if (n >= 0 || (flags & VF_UNSIGNED))
-		sign = (flags & VF_PLUS) ? 1 : 0;
-#endif
+	else if (n >= 0) sign = (pbufp -> flags & VF_PLUS) ? 1 : 0;
+#endif	/* !MINIMUMSHELL */
 	else {
 		sign = -1;
 		n = -n;
 	}
+
 #ifdef	MINIMUMSHELL
 	if (sign) width--;
 #else
-	if (sign || (flags & VF_SPACE)) width--;
+	if (sign || (pbufp -> flags & VF_SPACE)) width--;
 #endif
-	if ((flags & VF_ZERO) && prec < 0) prec = width;
+	if ((pbufp -> flags & VF_ZERO) && prec < 0) prec = width;
+
 	len = 0;
-	while (len < sizeof(num) / sizeof(char)) {
+	if (!n) {
+		if (prec) num[len++] = '0';
+	}
+	else while (len < sizeof(num) / sizeof(char)) {
 #ifdef	MINIMUMSHELL
 		if (!bit) i = (n % base) + '0';
 		else if ((i = (u & base)) < 10) i += '0';
 #else
-		if (!bit) i = (((flags & VF_UNSIGNED) ? u : n) % base) + '0';
+		if (!bit) i = '0'
+			+ (((pbufp -> flags & VF_UNSIGNED) ? u : n) % base);
 		else if ((i = (u & base)) < 10) i += '0';
 		else if (cap) i += 'A' - 10;
 		else i += 'a' - 10;
 #endif
 
-		if ((flags & VF_THOUSAND) && (len % (THDIGIT + 1)) == THDIGIT)
+		if ((pbufp -> flags & VF_THOUSAND)
+		&& (len % (THDIGIT + 1)) == THDIGIT)
 			num[len++] = ',';
 		num[len++] = i;
 		if (bit) {
 			u >>= bit;
 			if (!u) break;
 		}
-#ifdef	MINIMUMSHELL
-		else if (flags & VF_UNSIGNED) {
+#ifndef	MINIMUMSHELL
+		else if (pbufp -> flags & VF_UNSIGNED) {
 			u /= base;
 			if (!u) break;
 		}
@@ -199,164 +189,156 @@ int *ptrp, *sizep, flags, width, prec, new;
 		}
 	}
 
-	if (!(flags & VF_MINUS) && width >= 0 && len < width) {
+	ptr = pbufp -> ptr;
+	if (!(pbufp -> flags & VF_MINUS) && width >= 0 && len < width) {
 		while (len < width) {
 			if (prec >= 0 && prec > width - 1) break;
 			width--;
-			if (!(buf = setchar(' ', buf, ptrp, sizep, new)))
-				return(NULL);
+			if (setchar(' ', pbufp) < 0) return(-1);
 		}
 	}
 
 	c = '\0';
 	if (sign) c = (sign > 0) ? '+' : '-';
 #ifndef	MINIMUMSHELL
-	else if (flags & VF_SPACE) c = ' ';
+	else if (pbufp -> flags & VF_SPACE) c = ' ';
 #endif
-	if (c && !(buf = setchar(c, buf, ptrp, sizep, new))) return(NULL);
+	if (c && setchar(c, pbufp) < 0) return(-1);
 
 	if (prec >= 0 && len < prec) {
 		for (i = 0; i < prec - len; i++) {
-			if ((flags & VF_STRICTWIDTH) && width == 1) break;
+			if ((pbufp -> flags & VF_STRICTWIDTH) && width == 1)
+				break;
 			width--;
 			c = '0';
-			if ((flags & VF_THOUSAND)
+			if ((pbufp -> flags & VF_THOUSAND)
 			&& !((prec - i) % (THDIGIT + 1)))
 				c = (i) ? ',' : ' ';
-			if (!(buf = setchar(c, buf, ptrp, sizep, new)))
-				return(NULL);
+			if (setchar(c, pbufp) < 0) return(-1);
 		}
 	}
-	if ((flags & VF_STRICTWIDTH) && width >= 0 && width < len)
+	if ((pbufp -> flags & VF_STRICTWIDTH) && width >= 0 && width < len)
 	for (i = 0; i < width; i++) {
 		c = '9';
-		if ((flags & VF_THOUSAND) && !((width - i) % (THDIGIT + 1)))
+		if ((pbufp -> flags & VF_THOUSAND)
+		&& !((width - i) % (THDIGIT + 1)))
 			c = (i) ? ',' : ' ';
-		if (!(buf = setchar(c, buf, ptrp, sizep, new))) return(NULL);
+		if (setchar(c, pbufp) < 0) return(-1);
 	}
 	else for (i = 0; i < len; i++) {
-		if (!(buf = setchar(num[len - i - 1], buf, ptrp, sizep, new)))
-			return(NULL);
+		if (setchar(num[len - i - 1], pbufp) < 0) return(-1);
 	}
 
 	if (width >= 0) for (; i < width; i++) {
-		if (!(buf = setchar(' ', buf, ptrp, sizep, new))) return(NULL);
+		if (setchar(' ', pbufp) < 0) return(-1);
 	}
 
-	return(buf);
+	return(pbufp -> ptr - ptr);
 }
 
-#ifdef	FD
-static char *NEAR setstr(s, buf, ptrp, sizep, flags, width, prec, new, kanji)
-char *s, *buf;
-int *ptrp, *sizep, flags, width, prec, new, kanji;
-#else
-static char *NEAR setstr(s, buf, ptrp, sizep, flags, width, prec, new)
-char *s, *buf;
-int *ptrp, *sizep, flags, width, prec, new;
-#endif
+static int NEAR setstr(s, pbufp, width, prec)
+char *s;
+printbuf_t *pbufp;
+int width, prec;
 {
-#ifdef	FD
-	int j, c;
-#endif
-	int i, len;
+	int i, j, c, len, total;
 
 	if (s) {
-#if	defined (FD) && defined (CODEEUC)
-		if (kanji) {
+#ifdef	CODEEUC
+		if (pbufp -> flags & VF_KANJI) {
 			for (i = len = 0; s[i]; i++, len++)
 				if (isekana(s, i)) i++;
 		}
 		else
 #endif
 		len = strlen(s);
-		if (prec >= 0 && len > prec) len = prec;
 	}
 	else {
 		s = "(null)";
 		len = sizeof("(null)") - 1;
+#ifdef	LINUX
+		/* spec. of glibc */
 		if (prec >= 0 && len > prec) len = 0;
+#endif
 	}
+	if (prec >= 0 && len > prec) len = prec;
 
-	if (!(flags & VF_MINUS) && width >= 0 && len < width) {
+	total = 0;
+	if (!(pbufp -> flags & VF_MINUS) && width >= 0 && len < width) {
+		total += width - len;
 		while (len < width--) {
-			if (!(buf = setchar(' ', buf, ptrp, sizep, new)))
-				return(NULL);
+			if (setchar(' ', pbufp) < 0) return(-1);
 		}
 	}
-#ifdef	FD
-	if (kanji) for (i = j = 0; i < len; i++, j++) {
+	total += len;
+	if (!(pbufp -> flags & VF_KANJI)) {
+		for (i = 0; i < len; i++)
+			if (setchar(s[i], pbufp) < 0) return(-1);
+	}
+	else for (i = j = 0; i < len; i++, j++) {
 		c = s[j];
-# ifdef	CODEEUC
+#ifdef	CODEEUC
 		if (isekana(s, j)) {
-			if (!(buf = setchar(c, buf, ptrp, sizep, new)))
-				return(NULL);
+			if (setchar(c, pbufp) < 0) return(-1);
 			c = s[++j];
 		}
 		else
-# endif
+#endif
 		if (iskanji1(s, j)) {
 			if (++i >= len) c = ' ';
 			else {
-				if (!(buf = setchar(c, buf, ptrp, sizep, new)))
-					return(NULL);
+				if (setchar(c, pbufp) < 0) return(-1);
 				c = s[++j];
 			}
 		}
 
-		if (!(buf = setchar(c, buf, ptrp, sizep, new))) return(NULL);
-	}
-	else
-#endif	/* FD */
-	for (i = 0; i < len; i++) {
-		if (!(buf = setchar(s[i], buf, ptrp, sizep, new)))
-			return(NULL);
+		if (setchar(c, pbufp) < 0) return(-1);
 	}
 
-	if (width >= 0) for (; i < width; i++) {
-		if (!(buf = setchar(' ', buf, ptrp, sizep, new))) return(NULL);
+	if (width >= 0 && i < width) {
+		total += width - i;
+		for (; i < width; i++) if (setchar(' ', pbufp) < 0) return(-1);
 	}
 
-	return(buf);
+	return(total);
 }
 
-static char *NEAR commonprintf(buf, sizep, fmt, args)
-char *buf;
-int *sizep;
+static int NEAR commonprintf(pbufp, fmt, args)
+printbuf_t *pbufp;
 CONST char *fmt;
 va_list args;
 {
-#ifdef	FD
-	char *s, *cp;
-# ifndef	_NOKANJICONV
+#if	defined (FD) && !defined (_NOKANJICONV)
 	char *tmp;
-	int len;
-# endif
 #endif
 	long_t n;
-	int i, j, base, flags, width, prec, new;
+	char *s, *cp;
+	int i, len, total, base, width, prec;
 
-	if (buf) new = (*sizep >= 0) ? 0 : -1;
-	else if (!(buf = (char *)malloc(*sizep = BUFUNIT))) return(NULL);
-	else new = 1;
-	for (i = j = 0; fmt[i]; i++) {
+	if (pbufp -> flags & VF_NEW) {
+		if (!(pbufp -> buf = (char *)malloc(1))) return(-1);
+		pbufp -> size = 0;
+	}
+	pbufp -> ptr = total = 0;
+
+	for (i = 0; fmt[i]; i++) {
 		if (fmt[i] != '%') {
-			if (!(buf = setchar(fmt[i], buf, &j, sizep, new)))
-				return(NULL);
+			total++;
+			if (setchar(fmt[i], pbufp) < 0) return(-1);
 			continue;
 		}
 
 		i++;
-		flags = 0;
 		width = prec = -1;
 		for (;;) {
-			if (fmt[i] == '-') flags |= VF_MINUS;
-			else if (fmt[i] == '0') flags |= VF_ZERO;
-			else if (fmt[i] == '\'') flags |= VF_THOUSAND;
+			if (fmt[i] == '-') pbufp -> flags |= VF_MINUS;
+			else if (fmt[i] == '0') pbufp -> flags |= VF_ZERO;
+			else if (fmt[i] == '\'') pbufp -> flags |= VF_THOUSAND;
 #ifndef	MINIMUMSHELL
-			else if (fmt[i] == '+') flags |= VF_PLUS;
-			else if (fmt[i] == ' ') flags |= VF_SPACE;
-			else if (fmt[i] == '<') flags |= VF_STRICTWIDTH;
+			else if (fmt[i] == '+') pbufp -> flags |= VF_PLUS;
+			else if (fmt[i] == ' ') pbufp -> flags |= VF_SPACE;
+			else if (fmt[i] == '<')
+				pbufp -> flags |= VF_STRICTWIDTH;
 #endif
 			else break;
 
@@ -366,7 +348,7 @@ va_list args;
 		if (fmt[i] != '*') width = getnum(fmt, &i);
 		else {
 			i++;
-			width = (int)va_arg(args, int);
+			width = va_arg(args, int);
 		}
 		if (fmt[i] == '.') {
 			i++;
@@ -375,23 +357,24 @@ va_list args;
 				i++;
 				prec = va_arg(args, int);
 			}
+			if (prec < 0) prec = 0;
 		}
 		if (fmt[i] == 'l') {
 			i++;
-			flags |= VF_LONG;
+			pbufp -> flags |= VF_LONG;
 		}
 		else if (fmt[i] == 'q') {
 			i++;
-			flags |= VF_OFFT;
+			pbufp -> flags |= VF_OFFT;
 		}
 		else if (fmt[i] == 'i') {
 			i++;
-			flags |= VF_PIDT;
+			pbufp -> flags |= VF_PIDT;
 		}
 #ifndef	MINIMUMSHELL
 		else if (fmt[i] == 'L') {
 			i++;
-			flags |= VF_LOFFT;
+			pbufp -> flags |= VF_LOFFT;
 		}
 #endif
 
@@ -400,50 +383,37 @@ va_list args;
 			case 'd':
 				base = 10;
 				break;
-#ifdef	FD
 			case 'a':
 			case 'k':
+				pbufp -> flags |= VF_KANJI;
+/*FALLTHRU*/
+			case 's':
 				cp = s = va_arg(args, char *);
+#ifdef	FD
 				if (fmt[i] == 'a') cp = restorearg(s);
 
 # ifndef	_NOKANJICONV
-				len = strlen(cp) * 3 + 3;
-				tmp = malloc2(len + 1);
-				len = kanjiconv(tmp, cp, len,
-					DEFCODE, outputkcode, L_OUTPUT);
-				tmp[len] = '\0';
-				if (cp != s) free(cp);
-				cp = tmp;
+				if (cp && (pbufp -> flags & VF_KANJI)) {
+					tmp = newkanjiconv(cp, DEFCODE,
+						outputkcode, L_OUTPUT);
+					if (cp != s && cp != tmp) free(cp);
+					cp = tmp;
+				}
 # endif
-				buf = setstr(cp, buf, &j, sizep,
-					flags, width, prec, new, 1);
+#endif	/* FD */
+				len = setstr(cp, pbufp, width, prec);
 				if (cp != s) free(cp);
 				break;
-			case 's':
-				buf = setstr(va_arg(args, char *),
-					buf, &j, sizep,
-					flags, width, prec, new, 0);
-				break;
-#else	/* FD */
-			case 'a':
-			case 'k':
-			case 's':
-				buf = setstr(va_arg(args, char *),
-					buf, &j, sizep,
-					flags, width, prec, new);
-				break;
-#endif	/* FD */
 			case 'c':
-				buf = setchar(va_arg(args, int),
-					buf, &j, sizep, new);
+				len = setchar(va_arg(args, int) & 0xff, pbufp);
 				break;
 #ifndef	MINIMUMSHELL
 			case 'u':
-				flags |= VF_UNSIGNED;
+				pbufp -> flags |= VF_UNSIGNED;
 				base = 10;
 				break;
 			case 'p':
-				flags |= VF_LONG;
+				pbufp -> flags |= VF_LONG;
 /*FALLTHRU*/
 			case 'x':
 				base = 16;
@@ -456,31 +426,55 @@ va_list args;
 				base = 8;
 				break;
 			default:
-				buf = setchar(fmt[i], buf, &j, sizep, new);
+				len = setchar(fmt[i], pbufp);
 				break;
 		}
 
 		if (base) {
-			if (flags & VF_LONG) n = (long_t)va_arg(args, long);
-			else if (flags & VF_OFFT)
-				n = (long_t)va_arg(args, off_t);
-			else if (flags & VF_PIDT)
-				n = (long_t)va_arg(args, p_id_t);
+			if (pbufp -> flags & VF_LONG) {
+				n = va_arg(args, long);
+				len = (sizeof(long_t) - sizeof(long))
+					* BITSPERBYTE;
+			}
+			else if (pbufp -> flags & VF_OFFT) {
+				n = va_arg(args, off_t);
+				len = (sizeof(long_t) - sizeof(off_t))
+					* BITSPERBYTE;
+			}
+			else if (pbufp -> flags & VF_PIDT) {
+				n = va_arg(args, p_id_t);
+				len = (sizeof(long_t) - sizeof(p_id_t))
+					* BITSPERBYTE;
+			}
 #ifndef	MINIMUMSHELL
-			else if (flags & VF_LOFFT)
-				n = (long_t)va_arg(args, l_off_t);
+			else if (pbufp -> flags & VF_LOFFT) {
+				n = va_arg(args, l_off_t);
+				len = (sizeof(long_t) - sizeof(l_off_t))
+					* BITSPERBYTE;
+			}
 #endif
-			else n = (long_t)va_arg(args, int);
-			buf = setint(n, base,
-				buf, &j, sizep, flags, width, prec, new);
+			else {
+				n = va_arg(args, int);
+				len = (sizeof(long_t) - sizeof(int))
+					* BITSPERBYTE;
+			}
+#ifdef	MINIMUMSHELL
+			if (len > 0 && base != 10)
+#else
+			if (len > 0
+			&& (base != 10 || (pbufp -> flags & VF_UNSIGNED)))
+#endif
+				n &= (MAXUTYPE(u_long_t) >> len);
+			len = setint(n, base, pbufp, width, prec);
 		}
 
-		if (!buf) return(NULL);
+		if (len < 0) return(-1);
+		total += len;
 	}
 	va_end(args);
-	if (new >= 0) buf[j] = '\0';
-	*sizep = j;
-	return(buf);
+	if (pbufp -> buf && !(pbufp -> flags & VF_FILE))
+		pbufp -> buf[pbufp -> ptr] = '\0';
+	return(total);
 }
 
 int vasprintf2(sp, fmt, args)
@@ -488,13 +482,14 @@ char **sp;
 CONST char *fmt;
 va_list args;
 {
-	char *cp;
-	int size;
+	printbuf_t pbuf;
+	int n;
 
-	if (!(cp = commonprintf(NULL, &size, fmt, args))) return(-1);
-	if (sp) *sp = cp;
-	else free(cp);
-	return(size);
+	if (!sp) return(-1);
+	pbuf.flags = VF_NEW;
+	n = commonprintf(&pbuf, fmt, args);
+	*sp = pbuf.buf;
+	return(n);
 }
 
 #ifdef	USESTDARGH
@@ -509,7 +504,8 @@ va_dcl
 #endif
 {
 	va_list args;
-	int size;
+	printbuf_t pbuf;
+	int n;
 
 #ifdef	USESTDARGH
 	va_start(args, fmt);
@@ -517,18 +513,20 @@ va_dcl
 	va_start(args);
 #endif
 
-	*sp = commonprintf(NULL, &size, fmt, args);
+	if (!sp) return(-1);
+	pbuf.flags = VF_NEW;
+	n = commonprintf(&pbuf, fmt, args);
+	*sp = pbuf.buf;
 	va_end(args);
-	if (!*sp) return(-1);
-	return(size);
+	return(n);
 }
 
 #ifdef	USESTDARGH
 /*VARARGS3*/
-char *snprintf2(char *s, int size, CONST char *fmt, ...)
+int snprintf2(char *s, int size, CONST char *fmt, ...)
 #else
 /*VARARGS3*/
-char *snprintf2(s, size, fmt, va_alist)
+int snprintf2(s, size, fmt, va_alist)
 char *s;
 int size;
 CONST char *fmt;
@@ -536,6 +534,8 @@ va_dcl
 #endif
 {
 	va_list args;
+	printbuf_t pbuf;
+	int n;
 
 #ifdef	USESTDARGH
 	va_start(args, fmt);
@@ -543,10 +543,13 @@ va_dcl
 	va_start(args);
 #endif
 
-	if (size < 0) return(NULL);
-	commonprintf(s, &size, fmt, args);
+	if (size < 0) return(-1);
+	pbuf.buf = s;
+	pbuf.size = size;
+	pbuf.flags = 0;
+	n = commonprintf(&pbuf, fmt, args);
 	va_end(args);
-	return(s);
+	return(n);
 }
 
 #ifdef	USESTDARGH
@@ -561,8 +564,8 @@ va_dcl
 #endif
 {
 	va_list args;
-	char *cp;
-	int size;
+	printbuf_t pbuf;
+	int n;
 
 #ifdef	USESTDARGH
 	va_start(args, fmt);
@@ -570,11 +573,11 @@ va_dcl
 	va_start(args);
 #endif
 
-	size = -1;
-	cp = commonprintf((char *)fp, &size, fmt, args);
+	pbuf.buf = (char *)fp;
+	pbuf.flags = VF_FILE;
+	n = commonprintf(&pbuf, fmt, args);
 	va_end(args);
-	if (!cp) return(-1);
-	return(size);
+	return(n);
 }
 
 VOID fputnl(fp)

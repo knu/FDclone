@@ -8,11 +8,13 @@
 #ifdef	FD
 #include "fd.h"
 #else	/* !FD */
+#define	K_EXTERN
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include "machine.h"
 #include "printf.h"
+#include "kctype.h"
 #include "pathname.h"
 
 #ifndef	NOUNISTDH
@@ -29,8 +31,6 @@
 #define	TMPPREFIX	"tm"
 #endif
 #endif	/* !FD */
-
-#include "kctype.h"
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -10580,7 +10580,8 @@ char *argv[];
 	if (!getconstvar("PS4")) setenv2("PS4", PS4STR, 0);
 	setshlineno(1L);
 # if	!MSDOS
-	setenv2("PPID", snprintf2(buf, sizeof(buf), "%id", getppid()), 0);
+	snprintf2(buf, sizeof(buf), "%id", getppid());
+	setenv2("PPID", buf, 0);
 # endif
 #endif
 	setenv2("IFS", IFS_SET, 0);

@@ -643,7 +643,7 @@ VOID title(VOID_A)
 	}
 	cp = (iswellomit()) ? "" : " (c)1995-2003 T.Shirai  ";
 	cputs2(cp);
-	i = n_column - len - strlen(cp) - i;
+	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) putch2(' ');
 	putterm(end_standout);
 	timersec = 0;

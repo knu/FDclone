@@ -361,7 +361,7 @@ treelist *list;
 int max, nest;
 {
 	treelist *lp, *tmplp;
-	int i, j, w, len;
+	int i, w, len;
 
 	lp = NULL;
 	w = TREEFIELD - (nest * DIRFIELD) - 1;
@@ -382,8 +382,8 @@ int max, nest;
 #if	MSDOS
 				if (!_dospath(list[i].name)
 				|| list[i].name[2] != _SC_) len++;
-				for (j = strlen(treepath); j >= 0; j--)
-					treepath[j + len] = treepath[j];
+				memmove(&(treepath[len]), treepath,
+					strlen(treepath) + 1);
 				memcpy(treepath, list[i].name, len - 1);
 #else	/* !MSDOS */
 # ifdef	_NODOSDRIVE
@@ -392,8 +392,8 @@ int max, nest;
 				if (*list[i].name != _SC_
 				&& !_dospath(list[i].name)) len++;
 # endif
-				for (j = strlen(treepath); j >= 0; j--)
-					treepath[j + len] = treepath[j];
+				memmove(&(treepath[len]), treepath,
+					strlen(treepath) + 1);
 				if (*list[i].name != _SC_)
 					memcpy(treepath, list[i].name,
 						len - 1);

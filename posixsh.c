@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "machine.h"
 #include "printf.h"
+#include "kctype.h"
 #include "pathname.h"
 
 #ifndef	NOUNISTDH
@@ -23,8 +24,6 @@
 #include <stdlib.h>
 #endif
 #endif	/* !FD */
-
-#include "kctype.h"
 
 #if	MSDOS
 #include <io.h>
@@ -1627,7 +1626,8 @@ syntaxtree *trp;
 	setenv2(name, buf, 0);
 
 	n = posixoptind;
-	setenv2("OPTIND", snprintf2(buf, sizeof(buf), "%d", n), 0);
+	snprintf2(buf, sizeof(buf), "%d", n);
+	setenv2("OPTIND", buf, 0);
 	posixoptind = n;
 
 	return(ret);

@@ -129,7 +129,6 @@ extern int errno;
 #include "printf.h"
 #include "term.h"
 
-#define	BUFUNIT		16
 #define	GETSIZE		"\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 #define	WINTERMNAME	"iris"
@@ -1484,7 +1483,7 @@ int arg1, arg2;
 {
 	char *cp;
 
-	if (asprintf2(&cp, s, arg1, arg2) < 0) err2("malloc()");
+	if (asprintf2(&cp, s, arg1, arg2) < 0) return(NULL);
 	return(cp);
 }
 
@@ -1507,7 +1506,6 @@ char *tparamstr(s, arg1, arg2)
 char *s;
 int arg1, arg2;
 {
-	char *buf;
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 	if (!s) return(NULL);
@@ -1523,63 +1521,55 @@ int arg1, arg2;
 	if (!s || !(s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0)))
 		return(NULL);
 #  endif
-	buf = tstrdup(s);
+	return(tstrdup(s));
 # else	/* !USETERMINFO */
+	printbuf_t pbuf;
 	char *tmp;
-	int i, j, n, len, size, args[2];
+	int i, j, n, err, args[2];
 
-	if (!s) return(NULL);
-	if (!(buf = (char *)malloc(size = BUFUNIT))) err2("malloc()");
+	if (!s || !(pbuf.buf = (char *)malloc(1))) return(NULL);
+	pbuf.ptr = pbuf.size = 0;
+	pbuf.flags = VF_NEW;
 	args[0] = arg1;
 	args[1] = arg2;
 
-	for (i = j = n = 0; s[i]; i++) {
+	for (i = n = 0; s[i]; i++) {
 		tmp = NULL;
+		err = 0;
 		if (s[i] != '%' || s[++i] == '%') {
-			if (!(buf = setchar(s[i], buf, &j, &size, 1)))
-				err2("realloc()");
+			if (setchar(s[i], &pbuf) < 0) return(NULL);
 		}
-		else if (n >= 2) {
-			free(buf);
-			return(NULL);
-		}
+		else if (n >= 2) err++;
 		else switch (s[i]) {
 			case 'd':
 				if (asprintf2(&tmp, "%d", args[n++]) < 0)
-					err2("malloc()");
+					err++;
 				break;
 			case '2':
 				if (asprintf2(&tmp, "%02d", args[n++]) < 0)
-					err2("malloc()");
+					err++;
 				break;
 			case '3':
 				if (asprintf2(&tmp, "%03d", args[n++]) < 0)
-					err2("malloc()");
+					err++;
 				break;
 			case '.':
 				if (asprintf2(&tmp, "%c", args[n++]) < 0)
-					err2("malloc()");
+					err++;
 				break;
 			case '+':
-				if (!s[++i]) {
-					free(buf);
-					return(NULL);
-				}
-				if (asprintf2(&tmp, "%c",
-				args[n++] + s[i]) < 0)
-					err2("malloc()");;
+				if (!s[++i]
+				|| asprintf2(&tmp, "%c", args[n++] + s[i]) < 0)
+					err++;
 				break;
 			case '>':
-				if (!s[++i] || !s[i + 1]) {
-					free(buf);
-					return(NULL);
-				}
-				if (args[n] > s[i++]) args[n] += s[i];
+				if (!s[++i] || !s[i + 1]) err++;
+				else if (args[n] > s[i++]) args[n] += s[i];
 				break;
 			case 'r':
-				len = args[0];
+				j = args[0];
 				args[0] = args[1];
-				args[1] = len;
+				args[1] = j;
 				break;
 			case 'i':
 				args[0]++;
@@ -1597,28 +1587,24 @@ int arg1, arg2;
 				args[n] -= 2 * (args[n] % 16);
 				break;
 			default:
-				free(buf);
-				return(NULL);
-/*NOTREACHED*/
+				err++;
 				break;
 		}
 
+		if (err) {
+			free(pbuf.buf);
+			return(NULL);
+		}
 		if (tmp) {
-			len = strlen(tmp);
-			if (j + len + 1 >= size) {
-				size += BUFUNIT;
-				if (!(buf = (char *)realloc(buf, size)))
-					err2("realloc()");
-			}
-			memcpy(&(buf[j]), tmp, len);
+			for (j = 0; tmp[j]; j++)
+				if (setchar(tmp[j], &pbuf) < 0) return(NULL);
 			free(tmp);
-			j += len;
 		}
 	}
 
-	buf[j] = '\0';
+	pbuf.buf[pbuf.ptr] = '\0';
+	return(pbuf.buf);
 # endif	/* !USETERMINFO */
-	return(buf);
 }
 
 static char *NEAR tgetstr2(term, s)
@@ -2590,7 +2576,7 @@ u_long usec;
 		n = select(fd + 1, &readfds, NULL, NULL, &tv);
 	} while (n < 0 && errno == EINTR);
 	if (fd != ttyio) close(fd);
-	if (n < 0) err2(TTYNAME);
+	if (n < 0) err2("select()");
 	return(n);
 #  else	/* !DJGPP || DJGPP < 2 */
 	reg.h.ah = 0x01;
@@ -2855,7 +2841,7 @@ u_long usec;
 		n = select(fd + 1, &readfds, NULL, NULL, &tv);
 	} while (n < 0 && errno == EINTR);
 	if (fd != ttyio) close(fd);
-	if (n < 0) err2(TTYNAME);
+	if (n < 0) err2("select()");
 	return(n);
 # endif
 }

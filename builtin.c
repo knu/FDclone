@@ -6,7 +6,6 @@
 
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 #include "funcno.h"
 #include "kanji.h"
 
@@ -2392,7 +2391,10 @@ FILE *fp;
 	calcmd5(sum, x);
 
 	fprintf2(fp, "MD5 (%k) = ", path);
-	for (i = 0; i < 4; i++) fprintf2(fp, "%08lx", sum[i]);
+	for (i = 0; i < 4; i++) for (n = 0; n < 4; n++) {
+		fprintf2(fp, "%02x", (int)(sum[i] & 0xff));
+		sum[i] >>= 8;
+	}
 	fputnl(fp);
 	return(0);
 }
@@ -2449,8 +2451,8 @@ int argc;
 char *argv[];
 {
 	FILE *fpin, *fpout;
-	char *cp, *src, *dest;
-	int i, in, out, len, max, err;
+	char *cp, *tmp;
+	int i, in, out, err;
 
 	err = 0;
 	in = out = DEFCODE;
@@ -2509,25 +2511,17 @@ char *argv[];
 
 	if (in == M_UTF8 || out == M_UTF8) readunitable(1);
 	else if (in == UTF8 || out == UTF8) readunitable(0);
-	while ((src = fgets2(fpin, 0))) {
+	while ((cp = fgets2(fpin, 0))) {
 		if (in != DEFCODE) {
-			len = strlen(src);
-			max = len * 3 + 3;
-			cp = malloc2(max + 1);
-			len = kanjiconv(cp, src, max, in, DEFCODE, L_OUTPUT);
-			free(src);
-			cp[len] = '\0';
-			src = cp;
+			tmp = newkanjiconv(cp, in, DEFCODE, L_OUTPUT);
+			if (cp != tmp) free(cp);
+			cp = tmp;
 		}
-		len = strlen(src);
-		max = len * 3 + 3;
-		dest = malloc2(max + 1);
-		len = kanjiconv(dest, src, max, DEFCODE, out, L_OUTPUT);
-		free(src);
-		dest[len] = '\0';
-		fputs(dest, fpout);
+		tmp = newkanjiconv(cp, DEFCODE, out, L_OUTPUT);
+		if (cp != tmp) free(cp);
+		fputs(tmp, fpout);
 		fputnl(fpout);
-		free(dest);
+		free(tmp);
 	}
 
 	if (!unicodebuffer) discardunitable();

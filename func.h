@@ -442,9 +442,8 @@ extern u_int cnvunicode __P_((u_int, int));
 #endif
 #ifndef	_NOKANJICONV
 extern int kanjiconv __P_((char *, char *, int, int, int, int));
-# ifndef	_NOKANJIFCONV
-extern char *kanjiconv2 __P_((char *, char *, int, int, int));
-# endif
+extern char *kanjiconv2 __P_((char *, char *, int, int, int, int));
+extern char *newkanjiconv __P_((char *, int, int, int));
 #endif
 #ifndef	_NOKANJIFCONV
 extern int getkcode __P_((char *));

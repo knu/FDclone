@@ -6,7 +6,6 @@
 
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 
 #if	!defined (_NODOSDRIVE) && defined (CODEEUC)
 extern int noconv;
@@ -451,7 +450,7 @@ int bufsiz;
 	if ((len = readlink(path, lbuf, MAXPATHLEN)) < 0) return(-1);
 	lbuf[len] = '\0';
 #ifndef	_NOKANJIFCONV
-	path = kanjiconv2(conv, lbuf, MAXPATHLEN - 1, c, DEFCODE);
+	path = kanjiconv2(conv, lbuf, MAXPATHLEN - 1, c, DEFCODE, L_FNAME);
 #else
 	path = lbuf;
 #endif

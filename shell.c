@@ -6,7 +6,6 @@
 
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #if	MSDOS && !defined (_NOUSELFN)
@@ -131,9 +130,8 @@ int code;
 	}
 # endif
 	(*bufp)[eol] = '\0';
-	len = (eol - ptr) * 3 + 3;
-	cp = malloc2(len + 1);
-	len = kanjiconv(cp, &((*bufp)[ptr]), len, DEFCODE, code, L_FNAME);
+	cp = newkanjiconv(&((*bufp)[ptr]), DEFCODE, code, L_FNAME);
+	len = strlen(cp);
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	memcpy(&((*bufp)[ptr]), cp, len);
@@ -213,7 +211,8 @@ int flags;
 
 	if (arg != path) arg = convput(conv, arg, 1, 0, NULL, NULL);
 #ifndef	_NOKANJIFCONV
-	else arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, fnamekcode);
+	else arg = kanjiconv2(conv, arg, MAXPATHLEN - 1,
+		DEFCODE, fnamekcode, L_FNAME);
 #endif
 	optr = ptr;
 	ptr = checksc(*bufp, ptr, arg);
@@ -276,6 +275,7 @@ char *s;
 	char *buf;
 	int i, j, m, flags;
 
+	if (!s) return(NULL);
 	i = strlen(s);
 # ifdef	MACROMETA
 	buf = malloc2(i * 3 + 1);	/* MACROMETA+flags -> %XSTA (x2.5) */
@@ -310,10 +310,10 @@ char *s;
 static char *NEAR _demacroarg(s)
 char *s;
 {
-	char *buf;
+	char *cp;
 
-	if ((buf = _restorearg(s)) != s) free(s);
-	return(buf);
+	if ((cp = _restorearg(s)) != s && s) free(s);
+	return(cp);
 }
 #endif	/* !MACROMETA || !_NOEXTRAMACRO */
 

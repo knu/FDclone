@@ -75,15 +75,6 @@
 # endif
 #endif	/* !MSDOS && UF_SETTABLE && SF_SETTABLE */
 
-#ifndef	BITSPERBYTE
-#define	BITSPERBYTE	8
-#endif
-#define	MINTYPE(t)	((t)(-1L << (BITSPERBYTE * sizeof(t) - 1)))
-#define	MAXTYPE(t)	((t)~MINTYPE(t))
-#define	MAXUTYPE(t)	((t)(~(t)0))
-#define	MAXCOLSCOMMA(d)	(MAXLONGWIDTH + (MAXLONGWIDTH / (d)))
-#define	MAXHISTNO	MAXTYPE(short)
-
 typedef struct _namelist {
 	char *name;
 	u_short ent;

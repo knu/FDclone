@@ -8,7 +8,6 @@
 #include "fd.h"
 #include "func.h"
 #include "funcno.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	_NOORIGSHELL
@@ -133,8 +132,6 @@ extern int inruncom;
 			(selectstr(n, m, x, s, v) == K_ESC)
 #define	custputs(s)	cprintf2("%.*k", n_lastcolumn, s)
 #define	custputs2(s)	cprintf2("%.*k", n_column, s)
-#define	int2str(b, n, s) \
-			snprintf2(b, s, "%d", (int)(n))
 #define	MAXSAVEMENU	5
 #define	MAXTNAMLEN	8
 #ifndef	O_BINARY
@@ -202,6 +199,7 @@ static char *NEAR ascoctal __P_((int, char *));
 # ifndef	_NOORIGSHELL
 static VOID NEAR putargs __P_((char *, int, char *[], FILE *));
 # endif
+static char *NEAR int2str __P_((char *, int));
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
 static int NEAR dumpenv __P_((char *, FILE *));
@@ -740,7 +738,7 @@ static VOID NEAR custtitle(VOID_A)
 	str[6] = TSAVE_K;
 
 	for (i = width = max = 0; i < MAXCUSTOM; i++) {
-		len = strlen3(str[i]);
+		len = strlen2(str[i]);
 		width += len + 2;
 		if (max < len) max = len;
 	}
@@ -906,6 +904,14 @@ FILE *fp;
 }
 # endif	/* _NOORIGSHELL */
 
+static char *NEAR int2str(buf, n)
+char *buf;
+int n;
+{
+	snprintf2(buf, MAXLONGWIDTH + 1, "%d", n);
+	return(buf);
+}
+
 static int NEAR dispenv(no)
 int no;
 {
@@ -920,14 +926,12 @@ int no;
 			cp = str[(*((int *)(envlist[no].var))) ? 1 : 0];
 			break;
 		case T_SHORT:
-			cp = int2str(buf,
-				*((short *)(envlist[no].var)), sizeof(buf));
+			cp = int2str(buf, *((short *)(envlist[no].var)));
 			break;
 		case T_INT:
 		case T_NATURAL:
 		case T_COLUMN:
-			cp = int2str(buf,
-				*((int *)(envlist[no].var)), sizeof(buf));
+			cp = int2str(buf, *((int *)(envlist[no].var)));
 			break;
 		case T_SORT:
 			n = *((int *)(envlist[no].var));
@@ -1049,7 +1053,7 @@ int no;
 			break;
 	}
 	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
-	n = strlen3(cp);
+	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
 	if (new) free(new);
 	return(n);
@@ -1072,11 +1076,10 @@ int no;
 			str[1] = VBOL1_K;
 			envcaption(env);
 			if (noselect(&n, 2, 0, str, val)) return(0);
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 		case T_SHORT:
-			int2str(buf,
-				*((short *)(envlist[no].var)), sizeof(buf));
+			int2str(buf, *((short *)(envlist[no].var)));
 			cp = inputcuststr(env, 1, buf, -1);
 			if (!cp) return(0);
 			n = atoi2(cp);
@@ -1085,12 +1088,11 @@ int no;
 				warning(0, VALNG_K);
 				return(0);
 			}
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 		case T_INT:
 		case T_NATURAL:
-			int2str(buf,
-				*((int *)(envlist[no].var)), sizeof(buf));
+			int2str(buf, *((int *)(envlist[no].var)));
 			cp = inputcuststr(env, 1, buf, -1);
 			if (!cp) return(0);
 			n = atoi2(cp);
@@ -1099,7 +1101,7 @@ int no;
 				warning(0, VALNG_K);
 				return(0);
 			}
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 		case T_PATH:
 			if (!(cp = getenv2(envlist[no].env)))
@@ -1143,7 +1145,7 @@ int no;
 			val[1] = 100;
 			if (noselect(&p, 2, 0, str, val)) return(0);
 			n += p;
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 		case T_DISP:
 			n = *((int *)(envlist[no].var));
@@ -1173,7 +1175,7 @@ int no;
 			if (noselect(&tmp, 2, 0, str, val)) return(0);
 			n = (n & ~8) | (tmp << 3);
 # endif
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 # ifndef	_NOWRITEFS
 		case T_WRFS:
@@ -1183,7 +1185,7 @@ int no;
 			str[2] = VWFS2_K;
 			envcaption(env);
 			if (noselect(&n, 3, 0, str, val)) return(0);
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 # endif	/* !_NOWRITEFS */
 # if	MSDOS && !defined (_NODOSDRIVE)
@@ -1193,7 +1195,7 @@ int no;
 			str[1] = VBOL1_K;
 			envcaption(env);
 			if (noselect(&n, 2, 0, str, val)) return(0);
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			if (*((int *)(envlist[no].var)) & 2) {
 				cp = strdup2(cp);
 				cp = new = strcatalloc(cp, ",BIOS");
@@ -1212,7 +1214,7 @@ int no;
 			val[3] = 5;
 			envcaption(env);
 			if (noselect(&n, 4, 0, str, val)) return(0);
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 # ifndef	_NOCOLOR
 		case T_COLOR:
@@ -1223,7 +1225,7 @@ int no;
 			str[3] = VCOL3_K;
 			envcaption(env);
 			if (noselect(&n, 4, 0, str, val)) return(0);
-			cp = int2str(buf, n, sizeof(buf));
+			cp = int2str(buf, n);
 			break;
 # endif	/* !_NOCOLOR */
 # ifndef	_NOEDITMODE
@@ -1664,7 +1666,7 @@ int no;
 		cprintf2("%-*.*k",
 			MAXCUSTVAL - 1 - width, MAXCUSTVAL - 1 - width, cp2);
 	}
-	len = strlen3(cp1);
+	len = strlen2(cp1);
 	if (len > --width) len = width;
 	return(len);
 }
@@ -1980,7 +1982,7 @@ int no;
 	}
 	cp = encodestr(key.str, key.len);
 	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
-	len = strlen3(cp);
+	len = strlen2(cp);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
 	free(cp);
 	return(len);
@@ -2001,8 +2003,7 @@ int no;
 	locate(0, L_INFO);
 	putterm(l_clear);
 	buf = asprintf3(KYMPK_K, cp);
-	kanjiputs(buf);
-	win_x = strlen3(buf);
+	win_x = kanjiputs(buf);
 	win_y = L_INFO;
 	locate(win_x, win_y);
 	tflush();
@@ -2243,7 +2244,7 @@ int no;
 		putsep();
 		cprintf2("%-2d", launchlist[no].bottomskip);
 	}
-	len = strlen3(launchlist[no].comm);
+	len = strlen2(launchlist[no].comm);
 	if (len > --width) len = width;
 	return(len);
 }
@@ -2256,7 +2257,7 @@ launchtable *list;
 	custtitle();
 	y = LFILETOP + 1;
 	fillline(y++, n_column);
-	len = strlen3(list -> ext + 1);
+	len = strlen2(list -> ext + 1);
 	if (list -> flags & LF_IGNORECASE) len++;
 	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
 	fillline(y++, MAXCUSTNAM + 1 - len);
@@ -2476,7 +2477,7 @@ launchtable *list;
 				skipp = &(list -> bottomskip);
 				cp = BTMSK_K;
 			}
-			cp = int2str(buf, *skipp, sizeof(buf));
+			cp = int2str(buf, *skipp);
 			if (!(cp = inputcuststr(cp, 1, buf, -1))) continue;
 			i = atoi2(cp);
 			free(cp);
@@ -2788,7 +2789,7 @@ int no;
 	else cprintf2("%-*.*k",
 		MAXCUSTVAL - 1 - width, MAXCUSTVAL - 1 - width,
 		archivelist[no].u_comm);
-	len = (archivelist[no].p_comm) ? strlen3(archivelist[no].p_comm) : 0;
+	len = (archivelist[no].p_comm) ? strlen2(archivelist[no].p_comm) : 0;
 	if (len > --width) len = width;
 	return(len);
 }
@@ -3060,7 +3061,7 @@ int no;
 	{
 		len = 0;
 		for (i = 0; i < MEDIADESCRSIZ; i++) {
-			w2 = strlen(mediadescr[i].name);
+			w2 = strlen2(mediadescr[i].name);
 			if (len < w2) len = w2;
 		}
 
@@ -3078,12 +3079,11 @@ int no;
 			&& fdtype[no].sect == mediadescr[i].sect
 			&& fdtype[no].cyl == mediadescr[i].cyl) break;
 		}
-		if (i >= MEDIADESCRSIZ) cprintf2("%*s", w1 - (w2 + 1) * 3, "");
-		else cprintf2("%-*.*k",
-			w1 - (w2 + 1) * 3, w1 - (w2 + 1) * 3,
-			mediadescr[i].name);
+		w1 -= (w2 + 1) * 3;
+		if (i >= MEDIADESCRSIZ) cprintf2("%*s", w1, "");
+		else cprintf2("%-*.*k", w1, w1, mediadescr[i].name);
 	}
-	len = strlen3(fdtype[no].name);
+	len = strlen2(fdtype[no].name);
 	if (len > --width) len = width;
 	return(len);
 }
@@ -3180,7 +3180,7 @@ int no;
 
 		for (;;) {
 			if (!(fdtype[no].name)) cp = NULL;
-			else cp = int2str(buf, fdtype[no].head, sizeof(buf));
+			else cp = int2str(buf, fdtype[no].head);
 
 			if (!(cp = inputcuststr(DRHED_K, 1, cp, -1))) break;
 			dev.head = n = atoi2(cp);
@@ -3192,7 +3192,7 @@ int no;
 
 		for (;;) {
 			if (!(fdtype[no].name)) cp = NULL;
-			else cp = int2str(buf, fdtype[no].sect, sizeof(buf));
+			else cp = int2str(buf, fdtype[no].sect);
 
 			if (!(cp = inputcuststr(DRSCT_K, 1, cp, -1))) break;
 			dev.sect = n = atoi2(cp);
@@ -3205,7 +3205,7 @@ int no;
 
 		for (;;) {
 			if (!(fdtype[no].name)) cp = NULL;
-			else cp = int2str(buf, fdtype[no].cyl, sizeof(buf));
+			else cp = int2str(buf, fdtype[no].cyl);
 
 			if (!(cp = inputcuststr(DRCYL_K, 1, cp, -1))) break;
 			dev.cyl = n = atoi2(cp);
@@ -3372,7 +3372,7 @@ int no;
 	mes[4] = COVWR_K;
 # endif
 	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, mes[no]);
-	len = strlen3(mes[no]);
+	len = strlen2(mes[no]);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
 	return(len);
 }
@@ -3820,7 +3820,7 @@ int no, y, isstandout;
 			break;
 	}
 
-	len = strlen3(cp);
+	len = strlen2(cp);
 	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
 	fillline(y, MAXCUSTNAM + 1 - len);
 	if (isstandout) {

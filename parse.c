@@ -6,7 +6,6 @@
 
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 
 #ifdef	USEUNAME
 #include <sys/utsname.h>
@@ -259,9 +258,9 @@ char *evalcomstr(path, delim)
 char *path, *delim;
 {
 # ifndef	_NOKANJIFCONV
-	char *buf;
+	char *tmp;
 # endif
-	char *cp, *next, *tmp, *epath;
+	char *cp, *next, *epath;
 	int i, len, size;
 
 	epath = next = NULL;
@@ -277,34 +276,19 @@ char *path, *delim;
 		}
 		next = cp + len;
 		if (len) {
-			tmp = _evalpath(cp, next, 0, 0);
+			cp = _evalpath(cp, next, 0, 0);
 # ifndef	_NOKANJIFCONV
-			len = strlen(tmp) * 3 + 3;
-			buf = malloc2(len + 1);
-			cp = kanjiconv2(buf, tmp,
-				len, DEFCODE, getkcode(tmp));
-# else
+			tmp = newkanjiconv(cp, DEFCODE, getkcode(cp), L_FNAME);
+			if (cp != tmp) free(cp);
 			cp = tmp;
 # endif
 			len = strlen(cp);
 		}
-# ifdef	FAKEUNINIT
-		else {
-			/* fake for -Wuninitialized */
-#  ifndef	_NOKANJIFCONV
-			buf =
-#  endif
-			tmp = NULL;
-		}
-# endif
 
 		epath = realloc2(epath, size + len + i + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
-# ifndef	_NOKANJIFCONV
-			free(buf);
-# endif
-			free(tmp);
+			free(cp);
 			size += len;
 		}
 		if (i) {

@@ -7,7 +7,6 @@
 #include <fcntl.h>
 #include "fd.h"
 #include "func.h"
-#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	NOTZFILEH
@@ -53,17 +52,6 @@ extern int lastdrv;
 #ifndef	SIG_ERR
 #define	SIG_ERR		((sigcst_t)-1)
 #endif
-#ifndef	CHAR_BIT
-# ifdef	NBBY
-# define	CHAR_BIT	NBBY
-# else
-# define	CHAR_BIT	0x8
-# endif
-#endif
-#define	char2long(cp)	(  ((u_char *)(cp))[3] \
-			| (((u_char *)(cp))[2] << (CHAR_BIT * 1)) \
-			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
-			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
 #ifndef	NOSYMLINK
 static int NEAR evallink __P_((char *, char *));
@@ -634,10 +622,7 @@ int *lenp, ptr;
 int strlen2(s)
 char *s;
 {
-	int i, len;
-
-	for (i = len = 0; s[i]; i++, len++) if (isctl(s[i])) len++;
-	return(len);
+	return(snprintf2(NULL, 0, "%k", s));
 }
 
 int strlen3(s)
@@ -646,10 +631,17 @@ char *s;
 	int i, len;
 
 	for (i = len = 0; s[i]; i++, len++) {
-		if (isctl(s[i])) len++;
 #ifdef	CODEEUC
-		else if (isekana(s, i)) i++;
+		if (isekana(s, i)) i++;
+#else
+		if (iskna(s[i])) /*EMPTY*/;
 #endif
+		else if (iskanji1(s, i)) {
+			i++;
+			len++;
+		}
+		else if (isctl(s[i])) len++;
+		else if (ismsb(s[i])) len += 3;
 	}
 	return(len);
 }

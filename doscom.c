@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "machine.h"
 #include "printf.h"
+#include "kctype.h"
 #include "pathname.h"
 
 #ifndef	NOUNISTDH
@@ -23,8 +24,6 @@
 #include <stdlib.h>
 #endif
 #endif	/* !FD */
-
-#include "kctype.h"
 
 #ifdef	USETIMEH
 #include <time.h>

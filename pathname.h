@@ -50,17 +50,6 @@
 #define	PC_WORD		6
 #define	PC_META		7
 
-#define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
-#ifdef	LSI_C
-#define	toupper2	toupper
-#define	tolower2	tolower
-#else
-extern u_char uppercase[256];
-extern u_char lowercase[256];
-#define	toupper2(c)	(uppercase[(u_char)(c)])
-#define	tolower2(c)	(lowercase[(u_char)(c)])
-#endif
-
 #if	defined (_NOORIGGLOB) \
 && !defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
 #undef	_NOORIGGLOB

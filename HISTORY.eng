@@ -1,3 +1,6 @@
+Ver. 2.05a	Bug that 'checkid' builtin outputs a wrong value is fixed.
+ (12/10/03)
+
 Ver. 2.05	Support 'utf8-mac' as an additional Kanji code.
  (12/03/03)	Add 'LOOPCURSOR' and 'TRADLAYOUT' internal variables.
 		Add 'UNICODEBUFFER' internal variable.
