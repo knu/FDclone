@@ -633,6 +633,7 @@ launchtable *list;
 				sizeof(namelist));
 			filelist[maxfile].st_mode &= ~S_IFMT;
 			filelist[maxfile].st_mode |= S_IFDIR;
+			filelist[maxfile].st_size = 0;
 			filelist[maxfile].flags |= F_ISDIR;
 			filelist[maxfile].name = cp;
 			filelist[maxfile].ent = no;
@@ -721,8 +722,10 @@ char *file;
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
 	if (filepos >= 0 && strcmp(filelist[filepos].name, "..")) {
-		if (*(cp = archivedir) && (*cp != _SC_ || *(cp + 1)))
-			cp = strcatdelim(archivedir);
+		if (*(cp = archivedir)) {
+			if (*cp == _SC_ && !*(cp + 1)) cp++;
+			else cp = strcatdelim(archivedir);
+		}
 		strcpy(cp, filelist[filepos].name);
 		*file = '\0';
 	}

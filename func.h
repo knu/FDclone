@@ -72,6 +72,9 @@ extern int dospath3 __P_((char *));
 #define	dospath3(path)	dospath(path, NULL)
 # endif
 #endif
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+extern int getkcode __P_((char *));
+#endif
 extern DIR *_Xopendir __P_((char *));
 #ifdef	_NOROCKRIDGE
 #define	Xopendir	_Xopendir
@@ -99,7 +102,11 @@ extern int Xchdir __P_((char *));
 extern char *_Xgetwd __P_((char *));
 extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
+#if	MSDOS || defined (_NOKANJIFCONV)
 #define	_Xlstat(p, s)	(lstat(p, s) ? -1 : 0)
+#else
+extern int _Xlstat __P_((char *, struct stat *));
+#endif
 extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 extern int Xsymlink __P_((char *, char *));
@@ -143,7 +150,7 @@ extern int _Xmkdir __P_((char *, int));
 # endif
 #define	_Xrmdir(p)	(rmdir(p) ? -1 : 0)
 #else
-# if	!MSDOS && defined (_NODOSDRIVE)
+# if	!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJIFCONV)
 #define	_Xmkdir		mkdir
 #define	_Xrmdir		rmdir
 # else
@@ -160,7 +167,7 @@ extern int _Xrmdir __P_((char *));
 #  endif
 #define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
 # else
-#  if	!MSDOS && defined (_NODOSDRIVE)
+#  if	!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJIFCONV)
 #define	Xmkdir		mkdir
 #define	Xrmdir		rmdir
 #  else
@@ -172,7 +179,8 @@ extern int _Xrmdir __P_((char *));
 extern int Xmkdir __P_((char *, int));
 extern int Xrmdir __P_((char *));
 #endif
-#if	(MSDOS && defined (_NOUSELFN)) || (!MSDOS && defined (_NODOSDRIVE))
+#if	(MSDOS && defined (_NOUSELFN)) \
+|| (!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJIFCONV))
 #define	_Xfopen		fopen
 #else
 extern FILE *_Xfopen __P_((char *, char *));
@@ -357,6 +365,9 @@ extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 extern int kanjiconv __P_((char *, char *, int, int, int));
+#endif
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+extern char *kanjiconv2 __P_((char *, char *, int, int, int));
 #endif
 extern int kanjiputs __P_((char *));
 extern int kanjiprintf __P_((CONST char *, ...));

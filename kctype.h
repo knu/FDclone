@@ -53,6 +53,13 @@ extern u_char kctypetable[256];
 #define	SJIS	2
 #define	EUC	3
 #define	JIS7	4
+#define	O_JIS7	5
+#define	JIS8	6
+#define	O_JIS8	7
+#define	JUNET	8
+#define	O_JUNET	9
+#define	HEX	10
+#define	CAP	11
 
 #ifdef	CODEEUC
 #define	DEFCODE	EUC
@@ -69,9 +76,13 @@ extern int inputkcode;
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 extern int outputkcode;
 #endif
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+extern int fnamekcode;
+#endif
 
 #define	L_INPUT		0
 #define	L_OUTPUT	1
+#define	L_FNAME		2
 
 #ifdef	CODEEUC
 #define	iskanji1(s, i)	(iseuc((s)[i]) && iseuc((s)[(i) + 1]))

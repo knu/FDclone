@@ -67,6 +67,19 @@ extern int win_y;
 extern char *deftmpdir;
 #if	DEBUG
 extern char *rockridgepath;
+# if	!MSDOS && !defined (_NOKANJIFCONV)
+extern char *sjispath;
+extern char *eucpath;
+extern char *jis7path;
+extern char *jis8path;
+extern char *junetpath;
+extern char *ojis7path;
+extern char *ojis8path;
+extern char *ojunetpath;
+extern char *hexpath;
+extern char *cappath;
+extern char *noconvpath;
+# endif	/* !MSDOS && !_NOKANJIFCONV */
 #endif
 
 #define	CLOCKUPDATE	10	/* sec */
@@ -844,6 +857,19 @@ char *argv[], *envp[];
 	freehistory(1);
 	if (deftmpdir) free(deftmpdir);
 	if (rockridgepath) free(rockridgepath);
+# if	!MSDOS && !defined (_NOKANJIFCONV)
+	if (sjispath) free(sjispath);
+	if (eucpath) free(eucpath);
+	if (jis7path) free(jis7path);
+	if (jis8path) free(jis8path);
+	if (junetpath) free(junetpath);
+	if (ojis7path) free(ojis7path);
+	if (ojis8path) free(ojis8path);
+	if (ojunetpath) free(ojunetpath);
+	if (hexpath) free(hexpath);
+	if (cappath) free(cappath);
+	if (noconvpath) free(noconvpath);
+# endif	/* !MSDOS && !_NOKANJIFCONV */
 	freedefine();
 # ifndef	_NOUSEHASH
 	freehash(NULL);

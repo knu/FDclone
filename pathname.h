@@ -132,7 +132,7 @@ extern char *gethomedir __P_((VOID_A));
 extern char *evalarg __P_((char *, int));
 extern int evalifs __P_((int, char ***, char *, int));
 extern int evalglob __P_((int, char ***, int));
-extern int stripquote __P_((char *));
+extern char *stripquote __P_((char *));
 #ifndef	FDSH
 extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));

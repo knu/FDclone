@@ -68,7 +68,7 @@ config.h: config.hin
 	cp config.hin config.h
 
 install catman catman-b compman compman-b \
-fd.doc history.doc \
+fd.doc README.doc HISTORY.doc FAQ.doc \
 depend config clean: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
 

@@ -416,6 +416,7 @@ static VOID NEAR infobar(VOID_A)
 	int i;
 #endif
 
+	if (!filelist) return;
 	locate(0, LINFO);
 
 	if (filelist[filepos].st_nlink < 0) {
@@ -525,21 +526,17 @@ VOID waitmes(VOID_A)
 static VOID NEAR calclocate(i)
 int i;
 {
-	int x, y;
-
 	i %= FILEPERPAGE;
-	x = (i / FILEPERLOW) * (n_column / FILEPERLINE);
-	y = i % FILEPERLOW;
+	calc_x = (i / FILEPERLOW) * (n_column / FILEPERLINE) + 1;
+	calc_y = i % FILEPERLOW + LFILETOP;
 #ifndef	_NOCOLOR
 	if (ansicolor == 2) {
 		chgcolor(ANSI_BLACK, 1);
-		locate(x, y + LFILETOP);
+		locate(calc_x - 1, calc_y);
 		putch2(' ');
 	}
 	else
 #endif
-	calc_x = x + 1;
-	calc_y = y + LFILETOP;
 	locate(calc_x, calc_y);
 }
 
@@ -872,6 +869,7 @@ u_char fstat;
 VOID rewritefile(all)
 int all;
 {
+	if (!*fullpath) return;
 	if (all > 0) {
 		title();
 		helpbar();

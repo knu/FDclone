@@ -58,6 +58,19 @@ extern char *rockridgepath;
 #ifndef	_NOPRECEDE
 extern char *precedepath;
 #endif
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+extern char *sjispath;
+extern char *eucpath;
+extern char *jis7path;
+extern char *jis8path;
+extern char *junetpath;
+extern char *ojis7path;
+extern char *ojis8path;
+extern char *ojunetpath;
+extern char *hexpath;
+extern char *cappath;
+extern char *noconvpath;
+#endif	/* !MSDOS && !_NOKANJIFCONV */
 
 static int NEAR evalbool __P_((char *));
 
@@ -228,6 +241,18 @@ int ispath;
 				tmp = buf;
 			}
 		}
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+		else {
+			char *cp2;
+
+			cp2 = kanjiconv2(buf, tmp,
+				MAXPATHLEN - 1, DEFCODE, getkcode(tmp));
+			if (cp2 == buf) {
+				free(tmp);
+				tmp = buf;
+			}
+		}
+#endif
 		epath = (char *)realloc2(epath,
 			len + strlen(tmp) + (next - cp) + 1);
 		len = strcpy2(epath + len, tmp) - epath;
@@ -654,4 +679,40 @@ VOID evalenv(VOID_A)
 #if	!MSDOS && !defined (_NOKANJICONV)
 	inputkcode = getlang(getenv2("FD_INPUTKCODE"), L_INPUT);
 #endif
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+	fnamekcode = getlang(getenv2("FD_FNAMEKCODE"), L_FNAME);
+	if (sjispath) free(sjispath);
+	if (!(sjispath = getenv2("FD_SJISPATH"))) sjispath = SJISPATH;
+	sjispath = evalcomstr(sjispath, ";", 1);
+	if (eucpath) free(eucpath);
+	if (!(eucpath = getenv2("FD_EUCPATH"))) eucpath = EUCPATH;
+	eucpath = evalcomstr(eucpath, ";", 1);
+	if (jis7path) free(jis7path);
+	if (!(jis7path = getenv2("FD_JISPATH"))) jis7path = JISPATH;
+	jis7path = evalcomstr(jis7path, ";", 1);
+	if (jis8path) free(jis8path);
+	if (!(jis8path = getenv2("FD_JIS8PATH"))) jis8path = JIS8PATH;
+	jis8path = evalcomstr(jis8path, ";", 1);
+	if (junetpath) free(junetpath);
+	if (!(junetpath = getenv2("FD_JUNETPATH"))) junetpath = JUNETPATH;
+	junetpath = evalcomstr(junetpath, ";", 1);
+	if (ojis7path) free(ojis7path);
+	if (!(ojis7path = getenv2("FD_OJISPATH"))) ojis7path = OJISPATH;
+	ojis7path = evalcomstr(ojis7path, ";", 1);
+	if (ojis8path) free(ojis8path);
+	if (!(ojis8path = getenv2("FD_OJIS8PATH"))) ojis8path = OJIS8PATH;
+	ojis8path = evalcomstr(ojis8path, ";", 1);
+	if (ojunetpath) free(ojunetpath);
+	if (!(ojunetpath = getenv2("FD_OJUNETPATH"))) ojunetpath = OJUNETPATH;
+	ojunetpath = evalcomstr(ojunetpath, ";", 1);
+	if (hexpath) free(hexpath);
+	if (!(hexpath = getenv2("FD_HEXPATH"))) hexpath = HEXPATH;
+	hexpath = evalcomstr(hexpath, ";", 1);
+	if (cappath) free(cappath);
+	if (!(cappath = getenv2("FD_CAPPATH"))) cappath = CAPPATH;
+	cappath = evalcomstr(cappath, ";", 1);
+	if (noconvpath) free(noconvpath);
+	if (!(noconvpath = getenv2("FD_NOCONVPATH"))) noconvpath = NOCONVPATH;
+	noconvpath = evalcomstr(noconvpath, ";", 1);
+#endif	/* !MSDOS && !_NOKANJIFCONV */
 }

@@ -104,7 +104,7 @@ USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF \
-USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME \
+USEUTIME USEGETWD USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
 USEWAITPID USESIGPMASK USERESOURCEH USEULIMITH USETIMESH \
 GETPGRPVOID USESETPGID SIGARGINT SIGFNCINT \
 GETTODARGS
@@ -166,15 +166,15 @@ fi
 rm -f $TMPEXE
 
 lib=
-if havelib termlib "char b[1024]; tgetent(b,\"T\")"; then
+if havelib termlib "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-ltermlib
-elif havelib ncurses "char b[1024]; tgetent(b,\"T\")"; then
+elif havelib ncurses "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-lncurses
-elif havelib termcap "char b[1024]; tgetent(b,\"T\")"; then
+elif havelib termcap "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-ltermcap
-elif havelib curses "char b[1024]; tgetent(b,\"T\")"; then
+elif havelib curses "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-lcurses
-elif havelib "curses -ltermcap" "char b[1024]; tgetent(b,\"T\")"; then
+elif havelib "curses -ltermcap" "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-l"curses -ltermcap"
 fi
 if [ -n "$lib" ]; then
@@ -196,7 +196,7 @@ if [ -n "$lib" ]; then
 	LIBS="$LIBS $lib"
 fi
 
-if noexist "void *p"; then
+if noexist 'void *p'; then
 	echo "#define	NOVOID"
 fi
 if noinheader uid_t sys/types; then
@@ -204,7 +204,7 @@ if noinheader uid_t sys/types; then
 fi
 if inheader sys_siglist signal; then
 	echo "#define	DECLSIGLIST"
-elif noexist 'extern char *sys_siglist[]; return(*(sys_siglist[0]))' signal
+elif noexist 'return(*(sys_siglist[0]))' signal 'extern char *sys_siglist[];'
 then
 	echo "#define	NOSIGLIST"
 fi
@@ -228,7 +228,7 @@ if noheader stdlib; then
 fi
 if noheader tzfile; then
 	echo "#define	NOTZFILEH"
-elif isexist "struct tzhead t; t.tzh_leapcnt" tzfile; then
+elif isexist "t.tzh_leapcnt" tzfile "struct tzhead t;"; then
 	echo "#define	USELEAPCNT"
 fi
 
@@ -262,22 +262,22 @@ fi
 if noheader dirent; then
 	echo "#define	USEDIRECT"
 else
-	if isexist "struct dirent d; d.d_ino" "sys/types dirent" \
-	&& noexist "struct dirent d; d.d_fileno" "sys/types dirent"; then
+	if isexist "d.d_ino" "sys/types dirent" "struct dirent d;" \
+	&& noexist "d.d_fileno" "sys/types dirent" "struct dirent d;"; then
 		echo "#define	SYSVDIRENT"
 	fi
-	if noexist "struct dirent d; d.d_namlen" "sys/types dirent"; then
+	if noexist "d.d_namlen" "sys/types dirent" "struct dirent d;"; then
 		echo "#define	NODNAMLEN"
 	fi
 fi
 if (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' sys/time \
-&& isexist "extern time_t timezone; timezone" "sys/types sys/time") \
+&& isexist "timezone" "sys/types sys/time" "extern time_t timezone;") \
 || (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' time \
-&& isexist "extern time_t timezone; timezone" "sys/types time"); then
+&& isexist "timezone" "sys/types time" "extern time_t timezone;"); then
 	echo "#define	HAVETIMEZONE"
 fi
-if (noexist "struct tm t; t.tm_gmtoff" "sys/types sys/time" \
-&& noexist "struct tm t; t.tm_gmtoff" "sys/types time"); then
+if (noexist "t.tm_gmtoff" "sys/types sys/time" "struct tm t;"\
+&& noexist "t.tm_gmtoff" "sys/types time" "struct tm t;"); then
 	echo "#define	NOTMGMTOFF"
 fi
 
@@ -295,9 +295,9 @@ elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' sys/mount; then {
 }
 elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' \
 "sys/types sys/statfs" \
-&& { { isexist "struct statfs f; statfs(0,&f,0,0)" "sys/types sys/statfs" \
+&& { { isexist "statfs(0,&f,0,0)" "sys/types sys/statfs" "struct statfs f;"\
 && arg=4; } \
-|| isexist "struct statfs f; statfs(0,&f)" "sys/types sys/statfs"; }; then
+|| isexist "statfs(0,&f)" "sys/types sys/statfs" "struct statfs f;"; }; then
 	echo "#define	USESTATFSH"
 elif inheader 'struct.*[^a-zA-Z0-9_]statvfs[^a-zA-Z0-9_]' sys/statvfs; then
 	echo "#define	USESTATVFSH"
@@ -316,11 +316,11 @@ elif isexist "getmntinfo_r(0,0,0,0)"; then
 	echo "#define	USEMNTINFOR"
 elif isexist "getmntinfo(0,0)"; then {
 	echo "#define	USEMNTINFO"
-	if isexist "struct vfsconf c; getvfsbytype(0); return(*(c.vfc_name));" \
-	"sys/param sys/mount"; then
+	if isexist 'getvfsbytype(0); return(*(c.vfc_name));' \
+	"sys/param sys/mount" "struct vfsconf c;"; then
 		echo "#define	USEVFCNAME"
-	elif isexist "struct statfs f; return(*(f.f_fstypename));" \
-	"sys/param sys/mount"; then
+	elif isexist 'return(*(f.f_fstypename));' \
+	"sys/param sys/mount" "struct statfs f;"; then
 		echo "#define	USEFFSTYPE"
 	fi
 }
@@ -335,16 +335,16 @@ fi
 
 
 lib=
-if isexist "extern char *re_comp(); re_comp(0)" ctype \
-|| { havelib compat "extern char *re_comp(); re_comp(0)" ctype \
+if isexist "re_comp(0)" ctype 'extern char *re_comp();'\
+|| { havelib compat "re_comp(0)" ctype 'extern char *re_comp();'\
 && lib=-lcompat; }; then
 	echo "#define	USERE_COMP"
-elif isexist "regex_t *re; regfree(re)" "sys/types regex"; then
+elif isexist "regfree(re)" "sys/types regex" 'regex_t *re;'; then
 	echo "#define	USEREGCOMP"
-elif isexist "extern char *regcmp(); regcmp(0,0)" ctype \
-|| { havelib gen "extern char *regcmp(); regcmp(0,0)" ctype && lib=-lgen; } \
-|| { havelib PW "extern char *regcmp(); regcmp(0,0)" ctype && lib=-lPW; } \
-|| { havelib PW "extern char *regcmp(); regcmp(0,0)" ctype "char Error[1024];" \
+elif isexist "regcmp(0,0)" ctype 'extern char *regcmp();'\
+|| { havelib gen "regcmp(0,0)" ctype 'extern char *regcmp();' && lib=-lgen; } \
+|| { havelib PW "regcmp(0,0)" ctype 'extern char *regcmp();' && lib=-lPW; } \
+|| { havelib PW "regcmp(0,0)" ctype 'extern char *regcmp(); char Error[1024];' \
 && lib=-lPW && echo "#define	PWNEEDERROR"; }; then
 	echo "#define	USEREGCMP"
 fi
@@ -376,6 +376,18 @@ if isexist "mktime(0)" time; then
 	echo "#define	USEMKTIME"
 elif isexist "timelocal(0)" time; then
 	echo "#define	USETIMELOCAL"
+fi
+if isexist "sysconf(0)"; then
+	echo "#define	USESYSCONF"
+fi
+if isexist "_llseek(0,0,0,0,0)" "linux/unistd" 'static _syscall5(int, _llseek,
+	unsigned int, fd,
+	unsigned long, ofs_h,
+	unsigned long, ofs_l,
+	long long *, result,
+	unsigned int, whence);
+'; then
+	echo "#define	USELLSEEK"
 fi
 if noexist "gethostname(0,0)" && isexist "uname(0)" sys/utsname; then
 	echo "#define	USEUNAME"

@@ -6,6 +6,7 @@
 
 #ifdef	FD
 #include "fd.h"
+#define	EVALMACRO
 #else	/* !FD */
 #include <stdio.h>
 #include <string.h>
@@ -2349,16 +2350,19 @@ int iscom;
 				continue;
 			}
 #ifdef	CODEEUC
-			else if (isekana((*argvp)[n], i)) {
-				cp[j++] = (*argvp)[n][i];
-				i++;
-			}
+			else if (isekana((*argvp)[n], i))
+				cp[j++] = (*argvp)[n][i++];
 #endif
-			else if (iskanji1((*argvp)[n], i)) {
-				cp[j++] = (*argvp)[n][i];
-				i++;
+			else if (iskanji1((*argvp)[n], i))
+				cp[j++] = (*argvp)[n][i++];
+			else if (quote == '\'') {
+#ifdef	EVALMACRO
+				if ((*argvp)[n][i] == '%') {
+					cp = c_realloc(cp, j + 2, size);
+					cp[j++] = (*argvp)[n][i];
+				}
+#endif
 			}
-			else if (quote == '\'');
 			else if (ismeta((*argvp)[n], i, quote)) {
 				i++;
 				if (quote && (*argvp)[n][i] != quote
@@ -2411,7 +2415,7 @@ int iscom;
 	return(argc);
 }
 
-int stripquote(arg)
+char *stripquote(arg)
 char *arg;
 {
 	int i, j, quote;
@@ -2425,7 +2429,18 @@ char *arg;
 		else if (isekana(arg, i)) arg[j++] = arg[i++];
 #endif
 		else if (iskanji1(arg, i)) arg[j++] = arg[i++];
-		else if (quote == '\'');
+		else if (quote == '\'') {
+#ifdef	EVALMACRO
+			if (arg[i] == '%') {
+				int k;
+
+				k = strlen(&(arg[i])) + 1;
+				arg = realloc2(arg, i + k + 1);
+				while (--k > 0) arg[j + k + 1] = arg[i + k];
+				arg[j++] = arg[i];
+			}
+#endif
+		}
 		else if (ismeta(arg, i, quote)) {
 			i++;
 			if (quote && arg[i] != quote && arg[i] != PMETA)
@@ -2440,7 +2455,7 @@ char *arg;
 		arg[j++] = arg[i];
 	}
 	arg[j] = '\0';
-	return(j);
+	return(arg);
 }
 
 #ifndef	FDSH

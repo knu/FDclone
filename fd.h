@@ -23,6 +23,7 @@
 #define	_NOPRECEDE
 #define	_NOUSEHASH
 #define	_NOORIGGLOB
+#define	_NOKANJIFCONV
 
 #include "types.h"
 #include "pathname.h"
@@ -82,6 +83,17 @@ extern char *_mtrace_file;
 #endif
 #define	RRPATH		""
 #define	PRECEDEPATH	""
+#define	SJISPATH	""
+#define	EUCPATH		""
+#define	JISPATH		""
+#define	JIS8PATH	""
+#define	JUNETPATH	""
+#define	OJISPATH	""
+#define	OJIS8PATH	""
+#define	OJUNETPATH	""
+#define	HEXPATH		""
+#define	CAPPATH		""
+#define	NOCONVPATH	""
 #define	PROMPT		"sh#"
 
 
@@ -182,4 +194,8 @@ extern char *_mtrace_file;
 
 #if	defined (_NOENGMES) && defined (_NOJPNMES)
 #undef	_NOENGMES
+#endif
+
+#if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
+#define	_NOKANJIFCONV
 #endif

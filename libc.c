@@ -171,10 +171,8 @@ int rdlink;
 	char tmp[MAXPATHLEN];
 	int drv;
 
-	if (path == resolved) {
-		strcpy(tmp, path);
-		path = tmp;
-	}
+	strcpy(tmp, path);
+	path = tmp;
 
 #if	MSDOS
 	drv = dospath("", NULL);

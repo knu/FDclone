@@ -61,9 +61,11 @@ typedef long	off_t;
 #define	CODEEUC
 #define	CPP7BIT
 #define	USELEAPCNT
+#define	USESYSCONF
 #define	USERESOURCEH
 #include <sys/param.h>
-# if	!defined (MAXHOSTNAMELEN)
+# if	!defined (MAXHOSTNAMELEN) \
+|| defined (USGr4) || defined (__svr4__) || defined (__SVR4)
 # define	SVR4
 # define	OSTYPE		"SOLARIS"
 # include <stdio.h>
@@ -296,6 +298,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USESYSCONF
 #endif
 
 #if	defined (_AUX_SOURCE)
@@ -413,6 +416,7 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USESYSCONF
 # if	!defined (__alpha__) && !defined (__alpha) && !defined (alpha)
 # define	USELLSEEK
 # endif
@@ -466,6 +470,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USESYSCONF
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
@@ -491,6 +496,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USESYSCONF
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
@@ -567,6 +573,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USESYSCONF
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
@@ -714,6 +721,7 @@ typedef long	off_t;
 /* #define USEGETWD	;use getwd() instead of getcwd() */
 /* #define USETIMELOCAL	;have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	;use mktime() instead of timelocal() */
+/* #define USESYSCONF	;use sysconf() for getting system configuration */
 /* #define USELLSEEK	;use _llseek() for 64bits width instead of lseek() */
 /* #define USEUNAME	;use uname() instead of gethostname() */
 /* #define USEWAITPID	;use waitpid() instead of wait3() */

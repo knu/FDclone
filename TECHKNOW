@@ -260,6 +260,9 @@ USETIMELOCAL
 USEMKTIME
 	時間変換関数 mktime(3) を timelocal(3) の代わりに用
 	います。
+USESYSCONF
+	設定情報取得関数 sysconf(3) を用いて各種システム設定
+	値を取得します。
 USELLSEEK
 	ファイル制御関数 _llseek(2) を lseek(2) の代わりに用
 	います。32bit Linux 環境では 2^32 bytes を越える範囲

@@ -50,6 +50,9 @@ int ptr;
 char *dir, *arg;
 u_char flags;
 {
+#if	MSDOS && !defined (_NOUSELFN)
+	char tmp[MAXPATHLEN];
+#endif
 	char *cp;
 	int d, l;
 
@@ -95,8 +98,6 @@ u_char flags;
 	}
 #if	MSDOS && !defined (_NOUSELFN)
 	if ((flags & F_TOSFN) && l) {
-		char tmp[MAXPATHLEN];
-
 		strcpy(buf + ptr + d, arg);
 		if (shortname(buf + ptr, tmp)) {
 			arg = tmp;
@@ -120,7 +121,7 @@ char *buf;
 int ptr;
 u_char flags;
 {
-	int i, n, len;
+	int i, n, len, total;
 	char *dir;
 
 #ifdef	_NOARCHIVE
@@ -133,26 +134,26 @@ u_char flags;
 # endif
 #endif
 
-	if (!n_args) len = setarg(buf, ptr, dir,
-		filelist[filepos].name, flags);
-	else {
-		for (i = n = len = 0; i < maxfile; i++)
-		if (isarg(&(filelist[i]))) {
-			n = setarg(buf, ptr + len, dir,
-				filelist[i].name, flags);
-			if (!n) break;
-			filelist[i].tmpflags &= ~F_ISARG;
-			n_args--;
-			len += n;
-			buf[ptr + len++] = ' ';
+	if (!n_args) {
+		len = setarg(buf, ptr, dir, filelist[filepos].name, flags);
+		total = len;
+	}
+	else for (i = n = total = 0; i < maxfile; i++) {
+		if (!isarg(&(filelist[i]))) continue;
+		if (n++) buf[ptr + total++] = ' ';
+		len = setarg(buf, ptr + total, dir, filelist[i].name, flags);
+		if (!len) {
+			if (--n) total--;
+			break;
 		}
-		if (len > 0 && buf[ptr + len - 1] == ' ') len--;
-		if (!n) len = -len;
+		filelist[i].tmpflags &= ~F_ISARG;
+		n_args--;
+		total += len;
 	}
 #if	!MSDOS
 	if (dir) free(dir);
 #endif
-	return(len);
+	return(total);
 }
 
 static int NEAR insertarg(buf, format, arg, needmark)
@@ -212,14 +213,13 @@ macrostat *stp;
 int ignorelist;
 {
 #if	!MSDOS && !defined (_NOKANJICONV)
-	char tmpkanji[MAXCOMMSTR + 1];
+	char tmp[MAXCOMMSTR + 1];
 	int cnvcode = NOCNV;
-	int tmpcode;
-	int cnvptr = -1;
+	int tmpcode, cnvptr;
 #endif
 	macrostat st;
 	char *cp, line[MAXCOMMSTR + 1];
-	int i, j, c, len, uneval;
+	int i, j, c, len, uneval, setflag;
 	u_char flags;
 
 	if (stp) flags = stp -> flags;
@@ -230,127 +230,17 @@ int ignorelist;
 	stp -> addopt = -1;
 	stp -> needmark = 0;
 	uneval = '\0';
-
-	for (i = j = 0; command[i] && j < MAXCOMMSTR; i++) {
-		if (!uneval
-		&& ((flags & (F_NOEXT | F_TOSFN)) || command[i] == '%'))
-		switch ((c = toupper2(command[++i]))) {
-			case '\0':
-				i--;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'P':
-				len = setarg(line, j, NULL, fullpath, flags);
-				if (!len) return(NULL);
-				j += len;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-#if	MSDOS && !defined (_NOUSELFN)
-			case 'S':
-				flags |= F_TOSFN;
-				c = toupper2(command[i + 1]);
-				if (c == 'T' || c == 'M') {
-					i--;
-					break;
-				}
-#endif
-			case 'C':
-				len = setarg(line, j, NULL, arg, flags);
-				if (!len) return(NULL);
-				j += len;
-				flags |= F_ARGSET;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'X':
-				flags |= F_NOEXT;
-				c = toupper2(command[i + 1]);
-#if	MSDOS && !defined (_NOUSELFN)
-				if (c == 'T' || c == 'M' || c == 'S') {
-#else
-				if (c == 'T' || c == 'M') {
-#endif
-					i--;
-					break;
-				}
-				len = setarg(line, j, NULL, arg, flags);
-				if (!len) return(NULL);
-				j += len;
-				flags |= F_ARGSET;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'T':
-				if ((c = toupper2(command[i + 1])) == 'A') i++;
-				if (!ignorelist) {
-					len = setargs(line, j, flags);
-					if (!len) return(NULL);
-					if (len < 0) {
-						len = -len;
-						if (c == 'A')
-							flags |= F_REMAIN;
-					}
-					j += len;
-					flags |= F_ARGSET;
-				}
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'M':
-				if (!ignorelist) {
-					line[j++] = '\0';
-					(stp -> needmark)++;
-					line[j++] = flags;
-					flags |= F_ARGSET;
-				}
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'N':
-				flags |= F_ARGSET;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'R':
-				stp -> addopt = j;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-			case 'K':
-				flags |= F_NOCONFIRM;
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
 #if	!MSDOS && !defined (_NOKANJICONV)
-			case 'J':
-				c = toupper2(command[i + 1]);
-				flags &= ~(F_NOEXT | F_TOSFN);
-				if (c == 'S') tmpcode = SJIS;
-				else if (c == 'E' || c == 'U') tmpcode = EUC;
-				else if (c == 'J') tmpcode = JIS7;
-				else {
-					line[j++] = command[i];
-					break;
-				}
-
-				i++;
-				if (cnvcode && cnvptr >= 0) {
-					memcpy(tmpkanji, line + cnvptr,
-						j - cnvptr);
-					tmpkanji[j - cnvptr] = '\0';
-					j = kanjiconv(line + cnvptr, tmpkanji,
-						MAXCOMMSTR, DEFCODE, cnvcode)
-						+ cnvptr;
-					if (cnvcode == tmpcode) {
-						cnvcode = NOCNV;
-						cnvptr = -1;
-						break;
-					}
-				}
-				cnvcode = tmpcode;
-				cnvptr = j;
-				break;
+	cnvptr = 0;
 #endif
-			default:
-				line[j++] = command[i];
-				flags &= ~(F_NOEXT | F_TOSFN);
-				break;
-		}
+
+	for (i = j = 0; command[i]; i++) {
+		if (j >= MAXCOMMSTR) break;
+		c = (uneval) ? '\0' : command[i];
+		if (flags & (F_NOEXT | F_TOSFN));
+		else if (c == '%') c = command[++i];
 		else {
-			line[j++] = command[i];
+			line[j++] = c;
 #if	!MSDOS
 			if (command[i] == META && command[i + 1]
 			&& uneval != '\'')
@@ -361,16 +251,123 @@ int ignorelist;
 			else if (command[i] == '"' || command[i] == '\''
 			|| command[i] == '`')
 				uneval = command[i];
+			continue;
 		}
+
+		setflag = 0;
+		len = 0;
+		switch (toupper2(c)) {
+			case '\0':
+				i--;
+				break;
+			case 'P':
+				len = setarg(line, j, NULL, fullpath, flags);
+				if (!len) c = -1;
+				break;
+#if	MSDOS && !defined (_NOUSELFN)
+			case 'S':
+				flags |= F_TOSFN;
+				c = toupper2(command[i + 1]);
+				if (c == 'T' || c == 'M') {
+					setflag++;
+					break;
+				}
+#endif
+			case 'C':
+				len = setarg(line, j, NULL, arg, flags);
+				if (!len) c = -1;
+				flags |= F_ARGSET;
+				break;
+			case 'X':
+				flags |= F_NOEXT;
+				c = toupper2(command[i + 1]);
+#if	MSDOS && !defined (_NOUSELFN)
+				if (c == 'T' || c == 'M' || c == 'S') {
+#else
+				if (c == 'T' || c == 'M') {
+#endif
+					setflag++;
+					break;
+				}
+				len = setarg(line, j, NULL, arg, flags);
+				if (!len) c = -1;
+				flags |= F_ARGSET;
+				break;
+			case 'T':
+				c = toupper2(command[i + 1]);
+				if (c == 'A') {
+					flags |= F_REMAIN;
+					i++;
+				}
+				if (!ignorelist) {
+					len = setargs(line, j, flags);
+					if (!len) c = -1;
+					flags |= F_ARGSET;
+				}
+				break;
+			case 'M':
+				if (!ignorelist) {
+					line[j++] = '\0';
+					(stp -> needmark)++;
+					line[j++] = flags;
+					flags |= F_ARGSET;
+				}
+				break;
+			case 'N':
+				flags |= F_ARGSET;
+				break;
+			case 'R':
+				stp -> addopt = j;
+				break;
+			case 'K':
+				flags |= F_NOCONFIRM;
+				break;
+#if	!MSDOS && !defined (_NOKANJICONV)
+			case 'J':
+				c = toupper2(command[i + 1]);
+				if (c == 'S') tmpcode = SJIS;
+				else if (c == 'E' || c == 'U')
+					tmpcode = EUC;
+				else if (c == 'J') tmpcode = JIS7;
+				else {
+					line[j++] = command[i];
+					break;
+				}
+
+				i++;
+				if (cnvcode != NOCNV) {
+					memcpy(tmp, line + cnvptr,
+						j - cnvptr);
+					tmp[j - cnvptr] = '\0';
+					j = kanjiconv(line + cnvptr,
+						tmp, MAXCOMMSTR - cnvptr,
+						DEFCODE, cnvcode)
+						+ cnvptr;
+					if (cnvcode == tmpcode) {
+						cnvcode = NOCNV;
+						break;
+					}
+				}
+				cnvcode = tmpcode;
+				cnvptr = j;
+				break;
+#endif
+			default:
+				line[j++] = command[i];
+				break;
+		}
+		if (c < 0) break;
+		if (!setflag) flags &= ~(F_NOEXT | F_TOSFN);
+		j += len;
 	}
 	if (command[i]) return(NULL);
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-	if (cnvcode && cnvptr >= 0) {
-		memcpy(tmpkanji, line + cnvptr, j - cnvptr);
-		tmpkanji[j - cnvptr] = '\0';
-		j = kanjiconv(line + cnvptr, tmpkanji,
-			MAXCOMMSTR, DEFCODE, cnvcode) + cnvptr;
+	if (cnvcode != NOCNV) {
+		memcpy(tmp, line + cnvptr, j - cnvptr);
+		tmp[j - cnvptr] = '\0';
+		j = kanjiconv(line + cnvptr, tmp,
+			MAXCOMMSTR - cnvptr, DEFCODE, cnvcode) + cnvptr;
 	}
 #endif
 
