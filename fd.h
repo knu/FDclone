@@ -75,6 +75,7 @@ extern char *_mtrace_file;
 #define	TMPDIR		"/tmp"
 #endif
 #define	RRPATH		""
+#define	PRECEDEPATH	""
 #define	PROMPT		"sh#"
 
 
@@ -143,3 +144,5 @@ extern char *_mtrace_file;
 #if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 #define	_NODOSDRIVE
 #endif
+
+#define	_NOPRECEDE

@@ -58,8 +58,7 @@ time_t *atimep, *mtimep;
 	int val[4];
 
 	strcpy(dest, destpath);
-	strcat(dest, _SS_);
-	strcat(dest, file);
+	strcpy(strcatdelim(dest), file);
 	if (Xlstat(file, &status1) < 0) {
 		warning(-1, file);
 		return(-1L);
@@ -221,8 +220,7 @@ char *path;
 	char dest[MAXPATHLEN + 1];
 
 	strcpy(dest, destpath);
-	strcat(dest, _SS_);
-	strcat(dest, path);
+	strcpy(strcatdelim(dest), path);
 	if (Xmkdir(dest, 0777) < 0 && errno != EEXIST) return(-1);
 	return(0);
 }
@@ -592,6 +590,13 @@ char *path;
 	}
 #ifdef	HAVEFLAGS
 	if (attrflags != 0xffffffff) {
+# ifndef	_NODOSDRIVE
+		if (dospath(path, NULL)) {
+			errno = EACCES;
+			ret = -1;
+		}
+		else
+# endif
 		if (chflags(path, attrflags) < 0) ret = -1;
 	}
 #endif
@@ -669,8 +674,7 @@ char *endmes;
 	tflush();
 
 	strcpy(path, dir);
-	fname = path + strlen(path);
-	*(fname++) = _SC_;
+	fname = strcatdelim(path);
 
 	ret = max = 0;
 	dirlist = NULL;

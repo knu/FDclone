@@ -23,7 +23,6 @@ extern char fullpath[];
 #define	RR_VERNO	004
 #define	RR_HYPHN	010
 
-static int isrockridge __P_((char *));
 static char *getorgname __P_((char *, u_char));
 static assoclist *readtranstbl __P_((VOID_A));
 static VOID freetranstbl __P_((assoclist *));
@@ -34,29 +33,6 @@ char *rockridgepath = NULL;
 static assoclist *rr_curtbl = NULL;
 static char *rr_cwd = NULL;
 
-
-static int isrockridge(path)
-char *path;
-{
-	char *cp, *eol;
-	int len;
-
-	for (cp = rockridgepath; cp && *cp; ) {
-		if (!(eol = strchr(cp, ';'))) len = strlen(cp);
-		else {
-			len = eol - cp;
-			eol++;
-		}
-		while (len > 0 && cp[len - 1] == _SC_) len--;
-#if	MSDOS
-		if (onkanji1(cp, len - 1)) len++;
-#endif
-		if (len > 0 && !strnpathcmp(path, cp, len) &&
-		(!path[len] || path[len] == _SC_)) return(1);
-		cp = eol;
-	}
-	return(0);
-}
 
 static char *getorgname(name, flag)
 char *name;
@@ -209,9 +185,7 @@ int max;
 	char *cp, rpath[MAXPATHLEN + 1];
 	int i;
 
-	if (!rockridgepath || !*rockridgepath) return(0);
-	realpath2(fullpath, rpath);
-	if (!isrockridge(rpath)) return(0);
+	if (!includepath(rpath, rockridgepath)) return(0);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else if (!(tbl = readtranstbl())) return(0);
@@ -253,9 +227,7 @@ char *file, *buf;
 	assoclist *tp, *start, *tbl;
 	char *cp, rpath[MAXPATHLEN + 1];
 
-	if (!rockridgepath || !*rockridgepath) return(file);
-	realpath2(fullpath, rpath);
-	if (!isrockridge(rpath)) return(file);
+	if (!includepath(rpath, rockridgepath)) return(file);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else if (!(tbl = readtranstbl())) return(file);
@@ -306,7 +278,7 @@ int rdlink;
 	if (!tp) cp = NULL;
 	else {
 		start = tp -> next;
-		strcat(buf, _SS_);
+		strcatdelim(buf);
 		if (!rdlink || *(tp -> assoc) != 'L') strcat(buf, tp -> org);
 		else {
 			for (cp = tp -> assoc + 1; *cp; cp++);
@@ -328,9 +300,7 @@ int rdlink;
 {
 	char *cwd, rpath[MAXPATHLEN + 1];
 
-	if (!rockridgepath || !*rockridgepath) return(path);
-	realpath2(path, rpath);
-	if (!isrockridge(rpath)) return(path);
+	if (!includepath(rpath, rockridgepath)) return(path);
 
 	cwd = getwd2();
 	if (_detransfile(rpath, buf, rdlink)) path = realpath2(buf, buf);

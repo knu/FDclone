@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-99 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   1.03i 03/03/99
+.\" @(#)fd.1   1.03i 03/17/99
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "March 3, 1999"
+.TH FD 1 "March 17, 1999"
 .de sh
 .br
 .PP

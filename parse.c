@@ -50,6 +50,9 @@ extern int sizeinfo;
 #ifndef	_NOCOLOR
 extern int ansicolor;
 #endif
+#ifndef	_NOPRECEDE
+extern char *precedepath;
+#endif
 
 char *promptstr = NULL;
 
@@ -265,6 +268,29 @@ VOID adjustpath(VOID_A)
 	free(path);
 }
 #endif	/* !MSDOS */
+
+char *includepath(path, plist)
+char *path, *plist;
+{
+	char *cp, *eol, buf[MAXPATHLEN + 1];
+	int len;
+
+	if (!plist || !*plist) return(NULL);
+	if (!path) path = buf;
+	realpath2(fullpath, path);
+	for (cp = plist; cp && *cp; ) {
+		for (len = 0; cp[len]; len++) if (cp[len] == ';') break;
+		eol = (cp[len]) ? &(cp[len + 1]) : NULL;
+		while (len > 0 && cp[len - 1] == _SC_) len--;
+#if	MSDOS
+		if (onkanji1(cp, len - 1)) len++;
+#endif
+		if (len > 0 && !strnpathcmp(path, cp, len)
+		&& (!path[len] || path[len] == _SC_)) return(path);
+		cp = eol;
+	}
+	return(NULL);
+}
 
 int getargs(args, argv, max)
 char *args, *argv[];
@@ -559,6 +585,12 @@ VOID evalenv(VOID_A)
 #ifndef	_NOCOLOR
 	if ((ansicolor = atoi2(getenv2("FD_ANSICOLOR"))) < 0)
 		ansicolor = ANSICOLOR;
+#endif
+#ifndef	_NOPRECEDE
+	if (precedepath) free(precedepath);
+	if (!(precedepath = getenv2("FD_PRECEDEPATH")))
+		precedepath = PRECEDEPATH;
+	precedepath = evalcomstr(precedepath, ";");
 #endif
 	if (!(promptstr = getenv2("FD_PROMPT"))) promptstr = PROMPT;
 }

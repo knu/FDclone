@@ -62,7 +62,7 @@ typedef u_short	gid_t;
 #define	S_IXOTH	00001
 #endif
 
-#if	!MSDOS && defined (UF_SETTABLE) && (SF_SETTABLE)
+#if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
 #define	HAVEFLAGS
 # ifndef	UF_NODUMP
 # define	UF_NODUMP	0x00000001
@@ -109,6 +109,7 @@ typedef struct _namelist {
 	off_t st_size;
 	time_t st_mtim;
 	u_char flags;
+	u_char tmpflags;
 } namelist;
 
 #define	F_ISEXE	0001
@@ -117,17 +118,20 @@ typedef struct _namelist {
 #define	F_ISDIR	0010
 #define	F_ISLNK	0020
 #define	F_ISDEV	0040
-#define	F_ISMRK	0100
-#define	F_ISARG	0200
+#define	F_ISMRK	0001
+#define	F_ISARG	0002
+#define	F_STAT	0004
 
 #define	isdir(file)		((file) -> flags & F_ISDIR)
 #define	islink(file)		((file) -> flags & F_ISLNK)
 #define	isdev(file)		((file) -> flags & F_ISDEV)
+#define	isfile(file)		(!((file) -> flags & (F_ISDIR | F_ISDEV)))
 #define	isread(file)		((file) -> flags & F_ISRED)
 #define	iswrite(file)		((file) -> flags & F_ISWRI)
 #define	isexec(file)		((file) -> flags & F_ISEXE)
-#define	ismark(file)		((file) -> flags & F_ISMRK)
-#define	isarg(file)		((file) -> flags & F_ISARG)
+#define	ismark(file)		((file) -> tmpflags & F_ISMRK)
+#define	isarg(file)		((file) -> tmpflags & F_ISARG)
+#define	havestat(file)		((file) -> tmpflags & F_STAT)
 
 typedef struct _assoclist {
 	char *org;

@@ -38,6 +38,9 @@ extern int fnameofs;
 extern int dispmode;
 extern int sorton;
 extern int sorttype;
+extern off_t marksize;
+extern off_t totalsize;
+extern off_t blocksize;
 extern char fullpath[];
 extern char typesymlist[];
 extern u_short typelist[];
@@ -247,6 +250,7 @@ int max;
 
 	cp = line;
 	tmp -> flags = 0;
+	tmp -> tmpflags = F_STAT;
 	tmp -> st_mode = 0;
 	getfield(buf, line, skip, list, F_NAME);
 	if (!*buf) {
@@ -356,8 +360,7 @@ char *file, *dir;
 	arch = (char *)malloc2(strlen(fullpath)
 		+ strlen(file) + strlen(dir) + 3);
 	strcpy(arch, fullpath);
-	if (!isdelim(fullpath, (int)strlen(fullpath) - 1)) strcat(arch, _SS_);
-	strcat(arch, file);
+	strcpy(strcatdelim(arch), file);
 	strcat(arch, ":");
 	strcat(arch, dir);
 
@@ -531,6 +534,7 @@ launchtable *list;
 	addlist();
 	filelist[0].name = strdup2("..");
 	filelist[0].flags = F_ISDIR;
+	filelist[0].tmpflags = F_STAT;
 	maxfile++;
 
 	i = no = len = 0;
@@ -622,6 +626,11 @@ int max;
 	char *cp, *tmp, *arcre, buf[MAXNAMLEN + 1];
 	int ch, i, no, len, old;
 
+	maxarcf = (*archivedir) ? 1 : 0;
+	mark = 0;
+	totalsize = marksize = 0;
+	buf[0] = '\0';
+	blocksize = 1;
 	if (sorttype < 100) sorton = 0;
 
 	if (!findpattern) {
@@ -638,9 +647,6 @@ int max;
 		free(cp);
 		arcre = NULL;
 	}
-
-	maxarcf = (*archivedir) ? 1 : 0;
-	buf[0] = '\0';
 
 	for (i = 1; i < max; i++) {
 		if (!*archivedir) len = 0;
@@ -661,6 +667,9 @@ int max;
 			memcpy(&arcflist[maxarcf], &filelist[i],
 				sizeof(namelist));
 			arcflist[maxarcf].name = cp;
+			if (isfile(&arcflist[maxarcf]))
+				totalsize +=
+					getblock(arcflist[maxarcf].st_size);
 			maxarcf++;
 		}
 	}
@@ -831,10 +840,7 @@ int max;
 	if (archivefile) {
 		dupfullpath = strdup2(fullpath);
 		strcpy(fullpath, dir);
-		if (*archivedir) {
-			strcat(fullpath, _SS_);
-			strcat(fullpath, archivedir);
-		}
+		if (*archivedir) strcpy(strcatdelim(fullpath), archivedir);
 	}
 	duparchivefile = archivefile;
 	duparchivedir = archivedir;
@@ -1019,14 +1025,11 @@ int tr;
 # endif
 #endif
 		deftmpdir = strdup2(path);
-		strcat(path, _SS_);
-		strcat(path, tmpfilename);
-		strcat(path, _SS_);
-		sprintf(path + strlen(path), "D%c", drive);
+		strcpy(strcatdelim(path), tmpfilename);
+		sprintf(strcatdelim(path), "D%c", drive);
 	}
 #endif
-	strcat(path, _SS_);
-	strcat(path, arc);
+	strcpy(strcatdelim(path), arc);
 	waitmes();
 	if (execusercomm(archivelist[i].u_comm, path, list, &max, -1, 1) < 0) {
 		warning(E2BIG, archivelist[i].u_comm);
@@ -1085,7 +1088,7 @@ int max;
 
 	waitmes();
 	for (i = 0; i < max; i++)
-		if (ismark(&list[i])) list[i].flags |= F_ISARG;
+		if (ismark(&list[i])) list[i].tmpflags |= F_ISARG;
 	st.flags = 0;
 	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, &st))) {
 		warning(E2BIG, dev);
@@ -1098,7 +1101,7 @@ int max;
 		|| !(tmp = evalcommand("tar rf %C %TA", dev, list, max, NULL)))
 			break;
 	}
-	for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
+	for (i = 0; i < max; i++) list[i].tmpflags &= ~(F_ISARG | F_ISMRK);
 	return(1);
 }
 
@@ -1116,7 +1119,7 @@ int maxf, n;
 
 	if (n < 0) {
 		file = flist -> name;
-		if (getstatus(flist, 0, file) < 0 || isdir(flist)) return(0);
+		if (isdir(flist)) return(0);
 	}
 	else {
 		file = flist[n].name;

@@ -83,8 +83,7 @@ char *path, *buf;
 	}
 	else {
 		if (!dosgetcwd(buf, MAXPATHLEN)) return(0);
-		if (!isdelim(buf, (int)strlen(buf) - 1)) strcat(buf, _SS_);
-		buf += strlen(buf);
+		buf = strcatdelim(buf);
 	}
 	strcpy(buf, cp);
 	return(drive);
@@ -319,19 +318,10 @@ char *path;
 	if (detransfile(path, buf, 0) == buf) path = buf;
 	else
 #endif
-#ifndef	_NOUSELFN
-# ifndef	_NODOSDRIVE
-	if (checkpath(path, buf)) return(dosunlink(buf));
-	else
-# endif
-	if (!(path = preparefile(path, buf, 0))) return(-1);
-#else
-	;
-#endif
-	if (unlink(path) != 0) {
+	if (unixunlink(path) != 0) {
 		if (errno != EACCES
 		|| unixchmod(path, (S_IREAD | S_IWRITE | S_ISVTX)) < 0
-		|| unlink(path) != 0) return(-1);
+		|| unixunlink(path) != 0) return(-1);
 	}
 	return(0);
 }
@@ -413,12 +403,20 @@ int whence;
 }
 #endif	/* !_NODOSDRIVE */
 
+#ifndef	_NOUSELFN
 int _Xmkdir(path, mode)
 char *path;
 int mode;
 {
 	return(unixmkdir(path, mode));
 }
+
+int _Xrmdir(path)
+char *path;
+{
+	return(unixrmdir(path));
+}
+#endif	/* !_NOUSELFN */
 
 #ifndef	_NOROCKRIDGE
 int Xmkdir(path, mode)
@@ -428,32 +426,16 @@ int mode;
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
-	return(unixmkdir(path, mode));
+	return((unixmkdir(path, mode) != 0) ? -1 : 0);
 }
-#endif
 
-#ifndef	_NOUSELFN
-int _Xrmdir(path)
-char *path;
-{
-	char buf[MAXPATHLEN + 1];
-
-# ifndef	_NODOSDRIVE
-	if (checkpath(path, buf)) return(dosrmdir(buf));
-# endif
-	if (!(path = preparefile(path, buf, 0))) return(-1);
-	return((rmdir(path) != 0) ? -1 : 0);
-}
-#endif	/* !_NOUSELFN */
-
-#ifndef	_NOROCKRIDGE
 int Xrmdir(path)
 char *path;
 {
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
-	return(_Xrmdir(path));
+	return((unixrmdir(path) != 0) ? -1 : 0);
 }
 #endif
 
@@ -561,12 +543,18 @@ FILE *stream;
 FILE *Xpopen(command, type)
 char *command, *type;
 {
+#ifndef	_NOUSELFN
+	char *tmp, buf[MAXPATHLEN + 1];
+#endif
 	char cmdline[128], path[MAXPATHLEN + 1];
 
 	strcpy(path, PIPEDIR);
 	if (mktmpdir(path) < 0) return(NULL);
-	strcat(path, _SS_);
-	strcat(path, PIPEFILE);
+	strcpy(strcatdelim(path), PIPEFILE);
+#ifndef	_NOUSELFN
+	if (!(tmp = preparefile(path, buf, 0))) return(NULL);
+	else if (tmp != path) strcpy(path, tmp);
+#endif
 	sprintf(cmdline, "%s > %s", command, path);
 	system(cmdline);
 	return(fopen(path, type));
@@ -575,22 +563,25 @@ char *command, *type;
 int Xpclose(fp)
 FILE *fp;
 {
+#ifndef	_NOUSELFN
+	char *tmp, buf[MAXPATHLEN + 1];
+#endif
 	char *cp, path[MAXPATHLEN + 1];
 	int no;
 
 	no = 0;
 	if (fclose(fp) != 0) no = errno;
 	strcpy(path, deftmpdir);
-	strcat(path, _SS_);
-	strcat(path, tmpfilename);
-	strcat(path, _SS_);
-	strcat(path, PIPEDIR);
-	cp = path + strlen(path);
-	strcat(path, _SS_);
-	strcat(path, PIPEFILE);
+	strcpy(strcatdelim(path), tmpfilename);
+	strcpy(strcatdelim(path), PIPEDIR);
+	strcpy((cp = strcatdelim(path)), PIPEFILE);
+#ifndef	_NOUSELFN
+	if (!(tmp = preparefile(path, buf, 0))) no = errno;
+	else if (tmp != path) strcpy(path, tmp);
+#endif
 
-	if (unlink(path) != 0) no = errno;
-	*cp = '\0';
+	if (unixunlink(path) != 0) no = errno;
+	*(--cp) = '\0';
 	if (rmtmpdir(path) < 0) no = errno;
 	return((errno = no) ? -1 : 0);
 }

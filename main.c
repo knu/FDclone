@@ -497,7 +497,7 @@ VOID title(VOID_A)
 		eol++;
 	}
 	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
-		n_column - 32 - (int)(eol - cp), " (c)1995-98 T.Shirai  ");
+		n_column - 32 - (int)(eol - cp), " (c)1995-99 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 #ifdef	SIGALRM
@@ -652,10 +652,12 @@ char *argv;
 	{
 		char *cp;
 
-		if ((cp = strchr(argv, '.'))) *cp = '\0';
+		if ((cp = strchr(progname, '.'))) *cp = '\0';
 	}
-#endif
+	sprintf(buf, "FD%ld", (long)getpid());
+#else
 	sprintf(buf, "%s%ld", progname, (long)getpid());
+#endif
 	tmpfilename = strdup2(buf);
 }
 

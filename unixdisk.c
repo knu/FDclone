@@ -26,9 +26,11 @@
 #ifdef	FD
 extern int toupper2 __P_((int));
 extern int isdelim __P_((char *, int));
+extern char *strcatdelim __P_((char *));
 #else
 static int toupper2 __P_((int));
 static int isdelim __P_((char *, int));
+static char *strcatdelim __P_((char *));
 #endif
 
 static int seterrno __P_((u_short));
@@ -140,6 +142,23 @@ int ptr;
 	for (i = 0; s[i] && i < ptr; i++) if (issjis1((u_char)s[i])) i++;
 	if (!s[i] || i > ptr) return(1);
 	return(!issjis1((u_char)s[i]));
+}
+
+static char *strcatdelim(s)
+char *s;
+{
+	char *cp;
+	int i;
+
+	cp = NULL;
+	for (i = 0; s[i]; i++) {
+		if (s[i] == _SC_ && !cp) cp = &s[i];
+		else cp = NULL;
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	if (!cp) *(cp = &s[i]) = _SC_;
+	*(++cp) = '\0';
+	return(cp);
 }
 #endif
 
@@ -1237,7 +1256,20 @@ int n, size, iswrite;
 		if (int21call(&reg, &sreg) < 0) return(-1);
 	}
 	else if (err) {
-		seterrno(err & 0xff);
+		switch (err & 0xff) {
+			case 0:
+			case 10:
+			case 11:
+				errno = EACCES;
+				break;
+			case 1:
+			case 2:
+				errno = ENODEV;
+				break;
+			default:
+				errno = EINVAL;
+				break;
+		}
 		return(-1);
 	}
 #ifdef	DJGPP
@@ -1390,7 +1422,7 @@ u_short fd;
 
 	reg.x.ax = 0x71a1;
 	reg.x.bx = fd;
-	return(int21call(&reg, &sreg));
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
 }
 #endif	/* !_NOUSELFN */
 
@@ -1410,8 +1442,7 @@ char *dir;
 #endif
 
 	if (!unixrealpath(dir, path)) return(NULL);
-	i = strlen(path);
-	if (!isdelim(path, i - 1)) strcat(path, _SS_);
+	i = (strcatdelim(path) - path) - 1;
 
 	if (!(dirp = (DIR *)malloc(sizeof(DIR)))) return(NULL);
 	dirp -> dd_off = 0;
@@ -1546,9 +1577,8 @@ DIR *dirp;
 		i = dos_findnext((struct dosfind_t *)(dirp -> dd_buf));
 	}
 	else {
-		i = strlen(dirp -> dd_path);
 		strcpy(path, dirp -> dd_path);
-		if (!isdelim(path, i - 1)) path[i++] = _SC_;
+		i = strcatdelim(path) - path;
 
 #ifndef	_NOUSELFN
 		if (dirp -> dd_id & DID_IFLFN) {
@@ -1613,6 +1643,36 @@ DIR *dirp;
 }
 
 #ifndef	_NOUSELFN
+int unixunlink(path)
+char *path;
+{
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	int i;
+
+	path = duplpath(path);
+	i = supportLFN(path);
+#ifndef	_NODOSDRIVE
+	if (i < 0 && i > -3) {
+		char buf[MAXPATHLEN + 1];
+
+		if (dosunlink(regpath(path, buf)) >= 0) return(0);
+	}
+#endif	/* !_NODOSDRIVE */
+	if (i <= 0) reg.x.ax = 0x4100;
+	else {
+		reg.x.ax = 0x7141;
+		reg.x.cx = SEARCHATTRS & ~DS_IFDIR;
+		reg.x.si = 0;		/* forbid wild card */
+	}
+#ifdef	DJGPP
+	dos_putpath(path, 0);
+#endif
+	sreg.ds = PTR_SEG(path);
+	reg.x.dx = PTR_OFF(path, 0);
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
+}
+
 int unixrename(from, to)
 char *from, *to;
 {
@@ -1644,7 +1704,7 @@ char *from, *to;
 	reg.x.dx = PTR_OFF(from, 0);
 	sreg.es = PTR_SEG(to);
 	reg.x.di = PTR_OFF(to, f);
-	return(int21call(&reg, &sreg));
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
 }
 
 /*ARGSUSED*/
@@ -1678,6 +1738,31 @@ int mode;
 	return(-1);
 }
 
+int unixrmdir(path)
+char *path;
+{
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	int i;
+
+	path = duplpath(path);
+	i = supportLFN(path);
+#ifndef	_NODOSDRIVE
+	if (i < 0 && i > -3) {
+		char buf[MAXPATHLEN + 1];
+
+		if (dosrmdir(regpath(path, buf)) >= 0) return(0);
+	}
+#endif	/* !_NODOSDRIVE */
+	reg.x.ax = (i > 0) ? 0x713a : 0x3a00;
+#ifdef	DJGPP
+	dos_putpath(path, 0);
+#endif
+	sreg.ds = PTR_SEG(path);
+	reg.x.dx = PTR_OFF(path, 0);
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
+}
+
 int unixchdir(path)
 char *path;
 {
@@ -1701,7 +1786,7 @@ char *path;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
-	return(int21call(&reg, &sreg));
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
 }
 #endif	/* !_NOUSELFN */
 
@@ -2002,7 +2087,7 @@ int mode;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
-	return(int21call(&reg, &sreg));
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
 }
 
 #ifndef	_NOUSELFN
@@ -2055,6 +2140,6 @@ struct timeval tvp[2];
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
-	return(int21call(&reg, &sreg));
+	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
 }
 #endif	/* !_NOUSELFN */

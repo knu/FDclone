@@ -130,8 +130,8 @@ char *strrdelim(s, d)
 char *s;
 int d;
 {
-	int i;
 	char *cp;
+	int i;
 
 	if (d && _dospath(s)) cp = s + 1;
 	else cp = NULL;
@@ -149,8 +149,8 @@ char *strrdelim2(s, eol)
 char *s, *eol;
 {
 #if	MSDOS
-	int i;
 	char *cp;
+	int i;
 
 	cp = NULL;
 	for (i = 0; s[i] && &(s[i]) < eol; i++) {
@@ -162,6 +162,25 @@ char *s, *eol;
 	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
 	return(NULL);
 #endif
+}
+
+char *strcatdelim(s)
+char *s;
+{
+	char *cp;
+	int i;
+
+	cp = NULL;
+	for (i = 0; s[i]; i++) {
+		if (s[i] == _SC_ && !cp) cp = &s[i];
+		else cp = NULL;
+#if	MSDOS
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+#endif
+	}
+	if (!cp) *(cp = &s[i]) = _SC_;
+	*(++cp) = '\0';
+	return(cp);
 }
 
 static int evalenv(s, off, len)
@@ -689,9 +708,7 @@ char **pathp, *dir, **eolp;
 	} while (!(dirp = Xopendir(dir)) && *pathp);
 
 	if (!dirp) return(NULL);
-	cp = dir + strlen(dir);
-	if (!isdelim(dir, cp - 1 - dir)) strcpy(cp++, _SS_);
-	*eolp = cp;
+	*eolp = strcatdelim(dir);
 	return(dirp);
 }
 

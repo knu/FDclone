@@ -14,14 +14,12 @@
 #include <sys/file.h>
 #endif
 
-#define	getblock(c)	((((c) + blocksize - 1) / blocksize) * blocksize)
-
 extern int columns;
 extern int filepos;
 extern int mark;
-extern long marksize;
+extern off_t marksize;
+extern off_t blocksize;
 extern int isearch;
-extern long blocksize;
 extern int fnameofs;
 extern int dispmode;
 extern int sorton;
@@ -491,13 +489,13 @@ char *arg;
 
 static VOID markcount(VOID_A)
 {
-	char buf[16];
+	char buf[14 + 1];
 
 	locate(CMARK + 5, LSTATUS);
 	cprintf2("%4d", mark);
 	if (sizeinfo) {
 		locate(CSIZE + 5, LSIZE);
-		cprintf2("%14.14s", inscomma(buf, marksize, 3));
+		cprintf2("%14.14s", inscomma(buf, marksize, 3, 14));
 	}
 }
 
@@ -508,14 +506,16 @@ int *maxp;
 char *arg;
 {
 	if (isdir(&list[filepos])) return(0);
-	list[filepos].flags ^= F_ISMRK;
+	list[filepos].tmpflags ^= F_ISMRK;
 	if (ismark(&list[filepos])) {
 		mark++;
-		marksize += getblock(list[filepos].st_size);
+		if (isfile(&list[filepos]))
+			marksize += getblock(list[filepos].st_size);
 	}
 	else {
 		mark--;
-		marksize -= getblock(list[filepos].st_size);
+		if (isfile(&list[filepos]))
+			marksize -= getblock(list[filepos].st_size);
 	}
 	markcount();
 	return(2);
@@ -554,7 +554,7 @@ char *arg;
 	int i;
 
 	if ((arg && atoi(arg) == 0) || (!arg && mark)) {
-		for (i = 0; i < *maxp; i++) list[i].flags &= ~F_ISMRK;
+		for (i = 0; i < *maxp; i++) list[i].tmpflags &= ~F_ISMRK;
 		mark = 0;
 		marksize = 0;
 	}
@@ -562,9 +562,10 @@ char *arg;
 		mark = 0;
 		marksize = 0;
 		for (i = 0; i < *maxp; i++) if (!isdir(&list[i])) {
-			list[i].flags |= F_ISMRK;
+			list[i].tmpflags |= F_ISMRK;
 			mark++;
-			marksize += getblock(list[i].st_size);
+			if (isfile(&list[i]))
+				marksize += getblock(list[i].st_size);
 		}
 	}
 	markcount();
@@ -582,9 +583,10 @@ char *arg;
 	mark = 0;
 	marksize = 0;
 	for (i = 0; i < *maxp; i++) if (!isdir(&list[i]))
-		if ((list[i].flags ^= F_ISMRK) & F_ISMRK) {
+		if ((list[i].tmpflags ^= F_ISMRK) & F_ISMRK) {
 			mark++;
-			marksize += getblock(list[i].st_size);
+			if (isfile(&list[i]))
+				marksize += getblock(list[i].st_size);
 		}
 	markcount();
 	return(2);
@@ -625,9 +627,10 @@ char *arg;
 	for (i = 0; i < *maxp; i++)
 		if (!isdir(&list[i]) && !ismark(&list[i])
 		&& regexp_exec(re, list[i].name)) {
-			list[i].flags |= F_ISMRK;
+			list[i].tmpflags |= F_ISMRK;
 			mark++;
-			marksize += getblock(list[i].st_size);
+			if (isfile(&list[i]))
+				marksize += getblock(list[i].st_size);
 		}
 	regexp_free(re);
 	markcount();

@@ -207,7 +207,6 @@ extern char *strstr2 __P_((char *, char *));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));
 extern int Xaccess __P_((char *, int));
-extern char *inscomma __P_((char *, long, int));
 extern int kanjiprintf __P_((CONST char *, ...));
 
 extern bindtable bindlist[];
@@ -271,11 +270,17 @@ extern int needbavail;
 
 static int code2str __P_((char *, int));
 static int checkline __P_((int));
+VOID help __P_((int));
 static int getfsinfo __P_((char *, statfs_t *, mnt_t *));
+int writablefs __P_((char *));
+long getblocksize __P_((char *));
+char *inscomma __P_((char *, off_t, int, int));
 static int info1line __P_((int, char *, long, char *, char *));
 #if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
 static long calcKB __P_((long, long));
 #endif
+VOID getinfofs __P_((char *, long *, long *));
+int infofs __P_((char *));
 
 static int keycodelist[] = {
 	K_HOME, K_END, K_DL, K_IL, K_DC, K_IC,
@@ -809,23 +814,30 @@ char *dir;
 #endif	/* !MSDOS */
 }
 
-char *inscomma(buf, n, digit)
+char *inscomma(buf, n, digit, max)
 char *buf;
-long n;
-int digit;
+off_t n;
+int digit, max;
 {
-	char tmp[12];
-	int i, j, len;
+	char tmp[20 * 2 + 1];
+	int i, j;
 
 	j = 0;
-	if (n < 0) buf[j++] = '?';
+	if (n < 0 || digit < 1) buf[j++] = '?';
+	else if (!n) buf[j++] = '0';
 	else {
-		sprintf(tmp, "%ld", n);
-		len = strlen(tmp);
-		for (i = j = 0; tmp[i]; i++) {
-			buf[j++] = tmp[i];
-			if (--len && !(len % digit)) buf[j++] = ',';
+		for (i = 0;; i++) {
+			tmp[i] = '0' + n % 10;
+			if (!(n /= 10) || i >= max - 1) break;
+			if (++j >= digit) {
+				if (i >= max - 2) break;
+				tmp[++i] = ',';
+				j = 0;
+			}
 		}
+		if (!n) for (j = 0; j <= i; j++) buf[j] = tmp[i - j];
+		else for (j = 0; j <= i; j++)
+			buf[j] = (tmp[i - j] == ',') ? ',' : '9';
 	}
 	buf[j] = '\0';
 	return(buf);
@@ -837,7 +849,7 @@ char *ind;
 long n;
 char *str, *unit;
 {
-	char buf[16];
+	char buf[12 + 1];
 	int width;
 
 	locate(0, y);
@@ -850,7 +862,7 @@ char *str, *unit;
 		kanjiputs2(str, width, 0);
 	}
 	else {
-		cprintf2("%12.12s", inscomma(buf, n, 3));
+		cprintf2("%12.12s", inscomma(buf, n, 3, 12));
 		kanjiprintf(" %s", unit);
 	}
 	return(checkline(++y));

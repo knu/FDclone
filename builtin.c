@@ -808,12 +808,12 @@ int set;
 	if (!strncmp(argv[3], "HDD", 3)) {
 		if (argc > 5) return(-1);
 		cyl = 0;
-		if (!argv[3][3]) head = 0;
-		else if (!strcmp(&(argv[3][3]), "98")) head = 98;
+		if (!argv[3][3]) sect = 0;
+		else if (!strcmp(&(argv[3][3]), "98")) sect = 98;
 		else return(-1);
-		if (argc < 5) sect = 'n';
-		else if (!strcmp(argv[4], "ro")) sect = 'r';
-		else if (!strcmp(argv[4], "rw")) sect = 'w';
+		if (argc < 5) head = 'n';
+		else if (!strcmp(argv[4], "ro")) head = 'r';
+		else if (!strcmp(argv[4], "rw")) head = 'w';
 		else return(-1);
 	}
 	else
@@ -869,13 +869,13 @@ int set;
 		int c;
 
 		if (!cyl) {
-			if (!(sp = readpt(argv[2], head))) return(0);
-			for (n = 0; sp[n]; n++);
+			if (!(sp = readpt(argv[2], sect))) return(0);
+			for (n = 0; sp[n + 1]; n++);
 			if (!n) {
 				free(sp);
-				return(-1);
+				return(0);
 			}
-			head = n;
+			sect = sp[0];
 		}
 		else
 #endif
@@ -900,7 +900,7 @@ int set;
 			fdtype[i + j].sect = sect;
 			fdtype[i + j].cyl = cyl;
 #ifdef	HDDMOUNT
-			fdtype[i + j].offset = (cyl) ? (off_t)0 : sp[j];
+			fdtype[i + j].offset = (cyl) ? (off_t)0 : sp[j + 1];
 			if (j + 1 < n) do {
 				if (++drive > 'Z') {
 					while (j >= 0)
@@ -950,6 +950,9 @@ int argc;
 char *argv[];
 int comline;
 {
+#ifdef	HDDMOUNT
+	char buf[14 + 1];
+#endif
 	int i, n;
 
 	if (argc >= 3) return(-1);
@@ -962,7 +965,10 @@ int comline;
 			fdtype[i].drive, fdtype[i].name);
 #ifdef	HDDMOUNT
 		if (!fdtype[i].cyl)
-			kanjiprintf("HDD (ofs: %d)\r\n", fdtype[i].offset);
+			kanjiprintf("HDD #offset=%-14.14s\r\n",
+				inscomma(buf,
+					fdtype[i].offset / fdtype[i].sect,
+					3, 14));
 		else
 #endif
 		kanjiprintf("%3d,%3d,%3d\r\n",
@@ -977,7 +983,10 @@ int comline;
 		kanjiprintf("\"%s\"\t", fdtype[i].name);
 #ifdef	HDDMOUNT
 		if (!fdtype[i].cyl)
-			kanjiprintf("HDD (ofs: %d)\r\n", fdtype[i].offset);
+			kanjiprintf("HDD #offset=%-14.14s\r\n",
+				inscomma(buf,
+					fdtype[i].offset / fdtype[i].sect,
+					3, 14));
 		else
 #endif
 		kanjiprintf("%3d,%3d,%3d\r\n",

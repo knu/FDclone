@@ -116,6 +116,7 @@ extern u_char cc_intr;
 extern u_char cc_quit;
 extern u_char cc_eof;
 extern u_char cc_eol;
+extern VOID_T (*keywaitfunc)__P_((VOID_A));
 
 #if	MSDOS
 #define	putterm(str)	cputs2(str)

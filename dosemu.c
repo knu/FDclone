@@ -46,12 +46,11 @@ char *path, *buf;
 	strcpy(buf, cp);
 #endif
 	if (cp != path && *path) {
-		if (!isdelim(buf, (int)strlen(buf) - 1)) strcat(buf, _SS_);
+		buf = strcatdelim(buf);
 #ifdef	CODEEUC
-		buf += strlen(buf);
 		buf[ujis2sjis(buf, (u_char *)path)] = '\0';
 #else
-		strcat(buf, path);
+		strcpy(buf, path);
 #endif
 	}
 	return(drive);
@@ -446,31 +445,17 @@ int whence;
 }
 #endif	/* !_NODOSDRIVE */
 
+#ifndef	_NODOSDRIVE
 int _Xmkdir(path, mode)
 char *path;
 int mode;
 {
-#ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN + 1];
 
 	if (dospath(path, buf)) return(dosmkdir(buf, mode));
-#endif
 	return(mkdir(path, mode));
 }
 
-#ifndef	_NOROCKRIDGE
-int Xmkdir(path, mode)
-char *path;
-int mode;
-{
-	char buf[MAXPATHLEN + 1];
-
-	if (detransfile(path, buf, 0) == buf) path = buf;
-	return(_Xmkdir(path, mode));
-}
-#endif
-
-#ifndef	_NODOSDRIVE
 int _Xrmdir(path)
 char *path;
 {
@@ -482,6 +467,16 @@ char *path;
 #endif
 
 #ifndef	_NOROCKRIDGE
+int Xmkdir(path, mode)
+char *path;
+int mode;
+{
+	char buf[MAXPATHLEN + 1];
+
+	if (detransfile(path, buf, 0) == buf) path = buf;
+	return(_Xmkdir(path, mode));
+}
+
 int Xrmdir(path)
 char *path;
 {

@@ -86,6 +86,7 @@ extern int errno;
 # undef	USETERMIO
 # endif
 #include <termios.h>
+#include <sys/ioctl.h>	/* for Linux libc6 */
 typedef	struct termios	termioctl_t;
 #define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
 #define	getspeed(t)	cfgetospeed(&t)
@@ -123,9 +124,11 @@ typedef	struct sgttyb	termioctl_t;
 
 #ifdef	NOVOID
 #define	VOID
+#define	VOID_T	int
 #define	VOID_P	char *
 #else
 #define	VOID	void
+#define	VOID_T	void
 #define	VOID_P	void *
 #endif
 
@@ -288,6 +291,7 @@ u_char cc_intr = CTRL('c');
 u_char cc_quit = CTRL('\\');
 u_char cc_eof = CTRL('d');
 u_char cc_eol = 255;
+VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
 
 #if	MSDOS
 #ifdef	PC98
@@ -1125,7 +1129,7 @@ static int sortkeyseq(VOID_A)
 
 	keyseqtree = newkeyseq(NULL, 1);
 
-	for (i = 0; i < K_MAX - K_MIN; i++) {
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
 		p = keyseqtree;
 		for (j = 0; j < keyseq[i].len; j++) {
 			for (k = 0; k < p -> num; k++) {
@@ -1731,6 +1735,7 @@ int sig;
 			count = SENSEPERSEC;
 			kill(getpid(), sig);
 		}
+		if (keywaitfunc) (*keywaitfunc)();
 #ifndef	TIOCSTI
 		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 #endif

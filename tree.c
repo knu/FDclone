@@ -89,9 +89,9 @@ int disp;
 #if	MSDOS
 	cp = path;
 	if (_dospath(cp)) cp += 2;
-	if (strcmp(cp, _SS_)) strcat(path, _SS_);
+	if (strcmp(cp, _SS_)) strcatdelim(path);
 #else
-	if (strcmp(path, _SS_)) strcat(path, _SS_);
+	if (strcmp(path, _SS_)) strcatdelim(path);
 #endif
 	len = strlen(path);
 	i = x = 0;
@@ -418,7 +418,7 @@ char *path;
 	if (!(list -> sub)) return(1);
 	cp = path + strlen(path);
 	if (cp > path + 1) {
-		strcat(path, _SS_);
+		strcatdelim(path);
 		cp++;
 	}
 	for (i = 0; i < list -> max; i++) {
@@ -693,13 +693,13 @@ static char *_tree(VOID_A)
 	strcpy(path, fullpath);
 	strncpy2(list[0].name, path, 3);
 #else	/* !MSDOS */
-#ifndef	_NODOSDRIVE
-	if (dospath2("")) {
+# ifndef	_NODOSDRIVE
+	if (dospath("", path)) {
 		list[0].name = (char *)malloc2(3 + 1);
 		strncpy2(list[0].name, path, 3);
 	}
 	else
-#endif
+# endif
 	{
 		strcpy(path, fullpath);
 		list[0].name = strdup2(_SS_);

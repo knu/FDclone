@@ -317,12 +317,16 @@ extern int unixclosedir __P_((DIR *));
 extern struct dirent *unixreaddir __P_((DIR *));
 extern int unixrewinddir __P_((DIR *));
 #ifdef	_NOUSELFN
+#define	unixunlink	unlink
 #define	unixrename	rename
 #define	unixmkdir(p, m)	mkdir(p)
+#define	unixrmdir	rmdir
 #define	unixchdir	chdir
 #else
+extern int unixunlink __P_((char *));
 extern int unixrename __P_((char *, char *));
 extern int unixmkdir __P_((char *, int));
+extern int unixrmdir __P_((char *));
 extern int unixchdir __P_((char *));
 #endif
 extern char *unixgetcwd __P_((char *, int));

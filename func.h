@@ -49,6 +49,8 @@ extern int errno;
 			(((n) % BUFUNIT) ? (ptr) \
 			: realloc2(ptr, b_size(n, type)))
 
+#define	getblock(c)	((((c) + blocksize - 1) / blocksize) * blocksize)
+
 /* main.c */
 extern VOID error __P_((char *));
 extern VOID sigvecset __P_((void));
@@ -113,20 +115,33 @@ extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
 #endif
-extern int _Xmkdir __P_((char *, int));
-#ifdef	_NOROCKRIDGE
-#define	Xmkdir		_Xmkdir
-#else
-extern int Xmkdir __P_((char *, int));
-#endif
-#if	(MSDOS && defined (_NOUSELFN)) || (!MSDOS && defined (_NODOSDRIVE))
+#if	MSDOS && defined (_NOUSELFN)
+#define	_Xmkdir(p, m)	mkdir(p)
 #define	_Xrmdir		rmdir
 #else
+# if	!MSDOS && defined (_NODOSDRIVE)
+#define	_Xmkdir		mkdir
+#define	_Xrmdir		rmdir
+# else
+extern int _Xmkdir __P_((char *, int));
 extern int _Xrmdir __P_((char *));
+# endif
 #endif
 #ifdef	_NOROCKRIDGE
+# if	MSDOS && defined (_NOUSELFN)
+#define	Xmkdir(p, m)	mkdir(p)
+#define	Xrmdir		rmdir
+# else
+#  if	!MSDOS && defined (_NODOSDRIVE)
+#define	Xmkdir		mkdir
+#define	Xrmdir		rmdir
+#  else
+#define	Xmkdir		_Xmkdir
 #define	Xrmdir		_Xrmdir
+#  endif
+# endif
 #else
+extern int Xmkdir __P_((char *, int));
 extern int Xrmdir __P_((char *));
 #endif
 #if	(MSDOS && defined (_NOUSELFN)) || (!MSDOS && defined (_NODOSDRIVE))
@@ -197,6 +212,7 @@ extern char *evalcomstr __P_((char *, char *));
 extern char *killmeta __P_((char *));
 extern VOID adjustpath __P_((VOID_A));
 #endif
+extern char *includepath __P_((char *, char *));
 extern int getargs __P_((char *, char *[], int));
 extern char *catargs __P_((int, char *[], int));
 #ifndef	_NOARCHIVE
@@ -280,7 +296,7 @@ extern int completeuserfunc __P_((char *, int, char **));
 extern VOID help __P_((int));
 extern int writablefs __P_((char *));
 extern long getblocksize __P_((char *));
-extern char *inscomma __P_((char *, long, int));
+extern char *inscomma __P_((char *, off_t, int, int));
 extern VOID getinfofs __P_((char *, long *, long *));
 extern int infofs __P_((char *));
 
@@ -309,7 +325,7 @@ extern int logical_access __P_((u_short));
 #else
 extern int logical_access __P_((u_short, uid_t, gid_t));
 #endif
-extern int getstatus __P_((namelist *, int, char *));
+extern int getstatus __P_((namelist *));
 extern int isdotdir __P_((char *));
 extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
 #ifndef	_NOTREE

@@ -19,7 +19,7 @@ extern char *shortname __P_((char *, char *));
 
 extern int filepos;
 extern int mark;
-extern long marksize;
+extern off_t marksize;
 extern char fullpath[];
 #ifndef	_NOARCHIVE
 extern char *archivefile;
@@ -116,7 +116,7 @@ u_char flags;
 		for (i = n = len = 0; i < max; i++) if (isarg(&list[i])) {
 			n = setarg(buf, ptr + len, dir, list[i].name, flags);
 			if (!n) break;
-			list[i].flags &= ~F_ISARG;
+			list[i].tmpflags &= ~F_ISARG;
 			n_args--;
 			len += n;
 			buf[ptr + len++] = ' ';
@@ -355,7 +355,7 @@ macrostat *stp;
 #endif
 	}
 	if (list && !(stp -> needmark) && !(flags & F_REMAIN)) {
-		for (i = 0; i < max; i++) list[i].flags &= ~F_ISARG;
+		for (i = 0; i < max; i++) list[i].tmpflags &= ~F_ISARG;
 		n_args = 0;
 	}
 	if ((flags & F_REMAIN) && !n_args) flags &= ~F_REMAIN;
@@ -457,8 +457,8 @@ int *maxp, noconf, argset;
 	max = (maxp) ? *maxp : 0;
 	status = -2;
 	for (i = 0; i < max; i++) {
-		if (ismark(&list[i])) list[i].flags |= F_ISARG;
-		else list[i].flags &= ~F_ISARG;
+		if (ismark(&list[i])) list[i].tmpflags |= F_ISARG;
+		else list[i].tmpflags &= ~F_ISARG;
 	}
 	n_args = mark;
 
@@ -502,7 +502,8 @@ int *maxp, noconf, argset;
 	if (tmp) free(tmp);
 	if (status >= -1) return(status);
 	if (list) {
-		for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
+		for (i = 0; i < max; i++)
+			list[i].tmpflags &= ~(F_ISARG | F_ISMRK);
 		mark = 0;
 		marksize = 0;
 	}

@@ -218,11 +218,7 @@ char *path, *resolved;
 		}
 #endif	/* !MSDOS */
 	}
-	else {
-		if (!isdelim(resolved, (int)strlen(resolved) - 1))
-			strcat(resolved, _SS_);
-		strcat(resolved, path);
-	}
+	else strcpy(strcatdelim(resolved), path);
 	return(resolved);
 }
 
@@ -261,9 +257,9 @@ char *path, *resolved;
 	else if ((drv = _dospath(path))) {
 		path += 2;
 		resolved[0] = drv;
-		resolved[1] = ':';
-		resolved[2] = '\0';
-		if (*path == _SC_) strcat(resolved, _SS_);
+		resolved[drv = 1] = ':';
+		if (*path == _SC_) resolved[++drv] = _SC_;
+		resolved[++drv] = '\0';
 	}
 # endif
 #endif	/* !MSDOS */
@@ -897,8 +893,7 @@ time_t t;
 	if (cp[0] == _SC_) strcpy(buf, cp);
 	else {
 		strcpy(buf, TZDIR);
-		strcat(buf, _SS_);
-		strcat(buf, cp);
+		strcpy(strcatdelim(buf), cp);
 	}
 	if (!(fp = fopen(buf, "r"))) return(tz);
 	if (fread(&head, sizeof(struct tzhead), 1, fp) != 1) {

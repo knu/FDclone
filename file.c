@@ -34,6 +34,9 @@ extern int filepos;
 extern int mark;
 extern int dispmode;
 extern int sorton;
+extern off_t marksize;
+extern off_t totalsize;
+extern off_t blocksize;
 extern char *destpath;
 extern int copypolicy;
 extern char fullpath[];
@@ -118,48 +121,47 @@ gid_t gid;
 	return(mode & 007);
 }
 
-int getstatus(list, i, file)
+int getstatus(list)
 namelist *list;
-int i;
-char *file;
 {
 	struct stat status, lstatus;
 
 #if	MSDOS
-	if (stat2(file, &status) < 0) return(-1);
+	if (stat2(list -> name, &status) < 0) return(-1);
 	memcpy(&lstatus, &status, sizeof(struct stat));
 #else
 # ifndef	_NODOSDRIVE
-	if (_dospath(file)) {
-		if (stat2(file, &status) < 0) return(-1);
+	if (dospath(list -> name, NULL)) {
+		if (stat2(list -> name, &status) < 0) return(-1);
 		memcpy(&lstatus, &status, sizeof(struct stat));
 	}
 	else
 # endif
-	if (Xlstat(file, &lstatus) < 0 || stat2(file, &status) < 0) return(-1);
+	if (Xlstat(list -> name, &lstatus) < 0
+	|| stat2(list -> name, &status) < 0) return(-1);
 #endif
-	list[i].st_mode = lstatus.st_mode;
-	list[i].flags = 0;
-	if ((status.st_mode & S_IFMT) == S_IFDIR) list[i].flags |= F_ISDIR;
-	if ((lstatus.st_mode & S_IFMT) == S_IFLNK) list[i].flags |= F_ISLNK;
+	list -> st_mode = lstatus.st_mode;
+	list -> flags = 0;
+	if ((status.st_mode & S_IFMT) == S_IFDIR) list -> flags |= F_ISDIR;
+	if ((lstatus.st_mode & S_IFMT) == S_IFLNK) list -> flags |= F_ISLNK;
 #if	!MSDOS
 	if ((lstatus.st_mode & S_IFMT) == S_IFCHR
-	|| (lstatus.st_mode & S_IFMT) == S_IFBLK) list[i].flags |= F_ISDEV;
+	|| (lstatus.st_mode & S_IFMT) == S_IFBLK) list -> flags |= F_ISDEV;
 #endif
 
 	if (isdisplnk(dispmode)) memcpy(&lstatus, &status, sizeof(struct stat));
 
-	list[i].st_nlink = lstatus.st_nlink;
+	list -> st_nlink = lstatus.st_nlink;
 #if	!MSDOS
-	list[i].st_uid = lstatus.st_uid;
-	list[i].st_gid = lstatus.st_gid;
+	list -> st_uid = lstatus.st_uid;
+	list -> st_gid = lstatus.st_gid;
 #endif
 #ifdef	HAVEFLAGS
-	list[i].st_flags = lstatus.st_flags;
+	list -> st_flags = lstatus.st_flags;
 #endif
-	list[i].st_size = isdev(&list[i]) ? lstatus.st_rdev : lstatus.st_size;
-	list[i].st_mtim = lstatus.st_mtime;
-	list[i].flags |=
+	list -> st_size = isdev(list) ? lstatus.st_rdev : lstatus.st_size;
+	list -> st_mtim = lstatus.st_mtime;
+	list -> flags |=
 #if	MSDOS
 		logical_access((u_short)(status.st_mode));
 #else
@@ -167,6 +169,11 @@ char *file;
 			status.st_uid, status.st_gid);
 #endif
 
+	if (isfile(list) && list -> st_size) {
+		totalsize += getblock(list -> st_size);
+		if (ismark(list)) marksize += getblock(list -> st_size);
+	}
+	list -> tmpflags |= F_STAT;
 	return(0);
 }
 
@@ -182,50 +189,49 @@ int cmplist(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
+	namelist *list1, *list2;
 	char *cp1, *cp2;
 	long tmp;
 
-	if (!sorton)
-		return(((namelist *)vp1) -> ent - ((namelist *)vp2) -> ent);
-	if (!isdir((namelist *)vp1) && isdir((namelist *)vp2)) return(1);
-	if (isdir((namelist *)vp1) && !isdir((namelist *)vp2)) return(-1);
+	list1 = (namelist *)vp1;
+	list2 = (namelist *)vp2;
+	if (!sorton) return(list1 -> ent - list2 -> ent);
 
-	if (((namelist *)vp1) -> name[0] == '.'
-	&& ((namelist *)vp1) -> name[1] == '\0') return(-1);
-	if (((namelist *)vp2) -> name[0] == '.'
-	&& ((namelist *)vp2) -> name[1] == '\0') return(1);
-	if (((namelist *)vp1) -> name[0] == '.'
-	&& ((namelist *)vp1) -> name[1] == '.'
-	&& ((namelist *)vp1) -> name[2] == '\0') return(-1);
-	if (((namelist *)vp2) -> name[0] == '.'
-	&& ((namelist *)vp2) -> name[1] == '.'
-	&& ((namelist *)vp2) -> name[2] == '\0') return(1);
+#ifndef	_NOPRECEDE
+	if (!havestat(list1) && getstatus(list1) < 0) return(1);
+	if (!havestat(list2) && getstatus(list2) < 0) return(-1);
+#endif
+
+	if (!isdir(list1) && isdir(list2)) return(1);
+	if (isdir(list1) && !isdir(list2)) return(-1);
+
+	if (list1 -> name[0] == '.' && list1 -> name[1] == '\0') return(-1);
+	if (list2 -> name[0] == '.' && list2 -> name[1] == '\0') return(1);
+	if (list1 -> name[0] == '.' && list1 -> name[1] == '.'
+	&& list1 -> name[2] == '\0') return(-1);
+	if (list2 -> name[0] == '.' && list2 -> name[1] == '.'
+	&& list2 -> name[2] == '\0') return(1);
 
 	switch (sorton & 7) {
 		case 5:
-			tmp = strlen(((namelist *)vp1) -> name)
-				- strlen(((namelist *)vp2) -> name);
+			tmp = strlen(list1 -> name) - strlen(list2 -> name);
 			if (tmp != 0) break;
 		case 1:
-			tmp = strpathcmp(((namelist *)vp1) -> name,
-				((namelist *)vp2) -> name);
+			tmp = strpathcmp(list1 -> name, list2 -> name);
 			break;
 		case 2:
-			if ((cp1 = strrchr(((namelist *)vp1) -> name, '.')))
-				cp1++;
+			if ((cp1 = strrchr(list1 -> name, '.'))) cp1++;
 			else cp1 = "";
-			if ((cp2 = strrchr(((namelist *)vp2) -> name, '.')))
-				cp2++;
+			if ((cp2 = strrchr(list2 -> name, '.'))) cp2++;
 			else cp2 = "";
 			tmp = strpathcmp(cp1, cp2);
 			break;
 		case 3:
-			tmp = (long)(((namelist *)vp1) -> st_size)
-				- (long)(((namelist *)vp2) -> st_size);
+			tmp = (long)(list1 -> st_size)
+				- (long)(list2 -> st_size);
 			break;
 		case 4:
-			tmp = ((namelist *)vp1) -> st_mtim
-				- ((namelist *)vp2) -> st_mtim;
+			tmp = list1 -> st_mtim - list2 -> st_mtim;
 			break;
 		default:
 			tmp = 0;
@@ -233,7 +239,7 @@ CONST VOID_P vp2;
 	}
 
 	if (sorton > 7) tmp = -tmp;
-	if (!tmp) tmp = ((namelist *)vp1) -> ent - ((namelist *)vp2) -> ent;
+	if (!tmp) tmp = list1 -> ent - list2 -> ent;
 
 	if (tmp > 0) return(1);
 	if (tmp < 0) return(-1);
@@ -284,6 +290,7 @@ char *arcregstr;
 {
 	struct dirent *dp;
 #ifndef	_NOARCHIVE
+	struct stat status;
 	namelist tmp;
 	int i;
 #endif
@@ -293,7 +300,12 @@ char *arcregstr;
 	}
 #ifndef	_NOARCHIVE
 	else if (arcregstr) while ((dp = Xreaddir(dirp))) {
+		if (stat2(dp -> d_name, &status) < 0
+		|| (status.st_mode & S_IFMT) == S_IFDIR) continue;
+
 		tmp.name = dp -> d_name;
+		tmp.flags = 0;
+		tmp.tmpflags = F_STAT;
 		i = searcharc(arcregstr, &tmp, 1, -1);
 		if (i < 0) return(NULL);
 		if (i) break;
@@ -438,12 +450,16 @@ char *dir;
 		if (Xmkdir(dir, 0777) < 0) {
 #if	MSDOS
 			if (errno != EEXIST) return(-1);
-			if ((cp = strrdelim(dir, 1))) cp++;
-			else cp = dir;
-			if (cp[0] == '.' && !cp[1]) status.st_mode = S_IFDIR;
-			else
-#endif
+			cp = (_dospath(dir)) ? dir + 2 : dir;
+			if (cp[0] != _SC_ || cp[1]) {
+				if ((cp = strrdelim(dir, 1))) cp++;
+				else cp = dir;
+				if (cp[0] != '.' || cp[1]) return(-1);
+			}
+			status.st_mode = S_IFDIR;
+#else
 			return(-1);
+#endif
 		}
 		else if (stat2(dir, &status) < 0) return(-1);
 	}
@@ -604,13 +620,11 @@ char *dir;
 	if (no >= 'A' && no <= 'Z' && *path >= 'a' && *path <= 'z')
 		*path += 'A' - 'a';
 #endif
-	strcat(path, _SS_);
-	strcat(path, tmpfilename);
+	strcpy(strcatdelim(path), tmpfilename);
 	if (_Xmkdir(path, 0777) < 0 && errno != EEXIST) return(-1);
-	*(cp = path + strlen(path)) = _SC_;
-	strcpy(cp + 1, dir);
+	strcpy((cp = strcatdelim(path)), dir);
 	if (_Xmkdir(path, 0777) < 0 && errno != EEXIST) {
-		*cp = '\0';
+		*(--cp) = '\0';
 		no = errno;
 		if (_Xrmdir(path) < 0
 		&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
@@ -629,8 +643,7 @@ char *dir;
 
 	if (dir && *dir && _Xrmdir(dir) < 0) return(-1);
 	strcpy(path, deftmpdir);
-	strcat(path, _SS_);
-	strcat(path, tmpfilename);
+	strcpy(strcatdelim(path), tmpfilename);
 	if (_Xrmdir(path) < 0
 	&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
 		return(-1);
@@ -726,16 +739,14 @@ int mode;
 		return(-1);
 	}
 
-	cp = path + strlen(path);
-	*cp = _SC_;
-	strcpy(cp + 1, file);
+	strcpy((cp = strcatdelim(path)), file);
 	waitmes();
 	if (_cpfile(file, path, mode) < 0) {
 		removetmp(path, NULL, NULL);
 		return(-1);
 	}
 
-	*cp = '\0';
+	*(--cp) = '\0';
 	if (_chdir2(path) < 0) error(path);
 	*dirp = strdup2(path);
 	return(drive);
@@ -810,8 +821,7 @@ char *tmpdir;
 	l = 0;
 	if (tmpdir) {
 		strcpy(tmp, tmpdir);
-		l = strlen(tmp);
-		tmp[l++] = _SC_;
+		l = strcatdelim(tmp) - tmp;
 	}
 
 	for (;;) {
@@ -950,8 +960,7 @@ int max, fs;
 	persec = getblocksize(tmpdir);
 #endif
 	strcpy(path, tmpdir);
-	strcat(path, _SS_);
-	fnamp = strlen(path);
+	fnamp = strcatdelim(path) - path;
 	waitmes();
 
 	if (!(dirp = _Xopendir("."))) error(".");
@@ -985,7 +994,7 @@ int max, fs;
 		free(tmpdir);
 		tmpdir = cp;
 		strcpy(path, tmpdir);
-		strcat(path, _SS_);
+		strcatdelim(path);
 	}
 
 #if	!MSDOS
@@ -1043,8 +1052,7 @@ int max, fs;
 	free(tmpdir);
 	tmpdir = cp;
 	strcpy(path, tmpdir);
-	strcat(path, _SS_);
-	strcat(path, list[top].name);
+	strcpy(strcatdelim(path), list[top].name);
 	if (rename2(path, list[top].name) < 0) error(path);
 	restorefile(tmpdir, path, fnamp);
 

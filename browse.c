@@ -35,6 +35,9 @@ static char *putowner __P_((char *, uid_t));
 static char *putgroup __P_((char *, gid_t));
 #endif
 static VOID calclocate __P_((int));
+#ifndef	_NOPRECEDE
+static VOID readstatus __P_((VOID_A));
+#endif
 static int browsedir __P_((char *, char *));
 
 int columns = 0;
@@ -48,9 +51,9 @@ int sorttype = 0;
 int chgorder = 0;
 int stackdepth = 0;
 int sizeinfo = 0;
-long marksize = 0;
-long totalsize = 0;
-long blocksize = 0;
+off_t marksize = 0;
+off_t totalsize = 0;
+off_t blocksize = 0;
 namelist filestack[MAXSTACK];
 char fullpath[MAXPATHLEN + 1] = "";
 char *macrolist[MAXMACROTABLE];
@@ -90,6 +93,10 @@ int ansicolor = 0;
 static u_char colorlist[] = {
 	ANSI_CYAN, ANSI_YELLOW, ANSI_MAGENTA, ANSI_RED
 };
+#endif
+#ifndef	_NOPRECEDE
+char *precedepath = NULL;
+static int maxstat = 0;
 #endif
 
 
@@ -253,7 +260,7 @@ static VOID stackbar(VOID_A)
 
 VOID sizebar(VOID_A)
 {
-	char buf[16];
+	char buf[14 + 1];
 	long total, fre;
 
 	if (!sizeinfo) return;
@@ -265,8 +272,8 @@ VOID sizebar(VOID_A)
 	putterm(t_standout);
 	cputs2("Size:");
 	putterm(end_standout);
-	cprintf2("%14.14s/", inscomma(buf, marksize, 3));
-	cprintf2("%14.14s ", inscomma(buf, totalsize, 3));
+	cprintf2("%14.14s/", inscomma(buf, marksize, 3, 14));
+	cprintf2("%14.14s ", inscomma(buf, totalsize, 3, 14));
 
 	getinfofs(".", &total, &fre);
 
@@ -275,14 +282,14 @@ VOID sizebar(VOID_A)
 	cputs2("Total:");
 	putterm(end_standout);
 	if (total < 0) cprintf2("%15.15s ", "?");
-	else cprintf2("%12.12s KB ", inscomma(buf, total, 3));
+	else cprintf2("%12.12s KB ", inscomma(buf, total, 3, 12));
 
 	locate(CFREE, LSIZE);
 	putterm(t_standout);
 	cputs2("Free:");
 	putterm(end_standout);
 	if (fre < 0) cprintf2("%15.15s ", "?");
-	else cprintf2("%12.12s KB ", inscomma(buf, fre, 3));
+	else cprintf2("%12.12s KB ", inscomma(buf, fre, 3, 12));
 
 	tflush();
 }
@@ -381,6 +388,22 @@ int no;
 		tflush();
 		return;
 	}
+#ifndef	_NOPRECEDE
+	if (!havestat(&list[no])) {
+		putterm(l_clear);
+# if	MSDOS
+		len = WMODE + 4 + WDATE + 1 + WTIME + 1;
+# else
+		len = WMODE + 4 + WOWNER + 1 + WGROUP + 1 + 8 + 1
+			+ WDATE + 1 + WTIME + 1;
+# endif
+		width = n_lastcolumn - len;
+		locate(len, LINFO);
+		kanjiputs2(list[no].name, width, fnameofs);
+		tflush();
+		return;
+	}
+#endif
 
 	buf = (char *)malloc2(n_lastcolumn * 2 + 1);
 	tm = localtime(&list[no].st_mtim);
@@ -520,6 +543,17 @@ int no, standout;
 	wid = width;
 #endif
 	i = strncpy3(buf, list[no].name, &width, i);
+
+#ifndef	_NOPRECEDE
+	if (!havestat(&list[no])) {
+		if (standout > 0) putterm(t_standout);
+		kanjiputs(buf);
+		free(buf);
+		if (standout > 0) putterm(end_standout);
+		tflush();
+		return;
+	}
+#endif
 
 #ifdef	_NOCOLOR
 	if (isdisptyp(dispmode) && i < width)
@@ -793,6 +827,27 @@ VOID addlist(VOID_A)
 	filelist = (namelist *)realloc2(filelist, maxent * sizeof(namelist));
 }
 
+#ifndef	_NOPRECEDE
+static VOID readstatus(VOID_A)
+{
+	off_t size;
+	int i;
+
+	for (i = maxstat; i < maxfile; i++) if (!havestat(&filelist[i])) break;
+	if (i >= maxfile) return;
+	maxstat = i + 1;
+	if (getstatus(&(filelist[i])) < 0) return;
+	if (keywaitfunc != readstatus) return;
+	if (isfile(&filelist[i]) && filelist[i].st_size) sizebar();
+	if (i == filepos) {
+		putname(filelist, i, 1);
+		infobar(filelist, i);
+	}
+	else if (i / FILEPERPAGE == filepos / FILEPERPAGE)
+		putname(filelist, i, 0);
+}
+#endif
+
 static int browsedir(file, def)
 char *file, *def;
 {
@@ -802,6 +857,9 @@ char *file, *def;
 	u_char fstat;
 	char *cp, buf[MAXNAMLEN + 1];
 	int ch, i, no, old;
+#ifndef	_NOPRECEDE
+	int haste;
+#endif
 
 #ifndef	_NOCOLOR
 	if (ansicolor) putterms(t_normal);
@@ -810,9 +868,12 @@ char *file, *def;
 	maxfile = mark = 0;
 	totalsize = marksize = 0;
 	buf[0] = '\0';
-	blocksize = getblocksize(".");
+	blocksize = (off_t)getblocksize(".");
 	chgorder = 0;
 	if (sorttype < 100) sorton = sorttype;
+#ifndef	_NOPRECEDE
+	haste = (!sorton && includepath(NULL, precedepath)) ? 1 : 0;
+#endif
 
 	if (!(dirp = Xopendir("."))) error(".");
 	fnameofs = 0;
@@ -843,13 +904,18 @@ char *file, *def;
 		if (i < stackdepth) continue;
 
 		addlist();
-		if (getstatus(filelist, maxfile, file) < 0) continue;
 		filelist[maxfile].name = strdup2(file);
 		filelist[maxfile].ent = maxfile;
-		if (!isdir(&filelist[maxfile]))
-			totalsize += 
-				((filelist[maxfile].st_size + blocksize - 1)
-				/ blocksize) * blocksize;
+		filelist[maxfile].tmpflags = 0;
+#ifndef	_NOPRECEDE
+		if (!haste)
+#endif
+		{
+			if (getstatus(&filelist[maxfile]) < 0) {
+				free(filelist[maxfile].name);
+				continue;
+			}
+		}
 		maxfile++;
 	}
 	Xclosedir(dirp);
@@ -864,6 +930,9 @@ char *file, *def;
 		filelist[0].st_nlink = -1;
 	}
 
+#ifndef	_NOPRECEDE
+	maxstat = (!haste) ? maxfile : 0;
+#endif
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
 
 	if (stable_standout) {
@@ -885,12 +954,18 @@ char *file, *def;
 		if (no) movepos(filelist, maxfile, old, fstat);
 		locate(0, 0);
 		tflush();
+#ifndef	_NOPRECEDE
+		if (haste) keywaitfunc = readstatus;
+#endif
 #ifdef	_NOEDITMODE
 		ch = Xgetkey(SIGALRM);
 #else
 		Xgetkey(-1);
 		ch = Xgetkey(SIGALRM);
 		Xgetkey(-1);
+#endif
+#ifndef	_NOPRECEDE
+		keywaitfunc = NULL;
 #endif
 
 		old = filepos;
@@ -995,14 +1070,14 @@ char *cur;
 			cp [i - 2] = '\0';
 		}
 		if (*cp == _SC_) fullpath[2] = '\0';
-		strcat(fullpath, _SS_);
+		strcatdelim(fullpath);
 #else	/* !MSDOS */
 		if (
 #ifndef	_NODOSDRIVE
 		_dospath(cp) ||
 #endif
 		*cp == _SC_) *fullpath = '\0';
-		else strcat(fullpath, _SS_);
+		else strcatdelim(fullpath);
 #endif	/* !MSDOS */
 		if (_chdir2(cp) >= 0) {
 			strcat(fullpath, cp);
