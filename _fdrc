@@ -65,15 +65,15 @@ SAVEHIST	=	50
 #	Default: 50
 DIRCOUNTLIMIT	=	50
 
-# whether if display the second hand of clock
-#	0: not display (Default)
-#	>= 1: display
-SECOND		=	0
-
 # whether if make MS-DOS drive effective
 #	0: not use (Default)
 #	>= 1: effective
 DOSDRIVE	=	0
+
+# whether if display the second hand of clock
+#	0: not display (Default)
+#	>= 1: display
+SECOND		=	0
 
 # whether if show the info. of filesize
 #	0: not show (Default)
@@ -113,8 +113,15 @@ PROMPT		=	"sh#"
 #	eng, ENG, C: English
 #LANGUAGE	=	$LANG
 
-#PAGER	=	/usr/local/bin/less
-#EDITOR	=	/usr/ucb/vi
+# language code type to input
+#	Default: No convert
+#	euc, EUC: EUC
+#	sjis, SJIS: Shift JIS
+#INPUTKCODE	=	$LANG
+
+PAGER	=	more%K
+EDITOR	=	vi
+SHELL	=	/bin/sh
 
 # for Mischievous Japanese OS (see `man fd')
 #export	LANG=C

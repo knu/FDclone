@@ -65,7 +65,7 @@ CFLAGS	= -DFD=1 -D__OSTYPE__=1 -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__
 all:	$(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 
 $(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) $(CFLAGS) __LNK__ $@ __OBJLIST__ $(LDFLAGS)
+	$(CC) $(CFLAGS) __LNK__ __OBJLIST__ $(LDFLAGS)
 	__RENAME__ $@ $(PROGRAM)
 	__AOUT2EXE__ $(PROGRAM)
 	__REMOVE__ $(PROGRAM)
@@ -76,7 +76,7 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 .c__OBJ__:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c __OUT__ $@ $*.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
 
 
 ############################################################
@@ -98,7 +98,7 @@ history.doc: kanjicnv__EXE__ HISTORY machine.h config.h
 	./kanjicnv__EXE__ __KCODEOPTION__ HISTORY $@
 
 kanjicnv__EXE__: kanjicnv.c
-	$(CC) $(CFLAGS) __LNK__ $@ kanjicnv.c
+	$(CC) $(CFLAGS) __LNK__ kanjicnv.c
 	__RENAME__ $@ kanjicnv
 	__AOUT2EXE__ kanjicnv
 	__REMOVE__ kanjicnv
@@ -111,7 +111,7 @@ funcno.h: mkfuncno__EXE__
 	./mkfuncno__EXE__ $@
 
 mkfuncno__EXE__: mkfuncno.c functabl.h fd.h config.h
-	$(CC) $(CFLAGS) __LNK__ $@ mkfuncno.c
+	$(CC) $(CFLAGS) __LNK__ mkfuncno.c
 	__RENAME__ $@ mkfuncno
 	__AOUT2EXE__ mkfuncno
 	__REMOVE__ mkfuncno
@@ -127,7 +127,7 @@ $(UNITBL): mkunitbl__EXE__
 	./mkunitbl__EXE__ $@
 
 mkunitbl__EXE__: mkunitbl.c
-	$(CC) $(CFLAGS) __LNK__ $@ mkunitbl.c
+	$(CC) $(CFLAGS) __LNK__ mkunitbl.c
 	__RENAME__ $@ mkunitbl
 	__AOUT2EXE__ mkunitbl
 	__REMOVE__ mkunitbl
@@ -193,9 +193,9 @@ config: Configur expfunc.c
 		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
-			$(CC) $(CFLAGS) __LNK__ expfunc__EXE__ expfunc.c; \
+			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configur | ./expfunc__EXE__ | $(SHELL) \
+		$(SED) "2,3d" Configur | ./expfunc | $(SHELL) \
 		> config.h; \
 	fi
 

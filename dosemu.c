@@ -41,7 +41,7 @@ char *path, *buf;
 	if (!buf) return(drive);
 
 #ifdef	CODEEUC
-	buf[ujis2sjis(buf, cp)] = '\0';
+	buf[ujis2sjis(buf, (u_char *)cp)] = '\0';
 #else
 	strcpy(buf, cp);
 #endif
@@ -49,7 +49,7 @@ char *path, *buf;
 		if (*buf && buf[strlen(buf) - 1] != _SC_) strcat(buf, _SS_);
 #ifdef	CODEEUC
 		buf += strlen(buf);
-		buf[ujis2sjis(buf, path)] = '\0';
+		buf[ujis2sjis(buf, (u_char *)path)] = '\0';
 #else
 		strcat(buf, path);
 #endif
@@ -115,7 +115,8 @@ DIR *dirp;
 	memcpy(&buf, dp, sizeof(buf));
 #if	defined (CODEEUC) && !defined (_NODOSDRIVE)
 	if (*((int *)dirp) < 0) {
-		i = sjis2ujis(((struct dirent *)&buf) -> d_name, dp -> d_name);
+		i = sjis2ujis(((struct dirent *)&buf) -> d_name,
+			(u_char *)(dp -> d_name));
 		((struct dirent *)&buf) -> d_name[i] = '\0';
 	}
 #endif
@@ -211,7 +212,7 @@ int size;
 			path[i] += 'a' - 'A';
 	}
 #ifdef	CODEEUC
-	tmpbuf[sjis2ujis(tmpbuf, path)] = '\0';
+	tmpbuf[sjis2ujis(tmpbuf, (u_char *)path)] = '\0';
 	strcpy(path, tmpbuf);
 #endif
 	return(path);

@@ -10,6 +10,10 @@
 #include "funcno.h"
 #include "kanji.h"
 
+#ifdef	NOERRNO
+extern int errno;
+#endif
+
 #ifdef	USESYSDIRH
 #include <sys/dir.h>
 #endif

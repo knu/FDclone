@@ -53,8 +53,8 @@ OBJ2	= dosdisk.obj unixemu.obj unixdisk.obj \
 OBJ3	= kanji.obj file.obj apply.obj archive.obj \
 	tree.obj command.obj browse.obj
 
-LDFLAGS	=   -lintlib -ltinymain.obj -ml -h -k'-s 6000'
-CFLAGS	= -DFD=1 -DDOSV=1 -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O
+LDFLAGS	=   -lintlib -ltinymain.obj -k'-s 6000'
+CFLAGS	= -DFD=1 -DDOSV=1 -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O -ml -h
 
 .SUFFIXES: .h .c .obj .exe
 
@@ -193,9 +193,9 @@ config: Configur expfunc.c
 		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
-			$(CC) $(CFLAGS) -o expfunc.exe expfunc.c; \
+			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configur | .\expfunc.exe | $(SHELL) \
+		$(SED) "2,3d" Configur | .\expfunc | $(SHELL) \
 		> config.h; \
 	fi
 

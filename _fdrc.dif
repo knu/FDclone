@@ -1,5 +1,5 @@
---- ./.fdrc.FD-1.01h	Fri Oct  6 15:38:41 1995
-+++ _fdrc	Thu Jul 31 12:24:33 1997
+--- .fdrc.FD-1.01h	Fri Oct  6 15:38:41 1995
++++ _fdrc	Thu Aug  7 11:45:33 1997
 @@ -55,2 +55,6 @@
  
 +# history size of path input
@@ -33,7 +33,7 @@
 +PROMPT		=	"sh#"
 +
  # language code type to display
-@@ -99,14 +123,16 @@
+@@ -106,14 +130,16 @@
  #(Default)
 -#".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
 -#".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
@@ -61,7 +61,7 @@
 +#launch ".Z"	"zcat %C|$PAGER"
 +#launch ".gz"	"gzip -cd %C|$PAGER"
  
-@@ -113,8 +139,31 @@
+@@ -120,8 +146,31 @@
  # examples for SVR4 (or GNU tar)
 -#".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
 -#".tar.Z"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
@@ -99,7 +99,7 @@
 +#launch ".tar.gz"\
 +#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
  
-@@ -122,12 +171,17 @@
+@@ -129,12 +178,17 @@
  #(Default)
 -#".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
 -#".tar"		A "tar cf %C %T"		"tar xf %C %TA"
@@ -126,7 +126,7 @@
 +#arch ".tar.Z"	"tar cf %X %T; compress %X"	"gzip -cd %S|tar xf - %TA"
 +#arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %S|tar xf - %TA"
  
-@@ -135,10 +189,26 @@
+@@ -142,10 +196,26 @@
  #(Examples)
 -#'I'	"dir -d %C"
 -#'g'	"gzip %C%K"	WARNING_BELL
@@ -161,12 +161,12 @@
 +#	mv %X.tar.$2 %X.$3;\
 +#}
  
-@@ -146,3 +216,3 @@
+@@ -153,3 +223,3 @@
  #(Example)
 -#B:	"/dev/rfd00a"	2, 18, 80
 +#setdrv B	"/dev/rfd00a"	2, 18, 80
  
-@@ -151 +221,5 @@
+@@ -158 +228,5 @@
  #alias dir "ls -laF"
 +
 +# keymap definition

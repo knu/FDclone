@@ -4,7 +4,6 @@
  *	Command Execute Module
  */
 
-#include <time.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"

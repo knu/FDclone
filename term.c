@@ -239,9 +239,10 @@ static u_char specialkey[] = ":=<;89>\25667bcdefghijk\202\203\204\205\206\207\21
 #else
 #define	KEYBUFWORKSEG	0x40
 #define	KEYBUFWORKOFF	0x80
-static u_char specialkey[] = "HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
+static u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
 #endif
 static int specialkeycode[] = {
+	0,
 	K_UP, K_DOWN, K_RIGHT, K_LEFT,
 	K_IC, K_DC, K_HOME, K_END, K_PPAGE, K_NPAGE,
 	K_F(1), K_F(2), K_F(3), K_F(4), K_F(5),

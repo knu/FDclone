@@ -12,12 +12,12 @@ s:__LANGDIR__::
 s:__INSTALL__:copy:
 s:__INSTSTRIP__::
 s:__CC__:lcc:
-s:__CCOPTIONS__:-O:
-s:__OUT__:-o:
-s:__LNK__:-o:
+s:__CCOPTIONS__:-O -ml -h:
+s:__OUT__:-o $@:
+s:__LNK__:-o $@:
 s:__TERMLIBS__::
 s:__REGLIBS__::
-s:__OTHERLIBS__:-lintlib -ltinymain.obj -ml -h -k'-s 6000':
+s:__OTHERLIBS__:-lintlib -ltinymain.obj -k'-s 6000':
 s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
 s:__UNITBL__:$(UNITBL):

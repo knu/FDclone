@@ -59,8 +59,16 @@ char *argv[];
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
-	printf("s:__OUT__:-o:\n");
-	printf("s:__LNK__:-o:\n");
+#ifdef	CCOUTOPT
+	printf("s:__OUT__:%s:\n", CCOUTOPT);
+#else
+	printf("s:__OUT__:-o $@:\n");
+#endif
+#ifdef	CCLNKOPT
+	printf("s:__LNK__:%s:\n", CCLNKOPT);
+#else
+	printf("s:__LNK__:-o $@:\n");
+#endif
 
 	printf("s:__TERMLIBS__:%s:\n", TERMCAPLIB);
 	printf("s:__REGLIBS__:%s:\n", REGEXPLIB);

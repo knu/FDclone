@@ -13,8 +13,8 @@ s:__INSTALL__:copy:
 s:__INSTSTRIP__::
 s:__CC__:gcc:
 s:__CCOPTIONS__:-O:
-s:__OUT__:-o:
-s:__LNK__:-o:
+s:__OUT__:-o $@:
+s:__LNK__:-o $@:
 s:__TERMLIBS__::
 s:__REGLIBS__::
 s:__OTHERLIBS__::

@@ -298,6 +298,7 @@ typedef	long	off_t;
 #define	SVR4
 #define	OSTYPE			"UXPM"
 #define	CODEEUC
+#define	CCOUTOPT		"-o $*"
 #define	REGEXPLIB		"-lgen"
 #define	NODNAMLEN
 #define	NOTMGMTOFF
@@ -419,6 +420,7 @@ typedef	long	off_t;
 #define	CODEEUC
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
+#define	STRICTSTDC
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
@@ -506,6 +508,8 @@ typedef	long	off_t;
 /* #define CPP7BIT	;cpp(1) cannot through 8bit */
 /* #define CCCOMMAND	;fullpath of suitable cc(1) */
 /* #define EXTENDCCOPT	;additional option on cc(1) */
+/* #define CCOUTOPT	;option for output file name on cc(1) with -c */
+/* #define CCLNKOPT	;option for output file name on cc(1) without -c */
 /* #define TERMCAPLIB	;library needed for termcap */
 /* #define REGEXPLIB	;library needed for regular expression */
 /* #define EXTENDLIB	;library needed for the other extended */

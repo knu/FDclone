@@ -940,7 +940,9 @@ int x, plen, max, linemax, def, comline, h;
 				break;
 			case CTRL('L'):
 				keyflush();
-				for (i = 0; i < WCMDLINE; i++) {
+				locate(x + plen, LCMDLINE);
+				putterm(l_clear);
+				for (i = 1; i < WCMDLINE; i++) {
 					locate(x, LCMDLINE + i);
 					putterm(l_clear);
 				}

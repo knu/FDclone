@@ -193,9 +193,9 @@ config: Configur expfunc.c
 		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
-			$(CC) $(CFLAGS) -o expfunc.exe expfunc.c; \
+			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configur | .\expfunc.exe | $(SHELL) \
+		$(SED) "2,3d" Configur | .\expfunc | $(SHELL) \
 		> config.h; \
 	fi
 

@@ -17,29 +17,42 @@
    無理に変更すると却って失敗しますので、そのまま次のステッ
    プに進んで下さい。
 	Sun	SunOS		(4.1.x, 5.x)
-	SONY	NEWS-OS		(3.x, 4.x, 6.x)
-	SGI	IRIX		(R4.0.5, R5.x)
-	HP	HP-UX		(9.x, 10.01)
+	SONY	NEWS-OS		(3.2, 4.x, 6.x)
+	SGI	IRIX		(R5.x, R6.x)
+	HP	HP-UX		(9.x)
+	NEC	EWS-UX/V(Rel4.x)(R7.1, R12.3, R13.1)
+	DEC	OSF/1		(V3.2, V4.0)
+	DEC	ULTRIX		(V4.x)
+	IBM	AIX		(3.x)
+	Fujitsu	UXP/M		(4.1)
+	JCC	4.4BSD-Lite	(v1.0)
+		Linux		(2.x)
+		FreeBSD		(2.x)
+		NetBSD		(1.x)
+	BSDI	BSD/OS		(2.x, 3.0)
+	ASCII	BSD on Windows	(1.0, 1.5)
+
+   また、以下の OS は、Ver.1.03 での動作確認は行なわれていま
+   せんが、各 OS 用のコードが記述されていますので、多分変更
+   の必要がないものと思われます。
+   少なくとも、無変更のままコンパイルが無事通るようであれば、
+   余計な変更は行なわない方が無難だと思います。
+	SGI	IRIX		(R4.0.5)
+	HP	HP-UX		(10.01)
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
 	NEC	EWS-UX/V(Rel4.x)(R5.3, R8.1, R9.1, R10.1)
 	OMRON	UniOS-U		(Ver3.00)
 	OMRON	UniOS-B		(2.00)
 	OMRON	Luna/Mach	(2.5)
 	DEC	OSF/1		(V1.2, V2.0)
-	IBM	AIX		(3.x, 4.x)
-	DEC	ULTRIX		(V4.3)
+	IBM	AIX		(4.x)
 	Apple	A/UX		(3.0)
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0)
 	Mips	RISC/os		(4.x, 5.0x)
-	JCC	4.4BSD-Lite	(v1.0)
 	NeXT	NEXTSTEP	(3.0)
-		Linux		(1.x)
-		FreeBSD		(2.x)
-		NetBSD		(1.0, 2.0)
 		386BSD		(R0.1)
-	BSDI	BSD/OS		(1.1, 2.0)
-	ASCII	BSD on Windows	(1.0)
+	BSDI	BSD/OS		(1.1)
 
    これ以外の OS では、その OS の環境を自動判定するプログラ
    ムが付属されていますので、make config とすれば環境設定フ
