@@ -252,6 +252,9 @@ extern int needbavail;
 #ifndef	MNTTYPE_EXT2
 #define	MNTTYPE_EXT2	"ext2"	/* Linux */
 #endif
+#ifndef	MNTTYPE_EXT3
+#define	MNTTYPE_EXT3	"ext3"	/* Linux */
+#endif
 #ifndef	MNTTYPE_JFS
 #define	MNTTYPE_JFS	"jfs"	/* AIX */
 #endif
@@ -315,6 +318,43 @@ static CONST char *keystrlist[] = {
 	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter", "Help",
 	"Bs", "Tab", "Ret", "Esc"
 };
+static CONST strtable mntlist[] = {
+	{FSID_FAT, MNTTYPE_PC},
+	{FSID_LFN, MNTTYPE_DOS7},
+	{FSID_LFN, MNTTYPE_FAT32},
+#if	MSDOS
+# ifndef	_NODOSDRIVE
+	{FSID_FAT, MNTTYPE_FAT12},
+	{FSID_FAT, MNTTYPE_FAT16},
+	{FSID_FAT, MNTTYPE_FAT16X},
+# endif
+#else	/* !MSDOS */
+	{FSID_UFS, MNTTYPE_43},
+	{FSID_UFS, MNTTYPE_42},
+	{FSID_UFS, MNTTYPE_UFS},
+	{FSID_UFS, MNTTYPE_FFS},
+	{FSID_UFS, MNTTYPE_JFS},
+	{FSID_EFS, MNTTYPE_EFS},
+	{FSID_SYSV, MNTTYPE_SYSV},
+	{FSID_SYSV, MNTTYPE_DGUX},
+	{FSID_LINUX, MNTTYPE_EXT2},
+	{FSID_LINUX, MNTTYPE_EXT3},
+# ifdef	LINUX
+	{FSID_FAT, MNTTYPE_MSDOS},
+# else
+	{FSID_LFN, MNTTYPE_MSDOS},
+# endif
+	{FSID_LFN, MNTTYPE_UMSDOS},
+	{FSID_LFN, MNTTYPE_VFAT},
+	{0, MNTTYPE_ADVFS},
+	{0, MNTTYPE_VXFS},
+#endif	/* !MSDOS */
+#ifdef	DARWIN
+	/* Macintosh HFS+ is pseudo file system covered with skin */
+	{0, MNTTYPE_HFS},
+#endif
+};
+#define	MNTLISTSIZ	((int)(sizeof(mntlist) / sizeof(strtable)))
 
 
 static int NEAR code2str(buf, code)
@@ -822,53 +862,26 @@ char *s1, *s2;
 int writablefs(path)
 char *path;
 {
-	statfs_t fsbuf;
-	mnt_t mntbuf;
 #ifdef	_USEDOSEMU
 	int drv;
 #endif
+	statfs_t fsbuf;
+	mnt_t mntbuf;
+	int i;
 
 	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
 #ifdef	_USEDOSEMU
-	if ((drv = dospath(path, NULL))) return((isupper2(drv)) ? 4 : 7);
+	if ((drv = dospath(path, NULL)))
+		return((isupper2(drv)) ? FSID_FAT : FSID_DOSDRIVE);
 #endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
-	|| hasmntopt2(&mntbuf, "ro")) return(0);
+	|| hasmntopt2(&mntbuf, "ro"))
+		return(0);
 
-	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT32)) return(5);
-#if	MSDOS
-# ifndef	_NODOSDRIVE
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_FAT12)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT16)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT16X)) return(4);
-# endif
-#else	/* !MSDOS */
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_42)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FFS)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_JFS)) return(1);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_SYSV)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)) return(6);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_MSDOS))
-# ifdef	LINUX
-		return(4);
-# else
-		return(5);
-# endif
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_UMSDOS)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_VFAT)) return(5);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_ADVFS)) return(0);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_VXFS)) return(0);
-#endif	/* !MSDOS */
-#ifdef	DARWIN
-	/* Macintosh HFS+ is pseudo file system covered with skin */
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_HFS)) return(0);
-#endif
+	for (i = 0; i < MNTLISTSIZ; i++)
+		if (!strcmp(mntbuf.mnt_type, mntlist[i].str))
+			return(mntlist[i].no);
+
 	return(0);
 }
 

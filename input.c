@@ -1368,6 +1368,7 @@ int ins, quote;
 		}
 #ifdef	FAKEMETA
 		else if (strchr(DQ_METACHAR, strins[i])
+		|| (!quote && strchr(METACHAR, strins[i]))) {
 #else	/* !FAKEMETA */
 		else if ((quote == '\'' && strins[i] == '\'')
 		|| (quote == '"' && strins[i] == '!')) {
@@ -1385,8 +1386,8 @@ int ins, quote;
 			dupl[j] = (*sp)[cx + j] = quote;
 		}
 		else if ((quote == '"' && strchr(DQ_METACHAR, strins[i]))
-#endif	/* !FAKEMETA */
 		|| (!quote && strchr(METACHAR, strins[i]))) {
+#endif	/* !FAKEMETA */
 			insertchar(*sp, cx, len, plen, linemax, 1);
 			*sp = c_realloc(*sp, len + 1, sizep);
 			insshift(*sp, cx + j, len, 1);
@@ -1655,7 +1656,7 @@ int linemax, comline, cont;
 	if (vartop);
 	else
 # endif
-	cp = evalpath(cp, 1);
+	cp = evalpath(cp, 0);
 	hasmeta = 0;
 	for (i = 0; cp[i]; i++) {
 		if (strchr(METACHAR, cp[i])) {
@@ -1859,7 +1860,7 @@ char **tmp;
 
 	keyflush();
 #ifndef	_NOCOMPLETE
-	if (selectlist) {
+	if (h >= 0 && selectlist) {
 		selectfile(tmpfilepos--, NULL);
 		setcursor(*sp, *cxp, cx2, *lenp, plen, linemax);
 	}
@@ -1944,7 +1945,7 @@ char **tmp;
 	len2 = vlen(*sp, *lenp);
 	keyflush();
 #ifndef	_NOCOMPLETE
-	if (selectlist) {
+	if (h >= 0 && selectlist) {
 		selectfile(tmpfilepos++, NULL);
 		setcursor(*sp, *cxp, cx2, *lenp, plen, linemax);
 	}
@@ -2387,7 +2388,7 @@ int linemax, def, comline, h;
 			case K_RIGHT:
 				keyflush();
 #ifndef	_NOCOMPLETE
-				if (selectlist) {
+				if (h >= 0 && selectlist) {
 					i = tmpfilepos;
 					tmpfilepos += FILEPERROW;
 					selectfile(i, NULL);
@@ -2402,7 +2403,7 @@ int linemax, def, comline, h;
 			case K_LEFT:
 				keyflush();
 #ifndef	_NOCOMPLETE
-				if (selectlist) {
+				if (h >= 0 && selectlist) {
 					i = tmpfilepos;
 					tmpfilepos -= FILEPERROW;
 					selectfile(i, NULL);
@@ -2506,7 +2507,7 @@ int linemax, def, comline, h;
 #ifndef	_NOCOMPLETE
 			case '\t':
 				keyflush();
-				if (selectlist) {
+				if (h < 0 || selectlist) {
 					ringbell();
 					break;
 				}
@@ -2527,7 +2528,7 @@ int linemax, def, comline, h;
 			case K_CR:
 				keyflush();
 #ifndef	_NOCOMPLETE
-				if (!selectlist) break;
+				if (h < 0 || !selectlist) break;
 				i = completestr(sp, cx, len,
 					plen, &size, linemax, 0, -1);
 				cx += i;
@@ -2547,7 +2548,7 @@ int linemax, def, comline, h;
 				break;
 		}
 #ifndef	_NOCOMPLETE
-		if (selectlist && ch != '\t'
+		if (h >= 0 && selectlist && ch != '\t'
 		&& ch != K_RIGHT && ch != K_LEFT
 		&& ch != K_UP && ch != K_DOWN) {
 			selectfile(-1, NULL);

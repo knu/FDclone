@@ -3994,7 +3994,7 @@ struct stat *stp;
 	stp -> st_ctime = getdostime(byte2word(dd2dentp(dd) -> date),
 		byte2word(dd2dentp(dd) -> time));
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
-	stp -> st_flags = 0;
+	stp -> st_flags = (u_long)0;
 #endif
 	closedev(dd);
 

@@ -453,7 +453,7 @@ int no;
 			break;
 		case T_PATH:
 			if (!cp) cp = envlist[no].def.str;
-			cp = evalpath(strdup2(cp), 1);
+			cp = evalpath(strdup2(cp), 0);
 			if (*((char **)(envlist[no].var)))
 				free(*((char **)(envlist[no].var)));
 			*((char **)(envlist[no].var)) = cp;
@@ -2469,7 +2469,7 @@ launchtable *list;
 				skipp = &(list -> bottomskip);
 				cp = BTMSK_K;
 			}
-			cp = int2str(buf, *skipp);
+			int2str(buf, *skipp);
 			if (!(cp = inputcuststr(cp, 1, buf, -1))) continue;
 			i = atoi2(cp);
 			free(cp);
@@ -3681,7 +3681,7 @@ int no;
 			if (!(file = inputcuststr(FSAVE_K, 1, RUNCOMFILE, 1)))
 				break;
 			done = 1;
-			file = evalpath(file, 1);
+			file = evalpath(file, 0);
 # ifdef	FAKEUNINIT
 			fp = NULL;	/* fake for -Wuninitialized */
 # endif
@@ -3720,7 +3720,7 @@ int no;
 			if (!(file = inputcuststr(FOVWR_K, 1, RUNCOMFILE, 1)))
 				break;
 			done = 1;
-			file = evalpath(file, 1);
+			file = evalpath(file, 0);
 			if (!*file
 			|| (Xaccess(file, F_OK) < 0 && errno == ENOENT
 			&& !yesno(FOVOK_K)))

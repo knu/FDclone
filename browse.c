@@ -1660,7 +1660,7 @@ char *path, *buf;
 
 	if (!path) return(NULL);
 
-	cp = evalpath(strdup2(path), 1);
+	cp = evalpath(strdup2(path), 0);
 #if	MSDOS
 	if (_dospath(cp)) {
 		if (setcurdrv(*cp, 0) >= 0 && !Xgetwd(fullpath))

@@ -1701,7 +1701,7 @@ char *argv[];
 		} while (!strchr("ynYN", key));
 		if (key == 'n' || key == 'N') return(RET_SUCCESS);
 	}
-	if (!(wild = evalwild(argv[n]))) {
+	if (!(wild = evalwild(argv[n], 0))) {
 		doserror(argv[n], ER_FILENOTFOUND);
 		return(RET_FAIL);
 	}
@@ -1779,7 +1779,7 @@ char *argv[];
 		return(RET_FAIL);
 	}
 
-	if (!(wild = evalwild(argv[1]))) {
+	if (!(wild = evalwild(argv[1], 0))) {
 		doserror(argv[1], ER_FILENOTFOUND);
 		return(RET_FAIL);
 	}
@@ -2063,7 +2063,7 @@ int sbin, dbin, dfd;
 	}
 
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
-	stp -> st_flags = 0xffffffff;
+	stp -> st_flags = (u_long)-1;
 #endif
 	if (!tty && touchfile(dest, stp) < 0) return(-1);
 	return(1);
@@ -2190,7 +2190,7 @@ char *argv[];
 		copyflag |= CF_VERBOSE;
 	}
 	for (n = 0; n < nf; n++) {
-		if (!(wild = evalwild(arg[n]))) {
+		if (!(wild = evalwild(arg[n], 0))) {
 			if (nf > 1) continue;
 			doserror(arg[n], ER_FILENOTFOUND);
 			ret = RET_FAIL;

@@ -778,7 +778,7 @@ char *arg;
 
 	if (arg && *arg) path = strdup2(arg);
 	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, 1))) return(1);
-	else if (!*(path = evalpath(path, 1))) {
+	else if (!*(path = evalpath(path, 0))) {
 		free(path);
 		return(1);
 	}
@@ -1179,7 +1179,7 @@ char *arg;
 
 	if (arg && *arg) path = strdup2(arg);
 	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, 1))) return(1);
-	else if (!*(path = evalpath(path, 1))) {
+	else if (!*(path = evalpath(path, 0))) {
 		free(path);
 		return(1);
 	}
@@ -1489,7 +1489,7 @@ char *arg;
 
 	if (arg && *arg) file = strdup2(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))) return(1);
-	else if (!*(file = evalpath(file, 1))) {
+	else if (!*(file = evalpath(file, 0))) {
 		free(file);
 		return(1);
 	}
@@ -1549,7 +1549,7 @@ char *arg;
 
 	if (arg && *arg) path = strdup2(arg);
 	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, 1))) return(1);
-	else if (!*(path = evalpath(path, 1))) {
+	else if (!*(path = evalpath(path, 0))) {
 		free(path);
 		path = strdup2(".");
 	}
@@ -1648,7 +1648,7 @@ char *arg;
 #else
 	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))) return(1);
 #endif
-	else if (!*(dev = evalpath(dev, 1))) {
+	else if (!*(dev = evalpath(dev, 0))) {
 		free(dev);
 		return(1);
 	}

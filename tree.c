@@ -665,7 +665,7 @@ static int NEAR _tree_input(VOID_A)
 			break;
 		case 'l':
 			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, 1))
-			|| !*(cwd = evalpath(cwd, 1))) break;
+			|| !*(cwd = evalpath(cwd, 0))) break;
 			if (chdir2(cwd) >= 0) {
 				free(cwd);
 				break;

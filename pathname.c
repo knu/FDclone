@@ -147,13 +147,10 @@ static char *NEAR cnvregexp __P_((char *, int));
 #else
 static int NEAR _regexp_exec __P_((char **, char *));
 #endif
-static char *NEAR catpath __P_((char *, char *, int *, int, int));
-#ifdef	NODIRLOOP
-static int NEAR _evalwild __P_((int, char ***, char *, char *, int));
-#else
-static int NEAR _evalwild __P_((int, char ***, char *, char *, int,
-		int, devino_t *));
-#endif
+static void NEAR addstrbuf __P_((strbuf_t *, char *, int));
+static void NEAR duplwild(wild_t *, wild_t *);
+static void NEAR freewild(wild_t *);
+static int NEAR _evalwild __P_((int, char ***, wild_t *));
 #ifndef	_NOUSEHASH
 static int NEAR calchash __P_((char *));
 static VOID NEAR inithash __P_((VOID_A));
@@ -830,23 +827,34 @@ int ptr, quote, len;
 #ifdef	FAKEMETA
 	return(0);
 #else	/* !FAKEMETA */
-	if (s[ptr] != PMETA) return(0);
+	if (s[ptr] != PMETA || quote == '\'') return(0);
+
 	if (len >= 0) {
 		if (ptr + 1 >= len) return(0);
-		if (quote && s[ptr + 1] == quote && ptr + 2 >= len) return(0);
+# ifndef	BASHSTYLE
+	/* bash does not treat "\" as \ */
+		if (quote == '"' && s[ptr + 1] == quote && ptr + 2 >= len)
+			return(0);
+# endif
 	}
 	else {
 		if (!s[ptr + 1]) return(0);
-		if (quote) {
-			if (s[ptr + 1] == quote && !s[ptr + 2]) return(0);
-# ifdef	BSPATHDELIM
-			if (!strchr(DQ_METACHAR, s[ptr + 1])) return(0);
-# endif
-		}
-# ifdef	BSPATHDELIM
-		else if (!strchr(METACHAR, s[ptr + 1])) return(0);
+# ifndef	BASHSTYLE
+	/* bash does not treat "\" as \ */
+		if (quote == '"' && s[ptr + 1] == quote && !s[ptr + 2])
+			return(0);
 # endif
 	}
+
+# ifdef	BSPATHDELIM
+	if (quote == '"') {
+		if (!strchr(DQ_METACHAR, s[ptr + 1])) return(0);
+	}
+	else {	/* if (!quote || quote == '`') */
+		if (!strchr(METACHAR, s[ptr + 1])) return(0);
+	}
+# endif
+
 	return(1);
 #endif	/* !FAKEMETA */
 }
@@ -1032,7 +1040,7 @@ int len;
 	ALLOC_T size;
 	int i, j, n, pc, plen, metachar, quote;
 
-	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
+	skipdotfile = 0;
 	if (len < 0) len = strlen(s);
 	re = NULL;
 	paren = NULL;
@@ -1138,13 +1146,16 @@ int len;
 		else if (!quote && !metachar) switch (s[i]) {
 			case '?':
 				cp = wildsymbol1;
+				if (!n) skipdotfile++;
 				break;
 			case '*':
 				cp = wildsymbol2;
+				if (!n) skipdotfile++;
 				break;
 			case '[':
 				paren = c_realloc(NULL, 0, &size);
 				plen = 0;
+				if (!n) skipdotfile++;
 				break;
 			default:
 				break;
@@ -1282,245 +1293,226 @@ reg_t *re;
 # endif		/* !USEREGCOMP */
 #endif		/* !USERE_COMP */
 
-static char *NEAR catpath(path, file, plenp, flen, isoverwrite)
-char *path, *file;
-int *plenp, flen, isoverwrite;
+static void NEAR addstrbuf(sp, s, len)
+strbuf_t *sp;
+char *s;
+int len;
 {
-	char *new;
-	int i, sc;
-
-#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
-	if (*plenp >= 2 && _dospath(path)) i = 2;
-	else
-#endif
-	i = 0;
-
-	if (*plenp <= i) sc = 0;
-	else {
-		sc = 1;
-		if (path[i] == _SC_) {
-			for (i++; i < *plenp; i++) if (path[i] != _SC_) break;
-			if (i >= *plenp) sc = 0;
-		}
-	}
-
-	if (isoverwrite) new = realloc2(path, *plenp + sc + flen + 1);
-	else {
-		new = malloc2(*plenp + sc + flen + 1);
-		strncpy(new, path, *plenp);
-	}
-	if (sc) new[(*plenp)++] = _SC_;
-	strncpy2(&(new[*plenp]), file, flen);
-	*plenp += flen;
-	return(new);
+	sp -> s = c_realloc(sp -> s, sp -> len + len, &(sp -> size));
+	memcpy(&(sp -> s[sp -> len]), s, len);
+	sp -> len += len;
+	sp -> s[sp -> len] = '\0';
 }
 
-#ifdef	NODIRLOOP
-static int NEAR _evalwild(argc, argvp, s, fixed, len)
-int argc;
-char ***argvp, *s, *fixed;
-int len;
-#else
-static int NEAR _evalwild(argc, argvp, s, fixed, len, nino, ino)
-int argc;
-char ***argvp, *s, *fixed;
-int len, nino;
-devino_t *ino;
-#endif
+static void NEAR duplwild(dst, src)
+wild_t *dst, *src;
 {
+	memcpy(dst, src, sizeof(wild_t));
+	dst -> fixed.s = (char *)malloc2(src -> fixed.size);
+	memcpy(dst -> fixed.s, src -> fixed.s, src -> fixed.len + 1);
+	dst -> path.s = (char *)malloc2(src -> path.size);
+	memcpy(dst -> path.s, src -> path.s, src -> path.len + 1);
+
 #ifndef	NODIRLOOP
-	devino_t *dupino;
+	if (src -> ino) {
+		dst -> ino = (devino_t *)malloc2(src -> nino
+			* sizeof(devino_t));
+		memcpy(dst -> ino, src -> ino, src -> nino * sizeof(devino_t));
+	}
+#endif	/* !NODIRLOOP */
+}
+
+static void NEAR freewild(wp)
+wild_t *wp;
+{
+	if (wp -> fixed.s) free(wp -> fixed.s);
+	if (wp -> path.s) free(wp -> path.s);
+#ifndef	NODIRLOOP
+	if (wp -> ino) free(wp -> ino);
 #endif
+}
+
+static int NEAR _evalwild(argc, argvp, wp)
+int argc;
+char ***argvp;
+wild_t *wp;
+{
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
 	reg_t *re;
+	wild_t dupl;
+	ALLOC_T flen, plen;
 	char *cp;
-	int i, n, l;
+	int i, n, w, pc, quote, isdir;
 
-	if (!*s) {
-		if (len) {
-			fixed = realloc2(fixed, len + 1 + 1);
-			fixed[len++] = _SC_;
-			fixed[len] = '\0';
-			*argvp = (char **)realloc2(*argvp,
-				(argc + 2) * sizeof(char *));
-			(*argvp)[argc++] = fixed;
-		}
-#ifndef	NODIRLOOP
-		if (ino) free(ino);
-#endif
+	if (!*(wp -> s)) {
+		if (!(wp -> fixed.len)) return(argc);
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 2) * sizeof(char *));
+		(*argvp)[argc++] = wp -> fixed.s;
+		wp -> fixed.s = NULL;
 		return(argc);
 	}
 
-#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
-	if (!len && _dospath(s)) {
-		fixed = malloc2(2 + 1);
-		fixed[0] = *s;
-		fixed[1] = ':';
-		fixed[2] = '\0';
-# ifdef	NODIRLOOP
-		return(_evalwild(argc, argvp, &(s[2]), fixed, 2));
-# else
-		return(_evalwild(argc, argvp, &(s[2]), fixed, 2, nino, ino));
-# endif
-	}
-#endif
+	flen = wp -> fixed.len;
+	plen = wp -> path.len;
+	quote = wp -> quote;
 
-	n = 0;
-	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_) break;
-		if (s[i] == '*' || s[i] == '?'
-		|| s[i] == '[' || s[i] == ']') n = 1;
-#ifdef	BSPATHDELIM
-		if (iskanji1(s, i)) i++;
-#endif
-	}
+	if (wp -> fixed.len) addstrbuf(&(wp -> path), _SS_, 1);
 
-	if (!i) {
-		fixed = realloc2(fixed, len + 1 + 1);
-		fixed[len++] = _SC_;
-		fixed[len] = '\0';
-#ifdef	NODIRLOOP
-		return(_evalwild(argc, argvp, &(s[1]), fixed, len));
-#else
-		return(_evalwild(argc, argvp, &(s[1]), fixed, len, nino, ino));
-#endif
-	}
+	for (i = w = 0; wp -> s[i] && wp -> s[i] != _SC_; i++) {
+		pc = parsechar(&(wp -> s[i]), -1,
+			'\0', 0, &(wp -> quote), NULL);
+		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) {
+			if (!(wp -> flags & EA_STRIPQ))
+				addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
+			continue;
+		}
+		else if (pc == PC_WORD) {
+			addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
+			addstrbuf(&(wp -> path), &(wp -> s[i]), 1);
+			i++;
+		}
+		else if (pc == PC_META) {
+			if (wp -> flags & EA_KEEPMETA)
+				addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
+			if (wp -> s[i + 1] == _SC_) continue;
 
-	if (!n) {
-		fixed = catpath(fixed, s, &len, i, 1);
-		if (Xstat(fixed, &st) < 0) free(fixed);
-		else if (s[i]) {
-			if ((st.st_mode & S_IFMT) != S_IFDIR) free(fixed);
-			else {
-#ifdef	NODIRLOOP
-				return(_evalwild(argc, argvp,
-					&(s[i + 1]), fixed, len));
-#else
-				ino = (devino_t *)realloc2(ino,
-					(nino + 1) * sizeof(devino_t));
-				ino[nino].dev = st.st_dev;
-				ino[nino++].ino = st.st_ino;
-				return(_evalwild(argc, argvp,
-					&(s[i + 1]), fixed, len, nino, ino));
-#endif
+			if (wp -> quote == '\''
+			|| (wp -> quote == '"'
+			&& !strchr(DQ_METACHAR, wp -> s[i + 1]))) {
+				if (!(wp -> flags & EA_KEEPMETA))
+					addstrbuf(&(wp -> fixed),
+						&(wp -> s[i]), 1);
+				addstrbuf(&(wp -> path), &(wp -> s[i]), 1);
 			}
+			i++;
 		}
-		else {
-			*argvp = (char **)realloc2(*argvp,
-				(argc + 2) * sizeof(char *));
-			(*argvp)[argc++] = fixed;
+		else if (pc == PC_NORMAL && strchr("?*[", wp -> s[i])) {
+			if (w >= 0 && wp -> s[i] == '*') w++;
+			else w = -1;
 		}
+
+		addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
+		addstrbuf(&(wp -> path), &(wp -> s[i]), 1);
+	}
+
+	if (!(wp -> s[i])) isdir = 0;
+	else {
+		isdir = 1;
+		addstrbuf(&(wp -> fixed), _SS_, 1);
+	}
+
+	if (!w) {
+		if (wp -> path.len <= plen) w++;
+		else if (Xstat(wp -> path.s, &st) < 0) return(argc);
+
+		wp -> s += i;
+		if (isdir) {
+			if (!w && (st.st_mode & S_IFMT) != S_IFDIR)
+				return(argc);
+			(wp -> s)++;
+		}
+
 #ifndef	NODIRLOOP
-		if (ino) free(ino);
+		if (!w) {
+			wp -> ino = (devino_t *)realloc2(wp -> ino,
+				(wp -> nino + 1) * sizeof(devino_t));
+			wp -> ino[wp -> nino].dev = st.st_dev;
+			wp -> ino[(wp -> nino)++].ino = st.st_ino;
+		}
 #endif
-		return(argc);
+		return(_evalwild(argc, argvp, wp));
 	}
 
-	if (i == 2 && s[i] && s[0] == '*' && s[1] == '*') {
-#ifdef	NODIRLOOP
-		argc = _evalwild(argc, argvp, &(s[3]), strdup2(fixed), len);
-#else
-		if (!ino) dupino = NULL;
-		else {
-			dupino = (devino_t *)malloc2(nino * sizeof(devino_t));
-			for (n = 0; n < nino; n++) {
-				dupino[n].dev = ino[n].dev;
-				dupino[n].ino = ino[n].ino;
-			}
-		}
-		argc = _evalwild(argc, argvp,
-			&(s[3]), strdup2(fixed), len, nino, dupino);
-#endif
+	if (w != 2 || !isdir || strcmp(&(wp -> path.s[plen]), "**")) w = -1;
+	wp -> fixed.len = flen;
+	wp -> path.len = plen;
+	wp -> fixed.s[flen] = wp -> path.s[plen] = '\0';
+
+	if (w > 0) {
+		duplwild(&dupl, wp);
+		dupl.s += i + 1;
+		argc = _evalwild(argc, argvp, &dupl);
+		freewild(&dupl);
 		re = NULL;
 	}
-	else if (!(re = regexp_init(s, i))) {
-		if (fixed) free(fixed);
-#ifndef	NODIRLOOP
-		if (ino) free(ino);
-#endif
-		return(argc);
+	else {
+		cp = malloc2(i + 2);
+		n = 0;
+		if (quote) cp[n++] = quote;
+		memcpy(&(cp[n]), wp -> s, i);
+		n += i;
+		if (wp -> quote) cp[n++] = wp -> quote;
+		re = regexp_init(cp, n);
+		free(cp);
+		if (!re) return(argc);
+		wp -> s += i + 1;
 	}
-	if (!(dirp = Xopendir((len) ? fixed : "."))) {
+
+	if (wp -> path.len) cp = wp -> path.s;
+	else if (wp -> fixed.len) cp = _SS_;
+	else cp = ".";
+
+	if (!(dirp = Xopendir(cp))) {
 		regexp_free(re);
-		if (fixed) free(fixed);
-#ifndef	NODIRLOOP
-		if (ino) free(ino);
-#endif
 		return(argc);
 	}
+	if (wp -> path.len || wp -> fixed.len)
+		addstrbuf(&(wp -> path), _SS_, 1);
 
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 
-		l = len;
-		cp = catpath(fixed, dp -> d_name, &l, strlen(dp -> d_name), 0);
-		if (s[i]) {
-			if (Xstat(cp, &st) < 0
+		duplwild(&dupl, wp);
+		n = strlen(dp -> d_name);
+		addstrbuf(&(dupl.fixed), dp -> d_name, n);
+		addstrbuf(&(dupl.path), dp -> d_name, n);
+
+		if (isdir) {
+			if (re) n = regexp_exec(re, dp -> d_name, 1);
+			else n = (*(dp -> d_name) == '.') ? 0 : 1;
+
+			if (!n || Xstat(dupl.path.s, &st) < 0
 			|| (st.st_mode & S_IFMT) != S_IFDIR) {
-				free(cp);
+				freewild(&dupl);
 				continue;
 			}
 
 #ifndef	NODIRLOOP
-			dupino = (devino_t *)malloc2((nino + 1)
-				* sizeof(devino_t));
-			for (n = 0; n < nino; n++) {
-				dupino[n].dev = ino[n].dev;
-				dupino[n].ino = ino[n].ino;
-			}
-			dupino[n].dev = st.st_dev;
-			dupino[n].ino = st.st_ino;
-#endif
 			if (!re) {
-				if (*(dp -> d_name) == '.') {
-					free(cp);
-#ifndef	NODIRLOOP
-					free(dupino);
-#endif
+				for (n = 0; n < dupl.nino; n++)
+					if (dupl.ino[n].dev == st.st_dev
+					&& dupl.ino[n].ino == st.st_ino)
+						break;
+				if (n < dupl.nino) {
+					freewild(&dupl);
 					continue;
 				}
-#ifdef	NODIRLOOP
-				argc = _evalwild(argc, argvp, s, cp, l);
-#else
-				for (n = 0; n < nino; n++)
-					if (ino[n].dev == st.st_dev
-					&& ino[n].ino == st.st_ino) break;
-				if (n < nino) {
-					free(cp);
-					free(dupino);
-				}
-				else argc = _evalwild(argc, argvp,
-						s, cp, l, nino + 1, dupino);
-#endif
 			}
-			else if (!regexp_exec(re, dp -> d_name, 1)) {
-				free(cp);
-#ifndef	NODIRLOOP
-				free(dupino);
+
+			dupl.ino = (devino_t *)realloc2(dupl.ino,
+				(dupl.nino + 1) * sizeof(devino_t));
+			dupl.ino[dupl.nino].dev = st.st_dev;
+			dupl.ino[(dupl.nino)++].ino = st.st_ino;
 #endif
-			}
-#ifdef	NODIRLOOP
-			else argc = _evalwild(argc, argvp, &(s[i + 1]), cp, l);
-#else
-			else argc = _evalwild(argc, argvp,
-					&(s[i + 1]), cp, l, nino + 1, dupino);
-#endif
+
+			addstrbuf(&(dupl.fixed), _SS_, 1);
+			argc = _evalwild(argc, argvp, &dupl);
 		}
-		else if (!re || !regexp_exec(re, dp -> d_name, 1)) free(cp);
-		else {
+		else if (regexp_exec(re, dp -> d_name, 1)) {
 			*argvp = (char **)realloc2(*argvp,
 				(argc + 2) * sizeof(char *));
-			(*argvp)[argc++] = cp;
+			(*argvp)[argc++] = dupl.fixed.s;
+			dupl.fixed.s = NULL;
 		}
+
+		freewild(&dupl);
 	}
 	Xclosedir(dirp);
 	regexp_free(re);
-	if (fixed) free(fixed);
-#ifndef	NODIRLOOP
-	if (ino) free(ino);
-#endif
+
 	return(argc);
 }
 
@@ -1531,22 +1523,34 @@ CONST VOID_P vp2;
 	return(strpathcmp2(*((char **)vp1), *((char **)vp2)));
 }
 
-char **evalwild(s)
+char **evalwild(s, flags)
 char *s;
+int flags;
 {
+	wild_t w;
 	char **argv;
 	int argc;
 
 	argv = (char **)malloc2(1 * sizeof(char *));
-#ifdef	NODIRLOOP
-	argc = _evalwild(0, &argv, s, NULL, 0);
-#else
-	argc = _evalwild(0, &argv, s, NULL, 0, 0, NULL);
+	w.s = s;
+	w.fixed.s = c_realloc(NULL, 0, &(w.fixed.size));
+	w.path.s = c_realloc(NULL, 0, &(w.path.size));
+	w.fixed.len = w.path.len = (ALLOC_T)0;
+	w.quote = '\0';
+#ifndef	NODIRLOOP
+	w.nino = 0;
+	w.ino = NULL;
 #endif
+	w.flags = flags;
+
+	argc = _evalwild(0, &argv, &w);
+	freewild(&w);
+
 	if (!argc) {
 		free(argv);
 		return(NULL);
 	}
+
 	argv[argc] = NULL;
 	if (argc > 1) qsort(argv, argc, sizeof(char *), cmppath);
 	return(argv);
@@ -1798,7 +1802,7 @@ char *com, *search;
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;
 			else {
-				tmp = _evalpath(cp, cp + dlen, 1, 1);
+				tmp = _evalpath(cp, cp + dlen, 0);
 				dlen = strlen(tmp);
 			}
 			if (dlen + len + 1 + EXTWIDTH + 1 > size) {
@@ -1996,7 +2000,7 @@ char ***argvp;
 # endif
 		next = strchr(cp, PATHDELIM);
 		dlen = (next) ? (next++) - cp : strlen(cp);
-		tmp = _evalpath(cp, cp + dlen, 1, 1);
+		tmp = _evalpath(cp, cp + dlen, 0);
 		dlen = strlen(tmp);
 		argc = completefile(file, len, argc, argvp, tmp, dlen, 1);
 		free(tmp);
@@ -2059,9 +2063,9 @@ char **argv;
 }
 #endif	/* !FDSH && !_NOCOMPLETE */
 
-static int NEAR addmeta(s1, s2, stripm, quoted)
+static int NEAR addmeta(s1, s2, quoted, flags)
 char *s1, *s2;
-int stripm, quoted;
+int quoted, flags;
 {
 	int i, j;
 
@@ -2074,7 +2078,7 @@ int stripm, quoted;
 		else if (s2[i] == PMETA) {
 			if (s1) s1[j] = PMETA;
 			j++;
-			if (stripm && s2[i + 1] == PMETA) i++;
+			if (!(flags & EA_KEEPMETA) && s2[i + 1] == PMETA) i++;
 		}
 		else if (!quoted && s2[i] == '\'') {
 			if (s1) s1[j] = PMETA;
@@ -2170,28 +2174,44 @@ int len, spc, flags, *qp, *pqp;
 		}
 		return(PC_CLQUOTE);
 	}
-	if (iskanji1(s, 0)) return(PC_WORD);
+	else if (iskanji1(s, 0)) return(PC_WORD);
 #ifdef	CODEEUC
-	if (isekana(s, 0)) return(PC_WORD);
+	else if (isekana(s, 0)) return(PC_WORD);
 #endif
-	if (*qp == '`') return(PC_BQUOTE);
-	if (*qp == '\'') return(PC_SQUOTE);
-	if (spc && *s == spc) return(*s);
-	if (ismeta(s, 0, *qp, len)) return(PC_META);
-	if ((flags & EA_BACKQ) && *s == '`') {
+#ifdef	BASHSTYLE
+	else if (*qp == '`') return(PC_BQUOTE);
+#endif
+	else if (*qp == '\'') return(PC_SQUOTE);
+	else if (spc && *s == spc) return(*s);
+	else if (ismeta(s, 0, *qp, len)) return(PC_META);
+#ifdef	BASHSTYLE
+	/* bash can include `...` in "..." */
+	else if ((flags & EA_BACKQ) && *s == '`') {
 		if (pqp && *qp) *pqp = *qp;
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
-	if (*qp) return(PC_DQUOTE);
-	if (!(flags & EA_NOEVALQ) && *s == '\'') {
+#else
+	else if (*qp == '`') return(PC_BQUOTE);
+#endif
+	else if (*qp) return(PC_DQUOTE);
+	else if (!(flags & EA_NOEVALQ) && *s == '\'') {
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
-	if (*s == '"') {
+	else if (*s == '"') {
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
+#ifndef	BASHSTYLE
+	/* bash can include `...` in "..." */
+	else if ((flags & EA_BACKQ) && *s == '`') {
+		if (pqp && *qp) *pqp = *qp;
+		*qp = *s;
+		return(PC_OPQUOTE);
+	}
+#endif
+
 	return(PC_NORMAL);
 }
 
@@ -2472,18 +2492,19 @@ int plen, *modep;
 
 			for (i = j = 0; arglist[i + 1]; i++)
 				j += addmeta(NULL,
-					arglist[i + 1], 0, quoted);
+					arglist[i + 1], quoted, EA_KEEPMETA);
 			if (i <= 0) cp = strdup2("");
 			else {
 				j += (i - 1) * 3;
 				cp = malloc2(j + 1);
-				j = addmeta(cp, arglist[1], 0, quoted);
+				j = addmeta(cp, arglist[1],
+					quoted, EA_KEEPMETA);
 				for (i = 2; arglist[i]; i++) {
 					cp[j++] = quoted;
 					cp[j++] = sp;
 					cp[j++] = quoted;
-					j += addmeta(&(cp[j]),
-						arglist[i], 0, quoted);
+					j += addmeta(&(cp[j]), arglist[i],
+						quoted, EA_KEEPMETA);
 				}
 				cp[j] = '\0';
 			}
@@ -2725,9 +2746,9 @@ int quoted;
 	}
 
 	if (!mode && (c != '@' || !quoted)) {
-		vlen = addmeta(NULL, cp, 0, quoted);
+		vlen = addmeta(NULL, cp, quoted, EA_KEEPMETA);
 		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
-		addmeta(&((*bufp)[ptr]), cp, 0, quoted);
+		addmeta(&((*bufp)[ptr]), cp, quoted, EA_KEEPMETA);
 	}
 	else if (!cp) vlen = 0;
 	else if (c == '@' && !*cp && quoted
@@ -2904,10 +2925,10 @@ int rest;
 
 	stripquote(bbuf, 0);
 	if (!(tmp = (*backquotefunc)(bbuf))) return(buf);
-	len = addmeta(NULL, tmp, 1, '\0');
+	len = addmeta(NULL, tmp, '\0', 0);
 	size = *ptrp + len + rest + 1;
 	buf = realloc2(buf, size);
-	addmeta(&(buf[*ptrp]), tmp, 1, '\0');
+	addmeta(&(buf[*ptrp]), tmp, '\0', 0);
 	*ptrp += len;
 	free(tmp);
 
@@ -3188,60 +3209,29 @@ int argc;
 char ***argvp;
 int flags;
 {
-	char *cp, **wild;
-	ALLOC_T size;
-	int i, j, n, pc, w, quote;
+	char **wild;
+	int i, n;
 
 	for (n = 0; n < argc; n++) {
-		cp = c_realloc(NULL, 0, &size);
-		for (i = j = w = 0, quote = '\0'; (*argvp)[n][i]; i++) {
-			cp = c_realloc(cp, j + 1, &size);
-			pc = parsechar(&((*argvp)[n][i]), -1,
-				'\0', 0, &quote, NULL);
-			if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) {
-				if (flags & EA_STRIPQ) continue;
-			}
-			else if (pc == PC_WORD) cp[j++] = (*argvp)[n][i++];
-			else if (pc == PC_META) {
-				i++;
-				if (quote
-				&& !strchr(DQ_METACHAR, (*argvp)[n][i]))
-					cp[j++] = PMETA;
-			}
-			else if (pc != PC_NORMAL) /*EMPTY*/;
-			else if (!strchr("?*[", (*argvp)[n][i])) /*EMPTY*/;
-			else if ((wild = evalwild((*argvp)[n]))) {
-				w = countvar(wild);
-				if (w > 1) {
-					*argvp = (char **)realloc2(*argvp,
-						(argc + w) * sizeof(char *));
-					if (!*argvp) {
-						free(cp);
-						freevar(wild);
-						return(argc);
-					}
-					memmove((char *)(&((*argvp)[n + w])),
-						(char *)(&((*argvp)[n + 1])),
-						(argc - n) * sizeof(char *));
-					argc += w - 1;
-				}
-				free((*argvp)[n]);
-				free(cp);
-				memmove((char *)(&((*argvp)[n])),
-					(char *)wild, w * sizeof(char *));
-				free(wild);
-				n += w - 1;
-				break;
-			}
-
-			cp[j++] = (*argvp)[n][i];
+		if (!(wild = evalwild((*argvp)[n], flags))) {
+			stripquote((*argvp)[n], flags);
+			continue;
 		}
 
-		if (!w) {
-			cp[j] = '\0';
-			free((*argvp)[n]);
-			(*argvp)[n] = cp;
+		i = countvar(wild);
+		if (i > 1) {
+			*argvp = (char **)realloc2(*argvp,
+				(argc + i) * sizeof(char *));
+			memmove((char *)(&((*argvp)[n + i])),
+				(char *)(&((*argvp)[n + 1])),
+				(argc - n) * sizeof(char *));
+			argc += i - 1;
 		}
+		free((*argvp)[n]);
+		memmove((char *)(&((*argvp)[n])),
+			(char *)wild, i * sizeof(char *));
+		free(wild);
+		n += i - 1;
 	}
 	return(argc);
 }
@@ -3262,10 +3252,12 @@ int flags;
 		}
 		else if (pc == PC_WORD) arg[j++] = arg[i++];
 		else if (pc == PC_META) {
-			i++;
 			stripped = 1;
-			if (quote && arg[i] != quote && arg[i] != PMETA)
-				arg[j++] = PMETA;
+			if ((flags & EA_KEEPMETA)
+			|| quote == '\''
+			|| (quote == '"' && !strchr(DQ_METACHAR, arg[i + 1])))
+				arg[j++] = arg[i];
+			i++;
 		}
 
 		arg[j++] = arg[i];
@@ -3274,9 +3266,9 @@ int flags;
 	return(stripped);
 }
 
-char *_evalpath(path, eol, uniqdelim, evalq)
+char *_evalpath(path, eol, flags)
 char *path, *eol;
-int uniqdelim, evalq;
+int flags;
 {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char alias[MAXPATHLEN];
@@ -3289,7 +3281,7 @@ int uniqdelim, evalq;
 	else i = strlen(path);
 	cp = strndup2(path, i);
 
-	if (!(tmp = evalarg(cp, '\'', 0))) {
+	if (!(tmp = evalarg(cp, '\'', EA_KEEPMETA))) {
 		*cp = '\0';
 		return(cp);
 	}
@@ -3303,7 +3295,7 @@ int uniqdelim, evalq;
 		pc = parsechar(&(cp[i]), -1, '\0', 0, &quote, NULL);
 		if (pc == PC_CLQUOTE) {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
-			if (!evalq && top >= 0 && ++top < j) {
+			if ((flags & EA_NOEVALQ) && top >= 0 && ++top < j) {
 				tmp[j] = '\0';
 				if (shortname(&(tmp[top]), alias) == alias) {
 					int len;
@@ -3317,23 +3309,26 @@ int uniqdelim, evalq;
 			}
 			top = -1;
 #endif
-			if (evalq) continue;
+			if (!(flags & EA_NOEVALQ)) continue;
 		}
 		else if (pc == PC_WORD) tmp[j++] = cp[i++];
 		else if (pc == PC_META) {
 			i++;
-			if (!evalq
-			|| (quote && !strchr(DQ_METACHAR, cp[i])))
+			if ((flags & EA_KEEPMETA)
+			|| quote == '\''
+			|| (quote == '"' && !strchr(DQ_METACHAR, cp[i])))
 				tmp[j++] = PMETA;
 		}
 		else if (pc == PC_OPQUOTE) {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 			if (cp[i] == '"') top = j;
 #endif
-			if (evalq) continue;
+			if (!(flags & EA_NOEVALQ)) continue;
 		}
 		else if (pc != PC_NORMAL) /*EMPTY*/;
-		else if (uniqdelim && cp[i] == _SC_ && c == _SC_) continue;
+		else if (!(flags & EA_NOUNIQDELIM)
+		&& cp[i] == _SC_ && c == _SC_)
+			continue;
 		tmp[j++] = cp[i];
 	}
 	tmp[j] = '\0';
@@ -3341,15 +3336,15 @@ int uniqdelim, evalq;
 	return(tmp);
 }
 
-char *evalpath(path, uniqdelim)
+char *evalpath(path, flags)
 char *path;
-int uniqdelim;
+int flags;
 {
 	char *cp;
 
 	if (!path || !*path) return(path);
 	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
-	cp = _evalpath(cp, NULL, uniqdelim, 1);
+	cp = _evalpath(cp, NULL, flags);
 	free(path);
 	return(cp);
 }

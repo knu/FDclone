@@ -5752,7 +5752,7 @@ int quiet;
 {
 	char *cp;
 	ALLOC_T size;
-	int i, j, n, stype, hdoc;
+	int i, j, n, pc, stype, hdoc;
 
 	if (!rp -> filename) {
 		j = 0;
@@ -5795,30 +5795,23 @@ int quiet;
 			}
 		}
 
-		if (s[i] == rp -> new) {
-			rp -> filename[j++] = s[i];
+		pc = parsechar(&(s[i]), -1,
 #ifdef	BASHSTYLE
-			rp -> new = rp -> old;
-			rp -> old = '\0';
+			'$', EA_BACKQ, &(rp -> new), &(rp -> old));
 #else
-			rp -> new = '\0';
+			'$', EA_BACKQ, &(rp -> new), NULL);
 #endif
-		}
+
+		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_SQUOTE)
+			rp -> filename[j++] = s[i];
 #ifdef	BASHSTYLE
-		else if (rp -> new == '`') rp -> filename[j++] = s[i];
+		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
 #endif
-		else if (iskanji1(s, i)) {
+		else if (pc == PC_WORD) {
 			rp -> filename[j++] = s[i++];
 			rp -> filename[j++] = s[i];
 		}
-#ifdef	CODEEUC
-		else if (isekana(s, i)) {
-			rp -> filename[j++] = s[i++];
-			rp -> filename[j++] = s[i];
-		}
-#endif
-		else if (rp -> new == '\'') rp -> filename[j++] = s[i];
-		else if (s[i] == PMETA) {
+		else if (pc == PC_META) {
 			if (s[++i] != '\n' || rp -> new) {
 				rp -> filename[j++] = PMETA;
 				if (s[i]) rp -> filename[j++] = s[i];
@@ -5828,58 +5821,48 @@ int quiet;
 				}
 			}
 		}
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
-		else if (s[i] == '`') {
-			rp -> filename[j++] = s[i];
-			if (rp -> new) rp -> old = rp -> new;
-			rp -> new = s[i];
-		}
-#endif
-#ifndef	MINIMUMSHELL
-		else if (s[i] == '$' && s[i + 1] == '(') {
-			if (s[i + 2] != '(') {
-				trp = startvar(trp, rp, s, &i, &j, 2);
-				trp -> cont = CN_COMM;
-			}
-			else {
-				trp = startvar(trp, rp, s, &i, &j, 3);
-				trp -> cont = CN_EXPR;
-			}
-		}
-#endif	/* !MINIMUMSHELL */
+		else if (pc == '$') {
+			if (s[i + 1] == '{') {
 #ifdef	BASHSTYLE
 	/* bash treats any meta character in ${} as just a character */
-		else if (s[i] == '$' && s[i + 1] == '{') {
-			trp = startvar(trp, rp, s, &i, &j, 2);
-			trp -> cont = CN_VAR;
-		}
-		else if ((trp -> cont & CN_SBST) == CN_VAR) {
-			if (s[i] != '}') rp -> filename[j++] = s[i];
-			else trp = endvar(trp, rp, s, &i, &j, &size, 1);
-		}
-#else	/* !BASHSTYLE */
-		else if (s[i] == '$' && s[i + 1] == '{') {
-			rp -> filename[j++] = s[i++];
-			rp -> filename[j++] = s[i];
-			trp -> cont = CN_VAR;
+				trp = startvar(trp, rp, s, &i, &j, 2);
+#else
+				rp -> filename[j++] = s[i++];
+				rp -> filename[j++] = s[i];
+#endif
+				trp -> cont = CN_VAR;
+			}
+#ifndef	MINIMUMSHELL
+			else if (s[i + 1] == '(') {
+				if (s[i + 2] != '(') {
+					trp = startvar(trp, rp, s, &i, &j, 2);
+					trp -> cont = CN_COMM;
+				}
+				else {
+					trp = startvar(trp, rp, s, &i, &j, 3);
+					trp -> cont = CN_EXPR;
+				}
+			}
+#endif	/* !MINIMUMSHELL */
+			else rp -> filename[j++] = s[i];
 		}
 		else if (s[i] == '}' && (trp -> cont & CN_SBST) == CN_VAR) {
+#ifdef	BASHSTYLE
+	/* bash treats any meta character in ${} as just a character */
+			trp = endvar(trp, rp, s, &i, &j, &size, 1);
+#else
 			rp -> filename[j++] = s[i];
 			trp -> cont &= ~CN_VAR;
-		}
-#endif	/* !BASHSTYLE */
-		else if (s[i] == '$') rp -> filename[j++] = s[i];
-		else if (rp -> new) rp -> filename[j++] = s[i];
-#ifdef	BASHSTYLE
-		else if (s[i] == '\'' || s[i] == '"')
-#else
-		else if (s[i] == '\'' || s[i] == '"' || s[i] == '`')
 #endif
-		{
-			rp -> filename[j++] = s[i];
-			rp -> new = s[i];
 		}
+#ifdef	BASHSTYLE
+	/* bash treats any meta character in ${} as just a character */
+		else if ((trp -> cont & CN_SBST) == CN_VAR)
+			rp -> filename[j++] = s[i];
+#else
+		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
+#endif
+		else if (pc == PC_DQUOTE) rp -> filename[j++] = s[i];
 #ifndef	MINIMUMSHELL
 # ifdef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
@@ -6882,16 +6865,17 @@ int *typep, *contp;
 #ifdef	FD
 	else if (*typep == CT_FDINTERNAL) glob = 0;
 #endif
-	else if (*typep == CT_BUILTIN && (shbuiltinlist[id].flags & BT_NOGLOB))
-		glob = 0;
+	else if (*typep != CT_BUILTIN) glob = 1;
+	else if (shbuiltinlist[id].flags & BT_NOGLOB) glob = 0;
 	else glob = 1;
 
 	if (glob) {
 #if	defined (FD) && !defined (_NOKANJIFCONV)
-		if (*typep == CT_FDORIGINAL);
-		else if (*typep != CT_BUILTIN) nokanjifconv++;
-		else if (shbuiltinlist[id].flags & BT_NOKANJIFGET)
-			nokanjifconv++;
+		if (*typep == CT_FDORIGINAL) i = 0;
+		else if (*typep != CT_BUILTIN) i = 1;
+		else if (shbuiltinlist[id].flags & BT_NOKANJIFGET) i = 1;
+		else i = 0;
+		if (i) nokanjifconv++;
 #endif
 #if	MSDOS
 		comm -> argc = evalglob(comm -> argc, &(comm -> argv),
@@ -6901,10 +6885,7 @@ int *typep, *contp;
 			EA_STRIPQ);
 #endif
 #if	defined (FD) && !defined (_NOKANJIFCONV)
-		if (*typep == CT_FDORIGINAL);
-		else if (*typep != CT_BUILTIN) nokanjifconv--;
-		else if (shbuiltinlist[id].flags & BT_NOKANJIFGET)
-			nokanjifconv--;
+		if (i) nokanjifconv--;
 #endif
 	}
 	else {
@@ -8239,7 +8220,7 @@ syntaxtree *trp;
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;
 			else {
-				tmp = _evalpath(cp, cp + dlen, 1, 1);
+				tmp = _evalpath(cp, cp + dlen, 0);
 				dlen = strlen(tmp);
 			}
 			if (dlen + len + 1 + 1 > size) {
@@ -9104,7 +9085,7 @@ syntaxtree *trp;
 			execerror(NULL, ER_DIREMPTY, 0);
 			return(RET_FAIL);
 		}
-		cp = evalpath(strdup2(dirstack[0]), 1);
+		cp = evalpath(strdup2(dirstack[0]), 0);
 		i = chdir3(cp, 1);
 		free(cp);
 		if (i < 0) {
@@ -9140,7 +9121,7 @@ syntaxtree *trp;
 		execerror(NULL, ER_DIREMPTY, 0);
 		return(RET_FAIL);
 	}
-	cp = evalpath(strdup2(dirstack[0]), 1);
+	cp = evalpath(strdup2(dirstack[0]), 0);
 	i = chdir3(cp, 1);
 	free(cp);
 	if (i < 0) {
@@ -10333,7 +10314,7 @@ int verbose;
 	inruncom = 1;
 #endif
 	setsignal();
-	fname = evalpath(strdup2(fname), 1);
+	fname = evalpath(strdup2(fname), 0);
 	if (!isrootdir(fname)
 	|| (fd = newdup(Xopen(fname, O_BINARY | O_RDONLY, 0666))) < 0)
 		ret = RET_SUCCESS;

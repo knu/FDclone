@@ -715,7 +715,7 @@ int exist;
 
 		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
 		strcpy(strcpy2(strcpy2(cp, file), "."), tmp);
-		tmp = evalpath(cp, 1);
+		tmp = evalpath(cp, 0);
 		if (stat2(tmp, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG) {
 			free(tmp);
 			tmp = NULL;
@@ -723,7 +723,7 @@ int exist;
 	}
 	if (!tmp)
 # endif	/* !MSDOS */
-	tmp = evalpath(strdup2(file), 1);
+	tmp = evalpath(strdup2(file), 0);
 	fp = Xfopen(tmp, "r");
 	if (!fp) {
 		if (!exist) {

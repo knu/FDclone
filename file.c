@@ -467,7 +467,7 @@ struct stat *stp;
 #endif
 	}
 #ifdef	HAVEFLAGS
-	if (stp -> st_flags != 0xffffffff) {
+	if (stp -> st_flags != (u_long)-1) {
 # ifndef	_NODOSDRIVE
 		if (dospath(path, NULL)) {
 			duperrno = EACCES;
@@ -481,7 +481,7 @@ struct stat *stp;
 		}
 	}
 #endif
-	dummy.st_mode = 0xffff;
+	dummy.st_mode = (u_short)-1;
 	if (stp -> st_mode != dummy.st_mode) {
 		stp -> st_mode &= ~S_IFMT;
 		stp -> st_mode |= (st.st_mode & S_IFMT);
@@ -671,7 +671,7 @@ struct stat *stp1, *stp2;
 		return(-1);
 	}
 #ifdef	HAVEFLAGS
-	stp1 -> st_flags = 0xffffffff;
+	stp1 -> st_flags = (u_long)-1;
 #endif
 #ifdef	_USEDOSCOPY
 	if (touchfile(dest, stp1) < 0) return(-1);
@@ -728,7 +728,7 @@ struct stat *stp1, *stp2;
 	if (safecpfile(src, dest, stp1, stp2) < 0 || Xunlink(src) < 0)
 		return(-1);
 #ifdef	HAVEFLAGS
-	stp1 -> st_flags = 0xffffffff;
+	stp1 -> st_flags = (u_long)-1;
 #endif
 	return (touchfile(dest, stp1));
 }
@@ -1312,21 +1312,21 @@ int fs;
 
 	switch (fs) {
 #if	!MSDOS
-		case 2:	/* IRIX File System */
+		case FSID_EFS:		/* IRIX File System */
 			dos = 0;
 			headbyte = 4;
 			boundary = 2;
 			dirsize = sizeof(u_long);
 			namofs = 0;
 			break;
-		case 3:	/* SystemV R3 File System */
+		case FSID_SYSV:		/* SystemV R3 File System */
 			dos = 0;
 			headbyte = 0;
 			boundary = 8;
 			dirsize = sizeof(u_short);
 			namofs = 0;
 			break;
-		case 6:	/* Linux File System */
+		case FSID_LINUX:	/* Linux File System */
 			dos = 0;
 			headbyte = 0;
 			boundary = 4;
@@ -1334,7 +1334,7 @@ int fs;
 			namofs = 3;
 			break;
 # ifndef	_NODOSDRIVE
-		case 7:	/* Windows95 File System on DOSDRIVE */
+		case FSID_DOSDRIVE:	/* Windows95 File System on DOSDRIVE */
 			dos = 3;
 			headbyte = -1;
 			boundary = LFNENTSIZ;
@@ -1343,7 +1343,7 @@ int fs;
 			break;
 # endif
 #endif	/* !MSDOS */
-		case 4:	/* MS-DOS File System */
+		case FSID_FAT:		/* MS-DOS File System */
 			dos = 1;
 #if	!MSDOS
 			headbyte = -1;
@@ -1352,7 +1352,7 @@ int fs;
 			dirsize = DOSDIRENT;
 			namofs = 0;
 			break;
-		case 5:	/* Windows95 File System */
+		case FSID_LFN:		/* Windows95 File System */
 			dos = 2;
 #if	!MSDOS
 			headbyte = -1;
@@ -1456,7 +1456,7 @@ int fs;
 	}
 
 #if	!MSDOS
-	if (fs != 2) entnum = NULL;	/* except IRIX File System */
+	if (fs != FSID_EFS) entnum = NULL;	/* except IRIX File System */
 	else if (!(entnum = getentnum(".", persec))) {
 		warning(-1, ".");
 		restorefile(tmpdir, path, fnamp);
@@ -1482,13 +1482,13 @@ int fs;
 		size = realdirsiz(fnamelist[i],
 			dos, boundary, dirsize, namofs);
 		switch (fs) {
-			case 2:	/* IRIX File System */
+			case FSID_EFS:	/* IRIX File System */
 				if (totalptr > ptr + 1) ent -= totalptr;
 				else ent -= ptr + 1;
 				break;
-			case 3:	/* SystemV R3 File System */
-			case 4:	/* MS-DOS File System */
-			case 5:	/* Windows95 File System */
+			case FSID_SYSV:	/* SystemV R3 File System */
+			case FSID_FAT:	/* MS-DOS File System */
+			case FSID_LFN:	/* Windows95 File System */
 				ent = size;
 				break;
 			default:

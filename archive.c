@@ -58,9 +58,9 @@ static char *ign_lha[] = {
 	"  Name          Original *",
 	"--------------*",
 # if	defined (FAKEMETA) || !defined (BSPATHDELIM)
-	"* files * ???.?% ??-??-?? ??:??:??",
+	"* files * ???.?% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
 # else
-	"* files * ???.?%% ??-??-?? ??:??:??",
+	"* files * ???.?%% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
 # endif
 	"",
 #else	/* !MSDOS */
@@ -1615,7 +1615,7 @@ int argset;
 	filelist[0].tmpflags = F_STAT;
 	maxfile++;
 #ifdef	HAVEFLAGS
-	tmp.st_flags = 0;
+	tmp.st_flags = (u_long)0;
 #endif
 
 	no = 0;
@@ -2338,7 +2338,7 @@ int tr, ignorelist;
 		{
 			if (arg && *arg) dir = strdup2(arg);
 			else dir = inputstr(UNPAC_K, 1, -1, NULL, 1);
-			dir = evalpath(dir, 1);
+			dir = evalpath(dir, 0);
 		}
 		if (!dir) return(0);
 		if (!*dir) strcpy(path, ".");

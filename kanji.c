@@ -378,19 +378,19 @@ static CONST u_char b2htable[] = {
 #endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
 static CONST kpathtable kpathlist[] = {
-	{ &sjispath, SJIS },
-	{ &eucpath, EUC },
-	{ &jis7path, JIS7 },
-	{ &jis8path, JIS8 },
-	{ &junetpath, JUNET },
-	{ &ojis7path, O_JIS7 },
-	{ &ojis8path, O_JIS8 },
-	{ &ojunetpath, O_JUNET },
-	{ &hexpath, HEX },
-	{ &cappath, CAP },
-	{ &utf8path, UTF8 },
-	{ &utf8macpath, M_UTF8 },
-	{ &noconvpath, NOCNV },
+	{&sjispath, SJIS},
+	{&eucpath, EUC},
+	{&jis7path, JIS7},
+	{&jis8path, JIS8},
+	{&junetpath, JUNET},
+	{&ojis7path, O_JIS7},
+	{&ojis8path, O_JIS8},
+	{&ojunetpath, O_JUNET},
+	{&hexpath, HEX},
+	{&cappath, CAP},
+	{&utf8path, UTF8},
+	{&utf8macpath, M_UTF8},
+	{&noconvpath, NOCNV},
 };
 #define	MAXKPATHLIST	(sizeof(kpathlist) / sizeof(kpathtable))
 #endif	/* !_NOKANJIFCONV */

@@ -71,7 +71,7 @@ int copypolicy = 0;
 int removepolicy = 0;
 char *destpath = NULL;
 
-static u_int attrmode = 0;
+static u_short attrmode = 0;
 #ifdef	HAVEFLAGS
 static u_long attrflags = 0;
 #endif
@@ -178,7 +178,7 @@ char *mes, *arg;
 
 	if (arg && *arg) dir = strdup2(arg);
 	else if (!(dir = inputstr(mes, 1, -1, NULL, 1))) return(NULL);
-	else if (!*(dir = evalpath(dir, 1))) {
+	else if (!*(dir = evalpath(dir, 0))) {
 		dir = realloc2(dir, 2);
 		dir[0] = '.';
 		dir[1] = '\0';
@@ -525,8 +525,12 @@ char *path;
 			destatime = st2.st_atime;
 			break;
 	}
+
 	if (destdir) free(destdir);
-	destdir = strdup2(&(dest[strlen(destpath) + 1]));
+	destdir = &(dest[strlen(destpath)]);
+	while (*destdir == _SC_) destdir++;
+	destdir = strdup2(destdir);
+
 	return(0);
 }
 
@@ -547,7 +551,7 @@ char *path;
 		st.st_atime = destatime;
 	}
 # ifdef	HAVEFLAGS
-	st.st_flags = 0xffffffff;
+	st.st_flags = (u_long)-1;
 # endif
 	if (touchfile(dest, &st) < 0) return(-1);
 #endif	/* _USEDOSCOPY || !_NOEXTRACOPY */
@@ -567,7 +571,7 @@ char *path;
 		st.st_atime = destatime;
 	}
 # ifdef	HAVEFLAGS
-	st.st_flags = 0xffffffff;
+	st.st_flags = (u_long)-1;
 # endif
 	if (touchfile(dest, &st) < 0) return(-1);
 	if (checkrmv(path, R_OK | W_OK | X_OK) < 0) return(1);
@@ -900,18 +904,26 @@ int flag;
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 59)
 		return(-1);
 
-	attrmode = (flag & 1) ? attr.mode : 0xffff;
+	attrmode = attr.mode;
 #ifdef	HAVEFLAGS
-	attrflags = (flag & 1) ? attr.flags : 0xffffffff;
+	attrflags = attr.flags;
 #endif
-	attrtime = (flag & 2) ? timelocal2(tm) : (time_t)-1;
+	attrtime = timelocal2(tm);
 	if (flag == 3) {
-		if (attrmode == namep -> st_mode) attrmode = 0xffff;
+		if (attrmode == namep -> st_mode) attrmode = (u_short)-1;
 #ifdef	HAVEFLAGS
-		if (attrflags == namep -> st_flags) attrflags = 0xffffffff;
+		if (attrflags == namep -> st_flags) attrflags = (u_long)-1;
 #endif
 		if (attrtime == namep -> st_mtim) attrtime = (time_t)-1;
 	}
+	else {
+		if (!(flag & 1)) attrmode = (u_short)-1;
+#ifdef	HAVEFLAGS
+		attrflags = (u_long)-1;
+#endif
+		if (!(flag & 2)) attrtime = (time_t)-1;
+	}
+
 	return(1);
 }
 
@@ -1268,7 +1280,7 @@ char *path;
 	if (getdestpath(path, dest, &st) < 0) return(0);
 	if (safecpfile(path, dest, &st, NULL) < 0) return(-1);
 #ifdef	HAVEFLAGS
-	st.st_flags = 0xffffffff;
+	st.st_flags = (u_long)-1;
 #endif
 	return(touchfile(dest, &st));
 }
@@ -1304,7 +1316,7 @@ char *path;
 	if (isdotdir(path)) return(0);
 	if (getdestpath(path, dest, &st) < 0) return(-2);
 #ifdef	HAVEFLAGS
-	st.st_flags = 0xffffffff;
+	st.st_flags = (u_long)-1;
 #endif
 	return(touchfile(dest, &st));
 }

@@ -123,7 +123,8 @@ int code;
 	if (code < 0) {
 		char rpath[MAXPATHLEN];
 
-		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]), 0, 0);
+		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]),
+			EA_NOEVALQ | EA_NOUNIQDELIM);
 		realpath2(cp, rpath, 1);
 		free(cp);
 		code = getkcode(rpath);
@@ -1567,6 +1568,7 @@ int uniq;
 	}
 
 	if (!s || !*s) return(0);
+	s = (n == 1) ? killmeta(s) : strdup2(s);
 
 	if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 
@@ -1583,7 +1585,7 @@ int uniq;
 
 	if (history[n][size]) free(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
-	history[n][0] = strdup2(s);
+	history[n][0] = s;
 	return(1);
 }
 

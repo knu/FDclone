@@ -1,3 +1,10 @@
+Ver. 2.05e	Failure to copy files to destination suffixed by '/' is fixed.
+ (06/09/04)	Bug that wildcard out of quotation cannot be expanded is fixed.
+		Make meta characters in directory history to be escaped.
+		Invalidate filename completion in input unrelated to filename.
+		Bug to call chflags() in ATTR_FILE for marked files is fixed.
+		Allow ext2 file system to write directory.
+
 Ver. 2.05d	Bug that ineffective \$ in PS1 is fixed.
  (05/12/04)	Bug that \~ in PS1 is sometimes expanded incorrectly is fixed.
 		Bug that fd invoked by fdsh changes current directory is fixed.

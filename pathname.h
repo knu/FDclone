@@ -50,12 +50,6 @@
 #define	PC_WORD		6
 #define	PC_META		7
 
-#define	EA_STRIPQ	0001
-#define	EA_BACKQ	0002
-#define	EA_KEEPMETA	0004
-#define	EA_NOEVALQ	0010
-#define	EA_STRIPQLATER	0020
-
 #if	defined (_NOORIGGLOB) \
 && !defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
 #undef	_NOORIGGLOB
@@ -104,12 +98,37 @@ typedef struct _hashlist {
 #define	CM_RECALC	0100
 #define	CM_REHASH	0200
 
+typedef struct _strbuf_t {
+	char *s;
+	ALLOC_T size;
+	ALLOC_T len;
+} strbuf_t;
+
 #ifndef	NODIRLOOP
 typedef struct _devino_t {
 	dev_t dev;
 	ino_t ino;
 } devino_t;
 #endif
+
+typedef struct _wild_t {
+	char *s;
+	strbuf_t fixed;
+	strbuf_t path;
+	int quote;
+#ifndef	NODIRLOOP
+	int nino;
+	devino_t *ino;
+#endif
+	u_char flags;
+} wild_t;
+
+#define	EA_STRIPQ	0001
+#define	EA_BACKQ	0002
+#define	EA_KEEPMETA	0004
+#define	EA_NOEVALQ	0010
+#define	EA_STRIPQLATER	0020
+#define	EA_NOUNIQDELIM	0040
 
 #ifdef	NOUID_T
 typedef u_short	uid_t;
@@ -202,7 +221,7 @@ extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));
 extern int cmppath __P_((CONST VOID_P, CONST VOID_P));
-extern char **evalwild __P_((char *));
+extern char **evalwild __P_((char *, int));
 #ifndef	_NOUSEHASH
 hashlist **duplhash __P_((hashlist **));
 #endif
@@ -234,7 +253,7 @@ extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, char *));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *, int));
-extern char *_evalpath __P_((char *, char *, int, int));
+extern char *_evalpath __P_((char *, char *, int));
 extern char *evalpath __P_((char *, int));
 
 extern char **argvar;

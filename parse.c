@@ -346,7 +346,7 @@ char *s, ***argvp;
 	cp = skipspace(s);
 	for (i = 0; *cp; i++) {
 		*argvp = (char **)realloc2(*argvp, (i + 2) * sizeof(char *));
-		(*argvp)[i] = evalpath(geteostr(&cp), 0);
+		(*argvp)[i] = evalpath(geteostr(&cp), EA_NOUNIQDELIM);
 		cp = skipspace(cp);
 	}
 	(*argvp)[i] = NULL;
@@ -386,7 +386,7 @@ char *argv[];
 		cp = argv[i];
 	}
 	*argcp = i + 1;
-	return(evalpath(strdup2(cp), 0));
+	return(evalpath(strdup2(cp), EA_NOUNIQDELIM));
 }
 
 char *evalcomstr(path, delim)
@@ -411,7 +411,7 @@ char *path, *delim;
 		}
 		next = cp + len;
 		if (len) {
-			cp = _evalpath(cp, next, 0, 0);
+			cp = _evalpath(cp, next, EA_NOEVALQ | EA_NOUNIQDELIM);
 # ifndef	_NOKANJIFCONV
 			tmp = newkanjiconv(cp, DEFCODE, getkcode(cp), L_FNAME);
 			if (cp != tmp) free(cp);
@@ -456,7 +456,7 @@ int delim;
 		next = strchr(cp, delim);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if (len) {
-			tmp = _evalpath(cp, cp + len, 1, 1);
+			tmp = _evalpath(cp, cp + len, 0);
 			if (!isrootdir(cp)) cp = tmp;
 			else cp = realpath2(tmp, buf, 1);
 			len = strlen(cp);
@@ -595,7 +595,7 @@ char **bufp, *prompt;
 	int i, j, k, len, unprint;
 
 #ifdef	_NOORIGSHELL
-	prompt = evalpath(strdup2(prompt), 0);
+	prompt = evalpath(strdup2(prompt), EA_NOUNIQDELIM);
 #else
 	prompt = evalvararg(prompt, '\0', EA_BACKQ | EA_KEEPMETA, 0);
 #endif
