@@ -8,12 +8,17 @@
 #include "term.h"
 #include "kanji.h"
 
-#include <dirent.h>
 #include <ctype.h>
 #include <pwd.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
 
 extern int filepos;
 extern int mark;
@@ -22,6 +27,7 @@ extern int sorton;
 extern char *destpath;
 extern int copypolicy;
 extern char fullpath[];
+extern char **path_history;
 
 #ifdef	IRIXFS
 #define	realdirsiz(name)		(((strlen(name) + 2) & ~1)\
@@ -155,8 +161,10 @@ char *mes;
 	struct stat status;
 	char *dir;
 
-	if (!(dir = evalpath(inputstr2(mes, -1, NULL, NULL)))) return(NULL);
-	if (!*dir) {
+	if (!(dir = inputstr2(mes, -1, NULL, path_history))) return(NULL);
+	path_history = entryhist(path_history, dir);
+	if (*dir) dir = evalpath(dir);
+	else {
 		free(dir);
 		dir = strdup2(".");
 	}
@@ -377,6 +385,7 @@ int max;
 		|| !strcmp(list[i].name, "..")
 		|| i == top) continue;
 
+#ifndef	SVR3FS
 		ent = persec - totalent - getptrsiz(totalptr, ptr + 1);
 		if (ent < realdirsiz(list[i].name)) {
 			tmpfile = (char **)addlist(tmpfile, tmpno,
@@ -388,6 +397,7 @@ int max;
 			totalent = HEADBYTE;
 			totalptr = entnum[++block];
 		}
+#endif
 		strcpy(path + fnamp, list[i].name);
 		if (rename2(path, list[i].name) < 0) error(path);
 		totalent += realdirsiz(list[i].name);

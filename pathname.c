@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <ctype.h>
 #include <pwd.h>
 #include <sys/param.h>
@@ -20,6 +19,17 @@
 
 #ifndef	NOSTDLIB
 #include <stdlib.h>
+#endif
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+typedef direct	dirent;
+#else
+#include <dirent.h>
+#endif
+
+#ifdef	NOERRNO
+extern int errno;
 #endif
 
 #ifdef	FD

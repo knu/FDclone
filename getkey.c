@@ -19,6 +19,7 @@ main()
 	noecho2();
 	getterment();
 	putterm(t_keypad);
+	tflush();
 	i = 0;
 	for (;;) {
 		if (!i) while (!kbhit2(1000000L / SENSEPERSEC));

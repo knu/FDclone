@@ -29,11 +29,14 @@ extern int subwindow;
 #define	CLOCKUPDATE	10	/* sec */
 
 #ifndef	SIGWINCH
-# ifdef	SIGWINDOW
+# if defined (SIGWINDOW)
 # define	SIGWINCH	SIGWINDOW
-# endif
-# ifdef	NSIG
-# define	SIGWINCH	NSIG
+# else
+#  if defined (NSIG)
+#  define	SIGWINCH	NSIG
+#  else
+#  define	SIGWINCH	28
+#  endif
 # endif
 #endif
 
@@ -316,7 +319,7 @@ char *line;
 	eol = line + strlen(line);
 
 	ch = *(cp++);
-	if (ch == '^') ch = toupper(*(cp++)) - '@';
+	if (ch == '^') ch = toupper2(*(cp++)) - '@';
 	if (*cp == '\'') cp++;
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)

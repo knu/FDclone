@@ -7,10 +7,15 @@
 #include "fd.h"
 #include "term.h"
 
-#include <dirent.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
 
 extern char fullpath[];
 extern int subwindow;
@@ -490,7 +495,7 @@ char *tree()
 				break;
 			case CTRL_R:
 			case CTRL_Y:
-			case K_NPAGE:
+			case K_PPAGE:
 				half = (n_line - WHEADER - WFOOTER - 1) / 2;
 				y = WHEADER + half + 1;
 				if (top + half > WHEADER + 1)
@@ -501,7 +506,7 @@ char *tree()
 				break;
 			case CTRL_C:
 			case CTRL_V:
-			case K_PPAGE:
+			case K_NPAGE:
 				half = (n_line - WHEADER - WFOOTER - 1) / 2;
 				tmp = half + (WHEADER + half + 1) - y;
 				while (tmp-- > 0) {
@@ -627,7 +632,7 @@ char *tree()
 						path, list, &i, &redraw);
 					if (lptmp) lp = lptmp;
 					else break;
-				} while (toupper(*(lp -> next[i].name)) != ch);
+				} while (toupper2(*(lp -> next[i].name)) != ch);
 				break;
 		}
 		if (redraw || top != otop)

@@ -154,7 +154,8 @@ int max, argset;
 	flag = noext = needmark = 0;
 	command = evalcomstr(command);
 	for (i = j = 0; command[i] && j < sizeof(line); i++) {
-		if (noext || command[i] == '%') switch (toupper(command[++i])) {
+		if (noext || command[i] == '%')
+		switch (toupper2(command[++i])) {
 			case '\0':
 				i--;
 				break;
@@ -176,7 +177,7 @@ int max, argset;
 				argset = 1;
 				break;
 			case 'X':
-				if (strchr("TM", toupper(command[i + 1]))) {
+				if (strchr("TM", toupper2(command[i + 1]))) {
 					noext = 1;
 					i--;
 					break;
@@ -190,7 +191,7 @@ int max, argset;
 				argset = 1;
 				break;
 			case 'T':
-				if (toupper(command[i + 1]) == 'A') i++;
+				if (toupper2(command[i + 1]) == 'A') i++;
 				if (!list) break;
 				len = setargs(line, j, list, max, noext);
 				noext = 0;
@@ -200,7 +201,7 @@ int max, argset;
 				}
 				if (len < 0) {
 					len = -len;
-					if (toupper(command[i]) == 'A')
+					if (toupper2(command[i]) == 'A')
 						flag |= F_REMAIN;
 				}
 				j += len;
@@ -309,6 +310,8 @@ char *env, *arg;
 	char *command;
 
 	if (!(command = getenv2(env))) return(0);
+	putterms(t_clear);
+	tflush();
 	execmacro(command, arg, NULL, 0, 1, 0);
 	return(1);
 }
@@ -324,12 +327,13 @@ char **hist, *str;
 		hist = (char **)malloc2(sizeof(char *) * siz);
 		for (i = 1; i < siz; i++) hist[i] = NULL;
 	}
+	else if (str || !*str) return(hist);
 	else {
 		if (hist[siz - 1]) free(hist[i]);
 		for (i = siz - 1; i > 0; i--) hist[i] = hist[i - 1];
 	}
 
-	hist[0] = (str) ? strdup2(str): NULL;
+	hist[0] = strdup2(str);
 	return(hist);
 }
 

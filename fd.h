@@ -79,3 +79,8 @@
 #define	WMODE		10
 #define	WOWNER		8
 #define	WGROUP		8
+
+#ifdef	UNKNOWNFS
+#undef	WRITEFS
+#define	WRITEFS		2
+#endif

@@ -15,24 +15,37 @@
 #include <stdlib.h>
 #endif
 
-#include <dirent.h>
 #include <sys/file.h>
 #include <sys/param.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+typedef direct	dirent;
+#else
+#include <dirent.h>
+#endif
 
 #if defined (USESTATVFS)
 #include <sys/statvfs.h>
 typedef struct statvfs	statfs_t;
 #define	statfs2			statvfs
-#elif defined (USESTATFS)
-#include <sys/statfs.h>
-typedef struct statfs	statfs_t;
-#define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-#define	f_bavail	f_bfree
 #else
-# ifdef	USEMOUNTH
-# include <mount.h>
+# if defined (USESTATFS)
+# include <sys/statfs.h>
+typedef struct statfs	statfs_t;
+# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+# define	f_bavail	f_bfree
 # else
-# include <sys/vfs.h>
+#  if defined (USEMOUNTH) || defined (USENFSVFS)
+#  include <sys/mount.h>
+#  else
+#  include <sys/vfs.h>
+#  endif
+#  ifdef	USENFSVFS
+#  include <netinet/in.h>
+#  include <nfs/nfs_clnt.h>
+#  include <nfs/vfs.h>
+#  endif
 # endif
 typedef struct statfs	statfs_t;
 #define	statfs2			statfs
@@ -44,12 +57,14 @@ typedef struct statfs	statfs_t;
 typedef void	VOID;
 #endif
 
+#ifdef	NOERRNO
+extern int errno;
+#endif
+
 #define	MAXFILE		64
 #define	MAXNAME		64
 
-#if defined (USEMATHRAND)
-#include <math.h>
-#elif defined(USERAND48)
+#ifdef	USERAND48
 #define	random		lrand48
 #define	srandom		srand48
 #endif
@@ -203,13 +218,17 @@ char *dir;
 
 static int getblocksize()
 {
-#ifdef	DEV_BSIZE
-	return(DEV_BSIZE);
+#ifdef	DIRBLKSIZ
+	return(DIRBLKSIZ);
 #else
+# ifdef	DEV_BSIZE
+	return(DEV_BSIZE);
+# else
 	statfs_t buf;
 
 	if (statfs2(".", &buf) < 0) error(".");
 	return(buf.f_bsize);
+# endif
 #endif
 }
 
@@ -567,11 +586,7 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {
-#ifdef	USEMATHRAND
-	unsigned int seed;
-#else
 	long seed;
-#endif
 	char *wdir;
 	int i, level;
 

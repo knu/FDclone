@@ -9,12 +9,17 @@
 #include "funcno.h"
 #include "kanji.h"
 
-#include <dirent.h>
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -24,6 +29,7 @@ extern int fnameofs;
 extern int sorton;
 extern char fullpath[];
 extern char *findpattern;
+extern char **path_history;
 
 #define	PM_LHA	2, 2,\
 		{0, 1, 1, 2, -1, 4, 5, 6, 7},\
@@ -431,27 +437,40 @@ int *maxarcentp;
 	return(no);
 }
 
-int launcher(arc)
-char *arc;
+int launcher(list, max)
+namelist *list;
+int max;
 {
 	reg_t *re;
-	char *dupfindpat, path[MAXPATHLEN + 1], file[MAXNAMLEN + 1];
+	char *dir, *dupfindpat, path[MAXPATHLEN + 1], file[MAXNAMLEN + 1];
 	int i, dupfilepos, dupsorton, maxarcent;
 
 	for (i = 0; i < maxlaunch; i++) {
 		re = regexp_init(launchlist[i].ext);
-		if (regexp_exec(re, arc)) break;
+		if (regexp_exec(re, list[filepos].name)) break;
 		regexp_free(re);
 	}
 	if (i >= maxlaunch) return(-1);
 	regexp_free(re);
 
+	if (archivefile) {
+		if (launchlist[i].topskip >= 0 ||
+		!(dir = tmpunpack(list, max))) {
+			putterm(t_bell);
+			return(1);
+		}
+		execmacro(launchlist[i].comm, list[filepos].name,
+			NULL, 0, -1, 0);
+		removetmp(dir, list[filepos].name);
+		return(0);
+	}
 	if (launchlist[i].topskip < 0) {
-		execmacro(launchlist[i].comm, arc, NULL, 0, -1, 0);
+		execmacro(launchlist[i].comm, list[filepos].name,
+			NULL, 0, -1, 0);
 		return(0);
 	}
 
-	archivefile = arc;
+	archivefile = list[filepos].name;
 	archivedir = path;
 	arcflist = NULL;
 	maxarcent = 0;
@@ -512,8 +531,12 @@ int max, tr;
 
 	if (dir) strcpy(path, dir);
 	else {
-		dir = (tr) ? tree()
-			: evalpath(inputstr2(UNPAC_K, -1, NULL, NULL));
+		if (tr) dir = tree();
+		else {
+			dir = inputstr2(UNPAC_K, -1, NULL, path_history);
+			path_history = entryhist(path_history, path);
+			dir = evalpath(dir);
+		}
 		if (!dir) return(0);
 		strcpy(path, dir);
 		free(dir);

@@ -10,11 +10,11 @@ SED	= sed
 goal:	Makefile.tmp
 	$(MAKE) -f Makefile.tmp
 
-Makefile.tmp: Makefile.in mkmakefile.sed
-	$(SED) -f mkmakefile.sed Makefile.in > Makefile.tmp
+Makefile.tmp: Makefile.in mkmf.sed
+	$(SED) -f mkmf.sed Makefile.in > Makefile.tmp
 
-mkmakefile.sed: mkmakefile.sed.c machine.h
-	$(CPP) mkmakefile.sed.c | $(SED) "/^#/d" > mkmakefile.sed
+mkmf.sed: mkmf.sed.c machine.h
+	$(CPP) mkmf.sed.c | $(SED) -e "/^#/d" -e "s/\"//g" > mkmf.sed
 
 install: Makefile.tmp
 	$(MAKE) -f Makefile.tmp install

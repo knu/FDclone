@@ -244,25 +244,30 @@ int x, cx, len, linemax;
 	}
 }
 
-static VOID displaystr(str, x, len, linemax)
+static VOID displaystr(str, x, cx, len, max, linemax)
 u_char *str;
-int x, len, linemax;
+int x, cx, len, max, linemax;
 {
-	int cx, i;
+	int i, y, width;
 
 	locate(x, LCMDLINE);
 	putterm(l_clear);
 	str[len] = '\0';
-	if (len) {
-		i = linemax;
-		for (cx = 0; cx + linemax < len; cx += i) {
-			i = linemax;
-			if (onkanji1(str, cx + linemax - 1)) i++;
-			cprintf("%-*.*s", i, i, (char *)str + cx);
-			locate(x + i - linemax, LCMDLINE + cx / linemax + 1);
-		}
-		cputs((char *)str + cx);
+	width = linemax;
+	for (i = 0, y = 1; i + linemax < len; i += width, y++) {
+		width = linemax;
+		if (onkanji1(str, i + linemax - 1)) width++;
+		putterm(l_clear);
+		cprintf("%-*.*s", width, width, (char *)str + i);
+		locate(x + width - linemax, LCMDLINE + y);
 	}
+	putterm(l_clear);
+	cputs((char *)str + i);
+	for (; y * linemax < max; y++) {
+		locate(x, LCMDLINE + y);
+		putterm(l_clear);
+	}
+	locate(x + cx % linemax, LCMDLINE + cx / linemax);
 	tflush();
 }
 
@@ -319,11 +324,11 @@ u_char *hist[];
 
 	subwindow = 1;
 	cx = len = strlen((char *)str);
-	displaystr(str, x, len, linemax);
 	if (def >= 0 && def < linemax) {
 		while (def > len) str[len++] = ' ';
-		locate(x + (cx = def), LCMDLINE);
+		cx = def;
 	}
+	displaystr(str, x, cx, len, max, linemax);
 	keyflush();
 	histno = 0;
 	tmphist = NULL;
@@ -400,15 +405,13 @@ u_char *hist[];
 					locate(0, LCMDLINE + i);
 					putterm(l_clear);
 				}
-				displaystr(str, x, len, linemax);
-				locate(x + cx % linemax,
-					LCMDLINE + cx / linemax);
+				displaystr(str, x, cx, len, max, linemax);
 				break;
 			case CTRL_P:
 			case K_UP:
 				keyflush();
-				if (hist) {
-					if (!hist[histno]) {
+				if (cx < linemax) {
+					if (!hist || !hist[histno]) {
 						putterm(t_bell);
 						break;
 					}
@@ -418,11 +421,11 @@ u_char *hist[];
 						(char *)hist[histno]);
 					len = strlen((char *)str);
 					cx = len;
-					displaystr(str, x, len, linemax);
+					displaystr(str, x, cx,
+						len, max, linemax);
 					histno++;
 					break;
 				}
-				if (cx < linemax) break;
 				cx -= linemax;
 				putterm(c_up);
 				if (onkanji1(str, cx - 1)) {
@@ -433,8 +436,8 @@ u_char *hist[];
 			case CTRL_N:
 			case K_DOWN:
 				keyflush();
-				if (hist) {
-					if (histno <= 0) {
+				if (cx + linemax > len) {
+					if (!hist || histno <= 0) {
 						putterm(t_bell);
 						break;
 					}
@@ -448,10 +451,10 @@ u_char *hist[];
 					}
 					len = strlen((char *)str);
 					cx = len;
-					displaystr(str, x, len, linemax);
+					displaystr(str, x, cx,
+						len, max, linemax);
 					break;
 				}
-				if (cx + linemax >= len) break;
 				cx += linemax;
 				putterm(c_down);
 				if (onkanji1(str, cx - 1)) {
@@ -716,12 +719,14 @@ int *num, max, x;
 u_char *str[];
 int val[];
 {
-	int i, ch, old, new, xx[10];
+	int i, ch, old, new, xx[10], initial[10];
 
 	subwindow = 1;
 	xx[0] = 0;
-	for (i = 0; i < max; i++)
+	for (i = 0; i < max; i++) {
+		initial[i] = (isupper(*str[i])) ? *str[i] : -1;
 		xx[i + 1] = xx[i] + strlen((char *)str[i]) + 1;
+	}
 	new = selectmes(*num, max, x, str, val, xx);
 
 	do {
@@ -745,6 +750,12 @@ int val[];
 				selectmes(val[new], max, x, str, val, xx);
 				break;
 			default:
+				for (i = 0; i < max; i++)
+					if (toupper2(ch) == initial[i]) {
+						new = i;
+						ch = CR;
+						break;
+					}
 				break;
 		}
 		if (new != old) {

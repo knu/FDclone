@@ -21,6 +21,10 @@
 #include <tzfile.h>
 #endif
 
+#ifdef	USEGETWD
+#define	getcwd(buf, size)	getwd(buf)
+#endif
+
 extern char fullpath[];
 
 #define	BUFUNIT		32
@@ -215,6 +219,12 @@ int i, *max, size;
 	return(tmp);
 }
 
+int toupper2(c)
+int c;
+{
+	return(islower(c) ? c - 'a' + 'A' : c);
+}
+
 int onkanji1(s, ptr)
 u_char *s;
 int ptr;
@@ -316,6 +326,30 @@ char *str;
 {
 	return((str && *str >= '0' && *str <= '9') ? atoi(str) : -1);
 }
+
+#ifdef	NOPUTENV
+int putenv(str)
+char *str;
+{
+	extern char **environ;
+	char *cp, **envp;
+	int i;
+
+	if (!(cp = strchr(str, '='))) return(0);
+	for (envp = environ, i = 1; *envp; envp++, i++) {
+		if (!strncmp(*envp, str, cp - str)) {
+			*envp = str;
+			return(0);
+		}
+	}
+	envp = environ;
+	if (!(environ = (char **)malloc((i + 1) * sizeof(char *)))) return(1);
+	*environ = str;
+	memcpy(environ + 1, envp, i * sizeof(char *));
+	free(envp);
+	return(0);
+}
+#endif
 
 static assoclist *_getenv2(name)
 char *name;

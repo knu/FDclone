@@ -8,13 +8,18 @@
 #include "term.h"
 #include "kanji.h"
 
-#include <dirent.h>
 #include <fcntl.h>
 #include <time.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
 
 #ifdef	USEUTIME
 #include <utime.h>

@@ -10,10 +10,15 @@
 #include "kanji.h"
 
 #include <time.h>
-#include <dirent.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
 
 extern bindtable bindlist[];
 extern functable funclist[];

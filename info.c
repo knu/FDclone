@@ -16,45 +16,66 @@
 #include <sys/mnttab.h>
 typedef struct mnttab	mnt_t;
 #define	setmntent		fopen
-#define	getmntent2(fp, mnt)	(getmntent(fp, mnt) ? NULL : &mnt)
+#define	getmntent2(fp, mnt)	(getmntent(fp, &mnt) ? NULL : &mnt)
 #define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_mntopts, opt)
 #define	endmntent		fclose
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
 #define	mnt_type	mnt_fstype
-#elif defined (USEFSTABH)
-#include <fstab.h>
-typedef struct fstab	mnt_t;
-#define	setmntent(filep, type)	(FILE *)(setfsent(), NULL)
-#define	getmntent2(fp, mnt)	getfsent()
-#define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
-#define	endmntent(fp)		endfsent()
-#define	mnt_dir		fs_file
-#define	mnt_fsname	fs_spec
-#define	mnt_type	fs_vfstype
 #else
-#include <mntent.h>
+# if defined (USEFSTABH)
+# include <fstab.h>
+typedef struct fstab	mnt_t;
+# define	setmntent(filep, type)	(FILE *)(setfsent(), NULL)
+# define	getmntent2(fp, mnt)	getfsent()
+#  if defined (NOMNTOPS)
+#  define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_type, opt)
+#  else
+#  define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
+#  endif
+# define	endmntent(fp)		endfsent()
+# define	mnt_dir		fs_file
+# define	mnt_fsname	fs_spec
+#  ifdef	USENFSVFS
+#  define	mnt_type	fs_type
+#  else
+#  define	mnt_type	fs_vfstype
+#  endif
+# else
+# include <mntent.h>
 typedef struct mntent	mnt_t;
-#define	getmntent2(fp, mnt)	getmntent(fp)
+# define	getmntent2(fp, mnt)	getmntent(fp)
+# endif
 #endif
 
 #if defined (USESTATVFS)
 #include <sys/statvfs.h>
 typedef struct statvfs	statfs_t;
 #define	statfs2			statvfs
-#elif defined (USESTATFS)
-#include <sys/statfs.h>
-typedef struct statfs	statfs_t;
-#define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-#define	f_bavail	f_bfree
 #else
-# ifdef	USEMOUNTH
-# include <mount.h>
-# else
-# include <sys/vfs.h>
-# endif
+# if defined (USESTATFS)
+# include <sys/statfs.h>
 typedef struct statfs	statfs_t;
-#define	statfs2			statfs
+# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+# define	f_bavail	f_bfree
+# else
+#  if defined (USEMOUNTH) || defined (USENFSVFS)
+#  include <sys/mount.h>
+#  else
+#  include <sys/vfs.h>
+#  endif
+#  ifdef	USENFSVFS
+#  include <netinet/in.h>
+#  include <nfs/nfs_clnt.h>
+#  include <nfs/vfs.h>
+#  endif
+typedef struct statfs	statfs_t;
+# define	statfs2			statfs
+# endif
+#endif
+
+#ifdef	USESYSDIR
+#include <sys/dir.h>
 #endif
 
 extern bindtable bindlist[];
@@ -242,13 +263,17 @@ mnt_t *mntbuf;
 
 int getblocksize()
 {
-#ifdef	DEV_BSIZE
-        return(DEV_BSIZE);
+#ifdef	DIRBLKSIZ
+        return(DIRBLKSIZ);
 #else
+# ifdef	DEV_BSIZE
+        return(DEV_BSIZE);
+# else
 	statfs_t buf;
 
 	if (statfs2(".", &buf) < 0) error(".");
 	return(buf.f_bsize);
+# endif
 #endif
 }
 

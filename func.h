@@ -4,6 +4,10 @@
  *	Function Prototype Declaration
  */
 
+#ifdef	NOERRNO
+extern int errno;
+#endif
+
 /* main.c */
 extern VOID error();
 extern VOID usage();
@@ -26,6 +30,7 @@ extern VOID_P malloc2();
 extern VOID_P realloc2();
 extern char *strdup2();
 extern VOID_P addlist();
+extern int toupper2();
 extern int onkanji1();
 extern u_char *strchr2();
 extern u_char *strrchr2();
@@ -33,6 +38,9 @@ extern char *strncpy2();
 extern char *strncpy3();
 extern VOID cputs2();
 extern int atoi2();
+#ifdef	NOPUTENV
+extern int putenv();
+#endif
 extern int setenv2();
 extern char *getenv2();
 extern int printenv();

@@ -10,9 +10,14 @@
 #include "kanji.h"
 
 #include <time.h>
-#include <dirent.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
 
 extern int columns;
 extern int filepos;
@@ -89,13 +94,14 @@ static int no_operation();
 char *findpattern = NULL;
 reg_t *findregexp = NULL;
 char **sh_history = NULL;
+char **path_history = NULL;
 bindtable bindlist[MAXBINDTABLE] = {
 	{K_UP,		CUR_UP,		-1},
 	{K_DOWN,	CUR_DOWN,	-1},
 	{K_RIGHT,	CUR_RIGHT,	-1},
 	{K_LEFT,	CUR_LEFT,	-1},
-	{K_PPAGE,	ROLL_UP,	-1},
-	{K_NPAGE,	ROLL_DOWN,	-1},
+	{K_NPAGE,	ROLL_UP,	-1},
+	{K_PPAGE,	ROLL_DOWN,	-1},
 	{K_F(1),	LOG_DIR,	-1},
 	{K_F(2),	EXECUTE_FILE,	-1},
 	{K_F(3),	COPY_FILE,	-1},
@@ -444,7 +450,9 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = evalpath(inputstr2(LOGD_K, -1, NULL, NULL)))) return(1);
+	if (!(path = inputstr2(LOGD_K, -1, NULL, path_history))) return(1);
+	path_history = entryhist(path_history, path);
+	path = evalpath(path);
 	if (!strcmp(path, "?")) {
 		free(list[filepos].name);
 		list[filepos].name = path;
@@ -579,7 +587,7 @@ int *maxp;
 		str[1] = ODEC_K;
 		val[0] = 0;
 		val[1] = 8;
-		if (selectstr(&tmp2, 2, 40, (u_char *)str, val) == ESC)
+		if (selectstr(&tmp2, 2, 48, (u_char *)str, val) == ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
 		dup = (int *)malloc(*maxp * sizeof(int));
@@ -733,7 +741,7 @@ int *maxp;
 			warning(-1, list[filepos].name);
 		if (!i) filepos++;
 	}
-	if (filepos >= *maxp) filepos -= 2;
+	if (filepos >= *maxp && (filepos -= 2) < 0) filepos = 0;
 	return(4);
 }
 
@@ -819,7 +827,6 @@ int *maxp;
 {
 	char *com;
 
-	if (!sh_history) sh_history = entryhist(NULL, NULL);
 	if (!(com = inputstr2("sh#", -1, NULL, sh_history))) return(1);
 	sh_history = entryhist(sh_history, com);
 	if (!*com) {
@@ -854,7 +861,6 @@ int *maxp;
 	char *com, *dir;
 	int len;
 
-	if (!sh_history) sh_history = entryhist(NULL, NULL);
 	len = (access(list[filepos].name, X_OK) >= 0) ?
 		strlen(list[filepos].name) + 1 : 0;
 	if (!(com = inputstr2("sh#", len, list[filepos].name, sh_history)))
@@ -883,8 +889,7 @@ int *maxp;
 {
 	char *path;
 
-	if (archivefile || launcher(list[filepos].name) < 0)
-		return(view_file(list, maxp));
+	if (launcher(list, *maxp) < 0) return(view_file(list, maxp));
 	return(4);
 }
 
@@ -895,7 +900,9 @@ int *maxp;
 	char *file;
 	int i;
 
-	if (!(file = evalpath(inputstr2(PACK_K, -1, NULL, NULL)))) return(1);
+	if (!(file = inputstr2(PACK_K, -1, NULL, path_history))) return(1);
+	path_history = entryhist(path_history, file);
+	file = evalpath(file);
 	i = pack(file, list, *maxp);
 	free(file);
 	if (i < 0) {
@@ -942,7 +949,8 @@ int *maxp;
 	char *path;
 	int i;
 
-	if (!(path = inputstr2(FSDIR_K, -1, NULL, NULL))) return(1);
+	if (!(path = inputstr2(FSDIR_K, -1, NULL, path_history))) return(1);
+	path_history = entryhist(path_history, path);
 	if (*path) path = evalpath(path);
 	else {
 		free(path);
@@ -973,7 +981,7 @@ int *maxp;
 		locate(0, LINFO);
 		putterm(l_clear);
 		cputs(ATTRM_K);
-		if (selectstr(&flag, 2, 40, (u_char *)str, val) == ESC)
+		if (selectstr(&flag, 2, 35, (u_char *)str, val) == ESC)
 			return(1);
 	}
 	else {
@@ -1021,7 +1029,9 @@ int *maxp;
 	char *dev;
 	int i;
 
-	if (!(dev = evalpath(inputstr2(BKUP_K, 5, "/dev/", NULL)))) return(1);
+	if (!(dev = inputstr2(BKUP_K, 5, "/dev/", path_history))) return(1);
+	path_history = entryhist(path_history, dev);
+	dev = evalpath(dev);
 	i = backup(dev, list, *maxp);
 	free(dev);
 	if (i <= 0) return(1);

@@ -24,6 +24,10 @@
 #include <sgtty.h>
 #endif
 
+#ifdef	USESYSSELECT
+#include <sys/select.h>
+#endif
+
 extern int tgetent();
 extern int tgetnum();
 extern char *tgetstr();
