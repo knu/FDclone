@@ -1030,7 +1030,7 @@ char *file, *def;
 			no = execusercomm(macrolist[no - NO_OPERATION - 1],
 				filelist[filepos].name,
 				filelist, &maxfile, 0, 0);
-			if (no < 0) no = 0;
+			if (no < -1) no = 0;
 		}
 
 		if (no < 0) break;

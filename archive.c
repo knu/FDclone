@@ -75,27 +75,35 @@ extern int n_args;
 		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
 		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{9, 255, 255}, 1
-#ifdef	UXPDS
+# ifdef	UXPDS
 #define	PM_TAR	0, 0, \
 		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
 		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
 		{128 + 10, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{10, 255, 255}, 1
-#else	/* !UXPDS */
-#ifdef	TARUSESPACE
+# else	/* !UXPDS */
+#  ifdef	TARFROMPAX
+#define	PM_TAR	0, 0, \
+		{0, 2, 3, 4, 7, 5, 6, 7, 8}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{255, 255, 255}, 1
+#  else	/* !TARFROMPAX */
+#   ifdef	TARUSESPACE
 #define	PM_TAR	0, 0, \
 		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
 		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
 		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{255, 255, 255}, 1
-#else
+#   else	/* !TARUSESPACE */
 #define	PM_TAR	0, 0, \
 		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
 		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
 		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{9, 255, 255}, 1
-#endif
-#endif	/* !UXPDS */
+#   endif	/* !TARUSESPACE */
+#  endif	/* !TARFROMPAX */
+# endif	/* !UXPDS */
 #endif	/* !MSDOS */
 
 static int countfield __P_((char *, u_char [], int, int *));
@@ -538,9 +546,8 @@ launchtable *list;
 	i = no = len = 0;
 	buf = NULL;
 	while ((line = fgets2(fp))) {
-		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
+		if (intrkey()) {
 			Xpclose(fp);
-			warning(0, INTR_K);
 			free(line);
 			if (buf) free(buf);
 			for (i = 0; i < maxfile; i++) free(filelist[i].name);
@@ -1026,7 +1033,8 @@ int tr;
 #endif
 	strcpy(strcatdelim(path), arc);
 	waitmes();
-	if (execusercomm(archivelist[i].u_comm, path, list, &max, -1, 1) < 0) {
+	if (execusercomm(archivelist[i].u_comm, path, list, &max, -1, 1) < -1)
+	{
 		warning(E2BIG, archivelist[i].u_comm);
 		if (_chdir2(fullpath) < 0) error(fullpath);
 		return(0);
@@ -1201,9 +1209,8 @@ int maxf, n;
 			if (buf) free(buf);
 			break;
 		}
-		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
+		if (intrkey()) {
 			Xpclose(fp);
-			warning(0, INTR_K);
 			free(line);
 			if (buf) free(buf);
 			regexp_free(re);

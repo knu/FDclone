@@ -75,7 +75,7 @@
 #if	(defined (i386) || defined (__i386) || defined (__i386__)) \
 && (defined (LINUX) || defined (JCCBSD) || defined (FREEBSD) \
 || defined (NETBSD) ||	defined (BSDOS) || defined (BOW) \
-|| defined (ORG_386BSD))
+|| defined (OPENBSD) || defined (ORG_386BSD))
 #define	HDDMOUNT
 #endif
 
@@ -326,6 +326,7 @@ extern int lastdrive;
 extern int needbavail;
 extern char *unitblpath;
 extern VOID_T (*doswaitfunc)__P_((VOID_A));
+extern int (*dosintrfunc)__P_((VOID_A));
 
 #ifdef	HDDMOUNT
 extern off64_t *readpt __P_((char *, int));

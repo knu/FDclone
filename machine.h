@@ -531,6 +531,30 @@ typedef long	off_t;
 #define	SIGFNCINT
 #endif
 
+#if	defined (__OpenBSD__)
+#define	BSD43
+#define	OSTYPE			"OPENBSD"
+#define	CODEEUC
+#define	BSDINSTALL
+#define	TARFROMPAX
+#define	REGEXPLIB		"-lcompat"
+#define	DECLSIGLIST
+#define	DECLERRLIST
+#define	USELEAPCNT
+#define	USETERMIOS
+#define	USEMOUNTH
+#define	USEMNTINFO
+#define	USEFFSTYPE
+#define	USERE_COMP
+#define	USESETENV
+#define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
+#define	SIGFNCINT
+#endif
+
 #if	defined (__386BSD__) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"ORG_386BSD"
@@ -585,6 +609,7 @@ typedef long	off_t;
 /*	NETBSD		;NetBSD */
 /*	BSDOS		;BSD/OS (BSDI) */
 /*	BOW		;BSD on Windows (ASCII) */
+/*	OPENBSD		;OpenBSD */
 /*	386BSD_ORG	;386BSD */
 
 /* #define CODEEUC	;kanji code type is EUC */
@@ -592,6 +617,7 @@ typedef long	off_t;
 /* #define BSDINSTALL	;install(1) with option -c is valid like BSD */
 /* #define BSDINSTCMD	;command name except "install" to install like BSD */
 /* #define TARUSESPACE	;tar(1) uses space to devide file mode from UID */
+/* #define TARFROMPAX	;tar(1) comes from pax(1) */
 /* #define CPP7BIT	;cpp(1) cannot through 8bit */
 /* #define CCCOMMAND	;fullpath of suitable cc(1) */
 /* #define EXTENDCCOPT	;additional option on cc(1) */

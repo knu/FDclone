@@ -4,26 +4,30 @@
  *	Path Name Management Module
  */
 
+#ifdef	FD
+#include "fd.h"
+#else	/* !FD */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <ctype.h>
 #include "machine.h"
+
+# ifndef	NOUNISTDH
+# include <unistd.h>
+# endif
+
+# ifndef	NOSTDLIBH
+# include <stdlib.h>
+# endif
+#endif	/* !FD */
+#include <ctype.h>
 
 #ifdef	LSI_C
 #include <jctype.h>
 #define	issjis1(c)	iskanji(c)
 #define	issjis2(c)	iskanji2(c)
-#endif
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
 #endif
 
 #if	MSDOS
@@ -139,7 +143,9 @@ struct dirent *Xreaddir __P_((DIR *));
 static char *getvar __P_((char *, int));
 static int setvar __P_((char *, char *, int));
 static int evalenvvar __P_((char *, int, int));
-#ifndef	_NOORIGGLOB
+#ifdef	_NOORIGGLOB
+static char *cnvregexp __P_((char *, int));
+#else
 static int _regexp_exec __P_((char **, char *));
 #endif
 static char *catpath __P_((char *, char *, int *, int, int));
@@ -159,7 +165,7 @@ static VOID rmhash __P_((char *, int));
 #if	MSDOS
 static int extaccess __P_((char *, char *, int));
 #endif
-#ifndef	_NOCOMPLETE
+#if	!defined (FDSH) && !defined (_NOCOMPLETE)
 # if	!MSDOS
 static int completeuser __P_((char *, int, char ***));
 # endif
@@ -376,27 +382,6 @@ DIR *dirp;
 # endif	/* MSDOS */
 #endif	/* !FD */
 
-int isdelim(s, ptr)
-char *s;
-int ptr;
-{
-#if	MSDOS
-	int i;
-#endif
-
-	if (ptr < 0 || s[ptr] != _SC_) return(0);
-#if	MSDOS
-	if (--ptr < 0) return(1);
-	if (!ptr) return(!iskanji1(s, 0));
-
-	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
-	if (!s[i] || i > ptr) return(1);
-	return(!iskanji1(s, i));
-#else
-	return(1);
-#endif
-}
-
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 char *strdelim(s, d)
 char *s;
@@ -433,6 +418,7 @@ int d;
 }
 #endif	/* MSDOS || (FD && !_NODOSDRIVE) */
 
+#ifndef	FDSH
 char *strrdelim2(s, eol)
 char *s, *eol;
 {
@@ -451,6 +437,28 @@ char *s, *eol;
 	return(NULL);
 #endif
 }
+
+int isdelim(s, ptr)
+char *s;
+int ptr;
+{
+#if	MSDOS
+	int i;
+#endif
+
+	if (ptr < 0 || s[ptr] != _SC_) return(0);
+#if	MSDOS
+	if (--ptr < 0) return(1);
+	if (!ptr) return(!iskanji1(s, 0));
+
+	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
+	if (!s[i] || i > ptr) return(1);
+	return(!iskanji1(s, i));
+#else
+	return(1);
+#endif
+}
+#endif	/* !FDSH */
 
 char *strcatdelim(s)
 char *s;
@@ -585,218 +593,6 @@ int off, len;
 	return(len + off);
 }
 
-#ifdef	FD
-char *_evalpath(path, eol, uniqdelim, evalq)
-char *path, *eol;
-int uniqdelim, evalq;
-{
-#if	!MSDOS
-	struct passwd *pwd;
-#else
-# if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-	char alias[MAXPATHLEN];
-	int top = -1;
-# endif
-#endif
-	char *cp, *tmp, buf[MAXPATHLEN], qstack[MAXPATHLEN];
-	int i, j, env, quote, paren;
-
-	if (!eol) eol = path + strlen(path);
-	i = j = 0;
-
-	quote = -1;
-	if ((path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
-		qstack[++quote] = path[i++];
-		if (!evalq) {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-			top = j;
-#endif
-			buf[j++] = qstack[quote];
-		}
-	}
-
-	if ((quote < 0 || qstack[quote] != '\'') && path[i] == '~') {
-		if (!(cp = strdelim(path + i + 1, 0)) || cp > eol) cp = eol;
-		if (cp > path + i + 1) {
-			strncpy(buf + j, path + i + 1, cp - (path + i + 1));
-			buf[j + cp - (path + i + 1)] = '\0';
-#ifdef	FD
-			if (!strpathcmp(buf + j, "FD")) tmp = progpath;
-			else
-#endif
-#if	!MSDOS
-			if ((pwd = getpwnam(buf + j))) tmp = pwd -> pw_dir;
-			else
-#endif
-			tmp = NULL;
-		}
-		else {
-			tmp = getvar("HOME", -1);
-#if	!MSDOS
-			if (!tmp && (pwd = getpwuid(getuid())))
-				tmp = pwd -> pw_dir;
-#endif
-		}
-
-		if (tmp) {
-			strcpy(buf + j, tmp);
-			j = strlen(buf);
-		}
-		else {
-			strncpy(buf + j, path + i, cp - (path + i));
-			j += cp - (path + i);
-		}
-		i = cp - path;
-		if (path + i < eol) {
-			j = strcatdelim(buf) - buf;
-			i++;
-		}
-	}
-	else if (path[i] == _SC_) {
-		buf[j++] = _SC_;
-		i++;
-	}
-#if	MSDOS
-	else if (isalpha(path[i]) && path[i + 1] == ':') {
-		strncpy(buf + j, path + i, 2);
-		j += 2;
-		i += 2;
-		if (path[i] == _SC_) {
-			buf[j++] = _SC_;
-			i++;
-		}
-	}
-#endif
-	else buf[j] = '\0';
-
-	paren = '\0';
-	env = -1;
-	for (; i < eol - path && path[i] && j < MAXPATHLEN - 1; i++) {
-#if	!MSDOS
-		if (path[i] == META && (quote < 0 || qstack[quote] != '\'')) {
-			if (env >= 0) {
-				j = evalenvvar(buf, env, j);
-				env = -1;
-			}
-			buf[j++] = path[i++];
-			buf[j++] = path[i];
-			continue;
-		}
-#endif
-		if (quote >= 0) {
-			if (path[i] == qstack[quote]) {
-				if (env >= 0) {
-					j = evalenvvar(buf, env, j);
-					env = -1;
-				}
-				if (!evalq) {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-					cp = NULL;
-					if (qstack[quote] == '"' &&
-					top >= 0 && top + 1 < j) {
-						buf[j] = '\0';
-						cp = shortname(buf + top + 1,
-							alias);
-					}
-					if (!cp) buf[j++] = qstack[quote];
-					else {
-						j = top + strlen(alias);
-						if (j > MAXPATHLEN - 1)
-							j = MAXPATHLEN - 1;
-						strncpy(buf + top, alias,
-							j - top);
-					}
-					top = -1;
-#else
-					buf[j++] = qstack[quote];
-#endif
-				}
-				quote--;
-				continue;
-			}
-			if (qstack[quote] == '\'') {
-				buf[j++] = path[i];
-				continue;
-			}
-			if (path[i] == '"'
-			|| path[i] == '\'' || path[i] == '`') {
-				qstack[++quote] = path[i];
-				if (!evalq) {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-					top = j;
-#endif
-					buf[j++] = qstack[quote];
-				}
-				continue;
-			}
-		}
-		if (env >= 0) {
-			if (paren) {
-				if (path[i] != '}') buf[j++] = path[i];
-				else {
-					j = evalenvvar(buf, env, j);
-					env = -1;
-					paren = 0;
-				}
-				continue;
-			}
-			if (path[i] == '{' && env == j) {
-				paren = 1;
-				continue;
-			}
-			if (path[i] != '_' && !isalpha(path[i])
-			&& (path[i] < '0' || path[i] > '9' || env == j)) {
-#if	MSDOS
-				if (env == j
-				&& (path[i] < '0' || path[i] > '9')) {
-					buf[j++] = path[i];
-#else
-				if (env == j && path[i] == '$') {
-					env = getpid();
-					sprintf(buf + j, "%d", env);
-					while (buf[j]) j++;
-#endif
-					env = -1;
-					continue;
-				}
-				j = evalenvvar(buf, env, j);
-				env = -1;
-			}
-		}
-
-		if (quote < 0
-		&& (path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
-			qstack[++quote] = path[i];
-			if (!evalq) {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-				top = j;
-#endif
-				buf[j++] = qstack[quote];
-			}
-		}
-		else if (path[i] == _SC_
-		&& isdelim(path, i - 1) && uniqdelim);
-		else if (path[i] == '$') env = j;
-		else buf[j++] = path[i];
-	}
-	buf[j = evalenvvar(buf, env, j)] = '\0';
-	return(strdup2(buf));
-}
-
-char *evalpath(path, uniqdelim)
-char *path;
-int uniqdelim;
-{
-	char *cp;
-
-	if (!path || !(*path)) return(path);
-	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
-	cp = _evalpath(cp, NULL, uniqdelim, 1);
-	free(path);
-	return(cp);
-}
-#endif	/* FD */
-
 #ifdef	_NOORIGGLOB
 static char *cnvregexp(s, len)
 char *s;
@@ -840,7 +636,7 @@ int len;
 			case '^':
 			case '$':
 			case '.':
-				re[j++] = META;
+				re[j++] = '\\';
 				re[j++] = s[i];
 				break;
 			default:
@@ -1002,7 +798,7 @@ int len;
 
 			if (quote || meta) {
 #ifdef	BASHSTYLE
-				paren[plen++] = META;
+				paren[plen++] = PMETA;
 				paren[plen++] = s[i];
 #endif
 			}
@@ -1108,7 +904,7 @@ char *s;
 		c2 = '\0';
 		for (; re[n1][i]; i++) {
 #ifdef	BASHSTYLE
-			if (re[n1][i] == META && re[n1][i + 1]) i++;
+			if (re[n1][i] == PMETA && re[n1][i + 1]) i++;
 			if (re[n1][i] == '-' && re[n1][i + 1] && c2)
 #else
 			if (re[n1][i] == '-')
@@ -1577,9 +1373,12 @@ hashlist **hpp;
 char *com;
 {
 	char *cp, *next, *path;
-	int n, l, len, cost, size, ret;
+	int l, len, cost, size, ret;
 #if	MSDOS
 	char *ext;
+#endif
+#ifndef	_NOUSEHASH
+	int n;
 #endif
 
 #if	MSDOS
@@ -1683,7 +1482,7 @@ char *path;
 #endif
 }
 
-#ifndef	_NOCOMPLETE
+#if	!defined (FDSH) && !defined (_NOCOMPLETE)
 char *finddupl(target, argc, argv)
 char *target;
 int argc;
@@ -1847,43 +1646,43 @@ char **argv;
 	}
 	return(common);
 }
-#endif	/* _NOCOMPLETE */
+#endif	/* !FDSH && !_NOCOMPLETE */
 
 int addmeta(s1, s2, stripm, quoted)
 char *s1, *s2, stripm, quoted;
 {
-	int i, len;
+	int i, j;
 
 	if (!s2) return(0);
-	for (i = len = 0; s2[i]; i++, len++) {
+	for (i = j = 0; s2[i]; i++, j++) {
 		if (s2[i] == '"') {
-			if (s1) s1[len] = META;
-			len++;
+			if (s1) s1[j] = PMETA;
+			j++;
 		}
-		else if (s2[i] == META) {
-			if (s1) s1[len] = META;
-			len++;
-			if (stripm && s2[i + 1] == META) i++;
+		else if (s2[i] == PMETA) {
+			if (s1) s1[j] = PMETA;
+			j++;
+			if (stripm && s2[i + 1] == PMETA) i++;
 		}
 		else if (!quoted && s2[i] == '\'') {
-			if (s1) s1[len] = META;
-			len++;
+			if (s1) s1[j] = PMETA;
+			j++;
 		}
 #ifdef	CODEEUC
 		else if (isekana(s2, i)) {
-			if (s1) s1[len] = s2[i];
-			len++;
+			if (s1) s1[j] = s2[i];
+			j++;
 			i++;
 		}
 #endif
 		else if (iskanji1(s2, i)) {
-			if (s1) s1[len] = s2[i];
-			len++;
+			if (s1) s1[j] = s2[i];
+			j++;
 			i++;
 		}
-		if (s1) s1[len] = s2[i];
+		if (s1) s1[j] = s2[i];
 	}
-	return(len);
+	return(j);
 }
 
 static char *evalshellparam(c, quoted)
@@ -1891,7 +1690,7 @@ int c, quoted;
 {
 	char *cp, **arglist, tmp[MAXLONGWIDTH + 1];
 	long pid;
-	int i, len;
+	int i, j;
 
 	cp = NULL;
 	switch (c) {
@@ -1902,21 +1701,21 @@ int c, quoted;
 				cp = catargs(&(arglist[1]), ' ');
 				break;
 			}
-			for (i = len = 0; arglist[i + 1]; i++)
-				len += addmeta(NULL,
+			for (i = j = 0; arglist[i + 1]; i++)
+				j += addmeta(NULL,
 					arglist[i + 1], 0, quoted);
 			if (i > 0) {
-				len += (i - 1) * 3;
-				cp = malloc2(len + 1);
-				len = addmeta(cp, arglist[1], 0, quoted);
+				j += (i - 1) * 3;
+				cp = malloc2(j + 1);
+				j = addmeta(cp, arglist[1], 0, quoted);
 				for (i = 2; arglist[i]; i++) {
-					cp[len++] = quoted;
-					cp[len++] = ' ';
-					cp[len++] = quoted;
-					len += addmeta(cp + len,
+					cp[j++] = quoted;
+					cp[j++] = ' ';
+					cp[j++] = quoted;
+					j += addmeta(cp + j,
 						arglist[i], 0, quoted);
 				}
-				cp[len] = '\0';
+				cp[j] = '\0';
 			}
 			break;
 		case '*':
@@ -1951,10 +1750,6 @@ int c, quoted;
 			if (getflagfunc) cp = (*getflagfunc)();
 			break;
 		default:
-			tmp[0] = '$';
-			tmp[1] = c;
-			tmp[2] = '\0';
-			cp = tmp;
 			break;
 	}
 	if (cp == tmp) cp = strdup2(tmp);
@@ -2020,10 +1815,13 @@ int ptr, next, nlen;
 	int i, olen, len;
 
 	olen = next - ptr;
-	len = strlen(arg + next);
-	if (nlen < olen)
-		for (i = 0; i <= len; i++) arg[ptr + nlen + i] = arg[next + i];
+	if (nlen < olen) {
+		for (i = 0; arg[next + i]; i++)
+			arg[ptr + nlen + i] = arg[next + i];
+		arg[ptr + nlen + i] = '\0';
+	}
 	else if (nlen > olen) {
+		len = strlen(arg + next);
 		arg = realloc2(arg, ptr + nlen + len + 1);
 		for (i = len; i >= 0; i--) arg[ptr + nlen + i] = arg[next + i];
 	}
@@ -2049,13 +1847,14 @@ int ptr, quoted;
 		s = e = next = i;
 	}
 	else if ((*argp)[top] != '{') {
+		if ((*argp)[top] == quoted) return(top);
 		len = 1;
 		s = e = next = top + 1;
 	}
 	else {
 		nest = 1;
-		len = s = -1;
-		for (i = ++top, quote = '\0'; nest > 0; i++) {
+		len = s = e = -1;
+		for (i = ++top, quote = quoted; nest > 0; i++) {
 			if ((*argp)[i] == quote) quote = '\0';
 #ifdef	CODEEUC
 			else if (isekana(*argp, i)) {
@@ -2066,7 +1865,12 @@ int ptr, quoted;
 				if ((*argp)[i + 1]) i++;
 			}
 			else if (quote == '\'');
-			else if (ismeta(*argp, i, quote));
+			else if (ismeta(*argp, i, quote)) {
+				if (len < 0) return(-1);
+#ifndef	BASHSTYLE
+				if (!quote) e = i;
+#endif
+			}
 			else if (quote);
 			else if ((*argp)[i] == '\'' || (*argp)[i] == '"')
 				quote = (*argp)[i];
@@ -2112,7 +1916,7 @@ int ptr, quoted;
 					break;
 			}
 		}
-		e = i - 1;
+		if (e < 0) e = i - 1;
 		if (len < 0) len = e - top;
 		if (s < 0) s = e;
 		next = i;
@@ -2133,7 +1937,10 @@ int ptr, quoted;
 			if (i < n) cp = arglist[i];
 		}
 	}
-	else if (len == 1) cp = new = evalshellparam(c = (*argp)[top], quoted);
+	else if (len == 1) {
+		if ((cp = evalshellparam(c = (*argp)[top], quoted))) new = cp;
+		else return(next);
+	}
 	else return(-1);
 
 	if (!mode && checkundeffunc
@@ -2189,7 +1996,7 @@ int ptr;
 #endif
 	}
 #ifdef	FD
-	else if (!strnpathcmp(*argp + top, "FD", 2)) cp = progpath;
+	else if (!strpathcmp(*argp + top, "FD")) cp = progpath;
 #endif
 	else {
 #if	!MSDOS
@@ -2229,21 +2036,25 @@ int stripq;
 			if (stripq) arg[j++] = arg[i++];
 		}
 		else if (quote == '\'');
-		else if (ismeta(arg, i, quote)) {
-			i++;
-			if (stripq && quote
-			&& arg[i] != quote && arg[i] != META)
-				arg[j++] = META;
-		}
 		else if (arg[i] == '$' && arg[i + 1]) {
+#ifdef	FAKEMETA
+			if (arg[i + 1] == '$' || arg[i + 1] == '~') {
+				arg = insertarg(arg, j++, ++i, 0);
+				continue;
+			}
+#endif
 			if (stripq && i > j) {
-				for (n = 0; arg[i + n]; n++)
-					arg[j + n] = arg[i + n];
-				arg[j + n] = '\0';
+				arg = insertarg(arg, j, i, 0);
 				i = j;
 			}
 			if ((n = evalvar(&arg, i, quote)) < 0) return(NULL);
 			i = j = n - 1;
+		}
+		else if (ismeta(arg, i, quote)) {
+			i++;
+			if (stripq && quote
+			&& arg[i] != quote && arg[i] != PMETA)
+				arg[j++] = PMETA;
 		}
 		else if (quote);
 		else if (arg[i] == '\'' || arg[i] == '"') {
@@ -2252,9 +2063,7 @@ int stripq;
 		}
 		else if (arg[i] == '~') {
 			if (stripq && i > j) {
-				for (n = 0; arg[i + n]; n++)
-					arg[j + n] = arg[i + n];
-				arg[j + n] = '\0';
+				arg = insertarg(arg, j, i, 0);
 				i = j;
 			}
 			i = j = evalhome(&arg, i);
@@ -2351,8 +2160,8 @@ int iscom;
 			else if (ismeta((*argvp)[n], i, quote)) {
 				i++;
 				if (quote && (*argvp)[n][i] != quote
-				&& (*argvp)[n][i] != META)
-					cp[j++] = META;
+				&& (*argvp)[n][i] != PMETA)
+					cp[j++] = PMETA;
 			}
 			else if (quote);
 			else if ((*argvp)[n][i] == '\''
@@ -2417,8 +2226,8 @@ char *arg;
 		else if (quote == '\'');
 		else if (ismeta(arg, i, quote)) {
 			i++;
-			if (quote && arg[i] != quote && arg[i] != META)
-				arg[j++] = META;
+			if (quote && arg[i] != quote && arg[i] != PMETA)
+				arg[j++] = PMETA;
 		}
 		else if (quote);
 		else if (arg[i] == '\'' || arg[i] == '"') {
@@ -2431,3 +2240,117 @@ char *arg;
 	arg[j] = '\0';
 	return(j);
 }
+
+#ifndef	FDSH
+char *_evalpath(path, eol, uniqdelim, evalq)
+char *path, *eol;
+int uniqdelim, evalq;
+{
+	char *cp, *tmp, **argv;
+	int i, j, c, size, quote;
+
+	if (eol) i = eol - path;
+	else i = strlen(path);
+	cp = malloc2(i + 1);
+	strncpy2(cp, path, i);
+
+	if (!(tmp = evalarg(cp, 0))) {
+		*cp = '\0';
+		return(cp);
+	}
+	cp = tmp;
+
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+	if (uniqdelim || !evalq) {
+		char alias[MAXPATHLEN];
+		int top;
+
+		top = -1;
+#else
+	if (uniqdelim) {
+#endif
+		tmp = malloc2((size = strlen(cp) + 1));
+		for (i = j = c = 0, quote = '\0'; cp[i]; i++) {
+			if (cp[i] == quote) {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+				if (!evalq && top >= 0 && ++top < j) {
+					tmp[j] = '\0';
+					if (shortname(&(tmp[top]), alias)
+					&& strpathcmp(alias, &(tmp[top]))) {
+						int len;
+
+						len = strlen(alias);
+						size += top + len - j;
+						j = top + len;
+						tmp = realloc2(tmp, size + 1);
+						strncpy(tmp + top, alias, len);
+					}
+				}
+				top = -1;
+#endif
+				quote = '\0';
+			}
+#ifdef	CODEEUC
+			else if (isekana(cp, i)) tmp[j++] = cp[i++];
+#endif
+			else if (iskanji1(cp, i)) tmp[j++] = cp[i++];
+			else if (quote == '\'');
+			else if (ismeta(cp, i, quote)) tmp[j++] = cp[i++];
+			else if (quote);
+			else if (cp[i] == '\'') quote = cp[i];
+			else if (cp[i] == '"') {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+				top = j;
+#endif
+				quote = cp[i];
+			}
+			else {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+				if (uniqdelim && cp[i] == _SC_ && c == _SC_)
+					continue;
+#else
+				if (cp[i] == _SC_ && c == _SC_) continue;
+#endif
+			}
+			c = tmp[j++] = cp[i];
+		}
+		tmp[j] = '\0';
+		free(cp);
+		cp = tmp;
+		if (!j) return(cp);
+	}
+
+	if (evalq) {
+		argv = (char **)malloc2(sizeof(char *) * 2);
+		argv[0] = cp;
+		argv[1] = NULL;
+		i = evalifs(1, &argv);
+		if (!i) {
+			free(argv);
+			return(strdup2(""));
+		}
+		for (j = 1; j < i; j++) free(argv[j]);
+	
+		argv[1] = NULL;
+		i = evalglob(1, &argv, 0);
+		for (j = 1; j < i; j++) free(argv[j]);
+		cp = argv[0];
+		free(argv);
+	}
+
+	return(cp);
+}
+
+char *evalpath(path, uniqdelim)
+char *path;
+int uniqdelim;
+{
+	char *cp;
+
+	if (!path || !(*path)) return(path);
+	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
+	cp = _evalpath(cp, NULL, uniqdelim, 1);
+	free(path);
+	return(cp);
+}
+#endif	/* !FDSH */

@@ -652,7 +652,6 @@ char *dir, *file;
 #endif
 	extern char **environ;
 	char buf[MAXPATHLEN];
-	int i;
 
 	if (!dir || !*dir || !file || !*file) return(0);
 	strcatdelim2(buf, dir, file);

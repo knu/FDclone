@@ -7,22 +7,24 @@
 #ifndef	__PATHNAME_H_
 #define	__PATHNAME_H_
 
-#if	MSDOS
-#define	PATHDELIM	';'
-#else
-#define	PATHDELIM	':'
-#endif
-
-#if	MSDOS && !defined (_NOORIGGLOB)
-#define	META		'^'
-#else
 #define	META		'\\'
+#if	!MSDOS
+#define	PATHDELIM	':'
+#define	PMETA		META
+#else
+#define	PATHDELIM	';'
+# ifdef	_NOORIGGLOB
+# define	FAKEMETA
+# define	PMETA		'$'
+# else
+# define	PMETA		'^'
+# endif
 #endif
 
-#define	ismeta(s, i, q)	((s)[i] == META && (s)[(i) + 1] \
+#define	ismeta(s, i, q)	((s)[i] == PMETA && (s)[(i) + 1] \
 			&& (!(q) || (s)[(i) + 1] != (q) || (s)[(i) + 2]))
 #define	isnmeta(s, i, q, n) \
-			((s)[i] == META && (i) + 1 < n \
+			((s)[i] == PMETA && (i) + 1 < n \
 			&& (!(q) || (s)[(i) + 1] != (q) || (i) + 2 < n))
 
 #if	defined (_NOORIGGLOB) \
@@ -76,7 +78,6 @@ typedef struct _devino_t {
 } devino_t;
 #endif
 
-extern int isdelim __P_((char *, int));
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 extern char *strdelim __P_((char *, int));
 extern char *strrdelim __P_((char *, int));
@@ -84,16 +85,12 @@ extern char *strrdelim __P_((char *, int));
 #define	strdelim(s, d)	strchr(s, _SC_)
 #define	strrdelim(s, d)	strrchr(s, _SC_)
 #endif
+#ifndef	FDSH
 extern char *strrdelim2 __P_((char *, char *));
+extern int isdelim __P_((char *, int));
+#endif
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
-#ifdef	FD
-extern char *_evalpath __P_((char *, char *, int, int));
-extern char *evalpath __P_((char *, int));
-#endif
-#ifdef	_NOORIGGLOB
-extern char *cnvregexp __P_((char *, int));
-#endif
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));
@@ -105,7 +102,7 @@ hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, char *));
 extern char *searchpath __P_((char *));
-#ifndef	_NOCOMPLETE
+#if	!defined (FDSH) && !defined(_NOCOMPLETE)
 extern char *finddupl __P_((char *, int, char **));
 extern int completepath __P_((char *, int, int, char ***));
 extern char *findcommon __P_((int, char **));
@@ -115,6 +112,10 @@ extern char *evalarg __P_((char *, int));
 extern int evalifs __P_((int, char ***));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *));
+#ifndef	FDSH
+extern char *_evalpath __P_((char *, char *, int, int));
+extern char *evalpath __P_((char *, int));
+#endif
 
 extern int noglob;
 extern hashlist **hashtable;

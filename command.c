@@ -1266,7 +1266,10 @@ char *arg;
 
 	if (arg) com = strdup2(arg);
 	else if (!(com = inputstr(NULL, 0, -1, NULL, 0))) return(1);
-	if (*com) i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
+	if (*com) {
+		i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
+		if (i < -1) i = 4;
+	}
 	else {
 		execshell();
 		i = 4;
@@ -1342,6 +1345,7 @@ char *arg;
 		i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	}
 	free(com);
+	if (i < -1) i = 4;
 	return(i);
 }
 

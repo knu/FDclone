@@ -441,6 +441,7 @@ int lastdrive = -1;
 char *unitblpath = NULL;
 int needbavail = 0;
 VOID_T (*doswaitfunc)__P_((VOID_A)) = NULL;
+int (*dosintrfunc)__P_((VOID_A)) = NULL;
 
 static char *curdir['Z' - 'A' + 1];
 static devstat devlist[DOSNOFILE];
@@ -1412,6 +1413,10 @@ devstat *devp;
 	clust = devp -> totalsize + 2;;
 	if (devp -> flags & F_FAT32)
 	for (i = 0; i < devp -> fatsize; i++) {
+		if (dosintrfunc && (*dosintrfunc)()) {
+			free(buf);
+			return(0);
+		}
 		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0) {
 			free(buf);
 			return(-1);
@@ -1426,6 +1431,10 @@ devstat *devp;
 	}
 	else if (devp -> flags & F_16BIT)
 	for (i = 0; i < devp -> fatsize; i++) {
+		if (dosintrfunc && (*dosintrfunc)()) {
+			free(buf);
+			return(0);
+		}
 		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0) {
 			free(buf);
 			return(-1);
@@ -1438,6 +1447,10 @@ devstat *devp;
 		if (!clust) break;
 	}
 	else for (i = gap = 0; i < devp -> fatsize; i++) {
+		if (dosintrfunc && (*dosintrfunc)()) {
+			free(buf);
+			return(0);
+		}
 		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0) {
 			free(buf);
 			return(-1);

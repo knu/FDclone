@@ -420,13 +420,9 @@ A3-15.	バイナリ頒布については、1.03 以降の FDclone では頒布
 Q3-16.	MS-DOS ユーザなのですが、コンパイル環境を持っていま
 	せん。
 A3-16.	MS-DOS 用に Borland C++ 5.01J でコンパイルした実行バ
-	イナリパッケージが、以下の anonymous ftp で入手可能
-	です。このパッケージに含まれる実行バイナリには、飯塚
-	豊 <dude@is.s.u-tokyo.ac.jp> 氏作の正規表現ライブラ
-	リ REXP がリンクされていますので、ファイル名検索等に
-	正規表現の使用が可能となっています。
+	イナリパッケージが、以下の URL で入手可能です。
 
-	ftp://ftp.ics.es.osaka-u.ac.jp/pub/FDclone/msdos/
+	http://hp.vector.co.jp/authors/VA012337/soft/fd/
 
 Q3-17.	MS-DOS で画面が崩れて動作できません。
 A3-17.	ANSI.SYS が組込まれていますか？Windows の DOS プロン
@@ -599,10 +595,10 @@ A4-10.	フロッピードライブ機能ではキャッシュを用いているので、
 <5.その他>
 
 Q5-01.	ソースを失ってしまいました。
-A5-01.	現在確認されている anonymous ftp 先は下記のとおりで
-	す。そちらから入手して下さい。
+A5-01.	現在下記の URL に置かれていることが確認されています。
+	そちらから入手して下さい。
 
-	ftp://ftp.ics.es.osaka-u.ac.jp/pub/FDclone/
+	http://hp.vector.co.jp/authors/VA012337/soft/fd/
 
 Q5-02.	FAQ に載っていない質問があるのですが。
 A5-02.	本当ですか？FDclone リリース後に寄せられた質問 mail

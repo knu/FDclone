@@ -41,7 +41,7 @@ ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
 	makefile.bpc makefile.b98 \
-	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed\
+	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 

@@ -742,8 +742,7 @@ char *endmes;
 	ret = old = filepos;
 	helpbar();
 	for (filepos = 0; filepos < max; filepos++) {
-		if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
-			warning(0, INTR_K);
+		if (intrkey()) {
 			endmes = NULL;
 			break;
 		}
@@ -809,12 +808,9 @@ char *endmes;
 	struct dirent *dp;
 	struct stat st;
 	char *cp, *fname, path[MAXPATHLEN], **dirlist;
-	int c, ret, ndir, max;
+	int ret, ndir, max;
 
-	if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
-		warning(0, INTR_K);
-		return(-2);
-	}
+	if (intrkey()) return(-2);
 
 	locate(0, LCMDLINE);
 	putterm(l_clear);
@@ -867,10 +863,7 @@ char *endmes;
 		return(-1);
 	}
 	while ((dp = Xreaddir(dirp))) {
-		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
-			warning(0, INTR_K);
-			return(-2);
-		}
+		if (intrkey()) return(-2);
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 

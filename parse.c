@@ -107,7 +107,7 @@ int evaldq;
 		else if (quote == '\'') continue;
 		else if (ismeta(cp, 0, quote)) {
 			cp++;
-			if (*cp == META && strchr(c, *cp)) return(cp - 1);
+			if (*cp == PMETA && strchr(c, *cp)) return(cp - 1);
 			continue;
 		}
 		else if (quote == '`' || (quote == '"' && !evaldq)) continue;
@@ -206,13 +206,13 @@ int ispath;
 	len = 0;
 	for (cp = path; cp && *cp; cp = next) {
 		if ((next = strtkbrk(cp, delim, 0))) {
-			tmp = _evalpath(cp, next, 1, 0);
+			tmp = _evalpath(cp, next, 0, 0);
 			cp = next;
 			while (*(++next) && strchr(delim, *next));
 		}
 		else {
 			next = cp + strlen(cp);
-			tmp = _evalpath(cp, next, 1, 0);
+			tmp = _evalpath(cp, next, 0, 0);
 			cp = next;
 		}
 		if (ispath) {
@@ -414,7 +414,7 @@ int max;
 	for (i = j = len = 0; promptstr[i]; i++) {
 		cp = NULL;
 		*line = '\0';
-		if (promptstr[i] != '\\') {
+		if (promptstr[i] != META) {
 			k = 0;
 			line[k++] = promptstr[i];
 #ifdef	CODEEUC
@@ -427,7 +427,7 @@ int max;
 		else switch (promptstr[++i]) {
 			case '\0':
 				i--;
-				*line = '\\';
+				*line = META;
 				line[1] = '\0';
 				break;
 			case '!':
@@ -641,9 +641,9 @@ VOID evalenv(VOID_A)
 #endif
 	if (!(promptstr = getenv2("FD_PROMPT"))) promptstr = PROMPT;
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
-	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
+	outputkcode = getlang(getenv2("FD_LANGUAGE"), L_OUTPUT);
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
-	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
+	inputkcode = getlang(getenv2("FD_INPUTKCODE"), L_INPUT);
 #endif
 }

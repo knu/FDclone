@@ -143,8 +143,7 @@ int level, *maxp;
 		*maxp = -2;
 		return(NULL);
 	}
-	if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
-		warning(0, INTR_K);
+	if (intrkey()) {
 		*maxp = -1;
 		return(NULL);
 	}

@@ -503,22 +503,27 @@ int *maxp, noconf, argset;
 	}
 	if (noconf < 0) st.flags |= F_ISARCH;
 
-	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-1);
+	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-2);
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	st.flags |= F_ARGSET;
 	if (noconf >= 0 && !argset) {
 		cp = addoption(tmp, arg, list, max, &st);
 		if (cp != tmp) ret = 2;
-		if (!cp || cp == (char *)-1) return((cp) ? -1 : 2);
+		if (!cp || cp == (char *)-1) return((cp) ? -2 : 2);
 		tmp = cp;
 	}
 	if (!st.needmark) for (;;) {
 		r = dosystem(tmp, list, maxp, noconf);
-		if (r >= ret || r == -1) ret = r;
 		free(tmp);
 		tmp = NULL;
-
 		if (!argset) st.flags &= ~F_ARGSET;
+
+		if (r == -1) {
+			ret = r;
+			break;
+		}
+		if (r >= ret) ret = r;
+
 		if (!(st.flags & F_REMAIN)
 		|| !(tmp = evalcommand(command, arg, list, max, &st)))
 			break;
@@ -589,14 +594,18 @@ int *maxp, noconf, argset;
 	if (i >= maxuserfunc)
 		ret = execmacro(command, arg, list, maxp, noconf, argset);
 	else {
-		ret = -1;
+		ret = -2;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
 			r = execmacro(cp, arg, list, maxp, noconf, argset);
-			if (r >= ret) ret = r;
 			free(cp);
+			if (r == -1) {
+				ret = r;
+				break;
+			}
+			if (r >= ret) ret = r;
 		}
-		if (ret < 0) ret = 4;
+		if (ret < -1) ret = 4;
 	}
 	freeargs(argv);
 	return(ret);

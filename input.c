@@ -109,6 +109,17 @@ static int tmpfilepos = -1;
 static int xpos = 0;
 static int ypos = 0;
 
+int intrkey(VOID_A)
+{
+	int c;
+
+	if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
+		warning(0, INTR_K);
+		return(1);
+	}
+	return(0);
+}
+
 int Xgetkey(sig)
 int sig;
 {

@@ -14,6 +14,11 @@
 #include <jctype.h>
 #define	issjis1(c)	iskanji(c)
 #define	issjis2(c)	iskanji2(c)
+#define	isctl(c)	iscntrl(c)
+#define	iskna(c)	iskana(c)
+#else
+#define	isctl(c)	((u_char)(c) < ' ' || (u_char)(c) == C_DEL)
+#define	iskna(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xdf)
 #endif
 
 #ifndef	issjis1
@@ -29,8 +34,6 @@
 #define	iseuc(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xfe)
 #endif
 
-#define	isctl(c)	((u_char)(c) < ' ' || (u_char)(c) == C_DEL)
-#define	iskna(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xdf)
 #define	isekana(s, i)	((u_char)((s)[i]) == 0x8e && iskna((s)[(i) + 1]))
 #define	isskana(s, i)	iskna((s)[i])
 

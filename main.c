@@ -794,6 +794,7 @@ char *argv[], *envp[];
 #ifndef	_NODOSDRIVE
 	unitblpath = progpath;
 	doswaitfunc = waitmes;
+	dosintrfunc = intrkey;
 #endif
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);

@@ -28,8 +28,9 @@
 	Fujitsu	UXP/DS		(V10, V20)
 	JCC	4.4BSD-Lite	(v1.0)
 		Linux		(2.x)
-		FreeBSD		(2.x)
+		FreeBSD		(2.x, 3.x, 4,x)
 		NetBSD		(1.x)
+		OpenBSD		(2.x)
 	BSDI	BSD/OS		(2.x, 3.0)
 	ASCII	BSD on Windows	(1.0, 1.5)
 
@@ -125,7 +126,7 @@
 1. 以下のコンパイラで動作確認を行なっています。
 	djgpp 1.1x			(g)
 	djgpp 2.0x			(d)
-	LSI C-86 Ver.3.30 試食版	(l)
+	LSI C-86 Ver.3.30		(l)
 	Borland C++ 5.xx		(b)
 
    DOS/V, PC9800 用にそれぞれ makefile.?pc, makefile.?98 が
@@ -133,6 +134,8 @@
    ぞれのコンパイラに応じて上記の () 内の文字が入ります。
    それぞれを makefile と改名しても良いですし、make 時に明
    示的に make -f makefile.xxx と行なっても構いません。
+
+   (LSI-C 試食版ではコンパイルできません。)
 
 2. fd.h で定義されている定数の幾つかを、自分の好みに合わせて
    変更します。各定数の意味は、マニュアルに書かれている環境
@@ -146,17 +149,6 @@
    ておいて下さい。
    (PAGER: ファイル閲覧ソフト, EDITOR: テキストエディタ)
 
-   飯塚豊 <dude@is.s.u-tokyo.ac.jp> 氏作の正規表現ライブラリ
-   REXP <ftp://ftp.vector.co.jp/pack/dos/prog/lib/rexp005.lzh>
-   を持っている場合、ここで USERE_COMP を config.hin に追加
-   することでリンク可能になります。
-   この場合、makefile の LDFLAGS に REXP ライブラリファイル
-   を追加するのを忘れないで下さい。ライブラリの作り方や使い
-   方の詳細は、REXP のドキュメントを参照して下さい。
-   (djgpp 2.0x 以外のコンパイラでは、標準では正規表現ライブ
-   ラリが用意されていませんので、そのままコンパイルした場合
-   はファイル名検索機能等が多少貧弱になります。)
-
 3. make
 
 4. コンパイル時にメモリ不足等でエラーになるようであれば、一
@@ -164,12 +156,6 @@
    ら、config.hin で機能制限用識別子を定義した上で、再コンパ
    イルして下さい。
 	例: #define _NOTREE	(ツリー表示画面が仕様不能)
-
-   (LSI-C 試食版でコンパイルする場合は、ここに書かれた全て
-   の識別子を定義しないと、メモリ不足のためにコンパイルでき
-   ません。更に、config.hin を書換えた後、makefile.l?? にあ
-   る CFLAGS マクロから、"-ml -h" の部分を削除して下さい。
-   製品版の LSI-C ではこれらの手順は必要ないと思われます。)
 
 5. make fd.doc でマニュアルファイルが作成されます。同様に、
    README.doc, HISTORY.doc, FAQ.doc の各種ドキュメントファイ

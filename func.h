@@ -361,6 +361,7 @@ extern int kanjiprintf __P_((CONST char *, ...));
 extern int kanjiputs2 __P_((char *, int, int));
 
 /* input.c */
+extern int intrkey __P_((VOID_A));
 extern int Xgetkey __P_((int));
 extern int cmdlinelen __P_((int));
 extern char *inputstr __P_((char *, int, int, char *, int));
