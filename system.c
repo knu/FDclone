@@ -203,13 +203,12 @@ extern int nokanjifget;
 extern unsigned _stklen = 0x8000;
 # endif
 # if	MSDOS
-static char *deftmpdir = "\\";
+# define	deftmpdir	"\\"
 # define	TTYNAME		"CON"
 # else
-static char *deftmpdir = "/tmp";
+# define	deftmpdir	"/tmp"
 # define	TTYNAME		"/dev/tty"
 # endif
-static char *tmpfilename = NULL;
 int ttyio = -1;
 # ifdef	DEBUG
 # define	exit2(n)	(muntrace(), exit(n))
@@ -382,7 +381,7 @@ extern char *Xgetwd __P_((char *));
 # define	Xlstat		lstat
 # endif
 #define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
-#define	Xunlink		unlink
+#define	Xunlink(p)	(unlink(p) ? -1 : 0)
 #define	Xopen		open
 #define	Xclose		close
 #define	Xread		read
@@ -556,9 +555,7 @@ extern int posixoptind;
 #endif	/* !MINIMUMSHELL */
 
 #ifdef	FD
-extern int mktmpdir __P_((char *));
-extern int rmtmpdir __P_((char *));
-extern int mktmpfile __P_((char *, char *));
+extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((char *));
 # if	MSDOS
 extern int setcurdrv __P_((int, int));
@@ -569,9 +566,7 @@ extern int setenv2 __P_((char *, char *));
 time_t time2 __P_((VOID_A));
 static int NEAR genrand __P_((int));
 static char *NEAR genrandname __P_((char *, int));
-static int NEAR mktmpdir __P_((char *));
-static int NEAR rmtmpdir __P_((char *));
-static int NEAR mktmpfile __P_((char *, char *));
+static int NEAR mktmpfile __P_((char *));
 static int NEAR rmtmpfile __P_((char *));
 # ifdef	DJGPP
 int dos_putpath __P_((char *, int));
@@ -967,13 +962,12 @@ static int NEAR sourcefile __P_((int, char *, int));
 #define	RSHELL		"rfdsh"
 #define	RFD		"rfd"
 #define	UNLIMITED	"unlimited"
-#ifndef	PIPEDIR
-#define	PIPEDIR		"PIPE"
-#endif
-#ifndef	REDIRECTDIR
-#define	REDIRECTDIR	"REDIRECT"
-#endif
 #define	MAXTMPNAMLEN	8
+#if	MSDOS
+#define	TMPPREFIX	"TM"
+#else
+#define	TMPPREFIX	"tm"
+#endif
 #define	BUFUNIT		32
 #define	c_malloc(size)	(malloc2((size) = BUFUNIT))
 #define	c_realloc(ptr, n, size) \
@@ -1195,7 +1189,9 @@ static shbuiltintable shbuiltinlist[] = {
 	{dochdir, "cd", BT_RESTRICT},
 	{dopwd, "pwd", 0},
 	{dosource, ".", BT_POSIXSPECIAL},
+#ifndef	MINIMUMSHELL
 	{dosource, "source", 0},
+#endif
 	{doexport, "export", BT_POSIXSPECIAL},
 	{doreadonly, "readonly", BT_POSIXSPECIAL},
 	{dotimes, "times", BT_POSIXSPECIAL},
@@ -1616,10 +1612,17 @@ char *buf;
 int len;
 {
 	static char seq[] = {
+#if	MSDOS
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 		'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
 		'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
 		'U', 'V', 'W', 'X', 'Y', 'Z', '_'
+#else
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+		'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+		'u', 'v', 'w', 'x', 'y', 'z', '_'
+#endif
 	};
 	int i, j, c;
 
@@ -1641,105 +1644,38 @@ int len;
 	return(buf);
 }
 
-static int NEAR mktmpdir(dir)
-char *dir;
+static int NEAR mktmpfile(file)
+char *file;
 {
 	char *cp, path[MAXPATHLEN];
-	int no;
+	int fd, n, len;
 
-	if (!tmpfilename) {
-		strcpy(path, "TM");
-		ascnumeric(&(path[2]), mypid, 0, MAXPATHLEN - 2 - 1);
-		tmpfilename = strdup2(path);
-	}
-	if (!deftmpdir || !*deftmpdir || !dir || !*dir) {
-		errno = ENOENT;
-		return(-1);
-	}
 	strcpy(path, deftmpdir);
-	strcpy(strcatdelim(path), tmpfilename);
-	if (Xmkdir(path, 0755) < 0 && errno != EEXIST) return(-1);
-	strcpy((cp = strcatdelim(path)), dir);
-	if (Xmkdir(path, 0755) < 0 && errno != EEXIST) {
-		*(--cp) = '\0';
-		no = errno;
-		if (Xrmdir(path) < 0
-		&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES) {
-			fputs("fatal error: ", stderr);
-			kanjifputs(path, stderr);
-			fputs(": cannot remove temporary directory\n", stderr);
-			fflush(stderr);
-			prepareexit(-1);
-			Xexit2(RET_FATALERR);
-		}
-		errno = no;
-		return(-1);
-	}
-	strcpy(dir, path);
-	return(0);
-}
-
-static int NEAR rmtmpdir(dir)
-char *dir;
-{
-	char path[MAXPATHLEN];
-
-	if (dir && *dir && Xrmdir(dir) < 0) return(-1);
-	strcatdelim2(path, deftmpdir, tmpfilename);
-	if (Xrmdir(path) < 0
-	&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
-		return(-1);
-	return(0);
-}
-
-static int NEAR mktmpfile(buf, dir)
-char *buf, *dir;
-{
-	char *cp, path[MAXPATHLEN];
-	int fd, len;
-
-	strcpy(path, dir);
-	if (mktmpdir(path) < 0) return(-1);
 	cp = strcatdelim(path);
+	n = sizeof(TMPPREFIX) - 1;
+	strncpy(cp, TMPPREFIX, n);
 	len = sizeof(path) - 1 - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
+	len -= n;
 	genrandname(NULL, 0);
 
 	for (;;) {
-		genrandname(cp, len);
+		genrandname(cp + n, len);
 		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0644);
 		if (fd >= 0) {
-			strcpy(buf, path);
+			strcpy(file, path);
 			return(fd);
 		}
 		if (errno != EEXIST) break;
 	}
-	if (cp > path) cp--;
-	*cp = '\0';
-	rmtmpdir(path);
 	return(-1);
 }
 
-static int NEAR rmtmpfile(path)
-char *path;
+static int NEAR rmtmpfile(file)
+char *file;
 {
-	char *cp;
-	int ret;
-
-	ret = 0;
-	if (Xunlink(path) != 0 && errno != ENOENT) ret = -1;
-	else if (!(cp = strrdelim(path, 0)));
-# if	MSDOS
-	else if (cp == &(path[2]) && isalpha(path[0]) && path[1] == ':');
-# endif
-	else if (cp != path) {
-		*cp = '\0';
-		if (rmtmpdir(path) < 0
-		&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
-			ret = -1;
-	}
-	free(path);
-	return(ret);
+	if (Xunlink(file) < 0 && errno != ENOENT) return(-1);
+	return(0);
 }
 
 # ifdef	DJGPP
@@ -2380,12 +2316,6 @@ int noexit;
 # endif
 # if	!MSDOS && !defined (MINIMUMSHELL)
 	checkmail(1);
-# endif
-# ifndef	FD
-	if (tmpfilename) {
-		free(tmpfilename);
-		tmpfilename = NULL;
-	}
 # endif
 	for (i = 0; i < NSIG; i++) {
 		signal(i, SIG_IGN);
@@ -3036,7 +2966,7 @@ int ignoretab;
 	}
 #endif
 
-	if ((fd = newdup(mktmpfile(path, PIPEDIR))) < 0) return(NULL);
+	if ((fd = newdup(mktmpfile(path))) < 0) return(NULL);
 	new = (heredoc_t *)malloc2(sizeof(heredoc_t));
 	new -> eof = cp;
 	new -> filename = strdup2(path);
@@ -3053,8 +2983,8 @@ int nown;
 	if (!hdp) return;
 	if (hdp -> eof) free(hdp -> eof);
 	if (hdp -> filename) {
-		if (nown) free(hdp -> filename);
-		else rmtmpfile(hdp -> filename);
+		if (!nown) rmtmpfile(hdp -> filename);
+		free(hdp -> filename);
 	}
 	safeclose(hdp -> fd);
 	free(hdp);
@@ -3483,11 +3413,10 @@ int rm;
 			if (!rm) {
 				if (hdp -> fd >= 0) return(hdp);
 			}
-			else {
-				if (hdp -> filename) {
-					rmtmpfile(hdp -> filename);
-					hdp -> filename = NULL;
-				}
+			else if (hdp -> filename) {
+				rmtmpfile(hdp -> filename);
+				free(hdp -> filename);
+				hdp -> filename = NULL;
 			}
 		}
 	}
@@ -3681,7 +3610,7 @@ redirectlist *rp;
 	}
 # endif	/* !MSDOS && !USEFAKEPIPE */
 
-	if ((fd = newdup(mktmpfile(pfile, PIPEDIR))) < 0) return(-1);
+	if ((fd = newdup(mktmpfile(pfile))) < 0) return(-1);
 	if (rp -> type & MD_WRITE) rp -> dosfd = rp -> new;
 	else {
 		fdcopy(rp -> new, fd);
@@ -3689,7 +3618,7 @@ redirectlist *rp;
 		safeclose(fd);
 		fd = newdup(Xopen(pfile, O_BINARY | O_RDONLY, 0666));
 		if (fd < 0) {
-			rmtmpfile(strdup2(pfile));
+			rmtmpfile(pfile);
 			rp -> fakepipe = NULL;
 			return(-1);
 		}
@@ -3714,6 +3643,7 @@ redirectlist *rp;
 		safeclose(rp -> dosfd);
 	}
 	rmtmpfile(rp -> fakepipe);
+	free(rp -> fakepipe);
 	rp -> fakepipe = NULL;
 	rp -> dosfd = -1;
 	return(0);
@@ -5881,7 +5811,7 @@ long parent;
 		free(pl);
 		return(-1);
 	}
-	if ((fd = newdup(mktmpfile(pfile, PIPEDIR))) < 0) {
+	if ((fd = newdup(mktmpfile(pfile))) < 0) {
 		free(pl);
 		safeclose(dupl);
 		return(-1);
@@ -5940,6 +5870,7 @@ int fd, ret;
 	pl -> ret = ret;
 	if ((fd = newdup(Xopen(pl -> file, O_BINARY | O_RDONLY, 0666))) < 0) {
 		rmtmpfile(pl -> file);
+		free(pl -> file);
 		*prevp = pl -> next;
 		free(pl);
 		return(-1);
@@ -5948,6 +5879,7 @@ int fd, ret;
 		if ((dupl = newdup(Xdup(pl -> fd))) < 0) {
 			safeclose(fd);
 			rmtmpfile(pl -> file);
+			free(pl -> file);
 			*prevp = pl -> next;
 			free(pl);
 			return(-1);
@@ -5972,6 +5904,7 @@ int fd;
 	if (!(fp = Xfdopen(fd, "r"))) {
 		safeclose(fd);
 		rmtmpfile(pl -> file);
+		free(pl -> file);
 		*prevp = pl -> next;
 		free(pl);
 		return(NULL);
@@ -6008,6 +5941,7 @@ int fd;
 
 	if (pl -> file) {
 		if (rmtmpfile(pl -> file) < 0) doperror(NULL, pl -> file);
+		free(pl -> file);
 		ret = pl -> ret;
 	}
 #if	!MSDOS
@@ -8932,10 +8866,11 @@ syntaxtree *trp;
 int type, id, bg;
 #endif
 {
-#if	MSDOS
-	int ret;
-#else
+#if	!MSDOS
 	long pid;
+#endif
+#if	MSDOS || defined (FD)
+	int ret;
 #endif
 	command_t *comm;
 	char *path;
@@ -8955,7 +8890,10 @@ int type, id, bg;
 		return(execbuiltin(id, comm -> argc, comm -> argv));
 	if (type == CT_FDINTERNAL) {
 		if (shellmode) return(RET_FAIL);
-		return(execinternal(id, comm -> argc, comm -> argv));
+		resetsignal(0);
+		ret = execinternal(id, comm -> argc, comm -> argv);
+		setsignal();
+		return(ret);
 	}
 #endif
 #if	MSDOS

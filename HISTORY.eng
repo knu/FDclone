@@ -1,3 +1,9 @@
+Ver. 2.02a	Allow pack/unpack archive files into floppy drives.
+ (12/25/02)	Temporary directory names will be generated randomly.
+		Interruption in some internal commands via EXECUTE_SH is fixed.
+		Abortion when reading recursive directories is fixed.
+		Abortion when changing file attributions on some OS is fixed.
+
 Ver. 2.02	Add 'pushd', 'popd' and 'dirs' builtins.
  (11/26/02)	Add -L, -P options in 'cd', 'pwd' builtins.
 		Add -o physical option in 'set' builtin.

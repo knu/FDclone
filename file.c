@@ -59,7 +59,9 @@ extern int physical_path;
 static int NEAR cpfile __P_((char *, char *, struct stat *, struct stat *));
 static VOID changemes __P_((VOID_A));
 static int NEAR genrand __P_((int));
+static int dounlink __P_((char *));
 #ifndef	_NOWRITEFS
+static int NEAR isexist __P_((char *));
 static int NEAR k_strlen __P_((char *));
 static int NEAR saferename __P_((char *, char *));
 static char *NEAR maketmpfile __P_((int, char *, char *));
@@ -438,32 +440,36 @@ char *dir;
 {
 	struct stat st;
 	char tmp[MAXPATHLEN];
-#if	MSDOS
 	char *cp;
-#endif
 
-	if (stat2(dir, &st) < 0) {
-		if (errno != ENOENT) return(-1);
-		if (Xmkdir(dir, 0777) < 0) {
-#if	MSDOS
-			if (errno != EEXIST) return(-1);
-			cp = (_dospath(dir)) ? dir + 2 : dir;
-			if (cp[0] != _SC_ || cp[1]) {
-				if ((cp = strrdelim(dir, 1))) cp++;
-				else cp = dir;
-				if (cp[0] != '.' || cp[1]) return(-1);
-			}
-			st.st_mode = S_IFDIR;
-#else
-			return(-1);
+	cp = dir;
+#if	MSDOS || !defined (_NODOSDRIVE)
+	if (_dospath(dir)) cp += 2;
 #endif
+	if (!isdotdir(cp)) {
+		if (stat2(dir, &st) < 0) {
+			if (errno != ENOENT) return(-1);
+			if (Xmkdir(dir, 0777) < 0) {
+#if	MSDOS
+				if (errno != EEXIST) return(-1);
+				if (cp[0] != _SC_ || cp[1]) {
+					if ((cp = strrdelim(dir, 1))) cp++;
+					else cp = dir;
+					if (cp[0] != '.' || cp[1]) return(-1);
+				}
+				st.st_mode = S_IFDIR;
+#else
+				return(-1);
+#endif
+			}
+			else if (stat2(dir, &st) < 0) return(-1);
 		}
-		else if (stat2(dir, &st) < 0) return(-1);
+		if ((st.st_mode & S_IFMT) != S_IFDIR) {
+			errno = ENOTDIR;
+			return(-1);
+		}
 	}
-	if ((st.st_mode & S_IFMT) != S_IFDIR) {
-		errno = ENOTDIR;
-		return(-1);
-	}
+
 	entryhist(1, realpath2(dir, tmp, 0), 1);
 	return(0);
 }
@@ -509,7 +515,7 @@ struct stat *stp;
 	if (stp -> st_flags != 0xffffffff) {
 # ifndef	_NODOSDRIVE
 		if (dospath(path, NULL)) {
-			errno = EACCES;
+			duperrno = EACCES;
 			ret = -1;
 		}
 		else
@@ -533,6 +539,10 @@ struct stat *stp;
 	else if (!(st.st_mode & S_IWRITE)) Xchmod(path, st.st_mode);
 #else
 	if (stp -> st_gid != (gid_t)-1) {
+# ifndef	_NODOSDRIVE
+		if (dospath(path, NULL));
+		else
+# endif
 		if (chown(path, stp -> st_uid, stp -> st_gid) < 0)
 			chown(path, -1, stp -> st_gid);
 	}
@@ -552,14 +562,12 @@ char *path;
 
 	if (path != fullpath && !rawchdir(fullpath) && _Xgetwd(path, 1))
 		cp = NOCWD_K;
-	else {
-		if ((cp = gethomedir()) && !rawchdir(cp) && _Xgetwd(path, 1))
-			cp = GOHOM_K;
-		else if (!rawchdir(_SS_) && _Xgetwd(path, 1)) cp = GOROT_K;
-		else error(_SS_);
-		strncpy2(fullpath, path, MAXPATHLEN - 1);
-	}
+	else if ((cp = gethomedir()) && !rawchdir(cp) && _Xgetwd(path, 1))
+		cp = GOHOM_K;
+	else if (!rawchdir(_SS_) && _Xgetwd(path, 1)) cp = GOROT_K;
+	else error(_SS_);
 
+	if (path != fullpath) strncpy2(fullpath, path, MAXPATHLEN - 1);
 	warning(0, cp);
 	errno = duperrno;
 }
@@ -638,6 +646,9 @@ struct stat *stp1, *stp2;
 		errno = tmperrno;
 		return(-1);
 	}
+#ifdef	HAVEFLAGS
+	stp1 -> st_flags = 0xffffffff;
+#endif
 #if	MSDOS
 	if (touchfile(dest, stp1) < 0) return(-1);
 #else
@@ -688,9 +699,12 @@ struct stat *stp1, *stp2;
 	if (Xrename(src, dest) >= 0) return(0);
 	if (errno != EXDEV || (stp1 -> st_mode & S_IFMT) == S_IFDIR)
 		return(-1);
-	if (safecpfile(src, dest, stp1, stp2) < 0 || Xunlink(src) < 0
-	|| touchfile(dest, stp1) < 0) return(-1);
-	return(0);
+	if (safecpfile(src, dest, stp1, stp2) < 0 || Xunlink(src) < 0)
+		return(-1);
+#ifdef	HAVEFLAGS
+	stp1 -> st_flags = 0xffffffff;
+#endif
+	return (touchfile(dest, stp1));
 }
 
 static int NEAR genrand(max)
@@ -716,10 +730,17 @@ char *buf;
 int len;
 {
 	static char seq[] = {
+#if	MSDOS
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 		'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
 		'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
 		'U', 'V', 'W', 'X', 'Y', 'Z', '_'
+#else
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+		'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+		'u', 'v', 'w', 'x', 'y', 'z', '_'
+#endif
 	};
 	int i, j, c;
 
@@ -745,10 +766,9 @@ int mktmpdir(dir)
 char *dir;
 {
 	char *cp, path[MAXPATHLEN];
-	int no;
+	int n, len;
 
-	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename
-	|| !dir || !*dir) {
+	if (!deftmpdir || !*deftmpdir || !dir) {
 		errno = ENOENT;
 		return(-1);
 	}
@@ -764,23 +784,57 @@ char *dir;
 #endif
 	deftmpdir = strdup2(path);
 #if	MSDOS
-	no = getcurdrv();
-	*path = (no >= 'A' && no <= 'Z') ? toupper2(*path) : tolower2(*path);
+	n = getcurdrv();
+	*path = (n >= 'A' && n <= 'Z') ? toupper2(*path) : tolower2(*path);
 #endif
-	strcpy(strcatdelim(path), tmpfilename);
-	if (_Xmkdir(path, 0755, 0, 1) < 0 && errno != EEXIST) return(-1);
-	strcpy((cp = strcatdelim(path)), dir);
-	if (_Xmkdir(path, 0755, 0, 1) < 0 && errno != EEXIST) {
+
+	cp = strcatdelim(path);
+	if (tmpfilename) strcpy(cp, tmpfilename);
+	else {
+		n = sizeof(TMPPREFIX) - 1;
+		strncpy(cp, TMPPREFIX, n);
+		len = sizeof(path) - 1 - (cp - path);
+		if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
+		len -= n;
+		genrandname(NULL, 0);
+
+		for (;;) {
+			genrandname(cp + n, len);
+			if (_Xmkdir(path, 0755, 0, 1) >= 0) break;
+			if (errno != EEXIST) return(-1);
+		}
+		tmpfilename = strdup2(cp);
+	}
+
+	if (!(n = strlen(dir))) {
+		strcpy(dir, path);
+		return(0);
+	}
+
+	strncpy((cp = strcatdelim(path)), dir, n);
+	len = sizeof(path) - 1 - (cp - path);
+	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
+	len -= n;
+	genrandname(NULL, 0);
+
+	for (;;) {
+		genrandname(cp + n, len);
+		if (_Xmkdir(path, 0755, 0, 1) >= 0) {
+			strcpy(dir, path);
+			return(0);
+		}
+		if (errno != EEXIST) break;
+	}
+
+	if (cp > path) {
 		*(--cp) = '\0';
-		no = errno;
+		n = errno;
 		if (Xrmdir(path) < 0
 		&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
 			error(path);
-		errno = no;
-		return(-1);
+		errno = n;
 	}
-	strcpy(dir, path);
-	return(0);
+	return(-1);
 }
 
 int rmtmpdir(dir)
@@ -794,19 +848,22 @@ char *dir;
 		return(-1);
 	}
 	strcatdelim2(path, deftmpdir, tmpfilename);
-	if (_Xrmdir(path, 0, 1) < 0
-	&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
+	if (_Xrmdir(path, 0, 1) >= 0) {
+		free(tmpfilename);
+		tmpfilename = NULL;
+	}
+	else if (errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
 		return(-1);
 	return(0);
 }
 
-int mktmpfile(buf, dir)
-char *buf, *dir;
+int mktmpfile(file)
+char *file;
 {
 	char *cp, path[MAXPATHLEN];
 	int fd, len;
 
-	strcpy(path, dir);
+	*path = '\0';
 	if (mktmpdir(path) < 0) return(-1);
 	cp = strcatdelim(path);
 	len = sizeof(path) - 1 - (cp - path);
@@ -817,42 +874,42 @@ char *buf, *dir;
 		genrandname(cp, len);
 		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0644);
 		if (fd >= 0) {
-			strcpy(buf, path);
+			strcpy(file, path);
 			return(fd);
 		}
 		if (errno != EEXIST) break;
 	}
-	if (cp > path) cp--;
-	*cp = '\0';
-	rmtmpdir(path);
+	rmtmpdir(NULL);
 	return(-1);
 }
 
-int rmtmpfile(path)
+int rmtmpfile(file)
+char *file;
+{
+	if ((Xunlink(file) < 0 && errno != ENOENT) || rmtmpdir(NULL) < 0)
+		return(-1);
+	return(0);
+}
+
+static int dounlink(path)
 char *path;
 {
-	char *cp;
-	int ret;
+	return(Xunlink(path));
+}
 
-	ret = 0;
-	if (Xunlink(path) != 0 && errno != ENOENT) ret = -1;
-	else if (!(cp = strrdelim(path, 0)));
-#if	MSDOS
-	else if (cp == &(path[2]) && isalpha(path[0]) && path[1] == ':');
-#endif
-	else if (cp != path) {
-		*cp = '\0';
-		if (rmtmpdir(path) < 0
-		&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
-			ret = -1;
-	}
-	free(path);
-	return(ret);
+static int dormdir(path)
+char *path;
+{
+	if (isdotdir(path)) return(0);
+	return(Xrmdir(path));
 }
 
 VOID removetmp(dir, subdir, file)
 char *dir, *subdir, *file;
 {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char path[MAXPATHLEN];
+#endif
 	char *cp, *tmp, *dupdir;
 
 	if (!dir || !*dir) subdir = file = NULL;
@@ -870,20 +927,13 @@ char *dir, *subdir, *file;
 	}
 	if (file) {
 		if (*file) {
-#if	!MSDOS && !defined (_NODOSDRIVE)
-			char path[MAXPATHLEN];
-
-			file = nodospath(path, file);
-#endif
-			if (Xunlink(file) < 0) {
+			if (Xunlink(nodospath(path, file)) < 0) {
 				warning(-1, file);
 				subdir = NULL;
 			}
 		}
-		else if (applydir(".", Xunlink, NULL, NULL, 0, NULL) < 0) {
-			warning(-1, dir);
+		else if (applydir(NULL, dounlink, NULL, dormdir, 3, NULL) < 0)
 			subdir = NULL;
-		}
 	}
 	if (subdir && *subdir) {
 		if (_chdir2(dir) < 0) error(dir);
@@ -944,27 +994,36 @@ char *dir, *file;
 }
 
 #ifndef	_NODOSDRIVE
+char *dostmpdir(drive)
+int drive;
+{
+	char path[MAXPATHLEN];
+
+	path[0] = DOSTMPPREFIX;
+	path[1] = drive;
+	path[2] = '\0';
+	if (mktmpdir(path) < 0) return(NULL);
+	return(strdup2(path));
+}
+
 int tmpdosdupl(dir, dirp, single)
 char *dir, **dirp;
 int single;
 {
 	struct stat st;
-	char *cp, path[MAXPATHLEN];
+	char *cp, *tmpdir, path[MAXPATHLEN];
 # if	!MSDOS
 	char tmp[MAXPATHLEN];
 # endif
 	int i, drive;
 
 	if (!(drive = dospath2(dir))) return(0);
-	cp = path;
-	*(cp++) = 'D';
-	*(cp++) = drive;
-	*cp = '\0';
-	if (mktmpdir(path) < 0) {
-		warning(-1, path);
+	if (!(tmpdir = dostmpdir(drive))) {
+		warning(-1, dir);
 		return(-1);
 	}
 
+	strcpy(path, tmpdir);
 	cp = strcatdelim(path);
 	waitmes();
 
@@ -974,8 +1033,7 @@ int single;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
 		if (cpfile(fnodospath(tmp, filepos), path, &st, NULL) < 0) {
 			warning(-1, path);
-			*(--cp) = '\0';
-			removetmp(strdup2(path), NULL, NULL);
+			removetmp(tmpdir, NULL, NULL);
 			return(-1);
 		}
 	}
@@ -986,17 +1044,15 @@ int single;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
 		if (cpfile(fnodospath(tmp, i), path, &st, NULL) < 0) {
 			warning(-1, path);
-			*(--cp) = '\0';
-			removetmp(strdup2(path), NULL, "");
+			removetmp(tmpdir, NULL, "");
 			return(-1);
 		}
 	}
 
-	*(--cp) = '\0';
 	dosdrv = lastdrv;
 	lastdrv = -1;
-	if (_chdir2(path) < 0) error(path);
-	*dirp = strdup2(path);
+	if (_chdir2(tmpdir) < 0) error(tmpdir);
+	*dirp = tmpdir;
 	return(drive);
 }
 
@@ -1024,20 +1080,16 @@ char *file;
 }
 #endif	/* !_NODOSDRIVE */
 
-int isexist(file)
+#ifndef	_NOWRITEFS
+static int NEAR isexist(file)
 char *file;
 {
-#if	MSDOS && !defined (_NOUSELFN)
-	char *cp, buf[MAXPATHLEN];
+	struct stat st;
 
-	if (!(cp = preparefile(file, buf)) && errno == ENOENT) return(0);
-	if (cp == buf) return(1);
-#endif
-	if (Xaccess(file, F_OK) < 0 && errno == ENOENT) return(0);
+	if (_Xlstat(file, &st, 1, 0) < 0 && errno == ENOENT) return(0);
 	return(1);
 }
 
-#ifndef	_NOWRITEFS
 static int NEAR k_strlen(s)
 char *s;
 {
@@ -1262,8 +1314,7 @@ int fs;
 	Xclosedir(dirp);
 
 	if (ent > 0) {
-		if (!(cp = maketmpfile(len, tmpdir, tmpdir)))
-			error(tmpdir);
+		if (!(cp = maketmpfile(len, tmpdir, tmpdir))) error(tmpdir);
 		free(tmpdir);
 		tmpdir = cp;
 		strcatdelim2(path, tmpdir, NULL);
@@ -1335,7 +1386,7 @@ int fs;
 
 #if	!MSDOS
 	for (i = 0; i < tmpno; i++) if (tmpfile[i]) {
-		if (unlink(tmpfile[i]) < 0) error(tmpfile[i]);
+		if (_Xunlink(tmpfile[i], 1) < 0) error(tmpfile[i]);
 		free(tmpfile[i]);
 	}
 	free(tmpfile);

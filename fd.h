@@ -40,18 +40,24 @@ extern char *_mtrace_file;
 
 #if	MSDOS
 # if	FD >= 2
-#define	RUNCOMFILE	"~\\fd2.rc"
+# define	RUNCOMFILE	"~\\fd2.rc"
 # else
-#define	RUNCOMFILE	"~\\fd.rc"
+# define	RUNCOMFILE	"~\\fd.rc"
 # endif
 #define	HISTORYFILE	"~\\fd.hst"
+#define	TMPPREFIX	"FD"
+#define	ARCHTMPPREFIX	"AR"
+#define	DOSTMPPREFIX	'D'
 #else
 # if	FD >= 2
-#define	RUNCOMFILE	"~/.fd2rc"
+# define	RUNCOMFILE	"~/.fd2rc"
 # else
-#define	RUNCOMFILE	"~/.fdrc"
+# define	RUNCOMFILE	"~/.fdrc"
 # endif
 #define	HISTORYFILE	"~/.fd_history"
+#define	TMPPREFIX	"fd"
+#define	ARCHTMPPREFIX	"ar"
+#define	DOSTMPPREFIX	'd'
 #endif
 
 #if	MSDOS && defined (_NOORIGSHELL)
@@ -213,6 +219,10 @@ extern char *_mtrace_file;
 #define	WMODELINE	1
 #endif
 
+
+/****************************************************************
+ *	Restrictions for causation				*
+ ****************************************************************/
 #ifdef	UNKNOWNFS
 #undef	WRITEFS
 #define	WRITEFS		2

@@ -320,7 +320,7 @@ static int NEAR readdent __P_((dosDIR *, dent_t *, int));
 static dosDIR *NEAR _dosopendir __P_((char *, char *, int));
 static int NEAR _dosclosedir __P_((dosDIR *));
 static struct dirent *NEAR _dosreaddir __P_((dosDIR *, int));
-static struct dirent *NEAR finddir __P_((dosDIR *, char *, int, int));
+static struct dirent *NEAR finddirent __P_((dosDIR *, char *, int, int));
 static dosDIR *NEAR splitpath __P_((char **, char *, int));
 static int NEAR getdent __P_((char *, int *));
 static int NEAR writedent __P_((int));
@@ -3242,7 +3242,7 @@ int needlfn;
 		}
 		if (!len || (len == 1 && *cp == '.')) continue;
 
-		if (!(dp = finddir(xdirp, cp, len, needlfn))) {
+		if (!(dp = finddirent(xdirp, cp, len, needlfn))) {
 			errno = (doserrno) ? doserrno : ENOENT;
 			_dosclosedir(xdirp);
 			doserrno = errno;
@@ -3491,7 +3491,7 @@ DIR *dirp;
 	return(dp);
 }
 
-static struct dirent *NEAR finddir(xdirp, fname, len, needlfn)
+static struct dirent *NEAR finddirent(xdirp, fname, len, needlfn)
 dosDIR *xdirp;
 char *fname;
 int len, needlfn;
@@ -3616,6 +3616,11 @@ int needlfn;
 	if (i < 3) dir[i++] = _SC_;
 	dir[i] = '\0';
 
+	if (i <= 3 && isdotdir(*pathp)) {
+		doserrno = ENOENT;
+		return(NULL);
+	}
+
 	return(_dosopendir(dir, resolved, needlfn));
 }
 
@@ -3663,7 +3668,7 @@ int *ddp;
 		errno = tmperrno;
 		return(dd);
 	}
-	if (!finddir(xdirp, path, 0, 0)) {
+	if (!finddirent(xdirp, path, 0, 0)) {
 		errno = (doserrno) ? doserrno : ENOENT;
 		_dosclosedir(xdirp);
 		if (ddp && !doserrno) *ddp = dd;
@@ -3986,7 +3991,7 @@ char *path, *alias;
 	if (!*path);
 	else if (*name) strcpy(cp, name);
 	else if (isdotdir(path)) strcpy(cp, path);
-	else if (finddir(xdirp, path, 0, 0))
+	else if (finddirent(xdirp, path, 0, 0))
 		getdosname(cp, dd2dentp(xdirp -> dd_fd) -> name,
 			dd2dentp(xdirp -> dd_fd) -> ext);
 	else {
@@ -4020,7 +4025,8 @@ char *path, *resolved;
 	}
 	cp = strcatdelim(resolved);
 	if (!*path);
-	else if ((dp = finddir(xdirp, path, 0, 1))) strcpy(cp, dp -> d_name);
+	else if ((dp = finddirent(xdirp, path, 0, 1)))
+		strcpy(cp, dp -> d_name);
 	else {
 		errno = (doserrno) ? doserrno : ENOENT;
 		resolved = NULL;
@@ -4269,7 +4275,7 @@ int flags, mode;
 
 	if ((dd = getdent(path, &tmp)) < 0) {
 		if (doserrno != ENOENT || tmp < 0 || !(flags & O_CREAT)
-		|| (dd = creatdent(path, mode)) < 0) {
+		|| (dd = creatdent(path, mode & 0777)) < 0) {
 			errno = doserrno;
 			if (tmp >= 0) closedev(tmp);
 			return(-1);
@@ -4562,7 +4568,7 @@ int mode;
 	long clust;
 	int fd, tmp;
 
-	if ((fd = dosopen(path, O_RDWR | O_CREAT | O_EXCL, mode)) < 0)
+	if ((fd = dosopen(path, O_RDWR | O_CREAT | O_EXCL, mode & 0777)) < 0)
 		return(-1);
 
 	fd -= DOSFDOFFSET;

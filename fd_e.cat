@@ -1763,11 +1763,11 @@ DDEESSCCRRIIPPTTIIOONN
      screen, you can browse files in the archive file as well as
      in the normal directory.  But you cannot use the following
      internal commands in this screen.
-          LLOOGG_TTOOPP        LLOOGG_DDIIRR        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE
-          MMOOVVEE_FFIILLEE      DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE
-          MMAAKKEE_DDIIRR       WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE
-          LLOOGG_TTRREEEE       CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR
-          SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+          LLOOGG_TTOOPP        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE      MMOOVVEE_FFIILLEE
+          DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE    MMAAKKEE_DDIIRR
+          WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE      LLOOGG_TTRREEEE
+          CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       SSYYMMLLIINNKK_MMOODDEE
+          DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
 
      When you want to register a new archive browser, you must
      describe the format listed by the archiver as the following
@@ -2552,12 +2552,6 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    Any value except 00 and null effects valid.
                    ((UUNNIIXX))
 
-                   And, if this variable is ineffective, a com-
-                   mand line of ffddsshh always begins at the end of
-                   a screen.  (On MS-DOS version, the cursor
-                   position is always gotten rightly, if this
-                   variable is effective or not.)
-
      DDEEFFCCOOLLUUMMNNSS    Specify the columns displayed in the screen
                    when ffdd is invoked.  The default value is 22.
                    If you specify the value except 11, 22, 33 and 55,
@@ -2815,7 +2809,7 @@ FFIILLEESS
      //bbiinn//sshh   The user shell when the environment variable SSHHEELLLL
                is undefined
      //bbiinn//rrmm   The command to remove temporary files when abort
-     //ttmmpp//ffdd*  The temporary directory to unpack the archive file
+     //ttmmpp//ffdd**  The temporary directory to unpack the archive file
      ffdd--uunniiccdd..ttbbll
                The UNICODE translation table for the floppy
                drive, which is installed in the same directory as

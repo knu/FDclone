@@ -139,7 +139,10 @@ static int NEAR dirmatchlen __P_((char *, char *));
 static char *NEAR pseudodir __P_((namelist *));
 static int NEAR readarchive __P_((char *, launchtable *));
 static char *NEAR searcharcdir __P_((char *, int));
-static char *NEAR genfullpath __P_((char *, char *));
+static char *NEAR genfullpath __P_((char *, char *, char *, char *));
+#ifndef	_NODOSDRIVE
+static int NEAR archdostmpdir __P_((char *, char **, char *));
+#endif
 
 int maxlaunch = 0;
 int maxarchive = 0;
@@ -1280,51 +1283,53 @@ char ***argvp;
 int launcher(VOID_A)
 {
 	reg_t *re;
-	char *dir;
+	char *tmpdir;
 	int i, n;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
-#if	!MSDOS
-	int dupignorecase;
-#endif
 
-#ifndef	_NODOSDRIVE
-	drive = 0;
-#endif
 	for (i = 0; i < maxlaunch; i++) {
 #if	!MSDOS
-		dupignorecase = pathignorecase;
-		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase = 1;
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase++;
 #endif
 		re = regexp_init(launchlist[i].ext, -1);
 		n = regexp_exec(re, filelist[filepos].name, 0);
 		regexp_free(re);
 #if	!MSDOS
-		pathignorecase = dupignorecase;
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase--;
 #endif
 		if (n) break;
 	}
 	if (i >= maxlaunch) return(-1);
 
-	dir = NULL;
-	if ((archivefile && !(dir = tmpunpack(1)))
+	tmpdir = NULL;
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, 1)) < 0
+	drive = 0;
 #endif
-	) {
+
+	if (archivefile) {
+		if (!(tmpdir = tmpunpack(1))) {
+			putterm(t_bell);
+			return(1);
+		}
+	}
+#ifndef	_NODOSDRIVE
+	else if ((drive = tmpdosdupl("", &tmpdir, 1)) < 0) {
 		putterm(t_bell);
 		return(1);
 	}
+#endif
+
 	if (!isarchbr(&(launchlist[i]))) {
 		execusercomm(launchlist[i].comm, filelist[filepos].name,
 			1, 0, 1);
 #ifndef	_NODOSDRIVE
-		if (drive) removetmp(dir, NULL, filelist[filepos].name);
+		if (drive) removetmp(tmpdir, NULL, filelist[filepos].name);
 		else
 #endif
 		if (archivefile)
-			removetmp(dir, archivedir, filelist[filepos].name);
+			removetmp(tmpdir, archivedir, filelist[filepos].name);
 		return(0);
 	}
 
@@ -1332,13 +1337,13 @@ int launcher(VOID_A)
 #ifndef	_NODOSDRIVE
 	if (drive) {
 		archduplp -> v_fullpath = strdup2(fullpath);
-		strcpy(fullpath, dir);
+		strcpy(fullpath, tmpdir);
 	}
 	else
 #endif
 	if (archivefile) {
 		archduplp -> v_fullpath = strdup2(fullpath);
-		strcpy(fullpath, dir);
+		strcpy(fullpath, tmpdir);
 		if (*archivedir) {
 			strcpy(strcatdelim(fullpath), archivedir);
 			archduplp -> v_archivedir = strdup2(archivedir);
@@ -1346,7 +1351,7 @@ int launcher(VOID_A)
 	}
 	archivefile = strdup2(filelist[filepos].name);
 	*archivedir = '\0';
-	archtmpdir = dir;
+	archtmpdir = tmpdir;
 #ifndef	_NODOSDRIVE
 	archdrive = drive;
 #endif
@@ -1376,111 +1381,172 @@ int launcher(VOID_A)
 	return(0);
 }
 
-static char *NEAR genfullpath(path, file)
-char *path, *file;
+/*ARGSUSED*/
+static char *NEAR genfullpath(path, file, full, tmpdir)
+char *path, *file, *full, *tmpdir;
 {
 	char *cp;
-#if	MSDOS || !defined (_NODOSDRIVE)
-	int drive;
-#endif
 
 	cp = file;
 #if	MSDOS || !defined (_NODOSDRIVE)
 	if (_dospath(cp)) cp += 2;
 #endif
+
+#ifndef	_NODOSDRIVE
+	if (tmpdir) strcpy(path, tmpdir);
+	else
+#endif	/* !_NODOSDRIVE */
 	if (*cp == _SC_) {
 		strcpy(path, file);
 		return(path);
 	}
-#ifndef	_NODOSDRIVE
-	else if ((drive = dospath2(fullpath))) {
-		if (!deftmpdir || !*deftmpdir
-		|| !tmpfilename || !*tmpfilename) {
-			warning(ENOENT, file);
-			return(NULL);
-		}
-
-		realpath2(deftmpdir, path, 1);
-		free(deftmpdir);
-# if	MSDOS
-		if (checkdrive(toupper2(path[0]) - 'A'))
-		if (!_Xgetwd(path, 1)) {
-			lostcwd(path);
-			deftmpdir = NULL;
-			return(NULL);
-		}
-# endif
-		deftmpdir = strdup2(path);
-		strcpy(strcatdelim(path), tmpfilename);
-		cp = strcatdelim(path);
-		*(cp++) = 'D';
-		*(cp++) = drive;
-		*cp = '\0';
+	else if (!full || !*full) {
+		errno = ENOENT;
+		return(NULL);
 	}
-#endif	/* !_NODOSDRIVE */
 #if	MSDOS
-	else if (cp > file
-	&& (drive = toupper2(*file)) != toupper2(*fullpath)) {
+	else if (cp > file) {
+		int drive;
+
 		path[0] = *file;
 		path[1] = ':';
 		path[2] = _SC_;
-		if (!unixgetcurdir(&(path[3]), drive - 'A' + 1)) return(NULL);
+		if ((drive = toupper2(*file)) == toupper2(*full))
+			strcpy(&(path[3]), &(full[3]));
+		else if (!unixgetcurdir(&(path[3]), drive - 'A' + 1))
+			return(NULL);
 	}
 #endif
-	else strcpy(path, fullpath);
+	else strcpy(path, full);
+
 	strcpy(strcatdelim(path), cp);
 	return(path);
 }
+
+#ifndef	_NODOSDRIVE
+static int NEAR archdostmpdir(path, dirp, full)
+char *path, **dirp, *full;
+{
+	char *cp, dupfullpath[MAXPATHLEN];
+	int drive;
+
+	strcpy(dupfullpath, fullpath);
+	if (full != fullpath) {
+		strcpy(fullpath, full);
+		if (_chdir2(fullpath) < 0) full = NULL;
+	}
+	drive = dospath2(path);
+	strcpy(fullpath, dupfullpath);
+	if (full != fullpath && _chdir2(fullpath) < 0) {
+		lostcwd(fullpath);
+		return(-1);
+	}
+
+	if (!drive) return(0);
+	cp = path;
+	if (_dospath(cp)) cp += 2;
+	if (full) strcpy(fullpath, full);
+	else if (*cp != _SC_) return(-1);
+	realpath2(path, path, 1);
+	strcpy(fullpath, dupfullpath);
+
+	if (!(cp = dostmpdir(drive))) return(-1);
+	*dirp = cp;
+	return(1);
+}
+#endif	/* !_NODOSDRIVE */
 
 int pack(arc)
 char *arc;
 {
 	winvartable *wvp;
 	reg_t *re;
-	char *duparchivefile, path[MAXPATHLEN], dupfullpath[MAXPATHLEN];
+	char *tmpdir, *full, *duparchivefile, path[MAXPATHLEN];
 	int i, n, ret;
-#if	!MSDOS
-	int dupignorecase;
+#ifndef	_NODOSDRIVE
+	char *dest, *tmpdest;
+	int drive;
 #endif
 
 	for (i = 0; i < maxarchive; i++) {
 		if (!archivelist[i].p_comm) continue;
 #if	!MSDOS
-		dupignorecase = pathignorecase;
-		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase = 1;
+		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase++;
 #endif
 		re = regexp_init(archivelist[i].ext, -1);
 		n = regexp_exec(re, arc, 0);
 		regexp_free(re);
 #if	!MSDOS
-		pathignorecase = dupignorecase;
+		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase--;
 #endif
 		if (n) break;
 	}
 	if (i >= maxarchive) return(-1);
 
-	strcpy(dupfullpath, fullpath);
+	full = fullpath;
 	for (wvp = archduplp; wvp; wvp = wvp -> v_archduplp)
-		if (wvp -> v_fullpath) strcpy(fullpath, wvp -> v_fullpath);
-	if (!genfullpath(path, arc)) {
-		strcpy(fullpath, dupfullpath);
+		if (wvp -> v_fullpath) full = wvp -> v_fullpath;
+
+	ret = 1;
+	tmpdir = NULL;
+#ifndef	_NODOSDRIVE
+	tmpdest = NULL;
+	drive = 0;
+
+	strcpy(path, arc);
+	if ((dest = strrdelim(path, 1))) *(++dest) = '\0';
+	else strcpy(path, ".");
+	if ((n = archdostmpdir(path, &tmpdest, full)) < 0) {
+		warning(ENOENT, arc);
 		return(0);
 	}
-	waitmes();
-	duparchivefile = archivefile;
-	archivefile = NULL;
-	locate(0, LMESLINE);
-	tflush();
-	ret = execusercomm(archivelist[i].p_comm, path, -1, 1, 0);
-	if (ret > 0) {
-		if (ret < 127) {
-			hideclock = 1;
-			warning(0, HITKY_K);
+	if (n) dest = strdup2(path);
+#endif	/* !_NODOSDRIVE */
+
+	if (archivefile) {
+		if (!(tmpdir = tmpunpack(0))) {
+			free(dest);
+			return(0);
 		}
-		rewritefile(1);
 	}
-	archivefile = duparchivefile;
-	strcpy(fullpath, dupfullpath);
+#ifndef	_NODOSDRIVE
+	else if ((drive = tmpdosdupl("", &tmpdir, 0)) < 0) {
+		free(dest);
+		return(0);
+	}
+#endif
+
+	if (!genfullpath(path, arc, full, tmpdest)) warning(-1, arc);
+	else {
+		duparchivefile = archivefile;
+		archivefile = NULL;
+		waitmes();
+		locate(0, LMESLINE);
+		tflush();
+		ret = execusercomm(archivelist[i].p_comm, path, -1, 1, 0);
+		if (ret > 0) {
+			if (ret < 127) {
+				hideclock = 1;
+				warning(0, HITKY_K);
+			}
+			rewritefile(1);
+		}
+		archivefile = duparchivefile;
+	}
+#ifndef	_NODOSDRIVE
+	if (tmpdest) {
+		if (!ret) {
+			if (_chdir2(tmpdest) < 0) ret = 1;
+			else forcemovefile(dest);
+		}
+		free(dest);
+		removetmp(tmpdest, NULL, "");
+	}
+	if (drive) removetmp(tmpdir, NULL, "");
+	else
+#endif	/* !_NODOSDRIVE */
+	if (archivefile) removetmp(tmpdir, archivedir, "");
+
 	return((ret) ? 0 : 1);
 }
 
@@ -1490,34 +1556,31 @@ char *arc, *dir;
 char *arg;
 int tr, ignorelist;
 {
+	winvartable *wvp;
 	reg_t *re;
-	char *tmp, *tmpdir, path[MAXPATHLEN];
+	char *cp, *tmpdir, path[MAXPATHLEN];
 	int i, n, ret;
 #ifndef	_NODOSDRIVE
 	namelist alist[1], *dupfilelist;
+	char *full, *dest, *tmpdest;
 	int dd, drive, dupmaxfile, dupfilepos;
-#endif
-#if	!MSDOS
-	int dupignorecase;
 #endif
 
 	for (i = 0; i < maxarchive; i++) {
 		if (!archivelist[i].u_comm) continue;
 #if	!MSDOS
-		dupignorecase = pathignorecase;
-		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase = 1;
+		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase++;
 #endif
 		re = regexp_init(archivelist[i].ext, -1);
 		n = regexp_exec(re, arc, 0);
 		regexp_free(re);
 #if	!MSDOS
-		pathignorecase = dupignorecase;
+		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase--;
 #endif
 		if (n) break;
 	}
 	if (i >= maxarchive) return(-1);
 
-	tmpdir = NULL;
 	if (dir) strcpy(path, dir);
 	else {
 #ifndef	_NOTREE
@@ -1539,18 +1602,32 @@ int tr, ignorelist;
 		if (!dir) return(0);
 		if (!*dir) strcpy(path, ".");
 		else {
-			tmp = strcpy2(path, dir);
+			cp = strcpy2(path, dir);
 #if	MSDOS || !defined (_NODOSDRIVE)
-			if (_dospath(dir) && !dir[2]) strcpy(tmp, ".");
+			if (_dospath(dir) && !dir[2]) strcpy(cp, ".");
 #endif
 		}
 		free(dir);
 		dir = NULL;
 	}
+
+	ret = 1;
+	cp = path;
+	tmpdir = NULL;
 #ifndef	_NODOSDRIVE
-	if (dospath2(path)) {
+	tmpdest = NULL;
+
+	full = fullpath;
+	for (wvp = archduplp; wvp; wvp = wvp -> v_archduplp)
+		if (wvp -> v_fullpath) full = wvp -> v_fullpath;
+
+	if ((n = archdostmpdir(path, &tmpdest, full)) < 0) {
 		warning(ENOENT, path);
 		return(0);
+	}
+	if (n) {
+		dest = strdup2(path);
+		cp = tmpdest;
 	}
 
 	dupfilelist = filelist;
@@ -1565,29 +1642,37 @@ int tr, ignorelist;
 	filelist = dupfilelist;
 	maxfile = dupmaxfile;
 	filepos = dupfilepos;
-	if (drive < 0) {
-		warning(-1, arc);
-		return(0);
-	}
-#endif
-	if ((!dir && preparedir(path) < 0) || _chdir2(path) < 0) {
+
+	if (drive < 0) warning(-1, arc);
+	else
+#endif	/* !_NODOSDRIVE */
+	if ((!dir && preparedir(path) < 0) || _chdir2(cp) < 0)
 		warning(-1, path);
-		return(0);
+	else if (!genfullpath(path, arc, fullpath, tmpdir)) warning(-1, arc);
+	else {
+		waitmes();
+		locate(0, LMESLINE);
+		tflush();
+		ret = execusercomm(archivelist[i].u_comm, path,
+			-1, 1, ignorelist);
+		if (ret > 0) {
+			if (ret < 127) {
+				hideclock = 1;
+				warning(0, HITKY_K);
+			}
+			rewritefile(1);
+		}
 	}
 
-	if (!genfullpath(path, arc)) return(0);
-	waitmes();
-	locate(0, LMESLINE);
-	tflush();
-	ret = execusercomm(archivelist[i].u_comm, path, -1, 1, ignorelist);
-	if (ret > 0) {
-		if (ret < 127) {
-			hideclock = 1;
-			warning(0, HITKY_K);
-		}
-		rewritefile(1);
+#ifndef	_NODOSDRIVE
+	if (tmpdest) {
+		if (!ret) forcemovefile(dest);
+		free(dest);
+		removetmp(tmpdest, NULL, "");
 	}
 	if (tmpdir) removetmp(tmpdir, NULL, arc);
+	else
+#endif	/* !_NODOSDRIVE */
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	return((ret) ? 0 : 1);
 }
@@ -1596,19 +1681,16 @@ char *tmpunpack(single)
 int single;
 {
 	winvartable *wvp;
-	char *subdir, path[MAXPATHLEN];
+	char *subdir, *tmpdir, path[MAXPATHLEN];
 	int i, ret, dupmark;
 
 	for (i = 0, wvp = archduplp; wvp; i++, wvp = wvp -> v_archduplp);
-#ifndef	_NOSPLITWIN
-	if (windows > 1) sprintf(path, "L%d-%d", i, win);
-	else
-#endif
-	sprintf(path, "L%d", i);
+	strcpy(path, ARCHTMPPREFIX);
 	if (mktmpdir(path) < 0) {
 		warning(-1, path);
 		return(NULL);
 	}
+	tmpdir = strdup2(path);
 
 	for (i = 0; i < maxfile; i++)
 		if (ismark(&(filelist[i]))) filelist[i].tmpflags |= F_WSMRK;
@@ -1637,7 +1719,7 @@ int single;
 		else if (single || mark <= 0) {
 			if (Xaccess(fnodospath(tmp, filepos), F_OK) < 0)
 				warning(-1, filelist[filepos].name);
-			else return(strdup2(path));
+			else return(tmpdir);
 		}
 		else {
 			for (i = 0; i < maxfile; i++) {
@@ -1647,13 +1729,12 @@ int single;
 					break;
 				}
 			}
-			if (i >= maxfile) return(strdup2(path));
+			if (i >= maxfile) return(tmpdir);
 		}
 	}
-	if (ret <= 0) removetmp(strdup2(path), NULL, NULL);
-	else if (single || mark <= 0)
-		removetmp(strdup2(path), subdir, filelist[filepos].name);
-	else removetmp(strdup2(path), subdir, "");
+	if (ret <= 0) removetmp(tmpdir, NULL, NULL);
+	else if (!single && mark > 0) removetmp(tmpdir, subdir, "");
+	else removetmp(tmpdir, subdir, filelist[filepos].name);
 	return(NULL);
 }
 
@@ -1693,16 +1774,13 @@ int maxf, n;
 	namelist *dupfilelist;
 	reg_t *re;
 	FILE *fp;
-	char *cp, *buf, *dir, *file, *line;
+	char *cp, *buf, *tmpdir, *file, *line;
 	int i, c, no, len, match, dupmaxfile, dupfilepos;
 #if	FD >= 2
 	char *form;
 	int skip;
 #else
 	int max;
-#endif
-#if	!MSDOS
-	int dupignorecase;
 #endif
 
 	if (n < 0) {
@@ -1717,14 +1795,13 @@ int maxf, n;
 	for (i = 0; i < maxlaunch; i++) {
 		if (!isarchbr(&(launchlist[i]))) continue;
 #if	!MSDOS
-		dupignorecase = pathignorecase;
-		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase = 1;
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase++;
 #endif
 		re = regexp_init(launchlist[i].ext, -1);
 		c = regexp_exec(re, file, 0);
 		regexp_free(re);
 #if	!MSDOS
-		pathignorecase = dupignorecase;
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase--;
 #endif
 		if (c) break;
 	}
@@ -1738,15 +1815,15 @@ int maxf, n;
 		filelist = flist;
 		maxfile = maxf;
 		filepos = n;
-		dir = tmpunpack(1);
+		tmpdir = tmpunpack(1);
 		filelist = dupfilelist;
 		maxfile = dupmaxfile;
 		filepos = dupfilepos;
-		if (!dir) return(0);
+		if (!tmpdir) return(0);
 	}
 
 	if (!(cp = evalcommand(list -> comm, file, NULL, 1))) {
-		if (n >= 0) removetmp(dir, NULL, file);
+		if (n >= 0) removetmp(tmpdir, NULL, file);
 		return(0);
 	}
 	locate(0, n_line - 1);
@@ -1817,7 +1894,7 @@ int maxf, n;
 			free(line);
 			if (buf) free(buf);
 			regexp_free(re);
-			if (n >= 0) removetmp(dir, NULL, file);
+			if (n >= 0) removetmp(tmpdir, NULL, file);
 			return(-1);
 		}
 
@@ -1867,7 +1944,7 @@ int maxf, n;
 	free(form);
 #endif
 	regexp_free(re);
-	if (n >= 0) removetmp(dir, NULL, file);
+	if (n >= 0) removetmp(tmpdir, NULL, file);
 
 	if (dopclose(fp)) return(0);
 	if (match > no - (int)(list -> bottomskip)) match = 0;

@@ -150,7 +150,7 @@ int raw;
 #ifndef	_NOKANJIFCONV
 	if (dirp) {
 		dirpathlist = (opendirpath_t *)realloc2(dirpathlist,
-			(++maxdirpath + 1) * sizeof(opendirpath_t *));
+			++maxdirpath * sizeof(opendirpath_t));
 		realpath2(path, buf, 1);
 		dirpathlist[maxdirpath - 1].dirp = dirp;
 		dirpathlist[maxdirpath - 1].path = strdup2(buf);
@@ -543,8 +543,9 @@ struct timeval tvp[2];
 #endif	/* !USEUTIME */
 }
 
-int Xunlink(path)
+int _Xunlink(path, raw)
 char *path;
+int raw;
 {
 #if	!defined (_NODOSDRIVE) || !defined (_NOKANJIFCONV)
 	char buf[MAXPATHLEN];
@@ -555,13 +556,15 @@ char *path;
 
 #ifndef	_NODOSDRIVE
 	if (dospath(path, buf)) {
-		path = detransfile(buf, rbuf, 1);
+		path = (raw) ? buf : detransfile(buf, rbuf, 1);
 		return(dosunlink(path));
 	}
 #endif
-	path = convput(buf, path);
-	path = detransfile(path, rbuf, 1);
-	return(unlink(path));
+	if (!raw) {
+		path = convput(buf, path);
+		path = detransfile(path, rbuf, 1);
+	}
+	return(unlink(path) ? -1 : 0);
 }
 
 int _Xrename(from, to, raw)

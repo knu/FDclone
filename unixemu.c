@@ -9,8 +9,6 @@
 #include "func.h"
 #include "unixdisk.h"
 
-extern char *deftmpdir;
-extern char *tmpfilename;
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
@@ -344,14 +342,15 @@ struct timeval tvp[2];
 #endif	/* !USEUTIME */
 }
 
-int Xunlink(path)
+int _Xunlink(path, raw)
 char *path;
+int raw;
 {
 #ifndef	_NOROCKRIDGE
 	char rbuf[MAXPATHLEN];
 #endif
 
-	path = detransfile(path, rbuf, 1);
+	if (!raw) path = detransfile(path, rbuf, 1);
 	if (unixunlink(path) != 0) {
 		if (errno != EACCES
 		|| unixchmod(path, (S_IREAD | S_IWRITE | S_ISVTX)) < 0
@@ -618,7 +617,11 @@ FILE *stream;
 #endif	/* !_NODOSDRIVE */
 
 #ifdef	_NOORIGSHELL
+extern char *deftmpdir;
+extern char *tmpfilename;
 static int popenstat = 0;
+#define	PIPEDIR		"PIPE_DIR"
+#define	PIPEFILE	"FAKEPIPE"
 
 FILE *Xpopen(command, type)
 char *command, *type;

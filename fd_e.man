@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.02 11/26/02
+.\" @(#)fd.1   2.02a 12/25/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "November 26, 2002"
+.TH FD 1 "December 25, 2002"
 .de sh
 .br
 .PP
@@ -2803,11 +2803,11 @@ But you cannot use the following internal commands in this screen.
 .ta 1.5i 3i 4.5i
 .nf
 .ft B
-LOG_TOP	LOG_DIR	ATTR_FILE	COPY_FILE
-MOVE_FILE	DELETE_FILE	DELETE_DIR	RENAME_FILE
-MAKE_DIR	WRITE_DIR	TREE_DIR	EDIT_FILE
-LOG_TREE	COPY_TREE	MOVE_TREE	FIND_DIR
-SYMLINK_MODE	DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
+LOG_TOP	ATTR_FILE	COPY_FILE	MOVE_FILE
+DELETE_FILE	DELETE_DIR	RENAME_FILE	MAKE_DIR
+WRITE_DIR	TREE_DIR	EDIT_FILE	LOG_TREE
+COPY_TREE	MOVE_TREE	FIND_DIR	SYMLINK_MODE
+DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
 .ft R
 .fi
 .RE
@@ -3981,15 +3981,6 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
-
-And,
-if this variable is ineffective,
-a command line of
-.B fdsh
-always begins at the end of a screen.
-(On MS-DOS version,
-the cursor position is always gotten rightly,
-if this variable is effective or not.)
 .IP "\fBDEFCOLUMNS\fP"
 Specify the columns displayed in the screen when
 .B fd
@@ -4351,7 +4342,7 @@ is undefined
 .B /bin/rm
 The command to remove temporary files when abort
 .TP
-.BR /tmp/fd \(**
+.B /tmp/fd\(**
 The temporary directory to unpack the archive file
 .TP
 .B fd\-unicd.tbl

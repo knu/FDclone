@@ -868,14 +868,15 @@ char *arg;
 #ifndef	_NODOSDRIVE
 	drive = 0;
 #endif
-	if (isdir(&(filelist[filepos]))
+	if (isdir(&(filelist[filepos]))) return(1);
 #ifndef	_NOARCHIVE
-	|| (archivefile && !(dir = tmpunpack(1)))
+	else if (archivefile) {
+		if (!(dir = tmpunpack(1))) return(1);
+	}
 #endif
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, 1)) < 0
+	else if ((drive = tmpdosdupl("", &dir, 1)) < 0) return(1);
 #endif
-	) return(1);
 
 	if (!execenv("FD_PAGER", filelist[filepos].name)) {
 #ifdef	PAGER
@@ -886,6 +887,7 @@ char *arg;
 		} while (!yesno(PEND_K));
 #endif
 	}
+
 #ifndef	_NODOSDRIVE
 	if (drive) removetmp(dir, NULL, filelist[filepos].name);
 	else
@@ -1070,8 +1072,12 @@ char *arg;
 	char *path;
 
 	if (arg && *arg) path = strdup2(arg);
-	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, 1))
-	|| !*(path = evalpath(path, 1))) return(1);
+	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, 1))) return(1);
+	else if (!*(path = evalpath(path, 1))) {
+		free(path);
+		return(1);
+	}
+
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
 	free(path);
 	return(4);
@@ -1348,32 +1354,17 @@ char *arg;
 static int pack_file(arg)
 char *arg;
 {
-	char *dir, *file;
-#ifndef	_NODOSDRIVE
-	int drive;
-#endif
+	char *file;
 	int ret;
 
-	dir = NULL;
-#ifndef	_NODOSDRIVE
-	drive = 0;
-#endif
 	if (arg && *arg) file = strdup2(arg);
-	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
-	|| !*(file = evalpath(file, 1))
-	|| (archivefile && !(dir = tmpunpack(0)))
-#ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, 0)) < 0
-#endif
-	) return(1);
+	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))) return(1);
+	else if (!*(file = evalpath(file, 1))) {
+		free(file);
+		return(1);
+	}
 
 	ret = pack(file);
-#ifndef	_NODOSDRIVE
-	if (drive) removetmp(dir, NULL, "");
-	else
-#endif
-	if (archivefile) removetmp(dir, archivedir, "");
-
 	free(file);
 	if (ret < 0) {
 		putterm(t_bell);
@@ -1432,12 +1423,13 @@ char *arg;
 	char *path;
 	int ret;
 
-	if (arg && *arg) path = evalpath(strdup2(arg), 1);
+	if (arg && *arg) path = strdup2(arg);
 	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, 1))) return(1);
 	else if (!*(path = evalpath(path, 1))) {
 		free(path);
 		path = strdup2(".");
 	}
+
 	ret = infofs(path);
 	free(path);
 	if (!ret) return(1);
@@ -1521,16 +1513,26 @@ char *arg;
 #endif
 	if (arg && *arg) dev = strdup2(arg);
 #if	MSDOS
-	else if (!(dev = inputstr(BKUP_K, 1, -1, NULL, 1))
+	else if (!(dev = inputstr(BKUP_K, 1, -1, NULL, 1))) return(1);
 #else
-	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))
+	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))) return(1);
 #endif
-	|| !*(dev = evalpath(dev, 1))
-	|| (archivefile && !(dir = tmpunpack(0)))
+	else if (!*(dev = evalpath(dev, 1))) {
+		free(dev);
+		return(1);
+	}
+	else if (archivefile) {
+		if (!(dir = tmpunpack(0))) {
+			free(dev);
+			return(1);
+		}
+	}
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, 0)) < 0
+	else if ((drive = tmpdosdupl("", &dir, 0)) < 0) {
+		free(dev);
+		return(1);
+	}
 #endif
-	) return(1);
 
 	ret = backup(dev);
 #ifndef	_NODOSDRIVE

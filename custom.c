@@ -2827,7 +2827,8 @@ int no;
 				break;
 			done = 1;
 			file = evalpath(file, 1);
-			if (isexist(file) && yesno(FSVOK_K)) done = 0;
+			if (Xaccess(file, F_OK) >= 0 && yesno(FSVOK_K))
+				done = 0;
 			else {
 				envcaption(SSAVE_K);
 				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
@@ -2861,7 +2862,8 @@ int no;
 				break;
 			done = 1;
 			file = evalpath(file, 1);
-			if (!isexist(file) && !yesno(FOVOK_K)) done = 0;
+			if (Xaccess(file, F_OK) < 0 && errno == ENOENT
+			&& !yesno(FOVOK_K)) done = 0;
 			else {
 				envcaption(SOVWR_K);
 				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))

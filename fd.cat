@@ -1605,11 +1605,11 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      では、通常のディレクトリ内と同じように、アーカイブファイル内
      のファイルをブラウジングしていくことができます。但し、この画
      面では以下の内部コマンドは使用できません。
-          LLOOGG_TTOOPP        LLOOGG_DDIIRR        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE
-          MMOOVVEE_FFIILLEE      DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE
-          MMAAKKEE_DDIIRR       WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE
-          LLOOGG_TTRREEEE       CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR
-          SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+          LLOOGG_TTOOPP        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE      MMOOVVEE_FFIILLEE
+          DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE    MMAAKKEE_DDIIRR
+          WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE      LLOOGG_TTRREEEE
+          CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       SSYYMMLLIINNKK_MMOODDEE
+          DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
 
      また、新しいアーカイブブラウザを登録したい場合、以下のような
      書式でアーカイバの一覧表示形式のフォーマットを記述してやる必
@@ -2314,11 +2314,6 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    力してやると復帰します。00 かナル以外の値であれ
                    ば、何を定義しても有効です。((UUNNIIXX))
 
-                   また、この変数を有効にしていない場合、ffddsshh の
-                   コマンドラインは必ず画面最下行から始まります。
-                   (MS-DOS 版ではこの変数の有効無効に関わらず、常
-                   に正しくカーソル位置を取得します。)
-
      DDEEFFCCOOLLUUMMNNSS    ffdd 起動時の画面表示列を設定します。デフォルト
                    は 22 列です。11, 22, 33, 55 以外の値を指定すると無
                    視されます。
@@ -2553,7 +2548,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                コマンド履歴のセーブファイル。
      //bbiinn//sshh   環境変数 SSHHEELLLL が未定義だった場合のユーザシェル。
      //bbiinn//rrmm   異常終了時に不要ファイルを消去するためのコマンド。
-     //ttmmpp//ffdd*  アーカイブファイル伸長のための一時的ディレクトリ。
+     //ttmmpp//ffdd**  アーカイブファイル伸長のための一時的ディレクトリ。
      ffdd--uunniiccdd..ttbbll
                フロッピードライブの UNICODE 変換テーブル。ffdd の起
                動ディレクトリにインストールされる。

@@ -241,7 +241,8 @@ extern int Xutime __P_((char *, struct utimbuf *));
 # else
 extern int Xutimes __P_((char *, struct timeval []));
 # endif
-extern int Xunlink __P_((char *));
+extern int _Xunlink __P_((char *, int));
+#define	Xunlink(p)	_Xunlink(p, 0)
 extern int _Xrename __P_((char *, char *, int));
 #define	Xrename(f, t)	_Xrename(f, t, 0)
 extern int _Xopen __P_((char *, int, int, int));
@@ -293,7 +294,7 @@ extern char *Xgetwd __P_((char *));
 #define	Xchmod		chmod
 #define	Xutime(f, t)	(utime(f, t) ? -1 : 0)
 #define	Xutimes(f, t)	(utimes(f, t) ? -1 : 0)
-#define	Xunlink		unlink
+#define	Xunlink(p)	(unlink(p) ? -1 : 0)
 #define	Xrename(o, n)	(rename(o, n) ? -1 : 0)
 #define	Xopen		open
 #define	Xclose		close
@@ -370,7 +371,7 @@ extern char *ascnumeric __P_((char *, long, int, int));
 #ifdef	FD
 extern int getinfofs __P_((char *, long *, long *, long *));
 extern char *realpath2 __P_((char *, char *, int));
-extern int touchfile __P_((char *, time_t, time_t));
+extern int touchfile __P_((char *, struct stat *));
 extern int safewrite __P_((int, char *, int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 #else	/* !FD */
@@ -388,7 +389,7 @@ static VOID NEAR ttymode __P_((int));
 # define	stdiomode()	(ttymode(0))
 static int NEAR getkey2 __P_((int));
 # endif	/* !MSDOS */
-static int NEAR touchfile __P_((char *, time_t, time_t));
+static int NEAR touchfile __P_((char *, struct stat *));
 static int NEAR safewrite __P_((int, char *, int));
 static char * NEAR inputstr __P_((char *, int, int, char *, int));
 #endif	/* !FD */
@@ -627,22 +628,22 @@ int sig;
 }
 # endif	/* !MSDOS */
 
-static int NEAR touchfile(path, atime, mtime)
+static int NEAR touchfile(path, stp)
 char *path;
-time_t atime, mtime;
+struct stat *stp;
 {
 # ifdef	USEUTIME
 	struct utimbuf times;
 
-	times.actime = atime;
-	times.modtime = mtime;
+	times.actime = stp -> st_atime;
+	times.modtime = stp -> st_mtime;
 	return(Xutime(path, &times));
 # else
 	struct timeval tvp[2];
 
-	tvp[0].tv_sec = atime;
+	tvp[0].tv_sec = stp -> st_atime;
 	tvp[0].tv_usec = 0;
-	tvp[1].tv_sec = mtime;
+	tvp[1].tv_sec = stp -> st_mtime;
 	tvp[1].tv_usec = 0;
 	return(Xutimes(path, tvp));
 # endif
@@ -2119,8 +2120,10 @@ int sbin, dbin, dfd;
 		return(dfd < 0 ? -1 : -2);
 	}
 
-	if (!tty && touchfile(dest, stp -> st_atime, stp -> st_mtime) < 0)
-		return(-1);
+#ifdef	HAVEFLAGS
+	stp -> st_flags = 0xffffffff;
+#endif
+	if (!tty && touchfile(dest, stp) < 0) return(-1);
 	return(1);
 }
 

@@ -21,13 +21,6 @@
 #endif
 #define	MAXNAMLEN	255
 
-#define	PIPEDIR		"FD-PIPE"
-#define	PIPEFILE	"FAKEPIPE"
-#define	REDIRECTDIR	"FD-REDIR"
-
-#define	srandom(seed)		srand(seed)
-#define	lstat			stat
-
 #ifndef	R_OK
 #define	R_OK		4
 #endif

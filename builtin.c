@@ -1541,7 +1541,7 @@ char *argv[];
 	else {
 		int fd;
 
-		if ((fd = mktmpfile(path, argv[0])) < 0) {
+		if ((fd = mktmpfile(path)) < 0) {
 			builtinerror(argv, argv[0], -1);
 			free(tmp);
 			return(-1);
@@ -1549,7 +1549,7 @@ char *argv[];
 		if (!(fp = Xfdopen(fd, "w"))) {
 			builtinerror(argv, path, -1);
 			Xclose(fd);
-			rmtmpfile(strdup2(path));
+			rmtmpfile(path);
 			free(tmp);
 			return(-1);
 		}
@@ -1600,14 +1600,14 @@ char *argv[];
 	}
 	if (ret) {
 		builtinerror(argv, editor, -1);
-		rmtmpfile(strdup2(path));
+		rmtmpfile(path);
 		free(tmp);
 		return(-1);
 	}
 
 	if (!(fp = Xfopen(path, "r"))) {
 		builtinerror(argv, path, -1);
-		rmtmpfile(strdup2(path));
+		rmtmpfile(path);
 		free(tmp);
 		return(-1);
 	}
@@ -1628,7 +1628,7 @@ char *argv[];
 		free(cp);
 	}
 	Xfclose(fp);
-	rmtmpfile(strdup2(path));
+	rmtmpfile(path);
 	return(ret);
 }
 #endif	/* !NOPOSIXUTIL */

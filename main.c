@@ -723,21 +723,15 @@ char *argv[];
 static VOID NEAR setexecname(argv)
 char *argv;
 {
-	char buf[MAXNAMLEN + 1];
+#if	MSDOS
+	char *cp;
+#endif
 
 	if ((progname = strrdelim(argv, 1))) progname++;
 	else progname = argv;
 #if	MSDOS
-	{
-		char *cp;
-
-		if ((cp = strchr(progname, '.'))) *cp = '\0';
-	}
-	sprintf(buf, "FD%ld", (long)getpid());
-#else
-	sprintf(buf, "%s%ld", progname, (long)getpid());
+	if ((cp = strchr(progname, '.'))) *cp = '\0';
 #endif
-	tmpfilename = strdup2(buf);
 }
 
 static VOID NEAR setexecpath(argv, envp)

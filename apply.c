@@ -66,7 +66,10 @@ static int mvdir __P_((char *));
 static VOID NEAR showattr __P_((namelist *, attr_t *, int y));
 static char **NEAR getdirtree __P_((char *, char **, int *, int));
 static int NEAR _applydir __P_((char *, int (*)(char *),
-		int (*)(char *), int (*)(char *), int, char *));
+		int (*)(char *), int (*)(char *), int, char *, int));
+static int forcecpfile __P_((char *));
+static int forcecpdir __P_((char *));
+static int forcetouchdir __P_((char *));
 
 int copypolicy = 0;
 int removepolicy = 0;
@@ -467,8 +470,8 @@ int mode;
 static int safecopy(path)
 char *path;
 {
-	char dest[MAXPATHLEN];
 	struct stat st1, st2;
+	char dest[MAXPATHLEN];
 
 	if (checkdupl(path, dest, &st1, &st2) < 0) return(0);
 	if (safecpfile(path, dest, &st1, &st2) < 0) return(-1);
@@ -478,8 +481,8 @@ char *path;
 static int safemove(path)
 char *path;
 {
-	char dest[MAXPATHLEN];
 	struct stat st1, st2;
+	char dest[MAXPATHLEN];
 
 	if (checkdupl(path, dest, &st1, &st2) < 0) return(0);
 	if (checkrmv(path, W_OK) < 0) return(1);
@@ -490,8 +493,8 @@ char *path;
 static int cpdir(path)
 char *path;
 {
-	char dest[MAXPATHLEN];
 	struct stat st1, st2;
+	char dest[MAXPATHLEN];
 
 	switch (checkdupl(path, dest, &st1, &st2)) {
 		case 2:
@@ -501,9 +504,9 @@ char *path;
 		case 0:
 		/* Not exist */
 #if	MSDOS
-			if (Xmkdir(dest, st1.st_mode | S_IWRITE) < 0)
+			if (Xmkdir(dest, (st1.st_mode & 0777) | S_IWRITE) < 0)
 #else
-			if (Xmkdir(dest, st1.st_mode) < 0)
+			if (Xmkdir(dest, st1.st_mode & 0777) < 0)
 #endif
 				return(-1);
 			destmtime = st1.st_mtime;
@@ -530,8 +533,8 @@ static int touchdir(path)
 char *path;
 {
 #if	MSDOS || !defined (_NOEXTRACOPY)
-	char dest[MAXPATHLEN];
 	struct stat st;
+	char dest[MAXPATHLEN];
 
 # if	!MSDOS
 	if (!inheritcopy) return(0);
@@ -541,6 +544,9 @@ char *path;
 		st.st_mtime = destmtime;
 		st.st_atime = destatime;
 	}
+# ifdef	HAVEFLAGS
+	st.st_flags = 0xffffffff;
+# endif
 	if (touchfile(dest, &st) < 0) return(-1);
 #endif	/* MSDOS || !_NOEXTRACOPY */
 	return(0);
@@ -550,14 +556,17 @@ char *path;
 static int mvdir(path)
 char *path;
 {
-	char dest[MAXPATHLEN];
 	struct stat st;
+	char dest[MAXPATHLEN];
 
 	if (getdestpath(path, dest, &st) < 0) return(-2);
 	if (destmtime != (time_t)-1 || destatime != (time_t)-1) {
 		st.st_mtime = destmtime;
 		st.st_atime = destatime;
 	}
+# ifdef	HAVEFLAGS
+	st.st_flags = 0xffffffff;
+# endif
 	if (touchfile(dest, &st) < 0) return(-1);
 	if (checkrmv(path, R_OK | W_OK | X_OK) < 0) return(1);
 	return(Xrmdir(path));
@@ -990,8 +999,12 @@ int *maxp, depth;
 			dirlist[(*maxp)++] = strdup2(dir);
 			if (!depth || depth > 1) {
 				dirlist = getdirtree(dir,
-					dirlist, maxp, --depth);
-				if (!dirlist) return(NULL);
+					dirlist, maxp,
+					(depth) ? depth - 1 : 0);
+				if (!dirlist) {
+					Xclosedir(dirp);
+					return(NULL);
+				}
 			}
 		}
 	}
@@ -1000,13 +1013,14 @@ int *maxp, depth;
 	return(dirlist);
 }
 
-static int NEAR _applydir(dir, funcf, funcd1, funcd2, order, endmes)
+static int NEAR _applydir(dir, funcf, funcd1, funcd2, order, endmes, verbose)
 char *dir;
 int (*funcf)__P_((char *));
 int (*funcd1)__P_((char *));
 int (*funcd2)__P_((char *));
 int order;
 char *endmes;
+int verbose;
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -1017,19 +1031,22 @@ char *endmes;
 
 	if (intrkey()) return(-2);
 
-	locate(0, LCMDLINE);
-	putterm(l_clear);
-	putch2('[');
-	cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
-	kanjiputs2(cp, n_column - 2, -1);
-	putch2(']');
-	tflush();
+	if (verbose) {
+		locate(0, LCMDLINE);
+		putterm(l_clear);
+		putch2('[');
+		cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
+		kanjiputs2(cp, n_column - 2, -1);
+		putch2(']');
+		tflush();
+	}
 
 	if (!funcd1 && !funcd2) order = 0;
 	strcpy(path, dir);
 
 	ret = max = 0;
-	dirlist = getdirtree(path, NULL, &max, (order == 2) ? 0 : 1);
+	if (!order) dirlist = NULL;
+	else dirlist = getdirtree(path, NULL, &max, (order == 2) ? 0 : 1);
 	fname = strcatdelim(path);
 
 	destmtime = destatime = (time_t)-1;
@@ -1046,25 +1063,28 @@ char *endmes;
 
 	if (order) for (ndir = 0; ndir < max; ndir++) {
 		if (order != 2) ret = _applydir(dirlist[ndir], funcf,
-				funcd1, funcd2, order, NULL);
+				funcd1, funcd2, order, NULL, verbose);
 		else if ((ret = (*funcd1)(dirlist[ndir])) < 0) {
 			if (ret == -1) warning(-1, dir);
 			ret = -2;
 		}
 		else ret = _applydir(dirlist[ndir], funcf,
-			funcd1, funcd2, 0, NULL);
+			funcd1, funcd2, 0, NULL, verbose);
 		if (ret < -1) {
 			for (; ndir < max; ndir++) free(dirlist[ndir]);
 			free(dirlist);
 			return(ret);
 		}
 		free(dirlist[ndir]);
-		locate(0, LCMDLINE);
-		putterm(l_clear);
-		putch2('[');
-		kanjiputs2(cp, n_column - 2, -1);
-		putch2(']');
-		tflush();
+
+		if (verbose) {
+			locate(0, LCMDLINE);
+			putterm(l_clear);
+			putch2('[');
+			kanjiputs2(cp, n_column - 2, -1);
+			putch2(']');
+			tflush();
+		}
 	}
 	if (dirlist) free(dirlist);
 
@@ -1073,18 +1093,22 @@ char *endmes;
 		return(-1);
 	}
 	while ((dp = Xreaddir(dirp))) {
-		if (intrkey()) return(-2);
+		if (intrkey()) {
+			ret = -2;
+			break;
+		}
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 
 		if (Xlstat(path, &st) < 0) warning(-1, path);
 		else if ((st.st_mode & S_IFMT) == S_IFDIR) continue;
 		else if ((ret = (*funcf)(path)) < 0) {
-			if (ret == -1) warning(-1, path);
-			else return(ret);
+			if (ret < -1) break;
+			warning(-1, path);
 		}
 	}
 	Xclosedir(dirp);
+	if (ret < -1) return(ret);
 
 	destmtime = dupmtime;
 	destatime = dupatime;
@@ -1102,15 +1126,21 @@ int order;
 char *endmes;
 {
 	char path[MAXPATHLEN];
+	int verbose;
 
-	if (dir[0] == '.' && dir[1] == '.' && !dir[2]) {
+	verbose = 1;
+	if (!dir) {
+		dir = ".";
+		verbose = 0;
+	}
+	else if (dir[0] == '.' && dir[1] == '.' && !dir[2]) {
 		realpath2(dir, path, 0);
 		dir = path;
 	}
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	else dir = nodospath(path, dir);
 #endif
-	return(_applydir(dir, funcf, funcd1, funcd2, order, endmes));
+	return(_applydir(dir, funcf, funcd1, funcd2, order, endmes, verbose));
 }
 
 /*ARGSUSED*/
@@ -1236,4 +1266,65 @@ int tr;
 	forwarddrive = -1;
 #endif
 	return(4);
+}
+
+static int forcecpfile(path)
+char *path;
+{
+	struct stat st;
+	char dest[MAXPATHLEN];
+
+	if (getdestpath(path, dest, &st) < 0) return(0);
+	if (safecpfile(path, dest, &st, NULL) < 0) return(-1);
+#ifdef	HAVEFLAGS
+	st.st_flags = 0xffffffff;
+#endif
+	return(touchfile(dest, &st));
+}
+
+static int forcecpdir(path)
+char *path;
+{
+	struct stat st;
+	char dest[MAXPATHLEN];
+
+	if (isdotdir(path)) return(0);
+	if (getdestpath(path, dest, &st) < 0) return(0);
+#if	MSDOS
+	while (Xmkdir(dest, (st.st_mode & 0777) | S_IWRITE) < 0)
+#else
+	while (Xmkdir(dest, st.st_mode & 0777) < 0)
+#endif
+	{
+		if (errno != EEXIST) return(-1);
+		if (Xstat(dest, &st) < 0) return(-1);
+		if ((st.st_mode & S_IFMT) == S_IFDIR) break;
+		if (Xunlink(dest) < 0) return(-1);
+	}
+	return(0);
+}
+
+static int forcetouchdir(path)
+char *path;
+{
+	struct stat st;
+	char dest[MAXPATHLEN];
+
+	if (isdotdir(path)) return(0);
+	if (getdestpath(path, dest, &st) < 0) return(-2);
+#ifdef	HAVEFLAGS
+	st.st_flags = 0xffffffff;
+#endif
+	return(touchfile(dest, &st));
+}
+
+int forcemovefile(dest)
+char *dest;
+{
+	int ret;
+
+	destpath = dest;
+	ret = applydir(NULL, forcecpfile, forcecpdir, forcetouchdir, 1, NULL);
+	destpath = NULL;
+	return(ret);
 }

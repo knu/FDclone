@@ -110,7 +110,8 @@ extern int Xutime __P_((char *, struct utimbuf *));
 #else
 extern int Xutimes __P_((char *, struct timeval []));
 #endif
-extern int Xunlink __P_((char *));
+extern int _Xunlink __P_((char *, int));
+#define	Xunlink(p)	_Xunlink(p, 0)
 extern int _Xrename __P_((char *, char *, int));
 #define	Xrename(f, t)	_Xrename(f, t, 0)
 extern int _Xopen __P_((char *, int, int, int));
@@ -228,15 +229,15 @@ extern int safemvfile __P_((char *, char *, struct stat *, struct stat *));
 extern char *genrandname __P_((char *, int));
 extern int mktmpdir __P_((char *));
 extern int rmtmpdir __P_((char *));
-extern int mktmpfile __P_((char *, char *));
+extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((char *));
 extern VOID removetmp __P_((char *, char *, char *));
 extern int forcecleandir __P_((char *, char *));
 #ifndef	_NODOSDRIVE
+extern char *dostmpdir __P_((int));
 extern int tmpdosdupl __P_((char *, char **, int));
 extern int tmpdosrestore __P_((int, char *));
 #endif
-int isexist __P_((char *));
 #ifndef	_NOWRITEFS
 extern VOID arrangedir __P_((int));
 #endif
@@ -253,6 +254,7 @@ extern int applydir __P_((char *, int (*)__P_((char *)),
 		int (*)__P_((char *)), int (*)__P_((char *)), int, char *));
 extern int copyfile __P_((char *, int));
 extern int movefile __P_((char *, int));
+extern int forcemovefile __P_((char *));
 
 /* parse.c */
 extern char *skipspace __P_((char *));

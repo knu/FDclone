@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.02 11/26/02
+.\" @(#)fd.1   2.02a 12/25/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "November 26, 2002"
+.TH FD 1 "December 25, 2002"
 .de sh
 .br
 .PP
@@ -2672,11 +2672,11 @@ MAILCHECK
 .ta 1.5i 3i 4.5i
 .nf
 .ft B
-LOG_TOP	LOG_DIR	ATTR_FILE	COPY_FILE
-MOVE_FILE	DELETE_FILE	DELETE_DIR	RENAME_FILE
-MAKE_DIR	WRITE_DIR	TREE_DIR	EDIT_FILE
-LOG_TREE	COPY_TREE	MOVE_TREE	FIND_DIR
-SYMLINK_MODE	DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
+LOG_TOP	ATTR_FILE	COPY_FILE	MOVE_FILE
+DELETE_FILE	DELETE_DIR	RENAME_FILE	MAKE_DIR
+WRITE_DIR	TREE_DIR	EDIT_FILE	LOG_TREE
+COPY_TREE	MOVE_TREE	FIND_DIR	SYMLINK_MODE
+DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
 .ft R
 .fi
 .RE
@@ -3823,13 +3823,6 @@ VT100 互換のカーソル位置取得エスケープシーケンスを用います。
 .B 0
 かナル以外の値であれば、何を定義しても有効です。
 .B (UNIX)
-
-また、
-この変数を有効にしていない場合、
-.B fdsh
-のコマンドラインは必ず画面最下行から始まります。
-(MS-DOS 版ではこの変数の有効無効に関わらず、
-常に正しくカーソル位置を取得します。)
 .IP "\fBDEFCOLUMNS\fP"
 .B fd
 起動時の画面表示列を設定します。
@@ -4191,7 +4184,7 @@ A.Idei <SDI00544@niftyserve.or.jp> 氏によって 1989 年に
 .B /bin/rm
 異常終了時に不要ファイルを消去するためのコマンド。
 .TP
-.BR /tmp/fd \(**
+.B /tmp/fd\(**
 アーカイブファイル伸長のための一時的ディレクトリ。
 .TP
 .B fd\-unicd.tbl
