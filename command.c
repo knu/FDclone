@@ -399,7 +399,7 @@ char *arg;
 {
 	int i, m;
 
-#if	!MSDOS
+#ifndef	NOSYMLINK
 	if (islink(&(filelist[filepos]))) {
 # ifndef	_NODOSDRIVE
 		char path[MAXPATHLEN];
@@ -422,7 +422,7 @@ char *arg;
 		i = 1 - (strlen3(tmp) + 4);
 	}
 	else
-#endif	/* !MSDOS */
+#endif	/* !NOSYMLINK */
 	{
 		i = calcwidth();
 		if (isdisptyp(dispmode)) {
@@ -834,23 +834,12 @@ static int NEAR execshell(VOID_A)
 # endif
 	}
 #ifndef	_NOORIGSHELL
-	else {
-		char *cp;
-
-		if ((cp = strrdelim(sh, 1))) cp++;
-		else cp = sh;
-# if	MSDOS
-		if (*cp == 'r' || *cp == 'R') cp++;
-# else
-		if (*cp == 'r') cp++;
-# endif
-		if (!strpathcmp(cp, FDSHELL)) {
-			if (!fdmode) {
-				warning(0, RECUR_K);
-				return(-1);
-			}
-			sh = NULL;
+	else if (!strpathcmp(getshellname(sh, NULL, NULL), FDSHELL)) {
+		if (!fdmode) {
+			warning(0, RECUR_K);
+			return(-1);
 		}
+		sh = NULL;
 	}
 #endif
 
@@ -1141,7 +1130,7 @@ char *arg;
 static int rename_file(arg)
 char *arg;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
 	char *file;
@@ -1204,7 +1193,7 @@ char *arg;
 		return(warning_bell(arg));
 	if (!yesno(DELDR_K, filelist[filepos].name)) return(1);
 	removepolicy = 0;
-#if	!MSDOS
+#ifndef	NOSYMLINK
 	if (islink(&(filelist[filepos]))) {
 # ifndef	_NODOSDRIVE
 		char path[MAXPATHLEN];
@@ -1305,14 +1294,14 @@ char *arg;
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir;
 #endif
-	char *com;
-#if	!MSDOS || defined (DISMISS_CURPATH)
+#ifndef	CWDINPATH
 	char *tmp;
 #endif
-	int ret, len;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
+	char *com;
+	int ret, len;
 
 #if	!defined (_NOARCHIVE) && !defined (_NOBROWSE)
 	if (browselist) return(warning_bell(arg));
@@ -1324,7 +1313,7 @@ char *arg;
 #ifndef	_NODOSDRIVE
 	drive = 0;
 #endif
-#if	MSDOS && !defined (DISMISS_CURPATH)
+#ifdef	CWDINPATH
 	len = (!isdir(&(filelist[filepos])) && isexec(&(filelist[filepos])))
 		? strlen(filelist[filepos].name) + 1 : 0;
 	ttyiomode(1);
@@ -1415,7 +1404,7 @@ char *arg;
 static int unpack_file(arg)
 char *arg;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int ret;
@@ -1432,7 +1421,7 @@ char *arg;
 static int unpack_tree(arg)
 char *arg;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int ret;
@@ -1491,7 +1480,7 @@ char *arg;
 		if (selectstr(&flag, 2, 35, str, val) == K_ESC) return(1);
 	}
 	else {
-#if	!MSDOS
+#ifndef	NOSYMLINK
 		if (islink(&(filelist[filepos]))) {
 			warning(0, ILLNK_K);
 			return(1);

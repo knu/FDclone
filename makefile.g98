@@ -118,6 +118,9 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 main.o: main.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"'  $*.c
 
+term.o: term.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@  $*.c
+
 system.o: system.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"' $*.c
 

@@ -118,6 +118,9 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 main.obj: main.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4c00" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\"  $*.c
 
+term.obj: term.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4c00" $(CPPFLAGS) -c -o $@  $*.c
+
 system.obj: system.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4c00" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
 

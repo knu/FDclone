@@ -13,6 +13,16 @@
 #define	MSDOS		(DOSV || PC98 || J3100)
 
 #if	MSDOS
+#define	NOMULTIKANJI
+#define	PATHNOCASE
+#define	COMMNOCASE
+#define	ENVNOCASE
+#define	NOUID
+#define	NODIRLOOP
+#define	NOSYMLINK
+#define	BSPATHDELIM
+#define	USECRNL
+#define	CWDINPATH
 #define	NOTZFILEH
 #define	USETIMEH
 #define	USEUTIME
@@ -60,11 +70,6 @@ typedef long	off_t;
 # if	defined (DJGPP) || defined (BCC32)
 # define	PROTECTED_MODE
 # endif
-#define	_SC_	'\\'
-#define	_SS_	"\\"
-#else	/* !MSDOS */
-#define	_SC_	'/'
-#define	_SS_	"/"
 #endif	/* !MSDOS */
 
 #ifndef	NEAR
@@ -432,6 +437,31 @@ typedef long	off_t;
 #define	USERESOURCEH
 #endif
 
+#if	defined (__CYGWIN__)
+#define	POSIX
+#define	OSTYPE			"CYGWIN"
+#define	EXTENDCCOPT		"-O -D_FILE_OFFSET_BITS=64"
+#define	PATHNOCASE
+#define	COMMNOCASE
+#define	USECRNL
+#define	USEMANLANG
+#define	BSDINSTALL
+#define	TARUSESPACE
+#define	TERMCAPLIB		"-lncurses"
+#define	NOSIGLIST
+#define	DECLERRLIST
+#define	SYSVDIRENT
+#define	NODNAMLEN
+#define	NODRECLEN
+#define	HAVETIMEZONE
+#define	NOTMGMTOFF
+#define	USEREGCOMP
+#define	USESETENV
+#define	USEMKTIME
+#define	DEFFDSETSIZE
+#define	SIGFNCINT
+#endif
+
 #if	defined (linux)
 #define	POSIX
 #define	OSTYPE			"LINUX"
@@ -624,6 +654,7 @@ typedef long	off_t;
 #define	USEFFSTYPE
 #define	USEREGCOMP
 #define	USESETENV
+#define	SELECTRWONLY
 #define	USEMKTIME
 #define	SIGFNCINT
 #endif
@@ -710,6 +741,16 @@ typedef long	off_t;
 /*	ORG_386BSD	;386BSD */
 
 /* #define CODEEUC	;kanji code type is EUC */
+/* #define NOMULTIKANJI	;no need to support multiple kanji codes */
+/* #define PATHNOCASE	;pathname is case insensitive */
+/* #define COMMNOCASE	;shell command name is case insensitive */
+/* #define ENVNOCASE	;environment variable is case insensitive */
+/* #define NOUID	;have not uid, gid */
+/* #define NODIRLOOP	;any directory structure cannot loop */
+/* #define NOSYMLINK	;have not symbolic link */
+/* #define BSPATHDELIM	;path delimtor is backspace  */
+/* #define USECRNL	;use CR-NL as end of line */
+/* #define CWDINPATH	;CWD is implicitly included in command path */
 /* #define USEMANLANG	;man(1) directory includes LANG environment value */
 /* #define SUPPORTSJIS	;cc(1) or man(1) supports Shift JIS perfectly */
 /* #define BSDINSTALL	;install(1) with option -c is valid like BSD */
@@ -742,7 +783,7 @@ typedef long	off_t;
 /* #define NOUNISTDH	;have not <unistd.h> */
 /* #define NOSTDLIBH	;have not <stdlib.h> */
 /* #define NOTZFILEH	;have not <tzfile.h> */
-/* #define USELEAPCNT	;struct tzhead have tzh_leapcnt as leap second */
+/* #define USELEAPCNT	;struct tzhead has tzh_leapcnt as leap second */
 /* #define USESELECTH	;use <sys/select.h> for select() */
 /* #define USESYSDIRH	;use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	;use <time.h> for 'struct tm' */
@@ -754,10 +795,11 @@ typedef long	off_t;
 /* #define USETERMIOS	;use termios interface */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	;dirent interface behaves as System V */
-/* #define NODNAMLEN	;struct dirent haven't d_namlen */
+/* #define NODNAMLEN	;struct dirent hasn't d_namlen */
+/* #define NODRECLEN	;struct dirent hasn't d_reclen and has d_fd instead */
 /* #define DNAMESIZE	;size of d_name in struct dirent */
-/* #define HAVETIMEZONE	;have extern valiable 'timezone' */
-/* #define NOTMGMTOFF	;struct tm haven't tm_gmtoff */
+/* #define HAVETIMEZONE	;have extern variable 'timezone' */
+/* #define NOTMGMTOFF	;struct tm hasn't tm_gmtoff */
 
 /* following 5 items are exclusive */
 /* #define USESTATVFSH	;use <sys/statvfs.h> as header of the FS status */
@@ -792,6 +834,8 @@ typedef long	off_t;
 /* #define USERAND48	;use rand48() family instead of random() */
 /* #define USESETENV	;use setenv() instead of putenv() */
 /* #define NOSELECT	;have not select() */
+/* #define DEFFDSETSIZE	;pre-define FD_SETSIZE as OPEN_MAX for select() */
+/* #define SELECTRWONLY	;select() cannot respond with the file opened as r/w */
 /* #define NOVSPRINTF	;have not vsprintf() */
 /* #define NOTERMVAR	;have not termcap variables such as PC, ospeed, etc. */
 /* #define USEUTIME	;use utime() instead of utimes() */
@@ -827,12 +871,21 @@ typedef long	off_t;
 /* DO NOT DELETE or EDIT BELOW */
 /*                             */
 
+#ifdef	BSPATHDELIM
+#define	_SC_	'\\'
+#define	_SS_	"\\"
+#else
+#define	_SC_	'/'
+#define	_SS_	"/"
+#endif
+
 #if	defined (BSD43) || defined (BSD44)
 #define	BSD4
 #endif
 
 #if	defined (BSD44) || defined (SVR4)
 #define	POSIX
+#define	DEFFDSETSIZE
 #endif
 
 #ifdef	POSIX

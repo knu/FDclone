@@ -349,12 +349,15 @@ extern char *mesconv __P_((char *, char *));
 #define	VWFS0_K	mesconv("並び替え後に書込み可", "valid after replacement")
 #define	VWFS1_K	mesconv("コマンドのみ有効", "command only")
 #define	VWFS2_K	mesconv("使用禁止", "completely invalid")
+#define	VBIOS_K	mesconv(" (BIOS 経由)", " (via BIOS)")
 #define	VCOL2_K	mesconv("背景色を黒に", "black background")
 #define	VCOL3_K	mesconv("表示色を黒に", "black foreground")
+#define	VNONE_K	mesconv("なし", "none")
 #define	VNCNV_K	mesconv("変換しない", "NoConvert")
 #define	VENG_K	mesconv("英語", "English")
 #define	VNJIS_K	mesconv("新JIS", "NewJIS")
 #define	VOJIS_K	mesconv("旧JIS", "OldJIS")
+#define	VDEF_K	mesconv("(既定値)", "(default)")
 
 #define	NEWET_K	mesconv("新規登録", "NewEntry")
 #define	NIMPL_K	mesconv("この機能は実装されていません.", \

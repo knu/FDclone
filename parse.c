@@ -303,7 +303,7 @@ char *argv[];
 char *evalcomstr(path, delim)
 char *path, *delim;
 {
-# if	!MSDOS && !defined (_NOKANJIFCONV)
+# ifndef	_NOKANJIFCONV
 	char *buf;
 # endif
 	char *cp, *next, *tmp, *epath;
@@ -323,7 +323,7 @@ char *path, *delim;
 		next = cp + len;
 		if (len) {
 			tmp = _evalpath(cp, next, 0, 0);
-# if	!MSDOS && !defined (_NOKANJIFCONV)
+# ifndef	_NOKANJIFCONV
 			len = strlen(tmp) * 3 + 3;
 			buf = malloc2(len + 1);
 			cp = kanjiconv2(buf, tmp,
@@ -336,17 +336,17 @@ char *path, *delim;
 # ifdef	FAKEUNINIT
 		else {
 			/* fake for -Wuninitialized */
-#  if	!MSDOS && !defined (_NOKANJIFCONV)
+#  ifndef	_NOKANJIFCONV
 			buf =
 #  endif
 			tmp = NULL;
 		}
 # endif
 
-		epath = (char *)realloc2(epath, size + len + i + 1);
+		epath = realloc2(epath, size + len + i + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
-# if	!MSDOS && !defined (_NOKANJIFCONV)
+# ifndef	_NOKANJIFCONV
 			free(buf);
 # endif
 			free(tmp);
@@ -375,7 +375,7 @@ int delim;
 	epath = next = NULL;
 	size = 0;
 	for (cp = paths; cp; cp = next) {
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 		if (_dospath(cp)) next = strchr(&(cp[2]), delim);
 		else
 #endif
@@ -390,7 +390,7 @@ int delim;
 #ifdef	FAKEUNINIT
 		else tmp = NULL;	/* fake for -Wuninitialized */
 #endif
-		epath = (char *)realloc2(epath, size + len + 1 + 1);
+		epath = realloc2(epath, size + len + 1 + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
 			free(tmp);
@@ -438,7 +438,7 @@ char *name;
 }
 #endif	/* !MSDOS || !_NOORIGSHELL */
 
-#if	!MSDOS && defined (_NOORIGSHELL)
+#ifdef	_NOORIGSHELL
 VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
@@ -446,14 +446,10 @@ VOID adjustpath(VOID_A)
 	if (!(cp = getconstvar("PATH"))) return;
 
 	path = evalpaths(cp, PATHDELIM);
-	if (strpathcmp(path, cp)) {
-		cp = (char *)malloc2(strlen(path) + 5 + 1);
-		strcpy(strcpy2(cp, "PATH="), path);
-		if (putenv2(cp) < 0) error("PATH");
-	}
+	if (strpathcmp(path, cp)) setenv2("PATH", path, 1);
 	free(path);
 }
-#endif	/* !MSDOS && _NOORIGSHELL */
+#endif	/* _NOORIGSHELL */
 
 char *includepath(path, plist)
 char *path, *plist;
@@ -464,14 +460,14 @@ char *path, *plist;
 	if (!plist || !*plist) return(NULL);
 	next = plist;
 	for (cp = next; cp && *cp; cp = next) {
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
 		else
 #endif
 		next = strchr(cp, PATHDELIM);
 		len = (next) ? (next++) - cp : strlen(cp);
 		while (len > 1 && cp[len - 1] == _SC_) len--;
-#if	MSDOS
+#ifdef	BSPATHDELIM
 		if (onkanji1(cp, len - 1)) len++;
 #endif
 		if (len > 0 && !strnpathcmp(path, cp, len)
@@ -520,11 +516,11 @@ u_char *fp, *dp, *wp;
 int evalprompt(bufp, prompt)
 char **bufp, *prompt;
 {
-#if	!MSDOS
+#ifndef	NOUID
 	uidtable *up;
-# ifdef	USEUNAME
+#endif
+#if	!MSDOS && defined (USEUNAME)
 	struct utsname uts;
-# endif
 #endif
 	char *cp, *tmp, line[MAXPATHLEN];
 	ALLOC_T size;
@@ -562,11 +558,13 @@ char **bufp, *prompt;
 			case '!':
 				long2str(line, histno[0] + 1, sizeof(line));
 				break;
-#if	!MSDOS
+#ifndef	NOUID
 			case 'u':
 				if ((up = finduid(getuid(), NULL)))
 					cp = up -> name;
 				break;
+#endif
+#if	!MSDOS
 			case 'h':
 			case 'H':
 # ifdef	USEUNAME
@@ -591,7 +589,7 @@ char **bufp, *prompt;
 				if (!physical_path || !Xgetwd(line))
 					tmp = fullpath;
 				else tmp = line;
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 				if (_dospath(tmp)) tmp += 2;
 #endif
 				cp = strrdelim(tmp, 0);
@@ -687,7 +685,6 @@ int margin;
 #endif	/* FD >= 2 */
 
 #ifndef	_NOARCHIVE
-/*ARGSUSED*/
 char *getext(ext, flagsp)
 char *ext;
 u_char *flagsp;
@@ -697,9 +694,7 @@ u_char *flagsp;
 	*flagsp = 0;
 	if (*ext == '/') {
 		ext++;
-# if	!MSDOS
 		*flagsp |= LF_IGNORECASE;
-# endif
 	}
 
 	if (*ext == '*') tmp = strdup2(ext);
@@ -721,7 +716,7 @@ int flags2, strict;
 	if (*ext1 == '*') ext1++;
 	if (*ext2 == '*') ext2++;
 	if (!strict && *ext1 != '.' && *ext2 == '.') ext2++;
-# if	!MSDOS
+# ifndef	PATHNOCASE
 	if ((flags1 & LF_IGNORECASE) || (flags2 & LF_IGNORECASE))
 		return(strcasecmp2(ext1, ext2));
 # endif
@@ -879,7 +874,7 @@ int *lenp, evalhat;
 	return(s);
 }
 
-#if	!MSDOS && !defined (_NOKEYMAP)
+#ifndef	_NOKEYMAP
 char *encodestr(s, len)
 char *s;
 int len;
@@ -890,13 +885,13 @@ int len;
 	cp = malloc2(len * 4 + 1);
 	j = 0;
 	if (s) for (i = 0; i < len; i++) {
-#ifdef	CODEEUC
+# ifdef	CODEEUC
 		if (isekana(s, i)) cp[j++] = s[i++];
 		else
-#else
+# else
 		if (iskna(s[i])) /*EMPTY*/;
 		else
-#endif
+# endif
 		if (iskanji1(s, i)) cp[j++] = s[i++];
 		else if (isctl(s[i]) || ismsb(s[i])) {
 			for (n = 0; escapechar[n]; n++)
@@ -925,4 +920,4 @@ int len;
 	cp[j] = '\0';
 	return(cp);
 }
-#endif	/* !MSDOS && !_NOKEYMAP */
+#endif	/* !_NOKEYMAP */

@@ -8,9 +8,8 @@
 #include "func.h"
 #include "kctype.h"
 
-extern int norealpath;
-#ifndef	_NOROCKRIDGE
-extern int norockridge;
+#if	!defined (_NODOSDRIVE) && defined (CODEEUC)
+extern int noconv;
 #endif
 
 #ifdef	_NODOSDRIVE
@@ -23,13 +22,6 @@ typedef struct dirent	st_dirent;
 # endif
 #endif
 
-#ifndef	_NOKANJIFCONV
-typedef struct _kpathtable {
-	char **path;
-	u_short code;
-} kpathtable;
-#endif
-
 #if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
 typedef struct _opendirpath_t {
 	DIR *dirp;
@@ -37,48 +29,22 @@ typedef struct _opendirpath_t {
 } opendirpath_t;
 #endif
 
-int noconv = 0;
+#ifdef	CYGWIN
+#include <sys/cygwin.h>
+static struct dirent *pseudoreaddir __P_((DIR *));
+#else
+#define	pseudoreaddir	readdir
+#endif
+
 #ifndef	_NODOSDRIVE
 int lastdrv = -1;
 int dosdrive = 0;
 #endif
-#ifndef	_NOKANJIFCONV
-int nokanjifconv = 0;
-char *sjispath = NULL;
-char *eucpath = NULL;
-char *jis7path = NULL;
-char *jis8path = NULL;
-char *junetpath = NULL;
-char *ojis7path = NULL;
-char *ojis8path = NULL;
-char *ojunetpath = NULL;
-char *hexpath = NULL;
-char *cappath = NULL;
-char *utf8path = NULL;
-char *noconvpath = NULL;
-#endif	/* !_NOKANJIFCONV */
 
 static char cachecwd[MAXPATHLEN] = "";
 #if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
 static opendirpath_t *dirpathlist = NULL;
 static int maxdirpath = 0;
-#endif
-#ifndef	_NOKANJIFCONV
-static kpathtable kpathlist[] = {
-	{ &sjispath, SJIS },
-	{ &eucpath, EUC },
-	{ &jis7path, JIS7 },
-	{ &jis8path, JIS8 },
-	{ &junetpath, JUNET },
-	{ &ojis7path, O_JIS7 },
-	{ &ojis8path, O_JIS8 },
-	{ &ojunetpath, O_JUNET },
-	{ &hexpath, HEX },
-	{ &cappath, CAP },
-	{ &utf8path, UTF8 },
-	{ &noconvpath, NOCNV },
-};
-#define	MAXKPATHLIST	(sizeof(kpathlist) / sizeof(kpathtable))
 #endif
 
 
@@ -129,177 +95,10 @@ char *path, *buf;
 }
 #endif	/* !_NODOSDRIVE */
 
-#ifndef	_NOKANJIFCONV
-int getkcode(path)
-char *path;
-{
-	int i;
-
-# ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(SJIS);
-# endif
-	for (i = 0; i < MAXKPATHLIST; i++) {
-		if (includepath(path, *(kpathlist[i].path)))
-			return(kpathlist[i].code);
-	}
-	return(fnamekcode);
-}
-#endif	/* !_NOKANJIFCONV */
-
-/*ARGSUSED*/
-char *convget(buf, path, dos)
-char *buf, *path;
-int dos;
-{
-#ifndef	_NOROCKRIDGE
-	char rbuf[MAXPATHLEN];
-#endif
-#ifndef	_NOKANJIFCONV
-	int fgetok;
-#endif
-	char *cp;
-
-	if (noconv) return(path);
-#ifndef	_NOKANJIFCONV
-	fgetok = (nokanjifconv) ? 0 : 1;
-#endif
-
-	cp = path;
-#ifndef	_NOROCKRIDGE
-	if (!norockridge) cp = transpath(cp, rbuf);
-#endif
-#ifndef	_NODOSDRIVE
-	if (dos) {
-# ifdef	CODEEUC
-		buf[sjis2ujis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
-		cp = buf;
-# endif
-# ifndef	_NOKANJIFCONV
-		fgetok = 0;
-# endif
-	}
-#endif
-#ifndef	_NOKANJIFCONV
-	if (fgetok) cp = kanjiconv2(buf, cp,
-		MAXPATHLEN - 1, getkcode(cp), DEFCODE);
-#endif
-	if (cp == path) return(cp);
-	strcpy(buf, cp);
-	return(buf);
-}
-
-/*ARGSUSED*/
-char *convput(buf, path, needfile, rdlink, rrreal, codep)
-char *buf, *path;
-int needfile, rdlink;
-char *rrreal;
-int *codep;
-{
-#if	!defined (_NODOSDRIVE) || !defined (_NOKANJIFCONV)
-	char kbuf[MAXPATHLEN];
-#endif
-#ifndef	_NOROCKRIDGE
-	char rbuf[MAXPATHLEN];
-#endif
-#ifndef	_NOKANJIFCONV
-	int fputok;
-#endif
-	char *cp, *file, rpath[MAXPATHLEN];
-	int n;
-
-	if (rrreal) *rrreal = '\0';
-	if (codep) *codep = NOCNV;
-
-	if (noconv || isdotdir(path)) {
-#ifndef	_NODOSDRIVE
-		if (dospath(path, buf)) return(buf);
-#endif
-		return(path);
-	}
-#ifndef	_NOKANJIFCONV
-	fputok = (nokanjifconv) ? 0 : 1;
-#endif
-
-	if (needfile && strdelim(path, 0)) needfile = 0;
-	if (norealpath) cp = path;
-	else {
-		if ((file = strrdelim(path, 0))) {
-			n = file - path;
-			if (file++ == isrootdir(path)) n++;
-			strncpy2(rpath, path, n);
-		}
-#ifndef	_NODOSDRIVE
-		else if ((n = _dospath(path))) {
-			file = path + 2;
-			rpath[0] = n;
-			rpath[1] = ':';
-			rpath[2] = '.';
-			rpath[3] = '\0';
-		}
-#endif
-		else {
-			file = path;
-			strcpy(rpath, ".");
-		}
-		realpath2(rpath, rpath, 1);
-		cp = strcatdelim(rpath);
-		strncpy2(cp, file, MAXPATHLEN - 1 - (cp - rpath));
-		cp = rpath;
-	}
-#ifndef	_NODOSDRIVE
-	if ((n = dospath(cp, kbuf))) {
-		cp = kbuf;
-		if (codep) *codep = SJIS;
-# ifndef	_NOKANJIFCONV
-		fputok = 0;
-# endif
-	}
-#endif
-#ifndef	_NOKANJIFCONV
-	if (fputok) {
-		int c;
-
-		c = getkcode(cp);
-		if (codep) *codep = c;
-		cp = kanjiconv2(kbuf, cp, MAXPATHLEN - 1, DEFCODE, c);
-	}
-#endif
-#ifndef	_NOROCKRIDGE
-	if (!norockridge && (cp = detranspath(cp, rbuf)) == rbuf) {
-		if (rrreal) strcpy(rrreal, rbuf);
-		if (rdlink && rrreadlink(cp, buf, MAXPATHLEN - 1) >= 0) {
-			if (needfile && strdelim(buf, 0)) needfile = 0;
-			if (*buf == _SC_ || !(cp = strrdelim(rbuf, 0)))
-				cp = buf;
-			else {
-				cp++;
-				strncpy2(cp, buf, MAXPATHLEN - (cp - rbuf));
-				cp = rbuf;
-			}
-			realpath2(cp, rpath, 1);
-			cp = detranspath(rpath, rbuf);
-		}
-	}
-#endif
-	if (cp == path) return(path);
-	if (needfile && (file = strrdelim(cp, 0))) file++;
-	else file = cp;
-#ifndef	_NODOSDRIVE
-	if (n && !_dospath(file)) {
-		buf[0] = n;
-		buf[1] = ':';
-		strcpy(&(buf[2]), file);
-	}
-	else
-#endif
-	strcpy(buf, file);
-	return(buf);
-}
-
 DIR *Xopendir(path)
 char *path;
 {
-#if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
+#if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE) || defined (CYGWIN)
 	char buf[MAXPATHLEN];
 #endif
 	DIR *dirp;
@@ -311,15 +110,23 @@ char *path;
 	else
 #endif
 	dirp = opendir(cp);
+	if (!dirp) return(NULL);
+#if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE) || defined (CYGWIN)
+	realpath2(path, buf, 1);
+#endif
 #if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
-	if (dirp) {
-		dirpathlist = (opendirpath_t *)realloc2(dirpathlist,
-			++maxdirpath * sizeof(opendirpath_t));
-		realpath2(path, buf, 1);
-		cp = convput(conv, buf, 0, 1, NULL, NULL);
-		dirpathlist[maxdirpath - 1].dirp = dirp;
-		dirpathlist[maxdirpath - 1].path = strdup2(cp);
-	}
+	dirpathlist = (opendirpath_t *)realloc2(dirpathlist,
+		++maxdirpath * sizeof(opendirpath_t));
+	cp = convput(conv, buf, 0, 1, NULL, NULL);
+	dirpathlist[maxdirpath - 1].dirp = dirp;
+	dirpathlist[maxdirpath - 1].path = strdup2(cp);
+#endif
+#ifdef	CYGWIN
+#define	opendir_saw_u_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 2))
+#define	opendir_saw_s_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 3))
+	if (buf[0] != _SC_ || buf[1])
+		dirp -> __flags |=
+			opendir_saw_u_cygdrive | opendir_saw_s_cygdrive;
 #endif
 	return(dirp);
 }
@@ -346,18 +153,77 @@ DIR *dirp;
 	}
 #endif	/* !_NOKANJICONV || !_NOROCKRIDGE */
 #ifndef	_NODOSDRIVE
-	if (*((int *)dirp) < 0) return(dosclosedir(dirp));
+	if (((dosDIR *)dirp) -> dd_id == DID_IFDOSDRIVE)
+		return(dosclosedir(dirp));
 #endif
 	closedir(dirp);
 	return(0);
 }
+
+#ifdef	CYGWIN
+static struct dirent *pseudoreaddir(dirp)
+DIR *dirp;
+{
+	static char *upath = NULL;
+	static char *spath = NULL;
+	struct dirent *dp;
+
+	if (!upath) {
+		char ubuf[MAXPATHLEN], sbuf[MAXPATHLEN];
+
+		cygwin_internal(CW_GET_CYGDRIVE_PREFIXES, ubuf, sbuf);
+		for (upath = ubuf; *upath == _SC_; upath++);
+# ifdef	DEBUG
+		_mtrace_file = "pseudoreaddir(upath)";
+# endif
+		upath = strdup2(upath);
+		for (spath = sbuf; *spath == _SC_; spath++);
+		if (*upath && !strpathcmp(spath, upath)) *spath = '\0';
+# ifdef	DEBUG
+		_mtrace_file = "pseudoreaddir(spath)";
+# endif
+		spath = strdup2(spath);
+	}
+
+	dp = readdir(dirp);
+	if (dirp -> __d_cookie != __DIRENT_COOKIE) return(dp);
+
+	if (!(*upath)) dirp -> __flags |= opendir_saw_u_cygdrive;
+	if (!(*spath)) dirp -> __flags |= opendir_saw_s_cygdrive;
+
+	if (dp) {
+		if (*upath && !(dirp -> __flags & opendir_saw_u_cygdrive)
+		&& !strpathcmp(dp -> d_name, upath))
+			dirp -> __flags |= opendir_saw_u_cygdrive;
+		else if (*spath && !(dirp -> __flags & opendir_saw_s_cygdrive)
+		&& !strpathcmp(dp -> d_name, spath))
+			dirp -> __flags |= opendir_saw_s_cygdrive;
+	}
+	else {
+		if (!(dirp -> __flags & opendir_saw_u_cygdrive)) {
+			dp = dirp -> __d_dirent;
+			strcpy(dp -> d_name, upath);
+			dirp -> __flags |= opendir_saw_u_cygdrive;
+			dirp -> __d_position++;
+		}
+		else if (!(dirp -> __flags & opendir_saw_s_cygdrive)) {
+			dp = dirp -> __d_dirent;
+			strcpy(dp -> d_name, spath);
+			dirp -> __flags |= opendir_saw_s_cygdrive;
+			dirp -> __d_position++;
+		}
+	}
+
+	return(dp);
+}
+#endif	/* CYGWIN */
 
 struct dirent *Xreaddir(dirp)
 DIR *dirp;
 {
 #if	defined (_NODOSDRIVE) && defined (_NOKANJIFCONV) \
 && defined (_NOROCKRIDGE)
-	return(readdir(dirp));
+	return(pseudoreaddir(dirp));
 #else	/* !_NODOSDRIVE || !_NOKANJIFCONV || !_NOROCKRIDGE */
 # if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
 	char path[MAXPATHLEN], conv[MAXPATHLEN];
@@ -366,12 +232,19 @@ DIR *dirp;
 	static st_dirent buf;
 	struct dirent *dp;
 	char *src, *dest;
+	int dos;
 
 # ifndef	_NODOSDRIVE
-	if (*((int *)dirp) < 0) dp = dosreaddir(dirp);
+	if (((dosDIR *)dirp) -> dd_id == DID_IFDOSDRIVE) {
+		dp = dosreaddir(dirp);
+		dos = 1;
+	}
 	else
 # endif
-	dp = readdir(dirp);
+	{
+		dp = pseudoreaddir(dirp);
+		dos = 0;
+	}
 	if (!dp) return(NULL);
 	src = dp -> d_name;
 	dest = ((struct dirent *)&buf) -> d_name;
@@ -385,7 +258,7 @@ DIR *dirp;
 		if (dirp == dirpathlist[i].dirp) break;
 	if (i >= 0) {
 		strcatdelim2(path, dirpathlist[i].path, src);
-		if (convget(conv, path, *((int *)dirp) < 0) == conv) {
+		if (convget(conv, path, dos) == conv) {
 			if ((src = strrdelim(conv, 0))) src++;
 			else src = conv;
 		}
@@ -394,7 +267,7 @@ DIR *dirp;
 	else
 # endif	/* !_NOKANJIFCONV || !_NOROCKRIDGE */
 # if	!defined (_NODOSDRIVE) && defined (CODEEUC)
-	if (*((int *)dirp) < 0 && !noconv)
+	if (dos && !noconv)
 		dest[sjis2ujis(dest, (u_char *)src, MAXNAMLEN)] = '\0';
 	else
 # endif
@@ -408,7 +281,7 @@ VOID Xrewinddir(dirp)
 DIR *dirp;
 {
 #ifndef	_NODOSDRIVE
-	if (*((int *)dirp) < 0) dosrewinddir(dirp);
+	if (((dosDIR *)dirp) -> dd_id == DID_IFDOSDRIVE) dosrewinddir(dirp);
 #endif
 	rewinddir(dirp);
 }
@@ -723,6 +596,7 @@ int oldd;
 int Xdup2(oldd, newd)
 int oldd, newd;
 {
+	if (oldd == newd) return(newd);
 	if (oldd >= DOSFDOFFSET || newd >= DOSFDOFFSET) {
 		errno = EBADF;
 		return(-1);

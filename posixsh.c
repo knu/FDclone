@@ -4,12 +4,15 @@
  *	XSH command for POSIX
  */
 
+#include <fcntl.h>
+#ifdef	FD
+#include "fd.h"
+#else	/* !FD */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
 #include "machine.h"
-#include "kctype.h"
+#include "pathname.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -18,20 +21,18 @@
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
+#endif	/* !FD */
+
+#include "kctype.h"
 
 #if	MSDOS
 #include <io.h>
 #include "unixemu.h"
-#define	Xexit		exit
-#define	DEFPATH		":"
 #else	/* !MSDOS */
 #include <sys/param.h>
 #include <sys/ioctl.h>
-#define	Xexit		_exit
-#define	DEFPATH		":/bin:/usr/bin"
 #endif	/* !MSDOS */
 
-#include "pathname.h"
 #include "system.h"
 
 #if	!defined (MINIMUMSHELL) \
@@ -65,14 +66,14 @@ extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
 extern char *strndup2 __P_((char *, int));
 extern char *strncpy2 __P_((char *, char *, int));
-extern int setenv2 __P_((char *, char *));
+extern int setenv2 __P_((char *, char *, int));
 extern time_t time2 __P_((VOID_A));
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 static char *NEAR headstree __P_((syntaxtree *));
 #endif
 #ifndef	NOALIAS
-static aliastable *NEAR duplalias __P_((aliastable *));
+static shaliastable *NEAR duplalias __P_((shaliastable *));
 static int cmpalias __P_((CONST VOID_P, CONST VOID_P));
 #endif
 static int NEAR _evalexpression __P_((char *, int, long *));
@@ -105,7 +106,7 @@ typedef struct _mailpath_t {
 } mailpath_t;
 #endif
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 int gettermio __P_((p_id_t));
 VOID dispjob __P_((int, FILE *));
 int searchjob __P_((p_id_t, int *));
@@ -114,17 +115,17 @@ int stackjob __P_((p_id_t, int, syntaxtree *));
 int stoppedjob __P_((p_id_t));
 VOID killjob __P_((VOID_A));
 VOID checkjob __P_((int));
-#endif	/* !MSDOS && !NOJOB */
+#endif	/* !NOJOB */
 char *evalposixsubst __P_((char *, int *));
 #if	!MSDOS
 VOID replacemailpath __P_((char *, int));
 VOID checkmail __P_((int));
 #endif
 #ifndef	NOALIAS
-VOID freealias __P_((aliastable *));
+VOID freealias __P_((shaliastable *));
 int checkalias __P_((syntaxtree *, char *, int, int));
 #endif
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 int posixjobs __P_((syntaxtree *));
 int posixfg __P_((syntaxtree *));
 int posixbg __P_((syntaxtree *));
@@ -140,7 +141,7 @@ int posixcommand __P_((syntaxtree *));
 int posixgetopts __P_((syntaxtree *));
 #endif
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 jobtable *joblist = NULL;
 int maxjobs = 0;
 #endif
@@ -148,7 +149,7 @@ int maxjobs = 0;
 int mailcheck = 0;
 #endif
 #ifndef	NOALIAS
-aliastable *shellalias = NULL;
+shaliastable *shellalias = NULL;
 #endif
 #ifndef	NOPOSIXUTIL
 int posixoptind = 0;
@@ -160,7 +161,7 @@ static int maxmailpath = 0;
 #endif
 
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 int gettermio(pgrp)
 p_id_t pgrp;
 {
@@ -458,18 +459,18 @@ VOID killjob(VOID_A)
 		if (j > 0) Xkillpg(joblist[i].pids[0], SIGCONT);
 	}
 }
-#endif	/* !MSDOS && !NOJOB */
+#endif	/* !NOJOB */
 
 #ifndef	NOALIAS
-static aliastable *NEAR duplalias(alias)
-aliastable *alias;
+static shaliastable *NEAR duplalias(alias)
+shaliastable *alias;
 {
-	aliastable *dupl;
+	shaliastable *dupl;
 	int i, n;
 
 	if (!alias) n = 0;
 	else for (n = 0; alias[n].ident; n++);
-	dupl = (aliastable *)malloc2((n + 1) * sizeof(aliastable));
+	dupl = (shaliastable *)malloc2((n + 1) * sizeof(shaliastable));
 	for (i = 0; i < n; i++) {
 		dupl[i].ident = strdup2(alias[i].ident);
 		dupl[i].comm = strdup2(alias[i].comm);
@@ -479,7 +480,7 @@ aliastable *alias;
 }
 
 VOID freealias(alias)
-aliastable *alias;
+shaliastable *alias;
 {
 	int i;
 
@@ -496,10 +497,10 @@ static int cmpalias(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
-	aliastable *ap1, *ap2;
+	shaliastable *ap1, *ap2;
 
-	ap1 = (aliastable *)vp1;
-	ap2 = (aliastable *)vp2;
+	ap1 = (shaliastable *)vp1;
+	ap2 = (shaliastable *)vp2;
 	return(strpathcmp2(ap1 -> ident, ap2 -> ident));
 }
 
@@ -519,7 +520,7 @@ int len, delim;
 		return(-1);
 	for (i = 0; shellalias[i].ident; i++)
 		if (!(shellalias[i].flags & AL_USED)
-		&& !strnpathcmp(ident, shellalias[i].ident, len)
+		&& !strncommcmp(ident, shellalias[i].ident, len)
 		&& !(shellalias[i].ident[len])) break;
 	if (!(shellalias[i].ident)) return(-1);
 
@@ -899,7 +900,7 @@ int reset;
 }
 #endif	/* !MSDOS */
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 /*ARGSUSED*/
 int posixjobs(trp)
 syntaxtree *trp;
@@ -1002,13 +1003,13 @@ syntaxtree *trp;
 	lastjob = i;
 	return(RET_SUCCESS);
 }
-#endif	/* !MSDOS && !NOJOB */
+#endif	/* !NOJOB */
 
 #ifndef	NOALIAS
 int posixalias(trp)
 syntaxtree *trp;
 {
-	aliastable *alias;
+	shaliastable *alias;
 	char **argv;
 	int i, n, len, set, ret;
 
@@ -1016,7 +1017,7 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		alias = duplalias(shellalias);
 		for (i = 0; alias[i].ident; i++);
-		if (i > 1) qsort(alias, i, sizeof(aliastable), cmpalias);
+		if (i > 1) qsort(alias, i, sizeof(shaliastable), cmpalias);
 		for (i = 0; alias[i].ident; i++) {
 			fputs("alias ", stdout);
 			kanjifputs(alias[i].ident, stdout);
@@ -1037,7 +1038,7 @@ syntaxtree *trp;
 			break;
 		}
 		for (i = 0; shellalias[i].ident; i++)
-			if (!strnpathcmp(shellalias[i].ident, argv[n], len)
+			if (!strncommcmp(shellalias[i].ident, argv[n], len)
 			&& !(shellalias[i].ident[len]))
 				break;
 
@@ -1062,8 +1063,8 @@ syntaxtree *trp;
 			shellalias[i].comm = strdup2(&(argv[n][++len]));
 		}
 		else {
-			shellalias = (aliastable *)realloc2(shellalias,
-				(i + 2) * sizeof(aliastable));
+			shellalias = (shaliastable *)realloc2(shellalias,
+				(i + 2) * sizeof(shaliastable));
 			shellalias[i].ident = strndup2(argv[n], len);
 			shellalias[i].comm = strdup2(&(argv[n][++len]));
 			shellalias[++i].ident = NULL;
@@ -1089,7 +1090,7 @@ syntaxtree *trp;
 				if (!regexp_exec(re, shellalias[i].ident, 0))
 					continue;
 			}
-			else if (strpathcmp(shellalias[i].ident, argv[n]))
+			else if (strcommcmp(shellalias[i].ident, argv[n]))
 				continue;
 			c++;
 			free(shellalias[i].ident);
@@ -1164,12 +1165,12 @@ syntaxtree *trp;
 		i = 2;
 	}
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 	checkjob(0);
 #endif
 	for (; i < (trp -> comm) -> argc; i++) {
 		s = (trp -> comm) -> argv[i];
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 		if (*s == '%') {
 			if ((n = getjob(s)) < 0) {
 				execerror(s, ER_NOSUCHJOB, 0);
@@ -1178,7 +1179,7 @@ syntaxtree *trp;
 			n = Xkillpg(joblist[n].pids[0], sig);
 		}
 		else
-#endif	/* !MSDOS && !NOJOB */
+#endif	/* !NOJOB */
 		if ((pid = isnumeric(s)) < 0L) {
 			fputs("usage: kill [ -sig ] pid ...\n", stderr);
 			fputs("for a list of signals: kill -l\n", stderr);
@@ -1557,14 +1558,14 @@ syntaxtree *trp;
 #endif
 	else {
 		path = strdup2(getconstvar("PATH"));
-		setenv2("PATH", DEFPATH);
+		setenv2("PATH", DEFPATH, 1);
 #if	MSDOS
 		ret = exec_simplecom(trp, type, id);
 #else
 		ret = exec_simplecom(trp, type, id, 0);
 #endif
-		setenv2("PATH", path);
-		free(path);
+		setenv2("PATH", path, 1);
+		if (path) free(path);
 	}
 	(trp -> comm) -> argc = argc;
 	(trp -> comm) -> argv = argv;
@@ -1662,15 +1663,15 @@ syntaxtree *trp;
 		}
 	}
 
-	if (posixoptarg) setenv2("OPTARG", posixoptarg);
+	if (posixoptarg) setenv2("OPTARG", posixoptarg, 0);
 	else if (ret == RET_SUCCESS) unset("OPTARG", sizeof("OPTARG") - 1);
 
 	buf[0] = n;
 	buf[1] = '\0';
-	setenv2(name, buf);
+	setenv2(name, buf, 0);
 
 	n = posixoptind;
-	setenv2("OPTIND", long2str(buf, n, sizeof(buf)));
+	setenv2("OPTIND", long2str(buf, n, sizeof(buf)), 0);
 	posixoptind = n;
 
 	return(ret);

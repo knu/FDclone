@@ -24,6 +24,10 @@
 #include "unixdisk.h"
 #include "dosdisk.h"
 
+#ifndef	O_ACCMODE
+#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
+#endif
+
 #define	KC_SJIS1	0001
 #define	KC_SJIS2	0002
 #define	KC_EUCJP	0010
@@ -102,8 +106,10 @@ static long NEAR lfn_findfirst __P_((char *, u_short, struct lfnfind_t *));
 static int NEAR lfn_findnext __P_((u_short, struct lfnfind_t *));
 static int NEAR lfn_findclose __P_((u_short));
 #endif
+#ifndef	_NOUSELFN
 static int NEAR gendosname __P_((char *));
 static int NEAR unixrenamedir __P_((char *, char *));
+#endif
 static u_int NEAR getdosmode __P_((u_int));
 static u_int NEAR putdosmode __P_((u_int));
 static time_t NEAR getdostime __P_((u_int, u_int));
@@ -295,7 +301,9 @@ int d;
 	if (d && _dospath(s)) return(s + 1);
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) return(&(s[i]));
+# ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
+# endif
 	}
 	return(NULL);
 }
@@ -311,7 +319,9 @@ int d;
 	else cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) cp = &(s[i]);
+# ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
+# endif
 	}
 	return(cp);
 }
@@ -320,15 +330,21 @@ static int NEAR isdelim(s, ptr)
 char *s;
 int ptr;
 {
+# ifdef	BSPATHDELIM
 	int i;
+# endif
 
 	if (ptr < 0 || s[ptr] != _SC_) return(0);
+# ifdef	BSPATHDELIM
 	if (--ptr < 0) return(1);
 	if (!ptr) return(!iskanji1(s, 0));
 
 	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
 	if (!s[i] || i > ptr) return(1);
 	return(!iskanji1(s, i));
+# else
+	return(1);
+# endif
 }
 
 static char *NEAR strcatdelim(s)
@@ -349,7 +365,9 @@ char *s;
 			continue;
 		}
 		cp = NULL;
+# ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
+# endif
 	}
 	if (!cp) {
 		cp = &(s[i]);
@@ -375,7 +393,7 @@ char *buf, *s1, *s2;
 	if (!s1[i]) cp = &(buf[i]);
 	else if (s1[i] == _SC_ && !s1[i + 1]) {
 		cp = &(buf[i]);
-		*cp = _SC_;
+		*(cp++) = _SC_;
 	}
 	else {
 		cp = NULL;
@@ -386,10 +404,12 @@ char *buf, *s1, *s2;
 				continue;
 			}
 			cp = NULL;
+# ifdef	BSPATHDELIM
 			if (iskanji1(s1, i)) {
 				if (!s1[++i]) break;
 				buf[i] = s1[i];
 			}
+# endif
 		}
 		if (!cp) {
 			cp = &(buf[i]);
@@ -643,7 +663,7 @@ char *path;
 	if (drv[0] >= 'A' && drv[0] <= 'Z') return(0);
 
 	drv[1] = ':';
-	drv[2] = _SC_;
+	drv[2] = '\\';
 	drv[3] = '\0';
 
 	reg.x.ax = 0x71a0;
@@ -689,6 +709,9 @@ int drive;
 	if (int21call(&reg, &sreg) < 0) return(NULL);
 #ifdef	DJGPP
 	dosmemget(__tb, MAXPATHLEN - 3, pathname);
+#endif
+#ifndef	BSPATHDELIM
+	adjustpname(pathname);
 #endif
 	return(pathname);
 }
@@ -749,6 +772,9 @@ char *path, *alias;
 	if (int21call(&reg, &sreg) < 0) return(NULL);
 # ifdef	DJGPP
 	dosmemget(__tb + i, MAXPATHLEN, alias);
+# endif
+# ifndef	BSPATHDELIM
+	adjustpname(alias);
 # endif
 
 	if (!path || !(i = _dospath(path))) i = getcurdrv();
@@ -812,6 +838,10 @@ char *path, *resolved;
 #ifdef	DJGPP
 	dosmemget(__tb + i, MAXPATHLEN, resolved);
 #endif
+#ifndef	BSPATHDELIM
+	adjustpname(resolved);
+#endif
+
 	if (!path || !(i = _dospath(path))) i = getcurdrv();
 	else path += 2;
 	if (!_dospath(resolved) || resolved[2] != _SC_) {
@@ -842,6 +872,46 @@ char *path, *resolved;
 	return(resolved);
 }
 
+#ifndef	BSPATHDELIM
+char *adjustpname(path)
+char *path;
+{
+	int i;
+
+	for (i = 0; path[i]; i++) {
+		if (path[i] == '\\') path[i] = _SC_;
+		else if (iskanji1(path, i)) i++;
+	}
+	return(path);
+}
+#endif	/* !BSPATHDELIM */
+
+#if	defined (DJGPP) || !defined (BSPATHDELIM)
+char *adjustfname(path)
+char *path;
+{
+# ifndef	_NOUSELFN
+	char tmp[MAXPATHLEN];
+# endif
+	int i;
+
+# ifndef	_NOUSELFN
+	if (supportLFN(path) > 0 && unixrealpath(path, tmp)) strcpy(path, tmp);
+	else
+# endif
+	for (i = (_dospath(path)) ? 2 : 0; path[i]; i++) {
+# ifdef	BSPATHDELIM
+		if (path[i] == '/') path[i] = _SC_;
+# else
+		if (path[i] == '\\') path[i] = _SC_;
+		else if (iskanji1(path, i)) i++;
+# endif
+		else path[i] = toupper2(path[i]);
+	}
+	return(path);
+}
+#endif	/* DJGPP || !BSPATHDELIM */
+
 #ifndef	_NOUSELFN
 char *preparefile(path, alias)
 char *path, *alias;
@@ -862,23 +932,6 @@ char *path, *alias;
 #endif
 	return(NULL);
 }
-
-#ifdef	DJGPP
-char *adjustfname(path)
-char *path;
-{
-	char tmp[MAXPATHLEN];
-	int i;
-
-	if (supportLFN(path) > 0 && unixrealpath(path, tmp)) strcpy(path, tmp);
-	else
-	for (i = (_dospath(path)) ? 2 : 0; path[i]; i++) {
-		if (path[i] == '/') path[i] = _SC_;
-		else path[i] = toupper2(path[i]);
-	}
-	return(path);
-}
-#endif	/* DJGPP */
 
 #ifndef	_NODOSDRIVE
 static VOID NEAR biosreset(drive)
@@ -1846,7 +1899,7 @@ int unixclosedir(dirp)
 DIR *dirp;
 {
 #ifndef	_NODOSDRIVE
-	if (dirp -> dd_id < 0) return(dosclosedir(dirp));
+	if (dirp -> dd_id == DID_IFDOSDRIVE) return(dosclosedir(dirp));
 #endif
 #ifndef	_NOUSELFN
 	if (dirp -> dd_id & DID_IFLFN) lfn_findclose(dirp -> dd_fd);
@@ -1865,7 +1918,7 @@ DIR *dirp;
 	int i;
 
 #ifndef	_NODOSDRIVE
-	if (dirp -> dd_id < 0) return(dosreaddir(dirp));
+	if (dirp -> dd_id == DID_IFDOSDRIVE) return(dosreaddir(dirp));
 #endif
 	if (dirp -> dd_off < 0) return(NULL);
 	d.d_off = dirp -> dd_off;
@@ -1943,7 +1996,7 @@ DIR *dirp;
 	char *cp;
 
 #ifndef	_NODOSDRIVE
-	if (dirp -> dd_id < 0) return(dosrewinddir(dirp));
+	if (dirp -> dd_id == DID_IFDOSDRIVE) return(dosrewinddir(dirp));
 #endif
 #ifndef	_NOUSELFN
 	if (dirp -> dd_id & DID_IFLFN) lfn_findclose(dirp -> dd_fd);
@@ -1960,7 +2013,23 @@ DIR *dirp;
 	return(0);
 }
 
-#ifndef	_NOUSELFN
+#ifdef	_NOUSELFN
+# ifndef	DJGPP
+/*ARGSUSED*/
+int unixmkdir(path, mode)
+char * path;
+int mode;
+{
+	struct stat st;
+
+	if (unixstat(path, &st) >= 0) {
+		errno = EEXIST;
+		return(-1);
+	}
+	return(mkdir(path) ? -1 : 0);
+}
+# endif
+#else	/* !_NOUSELFN */
 int unixunlink(path)
 char *path;
 {
@@ -2215,9 +2284,9 @@ char *path;
 }
 #endif	/* !_NOUSELFN */
 
-char *unixgetcwd(pathname, size, pseudo)
+char *unixgetcwd(pathname, size)
 char *pathname;
-int size, pseudo;
+int size;
 {
 #ifdef	DJGPP
 	char tmp[MAXPATHLEN];
@@ -2226,7 +2295,7 @@ int size, pseudo;
 
 	drive = getcurdrv();
 #ifndef	_NODOSDRIVE
-	if (pseudo && checkdrive(toupper2(drive) - 'A') > 0) {
+	if (checkdrive(toupper2(drive) - 'A') > 0) {
 		if (!dosgetcwd(pathname, size)) return(NULL);
 	}
 	else
@@ -2595,8 +2664,8 @@ int flags, mode;
 
 	reg.x.ax = 0x716c;
 	reg.x.bx = 0x0110;	/* SH_DENYRW | NO_BUFFER */
-	if (flags & O_WRONLY) reg.x.bx |= 0x0001;
-	else if (flags & O_RDWR) reg.x.bx |= 0x0002;
+	if ((flags & O_ACCMODE) == O_WRONLY) reg.x.bx |= 0x0001;
+	else if ((flags & O_ACCMODE) == O_RDWR) reg.x.bx |= 0x0002;
 	reg.x.cx = (u_short)putdosmode(mode);
 	if (flags & O_CREAT) {
 		if (flags & O_EXCL) {

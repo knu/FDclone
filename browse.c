@@ -82,7 +82,7 @@ static VOID NEAR pathbar __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
 static VOID NEAR sizebar __P_((VOID_A));
-#if	!MSDOS
+#ifndef	NOUID
 static int NEAR putowner __P_((char *, uid_t));
 static int NEAR putgroup __P_((char *, gid_t));
 #endif
@@ -525,7 +525,7 @@ u_long flags;
 }
 #endif
 
-#if	!MSDOS
+#ifndef	NOUID
 static int NEAR putowner(buf, uid)
 char *buf;
 uid_t uid;
@@ -555,7 +555,7 @@ gid_t gid;
 
 	return(len);
 }
-#endif	/* !MSDOS */
+#endif	/* !NOUID */
 
 static int NEAR putsize(buf, n, min, max)
 char *buf;
@@ -599,18 +599,13 @@ static VOID NEAR infobar(VOID_A)
 #ifndef	_NOPRECEDE
 	if (!havestat(&(filelist[filepos]))) {
 		putterm(l_clear);
-# if	MSDOS
-		len = WMODE + WDATE + 1 + WTIME + 1;
-# else
-		len = WMODE + 8 + 1 + WDATE + 1 + WTIME + 1;
-# endif
+		len = WMODE + WSIZE2 + 1 + WDATE + 1 + WTIME + 1;
 		if (!ishardomit()) {
-# if	MSDOS
 			len += 4;
-# else
+# ifndef	NOUID
 			len += (iswellomit())
-				? 4 + WOWNERMIN + 1 + WGROUPMIN + 1
-				: 4 + WOWNER + 1 + WGROUP + 1;
+				? WOWNERMIN + 1 + WGROUPMIN + 1
+				: WOWNER + 1 + WGROUP + 1;
 # endif
 		}
 		width = n_lastcolumn - len;
@@ -639,7 +634,7 @@ static VOID NEAR infobar(VOID_A)
 		snprintf2(&(buf[len]), 5, " %2d ", filelist[filepos].st_nlink);
 		len += 4;
 
-#if	!MSDOS
+#ifndef	NOUID
 		len += putowner(&(buf[len]), filelist[filepos].st_uid);
 		buf[len++] = ' ';
 		len += putgroup(&(buf[len]), filelist[filepos].st_gid);
@@ -661,7 +656,7 @@ static VOID NEAR infobar(VOID_A)
 	else
 #endif
 	len += putsize(&(buf[len]),
-		filelist[filepos].st_size, 8, n_lastcolumn - len);
+		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len);
 	buf[len++] = ' ';
 
 	snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
@@ -671,9 +666,9 @@ static VOID NEAR infobar(VOID_A)
 	len += WDATE + 1 + WTIME + 1;
 	width = n_lastcolumn - len;
 
-#if	MSDOS
+#ifdef	NOSYMLINK
 	strncpy3(&(buf[len]), filelist[filepos].name, &width, fnameofs);
-#else	/* !MSDOS */
+#else	/* !NOSYMLINK */
 	i = strncpy3(&(buf[len]), filelist[filepos].name, &width, fnameofs);
 	if (islink(&(filelist[filepos]))) {
 		width += len;
@@ -706,7 +701,7 @@ static VOID NEAR infobar(VOID_A)
 			free(tmp);
 		}
 	}
-#endif	/* !MSDOS */
+#endif	/* !NOSYMLINK */
 
 	kanjiputs(buf);
 	free(buf);
@@ -755,7 +750,7 @@ int i;
 	return(width);
 }
 
-#if	MSDOS
+#ifdef	NOUID
 #define	WIDTH1	(WMODE + 1 + WSECOND + 1)
 #else
 #define	WIDTH1	(iswellomit() \
@@ -849,18 +844,21 @@ int no, isstandout;
 				"%*.*s", WSIZE, WSIZE, "<DIR>");
 			len += WSIZE;
 		}
-#if	MSDOS || !defined (_NODOSDRIVE)
-		else if (
-# if	!MSDOS
-		dospath2("") &&
-# endif
-		(list[no].st_mode & S_IFMT) == S_IFIFO) {
+#if	MSDOS
+		else if ((list[no].st_mode & S_IFMT) == S_IFIFO) {
 			snprintf2(&(buf[len]), WSIZE + 1,
 				"%*.*s", WSIZE, WSIZE, "<VOL>");
 			len += WSIZE;
 		}
-#endif
-#if	!MSDOS
+#else	/* !MSDOS */
+# ifndef	_NODOSDRIVE
+		else if (dospath2("")
+		&& (list[no].st_mode & S_IFMT) == S_IFIFO) {
+			snprintf2(&(buf[len]), WSIZE + 1,
+				"%*.*s", WSIZE, WSIZE, "<VOL>");
+			len += WSIZE;
+		}
+# endif
 		else if (isdev(&(list[no]))) {
 			ascnumeric(&(buf[len]),
 				(off_t)major((u_long)(list[no].st_size)),
@@ -873,7 +871,7 @@ int no, isstandout;
 				WSIZE - (WSIZE / 2) - 1);
 			len += WSIZE - (WSIZE / 2) - 1;
 		}
-#endif
+#endif	/* !MSDOS */
 		else {
 			ascnumeric(&(buf[len]),
 				list[no].st_size, WSIZE, WSIZE);
@@ -892,7 +890,7 @@ int no, isstandout;
 		snprintf2(&(buf[len]), 1 + WSECOND + 1, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
-#if	!MSDOS
+#ifndef	NOUID
 		len += putowner(&(buf[len]), list[no].st_uid);
 		buf[len++] = ' ';
 		len += putgroup(&(buf[len]), list[no].st_gid);
@@ -1571,7 +1569,7 @@ char *path, *buf;
 	if (chdir2(cp) >= 0) file = NULL;
 	else {
 		file = strrdelim(cp, 0);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 		if (!file && dospath2(cp)) file = &(cp[2]);
 #endif
 
@@ -1606,7 +1604,7 @@ VOID main_fd(path)
 char *path;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	char *cp, *def;
+	char *def;
 	int i, ischgdir;
 
 	for (i = 0; i < MAXWINDOWS; i++) {
@@ -1653,9 +1651,7 @@ char *path;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
-			if ((cp = strrdelim(fullpath, 1))) cp++;
-			else cp = fullpath;
-			strcpy(prev, cp);
+			strcpy(prev, getbasename(fullpath));
 			if (*prev) def = prev;
 			else {
 				strcpy(file, ".");
@@ -1664,7 +1660,7 @@ char *path;
 		}
 
 		if (strcmp(file, ".")) {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 			char buf[MAXPATHLEN];
 #endif
 

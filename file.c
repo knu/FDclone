@@ -95,7 +95,7 @@ static VOID NEAR restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir = NULL;
-#if	!MSDOS && !defined (_NOEXTRACOPY)
+#if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 int inheritcopy = 0;
 #endif
 int tmpumask = TMPUMASK;
@@ -105,7 +105,7 @@ static int dosdrv = -1;
 #endif
 
 
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 char *nodospath(path, file)
 char *path, *file;
 {
@@ -115,9 +115,9 @@ char *path, *file;
 	strcpy(&(path[2]), file);
 	return(path);
 }
-#endif
+#endif	/* _USEDOSEMU */
 
-#if	MSDOS
+#ifdef	NOUID
 int logical_access(mode)
 u_int mode;
 #else
@@ -127,71 +127,16 @@ uid_t uid;
 gid_t gid;
 #endif
 {
-#if	!MSDOS
-	struct group *gp;
-	uidtable *up;
-	uid_t euid;
-	int i;
-#endif
 	int dir;
 
 	dir = ((mode & S_IFMT) == S_IFDIR);
-#if	MSDOS
+#ifdef	NOUID
 	mode >>= 6;
-#else
-	euid = geteuid();
-	if (uid == euid) mode >>= 6;
+#else	/* !NOUID */
+	if (uid == geteuid()) mode >>= 6;
 	else if (gid == getegid()) mode >>= 3;
-	else if ((up = finduid(euid, NULL))) {
-# ifdef	DEBUG
-		_mtrace_file = "setgrent(start)";
-		setgrent();
-		if (_mtrace_file) _mtrace_file = NULL;
-		else {
-			_mtrace_file = "setgrent(end)";
-			malloc(0);	/* dummy alloc */
-		}
-		for (;;) {
-			_mtrace_file = "getgrent(start)";
-			gp = getgrent();
-			if (_mtrace_file) _mtrace_file = NULL;
-			else {
-				_mtrace_file = "getgrent(end)";
-				malloc(0);	/* dummy alloc */
-			}
-			if (!gp) break;
-			if (gid != gp -> gr_gid) continue;
-			for (i = 0; gp -> gr_mem[i]; i++) {
-				if (!strcmp(up -> name, gp -> gr_mem[i])) {
-					mode >>= 3;
-					break;
-				}
-			}
-			break;
-		}
-		_mtrace_file = "endgrent(start)";
-		endgrent();
-		if (_mtrace_file) _mtrace_file = NULL;
-		else {
-			_mtrace_file = "endgrent(end)";
-			malloc(0);	/* dummy alloc */
-		}
-# else	/* !DEBUG */
-		setgrent();
-		while ((gp = getgrent())) {
-			if (gid != gp -> gr_gid) continue;
-			for (i = 0; gp -> gr_mem[i]; i++) {
-				if (!strcmp(up -> name, gp -> gr_mem[i])) {
-					mode >>= 3;
-					break;
-				}
-			}
-			break;
-		}
-		endgrent();
-# endif	/* !DEBUG */
-	}
-#endif
+	else if (isgroupmember(gid)) mode >>= 3;
+#endif	/* !NOUID */
 	if (dir && !(mode & F_ISEXE)) mode &= ~(F_ISRED | F_ISWRI);
 	return(mode & 007);
 }
@@ -199,7 +144,7 @@ gid_t gid;
 int getstatus(list)
 namelist *list;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
 	struct stat st, lst;
@@ -220,11 +165,13 @@ namelist *list;
 
 	list -> st_mode = lst.st_mode;
 	list -> st_nlink = lst.st_nlink;
+#ifndef	NOUID
+	list -> st_uid = lst.st_uid;
+	list -> st_gid = lst.st_gid;
+#endif
 #if	MSDOS
 	list -> st_size = lst.st_size;
 #else
-	list -> st_uid = lst.st_uid;
-	list -> st_gid = lst.st_gid;
 	list -> st_size = isdev(list) ? (off_t)(lst.st_rdev) : lst.st_size;
 #endif
 #ifdef	HAVEFLAGS
@@ -232,7 +179,7 @@ namelist *list;
 #endif
 	list -> st_mtim = lst.st_mtime;
 	list -> flags |=
-#if	MSDOS
+#ifdef	NOUID
 		logical_access((u_int)(st.st_mode));
 #else
 		logical_access((u_int)(st.st_mode), st.st_uid, st.st_gid);
@@ -456,7 +403,7 @@ char *dir;
 	char *cp;
 
 	cp = dir;
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 	if (_dospath(dir)) cp += 2;
 #endif
 	if (!isdotdir(cp)) {
@@ -466,8 +413,7 @@ char *dir;
 #if	MSDOS
 				if (errno != EEXIST) return(-1);
 				if (cp[0] != _SC_ || cp[1]) {
-					if ((cp = strrdelim(dir, 1))) cp++;
-					else cp = dir;
+					cp = getbasename(dir);
 					if (cp[0] != '.' || cp[1]) return(-1);
 				}
 				st.st_mode = S_IFDIR;
@@ -553,7 +499,8 @@ struct stat *stp;
 	}
 #if	MSDOS
 	else if (!(st.st_mode & S_IWRITE)) Xchmod(path, st.st_mode);
-#else
+#endif
+#ifndef	NOUID
 	if (stp -> st_gid != (gid_t)-1) {
 # ifndef	_NODOSDRIVE
 		if (dospath(path, NULL)) /*EMPTY*/;
@@ -562,7 +509,7 @@ struct stat *stp;
 		if (chown(path, stp -> st_uid, stp -> st_gid) < 0)
 			chown(path, (uid_t)-1, stp -> st_gid);
 	}
-#endif
+#endif	/* !NOUID */
 	if (ret < 0) errno = duperrno;
 	return(ret);
 }
@@ -730,7 +677,7 @@ struct stat *stp1, *stp2;
 #ifdef	HAVEFLAGS
 	stp1 -> st_flags = 0xffffffff;
 #endif
-#if	MSDOS
+#ifdef	_USEDOSCOPY
 	if (touchfile(dest, stp1) < 0) return(-1);
 #else
 # ifndef	_NOEXTRACOPY
@@ -813,7 +760,7 @@ char *buf;
 int len;
 {
 	static char seq[] = {
-#if	MSDOS
+#ifdef	PATHNOCASE
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 		'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
 		'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
@@ -997,7 +944,7 @@ char *path;
 VOID removetmp(dir, file)
 char *dir, *file;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
 
@@ -1021,7 +968,7 @@ char *dir, *file;
 		lastdrv = dosdrv;
 		dosdrv = -1;
 	}
-#endif
+#endif	/* !_NODOSDRIVE */
 
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	if (dir) {
@@ -1212,12 +1159,12 @@ int size, dos, boundary, dirsize, ofs;
 static int NEAR saferename(from, to)
 char *from, *to;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char fpath[MAXPATHLEN], tpath[MAXPATHLEN];
 #endif
 
 	if (!strpathcmp(from, to)) return(0);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	from = nodospath(fpath, from);
 	to = nodospath(tpath, to);
 #endif
@@ -1243,7 +1190,7 @@ char *tmpdir, *old;
 
 	for (;;) {
 		genrandname(fname, len);
-#if	!MSDOS
+#ifndef	PATHNOCASE
 		if (dos) {
 			int i;
 
@@ -1327,7 +1274,7 @@ off_t bsiz;
 
 	return(tmp);
 }
-#endif
+#endif	/* !MSDOS */
 
 static VOID NEAR restorefile(dir, path, fnamp)
 char *dir, *path;
@@ -1390,7 +1337,16 @@ int fs;
 			dirsize = 4;	/* short + short */
 			namofs = 3;
 			break;
-#endif
+# ifndef	_NODOSDRIVE
+		case 7:	/* Windows95 File System on DOSDRIVE */
+			dos = 3;
+			headbyte = -1;
+			boundary = LFNENTSIZ;
+			dirsize = DOSDIRENT;
+			namofs = 0;
+			break;
+# endif
+#endif	/* !MSDOS */
 		case 4:	/* MS-DOS File System */
 			dos = 1;
 			headbyte = -1;
@@ -1422,7 +1378,7 @@ int fs;
 			if (top < 0) top = i;
 			cp = convput(path, filelist[i].name, 1, 0, NULL, NULL);
 		}
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 		if (_dospath(cp)) cp += 2;
 #endif
 		fnamelist[i] = strdup2(cp);
@@ -1462,8 +1418,10 @@ int fs;
 #if	MSDOS
 			if (!(dp -> d_alias[0])) len = DOSBODYLEN;
 #else
-			if (dos == 2 && dp -> d_reclen == DOSDIRENT)
+# ifndef	_NODOSDRIVE
+			if (dos == 3 && dp -> d_reclen == DOSDIRENT)
 				len = DOSBODYLEN;
+# endif
 #endif
 			ent = i;
 		}
@@ -1513,7 +1471,7 @@ int fs;
 	totalptr = 0;
 	if (entnum) totalptr = entnum[block];
 	tmpfiles = NULL;
-#endif
+#endif	/* !MSDOS */
 
 	for (i = 0; i < maxfile; i++) {
 		if (isdotdir(fnamelist[i]) || i == top) continue;

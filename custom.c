@@ -24,10 +24,10 @@ extern int sorttree;
 #ifndef	_NOWRITEFS
 extern int writefs;
 #endif
-#if	!MSDOS
-# ifndef	_NOEXTRACOPY
+#if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 extern int inheritcopy;
-# endif
+#endif
+#if	!MSDOS
 extern int adjtty;
 #endif
 extern int hideclock;
@@ -62,7 +62,7 @@ extern char *promptstr;
 #ifndef	_NOORIGSHELL
 extern char *promptstr2;
 #endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+#ifndef	_NOKANJIFCONV
 extern char *sjispath;
 extern char *eucpath;
 extern char *jis7path;
@@ -75,7 +75,7 @@ extern char *hexpath;
 extern char *cappath;
 extern char *utf8path;
 extern char *noconvpath;
-#endif	/* !MSDOS && !_NOKANJIFCONV */
+#endif	/* !_NOKANJIFCONV */
 extern int tmpumask;
 #ifndef	_NOORIGSHELL
 extern int dumbshell;
@@ -95,7 +95,7 @@ extern char **orighelpindex;
 extern bindtable bindlist[];
 extern bindtable *origbindlist;
 extern strtable keyidentlist[];
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 extern keyseq_t *origkeymaplist;
 # endif
 # ifndef	_NOARCHIVE
@@ -108,7 +108,7 @@ extern archivetable *origarchivelist;
 extern int maxarchive;
 extern int origmaxarchive;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 extern devinfo fdtype[];
 extern devinfo *origfdtype;
 # endif
@@ -157,7 +157,11 @@ typedef struct _envtable {
 #define	T_DISP		8
 #define	T_WRFS		9
 #define	T_COLUMN	10
+#if	MSDOS
 #define	T_DDRV		11
+#else
+#define	T_DDRV		T_BOOL
+#endif
 #define	T_COLOR		12
 #define	T_EDIT		13
 #define	T_KIN		14
@@ -184,11 +188,15 @@ static VOID NEAR cleanupenv __P_((VOID_A));
 # if	FD >= 2
 static char *NEAR ascoctal __P_((int, char *));
 # endif
+# ifndef	_NOORIGSHELL
+static VOID NEAR putargs __P_((char *, int, char *[], FILE *));
+# endif
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
 static int NEAR dumpenv __P_((char *, FILE *));
 # ifndef	_NOORIGSHELL
 static int NEAR checkenv __P_((char *, char **, int *, FILE *));
+static int NEAR checkunset __P_((char *, int, char **, FILE *));
 # endif
 static VOID NEAR cleanupbind __P_((VOID_A));
 static int NEAR dispbind __P_((int));
@@ -198,7 +206,7 @@ static int NEAR dumpbind __P_((char *, FILE *));
 # ifndef	_NOORIGSHELL
 static int NEAR checkbind __P_((char *, int, char **, FILE *));
 # endif
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 static VOID NEAR cleanupkeymap __P_((VOID_A));
 static int NEAR dispkeymap __P_((int));
 static int NEAR editkeymap __P_((int));
@@ -229,7 +237,7 @@ static int NEAR dumparch __P_((char *, FILE *));
 static int NEAR checkarch __P_((char *, int, char **, FILE *));
 #  endif
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 static VOID NEAR cleanupdosdrive __P_((VOID_A));
 static int NEAR dispdosdrive __P_((int));
 static int NEAR editdosdrive __P_((int));
@@ -262,14 +270,14 @@ static envtable envlist[] = {
 #ifndef	_NOWRITEFS
 	{"FD_WRITEFS", &writefs, {(char *)WRITEFS}, WRFS_E, T_WRFS},
 #endif
-#if	!MSDOS
-# if	FD >= 2
+#if	!defined (PATHNOCASE) && (FD >= 2)
 	{"FD_IGNORECASE", &pathignorecase,
 		{(char *)IGNORECASE}, IGNC_E, T_BOOL},
-# endif
-# ifndef	_NOEXTRACOPY
+#endif
+#if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 	{"FD_INHERITCOPY", &inheritcopy, {(char *)INHERITCOPY}, IHTM_E, T_BOOL},
-# endif
+#endif
+#if	!MSDOS
 	{"FD_ADJTTY", &adjtty, {(char *)ADJTTY}, AJTY_E, T_BOOL},
 # if	FD >= 2
 	{"FD_USEGETCURSOR", &usegetcursor,
@@ -295,7 +303,8 @@ static envtable envlist[] = {
 #ifndef	_NOCOLOR
 	{"FD_ANSICOLOR", &ansicolor, {(char *)ANSICOLOR}, ACOL_E, T_COLOR},
 # if	FD >= 2
-	{"FD_ANSIPALETTE", &ansipalette, {(char *)ANSIPALETTE}, APAL_E, T_CHARP},
+	{"FD_ANSIPALETTE", &ansipalette,
+		{(char *)ANSIPALETTE}, APAL_E, T_CHARP},
 # endif
 #endif
 #ifndef	_NOEDITMODE
@@ -316,14 +325,14 @@ static envtable envlist[] = {
 #ifndef	_NOORIGSHELL
 	{"FD_PS2", &promptstr2, {PROMPT2}, PRM2_E, T_CHARP},
 #endif
-#if	(!MSDOS && !defined (_NOKANJICONV)) \
+#if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 	{"FD_LANGUAGE", &outputkcode, {(char *)NOCNV}, LANG_E, T_KOUT},
 #endif
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 	{"FD_INPUTKCODE", &inputkcode, {(char *)NOCNV}, IPKC_E, T_KIN},
 #endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+#ifndef	_NOKANJIFCONV
 	{"FD_FNAMEKCODE", &fnamekcode, {(char *)NOCNV}, FNKC_E, T_KNAM},
 	{"FD_SJISPATH", &sjispath, {SJISPATH}, SJSP_E, T_PATHS},
 	{"FD_EUCPATH", &eucpath, {EUCPATH}, EUCP_E, T_PATHS},
@@ -337,7 +346,7 @@ static envtable envlist[] = {
 	{"FD_CAPPATH", &cappath, {CAPPATH}, CAPP_E, T_PATHS},
 	{"FD_UTF8PATH", &utf8path, {UTF8PATH}, UTF8P_E, T_PATHS},
 	{"FD_NOCONVPATH", &noconvpath, {NOCONVPATH}, NCVP_E, T_PATHS},
-#endif	/* !MSDOS && !_NOKANJIFCONV */
+#endif	/* !_NOKANJIFCONV */
 #if	FD >= 2
 	{"FD_TMPUMASK", &tmpumask, {(char *)TMPUMASK}, TUMSK_E, T_OCTAL},
 #endif
@@ -348,7 +357,7 @@ static envtable envlist[] = {
 #define	ENVLISTSIZ	((int)(sizeof(envlist) / sizeof(envtable)))
 
 #ifndef	_NOCUSTOMIZE
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 static devinfo mediadescr[] = {
 	{0xf0, "2HD(PC/AT)", 2, 18, 80},
 	{0xf9, "2HD(PC98)", 2, 15, 80},
@@ -360,7 +369,7 @@ static devinfo mediadescr[] = {
 #  endif
 };
 #define	MEDIADESCRSIZ	((int)(sizeof(mediadescr) / sizeof(devinfo)))
-# endif	/* !MSDOS && !_NODOSDRIVE */
+# endif	/* _USEDOSEMU */
 static int cs_item = 0;
 static int cs_max = 0;
 static int cs_row = 0;
@@ -370,7 +379,7 @@ static char **tmpmacrolist = NULL;
 static int tmpmaxmacro = 0;
 static char **tmphelpindex = NULL;
 static bindtable *tmpbindlist = NULL;
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 static keyseq_t *tmpkeymaplist = NULL;
 static short *keyseqlist = NULL;
 # endif
@@ -380,7 +389,7 @@ static int tmpmaxlaunch = 0;
 static archivetable *tmparchivelist = NULL;
 static int tmpmaxarchive = 0;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 static devinfo *tmpfdtype = NULL;
 # endif
 #endif	/* !_NOCUSTOMIZE */
@@ -413,30 +422,9 @@ int no;
 
 	cp = getenv2(envlist[no].env);
 	switch (envlist[no].type) {
-#ifndef	_NODOSDRIVE
-		case T_DDRV:
-# if	MSDOS
-			if (!cp) n = envlist[no].def.num;
-			else {
-				char *dupl;
-
-				n = 0;
-				dupl = strdup2(cp);
-				if ((cp = strchr(dupl, ','))) {
-					*(cp++) = '\0';
-					if (!strcmp(cp, "BIOS")) n = 2;
-				}
-				if (*dupl && atoi2(dupl)) n |= 1;
-				free(dupl);
-			}
-			*((int *)(envlist[no].var)) = n;
-			break;
-# endif	/* MSDOS */
-#endif	/* !_NODOSDRIVE */
 		case T_BOOL:
 			if (!cp) n = envlist[no].def.num;
-			else if (!*cp || !atoi2(cp)) n = 0;
-			else n = 1;
+			else n = (*cp && atoi2(cp)) ? 1 : 0;
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_SHORT:
@@ -492,6 +480,24 @@ int no;
 				n = envlist[no].def.num;
 			*((int *)(envlist[no].var)) = n;
 			break;
+#if	MSDOS && !defined (_NODOSDRIVE)
+		case T_DDRV:
+			if (!cp) n = envlist[no].def.num;
+			else {
+				char *dupl;
+
+				n = 0;
+				dupl = strdup2(cp);
+				if ((cp = strchr(dupl, ','))) {
+					*(cp++) = '\0';
+					if (!strcmp(cp, "BIOS")) n |= 2;
+				}
+				if (*dupl && atoi2(dupl)) n |= 1;
+				free(dupl);
+			}
+			*((int *)(envlist[no].var)) = n;
+			break;
+#endif	/* MSDOS && !_NODOSDRIVE */
 #ifndef	_NOCOLOR
 		case T_COLOR:
 			if ((n = atoi2(cp)) < 0 || n > 3)
@@ -499,7 +505,16 @@ int no;
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
-#if	(!MSDOS && !defined (_NOKANJICONV)) \
+#ifndef	_NOEDITMODE
+		case T_EDIT:
+			if (!cp) cp = envlist[no].def.str;
+			else if (strcmp(cp, "emacs")
+			&& strcmp(cp, "vi")
+			&& strcmp(cp, "wordstar")) cp = NULL;
+			*((char **)(envlist[no].var)) = cp;
+			break;
+#endif	/* !_NOEDITMODE */
+#if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 		case T_KIN:
 		case T_KOUT:
@@ -507,7 +522,7 @@ int no;
 			*((int *)(envlist[no].var)) =
 				getlang(cp, envlist[no].type - T_KIN);
 			break;
-#endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
+#endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
 #if	FD >= 2
 		case T_OCTAL:
 			if ((n = atooctal(cp)) < 0) n = envlist[no].def.num;
@@ -742,7 +757,7 @@ int max[], new;
 	max[0] = ENVLISTSIZ;
 	for (i = 0; bindlist[i].key >= 0; i++);
 	max[1] = i + new;
-# if	MSDOS || defined (_NOKEYMAP)
+# ifdef	_NOKEYMAP
 	max[2] = new;
 # else
 	for (i = 0; keyseqlist[i] >= 0; i++);
@@ -755,11 +770,11 @@ int max[], new;
 	max[3] = maxlaunch + new;
 	max[4] = maxarchive + new;
 # endif
-# if	MSDOS || defined (_NODOSDRIVE)
-	max[5] = new;
-# else
+# ifdef	_USEDOSEMU
 	for (i = 0; fdtype[i].name; i++);
 	max[5] = i + new;
+# else
+	max[5] = new;
 # endif
 	max[6] = (new) ? MAXSAVEMENU : 0;
 }
@@ -803,8 +818,9 @@ char **list;
 
 	if (list) {
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			setenv2(envlist[i].env, list[i * 2]);
-			setenv2(&(envlist[i].env[3]), list[i * 2 + 1]);
+			setenv2(envlist[i].env, list[i * 2], 0);
+			setenv2(&(envlist[i].env[FDESIZ]),
+				list[i * 2 + 1], 0);
 			_evalenv(i);
 		}
 	}
@@ -813,7 +829,8 @@ char **list;
 		for (i = 0; i < ENVLISTSIZ; i++) {
 			list[i * 2] = strdup2(getshellvar(envlist[i].env, -1));
 			list[i * 2 + 1] =
-				strdup2(getshellvar(&(envlist[i].env[3]), -1));
+				strdup2(getshellvar(&(envlist[i].env[FDESIZ]),
+					-1));
 		}
 	}
 	return(list);
@@ -825,9 +842,9 @@ static VOID NEAR cleanupenv(VOID_A)
 	int i;
 
 	for (i = 0; i < ENVLISTSIZ; i++) {
-		setenv2(envlist[i].env, NULL);
+		setenv2(envlist[i].env, NULL, 0);
 		cp = (envlist[i].type == T_CHARP) ? envlist[i].def.str : NULL;
-		setenv2(&(envlist[i].env[3]), cp);
+		setenv2(&(envlist[i].env[FDESIZ]), cp, 0);
 		_evalenv(i);
 	}
 }
@@ -851,7 +868,27 @@ char *buf;
 	}
 	return(buf);
 }
-#endif	/* FD >= 2 */
+# endif	/* FD >= 2 */
+
+# ifndef	_NOORIGSHELL
+static VOID NEAR putargs(s, argc, argv, fp)
+char *s;
+int argc;
+char *argv[];
+FILE *fp;
+{
+	int i;
+
+	if (!argc) return;
+
+	fputs(s, fp);
+	for (i = 0; i < argc; i++) {
+		fputc(' ', fp);
+		fputs(argv[i], fp);
+	}
+	fputc('\n', fp);
+}
+# endif	/* _NOORIGSHELL */
 
 static int NEAR dispenv(no)
 int no;
@@ -859,13 +896,12 @@ int no;
 	char *cp, *new, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
 	int n, p;
 
-	cp = getenv2(envlist[no].env);
 	new = NULL;
 	switch (envlist[no].type) {
 		case T_BOOL:
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
-			cp = str[*((int *)(envlist[no].var))];
+			cp = str[(*((int *)(envlist[no].var))) ? 1 : 0];
 			break;
 		case T_SHORT:
 			cp = long2str(buf,
@@ -932,20 +968,18 @@ int no;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
 # endif
-# ifndef	_NODOSDRIVE
+# if	MSDOS && !defined (_NODOSDRIVE)
 		case T_DDRV:
+			n = *((int *)(envlist[no].var));
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
-#  if	MSDOS
-			new = strdup2(str[*((int *)(envlist[no].var))]);
-			if (cp && (cp = strchr(cp, ','))
-			&& !strcmp(cp + 1, "BIOS")) new = strcatalloc(new, cp);
-			cp = new;
-#  else
-			cp = str[*((int *)(envlist[no].var))];
-#  endif
+			cp = str[n & 1];
+			if (n & 2) {
+				cp = strdup2(cp);
+				cp = new = strcatalloc(cp, VBIOS_K);
+			}
 			break;
-# endif	/* !_NODOSDRIVE */
+# endif	/* MSDOS && !_NODOSDRIVE */
 # ifndef	_NOCOLOR
 		case T_COLOR:
 			str[0] = VBOL0_K;
@@ -955,14 +989,20 @@ int no;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
 # endif	/* !_NOCOLOR */
-# if	(!MSDOS && !defined (_NOKANJICONV)) \
+# ifndef	_NOEDITMODE
+		case T_EDIT:
+			if (!(cp = *((char **)(envlist[no].var))))
+				cp = VNONE_K;
+			break;
+# endif	/* !_NOEDITMODE */
+# if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
 			str[NOCNV] = VNCNV_K;
 			str[ENG] = VENG_K;
-#  if	!MSDOS && !defined (_NOKANJICONV)
+#  ifndef	_NOKANJICONV
 			str[SJIS] = "ShiftJIS";
 			str[EUC] = "EUC-JP";
 			str[JIS7] = "7bit-JIS";
@@ -974,18 +1014,21 @@ int no;
 			str[HEX] = "HEX";
 			str[CAP] = "CAP";
 			str[UTF8] = "UTF-8";
-#  endif	/* !MSDOS && !_NOKANJICONV */
+#  endif	/* !_NOKANJICONV */
 			cp = str[*((int *)(envlist[no].var))];
 			break;
-# endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
+# endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
 # if	FD >= 2
 		case T_OCTAL:
 			cp = ascoctal(*((int *)(envlist[no].var)), buf);
 			break;
 # endif
 		default:
-			cp = *((char **)(envlist[no].var));
-			if (!cp) cp = "<null>";
+			if (!(cp = getenv2(envlist[no].env))) {
+				cp = strdup2(envlist[no].def.str);
+				if (cp && *cp) cp = strcatalloc(cp, " ");
+				cp = new = strcatalloc(cp, VDEF_K);
+			}
 			break;
 	}
 	kanjiputs2(cp, MAXCUSTVAL, 0);
@@ -998,28 +1041,26 @@ int no;
 static int NEAR editenv(no)
 int no;
 {
-	char *cp, *new, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
+	char *cp, *new, *env, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
 	int n, p, tmp, val[MAXSELECTSTRS];
 
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
 
 	new = NULL;
+	env = &(envlist[no].env[FDESIZ]);
 	switch (envlist[no].type) {
-# ifndef	_NODOSDRIVE
-		case T_DDRV:
-# endif
 		case T_BOOL:
-			n = *((int *)(envlist[no].var));
+			n = (*((int *)(envlist[no].var))) ? 1 : 0;
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 2, 0, str, val)) return(0);
 			cp = long2str(buf, n, sizeof(buf));
 			break;
 		case T_SHORT:
 			long2str(buf,
 				*((short *)(envlist[no].var)), sizeof(buf));
-			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
+			cp = inputcuststr(env, 1, buf, -1);
 			if (!cp) return(0);
 			n = atoi2(cp);
 			free(cp);
@@ -1033,7 +1074,7 @@ int no;
 		case T_NATURAL:
 			long2str(buf,
 				*((int *)(envlist[no].var)), sizeof(buf));
-			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
+			cp = inputcuststr(env, 1, buf, -1);
 			if (!cp) return(0);
 			n = atoi2(cp);
 			free(cp);
@@ -1044,8 +1085,9 @@ int no;
 			cp = long2str(buf, n, sizeof(buf));
 			break;
 		case T_PATH:
-			new = inputcuststr(&(envlist[no].env[3]), 1,
-				*((char **)(envlist[no].var)), 1);
+			if (!(cp = getenv2(envlist[no].env)))
+				cp = envlist[no].def.str;
+			new = inputcuststr(env, 1, cp, 1);
 			if (!new) return(0);
 			cp = new;
 			break;
@@ -1067,7 +1109,7 @@ int no;
 			n %= 100;
 			tmp = n & ~7;
 			n &= 7;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 6, 0, str, val)) return(0);
 			if (n) {
 				str[0] = OINC_K;
@@ -1122,11 +1164,25 @@ int no;
 			str[0] = VWFS0_K;
 			str[1] = VWFS1_K;
 			str[2] = VWFS2_K;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 3, 0, str, val)) return(0);
 			cp = long2str(buf, n, sizeof(buf));
 			break;
 # endif	/* !_NOWRITEFS */
+# if	MSDOS && !defined (_NODOSDRIVE)
+		case T_DDRV:
+			n = (*((int *)(envlist[no].var)) & 1);
+			str[0] = VBOL0_K;
+			str[1] = VBOL1_K;
+			envcaption(env);
+			if (noselect(&n, 2, 0, str, val)) return(0);
+			cp = long2str(buf, n, sizeof(buf));
+			if (*((int *)(envlist[no].var)) & 2) {
+				cp = strdup2(cp);
+				cp = new = strcatalloc(cp, ",BIOS");
+			}
+			break;
+# endif	/* MSDOS && !_NODOSDRIVE */
 		case T_COLUMN:
 			n = *((int *)(envlist[no].var));
 			str[0] = "1";
@@ -1137,7 +1193,7 @@ int no;
 			val[1] = 2;
 			val[2] = 3;
 			val[3] = 5;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 4, 0, str, val)) return(0);
 			cp = long2str(buf, n, sizeof(buf));
 			break;
@@ -1148,7 +1204,7 @@ int no;
 			str[1] = VBOL1_K;
 			str[2] = VCOL2_K;
 			str[3] = VCOL3_K;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 4, 0, str, val)) return(0);
 			cp = long2str(buf, n, sizeof(buf));
 			break;
@@ -1162,26 +1218,26 @@ int no;
 			if (!cp) n = 0;
 			else for (n = 2; n > 0; n--)
 				if (!strcmp(cp, str[n])) break;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 3, 0, str, val)) return(0);
 			cp = str[n];
 			break;
 # endif	/* !_NOEDITMODE */
-# if	!MSDOS && !defined (_NOKANJICONV)
+# ifndef	_NOKANJICONV
 		case T_KIN:
 			n = *((int *)(envlist[no].var));
 			str[0] = "ShiftJIS";
 			str[1] = "EUC-JP";
 			val[0] = SJIS;
 			val[1] = EUC;
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 2, 0, str, val)) return(0);
 			str[SJIS] = "sjis";
 			str[EUC] = "euc";
 			cp = str[n];
 			break;
-# endif	/* !MSDOS && !_NOKANJICONV */
-# if	(!MSDOS && !defined (_NOKANJICONV)) \
+# endif	/* !_NOKANJICONV */
+# if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 		case T_KOUT:
 			n = *((int *)(envlist[no].var));
@@ -1189,10 +1245,10 @@ int no;
 			str[1] = VENG_K;
 			val[0] = NOCNV;
 			val[1] = ENG;
-#  if	MSDOS || defined (_NOKANJICONV)
-			envcaption(&(envlist[no].env[3]));
+#  ifdef	_NOKANJICONV
+			envcaption(env);
 			if (noselect(&n, 2, 0, str, val)) return(0);
-#  else	/* !MSDOS && !_NOKANJICONV */
+#  else	/* !_NOKANJICONV */
 
 			str[2] = "SJIS";
 			str[3] = "EUC";
@@ -1211,7 +1267,7 @@ int no;
 				p = 1;
 				n--;
 			}
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 8, 0, str, val)) return(0);
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
@@ -1230,13 +1286,13 @@ int no;
 			str[JUNET] = "junet";
 			str[O_JUNET] = "ojunet";
 			str[UTF8] = "utf8";
-#  endif	/* !MSDOS && !_NOKANJICONV */
+#  endif	/* !_NOKANJICONV */
 			str[NOCNV] = "";
 			str[ENG] = "C";
 			cp = str[n];
 			break;
-# endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
-# if	!MSDOS && !defined (_NOKANJIFCONV)
+# endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
+# ifndef	_NOKANJIFCONV
 		case T_KNAM:
 			n = *((int *)(envlist[no].var));
 			str[0] = VNCNV_K;
@@ -1262,7 +1318,7 @@ int no;
 				p = 1;
 				n--;
 			}
-			envcaption(&(envlist[no].env[3]));
+			envcaption(env);
 			if (noselect(&n, 9, 0, str, val)) return(0);
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
@@ -1286,11 +1342,11 @@ int no;
 			str[UTF8] = "utf8";
 			cp = str[n];
 			break;
-# endif	/* !MSDOS && !_NOKANJIFCONV */
+# endif	/* !_NOKANJIFCONV */
 # if	FD >= 2
 		case T_OCTAL:
 			ascoctal(*((int *)(envlist[no].var)), buf);
-			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
+			cp = inputcuststr(env, 1, buf, -1);
 			if (!cp) return(0);
 			n = atooctal(cp);
 			free(cp);
@@ -1302,13 +1358,16 @@ int no;
 			break;
 # endif	/* FD >= 2 */
 		default:
-			new = inputcuststr(&(envlist[no].env[3]), 0,
-				*((char **)(envlist[no].var)), -1);
+			if (!(cp = getenv2(envlist[no].env)))
+				cp = envlist[no].def.str;
+			new = inputcuststr(env, 0, cp, -1);
 			if (!new) return(0);
 			cp = new;
 			break;
 	}
-	setenv2(envlist[no].env, cp);
+
+	if (getshellvar(envlist[no].env, -1)) setenv2(envlist[no].env, cp, 0);
+	else setenv2(env, cp, 0);
 	if (new) free(new);
 	_evalenv(no);
 	return(1);
@@ -1323,9 +1382,9 @@ FILE *fp;
 
 	for (i = n = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
-		&& (cp = getshellvar(&(envlist[i].env[3]), -1))
+		&& (cp = getshellvar(&(envlist[i].env[FDESIZ]), -1))
 		&& (envlist[i].type != T_CHARP
-		|| strcmp(cp, envlist[i].def.str))) n++;
+		|| strenvcmp(cp, envlist[i].def.str))) n++;
 		if ((!flaglist || !(flaglist[i] & 1))
 		&& getshellvar(envlist[i].env, -1)) n++;
 	}
@@ -1335,11 +1394,11 @@ FILE *fp;
 	fputs("# shell variables definition\n", fp);
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
-		&& (cp = getshellvar(&(envlist[i].env[3]), -1))
+		&& (cp = getshellvar(&(envlist[i].env[FDESIZ]), -1))
 		&& (envlist[i].type != T_CHARP
-		|| strcmp(cp, envlist[i].def.str))) {
+		|| strenvcmp(cp, envlist[i].def.str))) {
 			cp = killmeta(cp);
-			fprintf2(fp, "%s=%s\n", &(envlist[i].env[3]), cp);
+			fprintf2(fp, "%s=%s\n", &(envlist[i].env[FDESIZ]), cp);
 			free(cp);
 		}
 		if ((!flaglist || !(flaglist[i] & 1))
@@ -1354,57 +1413,166 @@ FILE *fp;
 
 # ifndef	_NOORIGSHELL
 static int NEAR checkenv(flaglist, argv, len, fp)
-char *flaglist;
-char *argv[];
+char *flaglist, *argv[];
 int *len;
 FILE *fp;
 {
-	char *cp, *ident;
-	int i, n, f;
+	char *cp, *ident, **unset, **trash;
+	int i, n, ns, nu, nt, f;
 
 	for (n = 0; argv[n]; n++) {
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			if (!strnpathcmp(argv[n], &(envlist[i].env[3]), len[n])
-			|| !strnpathcmp(argv[n], envlist[i].env, len[n]))
-				break;
+			ident = envlist[i].env;
+			if (!strnenvcmp(argv[n], ident, len[n])) break;
+			ident += FDESIZ;
+			if (!strnenvcmp(argv[n], ident, len[n])) break;
 		}
 		if (i < ENVLISTSIZ) break;
 	}
 	if (!argv[n]) return(0);
 
+	unset = trash = NULL;
+	ns = nu = nt = 0;
 	for (n = 0; argv[n]; n++) {
 #  ifdef	FAKEUNINIT
 		f = 0;	/* fake for -Wuninitialized */
 #  endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
 			ident = envlist[i].env;
-			if (!strnpathcmp(argv[n], ident, len[n])) {
+			if (!strnenvcmp(argv[n], ident, len[n])) {
 				f = 1;
 				break;
 			}
-			else if (!strnpathcmp(argv[n], ident += 3, len[n])) {
+			ident += FDESIZ;
+			if (!strnenvcmp(argv[n], ident, len[n])) {
 				f = 2;
 				break;
 			}
 		}
 		if (i >= ENVLISTSIZ) {
-			if (n) fputc(' ', fp);
+			if (ns++) fputc(' ', fp);
 			fputs(argv[n], fp);
 		}
-		else if (!(flaglist[i] & f)) {
-			flaglist[i] |= f;
-			if (n) fputc(' ', fp);
-			cp = getshellvar(ident, -1);
-			fputs(ident, fp);
-			fputc('=', fp);
-			if (cp) {
+		else if (flaglist && (flaglist[i] & f)) {
+			trash = (char **)realloc2(trash,
+				(nt + 1) * sizeof(char *));
+			trash[nt++] = argv[n];
+		}
+		else {
+			if (flaglist) flaglist[i] |= f;
+			if ((cp = getshellvar(ident, -1))
+			&& (envlist[i].type != T_CHARP
+			|| strenvcmp(cp, envlist[i].def.str))) {
+				if (ns++) fputc(' ', fp);
+				fputs(ident, fp);
+				fputc('=', fp);
 				cp = killmeta(cp);
 				fputs(cp, fp);
 				free(cp);
 			}
+			else {
+				unset = (char **)realloc2(unset,
+					(nu + 1) * sizeof(char *));
+				unset[nu++] = ident;
+			}
 		}
 	}
-	fputc('\n', fp);
+	if (ns) fputc('\n', fp);
+
+	if (unset) {
+		putargs(BL_UNSET, nu, unset, fp);
+		free(unset);
+	}
+	if (trash) {
+		putargs("#", nt, trash, fp);
+		free(trash);
+	}
+
+	return(1);
+}
+
+static int NEAR checkunset(flaglist, argc, argv, fp)
+char *flaglist;
+int argc;
+char *argv[];
+FILE *fp;
+{
+	char *cp, *ident, **unset, **trash;
+	int i, n, ns, nu, nt, f;
+
+	if (strcommcmp(argv[0], BL_UNSET)) return(0);
+	if (argc < 2) return(-1);
+
+	for (n = 1; argv[n]; n++) {
+		for (i = 0; i < ENVLISTSIZ; i++) {
+			ident = envlist[i].env;
+			if (!strenvcmp(argv[n], ident)) break;
+			ident += FDESIZ;
+			if (!strenvcmp(argv[n], ident)) break;
+		}
+		if (i < ENVLISTSIZ) break;
+	}
+	if (!argv[n]) return(0);
+
+	unset = trash = NULL;
+	ns = nu = nt = 0;
+	for (n = 1; n < argc; n++) {
+#  ifdef	FAKEUNINIT
+		f = 0;	/* fake for -Wuninitialized */
+#  endif
+		for (i = 0; i < ENVLISTSIZ; i++) {
+			ident = envlist[i].env;
+			if (!strenvcmp(argv[n], ident)) {
+				f = 1;
+				break;
+			}
+			ident += FDESIZ;
+			if (!strenvcmp(argv[n], ident)) {
+				f = 2;
+				break;
+			}
+		}
+		if (i >= ENVLISTSIZ) {
+			unset = (char **)realloc2(unset,
+				(nu + 1) * sizeof(char *));
+			unset[nu++] = argv[n];
+		}
+		else if (flaglist && (flaglist[i] & f)) {
+			trash = (char **)realloc2(trash,
+				(nt + 1) * sizeof(char *));
+			trash[nt++] = ident;
+		}
+		else {
+			if (flaglist) flaglist[i] |= f;
+			if ((cp = getshellvar(ident, -1))
+			&& (envlist[i].type != T_CHARP
+			|| strenvcmp(cp, envlist[i].def.str))) {
+				if (ns++) fputc(' ', fp);
+				fputs(ident, fp);
+				fputc('=', fp);
+				cp = killmeta(cp);
+				fputs(cp, fp);
+				free(cp);
+			}
+			else {
+				unset = (char **)realloc2(unset,
+					(nu + 1) * sizeof(char *));
+				unset[nu++] = ident;
+			}
+		}
+	}
+	if (ns) fputc('\n', fp);
+
+	if (unset) {
+		putargs(BL_UNSET, nu, unset, fp);
+		free(unset);
+	}
+	if (trash) {
+		fputs("# ", fp);
+		putargs(BL_UNSET, nt, trash, fp);
+		free(trash);
+	}
+
 	return(1);
 }
 # endif	/* !_NOORIGSHELL */
@@ -1708,23 +1876,22 @@ FILE *fp;
 {
 	int i, key;
 
-	if (argc < 3 || strpathcmp(argv[0], BL_BIND)
-	|| (key = getkeycode(argv[1], 0)) < 0)
-		return(0);
+	if (strcommcmp(argv[0], BL_BIND)) return(0);
+	if (argc < 3 || (key = getkeycode(argv[1], 0)) < 0) return(-1);
+
 	for (i = 0; bindlist[i].key >= 0; i++)
 		if (key == (int)(bindlist[i].key)) break;
-	if (bindlist[i].key < 0) return(0);
+	if (bindlist[i].key < 0 || (flaglist && flaglist[i]))
+		return(-1);
 
-	if (!flaglist[i]) {
-		flaglist[i] = 1;
-		printmacro(i, fp);
-		fputc('\n', fp);
-	}
+	if (flaglist) flaglist[i] = 1;
+	printmacro(i, fp);
+	fputc('\n', fp);
 	return(1);
 }
 # endif	/* !_NOORIGSHELL */
 
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 static VOID NEAR cleanupkeymap(VOID_A)
 {
 	copykeyseq(origkeymaplist);
@@ -1857,27 +2024,22 @@ int argc;
 char *argv[];
 FILE *fp;
 {
-	char *cp;
 	int i, key, len;
 
-	if (argc < 3 || strpathcmp(argv[0], BL_KEYMAP)
-	|| (key = getkeycode(argv[1], 1)) < 0)
-		return(0);
+	if (strcommcmp(argv[0], BL_KEYMAP)) return(0);
+	if (argc < 3 || (key = getkeycode(argv[1], 1)) < 0) return(-1);
+
 	for (i = 0; keyseqlist[i] >= 0; i++)
 		if (key == (int)(keyseqlist[i])) break;
-	if (keyseqlist[i] < 0) return(0);
+	if (keyseqlist[i] < 0 || (flaglist && flaglist[i])) return(-1);
 
-	cp = getkeyseq(key, &len);
-
-	if (!flaglist[i]) {
-		flaglist[i] = 1;
-		printkeymap(key, cp, len, fp);
-		fputc('\n', fp);
-	}
+	if (flaglist) flaglist[i] = 1;
+	printkeymap(key, getkeyseq(key, &len), len, fp);
+	fputc('\n', fp);
 	return(1);
 }
 #  endif	/* !_NOORIGSHELL */
-# endif	/* !MSDOS && !_NOKEYMAP */
+# endif	/* !_NOKEYMAP */
 
 # ifndef	_NOARCHIVE
 VOID freelaunch(list, max)
@@ -2316,7 +2478,7 @@ launchtable *launch;
 	|| launch -> bottomskip != list[i].bottomskip)
 		return(-1);
 
-	if (strcmp(launch -> comm, list[i].comm)) return(-1);
+	if (strcommcmp(launch -> comm, list[i].comm)) return(-1);
 	if (!(launch -> format)) return(i);
 
 	for (j = 0; launch -> format[j]; j++)
@@ -2387,19 +2549,19 @@ FILE *fp;
 	int i;
 	u_char flags;
 
-	if (argc < 3 || strpathcmp(argv[0], BL_LAUNCH)) return(0);
+	if (strcommcmp(argv[0], BL_LAUNCH)) return(0);
+	if (argc < 3) return(-1);
+
 	ext = getext(argv[1], &flags);
 	for (i = 0; i < maxlaunch; i++)
 		if (!extcmp(ext, flags,
 		launchlist[i].ext, launchlist[i].flags, 1)) break;
 	free(ext);
-	if (i >= maxlaunch) return(0);
+	if (i >= maxlaunch || (flaglist && flaglist[i])) return(-1);
 
-	if (!flaglist[i]) {
-		flaglist[i] = 1;
-		printlaunchcomm(i, 0, fp);
-		fputc('\n', fp);
-	}
+	if (flaglist) flaglist[i] = 1;
+	printlaunchcomm(i, 0, fp);
+	fputc('\n', fp);
 	return(1);
 }
 #  endif	/* !_NOORIGSHELL */
@@ -2563,8 +2725,8 @@ archivetable *arch;
 		if (list[i].p_comm) return(-1);
 	}
 	else if (!(list[i].p_comm)) return(-1);
-	else if (strcmp(arch -> p_comm, list[i].p_comm)) return(-1);
-	if (strcmp(arch -> u_comm, list[i].u_comm)) return(-1);
+	else if (strcommcmp(arch -> p_comm, list[i].p_comm)) return(-1);
+	if (strcommcmp(arch -> u_comm, list[i].u_comm)) return(-1);
 
 	return(i);
 }
@@ -2608,25 +2770,25 @@ FILE *fp;
 	int i;
 	u_char flags;
 
-	if (argc < 3 || strpathcmp(argv[0], BL_ARCH)) return(0);
+	if (strcommcmp(argv[0], BL_ARCH)) return(0);
+	if (argc < 3) return(-1);
+
 	ext = getext(argv[1], &flags);
 	for (i = 0; i < maxarchive; i++)
 		if (!extcmp(ext, flags,
 		archivelist[i].ext, archivelist[i].flags, 1)) break;
 	free(ext);
-	if (i >= maxarchive) return(0);
+	if (i >= maxarchive || (flaglist && flaglist[i])) return(-1);
 
-	if (!flaglist[i]) {
-		flaglist[i] = 1;
-		printarchcomm(i, fp);
-		fputc('\n', fp);
-	}
+	if (flaglist) flaglist[i] = 1;
+	printarchcomm(i, fp);
+	fputc('\n', fp);
 	return(1);
 }
 #  endif	/* _NOORIGSHELL */
 # endif	/* !_NOARCHIVE */
 
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 VOID freedosdrive(list)
 devinfo *list;
 {
@@ -2899,13 +3061,20 @@ int argc;
 char *argv[];
 FILE *fp;
 {
-	int i, j;
+	int i, j, n;
 
-	if (argc < 4 || strpathcmp(argv[0], BL_SDRIVE)) return(0);
+	if (!strcommcmp(argv[0], BL_SDRIVE) && !strcommcmp(argv[0], BL_UDRIVE))
+		return(0);
+	if (argc < 4) return(-1);
+
 	for (i = 0; fdtype[i].name; i++)
 		if (toupper2(argv[1][0]) == fdtype[i].drive) break;
-	if (!(fdtype[i].name)) return(0);
+	if (!flaglist && !(fdtype[i].name)) {
+		putargs(BL_UDRIVE, argc - 1, &(argv[1]), fp);
+		return(1);
+	}
 
+	n = 0;
 	for (j = i; fdtype[j].name; j++) {
 		if (i == j);
 		else if (fdtype[i].drive != fdtype[j].drive) {
@@ -2923,12 +3092,13 @@ FILE *fp;
 			flaglist[j] = 1;
 			printsetdrv(j, 0, fp);
 			fputc('\n', fp);
+			n++;
 		}
 	}
-	return(1);
+	return((n) ? 1 : -1);
 }
 #  endif	/* _NOORIGSHELL */
-# endif	/* !MSDOS && !_NODOSDRIVE */
+# endif	/* _USEDOSEMU */
 
 static int NEAR dispsave(no)
 int no;
@@ -2940,11 +3110,11 @@ int no;
 	mes[1] = CCLEA_K;
 	mes[2] = CLOAD_K;
 	mes[3] = CSAVE_K;
-#ifdef	_NOORIGSHELL
+# ifdef	_NOORIGSHELL
 	mes[4] = NIMPL_K;
-#else
+# else
 	mes[4] = COVWR_K;
-#endif
+# endif
 	kanjiputs2(mes[no], MAXCUSTVAL, 0);
 	len = strlen3(mes[no]);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
@@ -2968,8 +3138,7 @@ char *file;
 	}
 
 	strcpy(path, file);
-	if ((cp = strrdelim(path, 1))) cp++;
-	else cp = path;
+	cp = getbasename(path);
 	len = sizeof(path) - 1 - (cp - path);
 	if (len > MAXTNAMLEN) len = MAXTNAMLEN;
 	genrandname(NULL, 0);
@@ -3035,29 +3204,32 @@ char *file;
 			for (i = 0; i < argc; i++) stripquote(argv[i], 1);
 
 			if (subst[0]) {
-				if (!argc && val[0] && flaglist[0])
+				if (!argc && val[0])
 					n = checkenv(flaglist[0],
 						subst, slen, fpout);
 			}
 			else {
-				if (!n && val[1] && flaglist[1])
+				if (!n && val[0])
+					n = checkunset(flaglist[0],
+						argc, argv, fpout);
+				if (!n && val[1])
 					n = checkbind(flaglist[1],
 						argc, argv, fpout);
-#  if	!MSDOS && !defined (_NOKEYMAP)
-				if (!n && val[2] && flaglist[2])
+#  ifndef	_NOKEYMAP
+				if (!n && val[2])
 					n = checkkeymap(flaglist[2],
 						argc, argv, fpout);
 #  endif
 #  ifndef	_NOARCHIVE
-				if (!n && val[3] && flaglist[3])
+				if (!n && val[3])
 					n = checklaunch(flaglist[3],
 						argc, argv, fpout);
-				if (!n && val[4] && flaglist[4])
+				if (!n && val[4])
 					n = checkarch(flaglist[4],
 						argc, argv, fpout);
 #  endif
-#  if	!MSDOS && !defined (_NODOSDRIVE)
-				if (!n && val[5] && flaglist[5])
+#  ifdef	_USEDOSEMU
+				if (!n && val[5])
 					n = checkdosdrive(flaglist[5],
 						argc, argv, fpout);
 #  endif
@@ -3069,7 +3241,8 @@ char *file;
 
 		freestree(stree);
 		trp = stree;
-		if (!n) {
+		if (n <= 0) {
+			if (n < 0) fputs("# ", fpout);
 			fputs(buf, fpout);
 			fputc('\n', fpout);
 		}
@@ -3088,7 +3261,7 @@ char *file;
 			n = dumpenv(flaglist[0], NULL);
 		if (!n && val[1] && flaglist[1])
 			n += dumpbind(flaglist[1], NULL);
-#  if	!MSDOS && !defined (_NOKEYMAP)
+#  ifndef	_NOKEYMAP
 		if (!n && val[2] && flaglist[2])
 			n += dumpkeymap(flaglist[2], NULL);
 #  endif
@@ -3098,7 +3271,7 @@ char *file;
 		if (!n && val[4] && flaglist[4])
 			n += dumparch(flaglist[4], NULL);
 #  endif
-#  if	!MSDOS && !defined (_NODOSDRIVE)
+#  ifdef	_USEDOSEMU
 		if (!n && val[5] && flaglist[5])
 			n += dumpdosdrive(flaglist[5], NULL);
 #  endif
@@ -3111,14 +3284,14 @@ char *file;
 
 	if (val[0] && flaglist[0]) dumpenv(flaglist[0], fpout);
 	if (val[1] && flaglist[1]) dumpbind(flaglist[1], fpout);
-#  if	!MSDOS && !defined (_NOKEYMAP)
+#  ifndef	_NOKEYMAP
 	if (val[2] && flaglist[2]) dumpkeymap(flaglist[2], fpout);
 #  endif
 #  ifndef	_NOARCHIVE
 	if (val[3] && flaglist[3]) dumplaunch(flaglist[3], fpout);
 	if (val[4] && flaglist[4]) dumparch(flaglist[4], fpout);
 #  endif
-#  if	!MSDOS && !defined (_NODOSDRIVE)
+#  ifdef	_USEDOSEMU
 	if (val[5] && flaglist[5]) dumpdosdrive(flaglist[5], fpout);
 #  endif
 	Xfclose(fpout);
@@ -3147,14 +3320,14 @@ int no;
 
 	str[0] = TENV_K;
 	str[1] = TBIND_K;
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 	str[2] = TKYMP_K;
 # endif
 # ifndef	_NOARCHIVE
 	str[3] = TLNCH_K;
 	str[4] = TARCH_K;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 	str[5] = TSDRV_K;
 # endif
 
@@ -3172,7 +3345,7 @@ int no;
 					NULL, 10);
 				copybind(bindlist, tmpbindlist);
 			}
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 			if (val[2]) copykeyseq(tmpkeymaplist);
 # endif
 # ifndef	_NOARCHIVE
@@ -3181,7 +3354,7 @@ int no;
 			if (val[4]) copyarch(archivelist, tmparchivelist,
 					&maxarchive, tmpmaxarchive);
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 			if (val[5]) copydosdrive(fdtype, tmpfdtype);
 # endif
 			break;
@@ -3191,14 +3364,14 @@ int no;
 			done = 1;
 			if (val[0]) cleanupenv();
 			if (val[1]) cleanupbind();
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 			if (val[2]) cleanupkeymap();
 # endif
 # ifndef	_NOARCHIVE
 			if (val[3]) cleanuplaunch();
 			if (val[4]) cleanuparch();
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 			if (val[5]) cleanupdosdrive();
 # endif
 			break;
@@ -3225,7 +3398,8 @@ int no;
 # ifdef	FAKEUNINIT
 			fp = NULL;	/* fake for -Wuninitialized */
 # endif
-			if (Xaccess(file, F_OK) >= 0 && yesno(FSVOK_K))
+			if (!*file
+			|| (Xaccess(file, F_OK) >= 0 && yesno(FSVOK_K)))
 				done = 0;
 			else {
 				envcaption(SSAVE_K);
@@ -3242,14 +3416,14 @@ int no;
 			fputs("# configurations by customizer\n", fp);
 			if (val[0]) dumpenv(NULL, fp);
 			if (val[1]) dumpbind(NULL, fp);
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 			if (val[2]) dumpkeymap(NULL, fp);
 # endif
 # ifndef	_NOARCHIVE
 			if (val[3]) dumplaunch(NULL, fp);
 			if (val[4]) dumparch(NULL, fp);
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 			if (val[5]) dumpdosdrive(NULL, fp);
 # endif
 			Xfclose(fp);
@@ -3260,8 +3434,10 @@ int no;
 				break;
 			done = 1;
 			file = evalpath(file, 1);
-			if (Xaccess(file, F_OK) < 0 && errno == ENOENT
-			&& !yesno(FOVOK_K)) done = 0;
+			if (!*file
+			|| (Xaccess(file, F_OK) < 0 && errno == ENOENT
+			&& !yesno(FOVOK_K)))
+				done = 0;
 			else {
 				envcaption(SOVWR_K);
 				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
@@ -3281,7 +3457,7 @@ int no;
 static VOID NEAR dispname(no, y, isstandout)
 int no, y, isstandout;
 {
-# if	!defined (_NOARCHIVE) || (!MSDOS && !defined (_NODOSDRIVE))
+# if	!defined (_NOARCHIVE) || defined (_USEDOSEMU)
 	char buf[MAXCUSTNAM * 2 + 1];
 # endif
 	char *cp, *name[MAXSAVEMENU];
@@ -3290,13 +3466,13 @@ int no, y, isstandout;
 	cp = NEWET_K;
 	switch (custno) {
 		case 0:
-			cp = &(envlist[no].env[3]);
+			cp = &(envlist[no].env[FDESIZ]);
 			break;
 		case 1:
 			if (bindlist[no].key >= 0)
 				cp = getkeysym(bindlist[no].key, 0);
 			break;
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 		case 2:
 			cp = getkeysym(keyseqlist[no], 1);
 			break;
@@ -3327,7 +3503,7 @@ int no, y, isstandout;
 			}
 			break;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 		case 5:
 			if (fdtype[no].name) {
 				buf[0] = fdtype[no].drive;
@@ -3382,7 +3558,7 @@ static VOID NEAR dispcust(VOID_A)
 			case 1:
 				cs_len[i - start] = dispbind(i);
 				break;
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 			case 2:
 				cs_len[i - start] = dispkeymap(i);
 				break;
@@ -3395,7 +3571,7 @@ static VOID NEAR dispcust(VOID_A)
 				cs_len[i - start] = disparch(i);
 				break;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 			case 5:
 				cs_len[i - start] = dispdosdrive(i);
 				break;
@@ -3471,7 +3647,7 @@ static int NEAR editcust(VOID_A)
 				cs_max = i + 1;
 			}
 			break;
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 		case 2:
 			n = editkeymap(cs_item);
 			break;
@@ -3484,7 +3660,7 @@ static int NEAR editcust(VOID_A)
 			if ((n = editarch(cs_item))) cs_max = maxarchive + 1;
 			break;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 		case 5:
 			if ((n = editdosdrive(cs_item))) {
 				for (i = 0; fdtype[i].name; i++);
@@ -3508,7 +3684,7 @@ static int NEAR editcust(VOID_A)
 
 int customize(VOID_A)
 {
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 	int n;
 # endif
 	int i, ch, old, changed, item[MAXCUSTOM], max[MAXCUSTOM];
@@ -3524,7 +3700,7 @@ int customize(VOID_A)
 	tmphelpindex = copystrarray(NULL, helpindex, NULL, 10);
 	tmpbindlist = copybind(NULL, bindlist);
 	for (i = 0; bindlist[i].key >= 0; i++);
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 	tmpkeymaplist = copykeyseq(NULL);
 	for (n = 0; keyidentlist[n].no > 0; n++);
 	keyseqlist = (short *)malloc2((n + 20 + 1) * sizeof(short));
@@ -3549,7 +3725,7 @@ int customize(VOID_A)
 	tmparchivelist = copyarch(NULL, archivelist,
 		&tmpmaxarchive, maxarchive);
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 	tmpfdtype = copydosdrive(NULL, fdtype);
 # endif
 	calcmax(max, 1);
@@ -3675,7 +3851,7 @@ int customize(VOID_A)
 		free(tmphelpindex);
 	}
 	if (tmpbindlist) free(tmpbindlist);
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 	freekeyseq(tmpkeymaplist);
 	free(keyseqlist);
 # endif
@@ -3689,7 +3865,7 @@ int customize(VOID_A)
 		free(tmparchivelist);
 	}
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 	if (tmpfdtype) {
 		freedosdrive(tmpfdtype);
 		free(tmpfdtype);

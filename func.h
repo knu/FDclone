@@ -14,7 +14,7 @@ extern int errno;
 
 #if	MSDOS
 #include "unixemu.h"
-#else
+#else	/* !MSDOS */
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/file.h>
@@ -29,7 +29,7 @@ extern int errno;
 # ifdef	USEUTIME
 # include <utime.h>
 # endif
-#endif
+#endif	/* !MSDOS */
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -88,7 +88,7 @@ extern VOID saveorigenviron __P_((VOID_A));
 extern int loadruncom __P_((char *, int));
 
 /* dosemu.c or unixemu.c */
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 extern int _dospath __P_((char *));
 extern int dospath __P_((char *, char *));
 #endif
@@ -101,11 +101,6 @@ extern int dospath3 __P_((char *));
 #define	dospath3(path)	dospath(path, NULL)
 # endif
 #endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-extern int getkcode __P_((char *));
-#endif
-extern char *convget __P_((char *, char *, int));
-extern char *convput __P_((char *, char *, int, int, char *, int *));
 extern DIR *Xopendir __P_((char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
@@ -208,8 +203,7 @@ extern int atoi2 __P_((char *));
 extern int fprintf2 __P_((FILE *, CONST char *, ...));
 extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern VOID perror2 __P_((char *));
-extern int putenv2 __P_((char *));
-extern int setenv2 __P_((char *, char *));
+extern int setenv2 __P_((char *, char *, int));
 extern char *getenv2 __P_((char *));
 #ifdef	USESIGACTION
 extern sigcst_t signal2 __P_((int, sigcst_t));
@@ -225,13 +219,13 @@ extern time_t timelocal2 __P_((struct tm *));
 extern char *fgets2 __P_((FILE *, int));
 
 /* file.c */
-#if	MSDOS || defined (_NODOSDRIVE)
-#define	nodospath(p, f)	(f)
-#else
+#ifdef	_USEDOSEMU
 extern char *nodospath __P_((char *, char *));
+#else
+#define	nodospath(p, f)	(f)
 #endif
 #define	fnodospath(p, i)	nodospath(p, filelist[i].name)
-#if	MSDOS
+#ifdef	NOUID
 extern int logical_access __P_((u_int));
 #else
 extern int logical_access __P_((u_int, uid_t, gid_t));
@@ -301,7 +295,7 @@ extern char *evalpaths __P_((char *, int));
 #else
 extern char *killmeta __P_((char *));
 #endif
-#if	!MSDOS && defined (_NOORIGSHELL)
+#ifdef	_NOORIGSHELL
 extern VOID adjustpath __P_((VOID_A));
 #endif
 extern char *includepath __P_((char *, char *));
@@ -319,7 +313,7 @@ extern int extcmp __P_((char *, int, char *, int, int));
 extern int getkeycode __P_((char *, int));
 extern char *getkeysym __P_((int, int));
 extern char *decodestr __P_((char *, int *, int));
-#if	!MSDOS && !defined (_NOKEYMAP)
+#ifndef	_NOKEYMAP
 extern char *encodestr __P_((char *, int));
 #endif
 
@@ -333,13 +327,13 @@ extern VOID freebrowse __P_((launchtable *));
 #endif
 extern int freemacro __P_((int));
 extern VOID printmacro __P_((int, FILE *));
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 extern int searchdrv __P_((devinfo *, int, char *, int, int, int, int));
 extern int deletedrv __P_((int));
 extern int insertdrv __P_((int, int, char *, int, int, int));
 extern VOID printsetdrv __P_((int, int, FILE *));
 #endif
-#if	!MSDOS && !defined (_NOKEYMAP)
+#ifndef	_NOKEYMAP
 extern VOID printkeymap __P_((int, char *, int, FILE *));
 #endif
 #ifdef	_NOORIGSHELL
@@ -362,6 +356,7 @@ extern VOID freedefine __P_((VOID_A));
 #endif
 
 #define	BL_SET		"set"
+#define	BL_UNSET	"unset"
 #define	BL_PENV		"printenv"
 #define	BL_LAUNCH	"launch"
 #define	BL_ARCH		"arch"
@@ -423,32 +418,36 @@ extern int completeuserfunc __P_((char *, int, int, char ***));
 
 /* kanji.c */
 extern int onkanji1 __P_((char *, int));
-#if	(!MSDOS && !defined (_NOKANJICONV)) \
+#if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 extern int getlang __P_((char *, int));
 #endif
-#if	!MSDOS && (!defined (_NOKANJICONV) \
-|| (!defined (_NODOSDRIVE) && defined (CODEEUC)))
+#if	!defined (_NOKANJICONV) \
+|| (defined (_USEDOSEMU) && defined (CODEEUC))
 extern int sjis2ujis __P_((char *, u_char *, int));
 extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
-#if	(!MSDOS && defined (FD) && (FD >= 2) && !defined (_NOKANJICONV)) \
-|| !defined (_NODOSDRIVE)
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
 extern VOID readunitable __P_((VOID_A));
 extern VOID discardunitable __P_((VOID_A));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
 #endif
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 extern int kanjiconv __P_((char *, char *, int, int, int, int));
 # ifndef	_NOKANJIFCONV
 extern char *kanjiconv2 __P_((char *, char *, int, int, int));
 # endif
 #endif
-extern int kanjiputs __P_((char *));
 extern int kanjifputs __P_((char *, FILE *));
+extern int kanjiputs __P_((char *));
 extern int kanjiprintf __P_((CONST char *, ...));
 extern int kanjiputs2 __P_((char *, int, int));
+#ifndef	_NOKANJIFCONV
+extern int getkcode __P_((char *));
+#endif
+extern char *convget __P_((char *, char *, int));
+extern char *convput __P_((char *, char *, int, int, char *, int *));
 
 /* input.c */
 extern int intrkey __P_((VOID_A));
@@ -515,7 +514,7 @@ extern VOID freearch __P_((archivetable *, int));
 extern archivetable *copyarch __P_((archivetable *, archivetable *,
 	int *, int));
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 extern VOID freedosdrive __P_((devinfo *));
 extern devinfo *copydosdrive __P_((devinfo *, devinfo *));
 # endif

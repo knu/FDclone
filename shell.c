@@ -44,7 +44,7 @@ extern int internal_status;
 #endif
 
 static int NEAR checksc __P_((char *, int, char *));
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 static int NEAR extconv __P_((char **, int, int, ALLOC_T *, int));
 #endif
 static int NEAR isneedargs __P_((char *, int, int *));
@@ -111,22 +111,20 @@ char *arg;
 	return(ptr - 2);
 }
 
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 static int NEAR extconv(bufp, ptr, eol, sizep, code)
 char **bufp;
 int ptr, eol;
 ALLOC_T *sizep;
 int code;
 {
-# ifndef	_NOKANJIFCONV
-	char rpath[MAXPATHLEN];
-
-# endif
 	char *cp;
 	int len;
 
 # ifndef	_NOKANJIFCONV
 	if (code < 0) {
+		char rpath[MAXPATHLEN];
+
 		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]), 0, 0);
 		realpath2(cp, rpath, 1);
 		free(cp);
@@ -143,7 +141,7 @@ int code;
 	free(cp);
 	return(ptr + len);
 }
-#endif	/* !MSDOS && !_NOKANJICONV */
+#endif	/* !_NOKANJICONV */
 
 static int NEAR isneedargs(s, n, flagsp)
 char *s;
@@ -206,7 +204,7 @@ int flags;
 	else {
 		strcatdelim2(path, dir, arg);
 		arg = path;
-#if	MSDOS && !defined (_NOARCHIVE)
+#if	defined (BSPATHDELIM) && !defined (_NOARCHIVE)
 		if (flags & F_ISARCH) for (len = 0; arg[len]; len++) {
 			if (iskanji1(arg, len)) len++;
 			if (arg[len] == _SC_) arg[len] = '/';
@@ -215,7 +213,7 @@ int flags;
 	}
 
 	if (arg != path) arg = convput(conv, arg, 1, 0, NULL, NULL);
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+#ifndef	_NOKANJIFCONV
 	else arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, fnamekcode);
 #endif
 	optr = ptr;
@@ -522,7 +520,7 @@ char *command, *arg;
 macrostat *stp;
 int ignorelist;
 {
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 	int cnvcode = NOCNV;
 	int tmpcode, cnvptr;
 #endif
@@ -538,7 +536,7 @@ int ignorelist;
 	}
 	stp -> addopt = -1;
 	stp -> needmark = stp -> needburst = 0;
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 	cnvptr = 0;
 #endif
 
@@ -631,7 +629,7 @@ int ignorelist;
 			case 'K':
 				flags |= F_NOCONFIRM;
 				break;
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 			case 'J':
 				c = command[i + 1];
 				if (c == 'S') tmpcode = SJIS;
@@ -666,7 +664,7 @@ int ignorelist;
 				cnvcode = tmpcode;
 				cnvptr = j;
 				break;
-#endif	/* !MSDOS && !_NOKANJICONV */
+#endif	/* !_NOKANJICONV */
 			case '%':
 #ifndef	MACROMETA
 				line[j++] = '%';
@@ -693,7 +691,7 @@ int ignorelist;
 	}
 #endif
 
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 	if (cnvcode != NOCNV) j = extconv(&line, cnvptr, j, &size, cnvcode);
 #endif
 
@@ -1463,13 +1461,18 @@ int argset;
 {
 	macrostat st;
 	FILE *fp;
-	char *tmp;
+	char *tmp, *lang;
 
 	internal_status = -2;
 	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
 
 	if (!(tmp = evalcommand(command, arg, &st, 1))) return(NULL);
+	if ((lang = strdup2(getenv2("LANG")))) setenv2("LANG", "C", 1);
 	fp = popen2(tmp, "r");
+	if (lang) {
+		setenv2("LANG", lang, 1);
+		free(lang);
+	}
 	free(tmp);
 	return(fp);
 }
@@ -1521,7 +1524,7 @@ int noconf, argset, ignorelist;
 
 	if (!(argc = getargs(command, &argv))) i = maxuserfunc;
 	else for (i = 0; i < maxuserfunc; i++)
-		if (!strpathcmp(argv[0], userfunclist[i].func)) break;
+		if (!strcommcmp(argv[0], userfunclist[i].func)) break;
 	if (i >= maxuserfunc)
 		ret = execmacro(command, arg, noconf, argset, ignorelist);
 	else {
@@ -1551,7 +1554,7 @@ char *command;
 	len = (cp = strpbrk(command, " \t")) ? cp - command : strlen(command);
 
 	for (i = 0; i < maxalias; i++)
-		if (!strnpathcmp(command, aliaslist[i].alias, len)
+		if (!strncommcmp(command, aliaslist[i].alias, len)
 		&& !aliaslist[i].alias[len]) break;
 	if (i >= maxalias) return(NULL);
 
@@ -1591,7 +1594,7 @@ int uniq;
 	if (uniq) {
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
-#if	MSDOS
+#if	defined (PATHNOCASE) && defined (_USEDOSPATH)
 			if (n == 1 && *s != *(history[n][i])) continue;
 #endif
 			if (!strpathcmp(s, history[n][i])) break;
@@ -1790,7 +1793,7 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < maxalias; i++) {
-		if (strnpathcmp(com, aliaslist[i].alias, len)
+		if (strncommcmp(com, aliaslist[i].alias, len)
 		|| finddupl(aliaslist[i].alias, argc, *argvp)) continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
@@ -1807,7 +1810,7 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < maxuserfunc; i++) {
-		if (strnpathcmp(com, userfunclist[i].func, len)
+		if (strncommcmp(com, userfunclist[i].func, len)
 		|| finddupl(userfunclist[i].func, argc, *argvp)) continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));

@@ -107,14 +107,15 @@ for i in TARUSESPACE CPP7BIT USETERMINFO TERMCAPLIB REGEXPLIB EXTENDLIB \
 NOVOID NOUID_T USEPID_T DECLSIGLIST NOSIGLIST \
 DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
 USELEAPCNT USESELECTH USESYSDIRH USETIMEH USESTDARGH USEMKDEVH USEMKNODH \
-USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
+USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN NODRECLEN DNAMESIZE \
+HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USESTATVFS_T USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
-USERAND48 USESETENV NOSELECT NOVSPRINTF NOTERMVAR \
+USERAND48 USESETENV NOSELECT DEFFDSETSIZE SELECTRWONLY NOVSPRINTF NOTERMVAR \
 USEUTIME USEGETWD USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
 USEWAITPID USESIGACTION USESIGPMASK \
 USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
@@ -279,7 +280,7 @@ if isexist "return(major(0))" sys/mknod; then
 fi
 if noheader sgtty \
 || inheader 'TIOCFLUSH' sgtty "TIOCFLUSH"; then
-	if noheader termio; then
+	if useheader termios; then
 		echo "#define	USETERMIOS"
 	else
 		echo "#define	USETERMIO"
@@ -292,6 +293,10 @@ if useheader dirent; then
 	fi
 	if noexist "d.d_namlen" "sys/types dirent" "struct dirent d;"; then
 		echo "#define	NODNAMLEN"
+	fi
+	if isexist "d.d_fd" "sys/types dirent" "struct dirent d;" \
+	&& noexist "d.d_reclen" "sys/types dirent" "struct dirent d;"; then
+		echo "#define	NODRECLEN"
 	fi
 	gettypesize "d.d_name" "sys/types dirent" "struct dirent d;"
 	echo "#define	DNAMESIZE	$ret"
@@ -403,7 +408,8 @@ fi
 if noexist "select(0,0,0,0,0)"; then
 	echo "#define	NOSELECT"
 fi
-if noexist "vsprintf(0,0,0)" "stdio varargs"; then
+if noexist "vsprintf(0,0,0)" "stdio varargs" \
+&& noexist "vsprintf(0,0,0)" "stdio stdarg"; then
 	echo "#define	NOVSPRINTF"
 fi
 if noexist "ospeed=0" "" "extern short ospeed;" \

@@ -22,6 +22,7 @@
 	SGI	IRIX		(R5.x)
 	HP	HP-UX		(11.x)
 	DEC	OSF/1		(V4.x, V5.x)
+	(free)	Cygwin		(1.5.x)
 	(free)	Linux		(2.x)
 	(free)	FreeBSD		(2.x, 3.x, 4,x)
 	(free)	NetBSD		(1.x)

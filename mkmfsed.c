@@ -5,11 +5,36 @@
  */
 
 #include "fd.h"
+#if	!MSDOS
+#include <sys/param.h>
+#endif
+
+#ifdef	USESELECTH
+#include <sys/select.h>
+#endif
 
 #ifdef	NOVOID
 #define	VOID
 #else
 #define	VOID	void
+#endif
+
+#if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
+#define	MAXOPENFILE	sysconf(_SC_OPEN_MAX)
+#else
+# ifdef	NOFILE
+# define	MAXOPENFILE	NOFILE
+# else
+#  ifdef	OPEN_MAX
+#  define	MAXOPENFILE	OPEN_MAX
+#  else
+#   if	MSDOS
+#   define	MAXOPENFILE	20
+#   else
+#   define	MAXOPENFILE	64
+#   endif
+#  endif
+# endif
 #endif
 
 
@@ -87,6 +112,12 @@ char *argv[];
 		printf("s:__HOSTCC__:$(CC):\n");
 		printf("s:__HOSTCCOPTIONS__:%s:\n", EXTENDCCOPT);
 	}
+#if	defined (DEFFDSETSIZE) && defined (FD_SETSIZE)
+	if (FD_SETSIZE < MAXOPENFILE)
+		printf("s:__FDSETSIZE__:-DFD_SETSIZE=%d:\n", MAXOPENFILE);
+	else
+#endif
+	printf("s:__FDSETSIZE__::\n");
 	printf("s:__MEM__::\n");
 	printf("s:__SHMEM__::\n");
 	printf("s:__BSHMEM__::\n");

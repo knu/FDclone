@@ -4,12 +4,15 @@
  *	Builtin Command for DOS
  */
 
+#include <fcntl.h>
+#ifdef	FD
+#include "fd.h"
+#else	/* !FD */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
 #include "machine.h"
-#include "kctype.h"
+#include "pathname.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -18,13 +21,12 @@
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
+#endif	/* !FD */
+
+#include "kctype.h"
 
 #ifdef	USETIMEH
 #include <time.h>
-#endif
-
-#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
-#define	_NODOSDRIVE
 #endif
 
 #if	MSDOS && !defined (FD)
@@ -173,7 +175,6 @@ extern char *_mtrace_file;
 extern u_char _openfile[];
 #endif
 
-#include "pathname.h"
 #include "system.h"
 
 #if	defined (DOSCOMMAND) \
@@ -1825,8 +1826,7 @@ char *argv[];
 	ret = RET_SUCCESS;
 	for (i = 0; wild[i]; i++) {
 		strcpy(new, wild[i]);
-		if ((cp = strrdelim(new, 1))) cp++;
-		else cp = new;
+		cp = getbasename(new);
 		j = cp - new;
 		convwild(cp, &(wild[i][j]), argv[2], argv[1]);
 		if (Xaccess(new, F_OK) >= 0) {
@@ -2022,7 +2022,7 @@ int sbin, dbin, dfd;
 	u_char buf[BUFSIZ], buf2[BUFSIZ];
 	int i, n, fd1, fd2, tty, retry, duperrno;
 
-#if	!MSDOS
+#ifndef	NOSYMLINK
 	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK) {
 		if ((i = Xreadlink(src, (char *)buf, BUFSIZ - 1)) < 0)
 			return(-1);
@@ -2135,7 +2135,7 @@ char *argv[];
 	}
 
 	size = strlen(argv[n]) + 1;
-	src = (char *)malloc2(size);
+	src = malloc2(size);
 	strcpy(src, argv[n]);
 	for (n++; n < argc; n++) {
 		if ((cp = strchr(&(argv[n - 1][1]), '+')) && !*(++cp))
@@ -2202,8 +2202,7 @@ char *argv[];
 			file = strcatdelim(dest);
 	}
 	else {
-		if ((file = strrdelim(dest, 1))) file++;
-		else file = dest;
+		file = getbasename(dest);
 		if (strpbrk(file, "*?")) form = &(argv[n][file - dest]);
 		else if (*file) file = NULL;
 	}
@@ -2252,8 +2251,7 @@ char *argv[];
 			}
 			if ((sst.st_mode & S_IFMT) == S_IFDIR) continue;
 
-			if ((src = strrdelim(wild[i], 1))) src++;
-			else src = wild[i];
+			src = getbasename(wild[i]);
 			if (form) convwild(file, src, form, arg[n]);
 			else if (!n && file) strcpy(file, src);
 			j = doscopy(wild[i], dest, &sst, sbin[n], dbin, fd);

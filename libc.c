@@ -33,6 +33,10 @@ extern char *dosgetcwd __P_((char *, int));
 #include "system.h"
 #endif
 
+#ifdef	CYGWIN
+#include <sys/cygwin.h>
+#endif
+
 #ifdef	PWNEEDERROR
 char Error[1024];
 #endif
@@ -62,7 +66,7 @@ extern int lastdrv;
 			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
-#if	!MSDOS
+#ifndef	NOSYMLINK
 static int NEAR evallink __P_((char *, char *));
 #endif
 static char *NEAR _realpath2 __P_((char *, char *, int));
@@ -97,9 +101,9 @@ int stat2(path, stp)
 char *path;
 struct stat *stp;
 {
-#if	MSDOS
+#ifdef	NOSYMLINK
 	return(Xstat(path, stp));
-#else	/* !MSDOS */
+#else	/* !NOSYMLINK */
 	int duperrno;
 
 	if (Xstat(path, stp) < 0) {
@@ -118,10 +122,10 @@ struct stat *stp;
 		stp -> st_mode &= ~S_IFMT;
 	}
 	return(0);
-#endif	/* !MSDOS */
+#endif	/* !NOSYMLINK */
 }
 
-#if	!MSDOS
+#ifndef	NOSYMLINK
 static int NEAR evallink(path, delim)
 char *path, *delim;
 {
@@ -152,7 +156,7 @@ char *path, *delim;
 	errno = duperrno;
 	return(1);
 }
-#endif	/* !MSDOS */
+#endif	/* !NOSYMLINK */
 
 /*ARGSUSED*/
 static char *NEAR _realpath2(path, resolved, rdlink)
@@ -192,13 +196,13 @@ int rdlink;
 	else {
 		cp = strcatdelim(resolved);
 		strncpy2(cp, path, MAXPATHLEN - 1 - (cp - resolved));
-#if	!MSDOS
+#ifndef	NOSYMLINK
 		if (!rdlink) /*EMPTY*/;
 # ifndef	_NODOSDRIVE
 		else if (_dospath(resolved)) /*EMPTY*/;
 # endif
 		else evallink(resolved, cp - 1);
-#endif	/* !MSDOS */
+#endif	/* !NOSYMLINK */
 	}
 	return(resolved);
 }
@@ -276,11 +280,31 @@ char *path;
 
 	if (!Xgetwd(cwd)) strcpy(cwd, _SS_);
 	if (Xchdir(path) < 0) return(-1);
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	if (!dospath2("")) {
+#if	!MSDOS
+# ifndef	_NODOSDRIVE
+	if (dospath2("")) /*EMPTY*/;
+	else
+# endif
+	{
 		int fd, duperrno;
 
 		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
+# ifdef	CYGWIN
+			char upath[MAXPATHLEN], spath[MAXPATHLEN];
+			char tmp[MAXPATHLEN];
+			int len;
+
+			if (Xgetwd(tmp)) {
+				len = strlen(tmp);
+				cygwin_internal(CW_GET_CYGDRIVE_PREFIXES,
+					upath, spath);
+				if ((*upath && !strnpathcmp(tmp, upath, len)
+				&& (!upath[len] || upath[len] == _SC_))
+				|| (*spath && !strnpathcmp(tmp, spath, len)
+				&& (!spath[len] || spath[len] == _SC_)))
+					return(0);
+			}
+# endif	/* CYGWIN */
 			duperrno = errno;
 			if (Xchdir(cwd) < 0) lostcwd(cwd);
 			errno = duperrno;
@@ -288,14 +312,14 @@ char *path;
 		}
 		close(fd);
 	}
-#endif
+#endif	/* !MSDOS */
 	return(0);
 }
 
 int chdir2(path)
 char *path;
 {
-	char *pwd, cwd[MAXPATHLEN], tmp[MAXPATHLEN];
+	char cwd[MAXPATHLEN], tmp[MAXPATHLEN];
 	int duperrno;
 
 #ifdef	DEBUG
@@ -337,14 +361,7 @@ char *path;
 		unixpath = NULL;
 	}
 #endif
-	if (getconstvar("PWD")) {
-#ifdef	DEBUG
-		_mtrace_file = "chdir2(PWD)";
-#endif
-		pwd = malloc2(strlen(fullpath) + 4 + 1);
-		strcpy(strcpy2(pwd, "PWD="), fullpath);
-		if (putenv2(pwd) < 0) error("PWD");
-	}
+	if (getconstvar("PWD")) setenv2("PWD", fullpath, 1);
 #if	MSDOS
 	if (unixrealpath(fullpath, tmp)) strcpy(fullpath, tmp);
 #endif
@@ -399,7 +416,7 @@ int mode;
 
 	eol = path + (int)strlen(path) - 1;
 	while (eol > path && *eol == _SC_) eol--;
-#if	MSDOS
+#ifdef	BSPATHDELIM
 	if (onkanji1(path, eol - path)) eol++;
 #endif
 	*(++eol) = '\0';
@@ -737,7 +754,7 @@ char **envp;
 	if (!envp) return(-1);
 
 	for (i = 0; envp[i]; i++)
-		if (!strnpathcmp(envp[i], name, len) && envp[i][len] == '=')
+		if (!strnenvcmp(envp[i], name, len) && envp[i][len] == '=')
 			break;
 	return(i);
 }
@@ -745,7 +762,7 @@ char **envp;
 static char **NEAR _putenv2(s, envp)
 char *s, **envp;
 {
-	char *cp, *tmp, **new;
+	char *cp, **new;
 	int i, n, len;
 
 	if ((cp = strchr(s, '='))) len = (int)(cp - s);
@@ -753,83 +770,58 @@ char *s, **envp;
 
 	if ((n = _getenv2(s, len, envp)) < 0) n = 0;
 	else if (envp[n]) {
-		tmp = envp[n];
+		free(envp[n]);
 		if (cp) envp[n] = s;
 		else for (i = n; envp[i]; i++) envp[i] = envp[i + 1];
-		free(tmp);
 		return(envp);
 	}
 	if (!cp) return(envp);
 
-	if (!envp) new = (char **)malloc((n + 2) * sizeof(char *));
-	else new = (char **)realloc(envp, (n + 2) * sizeof(char *));
-	if (!new) {
-		free(s);
-		return(NULL);
-	}
+	new = (char **)realloc2(envp, (n + 2) * sizeof(char *));
 	new[n] = s;
 	new[n + 1] = (char *)NULL;
 	return(new);
 }
 #endif	/* _NOORIGSHELL */
 
-int putenv2(s)
-char *s;
-{
-#ifdef	_NOORIGSHELL
-	char **new;
-# if	MSDOS
-	char *cp;
-
-	for (cp = s; *cp && *cp != '='; cp++) *cp = toupper2(*cp);
-# endif
-	if (!(new = _putenv2(s, environ))) return(-1);
-	environ = new;
-	return(0);
-#else	/* !_NOORIGSHELL */
-	return(putexportvar(s, -1));
-#endif	/* !_NOORIGSHELL */
-}
-
 char *getenv2(name)
 char *name;
 {
 #ifdef	_NOORIGSHELL
 	char **envpp[2];
-	int i, c, n, len;
+	int i, n, len;
 
 	len = strlen(name);
-	c = strnpathcmp(name, "FD_", 3);
 	envpp[0] = environ2;
 	envpp[1] = environ;
 
 	for (i = 0; i < 2; i++) {
 		n = _getenv2(name, len, envpp[i]);
 		if (n >= 0 && envpp[i][n]) return(&(envpp[i][n][len + 1]));
-		if (c) continue;
-		n = _getenv2(&(name[3]), len - 3, envpp[i]);
-		if (n >= 0 && envpp[i][n]) return(&(envpp[i][n][len - 3 + 1]));
+		if (strnenvcmp(name, FDENV, FDESIZ)) continue;
+		n = _getenv2(&(name[FDESIZ]), len - FDESIZ, envpp[i]);
+		if (n >= 0 && envpp[i][n])
+			return(&(envpp[i][n][len - FDESIZ + 1]));
 	}
 #else	/* !_NOORIGSHELL */
 	char *cp;
 
 	if ((cp = getshellvar(name, -1))) return(cp);
-	if (!strnpathcmp(name, "FD_", 3) && (cp = getshellvar(&(name[3]), -1)))
+	if (!strnenvcmp(name, FDENV, FDESIZ)
+	&& (cp = getshellvar(&(name[FDESIZ]), -1)))
 		return(cp);
 #endif	/* !_NOORIGSHELL */
 	return(NULL);
 }
 
-int setenv2(name, value)
+int setenv2(name, value, export)
 char *name, *value;
+int export;
 {
 	char *cp;
 	int len;
-#ifdef	_NOORIGSHELL
-	char **new;
-# if	MSDOS
+#if	defined (ENVNOCASE) && defined (_NOORIGSHELL)
 	int i;
-# endif
 #endif
 
 	len = strlen(name);
@@ -843,17 +835,17 @@ char *name, *value;
 	else {
 		cp = malloc2(len + strlen(value) + 2);
 		memcpy(cp, name, len);
-#if	MSDOS && defined (_NOORIGSHELL)
+#if	defined (ENVNOCASE) && defined (_NOORIGSHELL)
 		for (i = 0; i < len ; i++) cp[i] = toupper2(cp[i]);
 #endif
 		cp[len] = '=';
 		strcpy(&(cp[len + 1]), value);
 	}
 #ifdef	_NOORIGSHELL
-	if (!(new = _putenv2(cp, environ2))) return(-1);
-	environ2 = new;
+	if (export) environ = _putenv2(cp, environ);
+	else environ2 = _putenv2(cp, environ2);
 #else	/* !_NOORIGSHELL */
-	if (putshellvar(cp, len) < 0) {
+	if (((export) ? putexportvar(cp, len) : putshellvar(cp, len)) < 0) {
 		free(cp);
 		return(-1);
 	}
@@ -1022,19 +1014,19 @@ static long NEAR gettimezone(tm, t)
 struct tm *tm;
 time_t t;
 {
-#if	MSDOS
+# if	MSDOS
 	struct timeb buffer;
 
 	ftime(&buffer);
 	return((long)(buffer.timezone) * 60L);
-#else	/* !MSDOS */
-#ifdef	NOTMGMTOFF
+# else	/* !MSDOS */
+#  ifdef	NOTMGMTOFF
 	struct timeval t_val;
 	struct timezone t_zone;
-#endif
-#ifndef	NOTZFILEH
+#  endif
+#  ifndef	NOTZFILEH
 	struct tzhead head;
-#endif
+#  endif
 	struct tm tmbuf;
 	FILE *fp;
 	time_t tmp;
@@ -1044,14 +1036,14 @@ time_t t;
 
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
 
-#ifdef	NOTMGMTOFF
+#  ifdef	NOTMGMTOFF
 	gettimeofday2(&t_val, &t_zone);
 	tz = t_zone.tz_minuteswest * 60L;
-#else
+#  else
 	tz = -(localtime(&t) -> tm_gmtoff);
-#endif
+#  endif
 
-#ifndef	NOTZFILEH
+#  ifndef	NOTZFILEH
 	cp = getconstvar("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == _SC_) strcpy(buf, cp);
@@ -1061,11 +1053,11 @@ time_t t;
 		fclose(fp);
 		return(tz);
 	}
-#ifdef	USELEAPCNT
+#   ifdef	USELEAPCNT
 	nleap = char2long(head.tzh_leapcnt);
-#else
+#   else
 	nleap = char2long(head.tzh_timecnt - 4);
-#endif
+#   endif
 	ntime = char2long(head.tzh_timecnt);
 	ntype = char2long(head.tzh_typecnt);
 	nchar = char2long(head.tzh_charcnt);
@@ -1123,10 +1115,10 @@ time_t t;
 
 	tz += leap;
 	fclose(fp);
-#endif	/* !NOTZFILEH */
+#  endif	/* !NOTZFILEH */
 
 	return(tz);
-#endif	/* !MSDOS */
+# endif	/* !MSDOS */
 }
 #endif	/* !USEMKTIME && !USETIMELOCAL */
 
@@ -1215,7 +1207,7 @@ int nulcnv;
 		if (nulcnv && !c) c = '\n';
 		cp[i] = c;
 	}
-#if	MSDOS
+#ifdef	USECRNL
 	if (i > 0 && cp[i - 1] == '\r') i--;
 #endif
 	cp[i++] = '\0';

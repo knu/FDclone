@@ -15,25 +15,31 @@
 
 #define	IFS_SET		" \t\n"
 #define	META		'\\'
-#if	!MSDOS
+#if	MSDOS && defined (_NOORIGSHELL)
+#define	PATHDELIM	';'
+#else
 #define	PATHDELIM	':'
+#endif
+
+#ifndef	BSPATHDELIM
 #define	PMETA		META
+#define	RMSUFFIX	'%'
 #define	METACHAR	"\t\n !\"#$&'()*;<=>?[\\]`|"
 #define	DQ_METACHAR	"\"$\\`"
-#else	/* MSDOS */
+#else	/* BSPATHDELIM */
 # ifdef	_NOORIGSHELL
 # define	FAKEMETA
 # define	PMETA		'$'
+# define	RMSUFFIX	'%'
 # define	METACHAR	"\t\n !\"$'*<>?|"
 # define	DQ_METACHAR	"\"$"
-# define	PATHDELIM	';'
 # else
 # define	PMETA		'%'
+# define	RMSUFFIX	'\\'
 # define	METACHAR	"\t\n !\"#$%&'()*;<=>?[]`|"
 # define	DQ_METACHAR	"\"$%`"
-# define	PATHDELIM	':'
 # endif
-#endif	/* MSDOS */
+#endif	/* BSPATHDELIM */
 
 #define	PC_NORMAL	0
 #define	PC_OPQUOTE	1
@@ -102,7 +108,7 @@ typedef struct _hashlist {
 #define	CM_ADDEXT	0040
 #define	CM_RECALC	0100
 
-#if	!MSDOS
+#ifndef	NODIRLOOP
 typedef struct _devino_t {
 	dev_t dev;
 	ino_t ino;
@@ -159,6 +165,8 @@ typedef struct _uidtable {
 typedef struct _gidtable {
 	gid_t gid;
 	char *name;
+	char **gr_mem;
+	char ismem;
 } gidtable;
 
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
@@ -172,19 +180,38 @@ extern char *strrdelim2 __P_((char *, char *));
 extern int isdelim __P_((char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
-#if	MSDOS
-#define	strnpathcmp	strnpathcmp2
-#define	strpathcmp	strpathcmp2
-#else
-#define	strnpathcmp	strncmp
-#define	strpathcmp	strcmp
-#endif
 extern int strcasecmp2 __P_((char *, char *));
+extern int strncasecmp2 __P_((char *, char *, int));
+#ifdef	PATHNOCASE
+#define	strpathcmp	strcasecmp2
+#define	strnpathcmp	strncasecmp2
+#define	strpathcmp2	strcasecmp2
+#define	strnpathcmp2	strncasecmp2
+#else
+#define	strpathcmp	strcmp
+#define	strnpathcmp	strncmp
 extern int strpathcmp2 __P_((char *, char *));
 extern int strnpathcmp2 __P_((char *, char *, int));
+#endif
+#ifdef	COMMNOCASE
+#define	strcommcmp	strcasecmp2
+#define	strncommcmp	strncasecmp2
+#else
+#define	strcommcmp	strcmp
+#define	strncommcmp	strncmp
+#endif
+#ifdef	ENVNOCASE
+#define	strenvcmp	strcasecmp2
+#define	strnenvcmp	strncasecmp2
+#else
+#define	strenvcmp	strcmp
+#define	strnenvcmp	strncmp
+#endif
 extern int isidentchar __P_((int));
 extern int isdotdir __P_((char *));
 extern char *isrootdir __P_((char *));
+extern char *getbasename __P_((char *));
+extern char *getshellname __P_((char *, int *, int *));
 extern char *long2str __P_((char *, long, int));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
@@ -205,13 +232,14 @@ extern char *catvar __P_((char *[], int));
 extern int countvar __P_((char **));
 extern VOID freevar __P_((char **));
 extern int parsechar __P_((char *, int, int, int, int *, int *));
-#if	!MSDOS
+#if	defined (FD) && !defined (NOUID)
 extern uidtable *finduid __P_((uid_t, char *));
 extern gidtable *findgid __P_((gid_t, char *));
+extern int isgroupmember __P_((gid_t));
 # ifdef	DEBUG
 extern VOID freeidlist __P_((VOID_A));
 # endif
-#endif
+#endif	/* FD && !NOUID */
 extern char *gethomedir __P_((VOID_A));
 extern int evalhome __P_((char **, int, char **));
 extern char *evalarg __P_((char *, int, int, int));
@@ -237,7 +265,7 @@ extern char *(*backquotefunc)__P_((char *));
 #ifndef	MINIMUMSHELL
 extern char *(*posixsubstfunc)__P_((char *, int *));
 #endif
-#if	!MSDOS
+#ifndef	PATHNOCASE
 extern int pathignorecase;
 #endif
 

@@ -29,6 +29,29 @@ CODEEUC	漢字コードとして、EUC (Extended Unix Code) 漢字を用
 	ルト値に影響します。
 	入出力やファイル名に用いる漢字コードに関しては、コン
 	パイル後に動的に変更可能です。
+NOMULTIKANJI
+	複数の漢字コードが共存する環境を考慮する必要がありま
+	せん。
+PATHNOCASE
+	パス名に含まれる大文字小文字の区別が無視されます。
+COMMNOCASE
+	シェルコマンド名に含まれる大文字小文字の区別が無視さ
+	れます。
+ENVNOCASE
+	環境変数名に含まれる大文字小文字の区別が無視されます。
+NOUID
+	ユーザ ID やグループ ID がありません。
+NODIRLOOP
+	ディレクトリ構造が絶対にループし得ません。
+NOSYMLINK
+	シンボリックリンクが実装されていません。
+BSPATHDELIM
+	パス名区切り子がバックスラッシュ文字です。
+USECRNL
+	テキストの改行文字として CR-NL を用います。
+CWDINPATH
+	コマンドサーチパスに暗黙の了解としてカレントディレク
+	トリが含まれています。
 USEMANLANG
 	man(1) の参照する検索パス名が、/usr/man/ja_JP.SJIS/
 	のように環境変数 LANG で示される文字列を含み、多国語
@@ -178,6 +201,9 @@ SYSVDIRENT
 	ちます。
 NODNAMLEN
 	構造体 dirent がメンバ d_namlen を持ちません。
+NODRECLEN
+	構造体 dirent がメンバ d_reclen を持ちません。代わり
+	にメンバ d_fd を持ちます。
 DNAMESIZE
 	構造体 dirent のメンバ d_name のサイズを示します。
 HAVETIMEZONE
@@ -266,6 +292,13 @@ USESETENV
 	環境変数設定用関数として setenv(3) が使えます。
 NOSELECT
 	低レベル入出力関数 select(2) を使うことができません。
+DEFFDSETSIZE
+	低レベル入出力関数 select(2) を使うために、予め識別
+	子 FD_SETSIZE にオープンファイルの最大数を定義してお
+	く必要があります。
+SELECTRWONLY
+	低レベル入出力関数 select(2) が、読書き用に open さ
+	れているファイル記述子に反応しません。
 NOVSPRINTF
 	書式付出力関数 vsprintf(3) を使うことができません。
 NOTERMVAR

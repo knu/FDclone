@@ -119,7 +119,7 @@ typedef struct _mnt_t {
 # define	PT_FAT32	0x0b
 # define	PT_FAT32LBA	0x0c
 # endif
-#endif
+#endif	/* MSDOS */
 
 
 #ifdef	USESTATVFSH
@@ -199,7 +199,7 @@ extern char *strcpy2 __P_((char *, char *));
 extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 extern int dospath __P_((char *, char *));
 #endif
 #if	MSDOS && !defined (_NOUSELFN)
@@ -834,14 +834,14 @@ char *path;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	int drv;
 #endif
 
 	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	if ((drv = dospath(path, NULL)))
-		return((drv >= 'A' && drv <= 'Z') ? 4 : 5);
+		return((drv >= 'A' && drv <= 'Z') ? 4 : 7);
 #endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
 	|| hasmntopt2(&mntbuf, "ro")) return(0);
@@ -849,7 +849,13 @@ char *path;
 	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT32)) return(5);
-#if	!MSDOS
+#if	MSDOS
+# ifndef	_NODOSDRIVE
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_FAT12)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT16)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT16X)) return(4);
+# endif
+#else	/* !MSDOS */
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_42)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
@@ -869,7 +875,7 @@ char *path;
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_VFAT)) return(5);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_ADVFS)) return(0);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_VXFS)) return(0);
-#endif
+#endif	/* !MSDOS */
 #ifdef	DARWIN
 	/* Macintosh HFS+ is pseudo file system covered with skin */
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_HFS)) return(0);
@@ -889,18 +895,18 @@ char *dir;
 #else	/* !MSDOS */
 	statfs_t fsbuf;
 	mnt_t mntbuf;
-#ifndef	DEV_BSIZE
+# ifndef	DEV_BSIZE
 	struct stat st;
-#endif
+# endif
 
 	if (!strcmp(dir, ".") && getfsinfo(dir, &fsbuf, &mntbuf) >= 0)
 		return((off_t)blocksize(fsbuf));
-#ifdef	DEV_BSIZE
+# ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
-#else
+# else
 	if (Xstat(dir, &st) < 0) error(dir);
 	return((off_t)(st.st_size));
-#endif
+# endif
 #endif	/* !MSDOS */
 }
 
@@ -952,14 +958,19 @@ off_t *totalp, *freep, *bsizep;
 	mnt_t mntbuf;
 
 #ifndef	_NODOSDRIVE
-	needbavail = 1;
+	needbavail++;
 #endif
-	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) return(-1);
+	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) {
+#ifndef	_NODOSDRIVE
+		needbavail--;
+#endif
+		return(-1);
+	}
 	*totalp = fsbuf.f_blocks;
 	*freep = fsbuf.f_bavail;
 	*bsizep = blocksize(fsbuf);
 #ifndef	_NODOSDRIVE
-	needbavail = 0;
+	needbavail--;
 #endif
 	return(0);
 }
@@ -972,12 +983,12 @@ char *path;
 	int y;
 
 #ifndef	_NODOSDRIVE
-	needbavail = 1;
+	needbavail++;
 #endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) {
 		warning(ENOTDIR, path);
 #ifndef	_NODOSDRIVE
-		needbavail = 0;
+		needbavail--;
 #endif
 		return(0);
 	}
@@ -1008,7 +1019,7 @@ char *path;
 		warning(0, HITKY_K);
 	}
 #ifndef	_NODOSDRIVE
-	needbavail = 0;
+	needbavail--;
 #endif
 	return(1);
 }

@@ -47,15 +47,23 @@ extern char *_mtrace_file;
 
 
 #if	MSDOS
-# if	FD >= 2
-# define	RUNCOMFILE	"~\\fd2.rc"
-# else
-# define	RUNCOMFILE	"~\\fd.rc"
-# endif
+# ifdef	BSPATHDELIM
+#  if	FD >= 2
+#  define	RUNCOMFILE	"~\\fd2.rc"
+#  else
+#  define	RUNCOMFILE	"~\\fd.rc"
+#  endif
+# else	/* !BSPATHDELIM */
+#  if	FD >= 2
+#  define	RUNCOMFILE	"~/fd2.rc"
+#  else
+#  define	RUNCOMFILE	"~/fd.rc"
+#  endif
+# endif	/* !BSPATHDELIM */
 #define	TMPPREFIX	"FD"
 #define	ARCHTMPPREFIX	"AR"
 #define	DOSTMPPREFIX	'D'
-#else
+#else	/* !MSDOS */
 # if	FD >= 2
 # define	RUNCOMFILE	"~/.fd2rc"
 # else
@@ -64,7 +72,7 @@ extern char *_mtrace_file;
 #define	TMPPREFIX	"fd"
 #define	ARCHTMPPREFIX	"ar"
 #define	DOSTMPPREFIX	'd'
-#endif
+#endif	/* !MSDOS */
 
 #if	MSDOS && defined (_NOORIGSHELL)
 /*	Using COMMAND.COM */
@@ -76,6 +84,8 @@ extern char *_mtrace_file;
 #endif
 
 #define	FDSHELL		"fdsh"
+#define	FDENV		"FD_"
+#define	FDESIZ		(sizeof(FDENV) - 1)
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*
@@ -101,10 +111,14 @@ extern char *_mtrace_file;
 #define	DEFCOLUMNS	2
 #define	MINFILENAME	12
 #if	MSDOS
-#define	HISTFILE	"~\\fd.hst"
-#else
+# ifdef	BSPATHDELIM
+# define	HISTFILE	"~\\fd.hst"
+# else
+# define	HISTFILE	"~/fd.hst"
+# endif
+#else	/* !MSDOS */
 #define	HISTFILE	"~/.fd_history"
-#endif
+#endif	/* !MSDOS */
 #define	HISTSIZE	50
 #define	DIRHIST		50
 #define	SAVEHIST	50
@@ -224,6 +238,7 @@ extern char *_mtrace_file;
 #define	C_FREE		59
 
 #define	WSIZE		9
+#define	WSIZE2		8
 #define	WDATE		8
 #define	WTIME		5
 #define	WSECOND		2
@@ -231,6 +246,8 @@ extern char *_mtrace_file;
 #define	WMODE		5
 #else
 #define	WMODE		10
+#endif
+#ifndef	NOUID
 #define	WOWNER		8
 #define	WGROUP		8
 #define	WOWNERMIN	5
@@ -254,10 +271,22 @@ extern char *_mtrace_file;
 #undef	_NOENGMES
 #endif
 
-#if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
-#define	_NOKANJIFCONV
+#if	MSDOS
+#define	_NOKEYMAP
 #endif
 
 #ifdef	_NOORIGSHELL
 #define	_NOEXTRAMACRO
+#endif
+
+#if	!MSDOS && !defined (_NODOSDRIVE)
+#define	_USEDOSEMU
+#endif
+
+#if	MSDOS || !defined (_NODOSDRIVE)
+#define	_USEDOSPATH
+#endif
+
+#if	MSDOS
+#define	_USEDOSCOPY
 #endif

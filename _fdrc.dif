@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Wed Jun 25 00:00:00 2003
++++ _fdrc	Wed Oct 15 00:00:00 2003
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-113: preserve previous sort type
@@ -9,7 +9,7 @@
  
  # to set default display mode
  #	0: normal (Default)
-@@ -21,146 +21,331 @@
+@@ -21,146 +21,338 @@
  #	5: sym-link status &				invisible dot file
  #	6: 			file type symbol &	invisible dot file
  #	7: sym-link status &	file type symbol &	invisible dot file
@@ -299,43 +299,50 @@
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
 +#launch ".tar.Z"	"zcat %C|tar tvf -" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
 +#launch ".tar.gz"	"gzip -cd %C|tar tvf -" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
 +#launch ".tar.bz2"	"bzip2 -cd %C|tar tvf -" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
 +#launch ".taZ"		"zcat %C|tar tvf -" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
 +#launch ".taz"		"gzip -cd %C|tar tvf -" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
 +#launch ".tgz"		"gzip -cd %C|tar tvf -" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 +#		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 +#		-f "%10a %u/%g %s %m %d %t %y %*f" \
-+#		-f "%9a %u/%g %s %m %d %t %y %*f"
++#		-f "%9a %u/%g %s %m %d %t %y %*f" \
++#		-f "%a %u/%g %m %d %t %y %*f"
  #(Examples)
 -#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2[7],2-'-',2'-'-'-',3,4
 -#launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
@@ -391,7 +398,7 @@
  
  # archiver definition
  #(Default)
-@@ -196,22 +381,52 @@
+@@ -196,22 +388,52 @@
  #bind '{'	ROLL_UP
  #bind '}'	ROLL_DOWN
  #bind '~'	"cd ~%N%K"
@@ -454,7 +461,7 @@
  #}
  
  # MS-DOS drive definition
-@@ -220,7 +435,7 @@
+@@ -220,7 +442,7 @@
  
  # alias definition
  #(Example)

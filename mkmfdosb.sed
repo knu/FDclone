@@ -23,6 +23,7 @@ s:__CC__:bcc:
 s:__HOSTCC__:$(CC):
 s:__CCOPTIONS__:-O -N -d -w-par -w-pia:
 s:__HOSTCCOPTIONS__:-O -N -d -w-par -w-pia:
+s:__FDSETSIZE__::
 s:__MEM__:-ml:
 s:__SHMEM__:-mm:
 s:__BSHMEM__:-mm:

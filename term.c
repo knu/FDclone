@@ -420,15 +420,17 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # define	FREAD	(O_RDONLY + 1)
 # endif
 #endif
+#endif	/* !MSDOS */
 
 #ifndef	FD_SET
 typedef struct fd_set {
-	int fds_bits[1];
+	u_int fds_bits[1];
 } fd_set;
 # define	FD_ZERO(p)	(((p) -> fds_bits[0]) = 0)
-# define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= (1 << (n)))
-#endif
-#endif	/* !MSDOS */
+# define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= ((u_int)1 << (n)))
+#endif	/* !FD_SET */
+
+#define	MAXFDSET	256
 
 #ifndef	LSI_C
 #define	safe_dup	dup
@@ -787,6 +789,7 @@ int oldd, newd;
 {
 	int fd;
 
+	if (oldd == newd) return(newd);
 	if ((fd = dup2(oldd, newd)) < 0) return(-1);
 	if (newd >= 0 && newd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
 		_openfile[newd] = _openfile[oldd];
@@ -796,7 +799,11 @@ int oldd, newd;
 
 int opentty(VOID_A)
 {
+#ifdef	SELECTRWONLY
+	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDONLY, 0600)) < 0
+#else
 	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
+#endif
 	&& (ttyio = safe_dup(STDERR_FILENO)) < 0)
 		err2("dup()");
 	return(ttyio);
@@ -1263,8 +1270,11 @@ int no;
 # if	!MSDOS
 	freeterment();
 # endif
-	if (ttyout && ttyout != stderr) fclose(ttyout);
-	else if (ttyio >= 0) close(ttyio);
+	if (ttyout && ttyout != stderr) {
+		if (fileno(ttyout) == ttyio) ttyio = -1;
+		fclose(ttyout);
+	}
+	if (ttyio >= 0) close(ttyio);
 	muntrace();
 #endif
 	exit(no);
@@ -2045,7 +2055,10 @@ char *s;
 	int i, j, dumb, dupdumbterm;
 
 	if (termflags & F_TERMENT) return(-1);
-	if (!ttyout && !(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
+	if (!ttyout) {
+		if (!(ttyout = fdopen(ttyio, "w+"))
+		&& !(ttyout = fopen(TTYNAME, "w+"))) ttyout = stderr;
+	}
 	dupdumbterm = dumbterm;
 	dumbterm = dumb = 0;
 	term = (s) ? s : (char *)getenv("TERM");
@@ -2810,7 +2823,7 @@ u_long usec;
 # ifndef	PC98
 	fd_set readfds;
 	struct timeval tv;
-	int n;
+	int n, fd;
 # endif
 #endif
 
@@ -2831,14 +2844,16 @@ u_long usec;
 	return(reg.h.bh != 0);
 # else	/* !PC98 */
 #  if	defined (DJGPP) && (DJGPP >= 2)
+	fd = (ttyio < MAXFDSET || (n = safe_dup(ttyio)) < 0) ? ttyio : n;
 	tv.tv_sec = usec / 1000000L;
 	tv.tv_usec = usec % 1000000L;
 	FD_ZERO(&readfds);
-	FD_SET(STDIN_FILENO, &readfds);
+	FD_SET(fd, &readfds);
 
 	do {
-		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
+		n = select(fd + 1, &readfds, NULL, NULL, &tv);
 	} while (n < 0 && errno == EINTR);
+	if (fd != ttyio) close(fd);
 	if (n < 0) err2(TTYNAME);
 	return(n);
 #  else	/* !DJGPP || DJGPP < 2 */
@@ -2957,6 +2972,7 @@ int sig;
 			raise(sig);
 		}
 # endif
+		if (keywaitfunc) (*keywaitfunc)();
 	} while (!i);
 #else	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
@@ -2968,6 +2984,7 @@ int sig;
 # endif
 			memcpy((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1));
 		}
+		if (keywaitfunc) (*keywaitfunc)();
 	}
 #endif	/* !DJGPP || NOTUSEBIOS || PC98 */
 	ch = getch2();
@@ -3090,16 +3107,18 @@ u_long usec;
 # else
 	fd_set readfds;
 	struct timeval tv;
-	int n;
+	int n, fd;
 
+	fd = (ttyio < MAXFDSET || (n = safe_dup(ttyio)) < 0) ? ttyio : n;
 	tv.tv_sec = usec / 1000000L;
 	tv.tv_usec = usec % 1000000L;
 	FD_ZERO(&readfds);
-	FD_SET(STDIN_FILENO, &readfds);
+	FD_SET(fd, &readfds);
 
 	do {
-		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
+		n = select(fd + 1, &readfds, NULL, NULL, &tv);
 	} while (n < 0 && errno == EINTR);
+	if (fd != ttyio) close(fd);
 	if (n < 0) err2(TTYNAME);
 	return(n);
 # endif

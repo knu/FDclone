@@ -118,6 +118,9 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 main__OBJ__: main.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ __UNITBLPATH__ $*.c
 
+term__OBJ__: term.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ __FDSETSIZE__ $*.c
+
 system__OBJ__: system.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ $*.c
 

@@ -23,6 +23,7 @@ s:__CC__:gcc:
 s:__HOSTCC__:$(CC):
 s:__CCOPTIONS__:-O:
 s:__HOSTCCOPTIONS__:-O:
+s:__FDSETSIZE__::
 s:__MEM__::
 s:__SHMEM__::
 s:__BSHMEM__::

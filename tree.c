@@ -134,7 +134,7 @@ int level, *maxp;
 	struct dirent *dp;
 	struct stat st;
 	char *cp, *dir, *subdir, cwd[MAXPATHLEN];
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char tmp[MAXPATHLEN];
 #endif
 	int i, len;
@@ -160,7 +160,7 @@ int level, *maxp;
 		subdir = path + 1;
 		if (!*subdir) subdir = NULL;
 	}
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	else if (_dospath(path)) {
 		dir = strndup2(path, 3);
 		subdir = path + 3;
@@ -191,7 +191,7 @@ int level, *maxp;
 			list[*maxp].name = strdup2(dp -> d_name);
 			list[*maxp].sub = NULL;
 			list[*maxp].max = 0;
-#if	!MSDOS
+#ifndef	NODIRLOOP
 			list[*maxp].dev = st.st_dev;
 			list[*maxp].ino = st.st_ino;
 			list[*maxp].parent = parent;
@@ -203,29 +203,41 @@ int level, *maxp;
 			list[0].name = strdup2(dp -> d_name);
 			list[0].sub = &(list[0]);
 			list[0].max = 0;
-#if	!MSDOS
+#ifndef	NODIRLOOP
 			list[0].dev = st.st_dev;
 			list[0].ino = st.st_ino;
 			list[0].parent = parent;
 #endif
 			if (++(*maxp) >= 2) break;
 		}
-		else if (!i) {
-			i++;
-			list[1].name = NULL;
-			list[1].sub = NULL;
-			list[1].max = -1;
-#if	!MSDOS
-			list[1].dev = 0;
-			list[1].ino = 0;
-			list[1].parent = NULL;
+		else {
+			if (!(*maxp)) {
+				list[0].name = NULL;
+				list[0].sub = NULL;
+				list[0].max = -1;
+#ifndef	NODIRLOOP
+				list[0].dev = 0;
+				list[0].ino = 0;
+				list[0].parent = NULL;
 #endif
-			if (++(*maxp) >= 2) break;
+			}
+			if (!i) {
+				i++;
+				list[1].name = NULL;
+				list[1].sub = NULL;
+				list[1].max = -1;
+#ifndef	NODIRLOOP
+				list[1].dev = 0;
+				list[1].ino = 0;
+				list[1].parent = NULL;
+#endif
+				if (++(*maxp) >= 2) break;
+			}
 		}
 	}
 	Xclosedir(dirp);
 	if (list) for (i = 0; i < *maxp; i++) {
-#if	!MSDOS
+#ifndef	NODIRLOOP
 		treelist *lp;
 
 		if (!(list[i].name)) lp = NULL;
@@ -242,7 +254,7 @@ int level, *maxp;
 			list[i].sub = maketree(subdir, NULL, &(list[i]),
 				level + 1, &(list[i].max));
 		else {
-			if (list[i].max >= 0
+			if (list[i].max >= 0 && list[i].name
 			&& evaldir(nodospath(tmp, list[i].name), 0))
 				list[i].max = -1;
 		}
@@ -251,14 +263,13 @@ int level, *maxp;
 
 #if	MSDOS
 	if (_dospath(path)) path += 2;
-	if (*path == _SC_) {
-#else	/* !MSDOS */
-	if (*path == _SC_
-# ifndef	_NODOSDRIVE
-	|| _dospath(path)
-# endif
-	) {
-#endif	/* !MSDOS */
+#endif
+#if	MSDOS || defined (_NODOSDRIVE)
+	if (*path == _SC_)
+#else
+	if (*path == _SC_ || _dospath(path))
+#endif
+	{
 		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
 	else if (strcmp(path, ".") && _chdir2(cwd) < 0) error("..");
@@ -376,11 +387,12 @@ int max, nest;
 					treepath[j + len] = treepath[j];
 				memcpy(treepath, list[i].name, len - 1);
 #else	/* !MSDOS */
+# ifdef	_NODOSDRIVE
+				if (*list[i].name != _SC_) len++;
+# else
 				if (*list[i].name != _SC_
-# ifndef	_NODOSDRIVE
-				&& !_dospath(list[i].name)
+				&& !_dospath(list[i].name)) len++;
 # endif
-				) len++;
 				for (j = strlen(treepath); j >= 0; j--)
 					treepath[j + len] = treepath[j];
 				if (*list[i].name != _SC_)
@@ -413,7 +425,10 @@ treelist *list;
 		memcpy((char *)lp, (char *)&(list -> sub[0]),
 			sizeof(treelist));
 		for (i = 1; i < list -> max; i++)
-			if ((list -> sub[i]).name) free((list -> sub[i]).name);
+			if ((list -> sub[i]).name) {
+				free((list -> sub[i]).name);
+				(list -> sub[i]).name = NULL;
+			}
 	}
 
 	if (_chdir2(treepath) < 0) {
@@ -435,8 +450,10 @@ treelist *list;
 		return(i);
 	}
 	if (list -> sub) {
-		for (i = 0; i < list -> max; i++)
-			if (!strpathcmp(lp -> name, lptmp[i].name)) break;
+		if (!(lp -> name)) i = list -> max;
+		else for (i = 0; i < list -> max; i++)
+			if (lptmp[i].name
+			&& !strpathcmp(lp -> name, lptmp[i].name)) break;
 		if (i < list -> max) {
 			free(lptmp[i].name);
 			for (; i > 0; i--) memcpy((char *)&(lptmp[i]),
@@ -682,7 +699,7 @@ static int NEAR _tree_input(VOID_A)
 
 static char *NEAR _tree(VOID_A)
 {
-#if	!MSDOS
+#ifndef	NODIRLOOP
 	struct stat st;
 # ifndef	_NODOSDRIVE
 	char tmp[MAXPATHLEN];
@@ -697,7 +714,7 @@ static char *NEAR _tree(VOID_A)
 	tr_root -> name = NULL;
 	tr_root -> max = 1;
 	tr_root -> sub = tr_cur = (treelist *)malloc2(sizeof(treelist));
-#if	!MSDOS
+#ifndef	NODIRLOOP
 	tr_root -> ino = 0;
 	tr_root -> parent = NULL;
 #endif
@@ -717,7 +734,9 @@ static char *NEAR _tree(VOID_A)
 		tr_cur[0].name = strdup2(_SS_);
 	}
 # endif
+#endif	/* !MSDOS */
 
+#ifndef	NODIRLOOP
 	if (Xstat(nodospath(tmp, tr_cur[0].name), &st) < 0)
 		tr_cur[0].dev = tr_cur[0].ino = 0;
 	else {
@@ -725,7 +744,7 @@ static char *NEAR _tree(VOID_A)
 		tr_cur[0].ino = st.st_ino;
 	}
 	tr_cur[0].parent = NULL;
-#endif	/* !MSDOS */
+#endif
 	tr_cur[0].sub = maketree(path, NULL, &(tr_cur[0]),
 		0, &(tr_cur[0].max));
 

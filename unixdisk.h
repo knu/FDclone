@@ -304,11 +304,14 @@ extern char *unixgetcurdir __P_((char *, int));
 extern char *shortname __P_((char *, char *));
 #endif
 extern char *unixrealpath __P_((char *, char *));
+#ifndef	BSPATHDELIM
+extern char *adjustpname __P_((char *));
+#endif
+#if	defined (DJGPP) || !defined (BSPATHDELIM)
+extern char *adjustfname __P_((char *));
+#endif
 #ifndef	_NOUSELFN
 extern char *preparefile __P_((char *, char *));
-# ifdef	DJGPP
-extern char *adjustfname __P_((char *));
-# endif
 # ifndef	_NODOSDRIVE
 extern int checkdrive __P_((int));
 extern int rawdiskio __P_((int, u_long, u_char *, int, int, int));
@@ -321,7 +324,11 @@ extern int unixrewinddir __P_((DIR *));
 #ifdef	_NOUSELFN
 #define	unixunlink	unlink
 #define	unixrename	rename
-#define	unixmkdir(p, m)	mkdir(p)
+# ifdef	DJGPP
+# define	unixmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+# else
+extern int unixmkdir __P_((char *, int));
+# endif
 #define	unixrmdir	rmdir
 #define	unixchdir	chdir
 #else
@@ -331,7 +338,7 @@ extern int unixmkdir __P_((char *, int));
 extern int unixrmdir __P_((char *));
 extern int unixchdir __P_((char *));
 #endif
-extern char *unixgetcwd __P_((char *, int, int));
+extern char *unixgetcwd __P_((char *, int));
 extern int unixstatfs __P_((char *, statfs_t *));
 extern int unixstat __P_((char *, struct stat *));
 extern int unixchmod __P_((char *, int));

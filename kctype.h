@@ -77,14 +77,23 @@ extern u_char kctypetable[256];
 #define	KANAWID	1
 #endif
 
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifdef	NOMULTIKANJI
+#define	_NOKANJICONV
+#define	_NOKANJIFCONV
+#endif
+
+#if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
+#define	_NOKANJIFCONV
+#endif
+
+#ifndef	_NOKANJICONV
 extern int inputkcode;
 #endif
-#if	(!MSDOS && !defined (_NOKANJICONV)) \
+#if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 extern int outputkcode;
 #endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+#ifndef	_NOKANJIFCONV
 extern int fnamekcode;
 #endif
 
@@ -98,11 +107,6 @@ extern int fnamekcode;
 #define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
 #endif
 
-#if	MSDOS
-#define	isinkanji1(c)	issjis1(c)
-#define	isinkanji2(c)	issjis2(c)
-#else	/* !MSDOS */
-
 #ifdef	_NOKANJICONV
 # ifdef	CODEEUC
 # define	isinkanji1(c)	iseuc(c)
@@ -115,4 +119,3 @@ extern int fnamekcode;
 #define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : issjis1(c))
 #define	isinkanji2(c)	((inputkcode == EUC) ? iseuc(c) : issjis2(c))
 #endif	/* !_NOKANJICONV */
-#endif	/* !MSDOS */

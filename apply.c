@@ -35,7 +35,7 @@ extern int mark;
 #ifdef	HAVEFLAGS
 extern u_long flaglist[];
 #endif
-#if	!MSDOS && !defined (_NOEXTRACOPY)
+#if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 extern int inheritcopy;
 #endif
 
@@ -112,7 +112,7 @@ char *path, *org;
 		return(0);
 	}
 
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 	if (dospath(path, NULL) != dospath(org, NULL)) path = NULL;
 	else
 #endif
@@ -128,7 +128,7 @@ char *path, *org;
 static int NEAR islowerdir(path, org)
 char *path, *org;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char orgpath[MAXPATHLEN];
 #endif
 	char *cp, *top, *cwd, tmp[MAXPATHLEN];
@@ -136,12 +136,12 @@ char *path, *org;
 
 	cwd = getwd2();
 	if (!org) org = cwd;
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	else org = nodospath(orgpath, org);
 #endif
 	strcpy(tmp, path);
 	top = tmp;
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 	if (dospath(path, NULL) != dospath(org, NULL)) {
 		free(cwd);
 		return(0);
@@ -188,7 +188,7 @@ char *mes, *arg;
 		dir[0] = '.';
 		dir[1] = '\0';
 	}
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 	else if (_dospath(dir) && !dir[2]) {
 		dir = realloc2(dir, 4);
 		dir[2] = '.';
@@ -336,12 +336,10 @@ struct stat *stp1, *stp2;
 /*NOTREACHED*/
 				break;
 			case 2:
-				if ((cp = strrdelim(dest, 1))) cp++;
-				else cp = dest;
 				lcmdline = L_INFO;
 				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, -1))) return(-1);
-				strcpy(cp, tmp);
+				strcpy(getbasename(dest), tmp);
 				free(tmp);
 				if (Xlstat(dest, stp2) < 0) {
 					stp2 -> st_mode = S_IWRITE;
@@ -441,15 +439,19 @@ int mode;
 		int duperrno;
 
 		duperrno = errno;
+# ifdef	NOUID
+		mode = logical_access(stp -> st_mode)
+# else
 		mode = logical_access(stp -> st_mode,
 			stp -> st_uid, stp -> st_gid);
+# endif
 		if (!(mode & F_ISWRI)) {
 			errno = duperrno;
 			warning(-1, path);
 			return(-1);
 		}
 	}
-#endif
+#endif	/* !MSDOS */
 	if (removepolicy > 0) return(removepolicy - 2);
 	locate(0, L_CMDLINE);
 	putterm(l_clear);
@@ -535,11 +537,11 @@ char *path;
 static int touchdir(path)
 char *path;
 {
-#if	MSDOS || !defined (_NOEXTRACOPY)
+#if	defined (_USEDOSCOPY) || !defined (_NOEXTRACOPY)
 	struct stat st;
 	char dest[MAXPATHLEN];
 
-# if	!MSDOS
+# if	!defined (_USEDOSCOPY)
 	if (!inheritcopy) return(0);
 # endif
 	if (getdestpath(path, dest, &st) < 0) return(-2);
@@ -551,7 +553,7 @@ char *path;
 	st.st_flags = 0xffffffff;
 # endif
 	if (touchfile(dest, &st) < 0) return(-1);
-#endif	/* MSDOS || !_NOEXTRACOPY */
+#endif	/* _USEDOSCOPY || !_NOEXTRACOPY */
 	return(0);
 }
 
@@ -593,12 +595,7 @@ char *path;
 int findfile(path)
 char *path;
 {
-	char *cp;
-
-	if ((cp = strrdelim(path, 1))) cp++;
-	else cp = path;
-
-	if (regexp_exec(findregexp, cp, 1)) {
+	if (regexp_exec(findregexp, getbasename(path), 1)) {
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
 		locate(0, L_CMDLINE);
 		putterm(l_clear);
@@ -616,12 +613,7 @@ char *path;
 int finddir(path)
 char *path;
 {
-	char *cp;
-
-	if ((cp = strrdelim(path, 1))) cp++;
-	else cp = path;
-
-	if (regexp_exec(findregexp, cp, 1)) {
+	if (regexp_exec(findregexp, getbasename(path), 1)) {
 		if (yesno(FOUND_K)) {
 			destpath = strdup2(path);
 			return(-2);
@@ -937,7 +929,7 @@ char *path;
 	st.st_flags = attrflags;
 #endif
 	st.st_mode = attrmode;
-#if	!MSDOS
+#ifndef	NOUID
 	st.st_gid = (gid_t)-1;
 #endif
 	return(touchfile(path, &st));
@@ -947,7 +939,7 @@ int applyfile(func, endmes)
 int (*func)__P_((char *));
 char *endmes;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int i, ret, old, dupfilepos;
@@ -1144,7 +1136,7 @@ char *endmes;
 		realpath2(dir, path, 0);
 		dir = path;
 	}
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	else dir = nodospath(path, dir);
 #endif
 	return(_applydir(dir, funcf, funcd1, funcd2, order, endmes, verbose));
@@ -1235,7 +1227,7 @@ int tr;
 	else if (islowerdir(destpath, filelist[filepos].name))
 		warning(EINVAL, filelist[filepos].name);
 	else {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 		char path[MAXPATHLEN];
 #endif
 

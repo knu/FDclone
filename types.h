@@ -45,7 +45,7 @@
 #define	S_IROTH	00004
 #define	S_IWOTH	00002
 #define	S_IXOTH	00001
-#endif
+#endif	/* NOFILEMODE */
 
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
 #define	HAVEFLAGS
@@ -73,7 +73,7 @@
 # ifndef	SF_NOUNLINK
 # define	SF_NOUNLINK	0x00080000
 # endif
-#endif
+#endif	/* !MSDOS && UF_SETTABLE && SF_SETTABLE */
 
 #ifndef	BITSPERBYTE
 #define	BITSPERBYTE	8
@@ -88,12 +88,12 @@ typedef struct _namelist {
 	u_short ent;
 	u_short st_mode;
 	short st_nlink;
-#if	!MSDOS
+#ifndef	NOUID
 	uid_t st_uid;
 	gid_t st_gid;
-# ifndef	_NOARCHIVE
+#endif
+#if	!defined (NOSYMLINK) && !defined (_NOARCHIVE)
 	char *linkname;
-# endif
 #endif
 #ifdef	HAVEFLAGS
 	u_long st_flags;
@@ -207,20 +207,20 @@ typedef struct _archivetable {
 } archivetable;
 
 #define	AF_IGNORECASE	0001	/* must be the same as LF_IGNORECASE */
-#endif
+#endif	/* !_NOARCHIVE */
 
 #ifndef	_NOTREE
 typedef struct _treelist {
 	char *name;
 	int max;
-#if	!MSDOS
+# ifndef	NODIRLOOP
 	dev_t dev;
 	ino_t ino;
 	struct _treelist *parent;
-#endif
+# endif
 	struct _treelist *sub;
 } treelist;
-#endif
+#endif	/* !_NOTREE */
 
 typedef struct _winvartable {
 #ifndef	_NOARCHIVE

@@ -22,10 +22,6 @@
 #endif	/* !FD */
 #include <ctype.h>
 
-#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
-#define	_NODOSDRIVE
-#endif
-
 #if	MSDOS
 #include <process.h>
 #include "unixemu.h"
@@ -85,9 +81,9 @@ extern char *strndup2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int snprintf2 __P_((char *, int, CONST char *, ...));
-# if	MSDOS || !defined (_NODOSDRIVE)
+# ifdef	_USEDOSPATH
 extern int _dospath __P_((char *));
-#endif
+# endif
 extern DIR *Xopendir __P_((char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
@@ -110,8 +106,8 @@ char *strndup2 __P_((char *, int));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
 char *ascnumeric __P_((char *, off_t, int, int));
-#define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
 # if	MSDOS
+# define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
 DIR *Xopendir __P_((char *));
 int Xclosedir __P_((DIR *));
 struct dirent *Xreaddir __P_((DIR *));
@@ -142,7 +138,7 @@ static char *NEAR cnvregexp __P_((char *, int));
 static int NEAR _regexp_exec __P_((char **, char *));
 #endif
 static char *NEAR catpath __P_((char *, char *, int *, int, int));
-#if	MSDOS
+#ifdef	NODIRLOOP
 static int NEAR _evalwild __P_((int, char ***, char *, char *, int));
 #else
 static int NEAR _evalwild __P_((int, char ***, char *, char *, int,
@@ -161,7 +157,7 @@ static int NEAR isexecute __P_((char *, int, int));
 static int NEAR extaccess __P_((char *, char *, int, int));
 #endif
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
-# if	!MSDOS
+# ifndef	NOUID
 static int NEAR completeuser __P_((char *, int, int, char ***));
 # endif
 static int NEAR completefile __P_((char *, int, int, char ***,
@@ -239,9 +235,9 @@ char *(*backquotefunc)__P_((char *)) = NULL;
 #ifndef	MINIMUMSHELL
 char *(*posixsubstfunc)__P_((char *, int *)) = NULL;
 #endif
-#if	!MSDOS
+#ifndef	PATHNOCASE
 int pathignorecase = 0;
-#endif	/* !MSDOS */
+#endif
 #ifndef	LSI_C
 u_char uppercase[256] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,	/* 0x00 */
@@ -356,12 +352,12 @@ static int skipdotfile = 0;
 static char *wildsymbol1 = "?";
 static char *wildsymbol2 = "*";
 #endif
-#if	!MSDOS
+#if	defined (FD) && !defined (NOUID)
 static uidtable *uidlist = NULL;
 static int maxuid = 0;
 static gidtable *gidlist = NULL;
 static int maxgid = 0;
-#endif	/* !MSDOS */
+#endif	/* FD && !NOUID */
 
 
 #ifndef	FD
@@ -599,9 +595,9 @@ int d;
 	if (d && _dospath(s)) return(s + 1);
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) return(&(s[i]));
-#if	MSDOS
+# ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
-#endif
+# endif
 	}
 	return(NULL);
 }
@@ -617,9 +613,9 @@ int d;
 	else cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) cp = &(s[i]);
-#if	MSDOS
+# ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
-#endif
+# endif
 	}
 	return(cp);
 }
@@ -628,7 +624,7 @@ int d;
 char *strrdelim2(s, eol)
 char *s, *eol;
 {
-#if	MSDOS
+#ifdef	BSPATHDELIM
 	char *cp;
 	int i;
 
@@ -648,12 +644,12 @@ int isdelim(s, ptr)
 char *s;
 int ptr;
 {
-#if	MSDOS
+#ifdef	BSPATHDELIM
 	int i;
 #endif
 
 	if (ptr < 0 || s[ptr] != _SC_) return(0);
-#if	MSDOS
+#ifdef	BSPATHDELIM
 	if (--ptr < 0) return(1);
 	if (!ptr) return(!iskanji1(s, 0));
 
@@ -686,7 +682,7 @@ char *s;
 			continue;
 		}
 		cp = NULL;
-#if	MSDOS
+#ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
 #endif
 	}
@@ -728,7 +724,7 @@ char *buf, *s1, *s2;
 				continue;
 			}
 			cp = NULL;
-#if	MSDOS
+#ifdef	BSPATHDELIM
 			if (iskanji1(s1, i)) {
 				if (!s1[++i]) break;
 				buf[i] = s1[i];
@@ -757,34 +753,6 @@ char *s1, *s2;
 {
 	for (;;) {
 		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
-# ifndef	CODEEUC
-		if (issjis1(*s1)) {
-			s1++;
-			s2++;
-			if (*s1 != *s2) return(*s1 - *s2);
-		}
-# endif
-		if (!*s1) break;
-		s1++;
-		s2++;
-	}
-	return(0);
-}
-
-int strpathcmp2(s1, s2)
-char *s1, *s2;
-{
-#if	!MSDOS
-	if (!pathignorecase) for (;;) {
-		if (*s1 != *s2) return(*s1 - *s2);
-		if (!*s1) break;
-		s1++;
-		s2++;
-	}
-	else
-#endif
-	for (;;) {
-		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
 			s1++;
@@ -799,19 +767,10 @@ char *s1, *s2;
 	return(0);
 }
 
-int strnpathcmp2(s1, s2, n)
+int strncasecmp2(s1, s2, n)
 char *s1, *s2;
 int n;
 {
-#if	!MSDOS
-	if (!pathignorecase) while (n-- > 0) {
-		if (*s1 != *s2) return(*s1 - *s2);
-		if (!*s1) break;
-		s1++;
-		s2++;
-	}
-	else
-#endif
 	while (n-- > 0) {
 		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
 #ifndef	CODEEUC
@@ -828,6 +787,23 @@ int n;
 	}
 	return(0);
 }
+
+#ifndef	PATHNOCASE
+int strpathcmp2(s1, s2)
+char *s1, *s2;
+{
+	if (pathignorecase) return(strcasecmp2(s1, s2));
+	else return(strcmp(s1, s2));
+}
+
+int strnpathcmp2(s1, s2, n)
+char *s1, *s2;
+int n;
+{
+	if (pathignorecase) return(strncasecmp2(s1, s2, n));
+	else return(strncmp(s1, s2, n));
+}
+#endif	/* !PATHNOCASE */
 
 static char *NEAR getvar(ident, len)
 char *ident;
@@ -895,6 +871,38 @@ char *s;
 	return(s);
 }
 
+char *getbasename(s)
+char *s;
+{
+	char *cp;
+
+	if ((cp = strrdelim(s, 1))) return(cp + 1);
+	return(s);
+}
+
+char *getshellname(s, loginp, restrictedp)
+char *s;
+int *loginp, *restrictedp;
+{
+	if (loginp) *loginp = 0;
+	if (restrictedp) *restrictedp = 0;
+	if (*s == '-') {
+		s++;
+		if (loginp) *loginp = 1;
+	}
+#ifdef	PATHNOCASE
+	if (tolower2(*s) == 'r')
+#else
+	if (*s == 'r')
+#endif
+	{
+		s++;
+		if (restrictedp) *restrictedp = 1;
+	}
+
+	return(s);
+}
+
 static int NEAR ismeta(s, ptr, quote, len)
 char *s;
 int ptr, quote, len;
@@ -911,11 +919,11 @@ int ptr, quote, len;
 		if (!s[ptr + 1]) return(0);
 		if (quote) {
 			if (s[ptr + 1] == quote && !s[ptr + 2]) return(0);
-# if	MSDOS
+# ifdef	BSPATHDELIM
 			if (!strchr(DQ_METACHAR, s[ptr + 1])) return(0);
 # endif
 		}
-# if	MSDOS
+# ifdef	BSPATHDELIM
 		else if (!strchr(METACHAR, s[ptr + 1])) return(0);
 # endif
 	}
@@ -997,7 +1005,7 @@ int len;
 #ifdef	USERE_COMP
 extern char *re_comp __P_((CONST char *));
 extern int re_exec __P_((CONST char *));
-# if	MSDOS
+# ifdef	PATHNOCASE
 extern int re_ignore_case;
 # endif
 
@@ -1005,7 +1013,7 @@ reg_t *regexp_init(s, len)
 char *s;
 int len;
 {
-# if	MSDOS
+# ifdef	PATHNOCASE
 	re_ignore_case = 1;
 # endif
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
@@ -1044,7 +1052,7 @@ int len;
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = cnvregexp(s, len);
 	re = (reg_t *)malloc2(sizeof(reg_t));
-# if	MSDOS
+# ifdef	PATHNOCASE
 	if (regcomp(re, s, REG_EXTENDED | REG_ICASE)) {
 # else
 	if (regcomp(re, s, REG_EXTENDED | (pathignorecase ? REG_ICASE : 0))) {
@@ -1142,7 +1150,7 @@ int len;
 #ifdef	BASHSTYLE
 	/* bash treats a character quoted by \ in "[]" as a character itself */
 				paren[plen++] = PMETA;
-# if	!MSDOS
+# ifndef	PATHNOCASE
 				if (!pathignorecase) paren[plen++] = s[i];
 				else
 # endif
@@ -1175,7 +1183,7 @@ int len;
 #endif
 			else if (s[i] == '-') {
 				if (i + 1 >= len) j = '\0';
-#if	!MSDOS
+#ifndef	PATHNOCASE
 				else if (!pathignorecase) j = s[i + 1];
 #endif
 				else j = toupper2(s[i + 1]);
@@ -1217,7 +1225,7 @@ int len;
 					paren[plen++] = s[i++];
 					paren[plen++] = s[i];
 				}
-#if	!MSDOS
+#ifndef	PATHNOCASE
 				else if (!pathignorecase) paren[plen++] = s[i];
 #endif
 				else paren[plen++] = toupper2(s[i]);
@@ -1253,7 +1261,7 @@ int len;
 				cp[j++] = s[i++];
 				cp[j++] = s[i];
 			}
-#if	!MSDOS
+#ifndef	PATHNOCASE
 			else if (!pathignorecase) cp[j++] = s[i];
 #endif
 			else cp[j++] = toupper2(s[i]);
@@ -1290,7 +1298,7 @@ char *s;
 		else
 #endif
 		if (iskanji1(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
-#if	!MSDOS
+#ifndef	PATHNOCASE
 		else if (!pathignorecase) /*EMPTY*/;
 #endif
 		else c1 = toupper2(c1);
@@ -1406,7 +1414,7 @@ int *plenp, flen, isoverwrite;
 	return(new);
 }
 
-#if	MSDOS
+#ifdef	NODIRLOOP
 static int NEAR _evalwild(argc, argvp, s, fixed, len)
 int argc;
 char ***argvp, *s, *fixed;
@@ -1419,7 +1427,7 @@ int len, nino;
 devino_t *ino;
 #endif
 {
-#if	!MSDOS
+#ifndef	NODIRLOOP
 	devino_t *dupino;
 #endif
 	DIR *dirp;
@@ -1438,7 +1446,7 @@ devino_t *ino;
 				(argc + 2) * sizeof(char *));
 			(*argvp)[argc++] = fixed;
 		}
-#if	!MSDOS
+#ifndef	NODIRLOOP
 		if (ino) free(ino);
 #endif
 		return(argc);
@@ -1450,7 +1458,7 @@ devino_t *ino;
 		fixed[0] = *s;
 		fixed[1] = ':';
 		fixed[2] = '\0';
-# if	MSDOS
+# ifdef	NODIRLOOP
 		return(_evalwild(argc, argvp, &(s[2]), fixed, 2));
 # else
 		return(_evalwild(argc, argvp, &(s[2]), fixed, 2, nino, ino));
@@ -1463,7 +1471,7 @@ devino_t *ino;
 		if (s[i] == _SC_) break;
 		if (s[i] == '*' || s[i] == '?'
 		|| s[i] == '[' || s[i] == ']') n = 1;
-#if	MSDOS
+#ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
 #endif
 	}
@@ -1472,7 +1480,7 @@ devino_t *ino;
 		fixed = realloc2(fixed, len + 1 + 1);
 		fixed[len++] = _SC_;
 		fixed[len] = '\0';
-#if	MSDOS
+#ifdef	NODIRLOOP
 		return(_evalwild(argc, argvp, &(s[1]), fixed, len));
 #else
 		return(_evalwild(argc, argvp, &(s[1]), fixed, len, nino, ino));
@@ -1485,7 +1493,7 @@ devino_t *ino;
 		else if (s[i]) {
 			if ((st.st_mode & S_IFMT) != S_IFDIR) free(fixed);
 			else {
-#if	MSDOS
+#ifdef	NODIRLOOP
 				return(_evalwild(argc, argvp,
 					&(s[i + 1]), fixed, len));
 #else
@@ -1503,14 +1511,14 @@ devino_t *ino;
 				(argc + 2) * sizeof(char *));
 			(*argvp)[argc++] = fixed;
 		}
-#if	!MSDOS
+#ifndef	NODIRLOOP
 		if (ino) free(ino);
 #endif
 		return(argc);
 	}
 
 	if (i == 2 && s[i] && s[0] == '*' && s[1] == '*') {
-#if	MSDOS
+#ifdef	NODIRLOOP
 		argc = _evalwild(argc, argvp, &(s[3]), strdup2(fixed), len);
 #else
 		if (!ino) dupino = NULL;
@@ -1528,7 +1536,7 @@ devino_t *ino;
 	}
 	else if (!(re = regexp_init(s, i))) {
 		if (fixed) free(fixed);
-#if	!MSDOS
+#ifndef	NODIRLOOP
 		if (ino) free(ino);
 #endif
 		return(argc);
@@ -1536,7 +1544,7 @@ devino_t *ino;
 	if (!(dirp = Xopendir((len) ? fixed : "."))) {
 		regexp_free(re);
 		if (fixed) free(fixed);
-#if	!MSDOS
+#ifndef	NODIRLOOP
 		if (ino) free(ino);
 #endif
 		return(argc);
@@ -1554,7 +1562,7 @@ devino_t *ino;
 				continue;
 			}
 
-#if	!MSDOS
+#ifndef	NODIRLOOP
 			dupino = (devino_t *)malloc2((nino + 1)
 				* sizeof(devino_t));
 			for (n = 0; n < nino; n++) {
@@ -1567,12 +1575,12 @@ devino_t *ino;
 			if (!re) {
 				if (*(dp -> d_name) == '.') {
 					free(cp);
-#if	!MSDOS
+#ifndef	NODIRLOOP
 					free(dupino);
 #endif
 					continue;
 				}
-#if	MSDOS
+#ifdef	NODIRLOOP
 				argc = _evalwild(argc, argvp, s, cp, l);
 #else
 				for (n = 0; n < nino; n++)
@@ -1588,11 +1596,11 @@ devino_t *ino;
 			}
 			else if (!regexp_exec(re, dp -> d_name, 1)) {
 				free(cp);
-#if	!MSDOS
+#ifndef	NODIRLOOP
 				free(dupino);
 #endif
 			}
-#if	MSDOS
+#ifdef	NODIRLOOP
 			else argc = _evalwild(argc, argvp, &(s[i + 1]), cp, l);
 #else
 			else argc = _evalwild(argc, argvp,
@@ -1609,7 +1617,7 @@ devino_t *ino;
 	Xclosedir(dirp);
 	regexp_free(re);
 	if (fixed) free(fixed);
-#if	!MSDOS
+#ifndef	NODIRLOOP
 	if (ino) free(ino);
 #endif
 	return(argc);
@@ -1629,7 +1637,7 @@ char *s;
 	int argc;
 
 	argv = (char **)malloc2(1 * sizeof(char *));
-#if	MSDOS
+#ifdef	NODIRLOOP
 	argc = _evalwild(0, &argv, s, NULL, 0);
 #else
 	argc = _evalwild(0, &argv, s, NULL, 0, 0, NULL);
@@ -1794,7 +1802,7 @@ int len, exe;
 	}
 	return(-1);
 }
-#endif
+#endif	/* MSDOS */
 
 int searchhash(hpp, com, search)
 hashlist **hpp;
@@ -1850,13 +1858,17 @@ char *com, *search;
 	}
 #endif
 
-#if	MSDOS && !defined (DISMISS_CURPATH)
+#ifdef	CWDINPATH
 	len = strlen(com);
 	path = malloc2(len + 2 + EXTWIDTH + 1);
 	path[0] = '.';
 	path[1] = _SC_;
 	strcpy(&(path[2]), com);
+# if	MSDOS
 	if ((ret = extaccess(path, ext, len + 2, 1)) < 0) free(path);
+# else
+	if ((ret = isexecute(path, 0, 0)) < 0) free(path);
+# endif
 	else {
 # ifdef	_NOUSEHASH
 		*hpp = (hashlist *)path;
@@ -1869,7 +1881,7 @@ char *com, *search;
 # endif
 		return(ret);
 	}
-#endif	/* MSDOS && !DISMISS_CURPATH */
+#endif	/* CWDINPATH */
 
 	recalc = 0;
 	if ((next = (search) ? search : getconstvar("PATH"))) {
@@ -1954,7 +1966,7 @@ char **argv;
 	return(NULL);
 }
 
-#if	!MSDOS
+# ifndef	NOUID
 static int NEAR completeuser(name, len, argc, argvp)
 char *name;
 int len, argc;
@@ -1965,7 +1977,7 @@ char ***argvp;
 	int size;
 
 	len = strlen(name);
-# ifdef	DEBUG
+#  ifdef	DEBUG
 	_mtrace_file = "setpwent(start)";
 	setpwent();
 	if (_mtrace_file) _mtrace_file = NULL;
@@ -2003,7 +2015,7 @@ char ***argvp;
 		_mtrace_file = "endpwent(end)";
 		malloc(0);	/* dummy alloc */
 	}
-# else	/* !DEBUG */
+#  else	/* !DEBUG */
 	setpwent();
 	while ((pwd = getpwent())) {
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
@@ -2021,10 +2033,10 @@ char ***argvp;
 		(*argvp)[argc++] = new;
 	}
 	endpwent();
-# endif	/* !DEBUG */
+#  endif	/* !DEBUG */
 	return(argc);
 }
-#endif	/* !MSDOS */
+# endif	/* !NOUID */
 
 static int NEAR completefile(file, len, argc, argvp, dir, dlen, exe)
 char *file;
@@ -2076,15 +2088,15 @@ char ***argvp;
 	char *cp, *tmp, *next;
 	int dlen;
 
-#if	MSDOS && !defined (DISMISS_CURPATH)
+# ifdef	CWDINPATH
 	argc = completefile(file, len, argc, argvp, ".", 1, 1);
-#endif
+# endif
 	if (!(next = getconstvar("PATH"))) return(argc);
 	for (cp = next; cp; cp = next) {
-#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+# if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
 		else
-#endif
+# endif
 		next = strchr(cp, PATHDELIM);
 		dlen = (next) ? (next++) - cp : strlen(cp);
 		tmp = _evalpath(cp, cp + dlen, 1, 1);
@@ -2106,22 +2118,22 @@ int exe;
 
 	dir = path;
 	dlen = 0;
-#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+# if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 	if (_dospath(path)) {
 		dir += 2;
 		dlen = 2;
 	}
-#endif
+# endif
 
 	if ((file = strrdelim(dir, 0))) {
 		dlen += (file == dir) ? 1 : file - dir;
 		return(completefile(file + 1, strlen(file + 1), argc, argvp,
 			path, dlen, exe));
 	}
-#if	!MSDOS
+# ifndef	NOUID
 	else if (*path == '~')
 		return(completeuser(&(path[1]), len - 1, argc, argvp));
-#endif
+# endif
 	else if (exe && dir == path)
 		return(completeexe(path, len, argc, argvp));
 	return(completefile(path, len, argc, argvp, ".", 1, exe));
@@ -2335,11 +2347,7 @@ int *eolp, *ptrp, qed;
 	}
 	else if (strchr("-=?+", i)) mode = i;
 #ifndef	MINIMUMSHELL
-# if	MSDOS
-	else if (i != '\\' && i != '#') return(-1);
-# else
-	else if (i != '%' && i != '#') return(-1);
-# endif
+	else if (i != RMSUFFIX && i != '#') return(-1);
 	else if ((*bufp)[*ptrp] != i) mode = i;
 	else {
 		(*ptrp)++;
@@ -2818,7 +2826,7 @@ int quoted;
 	return(ptr);
 }
 
-#if	!MSDOS
+#if	defined (FD) && !defined (NOUID)
 uidtable *finduid(uid, name)
 uid_t uid;
 char *name;
@@ -2909,7 +2917,31 @@ char *name;
 	gidlist = b_realloc(gidlist, maxgid, gidtable);
 	gidlist[maxgid].gid = grp -> gr_gid;
 	gidlist[maxgid].name = strdup2(grp -> gr_name);
+	gidlist[maxgid].gr_mem = grp -> gr_mem;
+	gidlist[maxgid].ismem = 0;
 	return(&(gidlist[maxgid++]));
+}
+
+int isgroupmember(gid)
+gid_t gid;
+{
+	uidtable *up;
+	gidtable *gp;
+	int i;
+
+	if (!(gp = findgid(gid, NULL))) return(0);
+	if (!(gp -> ismem)) {
+		gp -> ismem++;
+		if ((up = finduid(geteuid(), NULL)))
+		for (i = 0; gp -> gr_mem[i]; i++) {
+			if (!strpathcmp(up -> name, gp -> gr_mem[i])) {
+				gp -> ismem++;
+				break;
+			}
+		}
+	}
+
+	return(gp -> ismem - 1);
 }
 
 # ifdef	DEBUG
@@ -2933,7 +2965,7 @@ VOID freeidlist(VOID_A)
 	maxuid = maxgid = 0;
 }
 # endif
-#endif	/* !MSDOS */
+#endif	/* FD && !NOUID */
 
 static char *NEAR replacebackquote(buf, ptrp, bbuf, rest)
 char *buf;
@@ -2958,15 +2990,34 @@ int rest;
 
 char *gethomedir(VOID_A)
 {
-#if	!MSDOS
+#ifndef	NOUID
+# ifdef	FD
 	uidtable *up;
-#endif
+# else
+	struct passwd *pwd;
+# endif
+#endif	/* !NOUID */
 	char *cp;
 
 	if ((cp = getconstvar("HOME"))) return(cp);
-#if	!MSDOS
+#ifndef	NOUID
+# ifdef	FD
 	if ((up = finduid(getuid(), NULL))) return(up -> home);
-#endif
+# else	/* !FD */
+#  ifdef	DEBUG
+	_mtrace_file = "getpwuid(start)";
+	pwd = getpwuid(getuid());
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "getpwuid(end)";
+		malloc(0);	/* dummy alloc */
+	}
+#  else
+	pwd = getpwuid(getuid());
+#  endif
+	if (pwd) return(pwd -> pw_dir);
+# endif	/* !FD */
+#endif	/* !NOUID */
 	return(NULL);
 }
 
@@ -2987,16 +3038,35 @@ char **argp;
 		cp = progpath;
 #endif
 	else {
-#if	!MSDOS
+#ifdef	NOUID
+		cp = NULL;
+#else	/* !NOUID */
+# ifdef	FD
 		uidtable *up;
 
 		cp = strndup2(top, len);
 		up = finduid(0, cp);
 		free(cp);
-		if (up) cp = up -> home;
-		else
-#endif
-		cp = NULL;
+		cp = (up) ? up -> home : NULL;
+# else	/* !FD */
+		struct passwd *pwd;
+
+		cp = strndup2(top, len);
+#  ifdef	DEBUG
+		_mtrace_file = "getpwnam(start)";
+		pwd = getpwnam(cp);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getpwnam(end)";
+			malloc(0);	/* dummy alloc */
+		}
+#  else
+		pwd = getpwnam(cp);
+#  endif
+		free(cp);
+		cp = (pwd) ? pwd -> pw_dir : NULL;
+# endif	/* !FD */
+#endif	/* !NOUID */
 	}
 
 	if (!cp) {

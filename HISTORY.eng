@@ -1,3 +1,10 @@
+Ver. 2.04c	Support Cygwin.
+ (10/15/03)	Strange behaviors with redirected stdin are fixed.
+		Invisible file info. when set 'PRECEDEPATH' is fixed. (MS-DOS)
+		Strange information in archive browser on IRIX is fixed.
+		Freezing in archive browser with some format is fixed.
+		Freezing in 'exec' builtin with redirection is fixed.
+
 Ver. 2.04b	Failure to execute fdsh with no terminal is fixed.
  (09/17/03)	Freezing when use any history in -c option of fdsh is fixed.
 

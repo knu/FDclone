@@ -31,6 +31,28 @@ CODEEUC	This means to use EUC-JP (Extended Unix Code) as the
 	code, and so on.
 	You can dynamically change the Kanji code used in
 	input/output and filename, after compiled.
+NOMULTIKANJI
+	It is not necessary to consider the environment which
+	has multiple Kanji codes.
+PATHNOCASE
+	System calls ignore case for any filename.
+COMMNOCASE
+	Shell ignore case for any shell command name.
+ENVNOCASE
+	System calls ignore case for any environment variable.
+NOUID
+	Neither user ID nor group ID don't exist.
+NODIRLOOP
+	Any directory structure can never loop.
+NOSYMLINK
+	Symbolic link system is not implemented.
+BSPATHDELIM
+	The path delimiter is a backslash character.
+USECRNL
+	The character who indicates end of line is CR-NL.
+CWDINPATH
+	The current work directory is always included in
+	the command search path implicitly.
 USEMANLANG
 	The search pathname referred to man(1) includes the
 	string shown by the environment variable LANG, such
@@ -185,6 +207,9 @@ SYSVDIRENT
 	and has the member d_ino.
 NODNAMLEN
 	The structure dirent doesn't have the member d_namlen.
+NODRECLEN
+	The structure dirent doesn't have the member d_reclen.
+	It has the member d_fd instead.
 DNAMESIZE
 	The size of tha member d_name of the structure dirent.
 HAVETIMEZONE
@@ -286,6 +311,13 @@ USESETENV
 NOSELECT
 	The function select(2) is unavailable for the low
 	level input/output.
+DEFFDSETSIZE
+	The function select(2) needs the FD_SETSIZE identifier
+	to be pre-defined as the maximum number of openable
+	files.
+SELECTRWONLY
+	The function select(2) cannot respond the file descriptor
+	opened as read/write.
 NOVSPRINTF
 	The function vsprintf(3) is unavailable for the
 	formatted output.

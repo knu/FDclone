@@ -52,6 +52,10 @@
 #define	d_fileno	d_ino
 #endif
 
+#ifdef	NODRECLEN
+#define	d_reclen	d_fd
+#endif
+
 #ifndef	L_SET
 # ifdef	SEEK_SET
 # define	L_SET	SEEK_SET
@@ -249,6 +253,8 @@ typedef struct _dosdirdesc {
 	char *dd_buf;
 } dosDIR;
 
+#define	DID_IFDOSDRIVE	(-1)
+
 #ifdef	HDDMOUNT
 typedef struct _partition_t {
 	u_char boot __attribute__ ((packed));
@@ -351,10 +357,10 @@ extern int dosstatfs __P_((int, char *));
 extern int dosstat __P_((char *, struct stat *));
 extern int doslstat __P_((char *, struct stat *));
 extern int dosaccess __P_((char *, int));
-#if	!MSDOS
+#ifndef	NOSYMLINK
 extern int dossymlink __P_((char *, char *));
 extern int dosreadlink __P_((char *, char *, int));
-#endif	/* !MSDOS */
+#endif
 extern int doschmod __P_((char *, int));
 #ifdef	USEUTIME
 extern int dosutime __P_((char *, struct utimbuf *));

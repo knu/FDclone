@@ -271,43 +271,50 @@
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #launch ".tar.Z"	"zcat %C|tar tvf -" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #launch ".tar.gz"	"gzip -cd %C|tar tvf -" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #launch ".tar.bz2"	"bzip2 -cd %C|tar tvf -" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #launch ".taZ"		"zcat %C|tar tvf -" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #launch ".taz"		"gzip -cd %C|tar tvf -" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #launch ".tgz"		"gzip -cd %C|tar tvf -" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
 #		-f "%a %l %u %g %s %m %d %{yt} %*f" \
 #		-f "%10a %u/%g %s %m %d %t %y %*f" \
-#		-f "%9a %u/%g %s %m %d %t %y %*f"
+#		-f "%9a %u/%g %s %m %d %t %y %*f" \
+#		-f "%a %u/%g %m %d %t %y %*f"
 #(Examples)
 #launch ".zip"	"unzip -lqq"		" %s %m-%d-%y %t %*f"
 #launch ".zoo"	"zoo lq"		" %s %x %x %d %m %y %t %*f"

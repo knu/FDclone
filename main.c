@@ -14,9 +14,7 @@
 
 #if	MSDOS
 #include <process.h>
-# ifdef	DJGPP
-extern char *adjustfname __P_((char *));
-# else
+# ifndef	DJGPP
 # include <dos.h>
 #  ifdef	__TURBOC__
 extern unsigned _stklen = 0x5800;
@@ -33,7 +31,16 @@ extern unsigned _stklen = 0x5800;
 #include "system.h"
 #endif
 
-#if	!MSDOS && !defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	MSDOS
+# ifndef	BSPATHDELIM
+extern char *adjustpname __P_((char *));
+# endif
+# if	defined (DJGPP) || !defined (BSPATHDELIM)
+extern char *adjustfname __P_((char *));
+# endif
+#endif	/* MSDOS */
+
+#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
 extern VOID killjob __P_((VOID_A));
 #endif
 
@@ -179,7 +186,7 @@ int fd_restricted = 0;
 #ifndef	_NOCUSTOMIZE
 char **orighelpindex = NULL;
 bindtable *origbindlist = NULL;
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 keyseq_t *origkeymaplist = NULL;
 # endif
 # ifndef	_NOARCHIVE
@@ -188,7 +195,7 @@ int origmaxlaunch = 0;
 archivetable *origarchivelist = NULL;
 int origmaxarchive = 0;
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 devinfo *origfdtype = NULL;
 # endif
 #endif	/* !_NOCUSTOMIZE */
@@ -240,7 +247,7 @@ char *s;
 	keyflush();
 	prepareexitfd();
 #ifndef	_NOORIGSHELL
-# if	!MSDOS && !defined (NOJOB)
+# ifndef	NOJOB
 	killjob();
 # endif
 	prepareexit(0);
@@ -249,8 +256,11 @@ char *s;
 # if	!MSDOS
 	freeterment();
 # endif
-	if (ttyout && ttyout != stderr) fclose(ttyout);
-	else if (ttyio >= 0) close(ttyio);
+	if (ttyout && ttyout != stderr) {
+		if (fileno(ttyout) == ttyio) ttyio = -1;
+		fclose(ttyout);
+	}
+	if (ttyio >= 0) close(ttyio);
 	muntrace();
 #endif
 
@@ -648,7 +658,7 @@ VOID saveorigenviron(VOID_A)
 {
 	orighelpindex = copystrarray(NULL, helpindex, NULL, 10);
 	origbindlist = copybind(NULL, bindlist);
-# if	!MSDOS && !defined (_NOKEYMAP)
+# ifndef	_NOKEYMAP
 	origkeymaplist = copykeyseq(NULL);
 # endif
 # ifndef	_NOARCHIVE
@@ -657,7 +667,7 @@ VOID saveorigenviron(VOID_A)
 	origarchivelist = copyarch(NULL, archivelist,
 		&origmaxarchive, maxarchive);
 # endif
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 	origfdtype = copydosdrive(NULL, fdtype);
 # endif
 }
@@ -715,7 +725,7 @@ int exist;
 	if (!tmp)
 # endif	/* !MSDOS */
 	tmp = evalpath(strdup2(file), 1);
-	fp = fopen(tmp, "r");
+	fp = Xfopen(tmp, "r");
 	if (!fp) {
 		if (!exist) {
 			free(tmp);
@@ -824,7 +834,7 @@ char *argv[];
 			return(i + 1);
 		tmp = strdup2(&(argv[i][1]));
 		if ((cp = strchr(tmp, '='))) *(cp++) = '\0';
-		setenv2(tmp, cp);
+		setenv2(tmp, cp, 0);
 		free(tmp);
 	}
 	return(i);
@@ -837,7 +847,7 @@ char *s, *envp[];
 
 	len = strlen(s);
 	for (i = 0; envp[i]; i++)
-		if (!strnpathcmp(envp[i], s, len) && envp[i][len] == '=')
+		if (!strnenvcmp(envp[i], s, len) && envp[i][len] == '=')
 			return(&(envp[i][++len]));
 	return(NULL);
 }
@@ -845,15 +855,17 @@ char *s, *envp[];
 static VOID NEAR setexecname(argv)
 char *argv;
 {
-#if	MSDOS
+#if	MSDOS || defined (CYGWIN)
 	char *cp;
 #endif
 
-	if ((progname = strrdelim(argv, 1))) progname++;
-	else progname = argv;
-#if	MSDOS
-	if ((cp = strchr(progname, '.'))) *cp = '\0';
+	progname = getbasename(argv);
+#if	MSDOS || defined (CYGWIN)
+	if ((cp = strchr(progname, '.')) && cp > progname)
+		progname = strndup2(progname, cp - progname);
+	else
 #endif
+	progname = strdup2(progname);
 }
 
 static VOID NEAR setexecpath(argv, envp)
@@ -901,6 +913,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 		rawchdir(_SS_);
 	}
 	free(origpath);
+	free(progname);
 #ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
@@ -918,7 +931,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 		free(orighelpindex);
 	}
 	free(origbindlist);
-#  if	!MSDOS && !defined (_NOKEYMAP)
+#  ifndef	_NOKEYMAP
 	freekeyseq(origkeymaplist);
 #  endif
 #  ifndef	_NOARCHIVE
@@ -931,7 +944,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 		free(origarchivelist);
 	}
 #  endif
-#  if	!MSDOS && !defined (_NODOSDRIVE)
+#  ifdef	_USEDOSEMU
 	if (origfdtype) {
 		freedosdrive(origfdtype);
 		free(origfdtype);
@@ -942,7 +955,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 	freehistory(0);
 	freehistory(1);
 	freedefine();
-# if	!MSDOS
+# ifndef	NOUID
 	freeidlist();
 # endif
 	chdir2(NULL);
@@ -967,7 +980,7 @@ char *argv[], *envp[];
 	mtrace();
 #endif
 
-#if	MSDOS && defined (DJGPP)
+#if	MSDOS && (defined (DJGPP) || !defined (BSPATHDELIM))
 	adjustfname(argv[0]);
 #endif
 	setexecname(argv[0]);
@@ -1054,7 +1067,7 @@ char *argv[], *envp[];
 #endif	/* !_NOARCHIVE */
 
 	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	for (i = 0; fdtype[i].name; i++) {
 		fdtype[i].name = strdup2(fdtype[i].name);
 # ifdef	HDDMOUNT
@@ -1084,22 +1097,16 @@ char *argv[], *envp[];
 	getterment(NULL);
 	argc = initoption(argc, argv, envp);
 #else	/* !_NOORIGSHELL */
-	cp = progname;
-	if (*cp == '-') cp++;
-# if	MSDOS
-	if (*cp == 'r' || *cp == 'R') cp++;
-# else
-	if (*cp == 'r') cp++;
-# endif
+	cp = getshellname(progname, NULL, NULL);
 	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, "su")) {
 		i = main_shell(argc, argv, envp);
 		prepareexitfd();
 		Xexit2(i);
 	}
-	fdmode = 1;
+	fdmode = interactive = 1;
 	setshellvar(envp);
-	argc = initoption(argc, argv, envp);
 	prepareterm();
+	argc = initoption(argc, argv, envp);
 	if (dumbterm > 1) {
 		errno = 0;
 		error(NTERM_K);
@@ -1118,8 +1125,16 @@ char *argv[], *envp[];
 
 	locate(0, n_line - 1);
 	inruncom = 1;
+#if	MSDOS && !defined (BSPATHDELIM)
+	/* DEFRUNCOM is gave from command line, not to convert previously */
+/*NOTDEFINED*/
+	cp = strdup2(DEFRUNCOM);
+	i = loadruncom(adjustpname(cp), 0);
+	free(cp);
+#else
 /*NOTDEFINED*/
 	i = loadruncom(DEFRUNCOM, 0);
+#endif
 	i += loadruncom(RUNCOMFILE, 0);
 	inruncom = 0;
 	sigvecset(1);
@@ -1128,7 +1143,7 @@ char *argv[], *envp[];
 		warning(0, HITKY_K);
 	}
 	i = evaloption(argv);
-#if	!MSDOS && defined (_NOORIGSHELL)
+#ifdef	_NOORIGSHELL
 	adjustpath();
 #endif
 	evalenv();
@@ -1153,7 +1168,7 @@ char *argv[], *envp[];
 
 	stdiomode();
 #ifndef	_NOORIGSHELL
-# if	!MSDOS && !defined (NOJOB)
+# ifndef	NOJOB
 	killjob();
 # endif
 #endif

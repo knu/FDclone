@@ -196,7 +196,7 @@ int sig, eof;
 	if (eof) return(-1);
 
 #ifndef	_NOEDITMODE
-	if (!editmode) return(ch);
+	if (!editmode) /*EMPTY*/;
 	else if (!strcmp(editmode, "emacs")) {
 		for (i = 0; i < EMACSKEYSIZ; i++) {
 			if (emacskey[i] == K_ESC) continue;
@@ -1130,7 +1130,7 @@ int *cxp, *lenp, plen, linemax;
 		forwcursor(xpos);
 		i = plen;
 		x = cx2 - linemax;
-		y = (linemax + 1) / 2; 
+		y = (linemax + 1) / 2;
 		for (lastofs2 = 0; lastofs2 <= i + x; lastofs2 += y) i = 1;
 		if (!lastofs2) dispprompt(NULL, 0);
 		else {
@@ -1545,7 +1545,7 @@ int linemax, comline, cont;
 # ifndef	_NOORIGSHELL
 	int vartop;
 # endif
-	char *cp1, *cp2, **argv;
+	char *cp, *tmp, **argv;
 	int i, l, pc, ins, top, fix, argc, quote, quoted, hasmeta;
 
 	if (selectlist && cont > 0) {
@@ -1607,19 +1607,19 @@ int linemax, comline, cont;
 	}
 # endif	/* !_NOORIGSHELL */
 
-	cp1 = strndup2(&((*sp)[top]), cx - top);
+	cp = strndup2(&((*sp)[top]), cx - top);
 # ifndef	_NOORIGSHELL
 	if (vartop);
 	else
 # endif
-	cp1 = evalpath(cp1, 1);
+	cp = evalpath(cp, 1);
 	hasmeta = 0;
-	for (i = 0; cp1[i]; i++) {
-		if (strchr(METACHAR, cp1[i])) {
+	for (i = 0; cp[i]; i++) {
+		if (strchr(METACHAR, cp[i])) {
 			hasmeta = 1;
 			break;
 		}
-		if (iskanji1(cp1, i)) i++;
+		if (iskanji1(cp, i)) i++;
 	}
 
 	if (selectlist && cont < 0) {
@@ -1630,50 +1630,48 @@ int linemax, comline, cont;
 # ifndef	_NOORIGSHELL
 	else if (vartop) {
 		argv = NULL;
-		l = strlen(cp1);
-		argc = completeshellvar(cp1, l, 0, &argv);
+		l = strlen(cp);
+		argc = completeshellvar(cp, l, 0, &argv);
 	}
 # endif
 	else {
 		argv = NULL;
 		argc = 0;
-		l = strlen(cp1);
-		if (comline && !strdelim(cp1, 1)) {
+		l = strlen(cp);
+		if (comline && !strdelim(cp, 1)) {
 # ifdef	_NOORIGSHELL
-			argc = completeuserfunc(cp1, l, argc, &argv);
-			argc = completealias(cp1, l, argc, &argv);
-			argc = completebuiltin(cp1, l, argc, &argv);
-			argc = completeinternal(cp1, l, argc, &argv);
+			argc = completeuserfunc(cp, l, argc, &argv);
+			argc = completealias(cp, l, argc, &argv);
+			argc = completebuiltin(cp, l, argc, &argv);
+			argc = completeinternal(cp, l, argc, &argv);
 # else
-			argc = completeshellcomm(cp1, l, argc, &argv);
+			argc = completeshellcomm(cp, l, argc, &argv);
 # endif
 		}
 # ifndef	_NOARCHIVE
-		if (archivefile && !comline && *cp1 != _SC_)
-			argc = completearch(cp1, l, argc, &argv);
+		if (archivefile && !comline && *cp != _SC_)
+			argc = completearch(cp, l, argc, &argv);
 		else
 # endif
-		argc = completepath(cp1, l, argc, &argv, comline);
+		argc = completepath(cp, l, argc, &argv, comline);
 		if (!argc && comline)
-			argc = completepath(cp1, l, argc, &argv, 0);
+			argc = completepath(cp, l, argc, &argv, 0);
 	}
 
-	if ((cp2 = strrdelim(cp1, 1))) cp2++;
-	else cp2 = cp1;
-	ins = strlen(cp2);
-	free(cp1);
+	ins = strlen(getbasename(cp));
+	free(cp);
 	if (!argc) {
 		ringbell();
 		if (argv) free(argv);
 		return(0);
 	}
 
-	cp1 = findcommon(argc, argv);
+	cp = findcommon(argc, argv);
 	fix = '\0';
-	if (argc == 1 && cp1)
-		fix = ((cp2 = strrdelim(cp1, 0)) && !cp2[1]) ? _SC_ : ' ';
+	if (argc == 1 && cp)
+		fix = ((tmp = strrdelim(cp, 0)) && !tmp[1]) ? _SC_ : ' ';
 
-	if (!cp1 || ((ins = (int)strlen(cp1) - ins) <= 0 && fix != ' ')) {
+	if (!cp || ((ins = (int)strlen(cp) - ins) <= 0 && fix != ' ')) {
 		if (cont <= 0) {
 			ringbell();
 			l = 0;
@@ -1687,23 +1685,23 @@ int linemax, comline, cont;
 		}
 		for (i = 0; i < argc; i++) free(argv[i]);
 		free(argv);
-		if (cp1) free(cp1);
+		if (cp) free(cp);
 		return(l);
 	}
 	for (i = 0; i < argc; i++) free(argv[i]);
 	free(argv);
 
 	l = 0;
-	if (!hasmeta) for (i = 0; cp1[i]; i++) {
-		if (strchr(METACHAR, cp1[i])) {
+	if (!hasmeta) for (i = 0; cp[i]; i++) {
+		if (strchr(METACHAR, cp[i])) {
 			hasmeta = 1;
 			break;
 		}
-		if (iskanji1(cp1, i)) i++;
+		if (iskanji1(cp, i)) i++;
 	}
 
 	if (hasmeta) {
-		char *tmp, *home;
+		char *home;
 		int hlen;
 
 		if (quote || quoted > top || (*sp)[top] != '~') {
@@ -1773,9 +1771,9 @@ int linemax, comline, cont;
 		else hasmeta = 0;
 	}
 
-	cp2 = cp1 + (int)strlen(cp1) - ins;
+	tmp = cp + (int)strlen(cp) - ins;
 	if (fix == _SC_) ins--;
-	i = insertstr(sp, cx, len, plen, sizep, linemax, cp2, ins, quote);
+	i = insertstr(sp, cx, len, plen, sizep, linemax, tmp, ins, quote);
 	len += i;
 	l += i;
 	if (fix && !overflow(vlen(*sp, len), plen, linemax)) {
@@ -1798,7 +1796,7 @@ int linemax, comline, cont;
 		}
 	}
 
-	free(cp1);
+	free(cp);
 	return(l);
 }
 #endif	/* !_NOCOMPLETE */
@@ -2110,12 +2108,12 @@ int *cxp, cx2, *lenp, plen;
 ALLOC_T *sizep;
 int linemax, ch;
 {
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 	char tmpkanji[3];
 #endif
 	int rw, vw, ch2;
 
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 	if (inputkcode == EUC && ch == 0x8e) {
 		rw = KANAWID;
 		vw = 1;
@@ -2137,7 +2135,7 @@ int linemax, ch;
 		*cxp += KANAWID;
 	}
 	else
-#else
+#else	/* _NOKANJICONV */
 # ifdef	CODEEUC
 	if (ch == 0x8e) {
 		rw = KANAWID;
@@ -2157,7 +2155,7 @@ int linemax, ch;
 	}
 	else
 # endif
-#endif
+#endif	/* _NOKANJICONV */
 	if (isinkanji1(ch)) {
 		rw = vw = 2;
 		ch2 = (kbhit2(WAITMETA * 1000L)) ? getkey2(0) : '\0';
@@ -2169,7 +2167,7 @@ int linemax, ch;
 			return(cx2);
 		}
 
-#if	MSDOS || defined (_NOKANJICONV)
+#ifdef	_NOKANJICONV
 		(*sp)[*cxp] = ch;
 		(*sp)[*cxp + 1] = ch2;
 #else
@@ -2310,7 +2308,7 @@ int linemax, def, comline, h;
 						len, plen, linemax);
 				continue;
 			}
-#if	!MSDOS && !defined (_NOKANJICONV)
+#ifndef	_NOKANJICONV
 			else if (inputkcode == EUC
 			&& i == 0x8e && kbhit2(WAITMETA * 1000L)) /*EMPTY*/;
 			else if (inputkcode != EUC && iskna(i)) /*EMPTY*/;
@@ -2767,19 +2765,19 @@ static char *NEAR truncstr(s)
 char *s;
 {
 	int len;
-	char *cp1, *cp2;
+	char *cp, *tmp;
 
 	if ((len = (int)strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
-	|| !(cp1 = strchr2(s, '[')) || !(cp2 = strchr2(cp1, ']'))) return(s);
+	|| !(cp = strchr2(s, '[')) || !(tmp = strchr2(cp, ']'))) return(s);
 
-	cp1++;
-	len = cp2 - cp1 - len;
+	cp++;
+	len = tmp - cp - len;
 	if (len <= 0) len = 0;
 #ifdef	CODEEUC
-	else if (isekana(cp1, len - 1)) len--;
+	else if (isekana(cp, len - 1)) len--;
 #endif
-	else if (onkanji1(cp1, len - 1)) len--;
-	strcpy(&(cp1[len]), cp2);
+	else if (onkanji1(cp, len - 1)) len--;
+	strcpy(&(cp[len]), tmp);
 	return(s);
 }
 
@@ -2958,7 +2956,7 @@ char *s;
 	if (!s) s = err;
 	else if (no) {
 		len = n_lastcolumn - (int)strlen(err) - 3;
-		tmp = (char *)malloc2(strlen2(s) + strlen(err) + 3);
+		tmp = malloc2(strlen2(s) + strlen(err) + 3);
 		strncpy3(tmp, s, &len, -1);
 		strcat(tmp, ": ");
 		strcat(tmp, err);

@@ -108,8 +108,17 @@ typedef union wait	wait_pid_t;
 # endif
 #endif
 
-#if	MSDOS || defined (DEBUG)
+#if	MSDOS
+#define	NOJOB
 #define	DOSCOMMAND
+#define	USEFAKEPIPE
+#define	Xexit		exit
+#define	DEFPATH		":"
+#else
+#define	Xexit		_exit
+#define	DEFPATH		":/bin:/usr/bin"
+#define	DEFTERM		"dumb"
+#define	NULLDEVICE	"/dev/null"
 #endif
 
 #ifdef	MINIMUMSHELL
@@ -356,7 +365,7 @@ typedef struct _pipelist {
 	struct _pipelist *next;
 } pipelist;
 
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 typedef struct _jobtable {
 	p_id_t *pids;
 	int *stats;
@@ -367,18 +376,18 @@ typedef struct _jobtable {
 	int *ttyflag;
 # endif
 } jobtable;
-#endif	/* !MSDOS && !NOJOB */
+#endif	/* !NOJOB */
 
 typedef struct _shfunctable {
 	char *ident;
 	syntaxtree *func;
 } shfunctable;
 
-typedef struct _aliastable {
+typedef struct _shaliastable {
 	char *ident;
 	char *comm;
 	u_char flags;
-} aliastable;
+} shaliastable;
 
 #define	AL_USED		0001
 
@@ -425,14 +434,14 @@ extern int noglob;
 extern int autoexport;
 #ifndef	MINIMUMSHELL
 extern int noclobber;
-# if	!MSDOS && !defined (NOJOB)
+# ifndef	NOJOB
 extern int bgnotify;
 extern int jobok;
 # endif
 extern int ignoreeof;
 #endif
 extern int interactive;
-#if	!MSDOS && !defined (NOJOB)
+#ifndef	NOJOB
 extern int lastjob;
 extern int prevjob;
 extern int stopped;

@@ -13,11 +13,6 @@
 extern u_char _openfile[];
 #endif
 
-extern int norealpath;
-#ifndef	_NOROCKRIDGE
-extern int norockridge;
-#endif
-
 #ifndef	_NOROCKRIDGE
 typedef struct _opendirpath_t {
 	DIR *dirp;
@@ -30,7 +25,6 @@ static int NEAR checkpath __P_((char *, char *));
 #endif
 static int NEAR statcommon __P_((char *, struct stat *));
 
-int noconv = 0;
 #ifndef	_NODOSDRIVE
 int lastdrv = -1;
 #endif
@@ -120,76 +114,6 @@ char *path, *buf;
 	return(drive);
 }
 #endif	/* !_NODOSDRIVE */
-
-/*ARGSUSED*/
-char *convget(buf, path, dos)
-char *buf, *path;
-int dos;
-{
-#ifndef	_NOROCKRIDGE
-	if (noconv) return(path);
-
-	if (!norockridge) return(transpath(path, buf));
-#endif
-	return(path);
-}
-
-/*ARGSUSED*/
-char *convput(buf, path, needfile, rdlink, rrreal, codep)
-char *buf, *path;
-int needfile, rdlink;
-char *rrreal;
-int *codep;
-{
-#ifdef	_NOROCKRIDGE
-	return(path);
-#else	/* !_NOROCKRIDGE */
-	char *cp, *file, rbuf[MAXPATHLEN], rpath[MAXPATHLEN];
-	int n;
-
-	if (rrreal) *rrreal = '\0';
-
-	if (noconv || isdotdir(path)) return(path);
-
-	if (needfile && strdelim(path, 0)) needfile = 0;
-	if (norealpath) cp = path;
-	else {
-		if ((file = strrdelim(path, 0))) {
-			n = file - path;
-			if (file++ == isrootdir(path)) n++;
-			strncpy2(rpath, path, n);
-		}
-		else {
-			file = path;
-			strcpy(rpath, ".");
-		}
-		realpath2(rpath, rpath, 1);
-		cp = strcatdelim(rpath);
-		strncpy2(cp, file, MAXPATHLEN - 1 - (cp - rpath));
-		cp = rpath;
-	}
-	if (!norockridge && (cp = detranspath(cp, rbuf)) == rbuf) {
-		if (rrreal) strcpy(rrreal, rbuf);
-		if (rdlink && rrreadlink(cp, buf, MAXPATHLEN - 1) >= 0) {
-			if (needfile && strdelim(buf, 0)) needfile = 0;
-			if (*buf == _SC_ || !(cp = strrdelim(rbuf, 0)))
-				cp = buf;
-			else {
-				cp++;
-				strncpy2(cp, buf, MAXPATHLEN - (cp - rbuf));
-				cp = rbuf;
-			}
-			realpath2(cp, rpath, 1);
-			cp = detranspath(rpath, rbuf);
-		}
-	}
-	if (cp == path) return(path);
-	if (needfile && (file = strrdelim(cp, 0))) file++;
-	else file = cp;
-	strcpy(buf, file);
-	return(buf);
-#endif	/* !_NOROCKRIDGE */
-}
 
 DIR *Xopendir(path)
 char *path;
@@ -328,7 +252,7 @@ char *path;
 {
 	char *cp, conv[MAXPATHLEN];
 
-	if (!(cp = unixgetcwd(path, MAXPATHLEN, 0))) return(NULL);
+	if (!(cp = unixgetcwd(path, MAXPATHLEN))) return(NULL);
 	cp = convget(conv, cp, 0);
 	if (cp == path) return(cp);
 	strcpy(path, cp);
@@ -582,6 +506,7 @@ int oldd, newd;
 {
 	int fd;
 
+	if (oldd == newd) return(newd);
 #ifndef	_NODOSDRIVE
 	if ((oldd >= DOSFDOFFSET || newd >= DOSFDOFFSET)) {
 		errno = EBADF;

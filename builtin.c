@@ -32,7 +32,7 @@ extern int maxmacro;
 extern bindtable bindlist[];
 extern strtable keyidentlist[];
 extern functable funclist[];
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 extern devinfo fdtype[];
 #endif
 extern char **history[];
@@ -82,13 +82,13 @@ static int NEAR custbrowse __P_((int, char *[]));
 static int NEAR getcommand __P_((char *));
 static int NEAR setkeybind __P_((int, char *[]));
 static int NEAR printbind __P_((int, char *[]));
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 static int NEAR _setdrive __P_((int, char *[], int));
 static int NEAR setdrive __P_((int, char *[]));
 static int NEAR unsetdrive __P_((int, char *[]));
 static int NEAR printdrive __P_((int, char *[]));
 #endif
-#if	!MSDOS && !defined (_NOKEYMAP)
+#ifndef	_NOKEYMAP
 static int NEAR setkeymap __P_((int, char *[]));
 static int NEAR keytest __P_((int, char *[]));
 #endif
@@ -102,7 +102,7 @@ static VOID NEAR calcmd5 __P_((u_long [], u_long []));
 static int NEAR printmd5 __P_((char *, FILE *));
 static int NEAR md5sum __P_((int, char *[]));
 static int NEAR evalmacro __P_((int, char *[]));
-# if	!MSDOS && !defined (_NOKANJICONV)
+# ifndef	_NOKANJICONV
 static int NEAR kconv __P_((int, char *[]));
 # endif
 static int NEAR getinputstr __P_((int, char *[]));
@@ -174,12 +174,12 @@ static builtintable builtinlist[] = {
 #endif
 	{setkeybind,	BL_BIND},
 	{printbind,	BL_PBIND},
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	{setdrive,	BL_SDRIVE},
 	{unsetdrive,	BL_UDRIVE},
 	{printdrive,	BL_PDRIVE},
 #endif
-#if	!MSDOS && !defined (_NOKEYMAP)
+#ifndef	_NOKEYMAP
 	{setkeymap,	BL_KEYMAP},
 	{keytest,	BL_GETKEY},
 #endif
@@ -190,7 +190,7 @@ static builtintable builtinlist[] = {
 #if	FD >= 2
 	{md5sum,	BL_CHECKID},
 	{evalmacro,	BL_EVALMACRO},
-# if	!MSDOS && !defined (_NOKANJICONV)
+# ifndef	_NOKANJICONV
 	{kconv,		BL_KCONV},
 # endif
 	{getinputstr,	BL_READLINE},
@@ -1028,7 +1028,7 @@ char *cp;
 	int n;
 
 	for (n = 0; n < FUNCLISTSIZ; n++)
-		if (!strpathcmp(cp, funclist[n].ident)) break;
+		if (!strcommcmp(cp, funclist[n].ident)) break;
 	if (n < FUNCLISTSIZ) /*EMPTY*/;
 	else if (maxmacro >= MAXMACROTABLE) n = -1;
 	else {
@@ -1202,7 +1202,7 @@ char *argv[];
 	return(0);
 }
 
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 /*ARGSUSED*/
 int searchdrv(list, drive, name, head, sect, cyl, set)
 devinfo *list;
@@ -1569,9 +1569,9 @@ char *argv[];
 	fflush(stdout);
 	return(0);
 }
-#endif	/* !MSDOS && !_NODOSDRIVE */
+#endif	/* _USEDOSEMU */
 
-#if	!MSDOS && !defined (_NOKEYMAP)
+#ifndef	_NOKEYMAP
 VOID printkeymap(key, s, len, fp)
 int key;
 char *s;
@@ -1703,7 +1703,7 @@ char *argv[];
 	stdiomode();
 	return(0);
 }
-#endif	/* !MSDOS && !_NOKEYMAP */
+#endif	/* !_NOKEYMAP */
 
 static int NEAR printhist(argc, argv)
 int argc;
@@ -2230,7 +2230,7 @@ char *argv[];
 	return(ret);
 }
 
-# if	!MSDOS && !defined (_NOKANJICONV)
+# ifndef	_NOKANJICONV
 static int NEAR kconv(argc, argv)
 int argc;
 char *argv[];
@@ -2324,7 +2324,7 @@ char *argv[];
 	if (fpout != stdout) Xfclose(fpout);
 	return(0);
 }
-# endif	/* !MSDOS && !_NOKANJICONV */
+# endif	/* !_NOKANJICONV */
 
 static int NEAR getinputstr(argc, argv)
 int argc;
@@ -2399,7 +2399,7 @@ char *argv[];
 		hitkey(2);
 		len = strlen(argv[1]);
 		for (i = 0; environ2[i]; i++)
-			if (!strnpathcmp(environ2[i], argv[1], len)
+			if (!strnenvcmp(environ2[i], argv[1], len)
 			&& environ2[i][len] == '=') break;
 		if (!environ2[i]) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
@@ -2487,7 +2487,7 @@ char *argv[];
 # endif
 
 	for (i = 0; i < maxalias; i++)
-		if (!strnpathcmp(argv[1], aliaslist[i].alias, len)) break;
+		if (!strncommcmp(argv[1], aliaslist[i].alias, len)) break;
 
 # if	FD >= 2
 	if (*cp) *cp = '\0';
@@ -2517,7 +2517,7 @@ char *argv[];
 	}
 	aliaslist[i].alias = strdup2(argv[1]);
 	aliaslist[i].comm = strdup2(argv[2]);
-# if	MSDOS
+# ifdef	COMMNOCASE
 	for (cp = aliaslist[i].alias; cp && *cp; cp++)
 		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
 # endif
@@ -2603,10 +2603,10 @@ char *argv[];
 	if (*(cp++) != '{' || *cp) return(-2);
 
 	if (n > 0) {
-		for (i = 1; i < n; i++) free(argv[i]);
-		for (i = 1; n + i < argc; i++) argv[i] = argv[n + i];
-		argc = i;
-		argv[i] = NULL;
+		for (i = 1; i <= n; i++) free(argv[i]);
+		memmove((char *)&(argv[1]), (char *)&(argv[n + 1]),
+			sizeof(char *) * (argc - n));
+		argc -= n;
 	}
 
 	return(argc);
@@ -2643,7 +2643,7 @@ char *argv[];
 # endif
 
 	for (i = 0; i < maxuserfunc; i++)
-		if (!strpathcmp(argv[FUNCNAME], userfunclist[i].func)) break;
+		if (!strcommcmp(argv[FUNCNAME], userfunclist[i].func)) break;
 
 # if	FD < 2
 	if (!n) {
@@ -2705,7 +2705,7 @@ char *argv[];
 
 	if (i >= maxuserfunc) {
 		userfunclist[i].func = strdup2(argv[FUNCNAME]);
-# if	MSDOS
+# ifdef	COMMNOCASE
 		for (cp = userfunclist[i].func; *cp; cp++)
 			if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
 # endif
@@ -2726,8 +2726,8 @@ static int NEAR exportenv(argc, argv)
 int argc;
 char *argv[];
 {
-	char *cp, *env;
-	int i, len;
+	char *cp;
+	int i;
 
 	if (argc <= 1) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -2742,19 +2742,9 @@ char *argv[];
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	if (!cp) env = argv[1];
-	else {
-		len = strlen(argv[1]);
-		env = malloc2(len + strlen(cp) + 2);
-		memcpy(env, argv[1], len);
-		env[len++] = '=';
-		strcpy(&(env[len]), cp);
-		free(cp);
-	}
-	if (putenv2(env) < 0) error(argv[1]);
-# if	!MSDOS
+	setenv2(argv[1], cp, 1);
+	if (cp) free(cp);
 	adjustpath();
-# endif
 	evalenv();
 	return(0);
 }
@@ -2801,7 +2791,7 @@ char *comname;
 	int i;
 
 	for (i = 0; i < BUILTINSIZ; i++)
-		if (!strpathcmp(comname, builtinlist[i].ident)) return(i);
+		if (!strcommcmp(comname, builtinlist[i].ident)) return(i);
 	return(-1);
 }
 
@@ -2811,7 +2801,7 @@ char *comname;
 	int i;
 
 	for (i = 0; i < FUNCLISTSIZ; i++)
-		if (!strpathcmp(comname, funclist[i].ident)) return(i);
+		if (!strcommcmp(comname, funclist[i].ident)) return(i);
 	return(-1);
 }
 
@@ -2918,7 +2908,7 @@ int comline, ignorelist;
 	else if (isidentchar(*command)) {
 		i = argc;
 		if ((cp = getenvval(&i, argv)) != (char *)-1 && i == argc) {
-			if (setenv2(argv[0], cp) < 0) error(argv[0]);
+			if (setenv2(argv[0], cp, 0) < 0) error(argv[0]);
 			evalenv();
 			if (cp) free(cp);
 			n = RET_SUCCESS;
@@ -2939,7 +2929,7 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < BUILTINSIZ; i++) {
-		if (strnpathcmp(com, builtinlist[i].ident, len)
+		if (strncommcmp(com, builtinlist[i].ident, len)
 		|| finddupl(builtinlist[i].ident, argc, *argvp)) continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
@@ -2956,7 +2946,7 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < FUNCLISTSIZ; i++) {
-		if (strnpathcmp(com, funclist[i].ident, len)
+		if (strncommcmp(com, funclist[i].ident, len)
 		|| finddupl(funclist[i].ident, argc, *argvp)) continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
@@ -3002,7 +2992,7 @@ VOID freedefine(VOID_A)
 		free(userfunclist[i].comm);
 	}
 # endif	/* _NOORIGSHELL */
-# if	!MSDOS && !defined (_NODOSDRIVE)
+# ifdef	_USEDOSEMU
 	for (i = 0; fdtype[i].name; i++) free(fdtype[i].name);
 # endif
 	for (i = 0; i < 10; i++) free(helpindex[i]);
