@@ -160,6 +160,9 @@ static int checkline();
 static int getfsinfo();
 static char *inscomma();
 static int info1line();
+#ifndef	USEFSDATA
+static long calcKB();
+#endif
 
 
 static int code2str(buf, code)
@@ -288,7 +291,7 @@ char *file, *mode;
 {
 	char *buf;
 
-	mntctl(MCTL_QUERY, sizeof(int), (struct vmount *)(&mnt_size);
+	mntctl(MCTL_QUERY, sizeof(int), (struct vmount *)(&mnt_size));
 	buf = (char *)malloc2(mnt_size);
 	mntctl(MCTL_QUERY, mnt_size, (struct vmount *)buf);
 	mnt_ptr = 0;
@@ -444,7 +447,7 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = type;
-	mntp -> mnt_opts = (buf.fd_req.fstype & M_RONLY) ? "ro" : "";
+	mntp -> mnt_opts = (buf.fd_req.flags & M_RONLY) ? "ro" : "";
 
 	return(mntp);
 }
@@ -565,6 +568,21 @@ char *str, *unit;
 	return(checkline(++y));
 }
 
+#ifndef	USEFSDATA
+static long calcKB(block, byte)
+long block, byte;
+{
+	if (byte >= 1024) {
+		byte = (byte + 512) / 1024;
+		return(block * byte);
+	}
+	else {
+		byte = (1024 + (byte / 2)) / byte;
+		return(block / byte);
+	}
+}
+#endif
+
 int infofs(path)
 char *path;
 {
@@ -590,12 +608,12 @@ char *path;
 	y = info1line(y, FSAVL_K, fsbuf.fd_req.bfreen, NULL, "Kbytes");
 #else
 	y = info1line(y, FSTTL_K,
-		fsbuf.f_blocks * fsbuf.f_bsize / 1024, NULL, "Kbytes");
+		calcKB(fsbuf.f_blocks, fsbuf.f_bsize), NULL, "Kbytes");
 	y = info1line(y, FSUSE_K,
-		(fsbuf.f_blocks - fsbuf.f_bfree) * fsbuf.f_bsize / 1024,
+		calcKB(fsbuf.f_blocks - fsbuf.f_bfree, fsbuf.f_bsize),
 		NULL, "Kbytes");
 	y = info1line(y, FSAVL_K,
-		fsbuf.f_bavail * fsbuf.f_bsize / 1024, NULL, "Kbytes");
+		calcKB(fsbuf.f_bavail, fsbuf.f_bsize), NULL, "Kbytes");
 #endif
 	y = info1line(y, FSBSZ_K, fsbuf.f_bsize, NULL, "bytes");
 	y = info1line(y, FSINO_K, fsbuf.f_files, NULL, UNIT_K);

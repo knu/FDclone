@@ -14,6 +14,7 @@ extern int mark;
 extern char fullpath[];
 extern char *archivefile;
 extern char *archivedir;
+extern int histsize;
 
 static char *evalcomstr();
 static int setarg();
@@ -328,21 +329,26 @@ char *env, *arg;
 char **entryhist(hist, str)
 char **hist, *str;
 {
-	int i, siz;
-
-	if ((siz = atoi2(getenv2("FD_HISTSIZE"))) <= 0) siz = HISTSIZE;
+	int i;
 
 	if (!hist) {
-		hist = (char **)malloc2(sizeof(char *) * siz);
-		for (i = 1; i < siz; i++) hist[i] = NULL;
+		hist = (char **)malloc2(sizeof(char *) * (histsize + 2));
+		for (i = 0; i <= histsize; i++) hist[i + 1] = NULL;
+		hist[0] = (char *)histsize;
 	}
-	else if (!str || !*str) return(hist);
-	else {
-		if (hist[siz - 1]) free(hist[i]);
-		for (i = siz - 1; i > 0; i--) hist[i] = hist[i - 1];
+	else if (histsize > (int)hist[0]) {
+		hist = (char **)realloc2(hist, sizeof(char *) * (histsize + 2));
+		for (i = (int)hist[0]; i <= histsize; i++) hist[i + 1] = NULL;
+		hist[0] = (char *)histsize;
 	}
 
-	hist[0] = strdup2(str);
+	if (!str || !*str) return(hist);
+	else {
+		if (hist[histsize]) free(hist[histsize]);
+		for (i = histsize; i > 1; i--) hist[i] = hist[i - 1];
+	}
+
+	hist[1] = strdup2(str);
 	return(hist);
 }
 
@@ -360,6 +366,30 @@ char *command;
 	else if (!strcmp(command, "printlaunch")) i = printlaunch();
 	else if (!strcmp(command, "printarch")) i = printarch();
 	else if (evalconfigline(command) < 0) warning(0, NOCOM_K);
+	else {
+		adjustpath();
+		evalenv();
+	}
 	if (i >= 0) warning(0, HITKY_K);
 	return(0);
+}
+
+VOID adjustpath()
+{
+	char *cp, *path;
+
+	if (!(cp = getenv("PATH"))) return;
+
+	path = evalcomstr(cp);
+	if (strcmp(path, cp)) {
+#ifdef	USESETENV
+		if (setenv("PATH", path, 1) < 0) error("PATH");
+#else
+		cp = (char *)malloc(strlen(path) + 5 + 1);
+		strcpy(cp, "PATH=");
+		strcpy(cp + 5, path);
+		putenv2(cp);
+#endif
+	}
+	free(path);
 }

@@ -18,7 +18,7 @@ extern int columns;
 extern int filepos;
 extern int mark;
 extern int fnameofs;
-extern int lnstat;
+extern int dispmode;
 extern int sorton;
 extern int chgorder;
 extern int stackdepth;
@@ -26,6 +26,7 @@ extern namelist filestack[];
 extern char fullpath[];
 extern char *archivefile;
 extern char *destpath;
+extern int writefs;
 
 #ifndef	PAGER
 static VOID dump();
@@ -53,7 +54,10 @@ static int mark_find();
 static int push_file();
 static int pop_file();
 static int symlink_mode();
+static int filetype_mode();
+static int dotfile_mode();
 static int log_dir();
+static int log_top();
 static int view_file();
 static int edit_file();
 static int sort_dir();
@@ -149,6 +153,7 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{'i',		INFO_FILESYS,	-1},
 	{'k',		MAKE_DIR,	-1},
 	{'l',		LOG_DIR,	-1},
+	{'\\',		LOG_TOP,	-1},
 	{'m',		MOVE_FILE,	-1},
 	{'p',		PACK_FILE,	-1},
 	{'q',		QUIT_SYSTEM,	-1},
@@ -162,10 +167,12 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{'C',		COPY_TREE,	-1},
 	{'D',		DELETE_DIR,	-1},
 	{'F',		FIND_DIR,	-1},
+	{'H',		DOTFILE_MODE,	-1},
 	{'L',		LOG_TREE,	-1},
 	{'M',		MOVE_TREE,	-1},
 	{'Q',		QUIT_SYSTEM,	-1},
 	{'S',		SYMLINK_MODE,	-1},
+	{'T',		FILETYPE_MODE,	-1},
 	{'U',		UNPACK_TREE,	-1},
 	{CTRL_A,	CUR_TOP,	-1},
 	{CTRL_B,	CUR_LEFT,	-1},
@@ -204,8 +211,12 @@ static int cur_right(list, maxp)
 namelist *list;
 int *maxp;
 {
-	if (filepos + FILEPERLOW >= *maxp) return(0);
-	filepos += FILEPERLOW;
+	if (filepos + FILEPERLOW >= *maxp) {
+		if (filepos / FILEPERPAGE == (*maxp - 1) / FILEPERPAGE)
+			return(0);
+		else filepos = *maxp - 1;
+	}
+	else filepos += FILEPERLOW;
 	return(2);
 }
 
@@ -214,7 +225,7 @@ namelist *list;
 int *maxp;
 {
 	if (filepos - FILEPERLOW < 0) return(0);
-	filepos -= FILEPERLOW;
+	else filepos -= FILEPERLOW;
 	return(2);
 }
 
@@ -222,8 +233,11 @@ static int roll_up(list, maxp)
 namelist *list;
 int *maxp;
 {
-	if (filepos + FILEPERPAGE >= *maxp) return(0);
-	filepos += FILEPERPAGE;
+	int i;
+
+	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
+	if (i + FILEPERPAGE >= *maxp) return(warning_bell(list, maxp));
+	filepos = i + FILEPERPAGE;
 	return(2);
 }
 
@@ -231,8 +245,11 @@ static int roll_down(list, maxp)
 namelist *list;
 int *maxp;
 {
-	if (filepos - FILEPERPAGE < 0) return(0);
-	filepos -= FILEPERPAGE;
+	int i;
+
+	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
+	if (i - FILEPERPAGE < 0) return(warning_bell(list, maxp));
+	filepos = i - FILEPERPAGE;
 	return(2);
 }
 
@@ -319,7 +336,16 @@ int *maxp;
 {
 	int i;
 
-	i = (islink(&list[filepos])) ? 0 : calcwidth();
+	if (islink(&list[filepos])) i = 0;
+	else {
+		i = calcwidth();
+		if (isdisptyp(dispmode)
+		&& ((list[filepos].st_mode & S_IFMT) == S_IFDIR
+		|| (list[filepos].st_mode & S_IFMT) == S_IFLNK
+		|| (list[filepos].st_mode & S_IFMT) == S_IFSOCK
+		|| (list[filepos].st_mode & S_IFMT) == S_IFIFO
+		|| access(list[filepos].name, X_OK) >= 0)) i--;
+	}
 	if (fnameofs >= strlen(list[filepos].name) - i) return(0);
 	fnameofs++;
 	return(2);
@@ -435,7 +461,23 @@ static int symlink_mode(list, maxp)
 namelist *list;
 int *maxp;
 {
-	lnstat = 1 - lnstat;
+	dispmode ^= F_SYMLINK;
+	return(4);
+}
+
+static int filetype_mode(list, maxp)
+namelist *list;
+int *maxp;
+{
+	dispmode ^= F_FILETYPE;
+	return(3);
+}
+
+static int dotfile_mode(list, maxp)
+namelist *list;
+int *maxp;
+{
+	dispmode ^= F_DOTFILE;
 	return(4);
 }
 
@@ -468,6 +510,18 @@ int *maxp;
 		findpattern = NULL;
 	}
 	free(path);
+	free(list[filepos].name);
+	list[filepos].name = strdup2("..");
+	return(4);
+}
+
+static int log_top(list, maxp)
+namelist *list;
+int *maxp;
+{
+	if (chdir2("/") < 0) error("/");
+	if (findpattern) free(findpattern);
+	findpattern = NULL;
 	free(list[filepos].name);
 	list[filepos].name = strdup2("..");
 	return(4);
@@ -612,8 +666,7 @@ int *maxp;
 #else
 	int i;
 
-	if (atoi2(getenv2("FD_WRITEFS")) >= 2 || findpattern)
-		return(warning_bell(list, maxp));
+	if (writefs >= 2 || findpattern) return(warning_bell(list, maxp));
 	if ((i = writablefs(".")) <= 0) {
 		warning(0, NOWRT_K);
 		return(1);

@@ -140,13 +140,25 @@ char *path;
 int chdir2(path)
 char *path;
 {
+#ifndef	USESETENV
+	static char pwd[4 + MAXPATHLEN + 1];
+#endif
+
 	if (access(path, R_OK | X_OK) < 0 || chdir(path) < 0) return(-1);
 
 	if (*path == '/') strcpy(fullpath, "/");
 	_chdir2(path);
 
 	if (chdir(fullpath) < 0) return(-1);
-
+	if (getenv("PWD")) {
+#ifdef	USESETENV
+		setenv("PWD", fullpath, 1);
+#else
+		strcpy(pwd, "PWD=");
+		strcpy(pwd + 4, fullpath);
+		putenv2(pwd);
+#endif
+	}
 	return(0);
 }
 

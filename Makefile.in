@@ -5,7 +5,7 @@
 TITLE	= FD-
 BINDIR	= /usr/local/bin
 MANDIR	= /usr/local/man/ja_JP.SJIS/man1
-INSTALL	= install
+INSTALL	= cp
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
@@ -21,7 +21,7 @@ MANSEC	= 1
 SOURCES	= $(DOC) Makefile Makefile.in $(MANSRC) $(SRC) $(HEADER)\
 	kanji.h.in mkmf.sed.c version.h .fdrc
 
-CC	= cc
+CC	= __CC__
 SED	= sed
 PROGRAM	= fd
 OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
@@ -73,8 +73,8 @@ mkfuncno: mkfuncno.c
 # to install all
 
 install: $(PROGRAM) $(PROGRAM).$(MANSEC)
-	$(INSTALL) -c $(PROGRAM) $(BINDIR)
-	cp $(PROGRAM).$(MANSEC) $(MANDIR)/$(PROGRAM).$(MANSEC)
+	$(INSTALL) $(PROGRAM) $(BINDIR)
+	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)/$(PROGRAM).$(MANSEC)
 
 
 ############################################################

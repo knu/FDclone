@@ -22,26 +22,29 @@
 
 
 #define	RUNCOMFILE	"~/.fdrc"
-#define	CMDLINE_DELIM	" \t|><&!;"
+#define	CMDLINE_DELIM	" \t|><&!;:"
 
 /****************************************************************
- *	If you need to fix following tools, you should		*
- *	comment out below and define suitable command name.	*
+ *	If you don't like the following tools as each uses,	*
+ *	you should rewrite another suitable command name.	*
  ****************************************************************/
-/* #define PAGER	"/usr/local/bin/less"	/* to view file */
-/* #define EDITOR	"/usr/ucb/vi"		/* to edit file */
+#define PAGER		"more"		/* to view file */
+#define EDITOR		"vi"		/* to edit file */
 
 
 /****************************************************************
  *	Default value in case if not defined by neither environ	*
  *	variables nor run_com file nor command line option	*
  ****************************************************************/
-#define	TMPDIR		"/tmp"
-#define	HISTSIZE	50
-#define	DIRCOUNTLIMIT	50
 #define	SORTTYPE	0
+#define	DISPLAYMODE	0
 #define	WRITEFS		0
 #define	ADJTTY		0
+#define	COLUMNS		2
+#define	MINFILENAME	12
+#define	HISTSIZE	50
+#define	DIRCOUNTLIMIT	50
+#define	TMPDIR		"/tmp"
 
 
 /****************************************************************

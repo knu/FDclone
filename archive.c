@@ -28,6 +28,7 @@ extern int sorton;
 extern char fullpath[];
 extern char *findpattern;
 extern char **path_history;
+extern char *deftmpdir;
 
 #define	PM_LHA	2, 2,\
 		{0, 1, 1, 2, -1, 4, 5, 6, 7},\
@@ -52,6 +53,7 @@ static int countfield();
 static char *getfield();
 static namelist *readfileent();
 static VOID archbar();
+static char *pulldirname();
 static char *pullfilename();
 static int archbrowse();
 
@@ -250,6 +252,33 @@ char *file, *dir;
 	tflush();
 }
 
+static char *pulldirname(dir, list, dlist, max)
+char *dir;
+namelist *list;
+char **dlist;
+int max;
+{
+	char  *cp, *tmp;
+	int i, len;
+
+	cp = list -> name;
+	if ((len = strlen(dir)) > 0) {
+		if (strncmp(cp, dir, len) || cp[len] != '/') return(NULL);
+		cp += len + 1;
+	}
+	if (!(tmp = strchr(cp, '/'))) {
+		if (!*dir) return(NULL);
+		for (i = 0; i < max; i++) if (!strcmp(dlist[i], ".."))
+			return(NULL);
+		return(strdup2(".."));
+	}
+	len = tmp - cp;
+	for (i = 0; i < max; i++) if (!strncmp(dlist[i], cp, len)) return(NULL);
+	tmp = (char *)malloc2(len + 1);
+	strncpy2(tmp, cp, len);
+	return(tmp);
+}
+
 static char *pullfilename(dir, list)
 char *dir;
 namelist *list;
@@ -262,17 +291,7 @@ namelist *list;
 		if (strncmp(cp, dir, len) || cp[len] != '/') return(NULL);
 		cp += len + 1;
 	}
-	if (!*cp) {
-		list -> st_mode |= S_IFDIR;
-		list -> flags |= F_ISDIR;
-		return(strdup2(".."));
-	}
-	if (tmp = strchr(cp, '/')) {
-		if (*(tmp + 1)) return(NULL);
-		*tmp = '\0';
-		list -> st_mode |= S_IFDIR;
-		list -> flags |= F_ISDIR;
-	}
+	if (!*cp || (tmp = strchr(cp, '/'))) return(NULL);
 	return(strdup2(cp));
 }
 
@@ -297,8 +316,9 @@ int *maxarcentp;
 	reg_t *re;
 	FILE *fp;
 	u_char fstat;
+	char **dirlist;
 	char *cp, line[MAXLINESTR + 1];
-	int ch, i, no, old, curdir, max;
+	int ch, i, no, old, max, dmax, dmaxent;
 
 	if (!(cp = evalcommand(list -> comm, archivefile, NULL, 0, 0))) {
 		warning(E2BIG, list -> comm);
@@ -325,25 +345,26 @@ int *maxarcentp;
 	for (i = 0; i < list -> topskip; i++)
 		if (!fgets(line, MAXLINESTR, fp)) break;
 
-	maxarcf = curdir = no = 0;
+	maxarcf = no = dmax = dmaxent = 0;
+	dirlist = NULL;
 	while (fgets(line, MAXLINESTR, fp)) {
 		no++;
 		if (cp = strchr(line, '\n')) *cp = '\0';
 		if (!(tmp = readfileent(line, list, max))) continue;
 
-		if (!curdir
-		&& (!*archivedir || !strcmp(archivedir, "."))
-		&& !strncmp(tmp -> name, "./", 2)) {
+		if (cp = pulldirname(archivedir, tmp, dirlist, dmax)) {
+			dirlist = (char **)addlist(dirlist, dmax,
+				&dmaxent, sizeof(char *));
+			dirlist[dmax] = strdup2(cp);
+			dmax++;
 			arcflist = (namelist *)addlist(arcflist, maxarcf,
 				maxarcentp, sizeof(namelist));
 			memcpy(&arcflist[maxarcf], tmp, sizeof(namelist));
 			arcflist[maxarcf].st_mode |= S_IFDIR;
 			arcflist[maxarcf].flags |= F_ISDIR;
-			arcflist[maxarcf].name =
-				strdup2(*archivedir ? ".." : ".");
-			arcflist[maxarcf].ent = maxarcf;
+			arcflist[maxarcf].name = cp;
+			arcflist[maxarcf].ent = no;
 			maxarcf++;
-			curdir++;
 		}
 		cp = pullfilename(archivedir, tmp);
 		free(tmp -> name);
@@ -377,6 +398,8 @@ int *maxarcentp;
 		arcflist[0].name = NOFIL_K;
 		arcflist[0].st_nlink = -1;
 	}
+	for (i = 0; i < dmax; i++) free(dirlist[i]);
+	free(dirlist);
 
 	if (stable_standout) putterms(t_clear);
 	title();
@@ -602,8 +625,7 @@ int max;
 	char *cp, path[MAXPATHLEN + 1];
 	int i, dupmark;
 
-	if (!(cp = getenv2("FD_TMPDIR"))) cp = TMPDIR;
-	sprintf(path, "%s/fd%d.%d", cp, getpid(), launchlevel);
+	sprintf(path, "%s/fd%d.%d", deftmpdir, getpid(), launchlevel);
 	if (mkdir(path, 0777) < 0) {
 		warning(-1, path);
 		return(NULL);

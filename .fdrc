@@ -7,7 +7,19 @@
 #	2: extention	10: extension (reversal)
 #	3: size		11: size (reversal)
 #	4: date		12: date (reversal)
+#	99: preserve previous sort type
 SORTTYPE	=	1
+
+# to set default display mode
+#	0: normal
+#	1: sym-link status
+#	2: 			file type symbol
+#	3: sym-link status &	file type symbol
+#	4: 						unvisible dot file
+#	5: sym-link status &				unvisible dot file
+#	6: 			file type symbol &	unvisible dot file
+#	7: sym-link status &	file type symbol &	unvisible dot file
+DISPLAYMODE	=	6
 
 # behavior about writing over direcotory on file system
 #	0 or ""(null): confirm to write or not, after directory arranged
@@ -19,6 +31,15 @@ WRITEFS		=	1
 #	0 or ""(null): not adjust
 #	>= 1: adjust
 ADJTTY		=	1
+
+# to set default columns of file in 1 line
+#	1, 2, 3, 5: 1, 2, 3, 5 columns
+#	default: 2
+COLUMNS		=	2
+
+# minimum columns of filename field
+#	default: 12
+MINFILENAME	=	12
 
 # history size of sh mode
 #	default: 50
@@ -59,7 +80,7 @@ EDITOR	=	/usr/ucb/vi
 ".Z"		"zcat %C | $PAGER"
 ".gz"		"gunzip -c %C | $PAGER"
 
-# example for SVR4
+# example for SVR4 (or GNU tar)
 #".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
 #".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8

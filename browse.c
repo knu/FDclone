@@ -18,6 +18,9 @@
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char *findpattern;
+extern int sorttype;
+extern int writefs;
+extern int minfilename;
 
 static VOID pathbar();
 static VOID stackbar();
@@ -28,11 +31,11 @@ static VOID calclocate();
 static VOID putname();
 static int browsedir();
 
-int columns = 2;
+int columns;
 int filepos;
 int mark;
 int fnameofs;
-int lnstat = 0;
+int dispmode;
 int sorton;
 int chgorder;
 int stackdepth = 0;
@@ -69,8 +72,8 @@ static VOID pathbar()
 
 VOID helpbar()
 {
-	int i, j, width, len, ofs;
 	char *buf;
+	int i, j, width, len, ofs;
 
 	width = (n_column - 10) / 10 - 1;
 	ofs = (n_column - (width + 1) * 10 - 2) / 2;
@@ -78,6 +81,9 @@ VOID helpbar()
 
 	locate(0, LHELP);
 	putterm(l_clear);
+	putch(isdisplnk(dispmode) ? 'S' : ' ');
+	putch(isdisptyp(dispmode) ? 'T' : ' ');
+	putch(ishidedot(dispmode) ? 'H' : ' ');
 
 	for (i = 0; i < 10; i++) {
 		locate(ofs + (width + 1) * i + (i / 5) * 3, LHELP);
@@ -250,7 +256,7 @@ int no;
 
 	tm = localtime(&list[no].st_mtim);
 
-	putmode(buf, (!lnstat && islink(&list[no])) ?
+	putmode(buf, (!isdisplnk(dispmode) && islink(&list[no])) ?
 		(S_IFLNK | 0777) : list[no].st_mode);
 	len = WMODE;
 
@@ -268,7 +274,7 @@ int no;
 	len = strlen(buf);
 
 	sprintf(buf + len, "%02d-%02d-%02d %02d:%02d ",
-		tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday,
+		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
 	width = n_lastcolumn - len;
@@ -304,17 +310,18 @@ int i;
 	locate(x + 1, y + WHEADER);
 }
 
+#define	WIDTH1	(WOWNER + 1 + WGROUP + 1 + WMODE + 1 + WSECOND + 1)
+#define	WIDTH2	(WTIME + 1 + WDATE + 1)
+#define	WIDTH3	(WSIZE + 1)
+
 int calcwidth()
 {
 	int width;
 
 	width = (n_column / columns) - 2 - 1;
-
-	if (columns < 2) width -= WOWNER + 1 + WGROUP + 1
-					+ WMODE + 1 + WSECOND + 1;
-	if (columns < 3) width -= WTIME + 1 + WDATE + 1;
-	if (columns < 4) width -= WSIZE + 1;
-
+	if (columns < 2 && width - WIDTH1 >= minfilename) width -= WIDTH1;
+	if (columns < 3 && width - WIDTH2 >= minfilename) width -= WIDTH2;
+	if (columns < 4 && width - WIDTH3 >= minfilename) width -= WIDTH3;
 	return(width);
 }
 
@@ -325,7 +332,7 @@ int standout;
 {
 	char buf[MAXLINESTR + 1];
 	struct tm *tm;
-	int len, width, ofs;
+	int i, len, width;
 
 	calclocate(no);
 	putch(ismark(&list[no]) ? '*' : ' ');
@@ -337,26 +344,50 @@ int standout;
 	}
 
 	width = calcwidth();
-	ofs = (standout && fnameofs > 0) ? fnameofs : 0;
-	strncpy3(buf, list[no].name, width, ofs);
+	i = (standout && fnameofs > 0) ? fnameofs : 0;
+	strncpy3(buf, list[no].name, width, i);
+	if (isdisptyp(dispmode)) {
+		for (i = 0; i < width; i++) if (buf[i] == ' ') {
+			switch (list[no].st_mode & S_IFMT) {
+				case S_IFDIR:
+					buf[i] = '/';
+					break;
+				case S_IFLNK:
+					buf[i] = '@';
+					break;
+				case S_IFSOCK:
+					buf[i] = '=';
+					break;
+				case S_IFIFO:
+					buf[i] = '|';
+					break;
+				default:
+					if (access(list[no].name, X_OK) >= 0)
+						buf[i] = '*';
+					break;
+			}
+			break;
+		}
+	}
 	len = width;
+	width = (n_column / columns) - 2 - 1;
 
-	if (columns < 5) {
+	if (columns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&list[no]))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
 		else sprintf(buf + len, " %*d", WSIZE, list[no].st_size);
 		if (strlen(buf + len) > WSIZE + 1)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "OVERFLOW");
-		len += 1 + WSIZE;
+		len += WIDTH3;
 	}
-	if (columns < 3) {
+	if (columns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&list[no].st_mtim);
 		sprintf(buf + len, " %02d-%02d-%02d %2d:%02d",
-			tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday,
+			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
-		len += 1 + WDATE + 1 + WTIME;
+		len += WIDTH2;
 	}
-	if (columns < 2) {
+	if (columns < 2 && len + WIDTH1 <= width) {
 		sprintf(buf + len, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
@@ -365,7 +396,7 @@ int standout;
 		buf[len++] = ' ';
 		putgroup(buf + len, list[no].st_gid);
 		len += WGROUP;
-		putmode(buf + len, (!lnstat && islink(&list[no])) ?
+		putmode(buf + len, (!isdisplnk(dispmode) && islink(&list[no])) ?
 			(S_IFLNK | 0777) : list[no].st_mode);
 	}
 
@@ -471,8 +502,7 @@ int *maxentp;
 
 	maxfile = mark = 0;
 	chgorder = 0;
-
-	if ((sorton = atoi2(getenv2("FD_SORTTYPE"))) < 0) sorton = SORTTYPE;
+	if (sorttype < 99) sorton = sorttype;
 
 	if (!(dirp = opendir("."))) error(".");
 	fnameofs = 0;
@@ -484,6 +514,9 @@ int *maxentp;
 		free(cp);
 	}
 	while (dp = searchdir(dirp, re)) {
+		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
+		&& strcmp(dp -> d_name, ".")
+		&& strcmp(dp -> d_name, "..")) continue;
 		strcpy(file, dp -> d_name);
 		for (i = 0; i < stackdepth; i++)
 			if (!strcmp(file, filestack[i].name)) break;
@@ -552,7 +585,7 @@ int *maxentp;
 				stackbar();
 			}
 #if (WRITEFS < 1)
-			else if (chgorder && atoi2(getenv2("FD_WRITEFS")) < 1
+			else if (chgorder && writefs < 1
 			&& (i = writablefs(".")) > 0 && underhome() > 0) {
 				chgorder = 0;
 				if (yesno(WRTOK_K))
@@ -644,6 +677,12 @@ char *cur;
 	filelist = NULL;
 	maxent = 0;
 	strcpy(file, ".");
+#if (SORTTYPE < 99)
+	sorton = SORTTYPE;
+#else
+	sorton = 0;
+#endif
+
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
 			if (cp = strrchr(fullpath, '/')) cp++;

@@ -11,6 +11,8 @@
 
 #include <varargs.h>
 
+extern char *language;
+
 #define	ASCII	0
 #define	KANA	1
 #define	KANJI	2
@@ -36,8 +38,7 @@ static int getlang()
 {
 	char *cp;
 
-	cp = getenv2("FD_LANGUAGE");
-	if (!cp) return(NOCNV);
+	if (!(cp = language)) return(NOCNV);
 	else if (strstr(cp, "SJIS") || strstr(cp, "sjis")) return(SJIS);
 	else if (strstr(cp, "EUC") || strstr(cp, "euc")) return(EUC);
 	else if (strstr(cp, "JIS") || strstr(cp, "jis")) return(JIS7);

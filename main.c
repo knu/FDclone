@@ -29,6 +29,8 @@ extern bindtable bindlist[];
 extern functable funclist[];
 extern char *archivefile;
 extern int subwindow;
+extern int columns;
+extern int dispmode;
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -56,6 +58,14 @@ static VOID getkeybind();
 static VOID loadruncom();
 static VOID printext();
 static int getoption();
+
+int sorttype;
+int writefs;
+int minfilename;
+int histsize;
+int dircountlimit;
+char *deftmpdir;
+char *language;
 
 static char *progname;
 static int timersec = 0;
@@ -103,7 +113,7 @@ static VOID printtime()
 		locate(n_column - 16, LTITLE);
 		putterm(t_standout);
 		cprintf("%02d-%02d-%02d %02d:%02d",
-			tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday,
+			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		putterm(end_standout);
 		locate(0, 0);
@@ -484,6 +494,25 @@ int printarch()
 	return(n);
 }
 
+VOID evalenv()
+{
+	sorttype = atoi2(getenv2("FD_SORTTYPE"));
+	if ((sorttype < 0 || sorttype > 12) && sorttype != 99)
+#if ((SORTTYPE < 0) || (SORTTYPE > 12)) && (SORTTYPE != 99)
+		sorttype = 0;
+#else
+		sorttype = SORTTYPE;
+#endif
+	writefs = atoi2(getenv2("FD_WRITEFS"));
+	if ((histsize = atoi2(getenv2("FD_HISTSIZE"))) < 0) histsize = HISTSIZE;
+	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
+		minfilename = MINFILENAME;
+	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
+		dircountlimit = DIRCOUNTLIMIT;
+	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
+	language = getenv2("FD_LANGUAGE");
+}
+
 static int getoption(argc, argv)
 int argc;
 char *argv[];
@@ -531,6 +560,21 @@ char *argv[];
 
 	loadruncom(RUNCOMFILE);
 	i = getoption(argc, argv);
+	adjustpath();
+	evalenv();
+	if ((dispmode = atoi2(getenv2("FD_DISPLAYMODE"))) < 0)
+#if (DISPLAYMODE < 0) || (DISPLAYMODE > 7)
+		dispmode = 0;
+#else
+		dispmode = DISPLAYMODE;
+#endif
+	columns = atoi2(getenv2("FD_COLUMNS"));
+	if (columns < 1 || columns == 4 || columns > 5)
+#if (COLUMNS < 1) || (COLUMNS == 4) || (COLUMNS > 5)
+		columns = 2;
+#else
+		columns = COLUMNS;
+#endif
 #if (ADJTTY == 0)
 	if (atoi2(getenv2("FD_ADJTTY")) > 0) {
 #else

@@ -139,12 +139,19 @@ char *cnvregexp(str)
 char *str;
 {
 	char *cp, *pattern;
-	int i;
+	int i, flag;
 
 	if (!*str) str = "*";
-	if (!(pattern = (char *)malloc(strlen(str) * 2 + 3))) error(NULL);
+	if (!(pattern = (char *)malloc(strlen(str) * 2 + 5 + 3))) error(NULL);
 	i = 0;
 	pattern[i++] = '^';
+#if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
+	if (*str == '*') {
+		strcpy(&pattern[i], "[^\\.]");
+		i += 5;
+	}
+#endif
+	flag = 0;
 	for (cp = str; *cp; cp++) {
 		switch (*cp) {
 			case '\\':
@@ -159,7 +166,21 @@ char *str;
 				pattern[i++] = '.';
 				pattern[i++] = '*';
 				break;
+#if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
+			case '[':
+				flag = 1;
+				pattern[i++] = *cp;
+				break;
+			case ']':
+				flag = 0;
+				pattern[i++] = *cp;
+				break;
+#endif
 			case '^':
+				if (flag) {
+					pattern[i++] = *cp;
+					break;
+				}
 			case '$':
 			case '.':
 				pattern[i++] = '\\';

@@ -249,7 +249,7 @@ int y;
 	kanjiputs(TDATE_K);
 	locate(n_column / 2, y);
 	cprintf("%02d-%02d-%02d",
-		tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday);
+		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	locate(n_column / 2 + 10, y);
 	cputs(timestr[0]);
 
@@ -282,7 +282,7 @@ u_short flag;
 	attrmode = listp -> st_mode;
 	tm = localtime(&(listp -> st_mtim));
 	sprintf(timestr[0], "%02d-%02d-%02d",
-		tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday);
+		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	sprintf(timestr[1], "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(listp, attrmode, timestr, yy);

@@ -24,6 +24,7 @@ extern int evalconfigline();
 extern int printmacro();
 extern int printlaunch();
 extern int printarch();
+extern VOID evalenv();
 
 /* libc.c */
 extern int access2();
@@ -72,6 +73,7 @@ extern int execmacro();
 extern int execenv();
 extern char **entryhist();
 extern int execinternal();
+extern VOID adjustpath();
 
 /* info.c */
 extern VOID help();

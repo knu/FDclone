@@ -122,3 +122,11 @@ typedef struct _treelist {
 #define	F_NOCONFIRM	001
 #define	F_ADDOPTION	002
 #define	F_REMAIN	004
+
+#define	F_SYMLINK	001
+#define	F_FILETYPE	002
+#define	F_DOTFILE	004
+
+#define	isdisplnk(n)		((n) & F_SYMLINK)
+#define	isdisptyp(n)		((n) & F_FILETYPE)
+#define	ishidedot(n)		((n) & F_DOTFILE)

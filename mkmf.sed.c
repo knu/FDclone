@@ -4,6 +4,7 @@
 
 #include "machine.h"
 
+s/__CC__/CCCOMMAND/
 s/__CCOPTIONS__/EXTENDCCOPT/
 
 s/__TERMLIBS__/TERMCAPLIB/

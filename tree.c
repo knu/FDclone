@@ -14,6 +14,7 @@
 
 extern char fullpath[];
 extern int subwindow;
+extern int dircountlimit;
 
 /* #define	DEBUG */
 
@@ -45,9 +46,7 @@ char *dir;
 	char path[MAXPATHLEN + 1];
 	int i, len, limit;
 
-	if ((limit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
-		limit = DIRCOUNTLIMIT;
-	if (limit <= 0) return(1);
+	if ((limit = dircountlimit) <= 0) return(1);
 	strcpy(path, dir);
 	strcat(path, "/");
 	len = strlen(path);
@@ -77,9 +76,7 @@ char *dir;
 	char path[MAXPATHLEN + 1];
 	int i, x, y, w, len, limit;
 
-	if ((limit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
-		limit = DIRCOUNTLIMIT;
-	if (limit <= 0) return(0);
+	if ((limit = dircountlimit) <= 0) return(0);
 
 	for (i = WHEADER + 1; i < n_line - WFOOTER; i++) {
 		locate(TREEFIELD + 2, i);

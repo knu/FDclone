@@ -12,6 +12,7 @@
 #include <varargs.h>
 #include <signal.h>
 
+extern int histsize;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
 #endif
@@ -310,7 +311,7 @@ char *hist[];
 	}
 	displaystr(str, x, cx, len, max, linemax);
 	keyflush();
-	histno = 0;
+	histno = 1;
 	tmphist = NULL;
 
 	do {
@@ -391,12 +392,15 @@ char *hist[];
 			case K_UP:
 				keyflush();
 				if (cx < linemax) {
-					if (!hist || !hist[histno]) {
+					if (!hist || histno > histsize
+					|| !hist[histno]) {
 						putterm(t_bell);
 						break;
 					}
-					if (!tmphist) tmphist =
-						strdup2((char *)str);
+					if (!tmphist) {
+						str[len] = '\0';
+						tmphist = strdup2((char *)str);
+					}
 					strcpy((char *)str, hist[histno]);
 					len = strlen((char *)str);
 					cx = len;
@@ -416,11 +420,11 @@ char *hist[];
 			case K_DOWN:
 				keyflush();
 				if (cx + linemax > len) {
-					if (!hist || histno <= 0) {
+					if (!hist || histno <= 1) {
 						putterm(t_bell);
 						break;
 					}
-					if (--histno > 0) strcpy((char *)str,
+					if (--histno > 1) strcpy((char *)str,
 						hist[histno - 1]);
 					else {
 						strcpy((char *)str, tmphist);
@@ -634,7 +638,7 @@ char *str;
 
 	subwindow = 1;
 	if (no < 0) no = errno;
-	err = sys_errlist[no];
+	err = (char *)sys_errlist[no];
 	if (!str) tmp = err;
 	else if (!no) {
 		tmp = str;
