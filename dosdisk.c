@@ -1251,6 +1251,7 @@ int date, time;
 	struct tm tm;
 
 	tm.tm_year = 1980 + ((date >> 9) & 0x7f);
+	tm.tm_year -= 1900;
 	tm.tm_mon = ((date >> 5) & 0x0f) - 1;
 	tm.tm_mday = date & 0x1f;
 	tm.tm_hour = (time >> 11) & 0x1f;

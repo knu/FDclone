@@ -249,6 +249,7 @@ int max;
 		list -> delim[F_YEAR], list -> width[F_YEAR], list -> sep);
 	tm.tm_year = (*buf) ? atoi(buf) : 1970;
 	if (tm.tm_year < 100 && (tm.tm_year += 1900) < 1970) tm.tm_year += 100;
+	tm.tm_year -= 1900;
 	getfield(buf, line, list -> field[F_MON], skip,
 		list -> delim[F_MON], list -> width[F_MON], list -> sep);
 	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
