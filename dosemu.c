@@ -46,7 +46,7 @@ char *path, *buf;
 	strcpy(buf, cp);
 #endif
 	if (cp != path && *path) {
-		if (*buf && buf[strlen(buf) - 1] != _SC_) strcat(buf, _SS_);
+		if (!isdelim(buf, (int)strlen(buf) - 1)) strcat(buf, _SS_);
 #ifdef	CODEEUC
 		buf += strlen(buf);
 		buf[ujis2sjis(buf, (u_char *)path)] = '\0';

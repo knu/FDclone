@@ -816,7 +816,7 @@ int cx, len, plen, max, linemax, comline, cont;
 		}
 	}
 
-	if ((cp1 = strrchr(cp2, _SC_))) cp1++;
+	if ((cp1 = strrdelim(cp2))) cp1++;
 #if	MSDOS || !defined (_NODOSDRIVE)
 	else if (_dospath(cp2)) cp1 = cp2 + 2;
 #endif
@@ -831,8 +831,7 @@ int cx, len, plen, max, linemax, comline, cont;
 
 	cp1 = findcommon(match, i);
 	fix = 0;
-	if (i == 1 && cp1 && *cp1 && *(cp1 + (int)strlen(cp1) - 1) != _SC_)
-		fix++;
+	if (i == 1 && cp1 && !isdelim(cp1, (int)strlen(cp1) - 1)) fix++;
 
 	if (!cp1 || ((ins = (int)strlen(cp1) - ins) <= 0 && !fix)) {
 		if (cont <= 0) {

@@ -46,6 +46,7 @@ extern char *tmpfilename;
 					& ~(boundary - 1)) - 1))
 
 static int iscurdir __P_((char *));
+static int islowerdir __P_((char *, char *));
 static char *getdestdir __P_((char *, char *));
 #ifndef	_NOWRITEFS
 static int k_strlen __P_((char *));
@@ -287,7 +288,10 @@ char *path;
 
 	cwd = getwd2();
 #ifndef	_NODOSDRIVE
-	if (dospath(path, NULL) != dospath(cwd, NULL)) return(0);
+	if (dospath(path, NULL) != dospath(cwd, NULL)) {
+		free(cwd);
+		return(0);
+	}
 #endif
 	if (_chdir2(path) < 0) path = NULL;
 	else {
@@ -297,6 +301,47 @@ char *path;
 	i = (path) ? !strpathcmp(cwd, path) : 0;
 	free(cwd);
 	if (path) free(path);
+	return(i);
+}
+
+static int islowerdir(path, org)
+char *path, *org;
+{
+	char *cp, *top, *cwd, tmp[MAXPATHLEN + 1];
+	int i;
+
+	cwd = getwd2();
+	strcpy(tmp, path);
+	top = tmp;
+#ifndef	_NODOSDRIVE
+	if (dospath(path, NULL) != dospath(org, NULL)) {
+		free(cwd);
+		return(0);
+	}
+	if (_dospath(tmp)) top += 2;
+#endif
+	while (_chdir2(tmp) < 0) {
+		if ((cp = strrdelim(top)) && cp > top) *cp = '\0';
+		else {
+			path = NULL;
+			break;
+		}
+	}
+	i = 0;
+	if (path) {
+		path = getwd2();
+		if (_chdir2(cwd) < 0) error(cwd);
+		if (_chdir2(org) >= 0) {
+			org = getwd2();
+			i = strlen(org);
+			if (strnpathcmp(org, path, i) || path[i] != _SC_)
+				i = 0;
+			free(org);
+		}
+		if (_chdir2(cwd) < 0) error(cwd);
+		free(path);
+	}
+	free(cwd);
 	return(i);
 }
 
@@ -432,7 +477,9 @@ int tr;
 			warning(EEXIST, list[filepos].name);
 			return((tr) ? 2 : 1);
 		}
-		applydir(list[filepos].name, cpfile, cpdir, NULL, ENDCP_K);
+		applydir(list[filepos].name, cpfile, cpdir,
+			(islowerdir(destpath, list[filepos].name)) ? 2 : 1,
+			ENDCP_K);
 	}
 	else if (cpfile(list[filepos].name) < 0)
 		warning(-1, list[filepos].name);
@@ -467,6 +514,8 @@ int tr;
 	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
 	copypolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
+	else if (islowerdir(destpath, list[filepos].name))
+		warning(EINVAL, list[filepos].name);
 	else if (mvfile(list[filepos].name) < 0)
 		warning(-1, list[filepos].name);
 	else filepos++;
@@ -548,8 +597,7 @@ char *dir, *subdir, *file;
 		cp = dupdir + strlen(dupdir);
 		for (;;) {
 			*cp = '\0';
-			tmp = strrchr(dupdir, _SC_);
-			if (tmp) tmp++;
+			if ((tmp = strrdelim(dupdir))) tmp++;
 			else tmp = dupdir;
 			if ((*tmp && strcmp(tmp, ".") && _Xrmdir(dupdir) < 0)
 			|| tmp == dupdir) break;

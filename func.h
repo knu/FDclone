@@ -270,7 +270,7 @@ extern int inputattr __P_((namelist *, u_short));
 extern int setattr __P_((char *));
 extern int applyfile __P_((namelist *, int, int (*)__P_((char *)), char *));
 extern int applydir __P_((char *, int (*)__P_((char *)),
-		int (*)__P_((char *)), int (*)__P_((char *)), char *));
+		int (*)__P_((char *)), int, char *));
 
 /* archive.c */
 #ifndef	_NOARCHIVE

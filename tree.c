@@ -165,14 +165,14 @@ int level, *maxp, *maxentp;
 	}
 #endif
 	else {
-		len = (cp = strchr(path, _SC_)) ? cp - path : strlen(path);
+		len = (cp = strdelim(path)) ? cp - path : strlen(path);
 		dir = (char *)malloc2(len + 1);
 		strncpy2(dir, path, len);
 		subdir = (cp) ? cp + 1 : NULL;
 	}
 
 	if (!subdir) len = 0;
-	else len = (cp = strchr(subdir, _SC_)) ? cp - subdir : strlen(subdir);
+	else len = (cp = strdelim(subdir)) ? cp - subdir : strlen(subdir);
 
 	*maxp = *maxentp = 0;
 	i = _chdir2(dir);
@@ -372,7 +372,7 @@ char *path;
 		list -> max = list -> maxent = 0;
 		return(1);
 	}
-	for (cp = path, i = 0; (cp = strchr(cp, _SC_)); cp++, i++);
+	for (cp = path, i = 0; (cp = strdelim(cp)); cp++, i++);
 	lptmp = maketree(".", list -> next, i,
 		&(list -> max), &(list -> maxent));
 	if (_chdir2(fullpath) < 0) error(fullpath);
@@ -432,7 +432,7 @@ char *path;
 	|| lp -> next[tr_no].maxent < 0) return(NULL);
 
 	waitmes();
-	if ((cp = strrchr(path, _SC_)) == strchr(path, _SC_)) cp++;
+	if ((cp = strrdelim(path)) == strdelim(path)) cp++;
 	*cp = '\0';
 	if (!(expandtree(lp, path))) return((treelist *)-1);
 	return(searchtree(path, list, 1, 0));
@@ -711,7 +711,7 @@ static char *_tree(VOID_A)
 #endif
 #endif	/* !MSDOS */
 	if (strcmp(cwd, _SS_))
-		for (cp = cwd; (cp = strchr(cp, _SC_)); cp++, tr_line++)
+		for (cp = cwd; (cp = strdelim(cp)); cp++, tr_line++)
 			if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD) break;
 	tr_line += (tr_top = WHEADER + 1);
 	if (tr_line >= n_line - WFOOTER - 2) {

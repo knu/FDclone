@@ -11,6 +11,15 @@ typedef regex_t reg_t;
 typedef char reg_t;
 #endif
 
+extern int isdelim __P_((char *, int));
+#if	MSDOS
+extern char *strdelim __P_((char *));
+extern char *strrdelim __P_((char *));
+#else
+#define	strdelim(s)	strchr(s, _SC_)
+#define	strrdelim(s)	strrchr(s, _SC_)
+#endif
+extern char *strrdelim2 __P_((char *, char *));
 extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));
 extern char *cnvregexp __P_((char *, int));

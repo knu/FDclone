@@ -408,7 +408,7 @@ int max;
 				cp = fullpath;
 				break;
 			case 'W':
-				cp = strrchr(fullpath + 1, _SC_);
+				cp = strrdelim(fullpath + 1);
 				if (cp) cp++;
 				else cp = fullpath;
 				break;

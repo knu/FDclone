@@ -618,7 +618,7 @@ char *argv;
 {
 	char buf[MAXNAMLEN + 1];
 
-	if ((progname = strrchr(argv, _SC_))) progname++;
+	if ((progname = strrdelim(argv))) progname++;
 	else progname = argv;
 #if	MSDOS
 	{
@@ -642,7 +642,7 @@ char *argv;
 #if	MSDOS
 	cp = argv;
 #else
-	if (strchr(argv, _SC_)) cp = argv;
+	if (strdelim(argv)) cp = argv;
 	else {
 		adjustpath();
 		cp = NULL;
@@ -654,7 +654,7 @@ char *argv;
 	{
 		realpath2(cp, buf);
 		if (cp != argv) free(cp);
-		if ((cp = strrchr(buf, _SC_))) *cp = '\0';
+		if ((cp = strrdelim(buf))) *cp = '\0';
 		progpath = strdup2(buf);
 	}
 }

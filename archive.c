@@ -10,6 +10,7 @@
 #include "term.h"
 #include "func.h"
 #include "funcno.h"
+#include "kctype.h"
 #include "kanji.h"
 
 #ifndef	_NOARCHIVE
@@ -235,7 +236,7 @@ int max;
 #if	MSDOS
 	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[i] = _SC_;
 #endif
-	if (buf[(i = (int)strlen(buf) - 1)] == _SC_) {
+	if (isdelim(buf, i = (int)strlen(buf) - 1)) {
 		if (i > 0) buf[i] = '\0';
 		tmp -> st_mode |= S_IFDIR;
 	}
@@ -334,8 +335,7 @@ char *file, *dir;
 	arch = (char *)malloc2(strlen(fullpath)
 		+ strlen(file) + strlen(dir) + 3);
 	strcpy(arch, fullpath);
-	if (!*fullpath || fullpath[(int)strlen(fullpath) - 1] != _SC_)
-		strcat(arch, _SS_);
+	if (!isdelim(fullpath, (int)strlen(fullpath) - 1)) strcat(arch, _SS_);
 	strcat(arch, file);
 	strcat(arch, ":");
 	strcat(arch, dir);
@@ -358,7 +358,14 @@ char *s1, *s2;
 	int i, j;
 
 	for (i = j = 0; s2[j]; i++, j++) {
-		if (s1[i] == s2[j]) continue;
+		if (s1[i] == s2[j]) {
+#if	MSDOS
+			if (issjis1((u_char)(s1[i]))
+			&& (s1[++i] != s2[++j] || !s2[j]))
+				return(s1[i] - s2[j]);
+#endif
+			continue;
+		}
 		if (s1[i] != _SC_ || s2[j] != _SC_) return(s1[i] - s2[j]);
 		while (s1[i + 1] == _SC_) i++;
 		while (s2[j + 1] == _SC_) j++;
@@ -372,7 +379,17 @@ char *s1, *s2;
 	int i, j;
 
 	for (i = j = 0; s1[i]; i++, j++) {
-		if (s1[i] == s2[j]) continue;
+		if (s1[i] == s2[j]) {
+#if	MSDOS
+			if (issjis1((u_char)(s1[i]))) {
+				if (s1[++i] != s2[++j]) return(0);
+				if (s1[i]) continue;
+				if (s2[j]) j++;
+				break;
+			}
+#endif
+			continue;
+		}
 		if (s1[i] != _SC_ || s2[j] != _SC_) return(0);
 		while (s1[i + 1] == _SC_) i++;
 		while (s2[j + 1] == _SC_) j++;
@@ -393,7 +410,7 @@ int max;
 	int i, len;
 
 	cp = namep -> name;
-	while ((tmp = strchr(cp, _SC_))) {
+	while ((tmp = strdelim(cp))) {
 		while (*(tmp + 1) == _SC_) tmp++;
 		if (!*(tmp + 1)) break;
 		len = tmp - (namep -> name);
@@ -580,7 +597,7 @@ int max;
 			arcflist[0].name = filelist[0].name;
 			continue;
 		}
-		if ((tmp = strchr(cp, _SC_))) while (*(++tmp) == _SC_);
+		if ((tmp = strdelim(cp))) while (*(++tmp) == _SC_);
 		if ((!tmp || !*tmp) && (!re || regexp_exec(re, cp))) {
 			memcpy(&arcflist[maxarcf], &filelist[i],
 				sizeof(namelist));
@@ -677,9 +694,11 @@ int max;
 	else {
 		cp = archivedir + (int)strlen(archivedir) - 1;
 		while (cp > archivedir && *cp == _SC_) cp--;
-		for (cp--; cp >= archivedir; cp--)
-			if (*cp == _SC_) break;
-		if (cp >= archivedir) strcpy(file, cp + 1);
+#if	MSDOS
+		if (onkanji1(archivedir, cp - archivedir)) cp++;
+#endif
+		cp = strrdelim2(archivedir, cp);
+		if (cp) strcpy(file, cp + 1);
 		else {
 			strcpy(file, archivedir);
 			cp = archivedir;
@@ -809,7 +828,7 @@ int max;
 		}
 		else {
 			i = arcflist[filepos].ent;
-			if ((cp = strrchr(filelist[i].name, _SC_))) cp++;
+			if ((cp = strrdelim(filelist[i].name))) cp++;
 			else cp = filelist[i].name;
 			arcflist[filepos].name = cp;
 		}

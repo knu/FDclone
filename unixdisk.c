@@ -18,6 +18,17 @@
 
 #include "dosdisk.h"
 
+#ifndef	issjis1
+#define	issjis1(c)	((0x81 <= (c) && (c) <= 0x9f)\
+			|| (0xe0 <= (c) && (c) <= 0xfc))
+#endif
+
+#ifdef	FD
+extern int isdelim __P_((char *, int));
+#else
+static int isdelim __P_((char *, int));
+#endif
+
 static int seterrno __P_((u_short));
 #ifdef	DJGPP
 static int dos_putpath __P_((char *, int));
@@ -87,6 +98,23 @@ static int dos7access = 0;
 #define	D7_CAPITAL	020
 
 
+#ifndef	FD
+static int isdelim(s, ptr)
+char *s;
+int ptr;
+{
+	int i;
+
+	if (ptr < 0 || s[ptr] != _SC_) return(0);
+	if (--ptr < 0) return(1);
+	if (!ptr) return(!issjis1(s[0]));
+
+	for (i = 0; s[i] && i < ptr; i++) if (issjis1(s[i])) i++;
+	if (!s[i] || i > ptr) return(1);
+	return(!issjis1(s[i]));
+}
+#endif
+
 static int seterrno(doserr)
 u_short doserr;
 {
@@ -113,6 +141,7 @@ struct SREGS *sregp;
 {
 	int n;
 
+	(*regp).x.flags |= 1;
 # ifdef	DJGPP
 	(*regp).x.ds = (*sregp).ds;
 	(*regp).x.es = (*sregp).es;
@@ -206,8 +235,13 @@ char *path;
 	sreg.es = FP_SEG(buf);
 	reg.x.di = FP_OFF(buf);
 # endif
-	if (int21call(&reg, &sreg) < 0) return(-2);
-	return((reg.x.bx & 0x4000) ? 1 : -2);
+	if (int21call(&reg, &sreg) < 0 || !(reg.x.bx & 0x4000)) {
+# ifndef	_NODOSDRIVE
+		if (dosdrive) return(-1);
+# endif
+		return(-2);
+	}
+	return(1);
 #endif	/* !NOLFNEMU */
 }
 
@@ -686,7 +720,7 @@ char *dir;
 
 	if (!unixrealpath(dir, path)) return(NULL);
 	i = strlen(path);
-	if (i && path[i - 1] != _SC_) strcat(path, _SS_);
+	if (!isdelim(path, i - 1)) strcat(path, _SS_);
 
 	if (!(dirp = (DIR *)malloc(sizeof(DIR)))) return(NULL);
 	dirp -> dd_off = 0;
@@ -801,7 +835,7 @@ DIR *dirp;
 	else {
 		i = strlen(dirp -> dd_path);
 		strcpy(path, dirp -> dd_path);
-		if (i && path[i - 1] != _SC_) path[i++] =  _SC_;
+		if (!isdelim(path, i - 1)) path[i++] = _SC_;
 
 		if (!(dirp -> dd_id & DID_IFLFN)) {
 			strcpy(path + i, "*.*");

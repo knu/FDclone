@@ -1304,7 +1304,7 @@ char **matchp;
 {
 	int i, len, ptr, size;
 
-	if (strchr(com, _SC_)) return(0);
+	if (strdelim(com)) return(0);
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
 	for (i = 0; builtinlist[i].ident; i++) {

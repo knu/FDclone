@@ -47,7 +47,10 @@ char *path;
 			len = eol - cp;
 			eol++;
 		}
-		while (len > 0 && cp[len] == _SC_) len--;
+		while (len > 0 && cp[len - 1] == _SC_) len--;
+#if	MSDOS
+		if (onkanji1(cp, len - 1)) len++;
+#endif
 		if (len > 0 && !strnpathcmp(path, cp, len) &&
 		(!path[len] || path[len] == _SC_)) return(1);
 		cp = eol;
@@ -286,7 +289,7 @@ int rdlink;
 	assoclist *tp, *start, *tbl;
 	char *cp, dir[MAXPATHLEN + 1];
 
-	if (!(cp = strrchr(path, _SC_)) || cp == path) return(NULL);
+	if (!(cp = strrdelim(path)) || cp == path) return(NULL);
 	strncpy2(dir, path, (cp++) - path);
 	if (!_detransfile(dir, buf, 1)) strcpy(buf, dir);
 

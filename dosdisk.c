@@ -117,6 +117,15 @@ extern int errno;
 
 #ifdef	FD
 extern int toupper2 __P_((int));
+extern int isdelim __P_((char *, int));
+#if	MSDOS
+extern char *strdelim __P_((char *));
+extern char *strrdelim __P_((char *));
+#else
+#define	strdelim(s)	strchr(s, _SC_)
+#define	strrdelim(s)	strrchr(s, _SC_)
+#endif
+extern char *strrdelim2 __P_((char *, char *));
 extern int strcasecmp2 __P_((char *, char *));
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
@@ -136,6 +145,15 @@ extern time_t timelocal2 __P_((struct tm *));
 			| (long)((((u_char *)cp)[1]) << (CHAR_BIT * 2)) \
 			| (long)((((u_char *)cp)[0]) << (CHAR_BIT * 3)) )
 static int toupper2 __P_((int));
+static int isdelim __P_((char *, int));
+#if	MSDOS
+static char *strdelim __P_((char *));
+static char *strrdelim __P_((char *));
+#else
+#define	strdelim(s)	strchr(s, _SC_)
+#define	strrdelim(s)	strrchr(s, _SC_)
+#endif
+static char *strrdelim2 __P_((char *, char *));
 static int strcasecmp2 __P_((char *, char *));
 static int isdotdir __P_((char *));
 #if	!MSDOS && !defined (NOTZFILEH)\
@@ -340,6 +358,74 @@ int c;
 	return((c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c);
 }
 
+static int isdelim(s, ptr)
+char *s;
+int ptr;
+{
+#if	MSDOS
+	int i;
+#endif
+
+	if (ptr < 0 || s[ptr] != _SC_) return(0);
+#if     MSDOS
+	if (--ptr < 0) return(1);
+	if (!ptr) return(!issjis1((u_char)(s[0])));
+
+	for (i = 0; s[i] && i < ptr; i++) if (issjis1((u_char)(s[i]))) i++;
+	if (!s[i] || i > ptr) return(1);
+	return(!issjis1((u_char)(s[i])));
+#else
+	return(1);
+#endif
+}
+
+#if	MSDOS
+static char *strdelim(s)
+char *s;
+{
+	int i;
+
+	for (i = 0; s[i]; i++) {
+		if (s[i] == _SC_) return(&s[i]);
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	return(NULL);
+}
+
+static char *strrdelim(s)
+char *s;
+{
+	int i;
+	char *cp;
+
+	cp = NULL;
+	for (i = 0; s[i]; i++) {
+		if (s[i] == _SC_) cp = &s[i];
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	return(cp);
+}
+#endif
+
+static char *strrdelim2(s, eol)
+char *s, *eol;
+{
+#if	MSDOS
+	int i;
+	char *cp;
+
+	cp = NULL;
+	for (i = 0; s[i] && &(s[i]) < eol; i++) {
+		if (s[i] == _SC_) cp = &s[i];
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	return(cp);
+#else
+	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
+	return(NULL);
+#endif
+}
+
 static int strcasecmp2(s1, s2)
 char *s1, *s2;
 {
@@ -414,7 +500,7 @@ time_t t;
 #ifndef	NOTZFILEH
 	cp = (char *)getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
-	if (cp[0] == _SC_) strcpy(buf, cp);
+	if (*cp == _SC_) strcpy(buf, cp);
 	else {
 		strcpy(buf, TZDIR);
 		strcat(buf, _SS_);
@@ -1421,6 +1507,19 @@ int len, part;
 		c1 = toupper2(path1[i]);
 		c2 = toupper2(path2[i]);
 		if (!c1 || !c2 || c1 != c2) return(c1 - c2);
+#if	MSDOS
+		if (!issjis1((u_char)c1)) continue;
+		else if (++i < len) {
+			c1 = toupper2(path1[i]);
+			c2 = toupper2(path2[i]);
+			if (!c1 || !c2 || c1 != c2) return(c1 - c2);
+		}
+		else {
+			if (!path2[i]) return(0);
+			else if (part) return(0);
+			return(-path2[i]);
+		}
+#endif
 	}
 	if (!path2[i]) return(0);
 	else if (part && path2[i] == _SC_) return(0);
@@ -1673,8 +1772,8 @@ int class;
 		}
 		else if (!i || (i == 1 && *path == '.'));
 		else if (i == 2 && *path == '.' && *(path + 1) == '.') {
-			for (cp--; cp > buf; cp--) if (*cp == _SC_) break;
-			if (cp < buf) cp = buf;
+			cp = strrdelim2(buf, cp);
+			if (!cp) cp = buf;
 		}
 		else {
 			if (cp + i + 1 - buf >= DOSMAXPATHLEN) {
@@ -1689,7 +1788,7 @@ int class;
 		if (*(path += i)) path++;
 	}
 	if (cp == buf) *(cp++) = _SC_;
-	else if (cp - 1 > buf && *(cp - 1) == _SC_) cp--;
+	else if (isdelim(buf, cp - 1 - buf)) cp--;
 	*cp = '\0';
 
 	return(drive);
@@ -1755,7 +1854,7 @@ int needlfn;
 	}
 
 	if (cp && (len = strlen(cp)) > 0) {
-		if (cp[len - 1] == _SC_) len--;
+		if (isdelim(cp, len - 1)) len--;
 		if (!cmpdospath(cp, path, len, 1)) {
 			xdirp -> dd_top =
 			xdirp -> dd_off = byte2word(cache -> dent.clust);
@@ -1775,7 +1874,7 @@ int needlfn;
 	*cachepath = '\0';
 
 	while (*path) {
-		if (!(cp = strchr(path, _SC_))) cp = path + strlen(path);
+		if (!(cp = strdelim(path))) cp = path + strlen(path);
 		len = cp - path;
 		tmp = path;
 		path = (*cp) ? cp + 1 : cp;
@@ -1987,7 +2086,7 @@ int all;
 		xdirp -> dd_off = clust;
 		xdirp -> dd_loc = offset;
 	}
-	if ((cp = strrchr(dd2path(xdirp -> dd_fd), _SC_))) cp++;
+	if ((cp = strrdelim(dd2path(xdirp -> dd_fd)))) cp++;
 	else cp = dd2path(xdirp -> dd_fd);
 	strcpy(cp, dp -> d_name);
 

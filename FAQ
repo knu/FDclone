@@ -428,6 +428,17 @@ A3-16.	MS-DOS 用に Borland C++ 5.01J でコンパイルした実行バ
 
 	ftp://ftp.ics.es.osaka-u.ac.jp/pub/FDclone/msdos
 
+Q3-17.	MS-DOS で画面が崩れて動作できません。
+A3-17.	ANSI.SYS が組込まれていますか？Windows の DOS プロン
+	プト以外の一般の MS-DOS 画面では、ANSI.SYS を組込ま
+	ないときちんと端末入出力ができません。
+	Windows95 の起動ディスクなどでも、ANSI.SYS が組込ま
+	れていませんので、CONFIG.SYS を手で書換えて組込んで
+	下さい。
+	ANSI.SYS そのものを用意しておくことも忘れずに。例え
+	ば Windows95 の場合、環境変数 WINDIR で指し示される
+	ディレクトリの下にあります。
+
 
 <4.仕様の話>
 

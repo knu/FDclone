@@ -93,7 +93,7 @@ int mode;
 		}
 		if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
 
-		if ((name = strrchr(path, _SC_))) {
+		if ((name = strrdelim(path))) {
 			if (name == path) strcpy(dir, _SS_);
 			else strncpy2(dir, path, name - path);
 			name++;
@@ -190,7 +190,7 @@ char *path, *resolved;
 	char *cp;
 
 	if (!*path || !strcmp(path, ".")) return(resolved);
-	else if ((cp = strchr(path, _SC_))) {
+	else if ((cp = strdelim(path))) {
 		*cp = '\0';
 		_realpath2(path, resolved);
 		*(cp++) = _SC_;
@@ -199,7 +199,7 @@ char *path, *resolved;
 	}
 
 	if (!strcmp(path, "..")) {
-		cp = strrchr(resolved, _SC_);
+		cp = strrdelim(resolved);
 #if	MSDOS
 		if (cp && cp != &resolved[2]) *cp = '\0';
 		else resolved[3] = '\0';
@@ -218,7 +218,7 @@ char *path, *resolved;
 #endif	/* !MSDOS */
 	}
 	else {
-		if (*resolved && resolved[(int)strlen(resolved) - 1] != _SC_)
+		if (!isdelim(resolved, (int)strlen(resolved) - 1))
 			strcat(resolved, _SS_);
 		strcat(resolved, path);
 	}
@@ -378,24 +378,26 @@ int mode;
 {
 	char *cp1, *cp2, *eol;
 
-	for (eol = path + (int)strlen(path) - 1; eol > path; eol--) {
-		if (*eol != _SC_) break;
-		*eol = '\0';
-	}
+	eol = path + (int)strlen(path) - 1;
+	while (eol > path && *eol == _SC_) eol--;
+#if	MSDOS
+	if (onkanji1(path, eol - path)) eol++;
+#endif
+	*(++eol) = '\0';
 
-	cp1 = ++eol;
-	cp2 = strrchr(path, _SC_);
+	cp1 = eol;
+	cp2 = strrdelim(path);
 	for (;;) {
 		if (Xmkdir(path, mode) >= 0) break;
 		if (errno != ENOENT || !cp2 || cp2 <= path) return(-1);
 		*cp2 = '\0';
 		if (cp1 < eol) *cp1 = _SC_;
 		cp1 = cp2;
-		cp2 = strrchr(path, _SC_);
+		cp2 = strrdelim(path);
 	}
 
 	while (cp1 && cp1 < eol) {
-		cp2 = strchr(cp1 + 1, _SC_);
+		cp2 = strdelim(cp1 + 1);
 		*cp1 = _SC_;
 		if (cp2) *cp2 = '\0';
 		if (Xmkdir(path, mode) < 0 && errno != EEXIST) return(-1);
@@ -461,12 +463,11 @@ char *strchr2(s, c)
 char *s;
 int c;
 {
-	int i, len;
+	int i;
 
-	len = strlen(s);
-	for (i = 0; i < len; i++) {
+	for (i = 0; s[i]; i++) {
 		if (s[i] == c) return(&s[i]);
-		if (iskanji1(s[i])) i++;
+		if (iskanji1(s[i]) && !s[++i]) break;
 	}
 	return(NULL);
 }
@@ -475,14 +476,13 @@ char *strrchr2(s, c)
 char *s;
 int c;
 {
-	int i, len;
+	int i;
 	char *cp;
 
 	cp = NULL;
-	len = strlen(s);
-	for (i = 0; i < len; i++) {
+	for (i = 0; s[i]; i++) {
 		if (s[i] == c) cp = &s[i];
-		if (iskanji1(s[i])) i++;
+		if (iskanji1(s[i]) && !s[++i]) break;
 	}
 	return(cp);
 }

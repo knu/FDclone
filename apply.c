@@ -84,7 +84,8 @@ time_t *atimep, *mtimep;
 			if (status1.st_mtime < status2.st_mtime) return(-1L);
 			break;
 		case 2:
-			cp = strrchr(dest, _SC_) + 1;
+			if ((cp = strrdelim(dest))) cp++;
+			else cp = dest + strlen(cp);
 			do {
 				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, -1))) return(-1L);
@@ -217,7 +218,7 @@ char *path;
 {
 	char *cp;
 
-	if ((cp = strrchr(path, _SC_))) cp++;
+	if ((cp = strrdelim(path))) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
@@ -244,7 +245,7 @@ char *path;
 {
 	char *cp;
 
-	if ((cp = strrchr(path, _SC_))) cp++;
+	if ((cp = strrdelim(path))) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
@@ -559,11 +560,11 @@ char *endmes;
 	return(ret);
 }
 
-int applydir(dir, funcf, funcd1, funcd2, endmes)
+int applydir(dir, funcf, funcd, order, endmes)
 char *dir;
 int (*funcf)__P_((char *));
-int (*funcd1)__P_((char *));
-int (*funcd2)__P_((char *));
+int (*funcd)__P_((char *));
+int order;
 char *endmes;
 {
 	DIR *dirp;
@@ -613,7 +614,8 @@ char *endmes;
 	}
 	Xclosedir(dirp);
 
-	if (funcd1 && (i = (*funcd1)(dir)) < 0) {
+	if (!funcd) order = 0;
+	if (order == 1 && (i = (*funcd)(dir)) < 0) {
 		if (i == -1) warning(-1, dir);
 		return(i);
 	}
@@ -623,8 +625,8 @@ char *endmes;
 		strcpy(fname, dirlist[ndir]);
 		free(dirlist[ndir]);
 
-		if ((i = applydir(path,
-			funcf, funcd1, funcd2, NULL)) < -1) return(i);
+		if ((i = applydir(path, funcf, funcd, order, NULL)) < -1)
+			return(i);
 		locate(0, LCMDLINE);
 		putterm(l_clear);
 		putch2('[');
@@ -633,6 +635,11 @@ char *endmes;
 		tflush();
 	}
 	free(dirlist);
+
+	if (order == 2 && (i = (*funcd)(dir)) < 0) {
+		if (i == -1) warning(-1, dir);
+		return(i);
+	}
 
 	if (!(dirp = Xopendir(dir))) {
 		warning(-1, dir);
@@ -655,7 +662,7 @@ char *endmes;
 	}
 	Xclosedir(dirp);
 
-	if (funcd2 && (i = (*funcd2)(dir)) == -1) warning(-1, dir);
+	if (order == 3 && (i = (*funcd)(dir)) == -1) warning(-1, dir);
 	if (endmes) warning(0, endmes);
 	return(i);
 }

@@ -946,7 +946,7 @@ char *cur;
 			cp = fullpath + (int)strlen(fullpath) - 1;
 		}
 		else {
-			def = strrchr(cp, _SC_);
+			def = strrdelim(cp);
 #if	!MSDOS && !defined (_NODOSDRIVE)
 			if (!def && _dospath(cp)) def = &cp[2];
 #endif
@@ -988,7 +988,7 @@ char *cur;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
-			if ((cp = strrchr(fullpath, _SC_))) cp++;
+			if ((cp = strrdelim(fullpath))) cp++;
 			else cp = fullpath;
 			strcpy(prev, cp);
 			if (!*prev) {

@@ -594,7 +594,7 @@ char *mes, *arg;
 
 	if (arg && *arg) wild = strdup2(arg);
 	else if (!(wild = inputstr(mes, 0, 0, "*", -1))) return(NULL);
-	if (!*wild || strchr(wild, _SC_)) {
+	if (!*wild || strdelim(wild)) {
 		warning(ENOENT, wild);
 		free(wild);
 		return(NULL);
@@ -1069,7 +1069,7 @@ char *arg;
 		free(file);
 		return(1);
 	}
-	if (strchr(file, _SC_)) {
+	if (strdelim(file)) {
 		free(file);
 		file = strdup2("..");
 	}
@@ -1121,7 +1121,7 @@ char *arg;
 	}
 	else
 #endif
-	if (!applydir(list[filepos].name, unlink2, NULL, rmdir2, NULL))
+	if (!applydir(list[filepos].name, unlink2, rmdir2, 3, NULL))
 		filepos++;
 	if (filepos >= *maxp && (filepos -= 2) < 0) filepos = 0;
 	return(4);
@@ -1137,7 +1137,7 @@ char *arg;
 
 	if (arg && *arg) wild = strdup2(arg);
 	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", -1))) return(1);
-	if (strchr(wild, _SC_)) {
+	if (strdelim(wild)) {
 		warning(ENOENT, wild);
 		free(wild);
 		return(1);
@@ -1162,11 +1162,11 @@ char *arg;
 	if (!(findregexp = prepareregexp(FINDD_K, arg))) return(1);
 	destpath = NULL;
 	cp = isdir(&list[filepos]) ? list[filepos].name : ".";
-	applydir(cp, findfile, finddir, NULL, NOFND_K);
+	applydir(cp, findfile, finddir, 1, NOFND_K);
 	regexp_free(findregexp);
 	if (!destpath) return(1);
 
-	if ((cp = strrchr(destpath, _SC_))) {
+	if ((cp = strrdelim(destpath))) {
 		*(cp++) = '\0';
 		chdir2(destpath);
 	}

@@ -24,6 +24,10 @@
 #include "unixemu.h"
 #define	strpathcmp	stricmp
 #define	strnpathcmp	strnicmp
+#ifndef	issjis1
+#define	issjis1(c)	((0x81 <= (c) && (c) <= 0x9f) \
+			|| (0xe0 <= (c) && (c) <= 0xfc))
+#endif
 #else
 #include <pwd.h>
 #include <sys/file.h>
@@ -83,6 +87,74 @@ static struct dirent *readnextpath __P_((DIR **, char **, char *, char**));
 static int skipdotfile = 0;
 
 
+int isdelim(s, ptr)
+char *s;
+int ptr;
+{
+#if	MSDOS
+	int i;
+#endif
+
+	if (ptr < 0 || s[ptr] != _SC_) return(0);
+#if	MSDOS
+	if (--ptr < 0) return(1);
+	if (!ptr) return(!issjis1((u_char)(s[0])));
+
+	for (i = 0; s[i] && i < ptr; i++) if (issjis1((u_char)(s[i]))) i++;
+	if (!s[i] || i > ptr) return(1);
+	return(!issjis1((u_char)(s[i])));
+#else
+	return(1);
+#endif
+}
+
+#if	MSDOS
+char *strdelim(s)
+char *s;
+{
+	int i;
+
+	for (i = 0; s[i]; i++) {
+		if (s[i] == _SC_) return(&s[i]);
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	return(NULL);
+}
+
+char *strrdelim(s)
+char *s;
+{
+	int i;
+	char *cp;
+
+	cp = NULL;
+	for (i = 0; s[i]; i++) {
+		if (s[i] == _SC_) cp = &s[i];
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	return(cp);
+}
+#endif
+
+char *strrdelim2(s, eol)
+char *s, *eol;
+{
+#if	MSDOS
+	int i;
+	char *cp;
+
+	cp = NULL;
+	for (i = 0; s[i] && &(s[i]) < eol; i++) {
+		if (s[i] == _SC_) cp = &s[i];
+		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+	}
+	return(cp);
+#else
+	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
+	return(NULL);
+#endif
+}
+
 static int evalenv(s, off, len)
 char *s;
 int off, len;
@@ -138,7 +210,7 @@ int keepdelim, evalq;
 	}
 
 	if (quote != '\'' && *path == '~') {
-		if (!(cp = strchr(path + 1, _SC_)) || cp > eol) cp = eol;
+		if (!(cp = strdelim(path + 1)) || cp > eol) cp = eol;
 		if (cp > path + 1) {
 			strncpy(buf + j, path + 1, cp - path - 1);
 			buf[j + cp - path - 1] = '\0';
@@ -294,7 +366,7 @@ int keepdelim, evalq;
 #endif
 		}
 		else if (path[i] == _SC_
-		&& i && path[i - 1] == _SC_ && keepdelim);
+		&& isdelim(path, i - 1) && keepdelim);
 		else if (path[i] == '$') env = j;
 		else buf[j++] = path[i];
 	}
@@ -620,7 +692,7 @@ char **pathp, *dir, **eolp;
 
 	if (!dirp) return(NULL);
 	cp = dir + strlen(dir);
-	if (cp <= dir || *(cp - 1) != _SC_) strcpy(cp++, _SS_);
+	if (!isdelim(dir, cp - 1 - dir)) strcpy(cp++, _SS_);
 	*eolp = cp;
 	return(dirp);
 }
@@ -668,7 +740,7 @@ int exe, full;
 		len = 2;
 	}
 #endif
-	if ((file = strrchr(path, _SC_))) {
+	if ((file = strrdelim(path))) {
 		if (file == path) strcpy(dir + len, _SS_);
 		else {
 			strncpy(dir + len, path, file - path);

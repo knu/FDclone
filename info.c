@@ -302,7 +302,7 @@ int mode;
 		locate(i, LHELP);
 		putch2('[');
 		putterm(t_standout);
-		cprintf2(" Distributed by: <%s> ", distributor);
+		cprintf2(" Distributed by: %s ", distributor);
 		putterm(end_standout);
 		putch2(']');
 	}
