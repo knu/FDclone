@@ -26,6 +26,7 @@
 	DEC	OSF/1		(V1.2, V2.0)
 	IBM	AIX		(3.x, 4.x)
 	DEC	ULTRIX		(V4.3)
+	Apple	A/UX		(3.0)
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0)
 	Mips	RISC/os		(4.x, 5.0x)
@@ -34,6 +35,7 @@
 		Linux		(1.x)
 		FreeBSD		(2.x)
 		NetBSD		(1.0, 2.0)
+		386BSD		(R0.1)
 	BSDI	BSD/OS		(1.1, 2.0)
 	ASCII	BSD on Windows	(1.0)
 

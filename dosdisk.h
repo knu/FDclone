@@ -10,6 +10,7 @@
 #define	SECTCACHESIZE	20
 #define	SECTSIZE	512
 #define	MAX12BIT	(0xff0 - 0x002)
+#define	DOSMAXPATHLEN	255
 
 #define	NOTINLFN	"\\/:*?\"<>|"
 #define	NOTINALIAS	" +,;=[]"
@@ -173,6 +174,14 @@ typedef struct _dosdirdesc {
 	long dd_off;
 	char *dd_buf;
 } dosDIR;
+
+#ifdef	NODNAMLEN
+typedef struct _st_dirent {
+	char buf[sizeof(struct dirent) + MAXNAMLEN];
+} st_dirent;
+#else
+typedef	struct dirent st_dirent;
+#endif
 
 extern int preparedrv();
 extern int shutdrv();

@@ -213,10 +213,11 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 #endif
 #if defined (ORG_386BSD)
 # if defined (i386)
-	{'A', "/dev/rfd0a", 2, 18, 80},
-	{'A', "/dev/rfd0a", 2, 15, 80},
-	{'A', "/dev/rfd0c", 2, 9, 80},
-	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
+	{'A', "/dev/fd0a", 2, 18, 80},
+	{'A', "/dev/fd0a", 2, 18, 80},
+	{'A', "/dev/fd0b", 2, 8, 77},
+	{'A', "/dev/fd0c", 2, 9, 80},
+	{'A', "/dev/fd0c", 2, 8 + 100, 80},
 # endif
 #endif
 	{'\0', NULL, 0, 0, 0}
@@ -1181,6 +1182,12 @@ int class;
 		for (i = 0; path[i] && path[i] != '/' && path[i] != '\\'; i++)
 			if (issjis1((u_char)(path[i]))) i++;
 		if (class && !path[i]) {
+			if (!(i == 1 && *path == '.')
+			&& !(i == 2 && *path == '.' && *(path + 1) == '.')
+			&& cp + i + 1 - buf >= DOSMAXPATHLEN) {
+				errno = ENAMETOOLONG;
+				return(-1);
+			}
 			*(cp++) = '/';
 			strncpy(cp, path, i);
 			cp += i;
@@ -1188,10 +1195,14 @@ int class;
 		}
 		else if (!i || (i == 1 && *path == '.'));
 		else if (i == 2 && *path == '.' && *(path + 1) == '.') {
-			for (cp--; cp > buf; cp--) if (*(cp - 1) == '/') break;
+			for (cp--; cp > buf; cp--) if (*cp == '/') break;
 			if (cp < buf) cp = buf;
 		}
 		else {
+			if (cp + i + 1 - buf >= DOSMAXPATHLEN) {
+				errno = ENAMETOOLONG;
+				return(-1);
+			}
 			*(cp++) = '/';
 			strncpy(cp, path, i);
 			cp += i;
@@ -1213,7 +1224,7 @@ char *path;
 	struct dirent *dp;
 	dent_t *dentp;
 	cache_t *cache;
-	char *cp, *cachepath, *tmp, buf[MAXPATHLEN + 1];
+	char *cp, *cachepath, *tmp, buf[DOSMAXPATHLEN + 3 + 1];
 	int len, dd, drive;
 
 	if ((drive = parsepath(buf, path, 0)) < 0
@@ -1277,7 +1288,7 @@ char *path;
 		xdirp -> dd_top =
 		xdirp -> dd_off = byte2word(dentp -> clust);
 		xdirp -> dd_loc = 0;
-		cachepath += strlen(tmp);
+		cachepath += len;
 		*(cachepath++) = '/';
 		*cachepath = '\0';
 	}
@@ -1362,11 +1373,7 @@ dosDIR *xdirp;
 int all;
 {
 	dent_t *dentp;
-#ifdef	NODNAMLEN
-	static char d[sizeof(struct dirent) + MAXNAMLEN];
-#else
-	static struct dirent d;
-#endif
+	static st_dirent d;
 	struct dirent *dp;
 	char *cp, buf[LFNENTSIZ * 2 + 1];
 	long loc, clust;
@@ -1381,8 +1388,10 @@ int all;
 	cnt = -1;
 	for (;;) {
 		loc = xdirp -> dd_loc;
-		if (readdent(xdirp, dentp, 0) < 0) return(NULL);
-		if (!(dentp -> name[0])) return(NULL);
+		if (readdent(xdirp, dentp, 0) < 0 || !(dentp -> name[0])) {
+			*dd2path(xdirp -> dd_fd) = '\0';
+			return(NULL);
+		}
 		if (dentp -> name[0] == 0xe5) {
 			dp -> d_name[0] = '\0';
 			dp -> d_reclen = DOSDIRENT;
@@ -1504,7 +1513,7 @@ int doschdir(path)
 char *path;
 {
 	DIR *dirp;
-	char *tmp, buf[MAXPATHLEN + 1];
+	char *tmp, buf[2 + DOSMAXPATHLEN + 3 + 1];
 	int drv, drive;
 
 	buf[1] = ':';
@@ -1587,9 +1596,10 @@ int *ddp;
 {
 	dosDIR *xdirp;
 	struct dirent *dp;
-	char buf[MAXPATHLEN + 1];
+	char buf[2 + DOSMAXPATHLEN + 3 + 1];
 	int dd, drive;
 
+	if (ddp) *ddp = -1;
 	buf[1] = ':';
 	if ((drive = parsepath(buf + 2, path, 1)) < 0
 	|| (dd = opendev(drive)) < 0) return(-1);
@@ -1598,7 +1608,6 @@ int *ddp;
 	buf[0] = drive;
 
 	path = buf;
-	if (ddp) *ddp = -1;
 	if (!(xdirp = splitpath(&path))) {
 		closedev(dd);
 		if (errno == ENOENT) errno = ENOTDIR;
@@ -1795,6 +1804,12 @@ int mode;
 	memcpy(dentp -> name, fname, 8 + 3);
 	dentp -> attr = putdosmode(mode);
 	putdostime(dentp -> time, -1);
+	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
+		dentp -> dummy[2] = dentp -> time[0];
+		dentp -> dummy[3] = dentp -> time[1];
+		dentp -> dummy[4] = dentp -> dummy[6] = dentp -> date[0];
+		dentp -> dummy[5] = dentp -> dummy[7] = dentp -> date[1];
+	}
 	ret = (writedent(xdirp -> dd_fd) < 0
 	|| writefat(&devlist[xdirp -> dd_fd]) < 0) ? -1 : xdirp -> dd_fd;
 	free(xdirp -> dd_buf);
@@ -1970,7 +1985,7 @@ char *path;
 int dosrename(from, to)
 char *from, *to;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[DOSMAXPATHLEN + 3 + 1];
 	long clust;
 	u_short offset;
 	int i, dd, fd, sum, ret;

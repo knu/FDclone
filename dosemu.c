@@ -88,11 +88,7 @@ DIR *dirp;
 struct dirent *Xreaddir(dirp)
 DIR *dirp;
 {
-#ifdef	NODNAMLEN
-	static char buf[sizeof(struct dirent) + MAXNAMLEN];
-#else
-	static struct dirent buf;
-#endif
+	static st_dirent buf;
 	struct dirent *dp;
 	int i;
 

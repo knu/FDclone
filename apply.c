@@ -53,8 +53,9 @@ time_t *atimep, *mtimep;
 	if (atimep) *atimep = status1.st_atime;
 	if (mtimep) *mtimep = status1.st_mtime;
 	if (Xlstat(dest, &status2) < 0) {
-		if (errno != ENOENT) error(dest);
-		return((int)status1.st_mode);
+		if (errno == ENOENT) return((int)status1.st_mode);
+		warning(-1, dest);
+		return(-1);
 	}
 
 	if (!copypolicy || copypolicy == 2) {
