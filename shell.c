@@ -319,7 +319,7 @@ int max, noconf, argset;
 	if (!st.needmark) for (;;) {
 		if (st.addoption >= 0 && noconf >= 0 && !argset
 		&& strlen(tmp) < i) {
-			cp = inputstr2("sh#", st.addoption, tmp, &sh_history);
+			cp = inputstr("sh#", 0, st.addoption, tmp, &sh_history);
 			free(tmp);
 			if (!cp || !*cp) return(-1);
 			tmp = evalcomstr(cp);

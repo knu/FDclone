@@ -706,7 +706,7 @@ int max, tr;
 			if (dd >= 0) shutdrv(dd);
 		}
 		else {
-			dir = inputstr2(UNPAC_K, -1, NULL, NULL);
+			dir = inputstr(UNPAC_K, 0, -1, NULL, NULL);
 			dir = evalpath(dir);
 		}
 		if (!dir) return(0);
@@ -780,11 +780,12 @@ char *dir, *subdir, *file;
 
 	if (_chdir2(dir) < 0) {
 		warning(-1, dir);
-		return;
+		*dir = '\0';
+		subdir = file = NULL;
 	}
 	if (subdir && *subdir && _chdir2(subdir) < 0) {
 		warning(-1, subdir);
-		return;
+		subdir = file = NULL;
 	}
 	if (file && unlink(file) < 0) error(file);
 	if (subdir && *subdir) {

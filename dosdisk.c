@@ -157,9 +157,17 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0d", 2, 8, 80},
 #endif
+#if defined (FREEBSD)
+	{'A', "/dev/rfd0.1440", 2, 18, 80},
+	{'A', "/dev/rfd0.720", 2, 9, 80},
+	{'A', "/dev/rfd0.720", 2, 8 + 100, 80},
+#endif
 #if defined (NETBSD)
 # if defined (i386)
+	{'A', "/dev/rfd0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 15, 80},
+	{'A', "/dev/rfd0c", 2, 9, 80},
+	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
 #endif
 #if defined (BSDOS)
@@ -171,8 +179,8 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 #endif
 #if defined (ORG_386BSD)
 # if defined (i386)
+	{'A', "/dev/rfd0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 15, 80},
-	{'A', "/dev/rfd0b", 2, 8, 77},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif

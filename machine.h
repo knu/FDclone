@@ -276,6 +276,7 @@
 #define	CODEEUC
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
+#define	USELEAPCNT
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO

@@ -671,11 +671,8 @@ static long gettimezone()
 	tzset();
 	tz = timezone;
 #else
-	struct timeval t_val;
-	struct timezone t_zone;
-
-	gettimeofday(&t_val, &t_zone);
-	tz = t_zone.tz_minuteswest * 60L;
+	tz = time(0);
+	tz = -(localtime(&tz) -> tm_gmtoff);
 #endif
 #ifdef	USELEAPCNT
 	if (TZDEFAULT[0] == '/') strcpy(path, TZDEFAULT);

@@ -85,7 +85,7 @@ time_t *atimep, *mtimep;
 		case 2:
 			cp = strrchr(dest, '/') + 1;
 			do {
-				if (!(tmp = inputstr2(NEWNM_K,
+				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, NULL))) return(-1);
 				strcpy(cp, tmp);
 				free(tmp);

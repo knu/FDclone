@@ -709,6 +709,26 @@ char *line;
 		free(tmp);
 		return(-1);
 	}
+	if (*(line + 1) == '!') {
+		for (i = 0; fdtype[i].name; i++)
+		if (drive == fdtype[i].drive
+		&& head == fdtype[i].head
+		&& sect == fdtype[i].sect
+		&& cyl == fdtype[i].cyl
+		&& !strcmp(tmp, fdtype[i].name)) break;
+		free(tmp);
+		if (!fdtype[i].name) return(-1);
+		free(fdtype[i].name);
+		for (; fdtype[i + 1].name; i++) {
+			fdtype[i].drive = fdtype[i + 1].drive;
+			fdtype[i].name = fdtype[i + 1].name;
+			fdtype[i].head = fdtype[i + 1].head;
+			fdtype[i].sect = fdtype[i + 1].sect;
+			fdtype[i].cyl = fdtype[i + 1].cyl;
+		}
+		fdtype[i].name = NULL;
+		return(0);
+	}
 
 	fdtype[i].drive = drive;
 	fdtype[i].name = tmp;
@@ -753,7 +773,8 @@ char *line;
 		if (cp = strpbrk(tmp, " \t")) *cp = '\0';
 		loadruncom(tmp);
 	}
-	else if (isalpha(*line) && *(line + 1) == ':') getdosdrive(line);
+	else if (isalpha(*line) && (*(line + 1) == ':' || *(line + 1) == '!'))
+		 getdosdrive(line);
 	else if (isalpha(*line) || *line == '_') {
 		if (setenv2(line, cp = getenvval(line), 1) < 0) error(line);
 		if (cp) free(cp);
@@ -877,7 +898,7 @@ int printdrive()
 	int i, n;
 
 	n = 0;
-	for (i = 0; fdtype[i].drive; i++) {
+	for (i = 0; fdtype[i].name; i++) {
 		kanjiprintf("%c:\t\"%s\"\t(%1d,%3d,%3d)\r\n",
 			fdtype[i].drive, fdtype[i].name,
 			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl);
@@ -1020,6 +1041,8 @@ char *argv[];
 				strdup2(archivelist[maxarchive].u_comm);
 		}
 	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
+	for (i = 0; fdtype[i].name; i++)
+		fdtype[i].name = strdup2(fdtype[i].name);
 	maxalias = 0;
 
 	loadruncom(DEFRUNCOM);

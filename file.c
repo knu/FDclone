@@ -207,7 +207,7 @@ char *mes;
 	char *dir;
 	int drive;
 
-	if (!(dir = inputstr2(mes, -1, NULL, NULL))) return(NULL);
+	if (!(dir = inputstr(mes, 1, -1, NULL, NULL))) return(NULL);
 	if (!*(dir = evalpath(dir))) {
 		free(dir);
 		dir = strdup2(".");
@@ -311,7 +311,7 @@ char *dir;
 {
 	char path[MAXPATHLEN + 1];
 
-	if (rmdir(dir) < 0) return(-1);
+	if (dir && *dir && rmdir(dir) < 0) return(-1);
 	strcpy(path, deftmpdir);
 	strcat(path, "/");
 	strcat(path, tmpfilename);

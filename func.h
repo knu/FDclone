@@ -115,7 +115,7 @@ extern time_t timelocal2();
 
 /* input.c */
 extern int getkey2();
-extern char *inputstr2();
+extern char *inputstr();
 extern int yesno();
 extern VOID warning();
 extern int selectstr();

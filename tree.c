@@ -626,7 +626,7 @@ static char *_tree()
 				} while (&(lp -> next[i]) != olp);
 				break;
 			case 'l':
-				if (!(cwd = inputstr2(LOGD_K, -1, NULL, NULL))
+				if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, NULL))
 				|| !*(cwd = evalpath(cwd))) break;
 				if (chdir2(cwd) >= 0) {
 					free(cwd);

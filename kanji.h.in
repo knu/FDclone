@@ -3,6 +3,7 @@
 #define	NOFIL_K	mesconv("ファイルがありません", "No Files")
 #define	NOCOM_K	mesconv("不正なコマンドです.", "Invalid command.")
 #define	WAIT_K	mesconv("しばらくお待ち下さい.", "Wait a minute.")
+#define	DELSP_K	mesconv("行末に空白文字がありますが削除しますか ?", "Delete space characters on the end of line ?")
 
 #define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
 #define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")

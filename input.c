@@ -8,6 +8,7 @@
 #include "term.h"
 #include "func.h"
 #include "kctype.h"
+#include "kanji.h"
 
 #include <varargs.h>
 #include <signal.h>
@@ -33,7 +34,7 @@ static VOID displaystr();
 static int insertstr();
 static VOID selectfile();
 static int completestr();
-static int inputstr();
+static int _inputstr();
 static char *truncstr();
 static VOID yesnomes();
 static int selectmes();
@@ -699,7 +700,7 @@ int x, cx, len, linemax, max, comline, cont;
 	return(ins);
 }
 
-static int inputstr(str, x, max, linemax, def, comline, hist)
+static int _inputstr(str, x, max, linemax, def, comline, hist)
 u_char *str;
 int x, max, linemax, def, comline;
 char *hist[];
@@ -980,9 +981,9 @@ char *hist[];
 	return(ch);
 }
 
-char *inputstr2(prompt, ptr, def, hist)
+char *inputstr(prompt, delsp, ptr, def, hist)
 char *prompt;
-int ptr;
+int delsp, ptr;
 char *def, **hist[];
 {
 	char *dupl, input[MAXLINESTR + 1];
@@ -1005,7 +1006,7 @@ char *def, **hist[];
 	i = (n_column - len - 1) * WCMDLINE;
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
-	ch = inputstr(input, len + 1, i, n_column - len - 1,
+	ch = _inputstr(input, len + 1, i, n_column - len - 1,
 		ptr, hist == &sh_history, (hist) ? *hist : NULL);
 	for (i = 0; i < WCMDLINE; i++) {
 		locate(0, LCMDLINE + i);
@@ -1014,9 +1015,14 @@ char *def, **hist[];
 
 	if (ch == ESC) return(NULL);
 
+	len = strlen(input);
+	if (delsp && len > 0 && input[len - 1] == ' ' && yesno(DELSP_K)) {
+		for (len--; len > 0 && input[len - 1] == ' '; len--);
+		input[len] = '\0';
+	}
 	if (hist) *hist = entryhist(*hist, input);
 	tflush();
-	dupl = (char *)malloc2(strlen(input) + 1);
+	dupl = (char *)malloc2(len + 1);
 	for (i = 0, j = 0; input[i]; i++, j++) {
 		if (input[i] == QUOTE) i++;
 		dupl[j] = input[i];

@@ -452,7 +452,7 @@ int *maxp;
 	char *cp, *wild;
 	int i;
 
-	if (!(wild = inputstr2(FINDF_K, 0, "*", NULL))) return(1);
+	if (!(wild = inputstr(FINDF_K, 0, 0, "*", NULL))) return(1);
 	if (!*wild || strchr(wild, '/')) {
 		warning(ENOENT, wild);
 		free(wild);
@@ -542,7 +542,7 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = inputstr2(LOGD_K, -1, NULL, NULL))
+	if (!(path = inputstr(LOGD_K, 0, -1, NULL, NULL))
 	|| !*(path = evalpath(path))) return(1);
 	if (!chdir3(path)) {
 		warning(-1, path);
@@ -777,7 +777,7 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = inputstr2(MAKED_K, -1, NULL, NULL))
+	if (!(path = inputstr(MAKED_K, 1, -1, NULL, NULL))
 	|| !*(path = evalpath(path))) return(1);
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
 	free(path);
@@ -827,7 +827,7 @@ int *maxp;
 	if (!strcmp(list[filepos].name, ".")
 	|| !strcmp(list[filepos].name, "..")) return(warning_bell(list, maxp));
 	for (;;) {
-		if (!(file = inputstr2(NEWNM_K, 0, list[filepos].name, NULL)))
+		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, NULL)))
 			return(1);
 		file = evalpath(file);
 		if (Xlstat(file, &status) < 0) {
@@ -904,7 +904,7 @@ int *maxp;
 {
 	char *wild;
 
-	if (!(wild = inputstr2(FINDF_K, 0, "*", NULL))) return(1);
+	if (!(wild = inputstr(FINDF_K, 0, 0, "*", NULL))) return(1);
 	if (strchr(wild, '/')) {
 		warning(ENOENT, wild);
 		free(wild);
@@ -926,7 +926,7 @@ int *maxp;
 {
 	char *cp, *wild;
 
-	if (!(wild = inputstr2(FINDD_K, 0, "*", NULL))) return(1);
+	if (!(wild = inputstr(FINDD_K, 0, 0, "*", NULL))) return(1);
 	if (!*wild || strchr(wild, '/')) {
 		warning(ENOENT, wild);
 		free(wild);
@@ -961,7 +961,7 @@ int *maxp;
 {
 	char *com;
 
-	if (!(com = inputstr2("sh#", -1, NULL, &sh_history))) return(1);
+	if (!(com = inputstr("sh#", 0, -1, NULL, &sh_history))) return(1);
 	if (*com) execmacro(com, list[filepos].name, list, *maxp, 0, 1);
 	else execshell();
 	free(com);
@@ -978,7 +978,7 @@ int *maxp;
 
 	len = (Xaccess(list[filepos].name, X_OK) >= 0) ?
 		strlen(list[filepos].name) + 1 : 0;
-	if (!(com = inputstr2("sh#", len, list[filepos].name, &sh_history)))
+	if (!(com = inputstr("sh#", 0, len, list[filepos].name, &sh_history)))
 		return(1);
 	if (!*com) {
 		execshell();
@@ -1023,7 +1023,7 @@ int *maxp;
 	char *file;
 	int i;
 
-	if (!(file = inputstr2(PACK_K, -1, NULL, NULL))
+	if (!(file = inputstr(PACK_K, 1, -1, NULL, NULL))
 	|| !*(file = evalpath(file))) return(1);
 	i = pack(file, list, *maxp);
 	free(file);
@@ -1074,7 +1074,7 @@ int *maxp;
 	char *path;
 	int i;
 
-	if (!(path = inputstr2(FSDIR_K, -1, NULL, NULL))) return(1);
+	if (!(path = inputstr(FSDIR_K, 0, -1, NULL, NULL))) return(1);
 	if (!*(path = evalpath(path))) {
 		free(path);
 		path = strdup2(".");
@@ -1154,7 +1154,7 @@ int *maxp;
 	char *dev;
 	int i;
 
-	if (!(dev = inputstr2(BKUP_K, 5, "/dev/", NULL))
+	if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", NULL))
 	|| !*(dev = evalpath(dev))) return(1);
 	i = backup(dev, list, *maxp);
 	free(dev);
