@@ -2178,14 +2178,13 @@ int len, spc, flags, *qp, *pqp;
 #ifdef	CODEEUC
 	else if (isekana(s, 0)) return(PC_WORD);
 #endif
-#ifdef	BASHSTYLE
+#ifdef	NESTINGQUOTE
 	else if (*qp == '`') return(PC_BQUOTE);
 #endif
 	else if (*qp == '\'') return(PC_SQUOTE);
 	else if (spc && *s == spc) return(*s);
 	else if (ismeta(s, 0, *qp, len, flags)) return(PC_META);
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
+#ifdef	NESTINGQUOTE
 	else if ((flags & EA_BACKQ) && *s == '`') {
 		if (pqp && *qp) *pqp = *qp;
 		*qp = *s;
@@ -2203,8 +2202,7 @@ int len, spc, flags, *qp, *pqp;
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
-#ifndef	BASHSTYLE
-	/* bash can include `...` in "..." */
+#ifndef	NESTINGQUOTE
 	else if ((flags & EA_BACKQ) && *s == '`') {
 		if (pqp && *qp) *pqp = *qp;
 		*qp = *s;
@@ -2319,20 +2317,19 @@ char *next;
 int qed, nonl, nest;
 #endif
 {
-#ifdef	BASHSTYLE
+#ifdef	NESTINGQUOTE
 	int pq;
 #endif
 	char *cp;
 	int pc, q, len;
 
-#ifdef	BASHSTYLE
+#ifdef	NESTINGQUOTE
 	pq = '\0';
 #endif
 	q = '\0';
 	len = strlen(next);
 	while (s[*ptrp]) {
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
+#ifdef	NESTINGQUOTE
 		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, &pq);
 #else
 		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, NULL);
@@ -3040,11 +3037,14 @@ int qed, flags;
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char path[MAXPATHLEN], alias[MAXPATHLEN];
 #endif
-#ifdef	BASHSTYLE
+#ifndef	MINIMUMSHELL
+	int prev;
+#endif
+#ifdef	NESTINGQUOTE
 	int pq;
 #endif
 	char *cp, *buf, *bbuf;
-	int i, j, pc, prev, q;
+	int i, j, pc, q;
 
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	if (*arg == '"' && (i = strlen(arg)) > 2 && arg[i - 1] == '"') {
@@ -3067,15 +3067,18 @@ int qed, flags;
 	buf = malloc2(i);
 	if (!backquotefunc) flags &= ~EA_BACKQ;
 	bbuf = (flags & EA_BACKQ) ? malloc2(i) : NULL;
-#ifdef	BASHSTYLE
-	pq = '\0';
+#ifndef	MINIMUMSHELL
+	prev =
 #endif
-	prev = q = '\0';
+#ifdef	NESTINGQUOTE
+	pq =
+#endif
+	q = '\0';
 	i = j = 0;
+	cp = arg;
 
-	for (cp = arg; *cp; prev = *(cp++)) {
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
+	while (*cp) {
+#ifdef	NESTINGQUOTE
 		pc = parsechar(cp, -1, '$', flags, &q, &pq);
 #else
 		pc = parsechar(cp, -1, '$', flags, &q, NULL);
@@ -3141,6 +3144,12 @@ int qed, flags;
 			i = evalhome(&buf, i, &cp);
 #endif
 		else buf[i++] = *cp;
+
+#ifdef	MINIMUMSHELL
+		cp++;
+#else
+		prev = *(cp++);
+#endif
 	}
 #ifndef	BASHSTYLE
 	/* bash does not allow unclosed quote */

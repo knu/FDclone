@@ -106,19 +106,6 @@ typedef union REGS	__dpmi_regs;
  *	10. optional POSIX utilities are added.
  */
 
-/* #define BASHSTYLE		; rather near to bash style */
-/* #define BASHBUG		; keep bash's bug strictly */
-/* #define PSIGNALSTYLE		; based upon psignal(3) messages */
-/* #define NOJOB		; not use job control */
-/* #define CHILDSTATEMENT	; make any statement child for suspend */
-/* #define NOALIAS		; not use alias */
-/* #define DOSCOMMAND		; emulate builtin commands of COMMAND.COM */
-/* #define USEFAKEPIPE		; use DOS-like pipe instead of pipe(2) */
-/* #define SHOWSTREE		; show syntax tree with -n option */
-/* #define NOPOSIXUTIL		; not use POSIX utilities */
-/* #define STRICTPOSIX		; keep POSIX strictly */
-/* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
-
 #if	MSDOS
 #include <process.h>
 #include <io.h>
@@ -151,7 +138,7 @@ typedef union REGS	__dpmi_regs;
 
 #ifdef	FD
 #include "term.h"
-extern VOID main_fd __P_((char *));
+extern VOID main_fd __P_((char **));
 extern int sigvecset __P_((int));
 #ifndef	_NOCUSTOMIZE
 extern VOID saveorigenviron __P_((VOID_A));
@@ -1320,8 +1307,13 @@ static shbuiltintable shbuiltinlist[] = {
 	{dopushd, "pushd", BT_RESTRICT},
 	{dopopd, "popd", 0},
 	{dodirs, "dirs", 0},
+# if	0						/* Future plan */
+	{doenable, "enable", 0},
+	{dobuiltin, "builtin", 0},
+# else
 	{doenable, "enable", BT_DISABLE},
 	{dobuiltin, "builtin", BT_DISABLE},
+# endif
 #endif
 #ifdef	FD
 	{dofd, "fd", 0},
@@ -5838,8 +5830,7 @@ int quiet;
 		}
 
 		pc = parsechar(&(s[i]), -1, '$', EA_BACKQ | EA_EOLMETA,
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
+#ifdef	NESTINGQUOTE
 			&(rp -> new), &(rp -> old));
 #else
 			&(rp -> new), NULL);
@@ -5847,7 +5838,7 @@ int quiet;
 
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_SQUOTE)
 			rp -> filename[j++] = s[i];
-#ifdef	BASHSTYLE
+#ifdef	NESTINGQUOTE
 		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
 #endif
 		else if (pc == PC_WORD) {
@@ -9316,7 +9307,7 @@ syntaxtree *trp;
 		ttyiomode(0);
 		mode = termmode(1);
 		shellmode = 0;
-		main_fd((trp -> comm) -> argv[1]);
+		main_fd(&((trp -> comm) -> argv[1]));
 		shellmode = 1;
 		termmode(mode);
 		stdiomode();

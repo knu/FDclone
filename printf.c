@@ -109,8 +109,9 @@ printbuf_t *pbufp;
 {
 	char *tmp;
 
-	if (pbufp -> buf && (pbufp -> flags & VF_FILE)) {
-		if (fputc(n, (FILE *)(pbufp -> buf)) == EOF) return(-1);
+	if (pbufp -> flags & VF_FILE) {
+		if (pbufp -> buf && fputc(n, (FILE *)(pbufp -> buf)) == EOF)
+			return(-1);
 		(pbufp -> ptr)++;
 		return(1);
 	}

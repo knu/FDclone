@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05g 07/07/04
+.\" @(#)fd.1   2.05h 07/27/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 7, 2004"
+.TH FD 1 "July 27, 2004"
 .de sh
 .br
 .PP

@@ -1822,6 +1822,7 @@ int max, in, out, io;
 
 	if (_kanjiconv(buf, s, max, in, out, &len, io) != buf)
 		for (len = 0; s[len]; len++) buf[len] = s[len];
+	buf[len] = '\0';
 	return(len);
 }
 

@@ -13,6 +13,18 @@
 #include <bsdtty.h>
 #endif
 
+/* #define BASHBUG		; keep bash's bug strictly */
+/* #define PSIGNALSTYLE		; based upon psignal(3) messages */
+/* #define NOJOB		; not use job control */
+/* #define CHILDSTATEMENT	; make any statement child for suspend */
+/* #define NOALIAS		; not use alias */
+/* #define DOSCOMMAND		; emulate builtin commands of COMMAND.COM */
+/* #define USEFAKEPIPE		; use DOS-like pipe instead of pipe(2) */
+/* #define SHOWSTREE		; show syntax tree with -n option */
+/* #define NOPOSIXUTIL		; not use POSIX utilities */
+/* #define STRICTPOSIX		; keep POSIX strictly */
+/* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
+
 #ifdef	BASHSTYLE
 #define	BASHBUG
 #define	ERRBREAK	continue

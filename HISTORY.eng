@@ -1,3 +1,9 @@
+Ver. 2.05h	Freezing fd invoked from fdsh with any arguments is fixed.
+ (07/27/04)	Mis-handling for the archived file with '.' or '..' is fixed.
+		Bug to garble symbolic link to Japanese filename is fixed.
+		Mis-location of cursor in case conversion of string is fixed.
+		Mis-location of cursor in filename incremental search is fixed.
+
 Ver. 2.05g	Bug that startup options with directory cannot work is fixed.
  (07/07/04)	Strange sorted order in the filename completion is fixed.
 		Delete 'mkdir'/'rmdir' builtin commands for UNIX.

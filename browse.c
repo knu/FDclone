@@ -684,7 +684,7 @@ int width;
 # ifndef	_NOARCHIVE
 	else if (archivefile) {
 		if (namep -> linkname)
-			strncpy3(buf, &(namep -> linkname[len]), &w, 0);
+			strncpy3(buf, namep -> linkname, &w, len);
 	}
 # endif
 	else {
@@ -693,7 +693,7 @@ int width;
 			tmp, width * 2 + len);
 		if (i >= 0) {
 			tmp[i] = '\0';
-			strncpy3(buf, &(tmp[len]), &w, 0);
+			strncpy3(buf, tmp, &w, len);
 		}
 		free(tmp);
 	}
@@ -707,7 +707,7 @@ static VOID NEAR infobar(VOID_A)
 	struct tm *tm;
 	int len;
 
-	if (!filelist || maxfile < 0) return;
+	if (!filelist || filepos < 0 || maxfile < 0) return;
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
@@ -1075,8 +1075,8 @@ int isstandout;
 		if (i <= strlen2(cp)) cp = "NoFiles";
 		cprintf2("%-*.*k", i, i, cp);
 		if (isstandout) putterm(end_standout);
-		win_x = i + 2;
-		win_y = LFILETOP;
+		win_x = calc_x = i + 2;
+		win_y = calc_y = LFILETOP;
 		return(0);
 	}
 
@@ -1101,12 +1101,14 @@ int isstandout;
 		if (n >= max) break;
 		if (!isstandout || n != pos) putname(list, n, 0);
 		else {
-			win_x = putname(list, n, 1) + 1;
-			win_x += calc_x;
+			calc_x += putname(list, n, 1) + 1;
+			win_x = calc_x;
 			win_y = calc_y;
 		}
 	}
 
+	calc_x = win_x;
+	calc_y = win_y;
 	return(pos);
 }
 
@@ -1206,8 +1208,8 @@ int old, funcstat;
 	}
 	else if (((funcstat & REWRITEMODE) >= REWRITE) || old != filepos) {
 		if (old != filepos) putname(filelist, old, -1);
-		win_x = putname(filelist, filepos, 1) + 1;
-		win_x += calc_x;
+		calc_x += putname(filelist, filepos, 1) + 1;
+		win_x = calc_x;
 		win_y = calc_y;
 	}
 	infobar();
@@ -1216,7 +1218,7 @@ int old, funcstat;
 VOID rewritefile(all)
 int all;
 {
-	if (!filelist || maxfile < 0) return;
+	if (!filelist || filepos < 0 || maxfile < 0) return;
 	if (all > 0) {
 		title();
 		helpbar();
@@ -1354,8 +1356,8 @@ static VOID readstatus(VOID_A)
 	if (keywaitfunc != readstatus) return;
 	if (isfile(&(filelist[i])) && filelist[i].st_size) sizebar();
 	if (i == filepos) {
-		win_x = putname(filelist, i, 1) + 1;
-		win_x += calc_x;
+		calc_x += putname(filelist, i, 1) + 1;
+		win_x = calc_x;
 		win_y = calc_y;
 		infobar();
 	}
@@ -1439,9 +1441,9 @@ static VOID NEAR getfilelist(VOID_A)
 		re = regexp_init(findpattern, -1);
 	}
 
+	maxfile = 0;
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		maxfile = (*archivedir) ? 1 : 0;
 		blocksize = (off_t)1;
 		if (sorttype < 100) sorton = 0;
 		copyarcf(re, arcre);
@@ -1449,7 +1451,6 @@ static VOID NEAR getfilelist(VOID_A)
 	else
 #endif
 	{
-		maxfile = 0;
 		blocksize = getblocksize(".");
 		if (sorttype < 100) sorton = sorttype;
 		if (readfilelist(re, arcre)) {
@@ -1657,8 +1658,9 @@ char *file, *def;
 		else if (no > 4) {
 			char *tmp;
 
-			tmp = (filepos < 0) ? ".." : filelist[filepos].name;
+			tmp = (filepos >= 0) ? filelist[filepos].name : NULL;
 			if (!(cp = archchdir(tmp))) {
+				if (!tmp) tmp = "..";
 				warning(-1, tmp);
 				strcpy(file, tmp);
 			}

@@ -125,8 +125,6 @@ extern int inruncom;
 #define	MAXCUSTOM	7
 #define	MAXCUSTNAM	14
 #define	MAXCUSTVAL	(n_column - MAXCUSTNAM - 3)
-#define	inputcuststr(p, d, s, h) \
-			(inputstr(p, d, ((s) ? strlen(s) : 0), s, h))
 #define	noselect(n, m, x, s, v) \
 			(selectstr(n, m, x, s, v) == K_ESC)
 #define	MAXSAVEMENU	5
@@ -197,6 +195,7 @@ static int NEAR custputs __P_((char *));
 static char *NEAR strcatalloc __P_((char *, char *));
 static VOID NEAR putsep __P_((VOID_A));
 static VOID NEAR fillline __P_((int, int));
+static char *NEAR inputcuststr __P_((char *, int, char *, int));
 static VOID NEAR setnamelist __P_((int, namelist *, char *));
 static int NEAR browsenamelist __P_((namelist *, int,
 		int, char *, char *, char **));
@@ -622,6 +621,18 @@ int y, w;
 	putterm(end_standout);
 }
 
+static char *NEAR inputcuststr(prompt, delsp, s, h)
+char *prompt;
+int delsp;
+char *s;
+int h;
+{
+	int len;
+
+	len = (s) ? strlen(s) : 0;
+	return(inputstr(prompt, delsp, len, s, h));
+}
+
 static VOID NEAR setnamelist(n, list, s)
 int n;
 namelist *list;
@@ -720,8 +731,8 @@ char *def, *prompt, **mes;
 			pos = listupfile(list, max, list[pos].name, 1);
 		else if (old != pos) {
 			putname(list, old, -1);
-			win_x = putname(list, pos, 1) + 1;
-			win_x += calc_x;
+			calc_x += putname(list, pos, 1) + 1;
+			win_x = calc_x;
 			win_y = calc_y;
 		}
 	} while (ch != K_ESC && ch != K_CR);

@@ -13,6 +13,14 @@
 #include <sys/stat.h>
 #endif
 
+/* #define BASHSTYLE		; rather near to bash style */
+/* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
+/* #define NESTINGQUOTE		; allow `...` included in "..." */
+
+#ifdef	BASHSTYLE
+#define	NESTINGQUOTE
+#endif
+
 #define	IFS_SET		" \t\n"
 #define	META		'\\'
 #if	MSDOS && defined (_NOORIGSHELL)
@@ -24,19 +32,24 @@
 #ifndef	BSPATHDELIM
 #define	PMETA		META
 #define	RMSUFFIX	'%'
-#define	METACHAR	"\t\n !\"#$&'()*;<=>?[\\]`|"
+# ifdef	BASHSTYLE
+	/* bash treats '\r' as just a character */
+# define	METACHAR	"\t\n !\"#$&'()*;<=>?[\\]`|"
+# else
+# define	METACHAR	"\t\r\n !\"#$&'()*;<=>?[\\]`|"
+# endif
 #define	DQ_METACHAR	"\"$\\`"
 #else	/* BSPATHDELIM */
 # ifdef	_NOORIGSHELL
 # define	FAKEMETA
 # define	PMETA		'$'
 # define	RMSUFFIX	'%'
-# define	METACHAR	"\t\n !\"$'*<>?|"
+# define	METACHAR	"\t\r\n !\"$'*<>?|"
 # define	DQ_METACHAR	"\"$"
 # else
 # define	PMETA		'%'
 # define	RMSUFFIX	'\\'
-# define	METACHAR	"\t\n !\"#$%&'()*;<=>?[]`|"
+# define	METACHAR	"\t\r\n !\"#$%&'()*;<=>?[]`|"
 # define	DQ_METACHAR	"\"$%`"
 # endif
 #endif	/* BSPATHDELIM */
