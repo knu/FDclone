@@ -115,7 +115,6 @@
 #define	NOSTDLIBH
 #define	USETIMEH
 #define	USETERMIO
-#define	HAVETIMEZONE
 #define	NOSELECT
 #define	NOSTRSTR
 #endif
@@ -165,6 +164,8 @@
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USEMNTCTL
+#define	USERE_COMP
+#define	SIGARGINT
 #endif
 
 #if defined (ultrix)
@@ -176,6 +177,7 @@
 #define	USEFSDATA
 #define	USEGETMNT
 #define	USERE_COMP
+#define	USESETENV
 #endif
 
 #if defined (_AUX_SOURCE)
@@ -221,9 +223,11 @@
 #define	NOUNISTDH
 #define	NOSTDLIBH
 #define	USEDIRECT
+#define	USERE_COMP
 #define	USESETENV
 #define	NOSTRSTR
 #define	USEGETWD
+#define	SIGARGINT
 #endif
 
 #if defined (linux)

@@ -44,6 +44,14 @@ extern char *tgoto();
 #define	GETSIZE		"\0337\033[r\033[999;999H\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 
+#ifndef FD_SET
+typedef struct fd_set {
+	int fds_bits[1];
+} fd_set;
+# define	FD_ZERO(p)	(((p) -> fds_bits[0]) = 0)
+# define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= (1 << (n)))
+#endif
+
 static int err2();
 static int defaultterm();
 static int tgetstr2();
@@ -643,6 +651,7 @@ unsigned long usec;
 
 	timeout.tv_sec = 0L;
 	timeout.tv_usec = usec;
+	FD_ZERO(&readfds);
 	FD_SET(STDIN, &readfds);
 
 	return (select(1, &readfds, NULL, NULL, &timeout));

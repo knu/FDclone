@@ -11,6 +11,7 @@
 
 #include <sys/param.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 
 #ifdef	SYSDIRH
 #include <sys/dir.h>
@@ -63,7 +64,7 @@ typedef struct _mnt_t {
 static FILE *setmntent();
 static mnt_t *getmntent2();
 #define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
-#define	endmntent(fp)		((fp) && free(fp))
+#define	endmntent(fp)		((fp) && (free(fp), 1))
 static int mnt_ptr;
 static int mnt_size;
 #endif

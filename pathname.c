@@ -127,7 +127,7 @@ char *path;
 {
 	char *cp, *eol;
 
-	if (!path) return(NULL);
+	if (!path || !(*path)) return(path);
 	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
 	eol = cp + strlen(cp);
 	cp = _evalpath(cp, eol);
