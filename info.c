@@ -13,7 +13,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
-#ifdef	SYSDIRH
+#ifdef	USESYSDIRH
 #include <sys/dir.h>
 #endif
 

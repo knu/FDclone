@@ -288,7 +288,7 @@ struct tm *tm1, *tm2;
 
 static long gettimezone(tm, time)
 struct tm *tm;
-int time;
+time_t time;
 {
 #ifdef	NOTMGMTOFF
 	struct timeval t_val;

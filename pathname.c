@@ -359,10 +359,20 @@ char *lastpointer(buf, n)
 char *buf;
 int n;
 {
-	int i;
-
-	for (i = 0; i < n; i++) buf += strlen(buf) + 1;
+	while (n--) buf += strlen(buf) + 1;
 	return(buf);
+}
+
+char *finddupl(buf, n, target)
+char *buf;
+int n;
+char *target;
+{
+	while (n--) {
+		if (!strcmp(buf, target)) return(buf);
+		buf += strlen(buf) + 1;
+	}
+	return(NULL);
 }
 
 static int completeuser(name, matchno, matchp)
@@ -454,7 +464,8 @@ char **matchp;
 			if (!strcmp(dp -> d_name, ".")
 			|| !strcmp(dp -> d_name, "..")) continue;
 		}
-		if (strncmp(file, dp -> d_name, len)) continue;
+		if (strncmp(file, dp -> d_name, len)
+		|| finddupl(*matchp, matchno, dp -> d_name)) continue;
 
 		strcpy(cp, dp -> d_name);
 		dirflag = (Xstat(dir, &status) >= 0

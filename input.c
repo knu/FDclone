@@ -20,6 +20,7 @@ extern int columns;
 extern int filepos;
 extern int sorton;
 extern int minfilename;
+extern int inputkcode;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
 #endif
@@ -59,7 +60,8 @@ int sig;
 
 	ch = getkey(sig);
 
-	if (!strcmp(editmode, "emacs")) {
+	if (!editmode) return(ch);
+	else if (!strcmp(editmode, "emacs")) {
 		switch (ch) {
 			case CTRL('A'):
 				ch = K_BEG;

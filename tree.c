@@ -17,8 +17,6 @@ extern char fullpath[];
 extern char *archivefile;
 extern int subwindow;
 extern int sorton;
-extern int sorttree;
-extern int dircountlimit;
 extern int lastdrv;
 
 #define	DIRFIELD	3
@@ -41,6 +39,9 @@ static treelist *treeup();
 static treelist *treedown();
 static VOID freetree();
 static char *_tree();
+
+int sorttree;
+int dircountlimit;
 
 
 static int includedir(dir)

@@ -19,8 +19,6 @@ extern char *findpattern;
 extern char **sh_history;
 extern char *archivefile;
 extern char *archivedir;
-extern int histsize;
-extern int savehist;
 
 static char *evalcomstr();
 static char *killmeta();
@@ -29,27 +27,27 @@ static int setargs();
 static int insertarg();
 static int dohistory();
 
-int maxalias;
 aliastable aliaslist[MAXALIASTABLE];
+int maxalias;
+int histsize;
+int savehist;
 
 
-static char *evalcomstr(path)
-char *path;
+static char *evalcomstr(path, delim)
+char *path, *delim;
 {
 	char *cp, *next, *tmp, *epath;
 	int len;
 
-	epath = NULL;
+	epath = next = NULL;
 	len = 0;
 	for (cp = path; cp && *cp; cp = next) {
 		if ((next = strchr(cp, '\''))
-		|| (next = strpbrk(cp, CMDLINE_DELIM))) {
+		|| (next = strpbrk(cp, delim))) {
 			tmp = _evalpath(cp, next);
 			cp = next;
-			if (*next != '\'') {
-				while (*(++next)
-				&& strchr(CMDLINE_DELIM, *next));
-			}
+			if (*next != '\'')
+				while (*(++next) && strchr(delim, *next));
 			else if (next = strchr(next + 1, '\'')) next++;
 			else next = cp + strlen(cp);
 		}
@@ -210,7 +208,7 @@ int max;
 macrostat *stp;
 {
 	macrostat st;
-	char line[MAXCOMMSTR + 1];
+	char *cp, *tmp, line[MAXCOMMSTR + 1];
 	int i, j, len, noext, argset, uneval;
 
 	if (stp) argset = (stp -> flags) & F_ARGSET;
@@ -311,7 +309,17 @@ macrostat *stp;
 	}
 	if (((stp -> flags) & F_REMAIN) && mark == 0) stp -> flags &= ~F_REMAIN;
 	*(line + j) = '\0';
-	return(evalcomstr(line));
+
+	cp = evalcomstr(line, CMDLINE_DELIM);
+	len = strlen(cp);
+	for (i = j = 0; i < stp -> needmark; i++) {
+		j += strlen(&line[j]) + 1;
+		tmp = evalcomstr(&line[j], CMDLINE_DELIM);
+		cp = (char *)realloc2(cp, len + strlen(tmp) + 1 + 1);
+		strcpy(cp + len + 1, tmp);
+		len += strlen(tmp) + 1;
+	}
+	return(cp);
 }
 
 int execmacro(command, arg, list, max, noconf, argset)
@@ -335,7 +343,7 @@ int max, noconf, argset;
 			cp = inputstr("sh#", 0, st.addoption, tmp, &sh_history);
 			free(tmp);
 			if (!cp || !*cp) return(-1);
-			tmp = evalcomstr(cp);
+			tmp = evalcomstr(cp, CMDLINE_DELIM);
 			free(cp);
 		}
 		status = system3(tmp, noconf);
@@ -388,6 +396,7 @@ int execshell()
 	nl2();
 	tabs();
 	kanjiputs(SHEXT_K);
+	tflush();
 	status = system2(sh);
 	raw2();
 	noecho2();
@@ -535,14 +544,12 @@ int execinternal(command)
 char *command;
 {
 	char *cp;
-	int i;
 
 	raw2();
 	noecho2();
 	nonl2();
 	notabs();
 
-	i = -1;
 	locate(0, n_line - 1);
 	putterm(l_clear);
 	tflush();
@@ -552,19 +559,19 @@ char *command;
 		cp >= command && (*cp == ' ' || *cp == '\t'); cp--);
 	*(cp + 1) = '\0';
 	if (!(cp = strpbrk(command, " \t"))) cp = command + strlen(command);
-	if (!strcmp(command, "printenv")) i = printenv();
-	else if (!strcmp(command, "printmacro")) i = printmacro();
-	else if (!strcmp(command, "printlaunch")) i = printlaunch();
-	else if (!strcmp(command, "printarch")) i = printarch();
-	else if (!strcmp(command, "alias")) i = printalias();
-	else if (!strcmp(command, "printdrive")) i = printdrive();
-	else if (!strcmp(command, "history")) i = printhist();
+	if (!strcmp(command, "printenv")) printenv();
+	else if (!strcmp(command, "printmacro")) printmacro();
+	else if (!strcmp(command, "printlaunch")) printlaunch();
+	else if (!strcmp(command, "printarch")) printarch();
+	else if (!strcmp(command, "alias")) printalias();
+	else if (!strcmp(command, "printdrive")) printdrive();
+	else if (!strcmp(command, "history")) printhist();
 	else if (!strncmp(command, "cd", cp - command)) {
 		while (*cp == ' ' || *cp == '\t') cp++;
-		chdir3(cp);
+		if (*cp) chdir3(cp);
 	}
 	else if (*command == '!' || *command == '-'
-	|| (*command >= '0' && *command <= '9')) i = dohistory(command);
+	|| (*command >= '0' && *command <= '9')) dohistory(command);
 	else if (evalconfigline(command) < 0) warning(0, NOCOM_K);
 	else {
 		adjustpath();
@@ -579,7 +586,7 @@ VOID adjustpath()
 
 	if (!(cp = (char *)getenv("PATH"))) return;
 
-	path = evalcomstr(cp);
+	path = evalcomstr(cp, ":");
 	if (strcmp(path, cp)) {
 #ifdef	USESETENV
 		if (setenv("PATH", path, 1) < 0) error("PATH");

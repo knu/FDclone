@@ -1,11 +1,11 @@
 '\" t
 .\"
 .\" Copyright (c) 1995,96 Takashi SHIRAI
-.\"                    <shirai@red.nintendo.co.jp>
+.\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   1.01 02/02/96
+.\" @(#)fd.1   1.01g 04/22/96
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "February 2, 1996"
+.TH FD 1 "April 22, 1996"
 .de sh
 .br
 .PP
@@ -1459,7 +1459,7 @@ LANGUAGE
 ワイルドカードの検索では、漢字は 1 文字として見なされません。
 
 .SH 著者
-白井 隆 <shirai@red.nintendo.co.jp>。
+白井 隆 <shirai@nintendo.co.jp>。
 MS-DOS 用に作られたオリジナルの『ＦＤ』は、
 A.Idei <SDI00544@niftyserve.or.jp> 氏によって 1989 年に
 最初に作成、公開されました。
@@ -1541,4 +1541,4 @@ Copyright (C) 1995,96 by Takashi SHIRAI
 白井 隆, 任天堂株式会社 開発技術部
 .br
 .in +8
-<shirai@red.nintendo.co.jp>
+<shirai@nintendo.co.jp>

@@ -42,9 +42,17 @@ extern char **sh_history;
 extern char *helpindex[];
 extern int subwindow;
 extern int columns;
-extern int dispmode;
+extern int sorttype;
+extern int sorttree;
+extern int writefs;
+extern int histsize;
+extern int savehist;
+extern int minfilename;
+extern int dircountlimit;
 extern int dosdrive;
 extern char *editmode;
+extern char *deftmpdir;
+extern int dispmode;
 extern int inputkcode;
 extern int outputkcode;
 
@@ -110,16 +118,8 @@ static int loadruncom();
 static VOID printext();
 static int getoption();
 
-int sorttype;
-int sorttree;
-int writefs;
-int minfilename;
-int histsize;
-int savehist;
-int dircountlimit;
-int showsecond;
-char *deftmpdir;
 char *tmpfilename;
+int showsecond;
 
 static char *progname;
 static int timersec = 0;
@@ -257,7 +257,7 @@ static sigarg_t wintr()
 
 static sigarg_t printtime()
 {
-	static long now;
+	static time_t now;
 	struct timeval t;
 	struct timezone tz;
 	struct tm *tm;
@@ -330,23 +330,27 @@ char *cp;
 static char *geteostr(cp)
 char **cp;
 {
-	char *tmp;
-	int c;
+	char *tmp, *str;
+	int c, len;
 
 	tmp = *cp;
-	if ((c = **cp) == '"' || c == '\'') {
+	if ((c = **cp) != '"' && c != '\'') {
+		len = (str = strpbrk(*cp, " \t")) ? str - *cp : strlen(*cp);
+		*cp += len;
+	}	
+	else {
 		for (*cp = ++tmp; *cp = strchr(*cp, c); (*cp)++)
-			if (*(*cp - 1) != '\\') {
-				*((*cp)++) = '\0';
-				tmp = strdup2(tmp);
-				if (c != '\'') tmp = evalpath(tmp);
-				return(tmp);
-			}
+			if (*(*cp - 1) != '\\') break;
+		if (*cp) len = (*cp)++ - tmp;
+		else {
+			len = strlen(tmp);
+			*cp = tmp + len;
+		}
 	}
-	*cp = tmp + strlen(tmp);
-	tmp = strdup2(tmp);
-	if (c != '\'') tmp = evalpath(tmp);
-	return(tmp);
+	str = (char *)malloc2(len + 1);
+	strncpy2(str, tmp, len);
+	if (c != '\'') str = evalpath(str);
+	return(str);
 }
 
 static char *getrange(cp, fp, dp, wp)
@@ -385,11 +389,10 @@ char *str;
 		*cp = '\0';
 		if (ch == '=' || (cp = strchr(++cp, '='))) cp++;
 	}
-	if (cp) {
-		cp = skipspace(cp);
-		if (!*cp) return(NULL);
-		cp = geteostr(&cp);
-	}
+	if (!cp) return((char *)-1);
+	cp = skipspace(cp);
+	if (!*cp) return(NULL);
+	cp = geteostr(&cp);
 	return(cp);
 }
 
@@ -747,7 +750,7 @@ char *line;
 	cp = strpbrk(line, " \t");
 	if (!strncmp(line, "export", 6) && cp == line + 6) {
 		tmp = skipspace(cp + 1);
-		cp = getenvval(tmp);
+		if ((cp = getenvval(tmp)) == (char *)-1) return(-1);
 #ifdef	USESETENV
 		if (!cp) unsetenv(tmp);
 		else {
@@ -774,9 +777,10 @@ char *line;
 		loadruncom(tmp);
 	}
 	else if (isalpha(*line) && (*(line + 1) == ':' || *(line + 1) == '!'))
-		 getdosdrive(line);
+		getdosdrive(line);
 	else if (isalpha(*line) || *line == '_') {
-		if (setenv2(line, cp = getenvval(line), 1) < 0) error(line);
+		if ((cp = getenvval(line)) == (char *)-1) return(-1);
+		if (setenv2(line, cp, 1) < 0) error(line);
 		if (cp) free(cp);
 	}
 	else if (*line == '"') getlaunch(line);

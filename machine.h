@@ -380,10 +380,11 @@
 #define	OSTYPE			"ORG_386BSD"
 #define	TARUSESPACE
 #define	DECLERRLIST
-#define	SYSVDIRENT
+#define	USELEAPCNT
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USESETENV
+#define	USEMKTIME
 #endif
 
 /****************************************************************

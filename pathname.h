@@ -18,5 +18,6 @@ extern reg_t *regexp_init();
 extern int regexp_exec();
 extern int regexp_free();
 extern char *lastpointer();
+extern char *finddupl();
 extern int completepath();
 extern char *findcommon();

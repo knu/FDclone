@@ -19,9 +19,7 @@
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char *findpattern;
-extern int sorttype;
 extern int writefs;
-extern int minfilename;
 extern char *curfilename;
 
 static VOID pathbar();
@@ -32,11 +30,13 @@ static VOID calclocate();
 static int browsedir();
 
 int columns;
+int minfilename;
 int filepos;
 int mark;
 int fnameofs;
 int dispmode;
 int sorton;
+int sorttype;
 int chgorder;
 int stackdepth = 0;
 namelist filestack[MAXSTACK];
@@ -44,14 +44,13 @@ char fullpath[MAXPATHLEN + 1];
 char *origpath;
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
+namelist *filelist;
+int maxfile;
+int maxent;
 char *helpindex[10] = {
 	"Logdir", "eXec", "Copy", "Delete", "Rename",
 	"Sort", "Find", "Tree", "Editor", "Unpack"
 };
-
-namelist *filelist;
-int maxfile;
-int maxent;
 
 
 static VOID pathbar()

@@ -25,7 +25,6 @@ extern int sorton;
 extern char *destpath;
 extern int copypolicy;
 extern char fullpath[];
-extern char *deftmpdir;
 extern char *tmpfilename;
 
 #define	realdirsiz(name)		(((strlen(name) + boundary)\
@@ -39,6 +38,8 @@ static VOID touch();
 static char *maketmpfile();
 static char *getentnum();
 static VOID restorefile();
+
+char *deftmpdir;
 
 static int distdrive = -1;
 

@@ -538,7 +538,7 @@ int setenv2(name, value, overwrite)
 char *name, *value;
 int overwrite;
 {
-	assoclist *ap, *tmp;
+	assoclist *ap, **tmp;
 
 	if (ap = _getenv2(name)) {
 		if (!overwrite) return(0);
@@ -555,10 +555,10 @@ int overwrite;
 	if (value) ap -> assoc = (*value) ? strdup2(value) : NULL;
 	else {
 		free(ap -> org);
-		for (tmp = environ2; tmp; tmp = tmp -> next)
-			if (tmp -> next == ap) break;
-		if (tmp) {
-			tmp -> next = ap -> next;
+		for (tmp = &environ2; *tmp; tmp = &((*tmp) -> next))
+			if (*tmp == ap) break;
+		if (*tmp) {
+			*tmp = ap -> next;
 			free(ap);
 		}
 	}
@@ -711,7 +711,7 @@ struct tm *tm1, *tm2;
 
 static long gettimezone(tm, time)
 struct tm *tm;
-int time;
+time_t time;
 {
 #ifdef	NOTMGMTOFF
 	struct timeval t_val;

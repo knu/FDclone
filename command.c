@@ -27,7 +27,6 @@ extern namelist filestack[];
 extern char *archivefile;
 extern char *archivedir;
 extern char *destpath;
-extern int writefs;
 extern int savehist;
 
 #ifndef	PAGER
@@ -97,6 +96,7 @@ static int no_operation();
 char *findpattern = NULL;
 reg_t *findregexp = NULL;
 char **sh_history = NULL;
+int writefs;
 bindtable bindlist[MAXBINDTABLE] = {
 	{K_UP,		CUR_UP,		255},
 	{K_DOWN,	CUR_DOWN,	255},
@@ -464,7 +464,8 @@ int *maxp;
 	free(wild);
 	free(cp);
 	for (i = 0; i < *maxp; i++)
-		if (!isdir(&list[i]) && regexp_exec(re, list[i].name)) {
+		if (!isdir(&list[i]) && !ismark(&list[i])
+		&& regexp_exec(re, list[i].name)) {
 			list[i].flags |= F_ISMRK;
 			mark++;
 		}

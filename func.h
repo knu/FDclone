@@ -14,6 +14,9 @@ extern int errno;
 
 #ifdef	USEDIRECT
 #include <sys/dir.h>
+# ifdef	DIRSIZ
+# undef	DIRSIZ  
+# endif
 #else
 #include <dirent.h>
 #endif
