@@ -15,11 +15,12 @@
 #define	USETIMEH
 #define	USEUTIME
 #define	USEMKTIME
+#define	SENSEPERSEC	20
 # ifdef	__GNUC__
 #  ifndef	DJGPP
 #  define	DJGPP	1
+#  define	NOLFNEMU
 #  endif
-# define	NOLFNEMU
 # else	/* !__GNUC__ */
 # define	NOUID_T
 # define	NOFILEMODE
@@ -77,7 +78,7 @@ typedef unsigned long	u_long;
 # define	BSD43
 # define	USERE_COMP
 # define	SIGARGINT
-#  if	defined (__sony)
+#  if	defined (__sony) || !defined (bsd43)
 #  define	OSTYPE		"NEWS_OS4"
 #  define	USESETENV
 #  else
@@ -116,7 +117,7 @@ typedef unsigned long	u_long;
 #if	defined (hpux) || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SVR4
 #define	OSTYPE			"HPUX"
-#define	EXTENDCCOPT
+#define	EXTENDCCOPT		""
 #define	TERMCAPLIB		"-lcurses"
 #define	NOTZFILEH
 #define	NOTMGMTOFF
@@ -530,6 +531,7 @@ typedef unsigned long	u_long;
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
 /* #define USETIMELOCAL	/* have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	/* use mktime() instead of timelocal() */
+/* #define USEUNAME	/* use uname() instead of gethostname() */
 /* #define SIGARGINT	/* signal() needs the 2nd argument as int */
 
 /* #define SENSEPERSEC	/* ratio of key sense per 1 second */
@@ -548,6 +550,7 @@ typedef unsigned long	u_long;
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
 #define	USERAND48
+#define	USEUNAME
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif

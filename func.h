@@ -100,6 +100,9 @@ extern char *detransfile();
 
 /* builtin.c */
 extern int execbuiltin();
+#ifndef	_NOCOMPLETE
+extern int completebuiltin();
+#endif
 
 /* parse.c */
 extern char *skipspace();
@@ -273,6 +276,7 @@ extern VOID waitmes();
 extern int calcwidth();
 extern VOID putname();
 extern int listupfile();
-extern VOID rewritefile();
 extern VOID movepos();
+extern VOID rewritefile();
+extern int searchmove();
 extern VOID main_fd();

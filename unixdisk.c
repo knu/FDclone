@@ -7,9 +7,9 @@
 #include "machine.h"
 #include "unixdisk.h"
 
-#ifndef	NOLFNEMU
 static int seterrno();
-static char *shortname();
+#ifndef	NOLFNEMU
+static long int21call();
 static int dos_findfirst();
 static int dos_findnext();
 static u_short lfn_findfirst();
@@ -21,21 +21,15 @@ static u_char putdosmode();
 static time_t getdostime();
 
 static u_short doserrlist[] = {
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 65, 80
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
 };
 static int unixerrlist[] = {
 	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
-	EBADF, ENOMEM, ENOMEM, ENOMEM, EACCES, EEXIST
+	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, 0, EACCES, EEXIST
 };
 static int dos7access = 1;
 
-#if	defined (DJGPP) && (DJGPP >= 2)
-#include <crt0.h>
-int _crt0_startup_flags = _CRT0_FLAG_PRESERVE_FILENAME_CASE;
-#endif
 
-
-#ifndef	NOLFNEMU
 static int seterrno(doserr)
 u_short doserr;
 {
@@ -45,33 +39,57 @@ u_short doserr;
 		if (doserr == doserrlist[i]) return(errno = unixerrlist[i]);
 	return(errno = EINVAL);
 }
+
+#ifndef	NOLFNEMU
+/*ARGSUSED*/
+static long int21call(regsp, segsp)
+__dpmi_regs *regsp;
+struct SREGS *segsp;
+{
+	int n;
+# ifdef	DJGPP
+	__dpmi_int(0x21, regsp);
+	n = ((*regsp).x.flags & 1);
+# else
+	intdosx(regsp, regsp, segsp);
+	n = (*regsp).x.cflag;
+# endif
+	if (!n) return((*regsp).x.ax);
+	seterrno((*regsp).x.ax);
+	return(-1);
+}
 #endif	/* !NOLFNEMU */
 
 int getcurdrv()
 {
-	return(bdos(0x19, 0, 0) + ((dos7access) ? 'a' : 'A'));
+	return((u_char)bdos(0x19, 0, 0) + ((dos7access) ? 'a' : 'A'));
 }
 
 int setcurdrv(drive)
 int drive;
 {
 	union REGS regs;
+	int i;
 
 	errno = EINVAL;
 	if (drive >= 'a' && drive <= 'z') {
 		drive -= 'a';
-		dos7access = 1;
+		i = 1;
 	}
 	else {
 		drive -= 'A';
-		dos7access = 0;
+		i = 0;
 	}
 	if (drive < 0) return(-1);
 
+	dos7access = i;
 	regs.x.ax = 0x0e00;
 	regs.h.dl = drive;
 	intdos(&regs, &regs);
-	if (regs.h.al < drive) return(-1);
+	if (regs.h.al < drive) {
+		seterrno(0x0f);		/* Invarid drive */
+		return(-1);
+	}
 
 	return(0);
 }
@@ -82,90 +100,125 @@ char *path;
 #ifdef	NOLFNEMU
 	return(0);
 #else	/* !NOLFNEMU */
-	union REGS regs;
 	struct SREGS segs;
-	char buf[128], drv[4];
+	__dpmi_regs regs;
+	char drv[4], buf[128];
 
-	if (bdos(0x30, 0, 0) < 7) return(0);
+	if ((u_char)bdos(0x30, 0, 0) < 7) return(-1);
 
-	if (path && path[0] && path[1] == ':') drv[0] = path[0];
-	else drv[0] = getcurdrv();
+	if (!path || !isalpha(drv[0] = path[0]) || path[1] != ':')
+		drv[0] = getcurdrv();
 	if (drv[0] >= 'A' && drv[0] <= 'Z') return(0);
-	strcpy(&drv[1], ":\\");
+	drv[1] = ':';
+	drv[2] = '\\';
+	drv[3] = '\0';
 
 	regs.x.ax = 0x71a0;
 	regs.x.cx = sizeof(buf);
+# ifdef	DJGPP
+	_put_path(drv);
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+	regs.x.es = regs.x.ds;
+	regs.x.di = __tb_offset + 4;
+# else
 	segs.ds = FP_SEG(drv);
 	regs.x.dx = FP_OFF(drv);
 	segs.es = FP_SEG(buf);
 	regs.x.di = FP_OFF(buf);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) return(0);
-
-	return(1);
+# endif
+	if (int21call(&regs, &segs) < 0) return(-1);
+	return((regs.x.bx & 0x4000) ? 1 : -1);
 #endif	/* !NOLFNEMU */
 }
 
-#ifndef	NOLFNEMU
-static char *shortname(path, alias)
+char *shortname(path, alias)
 char *path, *alias;
 {
-	union REGS regs;
+#ifdef	NOLFNEMU
+	return(path);
+#else
 	struct SREGS segs;
-	int drv;
+	__dpmi_regs regs;
+	int i;
 
 	regs.x.ax = 0x7160;
-	regs.x.cx = 1;
+	regs.x.cx = 0x8001;
+# ifdef	DJGPP
+	i = strlen(path) + 1;
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.si = __tb_offset;
+	regs.x.es = regs.x.ds;
+	regs.x.di = __tb_offset + i;
+	if (int21call(&regs, &segs) < 0) return(NULL);
+	dosmemget(__tb + i, MAXPATHLEN, alias);
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.si = FP_OFF(path);
 	segs.es = FP_SEG(alias);
 	regs.x.di = FP_OFF(alias);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(NULL);
-	}
-	if (path && path[0] && path[1] == ':') drv = path[0];
-	else drv = getcurdrv();
-	if (drv >= 'a' && drv <= 'z') *alias += 'a' - 'A';
+	if (int21call(&regs, &segs) < 0) return(NULL);
+# endif
+	if (!path || !isalpha(i = path[0]) || path[1] != ':') i = getcurdrv();
+	if (i >= 'a' && i <= 'z') *alias += 'a' - 'A';
 
 	return(alias);
-}
 #endif	/* !NOLFNEMU */
+}
 
 char *unixrealpath(path, resolved)
 char *path, *resolved;
 {
-#ifdef	NOLFNEMU
 	int i;
 
+#ifdef	NOLFNEMU
 	_fixpath(path, resolved);
-	for (i = 0; resolved[i]; i++) {
+	for (i = 2; resolved[i]; i++) {
 		if (resolved[i] == '/') resolved[i] = _SC_;
-#if	defined (DJGPP) && (DJGPP >= 2)
-		else if (_USE_LFN);
-#endif
 		else if (resolved[i] >= 'a' && resolved[i] <= 'z')
 			resolved[i] -= 'a' - 'A';
 	}
 #else	/* !NOLFNEMU */
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
 
-	if (supportLFN(path)) return(shortname(path, resolved));
-	regs.x.ax = 0x6000;
-	regs.x.cx = 0;
+	switch (supportLFN(path)) {
+		case 1:
+			regs.x.ax = 0x7160;
+			regs.x.cx = 0x8002;
+			break;
+		case 0:
+			regs.x.ax = 0x7160;
+			regs.x.cx = 0x8001;
+			break;
+		default:
+			regs.x.ax = 0x6000;
+			regs.x.cx = 0;
+	}
+# ifdef	DJGPP
+	i = strlen(path) + 1;
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.si = __tb_offset;
+	regs.x.es = regs.x.ds;
+	regs.x.di = __tb_offset + i;
+	if (int21call(&regs, &segs) < 0) return(NULL);
+	dosmemget(__tb + i, MAXPATHLEN, resolved);
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.si = FP_OFF(path);
 	segs.es = FP_SEG(resolved);
 	regs.x.di = FP_OFF(resolved);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(NULL);
-	}
-
+	if (int21call(&regs, &segs) < 0) return(NULL);
+# endif
 #endif	/* !NOLFNEMU */
+	if (!path || !isalpha(i = path[0]) || path[1] != ':') i = getcurdrv();
+	if (i >= 'a' && i <= 'z' && *resolved >= 'A' && *resolved <= 'Z')
+		*resolved += 'a' - 'A';
+	if (i >= 'A' && i <= 'Z' && *resolved >= 'a' && *resolved <= 'z')
+		*resolved += 'A' - 'a';
+
 	return(resolved);
 }
 
@@ -176,11 +229,11 @@ int iscreat;
 #ifdef	NOLFNEMU
 	return(path);
 #else	/* !NOLFNEMU */
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
 	char *cp;
 
-	if (!supportLFN(path)) return(path);
+	if (supportLFN(path) < 0) return(path);
 	if (cp = shortname(path, alias)) return(cp);
 	if (!iscreat || errno != ENOENT) return(NULL);
 
@@ -188,16 +241,19 @@ int iscreat;
 	regs.x.bx = 0x0111;	/* O_WRONLY | SH_DENYRW | NO_BUFFER */
 	regs.x.cx = DS_IARCHIVE;
 	regs.x.dx = 0x0012;	/* O_CREAT | O_TRUNC */
+# ifdef	DJGPP
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.si = __tb_offset;
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.si = FP_OFF(path);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(NULL);
-	}
-	regs.x.bx = (u_short)(regs.x.ax);
+# endif
+	if (int21call(&regs, &segs) < 0) return(NULL);
+
+	regs.x.bx = regs.x.ax;
 	regs.x.ax = 0x3e00;
-	intdosx(&regs, &regs, &segs);
+	int21call(&regs, &segs);
 
 	return(shortname(path, alias));
 #endif	/* !NOLFNEMU */
@@ -208,36 +264,17 @@ char *adjustfname(path)
 char *path;
 {
 	int i;
-#if	defined (DJGPP) && (DJGPP >= 2)
-	struct ffblk dbuf;
-	char *cp, tmp[MAXPATHLEN + 1];
-	int j;
 
-	if (_USE_LFN) {
-		cp = NULL;
-		strcpy(tmp, path);
-		for (i = j = 0; tmp[i]; i++) {
-			if (tmp[i] != '/' && tmp[i] != _SC_) {
-				path[j++] = tmp[i];
-				continue;
-			}
-			path[j] = '\0';
-			if (cp && !findfirst(path, &dbuf, SEARCHATTRS)) {
-				strcpy(cp, dbuf.ff_name);
-				j = strlen(path);
-			}
-			path[j++] = _SC_;
-			cp = &path[j];
-		}
-		path[j] = '\0';
-		if (!cp) cp = path;
-		if ((cp[0] != '.' || (cp[1] && (cp[1] != '.' || cp[2])))
-		&& !findfirst(path, &dbuf, SEARCHATTRS))
-			strcpy(cp, dbuf.ff_name);
+#if	defined (DJGPP) && (DJGPP >= 2)
+	if (supportLFN(path) > 0) {
+		char tmp[MAXPATHLEN + 1];
+
+		unixrealpath(path, tmp);
+		strcpy(path, tmp);
 	}
 	else
-#endif	/* DJGPP >= 2 */
-	for (i = 0; path[i]; i++) {
+#endif
+	for (i = (isalpha(path[0]) && path[1] == ':') ? 2 : 0; path[i]; i++) {
 		if (path[i] == '/') path[i] = _SC_;
 		else if (path[i] >= 'a' && path[i] <= 'z')
 			path[i] -= 'a' - 'A';
@@ -251,45 +288,60 @@ static int dos_findfirst(path, result)
 char *path;
 struct dosfind_t *result;
 {
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
+# ifdef	DJGPP
+	int i;
 
-	regs.x.ax = 0x1a00;
+	i = strlen(path) + 1;
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset + i;
+# else
 	segs.ds = FP_SEG(result);
 	regs.x.dx = FP_OFF(result);
-	intdosx(&regs, &regs, &segs);
+# endif
+	regs.x.ax = 0x1a00;
+	int21call(&regs, &segs);
 
 	regs.x.ax = 0x4e00;
 	regs.x.cx = SEARCHATTRS;
+# ifdef	DJGPP
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+	if (int21call(&regs, &segs) < 0) return(-1);
+	dosmemget(__tb + i, sizeof(struct dosfind_t), result);
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.dx = FP_OFF(path);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
-		return(-1);
-	}
-
+	if (int21call(&regs, &segs) < 0) return(-1);
+# endif
 	return(0);
 }
 
 static int dos_findnext(result)
 struct dosfind_t *result;
 {
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
 
 	regs.x.ax = 0x1a00;
+# ifdef	DJGPP
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+	int21call(&regs, &segs);
+	dosmemput(result, sizeof(struct dosfind_t), __tb);
+# else
 	segs.ds = FP_SEG(result);
 	regs.x.dx = FP_OFF(result);
-	intdosx(&regs, &regs, &segs);
+	int21call(&regs, &segs);
+# endif
 
 	regs.x.ax = 0x4f00;
-	intdos(&regs, &regs);
-	if (regs.x.cflag) {
-		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
-		return(-1);
-	}
-
+	if (int21call(&regs, &segs) < 0) return(-1);
+# ifdef	DJGPP
+	dosmemget(__tb, sizeof(struct dosfind_t), result);
+# endif
 	return(0);
 }
 
@@ -297,61 +349,68 @@ static u_short lfn_findfirst(path, result)
 char *path;
 struct lfnfind_t *result;
 {
-	union REGS regs;
+# ifdef	DJGPP
+	int i;
+# endif
 	struct SREGS segs;
+	__dpmi_regs regs;
+	long fd;
 
 	regs.x.ax = 0x714e;
 	regs.x.cx = SEARCHATTRS;
+	regs.x.si = DATETIMEFORMAT;
+# ifdef	DJGPP
+	i = strlen(path) + 1;
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+	regs.x.es = regs.x.ds;
+	regs.x.di = __tb_offset + i;
+	if ((fd = int21call(&regs, &segs)) < 0) return((u_short)-1);
+	dosmemget(__tb + i, sizeof(struct lfnfind_t), result);
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.dx = FP_OFF(path);
 	segs.es = FP_SEG(result);
 	regs.x.di = FP_OFF(result);
-	regs.x.si = DATETIMEFORMAT;
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
-		return((u_short)-1);
-	}
-
-	return((u_short)(regs.x.ax));
+	if ((fd = int21call(&regs, &segs)) < 0) return((u_short)-1);
+# endif
+	return((u_short)fd);
 }
 
 static int lfn_findnext(fd, result)
 u_short fd;
 struct lfnfind_t *result;
 {
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
 
 	regs.x.ax = 0x714f;
 	regs.x.bx = fd;
 	regs.x.cx = SEARCHATTRS;
+	regs.x.si = DATETIMEFORMAT;
+# ifdef	DJGPP
+	regs.x.es = __tb_segment;
+	regs.x.di = __tb_offset;
+	if (int21call(&regs, &segs) < 0) return(-1);
+	dosmemget(__tb, sizeof(struct lfnfind_t), result);
+# else
 	segs.es = FP_SEG(result);
 	regs.x.di = FP_OFF(result);
-	regs.x.si = DATETIMEFORMAT;
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
-		return(-1);
-	}
-
+	if (int21call(&regs, &segs) < 0) return(-1);
+# endif
 	return(0);
 }
 
 static int lfn_findclose(fd)
 u_short fd;
 {
-	union REGS regs;
+	struct SREGS segs;
+	__dpmi_regs regs;
 
 	regs.x.ax = 0x71a1;
 	regs.x.bx = fd;
-	intdos(&regs, &regs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(-1);
-	}
-
-	return(0);
+	return((int21call(&regs, &segs) < 0) ? -1 : 0);
 }
 
 DIR *unixopendir(dir)
@@ -367,7 +426,7 @@ char *dir;
 	if (!(dirp = (DIR *)malloc(sizeof(DIR)))) return(NULL);
 	dirp -> dd_off = 0;
 
-	if (!supportLFN(path)) {
+	if (supportLFN(path) <= 0) {
 		strcat(path, "*.*");
 		dirp -> dd_buf = (char *)malloc(sizeof(struct dosfind_t));
 		if (!dirp -> dd_buf) {
@@ -465,48 +524,32 @@ long loc;
 	return(0);
 }
 
-/*ARGSUSED*/
-char *unixgetcwd(pathname, size)
-char *pathname;
-int size;
-{
-	union REGS regs;
-	struct SREGS segs;
-
-	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
-
-	pathname[0] = getcurdrv();
-	strcpy(pathname + 1, ":\\");
-	pathname += 3;
-	regs.x.ax = (supportLFN(NULL)) ? 0x7147 : 0x4700;
-	regs.h.dl = 0;			/* Current Drive */
-	segs.ds = FP_SEG(pathname);
-	regs.x.si = FP_OFF(pathname);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(NULL);
-	}
-	return(pathname);
-}
-
 int unixrename(from, to)
 char *from, *to;
 {
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
+# ifdef	DJGPP
+	int i;
+#endif
 
-	regs.x.ax = (supportLFN(from) || supportLFN(to)) ? 0x7156 : 0x5600;
+	regs.x.ax =
+		(supportLFN(from) > 0 || supportLFN(to) > 0) ? 0x7156 : 0x5600;
+# ifdef	DJGPP
+	_put_path(from);
+	i = strlen(from) + 1;
+	_put_path2(to, i);
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+	regs.x.es = regs.x.ds;
+	regs.x.di = __tb_offset + i;
+# else
 	segs.ds = FP_SEG(from);
 	regs.x.dx = FP_OFF(from);
 	segs.es = FP_SEG(to);
 	regs.x.di = FP_OFF(to);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(-1);
-	}
-	return(0);
+# endif
+	return((int21call(&regs, &segs) < 0) ? -1 : 0);
 }
 
 /*ARGSUSED*/
@@ -514,20 +557,66 @@ int unixmkdir(path, mode)
 char *path;
 int mode;
 {
-	union REGS regs;
 	struct SREGS segs;
+	__dpmi_regs regs;
 
-	regs.x.ax = (supportLFN(path)) ? 0x7139 : 0x3900;
+	regs.x.ax = (supportLFN(path) > 0) ? 0x7139 : 0x3900;
+# ifdef	DJGPP
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.dx = FP_OFF(path);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(-1);
-	}
-	return(0);
+# endif
+	return((int21call(&regs, &segs) < 0) ? -1 : 0);
 }
 #endif	/* !NOLFNEMU */
+
+/*ARGSUSED*/
+char *unixgetcwd(pathname, size)
+char *pathname;
+int size;
+{
+#ifdef	NOLFNEMU
+	if (getcwd(pathname, size)) adjustfname(pathname + 2);
+	else pathname = NULL;
+#else	/* !NOLFNEMU */
+# ifdef	DJGPP
+	char tmp[MAXPATHLEN + 1];
+# endif
+	struct SREGS segs;
+	__dpmi_regs regs;
+
+	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
+
+	pathname[0] = getcurdrv();
+	pathname[1] = ':';
+	pathname[2] = '\\';
+
+	regs.x.ax = (supportLFN(NULL) > 0) ? 0x7147 : 0x4700;
+	regs.h.dl = 0;			/* Current Drive */
+# ifdef	DJGPP
+	regs.x.ds = __tb_segment;
+	regs.x.si = __tb_offset;
+	if (int21call(&regs, &segs) < 0) return(NULL);
+	dosmemget(__tb, MAXPATHLEN, pathname + 3);
+# else
+	segs.ds = FP_SEG(pathname);
+	regs.x.si = FP_OFF(pathname + 3);
+	if (int21call(&regs, &segs) < 0) return(NULL);
+# endif
+#endif	/* !NOLFNEMU */
+	if (dos7access && *pathname >= 'A' && *pathname <= 'Z')
+		*pathname += 'a' - 'A';
+	if (!dos7access && *pathname >= 'a' && *pathname <= 'z')
+		*pathname += 'A' - 'a';
+#if	!defined (NOLFNEMU) && defined (DJGPP)
+	strcpy(tmp, pathname);
+	unixrealpath(tmp, pathname);
+#endif
+	return(pathname);
+}
 
 static u_short getdosmode(attr)
 u_char attr;
@@ -587,11 +676,7 @@ struct stat *status;
 	struct ffblk dbuf;
 
 	if (findfirst(path, &dbuf, SEARCHATTRS) != 0
-#if	defined (DJGPP) && (DJGPP >= 2)
-	&& (errno != ENOENT || strcmp(path, "..")
-#else
 	&& (errno != ENMFILE || strcmp(path, "..")
-#endif
 	|| findfirst(".", &dbuf, SEARCHATTRS) != 0)) {
 		if (!errno) errno = ENOENT;
 		return(-1);
@@ -600,7 +685,7 @@ struct stat *status;
 	status -> st_mtime = getdostime(dbuf.ff_fdate, dbuf.ff_ftime);
 	status -> st_size = dbuf.ff_fsize;
 #else	/* !NOLFNEMU */
-	if (!supportLFN(path)) {
+	if (supportLFN(path) < 0) {
 		struct dosfind_t dbuf;
 
 		if (dos_findfirst(path, &dbuf) < 0
@@ -617,9 +702,9 @@ struct stat *status;
 		struct lfnfind_t lbuf;
 		int fd;
 
-		if ((fd = lfn_findfirst(path, &lbuf)) < 0
+		if ((fd = lfn_findfirst(path, &lbuf)) == (u_short)-1
 		&& (errno != ENOENT || strcmp(path, "..")
-		|| (fd = lfn_findfirst(".", &lbuf)) < 0)) {
+		|| (fd = lfn_findfirst(".", &lbuf)) == (u_short)-1)) {
 			if (!errno) errno = ENOENT;
 			return(-1);
 		}
@@ -643,15 +728,15 @@ int unixchmod(path, mode)
 char *path;
 int mode;
 {
-	union REGS regs;
 #ifndef	NOLFNEMU
 	struct SREGS segs;
 #endif
+	__dpmi_regs regs;
 
 #ifdef	NOLFNEMU
 	regs.x.ax = 0x4301;
 #else
-	if (!supportLFN(path)) regs.x.ax = 0x4301;
+	if (supportLFN(path) < 0) regs.x.ax = 0x4301;
 	else {
 		regs.x.ax = 0x7143;
 		regs.h.bl = 0x01;
@@ -662,17 +747,19 @@ int mode;
 	regs.x.dx = (unsigned)path;
 	intdos(&regs, &regs);
 	if (regs.x.cflag) {
-		errno = (u_short)(regs.x.ax);
+		seterrno((u_short)(regs.x.ax));
 		return(-1);
 	}
+	return(0);
 #else
+# ifdef	DJGPP
+	_put_path(path);
+	regs.x.ds = __tb_segment;
+	regs.x.dx = __tb_offset;
+# else
 	segs.ds = FP_SEG(path);
 	regs.x.dx = FP_OFF(path);
-	intdosx(&regs, &regs, &segs);
-	if (regs.x.cflag) {
-		seterrno(regs.x.ax);
-		return(-1);
-	}
+# endif
+	return((int21call(&regs, &segs) < 0) ? -1 : 0);
 #endif
-	return(0);
 }

@@ -203,6 +203,9 @@ USETIMELOCAL
 USEMKTIME
 	時間変換関数 mktime(3) を timelocal(3) の代わりに用
 	います。
+USEUNAME
+	ホスト名取得関数 uname(2) を gethostname(2) の代わり
+	に用います。
 SIGARGINT
 	ソフトウェアシグナル関数 signal(3) の第 2 引数として、
 	int 型を返す関数へのポインタが用いられます。

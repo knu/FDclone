@@ -9,8 +9,8 @@
 #include "term.h"
 #include "func.h"
 #include "kctype.h"
-#include "kanji.h"
 #include "funcno.h"
+#include "kanji.h"
 #include "version.h"
 
 #ifdef	USETIMEH

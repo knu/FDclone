@@ -8,6 +8,10 @@
 #include "func.h"
 #include "kctype.h"
 
+#ifdef	USEUNAME
+#include <sys/utsname.h>
+#endif
+
 #if	MSDOS
 #include "unixemu.h"
 #else
@@ -358,6 +362,9 @@ u_char *fp, *dp, *wp;
 
 char *evalprompt()
 {
+#ifdef	USEUNAME
+	struct utsname uts;
+#endif
 	static char *prompt = NULL;
 	char *cp, line[MAXLINESTR + 1];
 	int i, j;
@@ -383,7 +390,15 @@ char *evalprompt()
 				while (*cp) line[j++] = *(cp++);
 				break;
 			case 'h':
+			case 'H':
+#ifdef	USEUNAME
+				uname(&uts);
+				strcpy(&line[j], uts.nodename);
+#else
 				gethostname(&line[j], MAXLINESTR - j);
+#endif
+				if (promptstr[i] == 'h'
+				&& (cp = strchr(&line[j], '.'))) *cp = '\0';
 				j += strlen(&line[j]);
 				break;
 			case '$':
@@ -398,6 +413,11 @@ char *evalprompt()
 				if (cp) cp++;
 				else cp = fullpath;
 				while (*cp) line[j++] = *(cp++);
+				break;
+			case '~':
+				if (underhome(&line[j + 1])) line[j++] = '~';
+				else strcpy(&line[j], fullpath);
+				j += strlen(&line[j]);
 				break;
 			default:
 				line[j++] = promptstr[i];

@@ -8,11 +8,14 @@
 #include "term.h"
 #include "func.h"
 #include "kctype.h"
-#include "kanji.h"
 #include "funcno.h"
+#include "kanji.h"
 
 #if	MSDOS
 #include "unixemu.h"
+# ifndef	NOLFNEMU
+extern char *shortname();
+# endif
 #else
 #include <sys/param.h>
 #endif
@@ -184,6 +187,9 @@ namelist *list;
 int max;
 macrostat *stp;
 {
+#if	MSDOS && !defined (NOLFNEMU)
+	char buf[MAXPATHLEN + 1];
+#endif
 	macrostat st;
 	char *cp, *tmp, line[MAXCOMMSTR + 1];
 	int i, j, len, noext, argset, uneval;
@@ -217,7 +223,11 @@ macrostat *stp;
 				break;
 			case 'X':
 				if (command[i + 1]
+#if	MSDOS && !defined (NOLFNEMU)
+				&& strchr("TMS", toupper2(command[i + 1]))) {
+#else
 				&& strchr("TM", toupper2(command[i + 1]))) {
+#endif
 					noext = 1;
 					i--;
 					break;
@@ -258,8 +268,19 @@ macrostat *stp;
 			case 'K':
 				stp -> flags |= F_NOCONFIRM;
 				break;
+#if	MSDOS && !defined (NOLFNEMU)
+			case 'S':
+				if (!(cp = shortname(arg, buf))) cp = arg;
+				len = setarg(line, j, NULL, cp, noext);
+				if (!len) return(NULL);
+				j += len;
+				argset = 1;
+				noext = 0;
+				break;
+#endif
 			default:
 				line[j++] = command[i];
+				noext = 0;
 				break;
 		}
 		else {
@@ -431,9 +452,11 @@ int *maxp, noconf, argset;
 	}
 	if (tmp) free(tmp);
 	if (status >= -1) return(status);
-	for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
-	mark = 0;
-	marksize = 0;
+	if (list) {
+		for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
+		mark = 0;
+		marksize = 0;
+	}
 	return(4);
 }
 
@@ -517,7 +540,7 @@ int *maxp, noconf, argset;
 
 	argc = getargs(command, argv, MAXARGS + 1);
 	for (i = 0; i < maxuserfunc; i++)
-		if (!strcmp(command, userfunclist[i].func)) break;
+		if (!strpathcmp(argv[0], userfunclist[i].func)) break;
 	if (i >= maxuserfunc)
 		status = execmacro(command, arg, list, maxp, noconf, argset);
 	else {
@@ -564,7 +587,7 @@ int uniq;
 	if (uniq) {
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
-			if (!strcmp(str, history[n][i])) break;
+			if (!strpathcmp(str, history[n][i])) break;
 		}
 		if (i < size) size = i;
 	}
@@ -662,9 +685,18 @@ int *maxp;
 		cp = skipnumeric(&argv[0][2], 0);
 		n = atoi(&argv[0][2]);
 	}
-	else {
+	else if (argv[0][1] >= '0' && argv[0][1] <= '9') {
 		cp = skipnumeric(&argv[0][1], 0);
 		n = histno[0] - atoi(&argv[0][1]);
+	}
+	else {
+		i = strlen(&argv[0][1]);
+		for (n = 1; n <= size; n++) {
+			if (!history[0][n]) break;
+			cp = skipspace(history[0][n]);
+			if (!strnpathcmp(&argv[0][1], cp, i)) break;
+		}
+		cp = &argv[0][i + 1];
 	}
 	free(history[0][0]);
 	if (*cp || n <= 0 || n > size || !history[0][n]) {
@@ -699,7 +731,7 @@ char *command;
 	len = (cp = strpbrk(command, " \t")) ? cp - command : strlen(command);
 
 	for (i = 0; i < maxalias; i++)
-		if (!strncmp(command, aliaslist[i].alias, len)
+		if (!strnpathcmp(command, aliaslist[i].alias, len)
 		&& !aliaslist[i].alias[len]) break;
 	if (i >= maxalias) return(NULL);
 
@@ -723,7 +755,7 @@ char **matchp;
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
 	for (i = 0; i < maxalias; i++) {
-		if (strncmp(com, aliaslist[i].alias, len)) continue;
+		if (strnpathcmp(com, aliaslist[i].alias, len)) continue;
 		ptr = size;
 		size += strlen(aliaslist[i].alias) + 1;
 		*matchp = (char *)realloc2(*matchp, size);
@@ -745,7 +777,7 @@ char **matchp;
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
 	for (i = 0; i < maxuserfunc; i++) {
-		if (strncmp(com, userfunclist[i].func, len)) continue;
+		if (strnpathcmp(com, userfunclist[i].func, len)) continue;
 		ptr = size;
 		size += strlen(userfunclist[i].func) + 1;
 		*matchp = (char *)realloc2(*matchp, size);

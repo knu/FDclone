@@ -159,7 +159,7 @@ char *path;
 int rename2(from, to)
 char *from, *to;
 {
-	if (!strcmp(from, to)) return(0);
+	if (!strpathcmp(from, to)) return(0);
 	return(Xrename(from, to));
 }
 
@@ -241,11 +241,6 @@ char *path, *resolved;
 	}
 
 #if	MSDOS
-# if	defined (DJGPP) && (DJGPP >= 2)
-	if (tmp != path) strcpy(tmp, path);
-	adjustfname(tmp);
-	path = tmp;
-# endif
 	drv = dospath("", NULL);
 	if (resolved[0] = _dospath(path)) path += 2;
 	if (*path == _SC_) {
@@ -255,7 +250,7 @@ char *path, *resolved;
 		resolved[3] = '\0';
 	}
 	else if (resolved[0] && resolved[0] != drv) {
-		if (resolved[0]) setcurdrv(resolved[0]);
+		setcurdrv(resolved[0]);
 		if (!Xgetcwd(resolved, MAXPATHLEN)) error(NULL);
 		setcurdrv(drv);
 	}
@@ -572,7 +567,7 @@ char *str;
 	if (cp = strchr(str, '=')) cp++;
 	else return(0);
 	for (envp = environ, i = 1; *envp; envp++, i++) {
-		if (!strncmp(*envp, str, cp - str)) {
+		if (!strnpathcmp(*envp, str, cp - str)) {
 			if (*cp) *envp = str;
 			else do {
 				*envp = *(envp + 1);
@@ -580,6 +575,9 @@ char *str;
 			return(0);
 		}
 	}
+#if	MSDOS
+	while (--cp >= str) *cp = toupper2(*cp);
+#endif
 	envp = environ;
 	if (!(environ = (char **)malloc((i + 1) * sizeof(char *)))) return(-1);
 	*environ = str;
@@ -596,9 +594,10 @@ char *name;
 	assoclist *ap;
 
 	for (ap = environ2; ap; ap = ap -> next)
-		if (!strcmp(name, ap -> org)) return(ap);
-	if (!strncmp(name, "FD_", 3)) for (ap = environ2; ap; ap = ap -> next)
-		if (!strcmp(name + 3, ap -> org)) return(ap);
+		if (!strpathcmp(name, ap -> org)) return(ap);
+	if (!strnpathcmp(name, "FD_", 3))
+	for (ap = environ2; ap; ap = ap -> next)
+		if (!strpathcmp(name + 3, ap -> org)) return(ap);
 	return(NULL);
 }
 
@@ -606,6 +605,9 @@ int setenv2(name, value, overwrite)
 char *name, *value;
 int overwrite;
 {
+#if	MSDOS
+	char *cp;
+#endif
 	assoclist *ap, **tmp;
 
 	if (ap = _getenv2(name)) {
@@ -616,6 +618,9 @@ int overwrite;
 		if (!value) return(0);
 		ap = (assoclist *)malloc2(sizeof(assoclist));
 		ap -> org = strdup2(name);
+#if	MSDOS
+		for (cp = ap -> org; cp && *cp; cp++) *cp = toupper2(*cp);
+#endif
 		ap -> next = environ2;
 		environ2 = ap;
 	}
@@ -641,7 +646,7 @@ char *name;
 
 	if (ap = _getenv2(name)) return(ap -> assoc);
 	else if (cp = (char *)getenv(name)) return(cp);
-	return(strncmp(name, "FD_", 3) ? NULL : (char *)getenv(name + 3));
+	return(strnpathcmp(name, "FD_", 3) ? NULL : (char *)getenv(name + 3));
 }
 
 /*ARGSUSED*/
@@ -665,7 +670,7 @@ int comline;
 		}
 	}
 	else for (ap = environ2; ap; ap = ap -> next)
-	if (!strcmp(argv[1], ap -> org)) {
+	if (!strpathcmp(argv[1], ap -> org)) {
 		cprintf2("%s=%s\r\n", ap -> org,
 			(ap -> assoc) ? ap -> assoc : "");
 		break;

@@ -8,11 +8,8 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
-#include "kanji.h"
-
-#ifndef	CPP
 #include "funcno.h"
-#endif	/* !CPP */
+#include "kanji.h"
 
 #if	MSDOS
 #include "unixemu.h"
@@ -26,6 +23,7 @@ extern int columns;
 extern int filepos;
 extern int mark;
 extern long marksize;
+extern int isearch;
 extern long blocksize;
 extern int fnameofs;
 extern int dispmode;
@@ -117,6 +115,8 @@ static int tree_dir();
 #ifndef	_NOARCHIVE
 static int backup_tape();
 #endif
+static int search_forw();
+static int search_back();
 static int warning_bell();
 static int no_operation();
 
@@ -249,6 +249,8 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{K_HELP,	HELP_MESSAGE,	255},
 	{CTRL('@'),	MARK_FILE3,	255},
 	{CTRL('L'),	REREAD_DIR,	255},
+	{CTRL('R'),	SEARCH_BACK,	255},
+	{CTRL('S'),	SEARCH_FORW,	255},
 	{-1,		NO_OPERATION,	255}
 };
 
@@ -917,7 +919,7 @@ char *arg;
 		return(1);
 	}
 	if (!yesno(WRTOK_K)) return(1);
-	if (underhome() <= 0 && !yesno(HOMOK_K)) return(1);
+	if (underhome(NULL) <= 0 && !yesno(HOMOK_K)) return(1);
 	arrangedir(list, *maxp, i);
 	chgorder = 0;
 	return(4);
@@ -1425,6 +1427,36 @@ char *arg;
 	return(4);
 }
 #endif	/* !_NOARCHIVE */
+
+/*ARGSUSED*/
+static int search_forw(list, maxp, arg)
+namelist *list;
+int *maxp;
+char *arg;
+{
+	isearch = 1;
+	locate(0, LHELP);
+	putterm(l_clear);
+	putterm(t_standout);
+	cputs2(SEAF_K);
+	putterm(end_standout);
+	return(0);
+}
+
+/*ARGSUSED*/
+static int search_back(list, maxp, arg)
+namelist *list;
+int *maxp;
+char *arg;
+{
+	isearch = -1;
+	locate(0, LHELP);
+	putterm(l_clear);
+	putterm(t_standout);
+	cputs2(SEAB_K);
+	putterm(end_standout);
+	return(0);
+}
 
 /*ARGSUSED*/
 static int warning_bell(list, maxp, arg)

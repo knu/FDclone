@@ -4,9 +4,9 @@
  *	Terminal Module
  */
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "machine.h"
 
 #if	defined (DJGPP) && (DJGPP >= 2)
@@ -806,10 +806,18 @@ char *str;
 	for (i = 0; i <= K_MAX - K_MIN; i++) if (keycode[i] == n) {
 		if (keyseq[i]) free(keyseq[i]);
 		keyseq[i] = str;
-		sortkeyseq();
-		return(0);
+		break;
 	}
-	return(-1);
+	if (i > K_MAX - K_MIN) return(-1);
+
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		if (keycode[i] == n || !keyseq[i] || strcmp(keyseq[i], str))
+			continue;
+		free(keyseq[i]);
+		keyseq[i] = NULL;
+	}
+	sortkeyseq();
+	return(0);
 }
 
 char *getkeyseq(n)
@@ -971,10 +979,21 @@ int sig;
 	static u_char tbuf1[3] = {0xff, 0xff, 0xff};
 	u_char tbuf2[3];
 #endif
+#if	defined (DJGPP) && (DJGPP >= 2)
+	static int count = SENSEPERSEC;
+#endif
 	int i, ch;
 
 #ifdef	__GNUC__
-	while (!kbhit2(1000000L / SENSEPERSEC));
+	do {
+		i = kbhit2(1000000L / SENSEPERSEC);
+# if	defined (DJGPP) && (DJGPP >= 2)
+		if (sig && !(--count)) {
+			count = SENSEPERSEC;
+			raise(sig);
+		}
+# endif
+	} while (!i);
 #else
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
 	while (!kbhit2(1000000L / SENSEPERSEC)) {

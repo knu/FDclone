@@ -8,9 +8,9 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include "machine.h"
 
 #ifndef	_NODOSDRIVE

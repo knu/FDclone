@@ -8,8 +8,8 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <ctype.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "machine.h"
 
 #ifndef	NOUNISTDH
@@ -22,10 +22,14 @@
 
 #if	MSDOS
 #include "unixemu.h"
+#define	strpathcmp	stricmp
+#define	strnpathcmp	strnicmp
 #else
 #include <pwd.h>
 #include <sys/file.h>
 #include <sys/param.h>
+#define	strpathcmp	strcmp
+#define	strnpathcmp	strncmp
 # ifdef	USEDIRECT
 # include <sys/dir.h>
 # define	dirent	direct
@@ -88,7 +92,7 @@ char *path, *eol;
 			strncpy(buf, path + 1, cp - path - 1);
 			buf[cp - path - 1] = '\0';
 #ifdef	FD
-			if (!strcmp(buf, "FD")) tmp = progpath;
+			if (!strpathcmp(buf, "FD")) tmp = progpath;
 			else
 #endif
 #if	!MSDOS
@@ -117,9 +121,20 @@ char *path, *eol;
 		}
 	}
 	else if (*path == _SC_) {
-		path++;
 		strcpy(buf, _SS_);
+		path++;
 	}
+#if	MSDOS
+	else if (isalpha(*path) && path[1] == ':') {
+		strncpy(buf, path, 2);
+		buf[2] = '\0';
+		path += 2;
+		if (*path == _SC_) {
+			strcat(buf, _SS_);
+			path++;
+		}
+	}
+#endif
 	else *buf = '\0';
 
 	while (path < eol) {
@@ -438,11 +453,7 @@ int n;
 char *target;
 {
 	while (n--) {
-#if	MSDOS
-		if (!stricmp(buf, target)) return(buf);
-#else
-		if (!strcmp(buf, target)) return(buf);
-#endif
+		if (!strpathcmp(buf, target)) return(buf);
 		buf += strlen(buf) + 1;
 	}
 	return(NULL);
@@ -473,7 +484,7 @@ char **pathp, *dir, **eolp;
 
 	if (!dirp) return(NULL);
 	cp = dir + strlen(dir);
-	if (strcmp(dir, _SS_)) strcpy(cp++, _SS_);
+	if (cp <= dir || *(cp - 1) != _SC_) strcpy(cp++, _SS_);
 	*eolp = cp;
 	return(dirp);
 }
@@ -509,6 +520,12 @@ int exe, full;
 	next = NULL;
 	if (file = strrchr(path, _SC_)) {
 		if (file == path) strcpy(dir, _SS_);
+#if	MSDOS
+		else if (isalpha(*path) && path[1] == ':' && file == &path[2]) {
+			strncpy(dir, path, 3);
+			dir[3] = '\0';
+		}
+#endif
 		else {
 			strncpy(dir, path, file - path);
 			dir[file - path] = '\0';
@@ -538,17 +555,10 @@ int exe, full;
 		}
 		strcpy(cp, dp -> d_name);
 		name = (full) ? dir : dp -> d_name;
-#if	MSDOS
 		if (exe > 1) {
-			if (stricmp(file, dp -> d_name)) continue;
+			if (strpathcmp(file, dp -> d_name)) continue;
 		}
-		else if (strnicmp(file, dp -> d_name, len)) continue;
-#else
-		if (exe > 1) {
-			if (strcmp(file, dp -> d_name)) continue;
-		}
-		else if (strncmp(file, dp -> d_name, len)) continue;
-#endif
+		else if (strnpathcmp(file, dp -> d_name, len)) continue;
 		if (finddupl(*matchp, matchno, name)) continue;
 
 		dirflag = (Xstat(dir, &status) >= 0

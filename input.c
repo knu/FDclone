@@ -61,6 +61,7 @@ char *curfilename;
 char *editmode = NULL;
 #endif
 #ifndef	_NOEDITMODE
+
 static int emulatekey[] = {
 	K_UP, K_DOWN, K_RIGHT, K_LEFT,
 	K_IC, K_DC, K_IL, K_DL,
@@ -609,10 +610,11 @@ int x, cx, len, linemax, max, comline, cont;
 	}
 	else {
 		match = NULL;
-		if (!comline) i = 0;
-		else {
-			i = completealias(cp2, 0, &match);
+		i = 0;
+		if (comline) {
 			i = completeuserfunc(cp2, i, &match);
+			i = completealias(cp2, i, &match);
+			i = completebuiltin(cp2, i, &match);
 		}
 		i = completepath(cp2, i, &match, comline, 0);
 		if (!i && comline) {
@@ -780,7 +782,6 @@ int x, cx, *lenp, max, linemax, ch;
 	}
 	return(cx);
 }
-
 
 static int _inputstr(str, x, max, linemax, def, comline, h)
 char *str;

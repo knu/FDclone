@@ -40,6 +40,7 @@ extern bindtable bindlist[];
 extern functable funclist[];
 extern int filepos;
 extern int mark;
+extern int isearch;
 extern int fnameofs;
 extern int sorton;
 extern char fullpath[];
@@ -488,7 +489,7 @@ int max;
 {
 	reg_t *re;
 	u_char fstat;
-	char *cp;
+	char *cp, buf[MAXNAMLEN + 1];
 	int ch, i, no, len, old;
 
 	if (!findpattern) re = NULL;
@@ -499,6 +500,7 @@ int max;
 	}
 
 	maxarcf = (len = strlen(archivedir)) ? 1 : 0;
+	buf[0] = '\0';
 
 	for (i = 1; i < max; i++) {
 		if (strncmp(archivedir, filelist[i].name, len)) continue;
@@ -549,6 +551,13 @@ int max;
 #endif
 
 		old = filepos;
+		if (isearch) {
+			no = searchmove(arcflist, maxarcf, ch, buf);
+			if (no >= 0) {
+				fnameofs = 0;
+				continue;
+			}
+		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
 		no = (bindlist[i].d_func < 255 && isdir(&arcflist[filepos])) ?

@@ -62,6 +62,7 @@ int maxmacro = 0;
 namelist *filelist;
 int maxfile;
 int maxent;
+int isearch;
 char *helpindex[10] = {
 #ifdef	_NOTREE
 	"help", "eXec", "Copy", "Delete", "Rename",
@@ -626,6 +627,84 @@ int all;
 	tflush();
 }
 
+int searchmove(list, max, ch, buf)
+namelist *list;
+int max, ch;
+char *buf;
+{
+	char *str[4];
+	int i, n, s, pos, len;
+
+	if (isearch > 0) {
+		n = isearch;
+		s = 1;
+	}
+	else {
+		n = -isearch;
+		s = -1;
+	}
+	len = strlen(buf);
+	pos = filepos;
+
+	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
+		if (ch == (int)(bindlist[i].key)) break;
+	if (ch == K_BS) {
+		if (!len) pos = -1;
+		else buf[--len] = '\0';
+	}
+	else if (len && bindlist[i].f_func == SEARCH_FORW) {
+		if (n > 2) pos++;
+		else if (n > 1) pos = 0;
+		s = 1;
+	}
+	else if (len && bindlist[i].f_func == SEARCH_BACK) {
+		if (n > 2) pos--;
+		else if (n > 1) pos = max - 1;
+		s = -1;
+	}
+	else {
+		if (n == 1) buf[len = 0] = '\0';
+		if (ch < ' ' || ch >= K_MIN) pos = -1;
+		else if (len < MAXNAMLEN - 1) {
+			buf[len++] = ch;
+			buf[len] = '\0';
+		}
+	}
+
+	if (pos < 0 || pos >= max) {
+		isearch = 0;
+		helpbar();
+		if (ch == CR) return(-1);
+		else if (ch != ESC) putterm(t_bell);
+		return(0);
+	}
+
+	locate(0, LHELP);
+	str[0] = SEAF_K;
+	str[1] = SEAFF_K;
+	str[2] = SEAB_K;
+	str[3] = SEABF_K;
+
+	i = 0;
+	for (;;) {
+		if (!strnpathcmp(list[pos].name, buf, len)) {
+			i = 1;
+			break;
+		}
+		pos += s;
+		if (pos < 0 || pos >= max) break;
+	}
+
+	putterm(t_standout);
+	cputs2(str[2 - s - i]);
+	putterm(end_standout);
+	kanjiputs2(buf, n_column - (int)strlen(str[2 - s - i]) - 1, 0);
+	if (i) filepos = pos;
+	else if (n != 2 && ch != K_BS) putterm(t_bell);
+	isearch = s * (i + 2);
+	return(i);
+}
+
 static int browsedir(file, def)
 char *file, *def;
 {
@@ -633,7 +712,7 @@ char *file, *def;
 	struct dirent *dp;
 	reg_t *re;
 	u_char fstat;
-	char *cp;
+	char *cp, buf[MAXNAMLEN + 1];
 	int ch, i, no, old;
 
 #ifndef	_NOCOLOR
@@ -643,6 +722,7 @@ char *file, *def;
 
 	maxfile = mark = 0;
 	totalsize = marksize = 0;
+	buf[0] = '\0';
 	blocksize = getblocksize(".");
 	chgorder = 0;
 	if (sorttype < 100) sorton = sorttype;
@@ -716,6 +796,13 @@ char *file, *def;
 #endif
 
 		old = filepos;
+		if (isearch) {
+			no = searchmove(filelist, maxfile, ch, buf);
+			if (no >= 0) {
+				fnameofs = 0;
+				continue;
+			}
+		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
 		no = (bindlist[i].d_func < 255 && isdir(&filelist[filepos])) ?
@@ -742,7 +829,7 @@ char *file, *def;
 			}
 #ifndef	_NOWRITEFS
 			else if (chgorder && writefs < 1 && no != WRITE_DIR
-			&& (i = writablefs(".")) > 0 && underhome() > 0) {
+			&& (i = writablefs(".")) > 0 && underhome(NULL) > 0) {
 				chgorder = 0;
 				if (yesno(WRTOK_K))
 					arrangedir(filelist, maxfile, i);

@@ -7,8 +7,8 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
-#include "kanji.h"
 #include "kctype.h"
+#include "kanji.h"
 
 #if	MSDOS
 #include "unixemu.h"
@@ -50,6 +50,7 @@ static char *getdestdir();
 #ifndef	_NOWRITEFS
 static int k_strlen();
 static VOID touch();
+static int nofile();
 static char *maketmpfile();
 #if	!MSDOS
 static char *getentnum();
@@ -269,15 +270,18 @@ char *path;
 	return(i);
 }
 
-int underhome()
+int underhome(buf)
+char *buf;
 {
-#if	MSDOS
-	return(1);
-#else	/* !MSDOS */
 	static char *homedir = NULL;
+	char *cp, *cwd;
+	int len;
+#if	MSDOS
+
+	if (!buf) return(1);
+	if (!homedir && !(homedir = (char *)getenv("HOME"))) homedir = "";
+#else	/* !MSDOS */
 	struct passwd *pwd;
-	char *cp;
-	int i;
 
 	if (!homedir) {
 		if (!(homedir = (char *)getenv("HOME"))) {
@@ -295,11 +299,20 @@ int underhome()
 		homedir = getwd2();
 		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
-	cp = getwd2();
-	i = strncmp(cp, homedir, strlen(homedir));
-	free(cp);
-	return(i ? 0 : 1);
 #endif	/* !MSDOS */
+
+	len = strlen(homedir);
+	cwd = getwd2();
+	if (!len || strnpathcmp(cwd, homedir, len)) {
+		cp = NULL;
+		if (buf) *buf = '\0';
+	}
+	else {
+		cp = cwd + len;
+		if (buf) strcpy(buf, cp);
+	}
+	free(cwd);
+	return(cp ? 1 : 0);
 }
 
 int preparedir(dir)
@@ -538,7 +551,8 @@ char *s;
 {
 	int i;
 
-	for (i = 0; *s; i++) if (issjis1((u_char)(*(s++)))) s++;
+	for (i = 0; s[i]; i++)
+		if (issjis1((u_char)(s[i])) && s[i + 1]) i++;
 	return(i);
 }
 
@@ -557,15 +571,28 @@ char *file;
 	fclose(fp);
 }
 
-static char *maketmpfile(len, dos)
-int len, dos;
+static int nofile(file)
+char *file;
 {
+	struct stat status;
 #if	MSDOS
 	char *cp, buf[MAXPATHLEN + 1];
+
+	cp = preparefile(file, buf, 0);
+	if ((!cp || (cp == file && Xstat(file, &status) < 0))
+#else
+	if (Xlstat(file, &status) < 0
 #endif
-	struct stat status;
-	char *str;
-	int i;
+	&& errno == ENOENT) return(1);
+	return(0);
+}
+
+static char *maketmpfile(len, dos, tmpdir)
+int len, dos;
+char *tmpdir;
+{
+	char *str, tmp[MAXPATHLEN + 1];
+	int i, l;
 
 	if (len < 0) return(NULL);
 	str = (char *)malloc2(len + 1);
@@ -573,14 +600,15 @@ int len, dos;
 	for (i = 0; i < len; i++) str[i] = 'a';
 	str[i] = '\0';
 
+	if (tmpdir) {
+		strcpy(tmp, tmpdir);
+		l = strlen(tmp);
+		tmp[l++] = '\\';
+	}
+
 	for (;;) {
-#if	MSDOS
-		cp = preparefile(str, buf, 0);
-		if ((!cp || (cp == str && Xstat(str, &status) < 0))
-		&& errno == ENOENT) return(str);
-#else
-		if (Xlstat(str, &status) < 0 && errno == ENOENT) return(str);
-#endif
+		if (tmpdir) strcpy(&tmp[l], str);
+		if (nofile(str) && (!tmpdir || nofile(tmp))) return(str);
 
 		for (i = len - 1; i >= 0; i--) {
 			if (dos) {
@@ -704,7 +732,7 @@ int max, fs;
 	top = i;
 	if (dos == 1) len = 8;
 	else len = getnamlen(realdirsiz(list[top].name));
-	tmpdir = maketmpfile(len, dos);
+	tmpdir = maketmpfile(len, dos, NULL);
 	if (_Xmkdir(tmpdir, 0777) < 0) {
 		warning(0, NOWRT_K);
 		free(tmpdir);
@@ -746,7 +774,7 @@ int max, fs;
 	Xclosedir(dirp);
 
 	if (ent > 0) {
-		cp = maketmpfile(len, dos);
+		cp = maketmpfile(len, dos, tmpdir);
 		if (rename2(tmpdir, cp) < 0) error(tmpdir);
 		free(tmpdir);
 		tmpdir = cp;
@@ -785,7 +813,8 @@ int max, fs;
 		if (ent < realdirsiz(list[i].name)) {
 			tmpfile = (char **)addlist(tmpfile, tmpno,
 				&maxtmp, sizeof(char *));
-			tmpfile[tmpno] = maketmpfile(getnamlen(ent), dos);
+			tmpfile[tmpno] =
+				maketmpfile(getnamlen(ent), dos, tmpdir);
 			if (tmpfile[tmpno]) touch(tmpfile[tmpno]);
 			tmpno++;
 			ptr = 0;
@@ -804,7 +833,7 @@ int max, fs;
 	if (entnum) free(entnum);
 #endif
 
-	cp = maketmpfile(len, dos);
+	cp = maketmpfile(len, dos, tmpdir);
 	if (rename2(tmpdir, cp) < 0) error(tmpdir);
 	free(tmpdir);
 	tmpdir = cp;

@@ -4,7 +4,6 @@
  *	UNIX Function Emulation on DOS
  */
 
-#include <fcntl.h>
 #include "fd.h"
 #include "func.h"
 #include "unixdisk.h"
@@ -48,7 +47,7 @@ char *path;
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
 #endif
-	return(unixopendir(path));
+	return(_Xopendir(path));
 }
 
 int Xclosedir(dirp)
@@ -74,7 +73,7 @@ DIR *dirp;
 VOID Xrewinddir(dirp)
 DIR *dirp;
 {
-	unixrewinddir(dirp);
+	unixrewinddir(dirp, 0L);
 }
 
 int _Xchdir(path)
@@ -83,7 +82,7 @@ char *path;
 	char buf[MAXPATHLEN + 1];
 	int drive;
 
-	drive = dospath(path, buf);
+	drive = dospath(path, NULL);
 	if (setcurdrv(drive) < 0
 	|| !(path = preparefile(path, buf, 0))) return(-1);
 	return((chdir(path) != 0) ? -1 : 0);
@@ -104,13 +103,7 @@ char *Xgetcwd(path, size)
 char *path;
 int size;
 {
-#ifdef	NOLFNEMU
-	if (!unixgetcwd(path, size)) return(NULL);
-	adjustfname(path + 2);
-	return(path);
-#else
 	return(unixgetcwd(path, size));
-#endif
 }
 
 int Xstat(path, statp)
@@ -129,9 +122,9 @@ struct stat *statp;
 	mode = statp -> st_mode;
 	if ((mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
-		if (!strcasecmp2(cp, "BAT")
-		|| !strcasecmp2(cp, "COM")
-		|| !strcasecmp2(cp, "EXE")) mode |= S_IEXEC;
+		if (!stricmp(cp, "BAT")
+		|| !stricmp(cp, "COM")
+		|| !stricmp(cp, "EXE")) mode |= S_IEXEC;
 	}
 	mode &= (S_IREAD | S_IWRITE | S_IEXEC);
 	mode |= (mode >> 3) | (mode >> 6);
@@ -262,7 +255,7 @@ char *from, *to;
 		errno = EXDEV;
 		return(-1);
 	}
-	return(unixrename(from, to));
+	return((unixrename(from, to) != 0) ? -1 : 0);
 }
 
 int Xopen(path, flags, mode)

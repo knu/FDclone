@@ -6,8 +6,8 @@
 
 #include "fd.h"
 #include "func.h"
-#include "dosdisk.h"
 #include "kctype.h"
+#include "dosdisk.h"
 
 #if	MSDOS
 #include "unixemu.h"

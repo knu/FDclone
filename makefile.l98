@@ -105,7 +105,7 @@ kanjicnv.exe: kanjicnv.c
 # function list using module
 
 funcno.h: mkfuncno.exe functabl.h fd.h config.h
-	-$(CPP) -DCPP command.c | .\\mkfuncno.exe - $@
+	-$(CPP) -DCPP functabl.h | .\\mkfuncno.exe - $@
 
 mkfuncno.exe: mkfuncno.c
 	$(CC) $(CFLAGS) -o $@ mkfuncno.c
@@ -204,7 +204,7 @@ shar: $(SOURCES)
 clean:
 	-rm -f *.obj funcno.h kanji.h
 	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
-	-rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
+	-rm -f $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
 	-rm -f core
 # DO NOT DELETE THIS LINE -- make depend depends on it.

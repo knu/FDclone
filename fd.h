@@ -26,12 +26,13 @@
 #if	MSDOS
 #define	RUNCOMFILE	"~\\fd.rc"
 #define	HISTORYFILE	"~\\fd.hst"
+#define	CMDLINE_DELIM	"\t ;<>|"
 #else
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
+#define	CMDLINE_DELIM	"\t !&:;<>|"
 #endif
 
-#define	CMDLINE_DELIM	"\t !&:;<>|"
 #define	METACHAR	"\t \"#$&'()*:;<>?[\\]^`|~"
 
 /****************************************************************

@@ -7,9 +7,9 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
-#include "kanji.h"
 #include "kctype.h"
 #include "funcno.h"
+#include "kanji.h"
 
 #if	MSDOS
 #include "unixemu.h"
@@ -482,7 +482,7 @@ char *cp;
 	int n;
 
 	for (n = 0; n < NO_OPERATION; n++)
-		if (!strcmp(cp, funclist[n].ident)) break;
+		if (!strpathcmp(cp, funclist[n].ident)) break;
 	if (n < NO_OPERATION) return(n);
 
 	if (maxmacro >= MAXMACROTABLE) return(-1);
@@ -587,15 +587,20 @@ int comline;
 		helpindex[ch - K_F(1)] = strdup2(argv[j] + 1);
 	}
 
-	if (bindlist[i].key < 0)
+	if (bindlist[i].key < 0) {
 		memcpy(&bindlist[i + 1], &bindlist[i], sizeof(bindtable));
+		bindlist[i].f_func = (u_char)n1;
+		bindlist[i].d_func = (u_char)n2;
+	}
 	else {
-		freemacro(bindlist[i].f_func);
-		freemacro(bindlist[i].d_func);
+		j = bindlist[i].f_func;
+		bindlist[i].f_func = (u_char)n1;
+		freemacro(j);
+		j = bindlist[i].d_func;
+		bindlist[i].d_func = (u_char)n2;
+		freemacro(j);
 	}
 	bindlist[i].key = (short)ch;
-	bindlist[i].f_func = (u_char)n1;
-	bindlist[i].d_func = (u_char)n2;
 	return(0);
 }
 
@@ -693,7 +698,7 @@ int comline;
 	free(tmp);
 	if (*cp) return(-1);
 	for (i = 0; i < maxalias; i++)
-		if (!strcmp(argv[1], aliaslist[i].alias)) break;
+		if (!strpathcmp(argv[1], aliaslist[i].alias)) break;
 
 	if (argc == 2) {
 		if (!comline) return(0);
@@ -709,6 +714,10 @@ int comline;
 	}
 	aliaslist[i].alias = strdup2(argv[1]);
 	aliaslist[i].comm = strdup2(argv[2]);
+#if	MSDOS
+	for (cp = aliaslist[i].alias; cp && *cp; cp++)
+		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
+#endif
 	return(0);
 }
 
@@ -779,7 +788,7 @@ int set;
 		&& head == fdtype[i].head
 		&& sect == fdtype[i].sect
 		&& cyl == fdtype[i].cyl
-		&& !strcmp(argv[2], fdtype[i].name)) break;
+		&& !strpathcmp(argv[2], fdtype[i].name)) break;
 		if (!fdtype[i].name) return(-1);
 
 		free(fdtype[i].name);
@@ -889,7 +898,7 @@ int comline;
 	}
 
 	for (i = 0; i < maxuserfunc; i++)
-		if (!strcmp(tmp, userfunclist[i].func)) break;
+		if (!strpathcmp(tmp, userfunclist[i].func)) break;
 	if (!*cp) {
 		free(line);
 		free(tmp);
@@ -969,6 +978,10 @@ int comline;
 	userfunclist[i].comm = (char **)malloc2(sizeof(char *) * (j + 1));
 	list[j] = NULL;
 	for (; j >= 0; j--) userfunclist[i].comm[j] = list[j];
+#if	MSDOS
+	for (cp = userfunclist[i].func; cp && *cp; cp++)
+		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
+#endif
 	return(0);
 }
 
@@ -982,7 +995,29 @@ int comline;
 	char *cp, *line;
 	int i, j, k, ch;
 
-	if (argc <= 1 || argc >= 4) return(-1);
+	if (argc >= 4) return(-1);
+	if (argc <= 1) {
+		if (!comline) return(0);
+		k = 0;
+		for (i = 0; i < 20 || keyidentlist[i - 20].no; i++) {
+			ch = (i < 20) ? K_F(i + 1) : keyidentlist[i - 20].no;
+			if (!(cp = getkeyseq(ch)) || !*cp) continue;
+
+			cputs2("keymap ");
+			if (i < 20) cprintf2("F%d \"", i + 1);
+			else cprintf2("%s \"", keyidentlist[i - 20].str);
+			for (j = 0; cp[j]; j++) {
+				if (isprint(cp[j])) putch2(cp[j]);
+				else cprintf2("\\%03o", cp[j]);
+			}
+			cputs2("\"\r\n");
+			if (++k >= n_line - 1) {
+				k = 0;
+				warning(0, HITKY_K);
+			}
+		}
+		return(1);
+	}
 	if (argv[1][0] == 'F' && argv[1][1] >= '1' && argv[1][1] <= '2') {
 		for (i = 2; argv[1][i]; i++)
 			if (argv[1][i] < '0' || argv[1][i] > '9') break;
@@ -999,8 +1034,8 @@ int comline;
 	if (argc == 2) {
 		if (!comline || !ch || !(cp = getkeyseq(ch))) return(0);
 		cputs2("keymap ");
-		if (ch >= K_F(i) && ch <= K_F(20)) cprintf2(" F%d \"", i);
-		cprintf2(" %s \"", keyidentlist[i].str);
+		if (ch >= K_F(i) && ch <= K_F(20)) cprintf2("F%d \"", i);
+		else cprintf2("%s \"", keyidentlist[i].str);
 		for (i = 0; cp[i]; i++) {
 			if (isprint(cp[i])) putch2(cp[i]);
 			else cprintf2("\\%03o", cp[i]);
@@ -1165,7 +1200,7 @@ int comline;
 
 	if (!comline) return(NO_OPERATION);
 	for (i = 0; i <= NO_OPERATION; i++)
-		if (!strcmp(argv[0], funclist[i].ident)) break;
+		if (!strpathcmp(argv[0], funclist[i].ident)) break;
 	if (i > NO_OPERATION) return(-1);
 	return(i);
 }
@@ -1182,7 +1217,7 @@ int *maxp, comline;
 	command = skipspace(command);
 	argc = getargs(command, argv, MAXARGS + 1);
 	for (i = 0; builtinlist[i].ident; i++)
-		if (!strcmp(argv[0], builtinlist[i].ident)) break;
+		if (!strpathcmp(argv[0], builtinlist[i].ident)) break;
 	if (builtinlist[i].ident) {
 		if (comline) {
 			locate(0, n_line - 1);
@@ -1227,3 +1262,26 @@ int *maxp, comline;
 	for (i = 0; i < argc; i++) free(argv[i]);
 	return(n);
 }
+
+#ifndef	_NOCOMPLETE
+int completebuiltin(com, matchno, matchp)
+char *com;
+int matchno;
+char **matchp;
+{
+	int i, len, ptr, size;
+
+	if (strchr(com, _SC_)) return(0);
+	size = lastpointer(*matchp, matchno) - *matchp;
+	len = strlen(com);
+	for (i = 0; builtinlist[i].ident; i++) {
+		if (strnpathcmp(com, builtinlist[i].ident, len)) continue;
+		ptr = size;
+		size += strlen(builtinlist[i].ident) + 1;
+		*matchp = (char *)realloc2(*matchp, size);
+		strcpy(*matchp + ptr, builtinlist[i].ident);
+		matchno++;
+	}
+	return(matchno);
+}
+#endif

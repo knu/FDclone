@@ -587,8 +587,8 @@ mnt_t *mntbuf;
 	mntbuf -> mnt_fsname = "";
 	mntbuf -> mnt_dir[0] = dospath(path, NULL);
 	strcpy(&(mntbuf -> mnt_dir[1]), ":\\");
-	mntbuf -> mnt_type =
-		(supportLFN(mntbuf -> mnt_dir)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
+	mntbuf -> mnt_type = (supportLFN(mntbuf -> mnt_dir) > 0)
+		? MNTTYPE_DOS7 : MNTTYPE_PC;
 	mntbuf -> mnt_opts = "";
 	dir = path;
 #else	/* !MSDOS */
