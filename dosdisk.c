@@ -777,7 +777,7 @@ char *buf, *name, *ext;
 		len += i;
 	}
 	buf[len] = '\0';
-	if ((u_char)(buf[0]) == 0x05) (u_char)(buf[0]) = 0xe5;
+	if (((u_char *)buf)[0] == 0x05) ((u_char *)buf)[0] = 0xe5;
 
 	return(buf);
 }
@@ -788,7 +788,7 @@ u_char *buf, *file;
 	u_char *cp;
 	int i;
 
-	if ((cp = (u_char *)strrchr(file, '.')) == file) cp = NULL;
+	if ((cp = (u_char *)strrchr((char *)file, '.')) == file) cp = NULL;
 	for (i = 0; i < 8; i++) {
 		if (file == cp || !*file) buf[i] = ' ';
 		else if (!issjis1(*file)) buf[i] = transchar(*(file++));
@@ -807,7 +807,7 @@ u_char *buf, *file;
 		}
 	}
 	buf[i] = '\0';
-	if ((u_char)(buf[0]) == 0xe5) (u_char)(buf[0]) = 0x05;
+	if (((u_char *)buf)[0] == 0xe5) ((u_char *)buf)[0] = 0x05;
 
 	return((char *)buf);
 }
@@ -930,8 +930,8 @@ int class;
 	if ((drive = getdrive(path)) < 0) return(-1);
 	path += 2;
 	if (*path != '/' && *path != '\\' && curdir[drive - 'A']) {
-		strcpy(buf, curdir[drive - 'A']);
-		cp += strlen(buf);
+		strcpy((char *)buf, curdir[drive - 'A']);
+		cp += strlen((char *)buf);
 	}
 
 	while (*path) {
@@ -1196,7 +1196,7 @@ char **pathp;
 	u_char dir[MAXPATHLEN + 1];
 	int i, j;
 
-	strcpy(dir, *pathp);
+	strcpy((char *)dir, *pathp);
 	for (i = 1, j = 2; dir[j]; j++) {
 		if (issjis1(dir[j])) j++;
 		else if (dir[j] == '/' || dir[j] == '\\') i = j;

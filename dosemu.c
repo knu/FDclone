@@ -152,6 +152,9 @@ char *path;
 char *Xgetwd(path)
 char *path;
 {
+#ifdef	CODEEUC
+	char tmpbuf[MAXPATHLEN + 1];
+#endif
 	int i;
 
 	if (lastdrv < 0) return(getwd(path));
