@@ -1,0 +1,33 @@
+/*
+ *	sed script for Makefile
+ */
+
+#include "machine.h"
+
+#ifdef	USECURSES
+# ifdef	USEREGCMP
+s/__LDOPTIONS__/-lcurses -lPW/
+# else	/* USEREGCMP */
+s/__LDOPTIONS__/-lcurses/
+# endif	/* USEREGCMP */
+#else
+# ifdef	USEREGCMP
+s/__LDOPTIONS__/-ltermcap -lPW/
+# else	/* USEREGCMP */
+s/__LDOPTIONS__/-ltermcap/
+# endif	/* USEREGCMP */
+#endif
+
+#ifdef	NOOPTIMIZE
+# ifdef	UNSIGNEDCHAR
+s/__CCOPTIONS__/-signed/
+# else
+s/__CCOPTIONS__//
+# endif
+#else	/* NOOPTIMIZE */
+# ifdef	UNSIGNEDCHAR
+s/__CCOPTIONS__/-O -signed/
+# else
+s/__CCOPTIONS__/-O/
+# endif
+#endif	/* NOOPTIMIZE */

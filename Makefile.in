@@ -1,0 +1,175 @@
+#
+#	Makefile for fd
+#
+
+TITLE	= FD-
+BINDIR	= /usr/local/bin
+MANDIR	= /usr/local/man/ja_JP.SJIS/man1
+INSTALL	= /bin/install
+MANSEC	= 1
+
+SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
+	file.c apply.c archive.c tree.c command.c browse.c\
+	kanjicnv.c mkfuncno.c checkfs.c getkey.c
+HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
+	func.h functable.h
+
+DOC	= README HISTORY TODO Install
+MANSRC	= fd.man
+MANSEC	= 1
+
+SOURCES	= $(DOC) Makefile Makefile.in $(MANSRC) $(SRC) $(HEADER)\
+	kanji.h.in mkmakefile.sed.in version.h verup.sh .fdrc
+
+CC	= cc
+SED	= sed
+PROGRAM	= fd
+OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
+	file.o apply.o archive.o tree.o command.o browse.o
+
+LDFLAGS	= __LDOPTIONS__
+CFLAGS	= -DFD __CCOPTIONS__
+
+############################################################
+#	Dependency Rules
+############################################################
+
+goal:	$(PROGRAM) $(PROGRAM).$(MANSEC)
+
+$(PROGRAM): $(OBJ)
+	$(CC) $(CFLAGS) -o $(PROGRAM) $(OBJ) $(LDFLAGS)
+
+
+############################################################
+# kanji using module
+
+kanji.h: kanjicnv kanji.h.in
+	./kanjicnv kanji.h.in $@
+
+$(PROGRAM).$(MANSEC): kanjicnv $(MANSRC)
+	./kanjicnv $(MANSRC) $@
+
+kanjicnv: kanjicnv.c
+	$(CC) $(CFLAGS) -o $@ $@.c
+
+
+############################################################
+# function list using module
+
+funcno.h: mkfuncno functable.h
+	./mkfuncno functable.h $@
+
+mkfuncno: mkfuncno.c
+	$(CC) $(CFLAGS) -o $@ $@.c
+
+
+############################################################
+# function list using module
+
+version.h: $(SRC) $(HEADER)
+	./verup.sh $@ $(SRC) $(HEADER)
+
+############################################################
+# to install all
+
+install: $(PROGRAM)
+	$(INSTALL) -c $(PROGRAM) $(BINDIR)
+	cp $(MANSRC) $(MANDIR)/$(PROGRAM).$(MANSEC)
+
+
+############################################################
+# to test structure of file system
+
+test: checkfs
+	./checkfs test1
+
+checkfs: checkfs.c
+	$(CC) $(CFLAGS) -o $@ $@.c
+
+getkey: getkey.o term.o term.h
+	$(CC) $(CFLAGS) -o $@ $@.o term.o $(LDFLAGS)
+
+
+############################################################
+# to make dependency
+
+depend: $(SRC) kanji.h funcno.h
+	mv Makefile.in Makefile.in.bak
+	makedepend -s "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
+	rm -f Makefile.tmp.bak
+	$(SED) -e "/^# DO NOT DELETE THIS LINE/,$$$$d" Makefile.in.bak\
+		> Makefile.in
+	echo "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+		>> Makefile.in
+	$(SED) -e "1,/^# DO NOT DELETE THIS LINE/d"\
+		-e "s/\/[^ ]* *//g"\
+		-e "/: *$$/d" Makefile.tmp >> Makefile.in
+	rm -f Makefile.in.bak Makefile.tmp
+
+
+############################################################
+# for programer's maintenance
+
+GETVER	= HEAD="`tail -1 version.h`";\
+	VER=`expr "$$HEAD" : '.*\([0-9][0-9]*\.[0-9a-z]*\).*'`
+
+tar: $(SOURCES)
+	($(GETVER);\
+	tar cvf $(TITLE)"$$VER".tar $(SOURCES);\
+	compress -f $(TITLE)"$$VER".tar)
+
+lzh: $(SOURCES)
+	($(GETVER);\
+	rm -f $(TITLE)"$$VER".lzh;\
+	lha a $(TITLE)"$$VER".lzh $(SOURCES))
+
+shar: $(SOURCES)
+	($(GETVER);\
+	rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
+	shar -L50 -ac -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar $(SOURCES))
+
+clean:
+	rm -f core *.o funcno.h kanji.h Makefile.tmp \
+	kanjicnv mkfuncno checkfs getkey mkmakefile.sed \
+	$(PROGRAM) $(PROGRAM).$(MANSEC)
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+
+main.o: fd.h 
+main.o: machine.h types.h pathname.h func.h term.h
+main.o: kctype.h kanji.h funcno.h version.h
+term.o: machine.h term.h
+pathname.o: machine.h pathname.h 
+libc.o: fd.h 
+libc.o: machine.h types.h pathname.h func.h term.h
+libc.o: kctype.h kanji.h 
+input.o: fd.h 
+input.o: machine.h types.h pathname.h func.h term.h
+input.o: kctype.h 
+shell.o: fd.h 
+shell.o: machine.h types.h pathname.h func.h term.h
+shell.o: kanji.h
+info.o: fd.h 
+info.o: machine.h types.h pathname.h func.h term.h
+info.o: funcno.h kanji.h 
+file.o: fd.h 
+file.o: machine.h types.h pathname.h func.h term.h
+file.o: kanji.h 
+apply.o: fd.h 
+apply.o: machine.h types.h pathname.h func.h term.h
+apply.o: kanji.h 
+archive.o: fd.h 
+archive.o: machine.h types.h
+archive.o: pathname.h func.h term.h funcno.h kanji.h 
+tree.o: fd.h 
+tree.o: machine.h types.h pathname.h func.h term.h
+command.o: fd.h 
+command.o: machine.h types.h
+command.o: pathname.h func.h term.h funcno.h kanji.h 
+command.o: functable.h
+browse.o: fd.h 
+browse.o: machine.h types.h pathname.h func.h term.h
+browse.o: funcno.h kanji.h 
+kanjicnv.o: machine.h
+checkfs.o: machine.h 
+getkey.o: term.h

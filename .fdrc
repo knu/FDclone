@@ -1,0 +1,61 @@
+# Initialize file for FD
+#
+
+# to set default sort type
+#	0: not sort
+#	1: alphabetical	9: alphabetical (reversal)
+#	2: extention	10: extension (reversal)
+#	3: size		11: size (reversal)
+#	4: date		12: date (reversal)
+SORTTYPE	=	1
+
+# behavior about writing over direcotory on file system
+#	0 or ""(null): confirm to write or not, after directory arranged
+#	1: write directory only if commanded
+#	2: never write over directory even if commanded
+WRITEFS		=	1
+
+# whether if adjust tty or not when exiting
+#	0 or ""(null): not adjust
+#	>= 1: adjust
+ADJTTY		=	1
+
+# history size of sh mode
+#	default: 50
+HISTSIZE	=	100
+
+# limit of counting file in directory, on tree mode
+#	default: 50
+DIRCOUNTLIMIT	=	0
+
+# temporary directory where archive file is unpacked
+#	default: /tmp
+TMPDIR		=	/usr/tmp
+
+PAGER	=	/usr/local/bin/less
+EDITOR	=	/usr/ucb/vi
+export	LANG=C
+
+# launcher definition
+#".lzh"		"lha l"			2,2:1,2-'/',2'/',3,0,5,6,7,8
+#".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+#".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6.8:10
+#".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+#".Z"		"zcat %C | $PAGER"
+#".gz"		"gunzip -c %C | $PAGER"
+
+# example for SVR4
+#".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
+#".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+
+# archiver definition
+#".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
+#".tar"		A "tar cf %C %T"		"tar xf %C %TA"
+#".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
+#".tar.gz"	A "tar cf %X %T; gzip %X"	"gunzip -c %C | tar xf - %TA"
+
+# key bind definition
+'I'	"ls -ld %C"
+'g'	"gzip %C%K"
+'G'	"gunzip %C%K"
