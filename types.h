@@ -2,6 +2,19 @@
  *	Type Definition
  */
 
+#ifdef	NOUID_T
+typedef u_short	uid_t;
+typedef u_short	gid_t;
+#endif
+
+#ifdef	NOVOID
+#define	VOID
+typedef char	*VOID_P;
+#else
+typedef void	VOID;
+typedef void	*VOID_P;
+#endif
+
 typedef struct _namelist {
 	char *name;
 	u_short ent;

@@ -13,8 +13,8 @@ goal:	Makefile.tmp
 Makefile.tmp: Makefile.in mkmakefile.sed
 	$(SED) -f mkmakefile.sed Makefile.in > Makefile.tmp
 
-mkmakefile.sed: mkmakefile.sed.in machine.h
-	$(CPP) mkmakefile.sed.in > mkmakefile.sed
+mkmakefile.sed: mkmakefile.sed.c machine.h
+	$(CPP) mkmakefile.sed.c | $(SED) "/^#/d" > mkmakefile.sed
 
 install: Makefile.tmp
 	$(MAKE) -f Makefile.tmp install

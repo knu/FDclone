@@ -25,7 +25,7 @@ static int includedir();
 static int includefile();
 static treelist *maketree();
 static int _showtree();
-static void showtree();
+static VOID showtree();
 static treelist *_searchtree();
 static treelist *searchtree();
 static int expandtree();
@@ -33,7 +33,7 @@ static int expandall();
 static treelist *checkmisc();
 static treelist *treeup();
 static treelist *treedown();
-static void freetree();
+static VOID freetree();
 
 
 static int includedir(dir)
@@ -222,7 +222,7 @@ int max, nest, y;
 	return(y);
 }
 
-static void showtree(path, buf, list, max, nest, top, y)
+static VOID showtree(path, buf, list, max, nest, top, y)
 char *path, *buf;
 treelist *list;
 int max, nest, top, y;
@@ -426,7 +426,7 @@ int *ip, *redrawp;
 	return(lp);
 }
 
-static void freetree(list, max)
+static VOID freetree(list, max)
 treelist *list;
 int max;
 {

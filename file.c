@@ -41,13 +41,13 @@ extern char fullpath[];
 #endif
 
 static char *getdistdir();
-static void touch();
+static VOID touch();
 static char *maketmpfile();
 static char *getentnum();
-static void restorefile();
+static VOID restorefile();
 
 
-void getstatus(list, i, file)
+VOID getstatus(list, i, file)
 namelist *list;
 int i;
 char *file;
@@ -214,7 +214,7 @@ int max, tr;
 	return(4);
 }
 
-static void touch(file)
+static VOID touch(file)
 char *file;
 {
 	FILE *fp;
@@ -281,7 +281,7 @@ int bsiz;
 	return(tmp);
 }
 
-static void restorefile(dir, path, fnamp)
+static VOID restorefile(dir, path, fnamp)
 char *dir, *path;
 int fnamp;
 {
@@ -302,7 +302,7 @@ int fnamp;
 	free(dir);
 }
 
-void arrangedir(list, max)
+VOID arrangedir(list, max)
 namelist *list;
 int max;
 {

@@ -12,6 +12,7 @@
 #include "version.h"
 
 #include <signal.h>
+#include <time.h>
 #include <sys/time.h>
 
 extern launchtable launchlist[];
@@ -27,24 +28,33 @@ extern int subwindow;
 
 #define	CLOCKUPDATE	10	/* sec */
 
-static void wintr();
-static void printtime();
+#ifndef	SIGWINCH
+# ifdef	SIGWINDOW
+# define	SIGWINCH	SIGWINDOW
+# endif
+# ifdef	NSIG
+# define	SIGWINCH	NSIG
+# endif
+#endif
+
+static VOID wintr();
+static VOID printtime();
 static char *skipspace();
 static char *geteostr();
 static char *getrange();
 static char *getenvval();
-static void getlaunch();
+static VOID getlaunch();
 static int getcommand();
-static void getkeybind();
-static void loadruncom();
-static void printext();
+static VOID getkeybind();
+static VOID loadruncom();
+static VOID printext();
 static int getoption();
 
 static char *progname;
 static int timersec = 0;
 
 
-void error(str)
+VOID error(str)
 char *str;
 {
 	if (!str) str = progname;
@@ -54,13 +64,13 @@ char *str;
 	exit2(1);
 }
 
-void usage(no)
+VOID usage(no)
 int no;
 {
 	exit2(no);
 }
 
-static void wintr()
+static VOID wintr()
 {
 	signal(SIGWINCH, SIG_IGN);
 	getwsize(80, WHEADER + WFOOTER + 2);
@@ -71,7 +81,7 @@ static void wintr()
 	signal(SIGWINCH, wintr);
 }
 
-static void printtime()
+static VOID printtime()
 {
 	struct timeval t;
 	struct timezone tz;
@@ -97,7 +107,7 @@ static void printtime()
 	signal(SIGALRM, printtime);
 }
 
-void title()
+VOID title()
 {
 	char *cp, *eol;
 
@@ -178,7 +188,7 @@ char *str;
 	return(str);
 }
 
-static void getlaunch(line)
+static VOID getlaunch(line)
 char *line;
 {
 	char *cp, *tmp, *ext, *eol;
@@ -296,7 +306,7 @@ char **cp;
 	return(n);
 }
 
-static void getkeybind(line)
+static VOID getkeybind(line)
 char *line;
 {
 	char *cp, *eol;
@@ -355,7 +365,7 @@ char *line;
 	return(0);
 }
 
-static void loadruncom(file)
+static VOID loadruncom(file)
 char *file;
 {
 	FILE *fp;
@@ -403,7 +413,7 @@ int printmacro()
 	return(n);
 }
 
-static void printext(ext)
+static VOID printext(ext)
 char *ext;
 {
 	char *cp;

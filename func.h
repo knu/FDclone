@@ -5,9 +5,9 @@
  */
 
 /* main.c */
-extern void error();
-extern void usage();
-extern void title();
+extern VOID error();
+extern VOID usage();
+extern VOID title();
 extern int evalconfigline();
 extern int printmacro();
 extern int printlaunch();
@@ -22,16 +22,16 @@ extern int stat2();
 extern int chdir2();
 extern int mkdir2();
 extern int mkdir3();
-extern void *malloc2();
-extern void *realloc2();
+extern VOID_P malloc2();
+extern VOID_P realloc2();
 extern char *strdup2();
-extern void *addlist();
+extern VOID_P addlist();
 extern int onkanji1();
 extern u_char *strchr2();
 extern u_char *strrchr2();
 extern char *strncpy2();
 extern char *strncpy3();
-extern void cputs2();
+extern VOID cputs2();
 extern int atoi2();
 extern int setenv2();
 extern char *getenv2();
@@ -46,7 +46,7 @@ extern time_t timelocal2();
 extern int inputstr();
 extern char *inputstr2();
 extern int yesno();
-extern void warning();
+extern VOID warning();
 extern int selectstr();
 
 /* shell.c */
@@ -57,20 +57,20 @@ extern char **entryhist();
 extern int execinternal();
 
 /* info.c */
-extern void help();
+extern VOID help();
 extern int getblocksize();
 extern int writablefs();
 extern int infofs();
 
 /* file.c */
-extern void getstatus();
+extern VOID getstatus();
 extern char *putmode();
 extern int cmplist();
 extern struct dirent *searchdir();
 extern int underhome();
 extern int copyfile();
 extern int movefile();
-extern void arrangedir();
+extern VOID arrangedir();
 
 /* apply.c */
 extern int cpfile();
@@ -88,7 +88,7 @@ extern int launcher();
 extern int pack();
 extern int unpack();
 extern char *tmpunpack();
-extern void removetmp();
+extern VOID removetmp();
 extern int backup();
 
 /* tree.c */
@@ -97,10 +97,10 @@ extern char *tree();
 /* command.c */
 
 /* browse.c */
-extern void helpbar();
-extern void statusbar();
+extern VOID helpbar();
+extern VOID statusbar();
 extern int calcwidth();
 extern int listupfile();
-extern void rewritefile();
-extern void movepos();
-extern void main_fd();
+extern VOID rewritefile();
+extern VOID movepos();
+extern VOID main_fd();

@@ -4,4 +4,4 @@
  *	Version Number
  */
 
-static char version[] = "@(#)fd.c  0.99 04/24/95";
+static char version[] = "@(#)fd.c  0.99a 04/27/95";

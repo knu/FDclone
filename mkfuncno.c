@@ -13,8 +13,8 @@ int argc;
 char *argv[];
 {
 	FILE *in, *out;
-	int lebel, cp, no, isstr;
-	char c, buf[32];
+	int c, lebel, cp, no, isstr;
+	char buf[32];
 
 	in = fopen(argv[1], "r");
 	out = fopen(argv[2], "w");

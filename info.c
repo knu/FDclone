@@ -9,16 +9,52 @@
 #include "funcno.h"
 #include "kanji.h"
 
-#include <mntent.h>
 #include <sys/param.h>
-#ifdef  USESTATVFS
-#include <sys/statvfs.h>
-typedef struct statvfs statfs_t;
-#define	statfs2		statvfs
+#include <sys/file.h>
+
+#if defined (USEMNTTAB)
+#include <sys/mnttab.h>
+typedef struct mnttab	mnt_t;
+#define	setmntent		fopen
+#define	getmntent2(fp, mnt)	(getmntent(fp, mnt) ? NULL : &mnt)
+#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_mntopts, opt)
+#define	endmntent		fclose
+#define	mnt_dir		mnt_mountp
+#define	mnt_fsname	mnt_special
+#define	mnt_type	mnt_fstype
+#elif defined (USEFSTABH)
+#include <fstab.h>
+typedef struct fstab	mnt_t;
+#define	setmntent(filep, type)	(FILE *)(setfsent(), NULL)
+#define	getmntent2(fp, mnt)	getfsent()
+#define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
+#define	endmntent(fp)		endfsent()
+#define	mnt_dir		fs_file
+#define	mnt_fsname	fs_spec
+#define	mnt_type	fs_vfstype
 #else
-#include <sys/vfs.h>
-typedef struct statfs statfs_t;
-#define	statfs2		statfs
+#include <mntent.h>
+typedef struct mntent	mnt_t;
+#define	getmntent2(fp, mnt)	getmntent(fp)
+#endif
+
+#if defined (USESTATVFS)
+#include <sys/statvfs.h>
+typedef struct statvfs	statfs_t;
+#define	statfs2			statvfs
+#elif defined (USESTATFS)
+#include <sys/statfs.h>
+typedef struct statfs	statfs_t;
+#define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+#define	f_bavail	f_bfree
+#else
+# ifdef	USEMOUNTH
+# include <mount.h>
+# else
+# include <sys/vfs.h>
+# endif
+typedef struct statfs	statfs_t;
+#define	statfs2			statfs
 #endif
 
 extern bindtable bindlist[];
@@ -108,7 +144,7 @@ int y;
 	return(y);
 }
 
-void help(mode)
+VOID help(mode)
 int mode;
 {
 	char buf[20];
@@ -162,9 +198,9 @@ int mode;
 static int getfsinfo(path, fsbuf, mntbuf)
 char *path;
 statfs_t *fsbuf;
-struct mntent *mntbuf;
+mnt_t *mntbuf;
 {
-	struct mntent *mntp;
+	mnt_t *mntp, mnt;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN + 1];
 	int len, match;
@@ -181,7 +217,7 @@ struct mntent *mntbuf;
 		match = 0;
 
 		fp = setmntent(MNTTAB, "r");
-		while (mntp = getmntent(fp)) {
+		while (mntp = getmntent2(fp, mnt)) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)) continue;
 			match = len;
@@ -194,11 +230,11 @@ struct mntent *mntbuf;
 		dir = fsname;
 	}
 	fp = setmntent(MNTTAB, "r");
-	while (mntp = getmntent(fp))
+	while (mntp = getmntent2(fp, mnt))
 		if (!strcmp(dir, mntp -> mnt_fsname)) break;
 	endmntent(fp);
 	if (!mntp) return(0);
-	memcpy(mntbuf, mntp, sizeof(struct mntent));
+	memcpy(mntbuf, mntp, sizeof(mnt_t));
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf)) error(mntbuf -> mnt_dir);
 	return(1);
@@ -206,17 +242,21 @@ struct mntent *mntbuf;
 
 int getblocksize()
 {
+#ifdef	DEV_BSIZE
+        return(DEV_BSIZE);
+#else
 	statfs_t buf;
 
 	if (statfs2(".", &buf) < 0) error(".");
 	return(buf.f_bsize);
+#endif
 }
 
 int writablefs(path)
 char *path;
 {
 	statfs_t fsbuf;
-	struct mntent mntbuf;
+	mnt_t mntbuf;
 
 	if (access(path, R_OK | W_OK | X_OK) < 0) return(-1);
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
@@ -276,7 +316,7 @@ int infofs(path)
 char *path;
 {
 	statfs_t fsbuf;
-	struct mntent mntbuf;
+	mnt_t mntbuf;
 	int y;
 
 	if (!getfsinfo(path, &fsbuf, &mntbuf)) {

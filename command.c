@@ -11,6 +11,7 @@
 
 #include <time.h>
 #include <dirent.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 
 extern int columns;
@@ -27,7 +28,7 @@ extern char *archivefile;
 extern char *destpath;
 
 #ifndef	PAGER
-static void dump();
+static VOID dump();
 #endif
 static int cur_up();
 static int cur_down();
@@ -470,7 +471,7 @@ int *maxp;
 }
 
 #ifndef	PAGER
-static void dump(file)
+static VOID dump(file)
 char *file;
 {
 	FILE *fp;

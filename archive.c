@@ -11,6 +11,7 @@
 
 #include <dirent.h>
 #include <signal.h>
+#include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -46,7 +47,7 @@ extern char *findpattern;
 static int countfield();
 static char *getfield();
 static namelist *readfileent();
-static void archbar();
+static VOID archbar();
 static char *pullfilename();
 static int archbrowse();
 
@@ -221,7 +222,7 @@ int max;
 	return(tmp);
 }
 
-static void archbar(file, dir)
+static VOID archbar(file, dir)
 char *file, *dir;
 {
 	char *arch;
@@ -272,7 +273,7 @@ namelist *list;
 	return(strdup2(cp));
 }
 
-void rewritearc()
+VOID rewritearc()
 {
 	archbar(archivefile, archivedir);
 	helpbar();
@@ -564,7 +565,7 @@ int max;
 	return(NULL);
 }
 
-void removetmp(dir, file)
+VOID removetmp(dir, file)
 char *dir, *file;
 {
 	char *cp, *tmp, *dupdir;

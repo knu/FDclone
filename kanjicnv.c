@@ -15,14 +15,15 @@
 #ifndef	CPP7BIT
 #define	fputs2	fputs
 #else
-static void fputs2();
+static int fputs2();
 #endif
 
 static unsigned char *convert();
+static int output();
 
 
 #ifdef	CPP7BIT
-static void fputs2(s, fp)
+static int fputs2(s, fp)
 char *s;
 FILE *fp;
 {
@@ -62,7 +63,7 @@ int j1, j2;
 	return(cnv);
 }
 
-static void output(fp, c, mode)
+static int output(fp, c, mode)
 FILE *fp;
 int c;
 int mode;

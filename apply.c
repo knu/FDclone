@@ -9,10 +9,13 @@
 #include "kanji.h"
 
 #include <dirent.h>
+#include <fcntl.h>
+#include <time.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+
 #ifdef	USEUTIME
 #include <utime.h>
 #endif
@@ -22,7 +25,7 @@ extern reg_t *findregexp;
 
 static int judgecopy();
 static int _cpfile();
-static void showattr();
+static VOID showattr();
 static int touchfile();
 
 int copypolicy = 0;
@@ -200,7 +203,7 @@ char *path;
 	return(0);
 }
 
-static void showattr(listp, mode, timestr, y)
+static VOID showattr(listp, mode, timestr, y)
 namelist *listp;
 u_short mode;
 char timestr[2][9];

@@ -19,13 +19,13 @@ extern bindtable bindlist[];
 extern functable funclist[];
 extern char *findpattern;
 
-static void pathbar();
-static void stackbar();
+static VOID pathbar();
+static VOID stackbar();
 static char *putowner();
 static char *putgroup();
-static void infobar();
-static void calclocate();
-static void putname();
+static VOID infobar();
+static VOID calclocate();
+static VOID putname();
 static int browsedir();
 
 int columns = 2;
@@ -49,7 +49,7 @@ static char *helpindex[10] = {
 };
 
 
-static void pathbar()
+static VOID pathbar()
 {
 	char *path;
 
@@ -67,7 +67,7 @@ static void pathbar()
 	tflush();
 }
 
-void helpbar()
+VOID helpbar()
 {
 	int i, j, width, len, ofs;
 	char *buf;
@@ -95,7 +95,7 @@ void helpbar()
 	tflush();
 }
 
-void statusbar(max)
+VOID statusbar(max)
 int max;
 {
 	char *str[5];
@@ -147,7 +147,7 @@ int max;
 	tflush();
 }
 
-static void stackbar()
+static VOID stackbar()
 {
 	int i, width;
 
@@ -232,7 +232,7 @@ gid_t gid;
 	return(buf);
 }
 
-static void infobar(list, no)
+static VOID infobar(list, no)
 namelist *list;
 int no;
 {
@@ -287,7 +287,7 @@ int no;
 	tflush();
 }
 
-static void calclocate(i)
+static VOID calclocate(i)
 int i;
 {
 	int x, y;
@@ -312,7 +312,7 @@ int calcwidth()
 	return(width);
 }
 
-static void putname(list, no, standout)
+static VOID putname(list, no, standout)
 namelist *list;
 int no;
 int standout;
@@ -405,7 +405,7 @@ char *def;
 	return(ret);
 }
 
-void movepos(list, max, old, fstat)
+VOID movepos(list, max, old, fstat)
 namelist *list;
 int max, old;
 u_char fstat;
@@ -421,7 +421,7 @@ u_char fstat;
 	infobar(list, filepos);
 }
 
-void rewritefile()
+VOID rewritefile()
 {
 	pathbar();
 	helpbar();
@@ -562,7 +562,7 @@ int *maxentp;
 	return(no);
 }
 
-void main_fd(cur)
+VOID main_fd(cur)
 char *cur;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];

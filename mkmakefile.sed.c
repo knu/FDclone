@@ -4,18 +4,22 @@
 
 #include "machine.h"
 
-#ifdef	USECURSES
-# ifdef	USEREGCMP
-s/__LDOPTIONS__/-lcurses -lPW/
-# else	/* USEREGCMP */
-s/__LDOPTIONS__/-lcurses/
-# endif	/* USEREGCMP */
+#ifdef	TERMCAPLIB
+s/__TERMLIBS__/TERMCAPLIB/
 #else
-# ifdef	USEREGCMP
-s/__LDOPTIONS__/-ltermcap -lPW/
-# else	/* USEREGCMP */
-s/__LDOPTIONS__/-ltermcap/
-# endif	/* USEREGCMP */
+s/__TERMLIBS__//
+#endif
+
+#ifdef	REGEXPLIB
+s/__REGLIBS__/REGEXPLIB/
+#else
+s/__REGLIBS__//
+#endif
+
+#ifdef	EXTENDLIB
+s/__OTHERLIBS__/EXTENDLIB/
+#else
+s/__OTHERLIBS__//
 #endif
 
 #ifdef	NOOPTIMIZE

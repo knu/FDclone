@@ -5,14 +5,18 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <varargs.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include "machine.h"
 #include "term.h"
+
+#ifndef	NOSTDLIB
+#include <stdlib.h>
+#endif
 
 #ifdef	USETERMIO
 #include <termio.h>
@@ -35,11 +39,11 @@ extern char *tgoto();
 #define	GETSIZE		"\0337\033[r\033[999;999H\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 
-static void err2();
-static void defaultterm();
-static void tgetstr2();
-static void tgetstr3();
-static void sortkeyseq();
+static int err2();
+static int defaultterm();
+static int tgetstr2();
+static int tgetstr3();
+static int sortkeyseq();
 static int realscanf();
 
 short ospeed;
@@ -99,7 +103,7 @@ static int termflags;
 #define	F_INITTERM	004
 
 
-void inittty(reset)
+int inittty(reset)
 int reset;
 {
 	unsigned long request;
@@ -124,7 +128,7 @@ int reset;
 	}
 }
 
-static void ttymode(d, mode, set)
+static int ttymode(d, mode, set)
 int d;
 short mode;
 int set;
@@ -146,7 +150,7 @@ int set;
 #endif
 }
 
-void cooked2()
+int cooked2()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -165,7 +169,7 @@ void cooked2()
 #endif
 }
 
-void cbreak2()
+int cbreak2()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -184,7 +188,7 @@ void cbreak2()
 #endif
 }
 
-void raw2()
+int raw2()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -202,7 +206,7 @@ void raw2()
 #endif
 }
 
-void echo2()
+int echo2()
 {
 #ifdef	USETERMIO
 	ttymode(ttyio, ECHO|ECHOE|ECHOK|ECHONL, 1);
@@ -211,7 +215,7 @@ void echo2()
 #endif
 }
 
-void noecho2()
+int noecho2()
 {
 #ifdef	USETERMIO
 	ttymode(ttyio, ECHO|ECHOE|ECHOK|ECHONL, 0);
@@ -220,7 +224,7 @@ void noecho2()
 #endif
 }
 
-void nl2()
+int nl2()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -234,7 +238,7 @@ void nl2()
 #endif
 }
 
-void nonl2()
+int nonl2()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -248,7 +252,7 @@ void nonl2()
 #endif
 }
 
-void tabs()
+int tabs()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -261,7 +265,7 @@ void tabs()
 #endif
 }
 
-void notabs()
+int notabs()
 {
 #ifdef	USETERMIO
 	struct termio tty;
@@ -274,7 +278,7 @@ void notabs()
 #endif
 }
 
-void keyflush()
+int keyflush()
 {
 #ifdef	USETERMIO
 	ioctl(ttyio, TCFLSH, 0);
@@ -284,7 +288,7 @@ void keyflush()
 #endif
 }
 
-void exit2(no)
+int exit2(no)
 int no;
 {
 	if (termflags & F_TERMENT) putterm(t_normal);
@@ -294,7 +298,7 @@ int no;
 	exit(no);
 }
 
-static void err2(mes)
+static int err2(mes)
 char *mes;
 {
 	endterm();
@@ -305,7 +309,7 @@ char *mes;
 	exit2(1);
 }
 
-static void defaultterm()
+static int defaultterm()
 {
 	int i;
 
@@ -397,7 +401,7 @@ static void defaultterm()
 	keyseq[K_NPAGE - K_MIN] = "\033[6~";
 }
 
-static void tgetstr2(term, str)
+static int tgetstr2(term, str)
 char **term;
 char *str;
 {
@@ -411,7 +415,7 @@ char *str;
 	}
 }
 
-static void tgetstr3(term, str1, str2)
+static int tgetstr3(term, str1, str2)
 char **term;
 char *str1, *str2;
 {
@@ -427,7 +431,7 @@ char *str1, *str2;
 	}
 }
 
-static void sortkeyseq()
+static int sortkeyseq()
 {
 	int i, j, tmp;
 	char *str;
@@ -469,7 +473,7 @@ static void sortkeyseq()
 		keyseqlen[i] = (keyseq[i]) ? strlen(keyseq[i]) : 0;
 }
 
-void getterment()
+int getterment()
 {
 	char buf[1024];
 	char *cp;
@@ -546,7 +550,7 @@ void getterment()
 	termflags |= F_TERMENT;
 }
 
-void initterm()
+int initterm()
 {
 	if (!(termflags & F_TERMENT)) getterment();
 	putterms(t_keypad);
@@ -555,7 +559,7 @@ void initterm()
 	termflags |= F_INITTERM;
 }
 
-void endterm()
+int endterm()
 {
 	if (!(termflags & F_INITTERM)) return;
 	putterms(t_nokeypad);
@@ -647,7 +651,7 @@ int sig;
 	}
 }
 
-void ungetch2(c)
+int ungetch2(c)
 char c;
 {
 #ifdef	TIOCSTI
@@ -658,13 +662,13 @@ char c;
 #endif
 }
 
-void locate(x, y)
+int locate(x, y)
 int x, y;
 {
 	putterms(tgoto(c_locate, x, y));
 }
 
-void tflush()
+int tflush()
 {
 	fflush(stdout);
 }
@@ -694,7 +698,7 @@ int *yp, *xp;
 	return(count);
 }
 
-void getwsize(xmax, ymax)
+int getwsize(xmax, ymax)
 int xmax, ymax;
 {
 	FILE *fp;

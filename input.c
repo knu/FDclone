@@ -11,17 +11,19 @@
 #include <varargs.h>
 #include <signal.h>
 
+#ifndef	DECLERRLIST
 extern char *sys_errlist[];
+#endif
 
 static int rightchar();
 static int leftchar();
-static void insertchar();
-static void deletechar();
-static void truncline();
-static void displaystr();
+static VOID insertchar();
+static VOID deletechar();
+static VOID truncline();
+static VOID displaystr();
 static int completestr();
 static u_char *truncstr();
-static void yesnomes();
+static VOID yesnomes();
 static int selectmes();
 
 int subwindow;
@@ -75,7 +77,7 @@ int x, cx, len, linemax, max;
 	return(cx);
 }
 
-static void insertchar(str, x, cx, len, linemax, ins)
+static VOID insertchar(str, x, cx, len, linemax, ins)
 u_char *str;
 int x, cx, len, linemax, ins;
 {
@@ -151,7 +153,7 @@ int x, cx, len, linemax, ins;
 	for (i = len - ins - 1; i >= cx; i--) str[i + ins] = str[i];
 }
 
-static void deletechar(str, x, cx, len, linemax, del)
+static VOID deletechar(str, x, cx, len, linemax, del)
 u_char *str;
 int x, cx, len, linemax, del;
 {
@@ -225,7 +227,7 @@ int x, cx, len, linemax, del;
 	for (i = cx; i <= len - del; i++) str[i] = str[i + del];
 }
 
-static void truncline(x, cx, len, linemax)
+static VOID truncline(x, cx, len, linemax)
 int x, cx, len, linemax;
 {
 	int dy, i;
@@ -242,7 +244,7 @@ int x, cx, len, linemax;
 	}
 }
 
-static void displaystr(str, x, len, linemax)
+static VOID displaystr(str, x, len, linemax)
 u_char *str;
 int x, len, linemax;
 {
@@ -568,7 +570,7 @@ u_char *str;
 	return(str);
 }
 
-static void yesnomes(mes, len)
+static VOID yesnomes(mes, len)
 char *mes;
 int len;
 {
@@ -640,7 +642,7 @@ va_dcl
 	return(ret);
 }
 
-void warning(no, str)
+VOID warning(no, str)
 int no;
 u_char *str;
 {

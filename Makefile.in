@@ -19,7 +19,7 @@ MANSRC	= fd.man
 MANSEC	= 1
 
 SOURCES	= $(DOC) Makefile Makefile.in $(MANSRC) $(SRC) $(HEADER)\
-	kanji.h.in mkmakefile.sed.in version.h verup.sh .fdrc
+	kanji.h.in mkmakefile.sed.c version.h verup.sh .fdrc
 
 CC	= cc
 SED	= sed
@@ -27,7 +27,7 @@ PROGRAM	= fd
 OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
 	file.o apply.o archive.o tree.o command.o browse.o
 
-LDFLAGS	= __LDOPTIONS__
+LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
 CFLAGS	= -DFD __CCOPTIONS__
 
 ############################################################

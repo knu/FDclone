@@ -5,26 +5,51 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "machine.h"
 
+#ifndef	NOSTDLIB
+#include <stdlib.h>
+#endif
+
 #include <dirent.h>
 #include <sys/file.h>
 #include <sys/param.h>
-#ifdef	USESTATVFS
+
+#if defined (USESTATVFS)
 #include <sys/statvfs.h>
+typedef struct statvfs	statfs_t;
+#define	statfs2			statvfs
+#elif defined (USESTATFS)
+#include <sys/statfs.h>
+typedef struct statfs	statfs_t;
+#define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+#define	f_bavail	f_bfree
 #else
-#include <sys/vfs.h>
+# ifdef	USEMOUNTH
+# include <mount.h>
+# else
+# include <sys/vfs.h>
+# endif
+typedef struct statfs	statfs_t;
+#define	statfs2			statfs
+#endif
+
+#ifdef	NOVOID
+#define VOID
+#else
+typedef void	VOID;
 #endif
 
 #define	MAXFILE		64
 #define	MAXNAME		64
 
-#ifdef	USERAND48
+#if defined (USEMATHRAND)
+#include <math.h>
+#elif defined(USERAND48)
 #define	random		lrand48
 #define	srandom		srand48
 #endif
@@ -34,11 +59,11 @@ typedef struct _strlist {
 	struct _strlist *next;
 } strlist;
 
-static void error();
-static void touch();
+static VOID error();
+static VOID touch();
 static char *randomname();
-static void touchfiles();
-static void shufflefiles();
+static VOID touchfiles();
+static VOID shufflefiles();
 static int _cleandir();
 static int cleandir();
 static int getblocksize();
@@ -46,14 +71,14 @@ static int getdirsize();
 static char *getentnum();
 static char *maketmp();
 static char *maketmplen();
-static void checkboundary();
+static VOID checkboundary();
 static int getdirent();
 static int getnamlen();
-static void checkreplace();
+static VOID checkreplace();
 static strlist *fillspace();
-static void writedir();
-static void checkdir();
-static void cmpdir();
+static VOID writedir();
+static VOID checkdir();
+static VOID cmpdir();
 static int cmpfile();
 
 char *progname;
@@ -66,7 +91,7 @@ int headbyte;
 int nameoffset;
 
 
-static void error(str)
+static VOID error(str)
 char *str;
 {
 	if (!str) str = progname;
@@ -74,7 +99,7 @@ char *str;
 	exit(-1);
 }
 
-static void touch(file)
+static VOID touch(file)
 char *file;
 {
 	FILE *fp;
@@ -98,7 +123,7 @@ static char *randomname()
 	return(buf);
 }
 
-static void touchfiles()
+static VOID touchfiles()
 {
 	int i, j;
 	char *fn;
@@ -118,7 +143,7 @@ static void touchfiles()
 	}
 }
 
-static void shufflefiles(n)
+static VOID shufflefiles(n)
 int n;
 {
 	int i, j, r;
@@ -171,23 +196,21 @@ char *dir;
 static int cleandir(dir)
 char *dir;
 {
-	if (_cleandir(dir) < 0) return(-1);
+	_cleandir(dir);
 	if (mkdir(dir, 0777)) error(dir);
 	return(0);
 }
 
 static int getblocksize()
 {
-#ifdef	USESTATVFS
-	struct statvfs buf;
-
-	if (statvfs(".", &buf) < 0) error(".");
+#ifdef	DEV_BSIZE
+	return(DEV_BSIZE);
 #else
-	struct statfs buf;
+	statfs_t buf;
 
-	if (statfs(".", &buf) < 0) error(".");
-#endif
+	if (statfs2(".", &buf) < 0) error(".");
 	return(buf.f_bsize);
+#endif
 }
 
 static int getdirsize(dir)
@@ -253,7 +276,7 @@ int ch;
 	return(path);
 }
 
-static void checkboundary(dir)
+static VOID checkboundary(dir)
 char *dir;
 {
 	char path[MAXPATHLEN + 1];
@@ -335,7 +358,7 @@ int ent;
 		+ boundary - 1 - nameoffset);
 }
 
-static void checkreplace(dir)
+static VOID checkreplace(dir)
 char *dir;
 {
 	DIR *dirp;
@@ -401,7 +424,7 @@ int ch;
 	return(new);
 }
 
-static void writedir()
+static VOID writedir()
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -480,7 +503,7 @@ static void writedir()
 	}
 }
 
-static void checkdir(dir)
+static VOID checkdir(dir)
 char *dir;
 {
 	DIR *dirp;
@@ -514,7 +537,7 @@ char *dir;
 	if (i < MAXFILE) printf("Lost Files: %d\n", MAXFILE - i);
 }
 
-static void cmpdir(dir)
+static VOID cmpdir(dir)
 char *dir;
 {
 	DIR *dirp;
@@ -544,7 +567,11 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {
+#ifdef	USEMATHRAND
+	unsigned int seed;
+#else
 	long seed;
+#endif
 	char *wdir;
 	int i, level;
 

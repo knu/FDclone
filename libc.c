@@ -11,10 +11,12 @@
 
 #include <pwd.h>
 #include <grp.h>
+#include <time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
+
 #ifdef	USELEAPCNT
 #include <tzfile.h>
 #endif
@@ -98,7 +100,7 @@ struct stat *buf;
 	return(0);
 }
 
-static void _chdir2(path)
+static VOID _chdir2(path)
 char *path;
 {
 	char *cp;
@@ -168,23 +170,23 @@ int mode;
 	return(0);
 }
 
-void *malloc2(size)
+VOID_P malloc2(size)
 unsigned size;
 {
-	void *tmp;
+	VOID_P tmp;
 
-	if (!(tmp = (void *)malloc(size))) error(NULL);
+	if (!(tmp = (VOID_P)malloc(size))) error(NULL);
 	return(tmp);
 }
 
-void *realloc2(ptr, size)
-void *ptr;
+VOID_P realloc2(ptr, size)
+VOID_P ptr;
 unsigned size;
 {
-	void *tmp;
+	VOID_P tmp;
 
 	if (!ptr) return(malloc2(size));
-	if (!(tmp = (void *)realloc(ptr, size))) error(NULL);
+	if (!(tmp = (VOID_P)realloc(ptr, size))) error(NULL);
 	return(tmp);
 }
 
@@ -199,11 +201,11 @@ char *str;
 	return(tmp);
 }
 
-void *addlist(array, i, max, size)
-void *array;
+VOID_P addlist(array, i, max, size)
+VOID_P array;
 int i, *max, size;
 {
-	void *tmp;
+	VOID_P tmp;
 
 	if (i >= *max) {
 		*max = ((i + 1) / BUFUNIT + 1) * BUFUNIT;
@@ -287,7 +289,7 @@ int len, ptr;
 	return(s1);
 }
 
-void cputs2(s, len, ptr)
+VOID cputs2(s, len, ptr)
 char *s;
 int len, ptr;
 {

@@ -8,7 +8,6 @@
 #include "pathname.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -19,9 +18,17 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
+#ifndef	NOSTDLIB
+#include <stdlib.h>
+#endif
+
 #ifdef	FD
 extern char *getenv2();
+# ifdef	NOVOID
+extern error();
+# else
 extern void error();
+# endif
 #else
 #define	getenv2 getenv
 #define	error return
@@ -168,10 +175,10 @@ char *s;
 	return(re_exec(s) > 0);
 }
 
-void regexp_free(re)
+int regexp_free(re)
 reg_t *re;
 {
-	return;
+	return(0);
 }
 
 #else		/* USERE_COMP */
@@ -198,7 +205,7 @@ char *s;
 	return(!regexec(re, s, 0, NULL, 0));
 }
 
-void regexp_free(re)
+int regexp_free(re)
 reg_t *re;
 {
 	if (re) regfree(re);
@@ -206,7 +213,7 @@ reg_t *re;
 
 # else		/* USEREGCOMP */
 
-void regexp_free(re)
+int regexp_free(re)
 reg_t *re;
 {
 	if (re) free(re);

@@ -3,7 +3,6 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -12,6 +11,10 @@
 #include "types.h"
 #include "pathname.h"
 #include "func.h"
+
+#ifndef	NOSTDLIB
+#include <stdlib.h>
+#endif
 
 
 #define	RUNCOMFILE	"~/.fdrc"
