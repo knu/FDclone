@@ -204,8 +204,8 @@ extern int strcasecmp2 __P_((char *, char *));
 #endif
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
-extern VOID readunitbl __P_((VOID_A));
-extern VOID discardunitbl __P_((VOID_A));
+extern VOID readunitable __P_((VOID_A));
+extern VOID discardunitable __P_((VOID_A));
 extern u_short unifysjis __P_((u_short, int));
 extern u_short cnvunicode __P_((u_short, int));
 #else	/* !FD */
@@ -251,8 +251,8 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
-static VOID NEAR readunitbl __P_((VOID_A));
-static VOID NEAR discardunitbl __P_((VOID_A));
+static VOID NEAR readunitable __P_((VOID_A));
+static VOID NEAR discardunitable __P_((VOID_A));
 static u_short NEAR unifysjis __P_((u_short, int));
 static u_short NEAR cnvunicode __P_((u_short, int));
 #define	UNICODETBL	"fd-unicd.tbl"

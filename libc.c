@@ -722,14 +722,14 @@ int system2(command, noconf)
 char *command;
 int noconf;
 {
-	int ret;
+	int n, ret;
 
 	if (!command || !*command) return(0);
-	sigvecreset();
+	n = sigvecset(0);
 	if (noconf >= 0) {
 		locate(0, n_line - 1);
 		putterm(l_clear);
-		if (noconf) putterms(t_end);
+		if (n && noconf) putterms(t_end);
 	}
 	stdiomode();
 	ret = dosystem(command);
@@ -744,10 +744,10 @@ int noconf;
 			stdiomode();
 			fputc('\n', stderr);
 		}
-		putterms(t_init);
+		if (n) putterms(t_init);
 	}
 	ttyiomode();
-	sigvecset();
+	sigvecset(n);
 	if (!noconf || (noconf < 0 && ret >= 127)) {
 		hideclock = 1;
 		warning(0, HITKY_K);

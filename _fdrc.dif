@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Fri Jan 11 00:00:00 2002
++++ _fdrc	Wed May  8 00:00:00 2002
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-112: preserve previous sort type
@@ -56,7 +56,7 @@
  #	3: 3 columns
  #	5: 5 columns
 -COLUMNS		=	2
-+COLUMNS=2
++DEFCOLUMNS=2
  
  # minimum columns of filename field
  #	Default: 12

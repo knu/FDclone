@@ -86,7 +86,7 @@ extern char *_mtrace_file;
 #define	ADJTTY		0
 #define	USEGETCURSOR	0
 #define	WINDOWS		1
-#define	COLUMNS		2
+#define	DEFCOLUMNS	2
 #define	MINFILENAME	12
 #define	HISTSIZE	50
 #define	DIRHIST		50

@@ -94,7 +94,7 @@ extern char *mesconv __P_((char *, char *));
 #define	CMODE_K	mesconv("A: ファイルモードの変更", "A: Attribute")
 #define	CDATE_K	mesconv("S: 日付,時間の変更", "S: timeStamp")
 #define	ILTMS_K	mesconv("タイムスタンプの設定が違います.", "Invalid timestamp.")
-#define	ILLNK_K	mesconv("シンボリックリンクの属性は変更できません.", "Cannot chenge attribute of symbolic link.")
+#define	ILLNK_K	mesconv("シンボリックリンクの属性は変更できません.", "Cannot change attribute of symbolic link.")
 #define	FSDIR_K	mesconv("情報を知りたいディレクトリ名:", "Target directory:")
 #define	FSNAM_K	mesconv("ファイルシステム", "File system")
 #define	FSMNT_K	mesconv("マウントポイント", "Mount point")
@@ -201,7 +201,7 @@ extern char *mesconv __P_((char *, char *));
 		"Inherit the timestamp on copying files.")
 #define	AJTY_E \
 	meslist("終了時に端末モードを強制的にリセットします.", \
-		"Adjust the termical mode when exiting.")
+		"Adjust the terminal mode when exiting.")
 #define	UGCS_E \
 	meslist("端末サイズ取得に VT100 互換エスケープシーケンスを使用します.", \
 		"Prioritize the VT100 escape sequence for getting terminal size.")
@@ -210,7 +210,7 @@ extern char *mesconv __P_((char *, char *));
 		"Set the default columns in 1 line.")
 #define	MINF_E \
 	meslist("ファイル名表示領域の最小文字数を設定します.", \
-		"Set the minumum columns of filename field.")
+		"Set the minimum columns of filename field.")
 #define	HSSZ_E \
 	meslist("コマンド履歴数の上限を設定します.", \
 		"Define the maximum size of command history.")
@@ -344,7 +344,7 @@ extern char *mesconv __P_((char *, char *));
 
 #define	NEWET_K	mesconv("新規登録", "NewEntry")
 #define	NIMPL_K	mesconv("この機能は実装されていません.", \
-			"Cannot available on this implementaion.")
+			"Cannot available on this implementation.")
 #define	OVERF_K	mesconv("これ以上の新規登録はできません.", \
 			"No more new registration.")
 #define	BINDK_K	mesconv("キー割当てを行ないたいキーを押して下さい:", \
@@ -372,7 +372,7 @@ extern char *mesconv __P_((char *, char *));
 			"Deleting the keymap for [%s], OK ?")
 #define	SETKM_K	mesconv("[%s]のキーマップを[%s]として登録します. よろしいですか ?", \
 			"Registering the keymap for [%s] as [%s], OK ?")
-#define	EXTLN_K	mesconv("ランチャ登録用拡張子:", "Extention for launcher:")
+#define	EXTLN_K	mesconv("ランチャ登録用拡張子:", "Extension for launcher:")
 #define	LNCHC_K	mesconv("ランチャ用コマンド:", "Command for launcher:")
 #define	ISARC_K	mesconv("アーカイブブラウザとして登録しますか ?", \
 			"Registration as archive browser ?")
@@ -385,7 +385,7 @@ extern char *mesconv __P_((char *, char *));
 #define	VALNG_K	mesconv("不正な値です.", "Invalid value.")
 #define	DLLOK_K	mesconv("[%s]用のランチャ登録を削除します. よろしいですか ?", \
 			"Deleting the launcher registration for [%s], OK ?")
-#define	EXTAR_K	mesconv("アーカイバ登録用拡張子:", "Extention for archiver:")
+#define	EXTAR_K	mesconv("アーカイバ登録用拡張子:", "Extension for archiver:")
 #define	PACKC_K	mesconv("圧縮用コマンド:", "Command for pack:")
 #define	UPCKC_K	mesconv("伸長用コマンド:", "Command for unpack:")
 #define	DLAOK_K	mesconv("[%s]用のアーカイバ登録を削除します. よろしいですか ?", \

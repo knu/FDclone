@@ -547,11 +547,11 @@ static int NEAR _tree_input(VOID_A)
 
 	keyflush();
 #ifdef	_NOEDITMODE
-	ch = Xgetkey(SIGALRM);
+	ch = Xgetkey(SIGALRM, 0);
 #else
-	Xgetkey(-1);
-	ch = Xgetkey(SIGALRM);
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
+	ch = Xgetkey(SIGALRM, 0);
+	Xgetkey(-1, 0);
 #endif
 
 	old = tr_cur;

@@ -443,7 +443,8 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
-# if	!defined (__alpha__) && !defined (__alpha) && !defined (alpha)
+#if !defined(__alpha__) && !defined(__ia64__) && !defined(__x86_64__) \
+&& !defined(CONFIG_ARCH_S390X)
 # define	USELLSEEK
 # endif
 #define	SIGFNCINT

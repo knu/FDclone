@@ -4,7 +4,7 @@
 # to set default sort type
 #	0: not sort (Default)
 #	1: alphabetical	9: alphabetical (reversal)
-#	2: extention	10: extension (reversal)
+#	2: extension	10: extension (reversal)
 #	3: size		11: size (reversal)
 #	4: date		12: date (reversal)
 #	5: length	13: length (reversal)
@@ -59,7 +59,7 @@
 #	2: 2 columns (Default)
 #	3: 3 columns
 #	5: 5 columns
-#COLUMNS=2
+#DEFCOLUMNS=2
 
 # minimum columns of filename field
 #	Default: 12

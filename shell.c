@@ -30,8 +30,12 @@ extern int lcmdline;
 extern int hideclock;
 extern int internal_status;
 
+static int NEAR checksc __P_((char *, int, char *));
+#if	!MSDOS && !defined (_NOKANJICONV)
+static int NEAR extconv __P_((char *, int, int, int));
+#endif
 static int NEAR setarg __P_((char *, int, char *, char *, u_char));
-static int NEAR setargs __P_((char *, int, u_char));
+static int NEAR setargs __P_((char *, int, int, int, macrostat *));
 static int NEAR insertarg __P_((char *, char *, char *, int));
 static char *NEAR addoption __P_((char *, char *, macrostat *, int));
 #ifdef	_NOORIGSHELL
@@ -41,7 +45,6 @@ static char *NEAR evalalias __P_((char *));
 #else
 #define	system3(c, n, i)	system2(c, n)
 #endif
-static char *parsehist __P_((char *, int *));
 
 #ifdef	_NOORIGSHELL
 aliastable aliaslist[MAXALIASTABLE];
@@ -61,6 +64,54 @@ int n_args = 0;
 static short histbufsize[2] = {0, 0};
 
 
+static int NEAR checksc(buf, ptr, arg)
+char *buf;
+int ptr;
+char *arg;
+{
+	if (!arg || !*arg);
+	else if (*arg == _SC_);
+#if	MSDOS
+	else if (_dospath(arg));
+#endif
+	else return(ptr);
+
+	if (buf) {
+		if (ptr < 2) return(ptr);
+		if (buf[ptr - 1] != _SC_ || buf[ptr - 2] != '.') return(ptr);
+		if (ptr > 2 && !strchr(IFS_SET, buf[ptr - 3])) return(ptr);
+	}
+
+	return(ptr - 2);
+}
+
+#if	!MSDOS && !defined (_NOKANJICONV)
+static int NEAR extconv(buf, ptr, eol, code)
+char *buf;
+int ptr, eol, code;
+{
+	char *cp, tmp[MAXCOMMSTR + 1];
+	int len, total;
+
+	buf[eol] = '\0';
+	cp = &(buf[ptr]);
+	total = 0;
+	for (;;) {
+		len = kanjiconv(&(tmp[total]), cp,
+			MAXCOMMSTR - ptr - total, DEFCODE, code, L_FNAME);
+		total += len;
+		cp += strlen(cp);
+		if (cp >= &(buf[eol])) break;
+		tmp[total++] = '\0';
+		cp++;
+		tmp[total++] = *cp++;
+	}
+
+	memcpy(&(buf[ptr]), tmp, total);
+	return(total);
+}
+#endif
+
 static int NEAR setarg(buf, ptr, dir, arg, flags)
 char *buf;
 int ptr;
@@ -71,9 +122,11 @@ u_char flags;
 	char conv[MAXPATHLEN];
 #endif
 	char *cp, path[MAXPATHLEN];
-	int l;
+	int len, optr;
 
-	if (!arg || !*arg) return(0);
+	optr = ptr;
+	ptr = checksc(buf, ptr, arg);
+	if (!arg || !*arg) return(ptr - optr);
 	if (!dir || !*dir) {
 #if	MSDOS && !defined (_NOUSELFN)
 		if ((flags & F_TOSFN) && shortname(arg, path))
@@ -86,9 +139,9 @@ u_char flags;
 		strcatdelim2(path, dir, arg);
 		arg = killmeta(path);
 #if	MSDOS && !defined (_NOARCHIVE)
-		if (flags & F_ISARCH) for (l = 0; arg[l]; l++) {
-			if (iskanji1(arg, l)) l++;
-			if (arg[l] == _SC_) arg[l] = '/';
+		if (flags & F_ISARCH) for (len = 0; arg[len]; len++) {
+			if (iskanji1(arg, len)) len++;
+			if (arg[len] == _SC_) arg[len] = '/';
 		}
 #endif
 	}
@@ -101,21 +154,26 @@ u_char flags;
 	}
 #endif
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
-		l = cp - arg;
-	else l = strlen(arg);
-	if (ptr + l >= MAXCOMMSTR - 1) l = 0;
-	else strncpy(buf + ptr, arg, l);
+		len = cp - arg;
+	else len = strlen(arg);
+	if (ptr + len > MAXCOMMSTR) {
+		free(arg);
+		return(MAXCOMMSTR);
+	}
+
+	strncpy(&(buf[ptr]), arg, len);
 	free(arg);
-	return(l);
+	return(len + ptr - optr);
 }
 
-static int NEAR setargs(buf, ptr, flags)
+static int NEAR setargs(buf, ptr, blen, eol, stp)
 char *buf;
-int ptr;
-u_char flags;
+int ptr, blen, eol;
+macrostat *stp;
 {
-	int i, n, len, total;
-	char *dir;
+	char *cp, *s, *dir, tmp[MAXCOMMSTR + 1];
+	int i, n, optr, len, flen, rlen;
+	u_char flags;
 
 #ifdef	_NOARCHIVE
 	dir = NULL;
@@ -123,23 +181,55 @@ u_char flags;
 	dir = (archivefile) ? archivedir : NULL;
 #endif
 
+	len = eol - ptr;
+	memcpy(tmp, &(buf[ptr]), len);
+	tmp[len] = '\0';
+	cp = tmp + blen;
+	flags = *(++cp);
+	for (s = ++cp; *s; s++) if (strchr(IFS_SET, *s)) break;
+	flen = s - cp;
+	rlen = len - (s - tmp);
+
+	ptr += blen;
 	if (!n_args) {
 		len = setarg(buf, ptr, dir, filelist[filepos].name, flags);
-		total = len;
+		if (len >= MAXCOMMSTR || ptr + len + flen > MAXCOMMSTR)
+			return(MAXCOMMSTR);
+		ptr += len;
+		strncpy(&(buf[ptr]), cp, flen);
+		ptr += flen;
 	}
-	else for (i = n = total = 0; i < maxfile; i++) {
+	else for (i = n = 0; i < maxfile; i++) {
 		if (!isarg(&(filelist[i]))) continue;
-		if (n++) buf[ptr + total++] = ' ';
-		len = setarg(buf, ptr + total, dir, filelist[i].name, flags);
-		if (!len) {
-			if (--n) total--;
+		optr = ptr;
+		if (n) {
+			if (ptr + blen + 1 > MAXCOMMSTR) break;
+			buf[ptr++] = ' ';
+			strncpy(&(buf[ptr]), tmp, blen);
+			ptr += blen;
+		}
+		len = setarg(buf, ptr, dir, filelist[i].name, flags);
+		if (len >= MAXCOMMSTR || ptr + len + flen > MAXCOMMSTR) {
+			if (!n) return(MAXCOMMSTR);
+			ptr = optr;
 			break;
 		}
+		ptr += len;
+		strncpy(&(buf[ptr]), cp, flen);
+		ptr += flen;
 		filelist[i].tmpflags &= ~F_ISARG;
 		n_args--;
-		total += len;
+		n++;
 	}
-	return(total);
+
+	if (ptr + rlen > MAXCOMMSTR) {
+		for (i = MAXCOMMSTR - ptr; i < rlen; i++)
+			if (!s[i++] && !(s[i] & F_BURST)) (stp -> needmark)--;
+		rlen = MAXCOMMSTR - ptr;
+	}
+	memcpy(&(buf[ptr]), s, rlen);
+	ptr += rlen;
+	return(ptr - eol);
 }
 
 static int NEAR insertarg(buf, format, arg, needmark)
@@ -173,12 +263,14 @@ int needmark;
 			if ((*src & F_NOEXT) && (cp = strrchr(ins, '.')))
 				len = cp - ins;
 			else len = strlen(ins);
+
+			ptr = checksc(buf, ptr, ins);
 			if (ptr + len > MAXCOMMSTR) break;
-			strncpy(buf + ptr, ins, len);
+			strncpy(&(buf[ptr]), ins, len);
 			ptr += len;
 			len = strlen(++src);
 			if (ptr + len > MAXCOMMSTR) break;
-			strcpy(buf + ptr, src);
+			strcpy(&(buf[ptr]), src);
 			ptr += len;
 			src += len + 1;
 		}
@@ -194,13 +286,12 @@ macrostat *stp;
 int ignorelist;
 {
 #if	!MSDOS && !defined (_NOKANJICONV)
-	char tmp[MAXCOMMSTR + 1];
 	int cnvcode = NOCNV;
 	int tmpcode, cnvptr;
 #endif
 	macrostat st;
 	char *cp, line[MAXCOMMSTR + 1];
-	int i, j, c, len, uneval, setflag;
+	int i, j, c, len, needburst, uneval, setflag;
 	u_char flags;
 
 	if (stp) flags = stp -> flags;
@@ -209,14 +300,14 @@ int ignorelist;
 		flags = 0;
 	}
 	stp -> addopt = -1;
-	stp -> needmark = 0;
+	stp -> needmark = needburst = 0;
 	uneval = '\0';
 #if	!MSDOS && !defined (_NOKANJICONV)
 	cnvptr = 0;
 #endif
 
 	for (i = j = 0; command[i]; i++) {
-		if (j >= MAXCOMMSTR) break;
+		if (j > MAXCOMMSTR) break;
 		c = (uneval) ? '\0' : command[i];
 		if (flags & (F_NOEXT | F_TOSFN));
 		else if (c == '%') c = command[++i];
@@ -245,7 +336,7 @@ int ignorelist;
 				break;
 			case 'P':
 				len = setarg(line, j, NULL, fullpath, flags);
-				if (!len) c = -1;
+				if (len >= MAXCOMMSTR) c = -1;
 				break;
 #if	MSDOS && !defined (_NOUSELFN)
 			case 'S':
@@ -259,7 +350,7 @@ int ignorelist;
 #endif
 			case 'C':
 				len = setarg(line, j, NULL, arg, flags);
-				if (!len) c = -1;
+				if (len >= MAXCOMMSTR) c = -1;
 				flags |= F_ARGSET;
 				break;
 			case 'X':
@@ -274,7 +365,7 @@ int ignorelist;
 					break;
 				}
 				len = setarg(line, j, NULL, arg, flags);
-				if (!len) c = -1;
+				if (len >= MAXCOMMSTR) c = -1;
 				flags |= F_ARGSET;
 				break;
 			case 'T':
@@ -284,8 +375,9 @@ int ignorelist;
 					i++;
 				}
 				if (!ignorelist) {
-					len = setargs(line, j, flags);
-					if (!len) c = -1;
+					line[j++] = '\0';
+					needburst++;
+					line[j++] = flags | F_BURST;
 					flags |= F_ARGSET;
 				}
 				break;
@@ -328,12 +420,7 @@ int ignorelist;
 
 				i++;
 				if (cnvcode != NOCNV) {
-					memcpy(tmp, line + cnvptr,
-						j - cnvptr);
-					tmp[j - cnvptr] = '\0';
-					j = kanjiconv(line + cnvptr,
-						tmp, MAXCOMMSTR - cnvptr,
-						DEFCODE, cnvcode, L_FNAME)
+					j = extconv(line, cnvptr, j, cnvcode)
 						+ cnvptr;
 					if (cnvcode == tmpcode) {
 						cnvcode = NOCNV;
@@ -358,15 +445,27 @@ int ignorelist;
 	}
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-	if (cnvcode != NOCNV) {
-		memcpy(tmp, line + cnvptr, j - cnvptr);
-		tmp[j - cnvptr] = '\0';
-		j = kanjiconv(line + cnvptr, tmp, MAXCOMMSTR - cnvptr,
-			DEFCODE, cnvcode, L_FNAME) + cnvptr;
-	}
+	if (cnvcode != NOCNV) j = extconv(line, cnvptr, j, cnvcode) + cnvptr;
 #endif
 
-	if (!(flags & F_ARGSET)) {
+	if (needburst) for (i = c = 0; i < j; i++) {
+		if (line[i] && strchr(IFS_SET, line[i])) c = -1;
+		else if (c < 0) c = i;
+		if (line[i] || !(line[++i] & F_BURST)) continue;
+
+		len = setargs(line, c, i - 1 - c, j, stp);
+		if (len >= MAXCOMMSTR) {
+			j = c;
+			for (i++; i < j; i++)
+				if (!line[i++] && !(line[i] & F_BURST))
+					(stp -> needmark)--;
+			break;
+		}
+		j += len;
+		i += len + 1;
+	}
+
+	if (!(flags & F_ARGSET) && arg && *arg) {
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 		char conv[MAXPATHLEN];
 
@@ -374,14 +473,18 @@ int ignorelist;
 			DEFCODE, getkcode(arg));
 #endif
 		line[j++] = ' ';
-		cp = malloc2(strlen(arg) + 2 + 1);
-		cp[0] = '.';
-		cp[1] = _SC_;
-		strcpy(&(cp[2]), arg);
-		arg = killmeta(cp);
-		free(cp);
+		if (checksc(NULL, 0, arg) < 0) arg = killmeta(arg);
+		else {
+			cp = malloc2(strlen(arg) + 2 + 1);
+			cp[0] = '.';
+			cp[1] = _SC_;
+			strcpy(&(cp[2]), arg);
+			arg = killmeta(cp);
+			free(cp);
+		}
+
 		len = strlen(arg);
-		if (j + len < MAXCOMMSTR - 1) {
+		if (j + len <= MAXCOMMSTR) {
 			strncpy(&(line[j]), arg, len);
 			j += len;
 		}
@@ -549,20 +652,20 @@ char *command;
 int noconf, ignorelist;
 {
 	char *cp, *tmp;
-	int n;
+	int n, ret;
 
 	while (*command == ' ' || *command == '\t') command++;
 	if ((cp = evalalias(command))) command = cp;
 
-	sigvecreset();
-	if ((n = execpseudoshell(command, 1, ignorelist)) < 0) {
+	n = sigvecset(0);
+	if ((ret = execpseudoshell(command, 1, ignorelist)) < 0) {
 		tmp = evalcomstr(command, CMDLINE_DELIM);
-		n = system2(tmp, noconf);
+		ret = system2(tmp, noconf);
 		free(tmp);
 	}
-	sigvecset();
+	sigvecset(n);
 	if (cp) free(cp);
-	return(n);
+	return(ret);
 }
 #endif	/* _NOORIGSHELL */
 
@@ -744,7 +847,7 @@ char *command;
 
 	cp = malloc2((int)strlen(command) - len
 		+ strlen(aliaslist[i].comm) + 1);
-	strcpy(strcpy2(cp, aliaslist[i].comm), command + len);
+	strcpy(strcpy2(cp, aliaslist[i].comm), &(command[len]));
 	return(cp);
 }
 #endif	/* _NOORIGSHELL */
@@ -773,7 +876,7 @@ int uniq;
 
 	if (!s || !*s) return(0);
 
-	if (histno[n]++ >= MAXTYPE(short)) histno[n] = 0;
+	if (histno[n]++ >= MAXHISTNO) histno[n] = 0;
 
 	if (uniq) {
 		for (i = 0; i <= size; i++) {
@@ -790,6 +893,21 @@ int uniq;
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
 	history[n][0] = strdup2(s);
 	return(1);
+}
+
+char *removehist(n)
+int n;
+{
+	char *tmp;
+	int i, size;
+
+	size = histsize[n];
+	if (!history[n] || size > histbufsize[n] || size <= 0) return(NULL);
+	if (--histno[n] < 0) histno[n] = MAXHISTNO;
+	tmp = history[n][0];
+	for (i = 0; i < size; i++) history[n][i] = history[n][i + 1];
+	history[n][size--] = NULL;
+	return(tmp);
 }
 
 int loadhistory(n, file)
@@ -812,7 +930,7 @@ char *file;
 
 	i = -1;
 	while ((line = fgets2(fp, 1))) {
-		if (histno[n]++ >= MAXTYPE(short)) histno[n] = 0;
+		if (histno[n]++ >= MAXHISTNO) histno[n] = 0;
 		if (i < size) i++;
 		else free(history[n][i]);
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
@@ -852,51 +970,61 @@ char *file;
 	return(0);
 }
 
-static char *parsehist(str, ptrp)
+int parsehist(str, ptrp)
 char *str;
 int *ptrp;
 {
 	char *cp;
-	long n;
-	int i, size;
+	long no;
+	int i, n, ptr, size;
 
+	ptr = (ptrp) ? *ptrp : 0;
 	size = histsize[0];
-	if (str[*ptrp] == '!') n = 0;
-	else if (str[*ptrp] == '=' || strchr(IFS_SET, str[*ptrp])) {
-		*ptrp = -1;
-		return(NULL);
+	if (str[ptr] == '!') n = 0;
+	else if (str[ptr] == '=' || strchr(IFS_SET, str[ptr])) {
+		ptr = -1;
+		n = -1;
 	}
-	else if ((cp = evalnumeric(&(str[*ptrp]), &n, -1))) {
-		if (n < 0) n--;
-		else n = histno[0] - n;
-		*ptrp = cp - str - 1;
+	else if ((cp = evalnumeric(&(str[ptr]), &no, -1))) {
+		if (!no) n = -1;
+		else if (no < 0) {
+			if (-1L - no > (long)MAXHISTNO) n = -1;
+			else n = -1L - no;
+		}
+		else if (no - 1L > (long)MAXHISTNO) n = -1;
+		else if (no <= (long)(histno[0])) n = histno[0] - no;
+		else n = MAXHISTNO - (no - histno[0]) + 1;
+		ptr = (cp - str) - 1;
 	}
 	else {
-		for (i = 0; str[*ptrp + i]; i++) {
-			if (strchr(CMDLINE_DELIM, str[*ptrp + i])) break;
-			if (iskanji1(str, *ptrp + i)) i++;
+		for (i = 0; str[ptr + i]; i++) {
+			if (strchr(CMDLINE_DELIM, str[ptr + i])) break;
+			if (iskanji1(str, ptr + i)) i++;
 		}
-		if (!i) {
-			*ptrp = -1;
-			return(NULL);
+		if (!i) ptr = -1;
+		else {
+			for (n = 0; n < size; n++) {
+				if (!history[0][n]) break;
+				cp = skipspace(history[0][n]);
+				if (!strnpathcmp(&(str[ptr]), cp, i)) break;
+			}
+			ptr += i - 1;
 		}
-		for (n = 0; n < size; n++) {
-			if (!history[0][n]) break;
-			cp = skipspace(history[0][n]);
-			if (!strnpathcmp(&(str[*ptrp]), cp, i)) break;
-		}
-		*ptrp += i - 1;
 	}
 
-	if (n < 0 || n >= size) return(NULL);
-	return(history[0][n]);
+	if (ptrp) *ptrp = ptr;
+	if (n < 0 || n >= size) return(-1);
+	if (!ptrp) {
+		while (!history[0][n]) if (--n < 0) return(-1);
+	}
+	return((int)n);
 }
 
 char *evalhistory(command)
 char *command;
 {
-	char *cp, *tmp;
-	int i, j, len, size, quote, hit;
+	char *cp;
+	int i, j, n, len, size, quote, hit;
 
 	hit = 0;
 	cp = c_malloc(size);
@@ -912,7 +1040,7 @@ char *command;
 		else if (command[i] == '\'') quote = command[i];
 		else if (command[i] == '!') {
 			len = i++;
-			if (!(tmp = parsehist(command, &i))) {
+			if ((n = parsehist(command, &i)) < 0) {
 				if (i < 0) {
 					cp[j] = '!';
 					i = len;
@@ -925,9 +1053,9 @@ char *command;
 				return(NULL);
 			}
 			hit++;
-			len = strlen(tmp);
+			len = strlen(history[0][n]);
 			cp = c_realloc(cp, j + len, size);
-			strncpy(&cp[j], tmp, len);
+			strncpy(&cp[j], history[0][n], len);
 			j += len - 1;
 			continue;
 		}

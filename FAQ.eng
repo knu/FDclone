@@ -452,6 +452,8 @@ A3-17.	Is ANSI.SYS set up? A general MS-DOS screen except
 	"devicehigh=%SystemRoot%\system32\ansi.sys" in
 	\WINNT\SYSTEM32\CONFIG.NT.
 
+	(ANSI.SYS is not necessary, from Ver. 2.01 downward.)
+
 Q3-18.	On Fujitsu UXP/DS, I cannot refer to a tar file by
 	the archive browser.
 A3-18.	Since tar on UXP/DS is special in the output form
@@ -547,6 +549,8 @@ A3-23.	PC-DOS (IBM-DOS) standard ANSI.SYS is inferior to
 	one, has been released, you should better use it
 	instead of standard ANSI.SYS.
 	http://hp.vector.co.jp/authors/VA003655/en/down.html
+
+	(ANSI.SYS is not necessary, from Ver. 2.01 downward.)
 
 
 <4.Specification Problem>

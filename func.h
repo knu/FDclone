@@ -53,8 +53,7 @@ extern int errno;
 
 /* main.c */
 extern VOID error __P_((char *));
-extern VOID sigvecset __P_((void));
-extern VOID sigvecreset __P_((void));
+extern int sigvecset __P_((int));
 extern VOID title __P_((void));
 extern int loadruncom __P_((char *, int));
 
@@ -276,6 +275,8 @@ extern int safecpfile __P_((char *, char *, struct stat *, struct stat *));
 extern int safemvfile __P_((char *, char *, struct stat *, struct stat *));
 extern int mktmpdir __P_((char *));
 extern int rmtmpdir __P_((char *));
+extern int mktmpfile __P_((char *, char *));
+extern int rmtmpfile __P_((char *));
 extern VOID removetmp __P_((char *, char *, char *));
 extern int forcecleandir __P_((char *, char *));
 #ifndef	_NODOSDRIVE
@@ -381,6 +382,7 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_KEYMAP	"keymap"
 #define	BL_GETKEY	"getkey"
 #define	BL_HISTORY	"history"
+#define	BL_FC		"fc"
 #define	BL_CHECKID	"checkid"
 #define	BL_KCONV	"kconv"
 #define	BL_EVALMACRO	"evalmacro"
@@ -404,8 +406,10 @@ extern int execusercomm __P_((char *, char *, int, int, int));
 #define	execusercomm	execmacro
 #endif
 extern int entryhist __P_((int, char *, int));
+extern char *removehist __P_((int));
 extern int loadhistory __P_((int, char *));
 extern int savehistory __P_((int, char *));
+extern int parsehist __P_((char *, int *));
 extern char *evalhistory __P_((char *));
 #ifdef	DEBUG
 extern VOID freehistory __P_((int));
@@ -428,8 +432,8 @@ extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
 #if	(!MSDOS && defined (FD) && (FD >= 2) && !defined (_NOKANJICONV)) \
 || !defined (_NODOSDRIVE)
-extern VOID readunitbl __P_((VOID_A));
-extern VOID discardunitbl __P_((VOID_A));
+extern VOID readunitable __P_((VOID_A));
+extern VOID discardunitable __P_((VOID_A));
 extern u_short unifysjis __P_((u_short, int));
 extern u_short cnvunicode __P_((u_short, int));
 #endif
@@ -446,7 +450,7 @@ extern int kanjiputs2 __P_((char *, int, int));
 
 /* input.c */
 extern int intrkey __P_((VOID_A));
-extern int Xgetkey __P_((int));
+extern int Xgetkey __P_((int, int));
 extern int cmdlinelen __P_((int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 extern int yesno __P_((CONST char *, ...));

@@ -852,7 +852,7 @@ int len;
 # if	MSDOS
 	re_ignore_case = 1;
 # endif
-	skipdotfile = (*s == '*' || *s == '?');
+	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = cnvregexp(s, len);
 	re_comp(s);
 	free(s);
@@ -885,7 +885,7 @@ int len;
 {
 	reg_t *re;
 
-	skipdotfile = (*s == '*' || *s == '?');
+	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = cnvregexp(s, len);
 	re = (reg_t *)malloc2(sizeof(reg_t));
 # if	MSDOS
@@ -929,7 +929,7 @@ int len;
 {
 	reg_t *re;
 
-	skipdotfile = (*s == '*' || *s == '?');
+	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = cnvregexp(s, len);
 	re = regcmp(s, 0);
 	free(s);
@@ -960,7 +960,7 @@ int len;
 	char *cp, *paren;
 	int i, j, n, plen, size, metachar, quote;
 
-	skipdotfile = (*s == '*' || *s == '?');
+	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	if (len < 0) len = strlen(s);
 	paren = NULL;
 	n = plen = size = 0;

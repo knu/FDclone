@@ -1,3 +1,26 @@
+Ver. 2.01	Add true/false/command/getopts/newgrp/fc builtins for POSIX.
+ (05/08/02)	Add -o, -b, -C options in 'set' builtin for POSIX.
+		Add the redirectee '>|', '&>|' for -C option.
+		Add the redirectee '&>>'.
+		Add 'login', 'logout' and 'disown' builtins.
+		Add the command separator '&|'.
+		Change the old pipe identifier '&|' to '|&'.
+		Change the overlapped variable name COLUMNS to DEFCOLUMNS.
+		Escape from depending on ANSI.SYS. (MS-DOS)
+		Missing .. on Windows NT is fixed. (MS-DOS)
+		Missing LFN on Windows 2000/XP is fixed. (MS-DOS)
+		Reference error of the history number is fixed.
+		Untermination error of the builtin 'execmacro' is fixed.
+		Unavailability of %M macro enclosed by %J macro is fixed.
+		Unrepeated error for the description before/after %T is fixed.
+		Illegal execution of 'trap 0' is fixed.
+		Misjudgment for the exit status of child process is fixed.
+		Abortion sometimes caused by filename completion is fixed.
+		Mismatching [] with dot files is fixed.
+		Bug that the last component of 'case' cannot omit ;; is fixed.
+		Bug that alias name cannot consist every character is fixed.
+		Support Linux/ia64.
+
 Ver. 2.00b	Allow ambiguity in decoding JIS type encoded strings.
  (03/27/02)	Support to decode ISO-2022-JP-3 encoding.
 		The different rule from Windows in generating LFN is adjusted.

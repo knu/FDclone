@@ -141,8 +141,8 @@ int intrkey(VOID_A)
 	return(0);
 }
 
-int Xgetkey(sig)
-int sig;
+int Xgetkey(sig, eof)
+int sig, eof;
 {
 	int ch;
 #ifndef	_NOEDITMODE
@@ -156,6 +156,7 @@ int sig;
 #endif
 
 	ch = getkey2(sig);
+	if (eof && ch == cc_eof) return(-1);
 
 #ifndef	_NOEDITMODE
 	if (!editmode) return(ch);
@@ -212,7 +213,7 @@ int sig;
 					overwritemode = 0;
 					ch = K_RIGHT;
 					break;
-#if	FD >= 2
+# if	FD >= 2
 				case 'R':
 					vimode = 2;
 					overwritemode = 1;
@@ -221,7 +222,7 @@ int sig;
 					vimode = 6;
 					overwritemode = 1;
 					break;
-#endif	/* FD >= 2 */
+# endif	/* FD >= 2 */
 				case K_BS:
 					ch = K_LEFT;
 					break;
@@ -1047,8 +1048,11 @@ static int NEAR completestr(s, cx, len, plen, max, linemax, comline, cont)
 char *s;
 int cx, len, plen, max, linemax, comline, cont;
 {
+# if	!MSDOS || !defined (_NOORIGSHELL)
+	int bq;
+# endif
 	char *cp1, *cp2, **argv;
-	int i, l, ins, top, fix, argc, quote, quoted;
+	int i, l, ins, top, fix, argc, quote, quoted, hasmeta;
 
 	if (selectlist && cont > 0) {
 		selectfile(tmpfilepos++, NULL);
@@ -1056,17 +1060,26 @@ int cx, len, plen, max, linemax, comline, cont;
 		return(0);
 	}
 
-	for (i = top = 0, quote = '\0'; i < cx; i++) {
-		if (s[i] == quote) quote = '\0';
+# if	!MSDOS || !defined (_NOORIGSHELL)
+	bq = 0;
+# endif
+	quote = '\0';
+	quoted = 0;
+	for (i = top = 0; i < cx; i++) {
+		if (s[i] == quote) {
+			if (quote == '"') quoted = i;
+# if	!MSDOS || !defined (_NOORIGSHELL)
+			if (quote == '\'') quoted = i;
+# endif
+			quote = '\0';
+		}
 		else if (iskanji1(s, i)) i++;
 		else if (quote);
-# if	MSDOS && defined (_NOORIGSHELL)
 		else if (s[i] == '"') quote = s[i];
-# else
-		else if (s[i] == '"' || s[i] == '\'') quote = s[i];
+# if	!MSDOS || !defined (_NOORIGSHELL)
+		else if (s[i] == '\'') quote = s[i];
 		else if (s[i] == '`') {
-			top = i + 1;
-			quote = s[i];
+			if ((bq = 1 - bq)) top = i + 1;
 		}
 # endif
 		else if (s[i] == '=' || strchr(CMDLINE_DELIM, s[i]))
@@ -1076,13 +1089,6 @@ int cx, len, plen, max, linemax, comline, cont;
 		putterm(t_bell);
 		return(0);
 	}
-# if	MSDOS && defined (_NOORIGSHELL)
-	quoted = (!quote && cx > 0 && s[cx - 1] == '"')
-# else
-	if (quote == '`') quote = '\0';
-	quoted = (!quote && cx > 0 && s[cx - 1] == '"' || s[cx - 1] == '\'')
-# endif
-		? s[cx - 1] : '\0';
 	if (comline && top > 0) {
 		for (i = top - 1; i >= 0; i--)
 			if (s[i] != ' ' && s[i] != '\t') break;
@@ -1092,6 +1098,14 @@ int cx, len, plen, max, linemax, comline, cont;
 	cp1 = malloc2(cx - top + 1);
 	strncpy2(cp1, s + top, cx - top);
 	cp1 = evalpath(cp1, 1);
+	hasmeta = 0;
+	for (i = 0; cp1[i]; i++) {
+		if (strchr(METACHAR, cp1[i])) {
+			hasmeta = 1;
+			break;
+		}
+		if (iskanji1(cp1, i)) i++;
+	}
 
 	if (selectlist && cont < 0) {
 		argv = (char **)malloc2(1 * sizeof(char *));
@@ -1128,13 +1142,11 @@ int cx, len, plen, max, linemax, comline, cont;
 	}
 
 	cp1 = findcommon(argc, argv);
-	fix = 0;
-	if (argc == 1 && cp1) {
-		if (isdelim(cp1, (int)strlen(cp1) - 1)) fix--;
-		else fix++;
-	}
+	fix = '\0';
+	if (argc == 1 && cp1)
+		fix = ((cp2 = strrdelim(cp1, 0)) && !*(cp2 + 1)) ? _SC_ : ' ';
 
-	if (!cp1 || ((ins = (int)strlen(cp1) - ins) <= 0 && fix <= 0)) {
+	if (!cp1 || ((ins = (int)strlen(cp1) - ins) <= 0 && fix != ' ')) {
 		if (cont <= 0) {
 			putterm(t_bell);
 			l = 0;
@@ -1157,12 +1169,25 @@ int cx, len, plen, max, linemax, comline, cont;
 	free(argv);
 
 	l = 0;
-	if (!quote && !quoted && len < max) {
-		for (i = 0; cp1[i]; i++) {
-			if (strchr(METACHAR, cp1[i])) break;
-			if (iskanji1(cp1, i)) i++;
+	if (!hasmeta) for (i = 0; cp1[i]; i++) {
+		if (strchr(METACHAR, cp1[i])) {
+			hasmeta = 1;
+			break;
 		}
-		if (cp1[i]) {
+		if (iskanji1(cp1, i)) i++;
+	}
+
+	if (hasmeta) {
+		if (quote);
+		else if (quoted) {
+			quote = s[quoted];
+			setcursor(vlen(s, quoted), plen, max, linemax);
+			deletechar(s, quoted, len, plen, max, linemax, 1);
+			delshift(s, quoted, len--, 1);
+			l--;
+			setcursor(vlen(s, --cx), plen, max, linemax);
+		}
+		else if (len < max) {
 			setcursor(vlen(s, top), plen, max, linemax);
 			insertchar(s, top, len, plen, max, linemax, 1);
 			insshift(s, top, len++, 1);
@@ -1171,43 +1196,30 @@ int cx, len, plen, max, linemax, comline, cont;
 			putch2(quote);
 			setcursor(vlen(s, ++cx), plen, max, linemax);
 		}
+		else hasmeta = 0;
 	}
 
 	cp2 = cp1 + (int)strlen(cp1) - ins;
-	if (quote && fix < 0 && len + 1 < max) {
-		i = insertstr(s, cx, len, plen,
-			max, linemax, cp2, ins - 1, quote);
-		l += i;
+	if (fix == _SC_) {
+		ins--;
+		if (!hasmeta) quote = '\0';
+	}
+	i = insertstr(s, cx, len, plen, max, linemax, cp2, ins, quote);
+	l += i;
+	if (fix && (len += i) < max) {
 		cx += i;
-		insertchar(s, cx, len, plen, max, linemax, 1);
-		insshift(s, cx, len++, 1);
-		l++;
-		s[cx++] = quote;
-		putcursor(quote, 1);
+		if (quote && len + 1 < max) {
+			insertchar(s, cx, len, plen, max, linemax, 1);
+			insshift(s, cx, len++, 1);
+			l++;
+			s[cx++] = quote;
+			putcursor(quote, 1);
+		}
 		insertchar(s, cx, len, plen, max, linemax, 1);
 		insshift(s, cx, len, 1);
 		l++;
-		s[cx] = _SC_;
-		putcursor(_SC_, 1);
-	}
-	else {
-		i = insertstr(s, cx, len, plen, max, linemax, cp2, ins, quote);
-		l += i;
-		if (fix > 0 && (len += i) < max) {
-			cx += i;
-			if (quote && len + 1 < max) {
-				insertchar(s, cx, len, plen, max, linemax, 1);
-				insshift(s, cx, len++, 1);
-				l++;
-				s[cx++] = quote;
-				putcursor(quote, 1);
-			}
-			insertchar(s, cx, len, plen, max, linemax, 1);
-			insshift(s, cx, len, 1);
-			l++;
-			s[cx] = ' ';
-			putcursor(' ', 1);
-		}
+		s[cx] = fix;
+		putcursor(fix, 1);
 	}
 
 	free(cp1);
@@ -1524,6 +1536,7 @@ int plen, max, linemax, def, comline, h;
 {
 	char *tmphist;
 	int len, cx, cx2, ocx2, i, hist, ch, ch2, quote, dupwin_x, dupwin_y;
+	int maxlen;
 #if	!MSDOS
 	char *cp;
 	int l;
@@ -1533,7 +1546,7 @@ int plen, max, linemax, def, comline, h;
 	dupwin_y = win_y;
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 #ifndef	_NOCOMPLETE
 	tmpfilepos = -1;
@@ -1551,11 +1564,24 @@ int plen, max, linemax, def, comline, h;
 	quote = 0;
 	ch = -1;
 
+	maxlen = len;
 	do {
+		if (maxlen < len) maxlen = len;
 		tflush();
 		ch2 = ch;
 		ocx2 = cx2;
-		if (!quote) ch = Xgetkey(SIGALRM);
+		if (!quote) {
+#ifndef	_NOORIGSHELL
+			if (shellmode && !maxlen) {
+				if ((ch = Xgetkey(SIGALRM, 1)) < 0) {
+					ch = K_ESC;
+					break;
+				}
+			}
+			else
+#endif
+			ch = Xgetkey(SIGALRM, 0);
+		}
 		else {
 			i = ch = getkey2(SIGALRM);
 			quote = 0;
@@ -1727,6 +1753,7 @@ int plen, max, linemax, def, comline, h;
 				ocx2 = cx2 = _inputstr_down(s, &cx, cx2,
 					&len, plen, max, linemax,
 					&hist, h, &tmphist);
+				if (!tmphist) maxlen = len;
 				break;
 			case K_IL:
 				keyflush();
@@ -1803,11 +1830,13 @@ int plen, max, linemax, def, comline, h;
 		}
 		if (ocx2 != cx2) setcursor(cx2, plen, max, linemax);
 #endif	/* !_NOCOMPLETE */
-#ifdef	_NOORIGSHELL
-		if (ch == K_ESC) break;
-#else
-		if (!shellmode && ch == K_ESC) break;
+		if (ch == K_ESC) {
+#ifndef	_NOORIGSHELL
+			if (shellmode);
+			else
 #endif
+			break;
+		}
 	} while (ch != K_CR);
 
 	if (selectlist) selectfile(-1, NULL);
@@ -1816,7 +1845,7 @@ int plen, max, linemax, def, comline, h;
 	win_y = dupwin_y;
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 	if (tmphist) free(tmphist);
 
@@ -1959,6 +1988,9 @@ int h;
 	ch = _inputstr(input, len, cmdlinelen(len),
 		n_column - 1, ptr, comline, h);
 	if (ch != K_ESC && (!prompt || !*prompt)) cputs2("\r\n");
+#ifndef	_NOORIGSHELL
+	else if (shellmode);
+#endif
 	else {
 		for (i = 0; i < WCMDLINE; i++) {
 			if (ypos + i >= n_line) break;
@@ -2064,7 +2096,7 @@ char *fmt;
 	duperrno = errno;
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 
 	win_y = LMESLINE;
@@ -2074,7 +2106,7 @@ char *fmt;
 		win_x = len + 1 + (1 - ret) * 2;
 		locate(win_x, win_y);
 		tflush();
-		switch (ch = Xgetkey(SIGALRM)) {
+		switch (ch = Xgetkey(SIGALRM, 0)) {
 			case 'y':
 			case 'Y':
 				ret = 1;
@@ -2110,7 +2142,7 @@ char *fmt;
 	win_y = dupwin_y;
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 
 	errno = duperrno;
@@ -2209,7 +2241,7 @@ int val[];
 	dupwin_y = win_y;
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 
 	xx = (int *)malloc2((max + 1) * sizeof(int));
@@ -2236,7 +2268,7 @@ int val[];
 		old = new;
 
 		keyflush();
-		switch (ch = Xgetkey(SIGALRM)) {
+		switch (ch = Xgetkey(SIGALRM, 0)) {
 			case K_RIGHT:
 				for (new++; new != old; new++) {
 					if (new >= max) new = 0;
@@ -2293,7 +2325,7 @@ int val[];
 	win_y = dupwin_y;
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 
 	if (stable_standout) {

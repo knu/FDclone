@@ -44,6 +44,7 @@ extern char *tmpfilename;
 
 #define	DOSDIRENT		32
 #define	LFNENTSIZ		13
+#define	MAXTMPNAMLEN		8
 #ifndef	O_BINARY
 #define	O_BINARY		0
 #endif
@@ -709,9 +710,9 @@ char *dir;
 	*path = (no >= 'A' && no <= 'Z') ? toupper2(*path) : tolower2(*path);
 #endif
 	strcpy(strcatdelim(path), tmpfilename);
-	if (_Xmkdir(path, 0777) < 0 && errno != EEXIST) return(-1);
+	if (_Xmkdir(path, 0755) < 0 && errno != EEXIST) return(-1);
 	strcpy((cp = strcatdelim(path)), dir);
-	if (_Xmkdir(path, 0777) < 0 && errno != EEXIST) {
+	if (_Xmkdir(path, 0755) < 0 && errno != EEXIST) {
 		*(--cp) = '\0';
 		no = errno;
 		if (_Xrmdir(path) < 0
@@ -739,6 +740,71 @@ char *dir;
 	&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
 		return(-1);
 	return(0);
+}
+
+int mktmpfile(buf, dir)
+char *buf, *dir;
+{
+	char *cp, path[MAXPATHLEN];
+	int i, fd;
+
+	strcpy(path, dir);
+	if (mktmpdir(path) < 0) return(-1);
+	cp = strcatdelim(path);
+	memset(cp, '\0', sizeof(path) - (cp - path));
+	cp[0] = '_';
+
+	for (;;) {
+		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0644);
+		if (fd >= 0) {
+			strcpy(buf, path);
+			return(fd);
+		}
+		if (errno != EEXIST) return(-1);
+
+		for (i = 0; i < MAXTMPNAMLEN; i++) {
+			if (!cp[i]) cp[i] = '_';
+			else if (cp[i] == '9') {
+				cp[i] = '_';
+				continue;
+			}
+			else if (cp[i] == '_') cp[i] = 'a';
+#if	MSDOS
+			else if (cp[i] == 'z') cp[i] = '0';
+#else
+			else if (cp[i] == 'z') cp[i] = 'A';
+			else if (cp[i] == 'Z') cp[i] = '0';
+#endif
+			else cp[i]++;
+			break;
+		}
+		if (i >= MAXTMPNAMLEN) break;
+	}
+	if (cp > path) *(--cp) = '\0';
+	rmtmpdir(path);
+	return(-1);
+}
+
+int rmtmpfile(path)
+char *path;
+{
+	char *cp;
+	int ret;
+
+	ret = 0;
+	if (Xunlink(path) != 0 && errno != ENOENT) ret = -1;
+	else if (!(cp = strrdelim(path, 0)));
+#if	MSDOS
+	else if (cp == path + 2 && isalpha(path[0]) && path[1] == ':');
+#endif
+	else if (cp != path) {
+		*cp = '\0';
+		if (rmtmpdir(path) < 0
+		&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
+			ret = -1;
+	}
+	free(path);
+	return(ret);
 }
 
 VOID removetmp(dir, subdir, file)

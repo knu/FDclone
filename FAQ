@@ -441,6 +441,8 @@ A3-17.	ANSI.SYS が組込まれていますか？Windows の MS-DOS プ
 	devicehigh=%SystemRoot%\system32\ansi.sys を追加し
 	ます。
 
+	(Ver. 2.01 以降は ANSI.SYS は不要です。)
+
 Q3-18.	Fujitsu UXP/DS で、tar ファイルがアーカイブブラウザ
 	で見られません。
 A3-18.	UXP/DS の tar はファイルモードに関する出力書式が特殊
@@ -536,6 +538,8 @@ A3-23.	PC-DOS (IBM-DOS) 標準の ANSI.SYS は、MS-DOS (Windows)
 	いう emulator が公開されていますので、ANSI.SYS の代
 	わりにそれを使うと良いでしょう。
 	http://hp.vector.co.jp/authors/VA003655/jp/down.html
+
+	(Ver. 2.01 以降は ANSI.SYS は不要です。)
 
 
 <4.仕様の話>

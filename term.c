@@ -30,6 +30,13 @@ extern char *_mtrace_file;
 #include <io.h>
 # ifdef	PC98
 # define	NOTUSEBIOS
+# else
+# define	USEVIDEOBIOS
+# define	VIDEOBIOS	0x10
+# define	BIOSSEG		0x40
+# define	CURRPAGE	0x62
+# define	SCRHEIGHT	0x84
+# define	SCRWIDTH	0x4a
 # endif
 # ifdef	DJGPP
 # include <dpmi.h>
@@ -46,6 +53,8 @@ extern char *_mtrace_file;
 # define	intdos2(rp)	__dpmi_int(0x21, rp)
 # define	getkeybuf(o)	_farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + o)
 # define	putkeybuf(o, n)	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + o, n)
+# define	intbios(v, rp)	__dpmi_int(v, rp)
+# define	getbiosbyte(o)	_farpeekb(_dos_ds, BIOSSEG * 0x10 + o)
 # else	/* !DJGPP */
 # include <sys/types.h>
 # include <sys/timeb.h>
@@ -53,6 +62,8 @@ typedef union REGS	__dpmi_regs;
 # define	intdos2(rp)	int86(0x21, rp, rp)
 # define	getkeybuf(o)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)))
 # define	putkeybuf(o, n)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)) = n)
+# define	intbios(v, rp)	int86(v, rp, rp)
+# define	getbiosbyte(o)	(*((u_char far *)MK_FP(BIOSSEG, o)))
 #  ifdef	LSI_C
 static int _asm_sti __P_((char *));
 static int _asm_cli __P_((char *));
@@ -190,10 +201,6 @@ extern int errno;
 # define	TERM_RI			parm_right_cursor
 # define	TERM_le			cursor_left
 # define	TERM_LE			parm_left_cursor
-# define	TERM_UP			parm_up_cursor
-# define	TERM_DO			parm_down_cursor
-# define	TERM_RI			parm_right_cursor
-# define	TERM_LE			parm_left_cursor
 # define	TERM_ku			key_up
 # define	TERM_kd			key_down
 # define	TERM_kr			key_right
@@ -302,10 +309,6 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 # define	TERM_nd			"nd"
 # define	TERM_RI			"RI"
 # define	TERM_le			"le"
-# define	TERM_LE			"LE"
-# define	TERM_UP			"UP"
-# define	TERM_DO			"DO"
-# define	TERM_RI			"RI"
 # define	TERM_LE			"LE"
 # define	TERM_ku			"ku"
 # define	TERM_kd			"kd"
@@ -426,6 +429,14 @@ static int NEAR err2 __P_((char *));
 static int NEAR defaultterm __P_((VOID_A));
 static int NEAR maxlocate __P_((int *, int *));
 #if	MSDOS
+# ifdef	USEVIDEOBIOS
+static int NEAR bioslocate __P_((int, int));
+static int NEAR biosscroll __P_((int, int, int, int, int));
+static int NEAR biosputch __P_((int, int));
+static int NEAR bioscurstype __P_((int));
+static int NEAR chgattr __P_((int));
+static int NEAR evalcsi __P_((char *));
+# endif
 # if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 static int NEAR dosgettime __P_((u_char []));
 # endif
@@ -511,7 +522,11 @@ char *c_nright = NULL;
 char *c_nleft = NULL;
 u_char cc_intr = CTRL('c');
 u_char cc_quit = CTRL('\\');
+#if	MSDOS
+u_char cc_eof = CTRL('z');
+#else
 u_char cc_eof = CTRL('d');
+#endif
 u_char cc_eol = 255;
 VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
 #if	!MSDOS
@@ -521,7 +536,7 @@ int ttyio = -1;
 FILE *ttyout = NULL;
 
 #if	MSDOS
-#ifdef	PC98
+# ifdef	PC98
 #define	KEYBUFWORKSEG	0x00
 #define	KEYBUFWORKSIZ	0x20
 #define	KEYBUFWORKMIN	0x502
@@ -531,7 +546,7 @@ FILE *ttyout = NULL;
 #define	KEYBUFWORKCNT	0x528
 static u_char specialkey[] = "\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
 static u_char metakey[] = "\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\026,\021*\025)";
-#else
+# else	/* !PC98 */
 #define	KEYBUFWORKSEG	0x40
 #define	KEYBUFWORKSIZ	0x20
 #define	KEYBUFWORKMIN	getkeybuf(0x80)
@@ -540,13 +555,16 @@ static u_char metakey[] = "\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\0
 #define	KEYBUFWORKEND	(KEYBUFWORKMIN - 2)
 static u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
 static u_char metakey[] = "\0360. \022!\"#\027$%&21\030\031\020\023\037\024\026/\021-\025,";
-#endif
-#if	defined (PC98) || defined (NOTUSEBIOS)
+# endif	/* !PC98 */
+# if	defined (PC98) || defined (NOTUSEBIOS)
 static int nextchar = '\0';
-#endif
-#ifdef	NOTUSEBIOS
+# endif
+# ifdef	NOTUSEBIOS
 static u_short keybuftop = 0;
-#endif
+# endif
+# ifdef	USEVIDEOBIOS
+static u_short videoattr = 0x07;
+# endif
 static int specialkeycode[] = {
 	0,
 	K_UP, K_DOWN, K_RIGHT, K_LEFT,
@@ -1056,11 +1074,20 @@ static int NEAR defaultterm(VOID_A)
 	t_resetcursor = "\033[u";
 #else	/* !MSDOS */
 	t_scroll = "\033[%i%d;%dr";
+# ifdef	BOW
+	/* hack for bowpad */
+	t_keypad = "";
+	t_nokeypad = "";
+	t_normalcursor = "";
+	t_highcursor = "";
+	t_nocursor = "";
+# else
 	t_keypad = "\033[?1h\033=";
 	t_nokeypad = "\033[?1l\033>";
 	t_normalcursor = "\033[?25h";
 	t_highcursor = "\033[?25h";
 	t_nocursor = "\033[?25l";
+# endif
 	t_setcursor = "\0337";
 	t_resetcursor = "\0338";
 #endif	/* !MSDOS */
@@ -1170,11 +1197,35 @@ static int NEAR defaultterm(VOID_A)
 	return(0);
 }
 
+#if	MSDOS && defined (USEVIDEOBIOS)
+static int NEAR maxlocate(yp, xp)
+int *yp, *xp;
+{
+	*xp = getbiosbyte(SCRWIDTH);
+	*yp = getbiosbyte(SCRHEIGHT) + 1;
+	return(0);
+}
+
+int getxy(yp, xp)
+int *yp, *xp;
+{
+	__dpmi_regs reg;
+
+	reg.x.ax = 0x0300;
+	reg.h.bh = getbiosbyte(CURRPAGE);
+	intbios(VIDEOBIOS, &reg);
+	*xp = reg.h.dl + 1;
+	*yp = reg.h.dh + 1;
+	return(0);
+}
+
+#else	/* !MSDOS || !USEVIDEOBIOS */
+
 static int NEAR maxlocate(yp, xp)
 int *yp, *xp;
 {
 	int i;
-#if	MSDOS
+# if	MSDOS
 	char *cp;
 
 	if (t_setcursor && t_resetcursor) putterms(t_setcursor);
@@ -1186,11 +1237,11 @@ int *yp, *xp;
 		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
 		free(cp);
 	}
-#else
+# else
 	if (t_setcursor && t_resetcursor) putterms(t_setcursor);
 	locate(998, 998);
 	tflush();
-#endif
+# endif
 	i = getxy(yp, xp);
 	if (t_setcursor && t_resetcursor) putterms(t_resetcursor);
 	return(i);
@@ -1204,26 +1255,26 @@ int *yp, *xp;
 
 	format = SIZEFMT;
 	keyflush();
-#if	MSDOS
+# if	MSDOS
 	for (i = 0; i < sizeof(GETSIZE) - 1; i++) bdos(0x06, GETSIZE[i], 0);
-#else
+# else
 	if (!usegetcursor) return(-1);
 	write(ttyio, GETSIZE, sizeof(GETSIZE) - 1);
-#endif
+# endif
 
 	do {
-#if	MSDOS
+# if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
-#else
+# else
 	        buf[0] = getch2();
-#endif
+# endif
 	} while (buf[0] != format[0]);
 	for (i = 1; i < sizeof(buf) - 1; i++) {
-#if	MSDOS
+# if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
-#else
+# else
 		buf[i] = getch2();
-#endif
+# endif
 		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
 	}
 	keyflush();
@@ -1249,6 +1300,7 @@ int *yp, *xp;
 	if (count != 2) return(-1);
 	return(0);
 }
+#endif	/* !MSDOS || !USEVIDEOBIOS */
 
 #if	MSDOS
 char *tparamstr(s, arg1, arg2)
@@ -1829,6 +1881,360 @@ int endterm(VOID_A)
 }
 
 #if	MSDOS
+# ifdef	USEVIDEOBIOS
+static int NEAR bioslocate(x, y)
+int x, y;
+{
+	__dpmi_regs reg;
+
+	reg.x.ax = 0x0200;
+	reg.h.bh = getbiosbyte(CURRPAGE);
+	reg.h.dh = y - 1;
+	reg.h.dl = x - 1;
+	intbios(VIDEOBIOS, &reg);
+	return(0);
+}
+
+static int NEAR biosscroll(d, sx, sy, ex, ey)
+int d, sx, sy, ex, ey;
+{
+	__dpmi_regs reg;
+
+	if (sx > ex || sy > ey) return(0);
+	if (d >= 0) {
+		reg.h.ah = 0x06;
+		reg.h.al = d;
+	}
+	else {
+		reg.h.ah = 0x07;
+		reg.h.al = -d;
+	}
+	reg.h.bh = videoattr;
+	reg.h.ch = sy - 1;
+	reg.h.cl = sx - 1;
+	reg.h.dh = ey - 1;
+	reg.h.dl = ex - 1;
+	intbios(VIDEOBIOS, &reg);
+	return(0);
+}
+
+static int NEAR biosputch(c, n)
+int c, n;
+{
+	__dpmi_regs reg;
+
+	reg.h.ah = 0x09;
+	reg.h.al = (c & 0xff);
+	reg.h.bh = getbiosbyte(CURRPAGE);
+	reg.h.bl = videoattr;
+	reg.x.cx = n;
+	intbios(VIDEOBIOS, &reg);
+	return(c);
+}
+
+static int NEAR bioscurstype(n)
+int n;
+{
+	__dpmi_regs reg;
+
+	reg.x.ax = 0x0300;
+	reg.h.bh = getbiosbyte(CURRPAGE);
+	intbios(VIDEOBIOS, &reg);
+	reg.x.ax = 0x0100;
+	reg.x.cx &= 0x1f1f;
+	reg.x.cx |= (n & 0x6000);
+	intbios(VIDEOBIOS, &reg);
+	return(0);
+}
+
+int putch2(c)
+int c;
+{
+	static int needscroll = 0;
+	int n, x, y, w, h;
+
+	if (c == '\007') {
+		bdos(0x06, '\007', 0);
+		return(c);
+	}
+
+	getxy(&y, &x);
+	w = getbiosbyte(SCRWIDTH);
+	h = getbiosbyte(SCRHEIGHT) + 1;
+
+	if (c == '\b') {
+		if (x > 1) x--;
+		needscroll = 0;
+	}
+	else if (c == '\t') {
+		if (x >= w && y >= h && needscroll) {
+			x = 1;
+			biosscroll(1, 1, 1, w, h);
+			bioslocate(x, y);
+		}
+		needscroll = 0;
+
+		n = 8 - ((x - 1) % 8);
+		if (x + n <= w) x += n;
+		else {
+			n = w - x + 1;
+			x = 1;
+			if (y < h) y++;
+			else {
+				x = w;
+				needscroll = 1;
+			}
+		}
+		biosputch(' ', n);
+	}
+	else if (c == '\r') {
+		x = 1;
+		needscroll = 0;
+	}
+	else if (c == '\n') {
+		if (y < h) y++;
+		else biosscroll(1, 1, 1, w, h);
+		needscroll = 0;
+	}
+	else {
+		if (x >= w && y >= h && needscroll) {
+			x = 1;
+			biosscroll(1, 1, 1, w, h);
+			bioslocate(x, y);
+		}
+		needscroll = 0;
+
+		if (x < w) x++;
+		else {
+			x = 1;
+			if (y < h) y++;
+			else {
+				x = w;
+				needscroll = 1;
+			}
+		}
+		biosputch(c, 1);
+	}
+
+	bioslocate(x, y);
+	return(c);
+}
+
+static int NEAR chgattr(n)
+int n;
+{
+	switch (n) {
+		case 0:
+			videoattr = 0x07;
+			break;
+		case 1:
+			videoattr |= 0x08;
+			break;
+		case 4:
+			videoattr &= 0xf0;
+			videoattr |= 0x01;
+			break;
+		case 5:
+			videoattr |= 0x80;
+			break;
+		case 7:
+			videoattr = 0x70;
+			break;
+		case 8:
+			videoattr = 0x08;
+			break;
+		case 30:
+		case 31:
+		case 32:
+		case 33:
+		case 34:
+		case 35:
+		case 36:
+		case 37:
+			videoattr &= 0xf0;
+			n -= 30;
+			if (n & 1) videoattr |= 0x04;
+			if (n & 2) videoattr |= 0x02;
+			if (n & 4) videoattr |= 0x01;
+			break;
+		case 40:
+		case 41:
+		case 42:
+		case 43:
+		case 44:
+		case 45:
+		case 46:
+		case 47:
+			videoattr &= 0x0f;
+			n -= 40;
+			if (n & 1) videoattr |= 0x40;
+			if (n & 2) videoattr |= 0x20;
+			if (n & 4) videoattr |= 0x10;
+			break;
+		default:
+			break;
+	}
+
+	return(videoattr);
+}
+
+static int NEAR evalcsi(s)
+char *s;
+{
+	static int savex, savey;
+	int i, x, y, w, h, n1, n2;
+
+	i = 0;
+	if (s[i] == '>') {
+		n1 = -1;
+
+		if (isdigit(s[++i])) {
+			n1 = s[i++] - '0';
+			while (isdigit(s[i])) n1 = n1 * 10 + s[i++] - '0';
+		}
+
+		if (s[i] == 'h') {
+			if (n1 == 5) bioscurstype(0x2000);
+			else i = -1;
+		}
+		else if (s[i] == 'l') {
+			if (n1 == 5) bioscurstype(0x0000);
+			else i = -1;
+		}
+		else i = -1;
+	}
+	else {
+		getxy(&y, &x);
+		w = getbiosbyte(SCRWIDTH);
+		h = getbiosbyte(SCRHEIGHT) + 1;
+		n1 = n2 = -1;
+
+		if (isdigit(s[i])) {
+			n1 = s[i++] - '0';
+			while (isdigit(s[i])) n1 = n1 * 10 + s[i++] - '0';
+		}
+		if (s[i] == ';' && isdigit(s[++i])) {
+			n2 = s[i++] - '0';
+			while (isdigit(s[i])) n2 = n2 * 10 + s[i++] - '0';
+		}
+
+		switch (s[i]) {
+			case 'A':
+				if (n1 <= 0) n1 = 1;
+				if ((y -= n1) <= 0) y = 1;
+				bioslocate(x, y);
+				break;
+			case 'B':
+				if (n1 <= 0) n1 = 1;
+				if ((y += n1) > h) y = h;
+				bioslocate(x, y);
+				break;
+			case 'C':
+				if (n1 <= 0) n1 = 1;
+				if ((x += n1) > w) x = w;
+				bioslocate(x, y);
+				break;
+			case 'D':
+				if (n1 <= 0) n1 = 1;
+				if ((x -= n1) <= 0) x = 1;
+				bioslocate(x, y);
+				break;
+			case 'H':
+			case 'f':
+				x = n2;
+				y = n1;
+				if (x <= 0) x = 1;
+				else if (x > w) x = w;
+				if (y <= 0) y = 1;
+				else if (y > h) y = h;
+				bioslocate(x, y);
+				break;
+			case 'm':
+				if (n1 < 0) chgattr(0);
+				else {
+					chgattr(n1);
+					if (n2 >= 0) chgattr(n2);
+				}
+				break;
+			case 's':
+				savex = x;
+				savey = y;
+				break;
+			case 'u':
+				x = savex;
+				y = savey;
+				if (x <= 0) x = 1;
+				else if (x > w) x = w;
+				if (y <= 0) y = 1;
+				else if (y > h) y = h;
+				bioslocate(savex, savey);
+				break;
+			case 'L':
+				if (n1 <= 0) n1 = 1;
+				biosscroll(-n1, 1, y, w, h);
+				bioslocate(1, y);
+				break;
+			case 'M':
+				if (n1 <= 0) n1 = 1;
+				biosscroll(n1, 1, y, w, h);
+				bioslocate(1, y);
+				break;
+			case 'J':
+				switch (n1) {
+					case -1:
+					case 0:
+						biosscroll(0, x, y, w, y);
+						biosscroll(0, 1, y + 1, w, h);
+						break;
+					case 1:
+						biosscroll(0, 1, y, x, y);
+						biosscroll(0, 1, 1, w, y - 1);
+						break;
+					case 2:
+						biosscroll(0, 1, 1, w, h);
+						bioslocate(1, 1);
+						break;
+					default:
+						break;
+				}
+				break;
+			case 'K':
+				switch (n1) {
+					case -1:
+					case 0:
+						biosscroll(0, x, y, w, y);
+						break;
+					case 1:
+						biosscroll(0, 1, y, x, y);
+						break;
+					case 2:
+						biosscroll(0, 1, y, w, y);
+						break;
+					default:
+						break;
+				}
+				break;
+			default:
+				i = -1;
+				break;
+		}
+	}
+
+	return(i);
+}
+
+int cputs2(s)
+char *s;
+{
+	int i, n;
+
+	for (i = 0; s[i]; i++) {
+		if (s[i] != '\033' || s[i + 1] != '[') putch2(s[i]);
+		else if ((n = evalcsi(&s[i + 2])) >= 0) i += n + 2;
+	}
+	return(0);
+}
+# else	/* !USEVIDEOBIOS */
 
 int putch2(c)
 int c;
@@ -1856,6 +2262,7 @@ char *s;
 	}
 	return(0);
 }
+# endif	/* !USEVIDEOBIOS */
 
 /*ARGSUSED*/
 int kbhit2(usec)

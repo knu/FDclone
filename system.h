@@ -40,14 +40,15 @@ typedef struct _redirectlist {
 	struct _redirectlist *next;
 } redirectlist;
 
-#define	MD_NORMAL	000
-#define	MD_READ		001
-#define	MD_WRITE	002
-#define	MD_RDWR		003
-#define	MD_APPEND	004
-#define	MD_FILEDESC	010
-#define	MD_WITHERR	020
-#define	MD_HEREDOC	040
+#define	MD_NORMAL	0000
+#define	MD_READ		0001
+#define	MD_WRITE	0002
+#define	MD_RDWR		0003
+#define	MD_APPEND	0004
+#define	MD_FILEDESC	0010
+#define	MD_WITHERR	0020
+#define	MD_HEREDOC	0040
+#define	MD_FORCED	0100
 
 typedef struct _command_t {
 	hashlist *hash;
@@ -123,6 +124,7 @@ typedef struct _syntaxtree {
 #define	OP_OR	4
 #define	OP_PIPE	5
 #define	OP_NOT	6
+#define	OP_NOWN	7
 
 typedef struct _shbuiltintable {
 	int (NEAR *func)__P_((syntaxtree *));
@@ -132,6 +134,7 @@ typedef struct _shbuiltintable {
 
 #define	BT_NOGLOB	0001
 #define	BT_RESTRICT	0002
+#define	BT_POSIXSPECIAL	0004
 
 #define	SMPREV	4
 typedef struct _statementtable {
@@ -220,7 +223,7 @@ extern char *ifs_set;
 extern char **shellvar;
 extern char **envvar;
 
-extern VOID prepareexit __P_((VOID_A));
+extern VOID prepareexit __P_((int));
 #ifndef	NOJOB
 extern VOID killjob __P_((VOID_A));
 #endif

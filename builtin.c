@@ -91,6 +91,9 @@ static int NEAR setkeymap __P_((int, char *[]));
 static int NEAR keytest __P_((int, char *[]));
 #endif
 static int NEAR printhist __P_((int, char *[]));
+#ifndef	NOPOSIXUTIL
+static int NEAR fixcommand __P_((int, char *[]));
+#endif
 #if	FD >= 2
 static VOID NEAR voidmd5 __P_((u_long, u_long, u_long, u_long));
 static VOID NEAR calcmd5 __P_((u_long [], u_long []));
@@ -130,6 +133,7 @@ static int NEAR loadsource __P_((int, char *[]));
 #define	ER_SYNTAXERR	4
 #define	ER_EXIST	5
 #define	ER_INVALDEV	6
+#define	ER_EVENTNOFOUND	7
 static char *builtinerrstr[] = {
 	"",
 	"Too few or many arguments",
@@ -138,6 +142,7 @@ static char *builtinerrstr[] = {
 	"Syntax error",
 	"Entry already exists",
 	"Invalid device",
+	"Event not found",
 };
 #define	BUILTINERRSIZ	((int)(sizeof(builtinerrstr) / sizeof(char *)))
 
@@ -160,6 +165,9 @@ static builtintable builtinlist[] = {
 	{keytest,	BL_GETKEY},
 #endif
 	{printhist,	BL_HISTORY},
+#ifndef	NOPOSIXUTIL
+	{fixcommand,	BL_FC},
+#endif
 #if	FD >= 2
 	{md5sum,	BL_CHECKID},
 	{evalmacro,	BL_EVALMACRO},
@@ -214,6 +222,7 @@ int n;
 #else
 	else fputs((char *)sys_errlist[duperrno], stderr);
 #endif
+	fputc('.', stderr);
 	fputc('\n', stderr);
 	fflush(stderr);
 }
@@ -1340,34 +1349,283 @@ static int NEAR printhist(argc, argv)
 int argc;
 char *argv[];
 {
-	char buf[5 + 1];
-	int i, no, max, size;
+	char *cp, buf[5 + 1];
+	long no;
+	int i, n, max, size;
 
 	if (argc >= 3) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
 	size = histsize[0];
-	no = histno[0];
-	if (argc < 2 || (max = atoi2(argv[1])) > size) max = size;
-	if (max <= 0) {
+	if (argc < 2) no = size;
+	else if (!(cp = evalnumeric(argv[1], &no, 1)) || *cp) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
+	else if (no > size) no = size;
+
+	if (--no > (long)MAXHISTNO) no = MAXHISTNO;
+	for (max = no; max >= 0; max--) if (history[0][max]) break;
+	if (max < histno[0]) n = histno[0] - max - 1;
+	else n = MAXHISTNO - (max - histno[0]);
 
 	hitkey(2);
-	for (i = 1; i <= max; i++) {
-		if (!history[0][max - i]) continue;
-		ascnumeric(buf, no + i - max, 5, 5);
+	for (i = max; i >= 0; i--) {
+		ascnumeric(buf, (long)n + 1L, 5, 5);
+		if (n++ >= MAXHISTNO) n = 0;
 		fputs(buf, stdout);
 		fputs("  ", stdout);
-		kanjifputs(history[0][max - i], stdout);
+		kanjifputs(history[0][i], stdout);
 		fputc('\n', stdout);
 		hitkey(0);
 	}
 	fflush(stdout);
 	return(0);
 }
+
+#ifndef	NOPOSIXUTIL
+static int NEAR fixcommand(argc, argv)
+int argc;
+char *argv[];
+{
+	FILE *fp;
+	char *cp, *tmp, *editor, buf[5 + 1], path[MAXPATHLEN];
+	int i, n, f, l, skip, list, nonum, rev, exe, ret;
+
+	editor = NULL;
+	skip = list = nonum = rev = exe = 0;
+	for (n = 1; n < argc && argv[n][0] == '-'; n++) {
+		skip = 0;
+		for (i = 1; argv[n][i]; i++) {
+			skip = 0;
+			switch(argv[n][i]) {
+				case 'e':
+					if (argv[n][i + 1]) {
+						editor = &(argv[n][i + 1]);
+						skip = 1;
+					}
+					else if (n + 1 < argc) {
+						editor = argv[++n];
+						skip = 1;
+					}
+					else skip = -1;
+					break;
+				case 'l':
+					list = 1;
+					break;
+				case 'n':
+					nonum = 1;
+					break;
+				case 'r':
+					rev = 1;
+					break;
+				case 's':
+					exe = 1;
+					break;
+				default:
+					skip = -1;
+					break;
+			}
+			if (skip) {
+				skip--;
+				break;
+			}
+		}
+		if (skip) {
+			skip--;
+			break;
+		}
+	}
+	if (skip) {
+		kanjifputs(argv[0], stderr);
+		fputs(": usage: ", stderr);
+		kanjifputs(argv[0], stderr);
+		fputs(" [-ls] [-nr] [-e editor] [old=new] [first] [last]\n",
+			stderr);
+		fflush(stderr);
+		return(-1);
+	}
+
+	tmp = removehist(0);
+	if (exe) {
+		char *s, *r;
+		int j, l1, l2, len, max;
+
+		i = n;
+		for (; n < argc; n++) if (!strchr(argv[n], '=')) break;
+		if ((f = parsehist((n < argc) ? argv[n] : "!", NULL)) < 0) {
+			builtinerror(argv, argv[n], ER_EVENTNOFOUND);
+			entryhist(0, tmp, 0);
+			free(tmp);
+			return(-1);
+		}
+		free(tmp);
+		s = strdup2(history[0][f]);
+		max = len = strlen(s);
+		for (; i < n; i++) {
+			if (!(r = strchr(argv[i], '='))) continue;
+			l1 = r - argv[i];
+			for (cp = s; (cp = strchr(cp, argv[i][0])); cp++)
+				if (!strncmp(cp, argv[i], l1)) break;
+			if (!cp) continue;
+			r++;
+			l2 = strlen(r);
+			len += l2 - l1;
+			if (len > max) {
+				max = len;
+				s = realloc2(s, max + 1);
+			}
+			if (l1 > l2)
+				for (j = (cp - s) + l2; j <= len; j++)
+					s[j] = s[j - l2 + l1];
+			else if (l1 < l2)
+				for (j = len; j >= (cp - s) + l2; j--)
+					s[j] = s[j - l2 + l1];
+			strncpy(cp, r, l2);
+		}
+		kanjifputs(s, stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
+		entryhist(0, s, 0);
+		ttyiomode();
+		if ((ret = execmacro(s, NULL, 1, 1, 1)) < 0) {
+			internal_status = 1;
+			ret = 0;
+		}
+		stdiomode();
+		free(s);
+		return(ret);
+	}
+
+	if (!editor) editor = getenv2("FD_FCEDIT");
+	if (!editor) editor = getenv2("FD_EDITOR");
+	if (!editor) editor = EDITOR;
+
+	if (list) {
+		f = parsehist((n < argc) ? argv[n] : "-16", NULL);
+		l = parsehist((n + 1 < argc) ? argv[n + 1] : "!", NULL);
+	}
+	else {
+		f = parsehist((n < argc) ? argv[n] : "!", NULL);
+		l = (n + 1 < argc) ? parsehist(argv[n + 1], NULL) : f;
+	}
+	if (f < 0 || l < 0) {
+		if (f < 0) builtinerror(argv, argv[n], ER_EVENTNOFOUND);
+		else builtinerror(argv,
+			(n + 1 < argc) ? argv[n + 1] : NULL, ER_EVENTNOFOUND);
+		entryhist(0, tmp, 0);
+		free(tmp);
+		return(-1);
+	}
+
+	if (rev) {
+		n = f;
+		f = l;
+		l = n;
+	}
+
+	if (f < histno[0]) n = histno[0] - f - 1;
+	else n = MAXHISTNO - (f - histno[0]);
+
+	if (list) {
+		fp = stdout;
+		hitkey(2);
+	}
+	else {
+		int fd;
+
+		if ((fd = mktmpfile(path, argv[0])) < 0) {
+			builtinerror(argv, argv[0], -1);
+			free(tmp);
+			return(-1);
+		}
+		if (!(fp = Xfdopen(fd, "w"))) {
+			builtinerror(argv, path, -1);
+			Xclose(fd);
+			rmtmpfile(strdup2(path));
+			free(tmp);
+			return(-1);
+		}
+		nonum = 1;
+	}
+
+	if (f >= l) for (i = f; i >= l; i--) {
+		if (history[0][i]) {
+			if (!nonum) {
+				ascnumeric(buf, (long)n + 1L, 5, 5);
+				if (n++ >= MAXHISTNO) n = 0;
+				fputs(buf, fp);
+				fputs("  ", fp);
+			}
+			kanjifputs(history[0][i], fp);
+			fputc('\n', fp);
+			if (list) hitkey(0);
+		}
+	}
+	else for (i = f; i <= l; i++) {
+		if (history[0][i]) {
+			if (!nonum) {
+				ascnumeric(buf, (long)n + 1L, 5, 5);
+				if (--n < 0) n = MAXHISTNO;
+				fputs(buf, fp);
+				fputs("  ", fp);
+			}
+			kanjifputs(history[0][i], fp);
+			fputc('\n', fp);
+			if (list) hitkey(0);
+		}
+	}
+
+	if (list) {
+		fflush(stdout);
+		entryhist(0, tmp, 0);
+		free(tmp);
+		return(0);
+	}
+
+	Xfclose(fp);
+	ttyiomode();
+	ret = execmacro(editor, path, 1, 0, 1);
+	stdiomode();
+	if (ret < 0) {
+		internal_status = 1;
+		ret = 0;
+	}
+	if (ret) {
+		builtinerror(argv, editor, -1);
+		rmtmpfile(strdup2(path));
+		free(tmp);
+		return(-1);
+	}
+
+	if (!(fp = Xfopen(path, "r"))) {
+		builtinerror(argv, path, -1);
+		rmtmpfile(strdup2(path));
+		free(tmp);
+		return(-1);
+	}
+	free(tmp);
+
+	for (n = 0; (cp = fgets2(fp, 0)); n++) {
+		if (!*cp) {
+			free(cp);
+			continue;
+		}
+		kanjifputs(cp, stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
+		entryhist(0, cp, 0);
+		ttyiomode();
+		ret = execmacro(cp, NULL, 1, 1, 1);
+		stdiomode();
+		free(cp);
+	}
+	Xfclose(fp);
+	rmtmpfile(strdup2(path));
+	return(ret);
+}
+#endif	/* !NOPOSIXUTIL */
 
 #if	FD >= 2
 /*ARGSUSED*/

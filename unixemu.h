@@ -19,6 +19,7 @@
 
 #define	PIPEDIR		"FD-PIPE"
 #define	PIPEFILE	"FAKEPIPE"
+#define	REDIRECTDIR	"FD-REDIR"
 
 #define	srandom(seed)		srand(seed)
 #define	lstat			stat

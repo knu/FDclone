@@ -98,6 +98,7 @@ typedef u_short	gid_t;
 #define	MAXTYPE(t)	((t)~MINTYPE(t))
 #define	MAXNUMCOLS	10
 #define	MAXCOLSCOMMA(d)	(MAXNUMCOLS + (MAXNUMCOLS / (d)))
+#define	MAXHISTNO	MAXTYPE(short)
 
 typedef struct _namelist {
 	char *name;
@@ -301,12 +302,13 @@ typedef struct _macrostat {
 	u_char flags;
 } macrostat;
 
-#define	F_NOCONFIRM	001
-#define	F_ARGSET	002
-#define	F_REMAIN	004
-#define	F_NOEXT		010
-#define	F_TOSFN		020
-#define	F_ISARCH	040
+#define	F_NOCONFIRM	0001
+#define	F_ARGSET	0002
+#define	F_REMAIN	0004
+#define	F_NOEXT		0010
+#define	F_TOSFN		0020
+#define	F_ISARCH	0040
+#define	F_BURST		0100
 
 #ifdef	_NOORIGSHELL
 typedef struct _aliastable {

@@ -249,7 +249,7 @@ static envtable envlist[] = {
 		(char *)USEGETCURSOR, UGCS_E, T_BOOL},
 # endif
 #endif
-	{"FD_COLUMNS", &defcolumns, (char *)COLUMNS, CLMN_E, T_COLUMN},
+	{"FD_DEFCOLUMNS", &defcolumns, (char *)DEFCOLUMNS, CLMN_E, T_COLUMN},
 	{"FD_MINFILENAME", &minfilename,
 		(char *)MINFILENAME, MINF_E, T_NATURAL},
 	{"FD_HISTSIZE", &(histsize[0]), (char *)HISTSIZE, HSSZ_E, T_SHORT},
@@ -381,11 +381,9 @@ int no;
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_SHORT:
-#if	!MSDOS
 			if ((n = atoi2(cp)) < 0) n = (int)(envlist[no].def);
 			*((short *)(envlist[no].var)) = n;
 			break;
-#endif
 		case T_INT:
 			if ((n = atoi2(cp)) < 0) n = (int)(envlist[no].def);
 			*((int *)(envlist[no].var)) = n;
@@ -624,12 +622,10 @@ int no;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
 		case T_SHORT:
-# if	!MSDOS
 			ascnumeric(buf, *((short *)(envlist[no].var)),
 				0, MAXLINESTR);
 			cp = buf;
 			break;
-# endif
 		case T_INT:
 		case T_NATURAL:
 		case T_COLUMN:
@@ -757,7 +753,6 @@ int no;
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_SHORT:
-# if	!MSDOS
 			ascnumeric(buf, *((short *)(envlist[no].var)),
 				0, MAXLINESTR);
 			cp = inputcuststr(envlist[no].env + 3, 1, buf, -1);
@@ -765,7 +760,6 @@ int no;
 			ascnumeric(buf, atoi2(cp), 0, MAXLINESTR);
 			free(cp);
 			break;
-# endif
 		case T_INT:
 		case T_NATURAL:
 			ascnumeric(buf, *((int *)(envlist[no].var)),
@@ -1245,11 +1239,11 @@ char *prompt;
 		tflush();
 		keyflush();
 # ifdef	_NOEDITMODE
-		ch = Xgetkey(SIGALRM);
+		ch = Xgetkey(SIGALRM, 0);
 # else
-		Xgetkey(-1);
-		ch = Xgetkey(SIGALRM);
-		Xgetkey(-1);
+		Xgetkey(-1, 0);
+		ch = Xgetkey(SIGALRM, 0);
+		Xgetkey(-1, 0);
 # endif
 
 		old = pos;
@@ -1345,11 +1339,11 @@ int no;
 		tflush();
 		keyflush();
 # ifdef	_NOEDITMODE
-		key = Xgetkey(SIGALRM);
+		key = Xgetkey(SIGALRM, 0);
 # else
-		Xgetkey(-1);
-		key = Xgetkey(SIGALRM);
-		Xgetkey(-1);
+		Xgetkey(-1, 0);
+		key = Xgetkey(SIGALRM, 0);
+		Xgetkey(-1, 0);
 # endif
 		win_x = dupwin_x;
 		win_y = dupwin_y;
@@ -2654,7 +2648,7 @@ int no;
 {
 	FILE *fp;
 	char *file, *str[MAXCUSTOM - 1];
-	int i, val[MAXCUSTOM - 1];
+	int i, n, val[MAXCUSTOM - 1];
 
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
 		str[i] = NULL;
@@ -2722,13 +2716,13 @@ int no;
 		case 2:
 			if (!(file = inputcuststr(FLOAD_K, 1, RUNCOMFILE, 1)))
 				return(0);
-			sigvecreset();
+			n = sigvecset(0);
 			locate(0, n_line - 1);
 			inruncom = 1;
 			i = loadruncom(file, 0);
 			inruncom = 0;
 			if (i) warning(0, HITKY_K);
-			sigvecset();
+			sigvecset(n);
 			break;
 		case 3:
 			if (!(file = inputcuststr(FSAVE_K, 1, RUNCOMFILE, 1)))
@@ -3060,11 +3054,11 @@ int customize(VOID_A)
 		tflush();
 		keyflush();
 # ifdef	_NOEDITMODE
-		ch = Xgetkey(SIGALRM);
+		ch = Xgetkey(SIGALRM, 0);
 # else
-		Xgetkey(-1);
-		ch = Xgetkey(SIGALRM);
-		Xgetkey(-1);
+		Xgetkey(-1, 0);
+		ch = Xgetkey(SIGALRM, 0);
+		Xgetkey(-1, 0);
 # endif
 
 		old = cs_item;

@@ -703,7 +703,7 @@ u_short flag;
 	dupwin_y = win_y;
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 
 	yy = LFILETOP;
@@ -732,7 +732,7 @@ u_short flag;
 		tflush();
 
 		keyflush();
-		switch (ch = Xgetkey(SIGALRM)) {
+		switch (ch = Xgetkey(SIGALRM, 0)) {
 			case K_UP:
 				if (y > ymin) y--;
 				else y = ymax;
@@ -863,7 +863,7 @@ u_short flag;
 	win_y = dupwin_y;
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	Xgetkey(-1);
+	Xgetkey(-1, 0);
 #endif
 
 	if (ch == K_ESC) return(0);

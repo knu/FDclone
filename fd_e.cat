@@ -6,8 +6,8 @@ NNAAMMEE
      fd - file & directory maintenance tool
 
 SSYYNNOOPPSSIISS
-     ffdd [ --aaeeffhhiikkmmnnrrssttuuxxvv ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y ]
-     ffddsshh [ --aacceeffhhiikkmmnnrrssttuuxxvv ] [ _a_r_g_s ]
+     ffdd [ --aabbCCeeffhhiikkmmnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y ]
+     ffddsshh [ --aabbCCcceeffhhiikkmmnnrrssttuuvvxx ] [ _a_r_g_s ]
 
 DDEESSCCRRIIPPTTIIOONN
      ffdd is a file & directory maintenance tool considered for the
@@ -707,29 +707,32 @@ DDEESSCCRRIIPPTTIIOONN
      use the internal commands described above and the builtin
      commands described below, as well as the external commands.
      With these commands, a pipeline can consist of one or more
-     commands separated by || or &&||.  || connects the standard out-
+     commands separated by || or ||&&.  || connects the standard out-
      put of the previous command to the standard input of the
-     next command.  &&|| connects both the standard output and
+     next command.  ||&& connects both the standard output and the
      standard error output of the previous command to the stan-
      dard input of the next command.  The exit status of a pipe-
      line is the exit status of the last command.  You can start
      a pipeline with !!, then the exit status of a pipeline will
      be the logical NOT of the exit status of the last command.
      Moreover, a command list can consist of one or more pipe-
-     lines separated by ;;, &&, &&&&, ||||.  This command list can end
-     with ;; or &&.  These separators mean the following.
+     lines separated by ;;, &&, &&||, &&&&, ||||.  This command list can
+     end with ;;, && or &&||.  These separators mean the following.
         ;;    Execute commands sequentially.
         &&    Execute commands synchronously, not waiting for the
-             preceding pipeline to finish.
+             preceding pipeline to finish.  ((UU))
+        &&||   Same as &&, except to immediately ddiissoowwnn the job.
+             ((UU))
         &&&&   Execute the following pipeline only if the preceding
-             pipeline returns a 0 exit status.
+             pipeline returns a 00 exit status.
         ||||   Execute the following pipeline only if the preceding
-             pipeline returns a non-0 exit status.
+             pipeline returns a non-00 exit status.
      In these command lists, a newline means as same as ;;.
 
      The input/output of each command in the command list can be
-     redirected with the following redirectees.  These redirec-
-     tees can be placed on any position in the command string.
+     redirected with the following redirectees.  These
+     redirectees can be placed on any position in the command
+     string.
         _n<<_f_i_l_e    Redirect the input indicated by the file
                   descriptor _n into the input from _f_i_l_e.  If _n is
                   omitted, it is regarded as the standard input
@@ -740,6 +743,9 @@ DDEESSCCRRIIPPTTIIOONN
                   is specified.  If _f_i_l_e doesn't exist it is
                   created, otherwise it is truncated to 0 length
                   before output.
+        _n>>||_f_i_l_e   Same as >>, except to force to overwrite
+                  existent files even if --CC option is set by the
+                  builtin sseett.
         _n>>>>_f_i_l_e   Redirect the output indicated by the file
                   descriptor _n into the output to _f_i_l_e.  If _n is
                   omitted, it is regarded as the standard output
@@ -754,7 +760,16 @@ DDEESSCCRRIIPPTTIIOONN
                   file descriptor _n_2.  If _n_1 is omitted, it is
                   regarded as the standard output is specified.
         &&>>_f_i_l_e    Redirect both the standard output and the stan-
-                  dard error output into the output to _f_i_l_e.
+                  dard error output into the output to _f_i_l_e.  If
+                  _f_i_l_e doesn't exist it is created, otherwise it
+                  is truncated to 0 length before output.
+        &&>>||_f_i_l_e   Same as &&>>, except to force to overwrite
+                  existent files even if --CC option is set by the
+                  builtin sseett.
+        &&>>>>_f_i_l_e   Redirect both the standard output and the stan-
+                  dard error output into the output to _f_i_l_e.  If
+                  _f_i_l_e doesn't exist it is created, otherwise
+                  output is appended to it.
         _n<<>>_f_i_l_e
         _n>><<_f_i_l_e   Redirect both the input/output indicated by the
                   file descriptor _n into the input/output from/to
@@ -799,28 +814,28 @@ DDEESSCCRRIIPPTTIIOONN
                    eelliiff clauses return a 0, the _l_i_s_t of eellssee
                    clause is executed.  If no _l_i_s_t of tthheenn
                    clauses nor eellssee clause is executed, then iiff
-                   returns a 0 exit status.
+                   returns a 00 exit status.
 
      wwhhiillee _l_i_s_t ddoo _l_i_s_t ddoonnee
                    The _l_i_s_t of wwhhiillee clause is executed repeat-
                    edly, and while its exit status is 0, the _l_i_s_t
                    of ddoo clause is executed repeatedly.  If the
                    _l_i_s_t of ddoo clause is never executed, then
-                   wwhhiillee returns a 0 exit status.
+                   wwhhiillee returns a 00 exit status.
 
      uunnttiill _l_i_s_t ddoo _l_i_s_t ddoonnee
                    The _l_i_s_t of uunnttiill clause is executed repeat-
                    edly, and while its exit status is NOT 0, the
                    _l_i_s_t of ddoo clause is executed repeatedly.  If
                    the _l_i_s_t of ddoo clause is never executed, then
-                   uunnttiill returns a 0 exit status.
+                   uunnttiill returns a 00 exit status.
 
      ffoorr _N_A_M_E [iinn _v_a_l_u_e ...] ddoo _l_i_s_t ddoonnee
                    The internal variable _N_A_M_E is substituted for
                    values of _v_a_l_u_e one by one, and _l_i_s_t is exe-
                    cuted according to the each value.  If iinn
-                   _v_a_l_u_e is omitted, then each positional parame-
-                   ter is substituted one by one.
+                   _v_a_l_u_e is omitted, then each positional
+                   parameter is substituted one by one.
 
      ccaassee _w_o_r_d iinn [_p_a_t_t_e_r_n [|| _p_a_t_t_e_r_n] ... )) _l_i_s_t ;;;;] ... eessaacc
                    The string _w_o_r_d is compared with the each _p_a_t_-
@@ -991,6 +1006,18 @@ DDEESSCCRRIIPPTTIIOONN
 
      ccllss           Clear the screen.  ((DD))
 
+     ccoommmmaanndd [--pp | --vv | --VV] _a_r_g ...
+                   Execute _a_r_g as a simple command.  When the
+                   same named function is defined, the function
+                   will not be executed.  If --pp is specified, the
+                   default value of PPAATTHH is used to search the
+                   path.  If --vv is specified, the absolute path
+                   for _a_r_g is displayed instead of executing _a_r_g.
+                   In this case, the builtin command _a_r_g will
+                   cause simply its name.  If --VV is specified,
+                   verbose description for _a_r_g is displayed as
+                   same as ttyyppee.
+
      ccoonnttiinnuuee _n    Resume the next iteration in the loop, it is
                    used in the ffoorr statement and so on.  If _n is
                    specified, it resumes the next iteration in
@@ -1052,6 +1079,16 @@ DDEESSCCRRIIPPTTIIOONN
                    you specify //VV, it lists the verbose informa-
                    tion.
 
+     ddiissoowwnn [_j_o_b]  Remove the job specified with _j_o_b from the
+                   shell control.  The job to be ddiissoowwnned cannot
+                   be controlled by jjoobbss, ffgg and bbgg.  If invoked
+                   as a login shell, any jobs not to be ddiissoowwnned
+                   will be forced to exit when the shell finish.
+                   ((UU))
+
+                   If _j_o_b is omitted, the current job is removed
+                   from the shell control.
+
      eecchhoo [--nn] [_a_r_g ...]
                    Echo _a_r_g to the standard output.  When you
                    don't specify --nn, newline is added to output
@@ -1095,6 +1132,49 @@ DDEESSCCRRIIPPTTIIOONN
                    definition of the environment variable, you
                    can use uunnsseett.
 
+     ffaallssee         Only return with a 11 exit status.
+
+     ffcc [--ll | --ss [_o_l_d==_n_e_w ...]] [--nnrr ] [--ee _e_d_i_t_o_r] [_f_i_r_s_t [_l_a_s_t]]
+                   List or edit command histories.  _f_i_r_s_t and
+                   _l_a_s_t select the range of command histories.
+                   This specification can be described as a
+                   numeric value or a string.  A positive value
+                   means the command history number, and a nega-
+                   tive value means the command history which has
+                   the history number as the current history
+                   number minus the value.  A string mean the
+                   command history which starts with the string.
+                   If --nn is specified, command histories are
+                   listed without their history numbers.  If --rr
+                   is specified, command histories are listed in
+                   reverse order.  If --ee is specified, the editor
+                   named by _e_d_i_t_o_r is used to edit command
+                   histories, otherwise the editor specified by
+                   the internal variable FFCCEEDDIITT or EEDDIITTOORR is
+                   used.
+
+                   When --ll is specified, selected command his-
+                   tories are listed to the standard output.  In
+                   this case, omitting _l_a_s_t means to specify the
+                   current history number, and also omitting
+                   _f_i_r_s_t means to specify --1166.
+
+                   When --ss is specified, the command history
+                   selected by _f_i_r_s_t is executed immediately.  In
+                   this case, omitting _f_i_r_s_t means to specify the
+                   current history number.  The first occurrence
+                   of the string _o_l_d in the command history will
+                   be replaced by the string _n_e_w before execu-
+                   tion.
+
+                   When neither --ll nor --ss is not specified,
+                   selected command histories are edited, and
+                   then each edited commands are executed one by
+                   one with display in the standard output.  In
+                   this case, omitting _l_a_s_t means to specify
+                   _f_i_r_s_t, and also omitting _f_i_r_s_t means to
+                   specify the current history number for both.
+
      ffdd [_d_i_r_e_c_t_o_r_y]
                    Invoke ffdd from the internal shell.  If you
                    specify _d_i_r_e_c_t_o_r_y, the current directory is
@@ -1132,6 +1212,43 @@ DDEESSCCRRIIPPTTIIOONN
 
                    If _n_u_m is omitted, it is regarded as 11 time is
                    specified.
+
+     ggeettooppttss _o_p_t_s_t_r _N_A_M_E [_a_r_g ...]
+                   Used to parse the optional parameters from a
+                   sequence of _a_r_g.  The valid characters as
+                   option is described in _o_p_t_s_t_r.  An option
+                   character which needs an argument is described
+                   with following :: in _o_p_t_s_t_r.  Each time ggeettooppttss
+                   is invoked, the new option character parsed
+                   from _a_r_g is substituted for the internal vari-
+                   able _N_A_M_E.  When the option has an argument,
+                   the argument is substituted for the internal
+                   variable OOPPTTAARRGG.  And the index of the next
+                   parameter is substituted for the internal
+                   variable OOPPTTIINNDD every time.  The value of
+                   OOPPTTIINNDD is initialized to 11 whenever the shell
+                   is invoked, another parsing of option parame-
+                   ters needs initializing OOPPTTIINNDD to 11 manually.
+                   If _a_r_g is omitted, positional parameters are
+                   parsed to the optional parameters.
+
+                   When the end of option is encountered, ggeettooppttss
+                   will exit with the value of 11.  In this case,
+                   ?? is substituted for _N_A_M_E.  When an option
+                   character which is not included in _o_p_t_s_t_r is
+                   found, an error message is written to the
+                   standard error, then ?? is substituted for _N_A_M_E
+                   and OOPPTTAARRGG is unset.  But, if OOPPTTAARRGG is
+                   started with ::, no error message is written,
+                   and the found option character is substituted
+                   for OOPPTTAARRGG instead.  When no argument is found
+                   with the option character which needs an argu-
+                   ment, an error message is written to the stan-
+                   dard error, then ?? is substituted for _N_A_M_E and
+                   OOPPTTAARRGG is unset.  But, if OOPPTTAARRGG is started
+                   with ::, no error message is written, then the
+                   found option character is substituted for
+                   OOPPTTAARRGG instead, and :: is substituted for _N_A_M_E.
 
      hhaasshh [--rr | _c_o_m ...]
                    Search the absolute path for _c_o_m referring to
@@ -1236,6 +1353,19 @@ DDEESSCCRRIIPPTTIIOONN
      mmdd _d_i_r
      mmkkddiirr _d_i_r     Create the directory _d_i_r.  ((DD))
 
+     nneewwggrrpp [_a_r_g ...]
+                   Execute nneewwggrrpp(1) in place of the execution of
+                   ffdd.  You can specify _a_r_g as arguments of
+                   nneewwggrrpp(1).  See nneewwggrrpp(1) for details.  ((UU))
+
+     llooggiinn [_a_r_g ...]
+                   Execute llooggiinn(1) in place of the execution of
+                   ffdd.  You can specify _a_r_g as arguments of
+                   llooggiinn(1).  See llooggiinn(1) for details.  ((UU))
+
+     llooggoouutt [_n]    Exit from a login shell.  When you specify _n,
+                   it exits with the exit status _n.
+
      pprriinnttaarrcchh [_e_x_t]
                    Print the archiver commands registered for the
                    archive file which has the extension _e_x_t.
@@ -1314,7 +1444,7 @@ DDEESSCCRRIIPPTTIIOONN
                    value is the exit status of the last executed
                    command.  It cannot be used out of a function.
 
-     sseett [----aaeeffhhkkmmnnttuuvvxx] [_a_r_g ...]
+     sseett [----aabbCCeeffhhkkmmnnttuuvvxx] [--oo _o_p_t_i_o_n] [_a_r_g ...]
                    List internal variables and functions, without
                    any argument.  When you specify _a_r_g, _a_r_g is
                    substituted for the positional parameter $$11,
@@ -1324,6 +1454,13 @@ DDEESSCCRRIIPPTTIIOONN
                    turns off each option.
                    --aa   EExxppoorrtt any internal variable automati-
                         cally when it is defined.
+                   --bb   When a background job has been ter-
+                        minated, its status report will be
+                        displayed immediately.  there is no
+                        effect when the job control is not
+                        enable.
+                   --CC   Prevent overwriting to any existent files
+                        in redirection.
                    --ee   Exit immediately when any command returns
                         the exit status except 00.
                    --ff   Disable the wildcard expansion.
@@ -1341,6 +1478,41 @@ DDEESSCCRRIIPPTTIIOONN
                         valid by default.  ((UU))
                    --nn   Read command inputs but don't execute
                         them.
+                   --oo _o_p_t_i_o_n
+                        The following identifiers are valid in
+                        _o_p_t_i_o_n.
+                        aalllleexxppoorrtt
+                             Same as --aa.
+                        eemmaaccss
+                             Same as EEDDIITTMMOODDEE==eemmaaccss.
+                        eerrrreexxiitt
+                             Same as --ee.
+                        hhaasshhaahheeaadd
+                             Same as --hh.
+                        iiggnnoorreeeeooff
+                             Any EEOOFF will not terminate the
+                             interactive shell.
+                        kkeeyywwoorrdd
+                             Same as --kk.
+                        mmoonniittoorr
+                             Same as --mm.
+                        nnoocclloobbbbeerr
+                             Same as --CC.
+                        nnooeexxeecc
+                             Same as --nn.
+                        nnoogglloobb
+                             Same as --ff.
+                        nnoottiiffyy
+                             Same as --bb.
+                        nnoouunnsseett
+                             Same as --uu.
+                        oonneeccmmdd
+                             Same as --tt.
+                        vveerrbboossee
+                             Same as --vv.
+                        vvii   Same as EEDDIITTMMOODDEE==vvii.
+                        xxttrraaccee
+                             Same as --xx.
                    --tt   Exit immediately after executing the
                         current command input.
                    --uu   Treat the reference of undefined vari-
@@ -1405,6 +1577,8 @@ DDEESSCCRRIIPPTTIIOONN
                    When you specify _n as 00, the command _c_o_m is
                    executed on exit.  If both _c_o_m and _n are omit-
                    ted, all of the registered traps are listed.
+
+     ttrruuee          Only return with a 00 exit status.
 
      ttyyppee [_c_o_m ...]
                    Display how each _c_o_m would be treated when it
@@ -1755,8 +1929,8 @@ DDEESSCCRRIIPPTTIIOONN
              _w_o_r_d.
 
      $${{_N_A_M_E==_w_o_r_d}}
-             If any value is substituted for the internal vari-
-             able or the environment variable _N_A_M_E, it is
+             If any value is substituted for the internal
+             variable or the environment variable _N_A_M_E, it is
              replaced by the value, otherwise _w_o_r_d is substituted
              for the internal variable _N_A_M_E, and this expression
              itself is replaces by _w_o_r_d.  But you cannot substi-
@@ -2120,8 +2294,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    environment variable SSHHEELLLL or \COMMAND.COM is
                    used.  ((DD))
 
-     CCOOPPYYCCMMDD*      Specify the default options used by the buil-
-                   tin command ccooppyy.  ((DD))
+     CCOOPPYYCCMMDD*      Specify the default options used by the
+                   builtin command ccooppyy.  ((DD))
 
      DDIIRRCCMMDD*       Specify the default options used by the buil-
                    tin command ddiirr.  ((DD))
@@ -2138,6 +2312,12 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    arguments.  Space, tab and newline are speci-
                    fied by default.
 
+     OOPPTTAARRGG*       An option argument is substituted in the buil-
+                   tin command ggeettooppttss.
+
+     OOPPTTIINNDD*       Specify the index of the next parameter in the
+                   builtin command ggeettooppttss.
+
      PPAATTHH*         Specify the search path for executing external
                    commands.  You can specify multiple paths
                    separating with '::'.
@@ -2147,6 +2327,15 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    tricted shell as well as --rr option when
                    invoked.  This variable also specify the shell
                    which can be invoked from EEXXEECCUUTTEE_SSHH.
+
+     EEDDIITTOORR        Specify the editor command used for editing
+                   files.
+
+     PPAAGGEERR         Specify the pager command used for viewing
+                   files.
+
+     FFCCEEDDIITT        Specify the editor command used for the buil-
+                   tin command ffcc.
 
      SSOORRTTTTYYPPEE      The file list in the browser screen is not
                    sorted by default, but placed in order
@@ -2241,7 +2430,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    position is always gotten rightly, if this
                    variable is effective or not.)
 
-     CCOOLLUUMMNNSS       Specify the columns displayed in the screen
+     DDEEFFCCOOLLUUMMNNSS    Specify the columns displayed in the screen
                    when ffdd is invoked.  The default value is 22.
                    If you specify the value except 11, 22, 33 and 55,
                    it is ignored.
@@ -2537,8 +2726,8 @@ LLIIMMIITTAATTIIOONNSS
 
 SSEEEE AALLSSOO
      sshh(1), eecchhoo(1), tteesstt(1), llss(1), rrmm(1), ttaarr(1), ccoommpprreessss(1),
-     zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), uummaasskk(2), tteerrmmccaapp(5),
-     tteerrmmiinnffoo(5)
+     zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), llooggiinn(1), nneewwggrrpp(1),
+     uummaasskk(2), tteerrmmccaapp(5), tteerrmmiinnffoo(5)
 
 BBUUGGSS
      When files in an archive file are packed with a pathname

@@ -768,7 +768,7 @@ char *env, *arg;
 static int NEAR execshell(VOID_A)
 {
 	char *sh;
-	int ret;
+	int n, ret;
 
 	sh = getenv2("FD_SHELL");
 #if	MSDOS
@@ -802,8 +802,8 @@ static int NEAR execshell(VOID_A)
 	}
 #endif
 
-	sigvecreset();
-	putterms(t_end);
+	n = sigvecset(0);
+	if (n) putterms(t_end);
 	stdiomode();
 	kanjifputs(SHEXT_K, stderr);
 	fputc('\n', stderr);
@@ -813,9 +813,9 @@ static int NEAR execshell(VOID_A)
 	if (sh) ret = dosystem(sh);
 	else ret = shell_loop(1);
 #endif
-	putterms(t_init);
+	if (n) putterms(t_init);
 	ttyiomode();
-	sigvecset();
+	sigvecset(n);
 
 	return(ret);
 }

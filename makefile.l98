@@ -85,7 +85,7 @@ SOBJ	= ssystem.obj sdoscom.obj spathnam.obj \
 ALLOC	=
 DEBUG	=
 
-LDFLAGS	=   -lintlib -ltinymain.obj -k"-s 6000" $(ALLOC)
+LDFLAGS	=   -lintlib -ltinymain.obj -k"-s 5800" $(ALLOC)
 CFLAGS	= -DPC98=1 -O -h $(DEBUG)
 
 .SUFFIXES: .h .c .obj .exe

@@ -20,8 +20,10 @@
 extern char fullpath[];
 extern short histno[];
 
+#ifdef	_NOORIGSHELL
 static char *NEAR strtkbrk __P_((char *, char *, int));
 static char *NEAR geteostr __P_((char **));
+#endif
 
 strtable keyidentlist[] = {
 	{K_DOWN,	"DOWN"},
@@ -567,7 +569,7 @@ int max;
 				line[1] = '\0';
 				break;
 			case '!':
-				ascnumeric(line, histno[0] + 1,
+				ascnumeric(line, (long)(histno[0]) + 1L,
 					0, MAXPATHLEN - 1);
 				break;
 #if	!MSDOS

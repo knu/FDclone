@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.00b 03/27/02
+.\" @(#)fd.1   2.01 05/08/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "March 27, 2002"
+.TH FD 1 "May 8, 2002"
 .de sh
 .br
 .PP
@@ -16,7 +16,7 @@ fd \- file & directory maintenance tool
 .SH SYNOPSIS
 .B fd
 [
-.B \-aefhikmnrstuxv
+.B \-abCefhikmnrstuvx
 ] [
 .BI \- NAME = value
 ] [
@@ -25,7 +25,7 @@ fd \- file & directory maintenance tool
 .br
 .B fdsh
 [
-.B \-acefhikmnrstuxv
+.B \-abCcefhikmnrstuvx
 ] [
 .I args
 ]
@@ -837,12 +837,12 @@ With these commands,
 a pipeline can consist of one or more commands separated by
 .B \(bv
 or
-.BR &\|\(bv .
+.BR \(bv\|& .
 .B \(bv
 connects the standard output of the previous command
 to the standard input of the next command.
-.B &\|\(bv
-connects both the standard output and standard error output
+.B \(bv\|&
+connects both the standard output and the standard error output
 of the previous command
 to the standard input of the next command.
 The exit status of a pipeline is the exit status of the last command.
@@ -854,12 +854,14 @@ Moreover,
 a command list can consist of one or more pipelines separated by
 .BR ; ,
 .BR & ,
+.BR &\|\(bv ,
 .BR && ,
 .BR \(bv\|\(bv .
 This command list can end with
-.B ;
+.BR ; ,
+.B &
 or
-.BR & .
+.BR &\|\(bv .
 These separators mean the following.
 .RS 3
 .PD 0
@@ -868,12 +870,24 @@ Execute commands sequentially.
 .IP "\fB&\fP"
 Execute commands synchronously,
 not waiting for the preceding pipeline to finish.
+.B (U)
+.IP "\fB&\|\(bv\fP"
+Same as
+.BR & ,
+except to immediately
+.B disown
+the job.
+.B (U)
 .IP "\fB&\|&\fP"
 Execute the following pipeline
-only if the preceding pipeline returns a 0 exit status.
+only if the preceding pipeline returns a
+.B 0
+exit status.
 .IP "\fB\(bv\|\(bv\fP"
 Execute the following pipeline
-only if the preceding pipeline returns a non-0 exit status.
+only if the preceding pipeline returns a
+.RB non- 0
+exit status.
 .PD
 .RE
 In these command lists,
@@ -907,6 +921,13 @@ If
 .I file
 doesn't exist it is created,
 otherwise it is truncated to 0 length before output.
+.IP "\fIn\fR\fB>\|\(bv\fP\fIfile\fR"
+Same as
+.BR \> ,
+except to force to overwrite existent files even if
+.B \-C
+option is set by the builtin
+.BR set .
 .IP "\fIn\fR\fB>\|>\fP\fIfile\fR"
 Redirect the output indicated by the file descriptor
 .I n
@@ -942,6 +963,25 @@ it is regarded as the standard output is specified.
 Redirect both the standard output and the standard error output
 into the output to
 .IR file .
+If
+.I file
+doesn't exist it is created,
+otherwise it is truncated to 0 length before output.
+.IP "\fB&\|>\|\(bv\fP\fIfile\fR"
+Same as
+.BR &\|> ,
+except to force to overwrite existent files even if
+.B \-C
+option is set by the builtin
+.BR set .
+.IP "\fB&\|>\|>\fP\fIfile\fR"
+Redirect both the standard output and the standard error output
+into the output to
+.IR file .
+If
+.I file
+doesn't exist it is created,
+otherwise output is appended to it.
 .IP "\fIn\fR\fB<\|>\fP\fIfile\fR"
 .IP "\fIn\fR\fB>\|<\fP\fIfile\fR"
 Redirect both the input/output indicated by the file descriptor
@@ -1040,7 +1080,9 @@ clauses nor
 clause is executed,
 then
 .B if
-returns a 0 exit status.
+returns a
+.B 0
+exit status.
 .IP "\fBwhile\fP \fIlist\fR \fBdo\fP \fIlist\fR \fBdone\fP"
 The
 .I list
@@ -1059,7 +1101,9 @@ of
 clause is never executed,
 then
 .B while
-returns a 0 exit status.
+returns a
+.B 0
+exit status.
 .IP "\fBuntil\fP \fIlist\fR \fBdo\fP \fIlist\fR \fBdone\fP"
 The
 .I list
@@ -1078,7 +1122,9 @@ of
 clause is never executed,
 then
 .B until
-returns a 0 exit status.
+returns a
+.B 0
+exit status.
 .IP "\fBfor\fP \fINAME\fR [\fBin\fP \fIvalue\fR .\|.\|.] \fBdo\fP \fIlist\fR \fBdone\fP"
 The internal variable
 .I NAME
@@ -1388,6 +1434,37 @@ it is available to confirm the identity of files.
 .IP "\fBcls\fP"
 Clear the screen.
 .B (D)
+.IP "\fBcommand\fP [\fB\-p\fP | \fB\-v\fP | \fB\-V\fP] \fIarg\fR .\|.\|."
+Execute
+.I arg
+as a simple command.
+When the same named function is defined,
+the function will not be executed.
+If
+.B \-p
+is specified,
+the default value of
+.B PATH
+is used to search the path.
+If
+.B \-v
+is specified,
+the absolute path for
+.I arg
+is displayed
+instead of executing
+.IR arg .
+In this case,
+the builtin command
+.I arg
+will cause simply its name.
+If
+.B \-V
+is specified,
+verbose description for
+.I arg
+is displayed as same as
+.BR type .
 .IP "\fBcontinue\fP \fIn\fR"
 Resume the next iteration in the loop,
 it is used in the
@@ -1501,6 +1578,27 @@ When you specify
 .BR /V ,
 it lists the verbose information.
 .RE
+.IP "\fBdisown\fP [\fIjob\fR]"
+Remove the job specified with
+.I job
+from the shell control.
+The job to be
+.BR disown ed
+cannot be controlled by
+.BR jobs ,
+.B fg
+and
+.BR bg .
+If invoked as a login shell,
+any jobs not to be
+.BR disown ed
+will be forced to exit when the shell finish.
+.B (U)
+
+If
+.I job
+is omitted,
+the current job is removed from the shell control.
 .IP "\fBecho\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
 Echo
 .I arg
@@ -1575,6 +1673,86 @@ environment variables are listed.
 When you want to delete the definition of the environment variable,
 you can use
 .BR unset .
+.IP "\fBfalse\fP"
+Only return with a
+.B 1
+exit status.
+.IP "\fBfc\fP [\fB-l\fP | \fB-s\fP [\fIold\fR\fB=\fP\fInew\fR .\|.\|.]] [\fB-nr \fP] [\fB-e\fP \fIeditor\fR] [\fIfirst\fR [\fIlast\fR]]"
+List or edit command histories.
+.I first
+and
+.I last
+select the range of command histories.
+This specification can be described as a numeric value or a string.
+A positive value means the command history number,
+and a negative value means the command history
+which has the history number as the current history number minus the value.
+A string mean the command history which starts with the string.
+If
+.B \-n
+is specified,
+command histories are listed without their history numbers.
+If
+.B \-r
+is specified,
+command histories are listed in reverse order.
+If
+.B \-e
+is specified,
+the editor named by
+.I editor
+is used to edit command histories,
+otherwise the editor specified by the internal variable
+.B FCEDIT
+or
+.B EDITOR
+is used.
+
+When
+.B \-l
+is specified,
+selected command histories are listed to the standard output.
+In this case,
+omitting
+.I last
+means to specify the current history number,
+and also omitting
+.I first
+means to specify
+.BR -16 .
+
+When
+.B \-s
+is specified,
+the command history selected by
+.I first
+is executed immediately.
+In this case,
+omitting
+.I first
+means to specify the current history number.
+The first occurrence of the string
+.I old
+in the command history will be replaced by the string
+.I new
+before execution.
+
+When neither
+.B \-l
+nor
+.B \-s
+is not specified,
+selected command histories are edited,
+and then each edited commands are executed one by one
+with display in the standard output.
+In this case,
+omitting
+.I last
+means to specify
+.IR first ,
+and also omitting
+.I first
+means to specify the current history number for both.
 .IP "\fBfd\fP [\fIdirectory\fR]"
 Invoke
 .B fd
@@ -1649,6 +1827,93 @@ is omitted,
 it is regarded as
 .B 1
 time is specified.
+.IP "\fBgetopts\fP \fIoptstr\fR \fINAME\fR [\fIarg .\|.\|.\fR]"
+Used to parse the optional parameters from a sequence of
+.IR arg .
+The valid characters as option is described in
+.IR optstr .
+An option character which needs an argument is described with following
+.B :
+in
+.IR optstr .
+Each time
+.B getopts
+is invoked,
+the new option character parsed from
+.I arg
+is substituted for the internal variable
+.IR NAME .
+When the option has an argument,
+the argument is substituted for the internal variable
+.BR OPTARG .
+And the index of the next parameter is substituted for the internal variable
+.BR OPTIND
+every time.
+The value of
+.B OPTIND
+is initialized to
+.B 1
+whenever the shell is invoked,
+another parsing of option parameters needs initializing
+.B OPTIND
+to
+.B 1
+manually.
+If
+.I arg
+is omitted,
+positional parameters are parsed to the optional parameters.
+
+When the end of option is encountered,
+.B getopts
+will exit with the value of
+.BR 1 .
+In this case,
+.B ?
+is substituted for
+.IR NAME .
+When an option character which is not included in
+.I optstr
+is found,
+an error message is written to the standard error,
+then
+.B ?
+is substituted for
+.I NAME
+and
+.B OPTARG
+is unset.
+But,
+if
+.B OPTARG
+is started with
+.BR : ,
+no error message is written,
+and the found option character is substituted for
+.B OPTARG
+instead.
+When no argument is found with the option character which needs an argument,
+an error message is written to the standard error,
+then
+.B ?
+is substituted for
+.I NAME
+and
+.B OPTARG
+is unset.
+But,
+if
+.B OPTARG
+is started with
+.BR : ,
+no error message is written,
+then the found option character is substituted for
+.B OPTARG
+instead,
+and
+.B :
+is substituted for
+.IR NAME .
 .IP "\fBhash\fP [\fB\-r\fP \(bv \fIcom\fR .\|.\|.]"
 Search the absolute path for
 .I com
@@ -1842,6 +2107,38 @@ is canceled.
 Create the directory
 .IR dir .
 .B (D)
+.IP "\fBnewgrp\fP [\fIarg .\|.\|.\fR]"
+Execute
+.BR newgrp (1)
+in place of the execution of
+.BR fd .
+You can specify
+.I arg
+as arguments of
+.BR newgrp (1).
+See
+.BR newgrp (1)
+for details.
+.B (U)
+.IP "\fBlogin\fP [\fIarg .\|.\|.\fR]"
+Execute
+.BR login (1)
+in place of the execution of
+.BR fd .
+You can specify
+.I arg
+as arguments of
+.BR login (1).
+See
+.BR login (1)
+for details.
+.B (U)
+.IP "\fBlogout\fP [\fIn\fR]"
+Exit from a login shell.
+When you specify
+.IR n ,
+it exits with the exit status
+.IR n .
 .IP "\fBprintarch\fP [\fIext\fR]"
 Print the archiver commands registered for the archive file
 which has the extension
@@ -1959,7 +2256,7 @@ If
 is omitted,
 the return value is the exit status of the last executed command.
 It cannot be used out of a function.
-.IP "\fBset\fP [\fB\-\-aefhkmntuvx\fP] [\fIarg\fR .\|.\|.]"
+.IP "\fBset\fP [\fB\-\-abCefhkmntuvx\fP] [\fB\-o\fP \fIoption\fR] [\fIarg\fR .\|.\|.]"
 List internal variables and functions, without any argument.
 When you specify
 .IR arg ,
@@ -1982,6 +2279,12 @@ the option parameter turns off each option.
 .IP "\fB\-a\fP" 5
 .B Export
 any internal variable automatically when it is defined.
+.IP "\fB\-b\fP"
+When a background job has been terminated,
+its status report will be displayed immediately.
+there is no effect when the job control is not enable.
+.IP "\fB\-C\fP"
+Prevent overwriting to any existent files in redirection.
 .IP "\fB\-e\fP"
 Exit immediately when any command returns the exit status except
 .BR 0 .
@@ -2006,6 +2309,61 @@ This option is valid by default.
 .B (U)
 .IP "\fB\-n\fP"
 Read command inputs but don't execute them.
+.IP "\fB\-o\fP \fIoption\fR"
+The following identifiers are valid in
+.IR option .
+.RS
+.PD 0
+.IP "\fBallexport\fP" 5
+Same as
+.BR \-a .
+.IP "\fBemacs\fP"
+Same as
+.BR EDITMODE=emacs .
+.IP "\fBerrexit\fP"
+Same as
+.BR \-e .
+.IP "\fBhashahead\fP"
+Same as
+.BR \-h .
+.IP "\fBignoreeof\fP"
+Any
+.B EOF
+will not terminate the interactive shell.
+.IP "\fBkeyword\fP"
+Same as
+.BR \-k .
+.IP "\fBmonitor\fP"
+Same as
+.BR \-m .
+.IP "\fBnoclobber\fP"
+Same as
+.BR \-C .
+.IP "\fBnoexec\fP"
+Same as
+.BR \-n .
+.IP "\fBnoglob\fP"
+Same as
+.BR \-f .
+.IP "\fBnotify\fP"
+Same as
+.BR \-b .
+.IP "\fBnounset\fP"
+Same as
+.BR \-u .
+.IP "\fBonecmd\fP"
+Same as
+.BR \-t .
+.IP "\fBverbose\fP"
+Same as
+.BR \-v .
+.IP "\fBvi\fP"
+Same as
+.BR EDITMODE=vi .
+.IP "\fBxtrace\fP"
+Same as
+.BR \-x .
+.RE
 .IP "\fB\-t\fP"
 Exit immediately after executing the current command input.
 .IP "\fB\-u\fP"
@@ -2121,6 +2479,10 @@ and
 .I n
 are omitted,
 all of the registered traps are listed.
+.IP "\fBtrue\fP"
+Only return with a
+.B 0
+exit status.
 .IP "\fBtype\fP [\fIcom\fR .\|.\|.]"
 Display how each
 .I com
@@ -3237,6 +3599,12 @@ They are used in
 .B EXECUTE_SH
 to separate command and arguments.
 Space, tab and newline are specified by default.
+.IP "\fBOPTARG\fP\(**"
+An option argument is substituted in the builtin command
+.BR getopts .
+.IP "\fBOPTIND\fP\(**"
+Specify the index of the next parameter in the builtin command
+.BR getopts .
 .IP "\fBPATH\fP\(**"
 Specify the search path for executing external commands.
 You can specify multiple paths separating with
@@ -3252,6 +3620,13 @@ as well as
 option when invoked.
 This variable also specify the shell which can be invoked from
 .BR EXECUTE_SH .
+.IP "\fBEDITOR\fP"
+Specify the editor command used for editing files.
+.IP "\fBPAGER\fP"
+Specify the pager command used for viewing files.
+.IP "\fBFCEDIT\fP"
+Specify the editor command used for the builtin command
+.BR fc .
 .IP "\fBSORTTYPE\fP"
 The file list in the browser screen is not sorted by default,
 but placed in order registered in the directory.
@@ -3388,7 +3763,7 @@ always begins at the end of a screen.
 (On MS-DOS version,
 the cursor position is always gotten rightly,
 if this variable is effective or not.)
-.IP "\fBCOLUMNS\fP"
+.IP "\fBDEFCOLUMNS\fP"
 Specify the columns displayed in the screen when
 .B fd
 is invoked.
@@ -3819,6 +4194,8 @@ due to be brought by this is not available.
 .BR gzip (1),
 .BR gunzip (1),
 .BR lha (1),
+.BR login (1),
+.BR newgrp (1),
 .BR umask (2),
 .BR termcap (5),
 .BR terminfo (5)

@@ -24,7 +24,7 @@ extern char *adjustfname __P_((char *));
 # else
 # include <dos.h>
 #  ifdef	__TURBOC__
-extern unsigned _stklen = 0x6000;
+extern unsigned _stklen = 0x5800;
 #  define	harderr_t	void
 #  else
 #  define	harderr_t	int
@@ -215,7 +215,7 @@ char *s;
 	int duperrno;
 
 	duperrno = errno;
-	sigvecreset();
+	sigvecset(0);
 	forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
 	dosallclose();
@@ -231,7 +231,7 @@ char *s;
 # if	!MSDOS && !defined (NOJOB)
 	killjob();
 # endif
-	prepareexit();
+	prepareexit(0);
 #endif
 	exit(2);
 }
@@ -463,38 +463,48 @@ static int printtime(VOID_A)
 }
 #endif
 
-VOID sigvecset(VOID_A)
+int sigvecset(set)
+int set;
 {
-#ifdef	SIGALRM
-	signal(SIGALRM, (sigcst_t)printtime);
-#endif
-#ifdef	SIGTSTP
-	signal(SIGTSTP, SIG_IGN);
-#endif
-#ifdef	SIGWINCH
-	signal(SIGWINCH, (sigcst_t)wintr);
-#endif
-#ifndef	_NODOSDRIVE
-	doswaitfunc = waitmes;
-	dosintrfunc = intrkey;
-#endif
-}
+	static int stat = -1;
+	int old;
 
-VOID sigvecreset(VOID_A)
-{
+	old = stat;
+	if (set == old);
+	else if (set) {
 #ifdef	SIGALRM
-	signal(SIGALRM, (sigcst_t)ignore_alrm);
+		signal(SIGALRM, (sigcst_t)printtime);
 #endif
 #ifdef	SIGTSTP
-	signal(SIGTSTP, SIG_DFL);
+		signal(SIGTSTP, SIG_IGN);
 #endif
 #ifdef	SIGWINCH
-	signal(SIGWINCH, (sigcst_t)ignore_winch);
+		signal(SIGWINCH, (sigcst_t)wintr);
 #endif
 #ifndef	_NODOSDRIVE
-	doswaitfunc = NULL;
-	dosintrfunc = NULL;
+		doswaitfunc = waitmes;
+		dosintrfunc = intrkey;
 #endif
+		stat = 1;
+	}
+	else {
+#ifdef	SIGALRM
+		signal(SIGALRM, (sigcst_t)ignore_alrm);
+#endif
+#ifdef	SIGTSTP
+		signal(SIGTSTP, SIG_DFL);
+#endif
+#ifdef	SIGWINCH
+		signal(SIGWINCH, (sigcst_t)ignore_winch);
+#endif
+#ifndef	_NODOSDRIVE
+		doswaitfunc = NULL;
+		dosintrfunc = NULL;
+#endif
+		stat = 0;
+	}
+
+	return(old);
 }
 
 VOID title(VOID_A)
@@ -851,7 +861,7 @@ char *argv[], *envp[];
 #ifdef	SIGXFSZ
 	signal(SIGXFSZ, (sigcst_t)xsizerror);
 #endif
-	sigvecreset();
+	sigvecset(0);
 
 #ifndef	_NOARCHIVE
 	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++) {
@@ -933,7 +943,7 @@ char *argv[], *envp[];
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);
 	inruncom = 0;
-	sigvecset();
+	sigvecset(1);
 	if (i < 0) {
 		hideclock = 1;
 		warning(0, HITKY_K);
@@ -956,7 +966,7 @@ char *argv[], *envp[];
 	putterms(t_clear);
 
 	main_fd(argv[i]);
-	sigvecreset();
+	sigvecset(0);
 	prepareexitfd();
 
 	stdiomode();
@@ -964,7 +974,7 @@ char *argv[], *envp[];
 # if	!MSDOS && !defined (NOJOB)
 	killjob();
 # endif
-	prepareexit();
+	prepareexit(0);
 #endif
 	exit2(0);
 	return(0);

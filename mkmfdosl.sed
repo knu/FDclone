@@ -24,7 +24,7 @@ s:__OUT__:-o $@:
 s:__LNK__:-o $@:
 s:__TERMLIBS__::
 s:__REGLIBS__::
-s:__OTHERLIBS__:-lintlib -ltinymain.obj -k"-s 6000":
+s:__OTHERLIBS__:-lintlib -ltinymain.obj -k"-s 5800":
 s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
 s:__UNITBL__:$(UNITBL):

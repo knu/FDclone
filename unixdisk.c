@@ -520,8 +520,24 @@ int drive, nodir;
 #ifndef	_NOUSELFN
 int getdosver(VOID_A)
 {
-	if (!(dos7access & D7_DOSVER))
-		dos7access |= ((u_char)bdos(0x30, 0, 0) & D7_DOSVER);
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	int ver;
+
+	if (!(dos7access & D7_DOSVER)) {
+		reg.x.ax = 0x3000;
+		int21call(&reg, &sreg);
+		ver = reg.h.al;
+		if (reg.x.ax == 0x0005) {
+			reg.x.ax = 0x3306;
+			int21call(&reg, &sreg);
+			if (reg.h.al != 0xff && reg.x.bx == 0x3205) {
+				/* Windows NT/2000/XP command prompt */
+				ver = 7;
+			}
+		}
+		dos7access |= (ver & D7_DOSVER);
+	}
 	return(dos7access & D7_DOSVER);
 }
 
@@ -2231,7 +2247,7 @@ struct stat *stp;
 
 #ifdef	_NOUSELFN
 	if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
-		if (errno) return(-1);
+		if (errno && errno != ENOENT) return(-1);
 		if (!strcmp(path, ".."))
 			i = dos_findfirst(".", SEARCHATTRS, &dbuf);
 		else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
@@ -2250,7 +2266,7 @@ struct stat *stp;
 	if (i <= 0) {
 		fd = -1;
 		if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
-			if (errno) return(-1);
+			if (errno && errno != ENOENT) return(-1);
 			if (!strcmp(path, ".."))
 				i = dos_findfirst(".", SEARCHATTRS, &dbuf);
 			else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
