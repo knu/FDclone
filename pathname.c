@@ -16,11 +16,11 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#ifndef	NOUNISTD
+#ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
 
-#ifndef	NOSTDLIB
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 

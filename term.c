@@ -14,7 +14,7 @@
 #include "machine.h"
 #include "term.h"
 
-#ifndef	NOSTDLIB
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 
@@ -24,7 +24,7 @@
 #include <sgtty.h>
 #endif
 
-#ifdef	USESYSSELECT
+#ifdef	USESELECTH
 #include <sys/select.h>
 #endif
 
@@ -100,6 +100,7 @@ static char *keyseq[K_MAX - K_MIN + 1];
 static unsigned char keyseqlen[K_MAX - K_MIN + 1];
 static short keycode[K_MAX - K_MIN + 1];
 static int ttyio;
+static char *termname;
 
 #ifndef	TIOCSTI
 static char ungetbuf[10];
@@ -486,11 +487,10 @@ static int sortkeyseq()
 
 int getterment()
 {
-	char buf[1024];
-	char *cp;
+	char *cp, buf[1024];
 
-	if (!(cp = getenv("TERM"))) cp = "unknown";
-	if (tgetent(buf, cp) <= 0) err2("No TERMCAP prepared");
+	if (!(termname = getenv("TERM"))) termname = "unknown";
+	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
 
 	if ((ttyio = open(TTYNAME, O_RDWR)) < 0) ttyio = STDERR;
 
@@ -744,7 +744,8 @@ int xmax, ymax;
 #endif
 #endif
 
-	if (x < 0 || y < 0) {
+	if ((x < 0 || y < 0)
+	&& !strcmp(termname + 1, "term") && strchr("xkjhtm", termname)) {
 		if (!(fp = fopen(TTYNAME, "r+"))) err2("Can't open terminal");
 		fd = fileno(fp);
 

@@ -29,6 +29,10 @@
 #define	getcwd(buf, size)	getwd(buf)
 #endif
 
+#ifdef	PWNEEDERROR
+char Error[1024];
+#endif
+
 extern char fullpath[];
 
 #define	BUFUNIT		32
@@ -314,21 +318,27 @@ int putenv(str)
 char *str;
 {
 	extern char **environ;
+	static char **newenvp = NULL;
 	char *cp, **envp;
 	int i;
 
-	if (!(cp = strchr(str, '='))) return(0);
+	if (cp = strchr(str, '=')) cp++;
+	else return(0);
 	for (envp = environ, i = 1; *envp; envp++, i++) {
 		if (!strncmp(*envp, str, cp - str)) {
-			*envp = str;
+			if (*cp) *envp = str;
+			else do {
+				*envp = *(envp + 1);
+			} while (*(++envp));
 			return(0);
 		}
 	}
 	envp = environ;
-	if (!(environ = (char **)malloc((i + 1) * sizeof(char *)))) return(1);
+	if (!(environ = (char **)malloc((i + 1) * sizeof(char *)))) return(-1);
 	*environ = str;
 	memcpy(environ + 1, envp, i * sizeof(char *));
-	free(envp);
+	if (newenvp) free(newenvp);
+	newenvp = environ;
 	return(0);
 }
 #endif
@@ -395,7 +405,7 @@ int noconf;
 {
 	int status;
 
-	if (noconf > 0) {
+	if (noconf >= 0) {
 		locate(0, n_line - 1);
 		putterm(l_clear);
 		tflush();
@@ -403,6 +413,7 @@ int noconf;
 		putterms(t_nokeypad);
 		tflush();
 	}
+	sigreset();
 	cooked2();
 	echo2();
 	nl2();
@@ -410,8 +421,9 @@ int noconf;
 	raw2();
 	noecho2();
 	nonl2();
+	sigset();
 	if (status > 127 || !noconf) warning(0, HITKY_K);
-	if (noconf > 0) {
+	if (noconf >= 0) {
 		if (noconf) putterms(t_init);
 		putterms(t_keypad);
 	}

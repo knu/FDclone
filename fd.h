@@ -9,11 +9,11 @@
 #include <errno.h>
 #include <sys/types.h>
 
-#ifndef	NOUNISTD
+#ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
 
-#ifndef	NOSTDLIB
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 

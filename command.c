@@ -832,6 +832,7 @@ int *maxp;
 		putterms(t_end);
 		putterms(t_nokeypad);
 		tflush();
+		sigreset();
 		cooked2();
 		echo2();
 		nl2();
@@ -840,6 +841,7 @@ int *maxp;
 		raw2();
 		noecho2();
 		nonl2();
+		sigset();
 		putterms(t_keypad);
 		putterms(t_init);
 	}
@@ -964,7 +966,7 @@ namelist *list;
 int *maxp;
 {
 	char *str[2];
-	int i, flag, val[2];
+	int i, n, flag, val[2];
 
 	str[0] = CMODE_K;
 	str[1] = CDATE_K;
@@ -990,8 +992,8 @@ int *maxp;
 		flag = 3;
 	}
 
-	while ((i = inputattr(&list[i], flag)) < 0) warning(0, ILTMS_K);
-	if (!i) return(3);
+	while ((n = inputattr(&list[i], flag)) < 0) warning(0, ILTMS_K);
+	if (!n) return(3);
 
 	if (mark > 0) applyfile(list, *maxp, setattr, NULL);
 	else if (setattr(list[filepos].name) < 0)

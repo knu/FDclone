@@ -12,69 +12,109 @@
 #include <sys/param.h>
 #include <sys/file.h>
 
-#if defined (USEMNTTAB)
+#ifdef	USEMNTTABH
 #include <sys/mnttab.h>
 typedef struct mnttab	mnt_t;
 #define	setmntent		fopen
-#define	getmntent2(fp, mnt)	(getmntent(fp, &mnt) ? NULL : &mnt)
+#define	getmntent2(fp, mntp)	(getmntent(fp, mntp) ? NULL : mntp)
 #define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_mntopts, opt)
 #define	endmntent		fclose
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
 #define	mnt_type	mnt_fstype
-#else
-# if defined (USEFSTABH)
-# include <fstab.h>
+#endif	/* USEMNTTABH */
+
+#ifdef	USEFSTABH
+#include <fstab.h>
 typedef struct fstab	mnt_t;
-# define	setmntent(filep, type)	(FILE *)(setfsent(), NULL)
-# define	getmntent2(fp, mnt)	getfsent()
-#  if defined (NOMNTOPS)
-#  define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_type, opt)
-#  else
-#  define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
-#  endif
-# define	endmntent(fp)		endfsent()
-# define	mnt_dir		fs_file
-# define	mnt_fsname	fs_spec
-#  ifdef	USENFSVFS
-#  define	mnt_type	fs_type
-#  else
-#  define	mnt_type	fs_vfstype
-#  endif
-# else
-# include <mntent.h>
-typedef struct mntent	mnt_t;
-# define	getmntent2(fp, mnt)	getmntent(fp)
-# endif
+#define	setmntent(filep, type)	(FILE *)(setfsent(), NULL)
+#define	getmntent2(fp, mntp)	getfsent()
+#define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
+#define	endmntent(fp)		endfsent()
+#define	mnt_dir		fs_file
+#define	mnt_fsname	fs_spec
+#define	mnt_type	fs_vfstype
+#endif	/* USEFSTABH */
+
+#ifdef	USEMNTCTL
+#include <fshelp.h>
 #endif
 
-#if defined (USESTATVFS)
+#ifdef	USEMNTINFO
+#include <sys/mount.h>
+#endif
+
+#ifdef	USEGETMNT
+#include <sys/fs_types.h>
+#endif
+
+#if defined (USEMNTCTL) || defined (USEMNTINFO) || defined (USEGETMNT)
+typedef struct _mnt_t {
+	char *mnt_fsname;
+	char *mnt_dir;
+	char *mnt_type;
+	char *mnt_opts;
+} mnt_t;
+static FILE *setmntent();
+static mnt_t *getmntent2();
+#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_mntopts, opt)
+#define	endmntent		free
+static int mnt_ptr;
+static int mnt_size;
+#endif
+
+#ifdef	USEMNTENTH
+#include <mntent.h>
+typedef struct mntent	mnt_t;
+#define	getmntent2(fp, mntp)	getmntent(fp)
+#endif	/* USEMNTENTH */
+
+
+#ifdef	USESTATVFSH
 #include <sys/statvfs.h>
+#endif
+#ifdef	USESTATFSH
+#include <sys/statfs.h>
+#define	f_bavail	f_bfree
+#endif
+#ifdef	USEMOUNTH
+#include <sys/mount.h>
+#endif
+#ifdef	USEVFSH
+#include <sys/vfs.h>
+#endif
+
+
+#ifdef	USESTATVFS
 typedef struct statvfs	statfs_t;
 #define	statfs2			statvfs
-#else
-# if defined (USESTATFS)
-# include <sys/statfs.h>
+#endif	/* USESTATVFS */
+
+#ifdef	USEFSDATA
+typedef struct fs_data	statfs_t;
+#define	statfs2(path, buf)	(statfs(path, buf) - 1)
+#define	f_bsize		fd_req.bsize
+#define	f_files		fd_req.gtot
+#endif	/* USEFSDATA */
+
+#ifdef	USESTATFS
 typedef struct statfs	statfs_t;
+# if (STATFSARGS >= 4)
 # define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-# define	f_bavail	f_bfree
+# endif
+# if (STATFSARGS >= 3)
+# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
 # else
-#  if defined (USEMOUNTH) || defined (USENFSVFS)
-#  include <sys/mount.h>
-#  else
-#  include <sys/vfs.h>
-#  endif
-#  ifdef	USENFSVFS
-#  include <netinet/in.h>
-#  include <nfs/nfs_clnt.h>
-#  include <nfs/vfs.h>
-#  endif
-typedef struct statfs	statfs_t;
 # define	statfs2			statfs
 # endif
+#endif	/* USESTATFS */
+
+#ifdef	USEFFSIZE
+#define	f_bsize		f_fsize
 #endif
 
-#ifdef	USESYSDIR
+
+#ifdef	USESYSDIRH
 #include <sys/dir.h>
 #endif
 
@@ -91,14 +131,17 @@ extern char fullpath[];
 #ifndef	MOUNTED
 #define	MOUNTED		"/etc/mtab"
 #endif
-#ifndef	MNTTYPE_NFS
-#define	MNTTYPE_NFS	"nfs"
+#ifndef	MNTTYPE_43
+#define	MNTTYPE_43	"4.3"
 #endif
-#ifndef	MNTTYPE_RFS
-#define	MNTTYPE_RFS	"rfs"
+#ifndef	MNTTYPE_42
+#define	MNTTYPE_42	"4.2"
 #endif
-#ifndef	MNTTYPE_TMPFS
-#define	MNTTYPE_TMPFS	"tmp"
+#ifndef	MNTTYPE_UFS
+#define	MNTTYPE_UFS	"ufs"
+#endif
+#ifndef	MNTTYPE_EFS
+#define	MNTTYPE_EFS	"efs"
 #endif
 
 static int code2str();
@@ -228,6 +271,175 @@ int mode;
 	}
 }
 
+#ifdef	USEMNTCTL
+static FILE *setmntent(file, mode)
+char *file, *mode;
+{
+	char *buf;
+
+	mntctl(MCTL_QUERY, sizeof(int) (struct vmount *)(&mnt_size);
+	buf = (char *)malloc2(mnt_size);
+	mntctl(MCTL_QUERY, mnt_size, (struct vmount *)buf);
+	mnt_ptr = 0;
+	return((FILE *)buf);
+}
+
+static mnt_t *getmntent2(fp, mntp)
+FILE *fp;
+mnt_t *mntp;
+{
+	static char *fsname = NULL;
+	static char *dir = NULL;
+	static char *type = NULL;
+	static char *opts = NULL;
+	struct vfs_ent *entp;
+	struct vmount *vmntp;
+	char *cp, *buf, *host;
+	int len;
+
+	if (mnt_ptr >= mnt_size) return(NULL);
+	buf = (char *)fp;
+	vmntp = (struct vmount *)(&buf[mnt_ptr]);
+
+	cp = &buf[mnt_ptr + vmntp -> vmt_data[VMT_OBJECT].vmt_off];
+	len = strlen(cp) + 1;
+	if (!(vmntp -> vmt_flags & MNT_REMOTE))
+		*(fsname = realloc2(fsname, len)) = '\0';
+	else {
+		host = &buf[mnt_ptr + vmntp -> vmt_data[VMT_HOSTNAME].vmt_off];
+		len += strlen(host) + 1;
+		fsname = realloc2(fsname, len);
+		strcpy(fsname, host);
+		strcat(fsname, ":");
+	}
+	strcat(fsname, cp);
+
+	cp = &buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off];
+	len = strlen(cp) + 1;
+	dir = realloc2(dir, len);
+	strcpy(dir, cp);
+
+	entp = getvfsbytype(vmntp -> vmt_gfstype);
+	if (entp) {
+		cp = entp -> vfsent_name;
+		len = strlen(cp) + 1;
+		type = realloc2(type, len);
+		strcpy(type, cp);
+	}
+	else if (type) {
+		free(type);
+		type = NULL;
+	}
+
+	mntp -> mnt_fsname = fsname;
+	mntp -> mnt_dir = dir;
+	mntp -> mnt_type = type;
+	mntp -> mnt_opts = opts;
+
+	mnt_ptr += vmntp -> vmt_length;
+	return(mntp);
+}
+#endif	/* USEMNTCTL */
+
+#ifdef	USEMNTINFO
+static FILE *setmntent(file, mode)
+char *file, *mode;
+{
+	struct statfs *buf;
+	int size;
+
+	ptr = NULL;
+	mnt_ptr = mnt_size = size = 0;
+	getmntinfo_r(&buf, MNT_WAIT, &mnt_size, &size);
+	return((FILE *)buf);
+}
+
+static mnt_t *getmntent2(fp, mntp)
+FILE *fp;
+mnt_t *mntp;
+{
+	static char *fsname = NULL;
+	static char *dir = NULL;
+	static char *type = NULL;
+	struct statfs *buf;
+	char *cp;
+	int len;
+
+	if (mnt_ptr >= mnt_size) return(NULL);
+	ptr = (struct statfs *)fp;
+
+	len = strlen(buf[mnt_ptr] -> f_mntfromname) + 1;
+	fsname = realloc2(fsname, len);
+	strcpy(fsname, buf[mnt_ptr] -> f_mntfromname);
+
+	len = strlen(buf[mnt_ptr] -> f_mntonname) + 1;
+	dir = realloc2(dir, len);
+	strcpy(dir, buf[mnt_ptr] -> f_mntonname);
+
+	cp = getvfsbynumber(buf[mnt_ptr] -> f_type);
+	if (cp) {
+		len = strlen(cp) + 1;
+		type = realloc2(type, len);
+		strcpy(type, cp);
+	}
+	else if (type) {
+		free(type);
+		type = NULL;
+	}
+
+	mntp -> mnt_fsname = fsname;
+	mntp -> mnt_dir = dir;
+	mntp -> mnt_type = type;
+	mntp -> mnt_opts = (buf[mnt_ptr] -> f_flags & M_RDONLY) ? "ro" : NULL;
+
+	mnt_ptr++;
+	return(mntp);
+}
+#endif	/* USEMNTINFO */
+
+#ifdef	USEGETMNT
+static FILE *setmntent(file, mode)
+char *file, *mode;
+{
+	mnt_ptr = 0;
+	return(malloc2(1));
+}
+
+static mnt_t *getmntent2(fp, mntp)
+FILE *fp;
+mnt_t *mntp;
+{
+	static char *fsname = NULL;
+	static char *dir = NULL;
+	static char *type = NULL;
+	static char *opts = NULL;
+	struct fs_data buf;
+	int len;
+
+	if (getmnt(&mnt_ptr, &buf, sizeof(struct fs_data),
+		NOSTAT_MANY, NULL) <= 0) return(NULL);
+
+	len = strlen(buf.fdreq.devname) + 1;
+	fsname = realloc2(fsname, len);
+	strcpy(fsname, buf.fdreq.devname);
+
+	len = strlen(buf.fdreq.path) + 1;
+	dir = realloc2(dir, len);
+	strcpy(dir, buf.fdreq.path);
+
+	len = strlen(gt_names[buf.fdreq.fstype]) + 1;
+	type = realloc2(type, len);
+	strcpy(type, gt_names[buf.fdreq.fstype]);
+
+	mntp -> mnt_fsname = fsname;
+	mntp -> mnt_dir = dir;
+	mntp -> mnt_type = type;
+	mntp -> mnt_opts = opts;
+
+	return(mntp);
+}
+#endif	/* USEGETMNT */
+
 static int getfsinfo(path, fsbuf, mntbuf)
 char *path;
 statfs_t *fsbuf;
@@ -250,7 +462,7 @@ mnt_t *mntbuf;
 		match = 0;
 
 		fp = setmntent(MOUNTED, "r");
-		while (mntp = getmntent2(fp, mnt)) {
+		while (mntp = getmntent2(fp, &mnt)) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)) continue;
 			match = len;
@@ -263,26 +475,14 @@ mnt_t *mntbuf;
 		dir = fsname;
 	}
 	fp = setmntent(MOUNTED, "r");
-	while (mntp = getmntent2(fp, mnt))
+	while (mntp = getmntent2(fp, &mnt))
 		if (!strcmp(dir, mntp -> mnt_fsname)) break;
 	endmntent(fp);
 	if (!mntp) return(0);
 	memcpy(mntbuf, mntp, sizeof(mnt_t));
 
-	if (statfs2(mntbuf -> mnt_dir, fsbuf)) error(mntbuf -> mnt_dir);
+	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) error(mntbuf -> mnt_dir);
 	return(1);
-}
-
-int getblocksize()
-{
-#ifdef	DEV_BSIZE
-        return(DEV_BSIZE);
-#else
-	statfs_t buf;
-
-	if (statfs2(".", &buf) < 0) error(".");
-	return(buf.f_bsize);
-#endif
 }
 
 int writablefs(path)
@@ -294,9 +494,10 @@ char *path;
 	if (access(path, R_OK | W_OK | X_OK) < 0) return(-1);
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
 	|| hasmntopt(&mntbuf, "ro")
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_NFS)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_RFS)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_TMPFS)) return(0);
+	|| (strcmp(mntbuf.mnt_type, MNTTYPE_43)
+	&& strcmp(mntbuf.mnt_type, MNTTYPE_42)
+	&& strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
+	&& strcmp(mntbuf.mnt_type, MNTTYPE_EFS))) return(0);
 	return(1);
 }
 
@@ -364,6 +565,12 @@ char *path;
 	y = info1line(y, FSNAM_K, 0, mntbuf.mnt_fsname, NULL);
 	y = info1line(y, FSMNT_K, 0, mntbuf.mnt_dir, NULL);
 	y = info1line(y, FSTYP_K, 0, mntbuf.mnt_type, NULL);
+#ifdef	USEFSDATA
+	y = info1line(y, FSTTL_K, fsbuf.fd_req.btot, NULL, "Kbytes");
+	y = info1line(y, FSUSE_K,
+		fsbuf.fd_req.btot - fsbuf.fd_req.bfree, NULL, "Kbytes");
+	y = info1line(y, FSAVL_K, fsbuf.fd_req.bfreen, NULL, "Kbytes");
+#else
 	y = info1line(y, FSTTL_K,
 		fsbuf.f_blocks * fsbuf.f_bsize / 1024, NULL, "Kbytes");
 	y = info1line(y, FSUSE_K,
@@ -371,6 +578,7 @@ char *path;
 		NULL, "Kbytes");
 	y = info1line(y, FSAVL_K,
 		fsbuf.f_bavail * fsbuf.f_bsize / 1024, NULL, "Kbytes");
+#endif
 	y = info1line(y, FSBSZ_K, fsbuf.f_bsize, NULL, "bytes");
 	y = info1line(y, FSINO_K, fsbuf.f_files, NULL, UNIT_K);
 	if (y > WHEADER + 1) {

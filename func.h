@@ -17,6 +17,8 @@ extern int errno;
 /* main.c */
 extern VOID error();
 extern VOID usage();
+extern VOID sigset();
+extern VOID sigreset();
 extern VOID title();
 extern int evalconfigline();
 extern int printmacro();
@@ -73,7 +75,6 @@ extern int execinternal();
 
 /* info.c */
 extern VOID help();
-extern int getblocksize();
 extern int writablefs();
 extern int infofs();
 

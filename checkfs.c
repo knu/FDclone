@@ -20,35 +20,9 @@
 
 #ifdef	USEDIRECT
 #include <sys/dir.h>
-typedef direct	dirent;
+#define	dirent	direct
 #else
 #include <dirent.h>
-#endif
-
-#if defined (USESTATVFS)
-#include <sys/statvfs.h>
-typedef struct statvfs	statfs_t;
-#define	statfs2			statvfs
-#else
-# if defined (USESTATFS)
-# include <sys/statfs.h>
-typedef struct statfs	statfs_t;
-# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-# define	f_bavail	f_bfree
-# else
-#  if defined (USEMOUNTH) || defined (USENFSVFS)
-#  include <sys/mount.h>
-#  else
-#  include <sys/vfs.h>
-#  endif
-#  ifdef	USENFSVFS
-#  include <netinet/in.h>
-#  include <nfs/nfs_clnt.h>
-#  include <nfs/vfs.h>
-#  endif
-typedef struct statfs	statfs_t;
-# define	statfs2			statfs
-# endif
 #endif
 
 #ifdef	NOVOID
@@ -216,15 +190,17 @@ char *dir;
 	return(0);
 }
 
-static int getblocksize()
+static int getblocksize(dir)
+char *dir;
 {
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
-	statfs_t buf;
+	struct stat buf;
 
-	if (statfs2(".", &buf) < 0) error(".");
-	return(buf.f_bsize);
+	cleandir(dir);
+	if (stat(dir, &buf) < 0) error(dir);
+	return((int)buf.st_size);
 #endif
 }
 
@@ -484,6 +460,7 @@ static VOID writedir()
 	ptr = 3;
 	ch = 'A';
 	for (i = 1; i < MAXFILE; i++) {
+#ifndef	SVR3FS
 		if (((totalptr > ptr + 1) ? totalptr : ptr + 1) * ptrsiz
 		+ totalent + getdirent(strlen(filelist[i])) > blocksize) {
 			if (totalptr < ptr + 1) totalptr = ptr + 1;
@@ -493,6 +470,7 @@ static VOID writedir()
 			totalent = headbyte;
 			totalptr = entnum[++block];
 		}
+#endif
 		strcpy(path + fnamp, filelist[i]);
 		if (rename(path, filelist[i]) < 0) error(path);
 		totalent += getdirent(strlen(filelist[i]));
@@ -615,7 +593,7 @@ char *argv[];
 	srandom(seed);
 
 	if (level == 0) {
-		blocksize = getblocksize();
+		blocksize = getblocksize(wdir);
 		checkboundary(wdir);
 	}
 	else {

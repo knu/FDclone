@@ -46,6 +46,7 @@ static VOID touch();
 static char *maketmpfile();
 static char *getentnum();
 static VOID restorefile();
+static int getblocksize();
 
 
 VOID getstatus(list, i, file)
@@ -305,6 +306,19 @@ int fnamp;
 	free(dir);
 }
 
+static int getblocksize(dir)
+char *dir;
+{
+#ifdef  DEV_BSIZE
+	return(DEV_BSIZE);
+#else
+	struct stat buf;
+
+	if (stat(dir, &buf) < 0) error(dir);
+	return((int)buf.st_size);
+#endif
+}
+
 VOID arrangedir(list, max)
 namelist *list;
 int max;
@@ -317,7 +331,6 @@ int max;
 	int i, top, len, fnamp, tmpno, block, ent, totalent, ptr, totalptr;
 	char *cp, *tmpdir, *entnum, path[MAXPATHLEN + 1];
 
-	persec = getblocksize();
 	for (i = 0; i < max; i++) {
 		if (strcmp(list[i].name, ".")
 		&& strcmp(list[i].name, "..")) break;
@@ -330,6 +343,7 @@ int max;
 		free(tmpdir);
 		return;
 	}
+	persec = getblocksize(tmpdir);
 	strcpy(path, tmpdir);
 	strcat(path, "/");
 	fnamp = strlen(path);

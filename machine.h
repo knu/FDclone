@@ -9,8 +9,9 @@
 # define	SVR4
 # define	SOLARIS
 # define	REGEXPLIB	"-lgen"
-# define	USESTATVFS
-# define	USEMNTTAB
+# define	USESTATVFSH
+# define	USEMNTTABH
+# define	MOUNTED		MNTTAB
 # else
 # define	BSD43
 # define	SUN_OS
@@ -24,8 +25,9 @@
 # define	SVR4
 # define	NEWS_OS6
 # define	REGEXPLIB	"-lgen"
-# define	USESTATVFS
-# define	USEMNTTAB
+# define	USESTATVFSH
+# define	USEMNTTABH
+# define	MOUNTED		MNTTAB
 # define	USEUTIME
 # else
 # define	BSD43
@@ -37,15 +39,15 @@
 #  define	NOVOID
 #  define	NOERRNO
 #  define	NOFILEMODE
-#  define	NOUNISTD
-#  define	NOSTDLIB
+#  define	NOUNISTDH
+#  define	NOSTDLIBH
 #  define	USEDIRECT
 #  define	HAVETIMEZONE
 #  define	NOPUTENV
 #  define	NOSTRSTR
 #  define	USEGETWD
 #  endif
-# define	USESYSDIR
+# define	USESYSDIRH
 # define	USERE_COMP
 # endif
 #endif
@@ -54,13 +56,14 @@
 #define	SYSV
 #define	IRIX
 #define	CODEEUC
-#define	EXTENDCCOPT		"-O -signed -cckr"
+#define	EXTENDCCOPT		"-O -signed"
 # if !defined (SYSTYPE_SVR4)
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
 #define	IRIXFS
-#define	USESTATFS
+#define	USESTATFSH
+#define	STATFSARGS	4
 #define	USERE_COMP
 #endif
 
@@ -80,8 +83,8 @@
 # define	EWSUXV
 # define	TERMCAPLIB	"-lcurses"
 # define	REGEXPLIB	"-lgen"
-# define	USESTATVFS
-# define	USEMNTTAB
+# define	USESTATVFSH
+# define	USEMNTTABH
 # define	USEUTIME
 # define	SIGARGINT
 # else
@@ -98,10 +101,12 @@
 #define	UNKNOWNFS
 #define	NOVOID
 #define	NOUID_T
-#define	NOSTDLIB
+#define	NOFILEMODE
+#define	NOSTDLIBH
 #define	USETERMIO
 #define	HAVETIMEZONE
 #define	USETIMEH
+#define	NOSTRSTR
 #endif
 
 #if defined (luna88k)
@@ -112,6 +117,7 @@
 #define	NOFILEMODE
 #define	USEDIRECT
 #define	USESETENV
+#define	NOSTRSTR
 #define	USEGETWD
 #endif
 
@@ -122,13 +128,14 @@
 # define	DECOSF1
 # define	EXTENDLIB	"-lsys5"
 # define	USEMOUNTH
+# define	STATFSARGS	3
 # define	USEFSTABH
 # else
-# define	BSD43
+# define	SVR4
 # define	DECOSF3
-# define	TARUSESPACE
 # define	EXTENDLIB	"-lc_r"
-# define	USESTATVFS
+# define	USEMNTINFO
+# define	USESTATVFSH
 # define	USEREGCOMP
 # endif
 #endif
@@ -138,11 +145,12 @@
 #define	AIX
 #define	EXTENDCCOPT		"-O -qchars=signed"
 #define	TERMCAPLIB		"-ltermcap"
-#define	USESTATFS
-#define	USEFSTABH
-#define	NOMNTOPS
-#define	USESYSSELECT
-#define	USESYSDIR
+#define	USESTATFSH
+#define	STATFSARGS	4
+#define	USEMNTCTL
+#define	USESELECTH
+#define	USESYSDIRH
+#define	USETIMEH
 #endif
 
 #if defined (ultrix)
@@ -151,9 +159,20 @@
 #define	CODEEUC
 #define	TARUSESPACE
 #define	CPP7BIT
-#define	USENFSVFS
-#define	USEFSTABH
+#define	USEMOUNTH
+#define	USEFSDATA
+#define	USEGETMNT
+#define	USESYSDIRH
 #define	USERE_COMP
+#endif
+
+#if defined (_AUX_SOURCE)
+#define	SYSV
+#define	AUX
+#define	CPP7BIT
+#define	TERMCAPLIB		"-ltermcap"
+#define	PWNEEDERROR
+#define	USETIMEH
 #endif
 
 #if defined (linux)
@@ -172,6 +191,16 @@
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
+#define	USEFSTABH
+#define	USERE_COMP
+#endif
+
+#if defined (__NetBSD__)
+#define	BSD43
+#define	NETBSD
+#define	DECLERRLIST
+#define	USEMOUNTH
+#define	USEFFSIZE
 #define	USEFSTABH
 #define	USERE_COMP
 #endif
@@ -198,8 +227,10 @@
 /* #define DECOSF	/* OS type is OSF/1 (DEC) */
 /* #define AIX		/* OS type is AIX (IBM) */
 /* #define ULTRIX	/* OS type is ULTRIX (DEC) */
+/* #define AUX		/* OS type is A/UX */
 /* #define LINUX	/* OS type is Linux */
 /* #define FREEBSD	/* OS type is FreeBSD */
+/* #define NETBSD	/* OS type is NetBSD */
 
 /* #define CODEEUC	/* kanji code type is EUC */
 /* #define TARUSESPACE	/* tar(1) uses space to devide file mode from UID */
@@ -208,30 +239,46 @@
 /* #define TERMCAPLIB	/* library needed for termcap */
 /* #define REGEXPLIB	/* library needed for regular expression */
 /* #define EXTENDLIB	/* library needed for the other extended */
+
 /* #define SVR3FS	/* use SVR3 type FileSystem */
 /* #define IRIXFS	/* use IRIX type FileSystem */
 /* #define UNKNOWNFS	/* use unsupported type FileSystem */
+
 /* #define USELEAPCNT	/* TZFILE includes tzh_leapcnt as leap second */
 /* #define NOVOID	/* cannot use type 'void' */
 /* #define NOUID_T	/* uid_t, gid_t is not defined in <sys/types.h> */
 /* #define DECLERRLIST	/* 'sys_errlist' already declared in <stdio.h> */
+/* #define PWNEEDERROR	/* /lib/libPW.a needs the extern variable 'Error[]' */
 /* #define NOERRNO	/* 'errno' not declared in <errno.h> */
 /* #define NOFILEMODE	/* 'S_I?{USR|GRP|OTH}' not defined in <sys/stat.h> */
-/* #define NOUNISTD	/* have not <unistd.h> */
-/* #define NOSTDLIB	/* have not <stdlib.h> */
+/* #define NOUNISTDH	/* have not <unistd.h> */
+/* #define NOSTDLIBH	/* have not <stdlib.h> */
 /* #define USETERMIO	/* use termio interface */
 /* #define SYSVDIRENT	/* dirent interface behaves as System V */
 /* #define USEDIRECT	/* use 'struct direct' instead of dirent */
 /* #define HAVETIMEZONE	/* have extern valiable 'timezone' */
-/* #define USESTATVFS	/* use <sys/statvfs.h> instead of <sys/vfs.h> */
-/* #define USESTATFS	/* use <sys/statfs.h> instead of <sys/vfs.h> */
-/* #define USEMOUNTH	/* use <mount.h> instead of <sys/vfs.h> */
-/* #define USENFSVFS	/* use <nfs/vfs.h> instead of <sys/vfs.h> */
-/* #define USEMNTTAB	/* use <sys/mnttab.h> instead of <mntent.h> */
-/* #define USEFSTABH	/* use <fstab.h> instead of <mntent.h> */
-/* #define NOMNTOPS	/* 'struct fstab' in <fstab.h> have not 'fs_mntops' */
-/* #define USESYSSELECT	/* use <sys/select.h> for select(2) */
-/* #define USESYSDIR	/* use <sys/dir.h> for DEV_BSIZE */
+
+/* #define USESTATVFSH	/* use <sys/statvfs.h> as header of the FS status */
+/* #define USESTATFSH	/* use <sys/statfs.h> as header of the FS status */
+/* #define USEMOUNTH	/* use <mount.h> as header of the FS status */
+/* #define USEVFSH	/* use <sys/vfs.h> as header of the FS status */
+
+/* #define USESTATVFS	/* use 'struct statvfs' as structure of hte FS status */
+/* #define USEFSDATA	/* use 'struct fs_data' as structure of hte FS status */
+/* #define USESTATFS	/* use 'struct statfs' as structure of hte FS status */
+/* #define USEFFSIZE	/* 'struct statfs' fas 'f_fsize' instead of 'f_bsize' */
+/* #define STATFSARGS	/* the number of arguments in statfs() */
+
+/* #define USEMNTTABH	/* use <sys/mnttab.h> as header of the mount entry */
+/* #define USEFSTABH	/* use <fstab.h> as header of the mount entry */
+/* #define USEMNTCTL	/* use mntctl() to get the mount entry */
+/* #define USEMNTINFO	/* use getmntinfo_r() to get the mount entry */
+/* #define USEGETMNT	/* use getmnt() to get the mount entry */
+/* #define USEMNTENTH	/* use <mntent.h> as header of the mount entry */
+/* #define MOUNTED	/* means '/etc/mtab' defined in <mntent.h> */
+
+/* #define USESELECTH	/* use <sys/select.h> for select() */
+/* #define USESYSDIRH	/* use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	/* use <time.h> for 'struct tm' */
 /* #define USERAND48	/* use rand48() family instead of random() */
 /* #define USERE_COMP	/* use re_comp() family as search */
@@ -271,4 +318,78 @@
 #endif
 #ifndef EXTENDLIB
 #define	EXTENDLIB
+#endif
+
+#if defined (USESTATVFSH)
+#define	USESTATVFS
+# ifdef	USESTATFSH
+# undef	USESTATFSH
+# endif
+#endif
+
+#if defined (USESTATVFSH) || defined (USESTATFSH)
+# ifdef	USEMOUNTH
+# undef	USEMOUNTH
+# endif
+#endif
+
+#if defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)
+# ifdef	USEVFSH
+# undef	USEVFSH
+# endif
+#else
+#define	USEVFSH
+#endif
+
+
+#if defined (USESTATVFS)
+# ifdef	USEFSDATA
+# undef	USEFSDATA
+# endif
+#endif
+
+#if defined (USESTATVFS) || defined (USEFSDATA)
+# ifdef	USESTATFS
+# undef	USESTATFS
+# endif
+#else
+# define	USESTATFS
+# ifndef	STATFSARGS
+# define	STATFSARGS	2
+# endif
+#endif
+
+
+#if defined (USEMNTTABH)
+# ifdef	USEFSTABH
+# undef	USEFSTABH
+# endif
+#endif
+
+#if defined (USEMNTTABH) || defined (USEFSTABH)
+# ifdef	USEMNTCTL
+# undef	USEMNTCTL
+# endif
+#endif
+
+#if defined (USEMNTTABH) || defined (USEFSTABH) || defined (USEMNTCTL)
+# ifdef	USEMNTINFO
+# undef	USEMNTINFO
+# endif
+#endif
+
+#if defined (USEMNTTABH) || defined (USEFSTABH) || defined (USEMNTCTL)\
+ || defined (USEMNTINFO)
+# ifdef	USEGETMNT
+# undef	USEGETMNT
+# endif
+#endif
+
+#if defined (USEMNTTABH) || defined (USEFSTABH) || defined (USEMNTCTL)\
+ || defined (USEMNTINFO) || defined (USEGETMNT)
+# ifdef	USEMNTENTH
+# undef	USEMNTENTH
+# endif
+#else
+#define	USEMNTENTH
 #endif

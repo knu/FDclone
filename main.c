@@ -114,6 +114,19 @@ static VOID printtime()
 	signal(SIGALRM, printtime);
 }
 
+VOID sigset()
+{
+	getwsize(80, WHEADER + WFOOTER + 2);
+	signal(SIGWINCH, wintr);
+	signal(SIGALRM, printtime);
+}
+
+VOID sigreset()
+{
+	signal(SIGWINCH, SIG_IGN);
+	signal(SIGALRM, SIG_IGN);
+}
+
 VOID title()
 {
 	char *cp, *eol;
@@ -351,6 +364,7 @@ int evalconfigline(line)
 char *line;
 {
 	char *cp, *tmp;
+	int len;
 
 	if (!strncmp(line, "export", 6)) {
 		tmp = skipspace(line + 6);
@@ -359,8 +373,9 @@ char *line;
 		else if (setenv(tmp, cp, 1) < 0) error(cp);
 #else
 		cp = getenvval(tmp);
-		strcat(tmp, "=");
-		if (cp) strcat(tmp, cp);
+		len = strlen(tmp);
+		tmp[len++] = '=';
+		if (cp) strcpy(tmp + len, cp);
 		cp = strdup2(tmp);
 		if (putenv(cp)) error(cp);
 #endif
@@ -512,10 +527,7 @@ char *argv[];
 	tabs();
 	getterment();
 	initterm();
-	getwsize(80, WHEADER + WFOOTER + 2);
-
-	signal(SIGWINCH, wintr);
-	signal(SIGALRM, printtime);
+	sigset();
 
 	loadruncom(RUNCOMFILE);
 	i = getoption(argc, argv);
