@@ -3,7 +3,7 @@
 #	FDclone Ver. 1.03 に関して
 #
 #	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	Oct 12, 2000
+#	Nov 11, 2000
 #
 ############################################################
 
@@ -56,15 +56,15 @@ expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 mkunitbl.c	UNICODE 変換テーブルファイル生成プログラム
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
 mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
-mkmfdosl.sed	LSI-C 向けメイクファイル加工用スクリプト
+mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト
 mkmfdosb.sed	Borland C++ 向けメイクファイル加工用スクリプト
 
 makefile.gpc	DOS/V 用 djgpp v1.xx 版メイクファイル
 makefile.g98	PC-9801 用 djgpp v1.xx 版メイクファイル
 makefile.dpc	DOS/V 用 djgpp v2.xx 版メイクファイル
 makefile.d98	PC-9801 用 djgpp v2.xx 版メイクファイル
-makefile.lpc	DOS/V 用 LSI-C 版メイクファイル
-makefile.l98	PC-9801 用 LSI-C 版メイクファイル
+makefile.lpc	DOS/V 用 LSI C-86 3.5 版メイクファイル
+makefile.l98	PC-9801 用 LSI C-86 3.5 版メイクファイル
 makefile.bpc	DOS/V 用 Borland C++ 版メイクファイル
 makefile.b98	PC-9801 用 Borland C++ 版メイクファイル
 

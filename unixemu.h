@@ -122,6 +122,10 @@ struct utimbuf {
 	time_t	modtime;
 };
 
+#ifdef	LSI_C
+extern	int utime __P_((CONST char *, CONST time_t[]));
+#else
 extern	int utime __P_((CONST char *, CONST struct utimbuf *));
+#endif
 
 #endif	/* !_UNIXEMU_H */

@@ -15,7 +15,7 @@
 #include <time.h>
 #endif
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -55,15 +55,14 @@ typedef union REGS	__dpmi_regs;
 # define	getkeybuf(o)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)))
 # define	putkeybuf(o, n)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)) = n)
 #  ifdef	LSI_C
-static int _asm_sti(VOID_A);
-static int _asm_cli(VOID_A);
+static int _asm_sti __P_((char *));
+static int _asm_cli __P_((char *));
 #  define	enable()	_asm_sti("\n\tsti\n")
 #  define	disable()	_asm_cli("\n\tcli\n")
 #  endif
 # endif	/* !DJGPP */
 #define	TTYNAME		"CON"
 #else	/* !MSDOS */
-#include <errno.h>
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/time.h>
@@ -80,10 +79,6 @@ typedef struct _kstree_t {
 	int num;
 	struct _kstree_t *next;
 } kstree_t;
-
-#ifdef	NOERRNO
-extern int errno;
-#endif
 
 #ifdef	USETERMIOS
 # ifdef	USETERMIO
@@ -107,7 +102,7 @@ typedef struct termio	termioctl_t;
 #define	REQSETP		TCSETAF
 #endif
 
-#if	!defined (USETERMIO) && !defined(USETERMIOS)
+#if	!defined (USETERMIO) && !defined (USETERMIOS)
 #define	USESGTTY
 #include <sgtty.h>
 typedef struct sgttyb	termioctl_t;
@@ -124,6 +119,11 @@ typedef struct sgttyb	termioctl_t;
 
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
+#endif
+
+#include <errno.h>
+#ifdef	NOERRNO
+extern int errno;
 #endif
 
 #include "term.h"
@@ -198,29 +198,29 @@ typedef struct fd_set {
 #endif
 #endif	/* !MSDOS */
 
-static int err2 __P_((char *));
-static int defaultterm __P_((VOID_A));
-static int maxlocate __P_((int *, int *));
-static int getxy __P_((int *, int *));
+static int NEAR err2 __P_((char *));
+static int NEAR defaultterm __P_((VOID_A));
+static int NEAR maxlocate __P_((int *, int *));
+static int NEAR getxy __P_((int *, int *));
 #if	MSDOS
 # if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
-static int dosgettime __P_((u_char []));
+static int NEAR dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-static int ttymode __P_((int, u_short, u_short, u_short, u_short));
+static int NEAR ttymode __P_((int, u_short, u_short, u_short, u_short));
 # else
-static int ttymode __P_((int, u_short, u_short, u_short, u_short,
+static int NEAR ttymode __P_((int, u_short, u_short, u_short, u_short,
 		u_short, u_short, int, int));
 # endif
-static int tgetstr2 __P_((char **, char *));
-static int tgetstr3 __P_((char **, char *, char *));
-static kstree_t *newkeyseq __P_((kstree_t *, int));
-static int freekeyseq __P_((kstree_t *, int));
-static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
-static int sortkeyseq __P_((VOID_A));
+static int NEAR tgetstr2 __P_((char **, char *));
+static int NEAR tgetstr3 __P_((char **, char *, char *));
+static kstree_t *NEAR newkeyseq __P_((kstree_t *, int));
+static int NEAR freekeyseq __P_((kstree_t *, int));
+static int NEAR cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
+static int NEAR sortkeyseq __P_((VOID_A));
 # ifdef	DEBUG
-static int freeterment __P_((VOID_A));
+static int NEAR freeterment __P_((VOID_A));
 # endif
 #endif	/* !MSDOS */
 
@@ -286,6 +286,7 @@ VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
 int usegetcursor = 0;
 #endif
 int ttyio = -1;
+FILE *ttyout = NULL;
 
 #if	MSDOS
 #ifdef	PC98
@@ -326,7 +327,6 @@ static int specialkeycode[] = {
 #else	/* !MSDOS */
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
-static FILE *ttyout;
 #endif	/* !MSDOS */
 
 #if	MSDOS || !defined (TIOCSTI)
@@ -521,7 +521,7 @@ int reset;
 }
 
 #ifdef	USESGTTY
-static int ttymode(d, set, reset, lset, lreset)
+static int NEAR ttymode(d, set, reset, lset, lreset)
 int d;
 u_short set, reset, lset, lreset;
 {
@@ -536,7 +536,7 @@ u_short set, reset, lset, lreset;
 	if (lreset) lflag &= lreset;
 	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
 #else
-static int ttymode(d, set, reset, iset, ireset, oset, oreset, min, time)
+static int NEAR ttymode(d, set, reset, iset, ireset, oset, oreset, min, time)
 int d;
 u_short set, reset, iset, ireset, oset, oreset;
 int min, time;
@@ -686,27 +686,31 @@ int no;
 #ifdef	DEBUG
 	freeterment();
 	if (ttyio >= 0) close(ttyio);
-	if (ttyout != stdout) fclose(ttyout);
+	if (ttyout && ttyout != stdout) fclose(ttyout);
 	muntrace();
 #endif
 	exit(no);
 	return(0);
 }
 
-static int err2(mes)
+static int NEAR err2(mes)
 char *mes;
 {
+	int duperrno;
+
+	duperrno = errno;
 	if (termflags & F_TERMENT) putterm(t_normal);
 	endterm();
 	inittty(1);
 	fprintf(stderr, "\007\n");
+	errno = duperrno;
 	if (mes) fprintf(stderr, "%s\n", mes);
 	else perror(TTYNAME);
 	exit(2);
 	return(0);
 }
 
-static int defaultterm(VOID_A)
+static int NEAR defaultterm(VOID_A)
 {
 #if	!MSDOS
 	int i;
@@ -862,7 +866,7 @@ static int defaultterm(VOID_A)
 	return(0);
 }
 
-static int maxlocate(yp, xp)
+static int NEAR maxlocate(yp, xp)
 int *yp, *xp;
 {
 	int i;
@@ -888,7 +892,7 @@ int *yp, *xp;
 	return(i);
 }
 
-static int getxy(yp, xp)
+static int NEAR getxy(yp, xp)
 int *yp, *xp;
 {
 	char *format, buf[sizeof(SIZEFMT) + 4];
@@ -1040,7 +1044,7 @@ int arg1, arg2;
 	return(buf);
 }
 
-static int tgetstr2(term, s)
+static int NEAR tgetstr2(term, s)
 char **term;
 char *s;
 {
@@ -1055,7 +1059,7 @@ char *s;
 	return(0);
 }
 
-static int tgetstr3(term, str1, str2)
+static int NEAR tgetstr3(term, str1, str2)
 char **term;
 char *str1, *str2;
 {
@@ -1072,7 +1076,7 @@ char *str1, *str2;
 	return(0);
 }
 
-static kstree_t *newkeyseq(parent, num)
+static kstree_t *NEAR newkeyseq(parent, num)
 kstree_t *parent;
 int num;
 {
@@ -1100,7 +1104,7 @@ int num;
 	return(new);
 }
 
-static int freekeyseq(list, n)
+static int NEAR freekeyseq(list, n)
 kstree_t *list;
 int n;
 {
@@ -1112,7 +1116,7 @@ int n;
 	return(0);
 }
 
-static int cmpkeyseq(vp1, vp2)
+static int NEAR cmpkeyseq(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
@@ -1121,7 +1125,7 @@ CONST VOID_P vp2;
 	return(strcmp(((keyseq_t *)vp1) -> str, ((keyseq_t *)vp2) -> str));
 }
 
-static int sortkeyseq(VOID_A)
+static int NEAR sortkeyseq(VOID_A)
 {
 	kstree_t *p;
 	int i, j, k;
@@ -1161,7 +1165,7 @@ int getterment(VOID_A)
 #endif
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
 
-	if (!(ttyout = fopen(TTYNAME, "w+"))) ttyout = stdout;
+	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stdout;
 
 	defaultterm();
 	cp = "";
@@ -1293,7 +1297,7 @@ int getterment(VOID_A)
 }
 
 #ifdef	DEBUG
-static int freeterment(VOID_A)
+static int NEAR freeterment(VOID_A)
 {
 	int i;
 
@@ -1566,7 +1570,7 @@ int getch2(VOID_A)
 }
 
 #if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
-static int dosgettime(tbuf)
+static int NEAR dosgettime(tbuf)
 u_char tbuf[];
 {
 	union REGS reg;
@@ -1927,7 +1931,7 @@ int xmax, ymax;
 }
 #endif	/* !MSDOS */
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 /*VARARGS1*/
 int cprintf2(CONST char *fmt, ...)
 {
@@ -1937,7 +1941,7 @@ int cprintf2(CONST char *fmt, ...)
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else	/* !MSDOS && !__STDC__ */
+#else	/* !USESTDARGH */
 # ifndef	NOVSPRINTF
 /*VARARGS1*/
 int cprintf2(fmt, va_alist)
@@ -1958,7 +1962,7 @@ char *fmt;
 
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
 # endif	/* NOVSPRINTF */
-#endif	/* !MSDOS && !__STDC__ */
+#endif	/* !USESTDARGH */
 	return(cputs2(buf));
 }
 

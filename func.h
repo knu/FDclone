@@ -14,8 +14,6 @@ extern int errno;
 
 #if	MSDOS
 #include "unixemu.h"
-#define	strpathcmp	strcasecmp2
-#define	strnpathcmp	strnicmp
 #else
 #include <sys/time.h>
 # ifdef	USEDIRECT
@@ -29,8 +27,6 @@ extern int errno;
 # ifdef	USEUTIME
 # include <utime.h>
 # endif
-#define	strpathcmp	strcmp
-#define	strnpathcmp	strncmp
 #endif
 
 #ifdef	USETIMEH
@@ -85,13 +81,23 @@ extern DIR *Xopendir __P_((char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern VOID Xrewinddir __P_((DIR *));
+#if	MSDOS
+extern int rawchdir __P_((char *));
+#else
+#define	rawchdir	chdir
+#endif
+#if	MSDOS && defined (_NODOSDRIVE)
+#define	_Xchdir		rawchdir
+#else
 extern int _Xchdir __P_((char *));
+#endif
 #ifdef	_NOROCKRIDGE
 #define	Xchdir		_Xchdir
 #else
 extern int Xchdir __P_((char *));
 #endif
-extern char *Xgetcwd __P_((char *, int));
+extern char *_Xgetwd __P_((char *));
+extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
 #define	_Xlstat(p, s)	(lstat(p, s) ? -1 : 0)
 extern int Xlstat __P_((char *, struct stat *));
@@ -133,7 +139,7 @@ extern int Xdup2 __P_((int, int));
 # ifdef	DJGPP
 #define	_Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
 # else
-#define	_Xmkdir(p, m)	(mkdir(p) ? -1 : 0)
+extern int _Xmkdir __P_((char *, int));
 # endif
 #define	_Xrmdir(p)	(rmdir(p) ? -1 : 0)
 #else
@@ -218,13 +224,11 @@ extern int mkdir2 __P_((char *, int));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
-extern int toupper2 __P_((int));
 extern char *strchr2 __P_((char *, int));
 extern char *strrchr2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int strncpy3 __P_((char *, char *, int *, int));
-extern int strcasecmp2 __P_((char *, char *));
 extern char *strstr2 __P_((char *, char *));
 extern int strlen2 __P_((char *));
 extern int strlen3 __P_((char *));
@@ -261,6 +265,7 @@ extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
 extern int underhome __P_((char *));
 extern int preparedir __P_((char *));
 extern int touchfile __P_((char *, time_t, time_t));
+extern VOID lostcwd __P_((char *));
 extern int cpfile __P_((char *, char *, struct stat *));
 extern int mvfile __P_((char *, char *, struct stat *));
 extern int mktmpdir __P_((char *));
@@ -353,11 +358,7 @@ extern int ujis2sjis __P_((char *, u_char *));
 extern int kanjiconv __P_((char *, char *, int, int));
 #endif
 extern int kanjiputs __P_((char *));
-#if	MSDOS || defined (__STDC__)
-extern int kanjiprintf(CONST char *, ...);
-#else
 extern int kanjiprintf __P_((CONST char *, ...));
-#endif
 extern int kanjiputs2 __P_((char *, int, int));
 
 /* input.c */
@@ -365,11 +366,7 @@ extern int intrkey __P_((VOID_A));
 extern int Xgetkey __P_((int));
 extern int cmdlinelen __P_((int));
 extern char *inputstr __P_((char *, int, int, char *, int));
-#if	MSDOS || defined (__STDC__)
-extern int yesno(CONST char *, ...);
-#else
 extern int yesno __P_((CONST char *, ...));
-#endif
 extern VOID warning __P_((int, char *));
 extern int selectstr __P_((int *, int, int, char *[], int []));
 

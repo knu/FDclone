@@ -42,23 +42,23 @@ extern short histno[];
 extern char *helpindex[];
 
 #ifndef	_NOARCHIVE
-static char *getext __P_((char *));
+static char *NEAR getext __P_((char *));
 static int setlaunch __P_((int, char *[], int));
 static int setarch __P_((int, char *[], int));
-static int extcmp __P_((char *, char *));
+static int NEAR extcmp __P_((char *, char *));
 static int printlaunch __P_((int, char *[], int));
 static int printarch __P_((int, char *[], int));
 #endif
-static int getcommand __P_((char *));
-static int getkeycode __P_((char *));
-static int freemacro __P_((int));
+static int NEAR getcommand __P_((char *));
+static int NEAR getkeycode __P_((char *));
+static int NEAR freemacro __P_((int));
 static int setkeybind __P_((int, char *[], int));
-static VOID printmacro __P_((int));
+static VOID NEAR printmacro __P_((int));
 static int printbind __P_((int, char *[], int));
 static int setalias __P_((int, char *[], int));
 static int unalias __P_((int, char *[], int));
 #if	!MSDOS && !defined (_NODOSDRIVE)
-static int _setdrive __P_((int, char *[], int));
+static int NEAR _setdrive __P_((int, char *[], int));
 static int setdrive __P_((int, char *[], int));
 static int unsetdrive __P_((int, char *[], int));
 static int printdrive __P_((int, char *[], int));
@@ -172,7 +172,7 @@ static char escapevalue[] = {0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b};
 
 
 #ifndef	_NOARCHIVE
-static char *getext(ext)
+static char *NEAR getext(ext)
 char *ext;
 {
 	char *tmp;
@@ -324,7 +324,7 @@ int comline;
 	return(0);
 }
 
-static int extcmp(s, ext)
+static int NEAR extcmp(s, ext)
 char *s, *ext;
 {
 	if (*s != '*' && *ext == '*') {
@@ -438,7 +438,7 @@ int comline;
 }
 #endif	/* !_NOARCHIVE */
 
-static int getcommand(cp)
+static int NEAR getcommand(cp)
 char *cp;
 {
 	int n;
@@ -454,7 +454,7 @@ char *cp;
 	return(n);
 }
 
-static int getkeycode(cp)
+static int NEAR getkeycode(cp)
 char *cp;
 {
 	int i, j, ch;
@@ -483,14 +483,11 @@ char *cp;
 			else ch = ((ch - '@') & 0x7f);
 			break;
 		case '@':
-			if (*cp >= 'a' && *cp <= 'z') ch = (*(cp++) | 0x80);
-			else if (*cp >= 'A' && *cp <= 'Z')
 #if	MSDOS
-				ch = ((*(cp++) + 'a' - 'A') | 0x80);
+			ch = (isalpha(*cp)) ? (tolower2(*(cp++)) | 0x80) : -1;
 #else
-				ch = (*(cp++) | 0x80);
+			ch = (isalpha(*cp)) ? (*(cp++) | 0x80) : -1;
 #endif
-			else ch = -1;
 			break;
 		case 'F':
 			if ((i = atoi2(cp)) >= 1 && i <= 20) {
@@ -510,7 +507,7 @@ char *cp;
 	return(ch);
 }
 
-static int freemacro(n)
+static int NEAR freemacro(n)
 int n;
 {
 	int i;
@@ -597,7 +594,7 @@ int comline;
 	return(0);
 }
 
-static VOID printmacro(n)
+static VOID NEAR printmacro(n)
 int n;
 {
 	if (bindlist[n].f_func <= NO_OPERATION)
@@ -631,9 +628,7 @@ int c;
 		if (c > 10) buf[i++] = (c / 10) + '0';
 		buf[i++] = (c % 10) + '0';
 	}
-	else if ((c & ~0x7f) == 0x80
-	&& (((c & 0x7f) >= 'a' && (c & 0x7f) <= 'z')
-	|| ((c & 0x7f) >= 'A' && (c & 0x7f) <= 'Z'))) {
+	else if ((c & ~0x7f) == 0x80 && isalpha(c & 0x7f)) {
 		buf[i++] = '@';
 		buf[i++] = c & 0x7f;
 	}
@@ -773,7 +768,7 @@ int comline;
 
 #if	!MSDOS && !defined (_NODOSDRIVE)
 /*ARGSUSED*/
-static int _setdrive(argc, argv, set)
+static int NEAR _setdrive(argc, argv, set)
 int argc;
 char *argv[];
 int set;

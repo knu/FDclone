@@ -76,10 +76,10 @@ typedef struct _mnt_t {
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
-static FILE *setmntent __P_((char *, char *));
-static mnt_t *getmntent2 __P_((FILE *, mnt_t *));
+static FILE *NEAR setmntent __P_((char *, char *));
+static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
 #define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
-#if	defined(USEMNTINFO) || defined(USEGETMNT)
+#if	defined (USEMNTINFO) || defined (USEGETMNT)
 #define	endmntent(fp)
 #else
 #define	endmntent(fp)		{ if (fp) free(fp); }
@@ -272,16 +272,16 @@ extern int needbavail;
 #define	MNTTYPE_FAT32	"fat32"	/* Win98 */
 #endif
 
-static int code2str __P_((char *, int));
-static int checkline __P_((int));
+static int NEAR code2str __P_((char *, int));
+static int NEAR checkline __P_((int));
 VOID help __P_((int));
-static int getfsinfo __P_((char *, statfs_t *, mnt_t *));
+static int NEAR getfsinfo __P_((char *, statfs_t *, mnt_t *));
 int writablefs __P_((char *));
 long getblocksize __P_((char *));
 char *inscomma __P_((char *, off_t, int, int));
-static int info1line __P_((int, char *, long, char *, char *));
+static int NEAR info1line __P_((int, char *, long, char *, char *));
 #if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
-static long calcKB __P_((long, long));
+static long NEAR calcKB __P_((long, long));
 #endif
 VOID getinfofs __P_((char *, long *, long *));
 int infofs __P_((char *));
@@ -297,16 +297,14 @@ static char *keystrlist[] = {
 	"Bs", "Tab", "Ret", "Esc"
 };
 
-static int code2str(buf, code)
+static int NEAR code2str(buf, code)
 char *buf;
 int code;
 {
 	buf = buf + strlen(buf);
 	if (code >= K_F(1) && code <= K_F(20))
 		sprintf(buf, "F%-6d", code - K_F0);
-	else if ((code & ~0x7f) == 0x80
-	&& (((code & 0x7f) >= 'a' && (code & 0x7f) <= 'z')
-	|| ((code & 0x7f) >= 'A' && (code & 0x7f) <= 'Z')))
+	else if ((code & ~0x7f) == 0x80 && isalpha(code & 0x7f))
 		sprintf(buf, "Alt-%c  ", code & 0x7f);
 	else if (code == K_UP) sprintf(buf, "%-7.7s", UPAR_K);
 	else if (code == K_DOWN) sprintf(buf, "%-7.7s", DWNAR_K);
@@ -327,7 +325,7 @@ int code;
 	return(1);
 }
 
-static int checkline(y)
+static int NEAR checkline(y)
 int y;
 {
 	if (y >= LFILEBOTTOM) {
@@ -400,7 +398,7 @@ int mode;
 
 #ifdef	USEMNTCTL
 /*ARGSUSED*/
-static FILE *setmntent(file, mode)
+static FILE *NEAR setmntent(file, mode)
 char *file, *mode;
 {
 	char *buf;
@@ -412,7 +410,7 @@ char *file, *mode;
 	return((FILE *)buf);
 }
 
-static mnt_t *getmntent2(fp, mntp)
+static mnt_t *NEAR getmntent2(fp, mntp)
 FILE *fp;
 mnt_t *mntp;
 {
@@ -472,7 +470,7 @@ mnt_t *mntp;
 
 #if	defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETFSSTAT)
 /*ARGSUSED*/
-static FILE *setmntent(file, mode)
+static FILE *NEAR setmntent(file, mode)
 char *file, *mode;
 {
 	struct statfs *buf;
@@ -500,7 +498,7 @@ char *file, *mode;
 #define	MNT_RDONLY	M_RDONLY
 #endif
 
-static mnt_t *getmntent2(fp, mntp)
+static mnt_t *NEAR getmntent2(fp, mntp)
 FILE *fp;
 mnt_t *mntp;
 {
@@ -569,7 +567,7 @@ mnt_t *mntp;
 
 #ifdef	USEGETMNT
 /*ARGSUSED*/
-static FILE *setmntent(file, mode)
+static FILE *NEAR setmntent(file, mode)
 char *file, *mode;
 {
 	mnt_ptr = 0;
@@ -577,7 +575,7 @@ char *file, *mode;
 }
 
 /*ARGSUSED*/
-static mnt_t *getmntent2(fp, mntp)
+static mnt_t *NEAR getmntent2(fp, mntp)
 FILE *fp;
 mnt_t *mntp;
 {
@@ -611,7 +609,7 @@ mnt_t *mntp;
 }
 #endif	/* USEGETMNT */
 
-static int getfsinfo(path, fsbuf, mntbuf)
+static int NEAR getfsinfo(path, fsbuf, mntbuf)
 char *path;
 statfs_t *fsbuf;
 mnt_t *mntbuf;
@@ -704,7 +702,7 @@ mnt_t *mntbuf;
 		fsbuf -> fd_req.bfreen = calcKB(fsbuf -> f_bsize,
 			*((long *)&(buf[sizeof(long) * 2])));
 #else	/* !USEFSDATA */
-#ifdef	USESTATVFS
+#ifdef	USESTATVFSH
 		fsbuf -> f_frsize = 0;
 #endif
 		fsbuf -> f_blocks = *((long *)&(buf[sizeof(long) * 1]));
@@ -851,7 +849,7 @@ int digit, max;
 	return(buf);
 }
 
-static int info1line(y, ind, n, s, unit)
+static int NEAR info1line(y, ind, n, s, unit)
 int y;
 char *ind;
 long n;
@@ -877,7 +875,7 @@ char *s, *unit;
 }
 
 #if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
-static long calcKB(block, byte)
+static long NEAR calcKB(block, byte)
 long block, byte;
 {
 	if (block < 0 || byte <= 0) return(-1);

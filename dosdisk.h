@@ -73,7 +73,8 @@
 #endif
 
 #if	(defined (i386) || defined (__i386) || defined (__i386__)) \
-&& (defined (LINUX) || defined (JCCBSD) || defined (FREEBSD) \
+&& (defined (SOLARIS) || defined (LINUX) \
+|| defined (JCCBSD) || defined (FREEBSD) \
 || defined (NETBSD) ||	defined (BSDOS) || defined (BOW) \
 || defined (OPENBSD) || defined (ORG_386BSD))
 #define	HDDMOUNT

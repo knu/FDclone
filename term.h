@@ -143,6 +143,7 @@ extern VOID_T (*keywaitfunc)__P_((VOID_A));
 extern int usegetcursor;
 #endif
 extern int ttyio;
+extern FILE *ttyout;
 
 #if	MSDOS
 #define	putterm(s)	cputs2(s)
@@ -177,11 +178,7 @@ extern int putch2 __P_((int));
 extern int putch3 __P_((int));
 #endif
 extern int cputs2 __P_((char *));
-#if	MSDOS || defined (__STDC__)
-extern int cprintf2(CONST char *, ...);
-#else
 extern int cprintf2 __P_((CONST char *, ...));
-#endif
 extern int kbhit2 __P_((u_long));
 extern int getch2 __P_((VOID_A));
 extern int getkey2 __P_((int));

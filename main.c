@@ -19,7 +19,7 @@ extern char *adjustfname __P_((char *));
 # else
 # include <dos.h>
 #  ifdef	__TURBOC__
-extern unsigned _stklen = 8000;
+extern unsigned _stklen = 0x6800;
 #  define	harderr_t	void
 #  else
 #  define	harderr_t	int
@@ -95,7 +95,7 @@ extern char *rockridgepath;
 #if	MSDOS && !defined (DJGPP)
 static harderr_t far criticalerror __P_((u_short, u_short, u_short far *));
 #endif
-static VOID signalexit __P_((int));
+static VOID NEAR signalexit __P_((int));
 #ifdef	SIGALRM
 static sigarg_t ignore_alrm __P_((VOID_A));
 #endif
@@ -153,10 +153,10 @@ static sigarg_t wintr __P_((VOID_A));
 #ifdef	SIGALRM
 static sigarg_t printtime __P_((VOID_A));
 #endif
-static int doexec __P_((char *, char *, int, char *));
-static int getoption __P_((int, char *[]));
-static VOID setexecname __P_((char *));
-static VOID setexecpath __P_((char *));
+static int NEAR doexec __P_((char *, char *, int, char *));
+static int NEAR getoption __P_((int, char *[]));
+static VOID NEAR setexecname __P_((char *));
+static VOID NEAR setexecpath __P_((char *));
 
 char *origpath = NULL;
 char *progpath = NULL;
@@ -185,6 +185,9 @@ u_short far *devhdr;
 VOID error(s)
 char *s;
 {
+	int duperrno;
+
+	duperrno = errno;
 	forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
 	dosallclose();
@@ -193,11 +196,12 @@ char *s;
 	endterm();
 	inittty(1);
 	fputc('\007', stderr);
+	errno = duperrno;
 	perror(s);
 	exit(2);
 }
 
-static VOID signalexit(sig)
+static VOID NEAR signalexit(sig)
 int sig;
 {
 	signal(sig, SIG_IGN);
@@ -495,7 +499,7 @@ VOID title(VOID_A)
 #endif
 }
 
-static int doexec(command, file, n, line)
+static int NEAR doexec(command, file, n, line)
 char *command, *file;
 int n;
 char *line;
@@ -601,7 +605,7 @@ int exist;
 	return(er ? -1 : 0);
 }
 
-static int getoption(argc, argv)
+static int NEAR getoption(argc, argv)
 int argc;
 char *argv[];
 {
@@ -632,7 +636,7 @@ char *argv[];
 	return(i);
 }
 
-static VOID setexecname(argv)
+static VOID NEAR setexecname(argv)
 char *argv;
 {
 	char buf[MAXNAMLEN + 1];
@@ -652,7 +656,7 @@ char *argv;
 	tmpfilename = strdup2(buf);
 }
 
-static VOID setexecpath(argv)
+static VOID NEAR setexecpath(argv)
 char *argv;
 {
 	char *cp, buf[MAXPATHLEN];

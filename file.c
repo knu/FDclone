@@ -59,15 +59,15 @@ extern char *tmpfilename;
 				: 	((((ent) - dirsize) \
 					& ~(boundary - 1)) - 1))
 
-static int safewrite __P_((int, char *, int));
+static int NEAR safewrite __P_((int, char *, int));
 #ifndef	_NOWRITEFS
-static int k_strlen __P_((char *));
-static int nofile __P_((char *));
-static char *maketmpfile __P_((int, int, char *, char *));
+static int NEAR k_strlen __P_((char *));
+static int NEAR nofile __P_((char *));
+static char *NEAR maketmpfile __P_((int, int, char *, char *));
 #if	!MSDOS
-static char *getentnum __P_((char *, int, int));
+static char *NEAR getentnum __P_((char *, int, int));
 #endif
-static VOID restorefile __P_((char *, char *, int));
+static VOID NEAR restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir = NULL;
@@ -140,27 +140,29 @@ namelist *list;
 	if (Xlstat(list -> name, &lst) < 0
 	|| stat2(list -> name, &st) < 0) return(-1);
 #endif
-	list -> st_mode = lst.st_mode;
 	list -> flags = 0;
 	if ((st.st_mode & S_IFMT) == S_IFDIR) list -> flags |= F_ISDIR;
 	if ((lst.st_mode & S_IFMT) == S_IFLNK) list -> flags |= F_ISLNK;
+
+	if (isdisplnk(dispmode))
+		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
 #if	!MSDOS
 	if ((lst.st_mode & S_IFMT) == S_IFCHR
 	|| (lst.st_mode & S_IFMT) == S_IFBLK) list -> flags |= F_ISDEV;
 #endif
 
-	if (isdisplnk(dispmode))
-		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
-
+	list -> st_mode = lst.st_mode;
 	list -> st_nlink = lst.st_nlink;
-#if	!MSDOS
+#if	MSDOS
+	list -> st_size = lst.st_size;
+#else
 	list -> st_uid = lst.st_uid;
 	list -> st_gid = lst.st_gid;
+	list -> st_size = isdev(list) ? lst.st_rdev : lst.st_size;
 #endif
 #ifdef	HAVEFLAGS
 	list -> st_flags = lst.st_flags;
 #endif
-	list -> st_size = isdev(list) ? lst.st_rdev : lst.st_size;
 	list -> st_mtim = lst.st_mtime;
 	list -> flags |=
 #if	MSDOS
@@ -217,22 +219,24 @@ CONST VOID_P vp2;
 			tmp = strlen(list1 -> name) - strlen(list2 -> name);
 			if (tmp != 0) break;
 		case 1:
-			tmp = strpathcmp(list1 -> name, list2 -> name);
+			tmp = strpathcmp2(list1 -> name, list2 -> name);
 			break;
 		case 2:
 			if (isdir(list1)) {
-				tmp = strpathcmp(list1 -> name, list2 -> name);
+				tmp = strpathcmp2(list1 -> name,
+					list2 -> name);
 				break;
 			}
 			if ((cp1 = strrchr(list1 -> name, '.'))) cp1++;
 			else cp1 = "";
 			if ((cp2 = strrchr(list2 -> name, '.'))) cp2++;
 			else cp2 = "";
-			tmp = strpathcmp(cp1, cp2);
+			tmp = strpathcmp2(cp1, cp2);
 			break;
 		case 3:
 			if (isdir(list1))
-				tmp = strpathcmp(list1 -> name, list2 -> name);
+				tmp = strpathcmp2(list1 -> name,
+					list2 -> name);
 			else tmp = (long)(list1 -> st_size)
 				- (long)(list2 -> st_size);
 			break;
@@ -264,7 +268,7 @@ CONST VOID_P vp2;
 	if (!(((treelist *)vp2) -> name)) return(-1);
 	switch (sorton & 7) {
 		case 1:
-			tmp = strpathcmp(((treelist *)vp1) -> name,
+			tmp = strpathcmp2(((treelist *)vp1) -> name,
 				((treelist *)vp2) -> name);
 			break;
 		case 2:
@@ -274,7 +278,7 @@ CONST VOID_P vp2;
 			if ((cp2 = strrchr(((treelist *)vp2) -> name, '.')))
 				cp2++;
 			else cp2 = "";
-			tmp = strpathcmp(cp1, cp2);
+			tmp = strpathcmp2(cp1, cp2);
 			break;
 		case 3:
 		case 4:
@@ -325,37 +329,23 @@ int underhome(buf)
 char *buf;
 {
 	static char *homedir = NULL;
-	char *cp, *cwd;
+	char *cp, cwd[MAXPATHLEN];
 	int len;
-#if	!MSDOS
-	struct passwd *pwd;
-#endif
 
 #if	MSDOS
 	if (!buf) return(1);
 #endif
-	cwd = getwd2();
+	if (!Xgetwd(cwd)) {
+		lostcwd(cwd);
+		return(-1);
+	}
 	if (!homedir) {
-		if (!(homedir = (char *)getenv("HOME"))) {
-#if	MSDOS
-			homedir = "";
-#else
-			if (!(pwd = getpwuid(getuid()))) {
-				free(cwd);
-				return(-1);
-			}
-			homedir = pwd -> pw_dir;
-#endif
-		}
+		if (!(cp = gethomedir())) return(-1);
 		if (
 #ifndef	_NODOSDRIVE
-		dospath2(homedir) ||
+		dospath2(cp) ||
 #endif
-		_chdir2(homedir) < 0) {
-			homedir = NULL;
-			free(cwd);
-			return(-1);
-		}
+		_chdir2(cp) < 0) return(-1);
 		homedir = getwd2();
 		if (_chdir2(cwd) < 0) error(cwd);
 	}
@@ -373,7 +363,6 @@ char *buf;
 		cp = cwd + len;
 		if (buf) strcpy(buf, cp);
 	}
-	free(cwd);
 #ifdef	DEBUG
 	free(homedir);
 	homedir = NULL;
@@ -437,7 +426,30 @@ time_t atime, mtime;
 #endif
 }
 
-static int safewrite(fd, buf, size)
+VOID lostcwd(path)
+char *path;
+{
+	char *cp, buf[MAXPATHLEN];
+	int duperrno;
+
+	duperrno = errno;
+	if (!path) path = buf;
+
+	if (path != fullpath && !rawchdir(fullpath) && _Xgetwd(path))
+		cp = NOCWD_K;
+	else {
+		if ((cp = gethomedir()) && !rawchdir(cp) && _Xgetwd(path))
+			cp = GOHOM_K;
+		else if (!rawchdir(_SS_) && _Xgetwd(path)) cp = GOROT_K;
+		else error(_SS_);
+		strncpy2(fullpath, path, MAXPATHLEN - 1);
+	}
+
+	warning(0, cp);
+	errno = duperrno;
+}
+
+static int NEAR safewrite(fd, buf, size)
 int fd;
 char *buf;
 int size;
@@ -464,7 +476,7 @@ struct stat *stp;
 	int i, n, fd1, fd2, tmperrno;
 
 	if ((stp -> st_mode & S_IFMT) == S_IFLNK) {
-		if ((i = Xreadlink(src, buf, BUFSIZ)) < 0) return(-1);
+		if ((i = Xreadlink(src, buf, BUFSIZ - 1)) < 0) return(-1);
 		buf[i] = '\0';
 		return(Xsymlink(buf, dest));
 	}
@@ -548,26 +560,25 @@ char *dir;
 	char *cp, path[MAXPATHLEN];
 	int no;
 
-	if (!deftmpdir || !*deftmpdir || !dir || !*dir) {
+	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename
+	|| !dir || !*dir) {
 		errno = ENOENT;
 		return(-1);
 	}
 	realpath2(deftmpdir, path, 1);
 	free(deftmpdir);
 #if	MSDOS && !defined (_NODOSDRIVE)
-# ifdef	USEGETWD
-	if (checkdrive(toupper2(path[0]) - 'A')) getwd(path);
-# else
-	if (checkdrive(toupper2(path[0]) - 'A')) getcwd(path, MAXPATHLEN);
-# endif
+	if (checkdrive(toupper2(path[0]) - 'A'))
+		if (!_Xgetwd(path)) {
+			lostcwd(path);
+			deftmpdir = NULL;
+			return(-1);
+		}
 #endif
 	deftmpdir = strdup2(path);
 #if	MSDOS
 	no = getcurdrv();
-	if (no >= 'a' && no <= 'z' && *path >= 'A' && *path <= 'Z')
-		*path += 'a' - 'A';
-	if (no >= 'A' && no <= 'Z' && *path >= 'a' && *path <= 'z')
-		*path += 'A' - 'a';
+	*path = (no >= 'A' && no <= 'Z') ? toupper2(*path) : tolower2(*path);
 #endif
 	strcpy(strcatdelim(path), tmpfilename);
 	if (_Xmkdir(path, 0777) < 0 && errno != EEXIST) return(-1);
@@ -591,6 +602,10 @@ char *dir;
 	char path[MAXPATHLEN];
 
 	if (dir && *dir && _Xrmdir(dir) < 0) return(-1);
+	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename) {
+		errno = ENOENT;
+		return(-1);
+	}
 	strcatdelim2(path, deftmpdir, tmpfilename);
 	if (_Xrmdir(path) < 0
 	&& errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
@@ -652,7 +667,7 @@ char *dir, *subdir, *file;
 		dosdrv = -1;
 	}
 #endif
-	if (_chdir2(fullpath) < 0) error(fullpath);
+	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	if (dir) {
 		if (rmtmpdir(dir) < 0) warning(-1, dir);
 		free(dir);
@@ -671,8 +686,8 @@ char *dir, *file;
 	if (!dir || !*dir || !file || !*file) return(0);
 	strcatdelim2(buf, dir, file);
 
-	if (chdir(buf) != 0) return(0);
-	chdir(_SS_);
+	if (rawchdir(buf) != 0) return(0);
+	rawchdir(_SS_);
 #if	MSDOS
 	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);
 #else
@@ -758,7 +773,7 @@ char *file;
 #endif	/* !_NODOSDRIVE */
 
 #ifndef	_NOWRITEFS
-static int k_strlen(s)
+static int NEAR k_strlen(s)
 char *s;
 {
 	int i;
@@ -767,7 +782,7 @@ char *s;
 	return(i);
 }
 
-static int nofile(file)
+static int NEAR nofile(file)
 char *file;
 {
 #if	MSDOS && !defined (_NOUSELFN)
@@ -780,7 +795,7 @@ char *file;
 	return(0);
 }
 
-static char *maketmpfile(len, dos, tmpdir, old)
+static char *NEAR maketmpfile(len, dos, tmpdir, old)
 int len, dos;
 char *tmpdir, *old;
 {
@@ -852,7 +867,7 @@ char *tmpdir, *old;
 }
 
 #if	!MSDOS
-static char *getentnum(dir, bsiz, fs)
+static char *NEAR getentnum(dir, bsiz, fs)
 char *dir;
 int bsiz, fs;
 {
@@ -879,7 +894,7 @@ int bsiz, fs;
 }
 #endif
 
-static VOID restorefile(dir, path, fnamp)
+static VOID NEAR restorefile(dir, path, fnamp)
 char *dir, *path;
 int fnamp;
 {
@@ -964,7 +979,10 @@ int max, fs;
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	waitmes();
 
-	if (!(dirp = _Xopendir("."))) error(".");
+	if (!(dirp = _Xopendir("."))) {
+		lostcwd(path);
+		return;
+	}
 	i = ent = 0;
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;

@@ -62,6 +62,14 @@
 # if	defined (BSD4) || defined (BSD43)
 # include <sys/disklabel.h>
 # else
+#  ifdef	SOLARIS
+#  include <sys/dkio.h>
+#  include <sys/vtoc.h>
+#  define	DIOCGDINFO	DKIOCGGEOM
+#  define	disklabel	dk_geom
+#  define	d_ntracks	dkg_nhead
+#  define	d_nsectors	dkg_nsect
+#  endif
 #  ifdef	LINUX
 #  include <linux/hdreg.h>
 #  define	DIOCGDINFO	HDIO_GETGEO
@@ -166,7 +174,6 @@ extern int errno;
 #endif
 
 #ifdef	FD
-extern int toupper2 __P_((int));
 extern int _dospath __P_((char *));
 extern int isdelim __P_((char *, int));
 #if	MSDOS || !defined (_NODOSDRIVE)
@@ -179,9 +186,13 @@ extern char *strrdelim __P_((char *, int));
 extern char *strrdelim2 __P_((char *, char *));
 #if	MSDOS
 extern char *strcatdelim __P_((char *));
+#define	toupper2	toupper
+#define	tolower2	tolower
+#else
+extern int toupper2 __P_((int));
+extern int tolower2 __P_((int));
 #endif
 extern char *strcatdelim2 __P_((char *, char *, char *));
-extern int strcasecmp2 __P_((char *, char *));
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
 #else	/* !FD */
@@ -199,132 +210,132 @@ extern time_t timelocal2 __P_((struct tm *));
 			| (long)((((u_char *)(cp))[2]) << (CHAR_BIT * 1)) \
 			| (long)((((u_char *)(cp))[1]) << (CHAR_BIT * 2)) \
 			| (long)((((u_char *)(cp))[0]) << (CHAR_BIT * 3)) )
-static int toupper2 __P_((int));
 #define	_dospath(s)	((isalpha(*(s)) && (s)[1] == ':') ? *(s) : 0)
-static int isdelim __P_((char *, int));
+static int NEAR isdelim __P_((char *, int));
 #if	MSDOS
-static char *strdelim __P_((char *, int));
-static char *strrdelim __P_((char *, int));
+static char *NEAR strdelim __P_((char *, int));
+static char *NEAR strrdelim __P_((char *, int));
 #else
 #define	strdelim(s, d)	strchr(s, _SC_)
 #define	strrdelim(s, d)	strrchr(s, _SC_)
 #endif
-static char *strrdelim2 __P_((char *, char *));
+static char *NEAR strrdelim2 __P_((char *, char *));
 #if	MSDOS
-static char *strcatdelim __P_((char *));
+static char *NEAR strcatdelim __P_((char *));
+#define	toupper2	toupper
+#define	tolower2	tolower
+#else
+static int NEAR toupper2 __P_((int));
+static int NEAR tolower2 __P_((int));
 #endif
-static char *strcatdelim2 __P_((char *, char *, char *));
-static int strcasecmp2 __P_((char *, char *));
-static int isdotdir __P_((char *));
+static char *NEAR strcatdelim2 __P_((char *, char *, char *));
+static int NEAR isdotdir __P_((char *));
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
-static int tmcmp __P_((struct tm *, struct tm *));
+static int NEAR tmcmp __P_((struct tm *, struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long gettimezone __P_((struct tm *, time_t));
+static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
-static time_t timelocal2 __P_((struct tm *));
+static time_t NEAR timelocal2 __P_((struct tm *));
 #endif	/* !FD */
 
+#if	MSDOS
+#define	strcasecmp2	stricmp
+#else
+static int NEAR strcasecmp2 __P_((char *, char *));
+#endif
 #ifdef	LINUX
-static off64_t lseek64 __P_((int, off64_t, int));
+static off64_t NEAR lseek64 __P_((int, off64_t, int));
 #else
 #define	lseek64	lseek
 #endif
 #if	!MSDOS
-static int sectseek __P_((devstat *, u_long));
+static int NEAR sectseek __P_((devstat *, u_long));
 #endif
-static int realread __P_((devstat *, u_long, u_char *, int));
-static int realwrite __P_((devstat *, u_long, u_char *, int));
-static int killcache __P_((devstat *, int, int));
-static int flushcache __P_((devstat *));
-static int shiftcache __P_((devstat *, int, int));
-static int cachecpy __P_((int, int, int, int));
-static int uniqcache __P_((devstat *, int, u_long, u_long));
-static int appendcache __P_((int, devstat *, u_long, u_char *, int, int));
-static int insertcache __P_((int, devstat *, u_long, u_char *, int, int));
-static int overwritecache __P_((int, devstat *, u_long, u_char *, int, int));
-static int savecache __P_((devstat *, u_long, u_char *, int, int));
-static int loadcache __P_((devstat *, u_long, u_char *, int));
-static long sectread __P_((devstat *, u_long, u_char *, int));
-static long sectwrite __P_((devstat *, u_long, u_char *, int));
-static int availfat __P_((devstat *));
+static int NEAR realread __P_((devstat *, u_long, u_char *, int));
+static int NEAR realwrite __P_((devstat *, u_long, u_char *, int));
+static int NEAR killcache __P_((devstat *, int, int));
+static int NEAR flushcache __P_((devstat *));
+static int NEAR shiftcache __P_((devstat *, int, int));
+static int NEAR cachecpy __P_((int, int, int, int));
+static int NEAR uniqcache __P_((devstat *, int, u_long, u_long));
+static int NEAR appendcache __P_((int, devstat *, u_long, u_char *, int, int));
+static int NEAR insertcache __P_((int, devstat *, u_long, u_char *, int, int));
+static int NEAR overwritecache __P_((int, devstat *,
+		u_long, u_char *, int, int));
+static int NEAR savecache __P_((devstat *, u_long, u_char *, int, int));
+static int NEAR loadcache __P_((devstat *, u_long, u_char *, int));
+static long NEAR sectread __P_((devstat *, u_long, u_char *, int));
+static long NEAR sectwrite __P_((devstat *, u_long, u_char *, int));
+static int NEAR availfat __P_((devstat *));
 #if	!MSDOS
-static int readfat __P_((devstat *));
+static int NEAR readfat __P_((devstat *));
 #endif
-static int writefat __P_((devstat *));
-static long getfatofs __P_((devstat *, long));
-static u_char *readtmpfat __P_((devstat *, long, int));
-static long getfatent __P_((devstat *, long));
-static int putfatent __P_((devstat *, long, long));
-static u_long clust2sect __P_((devstat *, long));
-static long clust32 __P_((devstat *, dent_t *));
-static long newclust __P_((devstat *));
-static long clustread __P_((devstat *, u_char *, long));
-static long clustwrite __P_((devstat *, u_char *, long));
-static long clustexpand __P_((devstat *, long, int));
-static int clustfree __P_((devstat *, long));
+static int NEAR writefat __P_((devstat *));
+static long NEAR getfatofs __P_((devstat *, long));
+static u_char *NEAR readtmpfat __P_((devstat *, long, int));
+static long NEAR getfatent __P_((devstat *, long));
+static int NEAR putfatent __P_((devstat *, long, long));
+static u_long NEAR clust2sect __P_((devstat *, long));
+static long NEAR clust32 __P_((devstat *, dent_t *));
+static long NEAR newclust __P_((devstat *));
+static long NEAR clustread __P_((devstat *, u_char *, long));
+static long NEAR clustwrite __P_((devstat *, u_char *, long));
+static long NEAR clustexpand __P_((devstat *, long, int));
+static int NEAR clustfree __P_((devstat *, long));
 #if	!MSDOS
-static int _readbpb __P_((devstat *, bpb_t *));
+static int NEAR _readbpb __P_((devstat *, bpb_t *));
 #endif
-static int readbpb __P_((devstat *, int));
+static int NEAR readbpb __P_((devstat *, int));
 #ifdef	HDDMOUNT
-static off64_t *_readpt __P_((off64_t, off64_t, int, int, int, int));
+static off64_t *NEAR _readpt __P_((off64_t, off64_t, int, int, int, int));
 #endif
-static int opendev __P_((int));
-static int closedev __P_((int));
-static int checksum __P_((char *));
-static u_short unifysjis __P_((u_short, int));
-static u_short cnvunicode __P_((u_short, int));
-static u_short lfnencode __P_((u_char, u_char));
-static u_short lfndecode __P_((u_char, u_char));
+static int NEAR opendev __P_((int));
+static int NEAR closedev __P_((int));
+static int NEAR checksum __P_((char *));
+static u_short NEAR unifysjis __P_((u_short, int));
+static u_short NEAR cnvunicode __P_((u_short, int));
+static u_short NEAR lfnencode __P_((u_char, u_char));
+static u_short NEAR lfndecode __P_((u_char, u_char));
 #if	!MSDOS
-static int transchar __P_((int));
-static int detranschar __P_((int));
+static int NEAR transchar __P_((int));
+static int NEAR detranschar __P_((int));
 #endif
-static int sfntranschar __P_((int));
-static int cmpdospath __P_((char *, char *, int, int));
-static char *getdosname __P_((char *, char *, char *));
-static char *putdosname __P_((char *, char *, int));
-static u_short getdosmode __P_((u_char));
-static u_char putdosmode __P_((u_short));
-static time_t getdostime __P_((u_short, u_short));
-static int putdostime __P_((u_char *, time_t));
-static int getdrive __P_((char *));
-static int parsepath __P_((char *, char *, int));
-static int seekdent __P_((dosDIR *, dent_t *, long, u_short));
-static int readdent __P_((dosDIR *, dent_t *, int));
-static dosDIR *_dosopendir __P_((char *, char *, int));
-static int _dosclosedir __P_((dosDIR *));
-static struct dirent *_dosreaddir __P_((dosDIR *, int));
-static struct dirent *finddir __P_((dosDIR *, char *, int, int));
-static dosDIR *splitpath __P_((char **, char *, int));
-static int getdent __P_((char *, int *));
-static int writedent __P_((int));
-static int expanddent __P_((int));
-static int creatdent __P_((char *, int));
-static int unlinklfn __P_((int, long, u_short, int));
-static int dosfilbuf __P_((int, int));
-static int dosflsbuf __P_((int));
-static int type2flags __P_((char *));
+static int NEAR sfntranschar __P_((int));
+static int NEAR cmpdospath __P_((char *, char *, int, int));
+static char *NEAR getdosname __P_((char *, char *, char *));
+static char *NEAR putdosname __P_((char *, char *, int));
+static u_short NEAR getdosmode __P_((u_char));
+static u_char NEAR putdosmode __P_((u_short));
+static time_t NEAR getdostime __P_((u_short, u_short));
+static int NEAR putdostime __P_((u_char *, time_t));
+static int NEAR getdrive __P_((char *));
+static int NEAR parsepath __P_((char *, char *, int));
+static int NEAR seekdent __P_((dosDIR *, dent_t *, long, u_short));
+static int NEAR readdent __P_((dosDIR *, dent_t *, int));
+static dosDIR *NEAR _dosopendir __P_((char *, char *, int));
+static int NEAR _dosclosedir __P_((dosDIR *));
+static struct dirent *NEAR _dosreaddir __P_((dosDIR *, int));
+static struct dirent *NEAR finddir __P_((dosDIR *, char *, int, int));
+static dosDIR *NEAR splitpath __P_((char **, char *, int));
+static int NEAR getdent __P_((char *, int *));
+static int NEAR writedent __P_((int));
+static int NEAR expanddent __P_((int));
+static int NEAR creatdent __P_((char *, int));
+static int NEAR unlinklfn __P_((int, long, u_short, int));
+static int NEAR dosfilbuf __P_((int, int));
+static int NEAR dosflsbuf __P_((int));
+static int NEAR type2flags __P_((char *));
 
 #if	MSDOS
 int dependdosfunc = 0;
 #else
 devinfo fdtype[MAXDRIVEENTRY] = {
-#if	defined (SOLARIS)
-# if	defined (i386)
-	{'A', "/dev/rfd0a", 2, 18, 80},
-	{'A', "/dev/rfd0c", 2, 9, 80},
-	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
-# endif
-#endif
-#if	defined (SUN_OS)
-# if	defined (sparc)
+#if	defined (SOLARIS) || defined (SUN_OS)
 	{'A', "/dev/rfd0c", 2, 18, 80},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
-# endif
 #endif
 #if	defined (NEWS_OS3) || defined (NEWS_OS4)
 # if	defined (news800) || defined (news900) \
@@ -408,6 +419,11 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
+#endif
+#if	defined (OPENBSD)
+	{'A', "/dev/rfd0Bc", 2, 18, 80},
+	{'A', "/dev/rfd0Fc", 2, 9, 80},
+	{'A', "/dev/rfd0Fc", 2, 8 + 100, 80},
 #endif
 #if	defined (ORG_386BSD)
 # if	defined (i386)
@@ -498,16 +514,80 @@ static sfntable_t sfntable[] = {
 	{0xfa5b, 0xfa5b, 0x81e6}
 };
 #define	SFNTBLSIZ	(sizeof(sfntable) / sizeof(sfntable_t))
+#if	!defined (FD) && !MSDOS
+static u_char uppercase[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+	0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+	0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+	0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+	0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+	0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+	0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+	0x60, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+	0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+	0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+	0x48, 0x49, 0x4a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+	0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+	0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+	0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+	0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+	0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+	0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+	0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+	0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+	0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+	0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+	0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+	0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+};
+static u_char lowercase[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+	0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+	0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+	0x40, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+	0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+	0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+	0x78, 0x79, 0x7a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+	0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+	0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+	0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+	0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+	0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+	0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+	0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+	0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+	0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+	0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+	0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+	0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+	0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+	0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+	0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+	0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+};
+#endif	/* !FD && !MSDOS */
 
 
 #ifndef	FD
-static int toupper2(c)
-int c;
-{
-	return((c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c);
-}
-
-static int isdelim(s, ptr)
+static int NEAR isdelim(s, ptr)
 char *s;
 int ptr;
 {
@@ -529,7 +609,7 @@ int ptr;
 }
 
 #if	MSDOS
-static char *strdelim(s, d)
+static char *NEAR strdelim(s, d)
 char *s;
 int d;
 {
@@ -543,7 +623,7 @@ int d;
 	return(NULL);
 }
 
-static char *strrdelim(s, d)
+static char *NEAR strrdelim(s, d)
 char *s;
 int d;
 {
@@ -560,7 +640,7 @@ int d;
 }
 #endif	/* MSDOS */
 
-static char *strrdelim2(s, eol)
+static char *NEAR strrdelim2(s, eol)
 char *s, *eol;
 {
 #if	MSDOS
@@ -580,7 +660,7 @@ char *s, *eol;
 }
 
 #if	MSDOS
-static char *strcatdelim(s)
+static char *NEAR strcatdelim(s)
 char *s;
 {
 	char *cp;
@@ -600,9 +680,21 @@ char *s;
 	*(++cp) = '\0';
 	return(cp);
 }
+#else	/* !MSDOS */
+static int NEAR toupper2(c)
+int c;
+{
+	return(uppercase[(u_char)c]);
+}
+
+static int NEAR tolower2(c)
+int c;
+{
+	return(lowercase[(u_char)c]);
+}
 #endif	/* MSDOS */
 
-static char *strcatdelim2(buf, s1, s2)
+static char *NEAR strcatdelim2(buf, s1, s2)
 char *buf, *s1, *s2;
 {
 	char *cp;
@@ -648,17 +740,7 @@ char *buf, *s1, *s2;
 	return(cp);
 }
 
-static int strcasecmp2(s1, s2)
-char *s1, *s2;
-{
-	int c1, c2;
-
-	while ((c1 = toupper2(*s1)) == (c2 = toupper2(*(s2++))))
-		if (!*(s1++)) return(0);
-	return(c1 - c2);
-}
-
-static int isdotdir(name)
+static int NEAR isdotdir(name)
 char *name;
 {
 	if (name[0] == '.'
@@ -668,7 +750,7 @@ char *name;
 
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
-static int tmcmp(tm1, tm2)
+static int NEAR tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;
 {
 	if (tm1 -> tm_year != tm2 -> tm_year)
@@ -686,7 +768,7 @@ struct tm *tm1, *tm2;
 #endif	/* !MSDOS && !NOTZFILEH && !USEMKTIME && !USETIMELOCAL */
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long gettimezone(tm, t)
+static long NEAR gettimezone(tm, t)
 struct tm *tm;
 time_t t;
 {
@@ -798,7 +880,7 @@ time_t t;
 }
 #endif	/* !USEMKTIME && !USETIMELOCAL */
 
-static time_t timelocal2(tm)
+static time_t NEAR timelocal2(tm)
 struct tm *tm;
 {
 #ifdef	USEMKTIME
@@ -847,6 +929,24 @@ struct tm *tm;
 }
 #endif	/* !FD */
 
+#if	!MSDOS
+static int NEAR strcasecmp2(s1, s2)
+char *s1, *s2;
+{
+	int c1, c2;
+
+	for (;;) {
+		c1 = toupper2(*s1);
+		c2 = toupper2(*s2);
+		if (c1 != c2) return(c1 - c2);
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	return(0);
+}
+#endif
+
 #ifdef	LINUX
 static _syscall5(int, _llseek,
 	unsigned int, fd,
@@ -855,7 +955,7 @@ static _syscall5(int, _llseek,
 	off64_t *, result,
 	unsigned int, whence);
 
-static off64_t lseek64(fd, offset, whence)
+static off64_t NEAR lseek64(fd, offset, whence)
 int fd;
 off64_t offset;
 int whence;
@@ -872,7 +972,7 @@ int whence;
 #endif	/* LINUX */
 
 #if	!MSDOS
-static int sectseek(devp, sect)
+static int NEAR sectseek(devp, sect)
 devstat *devp;
 u_long sect;
 {
@@ -895,7 +995,7 @@ u_long sect;
 }
 #endif	/* !MSDOS */
 
-static int realread(devp, sect, buf, n)
+static int NEAR realread(devp, sect, buf, n)
 devstat *devp;
 u_long sect;
 u_char *buf;
@@ -923,7 +1023,7 @@ int n;
 	return(0);
 }
 
-static int realwrite(devp, sect, buf, n)
+static int NEAR realwrite(devp, sect, buf, n)
 devstat *devp;
 u_long sect;
 u_char *buf;
@@ -951,7 +1051,7 @@ int n;
 	return(0);
 }
 
-static int killcache(devp, n, size)
+static int NEAR killcache(devp, n, size)
 devstat *devp;
 int n, size;
 {
@@ -974,7 +1074,7 @@ int n, size;
 	return(ret);
 }
 
-static int flushcache(devp)
+static int NEAR flushcache(devp)
 devstat *devp;
 {
 	int i, ret;
@@ -989,7 +1089,7 @@ devstat *devp;
 	return(ret);
 }
 
-static int shiftcache(devp, n, nsect)
+static int NEAR shiftcache(devp, n, nsect)
 devstat *devp;
 int n, nsect;
 {
@@ -1051,7 +1151,7 @@ int n, nsect;
 	return(n);
 }
 
-static int cachecpy(n, ofs1, ofs2, size)
+static int NEAR cachecpy(n, ofs1, ofs2, size)
 int n;
 int ofs1, ofs2, size;
 {
@@ -1068,7 +1168,7 @@ int ofs1, ofs2, size;
 	return(size);
 }
 
-static int uniqcache(devp, n, min, max)
+static int NEAR uniqcache(devp, n, min, max)
 devstat *devp;
 int n;
 u_long min, max;
@@ -1096,7 +1196,7 @@ u_long min, max;
 	return(0);
 }
 
-static int appendcache(dst, devp, sect, buf, n, wrt)
+static int NEAR appendcache(dst, devp, sect, buf, n, wrt)
 int dst;
 devstat *devp;
 u_long sect;
@@ -1152,7 +1252,7 @@ int n, wrt;
 	return(0);
 }
 
-static int insertcache(dst, devp, sect, buf, n, wrt)
+static int NEAR insertcache(dst, devp, sect, buf, n, wrt)
 int dst;
 devstat *devp;
 u_long sect;
@@ -1208,7 +1308,7 @@ int n, wrt;
 	return(0);
 }
 
-static int overwritecache(dst, devp, sect, buf, n, wrt)
+static int NEAR overwritecache(dst, devp, sect, buf, n, wrt)
 int dst;
 devstat *devp;
 u_long sect;
@@ -1254,7 +1354,7 @@ int n, wrt;
 	return(0);
 }
 
-static int savecache(devp, sect, buf, n, wrt)
+static int NEAR savecache(devp, sect, buf, n, wrt)
 devstat *devp;
 u_long sect;
 u_char *buf;
@@ -1304,7 +1404,7 @@ int n, wrt;
 	return(0);
 }
 
-static int loadcache(devp, sect, buf, n)
+static int NEAR loadcache(devp, sect, buf, n)
 devstat *devp;
 u_long sect;
 u_char *buf;
@@ -1376,7 +1476,7 @@ int n;
 	return(0);
 }
 
-static long sectread(devp, sect, buf, n)
+static long NEAR sectread(devp, sect, buf, n)
 devstat *devp;
 u_long sect;
 u_char *buf;
@@ -1386,7 +1486,7 @@ int n;
 	return((long)n * devp -> sectsize);
 }
 
-static long sectwrite(devp, sect, buf, n)
+static long NEAR sectwrite(devp, sect, buf, n)
 devstat *devp;
 u_long sect;
 u_char *buf;
@@ -1401,7 +1501,7 @@ int n;
 	return((long)n * devp -> sectsize);
 }
 
-static int availfat(devp)
+static int NEAR availfat(devp)
 devstat *devp;
 {
 	u_char *buf;
@@ -1500,7 +1600,7 @@ devstat *devp;
 }
 
 #if	!MSDOS
-static int readfat(devp)
+static int NEAR readfat(devp)
 devstat *devp;
 {
 	long size;
@@ -1523,7 +1623,7 @@ devstat *devp;
 }
 #endif
 
-static int writefat(devp)
+static int NEAR writefat(devp)
 devstat *devp;
 {
 	char *buf;
@@ -1546,7 +1646,7 @@ devstat *devp;
 	return(0);
 }
 
-static long getfatofs(devp, clust)
+static long NEAR getfatofs(devp, clust)
 devstat *devp;
 long clust;
 {
@@ -1564,7 +1664,7 @@ long clust;
 	return(ofs);
 }
 
-static u_char *readtmpfat(devp, ofs, nsect)
+static u_char *NEAR readtmpfat(devp, ofs, nsect)
 devstat *devp;
 long ofs;
 int nsect;
@@ -1586,7 +1686,7 @@ int nsect;
 	return(buf);
 }
 
-static long getfatent(devp, clust)
+static long NEAR getfatent(devp, clust)
 devstat *devp;
 long clust;
 {
@@ -1629,7 +1729,7 @@ long clust;
 	return(ofs);
 }
 
-static int putfatent(devp, clust, n)
+static int NEAR putfatent(devp, clust, n)
 devstat *devp;
 long clust, n;
 {
@@ -1689,7 +1789,7 @@ long clust, n;
 	}
 
 	if (devp -> availsize != (u_long)0xffffffff) {
-		long avail;
+		u_long avail;
 		int i;
 
 		avail = devp -> availsize;
@@ -1704,7 +1804,7 @@ long clust, n;
 	return(0);
 }
 
-static u_long clust2sect(devp, clust)
+static u_long NEAR clust2sect(devp, clust)
 devstat *devp;
 long clust;
 {
@@ -1735,7 +1835,7 @@ long clust;
 	return(sect);
 }
 
-static long clust32(devp, dentp)
+static long NEAR clust32(devp, dentp)
 devstat *devp;
 dent_t *dentp;
 {
@@ -1747,7 +1847,7 @@ dent_t *dentp;
 	return(clust);
 }
 
-static long newclust(devp)
+static long NEAR newclust(devp)
 devstat *devp;
 {
 	long clust, used;
@@ -1761,7 +1861,7 @@ devstat *devp;
 	return(clust);
 }
 
-static long clustread(devp, buf, clust)
+static long NEAR clustread(devp, buf, clust)
 devstat *devp;
 u_char *buf;
 long clust;
@@ -1780,7 +1880,7 @@ long clust;
 	return(next);
 }
 
-static long clustwrite(devp, buf, prev)
+static long NEAR clustwrite(devp, buf, prev)
 devstat *devp;
 u_char *buf;
 long prev;
@@ -1801,7 +1901,7 @@ long prev;
 	return(clust);
 }
 
-static long clustexpand(devp, clust, fill)
+static long NEAR clustexpand(devp, clust, fill)
 devstat *devp;
 long clust;
 int fill;
@@ -1826,7 +1926,7 @@ int fill;
 	return(new);
 }
 
-static int clustfree(devp, clust)
+static int NEAR clustfree(devp, clust)
 devstat *devp;
 long clust;
 {
@@ -1842,11 +1942,11 @@ long clust;
 }
 
 #if	MSDOS
-static int readbpb(devp, drv)
+static int NEAR readbpb(devp, drv)
 devstat *devp;
 int drv;
 #else
-static int _readbpb(devp, bpbcache)
+static int NEAR _readbpb(devp, bpbcache)
 devstat *devp;
 bpb_t *bpbcache;
 #endif
@@ -1927,7 +2027,7 @@ bpb_t *bpbcache;
 				endmntent(fp);
 			}
 		}
-#endif
+#endif	/* LINUX */
 		if ((fd = open(devp -> ch_name, i, 0600)) < 0) {
 #ifdef	EFORMAT
 			if (errno == EFORMAT) {
@@ -1990,13 +2090,12 @@ bpb_t *bpbcache;
 	if (devp -> ch_cyl)
 # endif
 	{
-		int nh, ns, nc;
+		int nh, ns;
 
 		nh = byte2word(bpb -> nhead);
 		ns = byte2word(bpb -> secttrack);
-		nc = (total + (nh * ns / 2)) / (nh * ns);
-		if (nh != devp -> ch_head || ns != nsect
-		|| nc != devp -> ch_cyl) {
+		if (!nh || !ns || nh != devp -> ch_head || ns != nsect
+		|| (total + (nh * ns / 2)) / (nh * ns) != devp -> ch_cyl) {
 			if (bpb != bpbcache)
 				memcpy((char *)bpbcache,
 					(char *)bpb, sizeof(bpb_t));
@@ -2009,6 +2108,12 @@ bpb_t *bpbcache;
 
 	devp -> clustsize = bpb -> clustsize;
 	devp -> sectsize = byte2word(bpb -> sectsize);
+	if (!(devp -> clustsize) || !(devp -> sectsize)) {
+		if (buf) free(buf);
+		errno = tmperrno;
+		return(-1);
+	}
+
 	devp -> fatofs = byte2word(bpb -> bootsect);
 	devp -> fatsize = byte2word(bpb -> fatsize);
 	devp -> dirsize = (long)byte2word(bpb -> maxdir) * DOSDIRENT
@@ -2044,7 +2149,7 @@ bpb_t *bpbcache;
 }
 
 #if	!MSDOS
-static int readbpb(devp, drv)
+static int NEAR readbpb(devp, drv)
 devstat * devp;
 int drv;
 {
@@ -2077,7 +2182,7 @@ int drv;
 #endif	/* !MSDOS */
 
 #ifdef	HDDMOUNT
-static off64_t *_readpt(offset, extoffset, fd, head, sect, secsiz)
+static off64_t *NEAR _readpt(offset, extoffset, fd, head, sect, secsiz)
 off64_t offset, extoffset;
 int fd, head, sect, secsiz;
 {
@@ -2203,7 +2308,7 @@ int pc98;
 # ifdef	DIOCGDINFO
 	struct disklabel dl;
 	off64_t *slice;
-	int fd, head, sect;
+	int fd, head, sect, size;
 
 	if ((fd = open(devfile, O_RDONLY | O_BINARY, 0600)) < 0) {
 		if (errno == EIO) errno = ENXIO;
@@ -2223,18 +2328,31 @@ int pc98;
 		sect = dl.d_nsectors;
 	}
 
-	slice = _readpt((off64_t)0, (off64_t)0, fd, head, sect, D_SECSIZE(dl));
+#  ifdef	SOLARIS
+	{
+		struct vtoc toc;
+
+		if (ioctl(fd, DKIOCGVTOC, &toc) < 0) {
+			close(fd);
+			return(NULL);
+		}
+		size = toc.v_sectorsz;
+	}
+#  else
+	size = D_SECSIZE(dl);
+#  endif
+	slice = _readpt((off64_t)0, (off64_t)0, fd, head, sect, size);
 
 	close(fd);
 	return(slice);
-# else
+# else	/* !DIOCGDINFO */
 	errno = ENODEV;
 	return(NULL);
-# endif
+# endif	/* !DIOCGDINFO */
 }
 #endif	/* HDDMOUNT */
 
-static int opendev(drive)
+static int NEAR opendev(drive)
 int drive;
 {
 	devstat dev;
@@ -2280,7 +2398,7 @@ int drive;
 	return(new);
 }
 
-static int closedev(dd)
+static int NEAR closedev(dd)
 int dd;
 {
 	int i, ret, tmperrno;
@@ -2367,6 +2485,7 @@ int drive;
 VOID_T (*func)__P_((VOID_A));
 {
 	devstat dev;
+	u_long avail;
 	int i, dd, drv, ret, tmperrno;
 
 	drv = toupper2(drive);
@@ -2401,6 +2520,7 @@ VOID_T (*func)__P_((VOID_A));
 	}
 	if (devlist[dd].fatbuf) free(devlist[dd].fatbuf);
 	if (devlist[dd].dircache) free(devlist[dd].dircache);
+	avail = devlist[dd].availsize;
 #if	!MSDOS
 	close(devlist[dd].fd);
 #endif
@@ -2415,6 +2535,7 @@ VOID_T (*func)__P_((VOID_A));
 	}
 	else {
 		dev.dircache = NULL;
+		dev.availsize = avail;
 #if	MSDOS
 		dev.fatbuf = NULL;
 #else
@@ -2432,7 +2553,7 @@ VOID_T (*func)__P_((VOID_A));
 	return(ret);
 }
 
-static int checksum(name)
+static int NEAR checksum(name)
 char *name;
 {
 	int i, sum;
@@ -2444,7 +2565,7 @@ char *name;
 	return(sum & 0xff);
 }
 
-static u_short unifysjis(wc, russ)
+static u_short NEAR unifysjis(wc, russ)
 u_short wc;
 int russ;
 {
@@ -2459,7 +2580,7 @@ int russ;
 	return(wc);
 }
 
-static u_short cnvunicode(wc, encode)
+static u_short NEAR cnvunicode(wc, encode)
 u_short wc;
 int encode;
 {
@@ -2523,7 +2644,7 @@ int encode;
 	return(r);
 }
 
-static u_short lfnencode(c1, c2)
+static u_short NEAR lfnencode(c1, c2)
 u_char c1, c2;
 {
 	u_short kanji, unicode;
@@ -2550,7 +2671,7 @@ u_char c1, c2;
 	return(0xff00);
 }
 
-static u_short lfndecode(c1, c2)
+static u_short NEAR lfndecode(c1, c2)
 u_char c1, c2;
 {
 	u_short kanji, unicode;
@@ -2576,7 +2697,7 @@ u_char c1, c2;
 }
 
 #if	!MSDOS
-static int transchar(c)
+static int NEAR transchar(c)
 int c;
 {
 	if (c == '+') return('`');
@@ -2586,7 +2707,7 @@ int c;
 	return('\0');
 }
 
-static int detranschar(c)
+static int NEAR detranschar(c)
 int c;
 {
 	if (c == '`') return('+');
@@ -2597,7 +2718,7 @@ int c;
 }
 #endif
 
-static int sfntranschar(c)
+static int NEAR sfntranschar(c)
 int c;
 {
 	if ((u_char)c < ' ' || strchr(NOTINLFN, c)) return(-2);
@@ -2606,7 +2727,7 @@ int c;
 	return(toupper2((u_char)c));
 }
 
-static int cmpdospath(path1, path2, len, part)
+static int NEAR cmpdospath(path1, path2, len, part)
 char *path1, *path2;
 int len, part;
 {
@@ -2636,7 +2757,7 @@ int len, part;
 	return(-path2[i]);
 }
 
-static char *getdosname(buf, name, ext)
+static char *NEAR getdosname(buf, name, ext)
 char *buf, *name, *ext;
 {
 	int i, len;
@@ -2654,7 +2775,7 @@ char *buf, *name, *ext;
 	return(buf);
 }
 
-static char *putdosname(buf, file, vol)
+static char *NEAR putdosname(buf, file, vol)
 char *buf, *file;
 int vol;
 {
@@ -2750,7 +2871,7 @@ int vol;
 	return(buf);
 }
 
-static u_short getdosmode(attr)
+static u_short NEAR getdosmode(attr)
 u_char attr;
 {
 	u_short mode;
@@ -2767,7 +2888,7 @@ u_char attr;
 	return(mode);
 }
 
-static u_char putdosmode(mode)
+static u_char NEAR putdosmode(mode)
 u_short mode;
 {
 	u_char attr;
@@ -2782,7 +2903,7 @@ u_short mode;
 	return(attr);
 }
 
-static time_t getdostime(d, t)
+static time_t NEAR getdostime(d, t)
 u_short d, t;
 {
 	struct tm tm;
@@ -2798,7 +2919,7 @@ u_short d, t;
 	return(timelocal2(&tm));
 }
 
-static int putdostime(buf, clock)
+static int NEAR putdostime(buf, clock)
 u_char *buf;
 time_t clock;
 {
@@ -2845,7 +2966,7 @@ time_t clock;
 	return(mt);
 }
 
-static int getdrive(path)
+static int NEAR getdrive(path)
 char *path;
 {
 	int i, drive;
@@ -2863,7 +2984,7 @@ char *path;
 	return(drive);
 }
 
-static int parsepath(buf, path, class)
+static int NEAR parsepath(buf, path, class)
 char *buf, *path;
 int class;
 {
@@ -2936,7 +3057,7 @@ int class;
 	return(drive);
 }
 
-static dosDIR *_dosopendir(path, resolved, needlfn)
+static dosDIR *NEAR _dosopendir(path, resolved, needlfn)
 char *path, *resolved;
 int needlfn;
 {
@@ -3077,7 +3198,7 @@ int needlfn;
 	return(xdirp);
 }
 
-static int _dosclosedir(xdirp)
+static int NEAR _dosclosedir(xdirp)
 dosDIR *xdirp;
 {
 	int ret, tmperrno;
@@ -3107,7 +3228,7 @@ DIR *dirp;
 	return(0);
 }
 
-static int seekdent(xdirp, dentp, clust, offset)
+static int NEAR seekdent(xdirp, dentp, clust, offset)
 dosDIR *xdirp;
 dent_t *dentp;
 long clust;
@@ -3132,7 +3253,7 @@ u_short offset;
 	return(0);
 }
 
-static int readdent(xdirp, dentp, force)
+static int NEAR readdent(xdirp, dentp, force)
 dosDIR *xdirp;
 dent_t *dentp;
 int force;
@@ -3160,7 +3281,7 @@ int force;
 	return(0);
 }
 
-static struct dirent *_dosreaddir(xdirp, all)
+static struct dirent *NEAR _dosreaddir(xdirp, all)
 dosDIR *xdirp;
 int all;
 {
@@ -3270,16 +3391,14 @@ DIR *dirp;
 #if	!MSDOS
 			else if ((c = detranschar(dp -> d_name[i])))
 				dp -> d_name[i] = c;
-			else if (dp -> d_name[i] >= 'A'
-			&& dp -> d_name[i] <= 'Z')
-				dp -> d_name[i] += 'a' - 'A';
+			else dp -> d_name[i] = tolower2(dp -> d_name[i]);
 #endif
 		}
 	}
 	return(dp);
 }
 
-static struct dirent *finddir(xdirp, fname, len, needlfn)
+static struct dirent *NEAR finddir(xdirp, fname, len, needlfn)
 dosDIR *xdirp;
 char *fname;
 int len, needlfn;
@@ -3387,7 +3506,7 @@ int size;
 	return(pathname);
 }
 
-static dosDIR *splitpath(pathp, resolved, needlfn)
+static dosDIR *NEAR splitpath(pathp, resolved, needlfn)
 char **pathp, *resolved;
 int needlfn;
 {
@@ -3407,7 +3526,7 @@ int needlfn;
 	return(_dosopendir(dir, resolved, needlfn));
 }
 
-static int getdent(path, ddp)
+static int NEAR getdent(path, ddp)
 char *path;
 int *ddp;
 {
@@ -3469,7 +3588,7 @@ int *ddp;
 	return(dd);
 }
 
-static int writedent(dd)
+static int NEAR writedent(dd)
 int dd;
 {
 	char *buf;
@@ -3494,7 +3613,7 @@ int dd;
 	return(ret < 0 ? -1 : 0);
 }
 
-static int expanddent(dd)
+static int NEAR expanddent(dd)
 int dd;
 {
 	long prev;
@@ -3511,7 +3630,7 @@ int dd;
 	return(0);
 }
 
-static int creatdent(path, mode)
+static int NEAR creatdent(path, mode)
 char *path;
 int mode;
 {
@@ -3703,7 +3822,7 @@ int mode;
 	return(ret);
 }
 
-static int unlinklfn(dd, clust, offset, sum)
+static int NEAR unlinklfn(dd, clust, offset, sum)
 int dd;
 long clust;
 u_short offset;
@@ -4163,7 +4282,7 @@ int fd;
 	return(ret);
 }
 
-static int dosfilbuf(fd, wrt)
+static int NEAR dosfilbuf(fd, wrt)
 int fd, wrt;
 {
 	long size, new, prev;
@@ -4204,7 +4323,7 @@ int fd, wrt;
 	return((int)size);
 }
 
-static int dosflsbuf(fd)
+static int NEAR dosflsbuf(fd)
 int fd;
 {
 	u_long sect;
@@ -4453,7 +4572,7 @@ FILE *stream;
 	return(-1);
 }
 
-static int type2flags(type)
+static int NEAR type2flags(type)
 char *type;
 {
 	int flags = 0;

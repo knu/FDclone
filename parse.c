@@ -351,7 +351,7 @@ int delim;
 
 	if (!argv) return(NULL);
 	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
-	if (i < 1) return(NULL);
+	if (i < 1) return(strdup2(""));
 	len += (delim) ? i - 1 : 0;
 	cp = (char *)malloc2(len + 1);
 	len = strcpy2(cp, argv[0]) - cp;
@@ -642,6 +642,12 @@ VOID evalenv(VOID_A)
 	if (!(promptstr = getenv2("FD_PROMPT"))) promptstr = PROMPT;
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
 	outputkcode = getlang(getenv2("FD_LANGUAGE"), L_OUTPUT);
+# if	defined (LINUX) && defined (O_REILLY_JAPAN)
+	/* See P.200 in "Linux Japanese Environment" (ISBN4-87310-016-5) */
+	if (outputkcode == NOCNV)
+		outputkcode = getlang(getenv("LANG"), L_OUTPUT);
+	/* This code is just a joke, not to be implemented in FDclone 2. */
+# endif
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 	inputkcode = getlang(getenv2("FD_INPUTKCODE"), L_INPUT);

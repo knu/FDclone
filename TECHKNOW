@@ -141,6 +141,12 @@ USESYSDIRH
 USETIMEH
 	構造体 tm が、<sys/types.h> や <sys/time.h> を参照す
 	るだけでは定義されず、<time.h> が必要です。
+USESTDARGH
+	可変引数を扱う va_list 型が <stdarg.h> の中で定義さ
+	れています。
+USEMKDEVH
+	デバイス番号用マクロ major()/minor() が <sys/mkdev.h>
+	の中で定義されています。
 USETERMIO
 	端末インタフェースとして、termio 構造体を用います。
 USETERMIOS
@@ -260,6 +266,9 @@ USEUNAME
 USEWAITPID
 	ソフトウェアシグナル待ち関数 waitpid(2) を wait3(2)
 	の代わりに用います。
+USESIGPMASK
+	シグナル操作関数 sigprocmask(2) を sigsetmask(2) の
+	代わりに用います。
 USERESOURCEH
 	リソース情報を取得・設定する際に <sys/resource.h> で
 	定義された関数群を用います。
@@ -629,11 +638,13 @@ NWS-3400:
 　以下に、代表的な PC-UNIX について、この物理ドライブ装置単
 位のスペシャルファイル名を挙げておきます。二台目以降の装置で
 は、下記ファイル名の '0' または 'a' の部分が '1' または 'b'
-以降の文字になります。
-	FreeBSD	/dev/rwd0 (IDE)		/dev/rsd0 (SCSI)
-				または	/dev/rda0 (SCSI)
-	NetBSD	/dev/rwd0d (IDE)	/dev/rsd0d (SCSI)
+以降の文字になります。(Solaris では 'd' に続く '0')
+	Solaris	/dev/rdsk/c0d0p0 (IDE)	/dev/rdsk/c0t1d0p0 (SCSI)
 	Linux	/dev/hda (IDE)		/dev/sda (SCSI)
+	FreeBSD	/dev/rwd0 (IDE)		/dev/rsd0 (SCSI)
+	 または	/dev/rad0 (IDE)		/dev/rda0 (SCSI)
+	NetBSD	/dev/rwd0d (IDE)	/dev/rsd0d (SCSI)
+	OpenBSD	/dev/rwd0c (IDE)	/dev/rsd0c (SCSI)
 
 
 7.関数

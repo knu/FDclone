@@ -59,6 +59,8 @@ char *argv[];
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
+	printf("s:__MEM__::\n");
+	printf("s:__SHMEM__::\n");
 #ifdef	CCOUTOPT
 	printf("s:__OUT__:%s:\n", CCOUTOPT);
 #else

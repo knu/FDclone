@@ -59,7 +59,7 @@ ALLOC	=
 DEBUG	=
 
 LDFLAGS	=    $(ALLOC)
-CFLAGS	= -DPC98=1 -O -N -ml -w-par -w-pia $(DEBUG)
+CFLAGS	= -DPC98=1 -O -N -w-par -w-pia $(DEBUG)
 
 .SUFFIXES: .h .c .obj .exe
 
@@ -70,7 +70,7 @@ CFLAGS	= -DPC98=1 -O -N -ml -w-par -w-pia $(DEBUG)
 all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) $(CFLAGS) -e$@ @$(ARGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -ml -e$@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
@@ -81,10 +81,10 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main.obj: main.c
-	$(CC) -DFD=1 $(CFLAGS) -DDEFRUNCOM=\"$(DOSRC)\" $(CPPFLAGS) -c -o$@ $*.c
+	$(CC) -DFD=1 $(CFLAGS) -ml $(CPPFLAGS) -c -o$@ -DDEFRUNCOM=\"$(DOSRC)\" $*.c
 
 .c.obj:
-	$(CC) -DFD=1 $(CFLAGS) $(CPPFLAGS) -c -o$@ $*.c
+	$(CC) -DFD=1 $(CFLAGS) -ml $(CPPFLAGS) -c -o$@ $*.c
 
 
 ############################################################
@@ -204,13 +204,14 @@ depend: $(SRC) kanji.h funcno.h
 
 config: Configur expfunc.c
 	-if (echo 't() { echo $1; }; t test' | $(SHELL) >\dev\null 2>&1); then \
-		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
+		$(SED) -e "2,3d" -e "s:__cc__:bcc:" Configur \
+		| $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
 			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configur | .\expfunc | $(SHELL) \
-		> config.h; \
+		$(SED) -e "2,3d" -e "s:__cc__:bcc:" Configur \
+		| .\expfunc | $(SHELL) > config.h; \
 	fi
 
 
@@ -261,7 +262,8 @@ dosemu.obj: machine.h config.h
 dosemu.obj: types.h pathname.h func.h
 dosemu.obj: kctype.h
 dosemu.obj: dosdisk.h
-unixdisk.obj: machine.h config.h unixdisk.h
+unixdisk.obj: machine.h config.h
+unixdisk.obj: unixdisk.h
 unixdisk.obj: unixemu.h
 unixdisk.obj: dosdisk.h
 unixemu.obj: fd.h

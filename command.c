@@ -40,7 +40,7 @@ extern char *destpath;
 extern int savehist;
 extern int sizeinfo;
 
-static VOID replacefname __P_((namelist *, int *, char *));
+static VOID NEAR replacefname __P_((namelist *, int *, char *));
 static int cur_up __P_((namelist *, int *, char *));
 static int cur_down __P_((namelist *, int *, char *));
 static int cur_right __P_((namelist *, int *, char *));
@@ -55,13 +55,13 @@ static int one_column __P_((namelist *, int *, char *));
 static int two_columns __P_((namelist *, int *, char *));
 static int three_columns __P_((namelist *, int *, char *));
 static int five_columns __P_((namelist *, int *, char *));
-static VOID markcount __P_((VOID_A));
+static VOID NEAR markcount __P_((VOID_A));
 static int mark_file __P_((namelist *, int *, char *));
 static int mark_file2 __P_((namelist *, int *, char *));
 static int mark_file3 __P_((namelist *, int *, char *));
 static int mark_all __P_((namelist *, int *, char *));
 static int mark_reverse __P_((namelist *, int *, char *));
-static reg_t *prepareregexp __P_((char *, char *));
+static reg_t *NEAR prepareregexp __P_((char *, char *));
 static int mark_find __P_((namelist *, int *, char *));
 static int in_dir __P_((namelist *, int *, char *));
 static int out_dir __P_((namelist *, int *, char *));
@@ -74,10 +74,10 @@ static int fileflg_mode __P_((namelist *, int *, char *));
 static int log_dir __P_((namelist *, int *, char *));
 static int log_top __P_((namelist *, int *, char *));
 #ifndef	PAGER
-static VOID dump __P_((char *));
+static VOID NEAR dump __P_((char *));
 #endif
-static int execenv __P_((char *, char *));
-static int execshell __P_((VOID_A));
+static int NEAR execenv __P_((char *, char *));
+static int NEAR execshell __P_((VOID_A));
 static int view_file __P_((namelist *, int *, char *));
 static int edit_file __P_((namelist *, int *, char *));
 static int sort_dir __P_((namelist *, int *, char *));
@@ -262,7 +262,7 @@ bindtable bindlist[MAXBINDTABLE] = {
 };
 
 
-static VOID replacefname(list, maxp, name)
+static VOID NEAR replacefname(list, maxp, name)
 namelist *list;
 int *maxp;
 char *name;
@@ -462,7 +462,7 @@ char *arg;
 	return(2);
 }
 
-static VOID markcount(VOID_A)
+static VOID NEAR markcount(VOID_A)
 {
 	char buf[14 + 1];
 
@@ -567,7 +567,7 @@ char *arg;
 	return(2);
 }
 
-static reg_t *prepareregexp(mes, arg)
+static reg_t *NEAR prepareregexp(mes, arg)
 char *mes, *arg;
 {
 	reg_t *re;
@@ -753,7 +753,7 @@ char *arg;
 }
 
 #ifndef	PAGER
-static VOID dump(file)
+static VOID NEAR dump(file)
 char *file;
 {
 	FILE *fp;
@@ -797,7 +797,7 @@ char *file;
 }
 #endif
 
-static int execenv(env, arg)
+static int NEAR execenv(env, arg)
 char *env, *arg;
 {
 	char *command;
@@ -809,7 +809,7 @@ char *env, *arg;
 	return(1);
 }
 
-static int execshell(VOID_A)
+static int NEAR execshell(VOID_A)
 {
 	char *sh;
 	int ret;
@@ -848,7 +848,7 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!defined(_NOARCHIVE) || !defined(_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir = NULL;
 #endif
 #ifndef	_NODOSDRIVE
@@ -1284,7 +1284,7 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!defined(_NOARCHIVE) || !defined (_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir = NULL;
 #endif
 	char *com;
@@ -1366,7 +1366,7 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!defined(_NOARCHIVE) || !defined(_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir = NULL;
 #endif
 #ifndef	_NODOSDRIVE
@@ -1534,7 +1534,7 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!defined(_NOARCHIVE) || !defined(_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir = NULL;
 #endif
 #ifndef	_NODOSDRIVE

@@ -41,17 +41,17 @@ extern u_long flaglist[];
 #define	EISDIR	EACCES
 #endif
 
-static int issamedir __P_((char *, char *));
-static int islowerdir __P_((char *, char *));
-static char *getdestdir __P_((char *, char *));
-static int checkdupl __P_((char *, char *, struct stat *));
-static int checkrmv __P_((char *, int));
+static int NEAR issamedir __P_((char *, char *));
+static int NEAR islowerdir __P_((char *, char *));
+static char *NEAR getdestdir __P_((char *, char *));
+static int NEAR checkdupl __P_((char *, char *, struct stat *));
+static int NEAR checkrmv __P_((char *, int));
 static int safecopy __P_((char *));
 static int safemove __P_((char *));
 static int cpdir __P_((char *));
-static VOID showattr __P_((namelist *, attr_t *, int y));
-static char **getdirtree __P_((char *, char **, int *, int));
-static int _applydir __P_((char *, int (*)(char *),
+static VOID NEAR showattr __P_((namelist *, attr_t *, int y));
+static char **NEAR getdirtree __P_((char *, char **, int *, int));
+static int NEAR _applydir __P_((char *, int (*)(char *),
 		int (*)(char *), int, char *));
 
 int copypolicy = 0;
@@ -68,7 +68,7 @@ static int destdrive = -1;
 #endif
 
 
-static int issamedir(path, org)
+static int NEAR issamedir(path, org)
 char *path, *org;
 {
 	char *cwd;
@@ -98,7 +98,7 @@ char *path, *org;
 	return(i);
 }
 
-static int islowerdir(path, org)
+static int NEAR islowerdir(path, org)
 char *path, *org;
 {
 	char *cp, *top, *cwd, tmp[MAXPATHLEN];
@@ -140,7 +140,7 @@ char *path, *org;
 	return(i);
 }
 
-static char *getdestdir(mes, arg)
+static char *NEAR getdestdir(mes, arg)
 char *mes, *arg;
 {
 	char *dir;
@@ -183,7 +183,7 @@ char *mes, *arg;
 	return(dir);
 }
 
-static int checkdupl(file, dest, stp)
+static int NEAR checkdupl(file, dest, stp)
 char *file, *dest;
 struct stat *stp;
 {
@@ -258,7 +258,7 @@ struct stat *stp;
 	return(0);
 }
 
-static int checkrmv(path, mode)
+static int NEAR checkrmv(path, mode)
 char *path;
 int mode;
 {
@@ -412,7 +412,7 @@ char *path;
 	return(0);
 }
 
-static VOID showattr(listp, attr, y)
+static VOID NEAR showattr(listp, attr, y)
 namelist *listp;
 attr_t *attr;
 int y;
@@ -763,7 +763,7 @@ char *endmes;
 	return(ret);
 }
 
-static char **getdirtree(dir, dirlist, maxp, depth)
+static char **NEAR getdirtree(dir, dirlist, maxp, depth)
 char *dir, **dirlist;
 int *maxp, depth;
 {
@@ -797,7 +797,7 @@ int *maxp, depth;
 	return(dirlist);
 }
 
-static int _applydir(dir, funcf, funcd, order, endmes)
+static int NEAR _applydir(dir, funcf, funcd, order, endmes)
 char *dir;
 int (*funcf)__P_((char *));
 int (*funcd)__P_((char *));
@@ -920,6 +920,9 @@ int tr;
 
 	if (!destpath) return((tr) ? 2 : 1);
 	copypolicy = (issamedir(destpath, NULL)) ? 2 : 0;
+#ifndef	_NODOSDRIVE
+	if (dospath3("")) waitmes();
+#endif
 	if (mark > 0) applyfile(list, max, safecopy, ENDCP_K);
 	else if (isdir(&(list[filepos])) && !islink(&(list[filepos]))) {
 		if (copypolicy) {

@@ -9,7 +9,7 @@
 #include "func.h"
 #include "kctype.h"
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -29,9 +29,9 @@ typedef struct _kconv_t {
 
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
-static VOID sjis2jis __P_((char *, u_char *));
-static VOID jis2sjis __P_((char *, u_char *));
-static int tojis7 __P_((char *, u_char *));
+static VOID NEAR sjis2jis __P_((char *, u_char *));
+static VOID NEAR jis2sjis __P_((char *, u_char *));
+static int NEAR tojis7 __P_((char *, u_char *));
 #endif
 
 #if	!MSDOS && !defined (_NOKANJICONV)
@@ -134,7 +134,7 @@ char *jpn, *eng;
 
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
-static VOID sjis2jis(buf, s)
+static VOID NEAR sjis2jis(buf, s)
 char *buf;
 u_char *s;
 {
@@ -168,7 +168,7 @@ u_char *s;
 	buf[1] = j2;
 }
 
-static VOID jis2sjis(buf, s)
+static VOID NEAR jis2sjis(buf, s)
 char *buf;
 u_char *s;
 {
@@ -222,7 +222,7 @@ u_char *s;
 #endif	/* !MSDOS && (!_NOKANJICONV || (!_NODOSDRIVE && CODEEUC)) */
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-static int tojis7(buf, s)
+static int NEAR tojis7(buf, s)
 char *buf;
 u_char *s;
 {
@@ -320,7 +320,7 @@ char *s;
 #endif
 }
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 /*VARARGS1*/
 int kanjiprintf(CONST char *fmt, ...)
 {
@@ -330,7 +330,7 @@ int kanjiprintf(CONST char *fmt, ...)
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else	/* !MSDOS && !__STDC__ */
+#else	/* !USESTDARGH */
 # ifndef	NOVSPRINTF
 /*VARARGS1*/
 int kanjiprintf(fmt, va_alist)
@@ -351,7 +351,7 @@ char *fmt;
 
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
 # endif	/* NOVSPRINTF */
-#endif	/* !MSDOS && !__STDC__ */
+#endif	/* !USESTDARGH */
 	return(kanjiputs(buf));
 }
 
@@ -359,9 +359,12 @@ int kanjiputs2(s, len, ptr)
 char *s;
 int len, ptr;
 {
-	char dupl[MAXLINESTR + 1];
+	char *dupl;
 
+	if (len >= 0) dupl = malloc2(len + 1);
+	else dupl = malloc2(strlen(&(s[ptr])) + 1);
 	strncpy3(dupl, s, &len, ptr);
 	kanjiputs(dupl);
+	free(dupl);
 	return(len);
 }

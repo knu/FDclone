@@ -20,19 +20,19 @@ extern int filepos;
 extern int mark;
 extern off_t marksize;
 extern char fullpath[];
-extern functable funclist[];
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 extern char *archivedir;
 #endif
 
-static int setarg __P_((char *, int, char *, char *, u_char));
-static int setargs __P_((char *, int, namelist *, int, u_char));
-static int insertarg __P_((char *, char *, char *, int));
-static char *addoption __P_((char *, char *, namelist *, int, macrostat *));
-static int dosystem __P_((char *, namelist *, int *, int));
-static char *evalargs __P_((char *, int, char *[]));
-static char *evalalias __P_((char *));
+static int NEAR setarg __P_((char *, int, char *, char *, u_char));
+static int NEAR setargs __P_((char *, int, namelist *, int, u_char));
+static int NEAR insertarg __P_((char *, char *, char *, int));
+static char *NEAR addoption __P_((char *, char *,
+		namelist *, int, macrostat *));
+static int NEAR dosystem __P_((char *, namelist *, int *, int));
+static char *NEAR evalargs __P_((char *, int, char *[]));
+static char *NEAR evalalias __P_((char *));
 
 aliastable aliaslist[MAXALIASTABLE];
 int maxalias = 0;
@@ -47,7 +47,7 @@ int n_args = 0;
 static short histbufsize[2] = {0, 0};
 
 
-static int setarg(buf, ptr, dir, arg, flags)
+static int NEAR setarg(buf, ptr, dir, arg, flags)
 char *buf;
 int ptr;
 char *dir, *arg;
@@ -118,7 +118,7 @@ u_char flags;
 	return(d + l);
 }
 
-static int setargs(buf, ptr, list, max, flags)
+static int NEAR setargs(buf, ptr, list, max, flags)
 char *buf;
 int ptr;
 namelist *list;
@@ -157,7 +157,7 @@ u_char flags;
 	return(len);
 }
 
-static int insertarg(buf, format, arg, needmark)
+static int NEAR insertarg(buf, format, arg, needmark)
 char *buf, *format, *arg;
 int needmark;
 {
@@ -395,11 +395,12 @@ macrostat *stp;
 	stp -> flags = flags;
 
 	cp = malloc2(j + 1);
-	strncpy2(cp, line, j);
+	memcpy(cp, line, j);
+	cp[j] = '\0';
 	return(cp);
 }
 
-static char *addoption(command, arg, list, max, stp)
+static char *NEAR addoption(command, arg, list, max, stp)
 char *command, *arg;
 namelist *list;
 int max;
@@ -455,7 +456,7 @@ macrostat *stp;
 	return(command);
 }
 
-static int dosystem(command, list, maxp, noconf)
+static int NEAR dosystem(command, list, maxp, noconf)
 char *command;
 namelist *list;
 int *maxp, noconf;
@@ -555,7 +556,7 @@ int *maxp, noconf, argset;
 	return(4);
 }
 
-static char *evalargs(command, argc, argv)
+static char *NEAR evalargs(command, argc, argv)
 char *command;
 int argc;
 char *argv[];
@@ -568,13 +569,15 @@ char *argv[];
 		while (&(command[i]) < cp && j < MAXCOMMSTR)
 			line[j++] = command[i++];
 		if (command[++i] < '0' || command[i] > '9') {
+			if (j > MAXCOMMSTR - 2) break;
 			line[j++] = '$';
 			line[j++] = command[i++];
 		}
 		else if ((n = command[i++] - '0') < argc)
-			for (k = 0; argv[n][k]; k++) line[j++] = argv[n][k];
+			for (k = 0; argv[n][k] && j < MAXCOMMSTR; k++)
+				line[j++] = argv[n][k];
 	}
-	while (command[i]) line[j++] = command[i++];
+	while (command[i] && j < MAXCOMMSTR) line[j++] = command[i++];
 	line[j] = '\0';
 
 	return(strdup2(line));
@@ -760,12 +763,12 @@ int *maxp;
 	else {
 		cp = malloc2(strlen(history[0][n]) + strlen(tmp) + 2);
 		strcpy(strcpy2(strcpy2(cp, history[0][n]), " "), tmp);
+		free(tmp);
 	}
 	history[0][0] = cp;
 	kanjiputs2(cp, -1, -1);
 	cputs2("\r\n");
 	n = dosystem(cp, list, maxp, 0);
-	free(tmp);
 	return(n);
 }
 
@@ -782,7 +785,7 @@ int n;
 }
 #endif
 
-static char *evalalias(command)
+static char *NEAR evalalias(command)
 char *command;
 {
 	char *cp;

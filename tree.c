@@ -13,6 +13,7 @@
 #ifndef	_NOTREE
 
 #if	MSDOS
+#include <ctype.h>
 # ifndef	_NODOSDRIVE
 extern int preparedrv __P_((int));
 # endif
@@ -34,21 +35,22 @@ extern int sizeinfo;
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
 #define	bufptr(y)	(&(tr_scr[(y - LFILETOP - 1) * (TREEFIELD + 1)]))
 
-static int evaldir __P_((char *, int));
-static treelist *maketree __P_((char *, treelist *, treelist *, int, int *));
-static int _showtree __P_((treelist *, int, int, int));
-static VOID showtree __P_((VOID_A));
-static VOID treebar __P_((VOID_A));
-static treelist *_searchtree __P_((treelist *, int, int));
-static VOID searchtree __P_((VOID_A));
-static int expandtree __P_((treelist *));
-static int expandall __P_((treelist *));
-static int treeup __P_((VOID_A));
-static int treedown __P_((VOID_A));
-static VOID freetree __P_((treelist *, int));
-static VOID _tree_search __P_((VOID_A));
-static int _tree_input __P_((VOID_A));
-static char *_tree __P_((VOID_A));
+static int NEAR evaldir __P_((char *, int));
+static treelist *NEAR maketree __P_((char *, treelist *, treelist *,
+		int, int *));
+static int NEAR _showtree __P_((treelist *, int, int, int));
+static VOID NEAR showtree __P_((VOID_A));
+static VOID NEAR treebar __P_((VOID_A));
+static treelist *NEAR _searchtree __P_((treelist *, int, int));
+static VOID NEAR searchtree __P_((VOID_A));
+static int NEAR expandtree __P_((treelist *));
+static int NEAR expandall __P_((treelist *));
+static int NEAR treeup __P_((VOID_A));
+static int NEAR treedown __P_((VOID_A));
+static VOID NEAR freetree __P_((treelist *, int));
+static VOID NEAR _tree_search __P_((VOID_A));
+static int NEAR _tree_input __P_((VOID_A));
+static char *NEAR _tree __P_((VOID_A));
 
 int sorttree = 0;
 int dircountlimit = 0;
@@ -64,7 +66,7 @@ static treelist *tr_root = NULL;
 static treelist *tr_cur = NULL;
 
 
-static int evaldir(dir, disp)
+static int NEAR evaldir(dir, disp)
 char *dir;
 int disp;
 {
@@ -128,7 +130,7 @@ int disp;
 }
 
 /*ARGSUSED*/
-static treelist *maketree(path, list, parent, level, maxp)
+static treelist *NEAR maketree(path, list, parent, level, maxp)
 char *path;
 treelist *list, *parent;
 int level, *maxp;
@@ -259,7 +261,7 @@ int level, *maxp;
 	return(list);
 }
 
-static int _showtree(list, max, nest, y)
+static int NEAR _showtree(list, max, nest, y)
 treelist *list;
 int max, nest, y;
 {
@@ -299,7 +301,7 @@ int max, nest, y;
 	return(y);
 }
 
-static VOID showtree(VOID_A)
+static VOID NEAR showtree(VOID_A)
 {
 	int i;
 
@@ -320,7 +322,7 @@ static VOID showtree(VOID_A)
 	keyflush();
 }
 
-static VOID treebar(VOID_A)
+static VOID NEAR treebar(VOID_A)
 {
 	locate(1, LFILETOP);
 	cputs2("Tree=");
@@ -339,7 +341,7 @@ VOID rewritetree(VOID_A)
 	tflush();
 }
 
-static treelist *_searchtree(list, max, nest)
+static treelist *NEAR _searchtree(list, max, nest)
 treelist *list;
 int max, nest;
 {
@@ -387,13 +389,13 @@ int max, nest;
 	return(lp);
 }
 
-static VOID searchtree(VOID_A)
+static VOID NEAR searchtree(VOID_A)
 {
 	tr_bottom = tr_top;
 	tr_cur = _searchtree(tr_root -> sub, 1, 0);
 }
 
-static int expandtree(list)
+static int NEAR expandtree(list)
 treelist *list;
 {
 	treelist *lp, *lptmp;
@@ -416,7 +418,7 @@ treelist *list;
 	}
 	for (cp = treepath, i = 0; (cp = strdelim(cp, 0)); cp++, i++);
 	lptmp = maketree(".", list -> sub, list, i, &(list -> max));
-	if (_chdir2(fullpath) < 0) error(fullpath);
+	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	if (list -> max < 0) {
 		i = (list -> max < -1) ? 1 : 0;
 		if (!(list -> sub)) list -> max = -1;
@@ -444,7 +446,7 @@ treelist *list;
 	return(1);
 }
 
-static int expandall(list)
+static int NEAR expandall(list)
 treelist *list;
 {
 	char *cp;
@@ -465,7 +467,7 @@ treelist *list;
 	return(1);
 }
 
-static int treeup(VOID_A)
+static int NEAR treeup(VOID_A)
 {
 	if (tr_line > LFILETOP + 1) tr_line--;
 	else if (tr_top <= LFILETOP) tr_top++;
@@ -474,7 +476,7 @@ static int treeup(VOID_A)
 	return(0);
 }
 
-static int treedown(VOID_A)
+static int NEAR treedown(VOID_A)
 {
 	char *cp;
 	int oy, otop;
@@ -505,7 +507,7 @@ static int treedown(VOID_A)
 	return(0);
 }
 
-static VOID freetree(list, max)
+static VOID NEAR freetree(list, max)
 treelist *list;
 int max;
 {
@@ -518,7 +520,7 @@ int max;
 	free(list);
 }
 
-static VOID _tree_search(VOID_A)
+static VOID NEAR _tree_search(VOID_A)
 {
 	int oy, otop;
 
@@ -536,7 +538,7 @@ static VOID _tree_search(VOID_A)
 	}
 }
 
-static int _tree_input(VOID_A)
+static int NEAR _tree_input(VOID_A)
 {
 	treelist *old;
 	char *cwd;
@@ -673,7 +675,7 @@ static int _tree_input(VOID_A)
 	return(ch);
 }
 
-static char *_tree(VOID_A)
+static char *NEAR _tree(VOID_A)
 {
 #if	!MSDOS
 	struct stat st;
@@ -793,7 +795,7 @@ int cleanup, *ddp;
 		lastdrv = -1;
 #endif
 	}
-	if (chdir2(dupfullpath) < 0) error(dupfullpath);
+	if (chdir2(dupfullpath) < 0) lostcwd(NULL);
 	free(dupfullpath);
 
 	if (cleanup) rewritefile(1);

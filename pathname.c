@@ -46,8 +46,6 @@
 			| DS_IFDIR | DS_IARCHIVE)
 #endif
 #define	EXTWIDTH	4
-#define	strpathcmp	stricmp
-#define	strnpathcmp	strnicmp
 # if defined (DJGPP) && DJGPP < 2
 # include <dir.h>
 # define	find_t	ffblk
@@ -63,8 +61,6 @@
 #include <sys/file.h>
 #include <sys/param.h>
 #define	EXTWIDTH	0
-#define	strpathcmp	strcmp
-#define	strnpathcmp	strncmp
 # ifdef	USEDIRECT
 # include <sys/dir.h>
 # define	dirent	direct
@@ -118,14 +114,14 @@ extern char *shortname __P_((char *, char *));
 extern char *progpath;
 #else	/* !FD */
 #define	getenv2		(char *)getenv
-static VOID allocerror __P_((VOID_A));
+static VOID NEAR allocerror __P_((VOID_A));
 char *malloc2 __P_((ALLOC_T));
 char *realloc2 __P_((VOID_P, ALLOC_T));
 char *strdup2 __P_((char *));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
 int isdotdir __P_((char *));
-static char *catargs __P_((char *[], int));
+static char *NEAR catargs __P_((char *[], int));
 # if	MSDOS
 DIR *Xopendir __P_((char *));
 int Xclosedir __P_((DIR *));
@@ -140,42 +136,42 @@ struct dirent *Xreaddir __P_((DIR *));
 #define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
 #endif	/* !FD */
 
-static char *getvar __P_((char *, int));
-static int setvar __P_((char *, char *, int));
+static char *NEAR getvar __P_((char *, int));
+static int NEAR setvar __P_((char *, char *, int));
 #ifdef	_NOORIGGLOB
-static char *cnvregexp __P_((char *, int));
+static char *NEAR cnvregexp __P_((char *, int));
 #else
-static int _regexp_exec __P_((char **, char *));
+static int NEAR _regexp_exec __P_((char **, char *));
 #endif
-static char *catpath __P_((char *, char *, int *, int, int));
+static char *NEAR catpath __P_((char *, char *, int *, int, int));
 #if	MSDOS
-static int _evalwild __P_((int, char ***, char *, char *, int));
+static int NEAR _evalwild __P_((int, char ***, char *, char *, int));
 #else
-static int _evalwild __P_((int, char ***, char *, char *, int,
+static int NEAR _evalwild __P_((int, char ***, char *, char *, int,
 		int, devino_t *));
 #endif
 #ifndef	_NOUSEHASH
-static int calchash __P_((char *));
-static VOID inithash __P_((VOID_A));
-static hashlist *newhash __P_((char *, char *, int, hashlist *));
-static hashlist *findhash __P_((char *, int));
-static VOID rmhash __P_((char *, int));
+static int NEAR calchash __P_((char *));
+static VOID NEAR inithash __P_((VOID_A));
+static hashlist *NEAR newhash __P_((char *, char *, int, hashlist *));
+static hashlist *NEAR findhash __P_((char *, int));
+static VOID NEAR rmhash __P_((char *, int));
 #endif
 #if	MSDOS
-static int extaccess __P_((char *, char *, int));
+static int NEAR extaccess __P_((char *, char *, int));
 #endif
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 # if	!MSDOS
-static int completeuser __P_((char *, int, char ***));
+static int NEAR completeuser __P_((char *, int, char ***));
 # endif
-static int completefile __P_((char *, char *, int, int, int, char ***));
-static int completeexe __P_((char *, int, char ***));
+static int NEAR completefile __P_((char *, char *, int, int, int, char ***));
+static int NEAR completeexe __P_((char *, int, char ***));
 #endif
-static char *evalshellparam __P_((int, int));
-static int replacevar __P_((char *, char **, int, int, int, int, int));
-static char *insertarg __P_((char *, int, int, int));
-static int evalvar __P_((char **, int, int));
-static int evalhome __P_((char **, int));
+static char *NEAR evalshellparam __P_((int, int));
+static int NEAR replacevar __P_((char *, char **, int, int, int, int));
+static char *NEAR insertarg __P_((char *, int, char *, int, int));
+static int NEAR evalvar __P_((char **, int, char **, int));
+static int NEAR evalhome __P_((char **, int, char **));
 
 #ifndef	issjis1
 #define	issjis1(c)	(((u_char)(c) >= 0x81 && (u_char)(c) <= 0x9f) \
@@ -222,10 +218,81 @@ char **(*getarglistfunc)__P_((VOID_A)) = NULL;
 char *(*getflagfunc)__P_((VOID_A)) = NULL;
 int (*checkundeffunc)__P_((char *, char *, int)) = NULL;
 VOID (*exitfunc)__P_((VOID_A)) = NULL;
+static u_char uppercase[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+	0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+	0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+	0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+	0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+	0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+	0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+	0x60, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+	0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+	0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+	0x58, 0x59, 0x5a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+	0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+	0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+	0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+	0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+	0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+	0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+	0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+	0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+	0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+	0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+	0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+	0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+};
+#if	!MSDOS
+static u_char lowercase[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+	0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+	0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+	0x40, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+	0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+	0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+	0x78, 0x79, 0x7a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+	0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+	0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+	0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+	0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+	0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+	0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+	0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+	0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+	0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+	0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+	0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+	0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+	0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+	0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+	0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+	0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+};
+int pathignorecase = 0;
+#endif
 
 
 #ifndef	FD
-static VOID allocerror(VOID_A)
+static VOID NEAR allocerror(VOID_A)
 {
 	fputs("fatal error: memory allocation error\n", stderr);
 	fflush(stderr);
@@ -293,7 +360,7 @@ char *name;
 	return(0);
 }
 
-static char *catargs(argv, delim)
+static char *NEAR catargs(argv, delim)
 char *argv[];
 int delim;
 {
@@ -302,7 +369,7 @@ int delim;
 
 	if (!argv) return(NULL);
 	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
-	if (i < 1) return(NULL);
+	if (i < 1) return(strdup2(""));
 	len += (delim) ? i - 1 : 0;
 	cp = malloc2(len + 1);
 	len = strcpy2(cp, argv[0]) - cp;
@@ -541,7 +608,69 @@ char *buf, *s1, *s2;
 	return(cp);
 }
 
-static char *getvar(ident, len)
+#if	!MSDOS
+int toupper2(c)
+int c;
+{
+	return(uppercase[(u_char)c]);
+}
+
+int tolower2(c)
+int c;
+{
+	return(lowercase[(u_char)c]);
+}
+
+int strnpathcmp2(s1, s2, n)
+char *s1, *s2;
+int n;
+{
+	int c1, c2;
+
+	if (!pathignorecase) while (n-- > 0) {
+		if (*s1 != *s2) return(*s1 - *s2);
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	else while (n-- > 0) {
+		c1 = uppercase[(u_char)(*s1)];
+		c2 = uppercase[(u_char)(*s2)];
+		if (c1 != c2) return(c1 - c2);
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	return(0);
+}
+#endif
+
+int strpathcmp2(s1, s2)
+char *s1, *s2;
+{
+	int c1, c2;
+
+#if	!MSDOS
+	if (!pathignorecase) for (;;) {
+		if (*s1 != *s2) return(*s1 - *s2);
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	else
+#endif
+	for (;;) {
+		c1 = uppercase[(u_char)(*s1)];
+		c2 = uppercase[(u_char)(*s2)];
+		if (c1 != c2) return(c1 - c2);
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	return(0);
+}
+
+static char *NEAR getvar(ident, len)
 char *ident;
 int len;
 {
@@ -556,7 +685,7 @@ int len;
 	return(env);
 }
 
-static int setvar(ident, value, len)
+static int NEAR setvar(ident, value, len)
 char *ident, *value;
 int len;
 {
@@ -575,7 +704,7 @@ int len;
 }
 
 #ifdef	_NOORIGGLOB
-static char *cnvregexp(s, len)
+static char *NEAR cnvregexp(s, len)
 char *s;
 int len;
 {
@@ -780,7 +909,11 @@ int len;
 			if (quote || meta) {
 #ifdef	BASHSTYLE
 				paren[plen++] = PMETA;
-				paren[plen++] = s[i];
+				paren[plen++] =
+#if	!MSDOS
+					(!pathignorecase) ? s[i] :
+#endif
+					uppercase[(u_char)(s[i])];
 #endif
 			}
 			else if (s[i] == ']') {
@@ -807,13 +940,21 @@ int len;
 #endif
 			else {
 #ifdef	CODEEUC
-				if (isekana(s, i))
+				if (isekana(s, i)) {
 					paren[plen++] = s[i++];
+					paren[plen++] = s[i];
+				}
 				else
 #endif
-				if (iskanji1(s, i))
+				if (iskanji1(s, i)) {
 					paren[plen++] = s[i++];
-				paren[plen++] = s[i];
+					paren[plen++] = s[i];
+				}
+				else paren[plen++] =
+#if	!MSDOS
+					(!pathignorecase) ? s[i] :
+#endif
+					uppercase[(u_char)(s[i])];
 			}
 		}
 		else if (!quote) switch(s[i]) {
@@ -834,11 +975,21 @@ int len;
 			cp = malloc2(2 + 1);
 			j = 0;
 #ifdef	CODEEUC
-			if (isekana(s, i)) cp[j++] = s[i++];
+			if (isekana(s, i)) {
+				cp[j++] = s[i++];
+				cp[j++] = s[i];
+			}
 			else
 #endif
-			if (iskanji1(s, i)) cp[j++] = s[i++];
-			cp[j++] = s[i];
+			if (iskanji1(s, i)) {
+				cp[j++] = s[i++];
+				cp[j++] = s[i];
+			}
+			else cp[j++] =
+#if	!MSDOS
+				(!pathignorecase) ? s[i] :
+#endif
+				uppercase[(u_char)(s[i])];
 			cp[j] = '\0';
 		}
 		re = (reg_t *)realloc2(re, (n + 2) * sizeof(reg_t));
@@ -853,7 +1004,7 @@ int len;
 	return(re);
 }
 
-static int _regexp_exec(re, s)
+static int NEAR _regexp_exec(re, s)
 reg_t *re;
 char *s;
 {
@@ -861,9 +1012,10 @@ char *s;
 
 	for (n1 = n2 = 0; re[n1] && s[n2]; n1++, n2++) {
 		c1 = (u_char)(s[i = n2]);
-#if	MSDOS
-		if (c1 >= 'a' && c1 <= 'z') c1 -= 'a' - 'A';
+#if	!MSDOS
+		if (pathignorecase)
 #endif
+		c1 = uppercase[c1];
 #ifdef	CODEEUC
 		if (isekana(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
 		else
@@ -895,9 +1047,6 @@ char *s;
 				i++;
 			}
 			c2 = (u_char)(re[n1][i]);
-#if	MSDOS
-			if (c2 >= 'a' && c2 <= 'z') c2 -= 'a' - 'A';
-#endif
 #ifdef	CODEEUC
 			if (isekana(re[n1], i))
 				c1 = (c1 << 8) + (u_char)(re[n1][++i]);
@@ -948,7 +1097,7 @@ reg_t *re;
 # endif		/* !USEREGCOMP */
 #endif		/* !USERE_COMP */
 
-static char *catpath(path, file, plenp, flen, overwrite)
+static char *NEAR catpath(path, file, plenp, flen, overwrite)
 char *path, *file;
 int *plenp, flen, overwrite;
 {
@@ -983,12 +1132,12 @@ int *plenp, flen, overwrite;
 }
 
 #if	MSDOS
-static int _evalwild(argc, argvp, s, fixed, len)
+static int NEAR _evalwild(argc, argvp, s, fixed, len)
 int argc;
 char ***argvp, *s, *fixed;
 int len;
 #else
-static int _evalwild(argc, argvp, s, fixed, len, nino, ino)
+static int NEAR _evalwild(argc, argvp, s, fixed, len, nino, ino)
 int argc;
 char ***argvp, *s, *fixed;
 int len, nino;
@@ -1020,7 +1169,7 @@ devino_t *ino;
 		return(argc);
 	}
 
-#if	MSDOS || (defined(FD) && !defined(_NODOSDRIVE))
+#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 	if (!len && _dospath(s)) {
 		fixed = malloc2(2 + 1);
 		fixed[0] = *s;
@@ -1188,7 +1337,7 @@ int cmppath(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
-	return(strpathcmp(*((char **)vp1), *((char **)vp2)));
+	return(strpathcmp2(*((char **)vp1), *((char **)vp2)));
 }
 
 char **evalwild(s)
@@ -1213,7 +1362,7 @@ char *s;
 }
 
 #ifndef	_NOUSEHASH
-static int calchash(s)
+static int NEAR calchash(s)
 char *s;
 {
 	u_int n;
@@ -1223,7 +1372,7 @@ char *s;
 	return(n % MAXHASH);
 }
 
-static VOID inithash(VOID_A)
+static VOID NEAR inithash(VOID_A)
 {
 	int i;
 
@@ -1232,7 +1381,7 @@ static VOID inithash(VOID_A)
 	for (i = 0; i < MAXHASH; i++) hashtable[i] = NULL;
 }
 
-static hashlist *newhash(com, path, cost, next)
+static hashlist *NEAR newhash(com, path, cost, next)
 char *com, *path;
 int cost;
 hashlist *next;
@@ -1292,7 +1441,7 @@ hashlist **htable;
 	return(new);
 }
 
-static hashlist *findhash(com, n)
+static hashlist *NEAR findhash(com, n)
 char *com;
 int n;
 {
@@ -1303,7 +1452,7 @@ int n;
 	return(NULL);
 }
 
-static VOID rmhash(com, n)
+static VOID NEAR rmhash(com, n)
 char *com;
 int n;
 {
@@ -1325,25 +1474,25 @@ int n;
 #endif	/* !_NOUSEHASH */
 
 #if	MSDOS
-static int extaccess(path, ext, len)
+static int NEAR extaccess(path, ext, len)
 char *path, *ext;
 int len;
 {
 	if (ext) {
 		if (Xaccess(path, F_OK) >= 0) {
-			if (!(strpathcmp(ext, "COM"))
-			|| !(strpathcmp(ext, "EXE"))) return(0);
+			if (!(strpathcmp(ext, "COM"))) return(0);
+			else if (!(strpathcmp(ext, "EXE"))) return(CM_EXE);
 			else if (!(strpathcmp(ext, "BAT"))) return(CM_BATCH);
 		}
 	}
 	else {
 		path[len++] = '.';
 		strcpy(path + len, "COM");
-		if (Xaccess(path, F_OK) >= 0) return(0);
+		if (Xaccess(path, F_OK) >= 0) return(CM_ADDEXT);
 		strcpy(path + len, "EXE");
-		if (Xaccess(path, F_OK) >= 0) return(0);
+		if (Xaccess(path, F_OK) >= 0) return(CM_ADDEXT | CM_EXE);
 		strcpy(path + len, "BAT");
-		if (Xaccess(path, F_OK) >= 0) return(CM_BATCH);
+		if (Xaccess(path, F_OK) >= 0) return(CM_ADDEXT | CM_BATCH);
 	}
 	return(-1);
 }
@@ -1395,7 +1544,7 @@ char *com;
 	path[0] = '.';
 	path[1] = _SC_;
 	strcpy(path + 2, com);
-	if ((ret = extaccess(path, ext, len)) < 0) free(path);
+	if ((ret = extaccess(path, ext, len + 2)) < 0) free(path);
 	else {
 # ifdef	_NOUSEHASH
 		*hpp = (hashlist *)path;
@@ -1477,7 +1626,7 @@ char **argv;
 }
 
 #if	!MSDOS
-static int completeuser(name, argc, argvp)
+static int NEAR completeuser(name, argc, argvp)
 char *name;
 int argc;
 char ***argvp;
@@ -1508,7 +1657,7 @@ char ***argvp;
 }
 #endif	/* !MSDOS */
 
-static int completefile(file, dir, dlen, exe, argc, argvp)
+static int NEAR completefile(file, dir, dlen, exe, argc, argvp)
 char *file, *dir;
 int dlen, exe, argc;
 char ***argvp;
@@ -1553,7 +1702,7 @@ char ***argvp;
 	return(argc);
 }
 
-static int completeexe(file, argc, argvp)
+static int NEAR completeexe(file, argc, argvp)
 char *file;
 int argc;
 char ***argvp;
@@ -1630,7 +1779,8 @@ char **argv;
 #endif	/* !FDSH && !_NOCOMPLETE */
 
 int addmeta(s1, s2, stripm, quoted)
-char *s1, *s2, stripm, quoted;
+char *s1, *s2;
+int stripm, quoted;
 {
 	int i, j;
 
@@ -1666,32 +1816,38 @@ char *s1, *s2, stripm, quoted;
 	return(j);
 }
 
-static char *evalshellparam(c, quoted)
+static char *NEAR evalshellparam(c, quoted)
 int c, quoted;
 {
 	char *cp, **arglist, tmp[MAXLONGWIDTH + 1];
 	long pid;
-	int i, j;
+	int i, j, sp;
 
 	cp = NULL;
 	switch (c) {
 		case '@':
 			if (!getarglistfunc
 			|| !(arglist = (*getarglistfunc)())) break;
+			sp = ' ';
 			if (!quoted) {
-				cp = catargs(&(arglist[1]), ' ');
+				cp = catargs(&(arglist[1]), sp);
 				break;
 			}
+#ifdef	BASHSTYLE
+			if ((cp = getvar("IFS", -1)) && *cp) sp = *cp;
+#endif
+
 			for (i = j = 0; arglist[i + 1]; i++)
 				j += addmeta(NULL,
 					arglist[i + 1], 0, quoted);
-			if (i > 0) {
+			if (i <= 0) cp = strdup2("");
+			else {
 				j += (i - 1) * 3;
 				cp = malloc2(j + 1);
 				j = addmeta(cp, arglist[1], 0, quoted);
 				for (i = 2; arglist[i]; i++) {
 					cp[j++] = quoted;
-					cp[j++] = ' ';
+					cp[j++] = sp;
 					cp[j++] = quoted;
 					j += addmeta(cp + j,
 						arglist[i], 0, quoted);
@@ -1700,8 +1856,14 @@ int c, quoted;
 			}
 			break;
 		case '*':
-			if (getarglistfunc && (arglist = (*getarglistfunc)()))
-				cp = catargs(&(arglist[1]), ' ');
+			if (!getarglistfunc
+			|| !(arglist = (*getarglistfunc)())) break;
+			sp = ' ';
+#ifdef	BASHSTYLE
+			if (quoted && (cp = getvar("IFS", -1)))
+				sp = (*cp) ? *cp : '\0';
+#endif
+			cp = catargs(&(arglist[1]), sp);
 			break;
 		case '#':
 			if (getarglistfunc
@@ -1737,9 +1899,9 @@ int c, quoted;
 	return(cp);
 }
 
-static int replacevar(arg, cpp, top, s, len, vlen, mode)
+static int NEAR replacevar(arg, cpp, s, len, vlen, mode)
 char *arg, **cpp;
-int top, s, len, vlen, mode;
+int s, len, vlen, mode;
 {
 	char *val;
 	int i;
@@ -1749,32 +1911,32 @@ int top, s, len, vlen, mode;
 		if (!*cpp) return(0);
 	}
 	else if (*cpp) return(0);
-	else if (mode == '=' && arg[top] != '_' && !isalpha(arg[top]))
+	else if (mode == '=' && *arg != '_' && !isalpha(*arg))
 		return(-1);
 
 	val = malloc2(vlen + 1);
 	strncpy2(val, arg + s, vlen);
-	if (!(*cpp = evalarg(val, (mode == '=' || mode == '?')))) {
-		free(val);
-		return(-1);
-	}
+	*cpp = evalarg(val, (mode == '=' || mode == '?'));
+	free(val);
+	if (!(*cpp)) return(-1);
+
 	if (mode == '=') {
-		if (setvar(arg + top, *cpp, len) < 0) {
+		if (setvar(arg, *cpp, len) < 0) {
 			free(*cpp);
+			*cpp = NULL;
 			return(-1);
 		}
 #ifdef	BASHSTYLE
 		free(*cpp);
 		val = malloc2(vlen + 1);
 		strncpy2(val, arg + s, vlen);
-		if (!(*cpp = evalarg(val, 0))) {
-			free(val);
-			return(-1);
-		}
+		*cpp = evalarg(val, 0);
+		free(val);
+		if (!(*cpp)) return(-1);
 #endif
 	}
 	else if (mode == '?') {
-		for (i = 0; i < len; i++) fputc(arg[top + i], stderr);
+		for (i = 0; i < len; i++) fputc(arg[i], stderr);
 		fputs(": ", stderr);
 		if (vlen <= 0)
 			fputs("parameter null or not set", stderr);
@@ -1784,79 +1946,80 @@ int top, s, len, vlen, mode;
 		fputc('\n', stderr);
 		fflush(stderr);
 		if (exitfunc) (*exitfunc)();
-		return(-1);
+		return(-2);
 	}
 	return(mode);
 }
 
-static char *insertarg(arg, ptr, next, nlen)
+static char *NEAR insertarg(buf, ptr, arg, olen, nlen)
+char *buf;
+int ptr;
 char *arg;
-int ptr, next, nlen;
+int olen, nlen;
 {
-	int i, olen, len;
-
-	olen = next - ptr;
-	if (nlen < olen) {
-		for (i = 0; arg[next + i]; i++)
-			arg[ptr + nlen + i] = arg[next + i];
-		arg[ptr + nlen + i] = '\0';
-	}
-	else if (nlen > olen) {
-		len = strlen(arg + next);
-		arg = realloc2(arg, ptr + nlen + len + 1);
-		for (i = len; i >= 0; i--) arg[ptr + nlen + i] = arg[next + i];
-	}
-	return(arg);
+	if (nlen <= olen) return(buf);
+	buf = realloc2(buf, ptr + nlen + strlen(arg) - olen + 1);
+	return(buf);
 }
 
-static int evalvar(argp, ptr, quoted)
+static int NEAR evalvar(bufp, ptr, argp, quoted)
+char **bufp;
+int ptr;
 char **argp;
-int ptr, quoted;
+int quoted;
 {
-	char *cp, *new, **arglist;
-	int i, c, n, top, len, vlen, s, e, next, nul, mode, nest, quote;
+	char *cp, *new, *arg, *top, **arglist;
+	int i, c, n, len, vlen, s, e, nul, mode, nest, quote;
 
 	nul = 0;
 	mode = '\0';
 	new = NULL;
-	top = ptr + 1;
+	arg = *argp;
+	top = *argp + 1;
 
-	if ((*argp)[top] == '_' || isalpha((*argp)[top])) {
-		for (i = top + 1; (*argp)[i]; i++)
-			if ((*argp)[i] != '_' && !isalnum((*argp)[i])) break;
-		len = i - top;
-		s = e = next = i;
+	if (*top == '_' || isalpha(*top)) {
+		for (i = 1; top[i]; i++)
+			if (top[i] != '_' && !isalnum(top[i])) break;
+		len = s = e = i;
+		*argp += i;
 	}
-	else if ((*argp)[top] != '{') {
-		if ((*argp)[top] == quoted) return(top);
-		len = 1;
-		s = e = next = top + 1;
+	else if (*top != '{') {
+		if (*top == quoted) {
+			(*bufp)[ptr++] = '$';
+			return(ptr);
+		}
+		len = s = e = 1;
+		(*argp)++;
 	}
 	else {
 		nest = 1;
 		len = s = e = -1;
-		for (i = ++top, quote = quoted; nest > 0; i++) {
-			if ((*argp)[i] == quote) quote = '\0';
+		top++;
+		quote = '\0';
+		for (i = 0; nest > 0; i++) {
+			if (!top[i]) return(-1);
+			else if (top[i] == quote) quote = '\0';
 #ifdef	CODEEUC
-			else if (isekana(*argp, i)) {
-				if ((*argp)[i + 1]) i++;
+			else if (isekana(top, i)) {
+				if (top[i + 1]) i++;
 			}
 #endif
-			else if (iskanji1(*argp, i)) {
-				if ((*argp)[i + 1]) i++;
+			else if (iskanji1(top, i)) {
+				if (top[i + 1]) i++;
 			}
 			else if (quote == '\'');
-			else if (ismeta(*argp, i, quote)) {
+			else if (ismeta(top, i, quote)) {
 				if (len < 0) return(-1);
 #ifndef	BASHSTYLE
 				if (!quote) e = i;
 #endif
 			}
 			else if (quote);
-			else if ((*argp)[i] == '\'' || (*argp)[i] == '"')
-				quote = (*argp)[i];
-			else switch ((*argp)[i]) {
-				case '\0':
+			else if (top[i] == '\'' || top[i] == '"') {
+				if (len < 0) return(-1);
+				quote = top[i];
+			}
+			else switch (top[i]) {
 				case '\n':
 					return(-1);
 /*NOTREACHED*/
@@ -1871,7 +2034,7 @@ int ptr, quoted;
 					break;
 				case ':':
 					if (len >= 0) break;
-					len = i - top;
+					len = i;
 					s = i + 1;
 					nul = 1;
 					break;
@@ -1879,28 +2042,29 @@ int ptr, quoted;
 				case '=':
 				case '?':
 				case '+':
-					if (len < 0) len = i - top;
-					else if (!nul || i - top > len + 1)
-						break;
+					if (len < 0) len = i;
+					else if (!nul || i > len + 1) break;
 					s = i + 1;
-					mode = (*argp)[i];
+					mode = top[i];
 					break;
 				default:
 					if (len >= 0) {
-						if (strchr(IFS_SET,
-						(*argp)[i]))
+#ifndef	BASHSTYLE
+						if (!quoted
+						&& strchr(IFS_SET, top[i]))
 							return(-1);
+#endif
 					}
-					else if (i > top && (*argp)[i] != '_'
-					&& !isalnum((*argp)[i]))
+					else if (i > 0 && top[i] != '_'
+					&& !isalnum(top[i]))
 						return(-1);
 					break;
 			}
 		}
 		if (e < 0) e = i - 1;
-		if (len < 0) len = e - top;
+		if (len < 0) len = e;
 		if (s < 0) s = e;
-		next = i;
+		*argp += i + 1;
 	}
 
 	vlen = e - s;
@@ -1908,44 +2072,53 @@ int ptr, quoted;
 
 	cp = NULL;
 	c = '\0';
-	if ((*argp)[top] == '_' || isalpha((*argp)[top]))
-		cp = getvar(*argp + top, len);
-	else if (isdigit((*argp)[top])) {
+	if (*top == '_' || isalpha(*top)) cp = getvar(top, len);
+	else if (isdigit(*top)) {
 		if (len > 1) return(-1);
-		if (getarglistfunc && (arglist = (*getarglistfunc)())) {
-			i = (*argp)[top] - '0';
+		if (!getarglistfunc || !(arglist = (*getarglistfunc)())) {
+			(*bufp)[ptr++] = '$';
+			(*bufp)[ptr++] = *top;
+			return(ptr);
+		}
+		else {
+			i = *top - '0';
 			for (n = 0; arglist[n]; n++);
 			if (i < n) cp = arglist[i];
 		}
 	}
 	else if (len == 1) {
-		if ((cp = evalshellparam(c = (*argp)[top], quoted))) new = cp;
-		else return(next);
+		if ((cp = evalshellparam(c = *top, quoted))) new = cp;
+		else {
+			(*bufp)[ptr++] = '$';
+			(*bufp)[ptr++] = *top;
+			return(ptr);
+		}
 	}
 	else return(-1);
 
-	if (!mode && checkundeffunc
-	&& (*checkundeffunc)(cp, *argp + top, len) < 0)
+	if (!mode && checkundeffunc && (*checkundeffunc)(cp, top, len) < 0)
 		return(-1);
 
 	if (cp && nul && !*cp) cp = NULL;
 
-	if ((mode = replacevar(*argp, &cp, top, s, len, vlen, mode)) < 0) {
+	if ((mode = replacevar(top, &cp, s, len, vlen, mode)) < 0) {
 		if (new) free(new);
-		return(-1);
+		return(mode);
+	}
+	else if (mode) {
+		if (new) free(new);
+		new = cp;
 	}
 
 	if (!mode && (c != '@' || !quoted)) {
 		vlen = addmeta(NULL, cp, 0, quoted);
-		*argp = insertarg(*argp, ptr, next, vlen);
-		addmeta(*argp + ptr, cp, 0, quoted);
+		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
+		addmeta(*bufp + ptr, cp, 0, quoted);
 	}
-	else if (!cp) *argp = insertarg(*argp, ptr, next, 0);
-	else {
-		new = cp;
+	else if (cp) {
 		vlen = strlen(cp);
-		*argp = insertarg(*argp, ptr, next, vlen);
-		strncpy(*argp + ptr, cp, vlen);
+		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
+		strncpy(*bufp + ptr, cp, vlen);
 	}
 
 	ptr += vlen;
@@ -1953,36 +2126,42 @@ int ptr, quoted;
 	return(ptr);
 }
 
-static int evalhome(argp, ptr)
-char **argp;
-int ptr;
+char *gethomedir(VOID_A)
 {
 #if	!MSDOS
 	struct passwd *pwd;
-#endif
-	char *cp;
-	int len, top, next;
+#endif 
+	char *cp; 
 
-	top = ptr + 1;
-
-	if (ptr && (*argp)[ptr - 1] != ':' && (*argp)[ptr - 1] != '=')
-		return(ptr);
-	len = ((cp = strdelim(*argp + top, 0)))
-		? (cp - *argp) - top : strlen(*argp + top);
-	next = top + len;
-	if (!len) {
-		cp = getvar("HOME", -1);
+	if ((cp = getvar("HOME", -1))) return(cp);
 #if	!MSDOS
-		if (!cp && (pwd = getpwuid(getuid()))) cp = pwd -> pw_dir;
-#endif
-	}
+	if ((pwd = getpwuid(getuid()))) return(pwd -> pw_dir);
+#endif 
+	return(NULL);
+}
+
+static int NEAR evalhome(bufp, ptr, argp)
+char **bufp;
+int ptr;
+char **argp;
+{
+	char *cp, *top;
+	int len, vlen;
+
+	top = *argp + 1;
+
+	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
+	if (!len) cp = gethomedir();
 #ifdef	FD
-	else if (!strpathcmp(*argp + top, "FD")) cp = progpath;
+	else if (len == sizeof("FD") - 1 && !strnpathcmp(top, "FD", len))
+		cp = progpath;
 #endif
 	else {
 #if	!MSDOS
+		struct passwd *pwd;
+
 		cp = malloc2(len + 1);
-		strncpy2(cp, *argp + top, len);
+		strncpy2(cp, top, len);
 		pwd = getpwnam(cp);
 		free(cp);
 		if (pwd) cp = pwd -> pw_dir;
@@ -1990,80 +2169,84 @@ int ptr;
 #endif
 		cp = NULL;
 	}
-	if (!cp) return(ptr);
-	len = strlen(cp);
-	*argp = insertarg(*argp, ptr, next, len);
-	strncpy(*argp + ptr, cp, len);
-	return(next - 1);
+
+	if (!cp) {
+		vlen = len;
+		(*bufp)[ptr++] = '~';
+		cp = top;
+	}
+	else {
+		vlen = strlen(cp);
+		*bufp = insertarg(*bufp, ptr, *argp, len + 1, vlen);
+	}
+	strncpy(*bufp + ptr, cp, vlen);
+	ptr += vlen;
+	*argp += len;
+	return(ptr);
 }
 
 char *evalarg(arg, stripq)
 char *arg;
 int stripq;
 {
-	int i, j, n, quote;
+	char *cp, *buf;
+	int i, prev, quote;
 
-	for (i = j = 0, quote = '\0'; arg[i]; i++) {
-		if (arg[i] == quote) {
+	buf = malloc2(strlen(arg) + 1);
+	prev = quote = '\0';
+	i = 0;
+	for (cp = arg; *cp; prev = *(cp++)) {
+		if (*cp == quote) {
 			quote = '\0';
+			if (!stripq) buf[i++] = *cp;
 			continue;
 		}
 #ifdef	CODEEUC
-		else if (isekana(arg, i)) {
-			if (stripq) arg[j++] = arg[i++];
-		}
+		else if (isekana(cp, 0)) buf[i++] = *(cp++);
 #endif
-		else if (iskanji1(arg, i)) {
-			if (stripq) arg[j++] = arg[i++];
-		}
+		else if (iskanji1(cp, 0)) buf[i++] = *(cp++);
 		else if (quote == '\'');
-		else if (arg[i] == '$' && arg[i + 1]) {
+		else if (*cp == '$' && *(cp + 1)) {
 #ifdef	FAKEMETA
-			if (arg[i + 1] == '$' || arg[i + 1] == '~') {
-				arg = insertarg(arg, j++, ++i, 0);
+			if (*(cp + 1) == '$' || *(cp + 1) == '~') {
+				buf[i++] = *(++cp);
 				continue;
 			}
 #endif
-			if (stripq && i > j) {
-				arg = insertarg(arg, j, i, 0);
-				i = j;
+			if ((i = evalvar(&buf, i, &cp, quote)) < 0) {
+				free(buf);
+				if (i < -1) *arg = '\0';
+				return(NULL);
 			}
-			if ((n = evalvar(&arg, i, quote)) < 0) return(NULL);
-			i = j = n - 1;
-		}
-		else if (ismeta(arg, i, quote)) {
-			i++;
-			if (stripq && quote
-			&& arg[i] != quote && arg[i] != PMETA)
-				arg[j++] = PMETA;
-		}
-		else if (quote);
-		else if (arg[i] == '\'' || arg[i] == '"') {
-			quote = arg[i];
 			continue;
 		}
-		else if (arg[i] == '~') {
-			if (stripq && i > j) {
-				arg = insertarg(arg, j, i, 0);
-				i = j;
-			}
-			i = j = evalhome(&arg, i);
+		else if (ismeta(cp, 0, quote)) buf[i++] = *(cp++);
+		else if (quote);
+		else if (*cp == '\'' || *cp == '"') {
+			quote = *cp;
+			if (!stripq) buf[i++] = *cp;
+			continue;
+		}
+		else if (*cp == '~'
+		&& (!prev || prev == ':' || prev == '=')) {
+			i = evalhome(&buf, i, &cp);
+			continue;
 		}
 
-		if (stripq) arg[j++] = arg[i];
+		buf[i++] = *cp;
 	}
-	if (stripq) arg[j] = '\0';
-	return(arg);
+	buf[i] = '\0';
+	return(buf);
 }
 
-int evalifs(argc, argvp)
+int evalifs(argc, argvp, ifs, iscom)
 int argc;
-char ***argvp;
+char ***argvp, *ifs;
+int iscom;
 {
-	char *cp, *ifs;
+	char *cp;
 	int i, j, n, quote;
 
-	if (!(ifs = getvar("IFS", -1))) ifs = IFS_SET;
 	for (n = 0; n < argc; n++) {
 		for (i = 0, quote = '\0'; (*argvp)[n][i]; i++) {
 			if ((*argvp)[n][i] == quote) quote = '\0';
@@ -2078,19 +2261,9 @@ char ***argvp;
 			|| (*argvp)[n][i] == '"')
 				quote = (*argvp)[n][i];
 			else if (strchr(ifs, (*argvp)[n][i])) {
-				for (j = i + 1; (*argvp)[n][j]; j++)
-					if (!strchr(ifs, (*argvp)[n][j]))							break;
-				if (!i) {
-					for (i = 0; (*argvp)[n][i + j]; i++)
-						(*argvp)[n][i] =
-							(*argvp)[n][i + j];
-					(*argvp)[n][i] = '\0';
-					i = -1;
-					continue;
-				}
-				(*argvp)[n][i] = '\0';
-				if (!(*argvp)[n][j]) break;
-				cp = strdup2(&((*argvp)[n][j]));
+				(*argvp)[n][i++] = '\0';
+				if (!(*argvp)[n][i]) break;
+				cp = strdup2(&((*argvp)[n][i]));
 				*argvp = (char **)realloc2(*argvp,
 					(argc + 2) * sizeof(char *));
 				for (j = argc; j > n; j--)
@@ -2100,7 +2273,7 @@ char ***argvp;
 				break;
 			}
 		}
-		if (!i) {
+		if (iscom && !i) {
 			free((*argvp)[n]);
 			for (i = n; i < argc; i++)
 				(*argvp)[i] = (*argvp)[i + 1];
@@ -2227,7 +2400,11 @@ char *_evalpath(path, eol, uniqdelim, evalq)
 char *path, *eol;
 int uniqdelim, evalq;
 {
-	char *cp, *tmp, **argv;
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+	char alias[MAXPATHLEN];
+	int top = -1;
+#endif
+	char *cp, *tmp;
 	int i, j, c, size, quote;
 
 	if (eol) i = eol - path;
@@ -2239,87 +2416,53 @@ int uniqdelim, evalq;
 		*cp = '\0';
 		return(cp);
 	}
+	free(cp);
 	cp = tmp;
 
+	size = strlen(cp) + 1;
+	tmp = malloc2(size);
+	quote = '\0';
+	for (i = j = c = 0; cp[i]; c = cp[i++]) {
+		if (cp[i] == quote) {
 #if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-	if (uniqdelim || !evalq) {
-		char alias[MAXPATHLEN];
-		int top;
+			if (!evalq && top >= 0 && ++top < j) {
+				tmp[j] = '\0';
+				if (shortname(&(tmp[top]), alias)
+				&& strpathcmp(alias, &(tmp[top]))) {
+					int len;
 
-		top = -1;
-#else
-	if (uniqdelim) {
-#endif
-		tmp = malloc2((size = strlen(cp) + 1));
-		for (i = j = c = 0, quote = '\0'; cp[i]; i++) {
-			if (cp[i] == quote) {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-				if (!evalq && top >= 0 && ++top < j) {
-					tmp[j] = '\0';
-					if (shortname(&(tmp[top]), alias)
-					&& strpathcmp(alias, &(tmp[top]))) {
-						int len;
-
-						len = strlen(alias);
-						size += top + len - j;
-						j = top + len;
-						tmp = realloc2(tmp, size + 1);
-						strncpy(tmp + top, alias, len);
-					}
+					len = strlen(alias);
+					size += top + len - j;
+					j = top + len;
+					tmp = realloc2(tmp, size);
+					strncpy(tmp + top, alias, len);
 				}
-				top = -1;
-#endif
-				quote = '\0';
 			}
+			top = -1;
+#endif
+			quote = '\0';
+			if (evalq) continue;
+		}
 #ifdef	CODEEUC
-			else if (isekana(cp, i)) tmp[j++] = cp[i++];
+		else if (isekana(cp, i)) tmp[j++] = cp[i++];
 #endif
-			else if (iskanji1(cp, i)) tmp[j++] = cp[i++];
-			else if (quote == '\'');
-			else if (ismeta(cp, i, quote)) tmp[j++] = cp[i++];
-			else if (quote);
-			else if (cp[i] == '\'') quote = cp[i];
-			else if (cp[i] == '"') {
+		else if (iskanji1(cp, i)) tmp[j++] = cp[i++];
+		else if (quote == '\'');
+		else if (ismeta(cp, i, quote)) tmp[j++] = cp[i++];
+		else if (quote);
+		else if (cp[i] == '\'' || cp[i] == '"') {
 #if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-				top = j;
+			if (cp[i] == '"') top = j;
 #endif
-				quote = cp[i];
-			}
-			else {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
-				if (uniqdelim && cp[i] == _SC_ && c == _SC_)
-					continue;
-#else
-				if (cp[i] == _SC_ && c == _SC_) continue;
-#endif
-			}
-			c = tmp[j++] = cp[i];
+			quote = cp[i];
+			if (evalq) continue;
 		}
-		tmp[j] = '\0';
-		free(cp);
-		cp = tmp;
-		if (!j) return(cp);
+		else if (uniqdelim && cp[i] == _SC_ && c == _SC_) continue;
+		tmp[j++] = cp[i];
 	}
-
-	if (evalq) {
-		argv = (char **)malloc2(sizeof(char *) * 2);
-		argv[0] = cp;
-		argv[1] = NULL;
-		i = evalifs(1, &argv);
-		if (!i) {
-			free(argv);
-			return(strdup2(""));
-		}
-		for (j = 1; j < i; j++) free(argv[j]);
-	
-		argv[1] = NULL;
-		i = evalglob(1, &argv, 0);
-		for (j = 1; j < i; j++) free(argv[j]);
-		cp = argv[0];
-		free(argv);
-	}
-
-	return(cp);
+	tmp[j] = '\0';
+	free(cp);
+	return(tmp);
 }
 
 char *evalpath(path, uniqdelim)

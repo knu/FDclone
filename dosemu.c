@@ -160,7 +160,10 @@ char *path;
 		if (lastdrv >= 0) shutdrv(lastdrv);
 		lastdrv = -1;
 	}
-	Xgetcwd(pseudocwd, MAXPATHLEN);
+	if (!Xgetwd(pseudocwd)) {
+		*pseudocwd = '\0';
+		return(-1);
+	}
 	return(0);
 #endif	/* !_NODOSDRIVE */
 }
@@ -176,43 +179,44 @@ char *path;
 }
 #endif
 
-/*ARGSUSED*/
-char *Xgetcwd(path, size)
+char *_Xgetwd(path)
 char *path;
-int size;
+{
+#ifdef	USEGETWD
+	return((char *)getwd(path));
+#else
+	return((char *)getcwd(path, MAXPATHLEN));
+#endif
+}
+
+char *Xgetwd(path)
+char *path;
 {
 #if	!defined (_NODOSDRIVE) && defined (CODEEUC)
 	char buf[MAXPATHLEN];
 #endif
-
 #ifdef	_NODOSDRIVE
-# ifdef	USEGETWD
-	return((char *)getwd(path));
-# else
-	return((char *)getcwd(path, size));
-# endif
-#else	/* !_NODOSDRIVE */
-# ifdef	USEGETWD
-	if (lastdrv < 0) return((char *)getwd(path));
-# else
-	if (lastdrv < 0) return((char *)getcwd(path, size));
-# endif
-	else if (!dosgetcwd(path, size)) return(NULL);
 
-	if (path[0] >= 'A' && path[0] <= 'Z') {
+	return(_Xgetwd(path));
+#else	/* !_NODOSDRIVE */
+	char *cp;
+
+	if (lastdrv < 0) return(_Xgetwd(path));
+	else if (!(cp = dosgetcwd(path, MAXPATHLEN))) return(NULL);
+
+	if (cp[0] >= 'A' && cp[0] <= 'Z') {
 		int i;
 
-		for (i = 2; path[i]; i++) {
-			if (issjis1((u_char)(path[i]))) i++;
-			else if (path[i] >= 'A' && path[i] <= 'Z')
-				path[i] += 'a' - 'A';
+		for (i = 2; cp[i]; i++) {
+			if (issjis1((u_char)(cp[i]))) i++;
+			else cp[i] = tolower2(cp[i]);
 		}
 	}
 # ifdef	CODEEUC
-	buf[sjis2ujis(buf, (u_char *)path)] = '\0';
-	strcpy(path, buf);
+	buf[sjis2ujis(buf, (u_char *)cp)] = '\0';
+	strcpy(cp, buf);
 # endif
-	return(path);
+	return(cp);
 #endif	/* !_NODOSDRIVE */
 }
 
@@ -289,11 +293,11 @@ int bufsiz;
 #ifndef	_NOROCKRIDGE
 	char tmp[MAXPATHLEN];
 #endif
-	char buf2[MAXPATHLEN];
+	char buf2[MAXPATHLEN + 1];
 	int len;
 
 #ifndef	_NOROCKRIDGE
-	if (detransfile(path, tmp, 0) == buf) {
+	if (detransfile(path, tmp, 0) == tmp) {
 		detransfile(path, buf2, 1);
 		if (strcmp(tmp, buf2)) {
 			errno = EINVAL;
@@ -310,7 +314,7 @@ int bufsiz;
 		if ((len = readlink(path, buf2, MAXPATHLEN)) < 0) return(-1);
 		buf2[len] = '\0';
 	}
-	len = strncpy3(buf, buf2, &bufsiz, -1);
+	for (len = 0; len < bufsiz && buf2[len]; len++) buf[len] = buf2[len];
 	return(len);
 }
 

@@ -15,7 +15,7 @@
 #define	SJIS	010
 #define	EUC	020
 
-#ifdef	__STDC__
+#if	defined (__STDC__) && !defined (__STRICT_ANSI__)
 #define	__P_(args)	args
 #define	VOID		void
 #else

@@ -6,11 +6,7 @@
 
 
 #ifndef	_TBL_
-# if	defined (LSI_C) && !defined (_NOENGMES)
-# define	_TBL_(func, id, hlp, ehlp, flg)	{func, id, hlp, ehlp, flg}
-# else
-# define	_TBL_(func, id, hlp, flg)	{func, id, hlp, flg}
-# endif
+#define	_TBL_(func, id, hlp, flg)	{func, id, hlp, flg}
 #endif
 
 functable funclist[] = {

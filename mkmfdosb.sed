@@ -12,7 +12,9 @@ s:__LANGDIR__::
 s:__INSTALL__:copy:
 s:__INSTSTRIP__::
 s:__CC__:bcc:
-s:__CCOPTIONS__:-O -N -ml -w-par -w-pia:
+s:__CCOPTIONS__:-O -N -w-par -w-pia:
+s:__MEM__:-ml:
+s:__SHMEM__:-ml:
 s:__OUT__:-o$@:
 s:__LNK__:-e$@:
 s:__TERMLIBS__::

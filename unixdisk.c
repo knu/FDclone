@@ -45,51 +45,54 @@
 #define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
 #endif
 
+#define	toupper2	toupper
+#define	tolower2	tolower
+
 #ifdef	FD
-extern int toupper2 __P_((int));
 extern int isdelim __P_((char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
 #else
-static int toupper2 __P_((int));
-static int isdelim __P_((char *, int));
-static char *strcatdelim __P_((char *));
-static char *strcatdelim2 __P_((char *, char *, char *));
+static int NEAR isdelim __P_((char *, int));
+static char *NEAR strcatdelim __P_((char *));
+static char *NEAR strcatdelim2 __P_((char *, char *, char *));
 #endif
 
-static int seterrno __P_((u_short));
+static int NEAR seterrno __P_((u_short));
 #ifdef	DJGPP
-static int dos_putpath __P_((char *, int));
+static int NEAR dos_putpath __P_((char *, int));
 #endif
-static char *duplpath __P_((char *));
-static long intcall __P_((int, __dpmi_regs *, struct SREGS *));
+static char *NEAR duplpath __P_((char *));
+static long NEAR intcall __P_((int, __dpmi_regs *, struct SREGS *));
 #define	int21call(reg, sreg)	intcall(0x21, reg, sreg)
 #ifndef	_NODOSDRIVE
-static char *regpath __P_((char *, char *));
-static VOID biosreset __P_((int));
-static int _biosdiskio __P_((int, int, int, int, u_char *, int, int, int));
+static char *NEAR regpath __P_((char *, char *));
+static VOID NEAR biosreset __P_((int));
+static int NEAR _biosdiskio __P_((int, int, int, int,
+		u_char *, int, int, int));
 #ifndef	PC98
-static int xbiosdiskio __P_((int, u_long, u_long, u_char *, int, int, int));
+static int NEAR xbiosdiskio __P_((int, u_long, u_long,
+		u_char *, int, int, int));
 #endif
-static int getdrvparam __P_((int, drvinfo *));
-static int _checkdrive __P_((int, int, int, u_long, u_long));
-static int biosdiskio __P_((int, u_long, u_char *, int, int, int));
-static int lockdrive __P_((int));
-static int unlockdrive __P_((int, int));
-static int dosrawdiskio __P_((int, u_long, u_char *, int, int, int));
+static int NEAR getdrvparam __P_((int, drvinfo *));
+static int NEAR _checkdrive __P_((int, int, int, u_long, u_long));
+static int NEAR biosdiskio __P_((int, u_long, u_char *, int, int, int));
+static int NEAR lockdrive __P_((int));
+static int NEAR unlockdrive __P_((int, int));
+static int NEAR dosrawdiskio __P_((int, u_long, u_char *, int, int, int));
 #endif
-static int dos_findfirst __P_((char *, u_short, struct dosfind_t *));
-static int dos_findnext __P_((struct dosfind_t *));
+static int NEAR dos_findfirst __P_((char *, u_short, struct dosfind_t *));
+static int NEAR dos_findnext __P_((struct dosfind_t *));
 #ifndef	_NOUSELFN
-static long lfn_findfirst __P_((char *, u_short, struct lfnfind_t *));
-static int lfn_findnext __P_((u_short, struct lfnfind_t *));
-static int lfn_findclose __P_((u_short));
+static long NEAR lfn_findfirst __P_((char *, u_short, struct lfnfind_t *));
+static int NEAR lfn_findnext __P_((u_short, struct lfnfind_t *));
+static int NEAR lfn_findclose __P_((u_short));
 #endif
-static u_short getdosmode __P_((u_char));
-static u_char putdosmode __P_((u_short));
-static time_t getdostime __P_((u_short, u_short));
+static u_short NEAR getdosmode __P_((u_char));
+static u_char NEAR putdosmode __P_((u_short));
+static time_t NEAR getdostime __P_((u_short, u_short));
 #ifndef	_NOUSELFN
-static int putdostime __P_((u_short *, u_short *, time_t));
+static int NEAR putdostime __P_((u_short *, u_short *, time_t));
 #endif
 
 #ifndef	_NODOSDRIVE
@@ -147,13 +150,7 @@ static int dos7access = 0;
 
 
 #ifndef	FD
-static int toupper2(c)
-int c;
-{
-	return((c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c);
-}
-
-static int isdelim(s, ptr)
+static int NEAR isdelim(s, ptr)
 char *s;
 int ptr;
 {
@@ -168,7 +165,7 @@ int ptr;
 	return(!iskanji1(s, i));
 }
 
-static char *strcatdelim(s)
+static char *NEAR strcatdelim(s)
 char *s;
 {
 	char *cp;
@@ -189,7 +186,7 @@ char *s;
 	return(cp);
 }
 
-static char *strcatdelim2(buf, s1, s2)
+static char *NEAR strcatdelim2(buf, s1, s2)
 char *buf, *s1, *s2;
 {
 	char *cp;
@@ -234,7 +231,7 @@ char *buf, *s1, *s2;
 }
 #endif	/* !FD */
 
-static int seterrno(doserr)
+static int NEAR seterrno(doserr)
 u_short doserr;
 {
 	int i;
@@ -245,7 +242,7 @@ u_short doserr;
 }
 
 #ifdef	DJGPP
-static int dos_putpath(path, offset)
+static int NEAR dos_putpath(path, offset)
 char *path;
 int offset;
 {
@@ -257,7 +254,7 @@ int offset;
 }
 #endif
 
-static char *duplpath(path)
+static char *NEAR duplpath(path)
 char *path;
 {
 	static char buf[MAXPATHLEN];
@@ -285,7 +282,7 @@ char *path;
 	return(buf);
 }
 
-static long intcall(vect, regp, sregp)
+static long NEAR intcall(vect, regp, sregp)
 int vect;
 __dpmi_regs *regp;
 struct SREGS *sregp;
@@ -346,8 +343,8 @@ int getcurdrv(VOID_A)
 	return(drive);
 }
 
-int setcurdrv(drive)
-int drive;
+int setcurdrv(drive, nodir)
+int drive, nodir;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
@@ -383,18 +380,20 @@ int drive;
 		return(-1);
 	}
 
-	path = ".";
-	reg.x.ax = 0x3b00;
+	if (!nodir) {
+		path = ".";
+		reg.x.ax = 0x3b00;
 #ifdef	DJGPP
-	dos_putpath(path, 0);
+		dos_putpath(path, 0);
 #endif
-	sreg.ds = PTR_SEG(path);
-	reg.x.dx = PTR_OFF(path, 0);
-	if (int21call(&reg, &sreg) < 0) {
-		drv = errno;
-		bdos(0x0e, olddrv, 0);
-		errno = drv;
-		return(-1);
+		sreg.ds = PTR_SEG(path);
+		reg.x.dx = PTR_OFF(path, 0);
+		if (int21call(&reg, &sreg) < 0) {
+			drv = errno;
+			bdos(0x0e, olddrv, 0);
+			errno = drv;
+			return(-1);
+		}
 	}
 
 #ifndef	_NODOSDRIVE
@@ -495,7 +494,7 @@ int drive;
 
 #ifndef	_NOUSELFN
 # ifndef	_NODOSDRIVE
-static char *regpath(path, buf)
+static char *NEAR regpath(path, buf)
 char *path, *buf;
 {
 	char *cp;
@@ -553,7 +552,7 @@ char *path, *alias;
 # endif
 
 	if (!path || !isalpha(i = path[0]) || path[1] != ':') i = getcurdrv();
-	if (i >= 'a' && i <= 'z') *alias += 'a' - 'A';
+	if (i >= 'a' && i <= 'z') *alias = tolower2(*alias);
 
 	return(alias);
 }
@@ -637,10 +636,8 @@ char *path, *resolved;
 			if (path && *path == _SC_) strcpy(resolved + 2, path);
 		}
 	}
-	else if (i >= 'a' && i <= 'z' && *resolved >= 'A' && *resolved <= 'Z')
-		*resolved += 'a' - 'A';
-	else if (i >= 'A' && i <= 'Z' && *resolved >= 'a' && *resolved <= 'z')
-		*resolved += 'A' - 'a';
+	else *resolved = (i >= 'A' && i <= 'Z')
+		? toupper2(*resolved) : tolower2(*resolved);
 
 	return(resolved);
 }
@@ -687,7 +684,7 @@ char *path;
 #endif	/* DJGPP */
 
 #ifndef	_NODOSDRIVE
-static VOID biosreset(drive)
+static VOID NEAR biosreset(drive)
 int drive;
 {
 	struct SREGS sreg;
@@ -703,7 +700,7 @@ int drive;
 }
 
 /*ARGSUSED*/
-static int _biosdiskio(drive, head, sect, cyl, buf, nsect, mode, retry)
+static int NEAR _biosdiskio(drive, head, sect, cyl, buf, nsect, mode, retry)
 int drive, head, sect, cyl;
 u_char *buf;
 int nsect, mode, retry;
@@ -818,7 +815,7 @@ int nsect, mode, retry;
 
 #ifndef	PC98
 /*ARGSUSED*/
-static int xbiosdiskio(drive, sect, f_sect, buf, nsect, mode, retry)
+static int NEAR xbiosdiskio(drive, sect, f_sect, buf, nsect, mode, retry)
 int drive;
 u_long sect, f_sect;
 u_char *buf;
@@ -933,7 +930,7 @@ int nsect, mode, retry;
 }
 #endif	/* !PC98 */
 
-static int getdrvparam(drv, buf)
+static int NEAR getdrvparam(drv, buf)
 int drv;
 drvinfo *buf;
 {
@@ -998,7 +995,7 @@ drvinfo *buf;
 }
 
 /*ARGSUSED*/
-static int _checkdrive(head, sect, cyl, l_sect, e_sect)
+static int NEAR _checkdrive(head, sect, cyl, l_sect, e_sect)
 int head, sect, cyl;
 u_long l_sect, e_sect;
 {
@@ -1166,7 +1163,7 @@ int drive;
 }
 
 /*ARGSUSED*/
-static int biosdiskio(drive, sect, buf, n, size, iswrite)
+static int NEAR biosdiskio(drive, sect, buf, n, size, iswrite)
 int drive;
 u_long sect;
 u_char *buf;
@@ -1215,7 +1212,7 @@ int n, size, iswrite;
 		buf, n, BIOS_VERIFY, 1));
 }
 
-static int lockdrive(drv)
+static int NEAR lockdrive(drv)
 int drv;
 {
 	struct SREGS sreg;
@@ -1252,7 +1249,7 @@ int drv;
 	return(end);
 }
 
-static int unlockdrive(drv, level)
+static int NEAR unlockdrive(drv, level)
 int drv, level;
 {
 	struct SREGS sreg;
@@ -1274,7 +1271,7 @@ int drv, level;
 }
 
 /*ARGSUSED*/
-static int dosrawdiskio(drv, sect, buf, n, size, iswrite)
+static int NEAR dosrawdiskio(drv, sect, buf, n, size, iswrite)
 int drv;
 u_long sect;
 u_char *buf;
@@ -1445,7 +1442,7 @@ int n, size, iswrite;
 #endif	/* !_NODOSDRIVE */
 #endif	/* !_NOUSELFN */
 
-static int dos_findfirst(path, attr, result)
+static int NEAR dos_findfirst(path, attr, result)
 char *path;
 u_short attr;
 struct dosfind_t *result;
@@ -1473,7 +1470,7 @@ struct dosfind_t *result;
 	return(0);
 }
 
-static int dos_findnext(result)
+static int NEAR dos_findnext(result)
 struct dosfind_t *result;
 {
 	struct SREGS sreg;
@@ -1496,7 +1493,7 @@ struct dosfind_t *result;
 }
 
 #ifndef	_NOUSELFN
-static long lfn_findfirst(path, attr, result)
+static long NEAR lfn_findfirst(path, attr, result)
 char *path;
 u_short attr;
 struct lfnfind_t *result;
@@ -1523,7 +1520,7 @@ struct lfnfind_t *result;
 	return(fd);
 }
 
-static int lfn_findnext(fd, result)
+static int NEAR lfn_findnext(fd, result)
 u_short fd;
 struct lfnfind_t *result;
 {
@@ -1542,7 +1539,7 @@ struct lfnfind_t *result;
 	return(0);
 }
 
-static int lfn_findclose(fd)
+static int NEAR lfn_findclose(fd)
 u_short fd;
 {
 	struct SREGS sreg;
@@ -1912,32 +1909,33 @@ char *path;
 }
 #endif	/* !_NOUSELFN */
 
-char *unixgetcwd(pathname, size)
+char *unixgetcwd(pathname, size, pseudo)
 char *pathname;
-int size;
+int size, pseudo;
 {
 #ifdef	DJGPP
 	char tmp[MAXPATHLEN];
 #endif
+	int drive;
 
-	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
-
-	pathname[0] = getcurdrv();
-	pathname[1] = ':';
-	pathname[2] = _SC_;
-
+	drive = getcurdrv();
 #ifndef	_NODOSDRIVE
-	if (checkdrive(toupper2(pathname[0]) - 'A') > 0) {
+	if (pseudo && checkdrive(toupper2(drive) - 'A') > 0) {
 		if (!dosgetcwd(pathname, size)) return(NULL);
 	}
 	else
 #endif
+	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
+	else {
+		pathname[0] = drive;
+		pathname[1] = ':';
+		pathname[2] = _SC_;
 
-	if (!unixgetcurdir(pathname + 3, 0)) return(NULL);
-	if (!(dos7access & D7_CAPITAL) && *pathname >= 'A' && *pathname <= 'Z')
-		*pathname += 'a' - 'A';
-	if ((dos7access & D7_CAPITAL) && *pathname >= 'a' && *pathname <= 'z')
-		*pathname += 'A' - 'a';
+		if (!unixgetcurdir(pathname + 3, 0)) return(NULL);
+	}
+
+	*pathname = (dos7access & D7_CAPITAL)
+		? toupper2(*pathname) : tolower2(*pathname);
 #ifdef	DJGPP
 	strcpy(tmp, pathname);
 	unixrealpath(tmp, pathname);
@@ -1945,7 +1943,7 @@ int size;
 	return(pathname);
 }
 
-static u_short getdosmode(attr)
+static u_short NEAR getdosmode(attr)
 u_char attr;
 {
 	u_short mode;
@@ -1962,7 +1960,7 @@ u_char attr;
 	return(mode);
 }
 
-static u_char putdosmode(mode)
+static u_char NEAR putdosmode(mode)
 u_short mode;
 {
 	u_char attr;
@@ -1976,7 +1974,7 @@ u_short mode;
 	return(attr);
 }
 
-static time_t getdostime(date, time)
+static time_t NEAR getdostime(date, time)
 u_short date, time;
 {
 	struct tm tm;
@@ -1994,7 +1992,7 @@ u_short date, time;
 }
 
 #ifndef	_NOUSELFN
-static int putdostime(dp, tp, clock)
+static int NEAR putdostime(dp, tp, clock)
 u_short *dp, *tp;
 time_t clock;
 {

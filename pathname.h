@@ -17,7 +17,7 @@
 # define	FAKEMETA
 # define	PMETA		'$'
 # else
-# define	PMETA		'^'
+# define	PMETA		'%'
 # endif
 #endif
 
@@ -70,6 +70,8 @@ typedef struct _hashlist {
 #define	CM_FULLPATH	0002
 #define	CM_HASH		0004
 #define	CM_BATCH	0010
+#define	CM_EXE		0020
+#define	CM_ADDEXT	0040
 
 #if	!MSDOS
 typedef struct _devino_t {
@@ -91,6 +93,20 @@ extern int isdelim __P_((char *, int));
 #endif
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
+#if	MSDOS
+#define	toupper2	toupper
+#define	tolower2	tolower
+#define	strnpathcmp	strnicmp
+#define	strpathcmp	strpathcmp2
+#define	strnpathcmp2	strnicmp
+#else
+extern int toupper2 __P_((int));
+extern int tolower2 __P_((int));
+#define	strnpathcmp	strncmp
+#define	strpathcmp	strcmp
+extern int strnpathcmp2 __P_((char *, char *, int));
+#endif
+extern int strpathcmp2 __P_((char *, char *));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));
@@ -102,14 +118,15 @@ hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, char *));
 extern char *searchpath __P_((char *));
-#if	!defined (FDSH) && !defined(_NOCOMPLETE)
+#if	!defined (FDSH) && !defined (_NOCOMPLETE)
 extern char *finddupl __P_((char *, int, char **));
 extern int completepath __P_((char *, int, int, char ***));
 extern char *findcommon __P_((int, char **));
 #endif
 extern int addmeta __P_((char *, char *, int, int));
+extern char *gethomedir __P_((VOID_A));
 extern char *evalarg __P_((char *, int));
-extern int evalifs __P_((int, char ***));
+extern int evalifs __P_((int, char ***, char *, int));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *));
 #ifndef	FDSH
@@ -117,8 +134,9 @@ extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));
 #endif
 
-extern int noglob;
+#ifndef	_NOUSEHASH
 extern hashlist **hashtable;
+#endif
 extern char *(*getvarfunc)__P_((char *, int));
 extern int (*putvarfunc)__P_((char *, int));
 extern int (*getretvalfunc)__P_((VOID_A));
@@ -127,5 +145,8 @@ extern char **(*getarglistfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));
 extern int (*checkundeffunc)__P_((char *, char *, int));
 extern VOID (*exitfunc)__P_((VOID_A));
+#if	!MSDOS
+extern int pathignorecase;
+#endif
 
 #endif	/* __PATHNAME_H_ */

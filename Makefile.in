@@ -70,7 +70,7 @@ CFLAGS	= -D__OSTYPE__=1 __CCOPTIONS__ $(DEBUG)
 all:	$(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 
 $(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) $(CFLAGS) __LNK__ __OBJLIST__ $(LDFLAGS)
+	$(CC) $(CFLAGS) __MEM__ __LNK__ __OBJLIST__ $(LDFLAGS)
 	__RENAME__ $@ $(PROGRAM)
 	__AOUT2EXE__ $(PROGRAM)
 	__REMOVE__ $(PROGRAM)
@@ -81,10 +81,10 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main__OBJ__: main.c
-	$(CC) -DFD=1 $(CFLAGS) -DDEFRUNCOM=__DEFRC__ $(CPPFLAGS) -c __OUT__ $*.c
+	$(CC) -DFD=1 $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ $*.c
 
 .c__OBJ__:
-	$(CC) -DFD=1 $(CFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
+	$(CC) -DFD=1 $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ $*.c
 
 
 ############################################################
@@ -204,13 +204,14 @@ depend: $(SRC) kanji.h funcno.h
 
 config: Configur expfunc.c
 	-if (echo 't() { echo $1; }; t test' | $(SHELL) >/dev/null 2>&1); then \
-		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
+		$(SED) -e "2,3d" -e "s:__cc__:__CC__:" Configur \
+		| $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
 			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configur | ./expfunc | $(SHELL) \
-		> config.h; \
+		$(SED) -e "2,3d" -e "s:__cc__:__CC__:" Configur \
+		| ./expfunc | $(SHELL) > config.h; \
 	fi
 
 
@@ -261,7 +262,8 @@ dosemu__OBJ__: machine.h config.h
 dosemu__OBJ__: types.h pathname.h func.h
 dosemu__OBJ__: kctype.h
 dosemu__OBJ__: dosdisk.h
-unixdisk__OBJ__: machine.h config.h unixdisk.h
+unixdisk__OBJ__: machine.h config.h
+unixdisk__OBJ__: unixdisk.h
 unixdisk__OBJ__: unixemu.h
 unixdisk__OBJ__: dosdisk.h
 unixemu__OBJ__: fd.h

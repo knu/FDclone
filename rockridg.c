@@ -23,10 +23,10 @@ extern char fullpath[];
 #define	RR_VERNO	004
 #define	RR_HYPHN	010
 
-static char *getorgname __P_((char *, u_char));
-static assoclist *readtranstbl __P_((VOID_A));
-static VOID freetranstbl __P_((assoclist *));
-static char *_detransfile __P_((char *, char *, int));
+static char *NEAR getorgname __P_((char *, u_char));
+static assoclist *NEAR readtranstbl __P_((VOID_A));
+static VOID NEAR freetranstbl __P_((assoclist *));
+static char *NEAR _detransfile __P_((char *, char *, int));
 
 char *rockridgepath = NULL;
 
@@ -34,7 +34,7 @@ static assoclist *rr_curtbl = NULL;
 static char *rr_cwd = NULL;
 
 
-static char *getorgname(name, flag)
+static char *NEAR getorgname(name, flag)
 char *name;
 u_char flag;
 {
@@ -42,8 +42,7 @@ u_char flag;
 	int i;
 
 	for (i = 0; i < MAXNAMLEN && name[i] && name[i] != ';'; i++) {
-		if ((flag & RR_LOWER) && buf[i] >= 'A' && buf[i] <= 'Z')
-			buf[i] = name[i] + 'a' - 'A';
+		if (flag & RR_LOWER) buf[i] = tolower2(name[i]);
 		else buf[i] = name[i];
 	}
 
@@ -57,7 +56,7 @@ u_char flag;
 	return(strdup2(buf));
 }
 
-static assoclist *readtranstbl(VOID_A)
+static assoclist *NEAR readtranstbl(VOID_A)
 {
 	assoclist *top, **bottom, *new;
 	FILE *fp;
@@ -78,11 +77,8 @@ static assoclist *readtranstbl(VOID_A)
 		flag |= RR_HYPHN;
 		if ((fp = _Xfopen(file, "r"))) break;
 
-		for (i = 0; i < sizeof(TRANSTBLFILE) - 1; i++) {
-			file[i] = TRANSTBLFILE[i];
-			if (file[i] >= 'A' && file[i] <= 'Z')
-				file[i] += 'a' - 'A';
-		}
+		for (i = 0; i < sizeof(TRANSTBLFILE) - 1; i++)
+			file[i] = tolower2(TRANSTBLFILE[i]);
 		file[i] = '\0';
 
 		flag = RR_TRANS | RR_LOWER;
@@ -160,7 +156,7 @@ static assoclist *readtranstbl(VOID_A)
 	return(top);
 }
 
-static VOID freetranstbl(tbl)
+static VOID NEAR freetranstbl(tbl)
 assoclist *tbl;
 {
 	assoclist *tp;
@@ -254,7 +250,7 @@ char *file, *buf;
 	return(cp);
 }
 
-static char *_detransfile(path, buf, rdlink)
+static char *NEAR _detransfile(path, buf, rdlink)
 char *path, *buf;
 int rdlink;
 {
@@ -302,15 +298,14 @@ char *detransfile(path, buf, rdlink)
 char *path, *buf;
 int rdlink;
 {
-	char *cwd, rpath[MAXPATHLEN];
+	char cwd[MAXPATHLEN], rpath[MAXPATHLEN];
 
-	if (!includepath(rpath, path, rockridgepath)) return(path);
+	if (!includepath(rpath, path, rockridgepath) || !Xgetwd(cwd))
+		return(path);
 
-	cwd = getwd2();
 	if (_detransfile(rpath, buf, rdlink))
 		path = realpath2(buf, buf, rdlink);
 	_Xchdir(cwd);
-	free(cwd);
 	return(path);
 }
 #endif	/* !_NOROCKRIDGE */

@@ -37,9 +37,14 @@ typedef unsigned short	u_short;
 typedef unsigned long	u_long;
 # endif
 # ifdef	__TURBOC__
+# define	NEAR		near
 # define	FORCEDSTDC
 # define	SIGFNCINT
 typedef long	off_t;
+# endif
+# ifdef	LSI_C
+# define	NEAR		near
+# define	FORCEDSTDC
 # endif
 #define	_SC_	'\\'
 #define	_SS_	"\\"
@@ -47,6 +52,10 @@ typedef long	off_t;
 #define	_SC_	'/'
 #define	_SS_	"/"
 #endif	/* !MSDOS */
+
+#ifndef	NEAR
+#define	NEAR
+#endif
 
 #if	defined (sun)
 #define	CODEEUC
@@ -404,6 +413,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -425,6 +435,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	SIGFNCINT
 #endif
@@ -452,6 +463,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -476,6 +488,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -501,6 +514,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -525,6 +539,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -549,6 +564,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -567,6 +583,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
@@ -646,6 +663,8 @@ typedef long	off_t;
 /* #define USESELECTH	;use <sys/select.h> for select() */
 /* #define USESYSDIRH	;use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	;use <time.h> for 'struct tm' */
+/* #define USESTDARGH	;use <stdarg.h> for va_list */
+/* #define USEMKDEVH	;use <sys/mkdev.h> for major()/minor() */
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
@@ -693,6 +712,7 @@ typedef long	off_t;
 /* #define USEMKTIME	;use mktime() instead of timelocal() */
 /* #define USEUNAME	;use uname() instead of gethostname() */
 /* #define USEWAITPID	;use waitpid() instead of wait3() */
+/* #define USESIGPMASK	;use sigprocmask() instead of sigsetmask() */
 /* #define USERESOURCEH	;use <sys/resource.h> for resource info. */
 /* #define USEULIMITH	;use <ulimit.h> for resource info. */
 /* #define USETIMESH	;use <sys/times.h> for resource info. */
@@ -732,8 +752,15 @@ typedef long	off_t;
 #endif
 
 #ifdef	SVR4
+#define	USEMKDEVH
+#define	USEWAITPID
+#define	USESIGPMASK
 #define	GETPGRPVOID
 #define	USESETPGID
+#endif
+
+#if	defined (__STDC__) || defined (FORCEDSTDC)
+#define	USESTDARGH
 #endif
 
 #if	(defined (__STDC__) || defined (FORCEDSTDC)) \

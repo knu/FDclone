@@ -106,15 +106,15 @@ extern int n_args;
 # endif	/* !UXPDS */
 #endif	/* !MSDOS */
 
-static int countfield __P_((char *, u_char [], int, int *));
-static char *getfield __P_((char *, char *, int, launchtable *, int));
-static int readfileent __P_((namelist *, char *, launchtable *, int));
-static VOID archbar __P_((char *, char *));
-static int dircmp __P_((char *, char *));
-static int dirmatchlen __P_((char *, char *));
-static char *pseudodir __P_((namelist *, namelist *, int));
-static int readarchive __P_((char *, launchtable *));
-static int archbrowse __P_((char *, int));
+static int NEAR countfield __P_((char *, u_char [], int, int *));
+static char *NEAR getfield __P_((char *, char *, int, launchtable *, int));
+static int NEAR readfileent __P_((namelist *, char *, launchtable *, int));
+static VOID NEAR archbar __P_((char *, char *));
+static int NEAR dircmp __P_((char *, char *));
+static int NEAR dirmatchlen __P_((char *, char *));
+static char *NEAR pseudodir __P_((namelist *, namelist *, int));
+static int NEAR readarchive __P_((char *, launchtable *));
+static int NEAR archbrowse __P_((char *, int));
 
 char *archivefile = NULL;
 char *archivedir = NULL;
@@ -157,7 +157,7 @@ static int maxarcf = 0;
 static int launchlevel = 0;
 
 
-static int countfield(line, sep, field, eolp)
+static int NEAR countfield(line, sep, field, eolp)
 char *line;
 u_char sep[];
 int field, *eolp;
@@ -200,7 +200,7 @@ int field, *eolp;
 	return((field < 0) ? f : -1);
 }
 
-static char *getfield(buf, line, skip, list, no)
+static char *NEAR getfield(buf, line, skip, list, no)
 char *buf, *line;
 int skip;
 launchtable *list;
@@ -236,7 +236,7 @@ int no;
 	return(strncpy2(buf, cp, i));
 }
 
-static int readfileent(tmp, line, list, max)
+static int NEAR readfileent(tmp, line, list, max)
 namelist *tmp;
 char *line;
 launchtable *list;
@@ -360,7 +360,7 @@ int max;
 	return(0);
 }
 
-static VOID archbar(file, dir)
+static VOID NEAR archbar(file, dir)
 char *file, *dir;
 {
 	char *arch;
@@ -380,7 +380,7 @@ char *file, *dir;
 	tflush();
 }
 
-static int dircmp(s1, s2)
+static int NEAR dircmp(s1, s2)
 char *s1, *s2;
 {
 	int i, j;
@@ -400,7 +400,7 @@ char *s1, *s2;
 	return(s1[i]);
 }
 
-static int dirmatchlen(s1, s2)
+static int NEAR dirmatchlen(s1, s2)
 char *s1, *s2;
 {
 	int i, j;
@@ -429,7 +429,7 @@ char *s1, *s2;
 	return(j);
 }
 
-static char *pseudodir(namep, list, max)
+static char *NEAR pseudodir(namep, list, max)
 namelist *namep, *list;
 int max;
 {
@@ -502,7 +502,7 @@ int all;
 	}
 }
 
-static int readarchive(file, list)
+static int NEAR readarchive(file, list)
 char *file;
 launchtable *list;
 {
@@ -626,7 +626,7 @@ launchtable *list;
 	return(maxfile);
 }
 
-static int archbrowse(file, max)
+static int NEAR archbrowse(file, max)
 char *file;
 int max;
 {
@@ -1013,15 +1013,20 @@ int tr;
 	strcpy(path, fullpath);
 #else
 	if (!(drive = dospath2(fullpath))) strcpy(path, fullpath);
+	else if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename) {
+		warning(ENOENT, arc);
+		return(0);
+	}
 	else {
 		realpath2(deftmpdir, path, 1);
 		free(deftmpdir);
 #if	MSDOS && !defined (_NODOSDRIVE)
-# ifdef	USEGETWD
-	if (checkdrive(toupper2(path[0]) - 'A')) getwd(path);
-# else
-	if (checkdrive(toupper2(path[0]) - 'A')) getcwd(path, MAXPATHLEN);
-# endif
+		if (checkdrive(toupper2(path[0]) - 'A'))
+			if (!_Xgetwd(path)) {
+				lostcwd(path);
+				deftmpdir = NULL;
+				return(0);
+			}
 #endif
 		deftmpdir = strdup2(path);
 		strcpy(strcatdelim(path), tmpfilename);
@@ -1040,7 +1045,7 @@ int tr;
 		ret = 0;
 	}
 	if (tmpdir) removetmp(tmpdir, NULL, arc);
-	if (_chdir2(fullpath) < 0) error(fullpath);
+	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	return(ret);
 }
 

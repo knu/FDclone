@@ -14,10 +14,21 @@
 
 #if	MSDOS
 extern int getcurdrv __P_((VOID_A));
-extern int setcurdrv __P_((int));
+extern int setcurdrv __P_((int, int));
 #else
 #include <sys/file.h>
 #include <sys/param.h>
+#endif
+
+#ifdef	USEMKDEVH
+#include <sys/mkdev.h>
+#else
+# ifndef	major
+# define	major(n)	(((unsigned)(n) >> 8) & 0xff)
+# endif
+# ifndef	minor
+# define	minor(n)	((unsigned)((n) & 0xff))
+# endif
 #endif
 
 #ifndef	_NOARCHIVE
@@ -35,17 +46,17 @@ extern char *origpath;
 extern char *treepath;
 #endif
 
-static VOID pathbar __P_((VOID_A));
-static VOID stackbar __P_((VOID_A));
+static VOID NEAR pathbar __P_((VOID_A));
+static VOID NEAR stackbar __P_((VOID_A));
 #if	!MSDOS
-static char *putowner __P_((char *, uid_t));
-static char *putgroup __P_((char *, gid_t));
+static char *NEAR putowner __P_((char *, uid_t));
+static char *NEAR putgroup __P_((char *, gid_t));
 #endif
-static VOID calclocate __P_((int));
+static VOID NEAR calclocate __P_((int));
 #ifndef	_NOPRECEDE
 static VOID readstatus __P_((VOID_A));
 #endif
-static int browsedir __P_((char *, char *));
+static int NEAR browsedir __P_((char *, char *));
 
 int columns = 0;
 int defcolumns = 0;
@@ -109,7 +120,7 @@ static int maxstat = 0;
 #endif
 
 
-static VOID pathbar(VOID_A)
+static VOID NEAR pathbar(VOID_A)
 {
 	char *path;
 
@@ -210,7 +221,7 @@ int max;
 	tflush();
 }
 
-static VOID stackbar(VOID_A)
+static VOID NEAR stackbar(VOID_A)
 {
 #ifndef	_NOCOLOR
 	int j, x, color;
@@ -353,7 +364,7 @@ u_long flags;
 #endif
 
 #if	!MSDOS
-static char *putowner(buf, uid)
+static char *NEAR putowner(buf, uid)
 char *buf;
 uid_t uid;
 {
@@ -368,7 +379,7 @@ uid_t uid;
 	return(buf);
 }
 
-static char *putgroup(buf, gid)
+static char *NEAR putgroup(buf, gid)
 char *buf;
 gid_t gid;
 {
@@ -391,6 +402,9 @@ int no;
 	char *buf;
 	struct tm *tm;
 	int len, width;
+#if	!MSDOS
+	int i;
+#endif
 
 	locate(0, LINFO);
 
@@ -442,12 +456,13 @@ int no;
 	putgroup(buf + len, list[no].st_gid);
 	len += WGROUP;
 	buf[len++] = ' ';
-#endif
 
 	if (isdev(&(list[no]))) sprintf(buf + len, "%3u, %3u ",
-		((unsigned)(list[no].st_size) >> 8) & 0xff,
-		(unsigned)(list[no].st_size) & 0xff);
-	else sprintf(buf + len, "%8ld ", (long)(list[no].st_size));
+		major(list[no].st_size) & 0xff,
+		minor(list[no].st_size) & 0xff);
+	else
+#endif
+	sprintf(buf + len, "%8ld ", (long)(list[no].st_size));
 	len = strlen(buf);
 
 	sprintf(buf + len, "%02d-%02d-%02d %02d:%02d ",
@@ -455,23 +470,32 @@ int no;
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
 	width = n_lastcolumn - len;
-	strncpy3(buf + len, list[no].name, &width, fnameofs);
 
-#if	!MSDOS
+#if	MSDOS
+	strncpy3(buf + len, list[no].name, &width, fnameofs);
+#else	/* !MSDOS */
+	i = strncpy3(buf + len, list[no].name, &width, fnameofs);
 	if (islink(&(list[no]))) {
 		width += len;
-		len = strlen(buf);
-		while (buf[--len] == ' ');
-		len += 2;
+		len += i + 1;
 		if (strlen3(list[no].name) > fnameofs) {
 			if (len < width) buf[len++] = '-';
 			if (len < width) buf[len++] = '>';
 			len++;
 		}
-		if ((width -= len) > 0)
-			Xreadlink(list[no].name, buf + len, width);
+		if ((width -= len) > 0) {
+			char *tmp;
+
+			tmp = malloc2(width * 2 + 1);
+			i = Xreadlink(list[no].name, tmp, width * 2);
+			if (i >= 0) {
+				tmp[i] = '\0';
+				strncpy3(buf + len, tmp, &width, 0);
+			}
+			free(tmp);
+		}
 	}
-#endif
+#endif	/* !MSDOS */
 
 	kanjiputs(buf);
 	free(buf);
@@ -487,7 +511,7 @@ VOID waitmes(VOID_A)
 	tflush();
 }
 
-static VOID calclocate(i)
+static VOID NEAR calclocate(i)
 int i;
 {
 	int x, y;
@@ -608,10 +632,12 @@ int no, standout;
 		(list[no].st_mode & S_IFMT) == S_IFIFO)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<VOL>");
 #endif
+#if	!MSDOS
 		else if (isdev(&(list[no]))) sprintf(buf + len, " %*u,%*u",
-			WSIZE / 2, ((unsigned)(list[no].st_size) >> 8) & 0xff,
+			WSIZE / 2, major(list[no].st_size) & 0xff,
 			WSIZE - (WSIZE / 2) - 1,
-			(unsigned)(list[no].st_size) & 0xff);
+			minor(list[no].st_size) & 0xff);
+#endif
 		else sprintf(buf + len, " %*ld",
 			WSIZE, (long)(list[no].st_size));
 		if (strlen(buf + len) > WSIZE + 1)
@@ -824,7 +850,7 @@ char *buf;
 
 	i = 0;
 	if (pos >= 0 && pos < max) for (;;) {
-		if (!strnpathcmp(list[pos].name, buf, len)) {
+		if (!strnpathcmp2(list[pos].name, buf, len)) {
 			i = 1;
 			break;
 		}
@@ -870,7 +896,7 @@ static VOID readstatus(VOID_A)
 }
 #endif
 
-static int browsedir(file, def)
+static int NEAR browsedir(file, def)
 char *file, *def;
 {
 	DIR *dirp;
@@ -897,7 +923,10 @@ char *file, *def;
 	haste = (!sorton && includepath(NULL, precedepath)) ? 1 : 0;
 #endif
 
-	if (!(dirp = Xopendir("."))) error(".");
+	if (!(dirp = Xopendir("."))) {
+		lostcwd(NULL);
+		if (!(dirp = Xopendir("."))) error(".");
+	}
 	fnameofs = 0;
 	waitmes();
 
@@ -1069,10 +1098,8 @@ char *cur;
 		cp = evalpath(strdup2(cur), 1);
 #if	MSDOS
 		if (_dospath(cp)) {
-			if (setcurdrv(*cp) >= 0) {
-				tmp = getwd2();
-				strcpy(fullpath, tmp);
-				free(tmp);
+			if (setcurdrv(*cp, 0) >= 0) {
+				if (!Xgetwd(fullpath)) error(NULL);
 			}
 			for (i = 2; cp[i]; i++) cp[i - 2] = cp[i];
 			cp [i - 2] = '\0';

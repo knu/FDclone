@@ -17,7 +17,7 @@
 
 #if	MSDOS
 #include <sys/timeb.h>
-extern int setcurdrv __P_((int));
+extern int setcurdrv __P_((int, int));
 extern char *unixrealpath __P_((char *, char *));
 #else
 #include <pwd.h>
@@ -50,15 +50,15 @@ extern char *findpattern;
 			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
-static char *_realpath2 __P_((char *, char *, int));
-static int _getenv2 __P_((char *, int, char **));
-static char **_putenv2 __P_((char *, char **));
+static char *NEAR _realpath2 __P_((char *, char *, int));
+static int NEAR _getenv2 __P_((char *, int, char **));
+static char **NEAR _putenv2 __P_((char *, char **));
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
-static int tmcmp __P_((struct tm *, struct tm *));
+static int NEAR tmcmp __P_((struct tm *, struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long gettimezone __P_((struct tm *, time_t));
+static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 
 static char **environ2 = NULL;
@@ -101,7 +101,7 @@ struct stat *stp;
 }
 
 /*ARGSUSED*/
-static char *_realpath2(path, resolved, rdlink)
+static char *NEAR _realpath2(path, resolved, rdlink)
 char *path, *resolved;
 int rdlink;
 {
@@ -187,28 +187,35 @@ int rdlink;
 		resolved[3] = '\0';
 	}
 	else if (resolved[0] && resolved[0] != drv) {
-		if (setcurdrv(resolved[0]) < 0) {
+		if (setcurdrv(resolved[0], 0) < 0) {
 			resolved[1] = ':';
 			resolved[2] = _SC_;
 			resolved[3] = '\0';
 		}
-		else if (!Xgetcwd(resolved, MAXPATHLEN) || setcurdrv(drv) < 0)
+		else if (!Xgetwd(resolved) || setcurdrv(drv, 0) < 0)
 			error(NULL);
 	}
 #else	/* !MSDOS */
 	if (*path == _SC_) strcpy(resolved, _SS_);
 # ifndef	_NODOSDRIVE
 	else if ((drv = _dospath(path))) {
+		char cwd[MAXPATHLEN];
+
 		path += 2;
 		resolved[0] = drv;
-		resolved[drv = 1] = ':';
-		if (*path == _SC_) resolved[++drv] = _SC_;
-		resolved[++drv] = '\0';
+		resolved[1] = ':';
+		resolved[2] = '\0';
+		if (*path == _SC_ || !Xgetwd(cwd)
+		|| Xchdir(resolved) < 0 || !Xgetwd(resolved)) {
+			resolved[2] = _SC_;
+			resolved[3] = '\0';
+		}
+		else if (Xchdir(cwd) < 0) error(cwd);
 	}
 # endif
 #endif	/* !MSDOS */
 	else if (!*fullpath) {
-		if (!Xgetcwd(resolved, MAXPATHLEN)) strcpy(resolved, _SS_);
+		if (!Xgetwd(resolved)) strcpy(resolved, _SS_);
 	}
 	else if (resolved != fullpath) strcpy(resolved, fullpath);
 	return(_realpath2(path, resolved, rdlink));
@@ -219,14 +226,14 @@ char *path;
 {
 	char cwd[MAXPATHLEN];
 
-	if (!Xgetcwd(cwd, MAXPATHLEN)) strcpy(cwd, _SS_);
+	if (!Xgetwd(cwd)) strcpy(cwd, _SS_);
 	if (Xchdir(path) < 0) return(-1);
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	if (!dospath2("")) {
 		int fd;
 
 		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
-			if (Xchdir(cwd) < 0) error(cwd);
+			if (Xchdir(cwd) < 0) lostcwd(cwd);
 			return(-1);
 		}
 		close(fd);
@@ -247,8 +254,8 @@ char *path;
 	strcpy(fullpath, tmp);
 
 	if (_chdir2(fullpath) < 0) {
-		if (_chdir2(cwd) < 0) error(cwd);
-		strcpy(fullpath, cwd);
+		if (_chdir2(cwd) < 0) lostcwd(fullpath);
+		else strcpy(fullpath, cwd);
 		return(-1);
 	}
 	if (lastpath) free(lastpath);
@@ -262,7 +269,7 @@ char *path;
 			if (unixpath) free(unixpath);
 			unixpath = strdup2(cwd);
 		}
-		if (Xgetcwd(cwd, MAXPATHLEN)) strcpy(fullpath, cwd);
+		if (Xgetwd(cwd)) strcpy(fullpath, cwd);
 		realpath2(fullpath, fullpath, 0);
 	}
 	else {
@@ -310,9 +317,7 @@ char *path;
 #endif
 	if (chdir2(path) < 0) return(NULL);
 	if (!cwd) {
-		cwd = getwd2();
-		strcpy(fullpath, cwd);
-		free(cwd);
+		if (!Xgetwd(fullpath)) lostcwd(fullpath);
 	}
 	else {
 		if (findpattern) free(findpattern);
@@ -385,12 +390,6 @@ char *s;
 	if (!(tmp = (char *)malloc((ALLOC_T)strlen(s) + 1))) error(NULL);
 	strcpy(tmp, s);
 	return(tmp);
-}
-
-int toupper2(c)
-int c;
-{
-	return((c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c);
 }
 
 char *strchr2(s, c)
@@ -494,16 +493,6 @@ int *lenp, ptr;
 	return(l);
 }
 
-int strcasecmp2(s1, s2)
-char *s1, *s2;
-{
-	int c1, c2;
-
-	while ((c1 = toupper2(*s1)) == (c2 = toupper2(*(s2++))))
-		if (!*(s1++)) return(0);
-	return(c1 - c2);
-}
-
 char *strstr2(s1, s2)
 char *s1, *s2;
 {
@@ -546,7 +535,7 @@ char *s;
 	return((s && *s >= '0' && *s <= '9') ? atoi(s) : -1);
 }
 
-static int _getenv2(name, len, envp)
+static int NEAR _getenv2(name, len, envp)
 char *name;
 int len;
 char **envp;
@@ -561,7 +550,7 @@ char **envp;
 	return(i);
 }
 
-static char **_putenv2(s, envp)
+static char **NEAR _putenv2(s, envp)
 char *s, **envp;
 {
 	char *cp, *tmp, **new;
@@ -732,7 +721,7 @@ char *getwd2(VOID_A)
 {
 	char cwd[MAXPATHLEN];
 
-	if (!Xgetcwd(cwd, MAXPATHLEN)) error(NULL);
+	if (!Xgetwd(cwd)) error(NULL);
 	return(strdup2(cwd));
 }
 
@@ -798,7 +787,7 @@ gid_t gid;
 
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
-static int tmcmp(tm1, tm2)
+static int NEAR tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;
 {
 	if (tm1 -> tm_year != tm2 -> tm_year)
@@ -816,7 +805,7 @@ struct tm *tm1, *tm2;
 #endif	/* !MSDOS && !NOTZFILEH && !USEMKTIME && !USETIMELOCAL */
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long gettimezone(tm, t)
+static long NEAR gettimezone(tm, t)
 struct tm *tm;
 time_t t;
 {

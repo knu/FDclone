@@ -2,7 +2,7 @@
 echo "Don't exec me!"
 exit 0
 
-CC=cc
+CC=__cc__
 CPP="$CC -E"
 TAR=tar
 LIBDIR=
@@ -94,8 +94,8 @@ cat ./config.hin
 
 for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
 NOVOID NOUID_T DECLSIGLIST NOSIGLIST \
-DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
-NOUNISTDH NOSTDLIBH NOTZFILEH USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
+DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
+USELEAPCNT USESELECTH USESYSDIRH USETIMEH USESTDARGH USEMKDEVH\
 USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USEFFSIZE STATFSARGS \
@@ -105,7 +105,7 @@ USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF \
 USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME \
-USEWAITPID USERESOURCEH USEULIMITH USETIMESH \
+USEWAITPID USESIGPMASK USERESOURCEH USEULIMITH USETIMESH \
 GETPGRPVOID USESETPGID SIGARGINT SIGFNCINT \
 GETTODARGS
 do
@@ -244,6 +244,13 @@ if inheader 'struct.*[^a-zA-Z0-9_]tm[^a-zA-Z0-9_]' "sys/types sys/time time" \
 && noinheader 'struct.*[^a-zA-Z0-9_]tm[^a-zA-Z0-9_]' "sys/types sys/time"; then
 	echo "#define	USETIMEH"
 fi
+if inheader 'va_list' stdarg; then
+	echo "#define	USESTDARGH"
+fi
+if inheader 'major' sys/mkdev; then
+	echo "#define	USEMKDEVH"
+fi
+if noheader sgtty \
 if noheader sgtty \
 || inheader 'TIOCFLUSH' sgtty "TIOCFLUSH"; then
 	if noheader termio; then
@@ -375,6 +382,9 @@ if noexist "gethostname(0,0)" && isexist "uname(0)" sys/utsname; then
 fi
 if isexist "waitpid(0,0,0)" sys/wait; then
 	echo "#define	USEWAITPID"
+fi
+if isexist "sigprocmask(0,0,0)" signal; then
+	echo "#define	USESIGPMASK"
 fi
 if isexist "getrusage(0,0)" "sys/types sys/time sys/resource"\
 && isexist "getrlimit(0,0)" "sys/types sys/time sys/resource"; then

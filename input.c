@@ -11,7 +11,7 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 #include <stdarg.h>
 #else
 #include <varargs.h>
@@ -28,47 +28,49 @@ extern int sizeinfo;
 extern char *sys_errlist[];
 #endif
 
-static int trquote __P_((char *, int));
+static int NEAR trquote __P_((char *, int));
 #ifdef	CODEEUC
-static int vlen __P_((char *, int));
-static int rlen __P_((char *, int));
+static int NEAR vlen __P_((char *, int));
+static int NEAR rlen __P_((char *, int));
 #else
 #define	vlen(s, len)	(len)
 #define	rlen(s, len)	(len)
 #endif
-static VOID putcursor __P_((int, int));
-static VOID rightcursor __P_((VOID_A));
-static VOID leftcursor __P_((VOID_A));
-static VOID upcursor __P_((VOID_A));
-static VOID downcursor __P_((VOID_A));
-static VOID Xlocate __P_((int, int));
-static VOID setcursor __P_((int, int, int, int));
-static int rightchar __P_((char *, int *, int, int, int, int, int));
-static int leftchar __P_((char *, int *, int, int, int, int, int));
-static VOID insertchar __P_((char *, int, int, int, int, int, int));
-static VOID deletechar __P_((char *, int, int, int, int, int, int));
-static VOID insshift __P_((char *, int, int, int));
-static VOID delshift __P_((char *, int, int, int));
-static VOID truncline __P_((int, int, int, int, int));
-static VOID displaystr __P_((char *, int, int, int, int, int));
-static int insertstr __P_((char *, int, int, int, int, int, char *, int, int));
+static VOID NEAR putcursor __P_((int, int));
+static VOID NEAR rightcursor __P_((VOID_A));
+static VOID NEAR leftcursor __P_((VOID_A));
+static VOID NEAR upcursor __P_((VOID_A));
+static VOID NEAR downcursor __P_((VOID_A));
+static VOID NEAR Xlocate __P_((int, int));
+static VOID NEAR setcursor __P_((int, int, int, int));
+static int NEAR rightchar __P_((char *, int *, int, int, int, int, int));
+static int NEAR leftchar __P_((char *, int *, int, int, int, int, int));
+static VOID NEAR insertchar __P_((char *, int, int, int, int, int, int));
+static VOID NEAR deletechar __P_((char *, int, int, int, int, int, int));
+static VOID NEAR insshift __P_((char *, int, int, int));
+static VOID NEAR delshift __P_((char *, int, int, int));
+static VOID NEAR truncline __P_((int, int, int, int, int));
+static VOID NEAR displaystr __P_((char *, int, int, int, int, int));
+static int NEAR insertstr __P_((char *, int, int, int, int, int,
+		char *, int, int));
 #ifndef	_NOCOMPLETE
-static VOID selectfile __P_((int, char **));
-static int completestr __P_((char *, int, int, int, int, int, int, int));
+static VOID NEAR selectfile __P_((int, char **));
+static int NEAR completestr __P_((char *, int, int, int, int, int, int, int));
 #endif
-static int _inputstr_up __P_((char *, int *, int, int *, int, int, int,
+static int NEAR _inputstr_up __P_((char *, int *, int, int *, int, int, int,
 		int *, int, char **));
-static int _inputstr_down __P_((char *, int *, int, int *, int, int, int,
+static int NEAR _inputstr_down __P_((char *, int *, int, int *, int, int, int,
 		int *, int, char **));
-static int _inputstr_delete __P_((char *, int, int, int, int, int));
-static int _inputstr_enter __P_((char *, int *, int, int *, int, int, int));
-static int _inputstr_input __P_((char *, int *, int, int *, int, int, int,
+static int NEAR _inputstr_delete __P_((char *, int, int, int, int, int));
+static int NEAR _inputstr_enter __P_((char *, int *, int, int *, int, int,
 		int));
-static int _inputstr __P_((char *, int, int, int, int, int, int));
-static int dispprompt __P_((char *, int));
-static char *truncstr __P_((char *));
-static VOID yesnomes __P_((char *));
-static int selectmes __P_((int, int, int, char *[], int [], int []));
+static int NEAR _inputstr_input __P_((char *, int *, int, int *, int, int, int,
+		int));
+static int NEAR _inputstr __P_((char *, int, int, int, int, int, int));
+static int NEAR dispprompt __P_((char *, int));
+static char *NEAR truncstr __P_((char *));
+static VOID NEAR yesnomes __P_((char *));
+static int NEAR selectmes __P_((int, int, int, char *[], int [], int []));
 
 int subwindow = 0;
 char *curfilename = NULL;
@@ -212,7 +214,7 @@ int sig;
 	return(ch);
 }
 
-static int trquote(s, cx)
+static int NEAR trquote(s, cx)
 char *s;
 int cx;
 {
@@ -223,7 +225,7 @@ int cx;
 }
 
 #ifdef	CODEEUC
-static int vlen(s, len)
+static int NEAR vlen(s, len)
 char *s;
 int len;
 {
@@ -233,7 +235,7 @@ int len;
 	return(v);
 }
 
-static int rlen(s, len)
+static int NEAR rlen(s, len)
 char *s;
 int len;
 {
@@ -244,33 +246,33 @@ int len;
 }
 #endif
 
-static VOID putcursor(c, n)
+static VOID NEAR putcursor(c, n)
 int c, n;
 {
 	while (n--) putch2(c);
 }
 
-static VOID rightcursor(VOID_A)
+static VOID NEAR rightcursor(VOID_A)
 {
 	putterm(c_right);
 }
 
-static VOID leftcursor(VOID_A)
+static VOID NEAR leftcursor(VOID_A)
 {
 	putterm(c_left);
 }
 
-static VOID upcursor(VOID_A)
+static VOID NEAR upcursor(VOID_A)
 {
 	putterm(c_up);
 }
 
-static VOID downcursor(VOID_A)
+static VOID NEAR downcursor(VOID_A)
 {
 	putterm(c_down);
 }
 
-static VOID Xlocate(x, y)
+static VOID NEAR Xlocate(x, y)
 int x, y;
 {
 	while (ypos + y >= n_line) {
@@ -281,7 +283,7 @@ int x, y;
 	locate(xpos + x, ypos + y);
 }
 
-static VOID setcursor(cx, plen, max, linemax)
+static VOID NEAR setcursor(cx, plen, max, linemax)
 int cx, plen, max, linemax;
 {
 	int f;
@@ -292,7 +294,7 @@ int cx, plen, max, linemax;
 	if (f) rightcursor();
 }
 
-static int rightchar(s, cxp, cx2, len, plen, max, linemax)
+static int NEAR rightchar(s, cxp, cx2, len, plen, max, linemax)
 char *s;
 int *cxp, cx2, len, plen, max, linemax;
 {
@@ -324,7 +326,7 @@ int *cxp, cx2, len, plen, max, linemax;
 }
 
 /*ARGSUSED*/
-static int leftchar(s, cxp, cx2, len, plen, max, linemax)
+static int NEAR leftchar(s, cxp, cx2, len, plen, max, linemax)
 char *s;
 int *cxp, cx2, len, plen, max, linemax;
 {
@@ -356,7 +358,7 @@ int *cxp, cx2, len, plen, max, linemax;
 	return(cx2);
 }
 
-static VOID insertchar(s, cx, len, plen, max, linemax, ins)
+static VOID NEAR insertchar(s, cx, len, plen, max, linemax, ins)
 char *s;
 int cx, len, plen, max, linemax, ins;
 {
@@ -494,7 +496,7 @@ int cx, len, plen, max, linemax, ins;
 	}
 }
 
-static VOID deletechar(s, cx, len, plen, max, linemax, del)
+static VOID NEAR deletechar(s, cx, len, plen, max, linemax, del)
 char *s;
 int cx, len, plen, max, linemax, del;
 {
@@ -577,7 +579,7 @@ int cx, len, plen, max, linemax, del;
 	}
 }
 
-static VOID insshift(s, cx, len, ins)
+static VOID NEAR insshift(s, cx, len, ins)
 char *s;
 int cx, len, ins;
 {
@@ -586,7 +588,7 @@ int cx, len, ins;
 	for (i = len - 1; i >= cx; i--) s[i + ins] = s[i];
 }
 
-static VOID delshift(s, cx, len, del)
+static VOID NEAR delshift(s, cx, len, del)
 char *s;
 int cx, len, del;
 {
@@ -595,7 +597,7 @@ int cx, len, del;
 	for (i = cx; i < len - del; i++) s[i] = s[i + del];
 }
 
-static VOID truncline(cx, len, plen, max, linemax)
+static VOID NEAR truncline(cx, len, plen, max, linemax)
 int cx, len, plen, max, linemax;
 {
 	int dy, i;
@@ -615,7 +617,7 @@ int cx, len, plen, max, linemax;
 	}
 }
 
-static VOID displaystr(s, cx, len, plen, max, linemax)
+static VOID NEAR displaystr(s, cx, len, plen, max, linemax)
 char *s;
 int cx, len, plen, max, linemax;
 {
@@ -660,7 +662,7 @@ int cx, len, plen, max, linemax;
 	free(dupl);
 }
 
-static int insertstr(s, cx, len, plen, max, linemax, insstr, ins, quote)
+static int NEAR insertstr(s, cx, len, plen, max, linemax, insstr, ins, quote)
 char *s;
 int cx, len, plen, max, linemax;
 char *insstr;
@@ -735,7 +737,7 @@ int ins, quote;
 }
 
 #ifndef	_NOCOMPLETE
-static VOID selectfile(argc, argv)
+static VOID NEAR selectfile(argc, argv)
 int argc;
 char **argv;
 {
@@ -793,7 +795,7 @@ char **argv;
 	columns = dupcolumns;
 }
 
-static int completestr(s, cx, len, plen, max, linemax, comline, cont)
+static int NEAR completestr(s, cx, len, plen, max, linemax, comline, cont)
 char *s;
 int cx, len, plen, max, linemax, comline, cont;
 {
@@ -936,7 +938,7 @@ int cx, len, plen, max, linemax, comline, cont;
 }
 #endif	/* !_NOCOMPLETE */
 
-static int _inputstr_up(s, cxp, cx2, lenp, plen, max, linemax,
+static int NEAR _inputstr_up(s, cxp, cx2, lenp, plen, max, linemax,
 	histnop, h, tmp)
 char *s;
 int *cxp, cx2, *lenp, plen, max, linemax, *histnop, h;
@@ -989,7 +991,7 @@ char **tmp;
 	return(cx2);
 }
 
-static int _inputstr_down(s, cxp, cx2, lenp, plen, max, linemax,
+static int NEAR _inputstr_down(s, cxp, cx2, lenp, plen, max, linemax,
 	histnop, h, tmp)
 char *s;
 int *cxp, cx2, *lenp, plen, max, linemax, *histnop, h;
@@ -1042,7 +1044,7 @@ char **tmp;
 	return(cx2);
 }
 
-static int _inputstr_delete(s, cx, len, plen, max, linemax)
+static int NEAR _inputstr_delete(s, cx, len, plen, max, linemax)
 char *s;
 int cx, len, plen, max, linemax;
 {
@@ -1072,7 +1074,7 @@ int cx, len, plen, max, linemax;
 	return(len -= n);
 }
 
-static int _inputstr_enter(s, cxp, cx2, lenp, plen, max, linemax)
+static int NEAR _inputstr_enter(s, cxp, cx2, lenp, plen, max, linemax)
 char *s;
 int *cxp, cx2, *lenp, plen, max, linemax;
 {
@@ -1109,7 +1111,7 @@ int *cxp, cx2, *lenp, plen, max, linemax;
 	return(cx2);
 }
 
-static int _inputstr_input(s, cxp, cx2, lenp, plen, max, linemax, ch)
+static int NEAR _inputstr_input(s, cxp, cx2, lenp, plen, max, linemax, ch)
 char *s;
 int *cxp, cx2, *lenp, plen, max, linemax, ch;
 {
@@ -1200,7 +1202,7 @@ int *cxp, cx2, *lenp, plen, max, linemax, ch;
 	return(cx2);
 }
 
-static int _inputstr(s, plen, max, linemax, def, comline, h)
+static int NEAR _inputstr(s, plen, max, linemax, def, comline, h)
 char *s;
 int plen, max, linemax, def, comline, h;
 {
@@ -1453,7 +1455,7 @@ int plen;
 	return(i);
 }
 
-static int dispprompt(s, set)
+static int NEAR dispprompt(s, set)
 char *s;
 int set;
 {
@@ -1555,7 +1557,7 @@ int h;
 	return(dupl);
 }
 
-static char *truncstr(s)
+static char *NEAR truncstr(s)
 char *s;
 {
 	int len;
@@ -1577,7 +1579,7 @@ char *s;
 	return(s);
 }
 
-static VOID yesnomes(mes)
+static VOID NEAR yesnomes(mes)
 char *mes;
 {
 	locate(0, LMESLINE);
@@ -1589,7 +1591,7 @@ char *mes;
 	tflush();
 }
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 /*VARARGS1*/
 int yesno(CONST char *fmt, ...)
 #else
@@ -1604,7 +1606,7 @@ char *fmt;
 # endif
 #endif
 {
-#if	MSDOS || defined (__STDC__) || !defined (NOVSPRINTF)
+#if	defined (USESTDARGH) || !defined (NOVSPRINTF)
 	va_list args;
 #endif
 	int len, ch, duperrno, ret = 1;
@@ -1616,7 +1618,7 @@ char *fmt;
 	Xgetkey(-1);
 #endif
 
-#if	MSDOS || defined (__STDC__)
+#ifdef	USESTDARGH
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
 	va_end(args);
@@ -1724,7 +1726,7 @@ char *s;
 	if (s) free(tmp);
 }
 
-static int selectmes(num, max, x, str, val, xx)
+static int NEAR selectmes(num, max, x, str, val, xx)
 int num, max, x;
 char *str[];
 int val[], xx[];

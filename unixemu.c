@@ -17,7 +17,7 @@ extern u_char _openfile[];
 #endif
 
 #ifndef	_NODOSDRIVE
-static int checkpath __P_((char *, char *));
+static int NEAR checkpath __P_((char *, char *));
 int lastdrv = -1;
 #endif
 
@@ -70,7 +70,7 @@ char *path;
 	return((drive = _dospath(path)) ? drive : getcurdrv());
 }
 
-static int checkpath(path, buf)
+static int NEAR checkpath(path, buf)
 char *path, *buf;
 {
 	char *cp, tmp[MAXPATHLEN];
@@ -148,27 +148,30 @@ DIR *dirp;
 	unixrewinddir(dirp);
 }
 
+int rawchdir(path)
+char *path;
+{
+	if (setcurdrv(dospath(path, NULL), 1) < 0 || unixchdir(path) < 0)
+		return(-1);
+	return(0);
+}
+
+#ifndef	_NODOSDRIVE
 int _Xchdir(path)
 char *path;
 {
-#ifdef	_NODOSDRIVE
-	if (setcurdrv(dospath(path, NULL)) < 0 || unixchdir(path) < 0)
-		return(-1);
-	return(0);
-#else	/* !_NODOSDRIVE */
 	char buf[MAXPATHLEN];
 	int drive, dd;
 
 	if (!(drive = dospath3(path))) {
-		if (setcurdrv(dospath(path, NULL)) < 0 || unixchdir(path) < 0)
-			return(-1);
+		if (rawchdir(path) < 0) return(-1);
 		if (lastdrv >= 0) shutdrv(lastdrv);
 		lastdrv = -1;
 		return(0);
 	}
 
 	if ((dd = preparedrv(drive)) < 0) return(-1);
-	if (setcurdrv(drive) < 0
+	if (setcurdrv(drive, 1) < 0
 	|| (checkpath(path, buf) ? doschdir(buf) : unixchdir(path)) < 0) {
 		shutdrv(dd);
 		return(-1);
@@ -180,8 +183,8 @@ char *path;
 	}
 	lastdrv = dd;
 	return(0);
-#endif	/* !_NODOSDRIVE */
 }
+#endif	/* !_NODOSDRIVE */
 
 #ifndef	_NOROCKRIDGE
 int Xchdir(path)
@@ -194,11 +197,16 @@ char *path;
 }
 #endif
 
-char *Xgetcwd(path, size)
+char *_Xgetwd(path)
 char *path;
-int size;
 {
-	return(unixgetcwd(path, size));
+	return(unixgetcwd(path, MAXPATHLEN, 0));
+}
+
+char *Xgetwd(path)
+char *path;
+{
+	return(unixgetcwd(path, MAXPATHLEN, 1));
 }
 
 int Xstat(path, stp)
@@ -465,7 +473,22 @@ int oldd, newd;
 }
 #endif	/* LSI_C || !_NODOSDRIVE */
 
-#ifndef	_NOUSELFN
+#ifdef	_NOUSELFN
+# ifndef	DJGPP
+int _Xmkdir(path, mode)
+char *path;
+int mode;
+{
+	struct stat st;
+
+	if (Xstat(path, &st) >= 0) {
+		errno = EEXIST;
+		return(-1);
+	}
+	return(mkdir(path) ? -1 : 0);
+}
+# endif	/* !DJGPP */
+#else	/* !_NOUSELFN */
 int _Xmkdir(path, mode)
 char *path;
 int mode;
@@ -639,6 +662,10 @@ FILE *fp;
 
 	no = 0;
 	if (fclose(fp) != 0) no = errno;
+	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename) {
+		errno = ENOENT;
+		return(-1);
+	}
 	strcatdelim2(path, deftmpdir, tmpfilename);
 	strcpy(strcatdelim(path), PIPEDIR);
 	strcpy((cp = strcatdelim(path)), PIPEFILE);
