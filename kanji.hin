@@ -1,3 +1,21 @@
+/*
+ *	kanji.h
+ *
+ *	Message Strings on Kanji
+ */
+
+#if	(MSDOS || defined (_NOKANJICONV)) && defined (_NOENGMES)
+#define	mesconv(jpn, eng)	(jpn)
+#else
+extern char *mesconv();
+#endif
+
+#ifdef	_NOENGMES
+#define	meslist(jpn, eng)	jpn
+#else
+#define	meslist(jpn, eng)	jpn, eng
+#endif
+
 #define	YESNO_K	mesconv("よろしいですか ?", "OK ?")
 #define	HITKY_K	mesconv("何かキーを押して下さい.", "Hit any key.")
 #define	NOFIL_K	mesconv("ファイルがありません", "No Files")
@@ -69,62 +87,63 @@
 #define	UNIT_K	mesconv("個", "files")
 #define	BKUP_K	mesconv("テープのデバイス名:", "Device name of tape:")
 
-#define	CUP_H	"カーソルを上に", "Cursor up"
-#define	CDWN_H	"カーソルを下に", "Cursor down"
-#define	CRIG_H	"カーソルを右に", "Cursor right"
-#define	CLEF_H	"カーソルを左に", "Cursor left"
-#define	RUP_H	"次の表示ページに", "Next page"
-#define	RDWN_H	"前の表示ページに", "Prev page"
-#define	CTOP_H	"カーソルを先頭に", "Cursor top"
-#define	CBTM_H	"カーソルを最後に", "Cursor bottom"
-#define	IND_H	"サブDIRに移動", "To sub dir"
-#define	OUTD_H	"親DIRに移動", "To parent dir"
-#define	LOGT_H	"ルートへの移動", "To root dir"
-#define	COL1_H	"画面表示を1列に", "In 1 row"
-#define	COL2_H	"画面表示を2列に", "In 2 rows"
-#define	COL3_H	"画面表示を3列に", "In 3 rows"
-#define	COL5_H	"画面表示を5列に", "In 5 rows"
-#define	FNRI_H	"FILE名を右シフト", "Right-shift name"
-#define	FNLE_H	"FILE名を左シフト", "Left-shift name"
-#define	MRK_H	"FILEのマーク", "Mark file"
-#define	MRK2_H	"マークして下移動", "Mark & down"
-#define	MRKA_H	"全FILEにマーク", "Mark all"
-#define	MRKR_H	"マークを全反転", "Mark reversed"
-#define	MRKF_H	"検索FILEにマーク", "Mark selected"
-#define	PUSH_H	"FILEをスタックに", "File to stack"
-#define	POP_H	"スタックから取出", "File from stack"
-#define	READ_H	"表示画面の再描画", "Rewrite"
-#define	LOGD_H	"DIRの移動", "Change dir"
-#define	ATTR_H	"属性の変更", "Attribute change"
-#define	EXEF_H	"FILEの実行", "Execute file"
-#define	INFO_H	"FILEシステム情報", "FS Info."
-#define	COPY_H	"FILEのコピー", "Copy file"
-#define	MOVE_H	"FILEの移動", "Move file"
-#define	DELF_H	"FILEの削除", "Delete file"
-#define	DELD_H	"DIRの削除", "Delete dir"
-#define	RENM_H	"FILE名の変更", "Rename file"
-#define	MKDR_H	"DIRの作成", "Make dir"
-#define	SORT_H	"FILEの並び替え", "Sort files"
-#define	EXSH_H	"子プロセスの実行", "Execute sh"
-#define	FNDF_H	"FILEの検索表示", "Find files"
-#define	WRIT_H	"表示DIRの書込み", "Write dir"
-#define	TREE_H	"DIRのTREE表示", "Tree display"
-#define	BACK_H	"テープへBACKUP", "Backup on tape"
-#define	EDIT_H	"FILEの編集", "Edit file"
-#define	VIEW_H	"FILEの閲覧", "View file"
-#define	UNPK_H	"FILEの解凍", "Unpack file"
-#define	PACK_H	"FILEの圧縮", "Pack file"
-#define	LGTR_H	"TREEでのDIR移動", "Chdir on tree"
-#define	CPTR_H	"TREE選択のコピー", "Copy on tree"
-#define	MVTR_H	"TREE選択の移動", "Move on tree"
-#define	UPTR_H	"TREE選択の解凍", "Unpack on tree"
-#define	FNDD_H	"DIRの検索移動", "Recursive find"
-#define	SYLN_H	"SYMLINK表示形式", "Sym-link status"
-#define	FLTY_H	"FILETYPEシンボル", "File type symbol"
-#define	DTFL_H	"DOTFILEの非表示", "Hidden dot file"
-#define	LAUN_H	"ランチャの起動", "Launcher"
-#define	HELP_H	"HELP画面の表示", "Show help"
-#define	QUIT_H	"FDの終了", "Quit FD"
+#define	CUP_H	meslist("カーソルを上に", "Cursor up")
+#define	CDWN_H	meslist("カーソルを下に", "Cursor down")
+#define	CRIG_H	meslist("カーソルを右に", "Cursor right")
+#define	CLEF_H	meslist("カーソルを左に", "Cursor left")
+#define	RUP_H	meslist("次の表示ページに", "Next page")
+#define	RDWN_H	meslist("前の表示ページに", "Prev page")
+#define	CTOP_H	meslist("カーソルを先頭に", "Cursor top")
+#define	CBTM_H	meslist("カーソルを最後に", "Cursor bottom")
+#define	IND_H	meslist("サブDIRに移動", "To sub dir")
+#define	OUTD_H	meslist("親DIRに移動", "To parent dir")
+#define	LOGT_H	meslist("ルートへの移動", "To root dir")
+#define	COL1_H	meslist("画面表示を1列に", "In 1 row")
+#define	COL2_H	meslist("画面表示を2列に", "In 2 rows")
+#define	COL3_H	meslist("画面表示を3列に", "In 3 rows")
+#define	COL5_H	meslist("画面表示を5列に", "In 5 rows")
+#define	FNRI_H	meslist("FILE名を右シフト", "Right-shift name")
+#define	FNLE_H	meslist("FILE名を左シフト", "Left-shift name")
+#define	MRK_H	meslist("FILEのマーク", "Mark file")
+#define	MRK2_H	meslist("マークして下移動", "Mark & down")
+#define	MRKA_H	meslist("全FILEにマーク", "Mark all")
+#define	MRKR_H	meslist("マークを全反転", "Mark reversed")
+#define	MRKF_H	meslist("検索FILEにマーク", "Mark selected")
+#define	PUSH_H	meslist("FILEをスタックに", "File to stack")
+#define	POP_H	meslist("スタックから取出", "File from stack")
+#define	READ_H	meslist("表示画面の再描画", "Rewrite")
+#define	LOGD_H	meslist("DIRの移動", "Change dir")
+#define	ATTR_H	meslist("属性の変更", "Attribute change")
+#define	EXEF_H	meslist("FILEの実行", "Execute file")
+#define	INFO_H	meslist("FILEシステム情報", "FS Info.")
+#define	COPY_H	meslist("FILEのコピー", "Copy file")
+#define	MOVE_H	meslist("FILEの移動", "Move file")
+#define	DELF_H	meslist("FILEの削除", "Delete file")
+#define	DELD_H	meslist("DIRの削除", "Delete dir")
+#define	RENM_H	meslist("FILE名の変更", "Rename file")
+#define	MKDR_H	meslist("DIRの作成", "Make dir")
+#define	SORT_H	meslist("FILEの並び替え", "Sort files")
+#define	EXSH_H	meslist("子プロセスの実行", "Execute sh")
+#define	FNDF_H	meslist("FILEの検索表示", "Find files")
+#define	WRIT_H	meslist("表示DIRの書込み", "Write dir")
+#define	TREE_H	meslist("DIRのTREE表示", "Tree display")
+#define	BACK_H	meslist("テープへBACKUP", "Backup on tape")
+#define	EDIT_H	meslist("FILEの編集", "Edit file")
+#define	VIEW_H	meslist("FILEの閲覧", "View file")
+#define	UNPK_H	meslist("FILEの解凍", "Unpack file")
+#define	PACK_H	meslist("FILEの圧縮", "Pack file")
+#define	LGTR_H	meslist("TREEでのDIR移動", "Chdir on tree")
+#define	CPTR_H	meslist("TREE選択のコピー", "Copy on tree")
+#define	MVTR_H	meslist("TREE選択の移動", "Move on tree")
+#define	UPTR_H	meslist("TREE選択の解凍", "Unpack on tree")
+#define	FNDD_H	meslist("DIRの検索移動", "Recursive find")
+#define	SYLN_H	meslist("SYMLINK表示形式", "Sym-link status")
+#define	FLTY_H	meslist("FILETYPEシンボル", "File type symbol")
+#define	DTFL_H	meslist("DOTFILEの非表示", "Hidden dot file")
+#define	LAUN_H	meslist("ランチャの起動", "Launcher")
+#define	HELP_H	meslist("HELP画面の表示", "Show help")
+#define	QUIT_H	meslist("FDの終了", "Quit FD")
+#define	NULL_H	meslist(NULL, NULL)
 
 #define	UPAR_K	mesconv("↑", "Up")
 #define	DWNAR_K	mesconv("↓", "Down")

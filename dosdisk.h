@@ -4,7 +4,11 @@
  *	Type Definition for "dosdisk.c"
  */
 
+#if	MSDOS
+#include "unixemu.h"
+#else
 #include <sys/param.h>
+#endif
 
 #define	DOSDIRENT	32
 #define	SECTCACHESIZE	20
@@ -191,11 +195,7 @@ extern int dosclosedir();
 extern struct dirent *dosreaddir();
 extern int dosrewinddir();
 extern int doschdir();
-#ifdef	USEGETWD
-extern char *dosgetwd();
-#else
 extern char *dosgetcwd();
-#endif
 extern int dosstat();
 extern int doslstat();
 extern int dosaccess();
@@ -213,7 +213,7 @@ extern int dosopen();
 extern int dosclose();
 extern int dosread();
 extern int doswrite();
-extern int doslseek();
+extern off_t doslseek();
 extern int dosmkdir();
 extern int dosrmdir();
 extern int stream2fd();

@@ -1,0 +1,276 @@
+#
+#	Makefile for fd
+#
+
+TITLE	= FD-
+TOPDIR	= \\usr\\local
+BINDIR	= $(TOPDIR)\\bin
+MANDIR	= $(TOPDIR)\\man\\man$(MANSEC)
+CATDIR	= $(TOPDIR)\\man\\cat$(MANSEC)
+DEFRC	= \\etc\\fdrc
+DOSRC	= ~FD\\fdrc
+SHELL	= \\bin\\sh
+INSTALL	= cp -p
+CHMOD	= chmod
+MANSEC	= 1
+
+SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
+	dosdisk.c dosemu.c \
+	unixdisk.c unixemu.c \
+	rockridg.c parse.c \
+	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
+	kanjicnv.c mkfuncno.c expfunc.c
+HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
+	dosdisk.h \
+	unixdisk.h unixemu.h \
+	func.h functabl.h
+
+DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin
+MANSRC	= fd.man
+MANCAT	= fd.cat
+MANSEC	= 1
+RUNCOM	= fdrc
+ARGS	= object.arg
+
+JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
+ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
+	makefile.gpc makefile.g98 makefile.g31 \
+	makefile.lpc makefile.l98 makefile.l31 \
+	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
+	version.h _fdrc _fdrc.dif
+SOURCES	= $(JSRCS) $(ESRCS)
+
+CC	= lcc
+CPP	= cpp
+SED	= sed
+PROGRAM	= fd
+OBJ1	= main.obj term.obj pathname.obj libc.obj input.obj \
+	shell.obj info.obj unixemu.obj unixdisk.obj
+OBJ2	= rockridg.obj parse.obj \
+	kanji.obj file.obj apply.obj archive.obj tree.obj \
+	command.obj browse.obj
+
+LDFLAGS	= @$(ARGS)   -lintlib -ltinymain.obj -k'-M -s 5000'
+CFLAGS	= -DFD -DDOSV -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O
+
+############################################################
+#	Dependency Rules
+############################################################
+
+goal:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
+
+$(PROGRAM).exe: $(OBJ1) $(OBJ2) $(ARGS)
+	$(CC) $(CFLAGS) -o $@ $(LDFLAGS)
+	@# $@ $(PROGRAM)
+	@# $(PROGRAM)
+	@# $(PROGRAM)
+
+$(ARGS): $(OBJ1) $(OBJ2)
+	@echo $(OBJ1) > $(ARGS)
+	@echo $(OBJ2) >> $(ARGS)
+
+
+############################################################
+# kanji using module
+
+kanji.h: kanjicnv.exe kanji.hin
+	.\\kanjicnv.exe -s   kanji.hin $@
+
+$(PROGRAM).$(MANSEC): kanjicnv.exe $(MANSRC)
+	.\\kanjicnv.exe -s  $(MANSRC) $@
+
+$(PROGRAM).$(MANSEC)c: kanjicnv.exe $(MANCAT)
+	.\\kanjicnv.exe -s $(MANCAT) $@
+
+$(PROGRAM).doc: kanjicnv.exe $(MANCAT)
+	.\\kanjicnv.exe -s -b $(MANCAT) $@
+
+history.doc: kanjicnv.exe HISTORY
+	.\\kanjicnv.exe -s HISTORY $@
+
+kanjicnv.exe: kanjicnv.c
+	$(CC) $(CFLAGS) -o $@ kanjicnv.c
+	@# $@ kanjicnv
+	@# kanjicnv
+	@# kanjicnv
+
+
+############################################################
+# function list using module
+
+funcno.h: mkfuncno.exe functabl.h fd.h config.h
+	-$(CPP) command.c | .\\mkfuncno.exe - $@
+
+mkfuncno.exe: mkfuncno.c
+	$(CC) $(CFLAGS) -o $@ mkfuncno.c
+	@# $@ mkfuncno
+	@# mkfuncno
+	@# mkfuncno
+
+config.h: config.hin
+	cp config.hin config.h
+
+
+############################################################
+# to install all
+
+install: $(PROGRAM).exe $(PROGRAM).$(MANSEC)
+	$(INSTALL) $(PROGRAM).exe $(BINDIR)
+	$(CHMOD) a+rx $(BINDIR)\\$(PROGRAM).exe
+	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)\\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(MANDIR)\\$(PROGRAM).$(MANSEC)
+	-if [ -f $(RUNCOM) ]; then \
+		$(INSTALL) $(RUNCOM) $(DEFRC); \
+		$(CHMOD) a+r $(DEFRC); \
+	fi
+
+catman: $(PROGRAM).$(MANSEC)c
+	$(INSTALL) $(PROGRAM).$(MANSEC)c $(CATDIR)\\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(CATDIR)\\$(PROGRAM).$(MANSEC)
+
+catman-b: $(PROGRAM).doc
+	$(INSTALL) $(PROGRAM).doc $(CATDIR)\\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(CATDIR)\\$(PROGRAM).$(MANSEC)
+
+compman: catman
+	compress -f $(CATDIR)\\$(PROGRAM).$(MANSEC)
+
+compman-b: catman-b
+	compress -f $(CATDIR)\\$(PROGRAM).$(MANSEC)
+
+
+############################################################
+# to make dependency
+
+depend: $(SRC) kanji.h funcno.h
+	mv Makefile.in Makefile.in.bak
+	makedepend -s "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
+	rm -f Makefile.tmp.bak
+	$(SED) -e '\\^# DO NOT DELETE THIS LINE\\,$$d' Makefile.in.bak\
+		> Makefile.in
+	echo "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+		>> Makefile.in
+	$(SED) -e '1,\\^# DO NOT DELETE THIS LINE\\d'\
+		-e 's\\\\\[^ ]* *\\\\g'\
+		-e 's\\\.o\\\_\_OBJ\_\_\\g'\
+		-e '\\: *$$\\d' Makefile.tmp >> Makefile.in
+	rm -f Makefile.in.bak Makefile.tmp
+
+
+############################################################
+# to make configuration file manually
+
+config: Configure expfunc.c
+	-if (echo 't() { echo $1; }; t test' | $(SHELL) >\\dev\\null 2>&1); then \
+		$(SED) "2,3d" Configure | $(SHELL) > config.h; \
+	else \
+		if [ ! -f expfunc ]; then \
+			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
+		fi; \
+		$(SED) "2,3d" Configure | .\\expfunc | $(SHELL) > config.h; \
+	fi
+
+
+############################################################
+# for programer's maintenance
+
+GETVER	= HEAD="`tail -1 version.h`";\
+	VER=`expr "$$HEAD" : '.*\([0-9][0-9]*\.[0-9a-z\-]*\).*'`
+
+tar: $(SOURCES)
+	($(GETVER);\
+	tar cvof $(TITLE)"$$VER".tar $(SOURCES);\
+	compress -f $(TITLE)"$$VER".tar)
+
+lzh: $(SOURCES)
+	($(GETVER);\
+	rm -f $(TITLE)"$$VER".lzh;\
+	lha a $(TITLE)"$$VER".lzh $(SOURCES))
+
+shar: $(SOURCES)
+	($(GETVER);\
+	rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
+	shar -L50 -apc -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar \
+	-C $(JSRCS) -T $(ESRCS))
+
+clean:
+	rm -f core *.obj funcno.h kanji.h
+	rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
+	rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
+	rm -f $(PROGRAM).doc $(ARGS)
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+
+main.obj: fd.h machine.h config.h 
+main.obj: types.h pathname.h term.h
+main.obj: func.h kctype.h
+main.obj: kanji.h funcno.h version.h 
+main.obj: dosdisk.h 
+term.obj: machine.h config.h 
+term.obj: term.h
+pathname.obj: machine.h config.h 
+pathname.obj: pathname.h
+libc.obj: fd.h machine.h config.h 
+libc.obj: types.h pathname.h term.h
+libc.obj: func.h kctype.h
+libc.obj: kanji.h 
+input.obj: fd.h machine.h config.h 
+input.obj: types.h pathname.h
+input.obj: term.h func.h 
+input.obj: kctype.h kanji.h 
+shell.obj: fd.h machine.h config.h 
+shell.obj: types.h pathname.h
+shell.obj: term.h func.h 
+shell.obj: kctype.h kanji.h funcno.h
+info.obj: fd.h machine.h config.h 
+info.obj: types.h pathname.h term.h
+info.obj: funcno.h kanji.h 
+dosdisk.obj: machine.h config.h 
+dosdisk.obj: dosdisk.h 
+dosemu.obj: fd.h machine.h config.h 
+dosemu.obj: types.h pathname.h
+dosemu.obj: func.h dosdisk.h
+dosemu.obj: kctype.h 
+unixdisk.obj: unixdisk.h machine.h config.h 
+unixdisk.obj: unixemu.h
+unixemu.obj: fd.h machine.h config.h 
+unixemu.obj: types.h pathname.h
+unixemu.obj: func.h 
+unixemu.obj: unixdisk.h
+unixemu.obj: unixemu.h
+rockridg.obj: fd.h machine.h config.h 
+rockridg.obj: types.h pathname.h
+rockridg.obj: func.h 
+parse.obj: fd.h machine.h config.h 
+parse.obj: types.h pathname.h
+parse.obj: term.h func.h 
+parse.obj: kctype.h kanji.h funcno.h
+parse.obj: dosdisk.h
+kanji.obj: fd.h machine.h config.h 
+kanji.obj: types.h pathname.h
+kanji.obj: term.h func.h 
+kanji.obj: kctype.h 
+file.obj: fd.h machine.h config.h 
+file.obj: types.h pathname.h term.h
+file.obj: func.h kanji.h
+file.obj: kctype.h 
+apply.obj: fd.h machine.h config.h 
+apply.obj: types.h pathname.h
+apply.obj: term.h func.h 
+apply.obj: kanji.h 
+archive.obj: fd.h machine.h config.h 
+archive.obj: types.h pathname.h
+archive.obj: term.h func.h 
+archive.obj: funcno.h kanji.h 
+tree.obj: fd.h machine.h config.h 
+tree.obj: types.h pathname.h term.h
+tree.obj: func.h kanji.h
+command.obj: fd.h machine.h config.h 
+command.obj: types.h pathname.h
+command.obj: term.h func.h 
+command.obj: funcno.h kanji.h 
+command.obj: functabl.h
+browse.obj: fd.h machine.h config.h 
+browse.obj: types.h pathname.h
+browse.obj: term.h func.h 
+browse.obj: funcno.h kanji.h 

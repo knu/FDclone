@@ -11,14 +11,24 @@
 #include "kanji.h"
 #include "funcno.h"
 #include "version.h"
-#include "dosdisk.h"
 
 #include <signal.h>
-#include <sys/time.h>
 
 #ifdef	USETIMEH
 #include <time.h>
 #endif
+
+#if	MSDOS
+#include "unixemu.h"
+# ifdef	__GNUC__
+extern char *adjustfname();
+# endif
+#else	/* !MSDOS */
+#include <sys/time.h>
+# ifndef	_NODOSDRIVE
+# include "dosdisk.h"
+# endif
+#endif	/* !MSDOS */
 
 #if defined (SIGARGINT) || defined (NOVOID)
 #define	sigarg_t	int
@@ -26,12 +36,17 @@
 #define	sigarg_t	void
 #endif
 
+#ifndef	_NOARCHIVE
+extern char *archivefile;
 extern launchtable launchlist[];
 extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
+#endif
+#if	!MSDOS && !defined (_NODOSDRIVE)
 extern devinfo fdtype[];
-extern char *archivefile;
+#endif
+extern char fullpath[];
 extern char **sh_history;
 extern char *helpindex[];
 extern int subwindow;
@@ -41,7 +56,7 @@ extern char *deftmpdir;
 
 #define	CLOCKUPDATE	10	/* sec */
 
-#ifndef	SIGWINCH
+#if !MSDOS && !defined (SIGWINCH)
 # if defined (SIGWINDOW)
 # define	SIGWINCH	SIGWINDOW
 # else
@@ -51,44 +66,76 @@ extern char *deftmpdir;
 #  define	SIGWINCH	28
 #  endif
 # endif
-#endif
+#endif	/* !MSDOS && !SIGWINCH */
 
-#if !defined(SIGIOT) && defined(SIGABRT)
+#if !defined (SIGIOT) && defined (SIGABRT)
 #define	SIGIOT	SIGABRT
 #endif
 
 static VOID signalexit();
+#ifdef	SIGALRM
 static sigarg_t ignore_alrm();
+#endif
+#ifdef	SIGWINCH
 static sigarg_t ignore_winch();
+#endif
+#ifdef	SIGINT
 static sigarg_t ignore_int();
+#endif
+#ifdef	SIGQUIT
 static sigarg_t ignore_quit();
-static sigarg_t hungup();
+#endif
+#ifdef	SIGHUP
+static sigarg_t hangup();
+#endif
+#ifdef	SIGILL
 static sigarg_t illerror();
+#endif
+#ifdef	SIGTRAP
 static sigarg_t traperror();
+#endif
 #ifdef	SIGIOT
 static sigarg_t ioerror();
 #endif
 #ifdef	SIGEMT
 static sigarg_t emuerror();
 #endif
+#ifdef	SIGFPE
 static sigarg_t floaterror();
+#endif
+#ifdef	SIGBUS
 static sigarg_t buserror();
+#endif
+#ifdef	SIGSEGV
 static sigarg_t segerror();
+#endif
 #ifdef	SIGSYS
 static sigarg_t syserror();
 #endif
+#ifdef	SIGPIPE
 static sigarg_t pipeerror();
+#endif
+#ifdef	SIGTERM
 static sigarg_t terminate();
+#endif
 #ifdef	SIGXCPU
 static sigarg_t xcpuerror();
 #endif
 #ifdef	SIGXFSZ
 static sigarg_t xsizerror();
 #endif
+#ifdef	SIGWINCH
 static sigarg_t wintr();
+#endif
+#ifdef	SIGALRM
 static sigarg_t printtime();
+#endif
 static int getoption();
+static VOID setexecname();
+static VOID setexecpath();
 
+char *origpath;
+char *progpath = NULL;
 char *tmpfilename;
 int showsecond;
 
@@ -105,7 +152,9 @@ char *str;
 	fputc('\007', stderr);
 	perror(str);
 	forcecleandir(deftmpdir, tmpfilename);
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	dosallclose();
+#endif
 	exit(127);
 }
 
@@ -115,45 +164,61 @@ int sig;
 	signal(sig, SIG_IGN);
 	inittty(1);
 	forcecleandir(deftmpdir, tmpfilename);
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	dosallclose();
+#endif
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);
 }
 
+#ifdef	SIGALRM
 static sigarg_t ignore_alrm()
 {
 	signal(SIGALRM, (sigarg_t (*)())ignore_alrm);
 }
+#endif
 
+#ifdef	SIGWINCH
 static sigarg_t ignore_winch()
 {
 	signal(SIGWINCH, (sigarg_t (*)())ignore_winch);
 }
+#endif
 
+#ifdef	SIGINT
 static sigarg_t ignore_int()
 {
 	signal(SIGINT, (sigarg_t (*)())ignore_int);
 }
+#endif
 
+#ifdef	SIGQUIT
 static sigarg_t ignore_quit()
 {
 	signal(SIGQUIT, (sigarg_t (*)())ignore_quit);
 }
+#endif
 
+#ifdef	SIGHUP
 static sigarg_t hangup()
 {
 	signalexit(SIGHUP);
 }
+#endif
 
+#ifdef	SIGILL
 static sigarg_t illerror()
 {
 	signalexit(SIGILL);
 }
+#endif
 
+#ifdef	SIGTRAP
 static sigarg_t traperror()
 {
 	signalexit(SIGTRAP);
 }
+#endif
 
 #ifdef	SIGIOT
 static sigarg_t ioerror()
@@ -169,20 +234,26 @@ static sigarg_t emuerror()
 }
 #endif
 
+#ifdef	SIGFPE
 static sigarg_t floaterror()
 {
 	signalexit(SIGFPE);
 }
+#endif
 
+#ifdef	SIGBUS
 static sigarg_t buserror()
 {
 	signalexit(SIGBUS);
 }
+#endif
 
+#ifdef	SIGSEGV
 static sigarg_t segerror()
 {
 	signalexit(SIGSEGV);
 }
+#endif
 
 #ifdef	SIGSYS
 static sigarg_t syserror()
@@ -191,15 +262,19 @@ static sigarg_t syserror()
 }
 #endif
 
+#ifdef	SIGPIPE
 static sigarg_t pipeerror()
 {
 	signalexit(SIGPIPE);
 }
+#endif
 
+#ifdef	SIGTERM
 static sigarg_t terminate()
 {
 	signalexit(SIGTERM);
 }
+#endif
 
 #ifdef	SIGXCPU
 static sigarg_t xcpuerror()
@@ -215,41 +290,51 @@ static sigarg_t xsizerror()
 }
 #endif
 
+#ifdef	SIGWINCH
 static sigarg_t wintr()
 {
 	signal(SIGWINCH, SIG_IGN);
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
 	title();
+#ifndef	_NOARCHIVE
 	if (archivefile) rewritearc(1);
-	else rewritefile(1);
+	else
+#endif
+	rewritefile(1);
 	if (subwindow) ungetch2(CTRL('L'));
 	signal(SIGWINCH, (sigarg_t (*)())wintr);
 }
+#endif
 
+#ifdef	SIGALRM
 static sigarg_t printtime()
 {
 	static time_t now;
+	struct tm *tm;
+#if	!MSDOS
 	struct timeval t;
 	struct timezone tz;
-	struct tm *tm;
+#endif
 
 	signal(SIGALRM, SIG_IGN);
 	if (timersec) now++;
 	else {
+#if	MSDOS
+		now = time(NULL);
+#else
 		gettimeofday(&t, &tz);
 		now = t.tv_sec;
+#endif
 		timersec = CLOCKUPDATE;
 	}
 	if (showsecond || timersec == CLOCKUPDATE) {
 		tm = localtime(&now);
 		locate(n_column - 16 - ((showsecond) ? 3 : 0), LTITLE);
 		putterm(t_standout);
-		if (showsecond) cprintf("%02d-%02d-%02d %02d:%02d:%02d",
-			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
-			tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-		else cprintf("%02d-%02d-%02d %02d:%02d",
+		cprintf2("%02d-%02d-%02d %02d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
+		if (showsecond) cprintf2(":%02d", tm -> tm_sec);
 		putterm(end_standout);
 		locate(0, 0);
 		tflush();
@@ -257,20 +342,33 @@ static sigarg_t printtime()
 	timersec--;
 	signal(SIGALRM, (sigarg_t (*)())printtime);
 }
+#endif
 
 VOID sigvecset()
 {
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
+#ifdef	SIGALRM
 	signal(SIGALRM, (sigarg_t (*)())printtime);
+#endif
+#ifdef	SIGTSTP
 	signal(SIGTSTP, SIG_IGN);
+#endif
+#ifdef	SIGWINCH
 	signal(SIGWINCH, (sigarg_t (*)())wintr);
+#endif
 }
 
 VOID sigvecreset()
 {
+#ifdef	SIGALRM
 	signal(SIGALRM, (sigarg_t (*)())ignore_alrm);
+#endif
+#ifdef	SIGTSTP
 	signal(SIGTSTP, SIG_DFL);
+#endif
+#ifdef	SIGWINCH
 	signal(SIGWINCH, (sigarg_t (*)())ignore_winch);
+#endif
 }
 
 VOID title()
@@ -279,12 +377,12 @@ VOID title()
 
 	locate(0, LTITLE);
 	putterm(t_standout);
-	cputs("  FD(File & Directory tool) Ver.");
+	cputs2("  FD(File & Directory tool) Ver.");
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
-	cprintf("%-*.*s", eol - cp, eol - cp, cp);
-	cprintf("%-*.*s", n_column - 32 - (eol - cp),
+	cprintf2("%-*.*s", eol - cp, eol - cp, cp);
+	cprintf2("%-*.*s", n_column - 32 - (eol - cp),
 		n_column - 32 - (eol - cp), " (c)1995,96 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
@@ -372,17 +470,62 @@ char *argv[];
 	return(i);
 }
 
+static VOID setexecname(argv)
+char *argv;
+{
+	char buf[MAXNAMLEN + 1];
+
+	if (progname = strrchr(argv, _SC_)) progname++;
+	else progname = argv;
+#if	MSDOS
+	{
+		char *cp;
+
+		if (cp = strchr(argv, '.')) *cp = '\0';
+	}
+#endif
+	sprintf(buf, "%s%d", progname, getpid());
+	tmpfilename = strdup2(buf);
+}
+
+static VOID setexecpath(argv)
+char *argv;
+{
+	char *cp, buf[MAXPATHLEN];
+
+	origpath = getwd2();
+	strcpy(fullpath, origpath);
+
+#if	MSDOS
+	cp = argv;
+#else
+	if (strchr(argv, _SC_)) cp = argv;
+	else {
+		adjustpath();
+		cp = NULL;
+		completepath(argv, 0, &cp, 2, 1);
+	}
+	if (!cp) progpath = origpath;
+	else
+#endif
+	{
+		realpath2(cp, buf);
+		if (cp != argv) free(cp);
+		if (cp = strrchr(buf, _SC_)) *cp = '\0';
+		progpath = strdup2(buf);
+	}
+}
+
 int main(argc, argv)
 int argc;
 char *argv[];
 {
-	char buf[MAXNAMLEN + 1];
 	int i;
 
-	if (progname = strrchr(argv[0], '/')) progname++;
-	else progname = argv[0];
-	sprintf(buf, "%s%d", progname, getpid());
-	tmpfilename = strdup2(buf);
+#if	MSDOS && defined (__GNUC__)
+	adjustfname(argv[0]);
+#endif
+	setexecname(argv[0]);
 
 	inittty(0);
 	raw2();
@@ -393,25 +536,45 @@ char *argv[];
 	initterm();
 	sigvecset();
 
+#ifdef	SIGHUP
 	signal(SIGHUP, (sigarg_t (*)())hangup);
+#endif
+#ifdef	SIGINT
 	signal(SIGINT, (sigarg_t (*)())ignore_int);
+#endif
+#ifdef	SIGQUIT
 	signal(SIGQUIT, (sigarg_t (*)())ignore_quit);
+#endif
+#ifdef	SIGILL
 	signal(SIGILL, (sigarg_t (*)())illerror);
+#endif
+#ifdef	SIGTRAP
 	signal(SIGTRAP, (sigarg_t (*)())traperror);
+#endif
 #ifdef	SIGIOT
 	signal(SIGIOT, (sigarg_t (*)())ioerror);
 #endif
 #ifdef	SIGEMT
 	signal(SIGEMT, (sigarg_t (*)())emuerror);
 #endif
+#ifdef	SIGFPE
 	signal(SIGFPE, (sigarg_t (*)())floaterror);
+#endif
+#ifdef	SIGBUS
 	signal(SIGBUS, (sigarg_t (*)())buserror);
+#endif
+#ifdef	SIGSEGV
 	signal(SIGSEGV, (sigarg_t (*)())segerror);
+#endif
 #ifdef	SIGSYS
 	signal(SIGSYS, (sigarg_t (*)())syserror);
 #endif
+#ifdef	SIGPIPE
 	signal(SIGPIPE, (sigarg_t (*)())pipeerror);
+#endif
+#ifdef	SIGTERM
 	signal(SIGTERM, (sigarg_t (*)())terminate);
+#endif
 #ifdef	SIGXCPU
 	signal(SIGXCPU, (sigarg_t (*)())xcpuerror);
 #endif
@@ -419,6 +582,7 @@ char *argv[];
 	signal(SIGXFSZ, (sigarg_t (*)())xsizerror);
 #endif
 
+#ifndef	_NOARCHIVE
 	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++)
 		if (!launchlist[maxlaunch].ext) break;
 		else {
@@ -437,14 +601,21 @@ char *argv[];
 			archivelist[maxarchive].u_comm =
 				strdup2(archivelist[maxarchive].u_comm);
 		}
+#endif	/* !_NOARCHIVE */
+
 	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	for (i = 0; fdtype[i].name; i++)
 		fdtype[i].name = strdup2(fdtype[i].name);
+#endif
 
+	setexecpath(argv[0]);
 	loadruncom(DEFRUNCOM);
 	loadruncom(RUNCOMFILE);
 	i = getoption(argc, argv);
+#if	!MSDOS
 	adjustpath();
+#endif
 	evalenv();
 	if ((dispmode = atoi2(getenv2("FD_DISPLAYMODE"))) < 0)
 #if (DISPLAYMODE < 0) || (DISPLAYMODE > 7)
@@ -480,7 +651,11 @@ char *argv[];
 	title();
 
 	main_fd(argv[i]);
+	if (_chdir2(origpath) < 0) error(origpath);
+	free(origpath);
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	dosallclose();
+#endif
 
 	exit2(0);
 }

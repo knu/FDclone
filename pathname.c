@@ -11,9 +11,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <ctype.h>
-#include <pwd.h>
-#include <sys/file.h>
-#include <sys/param.h>
 #include <sys/stat.h>
 
 #ifndef	NOUNISTDH
@@ -24,11 +21,18 @@
 #include <stdlib.h>
 #endif
 
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#define	dirent	direct
+#if	MSDOS
+#include "unixemu.h"
 #else
-#include <dirent.h>
+#include <pwd.h>
+#include <sys/file.h>
+#include <sys/param.h>
+# ifdef	USEDIRECT
+# include <sys/dir.h>
+# define	dirent	direct
+# else
+# include <dirent.h>
+# endif
 #endif
 
 #include "pathname.h"
@@ -49,6 +53,7 @@ extern error();
 # else
 extern void error();
 # endif
+extern char *progpath;
 #else
 #define	getenv2		(char *)getenv
 #define	Xopendir	opendir
@@ -59,7 +64,13 @@ extern void error();
 #define	error		return
 #endif
 
+#if	!MSDOS
 static int completeuser();
+#endif
+#if	!MSDOS || !defined (_NOCOMPLETE)
+static DIR *opennextpath();
+static struct dirent *readnextpath();
+#endif
 
 static int skipdotfile;
 
@@ -67,44 +78,67 @@ static int skipdotfile;
 char *_evalpath(path, eol)
 char *path, *eol;
 {
+#if	!MSDOS
 	struct passwd *pwd;
+#endif
 	char *cp, *tmp, *next, buf[MAXPATHLEN + 1];
 
 	if (*path == '~') {
-		if (!(cp = strchr(path + 1, '/')) || cp > eol) cp = eol;
+		if (!(cp = strchr(path + 1, _SC_)) || cp > eol) cp = eol;
 		if (cp > path + 1) {
 			strncpy(buf, path + 1, cp - path - 1);
 			buf[cp - path - 1] = '\0';
+#ifdef	FD
+			if (!strcmp(buf, "FD")) tmp = progpath;
+			else
+#endif
+#if	!MSDOS
 			if (pwd = getpwnam(buf)) tmp = pwd -> pw_dir;
-			else tmp = NULL;
+			else
+#endif
+			tmp = NULL;
 		}
+#if	MSDOS
+		else tmp = (char *)getenv("HOME");
+#else
 		else if (!(tmp = (char *)getenv("HOME"))
 		&& (pwd = getpwuid(getuid())))
 			tmp = pwd -> pw_dir;
+#endif
+
 		if (tmp) strcpy(buf, tmp);
 		else {
 			strncpy(buf, path, cp - path);
 			buf[cp - path] = '\0';
 		}
 		path = cp;
-		if (*path) {
-			strcat(buf, "/");
+		if (path < eol) {
+			strcat(buf, _SS_);
 			path++;
 		}
 	}
-	else if (*path == '/') {
+	else if (*path == _SC_) {
 		path++;
-		strcpy(buf, "/");
+		strcpy(buf, _SS_);
 	}
 	else *buf = '\0';
 
 	while (path < eol) {
-		if (!(next = strchr(path, '/')) || next > eol) next = eol;
+		if (*path == _SC_) {
+			path++;
+			continue;
+		}
+		if (!(next = strchr(path, _SC_)) || next > eol) next = eol;
 		while ((cp = strchr(path, '$')) && cp < next) {
 			strncat(buf, path, cp - path);
+#if	MSDOS
+			if (*(cp + 1) == '$') {
+				path = cp + 2;
+#else
 			if (cp > path && *(cp - 1) == '\\') {
-				strcat(buf, "$");
 				path = ++cp;
+#endif
+				strcat(buf, "$");
 				continue;
 			}
 			if (*(++cp) == '{') cp++;
@@ -125,7 +159,7 @@ char *path, *eol;
 		strncat(buf, path, next - path);
 		path = next;
 		if (path < eol) {
-			strcat(buf, "/");
+			strcat(buf, _SS_);
 			path++;
 		}
 	}
@@ -231,7 +265,7 @@ reg_t *re;
 	return(0);
 }
 
-#else		/* USERE_COMP */
+#else	/* !USERE_COMP */
 # ifdef	USEREGCOMP
 
 reg_t *regexp_init(s)
@@ -262,7 +296,7 @@ reg_t *re;
 	if (re) regfree(re);
 }
 
-# else		/* USEREGCOMP */
+# else	/* !USEREGCOMP */
 
 int regexp_free(re)
 reg_t *re;
@@ -289,7 +323,7 @@ char *s;
 	return(regex(re, s) ? 1 : 0);
 }
 
-#  else		/* USEREGCMP */
+#  else	/* !USEREGCMP */
 
 reg_t *regexp_init(s)
 char *s;
@@ -338,7 +372,12 @@ char *re, *s;
 				if (!*(++cp1)) break;
 			default:
 				if (!*cp2) cp1 = bank1 = NULL;
+#if	MSDOS
+				else if (toupper(*(cp1++)) == toupper(*cp2))
+					cp2++;
+#else
 				else if (*(cp1++) == *cp2) cp2++;
+#endif
 				else cp1 = NULL;
 				break;
 		}
@@ -351,30 +390,11 @@ char *re, *s;
 	return(cp1 && !*cp2);
 }
 
-#  endif	/* USEREGCMP */
-# endif		/* USEREGCOMP */
-#endif		/* USERE_COMP */
+#  endif	/* !USEREGCMP */
+# endif		/* !USEREGCOMP */
+#endif		/* !USERE_COMP */
 
-char *lastpointer(buf, n)
-char *buf;
-int n;
-{
-	while (n--) buf += strlen(buf) + 1;
-	return(buf);
-}
-
-char *finddupl(buf, n, target)
-char *buf;
-int n;
-char *target;
-{
-	while (n--) {
-		if (!strcmp(buf, target)) return(buf);
-		buf += strlen(buf) + 1;
-	}
-	return(NULL);
-}
-
+#if	!MSDOS
 static int completeuser(name, matchno, matchp)
 char *name;
 int matchno;
@@ -396,96 +416,164 @@ char **matchp;
 
 		*(*matchp + (ptr++)) = '~';
 		strcpy(*matchp + ptr, pwd -> pw_name);
-		strcat(*matchp + ptr, "/");
+		strcat(*matchp + ptr, _SS_);
 		matchno++;
 	}
 	endpwent();
 	return(matchno);
 }
+#endif
 
-int completepath(path, exe, matchno, matchp)
+#if	!MSDOS || !defined (_NOCOMPLETE)
+char *lastpointer(buf, n)
+char *buf;
+int n;
+{
+	while (n--) buf += strlen(buf) + 1;
+	return(buf);
+}
+
+char *finddupl(buf, n, target)
+char *buf;
+int n;
+char *target;
+{
+	while (n--) {
+#if	MSDOS
+		if (!stricmp(buf, target)) return(buf);
+#else
+		if (!strcmp(buf, target)) return(buf);
+#endif
+		buf += strlen(buf) + 1;
+	}
+	return(NULL);
+}
+
+static DIR *opennextpath(pathp, dir, eolp)
+char **pathp, *dir, **eolp;
+{
+	DIR *dirp;
+	char *cp;
+
+	if (dir == *pathp) {
+		dirp = Xopendir(dir);
+		*pathp = NULL;
+	}
+	else do {
+		cp = *pathp;
+#if	MSDOS
+		if (!(*pathp = strchr(cp, ';'))) strcpy(dir, cp);
+#else
+		if (!(*pathp = strchr(cp, ':'))) strcpy(dir, cp);
+#endif
+		else {
+			strncpy(dir, cp, *pathp - cp);
+			dir[((*pathp)++) - cp] = '\0';
+		}
+	} while (!(dirp = Xopendir(dir)) && *pathp);
+
+	if (!dirp) return(NULL);
+	cp = dir + strlen(dir);
+	if (strcmp(dir, _SS_)) strcpy(cp++, _SS_);
+	*eolp = cp;
+	return(dirp);
+}
+
+static struct dirent *readnextpath(dirpp, pathp, dir, eolp)
+DIR **dirpp;
+char **pathp, *dir, **eolp;
+{
+	struct dirent *dp;
+
+	if (dp = Xreaddir(*dirpp)) return(dp);
+	while (*pathp) {
+		Xclosedir(*dirpp);
+		if (!(*dirpp = opennextpath(pathp, dir, eolp))) return(NULL);
+		if (dp = Xreaddir(*dirpp)) return(dp);
+	}
+	return(NULL);
+}
+
+int completepath(path, matchno, matchp, exe, full)
 char *path;
-int exe, matchno;
+int matchno;
 char **matchp;
+int exe, full;
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat status;
-	char *cp, *file, *next, dir[MAXPATHLEN + 1];
+	char *cp, *name, *file, *next, dir[MAXPATHLEN + 1];
 	int len, ptr, size, dirflag;
 
 	size = lastpointer(*matchp, matchno) - *matchp;
 	next = NULL;
-	if (file = strrchr(path, '/')) {
-		if (file == path) strcpy(dir, "/");
+	if (file = strrchr(path, _SC_)) {
+		if (file == path) strcpy(dir, _SS_);
 		else {
 			strncpy(dir, path, file - path);
 			dir[file - path] = '\0';
 		}
+		next = dir;
 		file++;
 	}
+#if	!MSDOS
 	else if (*path == '~') return(completeuser(path + 1, matchno, matchp));
+#endif
 	else if (exe) {
-		cp = (char *)getenv("PATH");
-		if (!(next = strchr(cp, ':'))) strcpy(dir, cp);
-		else {
-			strncpy(dir, cp, next - cp);
-			dir[(next++) - cp] = '\0';
-		}
+		next = (char *)getenv("PATH");
 		file = path;
 	}
 	else {
 		strcpy(dir, ".");
+		next = dir;
 		file = path;
 	}
 	len = strlen(file);
 
-	if (!(dirp = Xopendir(dir))) return(matchno);
-	cp = dir + strlen(dir);
-	if (strcmp(dir, "/")) strcpy(cp++, "/");
-	while ((dp = Xreaddir(dirp)) || next) {
-		while (!dp && next) {
-			do {
-				if (dirp) Xclosedir(dirp);
-				cp = next;
-				if (!(next = strchr(cp, ':'))) strcpy(dir, cp);
-				else {
-					strncpy(dir, cp, next - cp);
-					dir[(next++) - cp] = '\0';
-				}
-			} while (!(dirp = Xopendir(dir)) && next);
-			cp = dir + strlen(dir);
-			if (strcmp(dir, "/")) strcpy(cp++, "/");
-			dp = Xreaddir(dirp);
-		}
-		if (!dp) break;
-
+	if (!(dirp = opennextpath(&next, dir, &cp))) return(matchno);
+	while (dp = readnextpath(&dirp, &next, dir, &cp)) {
 		if (!len) {
 			if (!strcmp(dp -> d_name, ".")
 			|| !strcmp(dp -> d_name, "..")) continue;
 		}
-		if (strncmp(file, dp -> d_name, len)
-		|| finddupl(*matchp, matchno, dp -> d_name)) continue;
-
 		strcpy(cp, dp -> d_name);
+		name = (full) ? dir : dp -> d_name;
+#if	MSDOS
+		if (exe > 1) {
+			if (stricmp(file, dp -> d_name)) continue;
+		}
+		else if (strnicmp(file, dp -> d_name, len)) continue;
+#else
+		if (exe > 1) {
+			if (strcmp(file, dp -> d_name)) continue;
+		}
+		else if (strncmp(file, dp -> d_name, len)) continue;
+#endif
+		if (finddupl(*matchp, matchno, name)) continue;
+
 		dirflag = (Xstat(dir, &status) >= 0
 		&& (status.st_mode & S_IFMT) == S_IFDIR) ? 1 : 0;
-		if (exe && (dirflag || Xaccess(dir, X_OK) < 0)) continue;
+		if ((exe > 1 && dirflag) || (exe && Xaccess(dir, X_OK) < 0))
+			continue;
 		ptr = size;
-		size += strlen(dp -> d_name) + dirflag + 1;
+		size += strlen(name) + dirflag + 1;
 		*matchp = (*matchp) ? (char *)realloc(*matchp, size)
 			: (char *)malloc(size);
 		if (!*matchp) error(NULL);
 
-		strcpy(*matchp + ptr, dp -> d_name);
-		if (dirflag) strcat(*matchp + ptr, "/");
+		strcpy(*matchp + ptr, name);
+		if (dirflag) strcat(*matchp + ptr, _SS_);
 		matchno++;
+		if (exe > 1) break;
 	}
 	if (dirp) Xclosedir(dirp);
 
 	return(matchno);
 }
+#endif	/* !MSDOS || !_NOCOMPLETE */
 
+#ifndef	_NOCOMPLETE
 char *findcommon(strs, max)
 char *strs;
 int max;
@@ -502,7 +590,7 @@ int max;
 		common[j] = '\0';
 	}
 	if (max == 1
-	&& (cp = common + (int)strlen(common) - 1) >= common && *cp != '/') {
+	&& (cp = common + (int)strlen(common) - 1) >= common && *cp != _SC_) {
 		*(++cp) = ' ';
 		*(++cp) = '\0';
 	}
@@ -512,3 +600,4 @@ int max;
 	strcpy(cp, common);
 	return(cp);
 }
+#endif	/* _NOCOMPLETE */

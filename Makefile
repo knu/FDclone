@@ -5,27 +5,62 @@
 MAKE	= make
 CC	= cc
 CPP	= $(CC) -E
-SHELL	= /bin/sh
 SED	= sed
 
 goal:	Makefile.tmp
 	$(MAKE) -f Makefile.tmp
 
 Makefile.tmp: Makefile.in mkmf.sed
-	$(SED) -f mkmf.sed Makefile.in > Makefile.tmp ||\
-	(rm -f Makefile.tmp; exit 1)
+	$(SED) -f mkmf.sed Makefile.in > $@ ||\
+	(rm -f $@; exit 1)
 
-mkmf.sed: mkmf.sed.c machine.h config.h
-	$(CPP) -DCCCOMMAND=$(CC) mkmf.sed.c |\
-	$(SED) -n -e 's/[\" 	]*:[\" 	]*/:/g' -e '/^s:.*:.*:$$/p' > mkmf.sed
+makefile.gpc: Makefile.in mkmfdosg.sed
+	$(SED) -f mkmfdosg.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/DOSV/g' > $@ ||\
+	(rm -f $@; exit 1)
 
-config.h: config.h.in
-	cp config.h.in config.h
+makefile.g98: Makefile.in mkmfdosg.sed
+	$(SED) -f mkmfdosg.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.g31: Makefile.in mkmfdosg.sed
+	$(SED) -f mkmfdosg.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/J3100/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.lpc: Makefile.in mkmfdosl.sed
+	$(SED) -f mkmfdosl.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/DOSV/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.l98: Makefile.in mkmfdosl.sed
+	$(SED) -f mkmfdosl.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.l31: Makefile.in mkmfdosl.sed
+	$(SED) -f mkmfdosl.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/J3100/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+mkmf.sed: mkmfsed.c machine.h config.h
+	$(CPP) -DCCCOMMAND=$(CC) mkmfsed.c |\
+	$(SED) -n -e 's/[\" 	]*:[\" 	]*/:/g' -e '/^s:.*:.*:g*$$/p' > mkmf.sed
+
+config.h: config.hin
+	cp config.hin config.h
 
 install catman catman-b compman compman-b \
-depend config tar lzh shar: Makefile.tmp
+fd.doc history.doc \
+depend config: Makefile.tmp
+	$(MAKE) -f Makefile.tmp $@
+
+tar lzh shar: Makefile.tmp makefile.gpc makefile.g98 makefile.g31 \
+makefile.lpc makefile.l98 makefile.l31
 	$(MAKE) -f Makefile.tmp $@
 
 clean: Makefile.tmp
 	$(MAKE) -f Makefile.tmp clean
-	rm -f Makefile.tmp mkmf.sed config.h
+	rm -f makefile.gpc makefile.g98 makefile.g31 Makefile.tmp
+	rm -f makefile.lpc makefile.l98 makefile.l31 mkmf.sed config.h

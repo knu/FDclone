@@ -1,4 +1,6 @@
 /*
+ *	fd.h
+ *
  *	Configuration File for FD
  */
 
@@ -21,8 +23,14 @@
 #include "pathname.h"
 
 
+#if	MSDOS
+#define	RUNCOMFILE	"~\\fd.rc"
+#define	HISTORYFILE	"~\\fd.hst"
+#else
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
+#endif
+
 #define	CMDLINE_DELIM	"\t !&:;<>|"
 #define	METACHAR	"\t \"#$&'()*:;<>?[\\]^`|~"
 
@@ -51,8 +59,13 @@
 #define	SECOND		0
 #define	DOSDRIVE	0
 #define	SIZEINFO	0
+#define	ANSICOLOR	0
 #define	EDITMODE	"emacs"
+#if	MSDOS
+#define	TMPDIR		"."
+#else
 #define	TMPDIR		"/tmp"
+#endif
 #define	RRPATH		""
 
 
@@ -105,9 +118,13 @@
 #define	WDATE		8
 #define	WTIME		5
 #define	WSECOND		2
+#if	MSDOS
+#define	WMODE		5
+#else
 #define	WMODE		10
 #define	WOWNER		8
 #define	WGROUP		8
+#endif
 
 #ifdef	UNKNOWNFS
 #undef	WRITEFS

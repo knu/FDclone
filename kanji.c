@@ -9,45 +9,24 @@
 #include "func.h"
 #include "kctype.h"
 
+#if	MSDOS
+#include <stdarg.h>
+#include "unixemu.h"
+#else
 #include <varargs.h>
+#endif
 
 #define	ASCII	0
 #define	KANA	1
 #define	KANJI	2
 
+#if	!MSDOS && !defined (_NOKANJICONV)
 int inputkcode;
-int outputkcode;
-
-
-int getlang(str, in)
-char *str;
-int in;
-{
-	int ret;
-
-	if (!str) ret = NOCNV;
-	else if (strstr2(str, "SJIS") || strstr2(str, "sjis")) ret = SJIS;
-	else if (strstr2(str, "EUC") || strstr2(str, "euc")) ret = EUC;
-	else if (strstr2(str, "JIS") || strstr2(str, "jis")) ret = JIS7;
-	else if (strstr2(str, "ENG") || strstr2(str, "eng")
-	|| !strcmp(str, "C")) ret = ENG;
-	else ret = NOCNV;
-
-	if (in) {
-#ifdef	CODEEUC
-		if (ret != SJIS) ret = EUC;
-#else
-		if (ret != EUC) ret = SJIS;
 #endif
-	}
-	return(ret);
-}
+#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
+int outputkcode;
+#endif
 
-char *mesconv(jpn, eng)
-char *jpn, *eng;
-{
-	return((outputkcode == ENG) ? eng : jpn);
-}
 
 int onkanji1(s, ptr)
 char *s;
@@ -63,6 +42,48 @@ int ptr;
 	return(iskanji1(s[ptr]));
 }
 
+#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
+/* ARGSUSED */
+int getlang(str, in)
+char *str;
+int in;
+{
+	int ret;
+
+	if (!str) ret = NOCNV;
+#if	!MSDOS && !defined (_NOKANJICONV) 
+	else if (strstr2(str, "SJIS") || strstr2(str, "sjis")) ret = SJIS;
+	else if (strstr2(str, "EUC") || strstr2(str, "euc")) ret = EUC;
+	else if (strstr2(str, "JIS") || strstr2(str, "jis")) ret = JIS7;
+#endif
+#ifndef	_NOENGMES
+	else if (strstr2(str, "ENG") || strstr2(str, "eng")
+	|| !strcmp(str, "C")) ret = ENG;
+#endif
+	else ret = NOCNV;
+
+#if	!MSDOS && !defined (_NOKANJICONV) 
+	if (in) {
+#ifdef	CODEEUC
+		if (ret != SJIS) ret = EUC;
+#else
+		if (ret != EUC) ret = SJIS;
+#endif
+	}
+#endif	/* !MSDOS && !_NOKANJICONV */
+	return(ret);
+}
+
+#ifndef	_NOENGMES
+char *mesconv(jpn, eng)
+char *jpn, *eng;
+{
+	return((outputkcode == ENG) ? eng : jpn);
+}
+#endif
+#endif	/* (!MSDOS && !_NOKANJICONV) || !_NOENGMES */
+
+#if	!MSDOS && !defined (_NOKANJICONV) 
 int jis7(buf, str, incode)
 char *buf;
 u_char *str;
@@ -192,19 +213,36 @@ int in, out;
 	}
 	return(len);
 }
+#endif	/* !MSDOS && !_NOKANJICONV */
 
 int kanjiputs(str)
 char *str;
 {
+#if	MSDOS || defined (_NOKANJICONV)
+	cputs2(str);
+	return(strlen(str));
+#else
 	char buf[MAXLINESTR + 1];
 	int i;
 
 	i = kanjiconv(buf, str, DEFCODE, outputkcode);
 	buf[i] = '\0';
-	cputs(buf);
-	return(strlen(buf));
+	cputs2(buf);
+	return(i);
+#endif
 }
 
+#if	MSDOS
+/*VARARGS1*/
+int kanjiprintf(const char *fmt, ...)
+{
+	va_list args;
+	char buf[MAXLINESTR + 1];
+
+	va_start(args, fmt);
+	vsprintf(buf, fmt, args);
+	va_end(args);
+#else	/* !MSDOS */
 #ifndef	NOVSPRINTF
 /*VARARGS1*/
 int kanjiprintf(fmt, va_alist)
@@ -217,14 +255,15 @@ va_dcl
 	va_start(args);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else
+#else	/* !NOVSPRINTF */
 int kanjiprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
 	char buf[MAXLINESTR + 1];
 
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-#endif
+#endif	/* !NOVSPRINTF */
+#endif	/* !MSDOS */
 	return(kanjiputs(buf));
 }
 
@@ -240,7 +279,7 @@ int len, ptr;
 	for (i = 0; i < len && s[ptr + i]; i++);
 	if (i < len) {
 		kanjiputs(s + ptr);
-		if (p >= 0) for (; i < len; i++) putch(' ');
+		if (p >= 0) for (; i < len; i++) putch2(' ');
 	}
 	else {
 		memcpy(dupl, s + ptr, len);

@@ -1,4 +1,6 @@
 /*
+ *	types.h
+ *
  *	Type Definition
  */
 
@@ -36,22 +38,30 @@ typedef struct _namelist {
 	u_short ent;
 	u_short st_mode;
 	short st_nlink;
+#if	!MSDOS
 	uid_t st_uid;
 	gid_t st_gid;
+#endif
 	off_t st_size;
 	time_t st_mtim;
 	u_char flags;
 } namelist;
 
-#define	F_ISDIR	001
-#define	F_ISLNK	002
-#define	F_ISDEV	004
-#define	F_ISMRK	010
-#define	F_ISARG	020
+#define	F_ISEXE	0001
+#define	F_ISWRI	0002
+#define	F_ISRED	0004
+#define	F_ISDIR	0010
+#define	F_ISLNK	0020
+#define	F_ISDEV	0040
+#define	F_ISMRK	0100
+#define	F_ISARG	0200
 
 #define	isdir(file)		((file) -> flags & F_ISDIR)
 #define	islink(file)		((file) -> flags & F_ISLNK)
 #define	isdev(file)		((file) -> flags & F_ISDEV)
+#define	isread(file)		((file) -> flags & F_ISRED)
+#define	iswrite(file)		((file) -> flags & F_ISWRI)
+#define	isexec(file)		((file) -> flags & F_ISEXE)
 #define	ismark(file)		((file) -> flags & F_ISMRK)
 #define	isarg(file)		((file) -> flags & F_ISARG)
 
@@ -62,7 +72,7 @@ typedef struct _assoclist {
 } assoclist;
 
 typedef struct _strtable {
-	int no;
+	u_short no;
 	char *str;
 } strtable;
 
@@ -76,7 +86,9 @@ typedef struct _functable {
 	int (*func)();
 	char *ident;
 	char *hmes;
+#ifndef	_NOENGMES
 	char *hmes_eng;
+#endif
 	u_char stat;
 } functable;
 
@@ -87,6 +99,7 @@ typedef struct _functable {
 #define	ARCH	010
 #define	NO_FILE	020
 
+#ifndef	_NOARCHIVE
 #define	MAXLAUNCHFIELD	9
 #define	MAXLAUNCHSEP	3
 typedef struct _launchtable {
@@ -98,6 +111,7 @@ typedef struct _launchtable {
 	u_char delim[MAXLAUNCHFIELD];
 	u_char width[MAXLAUNCHFIELD];
 	u_char sep[MAXLAUNCHSEP];
+	u_char lines;
 } launchtable;
 
 #define	F_MODE	0
@@ -115,13 +129,16 @@ typedef struct _archivetable {
 	char *p_comm;
 	char *u_comm;
 } archivetable;
+#endif
 
+#ifndef	_NOTREE
 typedef struct _treelist {
 	char *name;
 	int max;
 	int maxent;
 	struct _treelist *next;
 } treelist;
+#endif
 
 typedef struct _macrostat {
 	short addoption;

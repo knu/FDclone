@@ -7,60 +7,74 @@
 #include <stdio.h>
 #include <string.h>
 
+static int readfunctable();
 
-int main(argc, argv)
-int argc;
-char *argv[];
+
+static int readfunctable(in, out)
+FILE *in, *out;
 {
-	FILE *in, *out;
-	int c, lebel, cp, no, isstr;
+	int c, lebel, cp, no, isstr, done;
 	char buf[32];
 
-	in = fopen(argv[1], "r");
-	out = fopen(argv[2], "w");
-
-	lebel = no = isstr = 0;
+	lebel = no = isstr = done = 0;
 	cp = -1;
 
-	fprintf(out, "/*\n");
-	fprintf(out, " *\t%s\n", argv[1]);
-	fprintf(out, " *\n");
-	fprintf(out, " *\tFunction No. Table\n");
-	fprintf(out, " */\n");
-	fprintf(out, "\n");
-
 	while ((c = fgetc(in)) != EOF) {
-		switch (c) {
-			case '\t':
-			case ' ':
-				break;
-			case '{':
-				lebel++;
-				break;
-			case '}':
-				lebel--;
-				break;
-			case '"':
-				if (lebel != 2) break;
-				isstr = 1 - isstr;
-				if (isstr) cp = 0;
-				else {
+		if (isstr) {
+			if (c == '"') {
+				isstr = 0;
+				if (cp >= 0) {
 					buf[cp] = '\0';
 					fprintf(out, "#define\t%s\t", buf);
 					while ((cp += 8) < 16) fputc('\t', out);
 					fprintf(out, "%d\n", no);
 					no++;
 					cp = -1;
+					done = 1;
 				}
+			}
+			else if (cp >= 0) buf[cp++] = c;
+		}
+		else switch (c) {
+			case '\t':
+			case ' ':
+				break;
+			case '{':
+				if (++lebel == 2) cp = 0;
+				break;
+			case '}':
+				if (--lebel == 0 && done) return(0);
+				break;
+			case '"':
+				isstr = 1;
 				break;
 			default:
-				if (cp >= 0) buf[cp++] = c;
 				break;
 		}
 	}
+	return(EOF);
+}
 
-	fclose(out);
-	fclose(in);
+int main(argc, argv)
+int argc;
+char *argv[];
+{
+	FILE *in, *out;
+
+	in = (strcmp(argv[1], "-")) ? fopen(argv[1], "r") : stdin;
+	out = (strcmp(argv[2], "-")) ? fopen(argv[2], "w") : stdout;
+
+	fprintf(out, "/*\n");
+	fprintf(out, " *\t%s\n", (out != stdout) ? argv[2] : "STDOUT");
+	fprintf(out, " *\n");
+	fprintf(out, " *\tFunction No. Table\n");
+	fprintf(out, " */\n");
+	fprintf(out, "\n");
+
+	readfunctable(in, out);
+
+	if (out != stdout) fclose(out);
+	if (in != stdin) fclose(in);
 
 	exit(0);
 }

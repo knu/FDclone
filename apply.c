@@ -10,17 +10,21 @@
 #include "kanji.h"
 
 #include <fcntl.h>
-#include <sys/file.h>
-#include <sys/time.h>
-#include <sys/param.h>
 #include <sys/stat.h>
 
 #ifdef	USETIMEH
 #include <time.h>
 #endif
 
-#ifdef	USEUTIME
-#include <utime.h>
+#if	MSDOS
+#include "unixemu.h"
+#else
+#include <sys/file.h>
+#include <sys/time.h>
+#include <sys/param.h>
+# ifdef	USEUTIME
+# include <utime.h>
+# endif
 #endif
 
 extern int filepos;
@@ -28,7 +32,7 @@ extern reg_t *findregexp;
 extern int subwindow;
 extern int sizeinfo;
 
-static int judgecopy();
+static long judgecopy();
 static VOID showattr();
 static int touchfile();
 
@@ -39,7 +43,7 @@ static u_short attrmode;
 static time_t attrtime;
 
 
-static int judgecopy(file, dest, atimep, mtimep)
+static long judgecopy(file, dest, atimep, mtimep)
 char *file, *dest;
 time_t *atimep, *mtimep;
 {
@@ -48,7 +52,7 @@ time_t *atimep, *mtimep;
 	int val[4];
 
 	strcpy(dest, destpath);
-	strcat(dest, "/");
+	strcat(dest, _SS_);
 	strcat(dest, file);
 	if (Xlstat(file, &status1) < 0) {
 		warning(-1, file);
@@ -57,7 +61,7 @@ time_t *atimep, *mtimep;
 	if (atimep) *atimep = status1.st_atime;
 	if (mtimep) *mtimep = status1.st_mtime;
 	if (Xlstat(dest, &status2) < 0) {
-		if (errno == ENOENT) return((int)status1.st_mode);
+		if (errno == ENOENT) return((long)status1.st_mode);
 		warning(-1, dest);
 		return(-1);
 	}
@@ -65,7 +69,7 @@ time_t *atimep, *mtimep;
 	if (!copypolicy || copypolicy == 2) {
 		locate(0, LCMDLINE);
 		putterm(l_clear);
-		putch('[');
+		putch2('[');
 		cp = SAMEF_K;
 		kanjiputs2(dest, n_column - (int)strlen(cp) - 1, -1);
 		kanjiputs(cp);
@@ -88,14 +92,14 @@ time_t *atimep, *mtimep;
 			if (status1.st_mtime < status2.st_mtime) return(-1);
 			break;
 		case 2:
-			cp = strrchr(dest, '/') + 1;
+			cp = strrchr(dest, _SC_) + 1;
 			do {
 				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, NULL))) return(-1);
 				strcpy(cp, tmp);
 				free(tmp);
 			} while (Xlstat(dest, &status2) >= 0
-			&& (putterm(t_bell) || 1));
+			&& (putterm(t_bell), 1));
 			if (errno != ENOENT) {
 				warning(-1, dest);
 				return(-1);
@@ -108,12 +112,12 @@ time_t *atimep, *mtimep;
 /*NOTREACHED*/
 			break;
 	}
-	return((int)status1.st_mode);
+	return((long)status1.st_mode);
 }
 
 int _cpfile(src, dest, mode)
 char *src, *dest;
-int mode;
+u_short mode;
 {
 	char buf[BUFSIZ];
 	int i, fd1, fd2;
@@ -121,7 +125,7 @@ int mode;
 	if ((mode & S_IFMT) == S_IFLNK) {
 		if ((i = Xreadlink(src, buf, BUFSIZ)) < 0) return(-1);
 		buf[i] = '\0';
-		return(Xsymlink(buf, dest) < 0);
+		return(Xsymlink(buf, dest));
 	}
 	if ((fd1 = Xopen(src, O_RDONLY, mode)) < 0) return(-1);
 	if ((fd2 = Xopen(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
@@ -155,17 +159,18 @@ int cpfile(path)
 char *path;
 {
 	char dest[MAXPATHLEN + 1];
-	int mode;
+	long mode;
 
 	if ((mode = judgecopy(path, dest, NULL, NULL)) < 0) return(0);
-	return(_cpfile(path, dest, mode));
+	return(_cpfile(path, dest, (u_short)mode));
 }
 
 int mvfile(path)
 char *path;
 {
 	char dest[MAXPATHLEN + 1];
-	int mode, atime, mtime;
+	long mode;
+	time_t atime, mtime;
 
 	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
 	if (Xrename(path, dest) < 0) {
@@ -185,7 +190,7 @@ char *path;
 	char dest[MAXPATHLEN + 1];
 
 	strcpy(dest, destpath);
-	strcat(dest, "/");
+	strcat(dest, _SS_);
 	strcat(dest, path);
 	if (Xmkdir(dest, 0777) < 0 && errno != EEXIST) return(-1);
 	return(0);
@@ -196,16 +201,20 @@ char *path;
 {
 	char *cp;
 
-	if (cp = strrchr(path, '/')) cp++;
+	if (cp = strrchr(path, _SC_)) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
+#if	MSDOS
+		if (!(strncmp(path, ".\\", 2))) path += 2;
+#else
 		if (!(strncmp(path, "./", 2))) path += 2;
+#endif
 		locate(0, LCMDLINE);
 		putterm(l_clear);
-		putch('[');
+		putch2('[');
 		kanjiputs2(path, n_column - 2, -1);
-		putch(']');
+		putch2(']');
 		if (yesno(FOUND_K)) {
 			destpath = strdup2(path);
 			return(-2);
@@ -219,7 +228,7 @@ char *path;
 {
 	char *cp;
 
-	if (cp = strrchr(path, '/')) cp++;
+	if (cp = strrchr(path, _SC_)) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
@@ -238,7 +247,7 @@ char timestr[2][9];
 int y;
 {
 	struct tm *tm;
-	char buf[12];
+	char buf[WMODE + 1];
 
 	tm = localtime(&(listp -> st_mtim));
 
@@ -248,9 +257,9 @@ int y;
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
-	putch('[');
+	putch2('[');
 	kanjiputs2(listp -> name, 16, 0);
-	putch(']');
+	putch2(']');
 	locate(n_column / 2 + 3, y);
 	kanjiputs(TOLD_K);
 	locate(n_column / 2 + 13, y);
@@ -262,30 +271,30 @@ int y;
 	kanjiputs(TMODE_K);
 	locate(n_column / 2, y);
 	putmode(buf, listp -> st_mode);
-	cputs(buf + 1);
+	cputs2(buf + 1);
 	locate(n_column / 2 + 10, y);
 	putmode(buf, mode);
-	cputs(buf + 1);
+	cputs2(buf + 1);
 
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
 	kanjiputs(TDATE_K);
 	locate(n_column / 2, y);
-	cprintf("%02d-%02d-%02d",
+	cprintf2("%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	locate(n_column / 2 + 10, y);
-	cputs(timestr[0]);
+	cputs2(timestr[0]);
 
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
 	kanjiputs(TTIME_K);
 	locate(n_column / 2, y);
-	cprintf("%02d:%02d:%02d",
+	cprintf2("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	locate(n_column / 2 + 10, y);
-	cputs(timestr[1]);
+	cputs2(timestr[1]);
 
 	locate(0, ++y);
 	putterm(l_clear);
@@ -296,12 +305,14 @@ namelist *listp;
 u_short flag;
 {
 	struct tm *tm;
-	char buf[12], timestr[2][9];
+	char buf[WMODE + 1], timestr[2][9];
 	u_short tmp;
 	int i, ch, x, y, yy, ymin, ymax;
 
 	subwindow = 1;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	yy = WHEADER;
 	while (n_line - yy < 7) yy--;
 
@@ -361,7 +372,7 @@ u_short flag;
 			case '8':
 			case '9':
 				if (!y) break;
-				putch(ch);
+				putch2(ch);
 				timestr[y - 1][x] = ch;
 			case K_RIGHT:
 				if (y) {
@@ -375,7 +386,11 @@ u_short flag;
 						if (!((x + 1) % 3)) x++;
 					}
 				}
+#if	MSDOS
+				else if (x < 3) x++;
+#else
 				else if (x < 8) x++;
+#endif
 				break;
 			case K_LEFT:
 				if (y) {
@@ -396,6 +411,15 @@ u_short flag;
 				break;
 			case ' ':
 				if (y) break;
+#if	MSDOS
+				if (x == 2) break;
+				else if (x == 3) attrmode ^= S_ISVTX;
+				else {
+					tmp = 1;
+					for (i = 8; i > x; i--) tmp <<= 1;
+					attrmode ^= tmp;
+				}
+#else
 				tmp = 1;
 				for (i = 8; i > x; i--) tmp <<= 1;
 				if (!((x + 1) % 3) && (attrmode & tmp)) {
@@ -404,9 +428,10 @@ u_short flag;
 					else attrmode ^= (tmp << i);
 				}
 				attrmode ^= tmp;
+#endif
 				locate(n_column / 2 + 10, yy + y + 2);
 				putmode(buf, attrmode);
-				cputs(buf + 1);
+				cputs2(buf + 1);
 				break;
 			default:
 				break;
@@ -414,7 +439,9 @@ u_short flag;
 	} while (ch != ESC && ch != CR);
 
 	subwindow = 0;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 
 	if (ch == ESC) return(0);
 
@@ -520,22 +547,24 @@ char *endmes;
 
 	locate(0, LCMDLINE);
 	putterm(l_clear);
-	putch('[');
+	putch2('[');
+#if	MSDOS
+	cp = (strncmp(dir, ".\\", 2)) ? dir : dir + 2;
+#else
 	cp = (strncmp(dir, "./", 2)) ? dir : dir + 2;
+#endif
 	kanjiputs2(cp, n_column - 2, -1);
-	putch(']');
+	putch2(']');
 	tflush();
 
 	strcpy(path, dir);
 	fname = path + strlen(path);
-	*(fname++) = '/';
+	*(fname++) = _SC_;
 
 	ndir = max = 0;
 	dirlist = NULL;
 	while (dp = Xreaddir(dirp)) {
-		if (!strcmp(dp -> d_name, ".")
-		|| !strcmp(dp -> d_name, "..")) continue;
-
+		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 
 		if (Xlstat(path, &status) >= 0
@@ -561,17 +590,15 @@ char *endmes;
 			funcf, funcd1, funcd2, NULL)) < -1) return(i);
 		locate(0, LCMDLINE);
 		putterm(l_clear);
-		putch('[');
+		putch2('[');
 		kanjiputs2(cp, n_column - 2, -1);
-		putch(']');
+		putch2(']');
 		tflush();
 	}
 	free(dirlist);
 
 	while (dp = Xreaddir(dirp)) {
-		if (!strcmp(dp -> d_name, ".")
-		|| !strcmp(dp -> d_name, "..")) continue;
-
+		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 
 		if (Xlstat(path, &status) < 0) warning(-1, path);

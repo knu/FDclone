@@ -1,7 +1,7 @@
 /*
  *	parse.c
  *
- *	commandline parser
+ *	Commandline Parser
  */
 
 #include "fd.h"
@@ -10,12 +10,22 @@
 #include "kctype.h"
 #include "kanji.h"
 #include "funcno.h"
-#include "dosdisk.h"
 
+#if	MSDOS
+#include "unixemu.h"
+#else
+#include <sys/param.h>
+# ifndef	_NODOSDRIVE
+# include "dosdisk.h"
+# endif
+#endif
+
+#ifndef	_NOARCHIVE
 extern launchtable launchlist[];
 extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
+#endif
 extern char *macrolist[];
 extern int maxmacro;
 extern aliastable aliaslist[];
@@ -24,34 +34,53 @@ extern userfunctable userfunclist[];
 extern int maxuserfunc;
 extern bindtable bindlist[];
 extern functable funclist[];
+#if	!MSDOS && !defined (_NODOSDRIVE)
 extern devinfo fdtype[];
+#endif
 extern char **sh_history;
 extern char *helpindex[];
 extern int sorttype;
+#ifndef	_NOTREE
 extern int sorttree;
+#endif
+#ifndef	_NOWRITEFS
 extern int writefs;
+#endif
 extern int histsize;
 extern int savehist;
 extern int minfilename;
+#ifndef	_NOTREE
 extern int dircountlimit;
+#endif
 extern int showsecond;
+#if	!MSDOS && !defined (_NODOSDRIVE)
 extern int dosdrive;
+#endif
+#ifndef	_NOEDITMODE
 extern char *editmode;
+#endif
 extern char *deftmpdir;
-extern int inputkcode;
-extern int outputkcode;
+#ifndef	_NOROCKRIDGE
 extern char *rockridgepath;
+#endif
 extern int sizeinfo;
+#ifndef	_NOCOLOR
+extern int ansicolor;
+#endif
 
 static char *geteostr();
 static char *gettoken();
 static char *getenvval();
+#ifndef	_NOARCHIVE
 static char *getrange();
 static int getlaunch();
+#endif
 static int getcommand();
 static int getkeybind();
 static int getalias();
+#if	!MSDOS && !defined (_NODOSDRIVE)
 static int getdosdrive();
+#endif
 static int unalias();
 static int getuserfunc();
 static VOID printext();
@@ -106,7 +135,7 @@ int evaldq;
 
 char *strtkchr(s, c, evaldq)
 char *s;
-int c;
+int c, evaldq;
 {
 	char tmp[2];
 
@@ -213,10 +242,14 @@ char *path, *delim;
 	return(epath);
 }
 
+#if	!MSDOS
 char *killmeta(name)
 char *name;
 {
-	char *cp, buf[MAXPATHLEN * 2 + 1], tmp[MAXPATHLEN + 1];
+#ifndef	_NOROCKRIDGE
+	char tmp[MAXPATHLEN + 1];
+#endif
+	char *cp, buf[MAXPATHLEN * 2 + 1];
 	int i;
 #ifndef	CODEEUC
 	int sjis;
@@ -226,7 +259,9 @@ char *name;
 		&& strchr("AP", toupper2(*(cp + 1))));
 #endif
 
+#ifndef	_NOROCKRIDGE
 	name = detransfile(name, tmp);
+#endif
 	for (cp = name, i = 0; *cp; cp++, i++) {
 #ifndef	CODEEUC
 		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
@@ -246,7 +281,7 @@ VOID adjustpath()
 	if (!(cp = (char *)getenv("PATH"))) return;
 
 	path = evalcomstr(cp, ":");
-	if (strcmp(path, cp)) {
+	if (strpathcmp(path, cp)) {
 #ifdef	USESETENV
 		if (setenv("PATH", path, 1) < 0) error("PATH");
 #else
@@ -258,6 +293,7 @@ VOID adjustpath()
 	}
 	free(path);
 }
+#endif	/* !MSDOS */
 
 int getargs(args, argv, max)
 char *args, *argv[];
@@ -276,14 +312,14 @@ int max;
 	return(i);
 }
 
+#ifndef	_NOARCHIVE
 static char *getrange(cp, fp, dp, wp)
 char *cp;
 u_char *fp, *dp, *wp;
 {
 	int i;
 
-	*fp = *wp = 0;
-	*dp = '\0';
+	*fp = *dp = *wp = 0;
 
 	if (*cp >= '0' && *cp <= '9') *fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
 	while (*cp >= '0' && *cp <= '9') cp++;
@@ -291,6 +327,11 @@ u_char *fp, *dp, *wp;
 	if (*cp == '\'') {
 		*dp = *(++cp);
 		if (*cp && *(++cp) == '\'') cp++;
+	}
+	else if (*cp == '[') {
+		if ((i = atoi(++cp)) >= 1) *dp = i - 1 + 128;
+		while (*cp >= '0' && *cp <= '9') cp++;
+		if (*cp == ']') cp++;
 	}
 
 	if (*cp == '-') {
@@ -325,7 +366,7 @@ char *line;
 	cp = skipspace(cp);
 	if (*cp == 'A') {
 		for (n = 0; n < maxarchive; n++)
-			if (!strcmp(archivelist[n].ext, ext)) break;
+			if (!strpathcmp(archivelist[n].ext, ext)) break;
 		if (n < maxarchive) {
 			free(archivelist[n].ext);
 			free(archivelist[n].p_comm);
@@ -361,7 +402,7 @@ char *line;
 	}
 	else {
 		for (n = 0; n < maxlaunch; n++)
-			if (!strcmp(launchlist[n].ext, ext)) break;
+			if (!strpathcmp(launchlist[n].ext, ext)) break;
 		if (n < maxlaunch) {
 			free(launchlist[n].ext);
 			free(launchlist[n].comm);
@@ -415,10 +456,17 @@ char *line;
 				ch = ',';
 			}
 			for (; i < MAXLAUNCHSEP; i++) launchlist[n].sep[i] = -1;
+			if (!(tmp = strchr(cp, ':'))) launchlist[n].lines = 1;
+			else {
+				cp = skipspace(++tmp);
+				if ((ch = atoi(cp)) > 1)
+					launchlist[n].lines = ch;
+			}
 		}
 	}
 	return(0);
 }
+#endif	/* !_NOARCHIVE */
 
 static int getcommand(cp)
 char **cp;
@@ -590,6 +638,7 @@ char *line;
 	return((n) ? 0 : -1);
 }
 
+#if	!MSDOS && !defined (_NODOSDRIVE)
 static int getdosdrive(line)
 char *line;
 {
@@ -651,6 +700,7 @@ char *line;
 
 	return(0);
 }
+#endif	/* !MSDOS && !_NODOSDRIVE */
 
 static int getuserfunc(line)
 char *line;
@@ -767,15 +817,19 @@ char *line;
 	}
 	else if (!strncmp(line, "function", 8) && cp == line + 8)
 		n = getuserfunc(skipspace(cp + 1));
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	else if (isalpha(*line) && (*(line + 1) == ':' || *(line + 1) == '!'))
 		getdosdrive(line);
+#endif
 	else if (isalpha(*line) || *line == '_') {
 		if ((cp = getenvval(&line)) == (char *)-1) return(-1);
 		if (setenv2(line, cp, 1) < 0) error(line);
 		if (cp) free(cp);
 		free(line);
 	}
+#ifndef	_NOARCHIVE
 	else if (*line == '"') getlaunch(line);
+#endif
 	else if (*line == '\'') getkeybind(line);
 	else return(-1);
 	return(n);
@@ -791,19 +845,19 @@ int printmacro()
 		&& (bindlist[i].d_func <= NO_OPERATION
 		|| bindlist[i].d_func == 255)) continue;
 		if (bindlist[i].key < ' ')
-			cprintf("'^%c'\t", bindlist[i].key + '@');
+			cprintf2("'^%c'\t", bindlist[i].key + '@');
 		else if (bindlist[i].key >= K_F(1))
-			cprintf("'F%d'\t", bindlist[i].key - K_F0);
-		else cprintf("'%c'\t", bindlist[i].key);
+			cprintf2("'F%d'\t", bindlist[i].key - K_F0);
+		else cprintf2("'%c'\t", bindlist[i].key);
 		if (bindlist[i].f_func <= NO_OPERATION)
-			cputs(funclist[bindlist[i].f_func].ident);
+			cputs2(funclist[bindlist[i].f_func].ident);
 		else kanjiprintf("\"%s\"",
 			macrolist[bindlist[i].f_func - NO_OPERATION - 1]);
 		if (bindlist[i].d_func <= NO_OPERATION)
-			cprintf("\t%s", funclist[bindlist[i].d_func].ident);
+			cprintf2("\t%s", funclist[bindlist[i].d_func].ident);
 		else if (bindlist[i].d_func < 255) kanjiprintf("\t\"%s\"",
 			macrolist[bindlist[i].d_func - NO_OPERATION - 1]);
-		cputs("\r\n");
+		cputs2("\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
 	return(n);
@@ -817,24 +871,25 @@ char *ext;
 	for (cp = ext + 1; *cp; cp++) {
 		if (*cp == '\\') {
 			if (!*(++cp)) break;
-			putch((int)(*(u_char *)cp));
+			putch2((int)(*(u_char *)cp));
 		}
-		else if (*cp == '.' && *(cp + 1) != '*') putch('?');
-		else if (!strchr(".^$", *cp)) putch((int)(*(u_char *)cp));
+		else if (*cp == '.' && *(cp + 1) != '*') putch2('?');
+		else if (!strchr(".^$", *cp)) putch2((int)(*(u_char *)cp));
 	}
 }
 
+#ifndef	_NOARCHIVE
 int printlaunch()
 {
 	int i, n;
 
 	n = 0;
 	for (i = 0; i < maxlaunch; i++) {
-		putch('"');
+		putch2('"');
 		printext(launchlist[i].ext);
 		kanjiprintf("\"\t\"%s\"", launchlist[i].comm);
-		if (launchlist[i].topskip < 255) cputs(" (Arch)");
-		cputs("\r\n");
+		if (launchlist[i].topskip < 255) cputs2(" (Arch)");
+		cputs2("\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
 	return(n);
@@ -846,7 +901,7 @@ int printarch()
 
 	n = 0;
 	for (i = 0; i < maxarchive; i++) {
-		putch('"');
+		putch2('"');
 		printext(archivelist[i].ext);
 		kanjiprintf("\"\tA \"%s\"", archivelist[i].p_comm);
 		kanjiprintf("\t\"%s\"\r\n", archivelist[i].u_comm);
@@ -854,6 +909,7 @@ int printarch()
 	}
 	return(n);
 }
+#endif
 
 int printalias()
 {
@@ -876,13 +932,14 @@ int printuserfunc()
 	for (i = 0; i < maxuserfunc; i++) {
 		kanjiprintf("%s() {", userfunclist[i].func);
 		for (j = 0; userfunclist[i].comm[j]; j++)
-			cprintf(" %s;", userfunclist[i].comm[j]);
-		cprintf(" }\r\n");
+			cprintf2(" %s;", userfunclist[i].comm[j]);
+		cprintf2(" }\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
 	return(n);
 }
 
+#if	!MSDOS && !defined (_NODOSDRIVE)
 int printdrive()
 {
 	int i, n;
@@ -896,6 +953,7 @@ int printdrive()
 	}
 	return(n);
 }
+#endif !MSDOS && !_NODOSDRIVE
 
 int printhist()
 {
@@ -920,8 +978,6 @@ char *cp;
 
 VOID evalenv()
 {
-	char *cp;
-
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
 	if ((sorttype < 0 || sorttype > 12)
 	&& (sorttype < 100 || sorttype > 112))
@@ -931,27 +987,46 @@ VOID evalenv()
 #else
 		sorttype = SORTTYPE;
 #endif
+#ifndef	_NOTREE
 	if ((sorttree = evalbool(getenv2("FD_SORTTREE"))) < 0)
 		sorttree = SORTTREE;
+#endif
+#ifndef	_NOWRITEFS
 	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
+#endif
 	if ((histsize = atoi2(getenv2("FD_HISTSIZE"))) < 0) histsize = HISTSIZE;
 	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0) savehist = SAVEHIST;
 	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
 		minfilename = MINFILENAME;
+#ifndef	_NOTREE
 	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
 		dircountlimit = DIRCOUNTLIMIT;
+#endif
 	if ((showsecond = evalbool(getenv2("FD_SECOND"))) < 0)
 		showsecond = SECOND;
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	if ((dosdrive = evalbool(getenv2("FD_DOSDRIVE"))) < 0)
 		dosdrive = DOSDRIVE;
+#endif
+#ifndef	_NOEDITMODE
 	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
+#endif
 	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
 	deftmpdir = evalpath(strdup2(deftmpdir));
+#ifndef	_NOROCKRIDGE
 	if (!(rockridgepath = getenv2("FD_RRPATH"))) rockridgepath = RRPATH;
-	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
-	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
 	rockridgepath = evalcomstr(rockridgepath, ";");
+#endif
+#if	!MSDOS && !defined (_NOKANJICONV)
+	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
+#endif
+#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
+	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
+#endif
 	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) <= 0)
 		sizeinfo = SIZEINFO;
-	if (sizeinfo) sizeinfo = 1;
+#ifndef	_NOCOLOR
+	if ((ansicolor = evalbool(getenv2("FD_ANSICOLOR"))) <= 0)
+		ansicolor = ANSICOLOR;
+#endif
 }

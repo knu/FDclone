@@ -5,8 +5,21 @@
  */
 
 #include "machine.h"
+
 #include <stdio.h>
 #include <string.h>
+
+#if	MSDOS
+#include <dos.h>
+#include <stdarg.h>
+#ifndef	__GNUC__
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/timeb.h>
+#endif
+extern int initdir();
+#define	TTYNAME		""
+#else	/* !MSDOS */
 #include <varargs.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -22,9 +35,18 @@
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
+#endif	/* !MSDOS */
+
+#ifndef	NOSTDLIBH
+#include <stdlib.h>
+#endif
 
 #include "term.h"
 
+#define	MAXPRINTBUF	255
+#define	SIZEFMT		"\033[%d;%dR"
+
+#if	!MSDOS
 extern int tgetent();
 extern int tgetnum();
 extern int tgetflag();
@@ -37,13 +59,11 @@ extern char *tgoto();
 #ifndef	WAITKEYPAD
 #define	WAITKEYPAD	360		/* msec */
 #endif
-#define	MAXPRINTBUF	255
 #define	STDIN		0
 #define	STDOUT		1
 #define	STDERR		2
 #define	TTYNAME		"/dev/tty"
 #define	GETSIZE		"\0337\033[r\033[999;999H\033[6n"
-#define	SIZEFMT		"\033[%d;%dR"
 
 #ifndef	PENDIN
 #define	PENDIN		0
@@ -70,13 +90,20 @@ typedef struct fd_set {
 # define	FD_ZERO(p)	(((p) -> fds_bits[0]) = 0)
 # define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= (1 << (n)))
 #endif
+#endif	/* !MSDOS */
 
 static int err2();
 static int defaultterm();
+static int getxy();
+#if	MSDOS
+# ifndef	__GNUC__
+static int dosgettime();
+# endif
+#else	/* !MSDOS */
 static int tgetstr2();
 static int tgetstr3();
 static int sortkeyseq();
-static int realscanf();
+#endif	/* !MSDOS */
 
 short ospeed;
 char PC;
@@ -112,8 +139,6 @@ char *l_insert;
 char *l_delete;
 char *c_insert;
 char *c_delete;
-char *c_store;
-char *c_restore;
 char *c_home;
 char *c_locate;
 char *c_return;
@@ -123,6 +148,22 @@ char *c_down;
 char *c_right;
 char *c_left;
 
+#if	MSDOS
+#ifdef	PC98
+static int nextchar = '\0';
+static u_char specialkey[] = ":=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
+#else
+static u_char specialkey[] = "HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
+#endif
+static int specialkeycode[] = {
+	K_UP, K_DOWN, K_RIGHT, K_LEFT,
+	K_IC, K_DC, K_HOME, K_END, K_PPAGE, K_NPAGE,
+	K_F(1), K_F(2), K_F(3), K_F(4), K_F(5),
+	K_F(6), K_F(7), K_F(8), K_F(9), K_F(10),
+	K_F(11), K_F(12), K_F(13), K_F(14), K_F(15),
+	K_F(16), K_F(17), K_F(18), K_F(19), K_F(20), K_HELP
+};
+#else	/* !MSDOS */
 static char *keyseq[K_MAX - K_MIN + 1];
 static u_char keyseqlen[K_MAX - K_MIN + 1];
 static short keycode[K_MAX - K_MIN + 1];
@@ -134,12 +175,70 @@ static char *termname;
 static u_char ungetbuf[10];
 static int ungetnum = 0;
 #endif
+#endif	/* !MSDOS */
 
 static int termflags;
 #define	F_INITTTY	001
 #define	F_TERMENT	002
 #define	F_INITTERM	004
 
+
+#if	MSDOS
+int inittty(reset)
+int reset;
+{
+	termflags |= F_INITTTY;
+}
+
+int cooked2()
+{
+}
+
+int cbreak2()
+{
+}
+
+int raw2()
+{
+}
+
+int echo2()
+{
+}
+
+int noecho2()
+{
+}
+
+int nl2()
+{
+}
+
+int nonl2()
+{
+}
+
+int tabs()
+{
+}
+
+int notabs()
+{
+}
+
+int keyflush()
+{
+#ifdef	PC98
+	unsigned short far *keybuf = MK_FP(0x40, 0x124);
+
+	keybuf[1] = keybuf[0];
+	keybuf[2] = 0;
+#else
+	while (kbhit()) getch();
+#endif
+}
+
+#else	/* !MSDOS */
 
 int inittty(reset)
 int reset;
@@ -304,6 +403,7 @@ int keyflush()
 	ioctl(ttyio, TIOCFLUSH, &i);
 #endif
 }
+#endif	/* !MSDOS */	
 
 int exit2(no)
 int no;
@@ -329,14 +429,31 @@ char *mes;
 
 static int defaultterm()
 {
+#if	!MSDOS
 	int i;
+#endif
 
 	BC = "\010";
 	UP = "\033[A";
-	n_column = n_lastcolumn = 80;
+	n_column = 80;
+#if	MSDOS
+	n_lastcolumn = 79;
+	n_line = 25;
+#else
+	n_lastcolumn = 80;
 	n_line = 24;
+#endif
 	t_init = "";
 	t_end = "";
+#if	MSDOS
+	t_keypad = "";
+	t_nokeypad = "";
+	t_normalcursor = "\033[>5l";
+	t_highcursor = "\033[>5l";
+	t_nocursor = "\033[>5h";
+	t_setcursor = "\033[s";
+	t_resetcursor = "\033[u";
+#else
 	t_keypad = "\033[?1h\033=";
 	t_nokeypad = "\033[?1l\033>";
 	t_normalcursor = "\033[?25h";
@@ -344,6 +461,7 @@ static int defaultterm()
 	t_nocursor = "\033[?25l";
 	t_setcursor = "\0337";
 	t_resetcursor = "\0338";
+#endif
 	t_bell = "\007";
 	t_vbell = "\007";
 	t_clear = "\033[;H\033[2J";
@@ -361,10 +479,12 @@ static int defaultterm()
 	l_delete = "\033[M";
 	c_insert = "";
 	c_delete = "";
-	c_store = "\033[s";
-	c_restore = "\033[u";
 	c_home = "\033[H";
+#ifdef	MSDOS
+	c_locate = "\033[%d;%dH";
+#else
 	c_locate = "\033[%i%d;%dH";
+#endif
 	c_return = "\r";
 	c_newline = "\n";
 	c_up = "\033[A";
@@ -372,12 +492,13 @@ static int defaultterm()
 	c_right = "\033[C";
 	c_left = "\010";
 
+#if	!MSDOS
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i] = NULL;
 	keyseq[K_UP - K_MIN] = "\033OA";
 	keyseq[K_DOWN - K_MIN] = "\033OB";
 	keyseq[K_RIGHT - K_MIN] = "\033OC";
 	keyseq[K_LEFT - K_MIN] = "\033OD";
-	keyseq[K_HOME - K_MIN] = "\033[1~";
+	keyseq[K_HOME - K_MIN] = "\033[4~";
 	keyseq[K_BS - K_MIN] = "\010";
 	keyseq[K_F(1) - K_MIN] = "\033[11~";
 	keyseq[K_F(2) - K_MIN] = "\033[12~";
@@ -436,8 +557,43 @@ static int defaultterm()
 	keyseq[K_PPAGE - K_MIN] = "\033[5~";
 	keyseq[K_NPAGE - K_MIN] = "\033[6~";
 	keyseq[K_ENTER - K_MIN] = "\033[9~";
-	keyseq[K_END - K_MIN] = "\033[4~";
+	keyseq[K_END - K_MIN] = "\033[1~";
+#endif
 }
+
+static int getxy(s, format, yp, xp)
+char *s, *format;
+int *yp, *xp;
+{
+	char *cp;
+	int i, j, tmp, count, *val[2];
+
+	count = 0;
+	val[0] = yp;
+	val[1] = xp;
+
+	for (i = 0, j = 0; s[i] && format[j]; i++, j++) {
+		if (format[j] == '%' && format[++j] == 'd') {
+			for (cp = &s[i]; *cp && *cp >= '0' && *cp <= '9'; cp++);
+			if (cp == &s[i]) break;
+			tmp = *cp;
+			*cp = '\0';
+			*val[count++] = atoi(&s[i]);
+			*cp = tmp;
+		}
+		else if (s[i] != format[j]) j--;
+	}
+	return(count);
+}
+
+#if	MSDOS
+int getterment()
+{
+	defaultterm();
+	termflags |= F_TERMENT;
+}
+
+#else	/* !MSDOS */
 
 static int tgetstr2(term, str)
 char **term;
@@ -559,8 +715,6 @@ int getterment()
 	tgetstr2(&l_delete, "dl");
 	tgetstr3(&c_insert, "ic", "IC");
 	tgetstr3(&c_delete, "dc", "DC");
-	tgetstr2(&c_store, "sc");
-	tgetstr2(&c_restore, "rc");
 	tgetstr2(&c_home, "ho");
 	tgetstr2(&c_locate, "cm");
 	tgetstr2(&c_return, "cr");
@@ -611,10 +765,14 @@ int getterment()
 
 	termflags |= F_TERMENT;
 }
+#endif	/* !MSDOS */
 
 int initterm()
 {
 	if (!(termflags & F_TERMENT)) getterment();
+#if	MSDOS && defined (__GNUC__)
+	textmode(BW80);
+#endif
 	putterms(t_keypad);
 	putterms(t_init);
 	tflush();
@@ -630,13 +788,239 @@ int endterm()
 	termflags &= ~F_INITTERM;
 }
 
-int putch(c)
+#if	MSDOS
+
+int putch2(c)
+int c;
+{
+	return(putch(c));
+}
+
+int cputs2(s)
+char *s;
+{
+#ifndef	__GNUC__
+	char *size, buf[sizeof(SIZEFMT) + 4];
+	int y;
+#endif
+	int i, x;
+
+	for (i = 0; s[i]; i++) {
+		if (s[i] != '\t') {
+			putch(s[i]);
+			continue;
+		}
+#ifdef	__GNUC__
+		x = wherex();
+#else
+		cputs("\033[6n");
+		size = SIZEFMT;
+			
+		for (x = 0; (buf[x] = getch()) != size[sizeof(SIZEFMT) - 2];
+			x++);
+		buf[++x] = '\0';
+		if (getxy(buf, size, &y, &x) != 2) x = 1;
+#endif
+		do {
+			putch(' ');
+		} while (x++ % 8);
+	}
+}
+
+/*VARARGS1*/
+int cprintf2(const char *fmt, ...)
+{
+	va_list args;
+	char buf[MAXPRINTBUF + 1];
+
+	va_start(args, fmt);
+	vsprintf(buf, fmt, args);
+	va_end(args);
+	return(cputs2(buf));
+}
+
+int kbhit2()
+{
+#ifdef	PC98
+	union REGS regs;
+
+	if (nextchar) return(1);
+
+	regs.h.ah = 0x01;
+	int86(0x18, &regs, &regs);
+	return(regs.h.bh != 0);
+#else
+	return(kbhit());
+#endif
+}
+
+int getch2()
+{
+#ifdef	PC98
+	union REGS regs;
+	int ch;
+
+	if (nextchar) {
+		ch = nextchar;
+		nextchar = '\0';
+		return(ch);
+	}
+
+	regs.h.ah = 0x00;
+	int86(0x18, &regs, &regs);
+
+	if (!(ch = regs.h.al)) nextchar = regs.h.ah;
+	return(ch);
+#else
+	return((u_char)getch());
+#endif
+}
+
+#ifndef	__GNUC__
+static int dosgettime(tbuf)
+u_char tbuf[];
+{
+	union REGS regs;
+
+	regs.x.ax = 0x2c00;
+	intdos(&regs, &regs);
+	tbuf[0] = regs.h.ch;
+	tbuf[1] = regs.h.cl;
+	tbuf[2] = regs.h.dh;
+}
+#endif
+
+/*ARGSUSED*/
+int _getkey2(sig)
+int sig;
+{
+#ifndef	__GNUC__
+	static u_char tbuf1[3] = {0xff, 0xff, 0xff};
+	u_char tbuf2[3];
+#endif
+	int i, ch;
+
+#ifdef	__GNUC__
+	while (!kbhit2());
+#else
+	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
+	while (!kbhit()) {
+		dosgettime(tbuf2);
+		if (memcmp(tbuf1, tbuf2, sizeof(tbuf1))) {
+			if (sig) raise(sig);
+			memcpy(tbuf1, tbuf2, sizeof(tbuf1));
+		}
+	}
+#endif
+	ch = getch2();
+
+	if (ch) switch (ch) {
+		case '\010':
+			ch = K_BS;
+			break;
+		case '\177':
+			ch = K_DC;
+			break;
+		default:
+			break;
+	}
+#if	defined (__GNUC__) && !defined (PC98)
+	else {
+#else
+	else if (kbhit2()) {
+#endif
+		ch = getch2();
+		for (i = 0; i < sizeof(specialkey) / sizeof(u_char); i++)
+			if (ch == specialkey[i]) return(specialkeycode[i]);
+		ch = K_NOKEY;
+	}
+	return(ch);
+}
+
+int ungetch2(c)
+u_char c;
+{
+	return(ungetch(c));
+}
+
+#ifdef	__GNUC__
+int putterm(str)
+char *str;
+{
+	static int ox = 1;
+	static int oy = 1;
+	static u_char attr = 0x07;
+	int x, y;
+
+	if (str == t_normalcursor) _setcursortype(_NORMALCURSOR);
+	else if (str == t_highcursor) _setcursortype(_SOLIDCURSOR);
+	else if (str == t_nocursor) _setcursortype(_NOCURSOR);
+	else if (str == t_setcursor) {
+		ox = wherex();
+		oy = wherey();
+		attr = ScreenAttrib;
+	}
+	else if (str == t_resetcursor) {
+		gotoxy(ox, oy);
+		textattr(attr);
+		ox = oy = 1;
+		attr = 0x07;
+	}
+	else if (str == t_clear) clrscr();
+	else if (str == t_normal) normvideo();
+	else if (str == t_bold) textattr(0x0f);
+	else if (str == t_reverse) textattr(0x70);
+	else if (str == t_dim) textattr(0x08);
+	else if (str == t_blink) textattr(0x02);
+	else if (str == t_standout) textattr(0x70);
+	else if (str == t_underline) textattr(0x0e);
+	else if (str == end_standout) normvideo();
+	else if (str == end_underline) normvideo();
+	else if (str == l_clear) clreol();
+	else if (str == l_insert) insline();
+	else if (str == l_delete) delline();
+	else if (str == c_home) gotoxy(1, 1);
+	else if (str == c_up) {
+		if ((y = wherey() - 1) > 0) gotoxy(wherex(), y);
+	}
+	else if (str == c_right) {
+		x = wherex();
+		y = wherey();
+		if (x < ((y < n_line) ? n_column : n_lastcolumn))
+			gotoxy(++x, y);
+	}
+	else cputs2(str);
+}
+#endif
+
+int locate(x, y)
+int x, y;
+{
+#ifdef	__GNUC__
+	gotoxy(++x, ++y);
+#else
+	cprintf2(c_locate, ++y, ++x);
+#endif
+}
+
+int tflush()
+{
+}
+
+int getwsize(xmax, ymax)
+int xmax, ymax;
+{
+}
+
+#else	/* !MSDOS */
+
+int putch2(c)
 int c;
 {
 	return(fputc(c, ttyout));
 }
 
-int cputs(str)
+int cputs2(str)
 char *str;
 {
 	return(fputs(str, ttyout));
@@ -644,7 +1028,7 @@ char *str;
 
 #ifndef	NOVSPRINTF
 /*VARARGS1*/
-int cprintf(fmt, va_alist)
+int cprintf2(fmt, va_alist)
 char *fmt;
 va_dcl
 {
@@ -655,7 +1039,7 @@ va_dcl
 	vsprintf(buf, fmt, args);
 	va_end(args);
 #else
-int cprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
+int cprintf2(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
 	char buf[MAXPRINTBUF + 1];
@@ -693,7 +1077,7 @@ int getch2()
 	return((int)ch);
 }
 
-int getkey(sig)
+int _getkey2(sig)
 int sig;
 {
 	static int count = SENSEPERSEC;
@@ -734,7 +1118,7 @@ u_char c;
 	ioctl(ttyio, TIOCSTI, &c);
 #else
 	ungetbuf[ungetnum] = c;
-	if (ungetnum < sizeof(ungetbuf) - 1) ungetnum++;
+	if (ungetnum < sizeof(ungetbuf) / sizeof(u_char) - 1) ungetnum++;
 #endif
 }
 
@@ -747,31 +1131,6 @@ int x, y;
 int tflush()
 {
 	fflush(ttyout);
-}
-
-static int realscanf(s, format, yp, xp)
-char *s, *format;
-int *yp, *xp;
-{
-	char *cp;
-	int i, j, tmp, count, *val[2];
-
-	count = 0;
-	val[0] = yp;
-	val[1] = xp;
-
-	for (i = 0, j = 0; s[i] && format[j]; i++, j++) {
-		if (format[j] == '%' && format[++j] == 'd') {
-			for (cp = &s[i]; *cp && *cp >= '0' && *cp <= '9'; cp++);
-			if (cp == &s[i]) break;
-			tmp = *cp;
-			*cp = '\0';
-			*val[count++] = atoi(&s[i]);
-			*cp = tmp;
-		}
-		else if (s[i] != format[j]) j--;
-	}
-	return(count);
 }
 
 int getwsize(xmax, ymax)
@@ -818,9 +1177,7 @@ int xmax, ymax;
 		buf[++i] = '\0';
 		fclose(fp);
 
-		if (realscanf(buf, size, &y, &x) != 2) {
-			x = y = -1;
-		}
+		if (getxy(buf, size, &y, &x) != 2) x = y = -1;
 	}
 
 	if (x > 0) {
@@ -831,4 +1188,27 @@ int xmax, ymax;
 
 	if (n_column < xmax) err2("Column size too small");
 	if (n_line < ymax) err2("Line size too small");
+}
+#endif	/* !MSDOS */
+
+int chgcolor(color, reverse)
+int color, reverse;
+{
+#if	MSDOS && defined (__GNUC__)
+	int code;
+
+	code = (color & 0x0f);
+	if (reverse) {
+		code <<= 4;
+		if (color == ANSI_BLACK) code |= ANSI_WHITE;
+	}
+	textattr(code);
+#else
+	if (!reverse) cprintf2("\033[%dm", color + ANSI_NORMAL);
+	else if (color == ANSI_BLACK)
+		cprintf2("\033[%dm\033[%dm",
+			color + ANSI_REVERSE, ANSI_WHITE + ANSI_NORMAL);
+	else cprintf2("\033[%dm\033[%dm",
+			ANSI_BLACK + ANSI_NORMAL, color + ANSI_REVERSE);
+#endif
 }

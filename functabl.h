@@ -42,26 +42,40 @@ functable funclist[] = {
 	{sort_dir,	"SORT_DIR",	SORT_H,	RELIST | ARCH},
 	{execute_sh,	"EXECUTE_SH",	EXSH_H,	KILLSTK | RELIST | ARCH},
 	{find_file,	"FIND_FILE",	FNDF_H,	KILLSTK | ARCH | NO_FILE},
+#ifndef	_NOWRITEFS
 	{write_dir,	"WRITE_DIR",	WRIT_H,	KILLSTK},
+#endif
+#ifndef	_NOTREE
 	{tree_dir,	"TREE_DIR",	TREE_H,	KILLSTK | RELIST | NO_FILE},
+#endif
+#ifndef	_NOARCHIVE
 	{backup_tape,	"BACKUP_TAPE",	BACK_H,	KILLSTK | REWRITE},
+#endif
 	{edit_file,	"EDIT_FILE",	EDIT_H,	KILLSTK | REWRITE},
 	{view_file,	"VIEW_FILE",	VIEW_H,	RELIST | ARCH},
+#ifndef	_NOARCHIVE
 	{unpack_file,	"UNPACK_FILE",	UNPK_H,	KILLSTK | REWRITE | ARCH},
 	{pack_file,	"PACK_FILE",	PACK_H,	KILLSTK | REWRITE},
+#endif
+#ifndef	_NOTREE
 	{tree_dir,	"LOG_TREE",	LGTR_H,	KILLSTK | RELIST | NO_FILE},
 	{copy_tree,	"COPY_TREE",	CPTR_H,	KILLSTK | RELIST},
 	{move_tree,	"MOVE_TREE",	MVTR_H,	KILLSTK | RELIST},
+#ifndef	_NOARCHIVE
 	{unpack_tree,	"UNPACK_TREE",	UPTR_H,	KILLSTK | RELIST | ARCH},
+#endif
+#endif	/* !_NOTREE */
 	{find_dir,	"FIND_DIR",	FNDD_H,	KILLSTK | RELIST},
 	{symlink_mode,	"SYMLINK_MODE",	SYLN_H,	NO_FILE},
 	{filetype_mode,	"FILETYPE_MODE",FLTY_H,	RELIST | ARCH | NO_FILE},
 	{dotfile_mode,	"DOTFILE_MODE",	DTFL_H,	KILLSTK | NO_FILE},
 	{mark_find,	"MARK_FIND",	MRKF_H,	LISTUP | ARCH},
 	{mark_file3,	"MARK_FILE3",	MRK2_H,	REWRITE | ARCH},
+#ifndef	_NOARCHIVE
 	{launch_file,	"LAUNCH_FILE",	LAUN_H,	KILLSTK | RELIST | ARCH},
+#endif
 	{help_message,	"HELP_MESSAGE",	HELP_H,	LISTUP | ARCH | NO_FILE},
 	{quit_system,	"QUIT_SYSTEM",	QUIT_H,	KILLSTK | ARCH | NO_FILE},
-	{warning_bell,	"WARNING_BELL",	NULL, NULL,	ARCH | NO_FILE},
-	{no_operation,	"NO_OPERATION",	NULL, NULL,	ARCH | NO_FILE}
+	{warning_bell,	"WARNING_BELL",	NULL_H,	ARCH | NO_FILE},
+	{no_operation,	"NO_OPERATION",	NULL_H,	ARCH | NO_FILE}
 };

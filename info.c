@@ -9,12 +9,23 @@
 #include "funcno.h"
 #include "kanji.h"
 
-#include <sys/param.h>
-#include <sys/file.h>
+#include <ctype.h>
 #include <sys/stat.h>
 
 #ifdef	USESYSDIRH
 #include <sys/dir.h>
+#endif
+
+#if	MSDOS
+#undef	USEVFSH
+#undef	USEMNTENTH
+#include <dos.h>
+#include <errno.h>
+#include "unixemu.h"
+extern int supportLFN();
+#else
+#include <sys/param.h>
+#include <sys/file.h>
 #endif
 
 
@@ -42,7 +53,7 @@ typedef struct mnttab	mnt_t;
 #include <sys/vfs.h>
 #include <sys/mntctl.h>
 #include <sys/vmount.h>
-#endif
+#endif	/* USEMNTCTL */
 
 #if (defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))\
 && !defined (USEMOUNTH) && !defined (USEFSDATA)
@@ -80,6 +91,16 @@ typedef struct fstab	mnt_t;
 #define	mnt_fsname	fs_spec
 #define	mnt_type	fs_vfstype
 #endif	/* USEGETFSENT */
+
+#if	MSDOS
+typedef struct _mnt_t {
+	char *mnt_fsname;
+	char *mnt_dir;
+	char *mnt_type;
+	char *mnt_opts;
+} mnt_t;
+#define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#endif
 
 
 #ifdef	USESTATVFSH
@@ -133,11 +154,29 @@ typedef struct fs_data	statfs_t;
 # endif
 #endif
 
+#if	MSDOS
+typedef struct _statfs_t {
+	long	f_bsize;
+	long	f_blocks;
+	long	f_bfree;
+	long	f_bavail;
+	long	f_files;
+} statfs_t;
+static int statfs2();
+#define	blocksize(fs)	(fs).f_bsize
+#endif
+
 extern VOID error();
 extern char *getwd2();
 extern VOID warning();
-extern char *mesconv();
+#if	MSDOS || !defined (_NODOSDRIVE)
+extern int dospath();
+#endif
+extern char *strstr2();
+extern int kanjiputs();
+extern int kanjiprintf();
 extern int kanjiputs2();
+extern int Xaccess();
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -175,6 +214,9 @@ extern int sizeinfo;
 #ifndef	MNTTYPE_PC
 #define	MNTTYPE_PC	"pc"	/* MS-DOS */
 #endif
+#ifndef	MNTTYPE_DOS7
+#define	MNTTYPE_DOS7	"dos7"	/* MS-DOS on Win95 */
+#endif
 
 static int code2str();
 static int checkline();
@@ -184,78 +226,37 @@ static int info1line();
 static long calcKB();
 #endif
 
+static int keycodelist[] = {
+	K_HOME, K_END, K_DL, K_IL, K_DC, K_IC,
+	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER,
+	K_BS, '\t', CR, ESC
+};
+static char *keystrlist[] = {
+	"Home", "End", "DelLin", "InsLin", "Del", "Ins",
+	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter",
+	"Bs", "Tab", "Ret", "Esc"
+};
 
 static int code2str(buf, code)
 char *buf;
 int code;
 {
-	char *cp;
-
 	buf = buf + strlen(buf);
-	if (code == CR) strcpy(buf, "Ret    ");
-	else if (code == ESC) strcpy(buf, "Esc    ");
-	else if (code == '\t') strcpy(buf, "Tab    ");
-	else if (code < ' ') sprintf(buf, "Ctrl-%c ", code + '@');
-	else if (code < 0x100) sprintf(buf, "'%c'    ", code);
-	else if (code >= K_F(1) && code <= K_F(20))
+	if (code >= K_F(1) && code <= K_F(20))
 		sprintf(buf, "F%-6d", code - K_F0);
+	else if (code == K_UP) sprintf(buf, "%-7.7s", UPAR_K);
+	else if (code == K_DOWN) sprintf(buf, "%-7.7s", DWNAR_K);
+	else if (code == K_RIGHT) sprintf(buf, "%-7.7s", RIGAR_K);
+	else if (code == K_LEFT) sprintf(buf, "%-7.7s", LEFAR_K);
 	else {
-		switch (code) {
-			case K_UP:
-				cp = UPAR_K;
-				break;
-			case K_DOWN:
-				cp = DWNAR_K;
-				break;
-			case K_RIGHT:
-				cp = RIGAR_K;
-				break;
-			case K_LEFT:
-				cp = LEFAR_K;
-				break;
-			case K_HOME:
-				cp = "Home";
-				break;
-			case K_BS:
-				cp = "Bs";
-				break;
-			case K_DL:
-				cp = "DelLin";
-				break;
-			case K_IL:
-				cp = "InsLin";
-				break;
-			case K_DC:
-				cp = "Del";
-				break;
-			case K_IC:
-				cp = "Ins";
-				break;
-			case K_CLR:
-				cp = "Clr";
-				break;
-			case K_EOL:
-				cp = "Eol";
-				break;
-			case K_NPAGE:
-				cp = "PageDn";
-				break;
-			case K_PPAGE:
-				cp = "PageUp";
-				break;
-			case K_ENTER:
-				cp = "Enter";
-				break;
-			case K_BEG:
-				cp = "Beg";
-				break;
-			case K_END:
-				cp = "End";
-				break;
-			default:
-				return(0);
-		}
-		sprintf(buf, "%-7.7s", cp);
+		int i;
+
+		for (i = 0; keycodelist[i]; i++)
+			if (code == keycodelist[i]) break;
+		if (keycodelist[i]) sprintf(buf, "%-7.7s", keystrlist[i]);
+		else if (code < ' ') sprintf(buf, "Ctrl-%c ", code + '@');
+		else if (code < 0x100) sprintf(buf, "'%c'    ", code);
+		else return(0);
 	}
 	return(1);
 }
@@ -305,10 +306,10 @@ int mode;
 			}
 		if (!c) continue;
 
-		cputs("  ");
-		if (c < 2) cprintf("%-7.7s", " ");
+		cputs2("  ");
+		if (c < 2) cprintf2("%-7.7s", " ");
 		kanjiputs(buf);
-		cputs(": ");
+		cputs2(": ");
 		kanjiputs(mesconv(funclist[i].hmes, funclist[i].hmes_eng));
 
 		y = checkline(y);
@@ -324,6 +325,7 @@ int mode;
 }
 
 #ifdef	USEMNTCTL
+/*ARGSUSED*/
 static FILE *setmntent(file, mode)
 char *file, *mode;
 {
@@ -394,6 +396,7 @@ mnt_t *mntp;
 #endif	/* USEMNTCTL */
 
 #if defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETFSSTAT)
+/*ARGSUSED*/
 static FILE *setmntent(file, mode)
 char *file, *mode;
 {
@@ -418,7 +421,7 @@ char *file, *mode;
 	return((FILE *)buf);
 }
 
-#if !defined(MNT_RDONLY) && defined(M_RDONLY)
+#if !defined (MNT_RDONLY) && defined (M_RDONLY)
 #define	MNT_RDONLY	M_RDONLY
 #endif
 
@@ -435,7 +438,7 @@ mnt_t *mntp;
 	struct vfsconf *conf;
 # define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
 					conf -> vfc_name : NULL)
-# else
+# else	/* !USEVFCNAME */
 #  ifdef	USEFFSTYPE
 #  define	getvfsbynumber(n)	(buf[mnt_ptr].f_fstypename)
 #  else
@@ -447,13 +450,13 @@ mnt_t *mntp;
 #   define	getvfsbynumber(n)	(NULL)
 #   endif
 #  endif
-# endif
-#else	/* USEMNTINFO */
+# endif	/* !USEVFCNAME */
+#else	/* !USEMNTINFO */
 # ifdef	USEGETFSSTAT
 # define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
 					mnt_names[n] : NULL)
 # endif
-#endif
+#endif	/* !USEMNTINFO */
 	char *cp;
 	int len;
 
@@ -490,6 +493,7 @@ mnt_t *mntp;
 #endif	/* USEMNTINFOR || USEMNTINFO || USEGETFSSTAT */
 
 #ifdef	USEGETMNT
+/*ARGSUSED*/
 static FILE *setmntent(file, mode)
 char *file, *mode;
 {
@@ -497,6 +501,7 @@ char *file, *mode;
 	return(NULL);
 }
 
+/*ARGSUSED*/
 static mnt_t *getmntent2(fp, mntp)
 FILE *fp;
 mnt_t *mntp;
@@ -534,11 +539,53 @@ mnt_t *mntp;
 #define	endmntent(fp)
 #endif	/* USEGETMNT */
 
+#if	MSDOS
+int statfs2(path, buf)
+char *path;
+statfs_t *buf;
+{
+	union REGS regs;
+	int drv;
+
+	drv = dospath(path, NULL);
+	if (drv >= 'a' && drv <= 'z') drv -= 'a' - 1;
+	else if (drv >= 'A' && drv <= 'Z') drv -= 'A' - 1;
+	else drv = 0;
+
+	regs.x.ax = 0x3600;
+	regs.h.dl = (u_char)drv;
+	intdos(&regs, &regs);
+	if (regs.x.ax == 0xffff) {
+		errno = ENOENT;
+		return(-1);
+	}
+
+	buf -> f_bsize = (long)regs.x.ax * regs.x.cx;
+	buf -> f_blocks = regs.x.dx;
+	buf -> f_bfree = regs.x.bx;
+	buf -> f_bavail = regs.x.bx;
+	buf -> f_files = -1;
+
+	return(0);
+}
+#endif
+
 static int getfsinfo(path, fsbuf, mntbuf)
 char *path;
 statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
+#if	MSDOS
+	char *dir, drv[4];
+
+	mntbuf -> mnt_fsname = "";
+	mntbuf -> mnt_dir = drv;
+	drv[0] = dospath(path, NULL);
+	strcpy(&(drv[1]), ":\\");
+	mntbuf -> mnt_type = (supportLFN(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
+	mntbuf -> mnt_opts = "";
+	dir = path;
+#else	/* !MSDOS */
 	mnt_t *mntp, mnt;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN + 1];
@@ -548,7 +595,11 @@ mnt_t *mntbuf;
 	if (!strncmp(path, "/dev/", 4)) {
 		if (_chdir2(path) < 0) dir = path;
 	}
-	else if (dospath(path, NULL) || _chdir2(path) < 0) return(0);
+	else if (
+#ifndef	_NODOSDRIVE
+	dospath(path, NULL) ||
+#endif
+	_chdir2(path) < 0) return(0);
 
 	if (!dir) {
 		dir = getwd2();
@@ -559,8 +610,8 @@ mnt_t *mntbuf;
 		while (mntp = getmntent2(fp, &mnt)) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)
-			|| (mntp -> mnt_dir[len - 1] != '/'
-			&& dir[len] && dir[len] != '/')) continue;
+			|| (mntp -> mnt_dir[len - 1] != _SC_
+			&& dir[len] && dir[len] != _SC_)) continue;
 			match = len;
 			strcpy(fsname, mntp -> mnt_fsname);
 		}
@@ -576,6 +627,7 @@ mnt_t *mntbuf;
 	endmntent(fp);
 	if (!mntp) return(0);
 	memcpy(mntbuf, mntp, sizeof(mnt_t));
+#endif	/* !MSDOS */
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
 	&& (path == dir || statfs2(path, fsbuf) < 0))
@@ -588,12 +640,19 @@ char *path;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	int drv;
+#endif
 
-	if (dospath(path, NULL)) return(0);
-	if (access(path, R_OK | W_OK | X_OK) < 0) return(-1);
+	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	if (drv = dospath(path, NULL))
+		return((isupper(drv)) ? 4 : 5);
+#endif
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
 	|| hasmntopt(&mntbuf, "ro")) return(0);
 
+#if	!MSDOS
 	if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_42)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
@@ -602,13 +661,23 @@ char *path;
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_SYSV)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
+	else
+#endif
+	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)) return(5);
 	return(0);
 }
 
 /*ARGSUSED*/
-int getblocksize(dir)
+long getblocksize(dir)
 char *dir;
 {
+#if	MSDOS
+	statfs_t fsbuf;
+
+	if (statfs2(dir, &fsbuf) < 0) return(512);
+	return(blocksize(fsbuf));
+#else	/* !MSDOS */
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
@@ -617,6 +686,7 @@ char *dir;
 	if (stat(dir, &buf) < 0) error(dir);
 	return((int)buf.st_size);
 #endif
+#endif	/* !MSDOS */
 }
 
 char *inscomma(buf, n, digit)
@@ -630,7 +700,7 @@ int digit;
 	j = 0;
 	if (n < 0) buf[j++] = '?';
 	else {
-		sprintf(tmp, "%d", n);
+		sprintf(tmp, "%ld", n);
 		len = strlen(tmp);
 		for (i = j = 0; tmp[i]; i++) {
 			buf[j++] = tmp[i];
@@ -644,7 +714,7 @@ int digit;
 static int info1line(y, ind, n, str, unit)
 int y;
 char *ind;
-int n;
+long n;
 char *str, *unit;
 {
 	char buf[16];
@@ -660,7 +730,7 @@ char *str, *unit;
 		kanjiputs2(str, width, 0);
 	}
 	else {
-		cprintf("%12.12s", inscomma(buf, n, 3));
+		cprintf2("%12.12s", inscomma(buf, n, 3));
 		kanjiprintf(" %s", unit);
 	}
 	return(checkline(++y));
@@ -717,9 +787,9 @@ char *path;
 	locate(0, y++);
 	putterm(l_clear);
 
-	y = info1line(y, FSNAM_K, 0, mntbuf.mnt_fsname, NULL);
-	y = info1line(y, FSMNT_K, 0, mntbuf.mnt_dir, NULL);
-	y = info1line(y, FSTYP_K, 0, mntbuf.mnt_type, NULL);
+	y = info1line(y, FSNAM_K, 0L, mntbuf.mnt_fsname, NULL);
+	y = info1line(y, FSMNT_K, 0L, mntbuf.mnt_dir, NULL);
+	y = info1line(y, FSTYP_K, 0L, mntbuf.mnt_type, NULL);
 #ifdef	USEFSDATA
 	y = info1line(y, FSTTL_K, fsbuf.fd_req.btot, NULL, "Kbytes");
 	y = info1line(y, FSUSE_K,

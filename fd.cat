@@ -10,10 +10,10 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      _b_o_o_l ] [ --WWRRIITTEEFFSS== _n_u_m ] [ --AADDJJTTTTYY== _b_o_o_l ] [ --CCOOLLUUMMNNSS== _n_u_m ]
      [ --MMIINNFFIILLEENNAAMMEE== _n_u_m ] [ --HHIISSTTSSIIZZEE== _n_u_m ] [ --SSAAVVEEHHIISSTT== _n_u_m ]
      [ --DDIIRRCCOOUUNNTTLLIIMMIITT== _n_u_m ] [ --DDOOSSDDRRIIVVEE== _b_o_o_l ] [ --SSEECCOONNDD== _b_o_o_l
-     ] [ --SSIIZZEEIINNFFOO== _b_o_o_l ] [ --EEDDIITTMMOODDEE== _s_t_r ] [ --TTMMPPDDIIRR== _d_i_r ] [
-     --RRRRPPAATTHH== _p_a_t_h ] [ --LLAANNGGUUAAGGEE== _l_a_n_g ] [ --IINNPPUUTTKKCCOODDEE== _l_a_n_g ] [
-     --PPAAGGEERR== _c_o_m_m_a_n_d ] [ --EEDDIITTOORR== _c_o_m_m_a_n_d ] [ --SSHHEELLLL== _c_o_m_m_a_n_d ] [
-     _d_i_r_e_c_t_o_r_y ]
+     ] [ --SSIIZZEEIINNFFOO== _b_o_o_l ] [ --AANNSSIICCOOLLOORR== _b_o_o_l ] [ --EEDDIITTMMOODDEE== _s_t_r
+     ] [ --TTMMPPDDIIRR== _d_i_r ] [ --RRRRPPAATTHH== _p_a_t_h ] [ --LLAANNGGUUAAGGEE== _l_a_n_g ] [
+     --IINNPPUUTTKKCCOODDEE== _l_a_n_g ] [ --PPAAGGEERR== _c_o_m_m_a_n_d ] [ --EEDDIITTOORR== _c_o_m_m_a_n_d ]
+     [ --SSHHEELLLL== _c_o_m_m_a_n_d ] [ _d_i_r_e_c_t_o_r_y ]
 
 解解説説
      ffdd は、UNIX 汎用のテキスト端末用に考えられた、ファイルやディ
@@ -767,7 +767,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      要があります。このフォーマット文字列ひとつで、一覧表示の 1
      行分の表示形式を表すことになります。
 
-          "_t,, b:: _f_1,, _f_2,, _f_3,, _f_4,, _f_5,, _f_6,, _f_7,, _f_8,, _f_9 [:: _s_1,, ...]"
+          "_t,, b:: _f_1,, _f_2,, ...,, _f_9 [:: [_s_1,, ...][:: _l]]"
 
           _t         一覧の先頭行からの不必要な行の行数
           _b         一覧の最終行からの不必要な行の行数
@@ -783,6 +783,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                     (表示は "HH:MM:SS" 形式。分や秒はなくても可。)
           _f_9        ファイル名を表す文字列範囲の記述
           _s_1, ...   強制フィールドセパレータの位置
+          _l         一つのファイル情報が表示される行数
+          (_f_1 から _f_9 は省略不可)
 
      ここでは、「フィールド」とは空白文字またはタブ文字で分けられ
      ている領域のことを指します。各情報を表す文字列の範囲を表現す
@@ -794,6 +796,13 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      パレータ位置の記述は、ひとつのフォーマット文字列につき 33 箇
      所まで有効です。空白文字とタブ文字だけで完全に分けられるよう
      な場合は、'::' も含めて _s_1 以降の記述は必要ありません。
+
+     _l を記述すると、一つのファイル情報に付き複数行の表示を出力す
+     るようなフォーマットにも対応できます。省略した場合は一つのフ
+     ァイルは単一行に表示されると見なすので、必要なければ '::' も
+     含めて特に記述する必要はありません。但し、前述の _s_1, ... と
+     区別するために、_s_1, ... を省略して _l のみ記述する場合には、
+     '::' を 2 つ続けて記述する必要があります。
 
      各文字列範囲の記述は、以下のように表現されます。
 
@@ -1177,6 +1186,12 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ディスクを占有しているブロックサイズ単位で合計
                    したものになります。00 かナル以外の値であれば、
                    何を定義しても有効です。
+
+     AANNSSIICCOOLLOORR     ファイル表示をカラー化します。使用している端末
+                   が、ANSI 規格のカラー制御エスケープシーケンス
+                   対応している場合、ファイルタイプに応じて色別に
+                   表示させることが出来ます。00 かナル以外の値であ
+                   れば、何を定義しても有効です。
 
      EEDDIITTMMOODDEE      キー入力の編集モードを文字列で指定します。デフ
                    ォルトは eemmaaccss です。eemmaaccss,, wwoorrddssttaarr,, vvii 以外

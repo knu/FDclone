@@ -17,7 +17,11 @@ extern char *cnvregexp();
 extern reg_t *regexp_init();
 extern int regexp_exec();
 extern int regexp_free();
+#if	!MSDOS || !defined (_NOCOMPLETE)
 extern char *lastpointer();
 extern char *finddupl();
 extern int completepath();
+#endif
+#ifndef	_NOCOMPLETE
 extern char *findcommon();
+#endif

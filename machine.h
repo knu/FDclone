@@ -1,6 +1,34 @@
 /*
+ *	machine.h
+ *
  *	Definition of Machine Depended Identifier
  */
+
+#ifdef	MSDOS
+#undef	MSDOS
+#endif
+#define	MSDOS		(DOSV || PC98 || J3100)
+
+#if	MSDOS
+#define	NOUNISTDH
+#define	NOTZFILEH
+#define	USETIMEH
+#define	USEUTIME
+#define	USEMKTIME
+# ifndef	__GNUC__
+# define	NOUID_T
+# define	NOFILEMODE
+typedef unsigned int	u_int;
+typedef unsigned char	u_char;
+typedef unsigned short	u_short;
+typedef unsigned long	u_long;
+# endif
+#define	_SC_	'\\'
+#define	_SS_	"\\"
+#else
+#define	_SC_	'/'
+#define	_SS_	"/"
+#endif
 
 #if defined (sun)
 #define	CODEEUC
@@ -160,7 +188,7 @@
 #define	SIGARGINT
 #endif
 
-#if (defined (__alpha) || defined (alpha)) && !defined(linux)
+#if (defined (__alpha) || defined (alpha)) && !defined (linux)
 #define	CODEEUC
 #define	TARUSESPACE
 # if defined (SYSTYPE_BSD)

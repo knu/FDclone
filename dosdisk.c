@@ -12,9 +12,9 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include <sys/file.h>
 #include <sys/stat.h>
-#include <sys/time.h>
+
+#ifndef	_NODOSDRIVE
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -28,15 +28,20 @@
 #include <time.h>
 #endif
 
-#ifdef	USEUTIME
-#include <utime.h>
-#endif
-
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#define	dirent	direct
+#if	MSDOS
+#include "unixemu.h"
 #else
-#include <dirent.h>
+#include <sys/file.h>
+#include <sys/time.h>
+# ifdef	USEUTIME
+# include <utime.h>
+# endif
+# ifdef	USEDIRECT
+# include <sys/dir.h>
+# define	dirent	direct
+# else
+# include <dirent.h>
+# endif
 #endif
 
 #include "dosdisk.h"
@@ -153,7 +158,7 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0a", 2, 9, 80},
 	{'A', "/dev/rfd0a", 2, 8 + 100, 80},
 # else
-#  if defined (news3100) || defined(news5000)
+#  if defined (news3100) || defined (news5000)
 	{'A', "/dev/rfd00a", 2, 18, 80},
 	{'A', "/dev/rfd00a", 2, 9, 80},
 	{'A', "/dev/rfd00a", 2, 8 + 100, 80},
@@ -389,7 +394,7 @@ time_t time;
 
 	tz += leap;
 	fclose(fp);
-#endif	/* NOTZFILEH */
+#endif	/* !NOTZFILEH */
 
 	return(tz);
 }
@@ -1212,7 +1217,7 @@ u_char attr;
 	if (!(attr & DS_IHIDDEN)) mode |= S_IREAD;
 	if (!(attr & DS_IRDONLY)) mode |= S_IWRITE;
 	mode |= (mode >> 3) | (mode >> 6);
-	if (attr & DS_IFDIR) mode |= S_IFDIR;
+	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IEXEC_ALL);
 	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
 	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
 	else mode |= S_IFREG;
@@ -1225,38 +1230,28 @@ u_short mode;
 {
 	u_char attr;
 
-	attr = 0;
+	attr = DS_IARCHIVE;
 	if (!(mode & S_IREAD)) attr |= DS_IHIDDEN;
 	if (!(mode & S_IWRITE)) attr |= DS_IRDONLY;
-	switch (mode & S_IFMT) {
-		case S_IFDIR:
-			attr |= DS_IFDIR;
-			break;
-		case S_IFIFO:
-			attr |= DS_IFLABEL;
-			break;
-		case S_IFSOCK:
-			attr |= DS_IFSYSTEM;
-			break;
-		default:
-			break;
-	}
+	if ((mode & S_IFMT) == S_IFDIR) attr |= DS_IFDIR;
+	else if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
+	else if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
 
 	return(attr);
 }
 
 static time_t getdostime(date, time)
-int date, time;
+u_short date, time;
 {
 	struct tm tm;
 
 	tm.tm_year = 1980 + ((date >> 9) & 0x7f);
 	tm.tm_year -= 1900;
 	tm.tm_mon = ((date >> 5) & 0x0f) - 1;
-	tm.tm_mday = date & 0x1f;
-	tm.tm_hour = (time >> 11) & 0x1f;
-	tm.tm_min = (time >> 5) & 0x3f;
-	tm.tm_sec = (time << 1) & 0x3e;
+	tm.tm_mday = (date & 0x1f);
+	tm.tm_hour = ((time >> 11) & 0x1f);
+	tm.tm_min = ((time >> 5) & 0x3f);
+	tm.tm_sec = ((time << 1) & 0x3e);
 
 	return(timelocal2(&tm));
 }
@@ -1692,13 +1687,6 @@ char *path;
 	return(0);
 }
 
-#ifdef	USEGETWD
-char *dosgetwd(pathname)
-char *pathname;
-{
-	int i;
-	int size = MAXPATHLEN;
-#else
 char *dosgetcwd(pathname, size)
 char *pathname;
 int size;
@@ -1706,7 +1694,6 @@ int size;
 	int i;
 
 	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
-#endif
 
 	i = toupper2(lastdrive) - 'A';
 	if (lastdrive < 0 || !curdir[i]) {
@@ -2037,8 +2024,8 @@ struct stat *buf;
 		byte2word(dd2dentp(dd) -> time));
 	closedev(dd);
 
-	if ((buf -> st_mode & S_IFMT) == S_IFDIR) buf -> st_mode |= S_IEXEC_ALL;
-	else if ((cp = strrchr(path, '.')) && strlen(++cp) == 3) {
+	if ((buf -> st_mode & S_IFMT) != S_IFDIR
+	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
 		if (!strcasecmp2(cp, "BAT") || !strcasecmp2(cp, "COM")
 		|| !strcasecmp2(cp, "EXE")) buf -> st_mode |= S_IEXEC_ALL;
 	}
@@ -2450,7 +2437,7 @@ int nbytes;
 	return(total);
 }
 
-int doslseek(fd, offset, whence)
+off_t doslseek(fd, offset, whence)
 int fd;
 off_t offset;
 int whence;
@@ -2808,3 +2795,4 @@ int dosallclose()
 		}
 	return(ret);
 }
+#endif	/* !_NODOSDRIVE */

@@ -11,12 +11,7 @@
 #include "kanji.h"
 
 #include <fcntl.h>
-#include <pwd.h>
-#include <grp.h>
-#include <sys/file.h>
 #include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/param.h>
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -26,8 +21,16 @@
 #include <tzfile.h>
 #endif
 
-#ifdef	USEGETWD
-#define	Xgetcwd(buf, size)	Xgetwd(buf)
+#if	MSDOS
+#include <sys/timeb.h>
+#include "unixemu.h"
+extern int setcurdrv();
+#else
+#include <pwd.h>
+#include <grp.h>
+#include <sys/file.h>
+#include <sys/time.h>
+#include <sys/param.h>
 #endif
 
 #ifdef	PWNEEDERROR
@@ -55,21 +58,33 @@ extern char *findpattern;
 static char *_realpath2();
 static assoclist *_getenv2();
 static int tmcmp();
+#if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long gettimezone();
+#endif
 
 static assoclist *environ2 = NULL;
 static char *lastpath = NULL;
+#if	!MSDOS && !defined (_NODOSDRIVE)
 static char *unixpath = NULL;
+#endif
 
 
 int access2(path, mode)
 char *path;
 int mode;
 {
+#if	MSDOS
+	if (Xaccess(path, mode) < 0) {
+		warning(-1, path);
+		return(-1);
+	}
+	return(0);
+#else	/* !MSDOS */
 	struct stat status;
 	char *cp, *name, dir[MAXPATHLEN + 1], *str[4];
 	int val[4];
 
+#ifndef	_NODOSDRIVE
 	if (dospath(path, NULL)) {
 		if (Xaccess(path, mode) < 0) {
 			warning(-1, path);
@@ -77,14 +92,15 @@ int mode;
 		}
 		return(0);
 	}
+#endif
 	if (lstat(path, &status) < 0) {
 		warning(-1, path);
 		return(-1);
 	}
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
 
-	if ((name = strrchr(path, '/'))) {
-		if (name == path) strcpy(dir, "/");
+	if ((name = strrchr(path, _SC_))) {
+		if (name == path) strcpy(dir, _SS_);
 		else strncpy2(dir, path, name - path);
 		name++;
 	}
@@ -103,11 +119,11 @@ int mode;
 			warning(-1, path);
 			return(-1);
 		}
-		if (status.st_uid == getuid()) {
+		if (status.st_uid == geteuid()) {
 			if (copypolicy > 0) return(copypolicy - 2);
 			locate(0, LCMDLINE);
 			putterm(l_clear);
-			putch('[');
+			putch2('[');
 			cp = DELPM_K;
 			kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
 			kanjiputs(cp);
@@ -125,6 +141,7 @@ int mode;
 		}
 	}
 	return(0);
+#endif	/* !MSDOS */
 }
 
 int unlink2(path)
@@ -152,10 +169,15 @@ int stat2(path, buf)
 char *path;
 struct stat *buf;
 {
+#if	MSDOS
+	return(Xstat(path, buf));
+#else	/* !MSDOS */
 	int tmperr;
 
 	if (Xstat(path, buf) < 0) {
+#ifndef	_NODOSDRIVE
 		if (dospath(path, NULL)) return(-1);
+#endif
 		tmperr = errno;
 		if (lstat(path, buf) < 0
 		|| (buf -> st_mode & S_IFMT) != S_IFLNK) {
@@ -165,37 +187,45 @@ struct stat *buf;
 		buf -> st_mode &= ~S_IFMT;
 	}
 	return(0);
+#endif	/* !MSDOS */
 }
 
 static char *_realpath2(path, resolved)
 char *path, *resolved;
 {
 	char *cp;
-	int drive;
 
 	if (!*path || !strcmp(path, ".")) return(resolved);
-	else if (cp = strchr(path, '/')) {
+	else if (cp = strchr(path, _SC_)) {
 		*cp = '\0';
 		_realpath2(path, resolved);
-		*(cp++) = '/';
+		*(cp++) = _SC_;
 		_realpath2(cp, resolved);
 		return(resolved);
 	}
 
 	if (!strcmp(path, "..")) {
-		cp = strrchr(resolved, '/');
-		if (drive = _dospath(resolved)) {
+		cp = strrchr(resolved, _SC_);
+#if	MSDOS
+		if (cp && cp != &resolved[2]) *cp = '\0';
+		else resolved[3] = '\0';
+#else	/* !MSDOS */
+#ifndef	_NODOSDRIVE
+		if (_dospath(resolved)) {
 			if (cp && cp != &resolved[2]) *cp = '\0';
-			else sprintf(resolved, "%c:/", drive);
+			else resolved[3] = '\0';
 		}
-		else {
+		else
+#endif
+		{
 			if (cp && cp != resolved) *cp = '\0';
-			else strcpy(resolved, "/");
+			else resolved[1] = '\0';
 		}
+#endif	/* !MSDOS */
 	}
 	else {
-		if (*resolved && resolved[(int)strlen(resolved) - 1] != '/')
-			strcat(resolved, "/");
+		if (*resolved && resolved[(int)strlen(resolved) - 1] != _SC_)
+			strcat(resolved, _SS_);
 		strcat(resolved, path);
 	}
 	return(resolved);
@@ -212,11 +242,32 @@ char *path, *resolved;
 		path = tmp;
 	}
 
-	if (*path == '/') strcpy(resolved, "/");
-	else if (drv = _dospath(path)) {
-		sprintf(resolved, "%c:/", drv);
-		path += 2;
+#if	MSDOS
+	drv = dospath("", NULL);
+	if (resolved[0] = toupper2(_dospath(path))) path += 2;
+	if (*path == _SC_) {
+		if (!resolved[0]) resolved[0] = drv;
+		resolved[1] = ':';
+		resolved[2] = _SC_;
+		resolved[3] = '\0';
 	}
+	else if (resolved[0] && resolved[0] != drv) {
+		if (resolved[0]) setcurdrv(resolved[0]);
+		if (!Xgetcwd(resolved, MAXPATHLEN)) error(NULL);
+		setcurdrv(drv);
+	}
+#else	/* !MSDOS */
+	if (*path == _SC_) strcpy(resolved, _SS_);
+#ifndef	_NODOSDRIVE
+	else if (drv = _dospath(path)) {
+		path += 2;
+		resolved[0] = drv;
+		resolved[1] = ':';
+		resolved[2] = _SC_;
+		resolved[3] = '\0';
+	}
+#endif
+#endif	/* !MSDOS */
 	else if (resolved != fullpath) strcpy(resolved, fullpath);
 	return(_realpath2(path, resolved));
 }
@@ -225,10 +276,13 @@ int _chdir2(path)
 char *path;
 {
 	char cwd[MAXPATHLEN + 1];
+#if	!MSDOS
 	int fd;
+#endif
 
-	if (!Xgetcwd(cwd, MAXPATHLEN)) strcpy(cwd, "/");
+	if (!Xgetcwd(cwd, MAXPATHLEN)) strcpy(cwd, _SS_);
 	if (Xchdir(path) < 0) return(-1);
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	if (!dospath("", NULL)) {
 		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
 			if (Xchdir(cwd) < 0) error(cwd);
@@ -236,6 +290,7 @@ char *path;
 		}
 		close(fd);
 	}
+#endif
 	return(0);
 }
 
@@ -245,12 +300,13 @@ char *path;
 #ifndef	USESETENV
 	static char pwd[4 + MAXPATHLEN + 1];
 #endif
-	char cwd[MAXPATHLEN + 1];
+	char cwd[MAXPATHLEN + 1], tmp[MAXPATHLEN + 1];
 
+	realpath2(path, tmp);
 	if (_chdir2(path) < 0) return(-1);
 
 	strcpy(cwd, fullpath);
-	realpath2(path, fullpath);
+	strcpy(fullpath, tmp);
 
 	if (_chdir2(fullpath) < 0) {
 		if (_chdir2(cwd) < 0) error(cwd);
@@ -259,6 +315,7 @@ char *path;
 	}
 	if (lastpath) free(lastpath);
 	lastpath = strdup2(cwd);
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	if (_dospath(fullpath)) {
 		if (!_dospath(cwd)) {
 			if (unixpath) free(unixpath);
@@ -271,6 +328,7 @@ char *path;
 		if (unixpath) free(unixpath);
 		unixpath = NULL;
 	}
+#endif
 
 	if (getenv("PWD")) {
 #ifdef	USESETENV
@@ -281,6 +339,9 @@ char *path;
 		putenv2(pwd);
 #endif
 	}
+#if	MSDOS
+	dospath(fullpath, fullpath);
+#endif
 	return(0);
 }
 
@@ -296,10 +357,12 @@ char *path;
 		if (!lastpath) return(".");
 		path = lastpath;
 	}
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	else if (!strcmp(path, "@")) {
 		if (!unixpath) return(".");
 		path = unixpath;
 	}
+#endif
 	if (chdir2(path) < 0) return(NULL);
 	if (!cwd) {
 		cwd = getwd2();
@@ -320,24 +383,24 @@ int mode;
 	char *cp1, *cp2, *eol;
 
 	for (eol = path + (int)strlen(path) - 1; eol > path; eol--) {
-		if (*eol != '/') break;
+		if (*eol != _SC_) break;
 		*eol = '\0';
 	}
 
 	cp1 = ++eol;
-	cp2 = strrchr(path, '/');
+	cp2 = strrchr(path, _SC_);
 	for (;;) {
 		if (Xmkdir(path, mode) >= 0) break;
 		if (errno != ENOENT || !cp2 || cp2 <= path) return(-1);
 		*cp2 = '\0';
-		if (cp1 < eol) *cp1 = '/';
+		if (cp1 < eol) *cp1 = _SC_;
 		cp1 = cp2;
-		cp2 = strrchr(path, '/');
+		cp2 = strrchr(path, _SC_);
 	}
 
 	while (cp1 && cp1 < eol) {
-		cp2 = strchr(cp1 + 1, '/');
-		*cp1 = '/';
+		cp2 = strchr(cp1 + 1, _SC_);
+		*cp1 = _SC_;
 		if (cp2) *cp2 = '\0';
 		if (Xmkdir(path, mode) < 0 && errno != EEXIST) return(-1);
 		cp1 = cp2;
@@ -350,6 +413,7 @@ unsigned size;
 {
 	VOID_P tmp;
 
+	if (!size) error(NULL);
 	if (!(tmp = (VOID_P)malloc(size))) error(NULL);
 	return(tmp);
 }
@@ -360,6 +424,7 @@ unsigned size;
 {
 	VOID_P tmp;
 
+	if (!size) error(NULL);
 	if (!ptr) return(malloc2(size));
 	if (!(tmp = (VOID_P)realloc(ptr, size))) error(NULL);
 	return(tmp);
@@ -384,7 +449,7 @@ int i, *max, size;
 
 	if (i >= *max) {
 		*max = ((i + 1) / BUFUNIT + 1) * BUFUNIT;
-		tmp = realloc2(array, *max * size);
+		tmp = realloc2(array, (long)size * *max);
 	}
 	else tmp = array;
 	return(tmp);
@@ -583,7 +648,7 @@ int printenv()
 
 	n = 0;
 	for (ap = environ2; ap; ap = ap -> next) {
-		cprintf("%s=%s\r\n", ap -> org,
+		cprintf2("%s=%s\r\n", ap -> org,
 			(ap -> assoc) ? ap -> assoc : "");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
@@ -629,8 +694,9 @@ char *getwd2()
 	return(strdup2(cwd));
 }
 
+#if	!MSDOS
 char *getpwuid2(uid)
-int uid;
+uid_t uid;
 {
 	static strtable *uidlist = NULL;
 	static int maxuidbuf = 0;
@@ -649,12 +715,10 @@ int uid;
 		maxuid++;
 		return(uidlist[i].str);
 	}
-
-	return(NULL);
 }
 
 char *getgrgid2(gid)
-int gid;
+gid_t gid;
 {
 	static strtable *gidlist = NULL;
 	static int maxgidbuf = 0;
@@ -673,9 +737,9 @@ int gid;
 		maxgid++;
 		return(gidlist[i].str);
 	}
-
 	return(NULL);
 }
+#endif
 
 static int tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;
@@ -693,10 +757,17 @@ struct tm *tm1, *tm2;
 	return (tm1 -> tm_sec - tm2 -> tm_sec);
 }
 
+#if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long gettimezone(tm, time)
 struct tm *tm;
 time_t time;
 {
+#if	MSDOS
+	struct timeb buffer;
+
+	ftime(&buffer);
+	return(buffer.timezone);
+#else	/* !MSDOS */
 #ifdef	NOTMGMTOFF
 	struct timeval t_val;
 	struct timezone t_zone;
@@ -706,10 +777,9 @@ time_t time;
 #endif
 	struct tm tmbuf;
 	FILE *fp;
-	long tz, tmp, leap, nleap, ntime, ntype, nchar;
+	long i, tz, tmp, leap, nleap, ntime, ntype, nchar;
 	char *cp, buf[MAXPATHLEN + 1];
 	u_char c;
-	int i;
 
 	memcpy(&tmbuf, tm, sizeof(struct tm));
 
@@ -723,10 +793,10 @@ time_t time;
 #ifndef	NOTZFILEH
 	cp = (char *)getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
-	if (cp[0] == '/') strcpy(buf, cp);
+	if (cp[0] == _SC_) strcpy(buf, cp);
 	else {
 		strcpy(buf, TZDIR);
-		strcat(buf, "/");
+		strcat(buf, _SS_);
 		strcat(buf, cp);
 	}
 	if (!(fp = fopen(buf, "r"))) return(tz);
@@ -796,10 +866,12 @@ time_t time;
 
 	tz += leap;
 	fclose(fp);
-#endif	/* NOTZFILEH */
+#endif	/* !NOTZFILEH */
 
 	return(tz);
+#endif	/* !MSDOS */
 }
+#endif	/* !USEMKTIME && !USETIMELOCAL */
 
 time_t timelocal2(tm)
 struct tm *tm;

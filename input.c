@@ -10,17 +10,27 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#include <varargs.h>
 #include <signal.h>
+
+#if	MSDOS
+#include <stdarg.h>
+#include "unixemu.h"
+#else
+#include <varargs.h>
+#endif
 
 extern char **sh_history;
 extern int histsize;
+#ifndef	_NOARCHIVE
 extern char *archivefile;
+#endif
 extern int columns;
 extern int filepos;
 extern int sorton;
 extern int minfilename;
+#if	!MSDOS && !defined (_NOKANJICONV)
 extern int inputkcode;
+#endif
 extern int sizeinfo;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
@@ -34,8 +44,13 @@ static VOID deletechar();
 static VOID truncline();
 static VOID displaystr();
 static int insertstr();
+#ifndef	_NOCOMPLETE
 static VOID selectfile();
 static int completestr();
+#endif
+static int _inputstr_up();
+static int _inputstr_down();
+static int _inputstr_input();
 static int _inputstr();
 static char *truncstr();
 static VOID yesnomes();
@@ -43,68 +58,63 @@ static int selectmes();
 
 int subwindow;
 char *curfilename;
+#ifndef	_NOEDITMODE
 char *editmode = NULL;
+#endif
+#ifndef	_NOEDITMODE
+static int emulatekey[] = {
+	K_UP, K_DOWN, K_RIGHT, K_LEFT,
+	K_IC, K_DC, K_IL, K_DL,
+	K_HOME, K_END, K_BEG, K_EOL,
+	K_PPAGE, K_NPAGE, K_ENTER, ESC,
+};
+static char emacskey[] = {
+	CTRL('P'), CTRL('N'), CTRL('F'), CTRL('B'),
+	ESC, CTRL('D'), CTRL('Q'), CTRL('K'),
+	ESC, ESC, CTRL('A'), CTRL('E'),
+	CTRL('V'), CTRL('Y'), CTRL('O'), CTRL('G'),
+};
+static char vikey[] = {
+	'k', 'j', 'l', 'h',
+	ESC, 'x', ESC, 'D',
+	'g', 'G', '0', '$',
+	CTRL('B'), CTRL('F'), 'o', ESC,
+};
+static char wordstarkey[] = {
+	CTRL('E'), CTRL('X'), CTRL('D'), CTRL('S'),
+	CTRL('V'), CTRL('G'), CTRL(']'), CTRL('Y'),
+	CTRL('W'), CTRL('Z'), CTRL('A'), CTRL('F'),
+	CTRL('R'), CTRL('C'), CTRL('N'), ESC,
+};
+#endif
 
+#ifndef	_NOCOMPLETE
 static namelist *selectlist = NULL;
+#endif
 static int tmpfilepos;
 
 int getkey2(sig)
 int sig;
 {
-	static int vimode = 0;
 	int ch;
+#ifndef	_NOEDITMODE
+	static int vimode = 0;
+	int i;
 
 	if (sig < 0) {
 		vimode = 0;
 		return('\0');
 	}
+#endif
 
-	ch = getkey(sig);
+	ch = _getkey2(sig);
 
+#ifndef	_NOEDITMODE
 	if (!editmode) return(ch);
 	else if (!strcmp(editmode, "emacs")) {
-		switch (ch) {
-			case CTRL('A'):
-				ch = K_BEG;
-				break;
-			case CTRL('B'):
-				ch = K_LEFT;
-				break;
-			case CTRL('D'):
-				ch = K_DC;
-				break;
-			case CTRL('E'):
-				ch = K_EOL;
-				break;
-			case CTRL('F'):
-				ch = K_RIGHT;
-				break;
-			case CTRL('G'):
-				ch = ESC;
-				break;
-			case CTRL('K'):
-				ch = K_DL;
-				break;
-			case CTRL('N'):
-				ch = K_DOWN;
-				break;
-			case CTRL('O'):
-				ch = K_ENTER;
-				break;
-			case CTRL('P'):
-				ch = K_UP;
-				break;
-			case CTRL('Q'):
-				ch = K_IL;
-				break;
-			case CTRL('V'):
-				ch = K_NPAGE;
-				break;
-			case CTRL('Y'):
-				ch = K_PPAGE;
-				break;
-			default:
-				break;
+		for (i = 0; i < sizeof(emacskey) / sizeof(char); i++) {
+			if (emacskey[i] == ESC) continue;
+			if (ch == emacskey[i]) return(emulatekey[i]);
 		}
 	}
 	else if (!strcmp(editmode, "vi")) do {
@@ -127,129 +137,52 @@ int sig;
 				vimode &= ~1;
 				break;
 		}
-		else switch (ch) {
-			case CTRL('B'):
-				ch = K_PPAGE;
-				break;
-			case CTRL('F'):
-				ch = K_NPAGE;
-				break;
-			case '$':
-				ch = K_EOL;
-				break;
-			case ':':
-				vimode = 2;
-				break;
-			case '0':
-				ch = K_BEG;
-				break;
-			case 'A':
-				vimode = 3;
-				ch = K_EOL;
-				break;
-			case 'D':
-				ch = K_DL;
-				break;
-			case 'G':
-				ch = K_END;
-				break;
-			case 'g':
-				ch = K_HOME;
-				break;
-			case 'h':
-				ch = K_LEFT;
-				break;
-			case 'i':
-				vimode = 2;
-				break;
-			case 'a':
-				vimode = 3;
-				ch = K_RIGHT;
-				break;
-			case 'j':
-				ch = K_DOWN;
-				break;
-			case 'k':
-				ch = K_UP;
-				break;
-			case 'l':
-				ch = K_RIGHT;
-				break;
-			case 'o':
-				ch = K_ENTER;
-				break;
-			case 'x':
-				ch = K_DC;
-				break;
-			case K_BS:
-				ch = K_LEFT;
-				break;
-			case ' ':
-				ch = K_RIGHT;
-				break;
-			case ESC:
-			case CR:
-			case '\t':
-				break;
-			default:
-				if (ch >= K_MIN) break;
-				putterm(t_bell);
-				tflush();
-				vimode &= ~1;
-				break;
+		else {
+			for (i = 0; i < sizeof(vikey) / sizeof(char); i++) {
+				if (vikey[i] == ESC) continue;
+				if (ch == vikey[i]) return(emulatekey[i]);
+			}
+			switch (ch) {
+				case ':':
+					vimode = 2;
+					break;
+				case 'A':
+					vimode = 3;
+					ch = K_EOL;
+					break;
+				case 'i':
+					vimode = 2;
+					break;
+				case 'a':
+					vimode = 3;
+					ch = K_RIGHT;
+					break;
+				case K_BS:
+					ch = K_LEFT;
+					break;
+				case ' ':
+					ch = K_RIGHT;
+					break;
+				case ESC:
+				case CR:
+				case '\t':
+					break;
+				default:
+					if (ch >= K_MIN) break;
+					putterm(t_bell);
+					tflush();
+					vimode &= ~1;
+					break;
+			}
 		}
-	} while ((!(vimode & 1)) && (ch = getkey(sig)));
+	} while ((!(vimode & 1)) && (ch = _getkey2(sig)));
 	else if (!strcmp(editmode, "wordstar")) {
-		switch (ch) {
-			case CTRL('A'):
-				ch = K_BEG;
-				break;
-			case CTRL('C'):
-				ch = K_NPAGE;
-				break;
-			case CTRL('D'):
-				ch = K_RIGHT;
-				break;
-			case CTRL('E'):
-				ch = K_UP;
-				break;
-			case CTRL('F'):
-				ch = K_EOL;
-				break;
-			case CTRL('G'):
-				ch = K_DC;
-				break;
-			case CTRL('N'):
-				ch = K_ENTER;
-				break;
-			case CTRL('R'):
-				ch = K_PPAGE;
-				break;
-			case CTRL('S'):
-				ch = K_LEFT;
-				break;
-			case CTRL('V'):
-				ch = K_IC;
-				break;
-			case CTRL('W'):
-				ch = K_HOME;
-				break;
-			case CTRL('X'):
-				ch = K_DOWN;
-				break;
-			case CTRL('Y'):
-				ch = K_DL;
-				break;
-			case CTRL('Z'):
-				ch = K_END;
-				break;
-			case CTRL(']'):
-				ch = K_IL;
-				break;
-			default:
-				break;
+		for (i = 0; i < sizeof(wordstarkey) / sizeof(char); i++) {
+			if (wordstarkey[i] == ESC) continue;
+			if (ch == wordstarkey[i]) return(emulatekey[i]);
 		}
 	}
+#endif	/* !_NOEDITMODE */
 
 	return(ch);
 }
@@ -341,6 +274,7 @@ int x, cx, len, linemax, ins;
 	dy = cx / linemax;
 	i = (dy + 1) * linemax;
 
+#if	!MSDOS
 	if (*c_insert) {
 		for (j = 0; j < ins; j++) putterm(c_insert);
 
@@ -352,11 +286,11 @@ int x, cx, len, linemax, ins;
 				f2 = (onkanji1(dupl, ptr)) ? 1 : 0;
 				if (f1) {
 					locate(x + linemax - 1, LCMDLINE + dy);
-					putch(' ');
+					putch2(' ');
 				}
 				if (x + linemax < n_column) {
 					locate(x + linemax, LCMDLINE + dy);
-					for (j = 1; j < ins; j++) putch(' ');
+					for (j = 1; j < ins; j++) putch2(' ');
 				}
 				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < ins; j++) putterm(c_insert);
@@ -379,8 +313,10 @@ int x, cx, len, linemax, ins;
 			locate (x + cx % linemax, LCMDLINE + cx / linemax);
 		}
 	}
-	else {
-		for (j = 0; j < ins; j++) putch(' ');
+	else
+#endif	/* !MSDOS */
+	{
+		for (j = 0; j < ins; j++) putch2(' ');
 
 		f2 = cx;
 		j = 0;
@@ -390,12 +326,12 @@ int x, cx, len, linemax, ins;
 			if (ptr < ins) f1 = l = 0;
 			else f1 = (onkanji1(dupl, ptr - ins)) ? 1 : 0;
 			if ((l -= f1) > 0) kanjiputs2(dupl, l, j);
-			if (f1) putch(' ');
+			if (f1) putch2(' ');
 
 			locate(x - 1, LCMDLINE + ++dy);
 			l = linemax;
 			if (ptr < ins) {
-				putch(' ');
+				putch2(' ');
 				ptr++;
 				locate(x + ins - ptr, LCMDLINE + dy);
 				l -= ptr;
@@ -423,13 +359,17 @@ char *str;
 int x, cx, len, linemax, del;
 {
 	char dupl[MAXLINESTR + 1];
-	int dy, i, j, l, f1, f2, ptr;
+	int dy, i, j, l, f1, ptr;
+#if	!MSDOS
+	int f2;
+#endif
 
 	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
 	len -= del;
 	dy = cx / linemax;
 	i = (dy + 1) * linemax;
 
+#if	!MSDOS
 	if (*c_delete) {
 		for (j = 0; j < del; j++) putterm(c_delete);
 
@@ -452,16 +392,18 @@ int x, cx, len, linemax, del;
 				locate(x + j, LCMDLINE + dy);
 				if (ptr + l > len) l = len - ptr;
 				if (l > 0) kanjiputs2(dupl, l, ptr);
-				if (f1) putch(' ');
+				if (f1) putch2(' ');
 				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < del; j++) putterm(c_delete);
-				if (!f1) putch(' ');
+				if (!f1) putch2(' ');
 				i += linemax;
 			}
 			locate (x + cx % linemax, LCMDLINE + cx / linemax);
 		}
 	}
-	else {
+	else
+#endif	/* !MSDOS */
+	{
 		j = del;
 		l = i - cx;
 		while (i < len + del) {
@@ -469,12 +411,12 @@ int x, cx, len, linemax, del;
 			if (ptr >= len - cx) f1 = 0;
 			else f1 = (onkanji1(dupl, ptr + del)) ? 1 : 0;
 			if ((l -= f1) > 0) kanjiputs2(dupl, l, j);
-			if (f1) putch(' ');
+			if (f1) putch2(' ');
 
 			locate(x - 1, LCMDLINE + ++dy);
 			l = linemax + 1;
 			if (ptr < del) {
-				putch(' ');
+				putch2(' ');
 				ptr = del;
 				l--;
 			}
@@ -533,7 +475,7 @@ int x, cx, len, max, linemax;
 		if (stable_standout) putterm(end_standout);
 		kanjiputs2(dupl, width, i);
 		locate(x - 1, LCMDLINE + y);
-		if (width == linemax) putch(' ');
+		if (width == linemax) putch2(' ');
 	}
 	putterm(l_clear);
 	if (stable_standout) putterm(end_standout);
@@ -577,6 +519,7 @@ int ins;
 	return(ins);
 }
 
+#ifndef	_NOCOMPLETE
 static VOID selectfile(strs, max)
 char *strs;
 int max;
@@ -671,14 +614,14 @@ int x, cx, len, linemax, max, comline, cont;
 			i = completealias(cp2, 0, &match);
 			i = completeuserfunc(cp2, i, &match);
 		}
-		i = completepath(cp2, comline, i, &match);
+		i = completepath(cp2, i, &match, comline, 0);
 		if (!i && comline) {
 			match = NULL;
-			i = completepath(cp2, 0, 0, &match);
+			i = completepath(cp2, 0, &match, 0, 0);
 		}
 	}
 
-	if (cp1 = strrchr(cp2, '/')) cp1++;
+	if (cp1 = strrchr(cp2, _SC_)) cp1++;
 	else cp1 = cp2;
 	ins = strlen(cp1);
 	free(cp2);
@@ -707,17 +650,135 @@ int x, cx, len, linemax, max, comline, cont;
 	free(cp1);
 	return(ins);
 }
+#endif	/* !_NOCOMPLETE */
+
+static int _inputstr_up(str, x, cx, lenp, max, linemax, histnop, hist, tmp)
+char *str;
+int x, cx, *lenp, max, linemax, *histnop;
+char *hist[], **tmp;
+{
+	keyflush();
+	if (cx < linemax) {
+		if (!hist || *histnop > histsize || !hist[*histnop]) {
+			putterm(t_bell);
+			return(cx);
+		}
+		if (!(*tmp)) {
+			str[*lenp] = '\0';
+			*tmp = strdup2(str);
+		}
+		strcpy(str, hist[*histnop]);
+		*lenp = strlen(str);
+		cx = *lenp;
+		displaystr(str, x, cx, *lenp, max, linemax);
+		(*histnop)++;
+	}
+	else {
+		cx -= linemax;
+		putterm(c_up);
+		if (onkanji1(str, cx - 1)) {
+			putterm(c_left);
+			cx--;
+		}
+	}
+	return(cx);
+}
+
+static int _inputstr_down(str, x, cx, lenp, max, linemax, histnop, hist, tmp)
+char *str;
+int x, cx, *lenp, max, linemax, *histnop;
+char *hist[], **tmp;
+{
+	keyflush();
+	if (cx + linemax > *lenp) {
+		if (!hist || *histnop <= 1) {
+			putterm(t_bell);
+			return(cx);
+		}
+		if (--(*histnop) > 1) strcpy(str, hist[*histnop - 1]);
+		else {
+			strcpy(str, *tmp);
+			free(*tmp);
+			*tmp = NULL;
+		}
+		*lenp = strlen(str);
+		cx = *lenp;
+		displaystr(str, x, cx, *lenp, max, linemax);
+	}
+	else {
+		cx += linemax;
+		putterm(c_down);
+		if (onkanji1(str, cx - 1)) {
+			putterm(c_left);
+			cx--;
+		}
+	}
+	return(cx);
+}
+
+static int _inputstr_input(str, x, cx, lenp, max, linemax, ch)
+char *str;
+int x, cx, *lenp, max, linemax, ch;
+{
+#if	!MSDOS && !defined (_NOKANJICONV)
+	char tmpkanji[3];
+#endif
+	int i, ch2;
+
+	if (isinkanji1(ch)) {
+		ch2 = _getkey2(0);
+		if (*lenp + 1 >= max) {
+			putterm(t_bell);
+			keyflush();
+			return(cx);
+		}
+		insertchar(str, x, cx, *lenp, linemax, 2);
+
+#if	MSDOS || defined (_NOKANJICONV)
+		str[cx] = ch;
+		str[cx + 1] = ch2;
+#else
+		tmpkanji[0] = ch;
+		tmpkanji[1] = ch2;
+		tmpkanji[2] = '\0';
+		kanjiconv(&str[cx], tmpkanji, inputkcode, DEFCODE);
+#endif
+		*lenp += 2;
+		cx += 2;
+		i = (cx % linemax);
+		if (i == 1) locate(x - 1, LCMDLINE + cx / linemax);
+		kanjiputs2(str, 2, cx - 2);
+		if (!i && *lenp < max) locate(x, LCMDLINE + cx / linemax);
+	}
+	else {
+		if (ch < ' ' || ch >= K_MIN || *lenp >= max) {
+			putterm(t_bell);
+			keyflush();
+			return(cx);
+		}
+		insertchar(str, x, cx, *lenp, linemax, 1);
+		(*lenp)++;
+		str[cx++] = ch;
+		putch2(ch);
+		if (!(cx % linemax) && *lenp < max)
+			locate(x, LCMDLINE + cx / linemax);
+	}
+	return(cx);
+}
+
 
 static int _inputstr(str, x, max, linemax, def, comline, hist)
 char *str;
 int x, max, linemax, def, comline;
 char *hist[];
 {
-	char *tmphist, tmpkanji[3];
+	char *tmphist;
 	int len, cx, i, histno, ch, ch2, quote;
 
 	subwindow = 1;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	tmpfilepos = -1;
 	cx = len = strlen(str);
 	if (def >= 0 && def < linemax) {
@@ -736,7 +797,7 @@ char *hist[];
 		ch2 = ch;
 		if (!quote) ch = getkey2(0);
 		else {
-			ch = getkey(0);
+			ch = _getkey2(0);
 			quote = 0;
 			if (ch < ' ' || ch == K_DC) {
 				keyflush();
@@ -747,7 +808,7 @@ char *hist[];
 				insertchar(str, x, cx, len, linemax, 2);
 				len += 2;
 				str[cx++] = QUOTE;
-				putch('^');
+				putch2('^');
 				if (!(cx % linemax) && len - 1 < max)
 					locate(x, LCMDLINE
 						+ cx / linemax);
@@ -759,7 +820,7 @@ char *hist[];
 					str[cx++] = ch;
 					ch += '@';
 				}
-				putch((int)ch);
+				putch2(ch);
 				if (!(cx % linemax) && len < max)
 					locate(x, LCMDLINE
 						+ cx / linemax);
@@ -837,58 +898,12 @@ char *hist[];
 				displaystr(str, x, cx, len, max, linemax);
 				break;
 			case K_UP:
-				keyflush();
-				if (cx < linemax) {
-					if (!hist || histno > histsize
-					|| !hist[histno]) {
-						putterm(t_bell);
-						break;
-					}
-					if (!tmphist) {
-						str[len] = '\0';
-						tmphist = strdup2(str);
-					}
-					strcpy(str, hist[histno]);
-					len = strlen(str);
-					cx = len;
-					displaystr(str, x, cx,
-						len, max, linemax);
-					histno++;
-					break;
-				}
-				cx -= linemax;
-				putterm(c_up);
-				if (onkanji1(str, cx - 1)) {
-					putterm(c_left);
-					cx--;
-				}
+				cx = _inputstr_up(str, x, cx, &len,
+					max, linemax, &histno, hist, &tmphist);
 				break;
 			case K_DOWN:
-				keyflush();
-				if (cx + linemax > len) {
-					if (!hist || histno <= 1) {
-						putterm(t_bell);
-						break;
-					}
-					if (--histno > 1)
-						strcpy(str, hist[histno - 1]);
-					else {
-						strcpy(str, tmphist);
-						free(tmphist);
-						tmphist = NULL;
-					}
-					len = strlen(str);
-					cx = len;
-					displaystr(str, x, cx,
-						len, max, linemax);
-					break;
-				}
-				cx += linemax;
-				putterm(c_down);
-				if (onkanji1(str, cx - 1)) {
-					putterm(c_left);
-					cx--;
-				}
+				cx = _inputstr_down(str, x, cx, &len,
+					max, linemax, &histno, hist, &tmphist);
 				break;
 			case K_IL:
 				keyflush();
@@ -904,6 +919,7 @@ char *hist[];
 				if (!(cx % linemax) && len < max)
 					locate(x, LCMDLINE + cx / linemax);
 				break;
+#ifndef	_NOCOMPLETE
 			case '\t':
 				keyflush();
 				i = completestr(str, x, cx, len, linemax, max,
@@ -913,8 +929,10 @@ char *hist[];
 				if (!(cx % linemax) && len < max)
 					locate(x, LCMDLINE + cx / linemax);
 				break;
+#endif
 			case CR:
 				keyflush();
+#ifndef	_NOCOMPLETE
 				if (!selectlist) break;
 				i = completestr(str, x, cx, len, linemax, max,
 					0, -1);
@@ -923,63 +941,33 @@ char *hist[];
 				if (!(cx % linemax) && len < max)
 					locate(x, LCMDLINE + cx / linemax);
 				ch = '\0';
+#endif
 				break;
 			case ESC:
 				keyflush();
 				break;
 			default:
-				if (isinkanji1(ch)) {
-					ch2 = getkey(0);
-					if (len + 1 >= max) {
-						putterm(t_bell);
-						keyflush();
-						break;
-					}
-					insertchar(str, x, cx, len, linemax, 2);
-
-					tmpkanji[0] = ch;
-					tmpkanji[1] = ch2;
-					tmpkanji[2] = '\0';
-					kanjiconv(&str[cx], tmpkanji,
-						inputkcode, DEFCODE);
-					len += 2;
-					cx += 2;
-					i = (cx % linemax);
-					if (i == 1)
-						locate(x - 1, LCMDLINE
-							+ cx / linemax);
-					kanjiputs2(str, 2, cx - 2);
-					if (!i && len < max)
-						locate(x, LCMDLINE
-							+ cx / linemax);
-				}
-				else {
-					if (ch < ' ' || ch >= K_MIN
-					|| len >= max) {
-						putterm(t_bell);
-						keyflush();
-						break;
-					}
-					insertchar(str, x, cx, len, linemax, 1);
-					len++;
-					str[cx++] = ch;
-					putch((int)ch);
-					if (!(cx % linemax) && len < max)
-						locate(x, LCMDLINE
-							+ cx / linemax);
-				}
+				cx = _inputstr_input(str, x, cx, &len,
+					max, linemax, ch);
 				break;
 		}
+#ifndef	_NOCOMPLETE
 		if (selectlist && ch != '\t') {
 			selectfile(NULL, -1);
+#ifndef	_NOARCHIVE
 			if (archivefile) rewritearc(0);
-			else rewritefile(0);
+			else
+#endif
+			rewritefile(0);
 			locate(x + cx % linemax, LCMDLINE + cx / linemax);
 		}
+#endif	/* !_NOCOMPLETE */
 	} while (ch != ESC && ch != CR);
 
 	subwindow = 0;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	if (tmphist) free(tmphist);
 
 	if (ch == ESC) len = 0;
@@ -1002,7 +990,7 @@ char *def, **hist[];
 		putterm(l_clear);
 	}
 	locate(0, LCMDLINE);
-	putch(' ');
+	putch2(' ');
 	putterm(t_standout);
 	kanjiputs(prompt);
 	putterm(end_standout);
@@ -1064,11 +1052,24 @@ char *mes;
 	putterm(l_clear);
 	putterm(t_standout);
 	kanjiputs(mes);
-	cputs("[Y/N]");
+	cputs2("[Y/N]");
 	putterm(end_standout);
 	tflush();
 }
 
+#if	MSDOS
+/*VARARGS1*/
+int yesno(const char *fmt, ...)
+{
+	va_list args;
+	int len, ch, ret = 1;
+	char buf[MAXLINESTR + 1];
+
+	subwindow = 1;
+	va_start(args, fmt);
+	vsprintf(buf, fmt, args);
+	va_end(args);
+#else	/* !MSDOS */
 #ifndef	NOVSPRINTF
 /*VARARGS1*/
 int yesno(fmt, va_alist)
@@ -1083,7 +1084,7 @@ va_dcl
 	va_start(args);
 	vsprintf(buf, fmt, args);
 	va_end(args);
-#else
+#else	/* !NOVSPRINTF */
 int yesno(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
@@ -1092,8 +1093,11 @@ char *fmt;
 
 	subwindow = 1;
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-#endif
+#endif	/* !NOVSPRINTF */
+#endif	/* !MSDOS */
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	truncstr(buf);
 
 	len = strlen(buf);
@@ -1131,7 +1135,9 @@ char *fmt;
 	} while (ch != CR);
 
 	subwindow = 0;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	locate(0, LMESLINE);
 	putterm(l_clear);
 
@@ -1175,7 +1181,7 @@ char *str;
 	tflush();
 
 	keyflush();
-	getkey(SIGALRM);
+	_getkey2(SIGALRM);
 	subwindow = 0;
 
 	locate(0, LMESLINE);
@@ -1215,7 +1221,9 @@ int val[];
 	int i, ch, old, new, xx[10], initial[10];
 
 	subwindow = 1;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	xx[0] = 0;
 	for (i = 0; i < max; i++) {
 		initial[i] = (isupper(*str[i])) ? *str[i] : -1;
@@ -1262,7 +1270,9 @@ int val[];
 	} while (ch != ESC && ch != CR);
 
 	subwindow = 0;
+#ifndef	_NOEDITMODE
 	getkey2(-1);
+#endif
 	if (stable_standout) {
 		locate(x + 1, LMESLINE);
 		putterm(l_clear);
@@ -1270,7 +1280,7 @@ int val[];
 	for (i = 0; i < max; i++) {
 		locate(x + xx[i] + 1, LMESLINE);
 		if (i == new) kanjiputs(str[i]);
-		else cprintf("%*s", strlen(str[i]), " ");
+		else cprintf2("%*s", strlen(str[i]), " ");
 	}
 	if (ch != ESC) *num = val[new];
 	tflush();

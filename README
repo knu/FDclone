@@ -36,7 +36,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-1.01 のパッケージには、以下のファイルが含まれます。
+　FDclone-1.03 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 HISTORY		これまでの改定履歴
@@ -44,13 +44,13 @@ FAQ		Q&A 集 (Frequently Asked Question)
 TECHKNOW	テクニカルノウハウ
 Install		FDclone のインストール方法のドキュメント
 ToAdmin		FDclone を運用する管理者用ドキュメント
-Configure	環境設定用ヘッダの自動生成プログラム (Makefile 内で実行)
+Configur	環境設定用ヘッダの自動生成プログラム (Makefile 内で実行)
 Makefile	メイクファイル
 Makefile.in	メイクファイル本体 (雛型)
 fd.man		man ページ用 roff ファイル (JIS 版)
 fd.cat		man ページ用 プレーンテキスト (JIS 版)
 
-mkmf.sed.c	メイクファイル加工用の sed スクリプト (雛型)
+mkmfsed.c	メイクファイル加工用の sed スクリプト (雛型)
 kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
@@ -67,7 +67,7 @@ info.c		各種情報表示用
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
 dosemu.c	システム関数群のフロッピードライブ対応版
-rockridge.c	iso-9660 RockRidge 拡張関連
+rockridg.c	iso-9660 RockRidge 拡張関連
 parse.c		文字列解析関連
 kanji.c		漢字コードコンバート関連
 file.c		ファイル操作関連
@@ -79,16 +79,16 @@ browse.c	ブラウザ画面関連
 
 fd.h		FDclone のカスタマイズ用ヘッダ
 machine.h	機種依存性を吸収するヘッダ
-config.h.in	ダミーで用意してある環境設定用ヘッダ
+config.hin	ダミーで用意してある環境設定用ヘッダ
 types.h		各種型宣言
 kctype.h	漢字コードに関するヘッダ
 func.h		プロトタイプ宣言
-functable.h	内部コマンドの属性定義用
-kanji.h.in	日本語文字列のソース (JIS版)
+functabl.h	内部コマンドの属性定義用
+kanji.hin	日本語文字列のソース (JIS版)
 version.h	バージョン
 
-.fdrc		.fdrc のお手本
-.fdrc.diff	.fdrc に関する 1.00 からの変更点
+_fdrc		.fdrc のお手本
+_fdrc.dif	.fdrc に関する 1.00 からの変更点
 
 
 --

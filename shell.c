@@ -11,7 +11,11 @@
 #include "kanji.h"
 #include "funcno.h"
 
+#if	MSDOS
+#include "unixemu.h"
+#else
 #include <sys/param.h>
+#endif
 
 extern int filepos;
 extern int mark;
@@ -19,8 +23,10 @@ extern long marksize;
 extern char fullpath[];
 extern char *findpattern;
 extern char **sh_history;
+#ifndef	_NOARCHIVE
 extern char *archivefile;
 extern char *archivedir;
+#endif
 extern functable funclist[];
 
 static int setarg();
@@ -54,19 +60,25 @@ int noext;
 
 	if (dir && *dir) d = strlen(dir) + 1;
 	else d = 0;
+#if	!MSDOS
 	arg = killmeta(arg);
+#endif
 	if (noext && (cp = strrchr(arg, '.')) && cp != arg) l = cp - arg;
 	else l = strlen(arg);
 	if (ptr + d + l >= MAXCOMMSTR) {
+#if	!MSDOS
 		free(arg);
+#endif
 		return(0);
 	}
 	if (d) {
 		strcpy(buf + ptr, dir);
-		strcat(buf + ptr, "/");
+		strcat(buf + ptr, _SS_);
 	}
 	strncpy(buf + ptr + d, arg, l);
+#if	!MSDOS
 	free(arg);
+#endif
 	return(d + l);
 }
 
@@ -79,10 +91,21 @@ int max, noext;
 	int i, n, len;
 	char *dir;
 
-	dir = (archivefile) ? killmeta(archivedir) : NULL;
+	dir =
+#ifndef	_NOARCHIVE
+#if	MSDOS
+	(archivefile) ? archivedir :
+#else
+	(archivefile) ? killmeta(archivedir) :
+#endif
+#endif	/* !_NOARCHIVE */
+	NULL;
+
 	if (!n_args) {
 		len = setarg(buf, ptr, dir, list[filepos].name, noext);
+#if	!MSDOS
 		if (dir) free(dir);
+#endif
 		return(len);
 	}
 
@@ -96,7 +119,9 @@ int max, noext;
 	}
 	if (len > 0 && buf[ptr + len - 1] == ' ') len--;
 	if (!n) len = -len;
+#if	!MSDOS
 	if (dir) free(dir);
+#endif
 	return(len);
 }
 
@@ -108,7 +133,9 @@ int needmark;
 	char *cp, *src, *body;
 	int i, len, ptr;
 
+#if	!MSDOS
 	arg = killmeta(arg);
+#endif
 	if ((cp = strrchr(arg, '.')) && cp != arg) {
 		i = cp - arg;
 		body = (char *)malloc2(i + 1);
@@ -119,7 +146,9 @@ int needmark;
 	ptr = strlen(format);
 	if (ptr > MAXCOMMSTR) {
 		if (body != arg) free(body);
+#if	!MSDOS
 		free(arg);
+#endif
 		return(0);
 	}
 	strcpy(buf, format);
@@ -141,7 +170,9 @@ int needmark;
 		cp += len + 1;
 	}
 	if (body != arg) free(body);
+#if	!MSDOS
 	free(arg);
+#endif
 	if (i < needmark) return(0);
 	return(1);
 }
@@ -166,7 +197,7 @@ macrostat *stp;
 	noext = 0;
 	uneval = '\0';
 
-	for (i = j = 0; command[i] && j < sizeof(line); i++) {
+	for (i = j = 0; command[i] && j < sizeof(line) / sizeof(char); i++) {
 		if (!uneval && (noext || command[i] == '%'))
 		switch (toupper2(command[++i])) {
 			case '\0':
@@ -232,9 +263,12 @@ macrostat *stp;
 		}
 		else {
 			line[j++] = command[i];
+#if	!MSDOS
 			if (command[i] == '\\' && command[i + 1])
 				line[j++] = command[++i];
-			else if (command[i] == uneval) uneval = 0;
+			else
+#endif
+			if (command[i] == uneval) uneval = 0;
 			else if (command[i] == '"' || command[i] == '\'')
 				uneval = command[i];
 		}
@@ -243,10 +277,14 @@ macrostat *stp;
 
 	if (!argset) {
 		line[j++] = ' ';
+#if	!MSDOS
 		arg = killmeta(arg);
+#endif
 		strcpy(line + j, arg);
 		j += strlen(arg);
+#if	!MSDOS
 		free(arg);
+#endif
 	}
 	if (list && !(stp -> needmark) && !((stp -> flags) & F_REMAIN)) {
 		for (i = 0; i < max; i++) list[i].flags &= ~F_ISARG;
@@ -324,7 +362,7 @@ int *maxp, noconf;
 
 	while (*command == ' ' || *command == '\t') command++;
 	sigvecreset();
-	if (cp = evalalias(command, n)) command = cp;
+	if (cp = evalalias(command)) command = cp;
 
 	if (*command == '!') n = execinternal(command + 1, list, maxp);
 	else {
@@ -418,7 +456,12 @@ int execshell()
 	char *sh;
 	int status;
 
+#if	MSDOS
+	if (!(sh = getenv2("FD_SHELL"))
+	&& !(sh = getenv2("FD_COMSPEC"))) sh = "command.com";
+#else
 	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
+#endif
 	putterms(t_end);
 	putterms(t_nokeypad);
 	tflush();
@@ -471,7 +514,7 @@ char *command, *arg;
 namelist *list;
 int *maxp, noconf, argset;
 {
-	char *cp, *tmp, *argv[MAXARGS + 1];
+	char *cp, *argv[MAXARGS + 1];
 	int i, j, len, s, status, argc;
 
 	while (*command == ' ' || *command == '\t') command++;
@@ -616,14 +659,14 @@ int *maxp;
 		for (i = 1; i < histsize && sh_history[i]; i++)
 			sh_history[i] = sh_history[i + 1];
 		if (i >= histsize) sh_history[histsize] = NULL;
-		cprintf("%d: Event not found.\r\n", n);
+		cprintf2("%d: Event not found.\r\n", n);
 		return(-1);
 	}
 	command = (char *)malloc2(strlen(sh_history[i]) + strlen(cp) + 1);
 	strcpy(command, sh_history[i]);
 	strcat(command, cp);
 	sh_history[1] = strdup2(command);
-	cprintf("%s\r\n", command);
+	cprintf2("%s\r\n", command);
 	n = dosystem(command, list, maxp, 0);
 	free(command);
 	return(n);
@@ -654,11 +697,15 @@ int *maxp;
 	if (!(cp = strpbrk(command, " \t"))) cp = command + strlen(command);
 	if (!strcmp(command, "printenv")) printenv();
 	else if (!strcmp(command, "printmacro")) printmacro();
+#ifndef	_NOARCHIVE
 	else if (!strcmp(command, "printlaunch")) printlaunch();
 	else if (!strcmp(command, "printarch")) printarch();
+#endif
 	else if (!strcmp(command, "alias")) printalias();
 	else if (!strcmp(command, "function")) printuserfunc();
+#if	!MSDOS && !defined (_NODOSDRIVE)
 	else if (!strcmp(command, "printdrive")) printdrive();
+#endif
 	else if (!strcmp(command, "history")) printhist();
 	else if (!strncmp(command, "cd", cp - command)) {
 		while (*cp == ' ' || *cp == '\t') cp++;
@@ -675,7 +722,9 @@ int *maxp;
 		else if (n < 2) n = 2;
 	}
 	else if ((n = evalconfigline(command)) >= 0) {
+#if	!MSDOS
 		adjustpath();
+#endif
 		evalenv();
 		if (n > 0) warning(0, HITKY_K);
 		n = 4;
@@ -720,6 +769,7 @@ char *command;
 	return(cp);
 }
 
+#ifndef	_NOCOMPLETE
 int completealias(com, matchno, matchp)
 char *com;
 int matchno;
@@ -727,7 +777,7 @@ char **matchp;
 {
 	int i, len, ptr, size;
 
-	if (strchr(com, '/')) return(0);
+	if (strchr(com, _SC_)) return(0);
 
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
@@ -749,7 +799,7 @@ char **matchp;
 {
 	int i, len, ptr, size;
 
-	if (strchr(com, '/')) return(0);
+	if (strchr(com, _SC_)) return(0);
 
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
@@ -763,3 +813,4 @@ char **matchp;
 	}
 	return(matchno);
 }
+#endif	/* !_NOCOMPLETE */

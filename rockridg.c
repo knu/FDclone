@@ -7,9 +7,16 @@
 #include "fd.h"
 #include "func.h"
 
+#ifndef	_NOROCKRIDGE
+
 #include <ctype.h>
-#include <sys/param.h>
 #include <sys/stat.h>
+
+#if	MSDOS
+#include "unixemu.h"
+#else
+#include <sys/param.h>
+#endif
 
 extern char fullpath[];
 
@@ -44,9 +51,9 @@ char *path;
 			len = eol - cp;
 			eol++;
 		}
-		while (len > 0 && cp[len] == '/') len--;
-		if (len > 0 && !strncmp(path, cp, len) &&
-		(!path[len] || path[len] == '/')) return(1);
+		while (len > 0 && cp[len] == _SC_) len--;
+		if (len > 0 && !strnpathcmp(path, cp, len) &&
+		(!path[len] || path[len] == _SC_)) return(1);
 		cp = eol;
 	}
 	return(0);
@@ -199,24 +206,23 @@ namelist *list;
 int max;
 {
 	assoclist *tp, *start, *tbl;
-	char *cp, *link, rpath[MAXPATHLEN + 1];
-	int i, len;
+	char *cp, rpath[MAXPATHLEN + 1];
+	int i;
 
 	if (!rockridgepath || !*rockridgepath) return(0);
 	realpath2(fullpath, rpath);
 	if (!isrockridge(rpath)) return(0);
 
-	if (rr_cwd && !strcmp(rpath, rr_cwd)) tbl = rr_curtbl;
+	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else if (!(tbl = readtranstbl())) return(0);
 
 	start = tbl;
 	for (i = 0; i < max; i++) {
-		if (!strcmp(list[i].name, ".")
-		|| !strcmp(list[i].name, "..")) continue;
+		if (isdotdir(list[i].name)) continue;
 
 		tp = start;
 		while (tp) {
-			if (!strcmp(list[i].name, tp -> org)) break;
+			if (!strpathcmp(list[i].name, tp -> org)) break;
 			if ((tp = tp -> next) == start) tp = NULL;
 		}
 		if (!tp) continue;
@@ -245,19 +251,18 @@ char *transfile(file, buf)
 char *file, *buf;
 {
 	assoclist *tp, *start, *tbl;
-	FILE *fp;
 	char *cp, rpath[MAXPATHLEN + 1];
 
 	if (!rockridgepath || !*rockridgepath) return(file);
 	realpath2(fullpath, rpath);
 	if (!isrockridge(rpath)) return(file);
 
-	if (rr_cwd && !strcmp(rpath, rr_cwd)) tbl = rr_curtbl;
+	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else if (!(tbl = readtranstbl())) return(file);
 
 	start = tp = tbl;
 	while (tp) {
-		if (!strcmp(file, tp -> org)) break;
+		if (!strpathcmp(file, tp -> org)) break;
 		if ((tp = tp -> next) == start) tp = NULL;
 	}
 	if (!tp) cp = file;
@@ -281,14 +286,13 @@ char *path, *buf;
 int rdlink;
 {
 	assoclist *tp, *start, *tbl;
-	FILE *fp;
 	char *cp, dir[MAXPATHLEN + 1];
 
-	if (!(cp = strrchr(path, '/')) || cp == path) return(NULL);
+	if (!(cp = strrchr(path, _SC_)) || cp == path) return(NULL);
 	strncpy2(dir, path, (cp++) - path);
 	if (!_detransfile(dir, buf, 1)) strcpy(buf, dir);
 
-	if (rr_cwd && !strcmp(buf, rr_cwd)) tbl = rr_curtbl;
+	if (rr_cwd && !strpathcmp(buf, rr_cwd)) tbl = rr_curtbl;
 	else {
 		_Xchdir(buf);
 		if (!(tbl = readtranstbl())) return(NULL);
@@ -296,13 +300,13 @@ int rdlink;
 
 	start = tp = tbl;
 	while (tp) {
-		if (!strcmp(cp, tp -> assoc + 1)) break;
+		if (!strpathcmp(cp, tp -> assoc + 1)) break;
 		if ((tp = tp -> next) == start) tp = NULL;
 	}
 	if (!tp) cp = NULL;
 	else {
 		start = tp -> next;
-		strcat(buf, "/");
+		strcat(buf, _SS_);
 		if (!rdlink || *(tp -> assoc) != 'L') strcat(buf, tp -> org);
 		else {
 			for (cp = tp -> assoc + 1; *cp; cp++);
@@ -334,3 +338,4 @@ int rdlink;
 	free(cwd);
 	return(path);
 }
+#endif	/* !_NOROCKRIDGE */
