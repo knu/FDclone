@@ -1,3 +1,11 @@
+Ver. 2.01c	Enlarge range of the filename shift for symbolic link.
+ (10/01/02)	Mis-parsing for the archived file with '.' directory is fixed.
+		Trivial fixes about the filename completion.
+		Mis-repeating for the shell delimiter before/after %T is fixed.
+		Stop evaluating any meta characters in renaming filename.
+		Add the default archiver registration for .taz, .tgz.
+		Mistaken format strings for .zip, .zoo are fixed.
+
 Ver. 2.01b	Allow LOG_DIR in archive browser.
  (07/10/02)	Abortion in archive browser with inappropriate format is fixed.
 		Bug not to extract directory in archive browser is fixed.

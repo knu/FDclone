@@ -186,11 +186,7 @@ int level, *maxp;
 	i = 0;
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)
-#if	MSDOS || defined (_NODOSDRIVE)
-		|| Xstat(dp -> d_name, &st) < 0
-#else
 		|| Xstat(nodospath(tmp, dp -> d_name), &st) < 0
-#endif
 		|| (st.st_mode & S_IFMT) != S_IFDIR) continue;
 		list = b_realloc(list, *maxp, treelist);
 		if (!subdir) {
@@ -248,12 +244,8 @@ int level, *maxp;
 			list[i].sub = maketree(subdir, NULL, &(list[i]),
 				level + 1, &(list[i].max));
 		else {
-#if	MSDOS || defined (_NODOSDRIVE)
-			if (list[i].max >= 0 && evaldir(list[i].name, 0))
-#else
 			if (list[i].max >= 0
 			&& evaldir(nodospath(tmp, list[i].name), 0))
-#endif
 				list[i].max = -1;
 		}
 	}
@@ -722,7 +714,6 @@ static char *NEAR _tree(VOID_A)
 # ifdef	_NODOSDRIVE
 	strcpy(path, fullpath);
 	tr_cur[0].name = strdup2(_SS_);
-	if (Xstat(tr_cur[0].name, &st) < 0) tr_cur[0].dev = tr_cur[0].ino = 0;
 # else
 	if (dospath("", path)) {
 		tr_cur[0].name = malloc2(3 + 1);
@@ -732,9 +723,10 @@ static char *NEAR _tree(VOID_A)
 		strcpy(path, fullpath);
 		tr_cur[0].name = strdup2(_SS_);
 	}
+# endif
+
 	if (Xstat(nodospath(tmp, tr_cur[0].name), &st) < 0)
 		tr_cur[0].dev = tr_cur[0].ino = 0;
-# endif
 	else {
 		tr_cur[0].dev = st.st_dev;
 		tr_cur[0].ino = st.st_ino;

@@ -186,7 +186,10 @@ macrostat *stp;
 	tmp[len] = '\0';
 	cp = tmp + blen;
 	flags = *(++cp);
-	for (s = ++cp; *s; s++) if (strchr(IFS_SET, *s)) break;
+	for (s = ++cp; *s; s++) {
+		if (strchr(CMDLINE_DELIM, *s)) break;
+		if (iskanji1(s, 0)) s++;
+	}
 	flen = s - cp;
 	rlen = len - (s - tmp);
 
@@ -449,9 +452,13 @@ int ignorelist;
 #endif
 
 	if (needburst) for (i = c = 0; i < j; i++) {
-		if (line[i] && strchr(IFS_SET, line[i])) c = -1;
+		if (line[i] && strchr(CMDLINE_DELIM, line[i])) c = -1;
 		else if (c < 0) c = i;
-		if (line[i] || !(line[++i] & F_BURST)) continue;
+		if (line[i]) {
+			if (iskanji1(line, i)) i++;
+			continue;
+		}
+		else if (!(line[++i] & F_BURST)) continue;
 
 		len = setargs(line, c, i - 1 - c, j, stp);
 		if (len >= MAXCOMMSTR) {

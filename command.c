@@ -405,8 +405,20 @@ char *arg;
 {
 	int i, m;
 
-	if (islink(&(filelist[filepos]))) i = 0;
-	else {
+#if	!MSDOS
+	if (islink(&(filelist[filepos]))) {
+# ifndef	_NODOSDRIVE
+		char path[MAXPATHLEN];
+# endif
+		char tmp[MAXPATHLEN];
+
+		i = Xreadlink(fnodospath(path, filepos), tmp, sizeof(tmp) - 1);
+		tmp[i] = '\0';
+		i = 1 - (strlen3(tmp) + 4);
+	}
+	else
+#endif	/* !MSDOS */
+	{
 		i = calcwidth();
 		if (isdisptyp(dispmode)) {
 			m = filelist[filepos].st_mode;
@@ -1118,10 +1130,8 @@ char *arg;
 		}
 	}
 	else for (;;) {
-		if (!(file =
-		inputstr(NEWNM_K, 1, 0, filelist[filepos].name, -1))
-		|| !*(file = evalpath(file, 1)))
-			return(1);
+		file = inputstr(NEWNM_K, 1, 0, filelist[filepos].name, -1);
+		if (!file || !*file) return(1);
 		if (Xaccess(file, F_OK) < 0) {
 			if (errno == ENOENT) break;
 			warning(-1, file);
@@ -1130,12 +1140,7 @@ char *arg;
 		free(file);
 	}
 
-#if	MSDOS || defined (_NODOSDRIVE)
-	if (Xrename(filelist[filepos].name, file) < 0)
-#else
-	if (Xrename(nodospath(path, filelist[filepos].name), file) < 0)
-#endif
-	{
+	if (Xrename(fnodospath(path, filepos), file) < 0) {
 		warning(-1, file);
 		free(file);
 		return(1);
@@ -1174,15 +1179,12 @@ char *arg;
 	removepolicy = 0;
 #if	!MSDOS
 	if (islink(&(filelist[filepos]))) {
+# ifndef	_NODOSDRIVE
+		char path[MAXPATHLEN];
+# endif
 		int ret;
 
-# ifdef	_NODOSDRIVE
-		ret = rmvfile(filelist[filepos].name);
-# else
-		char path[MAXPATHLEN];
-
-		ret = rmvfile(nodospath(path, filelist[filepos].name));
-# endif
+		ret = rmvfile(fnodospath(path, filepos));
 		if (ret < 0) warning(-1, filelist[filepos].name);
 		else if (!ret) filepos++;
 	}
@@ -1393,14 +1395,11 @@ char *arg;
 	if (archivefile) ret = unpack(archivefile, NULL, arg, 0, 0);
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
-#if	MSDOS || defined (_NODOSDRIVE)
-		ret = unpack(filelist[filepos].name, NULL, arg, 0, 1);
-#else
+#if	!MSDOS && !defined (_NODOSDRIVE)
 		char path[MAXPATHLEN];
-
-		ret = unpack(nodospath(path, filelist[filepos].name),
-			NULL, arg, 0, 1);
 #endif
+
+		ret = unpack(fnodospath(path, filepos), NULL, arg, 0, 1);
 	}
 	if (ret < 0) return(warning_bell(arg));
 	if (!ret) return(1);
@@ -1416,14 +1415,11 @@ char *arg;
 	if (archivefile) ret = unpack(archivefile, NULL, NULL, 1, 0);
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
-#if	MSDOS || defined (_NODOSDRIVE)
-		ret = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
-#else
+#if	!MSDOS && !defined (_NODOSDRIVE)
 		char path[MAXPATHLEN];
-
-		ret = unpack(nodospath(path, filelist[filepos].name),
-			NULL, NULL, 1, 1);
 #endif
+
+		ret = unpack(fnodospath(path, filepos), NULL, NULL, 1, 1);
 	}
 	if (ret <= 0) {
 		if (ret < 0) warning_bell(arg);

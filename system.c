@@ -1526,7 +1526,7 @@ int *lenp, ptr;
 {
 	int i, j, l;
 
-	for (i = j = 0; i < ptr; i++, j++) {
+	for (i = j = 0; i < ptr && s2[j]; i++, j++) {
 #ifdef	CODEEUC
 		if (isekana(s2, j)) j++;
 		else

@@ -178,7 +178,6 @@ static char *NEAR evalshellparam __P_((int, int));
 static int NEAR replacevar __P_((char *, char **, int, int, int, int));
 static char *NEAR insertarg __P_((char *, int, char *, int, int));
 static int NEAR evalvar __P_((char **, int, char **, int));
-static int NEAR evalhome __P_((char **, int, char **));
 
 #ifdef	LSI_C
 #include <jctype.h>
@@ -2480,7 +2479,7 @@ char *gethomedir(VOID_A)
 	return(NULL);
 }
 
-static int NEAR evalhome(bufp, ptr, argp)
+int evalhome(bufp, ptr, argp)
 char **bufp;
 int ptr;
 char **argp;

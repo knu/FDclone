@@ -253,9 +253,12 @@ extern time_t timelocal2 __P_((struct tm *));
 extern char *fgets2 __P_((FILE *, int));
 
 /* file.c */
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#if	MSDOS || defined (_NODOSDRIVE)
+#define	nodospath(p, f)	(f)
+#else
 char *nodospath __P_((char *, char *));
 #endif
+#define	fnodospath(p, i)	nodospath(p, filelist[i].name)
 #if	MSDOS
 extern int logical_access __P_((u_short));
 #else

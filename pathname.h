@@ -161,6 +161,7 @@ extern VOID freeidlist __P_((VOID_A));
 # endif
 #endif
 extern char *gethomedir __P_((VOID_A));
+extern int evalhome __P_((char **, int, char **));
 extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, char *));
 extern int evalglob __P_((int, char ***, int));

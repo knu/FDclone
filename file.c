@@ -174,20 +174,20 @@ gid_t gid;
 int getstatus(list)
 namelist *list;
 {
+#if	!MSDOS
+# ifndef	_NODOSDRIVE
+	char path[MAXPATHLEN];
+# endif
+	char *cp;
+#endif
 	struct stat st, lst;
 
 #if	MSDOS
 	if (stat2(list -> name, &st) < 0) return(-1);
 	memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
 #else	/* !MSDOS */
-	char *cp;
-
-# ifdef	_NODOSDRIVE
-	cp = list -> name;
-# else
-	char path[MAXPATHLEN];
-
 	cp = nodospath(path, list -> name);
+# ifndef	_NODOSDRIVE
 	if (dospath(cp, NULL)) {
 		if (stat2(cp, &st) < 0) return(-1);
 		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
@@ -947,13 +947,7 @@ int single;
 		strcpy(cp, filelist[filepos].name);
 		st.st_mode = filelist[filepos].st_mode;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
-# if	MSDOS
-		if (cpfile(filelist[filepos].name, path, &st, NULL) < 0)
-# else
-		if (cpfile(nodospath(tmp, filelist[filepos].name),
-		path, &st, NULL) < 0)
-# endif
-		{
+		if (cpfile(fnodospath(tmp, filepos), path, &st, NULL) < 0) {
 			*(--cp) = '\0';
 			removetmp(path, NULL, NULL);
 			return(-1);
@@ -964,13 +958,7 @@ int single;
 		strcpy(cp, filelist[i].name);
 		st.st_mode = filelist[i].st_mode;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
-# if	MSDOS
-		if (cpfile(filelist[i].name, path, &st, NULL) < 0)
-# else
-		if (cpfile(nodospath(tmp, filelist[i].name),
-		path, &st, NULL) < 0)
-# endif
-		{
+		if (cpfile(fnodospath(tmp, i), path, &st, NULL) < 0) {
 			*(--cp) = '\0';
 			removetmp(path, NULL, "");
 			return(-1);

@@ -938,11 +938,7 @@ char *endmes;
 	ret = old = filepos;
 
 	if (mark <= 0) {
-#if	MSDOS || defined (_NODOSDRIVE)
-		i = (*func)(filelist[filepos].name);
-#else
-		i = (*func)(nodospath(path, filelist[filepos].name));
-#endif
+		i = (*func)(fnodospath(path, filepos));
 		if (i < 0) warning(-1, filelist[filepos].name);
 		else if (!i) ret++;
 		return(ret);
@@ -959,11 +955,7 @@ char *endmes;
 		movepos(old, 0);
 		locate(win_x, win_y);
 		tflush();
-#if	MSDOS || defined (_NODOSDRIVE)
-		i = (*func)(filelist[filepos].name);
-#else
-		i = (*func)(nodospath(path, filelist[filepos].name));
-#endif
+		i = (*func)(fnodospath(path, filepos));
 		if (i < 0) warning(-1, filelist[filepos].name);
 		else if (!i && ret == filepos) ret++;
 
@@ -1211,13 +1203,11 @@ int tr;
 	else if (islowerdir(destpath, filelist[filepos].name))
 		warning(EINVAL, filelist[filepos].name);
 	else {
-#if	MSDOS || defined (_NODOSDRIVE)
-		i = safemove(filelist[filepos].name);
-#else
+#if	!MSDOS && !defined (_NODOSDRIVE)
 		char path[MAXPATHLEN];
-
-		i = safemove(nodospath(path, filelist[filepos].name));
 #endif
+
+		i = safemove(fnodospath(path, filepos));
 		if (!i) filepos++;
 		else if (i < 0) {
 #ifdef	_NOEXTRACOPY

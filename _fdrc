@@ -206,7 +206,7 @@
 
 # directories on which language code type in filename is UTF-8
 #	Default: none
-#UFT8PATH=""
+#UTF8PATH=""
 
 # directories on which language code type in filename is not converted
 #	Default: none
@@ -234,8 +234,8 @@
 #launch ".taZ"	"zcat %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
 #launch ".taz"	"gzip -cd %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
-#launch ".zip"	"unzip -lqq"		"%s %m-%d-%y %t %f"
-#launch ".zoo"	"zoo lq"		"%s %x %x %d %m %x %t+ %f"
+#launch ".zip"	"unzip -lqq"		" %s %m-%d-%y %t %f"
+#launch ".zoo"	"zoo lq"		" %s %x %x %d %m %y %t %f"
 #launch ".Z"	"zcat %C|$PAGER"
 #launch ".gz"	"gzip -cd %C|$PAGER"
 #launch ".bz2"	"bzip2 -cd %C|$PAGER"
@@ -319,32 +319,32 @@
 #					"%a %u/%g %s %m %d %t %y %f"
 #launch ".taz"	"gzip -cd %S|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
 #launch ".tgz"	"gzip -cd %S|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
-#launch ".zip"	"unzip -lqq %S"		"%s %y-%m-%d %t %f"
-#launch ".zip"	"pkunzip -vb %S"	"%s %x %x %x %y-%m-%d %t %f" 14 2
+#launch ".zip"	"unzip -lqq %S"		" %s %y-%m-%d %t %f"
+#launch ".zip"	"pkunzip -vb %S"	" %s %x %x %x %y-%m-%d %t %f" 14 2
 
 # archiver definition
 #(Default)
 #arch ".lzh"	"lha aq %C %TA"			"lha xq %C %TA"
 #arch ".tar"	"tar cf %C %T"			"tar xf %C %TA"
-#arch ".tar.Z"	"tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
-#arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %C|tar xf - %TA"
+#arch ".tar.Z"	"tar cf - %T|compress -c > %C"	"zcat %C|tar xf - %TA"
+#arch ".tar.gz"	"tar cf - %T|gzip -c > %C"	"gzip -cd %C|tar xf - %TA"
 #arch ".tar.bz2"\
-#		"tar cf %X %T; bzip2 %X"	"bzip2 -cd %C|tar xf - %TA"
+#		"tar cf - %T|bzip2 -c > %C"	"bzip2 -cd %C|tar xf - %TA"
 #(Examples)
-#arch ".taZ"	"maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
-#arch ".taz"	"maketaz gzip gz taz"		"gzip -cd %C|tar xf - %TA"
-#arch ".tgz"	"maketaz gzip gz tgz"		"gzip -cd %C|tar xf - %TA"
+#arch ".taZ"	"tar cf - %T|compress -c > %C"	"zcat %C|tar xf - %TA"
+#arch ".taz"	"tar cf - %T|gzip -c > %C"	"gzip -cd %C|tar xf - %TA"
+#arch ".tgz"	"tar cf - %T|gzip -c > %C"	"gzip -cd %C|tar xf - %TA"
 #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
 #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
 
 # examples for MS-DOS
 #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
-#arch ".tar.Z"	"tar cf %XS %T; compress %XS"	"gzip -cd %S|tar xf - %TA"
-#arch ".tar.gz"	"tar cf %XS %T; gzip %XS"	"gzip -cd %S|tar xf - %TA"
+#arch ".tar.Z"	"tar cf - %T|compress -c > %C"	"gzip -cd %S|tar xf - %TA"
+#arch ".tar.gz"	"tar cf - %T|gzip -c > %C"	"gzip -cd %S|tar xf - %TA"
 #arch ".tar.bz2"\
-#		"tar cf %XS %T; bzip2 %XS"	"bzip2 -cd %S|tar xf - %TA"
-#arch ".taz"	"maketaz gzip gz taz"		"gzip -cd %S|tar xf - %TA"
-#arch ".tgz"	"maketaz gzip gz tgz"		"gzip -cd %S|tar xf - %TA"
+#		"tar cf - %T|bzip2 -c > %C"	"bzip2 -cd %S|tar xf - %TA"
+#arch ".taz"	"tar cf - %T|compress -c > %C"	"gzip -cd %S|tar xf - %TA"
+#arch ".tgz"	"tar cf - %T|gzip -c > %C"	"gzip -cd %S|tar xf - %TA"
 #arch ".zip"	"pkzip %S %TA"			"pkunzip %S %TA"
 
 # key bind definition

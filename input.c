@@ -852,52 +852,78 @@ int ins, quote;
 	dupl = malloc2(ins * 2 + 1);
 	insertchar(s, cx, len, plen, max, linemax, vlen(strins, ins));
 	insshift(s, cx, len, ins);
+	for (i = 0; i < ins; i++) s[cx + i] = ' ';
+	len += ins;
 	for (i = j = 0; i < ins; i++, j++) {
 		if (isctl(strins[i])) {
-			if (len + ins + j - i >= max)
+			if (len + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
 			else {
+				insertchar(s, cx, len, plen, max, linemax, 1);
+				insshift(s, cx + j, len, 1);
 				dupl[j] = '^';
 				s[cx + j] = QUOTE;
-				dupl[++j] = (strins[i] + '@') & 0x7f;
+				j++;
+				dupl[j] = (strins[i] + '@') & 0x7f;
 				s[cx + j] = strins[i];
 			}
 		}
 #ifdef	CODEEUC
 		else if (isekana(strins, i)) {
-			if (len + ins + j - i >= max)
+			if (len + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
 			else {
 				dupl[j] = s[cx + j] = strins[i];
-				dupl[j + 1] = s[cx + j + 1] = strins[++i];
 				j++;
+				dupl[j] = s[cx + j] = strins[++i];
 			}
 		}
 #endif
 		else if (iskanji1(strins, i)) {
-			if (len + ins + j - i >= max)
+			if (len + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
 			else {
 				dupl[j] = s[cx + j] = strins[i];
-				dupl[j + 1] = s[cx + j + 1] = strins[++i];
 				j++;
+				dupl[j] = s[cx + j] = strins[++i];
 			}
 		}
 #if	MSDOS && defined (_NOORIGSHELL)
-		else if (strchr(DQ_METACHAR, strins[i])) {
+		else if (strchr(DQ_METACHAR, strins[i])
 #else
-		else if (quote == '"' && strchr(DQ_METACHAR, strins[i])) {
-#endif
-			if (len + ins + j - i >= max)
+		else if ((quote == '\'' && strins[i] == '\'')
+		|| (quote == '"' && strins[i] == '!')) {
+			f = 3;
+			if (!strins[i + 1]) f--;
+			if (len + j - i + f > max)
 				dupl[j] = s[cx + j] = '?';
 			else {
+				insertchar(s, cx, len, plen, max, linemax, f);
+				insshift(s, cx + j, len, f);
+				dupl[j] = s[cx + j] = quote;
+				j++;
+				dupl[j] = s[cx + j] = PMETA;
+				j++;
+				dupl[j] = s[cx + j] = strins[i];
+				j++;
+				dupl[j] = s[cx + j] = quote;
+			}
+		}
+		else if ((quote == '"' && strchr(DQ_METACHAR, strins[i]))
+#endif
+		|| (!quote && strchr(METACHAR, strins[i]))) {
+			if (len + j - i >= max)
+				dupl[j] = s[cx + j] = '?';
+			else {
+				insertchar(s, cx, len, plen, max, linemax, 1);
+				insshift(s, cx + j, len, 1);
 #if	MSDOS && defined (_NOORIGSHELL)
-				dupl[j] = s[cx + j] =
+				dupl[j] = s[cx + j] = strins[i];
 #else
 				dupl[j] = s[cx + j] = PMETA;
 #endif
-				dupl[j + 1] = s[cx + j + 1] = strins[i];
 				j++;
+				dupl[j] = s[cx + j] = strins[i];
 			}
 		}
 		else dupl[j] = s[cx + j] = strins[i];
@@ -1052,7 +1078,7 @@ char *s;
 int cx, len, plen, max, linemax, comline, cont;
 {
 # if	!MSDOS || !defined (_NOORIGSHELL)
-	int bq;
+	int bq, hadmeta;
 # endif
 	char *cp1, *cp2, **argv;
 	int i, l, ins, top, fix, argc, quote, quoted, hasmeta;
@@ -1064,7 +1090,7 @@ int cx, len, plen, max, linemax, comline, cont;
 	}
 
 # if	!MSDOS || !defined (_NOORIGSHELL)
-	bq = 0;
+	bq = hadmeta = 0;
 # endif
 	quote = '\0';
 	quoted = 0;
@@ -1077,6 +1103,13 @@ int cx, len, plen, max, linemax, comline, cont;
 			quote = '\0';
 		}
 		else if (iskanji1(s, i)) i++;
+# if	!MSDOS || !defined (_NOORIGSHELL)
+		else if (quote == '\'');
+		else if (isnmeta(s, i, quote, cx)) {
+			i++;
+			hadmeta++;
+		}
+# endif
 		else if (quote);
 		else if (s[i] == '"') quote = s[i];
 # if	!MSDOS || !defined (_NOORIGSHELL)
@@ -1182,8 +1215,23 @@ int cx, len, plen, max, linemax, comline, cont;
 	}
 
 	if (hasmeta) {
+		char *tmp, *home;
+		int hlen;
+
+		if (quote || quoted > top || s[top] != '~') {
+			home = NULL;
+			i = hlen = 0;
+		}
+		else {
+			tmp = &(s[top]);
+			s[len] = '\0';
+			home = malloc2(len - top + 1);
+			hlen = evalhome(&home, 0, &tmp);
+			i = ++tmp - &(s[top]);
+		}
+
 		if (quote);
-		else if (quoted) {
+		else if (quoted > top) {
 			quote = s[quoted];
 			setcursor(vlen(s, quoted), plen, max, linemax);
 			deletechar(s, quoted, len, plen, max, linemax, 1);
@@ -1191,7 +1239,36 @@ int cx, len, plen, max, linemax, comline, cont;
 			l--;
 			setcursor(vlen(s, --cx), plen, max, linemax);
 		}
-		else if (len < max) {
+		else if (len + hlen - i < max) {
+			if (home) {
+				setcursor(vlen(s, top), plen, max, linemax);
+				deletechar(s, top, len, plen, max, linemax, i);
+				delshift(s, top, len, i);
+				len -= i;
+				l -= i;
+				cx -= i;
+				i = insertstr(s, top, len, plen, max, linemax,
+					home, hlen, '\0');
+				len += i;
+				l += i;
+				cx += i;
+				free(home);
+			}
+# if	!MSDOS || !defined (_NOORIGSHELL)
+			if (hadmeta) for (i = top; i < cx; i++) {
+				if (iskanji1(s, i)) {
+					i++;
+					continue;
+				}
+				if (!isnmeta(s, i, '\0', cx)) continue;
+				if (strchr(DQ_METACHAR, s[i + 1])) continue;
+				setcursor(vlen(s, i), plen, max, linemax);
+				deletechar(s, i, len, plen, max, linemax, 1);
+				delshift(s, i, len--, 1);
+				l--;
+				cx--;
+			}
+# endif	/* !MSDOS || !_NOORIGSHELL */
 			setcursor(vlen(s, top), plen, max, linemax);
 			insertchar(s, top, len, plen, max, linemax, 1);
 			insshift(s, top, len++, 1);
@@ -1204,15 +1281,12 @@ int cx, len, plen, max, linemax, comline, cont;
 	}
 
 	cp2 = cp1 + (int)strlen(cp1) - ins;
-	if (fix == _SC_) {
-		ins--;
-		if (!hasmeta) quote = '\0';
-	}
+	if (fix == _SC_) ins--;
 	i = insertstr(s, cx, len, plen, max, linemax, cp2, ins, quote);
 	l += i;
 	if (fix && (len += i) < max) {
 		cx += i;
-		if (quote && len + 1 < max) {
+		if (quote && len + 1 < max && (fix != _SC_ || hasmeta)) {
 			insertchar(s, cx, len, plen, max, linemax, 1);
 			insshift(s, cx, len++, 1);
 			l++;
@@ -1392,8 +1466,8 @@ int *cxp, cx2, *lenp, plen, max, linemax;
 		s[(*cxp)++] = quote = '"';
 		putcursor(quote, 1);
 	}
-	i = insertstr(s, *cxp, *lenp, plen, max, linemax, curfilename,
-		strlen(curfilename), quote);
+	i = insertstr(s, *cxp, *lenp, plen, max, linemax,
+		curfilename, strlen(curfilename), quote);
 	if (!i) {
 		putterm(t_bell);
 		return(cx2);

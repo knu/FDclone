@@ -155,12 +155,17 @@ launchtable launchlist[MAXLAUNCHTABLE] = {
 	{"*.tar.Z",	"gzip -cd %S | tar tvf -",	PM_TAR, 0},
 	{"*.tar.gz",	"gzip -cd %S | tar tvf -",	PM_TAR, 0},
 	{"*.tar.bz2",	"bzip2 -cd %S | tar tvf -",	PM_TAR, 0},
+	{"*.taz",	"gzip -cd %S | tar tvf -",	PM_TAR, 0},
+	{"*.tgz",	"gzip -cd %S | tar tvf -",	PM_TAR, 0},
 #else
 	{"*.lzh",	"lha l",		PM_LHA, 0},
 	{"*.tar",	"tar tvf", 		PM_TAR, 0},
 	{"*.tar.Z",	"zcat %C | tar tvf -",	PM_TAR, 0},
 	{"*.tar.gz",	"gzip -cd %C | tar tvf -",	PM_TAR, 0},
 	{"*.tar.bz2",	"bzip2 -cd %C | tar tvf -",	PM_TAR, 0},
+	{"*.taZ",	"zcat %C | tar tvf -",	PM_TAR, 0},
+	{"*.taz",	"gzip -cd %C | tar tvf -",	PM_TAR, 0},
+	{"*.tgz",	"gzip -cd %C | tar tvf -",	PM_TAR, 0},
 #endif
 	{NULL,		NULL,			PM_NULL, 0}
 };
@@ -168,30 +173,31 @@ archivetable archivelist[MAXARCHIVETABLE] = {
 #if	MSDOS
 	{"*.lzh",	"lha a %S %TA",		"lha x %S %TA", 0},
 	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA", 0},
-# if	FD >= 2
-	{"*.tar.Z",	"tar cf %XS %T; compress %XS",
+	{"*.tar.Z",	"tar cf - %T | compress -c > %C",
 					"gzip -cd %S | tar xf - %TA", 0},
-	{"*.tar.gz",	"tar cf %XS %T; gzip %XS",
+	{"*.tar.gz",	"tar cf - %T | gzip -c > %C",
 					"gzip -cd %S | tar xf - %TA", 0},
-	{"*.tar.bz2",	"tar cf %XS %T; bzip2 %XS",
+	{"*.tar.bz2",	"tar cf - %T | bzip2 -c > %C",
 					"bzip2 -cd %S | tar xf - %TA", 0},
-# else
-	{"*.tar.Z",	"tar cfZ %C %TA",
+	{"*.taz",	"tar cf - %T | compress -c > %C",
 					"gzip -cd %S | tar xf - %TA", 0},
-	{"*.tar.gz",	"tar cfz %C %TA",
+	{"*.tgz",	"tar cf - %T | gzip -c > %C",
 					"gzip -cd %S | tar xf - %TA", 0},
-	{"*.tar.bz2",	"tar cfI %C %TA",
-					"bzip2 -cd %S | tar xf - %TA", 0},
-# endif
 #else
 	{"*.lzh",	"lha aq %C %TA",	"lha xq %C %TA", 0},
 	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA", 0},
-	{"*.tar.Z",	"tar cf %X %T; compress %X",
+	{"*.tar.Z",	"tar cf - %T | compress -c > %C",
 					"zcat %C | tar xf - %TA", 0},
-	{"*.tar.gz",	"tar cf %X %T; gzip %X",
+	{"*.tar.gz",	"tar cf - %T | gzip -c > %C",
 					"gzip -cd %C | tar xf - %TA", 0},
-	{"*.tar.bz2",	"tar cf %X %T; bzip2 %X",
+	{"*.tar.bz2",	"tar cf - %T | bzip2 -c > %C",
 					"bzip2 -cd %C | tar xf - %TA", 0},
+	{"*.taZ",	"tar cf - %T | compress -c > %C",
+					"zcat %C | tar xf - %TA", 0},
+	{"*.taz",	"tar cf - %T | gzip -c > %C",
+					"gzip -cd %C | tar xf - %TA", 0},
+	{"*.tgz",	"tar cf - %T | gzip -c > %C",
+					"gzip -cd %C | tar xf - %TA", 0},
 #endif
 	{NULL,		NULL,			NULL, 0}
 };
@@ -204,8 +210,8 @@ static char *autoformat[] = {
 	" %f %s %x %x %y-%m-%d %t",		/* LHa (-l) */
 	"%a %u/%g %s %m %d %t %y %f",		/* tar (traditional) */
 	"%a %u/%g %s %y-%m-%d %t %f",		/* tar (GNU 1.12<=) */
-	"%s %y-%m-%d %t %f",			/* zip */
-	"%s %x %x %x %y-%m-%d %t %f",		/* pkunzip */
+	" %s %y-%m-%d %t %f",			/* zip */
+	" %s %x %x %x %y-%m-%d %t %f",		/* pkunzip */
 # else
 	"%9a %u/%g %s %m %d %t %y %f",		/* tar (traditional) */
 	"%a %u/%g %s %m %d %t %y %f",		/* tar (SVR4) */
@@ -214,9 +220,9 @@ static char *autoformat[] = {
 	"%9a %u/%g %s %x %m %d %{yt} %f",	/* LHa */
 	"%a %u/%g %s %x %m %d %{yt} %f",	/* LHa (1.14<=) */
 	"%a %x %u %g %s %m %d %{yt} %f",	/* pax */
-	"%s %m-%d-%y %t %f",			/* zip */
+	" %s %m-%d-%y %t %f",			/* zip */
 # endif
-	"%s %x %x %d %m %x %t+ %f",		/* zoo */
+	" %s %x %x %d %m %y %t %f",		/* zoo */
 };
 #define	AUTOFORMATSIZ	((int)(sizeof(autoformat) / sizeof(char *)))
 #endif
@@ -1188,7 +1194,7 @@ char *path;
 		if (*path == _SC_) len = 1;
 		else if ((cp = strdelim(path, 0))) len = cp - path;
 		else len = strlen(path);
-		if (strncmp(path, "..", len)) {
+		if (len != 2 || strncmp(path, "..", len)) {
 			if (!searcharcdir(path, len)) {
 				strcpy(archivedir, duparcdir);
 				return(NULL);
@@ -1472,8 +1478,16 @@ char *arc;
 	waitmes();
 	duparchivefile = archivefile;
 	archivefile = NULL;
+	locate(0, LMESLINE);
+	tflush();
 	ret = execusercomm(archivelist[i].p_comm, path, -1, 1, 0);
-	if (ret > 0 && ret <= 127) warning(0, HITKY_K);
+	if (ret > 0) {
+		if (ret < 127) {
+			hideclock = 1;
+			warning(0, HITKY_K);
+		}
+		rewritefile(1);
+	}
 	archivefile = duparchivefile;
 	strcpy(fullpath, dupfullpath);
 	return((ret) ? 0 : 1);
@@ -1572,8 +1586,16 @@ int tr, ignorelist;
 
 	if (!genfullpath(path, arc)) return(0);
 	waitmes();
+	locate(0, LMESLINE);
+	tflush();
 	ret = execusercomm(archivelist[i].u_comm, path, -1, 1, ignorelist);
-	if (ret > 0 && ret <= 127) warning(0, HITKY_K);
+	if (ret > 0) {
+		if (ret < 127) {
+			hideclock = 1;
+			warning(0, HITKY_K);
+		}
+		rewritefile(1);
+	}
 	if (tmpdir) removetmp(tmpdir, NULL, arc);
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	return((ret) ? 0 : 1);
@@ -1616,30 +1638,20 @@ int single;
 #if	!MSDOS && !defined (_NODOSDRIVE)
 		char tmp[MAXPATHLEN];
 #endif
+
 		if (*subdir && _chdir2(subdir) < 0) {
 			warning(-1, subdir);
 			ret = 0;
 		}
 		else if (single || mark <= 0) {
-#if	MSDOS || defined (_NODOSDRIVE)
-			if (Xaccess(filelist[filepos].name, F_OK) < 0)
-#else
-			if (Xaccess(nodospath(tmp, filelist[filepos].name),
-			F_OK) < 0)
-#endif
+			if (Xaccess(fnodospath(tmp, filepos), F_OK) < 0)
 				warning(-1, filelist[filepos].name);
 			else return(strdup2(path));
 		}
 		else {
 			for (i = 0; i < maxfile; i++) {
 				if (!ismark(&(filelist[i]))) continue;
-#if	MSDOS || defined (_NODOSDRIVE)
-				if (Xaccess(filelist[i].name, F_OK) < 0)
-#else
-				if (Xaccess(nodospath(tmp, filelist[i].name),
-				F_OK) < 0)
-#endif
-				{
+				if (Xaccess(fnodospath(tmp, i), F_OK) < 0) {
 					warning(-1, filelist[i].name);
 					break;
 				}

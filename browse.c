@@ -451,7 +451,7 @@ static VOID NEAR infobar(VOID_A)
 	struct tm *tm;
 	int len, width;
 #if	!MSDOS
-	int i;
+	int i, l;
 #endif
 
 	if (!filelist || maxfile <= 0) return;
@@ -526,28 +526,27 @@ static VOID NEAR infobar(VOID_A)
 	i = strncpy3(buf + len, filelist[filepos].name, &width, fnameofs);
 	if (islink(&(filelist[filepos]))) {
 		width += len;
-		len += i + 1;
-		if (strlen3(filelist[filepos].name) > fnameofs) {
-			if (len < width) buf[len++] = '-';
-			if (len < width) buf[len++] = '>';
+		len += i;
+		l = fnameofs - strlen3(filelist[filepos].name);
+		if (--l < 0) len++;
+		if (--l < 0 && len < width) buf[len++] = '-';
+		if (--l < 0 && len < width) buf[len++] = '>';
+		if (--l < 0) {
 			len++;
+			l = 0;
 		}
 		if ((width -= len) > 0) {
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 			char path[MAXPATHLEN];
-#endif
+# endif
 			char *tmp;
 
-			tmp = malloc2(width * 2 + 1);
-#ifdef	_NODOSDRIVE
-			i = Xreadlink(filelist[filepos].name, tmp, width * 2);
-#else
-			i = Xreadlink(nodospath(path, filelist[filepos].name),
-				tmp, width * 2);
-#endif
+			tmp = malloc2(width * 2 + l + 1);
+			i = Xreadlink(fnodospath(path, filepos),
+				tmp, width * 2 + l);
 			if (i >= 0) {
 				tmp[i] = '\0';
-				strncpy3(buf + len, tmp, &width, 0);
+				strncpy3(buf + len, tmp + l, &width, 0);
 			}
 			free(tmp);
 		}
@@ -1464,12 +1463,7 @@ char *cur;
 
 			if (findpattern) free(findpattern);
 			findpattern = NULL;
-#if	MSDOS || defined (_NODOSDRIVE)
-			if (chdir2(file) < 0)
-#else
-			if (chdir2(nodospath(path, file)) < 0)
-#endif
-			{
+			if (chdir2(nodospath(path, file)) < 0) {
 				warning(-1, file);
 				strcpy(prev, file);
 				def = prev;
