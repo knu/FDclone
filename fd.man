@@ -682,7 +682,7 @@ tar ファイルとその圧縮ファイル及び lha 圧縮ファイルに対し、
 共に省略すると、拡張子
 .I ext
 に対するアーカイバ登録を削除します。
-.IP "\fB!\fP\fIc\fR\fB:\fP ""\fIdevive\fR"" \fIh, s, c\fR"
+.IP "\fB!\fP\fIc\fR\fB:\fP ""\fIdevice\fR"" \fIh, s, c\fR"
 MS-DOS フロッピーを扱うドライブ名
 .I c
 に

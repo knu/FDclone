@@ -111,19 +111,21 @@ int max;
 
 	locate(0, LSTATUS);
 	putterm(l_clear);
-	putch(' ');
 
+	locate(CPAGE, LSTATUS);
 	putterm(t_standout);
 	cputs("Page:");
 	putterm(end_standout);
 	cprintf("%2d/%2d ",
 		filepos / FILEPERPAGE + 1, (max - 1) / FILEPERPAGE + 1);
 
+	locate(CMARK, LSTATUS);
 	putterm(t_standout);
 	cputs("Mark:");
 	putterm(end_standout);
 	cprintf("%4d/%4d ", mark, max);
 
+	locate(CSORT, LSTATUS);
 	putterm(t_standout);
 	cputs("Sort:");
 	putterm(end_standout);

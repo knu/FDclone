@@ -49,7 +49,10 @@ time_t *atimep, *mtimep;
 	strcpy(dest, destpath);
 	strcat(dest, "/");
 	strcat(dest, file);
-	if (Xlstat(file, &status1) < 0) error(file);
+	if (Xlstat(file, &status1) < 0) {
+		warning(-1, file);
+		return(-1);
+	}
 	if (atimep) *atimep = status1.st_atime;
 	if (mtimep) *mtimep = status1.st_mtime;
 	if (Xlstat(dest, &status2) < 0) {
@@ -92,7 +95,10 @@ time_t *atimep, *mtimep;
 				free(tmp);
 			} while (Xlstat(dest, &status2) >= 0
 			&& (putterm(t_bell) || 1));
-			if (errno != ENOENT) error(dest);
+			if (errno != ENOENT) {
+				warning(-1, dest);
+				return(-1);
+			}
 			break;
 		case 3:
 			break;
@@ -125,13 +131,22 @@ int mode;
 	for (;;) {
 		while ((i = Xread(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
 		if (i < BUFSIZ) break;
-		if (Xwrite(fd2, buf, BUFSIZ) < 0 && errno != EINTR) error(dest);
+		if (Xwrite(fd2, buf, BUFSIZ) < 0 && errno != EINTR) {
+			i = -1;
+			break;
+		}
 	}
-	if (i < 0) error(src);
-	if (i > 0 && Xwrite(fd2, buf, i) < 0 && errno != EINTR) error(dest);
+	if (i > 0 && Xwrite(fd2, buf, i) < 0 && errno != EINTR) i = -1;
 
 	Xclose(fd2);
 	Xclose(fd1);
+
+	if (i < 0) {
+		i = errno;
+		Xunlink(dest);
+		errno = i;
+		return(-1);
+	}
 	return(0);
 }
 
@@ -447,7 +462,7 @@ char *path;
 	struct stat status;
 	u_short mode;
 
-	if (Xlstat(path, &status) < 0) error(path);
+	if (Xlstat(path, &status) < 0) return(-1);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(1);
 
 	mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);

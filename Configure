@@ -86,16 +86,17 @@ havelib() {
 cat ./config.h.in
 
 for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
-USELEAPCNT NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
-NOUNISTDH NOSTDLIBH USESELECTH USESYSDIRH USETIMEH USETERMIO \
-USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
+NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
+NOUNISTDH NOSTDLIBH NOTZFILEH USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
+USETERMIO USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
-USERAND48 USESETENV NOSELECT NOVSPRINTF USEUTIME USEGETWD SIGARGINT
+USERAND48 USESETENV NOSELECT NOVSPRINTF \
+USEUTIME USEGETWD USETIMELOCAL USEMKTIME SIGARGINT
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -110,6 +111,10 @@ echo
 
 if [ "$LANG" = "ja_JP.EUC" ]; then
 	echo "#define	CODEEUC"
+elif [ "$LANG" = "ja_JP.SJIS" ]; then
+	echo "#ifdef	CODEEUC"
+	echo "#undef	CODEEUC"
+	echo "#endif"
 fi
 
 echo "Checking for tar(1)..." 1>&2
@@ -168,28 +173,6 @@ if [ -n "$lib" ]; then
 	LIBS="$LIBS $lib"
 fi
 
-
-echo "Checking for tzfile..." 1>&2
-(setheader "stdio tzfile")
-cat >> $TMPSRC << EOF
-int main() {
-	struct tzhead t;
-	FILE *fp;
-	if (chdir(TZDIR) < 0 || !(fp = fopen(TZDEFAULT, "r"))
-	|| fread(&t, sizeof(t), 1, fp) != 1) return(1);
-	fclose(fp);
-	return(0);
-}
-EOF
-if eval $docc && ./$TMPEXE; then
-	if isexist "struct tzhead t; t.tzh_leapcnt" tzfile; then
-		echo "#define	USELEAPCNT"
-	fi
-else
-	echo "#define	NOTZFILEH"
-fi
-rm -f $TMPEXE
-
 if noexist "void *p"; then
 	echo "#define	NOVOID"
 fi
@@ -212,6 +195,12 @@ fi
 if noheader stdlib; then
 	echo "#define	NOSTDLIBH"
 fi
+if noheader tzfile; then
+	echo "#define	NOTZFILEH"
+elif isexist "struct tzhead t; t.tzh_leapcnt" tzfile; then
+	echo "#define	USELEAPCNT"
+fi
+
 if noinheader 'struct.*[^a-zA-Z_]fd_set' sys/types \
 && inheader 'struct.*[^a-zA-Z_]fd_set' sys/select; then
 	echo "#define	USESELECTH"
@@ -244,7 +233,8 @@ if (inheader 'extern.*[^a-zA-Z_]timezone' sys/time \
 || (inheader 'extern.*[^a-zA-Z_]timezone' time \
 && isexist "extern time_t timezone; timezone" "sys/types time"); then
 	echo "#define	HAVETIMEZONE"
-elif (noexist "struct tm t; t.tm_gmtoff" "sys/types sys/time" \
+fi
+if (noexist "struct tm t; t.tm_gmtoff" "sys/types sys/time" \
 && noexist "struct tm t; t.tm_gmtoff" "sys/types time"); then
 	echo "#define	NOTMGMTOFF"
 fi

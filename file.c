@@ -50,8 +50,7 @@ char *file;
 {
 	struct stat status, lstatus;
 
-	if (Xlstat(file, &lstatus) < 0) return(-1);
-	if (stat2(file, &status) < 0) error(file);
+	if (Xlstat(file, &lstatus) < 0 || stat2(file, &status) < 0) return(-1);
 	list[i].st_mode = lstatus.st_mode;
 	list[i].flags = 0;
 	if ((status.st_mode & S_IFMT) == S_IFDIR) list[i].flags |= F_ISDIR;
@@ -221,13 +220,13 @@ char *mes;
 		return(NULL);
 	}
 	if (stat2(dir, &status) < 0) {
-		if (errno != ENOENT || Xmkdir(dir, 0777) < 0) {
+		if (errno != ENOENT || Xmkdir(dir, 0777) < 0
+		|| stat2(dir, &status) < 0) {
 			warning(-1, dir);
 			free(dir);
 			if (distdrive >= 0) shutdrv(distdrive);
 			return(NULL);
 		}
-		if (stat2(dir, &status) < 0) error(dir);
 	}
 	if ((status.st_mode & S_IFMT) != S_IFDIR) {
 		warning(ENOTDIR, dir);

@@ -15,6 +15,7 @@
 #  endif
 # define	REGEXPLIB	"-lgen"
 # define	NODNAMLEN
+# define	NOTMGMTOFF
 # define	USESTATVFSH
 # define	USEMNTTABH
 # else
@@ -68,8 +69,8 @@
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
-#define	NOTZFILEH
 #define	NODNAMLEN
+#define	NOTMGMTOFF
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USERE_COMP
@@ -82,6 +83,7 @@
 #define	EXTENDCCOPT
 #define	TERMCAPLIB		"-lcurses"
 #define	NOTZFILEH
+#define	NOTMGMTOFF
 #define	USEREGCOMP
 #define	USEUTIME
 #define	USEMKTIME
@@ -185,9 +187,11 @@
 #define	SVR4
 #define	OSTYPE			"AIX"
 #define	TERMCAPLIB		"-ltermcap"
+#define	NOTZFILEH
 #define	USESELECTH
 #define	USESYSDIRH
 #define	USETIMEH
+#define	NOTMGMTOFF
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USEMNTCTL
@@ -205,6 +209,7 @@
 #define	USEGETMNT
 #define	USERE_COMP
 #define	USESETENV
+#define	USEMKTIME
 #endif
 
 #if defined (_AUX_SOURCE)
@@ -214,6 +219,7 @@
 #define	TERMCAPLIB		"-ltermcap"
 #define	UNKNOWNFS		/* Because of the buggy (?) 'rename(2)' */
 #define	PWNEEDERROR
+#define	USELEAPCNT
 #define	USETIMEH
 #endif
 
@@ -277,11 +283,16 @@
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
 #define	TERMCAPLIB		"-ltermcap"
+#define	DECLERRLIST
+#define	NOTZFILEH
+#define	NOTMGMTOFF
 # if defined (__alpha)
 # define	USERE_COMP
 # else
 # define	USEREGCOMP
 # endif
+#define	USESETENV
+#define	USEMKTIME
 #endif
 
 #if defined (__FreeBSD__) && defined (__powerpc__)
@@ -305,11 +316,13 @@
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
+#define	NOTZFILEH
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEVFCNAME
 #define	USERE_COMP
 #define	USESETENV
+#define	USEMKTIME
 #endif
 
 #if defined (__NetBSD__)
@@ -319,6 +332,7 @@
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
+#define	USELEAPCNT
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEFFSTYPE
@@ -341,6 +355,7 @@
 #define	USEMNTINFO
 #define	USERE_COMP
 #define	USESETENV
+#define	USEMKTIME
 #include <sys/param.h>
 # if !defined (BSD) || (BSD < 199306)
 # define	USEFFSIZE

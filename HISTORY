@@ -1,3 +1,6 @@
+Ver. 1.01f	各種エラー処理の強化。
+ (04/09/96)	timezone 取得法の差異を Configure, machine.h に反映。
+
 Ver. 1.01e	timezone 取得法の機種依存性に対する措置。
  (03/28/96)
 

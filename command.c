@@ -378,7 +378,7 @@ int *maxp;
 	list[filepos].flags ^= F_ISMRK;
 	if (ismark(&list[filepos])) mark++;
 	else mark--;
-	locate(17, LSTATUS);
+	locate(CMARK + 5, LSTATUS);
 	cprintf("%4d", mark);
 	return(2);
 }
@@ -423,7 +423,7 @@ int *maxp;
 			mark++;
 		}
 	}
-	locate(17, LSTATUS);
+	locate(CMARK + 5, LSTATUS);
 	cprintf("%4d", mark);
 	return(2);
 }
@@ -438,7 +438,7 @@ int *maxp;
 	mark = 0;
 	for (i = 0; i < *maxp; i++) if (!isdir(&list[i]))
 		if (list[i].flags ^= F_ISMRK) mark++;
-	locate(17, LSTATUS);
+	locate(CMARK + 5, LSTATUS);
 	cprintf("%4d", mark);
 	return(2);
 }
@@ -469,7 +469,7 @@ int *maxp;
 			mark++;
 		}
 	regexp_free(re);
-	locate(17, LSTATUS);
+	locate(CMARK + 5, LSTATUS);
 	cprintf("%4d", mark);
 	return(3);
 }

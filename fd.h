@@ -85,6 +85,9 @@
 #define	LCMDLINE	(n_line - 2)
 #define	WCMDLINE	2
 #define	LMESLINE	(n_line - 1)
+#define	CPAGE		1
+#define	CMARK		12
+#define	CSORT		27
 #define	CFIND		47
 
 #define	WSIZE		9

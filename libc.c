@@ -40,6 +40,17 @@ extern char *origpath;
 extern char *findpattern;
 
 #define	BUFUNIT		32
+#ifndef	CHAR_BIT
+# ifdef	NBBY
+# define	CHAR_BIT	NBBY
+# else
+# define	CHAR_BIT	0x8
+# endif
+#endif
+#define	char2long(cp)	(  ((u_char *)cp)[3] \
+			| (((u_char *)cp)[2] << (CHAR_BIT * 1)) \
+			| (((u_char *)cp)[1] << (CHAR_BIT * 2)) \
+			| (((u_char *)cp)[0] << (CHAR_BIT * 3)) )
 
 static char *_realpath2();
 static assoclist *_getenv2();
@@ -66,7 +77,10 @@ int mode;
 		}
 		return(0);
 	}
-	if (lstat(path, &status) < 0) error(path);
+	if (lstat(path, &status) < 0) {
+		warning(-1, path);
+		return(-1);
+	}
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
 
 	if ((name = strrchr(path, '/'))) {
@@ -79,10 +93,16 @@ int mode;
 		name = path;
 	}
 
-	if (lstat(dir, &status) < 0) error(dir);
+	if (lstat(dir, &status) < 0) {
+		warning(-1, dir);
+		return(-1);
+	}
 	if (access(path, mode) < 0) {
 		if (errno == ENOENT) return(0);
-		if (errno != EACCES) error(path);
+		if (errno != EACCES) {
+			warning(-1, path);
+			return(-1);
+		}
 		if (status.st_uid == getuid()) {
 			if (copypolicy > 0) return(copypolicy - 2);
 			locate(0, LCMDLINE);
@@ -697,11 +717,13 @@ int time;
 	struct timeval t_val;
 	struct timezone t_zone;
 #endif
-	struct tzhead buf;
+#ifndef	NOTZFILEH
+	struct tzhead head;
+#endif
 	struct tm tmbuf;
 	FILE *fp;
 	long tz, tmp, leap, nleap, ntime, ntype, nchar;
-	char *cp, path[MAXPATHLEN + 1];
+	char *cp, buf[MAXPATHLEN + 1];
 	u_char c;
 	int i;
 
@@ -717,38 +739,38 @@ int time;
 #ifndef	NOTZFILEH
 	cp = (char *)getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
-	if (cp[0] == '/') strcpy(path, cp);
+	if (cp[0] == '/') strcpy(buf, cp);
 	else {
-		strcpy(path, TZDIR);
-		strcat(path, "/");
-		strcat(path, cp);
+		strcpy(buf, TZDIR);
+		strcat(buf, "/");
+		strcat(buf, cp);
 	}
-	if (!(fp = fopen(path, "r"))) return(tz);
-	if (fread(&buf, sizeof(struct tzhead), 1, fp) != 1) {
+	if (!(fp = fopen(buf, "r"))) return(tz);
+	if (fread(&head, sizeof(struct tzhead), 1, fp) != 1) {
 		fclose(fp);
 		return(tz);
 	}
 #ifdef	USELEAPCNT
-	cp = buf.tzh_leapcnt;
+	nleap = char2long(head.tzh_leapcnt);
 #else
-	cp = buf.tzh_reserved + 28;
+	nleap = char2long(head.tzh_timecnt - 4);
 #endif
-	memcpy(&nleap, cp, sizeof(long));
-	memcpy(&ntime, buf.tzh_timecnt, sizeof(long));
-	memcpy(&ntype, buf.tzh_typecnt, sizeof(long));
-	memcpy(&nchar, buf.tzh_charcnt, sizeof(long));
+	ntime = char2long(head.tzh_timecnt);
+	ntype = char2long(head.tzh_typecnt);
+	nchar = char2long(head.tzh_charcnt);
 
 	for (i = 0; i < ntime; i++) {
-		if (fread(&tmp, sizeof(long), 1, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 1) {
 			fclose(fp);
 			return(tz);
 		}
+		tmp = char2long(buf);
 		if (tmcmp(&tmbuf, localtime(&tmp)) < 0) break;
 	}
 	if (i > 0) {
 		i--;
 		i *= sizeof(char);
-		i += sizeof(struct tzhead) + ntime * sizeof(long);
+		i += sizeof(struct tzhead) + ntime * sizeof(char) * 4;
 		if (fseek(fp, i, 0) < 0
 		|| fread(&c, sizeof(char), 1, fp) != 1) {
 			fclose(fp);
@@ -756,17 +778,18 @@ int time;
 		}
 		i = c;
 	}
-	i *= sizeof(long) + sizeof(char) + sizeof(char);
-	i += sizeof(struct tzhead) + ntime * (sizeof(long) + sizeof(char));
+	i *= sizeof(char) * (4 + 1 + 1);
+	i += sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1);
 	if (fseek(fp, i, 0) < 0
-	|| fread(&tmp, sizeof(long), 1, fp) != 1) {
+	|| fread(buf, sizeof(char), 4, fp) != 1) {
 		fclose(fp);
 		return(tz);
 	}
+	tmp = char2long(buf);
 	tz = -tmp;
 
-	i = sizeof(struct tzhead) + ntime * (sizeof(long) + sizeof(char))
-		+ ntype * (sizeof(long) + sizeof(char) + sizeof(char))
+	i = sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1)
+		+ ntype * sizeof(char) * (4 + 1 + 1)
 		+ nchar * sizeof(char);
 	if (fseek(fp, i, 0) < 0) {
 		fclose(fp);
@@ -774,15 +797,17 @@ int time;
 	}
 	leap = 0;
 	for (i = 0; i < nleap; i++) {
-		if (fread(&tmp, sizeof(long), 1, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 1) {
 			fclose(fp);
 			return(tz);
 		}
+		tmp = char2long(buf);
 		if (tmcmp(&tmbuf, localtime(&tmp)) <= 0) break;
-		if (fread(&leap, sizeof(long), 1, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 1) {
 			fclose(fp);
 			return(tz);
 		}
+		leap = char2long(buf);
 	}
 
 	tz += leap;

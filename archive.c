@@ -787,7 +787,10 @@ char *dir, *subdir, *file;
 		warning(-1, subdir);
 		subdir = file = NULL;
 	}
-	if (file && unlink(file) < 0) error(file);
+	if (file && unlink(file) < 0) {
+		warning(-1, file);
+		subdir = NULL;
+	}
 	if (subdir && *subdir) {
 		if (_chdir2(dir) < 0) error(dir);
 		dupdir = strdup2(subdir);
@@ -797,15 +800,14 @@ char *dir, *subdir, *file;
 			tmp = strrchr(dupdir, '/');
 			if (tmp) tmp++;
 			else tmp = dupdir;
-			if (strcmp(tmp, ".") && rmdir(dupdir) < 0)
-				error(dupdir);
-			if (tmp == dupdir) break;
+			if ((strcmp(tmp, ".") && rmdir(dupdir) < 0)
+			|| tmp == dupdir) break;
 			cp = tmp - 1;
 		}
 		free(dupdir);
 	}
 	if (_chdir2(fullpath) < 0) error(fullpath);
-	if (rmtmpdir(dir) < 0) error(dir);
+	if (rmtmpdir(dir) < 0) warning(-1, dir);
 	free(dir);
 }
 

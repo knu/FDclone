@@ -112,6 +112,7 @@ typedef struct _devstat {
 	u_short fatsize;
 	u_short dirofs;
 	u_short dirsize;
+	u_short totalsize;
 	int fd;
 	cache_t *dircache;
 	u_char flags;

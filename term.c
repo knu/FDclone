@@ -649,24 +649,22 @@ char *fmt;
 va_dcl
 {
 	va_list args;
-	int len;
 	char buf[MAXPRINTBUF + 1];
 
 	va_start(args);
-	len = vsprintf(buf, fmt, args);
+	vsprintf(buf, fmt, args);
 	va_end(args);
 #else
 int cprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
-	int len;
 	char buf[MAXPRINTBUF + 1];
 
-	len = sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
+	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
 #endif
 
 	fputs(buf, ttyout);
-	return(len);
+	return(strlen(buf));
 }
 
 int kbhit2(usec)
