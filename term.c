@@ -286,7 +286,7 @@ int notabs()
 #ifdef	USETERMIO
 	ttymode(ttyio, 0, 0, 0, 0, TAB3, 0, 0, 0);
 #else
-	ttymode(ttyio, XTABS, 0, 0);
+	ttymode(ttyio, XTABS, 0, 0, 0);
 #endif
 }
 

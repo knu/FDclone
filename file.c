@@ -249,6 +249,11 @@ int movefile(list, max, tr)
 namelist *list;
 int max, tr;
 {
+	if (!mark && (!strcmp(list[filepos].name, ".")
+	|| !strcmp(list[filepos].name, ".."))) {
+		putterm(t_bell);
+		return(0);
+	}
 	destpath = (tr) ? tree(1) : getdistdir(MOVED_K);
 	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
 	copypolicy = 0;

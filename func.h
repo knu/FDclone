@@ -8,6 +8,10 @@
 extern int errno;
 #endif
 
+#if !defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
+#define	ENOTEMPTY	ENFSNOTEMPTY
+#endif
+
 #ifdef	USEDIRECT
 #include <sys/dir.h>
 #else
