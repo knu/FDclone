@@ -22,6 +22,8 @@ extern int sorton;
 extern char *destpath;
 extern int copypolicy;
 extern char fullpath[];
+extern char *deftmpdir;
+extern char *tmpfilename;
 
 #define	realdirsiz(name)		(((strlen(name) + boundary)\
 					& ~(boundary - 1)) + dirsize)
@@ -259,28 +261,59 @@ int max, tr;
 	return(4);
 }
 
+int mktmpdir(dir)
+char *dir;
+{
+	char *cp, path[MAXPATHLEN + 1];
+	int no;
+
+	strcpy(path, deftmpdir);
+	strcat(path, "/");
+	strcat(path, tmpfilename);
+	if (mkdir(path, 0777) < 0 && errno != EEXIST) return(-1);
+	*(cp = path + strlen(path)) = '/';
+	strcpy(cp + 1, dir);
+	if (mkdir(path, 0777) < 0) {
+		*cp = '\0';
+		no = errno;
+		if (rmdir(path) < 0 && errno != ENOTEMPTY) error(path);
+		errno = no;
+		return(-1);
+	}
+	strcpy(dir, path);
+	return(0);
+}
+
+int rmtmpdir(dir)
+char *dir;
+{
+	char path[MAXPATHLEN + 1];
+
+	if (rmdir(dir) < 0) return(-1);
+	strcpy(path, deftmpdir);
+	strcat(path, "/");
+	strcat(path, tmpfilename);
+	if (rmdir(path) < 0 && errno != ENOTEMPTY) return(-1);
+	return(0);
+}
+
 int forcecleandir(dir, file)
 char *dir, *file;
 {
 	extern char **environ;
-	char *rm, buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN + 1];
 	int i, len, pid;
 
-	rm = "/bin/rm -rf ";
-	for (i = 0; rm[i]; i++) buf[i] = rm[i];
+	for (i = 0; dir[i]; i++) buf[i] = dir[i];
 	len = i;
-	for (i = 0; dir[i]; i++) buf[len + i] = dir[i];
-	len += i;
 	buf[len++] = '/';
 	for (i = 0; file[i]; i++) buf[len + i] = file[i];
 	len += i;
-	buf[len++] = '*';
 	buf[len] = '\0';
 
 	if ((pid = fork()) < 0) return(-1);
-	else if (pid) while ((i = wait(0)) != pid) if (i < 0) return(-1);
-	else {
-		execle("/bin/sh", "sh", "-c", buf, NULL, environ);
+	else if (!pid) {
+		execle("/bin/rm", "rm", "-rf", buf, NULL, environ);
 		_exit(127);
 	}
 	return(0);

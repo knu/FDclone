@@ -131,6 +131,7 @@ static VOID signalexit(sig)
 int sig;
 {
 	signal(sig, SIG_IGN);
+	inittty(1);
 	forcecleandir(deftmpdir, tmpfilename);
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);

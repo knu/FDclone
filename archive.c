@@ -31,8 +31,6 @@ extern int fnameofs;
 extern int sorton;
 extern char fullpath[];
 extern char *findpattern;
-extern char *deftmpdir;
-extern char *tmpfilename;
 
 #define	PM_LHA	2, 2,\
 		{0, 1, 1, 2, 6, 4, 5, 6, 7},\
@@ -663,11 +661,11 @@ char *tmpunpack(list, max)
 namelist *list;
 int max;
 {
-	char *cp, path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN + 1];
 	int i, dupmark;
 
-	sprintf(path, "%s/%s.%d", deftmpdir, tmpfilename, launchlevel);
-	if (mkdir(path, 0777) < 0) {
+	sprintf(path, "L%d", launchlevel);
+	if (mktmpdir(path) < 0) {
 		warning(-1, path);
 		return(NULL);
 	}
@@ -678,16 +676,15 @@ int max;
 	mark = dupmark;
 
 	if (_chdir2(path) < 0) error(path);
-	cp = strdup2(path);
 	if (i < 0) putterm(t_bell);
 	else if (i > 0) {
 		if (*archivedir && _chdir2(archivedir) < 0)
 			warning(-1, archivedir);
 		else if (access(list[filepos].name, F_OK) < 0)
 			warning(-1, list[filepos].name);
-		else return(cp);
+		else return(strdup2(path));
 	}
-	removetmp(cp, NULL);
+	removetmp(path, NULL);
 	return(NULL);
 }
 
@@ -714,7 +711,7 @@ char *dir, *file;
 		free(dupdir);
 	}
 	if (_chdir2(fullpath) < 0) error(fullpath);
-	if (rmdir(dir) < 0) error(dir);
+	if (rmtmpdir(dir) < 0) error(dir);
 	free(dir);
 }
 

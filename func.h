@@ -104,6 +104,8 @@ extern struct dirent *searchdir();
 extern int underhome();
 extern int copyfile();
 extern int movefile();
+extern int mktmpdir();
+extern int rmtmpdir();
 extern int forcecleandir();
 extern VOID arrangedir();
 

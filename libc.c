@@ -142,13 +142,13 @@ char *path, *resolved;
 {
 	char *cp;
 
-	if (!*path || !strcmp(path, ".")) return;
+	if (!*path || !strcmp(path, ".")) return(resolved);
 	else if (cp = strchr(path, '/')) {
 		*cp = '\0';
 		realpath2(path, resolved);
 		*(cp++) = '/';
 		realpath2(cp, resolved);
-		return;
+		return(resolved);
 	}
 
 	if (!strcmp(path, "..")) {

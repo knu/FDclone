@@ -850,7 +850,7 @@ int *maxp;
 	}
 	else if (!applydir(list[filepos].name, unlink2, NULL, rmdir2, NULL))
 		filepos++;
-	if (filepos >= *maxp) filepos -= 2;
+	if (filepos >= *maxp && (filepos -= 2) < 0) filepos = 0;
 	return(4);
 }
 
