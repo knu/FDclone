@@ -19,11 +19,6 @@ extern int setcurdrv __P_((int, int));
 extern char *unixrealpath __P_((char *, char *));
 #endif
 
-#ifndef	_NODOSDRIVE
-extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
-extern char *dosgetcwd __P_((char *, int));
-#endif
-
 #ifdef	_NOORIGSHELL
 #include <signal.h>
 #define	dosystem(s)		system(s)
@@ -63,6 +58,7 @@ static char **NEAR _putenv2 __P_((char *, char **));
 #endif
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
+static long NEAR char2long __P_((u_char *));
 static int NEAR tmcmp __P_((struct tm *, struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
@@ -356,8 +352,9 @@ char *path;
 	return(0);
 }
 
-int chdir3(path)
+int chdir3(path, raw)
 char *path;
+int raw;
 {
 #ifndef	_NODOSDRIVE
 	int drive;
@@ -365,23 +362,33 @@ char *path;
 	char *cwd;
 
 	cwd = path;
-	if (!strcmp(path, ".")) cwd = NULL;
-	else if (!strcmp(path, "?")) path = origpath;
-	else if (!strcmp(path, "-")) {
-		if (!lastpath) {
-			errno = ENOENT;
-			return(-1);
-		}
-		path = lastpath;
+	if (!raw && path[0] && !path[1]) switch(path[0]) {
+		case '.':
+			cwd = NULL;
+			break;
+		case '?':
+			path = origpath;
+			break;
+		case '-':
+			if (!lastpath) {
+				errno = ENOENT;
+				return(-1);
+			}
+			path = lastpath;
+			break;
+#ifndef	_NODOSDRIVE
+		case '@':
+			if (!unixpath) {
+				errno = ENOENT;
+				return(-1);
+			}
+			path = unixpath;
+			break;
+#endif
+		default:
+			break;
 	}
 #ifndef	_NODOSDRIVE
-	else if (!strcmp(path, "@")) {
-		if (!unixpath) {
-			errno = ENOENT;
-			return(-1);
-		}
-		path = unixpath;
-	}
 	if ((drive = dospath3(fullpath))) flushdrv(drive, NULL);
 #endif
 	if (chdir2(path) < 0) return(-1);
@@ -391,6 +398,9 @@ char *path;
 	else {
 		if (findpattern) free(findpattern);
 		findpattern = NULL;
+#ifndef	_NOUSEHASH
+		searchhash(NULL, "", "");
+#endif
 	}
 	return(0);
 }
@@ -509,6 +519,9 @@ int c;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == c) return(&(s[i]));
 		if (iskanji1(s, i)) i++;
+#ifdef	CODEEUC
+		else if (isekana(s, i)) i++;
+#endif
 	}
 	return(NULL);
 }
@@ -524,6 +537,9 @@ int c;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == c) cp = &(s[i]);
 		if (iskanji1(s, i)) i++;
+#ifdef	CODEEUC
+		else if (isekana(s, i)) i++;
+#endif
 	}
 	return(cp);
 }
@@ -557,17 +573,16 @@ int strncpy3(s1, s2, lenp, ptr)
 char *s1, *s2;
 int *lenp, ptr;
 {
-	int i, j, l;
+	int i, j, len;
 
 	for (i = j = 0; i < ptr && s2[j]; i++, j++) {
-#ifdef	CODEEUC
-		if (isekana(s2, j)) j++;
-		else
-#endif
 		if (iskanji1(s2, j)) {
 			i++;
 			j++;
 		}
+#ifdef	CODEEUC
+		else if (isekana(s2, j)) j++;
+#endif
 	}
 	if (!i || i <= ptr) i = 0;
 	else {
@@ -575,54 +590,44 @@ int *lenp, ptr;
 		i = 1;
 	}
 
-	while ((*lenp < 0 || i < *lenp) && s2[j]) {
+	while (i < *lenp && s2[j]) {
+		if (iskanji1(s2, j)) {
+			i += snprintf2(&(s1[i]), *lenp - i + 1,
+				"%.2s", &(s2[j]));
+			j += 2;
+			continue;
+		}
 #ifdef	CODEEUC
-		if (isekana(s2, j)) {
-			if (*lenp >= 0) (*lenp)++;
+		else if (isekana(s2, j)) {
+			(*lenp)++;
 			s1[i++] = s2[j++];
 		}
 #else
-		if (iskna(s2[j])) /*EMPTY*/;
+		else if (isskana(s2, j)) /*EMPTY*/;
 #endif
-		else if (iskanji1(s2, j)) {
-			if (*lenp >= 0 && i >= *lenp - 1) {
-				if (ptr >= 0) s1[i++] = ' ';
-				break;
-			}
-			s1[i++] = s2[j++];
-		}
-		else if (isctl(s2[j])) {
-			s1[i++] = '^';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = ((s2[j++] + '@') & 0x7f);
+		else if (iscntrl2(s2[j])) {
+			i += snprintf2(&(s1[i]), *lenp - i + 1,
+				"^%c", (s2[j++] + '@') & 0x7f);
 			continue;
 		}
 		else if (ismsb(s2[j])) {
-			int c;
-
-			c = s2[j++] & 0xff;
-			s1[i++] = '\\';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = (c / (8 * 8)) + '0';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = ((c % (8 * 8)) / 8) + '0';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = (c % 8) + '0';
+			i += snprintf2(&(s1[i]), *lenp - i + 1,
+				"\\%03o", s2[j++] & 0xff);
 			continue;
 		}
 		s1[i++] = s2[j++];
 	}
 
-	l = i;
-	if (*lenp >= 0 && ptr >= 0) while (i < *lenp) s1[i++] = ' ';
+	len = i;
+	if (ptr >= 0) while (i < *lenp) s1[i++] = ' ';
 	s1[i] = '\0';
-	return(l);
+	return(len);
 }
 
 int strlen2(s)
 char *s;
 {
-	return(snprintf2(NULL, 0, "%k", s));
+	return(snprintf2(NULL, 0, "%s", s));
 }
 
 int strlen3(s)
@@ -631,16 +636,16 @@ char *s;
 	int i, len;
 
 	for (i = len = 0; s[i]; i++, len++) {
-#ifdef	CODEEUC
-		if (isekana(s, i)) i++;
-#else
-		if (iskna(s[i])) /*EMPTY*/;
-#endif
-		else if (iskanji1(s, i)) {
+		if (iskanji1(s, i)) {
 			i++;
 			len++;
 		}
-		else if (isctl(s[i])) len++;
+#ifdef	CODEEUC
+		else if (isekana(s, i)) i++;
+#else
+		else if (isskana(s, i)) /*EMPTY*/;
+#endif
+		else if (iscntrl2(s[i])) len++;
 		else if (ismsb(s[i])) len += 3;
 	}
 	return(len);
@@ -649,13 +654,10 @@ char *s;
 int atoi2(s)
 char *s;
 {
-	long n;
+	int n;
 
-	if (!s || !(s = evalnumeric(s, &n, 0)) || *s) return(-1);
-#if	MSDOS
-	if (n > MAXTYPE(int)) return(-1);
-#endif
-	return((int)n);
+	if (!sscanf2(s, "%d%$", &n)) return(-1);
+	return(n);
 }
 
 #ifdef	USESTDARGH
@@ -944,6 +946,15 @@ char *getwd2(VOID_A)
 
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
+static long NEAR char2long(s)
+u_char *s;
+{
+	return((long)((u_long)(s[3])
+		| ((u_long)(s[2]) << (BITSPERBYTE * 1))
+		| ((u_long)(s[1]) << (BITSPERBYTE * 2))
+		| ((u_long)(s[0]) << (BITSPERBYTE * 3))));
+}
+
 static int NEAR tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;
 {
@@ -978,13 +989,14 @@ time_t t;
 #  endif
 #  ifndef	NOTZFILEH
 	struct tzhead head;
-#  endif
-	struct tm tmbuf;
 	FILE *fp;
 	time_t tmp;
-	long i, tz, leap, nleap, ntime, ntype, nchar;
+	long i, leap, nleap, ntime, ntype, nchar;
 	char *cp, buf[MAXPATHLEN];
 	u_char c;
+#  endif
+	struct tm tmbuf;
+	long tz;
 
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
 
@@ -1000,7 +1012,7 @@ time_t t;
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == _SC_) strcpy(buf, cp);
 	else strcatdelim2(buf, TZDIR, cp);
-	if (!(fp = fopen(buf, "r"))) return(tz);
+	if (!(fp = fopen(buf, "rb"))) return(tz);
 	if (fread(&head, sizeof(struct tzhead), 1, fp) != 1) {
 		fclose(fp);
 		return(tz);

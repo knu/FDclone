@@ -2009,8 +2009,8 @@ DDEESSCCRRIIPPTTIIOONN
                mode.  (Default value is the insert mode.)
      DDeell       Delete a character on the cursor position.
      BBss        Delete a character before the cursor position.
-     DDeellLLiinn    Delete a string after the cursor position.
-     IInnssLLiinn    Treat the next input character as it is, effective
+     DDeellLLiinnee   Delete a string after the cursor position.
+     IInnssLLiinnee   Treat the next input character as it is, effective
                to input control characters.
      EEnntteerr     Insert a filename of the file on the cursor posi-
                tion.
@@ -2227,8 +2227,8 @@ DDEESSCCRRIIPPTTIIOONN
      eemmaaccss
                  ^^PP   = UUpp      ^^AA   = BBeegg
                  ^^NN   = DDoowwnn    ^^EE   = EEooll     ^^DD   = DDeell
-                 ^^FF   = RRiigghhtt                  ^^QQ   = IInnssLLiinn
-                 ^^BB   = LLeefftt                   ^^KK   = DDeellLLiinn
+                 ^^FF   = RRiigghhtt                  ^^QQ   = IInnssLLiinnee
+                 ^^BB   = LLeefftt                   ^^KK   = DDeellLLiinnee
                  ^^VV   = PPaaggeeDDnn  ^^YY   = PPaaggeeUUpp  ^^OO   = EEnntteerr
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc     ^^GG   = EEsscc
@@ -2236,8 +2236,8 @@ DDEESSCCRRIIPPTTIIOONN
      wwoorrddssttaarr
                  ^^EE   = UUpp      ^^AA   = BBeegg     ^^VV   = IInnss
                  ^^NN   = DDoowwnn    ^^FF   = EEooll     ^^GG   = DDeell
-                 ^^FF   = RRiigghhtt   ^^WW   = HHoommee    ^^]]   = IInnssLLiinn
-                 ^^SS   = LLeefftt    ^^ZZ   = EEnndd     ^^YY   = DDeellLLiinn
+                 ^^FF   = RRiigghhtt   ^^WW   = HHoommee    ^^]]   = IInnssLLiinnee
+                 ^^SS   = LLeefftt    ^^ZZ   = EEnndd     ^^YY   = DDeellLLiinnee
                  ^^CC   = PPaaggeeDDnn  ^^RR   = PPaaggeeUUpp  ^^NN   = EEnntteerr
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc
@@ -2252,7 +2252,7 @@ DDEESSCCRRIIPPTTIIOONN
                  kk    = UUpp      00    = BBeegg     II    = IInnss
                  jj    = DDoowwnn    $$    = EEooll     xx    = DDeell
                  ll    = RRiigghhtt   gg    = HHoommee
-                 hh    = LLeefftt    GG    = EEnndd     DD    = DDeellLLiinn
+                 hh    = LLeefftt    GG    = EEnndd     DD    = DDeellLLiinnee
                  ^^FF   = PPaaggeeDDnn  ^^BB   = PPaaggeeUUpp  oo    = EEnntteerr
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc
@@ -2262,7 +2262,7 @@ DDEESSCCRRIIPPTTIIOONN
                  RR    = overwrite
                  rr    = overwrite once
                  (insert mode)
-                 ^^VV   = IInnssLLiinn  EEsscc  = to command mode
+                 ^^VV   = IInnssLLiinnee EEsscc  = to command mode
 
              This key binding is so particular that it is not
              suitable for those who don't use vvii editor everyday.
@@ -3128,4 +3128,4 @@ BBUUGGSS
      The user interface is cheap.
 
 CCOOPPYYRRIIGGHHTT
-     Copyright (C) 1995-2003 by Takashi SHIRAI
+     Copyright (C) 1995-2004 by Takashi SHIRAI

@@ -166,7 +166,7 @@ int unicodebuffer = 0;
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 static u_char *unitblbuf = NULL;
 static u_int unitblent = 0;
-static kconv_t rsjistable[] = {
+static CONST kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* Cyrillic small letters */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
 #define	EXCEPTRUSS	2
@@ -203,7 +203,7 @@ static kconv_t rsjistable[] = {
 #endif	/* !_NOKANJICONV || (FD && !_NODOSDRIVE) */
 #if	!defined (_NOKANJICONV) \
 || (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
-static kconv_t convtable[] = {
+static CONST kconv_t convtable[] = {
 	{0xfa40, 0xeeef, 0x0a},		/* small Roman numerals */
 	{0xfa4a, 0x8754, 0x0a},		/* Roman numerals */
 	{0xfa54, 0x81ca, 0x01},		/* full width not sign */
@@ -224,7 +224,7 @@ static kconv_t convtable[] = {
 	{0xfc40, 0xeee1, 0x0c}		/* IBM extensions */
 };
 #define	CNVTBLSIZ	((int)(sizeof(convtable) / sizeof(kconv_t)))
-static u_char sj2jtable1[256] = {
+static CONST u_char sj2jtable1[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x20 */
@@ -246,7 +246,7 @@ static u_char sj2jtable1[256] = {
 	0x7f, 0x81, 0x83, 0x85, 0x87, 0x89, 0x8b, 0x8d,	/* 0xf0 */
 	0x8f, 0x91, 0x93, 0x95, 0x97,    0,    0,    0
 };
-static u_char sj2jtable2[256] = {
+static CONST u_char sj2jtable2[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x20 */
@@ -315,7 +315,7 @@ static u_int nflen = 0;
 static u_char **nftblbuf = NULL;
 static u_int *nftblent = 0;
 #define	NF_MAC		1
-static u_char hctypetable[256] = {
+static CONST u_char hctypetable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x20 */
@@ -336,7 +336,7 @@ static u_char hctypetable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xe0 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0	/* 0xf0 */
 };
-static u_char h2btable[256] = {
+static CONST u_char h2btable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x20 */
@@ -356,7 +356,10 @@ static u_char h2btable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xe0 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0	/* 0xf0 */
 };
-static u_char b2htable[256] = "0123456789abcdef";
+static CONST u_char b2htable[] = {
+	'0', '1', '2', '3', '4', '5', '6', '7',
+	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+};
 #define	HC_HEX		0001
 #define	HC_CAP		0002
 
@@ -374,7 +377,7 @@ static u_char b2htable[256] = "0123456789abcdef";
 			&& (hctypetable[(u_char)(s)[(i) + 2]] & HC_HEX))
 #endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
-static kpathtable kpathlist[] = {
+static CONST kpathtable kpathlist[] = {
 	{ &sjispath, SJIS },
 	{ &eucpath, EUC },
 	{ &jis7path, JIS7 },
@@ -436,11 +439,10 @@ int ptr;
 
 	for (i = 0; i < ptr; i++) {
 		if (!s[i]) return(0);
+		else if (iskanji1(s, i)) i++;
 #ifdef	CODEEUC
-		if (isekana(s, i)) i++;
-		else
+		else if (isekana(s, i)) i++;
 #endif
-		if (iskanji1(s, i)) i++;
 	}
 	if (i > ptr) return(0);
 	return(iskanji1(s, i));
@@ -456,8 +458,8 @@ char *s1, *s2;
 	while (*s1) {
 		for (i = 0;; i++) {
 			if (!s2[i]) return(s1);
-			c1 = toupper(s1[i]);
-			c2 = toupper(s2[i]);
+			c1 = toupper2(s1[i]);
+			c2 = toupper2(s2[i]);
 			if (c1 != c2) break;
 #ifndef	CODEEUC
 			if (issjis1(c1)) {
@@ -594,14 +596,14 @@ int max;
 	int i, j;
 
 	for (i = j = 0; s[i] && j < max - 1; i++, j++) {
-		if (isskana(s, i)) {
-			buf[j++] = (char)0x8e;
-			buf[j] = s[i];
-		}
-		else if (issjis1(s[i]) && issjis2(s[i + 1])) {
+		if (issjis1(s[i]) && issjis2(s[i + 1])) {
 			sj2j(&(buf[j]), &(s[i++]));
 			buf[j++] |= 0x80;
 			buf[j] |= 0x80;
+		}
+		else if (isskana(s, i)) {
+			buf[j++] = (char)C_EKANA;
+			buf[j] = s[i];
 		}
 		else buf[j] = s[i];
 	}
@@ -616,9 +618,9 @@ int max;
 	int i, j;
 
 	for (i = j = 0; s[i] && j < max - 1; i++, j++) {
-		if (isekana(s, i)) buf[j] = s[++i];
-		else if (iseuc(s[i]) && iseuc(s[i + 1]))
+		if (iseuc(s[i]) && iseuc(s[i + 1]))
 			j2sj(&(buf[j++]), &(s[i++]));
+		else if (isekana(s, i)) buf[j] = s[++i];
 		else buf[j] = s[i];
 	}
 	return(j);
@@ -953,19 +955,19 @@ int max;
 	int i, j;
 
 	for (i = j = 0; s[i] && j < max - 1; i++, j++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) {
-			i++;
-			buf[j] = '?';
-		}
-# else
-		if (isskana(s, i)) buf[j] = '?';
-# endif
-		else if (iskanji1(s, i)) {
+		if (iskanji1((char *)s, i)) {
 			i++;
 			buf[j++] = '?';
 			buf[j] = '?';
 		}
+# ifdef	CODEEUC
+		else if (isekana(s, i)) {
+			i++;
+			buf[j] = '?';
+		}
+# else
+		else if (isskana(s, i)) buf[j] = '?';
+# endif
 		else buf[j] = s[i];
 	}
 	return(j);
@@ -980,21 +982,9 @@ int max, knj, asc, io;
 
 	mode = ASCII;
 	for (i = j = 0; s[i] && j < max - 7; i++, j++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) {
-			i++;
-# else
-		if (isskana(s, i)) {
-# endif
-			if (!(mode & KANA)) buf[j++] = '\016';
-			mode |= KANA;
-			buf[j] = s[i] & ~0x80;
-			buf[j] = jcnv(buf[j], io);
-			continue;
-		}
-		if (mode & KANA) buf[j++] = '\017';
-		mode &= ~KANA;
-		if (iskanji1(s, i)) {
+		if (iskanji1((char *)s, i)) {
+			if (mode & KANA) buf[j++] = '\017';
+			mode &= ~KANA;
 			if (!(mode & KANJI)) {
 				buf[j++] = '\033';
 				buf[j++] = '$';
@@ -1009,7 +999,20 @@ int max, knj, asc, io;
 # endif
 			buf[j] = jcnv(buf[j], io);
 		}
+# ifdef	CODEEUC
+		else if (isekana(s, i)) {
+			i++;
+# else
+		else if (isskana(s, i)) {
+# endif
+			if (!(mode & KANA)) buf[j++] = '\016';
+			mode |= KANA;
+			buf[j] = s[i] & ~0x80;
+			buf[j] = jcnv(buf[j], io);
+		}
 		else {
+			if (mode & KANA) buf[j++] = '\017';
+			mode &= ~KANA;
 			if (mode & KANJI) {
 				buf[j++] = '\033';
 				buf[j++] = '(';
@@ -1090,7 +1093,7 @@ int max, io;
 				if (!isjkana(s, i)) buf[j++] = s[i];
 				else {
 # ifdef	CODEEUC
-					buf[j++] = (char)0x8e;
+					buf[j++] = (char)C_EKANA;
 # endif
 					buf[j++] = jdecnv(s[i], io) | 0x80;
 				}
@@ -1115,8 +1118,8 @@ int max, io;
 				}
 			}
 # ifdef	CODEEUC
-			else if (iskna(s[i])) {
-				buf[j++] = (char)0x8e;
+			else if (iskana2(s[i])) {
+				buf[j++] = (char)C_EKANA;
 				buf[j++] = s[i];
 			}
 # endif
@@ -1135,19 +1138,7 @@ int max, knj, asc, io;
 
 	mode = ASCII;
 	for (i = j = 0; s[i] && j < max - 7; i++, j++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) {
-			if (mode == KANJI) {
-				buf[j++] = '\033';
-				buf[j++] = '(';
-				buf[j++] = asc;
-			}
-			mode = ASCII;
-			buf[j] = s[++i];
-		}
-		else
-# endif
-		if (iskanji1(s, i)) {
+		if (iskanji1((char *)s, i)) {
 			if (mode != KANJI) {
 				buf[j++] = '\033';
 				buf[j++] = '$';
@@ -1169,6 +1160,9 @@ int max, knj, asc, io;
 				buf[j++] = asc;
 			}
 			mode = ASCII;
+# ifdef	CODEEUC
+			if (isekana(s, i)) i++;
+# endif
 			buf[j] = s[i];
 		}
 	}
@@ -1189,22 +1183,7 @@ int max, knj, asc, io;
 
 	mode = ASCII;
 	for (i = j = 0; s[i] && j < max - 7; i++, j++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) {
-			i++;
-# else
-		if (isskana(s, i)) {
-# endif
-			if (mode != JKANA) {
-				buf[j++] = '\033';
-				buf[j++] = '(';
-				buf[j++] = 'I';
-			}
-			mode = JKANA;
-			buf[j] = s[i] & ~0x80;
-			buf[j] = jcnv(buf[j], io);
-		}
-		else if (iskanji1(s, i)) {
+		if (iskanji1((char *)s, i)) {
 			if (mode != KANJI) {
 				buf[j++] = '\033';
 				buf[j++] = '$';
@@ -1217,6 +1196,21 @@ int max, knj, asc, io;
 # else
 			sj2j(&(buf[j++]), &(s[i++]));
 # endif
+			buf[j] = jcnv(buf[j], io);
+		}
+# ifdef	CODEEUC
+		else if (isekana(s, i)) {
+			i++;
+# else
+		else if (isskana(s, i)) {
+# endif
+			if (mode != JKANA) {
+				buf[j++] = '\033';
+				buf[j++] = '(';
+				buf[j++] = 'I';
+			}
+			mode = JKANA;
+			buf[j] = s[i] & ~0x80;
 			buf[j] = jcnv(buf[j], io);
 		}
 		else {
@@ -1374,23 +1368,23 @@ int *ptrp;
 	u_int w;
 
 # ifdef	CODEEUC
-	if (isekana(s, *ptrp)) {
-		w = s[++(*ptrp)];
-		(*ptrp)++;
-	}
-	else if (iseuc(s[*ptrp]) && iseuc(s[*ptrp + 1])) {
+	if (iseuc(s[*ptrp]) && iseuc(s[*ptrp + 1])) {
 		u_char tmp[2];
 
 		j2sj((char *)tmp, &(s[*ptrp]));
 		*ptrp += 2;
 		w = (((u_int)(tmp[0]) << 8) | tmp[1]);
 	}
+	else if (isekana(s, *ptrp)) {
+		w = s[++(*ptrp)];
+		(*ptrp)++;
+	}
 # else
-	if (isskana(s, *ptrp)) w = s[(*ptrp)++];
-	else if (issjis1(s[*ptrp]) && issjis2(s[*ptrp + 1])) {
+	if (issjis1(s[*ptrp]) && issjis2(s[*ptrp + 1])) {
 		w = (((u_int)(s[*ptrp]) << 8) | s[*ptrp + 1]);
 		*ptrp += 2;
 	}
+	else if (isskana(s, *ptrp)) w = s[(*ptrp)++];
 # endif
 	else w = s[(*ptrp)++];
 	return(cnvunicode(w, 1));
@@ -1408,7 +1402,7 @@ u_int wc;
 	c2 = wc & 0xff;
 	if (wc > 0xa0 && wc <= 0xdf) {
 # ifdef	CODEEUC
-		buf[(*ptrp)++] = 0x8e;
+		buf[(*ptrp)++] = (char)C_EKANA;
 # endif
 		buf[(*ptrp)++] = wc;
 	}
@@ -1559,20 +1553,20 @@ int max;
 
 	for (i = j = 0; s[i] && j < max - 2; i++, j++) {
 # ifdef	CODEEUC
-		if (isekana(s, i)) j += bin2hex(&(buf[j]), s[++i]) - 1;
-		else if (iseuc(s[i]) && iseuc(s[i + 1])) {
+		if (iseuc(s[i]) && iseuc(s[i + 1])) {
 			u_char tmp[2];
 
 			j2sj((char *)tmp, &(s[i++]));
 			j += bin2hex(&(buf[j]), tmp[0]);
 			j += bin2hex(&(buf[j]), tmp[1]) - 1;
 		}
+		else if (isekana(s, i)) j += bin2hex(&(buf[j]), s[++i]) - 1;
 # else
-		if (isskana(s, i)) j += bin2hex(&(buf[j]), s[i]) - 1;
-		else if (issjis1(s[i]) && issjis2(s[i + 1])) {
+		if (issjis1(s[i]) && issjis2(s[i + 1])) {
 			j += bin2hex(&(buf[j]), s[i++]);
 			j += bin2hex(&(buf[j]), s[i]) - 1;
 		}
+		else if (isskana(s, i)) j += bin2hex(&(buf[j]), s[i]) - 1;
 # endif
 		else buf[j] = s[i];
 	}
@@ -1591,9 +1585,9 @@ int max;
 		else {
 			c1 = tobin2(s, i + 1);
 			i += 2;
-			if (iskna(c1)) {
+			if (iskana2(c1)) {
 # ifdef	CODEEUC
-				buf[j++] = 0x8e;
+				buf[j++] = (char)C_EKANA;
 # endif
 				buf[j] = c1;
 			}
@@ -1654,20 +1648,20 @@ int max;
 
 	for (i = j = 0; s[i] && j < max - 2; i++, j++) {
 # ifdef	CODEEUC
-		if (isekana(s, i)) j += bin2cap(&(buf[j]), s[++i]) - 1;
-		else if (iseuc(s[i]) && iseuc(s[i + 1])) {
+		if (iseuc(s[i]) && iseuc(s[i + 1])) {
 			u_char tmp[2];
 
 			j2sj((char *)tmp, &(s[i++]));
 			j += bin2cap(&(buf[j]), tmp[0]);
 			j += bin2cap(&(buf[j]), tmp[1]) - 1;
 		}
+		else if (isekana(s, i)) j += bin2cap(&(buf[j]), s[++i]) - 1;
 # else
-		if (isskana(s, i)) j += bin2cap(&(buf[j]), s[i]) - 1;
-		else if (issjis1(s[i]) && issjis2(s[i + 1])) {
+		if (issjis1(s[i]) && issjis2(s[i + 1])) {
 			j += bin2cap(&(buf[j]), s[i++]);
 			j += bin2cap(&(buf[j]), s[i]) - 1;
 		}
+		else if (isskana(s, i)) j += bin2cap(&(buf[j]), s[i]) - 1;
 # endif
 		else buf[j] = s[i];
 	}
@@ -1686,9 +1680,9 @@ int max;
 		else {
 			c1 = tobin2(s, i + 1);
 			i += 2;
-			if (iskna(c1)) {
+			if (iskana2(c1)) {
 # ifdef	CODEEUC
-				buf[j++] = 0x8e;
+				buf[j++] = (char)C_EKANA;
 # endif
 				buf[j] = c1;
 			}

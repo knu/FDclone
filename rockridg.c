@@ -4,7 +4,6 @@
  *	ISO-9660 RockRidge Format Filter
  */
 
-#include <ctype.h>
 #include "fd.h"
 #include "func.h"
 
@@ -140,7 +139,7 @@ int len;
 {
 	transtable *top, **bottom, *new;
 	FILE *fp;
-	long maj, min;
+	r_dev_t maj, min;
 	char *cp, *eol, *org, *line;
 	int l1, l2, flags;
 
@@ -185,7 +184,7 @@ int len;
 		l1 = eol - cp;
 		if (*eol) *(eol++) = '\0';
 		l2 = 0;
-		maj = min = -1L;
+		maj = min = (r_dev_t)-1;
 		if (*line == 'L') {
 			eol = skipspace(eol);
 			while (eol[l2] && eol[l2] != ' ' && eol[l2] != '\t')
@@ -194,11 +193,12 @@ int len;
 		}
 		else if (*line == 'B' || *line == 'C') {
 			eol = skipspace(eol);
-			if (!(eol = evalnumeric(eol, &maj, 1))) maj = -1L;
-			else {
+			eol = sscanf2(eol, "%+*d", sizeof(r_dev_t), &maj);
+			if (eol) {
 				eol = skipspace(eol);
-				if (!(eol = evalnumeric(eol, &min, 1)))
-					maj = min = -1L;
+				eol = sscanf2(eol, "%+*d",
+					sizeof(r_dev_t), &min);
+				if (!eol) maj = (r_dev_t)-1;
 			}
 		}
 
@@ -207,7 +207,8 @@ int len;
 		new -> alias = strndup2(cp, l1);
 		new -> symlink = (l2 > 0) ? strndup2(eol, l2 - 1) : NULL;
 		new -> type = *line;
-		new -> rdev = (maj >= 0L) ? makedev(maj, min) : (r_dev_t)-1L;
+		new -> rdev = (maj >= (r_dev_t)0)
+			? makedev(maj, min) : (r_dev_t)-1;
 
 		*bottom = new;
 		new -> next = NULL;
@@ -445,7 +446,7 @@ struct stat *stp;
 
 	stp -> st_mode &= ~S_IFMT;
 	stp -> st_mode |= mode;
-	if ((mode == S_IFBLK || mode == S_IFCHR) && tp -> rdev != (r_dev_t)-1L)
+	if ((mode == S_IFBLK || mode == S_IFCHR) && tp -> rdev != (r_dev_t)-1)
 		stp -> st_rdev = tp -> rdev;
 	return(0);
 }

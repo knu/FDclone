@@ -485,14 +485,15 @@ clean:
 
 main.obj: fd.h
 main.obj: machine.h config.h
-main.obj: printf.h
-main.obj: kctype.h pathname.h term.h types.h func.h
+main.obj: printf.h kctype.h
+main.obj: pathname.h term.h types.h func.h
 main.obj: dosdisk.h kanji.h
 main.obj: version.h system.h
-printf.obj: machine.h config.h printf.h
-printf.obj: kctype.h
+printf.obj: machine.h config.h
+printf.obj: printf.h kctype.h
 term.obj: machine.h config.h
-term.obj: printf.h term.h
+term.obj: printf.h kctype.h
+term.obj: term.h
 pathname.obj: fd.h
 pathname.obj: machine.h config.h
 pathname.obj: printf.h
@@ -596,7 +597,8 @@ info.obj: types.h funcno.h kanji.h
 rockridg.obj: fd.h
 rockridg.obj: machine.h config.h
 rockridg.obj: printf.h
-rockridg.obj: kctype.h pathname.h term.h types.h func.h
+rockridg.obj: kctype.h
+rockridg.obj: pathname.h term.h types.h func.h
 rockridg.obj: dosdisk.h
 archive.obj: fd.h
 archive.obj: machine.h config.h
@@ -606,8 +608,8 @@ archive.obj: pathname.h term.h types.h func.h
 archive.obj: dosdisk.h kanji.h system.h
 tree.obj: fd.h
 tree.obj: machine.h config.h
-tree.obj: printf.h
-tree.obj: kctype.h pathname.h term.h types.h func.h
+tree.obj: printf.h kctype.h
+tree.obj: pathname.h term.h types.h func.h
 tree.obj: dosdisk.h kanji.h
 custom.obj: fd.h
 custom.obj: machine.h config.h

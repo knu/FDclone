@@ -4,7 +4,6 @@
  *	Tree Mode Module
  */
 
-#include <ctype.h>
 #include "fd.h"
 #include "func.h"
 #include "kanji.h"
@@ -681,7 +680,7 @@ static int NEAR _tree_input(VOID_A)
 		case K_ESC:
 			break;
 		default:
-			if (ch < 'A' || ch > 'Z') break;
+			if (!isupper2(ch)) break;
 			if (tr_line == tr_bottom - 1) {
 				tr_line = tr_top = LFILETOP + 1;
 				searchtree();

@@ -4,7 +4,6 @@
  *	by T.Shirai <shirai@unixusers.net>
  */
 
-#include <ctype.h>
 #include <signal.h>
 #include "fd.h"
 #include "func.h"
@@ -641,7 +640,7 @@ VOID title(VOID_A)
 		putch2('#');
 		i++;
 	}
-	cp = (iswellomit()) ? "" : " (c)1995-2003 T.Shirai  ";
+	cp = (iswellomit()) ? "" : " (c)1995-2004 T.Shirai  ";
 	cputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) putch2(' ');
@@ -792,29 +791,29 @@ int argc;
 char *argv[], *envp[];
 {
 	char *cp, **optv;
-	int i, j, optc;
+	int i, optc;
 
 	optc = 1;
 	optv = (char **)malloc2((argc + 1) * sizeof(char *));
 	optv[0] = argv[0];
-	optv[1] = NULL;
 
 	for (i = 1; i < argc; i++) {
-		if (argv[i][0] == '+') cp = argv[i];
+		if (argv[i][0] == '+') /*EMPTY*/;
 		else if (argv[i][0] != '-' || !argv[i][1]
 		|| (argv[i][1] == '-' && !argv[i][2])) break;
-		else for (cp = &(argv[i][1]); *cp; cp++) {
-			if (!isidentchar(*cp)
-			&& (cp == &(argv[i][1]) || !isdigit(*cp))) break;
+		else if (!isidentchar(argv[i][1])) /*EMPTY*/;
+		else {
+			for (cp = &(argv[i][2]); *cp; cp++)
+				if (!isidentchar2(*cp)) break;
+			if (*cp == '=') continue;
 		}
-		if (cp <= &(argv[i][1]) || *cp != '=') {
-			optv[optc++] = argv[i];
-			optv[optc] = NULL;
-			for (j = i; j < argc; j++) argv[j] = argv[j + 1];
-			argc--;
-			i--;
-		}
+
+		optv[optc++] = argv[i];
+		memmove((char *)&(argv[i]), (char *)&(argv[i + 1]),
+			(argc-- - i) * sizeof(char *));
+		i--;
 	}
+	optv[optc] = NULL;
 
 #ifndef	_NOORIGSHELL
 	if (initshell(optc, optv) < 0) Xexit2(RET_FAIL);

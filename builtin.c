@@ -30,9 +30,6 @@ extern int maxmacro;
 extern bindtable bindlist[];
 extern strtable keyidentlist[];
 extern functable funclist[];
-#ifdef	_USEDOSEMU
-extern devinfo fdtype[];
-#endif
 extern char **history[];
 extern short histsize[];
 extern short histno[];
@@ -97,10 +94,10 @@ static int NEAR setkeymap __P_((int, char *[]));
 static int NEAR keytest __P_((int, char *[]));
 #endif
 static int NEAR printhist __P_((int, char *[]));
-#ifndef	NOPOSIXUTIL
-static int NEAR fixcommand __P_((int, char *[]));
-#endif
 #if	FD >= 2
+# ifndef	NOPOSIXUTIL
+static int NEAR fixcommand __P_((int, char *[]));
+# endif
 static VOID NEAR voidmd5 __P_((u_long, u_long, u_long, u_long));
 static VOID NEAR calcmd5 __P_((u_long [], u_long []));
 static int NEAR printmd5 __P_((char *, FILE *));
@@ -135,7 +132,7 @@ static int NEAR loadsource __P_((int, char *[]));
 #define	FUNCNAME	1
 #endif
 
-static char *builtinerrstr[] = {
+static CONST char *builtinerrstr[] = {
 	"",
 #define	ER_FEWMANYARG	1
 	"Too few or many arguments",
@@ -166,7 +163,7 @@ static char *builtinerrstr[] = {
 };
 #define	BUILTINERRSIZ	((int)(sizeof(builtinerrstr) / sizeof(char *)))
 
-static builtintable builtinlist[] = {
+static CONST builtintable builtinlist[] = {
 #ifndef	_NOARCHIVE
 	{setlaunch,	BL_LAUNCH},
 	{setarch,	BL_ARCH},
@@ -188,10 +185,10 @@ static builtintable builtinlist[] = {
 	{keytest,	BL_GETKEY},
 #endif
 	{printhist,	BL_HISTORY},
-#ifndef	NOPOSIXUTIL
-	{fixcommand,	BL_FC},
-#endif
 #if	FD >= 2
+# ifndef	NOPOSIXUTIL
+	{fixcommand,	BL_FC},
+# endif
 	{md5sum,	BL_CHECKID},
 	{evalmacro,	BL_EVALMACRO},
 # ifndef	_NOKANJICONV
@@ -301,7 +298,7 @@ launchtable *lp;
 	if (argv[n][0] != '-') return(0);
 	c = argv[n][1];
 	if (!c || c == '-') return(++n);
-	else if (!strchr(opts, c)) {
+	else if (!strchr2(opts, c)) {
 		lp -> topskip = ER_UNKNOWNOPT;
 		lp -> bottomskip = n;
 		return(-1);
@@ -401,7 +398,7 @@ launchtable *lp;
 	int j, opt, err;
 # else
 	char *cp, *tmp;
-	long l;
+	u_char c;
 	int ch;
 # endif
 	int i, n;
@@ -475,7 +472,7 @@ launchtable *lp;
 		lp -> format[1] = NULL;
 	}
 
-	if (i + 1 >= argc);
+	if (i + 1 >= argc) /*EMPTY*/;
 	else if ((j = atoi2(argv[i + 1])) >= 0) lp -> topskip = j;
 	else {
 		lp -> topskip = ER_SYNTAXERR;
@@ -484,7 +481,7 @@ launchtable *lp;
 		return(-1);
 	}
 
-	if (i + 2 >= argc);
+	if (i + 2 >= argc) /*EMPTY*/;
 	else if ((j = atoi2(argv[i + 2])) >= 0) lp -> bottomskip = j;
 	else {
 		lp -> topskip = ER_SYNTAXERR;
@@ -498,7 +495,7 @@ launchtable *lp;
 	if (argc <= 3) lp -> topskip = lp -> bottomskip = 255;
 	else {
 		cp = tmp = catvar(&(argv[3]), '\0');
-		if (!(cp = evalnumeric(cp, &l, 0)) || *cp != ',') {
+		if (!(cp = sscanf2(cp, "%Cu,", &c))) {
 			lp -> topskip = ER_SYNTAXERR;
 			lp -> bottomskip = (u_char)-1;
 			free(lp -> ext);
@@ -506,8 +503,8 @@ launchtable *lp;
 			lp -> ext = tmp;
 			return(-1);
 		}
-		lp -> topskip = l;
-		if (!(cp = evalnumeric(++cp, &l, 0))) {
+		lp -> topskip = c;
+		if (!(cp = sscanf2(cp, "%Cu", &c))) {
 			lp -> topskip = ER_SYNTAXERR;
 			lp -> bottomskip = (u_char)-1;
 			free(lp -> ext);
@@ -515,11 +512,13 @@ launchtable *lp;
 			lp -> ext = tmp;
 			return(-1);
 		}
-		lp -> bottomskip = l;
+		lp -> bottomskip = c;
 
 		ch = ':';
 		for (i = 0; i < MAXLAUNCHFIELD; i++) {
-			if (!cp || *cp != ch) {
+			cp = getrange(cp, ch, &(lp -> field[i]),
+				&(lp -> delim[i]), &(lp -> width[i]));
+			if (!cp) {
 				lp -> topskip = ER_SYNTAXERR;
 				lp -> bottomskip = (u_char)-1;
 				free(lp -> ext);
@@ -527,15 +526,13 @@ launchtable *lp;
 				lp -> ext = tmp;
 				return(-1);
 			}
-			cp = getrange(++cp, &(lp -> field[i]),
-				&(lp -> delim[i]), &(lp -> width[i]));
 			ch = ',';
 		}
 
 		ch = ':';
 		for (i = 0; i < MAXLAUNCHSEP; i++) {
 			if (*cp != ch) break;
-			if (!(cp = evalnumeric(++cp, &l, 0))) {
+			if (!(cp = sscanf2(++cp, "%Cu", &c))) {
 				lp -> topskip = ER_SYNTAXERR;
 				lp -> bottomskip = (u_char)-1;
 				free(lp -> ext);
@@ -543,14 +540,14 @@ launchtable *lp;
 				lp -> ext = tmp;
 				return(-1);
 			}
-			lp -> sep[i] = (l > 0) ? l - 1 : 255;
+			lp -> sep[i] = (c) ? c - 1 : 255;
 			ch = ',';
 		}
 		for (; i < MAXLAUNCHSEP; i++) lp -> sep[i] = 255;
 
-		if (!cp || *cp != ':') lp -> lines = 1;
+		if (!*cp) lp -> lines = 1;
 		else {
-			if (!(cp = evalnumeric(++cp, &l, 0))) {
+			if (!sscanf2(cp, ":%Cu%$", &c)) {
 				lp -> topskip = ER_SYNTAXERR;
 				lp -> bottomskip = (u_char)-1;
 				free(lp -> ext);
@@ -558,17 +555,9 @@ launchtable *lp;
 				lp -> ext = tmp;
 				return(-1);
 			}
-			lp -> lines = (l > 0) ? l : 1;
+			lp -> lines = (c) ? c : 1;
 		}
 
-		if (*cp) {
-			lp -> topskip = ER_SYNTAXERR;
-			lp -> bottomskip = (u_char)-1;
-			free(lp -> ext);
-			free(lp -> comm);
-			lp -> ext = tmp;
-			return(-1);
-		}
 		free(tmp);
 	}
 # endif	/* FD < 2 */
@@ -756,13 +745,13 @@ FILE *fp;
 
 		if (list[n].topskip) {
 			if (ch) fputs(" \\\n", fp);
-			fprintf2(fp, "\t-t %d", list[n].topskip);
+			fprintf2(fp, "\t-t %d", (int)(list[n].topskip));
 		}
 		if (list[n].bottomskip) {
 			if (list[n].topskip) fputc(' ', fp);
 			else if (ch) fputs(" \\\n\t", fp);
 			else fputc('\t', fp);
-			fprintf2(fp, "-b %d", list[n].bottomskip);
+			fprintf2(fp, "-b %d", (int)(list[n].bottomskip));
 		}
 # else	/* FD < 2 */
 		if (list[n].topskip >= 255) break;
@@ -771,31 +760,33 @@ FILE *fp;
 			break;
 		}
 		fprintf2(fp, "\t%d,%d",
-			list[n].topskip, list[n].bottomskip);
+			(int)(list[n].topskip), (int)(list[n].bottomskip));
 		ch = ':';
 		for (i = 0; i < MAXLAUNCHFIELD; i++) {
 			fputc(ch, fp);
 			if (list[n].field[i] >= 255) fputc('0', fp);
-			else fprintf2(fp, "%d", list[n].field[i] + 1);
+			else fprintf2(fp, "%d", (int)(list[n].field[i]) + 1);
 			if (list[n].delim[i] >= 128)
-				fprintf2(fp, "[%d]", list[n].delim[i] - 128);
+				fprintf2(fp, "[%d]",
+					(int)(list[n].delim[i]) - 128 + 1);
 			else if (list[n].delim[i])
-				fprintf2(fp, "'%c'", list[n].delim[i]);
+				fprintf2(fp, "'%c'", (int)(list[n].delim[i]));
 			if (!(list[n].width[i])) /*EMPTY*/;
 			else if (list[n].width[i] >= 128)
-				fprintf2(fp, "-%d", list[n].width[i] - 128);
-			else fprintf2(fp, "-'%c'", list[n].width[i]);
+				fprintf2(fp, "-%d",
+					(int)(list[n].width[i]) - 128);
+			else fprintf2(fp, "-'%c'", (int)(list[n].width[i]));
 			ch = ',';
 		}
 		ch = ':';
 		for (i = 0; i < MAXLAUNCHSEP; i++) {
 			if (list[n].sep[i] >= 255) break;
-			fprintf2(fp, "%c%d", ch, list[n].sep[i] + 1);
+			fprintf2(fp, "%c%d", ch, (int)(list[n].sep[i]) + 1);
 			ch = ',';
 		}
 		if (list[n].lines > 1) {
 			if (!i) fputc(':', fp);
-			fprintf2(fp, "%d", list[n].lines);
+			fprintf2(fp, "%d", (int)(list[n].lines));
 		}
 # endif	/* FD < 2 */
 		break;
@@ -940,16 +931,16 @@ char **sargv, **dargv;
 					quoted = quote;
 					quote = '\0';
 				}
+				else if (iskanji1(line, i)) {
+					cp[j++] = line[i++];
+					cp[j++] = line[i];
+				}
 #  ifdef	CODEEUC
 				else if (isekana(line, i)) {
 					cp[j++] = line[i++];
 					cp[j++] = line[i];
 				}
 #  endif
-				else if (iskanji1(line, i)) {
-					cp[j++] = line[i++];
-					cp[j++] = line[i];
-				}
 				else if (quote) cp[j++] = line[i];
 				else if (line[i] == PMETA) {
 					if (!line[++i]) {
@@ -1518,7 +1509,7 @@ devinfo *devp;
 
 	devp -> drive = toupper2(argv[1][0]);
 	devp -> name = argv[2];
-	if (!isalpha(devp -> drive)) {
+	if (!isalpha2(devp -> drive)) {
 		devp -> drive = ER_SYNTAXERR;
 		devp -> head = 1;
 		return(-1);
@@ -1590,31 +1581,31 @@ devinfo *devp;
 # else	/* FD < 2 */
 	{
 		char *cp, *tmp;
-		long l;
+		u_char c;
 
 		cp = tmp = catvar(&(argv[3]), '\0');
 
-		if (!(cp = evalnumeric(cp, &l, 1)) || *cp != DRIVESEP) {
+		if (!(cp = sscanf2(cp, "%+Cu%c", &c, DRIVESEP))) {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = (u_char)-1;
 			devp -> name = tmp;
 			return(-1);
 		}
-		head = l;
-		if (!(cp = evalnumeric(++cp, &l, 1)) || *cp != DRIVESEP) {
+		head = c;
+		if (!(cp = sscanf2(cp, "%+Cu%c", &c, DRIVESEP))) {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = (u_char)-1;
 			devp -> name = tmp;
 			return(-1);
 		}
-		sect = l;
-		if (!(cp = evalnumeric(++cp, &l, 1)) || *cp) {
+		sect = c;
+		if (!sscanf2(cp, "%+Cu%$", &c)) {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = (u_char)-1;
 			devp -> name = tmp;
 			return(-1);
 		}
-		cyl = l;
+		cyl = c;
 		if (head > MAXUTYPE(u_char)
 		|| sect > MAXUTYPE(u_short)
 		|| cyl > MAXUTYPE(u_short)) {
@@ -1728,15 +1719,14 @@ FILE *fp;
 # ifdef	HDDMOUNT
 	if (!fdlist[n].cyl) {
 		fputs("HDD", fp);
-		if (fdlist[n].head >= 'A' && fdlist[n].head <= 'Z')
-			fputs("98", fp);
+		if (isupper2(fdlist[n].head)) fputs("98", fp);
 		if (verbose) fprintf2(fp, " #offset=%'Ld",
 			fdlist[n].offset / fdlist[n].sect);
 		return;
 	}
 # endif	/* HDDMOUNT */
-	fprintf2(fp, "%d%c%d%c%d", fdlist[n].head, DRIVESEP,
-		fdlist[n].sect, DRIVESEP, fdlist[n].cyl);
+	fprintf2(fp, "%d%c%d%c%d", (int)(fdlist[n].head), DRIVESEP,
+		(int)(fdlist[n].sect), DRIVESEP, (int)(fdlist[n].cyl));
 	fputnl(fp);
 }
 
@@ -1913,7 +1903,7 @@ char *argv[];
 		putterm(l_clear);
 		buf[1] = '\0';
 		do {
-			ch = getch2();
+			if ((ch = getch2()) == EOF) break;
 			next = kbhit2(WAITKEYPAD * 1000L);
 			buf[0] = ch;
 			cp = encodestr(buf, 1);
@@ -1936,39 +1926,38 @@ static int NEAR printhist(argc, argv)
 int argc;
 char *argv[];
 {
-	char *cp;
-	long no;
 	int i, n, max, size;
 
 	if (argc >= 3) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	size = histsize[0];
-	if (argc < 2) no = size;
-	else if (!(cp = evalnumeric(argv[1], &no, 1)) || *cp) {
+	size = (int)histsize[0];
+	if (argc < 2) n = size;
+	else if ((n = atoi2(argv[1])) < 1) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
-	else if (no > size) no = size;
+	else if (n > size) n = size;
 
 	if (!history[0]) return(0);
-	if (--no > (long)MAXHISTNO) no = MAXHISTNO;
-	for (max = no; max >= 0; max--) if (history[0][max]) break;
-	if (max < histno[0]) n = histno[0] - max - 1;
-	else n = MAXHISTNO - (max - histno[0]);
+	if (--n > (int)MAXHISTNO) n = (int)MAXHISTNO;
+	for (max = n; max >= 0; max--) if (history[0][max]) break;
+	if (max < (int)histno[0]) n = (int)histno[0] - max - 1;
+	else n = (int)MAXHISTNO - (max - (int)histno[0]);
 
 	hitkey(2);
 	for (i = max; i >= 0; i--) {
 		fprintf2(stdout, "%5d  %k", n + 1, history[0][i]);
 		fputnl(stdout);
-		if (n++ >= MAXHISTNO) n = 0;
+		if (n++ >= (int)MAXHISTNO) n = 0;
 		hitkey(0);
 	}
 	return(0);
 }
 
-#ifndef	NOPOSIXUTIL
+#if	FD >= 2
+# ifndef	NOPOSIXUTIL
 static int NEAR fixcommand(argc, argv)
 int argc;
 char *argv[];
@@ -2049,7 +2038,7 @@ char *argv[];
 		for (; i < n; i++) {
 			if (!(r = strchr(argv[i], '='))) continue;
 			l1 = r - argv[i];
-			for (cp = s; (cp = strchr(cp, argv[i][0])); cp++)
+			for (cp = s; (cp = strchr2(cp, argv[i][0])); cp++)
 				if (!strncmp(cp, argv[i], l1)) break;
 			if (!cp) continue;
 			r++;
@@ -2100,8 +2089,8 @@ char *argv[];
 		l = n;
 	}
 
-	if (f < histno[0]) n = histno[0] - f - 1;
-	else n = MAXHISTNO - (f - histno[0]);
+	if (f < (int)histno[0]) n = (int)histno[0] - f - 1;
+	else n = (int)MAXHISTNO - (f - (int)histno[0]);
 
 	if (list) {
 		fp = stdout;
@@ -2129,26 +2118,26 @@ char *argv[];
 		if (history[0][i]) {
 			if (!nonum) {
 				fprintf2(fp, "%5d  ", n + 1);
-				if (n++ >= MAXHISTNO) n = 0;
+				if (n++ >= (int)MAXHISTNO) n = 0;
 			}
 			kanjifputs(history[0][i], fp);
 			fputnl(fp);
-#ifdef	_NOORIGSHELL
+#  ifdef	_NOORIGSHELL
 			if (list) hitkey(0);
-#endif
+#  endif
 		}
 	}
 	else for (i = f; i <= l; i++) {
 		if (history[0][i]) {
 			if (!nonum) {
 				fprintf2(fp, "%5d  ", n + 1);
-				if (--n < 0) n = MAXHISTNO;
+				if (--n < 0) n = (int)MAXHISTNO;
 			}
 			kanjifputs(history[0][i], fp);
 			fputnl(fp);
-#ifdef	_NOORIGSHELL
+#  ifdef	_NOORIGSHELL
 			if (list) hitkey(0);
-#endif
+#  endif
 		}
 	}
 
@@ -2192,9 +2181,8 @@ char *argv[];
 	rmtmpfile(path);
 	return(ret);
 }
-#endif	/* !NOPOSIXUTIL */
+# endif	/* !NOPOSIXUTIL */
 
-#if	FD >= 2
 /*ARGSUSED*/
 static VOID NEAR voidmd5(a, b, c, d)
 u_long a, b, c, d;
@@ -2714,8 +2702,7 @@ char *argv[];
 	aliaslist[i].alias = strdup2(argv[1]);
 	aliaslist[i].comm = strdup2(argv[2]);
 # ifdef	COMMNOCASE
-	for (cp = aliaslist[i].alias; cp && *cp; cp++)
-		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
+	for (cp = aliaslist[i].alias; cp && *cp; cp++) *cp = tolower2(*cp);
 # endif
 	return(0);
 }
@@ -2797,7 +2784,7 @@ char *argv[];
 	if (n > 0) {
 		for (i = 1; i <= n; i++) free(argv[i]);
 		memmove((char *)&(argv[1]), (char *)&(argv[n + 1]),
-			sizeof(char *) * (argc - n));
+			(argc - n) * sizeof(char *));
 		argc -= n;
 	}
 
@@ -2896,8 +2883,7 @@ char *argv[];
 	if (i >= maxuserfunc) {
 		userfunclist[i].func = strdup2(argv[FUNCNAME]);
 # ifdef	COMMNOCASE
-		for (cp = userfunclist[i].func; *cp; cp++)
-			if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
+		for (cp = userfunclist[i].func; *cp; cp++) *cp = tolower2(*cp);
 # endif
 		maxuserfunc++;
 	}
@@ -2947,7 +2933,7 @@ char *argv[];
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	if (chdir3(argv[1]) < 0) {
+	if (chdir3(argv[1], 0) < 0) {
 		builtinerror(argv, argv[1], -1);
 		return(-1);
 	}

@@ -25,10 +25,8 @@ extern char *preparefile __P_((char *, char *));
 #endif
 
 #ifndef	_NODOSDRIVE
-extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
-extern int shutdrv __P_((int));
 extern int lastdrv;
-# if	MSDOS
+# if	MSDOS && !defined (_NOUSELFN)
 extern int checkdrive __P_((int));
 # endif
 #endif
@@ -596,6 +594,9 @@ char *path;
 
 	if (path != fullpath) strncpy2(fullpath, path, MAXPATHLEN - 1);
 	warning(0, cp);
+#ifndef	_NOUSEHASH
+	searchhash(NULL, "", "");
+#endif
 	errno = duperrno;
 }
 
@@ -803,7 +804,7 @@ char *dir;
 	}
 	realpath2(deftmpdir, path, 1);
 	free(deftmpdir);
-#if	MSDOS && !defined (_NODOSDRIVE)
+#if	MSDOS && !defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 	if (checkdrive(toupper2(path[0]) - 'A') && !nodosgetwd(path)) {
 		lostcwd(path);
 		deftmpdir = NULL;
@@ -813,7 +814,7 @@ char *dir;
 	deftmpdir = strdup2(path);
 #if	MSDOS
 	n = getcurdrv();
-	*path = (n >= 'A' && n <= 'Z') ? toupper2(*path) : tolower2(*path);
+	*path = (isupper2(n)) ? toupper2(*path) : tolower2(*path);
 #endif
 
 	mask = 0777 & ~tmpumask;
@@ -993,7 +994,7 @@ char *dir, *file;
 #if	MSDOS
 	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);
 #else
-	if ((pid = fork()) < 0L) return(-1);
+	if ((pid = fork()) < (p_id_t)0) return(-1);
 	else if (!pid) {
 		execle("/bin/rm", "rm", "-rf", buf, NULL, environ);
 		_exit(1);

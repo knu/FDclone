@@ -117,7 +117,6 @@ extern int maxarchive;
 extern int origmaxarchive;
 # endif
 # ifdef	_USEDOSEMU
-extern devinfo fdtype[];
 extern devinfo *origfdtype;
 # endif
 extern int inruncom;
@@ -130,8 +129,6 @@ extern int inruncom;
 			(inputstr(p, d, ((s) ? strlen(s) : 0), s, h))
 #define	noselect(n, m, x, s, v) \
 			(selectstr(n, m, x, s, v) == K_ESC)
-#define	custputs(s)	cprintf2("%.*k", n_lastcolumn, s)
-#define	custputs2(s)	cprintf2("%.*k", n_column, s)
 #define	MAXSAVEMENU	5
 #define	MAXTNAMLEN	8
 #ifndef	O_BINARY
@@ -182,6 +179,7 @@ static int NEAR atooctal __P_((char *));
 #endif
 static VOID NEAR _evalenv __P_((int));
 #ifndef	_NOCUSTOMIZE
+static int NEAR custputs __P_((char *));
 static char *NEAR strcatalloc __P_((char *, char *));
 static VOID NEAR putsep __P_((VOID_A));
 static VOID NEAR fillline __P_((int, int));
@@ -272,7 +270,7 @@ static int NEAR editcust __P_((VOID_A));
 int custno = -1;
 #endif
 
-static envtable envlist[] = {
+static CONST envtable envlist[] = {
 	{"FD_SORTTYPE", &sorttype, {(char *)SORTTYPE}, STTP_E, T_SORT},
 	{"FD_DISPLAYMODE", &displaymode, {(char *)DISPLAYMODE}, DPMD_E, T_DISP},
 #ifndef	_NOTREE
@@ -379,7 +377,7 @@ static envtable envlist[] = {
 
 #ifndef	_NOCUSTOMIZE
 # ifdef	_USEDOSEMU
-static devinfo mediadescr[] = {
+static CONST devinfo mediadescr[] = {
 	{0xf0, "2HD(PC/AT)", 2, 18, 80},
 	{0xf9, "2HD(PC98)", 2, 15, 80},
 	{0xf9, "2DD(PC/AT)", 2, 9, 80},
@@ -422,14 +420,7 @@ char *s;
 {
 	int n;
 
-	if (!s) return(-1);
-	n = 0;
-	while (*s) {
-		if (*s < '0' || *s > '7') break;
-		n = (n << 3) + *s - '0';
-		s++;
-	}
-	if (*s) return(-1);
+	if (!sscanf2(s, "%o%$", &n)) return(-1);
 	n &= 0777;
 	return(n);
 }
@@ -585,6 +576,12 @@ VOID freeenvpath(VOID_A)
 #endif
 
 #ifndef	_NOCUSTOMIZE
+static int NEAR custputs(s)
+char *s;
+{
+	return(cprintf2("%.*k", n_lastcolumn, s));
+}
+
 static char *NEAR strcatalloc(s1, s2)
 char *s1, *s2;
 {
@@ -802,7 +799,7 @@ char *s;
 	locate(0, L_HELP);
 	putterm(l_clear);
 	putterm(t_standout);
-	custputs2(s);
+	cprintf2("%.*k", n_column, s);
 	putterm(end_standout);
 }
 
@@ -871,18 +868,11 @@ static char *NEAR ascoctal(n, buf)
 int n;
 char *buf;
 {
-	int i;
-
 # ifdef	BASHSTYLE
-	i = 3;
+	snprintf2(buf, MAXLONGWIDTH + 1, "%03o", n & 0777);
 # else
-	i = 4;
+	snprintf2(buf, MAXLONGWIDTH + 1, "%04o", n & 0777);
 # endif
-	buf[i] = '\0';
-	while (--i >= 0) {
-		buf[i] = '0' + (n & 7);
-		n >>= 3;
-	}
 	return(buf);
 }
 # endif	/* FD >= 2 */
@@ -2015,7 +2005,8 @@ int no;
 	len = 0;
 	for (;;) {
 		buf = c_realloc(buf, len, &size);
-		buf[len++] = getch2();
+		if ((i = getch2()) == EOF) break;
+		buf[len++] = i;
 		if (!kbhit2(WAITKEYPAD * 1000L)) break;
 	}
 	buf = realloc2(buf, len + 1);
@@ -2240,9 +2231,9 @@ int no;
 		width = MAXCUSTVAL - 1 - 6 - width;
 		cprintf2("%-*.*k", width, width, launchlist[no].format[0]);
 		putsep();
-		cprintf2("%-2d", launchlist[no].topskip);
+		cprintf2("%-2d", (int)(launchlist[no].topskip));
 		putsep();
-		cprintf2("%-2d", launchlist[no].bottomskip);
+		cprintf2("%-2d", (int)(launchlist[no].bottomskip));
 	}
 	len = strlen2(launchlist[no].comm);
 	if (len > --width) len = width;
@@ -2286,12 +2277,12 @@ launchtable *list;
 				putterm(t_standout);
 				cputs2("-t");
 				putterm(end_standout);
-				cprintf2("%3d", list -> topskip);
+				cprintf2("%3d", (int)(list -> topskip));
 				putsep();
 				putterm(t_standout);
 				cputs2("-b");
 				putterm(end_standout);
-				cprintf2("%3d", list -> bottomskip);
+				cprintf2("%3d", (int)(list -> bottomskip));
 				putsep();
 				putterm(t_standout);
 				cputs2("-f");
@@ -2459,7 +2450,8 @@ launchtable *list;
 				freevar(list -> lignore);
 				freevar(list -> lerror);
 				list -> lignore = list -> lerror = NULL;
-				list -> topskip = list -> bottomskip = 0;
+				list -> topskip =
+				list -> bottomskip = (u_char)0;
 			}
 			break;
 		}
@@ -2525,7 +2517,8 @@ int no;
 			launchlist[i].comm = NULL;
 			launchlist[i].format =
 			launchlist[i].lignore = launchlist[i].lerror = NULL;
-			launchlist[i].topskip = launchlist[i].bottomskip = 0;
+			launchlist[i].topskip =
+			launchlist[i].bottomskip = (u_char)0;
 			launchlist[i].flags = list.flags;
 		}
 		no = i;
@@ -2570,7 +2563,7 @@ int no;
 			freevar(list.lignore);
 			freevar(list.lerror);
 			list.format = list.lignore = list.lerror = NULL;
-			list.topskip = list.bottomskip = 0;
+			list.topskip = list.bottomskip = (u_char)0;
 			break;
 		}
 
@@ -3049,8 +3042,7 @@ int no;
 		char buf[sizeof("HDD98 #offset=") + MAXCOLSCOMMA(3)];
 
 		strcpy(buf, "HDD");
-		if (fdtype[no].head >= 'A' && fdtype[no].head <= 'Z')
-			strcat(buf, "98");
+		if (isupper2(fdtype[no].head)) strcat(buf, "98");
 		i = strlen(buf);
 		snprintf2(&(buf[i]), sizeof(buf) - i, " #offset=%'Ld",
 			fdtype[no].offset / fdtype[no].sect);
@@ -3067,11 +3059,11 @@ int no;
 
 		w2 = (w1 - len) / 3 - 1;
 		if (w2 <= 0) w2 = 1;
-		cprintf2("%-*d", w2, fdtype[no].head);
+		cprintf2("%-*d", w2, (int)(fdtype[no].head));
 		putsep();
-		cprintf2("%-*d", w2, fdtype[no].sect);
+		cprintf2("%-*d", w2, (int)(fdtype[no].sect));
 		putsep();
-		cprintf2("%-*d", w2, fdtype[no].cyl);
+		cprintf2("%-*d", w2, (int)(fdtype[no].cyl));
 		putsep();
 
 		for (i = 0; i < MEDIADESCRSIZ; i++) {

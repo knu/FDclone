@@ -80,6 +80,17 @@ typedef struct _keyseq_t {
 #define	K_HELP	0553
 #define	K_MAX	K_HELP
 
+#define	K_METAKEY	01000
+#if	MSDOS
+#define	mkmetakey(c)	(K_METAKEY | (tolower2(c) & 0x7f))
+#define	ismetakey(c)	(((c) & K_METAKEY) && islower2((c) & 0xff))
+#else
+#define	mkmetakey(c)	(K_METAKEY | ((c) & 0x7f))
+#define	ismetakey(c)	(((c) & K_METAKEY) && isalpha2((c) & 0xff))
+#endif
+#define	mkekana(c)	(K_METAKEY | ((c) & 0xff))
+#define	isekana2(c)	(((c) & K_METAKEY) && iskana2((c) & 0xff))
+
 #define	K_CTRL(c)	((c) & 037)
 
 extern int n_column;
@@ -131,7 +142,9 @@ extern char *termstr[];
 #define	c_ndown		termstr[40]
 #define	c_nright	termstr[41]
 #define	c_nleft		termstr[42]
-#define	MAXTERMSTR	43
+#define	t_fgcolor	termstr[43]
+#define	t_bgcolor	termstr[44]
+#define	MAXTERMSTR	45
 
 extern u_char cc_intr;
 extern u_char cc_quit;
@@ -185,7 +198,7 @@ extern int cputs2 __P_((char *));
 extern int putterm __P_((char *));
 extern int putterms __P_((char *));
 #endif
-extern int kbhit2 __P_((u_long));
+extern int kbhit2 __P_((long));
 extern int getch2 __P_((VOID_A));
 extern int getkey2 __P_((int));
 extern int ungetch2 __P_((int));

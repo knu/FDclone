@@ -133,8 +133,8 @@ u_short typelist[] = {
 	S_IFDIR, S_IFBLK, S_IFCHR, S_IFLNK, S_IFSOCK, S_IFIFO
 };
 #ifdef	HAVEFLAGS
-char flagsymlist[] = "ANacuacu";
-u_long flaglist[] = {
+char fflagsymlist[] = "ANacuacu";
+u_long fflaglist[] = {
 	SF_ARCHIVED, UF_NODUMP,
 	SF_APPEND, SF_IMMUTABLE, SF_NOUNLINK,
 	UF_APPEND, UF_IMMUTABLE, UF_NOUNLINK
@@ -155,19 +155,19 @@ int win = 0;
 int calc_x = -1;
 int calc_y = -1;
 
-static u_short modelist[] = {
+static CONST u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
 #define	MAXMODELIST	(sizeof(modelist) / sizeof(u_short))
-static char suffixlist[] = {
+static CONST char suffixlist[] = {
 	'/', '@', '=', '|'
 };
 #define	MAXSUFFIXLIST	(sizeof(suffixlist) / sizeof(char))
 #ifndef	_NOCOLOR
-static u_char colorlist[] = {
+static CONST u_char colorlist[] = {
 	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
 };
-static char defpalette[] = {
+static CONST char defpalette[] = {
 	ANSI_FG,	/* CL_NORM */
 	ANSI_BG,	/* CL_BACK */
 	ANSI_CYAN,	/* CL_DIR */
@@ -210,7 +210,7 @@ int id;
 	if (!ansipalette || id >= strlen(ansipalette)) color = defpalette[id];
 	else {
 		color = ansipalette[id];
-		if (color >= '0' && color <= '9') color -= '0';
+		if (isdigit2(color)) color -= '0';
 		else color = defpalette[id];
 	}
 
@@ -452,7 +452,7 @@ static VOID NEAR sizebar(VOID_A)
 	off_t total, fre, bsize;
 
 	if (!hassizeinfo() || !*fullpath) return;
-	if (getinfofs(".", &total, &fre, &bsize) < 0) total = fre = -1L;
+	if (getinfofs(".", &total, &fre, &bsize) < 0) total = fre = (off_t)-1;
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
@@ -560,8 +560,8 @@ u_long flags;
 {
 	int i;
 
-	for (i = 0; i < sizeof(flaglist) / sizeof(u_long); i++)
-		buf[i] = (flags & flaglist[i]) ? flagsymlist[i] : '-';
+	for (i = 0; i < sizeof(fflaglist) / sizeof(u_long); i++)
+		buf[i] = (flags & fflaglist[i]) ? fflagsymlist[i] : '-';
 	buf[i] = '\0';
 
 	return(i);
@@ -579,7 +579,7 @@ uid_t uid;
 	i = len = (iswellomit()) ? WOWNERMIN : WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
 	else if ((up = finduid(uid, NULL))) strncpy3(buf, up -> name, &len, 0);
-	else snprintf2(buf, len + 1, "%-*d", len, uid);
+	else snprintf2(buf, len + 1, "%-*d", len, (int)uid);
 
 	return(len);
 }
@@ -594,7 +594,7 @@ gid_t gid;
 	i = len = (iswellomit()) ? WGROUPMIN : WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
 	else if ((gp = findgid(gid, NULL))) strncpy3(buf, gp -> name, &len, 0);
-	else snprintf2(buf, len + 1, "%-*d", len, gid);
+	else snprintf2(buf, len + 1, "%-*d", len, (int)gid);
 
 	return(len);
 }
@@ -633,10 +633,11 @@ int width;
 		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
 # endif
 	else if (isdev(namep))
-		snprintf2(buf, width + 1, "%<*d,%<*d",
-			width / 2, major((u_long)(namep -> st_size)),
+		snprintf2(buf, width + 1, "%<*lu,%<*lu",
+			width / 2,
+			(u_long)major((u_long)(namep -> st_size)),
 			width - (width / 2) - 1,
-			minor((u_long)(namep -> st_size)));
+			(u_long)minor((u_long)(namep -> st_size)));
 #endif	/* !MSDOS */
 	else snprintf2(buf, width + 1, "%<*qd", width, namep -> st_size);
 
@@ -731,7 +732,7 @@ static VOID NEAR infobar(VOID_A)
 		buf[len++] = ' ';
 
 		snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
-			"%02d-%02d-%02d %02d:%02d ",
+			"%02d-%02d-%02d %2d:%02d ",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		len += WDATE + 1 + WTIME + 1;
@@ -800,7 +801,7 @@ static VOID NEAR infobar(VOID_A)
 
 	if (!ishardomit()) {
 		snprintf2(&(buf[len]), 1 + WNLINK + 1 + 1, " %<*d ",
-			WNLINK, filelist[filepos].st_nlink);
+			WNLINK, (int)(filelist[filepos].st_nlink));
 		len += 1 + WNLINK + 1;
 
 #ifndef	NOUID
@@ -1279,7 +1280,7 @@ char *buf;
 	}
 	else {
 		if (n == 1) buf[len = 0] = '\0';
-		if (isctl(ch) || ch >= K_MIN) isearch = 0;
+		if (iscntrl2(ch) || ch >= K_MIN) isearch = 0;
 		else if (len < MAXNAMLEN - 1) {
 			buf[len++] = ch;
 			buf[len] = '\0';
@@ -1767,9 +1768,7 @@ char *path;
 			char buf[MAXPATHLEN];
 #endif
 
-			if (findpattern) free(findpattern);
-			findpattern = NULL;
-			if (chdir2(nodospath(buf, file)) < 0) {
+			if (chdir3(nodospath(buf, file), 1) < 0) {
 				hideclock = 1;
 				warning(-1, file);
 				strcpy(prev, file);

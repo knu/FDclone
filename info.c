@@ -304,13 +304,13 @@ off_t calcKB __P_((off_t, off_t));
 int getinfofs __P_((char *, off_t *, off_t *, off_t *));
 int infofs __P_((char *));
 
-static int keycodelist[] = {
+static CONST int keycodelist[] = {
 	K_HOME, K_END, K_DL, K_IL, K_DC, K_IC,
 	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER, K_HELP,
 	K_BS, '\t', K_CR, K_ESC
 };
 #define	KEYCODESIZ	((int)(sizeof(keycodelist) / sizeof(int)))
-static char *keystrlist[] = {
+static CONST char *keystrlist[] = {
 	"Home", "End", "DelLin", "InsLin", "Del", "Ins",
 	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter", "Help",
 	"Bs", "Tab", "Ret", "Esc"
@@ -324,7 +324,7 @@ int code;
 	buf = buf + strlen(buf);
 	if (code >= K_F(1) && code <= K_F(20))
 		snprintf2(buf, KEYWID + 1, "F%-6d", code - K_F0);
-	else if ((code & ~0x7f) == 0x80 && isalpha(code & 0x7f))
+	else if ((code & ~0x7f) == 0x80 && isalpha2(code & 0x7f))
 		snprintf2(buf, KEYWID + 1, "Alt-%c  ", code & 0x7f);
 	else if (code == K_UP)
 		snprintf2(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, UPAR_K);
@@ -342,14 +342,20 @@ int code;
 		if (i < KEYCODESIZ)
 			snprintf2(buf, KEYWID + 1, "%-*.*s",
 				KEYWID, KEYWID, keystrlist[i]);
+#ifdef	CODEEUC
+		else if (isekana2(code))
+			snprintf2(buf, KEYWID + 1 + 1,
+				"'%c%c'    ", C_EKANA, code & 0xff);
+#endif
+		else if (code > MAXUTYPE(u_char)) return(0);
 #ifndef	CODEEUC
-		else if (iskna(code))
+		else if (iskana2(code))
 			snprintf2(buf, KEYWID + 1, "'%c'    ", code);
 #endif
-		else if (isctl(code))
+		else if (iscntrl2(code))
 			snprintf2(buf, KEYWID + 1,
 				"Ctrl-%c ", (code + '@') & 0x7f);
-		else if (code < K_MIN && !ismsb(code))
+		else if (!ismsb(code))
 			snprintf2(buf, KEYWID + 1, "'%c'    ", code);
 		else return(0);
 	}
@@ -369,7 +375,7 @@ int y;
 VOID help(mode)
 int mode;
 {
-	char buf[20];
+	char buf[(KEYWID + 1 + 1) * 2 + 1];
 	int i, j, c, x, y;
 
 	if (distributor && *distributor) {
@@ -720,7 +726,7 @@ mnt_t *mntbuf;
 		mntbuf -> mnt_dir = dosmntdir;
 		dosmntdir[0] = drv;
 		strcpy(&(dosmntdir[1]), ":\\");
-		mntbuf -> mnt_type = (drv >= 'a' && drv <= 'z')
+		mntbuf -> mnt_type = (islower2(drv))
 			? MNTTYPE_DOS7 : MNTTYPE_PC;
 		mntbuf -> mnt_opts = "";
 		if (dosstatfs(drv, buf) < 0) return(-1);
@@ -752,7 +758,7 @@ mnt_t *mntbuf;
 		if (_chdir2(fullpath) < 0) error(fullpath);
 		match = 0;
 
-		fp = setmntent(MOUNTED, "r");
+		fp = setmntent(MOUNTED, "rb");
 		for (;;) {
 #ifdef	DEBUG
 			_mtrace_file = "getmntent(start)";
@@ -782,7 +788,7 @@ mnt_t *mntbuf;
 		}
 		dir = fsname;
 	}
-	fp = setmntent(MOUNTED, "r");
+	fp = setmntent(MOUNTED, "rb");
 	while ((mntp = getmntent2(fp, &mnt)))
 		if (!strcmp(dir, mntp -> mnt_fsname)) break;
 	endmntent(fp);
@@ -824,8 +830,7 @@ char *path;
 
 	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
 #ifdef	_USEDOSEMU
-	if ((drv = dospath(path, NULL)))
-		return((drv >= 'A' && drv <= 'Z') ? 4 : 7);
+	if ((drv = dospath(path, NULL))) return((isupper2(drv)) ? 4 : 7);
 #endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
 	|| hasmntopt2(&mntbuf, "ro")) return(0);
@@ -921,7 +926,7 @@ off_t block, byte;
 	if (block < (off_t)0 || byte <= (off_t)0) return((off_t)-1);
 	if (byte == (off_t)1024) return(block);
 	else if (byte > 1024) {
-		byte = (byte + (off_t)512L) / (off_t)1024;
+		byte = (byte + (off_t)512) / (off_t)1024;
 		return(block * byte);
 	}
 	else {

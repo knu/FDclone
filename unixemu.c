@@ -38,7 +38,7 @@ static int maxdirpath = 0;
 int _dospath(path)
 char *path;
 {
-	return((isalpha(*path) && path[1] == ':') ? *path : 0);
+	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 
 int dospath(path, buf)
@@ -152,8 +152,8 @@ DIR *dirp;
 			free(dirpathlist[i++].path);
 			memmove((char *)(&(dirpathlist[i - 1])),
 				(char *)(&(dirpathlist[i])),
-				(maxdirpath - i) * sizeof(opendirpath_t));
-			if (--maxdirpath <= 0) {
+				(maxdirpath-- - i) * sizeof(opendirpath_t));
+			if (maxdirpath <= 0) {
 				free(dirpathlist);
 				dirpathlist = NULL;
 			}
@@ -563,7 +563,7 @@ char *path, *type;
 # ifndef	_NODOSDRIVE
 	if (checkpath(path, buf)) return(dosfopen(buf, type));
 # endif
-	if (strchr(type, 'w')) return(unixfopen(path, type));
+	if (*type != 'r' || *(type + 1) == '+') return(unixfopen(path, type));
 	else if (!(path = preparefile(path, buf))) return(NULL);
 #endif
 	return(fopen(path, type));

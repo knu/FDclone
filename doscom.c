@@ -230,7 +230,7 @@ extern off_t Xlseek __P_((int, off_t, int));
 # endif	/* !_NODOSDRIVE */
 extern int Xmkdir __P_((char *, int));
 extern int Xrmdir __P_((char *));
-extern int chdir3 __P_((char *));
+extern int chdir2 __P_((char *));
 #else	/* !FD */
 # if	MSDOS
 extern DIR *Xopendir __P_((char *));
@@ -281,9 +281,9 @@ extern int Xmkdir __P_((char *, int));
 #define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
 # if	MSDOS
 extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
-extern int chdir3 __P_((char *));
+extern int chdir2 __P_((char *));
 # else
-# define	chdir3(p)	(chdir(p) ? -1 : 0)
+# define	chdir2(p)	(chdir(p) ? -1 : 0)
 # endif
 #endif	/* !FD */
 
@@ -435,7 +435,7 @@ extern char *sys_errlist[];
 #define	strerror2(n)		(char *)sys_errlist[n]
 #endif
 
-static char *doserrstr[] = {
+static CONST char *doserrstr[] = {
 	"",
 #define	ER_REQPARAM	1
 	"Required parameter missing",
@@ -734,7 +734,7 @@ int h;
 		if (c != K_BS) {
 			cp = c_realloc(cp, i, &size);
 			cp[i] = c;
-			if (!isctl(c)) fputc(c, stdout);
+			if (!iscntrl2(c)) fputc(c, stdout);
 			else fprintf2(stdout, "^%c", (c + '@') & 0x7f);
 			fflush(stdout);
 		}
@@ -742,7 +742,7 @@ int h;
 		else {
 			i -= 2;
 			fputs("\b \b", stdout);
-			if (isctl(cp[i + 1])) fputs("\b \b", stdout);
+			if (iscntrl2(cp[i + 1])) fputs("\b \b", stdout);
 			fflush(stdout);
 		}
 	}
@@ -1038,14 +1038,14 @@ int len, lower;
 	if (len < 0) len = -len;
 
 	for (i = 0; s[i] && len > 0; i++, len--) {
-#ifdef	CODEEUC
-		if (isekana(s, i)) i++;
-#endif
 		if (iskanji1(s, i)) {
 			if (len <= 1) break;
 			i++;
 			len--;
 		}
+#ifdef	CODEEUC
+		else if (isekana(s, i)) i++;
+#endif
 	}
 	if (olen >= 0) while (len-- > 0) s[i++] = ' ';
 	else olen = -olen - len;
@@ -1249,8 +1249,7 @@ static VOID NEAR dosdirheader(VOID_A)
 			if (checkline(1) < 0) return;
 		}
 		else fputc(' ', stdout);
-		fprintf2(stdout, "Directory of %k", dirwd);
-		fputnl(stdout);
+		fprintf2(stdout, "Directory of %k\n", dirwd);
 	}
 #ifndef	MINIMUMSHELL
 	if (dirtype == 'V') {
@@ -1322,7 +1321,7 @@ off_t *sump, *bsump, *fp, *tp;
 		fputs("                  ", stdout);
 		fputsize(tp, bsizep);
 		fprintf2(stdout, " total disk space, %3d%% in use\n",
-			((*tp - *fp) * (off_t)100) / *tp);
+			(int)(((*tp - *fp) * (off_t)100) / *tp));
 	}
 #endif	/* !MINIMUMSHELL */
 }
@@ -1568,7 +1567,7 @@ char *argv[];
 	}
 	if (dir != buf) strcpy(wd, cwd);
 	else {
-		if (chdir3(buf) < 0) {
+		if (chdir2(buf) < 0) {
 			dosperror(buf);
 			return(RET_FAIL);
 		}
@@ -1576,7 +1575,7 @@ char *argv[];
 			dosperror(NULL);
 			return(RET_FAIL);
 		}
-		if (chdir3(cwd) < 0) {
+		if (chdir2(cwd) < 0) {
 			dosperror(cwd);
 			return(RET_FAIL);
 		}
@@ -1865,8 +1864,8 @@ int bin;
 			return(-1);
 		}
 		*(cp++) = '\0';
-		if (*cp == 'B' || *cp == 'b') bin = CF_BINARY;
-		else if (*cp == 'A' || *cp == 'a') bin = CF_TEXT;
+		if (toupper2(*cp) == 'B') bin = CF_BINARY;
+		else if (toupper2(*cp) == 'A') bin = CF_TEXT;
 	}
 	return(bin);
 }

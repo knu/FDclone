@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include <signal.h>
 #include <fcntl.h>
 #include "machine.h"
@@ -127,6 +126,7 @@ extern int errno;
 #endif
 
 #include "printf.h"
+#include "kctype.h"
 #include "term.h"
 
 #define	GETSIZE		"\033[6n"
@@ -211,6 +211,10 @@ typedef int	tputs_t;
 # define	TERM_RI			parm_right_cursor
 # define	TERM_le			cursor_left
 # define	TERM_LE			parm_left_cursor
+# define	TERM_AF			set_a_foreground
+# define	TERM_AB			set_a_background
+# define	TERM_Sf			set_foreground
+# define	TERM_Sb			set_background
 # define	TERM_ku			key_up
 # define	TERM_kd			key_down
 # define	TERM_kr			key_right
@@ -321,6 +325,10 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # define	TERM_RI			"RI"
 # define	TERM_le			"le"
 # define	TERM_LE			"LE"
+# define	TERM_AF			"AF"
+# define	TERM_AB			"AB"
+# define	TERM_Sf			"Sf"
+# define	TERM_Sb			"Sb"
 # define	TERM_ku			"ku"
 # define	TERM_kd			"kd"
 # define	TERM_kr			"kr"
@@ -521,8 +529,10 @@ int dumbterm = 0;
 #define	KEYBUFWORKTOP	0x524
 #define	KEYBUFWORKEND	0x526
 #define	KEYBUFWORKCNT	0x528
-static u_char specialkey[] = "\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
-static u_char metakey[] = "\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\026,\021*\025)";
+static CONST u_char specialkey[] =
+	"\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
+static CONST u_char metakey[] =
+	"\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\026,\021*\025)";
 # else	/* !PC98 */
 #define	KEYBUFWORKSEG	0x40
 #define	KEYBUFWORKSIZ	0x20
@@ -530,8 +540,9 @@ static u_char metakey[] = "\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\0
 #define	KEYBUFWORKMAX	(KEYBUFWORKMIN + KEYBUFWORKSIZ)
 #define	KEYBUFWORKTOP	(KEYBUFWORKMIN - 4)
 #define	KEYBUFWORKEND	(KEYBUFWORKMIN - 2)
-static u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
-static u_char metakey[] = "\0360. \022!\"#\027$%&21\030\031\020\023\037\024\026/\021-\025,";
+static CONST u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
+static CONST u_char metakey[] =
+	"\0360. \022!\"#\027$%&21\030\031\020\023\037\024\026/\021-\025,";
 # endif	/* !PC98 */
 # if	defined (PC98) || defined (NOTUSEBIOS)
 static int nextchar = '\0';
@@ -708,7 +719,11 @@ static char *deftermstr[MAXTERMSTR] = {
 	"\033[s",		/* t_setcursor */
 	"\033[u",		/* t_resetcursor */
 #else	/* !MSDOS */
+# ifdef	USETERMINFO
+	"\033[%i%p1%d;%p2%dr",	/* t_scroll */
+# else
 	"\033[%i%d;%dr",	/* t_scroll */
+# endif
 # ifdef	BOW
 	/* hack for bowpad */
 	"",			/* t_keypad */
@@ -746,7 +761,11 @@ static char *deftermstr[MAXTERMSTR] = {
 #if	MSDOS
 	"\033[%d;%dH",		/* c_locate */
 #else
+# ifdef	USETERMINFO
+	"\033[%i%p1%d;%p2%dH",	/* c_locate */
+# else
 	"\033[%i%d;%dH",	/* c_locate */
+# endif
 #endif
 	"\033[H",		/* c_home */
 	"\r",			/* c_return */
@@ -757,10 +776,21 @@ static char *deftermstr[MAXTERMSTR] = {
 	"\012",			/* c_down */
 	"\033[C",		/* c_right */
 	"\010",			/* c_left */
+#if	!MSDOS && defined (USETERMINFO)
+	"\033[%p1%dA",		/* c_nup */
+	"\033[%p1%dB",		/* c_ndown */
+	"\033[%p1%dC",		/* c_nright */
+	"\033[%p1%dD",		/* c_nleft */
+	"\033[3%p1%dm",		/* t_fgcolor */
+	"\033[4%p1%dm",		/* t_bgcolor */
+#else
 	"\033[%dA",		/* c_nup */
 	"\033[%dB",		/* c_ndown */
 	"\033[%dC",		/* c_nright */
 	"\033[%dD",		/* c_nleft */
+	"\033[3%dm",		/* t_fgcolor */
+	"\033[4%dm",		/* t_bgcolor */
+#endif
 };
 
 
@@ -1423,7 +1453,7 @@ int getxy(yp, xp)
 int *yp, *xp;
 {
 	char *format, buf[sizeof(SIZEFMT) + 4];
-	int i, j, k, tmp, count, *val[2];
+	int i, j, tmp, count, *val[2];
 
 	format = SIZEFMT;
 	keyflush();
@@ -1439,7 +1469,8 @@ int *yp, *xp;
 # if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
 # else
-		buf[0] = getch2();
+		if ((tmp = getch2()) == EOF) return(-1);
+		buf[0] = tmp;
 # endif
 	} while (buf[0] != format[0]);
 	for (i = 1; i < sizeof(buf) - 1; i++) {
@@ -1447,7 +1478,8 @@ int *yp, *xp;
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
-		buf[i] = getch2();
+		if ((tmp = getch2()) == EOF) return(-1);
+		buf[0] = tmp;
 # endif
 		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
 	}
@@ -1460,13 +1492,8 @@ int *yp, *xp;
 
 	for (i = j = 0; format[i] && buf[j]; i++) {
 		if (format[i] == '%' && format[++i] == 'd' && count < 2) {
-			tmp = 0;
-			k = j;
-			for (; buf[j]; j++) {
-				if (!buf[j] || buf[j] == format[i + 1]) break;
-				tmp = tmp * 10 + buf[j] - '0';
-			}
-			if (j == k) break;
+			if ((tmp = getnum(buf, &j)) < 0
+			|| buf[j] != format[i + 1]) break;
 			*val[count++] = tmp;
 		}
 		else if (format[i] != buf[j++]) break;
@@ -1525,13 +1552,14 @@ int arg1, arg2;
 # else	/* !USETERMINFO */
 	printbuf_t pbuf;
 	char *tmp;
-	int i, j, n, err, args[2];
+	int i, j, n, pop, err, args[2];
 
 	if (!s || !(pbuf.buf = (char *)malloc(1))) return(NULL);
 	pbuf.ptr = pbuf.size = 0;
 	pbuf.flags = VF_NEW;
 	args[0] = arg1;
 	args[1] = arg2;
+	pop = 0;
 
 	for (i = n = 0; s[i]; i++) {
 		tmp = NULL;
@@ -1566,6 +1594,18 @@ int arg1, arg2;
 				if (!s[++i] || !s[i + 1]) err++;
 				else if (args[n] > s[i++]) args[n] += s[i];
 				break;
+			case 'p':
+				i++;
+				if (s[i] == '1') {
+					pop = 1;
+					break;
+				}
+				else if (s[i] == '2') {
+					if (pop) break;
+					pop = 2;
+				}
+				else break;
+/*FALLTHRU*/
 			case 'r':
 				j = args[0];
 				args[0] = args[1];
@@ -1772,8 +1812,8 @@ char *s;
 
 	if (termflags & F_TERMENT) return(-1);
 	if (!ttyout) {
-		if (!(ttyout = fdopen(ttyio, "w+"))
-		&& !(ttyout = fopen(TTYNAME, "w+"))) ttyout = stderr;
+		if (!(ttyout = fdopen(ttyio, "w+b"))
+		&& !(ttyout = fopen(TTYNAME, "w+b"))) ttyout = stderr;
 	}
 	dupdumbterm = dumbterm;
 	dumbterm = dumb = 0;
@@ -1926,6 +1966,16 @@ char *s;
 	tgetstr2(&c_ndown, TERM_DO);
 	tgetstr2(&c_nright, TERM_RI);
 	tgetstr2(&c_nleft, TERM_LE);
+	cp = NULL;
+	if (tgetstr2(&cp, TERM_AF) || tgetstr2(&cp, TERM_Sf)) {
+		if (t_fgcolor) free(t_fgcolor);
+		t_fgcolor = cp;
+	}
+	cp = NULL;
+	if (tgetstr2(&cp, TERM_AB) || tgetstr2(&cp, TERM_Sb)) {
+		if (t_fgcolor) free(t_bgcolor);
+		t_bgcolor = cp;
+	}
 
 	tgetkeyseq(K_UP, TERM_ku);
 	tgetkeyseq(K_DOWN, TERM_kd);
@@ -2357,14 +2407,9 @@ char *s;
 
 	i = 0;
 	if (s[i] == '>') {
-		n1 = -1;
-
-		if (isdigit(s[++i])) {
-			n1 = s[i++] - '0';
-			while (isdigit(s[i])) n1 = n1 * 10 + s[i++] - '0';
-		}
-
-		if (s[i] == 'h') {
+		i++;
+		if ((n1 = getnum(s, &i)) < 0) i = -1;
+		else if (s[i] == 'h') {
 			if (n1 == 5) bioscurstype(0x2000);
 			else i = -1;
 		}
@@ -2378,15 +2423,12 @@ char *s;
 		getxy(&y, &x);
 		w = getbiosbyte(SCRWIDTH);
 		h = getbiosbyte(SCRHEIGHT) + 1;
-		n1 = n2 = -1;
 
-		if (isdigit(s[i])) {
-			n1 = s[i++] - '0';
-			while (isdigit(s[i])) n1 = n1 * 10 + s[i++] - '0';
-		}
-		if (s[i] == ';' && isdigit(s[++i])) {
-			n2 = s[i++] - '0';
-			while (isdigit(s[i])) n2 = n2 * 10 + s[i++] - '0';
+		n1 = getnum(s, &i);
+		if (s[i] != ';') n2 = -1;
+		else {
+			i++;
+			n2 = getnum(s, &i);
 		}
 
 		switch (s[i]) {
@@ -2537,7 +2579,7 @@ char *s;
 
 /*ARGSUSED*/
 int kbhit2(usec)
-u_long usec;
+long usec;
 {
 #if	defined (NOTUSEBIOS) || !defined (DJGPP) || (DJGPP < 2)
 	union REGS reg;
@@ -2567,8 +2609,8 @@ u_long usec;
 # else	/* !PC98 */
 #  if	defined (DJGPP) && (DJGPP >= 2)
 	fd = (ttyio < MAXFDSET || (n = safe_dup(ttyio)) < 0) ? ttyio : n;
-	tv.tv_sec = usec / 1000000L;
-	tv.tv_usec = usec % 1000000L;
+	tv.tv_sec = (time_t)usec / (time_t)1000000;
+	tv.tv_usec = (time_t)usec % (time_t)1000000;
 	FD_ZERO(&readfds);
 	FD_SET(fd, &readfds);
 
@@ -2629,13 +2671,13 @@ int getch2(VOID_A)
 		if ((ch = (key & 0xff))) {
 			if (ch < 0x80 || (ch > 0x9f && ch < 0xe0)) break;
 			key &= 0xff00;
-			if (strchr(metakey, (key >> 8))) break;
+			if (strchr(metakey, key >> 8)) break;
 		}
 # else
 		if ((ch = (key & 0xff)) && ch != 0xe0 && ch != 0xf0) break;
 		key &= 0xff00;
 # endif
-		if (strchr(specialkey, (key >> 8))) break;
+		if (strchr(specialkey, key >> 8)) break;
 		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
 	}
 	putterms(t_metamode);
@@ -2709,7 +2751,7 @@ int sig;
 		if (keywaitfunc) (*keywaitfunc)();
 	}
 #endif	/* !DJGPP || NOTUSEBIOS || PC98 */
-	ch = getch2();
+	if ((ch = getch2()) == EOF) return(K_NOKEY);
 
 	if (ch) switch (ch) {
 		case '\010':
@@ -2727,11 +2769,11 @@ int sig;
 	if (kbhit2(WAITKEYPAD * 1000L))
 #endif
 	{
-		ch = getch2();
+		if ((ch = getch2()) == EOF) return(K_NOKEY);
 		for (i = 0; i < SPECIALKEYSIZ; i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
 		for (i = 0; i <= 'z' - 'a'; i++)
-			if (ch == metakey[i]) return(('a' + i) | 0x80);
+			if (ch == metakey[i]) return(mkmetakey('a' + i));
 		ch = K_NOKEY;
 	}
 	return(ch);
@@ -2822,7 +2864,7 @@ char *s;
 }
 
 int kbhit2(usec)
-u_long usec;
+long usec;
 {
 # ifdef	NOSELECT
 	return((usec) ? 1 : 0);
@@ -2832,8 +2874,8 @@ u_long usec;
 	int n, fd;
 
 	fd = (ttyio < MAXFDSET || (n = safe_dup(ttyio)) < 0) ? ttyio : n;
-	tv.tv_sec = usec / 1000000L;
-	tv.tv_usec = usec % 1000000L;
+	tv.tv_sec = (time_t)usec / (time_t)1000000;
+	tv.tv_usec = (time_t)usec % (time_t)1000000;
 	FD_ZERO(&readfds);
 	FD_SET(fd, &readfds);
 
@@ -2884,15 +2926,24 @@ int sig;
 # endif
 	} while (!key);
 
-	key = ch = getch2();
+	if ((key = ch = getch2()) == EOF) return(K_NOKEY);
+# if	!defined (_NOKANJICONV) || defined (CODEEUC)
+	if (key == C_EKANA) {
+		if (!kbhit2(WAITMETA * 1000L) || (ch = getch2()) == EOF)
+			return(key);
+		if (iskana2(ch)) return(mkekana(ch));
+		ungetch2(ch);
+		return(key);
+	}
+# endif
 	if (cc_erase != 255 && key == cc_erase) return(K_BS);
 	if (!(p = keyseqtree)) return(key);
 
 	if (key == K_ESC) {
-		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
-		ch = getch2();
-		if (isalpha(ch) && !kbhit2(WAITMETA * 1000L))
-			return(ch | 0x80);
+		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
+			return(key);
+		if (isalpha2(ch) && !kbhit2(WAITMETA * 1000L))
+			return(mkmetakey(ch));
 		for (j = 0; j < p -> num; j++)
 			if (key == keyseq[p -> next[j].key].str[0]) break;
 		if (j >= p -> num) return(key);
@@ -2907,8 +2958,8 @@ int sig;
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == 1)
 			return(keyseq[p -> key].code & 0777);
-		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
-		ch = getch2();
+		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
+			return(key);
 	}
 
 	for (i = 1; p && p -> next; i++) {
@@ -2918,8 +2969,8 @@ int sig;
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == i + 1)
 			return(keyseq[p -> key].code & 0777);
-		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
-		ch = getch2();
+		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
+			return(key);
 	}
 	return(key);
 }
@@ -3119,11 +3170,24 @@ char *s;
 int chgcolor(color, reverse)
 int color, reverse;
 {
-	if (!reverse) cprintf2("\033[%dm", color + ANSI_NORMAL);
-	else if (color == ANSI_BLACK)
-		cprintf2("\033[%dm\033[%dm",
-			ANSI_WHITE + ANSI_NORMAL, color + ANSI_REVERSE);
-	else cprintf2("\033[%dm\033[%dm",
-			ANSI_BLACK + ANSI_NORMAL, color + ANSI_REVERSE);
+	char *cp;
+	int bg;
+
+	bg = color;
+	if (reverse) color = (color == ANSI_BLACK) ? ANSI_WHITE : ANSI_BLACK;
+
+	if ((cp = tparamstr(t_fgcolor, color, 0))) {
+		cputs2(cp);
+		free(cp);
+	}
+	else cprintf2("\033[%dm", color + ANSI_NORMAL);
+
+	if (!reverse) return(0);
+	if ((cp = tparamstr(t_bgcolor, bg, 0))) {
+		cputs2(cp);
+		free(cp);
+	}
+	else cprintf2("\033[%dm", bg + ANSI_REVERSE);
+
 	return(0);
 }

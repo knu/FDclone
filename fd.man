@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-2003 Takashi SHIRAI
+.\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05a 12/10/03
+.\" @(#)fd.1   2.05b 01/14/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "December 10, 2003"
+.TH FD 1 "January 14, 2004"
 .de sh
 .br
 .PP
@@ -3085,9 +3085,9 @@ MS-DOS 版にもそのまま継承されています。
 カーソル位置の一文字を消去。
 .IP "\fBBs\fP"
 カーソル直前の一文字を消去。
-.IP "\fBDelLin\fP"
+.IP "\fBDelLine\fP"
 カーソル以降の文字列全てを消去。
-.IP "\fBInsLin\fP"
+.IP "\fBInsLine\fP"
 後続の入力文字をそのまま入力文字として扱います。
 コントロール文字の入力に有効です。
 .IP "\fBEnter\fP"
@@ -3447,8 +3447,8 @@ MS-DOS 版にもそのまま継承されています。
 .nf
 \fB^P\fP	= \fB↑\fP	\fB^A\fP	= \fBBeg\fP
 \fB^N\fP	= \fB↓\fP	\fB^E\fP	= \fBEol\fP	\fB^D\fP	= \fBDel\fP
-\fB^F\fP	= \fB→\fP			\fB^Q\fP	= \fBInsLin\fP
-\fB^B\fP	= \fB←\fP			\fB^K\fP	= \fBDelLin\fP
+\fB^F\fP	= \fB→\fP			\fB^Q\fP	= \fBInsLine\fP
+\fB^B\fP	= \fB←\fP			\fB^K\fP	= \fBDelLine\fP
 \fB^V\fP	= \fBPageDn\fP	\fB^Y\fP	= \fBPageUp\fP	\fB^O\fP	= \fBEnter\fP
 \fB^M\fP	= \fBReturn\fP	\fB^I\fP	= \fBTab\fP	\fB^H\fP	= \fBBs\fP
 \fB^[\fP	= \fBEsc\fP	\fB^G\fP	= \fBEsc\fP
@@ -3460,8 +3460,8 @@ MS-DOS 版にもそのまま継承されています。
 .nf
 \fB^E\fP	= \fB↑\fP	\fB^A\fP	= \fBBeg\fP	\fB^V\fP	= \fBIns\fP
 \fB^N\fP	= \fB↓\fP	\fB^F\fP	= \fBEol\fP	\fB^G\fP	= \fBDel\fP
-\fB^F\fP	= \fB→\fP	\fB^W\fP	= \fBHome\fP	\fB^]\fP	= \fBInsLin\fP
-\fB^S\fP	= \fB←\fP	\fB^Z\fP	= \fBEnd\fP	\fB^Y\fP	= \fBDelLin\fP
+\fB^F\fP	= \fB→\fP	\fB^W\fP	= \fBHome\fP	\fB^]\fP	= \fBInsLine\fP
+\fB^S\fP	= \fB←\fP	\fB^Z\fP	= \fBEnd\fP	\fB^Y\fP	= \fBDelLine\fP
 \fB^C\fP	= \fBPageDn\fP	\fB^R\fP	= \fBPageUp\fP	\fB^N\fP	= \fBEnter\fP
 \fB^M\fP	= \fBReturn\fP	\fB^I\fP	= \fBTab\fP	\fB^H\fP	= \fBBs\fP
 \fB^[\fP	= \fBEsc\fP
@@ -3482,7 +3482,7 @@ MS-DOS 版にもそのまま継承されています。
 \fBk\fP	= \fB↑\fP	\fB0\fP	= \fBBeg\fP	\fBI\fP	= \fBIns\fP
 \fBj\fP	= \fB↓\fP	\fB$\fP	= \fBEol\fP	\fBx\fP	= \fBDel\fP
 \fBl\fP	= \fB→\fP	\fBg\fP	= \fBHome\fP
-\fBh\fP	= \fB←\fP	\fBG\fP	= \fBEnd\fP	\fBD\fP	= \fBDelLin\fP
+\fBh\fP	= \fB←\fP	\fBG\fP	= \fBEnd\fP	\fBD\fP	= \fBDelLine\fP
 \fB^F\fP	= \fBPageDn\fP	\fB^B\fP	= \fBPageUp\fP	\fBo\fP	= \fBEnter\fP
 \fB^M\fP	= \fBReturn\fP	\fB^I\fP	= \fBTab\fP	\fB^H\fP	= \fBBs\fP
 \fB^[\fP	= \fBEsc\fP
@@ -3491,7 +3491,7 @@ MS-DOS 版にもそのまま継承されています。
 \fBa\fP	= + \fB→\fP	\fBA\fP	= + \fBEol\fP
 \fBR\fP	= 上書	\fBr\fP	= 一文字上書
 (挿入モード)
-\fB^V\fP	= \fBInsLin\fP	\fBEsc\fP	= コマンドモードへ
+\fB^V\fP	= \fBInsLine\fP	\fBEsc\fP	= コマンドモードへ
 .fi
 .RE
 
@@ -4703,4 +4703,4 @@ MS-DOS 版でのコマンド履歴のセーブファイル既定値。
 
 ユーザインタフェースが稚拙です。
 .SH 著作権
-Copyright (C) 1995-2003 by Takashi SHIRAI
+Copyright (C) 1995-2004 by Takashi SHIRAI

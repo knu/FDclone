@@ -13,10 +13,6 @@
 #include "system.h"
 #endif
 
-#ifndef	_NODOSDRIVE
-extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
-#endif
-
 extern int curcolumns;
 extern int mark;
 extern off_t marksize;
@@ -800,7 +796,7 @@ char *arg;
 	}
 	else
 #endif
-	if (chdir3(path) < 0) {
+	if (chdir3(path, 0) < 0) {
 		warning(-1, path);
 		free(path);
 		return(1);
@@ -832,9 +828,7 @@ char *arg;
 	char *path;
 
 	path = strdup2(_SS_);
-	if (chdir2(path) < 0) error(path);
-	if (findpattern) free(findpattern);
-	findpattern = NULL;
+	if (chdir3(path, 1) < 0) error(path);
 	replacefname(path);
 	return(4);
 }
@@ -1343,7 +1337,7 @@ char *arg;
 	if (!(cp = strrdelim(destpath, 0))) cp = destpath;
 	else {
 		*(cp++) = '\0';
-		chdir2(destpath);
+		chdir3(destpath, 1);
 	}
 
 	replacefname(strdup2(cp));
@@ -1598,7 +1592,7 @@ char *arg;
 	char *path;
 
 	if (!(path = tree(0, NULL))) return(2);
-	if (chdir2(path) < 0) {
+	if (chdir3(path, 1) < 0) {
 		warning(-1, path);
 		free(path);
 		return(2);
@@ -1769,7 +1763,7 @@ char *arg;
 	if (++win >= windows) win = 0;
 	duplwin(oldwin);
 	movewin(oldwin);
-	if (chdir2(fullpath) < 0) lostcwd(fullpath);
+	if (chdir3(fullpath, 1) < 0) lostcwd(fullpath);
 	return(4);
 }
 #endif	/* !_NOSPLITWIN */

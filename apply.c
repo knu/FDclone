@@ -19,11 +19,6 @@ typedef struct _attrib_t {
 	char timestr[2][MAXTIMESTR + 1];
 } attrib_t;
 
-#ifndef	_NODOSDRIVE
-extern int preparedrv __P_((int));
-extern int shutdrv __P_((int));
-#endif
-
 extern reg_t *findregexp;
 extern int subwindow;
 extern int win_x;
@@ -33,7 +28,7 @@ extern int tradlayout;
 extern int sizeinfo;
 extern int mark;
 #ifdef	HAVEFLAGS
-extern u_long flaglist[];
+extern u_long fflaglist[];
 #endif
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 extern int inheritcopy;
@@ -809,6 +804,9 @@ int flag;
 				}
 				else if (x < WMODE - 2) x++;
 				break;
+			case K_BS:
+				if (y < WMODELINE) break;
+/*FALLTHRU*/
 			case K_LEFT:
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {
@@ -839,7 +837,7 @@ int flag;
 			case ' ':
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {
-					attr.flags ^= flaglist[x];
+					attr.flags ^= fflaglist[x];
 					locate(xx, yy + y + 2);
 					putflags(buf, attr.flags);
 					cputs2(buf);

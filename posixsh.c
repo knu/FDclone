@@ -65,6 +65,7 @@ extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
 extern char *strndup2 __P_((char *, int));
+extern char *strchr2 __P_((char *, int));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int setenv2 __P_((char *, char *, int));
 extern time_t time2 __P_((VOID_A));
@@ -168,7 +169,8 @@ p_id_t pgrp;
 	int ret;
 	sigmask_t mask, omask;
 
-	if (ttypgrp < 0L || pgrp < 0L || pgrp == ttypgrp) return(0);
+	if (ttypgrp < (p_id_t)0 || pgrp < (p_id_t)0 || pgrp == ttypgrp)
+		return(0);
 	else if (!jobok) {
 		ttypgrp = pgrp;
 		return(0);
@@ -514,58 +516,64 @@ int ptr;
 long *resultp;
 {
 	long n;
+	int i, c, base;
 
 	while (s[ptr] && strchr(IFS_SET, s[ptr])) ptr++;
 	if (!s[ptr]) return(-1);
 
-	if (s[ptr] == '+') ptr = _evalexpression(s, ptr + 1, resultp);
+	if (s[ptr] == '+') {
+		if ((ptr = _evalexpression(s, ptr + 1, resultp)) < 0)
+			return(-1);
+	}
 	else if (s[ptr] == '-') {
-		ptr = _evalexpression(s, ptr + 1, resultp);
+		if ((ptr = _evalexpression(s, ptr + 1, resultp)) < 0)
+			return(-1);
 		*resultp = -(*resultp);
 	}
 	else if (s[ptr] == '~') {
-		ptr = _evalexpression(s, ptr + 1, resultp);
+		if ((ptr = _evalexpression(s, ptr + 1, resultp)) < 0)
+			return(-1);
 		*resultp = ~(*resultp);
 	}
 	else if (s[ptr] == '!' && s[ptr + 1] != '=') {
-		ptr = _evalexpression(s, ptr + 1, resultp);
+		if ((ptr = _evalexpression(s, ptr + 1, resultp)) < 0)
+			return(-1);
 		*resultp = (*resultp) ? 0L : 1L;
 	}
 	else if (s[ptr] == '(') {
-		ptr = evalexpression(s, ptr + 1, resultp, 9);
-		if (ptr >= 0) {
-			while (strchr(IFS_SET, s[ptr])) ptr++;
-			if (s[ptr] != ')') ptr = -1;
-			else ptr++;
-		}
+		if ((ptr = evalexpression(s, ptr + 1, resultp, 9)) < 0)
+			return(-1);
+		while (strchr(IFS_SET, s[ptr])) ptr++;
+		if (s[ptr++] != ')') return(-1);
 	}
-	else if (s[ptr] == '0') {
+	else if (isdigit2(s[ptr])) {
+		if (s[ptr] != '0') base = 10;
+		else if (toupper2(s[++ptr]) != 'X') base = 8;
+		else {
+			base = 16;
+			ptr++;
+		}
+
 		n = 0;
-		if (toupper2(s[++ptr]) == 'X') for (ptr++; s[ptr]; ptr++) {
-			if (isdigit(s[ptr])) n = n * 16L + s[ptr] - '0';
-			else if (s[ptr] >= 'a' && s[ptr] <= 'f')
-				n = n * 16L + s[ptr] - 'a' + 10;
-			else if (s[ptr] >= 'A' && s[ptr] <= 'F')
-				n = n * 16L + s[ptr] - 'A' + 10;
-			else break;
-			if (n < 0L) return(-1);
+		for (i = ptr; s[i]; i++) {
+			c = s[i];
+			if (isdigit2(c)) c -= '0';
+			else if (islower2(c)) c -= 'a' - 10;
+			else if (isupper2(c)) c -= 'A' - 10;
+			else c = -1;
+			if (c < 0 || c >= base) break;
+
+			if (n > MAXTYPE(long) / base
+			|| (n == MAXTYPE(long) / base
+			&& c > MAXTYPE(long) % base))
+				return(-1);
+			n = n * base + c;
 		}
-		else for (; s[ptr]; ptr++) {
-			if (s[ptr] < '0' || s[ptr] > '7') break;
-			n = n * 8L + s[ptr] - '0';
-			if (n < 0L) return(-1);
-		}
+		if (i <= ptr) return(-1);
+		ptr = i;
 		*resultp = n;
 	}
-	else if (isdigit(s[ptr])) {
-		n = (long)(s[ptr++] - '0');
-		while (isdigit(s[ptr])) {
-			n = n * 10L + (s[ptr++] - '0');
-			if (n < 0L) return(-1);
-		}
-		*resultp = n;
-	}
-	else ptr = -1;
+	else return(-1);
 
 	while (s[ptr] && strchr(IFS_SET, s[ptr])) ptr++;
 	return(ptr);
@@ -763,7 +771,7 @@ int *ptrp;
 		}
 
 		if (*ptrp < 0) cp = NULL;
-		else if (asprintf2(&cp, "%d", n) < 0) error("malloc()");
+		else if (asprintf2(&cp, "%ld", n) < 0) error("malloc()");
 	}
 	free(s);
 
@@ -1142,7 +1150,7 @@ syntaxtree *trp;
 		}
 		else
 #endif	/* !NOJOB */
-		if ((pid = isnumeric(s)) < 0L) {
+		if ((pid = isnumeric(s)) < (p_id_t)0) {
 			fputs("usage: kill [ -sig ] pid ...\n", stderr);
 			fputs("for a list of signals: kill -l", stderr);
 			fputnl(stderr);
@@ -1590,7 +1598,7 @@ syntaxtree *trp;
 	if (ret != RET_SUCCESS) n = '?';
 	else {
 		n = argv[posixoptind][ptr++];
-		if (!islower(n & 0xff) || !(cp = strchr(optstr, n))) {
+		if (n == ':' || ismsb(n) || !(cp = strchr2(optstr, n))) {
 			buf[0] = n;
 			buf[1] = '\0';
 			n = '?';

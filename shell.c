@@ -1474,7 +1474,7 @@ char *argv[];
 		memcpy(&(line[j]), &(command[i]), len);
 		i += len + 1;
 		j += len;
-		if (!isdigit(command[i])) {
+		if (!isdigit2(command[i])) {
 			line[j++] = '$';
 			line[j++] = command[i++];
 		}
@@ -1551,12 +1551,12 @@ int uniq;
 {
 	int i, size;
 
-	size = histsize[n];
+	size = (int)histsize[n];
 	if (!history[n]) {
 		history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
 		for (i = 0; i <= size; i++) history[n][i] = NULL;
 		histbufsize[n] = size;
-		histno[n] = 0;
+		histno[n] = (short)0;
 	}
 	else if (size > histbufsize[n]) {
 		history[n] = (char **)realloc2(history[n],
@@ -1568,7 +1568,7 @@ int uniq;
 
 	if (!s || !*s) return(0);
 
-	if (histno[n]++ >= MAXHISTNO) histno[n] = 0;
+	if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 
 	if (uniq) {
 		for (i = 0; i <= size; i++) {
@@ -1593,9 +1593,9 @@ int n;
 	char *tmp;
 	int i, size;
 
-	size = histsize[n];
+	size = (int)histsize[n];
 	if (!history[n] || size > histbufsize[n] || size <= 0) return(NULL);
-	if (--histno[n] < 0) histno[n] = MAXHISTNO;
+	if (--histno[n] < (short)0) histno[n] = MAXHISTNO;
 	tmp = history[n][0];
 	for (i = 0; i < size; i++) history[n][i] = history[n][i + 1];
 	history[n][size--] = NULL;
@@ -1612,14 +1612,14 @@ char *file;
 
 	if (!(fp = Xfopen(file, "r"))) return(-1);
 
-	size = histsize[n];
+	size = (int)histsize[n];
 	history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
 	histbufsize[n] = size;
-	histno[n] = 0;
+	histno[n] = (short)0;
 
 	i = -1;
 	while ((line = fgets2(fp, 1))) {
-		if (histno[n]++ >= MAXHISTNO) histno[n] = 0;
+		if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 		if (i < size) i++;
 		else free(history[n][i]);
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
@@ -1642,7 +1642,7 @@ char *file;
 	if (!history[n] || !history[n][0]) return(-1);
 	if (!(fp = Xfopen(file, "w"))) return(-1);
 
-	size = (savehist > histsize[n]) ? histsize[n] : savehist;
+	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
 		for (cp = history[n][i]; (eol = strchr(cp, '\n')); cp = eol) {
 			Xfwrite(cp, sizeof(char), eol++ - cp, fp);
@@ -1661,22 +1661,20 @@ char *str;
 int *ptrp;
 {
 	char *cp;
-	long no;
 	int i, n, ptr, size;
 
 	ptr = (ptrp) ? *ptrp : 0;
-	size = histsize[0];
+	size = (int)histsize[0];
 	if (str[ptr] == '!') n = 0;
 	else if (str[ptr] == '=' || strchr(IFS_SET, str[ptr])) n = ptr = -1;
-	else if ((cp = evalnumeric(&(str[ptr]), &no, -1))) {
-		if (!no) n = -1;
-		else if (no < 0) {
-			if (-1L - no > (long)MAXHISTNO) n = -1;
-			else n = -1L - no;
+	else if ((cp = sscanf2(&(str[ptr]), "%-d", &n))) {
+		if (!n) n = -1;
+		else if (n < 0) {
+			if ((n = -1 - n) > (int)MAXHISTNO) n = -1;
 		}
-		else if (no - 1L > (long)MAXHISTNO) n = -1;
-		else if (no <= (long)(histno[0])) n = histno[0] - no;
-		else n = MAXHISTNO - (no - histno[0]) + 1;
+		else if (n - 1 > (int)MAXHISTNO) n = -1;
+		else if (n <= (int)(histno[0])) n = (int)histno[0] - n;
+		else n = MAXHISTNO - (n - (int)histno[0]) + 1;
 		ptr = (cp - str) - 1;
 	}
 	else {

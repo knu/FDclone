@@ -23,20 +23,26 @@
 #define	K_INIT(x)
 #endif
 
-#define	QUOTE		('^' - '@')
 #define	C_BS		'\010'
 #define	C_DEL		'\177'
+#define	C_EKANA		0x8e
 
 #ifdef	LSI_C
 #include <jctype.h>
-#define	toupper2	toupper
-#define	tolower2	tolower
-#define	issjis1(c)	iskanji(c)
-#define	issjis2(c)	iskanji2(c)
-#define	isctl(c)	iscntrl(c)
-#define	iskna(c)	iskana(c)
+#define	toupper2(c)	toupper((u_char)(c))
+#define	tolower2(c)	tolower((u_char)(c))
+#define	isalnum2(c)	isalnum((u_char)(c))
+#define	isalpha2(c)	isalpha((u_char)(c))
+#define	iscntrl2(c)	iscntrl((u_char)(c))
+#define	isdigit2(c)	isdigit((u_char)(c))
+#define	isupper2(c)	isupper((u_char)(c))
+#define	islower2(c)	islower((u_char)(c))
+#define	isxdigit2(c)	isxdigit((u_char)(c))
+#define	issjis1(c)	iskanji((u_char)(c))
+#define	issjis2(c)	iskanji2((u_char)(c))
+#define	iskana2(c)	iskana((u_char)(c))
 #else	/* !LSI_C */
-K_EXTERN u_char uppercase[256]
+K_EXTERN CONST u_char uppercase[256]
 #ifdef	K_INTERN
 = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,	/* 0x00 */
@@ -74,7 +80,7 @@ K_EXTERN u_char uppercase[256]
 }
 #endif	/* K_INTERN */
 ;
-K_EXTERN u_char lowercase[256]
+K_EXTERN CONST u_char lowercase[256]
 #ifdef	K_INTERN
 = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,	/* 0x00 */
@@ -112,13 +118,40 @@ K_EXTERN u_char lowercase[256]
 }
 #endif	/* K_INTERN */
 ;
-K_EXTERN u_char kctypetable[256]
+K_EXTERN CONST u_char ctypetable[256]
 #ifdef	K_INTERN
 = {
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,	/* 0x00 */
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,	/* 0x10 */
-	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,	/* 0x00 */
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,	/* 0x10 */
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x20 */
+	0001, 0001, 0001, 0001, 0001, 0001, 0001, 0001,	/* 0x30 */
+	0001, 0001,    0,    0,    0,    0,    0,    0,
+	   0, 0012, 0012, 0012, 0012, 0012, 0012, 0002,	/* 0x40 */
+	0002, 0002, 0002, 0002, 0002, 0002, 0002, 0002,
+	0002, 0002, 0002, 0002, 0002, 0002, 0002, 0002,	/* 0x50 */
+	0002, 0002, 0002,    0,    0,    0,    0,    0,
+	   0, 0014, 0014, 0014, 0014, 0014, 0014, 0004,	/* 0x60 */
+	0004, 0004, 0004, 0004, 0004, 0004, 0004, 0004,
+	0004, 0004, 0004, 0004, 0004, 0004, 0004, 0004,	/* 0x70 */
+	0004, 0004, 0004,    0,    0,    0,    0, 0020,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x80 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x90 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xa0 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xb0 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xc0 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xd0 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xe0 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xf0 */
+}
+#endif	/* K_INTERN */
+;
+K_EXTERN CONST u_char kctypetable[256]
+#ifdef	K_INTERN
+= {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	   0, 0060, 0060, 0060, 0060, 0060, 0060, 0060,	/* 0x20 */
 	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,
 	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,	/* 0x30 */
@@ -130,7 +163,7 @@ K_EXTERN u_char kctypetable[256]
 	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x60 */
 	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,
 	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x70 */
-	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0200,
+	0022, 0022, 0022, 0022, 0022, 0022, 0022,    0,
 	0002, 0003, 0003, 0003, 0003, 0003, 0003, 0003,	/* 0x80 */
 	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,
 	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,	/* 0x90 */
@@ -152,15 +185,26 @@ K_EXTERN u_char kctypetable[256]
 ;
 #define	toupper2(c)	(uppercase[(u_char)(c)])
 #define	tolower2(c)	(lowercase[(u_char)(c)])
+#define	C_DIGIT		0001
+#define	C_UPPER		0002
+#define	C_LOWER		0004
+#define	C_HEX		0010
+#define	C_CNTRL		0020
+#define	isalnum2(c)	(ctypetable[(u_char)(c)] \
+			& (C_DIGIT | C_UPPER | C_LOWER))
+#define	isalpha2(c)	(ctypetable[(u_char)(c)] & (C_UPPER | C_LOWER))
+#define	iscntrl2(c)	(ctypetable[(u_char)(c)] & C_CNTRL)
+#define	isdigit2(c)	(ctypetable[(u_char)(c)] & C_DIGIT)
+#define	isupper2(c)	(ctypetable[(u_char)(c)] & C_UPPER)
+#define	islower2(c)	(ctypetable[(u_char)(c)] & C_LOWER)
+#define	isxdigit2(c)	(ctypetable[(u_char)(c)] & (C_DIGIT | C_HEX))
 #define	KC_SJIS1	0001
 #define	KC_SJIS2	0002
 #define	KC_KANA		0004
 #define	KC_EUCJP	0010
 #define	KC_JIS		0020
 #define	KC_JKANA	0040
-#define	KC_CNTRL	0200
-#define	isctl(c)	(kctypetable[(u_char)(c)] & KC_CNTRL)
-#define	iskna(c)	(kctypetable[(u_char)(c)] & KC_KANA)
+#define	iskana2(c)	(kctypetable[(u_char)(c)] & KC_KANA)
 
 # ifndef	issjis1
 # define	issjis1(c)	(kctypetable[(u_char)(c)] & KC_SJIS1)
@@ -179,8 +223,8 @@ K_EXTERN u_char kctypetable[256]
 #endif	/* !LSI_C */
 #define	ismsb(c)	(((u_char)(c)) & 0x80)
 
-#define	isekana(s, i)	((u_char)((s)[i]) == 0x8e && iskna((s)[(i) + 1]))
-#define	isskana(s, i)	iskna((s)[i])
+#define	isekana(s, i)	((u_char)((s)[i]) == C_EKANA && iskana2((s)[(i) + 1]))
+#define	isskana(s, i)	iskana2((s)[i])
 #define	isjkana(s, i)	(kctypetable[(u_char)((s)[i])] & KC_JKANA)
 
 #define	NOCNV	0
@@ -230,11 +274,19 @@ K_EXTERN int fnamekcode K_INIT(NOCNV);
 #define	L_OUTPUT	1
 #define	L_FNAME		2
 
-#ifdef	CODEEUC
-#define	iskanji1(s, i)	(iseuc((s)[i]) && iseuc((s)[(i) + 1]))
-#else
-#define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
-#endif
+K_EXTERN int iskanji1 __P_((char *, int));
+#ifdef	K_INTERN
+int iskanji1(s, i)
+char *s;
+int i;
+{
+# ifdef	CODEEUC
+	return(iseuc(s[i]) && iseuc(s[++i]));
+# else
+	return(issjis1(s[i]) && issjis2(s[++i]));
+# endif
+}
+#endif	/* K_INTERN */
 
 #ifdef	_NOKANJICONV
 # ifdef	CODEEUC
@@ -248,24 +300,5 @@ K_EXTERN int fnamekcode K_INIT(NOCNV);
 #define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : issjis1(c))
 #define	isinkanji2(c)	((inputkcode == EUC) ? iseuc(c) : issjis2(c))
 #endif	/* !_NOKANJICONV */
-
-#ifndef	BITSPERBYTE
-# ifdef	CHAR_BIT
-# define	BITSPERBYTE	CHAR_BIT
-# else	/* !CHAR_BIT */
-#  ifdef	NBBY
-#  define	BITSPERBYTE	NBBY
-#  else
-#  define	BITSPERBYTE	8
-#  endif
-# endif	/* !CHAR_BIT */
-#endif	/* !BITSPERBYTE */
-#define	MAXUTYPE(t)	((t)(~(t)0))
-#define	MINTYPE(t)	((t)(MAXUTYPE(t) << (BITSPERBYTE * sizeof(t) - 1)))
-#define	MAXTYPE(t)	((t)~MINTYPE(t))
-#define	char2long(cp)	( (long) (((u_char *)(cp))[3]) \
-			| (long)((((u_char *)(cp))[2]) << (BITSPERBYTE * 1)) \
-			| (long)((((u_char *)(cp))[1]) << (BITSPERBYTE * 2)) \
-			| (long)((((u_char *)(cp))[0]) << (BITSPERBYTE * 3)) )
 
 #endif	/* __KCTYPE_H_ */

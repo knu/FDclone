@@ -96,6 +96,7 @@ typedef struct _hashlist {
 #define	CM_EXE		0020
 #define	CM_ADDEXT	0040
 #define	CM_RECALC	0100
+#define	CM_REHASH	0200
 
 #ifndef	NODIRLOOP
 typedef struct _devino_t {
@@ -185,6 +186,7 @@ extern int strnpathcmp2 __P_((char *, char *, int));
 #define	strnenvcmp	strncmp
 #endif
 extern int isidentchar __P_((int));
+extern int isidentchar2 __P_((int));
 extern int isdotdir __P_((char *));
 extern char *isrootdir __P_((char *));
 extern char *getbasename __P_((char *));

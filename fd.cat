@@ -1828,8 +1828,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                ド)
      DDeell       カーソル位置の一文字を消去。
      BBss        カーソル直前の一文字を消去。
-     DDeellLLiinn    カーソル以降の文字列全てを消去。
-     IInnssLLiinn    後続の入力文字をそのまま入力文字として扱います。コ
+     DDeellLLiinnee   カーソル以降の文字列全てを消去。
+     IInnssLLiinnee   後続の入力文字をそのまま入力文字として扱います。コ
                ントロール文字の入力に有効です。
      EEnntteerr     現在のカーソル位置のファイル名を取込。
      PPaaggeeUUpp    カーソル位置の英文字を大文字に。
@@ -2020,8 +2020,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      eemmaaccss
                  ^^PP   = ↑↑      ^^AA   = BBeegg
                  ^^NN   = ↓↓      ^^EE   = EEooll     ^^DD   = DDeell
-                 ^^FF   = →→                     ^^QQ   = IInnssLLiinn
-                 ^^BB   = ←←                     ^^KK   = DDeellLLiinn
+                 ^^FF   = →→                     ^^QQ   = IInnssLLiinnee
+                 ^^BB   = ←←                     ^^KK   = DDeellLLiinnee
                  ^^VV   = PPaaggeeDDnn  ^^YY   = PPaaggeeUUpp  ^^OO   = EEnntteerr
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc     ^^GG   = EEsscc
@@ -2029,8 +2029,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      wwoorrddssttaarr
                  ^^EE   = ↑↑      ^^AA   = BBeegg     ^^VV   = IInnss
                  ^^NN   = ↓↓      ^^FF   = EEooll     ^^GG   = DDeell
-                 ^^FF   = →→      ^^WW   = HHoommee    ^^]]   = IInnssLLiinn
-                 ^^SS   = ←←      ^^ZZ   = EEnndd     ^^YY   = DDeellLLiinn
+                 ^^FF   = →→      ^^WW   = HHoommee    ^^]]   = IInnssLLiinnee
+                 ^^SS   = ←←      ^^ZZ   = EEnndd     ^^YY   = DDeellLLiinnee
                  ^^CC   = PPaaggeeDDnn  ^^RR   = PPaaggeeUUpp  ^^NN   = EEnntteerr
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc
@@ -2044,7 +2044,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                  kk    = ↑↑      00    = BBeegg     II    = IInnss
                  jj    = ↓↓      $$    = EEooll     xx    = DDeell
                  ll    = →→      gg    = HHoommee
-                 hh    = ←←      GG    = EEnndd     DD    = DDeellLLiinn
+                 hh    = ←←      GG    = EEnndd     DD    = DDeellLLiinnee
                  ^^FF   = PPaaggeeDDnn  ^^BB   = PPaaggeeUUpp  oo    = EEnntteerr
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc
@@ -2053,7 +2053,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                  aa    = + →→    AA    = + EEooll
                  RR    = 上書    rr    = 一文字上書
                  (挿入モード)
-                 ^^VV   = IInnssLLiinn  EEsscc  = コマンドモードへ
+                 ^^VV   = IInnssLLiinnee EEsscc  = コマンドモードへ
 
              かなり特殊なキー割当てなので、日常的に vvii エディタを
              用いていない人には不向きでしょう。
@@ -2833,4 +2833,4 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      ユーザインタフェースが稚拙です。
 
 著著作作権権
-     Copyright (C) 1995-2003 by Takashi SHIRAI
+     Copyright (C) 1995-2004 by Takashi SHIRAI

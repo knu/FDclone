@@ -85,6 +85,7 @@ extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
 extern char *strndup2 __P_((char *, int));
+extern char *strchr2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 # ifdef	_USEDOSPATH
@@ -109,31 +110,32 @@ char *realloc2 __P_((VOID_P, ALLOC_T));
 char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 char *strdup2 __P_((char *));
 char *strndup2 __P_((char *, int));
+char *strchr2 __P_((char *, int));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
 # if	MSDOS
-# define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
+int _dospath __P_((char *));
 DIR *Xopendir __P_((char *));
 int Xclosedir __P_((DIR *));
 struct dirent *Xreaddir __P_((DIR *));
 static u_int NEAR getdosmode __P_((u_int));
 static time_t NEAR getdostime __P_((u_int, u_int));
 int Xstat __P_((char *, struct stat *));
-# else
+# else	/* !MSDOS */
 # define	Xopendir	opendir
 # define	Xclosedir	closedir
 # define	Xreaddir	readdir
 # define	Xstat		stat
-# endif
+# endif	/* !MSDOS */
 # ifdef	DJGPP
 char *Xgetwd __P_((char *));
-# else
+# else	/* !DJGPP */
 #  ifdef	USEGETWD
 #  define	Xgetwd		(char *)getwd
 #  else
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
-# endif
+# endif	/* !DJGPP */
 #define	Xaccess		access
 #endif	/* !FD */
 
@@ -189,7 +191,7 @@ static int NEAR evalvar __P_((char **, int, char **, int));
 static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 
 #define	BUFUNIT		32
-#define	b_size(n, type) ((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
+#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
 #define	b_realloc(ptr, n, type) \
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
@@ -309,6 +311,22 @@ int n;
 	return(tmp);
 }
 
+char *strchr2(s, c)
+char *s;
+int c;
+{
+	int i;
+
+	for (i = 0; s[i]; i++) {
+		if (s[i] == c) return(&(s[i]));
+		if (iskanji1(s, i)) i++;
+#ifdef	CODEEUC
+		else if (isekana(s, i)) i++;
+#endif
+	}
+	return(NULL);
+}
+
 char *strcpy2(s1, s2)
 char *s1, *s2;
 {
@@ -331,6 +349,12 @@ int n;
 }
 
 # if	MSDOS
+int _dospath(path)
+char *path;
+{
+	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
+}
+
 DIR *Xopendir(dir)
 char *dir;
 {
@@ -727,7 +751,13 @@ int len;
 int isidentchar(c)
 int c;
 {
-	return(c == '_' || isalpha(c));
+	return(c == '_' || isalpha2(c));
+}
+
+int isidentchar2(c)
+int c;
+{
+	return(c == '_' || isalnum2(c));
 }
 
 int isdotdir(s)
@@ -737,7 +767,6 @@ char *s;
 	return(0);
 }
 
-/*ARGSUSED*/
 char *isrootdir(s)
 char *s;
 {
@@ -1077,23 +1106,20 @@ int len;
 #endif
 				else paren[plen++] = s[i];
 			}
-			else {
-#ifdef	CODEEUC
-				if (isekana(s, i)) {
-					paren[plen++] = s[i++];
-					paren[plen++] = s[i];
-				}
-				else
-#endif
-				if (iskanji1(s, i)) {
-					paren[plen++] = s[i++];
-					paren[plen++] = s[i];
-				}
-#ifndef	PATHNOCASE
-				else if (!pathignorecase) paren[plen++] = s[i];
-#endif
-				else paren[plen++] = toupper2(s[i]);
+			else if (iskanji1(s, i)) {
+				paren[plen++] = s[i++];
+				paren[plen++] = s[i];
 			}
+#ifdef	CODEEUC
+			else if (isekana(s, i)) {
+				paren[plen++] = s[i++];
+				paren[plen++] = s[i];
+			}
+#endif
+#ifndef	PATHNOCASE
+			else if (!pathignorecase) paren[plen++] = s[i];
+#endif
+			else paren[plen++] = toupper2(s[i]);
 		}
 		else if (!quote && !metachar) switch (s[i]) {
 			case '?':
@@ -1114,17 +1140,16 @@ int len;
 		if (!cp) {
 			cp = malloc2(2 + 1);
 			j = 0;
-#ifdef	CODEEUC
-			if (isekana(s, i)) {
-				cp[j++] = s[i++];
-				cp[j++] = s[i];
-			}
-			else
-#endif
 			if (iskanji1(s, i)) {
 				cp[j++] = s[i++];
 				cp[j++] = s[i];
 			}
+#ifdef	CODEEUC
+			else if (isekana(s, i)) {
+				cp[j++] = s[i++];
+				cp[j++] = s[i];
+			}
+#endif
 #ifndef	PATHNOCASE
 			else if (!pathignorecase) cp[j++] = s[i];
 #endif
@@ -1157,11 +1182,10 @@ char *s;
 
 	for (n1 = n2 = 0; re[n1] && s[n2]; n1++, n2++) {
 		c1 = (u_char)(s[i = n2]);
-#ifdef	CODEEUC
-		if (isekana(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
-		else
-#endif
 		if (iskanji1(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
+#ifdef	CODEEUC
+		else if (isekana(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
+#endif
 #ifndef	PATHNOCASE
 		else if (!pathignorecase) /*EMPTY*/;
 #endif
@@ -1195,13 +1219,12 @@ char *s;
 				i++;
 			}
 			c2 = (u_char)(re[n1][i]);
-#ifdef	CODEEUC
-			if (isekana(re[n1], i))
-				c2 = (c2 << 8) + (u_char)(re[n1][++i]);
-			else
-#endif
 			if (iskanji1(re[n1], i))
 				c2 = (c2 << 8) + (u_char)(re[n1][++i]);
+#ifdef	CODEEUC
+			else if (isekana(re[n1], i))
+				c2 = (c2 << 8) + (u_char)(re[n1][++i]);
+#endif
 			if (beg >= 0) {
 				if (beg && c1 >= beg && c1 <= c2) break;
 				beg = -1;
@@ -1672,21 +1695,23 @@ int searchhash(hpp, com, search)
 hashlist **hpp;
 char *com, *search;
 {
-	char *cp, *tmp, *next, *path;
-	int len, dlen, cost, size, ret, recalc;
 #if	MSDOS
 	char *ext;
 #endif
+	char *cp, *tmp, *next, *path;
+	int len, dlen, cost, size, ret, recalc;
 #ifndef	_NOUSEHASH
-	static char *searchcwd = NULL;
-	char buf[MAXPATHLEN];
+	hashlist *hp;
 	int n, duperrno;
 
-	if (!com && !search) {
+	if (!hpp || (!com && !search)) {
 		duperrno = errno;
-		freehash(hpp);
-		if (searchcwd) free(searchcwd);
-		searchcwd = NULL;
+		if (!com && !search) freehash(hpp);
+		if (!hpp && hashtable) for (n = 0; n < MAXHASH; n++) {
+			for (hp = hashtable[n]; hp; hp = hp -> next)
+				if (hp -> type & CM_RECALC)
+					hp -> type |= CM_REHASH;
+		}
 		errno = duperrno;
 		return(CM_NOTFOUND);
 	}
@@ -1713,11 +1738,9 @@ char *com, *search;
 	if (!hashtable) inithash();
 	n = calchash(com);
 	if ((*hpp = findhash(com, n))) {
-		path = (*hpp) -> path;
-		if (((*hpp) -> type & CM_RECALC)
-		&& (!searchcwd || !Xgetwd(buf) || strcmp(searchcwd, buf)))
-			/*EMPTY*/;
-		else if (isexecute(path, 0, 1) >= 0) return((*hpp) -> type);
+		if (!((*hpp) -> type & CM_REHASH)
+		&& isexecute((*hpp) -> path, 0, 1) >= 0)
+			return((*hpp) -> type);
 		rmhash(com, n);
 	}
 #endif
@@ -1740,8 +1763,6 @@ char *com, *search;
 		*hpp = newhash(com, path, 0, hashtable[n]);
 		hashtable[n] = *hpp;
 		(*hpp) -> type = (ret |= (CM_HASH | CM_RECALC));
-		if (searchcwd) free(searchcwd);
-		searchcwd = strdup2(Xgetwd(buf));
 # endif
 		return(ret);
 	}
@@ -1791,8 +1812,6 @@ char *com, *search;
 			*hpp = newhash(com, path, cost, hashtable[n]);
 			hashtable[n] = *hpp;
 			(*hpp) -> type = (ret |= (CM_HASH | recalc));
-			if (searchcwd) free(searchcwd);
-			searchcwd = strdup2(Xgetwd(buf));
 #endif
 			return(ret);
 		}
@@ -2047,6 +2066,11 @@ int stripm, quoted;
 			if (s1) s1[j] = PMETA;
 			j++;
 		}
+		else if (iskanji1(s2, i)) {
+			if (s1) s1[j] = s2[i];
+			j++;
+			i++;
+		}
 #ifdef	CODEEUC
 		else if (isekana(s2, i)) {
 			if (s1) s1[j] = s2[i];
@@ -2054,11 +2078,6 @@ int stripm, quoted;
 			i++;
 		}
 #endif
-		else if (iskanji1(s2, i)) {
-			if (s1) s1[j] = s2[i];
-			j++;
-			i++;
-		}
 		if (s1) s1[j] = s2[i];
 	}
 	return(j);
@@ -2137,10 +2156,10 @@ int len, spc, qflag, *qp, *pqp;
 		}
 		return(PC_CLQUOTE);
 	}
+	if (iskanji1(s, 0)) return(PC_WORD);
 #ifdef	CODEEUC
 	if (isekana(s, 0)) return(PC_WORD);
 #endif
-	if (iskanji1(s, 0)) return(PC_WORD);
 	if (*qp == '`') return(PC_BQUOTE);
 	if (*qp == '\'') return(PC_SQUOTE);
 	if (spc && *s == spc) return(*s);
@@ -2174,8 +2193,7 @@ int *eolp, *ptrp, qed;
 
 	if (isidentchar((*bufp)[*ptrp])) {
 		while ((*bufp)[++(*ptrp)])
-			if (!isidentchar((*bufp)[*ptrp])
-			&& !isdigit((*bufp)[*ptrp])) break;
+			if (!isidentchar2((*bufp)[*ptrp])) break;
 		if (eolp) *eolp = *ptrp;
 		return(mode);
 	}
@@ -2211,8 +2229,7 @@ int *eolp, *ptrp, qed;
 #endif
 	if (isidentchar((*bufp)[*ptrp])) {
 		while ((*bufp)[++(*ptrp)])
-			if (!isidentchar((*bufp)[*ptrp])
-			&& !isdigit((*bufp)[*ptrp])) break;
+			if (!isidentchar2((*bufp)[*ptrp])) break;
 	}
 	else (*ptrp)++;
 
@@ -2639,7 +2656,7 @@ int quoted;
 	c = '\0';
 	if ((cp = new)) /*EMPTY*/;
 	else if (isidentchar(*top)) cp = getenvvar(top, len);
-	else if (isdigit(*top)) {
+	else if (isdigit2(*top)) {
 		if (len > 1) return(-1);
 		if (!argvar) {
 			(*bufp)[ptr++] = '$';
@@ -3110,9 +3127,9 @@ char ***argvp, *ifs;
 				'\0', 0, &quote, NULL);
 			if (pc == PC_WORD || pc == PC_META) i++;
 			else if (pc != PC_NORMAL) /*EMPTY*/;
-			else if (strchr(ifs, (*argvp)[n][i])) {
+			else if (strchr2(ifs, (*argvp)[n][i])) {
 				for (j = i + 1; (*argvp)[n][j]; j++)
-					if (!strchr(ifs, (*argvp)[n][j]))
+					if (!strchr2(ifs, (*argvp)[n][j]))
 						break;
 				if (!i) {
 					for (i = 0; (*argvp)[n][i + j]; i++)
@@ -3138,7 +3155,7 @@ char ***argvp, *ifs;
 			free((*argvp)[n--]);
 			memmove((char *)(&((*argvp)[n + 1])),
 				(char *)(&((*argvp)[n + 2])),
-				(--argc - n) * sizeof(char *));
+				(argc-- - n) * sizeof(char *));
 		}
 	}
 	return(argc);

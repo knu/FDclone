@@ -185,7 +185,7 @@ extern int stat2 __P_((char *, struct stat *));
 extern char *realpath2 __P_((char *, char *, int));
 extern int _chdir2 __P_((char *));
 extern int chdir2 __P_((char *));
-extern int chdir3 __P_((char *));
+extern int chdir3 __P_((char *, int));
 extern int mkdir2 __P_((char *, int));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
@@ -279,7 +279,7 @@ extern int forcemovefile __P_((char *));
 
 /* parse.c */
 extern char *skipspace __P_((char *));
-extern char *evalnumeric __P_((char *, long *, int));
+extern char *sscanf2 __P_((char *, CONST char *, ...));
 #ifdef	_NOORIGSHELL
 extern char *strtkchr __P_((char *, int, int));
 extern int getargs __P_((char *, char ***));
@@ -298,7 +298,7 @@ extern VOID adjustpath __P_((VOID_A));
 #endif
 extern char *includepath __P_((char *, char *));
 #if	(FD < 2) && !defined (_NOARCHIVE)
-extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
+extern char *getrange __P_((char *, int, u_char *, u_char *, u_char *));
 #endif
 extern int evalprompt __P_((char **, char *));
 #ifndef	_NOARCHIVE

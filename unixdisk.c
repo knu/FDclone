@@ -105,11 +105,11 @@ static int maxdrive = -1;
 static int dos7access = 0;
 #define	D7_DOSVER	017
 #define	D7_CAPITAL	020
-static u_short doserrlist[] = {
+static CONST u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
 };
 #define	DOSERRLISTSIZ	((int)(sizeof(doserrlist) / sizeof(u_short)))
-static int unixerrlist[] = {
+static CONST int unixerrlist[] = {
 	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
 	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, 0, EACCES, EEXIST
 };
@@ -155,7 +155,7 @@ static int (far *doint25)__P_((VOID_A)) = NULL;
 static int NEAR _dospath(path)
 char *path;
 {
-	return((isalpha(*path) && path[1] == ':') ? *path : 0);
+	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 
 static char *NEAR strdelim(s, d)
@@ -423,7 +423,7 @@ int drive, nodir;
 	int drv, olddrv;
 
 	errno = EINVAL;
-	if (drive >= 'a' && drive <= 'z') {
+	if (islower2(drive)) {
 		drv = drive - 'a';
 		dos7access &= ~D7_CAPITAL;
 	}
@@ -521,12 +521,11 @@ char *path;
 #endif
 	if (getdosver() < 7) {
 #ifndef	_NODOSDRIVE
-		if ((dosdrive & 1) && drv[0] >= 'a' && drv[0] <= 'z')
-			return(-1);
+		if ((dosdrive & 1) && islower2(drv[0])) return(-1);
 #endif
 		return(-3);
 	}
-	if (drv[0] >= 'A' && drv[0] <= 'Z') return(0);
+	if (isupper2(drv[0])) return(0);
 
 	drv[1] = ':';
 	drv[2] = '\\';
@@ -644,7 +643,7 @@ char *path, *alias;
 # endif
 
 	if (!path || !(i = _dospath(path))) i = getcurdrv();
-	if (i >= 'a' && i <= 'z') *alias = tolower2(*alias);
+	if (islower2(i)) *alias = tolower2(*alias);
 
 	return(alias);
 }
@@ -715,7 +714,7 @@ char *path, *resolved;
 			resolved[0] = i;
 			resolved[1] = ':';
 			i = 2;
-			if (isalpha(resolved[2])
+			if (isalpha2(resolved[2])
 			&& resolved[3] == '.' && resolved[4] == _SC_) i = 5;
 			while (resolved[i]) if (resolved[i++] == _SC_) break;
 			resolved[2] = _SC_;
@@ -732,7 +731,7 @@ char *path, *resolved;
 				strcpy(&(resolved[2]), path);
 		}
 	}
-	else *resolved = (i >= 'A' && i <= 'Z')
+	else *resolved = (isupper2(i))
 		? toupper2(*resolved) : tolower2(*resolved);
 
 	return(resolved);
@@ -1130,7 +1129,7 @@ u_long l_sect, e_sect;
 		if (PART_TABLE + ofs >= size) {
 #ifndef	PC98
 			if (ps) {
-				if (xbiosdiskio(maxdrive, ps++, 0L,
+				if (xbiosdiskio(maxdrive, ps++, (u_long)0,
 				buf, 1, BIOS_XREAD, BIOSRETRY) < 0
 				&& ((drvlist[maxdrive].flags & DI_INVALIDCHS)
 				|| _biosdiskio(maxdrive, head, sect, cyl,
@@ -1180,14 +1179,15 @@ u_long l_sect, e_sect;
 			continue;
 		}
 		if (pt -> filesys == PT_EXTEND) {
-			if (_checkdrive(sh, ss, sc, 0L, 0L) < 0) {
+			if (_checkdrive(sh, ss, sc, (u_long)0, (u_long)0) < 0)
+			{
 				free(buf);
 				return(-1);
 			}
 			continue;
 		}
 
-		drvlist[maxdrive].f_sect = 0L;
+		drvlist[maxdrive].f_sect = (u_long)0;
 		if (pt -> filesys == PT_FAT16XLBA
 		|| pt -> filesys == PT_FAT32LBA)
 			drvlist[maxdrive].f_sect = ls + l_sect;
@@ -1251,12 +1251,14 @@ int drive;
 		for (i = 0; i < MAX_HDD && maxdrive < 'Z' - 'A' + 1; i++) {
 			if (getdrvparam(BIOS_HDD | i,
 				&(drvlist[maxdrive])) <= 0) continue;
-			if (_checkdrive(0, 1, 0, 0L, 0L) < 0) return(-1);
+			if (_checkdrive(0, 1, 0, (u_long)0, (u_long)0) < 0)
+				return(-1);
 		}
 		for (i = 0; i < MAX_SCSI && maxdrive < 'Z' - 'A' + 1; i++) {
 			if (getdrvparam(BIOS_SCSI | i,
 				&(drvlist[maxdrive])) <= 0) continue;
-			if (_checkdrive(0, 1, 0, 0L, 0L) < 0) return(-1);
+			if (_checkdrive(0, 1, 0, (u_long)0, (u_long)0) < 0)
+				return(-1);
 		}
 #else
 		reg.h.ah = BIOS_PARAM;
@@ -1267,7 +1269,8 @@ int drive;
 		for (i = 0; i < n && maxdrive < 'Z' - 'A' + 1; i++) {
 			if (!(j = getdrvparam(BIOS_HDD | i,
 				&(drvlist[maxdrive])))) continue;
-			if (j < 0 || _checkdrive(0, 0, 0, 0L, 0L) < 0)
+			if (j < 0
+			|| _checkdrive(0, 0, 0, (u_long)0, (u_long)0) < 0)
 				return(-1);
 		}
 #endif

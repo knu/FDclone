@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include "machine.h"
 
@@ -160,10 +159,7 @@ extern int _dospath __P_((char *));
 static int NEAR __dospath __P_((char *));
 #endif
 
-#if	defined (FD) && !defined (_NOORIGSHELL)
-extern char *getshellvar __P_((char *, int));
-#define	getconstvar(s)	(getshellvar(s, sizeof(s) - 1))
-#else
+#ifndef	FD
 #define	getconstvar(s)	(char *)getenv(s)
 #endif
 
@@ -198,6 +194,7 @@ static int NEAR strcasecmp2 __P_((char *, char *));
 static int NEAR isdotdir __P_((char *));
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
+static long NEAR char2long __P_((u_char *));
 static int NEAR tmcmp __P_((struct tm *, struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
@@ -416,7 +413,7 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'\0', NULL, 0, 0, 0}
 };
 #if	0
-devinfo mediadescr[] = {
+devinfo CONST mediadescr[] = {
 	{0xff, "2D-8SECT", 2, 8, 40},
 	{0xfe, "1D-8SECT", 1, 8, 40},
 	{0xfd, "2D-9SECT", 2, 9, 40},
@@ -455,10 +452,10 @@ static long lfn_clust = -1L;
 static long lfn_offset = 0L;
 static int doserrno = 0;
 #if	!MSDOS
-static short sectsizelist[] = SECTSIZE;
+static CONST short sectsizelist[] = SECTSIZE;
 #define	SLISTSIZ	((int)(sizeof(sectsizelist) / sizeof(short)))
 #endif
-static char *inhibitname[] = INHIBITNAME;
+static CONST char *inhibitname[] = INHIBITNAME;
 #define	INHIBITNAMESIZ	((int)(sizeof(inhibitname) / sizeof(char *)))
 #ifndef	FD
 typedef struct _kconv_t {
@@ -468,7 +465,7 @@ typedef struct _kconv_t {
 } kconv_t;
 char *unitblpath = NULL;
 static u_int unitblent = 0;
-static kconv_t rsjistable[] = {
+static CONST kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* Cyrillic small letters */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
 #define	EXCEPTRUSS	2
@@ -509,7 +506,7 @@ static kconv_t rsjistable[] = {
 static int NEAR __dospath(path)
 char *path;
 {
-	return((isalpha(*path) && path[1] == ':') ? *path : 0);
+	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 #endif
 
@@ -699,6 +696,15 @@ char *s;
 
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
+static long NEAR char2long(s)
+u_char *s;
+{
+	return((long)((u_long)(s[3])
+		| ((u_long)(s[2]) << (BITSPERBYTE * 1))
+		| ((u_long)(s[1]) << (BITSPERBYTE * 2))
+		| ((u_long)(s[0]) << (BITSPERBYTE * 3))));
+}
+
 static int NEAR tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;
 {
@@ -733,13 +739,14 @@ time_t t;
 #  endif
 #  ifndef	NOTZFILEH
 	struct tzhead head;
-#  endif
-	struct tm tmbuf;
 	FILE *fp;
 	time_t tmp;
-	long i, tz, leap, nleap, ntime, ntype, nchar;
+	long i, leap, nleap, ntime, ntype, nchar;
 	char *cp, buf[MAXPATHLEN];
 	u_char c;
+#  endif
+	struct tm tmbuf;
+	long tz;
 
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
 
@@ -755,7 +762,7 @@ time_t t;
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == _SC_) strcpy(buf, cp);
 	else strcatdelim2(buf, TZDIR, cp);
-	if (!(fp = fopen(buf, "r"))) return(tz);
+	if (!(fp = fopen(buf, "rb"))) return(tz);
 	if (fread(&head, sizeof(struct tzhead), 1, fp) != 1) {
 		fclose(fp);
 		return(tz);
@@ -2462,7 +2469,7 @@ int drive;
 			return(-1);
 		}
 	}
-	if (drive >= 'a' && drive <= 'z') dev.flags |= F_VFAT;
+	if (islower2(drive)) dev.flags |= F_VFAT;
 	else dev.flags &= ~F_VFAT;
 
 	memcpy((char *)&(devlist[new]), (char *)&dev, sizeof(devstat));
@@ -2616,7 +2623,7 @@ VOID_T (*func)__P_((VOID_A));
 			return(-1);
 		}
 	}
-	if (drive >= 'a' && drive <= 'z') dev.flags |= F_VFAT;
+	if (islower2(drive)) dev.flags |= F_VFAT;
 	else dev.flags &= ~F_VFAT;
 
 	memcpy((char *)&(devlist[dd]), (char *)&dev, sizeof(devstat));
@@ -3451,7 +3458,7 @@ char *path;
 	if ((drive = getdrive(path)) < 0) reterr(-1);
 	drv = toupper2(drive);
 
-	needlfn = (drive >= 'a' && drive <= 'z');
+	needlfn = islower2(drive);
 	if (!(xdirp = _dosopendir(path, buf, needlfn))) {
 		if (path[2] == '/' || path[2] == '\\'
 		|| !(tmp = curdir[drv - 'A'])) reterr(-1);

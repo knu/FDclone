@@ -15,6 +15,7 @@ extern char fullpath[];
 extern short histno[];
 extern int physical_path;
 
+static int NEAR asc2int __P_((int));
 #ifdef	_NOORIGSHELL
 static char *NEAR strtkbrk __P_((char *, char *, int));
 static char *NEAR geteostr __P_((char **));
@@ -93,8 +94,10 @@ strtable keyidentlist[] = {
 };
 #define	KEYIDENTSIZ	((int)(sizeof(keyidentlist) / sizeof(strtable)) - 1)
 
-static char escapechar[] = "abefnrtv";
-static char escapevalue[] = {0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b};
+static CONST char escapechar[] = "abefnrtv";
+static CONST char escapevalue[] = {
+	0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b,
+};
 
 
 char *skipspace(cp)
@@ -104,41 +107,175 @@ char *cp;
 	return(cp);
 }
 
-char *evalnumeric(cp, np, plus)
-char *cp;
-long *np;
-int plus;
+static int NEAR asc2int(c)
+int c;
 {
-	char *top;
-	long n;
+	if (c < 0) return(-1);
+	else if (isdigit2(c)) return(c - '0');
+	else if (islower2(c)) return(c - 'a' + 10);
+	else if (isupper2(c)) return(c - 'A' + 10);
+	else return(-1);
+}
 
-	top = cp;
-	n = 0;
-	if (plus < 0 && *cp == '-') {
-		for (cp++; isdigit(*cp); cp++) {
-			if (n == MINTYPE(long)) /*EMPTY*/;
-			else if (n <= MINTYPE(long) / 10
-			&& *cp >= MINTYPE(long) % 10 + '0')
-				n = MINTYPE(long);
-			else n = n * 10 - (*cp - '0');
+#ifdef	USESTDARGH
+/*VARARGS1*/
+char *sscanf2(char *s, CONST char *fmt, ...)
+#else
+/*VARARGS1*/
+char *sscanf2(s, fmt, va_alist)
+char *s;
+CONST char *fmt;
+va_dcl
+#endif
+{
+	va_list args;
+	char *cp;
+	long_t n;
+	u_long_t u, mask;
+	int i, c, len, base, width, flags;
+
+#ifdef	USESTDARGH
+	va_start(args, fmt);
+#else
+	va_start(args);
+#endif
+
+	if (!s || !fmt) return(NULL);
+	for (i = 0; fmt[i]; i++) {
+		if (fmt[i] != '%') {
+			if (*(s++) != fmt[i]) return(NULL);
+			continue;
 		}
+
+		i++;
+		flags = 0;
+		for (; fmt[i]; i++) {
+			if (!(cp = strchr(printfflagchar, fmt[i]))) break;
+			flags |= printfflag[cp - printfflagchar];
+		}
+		width = getnum(fmt, &i);
+
+		len = sizeof(int);
+		for (; fmt[i]; i++) {
+			if (!(cp = strchr(printfsizechar, fmt[i]))) break;
+			len = printfsize[cp - printfsizechar];
+		}
+		if (fmt[i] == '*') {
+			i++;
+			len = va_arg(args, int);
+		}
+
+		base = 0;
+		switch (fmt[i]) {
+			case 'd':
+				base = 10;
+				break;
+			case 'u':
+				flags |= VF_UNSIGNED;
+				base = 10;
+				break;
+			case 'o':
+				flags |= VF_UNSIGNED;
+				base = 8;
+				break;
+			case 'x':
+			case 'X':
+				flags |= VF_UNSIGNED;
+				base = 16;
+				break;
+			case 'c':
+				if (*(s++) != va_arg(args, int)) return(NULL);
+				break;
+			case '$':
+				if (*s) return(NULL);
+				break;
+			default:
+				if (*(s++) != fmt[i]) return(NULL);
+				break;
+		}
+		if (!base) continue;
+
+		cp = s;
+		n = (long_t)0;
+		u = (u_long_t)0;
+		if (*s == '-') {
+			if (!(flags & VF_MINUS)) return(NULL);
+			for (s++; *s; s++) {
+#ifdef	LSI_C
+			/* for buggy LSI-C */
+				long_t minlong;
+
+				minlong = MINTYPE(long_t);
+#else
+#define	minlong			MINTYPE(long_t)
+#endif
+				if (width >= 0 && --width < 0) break;
+				if ((c = asc2int(*s)) < 0 || c >= base) break;
+				if (n == MINTYPE(long_t)) /*EMPTY*/;
+				else if (n < minlong / base
+				|| (n == minlong / base
+				&& -c < MINTYPE(long_t) % base))
+					n = MINTYPE(long_t);
+				else n = n * base - c;
+			}
+			if ((flags & VF_UNSIGNED) && n) return(NULL);
+		}
+		else if (flags & VF_UNSIGNED) {
+			for (; *s; s++) {
+				if (width >= 0 && --width < 0) break;
+				if ((c = asc2int(*s)) < 0 || c >= base) break;
+				if (u == MAXUTYPE(u_long_t)) /*EMPTY*/;
+				else if (u > MAXUTYPE(u_long_t) / base
+				|| (u == MAXUTYPE(u_long_t) / base
+				&& c > MAXUTYPE(u_long_t) % base))
+					u = MAXTYPE(u_long_t);
+				else u = u * base + c;
+			}
+			if ((flags & VF_PLUS) && !u) return(NULL);
+		}
+		else {
+			for (; *s; s++) {
+				if (width >= 0 && --width < 0) break;
+				if ((c = asc2int(*s)) < 0 || c >= base) break;
+				if (n == MAXTYPE(long_t)) /*EMPTY*/;
+				else if (n > MAXTYPE(long_t) / base
+				|| (n == MAXTYPE(long_t) / base
+				&& c > MAXTYPE(long_t) % base))
+					n = MAXTYPE(long_t);
+				else n = n * base + c;
+			}
+			if ((flags & VF_PLUS) && !n) return(NULL);
+		}
+		if (s <= cp) return(NULL);
+		if ((flags & VF_ZERO) && width > 0) return(NULL);
+
+		mask = (MAXUTYPE(u_long_t)
+			>> ((sizeof(long_t) - len) * BITSPERBYTE));
+		if (flags & VF_UNSIGNED) {
+			if (u & ~mask) return(NULL);
+		}
+		else {
+			mask >>= 1;
+			if (n >= 0) {
+				if ((u_long_t)n & ~mask) return(NULL);
+			}
+			else if (((u_long_t)n & ~mask) != ~mask) return(NULL);
+			memcpy(&u, &n, sizeof(u));
+		}
+
+		if (len == sizeof(u_long_t))
+			*(va_arg(args, u_long_t *)) = u;
+#ifdef	HAVELONGLONG
+		else if (len == sizeof(u_long)) *(va_arg(args, u_long *)) = u;
+#endif
+		else if (len == sizeof(u_short))
+			*(va_arg(args, u_short *)) = u;
+		else if (len == sizeof(u_char)) *(va_arg(args, u_char *)) = u;
+		else *(va_arg(args, u_int *)) = u;
 	}
-	else {
-		if (plus > 0) {
-			if (*cp < '1' || *cp > '9') return(NULL);
-			n = *(cp++) - '0';
-		}
-		for (; isdigit(*cp); cp++) {
-			if (n == MAXTYPE(long)) /*EMPTY*/;
-			else if (n >= MAXTYPE(long) / 10
-			&& *cp >= MAXTYPE(long) % 10 + '0')
-				n = MAXTYPE(long);
-			else n = n * 10 + (*cp - '0');
-		}
-	}
-	if (cp <= top) return(NULL);
-	if (np) *np = n;
-	return(cp);
+	va_end(args);
+
+	return(s);
 }
 
 #ifdef	_NOORIGSHELL
@@ -220,7 +357,7 @@ char *gettoken(s)
 char *s;
 {
 	if (!isidentchar(*s)) return(NULL);
-	for (s++; isidentchar(*s) || isdigit(*s); s++);
+	for (s++; isidentchar2(*s); s++);
 	return(s);
 }
 
@@ -233,11 +370,9 @@ char *argv[];
 
 	if (*argcp <= 0) return((char *)-1);
 	i = 0;
-	for (cp = argv[i]; *cp; cp++)
-		if (!isidentchar(*cp) && (cp == argv[i] || !isdigit(*cp)))
-			break;
+	if (!isidentchar(argv[i][0])) return((char *)-1);
 
-	if (cp == argv[i]) return((char *)-1);
+	for (cp = &(argv[i][1]); *cp; cp++) if (!isidentchar2(*cp)) break;
 	cp = skipspace(cp);
 	if (!*cp) {
 		if (++i >= *argcp) return((char *)-1);
@@ -353,11 +488,10 @@ char *name;
 	buf = malloc2(strlen(name) * 2 + 2 + 1);
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
-# ifdef	CODEEUC
-		if (isekana(cp, 0)) buf[i++] = *(cp++);
-		else
-# endif
 		if (iskanji1(cp, 0)) buf[i++] = *(cp++);
+# ifdef	CODEEUC
+		else if (isekana(cp, 0)) buf[i++] = *(cp++);
+# endif
 		else if (*cp == PMETA) {
 			*buf = '"';
 			if (strchr(DQ_METACHAR, *(cp + 1))) buf[i++] = PMETA;
@@ -416,22 +550,22 @@ char *path, *plist;
 }
 
 #if	(FD < 2) && !defined (_NOARCHIVE)
-char *getrange(cp, fp, dp, wp)
+char *getrange(cp, delim, fp, dp, wp)
 char *cp;
+int delim;
 u_char *fp, *dp, *wp;
 {
 	char *tmp;
-	long n;
+	u_char c;
 
 	*fp = *dp = *wp = 0;
 
-	if (!(cp = evalnumeric(cp, &n, 0))) return(NULL);
-	*fp = (n > 0) ? n - 1 : 255;
+	if (!(cp = sscanf2(cp, "%c%Cu", delim, &c))) return(NULL);
+	*fp = (c) ? c - 1 : 255;
 
 	if (*cp == '[') {
-		if (!(cp = evalnumeric(++cp, &n, 0))) return(NULL);
-		if (n > 0) *dp = n - 1 + 128;
-		if (*(cp++) != ']') return(NULL);
+		if (!(cp = sscanf2(++cp, "%Cu]", &c))) return(NULL);
+		if (c && c <= MAXUTYPE(u_char) - 128 + 1) *dp = c - 1 + 128;
 	}
 	else if (*cp == '-') {
 		if (cp[1] == ',' || cp[1] == ':') *dp = *(cp++);
@@ -441,9 +575,9 @@ u_char *fp, *dp, *wp;
 	else if (*cp && *cp != ',' && *cp != ':') *dp = *(cp++);
 
 	if (*cp == '-') {
-		if ((tmp = evalnumeric(++cp, &n, 0))) {
+		if ((tmp = sscanf2(++cp, "%Cu", &c))) {
 			cp = tmp;
-			*wp = n + 128;
+			if (c && c <= MAXUTYPE(u_char) - 128) *wp = c + 128;
 		}
 		else if (*cp && *cp != ',' && *cp != ':') *wp = *(cp++) % 128;
 		else return(NULL);
@@ -481,11 +615,10 @@ char **bufp, *prompt;
 		if (prompt[i] != META) {
 			k = 0;
 			line[k++] = prompt[i];
-#ifdef	CODEEUC
-			if (isekana(prompt, i)) line[k++] = prompt[++i];
-			else
-#endif
 			if (iskanji1(prompt, i)) line[k++] = prompt[++i];
+#ifdef	CODEEUC
+			else if (isekana(prompt, i)) line[k++] = prompt[++i];
+#endif
 			line[k] = '\0';
 		}
 		else switch (prompt[++i]) {
@@ -496,7 +629,7 @@ char **bufp, *prompt;
 				break;
 			case '!':
 				snprintf2(line, sizeof(line), "%d",
-					(int)(histno[0] + 1));
+					(int)histno[0] + 1);
 				break;
 #ifndef	NOUID
 			case 'u':
@@ -552,21 +685,10 @@ char **bufp, *prompt;
 				unprint = 0;
 				break;
 			default:
-				if (prompt[i] < '0' || prompt[i] > '7') {
-					*line = prompt[i];
-					line[1] = '\0';
-				}
-				else {
-					*line = prompt[i] - '0';
-					for (k = 1; k < 3; k++) {
-						if (prompt[i + 1] < '0'
-						|| prompt[i + 1] > '7')
-							break;
-						*line = *line * 8
-							+ prompt[++i] - '0';
-					}
-					line[1] = '\0';
-				}
+				tmp = sscanf2(&(prompt[i]), "%3Co", line);
+				if (tmp) i = (tmp - prompt) - 1;
+				else *line = prompt[i];
+				line[1] = '\0';
 				break;
 		}
 		if (!cp) cp = line;
@@ -574,6 +696,11 @@ char **bufp, *prompt;
 		while (*cp) {
 			*bufp = c_realloc(*bufp, j + 1, &size);
 			if (unprint) (*bufp)[j] = *cp;
+			else if (iskanji1(cp, 0)) {
+				(*bufp)[j++] = *(cp++);
+				(*bufp)[j] = *cp;
+				len += 2;
+			}
 #ifdef	CODEEUC
 			else if (isekana(cp, 0)) {
 				(*bufp)[j++] = *(cp++);
@@ -581,12 +708,7 @@ char **bufp, *prompt;
 				len++;
 			}
 #endif
-			else if (iskanji1(cp, 0)) {
-				(*bufp)[j++] = *(cp++);
-				(*bufp)[j] = *cp;
-				len += 2;
-			}
-			else if (!isctl(*cp)) {
+			else if (!iscntrl2(*cp)) {
 				(*bufp)[j] = *cp;
 				len++;
 			}
@@ -650,10 +772,10 @@ int getkeycode(cp, identonly)
 char *cp;
 int identonly;
 {
-	long n;
+	char *tmp;
 	int i, ch;
 
-	ch = *(cp++);
+	ch = (*(cp++) & 0xff);
 	if (!*cp) {
 		if (identonly) return(-1);
 		return(ch);
@@ -661,13 +783,7 @@ int identonly;
 	switch (ch) {
 		case '\\':
 			if (identonly) return(-1);
-			if (*cp >= '0' && *cp <= '7') {
-				ch = *(cp++) - '0';
-				for (i = 1; i < 3; i++) {
-					if (*cp < '0' || *cp > '7') break;
-					ch = ch * 8 + *(cp++) - '0';
-				}
-			}
+			if ((tmp = sscanf2(cp, "%3o", &ch))) cp = tmp;
 			else {
 				for (i = 0; escapechar[i]; i++)
 					if (*cp == escapechar[i]) break;
@@ -683,24 +799,23 @@ int identonly;
 			break;
 		case '@':
 			if (identonly) return(-1);
-#if	MSDOS
-			ch = (isalpha(*cp)) ? (tolower2(*(cp++)) | 0x80) : -1;
-#else
-			ch = (isalpha(*cp)) ? (*(cp++) | 0x80) : -1;
-#endif
+			ch = (isalpha2(*cp)) ? mkmetakey(*(cp++)) : -1;
 			break;
+#ifdef	CODEEUC
+		case C_EKANA:
+			if (identonly) return(-1);
+			ch = (iskana2(*cp)) ? mkekana(*(cp++)) : -1;
+			break;
+#endif
 		case 'F':
-			if ((n = atoi2(cp)) >= 1 && n <= 20) return(K_F(n));
+			if ((i = atoi2(cp)) >= 1 && i <= 20) return(K_F(i));
 /*FALLTHRU*/
 		default:
 			cp--;
 			for (i = 0; i < KEYIDENTSIZ; i++)
-				if (!strcmp(keyidentlist[i].str, cp)) break;
-			if (i >= KEYIDENTSIZ) ch = -1;
-			else {
-				ch = keyidentlist[i].no;
-				cp += strlen(cp);
-			}
+				if (!strcmp(keyidentlist[i].str, cp))
+					return(keyidentlist[i].no);
+			ch = -1;
 			break;
 	}
 	if (*cp) ch = -1;
@@ -714,44 +829,38 @@ int c, tenkey;
 	int i, j;
 
 	i = 0;
-	if (c >= K_F(1) && c <= K_F(20)) {
-		c -= K_F0;
-		buf[i++] = 'F';
-		if (c >= 10) buf[i++] = (c / 10) + '0';
-		buf[i++] = (c % 10) + '0';
-	}
-	else if ((c & ~0x7f) == 0x80 && isalpha(c & 0x7f)) {
+	if (c >= K_F(1) && c <= K_F(20))
+		i = snprintf2(buf, sizeof(buf), "F%d", c - K_F0);
+	else if (ismetakey(c)) {
 		buf[i++] = '@';
 		buf[i++] = c & 0x7f;
 	}
-	else {
+#ifdef	CODEEUC
+	else if (isekana2(c)) {
+		buf[i++] = C_EKANA;
+		buf[i++] = c & 0xff;
+	}
+#endif
+	else if (c > (int)MAXUTYPE(u_char)) {
 		for (j = 0; j < KEYIDENTSIZ; j++)
 			if ((u_short)(c) == keyidentlist[j].no) break;
 		if (j < KEYIDENTSIZ) {
-			if (tenkey || c == ' ' || isctl(c)
+			if (tenkey || c == ' ' || iscntrl2(c)
 			|| keyidentlist[j].no >= K_MIN)
 				return(keyidentlist[j].str);
 		}
 
-		if (c >= K_MIN) {
-			buf[i++] = '?';
-			buf[i++] = '?';
-		}
-#ifndef	CODEEUC
-		else if (iskna(c)) buf[i++] = c;
-#endif
-		else if (isctl(c)) {
-			buf[i++] = '^';
-			buf[i++] = (c + '@') & 0x7f;
-		}
-		else if (ismsb(c)) {
-			buf[i++] = '\\';
-			buf[i++] = (c & 0700 >> 6) + '0';
-			buf[i++] = (c & 0070 >> 3) + '0';
-			buf[i++] = (c & 0007) + '0';
-		}
-		else buf[i++] = c;
+		buf[i++] = '?';
+		buf[i++] = '?';
 	}
+#ifndef	CODEEUC
+	else if (iskana2(c)) buf[i++] = c;
+#endif
+	else if (iscntrl2(c))
+		i = snprintf2(buf, sizeof(buf), "^%c", (c + '@') & 0x7f);
+	else if (ismsb(c)) i = snprintf2(buf, sizeof(buf), "\\%03o", c);
+	else buf[i++] = c;
+
 	buf[i] = '\0';
 	return(buf);
 }
@@ -761,20 +870,15 @@ char *s;
 u_char *lenp;
 int evalhat;
 {
-	char *cp;
+	char *cp, *tmp;
 	int i, j, n;
 
 	cp = malloc2(strlen(s) + 1);
 	for (i = j = 0; s[i]; i++, j++) {
 		if (s[i] == '\\') {
 			i++;
-			if (s[i] >= '0' && s[i] <= '7') {
-				cp[j] = s[i] - '0';
-				for (n = 1; n < 3; n++) {
-					if (s[i + 1] < '0' || s[i + 1] > '7')
-						break;
-					cp[j] = cp[j] * 8 + (s[++i] - '0');
-				}
+			if ((tmp = sscanf2(&(s[i]), "%3Co", &(cp[j])))) {
+				i = (tmp - s) - 1;
 				continue;
 			}
 			for (n = 0; escapechar[n]; n++)
@@ -808,34 +912,24 @@ int len;
 	cp = malloc2(len * 4 + 1);
 	j = 0;
 	if (s) for (i = 0; i < len; i++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) cp[j++] = s[i++];
-		else
-# else
-		if (iskna(s[i])) /*EMPTY*/;
-		else
-# endif
 		if (iskanji1(s, i)) cp[j++] = s[i++];
-		else if (isctl(s[i]) || ismsb(s[i])) {
+# ifdef	CODEEUC
+		else if (isekana(s, i)) cp[j++] = s[i++];
+# else
+		else if (isskana(s, i)) /*EMPTY*/;
+# endif
+		else if (iscntrl2(s[i]) || ismsb(s[i])) {
 			for (n = 0; escapechar[n]; n++)
 				if (s[i] == escapevalue[n]) break;
 			if (escapechar[n]) {
 				cp[j++] = '\\';
 				cp[j++] = escapechar[n];
 			}
-			else if (isctl(s[i])) {
-				cp[j++] = '^';
-				cp[j++] = ((s[i] + '@') & 0x7f);
-			}
-			else {
-				int c;
-
-				c = s[i] & 0xff;
-				cp[j++] = '\\';
-				cp[j++] = (c / (8 * 8)) + '0';
-				cp[j++] = ((c % (8 * 8)) / 8) + '0';
-				cp[j++] = (c % 8) + '0';
-			}
+			else if (iscntrl2(s[i]))
+				j = snprintf2(&(cp[j]), len * 4 + 1 - j,
+					"^%c", (s[i] + '@') & 0x7f);
+			else j += snprintf2(&(cp[j]), len * 4 + 1 - j,
+				"\\%03o", s[i] & 0xff);
 			continue;
 		}
 		cp[j++] = s[i];

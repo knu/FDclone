@@ -485,14 +485,15 @@ clean:
 
 main.o: fd.h
 main.o: machine.h config.h
-main.o: printf.h
-main.o: kctype.h pathname.h term.h types.h func.h
+main.o: printf.h kctype.h
+main.o: pathname.h term.h types.h func.h
 main.o: dosdisk.h kanji.h
 main.o: version.h system.h
-printf.o: machine.h config.h printf.h
-printf.o: kctype.h
+printf.o: machine.h config.h
+printf.o: printf.h kctype.h
 term.o: machine.h config.h
-term.o: printf.h term.h
+term.o: printf.h kctype.h
+term.o: term.h
 pathname.o: fd.h
 pathname.o: machine.h config.h
 pathname.o: printf.h
@@ -596,7 +597,8 @@ info.o: types.h funcno.h kanji.h
 rockridg.o: fd.h
 rockridg.o: machine.h config.h
 rockridg.o: printf.h
-rockridg.o: kctype.h pathname.h term.h types.h func.h
+rockridg.o: kctype.h
+rockridg.o: pathname.h term.h types.h func.h
 rockridg.o: dosdisk.h
 archive.o: fd.h
 archive.o: machine.h config.h
@@ -606,8 +608,8 @@ archive.o: pathname.h term.h types.h func.h
 archive.o: dosdisk.h kanji.h system.h
 tree.o: fd.h
 tree.o: machine.h config.h
-tree.o: printf.h
-tree.o: kctype.h pathname.h term.h types.h func.h
+tree.o: printf.h kctype.h
+tree.o: pathname.h term.h types.h func.h
 tree.o: dosdisk.h kanji.h
 custom.o: fd.h
 custom.o: machine.h config.h

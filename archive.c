@@ -14,9 +14,6 @@
 #include "system.h"
 #endif
 
-#ifndef	_NODOSDRIVE
-extern int shutdrv __P_((int));
-#endif
 #if	MSDOS
 extern char *unixgetcurdir __P_((char *, int));
 #endif
@@ -148,7 +145,7 @@ static char *form_tar[] = {
 		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
 		{255, 255, 255}, 1
 #define	LINESEP	'\t'
-#define	isarchbr(l)	(((l) -> topskip) < 255)
+#define	isarchbr(l)	(((l) -> topskip) < (u_char)255)
 #endif	/* FD < 2 */
 
 #define	iswhitespace(c)	((c) == ' ' || (c) == '\t')
@@ -599,8 +596,10 @@ int skip;
 #ifndef	NOUID
 	uidtable *up;
 	gidtable *gp;
+	uid_t uid;
+	gid_t gid;
 #endif
-	long n;
+	off_t n;
 	int i, ch, l, len, hit, err, err2, score;
 	char *cp, *s, *buf, *rawbuf;
 
@@ -614,7 +613,7 @@ int skip;
 	tmp -> st_gid = (gid_t)-1;
 	tmp -> linkname = NULL;
 #endif
-	tmp -> st_size = 0L;
+	tmp -> st_size = (off_t)0;
 	tmp -> flags = 0;
 	tmp -> tmpflags = F_STAT;
 	tm.tm_year = tm.tm_mon = tm.tm_mday = -1;
@@ -646,10 +645,10 @@ int skip;
 			for (i = 0; line[i]; i++) if (line[i] == '\n') break;
 			len = i;
 		}
-		else if (!(cp = evalnumeric(form, &n, 1))) len = -1;
+		else if (!(cp = sscanf2(form, "%+d", &len))) len = -1;
 		else {
 			form = cp;
-			for (i = 0; i < n; i++) if (!line[i]) break;
+			for (i = 0; i < len; i++) if (!line[i]) break;
 			len = i;
 			ch = -1;
 		}
@@ -701,8 +700,9 @@ int skip;
 				break;
 			case 'u':
 #ifndef	NOUID
-				if ((cp = evalnumeric(buf, &n, -1)) && !*cp)
-					tmp -> st_uid = n;
+				cp = sscanf2(buf, "%-*d%$",
+					sizeof(uid_t), &uid);
+				if (cp) tmp -> st_uid = uid;
 				else if ((up = finduid(0, buf)))
 					tmp -> st_uid = up -> uid;
 #endif
@@ -710,15 +710,16 @@ int skip;
 				break;
 			case 'g':
 #ifndef	NOUID
-				if ((cp = evalnumeric(buf, &n, -1)) && !*cp)
-					tmp -> st_gid = n;
+				cp = sscanf2(buf, "%-*d%$",
+					sizeof(gid_t), &gid);
+				if (cp) tmp -> st_gid = gid;
 				else if ((gp = findgid(0, buf)))
 					tmp -> st_gid = gp -> gid;
 #endif
 				hit++;
 				break;
 			case 's':
-				if (!(cp = evalnumeric(buf, &n, 0))) break;
+				if (!(cp = sscanf2(buf, "%qd", &n))) break;
 				if (*cp) err2++;
 				tmp -> st_size = n;
 				hit++;
@@ -763,28 +764,21 @@ int skip;
 				hit++;
 				break;
 			case 't':
-				if (!(cp = evalnumeric(buf, &n, 0))
-				|| n > 23) {
-					tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+				if (!(cp = sscanf2(buf, "%d", &i)) || i > 23)
 					break;
-				}
-				tm.tm_hour = n;
+				tm.tm_hour = i;
 				hit++;
-				if (*cp != ':'
-				|| !(cp = evalnumeric(++cp, &n, 0))
-				|| n > 59) {
+				if (!(cp = sscanf2(cp, ":%d", &i)) || i > 59) {
 					tm.tm_min = tm.tm_sec = 0;
 					err2++;
 					break;
 				}
-				tm.tm_min = n;
-				if (*cp != ':'
-				|| !(cp = evalnumeric(++cp, &n, 0))
-				|| n > 59) {
+				tm.tm_min = i;
+				if (!sscanf2(cp, ":%d%$", &i) || i > 59) {
 					tm.tm_sec = 0;
 					break;
 				}
-				tm.tm_sec = n;
+				tm.tm_sec = i;
 				break;
 			case 'f':
 				for (i = 0; i < len; i++) {
@@ -917,12 +911,12 @@ int field, *eolp;
 			j++;
 			sp = (j < MAXLAUNCHSEP) ? (int)sep[j] : 255;
 			for (; sp == 255 || i < sp; i++)
-				if (!strchr(" \t", line[i])) break;
+				if (!iswhitespace(line[i])) break;
 			if (f < 0) f = 1;
 			else f++;
 			s = 0;
 		}
-		else if (strchr(" \t", line[i])) s = 1;
+		else if (iswhitespace(line[i])) s = 1;
 		else if (s) {
 			f++;
 			s = 0;
@@ -934,7 +928,7 @@ int field, *eolp;
 			if (eolp) {
 				for (j = i; line[j]; j++) {
 					if ((sp < 255 && j >= sp)
-					|| strchr(" \t", line[j])) break;
+					|| iswhitespace(line[j])) break;
 				}
 				*eolp = j;
 			}
@@ -991,8 +985,10 @@ int max;
 #ifndef	NOUID
 	uidtable *up;
 	gidtable *gp;
+	uid_t uid;
+	gid_t gid;
 #endif
-	long n;
+	off_t n;
 	int i, skip;
 	char *cp, *buf;
 
@@ -1036,14 +1032,14 @@ int max;
 
 #ifndef	NOUID
 	getfield(buf, line, skip, list, F_UID);
-	if ((cp = evalnumeric(buf, &n, -1)) && !*cp) tmp -> st_uid = n;
+	if (sscanf2(buf, "%-*d%$", sizeof(uid_t), &uid)) tmp -> st_uid = uid;
 	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
 	getfield(buf, line, skip, list, F_GID);
-	if ((cp = evalnumeric(buf, &n, -1)) && !*cp) tmp -> st_gid = n;
+	if (sscanf2(buf, "%-*d%$", sizeof(gid_t), &gid)) tmp -> st_gid = gid;
 	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
 #endif
 	getfield(buf, line, skip, list, F_SIZE);
-	tmp -> st_size = ((cp = evalnumeric(buf, &n, 0)) && !*cp) ? n : 0L;
+	tmp -> st_size = (sscanf2(buf, "%qd%$", &n)) ? n : (off_t)0;
 
 	getfield(buf, line, skip, list, F_MON);
 	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
@@ -1064,7 +1060,7 @@ int max;
 	tm.tm_mday = ((i = atoi2(buf)) >= 1 && i < 31) ? i : 1;
 	getfield(buf, line, skip, list, F_YEAR);
 	if (!*buf) tm.tm_year = 1970;
-	else if ((cp = evalnumeric(buf, &n, 0)) && !*cp) tm.tm_year = n;
+	else if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
 	else if (list -> field[F_YEAR] == list -> field[F_TIME]
 	&& strchr(buf, ':')) {
 		tm.tm_year = today[0];
@@ -1078,17 +1074,16 @@ int max;
 	tm.tm_year -= 1900;
 
 	getfield(buf, line, skip, list, F_TIME);
-	if (!(cp = evalnumeric(buf, &n, 0)) || n > 23)
+	if (!(cp = sscanf2(buf, "%d", &i)) || i > 23)
 		tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
 	else {
-		tm.tm_hour = n;
-		if (*cp != ':' || !(cp = evalnumeric(++cp, &n, 0)) || n > 59)
+		tm.tm_hour = i;
+		if (!(cp = sscanf2(cp, ":%d", &i)) || i > 59)
 			tm.tm_min = tm.tm_sec = 0;
 		else {
-			tm.tm_min = n;
-			if (*cp != ':' || (n = atoi2(++cp)) < 0 || n > 59)
-				tm.tm_sec = 0;
-			else tm.tm_sec = n;
+			tm.tm_min = i;
+			if (!sscanf2(cp, ":%d%$", &i) || i > 59) tm.tm_sec = 0;
+			else tm.tm_sec = i;
 		}
 	}
 
@@ -1392,7 +1387,7 @@ int *linenop;
 	}
 
 #if	FD >= 2
-	if (!formlist) return(-3);
+	if (!formlist || !*formlist) return(-3);
 #endif
 	if (!(nline = countvar(lvar))) {
 		lvar = (char **)realloc2(lvar, (nline + 2) * sizeof(char *));

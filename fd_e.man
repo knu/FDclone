@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-2003 Takashi SHIRAI
+.\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05a 12/10/03
+.\" @(#)fd.1   2.05b 01/14/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "December 10, 2003"
+.TH FD 1 "January 14, 2004"
 .de sh
 .br
 .PP
@@ -3220,9 +3220,9 @@ Switch a input method to the insert/overwrite mode.
 Delete a character on the cursor position.
 .IP "\fBBs\fP"
 Delete a character before the cursor position.
-.IP "\fBDelLin\fP"
+.IP "\fBDelLine\fP"
 Delete a string after the cursor position.
-.IP "\fBInsLin\fP"
+.IP "\fBInsLine\fP"
 Treat the next input character as it is,
 effective to input control characters.
 .IP "\fBEnter\fP"
@@ -3597,8 +3597,8 @@ The prepared edit modes are the following 3 modes.
 .nf
 \fB^P\fP	= \fBUp\fP	\fB^A\fP	= \fBBeg\fP
 \fB^N\fP	= \fBDown\fP	\fB^E\fP	= \fBEol\fP	\fB^D\fP	= \fBDel\fP
-\fB^F\fP	= \fBRight\fP			\fB^Q\fP	= \fBInsLin\fP
-\fB^B\fP	= \fBLeft\fP			\fB^K\fP	= \fBDelLin\fP
+\fB^F\fP	= \fBRight\fP			\fB^Q\fP	= \fBInsLine\fP
+\fB^B\fP	= \fBLeft\fP			\fB^K\fP	= \fBDelLine\fP
 \fB^V\fP	= \fBPageDn\fP	\fB^Y\fP	= \fBPageUp\fP	\fB^O\fP	= \fBEnter\fP
 \fB^M\fP	= \fBReturn\fP	\fB^I\fP	= \fBTab\fP	\fB^H\fP	= \fBBs\fP
 \fB^[\fP	= \fBEsc\fP	\fB^G\fP	= \fBEsc\fP
@@ -3610,8 +3610,8 @@ The prepared edit modes are the following 3 modes.
 .nf
 \fB^E\fP	= \fBUp\fP	\fB^A\fP	= \fBBeg\fP	\fB^V\fP	= \fBIns\fP
 \fB^N\fP	= \fBDown\fP	\fB^F\fP	= \fBEol\fP	\fB^G\fP	= \fBDel\fP
-\fB^F\fP	= \fBRight\fP	\fB^W\fP	= \fBHome\fP	\fB^]\fP	= \fBInsLin\fP
-\fB^S\fP	= \fBLeft\fP	\fB^Z\fP	= \fBEnd\fP	\fB^Y\fP	= \fBDelLin\fP
+\fB^F\fP	= \fBRight\fP	\fB^W\fP	= \fBHome\fP	\fB^]\fP	= \fBInsLine\fP
+\fB^S\fP	= \fBLeft\fP	\fB^Z\fP	= \fBEnd\fP	\fB^Y\fP	= \fBDelLine\fP
 \fB^C\fP	= \fBPageDn\fP	\fB^R\fP	= \fBPageUp\fP	\fB^N\fP	= \fBEnter\fP
 \fB^M\fP	= \fBReturn\fP	\fB^I\fP	= \fBTab\fP	\fB^H\fP	= \fBBs\fP
 \fB^[\fP	= \fBEsc\fP
@@ -3631,7 +3631,7 @@ in order to input normal keys.
 \fBk\fP	= \fBUp\fP	\fB0\fP	= \fBBeg\fP	\fBI\fP	= \fBIns\fP
 \fBj\fP	= \fBDown\fP	\fB$\fP	= \fBEol\fP	\fBx\fP	= \fBDel\fP
 \fBl\fP	= \fBRight\fP	\fBg\fP	= \fBHome\fP
-\fBh\fP	= \fBLeft\fP	\fBG\fP	= \fBEnd\fP	\fBD\fP	= \fBDelLin\fP
+\fBh\fP	= \fBLeft\fP	\fBG\fP	= \fBEnd\fP	\fBD\fP	= \fBDelLine\fP
 \fB^F\fP	= \fBPageDn\fP	\fB^B\fP	= \fBPageUp\fP	\fBo\fP	= \fBEnter\fP
 \fB^M\fP	= \fBReturn\fP	\fB^I\fP	= \fBTab\fP	\fB^H\fP	= \fBBs\fP
 \fB^[\fP	= \fBEsc\fP
@@ -3641,7 +3641,7 @@ in order to input normal keys.
 \fBR\fP	= overwrite
 \fBr\fP	= overwrite once
 (insert mode)
-\fB^V\fP	= \fBInsLin\fP	\fBEsc\fP	= to command mode
+\fB^V\fP	= \fBInsLine\fP	\fBEsc\fP	= to command mode
 .fi
 .RE
 
@@ -4878,4 +4878,4 @@ The symbolic links in an archive file cannot be unpacked individually.
 
 The user interface is cheap.
 .SH COPYRIGHT
-Copyright (C) 1995-2003 by Takashi SHIRAI
+Copyright (C) 1995-2004 by Takashi SHIRAI

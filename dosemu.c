@@ -30,7 +30,7 @@ typedef struct _opendirpath_t {
 
 #ifdef	CYGWIN
 #include <sys/cygwin.h>
-static struct dirent *pseudoreaddir __P_((DIR *));
+static struct dirent *NEAR pseudoreaddir __P_((DIR *));
 #else
 #define	pseudoreaddir	readdir
 #endif
@@ -52,7 +52,7 @@ int _dospath(path)
 char *path;
 {
 	if (!dosdrive) return(0);
-	return((isalpha(*path) && path[1] == ':') ? *path : 0);
+	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 
 int dospath(path, buf)
@@ -143,8 +143,8 @@ DIR *dirp;
 			free(dirpathlist[i++].path);
 			memmove((char *)(&(dirpathlist[i - 1])),
 				(char *)(&(dirpathlist[i])),
-				(maxdirpath - i) * sizeof(opendirpath_t));
-			if (--maxdirpath <= 0) {
+				(maxdirpath-- - i) * sizeof(opendirpath_t));
+			if (maxdirpath <= 0) {
 				free(dirpathlist);
 				dirpathlist = NULL;
 			}
@@ -160,7 +160,7 @@ DIR *dirp;
 }
 
 #ifdef	CYGWIN
-static struct dirent *pseudoreaddir(dirp)
+static struct dirent *NEAR pseudoreaddir(dirp)
 DIR *dirp;
 {
 	static char *upath = NULL;
@@ -341,7 +341,7 @@ char *path;
 #ifndef	_NODOSDRIVE
 	if (dosdrive && lastdrv >= 0) {
 		if (!(cp = dosgetcwd(path, MAXPATHLEN))) return(NULL);
-		if (cp[0] >= 'A' && cp[0] <= 'Z') {
+		if (isupper2(cp[0])) {
 			int i;
 
 			for (i = 2; cp[i]; i++) {

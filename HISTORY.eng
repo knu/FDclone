@@ -1,3 +1,10 @@
+Ver. 2.05b	Abortion with InsLine key in the string input is fixed.
+ (01/14/04)	Bug that option letter for 'getopt' is lowercase only is fixed.
+		Bug to bind commands to no Katakana key on EUC is fixed.
+		Bug that strange error string for initialize in 16bit based OS.
+		Bug that cursor cannot back on string input without CODEEUC.
+		Strange display on some terminals with terminfo is fixed.
+
 Ver. 2.05a	Bug that 'checkid' builtin outputs a wrong value is fixed.
  (12/10/03)
 
