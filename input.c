@@ -777,7 +777,7 @@ int x, cx, *lenp, plen, max, linemax, ch;
 		kanjiputs2(str, 2, cx - 2);
 	}
 	else {
-		if (ch < ' ' || ch >= K_MIN || *lenp >= max) {
+		if (ch < ' ' || ch >= K_MIN || ch == C_DEL || *lenp >= max) {
 			putterm(t_bell);
 			keyflush();
 			return(cx);

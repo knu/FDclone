@@ -201,6 +201,10 @@ int keepdelim, evalq;
 				}
 				continue;
 			}
+			if (path[i] == '{' && env == j) {
+				paren = 1;
+				continue;
+			}
 			if (path[i] != '_' && !isalpha(path[i])
 			&& (path[i] < '0' || path[i] > '9' || env == j)) {
 				if (env == j && path[i] == '$') {
@@ -226,7 +230,6 @@ int keepdelim, evalq;
 			if (i > 0 && path[i - 1] == quote) buf[j++] = quote;
 #endif
 		}
-		else if (env >= 0 && path[i] == '{' && env == j) paren = 1;
 		else if (path[i] == _SC_
 		&& i && path[i - 1] == _SC_ && keepdelim);
 		else if (path[i] == '$') env = j;

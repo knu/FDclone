@@ -82,19 +82,19 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 ############################################################
 # kanji using module
 
-kanji.h: kanjicnv__EXE__ kanji.hin
+kanji.h: kanjicnv__EXE__ kanji.hin machine.h config.h
 	./kanjicnv__EXE__ __KCODEOPTION__ __PREFIXOPTION__ __MSBOPTION__ kanji.hin $@
 
-$(PROGRAM).$(MANSEC): kanjicnv__EXE__ $(MANSRC)
+$(PROGRAM).$(MANSEC): kanjicnv__EXE__ $(MANSRC) machine.h config.h
 	./kanjicnv__EXE__ __KCODEOPTION__ __PREFIXOPTION__ $(MANSRC) $@
 
-$(PROGRAM).$(MANSEC)c: kanjicnv__EXE__ $(MANCAT)
+$(PROGRAM).$(MANSEC)c: kanjicnv__EXE__ $(MANCAT) machine.h config.h
 	./kanjicnv__EXE__ __KCODEOPTION__ $(MANCAT) $@
 
-$(PROGRAM).doc: kanjicnv__EXE__ $(MANCAT)
+$(PROGRAM).doc: kanjicnv__EXE__ $(MANCAT) machine.h config.h
 	./kanjicnv__EXE__ __KCODEOPTION__ -b $(MANCAT) $@
 
-history.doc: kanjicnv__EXE__ HISTORY
+history.doc: kanjicnv__EXE__ HISTORY machine.h config.h
 	./kanjicnv__EXE__ __KCODEOPTION__ HISTORY $@
 
 kanjicnv__EXE__: kanjicnv.c
@@ -208,7 +208,7 @@ GETVER	= HEAD="`tail -1 version.h`";\
 
 tar: $(SOURCES)
 	($(GETVER);\
-	tar cvof $(TITLE)"$$VER".tar $(SOURCES);\
+	tar cvf $(TITLE)"$$VER".tar $(SOURCES);\
 	compress -f $(TITLE)"$$VER".tar)
 
 lzh: $(SOURCES)

@@ -529,6 +529,11 @@ char *endmes;
 	ret = tmp = old = filepos;
 	helpbar();
 	for (filepos = 0; filepos < max; filepos++) {
+		if (kbhit2(0) && getkey2(0) == cc_intr) {
+			warning(0, INTR_K);
+			endmes = NULL;
+			break;
+		}
 		if (!ismark(&list[filepos])) continue;
 
 		movepos(list, max, old, 0);
@@ -557,6 +562,11 @@ char *endmes;
 	struct stat status;
 	char *cp, *fname, path[MAXPATHLEN + 1], **dirlist;
 	int i, ndir, max;
+
+	if (kbhit2(0) && getkey2(0) == cc_intr) {
+		warning(0, INTR_K);
+		return(-2);
+	}
 
 	if (!(dirp = Xopendir(dir))) {
 		warning(-1, dir);
@@ -616,6 +626,10 @@ char *endmes;
 	free(dirlist);
 
 	while ((dp = Xreaddir(dirp))) {
+		if (kbhit2(0) && getkey2(0) == cc_intr) {
+			warning(0, INTR_K);
+			return(-2);
+		}
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 

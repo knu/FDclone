@@ -18,6 +18,9 @@
 # ifdef	__GNUC__
 extern char *adjustfname __P_((char *));
 # endif
+# ifdef	__TURBOC__
+extern unsigned _stklen = 16384;
+# endif
 #else
 # ifdef	_NODOSDRIVE
 # include <sys/param.h>

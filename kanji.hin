@@ -21,6 +21,7 @@ extern char *mesconv __P_((char *, char *));
 #define	ILFNC_K	mesconv("コマンドの使い方が違います.", "Illegal function call.")
 #define	WAIT_K	mesconv("しばらくお待ち下さい.", "Wait a minute.")
 #define	DELSP_K	mesconv("行末に空白文字がありますが削除しますか ?", "Delete space characters on the end of line ?")
+#define	INTR_K	mesconv("中断キーにより作業を中止します.", "Interrupted by keyboard.")
 
 #define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
 #define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")

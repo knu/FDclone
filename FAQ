@@ -361,6 +361,40 @@ A3-12.	UNIX 版 LHa は、V 1.14 からリスト表示形式のフォーマ
 	なって下さい。
 	launch ".lzh" "lha -lq" 0,0:1,2-'/',2'/',3,7,5,6,7,8
 
+Q3-13.	IRIX の winterm 端末で実行すると、Ret キーやカーソル
+	キーが効きません。
+A3-13.	標準で用意されている winterm 用の terminfo の記述が
+	誤っているのが原因です。
+	以下の記述を /etc/fdrc.iris-ansi に加えておくと良い
+	でしょう。
+		keymap	ENTER	""
+		keymap	UP	"\033OA"
+		keymap	DOWN	"\033OB"
+		keymap	RIGHT	"\033OC"
+		keymap	LEFT	"\033OD"
+	補足的に解説しておきますと、ここにある ENTER という
+	のは、特殊キーの Enter キーを指し、Ret キー (いわゆ
+	る改行キー) のことではありません。
+	キーボードの Ret キー (多くの場合右シフトの上) のキ
+	ートップに Enter と刻印のあるものもありますが、ここ
+	で言う Enter キーとはこれとは異なり、一部のキーボー
+	ドに用意されている特殊キーのことです。送信キーと呼ば
+	れることもあります。
+	IRIX の実装上この混同が生じたことが、この支障の現況
+	だと思われます。
+
+Q3-14.	BSD on Windows 1.5 でコンパイルしたのに、FreeBSD だ
+	と見なされてしまって、漢字コードが ShiftJIS ではなく
+	EUC になってしまいました。
+A3-14.	BSD on Windows 1.5 のインストーラに支障があり、プリ
+	デファインされるべき識別子が定義されていないのが原因
+	です。
+	以下のファイルをコピーして下さい。
+	コピー元:("X" は BOW CD-ROM のあるドライブ名)
+	/dfs/X/usr/local/lib/gcc-lib/i386--freebsd/2.6/specs
+	コピー先:
+	/usr/local/lib/gcc-lib/i386--freebsd/2.6.2/specs
+
 
 <4.仕様の話>
 

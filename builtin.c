@@ -76,33 +76,33 @@ static int printhist __P_((int, char *[], int));
 static int isinternal __P_((char *, int));
 
 static builtintable builtinlist[] = {
-	{printenv, "printenv"},
+	{printenv,	"printenv"},
 #ifndef	_NOARCHIVE
-	{setlaunch, "launch"},
-	{setarch, "arch"},
-	{printlaunch, "printlaunch"},
-	{printarch, "printarch"},
+	{setlaunch,	"launch"},
+	{setarch,	"arch"},
+	{printlaunch,	"printlaunch"},
+	{printarch,	"printarch"},
 #endif
-	{setkeybind, "bind"},
-	{printbind, "printbind"},
-	{setalias, "alias"},
-	{unalias, "unalias"},
+	{setkeybind,	"bind"},
+	{printbind,	"printbind"},
+	{setalias,	"alias"},
+	{unalias,	"unalias"},
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	{setdrive, "setdrv"},
-	{unsetdrive, "unsetdrv"},
-	{printdrive, "printdrv"},
+	{setdrive,	"setdrv"},
+	{unsetdrive,	"unsetdrv"},
+	{printdrive,	"printdrv"},
 #endif
-	{setuserfunc, "function"},
+	{setuserfunc,	"function"},
 #if	!MSDOS && !defined (_NOKEYMAP)
-	{setkeymap, "keymap"},
-	{keytest, "getkey"},
+	{setkeymap,	"keymap"},
+	{keytest,	"getkey"},
 #endif
-	{exportenv, "export"},
-	{dochdir, "chdir"},
-	{dochdir, "cd"},
-	{loadsource, "source"},
-	{printhist, "history"},
-	{NULL, NULL}
+	{exportenv,	"export"},
+	{dochdir,	"chdir"},
+	{dochdir,	"cd"},
+	{loadsource,	"source"},
+	{printhist,	"history"},
+	{NULL,		NULL}
 };
 static strtable keyidentlist[] = {
 	{K_DOWN,	"DOWN"},
@@ -1053,8 +1053,13 @@ int comline;
 		return(1);
 	}
 	if (!ch) return(-1);
+	argv[2] = evalpath(argv[2], 1);
+	if (!argv[2][0]) {
+		setkeyseq(ch, NULL);
+		return(0);
+	}
 
-	line = (char *)malloc2(strlen(argv[2] = evalpath(argv[2], 1)) + 1);
+	line = (char *)malloc2(strlen(argv[2]) + 1);
 	for (i = j = 0; argv[2][i]; i++, j++) {
 		if (argv[2][i] == '^'
 		&& (k = toupper2(argv[2][i + 1])) >= '?' && k <= '_') {

@@ -181,7 +181,7 @@ extern time_t timelocal2 __P_((struct tm *));
 /* input.c */
 extern int Xgetkey __P_((int));
 extern char *inputstr __P_((char *, int, int, char *, int));
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 extern int yesno(CONST char *, ...);
 #else
 extern int yesno __P_((CONST char *, ...));
@@ -224,7 +224,7 @@ extern int ujis2sjis __P_((char *, u_char *));
 extern int kanjiconv __P_((char *, char *, int, int));
 #endif
 extern int kanjiputs __P_((char *));
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 extern int kanjiprintf(CONST char *, ...);
 #else
 extern int kanjiprintf __P_((CONST char *, ...));

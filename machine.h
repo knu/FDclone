@@ -47,7 +47,6 @@ typedef	long	off_t;
 #define	CODEEUC
 #define	CPP7BIT
 #define	USELEAPCNT
-#define	USERE_COMP
 #include <sys/param.h>
 # if	!defined (MAXHOSTNAMELEN)
 # define	SVR4
@@ -69,6 +68,7 @@ typedef	long	off_t;
 # define	BSD43
 # define	OSTYPE		"SUN_OS"
 # define	BSDINSTALL
+# define	USERE_COMP
 # define	USETIMELOCAL
 # endif
 #endif
@@ -154,6 +154,7 @@ typedef	long	off_t;
 #  define	CCCOMMAND	"/usr/necccs/bin/cc"
 #  else
 #  define	CCCOMMAND	"/usr/abiccs/bin/cc"
+#  define	STRICTSTDC
 #  endif
 # define	TERMCAPLIB	"-lcurses"
 # define	REGEXPLIB	"-lgen"
@@ -162,6 +163,8 @@ typedef	long	off_t;
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME
+# define	SIGFNCINT
+# define	USEMKTIME
 # else
 # define	SYSV
 # endif
@@ -338,6 +341,7 @@ typedef	long	off_t;
 #define	SVR4
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
+#define	USEMANLANG
 #define	TERMCAPLIB		"-ltermcap"
 #define	DECLERRLIST
 #define	NOTZFILEH
@@ -368,7 +372,7 @@ typedef	long	off_t;
 #define	SIGFNCINT
 #endif
 
-#if	defined (__FreeBSD__) && !defined (OSTYPE)
+#if	defined (__FreeBSD__) && !defined (OSTYPE) && !defined (__BOW__)
 #define	BSD43
 #define	OSTYPE			"FREEBSD"
 #define	CODEEUC
@@ -427,7 +431,8 @@ typedef	long	off_t;
 # endif
 #endif
 
-#if	defined (__386BSD__) && defined (__BSD_NET2) && !defined (OSTYPE)
+#if	defined (__BOW__) \
+|| (defined (__386BSD__) && defined (__BSD_NET2) && !defined (OSTYPE))
 #define	BSD43
 #define	OSTYPE			"BOW"
 #define	TARUSESPACE
@@ -438,6 +443,8 @@ typedef	long	off_t;
 #define	USEVFCNAME
 #define	USEREGCOMP
 #define	USESETENV
+#define	USEMKTIME
+#define	SIGFNCINT
 #endif
 
 #if	defined (__386BSD__) && !defined (OSTYPE)

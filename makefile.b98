@@ -82,19 +82,19 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 ############################################################
 # kanji using module
 
-kanji.h: kanjicnv.exe kanji.hin
+kanji.h: kanjicnv.exe kanji.hin machine.h config.h
 	.\kanjicnv.exe -s   kanji.hin $@
 
-$(PROGRAM).$(MANSEC): kanjicnv.exe $(MANSRC)
+$(PROGRAM).$(MANSEC): kanjicnv.exe $(MANSRC) machine.h config.h
 	.\kanjicnv.exe -s  $(MANSRC) $@
 
-$(PROGRAM).$(MANSEC)c: kanjicnv.exe $(MANCAT)
+$(PROGRAM).$(MANSEC)c: kanjicnv.exe $(MANCAT) machine.h config.h
 	.\kanjicnv.exe -s $(MANCAT) $@
 
-$(PROGRAM).doc: kanjicnv.exe $(MANCAT)
+$(PROGRAM).doc: kanjicnv.exe $(MANCAT) machine.h config.h
 	.\kanjicnv.exe -s -b $(MANCAT) $@
 
-history.doc: kanjicnv.exe HISTORY
+history.doc: kanjicnv.exe HISTORY machine.h config.h
 	.\kanjicnv.exe -s HISTORY $@
 
 kanjicnv.exe: kanjicnv.c
@@ -208,7 +208,7 @@ GETVER	= HEAD="`tail -1 version.h`";\
 
 tar: $(SOURCES)
 	($(GETVER);\
-	tar cvof $(TITLE)"$$VER".tar $(SOURCES);\
+	tar cvf $(TITLE)"$$VER".tar $(SOURCES);\
 	compress -f $(TITLE)"$$VER".tar)
 
 lzh: $(SOURCES)

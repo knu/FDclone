@@ -131,6 +131,18 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 #ifndef	TAB3
 #define	TAB3		OXTABS
 #endif
+#ifndef	VINTR
+#define	VINTR		0
+#endif
+#ifndef	VQUIT
+#define	VQUIT		1
+#endif
+#ifndef	VEOF
+#define	VEOF		4
+#endif
+#ifndef	VEOL
+#define	VEOL		5
+#endif
 #define	not(x)		(~(x) & 0xffff)
 
 #ifndef	FREAD
@@ -213,6 +225,10 @@ char *c_up = NULL;
 char *c_down = NULL;
 char *c_right = NULL;
 char *c_left = NULL;
+u_char cc_intr = CTRL('c');
+u_char cc_quit = CTRL('\\');
+u_char cc_eof = CTRL('d');
+u_char cc_eol = 255;
 
 #if	MSDOS
 #ifdef	PC98
@@ -341,6 +357,7 @@ int reset;
 {
 #ifdef	USESGTTY
 	static int dupttyflag;
+	struct tchars cc;
 #endif
 	static termioctl_t dupttyio;
 	u_long request;
@@ -354,6 +371,18 @@ int reset;
 	if (tioctl(ttyio, request, &dupttyio) < 0) err2(NULL);
 
 	if (!reset) {
+#ifdef	USESGTTY
+		tioctl(ttyio, TIOCGETC, &cc);
+		cc_intr = cc.t_intrc;
+		cc_quit = cc.t_quitc;
+		cc_eof = cc.t_eofc;
+		cc_eol = cc.t_brkc;
+#else
+		cc_intr = dupttyio.c_cc[VINTR];
+		cc_quit = dupttyio.c_cc[VQUIT];
+		cc_eof = dupttyio.c_cc[VEOF];
+		cc_eol = dupttyio.c_cc[VEOL];
+#endif
 		ospeed = getspeed(dupttyio);
 		termflags |= F_INITTTY;
 	}
@@ -900,7 +929,7 @@ char *str;
 	}
 	if (i > K_MAX - K_MIN) return(-1);
 
-	for (i = 0; i <= K_MAX - K_MIN; i++) {
+	if (str) for (i = 0; i <= K_MAX - K_MIN; i++) {
 		if (keycode[i] == n || !keyseq[i] || strcmp(keyseq[i], str))
 			continue;
 		free(keyseq[i]);
@@ -1000,8 +1029,13 @@ u_long usec;
 	FD_SET(0, &readfds);
 
 	return(select(1, &readfds, NULL, NULL, &timeout));
-# endif	/* DJGPP >= 2 */
-	return(kbhit());
+# else	/* !DJGPP || DJGPP < 2 */
+	union REGS regs;
+
+	regs.h.ah = 0x01;
+	int86(0x16, &regs, &regs);
+	return((regs.x.flags & 0x01) != 0);
+# endif
 #endif
 }
 
@@ -1088,8 +1122,7 @@ int sig;
 			break;
 	}
 	else
-#if	!defined (__GNUC__) || defined (PC98) \
-|| (defined (DJGPP) && (DJGPP >= 2))
+#if	defined (PC98) || (defined (DJGPP) && (DJGPP >= 2))
 	if (kbhit2(WAITKEYPAD * 1000L))
 #endif
 	{

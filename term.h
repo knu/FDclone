@@ -103,6 +103,10 @@ extern char *c_up;
 extern char *c_down;
 extern char *c_right;
 extern char *c_left;
+extern u_char cc_intr;
+extern u_char cc_quit;
+extern u_char cc_eof;
+extern u_char cc_eol;
 
 #if	MSDOS
 #define	putterm(str)	cputs2(str)
@@ -133,7 +137,7 @@ extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
 extern int putch2 __P_((int));
 extern int cputs2 __P_((char *));
-#if	MSDOS
+#if	MSDOS || defined (__STDC__)
 extern int cprintf2(CONST char *, ...);
 #else
 extern int cprintf2 __P_((CONST char *, ...));

@@ -367,7 +367,9 @@ static char *getdestdir(mes, arg)
 char *mes, *arg;
 {
 	char *dir;
+#ifndef	_NODOSDRIVE
 	int drive;
+#endif
 
 	if (arg && *arg) dir = strdup2(arg);
 	else if (!(dir = inputstr(mes, 1, -1, NULL, 1))) return(NULL);

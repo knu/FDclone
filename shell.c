@@ -43,7 +43,7 @@ aliastable aliaslist[MAXALIASTABLE];
 int maxalias = 0;
 userfunctable userfunclist[MAXFUNCTABLE];
 int maxuserfunc = 0;
-char **history[2] = { NULL, NULL };
+char **history[2] = {NULL, NULL};
 short histsize[2] = {0, 0};
 short histno[2] = {0, 0};
 int savehist = 0;
@@ -554,7 +554,7 @@ int uniq;
 
 	if (!str || !*str) return(0);
 
-	if (histno[n]++ >= (short)(1L << (BITSPERBYTE * sizeof(short) - 1)) - 1)
+	if (histno[n]++ >= ~(short)(1L << (BITSPERBYTE * sizeof(short) - 1)))
 		histno[n] = 0;
 
 	if (uniq) {
@@ -593,7 +593,7 @@ char *file;
 	while (fgets(line, MAXLINESTR, fp)) {
 		if ((cp = strchr(line, '\n'))) *cp = '\0';
 		if (histno[n]++ >=
-		(short)(1L << (BITSPERBYTE * sizeof(short) - 1)) - 1)
+		~(short)(1L << (BITSPERBYTE * sizeof(short) - 1)))
 			histno[n] = 0;
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		for (j = len = 0; line[j]; j++, len++)
