@@ -211,8 +211,6 @@ extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
 extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
-extern int Xsymlink __P_((char *, char *));
-extern int Xreadlink __P_((char *, char *, int));
 extern int Xchmod __P_((char *, int));
 extern int Xunlink __P_((char *));
 extern int Xrename __P_((char *, char *));
@@ -230,6 +228,7 @@ extern off_t Xlseek __P_((int, off_t, int));
 # endif	/* !_NODOSDRIVE */
 extern int Xmkdir __P_((char *, int));
 extern int Xrmdir __P_((char *));
+extern int stat2 __P_((char *, struct stat *));
 extern int chdir2 __P_((char *));
 #else	/* !FD */
 # if	MSDOS
@@ -259,8 +258,10 @@ extern int Xstat __P_((char *, struct stat *));
 # define	Xlstat		lstat
 # endif
 #define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
-#define	Xsymlink(o, n)	(symlink(o, n) ? -1 : 0)
-#define	Xreadlink	readlink
+# ifndef	NOSYMLINK
+# define	Xsymlink(o, n)	(symlink(o, n) ? -1 : 0)
+# define	Xreadlink	readlink
+# endif
 #define	Xchmod		chmod
 #define	Xunlink(p)	(unlink(p) ? -1 : 0)
 #define	Xrename(o, n)	(rename(o, n) ? -1 : 0)
@@ -284,6 +285,11 @@ extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 extern int chdir2 __P_((char *));
 # else
 # define	chdir2(p)	(chdir(p) ? -1 : 0)
+# endif
+# ifdef	NOSYMLINK
+# define	stat2		Xstat
+# else
+extern int stat2 __P_((char *, struct stat *));
 # endif
 #endif	/* !FD */
 
@@ -346,6 +352,12 @@ extern char *strdup2 __P_((char *));
 extern int getinfofs __P_((char *, off_t *, off_t *, off_t *));
 extern char *realpath2 __P_((char *, char *, int));
 extern int touchfile __P_((char *, struct stat *));
+#ifndef	NODIRLOOP
+extern int issamebody __P_((char *, char *));
+#endif
+#ifndef	NOSYMLINK
+extern int cpsymlink __P_((char *, char *));
+#endif
 extern int safewrite __P_((int, char *, int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 #else	/* !FD */
@@ -372,6 +384,12 @@ static VOID NEAR ttymode __P_((int));
 static int NEAR getkey2 __P_((int));
 # endif	/* !MSDOS */
 static int NEAR touchfile __P_((char *, struct stat *));
+#ifndef	NODIRLOOP
+static int NEAR issamebody __P_((char *, char *));
+#endif
+#ifndef	NOSYMLINK
+static int NEAR cpsymlink __P_((char *, char *));
+#endif
 static int NEAR safewrite __P_((int, char *, int));
 static char *NEAR inputstr __P_((char *, int, int, char *, int));
 #endif	/* !FD */
@@ -691,6 +709,38 @@ struct stat *stp;
 	return(Xutimes(path, tvp));
 # endif
 }
+
+# ifndef	NODIRLOOP
+static int NEAR issamebody(src, dest)
+char *src, *dest;
+{
+	struct stat st1, st2;
+
+	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
+	return(st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
+}
+# endif	/* !NODIRLOOP */
+
+# ifndef	NOSYMLINK
+static int NEAR cpsymlink(src, dest)
+char *src, *dest;
+{
+	struct stat st;
+	char path[MAXPATHLEN];
+	int len;
+
+	if ((len = Xreadlink(src, path, sizeof(path) - 1)) < 0) return(-1);
+	if (Xlstat(dest, &st) >= 0) {
+#  ifndef	NODIRLOOP
+		if (issamebody(src, dest)) return(0);
+#  endif
+		if (Xunlink(dest) < 0) return(-1);
+	}
+
+	path[len] = '\0';
+	return(Xsymlink(path, dest));
+}
+# endif	/* !NOSYMLINK */
 
 static int NEAR safewrite(fd, buf, size)
 int fd;
@@ -1363,7 +1413,7 @@ off_t *sump, *bsump;
 	dirlist = NULL;
 	while ((dp = Xreaddir(dirp))) {
 		strcpy(file, dp -> d_name);
-		if (Xstat(dirwd, &st) < 0) continue;
+		if (stat2(dirwd, &st) < 0) continue;
 
 		dirlist = b_realloc(dirlist, n, struct filestat_t);
 		dirlist[n].nam = strdup2(dp -> d_name);
@@ -1721,7 +1771,7 @@ char *argv[];
 			} while (!strchr("ynYN", key));
 			if (key == 'n' || key == 'N') continue;
 		}
-		if (Xunlink(wild[i]) != 0) {
+		if (Xunlink(wild[i]) < 0) {
 			dosperror(wild[i]);
 			ret = RET_FAIL;
 			ERRBREAK;
@@ -1915,6 +1965,14 @@ char *file, *src;
 
 	flags = (copyflag & CF_VERIFY) ? O_RDWR : O_WRONLY;
 	flags |= (O_BINARY | O_CREAT | O_TRUNC);
+
+#ifndef	NODIRLOOP
+	if (issamebody(src, file)) {
+		flags |= O_EXCL;
+		if (Xunlink(file) < 0) return(-1);
+	}
+#endif
+
 	return(Xopen(file, flags, 0666));
 }
 
@@ -1976,12 +2034,8 @@ int sbin, dbin, dfd;
 	int i, n, fd1, fd2, tty, retry, duperrno;
 
 #ifndef	NOSYMLINK
-	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK) {
-		if ((i = Xreadlink(src, (char *)buf, BUFSIZ - 1)) < 0)
-			return(-1);
-		buf[i] = '\0';
-		return(Xsymlink((char *)buf, dest) >= 0);
-	}
+	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK)
+		return(cpsymlink(src, dest));
 #endif
 
 	if ((fd1 = Xopen(src, O_TEXT | O_RDONLY, stp -> st_mode)) < 0)

@@ -887,7 +887,6 @@ int iscomm;
 			if ((m = skipquote(argv[n], &i))) {
 				buf = c_realloc(buf, j + m - 1, &size);
 				memcpy(&(buf[j]), &(argv[n][i - m + 1]), m);
-				i += m - 1;
 				j += m;
 				continue;
 			}
@@ -943,7 +942,6 @@ int iscomm;
 					buf = c_realloc(buf, j + m - 1, &size);
 					memcpy(&(buf[j]),
 						&(argv[n][i - m + 1]), m);
-					i += m - 1;
 					j += m;
 					continue;
 				}
@@ -1015,7 +1013,6 @@ int iscomm;
 			if ((m = skipquote(argv[n], &i))) {
 				buf = c_realloc(buf, j + m - 1, &size);
 				memcpy(&(buf[j]), &(argv[n][i - m + 1]), m);
-				i += m - 1;
 				j += m;
 				continue;
 			}

@@ -1049,7 +1049,7 @@ char *arg;
 			i = 5;
 			tmp1 = val[0];
 		}
-		if (selectstr(&tmp1, i, 0, str, val) == K_ESC) return(1);
+		if (selectstr(&tmp1, i, 0, str, val) != K_CR) return(1);
 	}
 
 	if (!tmp1) {
@@ -1061,7 +1061,7 @@ char *arg;
 		str[1] = ODEC_K;
 		val[0] = 0;
 		val[1] = 8;
-		if (selectstr(&tmp2, 2, 56, str, val) == K_ESC)
+		if (selectstr(&tmp2, 2, 56, str, val) != K_CR)
 			return(1);
 		sorton = tmp1 + tmp2;
 		dupl = (int *)malloc2(maxfile * sizeof(int));
@@ -1166,7 +1166,7 @@ char *arg;
 		str[0] = QYES_K;
 		str[1] = QNO_K;
 		str[2] = QCHG_K;
-		if (selectstr(&n, 3, 20, str, val) == K_ESC || n == 1)
+		if (selectstr(&n, 3, 20, str, val) != K_CR || n == 1)
 			return(1);
 	}
 	else
@@ -1585,7 +1585,7 @@ char *arg;
 		locate(0, L_INFO);
 		putterm(l_clear);
 		kanjiputs(ATTRM_K);
-		if (selectstr(&flag, 2, 35, str, val) == K_ESC) return(1);
+		if (selectstr(&flag, 2, 35, str, val) != K_CR) return(1);
 	}
 	else {
 #ifndef	NOSYMLINK

@@ -244,6 +244,12 @@ extern int touchfile __P_((char *, struct stat *));
 extern int nodoslstat __P_((char *, struct stat *));
 #endif
 extern VOID lostcwd __P_((char *));
+#ifndef	NODIRLOOP
+extern int issamebody __P_((char *, char *));
+#endif
+#ifndef	NOSYMLINK
+extern int cpsymlink __P_((char *, char *));
+#endif
 extern int safewrite __P_((int, char *, int));
 extern int safecpfile __P_((char *, char *, struct stat *, struct stat *));
 extern int safemvfile __P_((char *, char *, struct stat *, struct stat *));

@@ -1,3 +1,10 @@
+Ver. 2.06a	Validate interrupt key at question in marked file operations.
+ (09/08/04)	Broken copy into the file linked the same entity is fixed.
+		Bug that symbolic link cannot overwrite existent file is fixed.
+		Mis-expansion of the macro with Japanese string is fixed.
+		Mis-completion of symbolic link name without entity is fixed.
+		Mis-position of cursor when cancel to move files is fixed.
+
 Ver. 2.06	Add the second startup argument for supplemental directory.
  (08/10/04)	Add the incremental history search in the string input.
 		Add 'builtin', 'enable' builtins.

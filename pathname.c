@@ -96,6 +96,7 @@ extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
+extern int stat2 __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 # if	MSDOS && !defined (_NOUSELFN)
 extern char *shortname __P_((char *, char *));
@@ -121,12 +122,23 @@ struct dirent *Xreaddir __P_((DIR *));
 static u_int NEAR getdosmode __P_((u_int));
 static time_t NEAR getdostime __P_((u_int, u_int));
 int Xstat __P_((char *, struct stat *));
+#  ifndef	NOSYMLINK
+#  define	Xlstat		Xstat
+#  endif
 # else	/* !MSDOS */
 # define	Xopendir	opendir
 # define	Xclosedir	closedir
 # define	Xreaddir	readdir
 # define	Xstat		stat
+#  ifndef	NOSYMLINK
+#  define	Xlstat		lstat
+#  endif
 # endif	/* !MSDOS */
+# ifdef	NOSYMLINK
+# define	stat2		Xstat
+# else
+int stat2 __P_((char *, struct stat *));
+# endif
 # ifdef	DJGPP
 char *Xgetwd __P_((char *));
 # else	/* !DJGPP */
@@ -468,6 +480,26 @@ struct stat *stp;
 	return(0);
 }
 # endif	/* MSDOS */
+
+# ifndef	NOSYMLINK
+int stat2(path, stp)
+char *path;
+struct stat *stp;
+{
+	int duperrno;
+
+	if (Xstat(path, stp) < 0) {
+		duperrno = errno;
+		if (Xlstat(path, stp) < 0
+		|| (stp -> st_mode & S_IFMT) != S_IFLNK) {
+			errno = duperrno;
+			return(-1);
+		}
+		stp -> st_mode &= ~S_IFMT;
+	}
+	return(0);
+}
+# endif	/* !NOSYMLINK */
 
 # ifdef	DJGPP
 char *Xgetwd(path)
@@ -1406,7 +1438,7 @@ wild_t *wp;
 
 	if (!w) {
 		if (wp -> path.len <= plen) w++;
-		else if (Xstat(wp -> path.s, &st) < 0) return(argc);
+		else if (stat2(wp -> path.s, &st) < 0) return(argc);
 
 		wp -> s += i;
 		if (isdir) {
@@ -1677,7 +1709,7 @@ int dirok, exe;
 	struct stat st;
 	int d;
 
-	if (Xstat(path, &st) < 0) return(-1);
+	if (stat2(path, &st) < 0) return(-1);
 	d = ((st.st_mode & S_IFMT) == S_IFDIR);
 	if (!exe) return(d);
 	if (d) return(dirok ? d : -1);
@@ -1717,10 +1749,10 @@ char *com, *search;
 	char *ext;
 #endif
 	char *cp, *tmp, *next, *path;
-	int len, dlen, cost, size, ret, recalc;
+	int len, dlen, cost, size, ret;
 #ifndef	_NOUSEHASH
 	hashlist *hp;
-	int n, duperrno;
+	int n, recalc, duperrno;
 
 	if (!hpp || (!com && !search)) {
 		duperrno = errno;
@@ -1786,7 +1818,9 @@ char *com, *search;
 	}
 #endif	/* CWDINPATH */
 
+#ifndef	_NOUSEHASH
 	recalc = 0;
+#endif
 	if ((next = (search) ? search : getconstvar("PATH"))) {
 		len = strlen(com);
 		size = ret = 0;
@@ -1797,7 +1831,9 @@ char *com, *search;
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 			if (_dospath(cp)) next += 2;
 #endif
+#ifndef	_NOUSEHASH
 			if (*next != _SC_) recalc = CM_RECALC;
+#endif
 			next = strchr(next, PATHDELIM);
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;

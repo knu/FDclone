@@ -126,7 +126,7 @@ extern int inruncom;
 #define	MAXCUSTNAM	14
 #define	MAXCUSTVAL	(n_column - MAXCUSTNAM - 3)
 #define	noselect(n, m, x, s, v) \
-			(selectstr(n, m, x, s, v) == K_ESC)
+			(selectstr(n, m, x, s, v) != K_CR)
 #define	MAXSAVEMENU	5
 #define	MAXTNAMLEN	8
 #ifndef	O_BINARY

@@ -660,10 +660,10 @@ char *s;
 }
 
 #ifdef	USESTDARGH
-/*VARARGS2*/
+/*VARARGS1*/
 char *asprintf3(CONST char *fmt, ...)
 #else
-/*VARARGS2*/
+/*VARARGS1*/
 char *asprintf3(fmt, va_alist)
 CONST char *fmt;
 va_dcl

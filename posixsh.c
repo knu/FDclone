@@ -1237,7 +1237,7 @@ int *ptrp;
 #if	defined (BASHSTYLE) || defined (STRICTPOSIX)
 	/* "test" on bash & POSIX has -e & -L option */
 		case 'e':
-			if (s) ret = (*s && Xstat(s, &st) >= 0)
+			if (s) ret = (*s && Xlstat(s, &st) >= 0)
 				? RET_SUCCESS : RET_FAIL;
 			break;
 		case 'L':

@@ -588,6 +588,38 @@ char *path;
 	errno = duperrno;
 }
 
+#ifndef	NODIRLOOP
+int issamebody(src, dest)
+char *src, *dest;
+{
+	struct stat st1, st2;
+
+	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
+	return(st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
+}
+#endif	/* !NODIRLOOP */
+
+#ifndef	NOSYMLINK
+int cpsymlink(src, dest)
+char *src, *dest;
+{
+	struct stat st;
+	char path[MAXPATHLEN];
+	int len;
+
+	if ((len = Xreadlink(src, path, sizeof(path) - 1)) < 0) return(-1);
+	if (Xlstat(dest, &st) >= 0) {
+# ifndef	NODIRLOOP
+		if (issamebody(src, dest)) return(0);
+# endif
+		if (Xunlink(dest) < 0) return(-1);
+	}
+
+	path[len] = '\0';
+	return(Xsymlink(path, dest));
+}
+#endif	/* !NOSYMLINK */
+
 int safewrite(fd, buf, size)
 int fd;
 char *buf;
@@ -616,29 +648,35 @@ struct stat *stp1, *stp2;
 	struct stat st;
 #endif
 	char buf[BUFSIZ];
-	int i, fd1, fd2, duperrno;
+	int i, fd1, fd2, flags, mode, duperrno;
 
 #if	MSDOS
 	if (!stp2 && Xlstat(dest, &st) >= 0) stp2 = &st;
 	if (stp2 && !(stp2 -> st_mode & S_IWRITE))
 		Xchmod(src, stp2 -> st_mode | S_IWRITE);
 #endif
-	if (s_islnk(stp1)) {
-		if ((i = Xreadlink(src, buf, BUFSIZ - 1)) < 0) return(-1);
-		buf[i] = '\0';
-		return(Xsymlink(buf, dest));
-	}
-	if ((fd1 = Xopen(src, O_BINARY | O_RDONLY, stp1 -> st_mode)) < 0)
-		return(-1);
-#if	MSDOS
-	fd2 = Xopen(dest,
-		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC,
-		stp1 -> st_mode | S_IWRITE);
-#else
-	fd2 = Xopen(dest,
-		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC, stp1 -> st_mode);
+#ifndef	NOSYMLINK
+	if (s_islnk(stp1)) return(cpsymlink(src, dest));
 #endif
-	if (fd2 < 0) {
+
+	flags = (O_BINARY | O_RDONLY);
+	mode = stp1 -> st_mode;
+	if ((fd1 = Xopen(src, flags, mode)) < 0) return(-1);
+
+	flags = (O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
+#if	MSDOS
+	mode |= S_IWRITE;
+#endif
+#ifndef	NODIRLOOP
+	if (issamebody(src, dest)) {
+		flags |= O_EXCL;
+		if (Xunlink(dest) < 0) {
+			Xclose(fd1);
+			return(-1);
+		}
+	}
+#endif
+	if ((fd2 = Xopen(dest, flags, mode)) < 0) {
 		Xclose(fd1);
 		return(-1);
 	}

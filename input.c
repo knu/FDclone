@@ -1940,7 +1940,7 @@ int ch;
 
 #ifndef	_NOKANJICONV
 	if (inputkcode == EUC && isekana2(ch)) {
-		tmpkanji[0] = C_EKANA;
+		tmpkanji[0] = (char)C_EKANA;
 		tmpkanji[1] = (ch & 0xff);
 		tmpkanji[2] = '\0';
 		kanjiconv(buf, tmpkanji, 2, inputkcode, DEFCODE, L_INPUT);
@@ -1955,7 +1955,7 @@ int ch;
 #else	/* _NOKANJICONV */
 # ifdef	CODEEUC
 	if (isekana2(ch)) {
-		buf[0] = C_EKANA;
+		buf[0] = (char)C_EKANA;
 		buf[1] = (ch * 0xff);
 		buf[2] = '\0';
 		return(1);
@@ -3461,7 +3461,7 @@ int val[];
 			if (stable_standout) putterm(end_standout);
 			else kanjiputs(tmpstr[old]);
 		}
-	} while (ch != K_ESC && ch != K_CR);
+	} while (ch != K_ESC && ch != K_CR && ch != cc_intr);
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
@@ -3473,7 +3473,7 @@ int val[];
 		putterm(l_clear);
 	}
 	if (num) {
-		if (ch == K_ESC) new = -1;
+		if (ch != K_CR) new = -1;
 		else *num = val[new];
 		for (i = 0; i < max; i++) {
 			if (!tmpstr[i]) continue;
@@ -3483,7 +3483,7 @@ int val[];
 		}
 	}
 	else {
-		if (ch == K_ESC) for (i = 0; i < max; i++) val[i] = 0;
+		if (ch != K_CR) for (i = 0; i < max; i++) val[i] = 0;
 		else {
 			for (i = 0; i < max; i++) if (val[i]) break;
 			if (i >= max) ch = K_ESC;

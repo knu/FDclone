@@ -241,7 +241,7 @@ char *file, *dest;
 struct stat *stp1, *stp2;
 {
 	char *cp, *tmp, *str[MAXCOPYITEM];
-	int i, n, val[MAXCOPYITEM];
+	int i, n, ch, val[MAXCOPYITEM];
 #ifndef	_NOEXTRACOPY
 	char path[MAXPATHLEN];
 #endif
@@ -292,15 +292,16 @@ struct stat *stp1, *stp2;
 			val[4] = 5;
 #endif
 			i = 1;
-			if (selectstr(&i, MAXCOPYITEM, 0, str, val) == K_ESC)
-				return(-1);
+			ch = selectstr(&i, MAXCOPYITEM, 0, str, val);
+			if (ch == K_ESC) return(-1);
+			else if (ch != K_CR) return(-2);
 #ifndef	_NOEXTRACOPY
 			if (i == 5) {
 				str[0] = UPDAT_K;
 				str[1] = OVERW_K;
 				val[0] = 5;
 				val[1] = 6;
-				if (selectstr(&i, 2, 0, str, val) == K_ESC)
+				if (selectstr(&i, 2, 0, str, val) != K_CR)
 					continue;
 # ifndef	_NODOSDRIVE
 				dupdestdrive = destdrive;
@@ -388,7 +389,7 @@ char *path;
 int mode;
 {
 	char *cp, *str[4];
-	int len, val[4];
+	int ch, len, val[4];
 #if	MSDOS
 
 	if (Xaccess(path, mode) >= 0) return(0);
@@ -461,8 +462,9 @@ int mode;
 	val[1] = -1;
 	val[2] = 2;
 	val[3] = 1;
-	if (selectstr(&removepolicy, 4, 0, str, val) == K_ESC)
-		removepolicy = -1;
+	ch = selectstr(&removepolicy, 4, 0, str, val);
+	if (ch == K_ESC) removepolicy = -1;
+	else if (ch != K_CR) removepolicy = -2;
 	return((removepolicy > 0) ? removepolicy - 2 : removepolicy);
 }
 
@@ -471,8 +473,10 @@ char *path;
 {
 	struct stat st1, st2;
 	char dest[MAXPATHLEN];
+	int n;
 
-	if (checkdupl(path, dest, &st1, &st2) < 0) return(0);
+	if ((n = checkdupl(path, dest, &st1, &st2)) < 0)
+		return((n < -1) ? -2 : 1);
 	if (safecpfile(path, dest, &st1, &st2) < 0) return(-1);
 	return(0);
 }
@@ -482,9 +486,11 @@ char *path;
 {
 	struct stat st1, st2;
 	char dest[MAXPATHLEN];
+	int n;
 
-	if (checkdupl(path, dest, &st1, &st2) < 0) return(0);
-	if (checkrmv(path, W_OK) < 0) return(1);
+	if ((n = checkdupl(path, dest, &st1, &st2)) < 0
+	|| (n = checkrmv(path, W_OK)) < 0)
+		return((n < -1) ? -2 : 1);
 	if (safemvfile(path, dest, &st1, &st2) < 0) return(-1);
 	return(0);
 }
@@ -512,6 +518,7 @@ char *path;
 			destatime = st1.st_atime;
 			break;
 		case -1:
+		case -2:
 		/* Abandon copy */
 			return(-2);
 /*NOTREACHED*/
@@ -561,6 +568,7 @@ char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];
+	int n;
 
 	if (getdestpath(path, dest, &st) < 0) return(-2);
 	if (destmtime != (time_t)-1 || destatime != (time_t)-1) {
@@ -571,7 +579,8 @@ char *path;
 	st.st_flags = (u_long)-1;
 # endif
 	if (touchfile(dest, &st) < 0) return(-1);
-	if (checkrmv(path, R_OK | W_OK | X_OK) < 0) return(1);
+	if ((n = checkrmv(path, R_OK | W_OK | X_OK) < 0))
+		return((n < -1) ? -2 : 1);
 	return(Xrmdir(path));
 }
 #endif	/* !_NOEXTRACOPY */
@@ -579,14 +588,19 @@ char *path;
 int rmvfile(path)
 char *path;
 {
-	if (checkrmv(path, W_OK) < 0) return(1);
+	int n;
+
+	if ((n = checkrmv(path, W_OK)) < 0) return((n < -1) ? -2 : 1);
 	return(Xunlink(path));
 }
 
 int rmvdir(path)
 char *path;
 {
-	if (checkrmv(path, R_OK | W_OK | X_OK) < 0) return(1);
+	int n;
+
+	if ((n = checkrmv(path, R_OK | W_OK | X_OK)) < 0)
+		return((n < -1) ? -2 : 1);
 	return(Xrmdir(path));
 }
 
@@ -954,7 +968,7 @@ char *endmes;
 
 	if (mark <= 0) {
 		i = (*func)(fnodospath(path, filepos));
-		if (i < 0) warning(-1, filelist[filepos].name);
+		if (i == -1) warning(-1, filelist[filepos].name);
 		else if (!i) ret++;
 		return(ret);
 	}
@@ -971,6 +985,10 @@ char *endmes;
 		locate(win_x, win_y);
 		tflush();
 		i = (*func)(fnodospath(path, filepos));
+		if (i < -1) {
+			endmes = NULL;
+			break;
+		}
 		if (i < 0) warning(-1, filelist[filepos].name);
 		else if (!i && ret == filepos) ret++;
 
@@ -1111,7 +1129,10 @@ int verbose;
 
 	destmtime = dupmtime;
 	destatime = dupatime;
-	if (funcd2 && (ret = (*funcd2)(dir)) == -1) warning(-1, dir);
+	if (funcd2 && (ret = (*funcd2)(dir)) < 0) {
+		if (ret < -1) return(ret);
+		warning(-1, dir);
+	}
 	if (endmes) warning(0, endmes);
 	return(ret);
 }
@@ -1286,21 +1307,23 @@ char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];
+	int mode;
 
 	if (isdotdir(path)) return(0);
 	if (getdestpath(path, dest, &st) < 0) return(0);
+	mode = (st.st_mode & 0777);
 #if	MSDOS
-	while (Xmkdir(dest, (st.st_mode & 0777) | S_IWRITE) < 0)
-#else
-	while (Xmkdir(dest, st.st_mode & 0777) < 0)
+	mode |= S_IWRITE;
 #endif
-	{
-		if (errno != EEXIST) return(-1);
-		if (Xstat(dest, &st) < 0) return(-1);
-		if (s_isdir(&st)) break;
-		if (Xunlink(dest) < 0) return(-1);
+	if (Xmkdir(dest, mode) >= 0) return(0);
+	if (errno != EEXIST) return(-1);
+	if (stat2(dest, &st) >= 0) {
+		if (s_isdir(&st)) return(0);
+		if (Xunlink(dest) >= 0 && Xmkdir(dest, mode) >= 0) return(0);
 	}
-	return(0);
+
+	errno = EEXIST;
+	return(-1);
 }
 
 static int forcetouchdir(path)

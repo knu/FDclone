@@ -790,6 +790,7 @@ FILE *fp;
 		}
 # endif	/* FD < 2 */
 		break;
+/*NOTREACHED*/
 	}
 
 	fputnl(fp);

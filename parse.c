@@ -118,10 +118,10 @@ int c;
 }
 
 #ifdef	USESTDARGH
-/*VARARGS1*/
+/*VARARGS2*/
 char *sscanf2(char *s, CONST char *fmt, ...)
 #else
-/*VARARGS1*/
+/*VARARGS2*/
 char *sscanf2(s, fmt, va_alist)
 char *s;
 CONST char *fmt;
@@ -832,7 +832,7 @@ int c, tenkey;
 	}
 #ifdef	CODEEUC
 	else if (isekana2(c)) {
-		buf[i++] = C_EKANA;
+		buf[i++] = (char)C_EKANA;
 		buf[i++] = c & 0xff;
 	}
 #endif
