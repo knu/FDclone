@@ -53,7 +53,9 @@
 #define	CTRL_Z	'\032'
 
 extern int n_column;
+extern int n_lastcolumn;
 extern int n_line;
+extern int stable_standout;
 extern char *t_init;
 extern char *t_end;
 extern char *t_keypad;

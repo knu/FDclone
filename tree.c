@@ -6,16 +6,11 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#else
-#include <dirent.h>
-#endif
 
 extern char fullpath[];
 extern int subwindow;
@@ -106,7 +101,7 @@ char *dir;
 		&& stat2(path, &status) == 0
 		&& (status.st_mode & S_IFMT) != S_IFDIR) {
 			locate(x + TREEFIELD + 4, y);
-			cputs2(dp -> d_name, w, 0);
+			kanjiputs2(dp -> d_name, w, 0);
 			i++;
 			if (++y >= n_line - WFOOTER) {
 				y = WHEADER + 1;
@@ -243,9 +238,9 @@ int max, nest, top, y;
 			TREEFIELD, TREEFIELD, " ");
 	_showtree(buf, list, max, nest, top);
 	for (i = WHEADER + 1; i < n_line - WFOOTER; i++) {
-		if (i == y) putterm(t_standout);
 		locate(1, i);
-		cputs(bufptr(buf, i));
+		if (i == y) putterm(t_standout);
+		kanjiputs(bufptr(buf, i));
 		if (i == y) putterm(end_standout);
 	}
 	includefile(path);
@@ -473,7 +468,7 @@ char *tree()
 	do {
 		locate(1, WHEADER);
 		cputs("Tree=");
-		cputs2(path, n_column - 6, 0);
+		kanjiputs2(path, n_column - 6, 0);
 		locate(0, 0);
 		tflush();
 		oy = y;
@@ -638,12 +633,13 @@ char *tree()
 		if (redraw || top != otop)
 			showtree(path, cp, list, 1, 0, top, y);
 		else if (oy != y) {
-			locate(1, oy);
-			cputs(bufptr(cp, oy));
 			locate(1, y);
 			putterm(t_standout);
-			cputs(bufptr(cp, y));
+			kanjiputs(bufptr(cp, y));
 			putterm(end_standout);
+			locate(1, oy);
+			if (stable_standout) putterm(end_standout);
+			else kanjiputs(bufptr(cp, oy));
 			includefile(path);
 		}
 	} while (ch != ESC && ch != CR);

@@ -16,7 +16,7 @@ typedef void	*VOID_P;
 #endif
 
 #ifdef	USEDIRECT
-typedef direct	dirent;
+#define	dirent	direct
 #endif
 
 #ifdef	NOFILEMODE
@@ -72,13 +72,16 @@ typedef struct _functable {
 	int (*func)();
 	char *ident;
 	char *hmes;
+	char *hmes_eng;
 	u_char stat;
 } functable;
 
 #define	REWRITE	001
 #define	LISTUP	002
+#define	RELIST	(REWRITE | LISTUP)
 #define	KILLSTK	004
 #define	ARCH	010
+#define	NO_FILE	020
 
 #define	MAXLAUNCHFIELD	9
 #define	MAXLAUNCHSEP	3

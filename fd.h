@@ -2,19 +2,23 @@
  *	Configuration File for FD
  */
 
+#include "machine.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/types.h>
-#include "machine.h"
-#include "types.h"
-#include "pathname.h"
-#include "func.h"
+
+#ifndef	NOUNISTD
+#include <unistd.h>
+#endif
 
 #ifndef	NOSTDLIB
 #include <stdlib.h>
 #endif
+
+#include "types.h"
+#include "pathname.h"
 
 
 #define	RUNCOMFILE	"~/.fdrc"

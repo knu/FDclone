@@ -6,19 +6,17 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
 #include <signal.h>
-#include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#else
-#include <dirent.h>
+#ifdef	USETIMEH
+#include <time.h>
 #endif
 
 extern bindtable bindlist[];
@@ -136,7 +134,7 @@ char *sep;
 	if (width >= 128) i = width - 128;
 	else {
 		end = NULL;
-		if (width) end = strchr(cp, width);
+		if (width) end = strchr2(cp, width);
 		if (!end) end = strpbrk(cp, " \t");
 		if (end) i = end - cp;
 		else i = strlen(cp);
@@ -247,7 +245,7 @@ char *file, *dir;
 	putterm(t_standout);
 	cputs("Arch:");
 	putterm(end_standout);
-	cputs2(arch, n_column - 6, 0);
+	kanjiputs2(arch, n_column - 6, 0);
 	free(arch);
 
 	tflush();
@@ -311,7 +309,7 @@ int *maxarcentp;
 	free(cp);
 	locate(0, LMESLINE);
 	putterm(l_clear);
-	cputs(WAIT_K);
+	kanjiputs(WAIT_K);
 	tflush();
 
 	max = 0;
@@ -370,8 +368,15 @@ int *maxarcentp;
 		if (--maxarcf < 0) break;
 		free(arcflist[maxarcf].name);
 	}
-	if (maxarcf <= 0) return(-1);
+	if (maxarcf <= 0) {
+		maxarcf = 0;
+		arcflist = (namelist *)addlist(arcflist, 0,
+			maxarcentp, sizeof(namelist));
+		arcflist[0].name = NOFIL_K;
+		arcflist[0].st_nlink = -1;
+	}
 
+	if (stable_standout) putterms(t_clear);
 	title();
 	archbar(archivefile, archivedir);
 	statusbar(maxarcf);
@@ -397,7 +402,8 @@ int *maxarcentp;
 			bindlist[i].d_func : bindlist[i].f_func;
 		if (no > NO_OPERATION) continue;
 		fstat = funclist[no].stat;
-		if (!(fstat & ARCH)) no = 0;
+		if (!(fstat & ARCH) || (maxarcf <= 0 && !(fstat & NO_FILE)))
+			no = 0;
 		else no = (*funclist[no].func)(arcflist, &maxarcf);
 
 		if (no < 0) break;
@@ -409,7 +415,7 @@ int *maxarcentp;
 		else if (no >= 4) break;
 
 		if (!(fstat & REWRITE)) fnameofs = 0;
-		if ((fstat & (REWRITE | LISTUP)) == (REWRITE | LISTUP)) {
+		if ((fstat & RELIST) == RELIST) {
 			title();
 			archbar(archivefile, archivedir);
 			statusbar(maxarcf);
@@ -508,6 +514,10 @@ int max;
 	if (i >= maxarchive) return(-1);
 	regexp_free(re);
 
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
 	execmacro(archivelist[i].p_comm, arc, list, max, -1, 1);
 	return(1);
 }
@@ -550,6 +560,10 @@ int max, tr;
 	strcpy(path, fullpath);
 	strcat(path, "/");
 	strcat(path, arc);
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
 	if (execmacro(archivelist[i].u_comm, path, list, max, -1, 1) == 127) {
 		warning(E2BIG, archivelist[i].u_comm);
 		return(0);
@@ -622,6 +636,10 @@ int max;
 {
 	char flag, *tmp;
 
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
 	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, 0))) {
 		warning(E2BIG, dev);
 		return(0);

@@ -1,121 +1,123 @@
-#define	YESNO_K	"よろしいですか ?"
-#define	HITKY_K	"何かキーを押して下さい."
-#define	LOGD_K	"変更するディレクトリ名:"
-#define	NEXT_K	": 続きを読みますか ?"
-#define	PEND_K	"閲覧を終了しますか ?"
-#define	NOCOM_K	"不正なコマンドです."
-#define	WAIT_K	"しばらくお待ち下さい."
+#define	YESNO_K	mesconv("よろしいですか ?", "OK ?")
+#define	HITKY_K	mesconv("何かキーを押して下さい.", "Hit any key.")
+#define	NOFIL_K	mesconv("ファイルがありません", "No Files")
+#define	NOCOM_K	mesconv("不正なコマンドです.", "Invalid command.")
+#define	WAIT_K	mesconv("しばらくお待ち下さい.", "Wait a minute.")
 
-#define	ONAME_K	"N: 名前順"
-#define	OEXT_K	"E: 拡張子"
-#define	OSIZE_K	"S: サイズ"
-#define	ODATE_K	"T: 日付順"
-#define	ORAW_K	"X: しない"
-#define	OINC_K	"U: 昇り順"
-#define	ODEC_K	"D: 降り順"
-#define	KILOK_K	"ディレクトリスタックを破棄してもよろしいですか ?"
-#define	WRTOK_K	"表示ディレクトリをディスクに書き込みますか ?"
-#define	HOMOK_K	"現在このディレクトリを他のユーザが利用していないことを確認しましたか ?"
-#define	NOWRT_K	"カレントディレクトリは書き込みできません."
-#define	QUIT_K	"FD を終了しますか ?"
-#define	MAKED_K	"新しいディレクトリ名:"
-#define	COPYD_K	"コピー先のディレクトリ名:"
-#define	SAMEF_K	"] 同名のファイルがあります."
-#define	UPDAT_K	"U: 新しい日付を"
-#define	RENAM_K	"R: 名前を変えて"
-#define	OVERW_K	"O: 全て上書き"
-#define	NOCPY_K	"N: 同名はコピーしない"
-#define	NEWNM_K	"新しい名前:"
-#define	ENDCP_K	"ファイルのコピーが終了しました. 何かキーを押して下さい."
-#define	MOVED_K	"移動先のディレクトリ名:"
-#define	ENDMV_K	"ファイルの移動が終了しました. 何かキーを押して下さい."
-#define	WRONG_K	"名前が間違っています."
-#define	DELFL_K	"[%s] を削除します. よろしいですか ?"
-#define	DELMK_K	"マークファイルを削除します. よろしいですか ?"
-#define	DELDR_K	"[%s] ディレクトリを削除します. よろしいですか ?"
-#define	DELPM_K	"[%s] ファイルのアクセス権は制限されていますが削除しますか ?"
-#define	FINDF_K	"検索するファイル名:"
-#define	FINDD_K	"再帰検索するファイル名:"
-#define	FOUND_K	"ファイルが見つかりました. カレントディレクトリを変更しますか ?"
-#define	NOFND_K	"指定のファイルは見つかりませんでした. 何かキーを押して下さい."
-#define	SHEXT_K	"`exit' で FDに戻ります.\n"
-#define	PACK_K	"書庫ファイル名:"
-#define	UNPAC_K	"展開先のディレクトリ名:"
-#define	TMODE_K	"モード:"
-#define	TDATE_K	"日付:"
-#define	TTIME_K	"時間:"
-#define	TOLD_K	"旧"
-#define	TNEW_K	"新"
-#define	ATTRM_K	"マークファイルの変更を行ないます."
-#define	CMODE_K	"A: ファイルモードの変更"
-#define	CDATE_K	"S: 日付,時間の変更"
-#define	ILTMS_K	"タイムスタンプの設定が違います."
-#define	ILLNK_K	"シンボリックリンクの属性は変更できません."
-#define	FSDIR_K	"情報を知りたいディレクトリ名:"
-#define	FSNAM_K	"ファイルシステム"
-#define	FSMNT_K	"マウントポイント"
-#define	FSTYP_K	"FSタイプ"
-#define	FSTTL_K	"全ディスク容量"
-#define	FSUSE_K	"使用ディスク容量"
-#define	FSAVL_K	"使用可能ディスク容量"
-#define	FSBSZ_K	"バイト数/ブロック"
-#define	FSINO_K	"iノード最大数"
-#define	UNIT_K	"個"
-#define	BKUP_K	"テープのデバイス名:"
+#define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
+#define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")
+#define	PEND_K	mesconv("閲覧を終了しますか ?", "Exit ?")
+#define	ONAME_K	mesconv("N: 名前順", "N: fileName")
+#define	OEXT_K	mesconv("E: 拡張子", "E: Extension")
+#define	OSIZE_K	mesconv("S: サイズ", "S: Size")
+#define	ODATE_K	mesconv("T: 日付順", "T: Timestamp")
+#define	ORAW_K	mesconv("X: しない", "X: No chg")
+#define	OINC_K	mesconv("U: 昇り順", "U: Up")
+#define	ODEC_K	mesconv("D: 降り順", "D: Down")
+#define	KILOK_K	mesconv("ディレクトリスタックを破棄してもよろしいですか ?", "Directory stack will be broken, OK ?")
+#define	WRTOK_K	mesconv("表示ディレクトリをディスクに書き込みますか ?", "Write this displayed directory on disk ?")
+#define	HOMOK_K	mesconv("現在このディレクトリを他のユーザが利用していないことを確認しましたか ?", "Are you the only user on this directory, now ?")
+#define	NOWRT_K	mesconv("カレントディレクトリは書き込みできません.", "Current directory unwritable.")
+#define	QUIT_K	mesconv("FD を終了しますか ?", "Quit from FD ?")
+#define	MAKED_K	mesconv("新しいディレクトリ名:", "New directory name:")
+#define	COPYD_K	mesconv("コピー先のディレクトリ名:", "Destination direcroty:")
+#define	SAMEF_K	mesconv("] 同名のファイルがあります.", "] The same named file exists.")
+#define	UPDAT_K	mesconv("U: 新しい日付を", "Update")
+#define	RENAM_K	mesconv("R: 名前を変えて", "Rename")
+#define	OVERW_K	mesconv("O: 全て上書き", "Overwrite")
+#define	NOCPY_K	mesconv("N: 同名はコピーしない", "Not_copy_the_same_name")
+#define	NEWNM_K	mesconv("新しい名前:", "New name:")
+#define	ENDCP_K	mesconv("ファイルのコピーが終了しました. 何かキーを押して下さい.", "Copy finished. Hit any key.")
+#define	MOVED_K	mesconv("移動先のディレクトリ名:", "Destination directory:")
+#define	ENDMV_K	mesconv("ファイルの移動が終了しました. 何かキーを押して下さい.", "Move finished. Hit any key.")
+#define	WRONG_K	mesconv("名前が間違っています.", "Illegal filename.")
+#define	DELFL_K	mesconv("[%s] を削除します. よろしいですか ?", "Delete the file [%s], OK ?")
+#define	DELMK_K	mesconv("マークファイルを削除します. よろしいですか ?", "Delete the marked files, OK ?")
+#define	DELDR_K	mesconv("[%s] ディレクトリを削除します. よろしいですか ?", "Delete the directory [%s], OK ?")
+#define	DELPM_K	mesconv("[%s] ファイルのアクセス権は制限されていますが削除しますか ?", "The file [%s] is restricted on premission, delete really ?")
+#define	FINDF_K	mesconv("検索するファイル名:", "Filename to find:")
+#define	FINDD_K	mesconv("再帰検索するファイル名:", "Filename to find recursively:")
+#define	FOUND_K	mesconv("ファイルが見つかりました. カレントディレクトリを変更しますか ?", "File found. Change current directory ?")
+#define	NOFND_K	mesconv("指定のファイルは見つかりませんでした. 何かキーを押して下さい.", "File not found. Hit any key.")
+#define	SHEXT_K	mesconv("`exit' で FD に戻ります.\n", "do `exit' to return FD.\n")
+#define	PACK_K	mesconv("書庫ファイル名:", "Archive file:")
+#define	UNPAC_K	mesconv("展開先のディレクトリ名:", "Destination directory:")
+#define	TMODE_K	mesconv("モード:", "File mode:")
+#define	TDATE_K	mesconv("日付:", "Date:")
+#define	TTIME_K	mesconv("時間:", "Time:")
+#define	TOLD_K	mesconv("旧", "Old")
+#define	TNEW_K	mesconv("新", "New")
+#define	ATTRM_K	mesconv("マークファイルの変更を行ないます.", "Changing attr. of the marked files.")
+#define	CMODE_K	mesconv("A: ファイルモードの変更", "A: Attribute")
+#define	CDATE_K	mesconv("S: 日付,時間の変更", "S: timeStamp")
+#define	ILTMS_K	mesconv("タイムスタンプの設定が違います.", "Invalid timestamp.")
+#define	ILLNK_K	mesconv("シンボリックリンクの属性は変更できません.", "Cannot chenge attribute of symbolic link.")
+#define	FSDIR_K	mesconv("情報を知りたいディレクトリ名:", "Target directory:")
+#define	FSNAM_K	mesconv("ファイルシステム", "File system")
+#define	FSMNT_K	mesconv("マウントポイント", "Mount point")
+#define	FSTYP_K	mesconv("FSタイプ", "FS type")
+#define	FSTTL_K	mesconv("全ディスク容量", "Total disk amount")
+#define	FSUSE_K	mesconv("使用ディスク容量", "Used disk amount")
+#define	FSAVL_K	mesconv("使用可能ディスク容量", "Available amount")
+#define	FSBSZ_K	mesconv("バイト数/ブロック", "Bytes/block")
+#define	FSINO_K	mesconv("iノード最大数", "Max i nodes")
+#define	UNIT_K	mesconv("個", "files")
+#define	BKUP_K	mesconv("テープのデバイス名:", "Device name of tape:")
 
-#define	CUP_H	"カーソルを上に"
-#define	CDWN_H	"カーソルを下に"
-#define	CRIG_H	"カーソルを右に"
-#define	CLEF_H	"カーソルを左に"
-#define	RUP_H	"次の表示ページに"
-#define	RDWN_H	"前の表示ページに"
-#define	CTOP_H	"カーソルを先頭に"
-#define	CBTM_H	"カーソルを最後に"
-#define	IND_H	"サブDIRに移動"
-#define	OUTD_H	"親DIRに移動"
-#define	COL1_H	"画面表示を1列に"
-#define	COL2_H	"画面表示を2列に"
-#define	COL3_H	"画面表示を3列に"
-#define	COL5_H	"画面表示を5列に"
-#define	FNRI_H	"FILE名を右シフト"
-#define	FNLE_H	"FILE名を左シフト"
-#define	MRK_H	"FILEのマーク"
-#define	MRK2_H	"マークして下移動"
-#define	MRKA_H	"全FILEにマーク"
-#define	MRKF_H	"検索FILEにマーク"
-#define	PUSH_H	"FILEをスタックに"
-#define	POP_H	"スタックから取出"
-#define	SYLN_H	"SYMLINK表示形式"
-#define	READ_H	"表示画面の再描画"
-#define	LOGD_H	"DIRの移動"
-#define	ATTR_H	"属性の変更"
-#define	EXEF_H	"FILEの実行"
-#define	INFO_H	"FILEシステム情報"
-#define	COPY_H	"FILEのコピー"
-#define	MOVE_H	"FILEの移動"
-#define	DELF_H	"FILEの削除"
-#define	DELD_H	"DIRの削除"
-#define	RENM_H	"FILE名の変更"
-#define	MKDR_H	"DIRの作成"
-#define	SORT_H	"FILEの並び替え"
-#define	EXSH_H	"子プロセスの実行"
-#define	FNDF_H	"FILEの検索表示"
-#define	WRIT_H	"表示DIRの書込み"
-#define	TREE_H	"DIRのTREE表示"
-#define	BACK_H	"テープへBACKUP"
-#define	EDIT_H	"FILEの編集"
-#define	VIEW_H	"FILEの閲覧"
-#define	UNPK_H	"FILEの解凍"
-#define	PACK_H	"FILEの圧縮"
-#define	LGTR_H	"TREEでのDIR移動"
-#define	CPTR_H	"TREE選択のコピー"
-#define	MVTR_H	"TREE選択の移動"
-#define	UPTR_H	"TREE選択の解凍"
-#define	FNDD_H	"DIRの検索移動"
-#define	LAUN_H	"ランチャの起動"
-#define	HELP_H	"HELP画面の表示"
-#define	QUIT_H	"FDの終了"
-#define	UPAR_K	"↑"
-#define	DWNAR_K	"↓"
-#define	RIGAR_K	"→"
-#define	LEFAR_K	"←"
+#define	CUP_H	"カーソルを上に", "Cursor up"
+#define	CDWN_H	"カーソルを下に", "Cursor down"
+#define	CRIG_H	"カーソルを右に", "Cursor right"
+#define	CLEF_H	"カーソルを左に", "Cursor left"
+#define	RUP_H	"次の表示ページに", "Next page"
+#define	RDWN_H	"前の表示ページに", "Prev page"
+#define	CTOP_H	"カーソルを先頭に", "Cursor top"
+#define	CBTM_H	"カーソルを最後に", "Cursor bottom"
+#define	IND_H	"サブDIRに移動", "To sub dir"
+#define	OUTD_H	"親DIRに移動", "To parent dir"
+#define	COL1_H	"画面表示を1列に", "In 1 row"
+#define	COL2_H	"画面表示を2列に", "In 2 rows"
+#define	COL3_H	"画面表示を3列に", "In 3 rows"
+#define	COL5_H	"画面表示を5列に", "In 5 rows"
+#define	FNRI_H	"FILE名を右シフト", "Right-shift name"
+#define	FNLE_H	"FILE名を左シフト", "Left-shift name"
+#define	MRK_H	"FILEのマーク", "Mark file"
+#define	MRK2_H	"マークして下移動", "Mark & down"
+#define	MRKA_H	"全FILEにマーク", "Mark all"
+#define	MRKF_H	"検索FILEにマーク", "Mark selected"
+#define	PUSH_H	"FILEをスタックに", "File to stack"
+#define	POP_H	"スタックから取出", "File from stack"
+#define	SYLN_H	"SYMLINK表示形式", "Symlink policy"
+#define	READ_H	"表示画面の再描画", "Rewrite"
+#define	LOGD_H	"DIRの移動", "Change dir"
+#define	ATTR_H	"属性の変更", "Attribute change"
+#define	EXEF_H	"FILEの実行", "Execute file"
+#define	INFO_H	"FILEシステム情報", "FS Info."
+#define	COPY_H	"FILEのコピー", "Copy file"
+#define	MOVE_H	"FILEの移動", "Move file"
+#define	DELF_H	"FILEの削除", "Delete file"
+#define	DELD_H	"DIRの削除", "Delete dir"
+#define	RENM_H	"FILE名の変更", "Rename file"
+#define	MKDR_H	"DIRの作成", "Make dir"
+#define	SORT_H	"FILEの並び替え", "Sort files"
+#define	EXSH_H	"子プロセスの実行", "Execute sh"
+#define	FNDF_H	"FILEの検索表示", "Find files"
+#define	WRIT_H	"表示DIRの書込み", "Write dir"
+#define	TREE_H	"DIRのTREE表示", "Tree display"
+#define	BACK_H	"テープへBACKUP", "Backup on tape"
+#define	EDIT_H	"FILEの編集", "Edit file"
+#define	VIEW_H	"FILEの閲覧", "View file"
+#define	UNPK_H	"FILEの解凍", "Unpack file"
+#define	PACK_H	"FILEの圧縮", "Pack file"
+#define	LGTR_H	"TREEでのDIR移動", "Chdir on tree"
+#define	CPTR_H	"TREE選択のコピー", "Copy on tree"
+#define	MVTR_H	"TREE選択の移動", "Move on tree"
+#define	UPTR_H	"TREE選択の解凍", "Unpack on tree"
+#define	FNDD_H	"DIRの検索移動", "Recursive find"
+#define	LAUN_H	"ランチャの起動", "Launcher"
+#define	HELP_H	"HELP画面の表示", "Show help"
+#define	QUIT_H	"FDの終了", "Quit FD"
+
+#define	UPAR_K	mesconv("↑", "Up")
+#define	DWNAR_K	mesconv("↓", "Down")
+#define	RIGAR_K	mesconv("→", "Right")
+#define	LEFAR_K	mesconv("←", "Left")

@@ -6,18 +6,13 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
 #include <time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#else
-#include <dirent.h>
-#endif
 
 extern int columns;
 extern int filepos;
@@ -483,8 +478,7 @@ static VOID dump(file)
 char *file;
 {
 	FILE *fp;
-	char *buf;
-	u_char *prompt;
+	char *buf, *prompt;
 	int i;
 
 	if (!(fp = fopen(file, "r"))) {
@@ -493,16 +487,19 @@ char *file;
 	}
 	putterms(t_clear);
 	tflush();
+	buf = NEXT_K;
+	i = strlen(file);
+	if (i + strlen(buf) > n_lastcolumn) i = n_lastcolumn - strlen(buf);
+	prompt = (char *)malloc2(i + strlen(buf) + 1);
+	strncpy3(prompt, file, i, 0);
+	strcat(prompt, buf);
 	buf = (char *)malloc2(n_column + 2);
-	prompt = (u_char *)malloc2(strlen(file) + sizeof(NEXT_K));
-	strcpy((char *)prompt, file);
-	strcat((char *)prompt, NEXT_K);
 
 	i = 0;
 	while (fgets(buf, n_column + 1, fp)) {
 		locate(0, i);
 		putterm(l_clear);
-		cputs(buf);
+		kanjiputs(buf);
 		if (++i >= n_line - 1) {
 			i = 0;
 			if (!yesno(prompt)) break;
@@ -576,7 +573,7 @@ int *maxp;
 	tmp2 = sorton & ~7;
 	i = (tmp1) ? 5 : 4;
 	if (!tmp1) tmp1 = val[0];
-	if (selectstr(&tmp1, i, 0, (u_char *)str, val) == ESC) return(1);
+	if (selectstr(&tmp1, i, 0, str, val) == ESC) return(1);
 
 	if (!tmp1) {
 		sorton = 0;
@@ -587,7 +584,7 @@ int *maxp;
 		str[1] = ODEC_K;
 		val[0] = 0;
 		val[1] = 8;
-		if (selectstr(&tmp2, 2, 48, (u_char *)str, val) == ESC)
+		if (selectstr(&tmp2, 2, 48, str, val) == ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
 		dup = (int *)malloc(*maxp * sizeof(int));
@@ -838,7 +835,7 @@ int *maxp;
 		cooked2();
 		echo2();
 		nl2();
-		cputs(SHEXT_K);
+		kanjiputs(SHEXT_K);
 		system(com);
 		raw2();
 		noecho2();
@@ -980,8 +977,8 @@ int *maxp;
 		flag = 1;
 		locate(0, LINFO);
 		putterm(l_clear);
-		cputs(ATTRM_K);
-		if (selectstr(&flag, 2, 35, (u_char *)str, val) == ESC)
+		kanjiputs(ATTRM_K);
+		if (selectstr(&flag, 2, 35, str, val) == ESC)
 			return(1);
 	}
 	else {

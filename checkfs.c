@@ -46,9 +46,9 @@ typedef struct statfs	statfs_t;
 #  include <nfs/nfs_clnt.h>
 #  include <nfs/vfs.h>
 #  endif
-# endif
 typedef struct statfs	statfs_t;
-#define	statfs2			statfs
+# define	statfs2			statfs
+# endif
 #endif
 
 #ifdef	NOVOID
@@ -218,17 +218,13 @@ char *dir;
 
 static int getblocksize()
 {
-#ifdef	DIRBLKSIZ
-	return(DIRBLKSIZ);
-#else
-# ifdef	DEV_BSIZE
+#ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
-# else
+#else
 	statfs_t buf;
 
 	if (statfs2(".", &buf) < 0) error(".");
 	return(buf.f_bsize);
-# endif
 #endif
 }
 

@@ -6,6 +6,7 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "kanji.h"
 
 #include <ctype.h>
@@ -13,12 +14,6 @@
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#else
-#include <dirent.h>
-#endif
 
 extern int filepos;
 extern int mark;
@@ -340,7 +335,7 @@ int max;
 	fnamp = strlen(path);
 	locate(0, LMESLINE);
 	putterm(l_clear);
-	cputs(WAIT_K);
+	kanjiputs(WAIT_K);
 	tflush();
 
 	if (!(dirp = opendir("."))) error(".");

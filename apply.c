@@ -6,19 +6,17 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "kanji.h"
 
 #include <fcntl.h>
-#include <time.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#else
-#include <dirent.h>
+#ifdef	USETIMEH
+#include <time.h>
 #endif
 
 #ifdef	USEUTIME
@@ -63,8 +61,9 @@ time_t *atimep, *mtimep;
 		locate(0, LCMDLINE);
 		putterm(l_clear);
 		putch('[');
-		cputs2(dest, n_column - sizeof(SAMEF_K) - 1, -1);
-		cputs(SAMEF_K);
+		cp = SAMEF_K;
+		kanjiputs2(dest, n_column - strlen(cp) - 1, -1);
+		kanjiputs(cp);
 	}
 	if (!copypolicy) {
 		str[0] = UPDAT_K;
@@ -76,7 +75,7 @@ time_t *atimep, *mtimep;
 		val[2] = 3;
 		val[3] = 4;
 		copypolicy = 1;
-		if (selectstr(&copypolicy, 4, 0, (u_char *)str, val) == ESC)
+		if (selectstr(&copypolicy, 4, 0, str, val) == ESC)
 			copypolicy = 0;
 	}
 	switch (copypolicy) {
@@ -181,7 +180,7 @@ char *path;
 		locate(0, LCMDLINE);
 		putterm(l_clear);
 		putch('[');
-		cputs2(path, n_column - 2, -1);
+		kanjiputs2(path, n_column - 2, -1);
 		putch(']');
 		if (yesno(FOUND_K)) {
 			destpath = strdup2(path);
@@ -226,17 +225,17 @@ int y;
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
 	putch('[');
-	cputs2(listp -> name, 16, 0);
+	kanjiputs2(listp -> name, 16, 0);
 	putch(']');
 	locate(n_column / 2 + 3, y);
-	cputs(TOLD_K);
+	kanjiputs(TOLD_K);
 	locate(n_column / 2 + 13, y);
-	cputs(TNEW_K);
+	kanjiputs(TNEW_K);
 
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
-	cputs(TMODE_K);
+	kanjiputs(TMODE_K);
 	locate(n_column / 2, y);
 	putmode(buf, listp -> st_mode);
 	cputs(buf + 1);
@@ -247,7 +246,7 @@ int y;
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
-	cputs(TDATE_K);
+	kanjiputs(TDATE_K);
 	locate(n_column / 2, y);
 	cprintf("%02d-%02d-%02d",
 		tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday);
@@ -257,7 +256,7 @@ int y;
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
-	cputs(TTIME_K);
+	kanjiputs(TTIME_K);
 	locate(n_column / 2, y);
 	cprintf("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
@@ -453,7 +452,7 @@ int applyfile(list, max, func, endmes)
 namelist *list;
 int max;
 int (*func)();
-u_char *endmes;
+char *endmes;
 {
 	int i, ret, tmp, old;
 
@@ -480,7 +479,7 @@ char *dir;
 int (*funcf)();
 int (*funcd1)();
 int (*funcd2)();
-u_char *endmes;
+char *endmes;
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -496,7 +495,7 @@ u_char *endmes;
 	locate(0, LCMDLINE);
 	putterm(l_clear);
 	putch('[');
-	cputs2(strncmp(dir, "./", 2) ? dir : dir + 2, n_column - 2, -1);
+	kanjiputs2(strncmp(dir, "./", 2) ? dir : dir + 2, n_column - 2, -1);
 	putch(']');
 	tflush();
 

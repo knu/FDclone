@@ -6,6 +6,7 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
@@ -13,12 +14,6 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-
-#ifdef	USEDIRECT
-#include <sys/dir.h>
-#else
-#include <dirent.h>
-#endif
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -66,7 +61,7 @@ static VOID pathbar()
 	putterm(t_standout);
 	cputs("Path:");
 	putterm(end_standout);
-	cputs2(path, n_column - 6, 0);
+	kanjiputs2(path, n_column - 6, 0);
 	free(path);
 
 	tflush();
@@ -84,7 +79,6 @@ VOID helpbar()
 	locate(0, LHELP);
 	putterm(l_clear);
 
-	putterm(t_standout);
 	for (i = 0; i < 10; i++) {
 		locate(ofs + (width + 1) * i + (i / 5) * 3, LHELP);
 		len = (width - strlen(helpindex[i])) / 2;
@@ -92,9 +86,10 @@ VOID helpbar()
 		strncpy2(buf + len, helpindex[i], width);
 		len = strlen(buf);
 		for (j = len; j < width; j++) buf[j] = ' ';
+		putterm(t_standout);
 		cputs(buf);
+		putterm(end_standout);
 	}
-	putterm(end_standout);
 	free(buf);
 
 	tflush();
@@ -130,15 +125,15 @@ int max;
 		str[1] = OEXT_K;
 		str[2] = OSIZE_K;
 		str[3] = ODATE_K;
-		cputs(str[(sorton & 7) - 1]);
+		kanjiputs(str[(sorton & 7) - 1] + 3);
 
 		str[0] = OINC_K;
 		str[1] = ODEC_K;
 		putch('(');
-		cputs(str[sorton / 8]);
+		kanjiputs(str[sorton / 8] + 3);
 		putch(')');
 	}
-	else cputs(ORAW_K);
+	else kanjiputs(ORAW_K + 3);
 
 	locate(CFIND, LSTATUS);
 	putterm(t_standout);
@@ -146,7 +141,7 @@ int max;
 	putterm(end_standout);
 	if (findpattern) {
 		width = n_column - (CFIND + 5);
-		cputs2(findpattern, width, 0);
+		kanjiputs2(findpattern, width, 0);
 	}
 
 	tflush();
@@ -161,12 +156,12 @@ static VOID stackbar()
 	locate(0, LSTACK);
 	putterm(l_clear);
 
-	putterm(t_standout);
 	for (i = 0; i < stackdepth; i++) {
 		locate(width * i + 1, LSTACK);
-		cputs2(filestack[i].name, width - 2, 0);
+		putterm(t_standout);
+		kanjiputs2(filestack[i].name, width - 2, 0);
+		putterm(end_standout);
 	}
-	putterm(end_standout);
 
 	tflush();
 }
@@ -247,6 +242,12 @@ int no;
 
 	locate(0, LINFO);
 
+	if (list[no].st_nlink < 0) {
+		kanjiputs(list[no].name);
+		tflush();
+		return;
+	}
+
 	tm = localtime(&list[no].st_mtim);
 
 	putmode(buf, (!lnstat && islink(&list[no])) ?
@@ -270,7 +271,7 @@ int no;
 		tm -> tm_year, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
-	width = n_column - len;
+	width = n_lastcolumn - len;
 	strncpy3(buf + len, list[no].name, width, fnameofs);
 
 	if (islink(&list[no])) {
@@ -278,17 +279,17 @@ int no;
 		while (buf[--len] == ' ');
 		len += 2;
 		if (list[no].name[fnameofs]) {
-			if (len < n_column) buf[len++] = '-';
-			if (len < n_column) buf[len++] = '>';
+			if (len < n_lastcolumn) buf[len++] = '-';
+			if (len < n_lastcolumn) buf[len++] = '>';
 			len++;
 		}
-		if (len < n_column) {
-			width = n_column - len;
+		if (len < n_lastcolumn) {
+			width = n_lastcolumn - len;
 			readlink(list[no].name, buf + len, width);
 		}
 	}
 
-	cputs(buf);
+	kanjiputs(buf);
 	tflush();
 }
 
@@ -326,6 +327,15 @@ int standout;
 	struct tm *tm;
 	int len, width, ofs;
 
+	calclocate(no);
+	putch(ismark(&list[no]) ? '*' : ' ');
+
+	if (standout < 0 && stable_standout) {
+		putterm(end_standout);
+		calclocate(no);
+		return;
+	}
+
 	width = calcwidth();
 	ofs = (standout && fnameofs > 0) ? fnameofs : 0;
 	strncpy3(buf, list[no].name, width, ofs);
@@ -359,11 +369,9 @@ int standout;
 			(S_IFLNK | 0777) : list[no].st_mode);
 	}
 
-	calclocate(no);
-	putch(ismark(&list[no]) ? '*' : ' ');
-	if (standout) putterm(t_standout);
-	cputs(buf);
-	if (standout) putterm(end_standout);
+	if (standout > 0) putterm(t_standout);
+	kanjiputs(buf);
+	if (standout > 0) putterm(end_standout);
 	tflush();
 }
 
@@ -372,12 +380,26 @@ namelist *list;
 int max;
 char *def;
 {
+	char *cp;
 	int i, count, start, ret;
 
 	for (i = 0; i < FILEPERLOW; i++) {
 		locate(0, i + WHEADER);
 		putterm(l_clear);
 	}
+
+	if (max <= 0) {
+		i = (n_column / columns) - 2 - 1;
+		locate(1, WHEADER);
+		putterm(t_standout);
+		cp = NOFIL_K;
+		if (i > strlen(cp)) kanjiputs2(cp, i, 0);
+		else cprintf("%-*.*s", i, i, "No Files");
+		putterm(end_standout);
+		tflush();
+		return(0);
+	}
+
 	ret = -1;
 	if (!def) def = "..";
 
@@ -404,7 +426,6 @@ char *def;
 		if (count >= FILEPERPAGE) break;
 		putname(list, i, (i == ret) ? 1 : 0);
 	}
-	putterm(end_standout);
 
 	tflush();
 	return(ret);
@@ -420,7 +441,7 @@ u_char fstat;
 		keyflush();
 	}
 	else if ((fstat & REWRITE) || old != filepos) {
-		if (old != filepos) putname(list, old, 0);
+		if (old != filepos) putname(list, old, -1);
 		putname(list, filepos, 1);
 	}
 	infobar(list, filepos);
@@ -478,8 +499,16 @@ int *maxentp;
 	closedir(dirp);
 	if (re) regexp_free(re);
 
+	if (maxfile <= 0) {
+		filelist = (namelist *)addlist(filelist, 0,
+			maxentp, sizeof(namelist));
+		filelist[0].name = NOFIL_K;
+		filelist[0].st_nlink = -1;
+	}
+
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
 
+	if (stable_standout) putterms(t_clear);
 	title();
 	pathbar();
 	statusbar(maxfile);
@@ -532,7 +561,8 @@ int *maxentp;
 #endif
 		}
 
-		if (no <= NO_OPERATION)
+		if (maxfile <= 0 && !(fstat & NO_FILE)) no = 0;
+		else if (no <= NO_OPERATION)
 			no = (*funclist[no].func)(filelist, &maxfile);
 		else {
 			execmacro(macrolist[no - NO_OPERATION - 1],
@@ -554,7 +584,7 @@ int *maxentp;
 		}
 
 		if (!(fstat & REWRITE)) fnameofs = 0;
-		if ((fstat & (REWRITE | LISTUP)) == (REWRITE | LISTUP)) {
+		if ((fstat & RELIST) == RELIST) {
 			title();
 			pathbar();
 			statusbar(maxfile);

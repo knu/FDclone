@@ -6,16 +6,20 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "kctype.h"
 #include "kanji.h"
 
 #include <pwd.h>
 #include <grp.h>
-#include <time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
+
+#ifdef	USETIMEH
+#include <time.h>
+#endif
 
 #ifdef	USELEAPCNT
 #include <tzfile.h>
@@ -225,21 +229,7 @@ int c;
 	return(islower(c) ? c - 'a' + 'A' : c);
 }
 
-int onkanji1(s, ptr)
-u_char *s;
-int ptr;
-{
-	int i;
-
-	if (ptr < 0) return(0);
-	if (!ptr) return(iskanji1((int)s[0]));
-
-	for (i = 0; i < ptr; i++) if (iskanji1((int)s[i])) i++;
-	if (i > ptr) return(0);
-	return(iskanji1((int)s[ptr]));
-}
-
-u_char *strchr2(s, c)
+char *strchr2(s, c)
 u_char *s;
 u_char c;
 {
@@ -247,23 +237,23 @@ u_char c;
 
 	len = strlen((char *)s);
 	for (i = 0; i < len; i++) {
-		if (s[i] == c) return(&s[i]);
+		if (s[i] == c) return((char *)&s[i]);
 		if (iskanji1(s[i])) i++;
 	}
 	return(NULL);
 }
 
-u_char *strrchr2(s, c)
+char *strrchr2(s, c)
 u_char *s;
 u_char c;
 {
 	int i, len;
-	u_char *cp;
+	char *cp;
 
 	cp = NULL;
 	len = strlen((char *)s);
 	for (i = 0; i < len; i++) {
-		if (s[i] == c) cp = &s[i];
+		if (s[i] == c) cp = (char *)&s[i];
 		if (iskanji1(s[i])) i++;
 	}
 	return(cp);
@@ -286,12 +276,12 @@ int len, ptr;
 	char *cp;
 
 	cp = s1;
-	if (ptr && onkanji1(s2, ptr - 1)) {
+	if (ptr && onkanji1((u_char *)s2, ptr - 1)) {
 		*(cp++) = ' ';
 		ptr++;
 		len--;
 	}
-	if (len < strlen(s2 + ptr) && onkanji1(s2, ptr + len - 1)) {
+	if (len < strlen(s2 + ptr) && onkanji1((u_char *)s2, ptr + len - 1)) {
 		strncpy2(cp, s2 + ptr, --len);
 		strcat(cp, " ");
 	}
@@ -299,27 +289,19 @@ int len, ptr;
 	return(s1);
 }
 
-VOID cputs2(s, len, ptr)
-char *s;
-int len, ptr;
+#ifdef	NOSTRSTR
+char *strstr(s1, s2)
+char *s1, *s2;
 {
-	if (ptr > 0 && onkanji1(s, ptr - 1)) {
-		putch(' ');
-		ptr++;
-		len--;
-	}
-	if (len <= 0) return;
-	else if (len >= strlen(s + ptr)) {
-		if (ptr < 0) cputs(s);
-		else cprintf("%-*.*s", len, len, s + ptr);
-	}
-	else if (onkanji1(s, ptr + len - 1)) {
-		len--;
-		cprintf("%-*.*s", len, len, s + ptr);
-		putch(' ');
-	}
-	else cprintf("%-*.*s", len, len, s + ptr);
+	char *cp;
+	int len;
+
+	len = strlen(s2);
+	for (cp = s1; cp = strchr(cp, *s2); cp++)
+		if (!strncmp(cp, s2, len)) return(cp);
+	return(NULL);
 }
+#endif
 
 int atoi2(str)
 char *str;
@@ -413,12 +395,14 @@ int noconf;
 {
 	int status;
 
-	locate(0, n_line - 1);
-	putterm(l_clear);
-	tflush();
-	if (noconf == 1) putterms(t_end);
-	putterms(t_nokeypad);
-	tflush();
+	if (noconf > 0) {
+		locate(0, n_line - 1);
+		putterm(l_clear);
+		tflush();
+		if (noconf) putterms(t_end);
+		putterms(t_nokeypad);
+		tflush();
+	}
 	cooked2();
 	echo2();
 	nl2();
@@ -427,8 +411,10 @@ int noconf;
 	noecho2();
 	nonl2();
 	if (status > 127 || !noconf) warning(0, HITKY_K);
-	if (noconf == 1) putterms(t_init);
-	putterms(t_keypad);
+	if (noconf > 0) {
+		if (noconf) putterms(t_init);
+		putterms(t_keypad);
+	}
 	return(status);
 }
 

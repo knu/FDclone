@@ -10,12 +10,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <pwd.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+
+#ifndef	NOUNISTD
+#include <unistd.h>
+#endif
 
 #ifndef	NOSTDLIB
 #include <stdlib.h>
@@ -23,7 +26,7 @@
 
 #ifdef	USEDIRECT
 #include <sys/dir.h>
-typedef direct	dirent;
+#define	dirent	direct
 #else
 #include <dirent.h>
 #endif

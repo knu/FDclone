@@ -6,6 +6,7 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "kctype.h"
 
 #include <varargs.h>
@@ -22,7 +23,7 @@ static VOID deletechar();
 static VOID truncline();
 static VOID displaystr();
 static int completestr();
-static u_char *truncstr();
+static char *truncstr();
 static VOID yesnomes();
 static int selectmes();
 
@@ -62,9 +63,9 @@ int x, cx, len, linemax, max;
 	int i;
 
 	if (onkanji1(str, cx - 2)) {
-		cx -= 2;
 		i = cx % linemax;
-		if (i < 0) locate(x + linemax + i, LCMDLINE + cx / linemax);
+		cx -= 2;
+		if (i < 2) locate(x + linemax + i - 2, LCMDLINE + cx / linemax);
 		else {
 			putterm(c_left);
 			putterm(c_left);
@@ -94,18 +95,18 @@ int x, cx, len, linemax, ins;
 			while (i < len) {
 				f1 = (onkanji1(str, i - ins - 1)) ? 1 : 0;
 				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
+				if (f1) {
+					locate(x + linemax - 1, LCMDLINE + dy);
+					putch(' ');
+				}
 				if (x + linemax < n_column) {
 					locate(x + linemax, LCMDLINE + dy);
-					if (f1) putterm(c_right);
-					else putch(' ');
-					for (j = 1; j < ins + f2; j++)
-						putch(' ');
+					for (j = 1; j < ins; j++) putch(' ');
 				}
-				locate(x, LCMDLINE + ++dy);
+				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < ins; j++) putterm(c_insert);
-				if (f1) putterm(c_right);
-				else putch((char)str[i - ins]);
-				for (j = 1; j < ins + f2; j++)
+				putch((f1) ? (char)str[i - ins - 1] : ' ');
+				for (j = 0; j < ins - f2; j++)
 					putch((char)str[i + j - ins]);
 				i += linemax;
 			}
@@ -115,38 +116,26 @@ int x, cx, len, linemax, ins;
 	else {
 		for (j = 0; j < ins; j++) putch(' ');
 
-		if (i >= len) i = cx + ins;
+		if (i >= len) f2 = cx;
 		else {
-			f1 = (onkanji1(str, i - ins - 1)) ? 1 : 0;
-			f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-
-			j = linemax - cx % linemax - ins + f1;
-			if (j > 0) cprintf("%-*.*s", j, j, (char *)str + cx);
-			if (f2 && !f1) putch(' ');
-
-			locate(x, LCMDLINE + ++dy);
-			if (f1) putch(' ');
-			else putch((char)str[i - ins]);
-			i += linemax;
-
+			j = linemax - cx % linemax - ins;
+			f2 = cx;
 			while (i < len) {
 				f1 = (onkanji1(str, i - ins - 1)) ? 1 : 0;
-				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-				j = linemax + f1 - 1;
-				cprintf("%-*.*s", j, j,
-					(char *)str + i - linemax - ins + 1);
-				if (f2 && !f1) putch(' ');
-
-				locate(x, LCMDLINE + ++dy);
+				if ((j -= f1) > 0)
+					kanjiprintf("%-*.*s", j, j, &str[f2]);
 				if (f1) putch(' ');
-				else putch((char)str[i - ins]);
+
+				locate(x - 1, LCMDLINE + ++dy);
+				putch((f1) ? (char)str[i - ins - 1] : ' ');
+				j = linemax - ins;
+				f2 = i - ins;
 				i += linemax;
 			}
-			i -= linemax - 1;
 		}
 
-		j = len - i;
-		if (j > 0) cprintf("%-*.*s", j, j, (char *)str + i - ins);
+		j = len - f2 - ins;
+		if (j > 0) kanjiprintf("%-*.*s", j, j, &str[f2]);
 		locate (x + cx % linemax, LCMDLINE + cx / linemax);
 	}
 
@@ -166,65 +155,54 @@ int x, cx, len, linemax, del;
 	if (*c_delete) {
 		for (j = 0; j < del; j++) putterm(c_delete);
 
-		if (i < len) {
-			while (i < len) {
+		if (i < len + del) {
+			while (i < len + del) {
 				f1 = (onkanji1(str, i + del - 1)) ? 1 : 0;
 				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-				locate(x + linemax - del, LCMDLINE + dy);
-				if (f2) putterm(c_right);
-				else putch((char)str[i]);
-				for (j = 1; j < del + f1; j++)
+				locate(x + linemax - del - f2, LCMDLINE + dy);
+				for (j = -f2; j < del - f1; j++)
 					putch((char)str[i + j]);
-				locate(x, LCMDLINE + ++dy);
-				for (j = 0; j < del; j++) putterm(c_delete);
 				if (f1) putch(' ');
+				locate(x - 1, LCMDLINE + ++dy);
+				for (j = 0; j < del; j++) putterm(c_delete);
+				if (!f1) putch(' ');
 				i += linemax;
 			}
 			locate (x + cx % linemax, LCMDLINE + cx / linemax);
 		}
 	}
 	else {
-		if (i >= len) i = cx;
+		if (i >= len) f2 = cx + del;
 		else {
-			f1 = (onkanji1(str, i + del - 1)) ? 1 : 0;
-			f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-
-			j = linemax - cx % linemax + f1;
-			cprintf("%-*.*s", j, j, (char *)str + cx + del);
-			if (f2 && !f1) putch(' ');
-
-			locate(x, LCMDLINE + ++dy);
-			if (f1) putch(' ');
-			else putch((char)str[i + del]);
-			i += linemax;
+			j = linemax - cx % linemax;
+			f2 = cx + del;
 
 			while (i < len) {
 				f1 = (onkanji1(str, i + del - 1)) ? 1 : 0;
-				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-				j = linemax + f1 - 1;
-				cprintf("%-*.*s", j, j,
-					(char *)str + i - linemax + del + 1);
-				if (f2 && !f1) putch(' ');
-
-				locate(x, LCMDLINE + ++dy);
+				if ((j -= f1) > 0)
+					kanjiprintf("%-*.*s", j, j, &str[f2]);
 				if (f1) putch(' ');
-				else putch((char)str[i - linemax + del]);
+
+				locate(x - 1, LCMDLINE + ++dy);
+				putch((f1) ? (char)str[i + del - 1] : ' ');
+				j = linemax - 1;
+				f2 = i + del;
 				i += linemax;
 			}
-			i -= linemax - 1;
 		}
 
-		j = len - i;
-		if (j > 0) {
-			cprintf("%-*.*s", j, j, (char *)str + i + del);
-			if (!(len % linemax)) locate(x, LCMDLINE + ++dy);
+		j = len - f2 + del;
+		if (j > 0) kanjiprintf("%-*.*s", j, j, &str[f2]);
+		else --dy;
+		for (j = 0; j < del; j++) {
+			if (!((len + j) % linemax)) locate(x, LCMDLINE + ++dy);
+			putch(' ');
 		}
-		for (j = 0; j < del; j++) putch(' ');
 
 		locate (x + cx % linemax, LCMDLINE + cx / linemax);
 	}
 
-	for (i = cx; i <= len - del; i++) str[i] = str[i + del];
+	for (i = cx; i < len; i++) str[i] = str[i + del];
 }
 
 static VOID truncline(x, cx, len, linemax)
@@ -237,7 +215,7 @@ int x, cx, len, linemax;
 	dy = cx / linemax;
 	if ((dy + 1) * linemax < len) {
 		for (i = (dy + 1) * linemax; i < len; i += linemax) {
-			locate(x, LCMDLINE + ++dy);
+			locate(x - 1, LCMDLINE + ++dy);
 			putterm(l_clear);
 		}
 		locate (x + cx % linemax, LCMDLINE + cx / linemax);
@@ -251,18 +229,20 @@ int x, cx, len, max, linemax;
 	int i, y, width;
 
 	locate(x, LCMDLINE);
-	putterm(l_clear);
 	str[len] = '\0';
 	width = linemax;
 	for (i = 0, y = 1; i + linemax < len; i += width, y++) {
 		width = linemax;
-		if (onkanji1(str, i + linemax - 1)) width++;
+		if (onkanji1(str, i + linemax - 1)) width--;
 		putterm(l_clear);
-		cprintf("%-*.*s", width, width, (char *)str + i);
-		locate(x + width - linemax, LCMDLINE + y);
+		if (stable_standout) putterm(end_standout);
+		kanjiprintf("%-*.*s", width, width, (char *)str + i);
+		locate(x - 1, LCMDLINE + y);
+		if (width == linemax) putch(' ');
 	}
 	putterm(l_clear);
-	cputs((char *)str + i);
+	if (stable_standout) putterm(end_standout);
+	kanjiputs((char *)str + i);
 	for (; y * linemax < max; y++) {
 		locate(x, LCMDLINE + y);
 		putterm(l_clear);
@@ -275,7 +255,7 @@ static int completestr(str, x, cx, len, linemax, max)
 u_char *str;
 int x, cx, len, linemax, max;
 {
-	u_char *cp1, *cp2;
+	char *cp1, *cp2;
 	int i, ins;
 
 	for (i = cx; i > 0; i--)
@@ -285,12 +265,12 @@ int x, cx, len, linemax, max;
 		return(0);
 	}
 
-	cp1 = (u_char *)malloc2(cx - i + 1);
-	strncpy2((char *)cp1, (char *)str + i, cx - i);
-	cp2 = (u_char *)evalpath(cp1);
-	cp1 = (u_char *)completepath(cp2);
+	cp1 = (char *)malloc2(cx - i + 1);
+	strncpy2(cp1, (char *)str + i, cx - i);
+	cp2 = evalpath(cp1);
+	cp1 = completepath(cp2);
 
-	if (!cp1 || (ins = strlen((char *)cp1) - strlen((char *)cp2)) <= 0) {
+	if (!cp1 || (ins = strlen(cp1) - strlen(cp2)) <= 0) {
 		putterm(t_bell);
 		if (cp1) free(cp1);
 		free(cp2);
@@ -302,7 +282,7 @@ int x, cx, len, linemax, max;
 
 	insertchar(str, x, cx, len, linemax, ins);
 
-	cp2 = cp1 + strlen((char *)cp1) - ins;
+	cp2 = cp1 + strlen(cp1) - ins;
 	for (i = 0; i < ins; i++) {
 		str[cx] = *(cp2++);
 		putch((char)str[cx]);
@@ -317,10 +297,10 @@ int x, cx, len, linemax, max;
 int inputstr(str, x, max, linemax, def, hist)
 u_char *str;
 int x, max, linemax, def;
-u_char *hist[];
+char *hist[];
 {
 	int len, cx, i, histno, ch, ch2;
-	u_char *tmphist;
+	char *tmphist;
 
 	subwindow = 1;
 	cx = len = strlen((char *)str);
@@ -402,7 +382,7 @@ u_char *hist[];
 			case CTRL_L:
 				keyflush();
 				for (i = 0; i < WCMDLINE; i++) {
-					locate(0, LCMDLINE + i);
+					locate(x, LCMDLINE + i);
 					putterm(l_clear);
 				}
 				displaystr(str, x, cx, len, max, linemax);
@@ -416,9 +396,8 @@ u_char *hist[];
 						break;
 					}
 					if (!tmphist) tmphist =
-						(u_char *)strdup2((char *)str);
-					strcpy((char *)str,
-						(char *)hist[histno]);
+						strdup2((char *)str);
+					strcpy((char *)str, hist[histno]);
 					len = strlen((char *)str);
 					cx = len;
 					displaystr(str, x, cx,
@@ -442,10 +421,9 @@ u_char *hist[];
 						break;
 					}
 					if (--histno > 0) strcpy((char *)str,
-						(char *)hist[histno - 1]);
+						hist[histno - 1]);
 					else {
-						strcpy((char *)str,
-							(char *)tmphist);
+						strcpy((char *)str, tmphist);
 						free(tmphist);
 						tmphist = NULL;
 					}
@@ -484,11 +462,14 @@ u_char *hist[];
 					len += 2;
 					str[cx++] = (u_char)ch;
 					str[cx++] = (u_char)ch2;
+					i = (cx % linemax);
+					if (i == 1)
+						locate(x - 1, LCMDLINE
+							+ cx / linemax);
 					putch((char)ch);
 					putch((char)ch2);
-					i = (cx % linemax);
-					if (i < 2 && len < max)
-						locate(x + i, LCMDLINE
+					if (!i && len < max)
+						locate(x, LCMDLINE
 							+ cx / linemax);
 				}
 				else {
@@ -520,11 +501,11 @@ u_char *hist[];
 }
 
 char *inputstr2(prompt, ptr, def, hist)
-u_char *prompt;
+char *prompt;
 int ptr;
-u_char *def, *hist[];
+char *def, *hist[];
 {
-	u_char input[MAXLINESTR + 1];
+	char input[MAXLINESTR + 1];
 	int i, len, ch;
 
 	for (i = 0; i < WCMDLINE; i++) {
@@ -534,14 +515,15 @@ u_char *def, *hist[];
 	locate(0, LCMDLINE);
 	putch(' ');
 	putterm(t_standout);
-	cputs((char *)prompt);
+	kanjiputs(prompt);
 	putterm(end_standout);
 	tflush();
 
-	len = strlen((char *)prompt);
-	if (def) strcpy((char *)input, (char *)def);
+	len = strlen(prompt);
+	if (def) strcpy(input, def);
 	else *input = '\0';
 	i = (n_column - len - 1) * WCMDLINE;
+	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
 	ch = inputstr(input, len + 1, i, n_column - len - 1, ptr, hist);
 	for (i = 0; i < WCMDLINE; i++) {
@@ -552,57 +534,55 @@ u_char *def, *hist[];
 	if (ch == ESC) return(NULL);
 
 	tflush();
-	return(strdup2((char *)input));
+	return(strdup2(input));
 }
 
-static u_char *truncstr(str)
-u_char *str;
+static char *truncstr(str)
+char *str;
 {
 	int len;
-	u_char *cp1, *cp2;
+	char *cp1, *cp2;
 
-	if ((len = strlen((char *)str) + 5 - n_column) <= 0
+	if ((len = strlen(str) + 5 - n_lastcolumn) <= 0
 	|| !(cp1 = strchr2(str, '['))
-	|| !(cp2 = strchr2(cp1, ']'))) return(str);
+	|| !(cp2 = strchr2((u_char *)cp1, ']'))) return(str);
 
 	cp1++;
 	len = cp2 - cp1 - len;
 	if (len < 0) len = 0;
-	else if (onkanji1(cp1, len - 1)) len--;
-	strcpy((char *)cp1 + len, (char *)cp2);
+	else if (onkanji1((u_char *)cp1, len - 1)) len--;
+	strcpy(cp1 + len, cp2);
 	return(str);
 }
 
-static VOID yesnomes(mes, len)
+static VOID yesnomes(mes)
 char *mes;
-int len;
 {
 	locate(0, LMESLINE);
 	putterm(l_clear);
 	putterm(t_standout);
-	cputs(mes);
-	locate(len, LMESLINE);
+	kanjiputs(mes);
 	cputs("[Y/N]");
 	putterm(end_standout);
 	tflush();
 }
 
 int yesno(fmt, va_alist)
-u_char *fmt;
+char *fmt;
 va_dcl
 {
 	va_list args;
 	int len, ch, ret = 1;
-	u_char buf[MAXLINESTR + 1];
+	char buf[MAXLINESTR + 1];
 
 	subwindow = 1;
 	va_start(args);
-	vsprintf((char *)buf, (char *)fmt, args);
+	vsprintf(buf, fmt, args);
 	va_end(args);
 	truncstr(buf);
 
-	len = strlen((char *)buf);
-	yesnomes((char *)buf, len);
+	len = strlen(buf);
+	yesnomes(buf);
 
 	do {
 		keyflush();
@@ -630,7 +610,7 @@ va_dcl
 				ret = 1;
 				break;
 			case CTRL_L:
-				yesnomes((char *)buf, len);
+				yesnomes(buf);
 				break;
 			default:
 				break;
@@ -647,37 +627,36 @@ va_dcl
 
 VOID warning(no, str)
 int no;
-u_char *str;
+char *str;
 {
-	u_char *tmp, *err;
+	char *tmp, *err;
 	int len;
 
 	subwindow = 1;
 	if (no < 0) no = errno;
-	err = (u_char *)sys_errlist[no];
+	err = sys_errlist[no];
 	if (!str) tmp = err;
 	else if (!no) {
 		tmp = str;
 		str = NULL;
 	}
 	else {
-		len = n_column - strlen((char *)err) - 3;
-		tmp = (u_char *)malloc2(strlen((char *)str)
-			+ strlen((char *)err) + 3);
-		strcpy((char *)tmp, (char *)str);
-		if (strlen((char *)str) > len) {
+		len = n_lastcolumn - strlen(err) - 3;
+		tmp = (char *)malloc2(strlen(str) + strlen(err) + 3);
+		strcpy(tmp, str);
+		if (strlen(str) > len) {
 			if (onkanji1(str, len - 1)) len--;
 			tmp[len] = '\0';
 		}
-		strcat((char *)tmp, ": ");
-		strcat((char *)tmp, (char *)err);
+		strcat(tmp, ": ");
+		strcat(tmp, err);
 	}
 	putterm(t_bell);
 
 	locate(0, LMESLINE);
 	putterm(l_clear);
 	putterm(t_standout);
-	cputs((char *)tmp);
+	kanjiputs(tmp);
 	putterm(end_standout);
 	tflush();
 
@@ -694,7 +673,7 @@ u_char *str;
 
 static int selectmes(num, max, x, str, val, xx)
 int num, max, x;
-u_char *str[];
+char *str[];
 int val[], xx[];
 {
 	int i, new;
@@ -703,11 +682,11 @@ int val[], xx[];
 	putterm(l_clear);
 	for (i = 0; i < max; i++) {
 		locate(x + xx[i] + 1, LMESLINE);
-		if (val[i] != num) cputs((char *)str[i]);
+		if (val[i] != num) kanjiputs(str[i]);
 		else {
 			new = i;
 			putterm(t_standout);
-			cputs((char *)str[i]);
+			kanjiputs(str[i]);
 			putterm(end_standout);
 		}
 	}
@@ -716,7 +695,7 @@ int val[], xx[];
 
 int selectstr(num, max, x, str, val)
 int *num, max, x;
-u_char *str[];
+char *str[];
 int val[];
 {
 	int i, ch, old, new, xx[10], initial[10];
@@ -725,7 +704,7 @@ int val[];
 	xx[0] = 0;
 	for (i = 0; i < max; i++) {
 		initial[i] = (isupper(*str[i])) ? *str[i] : -1;
-		xx[i + 1] = xx[i] + strlen((char *)str[i]) + 1;
+		xx[i + 1] = xx[i] + strlen(str[i]) + 1;
 	}
 	new = selectmes(*num, max, x, str, val, xx);
 
@@ -759,20 +738,25 @@ int val[];
 				break;
 		}
 		if (new != old) {
-			putterm(t_standout);
 			locate(x + xx[new] + 1, LMESLINE);
-			cputs((char *)str[new]);
+			putterm(t_standout);
+			kanjiputs(str[new]);
 			putterm(end_standout);
 			locate(x + xx[old] + 1, LMESLINE);
-			cputs((char *)str[old]);
+			if (stable_standout) putterm(end_standout);
+			else kanjiputs(str[old]);
 		}
 	} while (ch != ESC && ch != CR);
 
 	subwindow = 0;
+	if (stable_standout) {
+		locate(x + 1, LMESLINE);
+		putterm(l_clear);
+	}
 	for (i = 0; i < max; i++) {
 		locate(x + xx[i] + 1, LMESLINE);
-		if (i == new) cputs((char *)str[i]);
-		else cprintf("%*s", strlen((char *)str[i]), " ");
+		if (i == new) kanjiputs(str[i]);
+		else cprintf("%*s", strlen(str[i]), " ");
 	}
 	if (ch != ESC) *num = val[new];
 	tflush();

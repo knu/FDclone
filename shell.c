@@ -6,6 +6,7 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "kanji.h"
 
 extern int filepos;
@@ -266,6 +267,7 @@ int max, noconf, argset;
 	needmark = *(u_char *)(tmp + 1);
 	if (noconf >= 0 && (flag & F_NOCONFIRM)) noconf = 1 - noconf;
 	i = (n_column - 4) * WCMDLINE;
+	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
 	if (!needmark) for (;;) {
 		cp = tmp + 2;
@@ -327,7 +329,7 @@ char **hist, *str;
 		hist = (char **)malloc2(sizeof(char *) * siz);
 		for (i = 1; i < siz; i++) hist[i] = NULL;
 	}
-	else if (str || !*str) return(hist);
+	else if (!str || !*str) return(hist);
 	else {
 		if (hist[siz - 1]) free(hist[i]);
 		for (i = siz - 1; i > 0; i--) hist[i] = hist[i - 1];

@@ -17,4 +17,4 @@ extern char *cnvregexp();
 extern reg_t *regexp_init();
 extern int regexp_exec();
 extern int regexp_free();
-extern char *findpath();
+extern char *completepath();

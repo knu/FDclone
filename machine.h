@@ -28,16 +28,21 @@
 # define	USEMNTTAB
 # define	USEUTIME
 # else
+# define	BSD43
 #  if defined (__sony)
-#  define	BSD43
 #  define	NEWS_OS
 #  define	USESETENV
 #  else
-#  define	BSD
 #  define	NEWS_OS3
+#  define	NOVOID
 #  define	NOERRNO
+#  define	NOFILEMODE
+#  define	NOUNISTD
+#  define	NOSTDLIB
+#  define	USEDIRECT
 #  define	HAVETIMEZONE
 #  define	NOPUTENV
+#  define	NOSTRSTR
 #  define	USEGETWD
 #  endif
 # define	USESYSDIR
@@ -49,7 +54,7 @@
 #define	SYSV
 #define	IRIX
 #define	CODEEUC
-#define	EXTENDCCOPT		"-O -signed"
+#define	EXTENDCCOPT		"-O -signed -cckr"
 # if !defined (SYSTYPE_SVR4)
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
@@ -96,6 +101,7 @@
 #define	NOSTDLIB
 #define	USETERMIO
 #define	HAVETIMEZONE
+#define	USETIMEH
 #endif
 
 #if defined (luna88k)
@@ -111,9 +117,8 @@
 
 #if defined (__alpha) || defined (alpha)
 #define	CODEEUC
-#define	USEREGCOMP
 # if defined (SYSTYPE_BSD)
-# define	SVR4
+# define	BSD43
 # define	DECOSF1
 # define	EXTENDLIB	"-lsys5"
 # define	USEMOUNTH
@@ -124,6 +129,7 @@
 # define	TARUSESPACE
 # define	EXTENDLIB	"-lc_r"
 # define	USESTATVFS
+# define	USEREGCOMP
 # endif
 #endif
 
@@ -153,6 +159,7 @@
 #if defined (linux)
 #define	SVR4
 #define	LINUX
+#define	CODEEUC
 #define	TERMCAPLIB		"-lcurses"
 #define	USERE_COMP
 #endif
@@ -176,7 +183,7 @@
 
 /* #define SYSV		/* OS type is System V older Rel.3 */
 /* #define SVR4		/* OS type is System V Rel.4 */
-/* #define BSD		/* OS type is older BSD 4.2 */
+/* #define BSD4		/* OS type is older BSD 4.2 */
 /* #define BSD43	/* OS type is newer BSD 4.3 */
 /* #define SOLARIS	/* OS type is newer Solalis 2.0 (Sun) */
 /* #define SUN_OS	/* OS type is older SunOS 4.1 (Sun) */
@@ -210,6 +217,7 @@
 /* #define DECLERRLIST	/* 'sys_errlist' already declared in <stdio.h> */
 /* #define NOERRNO	/* 'errno' not declared in <errno.h> */
 /* #define NOFILEMODE	/* 'S_I?{USR|GRP|OTH}' not defined in <sys/stat.h> */
+/* #define NOUNISTD	/* have not <unistd.h> */
 /* #define NOSTDLIB	/* have not <stdlib.h> */
 /* #define USETERMIO	/* use termio interface */
 /* #define SYSVDIRENT	/* dirent interface behaves as System V */
@@ -224,12 +232,14 @@
 /* #define NOMNTOPS	/* 'struct fstab' in <fstab.h> have not 'fs_mntops' */
 /* #define USESYSSELECT	/* use <sys/select.h> for select(2) */
 /* #define USESYSDIR	/* use <sys/dir.h> for DEV_BSIZE */
+/* #define USETIMEH	/* use <time.h> for 'struct tm' */
 /* #define USERAND48	/* use rand48() family instead of random() */
 /* #define USERE_COMP	/* use re_comp() family as search */
 /* #define USEREGCOMP	/* use regcomp() family as search */
 /* #define USEREGCMP	/* use regcmp() family as search */
 /* #define USESETENV	/* use setenv() instead of putenv() */
 /* #define NOPUTENV	/* have neither putenv() nor setenv() */
+/* #define NOSTRSTR	/* have not strstr() */
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
 /* #define SIGARGINT	/* signal() needs the 2nd argument as int */

@@ -9,7 +9,7 @@ INSTALL	= install
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
-	file.c apply.c archive.c tree.c command.c browse.c\
+	kanji.c file.c apply.c archive.c tree.c command.c browse.c\
 	kanjicnv.c mkfuncno.c checkfs.c getkey.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
 	func.h functable.h
@@ -25,7 +25,7 @@ CC	= cc
 SED	= sed
 PROGRAM	= fd
 OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
-	file.o apply.o archive.o tree.o command.o browse.o
+	kanji.o file.o apply.o archive.o tree.o command.o browse.o
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
 CFLAGS	= -DFD __CCOPTIONS__
@@ -135,43 +135,54 @@ clean:
 	$(PROGRAM) $(PROGRAM).$(MANSEC)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-main.o: fd.h 
-main.o: machine.h types.h pathname.h func.h
-main.o: term.h kctype.h kanji.h
-main.o: funcno.h version.h 
-term.o: machine.h term.h 
+main.o: fd.h machine.h 
+main.o: types.h pathname.h term.h
+main.o: func.h kctype.h
+main.o: kanji.h funcno.h version.h 
+term.o: machine.h term.h
 pathname.o: machine.h pathname.h 
-libc.o: fd.h 
-libc.o: machine.h types.h pathname.h func.h
-libc.o: term.h kctype.h kanji.h
-input.o: fd.h 
-input.o: machine.h types.h pathname.h func.h
-input.o: term.h kctype.h 
-shell.o: fd.h 
-shell.o: machine.h types.h pathname.h func.h
-shell.o: term.h kanji.h
-info.o: fd.h 
-info.o: machine.h types.h pathname.h func.h
-info.o: term.h funcno.h kanji.h
-file.o: fd.h 
-file.o: machine.h types.h pathname.h func.h
-file.o: term.h kanji.h 
-apply.o: fd.h 
-apply.o: machine.h types.h pathname.h func.h
-apply.o: term.h kanji.h 
-archive.o: fd.h 
-archive.o: machine.h types.h pathname.h func.h
-archive.o: term.h funcno.h kanji.h
-tree.o: fd.h 
-tree.o: machine.h types.h pathname.h func.h
-tree.o: term.h 
-command.o: fd.h 
-command.o: machine.h types.h pathname.h func.h
-command.o: term.h funcno.h kanji.h 
+libc.o: fd.h machine.h 
+libc.o: types.h pathname.h term.h
+libc.o: func.h kctype.h
+libc.o: kanji.h 
+input.o: fd.h machine.h 
+input.o: types.h pathname.h
+input.o: term.h func.h 
+input.o: kctype.h 
+shell.o: fd.h machine.h 
+shell.o: types.h pathname.h
+shell.o: term.h func.h 
+shell.o: kanji.h
+info.o: fd.h machine.h 
+info.o: types.h pathname.h term.h
+info.o: funcno.h kanji.h 
+kanji.o: fd.h machine.h 
+kanji.o: types.h pathname.h
+kanji.o: term.h func.h 
+kanji.o: kctype.h 
+file.o: fd.h machine.h 
+file.o: types.h pathname.h term.h
+file.o: func.h kanji.h
+apply.o: fd.h machine.h 
+apply.o: types.h pathname.h
+apply.o: term.h func.h 
+apply.o: kanji.h 
+archive.o: fd.h machine.h 
+archive.o: types.h pathname.h
+archive.o: term.h func.h 
+archive.o: funcno.h kanji.h 
+tree.o: fd.h machine.h 
+tree.o: types.h pathname.h term.h
+tree.o: func.h 
+command.o: fd.h machine.h 
+command.o: types.h pathname.h
+command.o: term.h func.h 
+command.o: funcno.h kanji.h 
 command.o: functable.h
-browse.o: fd.h 
-browse.o: machine.h types.h pathname.h func.h
-browse.o: term.h funcno.h kanji.h 
+browse.o: fd.h machine.h 
+browse.o: types.h pathname.h
+browse.o: term.h func.h 
+browse.o: funcno.h kanji.h 
 kanjicnv.o: machine.h
 checkfs.o: machine.h 
 getkey.o: term.h

@@ -30,6 +30,7 @@
 
 extern int tgetent();
 extern int tgetnum();
+extern int tgetflag();
 extern char *tgetstr();
 extern char *tgoto();
 
@@ -52,8 +53,12 @@ static int realscanf();
 
 short ospeed;
 char PC;
+char *BC;
+char *UP;
 int n_column;
+int n_lastcolumn;
 int n_line;
+int stable_standout;
 char *t_init;
 char *t_end;
 char *t_keypad;
@@ -317,7 +322,9 @@ static int defaultterm()
 {
 	int i;
 
-	n_column = 80;
+	BC = "\010";
+	UP = "\033[A";
+	n_column = n_lastcolumn = 80;
 	n_line = 24;
 	t_keypad = "\033[?1h\033=";
 	t_nokeypad = "\033[?1l\033>";
@@ -341,8 +348,8 @@ static int defaultterm()
 	l_clear = "\033[K";
 	l_insert = "\033[L";
 	l_delete = "\033[M";
-	c_insert = "\033[@";
-	c_delete = "\033[P";
+	c_insert = "";
+	c_delete = "";
 	c_store = "\033[s";
 	c_restore = "\033[u";
 	c_home = "\033[H";
@@ -488,8 +495,16 @@ int getterment()
 	if ((ttyio = open(TTYNAME, O_RDWR)) < 0) ttyio = STDERR;
 
 	defaultterm();
-	n_column = tgetnum("co");
+	cp = "";
+	tgetstr2(&cp, "pc");
+	PC = *cp;
+	tgetstr2(&BC, "bc");
+	tgetstr2(&UP, "up");
+
+	n_column = n_lastcolumn = tgetnum("co");
 	n_line = tgetnum("li");
+	if (!tgetflag("xn")) n_lastcolumn--;
+	stable_standout = tgetflag("xs");
 	tgetstr2(&t_init, "ti");
 	tgetstr2(&t_end, "te");
 	tgetstr2(&t_keypad, "ks");
@@ -547,10 +562,6 @@ int getterment()
 	tgetstr2(&keyseq[K_NPAGE - K_MIN], "kN");
 	sortkeyseq();
 
-	cp = "";
-	tgetstr2(&cp, "pc");
-	PC = *cp;
-
 	termflags |= F_TERMENT;
 }
 
@@ -585,7 +596,7 @@ char *str;
 }
 
 int cprintf(fmt, va_alist)
-unsigned char *fmt;
+char *fmt;
 va_dcl
 {
 	va_list args;
@@ -750,7 +761,10 @@ int xmax, ymax;
 		}
 	}
 
-	if (x > 0) n_column = x;
+	if (x > 0) {
+		n_lastcolumn = (n_lastcolumn < n_column) ? x - 1 : x;
+		n_column = x;
+	}
 	if (y > 0) n_line = y;
 
 	if (n_column < xmax) err2("Column size too small");

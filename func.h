@@ -8,6 +8,12 @@
 extern int errno;
 #endif
 
+#ifdef	USEDIRECT
+#include <sys/dir.h>
+#else
+#include <dirent.h>
+#endif
+
 /* main.c */
 extern VOID error();
 extern VOID usage();
@@ -31,12 +37,13 @@ extern VOID_P realloc2();
 extern char *strdup2();
 extern VOID_P addlist();
 extern int toupper2();
-extern int onkanji1();
-extern u_char *strchr2();
-extern u_char *strrchr2();
+extern char *strchr2();
+extern char *strrchr2();
 extern char *strncpy2();
 extern char *strncpy3();
-extern VOID cputs2();
+#ifdef	NOSTRSTR
+extern char *strstr();
+#endif
 extern int atoi2();
 #ifdef	NOPUTENV
 extern int putenv();
@@ -69,6 +76,13 @@ extern VOID help();
 extern int getblocksize();
 extern int writablefs();
 extern int infofs();
+
+/* kanji.c */
+extern int onkanji1();
+extern char *mesconv();
+extern int kanjiputs();
+extern int kanjiprintf();
+extern int kanjiputs2();
 
 /* file.c */
 extern VOID getstatus();

@@ -78,15 +78,27 @@ typedef struct statfs	statfs_t;
 #include <sys/dir.h>
 #endif
 
+extern char *strdup2();
+extern char *getwd2();
+extern VOID warning();
+extern char *mesconv();
+extern int kanjiputs2();
+
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char fullpath[];
 
-#ifndef	MNTTAB
-#define	MNTTAB		"/etc/fstab"
+#ifndef	MOUNTED
+#define	MOUNTED		"/etc/mtab"
 #endif
 #ifndef	MNTTYPE_NFS
 #define	MNTTYPE_NFS	"nfs"
+#endif
+#ifndef	MNTTYPE_RFS
+#define	MNTTYPE_RFS	"rfs"
+#endif
+#ifndef	MNTTYPE_TMPFS
+#define	MNTTYPE_TMPFS	"tmp"
 #endif
 
 static int code2str();
@@ -200,9 +212,9 @@ int mode;
 
 		cputs("  ");
 		if (c < 2) cprintf("%-7.7s", " ");
-		cputs(buf);
+		kanjiputs(buf);
 		cputs(": ");
-		cputs(funclist[i].hmes);
+		kanjiputs(mesconv(funclist[i].hmes, funclist[i].hmes_eng));
 
 		y = checkline(y);
 	}
@@ -237,7 +249,7 @@ mnt_t *mntbuf;
 		if (chdir(fullpath) < 0) error(fullpath);
 		match = 0;
 
-		fp = setmntent(MNTTAB, "r");
+		fp = setmntent(MOUNTED, "r");
 		while (mntp = getmntent2(fp, mnt)) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)) continue;
@@ -250,7 +262,7 @@ mnt_t *mntbuf;
 		if (!match) return(0);
 		dir = fsname;
 	}
-	fp = setmntent(MNTTAB, "r");
+	fp = setmntent(MOUNTED, "r");
 	while (mntp = getmntent2(fp, mnt))
 		if (!strcmp(dir, mntp -> mnt_fsname)) break;
 	endmntent(fp);
@@ -263,17 +275,13 @@ mnt_t *mntbuf;
 
 int getblocksize()
 {
-#ifdef	DIRBLKSIZ
-        return(DIRBLKSIZ);
-#else
-# ifdef	DEV_BSIZE
+#ifdef	DEV_BSIZE
         return(DEV_BSIZE);
-# else
+#else
 	statfs_t buf;
 
 	if (statfs2(".", &buf) < 0) error(".");
 	return(buf.f_bsize);
-# endif
 #endif
 }
 
@@ -286,7 +294,9 @@ char *path;
 	if (access(path, R_OK | W_OK | X_OK) < 0) return(-1);
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
 	|| hasmntopt(&mntbuf, "ro")
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_NFS)) return(0);
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_NFS)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_RFS)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_TMPFS)) return(0);
 	return(1);
 }
 
@@ -311,7 +321,6 @@ int n, digit;
 	return(buf);
 }
 
-
 static int info1line(y, ind, n, str, unit)
 int y;
 char *ind;
@@ -324,15 +333,15 @@ char *str, *unit;
 	locate(0, y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
-	cprintf("%-20.20s", ind);
+	kanjiprintf("%-20.20s", ind);
 	locate(n_column / 2 + 2, y);
 	if (str) {
 		width = n_column - (n_column / 2 + 2);
-		cputs2(str, width, 0);
+		kanjiputs2(str, width, 0);
 	}
 	else {
 		cprintf("%12.12s", inscomma(buf, n, 3));
-		cprintf(" %s", unit);
+		kanjiprintf(" %s", unit);
 	}
 	return(checkline(++y));
 }

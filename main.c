@@ -6,14 +6,18 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "kctype.h"
 #include "kanji.h"
 #include "funcno.h"
 #include "version.h"
 
 #include <signal.h>
-#include <time.h>
 #include <sys/time.h>
+
+#ifdef	USETIMEH
+#include <time.h>
+#endif
 
 extern launchtable launchlist[];
 extern int maxlaunch;
@@ -120,8 +124,9 @@ VOID title()
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
-	cputs2(cp, eol - cp, 0);
-	cputs2("  (c)1995 T.Shirai  ", n_column - 34 - (eol - cp), 0);
+	cprintf("%-*.*s", eol - cp, eol - cp, cp);
+	cprintf("%-*.*s", n_column - 34 - (eol - cp),
+		n_column - 34 - (eol - cp), "  (c)1995 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 	printtime();
@@ -188,6 +193,7 @@ char *str;
 		if (cp > str) *cp = '\0';
 		else str = NULL;
 	}
+	if (str && *str == '$') str = getenv2(++str);
 	return(str);
 }
 
@@ -346,12 +352,7 @@ char *line;
 {
 	char *cp, *tmp;
 
-	if (isupper(*line)) {
-		if (setenv2(line, getenvval(line), 1) < 0) error(line);
-	}
-	else if (*line == '"') getlaunch(line);
-	else if (*line == '\'') getkeybind(line + 1);
-	else if (!strncmp(line, "export", 6)) {
+	if (!strncmp(line, "export", 6)) {
 		tmp = skipspace(line + 6);
 #ifdef	USESETENV
 		if (!(cp = getenvval(tmp))) unsetenv(tmp);
@@ -364,6 +365,11 @@ char *line;
 		if (putenv(cp)) error(cp);
 #endif
 	}
+	else if (isalpha(*line) || *line == '_') {
+		if (setenv2(line, getenvval(line), 1) < 0) error(line);
+	}
+	else if (*line == '"') getlaunch(line);
+	else if (*line == '\'') getkeybind(line + 1);
 	else return(-1);
 	return(0);
 }
@@ -403,12 +409,12 @@ int printmacro()
 		else cprintf("'%c'\t", bindlist[i].key);
 		if (bindlist[i].f_func <= NO_OPERATION)
 			cputs(funclist[bindlist[i].f_func].ident);
-		else cprintf("\"%s\"",
+		else kanjiprintf("\"%s\"",
 			macrolist[bindlist[i].f_func - NO_OPERATION - 1]);
 		if (bindlist[i].d_func < 0);
 		else if (bindlist[i].d_func <= NO_OPERATION)
 			cprintf("\t%s", funclist[bindlist[i].d_func].ident);
-		else cprintf("\t\"%s\"",
+		else kanjiprintf("\t\"%s\"",
 			macrolist[bindlist[i].d_func - NO_OPERATION - 1]);
 		cputs("\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
@@ -439,7 +445,9 @@ int printlaunch()
 	for (i = 0; i < maxlaunch; i++) {
 		putch('"');
 		printext(launchlist[i].ext);
-		cprintf("\"\t\"%s\"\r\n", launchlist[i].comm);
+		kanjiprintf("\"\t\"%s\"", launchlist[i].comm);
+		if (launchlist[i].topskip >= 0) cputs(" (Arch)");
+		cputs("\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
 	return(n);
@@ -454,8 +462,8 @@ int printarch()
 	for (i = 0; i < maxarchive; i++) {
 		putch('"');
 		printext(archivelist[i].ext);
-		cprintf("\"\tA \"%s\"", archivelist[i].p_comm);
-		cprintf("\t\"%s\"\r\n", archivelist[i].u_comm);
+		kanjiprintf("\"\tA \"%s\"", archivelist[i].p_comm);
+		kanjiprintf("\t\"%s\"\r\n", archivelist[i].u_comm);
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
 	return(n);
