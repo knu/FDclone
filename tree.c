@@ -13,7 +13,11 @@
 #include <sys/param.h>
 
 extern char fullpath[];
+extern char *archivefile;
+extern char **path_history;
 extern int subwindow;
+extern int sorton;
+extern int sorttree;
 extern int dircountlimit;
 
 /* #define	DEBUG */
@@ -178,6 +182,7 @@ int *maxp, *maxentp;
 		}
 	}
 	closedir(dirp);
+	if (sorttree && sorton) qsort(list, *maxp, sizeof(treelist), cmptree);
 
 	if (*path == '/') {
 		if (chdir(fullpath) < 0) error(fullpath);
@@ -331,7 +336,10 @@ char *path;
 			if (!strcmp(lp -> name, lptmp[i].name)) break;
 		if (i < list -> max) {
 			free(lptmp[i].name);
-			memcpy(&lptmp[i], &lptmp[0], sizeof(treelist));
+			for (; i > 0; i--) {
+				memcpy(&lptmp[i], &lptmp[i - 1],
+					sizeof(treelist));
+			}
 			memcpy(&lptmp[0], lp, sizeof(treelist));
 		}
 		free(lp);
@@ -436,7 +444,8 @@ int max;
 	free(list);
 }
 
-char *tree()
+char *tree(cleanup)
+int cleanup;
 {
 	treelist *list, *lp, *olp, *lptmp;
 	char *cp, path[MAXPATHLEN + 1];
@@ -645,5 +654,10 @@ char *tree()
 	free(cp);
 	freetree(list, 1);
 	if (ch == ESC) return(NULL);
+	path_history = entryhist(path_history, path);
+	if (cleanup) {
+		if (archivefile) rewritearc();
+		rewritefile();
+	}
 	return(strdup2(path));
 }

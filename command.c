@@ -27,6 +27,7 @@ extern char fullpath[];
 extern char *archivefile;
 extern char *destpath;
 extern int writefs;
+extern int savehist;
 
 #ifndef	PAGER
 static VOID dump();
@@ -95,97 +96,97 @@ reg_t *findregexp = NULL;
 char **sh_history = NULL;
 char **path_history = NULL;
 bindtable bindlist[MAXBINDTABLE] = {
-	{K_UP,		CUR_UP,		-1},
-	{K_DOWN,	CUR_DOWN,	-1},
-	{K_RIGHT,	CUR_RIGHT,	-1},
-	{K_LEFT,	CUR_LEFT,	-1},
-	{K_NPAGE,	ROLL_UP,	-1},
-	{K_PPAGE,	ROLL_DOWN,	-1},
-	{K_F(1),	LOG_DIR,	-1},
-	{K_F(2),	EXECUTE_FILE,	-1},
-	{K_F(3),	COPY_FILE,	-1},
-	{K_F(4),	DELETE_FILE,	-1},
-	{K_F(5),	RENAME_FILE,	-1},
-	{K_F(6),	SORT_DIR,	-1},
-	{K_F(7),	FIND_FILE,	-1},
-	{K_F(8),	TREE_DIR,	-1},
-	{K_F(9),	EDIT_FILE,	-1},
-	{K_F(10),	UNPACK_FILE,	-1},
-	{K_F(11),	ATTR_FILE,	-1},
-	{K_F(12),	INFO_FILESYS,	-1},
-	{K_F(13),	MOVE_FILE,	-1},
-	{K_F(14),	DELETE_DIR,	-1},
-	{K_F(15),	MAKE_DIR,	-1},
-	{K_F(16),	EXECUTE_SH,	-1},
-	{K_F(17),	WRITE_DIR,	-1},
-	{K_F(18),	BACKUP_TAPE,	-1},
-	{K_F(19),	VIEW_FILE,	-1},
-	{K_F(20),	PACK_FILE,	-1},
+	{K_UP,		CUR_UP,		255},
+	{K_DOWN,	CUR_DOWN,	255},
+	{K_RIGHT,	CUR_RIGHT,	255},
+	{K_LEFT,	CUR_LEFT,	255},
+	{K_NPAGE,	ROLL_UP,	255},
+	{K_PPAGE,	ROLL_DOWN,	255},
+	{K_F(1),	LOG_DIR,	255},
+	{K_F(2),	EXECUTE_FILE,	255},
+	{K_F(3),	COPY_FILE,	255},
+	{K_F(4),	DELETE_FILE,	255},
+	{K_F(5),	RENAME_FILE,	255},
+	{K_F(6),	SORT_DIR,	255},
+	{K_F(7),	FIND_FILE,	255},
+	{K_F(8),	TREE_DIR,	255},
+	{K_F(9),	EDIT_FILE,	255},
+	{K_F(10),	UNPACK_FILE,	255},
+	{K_F(11),	ATTR_FILE,	255},
+	{K_F(12),	INFO_FILESYS,	255},
+	{K_F(13),	MOVE_FILE,	255},
+	{K_F(14),	DELETE_DIR,	255},
+	{K_F(15),	MAKE_DIR,	255},
+	{K_F(16),	EXECUTE_SH,	255},
+	{K_F(17),	WRITE_DIR,	255},
+	{K_F(18),	BACKUP_TAPE,	255},
+	{K_F(19),	VIEW_FILE,	255},
+	{K_F(20),	PACK_FILE,	255},
 	{CR,		LAUNCH_FILE,	IN_DIR},
-	{K_BS,		OUT_DIR,	-1},
-	{K_DC,		PUSH_FILE,	-1},
-	{K_IC,		POP_FILE,	-1},
-	{'\t',		MARK_FILE,	-1},
-	{ESC,		QUIT_SYSTEM,	-1},
+	{K_BS,		OUT_DIR,	255},
+	{K_DC,		PUSH_FILE,	255},
+	{K_IC,		POP_FILE,	255},
+	{'\t',		MARK_FILE,	255},
+	{ESC,		QUIT_SYSTEM,	255},
 
-	{'<',		CUR_TOP,	-1},
-	{'>',		CUR_BOTTOM,	-1},
-	{'1',		ONE_COLUMN,	-1},
-	{'2',		TWO_COLUMNS,	-1},
-	{'3',		THREE_COLUMNS,	-1},
-	{'5',		FIVE_COLUMNS,	-1},
-	{'(',		FNAME_RIGHT,	-1},
-	{')',		FNAME_LEFT,	-1},
-	{' ',		MARK_FILE2,	-1},
-	{'+',		MARK_ALL,	-1},
-	{'*',		MARK_FIND,	-1},
-	{']',		PUSH_FILE,	-1},
-	{'[',		POP_FILE,	-1},
-	{'?',		HELP_MESSAGE,	-1},
+	{'<',		CUR_TOP,	255},
+	{'>',		CUR_BOTTOM,	255},
+	{'1',		ONE_COLUMN,	255},
+	{'2',		TWO_COLUMNS,	255},
+	{'3',		THREE_COLUMNS,	255},
+	{'5',		FIVE_COLUMNS,	255},
+	{'(',		FNAME_RIGHT,	255},
+	{')',		FNAME_LEFT,	255},
+	{' ',		MARK_FILE2,	255},
+	{'+',		MARK_ALL,	255},
+	{'*',		MARK_FIND,	255},
+	{']',		PUSH_FILE,	255},
+	{'[',		POP_FILE,	255},
+	{'?',		HELP_MESSAGE,	255},
 
-	{'a',		ATTR_FILE,	-1},
-	{'b',		BACKUP_TAPE,	-1},
-	{'c',		COPY_FILE,	-1},
-	{'d',		DELETE_FILE,	-1},
-	{'e',		EDIT_FILE,	-1},
-	{'f',		FIND_FILE,	-1},
-	{'h',		EXECUTE_SH,	-1},
-	{'i',		INFO_FILESYS,	-1},
-	{'k',		MAKE_DIR,	-1},
-	{'l',		LOG_DIR,	-1},
-	{'\\',		LOG_TOP,	-1},
-	{'m',		MOVE_FILE,	-1},
-	{'p',		PACK_FILE,	-1},
-	{'q',		QUIT_SYSTEM,	-1},
-	{'r',		RENAME_FILE,	-1},
-	{'s',		SORT_DIR,	-1},
-	{'t',		TREE_DIR,	-1},
-	{'u',		UNPACK_FILE,	-1},
-	{'v',		VIEW_FILE,	-1},
-	{'w',		WRITE_DIR,	-1},
-	{'x',		EXECUTE_FILE,	-1},
-	{'C',		COPY_TREE,	-1},
-	{'D',		DELETE_DIR,	-1},
-	{'F',		FIND_DIR,	-1},
-	{'H',		DOTFILE_MODE,	-1},
-	{'L',		LOG_TREE,	-1},
-	{'M',		MOVE_TREE,	-1},
-	{'Q',		QUIT_SYSTEM,	-1},
-	{'S',		SYMLINK_MODE,	-1},
-	{'T',		FILETYPE_MODE,	-1},
-	{'U',		UNPACK_TREE,	-1},
-	{CTRL_A,	CUR_TOP,	-1},
-	{CTRL_B,	CUR_LEFT,	-1},
-	{CTRL_C,	ROLL_UP,	-1},
-	{CTRL_E,	CUR_BOTTOM,	-1},
-	{CTRL_F,	CUR_RIGHT,	-1},
-	{CTRL_L,	REREAD_DIR,	-1},
-	{CTRL_N,	CUR_DOWN,	-1},
-	{CTRL_P,	CUR_UP,		-1},
-	{CTRL_R,	ROLL_DOWN,	-1},
-	{CTRL_V,	ROLL_UP,	-1},
-	{CTRL_Y,	ROLL_DOWN,	-1},
-	{-1,		NO_OPERATION,	-1}
+	{'a',		ATTR_FILE,	255},
+	{'b',		BACKUP_TAPE,	255},
+	{'c',		COPY_FILE,	255},
+	{'d',		DELETE_FILE,	255},
+	{'e',		EDIT_FILE,	255},
+	{'f',		FIND_FILE,	255},
+	{'h',		EXECUTE_SH,	255},
+	{'i',		INFO_FILESYS,	255},
+	{'k',		MAKE_DIR,	255},
+	{'l',		LOG_DIR,	255},
+	{'\\',		LOG_TOP,	255},
+	{'m',		MOVE_FILE,	255},
+	{'p',		PACK_FILE,	255},
+	{'q',		QUIT_SYSTEM,	255},
+	{'r',		RENAME_FILE,	255},
+	{'s',		SORT_DIR,	255},
+	{'t',		TREE_DIR,	255},
+	{'u',		UNPACK_FILE,	255},
+	{'v',		VIEW_FILE,	255},
+	{'w',		WRITE_DIR,	255},
+	{'x',		EXECUTE_FILE,	255},
+	{'C',		COPY_TREE,	255},
+	{'D',		DELETE_DIR,	255},
+	{'F',		FIND_DIR,	255},
+	{'H',		DOTFILE_MODE,	255},
+	{'L',		LOG_TREE,	255},
+	{'M',		MOVE_TREE,	255},
+	{'Q',		QUIT_SYSTEM,	255},
+	{'S',		SYMLINK_MODE,	255},
+	{'T',		FILETYPE_MODE,	255},
+	{'U',		UNPACK_TREE,	255},
+	{CTRL_A,	CUR_TOP,	255},
+	{CTRL_B,	CUR_LEFT,	255},
+	{CTRL_C,	ROLL_UP,	255},
+	{CTRL_E,	CUR_BOTTOM,	255},
+	{CTRL_F,	CUR_RIGHT,	255},
+	{CTRL_L,	REREAD_DIR,	255},
+	{CTRL_N,	CUR_DOWN,	255},
+	{CTRL_P,	CUR_UP,		255},
+	{CTRL_R,	ROLL_DOWN,	255},
+	{CTRL_V,	ROLL_UP,	255},
+	{CTRL_Y,	ROLL_DOWN,	255},
+	{-1,		NO_OPERATION,	255}
 };
 
 
@@ -346,7 +347,7 @@ int *maxp;
 		|| (list[filepos].st_mode & S_IFMT) == S_IFIFO
 		|| access(list[filepos].name, X_OK) >= 0)) i--;
 	}
-	if (fnameofs >= strlen(list[filepos].name) - i) return(0);
+	if (fnameofs + i >= strlen(list[filepos].name)) return(0);
 	fnameofs++;
 	return(2);
 }
@@ -410,7 +411,7 @@ int *maxp;
 		return(1);
 	}
 
-	cp = cnvregexp(wild);
+	cp = cnvregexp(wild, 1);
 	re = regexp_init(cp);
 	free(wild);
 	free(cp);
@@ -519,11 +520,14 @@ static int log_top(list, maxp)
 namelist *list;
 int *maxp;
 {
-	if (chdir2("/") < 0) error("/");
+	char *path;
+
+	path = strdup2("/");
+	if (chdir2(path) < 0) error(path);
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
 	free(list[filepos].name);
-	list[filepos].name = strdup2("..");
+	list[filepos].name = path;
 	return(4);
 }
 
@@ -700,6 +704,10 @@ namelist *list;
 int *maxp;
 {
 	if (!archivefile && !yesno(QUIT_K)) return(1);
+	if (savehist > 0) {
+		savehistory(sh_history, HISTORYFILE);
+		savehistory(path_history, PATHHISTFILE);
+	}
 	return(-1);
 }
 
@@ -852,7 +860,7 @@ int *maxp;
 		return(1);
 	}
 	destpath = NULL;
-	cp = cnvregexp(wild);
+	cp = cnvregexp(wild, 1);
 	findregexp = regexp_init(cp);
 	free(wild);
 	free(cp);
@@ -892,7 +900,7 @@ int *maxp;
 		echo2();
 		nl2();
 		kanjiputs(SHEXT_K);
-		system(com);
+		system2(com);
 		raw2();
 		noecho2();
 		nonl2();
@@ -901,8 +909,7 @@ int *maxp;
 		putterms(t_init);
 	}
 	else {
-		if (*com == '!') execinternal(com + 1);
-		else execmacro(com, list[filepos].name, list, *maxp, 0, 1);
+		execmacro(com, list[filepos].name, list, *maxp, 0, 1);
 		free(com);
 	}
 	return(4);
@@ -1062,7 +1069,7 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = tree())) return(3);
+	if (!(path = tree(0))) return(3);
 	if (chdir2(path) < 0) {
 		warning(-1, path);
 		free(path);

@@ -25,9 +25,13 @@ extern archivetable archivelist[];
 extern int maxarchive;
 extern char *macrolist[];
 extern int maxmacro;
+extern aliastable aliaslist[];
+extern int maxalias;
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char *archivefile;
+extern char **sh_history;
+extern char **path_history;
 extern int subwindow;
 extern int columns;
 extern int dispmode;
@@ -52,17 +56,21 @@ static char *skipspace();
 static char *geteostr();
 static char *getrange();
 static char *getenvval();
-static VOID getlaunch();
+static int getlaunch();
 static int getcommand();
-static VOID getkeybind();
-static VOID loadruncom();
+static int getkeybind();
+static int getalias();
+static int unalias();
+static int loadruncom();
 static VOID printext();
 static int getoption();
 
 int sorttype;
+int sorttree;
 int writefs;
 int minfilename;
 int histsize;
+int savehist;
 int dircountlimit;
 char *deftmpdir;
 char *language;
@@ -166,9 +174,10 @@ static char *geteostr(cp)
 char **cp;
 {
 	char *tmp;
+	int c;
 
-	if (**cp == '"') {
-		for (tmp = ++(*cp); tmp = strchr(tmp, '"'); tmp++) {
+	if ((c = **cp) == '"' || c == '\'') {
+		for (tmp = ++(*cp); tmp = strchr(tmp, c); tmp++) {
 			if (*(tmp - 1) != '\\') return(tmp);
 		}
 	}
@@ -176,13 +185,15 @@ char **cp;
 }
 
 static char *getrange(cp, fp, dp, wp)
-char *cp, *fp, *dp;
-u_char *wp;
+char *cp;
+u_char *fp, *dp, *wp;
 {
+	int i;
+
 	*fp = *wp = 0;
 	*dp = '\0';
 
-	if (*cp >= '0' && *cp <= '9') *fp = atoi(cp) - 1;
+	if (*cp >= '0' && *cp <= '9') *fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
 	while (*cp >= '0' && *cp <= '9') cp++;
 
 	if (*cp == '\'') {
@@ -193,7 +204,7 @@ u_char *wp;
 	if (*cp == '-') {
 		cp++;
 		if (*cp >= '0' && *cp <= '9') *wp = atoi(cp) + 128;
-		else if (*cp == '\'') *wp = *(++cp);
+		else if (*cp == '\'') *wp = (*(++cp)) % 128;
 	}
 	return(cp);
 }
@@ -212,15 +223,15 @@ char *str;
 	str = cp;
 	if (str) {
 		str = skipspace(str);
+		if (!*str) return(NULL);
 		cp = geteostr(&str);
-		if (cp > str) *cp = '\0';
-		else str = NULL;
+		*cp = '\0';
 	}
 	if (str && *str == '$') str = getenv2(++str);
 	return(str);
 }
 
-static VOID getlaunch(line)
+static int getlaunch(line)
 char *line;
 {
 	char *cp, *tmp, *ext, *eol;
@@ -231,7 +242,7 @@ char *line;
 
 	tmp = geteostr(&cp);
 	*tmp = '\0';
-	if (tmp >= eol) return;
+	if (tmp >= eol) return(-1);
 	if (*cp == '*') ext = cnvregexp(cp);
 	else {
 		cp = cnvregexp(cp);
@@ -245,19 +256,33 @@ char *line;
 	if (*tmp == 'A') {
 		for (n = 0; n < maxarchive; n++)
 			if (!strcmp(archivelist[n].ext, ext)) break;
-		if (n == maxarchive) {
-			if (maxarchive >= MAXARCHIVETABLE) return;
-			else maxarchive++;
+		if (n < maxarchive) {
+			free(archivelist[n].ext);
+			free(archivelist[n].p_comm);
+			if (archivelist[n].u_comm) free(archivelist[n].u_comm);
+		}
+		else if (maxarchive < MAXARCHIVETABLE) maxarchive++;
+		else {
+			free(ext);
+			return(-1);
+		}
+
+		if (!*(cp = skipspace(++tmp))) {
+			maxarchive--;
+			for (; n < maxarchive; n++)
+				memcpy(&archivelist[n], &archivelist[n + 1],
+					sizeof(archivetable));
+			free(ext);
+			return(0);
 		}
 
 		archivelist[n].ext = ext;
-		cp = skipspace(++tmp);
 		tmp = geteostr(&cp);
 		*tmp = '\0';
 		archivelist[n].p_comm = strdup2(cp);
 
 		if (tmp >= eol || (cp = skipspace(++tmp)) >= eol)
-			archivelist[n].p_comm = NULL;
+			archivelist[n].u_comm = NULL;
 		else {
 			tmp = geteostr(&cp);
 			*tmp = '\0';
@@ -267,31 +292,44 @@ char *line;
 	else {
 		for (n = 0; n < maxlaunch; n++)
 			if (!strcmp(launchlist[n].ext, ext)) break;
-		if (n == maxlaunch) {
-			if (maxlaunch >= MAXLAUNCHTABLE) return;
-			else maxlaunch++;
+		if (n < maxlaunch) {
+			free(launchlist[n].ext);
+			free(launchlist[n].comm);
+		}
+		else if (maxlaunch < MAXLAUNCHTABLE) maxlaunch++;
+		else {
+			free(ext);
+			return(-1);
+		}
+
+		if (!*(cp = tmp)) {
+			maxlaunch--;
+			for (; n < maxlaunch; n++)
+				memcpy(&launchlist[n], &launchlist[n + 1],
+					sizeof(launchtable));
+			free(ext);
+			return(0);
 		}
 
 		launchlist[n].ext = ext;
-		cp = tmp;
 		tmp = geteostr(&cp);
 		*tmp = '\0';
 		launchlist[n].comm = strdup2(cp);
 		cp = skipspace(++tmp);
-		if (!*cp) launchlist[n].topskip = -1;
+		if (!*cp) launchlist[n].topskip = 255;
 		else {
 			launchlist[n].topskip = atoi(cp);
 			if (!(tmp = strchr(cp, ','))) {
-				launchlist[n].topskip = -1;
-				return;
+				launchlist[n].topskip = 255;
+				return(0);
 			}
 			cp = skipspace(++tmp);
 			launchlist[n].bottomskip = atoi(cp);
 			ch = ':';
 			for (i = 0; i < MAXLAUNCHFIELD; i++) {
 				if (!(tmp = strchr(cp, ch))) {
-					launchlist[n].topskip = -1;
-					return;
+					launchlist[n].topskip = 255;
+					return(0);
 				}
 				cp = skipspace(++tmp);
 				cp = getrange(cp,
@@ -304,12 +342,14 @@ char *line;
 			for (i = 0; i < MAXLAUNCHSEP; i++) {
 				if (!(tmp = strchr(cp, ch))) break;
 				cp = skipspace(++tmp);
-				launchlist[n].sep[i] = atoi(cp) - 1;
+				launchlist[n].sep[i] =
+					((ch = atoi(cp)) >= 0) ? ch - 1 : 255;
 				ch = ',';
 			}
 			for (; i < MAXLAUNCHSEP; i++) launchlist[n].sep[i] = -1;
 		}
 	}
+	return(0);
 }
 
 static int getcommand(cp)
@@ -338,7 +378,7 @@ char **cp;
 	return(n);
 }
 
-static VOID getkeybind(line)
+static int getkeybind(line)
 char *line;
 {
 	char *cp, *eol;
@@ -352,22 +392,104 @@ char *line;
 	if (*cp == '\'') cp++;
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-		if (ch == bindlist[i].key) break;
-	if (i >= MAXBINDTABLE - 1) return;
+		if (ch == (int)(bindlist[i].key)) break;
+	if (i >= MAXBINDTABLE - 1) return(-1);
 	if (bindlist[i].key < 0)
 		memcpy(&bindlist[i + 1], &bindlist[i], sizeof(bindtable));
+	else {
+		n1 = (int)(bindlist[i].f_func) - NO_OPERATION;
+		n2 = (int)(bindlist[i].d_func) - NO_OPERATION;
+		bindlist[i].f_func = bindlist[i].d_func = NO_OPERATION;
+		if (n1 >= 0) {
+			free(macrolist[n1]);
+			maxmacro--;
+			for (; n1 < maxmacro; n1++)
+				memcpy(&macrolist[n1], &macrolist[n1 + 1],
+					sizeof(char *));
+		}
+		if (n2 >= 0) {
+			free(macrolist[n2]);
+			maxmacro--;
+			for (; n2 < maxmacro; n2++)
+				memcpy(&macrolist[n2], &macrolist[n2 + 1],
+					sizeof(char *));
+		}
+	}
 
-	cp = skipspace(cp);
-	if ((n1 = getcommand(&cp)) < 0) return;
+	if (!*(cp = skipspace(cp))) {
+		for (; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
+			memcpy(&bindlist[i], &bindlist[i + 1],
+				sizeof(bindtable));
+		return(0);
+	}
+	if ((n1 = getcommand(&cp)) < 0) return(-1);
 	if (cp < eol) {
 		cp = skipspace(cp + 1);
 		n2 = getcommand(&cp);
 	}
 	else n2 = -1;
 
-	bindlist[i].key = ch;
-	bindlist[i].f_func = n1;
-	bindlist[i].d_func = n2;
+	bindlist[i].key = (short)ch;
+	bindlist[i].f_func = (u_char)n1;
+	bindlist[i].d_func = (u_char)n2;
+	return(0);
+}
+
+static int getalias(line)
+char *line;
+{
+	char *cp, *tmp;
+	int i;
+
+	cp = line;
+
+	if (!isalpha(*cp) && *cp != '_') return(-1);
+	for (cp++; isalnum(*cp) || *cp == '_'; cp++);
+	if (!strchr(" \t=", *cp)) return(-1);
+	*cp = '\0';
+	cp = skipspace(cp + 1);
+	if (*cp == '=') cp = skipspace(cp + 1);
+
+	tmp = geteostr(&cp);
+	*tmp = '\0';
+	for (i = 0; i < maxalias; i++)
+		if (!strcmp(aliaslist[i].alias, line)) break;
+	if (!*cp) {
+		if (i < maxalias) kanjiprintf("%s\r\n", aliaslist[i].comm);
+		return(0);
+	}
+	if (i == maxalias) {
+		if (maxalias >= MAXALIASTABLE) return(-1);
+		else maxalias++;
+	}
+	aliaslist[i].alias = strdup2(line);
+	aliaslist[i].comm = strdup2(cp);
+	return(0);
+}
+
+static int unalias(line)
+char *line;
+{
+	reg_t *re;
+	char *cp;
+	int i, j, n;
+
+	cp = cnvregexp(line);
+	re = regexp_init(cp);
+	free(cp);
+	for (i = 0, n = 0; i < maxalias; i++)
+		if (regexp_exec(re, aliaslist[i].alias)) {
+			free(aliaslist[i].alias);
+			free(aliaslist[i].comm);
+			maxalias--;
+			for (j = i; j < maxalias; j++)
+				memcpy(&aliaslist[j], &aliaslist[j + 1],
+					sizeof(aliastable));
+			i--;
+			n++;
+		}
+	regexp_free(re);
+	return((n) ? 0 : -1);
 }
 
 int evalconfigline(line)
@@ -376,8 +498,9 @@ char *line;
 	char *cp, *tmp;
 	int len;
 
-	if (!strncmp(line, "export", 6)) {
-		tmp = skipspace(line + 6);
+	cp = strpbrk(line, " \t");
+	if (!strncmp(line, "export", 6) && cp == line + 6) {
+		tmp = skipspace(cp + 1);
 #ifdef	USESETENV
 		if (!(cp = getenvval(tmp))) unsetenv(tmp);
 		else if (setenv(tmp, cp, 1) < 0) error(cp);
@@ -390,6 +513,15 @@ char *line;
 		if (putenv2(cp)) error(cp);
 #endif
 	}
+	else if (!strncmp(line, "alias", 5) && cp == line + 5)
+		getalias(skipspace(cp + 1));
+	else if (!strncmp(line, "unalias", 7) && cp == line + 7)
+		unalias(skipspace(cp + 1));
+	else if (!strncmp(line, "source", 6) && cp == line + 6) {
+		tmp = skipspace(cp + 1);
+		if (cp = strpbrk(tmp, " \t")) *cp = '\0';
+		loadruncom(tmp);
+	}
 	else if (isalpha(*line) || *line == '_') {
 		if (setenv2(line, getenvval(line), 1) < 0) error(line);
 	}
@@ -399,26 +531,25 @@ char *line;
 	return(0);
 }
 
-static VOID loadruncom(file)
+static int loadruncom(file)
 char *file;
 {
 	FILE *fp;
 	char *cp, line[MAXLINESTR + 1];
 
-	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++)
-		if (!launchlist[maxlaunch].ext) break;
-	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++)
-		if (!archivelist[maxarchive].ext) break;
-
 	cp = evalpath(strdup2(file));
 	fp = fopen(cp, "r");
 	free(cp);
-	if (!fp) return;
+	if (!fp) return(-1);
 	while (fgets(line, MAXLINESTR, fp)) {
-		if (cp = strchr(line, '\n')) *cp = '\0';
-		if (*line && *line != ';' && *line != '#') evalconfigline(line);
+		if (!(cp = strchr(line, '\n'))) cp = line + strlen(line);
+		for (cp--; cp >= line && (*cp == ' ' || *cp == '\t'); cp--);
+		*(cp + 1) = '\0';
+		if (*line && *line != ';' && *line != '#')
+			evalconfigline(skipspace(line));
 	}
 	fclose(fp);
+	return(0);
 }
 
 int printmacro()
@@ -428,7 +559,8 @@ int printmacro()
 	n = 0;
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
 		if (bindlist[i].f_func <= NO_OPERATION
-		&& bindlist[i].d_func <= NO_OPERATION) continue;
+		&& (bindlist[i].d_func <= NO_OPERATION
+		|| bindlist[i].d_func == 255)) continue;
 		if (bindlist[i].key < ' ')
 			cprintf("'^%c'\t", bindlist[i].key + '@');
 		else cprintf("'%c'\t", bindlist[i].key);
@@ -436,10 +568,9 @@ int printmacro()
 			cputs(funclist[bindlist[i].f_func].ident);
 		else kanjiprintf("\"%s\"",
 			macrolist[bindlist[i].f_func - NO_OPERATION - 1]);
-		if (bindlist[i].d_func < 0);
-		else if (bindlist[i].d_func <= NO_OPERATION)
+		if (bindlist[i].d_func <= NO_OPERATION)
 			cprintf("\t%s", funclist[bindlist[i].d_func].ident);
-		else kanjiprintf("\t\"%s\"",
+		else if (bindlist[i].d_func < 255) kanjiprintf("\t\"%s\"",
 			macrolist[bindlist[i].d_func - NO_OPERATION - 1]);
 		cputs("\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
@@ -453,11 +584,12 @@ char *ext;
 	char *cp;
 
 	for (cp = ext; *cp; cp++) {
-		if (*cp == '.' && *(cp + 1) != '*') putch('?');
-		else {
-			if (strchr(".\\^$", *cp) && !*(++cp)) break;
-			putch(*cp);
+		if (*cp == '\\') {
+			if (!*(++cp)) break;
+			putch((int)(*(u_char *)cp));
 		}
+		else if (*cp == '.' && *(cp + 1) != '*') putch('?');
+		else if (!strchr(".^$", *cp)) putch((int)(*(u_char *)cp));
 	}
 }
 
@@ -471,7 +603,7 @@ int printlaunch()
 		putch('"');
 		printext(launchlist[i].ext);
 		kanjiprintf("\"\t\"%s\"", launchlist[i].comm);
-		if (launchlist[i].topskip >= 0) cputs(" (Arch)");
+		if (launchlist[i].topskip < 255) cputs(" (Arch)");
 		cputs("\r\n");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
@@ -494,17 +626,51 @@ int printarch()
 	return(n);
 }
 
+int printalias()
+{
+	char *cp;
+
+	int i, n;
+
+	n = 0;
+	for (i = 0; i < maxalias; i++) {
+		kanjiprintf("%s\t\"%s\"\r\n",
+			aliaslist[i].alias, aliaslist[i].comm);
+		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
+	}
+	return(n);
+}
+
+int printhist()
+{
+	char *cp;
+
+	int i, n;
+
+	n = 0;
+	for (i = histsize; i >= 1; i--) {
+		if (!sh_history[i]) continue;
+		kanjiprintf("%5d  %s\r\n", n + 1, sh_history[i]);
+		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
+	}
+	return(n);
+}
+
 VOID evalenv()
 {
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
-	if ((sorttype < 0 || sorttype > 12) && sorttype != 99)
-#if ((SORTTYPE < 0) || (SORTTYPE > 12)) && (SORTTYPE != 99)
+	if ((sorttype < 0 || sorttype > 12)
+	&& (sorttype < 100 || sorttype > 112))
+#if ((SORTTYPE < 0) || (SORTTYPE > 12)) \
+&& ((SORTTYPE < 100) || (SORTTYPE > 112))
 		sorttype = 0;
 #else
 		sorttype = SORTTYPE;
 #endif
-	writefs = atoi2(getenv2("FD_WRITEFS"));
+	if ((sorttree = atoi2(getenv2("FD_SORTTREE"))) < 0) sorttree = SORTTREE;
+	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
 	if ((histsize = atoi2(getenv2("FD_HISTSIZE"))) < 0) histsize = HISTSIZE;
+	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0) savehist = SAVEHIST;
 	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
 		minfilename = MINFILENAME;
 	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
@@ -558,6 +724,27 @@ char *argv[];
 	initterm();
 	sigvecset();
 
+	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++)
+		if (!launchlist[maxlaunch].ext) break;
+		else {
+			launchlist[maxlaunch].ext =
+				strdup2(launchlist[maxlaunch].ext);
+			launchlist[maxlaunch].comm =
+				strdup2(launchlist[maxlaunch].comm);
+		}
+	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++)
+		if (!archivelist[maxarchive].ext) break;
+		else {
+			archivelist[maxarchive].ext =
+				strdup2(archivelist[maxarchive].ext);
+			archivelist[maxarchive].p_comm =
+				strdup2(archivelist[maxarchive].p_comm);
+			archivelist[maxarchive].u_comm =
+				strdup2(archivelist[maxarchive].u_comm);
+		}
+	maxalias = 0;
+
+	loadruncom(DEFRUNCOM);
 	loadruncom(RUNCOMFILE);
 	i = getoption(argc, argv);
 	adjustpath();
@@ -589,6 +776,8 @@ char *argv[];
 		nonl2();
 	}
 
+	sh_history = loadhistory(HISTORYFILE);
+	path_history = loadhistory(PATHHISTFILE);
 	putterms(t_clear);
 	title();
 

@@ -63,7 +63,7 @@ char *file;
 int cmplist(listp1, listp2)
 namelist *listp1, *listp2;
 {
-	char *cpi, *cpj;
+	char *cp1, *cp2;
 	int tmp;
 
 	if (!sorton) return(listp1 -> ent - listp2 -> ent);
@@ -84,11 +84,11 @@ namelist *listp1, *listp2;
 			tmp = strcmp(listp1 -> name, listp2 -> name);
 			break;
 		case 2:
-			if (cpi = strrchr(listp1 -> name, '.')) cpi++;
-			else cpi = "";
-			if (cpj = strrchr(listp2 -> name, '.')) cpj++;
-			else cpj = "";
-			tmp = strcmp(cpi, cpj);
+			if (cp1 = strrchr(listp1 -> name, '.')) cp1++;
+			else cp1 = "";
+			if (cp2 = strrchr(listp2 -> name, '.')) cp2++;
+			else cp2 = "";
+			tmp = strcmp(cp1, cp2);
 			break;
 		case 3:
 			tmp = listp1 -> st_size - listp2 -> st_size;
@@ -103,6 +103,36 @@ namelist *listp1, *listp2;
 
 	if (sorton > 7) tmp = -tmp;
 	if (!tmp) tmp = listp1 -> ent - listp2 -> ent;
+	return(tmp);
+}
+
+int cmptree(listp1, listp2)
+treelist *listp1, *listp2;
+{
+	char *cp1, *cp2;
+	int tmp;
+
+	if (!strcmp(listp1 -> name, "...")) return(1);
+	if (!strcmp(listp2 -> name, "...")) return(-1);
+	switch (sorton & 7) {
+		case 1:
+			tmp = strcmp(listp1 -> name, listp2 -> name);
+			break;
+		case 2:
+			if (cp1 = strrchr(listp1 -> name, '.')) cp1++;
+			else cp1 = "";
+			if (cp2 = strrchr(listp2 -> name, '.')) cp2++;
+			else cp2 = "";
+			tmp = strcmp(cp1, cp2);
+			break;
+		case 3:
+		case 4:
+		default:
+			tmp = 0;
+			break;
+	}
+
+	if (sorton > 7) tmp = -tmp;
 	return(tmp);
 }
 
@@ -126,7 +156,7 @@ int underhome()
 	char *cp;
 
 	if (!homedir) {
-		if (!(homedir = getenv("HOME"))) {
+		if (!(homedir = (char *)getenv("HOME"))) {
 			if (pwd = getpwuid(getuid())) homedir = pwd -> pw_dir;
 			else return(-1);
 		}
@@ -178,7 +208,7 @@ int max, tr;
 		putterm(t_bell);
 		return(0);
 	}
-	destpath = (tr) ? tree() : getdistdir(COPYD_K);
+	destpath = (tr) ? tree(1) : getdistdir(COPYD_K);
 	if (!destpath) return((tr) ? 3 : 1);
 	copypolicy = 0;
 	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
@@ -187,14 +217,14 @@ int max, tr;
 	else if (cpfile(list[filepos].name) < 0)
 		warning(-1, list[filepos].name);
 	free(destpath);
-	return(3);
+	return(4);
 }
 
 int movefile(list, max, tr)
 namelist *list;
 int max, tr;
 {
-	destpath = (tr) ? tree() : getdistdir(MOVED_K);
+	destpath = (tr) ? tree(1) : getdistdir(MOVED_K);
 	if (!destpath) return((tr) ? 3 : 1);
 	copypolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
@@ -328,6 +358,11 @@ int max, fs;
 			boundary = 2;
 			dirsize = sizeof(u_long);
 			break;
+		case 3:	/* SystemV R3 File System */
+			headbyte = 0;
+			boundary = 8;
+			dirsize = sizeof(u_short);
+			break;
 		default:
 			headbyte = 0;
 			boundary = 4;
@@ -357,7 +392,7 @@ int max, fs;
 	tflush();
 
 	if (!(dirp = opendir("."))) error(".");
-	i = 0;
+	i = ent = 0;
 	while (dp = readdir(dirp)) {
 		if (!strcmp(dp -> d_name, ".")
 		|| !strcmp(dp -> d_name, "..")) continue;
@@ -398,12 +433,14 @@ int max, fs;
 		|| !strcmp(list[i].name, "..")
 		|| i == top) continue;
 
-#ifndef	SVR3FS
 		ent = persec - totalent;
 		switch (fs) {
 			case 2:	/* IRIX File System */
  				if (totalptr > ptr + 1) ent -= totalptr;
  				else ent -= ptr + 1;
+				break;
+			case 3:	/* SystemV R3 File System */
+				ent = realdirsiz(list[i].name);
 				break;
 			default:
 				break;
@@ -418,7 +455,6 @@ int max, fs;
 			totalent = headbyte;
 			totalptr = entnum[++block];
 		}
-#endif
 		strcpy(path + fnamp, list[i].name);
 		if (rename2(path, list[i].name) < 0) error(path);
 		totalent += realdirsiz(list[i].name);

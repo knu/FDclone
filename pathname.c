@@ -64,7 +64,8 @@ char *path, *eol;
 			if (pwd = getpwnam(buf)) tmp = pwd -> pw_dir;
 			else tmp = NULL;
 		}
-		else if (!(tmp = getenv("HOME")) && (pwd = getpwuid(getuid())))
+		else if (!(tmp = (char *)getenv("HOME"))
+		&& (pwd = getpwuid(getuid())))
 			tmp = pwd -> pw_dir;
 		if (tmp) strcpy(buf, tmp);
 		else {
@@ -135,20 +136,21 @@ char *path;
 	return(cp);
 }
 
-char *cnvregexp(str)
+char *cnvregexp(str, exceptdot)
 char *str;
+int exceptdot;
 {
 	char *cp, *pattern;
 	int i, flag;
 
 	if (!*str) str = "*";
-	if (!(pattern = (char *)malloc(strlen(str) * 2 + 5 + 3))) error(NULL);
+	if (!(pattern = (char *)malloc(strlen(str) * 2 + 6 + 3))) error(NULL);
 	i = 0;
 	pattern[i++] = '^';
 #if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
-	if (*str == '*') {
-		strcpy(&pattern[i], "[^\\.]");
-		i += 5;
+	if (exceptdot && (*str == '*' || *str == '?')) {
+		strcpy(&pattern[i], "[^\\.]*");
+		i += 6;
 	}
 #endif
 	flag = 0;

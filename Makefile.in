@@ -5,6 +5,7 @@
 TITLE	= FD-
 BINDIR	= /usr/local/bin
 MANDIR	= /usr/local/man/ja_JP.SJIS/man1
+DEFRC	= /etc/fdrc
 INSTALL	= cp
 MANSEC	= 1
 
@@ -17,6 +18,7 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
 DOC	= README HISTORY TODO Install
 MANSRC	= fd.man
 MANSEC	= 1
+RUNCOM	= .fdrc
 
 SOURCES	= $(DOC) Makefile Makefile.in $(MANSRC) $(SRC) $(HEADER)\
 	kanji.h.in mkmf.sed.c version.h .fdrc
@@ -28,7 +30,7 @@ OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
 	kanji.o file.o apply.o archive.o tree.o command.o browse.o
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
-CFLAGS	= -DFD __CCOPTIONS__
+CFLAGS	= -DFD -DDEFRUNCOM=\"$(DEFRC)\" __CCOPTIONS__
 
 ############################################################
 #	Dependency Rules
@@ -75,6 +77,9 @@ mkfuncno: mkfuncno.c
 install: $(PROGRAM) $(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM) $(BINDIR)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)/$(PROGRAM).$(MANSEC)
+	if [ -f $(RUNCOM) ]; then \
+		$(INSTALL) $(RUNCOM) $(DEFRC) \
+	fi
 
 
 ############################################################

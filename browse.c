@@ -12,8 +12,9 @@
 
 #include <time.h>
 #include <signal.h>
-#include <sys/stat.h>
+#include <sys/file.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -89,7 +90,7 @@ VOID helpbar()
 		locate(ofs + (width + 1) * i + (i / 5) * 3, LHELP);
 		len = (width - strlen(helpindex[i])) / 2;
 		for (j = 0; j < len; j++) buf[j] = ' ';
-		strncpy2(buf + len, helpindex[i], width);
+		strncpy2(buf + len, helpindex[i], width - len);
 		len = strlen(buf);
 		for (j = len; j < width; j++) buf[j] = ' ';
 		putterm(t_standout);
@@ -502,14 +503,14 @@ int *maxentp;
 
 	maxfile = mark = 0;
 	chgorder = 0;
-	if (sorttype < 99) sorton = sorttype;
+	if (sorttype < 100) sorton = sorttype;
 
 	if (!(dirp = opendir("."))) error(".");
 	fnameofs = 0;
 
 	if (!findpattern) re = NULL;
 	else {
-		cp = cnvregexp(findpattern);
+		cp = cnvregexp(findpattern, 1);
 		re = regexp_init(cp);
 		free(cp);
 	}
@@ -561,9 +562,9 @@ int *maxentp;
 
 		old = filepos;
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-			if (ch == (int)bindlist[i].key) break;
-		no = (bindlist[i].d_func > 0 && isdir(&filelist[filepos])) ?
-			bindlist[i].d_func : bindlist[i].f_func;
+			if (ch == (int)(bindlist[i].key)) break;
+		no = (bindlist[i].d_func < 255 && isdir(&filelist[filepos])) ?
+			(int)(bindlist[i].d_func) : (int)(bindlist[i].f_func);
 		fstat = (no <= NO_OPERATION) ? funclist[no].stat
 			: (KILLSTK | REWRITE);
 
@@ -677,11 +678,7 @@ char *cur;
 	filelist = NULL;
 	maxent = 0;
 	strcpy(file, ".");
-#if (SORTTYPE < 99)
-	sorton = SORTTYPE;
-#else
-	sorton = 0;
-#endif
+	sorton = sorttype % 100;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {

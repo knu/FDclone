@@ -82,8 +82,10 @@ static namelist *arcflist;
 static int maxarcf;
 static int launchlevel = 0;
 
+
 static int countfield(line, sep, field)
-char *line, *sep;
+char *line;
+u_char *sep;
 int field;
 {
 	int i, j, f, s;
@@ -97,9 +99,9 @@ int field;
 			f++;
 			s = 0;
 		}
-		if (sep[j] >= 0 && i >= sep[j]) {
+		if (sep[j] < 255 && i >= (int)(sep[j])) {
 			j++;
-			for (; sep[j] < 0 || i < sep[j]; i++)
+			for (; sep[j] == 255 || i < (int)(sep[j]); i++)
 				if (line[i] != ' ' && line[i] != '\t') break;
 			s = 0;
 			if (f < 0) f = 1;
@@ -113,18 +115,20 @@ int field;
 	return(f);
 }
 
-static char *getfield(buf, line, field, delim, width, sep)
+static char *getfield(buf, line, field, skip, delim, width, sep)
 char *buf, *line;
-int field, delim;
+u_char field;
+int skip, delim;
 u_char width;
-char *sep;
+u_char *sep;
 {
 	char *cp, *end;
 	int i;
 
 	*buf = '\0';
+	skip = (field < 255) ? (int)field - skip : -1;
 
-	if (field < 0 || (i = countfield(line, sep, field)) < 0) return(buf);
+	if (skip < 0 || (i = countfield(line, sep, skip)) < 0) return(buf);
 	cp = &line[i];
 
 	if (delim) {
@@ -161,15 +165,15 @@ int max;
 	i = countfield(line, list -> sep, -1);
 	skip = (max > i) ? max - i : 0;
 
-	getfield(buf, line, list -> field[F_NAME] - skip,
+	getfield(buf, line, list -> field[F_NAME], skip,
 		list -> delim[F_NAME], list -> width[F_NAME], list -> sep);
 	if (!*buf) return(NULL);
 	tmp = (namelist *)malloc2(sizeof(namelist));
 	tmp -> name = strdup2(buf);
 
-	getfield(buf, line, list -> field[F_MODE] - skip,
+	getfield(buf, line, list -> field[F_MODE], skip,
 		list -> delim[F_MODE], list -> width[F_MODE], list -> sep);
-	if ((ofs = strlen(buf) - 9) < 0) ofs = 0;
+	if ((ofs = (int)strlen(buf) - 9) < 0) ofs = 0;
 	tmp -> st_mode = 0;
 	for (i = 0; i < 9; i++) {
 		tmp -> st_mode *= 2;
@@ -178,13 +182,40 @@ int max;
 	if (buf[ofs + 2] == 's') tmp -> st_mode |= S_ISUID;
 	if (buf[ofs + 5] == 's') tmp -> st_mode |= S_ISGID;
 	if (buf[ofs + 8] == 't') tmp -> st_mode |= S_ISVTX;
+	tmp -> flags = 0;
+	if (ofs > 0) {
+		switch (buf[ofs - 1]) {
+			case 'd':
+				tmp -> st_mode |= S_IFDIR;
+				tmp -> flags |= F_ISDIR;
+				break;
+			case 'b':
+				tmp -> st_mode |= S_IFBLK;
+				break;
+			case 'c':
+				tmp -> st_mode |= S_IFCHR;
+				break;
+			case 'l':
+				tmp -> st_mode |= S_IFLNK;
+				tmp -> flags |= F_ISLNK;
+				break;
+			case 's':
+				tmp -> st_mode |= S_IFSOCK;
+				break;
+			case 'p':
+				tmp -> st_mode |= S_IFIFO;
+				break;
+			default:
+				break;
+		}
+	}
 
 	tmp -> st_nlink = 1;
-	tmp -> st_uid = atoi2(getfield(buf, line, list -> field[F_UID] - skip,
+	tmp -> st_uid = atoi2(getfield(buf, line, list -> field[F_UID], skip,
 		list -> delim[F_UID], list -> width[F_UID], list -> sep));
-	tmp -> st_gid = atoi2(getfield(buf, line, list -> field[F_GID] - skip,
+	tmp -> st_gid = atoi2(getfield(buf, line, list -> field[F_GID], skip,
 		list -> delim[F_GID], list -> width[F_GID], list -> sep));
-	tmp -> st_size = atol(getfield(buf, line, list -> field[F_SIZE] - skip,
+	tmp -> st_size = atol(getfield(buf, line, list -> field[F_SIZE], skip,
 		list -> delim[F_SIZE], list -> width[F_SIZE], list -> sep));
 	if (tmp -> st_mode <= 0 && tmp -> st_uid <= 0 && !tmp -> st_gid) {
 		free(tmp -> name);
@@ -192,11 +223,11 @@ int max;
 		return(NULL);
 	}
 
-	getfield(buf, line, list -> field[F_YEAR] - skip,
+	getfield(buf, line, list -> field[F_YEAR], skip,
 		list -> delim[F_YEAR], list -> width[F_YEAR], list -> sep);
 	tm.tm_year = (*buf) ? atoi(buf) : 1970;
 	if (tm.tm_year < 100 && (tm.tm_year += 1900) < 1970) tm.tm_year += 100;
-	getfield(buf, line, list -> field[F_MON] - skip,
+	getfield(buf, line, list -> field[F_MON], skip,
 		list -> delim[F_MON], list -> width[F_MON], list -> sep);
 	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
 	else if (!strncmp(buf, "Feb", 3)) tm.tm_mon = 1;
@@ -211,18 +242,18 @@ int max;
 	else if (!strncmp(buf, "Nov", 3)) tm.tm_mon = 10;
 	else if (!strncmp(buf, "Dec", 3)) tm.tm_mon = 11;
 	else if ((tm.tm_mon = atoi(buf)) > 0) tm.tm_mon--;
-	tm.tm_mday = atoi(getfield(buf, line, list -> field[F_DAY] - skip,
+	tm.tm_mday = atoi(getfield(buf, line, list -> field[F_DAY], skip,
 		list -> delim[F_DAY], list -> width[F_DAY], list -> sep));
 
-	getfield(buf, line, list -> field[F_TIME] - skip,
-		 list -> delim[F_TIME], list -> width[F_TIME], list -> sep);
+	getfield(buf, line, list -> field[F_TIME], skip,
+		list -> delim[F_TIME], list -> width[F_TIME], list -> sep);
 	tm.tm_hour = atoi(buf);
+	if (tm.tm_hour < 0 || tm.tm_hour > 23) tm.tm_hour = 0;
 	cp = strchr(buf, ':');
 	tm.tm_min = (cp) ? atoi(++cp) : 0;
 	tm.tm_sec = (cp && (cp = strchr(cp, ':'))) ? atoi(++cp) : 0;
 
 	tmp -> st_mtim = timelocal2(&tm);
-	tmp -> flags = 0;
 
 	return(tmp);
 }
@@ -263,16 +294,17 @@ int max;
 
 	cp = list -> name;
 	if ((len = strlen(dir)) > 0) {
-		if (strncmp(cp, dir, len) || cp[len] != '/') return(NULL);
-		cp += len + 1;
+		if (strncmp(cp, dir, len) || (cp[len] && cp[len] != '/'))
+			return(NULL);
+		cp += (cp[len]) ? len + 1 : len;
 	}
-	if (!(tmp = strchr(cp, '/'))) {
+	if (!*cp || (!(tmp = strchr(cp, '/')) && !isdir(list))) {
 		if (!*dir) return(NULL);
 		for (i = 0; i < max; i++) if (!strcmp(dlist[i], ".."))
 			return(NULL);
 		return(strdup2(".."));
 	}
-	len = tmp - cp;
+	len = (tmp) ? tmp - cp : strlen(cp);
 	for (i = 0; i < max; i++) if (!strncmp(dlist[i], cp, len)) return(NULL);
 	tmp = (char *)malloc2(len + 1);
 	strncpy2(tmp, cp, len);
@@ -291,7 +323,7 @@ namelist *list;
 		if (strncmp(cp, dir, len) || cp[len] != '/') return(NULL);
 		cp += len + 1;
 	}
-	if (!*cp || (tmp = strchr(cp, '/'))) return(NULL);
+	if (!*cp || isdir(list) || (tmp = strchr(cp, '/'))) return(NULL);
 	return(strdup2(cp));
 }
 
@@ -320,11 +352,11 @@ int *maxarcentp;
 	char *cp, line[MAXLINESTR + 1];
 	int ch, i, no, old, max, dmax, dmaxent;
 
-	if (!(cp = evalcommand(list -> comm, archivefile, NULL, 0, 0))) {
+	if (!(cp = evalcommand(list -> comm, archivefile, NULL, 0, NULL))) {
 		warning(E2BIG, list -> comm);
 		return(-1);
 	}
-	fp = popen(cp + 2, "r");
+	fp = popen(cp, "r");
 	free(cp);
 	locate(0, LMESLINE);
 	putterm(l_clear);
@@ -333,16 +365,16 @@ int *maxarcentp;
 
 	max = 0;
 	for (i = 0; i < MAXLAUNCHFIELD; i++)
-		if (list -> field[i] >= 0 && list -> field[i] > max)
-			max = list -> field[i];
+		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
+			max = (int)(list -> field[i]);
 
 	if (!findpattern) re = NULL;
 	else {
-		cp = cnvregexp(findpattern);
+		cp = cnvregexp(findpattern, 1);
 		re = regexp_init(cp);
 		free(cp);
 	}
-	for (i = 0; i < list -> topskip; i++)
+	for (i = 0; i < (int)(list -> topskip); i++)
 		if (!fgets(line, MAXLINESTR, fp)) break;
 
 	maxarcf = no = dmax = dmaxent = 0;
@@ -385,9 +417,10 @@ int *maxarcentp;
 	}
 	pclose(fp);
 	if (re) regexp_free(re);
-	for (i = 0; i < list -> bottomskip; i++) {
+	for (i = 0; i < (int)(list -> bottomskip); i++) {
 		if (maxarcf < 1
-		|| arcflist[maxarcf - 1].ent <= no - list -> bottomskip) break;
+		|| arcflist[maxarcf - 1].ent <= no - (int)(list -> bottomskip))
+			break;
 		free(arcflist[--maxarcf].name);
 	}
 	for (i = 0; i < maxarcf; i++) arcflist[i].ent = i;
@@ -422,9 +455,9 @@ int *maxarcentp;
 
 		old = filepos;
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-			if (ch == (int)bindlist[i].key) break;
-		no = (bindlist[i].d_func > 0 && isdir(&arcflist[filepos])) ?
-			bindlist[i].d_func : bindlist[i].f_func;
+			if (ch == (int)(bindlist[i].key)) break;
+		no = (bindlist[i].d_func < 255 && isdir(&arcflist[filepos])) ?
+			(int)(bindlist[i].d_func) : (int)(bindlist[i].f_func);
 		if (no > NO_OPERATION) continue;
 		fstat = funclist[no].stat;
 		if (!(fstat & ARCH) || (maxarcf <= 0 && !(fstat & NO_FILE)))
@@ -490,7 +523,7 @@ int max;
 		putterm(t_bell);
 		return(1);
 	}
-	if (launchlist[i].topskip < 0) {
+	if (launchlist[i].topskip == 255) {
 		execmacro(launchlist[i].comm, list[filepos].name,
 			NULL, 0, 1, 0);
 		if (archivefile) removetmp(dir, list[filepos].name);
@@ -554,7 +587,7 @@ int max;
 
 	for (i = 0; i < maxarchive; i++) {
 		re = regexp_init(archivelist[i].ext);
-		if (regexp_exec(re, arc)) break;
+		if (regexp_exec(re, arc) && archivelist[i].p_comm) break;
 		regexp_free(re);
 	}
 	if (i >= maxarchive) return(-1);
@@ -579,7 +612,7 @@ int max, tr;
 
 	for (i = 0; i < maxarchive; i++) {
 		re = regexp_init(archivelist[i].ext);
-		if (regexp_exec(re, arc)) break;
+		if (regexp_exec(re, arc) && archivelist[i].u_comm) break;
 		regexp_free(re);
 	}
 	if (i >= maxarchive) return(-1);
@@ -587,7 +620,7 @@ int max, tr;
 
 	if (dir) strcpy(path, dir);
 	else {
-		if (tr) dir = tree();
+		if (tr) dir = tree(0);
 		else {
 			dir = inputstr2(UNPAC_K, -1, NULL, path_history);
 			path_history = entryhist(path_history, path);
@@ -625,7 +658,9 @@ int max;
 	char *cp, path[MAXPATHLEN + 1];
 	int i, dupmark;
 
-	sprintf(path, "%s/fd%d.%d", deftmpdir, getpid(), launchlevel);
+	cp = evalpath(deftmpdir);
+	sprintf(path, "%s/fd%d.%d", cp, getpid(), launchlevel);
+	free(cp);
 	if (mkdir(path, 0777) < 0) {
 		warning(-1, path);
 		return(NULL);
@@ -679,23 +714,23 @@ char *dev;
 namelist *list;
 int max;
 {
-	char flag, *tmp;
+	macrostat st;
+	char *tmp;
 
 	locate(0, LMESLINE);
 	putterm(l_clear);
 	kanjiputs(WAIT_K);
 	tflush();
-	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, 0))) {
+	st.flags = 0;
+	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, &st))) {
 		warning(E2BIG, dev);
 		return(0);
 	}
-	flag = *tmp;
 	for (;;) {
-		system2(tmp + 2, -1);
+		system3(tmp, -1);
 		free(tmp);
-		if (!(flag & F_REMAIN)
+		if (!(st.flags & F_REMAIN)
 		|| !(tmp = evalcommand("tar rf %C %TA", dev, list, max, 0)))
 			return(1);
-		flag = *tmp;
 	}
 }

@@ -64,8 +64,8 @@ typedef struct _strtable {
 
 typedef struct _bindtable {
 	short key;
-	char f_func;
-	char d_func;
+	u_char f_func;
+	u_char d_func;
 } bindtable;
 
 typedef struct _functable {
@@ -88,12 +88,12 @@ typedef struct _functable {
 typedef struct _launchtable {
 	char *ext;
 	char *comm;
-	char topskip;
-	char bottomskip;
-	char field[MAXLAUNCHFIELD];
-	char delim[MAXLAUNCHFIELD];
+	u_char topskip;
+	u_char bottomskip;
+	u_char field[MAXLAUNCHFIELD];
+	u_char delim[MAXLAUNCHFIELD];
 	u_char width[MAXLAUNCHFIELD];
-	char sep[MAXLAUNCHSEP];
+	u_char sep[MAXLAUNCHSEP];
 } launchtable;
 
 #define	F_MODE	0
@@ -119,9 +119,20 @@ typedef struct _treelist {
 	struct _treelist *next;
 } treelist;
 
+typedef struct _macrostat {
+	short addoption;
+	short needmark;
+	u_char flags;
+} macrostat;
+
 #define	F_NOCONFIRM	001
-#define	F_ADDOPTION	002
+#define	F_ARGSET	002
 #define	F_REMAIN	004
+
+typedef struct _aliastable {
+	char *alias;
+	char *comm;
+} aliastable;
 
 #define	F_SYMLINK	001
 #define	F_FILETYPE	002

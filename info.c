@@ -154,6 +154,9 @@ extern char fullpath[];
 #ifndef	MNTTYPE_EFS
 #define	MNTTYPE_EFS	"efs"	/* IRIX */
 #endif
+#ifndef	MNTTYPE_DGUX
+#define	MNTTYPE_DGUX	"dg/ux"	/* DGUX */
+#endif
 
 static int code2str();
 static int checkline();
@@ -255,15 +258,15 @@ int mode;
 		c = 0;
 		*buf = '\0';
 		for (j = 0; j < MAXBINDTABLE && bindlist[j].key > 0; j++)
-			if (i == bindlist[j].f_func) {
+			if (i == (int)(bindlist[j].f_func)) {
 				if ((c += code2str(buf,
-					bindlist[j].key)) >= 2) break;
+					(int)(bindlist[j].key))) >= 2) break;
 			}
 		if (c < 2)
 		for (j = 0; j < MAXBINDTABLE && bindlist[j].key > 0; j++)
-			if (i == bindlist[j].d_func) {
+			if (i == (int)(bindlist[j].d_func)) {
 				if ((c += code2str(buf,
-					bindlist[j].key)) >= 2) break;
+					(int)(bindlist[j].key))) >= 2) break;
 			}
 		if (!c) continue;
 
@@ -519,6 +522,7 @@ char *path;
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_JFS)) return(1);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
 	return(0);
 }
 

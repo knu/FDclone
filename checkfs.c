@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include "machine.h"
 
-#ifndef	NOSTDLIB
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 

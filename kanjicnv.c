@@ -28,7 +28,7 @@ static int fputs2(s, fp)
 char *s;
 FILE *fp;
 {
-	unsigned char c;
+	int c;
 
 	if (through) return(fputs(s, fp));
 	while (c = *(unsigned char *)(s++)) {

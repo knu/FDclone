@@ -103,7 +103,7 @@ static int ttyio;
 static char *termname;
 
 #ifndef	TIOCSTI
-static char ungetbuf[10];
+static unsigned char ungetbuf[10];
 static int ungetnum = 0;
 #endif
 
@@ -388,6 +388,16 @@ static int defaultterm()
 	keyseq[K_F(18) - K_MIN] = "\033[32~";
 	keyseq[K_F(19) - K_MIN] = "\033[33~";
 	keyseq[K_F(20) - K_MIN] = "\033[34~";
+	keyseq[K_F(21) - K_MIN] = "\033OP";
+	keyseq[K_F(22) - K_MIN] = "\033OQ";
+	keyseq[K_F(23) - K_MIN] = "\033OR";
+	keyseq[K_F(24) - K_MIN] = "\033OS";
+	keyseq[K_F(25) - K_MIN] = "\033OT";
+	keyseq[K_F(26) - K_MIN] = "\033OU";
+	keyseq[K_F(27) - K_MIN] = "\033OV";
+	keyseq[K_F(28) - K_MIN] = "\033OW";
+	keyseq[K_F(29) - K_MIN] = "\033OX";
+	keyseq[K_F(30) - K_MIN] = "\033OY";
 
 	keyseq[K_F('*') - K_MIN] = "\033Oj";
 	keyseq[K_F('+') - K_MIN] = "\033Ok";
@@ -449,6 +459,7 @@ static int sortkeyseq()
 	char *str;
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keycode[i] = K_MIN + i;
+	for (i = 1; i <= 10; i++) keycode[K_F(i + 20) - K_MIN] = K_F(i);
 
 	keycode[K_F('*') - K_MIN] = '*';
 	keycode[K_F('+') - K_MIN] = '+';
@@ -489,7 +500,7 @@ int getterment()
 {
 	char *cp, buf[1024];
 
-	if (!(termname = getenv("TERM"))) termname = "unknown";
+	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
 
 	if ((ttyio = open(TTYNAME, O_RDWR)) < 0) ttyio = STDERR;
@@ -557,6 +568,16 @@ int getterment()
 	tgetstr2(&keyseq[K_F(8) - K_MIN], "l8");
 	tgetstr2(&keyseq[K_F(9) - K_MIN], "l9");
 	tgetstr2(&keyseq[K_F(10) - K_MIN], "la");
+	tgetstr2(&keyseq[K_F(21) - K_MIN], "k1");
+	tgetstr2(&keyseq[K_F(22) - K_MIN], "k2");
+	tgetstr2(&keyseq[K_F(23) - K_MIN], "k3");
+	tgetstr2(&keyseq[K_F(24) - K_MIN], "k4");
+	tgetstr2(&keyseq[K_F(25) - K_MIN], "k5");
+	tgetstr2(&keyseq[K_F(26) - K_MIN], "k6");
+	tgetstr2(&keyseq[K_F(27) - K_MIN], "k7");
+	tgetstr2(&keyseq[K_F(28) - K_MIN], "k8");
+	tgetstr2(&keyseq[K_F(29) - K_MIN], "k9");
+	tgetstr2(&keyseq[K_F(30) - K_MIN], "k0");
 	tgetstr2(&keyseq[K_DC - K_MIN], "kD");
 	tgetstr2(&keyseq[K_PPAGE - K_MIN], "kP");
 	tgetstr2(&keyseq[K_NPAGE - K_MIN], "kN");
@@ -584,7 +605,7 @@ int endterm()
 }
 
 int putch(c)
-char c;
+int c;
 {
 	return(fputc(c, stdout));
 }
@@ -614,6 +635,9 @@ va_dcl
 int kbhit2(usec)
 unsigned long usec;
 {
+#ifdef	NOSELECT
+	return((usec) ? 1 : 0);
+#else
 	fd_set readfds;
 	struct timeval timeout;
 
@@ -622,6 +646,7 @@ unsigned long usec;
 	FD_SET(STDIN, &readfds);
 
 	return (select(1, &readfds, NULL, NULL, &timeout));
+#endif
 }
 
 int getch2()
@@ -653,7 +678,7 @@ int sig;
 	} while (!key);
 
 	key = ch = getch2();
-	for (i = start = 0;;i++) {
+	for (i = start = 0; ; i++) {
 		for (j = start, start = -1; j <= K_MAX - K_MIN; j++) {
 			if (keyseqlen[j] > i && ch == keyseq[j][i]) {
 				if (keyseqlen[j] == i + 1) return(keycode[j]);
@@ -667,7 +692,7 @@ int sig;
 }
 
 int ungetch2(c)
-char c;
+unsigned char c;
 {
 #ifdef	TIOCSTI
 	ioctl(ttyio, TIOCSTI, &c);

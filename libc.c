@@ -290,6 +290,7 @@ char *s1, *s2;
 int len, ptr;
 {
 	char *cp;
+	int i;
 
 	cp = s1;
 	if (ptr && onkanji1((u_char *)s2, ptr - 1)) {
@@ -301,7 +302,11 @@ int len, ptr;
 		strncpy2(cp, s2 + ptr, --len);
 		strcat(cp, " ");
 	}
-	else sprintf(cp, "%-*.*s", len, len, s2 + ptr);
+	else {
+		for (i = 0; i < len && s2[ptr + i]; i++) *(cp++) = s2[ptr + i];
+		for (; i < len; i++) *(cp++) = ' ';
+		*cp = '\0';
+	}
 	return(s1);
 }
 
@@ -371,7 +376,7 @@ int setenv2(name, value, overwrite)
 char *name, *value;
 int overwrite;
 {
-	assoclist *ap;
+	assoclist *ap, *tmp;
 
 	if (ap = _getenv2(name)) {
 		if (!overwrite) return(0);
@@ -383,7 +388,17 @@ int overwrite;
 		ap -> next = environ2;
 		environ2 = ap;
 	}
-	ap -> assoc = (value) ? strdup2(value) : NULL;
+
+	if (value) ap -> assoc = (*value) ? strdup2(value) : NULL;
+	else {
+		free(ap -> org);
+		for (tmp = environ2; tmp; tmp = tmp -> next)
+			if (tmp -> next == ap) break;
+		if (tmp) {
+			tmp -> next = ap -> next;
+			free(ap);
+		}
+	}
 	return(0);
 }
 
@@ -394,8 +409,8 @@ char *name;
 	char *cp;
 
 	if (ap = _getenv2(name)) return(ap -> assoc);
-	else if (cp = getenv(name)) return(cp);
-	return(strncmp(name, "FD_", 3) ? NULL : getenv(name + 3));
+	else if (cp = (char *)getenv(name)) return(cp);
+	return(strncmp(name, "FD_", 3) ? NULL : (char *)getenv(name + 3));
 }
 
 int printenv()
@@ -405,13 +420,28 @@ int printenv()
 
 	n = 0;
 	for (ap = environ2; ap; ap = ap -> next) {
-		cprintf("%s=%s\r\n", ap -> org, ap -> assoc);
+		cprintf("%s=%s\r\n", ap -> org,
+			(ap -> assoc) ? ap -> assoc : "");
 		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
 	}
 	return(n);
 }
 
-int system2(command, noconf)
+int system2(command)
+char *command;
+{
+	char *cp, *alias;
+	int status;
+
+	for (cp = command; *cp == ' ' || *cp == '\t'; cp++);
+	if (alias = evalalias(cp)) command = alias;
+	if (*cp == '!') status = execinternal(cp + 1);
+	else status = system(command);
+	if (alias) free(alias);
+	return(status);
+}
+
+int system3(command, noconf)
 char *command;
 int noconf;
 {
@@ -429,16 +459,16 @@ int noconf;
 	cooked2();
 	echo2();
 	nl2();
-	status = system(command);
+	status = system2(command);
 	raw2();
 	noecho2();
 	nonl2();
-	sigvecset();
 	if (status > 127 || !noconf) warning(0, HITKY_K);
 	if (noconf >= 0) {
 		if (noconf) putterms(t_init);
 		putterms(t_keypad);
 	}
+	sigvecset();
 	return(status);
 }
 
@@ -507,15 +537,15 @@ static long gettimezone()
 #endif
 	long tz;
 #ifdef	HAVETIMEZONE
-	extern long timezone;
+	extern time_t timezone;
 
 	tz = timezone;
 #else
-	struct tm *tm;
+	struct timeval t_val;
+	struct timezone t_zone;
 
-	tz = 0;
-	tm = localtime(&tz);
-	tz = -(tm -> tm_gmtoff);
+	gettimeofday(&t_val, &t_zone);
+	tz = t_zone.tz_minuteswest * 60L;
 #endif
 #ifdef	USELEAPCNT
 	strcpy(path, TZDIR);

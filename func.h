@@ -24,6 +24,8 @@ extern int evalconfigline();
 extern int printmacro();
 extern int printlaunch();
 extern int printarch();
+extern int printalias();
+extern int printhist();
 extern VOID evalenv();
 
 /* libc.c */
@@ -55,6 +57,7 @@ extern int setenv2();
 extern char *getenv2();
 extern int printenv();
 extern int system2();
+extern int system3();
 extern char *getwd2();
 extern char *getpwuid2();
 extern char *getgrgid2();
@@ -72,8 +75,11 @@ extern char *evalcommand();
 extern int execmacro();
 extern int execenv();
 extern char **entryhist();
+extern char **loadhistory();
+extern int savehistory();
 extern int execinternal();
 extern VOID adjustpath();
+extern char *evalalias();
 
 /* info.c */
 extern VOID help();
@@ -91,6 +97,7 @@ extern int kanjiputs2();
 extern VOID getstatus();
 extern char *putmode();
 extern int cmplist();
+extern int cmptree();
 extern struct dirent *searchdir();
 extern int underhome();
 extern int copyfile();

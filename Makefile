@@ -14,7 +14,8 @@ Makefile.tmp: Makefile.in mkmf.sed
 	$(SED) -f mkmf.sed Makefile.in > Makefile.tmp
 
 mkmf.sed: mkmf.sed.c machine.h
-	$(CPP) mkmf.sed.c | $(SED) -e '/^$$/d' -e '/^#/d' -e 's/\"//g' > mkmf.sed
+	$(CPP) mkmf.sed.c |\
+	$(SED) -e '/^$$/d' -e '/^#/d' -e 's/[\"	]//g' > mkmf.sed
 
 install: Makefile.tmp
 	$(MAKE) -f Makefile.tmp install

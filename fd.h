@@ -22,7 +22,10 @@
 
 
 #define	RUNCOMFILE	"~/.fdrc"
-#define	CMDLINE_DELIM	" \t|><&!;:"
+#define	HISTORYFILE	"~/.fd_history"
+#define	PATHHISTFILE	"~/.fd_pathhist"
+#define	CMDLINE_DELIM	"\t !&:;<>|"
+#define	METACHAR	"\t \"#$&'()*:;<>?[\\]^`|~"
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*
@@ -38,11 +41,13 @@
  ****************************************************************/
 #define	SORTTYPE	0
 #define	DISPLAYMODE	0
+#define	SORTTREE	0
 #define	WRITEFS		0
 #define	ADJTTY		0
 #define	COLUMNS		2
 #define	MINFILENAME	12
 #define	HISTSIZE	50
+#define	SAVEHIST	50
 #define	DIRCOUNTLIMIT	50
 #define	TMPDIR		"/tmp"
 
@@ -54,6 +59,7 @@
 #define	MAXMACROTABLE	64
 #define	MAXLAUNCHTABLE	32
 #define	MAXARCHIVETABLE	16
+#define	MAXALIASTABLE	256
 #define	MAXLINESTR	255
 #define	MAXCOMMSTR	1023
 #define	MAXSTACK	5

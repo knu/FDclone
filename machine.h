@@ -49,7 +49,6 @@
 #   define	NOUNISTDH
 #   define	NOSTDLIBH
 #   define	USEDIRECT
-#   define	HAVETIMEZONE
 #   define	USEGETWD
 #   endif
 #  endif
@@ -60,7 +59,11 @@
 #define	SYSV
 #define	OSTYPE			"IRIX"
 #define	CODEEUC
-#define	EXTENDCCOPT		"-O -signed"
+# if defined (_COMPILER_VERSION) && (_COMPILER_VERSION >= 600)
+# define	EXTENDCCOPT	"-32 -O -signed"
+# else
+# define	EXTENDCCOPT	"-O -signed"
+# endif
 # if !defined (SYSTYPE_SVR4)
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
@@ -85,6 +88,11 @@
 # if defined (nec_ews_svr4) || defined (_nec_ews_svr4)
 # define	SVR4
 # define	OSTYPE		"EWSUXV"
+#  if defined (nec_ews)
+#  define	CCCOMMAND	"/usr/necccs/bin/cc"
+#  else
+#  define	CCCOMMAND	"/usr/abiccs/bin/cc"
+#  endif
 # define	TERMCAPLIB	"-lcurses"
 # define	REGEXPLIB	"-lgen"
 # define	USESTATVFSH
@@ -100,7 +108,7 @@
 #define	BSD43
 #define	OSTYPE			"UNIOS"
 #define	CODEEUC
-#define	EXTENDCCOPT		"-O -Zu"
+#define	EXTENDCCOPT		"-O -Zs"
 #define	TERMCAPLIB		"-lcurses"
 #define	UNKNOWNFS
 #define	NOVOID
@@ -110,6 +118,7 @@
 #define	USETIMEH
 #define	USETERMIO
 #define	HAVETIMEZONE
+#define	NOSELECT
 #define	NOSTRSTR
 #endif
 
@@ -134,6 +143,7 @@
 # define	OSTYPE		"DECOSF1V2"
 # define	EXTENDLIB	"-lsys5"
 # define	USEMOUNTH
+# define	USEFFSIZE
 # define	STATFSARGS	3
 # define	USEFSTABH
 # define	USERE_COMP
@@ -188,6 +198,19 @@
 #define	CODEEUC
 #define	TERMCAPLIB		"-ltermcap"
 #define	USESTATFSH
+#define	STATFSARGS	4
+#define	SVR3FS
+#endif
+
+#if defined (__uxpm__)
+#define	SVR4
+#define	OSTYPE			"UXPM"
+#define	CODEEUC
+#define	REGEXPLIB		"-lgen"
+#define	USESTATVFSH
+#define	USEMNTTABH
+#define	USEUTIME
+#define	SIGARGINT
 #endif
 
 #if defined (mips) && !defined (OSTYPE)
@@ -204,6 +227,7 @@
 #define	NOUNISTDH
 #define	NOSTDLIBH
 #define	USEDIRECT
+#define	USESETENV
 #define	NOSTRSTR
 #define	USEGETWD
 #endif
@@ -278,6 +302,7 @@
 /*	ULTRIX		/* Ultrix (DEC) */
 /*	AUX		/* A/UX */
 /*	AVIION		/* DG/UX AViiON (DG) */
+/*	UXPM		/* UXP/M (Fujitsu) */
 /*	MIPS		/* RISC/os (MIPS) */
 /*	LINUX		/* Linux */
 /*	FREEBSD		/* FreeBSD */
@@ -326,7 +351,7 @@
 /* #define USEFSDATA	/* use 'struct fs_data' as structure of hte FS status */
 /* #define USESTATFS	/* use 'struct statfs' as structure of hte FS status */
 
-/* #define USEFFSIZE	/* 'struct statfs' fas 'f_fsize' instead of 'f_bsize' */
+/* #define USEFFSIZE	/* 'struct statfs' has 'f_fsize' as block size */
 /* #define STATFSARGS	/* the number of arguments in statfs() */
 
 /* following 5 items are exclusive
@@ -346,6 +371,7 @@
 
 /* #define USERAND48	/* use rand48() family instead of random() */
 /* #define USESETENV	/* use setenv() instead of putenv() */
+/* #define NOSELECT	/* have not select() */
 /* #define NOSTRSTR	/* have not strstr() */
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
@@ -420,7 +446,7 @@
 # undef	USESTATFS
 # endif
 #else
-# define	USESTATFS
+#define	USESTATFS
 # ifndef	STATFSARGS
 # define	STATFSARGS	2
 # endif

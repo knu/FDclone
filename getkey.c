@@ -10,8 +10,7 @@
 
 main()
 {
-	unsigned char ch;
-	int i;
+	int i, ch;
 
 	inittty(0);
 	nonl2();

@@ -201,19 +201,21 @@ int kanjiputs2(s, len, ptr)
 char *s;
 int len, ptr;
 {
+	char *dup;
 	int i;
 
 	i = ptr;
 	if (ptr < 0) ptr = 0;
 	if (len >= strlen(s + ptr)) {
-		if (i < 0) kanjiputs(s);
-		else kanjiprintf("%-*.*s", len, len, s + ptr);
+		kanjiputs(s + ptr);
+		if (i >= 0) for (i = strlen(s + ptr); i < len; i++) putch(' ');
 	}
-	else if (onkanji1((u_char *)s, ptr + len - 1)) {
-		len--;
-		kanjiprintf("%-*.*s", len, len, s + ptr);
-		putch(' ');
+	else {
+		dup = strdup2(s + ptr);
+		dup[len] = '\0';
+		if (onkanji1((u_char *)s, len - 1)) dup[len - 1] = ' ';
+		kanjiputs(dup);
+		free(dup);
 	}
-	else kanjiprintf("%-*.*s", len, len, s + ptr);
 	return(len);
 }
