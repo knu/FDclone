@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2003 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.03b 05/15/03
+.\" @(#)fd.1   2.04 06/25/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "May 15, 2003"
+.TH FD 1 "June 25, 2003"
 .de sh
 .br
 .PP
@@ -75,7 +75,7 @@ It is effective only when it is invoked as
 If the
 .B \-i
 flag is present or if the standard input/output is a terminal,
-the shell is interactive shell.
+the shell is the interactive shell.
 .TP
 .B \-s
 If the
@@ -95,9 +95,10 @@ Specifically, the following operations are disallowed.
 changing the current directory
 .br
 setting the value of
-.B $PATH
-and
+.BR $PATH ,
 .B $SHELL
+and
+.B $ENV
 .br
 specifying command names include
 .B /
@@ -2844,7 +2845,7 @@ But the following variable definition cannot be deleted.
 .nf
 .ft B
 PATH	PS1	PS2	IFS
-MAILCHECK
+MAILCHECK	PPID
 .ft R
 .fi
 .RE
@@ -3223,10 +3224,14 @@ Convert a character on the cursor position to uppercase.
 .IP "\fBPageDown\fP"
 Convert a character on the cursor position to lowercase.
 .IP "\fBTab\fP"
-Complete a pathname on the cursor position,
-or move to the next choice in the completion choice list.
+Complete a pathname, a command name or a variable name on the cursor position.
+.RS
 When there are two or more completion choices,
-inputting this some times can display the completion choice list.
+inputting this continuously can display the completion choice list.
+Except for command line in the internal shell,
+you can make a choice from this list with cursor keys and
+.RB [ Return ].
+.RE
 .IP "\fB^L\fP"
 Redraw the input string.
 .IP "\fBReturn\fP"
@@ -4204,6 +4209,19 @@ you don't have to register any floppy drive.
 the access speed may be slow or some functions may be restricted
 for the reason to operate the disk I/O not by way of OS.
 .RE
+.IP "\fBDUMBSHELL\fP"
+Don't use any control sequences to edit command line in the internal shell.
+In the internal shell,
+the cursor addressing of terminal mode is not valid.
+In case of some terminal such as a console terminal,
+the cursor addressing cannot work correctly in this terminal mode,
+and the editing string is displayed incorrectly.
+When this variable is valid,
+while no control sequence is used to edit command line,
+an inefficient cursor addressing will cause restriction of some functions and failure of response.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBEDITMODE\fP"
 Specify the edit mode of key input as the string.
 The default value is
@@ -4217,6 +4235,19 @@ or null are specified,
 any control character is not converted and will be sent as it is.
 .IP "\fBEDITOR\fP"
 Specify the editor command used for editing files.
+.IP "\fBENV\fP\(**"
+Specify the additional initial configuration file when invoked as
+.BR fdsh .
+You must specify its filename as fullpath.
+When this variable is set,
+the initial configuration file is read after
+.BR /etc/fd2rc ,
+and before
+.B .fd2rc
+or
+.BR .fdshrc .
+This value will be ignored if your real and effective UIDs
+or real and effective GIDs are different.
 .IP "\fBFCEDIT\fP"
 Specify the editor command used for
 .B fc
@@ -4253,6 +4284,18 @@ etc. among them are the Kanji codes used in Samba.
 default	no convert
 .fi
 .RE
+.IP "\fBHISTFILE\fP"
+Specify the name of the command history file
+which can be referred by
+.B EXECUTE_FILE
+and
+.BR EXECUTE_SH .
+The default value is
+.BR ~/.fd_history .
+
+(On MS-DOS version,
+The default value is
+.BR $HOME\efd.hst .)
 .IP "\fBHISTSIZE\fP"
 Specify the maximum number of the command histories
 which can be referred by
@@ -4344,6 +4387,14 @@ default	no convert
 (On MS-DOS version,
 only the English is valid.)
 .RE
+.IP "\fBLINENO\fP\(**"
+Indicate the current line number.
+When not in a script nor function,
+this value cannot be guaranteed to make sense.
+If you
+.B unset
+or reset this value,
+this variable will lose its special meaning to be treated as a general variable.
 .IP "\fBMAIL\fP\(**"
 Specify the spool filename when the internal shell will check new mails.
 If
@@ -4398,6 +4449,11 @@ Specify the pager command used for viewing files.
 Specify the search path for executing external commands.
 You can specify multiple paths separating with
 .RB ' : '.
+.IP "\fBPPID\fP\(**"
+Indicate the process ID of the parent proccess for
+.B fd
+which is invoked first.
+.B (UNIX)
 .IP "\fBPRECEDEPATH\fP"
 Specify the file preceding function,
 which displays only filenames before obtaining their file informations,
@@ -4441,6 +4497,23 @@ The following escape sequences are available.
 Specify the prompt string when more continuous input is needed in
 .BR EXECUTE_SH .
 The default value is "\fB>\fP\|\ \|".
+.IP "\fBPS4\fP\(**"
+Specify the prompt string with which command strings are displayed
+when you do
+.B set
+.BR -x .
+.IP "\fBPWD\fP\(**"
+The variable for the the current directory with the absolute representation.
+If some value is set,
+this value will be replaced automatically
+according to changing the current directory.
+If no value is set,
+this value will remain unset.
+If this is passed as an environment variable when invoked,
+and this value and the current directory indicate the same directory logically,
+then it is used as the default value for the current directory.
+It is useful
+when you want to specify the logical pathname following symbolic links.
 .IP "\fBRRPATH\fP"
 Display files under the directory mounted by CD-ROM,
 with the pseudo ISO 9660 RockRidge Extension,
@@ -4524,11 +4597,36 @@ it is sorted according to the value indicated by lower 2 digits
 just after invoked,
 the last specified sorted type is kept when moving directory.
 .RE
+.IP "\fBTERM\fP\(**"
+Specity the terminal name.
+When this value is
+.BR dumb ,
+.B unknown
+or
+.BR un ,
+it is regarded as the dumb terminal
+to suppress any escape sequences in the internal shell
+in spite of
+.BR DUMBSHELL .
+If this value does not exist in
+.BR termcap (5)
+and
+.BR terminfo (5)
+entry,
+it is executable only when it is invoked as
+.BR fdsh .
+The terminal name will be variable dynamically,
+then you can re-specify the suitable one as this value after invoked
+for some strange terminal display and key input.
 .IP "\fBTMPDIR\fP"
 Specify the working directory
 where the archiver command temporarily unpack files in the archive file.
 The default value is
 .BR /tmp .
+
+(On MS-DOS version,
+The default value is
+.RB ` . '.)
 .IP "\fBTMPUMASK\fP"
 Specify the file creation mask with octal expression for files and directories created temporarily in
 .BR TMPDIR .
@@ -4654,7 +4752,7 @@ The individual initial configuration file for
 .B fdsh
 .TP
 .B ~/.fd_history
-The command history file
+The command history file by default
 .TP
 .B /bin/sh
 The user shell when
@@ -4691,7 +4789,7 @@ The individual initial configuration file for
 on MS-DOS version
 .TP
 .B $HOME\efd.hst
-The command history file on MS-DOS version
+The command history file on MS-DOS version by default
 .PD
 .SH LIMITATIONS
 The maximum key bindings which you can register is

@@ -35,6 +35,7 @@ extern char archivedir[];
 extern int win_x;
 extern int win_y;
 extern char *destpath;
+extern char *histfile;
 extern int savehist;
 extern int sizeinfo;
 extern char fullpath[];
@@ -475,7 +476,7 @@ static VOID NEAR markcount(VOID_A)
 
 	x = (isleftshift()) ? 1 : 0;
 	locate(C_MARK + 5 - x, L_STATUS);
-	cputs2(ascnumeric(buf, mark, 4, 4));
+	cputs2(ascnumeric(buf, (off_t)mark, 4, 4));
 	if (sizeinfo) {
 		locate(C_SIZE + 5 - x, L_SIZE);
 		cputs2(ascnumeric(buf, marksize, 3, 14));
@@ -528,11 +529,11 @@ char *arg;
 	if ((arg && atoi2(arg) == 0) || (!arg && mark)) {
 		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISMRK;
 		mark = 0;
-		marksize = 0;
+		marksize = (off_t)0;
 	}
 	else {
 		mark = 0;
-		marksize = 0;
+		marksize = (off_t)0;
 		for (i = 0; i < maxfile; i++) if (!isdir(&(filelist[i]))) {
 			filelist[i].tmpflags |= F_ISMRK;
 			mark++;
@@ -551,7 +552,7 @@ char *arg;
 	int i;
 
 	mark = 0;
-	marksize = 0;
+	marksize = (off_t)0;
 	for (i = 0; i < maxfile; i++) if (!isdir(&(filelist[i])))
 		if ((filelist[i].tmpflags ^= F_ISMRK) & F_ISMRK) {
 			mark++;
@@ -1086,7 +1087,7 @@ char *arg;
 	if (archivefile) return(-1);
 #endif
 	if (!yesno(QUIT_K)) return(1);
-	if (savehist > 0) savehistory(0, HISTORYFILE);
+	if (savehist > 0) savehistory(0, histfile);
 	return(-1);
 }
 

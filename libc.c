@@ -43,9 +43,6 @@ extern char **environ;
 extern char fullpath[];
 extern char *origpath;
 extern int hideclock;
-#ifndef	DECLERRLIST
-extern char *sys_errlist[];
-#endif
 #ifndef	_NODOSDRIVE
 extern int lastdrv;
 #endif
@@ -106,10 +103,13 @@ struct stat *stp;
 	int duperrno;
 
 	if (Xstat(path, stp) < 0) {
-# ifndef	_NODOSDRIVE
-		if (dospath2(path)) return(-1);
-# endif
 		duperrno = errno;
+# ifndef	_NODOSDRIVE
+		if (dospath2(path)) {
+			errno = duperrno;
+			return(-1);
+		}
+# endif
 		if (nodoslstat(path, stp) < 0
 		|| (stp -> st_mode & S_IFMT) != S_IFLNK) {
 			errno = duperrno;
@@ -143,15 +143,12 @@ char *path, *delim;
 		return(-1);
 	}
 
-	if (*buf == _SC_) strncpy2(path, buf, i);
-	else {
-		if (!delim || delim == path) {
-			*path = _SC_;
-			delim = path + 1;
-		}
-		buf[i] = *delim = '\0';
-		_realpath2(buf, path, 1);
+	if (*buf == _SC_ || !delim || delim == path) {
+		*path = _SC_;
+		delim = path + 1;
 	}
+	buf[i] = *delim = '\0';
+	_realpath2(buf, path, 1);
 	errno = duperrno;
 	return(1);
 }
@@ -184,7 +181,7 @@ int rdlink;
 		else
 # endif
 		if (rdlink && evallink(resolved, cp) > 0)
-			return(_realpath2(path, resolved, 1));
+			return(_realpath2(path, resolved, rdlink));
 #endif	/* !MSDOS */
 		if (!cp || cp == top) {
 			*top = _SC_;
@@ -281,10 +278,12 @@ char *path;
 	if (Xchdir(path) < 0) return(-1);
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	if (!dospath2("")) {
-		int fd;
+		int fd, duperrno;
 
 		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
+			duperrno = errno;
 			if (Xchdir(cwd) < 0) lostcwd(cwd);
+			errno = duperrno;
 			return(-1);
 		}
 		close(fd);
@@ -297,6 +296,7 @@ int chdir2(path)
 char *path;
 {
 	char *pwd, cwd[MAXPATHLEN], tmp[MAXPATHLEN];
+	int duperrno;
 
 #ifdef	DEBUG
 	if (!path) {
@@ -311,14 +311,14 @@ char *path;
 #endif
 
 	realpath2(path, tmp, physical_path);
-	if (_chdir2(path) < 0) return(-1);
-
 	strcpy(cwd, fullpath);
 	strcpy(fullpath, tmp);
 
 	if (_chdir2(fullpath) < 0) {
+		duperrno = errno;
 		if (_chdir2(cwd) < 0) lostcwd(fullpath);
 		else strcpy(fullpath, cwd);
+		errno = duperrno;
 		return(-1);
 	}
 	if (lastpath) free(lastpath);
@@ -337,7 +337,7 @@ char *path;
 		unixpath = NULL;
 	}
 #endif
-	if (getenv("PWD")) {
+	if (getconstvar("PWD")) {
 #ifdef	DEBUG
 		_mtrace_file = "chdir2(PWD)";
 #endif
@@ -472,10 +472,27 @@ char *strdup2(s)
 char *s;
 {
 	char *tmp;
+	int n;
 
 	if (!s) return(NULL);
-	if (!(tmp = (char *)malloc((ALLOC_T)strlen(s) + 1))) error("malloc()");
-	strcpy(tmp, s);
+	n = strlen(s);
+	if (!(tmp = (char *)malloc((ALLOC_T)n + 1))) error("malloc()");
+	memcpy(tmp, s, n + 1);
+	return(tmp);
+}
+
+char *strndup2(s, n)
+char *s;
+int n;
+{
+	char *tmp;
+	int i;
+
+	if (!s) return(NULL);
+	for (i = 0; i < n; i++) if (!s[i]) break;
+	if (!(tmp = (char *)malloc((ALLOC_T)i + 1))) error("malloc()");
+	memcpy(tmp, s, i);
+	tmp[i] = '\0';
 	return(tmp);
 }
 
@@ -636,6 +653,35 @@ char *s;
 
 #ifdef	USESTDARGH
 /*VARARGS1*/
+int fprintf2(FILE *fp, CONST char *fmt, ...)
+#else
+/*VARARGS1*/
+int fprintf2(fp, fmt, va_alist)
+FILE *s;
+char *fmt;
+va_dcl
+#endif
+{
+	va_list args;
+	char *buf;
+	int n;
+
+#ifdef	USESTDARGH
+	va_start(args, fmt);
+#else
+	va_start(args);
+#endif
+
+	n = vasprintf2(&buf, fmt, args);
+	va_end(args);
+	if (n < 0) error("malloc()");
+	fputs(buf, fp);
+	free(buf);
+	return(n);
+}
+
+#ifdef	USESTDARGH
+/*VARARGS1*/
 int snprintf2(char *s, int size, CONST char *fmt, ...)
 #else
 /*VARARGS1*/
@@ -674,11 +720,7 @@ char *s;
 		kanjifputs(s, stderr);
 		fputs(": ", stderr);
 	}
-#if	MSDOS
-	fputs(strerror(duperrno), stderr);
-#else
-	fputs((char *)sys_errlist[duperrno], stderr);
-#endif
+	fputs(strerror2(duperrno), stderr);
 	if (isttyiomode) fputc('\r', stderr);
 	fputc('\n', stderr);
 	fflush(stderr);
@@ -858,7 +900,8 @@ int noconf;
 	ret = dosystem(command);
 	sigvecset(n);
 	if (ret >= 127 && noconf > 0) {
-		fputs("\007\n", stderr);
+		if (dumbterm <= 2) fputc('\007', stderr);
+		fputc('\n', stderr);
 		kanjifputs(HITKY_K, stderr);
 		fflush(stderr);
 		ttyiomode(1);
@@ -917,7 +960,8 @@ char *command, *type;
 		}
 	}
 	else {
-		fputs("\007\n", stderr);
+		if (dumbterm <= 2) fputc('\007', stderr);
+		fputc('\n', stderr);
 		perror2(command);
 		fflush(stderr);
 		ttyiomode(1);
@@ -1008,7 +1052,7 @@ time_t t;
 #endif
 
 #ifndef	NOTZFILEH
-	cp = (char *)getenv("TZ");
+	cp = getconstvar("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == _SC_) strcpy(buf, cp);
 	else strcatdelim2(buf, TZDIR, cp);

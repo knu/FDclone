@@ -22,7 +22,7 @@ s:__CC__:lcc86:
 s:__HOSTCC__:$(CC):
 s:__CCOPTIONS__:-O:
 s:__HOSTCCOPTIONS__:-O:
-s:__MEM__:-ml -h -k"-s 5000":
+s:__MEM__:-ml -h -k"-s 4c00":
 s:__SHMEM__:-mp -h -k"-s 8000":
 s:__BSHMEM__:-ms -k"-s 8000":
 s:__OUT__:-o $@:

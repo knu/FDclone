@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "machine.h"
 
 # ifndef	NOUNISTDH
@@ -83,9 +81,10 @@ extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
+extern char *strndup2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
-extern char *ascnumeric __P_((char *, long, int, int));
+extern int snprintf2 __P_((char *, int, CONST char *, ...));
 # if	MSDOS || !defined (_NODOSDRIVE)
 extern int _dospath __P_((char *));
 #endif
@@ -107,9 +106,10 @@ char *malloc2 __P_((ALLOC_T));
 char *realloc2 __P_((VOID_P, ALLOC_T));
 char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 char *strdup2 __P_((char *));
+char *strndup2 __P_((char *, int));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
-char *ascnumeric __P_((char *, long, int, int));
+char *ascnumeric __P_((char *, off_t, int, int));
 #define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
 # if	MSDOS
 DIR *Xopendir __P_((char *));
@@ -419,10 +419,27 @@ char *strdup2(s)
 char *s;
 {
 	char *tmp;
+	int n;
 
 	if (!s) return(NULL);
-	if (!(tmp = (char *)malloc((ALLOC_T)strlen(s) + 1))) allocerror();
-	strcpy(tmp, s);
+	n = strlen(s);
+	if (!(tmp = (char *)malloc((ALLOC_T)n + 1))) allocerror();
+	memcpy(tmp, s, n + 1);
+	return(tmp);
+}
+
+char *strndup2(s, n)
+char *s;
+int n;
+{
+	char *tmp;
+	int i;
+
+	if (!s) return(NULL);
+	for (i = 0; i < n; i++) if (!s[i]) break;
+	if (!(tmp = (char *)malloc((ALLOC_T)i + 1))) allocerror();
+	memcpy(tmp, s, i);
+	tmp[i] = '\0';
 	return(tmp);
 }
 
@@ -457,7 +474,7 @@ int n;
  */
 char *ascnumeric(buf, n, digit, max)
 char *buf;
-long n;
+off_t n;
 int digit, max;
 {
 	char tmp[MAXLONGWIDTH * 2 + 1];
@@ -812,17 +829,6 @@ int n;
 	return(0);
 }
 
-char *strdupcpy(s, len)
-char *s;
-int len;
-{
-	char *cp;
-
-	cp = malloc2(len + 1);
-	strncpy2(cp, s, len);
-	return(cp);
-}
-
 static char *NEAR getvar(ident, len)
 char *ident;
 int len;
@@ -836,7 +842,7 @@ int len;
 	return(NULL);
 #else
 	if (len < 0) len = strlen(ident);
-	cp = strdupcpy(ident, len);
+	cp = strndup2(ident, len);
 	env = getenv2(cp);
 	free(cp);
 	return(env);
@@ -915,6 +921,19 @@ int ptr, quote, len;
 	}
 	return(1);
 #endif	/* !FAKEMETA */
+}
+
+char *long2str(s, n, size)
+char *s;
+long n;
+int size;
+{
+#ifdef	FD
+	snprintf2(s, size, "%ld", n);
+	return(s);
+#else
+	return(ascnumeric(s, (off_t)n, 0, size - 1));
+#endif
 }
 
 #ifdef	_NOORIGGLOB
@@ -2418,7 +2437,7 @@ int plen, mode;
 	int c, len;
 
 	if (!s || !*s) return(NULL);
-	tmp = strdupcpy(pattern, plen);
+	tmp = strndup2(pattern, plen);
 	pattern = evalarg(tmp, 0, 1, '\0');
 	free(tmp);
 	re = regexp_init(pattern, -1);
@@ -2439,7 +2458,7 @@ int plen, mode;
 				break;
 			}
 		}
-		if (ret) ret = strdupcpy(s, ret - s);
+		if (ret) ret = strndup2(s, ret - s);
 	}
 	else {
 		tmp = strdup2(s);
@@ -2567,26 +2586,21 @@ int plen, *modep;
 			break;
 		case '#':
 			if (!argvar) break;
-			ascnumeric(tmp, countvar(argvar + 1), 0, MAXLONGWIDTH);
-			cp = tmp;
+			cp = long2str(tmp, countvar(argvar + 1), sizeof(tmp));
 			break;
 		case '?':
 			i = (getretvalfunc) ? (*getretvalfunc)() : 0;
-			ascnumeric(tmp, i, 0, MAXLONGWIDTH);
-			cp = tmp;
+			cp = long2str(tmp, i, sizeof(tmp));
 			break;
 		case '$':
 			if (!getpidfunc) pid = getpid();
 			else pid = (*getpidfunc)();
-			ascnumeric(tmp, pid, 0, MAXLONGWIDTH);
-			cp = tmp;
+			cp = long2str(tmp, pid, sizeof(tmp));
 			break;
 		case '!':
 			if (getlastpidfunc
-			&& (pid = (*getlastpidfunc)()) >= 0) {
-				ascnumeric(tmp, pid, 0, MAXLONGWIDTH);
-				cp = tmp;
-			}
+			&& (pid = (*getlastpidfunc)()) >= 0)
+				cp = long2str(tmp, pid, sizeof(tmp));
 			break;
 		case '-':
 			if (getflagfunc) cp = (*getflagfunc)();
@@ -2615,7 +2629,7 @@ int s, len, vlen, mode, quoted;
 	else if (*cpp) return(0);
 	else if (mode == '=' && !isidentchar(*arg)) return(-1);
 
-	val = strdupcpy(&(arg[s]), vlen);
+	val = strndup2(&(arg[s]), vlen);
 	*cpp = evalarg(val, (mode == '=' || mode == '?'), 1, quoted);
 	free(val);
 	if (!*cpp) return(-1);
@@ -2632,7 +2646,7 @@ int s, len, vlen, mode, quoted;
 #ifdef	BASHSTYLE
 	/* bash does not evaluates a quoted string in substitution itself */
 		free(*cpp);
-		val = strdupcpy(&(arg[s]), vlen);
+		val = strndup2(&(arg[s]), vlen);
 		*cpp = evalarg(val, 0, 1, quoted);
 		free(val);
 		if (!*cpp) return(-1);
@@ -2763,10 +2777,8 @@ int quoted;
 	if (cp && (nul == 0x80) && !*cp) cp = NULL;
 
 #ifndef	MINIMUMSHELL
-	if (mode == 'n') {
-		i = (cp) ? strlen(cp) : 0;
-		cp = ascnumeric(tmp, i, 0, MAXLONGWIDTH);
-	}
+	if (mode == 'n')
+		cp = long2str(tmp, (cp) ? strlen(cp) : 0, sizeof(tmp));
 	else if (nul == -1) {
 		new = removeword(cp, top + s, vlen, mode);
 		if (new) cp = new;
@@ -2977,7 +2989,7 @@ char **argp;
 #if	!MSDOS
 		uidtable *up;
 
-		cp = strdupcpy(top, len);
+		cp = strndup2(top, len);
 		up = finduid(0, cp);
 		free(cp);
 		if (up) cp = up -> home;
@@ -3263,7 +3275,7 @@ int uniqdelim, evalq;
 
 	if (eol) i = eol - path;
 	else i = strlen(path);
-	cp = strdupcpy(path, i);
+	cp = strndup2(path, i);
 
 	if (!(tmp = evalarg(cp, 0, 0, '\''))) {
 		*cp = '\0';

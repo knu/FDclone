@@ -14,9 +14,9 @@ extern int norockridge;
 #endif
 
 #ifdef	_NODOSDRIVE
-# ifdef	NODNAMLEN
+# if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
 typedef struct _st_dirent {
-	char buf[sizeof(struct dirent) + MAXNAMLEN];
+	char buf[sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
 } st_dirent;
 # else
 typedef struct dirent	st_dirent;
@@ -228,6 +228,15 @@ int *codep;
 			if (file++ == isrootdir(path)) n++;
 			strncpy2(rpath, path, n);
 		}
+#ifndef	_NODOSDRIVE
+		else if ((n = _dospath(path))) {
+			file = path + 2;
+			rpath[0] = n;
+			rpath[1] = ':';
+			rpath[2] = '.';
+			rpath[3] = '\0';
+		}
+#endif
 		else {
 			file = path;
 			strcpy(rpath, ".");

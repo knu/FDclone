@@ -68,6 +68,17 @@ noinheader() {
 	if (inheader "$1" "$2" "$3"); then return 1; else return 0; fi
 }
 
+gettypesize() {
+	re=$1
+	echo "Checking for \"$1\" in <$2.h>..." 1>&2
+	(setheader "$2")
+	echo "#include <stdio.h>" >> $TMPSRC
+	echo "$3 int main() { printf(\"%d\\\\n\", sizeof($1)); }" >> $TMPSRC
+	if eval $docc; then ret=`./$TMPEXE`; else ret=0; fi
+	rm -f $TMPEXE
+	return $ret
+}
+
 isexist() {
 	echo "Checking for $1..." 1>&2
 	if (compile "$1" "$2" "$3"); then ret=0; else ret=1; fi
@@ -98,16 +109,17 @@ DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
 USELEAPCNT USESELECTH USESYSDIRH USETIMEH USESTDARGH USEMKDEVH USEMKNODH \
 USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
-USEFFSIZE STATFSARGS \
+USESTATVFS_T USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF NOTERMVAR \
 USEUTIME USEGETWD USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
-USEWAITPID USESIGACTION USESIGPMASK USERESOURCEH USEULIMITH USETIMESH \
+USEWAITPID USESIGACTION USESIGPMASK \
+USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
 GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
-GETTODARGS
+USESTRERROR GETTODARGS
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -273,9 +285,7 @@ if noheader sgtty \
 		echo "#define	USETERMIO"
 	fi
 fi
-if noheader dirent; then
-	echo "#define	USEDIRECT"
-else
+if useheader dirent; then
 	if isexist "d.d_ino" "sys/types dirent" "struct dirent d;" \
 	&& noexist "d.d_fileno" "sys/types dirent" "struct dirent d;"; then
 		echo "#define	SYSVDIRENT"
@@ -283,6 +293,14 @@ else
 	if noexist "d.d_namlen" "sys/types dirent" "struct dirent d;"; then
 		echo "#define	NODNAMLEN"
 	fi
+	gettypesize "d.d_name" "sys/types dirent" "struct dirent d;"
+	echo "#define	DNAMESIZE	$ret"
+elif useheader sys/dir; then
+	echo "#define	USEDIRECT"
+	gettypesize "d.d_name" "sys/types sys/dir" "struct direct d;"
+	echo "#define	DNAMESIZE	$ret"
+else
+	echo "#define	DNAMESIZE	0"
 fi
 if (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' sys/time \
 && isexist "timezone=0" "sys/types sys/time" "extern time_t timezone;") \
@@ -296,6 +314,7 @@ if (noexist "t.tm_gmtoff" "sys/types sys/time" "struct tm t;" \
 fi
 
 
+statvfs_t=
 arg=2
 if inheader 'struct.*[^a-zA-Z0-9_]fs_data[^a-zA-Z0-9_]' sys/mount; then
 	echo "#define	USEFSDATA"
@@ -307,14 +326,21 @@ elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' sys/mount; then {
 		echo "#define	USEFFSIZE"
 	elif isexist "statfs(0,0,0)" sys/mount; then arg=3; fi
 }
+elif inheader 'struct.*[^a-zA-Z0-9_]statvfs[^a-zA-Z0-9_]' \
+"sys/types sys/statvfs" \
+&& { { isexist "statvfs(0,&f)" "sys/types sys/statvfs" "statvfs_t f;" \
+&& statvfs_t=1; } \
+|| isexist "statvfs(0,&f)" "sys/types sys/statvfs" "struct statvfs f;"; }; then
+	echo "#define	USESTATVFSH"
 elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' \
 "sys/types sys/statfs" \
 && { { isexist "statfs(0,&f,0,0)" "sys/types sys/statfs" "struct statfs f;" \
 && arg=4; } \
 || isexist "statfs(0,&f)" "sys/types sys/statfs" "struct statfs f;"; }; then
 	echo "#define	USESTATFSH"
-elif inheader 'struct.*[^a-zA-Z0-9_]statvfs[^a-zA-Z0-9_]' sys/statvfs; then
-	echo "#define	USESTATVFSH"
+fi
+if [ -n "$statvfs_t" ]; then
+	echo "#define	USESTATVFS_T"
 fi
 if [ "$arg" != "2" ]; then
 	echo "#define	STATFSARGS	$arg"
@@ -419,16 +445,15 @@ fi
 if isexist "sigprocmask(0,0,0)" signal; then
 	echo "#define	USESIGPMASK"
 fi
-if isexist "getrusage(0,0)" "sys/types sys/time sys/resource" \
-&& isexist "getrlimit(0,0)" "sys/types sys/time sys/resource"; then
+if isexist "getrlimit(0,0)" "sys/types sys/time sys/resource"; then
 	echo "#define	USERESOURCEH"
-else
-	if isexist "ulimit(0,0)" ulimit; then
+elif isexist "ulimit(0,0)" ulimit; then
 	echo "#define	USEULIMITH"
-	fi
-	if isexist "times(0)" "sys/types sys/times"; then
-	echo "#define	USETIMESH"
-	fi
+fi
+if isexist "getrusage(0,0)" "sys/types sys/time sys/resource"; then
+	echo "#define	USEGETRUSAGE"
+elif isexist "times(0)" "sys/types sys/times"; then
+	echo "#define	USETIMES"
 fi
 if noexist "getpgrp(0)" && isexist "getpgrp()"; then
 	echo "#define	GETPGRPVOID"
@@ -445,6 +470,9 @@ fi
 if inheader '[^a-zA-Z0-9_]signal([^a-zA-Z0-9_].*\(|\()[ (]*int[ ),].*\) *;' \
 signal; then
 	echo "#define	SIGFNCINT"
+fi
+if isexist "strerror(0)" string; then
+	echo "#define	USESTRERROR"
 fi
 if noexist "gettimeofday(0,0)" "sys/time time" \
 && isexist "gettimeofday(0)" "sys/time time"; then

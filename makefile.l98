@@ -102,7 +102,7 @@ BCFLAGS	= $(CFLAGS) -DMINIMUMSHELL
 all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) -ml -h -k"-s 5000" -o $@ @$(ARGS) $(LDFLAGS)
+	$(CC) -ml -h -k"-s 4c00" -o $@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
@@ -113,13 +113,13 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main.obj: main.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 5000" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\"  $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4c00" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\"  $*.c
 
 system.obj: system.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 5000" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4c00" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
 
 .c.obj:
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 5000" $(CPPFLAGS) -c -o $@ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4c00" $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
@@ -368,10 +368,10 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	$(LN) $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe \
 		$(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
 	$(CHMOD) a+rx $(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
-	$(SED) -e 's:#TMPDIR=\tmp:TMPDIR=\home\tmp:' \
-		-e 's:#LANGUAGE=\$$LANG:LANGUAGE=euc:' \
-		-e 's:#INPUTKCODE=\$$LANG:INPUTKCODE=euc:' \
-		-e 's:#FNAMEKCODE=\$$LANG:FNAMEKCODE=utf8:' \
+	$(SED) -e 's:#TMPDIR=.*:TMPDIR=\home\tmp:' \
+		-e 's:#LANGUAGE=.*:LANGUAGE=euc:' \
+		-e 's:#INPUTKCODE=.*:INPUTKCODE=euc:' \
+		-e 's:#FNAMEKCODE=.*:FNAMEKCODE=utf8:' \
 		-e '\# launcher definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \

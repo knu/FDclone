@@ -8,7 +8,6 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include "machine.h"
 #include "kctype.h"
 
@@ -40,11 +39,19 @@
 
 #ifdef	FD
 #include "term.h"
+extern int Xstat __P_((char *, struct stat *));
+extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 extern int kanjifputs __P_((char *, FILE *));
 #else	/* !FD */
 extern int ttyio;
 extern FILE *ttyout;
+#define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
+# if	MSDOS
+# define	Xlstat(f, s)	(stat(f, s) ? -1 : 0)
+# else
+# define	Xlstat		lstat
+# endif
 #define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
 #define	kanjifputs	fputs
 #endif	/* !FD */
@@ -56,8 +63,8 @@ extern FILE *ttyout;
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
+extern char *strndup2 __P_((char *, int));
 extern char *strncpy2 __P_((char *, char *, int));
-extern char *ascnumeric __P_((char *, long, int, int));
 extern int setenv2 __P_((char *, char *));
 extern time_t time2 __P_((VOID_A));
 
@@ -73,6 +80,9 @@ static int NEAR evalexpression __P_((char *, int, long *, int));
 #if	!MSDOS
 static VOID NEAR addmailpath __P_((char *, char *, time_t));
 #endif
+static int NEAR testsub1 __P_((int, char *, int *));
+static int NEAR testsub2 __P_((int, char *[], int *));
+static int NEAR testsub3 __P_((int, char *[], int *, int));
 
 #define	ALIASDELIMIT	"();&|<>"
 #define	BUFUNIT		32
@@ -124,6 +134,7 @@ int posixalias __P_((syntaxtree *));
 int posixunalias __P_((syntaxtree *));
 #endif
 int posixkill __P_((syntaxtree *));
+int posixtest __P_((syntaxtree *));
 #ifndef	NOPOSIXUTIL
 int posixcommand __P_((syntaxtree *));
 int posixgetopts __P_((syntaxtree *));
@@ -360,7 +371,11 @@ syntaxtree *trp;
 	joblist[i].pids[j] = pid;
 	joblist[i].stats[j] = sig;
 	if (!j && !(joblist[i].trp) && trp) {
+#ifdef	MINIMUMSHELL
 		joblist[i].trp = duplstree(trp, NULL);
+#else
+		joblist[i].trp = duplstree(trp, NULL, 0L);
+#endif
 		if (!isoppipe(joblist[i].trp) && joblist[i].trp -> next) {
 			freestree(joblist[i].trp -> next);
 			joblist[i].trp -> next = NULL;
@@ -439,8 +454,8 @@ VOID killjob(VOID_A)
 		if (!(joblist[i].pids)) continue;
 		j = joblist[i].stats[joblist[i].npipe];
 		if (j < 0 || j >= 128) continue;
-		killpg(joblist[i].pids[0], SIGHUP);
-		if (j > 0) killpg(joblist[i].pids[0], SIGCONT);
+		Xkillpg(joblist[i].pids[0], SIGHUP);
+		if (j > 0) Xkillpg(joblist[i].pids[0], SIGCONT);
 	}
 }
 #endif	/* !MSDOS && !NOJOB */
@@ -734,7 +749,7 @@ int *ptrp;
 
 	s += i;
 	len = *ptrp - i * 2;
-	s = strdupcpy(s, len);
+	s = strndup2(s, len);
 	if (i <= 1) {
 #ifndef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
@@ -769,12 +784,10 @@ int *ptrp;
 		}
 
 		if (*ptrp < 0) cp = NULL;
-		else if (n >= 0) {
-			ascnumeric(buf, n, 0, sizeof(buf) - 1);
-			cp = strdup2(buf);
-		}
+		else if (n >= 0L)
+			cp = strdup2(long2str(buf, n, sizeof(buf)));
 		else {
-			ascnumeric(buf, -n, 0, sizeof(buf) - 1);
+			long2str(buf, -n, sizeof(buf));
 			cp = malloc2(strlen(buf) + 2);
 			cp[0] = '-';
 			strcpy(&(cp[1]), buf);
@@ -838,7 +851,7 @@ int multi;
 			else {
 				i = s + len - (msg + 1);
 				len = msg - s;
-				msg = strdupcpy(&(s[len + 1]), i);
+				msg = strndup2(&(s[len + 1]), i);
 			}
 		}
 		strncpy2(path, s, len);
@@ -949,7 +962,7 @@ syntaxtree *trp;
 # endif
 	gettermio(joblist[i].pids[0]);
 	if ((j = joblist[i].stats[n]) > 0 && j < 128) {
-		killpg(joblist[i].pids[0], SIGCONT);
+		Xkillpg(joblist[i].pids[0], SIGCONT);
 		for (j = 0; j <= n; j++) joblist[i].stats[j] = 0;
 	}
 	if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
@@ -979,7 +992,7 @@ syntaxtree *trp;
 	}
 	n = joblist[i].npipe;
 	if ((j = joblist[i].stats[n]) > 0 && j < 128) {
-		killpg(joblist[i].pids[0], SIGCONT);
+		Xkillpg(joblist[i].pids[0], SIGCONT);
 		for (j = 0; j <= n; j++) joblist[i].stats[j] = 0;
 	}
 	if (!isopbg(joblist[i].trp) || !isopnown(joblist[i].trp))
@@ -1051,7 +1064,7 @@ syntaxtree *trp;
 		else {
 			shellalias = (aliastable *)realloc2(shellalias,
 				(i + 2) * sizeof(aliastable));
-			shellalias[i].ident = strdupcpy(argv[n], len);
+			shellalias[i].ident = strndup2(argv[n], len);
 			shellalias[i].comm = strdup2(&(argv[n][++len]));
 			shellalias[++i].ident = NULL;
 		}
@@ -1162,7 +1175,7 @@ syntaxtree *trp;
 				execerror(s, ER_NOSUCHJOB, 0);
 				return(RET_FAIL);
 			}
-			n = killpg(joblist[n].pids[0], sig);
+			n = Xkillpg(joblist[n].pids[0], sig);
 		}
 		else
 #endif	/* !MSDOS && !NOJOB */
@@ -1186,6 +1199,269 @@ syntaxtree *trp;
 		}
 	}
 	return(RET_SUCCESS);
+}
+
+static int NEAR testsub1(c, s, ptrp)
+int c;
+char *s;
+int *ptrp;
+{
+	struct stat st;
+	int ret;
+
+	ret = -1;
+	switch (c) {
+		case 'r':
+			if (s) ret = (Xaccess(s, R_OK) >= 0)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'w':
+			if (s) ret = (Xaccess(s, W_OK) >= 0)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'x':
+			if (s) ret = (Xaccess(s, X_OK) >= 0)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'f':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) != S_IFDIR)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'd':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFDIR)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'c':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFCHR)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'b':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFBLK)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'p':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFIFO)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'u':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& st.st_mode & S_ISUID)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'g':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& st.st_mode & S_ISGID)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'k':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& st.st_mode & S_ISVTX)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'h':
+			if (s) ret = (*s && Xlstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFLNK)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 's':
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& st.st_size > 0)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 't':
+			if (s) {
+#ifdef	BASHBUG
+	/* Maybe bash's bug. */
+				if ((ret = isnumeric(s)) < 0) ret = 1;
+#else
+				if ((ret = isnumeric(s)) < 0) ret = 0;
+#endif
+				ret = (isatty(ret)) ? RET_SUCCESS : RET_FAIL;
+			}
+			else {
+				(*ptrp)++;
+#ifdef	BASHBUG
+	/* Maybe bash's bug. */
+				ret = 0;
+#else
+				ret = 1;
+#endif
+				return((isatty(ret)) ? RET_SUCCESS : RET_FAIL);
+			}
+			break;
+		case 'z':
+			if (s) ret = (!*s) ? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'n':
+			if (s) ret = (*s) ? RET_SUCCESS : RET_FAIL;
+			break;
+#ifdef	BASHSTYLE
+	/* bash's "test" has -e option */
+		case 'e':
+			if (s) ret = (*s && Xstat(s, &st) >= 0)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+#endif
+		default:
+			ret = -2;
+			break;
+	}
+	if (ret >= 0) *ptrp += 2;
+	return(ret);
+}
+
+static int NEAR testsub2(argc, argv, ptrp)
+int argc;
+char *argv[];
+int *ptrp;
+{
+	char *s, *a1, *a2;
+	int ret, v1, v2;
+
+	if (*ptrp >= argc) return(-1);
+	if (argv[*ptrp][0] == '(' && !argv[*ptrp][1]) {
+		(*ptrp)++;
+		if ((ret = testsub3(argc, argv, ptrp, 0)) < 0)
+			return(ret);
+		if (*ptrp >= argc
+		|| argv[*ptrp][0] != ')' || argv[*ptrp][1]) return(-1);
+		(*ptrp)++;
+		return(ret);
+	}
+	if (*ptrp + 2 < argc) {
+		s = argv[*ptrp + 1];
+		a1 = argv[*ptrp];
+		a2 = argv[*ptrp + 2];
+		ret = -1;
+
+		if (s[0] == '!' && s[1] == '=' && !s[2])
+			ret = (strcmp(a1, a2)) ? RET_SUCCESS : RET_FAIL;
+		else if (s[0] == '=' && !s[1])
+			ret = (!strcmp(a1, a2)) ? RET_SUCCESS : RET_FAIL;
+		else if (s[0] == '-') {
+			if ((v1 = isnumeric(a1)) < 0) {
+#ifdef	BASHSTYLE
+	/* bash's "test" does not allow arithmetic comparison with strings */
+				return(-3);
+#else
+				v1 = 0;
+#endif
+			}
+			if ((v2 = isnumeric(a2)) < 0) {
+#ifdef	BASHSTYLE
+	/* bash's "test" does not allow arithmetic comparison with strings */
+				*ptrp += 2;
+				return(-3);
+#else
+				v2 = 0;
+#endif
+			}
+			if (s[1] == 'e' && s[2] == 'q' && !s[3])
+				ret = (v1 == v2) ? RET_SUCCESS : RET_FAIL;
+			else if (s[1] == 'n' && s[2] == 'e' && !s[3])
+				ret = (v1 != v2) ? RET_SUCCESS : RET_FAIL;
+			else if (s[1] == 'g' && s[2] == 't' && !s[3])
+				ret = (v1 > v2) ? RET_SUCCESS : RET_FAIL;
+			else if (s[1] == 'g' && s[2] == 'e' && !s[3])
+				ret = (v1 >= v2) ? RET_SUCCESS : RET_FAIL;
+			else if (s[1] == 'l' && s[2] == 't' && !s[3])
+				ret = (v1 < v2) ? RET_SUCCESS : RET_FAIL;
+			else if (s[1] == 'l' && s[2] == 'e' && !s[3])
+				ret = (v1 <= v2) ? RET_SUCCESS : RET_FAIL;
+			else {
+				(*ptrp)++;
+				return(-2);
+			}
+		}
+		if (ret >= 0) {
+			*ptrp += 3;
+			return(ret);
+		}
+	}
+	if (argv[*ptrp][0] == '-' && !argv[*ptrp][2]) {
+		a1 = (*ptrp + 1 < argc) ? argv[*ptrp + 1] : NULL;
+		ret = testsub1(argv[*ptrp][1], a1, ptrp);
+		if (ret >= -1) return(ret);
+	}
+	ret = (argv[*ptrp][0]) ? RET_SUCCESS : RET_FAIL;
+	(*ptrp)++;
+	return(ret);
+}
+
+static int NEAR testsub3(argc, argv, ptrp, lvl)
+int argc;
+char *argv[];
+int *ptrp, lvl;
+{
+	int ret1, ret2;
+
+	if (lvl > 2) {
+		if (*ptrp >= argc) return(-1);
+		if (argv[*ptrp][0] == '!' && !argv[*ptrp][1]) {
+			(*ptrp)++;
+			if ((ret1 = testsub2(argc, argv, ptrp)) < 0)
+				return(ret1);
+			return(1 - ret1);
+		}
+		return(testsub2(argc, argv, ptrp));
+	}
+	if ((ret1 = testsub3(argc, argv, ptrp, lvl + 1)) < 0) return(ret1);
+	if (*ptrp >= argc || argv[*ptrp][0] != '-'
+	|| argv[*ptrp][1] != ((lvl) ? 'a' : 'o') || argv[*ptrp][2])
+		return(ret1);
+
+	(*ptrp)++;
+	if ((ret2 = testsub3(argc, argv, ptrp, lvl)) < 0) return(ret2);
+	ret1 = ((lvl)
+		? (ret1 != RET_FAIL && ret2 != RET_FAIL)
+		: (ret1 != RET_FAIL || ret2 != RET_FAIL))
+			? RET_SUCCESS : RET_FAIL;
+	return(ret1);
+}
+
+int posixtest(trp)
+syntaxtree *trp;
+{
+	char **argv;
+	int ret, ptr, argc;
+
+	argc = (trp -> comm) -> argc;
+	argv = (trp -> comm) -> argv;
+
+	if (argc <= 0) return(RET_FAIL);
+	if (argv[0][0] == '[' && !argv[0][1]
+	&& (--argc <= 0 || argv[argc][0] != ']' || argv[argc][1])) {
+		fputs("] missing\n", stderr);
+		fflush(stderr);
+		return(RET_NOTICE);
+	}
+	if (argc <= 1) return(RET_FAIL);
+	ptr = 1;
+	ret = testsub3(argc, argv, &ptr, 0);
+	if (!ret && ptr < argc) ret = -1;
+	if (ret < 0) {
+		switch (ret) {
+			case -1:
+				fputs("argument expected\n", stderr);
+				break;
+			case -2:
+				fputs("unknown operator ", stderr);
+				fputs(argv[ptr], stderr);
+				fputc('\n', stderr);
+				break;
+			default:
+				fputs("syntax error\n", stderr);
+				break;
+		}
+		fflush(stderr);
+		return(RET_NOTICE);
+	}
+	return(ret);
 }
 
 #ifndef	NOPOSIXUTIL
@@ -1394,7 +1670,7 @@ syntaxtree *trp;
 	setenv2(name, buf);
 
 	n = posixoptind;
-	setenv2("OPTIND", ascnumeric(buf, n, 0, sizeof(buf) - 1));
+	setenv2("OPTIND", long2str(buf, n, sizeof(buf)));
 	posixoptind = n;
 
 	return(ret);

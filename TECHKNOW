@@ -178,6 +178,8 @@ SYSVDIRENT
 	ちます。
 NODNAMLEN
 	構造体 dirent がメンバ d_namlen を持ちません。
+DNAMESIZE
+	構造体 dirent のメンバ d_name のサイズを示します。
 HAVETIMEZONE
 	大域変数 timezone が GMT からのオフセット値を表しま
 	す。
@@ -294,6 +296,9 @@ USEUNAME
 USEWAITPID
 	ソフトウェアシグナル待ち関数 waitpid(2) を wait3(2)
 	の代わりに用います。
+USESIGACTION
+	シグナル操作関数 sigaction(2) を signal(2) の代わり
+	に用います。
 USESIGPMASK
 	シグナル操作関数 sigprocmask(2) を sigsetmask(2) の
 	代わりに用います。
@@ -303,9 +308,11 @@ USERESOURCEH
 USEULIMITH
 	リソース情報を取得・設定する際に <ulimit.h> で定義さ
 	れた関数群を用います。
-USETIMESH
-	プロセス時間情報を取得する際に <sys/times.h> で定義
-	された関数群を用います。
+USEGETRUSAGE
+	プロセス時間情報を取得する際に getrusage(2) を用いま
+	す。
+USETIMES
+	プロセス時間情報を取得する際に times(2) を用います。
 GETPGRPVOID
 	プロセスグループ取得関数 getpgrp(2) が引数を持ちませ
 	ん。
@@ -321,6 +328,12 @@ SIGARGINT
 SIGFNCINT
 	ソフトウェアシグナル関数 signal(3) の第 2 引数として、
 	int 型の引数を持つ関数へのポインタが用いられます。
+USESTRERROR
+	エラー文字列関数 strerror(3) を sys_errlist[] の代わ
+	りに用います。
+GETTODARGS
+	時刻取得関数 gettimeofday(2) の用いる引数の数を指定
+	します。デフォルトは 2 です。
 
 SENSEPERSEC
 	1 秒間にキー入力を関知する回数を指定します。端末通信

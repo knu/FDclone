@@ -7,6 +7,12 @@
 #ifndef	__PATHNAME_H_
 #define	__PATHNAME_H_
 
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 #define	IFS_SET		" \t\n"
 #define	META		'\\'
 #if	!MSDOS
@@ -176,10 +182,10 @@ extern char *strcatdelim2 __P_((char *, char *, char *));
 extern int strcasecmp2 __P_((char *, char *));
 extern int strpathcmp2 __P_((char *, char *));
 extern int strnpathcmp2 __P_((char *, char *, int));
-extern char *strdupcpy __P_((char *, int));
 extern int isidentchar __P_((int));
 extern int isdotdir __P_((char *));
 extern char *isrootdir __P_((char *));
+extern char *long2str __P_((char *, long, int));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));

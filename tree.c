@@ -162,14 +162,14 @@ int level, *maxp;
 	}
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	else if (_dospath(path)) {
-		dir = strdupcpy(path, 3);
+		dir = strndup2(path, 3);
 		subdir = path + 3;
 		if (!*subdir) subdir = NULL;
 	}
 #endif
 	else {
 		len = (cp = strdelim(path, 0)) ? cp - path : strlen(path);
-		dir = strdupcpy(path, len);
+		dir = strndup2(path, len);
 		subdir = (cp) ? cp + 1 : NULL;
 	}
 
@@ -711,7 +711,7 @@ static char *NEAR _tree(VOID_A)
 	strcpy(path, fullpath);
 	tr_cur[0].name = strdup2(_SS_);
 # else
-	if (dospath("", path)) tr_cur[0].name = strdupcpy(path, 3);
+	if (dospath("", path)) tr_cur[0].name = strndup2(path, 3);
 	else {
 		strcpy(path, fullpath);
 		tr_cur[0].name = strdup2(_SS_);

@@ -7,12 +7,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <time.h>
 #include <dos.h>
+
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 #ifndef	USEUTIME
 #include <sys/time.h>

@@ -50,6 +50,7 @@ extern int maxarchive;
 #endif
 extern char fullpath[];
 extern char **history[];
+extern char *histfile;
 extern char *helpindex[];
 extern int sizeinfo;
 extern int subwindow;
@@ -157,6 +158,7 @@ static int NEAR execruncomline __P_((char *, char *, int, char *));
 #endif
 static int NEAR initoption __P_((int, char *[], char *[]));
 static int NEAR evaloption __P_((char *[]));
+static char *NEAR searchenv __P_((char *, char *[]));
 static VOID NEAR setexecname __P_((char *));
 static VOID NEAR setexecpath __P_((char *, char *[]));
 static VOID NEAR prepareexitfd __P_((VOID_A));
@@ -179,7 +181,7 @@ int fd_restricted = 0;
 char **orighelpindex = NULL;
 bindtable *origbindlist = NULL;
 # if	!MSDOS && !defined (_NOKEYMAP)
-keymaptable *origkeymaplist = NULL;
+keyseq_t *origkeymaplist = NULL;
 # endif
 # ifndef	_NOARCHIVE
 launchtable *origlaunchlist = NULL;
@@ -226,7 +228,7 @@ char *s;
 	if (!s) s = progname;
 	stdiomode();
 	endterm();
-	fputc('\007', stderr);
+	if (dumbterm <= 2) fputc('\007', stderr);
 	errno = duperrno;
 	if (errno) perror2(s);
 	else {
@@ -418,9 +420,16 @@ static int xsizerror(VOID_A)
 VOID checkscreen(xmax, ymax)
 int xmax, ymax;
 {
+#ifdef	SIGWINCH
+	int dupwinchok;
+#endif
 	char *cp;
 	int i, row;
 
+#ifdef	SIGWINCH
+	dupwinchok = winchok;
+	winchok = 0;
+#endif
 	for (i = 0;; i++) {
 		if (!(cp = getwsize(xmax, ymax))) {
 #ifndef	_NOTREE
@@ -451,23 +460,30 @@ int xmax, ymax;
 		cputs2("\r\n");
 		putterm(t_bell);
 		tflush();
+		keyflush();
 		if (kbhit2(1000000L) && getkey2(0) == K_ESC) {
 			errno = 0;
 			error(INTR_K);
 		}
 	}
+#ifdef	SIGWINCH
+	winchok = dupwinchok;
+#endif
 }
 
 #ifdef	SIGWINCH
 static int wintr(VOID_A)
 {
-	int duperrno;
+	int duperrno, dupusegetcursor;
 
 	duperrno = errno;
 	signal2(SIGWINCH, SIG_IGN);
 	if (!winchok) winched++;
 	else {
+		dupusegetcursor = usegetcursor;
+		usegetcursor = 0;
 		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
+		usegetcursor = dupusegetcursor;
 		rewritefile(1);
 		if (subwindow) ungetch2(K_CTRL('L'));
 	}
@@ -542,10 +558,10 @@ static int printtime(VOID_A)
 int sigvecset(set)
 int set;
 {
-	static int stat = -1;
+	static int status = -1;
 	int old;
 
-	old = stat;
+	old = status;
 	if (set == old);
 	else if (set) {
 #ifdef	SIGALRM
@@ -563,7 +579,7 @@ int set;
 		doswaitfunc = waitmes;
 		dosintrfunc = intrkey;
 #endif
-		stat = 1;
+		status = 1;
 	}
 	else {
 #ifdef	SIGALRM
@@ -580,7 +596,7 @@ int set;
 		doswaitfunc = NULL;
 		dosintrfunc = NULL;
 #endif
-		stat = 0;
+		status = 0;
 	}
 
 	return(old);
@@ -632,7 +648,7 @@ VOID saveorigenviron(VOID_A)
 	orighelpindex = copystrarray(NULL, helpindex, NULL, 10);
 	origbindlist = copybind(NULL, bindlist);
 # if	!MSDOS && !defined (_NOKEYMAP)
-	origkeymaplist = copykeymap(NULL);
+	origkeymaplist = copykeyseq(NULL);
 # endif
 # ifndef	_NOARCHIVE
 	origlaunchlist = copylaunch(NULL, launchlist,
@@ -684,7 +700,7 @@ int exist;
 #ifdef	_NOORIGSHELL
 # if	!MSDOS
 	tmp = NULL;
-	if (!exist && (tmp = (char *)getenv("TERM"))) {
+	if (!exist && (tmp = getconstvar("TERM"))) {
 		struct stat st;
 
 		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
@@ -750,11 +766,9 @@ int exist;
 	fclose(fp);
 	free(tmp);
 #else	/* !_NOORIGSHELL */
-	file = evalpath(strdup2(file), 1);
 	n = stdiomode();
 	er = execruncom(file, 1);
 	ttyiomode(n);
-	free(file);
 #endif	/* !_NOORIGSHELL */
 
 	return(er ? -1 : 0);
@@ -791,7 +805,7 @@ char *argv[], *envp[];
 	}
 
 #ifndef	_NOORIGSHELL
-	if (initshell(optc, optv, envp) < 0) Xexit2(RET_FAIL);
+	if (initshell(optc, optv) < 0) Xexit2(RET_FAIL);
 #endif	/* !_NOORIGSHELL */
 	free(optv);
 	return(argc);
@@ -815,6 +829,18 @@ char *argv[];
 	return(i);
 }
 
+static char *NEAR searchenv(s, envp)
+char *s, *envp[];
+{
+	int i, len;
+
+	len = strlen(s);
+	for (i = 0; envp[i]; i++)
+		if (!strnpathcmp(envp[i], s, len) && envp[i][len] == '=')
+			return(&(envp[i][++len]));
+	return(NULL);
+}
+
 static VOID NEAR setexecname(argv)
 char *argv;
 {
@@ -835,21 +861,22 @@ char *argv, *envp[];
 	char *cp, buf[MAXPATHLEN];
 
 	origpath = getwd2();
+	if ((cp = searchenv("PWD", envp))) {
+		*fullpath = '\0';
+		realpath2(cp, fullpath, 0);
+		realpath2(fullpath, buf, 1);
+		if (!strpathcmp(origpath, buf)) {
+			free(origpath);
+			origpath = strdup2(fullpath);
+		}
+	}
 	strcpy(fullpath, origpath);
 
 #if	MSDOS
 	cp = argv;
 #else
 	if (strdelim(argv, 0)) cp = argv;
-	else {
-		int i;
-
-		for (i = 0; envp[i]; i++)
-			if (!strncmp(envp[i], "PATH=", sizeof("PATH=") - 1))
-				break;
-		if (!envp[i]) cp = NULL;
-		else cp = searchpath(argv, envp[i] + sizeof("PATH=") - 1);
-	}
+	else if ((cp = searchenv("PATH", envp))) cp = searchpath(argv, cp);
 	if (!cp) progpath = strdup2(origpath);
 	else
 #endif
@@ -890,7 +917,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 	}
 	free(origbindlist);
 #  if	!MSDOS && !defined (_NOKEYMAP)
-	freekeymap(origkeymaplist);
+	freekeyseq(origkeymaplist);
 #  endif
 #  ifndef	_NOARCHIVE
 	if (origlaunchlist) {
@@ -1043,8 +1070,9 @@ char *argv[], *envp[];
 
 #ifdef	_NOORIGSHELL
 	inittty(0);
-	getterment();
+	getterment(NULL);
 #else
+	setshellvar(envp);
 	prepareterm();
 #endif
 	setexecpath(argv[0], envp);
@@ -1064,11 +1092,14 @@ char *argv[], *envp[];
 # else
 	if (*cp == 'r') cp++;
 # endif
-	if (!strpathcmp(cp, FDSHELL)) {
-		if (!Xgetwd(fullpath)) Xexit2(1);
+	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, "su")) {
 		i = main_shell(argc, argv, envp);
 		prepareexitfd();
 		Xexit2(i);
+	}
+	if (dumbterm > 1) {
+		errno = 0;
+		error(NTERM_K);
 	}
 #endif
 
@@ -1107,7 +1138,7 @@ char *argv[], *envp[];
 	}
 #endif	/* !MSDOS */
 
-	loadhistory(0, HISTORYFILE);
+	loadhistory(0, histfile);
 	entryhist(1, origpath, 1);
 	putterms(t_clear);
 

@@ -31,11 +31,15 @@ extern int internal_status;
 #if	0
 #define	MACROMETA	((char)-1)
 #endif
-#ifdef	ARG_MAX
-#define	MAXARGNUM	ARG_MAX
+#if	defined (USESYSCONF) && defined (_SC_ARG_MAX)
+#define	MAXARGNUM	sysconf(_SC_ARG_MAX)
 #else
-# ifdef	NCARGS
-# define	MAXARGNUM	NCARGS
+# ifdef	ARG_MAX
+# define	MAXARGNUM	ARG_MAX
+# else
+#  ifdef	NCARGS
+#  define	MAXARGNUM	NCARGS
+#  endif
 # endif
 #endif
 
@@ -77,6 +81,7 @@ char *promptstr2 = NULL;
 #endif
 char *promptstr = NULL;
 char **history[2] = {NULL, NULL};
+char *histfile = NULL;
 short histsize[2] = {0, 0};
 short histno[2] = {0, 0};
 int savehist = 0;
@@ -338,7 +343,7 @@ int flags;
 # endif
 
 	len = eol - ptr;
-	tmp = strdupcpy(&((*bufp)[ptr]), len);
+	tmp = strndup2(&((*bufp)[ptr]), len);
 	tmp[len] = '\0';
 	cp = &(tmp[blen + mlen]);
 	for (s = cp; *s; s++) {
@@ -769,7 +774,7 @@ int ignorelist;
 	if ((flags & F_REMAIN) && !n_args) flags &= ~F_REMAIN;
 	stp -> flags = flags;
 
-	cp = strdupcpy(line, j);
+	cp = strndup2(line, j);
 	free(line);
 	return(cp);
 }
@@ -1445,7 +1450,8 @@ int noconf, argset, ignorelist;
 	if (haslist && internal_status < -1) {
 		for (i = 0; i < maxfile; i++)
 			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
-		mark = marksize = 0;
+		mark = 0;
+		marksize = (off_t)0;
 	}
 	if (arg) duparg = NULL;
 	return(ret);
@@ -1619,13 +1625,10 @@ int n;
 char *file;
 {
 	FILE *fp;
-	char *cp, *line;
+	char *line;
 	int i, j, size;
 
-	cp = evalpath(strdup2(file), 1);
-	fp = fopen(cp, "r");
-	free(cp);
-	if (!fp) return(-1);
+	if (!(fp = Xfopen(file, "r"))) return(-1);
 
 	size = histsize[n];
 	history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
@@ -1640,7 +1643,7 @@ char *file;
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		history[n][0] = line;
 	}
-	fclose(fp);
+	Xfclose(fp);
 
 	for (i++; i <= size; i++) history[n][i] = NULL;
 	return(0);
@@ -1655,21 +1658,18 @@ char *file;
 	int i, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
-	cp = evalpath(strdup2(file), 1);
-	fp = fopen(cp, "w");
-	free(cp);
-	if (!fp) return(-1);
+	if (!(fp = Xfopen(file, "w"))) return(-1);
 
 	size = (savehist > histsize[n]) ? histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
 		for (cp = history[n][i]; (eol = strchr(cp, '\n')); cp = eol) {
-			fwrite(cp, sizeof(char), eol++ - cp, fp);
-			fputc('\0', fp);
+			Xfwrite(cp, sizeof(char), eol++ - cp, fp);
+			Xfputc('\0', fp);
 		}
-		fputs(cp, fp);
-		fputc('\n', fp);
+		Xfputs(cp, fp);
+		Xfputc('\n', fp);
 	}
-	fclose(fp);
+	Xfclose(fp);
 
 	return(0);
 }

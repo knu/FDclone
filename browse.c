@@ -86,6 +86,7 @@ static VOID NEAR sizebar __P_((VOID_A));
 static int NEAR putowner __P_((char *, uid_t));
 static int NEAR putgroup __P_((char *, gid_t));
 #endif
+static int NEAR putsize __P_((char *, off_t, int, int));
 static VOID NEAR infobar __P_((VOID_A));
 static int NEAR calclocate __P_((int));
 #ifndef	_NOSPLITWIN
@@ -108,9 +109,9 @@ int sorttype = 0;
 int chgorder = 0;
 int stackdepth = 0;
 int sizeinfo = 0;
-off_t marksize = 0;
-off_t totalsize = 0;
-off_t blocksize = 0;
+off_t marksize = (off_t)0;
+off_t totalsize = (off_t)0;
+off_t blocksize = (off_t)0;
 namelist filestack[MAXSTACK];
 char fullpath[MAXPATHLEN] = "";
 char *macrolist[MAXMACROTABLE];
@@ -306,18 +307,19 @@ static VOID NEAR statusbar(VOID_A)
 	putterm(t_standout);
 	cputs2("Page:");
 	putterm(end_standout);
-	cputs2(ascnumeric(buf, filepos / FILEPERPAGE + 1, 2, 2));
+	cputs2(ascnumeric(buf, (off_t)(filepos / FILEPERPAGE + 1), 2, 2));
 	putch2('/');
-	cputs2(ascnumeric(buf, (maxfile - 1) / FILEPERPAGE + 1, 2, 2));
+	cputs2(ascnumeric(buf,
+		(off_t)((maxfile - 1) / FILEPERPAGE + 1), 2, 2));
 	putch2(' ');
 
 	locate(C_MARK - x, L_STATUS);
 	putterm(t_standout);
 	cputs2("Mark:");
 	putterm(end_standout);
-	cputs2(ascnumeric(buf, mark, 4, 4));
+	cputs2(ascnumeric(buf, (off_t)mark, 4, 4));
 	putch2('/');
-	cputs2(ascnumeric(buf, maxfile, 4, 4));
+	cputs2(ascnumeric(buf, (off_t)maxfile, 4, 4));
 	putch2(' ');
 
 	if (ishardomit()) x += C_FIND - C_SORT;
@@ -410,7 +412,7 @@ static VOID NEAR stackbar(VOID_A)
 static VOID NEAR sizebar(VOID_A)
 {
 	char buf[14 + 1];
-	long total, fre, bsize;
+	off_t total, fre, bsize;
 	int x;
 
 	if (!sizeinfo || !*fullpath) return;
@@ -469,7 +471,7 @@ static VOID NEAR sizebar(VOID_A)
 
 int putmode(buf, mode)
 char *buf;
-u_short mode;
+u_int mode;
 {
 	int i;
 
@@ -526,7 +528,7 @@ uid_t uid;
 	i = len = (iswellomit()) ? WOWNERMIN : WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
 	else if ((up = finduid(uid, NULL))) strncpy3(buf, up -> name, &len, 0);
-	else ascnumeric(buf, uid, -1, len);
+	else snprintf2(buf, len + 1, "%-*d", len, uid);
 
 	return(len);
 }
@@ -541,17 +543,30 @@ gid_t gid;
 	i = len = (iswellomit()) ? WGROUPMIN : WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
 	else if ((gp = findgid(gid, NULL))) strncpy3(buf, gp -> name, &len, 0);
-	else ascnumeric(buf, gid, -1, len);
+	else snprintf2(buf, len + 1, "%-*d", len, gid);
 
 	return(len);
 }
 #endif	/* !MSDOS */
 
+static int NEAR putsize(buf, n, min, max)
+char *buf;
+off_t n;
+int min, max;
+{
+	char tmp[MAXLONGWIDTH + 1];
+	int i, len;
+
+	if (max > MAXLONGWIDTH) max = MAXLONGWIDTH;
+	ascnumeric(tmp, n, max, max);
+	for (i = max - min; i > 0; i--) if (tmp[i - 1] == ' ') break;
+	len = max - i;
+	strncpy(buf, &(tmp[i]), len);
+	return(len);
+}
+
 static VOID NEAR infobar(VOID_A)
 {
-	char *buf;
-	struct tm *tm;
-	int len, width;
 #if	!MSDOS
 # ifndef	_NODOSDRIVE
 	char path[MAXPATHLEN];
@@ -559,6 +574,9 @@ static VOID NEAR infobar(VOID_A)
 	char *tmp;
 	int i, l;
 #endif
+	char *buf;
+	struct tm *tm;
+	int len, width;
 
 	if (!filelist || maxfile < 0) return;
 	locate(0, L_INFO);
@@ -623,21 +641,19 @@ static VOID NEAR infobar(VOID_A)
 
 #if	!MSDOS
 	if (isdev(&(filelist[filepos]))) {
-		ascnumeric(&(buf[len]),
-			major(filelist[filepos].st_size), 3, 3);
-		len += 3;
+		len += putsize(&(buf[len]),
+			(off_t)(major((u_long)(filelist[filepos].st_size))),
+			3, n_lastcolumn - len);
 		buf[len++] = ',';
 		buf[len++] = ' ';
-		ascnumeric(&(buf[len]),
-			minor(filelist[filepos].st_size), 3, 3);
-		len += 3;
+		len += putsize(&(buf[len]),
+			(off_t)(minor((u_long)(filelist[filepos].st_size))),
+			3, n_lastcolumn - len);
 	}
 	else
 #endif
-	{
-		ascnumeric(&(buf[len]), filelist[filepos].st_size, 8, 8);
-		len += 8;
-	}
+	len += putsize(&(buf[len]),
+		filelist[filepos].st_size, 8, n_lastcolumn - len);
 	buf[len++] = ' ';
 
 	snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
@@ -838,11 +854,13 @@ int no, isstandout;
 #endif
 #if	!MSDOS
 		else if (isdev(&(list[no]))) {
-			ascnumeric(&(buf[len]), major(list[no].st_size),
+			ascnumeric(&(buf[len]),
+				(off_t)major((u_long)(list[no].st_size)),
 				WSIZE / 2, WSIZE / 2);
 			len += WSIZE / 2;
 			buf[len++] = ',';
-			ascnumeric(&(buf[len]), minor(list[no].st_size),
+			ascnumeric(&(buf[len]),
+				(off_t)minor((u_long)(list[no].st_size)),
 				WSIZE - (WSIZE / 2) - 1,
 				WSIZE - (WSIZE / 2) - 1);
 			len += WSIZE - (WSIZE / 2) - 1;
@@ -954,7 +972,8 @@ char *def;
 
 	if (list == filelist) {
 		locate(C_PAGE + 5 - ((isleftshift()) ? 1 : 0), L_STATUS);
-		cputs2(ascnumeric(buf, start / FILEPERPAGE + 1, 2, 2));
+		cputs2(ascnumeric(buf,
+			(off_t)(start / FILEPERPAGE + 1), 2, 2));
 	}
 
 	for (i = start, count = 0; i < max; i++, count++) {
@@ -1053,8 +1072,7 @@ int n;
 #endif	/* !_NOSPLITWIN */
 
 VOID movepos(old, funcstat)
-int old;
-u_char funcstat;
+int old, funcstat;
 {
 #ifndef	_NOSPLITWIN
 	if ((funcstat & REWRITEMODE) >= REWIN) {
@@ -1240,9 +1258,8 @@ char *file, *def;
 	DIR *dirp;
 	struct dirent *dp;
 	reg_t *re;
-	u_char funcstat;
 	char *cp, buf[MAXNAMLEN + 1];
-	int ch, i, no, old;
+	int ch, i, no, old, funcstat;
 
 #ifndef	_NOPRECEDE
 	haste = 0;
@@ -1255,7 +1272,7 @@ char *file, *def;
 #endif
 
 	mark = 0;
-	totalsize = marksize = 0;
+	totalsize = marksize = (off_t)0;
 	chgorder = 0;
 
 	fnameofs = 0;
@@ -1275,7 +1292,7 @@ char *file, *def;
 #ifndef	_NOARCHIVE
 	if (archivefile) {
 		maxfile = (*archivedir) ? 1 : 0;
-		blocksize = 1;
+		blocksize = (off_t)1;
 		if (sorttype < 100) sorton = 0;
 		copyarcf(re, cp);
 		def = (*file) ? file : NULL;
@@ -1284,7 +1301,7 @@ char *file, *def;
 #endif
 	{
 		maxfile = 0;
-		blocksize = (off_t)getblocksize(".");
+		blocksize = getblocksize(".");
 		if (sorttype < 100) sorton = sorttype;
 #ifndef	_NOPRECEDE
 		if (Xgetwd(cwd) && includepath(cwd, precedepath)) {
@@ -1386,7 +1403,7 @@ char *file, *def;
 #ifndef	_NOPRECEDE
 		if (haste && !havestat(&(filelist[filepos]))
 		&& (bindlist[i].d_func < 255
-		|| (funclist[bindlist[i].f_func].stat & NEEDSTAT))
+		|| (funclist[bindlist[i].f_func].status & NEEDSTAT))
 		&& getstatus(&(filelist[filepos])) < 0)
 			no = WARNING_BELL;
 		else
@@ -1394,7 +1411,7 @@ char *file, *def;
 		no = (bindlist[i].d_func < 255 && isdir(&(filelist[filepos])))
 			? (int)(bindlist[i].d_func)
 			: (int)(bindlist[i].f_func);
-		if (no < FUNCLISTSIZ) funcstat = funclist[no].stat;
+		if (no < FUNCLISTSIZ) funcstat = funclist[no].status;
 #ifndef	_NOARCHIVE
 		else if (archivefile) continue;
 #endif
@@ -1625,7 +1642,6 @@ char *path;
 
 	def = initcwd(path, prev);
 	_chdir2(fullpath);
-	if (!Xgetwd(fullpath)) error("getwd()");
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {

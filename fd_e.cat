@@ -53,7 +53,7 @@ DDEESSCCRRIIPPTTIIOONN
      --rr   The shell is a restricted shell.  Specifically, the
           following operations are disallowed.
                changing the current directory
-               setting the value of $$PPAATTHH and $$SSHHEELLLL
+               setting the value of $$PPAATTHH, $$SSHHEELLLL and $$EENNVV
                specifying command names include //
                redirecting output (>> and >>>>)
                IINN_DDIIRR         OOUUTT_DDIIRR        LLOOGG_TTOOPP
@@ -1774,7 +1774,7 @@ DDEESSCCRRIIPPTTIIOONN
                    tion for each _N_A_M_E.  But the following
                    variable definition cannot be deleted.
                          PPAATTHH      PPSS11       PPSS22       IIFFSS
-                         MMAAIILLCCHHEECCKK
+                         MMAAIILLCCHHEECCKK PPPPIIDD
 
      uunnsseettddrrvv _c _d_e_v_i_c_e _h_d _s_c _c_l
                    Delete the registered floppy drive.  Only the
@@ -2008,11 +2008,13 @@ DDEESSCCRRIIPPTTIIOONN
                uppercase.
      PPaaggeeDDoowwnn  Convert a character on the cursor position to
                lowercase.
-     TTaabb       Complete a pathname on the cursor position, or
-               move to the next choice in the completion choice
-               list.  When there are two or more completion
-               choices, inputting this some times can display the
-               completion choice list.
+     TTaabb       Complete a pathname, a command name or a variable
+               name on the cursor position.
+               When there are two or more completion choices,
+               inputting this continuously can display the com-
+               pletion choice list.  Except for command line in
+               the internal shell, you can make a choice from
+               this list with cursor keys and [RReettuurrnn].
      ^^LL        Redraw the input string.
      RReettuurrnn    Decide the input, or decide the choice in the com-
                pletion choice list.
@@ -2641,6 +2643,20 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    restricted for the reason to operate the disk
                    I/O not by way of OS.
 
+     DDUUMMBBSSHHEELLLL     Don't use any control sequences to edit com-
+                   mand line in the internal shell.  In the
+                   internal shell, the cursor addressing of ter-
+                   minal mode is not valid.  In case of some ter-
+                   minal such as a console terminal, the cursor
+                   addressing cannot work correctly in this ter-
+                   minal mode, and the editing string is
+                   displayed incorrectly.  When this variable is
+                   valid, while no control sequence is used to
+                   edit command line, an inefficient cursor
+                   addressing will cause restriction of some
+                   functions and failure of response.  Any value
+                   except 00 and null effects valid.
+
      EEDDIITTMMOODDEE      Specify the edit mode of key input as the
                    string.  The default value is eemmaaccss.  The
                    value except eemmaaccss, wwoorrddssttaarr and vvii or null
@@ -2649,6 +2665,15 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      EEDDIITTOORR        Specify the editor command used for editing
                    files.
+
+     EENNVV*          Specify the additional initial configuration
+                   file when invoked as ffddsshh.  You must specify
+                   its filename as fullpath.  When this variable
+                   is set, the initial configuration file is read
+                   after //eettcc//ffdd22rrcc, and before ..ffdd22rrcc or ..ffddsshhrrcc.
+                   This value will be ignored if your real and
+                   effective UIDs or real and effective GIDs are
+                   different.
 
      FFCCEEDDIITT        Specify the editor command used for ffcc the
                    builtin command.
@@ -2675,6 +2700,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
                        default        no convert
+
+     HHIISSTTFFIILLEE      Specify the name of the command history file
+                   which can be referred by EEXXEECCUUTTEE_FFIILLEE and EEXXEE--
+                   CCUUTTEE_SSHH.  The default value is ~~//..ffdd_hhiissttoorryy.
+
+                   (On MS-DOS version, The default value is
+                   $$HHOOMMEE\\ffdd..hhsstt.)
 
      HHIISSTTSSIIZZEE      Specify the maximum number of the command his-
                    tories which can be referred by EEXXEECCUUTTEE_FFIILLEE
@@ -2738,6 +2770,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    (On MS-DOS version, only the English is
                    valid.)
 
+     LLIINNEENNOO*       Indicate the current line number.  When not in
+                   a script nor function, this value cannot be
+                   guaranteed to make sense.  If you uunnsseett or
+                   reset this value, this variable will lose its
+                   special meaning to be treated as a general
+                   variable.
+
      MMAAIILL*         Specify the spool filename when the internal
                    shell will check new mails.  If MMAAIILLPPAATTHH is
                    set, it is prior to this.  ((UUNNIIXX))
@@ -2774,6 +2813,9 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      PPAATTHH*         Specify the search path for executing external
                    commands.  You can specify multiple paths
                    separating with '::'.
+
+     PPPPIIDD*         Indicate the process ID of the parent proccess
+                   for ffdd which is invoked first.  ((UUNNIIXX))
 
      PPRREECCEEDDEEPPAATTHH   Specify the file preceding function, which
                    displays only filenames before obtaining their
@@ -2812,6 +2854,23 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      PPSS22           Specify the prompt string when more continuous
                    input is needed in EEXXEECCUUTTEE_SSHH.  The default
                    value is ">> ".
+
+     PPSS44*          Specify the prompt string with which command
+                   strings are displayed when you do sseett --xx.
+
+     PPWWDD*          The variable for the the current directory
+                   with the absolute representation.  If some
+                   value is set, this value will be replaced
+                   automatically according to changing the cur-
+                   rent directory.  If no value is set, this
+                   value will remain unset.  If this is passed
+                   as an environment variable when invoked, and
+                   this value and the current directory indi-
+                   cate the same directory logically, then it
+                   is used as the default value for the current
+                   directory.  It is useful when you want to
+                   specify the logical pathname following sym-
+                   bolic links.
 
      RRRRPPAATTHH        Display files under the directory mounted by
                    CD-ROM, with the pseudo ISO 9660 RockRidge
@@ -2879,9 +2938,23 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    specified sorted type is kept when moving
                    directory.
 
+     TTEERRMM*         Specity the terminal name.  When this value
+                   is dduummbb, uunnkknnoowwnn or uunn, it is regarded as
+                   the dumb terminal to suppress any escape
+                   sequences in the internal shell in spite of
+                   DDUUMMBBSSHHEELLLL.  If this value does not exist in
+                   tteerrmmccaapp(5) and tteerrmmiinnffoo(5) entry, it is exe-
+                   cutable only when it is invoked as ffddsshh.
+                   The terminal name will be variable dynami-
+                   cally, then you can re-specify the suitable
+                   one as this value after invoked for some
+                   strange terminal display and key input.
+
      TTMMPPDDIIRR        Specify the working directory where the
                    archiver command temporarily unpack files in
                    the archive file.  The default value is //ttmmpp.
+
+                   (On MS-DOS version, The default value is `..'.)
 
      TTMMPPUUMMAASSKK      Specify the file creation mask with octal
                    expression for files and directories created
@@ -2968,7 +3041,7 @@ FFIILLEESS
      ~~//..ffdd22rrcc  The individual initial configuration file for ffdd
      ~~//..ffddsshhrrcc The individual initial configuration file for ffddsshh
      ~~//..ffdd_hhiissttoorryy
-               The command history file
+               The command history file by default
      //bbiinn//sshh   The user shell when SSHHEELLLL the environment variable
                is undefined
      //bbiinn//rrmm   The command to remove temporary files when abort
@@ -2988,7 +3061,8 @@ FFIILLEESS
                The individual initial configuration file for ffddsshh
                on MS-DOS version
      $$HHOOMMEE\\ffdd..hhsstt
-               The command history file on MS-DOS version
+               The command history file on MS-DOS version by
+               default
 
 LLIIMMIITTAATTIIOONNSS
      The maximum key bindings which you can register is 225566, and

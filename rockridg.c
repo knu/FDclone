@@ -110,8 +110,7 @@ int len, *flagsp;
 
 	len = cp - buf;
 	if (len + 1 >= MAXPATHLEN - 1) return(NULL);
-	ascnumeric(&(buf[len]) + 1,
-		TRANSTBLVAR, 0, MAXPATHLEN - 1 - (len + 1));
+	long2str(&(buf[len + 1]), TRANSTBLVAR, sizeof(buf) - (len + 1));
 	buf[len] = ';';
 	*flagsp |= RR_VERNO;
 	if ((fp = Xfopen(buf, "r"))) return(fp);
@@ -206,8 +205,8 @@ int len;
 
 		new = (transtable *)malloc2(sizeof(transtable));
 		new -> org = strdup2(org);
-		new -> alias = strdupcpy(cp, l1);
-		new -> symlink = (l2 > 0) ? strdupcpy(eol, l2 - 1) : NULL;
+		new -> alias = strndup2(cp, l1);
+		new -> symlink = (l2 > 0) ? strndup2(eol, l2 - 1) : NULL;
 		new -> type = *line;
 		new -> rdev = (maj >= 0L) ? makedev(maj, min) : (r_dev_t)-1L;
 
@@ -255,7 +254,7 @@ int len;
 	freetranstbl(rr_curtbl);
 	rr_curtbl = tp;
 	if (rr_cwd) free(rr_cwd);
-	rr_cwd = strdupcpy(path, len);
+	rr_cwd = strndup2(path, len);
 	if (rr_transcwd) free(rr_transcwd);
 	rr_transcwd = NULL;
 	return(rr_curtbl);
@@ -280,7 +279,7 @@ char *path, *trans;
 	}
 	if (strnpathcmp(path, rr_cwd, len)) return;
 	if (rr_transcwd) free(rr_transcwd);
-	rr_transcwd = strdupcpy(trans, cp2 - trans);
+	rr_transcwd = strndup2(trans, cp2 - trans);
 }
 
 static char *NEAR transfile(file, len, buf, ptr)

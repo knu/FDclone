@@ -8,8 +8,6 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "machine.h"
 #include "kctype.h"
 
@@ -105,7 +103,11 @@ typedef struct _statfs_t {
 # else	/* !MSDOS */
 #  ifdef	USESTATVFSH
 #include <sys/statvfs.h>
+#   ifdef	USESTATVFS_T
+typedef statvfs_t		statfs_t;
+#   else
 typedef struct statvfs		statfs_t;
+#   endif
 #  define	statfs2		statvfs
 #  define	blocksize(fs)	((fs).f_frsize ? (fs).f_frsize : (fs).f_bsize)
 #  endif	/* USESTATVFSH */
@@ -170,9 +172,6 @@ extern char *_mtrace_file;
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
-#ifndef	DECLERRLIST
-extern char *sys_errlist[];
-#endif
 
 #include "pathname.h"
 #include "system.h"
@@ -222,10 +221,12 @@ extern int Xopen __P_((char *, int, int));
 # define	Xclose		close
 # define	Xread		read
 # define	Xwrite		write
+# define	Xlseek		lseek
 # else	/* !_NODOSDRIVE */
 extern int Xclose __P_((int));
 extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
+extern off_t Xlseek __P_((int, off_t, int));
 # endif	/* !_NODOSDRIVE */
 extern int Xmkdir __P_((char *, int));
 extern int Xrmdir __P_((char *));
@@ -269,6 +270,7 @@ extern char *Xgetwd __P_((char *));
 #define	Xclose		close
 #define	Xread		read
 #define	Xwrite		write
+#define	Xlseek		lseek
 # if	MSDOS
 #  ifdef	DJGPP
 #  define	Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
@@ -336,16 +338,16 @@ extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
-extern char *ascnumeric __P_((char *, long, int, int));
+extern char *ascnumeric __P_((char *, off_t, int, int));
 
 #ifdef	FD
-extern int getinfofs __P_((char *, long *, long *, long *));
+extern int getinfofs __P_((char *, off_t *, off_t *, off_t *));
 extern char *realpath2 __P_((char *, char *, int));
 extern int touchfile __P_((char *, struct stat *));
 extern int safewrite __P_((int, char *, int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 #else	/* !FD */
-static int NEAR getinfofs __P_((char *, long *, long *, long *));
+static int NEAR getinfofs __P_((char *, off_t *, off_t *, off_t *));
 # if	MSDOS
 static char *NEAR realpath2 __P_((char *, char *, int));
 # define	ttyiomode(n)
@@ -366,8 +368,8 @@ static char * NEAR inputstr __P_((char *, int, int, char *, int));
 
 static VOID NEAR doserror __P_((char *, int));
 static VOID NEAR dosperror __P_((char *));
-static VOID NEAR fputnum __P_((long, int, int));
-static VOID NEAR fputsize __P_((long *, long *));
+static VOID NEAR fputnum __P_((off_t, int, int));
+static VOID NEAR fputsize __P_((off_t *, off_t *));
 static int NEAR inputkey __P_((VOID_A));
 static int cmpdirent __P_((CONST VOID_P, CONST VOID_P));
 static VOID NEAR evalenvopt __P_((char *, char *,
@@ -375,9 +377,9 @@ static VOID NEAR evalenvopt __P_((char *, char *,
 static int NEAR getdiropt __P_((int, char *[]));
 static int NEAR showstr __P_((char *, int, int));
 #ifdef	MINIMUMSHELL
-static VOID NEAR showfname __P_((struct filestat_t *, long *));
+static VOID NEAR showfname __P_((struct filestat_t *, off_t *));
 #else
-static VOID NEAR showfname __P_((struct filestat_t *, long *, int));
+static VOID NEAR showfname __P_((struct filestat_t *, off_t *, int));
 #endif
 static VOID NEAR showfnamew __P_((struct filestat_t *));
 static VOID NEAR showfnameb __P_((struct filestat_t *));
@@ -390,12 +392,13 @@ static int NEAR _checkline __P_((int));
 #endif
 static VOID NEAR dosdirheader __P_((VOID_A));
 #ifdef	MINIMUMSHELL
-static VOID NEAR dosdirfooter __P_((long *, int, int, long *, long *));
-static int NEAR dosdir __P_((reg_t *, long *, int *, int *, long *));
+static VOID NEAR dosdirfooter __P_((off_t *, int, int, off_t *, off_t *));
+static int NEAR dosdir __P_((reg_t *, off_t *, int *, int *, off_t *));
 #else
-static VOID NEAR dosdirfooter __P_((long *, int, int,
-		long *, long *, long *, long *));
-static int NEAR dosdir __P_((reg_t *, long *, int *, int *, long *, long *));
+static VOID NEAR dosdirfooter __P_((off_t *, int, int,
+		off_t *, off_t *, off_t *, off_t *));
+static int NEAR dosdir __P_((reg_t *, off_t *, int *, int *,
+		off_t *, off_t *));
 #endif
 static int NEAR checkarg __P_((int, char *[]));
 static char *NEAR convwild __P_((char *, char *, char *, char *));
@@ -412,7 +415,14 @@ static int NEAR doscopy __P_((char *, char *, struct stat *, int, int, int));
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
 #define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
-
+#ifdef	USESTRERROR
+#define	strerror2		strerror
+#else
+# ifndef	DECLERRLIST
+extern char *sys_errlist[];
+# endif
+#define	strerror2(n)		(char *)sys_errlist[n]
+#endif
 
 static char *doserrstr[] = {
 	"",
@@ -455,7 +465,7 @@ static int copyflag = 0;
 #ifndef	FD
 static int NEAR getinfofs(path, totalp, freep, bsizep)
 char *path;
-long *totalp, *freep, *bsizep;
+off_t *totalp, *freep, *bsizep;
 {
 # if	MSDOS
 	struct SREGS sreg;
@@ -499,9 +509,10 @@ long *totalp, *freep, *bsizep;
 #  ifdef	DJGPP
 		dosmemget(__tb, sizeof(fsbuf), &fsbuf);
 #  endif
-		*totalp = (long)(fsbuf.f_blocks);
-		*freep = (long)(fsbuf.f_bavail);
-		*bsizep = (long)(fsbuf.f_clustsize) * (long)(fsbuf.f_sectsize);
+		*totalp = (off_t)(fsbuf.f_blocks);
+		*freep = (off_t)(fsbuf.f_bavail);
+		*bsizep = (off_t)(fsbuf.f_clustsize)
+			* (off_t)(fsbuf.f_sectsize);
 	}
 	else {
 		reg.x.ax = 0x3600;
@@ -510,9 +521,9 @@ long *totalp, *freep, *bsizep;
 		if (reg.x.ax == 0xffff || !reg.x.ax || !reg.x.cx || !reg.x.dx
 		|| reg.x.dx < reg.x.bx) return(-1);
 
-		*totalp = (long)(reg.x.dx);
-		*freep = (long)(reg.x.bx);
-		*bsizep = (long)(reg.x.ax) * (long)(reg.x.cx);
+		*totalp = (off_t)(reg.x.dx);
+		*freep = (off_t)(reg.x.bx);
+		*bsizep = (off_t)(reg.x.ax) * (off_t)(reg.x.cx);
 	}
 # else	/* !MSDOS */
 	if (statfs2(path, &fsbuf) < 0) return(-1);
@@ -704,18 +715,14 @@ char *s;
 		kanjifputs(s, stderr);
 		fputc('\n', stderr);
 	}
-#if	MSDOS
-	fputs(strerror(duperrno), stderr);
-#else
-	fputs((char *)sys_errlist[duperrno], stderr);
-#endif
+	fputs(strerror2(duperrno), stderr);
 	fputc('\n', stderr);
 	fflush(stderr);
 	errno = 0;
 }
 
 static VOID NEAR fputnum(n, digit, max)
-long n;
+off_t n;
 int digit, max;
 {
 	char buf[MAXLONGWIDTH + 1];
@@ -724,20 +731,20 @@ int digit, max;
 }
 
 static VOID NEAR fputsize(np, bsizep)
-long *np, *bsizep;
+off_t *np, *bsizep;
 {
-	long s, mb;
+	off_t s, mb;
 
-	s = (1024L * 1024L + (*bsizep / 2)) / *bsizep;
+	s = ((off_t)1024 * (off_t)1024 + (*bsizep / 2)) / *bsizep;
 	mb = *np / s;
-	if (mb < 1024L) {
+	if (mb < (off_t)1024) {
 		fputnum(*np * *bsizep, 3, 15);
 		fputs(" bytes", stdout);
 	}
 	else {
 		fputnum(mb, 3, 12);
 		fputc('.', stdout);
-		fputnum(((*np - mb * s) * 100L) / s, 3, 2);
+		fputnum(((*np - mb * s) * (off_t)100) / s, 3, 2);
 		fputs(" MB", stdout);
 	}
 }
@@ -784,10 +791,12 @@ CONST VOID_P vp2;
 				ret = strpathcmp2(sp2 -> nam, sp1 -> nam);
 				break;
 			case 'S':
-				ret = sp1 -> siz - sp2 -> siz;
+				if (sp1 -> siz == sp2 -> siz) ret = 0;
+				else ret = (sp1 -> siz > sp2 -> siz) ? 1 : -1;
 				break;
 			case 's':
-				ret = sp2 -> siz - sp1 -> siz;
+				if (sp2 -> siz == sp1 -> siz) ret = 0;
+				else ret = (sp2 -> siz > sp1 -> siz) ? 1 : -1;
 				break;
 			case 'E':
 				if (cp1) ret = (cp2) ?
@@ -812,10 +821,14 @@ CONST VOID_P vp2;
 				ret = dir_isdir(sp1) - dir_isdir(sp2);
 				break;
 			case 'A':
-				ret = sp1 -> atim - sp2 -> atim;
+				if (sp1 -> atim == sp2 -> atim) ret = 0;
+				else ret = (sp1 -> atim > sp2 -> atim)
+					? 1 : -1;
 				break;
 			case 'a':
-				ret = sp2 -> atim - sp1 -> atim;
+				if (sp2 -> atim == sp1 -> atim) ret = 0;
+				else ret = (sp2 -> atim > sp1 -> atim)
+					? 1 : -1;
 				break;
 			default:
 				break;
@@ -1039,11 +1052,11 @@ int len, lower;
 #ifdef	MINIMUMSHELL
 static VOID NEAR showfname(dirp, bsizep)
 struct filestat_t *dirp;
-long *bsizep;
+off_t *bsizep;
 #else
 static VOID NEAR showfname(dirp, bsizep, verbose)
 struct filestat_t *dirp;
-long *bsizep;
+off_t *bsizep;
 int verbose;
 #endif
 {
@@ -1104,18 +1117,18 @@ int verbose;
 #endif
 	fputs("  ", stdout);
 #ifndef	MINIMUMSHELL
-	if (verbose < 0) fputnum(tm -> tm_year + 1900, 5, 4);
+	if (verbose < 0) fputnum((off_t)(tm -> tm_year + 1900), 5, 4);
 	else
 #endif
-	fputnum(tm -> tm_year % 100, 3, 2);
+	fputnum((off_t)(tm -> tm_year % 100), 3, 2);
 	fputc('-', stdout);
-	fputnum(tm -> tm_mon + 1, 3, 2);
+	fputnum((off_t)(tm -> tm_mon + 1), 3, 2);
 	fputc('-', stdout);
-	fputnum(tm -> tm_mday, 3, 2);
+	fputnum((off_t)(tm -> tm_mday), 3, 2);
 	fputs("  ", stdout);
-	fputnum(tm -> tm_hour, 2, 2);
+	fputnum((off_t)(tm -> tm_hour), 2, 2);
 	fputc(':', stdout);
-	fputnum(tm -> tm_sec, 3, 2);
+	fputnum((off_t)(tm -> tm_sec), 3, 2);
 	fputc(' ', stdout);
 
 #ifndef	MINIMUMSHELL
@@ -1132,11 +1145,11 @@ int verbose;
 		tm = localtime(&(dirp -> atim));
 # endif
 		fputc(' ', stdout);
-		fputnum(tm -> tm_year % 100, 3, 2);
+		fputnum((off_t)(tm -> tm_year % 100), 3, 2);
 		fputc('-', stdout);
-		fputnum(tm -> tm_mon + 1, 3, 2);
+		fputnum((off_t)(tm -> tm_mon + 1), 3, 2);
 		fputc('-', stdout);
-		fputnum(tm -> tm_mday, 3, 2);
+		fputnum((off_t)(tm -> tm_mday), 3, 2);
 		fputs("  ", stdout);
 		strcpy(buf, "           ");
 		if (!(dirp -> mod & S_IWUSR)) buf[0] = 'R';
@@ -1269,14 +1282,14 @@ static VOID NEAR dosdirheader(VOID_A)
 
 #ifdef	MINIMUMSHELL
 static VOID NEAR dosdirfooter(bsizep, nf, nd, sump, fp)
-long *bsizep;
+off_t *bsizep;
 int nf, nd;
-long *sump, *fp;
+off_t *sump, *fp;
 #else
 static VOID NEAR dosdirfooter(bsizep, nf, nd, sump, bsump, fp, tp)
-long *bsizep;
+off_t *bsizep;
 int nf, nd;
-long *sump, *bsump, *fp, *tp;
+off_t *sump, *bsump, *fp, *tp;
 #endif
 {
 	if (dirtype == 'B') return;
@@ -1294,14 +1307,14 @@ long *sump, *bsump, *fp, *tp;
 			fputs("Total files listed:\n", stdout);
 		}
 		if (checkline(1) < 0) return;
-		fputnum(nf, 10, 10);
+		fputnum((off_t)nf, 10, 10);
 		fputs(" file(s)", stdout);
 		fputnum(*sump, 3, 15);
 		fputs(" bytes\n", stdout);
 #ifndef	MINIMUMSHELL
 		if (dirtype == 'V') {
 			if (checkline(1) < 0) return;
-			fputnum(nd, 10, 10);
+			fputnum((off_t)nd, 10, 10);
 			fputs(" dir(s) ", stdout);
 			fputsize(bsump, bsizep);
 			fputs(" allocated\n", stdout);
@@ -1314,7 +1327,7 @@ long *sump, *bsump, *fp, *tp;
 	if (checkline(1) < 0) return;
 	if (nd < 0) fputs("                  ", stdout);
 	else {
-		fputnum(nd, 10, 10);
+		fputnum((off_t)nd, 10, 10);
 		fputs(" dir(s) ", stdout);
 	}
 
@@ -1327,7 +1340,7 @@ long *sump, *bsump, *fp, *tp;
 		fputs("                  ", stdout);
 		fputsize(tp, bsizep);
 		fputs(" total disk space, ", stdout);
-		fputnum(((*tp - *fp) * 100L) / *tp, 3, 3);
+		fputnum(((*tp - *fp) * (off_t)100) / *tp, 3, 3);
 		fputs("% in use\n", stdout);
 	}
 #endif	/* !MINIMUMSHELL */
@@ -1336,26 +1349,26 @@ long *sump, *bsump, *fp, *tp;
 #ifdef	MINIMUMSHELL
 static int NEAR dosdir(re, bsizep, nfp, ndp, sump)
 reg_t *re;
-long *bsizep;
+off_t *bsizep;
 int *nfp, *ndp;
-long *sump;
+off_t *sump;
 #else
 static int NEAR dosdir(re, bsizep, nfp, ndp, sump, bsump)
 reg_t *re;
-long *bsizep;
+off_t *bsizep;
 int *nfp, *ndp;
-long *sump, *bsump;
+off_t *sump, *bsump;
 #endif
 {
 #ifndef	MINIMUMSHELL
-	long bsum;
+	off_t bsum;
 #endif
 	struct filestat_t *dirlist;
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
 	char *file;
-	long sum;
+	off_t sum;
 	int i, c, n, nf, nd, f, len, max;
 
 	if (!(dirp = Xopendir(dirwd))) return(-1);
@@ -1364,7 +1377,7 @@ long *sump, *bsump;
 #ifndef	MINIMUMSHELL
 	bsum =
 #endif
-	sum = 0L;
+	sum = (off_t)0;
 	len = strlen(dirwd);
 	file = strcatdelim(dirwd);
 	dirlist = NULL;
@@ -1534,13 +1547,13 @@ int argc;
 char *argv[];
 {
 #ifndef	MINIMUMSHELL
-	long bsum;
+	off_t bsum;
 #endif
 	reg_t *re;
 	struct stat st;
 	char *dir, *file;
 	char wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
-	long sum, total, fre, bsize;
+	off_t sum, total, fre, bsize;
 	int i, n, nf, nd;
 
 	strcpy(dirattr, "hs");
@@ -1571,7 +1584,8 @@ char *argv[];
 		}
 		else {
 			i = file - buf;
-			*(++file) = '\0';
+			if (isrootdir(buf) || *file != _SC_) file++;
+			*file = '\0';
 			dir = buf;
 			file = &(argv[n][++i]);
 			if (!*file) file = "*";
@@ -1608,7 +1622,7 @@ char *argv[];
 #ifndef	MINIMUMSHELL
 	bsum =
 #endif
-	sum = 0L;
+	sum = (off_t)0;
 	dirwd = wd;
 	re = regexp_init(file, -1);
 #ifdef	MINIMUMSHELL
@@ -1814,12 +1828,12 @@ char *argv[];
 		else cp = new;
 		j = cp - new;
 		convwild(cp, &(wild[i][j]), argv[2], argv[1]);
-		if (Xaccess(new, F_OK) >= 0 || errno != ENOENT) {
+		if (Xaccess(new, F_OK) >= 0) {
 			doserror(new, ER_DUPLFILENAME);
 			ret = RET_FAIL;
 			ERRBREAK;
 		}
-		if (Xrename(wild[i], new) < 0) {
+		if (errno != ENOENT || Xrename(wild[i], new) < 0) {
 			dosperror(wild[i]);
 			ret = RET_FAIL;
 			ERRBREAK;
@@ -2018,13 +2032,13 @@ int sbin, dbin, dfd;
 		return(-1);
 	if (dfd >= 0) {
 		fd2 = dfd;
-		ofs = lseek(fd2, 0L, L_INCR);
+		ofs = Xlseek(fd2, (off_t)0, L_INCR);
 	}
 	else if ((fd2 = writeopen(dest, src)) <= 0) {
 		Xclose(fd1);
 		return(fd2);
 	}
-	else ofs = 0L;
+	else ofs = (off_t)0;
 
 #if	MSDOS && !defined (LSI_C)
 # ifdef	DJGPP
@@ -2055,7 +2069,8 @@ int sbin, dbin, dfd;
 			if (i < BUFSIZ) break;
 		}
 		if (i >= 0 && !(copyflag & CF_VERIFY)) break;
-		if (lseek(fd1, 0L, L_SET) < 0 || lseek(fd2, ofs, L_SET) < 0)
+		if (Xlseek(fd1, (off_t)0, L_SET) < (off_t)0
+		|| Xlseek(fd2, ofs, L_SET) < (off_t)0)
 			break;
 		if (i < 0) continue;
 
@@ -2077,7 +2092,8 @@ int sbin, dbin, dfd;
 			if (i < BUFSIZ) break;
 		}
 		if (i >= 0) break;
-		if (lseek(fd1, 0L, L_SET) < 0 || lseek(fd2, ofs, L_SET) < 0)
+		if (Xlseek(fd1, (off_t)0, L_SET) < (off_t)0
+		|| Xlseek(fd2, ofs, L_SET) < (off_t)0)
 			break;
 	}
 
@@ -2090,7 +2106,7 @@ int sbin, dbin, dfd;
 		return(dfd < 0 ? -1 : -2);
 	}
 
-#ifdef	HAVEFLAGS
+#if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
 	stp -> st_flags = 0xffffffff;
 #endif
 	if (!tty && touchfile(dest, stp) < 0) return(-1);
@@ -2257,7 +2273,7 @@ char *argv[];
 		if (nc > 0) nc = 1;
 	}
 	if (!(copyflag & CF_CANCEL)) {
-		fputnum(nc, 9, 9);
+		fputnum((off_t)nc, 9, 9);
 		fputs(" file(s) copied\n", stdout);
 		fflush(stdout);
 	}

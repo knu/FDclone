@@ -105,9 +105,9 @@ static int NEAR lfn_findclose __P_((u_short));
 #endif
 static int NEAR gendosname __P_((char *));
 static int NEAR unixrenamedir __P_((char *, char *));
-static u_short NEAR getdosmode __P_((u_char));
-static u_char NEAR putdosmode __P_((u_short));
-static time_t NEAR getdostime __P_((u_short, u_short));
+static u_int NEAR getdosmode __P_((u_int));
+static u_int NEAR putdosmode __P_((u_int));
+static time_t NEAR getdostime __P_((u_int, u_int));
 #ifndef	_NOUSELFN
 static int NEAR putdostime __P_((u_short *, u_short *, time_t));
 #endif
@@ -2249,10 +2249,10 @@ int size, pseudo;
 	return(pathname);
 }
 
-static u_short NEAR getdosmode(attr)
-u_char attr;
+static u_int NEAR getdosmode(attr)
+u_int attr;
 {
-	u_short mode;
+	u_int mode;
 
 	mode = 0;
 	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
@@ -2266,10 +2266,10 @@ u_char attr;
 	return(mode);
 }
 
-static u_char NEAR putdosmode(mode)
-u_short mode;
+static u_int NEAR putdosmode(mode)
+u_int mode;
 {
-	u_char attr;
+	u_int attr;
 
 	attr = 0;
 	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
@@ -2282,7 +2282,7 @@ u_short mode;
 }
 
 static time_t NEAR getdostime(d, t)
-u_short d, t;
+u_int d, t;
 {
 	struct tm tm;
 

@@ -7,6 +7,12 @@
 #ifndef	_UNIXEMU_H
 #define	_UNIXEMU_H
 
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 #ifdef	USETIMEH
 #include <time.h>
 #endif

@@ -27,24 +27,24 @@ extern char *unixgetcurdir __P_((char *, int));
 #endif
 
 extern int mark;
-extern off_t marksize;
 extern int stackdepth;
-extern int win_x;
-extern int win_y;
 extern int sizeinfo;
+extern off_t marksize;
 extern off_t totalsize;
 extern off_t blocksize;
 extern namelist filestack[];
 extern char fullpath[];
 extern char typesymlist[];
 extern u_short typelist[];
-extern char *deftmpdir;
-extern u_short today[];
 #ifndef	_NOCOLOR
 extern int ansicolor;
 #endif
-extern int n_args;
+extern int win_x;
+extern int win_y;
+extern char *deftmpdir;
 extern int hideclock;
+extern u_short today[];
+extern int n_args;
 
 #if	FD >= 2
 static char *form_lha[] = {
@@ -172,7 +172,7 @@ static int NEAR readattr __P_((namelist *, char *));
 #if	FD >= 2
 static char *NEAR checkspace __P_((char *, int *));
 # if	MSDOS || defined (_NOKANJIFCONV)
-#define	readfname	strdupcpy
+#define	readfname	strndup2
 # else
 static char *NEAR readfname __P_((char *, int));
 # endif
@@ -573,7 +573,7 @@ int *scorep;
 			*scorep += 4;
 		}
 	}
-	return(strdupcpy(s, len));
+	return(strndup2(s, len));
 }
 
 # if	!MSDOS && !defined (_NOKANJIFCONV)
@@ -583,7 +583,7 @@ int len;
 {
 	char buf[MAXPATHLEN];
 
-	s = strdupcpy(s, len);
+	s = strndup2(s, len);
 	if (kanjiconv2(buf, s, MAXPATHLEN - 1, fnamekcode, DEFCODE) != s) {
 		free(s);
 		s = strdup2(buf);
@@ -689,7 +689,7 @@ int skip;
 			}
 		}
 
-		rawbuf = strdupcpy(line, len);
+		rawbuf = strndup2(line, len);
 		hit = err = err2 = 0;
 		buf = checkspace(rawbuf, &err);
 		while (l--) switch (s[l]) {
@@ -1217,7 +1217,7 @@ namelist *namep;
 			&& len == dirmatchlen(filelist[i].name, namep -> name))
 				break;
 		}
-		if (i >= maxfile) return(strdupcpy(namep -> name, len));
+		if (i >= maxfile) return(strndup2(namep -> name, len));
 		if (strncmp(filelist[i].name, namep -> name, len)) {
 			filelist[i].name = realloc2(filelist[i].name, len + 1);
 			strncpy2(filelist[i].name, namep -> name, len);
@@ -1294,7 +1294,7 @@ char *s, **argv;
 			len = strlen(s2);
 			for (len--; len >= 0; len--)
 				if (!iswhitespace(s2[len])) break;
-			s2 = strdupcpy(s2, ++len);
+			s2 = strndup2(s2, ++len);
 		}
 		re = regexp_init(s1, -1);
 		ret = regexp_exec(re, s2, 0);
@@ -2114,7 +2114,7 @@ char *path, **dirp, *full;
 	if (_dospath(cp)) cp += 2;
 	if (full) strcpy(fullpath, full);
 	else if (*cp != _SC_) return(-1);
-	realpath2(path, path, -1);
+	realpath2(path, path, 1);
 	strcpy(fullpath, dupfullpath);
 
 	if (!(cp = dostmpdir(drive))) return(-1);
@@ -2467,7 +2467,8 @@ char *dev;
 	if (filelist) {
 		for (i = 0; i < maxfile; i++)
 			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
-		mark = marksize = 0;
+		mark = 0;
+		marksize = (off_t)0;
 	}
 	return(1);
 }

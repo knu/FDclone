@@ -30,6 +30,7 @@ extern char *mesconv __P_((char *, char *));
 #define	INTR_K	mesconv("中断キーにより作業を中止します.", "Interrupted by keyboard.")
 #define	RECUR_K	mesconv("再帰的に fdsh を起動することはできません.", "Recursive call for fdsh.")
 #define	SCRSZ_K	mesconv("ESC で終了するか画面サイズを広げて下さい.", "Terminate with the ESC key, or enlarge a screen.")
+#define	NTERM_K	mesconv("端末名が未登録のため FD を起動できません.", "Cannot invoke FD because of no terminal entry.")
 
 #define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
 #define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")
@@ -212,6 +213,9 @@ extern char *mesconv __P_((char *, char *));
 #define	MINF_E \
 	meslist("ファイル名表示領域の最小文字数を設定します.", \
 		"Set the minimum columns of filename field.")
+#define	HSFL_E \
+	meslist("コマンド履歴のセーブファイルを設定します.", \
+		"Define the name of command history file.")
 #define	HSSZ_E \
 	meslist("コマンド履歴数の上限を設定します.", \
 		"Define the maximum size of command history.")
@@ -305,6 +309,9 @@ extern char *mesconv __P_((char *, char *));
 #define	TUMSK_E \
 	meslist("一時的作業ディレクトリ用のファイル生成マスク値を指定します.", \
 		"Define the file creation mask for temporary directories.")
+#define	DMSHL_E \
+	meslist("内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
+		"Don't use control sequences to edit command line in the internal shell mode.")
 
 #define	TENV_K	mesconv("内部変数", "Variables")
 #define	TBIND_K	mesconv("キー割当て", "Key bind")

@@ -8,6 +8,12 @@
 #include <sys/param.h>
 #endif
 
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 #define	DOSDIRENT	32
 #define	SECTCACHESIZE	32
 #define	SECTSIZE	{512, 1024, 256, 128, 2048, 4096}
@@ -81,9 +87,9 @@
 #endif
 
 #ifdef	USELLSEEK
-typedef long long	off64_t;
+typedef long long	l_off_t;
 #else
-#define	off64_t		off_t
+typedef off_t		l_off_t;
 #endif
 
 typedef struct _bpb_t {
@@ -143,7 +149,7 @@ typedef struct _cache_t {
 	char path[MAXPATHLEN];
 	dent_t dent;
 	long clust;
-	u_short offset;
+	long offset;
 } cache_t;
 
 #if	!MSDOS
@@ -154,7 +160,7 @@ typedef struct _devinfo {
 	u_short sect;
 	u_short cyl;
 # ifdef	HDDMOUNT
-	off64_t offset;
+	l_off_t offset;
 # endif
 } devinfo;
 #endif
@@ -166,7 +172,7 @@ typedef struct _devstat {
 	u_short sectsize;	/* ch_sect */
 	u_short fatofs;		/* ch_cyl */
 #ifdef	HDDMOUNT
-	off64_t offset;
+	l_off_t offset;
 #endif
 	u_long fatsize;
 	u_short dirofs;
@@ -196,20 +202,20 @@ typedef struct _devstat {
 #define	ch_cyl	fatofs
 
 typedef struct _dosiobuf {
-	int _cnt;
+	long _cnt;
 	char *_ptr;
 	char *_base;
-	int _bufsize;
+	long _bufsize;
 	short _flag;
 	int _file;
 	long _top;
 	long _next;
 	long _off;
-	long _loc;
-	long _size;
+	off_t _loc;
+	off_t _size;
 	dent_t _dent;
 	long _clust;
-	u_short _offset;
+	long _offset;
 } dosFILE;
 
 #define	O_IOEOF	020000
@@ -303,9 +309,9 @@ typedef struct _partition98_t {
 #define	PT98_LINUX	0xe2	/* 0x80 | 0x62 */
 #endif	/* HDDMOUNT */
 
-#ifdef	NODNAMLEN
+#if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
 typedef struct _st_dirent {
-	char buf[sizeof(struct dirent) + MAXNAMLEN];
+	char buf[sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
 } st_dirent;
 #else
 typedef struct dirent	st_dirent;
@@ -326,7 +332,7 @@ extern VOID_T (*doswaitfunc)__P_((VOID_A));
 extern int (*dosintrfunc)__P_((VOID_A));
 
 #ifdef	HDDMOUNT
-extern off64_t *readpt __P_((char *, int));
+extern l_off_t *readpt __P_((char *, int));
 #endif
 extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
@@ -361,7 +367,7 @@ extern int dosopen __P_((char *, int, int));
 extern int dosclose __P_((int));
 extern int dosread __P_((int, char *, int));
 extern int doswrite __P_((int, char *, int));
-extern off64_t doslseek __P_((int, off64_t, int));
+extern off_t doslseek __P_((int, off_t, int));
 extern int dosmkdir __P_((char *, int));
 extern int dosrmdir __P_((char *));
 extern int dosfileno __P_((FILE *));

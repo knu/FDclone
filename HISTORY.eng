@@ -1,3 +1,18 @@
+Ver. 2.04	Add 'DUMBSHELL' and 'HISTFILE' internal variable.
+ (06/25/03)	Add 'ENV'/'LINENO'/'PPID'/'PS4' internal variables for POSIX.
+		Support dynamic variation of 'TERM' internal variable.
+		Support 'PWD' internal varable for current directory.
+		Support the variable completion with Tab on string input.
+		Support Large File Summit (over 2GB) for some OS.
+		The screen columns limit for file size is enlarged.
+		Prepare some substitute functions for System V.
+		Bug that no child can be executed on some System V is fixed.
+		Bug that no control works when invoked from GNU Emacs is fixed.
+		Bug that some customizer functions work incorrectly is fixed.
+		Bug that some symbolic links is followed incorrectly is fixed.
+		Bug that Kanji code in floppy drive on fdsh is wrong is fixed.
+		Bug that some OS cannot write directory correctly is fixed.
+
 Ver. 2.03b	Bug that %T, %M macros cannot be except in arguments is fixed.
  (05/15/03)	Bug that Japanese filename in floppy drive is broken is fixed.
 		Bug that directory in floppy drive cannot be written is fixed.

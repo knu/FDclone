@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 #include <fcntl.h>
 #include "machine.h"
 
@@ -77,6 +76,7 @@ extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strncpy3 __P_((char *, char *, int *, int));
 extern int strlen3 __P_((char *));
 extern VOID error __P_((char *));
+extern off_t Xlseek __P_((int, off_t, int));
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
@@ -381,8 +381,8 @@ int ujis2sjis __P_((char *, u_char *, int));
 || !defined (_NODOSDRIVE)
 VOID readunitable __P_((VOID_A));
 VOID discardunitable __P_((VOID_A));
-u_short unifysjis __P_((u_short, int));
-u_short cnvunicode __P_((u_short, int));
+u_int unifysjis __P_((u_int, int));
+u_int cnvunicode __P_((u_int, int));
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 int kanjiconv __P_((char *, char *, int, int, int, int));
@@ -400,24 +400,21 @@ int onkanji1(s, ptr)
 char *s;
 int ptr;
 {
-	int i, j;
+	int i;
 
 	if (ptr < 0) return(0);
 	if (!ptr) return(iskanji1(s, 0));
 
-	for (i = j = 0; i < ptr; i++, j++) {
-		if (!s[j]) return(0);
+	for (i = 0; i < ptr; i++) {
+		if (!s[i]) return(0);
 #ifdef	CODEEUC
-		if (isekana(s, j)) j++;
+		if (isekana(s, i)) i++;
 		else
 #endif
-		if (iskanji1(s, j)) {
-			i++;
-			j++;
-		}
+		if (iskanji1(s, i)) i++;
 	}
 	if (i > ptr) return(0);
-	return(iskanji1(s, j));
+	return(iskanji1(s, i));
 }
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) \
@@ -635,12 +632,13 @@ VOID discardunitable(VOID_A)
 	}
 }
 
-u_short unifysjis(wc, russ)
-u_short wc;
+u_int unifysjis(wc, russ)
+u_int wc;
 int russ;
 {
 	int i;
 
+	wc &= 0xffff;
 	for (i = ((russ) ? 0 : EXCEPTRUSS); i < RSJISTBLSIZ; i++)
 		if (wc >= rsjistable[i].start
 		&& wc < rsjistable[i].start + rsjistable[i].range)
@@ -652,15 +650,17 @@ int russ;
 	return(wc);
 }
 
-u_short cnvunicode(wc, encode)
-u_short wc;
+u_int cnvunicode(wc, encode)
+u_int wc;
 int encode;
 {
 	static int fd = -1;
 	u_char buf[4];
 	char path[MAXPATHLEN];
-	u_short r, w, min, max, ofs;
+	u_short min, max, ofs;
+	u_int r, w;
 
+	wc &= 0xffff;
 	if (encode < 0) {
 		if (fd >= 0) close(fd);
 		fd = -1;
@@ -756,7 +756,7 @@ int encode;
 	}
 
 	if (encode) {
-		if (lseek(fd, (off_t)2, L_SET) < 0) return(r);
+		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) return(r);
 		wc = unifysjis(wc, 0);
 		for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, buf, 4) != 4) break;
@@ -773,7 +773,8 @@ int encode;
 		ofs = unitblent / 2 + 1;
 		for (;;) {
 			if (ofs == min || ofs == max) break;
-			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET) < 0
+			if (Xlseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET)
+			< (off_t)0
 			|| read(fd, buf, 4) != 4) break;
 			w = (((u_short)(buf[1]) << 8) | buf[0]);
 			if (wc == w) {
@@ -1103,7 +1104,7 @@ int max;
 		else if (iseuc(s[i]) && iseuc(s[i + 1])) {
 			u_char tmp[2];
 
-			j2sj(tmp, &(s[i++]));
+			j2sj((char *)tmp, &(s[i++]));
 			w = (tmp[0] << 8) | tmp[1];
 		}
 #  else
@@ -1203,7 +1204,7 @@ int max;
 		else if (iseuc(s[i]) && iseuc(s[i + 1])) {
 			u_char tmp[2];
 
-			j2sj(tmp, &(s[i++]));
+			j2sj((char *)tmp, &(s[i++]));
 			j += bin2hex(&(buf[j]), tmp[0]);
 			j += bin2hex(&(buf[j]), tmp[1]) - 1;
 		}
@@ -1298,7 +1299,7 @@ int max;
 		else if (iseuc(s[i]) && iseuc(s[i + 1])) {
 			u_char tmp[2];
 
-			j2sj(tmp, &(s[i++]));
+			j2sj((char *)tmp, &(s[i++]));
 			j += bin2cap(&(buf[j]), tmp[0]);
 			j += bin2cap(&(buf[j]), tmp[1]) - 1;
 		}

@@ -185,6 +185,8 @@ SYSVDIRENT
 	and has the member d_ino.
 NODNAMLEN
 	The structure dirent doesn't have the member d_namlen.
+DNAMESIZE
+	The size of tha member d_name of the structure dirent.
 HAVETIMEZONE
 	The global variable timezone indicates the offset
 	value from GMT.
@@ -217,7 +219,7 @@ USEFFSIZE
 	this is meaningless.
 STATFSARGS
 	This indicates the number of arguments used by
-	function staffs(2).
+	function statfs(2).
 	In case of that USESTATVFSH, USEFSDATA is defined,
 	this is meaningless.
 
@@ -316,6 +318,9 @@ USEUNAME
 USEWAITPID
 	The function waitpid(2) is used instead of wait3(2)
 	to wait the software signals.
+USESIGACTION
+	The function sigaction(2) is used instead of signal(2)
+	to control the signals.
 USESIGPMASK
 	The function sigprocmask(2) is used instead of
 	sigsetmask(2) to control the signals.
@@ -325,9 +330,12 @@ USERESOURCEH
 USEULIMITH
 	The functions declared in <ulimit.h> is used to get/set
 	the resource information.
-USETIMESH
-	The functions declared in <sys/times.h> is used to
-	get the process time information.
+USEGETRUSAGE
+	The function getrusage(2) is used to get the process
+	time information.
+USETIMES
+	The function times(2) is used to get the process time
+	information.
 GETPGRPVOID
 	The function getpgrp(2) has no argument, to get the
 	process group.
@@ -345,6 +353,12 @@ SIGFNCINT
 	The second argument of the software signal function
 	signal(3) must be the pointer to the function which
 	has the argument of the type int.
+USESTRERROR
+	The function strerror(3) is used instead of sys_errlist[]
+	to get error messages.
+GETTODARGS
+	This indicates the number of arguments used by
+	function gettimeofday(3). The default value is 2.
 
 SENSEPERSEC
 	This indicates the number to sense the key input per

@@ -61,6 +61,22 @@ extern int errno;
 #define	ishardomit()	(n_column < WCOLUMNOMIT)
 #define	isbestomit()	(n_column < WCOLUMNHARD)
 
+#ifdef	_NOORIGSHELL
+#define	getconstvar(s)		(char *)getenv(s)
+#define	getshellvar(s, l)	(char *)getenv(s)
+#else
+#define	getconstvar(s)		(getshellvar(s, sizeof(s) - 1))
+#endif
+
+#ifdef	USESTRERROR
+#define	strerror2		strerror
+#else
+# ifndef	DECLERRLIST
+extern char *sys_errlist[];
+# endif
+#define	strerror2(n)		(char *)sys_errlist[n]
+#endif
+
 /* main.c */
 extern VOID error __P_((char *));
 extern VOID checkscreen __P_((int, int));
@@ -179,6 +195,7 @@ extern int mkdir2 __P_((char *, int));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
+extern char *strndup2 __P_((char *, int));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strchr2 __P_((char *, int));
 extern char *strrchr2 __P_((char *, int));
@@ -188,6 +205,7 @@ extern int strncpy3 __P_((char *, char *, int *, int));
 extern int strlen2 __P_((char *));
 extern int strlen3 __P_((char *));
 extern int atoi2 __P_((char *));
+extern int fprintf2 __P_((FILE *, CONST char *, ...));
 extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern VOID perror2 __P_((char *));
 extern int putenv2 __P_((char *));
@@ -214,9 +232,9 @@ extern char *nodospath __P_((char *, char *));
 #endif
 #define	fnodospath(p, i)	nodospath(p, filelist[i].name)
 #if	MSDOS
-extern int logical_access __P_((u_short));
+extern int logical_access __P_((u_int));
 #else
-extern int logical_access __P_((u_short, uid_t, gid_t));
+extern int logical_access __P_((u_int, uid_t, gid_t));
 #endif
 extern int getstatus __P_((namelist *));
 extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
@@ -269,7 +287,7 @@ extern int forcemovefile __P_((char *));
 /* parse.c */
 extern char *skipspace __P_((char *));
 extern char *evalnumeric __P_((char *, long *, int));
-extern char *ascnumeric __P_((char *, long, int, int));
+extern char *ascnumeric __P_((char *, off_t, int, int));
 #ifdef	_NOORIGSHELL
 extern char *strtkchr __P_((char *, int, int));
 extern int getargs __P_((char *, char ***));
@@ -418,8 +436,8 @@ extern int ujis2sjis __P_((char *, u_char *, int));
 || !defined (_NODOSDRIVE)
 extern VOID readunitable __P_((VOID_A));
 extern VOID discardunitable __P_((VOID_A));
-extern u_short unifysjis __P_((u_short, int));
-extern u_short cnvunicode __P_((u_short, int));
+extern u_int unifysjis __P_((u_int, int));
+extern u_int cnvunicode __P_((u_int, int));
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 extern int kanjiconv __P_((char *, char *, int, int, int, int));
@@ -443,9 +461,9 @@ extern int selectstr __P_((int *, int, int, char *[], int []));
 /* info.c */
 extern VOID help __P_((int));
 extern int writablefs __P_((char *));
-extern long getblocksize __P_((char *));
-extern long calcKB __P_((long, long));
-extern int getinfofs __P_((char *, long *, long *, long *));
+extern off_t getblocksize __P_((char *));
+extern off_t calcKB __P_((off_t, off_t));
+extern int getinfofs __P_((char *, off_t *, off_t *, off_t *));
 extern int infofs __P_((char *));
 
 /* rockridge.c */
@@ -489,10 +507,6 @@ extern VOID freeenvpath __P_((VOID_A));
 extern VOID freestrarray __P_((char **, int));
 extern char **copystrarray __P_((char **, char **, int *, int));
 extern bindtable *copybind __P_((bindtable *, bindtable *));
-# if	!MSDOS && !defined (_NOKEYMAP)
-extern VOID freekeymap __P_((keymaptable *));
-extern keymaptable *copykeymap __P_((keymaptable *));
-# endif
 # ifndef	_NOARCHIVE
 extern VOID freelaunch __P_((launchtable *, int));
 extern launchtable *copylaunch __P_((launchtable *, launchtable *,
@@ -513,7 +527,7 @@ extern int customize __P_((VOID_A));
 
 /* browse.c */
 extern VOID helpbar __P_((VOID_A));
-extern int putmode __P_((char *, u_short));
+extern int putmode __P_((char *, u_int));
 #ifdef	HAVEFLAGS
 extern int putflags __P_((char *, u_long));
 #endif
@@ -524,7 +538,7 @@ extern int listupfile __P_((namelist *, int, char *));
 #ifndef	_NOSPLITWIN
 extern int shutwin __P_((int));
 #endif
-extern VOID movepos __P_((int, u_char));
+extern VOID movepos __P_((int, int));
 extern VOID rewritefile __P_((int));
 extern VOID addlist __P_((VOID_A));
 extern VOID main_fd __P_((char *));

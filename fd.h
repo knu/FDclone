@@ -7,9 +7,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include "machine.h"
+
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "machine.h"
+#endif
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -48,7 +52,6 @@ extern char *_mtrace_file;
 # else
 # define	RUNCOMFILE	"~\\fd.rc"
 # endif
-#define	HISTORYFILE	"~\\fd.hst"
 #define	TMPPREFIX	"FD"
 #define	ARCHTMPPREFIX	"AR"
 #define	DOSTMPPREFIX	'D'
@@ -58,7 +61,6 @@ extern char *_mtrace_file;
 # else
 # define	RUNCOMFILE	"~/.fdrc"
 # endif
-#define	HISTORYFILE	"~/.fd_history"
 #define	TMPPREFIX	"fd"
 #define	ARCHTMPPREFIX	"ar"
 #define	DOSTMPPREFIX	'd'
@@ -98,6 +100,11 @@ extern char *_mtrace_file;
 #define	WINDOWS		1
 #define	DEFCOLUMNS	2
 #define	MINFILENAME	12
+#if	MSDOS
+#define	HISTFILE	"~\\fd.hst"
+#else
+#define	HISTFILE	"~/.fd_history"
+#endif
 #define	HISTSIZE	50
 #define	DIRHIST		50
 #define	SAVEHIST	50
@@ -134,6 +141,7 @@ extern char *_mtrace_file;
 #endif
 #define	PROMPT2		"> "
 #define	TMPUMASK	022
+#define	DUMBSHELL	0
 
 
 /****************************************************************

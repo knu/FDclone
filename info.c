@@ -124,7 +124,11 @@ typedef struct _mnt_t {
 
 #ifdef	USESTATVFSH
 #include <sys/statvfs.h>
+# ifdef	USESTATVFS_T
+typedef statvfs_t	statfs_t;
+# else
 typedef struct statvfs	statfs_t;
+# endif
 #define	statfs2		statvfs
 #define	blocksize(fs)	((fs).f_frsize ? (fs).f_frsize : (fs).f_bsize)
 #endif	/* USESTATVFSH */
@@ -215,7 +219,7 @@ extern int dosstatfs __P_((int, char *));
 #endif
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
-extern char *ascnumeric __P_((char *, long, int, int));
+extern char *ascnumeric __P_((char *, off_t, int, int));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));
 extern int Xaccess __P_((char *, int));
@@ -248,6 +252,12 @@ extern int needbavail;
 #ifndef	MNTTYPE_FFS
 #define	MNTTYPE_FFS	"ffs"	/* NetBSD, OpenBSD */
 #endif
+#ifndef	MNTTYPE_ADVFS
+#define	MNTTYPE_ADVFS	"advfs"	/* OSF/1 */
+#endif
+#ifndef	MNTTYPE_VXFS
+#define	MNTTYPE_VXFS	"vxfs"	/* HP-UX */
+#endif
 #ifndef	MNTTYPE_HFS
 #define	MNTTYPE_HFS	"hfs"	/* Darwin, HP-UX */
 #endif
@@ -265,6 +275,15 @@ extern int needbavail;
 #endif
 #ifndef	MNTTYPE_DGUX
 #define	MNTTYPE_DGUX	"dg/ux"	/* DG/UX */
+#endif
+#ifndef	MNTTYPE_MSDOS
+#define	MNTTYPE_MSDOS	"msdos"	/* msdosfs */
+#endif
+#ifndef	MNTTYPE_UMSDOS
+#define	MNTTYPE_UMSDOS	"umsdos"	/* umsdosfs */
+#endif
+#ifndef	MNTTYPE_VFAT
+#define	MNTTYPE_VFAT	"vfat"	/* vfatfs */
 #endif
 #ifndef	MNTTYPE_PC
 #define	MNTTYPE_PC	"pc"	/* MS-DOS */
@@ -291,10 +310,10 @@ VOID help __P_((int));
 static int NEAR getfsinfo __P_((char *, statfs_t *, mnt_t *));
 static char *NEAR strmntopt __P_((char *, char *));
 int writablefs __P_((char *));
-long getblocksize __P_((char *));
-static int NEAR info1line __P_((int, char *, long, char *, char *));
-long calcKB __P_((long, long));
-int getinfofs __P_((char *, long *, long *, long *));
+off_t getblocksize __P_((char *));
+static int NEAR info1line __P_((int, char *, off_t, char *, char *));
+off_t calcKB __P_((off_t, off_t));
+int getinfofs __P_((char *, off_t *, off_t *, off_t *));
 int infofs __P_((char *));
 
 static int keycodelist[] = {
@@ -384,7 +403,7 @@ int mode;
 		locate(x * (n_column / 2), y);
 		if (x ^= 1) putterm(l_clear);
 		else y++;
-		if (mode && !(funclist[i].stat & ARCH)) continue;
+		if (mode && !(funclist[i].status & ARCH)) continue;
 
 		c = 0;
 		*buf = '\0';
@@ -721,11 +740,11 @@ mnt_t *mntbuf;
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
 		fsbuf -> f_bsize = *((long *)&(buf[sizeof(long) * 0]));
 # ifdef	USEFSDATA
-		fsbuf -> fd_req.btot = calcKB(fsbuf -> f_bsize,
-			*((long *)&(buf[sizeof(long) * 1])));
+		fsbuf -> fd_req.btot = calcKB((off_t)(fsbuf -> f_bsize),
+			(off_t)(*((long *)&(buf[sizeof(long) * 1]))));
 		fsbuf -> fd_req.bfree =
-		fsbuf -> fd_req.bfreen = calcKB(fsbuf -> f_bsize,
-			*((long *)&(buf[sizeof(long) * 2])));
+		fsbuf -> fd_req.bfreen = calcKB((off_t)(fsbuf -> f_bsize),
+			(off_t)(*((long *)&(buf[sizeof(long) * 2]))));
 # else	/* !USEFSDATA */
 #  ifdef	USESTATVFSH
 		fsbuf -> f_frsize = 0;
@@ -824,38 +843,46 @@ char *path;
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
 	|| hasmntopt2(&mntbuf, "ro")) return(0);
 
+	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FAT32)) return(5);
 #if	!MSDOS
-	if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_42)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FFS)
-	|| !strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_JFS)) return(1);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_SYSV)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
-	else
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)) return(6);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_MSDOS))
+# ifdef	LINUX
+		return(4);
+# else
+		return(5);
+# endif
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_UMSDOS)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_VFAT)) return(5);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_ADVFS)) return(0);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_VXFS)) return(0);
 #endif
 #ifdef	DARWIN
 	/* Macintosh HFS+ is pseudo file system covered with skin */
-	if (!strcmp(mntbuf.mnt_type, MNTTYPE_HFS)) return(0);
-	else
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_HFS)) return(0);
 #endif
-	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)) return(5);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_FAT32)) return(5);
 	return(0);
 }
 
 /*ARGSUSED*/
-long getblocksize(dir)
+off_t getblocksize(dir)
 char *dir;
 {
 #if	MSDOS
 	statfs_t fsbuf;
 
-	if (statfs2(dir, &fsbuf) < 0) return(1024);
-	return(blocksize(fsbuf));
+	if (statfs2(dir, &fsbuf) < 0) return((off_t)1024);
+	return((off_t)blocksize(fsbuf));
 #else	/* !MSDOS */
 	statfs_t fsbuf;
 	mnt_t mntbuf;
@@ -864,12 +891,12 @@ char *dir;
 #endif
 
 	if (!strcmp(dir, ".") && getfsinfo(dir, &fsbuf, &mntbuf) >= 0)
-		return(blocksize(fsbuf));
+		return((off_t)blocksize(fsbuf));
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
 	if (Xstat(dir, &st) < 0) error(dir);
-	return((int)(st.st_size));
+	return((off_t)(st.st_size));
 #endif
 #endif	/* !MSDOS */
 }
@@ -877,7 +904,7 @@ char *dir;
 static int NEAR info1line(y, ind, n, s, unit)
 int y;
 char *ind;
-long n;
+off_t n;
 char *s, *unit;
 {
 	char buf[MAXCOLSCOMMA(3) + 1];
@@ -899,24 +926,24 @@ char *s, *unit;
 	return(checkline(++y));
 }
 
-long calcKB(block, byte)
-long block, byte;
+off_t calcKB(block, byte)
+off_t block, byte;
 {
-	if (block < 0 || byte <= 0) return(-1L);
-	if (byte == 1024) return(block);
+	if (block < (off_t)0 || byte <= (off_t)0) return((off_t)-1);
+	if (byte == (off_t)1024) return(block);
 	else if (byte > 1024) {
-		byte = (byte + 512) / 1024;
+		byte = (byte + (off_t)512L) / (off_t)1024;
 		return(block * byte);
 	}
 	else {
-		byte = (1024 + (byte / 2)) / byte;
+		byte = ((off_t)1024 + (byte / (off_t)2)) / byte;
 		return(block / byte);
 	}
 }
 
 int getinfofs(path, totalp, freep, bsizep)
 char *path;
-long *totalp, *freep, *bsizep;
+off_t *totalp, *freep, *bsizep;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;
@@ -955,18 +982,21 @@ char *path;
 	locate(0, y++);
 	putterm(l_clear);
 
-	y = info1line(y, FSNAM_K, 0L, mntbuf.mnt_fsname, NULL);
-	y = info1line(y, FSMNT_K, 0L, mntbuf.mnt_dir, NULL);
-	y = info1line(y, FSTYP_K, 0L, mntbuf.mnt_type, NULL);
+	y = info1line(y, FSNAM_K, (off_t)0, mntbuf.mnt_fsname, NULL);
+	y = info1line(y, FSMNT_K, (off_t)0, mntbuf.mnt_dir, NULL);
+	y = info1line(y, FSTYP_K, (off_t)0, mntbuf.mnt_type, NULL);
 	y = info1line(y, FSTTL_K,
-		calcKB(fsbuf.f_blocks, blocksize(fsbuf)), NULL, "Kbytes");
+		calcKB((off_t)(fsbuf.f_blocks), (off_t)blocksize(fsbuf)),
+		NULL, "Kbytes");
 	y = info1line(y, FSUSE_K,
-		calcKB(fsbuf.f_blocks - fsbuf.f_bfree, blocksize(fsbuf)),
+		calcKB((off_t)(fsbuf.f_blocks - fsbuf.f_bfree),
+			(off_t)blocksize(fsbuf)),
 		NULL, "Kbytes");
 	y = info1line(y, FSAVL_K,
-		calcKB(fsbuf.f_bavail, blocksize(fsbuf)), NULL, "Kbytes");
-	y = info1line(y, FSBSZ_K, fsbuf.f_bsize, NULL, "bytes");
-	y = info1line(y, FSINO_K, fsbuf.f_files, NULL, UNIT_K);
+		calcKB((off_t)(fsbuf.f_bavail), (off_t)blocksize(fsbuf)),
+		NULL, "Kbytes");
+	y = info1line(y, FSBSZ_K, (off_t)(fsbuf.f_bsize), NULL, "bytes");
+	y = info1line(y, FSINO_K, (off_t)(fsbuf.f_files), NULL, UNIT_K);
 	if (y > LFILETOP + 1) {
 		for (; y < LFILEBOTTOM; y++) {
 			locate(0, y);

@@ -20,6 +20,8 @@ extern int physical_path;
 #ifdef	_NOORIGSHELL
 static char *NEAR strtkbrk __P_((char *, char *, int));
 static char *NEAR geteostr __P_((char **));
+#else
+#include "system.h"
 #endif
 
 strtable keyidentlist[] = {
@@ -151,7 +153,7 @@ int plus;
  */
 char *ascnumeric(buf, n, digit, max)
 char *buf;
-long n;
+off_t n;
 int digit, max;
 {
 	char tmp[MAXLONGWIDTH * 2 + 1];
@@ -240,7 +242,7 @@ char **strp;
 	if ((tmp = strtkbrk(*strp, " \t", 0))) len = tmp - *strp;
 	else len = strlen(*strp);
 	*strp += len;
-	return(strdupcpy(cp, len));
+	return(strndup2(cp, len));
 }
 
 int getargs(s, argvp)
@@ -406,23 +408,22 @@ int delim;
 char *killmeta(name)
 char *name;
 {
-	char *cp, buf[MAXPATHLEN * 2 + 1];
+	char *cp, *buf;
 	int i;
-# ifndef	CODEEUC
-	int sjis;
 
-	cp = (char *)getenv("LANG");
-	sjis = (cp && toupper2(*cp) == 'J' && strchr("AP", toupper2(cp[1])));
-# endif
-
+	buf = malloc2(strlen(name) * 2 + 2 + 1);
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
-# ifndef	CODEEUC
-		if (sjis && issjis1(cp[0]) && issjis2(cp[1]))
-			buf[i++] = *(cp++);
+# ifdef	CODEEUC
+		if (isekana(cp, 0)) buf[i++] = *(cp++);
 		else
 # endif
-		if (strchr(METACHAR, *cp)) {
+		if (iskanji1(cp, 0)) buf[i++] = *(cp++);
+		else if (*cp == PMETA) {
+			*buf = '"';
+			if (strchr(DQ_METACHAR, *(cp + 1))) buf[i++] = PMETA;
+		}
+		else if (strchr(METACHAR, *cp)) {
 			*buf = '"';
 			if (strchr(DQ_METACHAR, *cp)) buf[i++] = PMETA;
 		}
@@ -431,7 +432,9 @@ char *name;
 	if (*(cp = buf)) buf[i++] = *cp;
 	else cp++;
 	buf[i] = '\0';
-	return(strdup2(cp));
+	cp = strdup2(cp);
+	free(buf);
+	return(cp);
 }
 #endif	/* !MSDOS || !_NOORIGSHELL */
 
@@ -440,7 +443,7 @@ VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
 
-	if (!(cp = (char *)getenv("PATH"))) return;
+	if (!(cp = getconstvar("PATH"))) return;
 
 	path = evalpaths(cp, PATHDELIM);
 	if (strpathcmp(path, cp)) {
@@ -527,6 +530,11 @@ char **bufp, *prompt;
 	ALLOC_T size;
 	int i, j, k, len, unprint;
 
+#ifdef	_NOORIGSHELL
+	prompt = evalpath(strdup2(prompt), 0);
+#else
+	prompt = evalvararg(prompt, 0, 1, '\0', 0, 0);
+#endif
 	unprint = 0;
 #ifdef	FAKEUNINIT
 	size = 0;	/* fake for -Wuninitialized */
@@ -552,8 +560,7 @@ char **bufp, *prompt;
 				line[1] = '\0';
 				break;
 			case '!':
-				ascnumeric(line, (long)(histno[0]) + 1L,
-					0, MAXPATHLEN - 1);
+				long2str(line, histno[0] + 1, sizeof(line));
 				break;
 #if	!MSDOS
 			case 'u':
@@ -655,6 +662,7 @@ char **bufp, *prompt;
 		}
 	}
 	(*bufp)[j] = '\0';
+	free(prompt);
 	return(len);
 }
 

@@ -138,12 +138,6 @@ typedef struct _bindtable {
 	u_char d_func;
 } bindtable;
 
-typedef struct _keymaptable {
-	short key;
-	u_char len;
-	char *str;
-} keymaptable;
-
 typedef struct _functable {
 	int (*func)__P_((char *));
 	char *ident;
@@ -153,7 +147,7 @@ typedef struct _functable {
 #if	!defined (_NOENGMES) || defined (_NOJPNMES)
 	char *hmes_eng;
 #endif
-	u_char stat;
+	u_char status;
 } functable;
 
 #define	REWRITE		0001

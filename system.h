@@ -8,6 +8,10 @@
 #if	!MSDOS
 #include <sys/wait.h>
 #endif
+#ifdef	HPUX
+/* for TIOCGPGRP & TIOCSPGRP */
+#include <bsdtty.h>
+#endif
 
 #ifdef	BASHSTYLE
 #define	BASHBUG
@@ -47,27 +51,28 @@ typedef int		sigmask_t;
 #define	Xsigblock(o,m)	((o) = sigblock(m))
 #endif	/* !USESIGPMASK */
 
-#ifdef	USETERMIOS
-#define	gettcpgrp(f, g)	(g = tcgetpgrp(f))
-#define	settcpgrp(f, g)	tcsetpgrp(f, g)
+#ifdef	SYSV
+#define	Xkillpg(p, s)	kill(-(p), s)
 #else
-# ifdef	TIOCGPGRP
-# define	gettcpgrp(f, g)	((ioctl(f, TIOCGPGRP, &g) < 0) ? (g = -1) : g)
-# else
-# define	gettcpgrp(f, g)	(-1)
-# endif
-# ifdef	TIOCSPGRP
-# define	settcpgrp(f, g)	ioctl(f, TIOCSPGRP, &(g))
-# else
-# define	settcpgrp(f, g)	(-1)
-# endif
+#define	Xkillpg(p, s)	killpg(p, s)
+#endif
+
+#ifdef	TIOCGPGRP
+#define	gettcpgrp(f, g)	((ioctl(f, TIOCGPGRP, &g) < 0) ? (g = -1) : g)
+#else
+#define	gettcpgrp(f, g)	(g = tcgetpgrp(f))
+#endif
+#ifdef	TIOCSPGRP
+#define	settcpgrp(f, g)	ioctl(f, TIOCSPGRP, &(g))
+#else
+#define	settcpgrp(f, g)	tcsetpgrp(f, g)
 #endif
 
 #if	!MSDOS
 # ifdef	USEWAITPID
-typedef int		wait_t;
+typedef int		wait_pid_t;
 # else
-typedef union wait	wait_t;
+typedef union wait	wait_pid_t;
 # endif
 #endif
 
@@ -243,6 +248,9 @@ typedef struct _syntaxtree {
 	command_t *comm;
 	struct _syntaxtree *parent;
 	struct _syntaxtree *next;
+#ifndef	MINIMUMSHELL
+	long lineno;
+#endif
 	u_char type;
 	u_char cont;
 	u_char flags;
@@ -447,7 +455,7 @@ extern VOID fputlong __P_((long, FILE *));
 extern VOID fputstr __P_((char *, int, FILE *));
 #if	!MSDOS
 extern VOID dispsignal __P_((int, int, FILE *));
-extern int waitjob __P_((p_id_t, wait_t *, int));
+extern int waitjob __P_((p_id_t, wait_pid_t *, int));
 extern int waitchild __P_((p_id_t, syntaxtree *));
 #endif
 extern char *evalvararg __P_((char *, int, int, int, int, int));
@@ -462,7 +470,11 @@ extern char *getshellvar __P_((char *, int));
 extern int putexportvar __P_((char *, int));
 extern int putshellvar __P_((char *, int));
 extern int unset __P_((char *, int));
+#ifdef	MINIMUMSHELL
 extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *));
+#else
+extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *, long));
+#endif
 extern int getstatid __P_((syntaxtree *trp));
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
 extern syntaxtree *startvar __P_((syntaxtree *, redirectlist *,
@@ -476,6 +488,7 @@ extern int checktype __P_((char *, int *, int));
 extern int checktype __P_((char *, int *, int, int));
 #endif
 #if	defined (FD) && !defined (_NOCOMPLETE)
+extern int completeshellvar __P_((char *, int, int, char ***));
 extern int completeshellcomm __P_((char *, int, int, char ***));
 #endif
 extern int getsubst __P_((int, char **, char ***, int **));
@@ -498,7 +511,8 @@ extern FILE *dopopen __P_((char *));
 extern int dopclose __P_((FILE *));
 #endif
 extern int execruncom __P_((char *, int));
+extern VOID setshellvar __P_((char *[]));
 extern int prepareterm __P_((VOID_A));
-extern int initshell __P_((int, char *[], char *[]));
+extern int initshell __P_((int, char *[]));
 extern int shell_loop __P_((int));
 extern int main_shell __P_((int, char *[], char *[]));

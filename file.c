@@ -58,6 +58,14 @@ extern int dosdrive;
 #define	DOSBODYLEN	8
 #define	DOSEXTLEN	3
 
+#ifndef	L_SET
+# ifdef	SEEK_SET
+# define	L_SET	SEEK_SET
+# else
+# define	L_SET	0
+# endif
+#endif
+
 #ifdef	_NODOSDRIVE
 #define	nodoschdir	Xchdir
 #define	nodosgetwd	Xgetwd
@@ -75,12 +83,13 @@ static int NEAR genrand __P_((int));
 static int dounlink __P_((char *));
 #ifndef	_NOWRITEFS
 static int NEAR isexist __P_((char *));
-static int NEAR realdirsiz __P_((char *, int, int, int));
-static int NEAR getnamlen __P_((int, int, int, int));
+static int NEAR realdirsiz __P_((char *, int, int, int, int));
+static int NEAR getnamlen __P_((int, int, int, int, int));
 static int NEAR saferename __P_((char *, char *));
 static char *NEAR maketmpfile __P_((int, int, char *, char *));
 #if	!MSDOS
-static char *NEAR getentnum __P_((char *, long));
+static off_t NEAR getdirblocksize __P_((char *));
+static u_char *NEAR getentnum __P_((char *, off_t));
 #endif
 static VOID NEAR restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
@@ -110,10 +119,10 @@ char *path, *file;
 
 #if	MSDOS
 int logical_access(mode)
-u_short mode;
+u_int mode;
 #else
 int logical_access(mode, uid, gid)
-u_short mode;
+u_int mode;
 uid_t uid;
 gid_t gid;
 #endif
@@ -216,7 +225,7 @@ namelist *list;
 #else
 	list -> st_uid = lst.st_uid;
 	list -> st_gid = lst.st_gid;
-	list -> st_size = isdev(list) ? lst.st_rdev : lst.st_size;
+	list -> st_size = isdev(list) ? (off_t)(lst.st_rdev) : lst.st_size;
 #endif
 #ifdef	HAVEFLAGS
 	list -> st_flags = lst.st_flags;
@@ -224,9 +233,9 @@ namelist *list;
 	list -> st_mtim = lst.st_mtime;
 	list -> flags |=
 #if	MSDOS
-		logical_access((u_short)(st.st_mode));
+		logical_access((u_int)(st.st_mode));
 #else
-		logical_access((u_short)(st.st_mode), st.st_uid, st.st_gid);
+		logical_access((u_int)(st.st_mode), st.st_uid, st.st_gid);
 #endif
 
 	if (isfile(list) && list -> st_size) {
@@ -243,7 +252,7 @@ CONST VOID_P vp2;
 {
 	namelist *list1, *list2;
 	char *cp1, *cp2;
-	long tmp;
+	int tmp;
 
 	list1 = (namelist *)vp1;
 	list2 = (namelist *)vp2;
@@ -268,7 +277,7 @@ CONST VOID_P vp2;
 		case 5:
 			tmp = (int)strlen(list1 -> name)
 				- (int)strlen(list2 -> name);
-			if (tmp != 0L) break;
+			if (tmp) break;
 /*FALLTHRU*/
 		case 1:
 			tmp = strpathcmp2(list1 -> name, list2 -> name);
@@ -291,7 +300,7 @@ CONST VOID_P vp2;
 					break;
 				}
 				else if (*cp1 != '.') {
-					tmp = -1L;
+					tmp = -1;
 					break;
 				}
 				if ((tmp = strpathcmp2(cp1 + 1, cp2 + 1)))
@@ -302,23 +311,26 @@ CONST VOID_P vp2;
 			if (isdir(list1))
 				tmp = strpathcmp2(list1 -> name,
 					list2 -> name);
-			else tmp = (long)(list1 -> st_size)
-				- (long)(list2 -> st_size);
+			else if (list1 -> st_size == list2 -> st_size)
+				tmp = 0;
+			else tmp = (list1 -> st_size > list2 -> st_size)
+				? 1 : -1;
 			break;
 		case 4:
-			tmp = list1 -> st_mtim - list2 -> st_mtim;
+			if (list1 -> st_mtim == list2 -> st_mtim)
+				tmp = 0;
+			else tmp = (list1 -> st_mtim > list2 -> st_mtim)
+				? 1 : -1;
 			break;
 		default:
-			tmp = 0L;
+			tmp = 0;
 			break;
 	}
 
 	if (sorton > 7) tmp = -tmp;
 	if (!tmp) tmp = list1 -> ent - list2 -> ent;
 
-	if (tmp > 0L) return(1);
-	if (tmp < 0L) return(-1);
-	return(0);
+	return(tmp);
 }
 
 #ifndef	_NOTREE
@@ -1143,20 +1155,18 @@ char *file;
 	return(1);
 }
 
-static int NEAR realdirsiz(s, dos, boundary, dirsize)
+static int NEAR realdirsiz(s, dos, boundary, dirsize, ofs)
 char *s;
-int dos, boundary, dirsize;
+int dos, boundary, dirsize, ofs;
 {
-	int len;
+	int i, len, lfn, dot;
 
 	if (!dos) {
-		len = (strlen(s) + boundary) & ~(boundary - 1);
+		len = (strlen(s) + ofs + boundary) & ~(boundary - 1);
 		return(len + dirsize);
 	}
 
-#if	MSDOS || !defined (_NODOSDRIVE)
 	if (dos > 1 && !isdotdir(s)) {
-		int i, lfn, dot;
 
 		lfn = dot = 0;
 		for (i = len = 0; s[i]; i++, len++) {
@@ -1177,28 +1187,24 @@ int dos, boundary, dirsize;
 		}
 		else if (i > DOSBODYLEN) lfn = 1;
 
+		len += ofs;
 		if (lfn) return((len / LFNENTSIZ + 1) * DOSDIRENT + DOSDIRENT);
 	}
-#endif	/* MSDOS || !defined (_NODOSDRIVE) */
-
 	return(DOSDIRENT);
 }
 
-static int NEAR getnamlen(size, dos, boundary, dirsize)
-int size, dos, boundary, dirsize;
+static int NEAR getnamlen(size, dos, boundary, dirsize, ofs)
+int size, dos, boundary, dirsize, ofs;
 {
 	if (!dos) {
 		size -= dirsize;
-		return((size & ~(boundary - 1)) - 1);
+		return((size & ~(boundary - 1)) - 1 - ofs);
 	}
 
-#if	MSDOS || !defined (_NODOSDRIVE)
 	if (size > DOSDIRENT) {
 		size -= DOSDIRENT;
 		return((size / DOSDIRENT) * LFNENTSIZ - 1);
 	}
-#endif
-
 	return(DOSBODYLEN);
 }
 
@@ -1279,29 +1285,44 @@ char *tmpdir, *old;
 }
 
 #if	!MSDOS
-static char *NEAR getentnum(dir, bsiz)
+static off_t NEAR getdirblocksize(dir)
 char *dir;
-long bsiz;
 {
-	FILE *fp;
 	struct stat st;
-	char *tmp;
-	int i, n;
 
-	if (Xlstat(dir, &st) < 0) return(NULL);
-	n = (long)(st.st_size) / bsiz;
-	tmp = malloc2(n + 1);
+	if (Xlstat(dir, &st) < 0) return(getblocksize(dir));
+	return((off_t)st.st_size);
+}
 
-	fp = fopen(dir, "r");
+static u_char *NEAR getentnum(dir, bsiz)
+char *dir;
+off_t bsiz;
+{
+	struct stat st;
+	u_char ch, *tmp;
+	int i, c, n, fd;
+
+	if (Xlstat(dir, &st) < 0
+	|| (fd = Xopen(dir, O_BINARY | O_RDONLY, 0666)) < 0)
+		return(NULL);
+	n = (off_t)(st.st_size) / bsiz;
+	tmp = (u_char *)malloc2(n + 1);
+
 	for (i = 0; i < n; i++) {
-		if (fseek(fp, i * bsiz + 3, 0) < 0) {
+		if (Xlseek(fd, (off_t)(i * bsiz + 3), L_SET) < 0) {
 			free(tmp);
 			return(NULL);
 		}
-		tmp[i] = fgetc(fp) + 1;
+		while ((c = Xread(fd, (char *)&ch, sizeof(ch))) < 0
+		&& errno == EINTR);
+		if (c < 0) {
+			free(tmp);
+			return(NULL);
+		}
+		tmp[i] = ch + 1;
 	}
 	tmp[i] = 0;
-	fclose(fp);
+	Xclose(fd);
 
 	return(tmp);
 }
@@ -1334,13 +1355,14 @@ VOID arrangedir(fs)
 int fs;
 {
 #if	!MSDOS
-	long persec;
-	char *entnum, **tmpfile;
-	int n, tmpno, block, totalent, ptr, totalptr;
+	off_t persec, totalent, dirblocksize;
+	u_char *entnum;
+	char **tmpfile;
+	int n, tmpno, block, ptr, totalptr;
 #endif
 	DIR *dirp;
 	struct dirent *dp;
-	int dos, headbyte, boundary, dirsize;
+	int dos, headbyte, boundary, dirsize, namofs;
 	int i, top, size, len, fnamp, ent;
 	char *cp, *tmpdir, **fnamelist, path[MAXPATHLEN];
 
@@ -1351,12 +1373,21 @@ int fs;
 			headbyte = 4;
 			boundary = 2;
 			dirsize = sizeof(u_long);
+			namofs = 0;
 			break;
 		case 3:	/* SystemV R3 File System */
 			dos = 0;
 			headbyte = 0;
 			boundary = 8;
 			dirsize = sizeof(u_short);
+			namofs = 0;
+			break;
+		case 6:	/* Linux File System */
+			dos = 0;
+			headbyte = 0;
+			boundary = 4;
+			dirsize = 4;	/* short + short */
+			namofs = 3;
 			break;
 #endif
 		case 4:	/* MS-DOS File System */
@@ -1364,18 +1395,21 @@ int fs;
 			headbyte = -1;
 			boundary = 1;
 			dirsize = DOSDIRENT;
+			namofs = 0;
 			break;
 		case 5:	/* Windows95 File System */
 			dos = 2;
 			headbyte = -1;
 			boundary = LFNENTSIZ;
 			dirsize = DOSDIRENT;
+			namofs = 0;
 			break;
 		default:
 			dos = 0;
 			headbyte = 0;
 			boundary = 4;
-			dirsize = sizeof(u_long) + sizeof(u_short) * 2;
+			dirsize = 8;	/* long + short + short */
+			namofs = 0;
 			break;
 	}
 
@@ -1399,8 +1433,8 @@ int fs;
 	}
 
 	noconv++;
-	size = realdirsiz(fnamelist[top], dos, boundary, dirsize);
-	len = getnamlen(size, dos, boundary, dirsize);
+	size = realdirsiz(fnamelist[top], dos, boundary, dirsize, namofs);
+	len = getnamlen(size, dos, boundary, dirsize, namofs);
 	if (!(tmpdir = maketmpfile(len, dos, NULL, NULL))) {
 		warning(0, NOWRT_K);
 		freevar(fnamelist);
@@ -1409,6 +1443,7 @@ int fs;
 	}
 #if	!MSDOS
 	persec = getblocksize(tmpdir);
+	dirblocksize = getdirblocksize(tmpdir);
 #endif
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	waitmes();
@@ -1468,9 +1503,10 @@ int fs;
 		noconv--;
 		return;
 	}
-	totalent = headbyte + realdirsiz(tmpdir, dos, boundary, dirsize)
-		+ realdirsiz(".", dos, boundary, dirsize)
-		+ realdirsiz("..", dos, boundary, dirsize);
+	totalent = headbyte
+		+ realdirsiz(tmpdir, dos, boundary, dirsize, namofs)
+		+ realdirsiz(".", dos, boundary, dirsize, namofs)
+		+ realdirsiz("..", dos, boundary, dirsize, namofs);
 	block = tmpno = 0;
 	ptr = 3;
 	totalptr = 0;
@@ -1481,8 +1517,9 @@ int fs;
 	for (i = 0; i < maxfile; i++) {
 		if (isdotdir(fnamelist[i]) || i == top) continue;
 #if	!MSDOS
-		ent = persec - totalent;
-		size = realdirsiz(fnamelist[i], dos, boundary, dirsize);
+		ent = dirblocksize - totalent;
+		size = realdirsiz(fnamelist[i],
+			dos, boundary, dirsize, namofs);
 		switch (fs) {
 			case 2:	/* IRIX File System */
 				if (totalptr > ptr + 1) ent -= totalptr;
@@ -1497,10 +1534,12 @@ int fs;
 				break;
 		}
 		if (ent < size) {
-			tmpfile = b_realloc(tmpfile, tmpno, char *);
-			n = getnamlen(ent, dos, boundary, dirsize);
-			tmpfile[tmpno] = maketmpfile(n, dos, tmpdir, NULL);
-			tmpno++;
+			n = getnamlen(ent, dos, boundary, dirsize, namofs);
+			if (n > 0) {
+				tmpfile = b_realloc(tmpfile, tmpno, char *);
+				tmpfile[tmpno++] =
+					maketmpfile(n, dos, tmpdir, NULL);
+			}
 			ptr = 0;
 			totalent = headbyte;
 			if (entnum) totalptr = entnum[++block];
@@ -1518,6 +1557,13 @@ int fs;
 	}
 #if	!MSDOS
 	if (entnum) free(entnum);
+	if (tmpfile) {
+		for (i = 0; i < tmpno; i++) if (tmpfile[i]) {
+			if (Xunlink(tmpfile[i]) < 0) warning(-1, tmpfile[i]);
+			free(tmpfile[i]);
+		}
+		free(tmpfile);
+	}
 #endif
 
 	if (!(cp = maketmpfile(len, dos, tmpdir, tmpdir))) warning(-1, tmpdir);
@@ -1529,15 +1575,6 @@ int fs;
 	if (saferename(path, fnamelist[top]) < 0) warning(-1, path);
 	restorefile(tmpdir, path, fnamp);
 
-#if	!MSDOS
-	if (tmpfile) {
-		for (i = 0; i < tmpno; i++) if (tmpfile[i]) {
-			if (Xunlink(tmpfile[i]) < 0) warning(-1, tmpfile[i]);
-			free(tmpfile[i]);
-		}
-		free(tmpfile);
-	}
-#endif
 	freevar(fnamelist);
 	noconv--;
 }

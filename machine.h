@@ -17,11 +17,13 @@
 #define	USETIMEH
 #define	USEUTIME
 #define	USEMKTIME
+#define	USESTRERROR
 #define	SENSEPERSEC	20
 # if	defined (__TURBOC__) && defined (__WIN32__)
 # define	BCC32
 # endif
 # ifdef	__GNUC__
+# define	USERESOURCEH
 # define	SIGFNCINT
 #  ifndef	DJGPP
 #  define	DJGPP	1
@@ -78,6 +80,7 @@ typedef long	off_t;
 || defined (USGr4) || defined (__svr4__) || defined (__SVR4)
 # define	SVR4
 # define	OSTYPE		"SOLARIS"
+# define	EXTENDCCOPT	"-O -D_FILE_OFFSET_BITS=64"
 # include <stdio.h>
 #  if	defined (__SUNPRO_C) && defined (BSD)
 #  define	USEDIRECT
@@ -87,8 +90,10 @@ typedef long	off_t;
 # define	REGEXPLIB	"-lgen"
 # define	USEMKDEVH
 # define	NODNAMLEN
+# define	DNAMESIZE	1
 # define	NOTMGMTOFF
 # define	USESTATVFSH
+# define	USESTATVFS_T
 # define	USEMNTTABH
 # define	USEMKTIME
 # define	SIGFNCINT
@@ -115,11 +120,13 @@ typedef long	off_t;
 # define	REGEXPLIB	"-lgen"
 # define	USEMKDEVH
 # define	NODNAMLEN
+# define	DNAMESIZE	1
 # define	NOTMGMTOFF
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEMKTIME
 # define	USEUTIME
+# define	USETIMES
 # define	SIGFNCINT
 # define	GETTODARGS	1
 # else	/* !USGr4 && !SYSTYPE_SYSV */
@@ -141,7 +148,7 @@ typedef long	off_t;
 #  define	NOTMGMTOFF
 #  define	NOVSPRINTF
 #  define	USEGETWD
-#  define	USETIMESH
+#  define	USETIMES
 #  endif	/* !__sony && bsd43 */
 # endif	/* !USGr4 && !SYSTYPE_SYSV */
 #endif
@@ -157,31 +164,36 @@ typedef long	off_t;
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
-#define	STRICTSTDC
 #define	USEPID_T
+#define	DECLERRLIST
+#define	USEMKDEVH
 #define	NODNAMLEN
+#define	DNAMESIZE	1
 #define	NOTMGMTOFF
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USERE_COMP
 #define	USEMKTIME
+#define	USESYSCONF
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
 #define	USESETPGID
 #define	USESETVBUF
+#define	USESTRERROR
 #endif
 
 #if	defined (hpux) || defined (__hpux) \
 || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SYSV
 #define	OSTYPE			"HPUX"
-#define	EXTENDCCOPT		""
+#define	EXTENDCCOPT		"-D_FILE_OFFSET_BITS=64"
 #define	USETERMINFO
 #define	TERMCAPLIB		"-lcurses"
 #define	STRICTSTDC
 #define	USEPID_T
+#define	NOSIGLIST
 #define	NOTZFILEH
 #define	USEMKNODH
 #define	NOTMGMTOFF
@@ -197,6 +209,7 @@ typedef long	off_t;
 #define	USESETPGID
 #define	USESETVBUF
 #define	SIGFNCINT
+#define	USESTRERROR
 #endif
 
 #if	defined (nec_ews) || defined (_nec_ews)
@@ -215,6 +228,7 @@ typedef long	off_t;
 # define	REGEXPLIB	"-lgen"
 # define	USEMKDEVH
 # define	NODNAMLEN
+# define	DNAMESIZE	1
 # define	NOTMGMTOFF
 # define	USESTATVFSH
 # define	USEMNTTABH
@@ -243,6 +257,7 @@ typedef long	off_t;
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
 #define	USEREGCMP
+#define	USERESOURCEH
 #define	WAITKEYPAD		720
 #define	WAITMETA		720
 #endif
@@ -259,6 +274,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	NOVSPRINTF
 #define	USEGETWD
+#define	USERESOURCEH
 #define	SIGARGINT
 #endif
 
@@ -272,6 +288,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEGETWD
+#define	USERESOURCEH
 #define	SIGARGINT
 #endif
 
@@ -289,13 +306,16 @@ typedef long	off_t;
 # define	USEMOUNTH
 # define	STATFSARGS	3
 # define	USERE_COMP
+# define	USERESOURCEH
 # else	/* !SYSTYPE_BSD */
 # define	SVR4
 # define	OSTYPE		"DECOSF1V3"
+# define	DECLERRLIST
+# define	USELEAPCNT
 # define	USETERMIO
-# define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEREGCOMP
+# define	USEMKTIME
 # define	SIGFNCINT
 # endif	/* !SYSTYPE_BSD */
 #endif
@@ -303,6 +323,7 @@ typedef long	off_t;
 #if	defined (_IBMR2)
 #define	SVR4
 #define	OSTYPE			"AIX"
+#define	EXTENDCCOPT		"-O -D_LARGE_FILES -U_LARGE_FILE_API"
 #define	TERMCAPLIB		"-lcurses"
 #define	NOTZFILEH
 #define	USESELECTH
@@ -340,6 +361,7 @@ typedef long	off_t;
 #define	USEMKTIME
 #define	USESYSCONF
 #define	USESIGPMASK
+#define	USERESOURCEH
 #endif
 
 #if	defined (_AUX_SOURCE)
@@ -362,6 +384,7 @@ typedef long	off_t;
 #define	STATFSARGS	4
 #define	USESYSDIRH
 #define	NODNAMLEN
+#define	DNAMESIZE	1
 #define	USERE_COMP
 #endif
 
@@ -373,6 +396,7 @@ typedef long	off_t;
 #define	REGEXPLIB		"-lgen"
 #define	USEMKDEVH
 #define	NODNAMLEN
+#define	DNAMESIZE	1
 #define	NOTMGMTOFF
 #define	USESTATVFSH
 #define	USEMNTTABH
@@ -387,6 +411,7 @@ typedef long	off_t;
 #define	REGEXPLIB		"-lgen"
 #define	USEMKDEVH
 #define	NODNAMLEN
+#define	DNAMESIZE	1
 #define	NOTMGMTOFF
 #define	USESTATVFSH
 #define	USEMNTTABH
@@ -411,6 +436,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEGETWD
+#define	USERESOURCEH
 #define	SIGARGINT
 #endif
 
@@ -423,12 +449,14 @@ typedef long	off_t;
 #define	USEDIRECT
 #define	USERE_COMP
 #define	USEGETWD
+#define	USERESOURCEH
 #endif
 
 #if	defined (linux)
-#define	OSTYPE			"LINUX"
 #define	POSIX
+#define	OSTYPE			"LINUX"
 #define	CODEEUC
+#define	EXTENDCCOPT		"-O -D_FILE_OFFSET_BITS=64"
 #define	USEMANLANG
 #define	BSDINSTALL
 #define	TARUSESPACE
@@ -454,6 +482,7 @@ typedef long	off_t;
 #define	NOTZFILEH
 #define	USETIMEH
 #define	SYSVDIRENT
+#define	NODNAMLEN
 #define	HAVETIMEZONE
 #define	NOTMGMTOFF
 #define	USEREGCOMP
@@ -717,6 +746,7 @@ typedef long	off_t;
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	;dirent interface behaves as System V */
 /* #define NODNAMLEN	;struct dirent haven't d_namlen */
+/* #define DNAMESIZE	;size of d_name in struct dirent */
 /* #define HAVETIMEZONE	;have extern valiable 'timezone' */
 /* #define NOTMGMTOFF	;struct tm haven't tm_gmtoff */
 
@@ -727,6 +757,7 @@ typedef long	off_t;
 /* #define USEMOUNTH	;use <sys/mount.h> as header of the FS status */
 /* #define USEFSDATA	;use 'struct fs_data' as structure of hte FS status */
 
+/* #define USESTATVFS_T	;use 'statvfs_t' instead of 'struct statvfs' */
 /* #define USEFFSIZE	;'struct statfs' has 'f_fsize' as block size */
 /* #define STATFSARGS	;the number of arguments in statfs() */
 
@@ -766,12 +797,14 @@ typedef long	off_t;
 /* #define USESIGPMASK	;use sigprocmask() instead of sigsetmask() */
 /* #define USERESOURCEH	;use <sys/resource.h> for resource info. */
 /* #define USEULIMITH	;use <ulimit.h> for resource info. */
-/* #define USETIMESH	;use <sys/times.h> for resource info. */
+/* #define USEGETRUSAGE	;use getrusage() for getting process time */
+/* #define USETIMES	;use times() for getting process time */
 /* #define GETPGRPVOID	;getpgrp() needs void argument */
 /* #define USESETPGID	;use setpgid() instead of setpgrp() */
 /* #define USESETVBUF	;use setvbuf() instead of setbuf() or setlinebuf() */
 /* #define SIGARGINT	;the 2nd argument function of signal() returns int */
 /* #define SIGFNCINT	;the 2nd argument function of signal() needs int */
+/* #define USESTRERROR	;use strerror() instead of sys_errlist[] */
 /* #define GETTODARGS	;the number of arguments in gettimeofday() */
 
 /* #define SENSEPERSEC	;ratio of key sense per 1 second */
@@ -806,6 +839,7 @@ typedef long	off_t;
 #define	GETPGRPVOID
 #define	USESETPGID
 #define	USESETVBUF
+#define	USESTRERROR
 #endif
 
 #ifdef	SVR4
@@ -886,6 +920,9 @@ typedef long	off_t;
 #endif
 #ifndef	EXTENDLIB
 #define	EXTENDLIB		""
+#endif
+#ifndef	DNAMESIZE
+#define	DNAMESIZE		(MAXNAMLEN + 1)
 #endif
 
 #if	defined (USESTATVFSH)
@@ -969,6 +1006,11 @@ typedef long	off_t;
 # endif
 #else
 #define	USEMNTENTH
+#endif
+
+#if	!defined (USEGETRUSAGE) && !defined (USETIMES) \
+&& defined (USERESOURCEH)
+#define	USEGETRUSAGE
 #endif
 
 #ifndef	GETTODARGS

@@ -7,6 +7,12 @@
 #ifndef	__TERM_H_
 #define	__TERM_H_
 
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 #ifdef	USESTDARGH
 #include <stdarg.h>
 #else
@@ -34,6 +40,12 @@
 #ifndef	STDERR_FILENO
 #define	STDERR_FILENO	2
 #endif
+
+typedef struct _keyseq_t {
+	short code;
+	u_char len;
+	char *str;
+} keyseq_t;
 
 #define	K_CR	'\r'
 #define	K_ESC	'\033'
@@ -92,49 +104,53 @@ extern int n_column;
 extern int n_lastcolumn;
 extern int n_line;
 extern int stable_standout;
-extern char *t_init;
-extern char *t_end;
-extern char *t_metamode;
-extern char *t_nometamode;
-extern char *t_scroll;
-extern char *t_keypad;
-extern char *t_nokeypad;
-extern char *t_normalcursor;
-extern char *t_highcursor;
-extern char *t_nocursor;
-extern char *t_setcursor;
-extern char *t_resetcursor;
-extern char *t_bell;
-extern char *t_vbell;
-extern char *t_clear;
-extern char *t_normal;
-extern char *t_bold;
-extern char *t_reverse;
-extern char *t_dim;
-extern char *t_blink;
-extern char *t_standout;
-extern char *t_underline;
-extern char *end_standout;
-extern char *end_underline;
-extern char *l_clear;
-extern char *l_insert;
-extern char *l_delete;
-extern char *c_insert;
-extern char *c_delete;
-extern char *c_home;
-extern char *c_locate;
-extern char *c_return;
-extern char *c_newline;
-extern char *c_scrollforw;
-extern char *c_scrollrev;
-extern char *c_up;
-extern char *c_down;
-extern char *c_right;
-extern char *c_left;
-extern char *c_nup;
-extern char *c_ndown;
-extern char *c_nright;
-extern char *c_nleft;
+
+extern char *termstr[];
+#define	t_init		termstr[0]
+#define	t_end		termstr[1]
+#define	t_metamode	termstr[2]
+#define	t_nometamode	termstr[3]
+#define	t_scroll	termstr[4]
+#define	t_keypad	termstr[5]
+#define	t_nokeypad	termstr[6]
+#define	t_normalcursor	termstr[7]
+#define	t_highcursor	termstr[8]
+#define	t_nocursor	termstr[9]
+#define	t_setcursor	termstr[10]
+#define	t_resetcursor	termstr[11]
+#define	t_bell		termstr[12]
+#define	t_vbell		termstr[13]
+#define	t_clear		termstr[14]
+#define	t_normal	termstr[15]
+#define	t_bold		termstr[16]
+#define	t_reverse	termstr[17]
+#define	t_dim		termstr[18]
+#define	t_blink		termstr[19]
+#define	t_standout	termstr[20]
+#define	t_underline	termstr[21]
+#define	end_standout	termstr[22]
+#define	end_underline	termstr[23]
+#define	l_clear		termstr[24]
+#define	l_insert	termstr[25]
+#define	l_delete	termstr[26]
+#define	c_insert	termstr[27]
+#define	c_delete	termstr[28]
+#define	c_locate	termstr[29]
+#define	c_home		termstr[30]
+#define	c_return	termstr[31]
+#define	c_newline	termstr[32]
+#define	c_scrollforw	termstr[33]
+#define	c_scrollrev	termstr[34]
+#define	c_up		termstr[35]
+#define	c_down		termstr[36]
+#define	c_right		termstr[37]
+#define	c_left		termstr[38]
+#define	c_nup		termstr[39]
+#define	c_ndown		termstr[40]
+#define	c_nright	termstr[41]
+#define	c_nleft		termstr[42]
+#define	MAXTERMSTR	43
+
 extern u_char cc_intr;
 extern u_char cc_quit;
 extern u_char cc_eof;
@@ -148,6 +164,7 @@ extern int suspended;
 extern int ttyio;
 extern int isttyiomode;
 extern FILE *ttyout;
+extern int dumbterm;
 
 extern int opentty __P_((VOID_A));
 extern int inittty __P_((int));
@@ -169,13 +186,13 @@ extern int getxy __P_((int *, int *));
 extern int vasprintf2 __P_((char **, CONST char *, va_list));
 extern int asprintf2 __P_((char **, CONST char *, ...));
 extern char *tparamstr __P_((char *, int, int));
-extern int getterment __P_((VOID_A));
+extern int getterment __P_((char *));
 #if	!MSDOS
-# ifdef	DEBUG
 extern int freeterment __P_((VOID_A));
-# endif
 extern int setkeyseq __P_((int, char *, int));
 extern char *getkeyseq __P_((int, int *));
+extern keyseq_t *copykeyseq __P_((keyseq_t *));
+extern int freekeyseq __P_((keyseq_t *));
 #endif
 extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
@@ -192,7 +209,7 @@ extern int cprintf2 __P_((CONST char *, ...));
 extern int kbhit2 __P_((u_long));
 extern int getch2 __P_((VOID_A));
 extern int getkey2 __P_((int));
-extern int ungetch2 __P_((u_char));
+extern int ungetch2 __P_((int));
 extern int setscroll __P_((int, int));
 extern int locate __P_((int, int));
 extern int tflush __P_((VOID_A));
