@@ -22,6 +22,10 @@
 #include "types.h"
 #include "pathname.h"
 
+#ifdef	DEBUG
+extern char *_mtrace_file;
+#endif
+
 
 #if	MSDOS
 #define	RUNCOMFILE	"~\\fd.rc"
@@ -134,4 +138,8 @@
 #ifdef	UNKNOWNFS
 #undef	WRITEFS
 #define	WRITEFS		2
+#endif
+
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
 #endif

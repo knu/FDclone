@@ -168,8 +168,7 @@ typedef struct _archivetable {
 typedef struct _treelist {
 	char *name;
 	int max;
-	int maxent;
-	struct _treelist *next;
+	struct _treelist *sub;
 } treelist;
 #endif
 
@@ -182,6 +181,8 @@ typedef struct _macrostat {
 #define	F_NOCONFIRM	001
 #define	F_ARGSET	002
 #define	F_REMAIN	004
+#define	F_NOEXT		010
+#define	F_TOSFN		020
 
 typedef struct _aliastable {
 	char *alias;

@@ -676,6 +676,7 @@ NWS-3400:
 
 	_NOARCHIVE	アーカイヴブラウザが使用不能
 	_NODOSDRIVE	MS-DOS フロッピーがアクセス不能
+	_NOUSELFN	LongFileName が使用不能 (MS-DOS 版)
 	_NOTREE		ツリー表示画面が使用不能
 	_NOROCKRIDGE	疑似 RockRidge 拡張機能が使用不能
 	_NOCOMPLETE	ファイル名補完機能が使用不能

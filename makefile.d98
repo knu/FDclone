@@ -52,9 +52,11 @@ OBJ2	= dosdisk.o unixemu.o unixdisk.o \
 	rockridg.o builtin.o parse.o
 OBJ3	= kanji.o file.o apply.o archive.o \
 	tree.o command.o browse.o
+ALLOC	=
+DEBUG	=
 
-LDFLAGS	=   
-CFLAGS	= -DFD=1 -DPC98=1 -DDEFRUNCOM='"'$(DOSRC)'"' -O
+LDFLAGS	=    $(ALLOC)
+CFLAGS	= -DFD=1 -DPC98=1 -DDEFRUNCOM='"'$(DOSRC)'"' -O $(DEBUG)
 
 .SUFFIXES: .h .c .o .exe
 
@@ -277,7 +279,7 @@ unixemu.o: fd.h
 unixemu.o: machine.h config.h
 unixemu.o: types.h pathname.h func.h
 unixemu.o: unixdisk.h
-unixemu.o: unixemu.h
+unixemu.o: unixemu.h dosdisk.h
 rockridg.o: fd.h
 rockridg.o: machine.h config.h
 rockridg.o: types.h pathname.h func.h
@@ -307,7 +309,7 @@ archive.o: fd.h
 archive.o: machine.h
 archive.o: config.h types.h
 archive.o: pathname.h term.h func.h
-archive.o: funcno.h kanji.h
+archive.o: funcno.h kctype.h kanji.h
 tree.o: fd.h
 tree.o: machine.h config.h
 tree.o: types.h pathname.h term.h func.h

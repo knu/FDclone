@@ -61,7 +61,7 @@ extern error __P_((char *));
 # else
 extern void error __P_((char *));
 # endif
-# if	MSDOS && !defined (NOLFNEMU)
+# if	MSDOS && !defined (_NOUSELFN)
 extern char *shortname __P_((char *, char *));
 # endif
 extern char *progpath;
@@ -72,6 +72,7 @@ extern char *progpath;
 #define	Xreaddir	readdir
 #define	Xstat		stat
 #define	Xaccess		access
+#define	_dospath(s)	(isalpha(*s) && s[1] == ':')
 #define	error		return
 #endif
 
@@ -108,33 +109,41 @@ int ptr;
 #endif
 }
 
-#if	MSDOS
-char *strdelim(s)
+#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+char *strdelim(s, d)
 char *s;
+int d;
 {
 	int i;
 
+	if (d && _dospath(s)) return(s + 1);
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) return(&s[i]);
+#if	MSDOS
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+#endif
 	}
 	return(NULL);
 }
 
-char *strrdelim(s)
+char *strrdelim(s, d)
 char *s;
+int d;
 {
 	int i;
 	char *cp;
 
-	cp = NULL;
+	if (d && _dospath(s)) cp = s + 1;
+	else cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) cp = &s[i];
+#if	MSDOS
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+#endif
 	}
 	return(cp);
 }
-#endif
+#endif	/* MSDOS || (FD && !_NODOSDRIVE) */
 
 char *strrdelim2(s, eol)
 char *s, *eol;
@@ -183,7 +192,7 @@ int keepdelim, evalq;
 #if	!MSDOS
 	struct passwd *pwd;
 #else
-# if	defined (FD) && !defined (NOLFNEMU)
+# if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 	char alias[MAXPATHLEN + 1];
 	int top = -1;
 # endif
@@ -195,14 +204,10 @@ int keepdelim, evalq;
 	j = 0;
 
 	quote = '\0';
-	if ((*path == '"' || *path == '\'' || *path == '`')
-#if	MSDOS
-	&& *path != *(path + 1)
-#endif
-	) {
+	if ((*path == '"' || *path == '\'' || *path == '`')) {
 		quote = *(path++);
 		if (!evalq) {
-#if	defined (FD) && MSDOS && !defined (NOLFNEMU)
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 			top = j;
 #endif
 			buf[j++] = quote;
@@ -210,7 +215,7 @@ int keepdelim, evalq;
 	}
 
 	if (quote != '\'' && *path == '~') {
-		if (!(cp = strdelim(path + 1)) || cp > eol) cp = eol;
+		if (!(cp = strdelim(path + 1, 0)) || cp > eol) cp = eol;
 		if (cp > path + 1) {
 			strncpy(buf + j, path + 1, cp - path - 1);
 			buf[j + cp - path - 1] = '\0';
@@ -224,13 +229,13 @@ int keepdelim, evalq;
 #endif
 			tmp = NULL;
 		}
-#if	MSDOS
-		else tmp = (char *)getenv("HOME");
-#else
-		else if (!(tmp = (char *)getenv("HOME"))
-		&& (pwd = getpwuid(getuid())))
-			tmp = pwd -> pw_dir;
+		else {
+			tmp = (char *)getenv("HOME");
+#if	!MSDOS
+			if (!tmp && (pwd = getpwuid(getuid())))
+				tmp = pwd -> pw_dir;
 #endif
+		}
 
 		if (tmp) {
 			strcpy(buf + j, tmp);
@@ -283,11 +288,8 @@ int keepdelim, evalq;
 					j = evalenv(buf, env, j);
 					env = -1;
 				}
-#if	MSDOS
-				if (i > 0 && path[i - 1] == quote)
-					buf[j++] = quote;
-				else if (!evalq) {
-# if	defined (FD) && !defined (NOLFNEMU)
+				if (!evalq) {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 					cp = NULL;
 					if (quote == '"' &&
 					top >= 0 && top + 1 < j) {
@@ -304,13 +306,10 @@ int keepdelim, evalq;
 							j - top);
 					}
 					top = -1;
-# else
-					buf[j++] = quote;
-# endif
-				}
 #else
-				if (!evalq) buf[j++] = quote;
+					buf[j++] = quote;
 #endif
+				}
 				quote = '\0';
 				continue;
 			}
@@ -335,10 +334,12 @@ int keepdelim, evalq;
 			}
 			if (path[i] != '_' && !isalpha(path[i])
 			&& (path[i] < '0' || path[i] > '9' || env == j)) {
-				if (env == j && path[i] == '$') {
 #if	MSDOS
-					buf[j++] = '$';
+				if (env == j
+				&& (path[i] < '0' || path[i] > '9')) {
+					buf[j++] = path[i];
 #else
+				if (env == j && path[i] == '$') {
 					env = getpid();
 					sprintf(buf + j, "%d", env);
 					while (buf[j]) j++;
@@ -351,19 +352,15 @@ int keepdelim, evalq;
 			}
 		}
 
-		if (path[i] == '"' || path[i] == '\'' || path[i] == '`') {
+		if (!quote
+		&& (path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
 			quote = path[i];
-#if	MSDOS
-			if (i > 0 && path[i - 1] == quote) buf[j++] = quote;
-			else if (!evalq) {
-# if	defined (FD) && !defined (NOLFNEMU)
+			if (!evalq) {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 				top = j;
-# endif
+#endif
 				buf[j++] = quote;
 			}
-#else
-			if (!evalq) buf[j++] = quote;
-#endif
 		}
 		else if (path[i] == _SC_
 		&& isdelim(path, i - 1) && keepdelim);
@@ -443,6 +440,7 @@ int exceptdot;
 	}
 	pattern[i++] = '$';
 	pattern[i++] = '\0';
+	if (!(pattern = (char *)realloc(pattern, i))) error(NULL);
 
 	return(pattern);
 }
@@ -728,11 +726,7 @@ int exe, full;
 	next = NULL;
 	len = 0;
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
-# ifdef	FD
 	if (_dospath(path)) {
-# else
-	if (isalpha(*path) && path[1] == ':') {
-# endif
 		dir[0] = path[0];
 		dir[1] = path[1];
 		dir[2] = '\0';
@@ -740,7 +734,7 @@ int exe, full;
 		len = 2;
 	}
 #endif
-	if ((file = strrdelim(path))) {
+	if ((file = strrdelim(path, 0))) {
 		if (file == path) strcpy(dir + len, _SS_);
 		else {
 			strncpy(dir + len, path, file - path);

@@ -193,8 +193,8 @@ SHELL	=	/bin/sh
 #		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tar.gz"\
 #		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
-#launch ".zip"	"pkunzip -vb"		14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
+#launch ".zip"	"unzip -lqq %S"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
+#launch ".zip"	"pkunzip -vb %S"	14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
 
 # archiver definition
 #(Default)
@@ -210,10 +210,10 @@ SHELL	=	/bin/sh
 #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
 
 # examples for MS-DOS
-#arch ".lzh"	"lha a %C %TA"			"lha x %S %TA"
-#arch ".tar.Z"	"tar cf %X %T; compress %X"	"gzip -cd %S|tar xf - %TA"
-#arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %S|tar xf - %TA"
-#arch ".zip"	"pkzip %C %TA"			"pkunzip %C %TA"
+#arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
+#arch ".tar.Z"	"tar cfZ %C %TA"		"gzip -cd %S|tar xf - %TA"
+#arch ".tar.gz"	"tar cfz %C %TA"		"gzip -cd %S|tar xf - %TA"
+#arch ".zip"	"pkzip %S %TA"			"pkunzip %S %TA"
 
 # key bind definition
 #(Examples)

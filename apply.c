@@ -84,8 +84,8 @@ time_t *atimep, *mtimep;
 			if (status1.st_mtime < status2.st_mtime) return(-1L);
 			break;
 		case 2:
-			if ((cp = strrdelim(dest))) cp++;
-			else cp = dest + strlen(cp);
+			if ((cp = strrdelim(dest, 1))) cp++;
+			else cp = dest;
 			do {
 				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, -1))) return(-1L);
@@ -218,15 +218,11 @@ char *path;
 {
 	char *cp;
 
-	if ((cp = strrdelim(path))) cp++;
+	if ((cp = strrdelim(path, 0))) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
-#if	MSDOS
-		if (!(strncmp(path, ".\\", 2))) path += 2;
-#else
-		if (!(strncmp(path, "./", 2))) path += 2;
-#endif
+		if (path[0] == '.' && path[1] == _SC_) path += 2;
 		locate(0, LCMDLINE);
 		putterm(l_clear);
 		putch2('[');
@@ -245,7 +241,7 @@ char *path;
 {
 	char *cp;
 
-	if ((cp = strrdelim(path))) cp++;
+	if ((cp = strrdelim(path, 0))) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
@@ -577,9 +573,9 @@ char *endmes;
 	struct dirent *dp;
 	struct stat status;
 	char *cp, *fname, path[MAXPATHLEN + 1], **dirlist;
-	int i, ndir, max;
+	int c, ret, ndir, max;
 
-	if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
+	if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
 		warning(0, INTR_K);
 		return(-2);
 	}
@@ -592,11 +588,7 @@ char *endmes;
 	locate(0, LCMDLINE);
 	putterm(l_clear);
 	putch2('[');
-#if	MSDOS
-	cp = (strncmp(dir, ".\\", 2)) ? dir : dir + 2;
-#else
-	cp = (strncmp(dir, "./", 2)) ? dir : dir + 2;
-#endif
+	cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
 	kanjiputs2(cp, n_column - 2, -1);
 	putch2(']');
 	tflush();
@@ -605,7 +597,7 @@ char *endmes;
 	fname = path + strlen(path);
 	*(fname++) = _SC_;
 
-	i = ndir = max = 0;
+	ret = max = 0;
 	dirlist = NULL;
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
@@ -613,26 +605,24 @@ char *endmes;
 
 		if (Xlstat(path, &status) >= 0
 		&& (status.st_mode & S_IFMT) == S_IFDIR) {
-			dirlist = (char **)addlist(dirlist, ndir,
-				&max, sizeof(char *));
-			dirlist[ndir++] = strdup2(dp -> d_name);
+			dirlist = (char **)b_realloc(dirlist, max, char *);
+			dirlist[max++] = strdup2(dp -> d_name);
 		}
 	}
 	Xclosedir(dirp);
 
 	if (!funcd) order = 0;
-	if (order == 1 && (i = (*funcd)(dir)) < 0) {
-		if (i == -1) warning(-1, dir);
-		return(i);
+	if (order == 1 && (ret = (*funcd)(dir)) < 0) {
+		if (ret == -1) warning(-1, dir);
+		return(ret);
 	}
 
-	max = ndir;
 	for (ndir = 0; ndir < max; ndir++) {
 		strcpy(fname, dirlist[ndir]);
 		free(dirlist[ndir]);
 
-		if ((i = applydir(path, funcf, funcd, order, NULL)) < -1)
-			return(i);
+		if ((ret = applydir(path, funcf, funcd, order, NULL)) < -1)
+			return(ret);
 		locate(0, LCMDLINE);
 		putterm(l_clear);
 		putch2('[');
@@ -642,9 +632,9 @@ char *endmes;
 	}
 	if (dirlist) free(dirlist);
 
-	if (order == 2 && (i = (*funcd)(dir)) < 0) {
-		if (i == -1) warning(-1, dir);
-		return(i);
+	if (order == 2 && (ret = (*funcd)(dir)) < 0) {
+		if (ret == -1) warning(-1, dir);
+		return(ret);
 	}
 
 	if (!(dirp = Xopendir(dir))) {
@@ -652,7 +642,7 @@ char *endmes;
 		return(-1);
 	}
 	while ((dp = Xreaddir(dirp))) {
-		if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
+		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
 			warning(0, INTR_K);
 			return(-2);
 		}
@@ -661,14 +651,14 @@ char *endmes;
 
 		if (Xlstat(path, &status) < 0) warning(-1, path);
 		else if ((status.st_mode & S_IFMT) == S_IFDIR) continue;
-		else if ((i = (*funcf)(path)) < 0) {
-			if (i == -1) warning(-1, path);
-			else return(i);
+		else if ((ret = (*funcf)(path)) < 0) {
+			if (ret == -1) warning(-1, path);
+			else return(ret);
 		}
 	}
 	Xclosedir(dirp);
 
-	if (order == 3 && (i = (*funcd)(dir)) == -1) warning(-1, dir);
+	if (order == 3 && (ret = (*funcd)(dir)) == -1) warning(-1, dir);
 	if (endmes) warning(0, endmes);
-	return(i);
+	return(ret);
 }

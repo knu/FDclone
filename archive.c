@@ -15,12 +15,7 @@
 
 #ifndef	_NOARCHIVE
 
-#if	MSDOS
-extern FILE *Xpopen __P_((char *, char *));
-extern int Xpclose __P_((FILE *));
-#else
-#define	Xpopen		popen
-#define	Xpclose		pclose
+#if	!MSDOS
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
@@ -38,6 +33,7 @@ extern int mark;
 extern int isearch;
 extern int fnameofs;
 extern int sorton;
+extern int sorttype;
 extern char fullpath[];
 extern char typesymlist[];
 extern u_short typelist[];
@@ -110,26 +106,34 @@ int maxlaunch = 0;
 int maxarchive = 0;
 launchtable launchlist[MAXLAUNCHTABLE] = {
 #if	MSDOS
-	{" ^.*\\.lzh$",		"lha v",		PM_LHA},
+	{" ^.*\\.lzh$",		"lha v %S",		PM_LHA},
+	{" ^.*\\.tar$",		"tar tvf %S", 		PM_TAR},
+	{" ^.*\\.tar\\.Z$",	"gzip -cd %S | tar tvf -",	PM_TAR},
+	{" ^.*\\.tar\\.gz$",	"gzip -cd %S | tar tvf -",	PM_TAR},
 #else
 	{" ^.*\\.lzh$",		"lha l",		PM_LHA},
-#endif
 	{" ^.*\\.tar$",		"tar tvf", 		PM_TAR},
 	{" ^.*\\.tar\\.Z$",	"zcat %C | tar tvf -",	PM_TAR},
 	{" ^.*\\.tar\\.gz$",	"gzip -cd %C | tar tvf -",	PM_TAR},
+#endif
 	{NULL,			NULL,		255, 0, "", "", "", "", 1}
 };
 archivetable archivelist[MAXARCHIVETABLE] = {
 #if	MSDOS
-	{" ^.*\\.lzh$",		"lha a %C %TA",		"lha x %C %TA"},
+	{" ^.*\\.lzh$",		"lha a %S %TA",		"lha x %S %TA"},
+	{" ^.*\\.tar$",		"tar cf %C %T",		"tar xf %C %TA"},
+	{" ^.*\\.tar\\.Z$",	"tar cfZ %C %TA",
+						"gzip -cd %S | tar xf - %TA"},
+	{" ^.*\\.tar\\.gz$",	"tar cfz %C %TA",
+						"gzip -cd %S | tar xf - %TA"},
 #else
 	{" ^.*\\.lzh$",		"lha aq %C %TA",	"lha xq %C %TA"},
-#endif
 	{" ^.*\\.tar$",		"tar cf %C %T",		"tar xf %C %TA"},
 	{" ^.*\\.tar\\.Z$",	"tar cf %X %T; compress %X",
 						"zcat %C | tar xf - %TA"},
 	{" ^.*\\.tar\\.gz$",	"tar cf %X %T; gzip %X",
 						"gzip -cd %C | tar xf - %TA"},
+#endif
 	{NULL,			NULL,			NULL}
 };
 
@@ -231,16 +235,20 @@ int max;
 #endif
 	u_short mode;
 	int i, ofs, skip;
-	char *cp, buf[MAXLINESTR + 1];
+	char *cp, *buf;
 
 	i = countfield(line, list -> sep, -1, NULL);
 	skip = (max > i) ? max - i : 0;
+	buf = (char *)malloc2(strlen(line) + 1);
 
 	cp = line;
 	tmp -> flags = 0;
 	tmp -> st_mode = 0;
 	getfield(buf, line, skip, list, F_NAME);
-	if (!*buf) return(-1);
+	if (!*buf) {
+		free(buf);
+		return(-1);
+	}
 #if	MSDOS
 	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[i] = _SC_;
 #endif
@@ -332,6 +340,7 @@ int max;
 		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
 #endif
 
+	free(buf);
 	return(0);
 }
 
@@ -416,9 +425,10 @@ int max;
 {
 	char *cp, *tmp;
 	int i, len;
+	u_short ent;
 
 	cp = namep -> name;
-	while ((tmp = strdelim(cp))) {
+	while ((tmp = strdelim(cp, 0))) {
 		while (*(tmp + 1) == _SC_) tmp++;
 		if (!*(tmp + 1)) break;
 		len = tmp - (namep -> name);
@@ -434,17 +444,18 @@ int max;
 			return(tmp);
 		}
 		if (strncmp(list[i].name, namep -> name, len)) {
-			free(list[i].name);
-			list[i].name = (char *)malloc2(len + 1);
+			list[i].name = (char *)realloc2(list[i].name, len + 1);
 			strncpy2(list[i].name, namep -> name, len);
 		}
 		cp = tmp + 1;
 	}
 	if (isdir(namep)) for (i = 0; i < max; i++) {
 		if (isdir(&list[i]) && !dircmp(list[i].name, namep -> name)) {
-			memcpy(&(list[i].st_mode), &(namep -> st_mode),
-				sizeof(namelist)
-				- sizeof(char *) - sizeof(u_short));
+			tmp = list[i].name;
+			ent = list[i].ent;
+			memcpy(&list[i], namep, sizeof(namelist));
+			list[i].name = tmp;
+			list[i].ent = ent;
 			return(NULL);
 		}
 	}
@@ -484,15 +495,22 @@ launchtable *list;
 {
 	namelist tmp;
 	FILE *fp;
-	char *cp, *buf, line[MAXLINESTR + 1];
-	int i, no, max;
+	char *cp, *buf, *line;
+	int i, c, no, len, max;
 
 	if (!(cp = evalcommand(list -> comm, file, NULL, 0, NULL))) {
 		warning(E2BIG, list -> comm);
 		return(-1);
 	}
+#ifdef	DEBUG
+	_mtrace_file = "popen";
+#endif
 	fp = Xpopen(cp, "r");
 	free(cp);
+	if (!fp) {
+		warning(-1, list -> comm);
+		return(-1);
+	}
 	waitmes();
 
 	max = 0;
@@ -500,37 +518,56 @@ launchtable *list;
 		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
 			max = (int)(list -> field[i]);
 
-	for (i = 0; i < (int)(list -> topskip); i++)
-		if (!fgets(line, MAXLINESTR, fp)) break;
+	for (i = 0; i < (int)(list -> topskip); i++) {
+		if (!(line = fgets2(fp))) break;
+		free(line);
+	}
 
-	filelist = (namelist *)addlist(filelist, 0, &maxent, sizeof(namelist));
+	maxfile = 0;
+	addlist();
 	filelist[0].name = strdup2("..");
 	filelist[0].flags = F_ISDIR;
-	maxfile = 1;
-	i = no = 0;
-	if (list -> lines == 1) buf = line;
-	else buf = (char *)malloc2(list -> lines * sizeof(line));
+	maxfile++;
 
-	while (fgets(line, MAXLINESTR, fp)) {
+	i = no = len = 0;
+	buf = NULL;
+	while ((line = fgets2(fp))) {
+		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
+			Xpclose(fp);
+			warning(0, INTR_K);
+			free(line);
+			if (buf) free(buf);
+			for (i = 0; i < maxfile; i++) free(filelist[i].name);
+			return(-1);
+		}
+
 		no++;
-		if ((cp = strchr(line, '\n'))) *cp = '\0';
-		if (list -> lines > 1) {
+		if (list -> lines <= 1) buf = line;
+		else {
+			c = strlen(line);
 			if (!(i++)) {
-				strcpy(buf, line);
+				buf = line;
+				len = c;
 				continue;
 			}
-			else {
-				strcat(buf, "\t");
-				strcat(buf, line);
-				if (i < list -> lines) continue;
-			}
-			i = 0;
+			buf = (char *)realloc2(buf, len + c + 2);
+			buf[len++] = '\t';
+			memcpy(&(buf[len]), line, c);
+			free(line);
+			len += c;
+			if (i < list -> lines) continue;
+
+			buf[len] = '\0';
+			i = len = 0;
 		}
-		if (readfileent(&tmp, buf, list, max) < 0) continue;
+
+		c = readfileent(&tmp, buf, list, max);
+		free(buf);
+		buf = NULL;
+		if (c < 0) continue;
 		while ((cp = pseudodir(&tmp, filelist, maxfile))
 		&& cp != tmp.name) {
-			filelist = (namelist *)addlist(filelist, maxfile,
-				&maxent, sizeof(namelist));
+			addlist();
 			memcpy(&filelist[maxfile], &tmp, sizeof(namelist));
 			filelist[maxfile].st_mode &= ~S_IFMT;
 			filelist[maxfile].st_mode |= S_IFDIR;
@@ -544,13 +581,11 @@ launchtable *list;
 			continue;
 		}
 
-		filelist = (namelist *)addlist(filelist, maxfile,
-			&maxent, sizeof(namelist));
+		addlist();
 		memcpy(&filelist[maxfile], &tmp, sizeof(namelist));
 		filelist[maxfile].ent = no;
 		maxfile++;
 	}
-	if (buf != line) free(buf);
 
 	no -= (int)(list -> bottomskip);
 	for (i = maxfile - 1; i > 0; i--) {
@@ -583,6 +618,8 @@ int max;
 	char *cp, *tmp, *arcre, buf[MAXNAMLEN + 1];
 	int ch, i, no, len, old;
 
+	if (sorttype < 100) sorton = 0;
+
 	if (!findpattern) {
 		re = NULL;
 		arcre = NULL;
@@ -613,7 +650,7 @@ int max;
 			arcflist[0].name = filelist[0].name;
 			continue;
 		}
-		if ((tmp = strdelim(cp))) while (*(++tmp) == _SC_);
+		if ((tmp = strdelim(cp, 0))) while (*(++tmp) == _SC_);
 		if ((!tmp || !*tmp)
 		&& (!re || regexp_exec(re, cp))
 		&& (!arcre || searcharc(arcre, filelist, max, i))) {
@@ -629,6 +666,8 @@ int max;
 		arcflist[0].name = NOFIL_K;
 		arcflist[0].st_nlink = -1;
 	}
+
+	if (sorton) qsort(arcflist, maxarcf, sizeof(namelist), cmplist);
 
 	if (stable_standout) putterms(t_clear);
 	title();
@@ -743,7 +782,7 @@ int max;
 	char *dupfullpath, *duparchivefile, *duparchivedir, *dupfindpat;
 	char *cp, *dir, path[MAXPATHLEN + 1], file[MAXNAMLEN + 1];
 	int i, dupmaxarcf, dupfilepos, dupsorton;
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
 
@@ -757,9 +796,9 @@ int max;
 
 	dir = NULL;
 	if ((archivefile && !(dir = tmpunpack(list, max)))
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	|| ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
-	list[filepos].name, list[filepos].st_mode)))
+#ifndef	_NODOSDRIVE
+	|| (drive = tmpdosdupl("", &dir,
+	list[filepos].name, list[filepos].st_mode)) < 0
 #endif
 	) {
 		putterm(t_bell);
@@ -768,7 +807,7 @@ int max;
 	if (launchlist[i].topskip == 255) {
 		execusercomm(launchlist[i].comm, list[filepos].name,
 			NULL, NULL, 1, 0);
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 		if (drive) removetmp(dir, NULL, list[filepos].name);
 		else
 #endif
@@ -778,7 +817,7 @@ int max;
 	}
 
 	dupfullpath = NULL;
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 	if (drive) {
 		dupfullpath = strdup2(fullpath);
 		strcpy(fullpath, dir);
@@ -825,11 +864,12 @@ int max;
 	arcflist = duparcflist;
 	maxarcf = dupmaxarcf;
 	filepos = dupfilepos;
+	if (findpattern) free(findpattern);
 	findpattern = dupfindpat;
 	sorton = dupsorton;
 	launchp = duplaunchp;
 
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 	if (drive) {
 		strcpy(fullpath, dupfullpath);
 		free(dupfullpath);
@@ -853,7 +893,7 @@ int max;
 		}
 		else {
 			i = arcflist[filepos].ent;
-			if ((cp = strrdelim(filelist[i].name))) cp++;
+			if ((cp = strrdelim(filelist[i].name, 0))) cp++;
 			else cp = filelist[i].name;
 			arcflist[filepos].name = cp;
 		}
@@ -900,10 +940,7 @@ int tr;
 	char *tmpdir, path[MAXPATHLEN + 1];
 	int i;
 #ifndef	_NODOSDRIVE
-	int dd;
-#endif
-#if	!MSDOS
-	int drive;
+	int dd, drive;
 #endif
 
 	for (i = 0; i < maxarchive; i++) {
@@ -934,18 +971,23 @@ int tr;
 			dir = evalpath(dir, 1);
 		}
 		if (!dir) return(0);
-		strcpy(path, (*dir) ? dir : ".");
+		if (!*dir) strcpy(path, ".");
+		else {
+			strcpy(path, dir);
+#if	MDDOS || !defined (_NODOSDRIVE)
+			if (_dospath(dir) && !dir[2]) strcat(path, ".");
+#endif
+		}
 		free(dir);
 		dir = NULL;
 	}
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	if (dospath(path, NULL)) {
+#ifndef	_NODOSDRIVE
+	if (dospath2(path)) {
 		warning(ENOENT, path);
 		return(0);
 	}
 
-	drive = dospath(arc, NULL);
-	if (drive && !(tmpdir = tmpdosdupl(drive, arc, 0700))) {
+	if ((drive = tmpdosdupl(arc, &tmpdir, arc, 0700)) < 0) {
 		warning(-1, arc);
 		return(0);
 	}
@@ -955,10 +997,10 @@ int tr;
 		return(0);
 	}
 
-#if	MSDOS || defined (_NODOSDRIVE)
+#ifdef	_NODOSDRIVE
 	strcpy(path, fullpath);
 #else
-	if (!(drive = _dospath(fullpath))) strcpy(path, fullpath);
+	if (!(drive = dospath2(fullpath))) strcpy(path, fullpath);
 	else {
 		realpath2(deftmpdir, path);
 		free(deftmpdir);
@@ -966,8 +1008,7 @@ int tr;
 		strcat(path, _SS_);
 		strcat(path, tmpfilename);
 		strcat(path, _SS_);
-		sprintf(path + strlen(path), "%c", drive);
-		strcat(path, ":");
+		sprintf(path + strlen(path), "D%c", drive);
 	}
 #endif
 	strcat(path, _SS_);
@@ -1014,8 +1055,8 @@ int max;
 			warning(-1, list[filepos].name);
 		else return(strdup2(path));
 	}
-	if (i > 0) removetmp(path, subdir, list[filepos].name);
-	else removetmp(path, NULL, NULL);
+	if (i > 0) removetmp(strdup2(path), subdir, list[filepos].name);
+	else removetmp(strdup2(path), NULL, NULL);
 	return(NULL);
 }
 
@@ -1056,8 +1097,8 @@ int maxf, n;
 	launchtable *list;
 	reg_t *re;
 	FILE *fp;
-	char *cp, *buf, *dir, *file, line[MAXLINESTR + 1];
-	int i, c, no, max, match, dupfilepos;
+	char *cp, *buf, *dir, *file, *line;
+	int i, c, no, len, max, match, dupfilepos;
 
 	if (n < 0) {
 		file = flist -> name;
@@ -1090,8 +1131,15 @@ int maxf, n;
 		if (n >= 0) removetmp(dir, NULL, file);
 		return(0);
 	}
+#ifdef	DEBUG
+	_mtrace_file = "popen";
+#endif
 	fp = Xpopen(cp, "r");
 	free(cp);
+	if (!fp) {
+		warning(-1, list -> comm);
+		return(-1);
+	}
 
 	locate(0, LMESLINE);
 	putterm(l_clear);
@@ -1106,42 +1154,57 @@ int maxf, n;
 		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
 			max = (int)(list -> field[i]);
 
-	for (i = 0; i < (int)(list -> topskip); i++)
-		if (!fgets(line, MAXLINESTR, fp)) break;
-	i = no = match = 0;
-	if (list -> lines == 1) buf = line;
-	else buf = (char *)malloc2(list -> lines * sizeof(line));
+	for (i = 0; i < (int)(list -> topskip); i++) {
+		if (!(line = fgets2(fp))) break;
+		free(line);
+	}
 
+	i = no = len = match = 0;
+	buf = NULL;
 	re = regexp_init(regstr);
-	while (fgets(line, MAXLINESTR, fp)) {
-		if (match && match <= no - (int)(list -> bottomskip)) break;
+	while ((line = fgets2(fp))) {
+		if (match && match <= no - (int)(list -> bottomskip)) {
+			free(line);
+			if (buf) free(buf);
+			break;
+		}
 		if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
 			Xpclose(fp);
 			warning(0, INTR_K);
-			if (buf != line) free(buf);
+			free(line);
+			if (buf) free(buf);
 			regexp_free(re);
 			if (n >= 0) removetmp(dir, NULL, file);
 			return(-1);
 		}
+
 		no++;
-		if ((cp = strchr(line, '\n'))) *cp = '\0';
-		if (list -> lines > 1) {
+		if (list -> lines <= 1) buf = line;
+		else {
+			c = strlen(line);
 			if (!(i++)) {
-				strcpy(buf, line);
+				buf = line;
+				len = c;
 				continue;
 			}
-			else {
-				strcat(buf, "\t");
-				strcat(buf, line);
-				if (i < list -> lines) continue;
-			}
-			i = 0;
+			buf = (char *)realloc2(buf, len + c + 2);
+			buf[len++] = '\t';
+			memcpy(&(buf[len]), line, c);
+			free(line);
+			len += c;
+			if (i < list -> lines) continue;
+
+			buf[len] = '\0';
+			i = len = 0;
 		}
-		if (readfileent(&tmp, buf, list, max) < 0) continue;
+
+		c = readfileent(&tmp, buf, list, max);
+		free(buf);
+		buf = NULL;
+		if (c < 0) continue;
 		if (regexp_exec(re, tmp.name)) match = no;
 		free(tmp.name);
 	}
-	if (buf != line) free(buf);
 	regexp_free(re);
 	if (n >= 0) removetmp(dir, NULL, file);
 

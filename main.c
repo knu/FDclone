@@ -16,19 +16,26 @@
 #if	MSDOS
 #include <process.h>
 #include <sys/timeb.h>
-# ifdef	__GNUC__
+# ifdef	DJGPP
 extern char *adjustfname __P_((char *));
-# endif
-# ifdef	__TURBOC__
-extern unsigned _stklen = 0x6000;
+# else
+# include <dos.h>
+#  ifdef	__TURBOC__
+extern unsigned _stklen = 8000;
+#  define	harderr_t	void
+#  else
+#  define	harderr_t	int
+#  endif
 # endif
 #else
 # ifdef	_NODOSDRIVE
 # include <sys/param.h>
-# else
-# include "dosdisk.h"
 # endif
 #endif	/* !MSDOS */
+
+#ifndef	_NODOSDRIVE
+#include "dosdisk.h"
+#endif
 
 #if	defined (SIGARGINT) || defined (NOVOID)
 #define	sigarg_t	int
@@ -46,6 +53,7 @@ extern unsigned _stklen = 0x6000;
 # endif
 #endif
 
+extern char **environ;
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 extern launchtable launchlist[];
@@ -54,10 +62,11 @@ extern archivetable archivelist[];
 extern int maxarchive;
 #endif
 #ifndef	_NODOSDRIVE
-#if	!MSDOS
+# if	!MSDOS
 extern devinfo fdtype[];
-#endif
+# endif
 extern char *unitblpath;
+extern VOID_T (*waitfunc)__P_((VOID_A));
 #endif
 extern char fullpath[];
 extern char **history[];
@@ -66,6 +75,9 @@ extern int subwindow;
 extern int columns;
 extern int dispmode;
 extern char *deftmpdir;
+#if	DEBUG
+extern char *rockridgepath;
+#endif
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -92,6 +104,9 @@ extern char *deftmpdir;
 #define	SIGIOT	SIGABRT
 #endif
 
+#if	MSDOS && !defined (DJGPP)
+static harderr_t far criticalerror __P_((u_short, u_short, u_short far *));
+#endif
 static VOID signalexit __P_((int));
 #ifdef	SIGALRM
 static sigarg_t ignore_alrm __P_((VOID_A));
@@ -164,11 +179,22 @@ static char *progname = NULL;
 static int timersec = 0;
 
 
+#if	MSDOS && !defined (DJGPP)
+/*ARGSUSED*/
+static harderr_t far criticalerror(deverr, errval, devhdr)
+u_short deverr, errval;
+u_short far *devhdr;
+{
+	if ((deverr & 0x8800) == 0x0800) _hardresume(_HARDERR_FAIL);
+	_hardresume(_HARDERR_ABORT);
+}
+#endif
+
 VOID error(str)
 char *str;
 {
 	forcecleandir(deftmpdir, tmpfilename);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
 	if (!str) str = progname;
@@ -184,7 +210,7 @@ int sig;
 {
 	signal(sig, SIG_IGN);
 	forcecleandir(deftmpdir, tmpfilename);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
 	inittty(1);
@@ -488,7 +514,7 @@ int exist;
 	char *tmp;
 #endif
 	FILE *fp;
-	char *cp, *fold, line[MAXLINESTR + 1];
+	char *cp, *fold, *line;
 	int i, n, er, cont;
 
 #if	!MSDOS
@@ -523,10 +549,14 @@ int exist;
 
 	fold = NULL;
 	n = er = 0;
-	while (fgets(line, MAXLINESTR, fp)) {
+	while ((line = fgets2(fp))) {
 		n++;
-		if (*line == ';' || *line == '#') continue;
-		if (!(cp = strchr(line, '\n'))) cp = line + strlen(line);
+		if (*line == ';' || *line == '#') {
+			free(line);
+			continue;
+		}
+
+		cp = line + strlen(line);
 		for (cp--; cp >= line && (*cp == ' ' || *cp == '\t'); cp--);
 		*(cp + 1) = '\0';
 
@@ -537,25 +567,22 @@ int exist;
 			cont = 1;
 		}
 
-		if (*line) {
-			if (fold) {
+		if (!fold) fold = line;
+		else {
+			if (*line) {
 				fold = (char *)realloc2(fold,
 					strlen(fold) + strlen(line) + 1);
 				strcat(fold, line);
 			}
-			else if (cont) fold = strdup2(skipspace(line));
+			free(line);
 		}
 
 		if (cont) continue;
 
-		if (fold) {
-			i = execbuiltin(fold, NULL, NULL, 0);
-			free(fold);
-			fold = NULL;
-		}
-		else if (*(cp = skipspace(line)))
-			i = execbuiltin(cp, NULL, NULL, 0);
-		else i = 4;
+		if (!(*(cp = skipspace(fold)))) i = 4;
+		else i = execbuiltin(cp, NULL, NULL, 0);
+		free(fold);
+		fold = NULL;
 		if (i < 4) {
 			er++;
 			cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
@@ -565,7 +592,8 @@ int exist;
 	}
 
 	if (fold) {
-		i = execbuiltin(fold, NULL, NULL, 0);
+		if (!(*(cp = skipspace(fold)))) i = 4;
+		else i = execbuiltin(cp, NULL, NULL, 0);
 		free(fold);
 		if (i < 4) {
 			er++;
@@ -606,7 +634,7 @@ char *argv[];
 		}
 		i += n - 1;
 
-		if (setenv2(env, cp, 1) < 0) error(env);
+		if (setenv2(env, cp) < 0) error(env);
 		if (cp) free(cp);
 		free(env);
 	}
@@ -618,7 +646,7 @@ char *argv;
 {
 	char buf[MAXNAMLEN + 1];
 
-	if ((progname = strrdelim(argv))) progname++;
+	if ((progname = strrdelim(argv, 1))) progname++;
 	else progname = argv;
 #if	MSDOS
 	{
@@ -642,7 +670,7 @@ char *argv;
 #if	MSDOS
 	cp = argv;
 #else
-	if (strdelim(argv)) cp = argv;
+	if (strdelim(argv, 0)) cp = argv;
 	else {
 		adjustpath();
 		cp = NULL;
@@ -654,18 +682,23 @@ char *argv;
 	{
 		realpath2(cp, buf);
 		if (cp != argv) free(cp);
-		if ((cp = strrdelim(buf))) *cp = '\0';
+		if ((cp = strrdelim(buf, 0))) *cp = '\0';
 		progpath = strdup2(buf);
 	}
 }
 
-int main(argc, argv)
+int main(argc, argv, envp)
 int argc;
-char *argv[];
+char *argv[], *envp[];
 {
+	char **ep;
 	int i;
 
-#if	MSDOS && defined (__GNUC__)
+#ifdef	DEBUG
+	mtrace();
+#endif
+
+#if	MSDOS && defined (DJGPP)
 	adjustfname(argv[0]);
 #endif
 	setexecname(argv[0]);
@@ -679,6 +712,10 @@ char *argv[];
 	initterm();
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
 	sigvecreset();
+
+#if	MSDOS && !defined (DJGPP)
+	_harderr(criticalerror);
+#endif
 
 #ifdef	SIGHUP
 	signal(SIGHUP, (sigarg_t (*)__P_((sigfnc_t)))hangup);
@@ -727,24 +764,22 @@ char *argv[];
 #endif
 
 #ifndef	_NOARCHIVE
-	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++)
+	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++) {
 		if (!launchlist[maxlaunch].ext) break;
-		else {
-			launchlist[maxlaunch].ext =
-				strdup2(launchlist[maxlaunch].ext);
-			launchlist[maxlaunch].comm =
-				strdup2(launchlist[maxlaunch].comm);
-		}
-	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++)
+		launchlist[maxlaunch].ext =
+			strdup2(launchlist[maxlaunch].ext);
+		launchlist[maxlaunch].comm =
+			strdup2(launchlist[maxlaunch].comm);
+	}
+	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++) {
 		if (!archivelist[maxarchive].ext) break;
-		else {
-			archivelist[maxarchive].ext =
-				strdup2(archivelist[maxarchive].ext);
-			archivelist[maxarchive].p_comm =
-				strdup2(archivelist[maxarchive].p_comm);
-			archivelist[maxarchive].u_comm =
-				strdup2(archivelist[maxarchive].u_comm);
-		}
+		archivelist[maxarchive].ext =
+			strdup2(archivelist[maxarchive].ext);
+		archivelist[maxarchive].p_comm =
+			strdup2(archivelist[maxarchive].p_comm);
+		archivelist[maxarchive].u_comm =
+			strdup2(archivelist[maxarchive].u_comm);
+	}
 #endif	/* !_NOARCHIVE */
 
 	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
@@ -753,9 +788,16 @@ char *argv[];
 		fdtype[i].name = strdup2(fdtype[i].name);
 #endif
 
+	for (i = 0; envp[i]; i++);
+	ep = (char **)malloc2((i + 1) * sizeof(char *));
+	for (i = 0; envp[i]; i++) ep[i] = strdup2(envp[i]);
+	ep[i] = NULL;
+	environ = ep;
+
 	setexecpath(argv[0]);
 #ifndef	_NODOSDRIVE
 	unitblpath = progpath;
+	waitfunc = waitmes;
 #endif
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);
@@ -803,10 +845,20 @@ char *argv[];
 	main_fd(argv[i]);
 	if (_chdir2(origpath) < 0) error(origpath);
 	free(origpath);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
 
+#ifdef	DEBUG
+	free(tmpfilename);
+	free(progpath);
+	freeenv();
+	freehistory(0);
+	freehistory(1);
+	if (deftmpdir) free(deftmpdir);
+	if (rockridgepath) free(rockridgepath);
+	freedefine();
+#endif
 	exit2(0);
 	return(0);
 }

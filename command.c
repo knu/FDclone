@@ -594,7 +594,7 @@ char *mes, *arg;
 
 	if (arg && *arg) wild = strdup2(arg);
 	else if (!(wild = inputstr(mes, 0, 0, "*", -1))) return(NULL);
-	if (!*wild || strdelim(wild)) {
+	if (!*wild || strdelim(wild, 1)) {
 		warning(ENOENT, wild);
 		free(wild);
 		return(NULL);
@@ -786,10 +786,10 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!MSDOS || !defined (_NOARCHIVE)
+#if	!defined(_NOARCHIVE) || !defined(_NODOSDRIVE)
 	char *dir = NULL;
 #endif
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
 
@@ -797,11 +797,12 @@ char *arg;
 #ifndef	_NOARCHIVE
 	|| (archivefile && !(dir = tmpunpack(list, *maxp)))
 #endif
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	|| ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
-	list[filepos].name, list[filepos].st_mode)))
+#ifndef	_NODOSDRIVE
+	|| (drive = tmpdosdupl("", &dir,
+	list[filepos].name, list[filepos].st_mode)) < 0
 #endif
 	) return(1);
+
 	if (!execenv("FD_PAGER", list[filepos].name)) {
 #ifdef	PAGER
 		execmacro(PAGER, list[filepos].name, NULL, NULL, 1, 0);
@@ -811,13 +812,15 @@ char *arg;
 		} while(!yesno(PEND_K));
 #endif
 	}
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 	if (drive) removetmp(dir, NULL, list[filepos].name);
 	else
 #endif
 #ifndef	_NOARCHIVE
 	if (archivefile) removetmp(dir, archivedir, list[filepos].name);
+	else
 #endif
+	;
 	return(2);
 }
 
@@ -827,22 +830,25 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	char *dir = NULL;
-	int drive;
+	int drive = 0;
 #endif
 
 	if (isdir(&list[filepos])) return(warning_bell(list, maxp, arg));
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	if ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
-	list[filepos].name, list[filepos].st_mode))) return(1);
+#ifndef	_NOARCHIVE
+	if (archivefile) return(1);
+#endif
+#ifndef	_NODOSDRIVE
+	if ((drive = tmpdosdupl("", &dir,
+	list[filepos].name, list[filepos].st_mode)) < 0) return(1);
 #endif
 	if (!execenv("FD_EDITOR", list[filepos].name)) {
 #ifdef	EDITOR
 		execmacro(EDITOR, list[filepos].name, NULL, NULL, 1, 0);
 #endif
 	}
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	if (drive) {
 		if (tmpdosrestore(drive, list[filepos].name,
 		list[filepos].st_mode) < 0) warning(-1, list[filepos].name);
@@ -969,11 +975,10 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-	if (
 #ifndef	_NOARCHIVE
-	!archivefile &&
+	if (archivefile) return(-1);
 #endif
-	!yesno(QUIT_K)) return(1);
+	if (!yesno(QUIT_K)) return(1);
 	if (savehist > 0) savehistory(0, HISTORYFILE);
 	return(-1);
 }
@@ -1069,7 +1074,7 @@ char *arg;
 		free(file);
 		return(1);
 	}
-	if (strdelim(file)) {
+	if (strdelim(file, 0)) {
 		free(file);
 		file = strdup2("..");
 	}
@@ -1142,7 +1147,7 @@ char *arg;
 #ifndef	_NOARCHIVE
 	*wild != '/' &&
 #endif
-	strdelim(wild)) {
+	strdelim(wild, 1)) {
 		warning(ENOENT, wild);
 		free(wild);
 		return(1);
@@ -1171,7 +1176,7 @@ char *arg;
 	regexp_free(findregexp);
 	if (!destpath) return(1);
 
-	if ((cp = strrdelim(destpath))) {
+	if ((cp = strrdelim(destpath, 1))) {
 		*(cp++) = '\0';
 		chdir2(destpath);
 	}
@@ -1192,8 +1197,7 @@ char *arg;
 	int i;
 
 	if (arg) com = strdup2(arg);
-	else if (!(com = inputstr(NULL, 0, -1, NULL, 0)))
-		return(1);
+	else if (!(com = inputstr(NULL, 0, -1, NULL, 0))) return(1);
 	if (*com) i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	else {
 		execshell();
@@ -1209,12 +1213,12 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-#if	!MSDOS || !defined (_NOARCHIVE)
+#if	!defined(_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir = NULL;
 #endif
 	char *com;
 	int i, len;
-#if	!MSDOS
+#ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
 
@@ -1227,38 +1231,29 @@ char *arg;
 		return(4);
 	}
 
-#if	(!MSDOS && !defined (_NODOSDRIVE)) || !defined (_NOARCHIVE)
-	if (
 #ifndef	_NOARCHIVE
-	(archivefile && !(dir = tmpunpack(list, *maxp)))
-#endif
-#if	(!MSDOS && !defined (_NODOSDRIVE)) && !defined (_NOARCHIVE)
-	||
-#endif
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
-	list[filepos].name, list[filepos].st_mode)))
-#endif
-	) {
-		free(com);
-		return(1);
+	if (archivefile) {
+		if (!(dir = tmpunpack(list, *maxp))) i = 1;
+		else {
+			i = execusercomm(com, list[filepos].name,
+				NULL, NULL, 0, 1);
+			removetmp(dir, archivedir, list[filepos].name);
+		}
 	}
-#endif	/* (!MSDOS && !_NODOSDRIVE) || !_NOARCHIVE */
-#if	!MSDOS
-	if (drive) {
+	else
+#endif
+#ifndef	_NODOSDRIVE
+	if ((drive = tmpdosdupl("", &dir,
+	list[filepos].name, list[filepos].st_mode)) < 0) i = 1;
+	else if (drive) {
 		i = execusercomm(com, list[filepos].name, NULL, NULL, 0, 1);
 		removetmp(dir, NULL, list[filepos].name);
 	}
 	else
 #endif
-#ifndef	_NOARCHIVE
-	if (archivefile) {
-		i = execusercomm(com, list[filepos].name, NULL, NULL, 0, 1);
-		removetmp(dir, archivedir, list[filepos].name);
+	{
+		i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	}
-	else
-#endif
-	i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	free(com);
 	return(i);
 }

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <signal.h>
+#include <fcntl.h>
 #include "machine.h"
 
 #if	defined (DJGPP) && (DJGPP >= 2)
@@ -22,27 +23,47 @@
 
 #if	MSDOS
 #include <dos.h>
-# ifdef	__GNUC__
+#include <io.h>
+# ifdef	PC98
+# define	NOTUSEBIOS
+# endif
+# ifdef	DJGPP
 # include <dpmi.h>
 # include <go32.h>
 # include <sys/farptr.h>
 #  if defined (DJGPP) && (DJGPP >= 2)
 #  include <libc/dosio.h>
 #  else
+#  define	__dpmi_regs	_go32_dpmi_registers
+#  define	__dpmi_int(v,r)	((r) -> x.ss = (r) -> x.sp = 0, \
+				_go32_dpmi_simulate_int(v, r))
 #  define	_dos_ds		_go32_info_block.selector_for_linear_memory
 #  endif
-# else	/* !__GNUC__ */
+# define	intdos2(rp)	__dpmi_int(0x21, rp)
+# define	getkeybuf(o)	_farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + o)
+# define	putkeybuf(o, n)	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + o, n)
+# else	/* !DJGPP */
 # include <signal.h>
 # include <sys/types.h>
 # include <sys/timeb.h>
-# endif	/* !__GNUC__ */
-#define	TTYNAME		""
+typedef union REGS	__dpmi_regs;
+# define	intdos2(rp)	int86(0x21, rp, rp)
+# define	getkeybuf(o)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)))
+# define	putkeybuf(o, n)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)) = n)
+#  ifdef	LSI_C
+static int _asm_sti(VOID_A);
+static int _asm_cli(VOID_A);
+#  define	enable()	_asm_sti("\n\tsti\n")
+#  define	disable()	_asm_cli("\n\tcli\n")
+#  endif
+# endif	/* !DJGPP */
+#define	TTYNAME		"CON"
 #else	/* !MSDOS */
-#include <fcntl.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/time.h>
+#define	TTYNAME		"/dev/tty"
 
 #ifdef	NOERRNO
 extern int errno;
@@ -100,6 +121,10 @@ typedef	struct sgttyb	termioctl_t;
 #define	GETSIZE		"\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 
+#define	STDIN		0
+#define	STDOUT		1
+#define	STDERR		2
+
 #if	!MSDOS
 extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
@@ -110,11 +135,6 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 
 #define	BUFUNIT		16
 #define	TERMCAPSIZE	2048
-
-#define	STDIN		0
-#define	STDOUT		1
-#define	STDERR		2
-#define	TTYNAME		"/dev/tty"
 
 #ifndef	PENDIN
 #define	PENDIN		0
@@ -176,7 +196,7 @@ static int defaultterm __P_((VOID_A));
 static int maxlocate __P_((VOID_A));
 static int getxy __P_((int *, int *));
 #if	MSDOS
-# ifndef	__GNUC__
+# if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 static int dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
@@ -189,6 +209,9 @@ static int ttymode __P_((int, u_short, u_short, u_short, u_short,
 static int tgetstr2 __P_((char **, char *));
 static int tgetstr3 __P_((char **, char *, char *));
 static int sortkeyseq __P_((VOID_A));
+# ifdef	DEBUG
+static int freeterment __P_((VOID_A));
+# endif
 #endif	/* !MSDOS */
 
 short ospeed = 0;
@@ -249,14 +272,28 @@ u_char cc_eol = 255;
 
 #if	MSDOS
 #ifdef	PC98
-#define	KEYBUFWORKSEG	0x40
-#define	KEYBUFWORKOFF	0x124
-static int nextchar = '\0';
+#define	KEYBUFWORKSEG	0x00
+#define	KEYBUFWORKSIZ	0x20
+#define	KEYBUFWORKMIN	0x502
+#define	KEYBUFWORKMAX	0x522
+#define	KEYBUFWORKTOP	0x524
+#define	KEYBUFWORKEND	0x526
+#define	KEYBUFWORKCNT	0x528
 static u_char specialkey[] = "\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
 #else
 #define	KEYBUFWORKSEG	0x40
-#define	KEYBUFWORKOFF	0x80
+#define	KEYBUFWORKSIZ	0x20
+#define	KEYBUFWORKMIN	getkeybuf(0x80)
+#define	KEYBUFWORKMAX	(KEYBUFWORKMIN + KEYBUFWORKSIZ)
+#define	KEYBUFWORKTOP	(KEYBUFWORKMIN - 4)
+#define	KEYBUFWORKEND	(KEYBUFWORKMIN - 2)
 static u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
+#endif
+#if	defined (PC98) || defined (NOTUSEBIOS)
+static int nextchar = '\0';
+#endif
+#ifdef	NOTUSEBIOS
+static u_short keybuftop = 0;
 #endif
 static int specialkeycode[] = {
 	0,
@@ -271,17 +308,16 @@ static int specialkeycode[] = {
 static char *keyseq[K_MAX - K_MIN + 1];
 static u_char keyseqlen[K_MAX - K_MIN + 1];
 static short keycode[K_MAX - K_MIN + 1];
-static int ttyio;
 static FILE *ttyout;
-static char *termname;
 #endif	/* !MSDOS */
+static int ttyio = -1;
 
 #if	MSDOS || !defined (TIOCSTI)
 static u_char ungetbuf[10];
 static int ungetnum = 0;
 #endif
 
-static int termflags;
+static int termflags = 0;
 #define	F_INITTTY	001
 #define	F_TERMENT	002
 #define	F_INITTERM	004
@@ -291,22 +327,81 @@ static int termflags;
 int inittty(reset)
 int reset;
 {
-	if (!reset) termflags |= F_INITTTY;
+	static int dupin = -1;
+	static int dupout = -1;
+	long l;
+#ifndef	DJGPP
+	static u_char dupbrk;
+	union REGS reg;
+#endif
+
+	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0)
+		ttyio = STDERR;
+	if (reset && !(termflags & F_INITTTY)) return(0);
+	if (!reset) {
+#ifdef	NOTUSEBIOS
+		if (!keybuftop) keybuftop = getkeybuf(KEYBUFWORKTOP);
+#endif
+#ifndef	DJGPP
+		reg.x.ax = 0x3300;
+		int86(0x21, &reg, &reg);
+		dupbrk = reg.h.dl;
+#endif
+		if (((!(l = ftell(stdin)) || l == -1)
+		&& ((dupin = dup(STDIN)) < 0 || dup2(ttyio, STDIN) < 0))
+		|| ((!(l = ftell(stdout)) || l == -1)
+		&& ((dupin = dup(STDOUT)) < 0 || dup2(ttyio, STDOUT) < 0)))
+			err2(NULL);
+		termflags |= F_INITTTY;
+	}
+	else {
+#ifndef	DJGPP
+		reg.x.ax = 0x3301;
+		reg.h.dl = dupbrk;
+		int86(0x21, &reg, &reg);
+#endif
+		if ((dupin >= 0 && dup2(dupin, STDIN) < 0)
+		|| (dupout >= 0 && dup2(dupout, STDOUT) < 0)) {
+			termflags &= ~F_INITTTY;
+			err2(NULL);
+		}
+	}
 	return(0);
 }
 
 int cooked2(VOID_A)
 {
+#ifndef	DJGPP
+	union REGS reg;
+
+	reg.x.ax = 0x3301;
+	reg.h.dl = 1;
+	int86(0x21, &reg, &reg);
+#endif
 	return(0);
 }
 
 int cbreak2(VOID_A)
 {
+#ifndef	DJGPP
+	union REGS reg;
+
+	reg.x.ax = 0x3301;
+	reg.h.dl = 0;
+	int86(0x21, &reg, &reg);
+#endif
 	return(0);
 }
 
 int raw2(VOID_A)
 {
+#ifndef	DJGPP
+	union REGS reg;
+
+	reg.x.ax = 0x3301;
+	reg.h.dl = 0;
+	int86(0x21, &reg, &reg);
+#endif
 	return(0);
 }
 
@@ -342,29 +437,15 @@ int notabs(VOID_A)
 
 int keyflush(VOID_A)
 {
-#ifdef	__GNUC__
-	u_short keybufp =
-		_farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF);
+	__dpmi_regs reg;
 
-# ifdef	PC98
-	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF + 2, keybufp);
-	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF + 4, 0);
-# else
-	u_short ptr;
-
-	ptr = _farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + keybufp - 4);
-	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + keybufp - 2, ptr);
-# endif
-#else	/* !__GNUC__ */
-	u_short far *keybuf = MK_FP(KEYBUFWORKSEG, KEYBUFWORKOFF);
-
-# ifdef	PC98
-	keybuf[2] = 0;
-# else
-	keybuf = MK_FP(KEYBUFWORKSEG, keybuf[0] - 4);
-# endif
-	keybuf[1] = keybuf[0];
-#endif	/* !__GNUC__ */
+	disable();
+	reg.x.ax = 0x0c00;
+	intdos2(&reg);
+#ifdef	NOTUSEBIOS
+	keybuftop = getkeybuf(KEYBUFWORKTOP);
+#endif
+	enable();
 	return(0);
 }
 
@@ -380,6 +461,8 @@ int reset;
 	static termioctl_t dupttyio;
 	termioctl_t tty;
 
+	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0)
+		ttyio = STDERR;
 	if (reset && !(termflags & F_INITTTY)) return(0);
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		termflags &= ~F_INITTTY;
@@ -581,6 +664,10 @@ int no;
 	endterm();
 	inittty(1);
 	keyflush();
+#ifdef	DEBUG
+	freeterment();
+	muntrace();
+#endif
 	exit(no);
 	return(0);
 }
@@ -766,6 +853,7 @@ static int maxlocate(VOID_A)
 	}
 #else
 	locate(998, 998);
+	tflush();
 #endif
 	return(0);
 }
@@ -791,9 +879,7 @@ int *yp, *xp;
 #endif
 		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
 	}
-#if	MSDOS
-	bdos(0x0c, 0x00, 0);
-#endif
+	keyflush();
 	buf[++i] = '\0';
 
 	count = 0;
@@ -831,6 +917,7 @@ int arg1, arg2;
 
 int getterment(VOID_A)
 {
+	if (termflags & F_TERMENT) return(-1);
 	defaultterm();
 	termflags |= F_TERMENT;
 	return(0);
@@ -979,19 +1066,20 @@ static int sortkeyseq(VOID_A)
 
 int getterment(VOID_A)
 {
-	char *cp, buf[TERMCAPSIZE];
+	char *cp, *termname, buf[TERMCAPSIZE];
 	int i;
 
+	if (termflags & F_TERMENT) return(-1);
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
 
-	if ((ttyio = open(TTYNAME, O_RDWR, 0600)) < 0) ttyio = STDERR;
 	if (!(ttyout = fopen(TTYNAME, "w+"))) ttyout = stdout;
 
 	defaultterm();
 	cp = "";
 	tgetstr2(&cp, "pc");
 	PC = *cp;
+	free(cp);
 	tgetstr2(&BC, "bc");
 	tgetstr2(&UP, "up");
 
@@ -1082,25 +1170,22 @@ int getterment(VOID_A)
 	tgetstr2(&keyseq[K_END - K_MIN], "@7");
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keycode[i] = K_MIN + i;
-	for (i = 1; i <= 10; i++) keycode[K_F(i + 20) - K_MIN] = K_F(i);
-
-	keycode[K_F('*') - K_MIN] = '*';
-	keycode[K_F('+') - K_MIN] = '+';
-	keycode[K_F(',') - K_MIN] = ',';
-	keycode[K_F('-') - K_MIN] = '-';
-	keycode[K_F('.') - K_MIN] = '.';
-	keycode[K_F('/') - K_MIN] = '/';
-	keycode[K_F('0') - K_MIN] = '0';
-	keycode[K_F('1') - K_MIN] = '1';
-	keycode[K_F('2') - K_MIN] = '2';
-	keycode[K_F('3') - K_MIN] = '3';
-	keycode[K_F('4') - K_MIN] = '4';
-	keycode[K_F('5') - K_MIN] = '5';
-	keycode[K_F('6') - K_MIN] = '6';
-	keycode[K_F('7') - K_MIN] = '7';
-	keycode[K_F('8') - K_MIN] = '8';
-	keycode[K_F('9') - K_MIN] = '9';
-	keycode[K_F('=') - K_MIN] = '=';
+	for (i = 1; i <= 10; i++) {
+		keycode[K_F(i + 20) - K_MIN] = K_F(i);
+		if (!keyseq[K_F(i + 10) - K_MIN]) continue;
+		cp = (char *)malloc(strlen(keyseq[K_F(i + 10) - K_MIN]) + 1);
+		if (!cp) err2(NULL);
+		strcpy(cp, keyseq[K_F(i + 10) - K_MIN]);
+		keyseq[K_F(i + 10) - K_MIN] = cp;
+	}
+	for (i = 31; K_F(i) < K_DL; i++) {
+		if (!keyseq[K_F(i) - K_MIN]) continue;
+		cp = (char *)malloc(strlen(keyseq[K_F(i) - K_MIN]) + 1);
+		if (!cp) err2(NULL);
+		strcpy(cp, keyseq[K_F(i) - K_MIN]);
+		keyseq[K_F(i) - K_MIN] = cp;
+		keycode[K_F(i) - K_MIN] = i;
+	}
 	keycode[K_F('?') - K_MIN] = CR;
 
 	sortkeyseq();
@@ -1108,6 +1193,66 @@ int getterment(VOID_A)
 	termflags |= F_TERMENT;
 	return(0);
 }
+
+#ifdef	DEBUG
+static int freeterment(VOID_A)
+{
+	int i;
+
+	if (!(termflags & F_TERMENT)) return(-1);
+
+	if (BC) free(BC);
+	if (UP) free(UP);
+	if (t_init) free(t_init);
+	if (t_end) free(t_end);
+	if (t_scroll) free(t_scroll);
+	if (t_keypad) free(t_keypad);
+	if (t_nokeypad) free(t_nokeypad);
+	if (t_normalcursor) free(t_normalcursor);
+	if (t_highcursor) free(t_highcursor);
+	if (t_nocursor) free(t_nocursor);
+	if (t_setcursor) free(t_setcursor);
+	if (t_resetcursor) free(t_resetcursor);
+	if (t_bell) free(t_bell);
+	if (t_vbell) free(t_vbell);
+	if (t_clear) free(t_clear);
+	if (t_normal) free(t_normal);
+	if (t_bold) free(t_bold);
+	if (t_reverse) free(t_reverse);
+	if (t_dim) free(t_dim);
+	if (t_blink) free(t_blink);
+	if (t_standout) free(t_standout);
+	if (t_underline) free(t_underline);
+	if (end_standout) free(end_standout);
+	if (end_underline) free(end_underline);
+	if (l_clear) free(l_clear);
+	if (l_insert) free(l_insert);
+	if (l_delete) free(l_delete);
+	if (c_insert) free(c_insert);
+	if (c_delete) free(c_delete);
+	if (c_store) free(c_store);
+	if (c_restore) free(c_restore);
+	if (c_locate) free(c_locate);
+	if (c_home) free(c_home);
+	if (c_return) free(c_return);
+	if (c_newline) free(c_newline);
+	if (c_scrollforw) free(c_scrollforw);
+	if (c_scrollrev) free(c_scrollrev);
+	if (c_up) free(c_up);
+	if (c_down) free(c_down);
+	if (c_right) free(c_right);
+	if (c_left) free(c_left);
+	if (c_nup) free(c_nup);
+	if (c_ndown) free(c_ndown);
+	if (c_nright) free(c_nright);
+	if (c_nleft) free(c_nleft);
+
+	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i]) free(keyseq[i]);
+
+	termflags &= ~F_TERMENT;
+	return(0);
+}
+#endif
 
 int setkeyseq(n, str)
 int n;
@@ -1155,7 +1300,7 @@ int initterm(VOID_A)
 
 int endterm(VOID_A)
 {
-	if (!(termflags & F_INITTERM)) return(0);
+	if (!(termflags & F_INITTERM)) return(-1);
 	putterms(t_nokeypad);
 	putterms(t_end);
 	tflush();
@@ -1183,7 +1328,7 @@ char *s;
 			continue;
 		}
 
-		bdos(0x0c, 0x00, 0);
+		keyflush();
 		if (getxy(&y, &x) != 2) x = 1;
 		do {
 			bdos(0x06, ' ', 0);
@@ -1196,39 +1341,54 @@ char *s;
 int kbhit2(usec)
 u_long usec;
 {
-#ifdef	PC98
-	union REGS regs;
-
-	if (nextchar) return(1);
-
-	regs.h.ah = 0x01;
-	int86(0x18, &regs, &regs);
-	return(regs.h.bh != 0);
+#if	defined (NOTUSEBIOS) || !defined (DJGPP) || (DJGPP < 2)
+	union REGS reg;
 #else
-# if	defined (DJGPP) && (DJGPP >= 2)
+# ifndef	PC98
 	fd_set readfds;
 	struct timeval timeout;
+# endif
+#endif
 
+	if (ungetnum > 0) return(1);
+#ifdef	NOTUSEBIOS
+	if (nextchar) return(1);
+	reg.x.ax = 0x4406;
+	reg.x.bx = STDIN;
+	int86(0x21, &reg, &reg);
+	return((reg.x.flags & 1) ? 0 : reg.h.al);
+#else	/* !NOTUSEBIOS */
+# ifdef	PC98
+	if (nextchar) return(1);
+	reg.h.ah = 0x01;
+	int86(0x18, &reg, &reg);
+	return(reg.h.bh != 0);
+# else	/* !PC98 */
+#  if	defined (DJGPP) && (DJGPP >= 2)
 	timeout.tv_sec = 0L;
 	timeout.tv_usec = usec;
 	FD_ZERO(&readfds);
 	FD_SET(0, &readfds);
 
 	return(select(1, &readfds, NULL, NULL, &timeout));
-# else	/* !DJGPP || DJGPP < 2 */
-	union REGS regs;
-
-	regs.h.ah = 0x01;
-	int86(0x16, &regs, &regs);
-	return((regs.x.flags & 0x40) ? 0 : 1);
-# endif
-#endif
+#  else	/* !DJGPP || DJGPP < 2 */
+	reg.h.ah = 0x01;
+	int86(0x16, &reg, &reg);
+	return((reg.x.flags & 0x40) ? 0 : 1);
+#  endif	/* !DJGPP || DJGPP < 2 */
+# endif	/* !PC98 */
+#endif	/* !NOTUSEBIOS */
 }
 
 int getch2(VOID_A)
 {
-#ifdef	PC98
-	union REGS regs;
+#ifdef	NOTUSEBIOS
+	u_short key, top;
+#endif
+#if	defined (PC98) && !defined (NOTUSEBIOS)
+	union REGS reg;
+#endif
+#if	defined (PC98) || defined (NOTUSEBIOS)
 	int ch;
 
 	if (nextchar) {
@@ -1239,28 +1399,60 @@ int getch2(VOID_A)
 #endif
 	if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 
-#ifdef	PC98
-	regs.h.ah = 0x00;
-	int86(0x18, &regs, &regs);
+#ifndef	NOTUSEBIOS
+# ifdef	PC98
+	reg.h.ah = 0x00;
+	int86(0x18, &reg, &reg);
 
-	if (!(ch = regs.h.al)) nextchar = regs.h.ah;
+	if (!(ch = reg.h.al)) nextchar = reg.h.ah;
 	return(ch);
-#else
+# else	/* !PC98 */
 	return(bdos(0x07, 0x00, 0) & 0xff);
-#endif
+# endif	/* !PC98 */
+#else	/* NOTUSEBIOS */
+	disable();
+	top = keybuftop;
+	for (;;) {
+		if (top == getkeybuf(KEYBUFWORKEND)) {
+			key = 0xffff;
+			break;
+		}
+		key = getkeybuf(top);
+# ifdef	PC98
+		if ((ch = (key & 0xff))) break;
+# else
+		if ((ch = (key & 0xff)) && ch != 0xe0 && ch != 0xf0) break;
+		key &= 0xff00;
+# endif
+		if (strchr(specialkey, (key >> 8))) break;
+		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
+	}
+	ch = (bdos(0x07, 0x00, 0) & 0xff);
+	keybuftop = getkeybuf(KEYBUFWORKTOP);
+	if (!(key & 0xff)) {
+		while (kbhit2(1000000L / SENSEPERSEC)) {
+			if (keybuftop != getkeybuf(KEYBUFWORKTOP)) break;
+			bdos(0x07, 0x00, 0);
+		}
+		ch = '\0';
+		nextchar = (key >> 8);
+	}
+	enable();
+	return(ch);
+#endif	/* NOTUSEBIOS */
 }
 
-#ifndef	__GNUC__
+#if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 static int dosgettime(tbuf)
 u_char tbuf[];
 {
-	union REGS regs;
+	union REGS reg;
 
-	regs.x.ax = 0x2c00;
-	intdos(&regs, &regs);
-	tbuf[0] = regs.h.ch;
-	tbuf[1] = regs.h.cl;
-	tbuf[2] = regs.h.dh;
+	reg.x.ax = 0x2c00;
+	intdos(&reg, &reg);
+	tbuf[0] = reg.h.ch;
+	tbuf[1] = reg.h.cl;
+	tbuf[2] = reg.h.dh;
 	return(0);
 }
 #endif
@@ -1269,7 +1461,7 @@ u_char tbuf[];
 int getkey2(sig)
 int sig;
 {
-#ifndef	__GNUC__
+#if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 	static u_char tbuf1[3] = {0xff, 0xff, 0xff};
 	u_char tbuf2[3];
 #endif
@@ -1278,7 +1470,7 @@ int sig;
 #endif
 	int i, ch;
 
-#ifdef	__GNUC__
+#if	defined (DJGPP) && !defined (NOTUSEBIOS) && !defined (PC98)
 	do {
 		i = kbhit2(1000000L / SENSEPERSEC);
 # if	defined (DJGPP) && (DJGPP >= 2)
@@ -1288,16 +1480,18 @@ int sig;
 		}
 # endif
 	} while (!i);
-#else
+#else	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
 	while (!kbhit2(1000000L / SENSEPERSEC)) {
 		dosgettime(tbuf2);
 		if (memcmp(tbuf1, tbuf2, sizeof(tbuf1))) {
+# if	!defined (DJGPP) || (DJGPP >= 2)
 			if (sig) raise(sig);
+# endif
 			memcpy(tbuf1, tbuf2, sizeof(tbuf1));
 		}
 	}
-#endif
+#endif	/* !DJGPP || NOTUSEBIOS || PC98 */
 	ch = getch2();
 
 	if (ch) switch (ch) {
@@ -1311,12 +1505,13 @@ int sig;
 			break;
 	}
 	else
-#if	defined (PC98) || (defined (DJGPP) && (DJGPP >= 2))
+#if	defined (PC98) || defined (NOTUSEBIOS)\
+|| (defined (DJGPP) && (DJGPP >= 2))
 	if (kbhit2(WAITKEYPAD * 1000L))
 #endif
 	{
 		ch = getch2();
-		for (i = 0; i < sizeof(specialkey) / sizeof(u_char); i++)
+		for (i = 0; i < sizeof(specialkey) / sizeof(u_char) - 1; i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
 		ch = K_NOKEY;
 	}
@@ -1355,7 +1550,7 @@ int xmax, ymax;
 {
 	int x, y;
 
-	bdos(0x0c, 0x00, 0);
+	keyflush();
 	maxlocate();
 	if (getxy(&y, &x) != 2) x = y = -1;
 
@@ -1553,7 +1748,7 @@ int cprintf2(CONST char *fmt, ...)
 # ifndef	NOVSPRINTF
 /*VARARGS1*/
 int cprintf2(fmt, va_alist)
-char *fmt;
+CONST char *fmt;
 va_dcl
 {
 	va_list args;

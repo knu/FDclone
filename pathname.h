@@ -15,12 +15,12 @@ typedef char reg_t;
 #endif
 
 extern int isdelim __P_((char *, int));
-#if	MSDOS
-extern char *strdelim __P_((char *));
-extern char *strrdelim __P_((char *));
+#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+extern char *strdelim __P_((char *, int));
+extern char *strrdelim __P_((char *, int));
 #else
-#define	strdelim(s)	strchr(s, _SC_)
-#define	strrdelim(s)	strrchr(s, _SC_)
+#define	strdelim(s, d)	strchr(s, _SC_)
+#define	strrdelim(s, d)	strrchr(s, _SC_)
 #endif
 extern char *strrdelim2 __P_((char *, char *));
 extern char *_evalpath __P_((char *, char *, int, int));

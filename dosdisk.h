@@ -9,9 +9,12 @@
 #endif
 
 #define	DOSDIRENT	32
-#define	SECTCACHESIZE	20
+#define	SECTCACHESIZE	32
 #define	SECTSIZE	{512, 1024, 256, 128}
-#define	MAX12BIT	(0xff0 - 0x002)
+#define	STDSECTSIZE	512
+#define	SECTCACHEMEM	(SECTCACHESIZE * STDSECTSIZE)
+#define	MINCLUST	2
+#define	MAX12BIT	(0xff0 - MINCLUST)
 #define	DOSMAXPATHLEN	260
 #define	MAXFATMEM	(512 * 9)	/* FAT size of 3.5inch 2HD */
 
@@ -60,7 +63,8 @@
 #endif
 
 typedef struct _bpb_t {
-	u_char dummy[11] __attribute__ ((packed));
+	u_char jmpcode[3] __attribute__ ((packed));
+	u_char makername[8] __attribute__ ((packed));
 	u_char sectsize[2] __attribute__ ((packed));
 	u_char clustsize __attribute__ ((packed));
 	u_char bootsect[2] __attribute__ ((packed));
@@ -71,21 +75,36 @@ typedef struct _bpb_t {
 	u_char fatsize[2] __attribute__ ((packed));
 	u_char secttrack[2] __attribute__ ((packed));
 	u_char nhead[2] __attribute__ ((packed));
-	u_char dummy2[4] __attribute__ ((packed));
-	u_char bigtotal_l[2] __attribute__ ((packed));
-	u_char bigtotal_h[2] __attribute__ ((packed));
+	u_char hidden[4] __attribute__ ((packed));
+	u_char bigtotal[4] __attribute__ ((packed));
+	u_char bigfatsize[4] __attribute__ ((packed));
+	u_char exflags[2] __attribute__ ((packed));
+	u_char filesys[2] __attribute__ ((packed));
+	u_char rootdir[4] __attribute__ ((packed));
+	u_char fsinfo[4] __attribute__ ((packed));
+	u_char reserved[2] __attribute__ ((packed));
+	u_char fsname[8] __attribute__ ((packed));
 } bpb_t;
+
+#define	FS_FAT		"FAT     "
+#define	FS_FAT12	"FAT12   "
+#define	FS_FAT16	"FAT16   "
+#define	FS_FAT32	"FAT32   "
 
 typedef struct _dent_t {
 	u_char name[8] __attribute__ ((packed));
 	u_char ext[3] __attribute__ ((packed));
 	u_char attr __attribute__ ((packed));
-	u_char dummy[10] __attribute__ ((packed));
+	u_char reserved __attribute__ ((packed));
+	u_char checksum __attribute__ ((packed));
+	u_char ctime[2] __attribute__ ((packed));
+	u_char cdate[2] __attribute__ ((packed));
+	u_char adate[2] __attribute__ ((packed));
+	u_char clust_h[2] __attribute__ ((packed));
 	u_char time[2] __attribute__ ((packed));
 	u_char date[2] __attribute__ ((packed));
 	u_char clust[2] __attribute__ ((packed));
-	u_char size_l[2] __attribute__ ((packed));
-	u_char size_h[2] __attribute__ ((packed));
+	u_char size[4] __attribute__ ((packed));
 } dent_t;
 
 #define	DS_IRDONLY	001
@@ -119,10 +138,12 @@ typedef struct _devstat {
 	u_char clustsize;	/* ch_head */
 	u_short sectsize;	/* ch_sect */
 	u_short fatofs;		/* ch_cyl */
-	u_short fatsize;
+	u_long fatsize;
 	u_short dirofs;
 	u_short dirsize;
-	u_short totalsize;
+	u_long totalsize;
+	u_long availsize;
+	long rootdir;
 #if	!MSDOS
 	int fd;
 #endif
@@ -137,6 +158,7 @@ typedef struct _devstat {
 #define	F_CACHE	0020
 #define	F_WRFAT	0040
 #define	F_VFAT	0100
+#define	F_FAT32	0200
 
 #define	ch_name	fatbuf
 #define	ch_head	clustsize
@@ -164,6 +186,9 @@ typedef struct _dosiobuf {
 #define	O_IOERR	040000
 
 #define	byte2word(p)	((p)[0] + ((u_short)(p)[1] << 8))
+#define	byte2dword(p)	((p)[0] + ((u_long)(p)[1] << 8) \
+				+ ((u_long)(p)[2] << 16) \
+				+ ((u_long)(p)[3] << 24))
 #define	dd2dentp(dd)	(&(devlist[dd].dircache -> dent))
 #define	dd2path(dd)	(devlist[dd].dircache -> path)
 #define	dd2clust(dd)	(devlist[dd].dircache -> clust)
@@ -196,7 +221,7 @@ typedef struct _st_dirent {
 typedef	struct dirent st_dirent;
 #endif
 
-extern int preparedrv __P_((int, VOID_T (*)__P_((VOID_A))));
+extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
 extern DIR *dosopendir __P_((char *));
 extern int dosclosedir __P_((DIR *));
@@ -207,17 +232,16 @@ extern char *dosgetcwd __P_((char *, int));
 #if	MSDOS
 extern char *dosshortname __P_((char *, char *));
 extern char *doslongname __P_((char *, char *));
-#else
-extern int dosstatfs __P_((int, char *));
 #endif
+extern int dosstatfs __P_((int, char *));
 extern int dosstat __P_((char *, struct stat *));
 extern int doslstat __P_((char *, struct stat *));
-#if	!MSDOS
 extern int dosaccess __P_((char *, int));
+#if	!MSDOS
 extern int dossymlink __P_((char *, char *));
 extern int dosreadlink __P_((char *, char *, int));
-extern int doschmod __P_((char *, int));
 #endif	/* !MSDOS */
+extern int doschmod __P_((char *, int));
 #ifdef	USEUTIME
 extern int dosutime __P_((char *, struct utimbuf *));
 #else
@@ -232,7 +256,6 @@ extern int doswrite __P_((int, char *, int));
 extern off_t doslseek __P_((int, off_t, int));
 extern int dosmkdir __P_((char *, int));
 extern int dosrmdir __P_((char *));
-#if	!MSDOS
 extern int dosfileno __P_((FILE *));
 extern FILE *dosfopen __P_((char *, char *));
 extern int dosfclose __P_((FILE *));
@@ -244,4 +267,3 @@ extern int dosfputc __P_((int, FILE *));
 extern char *dosfgets __P_((char *, int, FILE *));
 extern int dosfputs __P_((char *, FILE *));
 extern int dosallclose __P_((VOID_A));
-#endif	/* !MSDOS */

@@ -5,6 +5,7 @@
  */
 
 #include <ctype.h>
+#include <errno.h>
 #include "fd.h"
 #include "term.h"
 #include "funcno.h"
@@ -21,10 +22,7 @@ extern int errno;
 #if	MSDOS
 #undef	USEVFSH
 #undef	USEMNTENTH
-#include <dos.h>
-#include <errno.h>
 #include "unixemu.h"
-extern int supportLFN __P_((char *));
 #else
 #include <sys/param.h>
 #include <sys/file.h>
@@ -108,6 +106,18 @@ typedef struct _mnt_t {
 	char *mnt_opts;
 } mnt_t;
 #define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+# if	PC98
+# define	PT_FAT12	0x81	/* 0x80 | 0x01 */
+# define	PT_FAT16	0x91	/* 0x80 | 0x11 */
+# define	PT_FAT32	0xa0	/* 0x80 | 0x20 */
+# define	PT_FAT16X	0xa1	/* 0x80 | 0x21 */
+# else
+# define	PT_FAT12	0x01
+# define	PT_FAT16	0x04
+# define	PT_FAT16X	0x06
+# define	PT_FAT32	0x0b
+# define	PT_FAT32LBA	0x0c
+# endif
 #endif
 
 
@@ -170,7 +180,8 @@ typedef struct _statfs_t {
 	long	f_bavail;
 	long	f_files;
 } statfs_t;
-static int statfs2 __P_((char *, statfs_t *));
+extern int unixstatfs __P_((char *, statfs_t *));
+#define	statfs2		unixstatfs
 #define	blocksize(fs)	(fs).f_bsize
 #endif
 
@@ -181,7 +192,14 @@ extern VOID warning __P_((int, char *));
 #if	MSDOS || !defined (_NODOSDRIVE)
 extern int dospath __P_((char *, char *));
 #endif
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#if	MSDOS && !defined (_NOUSELFN)
+extern int toupper2 __P_((int));
+extern int supportLFN __P_((char *));
+# ifndef	_NODOSDRIVE
+extern int checkdrive __P_((int));
+# endif
+#endif
+#ifndef	_NODOSDRIVE
 extern int dosstatfs __P_((int, char *));
 #endif
 extern VOID_P realloc2 __P_((VOID_P, ALLOC_T));
@@ -197,6 +215,9 @@ extern functable funclist[];
 extern char fullpath[];
 extern int sizeinfo;
 extern char *distributor;
+#ifndef	_NODOSDRIVE
+extern int needbavail;
+#endif
 
 #ifndef	MOUNTED
 #define	MOUNTED		"/etc/mtab"
@@ -234,6 +255,18 @@ extern char *distributor;
 #endif
 #ifndef	MNTTYPE_DOS7
 #define	MNTTYPE_DOS7	"dos7"	/* MS-DOS on Win95 */
+#endif
+#ifndef	MNTTYPE_FAT12
+#define	MNTTYPE_FAT12	"fat12"	/* MS-DOS */
+#endif
+#ifndef	MNTTYPE_FAT16
+#define	MNTTYPE_FAT16	"fat16(16bit sector)"	/* MS-DOS */
+#endif
+#ifndef	MNTTYPE_FAT16X
+#define	MNTTYPE_FAT16X	"fat16(32bit sector)"	/* MS-DOS */
+#endif
+#ifndef	MNTTYPE_FAT32
+#define	MNTTYPE_FAT32	"fat32"	/* Win98 */
 #endif
 
 static int code2str __P_((char *, int));
@@ -565,52 +598,63 @@ mnt_t *mntp;
 }
 #endif	/* USEGETMNT */
 
-#if	MSDOS
-static int statfs2(path, buf)
-char *path;
-statfs_t *buf;
-{
-	union REGS regs;
-	int drv;
-
-	drv = dospath(path, NULL);
-	if (drv >= 'a' && drv <= 'z') drv -= 'a' - 1;
-	else if (drv >= 'A' && drv <= 'Z') drv -= 'A' - 1;
-	else drv = 0;
-
-	regs.x.ax = 0x3600;
-	regs.h.dl = (u_char)drv;
-	intdos(&regs, &regs);
-	if (regs.x.ax == 0xffff) {
-		errno = ENOENT;
-		return(-1);
-	}
-
-	buf -> f_bsize = (long)((u_short)(regs.x.ax) * (u_short)(regs.x.cx));
-	buf -> f_blocks = (u_short)(regs.x.dx);
-	buf -> f_bfree =
-	buf -> f_bavail = (u_short)(regs.x.bx);
-	buf -> f_files = -1;
-
-	return(0);
-}
-#endif
-
 static int getfsinfo(path, fsbuf, mntbuf)
 char *path;
 statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
 #if	MSDOS
-	char *dir;
+# ifndef	_NODOSDRIVE
+	int i;
+# endif
 
-	mntbuf -> mnt_fsname = "";
+	mntbuf -> mnt_fsname = "MSDOS";
 	mntbuf -> mnt_dir[0] = dospath(path, NULL);
-	strcpy(&(mntbuf -> mnt_dir[1]), ":\\");
-	mntbuf -> mnt_type = (supportLFN(mntbuf -> mnt_dir) > 0)
-		? MNTTYPE_DOS7 : MNTTYPE_PC;
+	mntbuf -> mnt_dir[1] = ':';
+	mntbuf -> mnt_dir[2] = _SC_;
+	mntbuf -> mnt_dir[3] = '\0';
+# ifdef	_NOUSELFN
+	mntbuf -> mnt_type = MNTTYPE_PC;
+# else	/* !_NOUSELFN */
+	switch (supportLFN(mntbuf -> mnt_dir)) {
+		case 2:
+			mntbuf -> mnt_type = MNTTYPE_FAT32;
+			break;
+		case 1:
+			mntbuf -> mnt_type = MNTTYPE_DOS7;
+			break;
+#  ifndef	_NODOSDRIVE
+		case -1:
+			mntbuf -> mnt_fsname = "LFN emurate";
+			mntbuf -> mnt_type = MNTTYPE_DOS7;
+			break;
+		case -2:
+			mntbuf -> mnt_fsname = "BIOS raw";
+			i = checkdrive(toupper2(mntbuf -> mnt_dir[0]) - 'A');
+			if (i == PT_FAT12) mntbuf -> mnt_type = MNTTYPE_FAT12;
+			else if (i == PT_FAT16)
+				mntbuf -> mnt_type = MNTTYPE_FAT16;
+			else if (i == PT_FAT16X)
+				mntbuf -> mnt_type = MNTTYPE_FAT16X;
+			else mntbuf -> mnt_type = MNTTYPE_FAT32;
+			break;
+#  endif
+		case -4:
+			errno = ENOENT;
+			return(-1);
+/*NOTREACHED*/
+			break;
+		default:
+			mntbuf -> mnt_type = MNTTYPE_PC;
+			break;
+	}
+# endif	/* !_NOUSELFN */
 	mntbuf -> mnt_opts = "";
-	dir = path;
+
+	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) {
+		if (errno == ENOENT) return(-1);
+		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
+	}
 #else	/* !MSDOS */
 	mnt_t *mntp, mnt;
 	FILE *fp;
@@ -627,7 +671,7 @@ mnt_t *mntbuf;
 #ifndef	_NODOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
 		static char dosmntdir[4];
-		char buf[sizeof(long) * 3];
+		char buf[sizeof(long) * 3 + 1];
 
 		mntbuf -> mnt_fsname = "";
 		mntbuf -> mnt_dir = dosmntdir;
@@ -637,6 +681,8 @@ mnt_t *mntbuf;
 			? MNTTYPE_DOS7 : MNTTYPE_PC;
 		mntbuf -> mnt_opts = "";
 		if (dosstatfs(drv, buf) < 0) return(-1);
+		if (buf[sizeof(long) * 3] & 001)
+			mntbuf -> mnt_type = MNTTYPE_FAT32;
 		fsbuf -> f_bsize = *((long *)(&buf[sizeof(long) * 0]));
 #ifdef	USEFSDATA
 		fsbuf -> fd_req.btot = calcKB(fsbuf -> f_bsize,
@@ -644,18 +690,18 @@ mnt_t *mntbuf;
 		fsbuf -> fd_req.bfree =
 		fsbuf -> fd_req.bfreen = calcKB(fsbuf -> f_bsize,
 			*((long *)(&buf[sizeof(long) * 2])));
-#else
+#else	/* !USEFSDATA */
 #ifdef	USESTATVFS
 		fsbuf -> f_frsize = 0;
 #endif
 		fsbuf -> f_blocks = *((long *)(&buf[sizeof(long) * 1]));
 		fsbuf -> f_bfree =
 		fsbuf -> f_bavail = *((long *)(&buf[sizeof(long) * 2]));
-#endif
+#endif	/* !USEFSDATA */
 		fsbuf -> f_files = -1;
 		return(0);
 	}
-#endif
+#endif	/* !_NODOSDRIVE */
 	else if (_chdir2(path) < 0) return(-1);
 
 	if (!dir) {
@@ -664,6 +710,9 @@ mnt_t *mntbuf;
 		match = 0;
 
 		fp = setmntent(MOUNTED, "r");
+#ifdef	DEBUG
+		_mtrace_file = "getmntent(x2)";
+#endif
 		while ((mntp = getmntent2(fp, &mnt))) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)
@@ -690,11 +739,11 @@ mnt_t *mntbuf;
 		return(-1);
 	}
 	memcpy(mntbuf, mntp, sizeof(mnt_t));
-#endif	/* !MSDOS */
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
 	&& (path == dir || statfs2(path, fsbuf) < 0))
 		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
+#endif	/* !MSDOS */
 	return(0);
 }
 
@@ -729,6 +778,7 @@ char *path;
 #endif
 	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)) return(5);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_FAT32)) return(5);
 	return(0);
 }
 
@@ -829,6 +879,9 @@ long *totalp, *freep;
 	statfs_t fsbuf;
 	mnt_t mntbuf;
 
+#ifndef	_NODOSDRIVE
+	needbavail = 1;
+#endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0)
 		*totalp = *freep = -1;
 	else {
@@ -840,6 +893,9 @@ long *totalp, *freep;
 		*freep = calcKB(fsbuf.f_bavail, blocksize(fsbuf));
 #endif
 	}
+#ifndef	_NODOSDRIVE
+	needbavail = 0;
+#endif
 }
 
 int infofs(path)
@@ -849,8 +905,14 @@ char *path;
 	mnt_t mntbuf;
 	int y;
 
+#ifndef	_NODOSDRIVE
+	needbavail = 1;
+#endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) {
 		warning(ENOTDIR, path);
+#ifndef	_NODOSDRIVE
+		needbavail = 0;
+#endif
 		return(0);
 	}
 	y = WHEADER;
@@ -883,5 +945,8 @@ char *path;
 		}
 		warning(0, HITKY_K);
 	}
+#ifndef	_NODOSDRIVE
+	needbavail = 0;
+#endif
 	return(1);
 }

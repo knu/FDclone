@@ -58,21 +58,21 @@ char *path;
 	return(0);
 }
 
-static char *getorgname(name, stat)
+static char *getorgname(name, flag)
 char *name;
-u_char stat;
+u_char flag;
 {
 	char buf[MAXPATHLEN + 1];
 	int i;
 
 	for (i = 0; i < MAXPATHLEN && name[i] && name[i] != ';'; i++) {
 		buf[i] = name[i];
-		if ((stat & RR_LOWER) && buf[i] >= 'A' && buf[i] <= 'Z')
+		if ((flag & RR_LOWER) && buf[i] >= 'A' && buf[i] <= 'Z')
 			buf[i] += 'a' - 'A';
 	}
 
-	if ((stat & RR_VERNO) && name[i] == ';') {
-		buf[i++] = (stat & RR_HYPHN) ? '-' : ';';
+	if ((flag & RR_VERNO) && name[i] == ';') {
+		buf[i++] = (flag & RR_HYPHN) ? '-' : ';';
 		buf[i] = name[i];
 		i++;
 	}
@@ -85,48 +85,47 @@ static assoclist *readtranstbl(VOID_A)
 {
 	assoclist *top, **bottom, *new;
 	FILE *fp;
-	char *cp, *eol, line[MAXPATHLEN * 2 + 1];
-	u_char stat;
+	char *cp, *eol, *org, *line, file[MAXNAMLEN + 1];
+	u_char flag;
 	int i, len;
 
 	for (;;) {
-		strcpy(line, TRANSTBLFILE);
-		stat = RR_TRANS;
-		if ((fp = _Xfopen(line, "r"))) break;
+		strcpy(file, TRANSTBLFILE);
+		flag = RR_TRANS;
+		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(line + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
-		stat |= RR_VERNO;
-		if ((fp = _Xfopen(line, "r"))) break;
+		sprintf(file + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
+		flag |= RR_VERNO;
+		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(line + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
-		stat |= RR_HYPHN;
-		if ((fp = _Xfopen(line, "r"))) break;
+		sprintf(file + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
+		flag |= RR_HYPHN;
+		if ((fp = _Xfopen(file, "r"))) break;
 
-		for (i = 0; i < sizeof(TRANSTBLFILE); i++) {
-			line[i] = TRANSTBLFILE[i];
-			if (line[i] >= 'A' && line[i] <= 'Z')
-				line[i] += 'a' - 'A';
+		for (i = 0; i < sizeof(TRANSTBLFILE) - 1; i++) {
+			file[i] = TRANSTBLFILE[i];
+			if (file[i] >= 'A' && file[i] <= 'Z')
+				file[i] += 'a' - 'A';
 		}
-		line[i] = '\0';
+		file[i] = '\0';
 
-		stat = RR_TRANS | RR_LOWER;
-		if ((fp = _Xfopen(line, "r"))) break;
+		flag = RR_TRANS | RR_LOWER;
+		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(line + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
-		stat |= RR_VERNO;
-		if ((fp = _Xfopen(line, "r"))) break;
+		sprintf(file + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
+		flag |= RR_VERNO;
+		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(line + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
-		stat |= RR_HYPHN;
-		if ((fp = _Xfopen(line, "r"))) break;
+		sprintf(file + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
+		flag |= RR_HYPHN;
+		if ((fp = _Xfopen(file, "r"))) break;
 
 		return(NULL);
 	}
 
 	top = NULL;
 	bottom = &top;
-	while (Xfgets(line, MAXPATHLEN * 2, fp)) {
-		if ((cp = strchr(line, '\n'))) *cp = '\0';
+	for (line = NULL; (line = fgets2(fp)); free(line)) {
 		cp = line;
 		switch (*cp) {
 			case 'F':
@@ -147,8 +146,7 @@ static assoclist *readtranstbl(VOID_A)
 		while (*eol == ' ' || *eol == '\t') eol++;
 		if (!*eol) continue;
 
-		new = (assoclist *)malloc2(sizeof(assoclist));
-		new -> org = getorgname(cp, stat);
+		org = getorgname(cp, flag);
 		cp = eol;
 		while (*eol && *eol != ' ' && *eol != '\t') eol++;
 		if (*eol) *(eol++) = '\0';
@@ -156,13 +154,14 @@ static assoclist *readtranstbl(VOID_A)
 		if (*line == 'L') {
 			while (*eol == ' ' || *eol == '\t') eol++;
 			if (!*eol) {
-				free(new -> org);
-				free(new);
+				free(org);
 				continue;
 			}
 			len += 1 + strlen(eol);
 		}
 
+		new = (assoclist *)malloc2(sizeof(assoclist));
+		new -> org = org;
 		new -> assoc = (char *)malloc2(len + 1);
 		*(new -> assoc) = *line;
 		strcpy(new -> assoc + 1, cp);
@@ -289,7 +288,7 @@ int rdlink;
 	assoclist *tp, *start, *tbl;
 	char *cp, dir[MAXPATHLEN + 1];
 
-	if (!(cp = strrdelim(path)) || cp == path) return(NULL);
+	if (!(cp = strrdelim(path, 0)) || cp == path) return(NULL);
 	strncpy2(dir, path, (cp++) - path);
 	if (!_detransfile(dir, buf, 1)) strcpy(buf, dir);
 

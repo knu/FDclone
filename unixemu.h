@@ -7,10 +7,6 @@
 #ifndef	_UNIXEMU_H
 #define	_UNIXEMU_H
 
-#ifdef	NOLFNEMU
-#include <dirent.h>
-#endif
-
 #ifdef	MAXPATHLEN
 #undef	MAXPATHLEN
 #endif
@@ -63,10 +59,7 @@
 #define	ENOTEMPTY	EACCES
 #endif
 
-#ifdef	__GNUC__
-#define	FP_SEG(p)	0
-#define	FP_OFF(p)	(unsigned)(p)
-#else	/* !__GNUC__ */
+#ifndef	DJGPP
 # ifndef	random
 # define	random()		rand()
 # endif
@@ -93,17 +86,16 @@
 # ifndef	ENOTDIR
 # define	ENOTDIR		ENOENT
 # endif
-#endif	/* !__GNUC__ */
+#endif	/* !DJGPP */
 
-#ifndef	NOLFNEMU
 typedef struct _dirdesc {
 	int	dd_id;
 	u_short	dd_fd;
-/*
+#if	0
 	long	dd_loc;
 	long	dd_size;
 	long	dd_bsize;
-*/
+#endif
 	long	dd_off;
 	char	*dd_buf;
 
@@ -124,7 +116,6 @@ struct	dirent {
 
 	char	d_alias[14];
 };
-#endif	/* !NOLFNEMU */
 
 struct utimbuf {
 	time_t	actime;

@@ -33,12 +33,12 @@ char *path, *buf;
 	else if (*path == _SC_ || !_dospath(pseudocwd)) return(0);
 	else cp = pseudocwd;
 
+	drive = *cp;
+	if (!buf) return(drive);
 	if (cp == buf) {
 		strcpy(tmp, cp);
 		cp = tmp;
 	}
-	drive = *cp;
-	if (!buf) return(drive);
 
 #ifdef	CODEEUC
 	buf[ujis2sjis(buf, (u_char *)cp)] = '\0';
@@ -61,25 +61,24 @@ char *path, *buf;
 DIR *_Xopendir(path)
 char *path;
 {
-#ifdef	_NODOSDRIVE
-	return(opendir(path));
-#else
+#ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN + 1];
 
-	return(dospath(path, buf) ? dosopendir(buf) : opendir(path));
+	if (dospath(path, buf)) return(dosopendir(buf));
 #endif
+	return(opendir(path));
 }
 
+#ifndef	_NOROCKRIDGE
 DIR *Xopendir(path)
 char *path;
 {
-#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
-#endif
 	return(_Xopendir(path));
 }
+#endif
 
 int Xclosedir(dirp)
 DIR *dirp;
@@ -135,7 +134,6 @@ DIR *dirp;
 {
 #ifndef	_NODOSDRIVE
 	if (*((int *)dirp) < 0) dosrewinddir(dirp);
-	else
 #endif
 	rewinddir(dirp);
 }
@@ -150,7 +148,7 @@ char *path;
 	int dd, drive;
 
 	if ((drive = dospath(path, buf))) {
-		if ((dd = preparedrv(drive, waitmes)) < 0) return(-1);
+		if ((dd = preparedrv(drive)) < 0) return(-1);
 		if (doschdir(buf) < 0) {
 			shutdrv(dd);
 			return(-1);
@@ -173,16 +171,16 @@ char *path;
 #endif	/* !_NODOSDRIVE */
 }
 
+#ifndef	_NOROCKRIDGE
 int Xchdir(path)
 char *path;
 {
-#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
-#endif
 	return(_Xchdir(path));
 }
+#endif
 
 /*ARGSUSED*/
 char *Xgetcwd(path, size)
@@ -232,11 +230,10 @@ struct stat *statp;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 1) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(stat(path, statp));
-#else
-	return(dospath(path, buf) ? dosstat(buf, statp) : stat(path, statp));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(dosstat(buf, statp));
 #endif
+	return(stat(path, statp));
 }
 
 int Xlstat(path, statp)
@@ -250,11 +247,10 @@ struct stat *statp;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(lstat(path, statp));
-#else
-	return(dospath(path, buf) ? doslstat(buf, statp) : lstat(path, statp));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(doslstat(buf, statp));
 #endif
+	return(lstat(path, statp));
 }
 
 int Xaccess(path, mode)
@@ -268,11 +264,10 @@ int mode;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 1) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(access(path, mode));
-#else
-	return(dospath(path, buf) ? dosaccess(buf, mode) : access(path, mode));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(dosaccess(buf, mode));
 #endif
+	return(access(path, mode));
 }
 
 int Xsymlink(name1, name2)
@@ -283,12 +278,11 @@ char *name1, *name2;
 
 	if (detransfile(name1, buf, 0) == buf) name1 = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(symlink(name1, name2));
-#else
-	return((dospath(name1, NULL) || dospath(name2, NULL)) ?
-		dossymlink(name1, name2) : symlink(name1, name2));
+#ifndef	_NODOSDRIVE
+	if ((dospath(name1, NULL) || dospath(name2, NULL)))
+		return(dossymlink(name1, name2));
 #endif
+	return(symlink(name1, name2));
 }
 
 int Xreadlink(path, buf, bufsiz)
@@ -305,12 +299,10 @@ int bufsiz;
 		return(-1);
 	}
 #endif
-#ifdef	_NODOSDRIVE
-	return(readlink(path, buf, bufsiz));
-#else
-	return(dospath(path, NULL) ?
-		dosreadlink(path, buf, bufsiz) : readlink(path, buf, bufsiz));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, NULL)) return(dosreadlink(path, buf, bufsiz));
 #endif
+	return(readlink(path, buf, bufsiz));
 }
 
 int Xchmod(path, mode)
@@ -324,11 +316,10 @@ int mode;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(chmod(path, mode));
-#else
-	return(dospath(path, buf) ? doschmod(buf, mode) : chmod(path, mode));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(doschmod(buf, mode));
 #endif
+	return(chmod(path, mode));
 }
 
 #ifdef	USEUTIME
@@ -343,11 +334,10 @@ struct utimbuf *times;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(utime(path, times));
-#else
-	return(dospath(path, buf) ? dosutime(buf, times) : utime(path, times));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(dosutime(buf, times));
 #endif
+	return(utime(path, times));
 #else	/* !USEUTIME */
 int Xutimes(path, tvp)
 char *path;
@@ -360,11 +350,10 @@ struct timeval tvp[2];
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(utimes(path, tvp));
-#else
-	return(dospath(path, buf) ? dosutimes(buf, tvp) : utimes(path, tvp));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(dosutimes(buf, tvp));
 #endif
+	return(utimes(path, tvp));
 #endif	/* !USEUTIME */
 }
 
@@ -378,11 +367,10 @@ char *path;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(unlink(path));
-#else
-	return(dospath(path, buf) ? dosunlink(buf) : unlink(path));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(dosunlink(buf));
 #endif
+	return(unlink(path));
 }
 
 int Xrename(from, to)
@@ -396,14 +384,13 @@ char *from, *to;
 	if (detransfile(from, buf1, 0) == buf1) from = buf1;
 	if (detransfile(to, buf2, 0) == buf2) to = buf2;
 #endif
-#ifdef	_NODOSDRIVE
-	return(rename(from, to));
-#else
+#ifndef	_NODOSDRIVE
 	errno = EXDEV;
 	if (dospath(from, buf1))
 		return(dospath(to, buf2) ? dosrename(buf1, buf2) : -1);
-	else return(dospath(to, NULL) ? -1 : rename(from, to));
+	else if (dospath(to, NULL)) return(-1);
 #endif
+	return(rename(from, to));
 }
 
 int Xopen(path, flags, mode)
@@ -417,22 +404,18 @@ int flags, mode;
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 1) == buf) path = buf;
 #endif
-#ifdef	_NODOSDRIVE
-	return(open(path, flags, mode));
-#else
-	return(dospath(path, buf) ?
-		dosopen(buf, flags, mode) : open(path, flags, mode));
+#ifndef	_NODOSDRIVE
+	if (dospath(path, buf)) return(dosopen(buf, flags, mode));
 #endif
+	return(open(path, flags, mode));
 }
 
+#ifndef	_NODOSDRIVE
 int Xclose(fd)
 int fd;
 {
-#ifdef	_NODOSDRIVE
+	if (fd >= DOSFDOFFSET) return(dosclose(fd));
 	return(close(fd));
-#else
-	return((fd >= DOSFDOFFSET) ? dosclose(fd) : close(fd));
-#endif
 }
 
 int Xread(fd, buf, nbytes)
@@ -440,12 +423,8 @@ int fd;
 char *buf;
 int nbytes;
 {
-#ifdef	_NODOSDRIVE
+	if (fd >= DOSFDOFFSET) return(dosread(fd, buf, nbytes));
 	return(read(fd, buf, nbytes));
-#else
-	return((fd >= DOSFDOFFSET) ?
-		dosread(fd, buf, nbytes) : read(fd, buf, nbytes));
-#endif
 }
 
 int Xwrite(fd, buf, nbytes)
@@ -453,12 +432,8 @@ int fd;
 char *buf;
 int nbytes;
 {
-#ifdef	_NODOSDRIVE
+	if (fd >= DOSFDOFFSET) return(doswrite(fd, buf, nbytes));
 	return(write(fd, buf, nbytes));
-#else
-	return((fd >= DOSFDOFFSET) ?
-		doswrite(fd, buf, nbytes) : write(fd, buf, nbytes));
-#endif
 }
 
 off_t Xlseek(fd, offset, whence)
@@ -466,103 +441,92 @@ int fd;
 off_t offset;
 int whence;
 {
-#ifdef	_NODOSDRIVE
+	if (fd >= DOSFDOFFSET) return(doslseek(fd, offset, whence));
 	return(lseek(fd, offset, whence));
-#else
-	return((fd >= DOSFDOFFSET) ?
-		doslseek(fd, offset, whence) : lseek(fd, offset, whence));
-#endif
 }
+#endif	/* !_NODOSDRIVE */
 
 int _Xmkdir(path, mode)
 char *path;
 int mode;
 {
-#ifdef	_NODOSDRIVE
-	return(mkdir(path, mode));
-#else
+#ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN + 1];
 
-	return(dospath(path, buf) ? dosmkdir(buf, mode) : mkdir(path, mode));
+	if (dospath(path, buf)) return(dosmkdir(buf, mode));
 #endif
+	return(mkdir(path, mode));
 }
 
+#ifndef	_NOROCKRIDGE
 int Xmkdir(path, mode)
 char *path;
 int mode;
 {
-#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
-#endif
 	return(_Xmkdir(path, mode));
 }
+#endif
 
+#ifndef	_NODOSDRIVE
 int _Xrmdir(path)
 char *path;
 {
-#ifdef	_NODOSDRIVE
-	return(rmdir(path));
-#else
 	char buf[MAXPATHLEN + 1];
 
-	return(dospath(path, buf) ? dosrmdir(buf) : rmdir(path));
-#endif
+	if (dospath(path, buf)) return(dosrmdir(buf));
+	return(rmdir(path));
 }
+#endif
 
+#ifndef	_NOROCKRIDGE
 int Xrmdir(path)
 char *path;
 {
-#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
-#endif
 	return(_Xrmdir(path));
 }
+#endif
 
+#ifndef	_NODOSDRIVE
 FILE *_Xfopen(path, type)
 char *path, *type;
 {
-#ifdef	_NODOSDRIVE
-	return(fopen(path, type));
-#else
 	char buf[MAXPATHLEN + 1];
 
-	return(dospath(path, buf) ? dosfopen(buf, type) : fopen(path, type));
-#endif
+	if (dospath(path, buf))  return(dosfopen(buf, type));
+	return(fopen(path, type));
 }
+#endif
 
+#ifndef	_NOROCKRIDGE
 FILE *Xfopen(path, type)
 char *path, *type;
 {
-#ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
-#endif
 	return(_Xfopen(path, type));
 }
+#endif
 
+#ifndef	_NODOSDRIVE
 int Xfclose(stream)
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfclose(stream));
 	return(fclose(stream));
-#else
-	return(dosfileno(stream) >= 0 ? dosfclose(stream) : fclose(stream));
-#endif
 }
 
 int Xfeof(stream)
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfeof(stream));
 	return(feof(stream));
-#else
-	return(dosfileno(stream) >= 0 ? dosfeof(stream) : feof(stream));
-#endif
 }
 
 int Xfread(buf, size, nitems, stream)
@@ -570,13 +534,9 @@ char *buf;
 int size, nitems;
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0)
+		return(dosfread(buf, size, nitems, stream));
 	return(fread(buf, size, nitems, stream));
-#else
-	return(dosfileno(stream) >= 0 ?
-		dosfread(buf, size, nitems, stream) :
-		fread(buf, size, nitems, stream));
-#endif
 }
 
 int Xfwrite(buf, size, nitems, stream)
@@ -584,44 +544,31 @@ char *buf;
 int size, nitems;
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0)
+		return(dosfwrite(buf, size, nitems, stream));
 	return(fwrite(buf, size, nitems, stream));
-#else
-	return(dosfileno(stream) >= 0 ?
-		dosfwrite(buf, size, nitems, stream) :
-		fwrite(buf, size, nitems, stream));
-#endif
 }
 
 int Xfflush(stream)
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfflush(stream));
 	return(fflush(stream));
-#else
-	return(dosfileno(stream) >= 0 ? dosfflush(stream) : fflush(stream));
-#endif
 }
 
 int Xfgetc(stream)
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfgetc(stream));
 	return(fgetc(stream));
-#else
-	return(dosfileno(stream) >= 0 ? dosfgetc(stream) : fgetc(stream));
-#endif
 }
 
 int Xfputc(c, stream)
 int c;
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfputc(c, stream));
 	return(fputc(c, stream));
-#else
-	return(dosfileno(stream) >= 0 ? dosfputc(c, stream) : fputc(c, stream));
-#endif
 }
 
 char *Xfgets(s, n, stream)
@@ -629,65 +576,15 @@ char *s;
 int n;
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfgets(s, n, stream));
 	return(fgets(s, n, stream));
-#else
-	return(dosfileno(stream) >= 0 ?
-		dosfgets(s, n, stream) : fgets(s, n, stream));
-#endif
 }
 
 int Xfputs(s, stream)
 char *s;
 FILE *stream;
 {
-#ifdef	_NODOSDRIVE
+	if (dosfileno(stream) >= 0) return(dosfputs(s, stream));
 	return(fputs(s, stream));
-#else
-	return(dosfileno(stream) >= 0 ?
-		dosfputs(s, stream) : fputs(s, stream));
-#endif
-}
-
-#ifndef	_NODOSDRIVE
-char *tmpdosdupl(drive, file, mode)
-int drive;
-char *file;
-int mode;
-{
-	char *cp, path[MAXPATHLEN + 1];
-
-	sprintf(path, "%c:", drive);
-	if (mktmpdir(path) < 0) {
-		warning(-1, path);
-		return(NULL);
-	}
-
-	cp = path + strlen(path);
-	*cp = _SC_;
-	strcpy(cp + 1, file);
-	waitmes();
-	if (_cpfile(file, path, mode) < 0) {
-		removetmp(path, NULL, NULL);
-		return(NULL);
-	}
-
-	*cp = '\0';
-	if (_chdir2(path) < 0) error(path);
-	return(strdup2(path));
-}
-
-int tmpdosrestore(drive, file, mode)
-int drive;
-char *file;
-int mode;
-{
-	char path[MAXPATHLEN + 1];
-
-	sprintf(path, "%c:%s", drive, file);
-	waitmes();
-	if (_cpfile(file, path, mode) < 0) return(-1);
-
-	return(0);
 }
 #endif	/* !_NODOSDRIVE */

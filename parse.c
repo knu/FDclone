@@ -209,6 +209,7 @@ char *path, *delim;
 	return(epath);
 }
 
+#if	!MSDOS
 char *killmeta(name)
 char *name;
 {
@@ -217,7 +218,7 @@ char *name;
 #endif
 	char *cp, buf[MAXPATHLEN * 2 + 2 + 1];
 	int i;
-#if	!MSDOS && !defined (CODEEUC)
+#ifndef	CODEEUC
 	int sjis;
 
 	cp = (char *)getenv("LANG");
@@ -230,24 +231,15 @@ char *name;
 #endif
 	*buf = '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
-#if	MSDOS
-		if (iskanji1(*cp)) buf[i++] = *(cp++);
-		else
-#else	/* !MSDOS */
-# ifndef	CODEEUC
+#ifndef	CODEEUC
 		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
 		else
-# endif
-#endif	/* !MSDOS */
+#endif
 		{
 			if ((u_char)(*cp) < ' ' || *cp == C_DEL
 			|| strchr(METACHAR, *cp)) *buf = '"';
 			if (strchr(DQ_METACHAR, *cp))
-#if	MSDOS
-				buf[i++] = *cp;
-#else
 				buf[i++] = '\\';
-#endif
 		}
 		buf[i] = *cp;
 	}
@@ -257,7 +249,6 @@ char *name;
 	return(strdup2(cp));
 }
 
-#if	!MSDOS
 VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
@@ -266,14 +257,10 @@ VOID adjustpath(VOID_A)
 
 	path = evalcomstr(cp, ":");
 	if (strpathcmp(path, cp)) {
-#ifdef	USESETENV
-		if (setenv("PATH", path, 1) < 0) error("PATH");
-#else
 		cp = (char *)malloc2(strlen(path) + 5 + 1);
 		strcpy(cp, "PATH=");
 		strcpy(cp + 5, path);
 		if (putenv2(cp) < 0) error("PATH");
-#endif
 	}
 	free(path);
 }
@@ -408,7 +395,7 @@ int max;
 				cp = fullpath;
 				break;
 			case 'W':
-				cp = strrdelim(fullpath + 1);
+				cp = strrdelim(fullpath + 1, 0);
 				if (cp) cp++;
 				else cp = fullpath;
 				break;
@@ -509,6 +496,10 @@ char *cp;
 
 VOID evalenv(VOID_A)
 {
+#ifndef	_NODOSDRIVE
+	char *cp;
+#endif
+
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
 	if ((sorttype < 0 || (sorttype & 7) > 5)
 	&& (sorttype < 100 || ((sorttype - 100) & 7) > 5))
@@ -539,12 +530,17 @@ VOID evalenv(VOID_A)
 	if ((showsecond = evalbool(getenv2("FD_SECOND"))) < 0)
 		showsecond = SECOND;
 #ifndef	_NODOSDRIVE
-	if ((dosdrive = evalbool(getenv2("FD_DOSDRIVE"))) < 0)
+	if ((dosdrive = evalbool(cp = getenv2("FD_DOSDRIVE"))) < 0)
 		dosdrive = DOSDRIVE;
+# if	MSDOS
+	if (cp && (cp = strchr(cp, ',')) && !strcmp(++cp, "BIOS"))
+		dosdrive |= 2;
+# endif
 #endif
 #ifndef	_NOEDITMODE
 	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
 #endif
+	if (deftmpdir) free(deftmpdir);
 	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
 	deftmpdir = evalpath(strdup2(deftmpdir), 1);
 #ifndef	_NOROCKRIDGE

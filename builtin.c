@@ -540,8 +540,7 @@ int n;
 	free(macrolist[n - NO_OPERATION - 1]);
 	maxmacro--;
 	for (i = n - NO_OPERATION - 1; i < maxmacro; i++)
-		memcpy(&macrolist[i], &macrolist[i + 1],
-			sizeof(char *));
+		macrolist[i] = macrolist[i + 1];
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
 		if (bindlist[i].f_func > n) bindlist[i].f_func--;
@@ -1138,34 +1137,23 @@ int argc;
 char *argv[];
 int comline;
 {
-#ifndef	USESETENV
-	char *env;
-	int len;
-#endif
-	char *cp;
-	int i;
+	char *cp, *env;
+	int i, len;
 
 	i = argc - 1;
 	if ((cp = getenvval(&i, &(argv[1]))) == (char *)-1 || i + 1 < argc)
 		return(-1);
 	argv[1] = evalpath(argv[1], 1);
-#ifdef	USESETENV
-	if (!cp) unsetenv(argv[1]);
+	if (!cp) env = argv[1];
 	else {
-		if (setenv(argv[1], cp, 1) < 0) error(argv[1]);
-		free(cp);
-	}
-#else
-	len = (cp) ? strlen(cp) + 1 : 0;
-	env = (char *)malloc2(strlen(argv[1]) + len + 1);
-	strcpy(env, argv[1]);
-	if (cp) {
-		strcat(env, "=");
-		strcat(env, cp);
+		len = strlen(argv[1]);
+		env = (char *)malloc2(len + strlen(cp) + 2);
+		memcpy(env, argv[1], len);
+		env[len++] = '=';
+		strcpy(&(env[len]), cp);
 		free(cp);
 	}
 	if (putenv2(env) < 0) error(argv[1]);
-#endif
 #if	!MSDOS
 	adjustpath();
 #endif
@@ -1284,7 +1272,7 @@ int *maxp, comline;
 	else if (isalpha(*command) || *command == '_') {
 		i = argc;
 		if ((cp = getenvval(&i, argv)) != (char *)-1 && i == argc) {
-			if (setenv2(argv[0], cp, 1) < 0) error(argv[0]);
+			if (setenv2(argv[0], cp) < 0) error(argv[0]);
 			evalenv();
 			if (cp) free(cp);
 			n = 4;
@@ -1304,7 +1292,7 @@ char **matchp;
 {
 	int i, len, ptr, size;
 
-	if (strdelim(com)) return(0);
+	if (strdelim(com, 1)) return(0);
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(com);
 	for (i = 0; builtinlist[i].ident; i++) {
@@ -1316,5 +1304,39 @@ char **matchp;
 		matchno++;
 	}
 	return(matchno);
+}
+#endif
+
+#ifdef	DEBUG
+VOID freedefine(VOID_A)
+{
+	int i, j;
+
+#ifndef	_NOARCHIVE
+	for (i = 0; i < maxlaunch; i++) {
+		free(launchlist[i].ext);
+		free(launchlist[i].comm);
+	}
+	for (i = 0; i < maxarchive; i++) {
+		free(archivelist[i].ext);
+		free(archivelist[i].p_comm);
+		free(archivelist[i].u_comm);
+	}
+#endif	/* !_NOARCHIVE */
+	for (i = 0; i < maxmacro; i++) free(macrolist[i]);
+	for (i = 0; i < maxalias; i++) {
+		free(aliaslist[i].alias);
+		free(aliaslist[i].comm);
+	}
+	for (i = 0; i < maxuserfunc; i++) {
+		free(userfunclist[i].func);
+		for (j = 0; userfunclist[i].comm[j]; j++)
+			free(userfunclist[i].comm[j]);
+		free(userfunclist[i].comm);
+	}
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	for (i = 0; fdtype[i].name; i++) free(fdtype[i].name);
+#endif
+	for (i = 0; i < 10; i++) free(helpindex[i]);
 }
 #endif

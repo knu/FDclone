@@ -52,9 +52,11 @@ OBJ2	= dosdisk__OBJ__ __OBJS__ \
 	rockridg__OBJ__ builtin__OBJ__ parse__OBJ__
 OBJ3	= kanji__OBJ__ file__OBJ__ apply__OBJ__ archive__OBJ__ \
 	tree__OBJ__ command__OBJ__ browse__OBJ__
+ALLOC	=
+DEBUG	=
 
-LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
-CFLAGS	= -DFD=1 -D__OSTYPE__=1 -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__
+LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__ $(ALLOC)
+CFLAGS	= -DFD=1 -D__OSTYPE__=1 -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__ $(DEBUG)
 
 .SUFFIXES: .h .c __OBJ__ __EXE__
 
@@ -277,7 +279,7 @@ unixemu__OBJ__: fd.h
 unixemu__OBJ__: machine.h config.h
 unixemu__OBJ__: types.h pathname.h func.h
 unixemu__OBJ__: unixdisk.h
-unixemu__OBJ__: unixemu.h
+unixemu__OBJ__: unixemu.h dosdisk.h
 rockridg__OBJ__: fd.h
 rockridg__OBJ__: machine.h config.h
 rockridg__OBJ__: types.h pathname.h func.h
@@ -307,7 +309,7 @@ archive__OBJ__: fd.h
 archive__OBJ__: machine.h
 archive__OBJ__: config.h types.h
 archive__OBJ__: pathname.h term.h func.h
-archive__OBJ__: funcno.h kanji.h
+archive__OBJ__: funcno.h kctype.h kanji.h
 tree__OBJ__: fd.h
 tree__OBJ__: machine.h config.h
 tree__OBJ__: types.h pathname.h term.h func.h

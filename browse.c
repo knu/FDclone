@@ -340,7 +340,7 @@ VOID infobar(list, no)
 namelist *list;
 int no;
 {
-	char buf[MAXLINESTR + 1];
+	char *buf;
 	struct tm *tm;
 	int len, width;
 
@@ -353,6 +353,7 @@ int no;
 		return;
 	}
 
+	buf = (char *)malloc2(n_lastcolumn * 2 + 1);
 	tm = localtime(&list[no].st_mtim);
 
 	putmode(buf, (!isdisplnk(dispmode) && islink(&list[no])) ?
@@ -386,22 +387,22 @@ int no;
 
 #if	!MSDOS
 	if (islink(&list[no])) {
+		width += len;
 		len = strlen(buf);
 		while (buf[--len] == ' ');
 		len += 2;
 		if (strlen3(list[no].name) > fnameofs) {
-			if (len < n_lastcolumn) buf[len++] = '-';
-			if (len < n_lastcolumn) buf[len++] = '>';
+			if (len < width) buf[len++] = '-';
+			if (len < width) buf[len++] = '>';
 			len++;
 		}
-		if (len < n_lastcolumn) {
-			width = n_lastcolumn - len;
+		if ((width -= len) > 0)
 			Xreadlink(list[no].name, buf + len, width);
-		}
 	}
 #endif
 
 	kanjiputs(buf);
+	free(buf);
 	tflush();
 }
 
@@ -456,7 +457,7 @@ VOID putname(list, no, standout)
 namelist *list;
 int no, standout;
 {
-	char buf[MAXLINESTR + 1];
+	char *buf;
 	struct tm *tm;
 	int i, j, len, width;
 #ifdef	CODEEUC
@@ -476,6 +477,7 @@ int no, standout;
 	}
 
 	width = calcwidth();
+	buf = (char *)malloc2((n_column / columns) * 2 + 1);
 	i = (standout && fnameofs > 0) ? fnameofs : 0;
 #ifdef	CODEEUC
 	wid = width;
@@ -516,12 +518,14 @@ int no, standout;
 	if (columns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&list[no]))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
+#if	MSDOS || !defined (_NODOSDRIVE)
 		else if (
-#if	!MSDOS && !defined (_NODOSDRIVE)
-		dospath("", NULL) &&
-#endif
+# if	!MSDOS
+		dospath2("") &&
+# endif
 		(list[no].st_mode & S_IFMT) == S_IFIFO)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<VOL>");
+#endif
 		else if (isdev(&list[no])) sprintf(buf + len, " %*u,%*u",
 			WSIZE / 2, ((unsigned)(list[no].st_size) >> 8) & 0xff,
 			WSIZE - (WSIZE / 2) - 1,
@@ -562,6 +566,7 @@ int no, standout;
 #endif
 	if (standout > 0) putterm(t_standout);
 	kanjiputs(buf);
+	free(buf);
 #ifndef	_NOCOLOR
 	if (ansicolor == 2) {
 		chgcolor(ANSI_BLACK, 1);
@@ -739,6 +744,13 @@ char *buf;
 	return(i);
 }
 
+VOID addlist(VOID_A)
+{
+	if (maxfile < maxent) return;
+	maxent = ((maxfile + 1) / BUFUNIT + 1) * BUFUNIT;
+	filelist = (namelist *)realloc2(filelist, maxent * sizeof(namelist));
+}
+
 static int browsedir(file, def)
 char *file, *def;
 {
@@ -788,8 +800,7 @@ char *file, *def;
 			if (!strcmp(file, filestack[i].name)) break;
 		if (i < stackdepth) continue;
 
-		filelist = (namelist *)addlist(filelist, maxfile,
-			&maxent, sizeof(namelist));
+		addlist();
 		if (getstatus(filelist, maxfile, file) < 0) continue;
 		filelist[maxfile].name = strdup2(file);
 		filelist[maxfile].ent = maxfile;
@@ -806,8 +817,7 @@ char *file, *def;
 #endif
 
 	if (!maxfile) {
-		filelist = (namelist *)addlist(filelist, 0,
-			&maxent, sizeof(namelist));
+		addlist();
 		filelist[0].name = NOFIL_K;
 		filelist[0].st_nlink = -1;
 	}
@@ -958,8 +968,8 @@ char *cur;
 			cp = fullpath + (int)strlen(fullpath) - 1;
 		}
 		else {
-			def = strrdelim(cp);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+			def = strrdelim(cp, 0);
+#if	MSDOS || !defined (_NODOSDRIVE)
 			if (!def && _dospath(cp)) def = &cp[2];
 #endif
 			if (def) {
@@ -973,7 +983,8 @@ char *cur;
 					strcpy(fullpath, _SS_);
 #endif
 				}
-				else if (_chdir2(cp) >= 0) strcat(fullpath, cp);
+				else if (_chdir2(cp) >= 0)
+					strcat(fullpath, cp);
 				else {
 					warning(-1, cp);
 					def = NULL;
@@ -1000,7 +1011,7 @@ char *cur;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
-			if ((cp = strrdelim(fullpath))) cp++;
+			if ((cp = strrdelim(fullpath, 0))) cp++;
 			else cp = fullpath;
 			strcpy(prev, cp);
 			if (!*prev) {
@@ -1031,4 +1042,5 @@ char *cur;
 	}
 
 	if (filelist) free(filelist);
+	if (findpattern) free(findpattern);
 }

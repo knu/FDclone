@@ -43,6 +43,12 @@ extern int errno;
 #define	gettimeofday2(tv, tz)	gettimeofday(tv, tz)
 #endif
 
+#define	BUFUNIT		32
+#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type)\
+			(((n) % BUFUNIT) ? (ptr) \
+			: realloc2(ptr, b_size(n, type)))
+
 /* main.c */
 extern VOID error __P_((char *));
 extern VOID sigvecset __P_((void));
@@ -55,13 +61,28 @@ extern int loadruncom __P_((char *, int));
 extern int _dospath __P_((char *));
 extern int dospath __P_((char *, char *));
 #endif
+#ifndef	_NODOSDRIVE
+# if	MSDOS
+extern int dospath2 __P_((char *));
+# else
+#define	dospath2(path)	dospath(path, NULL)
+# endif
+#endif
 extern DIR *_Xopendir __P_((char *));
+#ifdef	_NOROCKRIDGE
+#define	Xopendir	_Xopendir
+#else
 extern DIR *Xopendir __P_((char *));
+#endif
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern VOID Xrewinddir __P_((DIR *));
 extern int _Xchdir __P_((char *));
+#ifdef	_NOROCKRIDGE
+#define	Xchdir		_Xchdir
+#else
 extern int Xchdir __P_((char *));
+#endif
 extern char *Xgetcwd __P_((char *, int));
 extern int Xstat __P_((char *, struct stat *));
 extern int Xlstat __P_((char *, struct stat *));
@@ -76,17 +97,59 @@ extern int Xutimes __P_((char *, struct timeval []));
 #endif
 extern int Xunlink __P_((char *));
 extern int Xrename __P_((char *, char *));
+#if	MSDOS && defined (_NOROCKRIDGE) && defined (_NOUSELFN)
+#define	Xopen		open
+#else
 extern int Xopen __P_((char *, int, int));
+#endif
+#ifdef	_NODOSDRIVE
+#define	Xclose		close
+#define	Xread		read
+#define	Xwrite		write
+#define	Xlseek		lseek
+#else
 extern int Xclose __P_((int));
 extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
+#endif
 extern int _Xmkdir __P_((char *, int));
+#ifdef	_NOROCKRIDGE
+#define	Xmkdir		_Xmkdir
+#else
 extern int Xmkdir __P_((char *, int));
+#endif
+#if	(MSDOS && defined (_NOUSELFN)) || (!MSDOS && defined (_NODOSDRIVE))
+#define	_Xrmdir		rmdir
+#else
 extern int _Xrmdir __P_((char *));
+#endif
+#ifdef	_NOROCKRIDGE
+#define	Xrmdir		_Xrmdir
+#else
 extern int Xrmdir __P_((char *));
+#endif
+#if	(MSDOS && defined (_NOUSELFN)) || (!MSDOS && defined (_NODOSDRIVE))
+#define	_Xfopen		fopen
+#else
 extern FILE *_Xfopen __P_((char *, char *));
+#endif
+#ifdef	_NOROCKRIDGE
+#define	Xfopen		_Xfopen
+#else
 extern FILE *Xfopen __P_((char *, char *));
+#endif
+#ifdef	_NODOSDRIVE
+#define	Xfclose		fclose
+#define	Xfeof		feof
+#define	Xfread		fread
+#define	Xfwrite		fwrite
+#define	Xfflush		fflush
+#define	Xfgetc		fgetc
+#define	Xfputc		fputc
+#define	Xfgets		fgets
+#define	Xfputs		fputs
+#else
 extern int Xfclose __P_((FILE *));
 extern int Xfeof __P_((FILE *));
 extern int Xfread __P_((char *, int, int, FILE *));
@@ -96,15 +159,14 @@ extern int Xfgetc __P_((FILE *));
 extern int Xfputc __P_((int, FILE *));
 extern char *Xfgets __P_((char *, int, FILE *));
 extern int Xfputs __P_((char *, FILE *));
+#endif
 #if	MSDOS
 extern FILE *Xpopen __P_((char *, char *));
 extern int Xpclose __P_((FILE *));
-#else	/* !MSDOS */
-#ifndef _NODOSDRIVE
-extern char *tmpdosdupl __P_((int, char *, int));
-extern int tmpdosrestore __P_((int, char *, int));
+#else
+#define	Xpopen		popen
+#define	Xpclose		pclose
 #endif
-#endif	/* !MSDOS */
 
 /* rockridge.c */
 #ifndef	_NOROCKRIDGE
@@ -118,6 +180,9 @@ extern int execbuiltin __P_((char *, namelist *, int *, int));
 #ifndef	_NOCOMPLETE
 extern int completebuiltin __P_((char *, int, char **));
 #endif
+#ifdef	DEBUG
+extern VOID freedefine __P_((VOID_A));
+#endif
 
 /* parse.c */
 extern char *skipspace __P_((char *));
@@ -128,8 +193,8 @@ extern char *geteostr __P_((char **));
 extern char *gettoken __P_((char **, char *));
 extern char *getenvval __P_((int *, char *[]));
 extern char *evalcomstr __P_((char *, char *));
-extern char *killmeta __P_((char *));
 #if	!MSDOS
+extern char *killmeta __P_((char *));
 extern VOID adjustpath __P_((VOID_A));
 #endif
 extern int getargs __P_((char *, char *[], int));
@@ -155,7 +220,6 @@ extern int mkdir2 __P_((char *, int));
 extern VOID_P malloc2 __P_((ALLOC_T));
 extern VOID_P realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
-extern VOID_P addlist __P_((VOID_P, int, int *, int));
 extern int toupper2 __P_((int));
 extern char *strchr2 __P_((char *, int));
 extern char *strrchr2 __P_((char *, int));
@@ -166,11 +230,12 @@ extern char *strstr2 __P_((char *, char *));
 extern int strlen2 __P_((char *));
 extern int strlen3 __P_((char *));
 extern int atoi2 __P_((char *));
-#ifndef	USESETENV
 extern int putenv2 __P_((char *));
-#endif
-extern int setenv2 __P_((char *, char *, int));
+extern int setenv2 __P_((char *, char *));
 extern char *getenv2 __P_((char *));
+#ifdef	DEBUG
+extern VOID freeenv __P_((VOID_A));
+#endif
 extern int printenv __P_((int, char *[], int));
 extern int system2 __P_((char *, int));
 extern char *getwd2 __P_((VOID_A));
@@ -179,6 +244,7 @@ extern char *getpwuid2 __P_((uid_t));
 extern char *getgrgid2 __P_((gid_t));
 #endif
 extern time_t timelocal2 __P_((struct tm *));
+extern char *fgets2 __P_((FILE *));
 
 /* input.c */
 extern int Xgetkey __P_((int));
@@ -202,6 +268,9 @@ extern int entryhist __P_((int, char *, int));
 extern int loadhistory __P_((int, char *));
 extern int savehistory __P_((int, char *));
 extern int dohistory __P_((int, char *[], namelist *, int *));
+#ifdef	DEBUG
+extern VOID freehistory __P_((int));
+#endif
 #ifndef	_NOCOMPLETE
 extern int completealias __P_((char *, int, char **));
 extern int completeuserfunc __P_((char *, int, char **));
@@ -255,6 +324,10 @@ extern int mktmpdir __P_((char *));
 extern int rmtmpdir __P_((char *));
 extern VOID removetmp __P_((char *, char *, char *));
 extern int forcecleandir __P_((char *, char *));
+#ifndef _NODOSDRIVE
+extern int tmpdosdupl __P_((char *, char **, char *, int));
+extern int tmpdosrestore __P_((int, char *, int));
+#endif
 #ifndef	_NOWRITEFS
 extern VOID arrangedir __P_((namelist *, int, int));
 #endif
@@ -303,4 +376,5 @@ extern int listupfile __P_((namelist *, int, char *));
 extern VOID movepos __P_((namelist *, int, int, u_char));
 extern VOID rewritefile __P_((int));
 extern int searchmove __P_((namelist *, int, int, char *));
+extern VOID addlist __P_((VOID_A));
 extern VOID main_fd __P_((char *));
