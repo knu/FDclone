@@ -5,7 +5,6 @@
 SHELL	= /bin/sh
 MAKE	= make
 CC	= cc
-CPP	= $(CC) -E
 SED	= sed
 
 all:	Makefile.tmp

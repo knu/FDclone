@@ -37,6 +37,12 @@ extern int errno;
 #include <time.h>
 #endif
 
+#if	(GETTODARGS == 1)
+#define	gettimeofday2(tv, tz)	gettimeofday(tv)
+#else
+#define	gettimeofday2(tv, tz)	gettimeofday(tv, tz)
+#endif
+
 /* main.c */
 extern VOID error __P_((char *));
 extern VOID sigvecset __P_((void));

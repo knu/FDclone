@@ -96,7 +96,8 @@ USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF \
-USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME SIGARGINT SIGFNCINT
+USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME SIGARGINT SIGFNCINT \
+GETTODARGS
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -191,7 +192,7 @@ fi
 if noinheader uid_t sys/types; then
 	echo "#define	NOUID_T"
 fi
-if inheader sys_errlist stdio; then
+if inheader sys_errlist "stdio errno"; then
 	echo "#define	DECLERRLIST"
 fi
 if noexist errno errno; then
@@ -359,4 +360,8 @@ if inheader 'int.*[^a-zA-Z_]signal' signal; then
 fi
 if inheader '[^a-zA-Z_]signal[^a-zA-Z_]*\(.*\( *int *\) *\)' signal; then
 	echo "#define	SIGFNCINT"
+fi
+if noexist "gettimeofday(0,0)" "sys/time time"\
+&& isexist "gettimeofday(0)" "sys/time time"; then
+	echo "#define	GETTODARGS	1"
 fi

@@ -48,6 +48,9 @@ extern int maxfile;
 extern int maxent;
 extern char *curfilename;
 extern int sizeinfo;
+#ifndef	_NOCOLOR
+extern int ansicolor;
+#endif
 
 #if	MSDOS
 #define	PM_LHA	5, 2,\
@@ -411,6 +414,10 @@ int max;
 VOID rewritearc(all)
 int all;
 {
+#ifndef	_NOCOLOR
+	int i;
+#endif
+
 	archbar(archivefile, archivedir);
 	if (all) {
 		helpbar();
@@ -419,6 +426,13 @@ int all;
 	statusbar(maxarcf);
 	locate(0, LSTACK);
 	putterm(l_clear);
+#ifndef	_NOCOLOR
+	if (ansicolor == 2) {
+		chgcolor(ANSI_BLACK, 1);
+		for (i = 0; i < n_column; i++) putch2(' ');
+		putterm(t_normal);
+	}
+#endif
 	listupfile(arcflist, maxarcf, arcflist[filepos].name);
 	locate(0, 0);
 	tflush();
@@ -572,6 +586,13 @@ int max;
 	statusbar(maxarcf);
 	locate(0, LSTACK);
 	putterm(l_clear);
+#ifndef	_NOCOLOR
+	if (ansicolor == 2) {
+		chgcolor(ANSI_BLACK, 1);
+		for (i = 0; i < n_column; i++) putch2(' ');
+		putterm(t_normal);
+	}
+#endif
 	helpbar();
 
 	old = filepos = listupfile(arcflist, maxarcf, file);

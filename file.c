@@ -633,7 +633,7 @@ char *tmpdir;
 	if (tmpdir) {
 		strcpy(tmp, tmpdir);
 		l = strlen(tmp);
-		tmp[l++] = '\\';
+		tmp[l++] = _SC_;
 	}
 
 	for (;;) {

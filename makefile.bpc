@@ -10,7 +10,7 @@ MANDIR	= $(TOPDIR)\man\man$(MANSEC)
 CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 DEFRC	= \etc\fdrc
 DOSRC	= ~FD\\fdrc
-UNITBL	= unicode.tbl
+UNITBL	= fd-unicd.tbl
 INSTALL	= copy
 CHMOD	= chmod
 MANSEC	= 1
@@ -20,7 +20,7 @@ SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
 	unixdisk.c unixemu.c \
 	rockridg.c builtin.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
-	kanjicnv.c mkfuncno.c expfunc.c functabl.c mkmfsed.c
+	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
@@ -44,7 +44,6 @@ ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 SOURCES	= $(JSRCS) $(ESRCS)
 
 CC	= bcc
-CPP	= cpp
 SED	= sed
 PROGRAM	= fd
 OBJ1	= main.obj term.obj pathname.obj libc.obj \
@@ -108,10 +107,10 @@ kanjicnv.exe: kanjicnv.c
 ############################################################
 # function list using module
 
-funcno.h: mkfuncno.exe functabl.c functabl.h fd.h config.h
-	-$(CPP) functabl.c | .\mkfuncno.exe - $@
+funcno.h: mkfuncno.exe
+	.\mkfuncno.exe $@
 
-mkfuncno.exe: mkfuncno.c
+mkfuncno.exe: mkfuncno.c functabl.h fd.h config.h
 	$(CC) $(CFLAGS) -e$@ mkfuncno.c
 #	ren $@ mkfuncno
 #	aout2exe mkfuncno
@@ -225,7 +224,7 @@ shar: $(SOURCES)
 
 clean:
 	-rm -f *.obj funcno.h kanji.h
-	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
+	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe mkunitbl.exe
 	-rm -f $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
 	-rm -f core
@@ -318,7 +317,7 @@ browse.obj: machine.h config.h
 browse.obj: types.h pathname.h
 browse.obj: term.h func.h
 browse.obj: funcno.h kanji.h
-functabl.obj: fd.h
-functabl.obj: machine.h config.h
-functabl.obj: types.h pathname.h functabl.h
+mkfuncno.obj: fd.h
+mkfuncno.obj: machine.h config.h
+mkfuncno.obj: types.h pathname.h functabl.h
 mkmfsed.obj: machine.h config.h

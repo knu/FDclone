@@ -12,7 +12,6 @@ s:__LANGDIR__::
 s:__INSTALL__:copy:
 s:__INSTSTRIP__::
 s:__CC__:gcc:
-s:__CPP__:cpp:
 s:__CCOPTIONS__:-O:
 s:__OUT__:-o:
 s:__LNK__:-o:

@@ -221,6 +221,8 @@ char *c_left = NULL;
 static int nextchar = '\0';
 static u_char specialkey[] = ":=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
 #else
+#define	KEYBUFWORKSEG	0x40
+#define	KEYBUFWORKOFF	0x80
 static u_char specialkey[] = "HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
 #endif
 static int specialkeycode[] = {
@@ -306,22 +308,29 @@ int notabs(VOID_A)
 
 int keyflush(VOID_A)
 {
-#ifdef	PC98
-# ifdef	__GNUC__
-	unsigned short keybufp;
+#ifdef	__GNUC__
+	u_short keybufp =
+		_farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF);
 
-	keybufp = _farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF);
+# ifdef	PC98
 	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF + 2, keybufp);
 	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF + 4, 0);
 # else
-	unsigned short far *keybuf = MK_FP(KEYBUFWORKSEG, KEYBUFWORKOFF);
+	u_short ptr;
 
-	keybuf[1] = keybuf[0];
-	keybuf[2] = 0;
+	ptr = _farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + keybufp - 4);
+	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + keybufp - 2, ptr);
 # endif
-#else
-	while (kbhit2(1000000L / SENSEPERSEC)) getch();
-#endif
+#else	/* !__GNUC__ */
+	u_short far *keybuf = MK_FP(KEYBUFWORKSEG, KEYBUFWORKOFF);
+
+# ifdef	PC98
+	keybuf[2] = 0;
+# else
+	keybuf = MK_FP(KEYBUFWORKSEG, keybuf[0] - 4);
+# endif
+	keybuf[1] = keybuf[0];
+#endif	/* !__GNUC__ */
 	return(0);
 }
 
@@ -958,9 +967,8 @@ char *s;
 		putch2('n');
 		size = SIZEFMT;
 			
-		for (x = 0; (buf[x] = getch()) != size[sizeof(SIZEFMT) - 2];
-			x++);
-		buf[++x] = '\0';
+		for (x = 0; (buf[x] = getch()) != '\r'; x++);
+		buf[x] = '\0';
 		if (getxy(buf, size, &y, &x) != 2) x = 1;
 		do {
 			putch2(' ');
@@ -1120,8 +1128,8 @@ int xmax, ymax;
 	size = SIZEFMT;
 
 	for (i = 0; i < sizeof(GETSIZE) - 1; i++) putch2(GETSIZE[i]);
-	for (i = 0; (buf[i] = getch()) != size[sizeof(SIZEFMT) - 2]; i++);
-	buf[++i] = '\0';
+	for (i = 0; (buf[i] = getch()) != '\r'; i++);
+	buf[i] = '\0';
 	if (getxy(buf, size, &y, &x) != 2) x = y = -1;
 
 	if (x > 0) {

@@ -4,7 +4,7 @@
 #
 #	Takashi SHIRAI, Nintendo Co. Ltd.
 #	<shirai@nintendo.co.jp>
-#	Apr 22, 1996
+#	Aug 7, 1997
 #
 ############################################################
 
@@ -53,7 +53,6 @@ fd.cat		man ページ用 プレーンテキスト (JIS 版)
 mkmfsed.c	メイクファイル加工用の sed スクリプト生成プログラム
 kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
-functabl.c	functabl.h を cpp に通すためのダミーファイル
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 mkunitbl.c	UNICODE 変換テーブルファイル生成プログラム
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
@@ -108,7 +107,7 @@ kanji.hin	日本語文字列のソース (JIS版)
 version.h	バージョン
 
 _fdrc		.fdrc のお手本
-_fdrc.dif	.fdrc に関する 1.02 からの変更点
+_fdrc.dif	.fdrc に関する 1.01h からの変更点
 
 
 --

@@ -10,7 +10,7 @@ MANDIR	= $(TOPDIR)/man__LANGDIR__/man$(MANSEC)
 CATDIR	= $(TOPDIR)/man__LANGDIR__/cat$(MANSEC)
 DEFRC	= /etc/fdrc
 DOSRC	= ~FD\\fdrc
-UNITBL	= unicode.tbl
+UNITBL	= fd-unicd.tbl
 INSTALL	= __INSTALL__
 CHMOD	= chmod
 MANSEC	= 1
@@ -20,7 +20,7 @@ SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
 	unixdisk.c unixemu.c \
 	rockridg.c builtin.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
-	kanjicnv.c mkfuncno.c expfunc.c functabl.c mkmfsed.c
+	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
@@ -44,7 +44,6 @@ ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 SOURCES	= $(JSRCS) $(ESRCS)
 
 CC	= __CC__
-CPP	= __CPP__
 SED	= sed
 PROGRAM	= fd
 OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ libc__OBJ__ \
@@ -108,10 +107,10 @@ kanjicnv__EXE__: kanjicnv.c
 ############################################################
 # function list using module
 
-funcno.h: mkfuncno__EXE__ functabl.c functabl.h fd.h config.h
-	-$(CPP) functabl.c | ./mkfuncno__EXE__ - $@
+funcno.h: mkfuncno__EXE__
+	./mkfuncno__EXE__ $@
 
-mkfuncno__EXE__: mkfuncno.c
+mkfuncno__EXE__: mkfuncno.c functabl.h fd.h config.h
 	$(CC) $(CFLAGS) __LNK__ $@ mkfuncno.c
 	__RENAME__ $@ mkfuncno
 	__AOUT2EXE__ mkfuncno
@@ -225,7 +224,7 @@ shar: $(SOURCES)
 
 clean:
 	-rm -f *__OBJ__ funcno.h kanji.h
-	-rm -f kanjicnv__EXE__ mkfuncno__EXE__ expfunc__EXE__
+	-rm -f kanjicnv__EXE__ mkfuncno__EXE__ expfunc__EXE__ mkunitbl__EXE__
 	-rm -f $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
 	-rm -f core
@@ -318,7 +317,7 @@ browse__OBJ__: machine.h config.h
 browse__OBJ__: types.h pathname.h
 browse__OBJ__: term.h func.h
 browse__OBJ__: funcno.h kanji.h
-functabl__OBJ__: fd.h
-functabl__OBJ__: machine.h config.h
-functabl__OBJ__: types.h pathname.h functabl.h
+mkfuncno__OBJ__: fd.h
+mkfuncno__OBJ__: machine.h config.h
+mkfuncno__OBJ__: types.h pathname.h functabl.h
 mkmfsed__OBJ__: machine.h config.h

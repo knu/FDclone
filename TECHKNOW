@@ -79,8 +79,9 @@ UNKNOWNFS
 NOVOID	void 型を用いることができません。
 NOUID_T	uid_t, gid_t が <sys/types.h> で定義されていません。
 DECLERRLIST
-	大域変数 sys_errlist[] が <stdio.h> の中で宣言されて
-	おり、ソースリスト中で改めて宣言する必要がありません。
+	大域変数 sys_errlist[] が <stdio.h> または <errno.h>
+	の中で宣言されており、ソースリスト中で改めて宣言する
+	必要がありません。
 PWNEEDERROR
 	/lib/libPW.a をリンクする際に、大域変数 Error[] をソ
 	ース中に用意しなくてはなりません。

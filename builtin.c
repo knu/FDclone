@@ -499,9 +499,10 @@ char *cp;
 static int getkeycode(cp)
 char *cp;
 {
+	char *tmp;
 	int i, ch;
 
-	cp = _evalpath(cp, NULL, 1, 1);
+	tmp = cp = _evalpath(cp, NULL, 1, 1);
 	ch = *(cp++);
 	if (*cp) switch (ch) {
 		case '^':
@@ -525,7 +526,7 @@ char *cp;
 			break;
 	}
 	if (*cp) ch = -1;
-	free(cp);
+	free(tmp);
 	return(ch);
 }
 
@@ -1150,11 +1151,11 @@ int comline;
 		free(cp);
 	}
 #else
-	len = (cp) ? strlen(cp) : 0;
-	env = (char *)malloc2(strlen(argv[1]) + 1 + len + 1);
+	len = (cp) ? strlen(cp) + 1 : 0;
+	env = (char *)malloc2(strlen(argv[1]) + len + 1);
 	strcpy(env, argv[1]);
-	strcat(env, "=");
 	if (cp) {
+		strcat(env, "=");
 		strcat(env, cp);
 		free(cp);
 	}

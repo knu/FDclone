@@ -30,7 +30,7 @@ char *path, *buf;
 
 	if (!dosdrive) return(0);
 	if (_dospath(path)) cp = path;
-	else if (*path == '/' || !_dospath(pseudocwd)) return(0);
+	else if (*path == _SC_ || !_dospath(pseudocwd)) return(0);
 	else cp = pseudocwd;
 
 	if (cp == buf) {
@@ -46,7 +46,7 @@ char *path, *buf;
 	strcpy(buf, cp);
 #endif
 	if (cp != path && *path) {
-		if (*buf && buf[strlen(buf) - 1] != '/') strcat(buf, "/");
+		if (*buf && buf[strlen(buf) - 1] != _SC_) strcat(buf, _SS_);
 #ifdef	CODEEUC
 		buf += strlen(buf);
 		buf[ujis2sjis(buf, path)] = '\0';
@@ -152,7 +152,7 @@ char *path;
 			shutdrv(dd);
 			return(-1);
 		}
-		if (chdir("/") < 0) return(-1);
+		if (chdir(_SS_) < 0) return(-1);
 		if (lastdrv >= 0) {
 			if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
 				shutdrv(lastdrv);
@@ -661,7 +661,7 @@ int mode;
 	}
 
 	cp = path + strlen(path);
-	*cp = '/';
+	*cp = _SC_;
 	strcpy(cp + 1, file);
 	waitmes();
 	if (_cpfile(file, path, mode) < 0) {

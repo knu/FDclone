@@ -4,15 +4,11 @@
  *	Message Strings on Kanji
  */
 
-#if	(MSDOS || defined (_NOKANJICONV)) && defined (_NOENGMES)
-#define	mesconv(jpn, eng)	(jpn)
-#else
-extern char *mesconv __P_((char *, char *));
-#endif
-
 #ifdef	_NOENGMES
+#define	mesconv(jpn, eng)	(jpn)
 #define	meslist(jpn, eng)	jpn
 #else
+extern char *mesconv __P_((char *, char *));
 #define	meslist(jpn, eng)	jpn, eng
 #endif
 

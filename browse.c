@@ -125,6 +125,7 @@ VOID helpbar(VOID_A)
 		strncpy2(buf + len, helpindex[i], width - len);
 		len = strlen(buf);
 		for (j = len; j < width; j++) buf[j] = ' ';
+		buf[j] = '\0';
 		putterm(t_standout);
 		cputs2(buf);
 		putterm(end_standout);
@@ -192,16 +193,24 @@ int max;
 static VOID stackbar(VOID_A)
 {
 #ifndef	_NOCOLOR
-	int j, color;
+	int j, x, color;
 #endif
 	int i, width;
 
 	width = n_column / MAXSTACK;
 
 	locate(0, LSTACK);
+#ifndef	_NOCOLOR
+	if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
+	x = 0;
+#endif
 	putterm(l_clear);
 
 	for (i = 0; i < stackdepth; i++) {
+#ifndef	_NOCOLOR
+		if (ansicolor == 2) for (; x < width * i + 1; x++) putch2(' ');
+		else
+#endif
 		locate(width * i + 1, LSTACK);
 #ifndef	_NOCOLOR
 		if (!isread(&filestack[i])) color = ANSI_BLUE;
@@ -221,12 +230,19 @@ static VOID stackbar(VOID_A)
 		putterm(t_standout);
 		kanjiputs2(filestack[i].name, width - 2, 0);
 #ifndef	_NOCOLOR
+		x += width - 2;
 		if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
 		else if (ansicolor) putterms(t_normal);
 		else
 #endif
 		putterm(end_standout);
 	}
+#ifndef	_NOCOLOR
+	if (ansicolor == 2) {
+		for (; x < n_column; x++) putch2(' ');
+		putterm(t_normal);
+	}
+#endif
 
 	tflush();
 }
@@ -409,6 +425,14 @@ int i;
 	i %= FILEPERPAGE;
 	x = (i / FILEPERLOW) * (n_column / FILEPERLINE);
 	y = i % FILEPERLOW;
+#ifndef	_NOCOLOR
+	if (ansicolor == 2) {
+		chgcolor(ANSI_BLACK, 1);
+		locate(x, y + WHEADER);
+		putch2(' ');
+	}
+	else
+#endif
 	locate(x + 1, y + WHEADER);
 }
 
@@ -531,8 +555,11 @@ int no, standout;
 	if (standout > 0) putterm(t_standout);
 	kanjiputs(buf);
 #ifndef	_NOCOLOR
-	if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
-	else if (ansicolor) putterms(t_normal);
+	if (ansicolor == 2) {
+		chgcolor(ANSI_BLACK, 1);
+		putch2(' ');
+	}
+	if (ansicolor) putterms(t_normal);
 	else
 #endif
 	if (standout > 0) putterm(end_standout);
@@ -716,8 +743,7 @@ char *file, *def;
 	int ch, i, no, old;
 
 #ifndef	_NOCOLOR
-	if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
-	else if (ansicolor) putterms(t_normal);
+	if (ansicolor) putterms(t_normal);
 #endif
 
 	maxfile = mark = 0;

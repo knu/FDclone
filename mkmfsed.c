@@ -58,7 +58,6 @@ char *argv[];
 #endif
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
-	printf("s:__CPP__:$(CC) -E:\n");
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
 	printf("s:__OUT__:-o:\n");
 	printf("s:__LNK__:-o:\n");

@@ -43,6 +43,9 @@ typedef struct mnttab	mnt_t;
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
 #define	mnt_type	mnt_fstype
+#ifndef	mnt_opts
+#define	mnt_opts	mnt_mntopts
+#endif
 #endif	/* USEMNTTABH */
 
 #ifdef	USEMNTCTL
@@ -232,7 +235,7 @@ static int code2str __P_((char *, int));
 static int checkline __P_((int));
 static int getfsinfo __P_((char *, statfs_t *, mnt_t *));
 static int info1line __P_((int, char *, long, char *, char *));
-#if	!defined (USEFSDATA) && !defined (_NODOSDRIVE)
+#if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
 static long calcKB __P_((long, long));
 #endif
 
@@ -796,7 +799,7 @@ char *str, *unit;
 	return(checkline(++y));
 }
 
-#if	!defined (USEFSDATA) && !defined (_NODOSDRIVE)
+#if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
 static long calcKB(block, byte)
 long block, byte;
 {

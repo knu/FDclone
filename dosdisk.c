@@ -103,11 +103,17 @@ extern int errno;
 
 #define	reterr(c)	{errno = doserrno; return(c);}
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
-#define	UNICODETBL	"unicode.tbl"
+#define	UNICODETBL	"fd-unicd.tbl"
 #define	MINUNICODE	0x00a7
 #define	MAXUNICODE	0xffe5
 #define	MINKANJI	0x8140
 #define	MAXKANJI	0xeaa4
+
+#if	(GETTODARGS == 1)
+#define	gettimeofday2(tv, tz)	gettimeofday(tv)
+#else
+#define	gettimeofday2(tv, tz)	gettimeofday(tv, tz)
+#endif
 
 #ifdef	FD
 extern int toupper2 __P_((int));
@@ -125,7 +131,7 @@ extern time_t timelocal2 __P_((struct tm *));
 # define	CHAR_BIT	0x8
 # endif
 #endif
-#define	char2long(cp)	(  (long)(((u_char *)cp)[3]) \
+#define	char2long(cp)	( (long) (((u_char *)cp)[3]) \
 			| (long)((((u_char *)cp)[2]) << (CHAR_BIT * 1)) \
 			| (long)((((u_char *)cp)[1]) << (CHAR_BIT * 2)) \
 			| (long)((((u_char *)cp)[0]) << (CHAR_BIT * 3)) )
@@ -398,7 +404,7 @@ time_t t;
 	memcpy(&tmbuf, tm, sizeof(struct tm));
 
 #ifdef	NOTMGMTOFF
-	gettimeofday(&t_val, &t_zone);
+	gettimeofday2(&t_val, &t_zone);
 	tz = t_zone.tz_minuteswest * 60L;
 #else
 	tz = -(localtime(&t) -> tm_gmtoff);
@@ -1573,7 +1579,7 @@ time_t clock;
 		ftime(&buffer);
 		tmp = (time_t)(buffer.time);
 #else
-		gettimeofday(&t_val, &tz);
+		gettimeofday2(&t_val, &tz);
 		tmp = (time_t)(t_val.tv_sec);
 #endif
 	}

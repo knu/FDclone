@@ -189,7 +189,7 @@ char *path;
 	}
 
 	drv[1] = ':';
-	drv[2] = '\\';
+	drv[2] = _SC_;
 	drv[3] = '\0';
 
 	reg.x.ax = 0x71a0;
@@ -938,7 +938,7 @@ int size;
 
 	pathname[0] = getcurdrv();
 	pathname[1] = ':';
-	pathname[2] = '\\';
+	pathname[2] = _SC_;
 
 	if (!getcurdir(pathname + 3, 0)) return(NULL);
 #endif	/* !NOLFNEMU */

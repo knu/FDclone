@@ -566,36 +566,50 @@ char *str;
 #else	/* !MSDOS */
 	extern char **environ;
 	static char **newenvp = NULL;
-	char *cp, *tmp, **envp;
-	int i, j;
+	static int envsize = 0;
+	char *cp, *tmp;
+	int i, j, e, n, size;
 
-	if ((cp = strchr(str, '='))) cp++;
-	else return(0);
-	for (i = 0; environ[i]; i++) {
-		if (!strnpathcmp(environ[i], str, cp - str)) {
-			tmp = environ[i];
-			if (*cp) {
-				if (!strpathcmp(environ[i] + (cp - str), cp))
-					return(0);
-				environ[i] = str;
-			}
-			else for (j = i; environ[j]; j++)
-				environ[j] = environ[j + 1];
-			free(tmp);
-			return(0);
+	if ((cp = strchr(str, '='))) i = (int)(cp - str);
+	else i = strlen(str);
+	e = -1;
+	for (n = 0; environ[n]; n++)
+		if (e < 0 && !strnpathcmp(environ[n], str, i)
+		&& environ[n][i] == '=') e = n;
+	if (e < 0) e = n++;
+
+	if (e < envsize) {
+		tmp = environ[e];
+		if (cp) environ[e] = str;
+		else for (i = e; environ[i]; i++) environ[i] = environ[i + 1];
+		if (tmp) free(tmp);
+		return(0);
+	}
+
+	size = ((n + 1) / BUFUNIT + 1) * BUFUNIT;
+	if (!newenvp) {
+		if (!(newenvp = (char **)malloc(size * sizeof(char *)))) {
+			free(str);
+			return(-1);
+		}
+		for (i = j = 0; i < n; i++) {
+			if (i != e) newenvp[j++] = strdup2(environ[i]);
+			else if (cp) newenvp[j++] = str;
 		}
 	}
-	envp = environ;
-	if (!(environ = (char **)malloc((i + 2) * sizeof(char *)))) {
-		environ = envp;
-		free(cp);
-		return(-1);
+	else {
+		if (!(newenvp = (char **)realloc(newenvp,
+		size * sizeof(char *)))) {
+			newenvp = environ;
+			free(str);
+			return(-1);
+		}
+		if (cp) newenvp[e] = str;
+		j = ++e;
 	}
-	memcpy(environ, envp, i * sizeof(char *));
-	environ[i++] = str;
-	environ[i] = (char *)NULL;
-	if (newenvp) free(newenvp);
-	newenvp = environ;
+	while (j < size) newenvp[j++] = (char *)NULL;
+	environ = newenvp;
+	envsize = size;
 	return(0);
 #endif	/* !MSDOS */
 }
@@ -825,7 +839,7 @@ time_t t;
 	memcpy(&tmbuf, tm, sizeof(struct tm));
 
 #ifdef	NOTMGMTOFF
-	gettimeofday(&t_val, &t_zone);
+	gettimeofday2(&t_val, &t_zone);
 	tz = t_zone.tz_minuteswest * 60L;
 #else
 	tz = -(localtime(&t) -> tm_gmtoff);

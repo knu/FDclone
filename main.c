@@ -392,7 +392,7 @@ static sigarg_t printtime(VOID_A)
 #if	MSDOS
 		now = time(NULL);
 #else
-		gettimeofday(&t_val, &tz);
+		gettimeofday2(&t_val, &tz);
 		now = t_val.tv_sec;
 #endif
 		timersec = CLOCKUPDATE;
@@ -472,14 +472,39 @@ int loadruncom(file, exist)
 char *file;
 int exist;
 {
+#if	!MSDOS
+	struct stat status;
+	char *tmp;
+#endif
 	FILE *fp;
 	char *cp, *fold, line[MAXLINESTR + 1];
 	int i, n, er, cont;
 
+#if	!MSDOS
+	tmp = NULL;
+	if (cp = (char *)getenv("TERM")) {
+		tmp = (char *)malloc2(strlen(file) + strlen(cp) + 1 + 1);
+		strcpy(tmp, file);
+		strcat(tmp, ".");
+		strcat(tmp, cp);
+		cp = evalpath(strdup2(tmp), 1);
+		if (stat2(cp, &status) >= 0
+		&& (status.st_mode & S_IFMT) == S_IFREG) file = tmp;
+		else {
+			free(cp);
+			free(tmp);
+			tmp = NULL;
+		}
+	}
+	if (!tmp)
+#endif
 	cp = evalpath(strdup2(file), 1);
 	fp = fopen(cp, "r");
 	free(cp);
 	if (!fp) {
+#if	!MSDOS
+		if (tmp) free(tmp);
+#endif
 		if (!exist) return(0);
 		cprintf2("%s: Not found\r\n", file);
 		return(-1);
@@ -540,6 +565,9 @@ int exist;
 	}
 
 	fclose(fp);
+#if	!MSDOS
+	if (tmp) free(tmp);
+#endif
 	return(er ? -1 : 0);
 }
 
