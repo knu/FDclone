@@ -866,7 +866,7 @@ time_t t;
 	struct timeb buffer;
 
 	ftime(&buffer);
-	return(buffer.timezone);
+	return((long)(buffer.timezone) * 60L);
 #else	/* !MSDOS */
 #ifdef	NOTMGMTOFF
 	struct timeval t_val;
@@ -989,7 +989,7 @@ struct tm *tm;
 
 	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
 
-	d = (y - 1970) * 365;
+	d = ((long)y - 1970) * 365;
 	d += ((y - 1 - 1968) / 4)
 		- ((y - 1 - 1900) / 100)
 		+ ((y - 1 - 1600) / 400);
@@ -1013,8 +1013,8 @@ struct tm *tm;
 		}
 	}
 	d += tm -> tm_mday - 1;
-	t = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
-	t += d * 60 * 60 * 24;
+	t = ((long)(tm -> tm_hour) * 60L + tm -> tm_min) * 60L + tm -> tm_sec;
+	t += d * 60L * 60L * 24L;
 	t += gettimezone(tm, t);
 
 	return(t);

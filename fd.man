@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-98 Takashi SHIRAI
+.\" Copyright (c) 1995-99 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   1.03h 08/28/98
+.\" @(#)fd.1   1.03i 03/03/99
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "August 28, 1998"
+.TH FD 1 "March 3, 1999"
 .de sh
 .br
 .PP
@@ -246,6 +246,7 @@ MS-DOS 版では機能しません。)
 \fBSYMLINK_MODE\fP	symbolic リンク表示形式の切替	\fBS\fP
 \fBFILETYPE_MODE\fP	ファイルタイプシンボルの切替	\fBT\fP
 \fBDOTFILE_MODE\fP	ドットファイル非表示の切替	\fBH\fP
+\fBFILEFLG_MODE\fP	ファイルフラグ表示の切替	\fBO\fP
 \fBSEARCH_FORW\fP	ファイル名の前方検索	\fB^S\fP
 \fBSEARCH_BACK\fP	ファイル名の後方検索	\fB^R\fP
 \fBLAUNCH_FILE\fP	ランチャの起動	\fBReturn\fP
@@ -474,6 +475,10 @@ sticky ビットを含んだ 3 値のトグルになっていますので注意して下さい。
 
 なお、[\fBa\fP](Attr), [\fBd\fP](Date), [\fBt\fP](Time) を入力すると、
 各々の入力ラインの先頭位置にカーソル移動します。
+
+また、ファイルフラグ属性のある OS では、
+モードの変更と同様にファイルフラグも変更できます。
+但し、変更できるフラグの値は実行ユーザの権限に準じます。
 .IP "\fBファイルシステムの情報表示\fP (Info)"
 指定されたファイルシステムの情報を表示します。
 入力されたパスがファイルシステムを表すスペシャルファイルでなかった場合は、
@@ -663,6 +668,31 @@ symbolic リンクファイルの場合には、
 
 ドットファイル非表示モードでは、
 ファンクション行の左端に '\fBH\fP'(Hidden) と表示されます。
+.IP "\fBファイルフラグ表示の切替え\fP"
+各ファイルのファイルモードの代わりに、
+一部の OS にあるファイルフラグを表示します。
+トグルスイッチでファイルフラグの表示とファイルモードの表示を切替えます。
+ファイルフラグのない OS では機能しません。
+各シンボルの意味は順に以下のとおり。
+.B (U)
+.RS 10
+.ta 0.5i
+.nf
+\fBA\fP	Archived
+\fBN\fP	Nodump
+\fBa\fP	system Append-only
+\fBc\fP	system unChangable (immutable)
+\fBu\fP	system Undeletable
+\fBa\fP	user Append-only
+\fBc\fP	user unChangable (immutable)
+\fBu\fP	user Undeletable
+.fi
+.RE
+
+.RS
+ファイルフラグ表示モードでは、
+ファンクション行の左端に '\fBF\fP'(Flags) と表示されます。
+.RE
 .IP "\fBファイル名の検索\fP"
 カレントディレクトリ内でファイル名をインクリメンタルサーチし、
 カーソルを移動していきます。
@@ -780,11 +810,22 @@ tar ファイルとその圧縮ファイル及び lha 圧縮ファイルに対し、
 にコントロール文字を指定したい場合は、
 .B ^
 を冠して ^A のように 2 文字で記述します。
+Meta キー (MS-DOS 版では Alt キー) を併用する文字を指定したい場合は、
+.B @
+を冠して @a のように 2 文字で記述します。
 ファンクションキーや機能キーを指定したい場合は、
 後述の
 .B " keymap"
 コマンドで用いられている各識別子を用い、
 F10 のように文字列で記述します。
+また、
+.B \\\\n
+=0x0a や
+.B " \\\\e"
+=0x1b といったエスケープ文字列、8 進数を用いた
+.B " \\\\ooo"
+といった表記もできます。
+
 .B fd
 の持つ内部コマンドの割当ては、コマンド識別子をそのまま記述できます。
 引数付きで内部コマンドを定義したい場合や、
@@ -806,6 +847,7 @@ F10 のように文字列で記述します。
 ファンクション行の該当部分の表示を
 .I " comment"
 に変更できます。
+
 但し、コントロール文字に対するキー割当てについては、
 後述の編集モードの設定が優先しますので気をつけて下さい。
 
@@ -1043,7 +1085,7 @@ F10 のように文字列で記述します。
 アーカイブブラウザの場合の併記は文字列
 .I " `(Arch)'"
 のみになります。
-.IP "\fBsetdrv\fP \fIc\fR \fIdevice\fR \fIh\fR\fB,\fP \fIs\fR\fB,\fP \fIc\fR"
+.IP "\fBsetdrv\fP \fIc\fR \fIdevice\fR \fIhd\fR\fB,\fP \fIsc\fR\fB,\fP \fIcl\fR"
 MS-DOS フロッピーを扱うドライブ名
 .I " c"
 に
@@ -1054,15 +1096,38 @@ MS-DOS フロッピーを扱うドライブ名
 のドライバで扱うフォーマットの
 ヘッド(サイド)数、セクタ数、シリンダ(トラック)数を、
 それぞれ
-.I " h, s, c"
+.I " hd, sc, cl"
 で指定します。
-特殊な例として、720KB2DD(h=2/s=9/c=80) しか扱えない
-ドライバで 640KB2DD(h=2/s=8/c=80) のフロッピーを扱いたい場合、
-.I s
+特殊な例として、720KB2DD(hd=2/sc=9/cl=80) しか扱えない
+ドライバで 640KB2DD(hd=2/sc=8/cl=80) のフロッピーを扱いたい場合、
+.I sc
 の値として
 .B " 100"
 加えた値(108)を指定します。
 .B (U)
+
+PC 上で動作する PC-UNIX 環境では、
+.I hd, sc, cl
+の代わりに文字列
+.B " HDD"
+もしくは
+.B " HDD98"
+を指定することで、
+MS-DOS フロッピーではなく、
+それぞれ PC/AT 互換機用と PC9801 用の
+ハードディスクの MS-DOS パーティションを登録することができます。
+この場合、デバイスファイルにはスライス単位のデバイス名ではなく、
+物理ドライブ装置単位のデバイス名を記述します。
+ドライブ装置に含まれる MS-DOS パーティションが、
+ドライブ名
+.I " c"
+以降にのドライブ名に自動的に展開されます。
+指定ドライブ装置に MS-DOS パーティションが含まれていなかった場合には、
+このコマンドは無視されます。
+どのドライブ名が有効になったかは、
+.B printdrv
+コマンドで確認できます。
+但し、安全のため、ハードディスクは読込専用で登録されます。
 .IP "\fBsource\fP \fIfile\fR"
 設定ファイル
 .I " file"
@@ -1077,12 +1142,25 @@ MS-DOS フロッピーを扱うドライブ名
 にはワイルドカードを用いることが可能で、
 その場合にはマッチする全てのエイリアス定義を取消します。
 "*" を指定すれば、全エイリアス定義が無効になります。
-.IP "\fBunsetdrv\fP \fIc\fR \fIdevice\fR \fIh\fR\fB,\fP \fIs\fR\fB,\fP \fIc\fR"
+.IP "\fBunsetdrv\fP \fIc\fR \fIdevice\fR \fIhd\fR\fB,\fP \fIsc\fR\fB,\fP \fIcl\fR"
 既に登録されているフロッピードライブの登録を削除します。
-.I device, h, s, c
+.I device, hd, sc, cl
 の全てが一致した登録のみ削除されるので、
 よく確認して削除して下さい。
 .B (U)
+
+.B setdrv
+時に
+.B " HDD"
+または
+.B " HDD98"
+で登録した場合には、
+.I hd, sc, cl
+の代わりにそれぞれ
+.B " HDD"
+及び
+.B " HDD98"
+を記述します。
 .IP "\fICOMMAND\fR [\fIarg\fR]"
 .B fd
 の持つ内部コマンド
@@ -1781,6 +1859,14 @@ symbolic リンク表示形式、ファイルタイプシンボルの表示、
 \fB7\fP	SYMLINK &	FILETYPE &	DOTFILE
 .fi
 .RE
+.RS
+
+なお、ファイルフラグ対応の OS では、
+これらの値にそれぞれ
+.B " 8"
+を加えた値を設定することで、
+ファイルフラグ表示モードを選択できます。
+.RE
 .IP "\fBSORTTREE\fP"
 ツリー表示画面でディレクトリの並びをソートするようにします。
 ソートタイプは
@@ -2144,6 +2230,6 @@ MS-DOS 版でのコマンド履歴のセーブファイル。
 ユーザインタフェースが稚拙です。
 
 .SH 著作権
-Copyright (C) 1995-98 by Takashi SHIRAI
+Copyright (C) 1995-99 by Takashi SHIRAI
 .SH 著者
 白井 隆, <shirai@nintendo.co.jp>

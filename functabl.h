@@ -78,6 +78,7 @@ functable funclist[] = {
 	_TBL_(symlink_mode,	"SYMLINK_MODE",	SYLN_H,	NO_FILE),
 	_TBL_(filetype_mode,	"FILETYPE_MODE",FLTY_H,	RELIST|ARCH|NO_FILE),
 	_TBL_(dotfile_mode,	"DOTFILE_MODE",	DTFL_H,	KILLSTK|NO_FILE),
+	_TBL_(fileflg_mode,	"FILEFLG_MODE",	FLFL_H,	RELIST|NO_FILE),
 	_TBL_(mark_find,	"MARK_FIND",	MRKF_H,	LISTUP|ARCH),
 	_TBL_(mark_file3,	"MARK_FILE3",	MRK2_H,	REWRITE|ARCH),
 #ifndef	_NOARCHIVE

@@ -94,9 +94,13 @@ int c, mode;
 		bufp = 0;
 		kanji1 = mode;
 	}
+	else if (bufp > 0 && (kanji1 & (KANA | JKANA))) {
+		fputs2(convert(0, buf[0]), fp);
+		bufp = 0;
+		kanji1 = mode;
+	}
 	else if (bufp > 0 && !(kanji1 & KANJI)) {
-		if (kanji1 & (KANA | JKANA)) fputs2(convert(0, buf[0]), fp);
-		else fputc(buf[0], fp);
+		fputc(buf[0], fp);
 		bufp = 0;
 		kanji1 = mode;
 	}

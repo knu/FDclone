@@ -106,6 +106,7 @@ typedef union REGS	__dpmi_regs;
 
 #define	PT_FAT12	0x81	/* 0x80 | 0x01 */
 #define	PT_FAT16	0x91	/* 0x80 | 0x11 */
+#define	PT_FREEBSD	0x94	/* 0x80 | 0x14 */
 #define	PT_FAT16X	0xa1	/* 0x80 | 0x21 */
 #define	PT_NTFS		0xb1	/* 0x80 | 0x31 */
 #define	PT_386BSD	0xc4	/* 0x80 | 0x44 */
@@ -296,7 +297,7 @@ extern int setcurdrv __P_((int));
 extern int getdosver __P_((VOID_A));
 extern int supportLFN __P_((char *));
 #endif
-extern char *getcurdir __P_((char *, int));
+extern char *unixgetcurdir __P_((char *, int));
 #ifndef	_NOUSELFN
 extern char *shortname __P_((char *, char *));
 #endif

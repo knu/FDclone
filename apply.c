@@ -15,19 +15,33 @@
 #include <sys/param.h>
 #endif
 
+typedef struct _attr_t {
+	u_short mode;
+#ifdef	HAVEFLAGS
+	u_long flags;
+#endif
+	char timestr[2][9];
+} attr_t;
+
 extern int filepos;
 extern reg_t *findregexp;
 extern int subwindow;
 extern int sizeinfo;
+#ifdef	HAVEFLAGS
+extern u_long flaglist[];
+#endif
 
 static long judgecopy __P_((char *, char *, time_t *, time_t *));
-static VOID showattr __P_((namelist *, u_short, char [][9], int y));
+static VOID showattr __P_((namelist *, attr_t *, int y));
 static int touchfile __P_((char *, time_t, time_t));
 
 int copypolicy = 0;
 char *destpath = NULL;
 
 static u_short attrmode = 0;
+#ifdef	HAVEFLAGS
+static u_long attrflags = 0;
+#endif
 static time_t attrtime = 0;
 
 #ifndef	O_BINARY
@@ -253,10 +267,9 @@ char *path;
 	return(0);
 }
 
-static VOID showattr(listp, mode, timestr, y)
+static VOID showattr(listp, attr, y)
 namelist *listp;
-u_short mode;
-char timestr[2][9];
+attr_t *attr;
 int y;
 {
 	struct tm *tm;
@@ -286,8 +299,21 @@ int y;
 	putmode(buf, listp -> st_mode);
 	cputs2(buf + 1);
 	locate(n_column / 2 + 10, y);
-	putmode(buf, mode);
+	putmode(buf, attr -> mode);
 	cputs2(buf + 1);
+
+#ifdef	HAVEFLAGS
+	locate(0, ++y);
+	putterm(l_clear);
+	locate(n_column / 2 - 20, y);
+	kanjiputs(TFLAG_K);
+	locate(n_column / 2, y);
+	putflags(buf, listp -> st_flags);
+	cputs2(buf);
+	locate(n_column / 2 + 10, y);
+	putflags(buf, attr -> flags);
+	cputs2(buf);
+#endif
 
 	locate(0, ++y);
 	putterm(l_clear);
@@ -297,7 +323,7 @@ int y;
 	cprintf2("%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	locate(n_column / 2 + 10, y);
-	cputs2(timestr[0]);
+	cputs2(attr -> timestr[0]);
 
 	locate(0, ++y);
 	putterm(l_clear);
@@ -307,19 +333,26 @@ int y;
 	cprintf2("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	locate(n_column / 2 + 10, y);
-	cputs2(timestr[1]);
+	cputs2(attr -> timestr[1]);
 
 	locate(0, ++y);
 	putterm(l_clear);
 }
+
+#ifdef	HAVEFLAGS
+#define	MODELINES	2
+#else
+#define	MODELINES	1
+#endif
 
 int inputattr(listp, flag)
 namelist *listp;
 u_short flag;
 {
 	struct tm *tm;
-	char buf[WMODE + 1], timestr[2][9];
-	u_short tmp, tmpmode;
+	attr_t attr;
+	char buf[WMODE + 1];
+	u_short tmp;
 	int i, ch, x, y, yy, ymin, ymax;
 
 	subwindow = 1;
@@ -329,15 +362,18 @@ u_short flag;
 	yy = WHEADER;
 	while (n_line - yy < 7) yy--;
 
-	tmpmode = listp -> st_mode;
+	attr.mode = listp -> st_mode;
+#ifdef	HAVEFLAGS
+	attr.flags = listp -> st_flags;
+#endif
 	tm = localtime(&(listp -> st_mtim));
-	sprintf(timestr[0], "%02d-%02d-%02d",
+	sprintf(attr.timestr[0], "%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	sprintf(timestr[1], "%02d:%02d:%02d",
+	sprintf(attr.timestr[1], "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-	showattr(listp, tmpmode, timestr, yy);
-	y = ymin = (flag & 1) ? 0 : 1;
-	ymax = (flag & 2) ? 2 : 0;
+	showattr(listp, &attr, yy);
+	y = ymin = (flag & 1) ? 0 : MODELINES;
+	ymax = (flag & 2) ? MODELINES + 1 : 0;
 	x = 0;
 
 	do {
@@ -362,16 +398,16 @@ u_short flag;
 				break;
 			case 'd':
 			case 'D':
-				if (ymax >= 1) {
+				if (ymax >= MODELINES) {
 					x = 0;
-					y = 1;
+					y = MODELINES;
 				}
 				break;
 			case 't':
 			case 'T':
-				if (ymax >= 2) {
+				if (ymax >= MODELINES + 1) {
 					x = 0;
-					y = 2;
+					y = MODELINES + 1;
 				}
 				break;
 			case '0':
@@ -384,13 +420,19 @@ u_short flag;
 			case '7':
 			case '8':
 			case '9':
-				if (!y) break;
+				if (y < MODELINES) break;
 				putch2(ch);
-				timestr[y - 1][x] = ch;
+				attr.timestr[y - MODELINES][x] = ch;
 			case K_RIGHT:
+#ifdef	HAVEFLAGS
+				if (y == MODELINES - 1) {
+					if (x < 7) x++;
+				}
+				else
+#endif
 				if (y) {
 					if (x >= 7) {
-						if (y == 2) break;
+						if (y == MODELINES + 1) break;
 						y++;
 						x = 0;
 					}
@@ -406,9 +448,15 @@ u_short flag;
 #endif
 				break;
 			case K_LEFT:
+#ifdef	HAVEFLAGS
+				if (y == MODELINES - 1) {
+					if (x > 0) x--;
+				}
+				else
+#endif
 				if (y) {
 					if (x <= 0) {
-						if (y == 1) break;
+						if (y == MODELINES) break;
 						y--;
 						x = 7;
 					}
@@ -420,30 +468,40 @@ u_short flag;
 				else if (x > 0) x--;
 				break;
 			case CTRL('L'):
-				showattr(listp, tmpmode, timestr, yy);
+				showattr(listp, &attr, yy);
 				break;
 			case ' ':
+#ifdef	HAVEFLAGS
+				if (y == MODELINES - 1) {
+					attr.flags ^= flaglist[x];
+					locate(n_column / 2 + 10, yy + y + 2);
+					putflags(buf, attr.flags);
+					cputs2(buf);
+					break;
+				}
+#endif
 				if (y) break;
 #if	MSDOS
 				if (x == 2) break;
-				else if (x == 3) tmpmode ^= S_ISVTX;
+				else if (x == 3) attr.mode ^= S_ISVTX;
 				else {
 					tmp = 1;
 					for (i = 8; i > x; i--) tmp <<= 1;
-					tmpmode ^= tmp;
+					attr.mode ^= tmp;
 				}
 #else
 				tmp = 1;
 				for (i = 8; i > x; i--) tmp <<= 1;
-				if (!((x + 1) % 3) && (tmpmode & tmp)) {
+				if (!((x + 1) % 3) && (attr.mode & tmp)) {
 					i = (x * 2) / 3 + 4;
-					if (!(tmpmode & (tmp << i))) tmp <<= i;
-					else tmpmode ^= (tmp << i);
+					if (!(attr.mode & (tmp << i)))
+						tmp <<= i;
+					else attr.mode ^= (tmp << i);
 				}
-				tmpmode ^= tmp;
+				attr.mode ^= tmp;
 #endif
 				locate(n_column / 2 + 10, yy + y + 2);
-				putmode(buf, tmpmode);
+				putmode(buf, attr.mode);
 				cputs2(buf + 1);
 				break;
 			default:
@@ -458,24 +516,36 @@ u_short flag;
 
 	if (ch == ESC) return(0);
 
-	tm -> tm_year = (timestr[0][0] - '0') * 10 + timestr[0][1] - '0';
+	tm -> tm_year = (attr.timestr[0][0] - '0') * 10
+		+ attr.timestr[0][1] - '0';
 	if (tm -> tm_year < 70) tm -> tm_year += 100;
-	tm -> tm_mon = (timestr[0][3] - '0') * 10 + timestr[0][4] - '0';
+	tm -> tm_mon = (attr.timestr[0][3] - '0') * 10
+		+ attr.timestr[0][4] - '0';
 	tm -> tm_mon--;
-	tm -> tm_mday = (timestr[0][6] - '0') * 10 + timestr[0][7] - '0';
-	tm -> tm_hour = (timestr[1][0] - '0') * 10 + timestr[1][1] - '0';
-	tm -> tm_min = (timestr[1][3] - '0') * 10 + timestr[1][4] - '0';
-	tm -> tm_sec = (timestr[1][6] - '0') * 10 + timestr[1][7] - '0';
+	tm -> tm_mday = (attr.timestr[0][6] - '0') * 10
+		+ attr.timestr[0][7] - '0';
+	tm -> tm_hour = (attr.timestr[1][0] - '0') * 10
+		+ attr.timestr[1][1] - '0';
+	tm -> tm_min = (attr.timestr[1][3] - '0') * 10
+		+ attr.timestr[1][4] - '0';
+	tm -> tm_sec = (attr.timestr[1][6] - '0') * 10
+		+ attr.timestr[1][7] - '0';
 
 	if (tm -> tm_mon < 0 || tm -> tm_mon > 11
 	|| tm -> tm_mday < 1 || tm -> tm_mday > 31
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 59)
 		return(-1);
 
-	attrmode = (flag & 1) ? tmpmode : 0xffff;
+	attrmode = (flag & 1) ? attr.mode : 0xffff;
+#ifdef	HAVEFLAGS
+	attrflags = (flag & 1) ? attr.flags : 0xffffffff;
+#endif
 	attrtime = (flag & 2) ? timelocal2(tm) : (time_t)-1;
 	if (flag == 3) {
 		if (attrmode == listp -> st_mode) attrmode = 0xffff;
+#ifdef	HAVEFLAGS
+		if (attrflags == listp -> st_flags) attrflags = 0xffffffff;
+#endif
 		if (attrtime == listp -> st_mtim) attrtime = (time_t)-1;
 	}
 	return(1);
@@ -520,6 +590,11 @@ char *path;
 	if (attrtime != (time_t)-1) {
 		if (touchfile(path, status.st_atime, attrtime) < 0) ret = -1;
 	}
+#ifdef	HAVEFLAGS
+	if (attrflags != 0xffffffff) {
+		if (chflags(path, attrflags) < 0) ret = -1;
+	}
+#endif
 	if (attrmode != 0xffff) {
 		mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);
 		if (Xchmod(path, mode) < 0) ret = -1;

@@ -62,6 +62,34 @@ typedef u_short	gid_t;
 #define	S_IXOTH	00001
 #endif
 
+#if	!MSDOS && defined (UF_SETTABLE) && (SF_SETTABLE)
+#define	HAVEFLAGS
+# ifndef	UF_NODUMP
+# define	UF_NODUMP	0x00000001
+# endif
+# ifndef	UF_IMMUTABLE
+# define	UF_IMMUTABLE	0x00000002
+# endif
+# ifndef	UF_APPEND
+# define	UF_APPEND	0x00000004
+# endif
+# ifndef	UF_NOUNLINK
+# define	UF_NOUNLINK	0x00000010
+# endif
+# ifndef	SF_ARCHIVED
+# define	SF_ARCHIVED	0x00010000
+# endif
+# ifndef	SF_IMMUTABLE
+# define	SF_IMMUTABLE	0x00020000
+# endif
+# ifndef	SF_APPEND
+# define	SF_APPEND	0x00040000
+# endif
+# ifndef	SF_NOUNLINK
+# define	SF_NOUNLINK	0x00080000
+# endif
+#endif  
+
 #ifndef	BITSPERBYTE
 #define	BITSPERBYTE	8
 #endif
@@ -74,6 +102,9 @@ typedef struct _namelist {
 #if	!MSDOS
 	uid_t st_uid;
 	gid_t st_gid;
+#endif
+#ifdef	HAVEFLAGS
+	u_long st_flags;
 #endif
 	off_t st_size;
 	time_t st_mtim;
@@ -202,10 +233,12 @@ typedef struct _builtintable {
 #define	F_SYMLINK	001
 #define	F_FILETYPE	002
 #define	F_DOTFILE	004
+#define	F_FILEFLAG	010
 
 #define	isdisplnk(n)		((n) & F_SYMLINK)
 #define	isdisptyp(n)		((n) & F_FILETYPE)
 #define	ishidedot(n)		((n) & F_DOTFILE)
+#define	isfileflg(n)		((n) & F_FILEFLAG)
 
 #define	QUOTE	('^' - '@')
 #define	C_BS	'\010'

@@ -62,6 +62,12 @@
 #define	__attribute__(x)
 #endif
 
+#if	defined (LINUX) || defined (JCCBSD) || defined (FREEBSD)\
+|| defined (NETBSD) ||	defined (BSDOS) || defined (BOW)\
+|| defined (ORG_386BSD)
+#define	HDDMOUNT
+#endif
+
 typedef struct _bpb_t {
 	u_char jmpcode[3] __attribute__ ((packed));
 	u_char makername[8] __attribute__ ((packed));
@@ -83,7 +89,7 @@ typedef struct _bpb_t {
 	u_char rootdir[4] __attribute__ ((packed));
 	u_char fsinfo[4] __attribute__ ((packed));
 	u_char reserved[2] __attribute__ ((packed));
-	u_char fsname[8] __attribute__ ((packed));
+	char fsname[8] __attribute__ ((packed));
 } bpb_t;
 
 #define	FS_FAT		"FAT     "
@@ -129,6 +135,9 @@ typedef struct _devinfo {
 	u_char head;
 	u_short sect;
 	u_short cyl;
+# ifdef	HDDMOUNT
+	off_t offset;
+# endif
 } devinfo;
 #endif
 
@@ -138,6 +147,9 @@ typedef struct _devstat {
 	u_char clustsize;	/* ch_head */
 	u_short sectsize;	/* ch_sect */
 	u_short fatofs;		/* ch_cyl */
+#ifdef	HDDMOUNT
+	off_t offset;
+#endif
 	u_long fatsize;
 	u_short dirofs;
 	u_short dirsize;
@@ -213,6 +225,66 @@ typedef struct _dosdirdesc {
 	char *dd_buf;
 } dosDIR;
 
+#ifdef	HDDMOUNT
+typedef struct _partition_t {
+	u_char boot __attribute__ ((packed));
+	u_char s_head __attribute__ ((packed));
+	u_char s_sect __attribute__ ((packed));
+	u_char s_cyl __attribute__ ((packed));
+	u_char filesys __attribute__ ((packed));
+	u_char e_head __attribute__ ((packed));
+	u_char e_sect __attribute__ ((packed));
+	u_char e_cyl __attribute__ ((packed));
+	u_char f_sect[4] __attribute__ ((packed));
+	u_char t_sect[4] __attribute__ ((packed));
+} partition_t;
+#define	PART_SIZE	sizeof(partition_t)
+#define	PART_TABLE	0x01be
+#define	PART_NUM	4
+
+#define	PT_FAT12	0x01
+#define	PT_FAT16	0x04
+#define	PT_EXTEND	0x05
+#define	PT_FAT16X	0x06
+#define	PT_NTFS		0x07
+#define	PT_FAT32	0x0b
+#define	PT_FAT32LBA	0x0c
+#define	PT_FAT16XLBA	0x0e
+#define	PT_EXTENDLBA	0x0f
+#define	PT_LINUX	0x83
+#define	PT_386BSD	0xa5
+#define	PT_OPENBSD	0xa6
+#define	PT_NETBSD	0xa9
+
+typedef struct _partition98_t {
+	u_char boot __attribute__ ((packed));
+	u_char filesys __attribute__ ((packed));
+	u_char reserved[2] __attribute__ ((packed));
+	u_char ipl_sect __attribute__ ((packed));
+	u_char ipl_head __attribute__ ((packed));
+	u_char ipl_cyl[2] __attribute__ ((packed));
+	u_char s_sect __attribute__ ((packed));
+	u_char s_head __attribute__ ((packed));
+	u_char s_cyl[2] __attribute__ ((packed));
+	u_char e_sect __attribute__ ((packed));
+	u_char e_head __attribute__ ((packed));
+	u_char e_cyl[2] __attribute__ ((packed));
+	u_char name[16] __attribute__ ((packed));
+} partition98_t;
+#define	PART98_SIZE	sizeof(partition98_t)
+#define	PART98_TABLE	0x0200
+#define	PART98_NUM	16
+
+#define	PT98_FAT12	0x81	/* 0x80 | 0x01 */
+#define	PT98_FAT16	0x91	/* 0x80 | 0x11 */
+#define	PT98_FREEBSD	0x94	/* 0x80 | 0x14 */
+#define	PT98_FAT16X	0xa1	/* 0x80 | 0x21 */
+#define	PT98_NTFS	0xb1	/* 0x80 | 0x31 */
+#define	PT98_386BSD	0xc4	/* 0x80 | 0x44 */
+#define	PT98_FAT32	0xe1	/* 0x80 | 0x61 */
+#define	PT98_LINUX	0xe2	/* 0x80 | 0x62 */
+#endif	/* HDDMOUNT */
+
 #ifdef	NODNAMLEN
 typedef struct _st_dirent {
 	char buf[sizeof(struct dirent) + MAXNAMLEN];
@@ -221,6 +293,9 @@ typedef struct _st_dirent {
 typedef	struct dirent st_dirent;
 #endif
 
+#ifdef	HDDMOUNT
+extern off_t *readpt __P_((char *, int));
+#endif
 extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
 extern DIR *dosopendir __P_((char *));

@@ -65,6 +65,18 @@ static int _asm_cli(VOID_A);
 #include <sys/time.h>
 #define	TTYNAME		"/dev/tty"
 
+typedef	struct _keyseq_t {
+	u_short code;
+	u_char len;
+	char *str;
+} keyseq_t;
+
+typedef	struct _kstree_t {
+	int key;
+	int num;
+	struct _kstree_t *next;
+} kstree_t;
+
 #ifdef	NOERRNO
 extern int errno;
 #endif
@@ -111,8 +123,10 @@ typedef	struct sgttyb	termioctl_t;
 
 #ifdef	NOVOID
 #define	VOID
+#define	VOID_P	char *
 #else
 #define	VOID	void
+#define	VOID_P	void *
 #endif
 
 #include "term.h"
@@ -208,6 +222,9 @@ static int ttymode __P_((int, u_short, u_short, u_short, u_short,
 # endif
 static int tgetstr2 __P_((char **, char *));
 static int tgetstr3 __P_((char **, char *, char *));
+static kstree_t *newkeyseq __P_((kstree_t *, int));
+static int freekeyseq __P_((kstree_t *, int));
+static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
 static int sortkeyseq __P_((VOID_A));
 # ifdef	DEBUG
 static int freeterment __P_((VOID_A));
@@ -224,6 +241,8 @@ int n_line = 0;
 int stable_standout = 0;
 char *t_init = NULL;
 char *t_end = NULL;
+char *t_metamode = NULL;
+char *t_nometamode = NULL;
 char *t_scroll = NULL;
 char *t_keypad = NULL;
 char *t_nokeypad = NULL;
@@ -280,6 +299,7 @@ u_char cc_eol = 255;
 #define	KEYBUFWORKEND	0x526
 #define	KEYBUFWORKCNT	0x528
 static u_char specialkey[] = "\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
+static u_char metakey[] = "\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\026,\021*\025)";
 #else
 #define	KEYBUFWORKSEG	0x40
 #define	KEYBUFWORKSIZ	0x20
@@ -288,6 +308,7 @@ static u_char specialkey[] = "\032:=<;89>\25667bcdefghijk\202\203\204\205\206\20
 #define	KEYBUFWORKTOP	(KEYBUFWORKMIN - 4)
 #define	KEYBUFWORKEND	(KEYBUFWORKMIN - 2)
 static u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
+static u_char metakey[] = "\0360. \022!\"#\027$%&21\030\031\020\023\037\024\026/\021-\025,";
 #endif
 #if	defined (PC98) || defined (NOTUSEBIOS)
 static int nextchar = '\0';
@@ -305,9 +326,8 @@ static int specialkeycode[] = {
 	K_F(16), K_F(17), K_F(18), K_F(19), K_F(20), K_HELP
 };
 #else	/* !MSDOS */
-static char *keyseq[K_MAX - K_MIN + 1];
-static u_char keyseqlen[K_MAX - K_MIN + 1];
-static short keycode[K_MAX - K_MIN + 1];
+static keyseq_t keyseq[K_MAX - K_MIN + 1];
+static kstree_t *keyseqtree = NULL;
 static FILE *ttyout;
 #endif	/* !MSDOS */
 static int ttyio = -1;
@@ -350,7 +370,7 @@ int reset;
 		if (((!(l = ftell(stdin)) || l == -1)
 		&& ((dupin = dup(STDIN)) < 0 || dup2(ttyio, STDIN) < 0))
 		|| ((!(l = ftell(stdout)) || l == -1)
-		&& ((dupin = dup(STDOUT)) < 0 || dup2(ttyio, STDOUT) < 0)))
+		&& ((dupout = dup(STDOUT)) < 0 || dup2(ttyio, STDOUT) < 0)))
 			err2(NULL);
 		termflags |= F_INITTTY;
 	}
@@ -704,9 +724,13 @@ static int defaultterm(VOID_A)
 #ifdef	PC98
 	t_init = "\033[>1h";
 	t_end = "\033[>1l";
+	t_metamode = "\033)3";
+	t_nometamode = "\033)0";
 #else
 	t_init = "";
 	t_end = "";
+	t_metamode = "";
+	t_nometamode = "";
 #endif
 #if	MSDOS
 	t_scroll = "";
@@ -768,71 +792,71 @@ static int defaultterm(VOID_A)
 	c_nleft = "\033[%dD";
 
 #if	!MSDOS
-	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i] = NULL;
-	keyseq[K_UP - K_MIN] = "\033OA";
-	keyseq[K_DOWN - K_MIN] = "\033OB";
-	keyseq[K_RIGHT - K_MIN] = "\033OC";
-	keyseq[K_LEFT - K_MIN] = "\033OD";
-	keyseq[K_HOME - K_MIN] = "\033[4~";
-	keyseq[K_BS - K_MIN] = "\010";
-	keyseq[K_F(1) - K_MIN] = "\033[11~";
-	keyseq[K_F(2) - K_MIN] = "\033[12~";
-	keyseq[K_F(3) - K_MIN] = "\033[13~";
-	keyseq[K_F(4) - K_MIN] = "\033[14~";
-	keyseq[K_F(5) - K_MIN] = "\033[15~";
-	keyseq[K_F(6) - K_MIN] = "\033[17~";
-	keyseq[K_F(7) - K_MIN] = "\033[18~";
-	keyseq[K_F(8) - K_MIN] = "\033[19~";
-	keyseq[K_F(9) - K_MIN] = "\033[20~";
-	keyseq[K_F(10) - K_MIN] = "\033[21~";
-	keyseq[K_F(11) - K_MIN] = "\033[23~";
-	keyseq[K_F(12) - K_MIN] = "\033[24~";
-	keyseq[K_F(13) - K_MIN] = "\033[25~";
-	keyseq[K_F(14) - K_MIN] = "\033[26~";
-	keyseq[K_F(15) - K_MIN] = "\033[28~";
-	keyseq[K_F(16) - K_MIN] = "\033[29~";
-	keyseq[K_F(17) - K_MIN] = "\033[31~";
-	keyseq[K_F(18) - K_MIN] = "\033[32~";
-	keyseq[K_F(19) - K_MIN] = "\033[33~";
-	keyseq[K_F(20) - K_MIN] = "\033[34~";
-	keyseq[K_F(21) - K_MIN] = "\033OP";
-	keyseq[K_F(22) - K_MIN] = "\033OQ";
-	keyseq[K_F(23) - K_MIN] = "\033OR";
-	keyseq[K_F(24) - K_MIN] = "\033OS";
-	keyseq[K_F(25) - K_MIN] = "\033OT";
-	keyseq[K_F(26) - K_MIN] = "\033OU";
-	keyseq[K_F(27) - K_MIN] = "\033OV";
-	keyseq[K_F(28) - K_MIN] = "\033OW";
-	keyseq[K_F(29) - K_MIN] = "\033OX";
-	keyseq[K_F(30) - K_MIN] = "\033OY";
+	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].str = NULL;
+	keyseq[K_UP - K_MIN].str = "\033OA";
+	keyseq[K_DOWN - K_MIN].str = "\033OB";
+	keyseq[K_RIGHT - K_MIN].str = "\033OC";
+	keyseq[K_LEFT - K_MIN].str = "\033OD";
+	keyseq[K_HOME - K_MIN].str = "\033[4~";
+	keyseq[K_BS - K_MIN].str = "\010";
+	keyseq[K_F(1) - K_MIN].str = "\033[11~";
+	keyseq[K_F(2) - K_MIN].str = "\033[12~";
+	keyseq[K_F(3) - K_MIN].str = "\033[13~";
+	keyseq[K_F(4) - K_MIN].str = "\033[14~";
+	keyseq[K_F(5) - K_MIN].str = "\033[15~";
+	keyseq[K_F(6) - K_MIN].str = "\033[17~";
+	keyseq[K_F(7) - K_MIN].str = "\033[18~";
+	keyseq[K_F(8) - K_MIN].str = "\033[19~";
+	keyseq[K_F(9) - K_MIN].str = "\033[20~";
+	keyseq[K_F(10) - K_MIN].str = "\033[21~";
+	keyseq[K_F(11) - K_MIN].str = "\033[23~";
+	keyseq[K_F(12) - K_MIN].str = "\033[24~";
+	keyseq[K_F(13) - K_MIN].str = "\033[25~";
+	keyseq[K_F(14) - K_MIN].str = "\033[26~";
+	keyseq[K_F(15) - K_MIN].str = "\033[28~";
+	keyseq[K_F(16) - K_MIN].str = "\033[29~";
+	keyseq[K_F(17) - K_MIN].str = "\033[31~";
+	keyseq[K_F(18) - K_MIN].str = "\033[32~";
+	keyseq[K_F(19) - K_MIN].str = "\033[33~";
+	keyseq[K_F(20) - K_MIN].str = "\033[34~";
+	keyseq[K_F(21) - K_MIN].str = "\033OP";
+	keyseq[K_F(22) - K_MIN].str = "\033OQ";
+	keyseq[K_F(23) - K_MIN].str = "\033OR";
+	keyseq[K_F(24) - K_MIN].str = "\033OS";
+	keyseq[K_F(25) - K_MIN].str = "\033OT";
+	keyseq[K_F(26) - K_MIN].str = "\033OU";
+	keyseq[K_F(27) - K_MIN].str = "\033OV";
+	keyseq[K_F(28) - K_MIN].str = "\033OW";
+	keyseq[K_F(29) - K_MIN].str = "\033OX";
+	keyseq[K_F(30) - K_MIN].str = "\033OY";
 
-	keyseq[K_F('*') - K_MIN] = "\033Oj";
-	keyseq[K_F('+') - K_MIN] = "\033Ok";
-	keyseq[K_F(',') - K_MIN] = "\033Ol";
-	keyseq[K_F('-') - K_MIN] = "\033Om";
-	keyseq[K_F('.') - K_MIN] = "\033On";
-	keyseq[K_F('/') - K_MIN] = "\033Oo";
-	keyseq[K_F('0') - K_MIN] = "\033Op";
-	keyseq[K_F('1') - K_MIN] = "\033Oq";
-	keyseq[K_F('2') - K_MIN] = "\033Or";
-	keyseq[K_F('3') - K_MIN] = "\033Os";
-	keyseq[K_F('4') - K_MIN] = "\033Ot";
-	keyseq[K_F('5') - K_MIN] = "\033Ou";
-	keyseq[K_F('6') - K_MIN] = "\033Ov";
-	keyseq[K_F('7') - K_MIN] = "\033Ow";
-	keyseq[K_F('8') - K_MIN] = "\033Ox";
-	keyseq[K_F('9') - K_MIN] = "\033Oy";
-	keyseq[K_F('=') - K_MIN] = "\033OX";
-	keyseq[K_F('?') - K_MIN] = "\033OM";
-	keyseq[K_DL - K_MIN] = "";
-	keyseq[K_IL - K_MIN] = "";
-	keyseq[K_DC - K_MIN] = "\177";
-	keyseq[K_IC - K_MIN] = "\033[2~";
-	keyseq[K_CLR - K_MIN] = "";
-	keyseq[K_PPAGE - K_MIN] = "\033[5~";
-	keyseq[K_NPAGE - K_MIN] = "\033[6~";
-	keyseq[K_ENTER - K_MIN] = "\033[9~";
-	keyseq[K_END - K_MIN] = "\033[1~";
+	keyseq[K_F('*') - K_MIN].str = "\033Oj";
+	keyseq[K_F('+') - K_MIN].str = "\033Ok";
+	keyseq[K_F(',') - K_MIN].str = "\033Ol";
+	keyseq[K_F('-') - K_MIN].str = "\033Om";
+	keyseq[K_F('.') - K_MIN].str = "\033On";
+	keyseq[K_F('/') - K_MIN].str = "\033Oo";
+	keyseq[K_F('0') - K_MIN].str = "\033Op";
+	keyseq[K_F('1') - K_MIN].str = "\033Oq";
+	keyseq[K_F('2') - K_MIN].str = "\033Or";
+	keyseq[K_F('3') - K_MIN].str = "\033Os";
+	keyseq[K_F('4') - K_MIN].str = "\033Ot";
+	keyseq[K_F('5') - K_MIN].str = "\033Ou";
+	keyseq[K_F('6') - K_MIN].str = "\033Ov";
+	keyseq[K_F('7') - K_MIN].str = "\033Ow";
+	keyseq[K_F('8') - K_MIN].str = "\033Ox";
+	keyseq[K_F('9') - K_MIN].str = "\033Oy";
+	keyseq[K_F('=') - K_MIN].str = "\033OX";
+	keyseq[K_F('?') - K_MIN].str = "\033OM";
+	keyseq[K_DL - K_MIN].str = "";
+	keyseq[K_IL - K_MIN].str = "";
+	keyseq[K_DC - K_MIN].str = "\177";
+	keyseq[K_IC - K_MIN].str = "\033[2~";
+	keyseq[K_CLR - K_MIN].str = "";
+	keyseq[K_PPAGE - K_MIN].str = "\033[5~";
+	keyseq[K_NPAGE - K_MIN].str = "\033[6~";
+	keyseq[K_ENTER - K_MIN].str = "\033[9~";
+	keyseq[K_END - K_MIN].str = "\033[1~";
 #endif
 	return(0);
 }
@@ -1042,25 +1066,80 @@ char *str1, *str2;
 	return(0);
 }
 
+static kstree_t *newkeyseq(parent, num)
+kstree_t *parent;
+int num;
+{
+	kstree_t *new;
+	int i, n;
+
+	if (!parent || !(parent -> next))
+		new = (kstree_t *)malloc(sizeof(kstree_t) * num);
+	else new = (kstree_t *)realloc(parent -> next, sizeof(kstree_t) * num);
+	if (!new) err2(NULL);
+
+	if (!parent) n = 0;
+	else {
+		n = parent -> num;
+		parent -> num = num;
+		parent -> next = new;
+	}
+
+	for (i = n; i < num; i++) {
+		new[i].key = -1;
+		new[i].num = 0;
+		new[i].next = (kstree_t *)NULL;
+	}
+
+	return(new);
+}
+
+static int freekeyseq(list, n)
+kstree_t *list;
+int n;
+{
+	int i;
+
+	if (!list) return(-1);
+	for (i = list[n].num - 1; i >= 0; i--) freekeyseq(list[n].next, i);
+	if (!n) free(list);
+	return(0);
+}
+
+static int cmpkeyseq(vp1, vp2)
+CONST VOID_P vp1;
+CONST VOID_P vp2;
+{
+	if (!((keyseq_t *)vp1) -> str) return(-1);
+	if (!((keyseq_t *)vp2) -> str) return(1);
+	return(strcmp(((keyseq_t *)vp1) -> str, ((keyseq_t *)vp2) -> str));
+}
+
 static int sortkeyseq(VOID_A)
 {
-	int i, j, tmp;
-	char *str;
+	kstree_t *p;
+	int i, j, k;
 
-	for (i = 0; i < K_MAX - K_MIN; i++)
-		for (j = i + 1; j <= K_MAX - K_MIN; j++)
-			if (!keyseq[j]
-			|| (keyseq[i] && strcmp(keyseq[i], keyseq[j]) > 0)) {
-				tmp = keycode[i];
-				str = keyseq[i];
-				keycode[i] = keycode[j];
-				keyseq[i] = keyseq[j];
-				keycode[j] = tmp;
-				keyseq[j] = str;
+	qsort(keyseq, K_MAX - K_MIN + 1, sizeof(keyseq_t), cmpkeyseq);
+	if (keyseqtree) freekeyseq(keyseqtree, 0);
+
+	keyseqtree = newkeyseq(NULL, 1);
+
+	for (i = 0; i < K_MAX - K_MIN; i++) {
+		p = keyseqtree;
+		for (j = 0; j < keyseq[i].len; j++) {
+			for (k = 0; k < p -> num; k++) {
+				if (keyseq[i].str[j]
+				== keyseq[p -> next[k].key].str[j]) break;
 			}
+			if (k >= p -> num) {
+				newkeyseq(p, k + 1);
+				p -> next[k].key = i;
+			}
+			p = &(p -> next[k]);
+		}
+	}
 
-	for (i = 0; i <= K_MAX - K_MIN; i++)
-		keyseqlen[i] = (keyseq[i]) ? strlen(keyseq[i]) : 0;
 	return(0);
 }
 
@@ -1089,6 +1168,8 @@ int getterment(VOID_A)
 	stable_standout = tgetflag("xs");
 	tgetstr2(&t_init, "ti");
 	tgetstr2(&t_end, "te");
+	tgetstr2(&t_metamode, "mm");
+	tgetstr2(&t_nometamode, "mo");
 	tgetstr2(&t_scroll, "cs");
 	tgetstr2(&t_keypad, "ks");
 	tgetstr2(&t_nokeypad, "ke");
@@ -1131,63 +1212,65 @@ int getterment(VOID_A)
 	tgetstr2(&c_nright, "RI");
 	tgetstr2(&c_nleft, "LE");
 
-	tgetstr2(&keyseq[K_UP - K_MIN], "ku");
-	tgetstr2(&keyseq[K_DOWN - K_MIN], "kd");
-	tgetstr2(&keyseq[K_RIGHT - K_MIN], "kr");
-	tgetstr2(&keyseq[K_LEFT - K_MIN], "kl");
-	tgetstr2(&keyseq[K_HOME - K_MIN], "kh");
-	tgetstr2(&keyseq[K_BS - K_MIN], "kb");
-	tgetstr2(&keyseq[K_F(1) - K_MIN], "l1");
-	tgetstr2(&keyseq[K_F(2) - K_MIN], "l2");
-	tgetstr2(&keyseq[K_F(3) - K_MIN], "l3");
-	tgetstr2(&keyseq[K_F(4) - K_MIN], "l4");
-	tgetstr2(&keyseq[K_F(5) - K_MIN], "l5");
-	tgetstr2(&keyseq[K_F(6) - K_MIN], "l6");
-	tgetstr2(&keyseq[K_F(7) - K_MIN], "l7");
-	tgetstr2(&keyseq[K_F(8) - K_MIN], "l8");
-	tgetstr2(&keyseq[K_F(9) - K_MIN], "l9");
-	tgetstr2(&keyseq[K_F(10) - K_MIN], "la");
-	tgetstr2(&keyseq[K_F(21) - K_MIN], "k1");
-	tgetstr2(&keyseq[K_F(22) - K_MIN], "k2");
-	tgetstr2(&keyseq[K_F(23) - K_MIN], "k3");
-	tgetstr2(&keyseq[K_F(24) - K_MIN], "k4");
-	tgetstr2(&keyseq[K_F(25) - K_MIN], "k5");
-	tgetstr2(&keyseq[K_F(26) - K_MIN], "k6");
-	tgetstr2(&keyseq[K_F(27) - K_MIN], "k7");
-	tgetstr2(&keyseq[K_F(28) - K_MIN], "k8");
-	tgetstr2(&keyseq[K_F(29) - K_MIN], "k9");
-	tgetstr2(&keyseq[K_F(30) - K_MIN], "k0");
-	tgetstr2(&keyseq[K_DL - K_MIN], "kL");
-	tgetstr2(&keyseq[K_IL - K_MIN], "kA");
-	tgetstr2(&keyseq[K_DC - K_MIN], "kD");
-	tgetstr2(&keyseq[K_IC - K_MIN], "kI");
-	tgetstr2(&keyseq[K_CLR - K_MIN], "kC");
-	tgetstr2(&keyseq[K_EOL - K_MIN], "kE");
-	tgetstr2(&keyseq[K_PPAGE - K_MIN], "kP");
-	tgetstr2(&keyseq[K_NPAGE - K_MIN], "kN");
-	tgetstr2(&keyseq[K_ENTER - K_MIN], "@8");
-	tgetstr2(&keyseq[K_BEG - K_MIN], "@1");
-	tgetstr2(&keyseq[K_END - K_MIN], "@7");
+	tgetstr2(&(keyseq[K_UP - K_MIN].str), "ku");
+	tgetstr2(&(keyseq[K_DOWN - K_MIN].str), "kd");
+	tgetstr2(&(keyseq[K_RIGHT - K_MIN].str), "kr");
+	tgetstr2(&(keyseq[K_LEFT - K_MIN].str), "kl");
+	tgetstr2(&(keyseq[K_HOME - K_MIN].str), "kh");
+	tgetstr2(&(keyseq[K_BS - K_MIN].str), "kb");
+	tgetstr2(&(keyseq[K_F(1) - K_MIN].str), "l1");
+	tgetstr2(&(keyseq[K_F(2) - K_MIN].str), "l2");
+	tgetstr2(&(keyseq[K_F(3) - K_MIN].str), "l3");
+	tgetstr2(&(keyseq[K_F(4) - K_MIN].str), "l4");
+	tgetstr2(&(keyseq[K_F(5) - K_MIN].str), "l5");
+	tgetstr2(&(keyseq[K_F(6) - K_MIN].str), "l6");
+	tgetstr2(&(keyseq[K_F(7) - K_MIN].str), "l7");
+	tgetstr2(&(keyseq[K_F(8) - K_MIN].str), "l8");
+	tgetstr2(&(keyseq[K_F(9) - K_MIN].str), "l9");
+	tgetstr2(&(keyseq[K_F(10) - K_MIN].str), "la");
+	tgetstr2(&(keyseq[K_F(21) - K_MIN].str), "k1");
+	tgetstr2(&(keyseq[K_F(22) - K_MIN].str), "k2");
+	tgetstr2(&(keyseq[K_F(23) - K_MIN].str), "k3");
+	tgetstr2(&(keyseq[K_F(24) - K_MIN].str), "k4");
+	tgetstr2(&(keyseq[K_F(25) - K_MIN].str), "k5");
+	tgetstr2(&(keyseq[K_F(26) - K_MIN].str), "k6");
+	tgetstr2(&(keyseq[K_F(27) - K_MIN].str), "k7");
+	tgetstr2(&(keyseq[K_F(28) - K_MIN].str), "k8");
+	tgetstr2(&(keyseq[K_F(29) - K_MIN].str), "k9");
+	tgetstr2(&(keyseq[K_F(30) - K_MIN].str), "k0");
+	tgetstr2(&(keyseq[K_DL - K_MIN].str), "kL");
+	tgetstr2(&(keyseq[K_IL - K_MIN].str), "kA");
+	tgetstr2(&(keyseq[K_DC - K_MIN].str), "kD");
+	tgetstr2(&(keyseq[K_IC - K_MIN].str), "kI");
+	tgetstr2(&(keyseq[K_CLR - K_MIN].str), "kC");
+	tgetstr2(&(keyseq[K_EOL - K_MIN].str), "kE");
+	tgetstr2(&(keyseq[K_PPAGE - K_MIN].str), "kP");
+	tgetstr2(&(keyseq[K_NPAGE - K_MIN].str), "kN");
+	tgetstr2(&(keyseq[K_ENTER - K_MIN].str), "@8");
+	tgetstr2(&(keyseq[K_BEG - K_MIN].str), "@1");
+	tgetstr2(&(keyseq[K_END - K_MIN].str), "@7");
 
-	for (i = 0; i <= K_MAX - K_MIN; i++) keycode[i] = K_MIN + i;
-	for (i = 1; i <= 10; i++) {
-		keycode[K_F(i + 20) - K_MIN] = K_F(i);
-		if (!keyseq[K_F(i + 10) - K_MIN]) continue;
-		cp = (char *)malloc(strlen(keyseq[K_F(i + 10) - K_MIN]) + 1);
+	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
+	for (i = 11; i <= 20; i++) {
+		keyseq[K_F(i + 10) - K_MIN].code = K_F(i - 10);
+		if (!keyseq[K_F(i) - K_MIN].str) continue;
+		cp = (char *)malloc(strlen(keyseq[K_F(i) - K_MIN].str) + 1);
 		if (!cp) err2(NULL);
-		strcpy(cp, keyseq[K_F(i + 10) - K_MIN]);
-		keyseq[K_F(i + 10) - K_MIN] = cp;
+		strcpy(cp, keyseq[K_F(i) - K_MIN].str);
+		keyseq[K_F(i) - K_MIN].str = cp;
 	}
 	for (i = 31; K_F(i) < K_DL; i++) {
-		if (!keyseq[K_F(i) - K_MIN]) continue;
-		cp = (char *)malloc(strlen(keyseq[K_F(i) - K_MIN]) + 1);
+		if (!keyseq[K_F(i) - K_MIN].str) continue;
+		cp = (char *)malloc(strlen(keyseq[K_F(i) - K_MIN].str) + 1);
 		if (!cp) err2(NULL);
-		strcpy(cp, keyseq[K_F(i) - K_MIN]);
-		keyseq[K_F(i) - K_MIN] = cp;
-		keycode[K_F(i) - K_MIN] = i;
+		strcpy(cp, keyseq[K_F(i) - K_MIN].str);
+		keyseq[K_F(i) - K_MIN].str = cp;
+		keyseq[K_F(i) - K_MIN].code = i;
 	}
-	keycode[K_F('?') - K_MIN] = CR;
+	keyseq[K_F('?') - K_MIN].code = CR;
 
+	for (i = 0; i <= K_MAX - K_MIN; i++)
+		keyseq[i].len = (keyseq[i].str) ? strlen(keyseq[i].str) : 0;
 	sortkeyseq();
 
 	termflags |= F_TERMENT;
@@ -1205,6 +1288,8 @@ static int freeterment(VOID_A)
 	if (UP) free(UP);
 	if (t_init) free(t_init);
 	if (t_end) free(t_end);
+	if (t_metamode) free(t_metamode);
+	if (t_nometamode) free(t_nometamode);
 	if (t_scroll) free(t_scroll);
 	if (t_keypad) free(t_keypad);
 	if (t_nokeypad) free(t_nokeypad);
@@ -1247,43 +1332,56 @@ static int freeterment(VOID_A)
 	if (c_nright) free(c_nright);
 	if (c_nleft) free(c_nleft);
 
-	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i]) free(keyseq[i]);
+	for (i = 0; i <= K_MAX - K_MIN; i++)
+		if (keyseq[i].str) free(keyseq[i].str);
+	if (keyseqtree) freekeyseq(keyseqtree, 0);
 
 	termflags &= ~F_TERMENT;
 	return(0);
 }
 #endif
 
-int setkeyseq(n, str)
+int setkeyseq(n, str, len)
 int n;
 char *str;
+int len;
 {
-	int i;
+	int i, j;
 
-	for (i = 0; i <= K_MAX - K_MIN; i++) if (keycode[i] == n) {
-		if (keyseq[i]) free(keyseq[i]);
-		keyseq[i] = str;
+	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].code == n) {
+		if (keyseq[i].str) free(keyseq[i].str);
+		keyseq[i].str = str;
+		keyseq[i].len = len;
 		break;
 	}
 	if (i > K_MAX - K_MIN) return(-1);
 
 	if (str) for (i = 0; i <= K_MAX - K_MIN; i++) {
-		if (keycode[i] == n || !keyseq[i] || strcmp(keyseq[i], str))
+		if (keyseq[i].code == n
+		|| !(keyseq[i].str) || keyseq[i].len != len)
 			continue;
-		free(keyseq[i]);
-		keyseq[i] = NULL;
+		for (j = 0; j < len; j++)
+			if (keyseq[i].str[j] != str[j]) break;
+		if (j >= len) {
+			free(keyseq[i].str);
+			keyseq[i].str = NULL;
+			keyseq[i].len = 0;
+		}
 	}
 	sortkeyseq();
 	return(0);
 }
 
-char *getkeyseq(n)
-int n;
+char *getkeyseq(n, lenp)
+int n, *lenp;
 {
 	int i;
 
-	for (i = 0; i <= K_MAX - K_MIN; i++)
-		if (keycode[i] == n) return(keyseq[i]);
+	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].code == n) {
+		if (lenp) *lenp = keyseq[i].len;
+		return(keyseq[i].str);
+	}
+	if (lenp) *lenp = 0;
 	return(NULL);
 }
 #endif	/* !MSDOS */
@@ -1355,7 +1453,9 @@ u_long usec;
 	if (nextchar) return(1);
 	reg.x.ax = 0x4406;
 	reg.x.bx = STDIN;
+	putterms(t_metamode);
 	int86(0x21, &reg, &reg);
+	putterms(t_nometamode);
 	return((reg.x.flags & 1) ? 0 : reg.h.al);
 #else	/* !NOTUSEBIOS */
 # ifdef	PC98
@@ -1419,7 +1519,11 @@ int getch2(VOID_A)
 		}
 		key = getkeybuf(top);
 # ifdef	PC98
-		if ((ch = (key & 0xff))) break;
+		if ((ch = (key & 0xff))) {
+			if (ch < 0x80 || (ch > 0x9f && ch < 0xe0)) break;
+			key &= 0xff00;
+			if (strchr(metakey, (key >> 8))) break;
+		}
 # else
 		if ((ch = (key & 0xff)) && ch != 0xe0 && ch != 0xf0) break;
 		key &= 0xff00;
@@ -1427,12 +1531,16 @@ int getch2(VOID_A)
 		if (strchr(specialkey, (key >> 8))) break;
 		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
 	}
+	putterms(t_metamode);
 	ch = (bdos(0x07, 0x00, 0) & 0xff);
+	putterms(t_nometamode);
 	keybuftop = getkeybuf(KEYBUFWORKTOP);
 	if (!(key & 0xff)) {
 		while (kbhit2(1000000L / SENSEPERSEC)) {
 			if (keybuftop != getkeybuf(KEYBUFWORKTOP)) break;
+			putterms(t_metamode);
 			bdos(0x07, 0x00, 0);
+			putterms(t_nometamode);
 		}
 		ch = '\0';
 		nextchar = (key >> 8);
@@ -1513,6 +1621,8 @@ int sig;
 		ch = getch2();
 		for (i = 0; i < sizeof(specialkey) / sizeof(u_char) - 1; i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
+		for (i = 0; i <= 'z' - 'a'; i++)
+			if (ch == metakey[i]) return(('a' + i) | 0x80);
 		ch = K_NOKEY;
 	}
 	return(ch);
@@ -1612,7 +1722,8 @@ int getkey2(sig)
 int sig;
 {
 	static int count = SENSEPERSEC;
-	int i, j, ch, key, start, end, s, e;
+	kstree_t *p;
+	int i, j, ch, key;
 
 	do {
 		key = kbhit2(1000000L / SENSEPERSEC);
@@ -1621,33 +1732,45 @@ int sig;
 			kill(getpid(), sig);
 		}
 #ifndef	TIOCSTI
-		if (ungetnum > 0) {
-			ch = (int)ungetbuf[--ungetnum];
-			return(ch);
-		}
+		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 #endif
 	} while (!key);
 
 	key = ch = getch2();
-	start = 0;
-	end = K_MAX - K_MIN;
+	p = keyseqtree;
 
-	for (i = 0; ; i++) {
-		s = start;
-		e = end;
-		start = end = -1;
-		for (j = s; j <= e; j++) {
-			if (keyseqlen[j] > i && ch == keyseq[j][i]) {
-				if (keyseqlen[j] == i + 1) return(keycode[j]);
-				end = j;
-			}
-			else if (end < 0) start = j + 1;
-			else break;
-		}
-		if (start < 0) start = s;
-		if (start > end || !kbhit2(WAITKEYPAD * 1000L)) return(key);
+	if (key == ESC) {
+		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
+		ch = getch2();
+		if (isalpha(ch) && !kbhit2(WAITMETA * 1000L))
+			return(ch | 0x80);
+		for (j = 0; j < p -> num; j++)
+			if (key == keyseq[p -> next[j].key].str[0]) break;
+		if (j >= p -> num) return(key);
+		p = &(p -> next[j]);
+		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
+	}
+	else {
+		for (j = 0; j < p -> num; j++)
+			if (key == keyseq[p -> next[j].key].str[0]) break;
+		if (j >= p -> num) return(key);
+		p = &(p -> next[j]);
+		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
+		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
 		ch = getch2();
 	}
+
+	for (i = 1; p && p -> next; i++) {
+		for (j = 0; j < p -> num; j++)
+			if (ch == keyseq[p -> next[j].key].str[i]) break;
+		if (j >= p -> num) return(key);
+		p = &(p -> next[j]);
+		if (keyseq[p -> key].len == i + 1)
+			return(keyseq[p -> key].code);
+		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
+		ch = getch2();
+	}
+	return(key);
 }
 
 int ungetch2(c)

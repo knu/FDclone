@@ -24,6 +24,9 @@
 
 #ifndef	_NODOSDRIVE
 extern int shutdrv __P_((int));
+# if	MSDOS
+extern int checkdrive __P_((int));
+# endif
 #endif
 
 extern bindtable bindlist[];
@@ -32,6 +35,7 @@ extern int filepos;
 extern int mark;
 extern int isearch;
 extern int fnameofs;
+extern int dispmode;
 extern int sorton;
 extern int sorttype;
 extern char fullpath[];
@@ -781,7 +785,7 @@ int max;
 	launchtable *duplaunchp;
 	char *dupfullpath, *duparchivefile, *duparchivedir, *dupfindpat;
 	char *cp, *dir, path[MAXPATHLEN + 1], file[MAXNAMLEN + 1];
-	int i, dupmaxarcf, dupfilepos, dupsorton;
+	int i, dupmaxarcf, dupfilepos, dupdispmode, dupsorton;
 #ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
@@ -838,12 +842,14 @@ int max;
 	dupmaxarcf = maxarcf;
 	dupfilepos = filepos;
 	dupfindpat = findpattern;
+	dupdispmode = dispmode;
 	dupsorton = sorton;
 	duplaunchp = launchp;
 
 	archivefile = cp = strdup2(list[filepos].name);
 	archivedir = path;
 	findpattern = NULL;
+	dispmode &= ~(F_SYMLINK | F_FILEFLAG);
 	sorton = 0;
 	launchp = &launchlist[i];
 	for (i = 0; i < maxfile; i++) free(filelist[i].name);
@@ -866,6 +872,7 @@ int max;
 	filepos = dupfilepos;
 	if (findpattern) free(findpattern);
 	findpattern = dupfindpat;
+	dispmode = dupdispmode;
 	sorton = dupsorton;
 	launchp = duplaunchp;
 
@@ -974,7 +981,7 @@ int tr;
 		if (!*dir) strcpy(path, ".");
 		else {
 			strcpy(path, dir);
-#if	MDDOS || !defined (_NODOSDRIVE)
+#if	MSDOS || !defined (_NODOSDRIVE)
 			if (_dospath(dir) && !dir[2]) strcat(path, ".");
 #endif
 		}
@@ -1004,6 +1011,13 @@ int tr;
 	else {
 		realpath2(deftmpdir, path);
 		free(deftmpdir);
+#if	MSDOS && !defined (_NODOSDRIVE)
+# ifdef	USEGETWD
+	if (checkdrive(toupper2(path[0]) - 'A')) getwd(path);
+# else
+	if (checkdrive(toupper2(path[0]) - 'A')) getcwd(path, MAXPATHLEN);
+# endif
+#endif
 		deftmpdir = strdup2(path);
 		strcat(path, _SS_);
 		strcat(path, tmpfilename);

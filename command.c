@@ -67,6 +67,7 @@ static int pop_file __P_((namelist *, int *, char *));
 static int symlink_mode __P_((namelist *, int *, char *));
 static int filetype_mode __P_((namelist *, int *, char *));
 static int dotfile_mode __P_((namelist *, int *, char *));
+static int fileflg_mode __P_((namelist *, int *, char *));
 static int log_dir __P_((namelist *, int *, char *));
 static int log_top __P_((namelist *, int *, char *));
 #ifndef	PAGER
@@ -233,6 +234,9 @@ bindtable bindlist[MAXBINDTABLE] = {
 #ifndef	_NOTREE
 	{'L',		LOG_TREE,	255},
 	{'M',		MOVE_TREE,	255},
+#endif
+#ifdef	HAVEFLAGS
+	{'O',		FILEFLG_MODE,	255},
 #endif
 	{'Q',		QUIT_SYSTEM,	255},
 	{'S',		SYMLINK_MODE,	255},
@@ -691,6 +695,16 @@ int *maxp;
 char *arg;
 {
 	dispmode ^= F_DOTFILE;
+	return(4);
+}
+
+/*ARGSUSED*/
+static int fileflg_mode(list, maxp, arg)
+namelist *list;
+int *maxp;
+char *arg;
+{
+	dispmode ^= F_FILEFLAG;
 	return(4);
 }
 

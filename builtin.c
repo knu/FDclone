@@ -169,10 +169,8 @@ static strtable keyidentlist[] = {
 	{K_HELP,	"HELP"},
 	{0,		NULL}
 };
-#if	!MSDOS && !defined (_NOKEYMAP)
 static char escapechar[] = "abefnrtv";
 static char escapevalue[] = {0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b};
-#endif
 
 
 #ifndef	_NOARCHIVE
@@ -500,23 +498,47 @@ static int getkeycode(cp)
 char *cp;
 {
 	char *tmp;
-	int i, ch;
+	int i, j, ch;
 
 	tmp = cp = _evalpath(cp, NULL, 1, 1);
 	ch = *(cp++);
 	if (*cp) switch (ch) {
+		case '\\':
+			if (*cp >= '0' && *cp <= '7') {
+				ch = *(cp++) - '0';
+				for (j = 1; j < 3; j++) {
+					if (*cp < '0' || *cp > '7') break;
+					ch = ch * 8 + *(cp++) - '0';
+				}
+			}
+			else {
+				for (j = 0; escapechar[j]; j++)
+					if (*cp == escapechar[j]) break;
+				if (escapechar[j]) ch = escapevalue[j];
+				else ch = *cp;
+			}
+			break;
 		case '^':
 			ch = toupper2(*(cp++));
 			if (ch < '?' || ch > '_') ch = -1;
 			else ch = ((ch - '@') & 0x7f);
 			break;
+		case '@':
+			if (*cp >= 'a' && *cp <= 'z') ch = (*(cp++) | 0x80);
+			else if (*cp >= 'A' && *cp <= 'Z')
+#if	MSDOS
+				ch = ((*(cp++) + 'a' - 'A') | 0x80);
+#else
+				ch = (*(cp++) | 0x80);
+#endif
+			else ch = -1;
+			break;
 		case 'F':
-			if ((i = atoi2(cp)) < 1 || i > 20) ch = -1;
-			else {
+			if ((i = atoi2(cp)) >= 1 && i <= 20) {
 				cp = skipnumeric(cp, 1);
 				ch = K_F(i);
+				break;
 			}
-			break;
 		default:
 			cp--;
 			for (i = 0; keyidentlist[i].no; i++)
@@ -622,10 +644,11 @@ int n;
 		cputs2(funclist[bindlist[n].f_func].ident);
 	else kanjiprintf("\"%s\"",
 		macrolist[bindlist[n].f_func - NO_OPERATION - 1]);
-	putch2('\t');
-	if (bindlist[n].d_func <= NO_OPERATION)
+	if (bindlist[n].d_func <= NO_OPERATION) {
+		cputs2("\t");
 		cputs2(funclist[bindlist[n].d_func].ident);
-	else if (bindlist[n].d_func < 255) kanjiprintf("\"%s\"",
+	}
+	else if (bindlist[n].d_func < 255) kanjiprintf("\t\"%s\"",
 		macrolist[bindlist[n].d_func - NO_OPERATION - 1]);
 
 	cputs2("\r\n");
@@ -661,7 +684,9 @@ int comline;
 					break;
 			if (keyidentlist[j].no)
 				cprintf2("'%s'\t", keyidentlist[j].str);
-			else cprintf2("'%c'\t", bindlist[i].key);
+			else if (isprint(bindlist[i].key))
+				cprintf2("'%c'\t", bindlist[i].key);
+			else cprintf2("'\\%03o'\t", bindlist[i].key);
 		}
 
 		printmacro(i);
@@ -772,39 +797,66 @@ char *argv[];
 int set;
 {
 	char *cp, *tmp;
-	int i, drive, head, sect, cyl;
+	int i, j, n, drive, head, sect, cyl;
 
 	if (argc <= 3) return(-1);
 	argv[1] = evalpath(argv[1], 1);
 	argv[2] = evalpath(argv[2], 1);
-	drive = toupper2(argv[1][0]);
-	cp = tmp = catargs(argc - 3, &argv[3], '\0');
+	if (!isalpha(drive = toupper2(argv[1][0]))) return(-1);
 
-	head = atoi(cp);
-	if (head <= 0 || *(cp = skipnumeric(cp, 1)) != ',') {
-		free(tmp);
-		return(-1);
+#ifdef	HDDMOUNT
+	if (!strncmp(argv[3], "HDD", 3)) {
+		if (argc > 5) return(-1);
+		cyl = 0;
+		if (!argv[3][3]) head = 0;
+		else if (!strcmp(&(argv[3][3]), "98")) head = 98;
+		else return(-1);
+		if (argc < 5) sect = 'n';
+		else if (!strcmp(argv[4], "ro")) sect = 'r';
+		else if (!strcmp(argv[4], "rw")) sect = 'w';
+		else return(-1);
 	}
-	sect = atoi(++cp);
-	if (sect <= 0 || *(cp = skipnumeric(cp, 1)) != ',') {
-		free(tmp);
-		return(-1);
-	}
-	cyl = atoi(++cp);
-	if (cyl < 0 || *(cp = skipnumeric(cp, 0))) {
-		free(tmp);
-		return(-1);
-	}
-	free(tmp);
+	else
+#endif
+	{
+		cp = tmp = catargs(argc - 3, &argv[3], '\0');
 
-	if (!set) {
-		for (i = 0; fdtype[i].name; i++)
+		head = atoi(cp);
+		if (head <= 0 || *(cp = skipnumeric(cp, 1)) != ',') {
+			free(tmp);
+			return(-1);
+		}
+		sect = atoi(++cp);
+		if (sect <= 0 || *(cp = skipnumeric(cp, 1)) != ',') {
+			free(tmp);
+			return(-1);
+		}
+		cyl = atoi(++cp);
+		if (cyl <= 0 || *(cp = skipnumeric(cp, 0))) {
+			free(tmp);
+			return(-1);
+		}
+		free(tmp);
+	}
+
+#ifdef	HDDMOUNT
+	if (!cyl) for (i = 0; fdtype[i].name; i++) {
+		if (drive == fdtype[i].drive) break;
+	}
+	else
+#endif
+	for (i = 0; fdtype[i].name; i++)
 		if (drive == fdtype[i].drive
 		&& head == fdtype[i].head
 		&& sect == fdtype[i].sect
 		&& cyl == fdtype[i].cyl
 		&& !strpathcmp(argv[2], fdtype[i].name)) break;
+	if (!set) {
 		if (!fdtype[i].name) return(-1);
+#ifdef	HDDMOUNT
+		if (fdtype[i].cyl || strpathcmp(argv[2], fdtype[i].name))
+			return(-1);
+#endif
 
 		free(fdtype[i].name);
 		for (; fdtype[i + 1].name; i++)
@@ -812,13 +864,63 @@ int set;
 		fdtype[i].name = NULL;
 	}
 	else {
-		for (i = 0; fdtype[i].name; i++);
-		if (i >= MAXDRIVEENTRY - 1) return(-1);
-		fdtype[i].drive = drive;
-		fdtype[i].name = strdup2(argv[2]);
-		fdtype[i].head = head;
-		fdtype[i].sect = sect;
-		fdtype[i].cyl = cyl;
+#ifdef	HDDMOUNT
+		off_t *sp = NULL;
+		int c;
+
+		if (!cyl) {
+			if (!(sp = readpt(argv[2], head))) return(0);
+			for (n = 0; sp[n]; n++);
+			if (!n) {
+				free(sp);
+				return(-1);
+			}
+			head = n;
+		}
+		else
+#endif
+		n = 1;
+		if (i >= MAXDRIVEENTRY - n || fdtype[i].name) {
+#ifdef	HDDMOUNT
+			if (sp) free(sp);
+#endif
+			return(-1);
+		}
+		fdtype[i + n].name = NULL;
+		for (; i > 0; i--) {
+			if (!strcmp(argv[2], fdtype[i - 1].name)) break;
+			memcpy((char *)&fdtype[i + n - 1],
+				(char *)&fdtype[i - 1], sizeof(devinfo));
+		}
+
+		for (j = 0; j < n; j++) {
+			fdtype[i + j].drive = drive;
+			fdtype[i + j].name = strdup2(argv[2]);
+			fdtype[i + j].head = head;
+			fdtype[i + j].sect = sect;
+			fdtype[i + j].cyl = cyl;
+#ifdef	HDDMOUNT
+			fdtype[i + j].offset = (cyl) ? (off_t)0 : sp[j];
+			if (j + 1 < n) do {
+				if (++drive > 'Z') {
+					while (j >= 0)
+						free(fdtype[i + (j--)].name);
+					for (; fdtype[i + n].name; i++)
+						memcpy((char *)&fdtype[i],
+							(char *)&fdtype[i + n],
+							sizeof(devinfo));
+					fdtype[i].name = NULL;
+					if (sp) free(sp);
+					return(-1);
+				}
+				for (c = 0; fdtype[c].name; c++)
+					if (drive == fdtype[c].drive) break;
+			} while (fdtype[c].name);
+#endif
+		}
+#ifdef	HDDMOUNT
+		if (sp) free(sp);
+#endif
 	}
 
 	return(0);
@@ -855,9 +957,15 @@ int comline;
 	n = 1;
 	argv[1] = evalpath(argv[1], 1);
 	if (argc <= 1) for (i = n = 0; fdtype[i].name; i++) {
-		cputs2("drive ");
-		kanjiprintf("'%c'\t\"%s\"\t(%1d,%3d,%3d)\r\n",
-			fdtype[i].drive, fdtype[i].name,
+		cputs2("setdrv ");
+		kanjiprintf("'%c'\t\"%s\"\t",
+			fdtype[i].drive, fdtype[i].name);
+#ifdef	HDDMOUNT
+		if (!fdtype[i].cyl)
+			kanjiprintf("HDD (ofs: %d)\r\n", fdtype[i].offset);
+		else
+#endif
+		kanjiprintf("%3d,%3d,%3d\r\n",
 			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl);
 		if (++n >= n_line - 1) {
 			n = 0;
@@ -866,9 +974,14 @@ int comline;
 	}
 	else for (i = 0; fdtype[i].name; i++)
 	if (toupper2(argv[1][0]) == fdtype[i].drive) {
-		kanjiprintf("\"%s\"\t(%1d,%3d,%3d)\r\n",
-			fdtype[i].name, fdtype[i].head,
-			fdtype[i].sect, fdtype[i].cyl);
+		kanjiprintf("\"%s\"\t", fdtype[i].name);
+#ifdef	HDDMOUNT
+		if (!fdtype[i].cyl)
+			kanjiprintf("HDD (ofs: %d)\r\n", fdtype[i].offset);
+		else
+#endif
+		kanjiprintf("%3d,%3d,%3d\r\n",
+			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl);
 	}
 	return(i ? n : 1);
 }
@@ -1000,7 +1113,7 @@ char *argv[];
 int comline;
 {
 	char *cp, *line;
-	int i, j, k, ch;
+	int i, j, k, ch, l;
 
 	if (argc >= 4) return(-1);
 	if (argc <= 1) {
@@ -1008,12 +1121,12 @@ int comline;
 		k = 0;
 		for (i = 0; i < 20 || keyidentlist[i - 20].no; i++) {
 			ch = (i < 20) ? K_F(i + 1) : keyidentlist[i - 20].no;
-			if (!(cp = getkeyseq(ch)) || !*cp) continue;
+			if (!(cp = getkeyseq(ch, &l)) || !l) continue;
 
 			cputs2("keymap ");
 			if (i < 20) cprintf2("F%d \"", i + 1);
 			else cprintf2("%s \"", keyidentlist[i - 20].str);
-			for (j = 0; cp[j]; j++) {
+			for (j = 0; j < l; j++) {
 				if (isprint(cp[j])) putch2(cp[j]);
 				else cprintf2("\\%03o", cp[j]);
 			}
@@ -1026,7 +1139,7 @@ int comline;
 		return(1);
 	}
 	argv[1] = evalpath(argv[1], 1);
-	if (argv[1][0] == 'F' && argv[1][1] >= '1' && argv[1][1] <= '2') {
+	if (argv[1][0] == 'F' && argv[1][1] >= '1' && argv[1][1] <= '9') {
 		for (i = 2; argv[1][i]; i++)
 			if (argv[1][i] < '0' || argv[1][i] > '9') break;
 		if (argv[1][i] || (i = atoi2(argv[1] + 1)) < 1 || i > 20)
@@ -1040,11 +1153,12 @@ int comline;
 	}
 
 	if (argc == 2) {
-		if (!comline || !ch || !(cp = getkeyseq(ch)) || !*cp) return(0);
+		if (!comline || !ch || !(cp = getkeyseq(ch, &l)) || !l)
+			return(0);
 		cputs2("keymap ");
 		if (ch >= K_F(i) && ch <= K_F(20)) cprintf2("F%d \"", i);
 		else cprintf2("%s \"", keyidentlist[i].str);
-		for (i = 0; cp[i]; i++) {
+		for (i = 0; i < l; i++) {
 			if (isprint(cp[i])) putch2(cp[i]);
 			else cprintf2("\\%03o", cp[i]);
 		}
@@ -1054,7 +1168,7 @@ int comline;
 	if (!ch) return(-1);
 	argv[2] = evalpath(argv[2], 1);
 	if (!argv[2][0]) {
-		setkeyseq(ch, NULL);
+		setkeyseq(ch, NULL, 0);
 		return(0);
 	}
 
@@ -1081,12 +1195,13 @@ int comline;
 			else line[j] = argv[2][i];
 		}
 	}
-	line[j] = '\0';
 	if (!j) return(-1);
 
-	cp = strdup2(line);
+	cp = (char *)malloc2(j + 1);
+	for (i = 0; i < j; i++) cp[i] = line[i];
+	cp[i] = '\0';
 	free(line);
-	setkeyseq(ch, cp);
+	setkeyseq(ch, cp, j);
 
 	return(0);
 }

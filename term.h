@@ -69,6 +69,8 @@ extern int n_line;
 extern int stable_standout;
 extern char *t_init;
 extern char *t_end;
+extern char *t_metamode;
+extern char *t_nometamode;
 extern char *t_scroll;
 extern char *t_keypad;
 extern char *t_nokeypad;
@@ -138,8 +140,8 @@ extern int exit2 __P_((int));
 extern char *tparamstr __P_((char *, int, int));
 extern int getterment __P_((VOID_A));
 #if	!MSDOS
-extern int setkeyseq __P_((int, char *));
-extern char *getkeyseq __P_((int));
+extern int setkeyseq __P_((int, char *, int));
+extern char *getkeyseq __P_((int, int *));
 #endif
 extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
@@ -165,6 +167,9 @@ extern int chgcolor __P_((int, int));
 #endif
 #ifndef	WAITKEYPAD
 #define	WAITKEYPAD	360		/* msec */
+#endif
+#ifndef	WAITMETA
+#define	WAITMETA	60		/* msec */
 #endif
 
 #define	ANSI_BLACK	0

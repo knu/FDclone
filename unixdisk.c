@@ -370,7 +370,7 @@ char *path;
 }
 #endif	/* !_NOUSELFN */
 
-char *getcurdir(pathname, drive)
+char *unixgetcurdir(pathname, drive)
 char *pathname;
 int drive;
 {
@@ -1726,7 +1726,7 @@ int size;
 	else
 #endif
 
-	if (!getcurdir(pathname + 3, 0)) return(NULL);
+	if (!unixgetcurdir(pathname + 3, 0)) return(NULL);
 	if (!(dos7access & D7_CAPITAL) && *pathname >= 'A' && *pathname <= 'Z')
 		*pathname += 'a' - 'A';
 	if ((dos7access & D7_CAPITAL) && *pathname >= 'a' && *pathname <= 'z')

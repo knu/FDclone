@@ -25,6 +25,9 @@ extern char *preparefile __P_((char *, char *, int));
 #ifndef	_NODOSDRIVE
 extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
+# if	MSDOS
+extern int checkdrive __P_((int));
+# endif
 #endif
 
 extern int filepos;
@@ -150,6 +153,9 @@ char *file;
 #if	!MSDOS
 	list[i].st_uid = lstatus.st_uid;
 	list[i].st_gid = lstatus.st_gid;
+#endif
+#ifdef	HAVEFLAGS
+	list[i].st_flags = lstatus.st_flags;
 #endif
 	list[i].st_size = isdev(&list[i]) ? lstatus.st_rdev : lstatus.st_size;
 	list[i].st_mtim = lstatus.st_mtime;
@@ -583,6 +589,13 @@ char *dir;
 	}
 	realpath2(deftmpdir, path);
 	free(deftmpdir);
+#if	MSDOS && !defined (_NODOSDRIVE)
+# ifdef	USEGETWD
+	if (checkdrive(toupper2(path[0]) - 'A')) getwd(path);
+# else
+	if (checkdrive(toupper2(path[0]) - 'A')) getcwd(path, MAXPATHLEN);
+# endif
+#endif
 	deftmpdir = strdup2(path);
 #if	MSDOS
 	no = getcurdrv();
@@ -658,6 +671,9 @@ char *dir, *subdir, *file;
 		}
 		free(dupdir);
 	}
+#if	MSDOS && !defined (_NODOSDRIVE)
+	if (_chdir2(deftmpdir) < 0) error(deftmpdir);
+#endif
 	if (_chdir2(fullpath) < 0) error(fullpath);
 	if (rmtmpdir(dir) < 0) warning(-1, dir);
 	if (dir) free(dir);

@@ -554,7 +554,7 @@ VOID evalenv(VOID_A)
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
 	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
 #endif
-	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) <= 0)
+	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) < 0)
 		sizeinfo = SIZEINFO;
 #ifndef	_NOCOLOR
 	if ((ansicolor = atoi2(getenv2("FD_ANSICOLOR"))) < 0)

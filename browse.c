@@ -72,6 +72,14 @@ char typesymlist[] = "dbclsp";
 u_short typelist[] = {
 	S_IFDIR, S_IFBLK, S_IFCHR, S_IFLNK, S_IFSOCK, S_IFIFO
 };
+#ifdef	HAVEFLAGS
+char flagsymlist[] = "ANacuacu";
+u_long flaglist[] = {
+	SF_ARCHIVED, UF_NODUMP,
+	SF_APPEND, SF_IMMUTABLE, SF_NOUNLINK,
+	UF_APPEND, UF_IMMUTABLE, UF_NOUNLINK
+};
+#endif
 
 static u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO
@@ -115,6 +123,9 @@ VOID helpbar(VOID_A)
 	putch2(isdisplnk(dispmode) ? 'S' : ' ');
 	putch2(isdisptyp(dispmode) ? 'T' : ' ');
 	putch2(ishidedot(dispmode) ? 'H' : ' ');
+#ifdef	HAVEFLAGS
+	putch2(isfileflg(dispmode) ? 'F' : ' ');
+#endif
 
 	for (i = 0; i < 10; i++) {
 		locate(ofs + (width + 1) * i + (i / 5) * 3, LHELP);
@@ -293,18 +304,36 @@ u_short mode;
 	buf[4] = (mode & S_ISVTX) ? 'a' : '-';
 	buf[5] = '\0';
 #else
-	buf[3] = (mode & S_ISUID) ? 's' : (mode & S_IXUSR) ? 'x' : '-';
+	buf[3] = (mode & S_ISUID) ? ((mode & S_IXUSR) ? 's' : 'S')
+		: (mode & S_IXUSR) ? 'x' : '-';
 	buf[4] = (mode & S_IRGRP) ? 'r' : '-';
 	buf[5] = (mode & S_IWGRP) ? 'w' : '-';
-	buf[6] = (mode & S_ISGID) ? 's' : (mode & S_IXGRP) ? 'x' : '-';
+	buf[6] = (mode & S_ISGID) ? ((mode & S_IXGRP) ? 's' : 'S')
+		: (mode & S_IXGRP) ? 'x' : '-';
 	buf[7] = (mode & S_IROTH) ? 'r' : '-';
 	buf[8] = (mode & S_IWOTH) ? 'w' : '-';
-	buf[9] = (mode & S_ISVTX) ? 't' : (mode & S_IXOTH) ? 'x' : '-';
+	buf[9] = (mode & S_ISVTX) ? ((mode & S_IXOTH) ? 't' : 'T')
+		: (mode & S_IXOTH) ? 'x' : '-';
 	buf[10] = '\0';
 #endif
 
 	return(buf);
 }
+
+#ifdef	HAVEFLAGS
+char *putflags(buf, flags)
+char *buf;
+u_long flags;
+{
+	int i;
+
+	for (i = 0; i < sizeof(flaglist) / sizeof(u_long); i++)
+		buf[i] = (flags & flaglist[i]) ? flagsymlist[i] : '-';
+	buf[i] = '\0';
+
+	return(buf);
+}
+#endif
 
 #if	!MSDOS
 static char *putowner(buf, uid)
@@ -356,6 +385,14 @@ int no;
 	buf = (char *)malloc2(n_lastcolumn * 2 + 1);
 	tm = localtime(&list[no].st_mtim);
 
+#ifdef	HAVEFLAGS
+	if (isfileflg(dispmode)) {
+		putflags(buf, list[no].st_flags);
+		buf[8] = ' ';
+		buf[9] = ' ';
+	}
+	else
+#endif
 	putmode(buf, (!isdisplnk(dispmode) && islink(&list[no])) ?
 		(S_IFLNK | 0777) : list[no].st_mode);
 	len = WMODE;
@@ -555,6 +592,11 @@ int no, standout;
 		putgroup(buf + len, list[no].st_gid);
 		len += WGROUP;
 		buf[len++] = ' ';
+#endif
+#ifdef	HAVEFLAGS
+		if (isfileflg(dispmode))
+			putflags(buf + len, list[no].st_flags);
+		else
 #endif
 		putmode(buf + len, (!isdisplnk(dispmode) && islink(&list[no])) ?
 			(S_IFLNK | 0777) : list[no].st_mode);

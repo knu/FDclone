@@ -519,7 +519,7 @@ int exist;
 
 #if	!MSDOS
 	tmp = NULL;
-	if ((cp = (char *)getenv("TERM"))) {
+	if (!exist && (cp = (char *)getenv("TERM"))) {
 		tmp = (char *)malloc2(strlen(file) + strlen(cp) + 1 + 1);
 		strcpy(tmp, file);
 		strcat(tmp, ".");
@@ -784,8 +784,12 @@ char *argv[], *envp[];
 
 	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	for (i = 0; fdtype[i].name; i++)
+	for (i = 0; fdtype[i].name; i++) {
 		fdtype[i].name = strdup2(fdtype[i].name);
+# ifdef	HDDMOUNT
+		fdtype[i].offset = 0;
+# endif
+	}
 #endif
 
 	for (i = 0; envp[i]; i++);
@@ -807,11 +811,21 @@ char *argv[], *envp[];
 	adjustpath();
 #endif
 	evalenv();
-	if ((dispmode = atoi2(getenv2("FD_DISPLAYMODE"))) < 0)
-#if	(DISPLAYMODE < 0) || (DISPLAYMODE > 7)
+	dispmode = atoi2(getenv2("FD_DISPLAYMODE"));
+#ifdef	HAVEFLAGS
+	if (dispmode < 0 || dispmode > 15)
+# if	(DISPLAYMODE < 0) || (DISPLAYMODE > 15)
 		dispmode = 0;
-#else
+# else
 		dispmode = DISPLAYMODE;
+# endif
+#else
+	if (dispmode < 0 || dispmode > 7)
+# if	(DISPLAYMODE < 0) || (DISPLAYMODE > 7)
+		dispmode = 0;
+# else
+		dispmode = DISPLAYMODE;
+# endif
 #endif
 	columns = atoi2(getenv2("FD_COLUMNS"));
 	if (columns < 1 || columns == 4 || columns > 5)

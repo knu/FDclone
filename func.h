@@ -368,6 +368,9 @@ extern VOID helpbar __P_((VOID_A));
 extern VOID statusbar __P_((int));
 extern VOID sizebar __P_((VOID_A));
 extern char *putmode __P_((char *, u_short));
+#ifdef	HAVEFLAGS
+extern char *putflags __P_((char *, u_long));
+#endif
 extern VOID infobar __P_((namelist *, int));
 extern VOID waitmes __P_((VOID_A));
 extern int calcwidth __P_((VOID_A));

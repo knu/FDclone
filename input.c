@@ -1165,6 +1165,7 @@ int plen, max, linemax, def, comline, h;
 	int len, cx, cx2, ocx2, i, hist, ch, ch2, quote;
 #if	!MSDOS
 	char *cp;
+	int l;
 #endif
 
 	subwindow = 1;
@@ -1205,7 +1206,7 @@ int plen, max, linemax, def, comline, h;
 					break;
 			}
 #else
-			if ((cp = getkeyseq(i)) && *cp && !*(cp + 1)) i = *cp;
+			if ((cp = getkeyseq(i, &l)) && l == 1) i = *cp;
 #endif
 			if (i < ' ' || i == C_DEL) {
 				keyflush();
@@ -1442,7 +1443,6 @@ int h;
 	tflush();
 
 	if (!def) *input = '\0';
-	else if (h != 0) strcpy(input, def);
 	else {
 		j = 0;
 		ch = '\0';
