@@ -231,7 +231,8 @@ fi
 if noheader dirent; then
 	echo "#define	USEDIRECT"
 else
-	if isexist "struct dirent d; d.d_ino" "sys/types dirent"; then
+	if isexist "struct dirent d; d.d_ino" "sys/types dirent" \
+	&& noexist "struct dirent d; d.d_fileno" "sys/types dirent"; then
 		echo "#define	SYSVDIRENT"
 	fi
 	if noexist "struct dirent d; d.d_namlen" "sys/types dirent"; then

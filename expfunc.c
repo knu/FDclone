@@ -127,7 +127,7 @@ char *args[];
 		new = NULL;
 		while (**linep == ' ' || **linep == '\t') (*linep)++;
 		c = '\0';
-		for (cp = *linep; **linep; ) {
+		for (cp = *linep; **linep;) {
 			if (**linep == '\\') {
 				if (*(*linep + 1) == '\n') break;
 				else if (*(*linep + 1)) (*linep)++;

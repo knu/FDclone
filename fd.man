@@ -1,11 +1,11 @@
 '\" t
 .\"
-.\" Copyright (c) 1995 Takashi SHIRAI
+.\" Copyright (c) 1995,96 Takashi SHIRAI
 .\"                    <shirai@red.nintendo.co.jp>
 .\"
-.\" @(#)fd.1   1.01 09/19/95
+.\" @(#)fd.1   1.01 02/02/96
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "September 19, 1995"
+.TH FD 1 "February 2, 1996"
 .de sh
 .br
 .PP
@@ -164,7 +164,7 @@ PC の AT 互換機と PC9801 専用に、
 \fBONE_COLUMN\fP	画面表示を 1 列にする	\fB1\fP
 \fBTWO_COLUMNS\fP	画面表示を 2 列にする	\fB2\fP
 \fBTHREE_COLUMNS\fP	画面表示を 3 列にする	\fB3\fP
-\fBFUVE_COLUMNS\fP	画面表示を 5 列にする	\fB5\fP
+\fBFIVE_COLUMNS\fP	画面表示を 5 列にする	\fB5\fP
 \fBMARK_FILE\fP	ファイルのマーク	\fBTab\fP
 \fBMARK_FILE2\fP	ファイルのマークと下移動	\fBSpace\fP
 \fBMARK_FILE3\fP	ファイルのマークと画面内移動	\fB^Space\fP
@@ -1536,7 +1536,7 @@ A.Idei <SDI00544@niftyserve.or.jp> 氏によって 1989 年に
 ユーザインタフェースが稚拙です。
 
 .SH 著作権
-Copyright (C) 1995 by Takashi SHIRAI
+Copyright (C) 1995,96 by Takashi SHIRAI
 
 白井 隆, 任天堂株式会社 開発技術部
 .br

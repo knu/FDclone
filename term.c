@@ -687,7 +687,7 @@ u_long usec;
 	FD_ZERO(&readfds);
 	FD_SET(STDIN, &readfds);
 
-	return (select(1, &readfds, NULL, NULL, &timeout));
+	return(select(1, &readfds, NULL, NULL, &timeout));
 #endif
 }
 

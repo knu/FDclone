@@ -549,6 +549,9 @@ bpb_t *bpbcache;
 		devp -> fd = -1;
 		bpb = (bpb_t *)buf;
 		if ((fd = open(devp -> ch_name, O_RDWR, 0600)) < 0) {
+#ifdef	EFORMAT
+			if (errno == EFORMAT) return(0);
+#endif
 			if (errno == EIO) errno = ENXIO;
 			if (errno != EROFS
 			|| (fd = open(devp -> ch_name, O_RDONLY, 0600)) < 0)

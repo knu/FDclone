@@ -90,7 +90,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      OONNEE_CCOOLLUUMMNN          画面表示を 1 列にする         11
      TTWWOO_CCOOLLUUMMNNSS         画面表示を 2 列にする         22
      TTHHRREEEE_CCOOLLUUMMNNSS       画面表示を 3 列にする         33
-     FFUUVVEE_CCOOLLUUMMNNSS        画面表示を 5 列にする         55
+     FFIIVVEE_CCOOLLUUMMNNSS        画面表示を 5 列にする         55
      MMAARRKK_FFIILLEE           ファイルのマーク              TTaabb
      MMAARRKK_FFIILLEE22          ファイルのマークと下移動      SSppaaccee
      MMAARRKK_FFIILLEE33          ファイルのマークと画面内移動  ^^SSppaaccee
@@ -1218,7 +1218,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
 
 著著作作権権
-     Copyright (C) 1995 by Takashi SHIRAI
+     Copyright (C) 1995,96 by Takashi SHIRAI
 
      白井 隆, 任天堂株式会社 開発技術部
              <shirai@red.nintendo.co.jp>

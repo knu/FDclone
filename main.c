@@ -308,13 +308,13 @@ VOID title()
 
 	locate(0, LTITLE);
 	putterm(t_standout);
-	cputs("  FD (File & Directory tool) Ver. ");
+	cputs("  FD(File & Directory tool) Ver.");
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
 	cprintf("%-*.*s", eol - cp, eol - cp, cp);
-	cprintf("%-*.*s", n_column - 34 - (eol - cp),
-		n_column - 34 - (eol - cp), "  (c)1995 T.Shirai  ");
+	cprintf("%-*.*s", n_column - 32 - (eol - cp),
+		n_column - 32 - (eol - cp), " (c)1995,96 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 	printtime();

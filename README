@@ -1,10 +1,10 @@
 ############################################################
 #
-#       FDclone Ver. 1.01 に関して
+#	FDclone Ver. 1.01 に関して
 #
-#       Takashi SHIRAI, Nintendo Co. Ltd.
-#       <shirai@red.nintendo.co.jp>
-#       Sep 19, 1995
+#	Takashi SHIRAI, Nintendo Co. Ltd.
+#	<shirai@red.nintendo.co.jp>
+#	Feb 2, 1996
 #
 ############################################################
 
@@ -44,11 +44,11 @@ FAQ		Q&A 集 (Frequently Asked Question)
 TECHKNOW	テクニカルノウハウ
 Install		FDclone のインストール方法のドキュメント
 ToAdmin		FDclone を運用する管理者用ドキュメント
-Configure	環境設定用ヘッダの自動生成プログラム (Makefile内で実行)
+Configure	環境設定用ヘッダの自動生成プログラム (Makefile 内で実行)
 Makefile	メイクファイル
 Makefile.in	メイクファイル本体 (雛型)
-fd.man		man ページ用 roff ファイル (JIS版)
-fd.cat		man ページ用 プレーンテキスト (JIS版)
+fd.man		man ページ用 roff ファイル (JIS 版)
+fd.cat		man ページ用 プレーンテキスト (JIS 版)
 
 mkmf.sed.c	メイクファイル加工用の sed スクリプト (雛型)
 kanjicnv.c	簡易漢字コードコンバータ

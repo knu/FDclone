@@ -7,6 +7,7 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
+#include "kctype.h"
 #include "kanji.h"
 
 extern int filepos;
@@ -75,16 +76,25 @@ char *path;
 static char *killmeta(name)
 char *name;
 {
-	char *cp, *buf;
+	u_char *cp, *buf;
 	int i;
+#ifndef	CODEEUC
+	int sjis;
 
-	buf = (char *)malloc2(strlen(name) * 2 + 1);
-	for (cp = name, i = 0; *cp; cp++, i++) {
-		if (strchr(METACHAR, *cp)) buf[i++] = '\\';
+	sjis = (!strcmp((char *)getenv("LANG"), "C")) ? 0 : 1;
+#endif
+
+	buf = (u_char *)malloc2(strlen(name) * 2 + 1);
+	for (cp = (u_char *)name, i = 0; *cp; cp++, i++) {
+#ifndef	CODEEUC
+		if (sjis && iskanji1((int)(*cp))) buf[i++] = *(cp++);
+		else
+#endif
+		if (strchr(METACHAR, (int)(*cp))) buf[i++] = '\\';
 		buf[i] = *cp;
 	}
 	buf[i] = '\0';
-	return(buf);
+	return((char *)buf);
 }
 
 static int setarg(buf, ptr, dir, arg, noext)

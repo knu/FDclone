@@ -309,7 +309,7 @@ static char *pseudodir(namep, list, max)
 namelist *namep, *list;
 int max;
 {
-	char  *cp, *tmp;
+	char *cp, *tmp;
 	int i, len;
 
 	cp = namep -> name;

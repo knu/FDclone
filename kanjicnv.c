@@ -97,7 +97,6 @@ int argc;
 char *argv[];
 {
 	FILE *in, *out;
-	char *cp;
 	int i, j, c, mode, esc, kanji;
 
 	for (i = 1; i < argc; i++) {

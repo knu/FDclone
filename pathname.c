@@ -157,7 +157,7 @@ int exceptdot;
 
 	if (!*str) str = "*";
 	if (!(pattern = (char *)malloc(1 + strlen(str) * 2 + 3))) error(NULL);
-	pattern[0] =  (exceptdot && (*str == '*' || *str == '?')) ? '.' : ' ';
+	pattern[0] = (exceptdot && (*str == '*' || *str == '?')) ? '.' : ' ';
 	i = 1;
 	pattern[i++] = '^';
 	flag = 0;
