@@ -107,7 +107,7 @@ BCFLAGS	= $(CFLAGS) -DMINIMUMSHELL
 all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) -ml -h -k"-s 4400" -o $@ @$(ARGS) $(LDFLAGS)
+	$(CC) -ml -h -k"-s 4000" -o $@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
@@ -118,16 +118,16 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@$(ECHO) $(OBJ3) >> $(ARGS)
 
 main.obj: main.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4400" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\"  $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4000" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\"  $*.c
 
 term.obj: term.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4400" $(CPPFLAGS) -c -o $@  $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4000" $(CPPFLAGS) -c -o $@  $*.c
 
 system.obj: system.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4400" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4000" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
 
 .c.obj:
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4400" $(CPPFLAGS) -c -o $@ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 4000" $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################

@@ -1,3 +1,8 @@
+Ver. 2.06b	Support the key input by UTF-8 code.
+ (12/14/04)	Support some OS environments displaying every file size as 0.
+		Suppress the useless access to FDD on Cygwin.
+		Bug that some kanji cannot be inputted on ShiftJIS is fixed.
+
 Ver. 2.06a	Validate interrupt key at question in marked file operations.
  (09/08/04)	Broken copy into the file linked the same entity is fixed.
 		Bug that symbolic link cannot overwrite existent file is fixed.

@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.06a 09/08/04
+.\" @(#)fd.1   2.06b 12/14/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "September 8, 2004"
+.TH FD 1 "December 14, 2004"
 .de sh
 .br
 .PP
@@ -4406,6 +4406,8 @@ the Kanji code specified in compile is valid.
 .nf
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 .fi
 .RE
 .IP "\fBLANGUAGE\fP"

@@ -2787,6 +2787,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    is valid.  ((UUNNIIXX))
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
 
      LLAANNGGUUAAGGEE      Specify the language for display character.
                    It means not only each messages displayed by

@@ -1934,7 +1934,8 @@ char *buf;
 int ch;
 {
 #ifndef	_NOKANJICONV
-	char tmpkanji[3];
+	char tmpkanji[4];
+	int n;
 #endif
 	int ch2;
 
@@ -1951,6 +1952,39 @@ int ch;
 		tmpkanji[1] = '\0';
 		kanjiconv(buf, tmpkanji, 2, inputkcode, DEFCODE, L_INPUT);
 		return(1);
+	}
+	if (inputkcode == UTF8 || inputkcode == M_UTF8) {
+		if ((ch & 0xff00) || ch < 0x80) /*EMPTY*/;
+		else if (!kbhit2(WAITMETA * 1000L)
+		|| (ch2 = getch2()) == EOF) {
+			buf[0] = '\0';
+			return(-1);
+		}
+		else if ((ch & 0xe0) == 0xc0 && (ch2 & 0xc0) == 0x80) {
+			tmpkanji[0] = ch;
+			tmpkanji[1] = ch2;
+			tmpkanji[2] = '\0';
+			n = kanjiconv(buf, tmpkanji, 2,
+				inputkcode, DEFCODE, L_INPUT);
+			return(n);
+		}
+		else if (!kbhit2(WAITMETA * 1000L)
+		|| (n = getch2()) == EOF) {
+			buf[0] = '\0';
+			return(-1);
+		}
+		else {
+			tmpkanji[0] = ch;
+			tmpkanji[1] = ch2;
+			tmpkanji[2] = n;
+			tmpkanji[3] = '\0';
+			n = kanjiconv(buf, tmpkanji, 3,
+				inputkcode, DEFCODE, L_INPUT);
+# ifdef	CODEEUC
+			if (isekana(buf, 0)) n = 1;
+# endif
+			return(n);
+		}
 	}
 #else	/* _NOKANJICONV */
 # ifdef	CODEEUC
@@ -1970,8 +2004,8 @@ int ch;
 #endif	/* _NOKANJICONV */
 
 	if (isinkanji1(ch)) {
-		ch2 = (kbhit2(WAITMETA * 1000L)) ? getkey2(0) : '\0';
-		if (!isinkanji2(ch2)) {
+		if (!kbhit2(WAITMETA * 1000L)
+		|| (ch2 = getch2()) == EOF || !isinkanji2(ch2)) {
 			buf[0] = '\0';
 			return(-1);
 		}
@@ -2260,10 +2294,10 @@ int *cxp, cx2, len, upper;
 			s[(*cxp)++] = ch;
 			cx2++;
 			putcursor(ch, 1);
-#ifndef	_NOORIGSHELL
+# ifndef	_NOORIGSHELL
 			if (dumbmode) checkcursor(s, *cxp, cx2, len);
 			else
-#endif
+# endif
 			if (within(cx2) && ptr2col(cx2) < 1)
 				setcursor(s, *cxp, cx2, len);
 			return(cx2);

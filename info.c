@@ -210,6 +210,9 @@ extern int dosstatfs __P_((int, char *));
 #endif
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
+#if	!MSDOS
+extern int Xstat __P_((char *, struct stat *));
+#endif
 extern int Xaccess __P_((char *, int));
 
 extern bindtable bindlist[];
@@ -692,10 +695,15 @@ char *path;
 statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
+	statfs_t fs;
+	mnt_t mnt;
 #if	MSDOS
 # ifndef	_NODOSDRIVE
 	int i;
 # endif
+
+	if (!fsbuf) fsbuf = &fs;
+	if (!mntbuf) mntbuf = &mnt;
 
 	mntbuf -> mnt_fsname = "MSDOS";
 	mntbuf -> mnt_dir[0] = dospath(path, NULL);
@@ -742,9 +750,6 @@ mnt_t *mntbuf;
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
 #else	/* !MSDOS */
-# if	!defined (USEMNTENTH) && !defined (USEGETFSENT)
-	mnt_t mnt;
-# endif
 	mnt_t *mntp;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN];
@@ -753,8 +758,11 @@ mnt_t *mntbuf;
 	int drv;
 #endif
 
+	if (!fsbuf) fsbuf = &fs;
+	if (!mntbuf) mntbuf = &mnt;
+
 	dir = NULL;
-	if (!strncmp(path, "/dev/", 4)) {
+	if (!strncmp(path, "/dev/", sizeof("/dev/") - 1)) {
 		if (_chdir2(path) < 0) dir = path;
 	}
 #ifndef	_NODOSDRIVE
@@ -766,8 +774,8 @@ mnt_t *mntbuf;
 		mntbuf -> mnt_dir = dosmntdir;
 		dosmntdir[0] = drv;
 		strcpy(&(dosmntdir[1]), ":\\");
-		mntbuf -> mnt_type = (islower2(drv))
-			? MNTTYPE_DOS7 : MNTTYPE_PC;
+		mntbuf -> mnt_type =
+			(islower2(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
 		mntbuf -> mnt_opts = "";
 		if (dosstatfs(drv, buf) < 0) return(-1);
 		if (buf[sizeof(long) * 3] & 001)
@@ -788,6 +796,7 @@ mnt_t *mntbuf;
 		fsbuf -> f_bavail = *((long *)&(buf[sizeof(long) * 2]));
 # endif	/* !USEFSDATA */
 		fsbuf -> f_files = -1L;
+
 		return(0);
 	}
 #endif	/* !_NODOSDRIVE */
@@ -841,6 +850,7 @@ mnt_t *mntbuf;
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
 	&& (path == dir || statfs2(path, fsbuf) < 0)) return(-1);
 #endif	/* !MSDOS */
+
 	return(0);
 }
 
@@ -865,7 +875,6 @@ char *path;
 #ifdef	_USEDOSEMU
 	int drv;
 #endif
-	statfs_t fsbuf;
 	mnt_t mntbuf;
 	int i;
 
@@ -874,7 +883,7 @@ char *path;
 	if ((drv = dospath(path, NULL)))
 		return((isupper2(drv)) ? FSID_FAT : FSID_DOSDRIVE);
 #endif
-	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
+	if (getfsinfo(path, NULL, &mntbuf) < 0
 	|| hasmntopt2(&mntbuf, "ro"))
 		return(0);
 
@@ -896,18 +905,26 @@ char *dir;
 	return((off_t)blocksize(fsbuf));
 #else	/* !MSDOS */
 	statfs_t fsbuf;
-	mnt_t mntbuf;
-# ifndef	DEV_BSIZE
 	struct stat st;
-# endif
 
-	if (!strcmp(dir, ".") && getfsinfo(dir, &fsbuf, &mntbuf) >= 0)
-		return((off_t)blocksize(fsbuf));
+	if (strcmp(dir, ".")) {
+		/* In case of the newborn directory */
+		if (Xstat(dir, &st) >= 0) return((off_t)(st.st_size));
+	}
+	else {
+# ifdef	CYGWIN
+		if (statfs2(dir, &fsbuf) >= 0)
+# else
+		if (getfsinfo(dir, &fsbuf, NULL) >= 0)
+# endif
+			return((off_t)blocksize(fsbuf));
+		if (Xstat(dir, &st) >= 0) return((off_t)(st.st_blksize));
+	}
+
 # ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 # else
-	if (Xstat(dir, &st) < 0) error(dir);
-	return((off_t)(st.st_size));
+	return((off_t)512);
 # endif
 #endif	/* !MSDOS */
 }
@@ -953,13 +970,12 @@ char *path;
 off_t *totalp, *freep, *bsizep;
 {
 	statfs_t fsbuf;
-	mnt_t mntbuf;
 	int n;
 
 #ifndef	_NODOSDRIVE
 	needbavail++;
 #endif
-	n = getfsinfo(path, &fsbuf, &mntbuf);
+	n = getfsinfo(path, &fsbuf, NULL);
 #ifndef	_NODOSDRIVE
 	needbavail--;
 #endif

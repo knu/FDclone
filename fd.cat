@@ -2522,6 +2522,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    漢字コードが採用されます。((UUNNIIXX))
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
 
      LLAANNGGUUAAGGEE      表示する文字の言語を指定します。ffdd の出力する
                    各種メッセージの他、漢字を含むファイル名に対す

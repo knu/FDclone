@@ -94,6 +94,14 @@ typedef struct _kconv_t {
 	u_short range;
 } kconv_t;
 
+#if	!defined (_NOKANJICONV) \
+|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+typedef struct _langtable {
+	char *ident;
+	int lang;
+} langtable;
+#endif
+
 #ifndef	_NOKANJIFCONV
 typedef struct _kpathtable {
 	char **path;
@@ -162,6 +170,34 @@ char *noconvpath = NULL;
 char *unitblpath = NULL;
 int unicodebuffer = 0;
 #endif
+
+#if	!defined (_NOKANJICONV) \
+|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+static CONST langtable langlist[] = {
+# ifndef	_NOKANJICONV
+	{"sjis", SJIS},
+	{"euc", EUC},
+	{"ujis", EUC},
+	{"utf8-mac", M_UTF8},
+	{"mac", M_UTF8},
+	{"utf8", UTF8},
+	{"utf-8", UTF8},
+	{"ojunet", O_JUNET},
+	{"ojis8", O_JIS8},
+	{"ojis", O_JIS7},
+	{"junet", JUNET},
+	{"jis8", JIS8},
+	{"jis", JIS7},
+	{"hex", HEX},
+	{"cap", CAP},
+# endif	/* _NOKANJICONV */
+# ifndef	_NOENGMES
+	{"eng", ENG},
+	{"C", ENG},
+# endif	/* _NOENGMES */
+};
+#define	MAXLANGLIST	(sizeof(langlist) / sizeof(langtable))
+#endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 static u_char *unitblbuf = NULL;
@@ -458,8 +494,12 @@ char *s1, *s2;
 	while (*s1) {
 		for (i = 0;; i++) {
 			if (!s2[i]) return(s1);
-			c1 = toupper2(s1[i]);
-			c2 = toupper2(s2[i]);
+			c1 = s1[i];
+			c2 = s2[i];
+			if (islower2(c2)) {
+				c1 = toupper2(c1);
+				c2 = toupper2(c2);
+			}
 			if (c1 != c2) break;
 #ifndef	CODEEUC
 			if (issjis1(c1)) {
@@ -482,38 +522,38 @@ int getlang(s, io)
 char *s;
 int io;
 {
-	int ret;
+	int i, ret;
 
-	if (!s) ret = NOCNV;
-# ifndef	_NOKANJICONV
-	else if (io == L_FNAME && strstr2(s, "hex")) ret = HEX;
-	else if (io == L_FNAME && strstr2(s, "cap")) ret = CAP;
-	else if (strstr2(s, "sjis")) ret = SJIS;
-	else if (strstr2(s, "euc") || strstr2(s, "ujis")) ret = EUC;
-	else if (strstr2(s, "utf8-mac") || strstr2(s, "mac")) ret = M_UTF8;
-	else if (strstr2(s, "utf8") || strstr2(s, "utf-8")) ret = UTF8;
-	else if (strstr2(s, "ojunet")) ret = O_JUNET;
-	else if (strstr2(s, "ojis8")) ret = O_JIS8;
-	else if (strstr2(s, "ojis")) ret = O_JIS7;
-	else if (strstr2(s, "junet")) ret = JUNET;
-	else if (strstr2(s, "jis8")) ret = JIS8;
-	else if (strstr2(s, "jis")) ret = JIS7;
-# endif	/* !_NOKANJICONV */
-# ifndef	_NOENGMES
-	else if (io == L_OUTPUT && (strstr2(s, "eng") || !strcmp(s, "C")))
-		ret = ENG;
-# endif
-	else ret = NOCNV;
+	ret = NOCNV;
+	if (s) for (i = 0; i < MAXLANGLIST; i++) {
+		switch (kanjiiomode[langlist[i].lang]) {
+			case L_INPUT:
+				if (io == L_INPUT) continue;
+				break;
+			case L_OUTPUT:
+				if (io != L_OUTPUT) continue;
+				break;
+			case L_FNAME:
+				if (io != L_FNAME) continue;
+				break;
+			default:
+				break;
+		}
 
-# ifndef	_NOKANJICONV
-	if (io == L_INPUT) {
-#  ifdef	CODEEUC
-		if (ret != SJIS) ret = EUC;
-#  else
-		if (ret != EUC) ret = SJIS;
-#  endif
+		if (strstr2(s, langlist[i].ident)) {
+			ret = langlist[i].lang;
+			break;
+		}
 	}
+
+# ifndef	_NOKANJICONV
+#  ifdef	CODEEUC
+	if (io == L_INPUT && ret == NOCNV) ret = EUC;
+#  else
+	if (io == L_INPUT && ret == NOCNV) ret = SJIS;
+#  endif
 # endif	/* !_NOKANJICONV */
+
 	return(ret);
 }
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */

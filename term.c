@@ -2946,14 +2946,18 @@ int sig;
 
 	if ((key = ch = getch2()) == EOF) return(K_NOKEY);
 # if	!defined (_NOKANJICONV) || defined (CODEEUC)
-	if (key == C_EKANA) {
+	if (key != C_EKANA) /*EMPTY*/;
+#  if	!defined (_NOKANJICONV)
+	else if (inputkcode != EUC) /*EMPTY*/;
+#  endif
+	else {
 		if (!kbhit2(WAITMETA * 1000L) || (ch = getch2()) == EOF)
 			return(key);
 		if (iskana2(ch)) return(mkekana(ch));
 		ungetch2(ch);
 		return(key);
 	}
-# endif
+# endif	/* !_NOKANJICONV || CODEEUC */
 	if (cc_erase != 255 && key == cc_erase) return(K_BS);
 	if (!(p = keyseqtree)) return(key);
 

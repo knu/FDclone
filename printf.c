@@ -175,10 +175,7 @@ int width, prec;
 	}
 	else if (n >= 0) sign = (pbufp -> flags & VF_PLUS) ? 1 : 0;
 #endif	/* !MINIMUMSHELL */
-	else {
-		sign = -1;
-		n = -n;
-	}
+	else sign = -1;
 
 #ifdef	MINIMUMSHELL
 	if (sign) width--;
@@ -193,11 +190,18 @@ int width, prec;
 	}
 	else while (len < sizeof(num) / sizeof(char)) {
 #ifdef	MINIMUMSHELL
-		if (!bit) i = (n % base) + '0';
+		if (!bit) {
+			i = (n % base);
+			if (i < 0) i = -i;
+			i += '0';
+		}
 		else if ((i = (u & base)) < 10) i += '0';
 #else
-		if (!bit) i = '0'
-			+ (((pbufp -> flags & VF_UNSIGNED) ? u : n) % base);
+		if (!bit) {
+			if (pbufp -> flags & VF_UNSIGNED) i = u % base;
+			else if ((i = n % base) < 0) i = -i;
+			i += '0';
+		}
 		else if ((i = (u & base)) < 10) i += '0';
 		else if (cap) i += 'A' - 10;
 		else i += 'a' - 10;
@@ -495,6 +499,40 @@ va_list args;
 #endif
 			else u = va_arg(args, u_int);
 
+#ifndef	HAVELONGLONG
+			if (len > sizeof(u_long_t)) {
+				u_long_t hi, tmp;
+
+				while (len > sizeof(u_int)) {
+					hi = va_arg(args, u_int);
+					len -= sizeof(u_int);
+				}
+
+				tmp = 0x5a;
+				cp = (char *)(&tmp);
+				if (*cp != 0x5a) {
+					tmp = hi;
+					hi = u;
+					u = tmp;
+				}
+
+				if (pbufp -> flags & VF_UNSIGNED) {
+					if (hi) u = MAXUTYPE(u_long_t);
+				}
+				else {
+					mask = (MAXUTYPE(u_long_t) >> 1);
+					if (hi & ~mask) {
+						if (++hi || !(u & ~mask))
+							u = ~mask;
+					}
+					else {
+						if (hi || (u & ~mask))
+							u = mask;
+					}
+				}
+			}
+			else
+#endif	/* !HAVELONGLONG */
 			if (!(pbufp -> flags & VF_UNSIGNED)) {
 				mask = (MAXUTYPE(u_long_t)
 					>> ((sizeof(long_t) - len)

@@ -274,6 +274,27 @@ K_EXTERN int fnamekcode K_INIT(NOCNV);
 #define	L_OUTPUT	1
 #define	L_FNAME		2
 
+K_EXTERN CONST char kanjiiomode[]
+# ifdef	K_INTERN
+= {
+	L_INPUT,	/* NOCNV */
+	L_OUTPUT,	/* ENG */
+	-1,		/* SJIS */
+	-1,		/* EUC */
+	L_INPUT,	/* JIS7 */
+	L_INPUT,	/* O_JIS7 */
+	L_INPUT,	/* JIS8 */
+	L_INPUT,	/* O_JIS8 */
+	L_INPUT,	/* JUNET */
+	L_INPUT,	/* O_JUNET */
+	L_FNAME,	/* HEX */
+	L_FNAME,	/* CAP */
+	-1,		/* UTF8 */
+	-1,		/* M_UTF8 */
+}
+# endif	/* K_INTERN */
+;
+
 K_EXTERN int iskanji1 __P_((char *, int));
 #ifdef	K_INTERN
 int iskanji1(s, i)
@@ -297,8 +318,10 @@ int i;
 # define	isinkanji2(c)	issjis2(c)
 # endif
 #else	/* !_NOKANJICONV */
-#define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : issjis1(c))
-#define	isinkanji2(c)	((inputkcode == EUC) ? iseuc(c) : issjis2(c))
+#define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : \
+			((inputkcode == SJIS) ? issjis1(c) : 0))
+#define	isinkanji2(c)	((inputkcode == EUC) ? iseuc(c) : \
+			((inputkcode == SJIS) ? issjis2(c) : 0))
 #endif	/* !_NOKANJICONV */
 
 #endif	/* __KCTYPE_H_ */

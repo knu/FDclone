@@ -1257,53 +1257,69 @@ int no;
 			cp = str[n];
 			break;
 # endif	/* !_NOEDITMODE */
-# ifndef	_NOKANJICONV
-		case T_KIN:
-			n = *((int *)(envlist[no].var));
-			str[0] = "ShiftJIS";
-			str[1] = "EUC-JP";
-			val[0] = SJIS;
-			val[1] = EUC;
-			envcaption(env);
-			if (noselect(&n, 2, 0, str, val)) return(0);
-			str[SJIS] = "sjis";
-			str[EUC] = "euc";
-			cp = str[n];
-			break;
-# endif	/* !_NOKANJICONV */
 # if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
+		case T_KIN:
+		case T_KNAM:
 		case T_KOUT:
+			tmp = 0;
+			str[tmp] = VNCNV_K;
+			val[tmp++] = NOCNV;
+#  if	!defined (_NOENGMES) && !defined (_NOJPNMES)
+			str[tmp] = VENG_K;
+			val[tmp++] = ENG;
+#  endif
+#  ifndef	_NOKANJICONV
+			str[tmp] = "SJIS";
+			val[tmp++] = SJIS;
+			str[tmp] = "EUC";
+			val[tmp++] = EUC;
+			str[tmp] = "7bit-JIS";
+			val[tmp++] = JIS7;
+			str[tmp] = "8bit-JIS";
+			val[tmp++] = JIS8;
+			str[tmp] = "ISO-2022-JP";
+			val[tmp++] = JUNET;
+			str[tmp] = "UTF-8";
+			val[tmp++] = UTF8;
+#  endif	/* !_NOKANJICONV */
+			p = envlist[no].type - T_KIN;
+			for (n = 0; n < tmp; n++) {
+				switch (kanjiiomode[val[n]]) {
+					case L_INPUT:
+						if (p != L_INPUT) continue;
+						break;
+					case L_OUTPUT:
+						if (p == L_OUTPUT) continue;
+						break;
+					case L_FNAME:
+						if (p == L_FNAME) continue;
+						break;
+					default:
+						continue;
+/*NOTREACHED*/
+						break;
+				}
+				tmp--;
+				memmove(&(str[n]), &(str[n + 1]),
+					(tmp - n) * sizeof(char *));
+				memmove(&(val[n]), &(val[n + 1]),
+					(tmp - n) * sizeof(int));
+				n--;
+			}
+			if (!tmp) return(0);
 			n = *((int *)(envlist[no].var));
-			str[0] = VNCNV_K;
-			str[1] = VENG_K;
-			val[0] = NOCNV;
-			val[1] = ENG;
-#  ifdef	_NOKANJICONV
-			envcaption(env);
-			if (noselect(&n, 2, 0, str, val)) return(0);
-#  else	/* !_NOKANJICONV */
-
-			str[2] = "SJIS";
-			str[3] = "EUC";
-			str[4] = "7bit-JIS";
-			str[5] = "8bit-JIS";
-			str[6] = "ISO-2022-JP";
-			str[7] = "UTF-8";
-			val[2] = SJIS;
-			val[3] = EUC;
-			val[4] = JIS7;
-			val[5] = JIS8;
-			val[6] = JUNET;
-			val[7] = UTF8;
+#  ifndef	_NOKANJICONV
 			if (n != O_JIS7 && n != O_JIS8 && n != O_JUNET
 			&& n != M_UTF8) p = 0;
 			else {
 				p = 1;
 				n--;
 			}
+#  endif	/* !_NOKANJICONV */
 			envcaption(env);
-			if (noselect(&n, 8, 0, str, val)) return(0);
+			if (noselect(&n, tmp, 0, str, val)) return(0);
+#  ifndef	_NOKANJICONV
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
 				str[1] = VOJIS_K;
@@ -1320,68 +1336,12 @@ int no;
 				if (noselect(&p, 2, 64, str, val)) return(0);
 				n += p;
 			}
-			str[SJIS] = "sjis";
-			str[EUC] = "euc";
-			str[JIS7] = "jis7";
-			str[O_JIS7] = "ojis7";
-			str[JIS8] = "jis8";
-			str[O_JIS8] = "ojis8";
-			str[JUNET] = "junet";
-			str[O_JUNET] = "ojunet";
-			str[UTF8] = "utf8";
-			str[M_UTF8] = "utf8-mac";
 #  endif	/* !_NOKANJICONV */
 			str[NOCNV] = "";
+#  if	!defined (_NOENGMES) && !defined (_NOJPNMES)
 			str[ENG] = "C";
-			cp = str[n];
-			break;
-# endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
-# ifndef	_NOKANJIFCONV
-		case T_KNAM:
-			n = *((int *)(envlist[no].var));
-			str[0] = VNCNV_K;
-			str[1] = "SJIS";
-			str[2] = "EUC";
-			str[3] = "7bit-JIS";
-			str[4] = "8bit-JIS";
-			str[5] = "ISO-2022-JP";
-			str[6] = "HEX";
-			str[7] = "CAP";
-			str[8] = "UTF-8";
-			val[0] = NOCNV;
-			val[1] = SJIS;
-			val[2] = EUC;
-			val[3] = JIS7;
-			val[4] = JIS8;
-			val[5] = JUNET;
-			val[6] = HEX;
-			val[7] = CAP;
-			val[8] = UTF8;
-			if (n != O_JIS7 && n != O_JIS8 && n != O_JUNET
-			&& n != M_UTF8) p = 0;
-			else {
-				p = 1;
-				n--;
-			}
-			envcaption(env);
-			if (noselect(&n, 9, 0, str, val)) return(0);
-			if (n >= JIS7 && n <= JUNET) {
-				str[0] = VNJIS_K;
-				str[1] = VOJIS_K;
-				val[0] = 0;
-				val[1] = 1;
-				if (noselect(&p, 2, 64, str, val)) return(0);
-				n += p;
-			}
-			else if (n == UTF8) {
-				str[0] = VUTF8_K;
-				str[1] = VUTFM_K;
-				val[0] = 0;
-				val[1] = 1;
-				if (noselect(&p, 2, 64, str, val)) return(0);
-				n += p;
-			}
-			str[NOCNV] = "";
+#  endif
+#  ifndef	_NOKANJICONV
 			str[SJIS] = "sjis";
 			str[EUC] = "euc";
 			str[JIS7] = "jis7";
@@ -1394,9 +1354,10 @@ int no;
 			str[CAP] = "cap";
 			str[UTF8] = "utf8";
 			str[M_UTF8] = "utf8-mac";
+#  endif	/* !_NOKANJICONV */
 			cp = str[n];
 			break;
-# endif	/* !_NOKANJIFCONV */
+# endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
 # if	FD >= 2
 		case T_OCTAL:
 			ascoctal(*((int *)(envlist[no].var)), buf);
