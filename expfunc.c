@@ -152,8 +152,7 @@ char *args[];
 			if (*(*linep - 1) == '"') c--;
 		}
 		if (c > 0) {
-			args[i] = (char *)malloc(c + 1);
-			if (!args[i]) exit(-1);
+			if (!(args[i] = (char *)malloc(c + 1))) exit(-1);
 			strncpy(args[i], cp, c);
 			args[i][c] = '\0';
 		}

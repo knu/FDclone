@@ -92,7 +92,8 @@ namelist *listp1, *listp2;
 			tmp = strcmp(cp1, cp2);
 			break;
 		case 3:
-			tmp = listp1 -> st_size - listp2 -> st_size;
+			tmp = (int)(listp1 -> st_size)
+				- (int)(listp2 -> st_size);
 			break;
 		case 4:
 			tmp = listp1 -> st_mtim - listp2 -> st_mtim;
@@ -306,7 +307,7 @@ int bsiz, fs;
 	int i, n;
 
 	if (lstat(dir, &status) < 0) error(dir);
-	n = status.st_size / bsiz;
+	n = (int)(status.st_size) / bsiz;
 	tmp = (char *)malloc2(n + 1);
 
 	switch (fs) {

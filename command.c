@@ -630,7 +630,7 @@ int *maxp;
 		if (selectstr(&tmp2, 2, 48, str, val) == ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
-		dupl = (int *)malloc(*maxp * sizeof(int));
+		dupl = (int *)malloc2(*maxp * sizeof(int));
 		for (i = 0; i < *maxp; i++) {
 			dupl[i] = list[i].ent;
 			list[i].ent = i;

@@ -228,7 +228,8 @@ macrostat *stp;
 				argset = 1;
 				break;
 			case 'X':
-				if (strchr("TM", toupper2(command[i + 1]))) {
+				if (command[i + 1]
+				&& strchr("TM", toupper2(command[i + 1]))) {
 					noext = 1;
 					i--;
 					break;
@@ -553,7 +554,7 @@ VOID adjustpath()
 #ifdef	USESETENV
 		if (setenv("PATH", path, 1) < 0) error("PATH");
 #else
-		cp = (char *)malloc(strlen(path) + 5 + 1);
+		cp = (char *)malloc2(strlen(path) + 5 + 1);
 		strcpy(cp, "PATH=");
 		strcpy(cp + 5, path);
 		putenv2(cp);

@@ -609,7 +609,7 @@ static long gettimezone()
 	strcat(path, TZDEFAULT);
 	if (fp = fopen(path, "r")) {
 		if (fread(&buf, sizeof(struct tzhead), 1, fp) == 1)
-			tz += *((long *)buf.tzh_leapcnt);
+			tz += *((long *)(buf.tzh_leapcnt));
 		fclose(fp);
 	}
 #endif

@@ -274,8 +274,9 @@ int no;
 	strcpy(buf + (len++), " ");
 
 	if (isdev(&list[no])) sprintf(buf + len, "%3u, %3u ",
-		(list[no].st_size >> 8) & 0xff, list[no].st_size & 0xff);
-	else sprintf(buf + len, "%8d ", list[no].st_size);
+		((unsigned)(list[no].st_size) >> 8) & 0xff,
+		(unsigned)(list[no].st_size) & 0xff);
+	else sprintf(buf + len, "%8d ", (unsigned)(list[no].st_size));
 	len = strlen(buf);
 
 	sprintf(buf + len, "%02d-%02d-%02d %02d:%02d ",
@@ -383,12 +384,12 @@ int standout;
 	if (columns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&list[no]))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
-		else if (isdev(&list[no]))
-			sprintf(buf + len, " %*u,%*u",
-				WSIZE / 2, (list[no].st_size >> 8) & 0xff,
-				WSIZE - (WSIZE / 2) - 1,
-				list[no].st_size & 0xff);
-		else sprintf(buf + len, " %*d", WSIZE, list[no].st_size);
+		else if (isdev(&list[no])) sprintf(buf + len, " %*u,%*u",
+			WSIZE / 2, ((unsigned)(list[no].st_size) >> 8) & 0xff,
+			WSIZE - (WSIZE / 2) - 1,
+			(unsigned)(list[no].st_size) & 0xff);
+		else sprintf(buf + len, " %*d",
+			WSIZE, (unsigned)(list[no].st_size));
 		if (strlen(buf + len) > WSIZE + 1)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "OVERFLOW");
 		len += WIDTH3;
@@ -409,6 +410,7 @@ int standout;
 		buf[len++] = ' ';
 		putgroup(buf + len, list[no].st_gid);
 		len += WGROUP;
+		buf[len++] = ' ';
 		putmode(buf + len, (!isdisplnk(dispmode) && islink(&list[no])) ?
 			(S_IFLNK | 0777) : list[no].st_mode);
 	}

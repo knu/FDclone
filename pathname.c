@@ -203,8 +203,6 @@ extern int re_exec();
 reg_t *regexp_init(s)
 char *s;
 {
-	char *cp;
-
 	re_comp(s);
 	return((reg_t *)1);
 }
