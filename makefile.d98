@@ -352,6 +352,11 @@ tar: $(SOURCES)
 	tar cvf $(TITLE)"$$VER".tar $(SOURCES);\
 	compress -f $(TITLE)"$$VER".tar)
 
+gtar: $(SOURCES)
+	($(GETVER);\
+	tar cvf $(TITLE)"$$VER".tar $(SOURCES);\
+	gzip -f $(TITLE)"$$VER".tar)
+
 shtar: $(SHSOURCES)
 	(VER=`date '+%y%m%d'`;\
 	tar cvf $(TITLE)sh-"$$VER".tar $(SHSOURCES);\

@@ -760,7 +760,7 @@ int *ptrp;
 	}
 	else {
 		n = 0L;
-		if (!(cp = evalvararg(s, 0, 1, '\'', 0, 0))) *ptrp = -1;
+		if (!(cp = evalvararg(s, '\'', EA_BACKQ, 0))) *ptrp = -1;
 		else {
 			for (i = 0; cp[i] && strchr(IFS_SET, cp[i]); i++);
 			if (cp[i]) {
@@ -1234,6 +1234,14 @@ int *ptrp;
 			&& st.st_mode & S_ISVTX)
 				? RET_SUCCESS : RET_FAIL;
 			break;
+#if	defined (BASHSTYLE) || defined (STRICTPOSIX)
+	/* "test" on bash & POSIX has -e & -L option */
+		case 'e':
+			if (s) ret = (*s && Xstat(s, &st) >= 0)
+				? RET_SUCCESS : RET_FAIL;
+			break;
+		case 'L':
+#endif
 		case 'h':
 			if (s) ret = (*s && Xlstat(s, &st) >= 0
 			&& (st.st_mode & S_IFMT) == S_IFLNK)
@@ -1271,13 +1279,6 @@ int *ptrp;
 		case 'n':
 			if (s) ret = (*s) ? RET_SUCCESS : RET_FAIL;
 			break;
-#ifdef	BASHSTYLE
-	/* bash's "test" has -e option */
-		case 'e':
-			if (s) ret = (*s && Xstat(s, &st) >= 0)
-				? RET_SUCCESS : RET_FAIL;
-			break;
-#endif
 		default:
 			ret = -2;
 			break;

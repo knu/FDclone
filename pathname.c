@@ -706,6 +706,20 @@ int n;
 }
 #endif	/* !PATHNOCASE */
 
+char *underpath(path, dir, len)
+char *path, *dir;
+int len;
+{
+	char *cp;
+
+	if (len < 0) len = strlen(dir);
+	if ((cp = strrdelim2(dir, &(dir[len]))) && !*(cp + 1)) len = cp - dir;
+	if (len <= 0 || strnpathcmp(path, dir, len)) return(NULL);
+	if (path[len] && path[len] != _SC_) return(NULL);
+
+	return(&(path[len]));
+}
+
 static char *NEAR getenvvar(ident, len)
 char *ident;
 int len;
@@ -2144,9 +2158,9 @@ int margin;
 	return(dupl);
 }
 
-int parsechar(s, len, spc, qflag, qp, pqp)
+int parsechar(s, len, spc, flags, qp, pqp)
 char *s;
-int len, spc, qflag, *qp, *pqp;
+int len, spc, flags, *qp, *pqp;
 {
 	if (*s == *qp) {
 		if (!pqp) *qp = '\0';
@@ -2164,13 +2178,13 @@ int len, spc, qflag, *qp, *pqp;
 	if (*qp == '\'') return(PC_SQUOTE);
 	if (spc && *s == spc) return(*s);
 	if (ismeta(s, 0, *qp, len)) return(PC_META);
-	if (qflag > 0 && *s == '`') {
+	if ((flags & EA_BACKQ) && *s == '`') {
 		if (pqp && *qp) *pqp = *qp;
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
 	if (*qp) return(PC_DQUOTE);
-	if (qflag >= 0 && *s == '\'') {
+	if (!(flags & EA_NOEVALQ) && *s == '\'') {
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
@@ -2299,9 +2313,9 @@ int qed, nonl, nest;
 	while (s[*ptrp]) {
 #ifdef	BASHSTYLE
 	/* bash can include `...` in "..." */
-		pc = parsechar(&(s[*ptrp]), -1, '$', 1, &q, &pq);
+		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, &pq);
 #else
-		pc = parsechar(&(s[*ptrp]), -1, '$', 1, &q, NULL);
+		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, NULL);
 #endif
 		if (pc == PC_WORD || pc == PC_META) (*ptrp)++;
 		else if (pc == '$') {
@@ -2346,7 +2360,7 @@ int plen, mode;
 
 	if (!s || !*s) return(NULL);
 	tmp = strndup2(pattern, plen);
-	pattern = evalarg(tmp, 0, 1, '\0');
+	pattern = evalarg(tmp, '\0', EA_BACKQ);
 	free(tmp);
 	re = regexp_init(pattern, -1);
 	free(pattern);
@@ -2544,7 +2558,9 @@ int s, len, vlen, mode, quoted;
 	else if (mode == '=' && !isidentchar(*arg)) return(-1);
 
 	val = strndup2(&(arg[s]), vlen);
-	*cpp = evalarg(val, (mode == '=' || mode == '?'), 1, quoted);
+	*cpp = evalarg(val, quoted,
+		(mode == '=' || mode == '?')
+		? EA_STRIPQ | EA_BACKQ : EA_BACKQ);
 	free(val);
 	if (!*cpp) return(-1);
 
@@ -2561,7 +2577,7 @@ int s, len, vlen, mode, quoted;
 	/* bash does not evaluates a quoted string in substitution itself */
 		free(*cpp);
 		val = strndup2(&(arg[s]), vlen);
-		*cpp = evalarg(val, 0, 1, quoted);
+		*cpp = evalarg(val, quoted, EA_BACKQ);
 		free(val);
 		if (!*cpp) return(-1);
 # ifdef	FD
@@ -2996,9 +3012,9 @@ char **argp;
 }
 #endif	/* !MINIMUMSHELL */
 
-char *evalarg(arg, stripq, backq, qed)
+char *evalarg(arg, qed, flags)
 char *arg;
-int stripq, backq, qed;
+int qed, flags;
 {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char path[MAXPATHLEN], alias[MAXPATHLEN];
@@ -3013,7 +3029,8 @@ int stripq, backq, qed;
 	if (*arg == '"' && (i = strlen(arg)) > 2 && arg[i - 1] == '"') {
 		strncpy2(path, &(arg[1]), i - 2);
 		if (shortname(path, alias) == alias) {
-			if (stripq) return(strdup2(alias));
+			if (flags & (EA_STRIPQ | EA_STRIPQLATER))
+				return(strdup2(alias));
 			i = strlen(alias);
 			buf = malloc2(i + 2 + 1);
 			buf[0] = '"';
@@ -3027,8 +3044,8 @@ int stripq, backq, qed;
 
 	i = strlen(arg) + 1;
 	buf = malloc2(i);
-	if (!backquotefunc) backq = 0;
-	bbuf = (backq) ? malloc2(i) : NULL;
+	if (!backquotefunc) flags &= ~EA_BACKQ;
+	bbuf = (flags & EA_BACKQ) ? malloc2(i) : NULL;
 #ifdef	BASHSTYLE
 	pq = '\0';
 #endif
@@ -3038,9 +3055,9 @@ int stripq, backq, qed;
 	for (cp = arg; *cp; prev = *(cp++)) {
 #ifdef	BASHSTYLE
 	/* bash can include `...` in "..." */
-		pc = parsechar(cp, -1, '$', backq, &q, &pq);
+		pc = parsechar(cp, -1, '$', flags, &q, &pq);
 #else
-		pc = parsechar(cp, -1, '$', backq, &q, NULL);
+		pc = parsechar(cp, -1, '$', flags, &q, NULL);
 #endif
 		if (pc == PC_CLQUOTE) {
 			if (*cp == '`') {
@@ -3049,7 +3066,7 @@ int stripq, backq, qed;
 					bbuf, strlen(cp + 1));
 				j = 0;
 			}
-			else if (!stripq) buf[i++] = *cp;
+			else if (!(flags & EA_STRIPQ)) buf[i++] = *cp;
 		}
 		else if (pc == PC_WORD) {
 			if (q == '`') {
@@ -3084,16 +3101,18 @@ int stripq, backq, qed;
 		}
 		else if (pc == PC_META) {
 			cp++;
-			if (*cp == '$') /*EMPTY*/;
-			else if (backq && *cp == '`') /*EMPTY*/;
-			else if (stripq && (*cp == '\'' || *cp == '"'))
+			if (flags & EA_KEEPMETA) buf[i++] = PMETA;
+			else if (*cp == '$') /*EMPTY*/;
+			else if ((flags & EA_BACKQ) && *cp == '`') /*EMPTY*/;
+			else if ((flags & EA_STRIPQ)
+			&& (*cp == '\'' || *cp == '"'))
 				/*EMPTY*/;
 			else buf[i++] = PMETA;
 			buf[i++] = *cp;
 		}
 		else if (pc == PC_OPQUOTE) {
 			if (*cp == '`') j = 0;
-			else if (!stripq) buf[i++] = *cp;
+			else if (!(flags & EA_STRIPQ)) buf[i++] = *cp;
 		}
 		else if (pc != PC_NORMAL) /*EMPTY*/;
 #ifndef	MINIMUMSHELL
@@ -3104,13 +3123,16 @@ int stripq, backq, qed;
 	}
 #ifndef	BASHSTYLE
 	/* bash does not allow unclosed quote */
-	if (backq && q == '`') {
+	if ((flags & EA_BACKQ) && q == '`') {
 		bbuf[j] = '\0';
 		buf = replacebackquote(buf, &i, bbuf, 0);
 	}
 #endif
 	if (bbuf) free(bbuf);
 	buf[i] = '\0';
+
+	if (flags & EA_STRIPQLATER) stripquote(buf, EA_STRIPQ);
+
 	return(buf);
 }
 
@@ -3161,10 +3183,10 @@ char ***argvp, *ifs;
 	return(argc);
 }
 
-int evalglob(argc, argvp, stripq)
+int evalglob(argc, argvp, flags)
 int argc;
 char ***argvp;
-int stripq;
+int flags;
 {
 	char *cp, **wild;
 	ALLOC_T size;
@@ -3177,7 +3199,7 @@ int stripq;
 			pc = parsechar(&((*argvp)[n][i]), -1,
 				'\0', 0, &quote, NULL);
 			if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) {
-				if (stripq) continue;
+				if (flags & EA_STRIPQ) continue;
 			}
 			else if (pc == PC_WORD) cp[j++] = (*argvp)[n][i++];
 			else if (pc == PC_META) {
@@ -3224,9 +3246,9 @@ int stripq;
 	return(argc);
 }
 
-int stripquote(arg, stripq)
+int stripquote(arg, flags)
 char *arg;
-int stripq;
+int flags;
 {
 	int i, j, pc, quote, stripped;
 
@@ -3236,7 +3258,7 @@ int stripq;
 		pc = parsechar(&(arg[i]), -1, '\0', 0, &quote, NULL);
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) {
 			stripped = 1;
-			if (stripq) continue;
+			if (flags & EA_STRIPQ) continue;
 		}
 		else if (pc == PC_WORD) arg[j++] = arg[i++];
 		else if (pc == PC_META) {
@@ -3267,7 +3289,7 @@ int uniqdelim, evalq;
 	else i = strlen(path);
 	cp = strndup2(path, i);
 
-	if (!(tmp = evalarg(cp, 0, 0, '\''))) {
+	if (!(tmp = evalarg(cp, '\'', 0))) {
 		*cp = '\0';
 		return(cp);
 	}

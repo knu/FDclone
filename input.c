@@ -1608,9 +1608,9 @@ int linemax, comline, cont;
 	top = quoted = 0;
 	for (i = 0; i < cx; i++) {
 # ifdef	FAKEMETA
-		pc = parsechar(&((*sp)[i]), cx, '$', -1, &quote, NULL);
+		pc = parsechar(&((*sp)[i]), cx, '$', EA_NOEVALQ, &quote, NULL);
 # else
-		pc = parsechar(&((*sp)[i]), cx, '$', 1, &quote, NULL);
+		pc = parsechar(&((*sp)[i]), cx, '$', EA_BACKQ, &quote, NULL);
 # endif
 		if (pc == PC_CLQUOTE) quoted = i;
 		else if (pc == PC_WORD) i++;

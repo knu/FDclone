@@ -1,3 +1,8 @@
+Ver. 2.05d	Bug that ineffective \$ in PS1 is fixed.
+ (05/12/04)	Bug that \~ in PS1 is sometimes expanded incorrectly is fixed.
+		Bug that fd invoked by fdsh changes current directory is fixed.
+		Add notice when temporary directory is selected to expand file.
+
 Ver. 2.05c	Bug that 'bind' binds a wrong macro to the bound key is fixed.
  (02/04/04)	Failure to do 'make install' on Cygwin is fixed.
 

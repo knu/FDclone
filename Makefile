@@ -90,7 +90,7 @@ ipk: Makefile.tmp
 everything: Makefile.tmp
 	$(MAKE) -f Makefile.tmp sh bsh all
 
-tar shtar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
+tar gtar shtar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
 makefile.dpc makefile.d98 \
 makefile.lpc makefile.l98 \
 makefile.bpc makefile.b98

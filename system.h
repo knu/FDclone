@@ -468,7 +468,7 @@ extern VOID dispsignal __P_((int, int, FILE *));
 extern int waitjob __P_((p_id_t, wait_pid_t *, int));
 extern int waitchild __P_((p_id_t, syntaxtree *));
 #endif
-extern char *evalvararg __P_((char *, int, int, int, int, int));
+extern char *evalvararg __P_((char *, int, int, int));
 extern syntaxtree *newstree __P_((syntaxtree *));
 extern VOID freestree __P_((syntaxtree *));
 extern syntaxtree *parentstree __P_((syntaxtree *));

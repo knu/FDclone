@@ -374,22 +374,18 @@ char *buf;
 	if (buf && !physical_path) strcpy(cwd, fullpath);
 	len = strlen(homedir);
 #if	MSDOS
-	if (len <= 3 || strnpathcmp(cwd, homedir, len)) {
+	if (len <= 3) cp = NULL;
 #else
-	if (len <= 1 || strnpathcmp(cwd, homedir, len)) {
+	if (len <= 1) cp = NULL;
 #endif
-		cp = NULL;
-		if (buf) *buf = '\0';
-	}
-	else {
-		cp = cwd + len;
-		if (buf) strcpy(buf, cp);
-	}
+	else cp = underpath(cwd, homedir, len);
+
+	if (buf) strcpy(buf, (cp) ? cp : "");
 #ifdef	DEBUG
 	free(homedir);
 	homedir = NULL;
 #endif
-	return(cp ? 1 : 0);
+	return((cp) ? 1 : 0);
 }
 
 int preparedir(dir)

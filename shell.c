@@ -1315,7 +1315,7 @@ char *command;
 			i = (stree -> comm) -> argc;
 			(stree -> comm) -> argc =
 				getsubst(i, argv, &subst, &len);
-			stripquote(argv[0], 1);
+			stripquote(argv[0], EA_STRIPQ);
 			if (argv[0] && checkinternal(argv[0]) < 0) ret = 0;
 			freevar(subst);
 			free(len);

@@ -290,7 +290,7 @@ int evaldq;
 # if	MSDOS
 		pc = parsechar(cp, -1, '\0', 0, &quote, NULL);
 # else
-		pc = parsechar(cp, -1, '\0', 1, &quote, NULL);
+		pc = parsechar(cp, -1, '\0', EA_BACKQ, &quote, NULL);
 # endif
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) continue;
 		else if (pc == PC_SQUOTE || pc == PC_BQUOTE) continue;
@@ -527,7 +527,7 @@ VOID adjustpath(VOID_A)
 char *includepath(path, plist)
 char *path, *plist;
 {
-	char *cp, *next;
+	char *cp, *tmp, *next;
 	int len;
 
 	if (!plist || !*plist) return(NULL);
@@ -539,12 +539,7 @@ char *path, *plist;
 #endif
 		next = strchr(cp, PATHDELIM);
 		len = (next) ? (next++) - cp : strlen(cp);
-		while (len > 1 && cp[len - 1] == _SC_) len--;
-#ifdef	BSPATHDELIM
-		if (onkanji1(cp, len - 1)) len++;
-#endif
-		if (len > 0 && !strnpathcmp(path, cp, len)
-		&& (!path[len] || path[len] == _SC_)) return(path + len);
+		if ((tmp = underpath(path, cp, len))) return(tmp);
 	}
 	return(NULL);
 }
@@ -602,7 +597,7 @@ char **bufp, *prompt;
 #ifdef	_NOORIGSHELL
 	prompt = evalpath(strdup2(prompt), 0);
 #else
-	prompt = evalvararg(prompt, 0, 1, '\0', 0, 0);
+	prompt = evalvararg(prompt, '\0', EA_BACKQ | EA_KEEPMETA, 0);
 #endif
 	unprint = 0;
 #ifdef	FAKEUNINIT
@@ -670,7 +665,7 @@ char **bufp, *prompt;
 				else cp = tmp;
 				break;
 			case '~':
-				if (underhome(line + 1)) line[0] = '~';
+				if (underhome(&(line[1]))) line[0] = '~';
 				else if (!physical_path || !Xgetwd(line))
 					cp = fullpath;
 				break;

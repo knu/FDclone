@@ -3246,16 +3246,13 @@ ALLOC_T *lenp;
 	return(realloc2(cp, i + 1));
 }
 
-char *evalvararg(arg, stripq, backq, quoted, stripqlater, noexit)
+char *evalvararg(arg, quoted, flags, noexit)
 char *arg;
-int stripq, backq, quoted, stripqlater, noexit;
+int quoted, flags, noexit;
 {
 	char *tmp;
 
-	if ((tmp = evalarg(arg, stripq, backq, quoted))) {
-		if (stripqlater) stripquote(tmp, 1);
-		return(tmp);
-	}
+	if ((tmp = evalarg(arg, quoted, flags))) return(tmp);
 #if	defined (BASHSTYLE) && defined (STRICTPOSIX)
 	if (!noexit) noexit = -1;
 #endif
@@ -3274,11 +3271,11 @@ int ignoretab;
 	flags = (ignoretab) ? HD_IGNORETAB : 0;
 
 	cp = strdup2(eof);
-	if (stripquote(cp, 1)) flags |= HD_QUOTED;
+	if (stripquote(cp, EA_STRIPQ)) flags |= HD_QUOTED;
 #ifndef	BASHSTYLE
 	/* bash allows no variables as the EOF identifier */
 	free(cp);
-	if (!(cp = evalvararg(eof, 0, 0, '\0', 1, 0))) {
+	if (!(cp = evalvararg(eof, '\0', EA_STRIPQLATER, 0))) {
 		errno = -1;
 		return(NULL);
 	}
@@ -3986,8 +3983,8 @@ int old;
 				if (ret != RET_SUCCESS) /*EMPTY*/;
 				else if (hdp -> flags & HD_QUOTED)
 					fputs(cp, stdout);
-				else if (!(tmp = evalvararg(cp,
-				0, 1, '\'', 0, 1)))
+				else if (!(tmp = evalvararg(cp, '\'',
+				EA_BACKQ, 1)))
 					ret = RET_FAIL;
 				else {
 					fputs(tmp, stdout);
@@ -4148,7 +4145,8 @@ redirectlist *rp;
 	type = rp -> type;
 	if (!(rp -> filename)) tmp = NULL;
 	else if (type & MD_HEREDOC) tmp = rp -> filename;
-	else if (!(tmp = evalvararg(rp -> filename, 0, 1, '\0', 1, 0))) {
+	else if (!(tmp = evalvararg(rp -> filename, '\0',
+	EA_BACKQ | EA_STRIPQLATER, 0))) {
 		errno = -1;
 		return(rp);
 	}
@@ -6820,7 +6818,7 @@ char **argv;
 
 	for (i = 0; argv[i]; i++) {
 		if (trapok >= 0) trapok = 1;
-		tmp = evalarg(argv[i], 0, 1, '\0');
+		tmp = evalarg(argv[i], '\0', EA_BACKQ);
 		if (trapok >= 0) trapok = 0;
 		if (!tmp && i && *(argv[i])) {
 			arg = argv[i];
@@ -6862,7 +6860,7 @@ int *typep, *contp;
 		id = 0;
 	}
 	else {
-		stripquote(tmp = strdup2(comm -> argv[0]), 1);
+		stripquote(tmp = strdup2(comm -> argv[0]), EA_STRIPQ);
 #ifdef	NOALIAS
 		*typep = checktype(tmp, &id, 1);
 #else
@@ -6896,10 +6894,11 @@ int *typep, *contp;
 			nokanjifconv++;
 #endif
 #if	MSDOS
-		comm -> argc = evalglob(comm -> argc,
-			&(comm -> argv), *typep != CT_COMMAND);
+		comm -> argc = evalglob(comm -> argc, &(comm -> argv),
+			(*typep == CT_COMMAND) ? 0 : EA_STRIPQ);
 #else
-		comm -> argc = evalglob(comm -> argc, &(comm -> argv), 1);
+		comm -> argc = evalglob(comm -> argc, &(comm -> argv),
+			EA_STRIPQ);
 #endif
 #if	defined (FD) && !defined (_NOKANJIFCONV)
 		if (*typep == CT_FDORIGINAL);
@@ -6911,12 +6910,13 @@ int *typep, *contp;
 	else {
 		i = 0;
 #if	MSDOS
-		stripquote(comm -> argv[i++], 1);
+		stripquote(comm -> argv[i++], EA_STRIPQ);
 		if (*typep == CT_COMMAND) while (i < comm -> argc)
 			stripquote(comm -> argv[i++], 0);
 		else
 #endif
-		while (i < comm -> argc) stripquote(comm -> argv[i++], 1);
+		while (i < comm -> argc)
+			stripquote(comm -> argv[i++], EA_STRIPQ);
 	}
 	if (trapok >= 0) trapok = 0;
 
@@ -7590,7 +7590,7 @@ syntaxtree *trp;
 
 		argv = (char **)malloc2((comm -> argc + 1) * sizeof(char *));
 		for (i = 0; i < comm -> argc; i++) {
-			tmp = evalvararg(comm -> argv[i], 0, 1, '\0', 0, 0);
+			tmp = evalvararg(comm -> argv[i], '\0', EA_BACKQ, 0);
 			if (!tmp) {
 				while (--i >= 0) free(argv[i]);
 				free(argv);
@@ -7604,12 +7604,12 @@ syntaxtree *trp;
 #if	defined (FD) && !defined (_NOKANJIFCONV)
 			nokanjifconv++;
 #endif
-			argc = evalglob(argc, &argv, 1);
+			argc = evalglob(argc, &argv, EA_STRIPQ);
 #if	defined (FD) && !defined (_NOKANJIFCONV)
 			nokanjifconv--;
 #endif
 		}
-		else for (i = 0; i < argc; i++) stripquote(argv[i], 1);
+		else for (i = 0; i < argc; i++) stripquote(argv[i], EA_STRIPQ);
 #ifdef	FD
 		if (replaceargs(&argc, &argv, NULL, -1) < 0) {
 			freevar(argv);
@@ -7658,7 +7658,8 @@ syntaxtree *trp;
 
 	var = statementbody(trp);
 	comm = var -> comm;
-	if (!(key = evalvararg(comm -> argv[0], 0, 1, '\0', 1, 0)))
+	if (!(key = evalvararg(comm -> argv[0], '\0',
+	EA_BACKQ | EA_STRIPQLATER, 0)))
 		return(RET_FAIL);
 #ifdef	FD
 	demacroarg(&key);
@@ -7679,7 +7680,7 @@ syntaxtree *trp;
 		if (!(comm = var -> comm)) break;
 		ret = -1;
 		for (i = 0; i < comm -> argc; i++) {
-			tmp = evalvararg(comm -> argv[i], 0, 1, '\0', 0, 0);
+			tmp = evalvararg(comm -> argv[i], '\0', EA_BACKQ, 0);
 			if (!tmp) {
 				ret = RET_FAIL;
 				break;
@@ -9340,7 +9341,7 @@ syntaxtree *trp;
 	}
 #endif
 	ident = strdup2(ident);
-	stripquote(ident, 1);
+	stripquote(ident, EA_STRIPQ);
 	len = strlen(ident);
 #ifndef	BASHSTYLE
 	/* bash distinguishes the same named function and variable */
@@ -9515,7 +9516,7 @@ char **argv;
 #endif
 	if (!argc) return(argv);
 
-	stripquote(tmp = strdup2(argv[0]), 1);
+	stripquote(tmp = strdup2(argv[0]), EA_STRIPQ);
 #ifdef	NOALIAS
 	type = checktype(tmp, &id, 1);
 #else
@@ -9661,14 +9662,14 @@ int *contp, bg;
 # ifdef	FD
 	if ((ps = getconstvar("PS4"))) evalprompt(&ps, ps);
 # else
-	if ((ps = getconstvar("PS4"))) ps = evalvararg(ps, 0, 1, '\0', 0, 0);
+	if ((ps = getconstvar("PS4"))) ps = evalvararg(ps, '\0', EA_BACKQ, 0);
 # endif
 #endif
 	while (nsubst--) {
 #ifdef	FD
 		demacroarg(&(subst[nsubst]));
 #endif
-		stripquote(subst[nsubst], 1);
+		stripquote(subst[nsubst], EA_STRIPQ);
 		if (putshellvar(subst[nsubst], len[nsubst]) < 0) {
 			while (nsubst >= 0) free(subst[nsubst--]);
 			free(subst);
@@ -9966,8 +9967,8 @@ int cond;
 				char *tmp;
 
 				if (!(errp -> filename)) tmp = strdup2("-");
-				else tmp = evalvararg(errp -> filename,
-					0, 1, '\0', 1, 0);
+				else tmp = evalvararg(errp -> filename, '\0',
+					EA_BACKQ | EA_STRIPQLATER, 0);
 				if (tmp && !*tmp && *(errp -> filename)) {
 					free(tmp);
 					tmp = strdup2(errp -> filename);

@@ -1708,7 +1708,7 @@ VOID main_fd(path)
 char *path;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	char *def;
+	char *def, *cwd;
 	int i, ischgdir;
 
 	for (i = 0; i < MAXWINDOWS; i++) {
@@ -1750,6 +1750,7 @@ char *path;
 	dispmode = displaymode;
 	curcolumns = defcolumns;
 
+	cwd = getwd2();
 	def = initcwd(path, prev);
 	_chdir2(fullpath);
 
@@ -1783,7 +1784,10 @@ char *path;
 			ischgdir = browsedir(file, def);
 		} while (archivefile);
 #endif
-		if (ischgdir < 0) break;
+		if (ischgdir < 0) {
+			if (ischgdir > -2) chdir2(cwd);
+			break;
+		}
 		if (ischgdir) def = NULL;
 		else {
 			strcpy(prev, file);
@@ -1792,6 +1796,7 @@ char *path;
 		}
 	}
 
+	free(cwd);
 #ifdef	_NOSPLITWIN
 	if (filelist) free(filelist);
 	if (findpattern) free(findpattern);

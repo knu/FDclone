@@ -1145,12 +1145,31 @@ char *arg;
 static int quit_system(arg)
 char *arg;
 {
+	char *str[3];
+	int n, val[3];
+
 #ifndef	_NOARCHIVE
 	if (archivefile) return(-1);
 #endif
-	if (!yesno(QUIT_K)) return(1);
+	n = 0;
+	if (fdmode) {
+		if (!yesno(QUIT_K)) return(1);
+	}
+	else {
+		locate(0, L_MESLINE);
+		putterm(l_clear);
+		kanjiputs(QUIT_K);
+		val[0] = 0;
+		val[1] = 1;
+		val[2] = 2;
+		str[0] = QYES_K;
+		str[1] = QNO_K;
+		str[2] = QCHG_K;
+		if (selectstr(&n, 3, 20, str, val) == K_ESC || n == 1)
+			return(1);
+	}
 	if (savehist > 0) savehistory(0, histfile);
-	return(-1);
+	return((n) ? -2 : -1);
 }
 
 static int make_dir(arg)

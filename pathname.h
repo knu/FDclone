@@ -50,6 +50,12 @@
 #define	PC_WORD		6
 #define	PC_META		7
 
+#define	EA_STRIPQ	0001
+#define	EA_BACKQ	0002
+#define	EA_KEEPMETA	0004
+#define	EA_NOEVALQ	0010
+#define	EA_STRIPQLATER	0020
+
 #if	defined (_NOORIGGLOB) \
 && !defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
 #undef	_NOORIGGLOB
@@ -185,6 +191,7 @@ extern int strnpathcmp2 __P_((char *, char *, int));
 #define	strenvcmp	strcmp
 #define	strnenvcmp	strncmp
 #endif
+extern char *underpath(char *, char *, int);
 extern int isidentchar __P_((int));
 extern int isidentchar2 __P_((int));
 extern int isdotdir __P_((char *));
@@ -223,7 +230,7 @@ extern char *gethomedir __P_((VOID_A));
 #ifndef	MINIMUMSHELL
 extern int evalhome __P_((char **, int, char **));
 #endif
-extern char *evalarg __P_((char *, int, int, int));
+extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, char *));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *, int));

@@ -53,7 +53,7 @@ extern char *malloc2 __P_((ALLOC_T));
 extern char *strncpy2 __P_((char *, char *, int));
 #define	Xlseek	lseek
 # ifndef	_NOKANJIFCONV
-static char *NEAR includepath __P_((char *, char *));
+extern char *includepath __P_((char *, char *));
 # endif
 #endif	/* !FD */
 

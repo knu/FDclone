@@ -3474,7 +3474,8 @@ char *file;
 			argc = (stree -> comm) -> argc;
 			argc = (stree -> comm) -> argc =
 				getsubst(argc, argv, &subst, &slen);
-			for (i = 0; i < argc; i++) stripquote(argv[i], 1);
+			for (i = 0; i < argc; i++)
+				stripquote(argv[i], EA_STRIPQ);
 
 			if (subst[0]) {
 				if (!argc && val[0])
