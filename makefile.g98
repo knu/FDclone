@@ -20,6 +20,9 @@ DEFRC	= $(BUILD)\etc\fd2rc
 DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
 INSTALL	= copy /y
+ECHO	= command /c echo
+CP	= copy /y
+RM	= del
 CHMOD	= chmod
 LN	= copy /y
 
@@ -108,9 +111,9 @@ $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	@del $(PROGRAM)
 
 $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
-	@echo $(OBJ1) > $(ARGS)
-	@echo $(OBJ2) >> $(ARGS)
-	@echo $(OBJ3) >> $(ARGS)
+	@$(ECHO) $(OBJ1) > $(ARGS)
+	@$(ECHO) $(OBJ2) >> $(ARGS)
+	@$(ECHO) $(OBJ3) >> $(ARGS)
 
 main.o: main.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"'  $*.c
@@ -172,7 +175,7 @@ mkfuncno.exe: mkfuncno.c functabl.h fd.h config.h
 	@del mkfuncno
 
 config.h: config.hin
-	copy /y config.hin config.h
+	$(CP) config.hin config.h
 
 
 ############################################################
@@ -194,7 +197,7 @@ mkunitbl.exe: mkunitbl.c
 install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 	$(INSTALL)  $(PROGRAM).exe $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM).exe
-	-del $(BINDIR)\$(FDSHELL).exe
+	-$(RM) $(BINDIR)\$(FDSHELL).exe
 	$(LN) $(BINDIR)\$(PROGRAM).exe $(BINDIR)\$(FDSHELL).exe
 	$(CHMOD) a+rx $(BINDIR)\$(FDSHELL).exe
 	$(INSTALL) $(EMANSRC) $(EMANDIR)\$(PROGRAM).$(MANSEC)
@@ -256,7 +259,7 @@ depend: $(SRC) kanji.h funcno.h
 	rm -f Makefile.tmp.bak
 	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' Makefile.in.bak\
 		> Makefile.in
-	echo "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it."\
 		>> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d'\
 		-e 's\\\[^ ]* *\\g'\
@@ -270,7 +273,7 @@ depend: $(SRC) kanji.h funcno.h
 # to make configuration file manually
 
 config: Configur expfunc.c
-	-if (echo 't() { echo $1; }; t test' | $(SHELL) >\dev\null 2>&1); then \
+	-if ($(ECHO) 't() { echo $1; }; t test' | $(SHELL) >\dev\null 2>&1); then \
 		$(SED) -e "2,3d" -e "s:__cc__:gcc:" Configur \
 		| $(SHELL) > config.h; \
 	else \
@@ -364,7 +367,7 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	cp -p $(PROGRAM).exe $(IPKWDIR)\$(BINDIR)
 	-[ -z "$(STRIP)" ] || $(STRIP) $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe
 	$(CHMOD) a+rx $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe
-	-del $(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
+	-$(RM) $(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
 	$(LN) $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe \
 		$(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
 	$(CHMOD) a+rx $(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
@@ -434,18 +437,18 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		cp -p $(UNITBL) $(IPKWDIR)\$(BINDIR); \
 		$(CHMOD) a+r-x $(IPKWDIR)\$(BINDIR)\$(UNITBL); \
 	fi
-	echo "Package: fd" > $(IPKWDIR)\CONTROL\control
-	echo "Priority: optional" >> $(IPKWDIR)\CONTROL\control
-	echo "Section: extras" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Package: fd" > $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Priority: optional" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Section: extras" >> $(IPKWDIR)\CONTROL\control
 	HEAD=`tail -2 version.h | head -1`; \
 	DIST=`expr "$$HEAD" : '.*"\(.*\)".*'`; \
 	DIST=$${DIST:-`whoami`@`hostname -d`}; \
-	echo "Maintainer: $$DIST" >> $(IPKWDIR)\CONTROL\control
-	echo "Architecture: arm" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Maintainer: $$DIST" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Architecture: arm" >> $(IPKWDIR)\CONTROL\control
 	$(GETVER); \
-	echo "Version: $$VER-1" >> $(IPKWDIR)\CONTROL\control
-	echo "Depends: ncurses" >> $(IPKWDIR)\CONTROL\control
-	echo "Description: a file & directory maintenance tool." \
+	$(ECHO) "Version: $$VER-1" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Depends: ncurses" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Description: a file & directory maintenance tool." \
 		>> $(IPKWDIR)\CONTROL\control
 	(cd $(IPKWDIR); tar cf ..\data.tar --exclude=CONTROL .)
 	(cd $(IPKWDIR)\CONTROL; tar cf ..\..\control.tar .)
@@ -453,7 +456,7 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	mv .\data.tar.gz $(IPKTDIR)
 	gzip .\control.tar
 	mv .\control.tar.gz $(IPKTDIR)
-	echo "2.0" > $(IPKTDIR)\debian-binary
+	$(ECHO) "2.0" > $(IPKTDIR)\debian-binary
 	(cd $(IPKTDIR); \
 	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
 	gzip .\ipk.tar

@@ -1,3 +1,6 @@
+Ver. 2.04b	端末を持たない環境で fdsh が実行できなかった点を修正。
+ (09/17/03)	fdsh の -c オプションで履歴を扱うとフリーズしていた点を修正。
+
 Ver. 2.04a	varargs を用いる環境で compile に失敗していた点を修正。
  (07/24/03)	FreeBSD 5.x で compile できなかった点を修正。
 		Linux/Alpha で file system 容量表示がおかしかった点を修正。

@@ -24,32 +24,31 @@
 #include "unixdisk.h"
 #include "dosdisk.h"
 
-#ifdef	LSI_C
-#include <jctype.h>
-#define	toupper2	toupper
-#define	tolower2	tolower
-#define	issjis1		iskanji
-#define	issjis2		iskanji2
-#else	/* !LSI_C */
-#define	toupper2(c)	(uppercase[(u_char)(c)])
-#define	tolower2(c)	(lowercase[(u_char)(c)])
 #define	KC_SJIS1	0001
 #define	KC_SJIS2	0002
 #define	KC_EUCJP	0010
 
+#ifdef	LSI_C
+#include <jctype.h>
+#define	toupper2(c)	toupper(c)
+#define	tolower2(c)	tolower(c)
+#define	issjis1(c)	iskanji(c)
+#define	issjis2(c)	iskanji2(c)
+#else	/* !LSI_C */
+#define	toupper2(c)	(uppercase[(u_char)(c)])
+#define	tolower2(c)	(lowercase[(u_char)(c)])
 # ifndef	issjis1
 # define	issjis1(c)	(kctypetable[(u_char)(c)] & KC_SJIS1)
 # endif
 # ifndef	issjis2
 # define	issjis2(c)	(kctypetable[(u_char)(c)] & KC_SJIS2)
 # endif
-
-# ifndef	iseuc
-# define	iseuc(c)	(kctypetable[(u_char)(c)] & KC_EUCJP)
-# endif
 #endif	/* !LSI_C */
 
 #ifdef	CODEEUC
+# ifndef	iseuc
+# define	iseuc(c)	(kctypetable[(u_char)(c)] & KC_EUCJP)
+# endif
 #define	iskanji1(s, i)	(iseuc((s)[i]) && iseuc((s)[(i) + 1]))
 #else
 #define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))

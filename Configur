@@ -73,7 +73,7 @@ gettypesize() {
 	echo "Checking for \"$1\" in <$2.h>..." 1>&2
 	(setheader "$2")
 	echo "#include <stdio.h>" >> $TMPSRC
-	echo "$3 int main() { printf(\"%d\\\\n\", sizeof($1)); }" >> $TMPSRC
+	echo "$3 int main() { printf("'"%d\n"'", sizeof($1)); }" >> $TMPSRC
 	if eval $docc; then ret=`./$TMPEXE`; else ret=0; fi
 	rm -f $TMPEXE
 	return $ret

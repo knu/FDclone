@@ -167,6 +167,7 @@ typedef char	tputs_t;
 # define	TERM_li			lines
 # define	TERM_xn			eat_newline_glitch
 # define	TERM_xs			ceol_standout_glitch
+# define	TERM_gn			generic_type
 # define	TERM_ti			enter_ca_mode
 # define	TERM_te			exit_ca_mode
 # define	TERM_mm			meta_on
@@ -277,6 +278,7 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # define	TERM_li			"li"
 # define	TERM_xn			"xn"
 # define	TERM_xs			"xs"
+# define	TERM_gn			"gn"
 # define	TERM_ti			"ti"
 # define	TERM_te			"te"
 # define	TERM_mm			"mm"
@@ -463,9 +465,9 @@ static int NEAR dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-static int NEAR ttymode __P_((int, int, int, int, int));
+static int NEAR ttymode __P_((int, int, int, int));
 # else
-static int NEAR ttymode __P_((int, int, int, int, int, int, int, int, int));
+static int NEAR ttymode __P_((int, int, int, int, int, int, int, int));
 # endif
 static char *NEAR tgetstr2 __P_((char **, char *));
 static char *NEAR tgetstr3 __P_((char **, char *, char *));
@@ -557,6 +559,8 @@ static int specialkeycode[] = {
 };
 #define	SPECIALKEYSIZ	((int)(sizeof(specialkeycode) / sizeof(int)))
 #else	/* !MSDOS */
+static char *dumblist[] = {"dumb", "un", "unknown"};
+#define	DUMBLISTSIZE	(sizeof(dumblist) / sizeof(char *))
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
 static char *defkeyseq[K_MAX - K_MIN + 1] = {
@@ -826,8 +830,8 @@ int reset;
 	static int dupout = -1;
 	int fd;
 
-	opentty();
 	if (!reset) {
+		opentty();
 #ifdef	NOTUSEBIOS
 		if (!keybuftop) keybuftop = getkeybuf(KEYBUFWORKTOP);
 #endif
@@ -971,8 +975,9 @@ int reset;
 	static termioctl_t dupttyio;
 	termioctl_t tty;
 
-	opentty();
-	if (reset && (termflags & F_RESETTTY) != F_RESETTTY) return(0);
+	if (!reset) opentty();
+	else if (ttyio < 0 || (termflags & F_RESETTTY) != F_RESETTTY)
+		return(0);
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		termflags &= ~F_INITTTY;
 		close(ttyio);
@@ -1019,26 +1024,28 @@ int reset;
 }
 
 #ifdef	USESGTTY
-static int NEAR ttymode(d, set, reset, lset, lreset)
-int d, set, reset, lset, lreset;
+static int NEAR ttymode(set, reset, lset, lreset)
+int set, reset, lset, lreset;
 {
 	termioctl_t tty;
 	int lflag;
 
-	if (ioctl(d, TIOCLGET, &lflag) < 0) err2("ioctl()");
-	if (tioctl(d, REQGETP, &tty) < 0) err2("ioctl()");
+	if (!(termflags & F_INITTTY)) return(-1);
+	if (ioctl(ttyio, TIOCLGET, &lflag) < 0) err2("ioctl()");
+	if (tioctl(ttyio, REQGETP, &tty) < 0) err2("ioctl()");
 	if (set) tty.sg_flags |= set;
 	if (reset) tty.sg_flags &= ~reset;
 	if (lset) lflag |= lset;
 	if (lreset) lflag &= ~lreset;
-	if (ioctl(d, TIOCLSET, &lflag) < 0) err2("ioctl()");
+	if (ioctl(ttyio, TIOCLSET, &lflag) < 0) err2("ioctl()");
 #else
-static int NEAR ttymode(d, set, reset, iset, ireset, oset, oreset, vmin, vtime)
-int d, set, reset, iset, ireset, oset, oreset, vmin, vtime;
+static int NEAR ttymode(set, reset, iset, ireset, oset, oreset, vmin, vtime)
+int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 {
 	termioctl_t tty;
 
-	if (tioctl(d, REQGETP, &tty) < 0) err2("ioctl()");
+	if (!(termflags & F_INITTTY)) return(-1);
+	if (tioctl(ttyio, REQGETP, &tty) < 0) err2("ioctl()");
 	if (set) tty.c_lflag |= set;
 	if (reset) tty.c_lflag &= ~reset;
 	if (iset) tty.c_iflag |= iset;
@@ -1050,7 +1057,7 @@ int d, set, reset, iset, ireset, oset, oreset, vmin, vtime;
 		tty.c_cc[VTIME] = vtime;
 	}
 #endif
-	if (tioctl(d, REQSETP, &tty) < 0) err2("ioctl()");
+	if (tioctl(ttyio, REQSETP, &tty) < 0) err2("ioctl()");
 	termflags |= F_TTYCHANGED;
 	return(0);
 }
@@ -1058,9 +1065,9 @@ int d, set, reset, iset, ireset, oset, oreset, vmin, vtime;
 int cooked2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, CBREAK | RAW, LPASS8, LLITOUT | LPENDIN);
+	ttymode(0, CBREAK | RAW, LPASS8, LLITOUT | LPENDIN);
 #else
-	ttymode(ttyio, ISIG | ICANON | IEXTEN, PENDIN,
+	ttymode(ISIG | ICANON | IEXTEN, PENDIN,
 		BRKINT | IXON, IGNBRK | ISTRIP,
 		OPOST, 0, VAL_VMIN, VAL_VTIME);
 #endif
@@ -1070,10 +1077,9 @@ int cooked2(VOID_A)
 int cbreak2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
+	ttymode(CBREAK, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, ISIG | IEXTEN, ICANON,
-		BRKINT | IXON, IGNBRK, OPOST, 0, 1, 0);
+	ttymode(ISIG | IEXTEN, ICANON, BRKINT | IXON, IGNBRK, OPOST, 0, 1, 0);
 #endif
 	return(0);
 }
@@ -1081,9 +1087,9 @@ int cbreak2(VOID_A)
 int raw2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, RAW, 0, LLITOUT, 0);
+	ttymode(RAW, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, 0, ISIG | ICANON | IEXTEN,
+	ttymode(0, ISIG | ICANON | IEXTEN,
 		IGNBRK, BRKINT | IXON, 0, OPOST, 1, 0);
 #endif
 	return(0);
@@ -1092,10 +1098,9 @@ int raw2(VOID_A)
 int echo2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
+	ttymode(ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #else
-	ttymode(ttyio, ECHO | ECHOE | ECHOCTL | ECHOKE, ECHONL,
-		0, 0, 0, 0, 0, 0);
+	ttymode(ECHO | ECHOE | ECHOCTL | ECHOKE, ECHONL, 0, 0, 0, 0, 0, 0);
 #endif
 	return(0);
 }
@@ -1103,10 +1108,9 @@ int echo2(VOID_A)
 int noecho2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, ECHO, 0, LCRTBS | LCRTERA);
+	ttymode(0, ECHO, 0, LCRTBS | LCRTERA);
 #else
-	ttymode(ttyio, 0, ECHO | ECHOE | ECHOK | ECHONL, 0, 0,
-		0, 0, 0, 0);
+	ttymode(0, ECHO | ECHOE | ECHOK | ECHONL, 0, 0, 0, 0, 0, 0);
 #endif
 	return(0);
 }
@@ -1114,10 +1118,9 @@ int noecho2(VOID_A)
 int nl2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, CRMOD, 0, 0, 0);
+	ttymode(CRMOD, 0, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, ICRNL, 0,
-		ONLCR, OCRNL | ONOCR | ONLRET, 0, 0);
+	ttymode(0, 0, ICRNL, 0, ONLCR, OCRNL | ONOCR | ONLRET, 0, 0);
 #endif
 	return(0);
 }
@@ -1125,9 +1128,9 @@ int nl2(VOID_A)
 int nonl2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, CRMOD, 0, 0);
+	ttymode(0, CRMOD, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, ICRNL, 0, ONLCR, 0, 0);
+	ttymode(0, 0, 0, ICRNL, 0, ONLCR, 0, 0);
 #endif
 	return(0);
 }
@@ -1135,9 +1138,9 @@ int nonl2(VOID_A)
 int tabs(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, XTABS, 0, 0);
+	ttymode(0, XTABS, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, 0, 0, TAB3, 0, 0);
+	ttymode(0, 0, 0, 0, 0, TAB3, 0, 0);
 #endif
 	return(0);
 }
@@ -1145,9 +1148,9 @@ int tabs(VOID_A)
 int notabs(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, XTABS, 0, 0, 0);
+	ttymode(XTABS, 0, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, 0, TAB3, 0, 0, 0);
+	ttymode(0, 0, 0, 0, TAB3, 0, 0, 0);
 #endif
 	return(0);
 }
@@ -1181,12 +1184,10 @@ int isnl;
 	nonl2();
 	notabs();
 # else	/* !USESGTTY */
-	if (isnl) ttymode(ttyio,
-		0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
+	if (isnl) ttymode(0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
 		IGNBRK, (BRKINT|IXON) | ICRNL,
 		OPOST | ONLCR | TAB3, 0, 1, 0);
-	else ttymode(ttyio,
-		0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
+	else ttymode(0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
 		IGNBRK, (BRKINT|IXON) | ICRNL,
 		TAB3, OPOST | ONLCR, 1, 0);
 # endif	/* !USESGTTY */
@@ -1212,22 +1213,20 @@ int stdiomode(VOID_A)
 	echo2();
 	nl2();
 	tabs();
-	if (dumbterm > 2) ttymode(ttyio, 0, ECHO | CRMOD, 0, 0);
+	if (dumbterm > 2) ttymode(0, ECHO | CRMOD, 0, 0);
 # else	/* !USESGTTY */
-	if (isnl) ttymode(ttyio,
-		(ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
+	if (isnl) ttymode((ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
 		PENDIN | ECHONL,
 		(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
 		0, (OCRNL|ONOCR|ONLRET) | TAB3,
 		VAL_VMIN, VAL_VTIME);
-	else ttymode(ttyio,
-		(ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
+	else ttymode((ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
 		PENDIN | ECHONL,
 		(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
 		OPOST | ONLCR, (OCRNL|ONOCR|ONLRET) | TAB3,
 		VAL_VMIN, VAL_VTIME);
-	if (dumbterm > 2) ttymode(ttyio,
-		0, ECHO, 0, ICRNL, 0, ONLCR, VAL_VMIN, VAL_VTIME);
+	if (dumbterm > 2) ttymode(0, ECHO,
+		0, ICRNL, 0, ONLCR, VAL_VMIN, VAL_VTIME);
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	if (!dumbterm) {
@@ -2043,61 +2042,69 @@ char *s;
 	char buf[TERMCAPSIZE];
 # endif
 	char *cp, *term;
-	int i, j, dupdumbterm;
+	int i, j, dumb, dupdumbterm;
 
 	if (termflags & F_TERMENT) return(-1);
 	if (!ttyout && !(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
 	dupdumbterm = dumbterm;
-	dumbterm = 0;
+	dumbterm = dumb = 0;
 	term = (s) ? s : (char *)getenv("TERM");
 	if (!term || !*term) {
-		term = "unknown";
 		dumbterm = 1;
+		dumb = DUMBLISTSIZE;
 	}
-	else if (!strcmp(term, "dumb")
-	|| !strcmp(term, "un") || !strcmp(term, "unknown"))
-		dumbterm = 1;
+	else {
+		for (i = 0; i < DUMBLISTSIZE; i++)
+			if (!strcmp(term, dumblist[i])) break;
+		if (i < DUMBLISTSIZE) dumbterm = 1;
+	}
 # ifdef	IRIX
 	winterm = !strncmp(term, WINTERMNAME, sizeof(WINTERMNAME) - 1);
 # endif
 
+	for (;;) {
+		if (dumb) term = dumblist[--dumb];
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
-	_mtrace_file = "setupterm(start)";
-	setupterm(term, fileno(ttyout), &i);
-	if (_mtrace_file) _mtrace_file = NULL;
-	else {
-		_mtrace_file = "setupterm(end)";
-		malloc(0);	/* dummy alloc */
-	}
+		_mtrace_file = "setupterm(start)";
+		setupterm(term, fileno(ttyout), &i);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "setupterm(end)";
+			malloc(0);	/* dummy alloc */
+		}
 #  else
-	setupterm(term, fileno(ttyout), &i);
+		setupterm(term, fileno(ttyout), &i);
 #  endif
-	if (i == 1) /*EMPTY*/;
-	else if (s) dumbterm = 2;
-	else {
-		errno = 0;
-		err2("No TERMINFO is prepared");
-	}
+		if (i == 1) break;
 # else	/* !USETERMINFO */
 #  ifdef	DEBUG
-	_mtrace_file = "tgetent(start)";
-	i = tgetent(buf, term);
-	if (_mtrace_file) _mtrace_file = NULL;
-	else {
-		_mtrace_file = "tgetent(end)";
-		malloc(0);	/* dummy malloc */
-	}
+		_mtrace_file = "tgetent(start)";
+		i = tgetent(buf, term);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "tgetent(end)";
+			malloc(0);	/* dummy malloc */
+		}
 #  else
-	i = tgetent(buf, term);
+		i = tgetent(buf, term);
 #  endif
-	if (i > 0);
-	else if (s) dumbterm = 2;
-	else {
-		errno = 0;
-		err2("No TERMCAP is prepared");
-	}
+		if (i > 0) break;
 # endif	/* !USETERMINFO */
+		else if (dumb) continue;	/* retry for libncurses */
+		else if (s) {
+			dumbterm = 2;
+			break;
+		}
+		else {
+			errno = 0;
+# ifdef	USETERMINFO
+			err2("No TERMINFO is prepared");
+# else
+			err2("No TERMCAP is prepared");
+# endif
+		}
+	}
 
 	if (dupdumbterm >= 2 || !strcmp(term, "emacs") || getenv("EMACS"))
 		dumbterm = 3;
@@ -2140,6 +2147,7 @@ char *s;
 	if (!tgetflag2(TERM_xn)) n_lastcolumn--;
 	if (n_line < 0 && (n_line = tgetnum2(TERM_li)) < 0) n_column = 24;
 	stable_standout = tgetflag2(TERM_xs);
+	if (dumbterm < 2 && tgetflag2(TERM_gn)) dumbterm = 2;
 	tgetstr2(&t_init, TERM_ti);
 	tgetstr2(&t_end, TERM_te);
 	tgetstr2(&t_metamode, TERM_mm);

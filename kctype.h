@@ -18,10 +18,10 @@
 
 #ifdef	LSI_C
 #include <jctype.h>
-#define	issjis1		iskanji
-#define	issjis2		iskanji2
-#define	isctl		iscntrl
-#define	iskna		iskana
+#define	issjis1(c)	iskanji(c)
+#define	issjis2(c)	iskanji2(c)
+#define	isctl(c)	iscntrl(c)
+#define	iskna(c)	iskana(c)
 #else	/* !LSI_C */
 extern u_char kctypetable[256];
 #define	KC_SJIS1	0001

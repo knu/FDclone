@@ -49,7 +49,6 @@ extern archivetable archivelist[];
 extern int maxarchive;
 #endif
 extern char fullpath[];
-extern char **history[];
 extern char *histfile;
 extern char *helpindex[];
 extern int sizeinfo;
@@ -194,7 +193,9 @@ devinfo *origfdtype = NULL;
 # endif
 #endif	/* !_NOCUSTOMIZE */
 int inruncom = 0;
+#ifndef	_NOORIGSHELL
 int fdmode = 0;
+#endif
 
 static int timersec = 0;
 #ifdef	SIGWINCH
@@ -860,7 +861,8 @@ char *argv, *envp[];
 {
 	char *cp, buf[MAXPATHLEN];
 
-	origpath = getwd2();
+	if (!Xgetwd(buf)) error(NOCWD_K);
+	origpath = strdup2(buf);
 	if ((cp = searchenv("PWD", envp))) {
 		*fullpath = '\0';
 		realpath2(cp, fullpath, 0);
@@ -1068,13 +1070,6 @@ char *argv[], *envp[];
 	environ[i] = NULL;
 #endif
 
-#ifdef	_NOORIGSHELL
-	inittty(0);
-	getterment(NULL);
-#else
-	setshellvar(envp);
-	prepareterm();
-#endif
 	setexecpath(argv[0], envp);
 #ifndef	_NODOSDRIVE
 # ifdef	DATADIR
@@ -1084,7 +1079,11 @@ char *argv[], *envp[];
 # endif
 #endif
 
-#ifndef	_NOORIGSHELL
+#ifdef	_NOORIGSHELL
+	inittty(0);
+	getterment(NULL);
+	argc = initoption(argc, argv, envp);
+#else	/* !_NOORIGSHELL */
 	cp = progname;
 	if (*cp == '-') cp++;
 # if	MSDOS
@@ -1097,14 +1096,16 @@ char *argv[], *envp[];
 		prepareexitfd();
 		Xexit2(i);
 	}
+	fdmode = 1;
+	setshellvar(envp);
+	argc = initoption(argc, argv, envp);
+	prepareterm();
 	if (dumbterm > 1) {
 		errno = 0;
 		error(NTERM_K);
 	}
-#endif
+#endif	/* !_NOORIGSHELL */
 
-	fdmode = 1;
-	argc = initoption(argc, argv, envp);
 	ttyiomode(0);
 	initterm();
 	if ((cp = getwsize(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN))) {

@@ -186,9 +186,9 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 
 #ifdef	LSI_C
 #include <jctype.h>
-#define	iskna		iskana
-#define	issjis1		iskanji
-#define	issjis2		iskanji2
+#define	iskna(c)	iskana(c)
+#define	issjis1(c)	iskanji(c)
+#define	issjis2(c)	iskanji2(c)
 #else	/* !LSI_C */
 #define	KC_SJIS1	0001
 #define	KC_SJIS2	0002

@@ -1,3 +1,6 @@
+Ver. 2.04b	Failure to execute fdsh with no terminal is fixed.
+ (09/17/03)	Freezing when use any history in -c option of fdsh is fixed.
+
 Ver. 2.04a	Failure to compile on some environments using varargs is fixed.
  (07/24/03)	Failure to compile on FreeBSD 5.x is fixed.
 		Failure to count amount of file system on Linux/Alpha is fixed.

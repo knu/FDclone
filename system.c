@@ -2514,10 +2514,12 @@ int n;
 {
 	if (havetty()) {
 #ifdef	FD
-		if (!dumbterm) putterm(t_normal);
-		endterm();
-		inittty(1);
-		keyflush();
+		if (interactive && !nottyout) {
+			if (!dumbterm) putterm(t_normal);
+			endterm();
+			inittty(1);
+			keyflush();
+		}
 #endif	/* !FD */
 		prepareexit(0);
 
@@ -2995,10 +2997,12 @@ syntaxtree *trp;
 #   endif
 		}
 #  endif	/* USESGTTY */
+		if (interactive && !nottyout) {
 #  ifdef	FD
-		stdiomode();
+			stdiomode();
 #  endif	/* FD */
-		if (interactive && !nottyout) dispjob(lastjob, stderr);
+			dispjob(lastjob, stderr);
+		}
 		return(RET_SUCCESS);
 # endif	/* !NOJOB */
 	}
@@ -4457,13 +4461,15 @@ int len;
 # ifdef	FD
 	else if (constequal(s, "TERM", len)) {
 		keyseq_t *keymap;
+		char *term;
 
 		keymap = copykeyseq(NULL);
 		freeterment();
 		getterment(cp);
 		if (dumbterm > 1 && (!shellmode || exit_status < 0)) {
 			freeterment();
-			getterment(getconstvar("TERM"));
+			term = getconstvar("TERM");
+			getterment((term) ? term : "");
 			execerror(cp, ER_INVALTERMFD, 0);
 			copykeyseq(keymap);
 			freekeyseq(keymap);
@@ -9161,6 +9167,10 @@ syntaxtree *trp;
 		execerror(getconstvar("TERM"), ER_INVALTERMFD, 0);
 		return(RET_FAIL);
 	}
+	else if (!interactive || nottyout) {
+		execerror((trp -> comm) -> argv[0], ER_INVALTERMFD, 0);
+		return(RET_FAIL);
+	}
 	else {
 		sigvecset(1);
 		ttyiomode(0);
@@ -10345,12 +10355,15 @@ int prepareterm(VOID_A)
 		if (opentty() < 0) return(-1);
 		ttyio = newdup(ttyio);
 #ifdef	FD
-		inittty(0);
+		if (interactive) inittty(0);
 #endif
 	}
 	if (!ttyout) {
 #ifdef	FD
-		getterment(getconstvar("TERM"));
+		char *term;
+
+		term = getconstvar("TERM");
+		getterment((term) ? term : "");
 #else
 		if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
 #endif
@@ -10406,11 +10419,6 @@ char *argv[];
 		name++;
 	}
 
-	if (prepareterm() < 0) {
-		doperror(NULL, NULL);
-		return(-1);
-	}
-
 	definput = STDIN_FILENO;
 	interactive =
 		(isatty(STDIN_FILENO) && isatty(STDERR_FILENO)) ? 1 : 0;
@@ -10457,6 +10465,11 @@ char *argv[];
 		}
 	}
 	interactive_io = interactive;
+
+	if (prepareterm() < 0) {
+		doperror(NULL, NULL);
+		return(-1);
+	}
 
 	setnbuf(stdin);
 #if	!MSDOS
@@ -10682,7 +10695,7 @@ int pseudoexit;
 		if (trapok >= 0) trapok = 0;
 		if (!buf) {
 			if (errno) {
-				doperror(NULL, NULL);
+				doperror(NULL, "stdin");
 				exec_line(NULL);
 				break;
 			}
@@ -10730,10 +10743,12 @@ char *argv[], *envp[];
 	setshellvar(envp);
 	if (initshell(argc, argv) < 0) return(RET_FAIL);
 #ifdef	FD
+	if (interactive) {
 # if	MSDOS
-	inittty(1);
+		inittty(1);
 # endif
-	getwsize(0, 0);
+		getwsize(0, 0);
+	}
 # ifndef	_NOCUSTOMIZE
 	saveorigenviron();
 # endif
@@ -10741,8 +10756,10 @@ char *argv[], *envp[];
 	ret_status = RET_SUCCESS;
 	initrc(!loginshell);
 #ifdef	FD
-	loadhistory(0, histfile);
-	entryhist(1, origpath, 1);
+	if (interactive) {
+		loadhistory(0, histfile);
+		entryhist(1, origpath, 1);
+	}
 #endif
 	shell_loop(0);
 #ifdef	FD

@@ -48,6 +48,7 @@ char *argv[];
 	printf("s:	__RENAME__:#	mv:\n");
 	printf("s:	__AOUT2EXE__:#	aout2exe:\n");
 	printf("s:	__REMOVE__:#	rm -f:\n");
+	printf("s:__ECHO__:echo:\n");
 	printf("s:__COPY__:cp:\n");
 	printf("s:__RM__:rm -f:\n");
 

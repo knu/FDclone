@@ -1725,6 +1725,7 @@ char *argv[];
 	}
 	else if (no > size) no = size;
 
+	if (!history[0]) return(0);
 	if (--no > (long)MAXHISTNO) no = MAXHISTNO;
 	for (max = no; max >= 0; max--) if (history[0][max]) break;
 	if (max < histno[0]) n = histno[0] - max - 1;
@@ -1805,6 +1806,7 @@ char *argv[];
 		return(-1);
 	}
 
+	if (!history[0]) return(0);
 	tmp = removehist(0);
 	if (exe) {
 		char *s, *r;

@@ -12,6 +12,7 @@ s:__DATADIR__:$(BINDIR):
 s:__RENAME__:@ren:
 s:__AOUT2EXE__:@aout2exe:
 s:__REMOVE__:@del:
+s:__ECHO__:command /c echo:
 s:__COPY__:copy /y:
 s:__RM__:del:
 s:__LANGDIR__::

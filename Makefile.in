@@ -20,6 +20,9 @@ DEFRC	= $(BUILD)/etc/fd__RCVERSION__rc
 DOSRC	= ~FD\\fd__RCVERSION__rc
 UNITBL	= fd-unicd.tbl
 INSTALL	= __INSTALL__
+ECHO	= __ECHO__
+CP	= __COPY__
+RM	= __RM__
 CHMOD	= chmod
 LN	= __LN__
 
@@ -108,9 +111,9 @@ $(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	__REMOVE__ $(PROGRAM)
 
 $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
-	@echo $(OBJ1) > $(ARGS)
-	@echo $(OBJ2) >> $(ARGS)
-	@echo $(OBJ3) >> $(ARGS)
+	@$(ECHO) $(OBJ1) > $(ARGS)
+	@$(ECHO) $(OBJ2) >> $(ARGS)
+	@$(ECHO) $(OBJ3) >> $(ARGS)
 
 main__OBJ__: main.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ __UNITBLPATH__ $*.c
@@ -172,7 +175,7 @@ mkfuncno__EXE__: mkfuncno.c functabl.h fd.h config.h
 	__REMOVE__ mkfuncno
 
 config.h: config.hin
-	__COPY__ config.hin config.h
+	$(CP) config.hin config.h
 
 
 ############################################################
@@ -194,7 +197,7 @@ mkunitbl__EXE__: mkunitbl.c
 install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 	$(INSTALL) __INSTSTRIP__ $(PROGRAM)__EXE__ $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)/$(PROGRAM)__EXE__
-	-__RM__ $(BINDIR)/$(FDSHELL)__EXE__
+	-$(RM) $(BINDIR)/$(FDSHELL)__EXE__
 	$(LN) $(BINDIR)/$(PROGRAM)__EXE__ $(BINDIR)/$(FDSHELL)__EXE__
 	$(CHMOD) a+rx $(BINDIR)/$(FDSHELL)__EXE__
 	$(INSTALL) $(EMANSRC) $(EMANDIR)/$(PROGRAM).$(MANSEC)
@@ -256,7 +259,7 @@ depend: $(SRC) kanji.h funcno.h
 	rm -f Makefile.tmp.bak
 	$(SED) -e '/^# DO NOT DELETE THIS LINE/,$$d' Makefile.in.bak\
 		> Makefile.in
-	echo "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it."\
 		>> Makefile.in
 	$(SED) -e '1,/^# DO NOT DELETE THIS LINE/d'\
 		-e 's/\/[^ ]* *//g'\
@@ -270,7 +273,7 @@ depend: $(SRC) kanji.h funcno.h
 # to make configuration file manually
 
 config: Configur expfunc.c
-	-if (echo 't() { echo $1; }; t test' | $(SHELL) >/dev/null 2>&1); then \
+	-if ($(ECHO) 't() { echo $1; }; t test' | $(SHELL) >/dev/null 2>&1); then \
 		$(SED) -e "2,3d" -e "s:__cc__:__CC__:" Configur \
 		| $(SHELL) > config.h; \
 	else \
@@ -364,7 +367,7 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 	cp -p $(PROGRAM)__EXE__ $(IPKWDIR)/$(BINDIR)
 	-[ -z "$(STRIP)" ] || $(STRIP) $(IPKWDIR)/$(BINDIR)/$(PROGRAM)__EXE__
 	$(CHMOD) a+rx $(IPKWDIR)/$(BINDIR)/$(PROGRAM)__EXE__
-	-__RM__ $(IPKWDIR)/$(BINDIR)/$(FDSHELL)__EXE__
+	-$(RM) $(IPKWDIR)/$(BINDIR)/$(FDSHELL)__EXE__
 	$(LN) $(IPKWDIR)/$(BINDIR)/$(PROGRAM)__EXE__ \
 		$(IPKWDIR)/$(BINDIR)/$(FDSHELL)__EXE__
 	$(CHMOD) a+rx $(IPKWDIR)/$(BINDIR)/$(FDSHELL)__EXE__
@@ -434,18 +437,18 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 		cp -p $(UNITBL) $(IPKWDIR)/__DATADIR__; \
 		$(CHMOD) a+r-x $(IPKWDIR)/__DATADIR__/$(UNITBL); \
 	fi
-	echo "Package: fd" > $(IPKWDIR)/CONTROL/control
-	echo "Priority: optional" >> $(IPKWDIR)/CONTROL/control
-	echo "Section: extras" >> $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Package: fd" > $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Priority: optional" >> $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Section: extras" >> $(IPKWDIR)/CONTROL/control
 	HEAD=`tail -2 version.h | head -1`; \
 	DIST=`expr "$$HEAD" : '.*"\(.*\)".*'`; \
 	DIST=$${DIST:-`whoami`@`hostname -d`}; \
-	echo "Maintainer: $$DIST" >> $(IPKWDIR)/CONTROL/control
-	echo "Architecture: arm" >> $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Maintainer: $$DIST" >> $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Architecture: arm" >> $(IPKWDIR)/CONTROL/control
 	$(GETVER); \
-	echo "Version: $$VER-1" >> $(IPKWDIR)/CONTROL/control
-	echo "Depends: ncurses" >> $(IPKWDIR)/CONTROL/control
-	echo "Description: a file & directory maintenance tool." \
+	$(ECHO) "Version: $$VER-1" >> $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Depends: ncurses" >> $(IPKWDIR)/CONTROL/control
+	$(ECHO) "Description: a file & directory maintenance tool." \
 		>> $(IPKWDIR)/CONTROL/control
 	(cd $(IPKWDIR); tar cf ../data.tar --exclude=CONTROL .)
 	(cd $(IPKWDIR)/CONTROL; tar cf ../../control.tar .)
@@ -453,7 +456,7 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 	mv ./data.tar.gz $(IPKTDIR)
 	gzip ./control.tar
 	mv ./control.tar.gz $(IPKTDIR)
-	echo "2.0" > $(IPKTDIR)/debian-binary
+	$(ECHO) "2.0" > $(IPKTDIR)/debian-binary
 	(cd $(IPKTDIR); \
 	tar cf ../ipk.tar ./debian-binary ./data.tar.gz ./control.tar.gz)
 	gzip ./ipk.tar
