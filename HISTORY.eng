@@ -1,3 +1,9 @@
+Ver. 2.06	Add the second startup argument for supplemental directory.
+ (08/10/04)	Add the incremental history search in the string input.
+		Add 'builtin', 'enable' builtins.
+		Add the startup options -l, -N.
+		Allow `` included in "" with the internal shell.
+
 Ver. 2.05h	Freezing fd invoked from fdsh with any arguments is fixed.
  (07/27/04)	Mis-handling for the archived file with '.' or '..' is fixed.
 		Bug to garble symbolic link to Japanese filename is fixed.

@@ -171,7 +171,7 @@ extern char *_mtrace_file;
 #define	MAXSTACK	5
 #define	MAXWINDOWS	2
 #define	MAXHISTNO	MAXTYPE(short)
-#define	MAXINVOKEARGS	1
+#define	MAXINVOKEARGS	2
 
 #ifdef	_NOSPLITWIN
 #undef	MAXWINDOWS

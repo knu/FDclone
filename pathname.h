@@ -17,7 +17,7 @@
 /* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
 /* #define NESTINGQUOTE		; allow `...` included in "..." */
 
-#ifdef	BASHSTYLE
+#ifndef	MINIMUMSHELL
 #define	NESTINGQUOTE
 #endif
 

@@ -104,12 +104,10 @@ static int NEAR _inputstr_enter __P_((char **, int *, int, int *, ALLOC_T *));
 #if	FD >= 2
 static int NEAR _inputstr_case __P_((char *, int *, int, int, int));
 static int NEAR search_matchlen __P_((char *, int));
-# if	0						/* Future plan */
 static char *NEAR search_up __P_((char *, int *, int, int,
 		int *, int, char **));
 static char *NEAR search_down __P_((char *, int *, int, int,
 		int *, int, char **));
-# endif
 #endif
 static int NEAR _inputstr_input __P_((char **, int *, int, int *,
 		ALLOC_T *, char *, int));
@@ -2291,7 +2289,6 @@ int cx;
 	return(cx);
 }
 
-# if	0						/* Future plan */
 static char *NEAR search_up(s, cxp, len, bias, histnop, h, tmp)
 char *s;
 int *cxp, len, bias, *histnop, h;
@@ -2390,7 +2387,6 @@ char **tmp;
 	searchmode = 2;
 	return(NULL);
 }
-# endif	/* Future plan */
 #endif	/* FD >= 2 */
 
 static int NEAR _inputstr_input(sp, cxp, cx2, lenp, sizep, buf, vw)
@@ -2431,9 +2427,7 @@ int def, comline, h;
 	keyseq_t key;
 #endif
 #if	FD >= 2
-# if	0						/* Future plan */
 	ALLOC_T searchsize;
-# endif
 #endif
 	char *tmphist, buf[5];
 	int i, n, ch, ch2, cx, cx2, ocx2, len, hist, quote, sig;
@@ -2468,9 +2462,7 @@ int def, comline, h;
 #if	FD >= 2
 	searchmode = 0;
 	searchstr = NULL;
-# if	0						/* Future plan */
 	searchsize = (ALLOC_T)0;
-# endif
 #endif
 
 	do {
@@ -2538,7 +2530,6 @@ int def, comline, h;
 #endif
 
 #if	FD >= 2
-# if	0						/* Future plan */
 		if (searchmode) {
 			ALLOC_T *sizep;
 			char *cp;
@@ -2595,7 +2586,6 @@ int def, comline, h;
 
 			if (searchmode) continue;
 		}
-# endif	/* Future plan */
 #endif	/* FD >= 2 */
 
 		switch (ch) {
@@ -2724,7 +2714,6 @@ int def, comline, h;
 				ocx2 = cx2 = _inputstr_case(*sp, &cx, cx2,
 					len, 1);
 				break;
-# if	0						/* Future plan */
 			case K_CTRL('S'):
 				keyflush();
 				if (h < 0 || !history[h]) {
@@ -2749,7 +2738,6 @@ int def, comline, h;
 				searchsize = (ALLOC_T)0;
 				copyhist(sp, &cx, &len, NULL, NULL);
 				break;
-# endif	/* Future plan */
 #endif	/* FD >= 2 */
 #ifndef	_NOCOMPLETE
 			case '\t':

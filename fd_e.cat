@@ -6,7 +6,8 @@ NNAAMMEE
      fd - file & directory maintenance tool
 
 SSYYNNOOPPSSIISS
-     ffdd [ --aabbCCeeffhhiikkmmnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y ]
+     ffdd [ --aabbCCeeffhhiikkmmnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
+     _d_i_r_e_c_t_o_r_y_2 ]]
      ffddsshh [ --aabbCCcceeffhhiikkmmnnrrssttuuvvxx ] [ _a_r_g_s ]
 
 DDEESSCCRRIIPPTTIIOONN
@@ -32,7 +33,9 @@ DDEESSCCRRIIPPTTIIOONN
      able, but ffdd can accept only those which are described in
      the below section of EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS.  If you specify
      _d_i_r_e_c_t_o_r_y, the current directory is moved to the directory
-     initially.
+     initially.  If you specify _d_i_r_e_c_t_o_r_y_2, the split window mode
+     is invoked, and the current directory of the supplemental
+     window is moved to the directory.
 
      The following options are available for the internal shell.
 
@@ -66,6 +69,10 @@ DDEESSCCRRIIPPTTIIOONN
                FFIINNDD_DDIIRR
           When invoked as rrffdd or rrffddsshh, it becomes this res-
           tricted shell automatically.
+
+     --ll   The shell is a login shell.
+
+     --NN   Reading the initial configuration files is omitted.
 
      In addition, the options described below in the description
      of sseett the builtin command are available.
@@ -1047,6 +1054,11 @@ DDEESSCCRRIIPPTTIIOONN
                    describe --@@ option in _f_i_l_e, the argument file
                    is referred recursively.
 
+     bbuuiillttiinn _a_r_g ...
+                   Execute _a_r_g as a simple builtin command.  When
+                   the same named function is defined, the func-
+                   tion will not be executed.
+
      ccdd [--LLPP] [_d_i_r]
      cchhddiirr [--LLPP] [_d_i_r]
                    Change the current directory in ffdd to _d_i_r.  If
@@ -1189,6 +1201,12 @@ DDEESSCCRRIIPPTTIIOONN
                    don't specify --nn, newline is added to output
                    trailing after _a_r_g.  See eecchhoo(1) for details.
 
+     eennaabbllee [--nn] [_a_r_g ...]
+                   Enable _a_r_g as a builtin command.  When you
+                   specify --nn, it is disabled.  If _a_r_g is omit-
+                   ted, all of the enabled or disabled builtin
+                   commands are listed.
+
      eevvaall [_a_r_g ...]
                    Evaluate _a_r_g and execute the results.
 
@@ -1270,13 +1288,16 @@ DDEESSCCRRIIPPTTIIOONN
                    _f_i_r_s_t, and also omitting _f_i_r_s_t means to
                    specify the current history number for both.
 
-     ffdd [_d_i_r_e_c_t_o_r_y]
+     ffdd [_d_i_r_e_c_t_o_r_y [_d_i_r_e_c_t_o_r_y_2]]
                    Invoke ffdd from the internal shell.  If you
                    specify _d_i_r_e_c_t_o_r_y, the current directory is
-                   moved to the directory initially.  You can
-                   return to the internal shell by QQUUIITT_SSYYSSTTEEMM.
-                   It is effective only when it is invoked as
-                   ffddsshh.
+                   moved to the directory initially.  If you
+                   specify _d_i_r_e_c_t_o_r_y_2, the split window mode
+                   is invoked, and the current directory of
+                   the supplemental window is moved to the
+                   directory.  You can return to the internal
+                   shell by QQUUIITT_SSYYSSTTEEMM.  It is effective only
+                   when it is invoked as ffddsshh.
 
      ffgg [_j_o_b]      Continue the execution of the job specified
                    with _j_o_b in the foreground.  The following
@@ -2030,6 +2051,8 @@ DDEESSCCRRIIPPTTIIOONN
                the internal shell, you can make a choice from
                this list with cursor keys and [RReettuurrnn].
      ^^LL        Redraw the input string.
+     ^^SS, ^^RR    Search the previous histories (only commands and
+               pathnames) incrementally.
      RReettuurrnn    Decide the input, or decide the choice in the com-
                pletion choice list.
      EEsscc       Cancel.

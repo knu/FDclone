@@ -1307,13 +1307,8 @@ static shbuiltintable shbuiltinlist[] = {
 	{dopushd, "pushd", BT_RESTRICT},
 	{dopopd, "popd", 0},
 	{dodirs, "dirs", 0},
-# if	0						/* Future plan */
 	{doenable, "enable", 0},
 	{dobuiltin, "builtin", 0},
-# else
-	{doenable, "enable", BT_DISABLE},
-	{dobuiltin, "builtin", BT_DISABLE},
-# endif
 #endif
 #ifdef	FD
 	{dofd, "fd", 0},
@@ -1416,10 +1411,8 @@ static CONST shflagtable shflaglist[] = {
 	{"vi", &vimode, '\0'},
 # endif
 #endif
-#if	0						/* Future plan */
 	{NULL, &loginshell, 'l'},
 	{NULL, &noruncom, 'N'},
-#endif
 };
 #define	FLAGSSIZ	((int)(sizeof(shflaglist) / sizeof(shflagtable)))
 

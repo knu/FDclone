@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05h 07/27/04
+.\" @(#)fd.1   2.06 08/10/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 27, 2004"
+.TH FD 1 "August 10, 2004"
 .de sh
 .br
 .PP
@@ -21,7 +21,9 @@ fd \- file & directory maintenance tool
 .BI \- NAME = value
 ] [
 .I directory
-]
+[
+.I directory2
+]]
 .br
 .B fdsh
 [
@@ -61,6 +63,10 @@ which are described in the below section of
 If you specify
 .IR directory ,
 the current directory is moved to the directory initially.
+If you specify
+.IR directory2 ,
+the split window mode is invoked,
+and the current directory of the supplemental window is moved to the directory.
 
 The following options are available for the internal shell.
 .TP
@@ -129,6 +135,12 @@ or
 .BR rfdsh ,
 it becomes this restricted shell automatically.
 .RE
+.TP
+.B \-l
+The shell is a login shell.
+.TP
+.B \-N
+Reading the initial configuration files is omitted.
 
 In addition,
 the options described below in the description of
@@ -1535,6 +1547,12 @@ When you describe
 option in
 .IR file ,
 the argument file is referred recursively.
+.IP "\fBbuiltin\fP \fIarg\fR .\|.\|."
+Execute
+.I arg
+as a simple builtin command.
+When the same named function is defined,
+the function will not be executed.
 .IP "\fBcd\fP [\fB\-LP\fP] [\fIdir\fR]"
 .PD 0
 .IP "\fBchdir\fP [\fB\-LP\fP] [\fIdir\fR]"
@@ -1793,6 +1811,17 @@ newline is added to output trailing after
 See
 .BR echo (1)
 for details.
+.IP "\fBenable\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
+Enable
+.I arg
+as a builtin command.
+When you specify
+.BR \-n ,
+it is disabled.
+If
+.I arg
+is omitted,
+all of the enabled or disabled builtin commands are listed.
 .IP "\fBeval\fP [\fIarg\fR .\|.\|.]"
 Evaluate
 .I arg
@@ -1937,13 +1966,17 @@ means to specify
 and also omitting
 .I first
 means to specify the current history number for both.
-.IP "\fBfd\fP [\fIdirectory\fR]"
+.IP "\fBfd\fP [\fIdirectory\fR [\fIdirectory2\fR]]"
 Invoke
 .B fd
 from the internal shell.
 If you specify
 .IR directory ,
 the current directory is moved to the directory initially.
+If you specify
+.IR directory2 ,
+the split window mode is invoked,
+and the current directory of the supplemental window is moved to the directory.
 You can return to the internal shell by
 .BR QUIT_SYSTEM .
 It is effective only when it is invoked as
@@ -3250,6 +3283,8 @@ you can make a choice from this list with cursor keys and
 .RE
 .IP "\fB^L\fP"
 Redraw the input string.
+.IP "\fB^S\fP, \fB^R\fP"
+Search the previous histories (only commands and pathnames) incrementally.
 .IP "\fBReturn\fP"
 Decide the input,
 or decide the choice in the completion choice list.
