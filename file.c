@@ -214,7 +214,12 @@ char *mes;
 	}
 
 	distdrive = -1;
-	if (drive = dospath(dir, NULL)) distdrive = preparedrv(drive, waitmes);
+	if ((drive = dospath(dir, NULL))
+	&& (distdrive = preparedrv(drive, waitmes)) < 0) {
+		warning(-1, dir);
+		free(dir);
+		return(NULL);
+	}
 	if (stat2(dir, &status) < 0) {
 		if (errno != ENOENT || Xmkdir(dir, 0777) < 0) {
 			warning(-1, dir);
@@ -292,7 +297,8 @@ char *dir;
 	if (mkdir(path, 0777) < 0) {
 		*cp = '\0';
 		no = errno;
-		if (rmdir(path) < 0 && errno != ENOTEMPTY) error(path);
+		if (rmdir(path) < 0 && errno != ENOTEMPTY && errno != EEXIST)
+			error(path);
 		errno = no;
 		return(-1);
 	}
@@ -309,7 +315,8 @@ char *dir;
 	strcpy(path, deftmpdir);
 	strcat(path, "/");
 	strcat(path, tmpfilename);
-	if (rmdir(path) < 0 && errno != ENOTEMPTY) return(-1);
+	if (rmdir(path) < 0 && errno != ENOTEMPTY && errno != EEXIST)
+		return(-1);
 	return(0);
 }
 
@@ -327,6 +334,7 @@ char *dir, *file;
 	len += i;
 	buf[len] = '\0';
 
+	chdir("/");
 	if ((pid = fork()) < 0) return(-1);
 	else if (!pid) {
 		execle("/bin/rm", "rm", "-rf", buf, NULL, environ);

@@ -678,9 +678,12 @@ static long gettimezone()
 	tz = t_zone.tz_minuteswest * 60L;
 #endif
 #ifdef	USELEAPCNT
-	strcpy(path, TZDIR);
-	strcat(path, "/");
-	strcat(path, TZDEFAULT);
+	if (TZDEFAULT[0] == '/') strcpy(path, TZDEFAULT);
+	else {
+		strcpy(path, TZDIR);
+		strcat(path, "/");
+		strcat(path, TZDEFAULT);
+	}
 	if (fp = fopen(path, "r")) {
 		if (fread(&buf, sizeof(struct tzhead), 1, fp) == 1)
 			tz += *((long *)(buf.tzh_leapcnt));

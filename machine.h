@@ -270,7 +270,20 @@
 #define	USERE_COMP
 #endif
 
-#if defined (__FreeBSD__)
+#if defined (__FreeBSD__) && defined (__powerpc__)
+#define	BSD43
+#define	OSTYPE			"JCCBSD"
+#define	CODEEUC
+#define	TARUSESPACE
+#define	REGEXPLIB		"-lcompat"
+#define	DECLERRLIST
+#define	USEMOUNTH
+#define	USEMNTINFO
+#define	USERE_COMP
+#define	USESETENV
+#endif
+
+#if defined (__FreeBSD__) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"FREEBSD"
 #define	CODEEUC
@@ -375,7 +388,8 @@
 /*	UXPM		/* UXP/M (Fujitsu) */
 /*	MIPS		/* RISC/os (MIPS) */
 /*	LINUX		/* Linux */
-/*	FREEBSD		/* 4.4BSD-Lite (JCC) or FreeBSD */
+/*	JCCBSD		/* 4.4BSD-Lite (JCC) */
+/*	FREEBSD		/* FreeBSD */
 /*	NETBSD		/* NetBSD */
 /*	BSDOS		/* BSD/OS (BSDI) */
 /*	BOW		/* BSD on Windows (ASCII) */
