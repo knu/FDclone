@@ -19,6 +19,14 @@ A1-02.	On UNIX OS, each process has their own current
 	current directory of the user shell, as its parent
 	process.
 
+	It is an ad hoc method that invoking from a shell
+	with the form as "cd `fd`" can change the current
+	directory when finished.
+	In this case, specification as `trap "pwd" 0' in
+	.fd2rc and so on causes outputting the current directory
+	when finished, so that the parent shell who receives
+	it will change its current directory.
+
 Q1-03.	I want to page up/down by Shift + up/down key.
 Q1-04.	I want to execute editors and executable files by
 	Shift + Ret key.
@@ -267,8 +275,9 @@ A3-04.	It means that the terminal column size is too small
 	34x8 in case of the variable-sized terminal such
 	as a window terminal.
 	In case of variable-sized terminal, if you shorten
-	a terminal size while running, you should take care
-	that it can be terminated in spite of working.
+	a terminal size less than this while running, you
+	should note that you will be prompted to widen a
+	terminal size.
 
 Q3-05.	I cannot read a kanji because it is broken.
 A3-05.	Perhaps it may be compiled at a wrong kanji code, or
@@ -645,6 +654,41 @@ A4-10.	Since the floppy drive function uses caches, a floppy
 	Or also moving to directories other than the floppy
 	drive can make it written actually. You should not
 	eject a floppy disk until it is actually written.
+
+Q4-11.	I have used the shell which can treat the logical
+	directory described by symbolic links. While I invoke
+	FDclone on the directory with symbolic links, the
+	displayed pathname has indicated the physical directory.
+A4-11.	It is the first thing you should understand that
+	the function treating the logical directory is
+	particular to each shell and is not general function
+	over UNIX world.
+	Any processes invokes from a shell cannot get a
+	pathname of the logical directory held by the shell
+	from other than the shell itself.
+	Some shells will hold a pathname of the logical
+	directory with PWD the shell variable, so that you
+	can give it as the environment variable to FDclone
+	who is a child process in order to tell this
+	information.
+	In this case, you can describe `[ -d "$PWD" ] && cd $PWD'
+	in .fd2rc and so on to change the current directory
+	when invoked to the directory explicitly specified
+	by PWD the environment variable, and then the displayed
+	pathname will be logical one.
+
+	By the way, referring to each shell, Bourne shell
+	and ash cannot treat any logical directories. Korn
+	shell and bash can treat the logical directory and
+	hold its pathname with PWD the shell variable. zsh
+	and tcsh export PWD as the environment variable by
+	default.
+	The history of csh is confusing. The original csh
+	written by Bill Joy cannot treat the logical directory
+	nor have PWD as the shell variable. The csh rewritten
+	in 4.3BSD Net/2 and after this can treat the logical
+	directory and export the pathname as PWD the environment
+	variable.
 
 
 <5.Others>

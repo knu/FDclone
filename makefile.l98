@@ -371,16 +371,14 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		-e 's:#LANGUAGE=\$$LANG:LANGUAGE=euc:' \
 		-e 's:#INPUTKCODE=\$$LANG:INPUTKCODE=euc:' \
 		-e 's:#FNAMEKCODE=\$$LANG:FNAMEKCODE=utf8:' \
-		-e '\# examples for GNU tar >=1.12\,\^$$\ {' \
-		-e  's:^#\([^ ]\):\1:' \
-		-e  's:tar tvf[zZ]:gzip -cd %C|tar tvf -:' \
+		-e '\# launcher definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \
-		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar tvf -"\\' \
+		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
 		-e   '				"%a %u\%g %s %y-%m-%d %t %f"' \
 		-e   'i \' \
-		-e   'launch ".deb"	"ar -p %C data.tar.gz|gzip -cd|tar tvf -"\\' \
+		-e   'launch ".deb"	"ar -p %C data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
 		-e   '				"%a %u\%g %s %y-%m-%d %t %f"' \
 		-e  '}' \
@@ -388,11 +386,11 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		-e '\# archiver definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \
-		-e   'arch ".ipk"	"echo ERROR; false"\\' \
+		-e   'arch ".ipk"	"echo ERROR; false" \\' \
 		-e   'i \' \
 		-e   '		"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar xf - %TA"' \
 		-e   'i \' \
-		-e   'arch ".deb"	"echo ERROR; false"\\' \
+		-e   'arch ".deb"	"echo ERROR; false" \\' \
 		-e   'i \' \
 		-e   '		"ar -p %C data.tar.gz|gzip -cd|tar xf - %TA"' \
 		-e  '}' \
@@ -448,12 +446,17 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	echo "Depends: ncurses" >> $(IPKWDIR)\CONTROL\control
 	echo "Description: a file & directory maintenance tool." \
 		>> $(IPKWDIR)\CONTROL\control
-	tar -C $(IPKWDIR) -czf $(IPKTDIR)\data.tar.gz . --exclude=CONTROL
-	tar -C $(IPKWDIR)\CONTROL -czf $(IPKTDIR)\control.tar.gz .
+	(cd $(IPKWDIR); tar cf ..\data.tar --exclude=CONTROL .)
+	(cd $(IPKWDIR)\CONTROL; tar cf ..\..\control.tar .)
+	gzip .\data.tar
+	mv .\data.tar.gz $(IPKTDIR)
+	gzip .\control.tar
+	mv .\control.tar.gz $(IPKTDIR)
 	echo "2.0" > $(IPKTDIR)\debian-binary
-	$(GETVER); \
-	tar -C $(IPKTDIR) -czf .\fd_$$VER-1_arm.ipk \
-		.\debian-binary .\data.tar.gz .\control.tar.gz
+	(cd $(IPKTDIR); \
+	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
+	gzip .\ipk.tar
+	$(GETVER); mv .\ipk.tar.gz .\fd_$$VER-1_arm.ipk
 	-rm -rf $(IPKWDIR) $(IPKTDIR)
 
 clean:
@@ -467,114 +470,122 @@ clean:
 
 main.obj: fd.h
 main.obj: machine.h config.h
-main.obj: types.h pathname.h term.h func.h
-main.obj: kanji.h version.h dosdisk.h
-main.obj: system.h
+main.obj: pathname.h types.h term.h
+main.obj: func.h
+main.obj: dosdisk.h kanji.h
+main.obj: version.h system.h
 term.obj: machine.h config.h
 term.obj: term.h
 pathname.obj: fd.h
 pathname.obj: machine.h config.h
-pathname.obj: types.h pathname.h
+pathname.obj: pathname.h types.h
 system.obj: machine.h config.h kctype.h
-system.obj: term.h pathname.h system.h
-posixsh.obj: machine.h config.h
-posixsh.obj: kctype.h
-posixsh.obj: term.h pathname.h
-posixsh.obj: system.h
+system.obj: pathname.h
+system.obj: system.h term.h
+posixsh.obj: machine.h config.h kctype.h
+posixsh.obj: pathname.h system.h
+posixsh.obj: term.h
 doscom.obj: machine.h config.h kctype.h
-doscom.obj: term.h pathname.h system.h
+doscom.obj: pathname.h system.h
+doscom.obj: term.h
 dosdisk.obj: machine.h config.h
 dosdisk.obj: dosdisk.h
 dosemu.obj: fd.h
 dosemu.obj: machine.h config.h
-dosemu.obj: types.h pathname.h func.h
-dosemu.obj: kctype.h
-dosemu.obj: dosdisk.h
+dosemu.obj: pathname.h types.h func.h
+dosemu.obj: dosdisk.h kctype.h
 unixdisk.obj: machine.h config.h
 unixdisk.obj: unixdisk.h
 unixdisk.obj: unixemu.h
 unixdisk.obj: dosdisk.h
 unixemu.obj: fd.h
 unixemu.obj: machine.h config.h
-unixemu.obj: types.h pathname.h func.h
-unixemu.obj: unixdisk.h
-unixemu.obj: unixemu.h dosdisk.h
+unixemu.obj: pathname.h types.h func.h
+unixemu.obj: dosdisk.h unixdisk.h
+unixemu.obj: unixemu.h
 libc.obj: fd.h
 libc.obj: machine.h config.h
-libc.obj: types.h pathname.h term.h func.h
-libc.obj: kctype.h kanji.h
-libc.obj: system.h
+libc.obj: pathname.h types.h term.h
+libc.obj: func.h
+libc.obj: dosdisk.h kctype.h
+libc.obj: kanji.h system.h
 file.obj: fd.h
 file.obj: machine.h config.h
-file.obj: types.h pathname.h func.h
-file.obj: kctype.h kanji.h
+file.obj: pathname.h types.h func.h
+file.obj: dosdisk.h kctype.h
+file.obj: kanji.h
 apply.obj: fd.h
 apply.obj: machine.h config.h
-apply.obj: types.h pathname.h term.h func.h
-apply.obj: kanji.h
+apply.obj: pathname.h types.h term.h
+apply.obj: func.h
+apply.obj: dosdisk.h kanji.h
 parse.obj: fd.h
 parse.obj: machine.h config.h
-parse.obj: types.h pathname.h term.h func.h
-parse.obj: kctype.h
+parse.obj: pathname.h types.h term.h
+parse.obj: func.h
+parse.obj: dosdisk.h kctype.h
 builtin.obj: fd.h
 builtin.obj: machine.h config.h
-builtin.obj: types.h pathname.h term.h func.h
-builtin.obj: kctype.h
-builtin.obj: funcno.h kanji.h dosdisk.h
-builtin.obj: system.h
+builtin.obj: pathname.h types.h term.h
+builtin.obj: func.h
+builtin.obj: dosdisk.h kctype.h
+builtin.obj: funcno.h kanji.h system.h
 shell.obj: fd.h
 shell.obj: machine.h config.h
-shell.obj: types.h pathname.h term.h func.h
-shell.obj: kctype.h
-shell.obj: kanji.h
-shell.obj: system.h
+shell.obj: pathname.h types.h term.h
+shell.obj: func.h
+shell.obj: dosdisk.h kctype.h
+shell.obj: kanji.h system.h
 kanji.obj: machine.h config.h
-kanji.obj: term.h kctype.h pathname.h
+kanji.obj: term.h kctype.h
+kanji.obj: pathname.h
 input.obj: fd.h
 input.obj: machine.h config.h
-input.obj: types.h pathname.h term.h func.h
-input.obj: kctype.h
+input.obj: pathname.h types.h
+input.obj: term.h func.h
+input.obj: dosdisk.h kctype.h
 input.obj: kanji.h system.h
 info.obj: fd.h
 info.obj: machine.h config.h
-info.obj: types.h pathname.h term.h funcno.h kctype.h
-info.obj: kanji.h
+info.obj: pathname.h types.h term.h
+info.obj: funcno.h kctype.h kanji.h
 rockridg.obj: fd.h
 rockridg.obj: machine.h config.h
-rockridg.obj: types.h pathname.h func.h
+rockridg.obj: pathname.h types.h func.h
+rockridg.obj: dosdisk.h
 archive.obj: fd.h
 archive.obj: machine.h config.h
-archive.obj: types.h pathname.h term.h func.h
-archive.obj: kctype.h
-archive.obj: kanji.h
-archive.obj: system.h
+archive.obj: pathname.h types.h term.h
+archive.obj: func.h
+archive.obj: dosdisk.h kctype.h
+archive.obj: kanji.h system.h
 tree.obj: fd.h
 tree.obj: machine.h config.h
-tree.obj: types.h pathname.h term.h
+tree.obj: pathname.h types.h term.h
 tree.obj: func.h
-tree.obj: kanji.h
+tree.obj: dosdisk.h kanji.h
 custom.obj: fd.h
 custom.obj: machine.h config.h
-custom.obj: types.h pathname.h
+custom.obj: pathname.h types.h
 custom.obj: term.h func.h
-custom.obj: funcno.h kctype.h
-custom.obj: kanji.h dosdisk.h
-custom.obj: system.h
+custom.obj: dosdisk.h funcno.h
+custom.obj: kctype.h kanji.h system.h
 command.obj: fd.h
 command.obj: machine.h config.h
-command.obj: types.h pathname.h term.h func.h
-command.obj: funcno.h kctype.h
-command.obj: kanji.h
-command.obj: system.h functabl.h
+command.obj: pathname.h types.h term.h
+command.obj: func.h
+command.obj: dosdisk.h funcno.h
+command.obj: kctype.h kanji.h system.h
+command.obj: functabl.h
 browse.obj: fd.h
 browse.obj: machine.h config.h
-browse.obj: types.h pathname.h
-browse.obj: term.h func.h
-browse.obj: funcno.h kctype.h
-browse.obj: kanji.h
+browse.obj: pathname.h types.h term.h
+browse.obj: func.h
+browse.obj: dosdisk.h funcno.h
+browse.obj: kctype.h kanji.h
 mkfuncno.obj: fd.h
 mkfuncno.obj: machine.h config.h
-mkfuncno.obj: types.h pathname.h functabl.h
+mkfuncno.obj: pathname.h types.h functabl.h
 mkmfsed.obj: fd.h
 mkmfsed.obj: machine.h config.h
-mkmfsed.obj: types.h pathname.h
+mkmfsed.obj: pathname.h types.h

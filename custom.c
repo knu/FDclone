@@ -32,6 +32,7 @@ extern int inheritcopy;
 # endif
 extern int adjtty;
 #endif
+extern int hideclock;
 extern int defcolumns;
 extern int minfilename;
 extern short histsize[];
@@ -46,6 +47,7 @@ extern int showsecond;
 extern int sizeinfo;
 #ifndef	_NOCOLOR
 extern int ansicolor;
+extern char *ansipalette;
 #endif
 #ifndef	_NOEDITMODE
 extern char *editmode;
@@ -118,6 +120,8 @@ extern int inruncom;
 			(inputstr(p, d, ((s) ? strlen(s) : 0), s, h))
 #define	noselect(n, m, x, s, v) \
 			(selectstr(n, m, x, s, v) == K_ESC)
+#define	custputs(s)	kanjiputs2(s, n_lastcolumn, -1)
+#define	custputs2(s)	kanjiputs2(s, n_column, -1)
 #define	MAXSAVEMENU	5
 #define	MAXTNAMLEN	8
 #ifndef	O_BINARY
@@ -159,6 +163,12 @@ typedef struct _envtable {
 static int NEAR atooctal __P_((char *));
 static VOID NEAR _evalenv __P_((int));
 #ifndef	_NOCUSTOMIZE
+static char *NEAR strcatalloc __P_((char *, char *));
+static VOID NEAR putsep __P_((VOID_A));
+static VOID NEAR fillline __P_((int, int));
+static VOID NEAR setnamelist __P_((int, namelist *, char *));
+static int NEAR browsenamelist __P_((namelist *, int,
+		int, char *, char *, char **));
 static VOID NEAR custtitle __P_((VOID_A));
 static VOID NEAR calcmax __P_((int [], int));
 static VOID NEAR envcaption __P_((char *));
@@ -192,6 +202,9 @@ static int NEAR checkkeymap __P_((char *, int, char **, FILE *));
 # ifndef	_NOARCHIVE
 static VOID NEAR cleanuplaunch __P_((VOID_A));
 static int NEAR displaunch __P_((int));
+static VOID NEAR verboselaunch __P_((launchtable *));
+static char **NEAR editvar __P_((char *, char **));
+static int NEAR editarchbrowser __P_((launchtable *));
 static int NEAR editlaunch __P_((int));
 static int NEAR searchlaunch __P_((launchtable *, int, launchtable *));
 static int NEAR dumplaunch __P_((char *, FILE *));
@@ -208,12 +221,12 @@ static int NEAR checkarch __P_((char *, int, char **, FILE *));
 #  endif
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-static VOID NEAR cleanupdrive __P_((VOID_A));
-static int NEAR dispdrive __P_((int));
-static int NEAR editdrive __P_((int));
-static int NEAR dumpdrive __P_((char *, FILE *));
+static VOID NEAR cleanupdosdrive __P_((VOID_A));
+static int NEAR dispdosdrive __P_((int));
+static int NEAR editdosdrive __P_((int));
+static int NEAR dumpdosdrive __P_((char *, FILE *));
 #  ifndef	_NOORIGSHELL
-static int NEAR checkdrive __P_((char *, int, char **, FILE *));
+static int NEAR checkdosdrive __P_((char *, int, char **, FILE *));
 #  endif
 # endif
 static int NEAR dispsave __P_((int));
@@ -270,6 +283,9 @@ static envtable envlist[] = {
 	{"FD_SIZEINFO", &sizeinfo, (char *)SIZEINFO, SZIF_E, T_BOOL},
 #ifndef	_NOCOLOR
 	{"FD_ANSICOLOR", &ansicolor, (char *)ANSICOLOR, ACOL_E, T_COLOR},
+# if	FD >= 2
+	{"FD_ANSIPALETTE", &ansipalette, (char *)ANSIPALETTE, APAL_E, T_CHARP},
+# endif
 #endif
 #ifndef	_NOEDITMODE
 	{"FD_EDITMODE", &editmode, EDITMODE, EDMD_E, T_EDIT},
@@ -311,7 +327,7 @@ static envtable envlist[] = {
 	{"FD_UTF8PATH", &utf8path, UTF8PATH, UTF8P_E, T_PATHS},
 	{"FD_NOCONVPATH", &noconvpath, NOCONVPATH, NCVP_E, T_PATHS},
 #endif	/* !MSDOS && !_NOKANJIFCONV */
-#if	0
+#if	FD >= 2
 	{"FD_TMPUMASK", &tmpumask, (char *)TMPUMASK, TUMSK_E, T_OCTAL},
 #endif
 };
@@ -506,10 +522,149 @@ VOID freeenvpath(VOID_A)
 #endif
 
 #ifndef	_NOCUSTOMIZE
+static char *NEAR strcatalloc(s1, s2)
+char *s1, *s2;
+{
+	int l1, l2;
+
+	l1 = (s1) ? strlen(s1) : 0;
+	l2 = strlen(s2);
+	s1 = realloc2(s1, l1 + l2 + 1);
+	strncpy2(&(s1[l1]), s2, l2);
+	return(s1);
+}
+
+static VOID NEAR putsep(VOID_A)
+{
+	putterm(t_standout);
+	putch2(' ');
+	putterm(end_standout);
+}
+
+static VOID NEAR fillline(y, w)
+int y, w;
+{
+	locate(0, y);
+	putterm(t_standout);
+	kanjiputs2("", w, 0);
+	putterm(end_standout);
+}
+
+static VOID NEAR setnamelist(n, list, s)
+int n;
+namelist *list;
+char *s;
+{
+	memset((char *)&(list[n]), 0, sizeof(namelist));
+	list[n].name = s;
+	list[n].flags = (F_ISRED | F_ISWRI);
+	list[n].ent = n;
+	list[n].tmpflags = F_STAT;
+}
+
+static int NEAR browsenamelist(list, max, col, def, prompt, mes)
+namelist *list;
+int max, col;
+char *def, *prompt, **mes;
+{
+	int ch, pos, old;
+	int dupwin_x, dupwin_y, dupminfilename, dupcolumns;
+
+	dupminfilename = minfilename;
+	dupcolumns = curcolumns;
+	minfilename = n_column;
+	curcolumns = col;
+
+	dupwin_x = win_x;
+	dupwin_y = win_y;
+	subwindow = 1;
+	pos = listupfile(list, max, def);
+
+	envcaption(prompt);
+	do {
+		locate(0, L_INFO);
+		putterm(l_clear);
+		custputs(mes[pos] ? mes[pos] : list[pos].name);
+		putch2('.');
+
+		locate(win_x, win_y);
+		tflush();
+		keyflush();
+		Xgetkey(-1, 0);
+		ch = Xgetkey(1, 0);
+		Xgetkey(-1, 0);
+
+		old = pos;
+		switch (ch) {
+			case K_UP:
+				if (pos > 0) pos--;
+				break;
+			case K_DOWN:
+				if (pos < max - 1) pos++;
+				break;
+			case K_RIGHT:
+				if (pos <= max - 1 - FILEPERROW)
+					pos += FILEPERROW;
+				else if (pos / FILEPERPAGE
+				!= (max - 1) / FILEPERPAGE)
+					pos = max - 1;
+				break;
+			case K_LEFT:
+				if (pos >= FILEPERROW) pos -= FILEPERROW;
+				break;
+			case K_PPAGE:
+				if (pos < FILEPERPAGE) putterm(t_bell);
+				else pos = ((pos / FILEPERPAGE) - 1)
+					* FILEPERPAGE;
+				break;
+			case K_NPAGE:
+				if (((pos / FILEPERPAGE) + 1) * FILEPERPAGE
+				>= max - 1)
+					putterm(t_bell);
+				else pos = ((pos / FILEPERPAGE) + 1)
+					* FILEPERPAGE;
+				break;
+			case K_BEG:
+			case K_HOME:
+			case '<':
+				pos = 0;
+				break;
+			case K_EOL:
+			case K_END:
+			case '>':
+				pos = max - 1;
+				break;
+			case K_CTRL('L'):
+				rewritefile(1);
+				old = -FILEPERPAGE;
+				break;
+			default:
+				break;
+		}
+
+		if (old / FILEPERPAGE != pos / FILEPERPAGE)
+			pos = listupfile(list, max, list[pos].name);
+		else if (old != pos) {
+			putname(list, old, -1);
+			win_x = putname(list, pos, 1) + 1;
+			win_x += calc_x;
+			win_y = calc_y;
+		}
+	} while (ch != K_ESC && ch != K_CR);
+
+	win_x = dupwin_x;
+	win_y = dupwin_y;
+	subwindow = 0;
+	minfilename = dupminfilename;
+	curcolumns = dupcolumns;
+
+	return((ch == K_CR) ? list[pos].ent : -1);
+}
+
 static VOID NEAR custtitle(VOID_A)
 {
 	char *str[MAXCUSTOM];
-	int i;
+	int i, len, max, width;
 
 	str[0] = TENV_K;
 	str[1] = TBIND_K;
@@ -519,26 +674,37 @@ static VOID NEAR custtitle(VOID_A)
 	str[5] = TSDRV_K;
 	str[6] = TSAVE_K;
 
+	for (i = width = max = 0; i < MAXCUSTOM; i++) {
+		len = strlen3(str[i]);
+		width += len + 2;
+		if (max < len) max = len;
+	}
+	width--;
+	len = 1;
+	if (width <= n_column) width = max;
+	else {
+		len = 0;
+		if (width - (MAXCUSTOM - 1) <= n_column) width = max;
+		else width = n_column / MAXCUSTOM - 1;
+	}
+
 	locate(0, LFILETOP);
+	putterm(l_clear);
 	for (i = 0; i < MAXCUSTOM; i++) {
 		if (i != custno) {
 			putch2('/');
-			kanjiputs(str[i]);
+			kanjiputs2(str[i], width, -1);
 		}
 		else {
 			putterm(t_standout);
 			putch2('/');
-			kanjiputs(str[i]);
+			kanjiputs2(str[i], width, -1);
 			putterm(end_standout);
 		}
-		putch2(' ');
+		if (len) putch2(' ');
 	}
-	putterm(l_clear);
 
-	locate(0, LFILETOP + 1);
-	putterm(t_standout);
-	kanjiputs2("", n_column, 0);
-	putterm(end_standout);
+	fillline(LFILETOP + 1, n_column);
 }
 
 static VOID NEAR calcmax(max, new)
@@ -577,7 +743,7 @@ char *s;
 	locate(0, L_HELP);
 	putterm(l_clear);
 	putterm(t_standout);
-	kanjiputs(s);
+	custputs2(s);
 	putterm(end_standout);
 }
 
@@ -661,10 +827,11 @@ char *buf;
 static int NEAR dispenv(no)
 int no;
 {
-	char *cp, *tmp, buf[MAXLINESTR + 1], *str[MAXSELECTSTRS];
+	char *cp, *new, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
 	int n, p;
 
 	cp = getenv2(envlist[no].env);
+	new = NULL;
 	switch (envlist[no].type) {
 		case T_BOOL:
 			str[0] = VBOL0_K;
@@ -673,13 +840,13 @@ int no;
 			break;
 		case T_SHORT:
 			cp = ascnumeric(buf, *((short *)(envlist[no].var)),
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 			break;
 		case T_INT:
 		case T_NATURAL:
 		case T_COLUMN:
 			cp = ascnumeric(buf, *((int *)(envlist[no].var)),
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 			break;
 		case T_SORT:
 			n = *((int *)(envlist[no].var));
@@ -691,39 +858,42 @@ int no;
 			str[5] = OLEN_K;
 			p = (n >= 100) ? 1 : 0;
 			n %= 100;
-			tmp = strcpy2(buf, &(str[n & 7][3]));
+			new = strdup2(&(str[n & 7][3]));
 
 			if (n & 7) {
 				str[0] = OINC_K;
 				str[1] = ODEC_K;
-				tmp = strcpy2(tmp, "(");
-				tmp = strcpy2(tmp, &(str[n / 8][3]));
-				tmp = strcpy2(tmp, ")");
+				new = strcatalloc(new, "(");
+				new = strcatalloc(new, &(str[n / 8][3]));
+				new = strcatalloc(new, ")");
 			}
-			if (p) strcpy(strcpy2(tmp, ", "), VSORT_K);
-			cp = buf;
+			if (p) {
+				new = strcatalloc(new, ", ");
+				new = strcatalloc(new, VSORT_K);
+			}
+			cp = new;
 			break;
 		case T_DISP:
 			n = *((int *)(envlist[no].var));
-			tmp = strcpy2(buf, VDS1A_K);
+			new = strdup2(VDS1A_K);
 			str[0] = VDS10_K;
 			str[1] = VDS11_K;
-			tmp = strcpy2(tmp, str[n & 1]);
-			tmp = strcpy2(strcpy2(tmp, ", "), VDS2A_K);
+			new = strcatalloc(new, str[n & 1]);
+			new = strcatalloc(new, VDS2A_K);
 			str[0] = VDS20_K;
 			str[1] = VDS21_K;
-			tmp = strcpy2(tmp, str[(n >> 1) & 1]);
-			tmp = strcpy2(strcpy2(tmp, ", "), VDS3A_K);
+			new = strcatalloc(new, str[(n >> 1) & 1]);
+			new = strcatalloc(new, VDS3A_K);
 			str[0] = VDS30_K;
 			str[1] = VDS31_K;
-			tmp = strcpy2(tmp, str[(n >> 2) & 1]);
+			new = strcatalloc(new, str[(n >> 2) & 1]);
 # ifdef	HAVEFLAGS
-			tmp = strcpy2(strcpy2(tmp, ", "), VDS4A_K);
+			new = strcatalloc(new, VDS4A_K);
 			str[0] = VDS40_K;
 			str[1] = VDS41_K;
-			strcpy(tmp, str[(n >> 3) & 1]);
+			new = strcatalloc(new, str[(n >> 3) & 1]);
 # endif
-			cp = buf;
+			cp = new;
 			break;
 		case T_WRFS:
 			str[0] = VWFS0_K;
@@ -735,10 +905,10 @@ int no;
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
 # if	MSDOS
-			tmp = strcpy2(buf, str[*((int *)(envlist[no].var))]);
+			new = strdup2(str[*((int *)(envlist[no].var))]);
 			if (cp && (cp = strchr(cp, ','))
-			&& !strcmp(cp + 1, "BIOS")) strcpy(tmp, cp);
-			cp = buf;
+			&& !strcmp(cp + 1, "BIOS")) new = strcatalloc(new, cp);
+			cp = new;
 # else
 			cp = str[*((int *)(envlist[no].var))];
 # endif
@@ -782,17 +952,21 @@ int no;
 			break;
 	}
 	kanjiputs2(cp, MAXCUSTVAL, 0);
-	return(strlen3(cp));
+	n = strlen3(cp);
+	if (new) free(new);
+	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
+	return(n);
 }
 
 static int NEAR editenv(no)
 int no;
 {
-	char *cp, buf[MAXLINESTR + 1], *str[MAXSELECTSTRS];
+	char *cp, *new, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
 	int n, p, tmp, val[MAXSELECTSTRS];
 
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
 
+	new = NULL;
 	switch (envlist[no].type) {
 		case T_BOOL:
 		case T_DDRV:
@@ -801,11 +975,11 @@ int no;
 			str[1] = VBOL1_K;
 			envcaption(&(envlist[no].env[3]));
 			if (noselect(&n, 2, 0, str, val)) return(0);
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_SHORT:
 			ascnumeric(buf, *((short *)(envlist[no].var)),
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
 			if (!cp) return(0);
 			n = atoi2(cp);
@@ -814,12 +988,12 @@ int no;
 				warning(0, VALNG_K);
 				return(0);
 			}
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_INT:
 		case T_NATURAL:
 			ascnumeric(buf, *((int *)(envlist[no].var)),
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
 			if (!cp) return(0);
 			n = atoi2(cp);
@@ -828,14 +1002,13 @@ int no;
 				warning(0, VALNG_K);
 				return(0);
 			}
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_PATH:
-			cp = inputcuststr(&(envlist[no].env[3]), 1,
+			new = inputcuststr(&(envlist[no].env[3]), 1,
 				*((char **)(envlist[no].var)), 1);
-			if (!cp) return(0);
-			strcpy(buf, cp);
-			free(cp);
+			if (!new) return(0);
+			cp = new;
 			break;
 		case T_SORT:
 			n = *((int *)(envlist[no].var));
@@ -872,7 +1045,7 @@ int no;
 			val[1] = 100;
 			if (noselect(&p, 2, 0, str, val)) return(0);
 			n += p;
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_DISP:
 			n = *((int *)(envlist[no].var));
@@ -902,7 +1075,7 @@ int no;
 			if (noselect(&tmp, 2, 0, str, val)) return(0);
 			n = (n & ~8) | (tmp << 3);
 # endif
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_WRFS:
 			n = *((int *)(envlist[no].var));
@@ -911,7 +1084,7 @@ int no;
 			str[2] = VWFS2_K;
 			envcaption(&(envlist[no].env[3]));
 			if (noselect(&n, 3, 0, str, val)) return(0);
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_COLUMN:
 			n = *((int *)(envlist[no].var));
@@ -925,7 +1098,7 @@ int no;
 			val[3] = 5;
 			envcaption(&(envlist[no].env[3]));
 			if (noselect(&n, 4, 0, str, val)) return(0);
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_COLOR:
 			n = *((int *)(envlist[no].var));
@@ -935,7 +1108,7 @@ int no;
 			str[3] = VCOL3_K;
 			envcaption(&(envlist[no].env[3]));
 			if (noselect(&n, 4, 0, str, val)) return(0);
-			ascnumeric(buf, n, 0, MAXLINESTR);
+			cp = ascnumeric(buf, n, 0, MAXLONGWIDTH);
 			break;
 		case T_EDIT:
 			cp = *((char **)(envlist[no].var));
@@ -947,7 +1120,7 @@ int no;
 				if (!strcmp(cp, str[n])) break;
 			envcaption(&(envlist[no].env[3]));
 			if (noselect(&n, 3, 0, str, val)) return(0);
-			strcpy(buf, str[n]);
+			cp = str[n];
 			break;
 # if	!MSDOS && !defined (_NOKANJICONV)
 		case T_KIN:
@@ -960,7 +1133,7 @@ int no;
 			if (noselect(&n, 2, 0, str, val)) return(0);
 			str[SJIS] = "sjis";
 			str[EUC] = "euc";
-			strcpy(buf, str[n]);
+			cp = str[n];
 			break;
 # endif	/* !MSDOS && !_NOKANJICONV */
 # if	(!MSDOS && !defined (_NOKANJICONV)) \
@@ -1015,7 +1188,7 @@ int no;
 #  endif	/* !MSDOS && !_NOKANJICONV */
 			str[NOCNV] = "";
 			str[ENG] = "C";
-			strcpy(buf, str[n]);
+			cp = str[n];
 			break;
 # endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
 # if	!MSDOS && !defined (_NOKANJIFCONV)
@@ -1066,7 +1239,7 @@ int no;
 			str[HEX] = "hex";
 			str[CAP] = "cap";
 			str[UTF8] = "utf8";
-			strcpy(buf, str[n]);
+			cp = str[n];
 			break;
 # endif	/* !MSDOS && !_NOKANJIFCONV */
 		case T_OCTAL:
@@ -1079,17 +1252,17 @@ int no;
 				warning(0, VALNG_K);
 				return(0);
 			}
-			ascoctal(n, buf);
+			cp = ascoctal(n, buf);
 			break;
 		default:
-			cp = inputcuststr(&(envlist[no].env[3]), 0,
+			new = inputcuststr(&(envlist[no].env[3]), 0,
 				*((char **)(envlist[no].var)), -1);
-			if (!cp) return(0);
-			strcpy(buf, cp);
-			free(cp);
+			if (!new) return(0);
+			cp = new;
 			break;
 	}
-	setenv2(envlist[no].env, buf);
+	setenv2(envlist[no].env, cp);
+	if (new) free(new);
 	_evalenv(no);
 	return(1);
 }
@@ -1224,7 +1397,7 @@ static int NEAR dispbind(no)
 int no;
 {
 	char *cp1, *cp2;
-	int width;
+	int len, width;
 
 	if (bindlist[no].key < 0) {
 		kanjiputs2("", MAXCUSTVAL, 0);
@@ -1238,16 +1411,19 @@ int no;
 	else if (bindlist[no].d_func < 255)
 		cp2 = macrolist[bindlist[no].d_func - FUNCLISTSIZ];
 	else cp2 = NULL;
-	if (!cp2) kanjiputs2(cp1, MAXCUSTVAL, 0);
+	if (!cp2) {
+		width = MAXCUSTVAL;
+		kanjiputs2(cp1, width, 0);
+	}
 	else {
 		width = (MAXCUSTVAL - 1) / 2;
 		kanjiputs2(cp1, width, 0);
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
+		putsep();
 		kanjiputs2(cp2, MAXCUSTVAL - 1 - width, 0);
 	}
-	return(strlen3(cp1));
+	len = strlen3(cp1);
+	if (len > --width) len = width;
+	return(len);
 }
 
 static int NEAR selectbind(n, max, prompt)
@@ -1255,141 +1431,41 @@ int n, max;
 char *prompt;
 {
 	namelist *list;
-	int i, ch, pos, old;
-	int dupwin_x, dupwin_y, dupminfilename, dupcolumns, dupsorton;
+	char *cp, **mes;
+	int i, dupsorton;
 
 	max += FUNCLISTSIZ;
-	dupminfilename = minfilename;
-	dupcolumns = curcolumns;
-	minfilename = n_column;
-	curcolumns = 5;
 
 	list = (namelist *)malloc2((FUNCLISTSIZ + 2) * sizeof(namelist));
+	mes = (char **)malloc2((FUNCLISTSIZ + 2) * sizeof(char *));
 	for (i = 0; i < FUNCLISTSIZ; i++) {
-		memset((char *)&(list[i]), 0, sizeof(namelist));
-		list[i].name = strdup2(funclist[i].ident);
-		list[i].flags = (F_ISRED | F_ISWRI);
-		list[i].ent = i;
-		list[i].tmpflags = F_STAT;
+		setnamelist(i, list, funclist[i].ident);
+		mes[i] = mesconv(funclist[i].hmes, funclist[i].hmes_eng);
 	}
-	memset((char *)&(list[i]), 0, sizeof(namelist));
-	list[i].name = strdup2(USRDF_K);
-	list[i].flags = (F_ISRED | F_ISWRI);
-	list[i].ent = i;
-	list[i].tmpflags = F_STAT;
-	i++;
-	list[i].name = strdup2(DELKB_K);
-	list[i].flags = (F_ISRED | F_ISWRI);
-	list[i].ent = i;
-	list[i].tmpflags = F_STAT;
+	setnamelist(i, list, USRDF_K);
+	mes[i++] = NULL;
+	setnamelist(i, list, DELKB_K);
+	mes[i] = NULL;
 
 	dupsorton = sorton;
 	sorton = 1;
 	qsort(list, FUNCLISTSIZ, sizeof(namelist), cmplist);
 	sorton = dupsorton;
 
-	dupwin_x = win_x;
-	dupwin_y = win_y;
-	subwindow = 1;
-	pos = listupfile(list, max,
-		(n < FUNCLISTSIZ)
-		? funclist[n].ident : list[FUNCLISTSIZ].name);
+	cp = (n < FUNCLISTSIZ) ? funclist[n].ident : list[FUNCLISTSIZ].name;
+	n = browsenamelist(list, max, 5, cp, prompt, mes);
 
-	envcaption(prompt);
-	do {
-		locate(0, L_INFO);
-		putterm(l_clear);
-		if (list[pos].ent >= FUNCLISTSIZ) kanjiputs(list[pos].name);
-		else kanjiputs(mesconv(funclist[list[pos].ent].hmes,
-			funclist[list[pos].ent].hmes_eng));
-		putch2('.');
-
-		locate(win_x, win_y);
-		tflush();
-		keyflush();
-# ifdef	_NOEDITMODE
-		ch = Xgetkey(1, 0);
-# else
-		Xgetkey(-1, 0);
-		ch = Xgetkey(1, 0);
-		Xgetkey(-1, 0);
-# endif
-
-		old = pos;
-		switch (ch) {
-			case K_UP:
-				if (pos > 0) pos--;
-				break;
-			case K_DOWN:
-				if (pos < max - 1) pos++;
-				break;
-			case K_RIGHT:
-				if (pos <= max - 1 - FILEPERROW)
-					pos += FILEPERROW;
-				else if (pos / FILEPERPAGE
-				!= (max - 1) / FILEPERPAGE)
-					pos = max - 1;
-				break;
-			case K_LEFT:
-				if (pos >= FILEPERROW) pos -= FILEPERROW;
-				break;
-			case K_PPAGE:
-				if (pos < FILEPERPAGE) putterm(t_bell);
-				else pos = ((pos / FILEPERPAGE) - 1)
-					* FILEPERPAGE;
-				break;
-			case K_NPAGE:
-				if (((pos / FILEPERPAGE) + 1) * FILEPERPAGE
-				>= max - 1)
-					putterm(t_bell);
-				else pos = ((pos / FILEPERPAGE) + 1)
-					* FILEPERPAGE;
-				break;
-			case K_BEG:
-			case K_HOME:
-			case '<':
-				pos = 0;
-				break;
-			case K_EOL:
-			case K_END:
-			case '>':
-				pos = max - 1;
-				break;
-			case K_CTRL('L'):
-				rewritefile(1);
-				old = -FILEPERPAGE;
-				break;
-			default:
-				break;
-		}
-
-		if (old / FILEPERPAGE != pos / FILEPERPAGE)
-			pos = listupfile(list, max, list[pos].name);
-		else if (old != pos) {
-			putname(list, old, -1);
-			win_x = putname(list, pos, 1) + 1;
-			win_x += calc_x;
-			win_y = calc_y;
-		}
-	} while (ch != K_ESC && ch != K_CR);
-
-	win_x = dupwin_x;
-	win_y = dupwin_y;
-	subwindow = 0;
-	minfilename = dupminfilename;
-	curcolumns = dupcolumns;
-
-	if (pos < FUNCLISTSIZ) pos = list[pos].ent;
-	for (i = 0; i < FUNCLISTSIZ + 2; i++) free(list[i].name);
+	if (n >= 0) n = list[n].ent;
 	free(list);
+	free(mes);
 
-	return ((ch == K_CR) ? pos : -1);
+	return (n);
 }
 
 static int NEAR editbind(no)
 int no;
 {
-	char *cp, *str, buf[MAXLINESTR + 1];
+	char *cp, *str, *buf;
 	int i, n1, n2, key, dupwin_x, dupwin_y;
 
 	if ((key = bindlist[no].key) < 0) {
@@ -1402,18 +1478,14 @@ int no;
 		dupwin_y = win_y;
 		locate(0, L_INFO);
 		putterm(l_clear);
-		win_x = kanjiputs(BINDK_K);
+		win_x = custputs(BINDK_K);
 		win_y = L_INFO;
 		locate(win_x, win_y);
 		tflush();
 		keyflush();
-# ifdef	_NOEDITMODE
-		key = Xgetkey(1, 0);
-# else
 		Xgetkey(-1, 0);
 		key = Xgetkey(1, 0);
 		Xgetkey(-1, 0);
-# endif
 		win_x = dupwin_x;
 		win_y = dupwin_y;
 
@@ -1439,11 +1511,13 @@ int no;
 			n1 = bindlist[no].f_func;
 			i = 2;
 		}
-		sprintf(buf, BINDF_K, str);
-		if ((n1 = selectbind(n1, i, buf)) < 0) return(1);
+		asprintf2(&buf, BINDF_K, str);
+		n1 = selectbind(n1, i, buf);
+		free(buf);
+		if (n1 < 0) return(-1);
 		else if (n1 < FUNCLISTSIZ) break;
 		else if (n1 == FUNCLISTSIZ + 1) {
-			if (!yesno(DLBOK_K, str)) return(1);
+			if (!yesno(DLBOK_K, str)) return(-1);
 			freemacro(bindlist[no].f_func);
 			freemacro(bindlist[no].d_func);
 			if (key >= K_F(1) && key <= K_F(10)) {
@@ -1463,8 +1537,10 @@ int no;
 			if (bindlist[no].key < 0
 			|| bindlist[no].f_func < FUNCLISTSIZ) cp = NULL;
 			else cp = macrolist[bindlist[no].f_func - FUNCLISTSIZ];
-			sprintf(buf, BNDFC_K, str);
-			if (!(cp = inputcuststr(buf, 0, cp, 0)));
+			asprintf2(&buf, BNDFC_K, str);
+			cp = inputcuststr(buf, 0, cp, 0);
+			free(buf);
+			if (!cp);
 			else if (!*cp) {
 				free(cp);
 				n1 = NO_OPERATION;
@@ -1483,18 +1559,22 @@ int no;
 		if (bindlist[no].key < 0) n2 = FUNCLISTSIZ;
 		else if ((n2 = bindlist[no].d_func) == 255)
 			n2 = bindlist[no].f_func;
-		sprintf(buf, BINDD_K, str);
-		if ((n2 = selectbind(i = n2, 1, buf)) < 0) {
+		asprintf2(&buf, BINDD_K, str);
+		n2 = selectbind(i = n2, 1, buf);
+		free(buf);
+		if (n2 < 0) {
 			freemacro(n1);
-			return(1);
+			return(-1);
 		}
 		else if (n2 < FUNCLISTSIZ) break;
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
 			if (bindlist[no].key < 0 || i < FUNCLISTSIZ) cp = NULL;
 			else cp = macrolist[i - FUNCLISTSIZ];
-			sprintf(buf, BNDDC_K, str);
-			if (!(cp = inputcuststr(buf, 0, cp, 0)));
+			asprintf2(&buf, BNDDC_K, str);
+			cp = inputcuststr(buf, 0, cp, 0);
+			free(buf);
+			if (!cp);
 			else if (!*cp) {
 				free(cp);
 				n2 = 255;
@@ -1690,6 +1770,7 @@ int no;
 	str = encodestr(cp, len);
 	kanjiputs2(str, MAXCUSTVAL, 0);
 	len = strlen3(str);
+	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
 	free(str);
 	return(len);
 }
@@ -1697,7 +1778,8 @@ int no;
 static int NEAR editkeymap(no)
 int no;
 {
-	char *cp, *str, buf[MAXLINESTR + 1];
+	char *cp, *str, *buf;
+	ALLOC_T size;
 	int i, len, key, dupwin_x, dupwin_y;
 
 	key = tmpkeymaplist[no].key;
@@ -1714,28 +1796,35 @@ int no;
 	keyflush();
 
 	while (!kbhit2(1000000L / SENSEPERSEC));
-	for (len = 0; len < MAXLINESTR; ) {
+	buf = c_realloc(NULL, 0, &size);
+	len = 0;
+	for (;;) {
+		buf = c_realloc(buf, len, &size);
 		buf[len++] = getch2();
 		if (!kbhit2(WAITKEYPAD * 1000L)) break;
 	}
+	buf = realloc2(buf, len + 1);
+	buf[len] = '\0';
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 
 	if (len == 1 && buf[0] == K_ESC) {
+		free(buf);
 		if (!yesno(DELKM_K, cp)) return(0);
 		setkeyseq(key, NULL, 0);
 		return(1);
 	}
+
 	str = encodestr(buf, len);
 	i = yesno(SETKM_K, cp, str);
 	free(str);
-	if (!i) return(0);
+	if (!i) {
+		free(buf);
+		return(0);
+	}
 
-	cp = malloc2(len + 1);
-	memcpy(cp, buf, len);
-	cp[len] = '\0';
-	setkeyseq(key, cp, len);
+	setkeyseq(key, buf, len);
 	return(1);
 }
 
@@ -1826,7 +1915,9 @@ int max;
 	for (i = 0; i < max; i++) {
 		free(list[i].ext);
 		free(list[i].comm);
-		if (list[i].format) free(list[i].format);
+		freevar(list[i].format);
+		freevar(list[i].lignore);
+		freevar(list[i].lerror);
 	}
 }
 
@@ -1842,7 +1933,9 @@ int *ndestp, nsrc;
 	for (i = 0; i < nsrc; i++) {
 		dest[i].ext = strdup2(src[i].ext);
 		dest[i].comm = strdup2(src[i].comm);
-		dest[i].format = strdup2(src[i].format);
+		dest[i].format = duplvar(src[i].format, -1);
+		dest[i].lignore = duplvar(src[i].lignore, -1);
+		dest[i].lerror = duplvar(src[i].lerror, -1);
 		dest[i].topskip = src[i].topskip;
 		dest[i].bottomskip = src[i].bottomskip;
 		dest[i].flags = src[i].flags;
@@ -1859,44 +1952,291 @@ static VOID NEAR cleanuplaunch(VOID_A)
 static int NEAR displaunch(no)
 int no;
 {
-	char buf[2 + 1];
-	int width;
+	char buf[MAXLONGWIDTH + 1];
+	int len, width;
 
 	if (no >= maxlaunch) {
 		kanjiputs2("", MAXCUSTVAL, 0);
 		return(0);
 	}
-	if (!launchlist[no].format)
-		kanjiputs2(launchlist[no].comm, MAXCUSTVAL, 0);
+	if (!launchlist[no].format) {
+		width = MAXCUSTVAL;
+		kanjiputs2(launchlist[no].comm, width, 0);
+	}
 	else {
 		width = (MAXCUSTVAL - 1 - 6) / 2;
 		kanjiputs2(launchlist[no].comm, width, 0);
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
+		putsep();
 		width = MAXCUSTVAL - 1 - 6 - width;
-		kanjiputs2(launchlist[no].format, width, 0);
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
+		kanjiputs2(launchlist[no].format[0], width, 0);
+		putsep();
 		ascnumeric(buf, launchlist[no].topskip, -1, 2);
 		cputs2(buf);
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
+		putsep();
 		ascnumeric(buf, launchlist[no].bottomskip, -1, 2);
 		cputs2(buf);
 	}
-	return(strlen3(launchlist[no].comm));
+	len = strlen3(launchlist[no].comm);
+	if (len > --width) len = width;
+	return(len);
+}
+
+static VOID NEAR verboselaunch(list)
+launchtable *list;
+{
+	char buf[MAXLONGWIDTH + 1];
+	int y, len, nf, ni, ne;
+
+	custtitle();
+	y = LFILETOP + 1;
+	fillline(y++, n_column);
+	len = strlen3(list -> ext + 1);
+	if (list -> flags & LF_IGNORECASE) len++;
+	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
+	fillline(y++, MAXCUSTNAM + 1 - len);
+	putterm(l_clear);
+	if (list -> flags & LF_IGNORECASE) {
+		putch2('/');
+		len--;
+	}
+	kanjiputs2(list -> ext + 1, len, -1);
+	putsep();
+	kanjiputs2(list -> comm, MAXCUSTVAL, 0);
+	putsep();
+	fillline(y++, n_column);
+	nf = ni = ne = 0;
+	if (list -> format) for(; y < LFILEBOTTOM - 1; y++) {
+		if (nf >= 0) {
+			if (!(list -> format[nf])) {
+				nf = -1;
+				fillline(y, n_column);
+				continue;
+			}
+			else if (nf) fillline(y, MAXCUSTNAM + 2);
+			else {
+				locate(0, y);
+				putsep();
+				putterm(t_standout);
+				cputs2("-t");
+				putterm(end_standout);
+				ascnumeric(buf, list -> topskip, 3, 3);
+				cputs2(buf);
+				putsep();
+				putterm(t_standout);
+				cputs2("-b");
+				putterm(end_standout);
+				ascnumeric(buf, list -> bottomskip, 3, 3);
+				cputs2(buf);
+				putsep();
+				putterm(t_standout);
+				cputs2("-f");
+				putterm(end_standout);
+				putsep();
+			}
+			kanjiputs2(list -> format[nf], MAXCUSTVAL, 0);
+			putsep();
+			nf++;
+		}
+		else if (ni >= 0 && list -> lignore) {
+			if (!(list -> lignore[ni])) {
+				ni = -1;
+				fillline(y, n_column);
+				continue;
+			}
+			else if (ni) fillline(y, MAXCUSTNAM + 2);
+			else {
+				fillline(y, MAXCUSTNAM - 2 + 1);
+				putterm(t_standout);
+				cputs2("-i");
+				putterm(end_standout);
+				putsep();
+			}
+			kanjiputs2(list -> lignore[ni], MAXCUSTVAL, 0);
+			putsep();
+			ni++;
+		}
+		else if (ne >= 0 && list -> lerror) {
+			if (!(list -> lerror[ne])) {
+				ne = -1;
+				fillline(y, n_column);
+				continue;
+			}
+			else if (ne) fillline(y, MAXCUSTNAM + 2);
+			else {
+				fillline(y, MAXCUSTNAM - 2 + 1);
+				putterm(t_standout);
+				cputs2("-e");
+				putterm(end_standout);
+				putsep();
+			}
+			kanjiputs2(list -> lerror[ne], MAXCUSTVAL, 0);
+			putsep();
+			ne++;
+		}
+		else break;
+	}
+	for (; y < LFILEBOTTOM; y++) fillline(y, n_column);
+}
+
+static char **NEAR editvar(prompt, var)
+char *prompt, **var;
+{
+	namelist *list;
+	char *cp, *tmp, *usg, *str[4], **mes;
+	int i, n, max, val[4];
+
+	max = countvar(var);
+	for (i = 0; i < sizeof(val) / sizeof(int); i++) val[i] = i;
+
+	list = (namelist *)malloc2((max + 1) * sizeof(namelist));
+	mes = (char **)malloc2((max + 1) * sizeof(char *));
+	usg = ARUSG_K;
+	for (i = 0; i < max; i++) {
+		setnamelist(i, list, var[i]);
+		mes[i] = usg;
+	}
+	setnamelist(i, list, ARADD_K);
+	mes[i] = NULL;
+
+	cp = NULL;
+	for (;;) {
+		n = browsenamelist(list, max + 1, 1, cp, prompt, mes);
+		if (n < 0) break;
+		cp = list[n].name;
+		if (n >= max) {
+			if (!(tmp = inputcuststr(prompt, 0, NULL, -1)))
+				continue;
+			list = (namelist *)realloc2(list,
+				(max + 2) * sizeof(namelist));
+			mes = (char **)realloc2(mes,
+				(max + 2) * sizeof(char *));
+			memcpy((char *)&(list[max + 1]), (char *)&(list[max]),
+				sizeof(namelist));
+			setnamelist(max, list, cp = tmp);
+			mes[max++] = usg;
+			mes[max] = NULL;
+			continue;
+		}
+		str[0] = AREDT_K;
+		str[1] = (n > 0) ? ARUPW_K : NULL;
+		str[2] = (n < max - 1) ? ARDWN_K : NULL;
+		str[3] = ARDEL_K;
+		i = 0;
+		if (noselect(&i, sizeof(val) / sizeof(int), 0, str, val))
+			continue;
+		if (i == 0) {
+			if (!(tmp = inputcuststr(prompt, 0, cp, -1)))
+				continue;
+			free(cp);
+			cp = list[n].name = tmp;
+		}
+		else if (i == 1) {
+			list[n].name = list[n - 1].name;
+			list[n - 1].name = cp;
+		}
+		else if (i == 2) {
+			list[n].name = list[n + 1].name;
+			list[n + 1].name = cp;
+		}
+		else if (i == 3) {
+			if (!yesno(ADLOK_K)) continue;
+			free(cp);
+			memmove((char *)&(list[n]), (char *)&(list[n + 1]),
+				(max - n) * sizeof(namelist));
+			memmove((char *)&(mes[n]), (char *)&(mes[n + 1]),
+				(max - n) * sizeof(char *));
+			max--;
+			cp = list[n].name;
+		}
+	}
+
+	if (var) free(var);
+	if (!max) var = NULL;
+	else {
+		var = (char **)malloc2((max + 1) * sizeof(char *));
+		for (i = 0; i < max; i++) var[i] = list[i].name;
+		var[i] = NULL;
+	}
+	free(list);
+	free(mes);
+
+	return(var);
+}
+
+static int NEAR editarchbrowser(list)
+launchtable *list;
+{
+	char *cp, *str[6], buf[MAXLONGWIDTH + 1];
+	int i, n, val[6];
+	u_char *skipp;
+
+	str[0] = "-f";
+	str[1] = "-t";
+	str[2] = "-b";
+	str[3] = "-i";
+	str[4] = "-e";
+	str[5] = ARDON_K;
+	for (i = 0; i < sizeof(val) / sizeof(int); i++) val[i] = i;
+
+	n = 0;
+	for (;;) {
+		verboselaunch(list);
+		envcaption(ARSEL_K);
+		if (noselect(&n, sizeof(val) / sizeof(int), 0, str, val)) {
+			if (yesno(ARCAN_K)) return(0);
+			continue;
+		}
+		if (n == sizeof(val) / sizeof(int) - 1) {
+			if (!(list -> format)) {
+				if (!yesno(ARNOT_K)) continue;
+				freevar(list -> lignore);
+				freevar(list -> lerror);
+				list -> lignore = list -> lerror = NULL;
+				list -> topskip = list -> bottomskip = 0;
+			}
+			break;
+		}
+		if (n == 0) list -> format = editvar(ARCHF_K, list -> format);
+		else if (n == 3)
+			list -> lignore = editvar(ARIGN_K, list -> lignore);
+		else if (n == 4)
+			list -> lerror = editvar(ARERR_K, list -> lerror);
+		else {
+			if (n == 1) {
+				skipp = &(list -> topskip);
+				cp = TOPSK_K;
+			}
+			else {
+				skipp = &(list -> bottomskip);
+				cp = BTMSK_K;
+			}
+			ascnumeric(buf, *skipp, 0, MAXLONGWIDTH);
+			if (!(cp = inputcuststr(cp, 1, buf, -1))) continue;
+			i = atoi2(cp);
+			free(cp);
+			if (i < 0) {
+				warning(0, VALNG_K);
+				continue;
+			}
+			*skipp = i;
+		}
+	}
+	return(1);
 }
 
 static int NEAR editlaunch(no)
 int no;
 {
-	char *cp, *ext, *comm, *form, buf[3 + 1];
-	int i, top, bottom, flags;
+	launchtable list;
+	char *cp, *ext;
+	int i;
 
-	if (no < maxlaunch) ext = NULL;
+	if (no < maxlaunch) {
+		ext = NULL;
+		list.ext = launchlist[no].ext;
+		list.flags = launchlist[no].flags;
+		verboselaunch(&(launchlist[no]));
+	}
 	else {
 		if (no >= MAXLAUNCHTABLE) {
 			warning(0, OVERF_K);
@@ -1904,7 +2244,7 @@ int no;
 		}
 
 		if (!(cp = inputcuststr(EXTLN_K, 1, NULL, -1))) return(0);
-		ext = getext(cp, &flags);
+		list.ext = ext = getext(cp, &(list.flags));
 		free(cp);
 		if (!ext[0] || !ext[1]) {
 			free(ext);
@@ -1912,36 +2252,49 @@ int no;
 		}
 
 		for (i = 0; i < maxlaunch; i++)
-			if (!extcmp(ext, flags,
+			if (!extcmp(list.ext, list.flags,
 			launchlist[i].ext, launchlist[i].flags, 1)) break;
 		if (i >= maxlaunch) {
-			launchlist[i].comm = launchlist[i].format = NULL;
+			launchlist[i].comm = NULL;
+			launchlist[i].format =
+			launchlist[i].lignore = launchlist[i].lerror = NULL;
 			launchlist[i].topskip = launchlist[i].bottomskip = 0;
-			launchlist[i].flags = flags;
+			launchlist[i].flags = list.flags;
 		}
 		no = i;
 	}
 
-	comm = form = NULL;
-	top = bottom = 0;
 	for (;;) {
-		if (comm);
-		else if (!(comm =
+		list.format = duplvar(launchlist[no].format, -1);
+		list.lignore = duplvar(launchlist[no].lignore, -1);
+		list.lerror = duplvar(launchlist[no].lerror, -1);
+		list.topskip = launchlist[no].topskip;
+		list.bottomskip = launchlist[no].bottomskip;
+
+		if (!(list.comm =
 		inputcuststr(LNCHC_K, 0, launchlist[no].comm, 0))) {
 			if (ext) free(ext);
-			return(0);
+			freevar(list.format);
+			freevar(list.lignore);
+			freevar(list.lerror);
+			return(-1);
 		}
-		else if (!*comm) {
-			free(comm);
+		else if (!*(list.comm)) {
+			free(list.comm);
+			freevar(list.format);
+			freevar(list.lignore);
+			freevar(list.lerror);
 			if (ext) {
 				free(ext);
-				return(0);
+				return(-1);
 			}
 
-			if (!yesno(DLLOK_K, launchlist[no].ext)) return(0);
+			if (!yesno(DLLOK_K, launchlist[no].ext)) return(-1);
 			free(launchlist[no].ext);
 			free(launchlist[no].comm);
-			if (launchlist[no].format) free(launchlist[no].format);
+			freevar(launchlist[no].format);
+			freevar(launchlist[no].lignore);
+			freevar(launchlist[no].lerror);
 			maxlaunch--;
 			for (i = no; i < maxlaunch; i++)
 				memcpy((char *)&(launchlist[i]),
@@ -1949,62 +2302,31 @@ int no;
 					sizeof(launchtable));
 			return(1);
 		}
-		else if (!yesno(ISARC_K)) break;
-
-		if (!(form =
-		inputcuststr(ARCHF_K, 1, launchlist[no].format, -1))) {
-			free(comm);
-			comm = NULL;
-			continue;
-		}
-		else if (!*form) {
-			free(form);
-			form = NULL;
+		else if (!yesno(ISARC_K)) {
+			freevar(list.format);
+			freevar(list.lignore);
+			freevar(list.lerror);
+			list.format = list.lignore = list.lerror = NULL;
+			list.topskip = list.bottomskip = 0;
 			break;
 		}
 
-		ascnumeric(buf, launchlist[no].topskip, 0, 3);
-		for (;;) {
-			if (!(cp = inputcuststr(TOPSK_K, 1, buf, -1))) {
-				free(form);
-				form = NULL;
-				break;
-			}
-			top = atoi2(cp);
-			free(cp);
-			if (top >= 0) break;
-			warning(0, VALNG_K);
-		}
-		if (!form) continue;
-
-		ascnumeric(buf, launchlist[no].bottomskip, 0, 3);
-		for (;;) {
-			if (!(cp = inputcuststr(BTMSK_K, 1, buf, -1))) {
-				free(form);
-				form = NULL;
-				break;
-			}
-			bottom = atoi2(cp);
-			free(cp);
-			if (bottom >= 0) break;
-			warning(0, VALNG_K);
-		}
-		if (form) break;
+		if (editarchbrowser(&list)) break;
+		free(list.comm);
+		freevar(list.format);
+		freevar(list.lignore);
+		freevar(list.lerror);
 	}
 
 	if (no >= maxlaunch) maxlaunch++;
 	else {
-		if (!ext) ext = launchlist[no].ext;
-		else free(launchlist[no].ext);
+		if (ext) free(launchlist[no].ext);
 		free(launchlist[no].comm);
-		if (launchlist[no].format) free(launchlist[no].format);
+		freevar(launchlist[no].format);
+		freevar(launchlist[no].lignore);
+		freevar(launchlist[no].lerror);
 	}
-	launchlist[no].ext = ext;
-	launchlist[no].comm = comm;
-	launchlist[no].format = form;
-	launchlist[no].topskip = top;
-	launchlist[no].bottomskip = bottom;
-	launchlist[no].flags = flags;
+	memcpy((char *)&(launchlist[no]), (char *)&list, sizeof(list));
 	return(1);
 }
 
@@ -2013,7 +2335,7 @@ launchtable *list;
 int max;
 launchtable *launch;
 {
-	int i;
+	int i, j;
 
 	for (i = 0; i < max; i++)
 		if (!extcmp(launch -> ext, 0, list[i].ext, 0, 1)) break;
@@ -2024,10 +2346,37 @@ launchtable *launch;
 	}
 	else if (!(list[i].format)) return(-1);
 	else if (launch -> topskip != list[i].topskip
-	|| launch -> bottomskip != list[i].bottomskip
-	|| strcmp(launch -> format, list[i].format))
+	|| launch -> bottomskip != list[i].bottomskip)
 		return(-1);
+
 	if (strcmp(launch -> comm, list[i].comm)) return(-1);
+	if (!(launch -> format)) return(i);
+
+	for (j = 0; launch -> format[j]; j++)
+		if (strcmp(launch -> format[j], list[i].format[j])) break;
+	if (launch -> format[j]) return(-1);
+
+	if (!(launch -> lignore)) {
+		if (list[i].lignore) return(-1);
+	}
+	else if (!(list[i].lignore)) return(-1);
+	else {
+		for (j = 0; launch -> lignore[j]; j++)
+			if (strcmp(launch -> lignore[j], list[i].lignore[j]))
+				break;
+		if (launch -> lignore[j]) return(-1);
+	}
+
+	if (!(launch -> lerror)) {
+		if (list[i].lerror) return(-1);
+	}
+	else if (!(list[i].lerror)) return(-1);
+	else {
+		for (j = 0; launch -> lerror[j]; j++)
+			if (strcmp(launch -> lerror[j], list[i].lerror[j]))
+				break;
+		if (launch -> lerror[j]) return(-1);
+	}
 
 	return(i);
 }
@@ -2068,7 +2417,8 @@ char *argv[];
 FILE *fp;
 {
 	char *ext;
-	int i, flags;
+	int i;
+	u_char flags;
 
 	if (argc < 3 || strpathcmp(argv[0], BL_LAUNCH)) return(0);
 	ext = getext(argv[1], &flags);
@@ -2127,7 +2477,7 @@ static VOID NEAR cleanuparch(VOID_A)
 static int NEAR disparch(no)
 int no;
 {
-	int width;
+	int len, width;
 
 	if (no >= maxarchive) {
 		kanjiputs2("", MAXCUSTVAL, 0);
@@ -2136,21 +2486,26 @@ int no;
 	width = (MAXCUSTVAL - 1) / 2;
 	if (!archivelist[no].p_comm) kanjiputs2("", width, 0);
 	else kanjiputs2(archivelist[no].p_comm, width, 0);
-	putterm(t_standout);
-	putch2(' ');
-	putterm(end_standout);
+	putsep();
 	if (!archivelist[no].u_comm) kanjiputs2("", MAXCUSTVAL - 1 - width, 0);
 	else kanjiputs2(archivelist[no].u_comm, MAXCUSTVAL - 1 - width, 0);
-	return(archivelist[no].p_comm ? strlen3(archivelist[no].p_comm) : 0);
+	len = (archivelist[no].p_comm) ? strlen3(archivelist[no].p_comm) : 0;
+	if (len > --width) len = width;
+	return(len);
 }
 
 static int NEAR editarch(no)
 int no;
 {
-	char *cp, *ext, *pcom, *ucom;
-	int i, flags;
+	archivetable list;
+	char *cp, *ext;
+	int i;
 
-	if (no < maxarchive) ext = NULL;
+	if (no < maxarchive) {
+		ext = NULL;
+		list.ext = archivelist[no].ext;
+		list.flags = archivelist[no].flags;
+	}
 	else {
 		if (no >= MAXARCHIVETABLE) {
 			warning(0, OVERF_K);
@@ -2158,7 +2513,7 @@ int no;
 		}
 
 		if (!(cp = inputcuststr(EXTAR_K, 1, NULL, -1))) return(0);
-		ext = getext(cp, &flags);
+		list.ext = ext = getext(cp, &(list.flags));
 		free(cp);
 		if (!ext[0] || !ext[1]) {
 			free(ext);
@@ -2166,39 +2521,39 @@ int no;
 		}
 
 		for (i = 0; i < maxarchive; i++)
-			if (!extcmp(ext, flags,
+			if (!extcmp(list.ext, list.flags,
 			archivelist[i].ext, archivelist[i].flags, 1)) break;
 		if (i >= maxarchive) {
 			archivelist[i].p_comm = archivelist[i].u_comm = NULL;
-			archivelist[i].flags = flags;
+			archivelist[i].flags = list.flags;
 		}
 		no = i;
 	}
 
 	for (;;) {
-		if (!(pcom =
+		if (!(list.p_comm =
 		inputcuststr(PACKC_K, 0, archivelist[no].p_comm, 0))) {
 			if (ext) free(ext);
 			return(0);
 		}
-		else if (!*pcom) {
-			free(pcom);
-			pcom = NULL;
+		else if (!*(list.p_comm)) {
+			free(list.p_comm);
+			list.p_comm = NULL;
 		}
 
-		if (!(ucom =
+		if (!(list.u_comm =
 		inputcuststr(UPCKC_K, 0, archivelist[no].u_comm, 0))) {
-			if (pcom) free(pcom);
+			if (list.p_comm) free(list.p_comm);
 			continue;
 		}
-		if (!*ucom) {
-			free(ucom);
-			ucom = NULL;
+		if (!*(list.u_comm)) {
+			free(list.u_comm);
+			list.u_comm = NULL;
 		}
 		break;
 	}
 
-	if (!pcom && !ucom) {
+	if (!(list.p_comm) && !(list.u_comm)) {
 		if (ext) {
 			free(ext);
 			return(0);
@@ -2218,15 +2573,11 @@ int no;
 
 	if (no >= maxarchive) maxarchive++;
 	else {
-		if (!ext) ext = archivelist[no].ext;
-		else free(archivelist[no].ext);
+		if (ext) free(archivelist[no].ext);
 		if (archivelist[no].p_comm) free(archivelist[no].p_comm);
 		if (archivelist[no].u_comm) free(archivelist[no].u_comm);
 	}
-	archivelist[no].ext = ext;
-	archivelist[no].p_comm = pcom;
-	archivelist[no].u_comm = ucom;
-	archivelist[no].flags = flags;
+	memcpy((char *)&(archivelist[no]), (char *)&list, sizeof(list));
 	return(1);
 }
 
@@ -2287,7 +2638,8 @@ char *argv[];
 FILE *fp;
 {
 	char *ext;
-	int i, flags;
+	int i;
+	u_char flags;
 
 	if (argc < 3 || strpathcmp(argv[0], BL_ARCH)) return(0);
 	ext = getext(argv[1], &flags);
@@ -2308,7 +2660,7 @@ FILE *fp;
 # endif	/* !_NOARCHIVE */
 
 # if	!MSDOS && !defined (_NODOSDRIVE)
-VOID freedrive(list)
+VOID freedosdrive(list)
 devinfo *list;
 {
 	int i;
@@ -2316,12 +2668,12 @@ devinfo *list;
 	for (i = 0; list[i].name; i++) free(list[i].name);
 }
 
-devinfo *copydrive(dest, src)
+devinfo *copydosdrive(dest, src)
 devinfo *dest, *src;
 {
 	int i;
 
-	if (dest) freedrive(dest);
+	if (dest) freedosdrive(dest);
 	if (!src) {
 		if (dest) dest[0].name = NULL;
 	}
@@ -2341,16 +2693,16 @@ devinfo *dest, *src;
 	return(dest);
 }
 
-static VOID NEAR cleanupdrive(VOID_A)
+static VOID NEAR cleanupdosdrive(VOID_A)
 {
-	copydrive(fdtype, origfdtype);
+	copydosdrive(fdtype, origfdtype);
 }
 
-static int NEAR dispdrive(no)
+static int NEAR dispdosdrive(no)
 int no;
 {
-	char *cp, buf[sizeof("HDD98 #offset=") + 14];
-	int i, len, w, width;
+	char *cp, buf[sizeof("HDD98 #offset=") + MAXCOLSCOMMA(3)];
+	int i, len, w1, w2, width;
 
 	if (!fdtype[no].name) {
 		kanjiputs2("", MAXCUSTVAL, 0);
@@ -2358,11 +2710,9 @@ int no;
 	}
 	width = (MAXCUSTVAL - 1) / 2;
 	kanjiputs2(fdtype[no].name, width, 0);
-	putterm(t_standout);
-	putch2(' ');
-	putterm(end_standout);
+	putsep();
 
-	width = MAXCUSTVAL - 1 - width;
+	w1 = MAXCUSTVAL - 1 - width;
 #  ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
 		strcpy(buf, "HDD");
@@ -2370,32 +2720,28 @@ int no;
 			strcat(buf, "98");
 		strcat(buf, " #offset=");
 		ascnumeric(buf + strlen(buf),
-			fdtype[no].offset / fdtype[no].sect, -3, 14);
-		kanjiputs2(buf, width, 0);
+			fdtype[no].offset / fdtype[no].sect,
+			-3, MAXCOLSCOMMA(3));
+		kanjiputs2(buf, w1, 0);
 	}
 	else
 #  endif	/* HDDMOUNT */
 	{
 		len = 0;
 		for (i = 0; i < MEDIADESCRSIZ; i++) {
-			w = strlen(mediadescr[i].name);
-			if (len < w) len = w;
+			w2 = strlen(mediadescr[i].name);
+			if (len < w2) len = w2;
 		}
 
-		w = (width - len) / 3 - 1;
-		cp = malloc2(w + 1);
-		cputs2(ascnumeric(cp, fdtype[no].head, -1, w));
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
-		cputs2(ascnumeric(cp, fdtype[no].sect, -1, w));
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
-		cputs2(ascnumeric(cp, fdtype[no].cyl, -1, w));
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
+		w2 = (w1 - len) / 3 - 1;
+		if (w2 <= 0) w2 = 1;
+		cp = malloc2(w2 + 1);
+		cputs2(ascnumeric(cp, fdtype[no].head, -1, w2));
+		putsep();
+		cputs2(ascnumeric(cp, fdtype[no].sect, -1, w2));
+		putsep();
+		cputs2(ascnumeric(cp, fdtype[no].cyl, -1, w2));
+		putsep();
 		free(cp);
 
 		for (i = 0; i < MEDIADESCRSIZ; i++) {
@@ -2403,16 +2749,18 @@ int no;
 			&& fdtype[no].sect == mediadescr[i].sect
 			&& fdtype[no].cyl == mediadescr[i].cyl) break;
 		}
-		if (i >= MEDIADESCRSIZ) kanjiputs2("", width - (w + 1) * 3, 0);
-		else kanjiputs2(mediadescr[i].name, width - (w + 1) * 3, 0);
+		if (i >= MEDIADESCRSIZ) kanjiputs2("", w1 - (w2 + 1) * 3, 0);
+		else kanjiputs2(mediadescr[i].name, w1 - (w2 + 1) * 3, 0);
 	}
-	return(strlen3(fdtype[no].name));
+	len = strlen3(fdtype[no].name);
+	if (len > --width) len = width;
+	return(len);
 }
 
-static int NEAR editdrive(no)
+static int NEAR editdosdrive(no)
 int no;
 {
-	char *cp, *dev, buf[MAXLINESTR + 1];
+	char *cp, *dev, buf[MAXLONGWIDTH + 1];
 	char *str['Z' - 'A' + 1], sbuf['Z' - 'A' + 1][3];
 	int i, n, drive, head, sect, cyl, val['Z' - 'A' + 1];
 
@@ -2449,16 +2797,19 @@ int no;
 	head = sect = cyl = -1;	/* fake for -Wuninitialized */
 #  endif
 	for (;;) {
-		sprintf(buf, DRDEV_K, drive);
-		if (dev);
-		else if (!(dev = inputcuststr(buf, 1, fdtype[no].name, 1)))
-			return(0);
-		else if (!*dev) {
-			if (!(fdtype[no].name)) return(0);
+		if (!dev) {
+			asprintf2(&cp, DRDEV_K, drive);
+			dev = inputcuststr(cp, 1, fdtype[no].name, 1);
+			free(cp);
+			if (!dev) return(0);
+			else if (!*dev) {
+				if (!(fdtype[no].name)) return(0);
 
-			if (!yesno(DLDOK_K, fdtype[no].drive)) return(0);
-			deletedrv(no);
-			return(1);
+				if (!yesno(DLDOK_K, fdtype[no].drive))
+					return(0);
+				deletedrv(no);
+				return(1);
+			}
 		}
 
 		envcaption(DRMED_K);
@@ -2495,7 +2846,7 @@ int no;
 		for (;;) {
 			if (!(fdtype[no].name)) cp = NULL;
 			else cp = ascnumeric(buf, fdtype[no].head,
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 
 			if (!(cp = inputcuststr(DRHED_K, 1, cp, -1))) break;
 			head = atoi2(cp);
@@ -2508,7 +2859,7 @@ int no;
 		for (;;) {
 			if (!(fdtype[no].name)) cp = NULL;
 			else cp = ascnumeric(buf, fdtype[no].sect,
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 
 			if (!(cp = inputcuststr(DRSCT_K, 1, cp, -1))) break;
 			sect = atoi2(cp);
@@ -2521,7 +2872,7 @@ int no;
 		for (;;) {
 			if (!(fdtype[no].name)) cp = NULL;
 			else cp = ascnumeric(buf, fdtype[no].cyl,
-				0, MAXLINESTR);
+				0, MAXLONGWIDTH);
 
 			if (!(cp = inputcuststr(DRCYL_K, 1, cp, -1))) break;
 			cyl = atoi2(cp);
@@ -2550,7 +2901,7 @@ int no;
 	return(1);
 }
 
-static int NEAR dumpdrive(flaglist, fp)
+static int NEAR dumpdosdrive(flaglist, fp)
 char *flaglist;
 FILE *fp;
 {
@@ -2579,7 +2930,7 @@ FILE *fp;
 }
 
 #  ifndef	_NOORIGSHELL
-static int NEAR checkdrive(flaglist, argc, argv, fp)
+static int NEAR checkdosdrive(flaglist, argc, argv, fp)
 char *flaglist;
 int argc;
 char *argv[];
@@ -2620,6 +2971,7 @@ static int NEAR dispsave(no)
 int no;
 {
 	char *mes[MAXSAVEMENU];
+	int len;
 
 	mes[0] = CCNCL_K;
 	mes[1] = CCLEA_K;
@@ -2631,7 +2983,9 @@ int no;
 	mes[4] = COVWR_K;
 #endif
 	kanjiputs2(mes[no], MAXCUSTVAL, 0);
-	return(strlen3(mes[no]));
+	len = strlen3(mes[no]);
+	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
+	return(len);
 }
 
 # ifndef	_NOORIGSHELL
@@ -2685,7 +3039,8 @@ char *file;
 		if (!max[i]) flaglist[i] = NULL;
 		else {
 			flaglist[i] = malloc2(max[i] * sizeof(char));
-			memset(flaglist[i], 0, max[i] * sizeof(char));
+			memset((char *)(flaglist[i]), 0,
+				max[i] * sizeof(char));
 		}
 	}
 
@@ -2740,7 +3095,7 @@ char *file;
 #  endif
 #  if	!MSDOS && !defined (_NODOSDRIVE)
 				if (!n && val[5] && flaglist[5])
-					n = checkdrive(flaglist[5],
+					n = checkdosdrive(flaglist[5],
 						argc, argv, fpout);
 #  endif
 			}
@@ -2782,7 +3137,7 @@ char *file;
 #  endif
 #  if	!MSDOS && !defined (_NODOSDRIVE)
 		if (!n && val[5] && flaglist[5])
-			n += dumpdrive(flaglist[5], NULL);
+			n += dumpdosdrive(flaglist[5], NULL);
 #  endif
 		if (n) {
 			fputc('\n', fpout);
@@ -2801,7 +3156,7 @@ char *file;
 	if (val[4] && flaglist[4]) dumparch(flaglist[4], fpout);
 #  endif
 #  if	!MSDOS && !defined (_NODOSDRIVE)
-	if (val[5] && flaglist[5]) dumpdrive(flaglist[5], fpout);
+	if (val[5] && flaglist[5]) dumpdosdrive(flaglist[5], fpout);
 #  endif
 	Xfclose(fpout);
 	for (i = 0; i < MAXCUSTOM; i++) if (flaglist[i]) free(flaglist[i]);
@@ -2864,7 +3219,7 @@ int no;
 					&maxarchive, tmpmaxarchive);
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-			if (val[5]) copydrive(fdtype, tmpfdtype);
+			if (val[5]) copydosdrive(fdtype, tmpfdtype);
 # endif
 			break;
 		case 1:
@@ -2881,7 +3236,7 @@ int no;
 			if (val[4]) cleanuparch();
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-			if (val[5]) cleanupdrive();
+			if (val[5]) cleanupdosdrive();
 # endif
 			break;
 		case 2:
@@ -2893,8 +3248,11 @@ int no;
 			inruncom = 1;
 			i = loadruncom(file, 0);
 			inruncom = 0;
-			if (i) warning(0, HITKY_K);
 			sigvecset(n);
+			if (i < 0) {
+				hideclock = 1;
+				warning(0, HITKY_K);
+			}
 			break;
 		case 3:
 			if (!(file = inputcuststr(FSAVE_K, 1, RUNCOMFILE, 1)))
@@ -2929,7 +3287,7 @@ int no;
 			if (val[4]) dumparch(NULL, fp);
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-			if (val[5]) dumpdrive(NULL, fp);
+			if (val[5]) dumpdosdrive(NULL, fp);
 # endif
 			Xfclose(fp);
 			break;
@@ -2961,10 +3319,9 @@ static VOID NEAR dispname(no, y, isstandout)
 int no, y, isstandout;
 {
 # if	!defined (_NOARCHIVE) || (!MSDOS && !defined (_NODOSDRIVE))
-	char buf[MAXLINESTR + 1];
+	char buf[MAXCUSTNAM * 2 + 1];
 # endif
 	char *cp, *name[MAXSAVEMENU];
-
 	int len;
 
 	cp = NEWET_K;
@@ -2988,7 +3345,7 @@ int no, y, isstandout;
 					cp = launchlist[no].ext + 1;
 				else {
 					strncpy2(buf, launchlist[no].ext,
-						MAXLINESTR);
+						MAXCUSTNAM * 2);
 					buf[0] = '/';
 					cp = buf;
 				}
@@ -3000,7 +3357,7 @@ int no, y, isstandout;
 					cp = archivelist[no].ext + 1;
 				else {
 					strncpy2(buf, archivelist[no].ext,
-						MAXLINESTR);
+						MAXCUSTNAM * 2);
 					buf[0] = '/';
 					cp = buf;
 				}
@@ -3030,18 +3387,17 @@ int no, y, isstandout;
 			break;
 	}
 
-	locate(0, y);
-	putterm(t_standout);
-	for (len = strlen3(cp); len <= MAXCUSTNAM; len++) putch2(' ');
-	if (isstandout) kanjiputs(cp);
-	else {
-		putterm(end_standout);
-		if (!stable_standout) kanjiputs(cp);
-		else locate(MAXCUSTNAM + 1, y);
+	len = strlen3(cp);
+	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
+	fillline(y, MAXCUSTNAM + 1 - len);
+	if (isstandout) {
 		putterm(t_standout);
+		kanjiputs2(cp, MAXCUSTNAM, -1);
+		putterm(end_standout);
 	}
-	putch2(' ');
-	putterm(end_standout);
+	else if (stable_standout) locate(MAXCUSTNAM + 1, y);
+	else kanjiputs2(cp, MAXCUSTNAM, -1);
+	putsep();
 }
 
 static VOID NEAR dispcust(VOID_A)
@@ -3055,6 +3411,7 @@ static VOID NEAR dispcust(VOID_A)
 
 	for (i = start; i < end; i++) {
 		dispname(i, y++, 1);
+		putterm(l_clear);
 		switch (custno) {
 			case 0:
 				cs_len[i - start] = dispenv(i);
@@ -3077,33 +3434,25 @@ static VOID NEAR dispcust(VOID_A)
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
 			case 5:
-				cs_len[i - start] = dispdrive(i);
+				cs_len[i - start] = dispdosdrive(i);
 				break;
 # endif
 			case 6:
 				cs_len[i - start] = dispsave(i);
 				break;
 			default:
-				cs_len[i - start] = kanjiputs(NIMPL_K);
-				kanjiputs2("",
+				cs_len[i - start] =
+					kanjiputs2(NIMPL_K, MAXCUSTVAL, -1);
+				if (cs_len[i - start] > MAXCUSTVAL - 1)
+					cs_len[i - start] = MAXCUSTVAL - 1;
+				else kanjiputs2("",
 					MAXCUSTVAL - cs_len[i - start], 0);
 				break;
 		}
-		putterm(t_standout);
-		putch2(' ');
-		putterm(end_standout);
-
-		locate(0, y++);
-		putterm(t_standout);
-		kanjiputs2("", n_column, 0);
-		putterm(end_standout);
+		putsep();
+		fillline(y++, n_column);
 	}
-	for (; y < LFILEBOTTOM; y++) {
-		locate(0, y);
-		putterm(t_standout);
-		kanjiputs2("", n_column, 0);
-		putterm(end_standout);
-	}
+	for (; y < LFILEBOTTOM; y++) fillline(y, n_column);
 }
 
 VOID rewritecust(all)
@@ -3132,8 +3481,8 @@ int old, all;
 		hmes[6] = HSAVE_K;
 		locate(0, L_INFO);
 		putterm(l_clear);
-		if (hmes[custno]) kanjiputs(hmes[custno]);
-		else kanjiputs(mesconv(envlist[cs_item].hmes,
+		if (hmes[custno]) custputs(hmes[custno]);
+		else custputs(mesconv(envlist[cs_item].hmes,
 			envlist[cs_item].hmes_eng));
 	}
 
@@ -3174,7 +3523,7 @@ static int NEAR editcust(VOID_A)
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
 		case 5:
-			if ((n = editdrive(cs_item))) {
+			if ((n = editdosdrive(cs_item))) {
 				for (i = 0; fdtype[i].name; i++);
 				cs_max = i + 1;
 			}
@@ -3186,6 +3535,10 @@ static int NEAR editcust(VOID_A)
 		default:
 			n = 0;
 			break;
+	}
+	if (n < 0) {
+		rewritefile(1);
+		n = 0;
 	}
 	return(n);
 }
@@ -3215,7 +3568,7 @@ int customize(VOID_A)
 		&tmpmaxarchive, maxarchive);
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-	tmpfdtype = copydrive(NULL, fdtype);
+	tmpfdtype = copydosdrive(NULL, fdtype);
 # endif
 	calcmax(max, 1);
 
@@ -3233,13 +3586,9 @@ int customize(VOID_A)
 		locate(win_x, win_y);
 		tflush();
 		keyflush();
-# ifdef	_NOEDITMODE
-		ch = Xgetkey(1, 0);
-# else
 		Xgetkey(-1, 0);
 		ch = Xgetkey(1, 0);
 		Xgetkey(-1, 0);
-# endif
 
 		old = cs_item;
 		switch (ch) {
@@ -3359,7 +3708,7 @@ int customize(VOID_A)
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
 	if (tmpfdtype) {
-		freedrive(tmpfdtype);
+		freedosdrive(tmpfdtype);
 		free(tmpfdtype);
 	}
 # endif

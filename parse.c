@@ -313,7 +313,7 @@ char *evalcomstr(path, delim)
 char *path, *delim;
 {
 # if	!MSDOS && !defined (_NOKANJIFCONV)
-	char buf[MAXLINESTR + 1];
+	char *buf;
 # endif
 	char *cp, *next, *tmp, *epath;
 	int i, len, size;
@@ -333,17 +333,31 @@ char *path, *delim;
 		if (len) {
 			tmp = _evalpath(cp, next, 0, 0);
 # if	!MSDOS && !defined (_NOKANJIFCONV)
+			len = strlen(tmp) * 3 + 3;
+			buf = malloc2(len + 1);
 			cp = kanjiconv2(buf, tmp,
-				MAXLINESTR, DEFCODE, getkcode(tmp));
+				len, DEFCODE, getkcode(tmp));
 # else
 			cp = tmp;
 # endif
 			len = strlen(cp);
 		}
+# ifdef	FAKEUNINIT
+		else {
+			/* fake for -Wuninitialized */
+#  if	!MSDOS && !defined (_NOKANJIFCONV)
+			buf =
+#  endif
+			tmp = NULL;
+		}
+# endif
 
 		epath = (char *)realloc2(epath, size + len + i + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
+# if	!MSDOS && !defined (_NOKANJIFCONV)
+			free(buf);
+# endif
 			free(tmp);
 			size += len;
 		}
@@ -378,11 +392,7 @@ int delim;
 		len = (next) ? (next++) - cp : strlen(cp);
 		if (len) {
 			tmp = _evalpath(cp, cp + len, 1, 1);
-#if	MSDOS || !defined (_NODOSDRIVE)
-			if ((_dospath(cp) ? cp[2] : cp[0]) != _SC_) cp = tmp;
-#else
-			if (cp[0] != _SC_) cp = tmp;
-#endif
+			if (!isrootdir(cp)) cp = tmp;
 			else cp = realpath2(tmp, buf, 1);
 			len = strlen(cp);
 		}
@@ -453,18 +463,14 @@ VOID adjustpath(VOID_A)
 }
 #endif	/* !MSDOS && _NOORIGSHELL */
 
-char *includepath(buf, path, plistp)
-char *buf, *path, **plistp;
+char *includepath(path, plist)
+char *path, *plist;
 {
-	char *cp, *next, tmp[MAXPATHLEN];
+	char *cp, *next;
 	int len;
 
-	if (!plistp || !*plistp || !**plistp) return(NULL);
-	if (!buf) buf = tmp;
-	next = *plistp;
-	*plistp = NULL;
-	realpath2(path, buf, 1);
-	*plistp = next;
+	if (!plist || !*plist) return(NULL);
+	next = plist;
 	for (cp = next; cp && *cp; cp = next) {
 #if	MSDOS || !defined (_NODOSDRIVE)
 		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
@@ -476,8 +482,8 @@ char *buf, *path, **plistp;
 #if	MSDOS
 		if (onkanji1(cp, len - 1)) len++;
 #endif
-		if (len > 0 && !strnpathcmp(buf, cp, len)
-		&& (!buf[len] || buf[len] == _SC_)) return(cp);
+		if (len > 0 && !strnpathcmp(path, cp, len)
+		&& (!path[len] || path[len] == _SC_)) return(path + len);
 	}
 	return(NULL);
 }
@@ -519,9 +525,8 @@ u_char *fp, *dp, *wp;
 }
 #endif	/* (FD < 2) && !_NOARCHIVE */
 
-int evalprompt(buf, prompt, max)
-char *buf, *prompt;
-int max;
+int evalprompt(bufp, prompt)
+char **bufp, *prompt;
 {
 #if	!MSDOS
 	uidtable *up;
@@ -530,9 +535,14 @@ int max;
 	struct utsname uts;
 #endif
 	char *cp, *tmp, line[MAXPATHLEN];
+	ALLOC_T size;
 	int i, j, k, len, unprint;
 
 	unprint = 0;
+#ifdef	FAKEUNINIT
+	size = 0;	/* fake for -Wuninitialized */
+#endif
+	*bufp = c_realloc(NULL, 0, &size);
 	for (i = j = len = 0; prompt[i]; i++) {
 		cp = NULL;
 		*line = '\0';
@@ -627,71 +637,67 @@ int max;
 		}
 		if (!cp) cp = line;
 
-		if (buf) while (*cp && j < max) {
-			if (unprint) buf[j] = *cp;
+		while (*cp) {
+			*bufp = c_realloc(*bufp, j + 1, &size);
+			if (unprint) (*bufp)[j] = *cp;
 #ifdef	CODEEUC
 			else if (isekana(cp, 0)) {
-				buf[j++] = *(cp++);
-				buf[j] = *cp;
+				(*bufp)[j++] = *(cp++);
+				(*bufp)[j] = *cp;
 				len++;
 			}
 #endif
 			else if (iskanji1(cp, 0)) {
-				buf[j++] = *(cp++);
-				buf[j] = *cp;
+				(*bufp)[j++] = *(cp++);
+				(*bufp)[j] = *cp;
 				len += 2;
 			}
 			else if (!isctl(*cp)) {
-				buf[j] = *cp;
-				len++;
-			}
-			else if (j + 1 >= max) {
-				buf[j] = '?';
+				(*bufp)[j] = *cp;
 				len++;
 			}
 			else {
-				buf[j++] = '^';
-				buf[j] = ((*cp + '@') & 0x7f);
-				len += 2;
-			}
-			cp++;
-			j++;
-		}
-		else while (*cp && j < max) {
-			if (unprint);
-#ifdef	CODEEUC
-			else if (isekana(cp, 0)) {
-				j++;
-				cp++;
-				len++;
-			}
-#endif
-			else if (iskanji1(cp, 0)) {
-				j++;
-				cp++;
-				len += 2;
-			}
-			else if (!isctl(*cp) || j + 1 >= max) len++;
-			else {
-				j++;
+				(*bufp)[j++] = '^';
+				(*bufp)[j] = ((*cp + '@') & 0x7f);
 				len += 2;
 			}
 			cp++;
 			j++;
 		}
 	}
-	if (buf) buf[j] = '\0';
+	(*bufp)[j] = '\0';
 	return(len);
 }
+
+#if	FD >= 2
+char **duplvar(var, margin)
+char **var;
+int margin;
+{
+	char **dupl;
+	int i, n;
+
+	if (margin < 0) {
+		if (!var) return(NULL);
+		margin = 0;
+	}
+	n = countvar(var);
+	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
+	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
+	dupl[i] = NULL;
+	return(dupl);
+}
+#endif	/* FD >= 2 */
 
 #ifndef	_NOARCHIVE
 /*ARGSUSED*/
 char *getext(ext, flagsp)
 char *ext;
-int *flagsp;
+u_char *flagsp;
 {
 	char *tmp;
 
+	*flagsp = 0;
 	if (*ext == '/') {
 		ext++;
 # if	!MSDOS

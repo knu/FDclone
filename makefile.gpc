@@ -371,16 +371,14 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		-e 's:#LANGUAGE=\$$LANG:LANGUAGE=euc:' \
 		-e 's:#INPUTKCODE=\$$LANG:INPUTKCODE=euc:' \
 		-e 's:#FNAMEKCODE=\$$LANG:FNAMEKCODE=utf8:' \
-		-e '\# examples for GNU tar >=1.12\,\^$$\ {' \
-		-e  's:^#\([^ ]\):\1:' \
-		-e  's:tar tvf[zZ]:gzip -cd %C|tar tvf -:' \
+		-e '\# launcher definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \
-		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar tvf -"\\' \
+		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
 		-e   '				"%a %u\%g %s %y-%m-%d %t %f"' \
 		-e   'i \' \
-		-e   'launch ".deb"	"ar -p %C data.tar.gz|gzip -cd|tar tvf -"\\' \
+		-e   'launch ".deb"	"ar -p %C data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
 		-e   '				"%a %u\%g %s %y-%m-%d %t %f"' \
 		-e  '}' \
@@ -388,11 +386,11 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		-e '\# archiver definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \
-		-e   'arch ".ipk"	"echo ERROR; false"\\' \
+		-e   'arch ".ipk"	"echo ERROR; false" \\' \
 		-e   'i \' \
 		-e   '		"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar xf - %TA"' \
 		-e   'i \' \
-		-e   'arch ".deb"	"echo ERROR; false"\\' \
+		-e   'arch ".deb"	"echo ERROR; false" \\' \
 		-e   'i \' \
 		-e   '		"ar -p %C data.tar.gz|gzip -cd|tar xf - %TA"' \
 		-e  '}' \
@@ -448,12 +446,17 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	echo "Depends: ncurses" >> $(IPKWDIR)\CONTROL\control
 	echo "Description: a file & directory maintenance tool." \
 		>> $(IPKWDIR)\CONTROL\control
-	tar -C $(IPKWDIR) -czf $(IPKTDIR)\data.tar.gz . --exclude=CONTROL
-	tar -C $(IPKWDIR)\CONTROL -czf $(IPKTDIR)\control.tar.gz .
+	(cd $(IPKWDIR); tar cf ..\data.tar --exclude=CONTROL .)
+	(cd $(IPKWDIR)\CONTROL; tar cf ..\..\control.tar .)
+	gzip .\data.tar
+	mv .\data.tar.gz $(IPKTDIR)
+	gzip .\control.tar
+	mv .\control.tar.gz $(IPKTDIR)
 	echo "2.0" > $(IPKTDIR)\debian-binary
-	$(GETVER); \
-	tar -C $(IPKTDIR) -czf .\fd_$$VER-1_arm.ipk \
-		.\debian-binary .\data.tar.gz .\control.tar.gz
+	(cd $(IPKTDIR); \
+	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
+	gzip .\ipk.tar
+	$(GETVER); mv .\ipk.tar.gz .\fd_$$VER-1_arm.ipk
 	-rm -rf $(IPKWDIR) $(IPKTDIR)
 
 clean:
@@ -467,114 +470,122 @@ clean:
 
 main.o: fd.h
 main.o: machine.h config.h
-main.o: types.h pathname.h term.h func.h
-main.o: kanji.h version.h dosdisk.h
-main.o: system.h
+main.o: pathname.h types.h term.h
+main.o: func.h
+main.o: dosdisk.h kanji.h
+main.o: version.h system.h
 term.o: machine.h config.h
 term.o: term.h
 pathname.o: fd.h
 pathname.o: machine.h config.h
-pathname.o: types.h pathname.h
+pathname.o: pathname.h types.h
 system.o: machine.h config.h kctype.h
-system.o: term.h pathname.h system.h
-posixsh.o: machine.h config.h
-posixsh.o: kctype.h
-posixsh.o: term.h pathname.h
-posixsh.o: system.h
+system.o: pathname.h
+system.o: system.h term.h
+posixsh.o: machine.h config.h kctype.h
+posixsh.o: pathname.h system.h
+posixsh.o: term.h
 doscom.o: machine.h config.h kctype.h
-doscom.o: term.h pathname.h system.h
+doscom.o: pathname.h system.h
+doscom.o: term.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
 dosemu.o: fd.h
 dosemu.o: machine.h config.h
-dosemu.o: types.h pathname.h func.h
-dosemu.o: kctype.h
-dosemu.o: dosdisk.h
+dosemu.o: pathname.h types.h func.h
+dosemu.o: dosdisk.h kctype.h
 unixdisk.o: machine.h config.h
 unixdisk.o: unixdisk.h
 unixdisk.o: unixemu.h
 unixdisk.o: dosdisk.h
 unixemu.o: fd.h
 unixemu.o: machine.h config.h
-unixemu.o: types.h pathname.h func.h
-unixemu.o: unixdisk.h
-unixemu.o: unixemu.h dosdisk.h
+unixemu.o: pathname.h types.h func.h
+unixemu.o: dosdisk.h unixdisk.h
+unixemu.o: unixemu.h
 libc.o: fd.h
 libc.o: machine.h config.h
-libc.o: types.h pathname.h term.h func.h
-libc.o: kctype.h kanji.h
-libc.o: system.h
+libc.o: pathname.h types.h term.h
+libc.o: func.h
+libc.o: dosdisk.h kctype.h
+libc.o: kanji.h system.h
 file.o: fd.h
 file.o: machine.h config.h
-file.o: types.h pathname.h func.h
-file.o: kctype.h kanji.h
+file.o: pathname.h types.h func.h
+file.o: dosdisk.h kctype.h
+file.o: kanji.h
 apply.o: fd.h
 apply.o: machine.h config.h
-apply.o: types.h pathname.h term.h func.h
-apply.o: kanji.h
+apply.o: pathname.h types.h term.h
+apply.o: func.h
+apply.o: dosdisk.h kanji.h
 parse.o: fd.h
 parse.o: machine.h config.h
-parse.o: types.h pathname.h term.h func.h
-parse.o: kctype.h
+parse.o: pathname.h types.h term.h
+parse.o: func.h
+parse.o: dosdisk.h kctype.h
 builtin.o: fd.h
 builtin.o: machine.h config.h
-builtin.o: types.h pathname.h term.h func.h
-builtin.o: kctype.h
-builtin.o: funcno.h kanji.h dosdisk.h
-builtin.o: system.h
+builtin.o: pathname.h types.h term.h
+builtin.o: func.h
+builtin.o: dosdisk.h kctype.h
+builtin.o: funcno.h kanji.h system.h
 shell.o: fd.h
 shell.o: machine.h config.h
-shell.o: types.h pathname.h term.h func.h
-shell.o: kctype.h
-shell.o: kanji.h
-shell.o: system.h
+shell.o: pathname.h types.h term.h
+shell.o: func.h
+shell.o: dosdisk.h kctype.h
+shell.o: kanji.h system.h
 kanji.o: machine.h config.h
-kanji.o: term.h kctype.h pathname.h
+kanji.o: term.h kctype.h
+kanji.o: pathname.h
 input.o: fd.h
 input.o: machine.h config.h
-input.o: types.h pathname.h term.h func.h
-input.o: kctype.h
+input.o: pathname.h types.h
+input.o: term.h func.h
+input.o: dosdisk.h kctype.h
 input.o: kanji.h system.h
 info.o: fd.h
 info.o: machine.h config.h
-info.o: types.h pathname.h term.h funcno.h kctype.h
-info.o: kanji.h
+info.o: pathname.h types.h term.h
+info.o: funcno.h kctype.h kanji.h
 rockridg.o: fd.h
 rockridg.o: machine.h config.h
-rockridg.o: types.h pathname.h func.h
+rockridg.o: pathname.h types.h func.h
+rockridg.o: dosdisk.h
 archive.o: fd.h
 archive.o: machine.h config.h
-archive.o: types.h pathname.h term.h func.h
-archive.o: kctype.h
-archive.o: kanji.h
-archive.o: system.h
+archive.o: pathname.h types.h term.h
+archive.o: func.h
+archive.o: dosdisk.h kctype.h
+archive.o: kanji.h system.h
 tree.o: fd.h
 tree.o: machine.h config.h
-tree.o: types.h pathname.h term.h
+tree.o: pathname.h types.h term.h
 tree.o: func.h
-tree.o: kanji.h
+tree.o: dosdisk.h kanji.h
 custom.o: fd.h
 custom.o: machine.h config.h
-custom.o: types.h pathname.h
+custom.o: pathname.h types.h
 custom.o: term.h func.h
-custom.o: funcno.h kctype.h
-custom.o: kanji.h dosdisk.h
-custom.o: system.h
+custom.o: dosdisk.h funcno.h
+custom.o: kctype.h kanji.h system.h
 command.o: fd.h
 command.o: machine.h config.h
-command.o: types.h pathname.h term.h func.h
-command.o: funcno.h kctype.h
-command.o: kanji.h
-command.o: system.h functabl.h
+command.o: pathname.h types.h term.h
+command.o: func.h
+command.o: dosdisk.h funcno.h
+command.o: kctype.h kanji.h system.h
+command.o: functabl.h
 browse.o: fd.h
 browse.o: machine.h config.h
-browse.o: types.h pathname.h
-browse.o: term.h func.h
-browse.o: funcno.h kctype.h
-browse.o: kanji.h
+browse.o: pathname.h types.h term.h
+browse.o: func.h
+browse.o: dosdisk.h funcno.h
+browse.o: kctype.h kanji.h
 mkfuncno.o: fd.h
 mkfuncno.o: machine.h config.h
-mkfuncno.o: types.h pathname.h functabl.h
+mkfuncno.o: pathname.h types.h functabl.h
 mkmfsed.o: fd.h
 mkmfsed.o: machine.h config.h
-mkmfsed.o: types.h pathname.h
+mkmfsed.o: pathname.h types.h

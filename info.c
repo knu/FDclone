@@ -192,6 +192,7 @@ extern int unixstatfs __P_((char *, statfs_t *));
 extern VOID error __P_((char *));
 extern int _chdir2 __P_((char *));
 extern char *strcpy2 __P_((char *, char *));
+extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #if	MSDOS || !defined (_NODOSDRIVE)
@@ -228,6 +229,8 @@ extern char *distributor;
 #ifndef	_NODOSDRIVE
 extern int needbavail;
 #endif
+
+#define	KEYWID		7
 
 #ifndef	MOUNTED
 #define	MOUNTED		"/etc/mtab"
@@ -313,26 +316,33 @@ int code;
 {
 	buf = buf + strlen(buf);
 	if (code >= K_F(1) && code <= K_F(20))
-		sprintf(buf, "F%-6d", code - K_F0);
+		snprintf2(buf, KEYWID + 1, "F%-6d", code - K_F0);
 	else if ((code & ~0x7f) == 0x80 && isalpha(code & 0x7f))
-		sprintf(buf, "Alt-%c  ", code & 0x7f);
-	else if (code == K_UP) sprintf(buf, "%-7.7s", UPAR_K);
-	else if (code == K_DOWN) sprintf(buf, "%-7.7s", DWNAR_K);
-	else if (code == K_RIGHT) sprintf(buf, "%-7.7s", RIGAR_K);
-	else if (code == K_LEFT) sprintf(buf, "%-7.7s", LEFAR_K);
+		snprintf2(buf, KEYWID + 1, "Alt-%c  ", code & 0x7f);
+	else if (code == K_UP)
+		snprintf2(buf, KEYWID + 1, "%-7.7s", UPAR_K);
+	else if (code == K_DOWN)
+		snprintf2(buf, KEYWID + 1, "%-7.7s", DWNAR_K);
+	else if (code == K_RIGHT)
+		snprintf2(buf, KEYWID + 1, "%-7.7s", RIGAR_K);
+	else if (code == K_LEFT)
+		snprintf2(buf, KEYWID + 1, "%-7.7s", LEFAR_K);
 	else {
 		int i;
 
 		for (i = 0; i < KEYCODESIZ; i++)
 			if (code == keycodelist[i]) break;
-		if (i < KEYCODESIZ) sprintf(buf, "%-7.7s", keystrlist[i]);
+		if (i < KEYCODESIZ)
+			snprintf2(buf, KEYWID + 1, "%-7.7s", keystrlist[i]);
 #ifndef	CODEEUC
-		else if (iskna(code)) sprintf(buf, "'%c'    ", code);
+		else if (iskna(code))
+			snprintf2(buf, KEYWID + 1, "'%c'    ", code);
 #endif
 		else if (isctl(code))
-			sprintf(buf, "Ctrl-%c ", (code + '@') & 0x7f);
+			snprintf2(buf, KEYWID + 1,
+				"Ctrl-%c ", (code + '@') & 0x7f);
 		else if (code < K_MIN && !ismsb(code))
-			sprintf(buf, "'%c'    ", code);
+			snprintf2(buf, KEYWID + 1, "'%c'    ", code);
 		else return(0);
 	}
 	return(1);

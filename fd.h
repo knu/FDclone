@@ -28,13 +28,16 @@
 #define	_NOUSEHASH
 #define	_NOORIGGLOB
 #define	_NOKANJIFCONV
-#endif	/* FD < 2 */
 #define	_NOBROWSE
+#define	_NOEXTRAMAXRO
+#endif	/* FD < 2 */
 
 #include "pathname.h"
 #include "types.h"
 
 #ifdef	DEBUG
+extern VOID mtrace __P_ ((VOID));
+extern VOID muntrace __P_ ((VOID));
 extern char *_mtrace_file;
 #endif
 
@@ -71,8 +74,6 @@ extern char *_mtrace_file;
 #endif
 
 #define	FDSHELL		"fdsh"
-#define	BROWSECWD	"BROWSECWD"
-#define	BROWSELAST	"BROWSELAST"
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*
@@ -105,6 +106,7 @@ extern char *_mtrace_file;
 #define	DOSDRIVE	0
 #define	SIZEINFO	0
 #define	ANSICOLOR	0
+#define	ANSIPALETTE	""
 #define	EDITMODE	"emacs"
 #if	MSDOS
 #define	TMPDIR		"."
@@ -144,11 +146,8 @@ extern char *_mtrace_file;
 #define	MAXALIASTABLE	256
 #define	MAXFUNCTABLE	32
 #define	MAXFUNCLINES	16
-#define	MAXLINESTR	255
 #if	MSDOS
 #define	MAXCOMMSTR	(128 - 2)
-#else
-#define	MAXCOMMSTR	1023
 #endif
 #define	MAXSELECTSTRS	16
 #define	MAXSTACK	5
@@ -249,4 +248,8 @@ extern char *_mtrace_file;
 
 #if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
 #define	_NOKANJIFCONV
+#endif
+
+#ifdef	_NOORIGSHELL
+#define	_NOEXTRAMACRO
 #endif

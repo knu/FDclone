@@ -7,6 +7,12 @@
 #ifndef	__TERM_H_
 #define	__TERM_H_
 
+#ifdef	USESTDARGH
+#include <stdarg.h>
+#else
+#include <varargs.h>
+#endif
+
 #ifndef	VOID_P
 #ifdef	NOVOID
 #define	VOID
@@ -156,12 +162,18 @@ extern int tabs __P_((VOID_A));
 extern int notabs __P_((VOID_A));
 extern int keyflush __P_((VOID_A));
 extern int ttyiomode __P_((int));
-extern int stdiomode __P_((int));
+extern int stdiomode __P_((VOID_A));
+extern int termmode __P_((int));
 extern int exit2 __P_((int));
 extern int getxy __P_((int *, int *));
+extern int vasprintf2 __P_((char **, CONST char *, va_list));
+extern int asprintf2 __P_((char **, CONST char *, ...));
 extern char *tparamstr __P_((char *, int, int));
 extern int getterment __P_((VOID_A));
 #if	!MSDOS
+# ifdef	DEBUG
+extern int freeterment __P_((VOID_A));
+# endif
 extern int setkeyseq __P_((int, char *, int));
 extern char *getkeyseq __P_((int, int *));
 #endif

@@ -27,7 +27,9 @@ extern unsigned _stklen = 0x5800;
 # endif
 #endif	/* !MSDOS */
 
-#ifndef	_NOORIGSHELL
+#ifdef	_NOORIGSHELL
+#define	Xexit2		exit2
+#else
 #include "system.h"
 #endif
 
@@ -187,7 +189,7 @@ int adjtty = 0;
 int showsecond = 0;
 int hideclock = 0;
 #ifdef	SIGALRM
-int clockmode = 0;
+int noalrm = 1;
 #endif
 u_short today[3] = {0, 0, 0};
 int fd_restricted = 0;
@@ -211,6 +213,10 @@ int inruncom = 0;
 int fdmode = 0;
 
 static int timersec = 0;
+#ifdef	SIGWINCH
+static int winchok = 0;
+static int winched = 0;
+#endif
 
 
 #if	MSDOS && !defined (PROTECTED_MODE)
@@ -236,22 +242,33 @@ char *s;
 	dosallclose();
 #endif
 	if (!s) s = progname;
-	stdiomode(0);
+	stdiomode();
 	endterm();
 	fputc('\007', stderr);
 	errno = duperrno;
-	if (errno) perror(s);
+	if (errno) perror2(s);
 	else {
 		fputs(s, stderr);
 		fputc('\n', stderr);
 	}
 	inittty(1);
+	keyflush();
+	prepareexitfd();
 #ifndef	_NOORIGSHELL
 # if	!MSDOS && !defined (NOJOB)
 	killjob();
 # endif
 	prepareexit(0);
 #endif
+#ifdef	DEBUG
+# if	!MSDOS
+	freeterment();
+# endif
+	if (ttyout && ttyout != stderr) fclose(ttyout);
+	else if (ttyio >= 0) close(ttyio);
+	muntrace();
+#endif
+
 	exit(2);
 }
 
@@ -466,9 +483,12 @@ static int wintr(VOID_A)
 
 	duperrno = errno;
 	signal(SIGWINCH, SIG_IGN);
-	checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
-	rewritefile(1);
-	if (subwindow) ungetch2(K_CTRL('L'));
+	if (!winchok) winched++;
+	else {
+		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
+		rewritefile(1);
+		if (subwindow) ungetch2(K_CTRL('L'));
+	}
 	signal(SIGWINCH, (sigcst_t)wintr);
 	errno = duperrno;
 	return(0);
@@ -520,6 +540,17 @@ static int printtime(VOID_A)
 		}
 	}
 	timersec--;
+#ifdef	SIGWINCH
+	if (!winchok) winchok++;
+	else if (winched) {
+		signal(SIGWINCH, SIG_IGN);
+		winched = 0;
+		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
+		rewritefile(1);
+		if (subwindow) ungetch2(K_CTRL('L'));
+		signal(SIGWINCH, (sigcst_t)wintr);
+	}
+#endif
 	signal(SIGALRM, (sigcst_t)printtime);
 	errno = duperrno;
 	return(0);
@@ -537,12 +568,13 @@ int set;
 	else if (set) {
 #ifdef	SIGALRM
 		signal(SIGALRM, (sigcst_t)printtime);
-		clockmode = 1;
+		noalrm = 0;
 #endif
 #ifdef	SIGTSTP
 		signal(SIGTSTP, SIG_IGN);
 #endif
 #ifdef	SIGWINCH
+		winchok = winched = 0;
 		signal(SIGWINCH, (sigcst_t)wintr);
 #endif
 #ifndef	_NODOSDRIVE
@@ -554,7 +586,7 @@ int set;
 	else {
 #ifdef	SIGALRM
 		signal(SIGALRM, (sigcst_t)ignore_alrm);
-		clockmode = 0;
+		noalrm = 1;
 #endif
 #ifdef	SIGTSTP
 		signal(SIGTSTP, SIG_DFL);
@@ -627,7 +659,7 @@ VOID saveorigenviron(VOID_A)
 		&origmaxarchive, maxarchive);
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-	origfdtype = copydrive(NULL, fdtype);
+	origfdtype = copydosdrive(NULL, fdtype);
 # endif
 }
 #endif	/* !_NOCUSTOMIZE */
@@ -641,7 +673,7 @@ char *line;
 	char *cp;
 	int i;
 
-	if (!(*(cp = skipspace(command)))) i = 0;
+	if (!*(cp = skipspace(command))) i = 0;
 	else i = execpseudoshell(cp, 0, 1);
 	if (i) {
 		putterm(l_clear);
@@ -663,9 +695,9 @@ int exist;
 #ifdef	_NOORIGSHELL
 	FILE *fp;
 	char *cp, *tmp, *fold, *line;
-	int n, cont;
+	int cont;
 #endif
-	int er;
+	int n, er;
 
 #ifdef	_NOORIGSHELL
 # if	!MSDOS
@@ -737,9 +769,9 @@ int exist;
 	free(tmp);
 #else	/* !_NOORIGSHELL */
 	file = evalpath(strdup2(file), 1);
-	stdiomode(0);
+	n = stdiomode();
 	er = execruncom(file, 1);
-	ttyiomode(0);
+	ttyiomode(n);
 	free(file);
 #endif	/* !_NOORIGSHELL */
 
@@ -780,7 +812,7 @@ char *argv[], *envp[];
 	inittty(0);
 	getterment();
 #else
-	if (initshell(optc, optv, envp) < 0) exit2(RET_FAIL);
+	if (initshell(optc, optv, envp) < 0) Xexit2(RET_FAIL);
 #endif	/* !_NOORIGSHELL */
 	free(optv);
 	return(argc);
@@ -886,7 +918,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 #  endif
 #  if	!MSDOS && !defined (_NODOSDRIVE)
 	if (origfdtype) {
-		freedrive(origfdtype);
+		freedosdrive(origfdtype);
 		free(origfdtype);
 	}
 #  endif
@@ -898,8 +930,12 @@ static VOID NEAR prepareexitfd(VOID_A)
 # if	!MSDOS
 	freeidlist();
 # endif
+	chdir2(NULL);
 # if	!defined (_NOUSEHASH) && defined (_NOORIGSHELL)
 	searchhash(NULL, NULL, NULL);
+# endif
+# ifndef	_NOROCKRIDGE
+	detranspath(NULL, NULL);
 # endif
 #endif	/* DEBUG */
 }
@@ -983,7 +1019,11 @@ char *argv[], *envp[];
 			strdup2(launchlist[maxlaunch].comm);
 # if	FD >= 2
 		launchlist[maxlaunch].format =
-			strdup2(launchlist[maxlaunch].format);
+			duplvar(launchlist[maxlaunch].format, -1);
+		launchlist[maxlaunch].lignore =
+			duplvar(launchlist[maxlaunch].lignore, -1);
+		launchlist[maxlaunch].lerror =
+			duplvar(launchlist[maxlaunch].lerror, -1);
 # endif
 	}
 	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++) {
@@ -1032,10 +1072,10 @@ char *argv[], *envp[];
 	if (*cp == 'r') cp++;
 # endif
 	if (!strpathcmp(cp, FDSHELL)) {
-		if (!Xgetwd(fullpath)) exit2(1);
+		if (!Xgetwd(fullpath)) Xexit2(1);
 		i = main_shell(argc, argv, envp);
 		prepareexitfd();
-		exit2(i);
+		Xexit2(i);
 	}
 #endif
 
@@ -1068,7 +1108,7 @@ char *argv[], *envp[];
 	evalenv();
 #if	!MSDOS
 	if (adjtty) {
-		stdiomode(0);
+		stdiomode();
 		inittty(0);
 		ttyiomode(0);
 	}
@@ -1078,17 +1118,19 @@ char *argv[], *envp[];
 	entryhist(1, origpath, 1);
 	putterms(t_clear);
 
+#ifdef	SIGWINCH
+	winchok = 1;
+#endif
 	main_fd(argv[i]);
 	sigvecset(0);
 	prepareexitfd();
 
-	stdiomode(0);
+	stdiomode();
 #ifndef	_NOORIGSHELL
 # if	!MSDOS && !defined (NOJOB)
 	killjob();
 # endif
-	prepareexit(0);
 #endif
-	exit2(0);
+	Xexit2(0);
 	return(0);
 }

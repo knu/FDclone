@@ -29,7 +29,7 @@
 #define	_NODOSDRIVE
 #endif
 
-#if	!defined (FD) && MSDOS
+#if	MSDOS && !defined (FD)
 #include <dos.h>
 #define	VOL_FAT32	"FAT32"
 # ifdef	DJGPP
@@ -63,7 +63,7 @@ typedef union REGS	__dpmi_regs;
 # define	PTR_SEG(ptr)		FP_SEG(ptr)
 # define	PTR_OFF(ptr, ofs)	FP_OFF(ptr)
 # endif	/* !DJGPP */
-#endif	/* !FD && MSDOS */
+#endif	/* MSDOS && !FD */
 
 #if	MSDOS
 #include <io.h>
@@ -174,6 +174,12 @@ extern u_char _openfile[];
 extern char *sys_errlist[];
 #endif
 
+#include "pathname.h"
+#include "system.h"
+
+#if	defined (DOSCOMMAND) \
+&& (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
+
 #ifdef	FD
 #include "term.h"
 #else	/* !FD */
@@ -193,23 +199,13 @@ static int cc_intr = -1;
 #define	c_left		"\010"
 #endif	/* !FD */
 
-#include "pathname.h"
-#include "system.h"
-
-#if	!defined (_NOORIGSHELL) && defined (DOSCOMMAND) \
-&& (!defined (FD) || (FD >= 2))
-
 #ifdef	FD
-extern DIR *_Xopendir __P_((char *, int));
-#define	Xopendir(p)	_Xopendir(p, 0)
+extern DIR *Xopendir __P_((char *));
 extern int Xclosedir __P_((DIR *));
-extern struct dirent *_Xreaddir __P_((DIR *, int));
-#define	Xreaddir(d)	_Xreaddir(d, 0)
-extern char *_Xgetwd __P_((char *, int));
-#define	Xgetwd(p)	_Xgetwd(p, 0)
+extern struct dirent *Xreaddir __P_((DIR *));
+extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
-extern int _Xlstat __P_((char *, struct stat *, int, int));
-#define	Xlstat(p, s)	_Xlstat(p, s, 0, 0)
+extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 extern int Xsymlink __P_((char *, char *));
 extern int Xreadlink __P_((char *, char *, int));
@@ -219,12 +215,9 @@ extern int Xutime __P_((char *, struct utimbuf *));
 # else
 extern int Xutimes __P_((char *, struct timeval []));
 # endif
-extern int _Xunlink __P_((char *, int));
-#define	Xunlink(p)	_Xunlink(p, 0)
-extern int _Xrename __P_((char *, char *, int));
-#define	Xrename(f, t)	_Xrename(f, t, 0)
-extern int _Xopen __P_((char *, int, int, int));
-#define	Xopen(p, f, m)	_Xopen(p, f, m, 0)
+extern int Xunlink __P_((char *));
+extern int Xrename __P_((char *, char *));
+extern int Xopen __P_((char *, int, int));
 # ifdef	_NODOSDRIVE
 # define	Xclose		close
 # define	Xread		read
@@ -234,10 +227,8 @@ extern int Xclose __P_((int));
 extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
 # endif	/* !_NODOSDRIVE */
-extern int _Xmkdir __P_((char *, int, int, int));
-#define	Xmkdir(p, m)	_Xmkdir(p, m, 0, 0)
-extern int _Xrmdir __P_((char *, int, int));
-#define	Xrmdir(p)	_Xrmdir(p, 0, 0)
+extern int Xmkdir __P_((char *, int));
+extern int Xrmdir __P_((char *));
 extern int chdir3 __P_((char *));
 extern int kanjifputs __P_((char *, FILE *));
 #else	/* !FD */
@@ -299,7 +290,7 @@ extern int chdir3 __P_((char *));
 
 struct filestat_t {
 	char *nam;
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char *d_alias;
 #else
 #define	d_alias		nam
@@ -343,6 +334,7 @@ struct filestat_t {
 
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
+extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
 extern char *ascnumeric __P_((char *, long, int, int));
 
@@ -357,14 +349,14 @@ static int NEAR getinfofs __P_((char *, long *, long *, long *));
 # if	MSDOS
 static char *NEAR realpath2 __P_((char *, char *, int));
 # define	ttyiomode(n)
-# define	stdiomode(n)
+# define	stdiomode()
 # define	getkey2(n)	getch();
 # else	/* !MSDOS */
 # define	realpath2(p, r, f) \
 				realpath(p, r)
 static VOID NEAR ttymode __P_((int));
 # define	ttyiomode(n)	(ttymode(1))
-# define	stdiomode(n)	(ttymode(0))
+# define	stdiomode()	(ttymode(0))
 static int NEAR getkey2 __P_((int));
 # endif	/* !MSDOS */
 static int NEAR touchfile __P_((char *, struct stat *));
@@ -419,10 +411,6 @@ static int NEAR doscopy __P_((char *, char *, struct stat *, int, int, int));
 #define	b_realloc(ptr, n, type) \
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
-#define	c_malloc(size)	(malloc2((size) = BUFUNIT))
-#define	c_realloc(ptr, n, size) \
-			(((n) + 1 < (size)) \
-			? (ptr) : realloc2(ptr, (size) *= 2))
 #define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
 
 
@@ -654,19 +642,20 @@ char *def;
 int h;
 {
 	char *cp;
-	int i, c, size;
+	ALLOC_T size;
+	int i, c;
 
 	fputs(prompt, stdout);
 	fflush(stdout);
 
-	cp = c_malloc(size);
+	cp = c_realloc(NULL, 0, &size);
 	for (i = 0; (c = inputkey()) != '\n'; i++) {
 		if (c < 0) {
 			free(cp);
 			return(NULL);
 		}
 		if (c != K_BS) {
-			cp = c_realloc(cp, i, size);
+			cp = c_realloc(cp, i, &size);
 			cp[i] = c;
 			if (!isctl(c)) fputc(c, stdout);
 			else {
@@ -759,7 +748,7 @@ static int NEAR inputkey(VOID_A)
 
 	ttyiomode(1);
 	c = getkey2(0);
-	stdiomode(1);
+	stdiomode();
 	if (c == EOF) c = -1;
 	else if (c == cc_intr) {
 		fputs("^C\n", stdout);
@@ -1385,7 +1374,7 @@ long *sump, *bsump;
 
 		dirlist = b_realloc(dirlist, n, struct filestat_t);
 		dirlist[n].nam = strdup2(dp -> d_name);
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 		dirlist[n].d_alias = (dp -> d_alias[0])
 			? strdup2(dp -> d_alias) : dirlist[n].nam;
 #endif
@@ -1531,7 +1520,7 @@ long *sump, *bsump;
 
 	for (n = 0; n < max; n++) {
 		free(dirlist[n].nam);
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 		if (dirlist[n].d_alias != dirlist[n].nam)
 			free(dirlist[n].d_alias);
 #endif
@@ -1585,7 +1574,7 @@ char *argv[];
 			*(++file) = '\0';
 			dir = buf;
 			file = &(argv[n][++i]);
-			if (!(*file)) file = "*";
+			if (!*file) file = "*";
 		}
 	}
 
@@ -1724,7 +1713,7 @@ char *argv[];
 			fflush(stdout);
 			ttyiomode(1);
 			buf = inputstr("Are you sure (Y/N)?", 0, 0, NULL, -1);
-			stdiomode(1);
+			stdiomode();
 			if (!buf) return(RET_SUCCESS);
 			if (!isatty(STDIN_FILENO)) {
 				fputc('\n', stdout);
@@ -2298,7 +2287,8 @@ char *argv[];
 {
 	char *cp;
 	u_char ch;
-	int i, n, fd, size;
+	ALLOC_T size;
+	int i, n, fd;
 #if	MSDOS && !defined (LSI_C)
 	int omode;
 #endif
@@ -2320,7 +2310,7 @@ char *argv[];
 	}
 #endif	/* MSDOS && !LSI_C */
 
-	cp = c_malloc(size);
+	cp = c_realloc(NULL, 0, &size);
 	i = 0;
 	for (;;) {
 		if ((n = textread(fd, &ch, sizeof(ch), CF_TEXT)) < 0) break;
@@ -2334,7 +2324,7 @@ char *argv[];
 			i = 0;
 		}
 		else {
-			cp = c_realloc(cp, i, size);
+			cp = c_realloc(cp, i, &size);
 			cp[i++] = ch;
 		}
 	}
@@ -2350,4 +2340,4 @@ char *argv[];
 	}
 	return(RET_SUCCESS);
 }
-#endif	/* !_NOORIGSHELL && DOSCOMMAND && (!FD || (FD >= 2)) */
+#endif	/* DOSCOMMAND && (!FD || (FD >= 2 && !_NOORIGSHELL)) */

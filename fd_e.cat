@@ -68,7 +68,7 @@ DDEESSCCRRIIPPTTIIOONN
           tricted shell automatically.
 
      In addition, the options described below in the description
-     of the sseett builtin command are available.
+     of sseett the builtin command are available.
 
      SSccrreeeenn LLaayyoouutt
      ffdd has the 3 major screen modes.  In the browser screen, you
@@ -105,7 +105,7 @@ DDEESSCCRRIIPPTTIIOONN
                (and the total size of all files), the total capa-
                city and the free size of the file system includ-
                ing the current directory.  This line appears by
-               the environment variable SSIIZZEEIINNFFOO setting.  When
+               SSIIZZEEIINNFFOO the environment variable setting.  When
                this line is displayed, The information line and
                the path line are displayed 1 line under each.
 
@@ -402,8 +402,8 @@ DDEESSCCRRIIPPTTIIOONN
 
         EEddiitt ffiillee (Editor)
              Edit the file on the cursor position.  The editor is
-             used referring the internal variable EEDDIITTOORR, or
-             referring the environment variable EEDDIITTOORR when the
+             used referring EEDDIITTOORR the internal variable, or
+             referring EEDDIITTOORR the environment variable when the
              internal variable is undefined.
 
         UUnnppaacckk ffiillee (Unpack)
@@ -485,11 +485,11 @@ DDEESSCCRRIIPPTTIIOONN
              refer the command history and use automatic LFN
              replacement, as well as EEXXEECCUUTTEE_FFIILLEE.  When you push
              only [RReettuurrnn] without any input, the user shell
-             which is described by the internal variable or the
-             environment variable SSHHEELLLL is invoked.  In this
-             case, you should input "eexxiitt" to return to ffdd.  When
-             the value of SSHHEELLLL is ffddsshh, the internal shell is
-             executed as the interactive shell.
+             which is described by SSHHEELLLL the internal variable or
+             the environment variable is invoked.  In this case,
+             you should input "eexxiitt" to return to ffdd.  When the
+             value of SSHHEELLLL is ffddsshh, the internal shell is exe-
+             cuted as the interactive shell.
 
              However, when there is the same command name as a
              builtin command or a internal command, the builtin
@@ -536,8 +536,8 @@ DDEESSCCRRIIPPTTIIOONN
 
         VViieeww ffiillee (View)
              View the file on the cursor position.  The pager is
-             used referring the internal variable PPAAGGEERR, or
-             referring the environment variable PPAAGGEERR when the
+             used referring PPAAGGEERR the internal variable, or
+             referring PPAAGGEERR the environment variable when the
              internal variable is undefined.
 
         PPaacckk ffiillee (Pack)
@@ -744,8 +744,8 @@ DDEESSCCRRIIPPTTIIOONN
                   created, otherwise it is truncated to 0 length
                   before output.
         _n>>||_f_i_l_e   Same as >>, except to force to overwrite
-                  existent files even if --CC option is set by the
-                  sseett builtin command.
+                  existent files even if --CC option is set by sseett
+                  the builtin command.
         _n>>>>_f_i_l_e   Redirect the output indicated by the file
                   descriptor _n into the output to _f_i_l_e.  If _n is
                   omitted, it is regarded as the standard output
@@ -764,8 +764,8 @@ DDEESSCCRRIIPPTTIIOONN
                   _f_i_l_e doesn't exist it is created, otherwise it
                   is truncated to 0 length before output.
         &&>>||_f_i_l_e   Same as &&>>, except to force to overwrite
-                  existent files even if --CC option is set by the
-                  sseett builtin command.
+                  existent files even if --CC option is set by sseett
+                  the builtin command.
         &&>>>>_f_i_l_e   Redirect both the standard output and the stan-
                   dard error output into the output to _f_i_l_e.  If
                   _f_i_l_e doesn't exist it is created, otherwise
@@ -831,7 +831,7 @@ DDEESSCCRRIIPPTTIIOONN
                    uunnttiill returns a 00 exit status.
 
      ffoorr _N_A_M_E [iinn _v_a_l_u_e ...] ddoo _l_i_s_t ddoonnee
-                   The internal variable _N_A_M_E is substituted for
+                   _N_A_M_E the internal variable is substituted for
                    values of _v_a_l_u_e one by one, and _l_i_s_t is exe-
                    cuted according to the each value.  If iinn
                    _v_a_l_u_e is omitted, then each positional
@@ -849,7 +849,7 @@ DDEESSCCRRIIPPTTIIOONN
      _N_A_M_E==[_v_a_l_u_e] [_c_o_m ...]
                    Define a internal variable which is available
                    only in ffdd.  It substitutes the value (string)
-                   _v_a_l_u_e for the internal variable _N_A_M_E.  When
+                   _v_a_l_u_e for _N_A_M_E the internal variable.  When
                    you describe the command _c_o_m after the defini-
                    tion of a variable, _c_o_m is executed on the
                    state where this variable is regarded as the
@@ -858,10 +858,10 @@ DDEESSCCRRIIPPTTIIOONN
                    environment variable nor the internal vari-
                    able.
 
-                   If _v_a_l_u_e is omitted, the value of the internal
-                   variable _N_A_M_E is defined as a null.  If you
-                   want to delete the definition of a internal
-                   variable, use the uunnsseett builtin command.
+                   If _v_a_l_u_e is omitted, the value of _N_A_M_E the
+                   internal variable is defined as a null.  If
+                   you want to delete the definition of a inter-
+                   nal variable, use uunnsseett the builtin command.
 
      _n_a_m_e(()) {{ _l_i_s_t; }}
                    Define a function whose body is _l_i_s_t, as the
@@ -876,7 +876,7 @@ DDEESSCCRRIIPPTTIIOONN
                    Although you cannot omit {{ }} and _l_i_s_t, you can
                    omit {{ }} before/after _l_i_s_t which consists of a
                    single command.  If you want to delete the
-                   definition of a function, use the uunnsseett buil-
+                   definition of a function, use uunnsseett the buil-
                    tin command.
 
      !!_n_u_m          Execute the command which has the history
@@ -916,16 +916,16 @@ DDEESSCCRRIIPPTTIIOONN
 
      aarrcchh _e_x_t [_p_a_c_k _u_n_p_a_c_k]
                    Register the archiver command associated with
-                   the archive file which has extension _e_x_t.  The
-                   pack command is specified as _p_a_c_k, and the
+                   the archive file which has _e_x_t the extension.
+                   The pack command is specified as _p_a_c_k, and the
                    unpack command is specified as _u_n_p_a_c_k, using
                    the macro representation quoted with "".  When
                    _e_x_t starts with //, uppercase/lowercase is
                    ignored in the comparison of any extension.
 
                    If both _p_a_c_k and _u_n_p_a_c_k are omitted, the
-                   archiver command registration for the exten-
-                   sion _e_x_t is deleted.
+                   archiver command registration for _e_x_t the
+                   extension is deleted.
 
      bbgg [_j_o_b]      Continue the execution of the job specified
                    with _j_o_b in the background.  The following
@@ -984,18 +984,81 @@ DDEESSCCRRIIPPTTIIOONN
                    statement and so on.  If _n is specified, it
                    breaks _n levels from the loop.
 
+     bbrroowwssee [--@@ _f_i_l_e]
+     bbrroowwssee _c_o_m [--ffttbbiiee _a_r_g] [--pp _c_o_m_2] [--ddnn {nnoopprreepp,lloooopp}] ...
+                   Execute _c_o_m the command, and invoke the
+                   archive browser who receives its output.  You
+                   should the macro representation quoted with ""
+                   as _c_o_m.  --ff, --tt, --bb, --ii and --ee options are the
+                   same as the one for llaauunncchh the builtin com-
+                   mand.  In case that multiple _c_o_ms are
+                   specified, the next _c_o_m the command is exe-
+                   cuted one after another when you select each
+                   files in the archive browser, and the formats
+                   and patterns described after each _c_o_m the com-
+                   mand are adopted.  In order to return to the
+                   previous level of archive browser, you should
+                   select the file named as .... or push the key
+                   [BBss].  Or you can use QQUUIITT_SSYYSSTTEEMM the command
+                   to escape from all of the archive browsers
+                   invoked by bbrroowwssee.  You must describe --ff
+                   option, except for the last _c_o_m the command.
+                   When the last _c_o_m has no --ff option, the com-
+                   mand has been just executed instead of invok-
+                   ing an archive browser, and then will return
+                   to the previous archive browser when it is
+                   done.
+
+                   When you specify --pp option, the execution of
+                   _c_o_m_2 the command precedes the execution of the
+                   next _c_o_m the command when you select a file.
+                   While _c_o_m is executed in the sub shell for a
+                   pipeline, _c_o_m_2 is executed in the current
+                   shell to inherit the values of internal vari-
+                   ables set in this command after _c_o_m_2 has been
+                   done.  The filenames which is selected toward
+                   this level of archive browser are held in
+                   positional parameters sequentially, and the
+                   last selected filename is held in $$11.  These
+                   parameters will be newly set whenever you
+                   select a file, so that they are reset in
+                   sequential order when you select the next file
+                   even if you replace them with sseett or sshhiifftt the
+                   builtin command.  --dd and --nn options specify a
+                   control if the selected file is a directory or
+                   not respectively.  When you specify nnoopprreepp,
+                   _c_o_m_2 specified by --pp option is not executed.
+                   When you specify lloooopp, you don't step the next
+                   _c_o_m the command but the same _c_o_m the command
+                   again.
+
+                   And when you think troublesome to describe too
+                   many arguments for bbrroowwssee, you can specify
+                   _f_i_l_e the file in which some arguments are
+                   described with --@@ option.  You can describe --@@
+                   option in any place of arguments, the argu-
+                   ments described in _f_i_l_e are inserted in the
+                   place where --@@ is described.  If you specify --
+                   as _f_i_l_e, arguments are read from the standard
+                   input instead of the file.  You should
+                   describe arguments in _f_i_l_e with spaces or new-
+                   lines as separator.  The null line and the
+                   line started with ## will be ignored.  When you
+                   describe --@@ option in _f_i_l_e, the argument file
+                   is referred recursively.
+
      ccdd [--LLPP] [_d_i_r]
                    Change the current directory in ffdd to _d_i_r.  If
                    _d_i_r is omitted, it moves to the directory
-                   indicated by the internal variable HHOOMMEE.  If
+                   indicated by HHOOMMEE the internal variable.  If
                    you specify the pathname as "..", "??", "--",
                    "@@", it behaves like as LLOOGG_DDIIRR.
 
-                   If --LL is specified, the logical pathname
-                   following symbolic links is used.  If --PP is
+                   If --LL is specified, the logical pathname fol-
+                   lowing symbolic links is used.  If --PP is
                    specified, the physical pathname following no
                    symbolic links is used.  Otherwise, the pphhyyssii--
-                   ccaall option for the sseett builtin command is
+                   ccaall option for sseett the builtin command is
                    effective.
 
      cchhddiirr [_d_i_r]   Same as ccdd.  ((DDOOSS))
@@ -1021,7 +1084,7 @@ DDEESSCCRRIIPPTTIIOONN
                    default value of PPAATTHH is used to search the
                    path.  If --vv is specified, the absolute path
                    for _a_r_g is displayed instead of executing _a_r_g.
-                   In this case, the builtin command _a_r_g will
+                   In this case, _a_r_g the builtin command will
                    cause simply its name.  If --VV is specified,
                    verbose description for _a_r_g is displayed as
                    same as ttyyppee.
@@ -1094,7 +1157,7 @@ DDEESSCCRRIIPPTTIIOONN
                    letter to override the option.
 
      ddiirrss          Display the list of the current directory
-                   stack.  The ppuusshhdd and ppooppdd builtin command can
+                   stack.  ppuusshhdd and ppooppdd the builtin command can
                    load/unload directories onto the directory
                    stack.
 
@@ -1136,23 +1199,23 @@ DDEESSCCRRIIPPTTIIOONN
                    with the exit status _n.
 
      eexxppoorrtt [_N_A_M_E[==[_v_a_l_u_e]] ...]
-                   Mark the internal variable _N_A_M_E to be inher-
-                   ited to child processes as the environment
-                   variable.  Since then, the definition of _N_A_M_E
-                   can be referred in any child process.  When
-                   you eexxppoorrtt the undefined internal variable, it
-                   doesn't become the environment variable until
-                   the internal variable is defined.  When you
-                   want to define the value at the same time, you
-                   should specify _v_a_l_u_e.
+                   Mark _N_A_M_E the internal variable to be
+                   inherited to child processes as the environ-
+                   ment variable.  Since then, the definition of
+                   _N_A_M_E can be referred in any child process.
+                   When you eexxppoorrtt the undefined internal vari-
+                   able, it doesn't become the environment vari-
+                   able until the internal variable is defined.
+                   When you want to define the value at the same
+                   time, you should specify _v_a_l_u_e.
 
                    If only == is specified and _v_a_l_u_e is omitted,
-                   the value of the environment variable _N_A_M_E is
+                   the value of _N_A_M_E the environment variable is
                    defined as a null.  If no argument is speci-
                    fied, all of the eexxppoorrtted environment vari-
                    ables are listed.  When you want to delete the
                    definition of the environment variable, you
-                   can use the uunnsseett builtin command.
+                   can use uunnsseett the builtin command.
 
      ffaallssee         Only return with a 11 exit status.
 
@@ -1171,8 +1234,9 @@ DDEESSCCRRIIPPTTIIOONN
                    is specified, command histories are listed in
                    reverse order.  If --ee is specified, the editor
                    named by _e_d_i_t_o_r is used to edit command his-
-                   tories, otherwise the editor specified by the
-                   internal variable FFCCEEDDIITT or EEDDIITTOORR is used.
+                   tories, otherwise the editor specified by
+                   FFCCEEDDIITT or EEDDIITTOORR the internal variable is
+                   used.
 
                    When --ll is specified, selected command his-
                    tories are listed to the standard output.  In
@@ -1241,16 +1305,16 @@ DDEESSCCRRIIPPTTIIOONN
                    character which needs an argument is described
                    with following :: in _o_p_t_s_t_r.  Each time ggeettooppttss
                    is invoked, the new option character parsed
-                   from _a_r_g is substituted for the internal vari-
-                   able _N_A_M_E.  When the option has an argument,
-                   the argument is substituted for the internal
-                   variable OOPPTTAARRGG.  And the index of the next
-                   parameter is substituted for the internal
-                   variable OOPPTTIINNDD every time.  The value of
-                   OOPPTTIINNDD is initialized to 11 whenever the shell
-                   is invoked, another parsing of option parame-
-                   ters needs initializing OOPPTTIINNDD to 11 manually.
-                   If _a_r_g is omitted, positional parameters are
+                   from _a_r_g is substituted for _N_A_M_E the internal
+                   variable.  When the option has an argument,
+                   the argument is substituted for OOPPTTAARRGG the
+                   internal variable.  And the index of the next
+                   parameter is substituted for OOPPTTIINNDD the inter-
+                   nal variable every time.  The value of OOPPTTIINNDD
+                   is initialized to 11 whenever the shell is
+                   invoked, another parsing of option parameters
+                   needs initializing OOPPTTIINNDD to 11 manually.  If
+                   _a_r_g is omitted, positional parameters are
                    parsed to the optional parameters.
 
                    When the end of option is encountered, ggeettooppttss
@@ -1303,7 +1367,7 @@ DDEESSCCRRIIPPTTIIOONN
                    Read from _i_n_f_i_l_e and convert its Kanji code
                    from _i_n to _o_u_t, and output to _o_u_t_f_i_l_e.  In _i_n
                    and _o_u_t, you can specify the string which used
-                   in the environment variable FFNNAAMMEEKKCCOODDEE
+                   in FFNNAAMMEEKKCCOODDEE the environment variable
                    described below.  If each of them is omitted,
                    it is regarded as that the Kanji code speci-
                    fied in compile is specified.  If _o_u_t_f_i_l_e is
@@ -1356,10 +1420,11 @@ DDEESSCCRRIIPPTTIIOONN
                    a signal.
 
      llaauunncchh _e_x_t [_c_o_m [_f_o_r_m_a_t [_t_o_p _b_o_t_t_o_m]]]
-                   Register the behavior for the extension _e_x_t as
+     llaauunncchh _e_x_t _c_o_m [--ff _f_o_r_m_a_t] [--tt _t_o_p] [--bb _b_o_t_t_o_m] [--iiee _p_a_t_t]
+                   Register the behavior for _e_x_t the extension as
                    the launcher.  You should the macro represen-
                    tation quoted with "" as _c_o_m.  When you regis-
-                   ter the archive browser, you should describe
+                   ter an archive browser, you should describe
                    the command to list the archived files as _c_o_m,
                    and describe the format of the list as _f_o_r_m_a_t.
                    When you describe _t_o_p and _b_o_t_t_o_m, you can
@@ -1370,6 +1435,27 @@ DDEESSCCRRIIPPTTIIOONN
 
                    If _c_o_m is omitted, the launcher registration
                    for _e_x_t is canceled.
+
+                   When you register an archive browser, you can
+                   use the latter form to describe more detailed
+                   control.  You can specify multiple formats as
+                   candidates with multiple --ff options.  These
+                   candidates for format are compared in order of
+                   appearance, if no one is matched completely
+                   then the nearest one is adopted.  --ii and --ee
+                   options specify _p_a_t_t the pattern for the line
+                   to be ignored and for the line to be treated
+                   as error respectively.  When the list includes
+                   unnecessary lines you can specify also _t_o_p and
+                   _b_o_t_t_o_m, but you must specify lines except
+                   top/bottom lines with --ii option.  In case that
+                   a failure to unpack files in the archive file
+                   causes outputting some strings, you can
+                   specify the strings with --ee option.  --ii and --ee
+                   options can specify multiple patterns, and
+                   they are effective if one of them is matched.
+                   And you can use a wildcard in the description
+                   for each _p_a_t_t the pattern.
 
      mmdd _d_i_r
      mmkkddiirr _d_i_r     Create the directory _d_i_r.  ((DDOOSS))
@@ -1394,7 +1480,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      pprriinnttaarrcchh [_e_x_t]
                    Print the archiver commands registered for the
-                   archive file which has the extension _e_x_t.
+                   archive file which has _e_x_t the extension.
 
                    If _e_x_t is omitted, all of the registered
                    archiver commands are listed.
@@ -1417,7 +1503,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      pprriinnttllaauunncchh [_e_x_t]
                    Print the command macro registered as the
-                   launcher for the extension _e_x_t.  When it is
+                   launcher for _e_x_t the extension.  When it is
                    registered as the archive browser, the format
                    for listing is also printed.
 
@@ -1428,7 +1514,7 @@ DDEESSCCRRIIPPTTIIOONN
                    stack, and change the current directory in ffdd
                    to _d_i_r.  If you specify the pathname as "..",
                    "??", "--", "@@", it behaves like as LLOOGG_DDIIRR.
-                   The pphhyyssiiccaall option for the sseett builtin com-
+                   The pphhyyssiiccaall option for sseett the builtin com-
                    mand is effective for symbolic links.
 
                    If _d_i_r is omitted, change the current direc-
@@ -1443,32 +1529,43 @@ DDEESSCCRRIIPPTTIIOONN
                    displayed.  If --PP is specified, the physical
                    pathname following no symbolic links is
                    displayed.  Otherwise, the pphhyyssiiccaall option for
-                   the sseett builtin command is effective.
+                   sseett the builtin command is effective.
 
      rreeaadd [_N_A_M_E ...]
                    Read one line from the standard input and sub-
-                   stitute that string for the internal variable
-                   _N_A_M_E.  The inputted string is separated with
-                   IIFFSS into some words.  When multiple _N_A_M_Es are
-                   specified, words are substituted one by one
-                   from the first of line, and all the rest are
-                   substituted for the last _N_A_M_E.  When the
+                   stitute that string for _N_A_M_E the internal
+                   variable.  The inputted string is separated
+                   with IIFFSS into some words.  When multiple _N_A_M_Es
+                   are specified, words are substituted one by
+                   one from the first of line, and all the rest
+                   are substituted for the last _N_A_M_E.  When the
                    number of words in inputted string is less
                    than the number of _N_A_M_E, a null is substituted
                    for the rest of _N_A_M_E.
 
+     rreeaaddlliinnee [_p_r_o_m_p_t]
+                   Read one line from the terminal input and out-
+                   put that string to the standard output.  When
+                   _p_r_o_m_p_t is specified, the string is displayed
+                   on the beginning of input line.  This command
+                   differs from rreeaadd the builtin command in the
+                   terminal input and the line editing.  You can-
+                   not use the history as one of the line edit-
+                   ing, but can use the completion for a path-
+                   name.
+
      rreeaaddoonnllyy [_N_A_M_E[==[_v_a_l_u_e]] ...]
-                   Mark the internal variable _N_A_M_E to be
+                   Mark _N_A_M_E the internal variable to be
                    readonly.  Since then, you cannot change the
                    value of _N_A_M_E.  When you want to define the
                    value at the same time, you should specify
                    _v_a_l_u_e.
 
                    If only == is specified and _v_a_l_u_e is omitted,
-                   the value of the internal variable _N_A_M_E is
-                   defined as a null.  If no argument is speci-
-                   fied, all of the readonly internal variables
-                   are listed.
+                   the value of _N_A_M_E the internal variable is
+                   defined as a null.  If no argument is
+                   specified, all of the readonly internal vari-
+                   ables are listed.
 
      rrdd _d_i_r
      rrmmddiirr _d_i_r     Delete the directory _d_i_r.  You cannot delete
@@ -1553,7 +1650,7 @@ DDEESSCCRRIIPPTTIIOONN
                         oonneeccmmdd
                              Same as --tt.
                         pphhyyssiiccaall
-                             The builtin command ccdd and ppwwdd use
+                             ccdd and ppwwdd the builtin command use
                              the physical directory structure
                              instead of the logical directory
                              structure following symbolic links.
@@ -1564,8 +1661,8 @@ DDEESSCCRRIIPPTTIIOONN
                              Same as --xx.
                    --tt   Exit immediately after executing the
                         current command input.
-                   --uu   Treat the reference of undefined
-                        variables as an error.
+                   --uu   Treat the reference of undefined vari-
+                        ables as an error.
                    --vv   Display the command inputs whenever they
                         are read.
                    --xx   Display the command strings whenever they
@@ -1674,8 +1771,8 @@ DDEESSCCRRIIPPTTIIOONN
 
      uunnsseett [_N_A_M_E ...]
                    Delete the defined internal variable or func-
-                   tion for each _N_A_M_E.  But the following vari-
-                   able definition cannot be deleted.
+                   tion for each _N_A_M_E.  But the following
+                   variable definition cannot be deleted.
                          PPAATTHH      PPSS11       PPSS22       IIFFSS
                          MMAAIILLCCHHEECCKK
 
@@ -1694,6 +1791,18 @@ DDEESSCCRRIIPPTTIIOONN
                    the job indicated by _j_o_b, and return its exit
                    status.  If both _p_i_d and _j_o_b are omitted, the
                    current job is waited.  ((UUNNIIXX))
+
+     yyeessnnoo [_p_r_o_m_p_t]
+                   Wait for a input of yy or nn from the terminal,
+                   and then return 00 when yy is inputted, return
+                   225555 when nn is inputted.  Instead of input of yy
+                   or nn, you can select a character from
+                   displayed [[YY//NN]] with cursor keys and push
+                   [RReettuurrnn] to be regarded as an input of the
+                   selected character.  An input of [SSppaaccee] or
+                   [EEsscc] means the input of nn.  When _p_r_o_m_p_t is
+                   specified, the string is displayed before
+                   [[YY//NN]].
 
      _C_O_M_M_A_N_D [_a_r_g] Execute the internal command _C_O_M_M_A_N_D of ffdd.
                    You can describe each command identifier in
@@ -1797,7 +1906,10 @@ DDEESSCCRRIIPPTTIIOONN
      should describe the above string with that separator.  You
      can describe to indicate the field length as numeric, such
      as %_1_0_a.  This example means that the field which indicates
-     a file mode consists of 10 characters.
+     a file mode consists of 10 characters.  If you describe it
+     with a character ** as the field length instead of numeric,
+     such as %*_f, the string to the end of line is regarded as a
+     field, in which any space and tab will be ignored.
 
      When a field may have the different meanings according to
      situation, you should describe it quoted with {{ }}, such as
@@ -1823,7 +1935,7 @@ DDEESSCCRRIIPPTTIIOONN
      command for the archive file, too, don't forget this.
 
      On some OS, ttaarr(1) may output the Japanese timestamp when
-     _j_a_p_a_n_e_s_e is substituted for the environment variable LLAANNGG.
+     _j_a_p_a_n_e_s_e is substituted for LLAANNGG the environment variable.
      Since ffdd cannot analyze the representation like this, you
      should describe `_e_x_p_o_r_t _L_A_N_G=_C' in the initial configuration
      file, or specify LLAANNGG in the description of listing command,
@@ -1832,9 +1944,9 @@ DDEESSCCRRIIPPTTIIOONN
      FFllooppppyy DDrriivvee ((UUNNIIXX))
      You can access the MS-DOS formatted floppy disk, by
      representing to prefix "_c::" to the directory name.  But, it
-     is necessary to register the floppy drive and set the
-     environ variable DDOOSSDDRRIIVVEE which makes this function effec-
-     tive, in advance.
+     is necessary to register the floppy drive and set DDOOSSDDRRIIVVEE
+     the environ variable which makes this function effective, in
+     advance.
 
      Each registered drive is distinguished with the drive name.
      You should tag the physically different drive as the dif-
@@ -1921,8 +2033,8 @@ DDEESSCCRRIIPPTTIIOONN
              exists, when it is the beginning of filename.
 
      $$_N_A_M_E
-     $${{_N_A_M_E}} Indicate the value of the internal variable or the
-             environment variable _N_A_M_E.  When both are defined,
+     $${{_N_A_M_E}} Indicate the value of _N_A_M_E the internal variable or
+             the environment variable.  When both are defined,
              the internal variable is prior.  When both are unde-
              fined, it is replaced a null.  The brace {{ }}
              separates _N_A_M_E from its trailing characters.
@@ -1937,104 +2049,101 @@ DDEESSCCRRIIPPTTIIOONN
                     from $$11.  ""$$@@"" is replaced by ""$$11"" ""$$22"" ... .
              ##      The number of positional parameters.
              --      The option flags which is set by options when
-                    invoked or the sseett builtin command.
+                    invoked or sseett the builtin command.
              ??      The exit status of the last executed command.
              $$      The process number of the current shell.
              !!      The process number of the last executed back-
                     ground process.
 
      $${{_N_A_M_E::--_w_o_r_d}}
-             If the value except a null is substituted for the
-             internal variable or the environment variable _N_A_M_E,
+             If the value except a null is substituted for _N_A_M_E
+             the internal variable or the environment variable,
              it is replaced by the value, otherwise it is
              replaced by _w_o_r_d.
 
      $${{_N_A_M_E::==_w_o_r_d}}
-             If the value except a null is substituted for the
-             internal variable or the environment variable _N_A_M_E,
+             If the value except a null is substituted for _N_A_M_E
+             the internal variable or the environment variable,
              it is replaced by the value, otherwise _w_o_r_d is sub-
-             stituted for the internal variable _N_A_M_E, and this
+             stituted for _N_A_M_E the internal variable, and this
              expression itself is replaced by _w_o_r_d.  But you can-
              not substitute the value for any positional parame-
              ter.
 
      $${{_N_A_M_E::??_w_o_r_d}}
-             If the value except a null is substituted for the
-             internal variable or the environment variable _N_A_M_E,
+             If the value except a null is substituted for _N_A_M_E
+             the internal variable or the environment variable,
              it is replaced by the value, otherwise display _w_o_r_d
              and exit from the shell.  If _w_o_r_d is omitted, the
              string ``ppaarraammeetteerr nnuullll oorr nnoott sseett'' is displayed in
              its place.
 
      $${{_N_A_M_E::++_w_o_r_d}}
-             If the value except a null is substituted for the
-             internal variable or the environment variable _N_A_M_E,
+             If the value except a null is substituted for _N_A_M_E
+             the internal variable or the environment variable,
              it is replaced by _w_o_r_d, otherwise it is replaced by
              a null.
 
      $${{_N_A_M_E--_w_o_r_d}}
-             If any value is substituted for the internal vari-
-             able or the environment variable _N_A_M_E, it is
-             replaced by the value, otherwise it is replaced by
-             _w_o_r_d.
+             If any value is substituted for _N_A_M_E the internal
+             variable or the environment variable, it is replaced
+             by the value, otherwise it is replaced by _w_o_r_d.
 
      $${{_N_A_M_E==_w_o_r_d}}
-             If any value is substituted for the internal vari-
-             able or the environment variable _N_A_M_E, it is
-             replaced by the value, otherwise _w_o_r_d is substituted
-             for the internal variable _N_A_M_E, and this expression
-             itself is replaces by _w_o_r_d.  But you cannot substi-
-             tute the value for any positional parameter.
+             If any value is substituted for _N_A_M_E the internal
+             variable or the environment variable, it is replaced
+             by the value, otherwise _w_o_r_d is substituted for _N_A_M_E
+             the internal variable, and this expression itself is
+             replaces by _w_o_r_d.  But you cannot substitute the
+             value for any positional parameter.
 
      $${{_N_A_M_E??_w_o_r_d}}
-             If any value is substituted for the internal vari-
-             able or the environment variable _N_A_M_E, it is
-             replaced by the value, otherwise display _w_o_r_d and
-             exit from the shell.  If _w_o_r_d is omitted, the string
-             ``ppaarraammeetteerr nnuullll oorr nnoott sseett'' is displayed in its
-             place.
+             If any value is substituted for _N_A_M_E the internal
+             variable or the environment variable, it is replaced
+             by the value, otherwise display _w_o_r_d and exit from
+             the shell.  If _w_o_r_d is omitted, the string ``ppaarraammee--
+             tteerr nnuullll oorr nnoott sseett'' is displayed in its place.
 
      $${{_N_A_M_E++_w_o_r_d}}
-             If any value is substituted for the internal vari-
-             able or the environment variable _N_A_M_E, it is
-             replaced by _w_o_r_d, otherwise it is replaced by a
-             null.
+             If any value is substituted for _N_A_M_E the internal
+             variable or the environment variable, it is replaced
+             by _w_o_r_d, otherwise it is replaced by a null.
 
      $${{##_N_A_M_E}}
              It is replaced by the length in characters of the
-             value of the internal variable or the environment
-             variable _N_A_M_E.  If _N_A_M_E is ** or @@, it is replaced by
+             value of _N_A_M_E the internal variable or the environ-
+             ment variable.  If _N_A_M_E is ** or @@, it is replaced by
              the number of positional parameters instead of the
              length of characters.
 
      $${{_N_A_M_E%%_w_o_r_d}}
              It is replaced by the string in which the smallest
              portion of the suffix matched by the _w_o_r_d pattern is
-             deleted from the value of the internal variable or
-             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             deleted from the value of _N_A_M_E the internal variable
+             or the environment variable.  If _N_A_M_E is ** or @@,
              each positional parameter is replaced.  ( \\ is used
              instead of %% on MS-DOS version.)
 
      $${{_N_A_M_E%%%%_w_o_r_d}}
              It is replaced by the string in which the largest
              portion of the suffix matched by the _w_o_r_d pattern is
-             deleted from the value of the internal variable or
-             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             deleted from the value of _N_A_M_E the internal variable
+             or the environment variable.  If _N_A_M_E is ** or @@,
              each positional parameter is replaced.  ( \\\\ is used
              instead of %%%% on MS-DOS version.)
 
      $${{_N_A_M_E##_w_o_r_d}}
              It is replaced by the string in which the smallest
              portion of the prefix matched by the _w_o_r_d pattern is
-             deleted from the value of the internal variable or
-             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             deleted from the value of _N_A_M_E the internal variable
+             or the environment variable.  If _N_A_M_E is ** or @@,
              each positional parameter is replaced.
 
      $${{_N_A_M_E####_w_o_r_d}}
              It is replaced by the string in which the largest
              portion of the prefix matched by the _w_o_r_d pattern is
-             deleted from the value of the internal variable or
-             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             deleted from the value of _N_A_M_E the internal variable
+             or the environment variable.  If _N_A_M_E is ** or @@,
              each positional parameter is replaced.
 
      \\_c      It indicates a character _c itself.  You can use it
@@ -2096,7 +2205,7 @@ DDEESSCCRRIIPPTTIIOONN
      When you want to use some functions bound to special keys,
      such as a cursor key or a scroll key, such a key doesn't
      exist in some terminals.  In such a case, substituting the
-     string for the internal variable EEDDIITTMMOODDEE can make you use
+     string for EEDDIITTMMOODDEE the internal variable can make you use
      some control keys as alternative to these special keys.
      Since this alternative key function is prior to the key
      binding by the builtin command, the key binding is invalid
@@ -2292,19 +2401,19 @@ DDEESSCCRRIIPPTTIIOONN
                   $$HHOOMMEE\\ffdd22..rrcc, $$HHOOMMEE\\ffddsshh..rrcc and ~~FFDD\\ffdd22rrcc.)
 
         EEnnvviirroonnmmeenntt vvaarriiaabblleess
-                  Any valid variable name as the internal
-                  variable can be valid to be defined as the
-                  environment variable in advance.  But the
-                  internal variable is always prior to the
-                  environment variable in ffdd.  When the same
-                  named environment variable is used in another
-                  application, you can also use the name which
-                  FFDD_ is prefixed to each environment variable
-                  for ffdd only.  This environment variable with
-                  FFDD_ is always prior to the environment variable
-                  without it, then the definition of the environ-
-                  ment variable with FFDD_ is prior to the defini-
-                  tion of the internal variable without FFDD_.
+                  Any valid variable name as the internal vari-
+                  able can be valid to be defined as the environ-
+                  ment variable in advance.  But the internal
+                  variable is always prior to the environment
+                  variable in ffdd.  When the same named environ-
+                  ment variable is used in another application,
+                  you can also use the name which FFDD_ is prefixed
+                  to each environment variable for ffdd only.  This
+                  environment variable with FFDD_ is always prior
+                  to the environment variable without it, then
+                  the definition of the environment variable with
+                  FFDD_ is prior to the definition of the internal
+                  variable without FFDD_.
 
      CCuussttoommiizzeerr
      EEDDIITT_CCOONNFFIIGG command invokes the customizer to set up confi-
@@ -2391,98 +2500,112 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      The following environment variables are valid in ffdd.  These
      environment variables can be valid if they are defined as
      the internal variables.  You can specify them as the command
-     line options in `--_N_A_M_E==_v_a_l_u_e' form.  But the variables fol-
-     lowed by * cannot be use with the prefix FFDD_ as the environ-
-     ment variables.
+     line options in `--_N_A_M_E==_v_a_l_u_e' form.  But the variables
+     followed by * cannot be use with the prefix FFDD_ as the
+     environment variables.
 
-     CCDDPPAATTHH*       Specify the search path when an argument of
-                   the builtin command ccdd does not start with //.
+     AADDJJTTTTYY        Reset the terminal mode forcedly to the normal
+                   state, when ffdd is finished.  Invoking ffdd can
+                   adjust the terminal rightly from the state
+                   displaying broken characters.  Any value
+                   except 00 and null effects valid.  ((UUNNIIXX))
+
+     AANNSSIICCOOLLOORR     Colorize the file display.  When the terminal
+                   which you use supports the color control
+                   escape sequence of ANSI standard, each file is
+                   displayed with color according to its file
+                   type.  If the value is 11, it is colorized.  If
+                   the value is 22, the background color is forced
+                   to be black, for the case that the foreground
+                   color is the same as the background color and
+                   indistinguishable.  If the value is 33, the
+                   foreground color is forced to be black.
+
+     AANNSSIIPPAALLEETTTTEE   Specify color palette according to file type
+                   when the file display is colorized.  This
+                   variable value consists of a numeric value
+                   whose maximum columns are 1100 columns.  The
+                   number of each column shows a color number,
+                   which specifies the color of file type
+                   corresponding with its column.  The following
+                   are correspondence of the column number to the
+                   file type.
+                       11    normal file
+                       22    background
+                       33    directory
+                       44    unwritable file
+                       55    unreadable file
+                       66    symbolic link
+                       77    socket (or system file on MS-DOS)
+                       88    FIFO (or label on MS-DOS)
+                       99    block device
+                       1100   character device
+
+                   The following are the meaning of color number
+                   specified on each column.
+                       00    black
+                       11    red
+                       22    green
+                       33    yellow
+                       44    blue
+                       55    magenta
+                       66    cyan
+                       77    white
+                       88    default color for foreground
+                       99    default color for background
+
+                   The color number 88 is forced to be black, if
+                   the value of AANNSSIICCOOLLOORR the variable is 33.  The
+                   color number 99 is forced to be black, if the
+                   value of AANNSSIICCOOLLOORR the variable is 22.
+
+                   When the columns are less than 1100 or this
+                   variable is not set, the standard color
+                   palette will be applied for the file type
+                   corresponding with the following columns.  The
+                   standard color palette is described with the
+                   above color number as 88996644223355118888.
+
+     CCDDPPAATTHH*       Specify the search path when an argument of ccdd
+                   the builtin command does not start with //.
                    You can specify multiple paths separating with
                    '::'.  No search path is specified by default.
 
      CCOOMMSSPPEECC*      Specify the shell used to invoke a batch file.
-                   If undefined, the shell defined by the
-                   environment variable SSHHEELLLL or \COMMAND.COM is
-                   used.  ((DDOOSS))
+                   If undefined, the shell defined by SSHHEELLLL the
+                   environment variable or \COMMAND.COM is used.
+                   ((DDOOSS))
 
-     CCOOPPYYCCMMDD*      Specify the default options used by the buil-
-                   tin command ccooppyy.  ((DDOOSS))
+     CCOOPPYYCCMMDD*      Specify the default options used by ccooppyy the
+                   builtin command.  ((DDOOSS))
 
-     DDIIRRCCMMDD*       Specify the default options used by the buil-
-                   tin command ddiirr.  ((DDOOSS))
+     DDEEFFCCOOLLUUMMNNSS    Specify the columns displayed in the screen
+                   when ffdd is invoked.  The default value is 22.
+                   If you specify the value except 11, 22, 33 and 55,
+                   it is ignored.
 
-     HHOOMMEE*         Specify the default value when no argument of
-                   the builtin command ccdd is specified.  When
-                   invoked as a login shell, if this variable is
-                   specified that directory becomes the current
-                   directory, otherwise your home directory is
-                   automatically defined as this value.
+     DDIIRRCCOOUUNNTTLLIIMMIITT Specify the maximum number of files read from
+                   the directory in the tree screen.  When the
+                   directory trailed by '>>' has no sub directory,
+                   the expanded result is not changed.  If the
+                   number of files (including directories) in the
+                   directory is within this value, the directory
+                   with no sub directory is not trailed '>>' from
+                   the first.  Moreover, the file list in the
+                   directory displayed on the right of screen is
+                   not displayed over this value.  If the value
+                   is 00, you can realize a comfortable operation
+                   speed even in the slow machine.  The default
+                   value is 5500 files.
 
-     IIFFSS*          Specify the internal field separators.  They
-                   are used in EEXXEECCUUTTEE_SSHH to separate command and
-                   arguments.  Space, tab and newline are speci-
-                   fied by default.
+     DDIIRRCCMMDD*       Specify the default options used by ddiirr the
+                   builtin command.  ((DDOOSS))
 
-     OOPPTTAARRGG*       An option argument is substituted in the buil-
-                   tin command ggeettooppttss.
-
-     OOPPTTIINNDD*       Specify the index of the next parameter in the
-                   builtin command ggeettooppttss.
-
-     PPAATTHH*         Specify the search path for executing external
-                   commands.  You can specify multiple paths
-                   separating with '::'.
-
-     SSHHEELLLL*        When the filename part of this specified value
-                   is rrffdd or rrffddsshh, the shell becomes a res-
-                   tricted shell as well as --rr option when
-                   invoked.  This variable also specify the shell
-                   which can be invoked from EEXXEECCUUTTEE_SSHH.
-
-     MMAAIILL*         Specify the spool filename when the internal
-                   shell will check new mails.  If MMAAIILLPPAATTHH is
-                   set, it is prior to this.  ((UUNNIIXX))
-
-     MMAAIILLPPAATTHH*     Specify the multiple spool filenames, as the
-                   list separated by ::, when the internal shell
-                   will check new mails.  The any specified files
-                   will be checked.  Each filenames can be fol-
-                   lowed by %% and a arrival message of new mails.
-                   The default message is yyoouu hhaavvee mmaaiill.  ((UUNNIIXX))
-
-     MMAAIILLCCHHEECCKK*    Specify the interval of checking new mails in
-                   seconds, for the spool files specified by
-                   MMAAIILLPPAATTHH or MMAAIILL.  The default value is 660000
-                   seconds.  If the value is 00, it will be
-                   checked before each prompt.  ((UUNNIIXX))
-
-     EEDDIITTOORR        Specify the editor command used for editing
-                   files.
-
-     PPAAGGEERR         Specify the pager command used for viewing
-                   files.
-
-     FFCCEEDDIITT        Specify the editor command used for the buil-
-                   tin command ffcc.
-
-     SSOORRTTTTYYPPEE      The file list in the browser screen is not
-                   sorted by default, but placed in order
-                   registered in the directory.  This variable
-                   specify it to be sorted by default.  The fol-
-                   lowing are specifiable values.
-                       00    not sort
-                       11    by filename    99    by filename(reverse)
-                       22    by extension   1100   by extension(reverse)
-                       33    by size        1111   by size(reverse)
-                       44    by timestamp   1122   by timestamp(reverse)
-                       55    by length      1133   by length(reverse)
-                       110000--111133   keep the last sorted type
-
-                   If you specify the value of 100-113, it is
-                   sorted according to the value indicated by
-                   lower 2 digits just after invoked, the last
-                   specified sorted type is kept when moving
-                   directory.
+     DDIIRRHHIISSTT       Specify the maximum number of the directory
+                   histories which can be referred by the direc-
+                   tory input line.  The default value is 5500.  If
+                   this value is 00, you can refer to no directory
+                   history.
 
      DDIISSPPLLAAYYMMOODDEE   Specify the filename display mode of the file
                    list when ffdd is invoked.  Each of the symbolic
@@ -2504,97 +2627,6 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    each value, you can select the file flag
                    display mode.
 
-     SSOORRTTTTRREEEE      Sort directories in the tree screen.  The
-                   sorted type specified by SSOORRTT_TTYYPPEE is used,
-                   but they can not be sorted when it is "by
-                   size" or "by timestamp".  The directory
-                   included in the current directory path is
-                   always placed on the top of directory tree,
-                   with no regard to the sorted type.  Any value
-                   except 00 and null effects valid.
-
-     WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
-                   is 11, the directory is written only when the
-                   command is executed intentionally, and you are
-                   not confirmed after arranging the file order.
-                   If the value is 22, even writing by the command
-                   is invalid, the directory writing is quite
-                   forbidden.
-
-     IIGGNNOORREECCAASSEE    Ignore uppercase/lowercase when filenames are
-                   compared.  Any value except 00 and null effects
-                   valid.  ((UUNNIIXX))
-
-     IINNHHEERRIITTCCOOPPYY   Inherit the destination timestamp from the
-                   source timestamp when CCOOPPYY_FFIILLEE command is
-                   executed.  Any value except 00 and null effects
-                   valid.  ((UUNNIIXX))
-
-                   (On MS-DOS version, the destination timestamp
-                   is always inherited, if this variable is
-                   effective or not.)
-
-     AADDJJTTTTYY        Reset the terminal mode forcedly to the normal
-                   state, when ffdd is finished.  Invoking ffdd can
-                   adjust the terminal rightly from the state
-                   displaying broken characters.  Any value
-                   except 00 and null effects valid.  ((UUNNIIXX))
-
-     UUSSEEGGEETTCCUURRSSOORR  Use the VT100 compatible escape sequence get-
-                   ting the cursor position in order to get the
-                   terminal size.  When the screen size of ffdd
-                   doesn't correspond with the terminal size,
-                   this variable can be sometimes valid.  On some
-                   terminals which don't support the escape
-                   sequence getting the cursor position, the
-                   operation may be stopped.  In this case, it is
-                   continued by inputting 'R' from the keyboard.
-                   Any value except 00 and null effects valid.
-                   ((UUNNIIXX))
-
-     DDEEFFCCOOLLUUMMNNSS    Specify the columns displayed in the screen
-                   when ffdd is invoked.  The default value is 22.
-                   If you specify the value except 11, 22, 33 and 55,
-                   it is ignored.
-
-     MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
-                   filename display area in the file list.  When
-                   the area enough to be specified here cannot be
-                   obtained, the informations are reduced in the
-                   order of UID, GID, timestamp, size.  The
-                   default value is 1122 characters.
-
-     HHIISSTTSSIIZZEE      Specify the maximum number of the command his-
-                   tories which can be referred by EEXXEECCUUTTEE_FFIILLEE
-                   and EEXXEECCUUTTEE_SSHH.  The default value is 5500.  If
-                   this value is 00, you can refer to no command
-                   history.
-
-     DDIIRRHHIISSTT       Specify the maximum number of the directory
-                   histories which can be referred by the direc-
-                   tory input line.  The default value is 5500.  If
-                   this value is 00, you can refer to no directory
-                   history.
-
-     SSAAVVEEHHIISSTT      Specify the maximum number saved to the com-
-                   mand history file.  The default value is 5500.
-                   If this value is 00, no command history file is
-                   saved.
-
-     DDIIRRCCOOUUNNTTLLIIMMIITT Specify the maximum number of files read from
-                   the directory in the tree screen.  When the
-                   directory trailed by '>>' has no sub directory,
-                   the expanded result is not changed.  If the
-                   number of files (including directories) in the
-                   directory is within this value, the directory
-                   with no sub directory is not trailed '>>' from
-                   the first.  Moreover, the file list in the
-                   directory displayed on the right of screen is
-                   not displayed over this value.  If the value
-                   is 00, you can realize a comfortable operation
-                   speed even in the slow machine.  The default
-                   value is 5500 files.
-
      DDOOSSDDRRIIVVEE      Validate the access function to the MS-DOS
                    floppy.  If no floppy drive is registered,
                    this validation cannot make you access the
@@ -2609,53 +2641,139 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    restricted for the reason to operate the disk
                    I/O not by way of OS.
 
-     SSEECCOONNDD        Display the second in the clock of the title
-                   line.  But the clock is adjusted correctly
-                   every 1100 seconds, and some gap from the real
-                   time will be occurred in this span.  Any value
-                   except 00 and null effects valid.
-
-     SSIIZZEEIINNFFOO      Display the file size information line at the
-                   top of screen.  The total size displayed here
-                   is not the sum of bytes but the sum of disk
-                   block size occupied actually.  Any value
-                   except 00 and null effects valid.
-
-     AANNSSIICCOOLLOORR     Colorize the file display.  When the terminal
-                   which you use supports the color control
-                   escape sequence of ANSI standard, each file is
-                   displayed with color according to its file
-                   type.  If the value is 11, it is colorized.  If
-                   the value is 22, the background color is forced
-                   to be black, for the case that the foreground
-                   color is the same as the background color and
-                   indistinguishable.  If the value is 33, the
-                   foreground color is forced to be black.
-
      EEDDIITTMMOODDEE      Specify the edit mode of key input as the
                    string.  The default value is eemmaaccss.  The
                    value except eemmaaccss, wwoorrddssttaarr and vvii or null
                    are specified, any control character is not
                    converted and will be sent as it is.
 
-     TTMMPPDDIIRR        Specify the working directory where the
-                   archiver command temporarily unpack files in
-                   the archive file.  The default value is //ttmmpp.
+     EEDDIITTOORR        Specify the editor command used for editing
+                   files.
 
-     RRRRPPAATTHH        Display files under the directory mounted by
-                   CD-ROM, with the pseudo ISO 9660 RockRidge
-                   Extension, for the OS which cannot support
-                   RockRidge Extension.  You can specify multiple
-                   mount points separating with '::'.  You are
-                   enough to specify only the top directory
-                   mounted by CD-ROM, then the pseudo RockRidge
-                   Extension function is valid in all of the
-                   directories under that directory.  This is no
-                   more than a pseudo extension, which only
-                   replaces filenames according to TRANS.TBL, and
-                   cannot handle some CD-ROM which has an incon-
-                   sistent TRANS.TBL.  No mount point is speci-
+     FFCCEEDDIITT        Specify the editor command used for ffcc the
+                   builtin command.
+
+     FFNNAAMMEEKKCCOODDEE    Specify the Kanji code for filename.  Any
+                   filename is converted into the specified Kanji
+                   code at the point of accessing the file, then
+                   you can refer to the file which has a Kanji
+                   filename from another machine on network which
+                   use a different Kanji code.  The archive
+                   browser and bbrroowwssee the builtin command also
+                   refer the specified Kanji code.  JJIISS88, JJUUNNEETT,
+                   HHEEXX, CCAAPP, etc. among them are the Kanji codes
+                   used in Samba.  ((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       JJIISS, jjiiss       7bit JIS
+                       JJIISS88, jjiiss88     8bit JIS
+                       JJUUNNEETT, jjuunneett   ISO-2022-JP
+                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
+                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
+                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
+                       HHEEXX, hheexx       HEX
+                       CCAAPP, ccaapp       CAP
+                       UUTTFF88, uuttff88     UTF-8
+                       default        no convert
+
+     HHIISSTTSSIIZZEE      Specify the maximum number of the command his-
+                   tories which can be referred by EEXXEECCUUTTEE_FFIILLEE
+                   and EEXXEECCUUTTEE_SSHH.  The default value is 5500.  If
+                   this value is 00, you can refer to no command
+                   history.
+
+     HHOOMMEE*         Specify the default value when no argument of
+                   ccdd the builtin command is specified.  When
+                   invoked as a login shell, if this variable is
+                   specified that directory becomes the current
+                   directory, otherwise your home directory is
+                   automatically defined as this value.
+
+     IIFFSS*          Specify the internal field separators.  They
+                   are used in EEXXEECCUUTTEE_SSHH to separate command and
+                   arguments.  Space, tab and newline are speci-
                    fied by default.
+
+     IIGGNNOORREECCAASSEE    Ignore uppercase/lowercase when filenames are
+                   compared.  Any value except 00 and null effects
+                   valid.  ((UUNNIIXX))
+
+     IINNHHEERRIITTCCOOPPYY   Inherit the destination timestamp from the
+                   source timestamp when CCOOPPYY_FFIILLEE command is
+                   executed.  Any value except 00 and null effects
+                   valid.  ((UUNNIIXX))
+
+                   (On MS-DOS version, the destination timestamp
+                   is always inherited, if this variable is
+                   effective or not.)
+
+     IINNPPUUTTKKCCOODDEE    Specify the Kanji code for input from key-
+                   board.  When the value except the following is
+                   specified, the Kanji code specified in compile
+                   is valid.  ((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+
+     LLAANNGGUUAAGGEE      Specify the language for display character.
+                   It means not only each messages displayed by
+                   ffdd, but also a Kanji code of filename to be
+                   converted.  The following is the kind of
+                   languages, it doesn't have to be the string
+                   itself and is enough to contain the string,
+                   the value of LLAANNGG the environment variable
+                   also can be used.  JJIISS88, JJUUNNEETT, etc. among
+                   them are the Kanji codes used in Samba.
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       JJIISS, jjiiss       7bit JIS
+                       JJIISS88, jjiiss88     8bit JIS
+                       JJUUNNEETT, jjuunneett   ISO-2022-JP
+                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
+                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
+                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
+                       UUTTFF88, uuttff88     UTF-8
+                       EENNGG, eenngg, CC    English (message only)
+                       default        no convert
+
+                   (On MS-DOS version, only the English is
+                   valid.)
+
+     MMAAIILL*         Specify the spool filename when the internal
+                   shell will check new mails.  If MMAAIILLPPAATTHH is
+                   set, it is prior to this.  ((UUNNIIXX))
+
+     MMAAIILLCCHHEECCKK*    Specify the interval of checking new mails in
+                   seconds, for the spool files specified by
+                   MMAAIILLPPAATTHH or MMAAIILL.  The default value is 660000
+                   seconds.  If the value is 00, it will be
+                   checked before each prompt.  ((UUNNIIXX))
+
+     MMAAIILLPPAATTHH*     Specify the multiple spool filenames, as the
+                   list separated by ::, when the internal shell
+                   will check new mails.  The any specified files
+                   will be checked.  Each filenames can be fol-
+                   lowed by %% and a arrival message of new mails.
+                   The default message is yyoouu hhaavvee mmaaiill.  ((UUNNIIXX))
+
+     MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
+                   filename display area in the file list.  When
+                   the area enough to be specified here cannot be
+                   obtained, the informations are reduced in the
+                   order of UID, GID, timestamp, size.  The
+                   default value is 1122 characters.
+
+     OOPPTTAARRGG*       An option argument is substituted in ggeettooppttss
+                   the builtin command.
+
+     OOPPTTIINNDD*       Specify the index of the next parameter in
+                   ggeettooppttss the builtin command.
+
+     PPAAGGEERR         Specify the pager command used for viewing
+                   files.
+
+     PPAATTHH*         Specify the search path for executing external
+                   commands.  You can specify multiple paths
+                   separating with '::'.
 
      PPRREECCEEDDEEPPAATTHH   Specify the file preceding function, which
                    displays only filenames before obtaining their
@@ -2695,57 +2813,102 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    input is needed in EEXXEECCUUTTEE_SSHH.  The default
                    value is ">> ".
 
-     LLAANNGGUUAAGGEE      Specify the language for display character.
-                   It means not only each messages displayed by
-                   ffdd, but also a Kanji code of filename to be
-                   converted.  The following is the kind of
-                   languages, it doesn't have to be the string
-                   itself and is enough to contain the string,
-                   the value of the environment variable LLAANNGG
-                   also can be used.  JJIISS88, JJUUNNEETT, etc. among
-                   them are the Kanji codes used in Samba.
-                       SSJJIISS, ssjjiiss     Shift JIS
-                       EEUUCC, eeuucc       EUC-JP
-                       JJIISS, jjiiss       7bit JIS
-                       JJIISS88, jjiiss88     8bit JIS
-                       JJUUNNEETT, jjuunneett   ISO-2022-JP
-                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
-                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
-                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
-                       UUTTFF88, uuttff88     UTF-8
-                       EENNGG, eenngg, CC    English (message only)
-                       default        no convert
+     RRRRPPAATTHH        Display files under the directory mounted by
+                   CD-ROM, with the pseudo ISO 9660 RockRidge
+                   Extension, for the OS which cannot support
+                   RockRidge Extension.  You can specify multiple
+                   mount points separating with '::'.  You are
+                   enough to specify only the top directory
+                   mounted by CD-ROM, then the pseudo RockRidge
+                   Extension function is valid in all of the
+                   directories under that directory.  This is no
+                   more than a pseudo extension, which only
+                   replaces filenames according to TRANS.TBL, and
+                   cannot handle some CD-ROM which has an incon-
+                   sistent TRANS.TBL.  No mount point is speci-
+                   fied by default.
 
-                   (On MS-DOS version, only the English is
-                   valid.)
+     SSAAVVEEHHIISSTT      Specify the maximum number saved to the com-
+                   mand history file.  The default value is 5500.
+                   If this value is 00, no command history file is
+                   saved.
 
-     IINNPPUUTTKKCCOODDEE    Specify the Kanji code for input from key-
-                   board.  When the value except the following is
-                   specified, the Kanji code specified in compile
-                   is valid.  ((UUNNIIXX))
-                       SSJJIISS, ssjjiiss     Shift JIS
-                       EEUUCC, eeuucc       EUC-JP
+     SSEECCOONNDD        Display the second in the clock of the title
+                   line.  But the clock is adjusted correctly
+                   every 1100 seconds, and some gap from the real
+                   time will be occurred in this span.  Any value
+                   except 00 and null effects valid.
 
-     FFNNAAMMEEKKCCOODDEE    Specify the Kanji code for filename.  Any
-                   filename is converted into the specified Kanji
-                   code at the point of accessing the file, then
-                   you can refer to the file which has a Kanji
-                   filename from another machine on network which
-                   use a different Kanji code.  JJIISS88, JJUUNNEETT, HHEEXX,
-                   CCAAPP, etc. among them are the Kanji codes used
-                   in Samba.  ((UUNNIIXX))
-                       SSJJIISS, ssjjiiss     Shift JIS
-                       EEUUCC, eeuucc       EUC-JP
-                       JJIISS, jjiiss       7bit JIS
-                       JJIISS88, jjiiss88     8bit JIS
-                       JJUUNNEETT, jjuunneett   ISO-2022-JP
-                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
-                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
-                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
-                       HHEEXX, hheexx       HEX
-                       CCAAPP, ccaapp       CAP
-                       UUTTFF88, uuttff88     UTF-8
-                       default        no convert
+     SSHHEELLLL*        When the filename part of this specified value
+                   is rrffdd or rrffddsshh, the shell becomes a res-
+                   tricted shell as well as --rr option when
+                   invoked.  This variable also specify the shell
+                   which can be invoked from EEXXEECCUUTTEE_SSHH.
+
+     SSIIZZEEIINNFFOO      Display the file size information line at the
+                   top of screen.  The total size displayed here
+                   is not the sum of bytes but the sum of disk
+                   block size occupied actually.  Any value
+                   except 00 and null effects valid.
+
+     SSOORRTTTTRREEEE      Sort directories in the tree screen.  The
+                   sorted type specified by SSOORRTT_TTYYPPEE is used,
+                   but they can not be sorted when it is "by
+                   size" or "by timestamp".  The directory
+                   included in the current directory path is
+                   always placed on the top of directory tree,
+                   with no regard to the sorted type.  Any value
+                   except 00 and null effects valid.
+
+     SSOORRTTTTYYPPEE      The file list in the browser screen is not
+                   sorted by default, but placed in order
+                   registered in the directory.  This variable
+                   specify it to be sorted by default.  The fol-
+                   lowing are specifiable values.
+                       00    not sort
+                       11    by filename    99    by filename(reverse)
+                       22    by extension   1100   by extension(reverse)
+                       33    by size        1111   by size(reverse)
+                       44    by timestamp   1122   by timestamp(reverse)
+                       55    by length      1133   by length(reverse)
+                       110000--111133   keep the last sorted type
+
+                   If you specify the value of 100-113, it is
+                   sorted according to the value indicated by
+                   lower 2 digits just after invoked, the last
+                   specified sorted type is kept when moving
+                   directory.
+
+     TTMMPPDDIIRR        Specify the working directory where the
+                   archiver command temporarily unpack files in
+                   the archive file.  The default value is //ttmmpp.
+
+     TTMMPPUUMMAASSKK      Specify the file creation mask with octal
+                   expression for files and directories created
+                   temporarily in TTMMPPDDIIRR.  But the mask value set
+                   by uummaasskk the builtin command is prior, then
+                   actual mask value is the logical OR of this
+                   value and uummaasskk value.
+
+     UUSSEEGGEETTCCUURRSSOORR  Use the VT100 compatible escape sequence get-
+                   ting the cursor position in order to get the
+                   terminal size.  When the screen size of ffdd
+                   doesn't correspond with the terminal size,
+                   this variable can be sometimes valid.  On some
+                   terminals which don't support the escape
+                   sequence getting the cursor position, the
+                   operation may be stopped.  In this case, it is
+                   continued by inputting 'R' from the keyboard.
+                   Any value except 00 and null effects valid.
+                   ((UUNNIIXX))
+
+     WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
+                   is 11, the directory is written only when the
+                   command is executed intentionally, and you are
+                   not confirmed after arranging the file order.
+                   If the value is 22, even writing by the command
+                   is invalid, the directory writing is quite
+                   forbidden.
 
      SSJJIISSPPAATTHH
      EEUUCCPPAATTHH
@@ -2774,9 +2937,9 @@ MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
      "EUC-JP" or "Shift JIS" according to setting in compile.
      The the pathname including Kanji is displayed in considera-
      tion for the 2nd byte character in Kanji.  You can dynami-
-     cally select Kanji code to input/output with the internal
-     variable LLAANNGGUUAAGGEE, IINNPPUUTTKKCCOODDEE and FFNNAAMMEEKKCCOODDEE.  You can input
-     Kanji string with some Japanese input methods.
+     cally select Kanji code to input/output with LLAANNGGUUAAGGEE,
+     IINNPPUUTTKKCCOODDEE and FFNNAAMMEEKKCCOODDEE the internal variable.  You can
+     input Kanji string with some Japanese input methods.
 
      You can use Kanji in the command macro and the command
      string, but cannot use Kanji as the value of the internal
@@ -2806,7 +2969,7 @@ FFIILLEESS
      ~~//..ffddsshhrrcc The individual initial configuration file for ffddsshh
      ~~//..ffdd_hhiissttoorryy
                The command history file
-     //bbiinn//sshh   The user shell when the environment variable SSHHEELLLL
+     //bbiinn//sshh   The user shell when SSHHEELLLL the environment variable
                is undefined
      //bbiinn//rrmm   The command to remove temporary files when abort
      //ttmmpp//ffdd**  The temporary directory to unpack the archive file
@@ -2828,10 +2991,6 @@ FFIILLEESS
                The command history file on MS-DOS version
 
 LLIIMMIITTAATTIIOONNSS
-     Words expanded from a command macro can be no longer than
-     11002233 characters.  You cannot input a string over 225555 charac-
-     ters, and it depends on also the screen size.
-
      The maximum key bindings which you can register is 225566, and
      the maximum that with the user defined macro is 6644.  The
      maximum launchers which you can register is 3322, including

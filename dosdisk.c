@@ -200,10 +200,9 @@ extern char *strrdelim2 __P_((char *, char *));
 extern int isdelim __P_((char *, int));
 #if	MSDOS
 extern char *strcatdelim __P_((char *));
-#define	strcasecmp2	stricmp
-#else
-extern int strcasecmp2 __P_((char *, char *));
 #endif
+extern char *strcatdelim2 __P_((char *, char *, char *));
+extern int strcasecmp2 __P_((char *, char *));
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
 extern u_short unifysjis __P_((u_short, int));
@@ -231,11 +230,7 @@ static int NEAR isdelim __P_((char *, int));
 static char *NEAR strcatdelim __P_((char *));
 #endif
 static char *NEAR strcatdelim2 __P_((char *, char *, char *));
-#if	MSDOS
-#define	strcasecmp2	stricmp
-#else
 static int NEAR strcasecmp2 __P_((char *, char *));
-#endif
 static int NEAR isdotdir __P_((char *));
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
@@ -812,18 +807,13 @@ char *buf, *s1, *s2;
 	return(cp);
 }
 
-#if	!MSDOS
 static int NEAR strcasecmp2(s1, s2)
 char *s1, *s2;
 {
-	int c1, c2;
-
 	for (;;) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
-		if (c1 != c2) return(c1 - c2);
+		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
 # ifndef	CODEEUC
-		if (issjis1(c1)) {
+		if (issjis1(*s1)) {
 			s1++;
 			s2++;
 			if (*s1 != *s2) return(*s1 - *s2);
@@ -835,7 +825,6 @@ char *s1, *s2;
 	}
 	return(0);
 }
-#endif	/* !MSDOS */
 
 static int NEAR isdotdir(s)
 char *s;
@@ -2294,8 +2283,8 @@ bpb_t *bpbcache;
 		if (!nh || !ns || nh != devp -> ch_head || ns != nsect
 		|| (total + (nh * ns / 2)) / (nh * ns) != devp -> ch_cyl) {
 			if (bpb != bpbcache)
-				memcpy((char *)bpbcache,
-					(char *)bpb, sizeof(bpb_t));
+				memcpy((char *)bpbcache, (char *)bpb,
+					sizeof(bpb_t));
 			if (buf) free(buf);
 			errno = tmperrno;
 			return(0);
@@ -2569,8 +2558,8 @@ int drive;
 	for (i = maxorder - 1; i >= 0; i--)
 		if (drv == (int)devlist[devorder[i]].drive) break;
 	if (i >= 0) {
-		memcpy((char *)&dev,
-			(char *)&(devlist[devorder[i]]), sizeof(devstat));
+		memcpy((char *)&dev, (char *)&(devlist[devorder[i]]),
+			sizeof(devstat));
 		dev.flags |= F_DUPL;
 		dev.flags &= ~(F_CACHE | F_WRFAT);
 	}
@@ -2868,7 +2857,7 @@ static char *NEAR putdosname(buf, file, vol)
 char *buf, *file;
 int vol;
 {
-	char *cp, *eol, num[9];
+	char *cp, *eol, num[7];
 	u_short w;
 	int i, j, c, cnv;
 
@@ -2949,11 +2938,15 @@ int vol;
 	buf[i] = '\0';
 
 	if (vol > 1 || (vol > 0 && cnv)) {
-		sprintf(num, "%d", vol);
-		for (i = 7 - (int)strlen(num); i > 0; i--)
+		for (j = 0; j < sizeof(num) / sizeof(char); j++) {
+			if (!vol) break;
+			num[j] = (vol % 10) + '0';
+			vol /= 10;
+		}
+		for (i = sizeof(num) / sizeof(char) - j; i > 0; i--)
 			if (buf[i - 1] != ' ') break;
 		buf[i++] = '~';
-		for (j = 0; num[j]; j++) buf[i++] = num[j];
+		while (j-- > 0) buf[i++] = num[j];
 	}
 	if (((u_char *)buf)[0] == 0xe5) buf[0] = 0x05;
 
@@ -3372,8 +3365,8 @@ int force;
 	}
 
 	dd2offset(xdirp -> dd_fd) = xdirp -> dd_loc;
-	memcpy((char *)dentp,
-		(char *)&(xdirp -> dd_buf[xdirp -> dd_loc]), sizeof(dent_t));
+	memcpy((char *)dentp, (char *)&(xdirp -> dd_buf[xdirp -> dd_loc]),
+		sizeof(dent_t));
 	if (force || dentp -> name[0]) {
 		xdirp -> dd_loc += DOSDIRENT;
 		if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0;

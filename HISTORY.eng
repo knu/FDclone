@@ -1,3 +1,23 @@
+Ver. 2.03	Add 'browse' builtin.
+ (03/26/03)	Add 'readline', 'yesno' builtins.
+		Add 'ANSIPALETTE' internal variable.
+		Add 'TMPUMASK' internal variable.
+		Add -f, -i, -e, -t, -b options in 'launch' builtin.
+		Add %l, * in the format for archive browser registration.
+		%T, %M macros are refined to be used in any statements.
+		The maximum 1023 characters for a command macro is abolished.
+		The maximum 255 characters for an input line is abolished.
+		The archive browser is refined to refer FNAMEKCODE.
+		Bug that FIND_FILE with '/' sometimes fails is fixed.
+		Abortion in the wildcard with more than 31 characters is fixed.
+		Bug that some pipes cannot close safely is fixed.
+		Bug that some temporary directories remain is fixed.
+		Support invoking from the shell with lazy terminal control.
+		Some incompletion when reading recursive directories is fixed.
+		Abortion in EDIT_CONFIG with the minimum screen size is fixed.
+		Broken select menus with the minimum screen size is fixed.
+		Bug that '%' cannot kill meta characters on MS-DOS is fixed.
+
 Ver. 2.02b	Support cross-compiling.
  (02/26/03)	Support 64bit based OS.
 		Reduce the minimum columns of a terminal to 34.

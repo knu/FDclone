@@ -28,7 +28,6 @@ extern char *mesconv __P_((char *, char *));
 #define	WAIT_K	mesconv("しばらくお待ち下さい.", "Wait a minute.")
 #define	DELSP_K	mesconv("行末に空白文字がありますが削除しますか ?", "Delete space characters on the end of line ?")
 #define	INTR_K	mesconv("中断キーにより作業を中止します.", "Interrupted by keyboard.")
-#define	INOV_K	mesconv("入力文字数がオーバーフローしました.", "Input length overflow.")
 #define	RECUR_K	mesconv("再帰的に fdsh を起動することはできません.", "Recursive call for fdsh.")
 #define	SCRSZ_K	mesconv("ESC で終了するか画面サイズを広げて下さい.", "Terminate with the ESC key, or enlarge a screen.")
 
@@ -237,6 +236,9 @@ extern char *mesconv __P_((char *, char *));
 #define	ACOL_E \
 	meslist("ファイル表示をカラー化します.", \
 		"Display with the ANSI color escape sequence.")
+#define	APAL_E \
+	meslist("カラー表示時の各表示色を指定します.", \
+		"Specify color palette in the ANSI color mode.")
 #define	EDMD_E \
 	meslist("キー入力時の編集モードを設定します.", \
 		"Select the edit mode with your favorite editor type.")
@@ -322,17 +324,17 @@ extern char *mesconv __P_((char *, char *));
 			"status information of symbolic link file")
 #define	VDS10_K	mesconv("リンク", "link")
 #define	VDS11_K	mesconv("本体", "file")
-#define	VDS2A_K	mesconv("ファイル型:", "file type:")
+#define	VDS2A_K	mesconv(", ファイル型:", ", file type:")
 #define	VDS2B_K	mesconv("ファイルタイプシンボルの付属", \
 			"trailing file type symbol")
 #define	VDS20_K	mesconv("不要", "no display")
 #define	VDS21_K	mesconv("要", "display")
-#define	VDS3A_K	mesconv("\".\"ファイル:", "dot file:")
+#define	VDS3A_K	mesconv(", \".\"ファイル:", ", dot file:")
 #define	VDS3B_K	mesconv("\".\"で始まるファイル名の扱い", \
 			"whether to hide files whose names begin with \".\"")
 #define	VDS30_K	mesconv("表示", "visible")
 #define	VDS31_K	mesconv("隠す", "invisible")
-#define	VDS4A_K	mesconv("ファイル:", "file:")
+#define	VDS4A_K	mesconv(", ファイル:", ", file:")
 #define	VDS4B_K	mesconv("ファイルモード欄の表示情報", \
 			"information on file mode column")
 #define	VDS40_K	mesconv("モード", "mode")
@@ -377,6 +379,22 @@ extern char *mesconv __P_((char *, char *));
 			"Deleting the keymap for [%s], OK ?")
 #define	SETKM_K	mesconv("[%s]のキーマップを[%s]として登録します. よろしいですか ?", \
 			"Registering the keymap for [%s] as [%s], OK ?")
+#define	ARADD_K	mesconv("[追加]", "[Add]")
+#define	ARUSG_K	mesconv("Ret: 変更/並べ替え/削除, Esc: 終了", \
+			"Ret: edit/swap/remove, Esc: done")
+#define	AREDT_K	mesconv("E: 編集", "Edit")
+#define	ARUPW_K	mesconv("U: 一つ上へ", "Upward")
+#define	ARDWN_K	mesconv("D: 一つ下へ", "Downward")
+#define	ARDEL_K	mesconv("R: 削除", "Remove")
+#define	ADLOK_K	mesconv("選択された項目を削除します. よろしいですか ?", \
+			"Deleting the selected item, OK ?")
+#define	ARSEL_K	mesconv("編集するオプション項目を選んで下さい.", \
+			"Select the option to edit.")
+#define	ARDON_K	mesconv("終了", "Done")
+#define	ARCAN_K	mesconv("アーカイブブラウザとしての登録をキャンセルしますか ?", \
+			"Cancel registration for archive browser ?")
+#define	ARNOT_K	mesconv("フォーマットが登録されていません. 一般のランチャとして登録しますか ?", \
+			"No format registered. Register as a normal launcher ?")
 #define	EXTLN_K	mesconv("ランチャ登録用拡張子:", "Extension for launcher:")
 #define	LNCHC_K	mesconv("ランチャ用コマンド:", "Command for launcher:")
 #define	ISARC_K	mesconv("アーカイブブラウザとして登録しますか ?", \
@@ -387,6 +405,10 @@ extern char *mesconv __P_((char *, char *));
 			"needless line(s) from top:")
 #define	BTMSK_K	mesconv("最終行からの不要行の数:", \
 			"needless line(s) from bottom:")
+#define	ARIGN_K	mesconv("アーカイブブラウザ用不要行のパターン:", \
+			"Pattern of ingored line for archive browser:")
+#define	ARERR_K	mesconv("アーカイブブラウザ用エラー行のパターン:", \
+			"Pattern of error line for archive browser:")
 #define	VALNG_K	mesconv("不正な値です.", "Invalid value.")
 #define	DLLOK_K	mesconv("[%s]用のランチャ登録を削除します. よろしいですか ?", \
 			"Deleting the launcher registration for [%s], OK ?")

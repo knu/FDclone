@@ -26,12 +26,6 @@
 #include "kctype.h"
 #include "pathname.h"
 
-#ifdef	USESTDARGH
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 #if	MSDOS
 #include <io.h>
 #include "unixemu.h"
@@ -42,6 +36,10 @@
 
 #if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 #define	_NODOSDRIVE
+#endif
+
+#if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
+#define	_NOKANJIFCONV
 #endif
 
 #ifndef	L_SET
@@ -56,7 +54,6 @@
 #define	KANA		001
 #define	KANJI		002
 #define	JKANA		004
-#define	MAXPRINTBUF	1023
 #define	SJ_UDEF		0x81ac	/* GETA */
 #define	UNICODETBL	"fd-unicd.tbl"
 #define	MINUNICODE	0x00a7
@@ -78,6 +75,8 @@ typedef struct _kconv_t {
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strncpy3 __P_((char *, char *, int *, int));
+extern int strlen3 __P_((char *));
+extern VOID error __P_((char *));
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
@@ -1539,49 +1538,45 @@ char *s;
 #ifdef	USESTDARGH
 /*VARARGS1*/
 int kanjiprintf(CONST char *fmt, ...)
-{
-	va_list args;
-	char buf[MAXPRINTBUF + 1];
-
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-#else	/* !USESTDARGH */
-# ifndef	NOVSPRINTF
+#else
 /*VARARGS1*/
 int kanjiprintf(fmt, va_alist)
 char *fmt;
 va_dcl
+#endif
 {
 	va_list args;
-	char buf[MAXPRINTBUF + 1];
+	char *buf;
+	int n;
 
+#ifdef	USESTDARGH
+	va_start(args, fmt);
+#else
 	va_start(args);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-# else	/* NOVSPRINTF */
-int kanjiprintf(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
-char *fmt;
-{
-	char buf[MAXPRINTBUF + 1];
+#endif
 
-	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-# endif	/* NOVSPRINTF */
-#endif	/* !USESTDARGH */
-	return(kanjiputs(buf));
+	n = vasprintf2(&buf, fmt, args);
+	va_end(args);
+	if (n < 0) error("malloc()");
+	n = strlen3(buf);
+	kanjiputs(buf);
+	free(buf);
+	return(n);
 }
 
 int kanjiputs2(s, len, ptr)
 char *s;
 int len, ptr;
 {
-	char *dupl;
+	char *buf;
+	int n;
 
-	if (len >= 0) dupl = malloc2(len + 1);
-	else if (ptr < 0) dupl = malloc2(strlen(s) + 1);
-	else dupl = malloc2(strlen(&(s[ptr])) + 1);
-	strncpy3(dupl, s, &len, ptr);
-	kanjiputs(dupl);
-	free(dupl);
-	return(len);
+	if (len >= 0) buf = malloc2(len * KANAWID + 1);
+	else if (ptr < 0) buf = malloc2(strlen(s) + 1);
+	else buf = malloc2(strlen(&(s[ptr])) + 1);
+	strncpy3(buf, s, &len, ptr);
+	n = strlen3(buf);
+	kanjiputs(buf);
+	free(buf);
+	return(n);
 }

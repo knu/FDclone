@@ -23,6 +23,9 @@ extern launchtable launchlist[];
 extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
+# ifndef	_NOBROWSE
+extern char **browsevar;
+# endif
 #endif
 extern char *macrolist[];
 extern int maxmacro;
@@ -40,6 +43,8 @@ extern int fd_restricted;
 #if	FD >= 2
 extern char *progpath;
 extern char *progname;
+extern char *promptstr;
+extern int lcmdline;
 #endif
 extern int internal_status;
 #ifdef	_NOORIGSHELL
@@ -52,10 +57,10 @@ extern int win_x;
 extern int win_y;
 extern int hideclock;
 #endif
+extern int inruncom;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
 #endif
-extern int inruncom;
 
 static VOID NEAR builtinerror __P_((char *[], char *, int));
 #ifdef	_NOORIGSHELL
@@ -65,6 +70,9 @@ static VOID NEAR hitkey __P_((int));
 #endif
 static VOID NEAR fputsmeta __P_((char *, FILE *));
 #ifndef	_NOARCHIVE
+# if	FD >= 2
+static int NEAR getlaunchopt __P_((int, char *[], char *, launchtable *));
+# endif
 static int NEAR setlaunch __P_((int, char *[]));
 static int NEAR setarch __P_((int, char *[]));
 static int NEAR printlaunch __P_((int, char *[]));
@@ -100,6 +108,8 @@ static int NEAR evalmacro __P_((int, char *[]));
 # if	!MSDOS && !defined (_NOKANJICONV)
 static int NEAR kconv __P_((int, char *[]));
 # endif
+static int NEAR getinputstr __P_((int, char *[]));
+static int NEAR getyesno __P_((int, char *[]));
 #endif	/* FD >= 2 */
 #ifdef	_NOORIGSHELL
 static int NEAR printenv __P_((int, char *[]));
@@ -140,11 +150,15 @@ static char *builtinerrstr[] = {
 	"Invalid device",
 #define	ER_EVENTNOFOUND	7
 	"Event not found",
-#define	ER_NOARGSPEC	8
+#define	ER_UNKNOWNOPT	8
+	"Unknown option",
+#define	ER_NOARGSPEC	9
 	"No argument is specified",
-#define	ER_NOTINSHELL	9
+#define	ER_NOTINSHELL	10
 	"Cannot execute in shell mode",
-#define	ER_NOTRECURSE	10
+#define	ER_NOTINRUNCOM	11
+	"Cannot execute in startup file",
+#define	ER_NOTRECURSE	12
 	"Cannot execute recursively",
 };
 #define	BUILTINERRSIZ	((int)(sizeof(builtinerrstr) / sizeof(char *)))
@@ -180,6 +194,8 @@ static builtintable builtinlist[] = {
 # if	!MSDOS && !defined (_NOKANJICONV)
 	{kconv,		BL_KCONV},
 # endif
+	{getinputstr,	BL_READLINE},
+	{getyesno,	BL_YESNO},
 #endif	/* FD >= 2 */
 #ifdef	_NOORIGSHELL
 # if	FD >= 2
@@ -262,7 +278,7 @@ int init;
 		win_y = n_line - 1;
 		hideclock = 1;
 		warning(0, HITKY_K);
-		stdiomode(1);
+		stdiomode();
 	}
 }
 #endif	/* _NOORIGSHELL */
@@ -273,7 +289,7 @@ FILE *fp;
 {
 	char *cp;
 
-	if (!arg) fputs("\"\"", fp);
+	if (!*arg) fputs("\"\"", fp);
 	else {
 		cp = killmeta(arg);
 		kanjifputs(cp, fp);
@@ -282,139 +298,274 @@ FILE *fp;
 }
 
 #ifndef	_NOARCHIVE
+# if	FD >= 2
+static int NEAR getlaunchopt(n, argv, opts, list)
+int n;
+char *argv[], *opts;
+launchtable *list;
+{
+	char *cp;
+	int i, c;
+
+	if (argv[n][0] != '-') return(0);
+	c = argv[n][1];
+	if (!c || c == '-') return(++n);
+	else if (!strchr(opts, c)) {
+		builtinerror(argv, argv[n], ER_UNKNOWNOPT);
+		return(-1);
+	}
+
+	if (argv[n][2]) cp = &(argv[n][2]);
+	else if (argv[n + 1]) cp = argv[++n];
+	else {
+		builtinerror(argv, argv[n], ER_NOARGSPEC);
+		return(-1);
+	}
+
+	if (c == 'f') {
+		i = countvar(list -> format);
+		list -> format = (char **)realloc2(list -> format,
+			sizeof(char *) * (i + 2));
+		list -> format[i++] = strdup2(cp);
+		list -> format[i] = NULL;
+	}
+	else if (c == 'i') {
+		i = countvar(list -> lignore);
+		list -> lignore = (char **)realloc2(list -> lignore,
+			sizeof(char *) * (i + 2));
+		list -> lignore[i++] = strdup2(cp);
+		list -> lignore[i] = NULL;
+	}
+	else if (c == 'e') {
+		i = countvar(list -> lerror);
+		list -> lerror = (char **)realloc2(list -> lerror,
+			sizeof(char *) * (i + 2));
+		list -> lerror[i++] = strdup2(cp);
+		list -> lerror[i] = NULL;
+	}
+	else if (c == 't' || c == 'b') {
+		if ((i = atoi2(cp)) < 0) {
+			builtinerror(argv, cp, ER_SYNTAXERR);
+			return(-1);
+		}
+		if (c == 't') list -> topskip = i;
+		else list -> bottomskip = i;
+	}
+	else if (c == 'p') {
+		if (list -> ext) free (list -> ext);
+		list -> ext = strdup2(cp);
+	}
+	else {
+		if (!strcmp(cp, "loop"))
+			i = (c == 'd') ? LF_DIRLOOP : LF_FILELOOP;
+		else if (!strcmp(cp, "noprep"))
+			i = (c == 'd') ? LF_DIRNOPREP : LF_FILENOPREP;
+		else {
+			builtinerror(argv, cp, ER_SYNTAXERR);
+			return(-1);
+		}
+		list -> flags |= i;
+	}
+	n++;
+
+	return(n);
+}
+# endif
+
 static int NEAR setlaunch(argc, argv)
 int argc;
 char *argv[];
 {
-	char *ext;
-	long n;
-	int i, flags;
-# if	FD < 2
+# if	FD >= 2
+	int j, opt, err;
+# else
 	char *cp, *tmp;
-	int j, ch;
+	long l;
+	int ch;
 # endif
+	launchtable list;
+	int i, n;
 
 	if (argc <= 1) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-# if	FD >= 2
-	if (argc >= 7) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
-		return(-1);
-	}
-# endif
 
-	flags = 0;
-	ext = getext(argv[1], &flags);
+	list.flags = 0;
+	list.ext = getext(argv[1], &(list.flags));
 
-	for (i = 0; i < maxlaunch; i++)
-		if (!extcmp(ext, flags,
-		launchlist[i].ext, launchlist[i].flags, 1)) break;
+	for (n = 0; n < maxlaunch; n++)
+		if (!extcmp(list.ext, list.flags,
+		launchlist[n].ext, launchlist[n].flags, 1)) break;
 
-	if (i >= MAXLAUNCHTABLE) {
+	if (n >= MAXLAUNCHTABLE) {
 		builtinerror(argv, NULL, ER_OUTOFLIMIT);
-		free(ext);
+		free(list.ext);
 		return(-1);
 	}
 
 	if (argc < 3) {
-		free(ext);
-		if (i >= maxlaunch) {
+		free(list.ext);
+		if (n >= maxlaunch) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
 		}
 
-		free(launchlist[i].ext);
-		free(launchlist[i].comm);
+		free(launchlist[n].ext);
+		free(launchlist[n].comm);
 # if	FD >= 2
-		if (launchlist[i].format) free(launchlist[i].format);
+		freevar(launchlist[n].format);
+		freevar(launchlist[n].lignore);
+		freevar(launchlist[n].lerror);
 # endif
 		maxlaunch--;
-		for (; i < maxlaunch; i++)
-			memcpy((char *)&(launchlist[i]),
-				(char *)&(launchlist[i + 1]),
+		for (; n < maxlaunch; n++)
+			memcpy((char *)&(launchlist[n]),
+				(char *)&(launchlist[n + 1]),
 				sizeof(launchtable));
 		return(0);
 	}
 
 # if	FD >= 2
-	if (argc <= 4) launchlist[i].topskip = 0;
-	else if ((n = atoi2(argv[4])) >= 0) launchlist[i].topskip = n;
-	else {
-		builtinerror(argv, argv[4], ER_SYNTAXERR);
-		free(ext);
+	list.format = list.lignore = list.lerror = NULL;
+	list.comm = NULL;
+	list.topskip = list.bottomskip = 0;
+	opt = err = 0;
+	for (i = 2; i < argc; i++) {
+		j = getlaunchopt(i, argv, "fietb", &list);
+		if (!j) {
+			if (list.comm) break;
+			list.comm = strdup2(argv[i]);
+		}
+		else if (j > 0) {
+			opt++;
+			i = j - 1;
+		}
+		else {
+			err++;
+			break;
+		}
+	}
+
+	if (err);
+	else if (!(list.comm)) {
+		builtinerror(argv, NULL, ER_FEWMANYARG);
+		err++;
+	}
+	else if (i + 3 < argc) {
+		builtinerror(argv, argv[i + 3], ER_FEWMANYARG);
+		err++;
+	}
+	else if (i < argc && opt) {
+		builtinerror(argv, argv[i], ER_FEWMANYARG);
+		err++;
+	}
+	if (err) {
+		free(list.ext);
+		free(list.comm);
+		freevar(list.format);
+		freevar(list.lignore);
+		freevar(list.lerror);
 		return(-1);
 	}
-	if (argc <= 5) launchlist[i].bottomskip = 0;
-	else if ((n = atoi2(argv[5])) >= 0) launchlist[i].bottomskip = n;
+
+	if (i < argc) {
+		list.format = (char **)malloc2(sizeof(char *) * 2);
+		list.format[0] = strdup2(argv[i]);
+		list.format[1] = NULL;
+	}
+
+	if (i + 1 >= argc);
+	else if ((j = atoi2(argv[i + 1])) >= 0) list.topskip = j;
 	else {
-		builtinerror(argv, argv[5], ER_SYNTAXERR);
-		free(ext);
+		builtinerror(argv, argv[i + 1], ER_SYNTAXERR);
+		free(list.ext);
+		free(list.comm);
+		freevar(list.format);
+		freevar(list.lignore);
+		freevar(list.lerror);
 		return(-1);
 	}
+
+	if (i + 2 >= argc);
+	else if ((j = atoi2(argv[i + 2])) >= 0) list.bottomskip = j;
+	else {
+		builtinerror(argv, argv[i + 2], ER_SYNTAXERR);
+		free(list.ext);
+		free(list.comm);
+		freevar(list.format);
+		freevar(list.lignore);
+		freevar(list.lerror);
+		return(-1);
+	}
+
 # else	/* FD < 2 */
-	if (argc <= 3) launchlist[i].topskip = 255;
+	list.comm = strdup2(argv[2]);
+	if (argc <= 3) list.topskip = list.bottomskip = 255;
 	else {
 		cp = tmp = catvar(&(argv[3]), '\0');
-		if (!(cp = evalnumeric(cp, &n, 0)) || *cp != ',') {
+		if (!(cp = evalnumeric(cp, &l, 0)) || *cp != ',') {
 			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(ext);
+			free(list.ext);
+			free(list.comm);
 			free(tmp);
 			return(-1);
 		}
-		launchlist[i].topskip = n;
-		if (!(cp = evalnumeric(++cp, &n, 0))) {
+		list.topskip = l;
+		if (!(cp = evalnumeric(++cp, &l, 0))) {
 			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(ext);
+			free(list.ext);
+			free(list.comm);
 			free(tmp);
 			return(-1);
 		}
-		launchlist[i].bottomskip = n;
+		list.bottomskip = l;
 
 		ch = ':';
-		for (j = 0; j < MAXLAUNCHFIELD; j++) {
+		for (i = 0; i < MAXLAUNCHFIELD; i++) {
 			if (!cp || *cp != ch) {
 				builtinerror(argv, tmp, ER_SYNTAXERR);
-				free(ext);
+				free(list.ext);
+				free(list.comm);
 				free(tmp);
 				return(-1);
 			}
-			cp = getrange(++cp,
-				&(launchlist[i].field[j]),
-				&(launchlist[i].delim[j]),
-				&(launchlist[i].width[j]));
+			cp = getrange(++cp, &(list.field[i]),
+				&(list.delim[i]), &(list.width[i]));
 			ch = ',';
 		}
 
 		ch = ':';
-		for (j = 0; j < MAXLAUNCHSEP; j++) {
+		for (i = 0; i < MAXLAUNCHSEP; i++) {
 			if (*cp != ch) break;
-			if (!(cp = evalnumeric(++cp, &n, 0))) {
+			if (!(cp = evalnumeric(++cp, &l, 0))) {
 				builtinerror(argv, tmp, ER_SYNTAXERR);
-				free(ext);
+				free(list.ext);
+				free(list.comm);
 				free(tmp);
 				return(-1);
 			}
-			launchlist[i].sep[j] = (n > 0) ? n - 1 : 255;
+			list.sep[i] = (l > 0) ? l - 1 : 255;
 			ch = ',';
 		}
-		for (; j < MAXLAUNCHSEP; j++) launchlist[i].sep[j] = -1;
+		for (; i < MAXLAUNCHSEP; i++) list.sep[i] = -1;
 
-		if (!cp || *cp != ':') launchlist[i].lines = 1;
+		if (!cp || *cp != ':') list.lines = 1;
 		else {
-			if (!(cp = evalnumeric(++cp, &n, 0))) {
+			if (!(cp = evalnumeric(++cp, &l, 0))) {
 				builtinerror(argv, tmp, ER_SYNTAXERR);
-				free(ext);
+				free(list.ext);
+				free(list.comm);
 				free(tmp);
 				return(-1);
 			}
-			launchlist[i].lines = (n > 0) ? n : 1;
+			list.lines = (l > 0) ? l : 1;
 		}
 
 		if (*cp) {
 			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(ext);
+			free(list.ext);
+			free(list.comm);
 			free(tmp);
 			return(-1);
 		}
@@ -422,22 +573,17 @@ char *argv[];
 	}
 # endif	/* FD < 2 */
 
-	if (i >= maxlaunch) maxlaunch++;
+	if (n >= maxlaunch) maxlaunch++;
 	else {
-		free(launchlist[i].ext);
-		free(launchlist[i].comm);
+		free(launchlist[n].comm);
+		free(launchlist[n].ext);
 # if	FD >= 2
-		if (launchlist[i].format) free(launchlist[i].format);
+		freevar(launchlist[n].format);
+		freevar(launchlist[n].lignore);
+		freevar(launchlist[n].lerror);
 # endif
 	}
-	launchlist[i].ext = ext;
-	launchlist[i].comm = strdup2(argv[2]);
-# if	FD >= 2
-	launchlist[i].format = strdup2(argv[3]);
-# else
-	flags = 0;
-# endif
-	launchlist[i].flags = flags;
+	memcpy((char *)&(launchlist[n]), (char *)&list, sizeof(list));
 	return(0);
 }
 
@@ -446,14 +592,14 @@ int argc;
 char *argv[];
 {
 	char *ext;
-	int i, flags;
+	int i;
+	u_char flags;
 
 	if (argc <= 1 || argc >= 5) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
 
-	flags = 0;
 	ext = getext(argv[1], &flags);
 
 	for (i = 0; i < maxarchive; i++)
@@ -506,10 +652,8 @@ VOID printlaunchcomm(n, omit, fp)
 int n, omit;
 FILE *fp;
 {
-	char buf[MAXNUMCOLS + 1];
-# if	FD < 2
+	char buf[MAXLONGWIDTH + 1];
 	int i, ch;
-# endif
 
 	fputs(BL_LAUNCH, fp);
 	fputc(' ', fp);
@@ -521,16 +665,41 @@ FILE *fp;
 # if	FD >= 2
 	if (!launchlist[n].format) return;
 
-	fputc('\t', fp);
-	fputsmeta(launchlist[n].format, fp);
+	ch = 0;
+	for (i = 0; launchlist[n].format[i]; i++) {
+		if (i) {
+			fputs(" \\\n", fp);
+			ch++;
+		}
+		fputs("\t-f ", fp);
+		fputsmeta(launchlist[n].format[i], fp);
+	}
+	if (launchlist[n].lignore) for (i = 0; launchlist[n].lignore[i]; i++) {
+		fputs(" \\\n\t-i ", fp);
+		ch++;
+		fputsmeta(launchlist[n].lignore[i], fp);
+	}
+	if (launchlist[n].lerror) for (i = 0; launchlist[n].lerror[i]; i++) {
+		fputs(" \\\n\t-e ", fp);
+		ch++;
+		fputsmeta(launchlist[n].lerror[i], fp);
+	}
 	if (!launchlist[n].topskip && !launchlist[n].bottomskip) return;
-	fputc('\t', fp);
 
-	ascnumeric(buf, launchlist[n].topskip, 0, MAXNUMCOLS);
-	fputs(buf, fp);
-	fputc(' ', fp);
-	ascnumeric(buf, launchlist[n].bottomskip, 0, MAXNUMCOLS);
-	fputs(buf, fp);
+	if (launchlist[n].topskip) {
+		if (ch) fputs(" \\\n", fp);
+		fputs("\t-t ", fp);
+		ascnumeric(buf, launchlist[n].topskip, 0, MAXLONGWIDTH);
+		fputs(buf, fp);
+	}
+	if (launchlist[n].bottomskip) {
+		if (launchlist[n].topskip) fputc(' ', fp);
+		else if (ch) fputs(" \\\n\t", fp);
+		else fputc('\t', fp);
+		fputs("-b ", fp);
+		ascnumeric(buf, launchlist[n].bottomskip, 0, MAXLONGWIDTH);
+		fputs(buf, fp);
+	}
 # else	/* FD < 2 */
 	if (launchlist[n].topskip >= 255) return;
 	if (omit) {
@@ -538,10 +707,10 @@ FILE *fp;
 		return;
 	}
 	fputc('\t', fp);
-	ascnumeric(buf, launchlist[n].topskip, 0, MAXNUMCOLS);
+	ascnumeric(buf, launchlist[n].topskip, 0, MAXLONGWIDTH);
 	fputs(buf, fp);
 	fputc(',', fp);
-	ascnumeric(buf, launchlist[n].bottomskip, 0, MAXNUMCOLS);
+	ascnumeric(buf, launchlist[n].bottomskip, 0, MAXLONGWIDTH);
 	fputs(buf, fp);
 	ch = ':';
 	for (i = 0; i < MAXLAUNCHFIELD; i++) {
@@ -549,13 +718,13 @@ FILE *fp;
 		if (launchlist[n].field[i] >= 255) fputc('0', fp);
 		else {
 			ascnumeric(buf, launchlist[n].field[i] + 1,
-				0, MAXNUMCOLS);
+				0, MAXLONGWIDTH);
 			fputs(buf, fp);
 		}
 		if (launchlist[n].delim[i] >= 128) {
 			fputc('[', fp);
 			ascnumeric(buf, launchlist[n].delim[i] - 128,
-				0, MAXNUMCOLS);
+				0, MAXLONGWIDTH);
 			fputs(buf, fp);
 			fputc(']', fp);
 		}
@@ -568,7 +737,7 @@ FILE *fp;
 			fputc('-', fp);
 			if (launchlist[n].width[i] >= 128) {
 				ascnumeric(buf, launchlist[n].width[i] - 128,
-					0, MAXNUMCOLS);
+					0, MAXLONGWIDTH);
 				fputs(buf, fp);
 			}
 			else {
@@ -584,13 +753,13 @@ FILE *fp;
 		if (launchlist[n].sep[i] >= 255) break;
 		fputc(ch, fp);
 		ascnumeric(buf, launchlist[n].sep[i] + 1,
-			0, MAXNUMCOLS);
+			0, MAXLONGWIDTH);
 		fputs(buf, fp);
 		ch = ',';
 	}
 	if (launchlist[n].lines > 1) {
 		if (!i) fputc(':', fp);
-		ascnumeric(buf, launchlist[n].lines, 0, MAXNUMCOLS);
+		ascnumeric(buf, launchlist[n].lines, 0, MAXLONGWIDTH);
 		fputs(buf, fp);
 	}
 # endif	/* FD < 2 */
@@ -601,7 +770,8 @@ int argc;
 char *argv[];
 {
 	char *ext;
-	int i, flags;
+	int i;
+	u_char flags;
 
 	if (argc >= 3) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -614,7 +784,6 @@ char *argv[];
 		hitkey(0);
 	}
 	else {
-		flags = 0;
 		ext = getext(argv[1], &flags);
 		for (i = 0; i < maxlaunch; i++)
 			if (!extcmp(ext, flags,
@@ -652,7 +821,8 @@ int argc;
 char *argv[];
 {
 	char *ext;
-	int i, flags;
+	int i;
+	u_char flags;
 
 	if (argc >= 3) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -665,7 +835,6 @@ char *argv[];
 		hitkey(0);
 	}
 	else {
-		flags = 0;
 		ext = getext(argv[1], &flags);
 		for (i = 0; i < maxarchive; i++)
 			if (!extcmp(ext, flags,
@@ -688,7 +857,8 @@ char **sargv, **dargv;
 {
 	FILE *fp;
 	char *cp, *line, **argv;
-	int i, j, n, size, argc, dargc, meta, quote;
+	ALLOC_T size;
+	int i, j, n, argc, dargc, meta, quote, quoted;
 
 	dargc = countvar(dargv);
 	for (n = 1; sargv[n]; n++) {
@@ -706,7 +876,8 @@ char **sargv, **dargv;
 			freevar(dargv);
 			return(NULL);
 		}
-		if (!(fp = Xfopen(cp, "r"))) {
+		if (cp[0] == '-' && !cp[1]) fp = stdin;
+		else if (!(fp = Xfopen(cp, "r"))) {
 			builtinerror(sargv, cp, -1);
 			freevar(dargv);
 			return(NULL);
@@ -717,8 +888,8 @@ char **sargv, **dargv;
 		argv[0] = strdup2(sargv[0]);
 		argv[1] = NULL;
 		j = meta = 0;
-		quote = '\0';
-		cp = c_malloc(size);
+		quote = quoted = '\0';
+		cp = c_realloc(NULL, 0, &size);
 		while ((line = fgets2(fp, 0))) {
 			if (!meta && !quote && *line == '#') {
 				free(line);
@@ -726,8 +897,11 @@ char **sargv, **dargv;
 			}
 			meta = 0;
 			for (i = 0; line[i]; i++) {
-				cp = c_realloc(cp, j + 2, size);
-				if (line[i] == quote) quote = '\0';
+				cp = c_realloc(cp, j + 2, &size);
+				if (line[i] == quote) {
+					quoted = quote;
+					quote = '\0';
+				}
 #  ifdef	CODEEUC
 				else if (isekana(line, i)) {
 					cp[j++] = line[i++];
@@ -738,7 +912,7 @@ char **sargv, **dargv;
 					cp[j++] = line[i++];
 					cp[j++] = line[i];
 				}
-				else if (quote == '\'') cp[j++] = line[i];
+				else if (quote) cp[j++] = line[i];
 				else if (line[i] == PMETA) {
 					if (!line[++i]) {
 						meta = 1;
@@ -746,13 +920,14 @@ char **sargv, **dargv;
 					}
 					cp[j++] = line[i];
 				}
-				else if (quote) cp[j++] = line[i];
-				else if (line[i] == '\'' || line[i] == '"')
+				else if (line[i] == '\'' || line[i] == '"') {
+					quoted = '\0';
 					quote = line[i];
+				}
 				else if (!strchr(IFS_SET, line[i]))
 					cp[j++] = line[i];
-				else if (j) {
-					cp[j] = '\0';
+				else if (j || quoted) {
+					quoted = cp[j] = '\0';
 					argv = (char **)realloc2(argv,
 						(argc + 2) * sizeof(char *));
 					argv[argc++] = strdup2(cp);
@@ -762,8 +937,8 @@ char **sargv, **dargv;
 			}
 			if (meta);
 			else if (quote) cp[j++] = '\n';
-			else if (j) {
-				cp[j] = '\0';
+			else if (j || quoted) {
+				quoted = cp[j] = '\0';
 				argv = (char **)realloc2(argv,
 					(argc + 2) * sizeof(char *));
 				argv[argc++] = strdup2(cp);
@@ -772,7 +947,8 @@ char **sargv, **dargv;
 			}
 			free(line);
 		}
-		Xfclose(fp);
+		if (fp != stdin) Xfclose(fp);
+		else clearerr(fp);
 		if (j) {
 			cp[j] = '\0';
 			argv = (char **)realloc2(argv,
@@ -795,19 +971,21 @@ launchtable *list;
 	int i;
 
 	browselevel = 0;
+	freevar(browsevar);
+	browsevar = NULL;
 	if (argvar) {
 		for (i = 1; argvar[i]; i++) {
 			free(argvar[i]);
 			argvar[i] = NULL;
 		}
 	}
-	setenv2(BROWSECWD, NULL);
-	setenv2(BROWSELAST, NULL);
 	if (!list) return;
 	for (i = 0; list[i].comm; i++) {
 		if (list[i].ext) free(list[i].ext);
 		free(list[i].comm);
-		if (list[i].format) free(list[i].format);
+		freevar(list[i].format);
+		freevar(list[i].lignore);
+		freevar(list[i].lerror);
 	}
 	free(list);
 }
@@ -817,8 +995,8 @@ int argc;
 char *argv[];
 {
 	launchtable *list;
-	char *cp, **argv2;
-	int i, c, n, lvl, err;
+	char **argv2;
+	int i, n, lvl;
 
 #  ifndef	_NOORIGSHELL
 	if (shellmode) {
@@ -826,75 +1004,40 @@ char *argv[];
 		return(-1);
 	}
 #  endif
+	if (inruncom) {
+		builtinerror(argv, NULL, ER_NOTINRUNCOM);
+		return(-1);
+	}
 	if (browselist) {
 		builtinerror(argv, NULL, ER_NOTRECURSE);
 		return(-1);
 	}
-	argv2 = (char **)malloc2(1 * sizeof(char *));
-	argv2[0] = NULL;
+	argv2 = (char **)malloc2(2 * sizeof(char *));
+	argv2[0] = strdup2(argv[0]);
+	argv2[1] = NULL;
 	if (!(argv2 = readargv(argv, argv2))) return(-1);
 
 	list = NULL;
-	n = lvl = 0;
+	lvl = 0;
+	n = 1;
 	while (argv2[n]) {
 		list = (launchtable *)realloc2(list,
 			(lvl + 2) * sizeof(launchtable));
 		list[lvl].topskip = list[lvl].bottomskip = 0;
 		list[lvl].comm = strdup2(argv2[n++]);
 		list[lvl].flags = 0;
-		list[lvl].ext = list[lvl].format = list[lvl + 1].comm = NULL;
-		err = 0;
-		while (argv2[n] && argv2[n][0] == '-') {
-			c = argv2[n][1];
-			if (!c || c == '-') {
-				n++;
+		list[lvl].ext = list[lvl + 1].comm = NULL;
+		list[lvl].format = list[lvl].lignore = list[lvl].lerror = NULL;
+		while (argv2[n]) {
+			i = getlaunchopt(n, argv2, "fietbpdn", &(list[lvl]));
+			if (!i) break;
+			else if (i > 0) n = i;
+			else {
+				freevar(argv2);
+				freebrowse(list);
+				return(-1);
 				break;
 			}
-			else if (!strchr("cftbdn", c)) break;
-			if (argv2[n][2]) cp = &(argv2[n][2]);
-			else if (argv2[n + 1]) cp = argv2[++n];
-			else {
-				err = ER_NOARGSPEC;
-				cp = argv2[n];
-				break;
-			}
-
-			if (c == 'c') {
-				if (list[lvl].ext) free (list[lvl].ext);
-				list[lvl].ext = strdup2(cp);
-			}
-			else if (c == 'f') {
-				if (list[lvl].format) free (list[lvl].format);
-				list[lvl].format = strdup2(cp);
-			}
-			else if (c == 't' || c == 'b') {
-				if ((i = atoi2(cp)) < 0) {
-					err = ER_SYNTAXERR;
-					break;
-				}
-				if (c == 't') list[lvl].topskip = i;
-				else list[lvl].bottomskip = i;
-			}
-			else {
-				if (!strcmp(cp, "loop"))
-					i = (c == 'd')
-						? LF_DIRLOOP : LF_FILELOOP;
-				else if (!strcmp(cp, "nocwd"))
-					i = (c == 'd')
-						? LF_DIRNOCWD : LF_FILENOCWD;
-				else {
-					err = ER_SYNTAXERR;
-					break;
-				}
-				list[lvl].flags |= i;
-			}
-			n++;
-		}
-		if (err) {
-			builtinerror(argv, cp, err);
-			freevar(argv2);
-			freebrowse(list);
-			return(-1);
 		}
 		lvl++;
 	}
@@ -1602,7 +1745,7 @@ char *argv[];
 		}
 		if (n != 1 && ch == ' ') break;
 	}
-	stdiomode(1);
+	stdiomode();
 	return(0);
 }
 #endif	/* !MSDOS && !_NOKEYMAP */
@@ -1736,24 +1879,19 @@ char *argv[];
 			len += l2 - l1;
 			if (len > max) {
 				max = len;
+				j = cp - s;
 				s = realloc2(s, max + 1);
+				cp = s + j;
 			}
-			if (l1 > l2)
-				for (j = (cp - s) + l2; j <= len; j++)
-					s[j] = s[j - l2 + l1];
-			else if (l1 < l2)
-				for (j = len; j >= (cp - s) + l2; j--)
-					s[j] = s[j - l2 + l1];
+			memmove(&(cp[l2]), &(cp[l1]),
+				&(s[len]) - &(cp[l2]) + 1);
 			strncpy(cp, r, l2);
 		}
 		kanjifputs(s, stdout);
 		fputc('\n', stdout);
 		fflush(stdout);
 		entryhist(0, s, 0);
-		if ((ret = execmacro(s, NULL, 1, -1, 1)) < 0) {
-			internal_status = 1;
-			ret = 0;
-		}
+		if ((ret = execmacro(s, NULL, 1, -1, 1)) < 0) ret = 0;
 		free(s);
 		return(ret);
 	}
@@ -1846,10 +1984,7 @@ char *argv[];
 
 	Xfclose(fp);
 	ret = execmacro(editor, path, 1, 0, 1);
-	if (ret < 0) {
-		internal_status = 1;
-		ret = 0;
-	}
+	if (ret < 0) ret = 0;
 	if (ret) {
 		builtinerror(argv, editor, -1);
 		rmtmpfile(path);
@@ -1968,7 +2103,7 @@ u_long sum[4], x[16];
 	s[1] = 11;
 	s[2] = 16;
 	s[3] = 23;
-	t[0] = 0xfffa3942; 	/* floor(4294967296.0 * fabs(sin(32.0))) */
+	t[0] = 0xfffa3942;	/* floor(4294967296.0 * fabs(sin(32.0))) */
 	t[1] = 0x8771f681;
 	t[2] = 0x6d9d6122;
 	t[3] = 0xfde5380c;
@@ -2113,6 +2248,7 @@ char *argv[];
 			return(-1);
 		}
 		fputc('\n', stdout);
+		fflush(stdout);
 		return(0);
 	}
 
@@ -2126,6 +2262,7 @@ char *argv[];
 		fputc('\n', stdout);
 		hitkey(0);
 	}
+	fflush(stdout);
 	return(ret);
 }
 
@@ -2137,10 +2274,7 @@ char *argv[];
 	int ret;
 
 	if (argc <= 1 || !(cp = catvar(&(argv[1]), ' '))) return(0);
-	if ((ret = execmacro(cp, NULL, 1, -1, 0)) < 0) {
-		internal_status = 1;
-		ret = 0;
-	}
+	if ((ret = execmacro(cp, NULL, 1, -1, 0)) < 0) ret = 0;
 	free(cp);
 	return(ret);
 }
@@ -2190,6 +2324,7 @@ char *argv[];
 			fputs(argv[0], stderr);
 			fputs("[-i inputcode] [-o outputcode] [filename]\n",
 				stderr);
+			fflush(stderr);
 			return(-1);
 		}
 	}
@@ -2230,13 +2365,55 @@ char *argv[];
 		fputc('\n', fpout);
 		free(dest);
 	}
+	fflush(fpout);
 
 	discardunitable();
 	if (fpin != stdin) Xfclose(fpin);
+	else clearerr(fpin);
 	if (fpout != stdout) Xfclose(fpout);
 	return(0);
 }
 # endif	/* !MSDOS && !_NOKANJICONV */
+
+static int NEAR getinputstr(argc, argv)
+int argc;
+char *argv[];
+{
+	char *s, *duppromptstr;
+	int wastty;
+
+	if (!(wastty = isttyiomode)) ttyiomode(1);
+	duppromptstr = promptstr;
+	promptstr = (argc >= 2) ? argv[1] : "";
+	s = inputstr(NULL, 0, -1, NULL, -1);
+	promptstr = duppromptstr;
+	if (!wastty) stdiomode();
+	if (!s) return(-1);
+
+	kanjifputs(s, stdout);
+	fputc('\n', stdout);
+	fflush(stdout);
+	free(s);
+	return(0);
+}
+
+static int NEAR getyesno(argc, argv)
+int argc;
+char *argv[];
+{
+	char *s;
+	int ret, wastty;
+
+	if (argc < 2) s = "";
+	else s = argv[1];
+
+	if (!(wastty = isttyiomode)) ttyiomode(1);
+	lcmdline = -1;
+	ret = yesno(s);
+	if (!wastty) stdiomode();
+	return((ret) ? 0 : -1);
+}
+
 #endif	/* FD >= 2 */
 
 #ifdef	_NOORIGSHELL
@@ -2651,7 +2828,7 @@ char *argv[];
 	}
 	ttyiomode(1);
 	ret = loadruncom(argv[1], 1);
-	stdiomode(1);
+	stdiomode();
 	if (ret < 0) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
@@ -2697,6 +2874,7 @@ char *argv[];
 		fputs(": ", stderr);
 		kanjifputs(RESTR_K, stderr);
 		fputc('\n', stderr);
+		fflush(stderr);
 		return(RET_NOTICE);
 	}
 	if (argc > 2 || !filelist || maxfile <= 0) {
@@ -2704,12 +2882,13 @@ char *argv[];
 		fputs(": ", stderr);
 		kanjifputs(ILFNC_K, stderr);
 		fputc('\n', stderr);
+		fflush(stderr);
 		return(RET_NOTICE);
 	}
 	ttyiomode(0);
 	internal_status = (*funclist[n].func)(argv[1]);
 	locate(0, n_line - 1);
-	stdiomode(0);
+	stdiomode();
 	return(RET_SUCCESS);
 }
 
@@ -2719,7 +2898,7 @@ char *command;
 int comline, ignorelist;
 {
 	char *cp, **argv;
-	int i, n, argc;
+	int i, n, nl, argc;
 
 	n = -1;
 	command = skipspace(command);
@@ -2734,9 +2913,9 @@ int comline, ignorelist;
 			tflush();
 		}
 		hitkey((comline) ? 1 : -1);
-		stdiomode(0);
+		nl = stdiomode();
 		n = execbuiltin(i, argc, argv);
-		ttyiomode(0);
+		ttyiomode(nl);
 		if (n == RET_SUCCESS) hitkey(3);
 		else if (comline) {
 			hideclock = 1;
@@ -2748,9 +2927,9 @@ int comline, ignorelist;
 			locate(0, n_line - 1);
 			tflush();
 		}
-		stdiomode(0);
+		nl = stdiomode();
 		n = execinternal(i, argc, argv);
-		ttyiomode(0);
+		ttyiomode(nl);
 		if (n == RET_SUCCESS);
 		else if (comline) {
 			hideclock = 1;
@@ -2763,10 +2942,10 @@ int comline, ignorelist;
 			locate(0, n_line - 1);
 			tflush();
 		}
-		stdiomode(0);
+		nl = stdiomode();
 		n = setuserfunc(i, argv);
 		n = (n < 0) ? RET_NOTICE : RET_SUCCESS;
-		ttyiomode(0);
+		ttyiomode(nl);
 		if (n == RET_SUCCESS);
 		else if (comline) {
 			hideclock = 1;
@@ -2835,7 +3014,9 @@ VOID freedefine(VOID_A)
 		free(launchlist[i].ext);
 		free(launchlist[i].comm);
 # if	FD >= 2
-		if (launchlist[i].format) free(launchlist[i].format);
+		freevar(launchlist[i].format);
+		freevar(launchlist[i].lignore);
+		freevar(launchlist[i].lerror);
 # endif
 	}
 	for (i = 0; i < maxarchive; i++) {

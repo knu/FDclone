@@ -28,18 +28,35 @@ extern int lcmdline;
 extern int hideclock;
 extern int internal_status;
 
+#define	MACROMETA	((char)-1)
+#define	isneedburst(s, i) \
+			((s)[i] == MACROMETA && ((s)[(i) + 1] & F_BURST))
+#define	isneedmark(s, i) \
+			((s)[i] == MACROMETA && ((s)[(i) + 1] & F_MARK))
+#ifdef	ARG_MAX
+#define	MAXARGNUM	ARG_MAX
+#else
+# ifdef	NCARGS
+# define	MAXARGNUM	NCARGS
+# endif
+#endif
+
 static int NEAR checksc __P_((char *, int, char *));
 #if	!MSDOS && !defined (_NOKANJICONV)
-static int NEAR extconv __P_((char *, int, int, int));
+static int NEAR extconv __P_((char **, int, int, ALLOC_T *, int));
 #endif
-static int NEAR setarg __P_((char *, int, char *, char *, u_char));
-static int NEAR setargs __P_((char *, int, int, int, macrostat *));
-static int NEAR insertarg __P_((char *, char *, char *, int));
+static int NEAR setarg __P_((char **, int, ALLOC_T *, char *, char *, u_char));
+#ifdef	_NOEXTRAMACRO
+static int NEAR setargs __P_((char **, int, int, int, ALLOC_T *, macrostat *));
+static char *NEAR insertarg __P_((char *, char *, int));
+#endif
 static char *NEAR addoption __P_((char *, char *, macrostat *, int));
-static int NEAR system3 __P_((char *, int, int));
 #ifdef	_NOORIGSHELL
+static int NEAR system3 __P_((char *, int, int));
 static char *NEAR evalargs __P_((char *, int, char *[]));
 static char *NEAR evalalias __P_((char *));
+#else
+#define	system3(c, n, i)	system2(c, n)
 #endif
 
 #ifdef	_NOORIGSHELL
@@ -82,57 +99,50 @@ char *arg;
 }
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-static int NEAR extconv(buf, ptr, eol, code)
-char *buf;
-int ptr, eol, code;
+static int NEAR extconv(bufp, ptr, eol, sizep, code)
+char **bufp;
+int ptr, eol;
+ALLOC_T *sizep;
+int code;
 {
-	char *cp, tmp[MAXCOMMSTR + 1];
-	int len, total;
+# ifndef	_NOKANJIFCONV
+	char rpath[MAXPATHLEN];
+
+# endif
+	char *cp;
+	int len;
 
 # ifndef	_NOKANJIFCONV
 	if (code < 0) {
-		cp = _evalpath(&(buf[ptr]), &(buf[eol]), 0, 0);
-		code = getkcode(cp);
+		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]), 0, 0);
+		realpath2(cp, rpath, 1);
 		free(cp);
+		code = getkcode(rpath);
 	}
 # endif
-	buf[eol] = '\0';
-	cp = &(buf[ptr]);
-	total = 0;
-	for (;;) {
-		len = kanjiconv(&(tmp[total]), cp,
-			MAXCOMMSTR - ptr - total, DEFCODE, code, L_FNAME);
-		total += len;
-		cp += strlen(cp);
-		if (cp >= &(buf[eol])) break;
-		tmp[total++] = '\0';
-		cp++;
-		tmp[total++] = *cp++;
-	}
+	(*bufp)[eol] = '\0';
+	len = (eol - ptr) * 3 + 3;
+	cp = malloc2(len + 1);
+	len = kanjiconv(cp, &((*bufp)[ptr]), len, DEFCODE, code, L_FNAME);
 
-	memcpy(&(buf[ptr]), tmp, total);
-	return(total);
+	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
+	memcpy(&((*bufp)[ptr]), cp, len);
+	free(cp);
+	return(ptr + len);
 }
 #endif	/* !MSDOS && !_NOKANJICONV */
 
-static int NEAR setarg(buf, ptr, dir, arg, flags)
-char *buf;
+static int NEAR setarg(bufp, ptr, sizep, dir, arg, flags)
+char **bufp;
 int ptr;
+ALLOC_T *sizep;
 char *dir, *arg;
 u_char flags;
 {
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-	char conv[MAXPATHLEN];
-#endif
-#ifndef	_NOROCKRIDGE
-	char rbuf[MAXPATHLEN];
-#endif
-	char *cp, path[MAXPATHLEN];
+	char *cp, path[MAXPATHLEN], conv[MAXPATHLEN];
 	int len, optr;
 
-	optr = ptr;
-	ptr = checksc(buf, ptr, arg);
-	if (!arg || !*arg) return(ptr - optr);
+	if (!arg || !*arg) return(checksc(*bufp, ptr, NULL) - ptr);
 	if (!dir || !*dir) {
 #if	MSDOS && !defined (_NOUSELFN)
 		if ((flags & F_TOSFN) && shortname(arg, path) == path)
@@ -150,45 +160,52 @@ u_char flags;
 #endif
 	}
 
-	cp = arg;
+	if (arg != path) arg = convput(conv, arg, 1, 0, NULL, NULL);
 #if	!MSDOS && !defined (_NOKANJIFCONV)
-	arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, getkcode(arg));
+	else arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, fnamekcode);
 #endif
-#ifndef	_NOROCKRIDGE
-	if (cp != path) arg = detransfile(cp, rbuf, 0);
+	optr = ptr;
+	ptr = checksc(*bufp, ptr, arg);
+#ifndef	_NOEXTRAMACRO
+	if (flags & (F_BURST | F_MARK)) arg = strdup2(arg);
+	else
 #endif
 	arg = killmeta(arg);
 
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
 		len = cp - arg;
 	else len = strlen(arg);
-	if (ptr + len > MAXCOMMSTR) {
-		free(arg);
-		return(MAXCOMMSTR);
-	}
 
-	strncpy(&(buf[ptr]), arg, len);
+	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
+	strncpy(&((*bufp)[ptr]), arg, len);
 	free(arg);
 	return(len + ptr - optr);
 }
 
-static int NEAR setargs(buf, ptr, blen, eol, stp)
-char *buf;
+#ifdef	_NOEXTRAMACRO
+/*ARGSUSED*/
+static int NEAR setargs(bufp, ptr, blen, eol, sizep, stp)
+char **bufp;
 int ptr, blen, eol;
+ALLOC_T *sizep;
 macrostat *stp;
 {
-	char *cp, *s, *dir, tmp[MAXCOMMSTR + 1];
-	int i, n, optr, len, flen, rlen;
+# ifdef	MAXCOMMSTR
+	int optr;
+# endif
+	char *cp, *s, *dir, *tmp;
+	int i, n, len, flen, rlen;
 	u_char flags;
 
-#ifdef	_NOARCHIVE
+# ifdef	_NOARCHIVE
 	dir = NULL;
-#else
+# else
 	dir = (archivefile) ? archivedir : NULL;
-#endif
+# endif
 
 	len = eol - ptr;
-	memcpy(tmp, &(buf[ptr]), len);
+	tmp = malloc2(len + 1);
+	memcpy(tmp, &((*bufp)[ptr]), len);
 	tmp[len] = '\0';
 	cp = tmp + blen;
 	flags = *(++cp);
@@ -201,111 +218,141 @@ macrostat *stp;
 
 	ptr += blen;
 	if (!n_args) {
-		len = setarg(buf, ptr, dir, filelist[filepos].name, flags);
-		if (len >= MAXCOMMSTR || ptr + len + flen > MAXCOMMSTR)
-			return(MAXCOMMSTR);
+		len = setarg(bufp, ptr, sizep,
+			dir, filelist[filepos].name, flags);
 		ptr += len;
-		strncpy(&(buf[ptr]), cp, flen);
+# ifdef	MAXCOMMSTR
+		if (ptr > MAXCOMMSTR || ptr + flen > MAXCOMMSTR) {
+			free(tmp);
+			return(-1);
+		}
+# endif
+		*bufp = c_realloc(*bufp, ptr + flen + 1, sizep);
+		strncpy(&((*bufp)[ptr]), cp, flen);
 		ptr += flen;
 	}
 	else for (i = n = 0; i < maxfile; i++) {
 		if (!isarg(&(filelist[i]))) continue;
+# ifdef	MAXCOMMSTR
 		optr = ptr;
+# endif
 		if (n) {
+# ifdef	MAXCOMMSTR
 			if (ptr + blen + 1 > MAXCOMMSTR) break;
-			buf[ptr++] = ' ';
-			strncpy(&(buf[ptr]), tmp, blen);
+# endif
+			*bufp = c_realloc(*bufp, ptr + blen + 1 + 1, sizep);
+			(*bufp)[ptr++] = ' ';
+			strncpy(&((*bufp)[ptr]), tmp, blen);
 			ptr += blen;
 		}
-		len = setarg(buf, ptr, dir, filelist[i].name, flags);
-		if (len >= MAXCOMMSTR || ptr + len + flen > MAXCOMMSTR) {
-			if (!n) return(MAXCOMMSTR);
+		len = setarg(bufp, ptr, sizep, dir, filelist[i].name, flags);
+		ptr += len;
+# ifdef	MAXCOMMSTR
+		if (ptr > MAXCOMMSTR || ptr + flen > MAXCOMMSTR) {
+			if (!n) {
+				free(tmp);
+				return(-1);
+			}
 			ptr = optr;
 			break;
 		}
-		ptr += len;
-		strncpy(&(buf[ptr]), cp, flen);
+# endif
+		*bufp = c_realloc(*bufp, ptr + flen + 1, sizep);
+		strncpy(&((*bufp)[ptr]), cp, flen);
 		ptr += flen;
 		filelist[i].tmpflags &= ~F_ISARG;
 		n_args--;
 		n++;
 	}
 
+# ifdef	MAXCOMMSTR
 	if (ptr + rlen > MAXCOMMSTR) {
 		for (i = MAXCOMMSTR - ptr; i < rlen; i++)
-			if (!s[i++] && !(s[i] & F_BURST)) (stp -> needmark)--;
+			if (isneedmark(s, i)) {
+				(stp -> needmark)--;
+				i++;
+			}
 		rlen = MAXCOMMSTR - ptr;
 	}
-	memcpy(&(buf[ptr]), s, rlen);
+# endif
+	*bufp = c_realloc(*bufp, ptr + rlen + 1, sizep);
+	memcpy(&((*bufp)[ptr]), s, rlen);
 	ptr += rlen;
+	free(tmp);
 	return(ptr - eol);
 }
 
-static int NEAR insertarg(buf, format, arg, needmark)
-char *buf, *format, *arg;
+static char *NEAR insertarg(format, arg, needmark)
+char *format, *arg;
 int needmark;
 {
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-	char conv[MAXPATHLEN];
-#endif
-#if	MSDOS && !defined (_NOUSELFN)
+# if	MSDOS && !defined (_NOUSELFN)
 	char *org, alias[MAXPATHLEN];
-#endif
-#ifndef	_NOROCKRIDGE
-	char rbuf[MAXPATHLEN];
-#endif
-	char *cp, *src, *ins;
-	int i, len, ptr;
+# endif
+	char *cp, *src, *ins, *buf, conv[MAXPATHLEN];
+	ALLOC_T size;
+	int i, j, len;
 
-#if	MSDOS && !defined (_NOUSELFN)
+# if	MSDOS && !defined (_NOUSELFN)
 	org = arg;
 	*alias = '\0';
-#endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-	arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, getkcode(arg));
-#endif
-#ifndef	_NOROCKRIDGE
-	arg = detransfile(arg, rbuf, 0);
-#endif
-	arg = killmeta(arg);
-	ptr = strlen(format);
-	if (ptr > MAXCOMMSTR) i = 0;
-	else {
-		strcpy(buf, format);
-		src = format + ptr + 1;
+# endif
+	arg = convput(conv, arg, 1, 0, NULL, NULL);
+	for (j = 0; format[j]; j++) if (isneedmark(format, j)) break;
+	buf = c_realloc(NULL, 0, &size);
+# ifdef	MAXCOMMSTR
+	if (j > MAXCOMMSTR) i = j = 0;
+	else
+# endif
+	{
+		buf = c_realloc(buf, j + 1, &size);
+		memcpy(buf, format, j);
+		src = format + j + 1;
 		for (i = 0; i < needmark; i++) {
 			ins = arg;
-#if	MSDOS && !defined (_NOUSELFN)
+# if	MSDOS && !defined (_NOUSELFN)
 			if (*src & F_TOSFN) {
 				if (!*alias) {
 					if (shortname(org, alias) == alias)
 						org = alias;
-					org = killmeta(org);
-					strcpy(alias, org);
-					free(org);
+					else strcpy(alias, org);
 				}
 				ins = alias;
 			}
-#endif
-			if ((*src & F_NOEXT) && (cp = strrchr(ins, '.')))
-				len = cp - ins;
-			else len = strlen(ins);
+# endif
+			j = checksc(buf, j, ins);
+			cp = killmeta(ins);
 
-			ptr = checksc(buf, ptr, ins);
-			if (ptr + len > MAXCOMMSTR) break;
-			strncpy(&(buf[ptr]), ins, len);
-			ptr += len;
-			len = strlen(++src);
-			if (ptr + len > MAXCOMMSTR) break;
-			strcpy(&(buf[ptr]), src);
-			ptr += len;
+			if ((*src & F_NOEXT) && (cp = strrchr(cp, '.')))
+				len = cp - cp;
+			else len = strlen(cp);
+# ifdef	MAXCOMMSTR
+			if (j + len > MAXCOMMSTR) break;
+# endif
+			buf = c_realloc(buf, j + len + 1, &size);
+			strncpy(&(buf[j]), cp, len);
+			free(cp);
+			j += len;
+			src++;
+			for (len = 0; src[len]; len++)
+				if (isneedmark(src, len)) break;
+# ifdef	MAXCOMMSTR
+			if (j + len > MAXCOMMSTR) break;
+# endif
+			buf = c_realloc(buf, j + len + 1, &size);
+			memcpy(&(buf[j]), src, len);
+			j += len;
 			src += len + 1;
 		}
 	}
-	free(arg);
-	if (i < needmark) return(0);
-	return(1);
+	buf[j] = '\0';
+	if (i < needmark) {
+		free(buf);
+		return(NULL);
+	}
+	return(buf);
 }
+#endif	/* _NOEXTRAMACRO */
 
 char *evalcommand(command, arg, stp, ignorelist)
 char *command, *arg;
@@ -317,8 +364,9 @@ int ignorelist;
 	int tmpcode, cnvptr;
 #endif
 	macrostat st;
-	char *cp, line[MAXCOMMSTR + 1];
-	int i, j, c, len, needburst, uneval, setflag;
+	char *cp, *line;
+	ALLOC_T size;
+	int i, j, c, len, quote, setflag;
 	u_char flags;
 
 	if (stp) flags = stp -> flags;
@@ -327,45 +375,42 @@ int ignorelist;
 		flags = 0;
 	}
 	stp -> addopt = -1;
-	stp -> needmark = needburst = 0;
-	uneval = '\0';
+	stp -> needmark = stp -> needburst = 0;
+	quote = '\0';
 #if	!MSDOS && !defined (_NOKANJICONV)
 	cnvptr = 0;
 #endif
 
+	line = c_realloc(NULL, 0, &size);
 	for (i = j = 0; command[i]; i++) {
-		if (j > MAXCOMMSTR) break;
-		c = (uneval) ? '\0' : command[i];
-		if (flags & (F_NOEXT | F_TOSFN));
-		else if (c == '%') c = command[++i];
-		else {
-			line[j++] = command[i];
-#if	MSDOS && defined (_NOORIGSHELL)
-			if (command[i] == uneval) uneval = 0;
-			else if (command[i] == '"' || command[i] == '\'')
-				uneval = command[i];
-#else
-			if (command[i] == PMETA && command[i + 1]
-			&& uneval != '\'')
-				line[j++] = command[++i];
-			else if (command[i] == uneval) uneval = 0;
-			else if (command[i] == '"' || command[i] == '\''
-			|| command[i] == '`')
-				uneval = command[i];
+		line = c_realloc(line, j + 1, &size);
+
+		c = '\0';
+		if (command[i] == quote) quote = '\0';
+#ifdef	CODEEUC
+		else if (isekana(command, i)) line[j++] = command[i++];
 #endif
+		else if (iskanji1(command, i)) line[j++] = command[i++];
+		else if (quote == '\'');
+		else if (ismeta(command, i, quote)) line[j++] = command[i++];
+		else if (quote);
+		else if (command[i] == '\'' || command[i] == '"')
+			quote = command[i];
+		else if (command[i] == '%') c = command[++i];
+		else if (flags & (F_NOEXT | F_TOSFN)) c = command[i];
+
+		if (!c) {
+			line[j++] = command[i];
 			continue;
 		}
 
 		len = setflag = 0;
 		switch (toupper2(c)) {
-			case '\0':
-				i--;
-				break;
 			case 'P':
-				len = setarg(line, j, NULL, fullpath, flags);
-				if (len >= MAXCOMMSTR) c = -1;
+				len = setarg(&line, j, &size,
+					NULL, fullpath, flags);
 				break;
-#if	MSDOS && !defined (_NOUSELFN)
+#if	MSDOS
 			case 'S':
 				flags |= F_TOSFN;
 				c = toupper2(command[i + 1]);
@@ -376,14 +421,14 @@ int ignorelist;
 /*FALLTHRU*/
 #endif
 			case 'C':
-				len = setarg(line, j, NULL, arg, flags);
-				if (len >= MAXCOMMSTR) c = -1;
+				len = setarg(&line, j, &size,
+					NULL, arg, flags);
 				flags |= F_ARGSET;
 				break;
 			case 'X':
 				flags |= F_NOEXT;
 				c = toupper2(command[i + 1]);
-#if	MSDOS && !defined (_NOUSELFN)
+#if	MSDOS
 				if (c == 'T' || c == 'M' || c == 'S') {
 #else
 				if (c == 'T' || c == 'M') {
@@ -391,8 +436,8 @@ int ignorelist;
 					setflag++;
 					break;
 				}
-				len = setarg(line, j, NULL, arg, flags);
-				if (len >= MAXCOMMSTR) c = -1;
+				len = setarg(&line, j, &size,
+					NULL, arg, flags);
 				flags |= F_ARGSET;
 				break;
 			case 'T':
@@ -402,17 +447,17 @@ int ignorelist;
 					i++;
 				}
 				if (!ignorelist) {
-					line[j++] = '\0';
-					needburst++;
+					line[j++] = MACROMETA;
+					(stp -> needburst)++;
 					line[j++] = flags | F_BURST;
 					flags |= F_ARGSET;
 				}
 				break;
 			case 'M':
 				if (!ignorelist) {
-					line[j++] = '\0';
+					line[j++] = MACROMETA;
 					(stp -> needmark)++;
-					line[j++] = flags;
+					line[j++] = flags | F_MARK;
 					flags |= F_ARGSET;
 				}
 				break;
@@ -450,8 +495,8 @@ int ignorelist;
 
 				i++;
 				if (cnvcode != NOCNV) {
-					j = extconv(line, cnvptr, j, cnvcode)
-						+ cnvptr;
+					j = extconv(&line, cnvptr, j,
+						&size, cnvcode);
 					if (cnvcode == tmpcode) {
 						cnvcode = NOCNV;
 						break;
@@ -465,86 +510,287 @@ int ignorelist;
 				line[j++] = command[i];
 				break;
 		}
-		if (c < 0) break;
 		if (!setflag) flags &= ~(F_NOEXT | F_TOSFN);
 		j += len;
 	}
-	if (command[i]) {
+#if	defined (_NOEXTRAMACRO) && defined (MAXCOMMSTR)
+	if (j > MAXCOMMSTR) {
 		if (isttyiomode) warning(E2BIG, command);
 		else {
 			errno = E2BIG;
-			perror(command);
+			perror2(command);
 		}
+		free(line);
 		return(NULL);
 	}
-
-#if	!MSDOS && !defined (_NOKANJICONV)
-	if (cnvcode != NOCNV) j = extconv(line, cnvptr, j, cnvcode) + cnvptr;
 #endif
 
-	if (needburst) for (i = c = 0; i < j; i++) {
-		if (line[i] && strchr(CMDLINE_DELIM, line[i])) c = -1;
+#if	!MSDOS && !defined (_NOKANJICONV)
+	if (cnvcode != NOCNV) j = extconv(&line, cnvptr, j, &size, cnvcode);
+#endif
+
+#ifdef	_NOEXTRAMACRO
+	if (stp -> needburst) for (i = c = 0; i < j; i++) {
+		if (strchr(CMDLINE_DELIM, line[i])) c = -1;
 		else if (c < 0) c = i;
-		if (line[i]) {
+		if (!isneedburst(line, i)) {
 			if (iskanji1(line, i)) i++;
 			continue;
 		}
-		else if (!(line[++i] & F_BURST)) continue;
 
-		len = setargs(line, c, i - 1 - c, j, stp);
-		if (len >= MAXCOMMSTR) {
+		if (stp -> needburst <= 0) {
+			memmove(&(line[i]), &(line[i + 2]), j - i - 2);
+			j -= 2;
+			i--;
+			continue;
+		}
+
+		(stp -> needburst)--;
+		len = setargs(&line, c, i - c, j, &size, stp);
+		if (len < 0) {
+			for (i += 2; i < j; i++) if (isneedmark(line, i)) {
+				(stp -> needmark)--;
+				i++;
+			}
 			j = c;
-			for (i++; i < j; i++)
-				if (!line[i++] && !(line[i] & F_BURST))
-					(stp -> needmark)--;
 			break;
 		}
 		j += len;
 		i += len + 1;
 	}
+#endif	/* _NOEXTRAMACRO */
 
 	if (!(flags & F_ARGSET) && arg && *arg) {
-#ifndef	_NOROCKRIDGE
-		char rbuf[MAXPATHLEN];
-#endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
 		char conv[MAXPATHLEN];
 
-		arg = kanjiconv2(conv, arg, MAXPATHLEN - 1,
-			DEFCODE, getkcode(arg));
-#endif
-#ifndef	_NOROCKRIDGE
-		arg = detransfile(arg, rbuf, 0);
-#endif
-		line[j++] = ' ';
-		arg = killmeta(arg);
-		if (checksc(NULL, 0, arg) >= 0) {
+		arg = convput(conv, arg, 1, 1, NULL, NULL);
+		if (checksc(NULL, 0, arg) < 0) cp = NULL;
+		else {
 			cp = malloc2(strlen(arg) + 2 + 1);
 			cp[0] = '.';
 			cp[1] = _SC_;
 			strcpy(&(cp[2]), arg);
-			free(arg);
 			arg = cp;
 		}
+		arg = killmeta(arg);
+		if (cp) free(cp);
 
 		len = strlen(arg);
-		if (j + len <= MAXCOMMSTR) {
+#if	defined (_NOEXTRAMACRO) && defined (MAXCOMMSTR)
+		if (j + len + 1 > MAXCOMMSTR);
+		else
+#endif
+		{
+			line = c_realloc(line, j + len + 1, &size);
+			line[j++] = ' ';
 			strncpy(&(line[j]), arg, len);
 			j += len;
 		}
 		free(arg);
 	}
-	if (!ignorelist && !(stp -> needmark) && !(flags & F_REMAIN)) {
+	if (!ignorelist && !(stp -> needburst) && !(stp -> needmark)) {
 		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISARG;
 		n_args = 0;
 	}
 	if ((flags & F_REMAIN) && !n_args) flags &= ~F_REMAIN;
 	stp -> flags = flags;
 
-	cp = malloc2(j + 1);
-	memcpy(cp, line, j);
-	cp[j] = '\0';
+	cp = strdupcpy(line, j);
+	free(line);
 	return(cp);
+}
+
+/*ARGSUSED*/
+int replaceargs(argcp, argvp, env, iscomm)
+int *argcp;
+char ***argvp, **env;
+int iscomm;
+{
+#ifdef	_NOEXTRAMACRO
+	return(0);
+#else	/* !_NOEXTRAMACRO */
+	static int lastptr = 0;
+	char *cp, *arg, *buf, *dir, **argv, **argv2;
+	ALLOC_T size;
+	int i, j, n, argc, argc2, len, maxarg, min, next, ret;
+	u_char flags;
+
+	if (!argcp || !argvp) {
+		lastptr = 0;
+		return(0);
+	}
+
+	argc = *argcp;
+	argv = *argvp;
+	ret = 0;
+
+	if (!filelist) return(ret);
+
+# ifdef	_NOARCHIVE
+	dir = NULL;
+# else
+	dir = (archivefile) ? archivedir : NULL;
+# endif
+
+	maxarg = i = 0;
+	for (n = 0; n < argc; n++) {
+		if (n) maxarg++;
+		for (len = 0; argv[n][len]; len++) {
+			if (!isneedburst(argv[n], len)
+			&& !isneedmark(argv[n], len))
+				maxarg++;
+			else {
+				len++;
+				i++;
+			}
+		}
+	}
+	if (!i) return(ret);
+
+# ifdef	MAXCOMMSTR
+	if (iscomm > 0 && maxarg > MAXCOMMSTR) {
+		errno = E2BIG;
+		return(-1);
+	}
+# else
+#  ifdef	MAXARGNUM
+	maxarg = MAXARGNUM - 2048;
+	if (maxarg > 20 * 1024) maxarg = 20 * 1024;
+	maxarg -= countvar(env);
+	if (iscomm > 0 && argc > maxarg) {
+		errno = E2BIG;
+		return(-1);
+	}
+#  endif
+# endif
+
+	argc2 = 0;
+	argv2 = NULL;
+	buf = c_realloc(NULL, 0, &size);
+
+	min = -1;
+	for (next = lastptr; next < maxfile; next++)
+	if (isarg(&(filelist[next]))) {
+		if (min < 0) min = next;
+		else break;
+	}
+	arg = (min >= 0) ? filelist[min].name : filelist[filepos].name;
+
+	for (n = 0; n < argc; n++) {
+		flags = 0;
+		for (i = j = 0; argv[n][i]; i++) {
+			buf = c_realloc(buf, j + 1, &size);
+			if (!isneedburst(argv[n], i)
+			&& (iscomm >= 0 || !isneedmark(argv[n], i)))
+				buf[j++] = argv[n][i];
+			else {
+				flags = argv[n][++i];
+				cp = (iscomm < 0 || n) ? arg : NULL;
+
+				len = setarg(&buf, j, &size, dir, cp, flags);
+# ifdef	MAXCOMMSTR
+				maxarg += len;
+				if (iscomm > 0 && maxarg > MAXCOMMSTR) {
+					free(buf);
+					freevar(argv2);
+					errno = E2BIG;
+					return(-1);
+				}
+# endif
+				j += len;
+			}
+		}
+		buf[j++] = '\0';
+		argv2 = (char **)realloc2(argv2, (argc2 + 2) * sizeof(char *));
+		argv2[argc2++] = strdup2(buf);
+		argv2[argc2] = NULL;
+		if (min < 0 || !flags || (iscomm >= 0 && !n)) continue;
+
+		while (next < maxfile) {
+# if	!defined (MAXCOMMSTR) && defined (MAXARGNUM)
+			if (iscomm > 0 && argc + (argc2 - n) + 1 > maxarg) {
+				if (flags & F_REMAIN) ret++;
+				break;
+			}
+# endif
+			arg = filelist[next].name;
+			for (i = j = 0; argv[n][i]; i++) {
+				buf = c_realloc(buf, j + 1, &size);
+				if (!isneedburst(argv[n], i)
+				&& (iscomm >= 0 || !isneedmark(argv[n], i)))
+					buf[j++] = argv[n][i];
+				else {
+					flags = argv[n][++i];
+
+					len = setarg(&buf, j, &size,
+						dir, arg, flags);
+# ifdef	MAXCOMMSTR
+					maxarg += len;
+					if (iscomm > 0 && maxarg > MAXCOMMSTR)
+						break;
+# endif
+					j += len;
+				}
+			}
+# ifdef	MAXCOMMSTR
+			if (argv[n][i]) {
+				if (flags & F_REMAIN) ret++;
+				break;
+			}
+# endif
+			buf[j++] = '\0';
+			argv2 = (char **)realloc2(argv2,
+				(argc2 + 2) * sizeof(char *));
+			argv2[argc2++] = strdup2(buf);
+			argv2[argc2] = NULL;
+			for (next++; next < maxfile; next++)
+				if (isarg(&(filelist[next]))) break;
+		}
+	}
+	if (ret) lastptr = next;
+	freevar(argv);
+	*argcp = argc = argc2;
+	*argvp = argv = argv2;
+
+	min = -1;
+	for (next = lastptr; next < maxfile; next++)
+	if (isarg(&(filelist[next]))) {
+		if (min < 0) min = next;
+		else break;
+	}
+	arg = (min >= 0) ? filelist[min].name : filelist[filepos].name;
+
+	flags = 0;
+	for (n = 0; n < argc; n++) {
+		for (i = j = 0; argv[n][i]; i++) {
+			buf = c_realloc(buf, j + 1, &size);
+			if (!isneedmark(argv[n], i)) buf[j++] = argv[n][i];
+			else {
+				flags = argv[n][++i];
+				cp = (iscomm < 0 || n) ? arg : NULL;
+				if (min >= 0 && next < maxfile) ret++;
+
+				len = setarg(&buf, j, &size, NULL, cp, flags);
+# ifdef	MAXCOMMSTR
+				maxarg += len;
+				if (iscomm > 0 && maxarg > MAXCOMMSTR) {
+					free(buf);
+					freevar(argv);
+					errno = E2BIG;
+					return(-1);
+				}
+# endif
+				j += len;
+			}
+		}
+		buf[j++] = '\0';
+		free(argv[n]);
+		argv[n] = strdup2(buf);
+	}
+	if (flags) lastptr = next;
+	free(buf);
+	return(ret);
+#endif	/* !_NOEXTRAMACRO */
 }
 
 char *inputshellstr(prompt, ptr, def)
@@ -553,6 +799,7 @@ int ptr;
 char *def;
 {
 	char *cp, *tmp, *duppromptstr;
+	int nl;
 
 	duppromptstr = promptstr;
 	if (prompt) promptstr = prompt;
@@ -560,9 +807,9 @@ char *def;
 	promptstr = duppromptstr;
 	if (!cp) return((char *)-1);
 
-	stdiomode(1);
+	nl = stdiomode();
 	tmp = evalhistory(cp);
-	ttyiomode(1);
+	ttyiomode(nl);
 	if (!tmp) {
 		free(cp);
 		return(NULL);
@@ -592,6 +839,7 @@ char *def;
 	}
 
 #ifndef	_NOORIGSHELL
+	l = -1;
 	len = strlen(cp);
 	buf = malloc2(len + 1);
 	strcpy(buf, cp);
@@ -618,6 +866,7 @@ char *def;
 	freestree(stree);
 	free(stree);
 	cp = buf;
+	if (l >= 0) rewritefile(1);
 #endif	/* !_NOORIGSHELL */
 
 	return(cp);
@@ -628,70 +877,95 @@ char *command, *arg;
 macrostat *stp;
 int ignorelist;
 {
-	char *cp, line[MAXLINESTR + 1];
-	int i, j, n, p, len;
+	char *cp, *line;
+	ALLOC_T size;
+	int i, j, nb, nm, p, flags, quote;
 
-	while (stp -> addopt >= 0) {
-		len = cmdlinelen(-1) + 1;
-		n = stp -> needmark;
-		p = -1;
-		for (i = j = 0; i < len; i++, j++) {
-			line[i] = command[j];
-			if (j >= stp -> addopt && p < 0) p = i;
-			if (command[j] == '%') {
-				if (++i >= len) break;
-				line[i] = '%';
-			}
-			else if (!command[j]) {
-				if (n-- <= 0) break;
-				line[i] = '%';
-				j++;
-				if (command[j] & F_NOEXT) {
-					if (++i >= len) break;
-					line[i] = 'X';
-				}
-#if	MSDOS && !defined (_NOUSELFN)
-				if (command[j] & F_TOSFN) {
-					if (++i >= len) break;
-					line[i] = 'S';
-				}
+	nb = stp -> needburst;
+	nm = stp -> needmark;
+	p = -1;
+	line = c_realloc(NULL, 0, &size);
+	quote = '\0';
+	for (i = j = 0; command[i]; i++) {
+		if (i >= stp -> addopt && p < 0) p = j;
+		flags = 0;
+
+		line = c_realloc(line, j + 1, &size);
+		if (command[i] == quote) quote = '\0';
+#ifdef	CODEEUC
+		else if (isekana(command, i)) line[j++] = command[i++];
 #endif
-				if (++i >= len) break;
-				line[i] = 'M';
+		else if (iskanji1(command, i)) line[j++] = command[i++];
+		else if (quote == '\'');
+		else if (ismeta(command, i, quote)) line[j++] = command[i++];
+		else if (quote);
+		else if (command[i] == '\'' || command[i] == '"')
+			quote = command[i];
+		else if (command[i] == '%') line[j++] = command[i];
+		else if (isneedburst(command, i)) {
+			if (nb > 0) {
+				nb--;
+				flags = command[++i];
 			}
 		}
-		free(command);
-
-		if (i >= len) {
-			warning(0, INOV_K);
-			return(NULL);
+		else if (isneedmark(command, i)) {
+			if (nm > 0) {
+				nm--;
+				flags = command[++i];
+			}
 		}
 
-		if (p < 0) p = strlen(line);
-		if (!(i = isttyiomode)) ttyiomode(1);
-		cp = inputstr("", 0, p, line, 0);
-		if (!i) stdiomode(1);
-		if (!cp) return(NULL);
-		if (!*cp) {
-			free(cp);
-			return(NULL);
+		if (!flags) {
+			line[j++] = command[i];
+			continue;
 		}
-		command = evalcommand(cp, arg, stp, ignorelist);
+
+		line = c_realloc(line, j + 4, &size);
+		line[j++] = '%';
+		if (flags & F_NOEXT) line[j++] = 'X';
+#if	MSDOS
+		if (flags & F_TOSFN) line[j++] = 'S';
+#endif
+		if (flags & F_MARK) line[j++] = 'M';
+		else if (flags & F_BURST) {
+			line[j++] = 'T';
+			if (flags & F_REMAIN) line[j++] = 'A';
+		}
+	}
+	line[j] = '\0';
+	free(command);
+
+	if (p < 0) p = strlen(line);
+	if (!(i = isttyiomode)) ttyiomode(1);
+	cp = inputstr("", 0, p, line, 0);
+	if (!i) stdiomode();
+	free(line);
+	if (!cp) {
+		if (!i) {
+			fputc('\n', stdout);
+			fflush(stdout);
+		}
+		return(NULL);
+	}
+	if (!*cp) {
 		free(cp);
-		if (!command) return(NULL);
-		if (!*command) {
-			free(command);
-			return(NULL);
-		}
+		return(NULL);
+	}
+	command = evalcommand(cp, arg, stp, ignorelist);
+	free(cp);
+	if (!command) return(NULL);
+	if (!*command) {
+		free(command);
+		return(NULL);
 	}
 	return(command);
 }
 
+#ifdef	_NOORIGSHELL
 static int NEAR system3(command, noconf, ignorelist)
 char *command;
 int noconf, ignorelist;
 {
-#ifdef	_NOORIGSHELL
 	char *cp, *tmp;
 	int n, ret;
 
@@ -707,11 +981,8 @@ int noconf, ignorelist;
 	sigvecset(n);
 	if (cp) free(cp);
 	return(ret);
-#else	/* _NOORIGSHELL */
-	if (!isttyiomode) return(dosystem(command));
-	return(system2(command, noconf));
-#endif	/* _NOORIGSHELL */
 }
+#endif	/* _NOORIGSHELL */
 
 int isinternalcomm(command)
 char *command;
@@ -752,20 +1023,28 @@ int execmacro(command, arg, noconf, argset, ignorelist)
 char *command, *arg;
 int noconf, argset, ignorelist;
 {
+#ifdef	_NOEXTRAMACRO
+	char *buf;
+	int r, status;
+#endif
 	static char *duparg = NULL;
 	macrostat st;
-	char *tmp, buf[MAXCOMMSTR + 1];
-	int i, max, r, ret, status;
+	char *tmp;
+	int i, haslist, ret;
 
 	if (arg) duparg = arg;
-	max = (ignorelist) ? 0 : maxfile;
+	haslist = (filelist && !ignorelist);
 	ret = 0;
-	status = internal_status = -2;
-	for (i = 0; i < max; i++) {
-		if (ismark(&(filelist[i]))) filelist[i].tmpflags |= F_ISARG;
-		else filelist[i].tmpflags &= ~F_ISARG;
+	internal_status = -2;
+	if (!haslist) n_args = 0;
+	else {
+		for (i = 0; i < maxfile; i++) {
+			if (ismark(&(filelist[i])))
+				filelist[i].tmpflags |= F_ISARG;
+			else filelist[i].tmpflags &= ~F_ISARG;
+		}
+		n_args = mark;
 	}
-	n_args = mark;
 
 	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
 	if (noconf < 0) st.flags |= F_ISARCH;
@@ -776,13 +1055,15 @@ int noconf, argset, ignorelist;
 	}
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	st.flags |= F_ARGSET;
-	if (noconf >= 0 && argset <= 0) {
+	while (st.addopt >= 0 && noconf >= 0 && argset <= 0)
 		if (!(tmp = addoption(tmp, duparg, &st, ignorelist))) {
 			if (arg) duparg = NULL;
 			return(-1);
 		}
-	}
-	if (!st.needmark) for (;;) {
+
+#ifdef	_NOEXTRAMACRO
+	status = internal_status;
+	if (!haslist || !st.needmark) for (;;) {
 		r = system3(tmp, noconf, ignorelist);
 		free(tmp);
 		tmp = NULL;
@@ -795,35 +1076,60 @@ int noconf, argset, ignorelist;
 		if (!(st.flags & F_REMAIN)
 		|| !(tmp = evalcommand(command, duparg, &st, ignorelist)))
 			break;
-		if (noconf >= 0 && argset <= 0) {
+		while (st.addopt >= 0 && noconf >= 0 && argset <= 0)
 			if (!(tmp = addoption(tmp, duparg, &st, ignorelist)))
 				break;
-		}
 	}
 	else if (n_args <= 0) {
-		if (insertarg(buf, tmp, filelist[filepos].name, st.needmark)) {
+		buf = insertarg(tmp, filelist[filepos].name, st.needmark);
+		if (buf) {
 			ret = system3(buf, noconf, ignorelist);
+			free(buf);
 			status = internal_status;
 		}
 	}
-	else for (i = 0; i < max; i++) if (isarg(&(filelist[i]))) {
-		if (insertarg(buf, tmp, filelist[i].name, st.needmark)) {
+	else for (i = 0; i < maxfile; i++) if (isarg(&(filelist[i]))) {
+		buf = insertarg(tmp, filelist[i].name, st.needmark);
+		if (buf) {
 			r = system3(buf, noconf, ignorelist);
+			free(buf);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status < -1) status = 4;
 			else if (internal_status > status)
 				status = internal_status;
 		}
 	}
+	internal_status = status;
+#else	/* !_NOEXTRAMACRO */
+	ret = system3(tmp, noconf, ignorelist);
+	if (internal_status < -1) internal_status = 4;
+#endif	/* !_NOEXTRAMACRO */
+
 	if (tmp) free(tmp);
-	if ((internal_status = status) < -1 && !ignorelist) {
-		for (i = 0; i < max; i++)
+	if (haslist && internal_status < -1) {
+		for (i = 0; i < maxfile; i++)
 			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
-		mark = 0;
-		marksize = 0;
+		mark = marksize = 0;
 	}
 	if (arg) duparg = NULL;
 	return(ret);
+}
+
+FILE *popenmacro(command, arg, argset)
+char *command, *arg;
+int argset;
+{
+	macrostat st;
+	FILE *fp;
+	char *tmp;
+
+	internal_status = -2;
+	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
+
+	if (!(tmp = evalcommand(command, arg, &st, 1))) return(NULL);
+	fp = popen2(tmp, "r");
+	free(tmp);
+	return(fp);
 }
 
 #ifdef	_NOORIGSHELL
@@ -832,27 +1138,36 @@ char *command;
 int argc;
 char *argv[];
 {
-	char *cp, line[MAXCOMMSTR + 1];
-	int i, j, k, n;
+	char *cp, *line;
+	ALLOC_T size;
+	int i, j, n, len;
 
 	i = j = 0;
+	line = c_realloc(NULL, 0, &size);
 	while ((cp = strtkchr(&(command[i]), '$', 1))) {
-		while (&(command[i]) < cp && j < MAXCOMMSTR)
-			line[j++] = command[i++];
-		i++;
+		len = cp - &(command[i]);
+		line = c_realloc(line, j + len + 2, &size);
+		memcpy(&(line[j]), &(command[i]), len);
+		i += len + 1;
+		j += len;
 		if (!isdigit(command[i])) {
-			if (j > MAXCOMMSTR - 2) break;
 			line[j++] = '$';
 			line[j++] = command[i++];
 		}
-		else if ((n = command[i++] - '0') < argc)
-			for (k = 0; argv[n][k] && j < MAXCOMMSTR; k++)
-				line[j++] = argv[n][k];
+		else if ((n = command[i++] - '0') < argc) {
+			len = strlen(argv[n]);
+			line = c_realloc(line, j + len, &size);
+			memcpy(&(line[j]), argv[n], len);
+			j += len;
+		}
 	}
-	while (command[i] && j < MAXCOMMSTR) line[j++] = command[i++];
+	len = strlen(&(command[i]));
+	line = c_realloc(line, j + len, &size);
+	memcpy(&(line[j]), &(command[i]), len);
+	j += len;
 	line[j] = '\0';
 
-	return(strdup2(line));
+	return(line);
 }
 
 int execusercomm(command, arg, noconf, argset, ignorelist)
@@ -1074,25 +1389,26 @@ char *evalhistory(command)
 char *command;
 {
 	char *cp;
-	int i, j, n, len, size, quote, hit;
+	ALLOC_T size;
+	int i, j, n, len, quote, hit;
 
 	hit = 0;
-	cp = c_malloc(size);
-	for (i = j = 0, quote = '\0'; command[i]; i++, j++) {
-		cp = c_realloc(cp, j + 1, size);
+	cp = c_realloc(NULL, 0, &size);
+	for (i = j = 0, quote = '\0'; command[i]; i++) {
+		cp = c_realloc(cp, j + 1, &size);
 		if (command[i] == quote) quote = '\0';
 #ifdef	CODEEUC
 		else if (isekana(command, i)) cp[j++] = command[i++];
 #endif
 		else if (iskanji1(command, i)) cp[j++] = command[i++];
-		else if (ismeta(command, i, quote)) cp[j++] = command[i++];
 		else if (quote);
+		else if (ismeta(command, i, quote)) cp[j++] = command[i++];
 		else if (command[i] == '\'') quote = command[i];
 		else if (command[i] == '!') {
 			len = i++;
 			if ((n = parsehist(command, &i)) < 0) {
 				if (i < 0) {
-					cp[j] = '!';
+					cp[j++] = '!';
 					i = len;
 					continue;
 				}
@@ -1104,12 +1420,12 @@ char *command;
 			}
 			hit++;
 			len = strlen(history[0][n]);
-			cp = c_realloc(cp, j + len, size);
+			cp = c_realloc(cp, j + len + 1, &size);
 			strncpy(&cp[j], history[0][n], len);
-			j += len - 1;
+			j += len;
 			continue;
 		}
-		cp[j] = command[i];
+		cp[j++] = command[i];
 	}
 	cp[j] = '\0';
 	if (hit) {

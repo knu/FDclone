@@ -313,8 +313,10 @@ static VOID NEAR showtree(VOID_A)
 		locate(0, i);
 		putterm(l_clear);
 	}
-	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++)
-		sprintf(bufptr(i), "%-*.*s", TREEFIELD, TREEFIELD, " ");
+	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++) {
+		memset(bufptr(i), ' ', TREEFIELD);
+		bufptr(i)[TREEFIELD] = '\0';
+	}
 	_showtree(tr_root -> sub, 1, 0, tr_top);
 	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++) {
 		locate(1, i);
@@ -550,13 +552,9 @@ static int NEAR _tree_input(VOID_A)
 	int ch, tmp, half;
 
 	keyflush();
-#ifdef	_NOEDITMODE
-	ch = Xgetkey(1, 0);
-#else
 	Xgetkey(-1, 0);
 	ch = Xgetkey(1, 0);
 	Xgetkey(-1, 0);
-#endif
 
 	old = tr_cur;
 	switch (ch) {

@@ -10,12 +10,14 @@
 #include "func.h"
 #include "kanji.h"
 
+#define	MAXTIMESTR	8
+
 typedef struct _attrib_t {
 	u_short mode;
 #ifdef	HAVEFLAGS
 	u_long flags;
 #endif
-	char timestr[2][9];
+	char timestr[2][MAXTIMESTR + 1];
 } attrib_t;
 
 #ifndef	_NODOSDRIVE
@@ -398,6 +400,7 @@ int mode;
 	if (Xaccess(path, mode) >= 0) return(0);
 #else	/* !MSDOS */
 	struct stat *stp, st;
+	char *tmp, dir[MAXPATHLEN];
 
 # ifndef	_NODOSDRIVE
 	if (dospath2(path)) {
@@ -407,9 +410,7 @@ int mode;
 	else
 # endif
 	{
-		char *tmp, dir[MAXPATHLEN];
-
-		if (_Xlstat(path, &st, 0, 1) < 0) {
+		if (nodoslstat(path, &st) < 0) {
 			warning(-1, path);
 			return(-1);
 		}
@@ -419,7 +420,7 @@ int mode;
 		else if (tmp == path) strcpy(dir, _SS_);
 		else strncpy2(dir, path, tmp - path);
 
-		if (_Xlstat(dir, &st, 0, 1) < 0) {
+		if (nodoslstat(dir, &st) < 0) {
 			warning(-1, dir);
 			return(-1);
 		}
@@ -722,9 +723,7 @@ int flag;
 	dupwin_x = win_x;
 	dupwin_y = win_y;
 	subwindow = 1;
-#ifndef	_NOEDITMODE
 	Xgetkey(-1, 0);
-#endif
 
 	yy = LFILETOP;
 	while (yy + WMODELINE + 5 > n_line - 1) yy--;
@@ -736,9 +735,9 @@ int flag;
 	attr.flags = listp -> st_flags;
 #endif
 	tm = localtime(&(listp -> st_mtim));
-	sprintf(attr.timestr[0], "%02d-%02d-%02d",
+	snprintf2(attr.timestr[0], sizeof(attr.timestr[0]), "%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	sprintf(attr.timestr[1], "%02d:%02d:%02d",
+	snprintf2(attr.timestr[1], sizeof(attr.timestr[1]), "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(listp, &attr, yy);
 	y = ymin = (flag & 1) ? 0 : WMODELINE;
@@ -886,9 +885,7 @@ int flag;
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 	subwindow = 0;
-#ifndef	_NOEDITMODE
 	Xgetkey(-1, 0);
-#endif
 
 	if (ch == K_ESC) return(0);
 
@@ -996,31 +993,22 @@ int *maxp, depth;
 	struct dirent *dp;
 	struct stat st;
 	char *cp;
+	int d;
 
-	if (!(dirp = Xopendir(dir))) {
-		warning(-1, dir);
-		if (dirlist) free(dirlist);
-		return(NULL);
-	}
+	if (!(dirp = Xopendir(dir))) return(dirlist);
 	cp = strcatdelim(dir);
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(cp, dp -> d_name);
 
-		if (Xlstat(dir, &st) >= 0
-		&& (st.st_mode & S_IFMT) == S_IFDIR) {
-			dirlist = b_realloc(dirlist, *maxp, char *);
-			dirlist[(*maxp)++] = strdup2(dir);
-			if (!depth || depth > 1) {
-				dirlist = getdirtree(dir,
-					dirlist, maxp,
-					(depth) ? depth - 1 : 0);
-				if (!dirlist) {
-					Xclosedir(dirp);
-					return(NULL);
-				}
-			}
-		}
+		if (Xlstat(dir, &st) < 0 || (st.st_mode & S_IFMT) != S_IFDIR)
+			continue;
+		dirlist = b_realloc(dirlist, *maxp, char *);
+		dirlist[(*maxp)++] = strdup2(dir);
+		if (!(d = depth));
+		else if (d > 1) d--;
+		else continue;
+		dirlist = getdirtree(dir, dirlist, maxp, d);
 	}
 	if (cp > dir) *(cp - 1) = '\0';
 	Xclosedir(dirp);
@@ -1105,27 +1093,26 @@ int verbose;
 	}
 	if (dirlist) free(dirlist);
 
-	if (!(dirp = Xopendir(dir))) {
-		warning(-1, dir);
-		return(-1);
-	}
-	while ((dp = Xreaddir(dirp))) {
-		if (intrkey()) {
-			ret = -2;
-			break;
-		}
-		if (isdotdir(dp -> d_name)) continue;
-		strcpy(fname, dp -> d_name);
+	if (!(dirp = Xopendir(dir))) warning(-1, dir);
+	else {
+		while ((dp = Xreaddir(dirp))) {
+			if (intrkey()) {
+				ret = -2;
+				break;
+			}
+			if (isdotdir(dp -> d_name)) continue;
+			strcpy(fname, dp -> d_name);
 
-		if (Xlstat(path, &st) < 0) warning(-1, path);
-		else if ((st.st_mode & S_IFMT) == S_IFDIR) continue;
-		else if ((ret = (*funcf)(path)) < 0) {
-			if (ret < -1) break;
-			warning(-1, path);
+			if (Xlstat(path, &st) < 0) warning(-1, path);
+			else if ((st.st_mode & S_IFMT) == S_IFDIR) continue;
+			else if ((ret = (*funcf)(path)) < 0) {
+				if (ret < -1) break;
+				warning(-1, path);
+			}
 		}
+		Xclosedir(dirp);
+		if (ret < -1) return(ret);
 	}
-	Xclosedir(dirp);
-	if (ret < -1) return(ret);
 
 	destmtime = dupmtime;
 	destatime = dupatime;

@@ -539,6 +539,9 @@ you can skip these descriptions.
 in addition to the archive file information, you must specify
 the number of lines from the top/bottom line, which is to be
 deleted.
+  You can also specify lines to be deleted as a pattern with
+-i option, and specify error message lines with -e option to
+treat their contents as an error.
 
   The string showing the format is so similar to the format
 of printf(3) and scanf(3) that who is familiar with the C
@@ -558,16 +561,31 @@ file mode.
 can specify as "%9a". Therefore, the whole format string is
 as follows.
 
-	"%9a %u/%g %s %m %d %t %y %f"
+	"%9a %u/%g %s %m %d %t %y %*f"
 
-  While the space after "%9a" is described in this example,
-it does not surely have to exist. It is described only for
-visibility.
-  Since it is on the nod that each field is separated by spaces
-or tabs, the spaces or tabs appears in the format string are
-the verbose information.
-  Then, in analyzing, the spaces or tabs in the format string
-are ignored to read.
+  You can see a space after "%9a" in this example, a space
+matches 0 or more spaces or tabs, then this format string
+can also match the output which has no space such as the above
+example.
+  If the format string does not have this space, it cannot
+skip any space on the output. BSDish tar will insert some
+spaces before the user ID whose digits are less than 3, then
+the inserted spaces will be treated as a part of the field
+for the following "%u".
+  The behavior for the field with some spaces and tabs will
+differ with the type of field. Some types of field cannot
+allow any spaces in the field.
+  They will be ignored in the needless field. In the field
+specifying a filename, spaces at the end of line will be
+ignored and the rest spaces are regarded as a part of the
+filename. In the other field, only the spaces at the front
+or end of field will be ignored, but the format string will
+be inferior when there are the other candidates of format
+string.
+  By the way, the length of field for a filename is specified
+as "to the end of line" in this example, then whole string
+to the end of line with spaces and tabs will be regarded as
+a filename.
 
 
   By the way, some archivers cannot display a year nor a time,
@@ -588,7 +606,22 @@ and the time is displayed as 0:00 (Because the hour called
 1994 cannot exist.) in the latter example.
   The following is the format string in this case.
 
-	"%a %u/%g %s %x %m %d %{yt} %f"
+	"%a %u/%g %s %x %m %d %{yt} %*f"
+
+
+  Since the outputs of archivers are different from each
+other according to your environment, you should register
+multiple format strings to use generally in every environment.
+  While some different format strings are prepared by default
+for some archivers which are used rather popularly like as
+tar and LHa, you should analyze and register them by yourself
+for archivers except them.
+  But you should be careful with the order of description,
+because the multiple registered format strings will be compared
+in order of description. For example, the format string which
+regards a whole line as a filename, such as "%*f", will match
+any output line, then the format strings described after this
+are never used as candidates to be compared.
 
 
 6.Registration of Floppy Drive
@@ -826,6 +859,8 @@ not implemented.
 	_NOPRECEDE	cannot use preceding filename display
 	_NOCUSTOMIZE	cannot use customizer
 	_NOEXTRACOPY	cannot use extra copy
+	_NOBROWSE	cannot use browse the builtin command
+	_NOEXTRAMACRO	cannot use %T, %M the macro in statements
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,
@@ -929,3 +964,214 @@ in different ways.
 to cover it, for example, you do "umount" the corresponding
 MS-DOS file system in advance, or you take care that the other
 users or processes may not access it, etc.
+
+
+10. browse the builtin command
+
+  The manual describes only specifications then this document
+will refer to an usage for browse the builtin command with
+some samples.
+
+  The basic of browse is invoking browsers recursively, such
+as invoking a browser first, and invoking the next browser
+if you select a file, and then...
+  For a simple example, I will introduce the browse which
+shows the calendar of specified year and month.
+	browse \
+	'for i in 0 1 2 3 4 5 6 7 8 9; do echo 200$i; done' \
+	-f "%f" \
+	'for i in 1 2 3 4 5 6 7 8 9 10 11 12; do echo $i; done' \
+	-f "%f" \
+	'cal $1 $2%K'
+
+  Though each end of line has '\' because of separating
+each arguments by line for ease to look, these are a command
+line then should be described in one line.
+  The 1st line is a name of command. The 2nd line is the
+command macro to display strings from "2000" to "2009" line
+by line. I don't mention the shell syntax, then you should
+understand that this description can cause so.
+  The 3rd line is the format for an archive browser. This
+result outputted by the 2nd line does not include information
+of timestamp nor file size, so that only "%f" which means
+a filename is specified.
+  In this description, the browser is built such that lists
+filenames from "2000" to "2009" and lets you select a file
+from them.
+
+  When you select any of file, the next command in the 4th
+line is executed. This is the command macro to display strings
+from "1" to "12" line by line.
+  The 5th line is the format for an archive browser as same
+as above which means to pick up only the item of filename
+from the outputted result. As a result, the browser is built
+such that lets you select any of file from "1" to "12".
+
+  The 6th line executes 'cal' the external command. $1 and
+$2 the positional parameters hold the filenames selected till
+now, so that they hold the one from "1" to "12" and the one
+from "2000" to "2009" respectively.
+  Since no -f option follows this command, in this case,
+this output is just displayed to screen and it is done. You
+will not be able to have enough time to read the output if
+finished at that, then "%K" the macro waits for a key input.
+
+  In total, this command builds the following browser.
+	1. The first, you select a year.
+	2. The next, you select a month.
+	3. Then it shows the calendar of selected year and
+	   month.
+
+
+  And now, I will show you more complex example.
+	browse \
+	'echo "host1
+	host2
+	host3"' \
+	-f "%f" \
+	-p 'RHOST=$1; RPATH=' \
+	'rsh $RHOST "ls -lag $RPATH"' \
+	-f "%a %l %u %g %s %m %d %{yt} %*f" \
+	-i "total *" \
+	-p 'RPATH=$1; while [ "$#" -gt 2 ]; do shift; RPATH=$1/$RPATH; done' \
+	-d loop \
+	'rcp $RHOST:$RPATH ./${RPATH##*/}'
+
+  The 1st line is a name of command. The 2nd-4th line is
+the command macro to display strings "host1", "host2 and
+"host3" line by line. The 5th line is the format. It is
+less difference from the above example so far.
+  The -p option in the 6th line works a little specially.
+Though you could step the next selection when you select
+any of file, this option orders to execute the command
+such as "RHOST=$1; RPATH=" before then.
+  This is the command to substitute the selected filename
+for "RHOST" the internal variable and empty the value
+of "RPATH" the internal variable. So the next level of
+command will be executed when you select a file, you may
+think that it is enough to describe so in it. Yet there
+are two reasons why I don't so.
+  The one reason is that a loop is occurred, this will be
+mentioned after. The other reason is no definition of
+internal variables in the command whose output is used
+for an archive browser is left later.
+  In general, the shell pipeline with "|" will be executed
+in a child process, and any values set in a child process
+will not affect its parent process.
+  Of course, I could build the implementation in which
+the result output executed in the current process is
+passed to an archive browser, but I dare to take another
+specification. You should think as it is.
+
+  You can step the next selection if you select any of "host?".
+The command in the 7th line is execute then.
+  The internal variables already set by -p option are used
+at once. Rsh the external command requires the 1st argument
+as a remote host name, and the 2nd argument as the command
+string to be executed on the remote host.
+  The content of "RPATH" is empty, so "ls -lag" will be
+executed on the selected host. And the format in the 8th
+line specify the output form of ls.
+  -i option in the 10th line set a value of an internal
+variable as same as above. Though it looks like confusing,
+the value of "RPATH" finally becomes ".../$3/$2/$1".
+  Because of the condition such as `[ "$#" -gt 2 ]', it does
+not include the last positional parameter. Since the last
+positional parameter holds the filename selected first, it
+is the host name in this case.
+  The 11th line orders "Execute the same command as the last
+one instead of stepping the next, if the selected file is 
+a directory". Whenever you select any directory, rsh will be
+used.
+  As a result, it is repeated that whenever you continue to
+select directories, the name is added to "RPATH" the internal
+variable and ls is executed with the content as an argument.
+  Because the loop has occurred in this line, the previous
+initialization for "RHOST" and "RPATH" must be described
+in -p option.
+
+  Meanwhile, how about in case that you select except
+directories ? Since the loop is not ordered with except
+directories, you will step the next 12th line.
+  Rcp the external command requires the 1st argument as a
+source filename, and the 2nd argument as a destination filename.
+The "hostname:" prefixed to each filename means a file on the
+remote host.
+  Since the command execution specified by the -p option
+in the 10th line precedes the execution of the 12th line,
+"RPATH" the internal variable will hold the fullpath name
+for the selected file.
+  And the description such as "${RPATH##*/}" extracts the
+last item of this fullpath name, so that this description
+means that the selected file on the selected remote host
+is copied to the current directory on the local machine
+as the same name.
+
+  In total, this command builds the following browser.
+	1. The first, you select a host.
+	2. The next, you select directories recursively.
+	3. The last, select a filename.
+	4. Then it copies the selected file in the selected
+	   directory from the selected remote host to the
+	   current directory on local machine.
+  As compared with the above example of a calendar, it looks
+like the browser more. The example with a similar structure
+is described with getftp() the function definition in _fdrc,
+you can analyze it if possible.
+
+
+  By the way, it is troublesome for browsing that you can
+only dig one-way directories. It is necessary to return to
+the parent directory and to re-enter another directory.
+  In the browser build by browse the builtin command, as written
+in a manual, the filename as ".." is treated specially. This
+is the same as general browsers.
+  Since ".." is clearly the filename which means the parent
+directory, even if no ".." appeared in the output passed to
+the archive browser, it will use as "the filename to return".
+Then you can return the parent directory with pushing the [Bs]
+key or selecting ".." in LOG_DIR the command, if no ".." is
+listed.
+  In this case, ".." is a directory absolutely, so that it
+will obey the order of -d option. In the above example, it
+continues to execute rsh instead of stepping rcp.
+  And it executes the command specified by -p option unless
+-d noprep is specified, then the value of "RPATH" will be
+also set in the above example.
+  Since the case that you push the [Bs] key is treated as
+you select "..", $1 will hold "..". Then "RPATH" will always
+keep a name of the current directory.
+
+  As look well, execution of shift in -p option of the 10th
+line seems to empty the all positional parameters. But these
+positional parameters will be restored when you select each
+file even if shift is done or set another value with set the
+builtin command, because they are set together when you select
+each file, as written in a manual.
+  Because there is no file selection from the execution of
+the command for -p option to the execution of the next command
+for an archive browser, you should note that, if you empty
+positional parameters in -p option, you cannot refer to it
+in the next command for an archive browser.
+
+
+  The last I refer to a difficult notice. It is that when
+you use the external command such as rsh and ftp in the examples,
+its output form will be different according to the OS or the
+environment.
+
+  In the general archive browser, since the output of each
+archiver which is the external command also relies on the
+environment, launch the builtin command needs registrations
+of the multiple format strings with -f option.
+  It is the same for browse the builtin command. Unlike the
+archiver command which has the only implementation on the
+only environment, the command using the network such as rsh
+and ftp will have the quite different output form only if
+the remote host is different.
+  In above example, the format string is shown for the rather
+popular output form. For more practical, you should register
+the multiple format strings in order to support more various
+remote hosts.
+  Like this, you should also register the multiple -i options
+and -e options.

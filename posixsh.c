@@ -23,15 +23,20 @@
 #if	MSDOS
 #include <io.h>
 #include "unixemu.h"
-#define	Xexit2		exit2
+#define	Xexit		exit
 #define	DEFPATH		":"
 #else	/* !MSDOS */
 #include <sys/param.h>
 #include <sys/ioctl.h>
-#define	Xexit2(n)	((ttypgrp >= 0 && ttypgrp == getpid()) \
-			? (VOID)exit2(n) : (VOID)exit(n))
+#define	Xexit		_exit
 #define	DEFPATH		":/bin:/usr/bin"
 #endif	/* !MSDOS */
+
+#include "pathname.h"
+#include "system.h"
+
+#if	!defined (MINIMUMSHELL) \
+&& (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
 
 #ifdef	FD
 #include "term.h"
@@ -39,21 +44,10 @@ extern int Xaccess __P_((char *, int));
 extern int kanjifputs __P_((char *, FILE *));
 #else	/* !FD */
 extern int ttyio;
-FILE *ttyout = NULL;
+extern FILE *ttyout;
 #define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
 #define	kanjifputs	fputs
-# ifdef	DEBUG
-# define	exit2(n)	(muntrace(), exit(n))
-# else
-# define	exit2		exit
-# endif
 #endif	/* !FD */
-
-#include "pathname.h"
-#include "system.h"
-
-#if	!defined (_NOORIGSHELL) && !defined (MINIMUMSHELL) \
-&& (!defined (FD) || (FD >= 2))
 
 #ifndef	EPERM
 #define	EPERM		EACCES
@@ -184,7 +178,6 @@ p_id_t pgrp;
 	Xsigblock(omask, mask);
 
 #ifdef	JOBVERBOSE
-	if (!ttyout && !(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
 	fputs("gettermio: ", ttyout);
 	fputlong(mypid, ttyout);
 	fputs(": ", ttyout);
@@ -192,6 +185,7 @@ p_id_t pgrp;
 	fputs(" -> ", ttyout);
 	fputlong(pgrp, ttyout);
 	fputc('\n', ttyout);
+	fflush(ttyout);
 #endif	/* JOBVERBOSE */
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
 	Xsigsetmask(omask);
@@ -374,7 +368,6 @@ syntaxtree *trp;
 	}
 
 #ifdef	JOBVERBOSE
-	if (!ttyout && !(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
 	fputs("stackjob: ", ttyout);
 	fputlong(mypid, ttyout);
 	fputs(": ", ttyout);
@@ -504,7 +497,7 @@ int len, delim;
 
 	if (!trp || (trp -> flags & ST_NODE) || hascomm(trp)
 	|| !interactive
-	|| ((i = getstatid(trp = parentshell(trp))) >= 0
+	|| ((i = getstatid(parentstree(trp))) >= 0
 	&& !(statementlist[i].type & STT_NEEDLIST))) return(-1);
 
 	if ((!strchr(IFS_SET, delim) && !strchr(ALIASDELIMIT, delim)))
@@ -942,7 +935,7 @@ syntaxtree *trp;
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		doperror((trp -> comm) -> argv[0], "fatal error");
 		prepareexit(-1);
-		Xexit2(RET_FATALERR);
+		Xexit(RET_FATALERR);
 	}
 	fputc('[', stderr);
 	fputlong(i + 1, stderr);
@@ -966,7 +959,7 @@ syntaxtree *trp;
 	if (tioctl(ttyio, REQSETP, &tty) < 0) {
 		doperror((trp -> comm) -> argv[0], "fatal error");
 		prepareexit(-1);
-		Xexit2(RET_FATALERR);
+		Xexit(RET_FATALERR);
 	}
 	return(ret);
 }
@@ -1407,4 +1400,4 @@ syntaxtree *trp;
 	return(ret);
 }
 #endif	/* NOPOSIXUTIL */
-#endif	/* !_NOORIGSHELL && !MINIMUMSHELL && (!FD || (FD >= 2)) */
+#endif	/* !MINIMUMSHELL && (!FD || (FD >= 2 && !_NOORIGSHELL)) */

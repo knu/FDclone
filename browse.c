@@ -25,21 +25,34 @@ extern int setcurdrv __P_((int, int));
 #  ifdef	SVR4
 #  include <sys/sysmacros.h>
 #   ifndef	major
-#   define	major(n)	(((unsigned long)(n) >> 18) & 0x3fff)
+#   define	major(n)	((((unsigned long)(n)) >> 18) & 0x3fff)
 #   endif
 #   ifndef	minor
-#   define	minor(n)	((unsigned long)((n) & 0x3ffff))
+#   define	minor(n)	(((unsigned long)(n)) & 0x3ffff)
 #   endif
 #  else
 #   ifndef	major
-#   define	major(n)	(((unsigned)(n) >> 8) & 0xff)
+#   define	major(n)	((((unsigned)(n)) >> 8) & 0xff)
 #   endif
 #   ifndef	minor
-#   define	minor(n)	((unsigned)((n) & 0xff))
+#   define	minor(n)	(((unsigned)(n)) & 0xff)
 #   endif
 #  endif
 # endif
 #endif
+
+#define	CL_NORM		0
+#define	CL_BACK		1
+#define	CL_DIR		2
+#define	CL_RONLY	3
+#define	CL_HIDDEN	4
+#define	CL_LINK		5
+#define	CL_SOCK		6
+#define	CL_FIFO		7
+#define	CL_BLOCK	8
+#define	CL_CHAR		9
+#define	ANSI_FG		8
+#define	ANSI_BG		9
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -57,9 +70,14 @@ extern int win_y;
 extern int custno;
 #endif
 extern int internal_status;
+extern int hideclock;
 extern int fd_restricted;
 extern int physical_path;
 
+#ifndef	_NOCOLOR
+static int NEAR getcolorid __P_((namelist *));
+static int NEAR getcolor __P_((int));
+#endif
 static VOID NEAR pathbar __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
@@ -122,6 +140,7 @@ u_long flaglist[] = {
 winvartable winvar[MAXWINDOWS];
 #ifndef	_NOCOLOR
 int ansicolor = 0;
+char *ansipalette = NULL;
 #endif
 #ifndef	_NOPRECEDE
 char *precedepath = NULL;
@@ -134,12 +153,28 @@ int calc_x = -1;
 int calc_y = -1;
 
 static u_short modelist[] = {
-	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO
+	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
-static char suffixlist[] = "/@=|";
+#define	MAXMODELIST	(sizeof(modelist) / sizeof(u_short))
+static char suffixlist[] = {
+	'/', '@', '=', '|'
+};
+#define	MAXSUFFIXLIST	(sizeof(suffixlist) / sizeof(char))
 #ifndef	_NOCOLOR
 static u_char colorlist[] = {
-	ANSI_CYAN, ANSI_YELLOW, ANSI_MAGENTA, ANSI_RED
+	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
+};
+static char defpalette[] = {
+	ANSI_FG,	/* CL_NORM */
+	ANSI_BG,	/* CL_BACK */
+	ANSI_CYAN,	/* CL_DIR */
+	ANSI_BLUE,	/* CL_RONLY */
+	ANSI_GREEN,	/* CL_HIDDEN */
+	ANSI_YELLOW,	/* CL_LINK */
+	ANSI_MAGENTA,	/* CL_SOCK */
+	ANSI_RED,	/* CL_FIFO */
+	ANSI_FG,	/* CL_BLOCK */
+	ANSI_FG,	/* CL_CHAR */
 };
 #endif
 #ifndef	_NOPRECEDE
@@ -149,6 +184,40 @@ static int haste = 0;
 static int search_x = -1;
 static int search_y = -1;
 
+
+#ifndef	_NOCOLOR
+static int NEAR getcolorid(list)
+namelist *list;
+{
+	int i;
+
+	if (!isread(list)) return(CL_HIDDEN);
+	if (!iswrite(list)) return(CL_RONLY);
+	for (i = 0; i < MAXMODELIST; i++)
+		if ((list -> st_mode & S_IFMT) == modelist[i])
+			return(colorlist[i]);
+	return(CL_NORM);
+}
+
+static int NEAR getcolor(id)
+int id;
+{
+	int color;
+
+	if (!ansipalette || id >= strlen(ansipalette)) color = defpalette[id];
+	else {
+		color = ansipalette[id];
+		if (color >= '0' && color <= '9') color -= '0';
+		else color = defpalette[id];
+	}
+
+	if (color == ANSI_FG)
+		color = (ansicolor == 3) ? ANSI_BLACK : ANSI_WHITE;
+	else if (color == ANSI_BG) color = (ansicolor == 2) ? ANSI_BLACK : -1;
+
+	return(color);
+}
+#endif	/* !_NOCOLOR */
 
 static VOID NEAR pathbar(VOID_A)
 {
@@ -269,7 +338,7 @@ static VOID NEAR statusbar(VOID_A)
 			str[3] = ODATE_K;
 			str[4] = OLEN_K;
 			kanjiputs(&(str[(sorton & 7) - 1][3]));
-	
+
 			str[0] = OINC_K;
 			str[1] = ODEC_K;
 			putch2('(');
@@ -294,7 +363,7 @@ static VOID NEAR statusbar(VOID_A)
 static VOID NEAR stackbar(VOID_A)
 {
 #ifndef	_NOCOLOR
-	int j, x, color;
+	int x, color, bgcolor;
 #endif
 	int i, width;
 
@@ -302,7 +371,7 @@ static VOID NEAR stackbar(VOID_A)
 
 	locate(0, L_STACK);
 #ifndef	_NOCOLOR
-	if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
+	if ((bgcolor = getcolor(CL_BACK)) >= 0) chgcolor(bgcolor, 1);
 	x = 0;
 #endif
 	putterm(l_clear);
@@ -314,33 +383,22 @@ static VOID NEAR stackbar(VOID_A)
 #endif
 		locate(width * i + 1, L_STACK);
 #ifndef	_NOCOLOR
-		if (!isread(&(filestack[i]))) color = ANSI_BLUE;
-		else if (!iswrite(&(filestack[i]))) color = ANSI_GREEN;
-		else {
-			for (j = 0;
-			j < sizeof(modelist) / sizeof(u_short); j++)
-				if ((filestack[i].st_mode & S_IFMT)
-				== modelist[j]) break;
-			if (j < sizeof(modelist) / sizeof(u_short))
-				color = colorlist[j];
-			else if (ansicolor == 3) color = ANSI_BLACK;
-			else color = ANSI_WHITE;
-		}
-		if (ansicolor) chgcolor(color, 1);
+		color = getcolor(getcolorid(&(filestack[i])));
+		if (ansicolor && color >= 0) chgcolor(color, 1);
 		else
 #endif
 		putterm(t_standout);
 		kanjiputs2(filestack[i].name, width - 2, 0);
 #ifndef	_NOCOLOR
 		x += width - 2;
-		if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
+		if (bgcolor >= 0) chgcolor(bgcolor, 1);
 		else if (ansicolor) putterms(t_normal);
 		else
 #endif
 		putterm(end_standout);
 	}
 #ifndef	_NOCOLOR
-	if (ansicolor == 2) {
+	if (bgcolor >= 0) {
 		for (; x < n_column; x++) putch2(' ');
 		putterm(t_normal);
 	}
@@ -467,7 +525,7 @@ uid_t uid;
 
 	i = len = (iswellomit()) ? WOWNERMIN : WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((up = finduid(uid, NULL))) strncpy3(buf, up -> name, &i, 0);
+	else if ((up = finduid(uid, NULL))) strncpy3(buf, up -> name, &len, 0);
 	else ascnumeric(buf, uid, -1, len);
 
 	return(len);
@@ -482,7 +540,7 @@ gid_t gid;
 
 	i = len = (iswellomit()) ? WGROUPMIN : WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((gp = findgid(gid, NULL))) strncpy3(buf, gp -> name, &i, 0);
+	else if ((gp = findgid(gid, NULL))) strncpy3(buf, gp -> name, &len, 0);
 	else ascnumeric(buf, gid, -1, len);
 
 	return(len);
@@ -502,12 +560,13 @@ static VOID NEAR infobar(VOID_A)
 	int i, l;
 #endif
 
-	if (!filelist || filepos >= maxfile) return;
+	if (!filelist || maxfile < 0) return;
 	locate(0, L_INFO);
 
-	if (filelist[filepos].st_nlink < 0) {
+	if (filepos >= maxfile) {
 		putterm(l_clear);
-		kanjiputs(filelist[filepos].name);
+		if (filelist[0].st_nlink < 0 && filelist[0].name)
+			kanjiputs(filelist[0].name);
 		tflush();
 		return;
 	}
@@ -536,7 +595,7 @@ static VOID NEAR infobar(VOID_A)
 	}
 #endif
 
-	buf = malloc2(n_lastcolumn * 2 + 1);
+	buf = malloc2(n_lastcolumn * KANAWID + 1);
 	tm = localtime(&(filelist[filepos].st_mtim));
 
 	if (isbestomit()) len = 0;
@@ -551,7 +610,7 @@ static VOID NEAR infobar(VOID_A)
 		? (S_IFLNK | 0777) : filelist[filepos].st_mode);
 
 	if (!ishardomit()) {
-		sprintf(&(buf[len]), " %2d ", filelist[filepos].st_nlink);
+		snprintf2(&(buf[len]), 5, " %2d ", filelist[filepos].st_nlink);
 		len += 4;
 
 #if	!MSDOS
@@ -581,7 +640,8 @@ static VOID NEAR infobar(VOID_A)
 	}
 	buf[len++] = ' ';
 
-	sprintf(&(buf[len]), "%02d-%02d-%02d %02d:%02d ",
+	snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
+		"%02d-%02d-%02d %02d:%02d ",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
@@ -642,6 +702,9 @@ VOID waitmes(VOID_A)
 static int NEAR calclocate(i)
 int i;
 {
+#ifndef	_NOCOLOR
+	int bgcolor;
+#endif
 	int col, width;
 
 	col = n_column;
@@ -651,8 +714,8 @@ int i;
 	calc_x = (i / FILEPERROW) * width;
 	calc_y = i % FILEPERROW + LFILETOP;
 #ifndef	_NOCOLOR
-	if (ansicolor == 2) {
-		chgcolor(ANSI_BLACK, 1);
+	if ((bgcolor = getcolor(CL_BACK)) >= 0) {
+		chgcolor(bgcolor, 1);
 		locate(calc_x, calc_y);
 		if (!isleftshift()) {
 			putch2(' ');
@@ -701,29 +764,33 @@ int no, isstandout;
 {
 	char *buf;
 	struct tm *tm;
-	int i, j, col, len, width;
-#ifdef	CODEEUC
-	int wid;
-#endif
+	int i, j, col, len, wid, width;
 #ifndef	_NOCOLOR
-	int color;
+	int color, bgcolor;
 #endif
 
 	col = calclocate(no) - 2 - 1 + ((isshortwid()) ? 1 : 0);
+	width = calcwidth();
 	putch2(ismark(&(list[no])) ? '*' : ' ');
+
+	if (list != filelist) {
+		len = strlen3(list[no].name);
+		if (col > len) col = len;
+		if (width > len) width = len;
+	}
 
 	if (isstandout < 0 && stable_standout) {
 		putterm(end_standout);
 		calclocate(no);
+#ifndef	_NOPRECEDE
+		if (!havestat(&(list[no]))) return(width);
+#endif
 		return(col);
 	}
 
-	width = calcwidth();
-	buf = malloc2(col * 2 + 1);
+	buf = malloc2(col * KANAWID + 1);
 	i = (isstandout && fnameofs > 0) ? fnameofs : 0;
-#ifdef	CODEEUC
 	wid = width;
-#endif
 	i = strncpy3(buf, list[no].name, &width, i);
 
 #ifndef	_NOPRECEDE
@@ -732,49 +799,30 @@ int no, isstandout;
 		kanjiputs(buf);
 		free(buf);
 		if (isstandout > 0) putterm(end_standout);
-# ifdef	CODEEUC
 		return(wid);
-# else
-		return(width);
-# endif
 	}
 #endif
 
-#ifdef	_NOCOLOR
-	if (isdisptyp(dispmode) && i < width)
-#endif
-	{
-		for (j = 0; j < sizeof(modelist) / sizeof(u_short); j++)
-			if ((list[no].st_mode & S_IFMT) == modelist[j]) break;
-#ifndef	_NOCOLOR
-	}
 	if (isdisptyp(dispmode) && i < width) {
-#endif
-		if (j < sizeof(modelist) / sizeof(u_short))
-			buf[i] = suffixlist[j];
+		for (j = 0; j < MAXMODELIST; j++)
+			if ((list[no].st_mode & S_IFMT) == modelist[j]) break;
+		if (j < MAXSUFFIXLIST) buf[i] = suffixlist[j];
 		else if ((list[no].st_mode & S_IFMT) == S_IFREG
 		&& (list[no].st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)))
 			buf[i] = '*';
 	}
 #ifndef	_NOCOLOR
-	if (!isread(&(list[no]))) color = ANSI_BLUE;
-	else if (!iswrite(&(list[no]))) color = ANSI_GREEN;
-	else if (j < sizeof(modelist) / sizeof(u_short)) color = colorlist[j];
-	else if (ansicolor == 3) color = ANSI_BLACK;
-	else color = ANSI_WHITE;
+	color = getcolor(getcolorid(&(list[no])));
 #endif
 	len = width;
-#ifdef	CODEEUC
 	width += col - wid;
-#else
-	width = col;
-#endif
 
 	tm = NULL;
 	if (curcolumns < 5 && len + WIDTH3 <= width) {
 		buf[len++] = ' ';
 		if (isdir(&(list[no]))) {
-			sprintf(&(buf[len]), "%*.*s", WSIZE, WSIZE, "<DIR>");
+			snprintf2(&(buf[len]), WSIZE + 1,
+				"%*.*s", WSIZE, WSIZE, "<DIR>");
 			len += WSIZE;
 		}
 #if	MSDOS || !defined (_NODOSDRIVE)
@@ -783,7 +831,8 @@ int no, isstandout;
 		dospath2("") &&
 # endif
 		(list[no].st_mode & S_IFMT) == S_IFIFO) {
-			sprintf(&(buf[len]), "%*.*s", WSIZE, WSIZE, "<VOL>");
+			snprintf2(&(buf[len]), WSIZE + 1,
+				"%*.*s", WSIZE, WSIZE, "<VOL>");
 			len += WSIZE;
 		}
 #endif
@@ -807,14 +856,14 @@ int no, isstandout;
 	}
 	if (curcolumns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&(list[no].st_mtim));
-		sprintf(&(buf[len]), " %02d-%02d-%02d %2d:%02d",
+		snprintf2(&(buf[len]), WIDTH2 + 1, " %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		len += WIDTH2;
 	}
 	if (curcolumns < 2 && len + WIDTH1 <= width) {
 		if (!tm) tm = localtime(&(list[no].st_mtim));
-		sprintf(&(buf[len]), ":%02d", tm -> tm_sec);
+		snprintf2(&(buf[len]), 1 + WSECOND + 1, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
 #if	!MSDOS
@@ -839,15 +888,15 @@ int no, isstandout;
 	buf[len] = '\0';
 
 #ifndef	_NOCOLOR
-	if (ansicolor) chgcolor(color, isstandout > 0);
+	if (ansicolor && color >= 0) chgcolor(color, isstandout > 0);
 	else
 #endif
 	if (isstandout > 0) putterm(t_standout);
 	kanjiputs(buf);
 	free(buf);
 #ifndef	_NOCOLOR
-	if (ansicolor == 2) {
-		chgcolor(ANSI_BLACK, 1);
+	if ((bgcolor = getcolor(CL_BACK)) >= 0) {
+		chgcolor(bgcolor, 1);
 		putch2(' ');
 	}
 	if (ansicolor) putterms(t_normal);
@@ -970,12 +1019,12 @@ int n;
 	win = n;
 #ifndef	_NOARCHIVE
 	while (archivefile) {
-# ifndef	_NOBROWSE
-		do {
-			poparchdupl();
-		} while (browselist);
+# ifdef	_NOBROWSE
+		escapearch();
 # else
-		poparchdupl();
+		do {
+			escapearch();
+		} while (browselist);
 # endif
 	}
 	if (winvar[win].v_archivedir) {
@@ -1184,15 +1233,18 @@ static VOID readstatus(VOID_A)
 static int NEAR browsedir(file, def)
 char *file, *def;
 {
+#ifndef	_NOPRECEDE
+	char cwd[MAXPATHLEN];
+	int dupsorton;
+#endif
 	DIR *dirp;
 	struct dirent *dp;
 	reg_t *re;
 	u_char funcstat;
 	char *cp, buf[MAXNAMLEN + 1];
 	int ch, i, no, old;
-#ifndef	_NOPRECEDE
-	int dupsorton;
 
+#ifndef	_NOPRECEDE
 	haste = 0;
 # ifdef	FAKEUNINIT
 	dupsorton = sorton;	/* fake for -Wuninitialized */
@@ -1235,7 +1287,7 @@ char *file, *def;
 		blocksize = (off_t)getblocksize(".");
 		if (sorttype < 100) sorton = sorttype;
 #ifndef	_NOPRECEDE
-		if (includepath(NULL, fullpath, &precedepath)) {
+		if (Xgetwd(cwd) && includepath(cwd, precedepath)) {
 			haste = 1;
 			dupsorton = sorton;
 			sorton = 0;
@@ -1314,13 +1366,9 @@ char *file, *def;
 #ifndef	_NOPRECEDE
 		if (haste) keywaitfunc = readstatus;
 #endif
-#ifdef	_NOEDITMODE
-		ch = Xgetkey(1, 0);
-#else
 		Xgetkey(-1, 0);
 		ch = Xgetkey(1, 0);
 		Xgetkey(-1, 0);
-#endif
 #ifndef	_NOPRECEDE
 		keywaitfunc = NULL;
 #endif
@@ -1428,12 +1476,12 @@ char *file, *def;
 #ifndef	_NOARCHIVE
 	if (archivefile) {
 		if (no < 0) {
-# ifndef	_NOBROWSE
-			do {
-				poparchdupl();
-			} while (browselist);
+# ifdef	_NOBROWSE
+			escapearch();
 # else
-			poparchdupl();
+			do {
+				escapearch();
+			} while (browselist);
 # endif
 			strcpy(file, filelist[filepos].name);
 		}
@@ -1447,7 +1495,7 @@ char *file, *def;
 			}
 			else if (cp != (char *)-1) strcpy(file, cp);
 			else {
-				poparchdupl();
+				escapearch();
 				strcpy(file, filelist[filepos].name);
 			}
 		}
@@ -1488,9 +1536,8 @@ char *path, *buf;
 	cp = evalpath(strdup2(path), 1);
 #if	MSDOS
 	if (_dospath(cp)) {
-		if (setcurdrv(*cp, 0) >= 0) {
-			if (!Xgetwd(fullpath)) error(NULL);
-		}
+		if (setcurdrv(*cp, 0) >= 0 && !Xgetwd(fullpath))
+			error("getwd()");
 		for (i = 0; cp[i + 2]; i++) cp[i] = cp[i + 2];
 		cp[i] = '\0';
 	}
@@ -1511,6 +1558,7 @@ char *path, *buf;
 				if (chdir2(_SS_) < 0) error(_SS_);
 			}
 			else if (chdir2(cp) < 0) {
+				hideclock = 1;
 				warning(-1, cp);
 #if	MSDOS
 				strcpy(fullpath, origpath);
@@ -1576,9 +1624,8 @@ char *path;
 	curcolumns = defcolumns;
 
 	def = initcwd(path, prev);
-#if	MSDOS
 	_chdir2(fullpath);
-#endif
+	if (!Xgetwd(fullpath)) error("getwd()");
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
@@ -1600,6 +1647,7 @@ char *path;
 			if (findpattern) free(findpattern);
 			findpattern = NULL;
 			if (chdir2(nodospath(buf, file)) < 0) {
+				hideclock = 1;
 				warning(-1, file);
 				strcpy(prev, file);
 				def = prev;

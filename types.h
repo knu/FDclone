@@ -80,8 +80,7 @@
 #endif
 #define	MINTYPE(t)	((t)(-1L << (BITSPERBYTE * sizeof(t) - 1)))
 #define	MAXTYPE(t)	((t)~MINTYPE(t))
-#define	MAXNUMCOLS	10
-#define	MAXCOLSCOMMA(d)	(MAXNUMCOLS + (MAXNUMCOLS / (d)))
+#define	MAXCOLSCOMMA(d)	(MAXLONGWIDTH + (MAXLONGWIDTH / (d)))
 #define	MAXHISTNO	MAXTYPE(short)
 
 typedef struct _namelist {
@@ -127,12 +126,6 @@ typedef struct _namelist {
 #define	wasmark(file)		((file) -> tmpflags & F_WSMRK)
 #define	isarg(file)		((file) -> tmpflags & F_ISARG)
 #define	havestat(file)		((file) -> tmpflags & F_STAT)
-
-typedef struct _assoclist {
-	char *org;
-	char *assoc;
-	struct _assoclist *next;
-} assoclist;
 
 typedef struct _strtable {
 	u_short no;
@@ -181,7 +174,9 @@ typedef struct _launchtable {
 	char *ext;
 	char *comm;
 # if	FD >= 2
-	char *format;
+	char **format;
+	char **lignore;
+	char **lerror;
 # endif
 	u_char topskip;
 	u_char bottomskip;
@@ -206,9 +201,9 @@ typedef struct _launchtable {
 #define	F_NAME	8
 #define	LF_IGNORECASE	0001
 #define	LF_DIRLOOP	0002
-#define	LF_DIRNOCWD	0004
+#define	LF_DIRNOPREP	0004
 #define	LF_FILELOOP	0010
-#define	LF_FILENOCWD	0020
+#define	LF_FILENOPREP	0020
 
 typedef struct _archivetable {
 	char *ext;
@@ -298,6 +293,7 @@ extern int win;
 
 typedef struct _macrostat {
 	short addopt;
+	short needburst;
 	short needmark;
 	u_char flags;
 } macrostat;
@@ -309,6 +305,7 @@ typedef struct _macrostat {
 #define	F_TOSFN		0020
 #define	F_ISARCH	0040
 #define	F_BURST		0100
+#define	F_MARK		0200
 
 #ifdef	_NOORIGSHELL
 typedef struct _aliastable {

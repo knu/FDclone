@@ -37,9 +37,7 @@ extern int win_y;
 extern char *destpath;
 extern int savehist;
 extern int sizeinfo;
-#if	!defined (_NOARCHIVE) || !defined (_NOSPLITWIN)
 extern char fullpath[];
-#endif
 #ifndef	_NOORIGSHELL
 extern int fdmode;
 #endif
@@ -716,7 +714,8 @@ char *arg;
 			return(1);
 		}
 		free(path);
-		filelist[filepos].name = cp;
+		if (cp != (char *)-1) filelist[filepos].name = cp;
+		else escapearch();
 		return(4);
 	}
 	else
@@ -730,7 +729,15 @@ char *arg;
 #ifndef	_NOARCHIVE
 	if (archivefile) {
 		strcpy(dupfullpath, fullpath);
-		while (archivefile) poparchdupl();
+		while (archivefile) {
+# ifdef	_NOBROWSE
+			escapearch();
+# else
+			do {
+				escapearch();
+			} while (browselist);
+# endif
+		}
 		strcpy(fullpath, dupfullpath);
 	}
 #endif
@@ -812,7 +819,7 @@ char *env, *arg;
 static int NEAR execshell(VOID_A)
 {
 	char *sh;
-	int n, ret;
+	int mode, nl, ret;
 
 	sh = getenv2("FD_SHELL");
 #if	MSDOS
@@ -846,9 +853,9 @@ static int NEAR execshell(VOID_A)
 	}
 #endif
 
-	n = sigvecset(0);
-	if (n) putterms(t_end);
-	stdiomode(0);
+	sigvecset(0);
+	mode = termmode(0);
+	nl = stdiomode();
 	kanjifputs(SHEXT_K, stderr);
 	fputc('\n', stderr);
 #ifdef	_NOORIGSHELL
@@ -857,9 +864,9 @@ static int NEAR execshell(VOID_A)
 	if (sh) ret = dosystem(sh);
 	else ret = shell_loop(1);
 #endif
-	if (n) putterms(t_init);
-	ttyiomode(0);
-	sigvecset(n);
+	ttyiomode(nl);
+	termmode(mode);
+	sigvecset(1);
 
 	return(ret);
 }
@@ -902,11 +909,11 @@ char *arg;
 	}
 
 #ifndef	_NODOSDRIVE
-	if (drive) removetmp(dir, NULL, filelist[filepos].name);
+	if (drive) removetmp(dir, filelist[filepos].name);
 	else
 #endif
 #ifndef	_NOARCHIVE
-	if (archivefile) removetmp(dir, archivedir, filelist[filepos].name);
+	if (archivefile) removetmp(dir, NULL);
 	else
 #endif
 	;
@@ -939,7 +946,7 @@ char *arg;
 	if (drive) {
 		if (tmpdosrestore(drive, filelist[filepos].name) < 0)
 			warning(-1, filelist[filepos].name);
-		removetmp(dir, NULL, filelist[filepos].name);
+		removetmp(dir, filelist[filepos].name);
 	}
 #endif
 	return(4);
@@ -1306,6 +1313,10 @@ char *arg;
 	int drive;
 #endif
 
+#if	!defined (_NOARCHIVE) && !defined (_NOBROWSE)
+	if (browselist) return(warning_bell(arg));
+#endif
+
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	dir = NULL;
 #endif
@@ -1348,7 +1359,7 @@ char *arg;
 		else {
 			ret = execusercomm(com,
 				filelist[filepos].name, 0, -1, 1);
-			removetmp(dir, archivedir, filelist[filepos].name);
+			removetmp(dir, NULL);
 		}
 	}
 	else
@@ -1357,7 +1368,7 @@ char *arg;
 	if ((drive = tmpdosdupl("", &dir, 1)) < 0) ret = -1;
 	else if (drive) {
 		ret = execusercomm(com, filelist[filepos].name, 0, -1, 1);
-		removetmp(dir, NULL, filelist[filepos].name);
+		removetmp(dir, filelist[filepos].name);
 	}
 	else
 #endif
@@ -1403,17 +1414,14 @@ char *arg;
 static int unpack_file(arg)
 char *arg;
 {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char path[MAXPATHLEN];
+#endif
 	int ret;
 
 	if (archivefile) ret = unpack(archivefile, NULL, arg, 0, 0);
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
-	else {
-#if	!MSDOS && !defined (_NODOSDRIVE)
-		char path[MAXPATHLEN];
-#endif
-
-		ret = unpack(fnodospath(path, filepos), NULL, arg, 0, 1);
-	}
+	else ret = unpack(fnodospath(path, filepos), NULL, arg, 0, 1);
 	if (ret < 0) return(warning_bell(arg));
 	if (!ret) return(1);
 	return(4);
@@ -1423,17 +1431,14 @@ char *arg;
 static int unpack_tree(arg)
 char *arg;
 {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char path[MAXPATHLEN];
+#endif
 	int ret;
 
 	if (archivefile) ret = unpack(archivefile, NULL, NULL, 1, 0);
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
-	else {
-#if	!MSDOS && !defined (_NODOSDRIVE)
-		char path[MAXPATHLEN];
-#endif
-
-		ret = unpack(fnodospath(path, filepos), NULL, NULL, 1, 1);
-	}
+	else ret = unpack(fnodospath(path, filepos), NULL, NULL, 1, 1);
 	if (ret <= 0) {
 		if (ret < 0) warning_bell(arg);
 		return(3);
@@ -1536,6 +1541,10 @@ char *arg;
 #endif
 	int ret;
 
+#if	!defined (_NOARCHIVE) && !defined (_NOBROWSE)
+	if (browselist) return(warning_bell(arg));
+#endif
+
 	dir = NULL;
 #ifndef	_NODOSDRIVE
 	drive = 0;
@@ -1565,10 +1574,10 @@ char *arg;
 
 	ret = backup(dev);
 #ifndef	_NODOSDRIVE
-	if (drive) removetmp(dir, NULL, "");
+	if (drive) removetmp(dir, NULL);
 	else
 #endif
-	if (archivefile) removetmp(dir, archivedir, "");
+	if (archivefile) removetmp(dir, NULL);
 
 	free(dev);
 	if (ret <= 0) return(1);

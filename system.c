@@ -119,7 +119,6 @@ typedef union REGS	__dpmi_regs;
 #include <sys/timeb.h>
 #include "unixemu.h"
 #define	Xexit		exit
-#define	Xexit2		exit2
 #define	getdtablesize()	20
 #define	DEFPATH		":"
 #else	/* !MSDOS */
@@ -138,11 +137,14 @@ typedef union REGS	__dpmi_regs;
 # include <ulimit.h>
 # endif
 #define	Xexit		_exit
-#define	Xexit2(n)	((ttypgrp >= 0 && ttypgrp == getpid()) \
-			? (VOID)exit2(n) : (VOID)exit(n))
 #define	DEFPATH		":/bin:/usr/bin"
 #define	NULLDEVICE	"/dev/null"
 #endif	/* !MSDOS */
+
+#include "pathname.h"
+#include "system.h"
+
+#if	!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL))
 
 #ifdef	FD
 #include "term.h"
@@ -161,6 +163,7 @@ extern int completeinternal __P_((char *, int, int, char ***));
 # endif
 extern VOID evalenv __P_((VOID_A));
 extern int underhome __P_((char *));
+extern int replaceargs __P_((int *, char ***, char **, int));
 extern char *inputshellstr __P_((char *, int, char *));
 extern int entryhist __P_((int, char *, int));
 extern int loadhistory __P_((int, char *));
@@ -170,10 +173,13 @@ extern int internal_status;
 extern char fullpath[];
 extern char *origpath;
 extern int inruncom;
+# ifdef	SIGALRM
+extern int noalrm;
+# endif
 extern int fd_restricted;
 extern int physical_path;
 # if	!MSDOS && !defined (_NOKANJIFCONV)
-extern int nokanjifget;
+extern int nokanjifconv;
 # endif
 # ifndef	_NODOSDRIVE
 # define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
@@ -191,17 +197,13 @@ extern unsigned _stklen = 0x8000;
 # define	TTYNAME		"/dev/tty"
 # endif
 int ttyio = -1;
+FILE *ttyout = NULL;
 # ifdef	DEBUG
 # define	exit2(n)	(muntrace(), exit(n))
 # else
 # define	exit2		exit
 # endif
 #endif	/* !FD */
-
-#include "pathname.h"
-#include "system.h"
-
-#if	!defined (_NOORIGSHELL) && (!defined (FD) || (FD >= 2))
 
 #if	(GETTODARGS == 1)
 #define	gettimeofday2(tv, tz)	gettimeofday(tv)
@@ -244,6 +246,16 @@ int ttyio = -1;
 #else
 #define	setnbuf(f)	setbuf(f, NULL)
 #define	setlbuf(f)	setlinebuf(f)
+#endif
+
+#if	MSDOS
+#define	havetty()	(1)
+#else
+# ifdef	NOJOB
+# define	havetty()	(mypid == orgpid)
+# else
+# define	havetty()	(ttypgrp >= 0 && mypid == ttypgrp)
+# endif
 #endif
 
 #if	!MSDOS
@@ -317,14 +329,11 @@ extern char *sys_errlist[];
 # if	MSDOS || !defined (_NODOSDRIVE)
 extern int _dospath __P_((char *));
 # endif
-extern char *_Xgetwd __P_((char *, int));
-#define	Xgetwd(p)	_Xgetwd(p, 0)
+extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
-extern int _Xlstat __P_((char *, struct stat *, int, int));
-#define	Xlstat(p, s)	_Xlstat(p, s, 0, 0)
+extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
-extern int _Xopen __P_((char *, int, int, int));
-#define	Xopen(p, f, m)	_Xopen(p, f, m, 0)
+extern int Xopen __P_((char *, int, int));
 # ifdef	_NODOSDRIVE
 # define	Xclose		close
 # define	Xread		read
@@ -474,14 +483,6 @@ int Xmkdir __P_((char *, int));
 # endif
 #endif
 
-#ifndef	NSIG
-# ifdef	_NSIG
-# define	NSIG	_NSIG
-# else
-# define	NSIG	64
-# endif
-#endif
-
 #ifndef	CLK_TCK
 # ifdef	HZ
 # define	CLK_TCK	HZ
@@ -541,9 +542,16 @@ extern int posixgetopts __P_((syntaxtree *));
 
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
+extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern char *ascnumeric __P_((char *, long, int, int));
+
+#ifdef	DEBUG
+extern VOID mtrace __P_ ((VOID));
+extern VOID muntrace __P_ ((VOID));
+extern char *_mtrace_file;
+#endif
 
 #ifndef	MINIMUMSHELL
 # if	!MSDOS && !defined (NOJOB)
@@ -564,6 +572,7 @@ extern int posixoptind;
 #ifdef	FD
 extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((char *));
+extern char **duplvar __P_((char **, int));
 # if	MSDOS
 extern int setcurdrv __P_((int, int));
 # endif
@@ -577,6 +586,7 @@ static int NEAR genrand __P_((int));
 static char *NEAR genrandname __P_((char *, int));
 static int NEAR mktmpfile __P_((char *));
 static int NEAR rmtmpfile __P_((char *));
+static char **NEAR duplvar __P_((char **, int));
 # ifdef	DJGPP
 int dos_putpath __P_((char *, int));
 # endif
@@ -710,8 +720,9 @@ static p_id_t NEAR makechild __P_((int, p_id_t));
 #endif	/* !MSDOS */
 static VOID NEAR safeclose __P_((int));
 static VOID NEAR safefclose __P_((FILE *));
+static VOID NEAR safermtmpfile __P_((char *));
 static int NEAR getoption __P_((int, char *[], char *[]));
-static int NEAR c_allocsize __P_((int));
+static ALLOC_T NEAR c_allocsize __P_((int));
 static int NEAR readchar __P_((int));
 static char *NEAR readline __P_((int));
 static char *NEAR readfile __P_((int, ALLOC_T *));
@@ -721,7 +732,7 @@ static redirectlist *NEAR newrlist __P_((int, char *, int, redirectlist *));
 static int NEAR freerlist __P_((redirectlist *, int, int));
 static command_t *NEAR newcomm __P_((VOID_A));
 static VOID NEAR freecomm __P_((command_t *, int));
-static syntaxtree *NEAR parentstree __P_((syntaxtree *));
+static syntaxtree *NEAR eldeststree __P_((syntaxtree *));
 static syntaxtree *NEAR childstree __P_((syntaxtree *, int));
 static syntaxtree *NEAR skipfuncbody __P_((syntaxtree *));
 static syntaxtree *NEAR insertstree __P_((syntaxtree *, syntaxtree *, int));
@@ -750,7 +761,6 @@ static char **NEAR putvar __P_((char **, char *, int));
 static int NEAR checkprimal __P_((char *, int));
 static int NEAR checkronly __P_((char *, int));
 static int NEAR _putshellvar __P_((char *, int));
-static char **NEAR duplvar __P_((char **, int));
 static heredoc_t *NEAR duplheredoc __P_((heredoc_t *));
 static redirectlist *NEAR duplrlist __P_((redirectlist *));
 static shfunctable *NEAR duplfunc __P_((shfunctable *));
@@ -763,7 +773,7 @@ static p_id_t getlastpid __P_((VOID_A));
 static char *getflagstr __P_((VOID_A));
 static int checkundefvar __P_((char *, char *, int));
 static VOID safeexit __P_((VOID_A));
-static int getparenttype __P_((syntaxtree *));
+static int NEAR getparenttype __P_((syntaxtree *));
 static int NEAR parsestatement __P_((syntaxtree **, int, int, int));
 static syntaxtree *NEAR _addarg __P_((syntaxtree *, char *));
 static int NEAR addarg __P_((syntaxtree **, redirectlist *,
@@ -781,18 +791,18 @@ static syntaxtree *NEAR morethan __P_((syntaxtree *, redirectlist *,
 		char *, int *));
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
 static syntaxtree *NEAR endvar __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, int *, int));
+		char *, int *, int *, ALLOC_T *, int));
 static syntaxtree *NEAR addvar __P_((syntaxtree *,
 		char *, int *, char *, int *, int));
 #endif
 static syntaxtree *NEAR normaltoken __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, int *));
+		char *, int *, int *, ALLOC_T *));
 static syntaxtree *NEAR casetoken __P_((syntaxtree *, redirectlist *,
 		char *, int *, int *));
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
 static int NEAR cmpstatement __P_((char *, int));
 static syntaxtree *NEAR comsubtoken __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, int *));
+		char *, int *, int *, ALLOC_T *));
 #endif
 static syntaxtree *NEAR analyzeloop __P_((syntaxtree *, redirectlist *,
 		char *, int));
@@ -979,10 +989,6 @@ static int NEAR sourcefile __P_((int, char *, int));
 #define	TMPPREFIX	"tm"
 #endif
 #define	BUFUNIT		32
-#define	c_malloc(size)	(malloc2((size) = BUFUNIT))
-#define	c_realloc(ptr, n, size) \
-			(((n) + 1 < (size)) \
-			? (ptr) : realloc2(ptr, (size) *= 2))
 #define	getconstvar(s)	(getshellvar(s, sizeof(s) - 1))
 
 #ifdef	FDSH
@@ -1024,8 +1030,8 @@ int prevjob = -1;
 int stopped = 0;
 p_id_t orgpgrp = -1;
 p_id_t childpgrp = -1;
-#endif
 p_id_t ttypgrp = -1;
+#endif
 int interrupted = 0;
 int nottyout = 0;
 int syntaxerrno = 0;
@@ -1041,6 +1047,9 @@ static int exit_status = RET_SUCCESS;
 static sigmask_t oldsigmask;
 static p_id_t orgpid = -1;
 static p_id_t lastpid = -1;
+#if	!MSDOS && !defined (NOJOB)
+static p_id_t oldttypgrp = -1;
+#endif
 static int setsigflag = 0;
 static int trapok = 0;
 static int readtrap = 0;
@@ -1702,6 +1711,24 @@ char *file;
 	return(0);
 }
 
+static char **NEAR duplvar(var, margin)
+char **var;
+int margin;
+{
+	char **dupl;
+	int i, n;
+
+	if (margin < 0) {
+		if (!var) return(NULL);
+		margin = 0;
+	}
+	n = countvar(var);
+	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
+	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
+	dupl[i] = NULL;
+	return(dupl);
+}
+
 # ifdef	DJGPP
 int dos_putpath(path, offset)
 char *path;
@@ -1880,6 +1907,9 @@ static VOID NEAR setsignal(VOID_A)
 	int i, sig;
 
 	if (setsigflag++) return;
+#if	defined (FD) && defined (SIGALRM)
+	noalrm++;
+#endif
 	for (i = 0; signallist[i].sig >= 0; i++) {
 		sig = signallist[i].sig;
 		if (signallist[i].flags & TR_BLOCK);
@@ -1909,10 +1939,8 @@ int forced;
 	checkjob(1);
 	stopped = 0;
 # endif
-	if (ttypgrp < 0 || ttypgrp != getpid());
-	else
 #endif	/* !MSDOS */
-	if (interrupted && interactive && !nottyout) {
+	if (havetty() && interrupted && interactive && !nottyout) {
 		fflush(stdout);
 		fputc('\n', stderr);
 		fflush(stderr);
@@ -1921,6 +1949,9 @@ int forced;
 	if (setsigflag) {
 		if (forced) setsigflag = 1;
 		if (!(--setsigflag)) {
+#if	defined (FD) && defined (SIGALRM)
+			noalrm--;
+#endif
 			for (i = 0; i < NSIG; i++)
 				if (oldsigfunc[i] != SIG_ERR)
 					signal(i, oldsigfunc[i]);
@@ -1941,9 +1972,7 @@ static VOID NEAR exectrapcomm(VOID_A)
 #endif
 	int i;
 
-#if	!MSDOS
-	if (ttypgrp < 0L || ttypgrp != mypid) return;
-#endif
+	if (!havetty()) return;
 	for (i = 0; i < NSIG; i++) {
 		if (!(trapmode[i] & TR_CATCH)) continue;
 		trapmode[i] &= ~TR_CATCH;
@@ -2001,11 +2030,7 @@ int sig;
 	}
 	else if	((flags & TR_STAT) == TR_TERM) trapped = -1;
 
-#if	!MSDOS
-	if (ttypgrp < 0L || ttypgrp != mypid);
-	else
-#endif
-	if (trapped > 0) {
+	if (havetty() && trapped > 0) {
 		trapmode[sig] |= TR_CATCH;
 		if (trapok) exectrapcomm();
 	}
@@ -2015,10 +2040,7 @@ int sig;
 		fflush(stderr);
 	}
 
-	if (trapped < 0) {
-		prepareexit(0);
-		Xexit2(sig + 128);
-	}
+	if (trapped < 0) Xexit2(sig + 128);
 
 	if (signallist[i].func) signal(sig, (sigcst_t)(signallist[i].func));
 	errno = duperrno;
@@ -2030,7 +2052,7 @@ static int trap_hup(VOID_A)
 {
 	if (!trap_common(SIGHUP)) {
 # if	!MSDOS && !defined (NOJOB)
-		if (ttypgrp >= 0L && ttypgrp == getpid()) killjob();
+		if (havetty()) killjob();
 # endif
 		if (oldsigfunc[SIGHUP] && oldsigfunc[SIGHUP] != SIG_ERR
 		&& oldsigfunc[SIGHUP] != SIG_DFL
@@ -2041,7 +2063,6 @@ static int trap_hup(VOID_A)
 			(*oldsigfunc[SIGHUP])();
 # endif
 		}
-		prepareexit(0);
 		Xexit2(RET_FAIL);
 	}
 	return(0);
@@ -2179,7 +2200,7 @@ static int trap_tstp(VOID_A)
 #ifdef	SIGCONT
 static int trap_cont(VOID_A)
 {
-# if	defined (FD) && !MSDOS
+# if	!MSDOS && defined (FD)
 	suspended = 1;
 # endif
 	return(trap_common(SIGCONT));
@@ -2307,13 +2328,16 @@ int noexit;
 		return;
 	}
 	duperrno = errno;
-	if (ttypgrp >= 0L && ttypgrp == getpid()) {
+	if (havetty()) {
 		exectrapcomm();
 		if (!noexit && (trapmode[0] & TR_STAT) == TR_TRAP) {
 			trapmode[0] = 0;
 			if (trapcomm[0] && *(trapcomm[0]))
 				_dosystem(trapcomm[0]);
 		}
+#if	!MSDOS && !defined (NOJOB)
+		if (oldttypgrp >= 0L) settcpgrp(ttyio, oldttypgrp);
+#endif
 	}
 	resetsignal(1);
 	freefunc(shellfunc);
@@ -2376,6 +2400,33 @@ int noexit;
 	errno = duperrno;
 }
 
+VOID Xexit2(n)
+int n;
+{
+	if (havetty()) {
+#ifdef	FD
+		putterm(t_normal);
+		endterm();
+		inittty(1);
+		keyflush();
+#endif	/* !FD */
+		prepareexit(0);
+
+#ifdef	DEBUG
+		if (mypid == orgpid) {
+# if	!MSDOS && defined (FD)
+			freeterment();
+# endif
+			if (ttyout && ttyout != stderr) fclose(ttyout);
+			else if (ttyio >= 0) close(ttyio);
+			muntrace();
+		}
+#endif
+	}
+
+	exit(n);
+}
+
 static VOID NEAR syntaxerror(s)
 char *s;
 {
@@ -2403,7 +2454,6 @@ char *s;
 #if	!MSDOS && !defined (NOJOB)
 		if (loginshell && interactive_io) killjob();
 #endif
-		prepareexit(0);
 		Xexit2(RET_SYNTAXERR);
 	}
 	safeexit();
@@ -2700,7 +2750,6 @@ p_id_t ppid;
 		mypid = getpid();
 		stop = 1;
 # ifdef	NOJOB
-		ttypgrp = -1L;
 		if (loginshell) stop = 0;
 # else
 		if (jobok && (!tty || childpgrp == orgpgrp)) stop = 0;
@@ -2718,7 +2767,7 @@ p_id_t ppid;
 	else {
 		if (jobok && setpgroup(mypid, childpgrp) < 0) {
 			doperror(NULL, "fatal error");
-			prepareexit(1);
+			prepareexit(-1);
 			Xexit(RET_FATALERR);
 		}
 		if (tty) gettermio(childpgrp);
@@ -2734,7 +2783,6 @@ syntaxtree *trp;
 {
 # ifndef	NOJOB
 #  ifdef	USESGTTY
-	struct tchars cc;
 	int lflag;
 #  endif
 	termioctl_t tty;
@@ -2772,7 +2820,8 @@ syntaxtree *trp;
 			if (joblist[lastjob].tty) free(joblist[lastjob].tty);
 			joblist[lastjob].tty =
 				(termioctl_t *)malloc2(sizeof(tty));
-			memcpy(joblist[lastjob].tty, &tty, sizeof(tty));
+			memcpy((char *)(joblist[lastjob].tty), (char *)&tty,
+				sizeof(tty));
 #  ifndef	FD
 #   ifdef	USESGTTY
 			tty.sg_flags |= ECHO | CRMOD;
@@ -2795,8 +2844,8 @@ syntaxtree *trp;
 				free(joblist[lastjob].ttyflag);
 			joblist[lastjob].ttyflag =
 				(int *)malloc2(sizeof(lflag));
-			memcpy(joblist[lastjob].ttyflag,
-				&lflag, sizeof(lflag));
+			memcpy((char *)(joblist[lastjob].ttyflag),
+				(char *)&lflag, sizeof(lflag));
 #   ifndef	!FD
 			lflag |= LPASS8 | LCRTBS | LCRTERA | LCRTKIL | LCTLECH;
 			lflag &= ~(LLITOUT | LPENDIN);
@@ -2805,7 +2854,7 @@ syntaxtree *trp;
 		}
 #  endif	/* USESGTTY */
 #  ifdef	FD
-		stdiomode(0);
+		stdiomode();
 #  endif	/* FD */
 		if (interactive && !nottyout) dispjob(lastjob, stderr);
 		return(RET_SUCCESS);
@@ -2814,7 +2863,10 @@ syntaxtree *trp;
 	trapok = 0;
 
 # ifndef	NOJOB
-	if (mypid == orgpgrp) gettermio(orgpgrp);
+	if (mypid == orgpgrp) {
+		gettermio(orgpgrp);
+		childpgrp = -1L;
+	}
 # endif
 	if (ret < 0) {
 		if (!trp && errno == ECHILD) ret = errno = 0;
@@ -2890,6 +2942,16 @@ FILE *fp;
 	errno = duperrno;
 }
 
+static VOID NEAR safermtmpfile(file)
+char *file;
+{
+	int duperrno;
+
+	duperrno = errno;
+	rmtmpfile(file);
+	errno = duperrno;
+}
+
 static int NEAR getoption(argc, argv, envp)
 int argc;
 char *argv[], *envp[];
@@ -2933,10 +2995,10 @@ char *argv[], *envp[];
 	return(com + 2);
 }
 
-static int NEAR c_allocsize(n)
+static ALLOC_T NEAR c_allocsize(n)
 int n;
 {
-	int size;
+	ALLOC_T size;
 
 	n++;
 	for (size = BUFUNIT; size < n; size *= 2);
@@ -2977,9 +3039,10 @@ static char *NEAR readline(fd)
 int fd;
 {
 	char *cp;
-	int i, c, size;
+	ALLOC_T i, size;
+	int c;
 
-	cp = c_malloc(size);
+	cp = c_realloc(NULL, 0, &size);
 	for (i = 0; (c = readchar(fd)) != '\n'; i++) {
 		if (c < 0) {
 			free(cp);
@@ -2993,7 +3056,7 @@ int fd;
 			}
 			break;
 		}
-		cp = c_realloc(cp, i, size);
+		cp = c_realloc(cp, i, &size);
 		cp[i] = c;
 	}
 #if	MSDOS
@@ -3011,13 +3074,13 @@ ALLOC_T *lenp;
 	ALLOC_T i, size;
 	int c;
 
-	cp = c_malloc(size);
+	cp = c_realloc(NULL, 0, &size);
 	for (i = 0; (c = readchar(fd)) != READ_EOF; i++) {
 		if (c < 0) {
 			free(cp);
 			return(NULL);
 		}
-		cp = c_realloc(cp, i, size);
+		cp = c_realloc(cp, i, &size);
 		cp[i] = c;
 	}
 	cp[i] = '\0';
@@ -3081,7 +3144,7 @@ int undo, nown;
 	if (!hdp) return;
 	if (hdp -> eof) free(hdp -> eof);
 	if (hdp -> filename) {
-		if (undo && !nown) rmtmpfile(hdp -> filename);
+		if (undo && !nown) safermtmpfile(hdp -> filename);
 		free(hdp -> filename);
 	}
 	if (hdp -> buf) free(hdp -> buf);
@@ -3207,7 +3270,11 @@ syntaxtree *parent;
 VOID freestree(trp)
 syntaxtree *trp;
 {
+	int duperrno;
+
 	if (!trp) return;
+
+	duperrno = errno;
 	if (trp -> comm) {
 		if (!(trp -> flags & ST_NODE))
 			freecomm(trp -> comm, trp -> flags & ST_NOWN);
@@ -3239,9 +3306,10 @@ syntaxtree *trp;
 	}
 	trp -> type = OP_NONE;
 	trp -> cont = trp -> flags = 0;
+	errno = duperrno;
 }
 
-static syntaxtree *NEAR parentstree(trp)
+static syntaxtree *NEAR eldeststree(trp)
 syntaxtree *trp;
 {
 	syntaxtree *tmptr;
@@ -3254,10 +3322,10 @@ syntaxtree *trp;
 	return(NULL);
 }
 
-syntaxtree *parentshell(trp)
+syntaxtree *parentstree(trp)
 syntaxtree *trp;
 {
-	while ((trp = parentstree(trp)))
+	while ((trp = eldeststree(trp)))
 		if (!(trp -> flags & ST_NODE) && isstatement(trp -> comm))
 			return(trp);
 	return(NULL);
@@ -3339,14 +3407,17 @@ int type;
 		new -> next = trp -> next;
 		new -> type = trp -> type;
 		new -> cont = trp -> cont;
-		new -> flags = (trp -> flags & ST_NODE) ? trp -> flags : 0;
+		if (trp -> flags & ST_NODE) {
+			new -> flags = trp -> flags;
+			trp -> flags = 0;
+		}
 		trp -> comm = (command_t *)new;
 		trp -> type = OP_NONE;
-		trp -> flags = ST_NODE;
+		trp -> flags |= ST_NODE;
 		trp = new;
 	}
 	else if (l1 > l2) {
-		if (!(tmptr = parentstree(parent))) {
+		if (!(tmptr = eldeststree(parent))) {
 			while (hasparent(trp)) trp = trp -> parent;
 			new = newstree(trp);
 			new -> comm = trp -> comm;
@@ -3361,7 +3432,7 @@ int type;
 			trp -> flags = ST_NODE;
 		}
 		else if (tmptr -> flags & ST_NODE)
-			trp = insertstree(tmptr, parentstree(tmptr), type);
+			trp = insertstree(tmptr, eldeststree(tmptr), type);
 		else if (!isstatement(tmptr -> comm))
 			trp = insertstree(trp, tmptr, type);
 		else {
@@ -3564,7 +3635,7 @@ int rm;
 				if (hdp -> fd >= 0) hit = hdp;
 			}
 			else if (hdp -> filename) {
-				rmtmpfile(hdp -> filename);
+				safermtmpfile(hdp -> filename);
 				free(hdp -> filename);
 				hdp -> filename = NULL;
 			}
@@ -3623,6 +3694,9 @@ syntaxtree *trp;
 			cp = s = NULL;
 		}
 	}
+#ifdef	FAKEUNINIT
+	else i = 0;	/* fake for -Wuninitialized */
+#endif
 
 	ret = 1;
 	if (cp) {
@@ -3677,7 +3751,7 @@ int old;
 		return(fd);
 	}
 
-	cp = c_malloc(size);
+	cp = c_realloc(NULL, 0, &size);
 	ret = RET_SUCCESS;
 
 	i = 0;
@@ -3710,7 +3784,7 @@ int old;
 			if (ret == RET_SUCCESS) fputc('\n', stdout);
 			continue;
 		}
-		cp = c_realloc(cp, i, size);
+		cp = c_realloc(cp, i, &size);
 		cp[i++] = c;
 	}
 	safeclose(fdin);
@@ -3801,7 +3875,7 @@ redirectlist *rp;
 		safeclose(fd);
 		fd = newdup(Xopen(pfile, O_BINARY | O_RDONLY, 0666));
 		if (fd < 0) {
-			rmtmpfile(pfile);
+			safermtmpfile(pfile);
 			rp -> fakepipe = NULL;
 			return(-1);
 		}
@@ -3825,7 +3899,7 @@ redirectlist *rp;
 		}
 		safeclose(rp -> dosfd);
 	}
-	rmtmpfile(rp -> fakepipe);
+	safermtmpfile(rp -> fakepipe);
 	free(rp -> fakepipe);
 	rp -> fakepipe = NULL;
 	rp -> dosfd = -1;
@@ -4256,20 +4330,6 @@ int len;
 	return(0);
 }
 
-static char **NEAR duplvar(var, margin)
-char **var;
-int margin;
-{
-	char **dupl;
-	int i, n;
-
-	n = countvar(var);
-	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
-	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
-	dupl[i] = NULL;
-	return(dupl);
-}
-
 static heredoc_t *NEAR duplheredoc(hdp)
 heredoc_t *hdp;
 {
@@ -4344,7 +4404,8 @@ syntaxtree *trp, *parent;
 			new -> next = duplstree(trp -> next, new);
 		else {
 			rp = (redirectlist *)malloc2(sizeof(redirectlist));
-			memcpy(rp, trp -> next, sizeof(redirectlist));
+			memcpy((char *)rp, (char *)(trp -> next),
+				sizeof(redirectlist));
 			rp -> filename = strdup2(rp -> filename);
 			new -> next = (syntaxtree *)rp;
 		}
@@ -4443,7 +4504,6 @@ int len;
 static VOID safeexit(VOID_A)
 {
 	if (interactive_io) return;
-	prepareexit(0);
 	Xexit2(RET_FAIL);
 }
 
@@ -4457,12 +4517,12 @@ syntaxtree *trp;
 	return(id - 1);
 }
 
-static int getparenttype(trp)
+static int NEAR getparenttype(trp)
 syntaxtree *trp;
 {
 	int id;
 
-	if ((id = getstatid(parentshell(trp))) < 0) return(0);
+	if ((id = getstatid(parentstree(trp))) < 0) return(0);
 	return(statementlist[id].type & STT_TYPE);
 }
 
@@ -4489,7 +4549,7 @@ int no, prev, type;
 		*trpp = childstree(*trpp, SM_STATEMENT);
 	}
 	else {
-		if (prev <= 0 || !(tmptr = parentshell(*trpp))) return(-1);
+		if (prev <= 0 || !(tmptr = parentstree(*trpp))) return(-1);
 
 		for (i = 0; i < SMPREV; i++) {
 			if (!(statementlist[no].prev[i])) continue;
@@ -4506,10 +4566,10 @@ int no, prev, type;
 	}
 
 	if (statementlist[no].type & STT_NEEDNONE) {
-		if (!(tmptr = parentshell(*trpp))) return(-1);
+		if (!(tmptr = parentstree(*trpp))) return(-1);
 		*trpp = tmptr;
 		if (getstatid(tmptr = getparent(tmptr)) == SM_FUNC - 1) {
-			if (!(tmptr = parentshell(tmptr))) return(-1);
+			if (!(tmptr = parentstree(tmptr))) return(-1);
 			*trpp = tmptr;
 		}
 	}
@@ -4548,7 +4608,7 @@ char *arg;
 	}
 	else if (arg) {
 		if ((trp -> flags & ST_NEXT)
-		&& (id = getstatid(parentshell(trp))) >= 0
+		&& (id = getstatid(parentstree(trp))) >= 0
 		&& !(statementlist[id].type & STT_NEEDLIST)) {
 			syntaxerrno = ER_UNEXPTOK;
 			return(trp);
@@ -4585,8 +4645,8 @@ char *arg;
 			break;
 		case STT_FUNC:
 			if (!arg && comm) {
-				if (!(tmptr = parentshell(trp))
-				|| !(tmptr = parentshell(tmptr))) {
+				if (!(tmptr = parentstree(trp))
+				|| !(tmptr = parentstree(tmptr))) {
 					syntaxerrno = ER_UNEXPNL;
 					return(trp);
 				}
@@ -4629,7 +4689,7 @@ int *lenp, notok;
 	*lenp = 0;
 
 	if (!type) {
-		id = getstatid(tmptr = parentshell(*trpp));
+		id = getstatid(tmptr = parentstree(*trpp));
 		type = (id >= 0) ? statementlist[id].type : 0;
 
 		if ((type & STT_NEEDIDENT) && tmptr == getparent(*trpp));
@@ -4685,7 +4745,7 @@ syntaxtree *trp;
 	syntaxtree *tmptr;
 
 	if ((!(trp -> comm) && !(trp -> flags & ST_NEXT))
-	|| !(tmptr = parentshell(trp)) || !ischild(tmptr -> comm))
+	|| !(tmptr = parentstree(trp)) || !ischild(tmptr -> comm))
 		syntaxerrno = ER_UNEXPTOK;
 	else {
 		_addarg(trp, NULL);
@@ -4705,7 +4765,7 @@ int *ptrp;
 	char tmptok[3];
 	int i, id;
 
-	id = getstatid(parentshell(trp));
+	id = getstatid(parentstree(trp));
 	if (!(trp -> comm) && !(trp -> flags & ST_NEXT) && id >= 0) {
 		syntaxerrno = ER_UNEXPNL;
 		return(trp);
@@ -4907,7 +4967,7 @@ int *ptrp, *tptrp, n;
 	new = newstree(NULL);
 	new -> parent = trp;
 	newrp = (redirectlist *)malloc2(sizeof(redirectlist));
-	memcpy(newrp, rp, sizeof(redirectlist));
+	memcpy((char *)newrp, (char *)rp, sizeof(redirectlist));
 	newrp -> filename = cp;
 	newrp -> next = (redirectlist *)new;
 	trp -> next = (syntaxtree *)newrp;
@@ -4923,11 +4983,14 @@ static syntaxtree *NEAR endvar(trp, rp, s, ptrp, tptrp, sp, n)
 syntaxtree *trp;
 redirectlist *rp;
 char *s;
-int *ptrp, *tptrp, *sp, n;
+int *ptrp, *tptrp;
+ALLOC_T *sp;
+int n;
 {
 	syntaxtree *tmptr;
 	char *cp;
-	int len, size;
+	ALLOC_T size;
+	int len;
 
 	if (!(tmptr = trp -> parent) || !(tmptr -> flags & ST_BUSY)
 	|| !(tmptr -> next)) {
@@ -4940,7 +5003,7 @@ int *ptrp, *tptrp, *sp, n;
 	trp -> flags &= ~ST_BUSY;
 
 	cp = rp -> filename;
-	memcpy(rp, tmptr, sizeof(redirectlist));
+	memcpy((char *)rp, (char *)tmptr, sizeof(redirectlist));
 	len = strlen(rp -> filename);
 	size = c_allocsize(len + *tptrp + n + 2);
 	if (size > *sp) cp = realloc2(cp, *sp = size);
@@ -4997,10 +5060,12 @@ static syntaxtree *NEAR normaltoken(trp, rp, s, ptrp, tptrp, sp)
 syntaxtree *trp;
 redirectlist *rp;
 char *s;
-int *ptrp, *tptrp, *sp;
+int *ptrp, *tptrp;
+ALLOC_T *sp;
 {
 	char tmptok[2];
-	int i, size;
+	ALLOC_T size;
+	int i;
 
 	switch (s[*ptrp]) {
 		case '{':
@@ -5056,7 +5121,7 @@ int *ptrp, *tptrp, *sp;
 			else if (rp -> type) syntaxerrno = ER_UNEXPTOK;
 #ifdef	BASHSTYLE
 	/* bash does not allow the function definition without "{ }" */
-			else if (getstatid(parentshell(trp)) == SM_FUNC - 1)
+			else if (getstatid(parentstree(trp)) == SM_FUNC - 1)
 				syntaxerrno = ER_UNEXPTOK;
 #endif
 			else trp = childstree(trp, SM_CHILD);
@@ -5122,7 +5187,7 @@ int *ptrp, *tptrp, *sp;
 				trp = linkstree(trp, OP_FG);
 			}
 			else if (!(trp -> flags & ST_NEXT)
-			&& (i = getstatid(parentshell(trp)) + 1) > 0) {
+			&& (i = getstatid(parentstree(trp)) + 1) > 0) {
 				if (i == SM_FOR || i == SM_CASE || i == SM_IN
 				|| *tptrp)
 					syntaxerrno = ER_UNEXPNL;
@@ -5181,7 +5246,7 @@ int *ptrp, *tptrp;
 
 	switch (s[*ptrp]) {
 		case ')':
-			if (!(*tptrp));
+			if (!*tptrp);
 			else if (addarg(&trp, rp, NULL, tptrp, 0) < 0) break;
 			trp = _addarg(trp, NULL);
 			trp = linkstree(trp, OP_NONE);
@@ -5190,7 +5255,7 @@ int *ptrp, *tptrp;
 			addarg(&trp, rp, tmptok, &i, 0);
 			break;
 		case '|':
-			if (!(*tptrp));
+			if (!*tptrp);
 			else addarg(&trp, rp, NULL, tptrp, 0);
 			break;
 		case ';':
@@ -5231,7 +5296,7 @@ int *ptrp, *tptrp;
 				trp = linkstree(trp, OP_FG);
 			}
 			else if (!(trp -> flags & ST_NEXT)
-			&& (i = getstatid(parentshell(trp)) + 1) > 0) {
+			&& (i = getstatid(parentstree(trp)) + 1) > 0) {
 				if (*tptrp) syntaxerrno = ER_UNEXPNL;
 			}
 			break;
@@ -5288,7 +5353,8 @@ static syntaxtree *NEAR comsubtoken(trp, rp, s, ptrp, tptrp, sp)
 syntaxtree *trp;
 redirectlist *rp;
 char *s;
-int *ptrp, *tptrp, *sp;
+int *ptrp, *tptrp;
+ALLOC_T *sp;
 {
 	int i, len;
 
@@ -5357,11 +5423,12 @@ char *s;
 int quiet;
 {
 	char *cp;
-	int i, j, n, size, stype, hdoc;
+	ALLOC_T size;
+	int i, j, n, stype, hdoc;
 
 	if (!rp -> filename) {
 		j = 0;
-		rp -> filename = c_malloc(size);
+		rp -> filename = c_realloc(NULL, 0, &size);
 	}
 	else {
 		j = strlen(rp -> filename);
@@ -5371,7 +5438,7 @@ int quiet;
 	hdoc = 0;
 	for (i = 0; s && s[i]; i++) {
 		syntaxerrno = 0;
-		rp -> filename = c_realloc(rp -> filename, j + 2, size);
+		rp -> filename = c_realloc(rp -> filename, j + 2, &size);
 
 		if ((trp -> cont & CN_HDOC) && (trp -> flags & ST_HDOC)) {
 			if (s[i] != '\n') {
@@ -5590,7 +5657,7 @@ int quiet;
 	red.next = NULL;
 
 	if (trp -> cont & (CN_QUOT | CN_META)) {
-		memcpy(&red, trp -> next, sizeof(red));
+		memcpy((char *)&red, (char *)(trp -> next), sizeof(red));
 		free(trp -> next);
 
 		i = strlen(red.filename);
@@ -5641,7 +5708,7 @@ int quiet;
 
 	if (trp -> cont & (CN_QUOT | CN_META)) {
 		rp = (redirectlist *)malloc2(sizeof(redirectlist));
-		memcpy(rp, &red, sizeof(red));
+		memcpy((char *)rp, (char *)&red, sizeof(red));
 		trp -> next = (syntaxtree *)rp;
 		red.filename = NULL;
 	}
@@ -5670,7 +5737,7 @@ int quiet;
 		return(NULL);
 	}
 	if (red.filename) free(red.filename);
-	if ((parent = parentshell(trp)) && isstatement(parent -> comm))
+	if ((parent = parentstree(trp)) && isstatement(parent -> comm))
 		trp -> cont |= CN_STAT;
 
 	return(trp);
@@ -5860,10 +5927,10 @@ char *path, *argv[], *envp[];
 		sourcefile(fd, argv[0], 0);
 		ret = ret_status;
 	}
-	prepareexit(1);
 #ifdef	DEBUG
 	if (!bg) Xexit2(ret);
 #endif
+	prepareexit(1);
 	Xexit(ret);
 }
 
@@ -6022,7 +6089,7 @@ int fd;
 		if (fd == (*prevp) -> new) break;
 		prevp = &((*prevp) -> next);
 	}
-	if (!(*prevp)) return(NULL);
+	if (!*prevp) return(NULL);
 	return(prevp);
 }
 
@@ -6049,7 +6116,7 @@ int fd, ret;
 
 	pl -> ret = ret;
 	if ((fd = newdup(Xopen(pl -> file, O_BINARY | O_RDONLY, 0666))) < 0) {
-		rmtmpfile(pl -> file);
+		safermtmpfile(pl -> file);
 		free(pl -> file);
 		*prevp = pl -> next;
 		free(pl);
@@ -6058,7 +6125,7 @@ int fd, ret;
 	if (pl -> fd >= 0) {
 		if ((dupl = newdup(Xdup(pl -> fd))) < 0) {
 			safeclose(fd);
-			rmtmpfile(pl -> file);
+			safermtmpfile(pl -> file);
 			free(pl -> file);
 			*prevp = pl -> next;
 			free(pl);
@@ -6083,7 +6150,7 @@ int fd;
 	pl = *prevp;
 	if (!(fp = Xfdopen(fd, "r"))) {
 		safeclose(fd);
-		rmtmpfile(pl -> file);
+		safermtmpfile(pl -> file);
 		free(pl -> file);
 		*prevp = pl -> next;
 		free(pl);
@@ -6144,6 +6211,7 @@ int fd;
 			ret = -1;
 # else	/* !NOJOB */
 		ret = waitchild(pl -> pid, NULL);
+		if (ret == 128 + SIGPIPE) ret = RET_SUCCESS;
 # endif	/* !NOJOB */
 	}
 #endif	/* !MSDOS */
@@ -6431,11 +6499,11 @@ int *typep, valid;
 	else glob = 1;
 
 	if (glob) {
-#if	defined (FD) && !MSDOS && !defined (_NOKANJIFCONV)
+#if	!MSDOS && defined (FD) && !defined (_NOKANJIFCONV)
 		if (*typep == CT_FDORIGINAL);
-		else if (*typep != CT_BUILTIN) nokanjifget++;
+		else if (*typep != CT_BUILTIN) nokanjifconv++;
 		else if (shbuiltinlist[id].flags & BT_NOKANJIFGET)
-			nokanjifget++;
+			nokanjifconv++;
 #endif
 #if	MSDOS
 		comm -> argc = evalglob(comm -> argc,
@@ -6443,11 +6511,11 @@ int *typep, valid;
 #else
 		comm -> argc = evalglob(comm -> argc, &(comm -> argv), 1);
 #endif
-#if	defined (FD) && !MSDOS && !defined (_NOKANJIFCONV)
+#if	!MSDOS && defined (FD) && !defined (_NOKANJIFCONV)
 		if (*typep == CT_FDORIGINAL);
-		else if (*typep != CT_BUILTIN) nokanjifget--;
+		else if (*typep != CT_BUILTIN) nokanjifconv--;
 		else if (shbuiltinlist[id].flags & BT_NOKANJIFGET)
-			nokanjifget--;
+			nokanjifconv--;
 #endif
 	}
 	else {
@@ -6637,7 +6705,7 @@ FILE *fp;
 #else
 	if (!trp) return(rlist);
 #endif
-	prev = getstatid(tmptr = parentshell(trp)) + 1;
+	prev = getstatid(tmptr = parentstree(trp)) + 1;
 
 #ifndef	MINIMUMSHELL
 	if (isopnot(trp)) {
@@ -7100,7 +7168,7 @@ syntaxtree *trp;
 {
 	syntaxtree *var, *body;
 	command_t *comm;
-	char *tmp, *ident, **argv, **tmpargv;
+	char *tmp, *ident, **argv;
 	int i, argc, ret;
 
 	var = statementbody(trp);
@@ -7113,10 +7181,8 @@ syntaxtree *trp;
 		return(RET_FAIL);
 	}
 	trp = trp -> next;
-	if ((trp -> comm) -> id != SM_IN) {
-		tmpargv = NULL;
-		argv = &(argvar[1]);
-	}
+	if ((trp -> comm) -> id != SM_IN)
+		argv = duplvar(&(argvar[1]), 0);
 	else {
 		if (!(comm = body -> comm)) {
 			errno = EINVAL;
@@ -7124,34 +7190,39 @@ syntaxtree *trp;
 		}
 		trp = trp -> next;
 
-		tmpargv = (char **)malloc2((comm -> argc + 1)
-			* sizeof(char *));
+		argv = (char **)malloc2((comm -> argc + 1) * sizeof(char *));
 		for (i = 0; i < comm -> argc; i++) {
 			tmp = evalvararg(comm -> argv[i], 0, 1, '\0', 0, 0);
 			if (!tmp) {
-				while (--i >= 0) free(tmpargv[i]);
-				free(tmpargv);
+				while (--i >= 0) free(argv[i]);
+				free(argv);
 				return(RET_FAIL);
 			}
-			tmpargv[i] = tmp;
+			argv[i] = tmp;
 		}
-		tmpargv[i] = NULL;
-		argc = evalifs(comm -> argc, &tmpargv, getifs());
+		argv[i] = NULL;
+		argc = evalifs(comm -> argc, &argv, getifs());
 		if (!noglob) {
-#if	defined (FD) && !MSDOS && !defined (_NOKANJIFCONV)
-			nokanjifget++;
+#if	!MSDOS && defined (FD) && !defined (_NOKANJIFCONV)
+			nokanjifconv++;
 #endif
-			argc = evalglob(argc, &tmpargv, 1);
-#if	defined (FD) && !MSDOS && !defined (_NOKANJIFCONV)
-			nokanjifget--;
+			argc = evalglob(argc, &argv, 1);
+#if	!MSDOS && defined (FD) && !defined (_NOKANJIFCONV)
+			nokanjifconv--;
 #endif
 		}
-		else for (i = 0; i < argc; i++) stripquote(tmpargv[i], 1);
-		argv = tmpargv;
+		else for (i = 0; i < argc; i++) stripquote(argv[i], 1);
+#ifdef	FD
+		replaceargs(NULL, NULL, NULL, 0);
+		if (replaceargs(&argc, &argv, NULL, -1) < 0) {
+			freevar(argv);
+			return(-1);
+		}
+#endif
 	}
 
 	if (!(body = statementcheck(trp, SM_DO))) {
-		freevar(tmpargv);
+		freevar(argv);
 		return(-1);
 	}
 
@@ -7175,7 +7246,7 @@ syntaxtree *trp;
 		if (continuelevel && --continuelevel) break;
 	}
 	loopdepth--;
-	freevar(tmpargv);
+	freevar(argv);
 	return(ret);
 }
 
@@ -7331,7 +7402,6 @@ int errexit;
 #ifdef	DEBUG
 		freevar(evar);
 #endif
-		prepareexit(0);
 		Xexit2(RET_FAIL);
 	}
 
@@ -7458,7 +7528,6 @@ syntaxtree *trp;
 #if	!MSDOS && !defined (NOJOB)
 		if (loginshell && interactive_io) killjob();
 #endif
-		prepareexit(0);
 		Xexit2(ret);
 	}
 	return(RET_SUCCESS);
@@ -7468,7 +7537,8 @@ static int NEAR doread(trp)
 syntaxtree *trp;
 {
 	char *cp, *next, *buf, *ifs;
-	int i, c, size;
+	ALLOC_T i, size;
+	int c;
 
 	if ((trp -> comm) -> argc <= 1) {
 		execerror(NULL, ER_MISSARG, 0);
@@ -7481,7 +7551,7 @@ syntaxtree *trp;
 		}
 	}
 
-	buf = c_malloc(size);
+	buf = c_realloc(NULL, 0, &size);
 	trapok = 1;
 	readtrap = 1;
 	for (i = 0;;) {
@@ -7492,7 +7562,7 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		if (c == READ_EOF || c == '\n') break;
-		buf = c_realloc(buf, i, size);
+		buf = c_realloc(buf, i, &size);
 		buf[i++] = c;
 	}
 	trapok = 0;
@@ -7597,6 +7667,7 @@ syntaxtree *trp;
 				fputs((*(setvals[i])) ? "on" : "off", stdout);
 				fputc('\n', stdout);
 			}
+			fflush(stdout);
 		}
 #ifndef	MINIMUMSHELL
 		else if (!strpathcmp(argv[2], "ignoreeof"))
@@ -8107,6 +8178,7 @@ syntaxtree *trp;
 #else	/* USERESOURCEH || USEULIMITH */
 # ifdef	USERESOURCEH
 	struct rlimit lim;
+	FILE *fp;
 	u_long flags;
 	int j, n, err, hs, res, inf;
 # endif
@@ -8182,13 +8254,23 @@ syntaxtree *trp;
 		}
 	}
 	if (err) {
-		fputs("usage: ", stdout);
-		kanjifputs(argv[0], stdout);
-		fputs(" [ -HSa", stdout);
+#  ifdef	BASHSTYLE
+		fp = stderr;
+#  else
+		fp = stdout;
+#  endif
+		fputs("usage: ", fp);
+		kanjifputs(argv[0], fp);
+		fputs(" [ -HSa", fp);
 		for (j = 0; j < ULIMITSIZ; j++)
-			fputc(ulimitlist[j].opt, stdout);
-		fputs(" ] [ limit ]\n", stdout);
+			fputc(ulimitlist[j].opt, fp);
+		fputs(" ] [ limit ]\n", fp);
+		fflush(fp);
+#  ifdef	BASHSTYLE
+		return(RET_SYNTAXERR);
+#  else
 		return(RET_SUCCESS);
+#  endif
 	}
 
 	if (n >= argc) {
@@ -8256,6 +8338,7 @@ syntaxtree *trp;
 		}
 	}
 # endif	/* !USERESOURCEH */
+	fflush(stdout);
 	return(RET_SUCCESS);
 #endif	/* USERESOURCEH || USEULIMITH */
 }
@@ -8951,22 +9034,22 @@ syntaxtree *trp;
 static int NEAR dofd(trp)
 syntaxtree *trp;
 {
-	int n;
+	int mode;
 
 	if (!shellmode || exit_status < 0) {
 		execerror((trp -> comm) -> argv[0], ER_RECURSIVEFD, 0);
 		return(RET_FAIL);
 	}
 	else {
-		n = sigvecset(1);
-		if (!n) putterms(t_init);
+		sigvecset(1);
 		ttyiomode(0);
+		mode = termmode(1);
 		shellmode = 0;
 		main_fd((trp -> comm) -> argv[1]);
 		shellmode = 1;
-		if (!n) putterms(t_end);
-		stdiomode(0);
-		sigvecset(n);
+		termmode(mode);
+		stdiomode();
+		sigvecset(0);
 	}
 	return(RET_SUCCESS);
 }
@@ -9277,7 +9360,7 @@ char **argv;
 	if (type == CT_BUILTIN && (shbuiltinlist[id].flags & BT_POSIXSPECIAL))
 		isshellbuiltin = 1;
 #else
-	if (type != CT_NONE && type != CT_COMMAND) isshellbuiltin = 1; 
+	if (type != CT_NONE && type != CT_COMMAND) isshellbuiltin = 1;
 #endif
 	return(argv);
 }
@@ -9372,7 +9455,7 @@ int bg;
 		else keepvar = -1;
 	}
 #else
-	if (type != CT_NONE && type != CT_COMMAND) isshellbuiltin = 1; 
+	if (type != CT_NONE && type != CT_COMMAND) isshellbuiltin = 1;
 #endif
 
 	if (keepvar < 0) {
@@ -9443,11 +9526,37 @@ int bg;
 		fflush(stderr);
 	}
 
-#if	MSDOS
-	ret = exec_simplecom(trp, type, id);
-#else
-	ret = exec_simplecom(trp, type, id, bg);
+#ifdef	FD
+	replaceargs(NULL, NULL, NULL, 0);
 #endif
+	for (;;) {
+#ifdef	FD
+		char **dupargv;
+		int dupargc;
+
+		dupargv = comm -> argv;
+		dupargc = comm -> argc;
+		comm -> argv = duplvar(comm -> argv, 2);
+		i = replaceargs(&(comm -> argc), &(comm -> argv),
+			exportvar, type == CT_COMMAND);
+		if (i < 0) {
+			ret = i;
+			break;
+		}
+#endif
+#if	MSDOS
+		ret = exec_simplecom(trp, type, id);
+#else
+		ret = exec_simplecom(trp, type, id, bg);
+#endif
+#ifdef	FD
+		freevar(comm -> argv);
+		comm -> argv = dupargv;
+		comm -> argc = dupargc;
+		if (i) continue;
+#endif
+		break;
+	}
 
 	if (keepvar) {
 #ifndef	_NOUSEHASH
@@ -9728,9 +9837,6 @@ int cond;
 			prepareexit(1);
 			Xexit(RET_SUCCESS);
 		}
-# ifndef	NOJOB
-		if (pipein < 0L && mypid == orgpgrp) childpgrp = -1L;
-# endif
 #endif	/* !MSDOS */
 
 		if (interrupted) {
@@ -9775,7 +9881,6 @@ int noexit;
 #if	!MSDOS && !defined (NOJOB)
 				if (loginshell && interactive_io) killjob();
 #endif
-				prepareexit(0);
 				Xexit2(RET_SYNTAXERR);
 			}
 			return(NULL);
@@ -9803,7 +9908,6 @@ int noexit;
 #if	!MSDOS && !defined (NOJOB)
 		if (loginshell && interactive_io) killjob();
 #endif
-		prepareexit(0);
 		Xexit2(ret);
 	}
 	return(NULL);
@@ -9972,13 +10076,14 @@ int verbose;
 	dupinteractive = interactive;
 	interactive = 0;
 	trp = stree = newstree(NULL);
-	ret= RET_SUCCESS;
+	ret = 0;
 	n = errno = 0;
 	while ((buf = readline(fd))) {
 		if (!trp) trp = stree;
 		trp = execline(buf, stree, trp, 1);
 		n++;
-		if (syntaxerrno || execerrno) {
+		if (ret_status == RET_NOTICE || syntaxerrno || execerrno) {
+			ret++;
 			if (verbose) {
 				fputs(fname, stderr);
 				fputc(':', stderr);
@@ -9986,25 +10091,22 @@ int verbose;
 				fputs(": ", stderr);
 				fputs(buf, stderr);
 				fputc('\n', stderr);
+				fflush(stderr);
 			}
 			ret_status = RET_FAIL;
-#ifdef	BASHSTYLE
-			if (syntaxerrno)
-#endif
-			{
-				ret = ret_status;
-				free(buf);
-				break;
-			}
 		}
-		if (ret < ret_status) ret = ret_status;
 		free(buf);
+		if (syntaxerrno) break;
+#ifndef	BASHSTYLE
+		if (execerrno) break;
+#endif
 	}
 	safeclose(fd);
 
-	if (ret == RET_SUCCESS && errno) {
+	if (!ret && errno) {
 		doperror(NULL, fname);
-		ret = ret_status = RET_FAIL;
+		ret++;
+		ret_status = RET_FAIL;
 	}
 	execline((char *)-1, stree, trp, 1);
 	if (syntaxerrno) ret_status = RET_SYNTAXERR;
@@ -10080,13 +10182,15 @@ char *argv[], *envp[];
 		doperror(NULL, NULL);
 		return(-1);
 	}
+	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
 #endif
 
 	definput = STDIN_FILENO;
 	interactive =
 		(isatty(STDIN_FILENO) && isatty(STDERR_FILENO)) ? 1 : 0;
-	ttypgrp = orgpid = mypid = getpid();
+	orgpid = mypid = getpid();
 #if	!MSDOS && !defined (NOJOB)
+	ttypgrp = mypid;
 	if ((orgpgrp = getpgroup()) < 0L) {
 		doperror(NULL, NULL);
 		return(-1);
@@ -10241,13 +10345,14 @@ char *argv[], *envp[];
 	if (!interactive) {
 		jobok = 0;
 		orgpgrp = -1L;
+		oldttypgrp = -1L;
 	}
 	else {
 		if (jobok < 0) jobok = 1;
+		gettcpgrp(ttyio, oldttypgrp);
 		if (!orgpgrp && (setpgroup(0, orgpgrp = mypid) < 0L
 		|| settcpgrp(ttyio, orgpgrp) < 0)) {
 			doperror(NULL, NULL);
-			prepareexit(0);
 			return(-1);
 		}
 		gettcpgrp(ttyio, ttypgrp);
@@ -10264,14 +10369,12 @@ char *argv[], *envp[];
 		|| (ldisc(tty) != NTTYDISC && (ldisc(tty) = NTTYDISC) > 0
 		&& tioctl(ttyio, REQSETD, &tty) < 0)) {
 			doperror(NULL, NULL);
-			prepareexit(0);
 			return(-1);
 		}
 # endif
 		if ((orgpgrp != mypid && setpgroup(0, orgpgrp = mypid) < 0)
 		|| (mypid != ttypgrp && gettermio(orgpgrp) < 0)) {
 			doperror(NULL, NULL);
-			prepareexit(0);
 			return(-1);
 		}
 		closeonexec(ttyio);
@@ -10291,13 +10394,12 @@ char *argv[], *envp[];
 		shellmode = 1;
 		n = _dosystem(argv[2]);
 		resetsignal(0);
-		prepareexit(0);
 		Xexit2(n);
 	}
 
 	if (loginshell && chdir3(home) < 0) {
 		fputs("No directory\n", stderr);
-		prepareexit(0);
+		fflush(stderr);
 		Xexit2(RET_FAIL);
 	}
 	if (!(cp = getconstvar("SHELL"))) cp = name;
@@ -10330,7 +10432,7 @@ int pseudoexit;
 #ifdef	FD
 			ttyiomode(1);
 			buf = inputshellstr(ps, -1, NULL);
-			stdiomode(1);
+			stdiomode();
 			if (!buf) continue;
 			if (buf == (char *)-1) {
 				buf = NULL;
@@ -10362,6 +10464,7 @@ int pseudoexit;
 						stderr);
 					fputs("\" to leave to the shell.\n",
 						stderr);
+					fflush(stderr);
 				}
 				cont = 0;
 				continue;
@@ -10398,13 +10501,13 @@ char *argv[], *envp[];
 #endif
 	ret_status = RET_SUCCESS;
 	if (loginshell) {
-		ret_status = execruncom(DEFRUNCOM, 0);
-		ret_status = execruncom(RUNCOMFILE, 0);
+		execruncom(DEFRUNCOM, 0);
+		execruncom(RUNCOMFILE, 0);
 	}
 #ifdef	FD
 	else {
-		ret_status = execruncom(DEFRUNCOM, 1);
-		ret_status = execruncom(FD_RUNCOMFILE, 1);
+		execruncom(DEFRUNCOM, 1);
+		execruncom(FD_RUNCOMFILE, 1);
 	}
 	evalenv();
 
@@ -10418,7 +10521,6 @@ char *argv[], *envp[];
 #if	!MSDOS && !defined (NOJOB)
 	if (loginshell && interactive) killjob();
 #endif
-	prepareexit(0);
 	return(ret_status);
 }
 
@@ -10437,4 +10539,4 @@ char *argv[], *envp[];
 	return(0);
 }
 #endif	/* FDSH */
-#endif	/* !_NOORIGSHELL && (!FD || (FD >= 2)) */
+#endif	/* !FD || (FD >= 2 && !_NOORIGSHELL) */

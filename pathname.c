@@ -81,6 +81,7 @@ extern char *_mtrace_file;
 extern char *getenv2 __P_((char *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
+extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
@@ -88,13 +89,10 @@ extern char *ascnumeric __P_((char *, long, int, int));
 # if	MSDOS || !defined (_NODOSDRIVE)
 extern int _dospath __P_((char *));
 #endif
-extern DIR *_Xopendir __P_((char *, int));
-#define	Xopendir(p)	_Xopendir(p, 0)
+extern DIR *Xopendir __P_((char *));
 extern int Xclosedir __P_((DIR *));
-extern struct dirent *_Xreaddir __P_((DIR *, int));
-#define	Xreaddir(d)	_Xreaddir(d, 0)
-extern char *_Xgetwd __P_((char *, int));
-#define	Xgetwd(p)	_Xgetwd(p, 0)
+extern struct dirent *Xreaddir __P_((DIR *));
+extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 # if	MSDOS && !defined (_NOUSELFN)
@@ -106,6 +104,7 @@ extern char *progpath;
 static VOID NEAR allocerror __P_((VOID_A));
 char *malloc2 __P_((ALLOC_T));
 char *realloc2 __P_((VOID_P, ALLOC_T));
+char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 char *strdup2 __P_((char *));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
@@ -220,10 +219,6 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 #define	b_realloc(ptr, n, type) \
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
-#define	c_malloc(size)	(malloc2((size) = BUFUNIT))
-#define	c_realloc(ptr, n, size) \
-			(((n) + 1 < (size)) \
-			? (ptr) : realloc2(ptr, (size) *= 2))
 #define	getconstvar(s)	(getvar(s, sizeof(s) - 1))
 
 char **argvar = NULL;
@@ -355,8 +350,10 @@ u_char kctypetable[256] = {
 #endif	/* !LSI_C */
 
 static int skipdotfile = 0;
+#if	!defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
 static char *wildsymbol1 = "?";
 static char *wildsymbol2 = "*";
+#endif
 #if	!MSDOS
 static uidtable *uidlist = NULL;
 static int maxuid = 0;
@@ -378,7 +375,12 @@ ALLOC_T size;
 {
 	char *tmp;
 
-	if (!size || !(tmp = (char *)malloc(size))) allocerror();
+	if (!size || !(tmp = (char *)malloc(size))) {
+		allocerror();
+#ifdef	FAKEUNINIT
+		tmp = NULL;	/* fake for -Wuninitialized */
+#endif
+	}
 	return(tmp);
 }
 
@@ -390,8 +392,25 @@ ALLOC_T size;
 
 	if (!size
 	|| !(tmp = (ptr) ? (char *)realloc(ptr, size) : (char *)malloc(size)))
+	{
 		allocerror();
+#ifdef	FAKEUNINIT
+		tmp = NULL;	/* fake for -Wuninitialized */
+#endif
+	}
 	return(tmp);
+}
+
+char *c_realloc(ptr, n, sizep)
+char *ptr;
+ALLOC_T n, *sizep;
+{
+	if (!ptr) {
+		*sizep = BUFUNIT;
+		return(malloc2(*sizep));
+	}
+	while (n + 1 >= *sizep) *sizep *= 2;
+	return(realloc2(ptr, *sizep));
 }
 
 char *strdup2(s)
@@ -423,7 +442,7 @@ int n;
 
 	for (i = 0; i < n && s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
-	return(s1);
+	return(&(s1[i]));
 }
 
 /*
@@ -714,18 +733,13 @@ char *buf, *s1, *s2;
 	return(cp);
 }
 
-#if	!MSDOS
 int strcasecmp2(s1, s2)
 char *s1, *s2;
 {
-	int c1, c2;
-
 	for (;;) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
-		if (c1 != c2) return(c1 - c2);
+		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
 # ifndef	CODEEUC
-		if (issjis1(c1)) {
+		if (issjis1(*s1)) {
 			s1++;
 			s2++;
 			if (*s1 != *s2) return(*s1 - *s2);
@@ -737,13 +751,10 @@ char *s1, *s2;
 	}
 	return(0);
 }
-#endif	/* !MSDOS */
 
 int strpathcmp2(s1, s2)
 char *s1, *s2;
 {
-	int c1, c2;
-
 #if	!MSDOS
 	if (!pathignorecase) for (;;) {
 		if (*s1 != *s2) return(*s1 - *s2);
@@ -754,11 +765,9 @@ char *s1, *s2;
 	else
 #endif
 	for (;;) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
-		if (c1 != c2) return(c1 - c2);
+		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
 #ifndef	CODEEUC
-		if (issjis1(c1)) {
+		if (issjis1(*s1)) {
 			s1++;
 			s2++;
 			if (*s1 != *s2) return(*s1 - *s2);
@@ -775,8 +784,6 @@ int strnpathcmp2(s1, s2, n)
 char *s1, *s2;
 int n;
 {
-	int c1, c2;
-
 #if	!MSDOS
 	if (!pathignorecase) while (n-- > 0) {
 		if (*s1 != *s2) return(*s1 - *s2);
@@ -787,12 +794,10 @@ int n;
 	else
 #endif
 	while (n-- > 0) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
-		if (c1 != c2) return(c1 - c2);
+		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
 #ifndef	CODEEUC
-		if (issjis1(c1)) {
-			if (--n <= 0) break;
+		if (issjis1(*s1)) {
+			if (n-- <= 0) break;
 			s1++;
 			s2++;
 			if (*s1 != *s2) return(*s1 - *s2);
@@ -812,7 +817,8 @@ int len;
 	char *cp;
 
 	cp = malloc2(len + 1);
-	return(strncpy2(cp, s, len));
+	strncpy2(cp, s, len);
+	return(cp);
 }
 
 static char *NEAR getvar(ident, len)
@@ -870,28 +876,57 @@ char *s;
 	return(0);
 }
 
+/*ARGSUSED*/
+char *isrootdir(s)
+char *s;
+{
+#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+	if (_dospath(s)) s += 2;
+#endif
+	if (*s != _SC_) return(NULL);
+	return(s);
+}
+
 int ismeta(s, ptr, quote)
 char *s;
 int ptr, quote;
 {
+#ifdef	FAKEMETA
+	return(0);
+#else	/* !FAKEMETA */
 	if (s[ptr] != PMETA || !s[ptr + 1]) return(0);
 	if (quote) {
-		if (s[ptr + 1] != quote || s[ptr + 2]) return(1);
-		return(0);
+		if (s[ptr + 1] == quote && !s[ptr + 2]) return(0);
+# if	MSDOS
+		if (!strchr(DQ_METACHAR, s[ptr + 1])) return(0);
+# endif
 	}
+# if	MSDOS
+	else if (!strchr(METACHAR, s[ptr + 1])) return(0);
+# endif
 	return(1);
+#endif	/* !FAKEMETA */
 }
 
 int isnmeta(s, ptr, quote, len)
 char *s;
 int ptr, quote, len;
 {
+#ifdef	FAKEMETA
+	return(0);
+#else	/* !FAKEMETA */
 	if (s[ptr] != PMETA || ptr + 1 >= len) return(0);
 	if (quote) {
-		if (s[ptr + 1] != quote || ptr + 2 < len) return(1);
-		return(0);
+		if (s[ptr + 1] == quote && ptr + 2 >= len) return(0);
+# if	MSDOS
+		if (!strchr(DQ_METACHAR, s[ptr + 1])) return(0);
+# endif
 	}
+# if	MSDOS
+	else if (!strchr(METACHAR, s[ptr + 1])) return(0);
+# endif
 	return(1);
+#endif	/* !FAKEMETA */
 }
 
 #ifdef	_NOORIGGLOB
@@ -900,18 +935,19 @@ char *s;
 int len;
 {
 	char *re;
-	int i, j, paren, size;
+	ALLOC_T size;
+	int i, j, paren;
 
 	if (!*s) {
 		s = "*";
 		len = 1;
 	}
 	if (len < 0) len = strlen(s);
-	re = c_malloc(size);
+	re = c_realloc(NULL, 0, &size);
 	paren = j = 0;
 	re[j++] = '^';
 	for (i = 0; i < len; i++) {
-		re = c_realloc(re, j + 2, size);
+		re = c_realloc(re, j + 2, &size);
 
 		if (paren) {
 			if (s[i] == ']') paren = 0;
@@ -1071,7 +1107,8 @@ int len;
 {
 	reg_t *re;
 	char *cp, *paren;
-	int i, j, n, plen, size, metachar, quote;
+	ALLOC_T size;
+	int i, j, n, plen, metachar, quote;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	if (len < 0) len = strlen(s);
@@ -1100,7 +1137,7 @@ int len;
 		}
 
 		if (paren) {
-			paren = c_realloc(paren, plen + 1, size);
+			paren = c_realloc(paren, plen + 1, &size);
 
 			if (quote || metachar) {
 #ifdef	BASHSTYLE
@@ -1195,7 +1232,7 @@ int len;
 				cp = wildsymbol2;
 				break;
 			case '[':
-				paren = c_malloc(size);
+				paren = c_realloc(NULL, 0, &size);
 				plen = 0;
 				break;
 			default:
@@ -1223,8 +1260,8 @@ int len;
 			else cp[j++] = toupper2(s[i]);
 			cp[j] = '\0';
 		}
-		re[n] = cp;
-		re = b_realloc(re, ++n, reg_t);
+		re[n++] = cp;
+		re = b_realloc(re, n, reg_t);
 		re[n] = NULL;
 	}
 	if (paren) {
@@ -1234,8 +1271,8 @@ int len;
 			return(NULL);
 		}
 		cp = strdup2("[");
-		re[n] = cp;
-		re = b_realloc(re, ++n, reg_t);
+		re[n++] = cp;
+		re = b_realloc(re, n, reg_t);
 		re[n] = NULL;
 	}
 	return((reg_t *)realloc2(re, (n + 1) * sizeof(reg_t)));
@@ -1805,7 +1842,7 @@ char *com, *search;
 	if ((*hpp = findhash(com, n))) {
 		path = (*hpp) -> path;
 		if (((*hpp) -> type & CM_RECALC)
-		&& (!searchcwd || strcmp(searchcwd, Xgetwd(buf))));
+		&& (!searchcwd || !Xgetwd(buf) || strcmp(searchcwd, buf)));
 		else if (isexecute(path, 0, 1) >= 0) return((*hpp) -> type);
 		rmhash(com, n);
 	}
@@ -2239,7 +2276,8 @@ int *eolp, *ptrp, qed;
 #endif
 	if (isidentchar((*bufp)[*ptrp])) {
 		while ((*bufp)[++(*ptrp)])
-			if (!isidentchar((*bufp)[*ptrp])) break;
+			if (!isidentchar((*bufp)[*ptrp])
+			&& !isdigit((*bufp)[*ptrp])) break;
 	}
 	else (*ptrp)++;
 
@@ -2375,39 +2413,37 @@ int plen, mode;
 {
 	reg_t *re;
 	char *cp, *ret, *tmp;
-	int c;
+	int c, len;
 
 	if (!s || !*s || !(re = regexp_init(pattern, plen))) return(NULL);
 	ret = NULL;
+	len = strlen(s);
 	if ((mode & ~0x80) != '#') {
-		if (mode & 0x80) for (cp = s; *cp; cp++) {
+		if (mode & 0x80) for (cp = s; cp < s + len; cp++) {
 			if (regexp_exec(re, cp, 0)) {
 				ret = cp;
 				break;
 			}
 		}
-		else for (cp = s + strlen(s) - 1; cp >= s; cp--) {
+		else for (cp = s + len - 1; cp >= s; cp--) {
 			if (regexp_exec(re, cp, 0)) {
 				ret = cp;
 				break;
 			}
 		}
-		if (ret) {
-			ret = malloc2(cp - s + 1);
-			strncpy2(ret, s, cp - s);
-		}
+		if (ret) ret = strdupcpy(s, ret - s);
 	}
 	else {
 		tmp = strdup2(s);
 		if (mode & 0x80)
-		for (cp = tmp + strlen(tmp); cp >= tmp; cp--) {
+		for (cp = tmp + len; cp >= tmp; cp--) {
 			*cp = '\0';
 			if (regexp_exec(re, tmp, 0)) {
 				ret = cp;
 				break;
 			}
 		}
-		else for (cp = tmp + 1; *cp; cp++) {
+		else for (cp = tmp + 1; cp <= tmp + len; cp++) {
 			c = *cp;
 			*cp = '\0';
 			if (regexp_exec(re, tmp, 0)) {
@@ -2416,7 +2452,7 @@ int plen, mode;
 			}
 			*cp = c;
 		}
-		if (ret) ret = strdup2(&(s[cp - tmp]));
+		if (ret) ret = strdup2(&(s[ret - tmp]));
 		free(tmp);
 	}
 	regexp_free(re);
@@ -2574,7 +2610,7 @@ int s, len, vlen, mode, quoted;
 	val = strdupcpy(&(arg[s]), vlen);
 	*cpp = evalarg(val, (mode == '=' || mode == '?'), 1, quoted);
 	free(val);
-	if (!(*cpp)) return(-1);
+	if (!*cpp) return(-1);
 
 	if (mode == '=') {
 		if (setvar(arg, *cpp, len) < 0) {
@@ -2588,7 +2624,7 @@ int s, len, vlen, mode, quoted;
 		val = strdupcpy(&(arg[s]), vlen);
 		*cpp = evalarg(val, 0, 1, quoted);
 		free(val);
-		if (!(*cpp)) return(-1);
+		if (!*cpp) return(-1);
 #endif
 	}
 	else if (mode == '?') {
@@ -2661,7 +2697,7 @@ int quoted;
 			if ((new = (*posixsubstfunc)(top, &n))) break;
 			if (n < 0 || !top[n]) return(-1);
 			if (skipvarvalue(top, &n, ")", quoted, 0, 1) < 0)
-                                return(-1);
+				return(-1);
 			*argp = top + n - 1;
 		}
 		mode = '\0';
@@ -2735,7 +2771,7 @@ int quoted;
 		addmeta(&((*bufp)[ptr]), cp, 0, quoted);
 	}
 	else if (!cp);
-	else if (c == '@' && !(*cp) && quoted
+	else if (c == '@' && !*cp && quoted
 	&& ptr > 0 && (*bufp)[ptr - 1] == quoted && *(*argp + 1) == quoted) {
 		vlen = 0;
 		ptr--;
@@ -2952,7 +2988,7 @@ char *evalarg(arg, stripq, backq, qed)
 char *arg;
 int stripq, backq, qed;
 {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char path[MAXPATHLEN], alias[MAXPATHLEN];
 #endif
 	char *cp, *buf, *bbuf;
@@ -2961,7 +2997,7 @@ int stripq, backq, qed;
 	int pq;
 #endif
 
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	if (*arg == '"' && (i = strlen(arg)) > 2 && arg[i - 1] == '"') {
 		strncpy2(path, &(arg[1]), i - 2);
 		if (shortname(path, alias) == alias) {
@@ -3137,12 +3173,13 @@ char ***argvp;
 int stripq;
 {
 	char *cp, **wild;
-	int i, j, n, w, size, quote;
+	ALLOC_T size;
+	int i, j, n, w, quote;
 
 	for (n = 0; n < argc; n++) {
-		cp = c_malloc(size);
+		cp = c_realloc(NULL, 0, &size);
 		for (i = j = w = 0, quote = '\0'; (*argvp)[n][i]; i++) {
-			cp = c_realloc(cp, j + 1, size);
+			cp = c_realloc(cp, j + 1, &size);
 			if ((*argvp)[n][i] == quote) {
 				quote = '\0';
 				if (stripq) continue;
@@ -3245,7 +3282,7 @@ char *_evalpath(path, eol, uniqdelim, evalq)
 char *path, *eol;
 int uniqdelim, evalq;
 {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char alias[MAXPATHLEN];
 	int top = -1;
 #endif
@@ -3268,7 +3305,7 @@ int uniqdelim, evalq;
 	quote = '\0';
 	for (i = j = c = 0; cp[i]; c = cp[i++]) {
 		if (cp[i] == quote) {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 			if (!evalq && top >= 0 && ++top < j) {
 				tmp[j] = '\0';
 				if (shortname(&(tmp[top]), alias) == alias) {
@@ -3299,7 +3336,7 @@ int uniqdelim, evalq;
 		}
 		else if (quote);
 		else if (cp[i] == '\'' || cp[i] == '"') {
-#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 			if (cp[i] == '"') top = j;
 #endif
 			quote = cp[i];
@@ -3319,7 +3356,7 @@ int uniqdelim;
 {
 	char *cp;
 
-	if (!path || !(*path)) return(path);
+	if (!path || !*path) return(path);
 	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
 	cp = _evalpath(cp, NULL, uniqdelim, 1);
 	free(path);

@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2003 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.02b 02/26/03
+.\" @(#)fd.1   2.03 03/26/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "February 26, 2003"
+.TH FD 1 "March 26, 2003"
 .de sh
 .br
 .PP
@@ -130,9 +130,9 @@ it becomes this restricted shell automatically.
 .RE
 
 In addition,
-the options described below in the description of the
+the options described below in the description of
 .B set
-builtin command are available.
+the builtin command are available.
 .SS Screen Layout
 .B fd
 has the 3 major screen modes.
@@ -179,9 +179,9 @@ It displays the total size of the marked files in the directory
 (and the total size of all files),
 the total capacity and the free size of the file system
 including the current directory.
-This line appears by the environment variable
+This line appears by
 .B SIZEINFO
-setting.
+the environment variable setting.
 When this line is displayed,
 The information line and the path line are displayed 1 line under each.
 .IP "\fBbottom \- 2\fP"
@@ -272,7 +272,7 @@ Identifier	Command	Key
 \fBNEXT_WINDOW\fP	Change to the next window	\fB^\fP
 \fBEDIT_CONFIG\fP	Invoke the customizer	\fBE\fP
 \fBHELP_MESSAGE\fP	Display a help screen	\fB?\fP
-\fBQUIT_SYSTEM\fP	Quit from fd 	\fBEsc\fP(q)
+\fBQUIT_SYSTEM\fP	Quit from fd	\fBEsc\fP(q)
 
 \fBWARNING_BELL\fP	Bell for warning
 \fBNO_OPERATION\fP	Do nothing
@@ -384,7 +384,7 @@ When you input the pathname "\fB?\fP",
 you can move to the current directory when
 .B fd
 was invoked.
-When you input the pathname "\fB-\fP",
+When you input the pathname "\fB\-\fP",
 you can move to the last visited directory.
 
 Moreover,
@@ -494,11 +494,12 @@ You can select the directory in the tree screen,
 to move the current directory.
 .IP "\fBEdit file\fP (Editor)"
 Edit the file on the cursor position.
-The editor is used referring the internal variable
-.BR EDITOR ,
-or referring the environment variable
-.BR EDITOR
-when the internal variable is undefined.
+The editor is used referring
+.B EDITOR
+the internal variable,
+or referring
+.B EDITOR
+the environment variable when the internal variable is undefined.
 .IP "\fBUnpack file\fP (Unpack)"
 Unpack the archive file on the cursor position into the specified directory.
 In builtin configuration,
@@ -583,9 +584,8 @@ When you push only
 .RB [ Return ]
 without any input,
 the user shell which is described by
-the internal variable or the environment variable
 .B SHELL
-is invoked.
+the internal variable or the environment variable is invoked.
 In this case,
 you should input "\fBexit\fP" to return to
 .BR fd .
@@ -641,11 +641,12 @@ as input of the device name,
 the archive file is created with that filename.
 .IP "\fBView file\fP (View)"
 View the file on the cursor position.
-The pager is used referring the internal variable
-.BR PAGER ,
-or referring the environment variable
+The pager is used referring
 .B PAGER
-when the internal variable is undefined.
+the internal variable,
+or referring
+.B PAGER
+the environment variable when the internal variable is undefined.
 .IP "\fBPack file\fP (Pack)"
 Pack the file on the cursor position into the specified archive file.
 When the cursor position indicates a directory,
@@ -886,7 +887,7 @@ exit status.
 .IP "\fB\(bv\|\(bv\fP"
 Execute the following pipeline
 only if the preceding pipeline returns a
-.RB non- 0
+.RB non\- 0
 exit status.
 .PD
 .RE
@@ -926,9 +927,9 @@ Same as
 .BR \> ,
 except to force to overwrite existent files even if
 .B \-C
-option is set by the
+option is set by
 .B set
-builtin command.
+the builtin command.
 .IP "\fIn\fR\fB>\|>\fP\fIfile\fR"
 Redirect the output indicated by the file descriptor
 .I n
@@ -973,9 +974,9 @@ Same as
 .BR &\|> ,
 except to force to overwrite existent files even if
 .B \-C
-option is set by the
+option is set by
 .B set
-builtin command.
+the builtin command.
 .IP "\fB&\|>\|>\fP\fIfile\fR"
 Redirect both the standard output and the standard error output
 into the output to
@@ -994,16 +995,16 @@ If
 .I n
 is omitted,
 it is regarded as the standard input is specified.
-.IP "\fIn\fR\fB<\|-\fP"
-.IP "\fIn\fR\fB<\|&\|-\fP"
+.IP "\fIn\fR\fB<\|\-\fP"
+.IP "\fIn\fR\fB<\|&\|\-\fP"
 Close the input indicated by the file descriptor
 .IR n .
 If
 .I n
 is omitted,
 it is regarded as the standard input is specified.
-.IP "\fIn\fR\fB>\|-\fP"
-.IP "\fIn\fR\fB>\|&\|-\fP"
+.IP "\fIn\fR\fB>\|\-\fP"
+.IP "\fIn\fR\fB>\|&\|\-\fP"
 Close the output indicated by the file descriptor
 .IR n .
 If
@@ -1128,9 +1129,8 @@ returns a
 .B 0
 exit status.
 .IP "\fBfor\fP \fINAME\fR [\fBin\fP \fIvalue\fR .\|.\|.] \fBdo\fP \fIlist\fR \fBdone\fP"
-The internal variable
 .I NAME
-is substituted for values of
+the internal variable is substituted for values of
 .I value
 one by one, and
 .I list
@@ -1162,8 +1162,9 @@ Define a internal variable which is available only in
 .BR fd .
 It substitutes the value (string)
 .I value
-for the internal variable
-.IR NAME .
+for
+.I NAME
+the internal variable.
 When you describe the command
 .I com
 after the definition of a variable,
@@ -1178,12 +1179,13 @@ is not remain as the environment variable nor the internal variable.
 If
 .I value
 is omitted,
-the value of the internal variable
+the value of
 .I NAME
-is defined as a null.
-If you want to delete the definition of a internal variable, use the
+the internal variable is defined as a null.
+If you want to delete the definition of a internal variable,
+use
 .B unset
-builtin command.
+the builtin command.
 .IP "\fIname\fR\fB()\fP \fB{\fP \fIlist\fR; \fB}\fP"
 Define a function whose body is
 .IR list ,
@@ -1213,9 +1215,9 @@ you can omit
 before/after
 .I list
 which consists of a single command.
-If you want to delete the definition of a function, use the
+If you want to delete the definition of a function, use
 .B unset
-builtin command.
+the builtin command.
 .IP "\fB!\fP\fInum\fR"
 Execute the command
 which has the history number specified with the numeric value
@@ -1277,8 +1279,9 @@ are omitted,
 all the current alias definition list is displayed.
 .IP "\fBarch\fP \fIext\fR [\fIpack unpack\fR]"
 Register the archiver command associated with the archive file
-which has extension
-.IR ext .
+which has
+.I ext
+the extension.
 The pack command is specified as
 .IR pack ,
 and the unpack command is specified as
@@ -1295,9 +1298,9 @@ If both
 and
 .I unpack
 are omitted,
-the archiver command registration for the extension
+the archiver command registration for
 .I ext
-is deleted.
+the extension is deleted.
 .IP "\fBbg\fP [\fIjob\fR]"
 Continue the execution of the job specified with
 .I job
@@ -1309,7 +1312,7 @@ The following format is available to specify a job.
 .nf
 \fB%\fP
 \fB%+\fP	the current job
-\fB%-\fP	the previous job
+\fB%\-\fP	the previous job
 \fB%\fP\fIn\fR	the job with job number \fIn\fR
 \fB%\fP\fIstr\fR	the job whose command line starts with \fIstr\fR
 .fi
@@ -1404,7 +1407,134 @@ is specified,
 it breaks
 .I n
 levels from the loop.
-.IP "\fBcd\fP [\fB-LP\fP] [\fIdir\fR]"
+.IP "\fBbrowse\fP [\fB\-@\fP \fIfile\fR]"
+.PD 0
+.IP "\fBbrowse\fP \fIcom\fR [\fB\-ftbie\fP \fIarg\fR] [\fB\-p\fP \fIcom2\fR] [\fB\-dn\fP {\fBnoprep\fP,\fBloop\fP}] .\|.\|."
+.PD
+Execute
+.I com
+the command,
+and invoke the archive browser who receives its output.
+You should the macro representation quoted with \fB"\fP as
+.IR com .
+.BR \-f ,
+.BR \-t ,
+.BR \-b ,
+.B \-i
+and
+.B \-e
+options are the same as the one for
+.B launch
+the builtin command.
+In case that multiple
+.IR com s
+are specified,
+the next
+.I com
+the command is executed one after another
+when you select each files in the archive browser,
+and the formats and patterns described after each
+.I com
+the command are adopted.
+In order to return to the previous level of archive browser,
+you should select the file named as
+.B .\|.
+or push the key
+.RB [ Bs ].
+Or you can use
+.B QUIT_SYSTEM
+the command to escape from all of the archive browsers invoked by
+.BR browse .
+You must describe
+.B \-f
+option, except for the last
+.I com
+the command.
+When the last
+.I com
+has no
+.B \-f
+option,
+the command has been just executed instead of invoking an archive browser,
+and then will return to the previous archive browser when it is done.
+
+When you specify
+.B \-p
+option,
+the execution of
+.I com2
+the command precedes the execution of the next
+.I com
+the command when you select a file.
+While
+.I com
+is executed in the sub shell for a pipeline,
+.I com2
+is executed in the current shell
+to inherit the values of internal variables set in this command after
+.I com2
+has been done.
+The filenames which is selected toward this level of archive browser
+are held in positional parameters sequentially,
+and the last selected filename is held in
+.BR $1 .
+These parameters will be newly set whenever you select a file,
+so that they are reset in sequential order when you select the next file
+even if you replace them with
+.B set
+or
+.B shift
+the builtin command.
+.B \-d
+and
+.B \-n
+options specify a control if the selected file is a directory or not respectively.
+When you specify
+.BR noprep ,
+.I com2
+specified by
+.B \-p
+option is not executed.
+When you specify
+.BR loop ,
+you don't step the next
+.I com
+the command but the same
+.I com
+the command again.
+
+And when you think troublesome to describe too many arguments for
+.BR browse ,
+you can specify
+.I file
+the file in which some arguments are described with
+.B \-@
+option.
+You can describe
+.B \-@
+option in any place of arguments,
+the arguments described in
+.I file
+are inserted in the place where
+.B \-@
+is described.
+If you specify
+.B \-
+as
+.IR file ,
+arguments are read from the standard input instead of the file.
+You should describe arguments in
+.I file
+with spaces or newlines as separator.
+The null line and the line started with
+.B #
+will be ignored.
+When you describe
+.B \-@
+option in
+.IR file ,
+the argument file is referred recursively.
+.IP "\fBcd\fP [\fB\-LP\fP] [\fIdir\fR]"
 Change the current directory in
 .B fd
 to
@@ -1412,9 +1542,10 @@ to
 If
 .I dir
 is omitted,
-it moves to the directory indicated by the internal variable
-.BR HOME .
-If you specify the pathname as "\fB.\fP", "\fB?\fP", "\fB-\fP", "\fB@\fP",
+it moves to the directory indicated by
+.B HOME
+the internal variable.
+If you specify the pathname as "\fB.\fP", "\fB?\fP", "\fB\-\fP", "\fB@\fP",
 it behaves like as
 .BR LOG_DIR .
 
@@ -1429,9 +1560,9 @@ the physical pathname following no symbolic links is used.
 Otherwise,
 the
 .B physical
-option for the
+option for
 .B set
-builtin command is effective.
+the builtin command is effective.
 .IP "\fBchdir\fP [\fIdir\fR]"
 Same as
 .BR cd .
@@ -1473,9 +1604,8 @@ is displayed
 instead of executing
 .IR arg .
 In this case,
-the builtin command
 .I arg
-will cause simply its name.
+the builtin command will cause simply its name.
 If
 .B \-V
 is specified,
@@ -1547,7 +1677,7 @@ You can specify multiple files by using wildcard.
 When you specify
 .BR /P ,
 it prompts for confirmation before deleting files.
-.IP "\fBdir\fP [\fB/\fP[\fB-\fP]\fBPWSBLV4\fP] [\fB/A\fP[\fBDRHSA\-\fP]] [\fB/O\fP[\fBNSEDGA\-\fP]] [\fIdir\fR]"
+.IP "\fBdir\fP [\fB/\fP[\fB\-\fP]\fBPWSBLV4\fP] [\fB/A\fP[\fBDRHSA\-\fP]] [\fB/O\fP[\fBNSEDGA\-\fP]] [\fIdir\fR]"
 List files and sub directories in the directory indicated by
 .IR dir .
 If
@@ -1571,7 +1701,7 @@ which have the attribute indicated by the trailing character.
 .nf
 \fBD\fP	directory	\fBR\fP	read only file
 \fBH\fP	hidden file	\fBS\fP	system file
-\fBA\fP	ready to archive	\fB-\fP	except it
+\fBA\fP	ready to archive	\fB\-\fP	except it
 .fi
 .RE
 .RS
@@ -1585,7 +1715,7 @@ it sorts with the sorted type indicated by the trailing character.
 \fBN\fP	by name	\fBS\fP	by size
 \fBE\fP	by extension	\fBD\fP	by date & time
 \fBG\fP	directory first	\fBA\fP	by last access time
-\fB-\fP	reverse order
+\fB\-\fP	reverse order
 .fi
 .RE
 .RS
@@ -1610,11 +1740,10 @@ to any option letter to override the option.
 .RE
 .IP "\fBdirs\fP"
 Display the list of the current directory stack.
-The
 .B pushd
 and
 .B popd
-builtin command can load/unload directories onto the directory stack.
+the builtin command can load/unload directories onto the directory stack.
 .IP "\fBdisown\fP [\fIjob\fR]"
 Remove the job specified with
 .I job
@@ -1683,9 +1812,9 @@ When you specify
 it exits with the exit status
 .IR n .
 .IP "\fBexport\fP [\fINAME\fR[\fB=\fP[\fIvalue\fR]] .\|.\|.]"
-Mark the internal variable
+Mark
 .I NAME
-to be inherited to child processes as the environment variable.
+the internal variable to be inherited to child processes as the environment variable.
 Since then,
 the definition of
 .I NAME
@@ -1704,22 +1833,22 @@ If only
 is specified and
 .I value
 is omitted,
-the value of the environment variable
+the value of
 .I NAME
-is defined as a null.
+the environment variable is defined as a null.
 If no argument is specified,
 all of the
 .BR export ed
 environment variables are listed.
 When you want to delete the definition of the environment variable,
-you can use the
+you can use
 .B unset
-builtin command.
+the builtin command.
 .IP "\fBfalse\fP"
 Only return with a
 .B 1
 exit status.
-.IP "\fBfc\fP [\fB-l\fP | \fB-s\fP [\fIold\fR\fB=\fP\fInew\fR .\|.\|.]] [\fB-nr \fP] [\fB-e\fP \fIeditor\fR] [\fIfirst\fR [\fIlast\fR]]"
+.IP "\fBfc\fP [\fB\-l\fP | \fB\-s\fP [\fIold\fR\fB=\fP\fInew\fR .\|.\|.]] [\fB\-nr \fP] [\fB\-e\fP \fIeditor\fR] [\fIfirst\fR [\fIlast\fR]]"
 List or edit command histories.
 .I first
 and
@@ -1744,11 +1873,11 @@ is specified,
 the editor named by
 .I editor
 is used to edit command histories,
-otherwise the editor specified by the internal variable
+otherwise the editor specified by
 .B FCEDIT
 or
 .B EDITOR
-is used.
+the internal variable is used.
 
 When
 .B \-l
@@ -1761,7 +1890,7 @@ means to specify the current history number,
 and also omitting
 .I first
 means to specify
-.BR -16 .
+.BR \-16 .
 
 When
 .B \-s
@@ -1817,7 +1946,7 @@ The following format is available to specify a job.
 .nf
 \fB%\fP
 \fB%+\fP	the current job
-\fB%-\fP	the previous job
+\fB%\-\fP	the previous job
 \fB%\fP\fIn\fR	the job with job number \fIn\fR
 \fB%\fP\fIstr\fR	the job whose command line starts with \fIstr\fR
 .fi
@@ -1883,14 +2012,16 @@ Each time
 is invoked,
 the new option character parsed from
 .I arg
-is substituted for the internal variable
-.IR NAME .
+is substituted for
+.I NAME
+the internal variable.
 When the option has an argument,
-the argument is substituted for the internal variable
-.BR OPTARG .
-And the index of the next parameter is substituted for the internal variable
-.BR OPTIND
-every time.
+the argument is substituted for
+.B OPTARG
+the internal variable.
+And the index of the next parameter is substituted for
+.B OPTIND
+the internal variable every time.
 The value of
 .B OPTIND
 is initialized to
@@ -2013,9 +2144,9 @@ In
 .I in
 and
 .IR out ,
-you can specify the string which used in the environment variable
+you can specify the string which used in
 .B FNAMEKCODE
-described below.
+the environment variable described below.
 If each of them is omitted,
 it is regarded as that the Kanji code specified in compile is specified.
 If
@@ -2114,12 +2245,15 @@ it lists the signal names which can be used as
 .I signal
 instead of sending a signal.
 .IP "\fBlaunch\fP \fIext\fR [\fIcom\fR [\fIformat\fR [\fItop\fR \fIbottom\fR]]]"
-Register the behavior for the extension
+.PD 0
+.IP "\fBlaunch\fP \fIext\fR \fIcom\fR [\fB\-f\fP \fIformat\fR] [\fB\-t\fP \fItop\fR\] [\fB\-b\fP \fIbottom\fR] [\fB\-ie\fP \fIpatt\fR\]"
+.PD
+Register the behavior for
 .I ext
-as the launcher.
+the extension as the launcher.
 You should the macro representation quoted with \fB"\fP as
 .IR com .
-When you register the archive browser,
+When you register an archive browser,
 you should describe the command to list the archived files as
 .IR com ,
 and describe the format of the list as
@@ -2142,6 +2276,39 @@ is omitted,
 the launcher registration for
 .I ext
 is canceled.
+
+When you register an archive browser,
+you can use the latter form to describe more detailed control.
+You can specify multiple formats as candidates with multiple
+.B \-f
+options.
+These candidates for format are compared in order of appearance,
+if no one is matched completely then the nearest one is adopted.
+.B \-i
+and
+.B \-e
+options specify
+.I patt
+the pattern for the line to be ignored and for the line to be treated as error respectively.
+When the list includes unnecessary lines you can specify also
+.I top
+and
+.IR bottom ,
+but you must specify lines except top/bottom lines with
+.B \-i
+option.
+In case that a failure to unpack files in the archive file causes outputting some strings,
+you can specify the strings with
+.B \-e
+option.
+.B \-i
+and
+.B \-e
+options can specify multiple patterns,
+and they are effective if one of them is matched.
+And you can use a wildcard in the description for each
+.I patt
+the pattern.
 .IP "\fBmd\fP \fIdir\fR"
 .PD 0
 .IP "\fBmkdir\fP \fIdir\fR"
@@ -2189,8 +2356,9 @@ to the directory.
 This command is failed when the directory stack is empty.
 .IP "\fBprintarch\fP [\fIext\fR]"
 Print the archiver commands registered for the archive file
-which has the extension
-.IR ext .
+which has
+.I ext
+the extension.
 
 If
 .I ext
@@ -2220,8 +2388,9 @@ If
 is omitted,
 all of the registered floppy drives are listed.
 .IP "\fBprintlaunch\fP [\fIext\fR]"
-Print the command macro registered as the launcher for the extension
-.IR ext .
+Print the command macro registered as the launcher for
+.I ext
+the extension.
 When it is registered as the archive browser,
 the format for listing is also printed.
 
@@ -2235,14 +2404,14 @@ and change the current directory in
 .B fd
 to
 .IR dir .
-If you specify the pathname as "\fB.\fP", "\fB?\fP", "\fB-\fP", "\fB@\fP",
+If you specify the pathname as "\fB.\fP", "\fB?\fP", "\fB\-\fP", "\fB@\fP",
 it behaves like as
 .BR LOG_DIR .
 The
 .B physical
-option for the
+option for
 .B set
-builtin command is effective for symbolic links.
+the builtin command is effective for symbolic links.
 
 If
 .I dir
@@ -2251,7 +2420,7 @@ change the current directory to the top directory of the directory stack,
 and replace it with the current directory.
 In this case,
 this command is failed when the directory stack is empty.
-.IP "\fBpwd\fP [\fB-LP\fP]"
+.IP "\fBpwd\fP [\fB\-LP\fP]"
 Display the current directory with the absolute representation.
 If
 .B \-L
@@ -2264,13 +2433,14 @@ the physical pathname following no symbolic links is displayed.
 Otherwise,
 the
 .B physical
-option for the
+option for
 .B set
-builtin command is effective.
+the builtin command is effective.
 .IP "\fBread\fP [\fINAME .\|.\|.\fR]"
 Read one line from the standard input
-and substitute that string for the internal variable
-.IR NAME .
+and substitute that string for
+.I NAME
+the internal variable.
 The inputted string is separated with
 .B IFS
 into some words.
@@ -2284,10 +2454,22 @@ When the number of words in inputted string is less than the number of
 .IR NAME ,
 a null is substituted for the rest of
 .IR NAME .
+.IP "\fBreadline\fP [\fIprompt\fR]"
+Read one line from the terminal input
+and output that string to the standard output.
+When
+.I prompt
+is specified,
+the string is displayed on the beginning of input line.
+This command differs from
+.B read
+the builtin command in the terminal input and the line editing.
+You cannot use the history as one of the line editing,
+but can use the completion for a pathname.
 .IP "\fBreadonly\fP [\fINAME\fR[\fB=\fP[\fIvalue\fR]] .\|.\|.]"
-Mark the internal variable
+Mark
 .I NAME
-to be readonly.
+the internal variable to be readonly.
 Since then,
 you cannot change the value of
 .IR NAME .
@@ -2300,9 +2482,9 @@ If only
 is specified and
 .I value
 is omitted,
-the value of the internal variable
+the value of
 .I NAME
-is defined as a null.
+the internal variable is defined as a null.
 If no argument is specified,
 all of the readonly internal variables are listed.
 .IP "\fBrd\fP \fIdir\fR"
@@ -2380,7 +2562,7 @@ The commands used in a function are read when it is defined,
 and are registered to the hash table.
 The command hash itself is always valid,
 if
-.B -h
+.B \-h
 option is set or not.
 .IP "\fB\-k\fP"
 Treat all
@@ -2439,11 +2621,10 @@ Same as
 Same as
 .BR \-t .
 .IP "\fBphysical\fP"
-The builtin command
 .B cd
 and
 .B pwd
-use the physical directory structure
+the builtin command use the physical directory structure
 instead of the logical directory structure following symbolic links.
 .IP "\fBverbose\fP"
 Same as
@@ -2706,6 +2887,42 @@ and
 are omitted,
 the current job is waited.
 .B (UNIX)
+.IP "\fByesno\fP [\fIprompt\fR]"
+Wait for a input of
+.B y
+or
+.B n
+from the terminal,
+and then return
+.B 0
+when
+.B y
+is inputted,
+return
+.B 255
+when
+.B n
+is inputted.
+Instead of input of
+.B y
+or
+.BR n ,
+you can select a character from displayed
+.B [Y/N]
+with cursor keys and push
+.RB [ Return ]
+to be regarded as an input of the selected character.
+An input of
+.RB [ Space ]
+or
+.RB [ Esc ]
+means the input of
+.BR n .
+When
+.I prompt
+is specified,
+the string is displayed before
+.BR [Y/N] .
 .IP "\fICOMMAND\fR [\fIarg\fR]"
 Execute the internal command
 .I COMMAND
@@ -2852,6 +3069,13 @@ You can describe to indicate the field length as numeric, such as
 .IR %10a .
 This example means that
 the field which indicates a file mode consists of 10 characters.
+If you describe it with a character
+.B *
+as the field length instead of numeric,
+such as
+.IR %*f ,
+the string to the end of line is regarded as a field,
+in which any space and tab will be ignored.
 
 When a field may have the different meanings according to situation,
 you should describe it quoted with
@@ -2895,8 +3119,9 @@ On some OS,
 .BR tar (1)
 may output the Japanese timestamp when
 .I japanese
-is substituted for the environment variable
-.BR LANG .
+is substituted for
+.B LANG
+the environment variable.
 Since
 .B fd
 cannot analyze the representation like this,
@@ -2913,9 +3138,9 @@ You can access the MS-DOS formatted floppy disk,
 by representing to prefix "\fIc\fR\fB:\fP" to the directory name.
 But,
 it is necessary to register the floppy drive
-and set the environ variable
+and set
 .B DOSDRIVE
-which makes this function effective, in advance.
+the environ variable which makes this function effective, in advance.
 
 Each registered drive is distinguished with the drive name.
 You should tag the physically different drive as the different drive name.
@@ -2953,7 +3178,7 @@ In this case,
 you can copy a file with a long filename on UNIX as it is.
 But,
 when the UNICODE translation table
-.B fd-unicd.tbl
+.B fd\-unicd.tbl
 is not exist in the same directory as the invoked
 .B fd
 exists,
@@ -3034,8 +3259,9 @@ when it is the beginning of filename.
 .PD 0
 .IP "\fB${\fP\fINAME\fR\fB}\fP"
 .PD
-Indicate the value of the internal variable or the environment variable
-.IR NAME .
+Indicate the value of
+.I NAME
+the internal variable or the environment variable.
 When both are defined,
 the internal variable is prior.
 When both are undefined,
@@ -3067,9 +3293,9 @@ The all positional parameters which starts from
 .IP "\fB#\fP"
 The number of positional parameters.
 .IP "\fB\-\fP"
-The option flags which is set by options when invoked or the
+The option flags which is set by options when invoked or
 .B set
-builtin command.
+the builtin command.
 .IP "\fB?\fP"
 The exit status of the last executed command.
 .IP "\fB$\fP"
@@ -3079,28 +3305,29 @@ The process number of the last executed background process.
 .PD
 .RE
 .IP "\fB${\fP\fINAME\fR\fB:\-\fP\fIword\fR\fB}\fP"
-If the value except a null is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If the value except a null is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by the value,
 otherwise it is replaced by
 .IR word .
 .IP "\fB${\fP\fINAME\fR\fB:=\fP\fIword\fR\fB}\fP"
-If the value except a null is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If the value except a null is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by the value,
 otherwise
 .I word
-is substituted for the internal variable
-.IR NAME ,
+is substituted for
+.I NAME
+the internal variable,
 and this expression itself is replaced by
 .IR word .
 But you cannot substitute the value for any positional parameter.
 .IP "\fB${\fP\fINAME\fR\fB:?\fP\fIword\fR\fB}\fP"
-If the value except a null is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If the value except a null is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by the value,
 otherwise
 display
@@ -3113,35 +3340,36 @@ the string
 .RB `` "parameter null or not set" ''
 is displayed in its place.
 .IP "\fB${\fP\fINAME\fR\fB:\+\fP\fIword\fR\fB}\fP"
-If the value except a null is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If the value except a null is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by
 .IR word ,
 otherwise it is replaced by a null.
 .IP "\fB${\fP\fINAME\fR\fB\-\fP\fIword\fR\fB}\fP"
-If any value is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If any value is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by the value,
 otherwise it is replaced by
 .IR word .
 .IP "\fB${\fP\fINAME\fR\fB=\fP\fIword\fR\fB}\fP"
-If any value is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If any value is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by the value,
 otherwise
 .I word
-is substituted for the internal variable
-.IR NAME ,
+is substituted for
+.I NAME
+the internal variable,
 and this expression itself is replaces by
 .IR word .
 But you cannot substitute the value for any positional parameter.
 .IP "\fB${\fP\fINAME\fR\fB?\fP\fIword\fR\fB}\fP"
-If any value is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If any value is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by the value,
 otherwise
 display
@@ -3154,15 +3382,16 @@ the string
 .RB `` "parameter null or not set" ''
 is displayed in its place.
 .IP "\fB${\fP\fINAME\fR\fB\+\fP\fIword\fR\fB}\fP"
-If any value is substituted
-for the internal variable or the environment variable
-.IR NAME ,
+If any value is substituted for
+.I NAME
+the internal variable or the environment variable,
 it is replaced by
 .IR word ,
 otherwise it is replaced by a null.
 .IP "\fB${#\fP\fINAME\fR\fB}\fP"
-It is replaced by the length in characters of the value of the internal variable or the environment variable
-.IR NAME .
+It is replaced by the length in characters of the value of
+.I NAME
+the internal variable or the environment variable.
 If
 .I NAME
 is
@@ -3173,8 +3402,9 @@ it is replaced by the number of positional parameters instead of the length of c
 .IP "\fB${\fP\fINAME\fR\fB%\fP\fIword\fR\fB}\fP"
 It is replaced by the string in which the smallest portion of the suffix matched by the
 .I word
-pattern is deleted from the value of the internal variable or the environment variable
-.IR NAME .
+pattern is deleted from the value of
+.I NAME
+the internal variable or the environment variable.
 If
 .I NAME
 is
@@ -3190,8 +3420,9 @@ on MS-DOS version.)
 .IP "\fB${\fP\fINAME\fR\fB%%\fP\fIword\fR\fB}\fP"
 It is replaced by the string in which the largest portion of the suffix matched by the
 .I word
-pattern is deleted from the value of the internal variable or the environment variable
-.IR NAME .
+pattern is deleted from the value of
+.I NAME
+the internal variable or the environment variable.
 If
 .I NAME
 is
@@ -3207,8 +3438,9 @@ on MS-DOS version.)
 .IP "\fB${\fP\fINAME\fR\fB#\fP\fIword\fR\fB}\fP"
 It is replaced by the string in which the smallest portion of the prefix matched by the
 .I word
-pattern is deleted from the value of the internal variable or the environment variable
-.IR NAME .
+pattern is deleted from the value of
+.I NAME
+the internal variable or the environment variable.
 If
 .I NAME
 is
@@ -3219,8 +3451,9 @@ each positional parameter is replaced.
 .IP "\fB${\fP\fINAME\fR\fB##\fP\fIword\fR\fB}\fP"
 It is replaced by the string in which the largest portion of the prefix matched by the
 .I word
-pattern is deleted from the value of the internal variable or the environment variable
-.IR NAME .
+pattern is deleted from the value of
+.I NAME
+the internal variable or the environment variable.
 If
 .I NAME
 is
@@ -3276,13 +3509,14 @@ are evaluated as it is.
 .I expression
 the arithmetic expression is evaluated
 and this string is replaced by its result value.
-You can specify numeric values, variables and integral calculations with the following operators in
+You can specify numeric values,
+variables and integral calculations with the following operators in
 .IR expression .
 .RS 12
 .ta 1.8i 2.6i
 .nf
 	(unary)	(binary)
-arithmetic	\fB+ -\fP	\fB+ - * / %\fP
+arithmetic	\fB+ \-\fP	\fB+ \- * / %\fP
 boolean	\fB!\fP	\fB== != < > <= >= && ||\fP
 bit operator	\fB~\fP	\fB& | ^ << >>\fP
 parenthesis	\fB( )\fP
@@ -3336,9 +3570,9 @@ When you want to use some functions bound to special keys,
 such as a cursor key or a scroll key,
 such a key doesn't exist in some terminals.
 In such a case,
-substituting the string for the internal variable
+substituting the string for
 .B EDITMODE
-can make you use some control keys as alternative to these special keys.
+the internal variable can make you use some control keys as alternative to these special keys.
 Since this alternative key function is prior to
 the key binding by the builtin command,
 the key binding is invalid for the control characters
@@ -3755,11 +3989,109 @@ form.
 But the variables followed by \(** cannot be use with the prefix
 .B FD_
 as the environment variables.
-.IP "\fBCDPATH\fP\(**" 14
+.IP "\fBADJTTY\fP" 14
+Reset the terminal mode forcedly to the normal state,
+when
+.B fd
+is finished.
+Invoking
+.B fd
+can adjust the terminal rightly from the state displaying broken characters.
+Any value except
+.B 0
+and null effects valid.
+.B (UNIX)
+.IP "\fBANSICOLOR\fP"
+Colorize the file display.
+When the terminal which you use supports the color control escape sequence
+of ANSI standard,
+each file is displayed with color according to its file type.
+If the value is
+.BR 1 ,
+it is colorized.
+If the value is
+.BR 2 ,
+the background color is forced to be black,
+for the case that the foreground color is the same as the background color
+and indistinguishable.
+If the value is
+.BR 3 ,
+the foreground color is forced to be black.
+.IP "\fBANSIPALETTE\fP"
+Specify color palette according to file type
+when the file display is colorized.
+This variable value consists of a numeric value whose maximum columns are
+.B 10
+columns.
+The number of each column shows a color number,
+which specifies the color of file type corresponding with its column.
+The following are correspondence of the column number to the file type.
+.RS 18
+.ta 0.5i
+.nf
+\fB1\fP	normal file
+\fB2\fP	background
+\fB3\fP	directory
+\fB4\fP	unwritable file
+\fB5\fP	unreadable file
+\fB6\fP	symbolic link
+\fB7\fP	socket (or system file on MS-DOS)
+\fB8\fP	FIFO (or label on MS-DOS)
+\fB9\fP	block device
+\fB10\fP	character device
+.fi
+.RE
+
+.RS
+The following are the meaning of color number specified on each column.
+.RE
+.RS 18
+.ta 0.5i
+.nf
+\fB0\fP	black
+\fB1\fP	red
+\fB2\fP	green
+\fB3\fP	yellow
+\fB4\fP	blue
+\fB5\fP	magenta
+\fB6\fP	cyan
+\fB7\fP	white
+\fB8\fP	default color for foreground
+\fB9\fP	default color for background
+.fi
+.RE
+
+.RS
+The color number
+.B 8
+is forced to be black,
+if the value of
+.B ANSICOLOR
+the variable is
+.BR 3 .
+The color number
+.B 9
+is forced to be black,
+if the value of
+.B ANSICOLOR
+the variable is
+.BR 2 .
+.RE
+
+.RS
+When the columns are less than
+.B 10
+or this variable is not set,
+the standard color palette will be applied
+for the file type corresponding with the following columns.
+The standard color palette is described with the above color number as
+.BR 8964235188 .
+.RE
+.IP "\fBCDPATH\fP\(**"
 Specify the search path
-when an argument of the builtin command
+when an argument of
 .B cd
-does not start with
+the builtin command does not start with
 .BR / .
 You can specify multiple paths separating with
 .RB ' : '.
@@ -3767,117 +4099,62 @@ No search path is specified by default.
 .IP "\fBCOMSPEC\fP\(**"
 Specify the shell used to invoke a batch file.
 If undefined,
-the shell defined by the environment variable
+the shell defined by
 .B SHELL
-or \eCOMMAND.COM is used.
+the environment variable or \eCOMMAND.COM is used.
 .B (DOS)
 .IP "\fBCOPYCMD\fP\(**"
-Specify the default options used by the builtin command
-.BR copy .
+Specify the default options used by
+.B copy
+the builtin command.
 .B (DOS)
-.IP "\fBDIRCMD\fP\(**"
-Specify the default options used by the builtin command
-.BR dir .
-.B (DOS)
-.IP "\fBHOME\fP\(**"
-Specify the default value
-when no argument of the builtin command
-.B cd
-is specified.
-When invoked as a login shell,
-if this variable is specified
-that directory becomes the current directory,
-otherwise your home directory is automatically defined as this value.
-.IP "\fBIFS\fP\(**"
-Specify the internal field separators.
-They are used in
-.B EXECUTE_SH
-to separate command and arguments.
-Space, tab and newline are specified by default.
-.IP "\fBOPTARG\fP\(**"
-An option argument is substituted in the builtin command
-.BR getopts .
-.IP "\fBOPTIND\fP\(**"
-Specify the index of the next parameter in the builtin command
-.BR getopts .
-.IP "\fBPATH\fP\(**"
-Specify the search path for executing external commands.
-You can specify multiple paths separating with
-.RB ' : '.
-.IP "\fBSHELL\fP\(**"
-When the filename part of this specified value is
-.B rfd
-or
-.BR rfdsh ,
-the shell becomes a restricted shell
-as well as
-.B \-r
-option when invoked.
-This variable also specify the shell which can be invoked from
-.BR EXECUTE_SH .
-.IP "\fBMAIL\fP\(**"
-Specify the spool filename when the internal shell will check new mails.
-If
-.B MAILPATH
-is set,
-it is prior to this.
-.B (UNIX)
-.IP "\fBMAILPATH\fP\(**"
-Specify the multiple spool filenames,
-as the list separated by
-.BR : ,
-when the internal shell will check new mails.
-The any specified files will be checked.
-Each filenames can be followed by
-.B %
-and a arrival message of new mails.
-The default message is
-.BR "you have mail\^" .
-.B (UNIX)
-.IP "\fBMAILCHECK\fP\(**"
-Specify the interval of checking new mails in seconds,
-for the spool files specified by
-.B MAILPATH
-or
-.BR MAIL .
+.IP "\fBDEFCOLUMNS\fP"
+Specify the columns displayed in the screen when
+.B fd
+is invoked.
 The default value is
-.B 600
-seconds.
+.BR 2 .
+If you specify the value except
+.BR 1 ,
+.BR 2 ,
+.B 3
+and
+.BR 5 ,
+it is ignored.
+.IP "\fBDIRCOUNTLIMIT\fP"
+Specify the maximum number of files read from the directory
+in the tree screen.
+When the directory trailed by
+.RB ' > '
+has no sub directory,
+the expanded result is not changed.
+If the number of files (including directories) in the directory
+is within this value,
+the directory with no sub directory is not trailed
+.RB ' > '
+from the first.
+Moreover,
+the file list in the directory displayed on the right of screen
+is not displayed over this value.
 If the value is
 .BR 0 ,
-it will be checked before each prompt.
-.B (UNIX)
-.IP "\fBEDITOR\fP"
-Specify the editor command used for editing files.
-.IP "\fBPAGER\fP"
-Specify the pager command used for viewing files.
-.IP "\fBFCEDIT\fP"
-Specify the editor command used for the builtin command
-.BR fc .
-.IP "\fBSORTTYPE\fP"
-The file list in the browser screen is not sorted by default,
-but placed in order registered in the directory.
-This variable specify it to be sorted by default.
-The following are specifiable values.
-.RS 18
-.ta 0.5i 1i 2i 2.5i
-.nf
-\fB0\fP	not sort
-\fB1\fP	by filename	\fB9\fP	by filename(reverse)
-\fB2\fP	by extension	\fB10\fP	by extension(reverse)
-\fB3\fP	by size	\fB11\fP	by size(reverse)
-\fB4\fP	by timestamp	\fB12\fP	by timestamp(reverse)
-\fB5\fP	by length	\fB13\fP	by length(reverse)
-\fB100-113\fP	keep the last sorted type
-.fi
-.RE
-
-.RS
-If you specify the value of 100-113,
-it is sorted according to the value indicated by lower 2 digits
-just after invoked,
-the last specified sorted type is kept when moving directory.
-.RE
+you can realize a comfortable operation speed even in the slow machine.
+The default value is
+.B 50
+files.
+.IP "\fBDIRCMD\fP\(**"
+Specify the default options used by
+.B dir
+the builtin command.
+.B (DOS)
+.IP "\fBDIRHIST\fP"
+Specify the maximum number of the directory histories
+which can be referred by the directory input line.
+The default value is
+.BR 50 .
+If this value is
+.BR 0 ,
+you can refer to no directory history.
 .IP "\fBDISPLAYMODE\fP"
 Specify the filename display mode of the file list when
 .B fd
@@ -3910,30 +4187,98 @@ if you specify the value adding
 to each value,
 you can select the file flag display mode.
 .RE
-.IP "\fBSORTTREE\fP"
-Sort directories in the tree screen.
-The sorted type specified by
-.B SORT_TYPE
-is used,
-but they can not be sorted when it is "by size" or "by timestamp".
-The directory included in the current directory path
-is always placed on the top of directory tree,
-with no regard to the sorted type.
+.IP "\fBDOSDRIVE\fP"
+Validate the access function to the MS-DOS floppy.
+If no floppy drive is registered,
+this validation cannot make you access the floppy.
 Any value except
 .B 0
 and null effects valid.
-.IP "\fBWRITEFS\fP"
-Forbid use of
-.B WRITE_DIR
-command.
-If the value is
-.BR 1 ,
-the directory is written only when the command is executed intentionally,
-and you are not confirmed after arranging the file order.
-If the value is
-.BR 2 ,
-even writing by the command is invalid,
-the directory writing is quite forbidden.
+.RS
+
+On MS-DOS version,
+This definition can make you treat the LFN formed filename
+in the old DOS before Ver. 6.xx.
+In this case,
+you don't have to register any floppy drive.
+the access speed may be slow or some functions may be restricted
+for the reason to operate the disk I/O not by way of OS.
+.RE
+.IP "\fBEDITMODE\fP"
+Specify the edit mode of key input as the string.
+The default value is
+.BR emacs .
+The value except
+.BR emacs ,
+.B wordstar
+and
+.B vi
+or null are specified,
+any control character is not converted and will be sent as it is.
+.IP "\fBEDITOR\fP"
+Specify the editor command used for editing files.
+.IP "\fBFCEDIT\fP"
+Specify the editor command used for
+.B fc
+the builtin command.
+.IP "\fBFNAMEKCODE\fP"
+Specify the Kanji code for filename.
+Any filename is converted into the specified Kanji code
+at the point of accessing the file,
+then you can refer to the file which has a Kanji filename
+from another machine on network which use a different Kanji code.
+The archive browser and
+.B browse
+the builtin command also refer the specified Kanji code.
+.BR JIS8 ,
+.BR JUNET ,
+.BR HEX ,
+.BR CAP ,
+etc. among them are the Kanji codes used in Samba.
+.B (UNIX)
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBJIS\fP, \fBjis\fP	7bit JIS
+\fBJIS8\fP, \fBjis8\fP	8bit JIS
+\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
+\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
+\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
+\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
+\fBHEX\fP, \fBhex\fP	HEX
+\fBCAP\fP, \fBcap\fP	CAP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+default	no convert
+.fi
+.RE
+.IP "\fBHISTSIZE\fP"
+Specify the maximum number of the command histories
+which can be referred by
+.B EXECUTE_FILE
+and
+.BR EXECUTE_SH .
+The default value is
+.BR 50 .
+If this value is
+.BR 0 ,
+you can refer to no command history.
+.IP "\fBHOME\fP\(**"
+Specify the default value
+when no argument of
+.B cd
+the builtin command is specified.
+When invoked as a login shell,
+if this variable is specified
+that directory becomes the current directory,
+otherwise your home directory is automatically defined as this value.
+.IP "\fBIFS\fP\(**"
+Specify the internal field separators.
+They are used in
+.B EXECUTE_SH
+to separate command and arguments.
+Space, tab and newline are specified by default.
 .IP "\fBIGNORECASE\fP"
 Ignore uppercase/lowercase when filenames are compared.
 Any value except
@@ -3953,47 +4298,84 @@ and null effects valid.
 (On MS-DOS version,
 the destination timestamp is always inherited,
 if this variable is effective or not.)
-.IP "\fBADJTTY\fP"
-Reset the terminal mode forcedly to the normal state,
-when
-.B fd
-is finished.
-Invoking
-.B fd
-can adjust the terminal rightly from the state displaying broken characters.
-Any value except
-.B 0
-and null effects valid.
+.IP "\fBINPUTKCODE\fP"
+Specify the Kanji code for input from keyboard.
+When the value except the following is specified,
+the Kanji code specified in compile is valid.
 .B (UNIX)
-.IP "\fBUSEGETCURSOR\fP"
-Use the VT100 compatible escape sequence getting the cursor position
-in order to get the terminal size.
-When the screen size of
-.B fd
-doesn't correspond with the terminal size,
-this variable can be sometimes valid.
-On some terminals
-which don't support the escape sequence getting the cursor position,
-the operation may be stopped.
-In this case,
-it is continued by inputting 'R' from the keyboard.
-Any value except
-.B 0
-and null effects valid.
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+.fi
+.RE
+.IP "\fBLANGUAGE\fP"
+Specify the language for display character.
+It means not only each messages displayed by
+.BR fd ,
+but also a Kanji code of filename to be converted.
+The following is the kind of languages,
+it doesn't have to be the string itself and is enough to contain the string,
+the value of
+.B LANG
+the environment variable also can be used.
+.BR JIS8 ,
+.BR JUNET ,
+etc. among them are the Kanji codes used in Samba.
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBJIS\fP, \fBjis\fP	7bit JIS
+\fBJIS8\fP, \fBjis8\fP	8bit JIS
+\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
+\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
+\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
+\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fBENG\fP, \fBeng\fP, \fBC\fP	English (message only)
+default	no convert
+.fi
+.RE
+
+.RS
+(On MS-DOS version,
+only the English is valid.)
+.RE
+.IP "\fBMAIL\fP\(**"
+Specify the spool filename when the internal shell will check new mails.
+If
+.B MAILPATH
+is set,
+it is prior to this.
 .B (UNIX)
-.IP "\fBDEFCOLUMNS\fP"
-Specify the columns displayed in the screen when
-.B fd
-is invoked.
+.IP "\fBMAILCHECK\fP\(**"
+Specify the interval of checking new mails in seconds,
+for the spool files specified by
+.B MAILPATH
+or
+.BR MAIL .
 The default value is
-.BR 2 .
-If you specify the value except
-.BR 1 ,
-.BR 2 ,
-.B 3
-and
-.BR 5 ,
-it is ignored.
+.B 600
+seconds.
+If the value is
+.BR 0 ,
+it will be checked before each prompt.
+.B (UNIX)
+.IP "\fBMAILPATH\fP\(**"
+Specify the multiple spool filenames,
+as the list separated by
+.BR : ,
+when the internal shell will check new mails.
+The any specified files will be checked.
+Each filenames can be followed by
+.B %
+and a arrival message of new mails.
+The default message is
+.BR "you have mail\^" .
+.B (UNIX)
 .IP "\fBMINFILENAME\fP"
 Specify the minimum character length of filename display area
 in the file list.
@@ -4002,131 +4384,20 @@ the informations are reduced in the order of UID, GID, timestamp, size.
 The default value is
 .B 12
 characters.
-.IP "\fBHISTSIZE\fP"
-Specify the maximum number of the command histories
-which can be referred by
-.B EXECUTE_FILE
-and
-.BR EXECUTE_SH .
-The default value is
-.BR 50 .
-If this value is
-.BR 0 ,
-you can refer to no command history.
-.IP "\fBDIRHIST\fP"
-Specify the maximum number of the directory histories
-which can be referred by the directory input line.
-The default value is
-.BR 50 .
-If this value is
-.BR 0 ,
-you can refer to no directory history.
-.IP "\fBSAVEHIST\fP"
-Specify the maximum number saved to the command history file.
-The default value is
-.BR 50 .
-If this value is
-.BR 0 ,
-no command history file is saved.
-.IP "\fBDIRCOUNTLIMIT\fP"
-Specify the maximum number of files read from the directory
-in the tree screen.
-When the directory trailed by
-.RB ' > '
-has no sub directory,
-the expanded result is not changed.
-If the number of files (including directories) in the directory
-is within this value,
-the directory with no sub directory is not trailed
-.RB ' > '
-from the first.
-Moreover,
-the file list in the directory displayed on the right of screen
-is not displayed over this value.
-If the value is
-.BR 0 ,
-you can realize a comfortable operation speed even in the slow machine.
-The default value is
-.B 50
-files.
-.IP "\fBDOSDRIVE\fP"
-Validate the access function to the MS-DOS floppy.
-If no floppy drive is registered,
-this validation cannot make you access the floppy.
-Any value except
-.B 0
-and null effects valid.
-.RS
-
-On MS-DOS version,
-This definition can make you treat the LFN formed filename
-in the old DOS before Ver. 6.xx.
-In this case,
-you don't have to register any floppy drive.
-the access speed may be slow or some functions may be restricted
-for the reason to operate the disk I/O not by way of OS.
-.RE
-.IP "\fBSECOND\fP"
-Display the second in the clock of the title line.
-But the clock is adjusted correctly every
-.B 10
-seconds,
-and some gap from the real time will be occurred in this span.
-Any value except
-.B 0
-and null effects valid.
-.IP "\fBSIZEINFO\fP"
-Display the file size information line at the top of screen.
-The total size displayed here is not the sum of bytes
-but the sum of disk block size occupied actually.
-Any value except
-.B 0
-and null effects valid.
-.IP "\fBANSICOLOR\fP"
-Colorize the file display.
-When the terminal which you use supports the color control escape sequence
-of ANSI standard,
-each file is displayed with color according to its file type.
-If the value is
-.BR 1 ,
-it is colorized.
-If the value is
-.BR 2 ,
-the background color is forced to be black,
-for the case that the foreground color is the same as the background color
-and indistinguishable.
-If the value is
-.BR 3 ,
-the foreground color is forced to be black.
-.IP "\fBEDITMODE\fP"
-Specify the edit mode of key input as the string.
-The default value is
-.BR emacs .
-The value except
-.BR emacs ,
-.B wordstar
-and
-.B vi
-or null are specified,
-any control character is not converted and will be sent as it is.
-.IP "\fBTMPDIR\fP"
-Specify the working directory
-where the archiver command temporarily unpack files in the archive file.
-The default value is
-.BR /tmp .
-.IP "\fBRRPATH\fP"
-Display files under the directory mounted by CD-ROM,
-with the pseudo ISO 9660 RockRidge Extension,
-for the OS which cannot support RockRidge Extension.
-You can specify multiple mount points separating with
+.IP "\fBOPTARG\fP\(**"
+An option argument is substituted in
+.B getopts
+the builtin command.
+.IP "\fBOPTIND\fP\(**"
+Specify the index of the next parameter in
+.B getopts
+the builtin command.
+.IP "\fBPAGER\fP"
+Specify the pager command used for viewing files.
+.IP "\fBPATH\fP\(**"
+Specify the search path for executing external commands.
+You can specify multiple paths separating with
 .RB ' : '.
-You are enough to specify only the top directory mounted by CD-ROM,
-then the pseudo RockRidge Extension function is valid
-in all of the directories under that directory.
-This is no more than a pseudo extension,
-which only replaces filenames according to TRANS.TBL,
-and cannot handle some CD-ROM which has an inconsistent TRANS.TBL.
-No mount point is specified by default.
 .IP "\fBPRECEDEPATH\fP"
 Specify the file preceding function,
 which displays only filenames before obtaining their file informations,
@@ -4170,81 +4441,131 @@ The following escape sequences are available.
 Specify the prompt string when more continuous input is needed in
 .BR EXECUTE_SH .
 The default value is "\fB>\fP\|\ \|".
-.IP "\fBLANGUAGE\fP"
-Specify the language for display character.
-It means not only each messages displayed by
-.BR fd ,
-but also a Kanji code of filename to be converted.
-The following is the kind of languages,
-it doesn't have to be the string itself and is enough to contain the string,
-the value of the environment variable
-.B LANG
-also can be used.
-.BR JIS8 ,
-.BR JUNET ,
-etc. among them are the Kanji codes used in Samba.
+.IP "\fBRRPATH\fP"
+Display files under the directory mounted by CD-ROM,
+with the pseudo ISO 9660 RockRidge Extension,
+for the OS which cannot support RockRidge Extension.
+You can specify multiple mount points separating with
+.RB ' : '.
+You are enough to specify only the top directory mounted by CD-ROM,
+then the pseudo RockRidge Extension function is valid
+in all of the directories under that directory.
+This is no more than a pseudo extension,
+which only replaces filenames according to TRANS.TBL,
+and cannot handle some CD-ROM which has an inconsistent TRANS.TBL.
+No mount point is specified by default.
+.IP "\fBSAVEHIST\fP"
+Specify the maximum number saved to the command history file.
+The default value is
+.BR 50 .
+If this value is
+.BR 0 ,
+no command history file is saved.
+.IP "\fBSECOND\fP"
+Display the second in the clock of the title line.
+But the clock is adjusted correctly every
+.B 10
+seconds,
+and some gap from the real time will be occurred in this span.
+Any value except
+.B 0
+and null effects valid.
+.IP "\fBSHELL\fP\(**"
+When the filename part of this specified value is
+.B rfd
+or
+.BR rfdsh ,
+the shell becomes a restricted shell
+as well as
+.B \-r
+option when invoked.
+This variable also specify the shell which can be invoked from
+.BR EXECUTE_SH .
+.IP "\fBSIZEINFO\fP"
+Display the file size information line at the top of screen.
+The total size displayed here is not the sum of bytes
+but the sum of disk block size occupied actually.
+Any value except
+.B 0
+and null effects valid.
+.IP "\fBSORTTREE\fP"
+Sort directories in the tree screen.
+The sorted type specified by
+.B SORT_TYPE
+is used,
+but they can not be sorted when it is "by size" or "by timestamp".
+The directory included in the current directory path
+is always placed on the top of directory tree,
+with no regard to the sorted type.
+Any value except
+.B 0
+and null effects valid.
+.IP "\fBSORTTYPE\fP"
+The file list in the browser screen is not sorted by default,
+but placed in order registered in the directory.
+This variable specify it to be sorted by default.
+The following are specifiable values.
 .RS 18
-.ta 1.5i
+.ta 0.5i 1i 2i 2.5i
 .nf
-\fBSJIS\fP, \fBsjis\fP	Shift JIS
-\fBEUC\fP, \fBeuc\fP	EUC-JP
-\fBJIS\fP, \fBjis\fP	7bit JIS
-\fBJIS8\fP, \fBjis8\fP	8bit JIS
-\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
-\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
-\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
-\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
-\fBUTF8\fP, \fButf8\fP	UTF-8
-\fBENG\fP, \fBeng\fP, \fBC\fP	English (message only)
-default	no convert
+\fB0\fP	not sort
+\fB1\fP	by filename	\fB9\fP	by filename(reverse)
+\fB2\fP	by extension	\fB10\fP	by extension(reverse)
+\fB3\fP	by size	\fB11\fP	by size(reverse)
+\fB4\fP	by timestamp	\fB12\fP	by timestamp(reverse)
+\fB5\fP	by length	\fB13\fP	by length(reverse)
+\fB100\-113\fP	keep the last sorted type
 .fi
 .RE
 
 .RS
-(On MS-DOS version,
-only the English is valid.)
+If you specify the value of 100-113,
+it is sorted according to the value indicated by lower 2 digits
+just after invoked,
+the last specified sorted type is kept when moving directory.
 .RE
-.IP "\fBINPUTKCODE\fP"
-Specify the Kanji code for input from keyboard.
-When the value except the following is specified,
-the Kanji code specified in compile is valid.
+.IP "\fBTMPDIR\fP"
+Specify the working directory
+where the archiver command temporarily unpack files in the archive file.
+The default value is
+.BR /tmp .
+.IP "\fBTMPUMASK\fP"
+Specify the file creation mask with octal expression for files and directories created temporarily in
+.BR TMPDIR .
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
+.IP "\fBUSEGETCURSOR\fP"
+Use the VT100 compatible escape sequence getting the cursor position
+in order to get the terminal size.
+When the screen size of
+.B fd
+doesn't correspond with the terminal size,
+this variable can be sometimes valid.
+On some terminals
+which don't support the escape sequence getting the cursor position,
+the operation may be stopped.
+In this case,
+it is continued by inputting 'R' from the keyboard.
+Any value except
+.B 0
+and null effects valid.
 .B (UNIX)
-.RS 18
-.ta 1.5i
-.nf
-\fBSJIS\fP, \fBsjis\fP	Shift JIS
-\fBEUC\fP, \fBeuc\fP	EUC-JP
-.fi
-.RE
-.IP "\fBFNAMEKCODE\fP"
-Specify the Kanji code for filename.
-Any filename is converted into the specified Kanji code
-at the point of accessing the file,
-then you can refer to the file which has a Kanji filename
-from another machine on network which use a different Kanji code.
-.BR JIS8 ,
-.BR JUNET ,
-.BR HEX ,
-.BR CAP ,
-etc. among them are the Kanji codes used in Samba.
-.B (UNIX)
-.RS 18
-.ta 1.5i
-.nf
-\fBSJIS\fP, \fBsjis\fP	Shift JIS
-\fBEUC\fP, \fBeuc\fP	EUC-JP
-\fBJIS\fP, \fBjis\fP	7bit JIS
-\fBJIS8\fP, \fBjis8\fP	8bit JIS
-\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
-\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
-\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
-\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
-\fBHEX\fP, \fBhex\fP	HEX
-\fBCAP\fP, \fBcap\fP	CAP
-\fBUTF8\fP, \fButf8\fP	UTF-8
-default	no convert
-.fi
-.RE
+.IP "\fBWRITEFS\fP"
+Forbid use of
+.B WRITE_DIR
+command.
+If the value is
+.BR 1 ,
+the directory is written only when the command is executed intentionally,
+and you are not confirmed after arranging the file order.
+If the value is
+.BR 2 ,
+even writing by the command is invalid,
+the directory writing is quite forbidden.
 .IP "\fBSJISPATH\fP"
 .PD 0
 .IP "\fBEUCPATH\fP"
@@ -4280,11 +4601,12 @@ as "EUC-JP" or "Shift JIS" according to setting in compile.
 The the pathname including Kanji is displayed
 in consideration for the 2nd byte character in Kanji.
 You can dynamically select Kanji code to input/output
-with the internal variable
+with
 .BR LANGUAGE ,
 .B INPUTKCODE
 and
-.BR FNAMEKCODE .
+.B FNAMEKCODE
+the internal variable.
 You can input Kanji string with some Japanese input methods.
 
 You can use Kanji in the command macro and the command string,
@@ -4335,9 +4657,9 @@ The individual initial configuration file for
 The command history file
 .TP
 .B /bin/sh
-The user shell when the environment variable
+The user shell when
 .B SHELL
-is undefined
+the environment variable is undefined
 .TP
 .B /bin/rm
 The command to remove temporary files when abort
@@ -4372,13 +4694,6 @@ on MS-DOS version
 The command history file on MS-DOS version
 .PD
 .SH LIMITATIONS
-Words expanded from a command macro can be no longer than
-.B 1023
-characters.
-You cannot input a string over
-.B 255
-characters, and it depends on also the screen size.
-
 The maximum key bindings which you can register is
 .BR 256 ,
 and the maximum that with the user defined macro is

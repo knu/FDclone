@@ -89,8 +89,8 @@ typedef struct _hashlist {
 
 #if	!MSDOS
 typedef struct _devino_t {
-	dev_t	dev;
-	ino_t	ino;
+	dev_t dev;
+	ino_t ino;
 } devino_t;
 #endif
 
@@ -105,6 +105,7 @@ typedef	pid_t		p_id_t;
 typedef	long		p_id_t;
 #endif
 
+#ifndef	VOID_P
 #ifdef	NOVOID
 #define	VOID
 #define	VOID_T	int
@@ -113,6 +114,7 @@ typedef	long		p_id_t;
 #define	VOID	void
 #define	VOID_T	void
 #define	VOID_P	void *
+#endif
 #endif
 
 typedef struct _uidtable {
@@ -140,17 +142,17 @@ extern char *strcatdelim2 __P_((char *, char *, char *));
 #if	MSDOS
 #define	strnpathcmp	strnpathcmp2
 #define	strpathcmp	strpathcmp2
-#define	strcasecmp2	stricmp
 #else
 #define	strnpathcmp	strncmp
 #define	strpathcmp	strcmp
-extern int strcasecmp2 __P_((char *, char *));
 #endif
+extern int strcasecmp2 __P_((char *, char *));
 extern int strpathcmp2 __P_((char *, char *));
 extern int strnpathcmp2 __P_((char *, char *, int));
 extern char *strdupcpy __P_((char *, int));
 extern int isidentchar __P_((int));
 extern int isdotdir __P_((char *));
+extern char *isrootdir __P_((char *));
 extern int ismeta __P_((char *s, int, int));
 extern int isnmeta __P_((char *s, int, int, int));
 extern reg_t *regexp_init __P_((char *, int));

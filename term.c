@@ -15,16 +15,6 @@
 #include <time.h>
 #endif
 
-#ifdef	USESTDARGH
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
-#ifdef	DEBUG
-extern char *_mtrace_file;
-#endif
-
 #if	MSDOS
 #include <dos.h>
 #include <io.h>
@@ -138,14 +128,27 @@ extern int errno;
 
 #include "term.h"
 
-#define	MAXPRINTBUF	255
+#define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
+#define	BUFUNIT		16
 #define	GETSIZE		"\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
+#define	VF_PLUS		0001
+#define	VF_MINUS	0002
+#define	VF_SPACE	0004
+#define	VF_ZERO		0010
+#define	VF_LONG		0020
+#define	VF_UNSIGNED	0040
+
+#ifdef	DEBUG
+extern VOID muntrace __P_ ((VOID));
+extern char *_mtrace_file;
+#endif
 
 #if	!MSDOS
 # ifdef	USETERMINFO
 # include <curses.h>
 # include <term.h>
+typedef char	tputs_t;
 # define	tgetnum2(s)		(s)
 # define	tgetflag2(s)		(s)
 # define	tgoto2(s, p1, p2)	tparm(s, p2, p1, \
@@ -250,12 +253,13 @@ extern int errno;
 # define	TERM_at1		key_beg
 # define	TERM_at7		key_end
 # else	/* !USETERMINFO */
+typedef int	tputs_t;
 extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
 extern char *tgetstr __P_((char *, char **));
 extern char *tgoto __P_((char *, int, int));
-extern int tputs __P_((char *, int, int (*)__P_((int))));
+extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # define	tgetnum2		tgetnum
 # define	tgetflag2		tgetflag
 # define	tgoto2			tgoto
@@ -360,7 +364,6 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 # define	TERM_at7		"@7"
 # endif	/* !USETERMINFO */
 
-#define	BUFUNIT		16
 #define	TERMCAPSIZE	2048
 
 #ifndef	PENDIN
@@ -430,6 +433,11 @@ static int NEAR newdup __P_((int));
 static int NEAR err2 __P_((char *));
 static int NEAR defaultterm __P_((VOID_A));
 static int NEAR maxlocate __P_((int *, int *));
+static int NEAR getnum __P_((CONST char *, int *));
+static char *NEAR setchar __P_((int, char *, int *, int *));
+static char *NEAR setint __P_((long, int,
+		char *, int *, int *, int, int, int));
+static char *NEAR setstr __P_((char *, char *, int *, int *, int, int, int));
 #if	MSDOS
 # ifdef	USEVIDEOBIOS
 static int NEAR bioslocate __P_((int, int));
@@ -455,15 +463,16 @@ static kstree_t *NEAR newkeyseq __P_((kstree_t *, int));
 static int NEAR freekeyseq __P_((kstree_t *, int));
 static int NEAR cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR sortkeyseq __P_((VOID_A));
-# ifdef	DEBUG
-static int NEAR freeterment __P_((VOID_A));
-# endif
-static int putch3 __P_((int));
+static int putch3 __P_((tputs_t));
 #endif	/* !MSDOS */
 
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
+#ifndef	DECLERRLIST
+extern char *sys_errlist[];
+#endif
+
 #if	!MSDOS && !defined (USETERMINFO)
 # ifdef	NOTERMVAR
 # define	T_EXTERN
@@ -626,7 +635,7 @@ int opentty(VOID_A)
 {
 	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
 	&& (ttyio = safe_dup(STDERR_FILENO)) < 0)
-		err2(0);
+		err2("dup()");
 	return(ttyio);
 }
 
@@ -675,7 +684,7 @@ int reset;
 		|| ((!(l = ftell(stdout)) || l == -1)
 		&& ((dupout = newdup(safe_dup(STDOUT_FILENO))) < 0
 		|| safe_dup2(ttyio, STDOUT_FILENO) < 0)))
-			err2(NULL);
+			err2("dup2()");
 		termflags |= F_INITTTY;
 	}
 	else {
@@ -687,7 +696,7 @@ int reset;
 		if ((dupin >= 0 && safe_dup2(dupin, STDIN_FILENO) < 0)
 		|| (dupout >= 0 && safe_dup2(dupout, STDOUT_FILENO) < 0)) {
 			termflags &= ~F_INITTTY;
-			err2(NULL);
+			err2("dup2()");
 		}
 	}
 	return(0);
@@ -791,7 +800,7 @@ int reset;
 		termflags &= ~F_INITTTY;
 		close(ttyio);
 		ttyio = -1;
-		err2(NULL);
+		err2("ioctl()");
 	}
 	if (!reset) {
 		memcpy((char *)&dupttyio, (char *)&tty, sizeof(termioctl_t));
@@ -799,7 +808,7 @@ int reset;
 		if (ioctl(ttyio, TIOCLGET, &dupttyflag) < 0
 		|| ioctl(ttyio, TIOCGETC, &cc) < 0) {
 			termflags &= ~F_INITTTY;
-			err2(NULL);
+			err2("ioctl()");
 		}
 		cc_intr = cc.t_intrc;
 		cc_quit = cc.t_quitc;
@@ -826,7 +835,7 @@ int reset;
 		termflags &= ~F_INITTTY;
 		close(ttyio);
 		ttyio = -1;
-		err2(NULL);
+		err2("ioctl()");
 	}
 
 	return(0);
@@ -839,20 +848,20 @@ int d, set, reset, lset, lreset;
 	termioctl_t tty;
 	int lflag;
 
-	if (ioctl(d, TIOCLGET, &lflag) < 0) err2(NULL);
-	if (tioctl(d, REQGETP, &tty) < 0) err2(NULL);
+	if (ioctl(d, TIOCLGET, &lflag) < 0) err2("ioctl()");
+	if (tioctl(d, REQGETP, &tty) < 0) err2("ioctl()");
 	if (set) tty.sg_flags |= set;
 	if (reset) tty.sg_flags &= ~reset;
 	if (lset) lflag |= lset;
 	if (lreset) lflag &= ~lreset;
-	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
+	if (ioctl(d, TIOCLSET, &lflag) < 0) err2("ioctl()");
 #else
 static int NEAR ttymode(d, set, reset, iset, ireset, oset, oreset, vmin, vtime)
 int d, set, reset, iset, ireset, oset, oreset, vmin, vtime;
 {
 	termioctl_t tty;
 
-	if (tioctl(d, REQGETP, &tty) < 0) err2(NULL);
+	if (tioctl(d, REQGETP, &tty) < 0) err2("ioctl()");
 	if (set) tty.c_lflag |= set;
 	if (reset) tty.c_lflag &= ~reset;
 	if (iset) tty.c_iflag |= iset;
@@ -864,7 +873,7 @@ int d, set, reset, iset, ireset, oset, oreset, vmin, vtime;
 		tty.c_cc[VTIME] = vtime;
 	}
 #endif
-	if (tioctl(d, REQSETP, &tty) < 0) err2(NULL);
+	if (tioctl(d, REQSETP, &tty) < 0) err2("ioctl()");
 	termflags |= F_TTYCHANGED;
 	return(0);
 }
@@ -987,7 +996,6 @@ int keyflush(VOID_A)
 }
 #endif	/* !MSDOS */
 
-/*ARGSUSED*/
 int ttyiomode(nl)
 int nl;
 {
@@ -1016,17 +1024,18 @@ int nl;
 	return(0);
 }
 
-/*ARGSUSED*/
-int stdiomode(nonl)
-int nonl;
+int stdiomode(VOID_A)
 {
+	int nl;
+
+	nl = (isttyiomode) ? isttyiomode - 1 : 0;
 #if	MSDOS || defined (USESGTTY)
 	cooked2();
 	echo2();
 	nl2();
 	tabs();
 #else	/* !MSDOS && !USESGTTY */
-	if (nonl) {
+	if (nl) {
 		ttymode(ttyio,
 			(ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
 			PENDIN | ECHONL,
@@ -1054,7 +1063,22 @@ int nonl;
 	putterms(t_nokeypad);
 	tflush();
 	isttyiomode = 0;
-	return(0);
+	return(nl);
+}
+
+int termmode(init)
+int init;
+{
+	static int mode = 0;
+	int oldmode;
+
+	oldmode = mode;
+	if (mode != init) {
+		putterms((init) ? t_init : t_end);
+		tflush();
+		mode = init;
+	}
+	return(oldmode);
 }
 
 int exit2(no)
@@ -1068,8 +1092,8 @@ int no;
 # if	!MSDOS
 	freeterment();
 # endif
-	if (ttyio >= 0) close(ttyio);
-	if (ttyout && ttyout != stdout) fclose(ttyout);
+	if (ttyout && ttyout != stderr) fclose(ttyout);
+	else if (ttyio >= 0) close(ttyio);
 	muntrace();
 #endif
 	exit(no);
@@ -1091,12 +1115,17 @@ char *mes;
 		tabs();
 	}
 	fputs("\007\n", stderr);
-	errno = duperrno;
-	if (!mes) perror(TTYNAME);
-	else {
-		fputs(mes, stderr);
-		fputc('\n', stderr);
+	fputs(mes, stderr);
+
+	if (duperrno) {
+		fputs(": ", stderr);
+#if	MSDOS
+		fputs(strerror(duperrno), stderr);
+#else
+		fputs((char *)sys_errlist[duperrno], stderr);
+#endif
 	}
+	fputc('\n', stderr);
 	inittty(1);
 	exit(2);
 	return(0);
@@ -1293,11 +1322,14 @@ int *yp, *xp;
 static int NEAR maxlocate(yp, xp)
 int *yp, *xp;
 {
-	int i;
 # if	MSDOS
 	char *cp;
+# endif
+	int i, sc;
 
-	if (t_setcursor && t_resetcursor) putterms(t_setcursor);
+	sc = (t_setcursor && *t_setcursor && t_resetcursor && *t_resetcursor);
+	if (sc) putterms(t_setcursor);
+# if	MSDOS
 	if ((cp = tparamstr(c_locate, 0, 999))) {
 		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
 		free(cp);
@@ -1307,12 +1339,11 @@ int *yp, *xp;
 		free(cp);
 	}
 # else
-	if (t_setcursor && t_resetcursor) putterms(t_setcursor);
 	locate(998, 998);
 	tflush();
 # endif
 	i = getxy(yp, xp);
-	if (t_setcursor && t_resetcursor) putterms(t_resetcursor);
+	if (sc) putterms(t_resetcursor);
 	return(i);
 }
 
@@ -1332,6 +1363,7 @@ int *yp, *xp;
 # endif
 
 	do {
+		if (!kbhit2(WAITKEYPAD * 1000L)) return(-1);
 # if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
 # else
@@ -1339,6 +1371,7 @@ int *yp, *xp;
 # endif
 	} while (buf[0] != format[0]);
 	for (i = 1; i < sizeof(buf) - 1; i++) {
+		if (!kbhit2(WAITKEYPAD * 1000L)) return(-1);
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
@@ -1371,16 +1404,292 @@ int *yp, *xp;
 }
 #endif	/* !MSDOS || !USEVIDEOBIOS */
 
+static int NEAR getnum(s, ptrp)
+CONST char *s;
+int *ptrp;
+{
+	int i, n;
+
+	i = *ptrp;
+	for (n = 0; isdigit(s[i]); i++) n = n * 10 + (s[i] - '0');
+	if (i <= *ptrp) n = -1;
+	*ptrp = i;
+	return(n);
+}
+
+static char *NEAR setchar(n, buf, ptrp, sizep)
+int n;
+char *buf;
+int *ptrp, *sizep;
+{
+	char *tmp;
+
+	if (*ptrp + 1 >= *sizep) {
+		*sizep += BUFUNIT;
+		if ((tmp = (char *)realloc(buf, *sizep))) buf = tmp;
+		else {
+			free(buf);
+			return(NULL);
+		}
+	}
+	buf[(*ptrp)++] = n;
+	return(buf);
+}
+
+static char *NEAR setint(n, base, buf, ptrp, sizep, flags, width, prec)
+long n;
+int base;
+char *buf;
+int *ptrp, *sizep, flags, width, prec;
+{
+	char num[MAXLONGWIDTH + 1];
+	u_long ul;
+	int i, len, sign, cap, bit;
+
+	cap = 0;
+	if (base >= 256) {
+		cap++;
+		base -= 256;
+	}
+
+	ul = (u_long)n;
+	bit = 0;
+	if (base != 10) {
+		sign = 0;
+		flags &= ~(VF_PLUS | VF_SPACE);
+		i = 1;
+		for (i = 1; i < base; i <<= 1) bit++;
+		base--;
+	}
+	else if (n >= 0 || (flags & VF_UNSIGNED))
+		sign = (flags & VF_PLUS) ? 1 : 0;
+	else {
+		sign = -1;
+		n = -n;
+	}
+	if (sign || (flags & VF_SPACE)) width--;
+	if ((flags & VF_ZERO) && prec < 0) prec = width;
+	len = 0;
+	while (len < sizeof(num) / sizeof(char)) {
+		if (!bit) i = (((flags & VF_UNSIGNED) ? ul : n) % base) + '0';
+		else if ((i = (ul & base)) < 10) i += '0';
+		else if (cap) i += 'A' - 10;
+		else i += 'a' - 10;
+
+		num[len++] = i;
+		if (bit) {
+			ul >>= bit;
+			if (!ul) break;
+		}
+		else if (flags & VF_UNSIGNED) {
+			ul /= base;
+			if (!ul) break;
+		}
+		else {
+			n /= base;
+			if (!n) break;
+		}
+	}
+	if (!(flags & VF_MINUS) && width >= 0 && len < width) {
+		while (len < width--) {
+			if (prec >= 0 && prec > width) break;
+			if (!(buf = setchar(' ', buf, ptrp, sizep)))
+				return(NULL);
+		}
+	}
+
+	i = '\0';
+	if (sign) i = (sign > 0) ? '+' : '-';
+	else if (flags & VF_SPACE) i = ' ';
+	if (i && !(buf = setchar(i, buf, ptrp, sizep))) return(NULL);
+
+	if (prec >= 0 && len < prec) {
+		while (len < prec--) {
+			width--;
+			if (!(buf = setchar('0', buf, ptrp, sizep)))
+				return(NULL);
+		}
+	}
+	for (i = 0; i < len; i++) {
+		if (!(buf = setchar(num[len - i - 1], buf, ptrp, sizep)))
+			return(NULL);
+	}
+
+	if (width >= 0) for (; i < width; i++) {
+		if (!(buf = setchar(' ', buf, ptrp, sizep))) return(NULL);
+	}
+
+	return(buf);
+}
+
+static char *NEAR setstr(s, buf, ptrp, sizep, flags, width, prec)
+char *s, *buf;
+int *ptrp, *sizep, flags, width, prec;
+{
+	int i, len;
+
+	if (s) {
+		len = strlen(s);
+		if (prec >= 0 && len > prec) len = prec;
+	}
+	else {
+		s = "(null)";
+		len = strlen(s);
+		if (prec >= 0 && len > prec) len = 0;
+	}
+
+	if (!(flags & VF_MINUS) && width >= 0 && len < width) {
+		while (len < width--) {
+			if (!(buf = setchar(' ', buf, ptrp, sizep)))
+				return(NULL);
+		}
+	}
+	for (i = 0; i < len; i++) {
+		if (!(buf = setchar(s[i], buf, ptrp, sizep)))
+			return(NULL);
+	}
+
+	if (width >= 0) for (; i < width; i++) {
+		if (!(buf = setchar(' ', buf, ptrp, sizep)))
+			return(NULL);
+	}
+
+	return(buf);
+}
+
+int vasprintf2(sp, fmt, args)
+char **sp;
+CONST char *fmt;
+va_list args;
+{
+	char *buf;
+	long l;
+	int i, j, base, size, flags, width, prec;
+
+	if (!(buf = (char *)malloc(size = BUFUNIT))) return(-1);
+	for (i = j = 0; fmt[i]; i++) {
+		if (fmt[i] != '%') {
+			if (!(buf = setchar(fmt[i], buf, &j, &size)))
+				return(-1);
+			continue;
+		}
+
+		i++;
+		flags = 0;
+		width = prec = -1;
+		for (;;) {
+			if (fmt[i] == '+') flags |= VF_PLUS;
+			else if (fmt[i] == '-') flags |= VF_MINUS;
+			else if (fmt[i] == ' ') flags |= VF_SPACE;
+			else if (fmt[i] == '0') flags |= VF_ZERO;
+			else break;
+
+			i++;
+		}
+
+		if (fmt[i] != '*') width = getnum(fmt, &i);
+		else {
+			i++;
+			width = (int)va_arg(args, int);
+		}
+		if (fmt[i] == '.') {
+			i++;
+			if (fmt[i] != '*') prec = getnum(fmt, &i);
+			else {
+				i++;
+				prec = va_arg(args, int);
+			}
+		}
+		if (fmt[i] == 'l') {
+			i++;
+			flags |= VF_LONG;
+		}
+
+		base = 0;
+		switch (fmt[i]) {
+			case 'd':
+				base = 10;
+				break;
+			case 's':
+				buf = setstr(va_arg(args, char *),
+					buf, &j, &size, flags, width, prec);
+				break;
+			case 'c':
+				buf = setchar(va_arg(args, int),
+					buf, &j, &size);
+				break;
+			case 'p':
+				flags |= VF_LONG;
+/*FALLTHRU*/
+			case 'x':
+				base = 16;
+				break;
+			case 'X':
+				base = 16 + 256;
+				break;
+			case 'o':
+				base = 8;
+				break;
+			case 'u':
+				flags |= VF_UNSIGNED;
+				base = 10;
+				break;
+			default:
+				buf = setchar(fmt[i], buf, &j, &size);
+				break;
+		}
+
+		if (base) {
+			if (flags & VF_LONG) l = va_arg(args, long);
+			else l = (long)va_arg(args, int);
+			buf = setint(l, base,
+				buf, &j, &size, flags, width, prec);
+		}
+
+		if (!buf) return(-1);
+	}
+	va_end(args);
+
+	buf[j] = '\0';
+	if (sp) *sp = buf;
+	else free(buf);
+	return(j);
+}
+
+#ifdef	USESTDARGH
+/*VARARGS1*/
+int asprintf2(char **sp, CONST char *fmt, ...)
+#else
+/*VARARGS1*/
+int asprintf2(sp, fmt, va_alist)
+char *sp;
+CONST char *fmt;
+va_dcl
+#endif
+{
+	va_list args;
+	int n;
+
+#ifdef	USESTDARGH
+	va_start(args, fmt);
+#else
+	va_start(args);
+#endif
+
+	n = vasprintf2(sp, fmt, args);
+	va_end(args);
+	if (n < 0) err2("malloc()");
+	return(n);
+}
+
 #if	MSDOS
 char *tparamstr(s, arg1, arg2)
 char *s;
 int arg1, arg2;
 {
-	char *cp, buf[MAXPRINTBUF + 1];
+	char *cp;
 
-	sprintf(buf, s, arg1, arg2);
-	if (!(cp = (char *)malloc(strlen(buf) + 1))) err2(NULL);
-	strcpy(cp, buf);
+	asprintf2(&cp, s, arg1, arg2);
 	return(cp);
 }
 
@@ -1398,7 +1707,7 @@ char *tparamstr(s, arg1, arg2)
 char *s;
 int arg1, arg2;
 {
-	char *buf;
+	char *buf, *tmp;
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 	if (!s) return(NULL);
@@ -1414,49 +1723,45 @@ int arg1, arg2;
 	if (!s || !(s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0)))
 		return(NULL);
 #  endif
-	if (!(buf = (char *)malloc(strlen(s) + 1))) err2(NULL);
+	if (!(buf = (char *)malloc(strlen(s) + 1))) err2("malloc()");
 	strcpy(buf, s);
 # else	/* !USETERMINFO */
-	int i, j, n, sw, size, args[2];
+	int i, j, n, len, size, args[2];
 
 	if (!s) return(NULL);
-	if (!(buf = (char *)malloc(size = BUFUNIT))) err2(NULL);
+	if (!(buf = (char *)malloc(size = BUFUNIT))) err2("malloc()");
 	args[0] = arg1;
 	args[1] = arg2;
 
 	for (i = j = n = 0; s[i]; i++) {
-		if (j + 5 >= size) {
-			size += BUFUNIT;
-			if (!(buf = (char *)realloc(buf, size))) err2(NULL);
+		tmp = NULL;
+		if (s[i] != '%' || s[++i] == '%') {
+			if (!(buf = setchar(s[i], buf, &j, &size)))
+				err2("realloc()");
 		}
-		if (s[i] != '%') buf[j++] = s[i];
-		else if (s[++i] == '%') buf[j++] = '%';
 		else if (n >= 2) {
 			free(buf);
 			return(NULL);
 		}
 		else switch (s[i]) {
 			case 'd':
-				sprintf(&(buf[j]), "%d", args[n++]);
-				j += strlen(&(buf[j]));
+				asprintf2(&tmp, "%d", args[n++]);
 				break;
 			case '2':
-				sprintf(&(buf[j]), "%02d", args[n++]);
-				j += 2;
+				asprintf2(&tmp, "%02d", args[n++]);
 				break;
 			case '3':
-				sprintf(&(buf[j]), "%03d", args[n++]);
-				j += 3;
+				asprintf2(&tmp, "%03d", args[n++]);
 				break;
 			case '.':
-				sprintf(&(buf[j++]), "%c", args[n++]);
+				asprintf2(&tmp, "%c", args[n++]);
 				break;
 			case '+':
 				if (!s[++i]) {
 					free(buf);
 					return(NULL);
 				}
-				sprintf(&(buf[j++]), "%c", args[n++] + s[i]);
+				asprintf2(&tmp, "%c", args[n++] + s[i]);
 				break;
 			case '>':
 				if (!s[++i] || !s[i + 1]) {
@@ -1466,9 +1771,9 @@ int arg1, arg2;
 				if (args[n] > s[i++]) args[n] += s[i];
 				break;
 			case 'r':
-				sw = args[0];
+				len = args[0];
 				args[0] = args[1];
-				args[1] = sw;
+				args[1] = len;
 				break;
 			case 'i':
 				args[0]++;
@@ -1491,6 +1796,18 @@ int arg1, arg2;
 /*NOTREACHED*/
 				break;
 		}
+
+		if (tmp) {
+			len = strlen(tmp);
+			if (j + len + 1 >= size) {
+				size += BUFUNIT;
+				if (!(buf = (char *)realloc(buf, size)))
+					err2("realloc()");
+			}
+			memcpy(&(buf[j]), tmp, len);
+			free(tmp);
+			j += len;
+		}
 	}
 
 	buf[j] = '\0';
@@ -1509,7 +1826,7 @@ char **term, *s;
 	s = tgetstr(s, &p);
 # endif
 	if (s || (s = *term)) {
-		if (!(*term = (char *)malloc(strlen(s) + 1))) err2(NULL);
+		if (!(*term = (char *)malloc(strlen(s) + 1))) err2("malloc()");
 		strcpy(*term, s);
 	}
 	return(*term);
@@ -1529,7 +1846,8 @@ char **term, *str1, *str2;
 	&& (str1 = tparamstr(tgetstr(str2, &p), 1, 1))) *term = str1;
 # endif
 	else if (str1 || (str1 = *term)) {
-		if (!(*term = (char *)malloc(strlen(str1) + 1))) err2(NULL);
+		if (!(*term = (char *)malloc(strlen(str1) + 1)))
+			err2("malloc()");
 		strcpy(*term, str1);
 	}
 	return(*term);
@@ -1573,7 +1891,7 @@ int num;
 	if (!parent || !(parent -> next))
 		new = (kstree_t *)malloc(sizeof(kstree_t) * num);
 	else new = (kstree_t *)realloc(parent -> next, sizeof(kstree_t) * num);
-	if (!new) err2(NULL);
+	if (!new) err2("realloc()");
 
 	if (!parent) n = 0;
 	else {
@@ -1646,7 +1964,7 @@ int getterment(VOID_A)
 	int i, j;
 
 	if (termflags & F_TERMENT) return(-1);
-	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stdout;
+	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
 	if (!(terminalname = (char *)getenv("TERM"))) terminalname = "unknown";
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
@@ -1660,7 +1978,10 @@ int getterment(VOID_A)
 #  else
 	setupterm(terminalname, fileno(ttyout), &i);
 #  endif
-	if (i != 1) err2("No TERMINFO is prepared");
+	if (i != 1) {
+		errno = 0;
+		err2("No TERMINFO is prepared");
+	}
 	defaultterm();
 # else	/* !USETERMINFO */
 #  ifdef	DEBUG
@@ -1671,10 +1992,13 @@ int getterment(VOID_A)
 		_mtrace_file = "tgetent(end)";
 		malloc(0);	/* dummy malloc */
 	}
-	if (i <= 0) err2("No TERMCAP is prepared");
 #  else
-	if (tgetent(buf, terminalname) <= 0) err2("No TERMCAP is prepared");
+	i = tgetent(buf, terminalname);
 #  endif
+	if (i <= 0) {
+		errno = 0;
+		err2("No TERMCAP is prepared");
+	}
 
 	defaultterm();
 	cp = "";
@@ -1745,8 +2069,8 @@ int getterment(VOID_A)
 	tgetstr2(&c_nleft, TERM_LE);
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].str) {
-		cp = (char *)malloc(strlen(keyseq[i].str) + 1);
-		if (!cp) err2(NULL);
+		if (!(cp = (char *)malloc(strlen(keyseq[i].str) + 1)))
+			err2("malloc()");
 		strcpy(cp, keyseq[i].str);
 		keyseq[i].str = cp;
 	}
@@ -1828,7 +2152,7 @@ int getterment(VOID_A)
 }
 
 # ifdef	DEBUG
-static int NEAR freeterment(VOID_A)
+int freeterment(VOID_A)
 {
 	int i;
 
@@ -1942,7 +2266,7 @@ int initterm(VOID_A)
 {
 	if (!(termflags & F_TERMENT)) getterment();
 	putterms(t_keypad);
-	putterms(t_init);
+	termmode(1);
 	tflush();
 	termflags |= F_INITTERM;
 	return(0);
@@ -1952,7 +2276,7 @@ int endterm(VOID_A)
 {
 	if (!(termflags & F_INITTERM)) return(-1);
 	putterms(t_nokeypad);
-	putterms(t_end);
+	termmode(0);
 	tflush();
 	termflags &= ~F_INITTERM;
 	return(0);
@@ -2306,7 +2630,7 @@ char *s;
 {
 	int i, n;
 
-	for (i = 0; s[i]; i++) {
+	if (s) for (i = 0; s[i]; i++) {
 		if (s[i] != '\033' || s[i + 1] != '[') putch2(s[i]);
 		else if ((n = evalcsi(&s[i + 2])) >= 0) i += n + 2;
 	}
@@ -2326,7 +2650,7 @@ char *s;
 {
 	int i, x, y;
 
-	for (i = 0; s[i]; i++) {
+	if (s) for (i = 0; s[i]; i++) {
 		if (s[i] != '\t') {
 			bdos(0x06, s[i], 0);
 			continue;
@@ -2594,14 +2918,15 @@ int c;
 	return(fputc(c, ttyout));
 }
 
-int cputs2(str)
-char *str;
+int cputs2(s)
+char *s;
 {
-	return(fputs(str, ttyout));
+	if (!s) return(0);
+	return(fputs(s, ttyout));
 }
 
 static int putch3(c)
-int c;
+tputs_t c;
 {
 	return(fputc(c & 0x7f, ttyout));
 }
@@ -2609,12 +2934,14 @@ int c;
 int putterm(s)
 char *s;
 {
+	if (!s) return(0);
 	return(tputs(s, 1, putch3));
 }
 
 int putterms(s)
 char *s;
 {
+	if (!s) return(0);
 	return(tputs(s, n_line, putch3));
 }
 
@@ -2647,8 +2974,7 @@ int getch2(VOID_A)
 
 	do {
 		if (suspended) {
-			if (!isttyiomode) isttyiomode = 1;
-			ttyiomode(isttyiomode - 1);
+			ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
 			suspended = 0;
 		}
 	} while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
@@ -2670,8 +2996,7 @@ int sig;
 			kill(getpid(), sig);
 		}
 		if (suspended) {
-			if (!isttyiomode) isttyiomode = 1;
-			ttyiomode(isttyiomode - 1);
+			ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
 			suspended = 0;
 		}
 		if (keywaitfunc) (*keywaitfunc)();
@@ -2863,36 +3188,29 @@ int xmax, ymax;
 #ifdef	USESTDARGH
 /*VARARGS1*/
 int cprintf2(CONST char *fmt, ...)
-{
-	va_list args;
-	char buf[MAXPRINTBUF + 1];
-
-	va_start(args, fmt);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-#else	/* !USESTDARGH */
-# ifndef	NOVSPRINTF
+#else
 /*VARARGS1*/
 int cprintf2(fmt, va_alist)
 CONST char *fmt;
 va_dcl
+#endif
 {
 	va_list args;
-	char buf[MAXPRINTBUF + 1];
+	char *buf;
+	int n;
 
+#ifdef	USESTDARGH
+	va_start(args, fmt);
+#else
 	va_start(args);
-	vsprintf(buf, fmt, args);
-	va_end(args);
-# else	/* NOVSPRINTF */
-int cprintf2(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
-char *fmt;
-{
-	char buf[MAXPRINTBUF + 1];
+#endif
 
-	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
-# endif	/* NOVSPRINTF */
-#endif	/* !USESTDARGH */
-	return(cputs2(buf));
+	n = vasprintf2(&buf, fmt, args);
+	va_end(args);
+	if (n < 0) err2("malloc()");
+	cputs2(buf);
+	free(buf);
+	return(n);
 }
 
 int chgcolor(color, reverse)

@@ -23,6 +23,7 @@ extern char *unixrealpath __P_((char *, char *));
 
 #ifndef	_NODOSDRIVE
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
+extern char *dosgetcwd __P_((char *, int));
 #endif
 
 #ifdef	_NOORIGSHELL
@@ -41,6 +42,12 @@ extern char **environ;
 extern char fullpath[];
 extern char *origpath;
 extern int hideclock;
+#ifndef	DECLERRLIST
+extern char *sys_errlist[];
+#endif
+#ifndef	_NODOSDRIVE
+extern int lastdrv;
+#endif
 
 #ifndef	CHAR_BIT
 # ifdef	NBBY
@@ -54,7 +61,7 @@ extern int hideclock;
 			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
-static int evallink __P_((char *, char *));
+static int NEAR evallink __P_((char *, char *));
 static char *NEAR _realpath2 __P_((char *, char *, int));
 #ifdef	_NOORIGSHELL
 static int NEAR _getenv2 __P_((char *, int, char **));
@@ -72,11 +79,15 @@ static long NEAR gettimezone __P_((struct tm *, time_t));
 char **environ2 = NULL;
 #endif
 int physical_path = 0;
+int norealpath = 0;
 
 static char *lastpath = NULL;
 #ifndef	_NODOSDRIVE
 static char *unixpath = NULL;
 #endif
+static int wasttyflags = 0;
+#define	TF_TTYIOMODE	001
+#define	TF_TTYNL	002
 
 
 int stat2(path, stp)
@@ -86,16 +97,16 @@ struct stat *stp;
 #if	MSDOS
 	return(Xstat(path, stp));
 #else	/* !MSDOS */
-	int tmperr;
+	int duperrno;
 
 	if (Xstat(path, stp) < 0) {
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 		if (dospath2(path)) return(-1);
-#endif
-		tmperr = errno;
-		if (_Xlstat(path, stp, 0, 1) < 0
+# endif
+		duperrno = errno;
+		if (nodoslstat(path, stp) < 0
 		|| (stp -> st_mode & S_IFMT) != S_IFLNK) {
-			errno = tmperr;
+			errno = duperrno;
 			return(-1);
 		}
 		stp -> st_mode &= ~S_IFMT;
@@ -105,16 +116,16 @@ struct stat *stp;
 }
 
 #if	!MSDOS
-static int evallink(path, delim)
+static int NEAR evallink(path, delim)
 char *path, *delim;
 {
 	struct stat st;
 	char buf[MAXPATHLEN];
 	int i;
 
-	if (_Xlstat(path, &st, 0, 1) < 0) return(-1);
+	if (nodoslstat(path, &st) < 0) return(-1);
 	if ((st.st_mode & S_IFMT) != S_IFLNK) return(0);
-	if ((i = readlink(path, buf, MAXPATHLEN - 1)) < 0) return(-1);
+	if ((i = Xreadlink(path, buf, MAXPATHLEN - 1)) < 0) return(-1);
 
 	if (*buf == _SC_) strncpy2(path, buf, i);
 	else {
@@ -182,8 +193,14 @@ char *realpath2(path, resolved, rdlink)
 char *path, *resolved;
 int rdlink;
 {
-	char tmp[MAXPATHLEN];
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char *cp;
+	int duplastdrive;
+#endif
+#if	MSDOS || !defined (_NODOSDRIVE)
 	int drv;
+#endif
+	char tmp[MAXPATHLEN];
 
 	strcpy(tmp, path);
 	path = tmp;
@@ -203,32 +220,39 @@ int rdlink;
 			resolved[2] = _SC_;
 			resolved[3] = '\0';
 		}
-		else if (!Xgetwd(resolved) || setcurdrv(drv, 0) < 0)
-			error(NULL);
+		else {
+			if (!Xgetwd(resolved)) lostcwd(resolved);
+			if (setcurdrv(drv, 0) < 0) error("setcurdrv()");
+		}
 	}
 #else	/* !MSDOS */
 	if (*path == _SC_) strcpy(resolved, _SS_);
 # ifndef	_NODOSDRIVE
 	else if ((drv = _dospath(path))) {
-		char cwd[MAXPATHLEN];
-
 		path += 2;
-		resolved[0] = drv;
-		resolved[1] = ':';
-		resolved[2] = '\0';
-		if (*path == _SC_ || !Xgetwd(cwd)
-		|| Xchdir(resolved) < 0 || !Xgetwd(resolved)) {
+		if (*path == _SC_) cp = NULL;
+		else {
+			duplastdrive = lastdrive;
+			lastdrive = drv;
+			cp = dosgetcwd(resolved, MAXPATHLEN - 1);
+			lastdrive = duplastdrive;
+		}
+		if (!cp) {
+			resolved[0] = drv;
+			resolved[1] = ':';
 			resolved[2] = _SC_;
 			resolved[3] = '\0';
 		}
-		else if (Xchdir(cwd) < 0) error(cwd);
 	}
 # endif
 #endif	/* !MSDOS */
-	else if (rdlink <= 0 && resolved != fullpath && *fullpath)
+	else if (!rdlink && resolved != fullpath && *fullpath)
 		strcpy(resolved, fullpath);
 	else if (!Xgetwd(resolved)) strcpy(resolved, _SS_);
-	return(_realpath2(path, resolved, rdlink));
+	norealpath++;
+	_realpath2(path, resolved, rdlink);
+	norealpath--;
+	return(resolved);
 }
 
 int _chdir2(path)
@@ -257,6 +281,18 @@ char *path;
 {
 	char *pwd, cwd[MAXPATHLEN], tmp[MAXPATHLEN];
 
+#ifdef	DEBUG
+	if (!path) {
+		if (lastpath) free(lastpath);
+		lastpath = NULL;
+# ifndef	_NODOSDRIVE
+		if (unixpath) free(unixpath);
+		unixpath = NULL;
+# endif
+		return(0);
+	}
+#endif
+
 	realpath2(path, tmp, physical_path);
 	if (_chdir2(path) < 0) return(-1);
 
@@ -269,9 +305,6 @@ char *path;
 		return(-1);
 	}
 	if (lastpath) free(lastpath);
-#ifdef	DEBUG
-	_mtrace_file = "chdir2";
-#endif
 	lastpath = strdup2(cwd);
 #ifndef	_NODOSDRIVE
 	if (dospath2(fullpath)) {
@@ -305,10 +338,10 @@ char *path;
 int chdir3(path)
 char *path;
 {
-	char *cwd;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
+	char *cwd;
 
 	cwd = path;
 	if (!strcmp(path, ".")) cwd = NULL;
@@ -381,7 +414,7 @@ ALLOC_T size;
 	char *tmp;
 
 	if (!size || !(tmp = (char *)malloc(size))) {
-		error(NULL);
+		error("malloc()");
 #ifdef	FAKEUNINIT
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
@@ -398,12 +431,24 @@ ALLOC_T size;
 	if (!size
 	|| !(tmp = (ptr) ? (char *)realloc(ptr, size) : (char *)malloc(size)))
 	{
-		error(NULL);
+		error("realloc()");
 #ifdef	FAKEUNINIT
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
 	}
 	return(tmp);
+}
+
+char *c_realloc(ptr, n, sizep)
+char *ptr;
+ALLOC_T n, *sizep;
+{
+	if (!ptr) {
+		*sizep = BUFUNIT;
+		return(malloc2(*sizep));
+	}
+	while (n + 1 >= *sizep) *sizep *= 2;
+	return(realloc2(ptr, *sizep));
 }
 
 char *strdup2(s)
@@ -412,7 +457,7 @@ char *s;
 	char *tmp;
 
 	if (!s) return(NULL);
-	if (!(tmp = (char *)malloc((ALLOC_T)strlen(s) + 1))) error(NULL);
+	if (!(tmp = (char *)malloc((ALLOC_T)strlen(s) + 1))) error("malloc()");
 	strcpy(tmp, s);
 	return(tmp);
 }
@@ -463,7 +508,7 @@ int n;
 
 	for (i = 0; i < n && s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
-	return(s1);
+	return(&(s1[i]));
 }
 
 /*
@@ -503,7 +548,7 @@ int *lenp, ptr;
 #endif
 		else if (iskanji1(s2, j)) {
 			if (*lenp >= 0 && i >= *lenp - 1) {
-				s1[i++] = ' ';
+				if (ptr >= 0) s1[i++] = ' ';
 				break;
 			}
 			s1[i++] = s2[j++];
@@ -572,6 +617,55 @@ char *s;
 	return((int)n);
 }
 
+#ifdef	USESTDARGH
+/*VARARGS1*/
+int snprintf2(char *s, int size, CONST char *fmt, ...)
+#else
+/*VARARGS1*/
+int snprintf2(s, size, fmt, va_alist)
+char *s;
+int size;
+char *fmt;
+va_dcl
+#endif
+{
+	va_list args;
+	char *buf;
+	int n;
+
+#ifdef	USESTDARGH
+	va_start(args, fmt);
+#else
+	va_start(args);
+#endif
+
+	n = vasprintf2(&buf, fmt, args);
+	va_end(args);
+	if (n < 0) error("malloc()");
+	strncpy2(s, buf, size - 1);
+	free(buf);
+	return(n);
+}
+
+VOID perror2(s)
+char *s;
+{
+	int duperrno;
+
+	duperrno = errno;
+	if (s) {
+		kanjifputs(s, stderr);
+		fputs(": ", stderr);
+	}
+#if	MSDOS
+	fputs(strerror(duperrno), stderr);
+#else
+	fputs((char *)sys_errlist[duperrno], stderr);
+#endif
+	fputc('\n', stderr);
+	fflush(stderr);
+}
+
 #ifdef	_NOORIGSHELL
 static int NEAR _getenv2(name, len, envp)
 char *name;
@@ -607,9 +701,6 @@ char *s, **envp;
 	}
 	if (!cp) return(envp);
 
-# ifdef	DEBUG
-	_mtrace_file = "_putenv2";
-# endif
 	if (!envp) new = (char **)malloc((n + 2) * sizeof(char *));
 	else new = (char **)realloc(envp, (n + 2) * sizeof(char *));
 	if (!new) {
@@ -714,36 +805,110 @@ int system2(command, noconf)
 char *command;
 int noconf;
 {
-	int n, ret;
+	int n, wastty, mode, nl, ret;
 
 	if (!command || !*command) return(0);
+#ifdef	FAKEUNINIT
+	mode = nl = 0;		/* fake for -Wuninitialized */
+#endif
 	n = sigvecset(0);
-	if (noconf >= 0) {
-		locate(0, n_line - 1);
-		putterm(l_clear);
-		if (n && noconf) putterms(t_end);
-	}
-	stdiomode(0);
-	ret = dosystem(command);
-	if (noconf > 0) {
-		if (ret >= 127) {
-			fputs("\007\n", stderr);
-			kanjifputs(HITKY_K, stderr);
-			fflush(stderr);
-			ttyiomode(1);
-			keyflush();
-			getkey2(0);
-			stdiomode(1);
-			fputc('\n', stderr);
+	if ((wastty = isttyiomode)) {
+		if (noconf >= 0) {
+			locate(0, n_line - 1);
+			putterm(l_clear);
 		}
-		if (n) putterms(t_init);
+		if (n && noconf > 0) mode = termmode(0);
+		nl = stdiomode();
 	}
-	ttyiomode(0);
+
+	ret = dosystem(command);
 	sigvecset(n);
-	if (!noconf || (noconf < 0 && ret >= 127)) {
-		hideclock = 1;
-		warning(0, HITKY_K);
+	if (ret >= 127 && noconf > 0) {
+		fputs("\007\n", stderr);
+		kanjifputs(HITKY_K, stderr);
+		fflush(stderr);
+		ttyiomode(1);
+		keyflush();
+		getkey2(0);
+		stdiomode();
+		fputc('\n', stderr);
 	}
+
+	if (wastty) {
+		ttyiomode(nl);
+		if (n && noconf > 0) termmode(mode);
+		if (!noconf || (noconf < 0 && ret >= 127)) {
+			hideclock = 1;
+			warning(0, HITKY_K);
+		}
+	}
+	return(ret);
+}
+
+/*ARGSUSED*/
+FILE *popen2(command, type)
+char *command, *type;
+{
+	FILE *fp;
+	int n;
+
+	if (!command || !*command) return(NULL);
+	n = sigvecset(0);
+	wasttyflags = 0;
+	if (isttyiomode) {
+		wasttyflags |= TF_TTYIOMODE;
+		if (stdiomode()) wasttyflags |= TF_TTYNL;
+	}
+
+#ifdef	_NOORIGSHELL
+# ifdef	DEBUG
+	_mtrace_file = "popen(start)";
+	fp = Xpopen(command, type);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "popen(end)";
+		malloc(0);	/* dummy malloc */
+	}
+# else
+	fp = Xpopen(command, type);
+# endif
+#else	/* !_NOORIGSHELL */
+	fp = dopopen(command);
+#endif	/* !_NOORIGSHELL */
+	sigvecset(n);
+	if (fp) {
+		if (wasttyflags & TF_TTYIOMODE) {
+			putterms(t_keypad);
+			tflush();
+		}
+	}
+	else {
+		fputs("\007\n", stderr);
+		perror2(command);
+		fflush(stderr);
+		ttyiomode(1);
+		keyflush();
+		getkey2(0);
+		stdiomode();
+		fputc('\n', stderr);
+		if (wasttyflags & TF_TTYIOMODE)
+			ttyiomode((wasttyflags & TF_TTYNL) ? 1 : 0);
+	}
+	return(fp);
+}
+
+int pclose2(fp)
+FILE *fp;
+{
+	int ret;
+
+#ifdef	_NOORIGSHELL
+	ret = Xpclose(fp);
+#else
+	ret = dopclose(fp);
+#endif
+	if (wasttyflags & TF_TTYIOMODE)
+		ttyiomode((wasttyflags & TF_TTYNL) ? 1 : 0);
 	return(ret);
 }
 
@@ -751,7 +916,7 @@ char *getwd2(VOID_A)
 {
 	char cwd[MAXPATHLEN];
 
-	if (!Xgetwd(cwd)) error(NULL);
+	if (!Xgetwd(cwd)) lostcwd(cwd);
 	return(strdup2(cwd));
 }
 
@@ -956,10 +1121,10 @@ FILE *fp;
 int nulcnv;
 {
 	char *cp;
-	long i, size;
+	ALLOC_T i, size;
 	int c;
 
-	cp = c_malloc(size);
+	cp = c_realloc(NULL, 0, &size);
 	for (i = 0; (c = Xfgetc(fp)) != '\n'; i++) {
 		if (c == EOF) {
 			if (!i || ferror(fp)) {
@@ -968,7 +1133,7 @@ int nulcnv;
 			}
 			break;
 		}
-		cp = c_realloc(cp, i, size);
+		cp = c_realloc(cp, i, &size);
 		if (nulcnv && !c) c = '\n';
 		cp[i] = c;
 	}

@@ -95,7 +95,11 @@ typedef union wait	wait_t;
 # ifdef	_NSIG
 # define	NSIG	_NSIG
 # else
-# define	NSIG	64
+#  ifdef	DJGPP
+#  define	NSIG	301
+#  else
+#  define	NSIG	64
+#  endif
 # endif
 #endif
 
@@ -138,7 +142,7 @@ typedef struct termio	ldiscioctl_t;
 #ifdef	USESGTTY
 #include <sgtty.h>
 typedef struct sgttyb	termioctl_t;
-typedef int 		ldiscioctl_t;
+typedef int		ldiscioctl_t;
 #define	tioctl		ioctl
 #define	ldisc(a)	(a)
 #define	REQGETP		TIOCGETP
@@ -425,8 +429,8 @@ extern int prevjob;
 extern int stopped;
 extern p_id_t orgpgrp;
 extern p_id_t childpgrp;
-#endif
 extern p_id_t ttypgrp;
+#endif
 extern int interrupted;
 extern int nottyout;
 extern int syntaxerrno;
@@ -434,6 +438,7 @@ extern statementtable statementlist[];
 extern signaltable signallist[];
 
 extern VOID prepareexit __P_((int));
+extern VOID Xexit2 __P_((int));
 extern VOID execerror __P_((char *, int, int));
 extern VOID doperror __P_((char *, char *));
 extern int isnumeric __P_((char *));
@@ -447,7 +452,7 @@ extern int waitchild __P_((p_id_t, syntaxtree *));
 extern char *evalvararg __P_((char *, int, int, int, int, int));
 extern syntaxtree *newstree __P_((syntaxtree *));
 extern VOID freestree __P_((syntaxtree *));
-extern syntaxtree *parentshell __P_((syntaxtree *));
+extern syntaxtree *parentstree __P_((syntaxtree *));
 #if	!MSDOS
 extern VOID cmpmail __P_((char *, char *, time_t *));
 #endif
