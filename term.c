@@ -1875,7 +1875,8 @@ char *s;
 		}
 	}
 
-	if (dupdumbterm >= 2 || !strcmp(term, "emacs") || getenv("EMACS"))
+	if (dupdumbterm >= 2 || !strcmp(term, "emacs")
+	|| ((cp = getenv("EMACS")) && !strcmp(cp, "t")))
 		dumbterm = 3;
 
 	defaultterm();

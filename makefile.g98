@@ -205,10 +205,10 @@ install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 	-$(RM) $(BINDIR)\$(FDSHELL).exe
 	$(LN) $(BINDIR)\$(PROGRAM).exe $(BINDIR)\$(FDSHELL).exe
 	$(CHMOD) a+rx $(BINDIR)\$(FDSHELL).exe
-	$(INSTALL) $(EMANSRC) $(EMANDIR)\$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r-x $(EMANDIR)\$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(MANDIR)\$(PROGRAM).$(MANSEC)
+	$(INSTALL) $(EMANSRC) $(EMANDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(EMANDIR)\$(PROGRAM).$(MANSEC)
 	-if [ -f $(RUNCOM) ]; then \
 		$(INSTALL) $(RUNCOM) $(DEFRC); \
 		$(CHMOD) a+r-x $(DEFRC); \

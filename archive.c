@@ -66,7 +66,7 @@ static char *ign_lha[] = {
 #else	/* !MSDOS */
 	" PERMSSN * UID*GID *",
 	"----------*",
-	" Total * file* ???.?%*",
+	" Total * file* ???.*%*",
 #endif	/* !MSDOS */
 	NULL
 };

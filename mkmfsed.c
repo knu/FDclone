@@ -5,9 +5,7 @@
  */
 
 #include "fd.h"
-#if	!MSDOS
 #include <sys/param.h>
-#endif
 
 #ifdef	USESELECTH
 #include <sys/select.h>
@@ -22,11 +20,7 @@
 #  ifdef	OPEN_MAX
 #  define	MAXOPENFILE	OPEN_MAX
 #  else
-#   if	MSDOS
-#   define	MAXOPENFILE	20
-#   else
-#   define	MAXOPENFILE	64
-#   endif
+#  define	MAXOPENFILE	64
 #  endif
 # endif
 #endif
@@ -50,7 +44,11 @@ char *argv[];
 #endif
 /*NOTDEFINED*/
 	printf("s:__PREFIX__:%s:\n", PREFIX);
+#ifdef	__CYGWIN__
+	printf("s:__EXE__:.exe:g\n");
+#else
 	printf("s:__EXE__::g\n");
+#endif
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__OBJS__:dosemu.o:\n");
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");

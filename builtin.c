@@ -1117,8 +1117,9 @@ int n;
 
 	free(macrolist[n - FUNCLISTSIZ]);
 	maxmacro--;
-	for (i = n - FUNCLISTSIZ; i < maxmacro; i++)
-		macrolist[i] = macrolist[i + 1];
+	memmove((char *)&(macrolist[n - FUNCLISTSIZ]),
+		(char *)&(macrolist[n - FUNCLISTSIZ + 1]),
+		(maxmacro - (n - FUNCLISTSIZ)) * sizeof(char *));
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
 		if (ismacro(bindlist[i].f_func) && bindlist[i].f_func > n)
@@ -1208,7 +1209,7 @@ int argc;
 char *argv[];
 {
 	bindtable bind;
-	int i, n;
+	int i, n1, n2;
 
 	if ((i = parsekeybind(argc, argv, &bind)) < 0) {
 		builtinerror(argv,
@@ -1245,21 +1246,24 @@ char *argv[];
 		return(-1);
 	}
 
-	n = (bind.d_func == 255) ? 3 : 4;
-	if (argc > n) {
+	n1 = (bind.d_func == 255) ? 3 : 4;
+	if (argc > n1) {
 		free(helpindex[bind.key - K_F(1)]);
-		helpindex[bind.key - K_F(1)] = strdup2(&(argv[n][1]));
+		helpindex[bind.key - K_F(1)] = strdup2(&(argv[n1][1]));
 	}
 
 	if (bindlist[i].key < 0) {
+		n1 = n2 = -1;
 		memcpy((char *)&(bindlist[i + 1]), (char *)&(bindlist[i]),
 			sizeof(bindtable));
 	}
 	else {
-		freemacro(bindlist[i].f_func);
-		freemacro(bindlist[i].d_func);
+		n1 = bindlist[i].f_func;
+		n2 = bindlist[i].d_func;
 	}
 	memcpy((char *)&(bindlist[i]), (char *)&bind, sizeof(bindtable));
+	freemacro(n1);
+	freemacro(n2);
 	return(0);
 }
 

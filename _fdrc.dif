@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Wed Dec  3 00:00:00 2003
++++ _fdrc	Wed Feb  4 00:00:00 2004
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-113: preserve previous sort type
@@ -314,7 +314,7 @@
 +#		-f "%9a %u/%g %s %x %m %d %{yt} %*f" \
 +#		-i " PERMSSN * UID*GID *" \
 +#		-i "----------*" \
-+#		-i " Total * file* ???.?%*" \
++#		-i " Total * file* ???.*%*" \
 +#launch ".tar"		"tar tvf" \
 +#		-f "%a %u/%g %s %m %d %t %y %*f" \
 +#		-f "%a %u/%g %s %y-%m-%d %t %*f" \

@@ -286,7 +286,7 @@
 #		-f "%9a %u/%g %s %x %m %d %{yt} %*f" \
 #		-i " PERMSSN * UID*GID *" \
 #		-i "----------*" \
-#		-i " Total * file* ???.?%*" \
+#		-i " Total * file* ???.*%*" \
 #launch ".tar"		"tar tvf" \
 #		-f "%a %u/%g %s %m %d %t %y %*f" \
 #		-f "%a %u/%g %s %y-%m-%d %t %*f" \
