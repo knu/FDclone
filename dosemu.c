@@ -7,8 +7,8 @@
 #include "fd.h"
 #include "func.h"
 #include "dosdisk.h"
+#include "kctype.h"
 
-#include <ctype.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -43,10 +43,19 @@ char *path, *buf;
 	if (islower(drive)) drive += 'A' - 'a';
 	if (!buf) return(drive);
 
+#ifdef	CODEEUC
+	buf[ujis2sjis(buf, cp)] = '\0';
+#else
 	strcpy(buf, cp);
+#endif
 	if (cp != path && *path) {
 		if (*buf && buf[strlen(buf) - 1] != '/') strcat(buf, "/");
+#ifdef	CODEEUC
+		buf += strlen(buf);
+		buf[ujis2sjis(buf, path)] = '\0';
+#else
 		strcat(buf, path);
+#endif
 	}
 	return(drive);
 }
@@ -81,8 +90,9 @@ DIR *dirp;
 	if (*((int *)dirp) >= 0) dp = readdir(dirp);
 	else {
 		dp = dosreaddir(dirp);
-		if (dp) for (i = 0; dp -> d_name[i]; i++)
-			if (isupper(dp -> d_name[i]))
+		if (dp) for (i = 0; dp -> d_name[i]; i++) {
+			if (issjis1((u_char)(dp -> d_name[i]))) i++;
+			else if (isupper(dp -> d_name[i]))
 				dp -> d_name[i] += 'a' - 'A';
 			else if (dp -> d_name[i] == '`')
 				dp -> d_name[i] = '+';
@@ -92,9 +102,16 @@ DIR *dirp;
 				dp -> d_name[i] = '[';
 			else if (dp -> d_name[i] == '$')
 				dp -> d_name[i] = '.';
+		}
 	}
 	if (!dp) return(NULL);
 	memcpy(&buf, dp, sizeof(buf));
+#ifdef	CODEEUC
+	if (*((int *)dirp) < 0) {
+		i = sjis2ujis(((struct dirent *)&buf) -> d_name, dp -> d_name);
+		((struct dirent *)&buf) -> d_name[i] = '\0';
+	}
+#endif
 	return((struct dirent *)(&buf));
 }
 
@@ -144,13 +161,22 @@ char *Xgetcwd(path, size)
 char *path;
 int size;
 {
+#ifdef	CODEEUC
+	char tmpbuf[MAXPATHLEN + 1];
+#endif
 	int i;
 
 	if (lastdrv < 0) return(getcwd(path, size));
 	else if (!dosgetcwd(path, size)) return(NULL);
 #endif
-	for (i = 0; path[i]; i++)
-		if (isupper(path[i])) path[i] += 'a' - 'A';
+	for (i = 0; path[i]; i++) {
+		if (issjis1((u_char)(path[i]))) i++;
+		else if (isupper(path[i])) path[i] += 'a' - 'A';
+	}
+#ifdef	CODEEUC
+	tmpbuf[sjis2ujis(tmpbuf, path)] = '\0';
+	strcpy(path, tmpbuf);
+#endif
 	return(path);
 }
 

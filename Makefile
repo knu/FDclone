@@ -22,7 +22,8 @@ mkmf.sed: mkmf.sed.c machine.h config.h
 config.h: config.h.in
 	cp config.h.in config.h
 
-install catman catman-b depend config tar lzh shar: Makefile.tmp
+install catman catman-b compman compman-b \
+depend config tar lzh shar: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@
 
 clean: Makefile.tmp

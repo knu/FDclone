@@ -49,6 +49,11 @@ extern int errno;
 #define	ENOTEMPTY	ENFSNOTEMPTY
 #endif
 
+#ifndef issjis1
+#define issjis1(c)	((0x81 <= (c) && (c) <= 0x9f)\
+			|| (0xe0 <= (c) && (c) <= 0xfc))
+#endif
+
 extern time_t timelocal2();
 
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
@@ -726,23 +731,34 @@ int c;
 }
 
 static int transname(buf, path, len)
-char *buf, *path;
+u_char *buf, *path;
 int len;
 {
-	char *cp;
+	u_char *cp;
 	int i, j;
 
 	for (i = len - 1; i >= 0; i--) if (path[i] == '.') break;
 	if (i <= 0) i = len;
 	cp = &path[i];
 
-	for (i = 0, j = 0; i < 8 && &path[j] < cp; i++, j++)
-		buf[i] = transchar(path[j]);
+	for (i = 0, j = 0; i < 8 && &path[j] < cp; i++, j++) {
+		if (!issjis1(path[j])) buf[i] = transchar(path[j]);
+		else {
+			buf[i++] = path[j++];
+			buf[i] = path[j];
+		}
+	}
 	if (++cp < &path[len]) {
 		buf[i++] = '.';
 		j = cp - path;
 		if (len - j > 3) len = j + 3;
-		for (; j < len; i++, j++) buf[i] = transchar(path[j]);
+		for (; j < len; i++, j++) {
+			if (!issjis1(path[j])) buf[i] = transchar(path[j]);
+			else {
+				buf[i++] = path[j++];
+				buf[i] = path[j];
+			}
+		}
 	}
 	buf[i] = '\0';
 	return(i);
@@ -761,24 +777,39 @@ char *buf, *name, *ext;
 		len += i;
 	}
 	buf[len] = '\0';
+	if ((u_char)(buf[0]) == 0x05) (u_char)(buf[0]) = 0xe5;
 
 	return(buf);
 }
 
 static char *putdosname(buf, file)
-char *buf, *file;
+u_char *buf, *file;
 {
-	char *cp;
+	u_char *cp;
 	int i;
 
-	if ((cp = strrchr(file, '.')) == file) cp = NULL;
-	for (i = 0; i < 8; i++)
-		buf[i] = (file != cp && *file) ? transchar(*(file++)) : ' ';
+	if ((cp = (u_char *)strrchr(file, '.')) == file) cp = NULL;
+	for (i = 0; i < 8; i++) {
+		if (file == cp || !*file) buf[i] = ' ';
+		else if (!issjis1(*file)) buf[i] = transchar(*(file++));
+		else {
+			buf[i++] = *(file++);
+			buf[i] = *(file++);
+		}
+	}
 	if (cp) cp++;
-	for (; i < 11; i++) buf[i] = (cp && *cp) ? transchar(*(cp++)) : ' ';
+	for (; i < 11; i++) {
+		if (!cp || !*cp) buf[i] = ' ';
+		else if (!issjis1(*cp)) buf[i] = transchar(*(cp++));
+		else {
+			buf[i++] = *(cp++);
+			buf[i] = *(cp++);
+		}
+	}
 	buf[i] = '\0';
+	if ((u_char)(buf[0]) == 0xe5) (u_char)(buf[0]) = 0x05;
 
-	return(buf);
+	return((char *)buf);
 }
 
 static u_short getdosmode(attr)
@@ -889,10 +920,10 @@ char *path;
 }
 
 static int parsepath(buf, path, class)
-char *buf, *path;
+u_char *buf, *path;
 int class;
 {
-	char *cp;
+	u_char *cp;
 	int i, len, drive;
 
 	cp = buf;
@@ -904,7 +935,8 @@ int class;
 	}
 
 	while (*path) {
-		for (i = 0; path[i] && path[i] != '/' && path[i] != '\\'; i++);
+		for (i = 0; path[i] && path[i] != '/' && path[i] != '\\'; i++)
+			if (issjis1(path[i])) i++;
 		if (class && !path[i]) {
 			*(cp++) = '/';
 			if (i == 1 && *path == '.') *(cp++) = '.';
@@ -1161,12 +1193,15 @@ int size;
 static dosDIR *splitpath(pathp)
 char **pathp;
 {
-	char dir[MAXPATHLEN + 1];
-	int i;
+	u_char dir[MAXPATHLEN + 1];
+	int i, j;
 
 	strcpy(dir, *pathp);
-	for (i = strlen(dir) - 1; i >= 2; i--)
-		if (dir[i] == '/' || dir[i] == '\\') break;
+	for (i = 1, j = 2; dir[j]; j++) {
+		if (issjis1(dir[j])) j++;
+		else if (dir[j] == '/' || dir[j] == '\\') i = j;
+	}
+
 	*pathp += i + 1;
 	if (i < 3) i++;
 	dir[i] = '\0';

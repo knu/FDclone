@@ -142,6 +142,9 @@ extern int infofs();
 /* kanji.c */
 extern int getlang();
 extern int onkanji1();
+extern int jis7();
+extern int sjis2ujis();
+extern int ujis2sjis();
 extern char *mesconv();
 extern int kanjiconv();
 extern int kanjiputs();

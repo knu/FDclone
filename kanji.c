@@ -15,10 +15,6 @@
 #define	KANA	1
 #define	KANJI	2
 
-static int jis7();
-static int sjis2ujis();
-static int ujis2sjis();
-
 int inputkcode;
 int outputkcode;
 
@@ -67,7 +63,7 @@ int ptr;
 	return(iskanji1((int)s[ptr]));
 }
 
-static int jis7(buf, str, incode)
+int jis7(buf, str, incode)
 char *buf;
 u_char *str;
 int incode;
@@ -123,7 +119,7 @@ int incode;
 	return(j);
 }
 
-static int sjis2ujis(buf, str)
+int sjis2ujis(buf, str)
 char *buf;
 u_char *str;
 {
@@ -150,7 +146,7 @@ u_char *str;
 	return(j);
 }
 
-static int ujis2sjis(buf, str)
+int ujis2sjis(buf, str)
 char *buf;
 u_char *str;
 {

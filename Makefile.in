@@ -21,7 +21,7 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
 	dosdisk.h\
 	func.h functable.h
 
-DOC	= README HISTORY FAQ TECHKNOW Install
+DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin
 MANSRC	= fd.man
 MANCAT	= fd.cat
 MANSEC	= 1
@@ -102,6 +102,12 @@ catman-b: $(PROGRAM).$(MANSEC).cat-b
 	$(INSTALL) $(PROGRAM).$(MANSEC).cat-b $(CATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r $(CATDIR)/$(PROGRAM).$(MANSEC)
 
+compman: catman
+	compress -f $(CATDIR)/$(PROGRAM).$(MANSEC)
+
+compman-b: catman-b
+	compress -f $(CATDIR)/$(PROGRAM).$(MANSEC)
+
 
 ############################################################
 # to make dependency
@@ -160,7 +166,8 @@ shar: $(SOURCES)
 
 clean:
 	rm -f core *.o funcno.h kanji.h kanjicnv mkfuncno expfunc \
-	$(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC).cat
+	$(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC).cat \
+	$(PROGRAM).$(MANSEC).cat-b
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.o: fd.h machine.h config.h 

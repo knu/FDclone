@@ -42,7 +42,8 @@ README		このファイル
 HISTORY		これまでの改定履歴
 FAQ		Q&A 集 (Frequently Asked Question)
 TECHKNOW	テクニカルノウハウ
-Install		fd のインストール方法のドキュメント
+Install		FDclone のインストール方法のドキュメント
+ToAdmin		FDclone を運用する管理者用ドキュメント
 Configure	環境設定用ヘッダの自動生成プログラム (Makefile内で実行)
 Makefile	メイクファイル
 Makefile.in	メイクファイル本体 (雛型)
@@ -54,7 +55,7 @@ kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 
-main.c		fd のメインソース
+main.c		FDclone のメインソース
 term.c		termcap ライブラリソース
 term.h		term.c 用のヘッダ
 pathname.c	パス名操作に関するモジュール
@@ -74,7 +75,7 @@ tree.c		ツリー表示関連
 command.c	内部コマンド関連
 browse.c	ブラウザ画面関連
 
-fd.h		fd のカスタマイズ用ヘッダ
+fd.h		FDclone のカスタマイズ用ヘッダ
 machine.h	機種依存性を吸収するヘッダ
 config.h.in	ダミーで用意してある環境設定用ヘッダ
 types.h		各種型宣言
