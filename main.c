@@ -808,10 +808,7 @@ char *argv[], *envp[];
 		}
 	}
 
-#ifdef	_NOORIGSHELL
-	inittty(0);
-	getterment();
-#else
+#ifndef	_NOORIGSHELL
 	if (initshell(optc, optv, envp) < 0) Xexit2(RET_FAIL);
 #endif	/* !_NOORIGSHELL */
 	free(optv);
@@ -884,7 +881,14 @@ char *argv, *envp[];
 
 static VOID NEAR prepareexitfd(VOID_A)
 {
-	if (_chdir2(origpath) < 0) error(origpath);
+	char cwd[MAXPATHLEN];
+
+	*cwd = '\0';
+	if (origpath && _chdir2(origpath) < 0) {
+		perror2(origpath);
+		if (!Xgetwd(cwd)) *cwd = '\0';
+		rawchdir(_SS_);
+	}
 	free(origpath);
 #ifndef	_NODOSDRIVE
 	dosallclose();
@@ -938,6 +942,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 	detranspath(NULL, NULL);
 # endif
 #endif	/* DEBUG */
+	if (*cwd) rawchdir(cwd);
 }
 
 int main(argc, argv, envp)
@@ -1054,6 +1059,12 @@ char *argv[], *envp[];
 	environ[i] = NULL;
 #endif
 
+#ifdef	_NOORIGSHELL
+	inittty(0);
+	getterment();
+#else
+	prepareterm();
+#endif
 	setexecpath(argv[0], envp);
 #ifndef	_NODOSDRIVE
 # ifdef	DATADIR

@@ -1042,7 +1042,7 @@ int ins, quote;
 		}
 #ifdef	FAKEMETA
 		else if (strchr(DQ_METACHAR, strins[i])
-#else
+#else	/* !FAKEMETA */
 		else if ((quote == '\'' && strins[i] == '\'')
 		|| (quote == '"' && strins[i] == '!')) {
 			f = 3;
@@ -1059,7 +1059,7 @@ int ins, quote;
 			dupl[j] = (*sp)[cx + j] = quote;
 		}
 		else if ((quote == '"' && strchr(DQ_METACHAR, strins[i]))
-#endif
+#endif	/* !FAKEMETA */
 		|| (!quote && strchr(METACHAR, strins[i]))) {
 			insertchar(*sp, cx, len, plen, linemax, 1);
 			*sp = c_realloc(*sp, len + 1, sizep);
@@ -2541,7 +2541,7 @@ int no;
 char *s;
 {
 	char *tmp, *err;
-	int len, dupwin_x, dupwin_y;
+	int len, wastty, dupwin_x, dupwin_y;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -2575,6 +2575,7 @@ char *s;
 
 	if (win_x >= n_lastcolumn) win_x = n_lastcolumn - 1;
 
+	if (!(wastty = isttyiomode)) ttyiomode(1);
 	keyflush();
 	do {
 #ifdef	SIGALRM
@@ -2583,6 +2584,8 @@ char *s;
 		getkey2(0);
 #endif
 	} while (kbhit2(WAITAFTERWARN * 1000L));
+	if (!wastty) stdiomode();
+
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 	subwindow = 0;

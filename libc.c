@@ -662,6 +662,7 @@ char *s;
 #else
 	fputs((char *)sys_errlist[duperrno], stderr);
 #endif
+	if (isttyiomode) fputc('\r', stderr);
 	fputc('\n', stderr);
 	fflush(stderr);
 }

@@ -497,6 +497,7 @@ extern FILE *dopopen __P_((char *));
 extern int dopclose __P_((FILE *));
 #endif
 extern int execruncom __P_((char *, int));
+extern int prepareterm __P_((VOID_A));
 extern int initshell __P_((int, char *[], char *[]));
 extern int shell_loop __P_((int));
 extern int main_shell __P_((int, char *[], char *[]));

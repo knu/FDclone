@@ -121,7 +121,7 @@
 +#	7: white
 +#	8: default color for foreground
 +#	9: default color for background
-+#	default palette: 8964235188
++#	default palette: 8962435188
 +#	                 ||||||||||
 +#	normal file -----+|||||||||
 +#	background -------+||||||||
@@ -350,12 +350,12 @@
 -#launch ".zip"	"unzip -lqq %S"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
 -#launch ".zip"	"pkunzip -vb %S"	14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
 +#launch ".lzh"		"lha v %S" %
-+#		-f "%*f\\n%s %x %x %y-%m-%d %t %a" %
++#		-f "%*f\n%s %x %x %y-%m-%d %t %a" %
 +#		-f "%1x %12f %s %x %x %y-%m-%d %t %a" %
 +#		-i "Listing of archive : *" %
 +#		-i "  Name          Original *" %
 +#		-i "--------------*" %
-+#		-i "* files * ???.?%% ??-??-?? ??:??:??" %
++#		-i "* files * ???.?%%%% ??-??-?? ??:??:??" %
 +#		-i ""
 +#launch ".tar.Z"	"gzip -cd %S|tar tvf -" %
 +#		-f "%a %u/%g %s %m %d %t %y %*f" %

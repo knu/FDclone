@@ -5,8 +5,9 @@
 TITLE	= FD-
 VERSION	= __VERSION__
 PREFIX	= __PREFIX__
+BUILD	=
 MANSEC	= 1
-TOPDIR	= $(PREFIX)
+TOPDIR	= $(BUILD)$(PREFIX)
 BINDIR	= $(TOPDIR)/bin
 DATADIR	= $(TOPDIR)/share
 MANDIR	= $(TOPDIR)/man__LANGDIR__/man$(MANSEC)
@@ -15,7 +16,7 @@ EMANDIR	= $(TOPDIR)/man/man$(MANSEC)
 ECATDIR	= $(TOPDIR)/man/cat$(MANSEC)
 IPKWDIR	= ./ipk.work
 IPKTDIR	= ./ipk.tmp
-DEFRC	= /etc/fd__RCVERSION__rc
+DEFRC	= $(BUILD)/etc/fd__RCVERSION__rc
 DOSRC	= ~FD\\fd__RCVERSION__rc
 UNITBL	= fd-unicd.tbl
 INSTALL	= __INSTALL__
@@ -197,29 +198,29 @@ install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 	$(LN) $(BINDIR)/$(PROGRAM)__EXE__ $(BINDIR)/$(FDSHELL)__EXE__
 	$(CHMOD) a+rx $(BINDIR)/$(FDSHELL)__EXE__
 	$(INSTALL) $(EMANSRC) $(EMANDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(EMANDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(EMANDIR)/$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(MANDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(MANDIR)/$(PROGRAM).$(MANSEC)
 	-if [ -f $(RUNCOM) ]; then \
 		$(INSTALL) $(RUNCOM) $(DEFRC); \
-		$(CHMOD) a+r $(DEFRC); \
+		$(CHMOD) a+r-x $(DEFRC); \
 	fi
 	-if [ -f $(UNITBL) ]; then \
 		$(INSTALL) $(UNITBL) __DATADIR__; \
-		$(CHMOD) a+r __DATADIR__/$(UNITBL); \
+		$(CHMOD) a+r-x __DATADIR__/$(UNITBL); \
 	fi
 
 catman: $(PROGRAM).$(MANSEC)c $(EMANCAT)
 	$(INSTALL) $(EMANCAT) $(ECATDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(ECATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(ECATDIR)/$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).$(MANSEC)c $(CATDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(CATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(CATDIR)/$(PROGRAM).$(MANSEC)
 
 catman-b: $(PROGRAM).doc $(PROGRAM).eng
 	$(INSTALL) $(PROGRAM).eng $(ECATDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(ECATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(ECATDIR)/$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).doc $(CATDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(CATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(CATDIR)/$(PROGRAM).$(MANSEC)
 
 compman: catman
 	compress -f $(ECATDIR)/$(PROGRAM).$(MANSEC)
@@ -231,11 +232,11 @@ compman-b: catman-b
 
 ecatman: $(EMANCAT)
 	$(INSTALL) $(EMANCAT) $(ECATDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(ECATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(ECATDIR)/$(PROGRAM).$(MANSEC)
 
 ecatman-b: $(PROGRAM).eng
 	$(INSTALL) $(PROGRAM).eng $(ECATDIR)/$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(ECATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(ECATDIR)/$(PROGRAM).$(MANSEC)
 
 ecompman: ecatman
 	compress -f $(ECATDIR)/$(PROGRAM).$(MANSEC)
@@ -312,9 +313,9 @@ bsh: fdbsh__EXE__
 
 fdbsh__EXE__: $(BOBJ)
 	$(CC) __BSHMEM__ __LNK__ $(BOBJ) $(SLDFLAGS)
-	__RENAME__ $@ fdsh
-	__AOUT2EXE__ fdsh
-	__REMOVE__ fdsh
+	__RENAME__ $@ fdbsh
+	__AOUT2EXE__ fdbsh
+	__REMOVE__ fdbsh
 
 bsystem__OBJ__: system.c machine.h config.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) __BSHMEM__ $(CPPFLAGS) -c __OUT__ system.c
@@ -428,10 +429,10 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 		-e  'fi' \
 		-e '}' \
 	_fdrc > $(IPKWDIR)/$(DEFRC)
-	$(CHMOD) a+r $(IPKWDIR)/$(DEFRC)
+	$(CHMOD) a+r-x $(IPKWDIR)/$(DEFRC)
 	-if [ -f $(UNITBL) ]; then \
 		cp -p $(UNITBL) $(IPKWDIR)/__DATADIR__; \
-		$(CHMOD) a+r $(IPKWDIR)/__DATADIR__/$(UNITBL); \
+		$(CHMOD) a+r-x $(IPKWDIR)/__DATADIR__/$(UNITBL); \
 	fi
 	echo "Package: fd" > $(IPKWDIR)/CONTROL/control
 	echo "Priority: optional" >> $(IPKWDIR)/CONTROL/control

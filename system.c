@@ -151,7 +151,7 @@ typedef union REGS	__dpmi_regs;
 extern VOID main_fd __P_((char *));
 extern int sigvecset __P_((int));
 #ifndef	_NOCUSTOMIZE
-VOID saveorigenviron __P_((VOID_A));
+extern VOID saveorigenviron __P_((VOID_A));
 #endif
 extern int checkbuiltin __P_((char *));
 extern int checkinternal __P_((char *));
@@ -198,6 +198,7 @@ extern unsigned _stklen = 0x8000;
 # endif
 int ttyio = -1;
 FILE *ttyout = NULL;
+static int NEAR opentty __P_((VOID_A));
 # ifdef	DEBUG
 # define	exit2(n)	(muntrace(), exit(n))
 # else
@@ -1590,6 +1591,14 @@ static sigarg_t (*oldsigfunc[NSIG])__P_((sigfnc_t));
 
 
 #ifndef	FD
+static int NEAR opentty(VOID_A)
+{
+	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
+	&& (ttyio = Xdup(STDERR_FILENO)) < 0)
+		return(-1);
+	return(ttyio);
+}
+
 # if	!MSDOS || !defined (MINIMUMSHELL)
 time_t time2(VOID_A)
 {
@@ -5861,10 +5870,13 @@ syntaxtree *trp;
 	}
 	else if (getstatid(tmptr = statementcheck(trp -> next, SM_STATEMENT))
 	== SM_LPAREN - 1) {
+#ifndef	BASHSTYLE
+	/* bash allows any character in the function identifier */
 		if (identcheck((trp -> comm) -> argv[0], '\0') <= 0) {
 			execerror((trp -> comm) -> argv[0], ER_NOTIDENT, 0);
 			return(-1);
 		}
+#endif
 		if (!statementcheck(tmptr -> next, 0)) {
 			errno = EINVAL;
 			doperror(NULL, NULL);
@@ -6541,7 +6553,12 @@ command_t *comm;
 
 	type = searchhash(&(comm -> hash), comm -> argv[0], NULL);
 	if (type & CM_NOTFOUND) {
+#ifdef	BASHSTYLE
+	/* bash does not exit on error, in non interactive shell */
 		execerror(comm -> argv[0], ER_COMNOFOUND, 0);
+#else
+		execerror(comm -> argv[0], ER_COMNOFOUND, -1);
+#endif
 		ret_status = RET_NOTFOUND;
 		return(NULL);
 	}
@@ -9184,14 +9201,29 @@ syntaxtree *trp;
 	syntaxtree *functr;
 	int i, len;
 
+#ifndef	BASHSTYLE
+	/* bash allows any character in the function identifier */
+	if (identcheck(ident, '\0') <= 0) { 
+		execerror(ident, ER_NOTIDENT, 0);
+		return(-1);
+	}
+#endif
+	ident = strdup2(ident);
+	stripquote(ident, 1);
 	len = strlen(ident);
 #ifndef	BASHSTYLE
 	/* bash distinguishes the same named function and variable */
-	if (unset(ident, len) < 0) return(RET_FAIL);
+	if (unset(ident, len) < 0) {
+		free(ident);
+		return(RET_FAIL);
+	}
 #endif
 
 	trp = trp -> next;
-	if (!(functr = statementbody(trp))) return(RET_FAIL);
+	if (!(functr = statementbody(trp))) {
+		free(ident);
+		return(RET_FAIL);
+	}
 	(trp -> comm) -> argv = (char **)duplstree(functr, trp);
 	functr -> parent = NULL;
 	functr -> flags |= ST_TOP;
@@ -9205,7 +9237,7 @@ syntaxtree *trp;
 	else {
 		shellfunc = (shfunctable *)realloc2(shellfunc,
 			(i + 2) * sizeof(shfunctable));
-		shellfunc[i].ident = strdup2(ident);
+		shellfunc[i].ident = ident;
 		shellfunc[i + 1].ident = NULL;
 	}
 	shellfunc[i].func = functr;
@@ -10149,6 +10181,25 @@ int verbose;
 	return(ret);
 }
 
+int prepareterm(VOID_A)
+{
+	if (ttyio < 0) {
+		if (opentty() < 0) return(-1);
+		ttyio = newdup(ttyio);
+#ifdef	FD
+		inittty(0);
+#endif
+	}
+	if (!ttyout) {
+#ifdef	FD
+		getterment();
+#else
+		if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
+#endif
+	}
+	return(0);
+}
+
 int initshell(argc, argv, envp)
 int argc;
 char *argv[], *envp[];
@@ -10171,19 +10222,10 @@ char *argv[], *envp[];
 		name++;
 	}
 
-#ifdef	FD
-	opentty();
-	ttyio = newdup(ttyio);
-	inittty(0);
-	getterment();
-#else
-	if ((ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
-	&& (ttyio = newdup(Xdup(STDERR_FILENO))) < 0) {
+	if (prepareterm() < 0) {
 		doperror(NULL, NULL);
 		return(-1);
 	}
-	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stderr;
-#endif
 
 	definput = STDIN_FILENO;
 	interactive =

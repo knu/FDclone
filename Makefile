@@ -4,6 +4,7 @@
 
 VERSION	= 2
 PREFIX	= /usr/local
+BUILD	=
 SHELL	= /bin/sh
 MAKE	= make
 CC	= cc
@@ -11,15 +12,13 @@ HOSTCC	= $(CC)
 SED	= sed
 
 all: Makefile.tmp
-	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp
+	$(MAKE) -f Makefile.tmp
 
 debug: Makefile.tmp
-	$(MAKE) SHELL=$(SHELL) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' \
-	-f Makefile.tmp
+	$(MAKE) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' -f Makefile.tmp
 
 shdebug: Makefile.tmp
-	$(MAKE) SHELL=$(SHELL) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' \
-	-f Makefile.tmp sh
+	$(MAKE) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' -f Makefile.tmp sh
 
 Makefile.tmp: Makefile.in mkmf.sed
 	$(SED) -f mkmf.sed Makefile.in > $@ ||\
@@ -75,25 +74,30 @@ config.h: config.hin
 	cp config.hin config.h
 
 install catman catman-b compman compman-b \
-ecatman ecatman-b ecompman ecompman-b \
+ecatman ecatman-b ecompman ecompman-b: Makefile.tmp
+	$(MAKE) BUILD=$(BUILD) -f Makefile.tmp $@
+
 fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
-depend config sh bsh clean: Makefile.tmp
+depend sh bsh clean: Makefile.tmp
+	$(MAKE) -f Makefile.tmp $@
+
+config: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
 
 ipk: Makefile.tmp
-	$(MAKE) SHELL=$(SHELL) STRIP=$(STRIP) -f Makefile.tmp $@
+	$(MAKE) STRIP=$(STRIP) -f Makefile.tmp $@
 
 everything: Makefile.tmp
-	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp sh bsh all
+	$(MAKE) -f Makefile.tmp sh bsh all
 
 tar shtar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
 makefile.dpc makefile.d98 \
 makefile.lpc makefile.l98 \
 makefile.bpc makefile.b98
-	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
+	$(MAKE) -f Makefile.tmp $@
 
 realclean: Makefile.tmp
-	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp clean
+	$(MAKE) -f Makefile.tmp clean
 	-rm -f Makefile.tmp mkmf.sed config.h
 	-rm -f makefile.gpc makefile.g98
 	-rm -f makefile.dpc makefile.d98

@@ -659,16 +659,15 @@ int fd;
 int inittty(reset)
 int reset;
 {
-	static int dupin = -1;
-	static int dupout = -1;
-	long l;
 #ifndef	DJGPP
 	static u_char dupbrk;
 	union REGS reg;
 #endif
+	static int dupin = -1;
+	static int dupout = -1;
+	int fd;
 
 	opentty();
-	if (reset && !(termflags & F_INITTTY)) return(0);
 	if (!reset) {
 #ifdef	NOTUSEBIOS
 		if (!keybuftop) keybuftop = getkeybuf(KEYBUFWORKTOP);
@@ -678,25 +677,44 @@ int reset;
 		int86(0x21, &reg, &reg);
 		dupbrk = reg.h.dl;
 #endif
-		if (((!(l = ftell(stdin)) || l == -1)
-		&& ((dupin = newdup(safe_dup(STDIN_FILENO))) < 0
-		|| safe_dup2(ttyio, STDIN_FILENO) < 0))
-		|| ((!(l = ftell(stdout)) || l == -1)
-		&& ((dupout = newdup(safe_dup(STDOUT_FILENO))) < 0
-		|| safe_dup2(ttyio, STDOUT_FILENO) < 0)))
-			err2("dup2()");
+		if (!isatty(STDIN_FILENO)) {
+			if (dupin < 0)
+				dupin = newdup(safe_dup(STDIN_FILENO));
+			if (dupin < 0 || safe_dup2(ttyio, STDIN_FILENO) < 0)
+				err2("dup2()");
+		}
+		if (!isatty(STDOUT_FILENO)) {
+			if (dupout < 0)
+				dupout = newdup(safe_dup(STDOUT_FILENO));
+			if (dupout < 0 || safe_dup2(ttyio, STDOUT_FILENO) < 0)
+				err2("dup2()");
+		}
 		termflags |= F_INITTTY;
 	}
 	else {
+		if (!(termflags & F_INITTTY)) return(0);
 #ifndef	DJGPP
 		reg.x.ax = 0x3301;
 		reg.h.dl = dupbrk;
 		int86(0x21, &reg, &reg);
 #endif
-		if ((dupin >= 0 && safe_dup2(dupin, STDIN_FILENO) < 0)
-		|| (dupout >= 0 && safe_dup2(dupout, STDOUT_FILENO) < 0)) {
-			termflags &= ~F_INITTTY;
-			err2("dup2()");
+		if (dupin >= 0) {
+			fd = safe_dup2(dupin, STDIN_FILENO);
+			close(dupin);
+			dupin = -1;
+			if (fd < 0) {
+				termflags &= ~F_INITTTY;
+				err2("dup2()");
+			}
+		}
+		if (dupout >= 0) {
+			fd = safe_dup2(dupout, STDOUT_FILENO);
+			close(dupout);
+			dupout = -1;
+			if (fd < 0) {
+				termflags &= ~F_INITTTY;
+				err2("dup2()");
+			}
 		}
 	}
 	return(0);
@@ -2684,7 +2702,7 @@ u_long usec;
 #ifdef	NOTUSEBIOS
 	if (nextchar) return(1);
 	reg.x.ax = 0x4406;
-	reg.x.bx = STDIN_FILENO;
+	reg.x.bx = ttyio;
 	putterms(t_metamode);
 	int86(0x21, &reg, &reg);
 	putterms(t_nometamode);
@@ -2704,7 +2722,8 @@ u_long usec;
 
 	do {
 		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
-	} while (n < 0);
+	} while (n < 0 && errno == EINTR);
+	if (n < 0) err2(TTYNAME);
 	return(n);
 #  else	/* !DJGPP || DJGPP < 2 */
 	reg.h.ah = 0x01;
@@ -2962,7 +2981,8 @@ u_long usec;
 
 	do {
 		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
-	} while (n < 0);
+	} while (n < 0 && errno == EINTR);
+	if (n < 0) err2(TTYNAME);
 	return(n);
 # endif
 }

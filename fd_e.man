@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2003 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.03 03/26/03
+.\" @(#)fd.1   2.03a 04/15/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "March 26, 2003"
+.TH FD 1 "April 15, 2003"
 .de sh
 .br
 .PP
@@ -4085,7 +4085,7 @@ or this variable is not set,
 the standard color palette will be applied
 for the file type corresponding with the following columns.
 The standard color palette is described with the above color number as
-.BR 8964235188 .
+.BR 8962435188 .
 .RE
 .IP "\fBCDPATH\fP\(**"
 Specify the search path

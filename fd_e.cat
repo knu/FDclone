@@ -2564,7 +2564,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    palette will be applied for the file type
                    corresponding with the following columns.  The
                    standard color palette is described with the
-                   above color number as 88996644223355118888.
+                   above color number as 88996622443355118888.
 
      CCDDPPAATTHH*       Specify the search path when an argument of ccdd
                    the builtin command does not start with //.

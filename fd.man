@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2003 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.03 03/26/03
+.\" @(#)fd.1   2.03a 04/15/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "March 26, 2003"
+.TH FD 1 "April 15, 2003"
 .de sh
 .br
 .PP
@@ -3918,7 +3918,7 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 後ろの桁に相当するファイルタイプには標準の配色が用いられます。
 標準の配色は、
 上記の色番号で表現すると
-.B " 8964235188"
+.B " 8962435188"
 になります。
 .RE
 .IP "\fBCDPATH\fP\(**"

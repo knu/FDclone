@@ -1,3 +1,7 @@
+Ver. 2.03a	Bug that the default palette differs in color mode is fixed.
+ (04/15/03)	Bug that the function name can include any character is fixed.
+		Some troubles when missing the current directory is fixed.
+
 Ver. 2.03	Add 'browse' builtin.
  (03/26/03)	Add 'readline', 'yesno' builtins.
 		Add 'ANSIPALETTE' internal variable.

@@ -13,7 +13,7 @@
 #define	PATHDELIM	':'
 #define	PMETA		META
 #define	METACHAR	"\t\n !\"#$&'()*;<=>?[\\]`|"
-#define	DQ_METACHAR	"\"$`"
+#define	DQ_METACHAR	"\"$\\`"
 #else	/* MSDOS */
 # ifdef	_NOORIGSHELL
 # define	FAKEMETA
@@ -24,7 +24,7 @@
 # else
 # define	PMETA		'%'
 # define	METACHAR	"\t\n !\"#$%&'()*;<=>?[]`|"
-# define	DQ_METACHAR	"\"$`"
+# define	DQ_METACHAR	"\"$%`"
 # define	PATHDELIM	':'
 # endif
 #endif	/* MSDOS */

@@ -168,8 +168,8 @@ static char defpalette[] = {
 	ANSI_FG,	/* CL_NORM */
 	ANSI_BG,	/* CL_BACK */
 	ANSI_CYAN,	/* CL_DIR */
-	ANSI_BLUE,	/* CL_RONLY */
-	ANSI_GREEN,	/* CL_HIDDEN */
+	ANSI_GREEN,	/* CL_RONLY */
+	ANSI_BLUE,	/* CL_HIDDEN */
 	ANSI_YELLOW,	/* CL_LINK */
 	ANSI_MAGENTA,	/* CL_SOCK */
 	ANSI_RED,	/* CL_FIFO */

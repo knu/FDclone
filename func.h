@@ -67,7 +67,7 @@ extern VOID checkscreen __P_((int, int));
 extern int sigvecset __P_((int));
 extern VOID title __P_((VOID_A));
 #ifndef	_NOCUSTOMIZE
-VOID saveorigenviron __P_((VOID_A));
+extern VOID saveorigenviron __P_((VOID_A));
 #endif
 extern int loadruncom __P_((char *, int));
 
@@ -205,7 +205,7 @@ extern char *fgets2 __P_((FILE *, int));
 #if	MSDOS || defined (_NODOSDRIVE)
 #define	nodospath(p, f)	(f)
 #else
-char *nodospath __P_((char *, char *));
+extern char *nodospath __P_((char *, char *));
 #endif
 #define	fnodospath(p, i)	nodospath(p, filelist[i].name)
 #if	MSDOS
@@ -478,8 +478,8 @@ extern VOID evalenv __P_((VOID_A));
 extern VOID freeenvpath __P_((VOID_A));
 #endif
 #ifndef	_NOCUSTOMIZE
-VOID freestrarray __P_((char **, int));
-char **copystrarray __P_((char **, char **, int *, int));
+extern VOID freestrarray __P_((char **, int));
+extern char **copystrarray __P_((char **, char **, int *, int));
 extern bindtable *copybind __P_((bindtable *, bindtable *));
 # if	!MSDOS && !defined (_NOKEYMAP)
 extern VOID freekeymap __P_((keymaptable *));

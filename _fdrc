@@ -115,7 +115,7 @@
 #	7: white
 #	8: default color for foreground
 #	9: default color for background
-#	default palette: 8964235188
+#	default palette: 8962435188
 #	                 ||||||||||
 #	normal file -----+|||||||||
 #	background -------+||||||||
@@ -308,12 +308,12 @@
 
 # examples for MS-DOS
 #launch ".lzh"		"lha v %S" %
-#		-f "%*f\\n%s %x %x %y-%m-%d %t %a" %
+#		-f "%*f\n%s %x %x %y-%m-%d %t %a" %
 #		-f "%1x %12f %s %x %x %y-%m-%d %t %a" %
 #		-i "Listing of archive : *" %
 #		-i "  Name          Original *" %
 #		-i "--------------*" %
-#		-i "* files * ???.?%% ??-??-?? ??:??:??" %
+#		-i "* files * ???.?%%%% ??-??-?? ??:??:??" %
 #		-i ""
 #launch ".tar.Z"	"gzip -cd %S|tar tvf -" %
 #		-f "%a %u/%g %s %m %d %t %y %*f" %
