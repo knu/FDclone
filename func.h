@@ -95,7 +95,7 @@ extern int kanjiprintf();
 extern int kanjiputs2();
 
 /* file.c */
-extern VOID getstatus();
+extern int getstatus();
 extern char *putmode();
 extern int cmplist();
 extern int cmptree();
@@ -103,6 +103,7 @@ extern struct dirent *searchdir();
 extern int underhome();
 extern int copyfile();
 extern int movefile();
+extern int forcecleandir();
 extern VOID arrangedir();
 
 /* apply.c */
@@ -133,6 +134,7 @@ extern char *tree();
 /* browse.c */
 extern VOID helpbar();
 extern VOID statusbar();
+extern VOID waitmes();
 extern int calcwidth();
 extern int listupfile();
 extern VOID rewritefile();

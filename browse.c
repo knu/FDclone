@@ -305,6 +305,15 @@ int no;
 	tflush();
 }
 
+VOID waitmes()
+{
+	helpbar();
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
+}
+
 static VOID calclocate(i)
 int i;
 {
@@ -521,11 +530,7 @@ int *maxentp;
 
 	if (!(dirp = opendir("."))) error(".");
 	fnameofs = 0;
-
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	tflush();
+	waitmes();
 
 	if (!findpattern) re = NULL;
 	else {
@@ -544,18 +549,18 @@ int *maxentp;
 
 		filelist = (namelist *)addlist(filelist, maxfile,
 			maxentp, sizeof(namelist));
+		if (getstatus(filelist, maxfile, file) < 0) continue;
 		filelist[maxfile].name = strdup2(file);
 		filelist[maxfile].ent = maxfile;
-		getstatus(filelist, maxfile, file);
 		maxfile++;
 	}
 	closedir(dirp);
 	if (re) regexp_free(re);
 
-	if (maxfile <= 0) {
+	if (!maxfile) {
 		filelist = (namelist *)addlist(filelist, 0,
 			maxentp, sizeof(namelist));
-		filelist[0].name = strdup2(NOFIL_K);
+		filelist[0].name = NOFIL_K;
 		filelist[0].st_nlink = -1;
 	}
 
@@ -566,7 +571,6 @@ int *maxentp;
 	pathbar();
 	statusbar(maxfile);
 	stackbar();
-	helpbar();
 
 	old = filepos = listupfile(filelist, maxfile, def);
 	fstat = 0;
@@ -605,7 +609,7 @@ int *maxentp;
 				stackbar();
 			}
 #if (WRITEFS < 1)
-			else if (chgorder && writefs < 1
+			else if (chgorder && writefs < 1 && no != WRITE_DIR
 			&& (i = writablefs(".")) > 0 && underhome() > 0) {
 				chgorder = 0;
 				if (yesno(WRTOK_K))
@@ -663,9 +667,9 @@ char *cur;
 	findpattern = def = NULL;
 	if (cur) {
 		cp = evalpath(strdup2(cur));
+		if (*cp == '/') *fullpath = '\0';
+		else strcat(fullpath, "/");
 		if (chdir(cp) >= 0) {
-			if (*cp == '/') *fullpath = '\0';
-			else strcat(fullpath, "/");
 			strcat(fullpath, cp);
 			free(cp);
 			cp = fullpath + strlen(fullpath) - 1;
@@ -679,9 +683,11 @@ char *cur;
 					if (chdir("/") < 0) error("/");
 					else strcpy(fullpath, "/");
 				}
+				else if (chdir(cp) >= 0) strcat(fullpath, cp);
 				else {
-					if (chdir(cp) < 0) def = NULL;
-					else strcpy(fullpath, cp);
+					warning(-1, cp);
+					def = NULL;
+					strcpy(fullpath, origpath);
 				}
 			}
 			else def = cp;

@@ -515,10 +515,12 @@ int noconf;
 	cooked2();
 	echo2();
 	nl2();
+	tabs();
 	status = system2(command);
 	raw2();
 	noecho2();
 	nonl2();
+	notabs();
 	if (status > 127 || !noconf) warning(0, HITKY_K);
 	if (noconf >= 0) {
 		if (noconf) putterms(t_init);
@@ -595,6 +597,7 @@ static long gettimezone()
 #ifdef	HAVETIMEZONE
 	extern time_t timezone;
 
+	tzset();
 	tz = timezone;
 #else
 	struct timeval t_val;

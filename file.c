@@ -36,14 +36,14 @@ static char *getentnum();
 static VOID restorefile();
 
 
-VOID getstatus(list, i, file)
+int getstatus(list, i, file)
 namelist *list;
 int i;
 char *file;
 {
 	struct stat status, lstatus;
 
-	if (lstat(file, &lstatus) < 0) error(file);
+	if (lstat(file, &lstatus) < 0) return(-1);
 	if (stat2(file, &status) < 0) error(file);
 	list[i].st_mode = lstatus.st_mode;
 	list[i].flags = 0;
@@ -59,6 +59,7 @@ char *file;
 	list[i].st_gid = lstatus.st_gid;
 	list[i].st_size = isdev(&list[i]) ? lstatus.st_rdev : lstatus.st_size;
 	list[i].st_mtim = lstatus.st_mtime;
+	return(0);
 }
 
 int cmplist(listp1, listp2)
@@ -258,6 +259,36 @@ int max, tr;
 	return(4);
 }
 
+int forcecleandir(dir, file)
+char *dir, *file;
+{
+	DIR *dirp;
+	struct dirent *dp;
+	struct stat status;
+	char path[MAXPATHLEN + 1];
+	int len;
+
+	if (!(dirp = opendir(dir))) return(-1);
+	while (dp = readdir(dirp)) {
+		if (!strcmp(dp -> d_name, ".")
+		|| !strcmp(dp -> d_name, "..")) continue;
+		if (file && (len = strlen(file)) > 0
+		&& strncmp(dp -> d_name, file, len)) continue;
+
+		strcpy(path, dir);
+		strcat(path, "/");
+		strcat(path, dp -> d_name);
+		if (lstat(path, &status) < 0
+		|| (status.st_mode & S_IFMT) != S_IFDIR) unlink(path);
+		else {
+			forcecleandir(path, NULL);
+			rmdir(path);
+		}
+	}
+	closedir(dirp);
+	return(0);
+}
+
 static VOID touch(file)
 char *file;
 {
@@ -395,10 +426,7 @@ int max, fs;
 	strcpy(path, tmpdir);
 	strcat(path, "/");
 	fnamp = strlen(path);
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	tflush();
+	waitmes();
 
 	if (!(dirp = opendir("."))) error(".");
 	i = ent = 0;

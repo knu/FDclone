@@ -276,11 +276,19 @@
 #if defined (__NetBSD__)
 #define	BSD43
 #define	OSTYPE			"NETBSD"
+#define	CODEEUC
+#define	TARUSESPACE
+#define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
-#define	USEFFSIZE
+#define	USEFFSTYPE
 #define	USEMNTINFO
 #define	USERE_COMP
+#define	USESETENV
+#include <sys/param.h>
+# if (NetBSD1_0 <= 1)
+# define	USEFFSIZE
+# endif
 #endif
 
 #if defined (__bsdi__)
@@ -372,6 +380,7 @@
 /* #define USEFSDATA	/* use 'struct fs_data' as structure of hte FS status */
 
 /* #define USEFFSIZE	/* 'struct statfs' has 'f_fsize' as block size */
+/* #define USEFFSTYPE	/* 'struct statfs' has 'f_fstypename' as mount type */
 /* #define STATFSARGS	/* the number of arguments in statfs() */
 
 /* following 8 items are exclusive

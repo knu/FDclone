@@ -110,7 +110,7 @@ int x, cx, len, linemax, ins;
 				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < ins; j++) putterm(c_insert);
 				putch((f1) ? (int)str[i - ins - 1] : ' ');
-				for (j = 0; j < ins - f2; j++)
+				for (j = 0; j < ins - f2 && i + j < len; j++)
 					putch((int)str[i + j - ins]);
 				i += linemax;
 			}
@@ -160,11 +160,13 @@ int x, cx, len, linemax, del;
 
 		if (i < len + del) {
 			while (i < len + del) {
-				f1 = (onkanji1(str, i + del - 1)) ? 1 : 0;
+				if (i - 1 >= len) f1 = 0;
+				else f1 = (onkanji1(str, i + del - 1)) ? 1 : 0;
 				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-				locate(x + linemax - del - f2, LCMDLINE + dy);
-				for (j = -f2; j < del - f1; j++)
-					putch((int)str[i + j]);
+				for (j = -f2; i + j - del < cx; j++);
+				locate(x + linemax - del + j, LCMDLINE + dy);
+				while (j < del - f1 && i + j < len + del)
+					putch((int)str[i + (j++)]);
 				if (f1) putch(' ');
 				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < del; j++) putterm(c_delete);
@@ -282,16 +284,14 @@ int x, cx, len, linemax, max, comline;
 		return(0);
 	}
 	free(cp2);
+	cp2 = cp1 + strlen(cp1) - ins;
 
 	if (len + ins > max) ins = max - len;
-
 	insertchar(str, x, cx, len, linemax, ins);
-
-	cp2 = cp1 + strlen(cp1) - ins;
 	for (i = 0; i < ins; i++) {
 		str[cx] = *(cp2++);
 		putch((int)str[cx]);
-		if (!(++cx % linemax) && len < max)
+		if (!(++cx % linemax) && cx < max)
 			locate(x, LCMDLINE + cx / linemax);
 	}
 

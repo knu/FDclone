@@ -436,7 +436,9 @@ char *prematch;
 		else if (strncmp(cp, dp -> d_name, len)) continue;
 		else if (exe) {
 			strcpy(ptr, dp -> d_name);
-			if (access(dir, X_OK) < 0) continue;
+			if (access(dir, X_OK) < 0
+			|| (stat(dir, &status) >= 0
+			&& (status.st_mode & S_IFMT) == S_IFDIR)) continue;
 		}
 		if (!matchno++) strcpy(match, dp -> d_name);
 		else {

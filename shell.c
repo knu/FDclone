@@ -310,7 +310,7 @@ int max, noconf, argset;
 	int i, status;
 
 	st.flags = (argset) ? F_ARGSET : 0;
-	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(127);
+	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-1);
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	i = (n_column - 4) * WCMDLINE;
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
@@ -318,9 +318,9 @@ int max, noconf, argset;
 	if (!st.needmark) for (;;) {
 		if (st.addoption >= 0 && noconf >= 0 && !argset
 		&& strlen(tmp) < i) {
-			cp = inputstr2("sh#", st.addoption, tmp, sh_history);
+			cp = inputstr2("sh#", st.addoption, tmp, &sh_history);
 			free(tmp);
-			if (!cp || !*cp) return(127);
+			if (!cp || !*cp) return(-1);
 			tmp = evalcomstr(cp);
 			free(cp);
 		}
@@ -334,12 +334,12 @@ int max, noconf, argset;
 	if (mark <= 0) {
 		if (insertarg(buf, tmp, list[filepos].name, st.needmark))
 			status = system3(buf, noconf);
-		else status = 127;
+		else status = -1;
 	}
 	else for (i = 0; i < max; i++) if (ismark(&list[i])) {
 		if (insertarg(buf, tmp, list[i].name, st.needmark))
 			status = system3(buf, noconf);
-		else status = 127;
+		else status = -1;
 	}
 	for (i = 0; i < max; i++) list[i].flags &= ~F_ISMRK;
 	mark = 0;
@@ -372,11 +372,13 @@ int execshell()
 	cooked2();
 	echo2();
 	nl2();
+	tabs();
 	kanjiputs(SHEXT_K);
 	status = system2(sh);
 	raw2();
 	noecho2();
 	nonl2();
+	notabs();
 	sigvecset();
 	putterms(t_keypad);
 	putterms(t_init);
@@ -498,6 +500,7 @@ char *command;
 	cooked2();
 	echo2();
 	nl2();
+	tabs();
 	system2(command);
 	free(command);
 	return(0);
@@ -512,6 +515,7 @@ char *command;
 	raw2();
 	noecho2();
 	nonl2();
+	notabs();
 
 	i = -1;
 	locate(0, n_line - 1);

@@ -464,6 +464,7 @@ char *endmes;
 	int i, ret, tmp, old;
 
 	ret = tmp = old = filepos;
+	helpbar();
 	for (filepos = 0; filepos < max; filepos++) {
 		if (!ismark(&list[filepos])) continue;
 
@@ -491,7 +492,7 @@ char *endmes;
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat status;
-	char path[MAXPATHLEN + 1];
+	char *cp, path[MAXPATHLEN + 1];
 	int i;
 
 	if (!(dirp = opendir(dir))) {
@@ -502,7 +503,8 @@ char *endmes;
 	locate(0, LCMDLINE);
 	putterm(l_clear);
 	putch('[');
-	kanjiputs2(strncmp(dir, "./", 2) ? dir : dir + 2, n_column - 2, -1);
+	cp = (strncmp(dir, "./", 2)) ? dir : dir + 2;
+	kanjiputs2(cp, n_column - 2, -1);
 	putch(']');
 	tflush();
 
@@ -520,9 +522,15 @@ char *endmes;
 		strcat(path, dp -> d_name);
 
 		if (lstat(path, &status) < 0) warning(-1, path);
-		if ((status.st_mode & S_IFMT) == S_IFDIR) {
+		else if ((status.st_mode & S_IFMT) == S_IFDIR) {
 			if ((i = applydir(path,
 				funcf, funcd1, funcd2, NULL)) < -1) return(i);
+			locate(0, LCMDLINE);
+			putterm(l_clear);
+			putch('[');
+			kanjiputs2(cp, n_column - 2, -1);
+			putch(']');
+			tflush();
 		}
 		else if ((i = (*funcf)(path)) < 0) {
 			if (i == -1) warning(-1, path);
@@ -532,9 +540,6 @@ char *endmes;
 	closedir(dirp);
 
 	if (funcd2 && (i = (*funcd2)(dir)) == -1) warning(-1, dir);
-	locate(0, LCMDLINE);
-	putterm(l_clear);
-	tflush();
 	if (endmes) warning(0, endmes);
 	return(i);
 }

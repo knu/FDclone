@@ -109,13 +109,14 @@ char *c_right;
 char *c_left;
 
 static char *keyseq[K_MAX - K_MIN + 1];
-static unsigned char keyseqlen[K_MAX - K_MIN + 1];
+static u_char keyseqlen[K_MAX - K_MIN + 1];
 static short keycode[K_MAX - K_MIN + 1];
 static int ttyio;
+static FILE *ttyout;
 static char *termname;
 
 #ifndef	TIOCSTI
-static unsigned char ungetbuf[10];
+static u_char ungetbuf[10];
 static int ungetnum = 0;
 #endif
 
@@ -128,17 +129,22 @@ static int termflags;
 int inittty(reset)
 int reset;
 {
-	unsigned long request;
 #ifdef	USETERMIO
 	static struct termio dupttyio;
-
-	request = (reset) ? TCSETAW : TCGETA;
 #else
 	static struct sgttyb dupttyio;
+	static int dupttyflag;
+#endif
+	u_long request;
 
+	if (reset && !(termflags & F_INITTTY)) return;
+#ifdef	USETERMIO
+	request = (reset) ? TCSETAW : TCGETA;
+#else
+	request = (reset) ? TIOCLSET : TIOCLGET;
+	if (ioctl(ttyio, request, &dupttyflag) < 0) err2(NULL);
 	request = (reset) ? TIOCSETP : TIOCGETP;
 #endif
-	if (reset && !(termflags & F_INITTTY)) return;
 	if (ioctl(ttyio, request, &dupttyio) < 0) err2(NULL);
 	if (!reset) {
 #ifdef	USETERMIO
@@ -150,153 +156,127 @@ int reset;
 	}
 }
 
-static int ttymode(d, mode, set)
-int d;
-short mode;
-int set;
-{
 #ifdef	USETERMIO
+static int ttymode(d, set, reset, iset, ireset, oset, oreset, min, time)
+int d;
+u_short set, reset, iset, ireset, oset, oreset;
+cc_t min, time;
+{
 	struct termio tty;
 
 	if (ioctl(d, TCGETA, &tty) < 0) err2(NULL);
-	if (set) tty.c_lflag |= mode;
-	else tty.c_lflag &= ~mode;
+	if (set) tty.c_lflag |= set;
+	if (reset) tty.c_lflag &= reset;
+	if (iset) tty.c_iflag |= iset;
+	if (ireset) tty.c_iflag &= ireset;
+	if (oset) tty.c_oflag |= oset;
+	if (oreset) tty.c_oflag &= oreset;
+	if (min) {
+		tty.c_cc[VMIN] = min;
+		tty.c_cc[VTIME] = time;
+	}
 	if (ioctl(d, TCSETAW, &tty) < 0) err2(NULL);
 #else
+static int ttymode(d, set, reset, lset, lreset)
+int d;
+u_short set, reset, lset, lreset;
+{
 	struct sgttyb tty;
+	int lflag;
 
 	if (ioctl(d, TIOCGETP, &tty) < 0) err2(NULL);
-	if (set) tty.sg_flags |= mode;
-	else tty.sg_flags &= ~mode;
+	if (ioctl(d, TIOCLGET, &lflag) < 0) err2(NULL);
+	if (set) tty.sg_flags |= set;
+	if (reset) tty.sg_flags &= reset;
+	if (set) lflag |= lset;
+	if (lreset) lflag &= lreset;
 	if (ioctl(d, TIOCSETP, &tty) < 0) err2(NULL);
+	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
 #endif
 }
 
 int cooked2()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_iflag &= ~IGNBRK;
-	tty.c_iflag |= IXON;
-	tty.c_oflag |= OPOST;
-	tty.c_oflag &= ~(OCRNL|ONOCR|ONLRET);
-	tty.c_lflag |= ISIG|ICANON;
-	tty.c_cc[VMIN] = 4;
-	tty.c_cc[VTIME] = 255;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, ISIG | ICANON, ~PENDIN,
+		BRKINT | IGNPAR | IXON | IXANY | IXOFF, ~IGNBRK,
+		OPOST, 0, '\004', 255);
 #else
-	ttymode(ttyio, CBREAK | RAW, 0);
+	ttymode(ttyio, 0, ~(CBREAK | RAW), 0, ~(LLITOUT | LPENDIN));
 #endif
 }
 
 int cbreak2()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_iflag &= ~IGNBRK;
-	tty.c_iflag &= ~IXON;
-	tty.c_oflag |= OPOST;
-	tty.c_oflag &= ~(OCRNL|ONOCR|ONLRET);
-	tty.c_lflag |= ISIG|ICANON;
-	tty.c_cc[VMIN] = 1;
-	tty.c_cc[VTIME] = 0;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, ISIG | ICANON, 0, BRKINT, ~(IXON | IGNBRK),
+		0, ~OPOST, 1, 0);
 #else
-	ttymode(ttyio, CBREAK, 1);
+	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
 #endif
 }
 
 int raw2()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_iflag |= IGNBRK;
-	tty.c_iflag &= ~IXON;
-	tty.c_oflag &= ~OPOST;
-	tty.c_lflag &= ~(ISIG|ICANON);
-	tty.c_cc[VMIN] = 1;
-	tty.c_cc[VTIME] = 0;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, 0, ~(ISIG | ICANON), IGNBRK, ~IXON, 0, ~OPOST, 1, 0);
 #else
-	ttymode(ttyio, RAW, 1);
+	ttymode(ttyio, RAW, 0, LLITOUT, 0);
 #endif
 }
 
 int echo2()
 {
 #ifdef	USETERMIO
-	ttymode(ttyio, ECHO|ECHOE|ECHOK|ECHONL, 1);
+	ttymode(ttyio, ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE, ~ECHONL,
+		0, 0, 0, 0, 0, 0);
 #else
-	ttymode(ttyio, ECHO, 1);
+	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #endif
 }
 
 int noecho2()
 {
 #ifdef	USETERMIO
-	ttymode(ttyio, ECHO|ECHOE|ECHOK|ECHONL, 0);
+	ttymode(ttyio, 0, ~(ECHO | ECHOE | ECHOK | ECHONL), 0, 0, 0, 0, 0, 0);
 #else
-	ttymode(ttyio, ECHO, 0);
+	ttymode(ttyio, 0, ~ECHO, 0, ~(LCRTBS | LCRTERA));
 #endif
 }
 
 int nl2()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_iflag |= ICRNL;
-	tty.c_oflag |= ONLCR;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, 0, 0, ICRNL, 0, ONLCR, ~(OCRNL | ONOCR | ONLRET), 0, 0);
 #else
-	ttymode(ttyio, CRMOD, 1);
+	ttymode(ttyio, CRMOD, 0, 0, 0);
 #endif
 }
 
 int nonl2()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_iflag &= ~ICRNL;
-	tty.c_oflag &= ~ONLCR;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, 0, 0, 0, ~ICRNL, 0, ~ONLCR, 0, 0);
 #else
-	ttymode(ttyio, CRMOD, 0);
+	ttymode(ttyio, 0, ~CRMOD, 0, 0);
 #endif
 }
 
 int tabs()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_oflag &= ~TAB3;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, 0, 0, 0, 0, 0, ~TAB3, 0, 0);
 #else
-	ttymode(ttyio, XTABS, 0);
+	ttymode(ttyio, 0, ~XTABS, 0, 0);
 #endif
 }
 
 int notabs()
 {
 #ifdef	USETERMIO
-	struct termio tty;
-
-	if (ioctl(ttyio, TCGETA, &tty) < 0) err2(NULL);
-	tty.c_oflag |= TAB3;
-	if (ioctl(ttyio, TCSETAW, &tty) < 0) err2(NULL);
+	ttymode(ttyio, 0, 0, 0, 0, TAB3, 0, 0, 0);
 #else
-	ttymode(ttyio, XTABS, 1);
+	ttymode(ttyio, XTABS, 0, 0);
 #endif
 }
 
@@ -323,12 +303,13 @@ int no;
 static int err2(mes)
 char *mes;
 {
+	if (termflags & F_TERMENT) putterm(t_normal);
 	endterm();
 	inittty(1);
-	cprintf("\007\n");
-	if (mes) cprintf("%s\n", mes);
+	fprintf(stderr, "\007\n");
+	if (mes) fprintf(stderr, "%s\n", mes);
 	else perror(TTYNAME);
-	exit2(1);
+	exit(127);
 }
 
 static int defaultterm()
@@ -515,7 +496,8 @@ int getterment()
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
 
-	if ((ttyio = open(TTYNAME, O_RDWR)) < 0) ttyio = STDERR;
+	if ((ttyio = open(TTYNAME, O_RDWR, 0600)) < 0) ttyio = STDERR;
+	if (!(ttyout = fopen(TTYNAME, "w+"))) ttyout = stdout;
 
 	defaultterm();
 	cp = "";
@@ -619,13 +601,13 @@ int endterm()
 int putch(c)
 int c;
 {
-	return(fputc(c, stdout));
+	return(fputc(c, ttyout));
 }
 
 int cputs(str)
 char *str;
 {
-	return(fputs(str, stdout));
+	return(fputs(str, ttyout));
 }
 
 #ifndef	NOVSPRINTF
@@ -651,12 +633,12 @@ char *fmt;
 	len = sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
 #endif
 
-	fputs(buf, stdout);
+	fputs(buf, ttyout);
 	return(len);
 }
 
 int kbhit2(usec)
-unsigned long usec;
+u_long usec;
 {
 #ifdef	NOSELECT
 	return((usec) ? 1 : 0);
@@ -675,9 +657,9 @@ unsigned long usec;
 
 int getch2()
 {
-	unsigned char ch;
+	u_char ch;
 
-	read(ttyio, &ch, sizeof(unsigned char));
+	read(ttyio, &ch, sizeof(u_char));
 	return((int)ch);
 }
 
@@ -716,7 +698,7 @@ int sig;
 }
 
 int ungetch2(c)
-unsigned char c;
+u_char c;
 {
 #ifdef	TIOCSTI
 	ioctl(ttyio, TIOCSTI, &c);
@@ -734,7 +716,7 @@ int x, y;
 
 int tflush()
 {
-	fflush(stdout);
+	fflush(ttyout);
 }
 
 static int realscanf(s, format, yp, xp)

@@ -410,14 +410,18 @@ mnt_t *mntp;
 	static char *type = NULL;
 	struct statfs *buf;
 #ifdef	USEMNTINFO
-# ifdef	INITMOUNTNAMES
-	static char *mnt_names[] = INITMOUNTNAMES;
-# define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
-					mnt_names[n] : NULL)
+# ifdef	USEFFSTYPE
+# define	getvfsbynumber(n)	(buf[mnt_ptr].f_fstypename)
 # else
+#  ifdef	INITMOUNTNAMES
+	static char *mnt_names[] = INITMOUNTNAMES;
+#  define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
+					mnt_names[n] : NULL)
+#  else
 	struct vfsconf *conf;
-# define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
+#  define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
 					conf -> vfc_name : NULL)
+#  endif
 # endif
 #else
 # ifdef	USEGETFSSTAT

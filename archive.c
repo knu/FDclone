@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <pwd.h>
 #include <grp.h>
+#include <sys/file.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -367,10 +368,7 @@ int *maxarcentp;
 	}
 	fp = popen(cp, "r");
 	free(cp);
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	tflush();
+	waitmes();
 
 	max = 0;
 	for (i = 0; i < MAXLAUNCHFIELD; i++)
@@ -497,20 +495,21 @@ int *maxarcentp;
 		}
 	}
 
-	if (no > 4) {
-		if (strcmp(arcflist[filepos].name, "..")) {
-			if (*archivedir) strcat(archivedir, "/");
-			strcat(archivedir, arcflist[filepos].name);
-			*file = '\0';
-		}
-		else if (!*archivedir) no = -1;
-		else {
-			if (!(cp = strrchr(archivedir, '/'))) cp = archivedir;
-			strcpy(file, cp + 1);
-			*cp = '\0';
-		}
+	if (no <= 4) strcpy(file, arcflist[filepos].name);
+	else if (strcmp(arcflist[filepos].name, "..")) {
+		if (*archivedir) strcat(archivedir, "/");
+		strcat(archivedir, arcflist[filepos].name);
+		*file = '\0';
 	}
-	else strcpy(file, arcflist[filepos].name);
+	else if (!*archivedir) no = -1;
+	else {
+		if (cp = strrchr(archivedir, '/')) strcpy(file, cp + 1);
+		else {
+			strcpy(file, archivedir);
+			cp = archivedir;
+		}
+		*cp = '\0';
+	}
 	for (i = 0; i < maxarcf; i++) free(arcflist[i].name);
 	return(no);
 }
@@ -607,10 +606,7 @@ int max;
 	if (i >= maxarchive) return(-1);
 	regexp_free(re);
 
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	tflush();
+	waitmes();
 	execmacro(archivelist[i].p_comm, arc, list, max, -1, 1);
 	return(1);
 }
@@ -652,12 +648,10 @@ int max, tr;
 	strcpy(path, fullpath);
 	strcat(path, "/");
 	strcat(path, arc);
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	tflush();
-	if (execmacro(archivelist[i].u_comm, path, list, max, -1, 1) == 127) {
+	waitmes();
+	if (execmacro(archivelist[i].u_comm, path, list, max, -1, 1) < 0) {
 		warning(E2BIG, archivelist[i].u_comm);
+		if (chdir(fullpath) < 0) error(fullpath);
 		return(0);
 	}
 	if (chdir(fullpath) < 0) error(fullpath);
@@ -686,11 +680,14 @@ int max;
 
 	if (chdir(path) < 0) error(path);
 	cp = strdup2(path);
-	if (i > 0) {
-		if (!*archivedir || chdir(archivedir) >= 0) return(cp);
-		warning(-1, archivedir);
+	if (i < 0) putterm(t_bell);
+	else if (i > 0) {
+		if (*archivedir && chdir(archivedir) < 0)
+			warning(-1, archivedir);
+		else if (access(list[filepos].name, F_OK) < 0)
+			warning(-1, list[filepos].name);
+		else return(cp);
 	}
-	else if (i < 0) putterm(t_bell);
 	removetmp(cp, NULL);
 	return(NULL);
 }
@@ -730,10 +727,7 @@ int max;
 	macrostat st;
 	char *tmp;
 
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	tflush();
+	waitmes();
 	st.flags = 0;
 	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, &st))) {
 		warning(E2BIG, dev);

@@ -596,7 +596,7 @@ int *maxp;
 	char *dir;
 
 	if (isdir(&list[filepos])
-	|| (archivefile && !(dir = tmpunpack(list, *maxp)))) return(0);
+	|| (archivefile && !(dir = tmpunpack(list, *maxp)))) return(1);
 	if (!execenv("FD_PAGER", list[filepos].name)) {
 #ifdef	PAGER
 		execmacro(PAGER, list[filepos].name, NULL, 0, 0, 0);

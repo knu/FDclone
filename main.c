@@ -56,6 +56,30 @@ extern int dispmode;
 # endif
 #endif
 
+static VOID abandon();
+static VOID signalexit();
+static sigarg_t hungup();
+static sigarg_t illerror();
+static sigarg_t traperror();
+#ifdef	SIGIOT
+static sigarg_t ioerror();
+#else
+# ifdef	SIGABRT
+static sigarg_t oldabort();
+# endif
+#endif
+static sigarg_t emuerror();
+static sigarg_t floaterror();
+static sigarg_t buserror();
+static sigarg_t segerror();
+static sigarg_t syserror();
+static sigarg_t terminate();
+#ifdef	SIGXCPU
+static sigarg_t xcpuerror();
+#endif
+#ifdef	SIGXFSZ
+static sigarg_t xsizerror();
+#endif
 static sigarg_t wintr();
 static sigarg_t printtime();
 static char *skipspace();
@@ -85,15 +109,123 @@ static char *progname;
 static int timersec = 0;
 
 
+static VOID abandon(no)
+int no;
+{
+	char *cp, tmpfile[2 + sizeof(int) + 1];
+
+	cp = evalpath(strdup2(deftmpdir));
+	sprintf(tmpfile, "fd%d", getpid());
+	forcecleandir(cp, tmpfile);
+	free(cp);
+	exit(no);
+}
+
 VOID error(str)
 char *str;
 {
 	if (!str) str = progname;
 	endterm();
 	inittty(1);
+	fputc('\007', stderr);
 	perror(str);
-	exit2(1);
+	abandon(1);
 }
+
+static VOID signalexit(str)
+char *str;
+{
+	endterm();
+	inittty(1);
+	fprintf(stderr, "\007%s\n", str);
+	abandon(1);
+}
+
+static sigarg_t hangup()
+{
+	signal(SIGHUP, SIG_IGN);
+	signalexit("Hangup");
+}
+
+static sigarg_t illerror()
+{
+	signal(SIGILL, SIG_IGN);
+	signalexit("Illegal instruction");
+}
+
+static sigarg_t traperror()
+{
+	signal(SIGTRAP, SIG_IGN);
+	signalexit("Trace/BPT trap");
+}
+
+#ifdef	SIGIOT
+static sigarg_t ioerror()
+{
+	signal(SIGIOT, SIG_IGN);
+	signalexit("IOT trap");
+}
+#else
+# ifdef	SIGABRT
+static sigarg_t oldabort()
+{
+	signal(SIGABRT, SIG_IGN);
+	signalexit("Abort");
+}
+# endif
+#endif
+
+static sigarg_t emuerror()
+{
+	signal(SIGEMT, SIG_IGN);
+	signalexit("EMT trap");
+}
+
+static sigarg_t floaterror()
+{
+	signal(SIGFPE, SIG_IGN);
+	signalexit("Floating point exception");
+}
+
+static sigarg_t buserror()
+{
+	signal(SIGBUS, SIG_IGN);
+	signalexit("Bus error");
+}
+
+static sigarg_t segerror()
+{
+	signal(SIGSEGV, SIG_IGN);
+	signalexit("Segmemtation fault");
+}
+
+static sigarg_t syserror()
+{
+	signal(SIGSYS, SIG_IGN);
+	signalexit("Bad system call");
+}
+
+static sigarg_t terminate()
+{
+	signal(SIGTERM, SIG_IGN);
+	signalexit("Terminated");
+}
+
+#ifdef	SIGXCPU
+static sigarg_t xcpuerror()
+{
+	signal(SIGXCPU, SIG_IGN);
+	signalexit("Cputime limit exceeded");
+}
+#endif
+
+#ifdef	SIGXFSZ
+static sigarg_t xsizerror()
+{
+	signal(SIGXFSZ, SIG_IGN);
+	signalexit("Filesize limit exceeded");
+}
+#endif
 
 static sigarg_t wintr()
 {
@@ -103,7 +235,7 @@ static sigarg_t wintr()
 	if (archivefile) rewritearc();
 	else rewritefile();
 	if (subwindow) ungetch2(CTRL_L);
-	signal(SIGWINCH, (sigarg_t (*))wintr);
+	signal(SIGWINCH, (sigarg_t (*)())wintr);
 }
 
 static sigarg_t printtime()
@@ -115,7 +247,6 @@ static sigarg_t printtime()
 	signal(SIGALRM, SIG_IGN);
 	if (!timersec) {
 		gettimeofday(&t, &tz);
-		tzset();
 		tm = localtime(&(t.tv_sec));
 
 		locate(n_column - 16, LTITLE);
@@ -129,14 +260,14 @@ static sigarg_t printtime()
 		timersec = CLOCKUPDATE;
 	}
 	timersec--;
-	signal(SIGALRM, (sigarg_t (*))printtime);
+	signal(SIGALRM, (sigarg_t (*)())printtime);
 }
 
 VOID sigvecset()
 {
 	getwsize(80, WHEADER + WFOOTER + 2);
-	signal(SIGWINCH, (sigarg_t (*))wintr);
-	signal(SIGALRM, (sigarg_t (*))printtime);
+	signal(SIGWINCH, (sigarg_t (*)())wintr);
+	signal(SIGALRM, (sigarg_t (*)())printtime);
 }
 
 VOID sigvecreset()
@@ -178,7 +309,7 @@ char **cp;
 
 	tmp = *cp;
 	if ((c = **cp) == '"' || c == '\'') {
-		for (*cp = ++tmp; *cp = strchr(*cp, c); *cp++)
+		for (*cp = ++tmp; *cp = strchr(*cp, c); (*cp)++)
 			if (*(*cp - 1) != '\\') {
 				*((*cp)++) = '\0';
 				tmp = strdup2(tmp);
@@ -747,10 +878,37 @@ char *argv[];
 	raw2();
 	noecho2();
 	nonl2();
-	tabs();
+	notabs();
 	getterment();
 	initterm();
 	sigvecset();
+
+	signal(SIGHUP, (sigarg_t (*)())hangup);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGILL, (sigarg_t (*)())illerror);
+	signal(SIGTRAP, (sigarg_t (*)())traperror);
+#ifdef	SIGIOT
+	signal(SIGIOT, (sigarg_t (*)())ioerror);
+# else
+# ifdef	SIGABRT
+	signal(SIGABORT, (sigarg_t (*)())oldabort);
+# endif
+#endif
+	signal(SIGEMT, (sigarg_t (*)())emuerror);
+	signal(SIGFPE, (sigarg_t (*)())floaterror);
+	signal(SIGBUS, (sigarg_t (*)())buserror);
+	signal(SIGSEGV, (sigarg_t (*)())segerror);
+	signal(SIGSYS, (sigarg_t (*)())syserror);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGTERM, (sigarg_t (*)())terminate);
+	signal(SIGTSTP, SIG_IGN);
+#ifdef	SIGXCPU
+	signal(SIGXCPU, (sigarg_t (*)())xcpuerror);
+#endif
+#ifdef	SIGXFSZ
+	signal(SIGXFSZ, (sigarg_t (*)())xsizerror);
+#endif
 
 	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++)
 		if (!launchlist[maxlaunch].ext) break;
@@ -799,10 +957,12 @@ char *argv[];
 		cooked2();
 		echo2();
 		nl2();
+		tabs();
 		inittty(0);
 		raw2();
 		noecho2();
 		nonl2();
+		notabs();
 	}
 
 	sh_history = loadhistory(HISTORYFILE);
