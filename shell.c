@@ -82,7 +82,8 @@ char *name;
 	int sjis;
 
 	cp = (char *)getenv("LANG");
-	sjis = (toupper2(*cp) == 'J' && strchr("AP", toupper2(*(cp + 1))));
+	sjis = (cp && toupper2(*cp) == 'J'
+		&& strchr("AP", toupper2(*(cp + 1))));
 #endif
 
 	buf = (char *)malloc2(strlen(name) * 2 + 1);

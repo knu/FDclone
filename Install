@@ -30,6 +30,7 @@
 	Fujitsu	UXP/M		(4.0)
 	Mips	RISC/os		(4.x, 5.0x)
 	JCC	4.4BSD-Lite	(v1.0)
+	NeXT	NEXTSTEP	(3.0)
 		Linux		(1.x)
 		FreeBSD		(2.x)
 		NetBSD		(1.0, 2.0)

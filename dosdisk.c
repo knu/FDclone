@@ -91,8 +91,8 @@ static int readbpb();
 static int opendev();
 static int closedev();
 static int checksum();
-static u_short uniencode();
-static u_short unidecode();
+static u_short lfnencode();
+static u_short lfndecode();
 static int transchar();
 static int detranschar();
 static int transname();
@@ -164,11 +164,11 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 # endif
 #endif
 #if defined (EWSUXV)
-	{'A', "/dev/rif/f0h18", 2, 18, 80},
-	{'A', "/dev/rif/f0h8", 2, 8, 77},
-	{'A', "/dev/rif/f0c15", 2, 15, 80},
-	{'A', "/dev/rif/f0d9", 2, 9, 80},
-	{'A', "/dev/rif/f0d8", 2, 8, 80},
+	{'A', "/dev/if/f0h18", 2, 18, 80},
+	{'A', "/dev/if/f0h8", 2, 8, 77},
+	{'A', "/dev/if/f0c15", 2, 15, 80},
+	{'A', "/dev/if/f0d9", 2, 9, 80},
+	{'A', "/dev/if/f0d8", 2, 8, 80},
 #endif
 #if defined (AIX)
 	{'A', "/dev/rfd0h", 2, 18, 80},
@@ -857,7 +857,7 @@ char *name;
 	return(sum & 0xff);
 }
 
-static u_short uniencode(c1, c2)
+static u_short lfnencode(c1, c2)
 u_char c1, c2;
 {
 	u_short kanji;
@@ -878,7 +878,7 @@ u_char c1, c2;
 	return(0xff00);
 }
 
-static u_short unidecode(c1, c2)
+static u_short lfndecode(c1, c2)
 u_char c1, c2;
 {
 	switch (c1) {
@@ -959,9 +959,9 @@ int len;
 	return(i);
 }
 
-static int cmpdospath(path1, path2, len, drive)
+static int cmpdospath(path1, path2, len, dd)
 char *path1, *path2;
-int len, drive;
+int len, dd;
 {
 	int i, c1, c2, kanji2;
 
@@ -969,7 +969,7 @@ int len, drive;
 	if (len < 0) len = strlen(path1) + 1;
 	c1 = path1[0];
 	c2 = path2[0];
-	if (isupper(drive)) for (i = 0; i < len; i++) {
+	if (!(devlist[dd].flags & F_VFAT)) for (i = 0; i < len; i++) {
 		c1 = path1[i];
 		c2 = path2[i];
 		if (!c1 || !c2) break;
@@ -986,7 +986,9 @@ int len, drive;
 		if (!c1 || !c2) break;
 		if (!kanji2 && c1 != '/' && c1 != '\\') {
 			if (strchr(NOTINLFN, c1)) c1 = '_';
+			else c1 = toupper2(c1);
 			if (strchr(NOTINLFN, c2)) c2 = '_';
+			else c2 = toupper2(c2);
 		}
 		if (c1 != c2) break;
 		if (issjis1((u_char)(path1[i]))) kanji2 = 1;
@@ -1180,15 +1182,9 @@ int class;
 			if (issjis1((u_char)(path[i]))) i++;
 		if (class && !path[i]) {
 			*(cp++) = '/';
-			if (i == 1 && *path == '.') *(cp++) = '.';
-			else if (i == 2 && *path == '.' && *(path + 1) == '.') {
-				*(cp++) = '.';
-				*(cp++) = '.';
-			}
-			else {
-				strncpy(cp, path, i);
-				cp += i;
-			}
+			strncpy(cp, path, i);
+			cp += i;
+			if (path[i - 1] == '.') cp--;
 		}
 		else if (!i || (i == 1 && *path == '.'));
 		else if (i == 2 && *path == '.' && *(path + 1) == '.') {
@@ -1199,6 +1195,7 @@ int class;
 			*(cp++) = '/';
 			strncpy(cp, path, i);
 			cp += i;
+			if (path[i - 1] == '.') cp--;
 		}
 		if (*(path += i)) path++;
 	}
@@ -1251,7 +1248,7 @@ char *path;
 
 	if (cp && (len = strlen(cp)) > 0) {
 		if (cp[len - 1] == '/') len--;
-		if (!cmpdospath(cp, path, len, drive)
+		if (!cmpdospath(cp, path, len, dd)
 		&& (!path[len] || path[len] == '/')) {
 			xdirp -> dd_off = byte2word(cache -> dent.clust);
 			memcpy(devlist[dd].dircache, cache, sizeof(cache_t));
@@ -1309,6 +1306,7 @@ DIR *dirp;
 
 static int seekdent(xdirp, dentp, clust, offset)
 dosDIR *xdirp;
+dent_t *dentp;
 long clust;
 u_short offset;
 {
@@ -1414,7 +1412,7 @@ int all;
 		for (i = 1, j = 0; i < DOSDIRENT; i += 2, j++) {
 			if (cp + i == (char *)&(dentp -> attr)) i += 3;
 			else if (cp + i == (char *)(dentp -> clust)) i += 2;
-			if (!(ch = unidecode(cp[i + 1], cp[i]))) break;
+			if (!(ch = lfndecode(cp[i + 1], cp[i]))) break;
 			if (ch & 0xff00) buf[j++] = (ch >> 8) & 0xff;
 			buf[j] = ch & 0xff;
 		}
@@ -1479,7 +1477,8 @@ int len;
 	if (len <= 0) len = strlen(fname);
 	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
 		while (dp = _dosreaddir(xdirp, 1))
-			if (!strncmp(fname, dp -> d_name, len)
+			if (!cmpdospath(fname, dp -> d_name,
+				len, xdirp -> dd_fd)
 			&& !(dp -> d_name[len])) return(dp);
 	}
 	else {
@@ -1595,7 +1594,7 @@ int *ddp;
 	if ((drive = parsepath(buf + 2, path, 1)) < 0
 	|| (dd = opendev(drive)) < 0) return(-1);
 	if (devlist[dd].dircache
-	&& !cmpdospath(dd2path(dd), buf + 3, -1, drive)) return(dd);
+	&& !cmpdospath(dd2path(dd), buf + 3, -1, dd)) return(dd);
 	buf[0] = drive;
 
 	path = buf;
@@ -1683,7 +1682,7 @@ int mode;
 	u_char *cp, longfname[DOSMAXNAMLEN + 1];
 	char *file, tmp[8 + 1 + 3 + 1], fname[8 + 3];
 	long clust;
-	u_short uni, offset;
+	u_short c, offset;
 	int i, j, n, len, cnt, sum, ret;
 
 	file = path;
@@ -1704,13 +1703,13 @@ int mode;
 		n = 1;
 		for (i = j = 0; file[i]; i++, j += 2) {
 			if (!issjis1((u_char)(file[i])))
-				uni = uniencode(0, file[i]);
+				c = lfnencode(0, file[i]);
 			else {
-				uni = uniencode(file[i], file[i + 1]);
+				c = lfnencode(file[i], file[i + 1]);
 				i++;
 			}
-			longfname[j] = uni & 0xff;
-			longfname[j + 1] = (uni >> 8) & 0xff;
+			longfname[j] = c & 0xff;
+			longfname[j + 1] = (c >> 8) & 0xff;
 		}
 		cnt = j / (LFNENTSIZ * 2) + 2;
 		longfname[j] = longfname[j + 1] = '\0';
@@ -1748,7 +1747,7 @@ int mode;
 		i = 0;
 		if (dentp -> attr == DS_IFLFN) continue;
 
-		if (!strncmp(dentp -> name, fname, 8 + 3)) {
+		if (!strncmp((char *)(dentp -> name), fname, 8 + 3)) {
 			if (!n) {
 				dosclosedir((DIR *)xdirp);
 				errno = EEXIST;
@@ -1987,7 +1986,7 @@ char *from, *to;
 	offset = lfn_offset;
 
 	i = strlen(dd2path(dd));
-	if (!cmpdospath(dd2path(dd), buf + 1, i, *from)
+	if (!cmpdospath(dd2path(dd), buf + 1, i, dd)
 	&& (!buf[i + 1] || buf[i + 1] == '/')) {
 		closedev(dd);
 		errno = EINVAL;

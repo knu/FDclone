@@ -317,7 +317,7 @@
 #define	USERE_COMP
 #define	USESETENV
 #include <sys/param.h>
-# if (NetBSD1_0 < 1)
+# if defined (NetBSD1_0) && (NetBSD1_0 < 1)
 # define	USEFFSIZE
 # endif
 #endif

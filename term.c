@@ -13,10 +13,6 @@
 #include <sys/file.h>
 #include <sys/time.h>
 
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
 #ifdef	USETERMIO
 #include <termio.h>
 #else
@@ -336,7 +332,7 @@ static int defaultterm()
 	int i;
 
 	BC = "\010";
-	UP = "2\033[A";
+	UP = "\033[A";
 	n_column = n_lastcolumn = 80;
 	n_line = 24;
 	t_init = "";
@@ -350,17 +346,17 @@ static int defaultterm()
 	t_resetcursor = "\0338";
 	t_bell = "\007";
 	t_vbell = "\007";
-	t_clear = "50\033[;H\033[2J";
-	t_normal = "2\033[m";
-	t_bold = "2\033[1m";
-	t_reverse = "2\033[7m";
-	t_dim = "2\033[2m";
-	t_blink = "2\033[5m";
-	t_standout = "2\033[7m";
-	t_underline = "2\033[4m";
-	end_standout = "2\033[m";
-	end_underline = "2\033[m";
-	l_clear = "3\033[K";
+	t_clear = "\033[;H\033[2J";
+	t_normal = "\033[m";
+	t_bold = "\033[1m";
+	t_reverse = "\033[7m";
+	t_dim = "\033[2m";
+	t_blink = "\033[5m";
+	t_standout = "\033[7m";
+	t_underline = "\033[4m";
+	end_standout = "\033[m";
+	end_underline = "\033[m";
+	l_clear = "\033[K";
 	l_insert = "\033[L";
 	l_delete = "\033[M";
 	c_insert = "";
@@ -368,12 +364,12 @@ static int defaultterm()
 	c_store = "\033[s";
 	c_restore = "\033[u";
 	c_home = "\033[H";
-	c_locate = "5\033[%i%d;%dH";
+	c_locate = "\033[%i%d;%dH";
 	c_return = "\r";
 	c_newline = "\n";
-	c_up = "2\033[A";
+	c_up = "\033[A";
 	c_down = "\012";
-	c_right = "2\033[C";
+	c_right = "\033[C";
 	c_left = "\010";
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i] = NULL;

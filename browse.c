@@ -251,6 +251,7 @@ int no;
 	locate(0, LINFO);
 
 	if (list[no].st_nlink < 0) {
+		putterm(l_clear);
 		kanjiputs(list[no].name);
 		tflush();
 		return;

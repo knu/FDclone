@@ -25,7 +25,7 @@ int _dospath(path)
 char *path;
 {
 	if (!dosdrive) return(0);
-#ifdef	UNICODE
+#ifdef	LFNCONVERT
 	return((isalpha(*path) && *(path + 1) == ':') ? *path : 0);
 #else
 	return((isalpha(*path) && *(path + 1) == ':') ? toupper2(*path) : 0);
@@ -44,7 +44,7 @@ char *path, *buf;
 	else cp = pseudocwd;
 
 	drive = *cp;
-#ifndef	UNICODE
+#ifndef	LFNCONVERT
 	drive = toupper2(drive);
 #endif
 	if (!buf) return(drive);
@@ -54,7 +54,7 @@ char *path, *buf;
 #else
 	strcpy(buf, cp);
 #endif
-#ifndef	UNICODE
+#ifndef	LFNCONVERT
 	*buf = toupper2(*buf);
 #endif
 	if (cp != path && *path) {
