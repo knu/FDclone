@@ -11,8 +11,8 @@ typedef regex_t reg_t;
 typedef char reg_t;
 #endif
 
-extern char *_evalpath __P_((char *, char *, int));
-extern char *evalpath __P_((char *));
+extern char *_evalpath __P_((char *, char *, int, int));
+extern char *evalpath __P_((char *, int));
 extern char *cnvregexp __P_((char *, int));
 extern reg_t *regexp_init __P_((char *));
 extern int regexp_exec __P_((reg_t *, char *));

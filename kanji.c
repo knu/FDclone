@@ -20,10 +20,10 @@
 #define	KANJI	2
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-int inputkcode;
+int inputkcode = 0;
 #endif
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
-int outputkcode;
+int outputkcode = 0;
 #endif
 
 
@@ -91,7 +91,7 @@ int incode;
 	int i, j, mode;
 
 	mode = ASCII;
-	for (i = 0, j = 0; str[i] && j < MAXLINESTR - 8; i++, j++) {
+	for (i = j = 0; str[i] && j < MAXLINESTR - 8; i++, j++) {
 		if ((incode == EUC) ? isekana(str, i) : isskana(str, i)) {
 			if (!(mode & KANA)) buf[j++] = '\016';
 			mode |= KANA;
@@ -145,7 +145,7 @@ u_char *str;
 {
 	int i, j;
 
-	for (i = 0, j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
+	for (i = j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
 		if (isskana(str, i)) {
 			buf[j++] = 0x8e;
 			buf[j] = str[i];
@@ -172,7 +172,7 @@ u_char *str;
 {
 	int i, j;
 
-	for (i = 0, j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
+	for (i = j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
 		if (isekana(str, i)) buf[j] = str[i];
 		else if (iseuc(str[i])) {
 			buf[j++] = ((str[i] - 0x81) >> 1)

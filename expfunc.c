@@ -30,9 +30,9 @@ static char *expargs __P_((char *, char *[]));
 static int evalline __P_((char *, char *[]));
 static char *getline __P_((FILE *));
 
-int funcno;
-char *func[MAXFUNCNO];
-char *funcbody[MAXFUNCNO];
+static int funcno = 0;
+static char *func[MAXFUNCNO];
+static char *funcbody[MAXFUNCNO];
 
 
 static char *isfunction(line)
@@ -53,7 +53,7 @@ char *line;
 	if (*(cp++) != ')') return(NULL);
 	while (*cp == ' ' || *cp == '\t') cp++;
 	if (*(cp++) != '{') return(NULL);
-	if (!(func[funcno] = (char *)malloc(len + 1))) exit(-1);
+	if (!(func[funcno] = (char *)malloc(len + 1))) exit(1);
 	strncpy(func[funcno], top, len);
 	func[funcno][len] = '\0';
 	funcbody[funcno] = NULL;
@@ -85,13 +85,13 @@ char *line;
 	if (!i) len += 3;
 	if (!funcbody[funcno]) {
 		funcbody[funcno] = (char *)malloc(len + 2 + 1);
-		if (!funcbody[funcno]) exit(-1);
+		if (!funcbody[funcno]) exit(1);
 		strcpy(funcbody[funcno], "{ ");
 	}
 	else {
 		len += strlen(funcbody[funcno]);
 		funcbody[funcno] = (char *)realloc(funcbody[funcno], len + 2);
-		if (!funcbody[funcno]) exit(-1);
+		if (!funcbody[funcno]) exit(1);
 		if (*line) strcat(funcbody[funcno], "\n");
 	}
 	strcat(funcbody[funcno], line);
@@ -119,7 +119,7 @@ char *line;
 	line = cp;
 	while (*cp && *cp != ' ' && *cp != '\t') cp++;
 	c = cp - line;
-	if (!(cp = (char *)malloc(c + 1))) exit(-1);
+	if (!(cp = (char *)malloc(c + 1))) exit(1);
 	strncpy(cp, line, c);
 	cp[c] = '\0';
 	return(cp);
@@ -162,7 +162,7 @@ char *args[];
 			if (*(*linep - 1) == '"') c--;
 		}
 		if (c > 0) {
-			if (!(args[i] = (char *)malloc(c + 1))) exit(-1);
+			if (!(args[i] = (char *)malloc(c + 1))) exit(1);
 			strncpy(args[i], cp, c);
 			args[i][c] = '\0';
 		}
@@ -182,7 +182,7 @@ char *args[];
 	int i, j, k, c, cp, tmp, len;
 
 	len = strlen(line);
-	if (!(buf = (char *)malloc(len + 1))) exit(-1);
+	if (!(buf = (char *)malloc(len + 1))) exit(1);
 	strcpy(buf, line);
 
 	c = '\0';
@@ -205,7 +205,7 @@ char *args[];
 				else {
 					len += strlen(args[i]);
 					buf = (char *)realloc(buf, len + 1);
-					if (!buf) exit(-1);
+					if (!buf) exit(1);
 					k = len - (int)strlen(buf);
 					cp += k;
 					if (k > 0) for (j = len; j >= cp; j--)
@@ -298,4 +298,6 @@ char *argv[];
 			else evalline(line, NULL);
 		}
 	}
+
+	return(0);
 }

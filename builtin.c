@@ -73,7 +73,7 @@ static int exportenv __P_((int, char *[], int));
 static int dochdir __P_((int, char *[], int));
 static int loadsource __P_((int, char *[], int));
 static int printhist __P_((int, char *[], int));
-static int isinternal __P_((int, char *[], int));
+static int isinternal __P_((char *, int));
 
 static builtintable builtinlist[] = {
 	{printenv, "printenv"},
@@ -169,8 +169,10 @@ static strtable keyidentlist[] = {
 	{K_HELP,	"HELP"},
 	{0,		NULL}
 };
+#if	!MSDOS && !defined (_NOKEYMAP)
 static char escapechar[] = "abefnrtv";
 static char escapevalue[] = {0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b};
+#endif
 
 
 #ifndef	_NOARCHIVE
@@ -179,6 +181,7 @@ char *ext;
 {
 	char *cp, *tmp;
 
+	ext = _evalpath(ext, NULL, 0, 1);
 	cp = cnvregexp(ext, 0);
 	if (*ext != '*') {
 		tmp = cp;
@@ -188,7 +191,7 @@ char *ext;
 		memcpy(cp + 1, "^.*", 3);
 		free(tmp);
 	}
-
+	free(ext);
 	return(cp);
 }
 
@@ -280,7 +283,7 @@ int comline;
 		free(launchlist[i].comm);
 	}
 	launchlist[i].ext = ext;
-	launchlist[i].comm = strdup2(argv[2]);
+	launchlist[i].comm = _evalpath(argv[2], NULL, 1, 1);
 	return(0);
 }
 
@@ -323,8 +326,9 @@ int comline;
 		if (archivelist[i].u_comm) free(archivelist[i].u_comm);
 	}
 	archivelist[i].ext = ext;
-	archivelist[i].p_comm = strdup2(argv[2]);
-	archivelist[i].u_comm = (argc > 3) ? strdup2(argv[3]) : NULL;
+	archivelist[i].p_comm = _evalpath(argv[2], NULL, 1, 1);
+	archivelist[i].u_comm =
+		(argc > 3) ? _evalpath(argv[3], NULL, 1, 1) : NULL;
 	return(0);
 }
 
@@ -333,7 +337,6 @@ char *ext;
 {
 	char *cp;
 
-	putch2('"');
 	for (cp = ext + 1; *cp; cp++) {
 		if (*cp == '\\') {
 			if (!*(++cp)) break;
@@ -342,7 +345,6 @@ char *ext;
 		else if (*cp == '.' && *(cp + 1) != '*') putch2('?');
 		else if (!strchr(".^$", *cp)) putch2((int)(*(u_char *)cp));
 	}
-	putch2('"');
 }
 
 static int extcmp(str, ext)
@@ -382,6 +384,7 @@ int comline;
 	if (argc >= 3) return(-1);
 	if (!comline) return(0);
 	n = 1;
+	argv[1] = evalpath(argv[1], 1);
 	if (argc <= 1) for (i = n = 0; i < maxlaunch; i++) {
 		cputs2("launch ");
 		printext(launchlist[i].ext);
@@ -450,6 +453,7 @@ int comline;
 	if (argc >= 3) return(-1);
 	if (!comline) return(0);
 	n = 1;
+	argv[1] = evalpath(argv[1], 1);
 	if (argc <= 1) for (i = n = 0; i < maxarchive; i++) {
 		cputs2("arch ");
 		printext(archivelist[i].ext);
@@ -479,13 +483,16 @@ char *cp;
 {
 	int n;
 
+	cp = _evalpath(cp, NULL, 1, 1);
 	for (n = 0; n < NO_OPERATION; n++)
 		if (!strpathcmp(cp, funclist[n].ident)) break;
-	if (n < NO_OPERATION) return(n);
-
-	if (maxmacro >= MAXMACROTABLE) return(-1);
-	macrolist[maxmacro] = strdup2(cp);
-	n = NO_OPERATION + (++maxmacro);
+	if (n < NO_OPERATION);
+	else if (maxmacro >= MAXMACROTABLE) n = -1;
+	else {
+		macrolist[maxmacro] = cp;
+		return(NO_OPERATION + (++maxmacro));
+	}
+	free(cp);
 	return(n);
 }
 
@@ -494,27 +501,32 @@ char *cp;
 {
 	int i, ch;
 
+	cp = _evalpath(cp, NULL, 1, 1);
 	ch = *(cp++);
 	if (*cp) switch (ch) {
 		case '^':
 			ch = toupper2(*(cp++));
-			if (ch < '?' || ch > '_') return(-1);
-			ch = ((ch - '@') & 0x7f);
+			if (ch < '?' || ch > '_') ch = -1;
+			else ch = ((ch - '@') & 0x7f);
 			break;
 		case 'F':
-			if ((i = atoi2(cp)) < 1 || i > 20) return(-1);
-			cp = skipnumeric(cp, 1);
-			ch = K_F(i);
+			if ((i = atoi2(cp)) < 1 || i > 20) ch = -1;
+			else {
+				cp = skipnumeric(cp, 1);
+				ch = K_F(i);
+			}
 			break;
 		default:
 			cp--;
 			for (i = 0; keyidentlist[i].no; i++)
 				if (!strcmp(keyidentlist[i].str, cp)) break;
-			if (!(ch = keyidentlist[i].no)) return(-1);
-			cp += strlen(cp);
+			if (!(ch = keyidentlist[i].no)) ch = -1;
+			else cp += strlen(cp);
 			break;
 	}
-	return(!(*cp) ? ch : -1);
+	if (*cp) ch = -1;
+	free(cp);
+	return(ch);
 }
 
 static int freemacro(n)
@@ -583,7 +595,7 @@ int comline;
 			return(-1);
 		}
 		free(helpindex[ch - K_F(1)]);
-		helpindex[ch - K_F(1)] = strdup2(argv[j] + 1);
+		helpindex[ch - K_F(1)] = _evalpath(&(argv[j][1]), NULL, 1, 1);
 	}
 
 	if (bindlist[i].key < 0) {
@@ -644,7 +656,8 @@ int comline;
 			cprintf2("'F%d'\t", bindlist[i].key - K_F0);
 		else {
 			for (j = 0; keyidentlist[j].no; j++)
-				if (bindlist[i].key == keyidentlist[j].no)
+				if ((u_short)(bindlist[i].key)
+				== keyidentlist[j].no)
 					break;
 			if (keyidentlist[j].no)
 				cprintf2("'%s'\t", keyidentlist[j].str);
@@ -664,6 +677,7 @@ int comline;
 			break;
 		}
 	}
+	else i = 0;
 	return(i ? n : 1);
 }
 
@@ -692,7 +706,7 @@ int comline;
 		return(i ? n : 1);
 	}
 
-	cp = argv[1];
+	cp = argv[1] = evalpath(argv[1], 1);
 	if (!(tmp = gettoken(&cp, ""))) return(-1);
 	free(tmp);
 	if (*cp) return(-1);
@@ -712,7 +726,7 @@ int comline;
 		free(aliaslist[i].alias);
 	}
 	aliaslist[i].alias = strdup2(argv[1]);
-	aliaslist[i].comm = strdup2(argv[2]);
+	aliaslist[i].comm = _evalpath(argv[2], NULL, 1, 1);
 #if	MSDOS
 	for (cp = aliaslist[i].alias; cp && *cp; cp++)
 		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
@@ -732,7 +746,7 @@ int comline;
 
 	if (argc <= 1 || argc >= 4) return(-1);
 	n = 0;
-	cp = cnvregexp(argv[1], 0);
+	cp = cnvregexp(argv[1] = evalpath(argv[1], 1), 0);
 	re = regexp_init(cp);
 	free(cp);
 	for (i = 0; i < maxalias; i++)
@@ -761,6 +775,8 @@ int set;
 	int i, drive, head, sect, cyl;
 
 	if (argc <= 3) return(-1);
+	argv[1] = evalpath(argv[1], 1);
+	argv[2] = evalpath(argv[2], 1);
 	drive = toupper2(argv[1][0]);
 	cp = tmp = catargs(argc - 3, &argv[3], '\0');
 
@@ -837,6 +853,7 @@ int comline;
 	if (argc >= 3) return(-1);
 	if (!comline) return(0);
 	n = 1;
+	argv[1] = evalpath(argv[1], 1);
 	if (argc <= 1) for (i = n = 0; fdtype[i].name; i++) {
 		cputs2("drive ");
 		kanjiprintf("'%c'\t\"%s\"\t(%1d,%3d,%3d)\r\n",
@@ -849,8 +866,9 @@ int comline;
 	}
 	else for (i = 0; fdtype[i].name; i++)
 	if (toupper2(argv[1][0]) == fdtype[i].drive) {
-		kanjiprintf("\"%s\"\t(%1d,%3d,%3d)\r\n", fdtype[i].name,
-			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl);
+		kanjiprintf("\"%s\"\t(%1d,%3d,%3d)\r\n",
+			fdtype[i].name, fdtype[i].head,
+			fdtype[i].sect, fdtype[i].cyl);
 	}
 	return(i ? n : 1);
 }
@@ -918,22 +936,12 @@ int comline;
 
 	userfunclist[i].func = tmp;
 	if (*cp != '{') {
-		tmp = geteostr(&cp, 0);
-		if (*cp) {
-			free(line);
-			free(userfunclist[i].func);
-			free(tmp);
-			return(-1);
-		}
-		userfunclist[i].comm = (char **)malloc2(sizeof(char *) * 2);
-		userfunclist[i].comm[0] = tmp;
-		userfunclist[i].comm[1] = NULL;
 		free(line);
-		return(0);
+		free(tmp);
+		return(-1);
 	}
-
 	cp = skipspace(cp + 1);
-	if (tmp = strtkchr(cp, '}', 0)) {
+	if ((tmp = strtkchr(cp, '}', 0))) {
 		*tmp = '\0';
 		if (*(++tmp)) {
 			free(line);
@@ -942,7 +950,6 @@ int comline;
 		}
 	}
 	if (!*cp) {
-		free(line);
 		free(userfunclist[i].func);
 		if (i >= maxuserfunc) return(-1);
 
@@ -957,14 +964,14 @@ int comline;
 	}
 
 	for (j = 0; j < MAXFUNCLINES && *cp; j++) {
-		if (!(line = strtkchr(cp, ';', 0))) {
+		if (!(tmp = strtkchr(cp, ';', 0))) {
 			list[j++] = strdup2(cp);
 			break;
 		}
-		len = line - cp;
+		len = tmp - cp;
 		list[j] = (char *)malloc2(len + 1);
 		strncpy2(list[j], cp, len);
-		cp = skipspace(line + 1);
+		cp = skipspace(tmp + 1);
 	}
 
 	if (i >= maxuserfunc) maxuserfunc++;
@@ -981,6 +988,7 @@ int comline;
 	for (cp = userfunclist[i].func; cp && *cp; cp++)
 		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
 #endif
+	free(line);
 	return(0);
 }
 
@@ -1017,6 +1025,7 @@ int comline;
 		}
 		return(1);
 	}
+	argv[1] = evalpath(argv[1], 1);
 	if (argv[1][0] == 'F' && argv[1][1] >= '1' && argv[1][1] <= '2') {
 		for (i = 2; argv[1][i]; i++)
 			if (argv[1][i] < '0' || argv[1][i] > '9') break;
@@ -1044,7 +1053,7 @@ int comline;
 	}
 	if (!ch) return(-1);
 
-	line = (char *)malloc2(strlen(argv[2]) + 1);
+	line = (char *)malloc2(strlen(argv[2] = evalpath(argv[2], 1)) + 1);
 	for (i = j = 0; argv[2][i]; i++, j++) {
 		if (argv[2][i] == '^'
 		&& (k = toupper2(argv[2][i + 1])) >= '?' && k <= '_') {
@@ -1088,7 +1097,7 @@ int comline;
 	if (argc >= 3) return(-1);
 	if (!comline) return(0);
 
-	n = (argc >= 2) ? atoi2(argv[1]) : 1;
+	n = (argc >= 2) ? atoi2(argv[1] = evalpath(argv[1], 1)) : 1;
 	if (n < 0) return(-1);
 
 	i = 0;
@@ -1123,35 +1132,34 @@ int argc;
 char *argv[];
 int comline;
 {
-	char *cp, *tmp, *line;
 #ifndef	USESETENV
 	char *env;
+	int len;
 #endif
+	char *cp;
+	int i;
 
-	if (argc <= 1) return(-1);
-	tmp = line = catargs(argc - 1, &argv[1], '\0');
-	if ((cp = getenvval(&tmp)) == (char *)-1) {
-		free(line);
+	i = argc - 1;
+	if ((cp = getenvval(&i, &(argv[1]))) == (char *)-1 || i + 1 < argc)
 		return(-1);
-	}
+	argv[1] = evalpath(argv[1], 1);
 #ifdef	USESETENV
-	if (!cp) unsetenv(tmp);
+	if (!cp) unsetenv(argv[1]);
 	else {
-		if (setenv(tmp, cp, 1) < 0) error(cp);
+		if (setenv(argv[1], cp, 1) < 0) error(argv[1]);
 		free(cp);
 	}
 #else
-	env = (char *)malloc2(strlen(tmp) + 1 + strlen(cp) + 1);
-	strcpy(env, tmp);
+	len = (cp) ? strlen(cp) : 0;
+	env = (char *)malloc2(strlen(argv[1]) + 1 + len + 1);
+	strcpy(env, argv[1]);
 	strcat(env, "=");
 	if (cp) {
 		strcat(env, cp);
 		free(cp);
 	}
-	if (putenv2(env)) error(env);
+	if (putenv2(env) < 0) error(argv[1]);
 #endif
-	free(line);
-	free(tmp);
 #if	!MSDOS
 	adjustpath();
 #endif
@@ -1166,7 +1174,7 @@ char *argv[];
 int comline;
 {
 	if (argc != 2) return(-1);
-	chdir3(argv[1]);
+	chdir3(argv[1] = evalpath(argv[1], 1));
 	return(0);
 }
 
@@ -1192,7 +1200,8 @@ int comline;
 	if (!comline) return(0);
 	size = histsize[0];
 	no = histno[0];
-	if (argc < 2 || (max = atoi2(argv[1])) > size) max = size;
+	if (argc < 2 || (max = atoi2(argv[1] = evalpath(argv[1], 1))) > size)
+		max = size;
 	if (max <= 0) return(-1);
 
 	n = 0;
@@ -1208,17 +1217,15 @@ int comline;
 	return(i ? n : 1);
 }
 
-/*ARGSUSED*/
-static int isinternal(argc, argv, comline)
-int argc;
-char *argv[];
+static int isinternal(comname, comline)
+char *comname;
 int comline;
 {
 	int i;
 
 	if (!comline) return(NO_OPERATION);
 	for (i = 0; i <= NO_OPERATION; i++)
-		if (!strpathcmp(argv[0], funclist[i].ident)) break;
+		if (!strpathcmp(comname, funclist[i].ident)) break;
 	if (i > NO_OPERATION) return(-1);
 	return(i);
 }
@@ -1228,14 +1235,15 @@ char *command;
 namelist *list;
 int *maxp, comline;
 {
-	char *cp, *tmp, *argv[MAXARGS + 2];
+	char *cp, *comname, *argv[MAXARGS + 2];
 	int i, n, argc;
 
 	n = -2;
 	command = skipspace(command);
 	argc = getargs(command, argv, MAXARGS + 1);
+	comname = _evalpath(argv[0], NULL, 0, 1);
 	for (i = 0; builtinlist[i].ident; i++)
-		if (!strpathcmp(argv[0], builtinlist[i].ident)) break;
+		if (!strpathcmp(comname, builtinlist[i].ident)) break;
 	if (builtinlist[i].ident) {
 		if (comline) {
 			locate(0, n_line - 1);
@@ -1258,25 +1266,26 @@ int *maxp, comline;
 			else if (n < 2) n = 2;
 		}
 	}
-	else if (list && maxp && (i = isinternal(argc, argv, comline)) >= 0) {
+	else if (list && maxp && (i = isinternal(comname, comline)) >= 0) {
 		if (argc <= 2)
-			n = (int)(*funclist[i].func)(list, maxp, argv[1]);
+			n = (int)(*funclist[i].func)(list, maxp,
+				argv[1] = evalpath(argv[1], 1));
 		else {
 			if (comline) warning(0, ILFNC_K);
 			n = 2;
 		}
 	}
 	else if (isalpha(*command) || *command == '_') {
-		tmp = command;
-		if ((cp = getenvval(&tmp)) == (char *)-1) free(tmp);
-		else {
-			if (setenv2(tmp, cp, 1) < 0) error(tmp);
+		i = argc;
+		if ((cp = getenvval(&i, argv)) != (char *)-1 && i == argc) {
+			if (setenv2(argv[0], cp, 1) < 0) error(argv[0]);
 			evalenv();
 			if (cp) free(cp);
 			n = 4;
 		}
 	}
 
+	free(comname);
 	for (i = 0; i < argc; i++) free(argv[i]);
 	return(n);
 }

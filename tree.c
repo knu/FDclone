@@ -13,9 +13,14 @@
 
 #include <signal.h>
 
-#if	!MSDOS
+#if	MSDOS
+# ifndef	_NODOSDRIVE
+extern int preparedrv __P_((int, VOID (*)__P_((VOID_A))));
+# endif
+#else
 #include <sys/param.h>
 #endif
+
 
 extern char fullpath[];
 #ifndef	_NOARCHIVE
@@ -48,16 +53,16 @@ static treelist *treedown __P_((char *, treelist *));
 static VOID freetree __P_((treelist *, int));
 static treelist *_tree_search __P_((char *, treelist *, treelist *));
 static int _tree_input __P_((char *, char **, treelist *, treelist **));
-static char *_tree __P_((VOID));
+static char *_tree __P_((VOID_A));
 
-int sorttree;
-int dircountlimit;
+int sorttree = 0;
+int dircountlimit = 0;
 
-static int redraw;
-static int tr_no;
-static int tr_line;
-static int tr_top;
-static int tr_bottom;
+static int redraw = 0;
+static int tr_no = 0;
+static int tr_line = 0;
+static int tr_top = 0;
+static int tr_bottom = 0;
 
 
 static int evaldir(dir, disp)
@@ -93,7 +98,7 @@ int disp;
 	y = WHEADER + 1;
 	w = FILEFIELD / 2;
 	if (!(dirp = Xopendir(dir))) return(0);
-	while (dp = Xreaddir(dirp)) {
+	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(path + len, dp -> d_name);
 		if (limit-- <= 0
@@ -170,7 +175,7 @@ int level, *maxp, *maxentp;
 	if (i < 0 || !(dirp = Xopendir("."))) return(NULL);
 
 	cp = NULL;
-	while (dp = Xreaddir(dirp)) {
+	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)
 		|| Xstat(dp -> d_name, &status) < 0
 		|| (status.st_mode & S_IFMT) != S_IFDIR) continue;
@@ -343,6 +348,7 @@ char *path;
 	char *cp;
 	int i;
 
+	lp = NULL;
 	if (list -> next) {
 		lp = (treelist *)malloc2(sizeof(treelist));
 		memcpy(lp, &(list -> next[0]), sizeof(treelist));
@@ -354,7 +360,7 @@ char *path;
 		list -> max = list -> maxent = 0;
 		return(1);
 	}
-	for (cp = path, i = 0; cp = strchr(cp, _SC_); cp++, i++);
+	for (cp = path, i = 0; (cp = strchr(cp, _SC_)); cp++, i++);
 	lptmp = maketree(".", list -> next, i,
 		&(list -> max), &(list -> maxent));
 	if (_chdir2(fullpath) < 0) error(fullpath);
@@ -621,7 +627,7 @@ treelist *list, **lpp;
 		case 'l':
 			ch = '\0';
 			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, 1))
-			|| !*(cwd = evalpath(cwd))) break;
+			|| !*(cwd = evalpath(cwd, 1))) break;
 			if (chdir2(cwd) >= 0) {
 				free(cwd);
 				return('l');
@@ -654,7 +660,7 @@ treelist *list, **lpp;
 	return(ch);
 }
 
-static char *_tree(VOID)
+static char *_tree(VOID_A)
 {
 	treelist *list, *lp;
 	char *cp, *cwd, path[MAXPATHLEN + 1];
@@ -693,7 +699,7 @@ static char *_tree(VOID)
 #endif
 #endif	/* !MSDOS */
 	if (strcmp(cwd, _SS_))
-		for (cp = cwd; cp = strchr(cp, _SC_); cp++, tr_line++)
+		for (cp = cwd; (cp = strchr(cp, _SC_)); cp++, tr_line++)
 			if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD) break;
 	tr_line += (tr_top = WHEADER + 1);
 	if (tr_line >= n_line - WFOOTER - 2) {
@@ -757,13 +763,17 @@ int cleanup, *ddp;
 	do {
 		path = _tree();
 	} while (path == fullpath);
-#if	!MSDOS && !defined (_NODOSDRIVE)
 	if (ddp) {
+#ifndef	_NODOSDRIVE
+# if	MSDOS
+		*ddp = preparedrv(dospath(path, NULL), waitmes);
+# else
 		*ddp = lastdrv;
 		lastdrv = -1;
+# endif
+#endif
 		if (chdir2(treepath) < 0) error(treepath);
 	}
-#endif
 	free(treepath);
 
 	if (cleanup) {

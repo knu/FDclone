@@ -57,13 +57,13 @@ static char *truncstr __P_((char *));
 static VOID yesnomes __P_((char *));
 static int selectmes __P_((int, int, int, char *[], int [], int []));
 
-int subwindow;
-char *curfilename;
+int subwindow = 0;
+char *curfilename = NULL;
 #ifndef	_NOEDITMODE
 char *editmode = NULL;
 #endif
-#ifndef	_NOEDITMODE
 
+#ifndef	_NOEDITMODE
 static int emulatekey[] = {
 	K_UP, K_DOWN, K_RIGHT, K_LEFT,
 	K_IC, K_DC, K_IL, K_DL,
@@ -89,11 +89,10 @@ static char wordstarkey[] = {
 	CTRL('R'), CTRL('C'), CTRL('N'), ESC,
 };
 #endif
-
 #ifndef	_NOCOMPLETE
 static namelist *selectlist = NULL;
 #endif
-static int tmpfilepos;
+static int tmpfilepos = 0;
 
 int Xgetkey(sig)
 int sig;
@@ -612,7 +611,7 @@ int x, cx, len, plen, max, linemax, comline, cont;
 
 	cp1 = (char *)malloc2(cx - i + 1);
 	strncpy2(cp1, str + i, cx - i);
-	cp2 = evalpath(cp1);
+	cp2 = evalpath(cp1, 1);
 
 	if (selectlist && cont < 0) {
 		match = strdup2(selectlist[tmpfilepos].name);
@@ -633,7 +632,10 @@ int x, cx, len, plen, max, linemax, comline, cont;
 		}
 	}
 
-	if (cp1 = strrchr(cp2, _SC_)) cp1++;
+	if ((cp1 = strrchr(cp2, _SC_))) cp1++;
+#if	MSDOS || !defined (_NODOSDRIVE)
+	else if (_dospath(cp2)) cp1 = cp2 + 2;
+#endif
 	else cp1 = cp2;
 	ins = strlen(cp1);
 	free(cp2);
@@ -840,6 +842,7 @@ int x, plen, max, linemax, def, comline, h;
 #endif
 			if (i < ' ' || i == C_DEL) {
 				keyflush();
+				if (!i) continue;
 				if (len + 1 >= max) {
 					putterm(t_bell);
 					continue;
@@ -1080,7 +1083,7 @@ int h;
 	if (h == 0) entryhist(h, input, 0);
 	tflush();
 	dupl = (char *)malloc2(len + 1);
-	for (i = 0, j = 0; input[i]; i++, j++) {
+	for (i = j = 0; input[i]; i++, j++) {
 		if (input[i] == QUOTE) i++;
 		dupl[j] = input[i];
 	}
@@ -1245,9 +1248,17 @@ char *str;
 	getkey2(SIGALRM);
 	subwindow = 0;
 
-	locate(0, LMESLINE);
-	putterm(l_clear);
-	tflush();
+	if (!no) {
+		locate(0, LMESLINE);
+		putterm(l_clear);
+		tflush();
+	}
+	else
+#ifndef	_NOARCHIVE
+	if (archivefile) rewritearc(1);
+	else
+#endif
+		rewritefile(1);
 
 	if (str) free(tmp);
 }
@@ -1261,6 +1272,7 @@ int val[], xx[];
 
 	locate(x, LMESLINE);
 	putterm(l_clear);
+	new = -1;
 	for (i = 0; i < max; i++) {
 		locate(x + xx[i] + 1, LMESLINE);
 		if (val[i] != num) kanjiputs(str[i]);
@@ -1341,7 +1353,7 @@ int val[];
 	for (i = 0; i < max; i++) {
 		locate(x + xx[i] + 1, LMESLINE);
 		if (i == new) kanjiputs(str[i]);
-		else cprintf2("%*s", strlen(str[i]), " ");
+		else cprintf2("%*s", (int)strlen(str[i]), " ");
 	}
 	if (ch != ESC) *num = val[new];
 	tflush();

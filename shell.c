@@ -46,10 +46,10 @@ int maxuserfunc = 0;
 char **history[2] = { NULL, NULL };
 short histsize[2] = {0, 0};
 short histno[2] = {0, 0};
-int savehist;
+int savehist = 0;
 char *promptstr = NULL;
 
-static int n_args;
+static int n_args = 0;
 static short histbufsize[2] = {0, 0};
 
 
@@ -64,15 +64,11 @@ int noext;
 
 	if (dir && *dir) d = strlen(dir) + 1;
 	else d = 0;
-#if	!MSDOS
 	arg = killmeta(arg);
-#endif
 	if (noext && (cp = strrchr(arg, '.')) && cp != arg) l = cp - arg;
 	else l = strlen(arg);
 	if (ptr + d + l >= MAXCOMMSTR) {
-#if	!MSDOS
 		free(arg);
-#endif
 		return(0);
 	}
 	if (d) {
@@ -80,9 +76,7 @@ int noext;
 		strcat(buf + ptr, _SS_);
 	}
 	strncpy(buf + ptr + d, arg, l);
-#if	!MSDOS
 	free(arg);
-#endif
 	return(d + l);
 }
 
@@ -95,25 +89,19 @@ int max, noext;
 	int i, n, len;
 	char *dir;
 
-	dir =
-#ifndef	_NOARCHIVE
-#if	MSDOS
-	(archivefile) ? archivedir :
+#ifdef	_NOARCHIVE
+	dir = NULL;
 #else
-	(archivefile) ? killmeta(archivedir) :
+	dir = (archivefile) ? killmeta(archivedir) : NULL;
 #endif
-#endif	/* !_NOARCHIVE */
-	NULL;
 
 	if (!n_args) {
 		len = setarg(buf, ptr, dir, list[filepos].name, noext);
-#if	!MSDOS
 		if (dir) free(dir);
-#endif
 		return(len);
 	}
 
-	for (i = len = 0; i < max; i++) if (isarg(&list[i])) {
+	for (i = n = len = 0; i < max; i++) if (isarg(&list[i])) {
 		n = setarg(buf, ptr + len, dir, list[i].name, noext);
 		if (!n) break;
 		list[i].flags &= ~F_ISARG;
@@ -123,9 +111,7 @@ int max, noext;
 	}
 	if (len > 0 && buf[ptr + len - 1] == ' ') len--;
 	if (!n) len = -len;
-#if	!MSDOS
 	if (dir) free(dir);
-#endif
 	return(len);
 }
 
@@ -136,9 +122,7 @@ int needmark;
 	char *cp, *src, *body;
 	int i, len, ptr;
 
-#if	!MSDOS
 	arg = killmeta(arg);
-#endif
 	if ((cp = strrchr(arg, '.')) && cp != arg) {
 		i = cp - arg;
 		body = (char *)malloc2(i + 1);
@@ -149,9 +133,7 @@ int needmark;
 	ptr = strlen(format);
 	if (ptr > MAXCOMMSTR) {
 		if (body != arg) free(body);
-#if	!MSDOS
 		free(arg);
-#endif
 		return(0);
 	}
 	strcpy(buf, format);
@@ -173,9 +155,7 @@ int needmark;
 		cp += len + 1;
 	}
 	if (body != arg) free(body);
-#if	!MSDOS
 	free(arg);
-#endif
 	if (i < needmark) return(0);
 	return(1);
 }
@@ -190,7 +170,7 @@ macrostat *stp;
 	char buf[MAXPATHLEN + 1];
 #endif
 	macrostat st;
-	char *cp, *tmp, line[MAXCOMMSTR + 1];
+	char *cp, line[MAXCOMMSTR + 1];
 	int i, j, len, noext, argset, uneval;
 
 	if (stp) argset = (stp -> flags) & F_ARGSET;
@@ -285,12 +265,14 @@ macrostat *stp;
 		else {
 			line[j++] = command[i];
 #if	!MSDOS
-			if (command[i] == '\\' && command[i + 1])
+			if (command[i] == '\\' && command[i + 1]
+			&& uneval != '\'')
 				line[j++] = command[++i];
 			else
 #endif
 			if (command[i] == uneval) uneval = 0;
-			else if (command[i] == '"' || command[i] == '\'')
+			else if (command[i] == '"' || command[i] == '\''
+			|| command[i] == '`')
 				uneval = command[i];
 		}
 	}
@@ -298,31 +280,20 @@ macrostat *stp;
 
 	if (!argset) {
 		line[j++] = ' ';
-#if	!MSDOS
 		arg = killmeta(arg);
-#endif
 		strcpy(line + j, arg);
 		j += strlen(arg);
-#if	!MSDOS
 		free(arg);
-#endif
 	}
 	if (list && !(stp -> needmark) && !((stp -> flags) & F_REMAIN)) {
 		for (i = 0; i < max; i++) list[i].flags &= ~F_ISARG;
 		n_args = 0;
 	}
 	if (((stp -> flags) & F_REMAIN) && !n_args) stp -> flags &= ~F_REMAIN;
-	*(line + j) = '\0';
 
-	cp = evalcomstr(line, CMDLINE_DELIM);
-	len = strlen(cp);
-	for (i = j = 0; i < stp -> needmark; i++) {
-		j += strlen(&line[j]) + 1;
-		if (!(tmp = evalcomstr(&line[j], CMDLINE_DELIM))) tmp = "";
-		cp = (char *)realloc2(cp, len + strlen(tmp) + 1 + 1);
-		strcpy(cp + len + 1, tmp);
-		len += strlen(tmp) + 1;
-	}
+	cp = (char *)malloc2(j + 1);
+	memcpy(cp, line, j);
+	cp[j] = '\0';
 	return(cp);
 }
 
@@ -378,15 +349,18 @@ char *command;
 namelist *list;
 int *maxp, noconf;
 {
-	char *cp;
+	char *cp, *tmp;
 	int n;
 
 	while (*command == ' ' || *command == '\t') command++;
 	sigvecreset();
-	if (cp = evalalias(command)) command = cp;
+	if ((cp = evalalias(command))) command = cp;
 
-	if ((n = execbuiltin(command, list, maxp, 1)) < -1)
-		system2(command, noconf);
+	if ((n = execbuiltin(command, list, maxp, 1)) < -1) {
+		tmp = evalcomstr(command, CMDLINE_DELIM);
+		system2(tmp, noconf);
+		free(tmp);
+	}
 	sigvecset();
 	if (cp) free(cp);
 	return(n);
@@ -471,7 +445,7 @@ char *env, *arg;
 	return(1);
 }
 
-int execshell(VOID)
+int execshell(VOID_A)
 {
 	char *sh;
 	int status;
@@ -513,7 +487,7 @@ char *argv[];
 	int i, j, k, n;
 
 	i = j = 0;
-	while (cp = strtkchr(&command[i], '$', 1)) {
+	while ((cp = strtkchr(&command[i], '$', 1))) {
 		while (&command[i] < cp && j < MAXCOMMSTR)
 			line[j++] = command[i++];
 		if (command[++i] < '0' || command[i] > '9') {
@@ -580,7 +554,7 @@ int uniq;
 
 	if (!str || !*str) return(0);
 
-	if (histno[n]++ >= (1 << (BITSPERBYTE * sizeof(short) - 1) - 1))
+	if (histno[n]++ >= (short)(1L << (BITSPERBYTE * sizeof(short) - 1)) - 1)
 		histno[n] = 0;
 
 	if (uniq) {
@@ -605,7 +579,7 @@ char *file;
 	char *cp, line[MAXLINESTR + 1];
 	int i, j, len, size;
 
-	cp = evalpath(strdup2(file));
+	cp = evalpath(strdup2(file), 1);
 	fp = fopen(cp, "r");
 	free(cp);
 	if (!fp) return(-1);
@@ -617,8 +591,9 @@ char *file;
 
 	i = 0;
 	while (fgets(line, MAXLINESTR, fp)) {
-		if (cp = strchr(line, '\n')) *cp = '\0';
-		if (histno[n]++ >= (1 << (BITSPERBYTE * sizeof(short) - 1) - 1))
+		if ((cp = strchr(line, '\n'))) *cp = '\0';
+		if (histno[n]++ >=
+		(short)(1L << (BITSPERBYTE * sizeof(short) - 1)) - 1)
 			histno[n] = 0;
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		for (j = len = 0; line[j]; j++, len++)
@@ -647,7 +622,7 @@ char *file;
 	int i, j, len, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
-	cp = evalpath(strdup2(file));
+	cp = evalpath(strdup2(file), 1);
 	fp = fopen(cp, "w");
 	free(cp);
 	if (!fp) return(-1);

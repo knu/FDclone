@@ -15,8 +15,6 @@
 #define	VOID
 #endif
 
-extern VOID exit __P_((int));
-
 static int fgetc2 __P_((FILE *));
 static int readfunctable __P_((FILE *, FILE *));
 
@@ -97,7 +95,7 @@ char *argv[];
 
 	if (!in || !out) {
 		fprintf(stderr, "Cannot open file.\n");
-		exit(127);
+		return(1);
 	}
 
 	fprintf(out, "/*\n");
@@ -113,5 +111,5 @@ char *argv[];
 	if (in != stdin) fclose(in);
 	if (out != stdout) fclose(out);
 
-	exit(0);
+	return(0);
 }

@@ -345,11 +345,10 @@ fi
 if noexist "getcwd(0,0)"; then
 	echo "#define	USEGETWD"
 fi
-if isexist "timelocal(0)" time; then
-	echo "#define	USETIMELOCAL"
-fi
 if isexist "mktime(0)" time; then
 	echo "#define	USEMKTIME"
+elif isexist "timelocal(0)" time; then
+	echo "#define	USETIMELOCAL"
 fi
 if noexist "gethostname(0,0)"\
 && isexist "uname(0)" sys/utsname; then
@@ -358,6 +357,6 @@ fi
 if inheader 'int.*[^a-zA-Z_]signal' signal; then
 	echo "#define	SIGARGINT"
 fi
-if inheader 'signal.*[^a-zA-Z_](.*( *int *) *)' signal; then
+if inheader '[^a-zA-Z_]signal[^a-zA-Z_]*\(.*\( *int *\) *\)' signal; then
 	echo "#define	SIGFNCINT"
 fi

@@ -55,7 +55,7 @@ static int three_columns __P_((namelist *, int *, char *));
 static int five_columns __P_((namelist *, int *, char *));
 static int fname_right __P_((namelist *, int *, char *));
 static int fname_left __P_((namelist *, int *, char *));
-static VOID markcount __P_((VOID));
+static VOID markcount __P_((VOID_A));
 static int mark_file __P_((namelist *, int *, char *));
 static int mark_file2 __P_((namelist *, int *, char *));
 static int mark_file3 __P_((namelist *, int *, char *));
@@ -124,7 +124,7 @@ static int no_operation __P_((namelist *, int *, char *));
 char *findpattern = NULL;
 reg_t *findregexp = NULL;
 #ifndef	_NOWRITEFS
-int writefs;
+int writefs = 0;
 #endif
 bindtable bindlist[MAXBINDTABLE] = {
 	{K_UP,		CUR_UP,		255},
@@ -486,7 +486,7 @@ char *arg;
 	return(2);
 }
 
-static VOID markcount(VOID)
+static VOID markcount(VOID_A)
 {
 	char buf[16];
 
@@ -703,9 +703,9 @@ char *arg;
 {
 	char *path;
 
-	if (arg && *arg) path = evalpath(strdup2(arg));
+	if (arg && *arg) path = strdup2(arg);
 	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, 1))
-	|| !*(path = evalpath(path))) return(1);
+	|| !*(path = evalpath(path, 1))) return(1);
 	if (!chdir3(path)) {
 		warning(-1, path);
 		free(path);
@@ -784,7 +784,7 @@ int *maxp;
 char *arg;
 {
 #if	!MSDOS || !defined (_NOARCHIVE)
-	char *dir;
+	char *dir = NULL;
 #endif
 #if	!MSDOS
 	int drive = 0;
@@ -825,7 +825,7 @@ int *maxp;
 char *arg;
 {
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	char *dir;
+	char *dir = NULL;
 	int drive;
 #endif
 
@@ -875,7 +875,7 @@ char *arg;
 	tmp2 = sorton & ~7;
 	if (arg && *arg) {
 		i = atoi(arg);
-		if (i >= 0 && i <= 13 || (i & 7) <= 5) {
+		if ((i >= 0 && i <= 13) || (i & 7) <= 5) {
 			tmp1 = i & 7;
 			tmp2 = i & ~7;
 		}
@@ -983,9 +983,9 @@ char *arg;
 {
 	char *path;
 
-	if (arg && *arg) path = evalpath(strdup2(arg));
+	if (arg && *arg) path = strdup2(arg);
 	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, 1))
-	|| !*(path = evalpath(path))) return(1);
+	|| !*(path = evalpath(path, 1))) return(1);
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
 	free(path);
 	return(4);
@@ -1041,7 +1041,7 @@ char *arg;
 
 	if (isdotdir(list[filepos].name)) return(warning_bell(list, maxp, arg));
 	if (arg && *arg) {
-		file = evalpath(strdup2(arg));
+		file = strdup2(arg);
 		errno = EEXIST;
 		if (Xaccess(file, F_OK) >= 0 || errno != ENOENT) {
 			warning(-1, file);
@@ -1050,9 +1050,9 @@ char *arg;
 		}
 	}
 	else for (;;) {
-		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, -1)))
+		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, -1))
+		|| !*(file = evalpath(file, 1)))
 			return(1);
-		file = evalpath(file);
 		if (Xaccess(file, F_OK) < 0) {
 			if (errno == ENOENT) break;
 			warning(-1, file);
@@ -1163,7 +1163,7 @@ char *arg;
 	regexp_free(findregexp);
 	if (!destpath) return(1);
 
-	if (cp = strrchr(destpath, _SC_)) {
+	if ((cp = strrchr(destpath, _SC_))) {
 		*(cp++) = '\0';
 		chdir2(destpath);
 	}
@@ -1202,7 +1202,7 @@ int *maxp;
 char *arg;
 {
 #if	!MSDOS || !defined (_NOARCHIVE)
-	char *dir;
+	char *dir = NULL;
 #endif
 	char *com;
 	int i, len;
@@ -1275,9 +1275,9 @@ char *arg;
 	char *file;
 	int i;
 
-	if (arg && *arg) file = evalpath(strdup2(arg));
+	if (arg && *arg) file = strdup2(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
-	|| !*(file = evalpath(file))) return(1);
+	|| !*(file = evalpath(file, 1))) return(1);
 	i = pack(file, list, *maxp);
 	free(file);
 	if (i < 0) {
@@ -1333,9 +1333,9 @@ char *arg;
 	char *path;
 	int i;
 
-	if (arg && *arg) path = evalpath(strdup2(arg));
+	if (arg && *arg) path = evalpath(strdup2(arg), 1);
 	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, 1))) return(1);
-	if (!*(path = evalpath(path))) {
+	else if (!*(path = evalpath(path, 1))) {
 		free(path);
 		path = strdup2(".");
 	}
@@ -1427,7 +1427,7 @@ char *arg;
 #else
 	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))
 #endif
-	|| !*(dev = evalpath(dev))) return(1);
+	|| !*(dev = evalpath(dev, 1))) return(1);
 	i = backup(dev, list, *maxp);
 	free(dev);
 	if (i <= 0) return(1);

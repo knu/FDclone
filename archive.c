@@ -26,7 +26,7 @@ extern int Xpclose __P_((FILE *));
 #include <sys/param.h>
 #endif
 
-#if	!MSDOS && !defined(_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 extern int shutdrv __P_((int));
 #endif
 
@@ -92,9 +92,9 @@ static int readarchive __P_((char *, launchtable *));
 static int archbrowse __P_((char *, int));
 
 char *archivefile = NULL;
-char *archivedir;
-int maxlaunch;
-int maxarchive;
+char *archivedir = NULL;
+int maxlaunch = 0;
+int maxarchive = 0;
 launchtable launchlist[MAXLAUNCHTABLE] = {
 #if	MSDOS
 	{" ^.*\\.lzh$",		"lha v",		PM_LHA},
@@ -103,7 +103,7 @@ launchtable launchlist[MAXLAUNCHTABLE] = {
 #endif
 	{" ^.*\\.tar$",		"tar tvf", 		PM_TAR},
 	{" ^.*\\.tar\\.Z$",	"zcat %C | tar tvf -",	PM_TAR},
-	{" ^.*\\.tar\\.gz$",	"gzip -cd %C | tar tvf -", PM_TAR},
+	{" ^.*\\.tar\\.gz$",	"gzip -cd %C | tar tvf -",	PM_TAR},
 	{NULL,			NULL,		-1, 0, "", "", "", "", 1}
 };
 archivetable archivelist[MAXARCHIVETABLE] = {
@@ -120,9 +120,9 @@ archivetable archivelist[MAXARCHIVETABLE] = {
 	{NULL,			NULL,			NULL}
 };
 
-static launchtable *launchp;
-static namelist *arcflist;
-static int maxarcf;
+static launchtable *launchp = NULL;
+static namelist *arcflist = NULL;
+static int maxarcf = 0;
 static int launchlevel = 0;
 
 
@@ -197,7 +197,7 @@ int no;
 	i = (int)(list -> width[no]);
 	if (i >= 128) i -= 128;
 	else if (i) {
-		if (tmp = strchr2(cp, i)) i = tmp - cp;
+		if ((tmp = strchr2(cp, i))) i = tmp - cp;
 		else i = &line[eol] - cp;
 	}
 	if (!i || &cp[i] > &line[eol]) i = &line[eol] - cp;
@@ -363,6 +363,7 @@ char *s1, *s2;
 		while (s1[i + 1] == _SC_) i++;
 		while (s2[j + 1] == _SC_) j++;
 	}
+	if (s2[j] && s2[j] != _SC_) return(0);
 	if (i) while (s2[j + 1] == _SC_) j++;
 	return(j);
 }
@@ -375,7 +376,7 @@ int max;
 	int i, len;
 
 	cp = namep -> name;
-	while (tmp = strchr(cp, _SC_)) {
+	while ((tmp = strchr(cp, _SC_))) {
 		while (*(tmp + 1) == _SC_) tmp++;
 		if (!*(tmp + 1)) break;
 		len = tmp - (namep -> name);
@@ -458,7 +459,7 @@ launchtable *list;
 
 	while (fgets(line, MAXLINESTR, fp)) {
 		no++;
-		if (cp = strchr(line, '\n')) *cp = '\0';
+		if ((cp = strchr(line, '\n'))) *cp = '\0';
 		if (list -> lines > 1) {
 			if (!(i++)) {
 				strcpy(buf, line);
@@ -550,7 +551,7 @@ int max;
 			arcflist[0].name = filelist[0].name;
 			continue;
 		}
-		if (tmp = strchr(cp, _SC_)) while (*(++tmp) == _SC_);
+		if ((tmp = strchr(cp, _SC_))) while (*(++tmp) == _SC_);
 		if ((!tmp || !*tmp) && (!re || regexp_exec(re, cp))) {
 			memcpy(&arcflist[maxarcf], &filelist[i],
 				sizeof(namelist));
@@ -673,6 +674,7 @@ int max;
 	if (i >= maxlaunch) return(-1);
 	regexp_free(re);
 
+	dir = NULL;
 	if ((archivefile && !(dir = tmpunpack(list, max)))
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	|| ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
@@ -694,6 +696,7 @@ int max;
 		return(0);
 	}
 
+	dupfullpath = NULL;
 #if	!MSDOS
 	if (drive) {
 		dupfullpath = strdup2(fullpath);
@@ -769,7 +772,7 @@ int max;
 		}
 		else {
 			i = arcflist[filepos].ent;
-			if (cp = strrchr(filelist[i].name, _SC_)) cp++;
+			if ((cp = strrchr(filelist[i].name, _SC_))) cp++;
 			else cp = filelist[i].name;
 			arcflist[filepos].name = cp;
 		}
@@ -815,8 +818,11 @@ int tr;
 	reg_t *re;
 	char *tmpdir, path[MAXPATHLEN + 1];
 	int i;
+#ifndef	_NODOSDRIVE
+	int dd;
+#endif
 #if	!MSDOS
-	int dd, drive;
+	int drive;
 #endif
 
 	for (i = 0; i < maxarchive; i++) {
@@ -832,8 +838,8 @@ int tr;
 	else {
 #ifndef	_NOTREE
 		if (tr) {
-#if	MSDOS || defined(_NODOSDRIVE)
-			dir = tree(0, NULL);
+#ifdef	_NODOSDRIVE
+			dir = tree(0, (int *)1);
 #else
 			dir = tree(0, &dd);
 			if (dd >= 0) shutdrv(dd);
@@ -844,7 +850,7 @@ int tr;
 		{
 			if (arg && *arg) dir = strdup2(arg);
 			else dir = inputstr(UNPAC_K, 1, -1, NULL, 1);
-			dir = evalpath(dir);
+			dir = evalpath(dir, 1);
 		}
 		if (!dir) return(0);
 		strcpy(path, (*dir) ? dir : ".");
@@ -915,8 +921,10 @@ int max;
 	if (_chdir2(path) < 0) error(path);
 	if (i < 0) putterm(t_bell);
 	else if (i > 0) {
-		if (*archivedir && _chdir2(archivedir) < 0)
+		if (*archivedir && _chdir2(archivedir) < 0) {
 			warning(-1, archivedir);
+			*path = '\0';
+		}
 		else if (Xaccess(list[filepos].name, F_OK) < 0)
 			warning(-1, list[filepos].name);
 		else return(strdup2(path));

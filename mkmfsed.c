@@ -16,9 +16,9 @@
 #ifdef	USEMANLANG
 extern char *getenv __P_((char *));
 #endif
-extern VOID exit __P_((int));
 
-int main (argc, argv)
+
+int main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -28,7 +28,7 @@ char *argv[];
 
 	printf("s:__EXE__::g\n");
 	printf("s:__OBJ__:.o:g\n");
-	printf("s:__OBJS__:dosemu.o dosdisk.o:\n");
+	printf("s:__OBJS__:dosemu.o:\n");
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
@@ -60,6 +60,8 @@ char *argv[];
 	printf("s:__CC__:%s:\n", CCCOMMAND);
 	printf("s:__CPP__:$(CC) -E:\n");
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
+	printf("s:__OUT__:-o:\n");
+	printf("s:__LNK__:-o:\n");
 
 	printf("s:__TERMLIBS__:%s:\n", TERMCAPLIB);
 	printf("s:__REGLIBS__:%s:\n", REGEXPLIB);
@@ -77,7 +79,13 @@ char *argv[];
 	printf("s:__MSBOPTION__::\n");
 #endif
 
+#ifdef	_NODOSDRIVE
+	printf("s:__UNITBL__::\n");
+#else
+	printf("s:__UNITBL__:$(UNITBL):\n");
+#endif
+
 	printf("s:__PREFIXOPTION__:-c:\n");
 
-	exit(0);
+	return(0);
 }

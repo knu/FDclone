@@ -84,6 +84,7 @@ SIZEINFO	=	0
 #	0: monochrome (Default)
 #	1: color
 #	2: color & force background to blacken
+#	3: color & force foreground to blacken
 ANSICOLOR	=	0
 
 # select edit mode with your favorite editor type

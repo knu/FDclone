@@ -16,8 +16,6 @@
 
 extern char fullpath[];
 
-char *rockridgepath;
-
 #define TRANSTBLFILE	"TRANS.TBL"
 #define TRANSTBLVAR	1
 #define	RR_TRANS	001
@@ -27,9 +25,11 @@ char *rockridgepath;
 
 static int isrockridge __P_((char *));
 static char *getorgname __P_((char *, u_char));
-static assoclist *readtranstbl __P_((void));
+static assoclist *readtranstbl __P_((VOID_A));
 static VOID freetranstbl __P_((assoclist *));
 static char *_detransfile __P_((char *, char *, int));
+
+char *rockridgepath = NULL;
 
 static assoclist *rr_curtbl = NULL;
 static char *rr_cwd = NULL;
@@ -78,7 +78,7 @@ u_char stat;
 	return(strdup2(buf));
 }
 
-static assoclist *readtranstbl __P_((void))
+static assoclist *readtranstbl(VOID_A)
 {
 	assoclist *top, **bottom, *new;
 	FILE *fp;
@@ -89,15 +89,15 @@ static assoclist *readtranstbl __P_((void))
 	for (;;) {
 		strcpy(line, TRANSTBLFILE);
 		stat = RR_TRANS;
-		if (fp = _Xfopen(line, "r")) break;
+		if ((fp = _Xfopen(line, "r"))) break;
 
 		sprintf(line + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
 		stat |= RR_VERNO;
-		if (fp = _Xfopen(line, "r")) break;
+		if ((fp = _Xfopen(line, "r"))) break;
 
 		sprintf(line + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
 		stat |= RR_HYPHN;
-		if (fp = _Xfopen(line, "r")) break;
+		if ((fp = _Xfopen(line, "r"))) break;
 
 		for (i = 0; i < sizeof(TRANSTBLFILE); i++) {
 			line[i] = TRANSTBLFILE[i];
@@ -107,15 +107,15 @@ static assoclist *readtranstbl __P_((void))
 		line[i] = '\0';
 
 		stat = RR_TRANS | RR_LOWER;
-		if (fp = _Xfopen(line, "r")) break;
+		if ((fp = _Xfopen(line, "r"))) break;
 
 		sprintf(line + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
 		stat |= RR_VERNO;
-		if (fp = _Xfopen(line, "r")) break;
+		if ((fp = _Xfopen(line, "r"))) break;
 
 		sprintf(line + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
 		stat |= RR_HYPHN;
-		if (fp = _Xfopen(line, "r")) break;
+		if ((fp = _Xfopen(line, "r"))) break;
 
 		return(NULL);
 	}
@@ -123,7 +123,7 @@ static assoclist *readtranstbl __P_((void))
 	top = NULL;
 	bottom = &top;
 	while (Xfgets(line, MAXPATHLEN * 2, fp)) {
-		if (cp = strchr(line, '\n')) *cp = '\0';
+		if ((cp = strchr(line, '\n'))) *cp = '\0';
 		cp = line;
 		switch (*cp) {
 			case 'F':

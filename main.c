@@ -14,6 +14,7 @@
 #include "version.h"
 
 #if	MSDOS
+# include <process.h>
 # ifdef	__GNUC__
 extern char *adjustfname __P_((char *));
 # endif
@@ -48,8 +49,11 @@ extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
 #endif
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
+#if	!MSDOS
 extern devinfo fdtype[];
+#endif
+extern char *unitblpath;
 #endif
 extern char fullpath[];
 extern char **history[];
@@ -60,6 +64,13 @@ extern int dispmode;
 extern char *deftmpdir;
 
 #define	CLOCKUPDATE	10	/* sec */
+
+#ifndef	SIG_DFL
+#define	SIG_DFL		(sigarg_t (*)__P_((sigfnc_t)))0
+#endif
+#ifndef	SIG_IGN
+#define	SIG_IGN		(sigarg_t (*)__P_((sigfnc_t)))1
+#endif
 
 #if	!MSDOS && !defined (SIGWINCH)
 # if	defined (SIGWINDOW)
@@ -79,72 +90,72 @@ extern char *deftmpdir;
 
 static VOID signalexit __P_((int));
 #ifdef	SIGALRM
-static sigarg_t ignore_alrm __P_((VOID));
+static sigarg_t ignore_alrm __P_((VOID_A));
 #endif
 #ifdef	SIGWINCH
-static sigarg_t ignore_winch __P_((VOID));
+static sigarg_t ignore_winch __P_((VOID_A));
 #endif
 #ifdef	SIGINT
-static sigarg_t ignore_int __P_((VOID));
+static sigarg_t ignore_int __P_((VOID_A));
 #endif
 #ifdef	SIGQUIT
-static sigarg_t ignore_quit __P_((VOID));
+static sigarg_t ignore_quit __P_((VOID_A));
 #endif
 #ifdef	SIGHUP
-static sigarg_t hangup __P_((VOID));
+static sigarg_t hangup __P_((VOID_A));
 #endif
 #ifdef	SIGILL
-static sigarg_t illerror __P_((VOID));
+static sigarg_t illerror __P_((VOID_A));
 #endif
 #ifdef	SIGTRAP
-static sigarg_t traperror __P_((VOID));
+static sigarg_t traperror __P_((VOID_A));
 #endif
 #ifdef	SIGIOT
-static sigarg_t ioerror __P_((VOID));
+static sigarg_t ioerror __P_((VOID_A));
 #endif
 #ifdef	SIGEMT
-static sigarg_t emuerror __P_((VOID));
+static sigarg_t emuerror __P_((VOID_A));
 #endif
 #ifdef	SIGFPE
-static sigarg_t floaterror __P_((VOID));
+static sigarg_t floaterror __P_((VOID_A));
 #endif
 #ifdef	SIGBUS
-static sigarg_t buserror __P_((VOID));
+static sigarg_t buserror __P_((VOID_A));
 #endif
 #ifdef	SIGSEGV
-static sigarg_t segerror __P_((VOID));
+static sigarg_t segerror __P_((VOID_A));
 #endif
 #ifdef	SIGSYS
-static sigarg_t syserror __P_((VOID));
+static sigarg_t syserror __P_((VOID_A));
 #endif
 #ifdef	SIGPIPE
-static sigarg_t pipeerror __P_((VOID));
+static sigarg_t pipeerror __P_((VOID_A));
 #endif
 #ifdef	SIGTERM
-static sigarg_t terminate __P_((VOID));
+static sigarg_t terminate __P_((VOID_A));
 #endif
 #ifdef	SIGXCPU
-static sigarg_t xcpuerror __P_((VOID));
+static sigarg_t xcpuerror __P_((VOID_A));
 #endif
 #ifdef	SIGXFSZ
-static sigarg_t xsizerror __P_((VOID));
+static sigarg_t xsizerror __P_((VOID_A));
 #endif
 #ifdef	SIGWINCH
-static sigarg_t wintr __P_((VOID));
+static sigarg_t wintr __P_((VOID_A));
 #endif
 #ifdef	SIGALRM
-static sigarg_t printtime __P_((VOID));
+static sigarg_t printtime __P_((VOID_A));
 #endif
 static int getoption __P_((int, char *[]));
 static VOID setexecname __P_((char *));
 static VOID setexecpath __P_((char *));
 
-char *origpath;
+char *origpath = NULL;
 char *progpath = NULL;
-char *tmpfilename;
-int showsecond;
+char *tmpfilename = NULL;
+int showsecond = 0;
 
-static char *progname;
+static char *progname = NULL;
 static int timersec = 0;
 
 
@@ -160,7 +171,7 @@ char *str;
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	dosallclose();
 #endif
-	exit(127);
+	exit(1);
 }
 
 static VOID signalexit(sig)
@@ -177,126 +188,177 @@ int sig;
 }
 
 #ifdef	SIGALRM
-static sigarg_t ignore_alrm(VOID)
+static sigarg_t ignore_alrm(VOID_A)
 {
 	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))ignore_alrm);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGWINCH
-static sigarg_t ignore_winch(VOID)
+static sigarg_t ignore_winch(VOID_A)
 {
 	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))ignore_winch);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGINT
-static sigarg_t ignore_int(VOID)
+static sigarg_t ignore_int(VOID_A)
 {
 	signal(SIGINT, (sigarg_t (*)__P_((sigfnc_t)))ignore_int);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGQUIT
-static sigarg_t ignore_quit(VOID)
+static sigarg_t ignore_quit(VOID_A)
 {
 	signal(SIGQUIT, (sigarg_t (*)__P_((sigfnc_t)))ignore_quit);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGHUP
-static sigarg_t hangup(VOID)
+static sigarg_t hangup(VOID_A)
 {
 	signalexit(SIGHUP);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGILL
-static sigarg_t illerror(VOID)
+static sigarg_t illerror(VOID_A)
 {
 	signalexit(SIGILL);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGTRAP
-static sigarg_t traperror(VOID)
+static sigarg_t traperror(VOID_A)
 {
 	signalexit(SIGTRAP);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGIOT
-static sigarg_t ioerror(VOID)
+static sigarg_t ioerror(VOID_A)
 {
 	signalexit(SIGIOT);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGEMT
-static sigarg_t emuerror(VOID)
+static sigarg_t emuerror(VOID_A)
 {
 	signalexit(SIGEMT);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGFPE
-static sigarg_t floaterror(VOID)
+static sigarg_t floaterror(VOID_A)
 {
 	signalexit(SIGFPE);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGBUS
-static sigarg_t buserror(VOID)
+static sigarg_t buserror(VOID_A)
 {
 	signalexit(SIGBUS);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGSEGV
-static sigarg_t segerror(VOID)
+static sigarg_t segerror(VOID_A)
 {
 	signalexit(SIGSEGV);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGSYS
-static sigarg_t syserror(VOID)
+static sigarg_t syserror(VOID_A)
 {
 	signalexit(SIGSYS);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGPIPE
-static sigarg_t pipeerror(VOID)
+static sigarg_t pipeerror(VOID_A)
 {
 	signalexit(SIGPIPE);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGTERM
-static sigarg_t terminate(VOID)
+static sigarg_t terminate(VOID_A)
 {
 	signalexit(SIGTERM);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGXCPU
-static sigarg_t xcpuerror(VOID)
+static sigarg_t xcpuerror(VOID_A)
 {
 	signalexit(SIGXCPU);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGXFSZ
-static sigarg_t xsizerror(VOID)
+static sigarg_t xsizerror(VOID_A)
 {
 	signalexit(SIGXFSZ);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGWINCH
-static sigarg_t wintr(VOID)
+static sigarg_t wintr(VOID_A)
 {
 	signal(SIGWINCH, SIG_IGN);
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
@@ -308,11 +370,14 @@ static sigarg_t wintr(VOID)
 	rewritefile(1);
 	if (subwindow) ungetch2(CTRL('L'));
 	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))wintr);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
 #ifdef	SIGALRM
-static sigarg_t printtime(VOID)
+static sigarg_t printtime(VOID_A)
 {
 	static time_t now;
 	struct tm *tm;
@@ -346,10 +411,13 @@ static sigarg_t printtime(VOID)
 	}
 	timersec--;
 	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))printtime);
+#if	defined (SIGARGINT) || defined (NOVOID)
+	return(0);
+#endif
 }
 #endif
 
-VOID sigvecset(VOID)
+VOID sigvecset(VOID_A)
 {
 	getwsize(80, WHEADERMAX + WFOOTER + 2);
 #ifdef	SIGALRM
@@ -363,7 +431,7 @@ VOID sigvecset(VOID)
 #endif
 }
 
-VOID sigvecreset(VOID)
+VOID sigvecreset(VOID_A)
 {
 #ifdef	SIGALRM
 	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))ignore_alrm);
@@ -376,7 +444,7 @@ VOID sigvecreset(VOID)
 #endif
 }
 
-VOID title(VOID)
+VOID title(VOID_A)
 {
 	char *cp, *eol;
 
@@ -386,16 +454,18 @@ VOID title(VOID)
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
-	cprintf2("%-*.*s", eol - cp, eol - cp, cp);
+	cprintf2("%-*.*s", (int)(eol - cp), (int)(eol - cp), cp);
 	if (distributor) {
 		putch2('#');
 		eol++;
 	}
-	cprintf2("%-*.*s", n_column - 32 - (eol - cp),
-		n_column - 32 - (eol - cp), " (c)1995-97 T.Shirai  ");
+	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
+		n_column - 32 - (int)(eol - cp), " (c)1995-97 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
+#ifdef	SIGALRM
 	printtime();
+#endif
 }
 
 int loadruncom(file, exist)
@@ -406,7 +476,7 @@ int exist;
 	char *cp, *fold, line[MAXLINESTR + 1];
 	int i, n, er, cont;
 
-	cp = evalpath(strdup2(file));
+	cp = evalpath(strdup2(file), 1);
 	fp = fopen(cp, "r");
 	free(cp);
 	if (!fp) {
@@ -477,25 +547,29 @@ static int getoption(argc, argv)
 int argc;
 char *argv[];
 {
-	char *cp, *env;
-	int i, ch;
+	char *cp, *env, *tmp;
+	int i, n;
 
 	for (i = 1; i < argc; i++) {
-		env = argv[i] + 1;
-		if (*argv[i] != '-' || *env < 'A' || *env > 'Z') return(i);
+		env = &(argv[i][1]);
+		if (*argv[i] != '-') return(i);
+		if (*env == '-' && !*(env + 1)) return(i + 1);
 
-		if (cp = strpbrk(env, "= \t")) {
-			ch = *cp;
-			*cp = '\0';
-			if (ch == '=' || (cp = strchr(++cp, '='))
-			|| (++i < argc && (cp = strchr(argv[i], '=')))) cp++;
-			else i--;
+		tmp = argv[i];
+		argv[i] = strdup2(env);
+		n = argc - i;
+		cp = getenvval(&n, &(argv[i]));
+		env = argv[i];
+		argv[i] = tmp;
+		if (cp == (char *)-1) {
+			errno = EINVAL;
+			error(argv[i]);
 		}
+		i += n - 1;
 
-		if (cp) {
-			while (*cp && (*cp == ' ' || *cp == '\t')) cp++;
-			if (setenv2(env, cp, 1) < 0) error(env);
-		} else setenv2(env, NULL, 1);
+		if (setenv2(env, cp, 1) < 0) error(env);
+		if (cp) free(cp);
+		free(env);
 	}
 	return(i);
 }
@@ -505,16 +579,16 @@ char *argv;
 {
 	char buf[MAXNAMLEN + 1];
 
-	if (progname = strrchr(argv, _SC_)) progname++;
+	if ((progname = strrchr(argv, _SC_))) progname++;
 	else progname = argv;
 #if	MSDOS
 	{
 		char *cp;
 
-		if (cp = strchr(argv, '.')) *cp = '\0';
+		if ((cp = strchr(argv, '.'))) *cp = '\0';
 	}
 #endif
-	sprintf(buf, "%s%d", progname, getpid());
+	sprintf(buf, "%s%ld", progname, (long)getpid());
 	tmpfilename = strdup2(buf);
 }
 
@@ -541,7 +615,7 @@ char *argv;
 	{
 		realpath2(cp, buf);
 		if (cp != argv) free(cp);
-		if (cp = strrchr(buf, _SC_)) *cp = '\0';
+		if ((cp = strrchr(buf, _SC_))) *cp = '\0';
 		progpath = strdup2(buf);
 	}
 }
@@ -641,6 +715,9 @@ char *argv[];
 #endif
 
 	setexecpath(argv[0]);
+#ifndef	_NODOSDRIVE
+	unitblpath = progpath;
+#endif
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);
 	if (i < 0) warning(0, HITKY_K);
@@ -692,4 +769,5 @@ char *argv[];
 #endif
 
 	exit2(0);
+	return(0);
 }

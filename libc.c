@@ -18,6 +18,7 @@
 #if	MSDOS
 #include <sys/timeb.h>
 extern int setcurdrv __P_((int));
+extern char *unixrealpath __P_((char *, char *));
 #else
 #include <pwd.h>
 #include <grp.h>
@@ -49,7 +50,10 @@ extern char *findpattern;
 
 static char *_realpath2 __P_((char *, char *));
 static assoclist *_getenv2 __P_((char *));
+#if	!MSDOS && !defined (NOTZFILEH)\
+&& !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static int tmcmp __P_((struct tm *, struct tm *));
+#endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long gettimezone __P_((struct tm *, time_t));
 #endif
@@ -65,75 +69,73 @@ int access2(path, mode)
 char *path;
 int mode;
 {
-#if	MSDOS
-	if (Xaccess(path, mode) < 0) {
-		warning(-1, path);
-		return(-1);
-	}
-	return(0);
-#else	/* !MSDOS */
-	struct stat status;
-	char *cp, *name, dir[MAXPATHLEN + 1], *str[4];
+	char *cp, *str[4];
 	int val[4];
+#if	MSDOS
 
-#ifndef	_NODOSDRIVE
+	if (Xaccess(path, mode) >= 0) return(0);
+#else	/* !MSDOS */
+	struct stat *statp, status;
+
+# ifndef	_NODOSDRIVE
 	if (dospath(path, NULL)) {
-		if (Xaccess(path, mode) < 0) {
+		if (Xaccess(path, mode) >= 0) return(0);
+		statp = NULL;
+	}
+	else
+# endif
+	{
+		char *name, dir[MAXPATHLEN + 1];
+
+		if (lstat(path, &status) < 0) {
 			warning(-1, path);
 			return(-1);
 		}
-		return(0);
+		if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
+
+		if ((name = strrchr(path, _SC_))) {
+			if (name == path) strcpy(dir, _SS_);
+			else strncpy2(dir, path, name - path);
+			name++;
+		}
+		else {
+			strcpy(dir, ".");
+			name = path;
+		}
+
+		if (lstat(dir, &status) < 0) {
+			warning(-1, dir);
+			return(-1);
+		}
+		statp = &status;
+		if (access(path, mode) >= 0) return(0);
 	}
-#endif
-	if (lstat(path, &status) < 0) {
+#endif	/* !MSDOS */
+	if (errno == ENOENT) return(0);
+	if (errno != EACCES) {
 		warning(-1, path);
 		return(-1);
 	}
-	if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
-
-	if ((name = strrchr(path, _SC_))) {
-		if (name == path) strcpy(dir, _SS_);
-		else strncpy2(dir, path, name - path);
-		name++;
-	}
-	else {
-		strcpy(dir, ".");
-		name = path;
-	}
-
-	if (lstat(dir, &status) < 0) {
-		warning(-1, dir);
-		return(-1);
-	}
-	if (access(path, mode) < 0) {
-		if (errno == ENOENT) return(0);
-		if (errno != EACCES) {
-			warning(-1, path);
-			return(-1);
-		}
-		if (status.st_uid == geteuid()) {
-			if (copypolicy > 0) return(copypolicy - 2);
-			locate(0, LCMDLINE);
-			putterm(l_clear);
-			putch2('[');
-			cp = DELPM_K;
-			kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
-			kanjiputs(cp);
-			str[0] = ANYES_K;
-			str[1] = ANNO_K;
-			str[2] = ANALL_K;
-			str[3] = ANKEP_K;
-			val[0] = 0;
-			val[1] = -1;
-			val[2] = 2;
-			val[3] = 1;
-			if (selectstr(&copypolicy, 4, 0, str, val) == ESC)
-				copypolicy = 2;
-			return((copypolicy > 0) ? copypolicy - 2 : copypolicy);
-		}
-	}
-	return(0);
-#endif	/* !MSDOS */
+#if	!MSDOS
+	if (statp && statp -> st_uid != geteuid()) return(-1);
+#endif
+	if (copypolicy > 0) return(copypolicy - 2);
+	locate(0, LCMDLINE);
+	putterm(l_clear);
+	putch2('[');
+	cp = DELPM_K;
+	kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
+	kanjiputs(cp);
+	str[0] = ANYES_K;
+	str[1] = ANNO_K;
+	str[2] = ANALL_K;
+	str[3] = ANKEP_K;
+	val[0] = 0;
+	val[1] = -1;
+	val[2] = 2;
+	val[3] = 1;
+	if (selectstr(&copypolicy, 4, 0, str, val) == ESC) copypolicy = 2;
+	return((copypolicy > 0) ? copypolicy - 2 : copypolicy);
 }
 
 int unlink2(path)
@@ -188,7 +190,7 @@ char *path, *resolved;
 	char *cp;
 
 	if (!*path || !strcmp(path, ".")) return(resolved);
-	else if (cp = strchr(path, _SC_)) {
+	else if ((cp = strchr(path, _SC_))) {
 		*cp = '\0';
 		_realpath2(path, resolved);
 		*(cp++) = _SC_;
@@ -236,7 +238,7 @@ char *path, *resolved;
 
 #if	MSDOS
 	drv = dospath("", NULL);
-	if (resolved[0] = _dospath(path)) path += 2;
+	if ((resolved[0] = _dospath(path))) path += 2;
 	if (*path == _SC_) {
 		if (!resolved[0]) resolved[0] = drv;
 		resolved[1] = ':';
@@ -251,12 +253,12 @@ char *path, *resolved;
 #else	/* !MSDOS */
 	if (*path == _SC_) strcpy(resolved, _SS_);
 # ifndef	_NODOSDRIVE
-	else if (drv = _dospath(path)) {
+	else if ((drv = _dospath(path))) {
 		path += 2;
 		resolved[0] = drv;
 		resolved[1] = ':';
-		resolved[2] = _SC_;
-		resolved[3] = '\0';
+		resolved[2] = '\0';
+		if (*path == _SC_) strcat(resolved, _SS_);
 	}
 # endif
 #endif	/* !MSDOS */
@@ -290,7 +292,7 @@ int chdir2(path)
 char *path;
 {
 #ifndef	USESETENV
-	static char pwd[4 + MAXPATHLEN + 1];
+	char *pwd;
 #endif
 	char cwd[MAXPATHLEN + 1], tmp[MAXPATHLEN + 1];
 
@@ -323,15 +325,17 @@ char *path;
 #endif
 	if (getenv("PWD")) {
 #ifdef	USESETENV
-		setenv("PWD", fullpath, 1);
+		if (setenv("PWD", fullpath, 1) < 0) error("PWD");
 #else
+		pwd = (char *)malloc2(strlen(fullpath) + 4 + 1);
 		strcpy(pwd, "PWD=");
 		strcpy(pwd + 4, fullpath);
-		putenv2(pwd);
+		if (putenv2(pwd) < 0) error("PWD");
 #endif
 	}
 #if	MSDOS
-	dospath(fullpath, fullpath);
+	unixrealpath(fullpath, tmp);
+	strcpy(fullpath, tmp);
 #endif
 	entryhist(1, fullpath, 1);
 	return(0);
@@ -401,7 +405,7 @@ int mode;
 }
 
 VOID_P malloc2(size)
-unsigned size;
+ALLOC_T size;
 {
 	VOID_P tmp;
 
@@ -412,7 +416,7 @@ unsigned size;
 
 VOID_P realloc2(ptr, size)
 VOID_P ptr;
-unsigned size;
+ALLOC_T size;
 {
 	VOID_P tmp;
 
@@ -428,7 +432,7 @@ char *str;
 	char *tmp;
 
 	if (!str) return(NULL);
-	if (!(tmp = (char *)malloc(strlen(str) + 1))) error(NULL);
+	if (!(tmp = (char *)malloc((ALLOC_T)strlen(str) + 1))) error(NULL);
 	strcpy(tmp, str);
 	return(tmp);
 }
@@ -538,7 +542,7 @@ char *s1, *s2;
 	int len;
 
 	len = strlen(s2);
-	for (cp = s1; cp = strchr(cp, *s2); cp++)
+	for (cp = s1; (cp = strchr(cp, *s2)); cp++)
 		if (!strncmp(cp, s2, len)) return(cp);
 	return(NULL);
 }
@@ -553,34 +557,49 @@ char *str;
 int putenv2(str)
 char *str;
 {
+#if	MSDOS
+	char *cp;
+
+	if (!(cp = strchr(str, '='))) return(0);
+	while (--cp >= str) *cp = toupper2(*cp);
+	return(putenv(str));
+#else	/* !MSDOS */
 	extern char **environ;
 	static char **newenvp = NULL;
-	char *cp, **envp;
-	int i;
+	char *cp, *tmp, **envp;
+	int i, j;
 
-	if (cp = strchr(str, '=')) cp++;
+	if ((cp = strchr(str, '='))) cp++;
 	else return(0);
-	for (envp = environ, i = 1; *envp; envp++, i++) {
-		if (!strnpathcmp(*envp, str, cp - str)) {
-			if (*cp) *envp = str;
-			else do {
-				*envp = *(envp + 1);
-			} while (*(++envp));
+	for (i = 0; environ[i]; i++) {
+		if (!strnpathcmp(environ[i], str, cp - str)) {
+			tmp = environ[i];
+			if (*cp) {
+				if (!strpathcmp(environ[i] + (cp - str), cp))
+					return(0);
+				environ[i] = str;
+			}
+			else for (j = i; environ[j]; j++)
+				environ[j] = environ[j + 1];
+			free(tmp);
 			return(0);
 		}
 	}
-#if	MSDOS
-	while (--cp >= str) *cp = toupper2(*cp);
-#endif
 	envp = environ;
-	if (!(environ = (char **)malloc((i + 1) * sizeof(char *)))) return(-1);
-	*environ = str;
-	memcpy(environ + 1, envp, i * sizeof(char *));
+	if (!(environ = (char **)malloc((i + 2) * sizeof(char *)))) {
+		environ = envp;
+		free(cp);
+		return(-1);
+	}
+	memcpy(environ, envp, i * sizeof(char *));
+	environ[i++] = str;
+	environ[i] = (char *)NULL;
 	if (newenvp) free(newenvp);
 	newenvp = environ;
 	return(0);
+#endif	/* !MSDOS */
 }
-#endif
+#endif	/* !USESETENV */
 
 static assoclist *_getenv2(name)
 char *name;
@@ -604,7 +623,7 @@ int overwrite;
 #endif
 	assoclist *ap, **tmp;
 
-	if (ap = _getenv2(name)) {
+	if ((ap = _getenv2(name))) {
 		if (!overwrite) return(0);
 		free(ap -> assoc);
 	}
@@ -638,8 +657,8 @@ char *name;
 	assoclist *ap;
 	char *cp;
 
-	if (ap = _getenv2(name)) return(ap -> assoc);
-	else if (cp = (char *)getenv(name)) return(cp);
+	if ((ap = _getenv2(name))) return(ap -> assoc);
+	else if ((cp = (char *)getenv(name))) return(cp);
 	return(strnpathcmp(name, "FD_", 3) ? NULL : (char *)getenv(name + 3));
 }
 
@@ -703,7 +722,7 @@ int noconf;
 	return(status);
 }
 
-char *getwd2(VOID)
+char *getwd2(VOID_A)
 {
 	char cwd[MAXPATHLEN + 1];
 
@@ -724,7 +743,7 @@ uid_t uid;
 	for (i = 0; i < maxuid; i++)
 		if (uid == uidlist[i].no) return(uidlist[i].str);
 
-	if (pwd = getpwuid(uid)) {
+	if ((pwd = getpwuid(uid))) {
 		uidlist = (strtable *)addlist(uidlist, i,
 			&maxuidbuf, sizeof(strtable));
 		uidlist[i].no = pwd -> pw_uid;
@@ -747,7 +766,7 @@ gid_t gid;
 	for (i = 0; i < maxgid; i++)
 		if (gid == gidlist[i].no) return(gidlist[i].str);
 
-	if (grp = getgrgid(gid)) {
+	if ((grp = getgrgid(gid))) {
 		gidlist = (strtable *)addlist(gidlist, i,
 			&maxgidbuf, sizeof(strtable));
 		gidlist[i].no = grp -> gr_gid;
@@ -759,6 +778,8 @@ gid_t gid;
 }
 #endif
 
+#if	!MSDOS && !defined (NOTZFILEH)\
+&& !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static int tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;
 {
@@ -774,6 +795,7 @@ struct tm *tm1, *tm2;
 		return (tm1 -> tm_min - tm2 -> tm_min);
 	return (tm1 -> tm_sec - tm2 -> tm_sec);
 }
+#endif	/* !MSDOS && !NOTZFILEH && !USEMKTIME && !USETIMELOCAL */
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long gettimezone(tm, t)

@@ -26,7 +26,6 @@ extern int supportLFN __P_((char *));
 #include <sys/file.h>
 #endif
 
-
 #ifdef	USEMNTENTH
 #include <mntent.h>
 typedef struct mntent	mnt_t;
@@ -53,8 +52,8 @@ typedef struct mnttab	mnt_t;
 #include <sys/vmount.h>
 #endif	/* USEMNTCTL */
 
-#if	(defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))\
-&& !defined (USEMOUNTH) && !defined (USEFSDATA)
+#if !defined (USEMOUNTH) && !defined (USEFSDATA)\
+&& (defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))
 #include <sys/mount.h>
 #endif
 
@@ -78,8 +77,8 @@ static mnt_t *getmntent2 __P_((FILE *, mnt_t *));
 #else
 #define	endmntent(fp)		{ if (fp) free(fp); }
 #endif
-static int mnt_ptr;
-static int mnt_size;
+static int mnt_ptr = 0;
+static int mnt_size = 0;
 #endif
 
 #ifdef	USEGETFSENT
@@ -169,15 +168,20 @@ static int statfs2 __P_((char *, statfs_t *));
 #endif
 
 extern VOID error __P_((char *));
-extern char *getwd2 __P_((VOID));
+extern int _chdir2 __P_((char *));
+extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #if	MSDOS || !defined (_NODOSDRIVE)
 extern int dospath __P_((char *, char *));
+#endif
+#if	!MSDOS && !defined (_NODOSDRIVE)
+extern int dosstatfs __P_((int, char *));
 #endif
 extern char *strstr2 __P_((char *, char *));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));
 extern int Xaccess __P_((char *, int));
+extern char *inscomma __P_((char *, long, int));
 extern int kanjiprintf __P_((CONST char *, ...));
 
 extern bindtable bindlist[];
@@ -228,7 +232,7 @@ static int code2str __P_((char *, int));
 static int checkline __P_((int));
 static int getfsinfo __P_((char *, statfs_t *, mnt_t *));
 static int info1line __P_((int, char *, long, char *, char *));
-#ifndef	USEFSDATA
+#if	!defined (USEFSDATA) && !defined (_NODOSDRIVE)
 static long calcKB __P_((long, long));
 #endif
 
@@ -575,7 +579,7 @@ statfs_t *buf;
 
 	buf -> f_bsize = (long)((u_short)(regs.x.ax) * (u_short)(regs.x.cx));
 	buf -> f_blocks = (u_short)(regs.x.dx);
-	buf -> f_bfree = (u_short)(regs.x.bx);
+	buf -> f_bfree =
 	buf -> f_bavail = (u_short)(regs.x.bx);
 	buf -> f_files = -1;
 
@@ -603,16 +607,47 @@ mnt_t *mntbuf;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN + 1];
 	int len, match;
+#ifndef	_NODOSDRIVE
+	int drv;
+#endif
 
 	dir = NULL;
 	if (!strncmp(path, "/dev/", 4)) {
 		if (_chdir2(path) < 0) dir = path;
 	}
-	else if (
 #ifndef	_NODOSDRIVE
-	dospath(path, NULL) ||
+	else if ((drv = dospath(path, NULL))) {
+		static char dosmntdir[4];
+		char buf[sizeof(long) * 3];
+
+		mntbuf -> mnt_fsname = "";
+		mntbuf -> mnt_dir = dosmntdir;
+		dosmntdir[0] = drv;
+		strcpy(&(dosmntdir[1]), ":\\");
+		mntbuf -> mnt_type = (drv >= 'a' && drv <= 'z')
+			? MNTTYPE_DOS7 : MNTTYPE_PC;
+		mntbuf -> mnt_opts = "";
+		if (dosstatfs(drv, buf) < 0) return(-1);
+		fsbuf -> f_bsize = *((long *)(&buf[sizeof(long) * 0]));
+#ifdef	USEFSDATA
+		fsbuf -> fd_req.btot = calcKB(fsbuf -> f_bsize,
+			*((long *)(&buf[sizeof(long) * 1])));
+		fsbuf -> fd_req.bfree =
+		fsbuf -> fd_req.bfreen = calcKB(fsbuf -> f_bsize,
+			*((long *)(&buf[sizeof(long) * 2])));
+#else
+#ifdef	USESTATVFS
+		fsbuf -> f_frsize = 0;
 #endif
-	_chdir2(path) < 0) return(0);
+		fsbuf -> f_blocks = *((long *)(&buf[sizeof(long) * 1]));
+		fsbuf -> f_bfree =
+		fsbuf -> f_bavail = *((long *)(&buf[sizeof(long) * 2]));
+#endif
+		fsbuf -> f_files = -1;
+		return(0);
+	}
+#endif
+	else if (_chdir2(path) < 0) return(-1);
 
 	if (!dir) {
 		dir = getwd2();
@@ -620,7 +655,7 @@ mnt_t *mntbuf;
 		match = 0;
 
 		fp = setmntent(MOUNTED, "r");
-		while (mntp = getmntent2(fp, &mnt)) {
+		while ((mntp = getmntent2(fp, &mnt))) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)
 			|| (mntp -> mnt_dir[len - 1] != _SC_
@@ -631,21 +666,27 @@ mnt_t *mntbuf;
 		endmntent(fp);
 
 		free(dir);
-		if (!match) return(0);
+		if (!match) {
+			errno = ENOENT;
+			return(-1);
+		}
 		dir = fsname;
 	}
 	fp = setmntent(MOUNTED, "r");
-	while (mntp = getmntent2(fp, &mnt))
+	while ((mntp = getmntent2(fp, &mnt)))
 		if (!strcmp(dir, mntp -> mnt_fsname)) break;
 	endmntent(fp);
-	if (!mntp) return(0);
+	if (!mntp) {
+		errno = ENOENT;
+		return(-1);
+	}
 	memcpy(mntbuf, mntp, sizeof(mnt_t));
 #endif	/* !MSDOS */
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
 	&& (path == dir || statfs2(path, fsbuf) < 0))
 		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
-	return(1);
+	return(0);
 }
 
 int writablefs(path)
@@ -659,10 +700,10 @@ char *path;
 
 	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	if (drv = dospath(path, NULL))
+	if ((drv = dospath(path, NULL)))
 		return((drv >= 'A' && drv <= 'Z') ? 4 : 5);
 #endif
-	if (!getfsinfo(path, &fsbuf, &mntbuf)
+	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
 	|| hasmntopt(&mntbuf, "ro")) return(0);
 
 #if	!MSDOS
@@ -689,9 +730,14 @@ char *dir;
 #if	MSDOS
 	statfs_t fsbuf;
 
-	if (statfs2(dir, &fsbuf) < 0) return(512);
+	if (statfs2(dir, &fsbuf) < 0) return(1024);
 	return(blocksize(fsbuf));
 #else	/* !MSDOS */
+	statfs_t fsbuf;
+	mnt_t mntbuf;
+
+	if (!strcmp(dir, ".") && getfsinfo(dir, &fsbuf, &mntbuf) >= 0)
+		return(blocksize(fsbuf));
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
@@ -750,7 +796,7 @@ char *str, *unit;
 	return(checkline(++y));
 }
 
-#ifndef	USEFSDATA
+#if	!defined (USEFSDATA) && !defined (_NODOSDRIVE)
 static long calcKB(block, byte)
 long block, byte;
 {
@@ -773,7 +819,7 @@ long *totalp, *freep;
 	statfs_t fsbuf;
 	mnt_t mntbuf;
 
-	if (!getfsinfo(path, &fsbuf, &mntbuf))
+	if (getfsinfo(path, &fsbuf, &mntbuf) < 0)
 		*totalp = *freep = -1;
 	else {
 #ifdef	USEFSDATA
@@ -793,7 +839,7 @@ char *path;
 	mnt_t mntbuf;
 	int y;
 
-	if (!getfsinfo(path, &fsbuf, &mntbuf)) {
+	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) {
 		warning(ENOTDIR, path);
 		return(0);
 	}

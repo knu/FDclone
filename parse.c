@@ -36,7 +36,7 @@ extern int minfilename;
 extern int dircountlimit;
 #endif
 extern int showsecond;
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 extern int dosdrive;
 #endif
 #ifndef	_NOEDITMODE
@@ -82,33 +82,18 @@ int evaldq;
 
 	q = '\0';
 	for (cp = s; *cp; cp++) {
-		if (q == '\'' || (evaldq && q == '"')) continue;
-		if (*cp == '\\') {
+		if (*cp == '\\' && q != '\'') {
 			if (!*(++cp)) return(NULL);
-			else if (*cp == '\\' && (strchr(c, '\\'))) return(cp);
+			else if (*cp == '\\' && (strchr(c, '\\')))
+				return(cp - 1);
 			continue;
 		}
+		if (q) {
+			if (*cp == q) q = '\0';
+			if (q == '\'' || q == '`' || !evaldq) continue;
+		}
+		else if (*cp == '\'' || *cp == '"' || *cp == '`') q = *cp;
 		if (strchr(c, *cp)) return(cp);
-		if (*cp == '\'') switch (q) {
-			case '\'':
-				q = '\0';
-				break;
-			case '"':
-				break;
-			default:
-				q = '\'';
-				break;
-		}
-		else if (*cp == '"') switch (q) {
-			case '"':
-				q = '\0';
-				break;
-			case '\'':
-				break;
-			default:
-				q = '"';
-				break;
-		}
 	}
 	return(NULL);
 }
@@ -124,31 +109,18 @@ int c, evaldq;
 	return(strtkbrk(s, tmp, evaldq));
 }
 
-char *geteostr(strp, eval)
+char *geteostr(strp)
 char **strp;
-int eval;
 {
 	char *cp, *tmp;
-	int c, len;
+	int len;
 
 	cp = *strp;
-	if ((c = **strp) != '"' && c != '\'') {
-		if (tmp = strtkbrk(*strp, " \t", 0)) len = tmp - *strp;
-		else len = strlen(*strp);
-		*strp += len;
-	}
-	else {
-		for (*strp = ++cp; *strp = strtkchr(*strp, c, 0); (*strp)++)
-			if (*(*strp - 1) != '\\') break;
-		if (*strp) len = (*strp)++ - cp;
-		else {
-			len = strlen(cp);
-			*strp = cp + len;
-		}
-	}
+	if ((tmp = strtkbrk(*strp, " \t", 0))) len = tmp - *strp;
+	else len = strlen(*strp);
+	*strp += len;
 	tmp = (char *)malloc2(len + 1);
 	strncpy2(tmp, cp, len);
-	if (eval && c != '\'') tmp = evalpath(tmp);
 	return(tmp);
 }
 
@@ -170,22 +142,34 @@ char **strp, *delim;
 	return(tmp);
 }
 
-char *getenvval(strp)
-char **strp;
+char *getenvval(argcp, argv)
+int *argcp;
+char *argv[];
 {
 	char *cp;
+	int i;
 
-	cp = *strp;
-	if (!(*strp = gettoken(&cp, " \t="))) return((char *)-1);
-	if (*cp != '=') {
-		free(*strp);
-		*strp = NULL;
-		return((char *)-1);
+	if (*argcp <= 0) return((char *)-1);
+	i = 0;
+	for (cp = argv[i]; *cp; cp++)
+		if (*cp != '_' && !isalpha(*cp)
+		&& (cp == argv[i] || *cp < '0' || *cp > '9')) break;
+
+	if (cp == argv[i]) return((char *)-1);
+	cp = skipspace(cp);
+	if (!*cp) {
+		if (++i >= *argcp) return((char *)-1);
+		cp = skipspace(argv[i]);
 	}
-	cp = skipspace(cp + 1);
-	if (!*cp) return(NULL);
-	cp = geteostr(&cp, 1);
-	return(cp);
+	if (*cp != '=') return((char *)-1);
+	*(cp++) = '\0';
+
+	if (!*cp) {
+		if (++i >= *argcp) return((char *)NULL);
+		cp = argv[i];
+	}
+	*argcp = i + 1;
+	return(_evalpath(cp, NULL, 1, 1));
 }
 
 char *evalcomstr(path, delim)
@@ -197,18 +181,14 @@ char *path, *delim;
 	epath = next = NULL;
 	len = 0;
 	for (cp = path; cp && *cp; cp = next) {
-		if ((next = strtkchr(cp, '\'', 0))
-		|| (next = strtkbrk(cp, delim, 0))) {
-			tmp = _evalpath(cp, next, 1);
+		if ((next = strtkbrk(cp, delim, 0))) {
+			tmp = _evalpath(cp, next, 1, 1);
 			cp = next;
-			if (*next != '\'')
-				while (*(++next) && strchr(delim, *next));
-			else if (next = strtkchr(next + 1, '\'', 0)) next++;
-			else next = cp + strlen(cp);
+			while (*(++next) && strchr(delim, *next));
 		}
 		else {
 			next = cp + strlen(cp);
-			tmp = _evalpath(cp, next, 1);
+			tmp = _evalpath(cp, next, 1, 1);
 			if (!epath) {
 				epath = tmp;
 				break;
@@ -228,7 +208,6 @@ char *path, *delim;
 	return(epath);
 }
 
-#if	!MSDOS
 char *killmeta(name)
 char *name;
 {
@@ -237,7 +216,7 @@ char *name;
 #endif
 	char *cp, buf[MAXPATHLEN * 2 + 1];
 	int i;
-#ifndef	CODEEUC
+#if	!MSDOS && !defined (CODEEUC)
 	int sjis;
 
 	cp = (char *)getenv("LANG");
@@ -249,18 +228,24 @@ char *name;
 	name = detransfile(name, tmp, 0);
 #endif
 	for (cp = name, i = 0; *cp; cp++, i++) {
-#ifndef	CODEEUC
+#if	MSDOS
+		if (iskanji1(*cp)) buf[i++] = *(cp++);
+		else if (*cp == '$') buf[i++] = *cp;
+#else	/* !MSDOS */
+# ifndef	CODEEUC
 		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
 		else
-#endif
+# endif
 		if (strchr(METACHAR, *cp)) buf[i++] = '\\';
+#endif	/* !MSDOS */
 		buf[i] = *cp;
 	}
 	buf[i] = '\0';
 	return(strdup2(buf));
 }
 
-VOID adjustpath(VOID)
+#if	!MSDOS
+VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
 
@@ -274,7 +259,7 @@ VOID adjustpath(VOID)
 		cp = (char *)malloc2(strlen(path) + 5 + 1);
 		strcpy(cp, "PATH=");
 		strcpy(cp + 5, path);
-		putenv2(cp);
+		if (putenv2(cp) < 0) error("PATH");
 #endif
 	}
 	free(path);
@@ -290,7 +275,7 @@ int max;
 
 	cp = skipspace(args);
 	for (i = 0; i < max && *cp; i++) {
-		argv[i] = geteostr(&cp, 1);
+		argv[i] = geteostr(&cp);
 		cp = skipspace(cp);
 	}
 	argv[i] = NULL;
@@ -358,7 +343,7 @@ u_char *fp, *dp, *wp;
 }
 #endif
 
-char *evalprompt(VOID)
+char *evalprompt(VOID_A)
 {
 #ifdef	USEUNAME
 	struct utsname uts;
@@ -435,7 +420,7 @@ char *cp;
 	return(1);
 }
 
-VOID evalenv(VOID)
+VOID evalenv(VOID_A)
 {
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
 	if ((sorttype < 0 || (sorttype & 7) > 5)
@@ -466,7 +451,7 @@ VOID evalenv(VOID)
 #endif
 	if ((showsecond = evalbool(getenv2("FD_SECOND"))) < 0)
 		showsecond = SECOND;
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	if ((dosdrive = evalbool(getenv2("FD_DOSDRIVE"))) < 0)
 		dosdrive = DOSDRIVE;
 #endif
@@ -474,8 +459,9 @@ VOID evalenv(VOID)
 	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
 #endif
 	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
-	deftmpdir = evalpath(strdup2(deftmpdir));
+	deftmpdir = evalpath(strdup2(deftmpdir), 1);
 #ifndef	_NOROCKRIDGE
+	if (rockridgepath) free(rockridgepath);
 	if (!(rockridgepath = getenv2("FD_RRPATH"))) rockridgepath = RRPATH;
 	rockridgepath = evalcomstr(rockridgepath, ";");
 #endif

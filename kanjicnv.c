@@ -7,12 +7,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#define	ASCII	0
-#define	KANA	1
-#define	KANJI	2
+#define	ASCII	000
+#define	KANA	001
+#define	KANJI	002
+#define	JKANA	004
 
-#define	SJIS	3
-#define	EUC	4
+#define	SJIS	010
+#define	EUC	020
 
 #ifdef	__STDC__
 #define	__P_(args)	args
@@ -22,11 +23,9 @@
 #define	VOID
 #endif
 
-extern VOID exit __P_((int));
-
 static int fputs2 __P_((char *, FILE *));
 static char *convert __P_((int, int));
-static int output __P_((FILE *, int, int));
+static VOID output __P_((FILE *, int, int));
 
 static int msboff = 0;
 static int prefix = 0;
@@ -41,7 +40,7 @@ FILE *fp;
 	int c;
 
 	if (!msboff) return(fputs(s, fp));
-	while (c = *(unsigned char *)(s++)) {
+	while ((c = *(unsigned char *)(s++))) {
 		if (c & 0x80) fprintf(fp, "\\%o", c);
 		else fputc(c, fp);
 	}
@@ -54,8 +53,13 @@ int j1, j2;
 	static unsigned char cnv[4];
 
 	if (kanjicode == EUC) {
-		cnv[0] = (j1) ? j1 | 0x80 : 0x8e;
 		cnv[1] = j2 | 0x80;
+		if (j1) cnv[0] = j1 | 0x80;
+		else if (j2 > ' ') cnv[0] = 0x8e;
+		else {
+			cnv[0] = j2;
+			cnv[1] = '\0';
+		}
 		cnv[2] = '\0';
 	}
 	else if (j1) {
@@ -67,14 +71,15 @@ int j1, j2;
 		}
 		else cnv[2] = '\0';
 	}
+	else if (j2 >= 0x60) cnv[0] = '\0';
 	else {
-		cnv[0] = j2 | 0x80;
+		cnv[0] = (j2 > ' ') ? j2 | 0x80 : j2;
 		cnv[1] = '\0';
 	}
 	return((char *)cnv);
 }
 
-static int output(fp, c, mode)
+static VOID output(fp, c, mode)
 FILE *fp;
 int c, mode;
 {
@@ -90,7 +95,7 @@ int c, mode;
 		kanji1 = mode;
 	}
 	else if (bufp > 0 && !(kanji1 & KANJI)) {
-		if (kanji1 & KANA) fputs2(convert(0, buf[0]), fp);
+		if (kanji1 & (KANA | JKANA)) fputs2(convert(0, buf[0]), fp);
 		else fputc(buf[0], fp);
 		bufp = 0;
 		kanji1 = mode;
@@ -136,7 +141,7 @@ char *argv[];
 	if (i >= argc) {
 		fprintf(stderr,
 			"\007Usage: kanjicnv [-7bces] <infile> [<outfile>]\n");
-		exit(1);
+		return(1);
 	}
 
 	in = strcmp(argv[i], "-") ? fopen(argv[i], "r") : stdin;
@@ -151,23 +156,25 @@ char *argv[];
 				esc = 1;
 				break;
 			case '$':
-				if (esc) {
+				if (!esc) output(out, c, mode);
+				else {
+					mode &= ~JKANA;
 					kanji = 1;
 					esc = 0;
 				}
-				else output(out, c, mode);
 				break;
 			case '(':
-				if (esc) {
+				if (!esc) output(out, c, mode);
+				else {
+					mode &= ~JKANA;
 					kanji = -1;
 					esc = 0;
 				}
-				else output(out, c, mode);
 				break;
-			case '\016':	/* SI */
+			case '\016':	/* SO */
 				mode |= KANA;
 				break;
-			case '\017':	/* SO */
+			case '\017':	/* SI */
 				mode &= ~KANA;
 				break;
 			case '\b':
@@ -178,7 +185,10 @@ char *argv[];
 			default:
 				if (esc) output(out, '\033', mode);
 				if (kanji > 0) mode |= KANJI;
-				else if (kanji < 0) mode &= ~KANJI;
+				else if (kanji < 0) {
+					if (c == 'I') mode |= JKANA;
+					else mode &= ~KANJI;
+				}
 				else output(out, c, mode);
 				esc = kanji = 0;
 				break;
@@ -189,5 +199,5 @@ char *argv[];
 	fclose(out);
 	fclose(in);
 
-	exit(0);
+	return(0);
 }

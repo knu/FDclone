@@ -4,16 +4,20 @@
  *	Type Definition for "dosdisk.c"
  */
 
+#if	!MSDOS
 #include <sys/param.h>
+#endif
 
 #define	DOSDIRENT	32
 #define	SECTCACHESIZE	20
-#define	SECTSIZE	512
+#define	SECTSIZE	{512, 1024, 256, 128}
 #define	MAX12BIT	(0xff0 - 0x002)
-#define	DOSMAXPATHLEN	255
+#define	DOSMAXPATHLEN	260
+#define	MAXFATMEM	(512 * 9)	/* FAT size of 3.5inch 2HD */
 
 #define	NOTINLFN	"\\/:*?\"<>|"
-#define	NOTINALIAS	" +,;=[]"
+#define	NOTINALIAS	"+,;=[]"
+#define	PACKINALIAS	" ."
 #define	LFNENTSIZ	13
 #define	DOSMAXNAMLEN	255
 
@@ -51,33 +55,37 @@
 # endif
 #endif
 
+#ifndef	__attribute__
+#define	__attribute__(x)
+#endif
+
 typedef struct _bpb_t {
-	u_char dummy[11];
-	u_char sectsize[2];
-	u_char clustsize;
-	u_char bootsect[2];
-	u_char nfat;
-	u_char maxdir[2];
-	u_char total[2];
-	u_char media;
-	u_char fatsize[2];
-	u_char secttrack[2];
-	u_char nhead[2];
-	u_char dummy2[2];
-	u_char bigtotal_l[2];
-	u_char bigtotal_h[2];
+	u_char dummy[11] __attribute__ ((packed));
+	u_char sectsize[2] __attribute__ ((packed));
+	u_char clustsize __attribute__ ((packed));
+	u_char bootsect[2] __attribute__ ((packed));
+	u_char nfat __attribute__ ((packed));
+	u_char maxdir[2] __attribute__ ((packed));
+	u_char total[2] __attribute__ ((packed));
+	u_char media __attribute__ ((packed));
+	u_char fatsize[2] __attribute__ ((packed));
+	u_char secttrack[2] __attribute__ ((packed));
+	u_char nhead[2] __attribute__ ((packed));
+	u_char dummy2[4] __attribute__ ((packed));
+	u_char bigtotal_l[2] __attribute__ ((packed));
+	u_char bigtotal_h[2] __attribute__ ((packed));
 } bpb_t;
 
 typedef struct _dent_t {
-	u_char name[8];
-	u_char ext[3];
-	u_char attr;
-	u_char dummy[10];
-	u_char time[2];
-	u_char date[2];
-	u_char clust[2];
-	u_char size_l[2];
-	u_char size_h[2];
+	u_char name[8] __attribute__ ((packed));
+	u_char ext[3] __attribute__ ((packed));
+	u_char attr __attribute__ ((packed));
+	u_char dummy[10] __attribute__ ((packed));
+	u_char time[2] __attribute__ ((packed));
+	u_char date[2] __attribute__ ((packed));
+	u_char clust[2] __attribute__ ((packed));
+	u_char size_l[2] __attribute__ ((packed));
+	u_char size_h[2] __attribute__ ((packed));
 } dent_t;
 
 #define	DS_IRDONLY	001
@@ -95,16 +103,18 @@ typedef struct _cache_t {
 	u_short offset;
 } cache_t;
 
+#if	!MSDOS
 typedef struct _devinfo {
-	char drive;
+	u_char drive;
 	char *name;
 	u_char head;
 	u_short sect;
 	u_short cyl;
 } devinfo;
+#endif
 
 typedef struct _devstat {
-	char drive;
+	u_char drive;
 	char *fatbuf;		/* ch_name */
 	u_char clustsize;	/* ch_head */
 	u_short sectsize;	/* ch_sect */
@@ -113,17 +123,19 @@ typedef struct _devstat {
 	u_short dirofs;
 	u_short dirsize;
 	u_short totalsize;
+#if	!MSDOS
 	int fd;
+#endif
 	cache_t *dircache;
 	u_char flags;
 } devstat;
 
-#define	F_RONLY	001
-#define	F_16BIT	002
-#define	F_8SECT	004
-#define	F_DUPL	010
-#define	F_CACHE	020
-#define	F_WRFAT	040
+#define	F_RONLY	0001
+#define	F_16BIT	0002
+#define	F_8SECT	0004
+#define	F_DUPL	0010
+#define	F_CACHE	0020
+#define	F_WRFAT	0040
 #define	F_VFAT	0100
 
 #define	ch_name	fatbuf
@@ -151,7 +163,7 @@ typedef struct _dosiobuf {
 #define	O_IOEOF	020000
 #define	O_IOERR	040000
 
-#define	byte2word(p)	((p)[0] + ((p)[1] << 8))
+#define	byte2word(p)	((p)[0] + ((u_short)(p)[1] << 8))
 #define	dd2dentp(dd)	(&(devlist[dd].dircache -> dent))
 #define	dd2path(dd)	(devlist[dd].dircache -> path)
 #define	dd2clust(dd)	(devlist[dd].dircache -> clust)
@@ -184,7 +196,7 @@ typedef struct _st_dirent {
 typedef	struct dirent st_dirent;
 #endif
 
-extern int preparedrv __P_((int, VOID (*)__P_((VOID))));
+extern int preparedrv __P_((int, VOID_T (*)__P_((VOID_A))));
 extern int shutdrv __P_((int));
 extern DIR *dosopendir __P_((char *));
 extern int dosclosedir __P_((DIR *));
@@ -192,8 +204,15 @@ extern struct dirent *dosreaddir __P_((DIR *));
 extern int dosrewinddir __P_((DIR *));
 extern int doschdir __P_((char *));
 extern char *dosgetcwd __P_((char *, int));
+#if	MSDOS
+extern char *dosshortname __P_((char *, char *));
+extern char *doslongname __P_((char *, char *));
+#else
+extern int dosstatfs __P_((int, char *));
+#endif
 extern int dosstat __P_((char *, struct stat *));
 extern int doslstat __P_((char *, struct stat *));
+#if	!MSDOS
 extern int dosaccess __P_((char *, int));
 extern int dossymlink __P_((char *, char *));
 extern int dosreadlink __P_((char *, char *, int));
@@ -203,6 +222,7 @@ extern int dosutime __P_((char *, struct utimbuf *));
 #else
 extern int dosutimes __P_((char *, struct timeval []));
 #endif
+#endif	/* !MSDOS */
 extern int dosunlink __P_((char *));
 extern int dosrename __P_((char *, char *));
 extern int dosopen __P_((char *, int, int));
@@ -212,7 +232,8 @@ extern int doswrite __P_((int, char *, int));
 extern off_t doslseek __P_((int, off_t, int));
 extern int dosmkdir __P_((char *, int));
 extern int dosrmdir __P_((char *));
-extern int stream2fd __P_((FILE *));
+#if	!MSDOS
+extern int dosfileno __P_((FILE *));
 extern FILE *dosfopen __P_((char *, char *));
 extern int dosfclose __P_((FILE *));
 extern int dosfread __P_((char *, int, int, FILE *));
@@ -222,4 +243,5 @@ extern int dosfgetc __P_((FILE *));
 extern int dosfputc __P_((int, FILE *));
 extern char *dosfgets __P_((char *, int, FILE *));
 extern int dosfputs __P_((char *, FILE *));
-extern int dosallclose __P_((VOID));
+extern int dosallclose __P_((VOID_A));
+#endif	/* !MSDOS */

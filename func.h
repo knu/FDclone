@@ -118,22 +118,22 @@ extern char *skipspace __P_((char *));
 extern char *skipnumeric __P_((char *, int));
 extern char *strtkbrk __P_((char *, char *, int));
 extern char *strtkchr __P_((char *, int, int));
-extern char *geteostr __P_((char **, int));
+extern char *geteostr __P_((char **));
 extern char *gettoken __P_((char **, char *));
-extern char *getenvval __P_((char **));
+extern char *getenvval __P_((int *, char *[]));
 extern char *evalcomstr __P_((char *, char *));
-#if	!MSDOS
 extern char *killmeta __P_((char *));
-extern VOID adjustpath __P_((VOID));
+#if	!MSDOS
+extern VOID adjustpath __P_((VOID_A));
 #endif
 extern int getargs __P_((char *, char *[], int));
 extern char *catargs __P_((int, char *[], int));
 #ifndef	_NOARCHIVE
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
-extern char *evalprompt __P_((VOID));
+extern char *evalprompt __P_((VOID_A));
 extern int evalbool __P_((char *));
-extern VOID evalenv __P_((VOID));
+extern VOID evalenv __P_((VOID_A));
 
 /* libc.c */
 extern int access2 __P_((char *, int));
@@ -146,8 +146,8 @@ extern int _chdir2 __P_((char *));
 extern int chdir2 __P_((char *));
 extern char *chdir3 __P_((char *));
 extern int mkdir2 __P_((char *, int));
-extern VOID_P malloc2 __P_((unsigned));
-extern VOID_P realloc2 __P_((VOID_P, unsigned));
+extern VOID_P malloc2 __P_((ALLOC_T));
+extern VOID_P realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
 extern VOID_P addlist __P_((VOID_P, int, int *, int));
 extern int toupper2 __P_((int));
@@ -165,7 +165,7 @@ extern int setenv2 __P_((char *, char *, int));
 extern char *getenv2 __P_((char *));
 extern int printenv __P_((int, char *[], int));
 extern int system2 __P_((char *, int));
-extern char *getwd2 __P_((VOID));
+extern char *getwd2 __P_((VOID_A));
 #if	!MSDOS
 extern char *getpwuid2 __P_((uid_t));
 extern char *getgrgid2 __P_((gid_t));
@@ -187,7 +187,7 @@ extern int selectstr __P_((int *, int, int, char *[], int []));
 extern char *evalcommand __P_((char *, char *, namelist *, int, macrostat *));
 extern int execmacro __P_((char *, char *, namelist *, int *, int, int));
 extern int execenv __P_((char *, char *));
-extern int execshell __P_((VOID));
+extern int execshell __P_((VOID_A));
 extern int execusercomm __P_((char *, char *, namelist *, int *, int, int));
 extern int entryhist __P_((int, char *, int));
 extern int loadhistory __P_((int, char *));
@@ -281,13 +281,13 @@ extern char *tree __P_((int, int *));
 /* command.c */
 
 /* browse.c */
-extern VOID helpbar __P_((VOID));
+extern VOID helpbar __P_((VOID_A));
 extern VOID statusbar __P_((int));
-extern VOID sizebar __P_((VOID));
+extern VOID sizebar __P_((VOID_A));
 extern char *putmode __P_((char *, u_short));
 extern VOID infobar __P_((namelist *, int));
-extern VOID waitmes __P_((VOID));
-extern int calcwidth __P_((VOID));
+extern VOID waitmes __P_((VOID_A));
+extern int calcwidth __P_((VOID_A));
 extern VOID putname __P_((namelist *, int, int));
 extern int listupfile __P_((namelist *, int, char *));
 extern VOID movepos __P_((namelist *, int, int, u_char));

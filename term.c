@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <signal.h>
 #include "machine.h"
 
 #if	defined (DJGPP) && (DJGPP >= 2)
@@ -25,7 +26,7 @@
 # include <dpmi.h>
 # include <go32.h>
 # include <sys/farptr.h>
-#  if (DJGPP >= 2)
+#  if defined (DJGPP) && (DJGPP >= 2)
 #  include <libc/dosio.h>
 #  else
 #  define	_dos_ds		_go32_info_block.selector_for_linear_memory
@@ -93,7 +94,9 @@ typedef	struct sgttyb	termioctl_t;
 #define	MAXPRINTBUF	255
 #define	SIZEFMT		"\033[%d;%dR"
 
-#if	!MSDOS
+#if	MSDOS
+#define	GETSIZE		"\033[0;999H\033[999B\033[6n"
+#else	/* !MSDOS */
 extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
@@ -128,6 +131,7 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 #ifndef	TAB3
 #define	TAB3		OXTABS
 #endif
+#define	not(x)		(~(x) & 0xffff)
 
 #ifndef	FREAD
 # ifdef	_FREAD
@@ -147,7 +151,7 @@ typedef struct fd_set {
 #endif	/* !MSDOS */
 
 static int err2 __P_((char *));
-static int defaultterm __P_((VOID));
+static int defaultterm __P_((VOID_A));
 static int getxy __P_((char *, char *, int *, int *));
 #if	MSDOS
 # ifndef	__GNUC__
@@ -162,53 +166,53 @@ static int ttymode __P_((int, u_short, u_short, u_short, u_short,
 # endif
 static int tgetstr2 __P_((char **, char *));
 static int tgetstr3 __P_((char **, char *, char *));
-static int sortkeyseq __P_((VOID));
+static int sortkeyseq __P_((VOID_A));
 #endif	/* !MSDOS */
 
-short ospeed;
-char PC;
-char *BC;
-char *UP;
-int n_column;
-int n_lastcolumn;
-int n_line;
-int stable_standout;
-char *t_init;
-char *t_end;
-char *t_keypad;
-char *t_nokeypad;
-char *t_normalcursor;
-char *t_highcursor;
-char *t_nocursor;
-char *t_setcursor;
-char *t_resetcursor;
-char *t_bell;
-char *t_vbell;
-char *t_clear;
-char *t_normal;
-char *t_bold;
-char *t_reverse;
-char *t_dim;
-char *t_blink;
-char *t_standout;
-char *t_underline;
-char *end_standout;
-char *end_underline;
-char *l_clear;
-char *l_insert;
-char *l_delete;
-char *c_insert;
-char *c_delete;
-char *c_store;
-char *c_restore;
-char *c_home;
-char *c_locate;
-char *c_return;
-char *c_newline;
-char *c_up;
-char *c_down;
-char *c_right;
-char *c_left;
+short ospeed = 0;
+char PC ='\0';
+char *BC = NULL;
+char *UP = NULL;
+int n_column = 0;
+int n_lastcolumn = 0;
+int n_line = 0;
+int stable_standout = 0;
+char *t_init = NULL;
+char *t_end = NULL;
+char *t_keypad = NULL;
+char *t_nokeypad = NULL;
+char *t_normalcursor = NULL;
+char *t_highcursor = NULL;
+char *t_nocursor = NULL;
+char *t_setcursor = NULL;
+char *t_resetcursor = NULL;
+char *t_bell = NULL;
+char *t_vbell = NULL;
+char *t_clear = NULL;
+char *t_normal = NULL;
+char *t_bold = NULL;
+char *t_reverse = NULL;
+char *t_dim = NULL;
+char *t_blink = NULL;
+char *t_standout = NULL;
+char *t_underline = NULL;
+char *end_standout = NULL;
+char *end_underline = NULL;
+char *l_clear = NULL;
+char *l_insert = NULL;
+char *l_delete = NULL;
+char *c_insert = NULL;
+char *c_delete = NULL;
+char *c_store = NULL;
+char *c_restore = NULL;
+char *c_home = NULL;
+char *c_locate = NULL;
+char *c_return = NULL;
+char *c_newline = NULL;
+char *c_up = NULL;
+char *c_down = NULL;
+char *c_right = NULL;
+char *c_left = NULL;
 
 #if	MSDOS
 #ifdef	PC98
@@ -251,56 +255,56 @@ static int termflags;
 int inittty(reset)
 int reset;
 {
-	termflags |= F_INITTTY;
+	if (!reset) termflags |= F_INITTTY;
 	return(0);
 }
 
-int cooked2(VOID)
+int cooked2(VOID_A)
 {
 	return(0);
 }
 
-int cbreak2(VOID)
+int cbreak2(VOID_A)
 {
 	return(0);
 }
 
-int raw2(VOID)
+int raw2(VOID_A)
 {
 	return(0);
 }
 
-int echo2(VOID)
+int echo2(VOID_A)
 {
 	return(0);
 }
 
-int noecho2(VOID)
+int noecho2(VOID_A)
 {
 	return(0);
 }
 
-int nl2(VOID)
+int nl2(VOID_A)
 {
 	return(0);
 }
 
-int nonl2(VOID)
+int nonl2(VOID_A)
 {
 	return(0);
 }
 
-int tabs(VOID)
+int tabs(VOID_A)
 {
 	return(0);
 }
 
-int notabs(VOID)
+int notabs(VOID_A)
 {
 	return(0);
 }
 
-int keyflush(VOID)
+int keyflush(VOID_A)
 {
 #ifdef	PC98
 # ifdef	__GNUC__
@@ -386,91 +390,94 @@ int min, time;
 	return(0);
 }
 
-int cooked2(VOID)
+int cooked2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, ~(CBREAK | RAW), 0, ~(LLITOUT | LPENDIN));
+	ttymode(ttyio, 0, not(CBREAK | RAW), 0, not(LLITOUT | LPENDIN));
 #else
-	ttymode(ttyio, ISIG | ICANON, ~PENDIN,
-		BRKINT | IGNPAR | IXON | IXANY | IXOFF, ~IGNBRK,
+	ttymode(ttyio, ISIG | ICANON, not(PENDIN),
+		BRKINT | IGNPAR | IXON | IXANY | IXOFF, not(IGNBRK),
 		OPOST, 0, '\004', 255);
 #endif
 	return(0);
 }
 
-int cbreak2(VOID)
+int cbreak2(VOID_A)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, ISIG | ICANON, 0, BRKINT, ~(IXON | IGNBRK),
-		0, ~OPOST, 1, 0);
+	ttymode(ttyio, ISIG | ICANON, 0, BRKINT, not(IXON | IGNBRK),
+		0, not(OPOST), 1, 0);
 #endif
 	return(0);
 }
 
-int raw2(VOID)
+int raw2(VOID_A)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, RAW, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, 0, ~(ISIG | ICANON), IGNBRK, ~IXON, 0, ~OPOST, 1, 0);
+	ttymode(ttyio, 0, not(ISIG | ICANON), IGNBRK, not(IXON),
+		0, not(OPOST), 1, 0);
 #endif
 	return(0);
 }
 
-int echo2(VOID)
+int echo2(VOID_A)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #else
-	ttymode(ttyio, ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE, ~ECHONL,
+	ttymode(ttyio, ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE, not(ECHONL),
 		0, 0, 0, 0, 0, 0);
 #endif
 	return(0);
 }
 
-int noecho2(VOID)
+int noecho2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, ~ECHO, 0, ~(LCRTBS | LCRTERA));
+	ttymode(ttyio, 0, not(ECHO), 0, not(LCRTBS | LCRTERA));
 #else
-	ttymode(ttyio, 0, ~(ECHO | ECHOE | ECHOK | ECHONL), 0, 0, 0, 0, 0, 0);
+	ttymode(ttyio, 0, not(ECHO | ECHOE | ECHOK | ECHONL), 0, 0,
+		0, 0, 0, 0);
 #endif
 	return(0);
 }
 
-int nl2(VOID)
+int nl2(VOID_A)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, CRMOD, 0, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, ICRNL, 0, ONLCR, ~(OCRNL | ONOCR | ONLRET), 0, 0);
+	ttymode(ttyio, 0, 0, ICRNL, 0,
+		ONLCR, not(OCRNL | ONOCR | ONLRET), 0, 0);
 #endif
 	return(0);
 }
 
-int nonl2(VOID)
+int nonl2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, ~CRMOD, 0, 0);
+	ttymode(ttyio, 0, not(CRMOD), 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, ~ICRNL, 0, ~ONLCR, 0, 0);
+	ttymode(ttyio, 0, 0, 0, not(ICRNL), 0, not(ONLCR), 0, 0);
 #endif
 	return(0);
 }
 
-int tabs(VOID)
+int tabs(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, ~XTABS, 0, 0);
+	ttymode(ttyio, 0, not(XTABS), 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, 0, 0, ~TAB3, 0, 0);
+	ttymode(ttyio, 0, 0, 0, 0, 0, not(TAB3), 0, 0);
 #endif
 	return(0);
 }
 
-int notabs(VOID)
+int notabs(VOID_A)
 {
 #ifdef	USESGTTY
 	ttymode(ttyio, XTABS, 0, 0, 0);
@@ -480,7 +487,7 @@ int notabs(VOID)
 	return(0);
 }
 
-int keyflush(VOID)
+int keyflush(VOID_A)
 {
 #ifdef	USESGTTY
 	int i = FREAD;
@@ -516,11 +523,11 @@ char *mes;
 	fprintf(stderr, "\007\n");
 	if (mes) fprintf(stderr, "%s\n", mes);
 	else perror(TTYNAME);
-	exit(127);
+	exit(1);
 	return(0);
 }
 
-static int defaultterm(VOID)
+static int defaultterm(VOID_A)
 {
 #if	!MSDOS
 	int i;
@@ -683,7 +690,7 @@ int *yp, *xp;
 }
 
 #if	MSDOS
-int getterment(VOID)
+int getterment(VOID_A)
 {
 	defaultterm();
 	termflags |= F_TERMENT;
@@ -724,7 +731,7 @@ char *str1, *str2;
 	return(0);
 }
 
-static int sortkeyseq(VOID)
+static int sortkeyseq(VOID_A)
 {
 	int i, j, tmp;
 	char *str;
@@ -746,7 +753,7 @@ static int sortkeyseq(VOID)
 	return(0);
 }
 
-int getterment(VOID)
+int getterment(VOID_A)
 {
 	char *cp, buf[1024];
 	int i;
@@ -905,12 +912,9 @@ int n;
 }
 #endif	/* !MSDOS */
 
-int initterm(VOID)
+int initterm(VOID_A)
 {
 	if (!(termflags & F_TERMENT)) getterment();
-#if	MSDOS && defined (__GNUC__)
-	textmode(BW80);
-#endif
 	putterms(t_keypad);
 	putterms(t_init);
 	tflush();
@@ -918,7 +922,7 @@ int initterm(VOID)
 	return(0);
 }
 
-int endterm(VOID)
+int endterm(VOID_A)
 {
 	if (!(termflags & F_INITTERM)) return(0);
 	putterms(t_nokeypad);
@@ -933,36 +937,33 @@ int endterm(VOID)
 int putch2(c)
 int c;
 {
-	return(putch(c));
+	bdos(0x06, c & 0xff, 0);
+	return(c);
 }
 
 int cputs2(s)
 char *s;
 {
-#ifndef	__GNUC__
 	char *size, buf[sizeof(SIZEFMT) + 4];
-	int y;
-#endif
-	int i, x;
+	int i, x, y;
 
 	for (i = 0; s[i]; i++) {
 		if (s[i] != '\t') {
-			putch(s[i]);
+			putch2(s[i]);
 			continue;
 		}
-#ifdef	__GNUC__
-		x = wherex();
-#else
-		cputs("\033[6n");
+		putch2('\033');
+		putch2('[');
+		putch2('6');
+		putch2('n');
 		size = SIZEFMT;
 			
 		for (x = 0; (buf[x] = getch()) != size[sizeof(SIZEFMT) - 2];
 			x++);
 		buf[++x] = '\0';
 		if (getxy(buf, size, &y, &x) != 2) x = 1;
-#endif
 		do {
-			putch(' ');
+			putch2(' ');
 		} while (x++ % 8);
 	}
 	return(0);
@@ -996,7 +997,7 @@ u_long usec;
 #endif
 }
 
-int getch2(VOID)
+int getch2(VOID_A)
 {
 #ifdef	PC98
 	union REGS regs;
@@ -1079,7 +1080,8 @@ int sig;
 			break;
 	}
 	else
-#if	!defined (__GNUC__) || defined (PC98) || (defined (DJGPP) && (DJGPP >= 2))
+#if	!defined (__GNUC__) || defined (PC98) \
+|| (defined (DJGPP) && (DJGPP >= 2))
 	if (kbhit2(WAITKEYPAD * 1000L))
 #endif
 	{
@@ -1097,70 +1099,14 @@ u_char c;
 	return(ungetch(c));
 }
 
-#ifdef	__GNUC__
-int putterm(str)
-char *str;
-{
-	static int ox = 1;
-	static int oy = 1;
-	static u_char attr = 0x07;
-	int x, y;
-
-	if (str == t_normalcursor) _setcursortype(_NORMALCURSOR);
-	else if (str == t_highcursor) _setcursortype(_SOLIDCURSOR);
-	else if (str == t_nocursor) _setcursortype(_NOCURSOR);
-	else if (str == t_setcursor) {
-		ox = wherex();
-		oy = wherey();
-		attr = ScreenAttrib;
-	}
-	else if (str == t_resetcursor) {
-		gotoxy(ox, oy);
-		textattr(attr);
-		ox = oy = 1;
-		attr = 0x07;
-	}
-	else if (str == t_clear) clrscr();
-	else if (str == t_normal) normvideo();
-	else if (str == t_bold) textattr(0x0f);
-	else if (str == t_reverse) textattr(0x70);
-	else if (str == t_dim) textattr(0x08);
-	else if (str == t_blink) textattr(0x02);
-	else if (str == t_standout) textattr(0x70);
-	else if (str == t_underline) textattr(0x0e);
-	else if (str == end_standout) normvideo();
-	else if (str == end_underline) normvideo();
-	else if (str == l_clear) clreol();
-	else if (str == l_insert) insline();
-	else if (str == l_delete) delline();
-	else if (str == c_home) gotoxy(1, 1);
-	else if (str == c_up) {
-		if ((y = wherey() - 1) > 0) gotoxy(wherex(), y);
-	}
-	else if (str == c_right) {
-		x = wherex();
-		y = wherey();
-		if (x < ((y < n_line) ? n_column : n_lastcolumn))
-			gotoxy(++x, y);
-	}
-	else cputs2(str);
-
-	return(0);
-}
-#endif
-
 int locate(x, y)
 int x, y;
 {
-#ifdef	__GNUC__
-	gotoxy(++x, ++y);
-#else
 	cprintf2(c_locate, ++y, ++x);
-#endif
 	return(0);
 }
 
-int tflush(VOID)
+int tflush(VOID_A)
 {
 	return(0);
 }
@@ -1168,6 +1114,25 @@ int tflush(VOID)
 int getwsize(xmax, ymax)
 int xmax, ymax;
 {
+	char *size, buf[sizeof(SIZEFMT) + 4];
+	int i, x, y;
+
+	size = SIZEFMT;
+
+	for (i = 0; i < sizeof(GETSIZE) - 1; i++) putch2(GETSIZE[i]);
+	for (i = 0; (buf[i] = getch()) != size[sizeof(SIZEFMT) - 2]; i++);
+	buf[++i] = '\0';
+	if (getxy(buf, size, &y, &x) != 2) x = y = -1;
+
+	if (x > 0) {
+		n_lastcolumn = (n_lastcolumn < n_column) ? x - 1 : x;
+		n_column = x;
+	}
+	if (y > 0) n_line = y;
+
+	if (n_column < xmax) err2("Column size too small");
+	if (n_line < ymax) err2("Line size too small");
+
 	return(0);
 }
 
@@ -1203,7 +1168,7 @@ u_long usec;
 #endif
 }
 
-int getch2(VOID)
+int getch2(VOID_A)
 {
 	u_char ch;
 
@@ -1272,7 +1237,7 @@ int x, y;
 	return(0);
 }
 
-int tflush(VOID)
+int tflush(VOID_A)
 {
 	fflush(ttyout);
 	return(0);
@@ -1373,26 +1338,14 @@ char *fmt;
 	return(cputs2(buf));
 }
 
-
 int chgcolor(color, reverse)
 int color, reverse;
 {
-#if	MSDOS && defined (__GNUC__)
-	int code;
-
-	code = (color & 0x0f);
-	if (reverse) {
-		code <<= 4;
-		if (color == ANSI_BLACK) code |= ANSI_WHITE;
-	}
-	textattr(code);
-#else
 	if (!reverse) cprintf2("\033[%dm", color + ANSI_NORMAL);
 	else if (color == ANSI_BLACK)
 		cprintf2("\033[%dm\033[%dm",
 			ANSI_WHITE + ANSI_NORMAL, color + ANSI_REVERSE);
 	else cprintf2("\033[%dm\033[%dm",
 			ANSI_BLACK + ANSI_NORMAL, color + ANSI_REVERSE);
-#endif
 	return(0);
 }

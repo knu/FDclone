@@ -11,16 +11,17 @@
 #include "kanji.h"
 
 #if	MSDOS
+#include <process.h>
 extern char *preparefile __P_((char *, char *, int));
 #else
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
 #include <sys/param.h>
-# ifndef	_NODOSDRIVE
-extern int preparedrv __P_((int, VOID (*)__P_((VOID))));
+#endif
+#ifndef	_NODOSDRIVE
+extern int preparedrv __P_((int, VOID (*)__P_((VOID_A))));
 extern int shutdrv __P_((int));
-# endif
 #endif
 
 extern int filepos;
@@ -48,7 +49,9 @@ static int iscurdir __P_((char *));
 static char *getdestdir __P_((char *, char *));
 #ifndef	_NOWRITEFS
 static int k_strlen __P_((char *));
+#if	!MSDOS
 static VOID touch __P_((char *));
+#endif
 static int nofile __P_((char *));
 static char *maketmpfile __P_((int, int, char *));
 #if	!MSDOS
@@ -57,9 +60,9 @@ static char *getentnum __P_((char *, int, int));
 static VOID restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
-char *deftmpdir;
+char *deftmpdir = NULL;
 
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 static int destdrive = -1;
 #endif
 
@@ -89,9 +92,9 @@ gid_t gid;
 	euid = geteuid();
 	if (uid == euid) mode >>= 6;
 	else if (gid == getegid()) mode >>= 3;
-	else if (name = getpwuid2(euid)) {
+	else if ((name = getpwuid2(euid))) {
 		setgrent();
-		while (gp = getgrent()) {
+		while ((gp = getgrent())) {
 			if (gid != gp -> gr_gid) continue;
 			for (i = 0; gp -> gr_mem[i]; i++) {
 				if (!strcmp(name, gp -> gr_mem[i])) {
@@ -115,7 +118,19 @@ char *file;
 {
 	struct stat status, lstatus;
 
+#if	MSDOS
+	if (stat2(file, &status) < 0) return(-1);
+	memcpy(&lstatus, &status, sizeof(struct stat));
+#else
+# ifndef	_NODOSDRIVE
+	if (_dospath(file)) {
+		if (stat2(file, &status) < 0) return(-1);
+		memcpy(&lstatus, &status, sizeof(struct stat));
+	}
+	else
+# endif
 	if (Xlstat(file, &lstatus) < 0 || stat2(file, &status) < 0) return(-1);
+#endif
 	list[i].st_mode = lstatus.st_mode;
 	list[i].flags = 0;
 	if ((status.st_mode & S_IFMT) == S_IFDIR) list[i].flags |= F_ISDIR;
@@ -136,9 +151,10 @@ char *file;
 	list[i].st_mtim = lstatus.st_mtime;
 	list[i].flags |=
 #if	MSDOS
-		logical_access(status.st_mode);
+		logical_access((u_short)(status.st_mode));
 #else
-		logical_access(status.st_mode, status.st_uid, status.st_gid);
+		logical_access((u_short)(status.st_mode),
+			status.st_uid, status.st_gid);
 #endif
 
 	return(0);
@@ -185,10 +201,10 @@ CONST VOID_P vp2;
 				((namelist *)vp2) -> name);
 			break;
 		case 2:
-			if (cp1 = strrchr(((namelist *)vp1) -> name, '.'))
+			if ((cp1 = strrchr(((namelist *)vp1) -> name, '.')))
 				cp1++;
 			else cp1 = "";
-			if (cp2 = strrchr(((namelist *)vp2) -> name, '.'))
+			if ((cp2 = strrchr(((namelist *)vp2) -> name, '.')))
 				cp2++;
 			else cp2 = "";
 			tmp = strpathcmp(cp1, cp2);
@@ -230,10 +246,10 @@ CONST VOID_P vp2;
 				((treelist *)vp2) -> name);
 			break;
 		case 2:
-			if (cp1 = strrchr(((treelist *)vp1) -> name, '.'))
+			if ((cp1 = strrchr(((treelist *)vp1) -> name, '.')))
 				cp1++;
 			else cp1 = "";
-			if (cp2 = strrchr(((treelist *)vp2) -> name, '.'))
+			if ((cp2 = strrchr(((treelist *)vp2) -> name, '.')))
 				cp2++;
 			else cp2 = "";
 			tmp = strpathcmp(cp1, cp2);
@@ -257,7 +273,7 @@ reg_t *regexp;
 	struct dirent *dp;
 
 	if (!regexp) dp = Xreaddir(dirp);
-	else while (dp = Xreaddir(dirp)) {
+	else while ((dp = Xreaddir(dirp))) {
 		if (regexp_exec(regexp, dp -> d_name)) break;
 	}
 	return(dp);
@@ -299,7 +315,7 @@ char *buf;
 
 	if (!homedir) {
 		if (!(homedir = (char *)getenv("HOME"))) {
-			if (pwd = getpwuid(getuid())) homedir = pwd -> pw_dir;
+			if ((pwd = getpwuid(getuid()))) homedir = pwd -> pw_dir;
 			else return(-1);
 		}
 		if (
@@ -351,18 +367,16 @@ static char *getdestdir(mes, arg)
 char *mes, *arg;
 {
 	char *dir;
-#if	!MSDOS
 	int drive;
-#endif
 
-	if (arg && *arg) dir = evalpath(strdup2(arg));
+	if (arg && *arg) dir = strdup2(arg);
 	else if (!(dir = inputstr(mes, 1, -1, NULL, 1))) return(NULL);
-	if (!*(dir = evalpath(dir))) {
+	else if (!*(dir = evalpath(dir, 1))) {
 		free(dir);
 		dir = strdup2(".");
 	}
 
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	destdrive = -1;
 	if ((drive = dospath(dir, NULL))
 	&& (destdrive = preparedrv(drive, waitmes)) < 0) {
@@ -374,7 +388,7 @@ char *mes, *arg;
 	if (preparedir(dir) < 0) {
 		warning(-1, dir);
 		free(dir);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 		if (destdrive >= 0) shutdrv(destdrive);
 #endif
 		return(NULL);
@@ -395,8 +409,8 @@ int tr;
 	}
 	destpath =
 #ifndef	_NOTREE
-# if	MSDOS || defined (_NODOSDRIVE)
-	(tr) ? tree(1, NULL) :
+# ifdef	_NODOSDRIVE
+	(tr) ? tree(1, (int *)1) :
 # else
 	(tr) ? tree(1, &destdrive) :
 # endif
@@ -416,7 +430,7 @@ int tr;
 	else if (cpfile(list[filepos].name) < 0)
 		warning(-1, list[filepos].name);
 	free(destpath);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	if (destdrive >= 0) shutdrv(destdrive);
 #endif
 	return(4);
@@ -435,8 +449,8 @@ int tr;
 	}
 	destpath =
 #ifndef	_NOTREE
-# if	MSDOS || defined (_NODOSDRIVE)
-	(tr) ? tree(1, NULL) :
+# ifdef	_NODOSDRIVE
+	(tr) ? tree(1, (int *)1) :
 # else
 	(tr) ? tree(1, &destdrive) :
 # endif
@@ -451,7 +465,7 @@ int tr;
 	else filepos++;
 	if (filepos >= max) filepos = max - 1;
 	free(destpath);
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifndef	_NODOSDRIVE
 	if (destdrive >= 0) shutdrv(destdrive);
 #endif
 	return(4);
@@ -500,7 +514,8 @@ char *dir, *subdir, *file;
 {
 	char *cp, *tmp, *dupdir;
 
-	if (_chdir2(dir) < 0) {
+	if (!dir || !*dir) subdir = file = NULL;
+	else if (_chdir2(dir) < 0) {
 		warning(-1, dir);
 		*dir = '\0';
 		subdir = file = NULL;
@@ -530,16 +545,17 @@ char *dir, *subdir, *file;
 	}
 	if (_chdir2(fullpath) < 0) error(fullpath);
 	if (rmtmpdir(dir) < 0) warning(-1, dir);
-	free(dir);
+	if (dir) free(dir);
 }
 
 int forcecleandir(dir, file)
 char *dir, *file;
 {
 #if	!MSDOS
+	long pid;
+#endif
 	extern char **environ;
 	char buf[MAXPATHLEN + 1];
-	long pid;
 	int i, len;
 
 	for (i = 0; dir[i]; i++) buf[i] = dir[i];
@@ -550,10 +566,13 @@ char *dir, *file;
 	buf[len] = '\0';
 
 	chdir(_SS_);
+#if	MSDOS
+	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);
+#else
 	if ((pid = fork()) < 0) return(-1);
 	else if (!pid) {
 		execle("/bin/rm", "rm", "-rf", buf, NULL, environ);
-		_exit(127);
+		_exit(1);
 	}
 #endif
 	return(0);
@@ -570,20 +589,16 @@ char *s;
 	return(i);
 }
 
+#if	!MSDOS
 static VOID touch(file)
 char *file;
 {
 	FILE *fp;
-#if	MSDOS
-	char *cp, buf[MAXPATHLEN + 1];
-
-	if (!(cp = preparefile(file, buf, 1))) error(file);
-	if (cp != file) return;
-#endif
 
 	if (!(fp = fopen(file, "w"))) error(file);
 	fclose(fp);
 }
+#endif
 
 static int nofile(file)
 char *file;
@@ -614,6 +629,7 @@ char *tmpdir;
 	for (i = 0; i < len; i++) str[i] = 'a';
 	str[i] = '\0';
 
+	l = 0;
 	if (tmpdir) {
 		strcpy(tmp, tmpdir);
 		l = strlen(tmp);
@@ -680,7 +696,7 @@ int fnamp;
 	struct dirent *dp;
 
 	if (!(dirp = _Xopendir(dir))) error(dir);
-	while (dp = Xreaddir(dirp)) {
+	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		else {
 			strcpy(path + fnamp, dp -> d_name);
@@ -762,7 +778,7 @@ int max, fs;
 
 	if (!(dirp = _Xopendir("."))) error(".");
 	i = ent = 0;
-	while (dp = Xreaddir(dirp)) {
+	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		else if (!strpathcmp(dp -> d_name, tmpdir)) {
 #if	MSDOS
@@ -802,6 +818,7 @@ int max, fs;
 		+ realdirsiz(tmpdir);
 	block = tmpno = 0;
 	ptr = 3;
+	totalptr = 0;
 	if (entnum) totalptr = entnum[block];
 	tmpfile = NULL;
 	maxtmp = 0;

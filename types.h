@@ -11,9 +11,11 @@ typedef u_short	gid_t;
 
 #ifdef	NOVOID
 #define	VOID
+#define	VOID_T	int
 #define	VOID_P	char *
 #else
 #define	VOID	void
+#define	VOID_T	void
 #define	VOID_P	void *
 #endif
 

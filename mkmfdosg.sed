@@ -1,4 +1,4 @@
-s:/:\\\\:g
+s:/:\\:g
 s:__EXE__:.exe:g
 s:__OBJ__:.o:g
 s:__OBJS__:unixemu.o unixdisk.o:
@@ -14,9 +14,12 @@ s:__INSTSTRIP__::
 s:__CC__:gcc:
 s:__CPP__:cpp:
 s:__CCOPTIONS__:-O:
-s:__TERMLIBS__:-lpc:
+s:__OUT__:-o:
+s:__LNK__:-o:
+s:__TERMLIBS__::
 s:__REGLIBS__::
 s:__OTHERLIBS__::
 s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
+s:__UNITBL__:$(UNITBL):
 s:__PREFIXOPTION__::

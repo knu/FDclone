@@ -4,6 +4,7 @@
  *	UNIX Function Emulation on DOS
  */
 
+#include <io.h>
 #include "fd.h"
 #include "func.h"
 #include "unixdisk.h"
@@ -28,7 +29,7 @@ char *path, *buf;
 		strcpy(tmp, path);
 		path = tmp;
 	}
-	if (buf && unixrealpath(path, buf)) return(*buf);
+	if (buf && shortname(path, buf)) return(*buf);
 	drv = _dospath(path);
 	return((drv) ? drv : getcurdrv());
 }
@@ -73,7 +74,7 @@ DIR *dirp;
 VOID Xrewinddir(dirp)
 DIR *dirp;
 {
-	unixseekdir(dirp, 0L);
+	unixrewinddir(dirp);
 }
 
 int _Xchdir(path)
@@ -119,7 +120,7 @@ struct stat *statp;
 #endif
 	if (unixstat(path, statp) < 0) return(-1);
 
-	mode = statp -> st_mode;
+	mode = (u_short)(statp -> st_mode);
 	if ((mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
 		if (!stricmp(cp, "BAT")
@@ -195,7 +196,6 @@ int mode;
 	char buf[MAXPATHLEN + 1];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
-	else
 #endif
 	return(unixchmod(path, mode));
 }
@@ -239,7 +239,12 @@ char *path;
 	else
 #endif
 	if (!(path = preparefile(path, buf, 0))) return(-1);
-	return((unlink(path) != 0) ? -1 : 0);
+	if (unlink(path) != 0) {
+		if (errno != EACCES
+		|| unixchmod(path, (S_IREAD | S_IWRITE | S_ISVTX)) < 0
+		|| unlink(path) != 0) return(-1);
+	}
+	return(0);
 }
 
 int Xrename(from, to)

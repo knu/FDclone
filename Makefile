@@ -45,11 +45,21 @@ makefile.l98: Makefile.in mkmfdosl.sed
 	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
 	(rm -f $@; exit 1)
 
+makefile.bpc: Makefile.in mkmfdosb.sed
+	$(SED) -f mkmfdosb.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/DOSV/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.b98: Makefile.in mkmfdosb.sed
+	$(SED) -f mkmfdosb.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
+	(rm -f $@; exit 1)
+
 mkmf.sed: mkmfsed
 	./mkmfsed > mkmf.sed
 
 mkmfsed: mkmfsed.c machine.h config.h
-	$(CC) $(CFLAGS) -DCCCOMMAND='"'$(CC)'"' -o $@ mkmfsed.c
+	$(CC) $(CFLAGS) -DCCCOMMAND='"$(CC)"' -o $@ mkmfsed.c
 
 config.h: config.hin
 	cp config.hin config.h
@@ -61,7 +71,8 @@ depend config: Makefile.tmp
 
 tar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
 makefile.dpc makefile.d98 \
-makefile.lpc makefile.l98
+makefile.lpc makefile.l98 \
+makefile.bpc makefile.b98
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
 
 clean: Makefile.tmp

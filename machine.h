@@ -10,7 +10,6 @@
 #define	MSDOS		(DOSV || PC98 || J3100)
 
 #if	MSDOS
-#define	NOUNISTDH
 #define	NOTZFILEH
 #define	USETIMEH
 #define	USEUTIME
@@ -25,12 +24,17 @@
 # else	/* !__GNUC__ */
 # define	NOUID_T
 # define	NOFILEMODE
+# define	NOUNISTDH
 # endif	/* !__GNUC__ */
 # if	!defined (__GNUC__) || (DJGPP >= 2)
 typedef unsigned int	u_int;
 typedef unsigned char	u_char;
 typedef unsigned short	u_short;
 typedef unsigned long	u_long;
+# endif
+# ifdef	__TURBOC__
+# define	__STRICT_ANSI__
+typedef	long	off_t;
 # endif
 #define	_SC_	'\\'
 #define	_SS_	"\\"
@@ -123,7 +127,7 @@ typedef unsigned long	u_long;
 || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SVR4
 #define	OSTYPE			"HPUX"
-#define	EXTENDCCOPT		""
+#define	EXTENDCCOPT		"-U__STDC__"
 #define	TERMCAPLIB		"-lcurses"
 #define	NOTZFILEH
 #define	NOTMGMTOFF
@@ -337,6 +341,7 @@ typedef unsigned long	u_long;
 # endif
 #define	USESETENV
 #define	USEMKTIME
+#define	SIGFNCINT
 #endif
 
 #if	defined (__FreeBSD__) && defined (__powerpc__)
@@ -370,6 +375,7 @@ typedef unsigned long	u_long;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	SIGFNCINT
 #endif
 
 #if	defined (__NetBSD__)
@@ -508,7 +514,7 @@ typedef unsigned long	u_long;
 /* #define HAVETIMEZONE	/* have extern valiable 'timezone' */
 /* #define NOTMGMTOFF	/* struct tm haven't tm_gmtoff */
 
-/* following 5 items are exclusive
+/* following 5 items are exclusive */
 /* #define USESTATVFSH	/* use <sys/statvfs.h> as header of the FS status */
 /* #define USESTATFSH	/* use <sys/statfs.h> as header of the FS status */
 /* #define USEVFSH	/* use <sys/vfs.h> as header of the FS status */
@@ -518,7 +524,7 @@ typedef unsigned long	u_long;
 /* #define USEFFSIZE	/* 'struct statfs' has 'f_fsize' as block size */
 /* #define STATFSARGS	/* the number of arguments in statfs() */
 
-/* following 8 items are exclusive
+/* following 8 items are exclusive */
 /* #define USEMNTENTH	/* use <mntent.h> as header of the mount entry */
 /* #define USEMNTTABH	/* use <sys/mnttab.h> as header of the mount entry */
 /* #define USEGETFSSTAT	/* use getfsstat() to get the mount entry */
@@ -528,11 +534,11 @@ typedef unsigned long	u_long;
 /* #define USEGETMNT	/* use getmnt() to get the mount entry */
 /* #define USEGETFSENT	/* use getfsent() to get the mount entry */
 
-/* following 2 items are exclusive
+/* following 2 items are exclusive */
 /* #define USEVFCNAME	/* 'struct vfsconf' has 'vfc_name' as the mount type */
 /* #define USEFFSTYPE	/* 'struct statfs' has 'f_fstypename' as mount type */
 
-/* following 3 items are exclusive
+/* following 3 items are exclusive */
 /* #define USERE_COMP	/* use re_comp() family as search */
 /* #define USEREGCOMP	/* use regcomp() family as search */
 /* #define USEREGCMP	/* use regcmp() family as search */
@@ -577,12 +583,16 @@ typedef unsigned long	u_long;
 # endif
 #endif
 
-#ifdef	__STDC__
+#if	defined (__STDC__) || defined (__STRICT_ANSI__)
 #define	__P_(args)	args
 #define	CONST		const
+#define	ALLOC_T		size_t
+#define	VOID_A		void
 #else
 #define	__P_(args)	()
 #define	CONST
+#define	ALLOC_T		unsigned
+#define	VOID_A
 #endif
 
 #if	defined (USEREGCMP) && !defined (REGEXPLIB)

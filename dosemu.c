@@ -146,7 +146,7 @@ char *path;
 	char buf[MAXPATHLEN + 1];
 	int dd, drive;
 
-	if (drive = dospath(path, buf)) {
+	if ((drive = dospath(path, buf))) {
 		if ((dd = preparedrv(drive, waitmes)) < 0) return(-1);
 		if (doschdir(buf) < 0) {
 			shutdrv(dd);
@@ -548,7 +548,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fclose(stream));
 #else
-	return(stream2fd(stream) >= 0 ? dosfclose(stream) : fclose(stream));
+	return(dosfileno(stream) >= 0 ? dosfclose(stream) : fclose(stream));
 #endif
 }
 
@@ -558,7 +558,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(feof(stream));
 #else
-	return(stream2fd(stream) >= 0 ? dosfeof(stream) : feof(stream));
+	return(dosfileno(stream) >= 0 ? dosfeof(stream) : feof(stream));
 #endif
 }
 
@@ -570,7 +570,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fread(buf, size, nitems, stream));
 #else
-	return(stream2fd(stream) >= 0 ?
+	return(dosfileno(stream) >= 0 ?
 		dosfread(buf, size, nitems, stream) :
 		fread(buf, size, nitems, stream));
 #endif
@@ -584,7 +584,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fwrite(buf, size, nitems, stream));
 #else
-	return(stream2fd(stream) >= 0 ?
+	return(dosfileno(stream) >= 0 ?
 		dosfwrite(buf, size, nitems, stream) :
 		fwrite(buf, size, nitems, stream));
 #endif
@@ -596,7 +596,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fflush(stream));
 #else
-	return(stream2fd(stream) >= 0 ? dosfflush(stream) : fflush(stream));
+	return(dosfileno(stream) >= 0 ? dosfflush(stream) : fflush(stream));
 #endif
 }
 
@@ -606,7 +606,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fgetc(stream));
 #else
-	return(stream2fd(stream) >= 0 ? dosfgetc(stream) : fgetc(stream));
+	return(dosfileno(stream) >= 0 ? dosfgetc(stream) : fgetc(stream));
 #endif
 }
 
@@ -617,7 +617,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fputc(c, stream));
 #else
-	return(stream2fd(stream) >= 0 ? dosfputc(c, stream) : fputc(c, stream));
+	return(dosfileno(stream) >= 0 ? dosfputc(c, stream) : fputc(c, stream));
 #endif
 }
 
@@ -629,7 +629,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fgets(s, n, stream));
 #else
-	return(stream2fd(stream) >= 0 ?
+	return(dosfileno(stream) >= 0 ?
 		dosfgets(s, n, stream) : fgets(s, n, stream));
 #endif
 }
@@ -641,7 +641,7 @@ FILE *stream;
 #ifdef	_NODOSDRIVE
 	return(fputs(s, stream));
 #else
-	return(stream2fd(stream) >= 0 ?
+	return(dosfileno(stream) >= 0 ?
 		dosfputs(s, stream) : fputs(s, stream));
 #endif
 }

@@ -3,23 +3,24 @@
 #
 
 TITLE	= FD-
-PREFIX	= \\usr\\local
+PREFIX	= \usr\local
 TOPDIR	= $(PREFIX)
-BINDIR	= $(TOPDIR)\\bin
-MANDIR	= $(TOPDIR)\\man\\man$(MANSEC)
-CATDIR	= $(TOPDIR)\\man\\cat$(MANSEC)
-DEFRC	= \\etc\\fdrc
+BINDIR	= $(TOPDIR)\bin
+MANDIR	= $(TOPDIR)\man\man$(MANSEC)
+CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
+DEFRC	= \etc\fdrc
 DOSRC	= ~FD\\fdrc
+UNITBL	= unicode.tbl
 INSTALL	= copy
 CHMOD	= chmod
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
-	dosdisk.c dosemu.c \
+	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	rockridg.c builtin.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
-	kanjicnv.c mkfuncno.c expfunc.c functabl.c
+	kanjicnv.c mkfuncno.c expfunc.c functabl.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
@@ -34,10 +35,11 @@ ARGS	= object.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
-	makefile.lpc makefile.l98 \
-	makefile.dpc makefile.d98 \
 	makefile.gpc makefile.g98 \
-	config.hin mkmfsed.c mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed \
+	makefile.dpc makefile.d98 \
+	makefile.lpc makefile.l98 \
+	makefile.bpc makefile.b98 \
+	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed\
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 
@@ -47,13 +49,13 @@ SED	= sed
 PROGRAM	= fd
 OBJ1	= main.o term.o pathname.o libc.o \
 	input.o shell.o info.o
-OBJ2	= unixemu.o unixdisk.o \
+OBJ2	= dosdisk.o unixemu.o unixdisk.o \
 	rockridg.o builtin.o parse.o
 OBJ3	= kanji.o file.o apply.o archive.o \
 	tree.o command.o browse.o
 
-LDFLAGS	= -lpc  
-CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
+LDFLAGS	=   
+CFLAGS	= -DFD=1 -DPC98=1 -DDEFRUNCOM='"'$(DOSRC)'"' -O
 
 .SUFFIXES: .h .c .o .exe
 
@@ -61,7 +63,7 @@ CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
 #	Dependency Rules
 ############################################################
 
-all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
+all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	$(CC) $(CFLAGS) -o $@ @$(ARGS) $(LDFLAGS)
@@ -75,26 +77,26 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
 # kanji using module
 
 kanji.h: kanjicnv.exe kanji.hin
-	.\\kanjicnv.exe -s  -c kanji.hin $@
+	.\kanjicnv.exe -s  -c kanji.hin $@
 
 $(PROGRAM).$(MANSEC): kanjicnv.exe $(MANSRC)
-	.\\kanjicnv.exe -s  $(MANSRC) $@
+	.\kanjicnv.exe -s  $(MANSRC) $@
 
 $(PROGRAM).$(MANSEC)c: kanjicnv.exe $(MANCAT)
-	.\\kanjicnv.exe -s $(MANCAT) $@
+	.\kanjicnv.exe -s $(MANCAT) $@
 
 $(PROGRAM).doc: kanjicnv.exe $(MANCAT)
-	.\\kanjicnv.exe -s -b $(MANCAT) $@
+	.\kanjicnv.exe -s -b $(MANCAT) $@
 
 history.doc: kanjicnv.exe HISTORY
-	.\\kanjicnv.exe -s HISTORY $@
+	.\kanjicnv.exe -s HISTORY $@
 
 kanjicnv.exe: kanjicnv.c
 	$(CC) $(CFLAGS) -o $@ kanjicnv.c
@@ -107,7 +109,7 @@ kanjicnv.exe: kanjicnv.c
 # function list using module
 
 funcno.h: mkfuncno.exe functabl.c functabl.h fd.h config.h
-	-$(CPP) functabl.c | .\\mkfuncno.exe - $@
+	-$(CPP) functabl.c | .\mkfuncno.exe - $@
 
 mkfuncno.exe: mkfuncno.c
 	$(CC) $(CFLAGS) -o $@ mkfuncno.c
@@ -120,31 +122,48 @@ config.h: config.hin
 
 
 ############################################################
+# UNICODE table generating module
+
+$(UNITBL): mkunitbl.exe
+	.\mkunitbl.exe $@
+
+mkunitbl.exe: mkunitbl.c
+	$(CC) $(CFLAGS) -o $@ mkunitbl.c
+#	@ren $@ mkunitbl
+#	@aout2exe mkunitbl
+#	@del mkunitbl
+
+
+############################################################
 # to install all
 
-install: $(PROGRAM).exe $(PROGRAM).$(MANSEC)
+install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 	$(INSTALL)  $(PROGRAM).exe $(BINDIR)
-	$(CHMOD) a+rx $(BINDIR)\\$(PROGRAM).exe
-	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)\\$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(MANDIR)\\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM).exe
+	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(MANDIR)\$(PROGRAM).$(MANSEC)
 	-if [ -f $(RUNCOM) ]; then \
 		$(INSTALL) $(RUNCOM) $(DEFRC); \
 		$(CHMOD) a+r $(DEFRC); \
 	fi
+	-if [ -f $(UNITBL) ]; then \
+		$(INSTALL) $(UNITBL) $(BINDIR); \
+		$(CHMOD) a+r $(BINDIR)\$(UNTABL); \
+	fi
 
 catman: $(PROGRAM).$(MANSEC)c
-	$(INSTALL) $(PROGRAM).$(MANSEC)c $(CATDIR)\\$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(CATDIR)\\$(PROGRAM).$(MANSEC)
+	$(INSTALL) $(PROGRAM).$(MANSEC)c $(CATDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(CATDIR)\$(PROGRAM).$(MANSEC)
 
 catman-b: $(PROGRAM).doc
-	$(INSTALL) $(PROGRAM).doc $(CATDIR)\\$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r $(CATDIR)\\$(PROGRAM).$(MANSEC)
+	$(INSTALL) $(PROGRAM).doc $(CATDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(CATDIR)\$(PROGRAM).$(MANSEC)
 
 compman: catman
-	compress -f $(CATDIR)\\$(PROGRAM).$(MANSEC)
+	compress -f $(CATDIR)\$(PROGRAM).$(MANSEC)
 
 compman-b: catman-b
-	compress -f $(CATDIR)\\$(PROGRAM).$(MANSEC)
+	compress -f $(CATDIR)\$(PROGRAM).$(MANSEC)
 
 
 ############################################################
@@ -155,15 +174,15 @@ depend: $(SRC) kanji.h funcno.h
 	makedepend -s "# DO NOT DELETE THIS LINE -- make depend depends on it."\
 		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
 	rm -f Makefile.tmp.bak
-	$(SED) -e '\\^# DO NOT DELETE THIS LINE\\,$$d' Makefile.in.bak\
+	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' Makefile.in.bak\
 		> Makefile.in
 	echo "# DO NOT DELETE THIS LINE -- make depend depends on it."\
 		>> Makefile.in
-	$(SED) -e '1,\\^# DO NOT DELETE THIS LINE\\d'\
-		-e 's\\\\\[^ ]* *\\\\g'\
-		-e 's\\\.o\\\_\_OBJ\_\_\\g'\
-		-e 's\\ *$$\\\\'\
-		-e '\\: *$$\\d' Makefile.tmp >> Makefile.in
+	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d'\
+		-e 's\\\[^ ]* *\\g'\
+		-e 's\\.o\\_\_OBJ\_\_\g'\
+		-e 's\ *$$\\'\
+		-e '\: *$$\d' Makefile.tmp >> Makefile.in
 	rm -f Makefile.in.bak Makefile.tmp
 
 
@@ -171,13 +190,14 @@ depend: $(SRC) kanji.h funcno.h
 # to make configuration file manually
 
 config: Configur expfunc.c
-	-if (echo 't() { echo $1; }; t test' | $(SHELL) >\\dev\\null 2>&1); then \
+	-if (echo 't() { echo $1; }; t test' | $(SHELL) >\dev\null 2>&1); then \
 		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
-			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
+			$(CC) $(CFLAGS) -o expfunc.exe expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configur | .\\expfunc | $(SHELL) > config.h; \
+		$(SED) "2,3d" Configur | .\expfunc.exe | $(SHELL) \
+		> config.h; \
 	fi
 
 
@@ -211,79 +231,94 @@ clean:
 	-rm -f core
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-main.o: fd.h machine.h config.h
+main.o: fd.h
+main.o: machine.h config.h
 main.o: types.h pathname.h term.h
-main.o: func.h kctype.h
-main.o: kanji.h funcno.h version.h
-main.o: dosdisk.h
+main.o: func.h
+main.o: kctype.h
+main.o: funcno.h kanji.h version.h dosdisk.h
 term.o: machine.h config.h
 term.o: term.h
 pathname.o: machine.h config.h
 pathname.o: pathname.h
-libc.o: fd.h machine.h config.h
-libc.o: types.h pathname.h term.h
-libc.o: func.h kctype.h
-libc.o: kanji.h
-input.o: fd.h machine.h config.h
+libc.o: fd.h
+libc.o: machine.h config.h
+libc.o: types.h pathname.h term.h func.h
+libc.o: kctype.h kanji.h
+input.o: fd.h
+input.o: machine.h config.h
 input.o: types.h pathname.h
 input.o: term.h func.h
-input.o: kctype.h kanji.h
-shell.o: fd.h machine.h config.h
-shell.o: types.h pathname.h
-shell.o: term.h func.h
-shell.o: kctype.h kanji.h funcno.h
-info.o: fd.h machine.h config.h
-info.o: types.h pathname.h term.h
-info.o: funcno.h kanji.h
+input.o: kctype.h
+input.o: kanji.h
+shell.o: fd.h
+shell.o: machine.h config.h
+shell.o: types.h pathname.h term.h func.h
+shell.o: kctype.h
+shell.o: funcno.h kanji.h
+info.o: fd.h
+info.o: machine.h config.h
+info.o: types.h pathname.h term.h funcno.h kanji.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
-dosemu.o: fd.h machine.h config.h
-dosemu.o: types.h pathname.h
-dosemu.o: func.h dosdisk.h
+dosemu.o: fd.h
+dosemu.o: machine.h config.h
+dosemu.o: types.h pathname.h func.h
 dosemu.o: kctype.h
-unixdisk.o: unixdisk.h machine.h config.h
-unixdisk.o: unixemu.h
-unixemu.o: fd.h machine.h config.h
-unixemu.o: types.h pathname.h
-unixemu.o: func.h
+dosemu.o: dosdisk.h
+unixdisk.o: machine.h config.h unixdisk.h
+unixdisk.o: unixemu.h dosdisk.h
+unixemu.o: fd.h
+unixemu.o: machine.h config.h
+unixemu.o: types.h pathname.h func.h
 unixemu.o: unixdisk.h
 unixemu.o: unixemu.h
-rockridg.o: fd.h machine.h config.h
-rockridg.o: types.h pathname.h
-rockridg.o: func.h
-builtin.o: fd.h machine.h config.h
-builtin.o: types.h pathname.h
-builtin.o: term.h func.h
-builtin.o: kanji.h kctype.h funcno.h dosdisk.h
-parse.o: fd.h machine.h config.h
-parse.o: types.h pathname.h
-parse.o: func.h kctype.h
+rockridg.o: fd.h
+rockridg.o: machine.h config.h
+rockridg.o: types.h pathname.h func.h
+builtin.o: fd.h
+builtin.o: machine.h config.h
+builtin.o: types.h pathname.h term.h func.h
+builtin.o: kctype.h
+builtin.o: funcno.h kanji.h dosdisk.h
+parse.o: fd.h
+parse.o: machine.h config.h
+parse.o: types.h pathname.h func.h
+parse.o: kctype.h
 parse.o: dosdisk.h
-kanji.o: fd.h machine.h config.h
-kanji.o: types.h pathname.h
-kanji.o: term.h func.h
+kanji.o: fd.h
+kanji.o: machine.h config.h
+kanji.o: types.h pathname.h term.h func.h
 kanji.o: kctype.h
-file.o: fd.h machine.h config.h
-file.o: types.h pathname.h term.h
-file.o: func.h kanji.h
-file.o: kctype.h
-apply.o: fd.h machine.h config.h
-apply.o: types.h pathname.h
-apply.o: term.h func.h
+file.o: fd.h
+file.o: machine.h config.h
+file.o: types.h pathname.h term.h func.h
+file.o: kctype.h kanji.h
+apply.o: fd.h
+apply.o: machine.h config.h
+apply.o: types.h pathname.h term.h func.h
 apply.o: kanji.h
-archive.o: fd.h machine.h config.h
-archive.o: types.h pathname.h
-archive.o: term.h func.h
+archive.o: fd.h
+archive.o: machine.h
+archive.o: config.h types.h
+archive.o: pathname.h term.h func.h
 archive.o: funcno.h kanji.h
-tree.o: fd.h machine.h config.h
-tree.o: types.h pathname.h term.h
-tree.o: func.h kanji.h
-command.o: fd.h machine.h config.h
-command.o: types.h pathname.h
-command.o: term.h func.h
-command.o: kanji.h funcno.h
+tree.o: fd.h
+tree.o: machine.h config.h
+tree.o: types.h pathname.h term.h func.h
+tree.o: kanji.h
+command.o: fd.h
+command.o: machine.h
+command.o: config.h types.h
+command.o: pathname.h term.h func.h
+command.o: funcno.h kanji.h
 command.o: functabl.h
-browse.o: fd.h machine.h config.h
+browse.o: fd.h
+browse.o: machine.h config.h
 browse.o: types.h pathname.h
 browse.o: term.h func.h
 browse.o: funcno.h kanji.h
+functabl.o: fd.h
+functabl.o: machine.h config.h
+functabl.o: types.h pathname.h functabl.h
+mkmfsed.o: machine.h config.h

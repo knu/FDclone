@@ -4,8 +4,6 @@
  *	Directory Browsing Module
  */
 
-extern char *archivefile;
-
 #include <signal.h>
 #include "fd.h"
 #include "term.h"
@@ -14,7 +12,7 @@ extern char *archivefile;
 #include "kanji.h"
 
 #if	MSDOS
-extern int getcurdrv __P_((VOID));
+extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int));
 #else
 #include <sys/file.h>
@@ -30,8 +28,8 @@ extern int writefs;
 extern char *curfilename;
 extern char *origpath;
 
-static VOID pathbar __P_((VOID));
-static VOID stackbar __P_((VOID));
+static VOID pathbar __P_((VOID_A));
+static VOID stackbar __P_((VOID_A));
 #if	!MSDOS
 static char *putowner __P_((char *, uid_t));
 static char *putgroup __P_((char *, gid_t));
@@ -39,28 +37,28 @@ static char *putgroup __P_((char *, gid_t));
 static VOID calclocate __P_((int));
 static int browsedir __P_((char *, char *));
 
-int columns;
-int minfilename;
-int filepos;
-int mark;
-int fnameofs;
-int dispmode;
-int sorton;
-int sorttype;
-int chgorder;
+int columns = 0;
+int minfilename = 0;
+int filepos = 0;
+int mark = 0;
+int fnameofs = 0;
+int dispmode = 0;
+int sorton = 0;
+int sorttype = 0;
+int chgorder = 0;
 int stackdepth = 0;
-int sizeinfo;
-long marksize;
-long totalsize;
-long blocksize;
+int sizeinfo = 0;
+long marksize = 0;
+long totalsize = 0;
+long blocksize = 0;
 namelist filestack[MAXSTACK];
-char fullpath[MAXPATHLEN + 1];
+char fullpath[MAXPATHLEN + 1] = "";
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
-namelist *filelist;
-int maxfile;
-int maxent;
-int isearch;
+namelist *filelist = NULL;
+int maxfile = 0;
+int maxent = 0;
+int isearch = 0;
 char *helpindex[10] = {
 #ifdef	_NOTREE
 	"help", "eXec", "Copy", "Delete", "Rename",
@@ -80,14 +78,14 @@ static u_short modelist[] = {
 };
 static char suffixlist[] = "/@=|";
 #ifndef	_NOCOLOR
-int ansicolor;
+int ansicolor = 0;
 static u_char colorlist[] = {
 	ANSI_CYAN, ANSI_YELLOW, ANSI_MAGENTA, ANSI_RED
 };
 #endif
 
 
-static VOID pathbar(VOID)
+static VOID pathbar(VOID_A)
 {
 	char *path;
 
@@ -105,7 +103,7 @@ static VOID pathbar(VOID)
 	tflush();
 }
 
-VOID helpbar(VOID)
+VOID helpbar(VOID_A)
 {
 	char *buf;
 	int i, j, width, len, ofs;
@@ -191,7 +189,7 @@ int max;
 	tflush();
 }
 
-static VOID stackbar(VOID)
+static VOID stackbar(VOID_A)
 {
 #ifndef	_NOCOLOR
 	int j, color;
@@ -214,6 +212,7 @@ static VOID stackbar(VOID)
 				== modelist[j]) break;
 			if (j < sizeof(modelist) / sizeof(u_short))
 				color = colorlist[j];
+			else if (ansicolor == 3) color = ANSI_BLACK;
 			else color = ANSI_WHITE;
 		}
 		if (ansicolor) chgcolor(color, 1);
@@ -222,7 +221,7 @@ static VOID stackbar(VOID)
 		putterm(t_standout);
 		kanjiputs2(filestack[i].name, width - 2, 0);
 #ifndef	_NOCOLOR
-		if (ansicolor > 1) chgcolor(ANSI_BLACK, 1);
+		if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
 		else if (ansicolor) putterms(t_normal);
 		else
 #endif
@@ -232,7 +231,7 @@ static VOID stackbar(VOID)
 	tflush();
 }
 
-VOID sizebar(VOID)
+VOID sizebar(VOID_A)
 {
 	char buf[16];
 	long total, fre;
@@ -305,7 +304,7 @@ uid_t uid;
 {
 	char *str;
 
-	if (str = getpwuid2(uid)) strncpy3(buf, str, WOWNER, 0);
+	if ((str = getpwuid2(uid))) strncpy3(buf, str, WOWNER, 0);
 	else sprintf(buf, "%-*u", WOWNER, uid);
 
 	return(buf);
@@ -317,7 +316,7 @@ gid_t gid;
 {
 	char *str;
 
-	if (str = getgrgid2(gid)) strncpy3(buf, str, WGROUP, 0);
+	if ((str = getgrgid2(gid))) strncpy3(buf, str, WGROUP, 0);
 	else sprintf(buf, "%-*u", WGROUP, gid);
 
 	return(buf);
@@ -393,7 +392,7 @@ int no;
 	tflush();
 }
 
-VOID waitmes(VOID)
+VOID waitmes(VOID_A)
 {
 	helpbar();
 	locate(0, LMESLINE);
@@ -421,7 +420,7 @@ int i;
 #define	WIDTH2	(WTIME + 1 + WDATE + 1)
 #define	WIDTH3	(WSIZE + 1)
 
-int calcwidth(VOID)
+int calcwidth(VOID_A)
 {
 	int width;
 
@@ -475,11 +474,13 @@ int no, standout;
 	if (!isread(&list[no])) color = ANSI_BLUE;
 	else if (!iswrite(&list[no])) color = ANSI_GREEN;
 	else if (j < sizeof(modelist) / sizeof(u_short)) color = colorlist[j];
+	else if (ansicolor == 3) color = ANSI_BLACK;
 	else color = ANSI_WHITE;
 #endif
 	len = width;
 	width = (n_column / columns) - 2 - 1;
 
+	tm = NULL;
 	if (columns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&list[no]))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
@@ -507,6 +508,7 @@ int no, standout;
 		len += WIDTH2;
 	}
 	if (columns < 2 && len + WIDTH1 <= width) {
+		if (!tm) tm = localtime(&list[no].st_mtim);
 		sprintf(buf + len, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
@@ -529,7 +531,7 @@ int no, standout;
 	if (standout > 0) putterm(t_standout);
 	kanjiputs(buf);
 #ifndef	_NOCOLOR
-	if (ansicolor > 1) chgcolor(ANSI_BLACK, 1);
+	if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
 	else if (ansicolor) putterms(t_normal);
 	else
 #endif
@@ -714,7 +716,7 @@ char *file, *def;
 	int ch, i, no, old;
 
 #ifndef	_NOCOLOR
-	if (ansicolor > 1) chgcolor(ANSI_BLACK, 1);
+	if (ansicolor == 2) chgcolor(ANSI_BLACK, 1);
 	else if (ansicolor) putterms(t_normal);
 #endif
 
@@ -735,7 +737,7 @@ char *file, *def;
 		re = regexp_init(cp);
 		free(cp);
 	}
-	while (dp = searchdir(dirp, re)) {
+	while ((dp = searchdir(dirp, re))) {
 		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
 		&& !isdotdir(dp -> d_name)) continue;
 		strcpy(file, dp -> d_name);
@@ -882,7 +884,7 @@ char *cur;
 
 	findpattern = def = NULL;
 	if (cur) {
-		cp = evalpath(strdup2(cur));
+		cp = evalpath(strdup2(cur), 1);
 #if	MSDOS
 		if (_dospath(cp)) {
 			if (setcurdrv(*cp) < 0) fullpath[0] = getcurdrv();
@@ -952,7 +954,7 @@ char *cur;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
-			if (cp = strrchr(fullpath, _SC_)) cp++;
+			if ((cp = strrchr(fullpath, _SC_))) cp++;
 			else cp = fullpath;
 			strcpy(prev, cp);
 			if (!*prev) {

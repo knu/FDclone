@@ -21,14 +21,18 @@ extern int subwindow;
 extern int sizeinfo;
 
 static long judgecopy __P_((char *, char *, time_t *, time_t *));
-static VOID showattr __P_((namelist *, u_short, char [2][9], int y));
+static VOID showattr __P_((namelist *, u_short, char [][9], int y));
 static int touchfile __P_((char *, time_t, time_t));
 
 int copypolicy = 0;
 char *destpath = NULL;
 
-static u_short attrmode;
-static time_t attrtime;
+static u_short attrmode = 0;
+static time_t attrtime = 0;
+
+#ifndef	O_BINARY
+#define	O_BINARY	0
+#endif
 
 
 static long judgecopy(file, dest, atimep, mtimep)
@@ -44,14 +48,14 @@ time_t *atimep, *mtimep;
 	strcat(dest, file);
 	if (Xlstat(file, &status1) < 0) {
 		warning(-1, file);
-		return(-1);
+		return(-1L);
 	}
 	if (atimep) *atimep = status1.st_atime;
 	if (mtimep) *mtimep = status1.st_mtime;
 	if (Xlstat(dest, &status2) < 0) {
-		if (errno == ENOENT) return((long)status1.st_mode);
+		if (errno == ENOENT) return((u_short)(status1.st_mode));
 		warning(-1, dest);
-		return(-1);
+		return(-1L);
 	}
 
 	if (!copypolicy || copypolicy == 2) {
@@ -77,30 +81,30 @@ time_t *atimep, *mtimep;
 	}
 	switch (copypolicy) {
 		case 1:
-			if (status1.st_mtime < status2.st_mtime) return(-1);
+			if (status1.st_mtime < status2.st_mtime) return(-1L);
 			break;
 		case 2:
 			cp = strrchr(dest, _SC_) + 1;
 			do {
 				if (!(tmp = inputstr(NEWNM_K, 1,
-					-1, NULL, -1))) return(-1);
+					-1, NULL, -1))) return(-1L);
 				strcpy(cp, tmp);
 				free(tmp);
 			} while (Xlstat(dest, &status2) >= 0
 			&& (putterm(t_bell), 1));
 			if (errno != ENOENT) {
 				warning(-1, dest);
-				return(-1);
+				return(-1L);
 			}
 			break;
 		case 3:
 			break;
 		default:
-			return(-1);
+			return(-1L);
 /*NOTREACHED*/
 			break;
 	}
-	return((long)status1.st_mode);
+	return((u_short)(status1.st_mode));
 }
 
 int _cpfile(src, dest, mode)
@@ -115,13 +119,9 @@ u_short mode;
 		buf[i] = '\0';
 		return(Xsymlink(buf, dest));
 	}
-#if	MSDOS && defined (O_BINARY)
-	if ((fd1 = Xopen(src, O_RDONLY|O_BINARY, mode)) < 0) return(-1);
-	if ((fd2 = Xopen(dest, O_WRONLY|O_BINARY|O_CREAT|O_TRUNC, mode)) < 0) {
-#else
-	if ((fd1 = Xopen(src, O_RDONLY, mode)) < 0) return(-1);
-	if ((fd2 = Xopen(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
-#endif
+	if ((fd1 = Xopen(src, O_RDONLY | O_BINARY, mode)) < 0) return(-1);
+	if ((fd2 = Xopen(dest,
+	O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, mode)) < 0) {
 		Xclose(fd1);
 		return(-1);
 	}
@@ -141,6 +141,9 @@ u_short mode;
 
 	if (i < 0) {
 		i = errno;
+#if	MSDOS
+		if (!(mode & S_IWRITE)) Xchmod(dest, (mode | S_IWRITE));
+#endif
 		Xunlink(dest);
 		errno = i;
 		return(-1);
@@ -153,9 +156,20 @@ char *path;
 {
 	char dest[MAXPATHLEN + 1];
 	long mode;
+#if	MSDOS
+	time_t atime, mtime;
+
+	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
+	if (_cpfile(path, dest, (u_short)mode) < 0) return(-1);
+	if (!(mode & S_IWRITE)) Xchmod(dest, (mode | S_IWRITE));
+	touchfile(dest, atime, mtime);
+	if (!(mode & S_IWRITE)) Xchmod(dest, mode);
+	return(0);
+#else
 
 	if ((mode = judgecopy(path, dest, NULL, NULL)) < 0) return(0);
 	return(_cpfile(path, dest, (u_short)mode));
+#endif
 }
 
 int mvfile(path)
@@ -168,11 +182,20 @@ char *path;
 	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
 	if (Xrename(path, dest) < 0) {
 		if (errno != EXDEV || (mode & S_IFMT) == S_IFDIR) return(-1);
+#if	MSDOS
+		if (!(mode & S_IWRITE)) Xchmod(path, (mode | S_IWRITE));
+		if (access2(path, W_OK) < 0) return(1);
+		if (_cpfile(path, dest, (mode | S_IWRITE)) < 0
+#else
 		if (access2(path, W_OK) < 0) return(1);
 		if (_cpfile(path, dest, mode) < 0
+#endif
 		|| Xunlink(path) < 0) return(-1);
 		if ((mode & S_IFMT) != S_IFLNK
 		&& touchfile(dest, atime, mtime) < 0) return(-1);
+#if	MSDOS
+		if (!(mode & S_IWRITE)) Xchmod(dest, mode);
+#endif
 	}
 	return(0);
 }
@@ -194,7 +217,7 @@ char *path;
 {
 	char *cp;
 
-	if (cp = strrchr(path, _SC_)) cp++;
+	if ((cp = strrchr(path, _SC_))) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
@@ -221,7 +244,7 @@ char *path;
 {
 	char *cp;
 
-	if (cp = strrchr(path, _SC_)) cp++;
+	if ((cp = strrchr(path, _SC_))) cp++;
 	else cp = path;
 
 	if (regexp_exec(findregexp, cp)) {
@@ -487,6 +510,9 @@ char *path;
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(1);
 
 	mode = (status.st_mode & S_IFMT) | (attrmode & ~S_IFMT);
+#if	MSDOS
+	if (!(status.st_mode & S_IWRITE)) Xchmod(path, (mode | S_IWRITE));
+#endif
 	if (touchfile(path, status.st_atime, attrtime) < 0
 	|| Xchmod(path, mode) < 0) return(-1);
 	return(0);
@@ -553,9 +579,9 @@ char *endmes;
 	fname = path + strlen(path);
 	*(fname++) = _SC_;
 
-	ndir = max = 0;
+	i = ndir = max = 0;
 	dirlist = NULL;
-	while (dp = Xreaddir(dirp)) {
+	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 
@@ -589,7 +615,7 @@ char *endmes;
 	}
 	free(dirlist);
 
-	while (dp = Xreaddir(dirp)) {
+	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(fname, dp -> d_name);
 

@@ -51,6 +51,7 @@ extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern int Xstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
+extern int _dospath __P_((char *));
 # ifdef	NOVOID
 extern error __P_((char *));
 # else
@@ -67,6 +68,7 @@ extern char *progpath;
 #define	error		return
 #endif
 
+static int evalenv __P_((char *, int, int));
 #if	!MSDOS
 static int completeuser __P_((char *, int, char **));
 #endif
@@ -75,18 +77,42 @@ static DIR *opennextpath __P_((char **, char *, char**));
 static struct dirent *readnextpath __P_((DIR **, char **, char *, char**));
 #endif
 
-static int skipdotfile;
+static int skipdotfile = 0;
 
 
-char *_evalpath(path, eol, keepdelim)
+static int evalenv(s, off, len)
+char *s;
+int off, len;
+{
+	char *env;
+
+	if (off < 0) return(len);
+	if (off == len) {
+		s[off] = '$';
+		return(off + 1);
+	}
+	s[len] = '\0';
+	if (!(env = getenv2(s + off))) return(len);
+	len = strlen(env);
+	if (off + len >= MAXPATHLEN) len = MAXPATHLEN - 1 - off;
+	strncpy(s + off, env, len);
+	len += off;
+	s[len] = '\0';
+	return(len);
+}
+
+char *_evalpath(path, eol, keepdelim, evalq)
 char *path, *eol;
-int keepdelim;
+int keepdelim, evalq;
 {
 #if	!MSDOS
 	struct passwd *pwd;
 #endif
-	char *cp, *tmp, *next, buf[MAXPATHLEN + 1];
+	char *cp, *tmp, buf[MAXPATHLEN + 1];
+	int i, j, env, quote, paren;
 
+	if (!eol) eol = path + strlen(path);
+	j = 0;
 	if (*path == '~') {
 		if (!(cp = strchr(path + 1, _SC_)) || cp > eol) cp = eol;
 		if (cp > path + 1) {
@@ -97,7 +123,7 @@ int keepdelim;
 			else
 #endif
 #if	!MSDOS
-			if (pwd = getpwnam(buf)) tmp = pwd -> pw_dir;
+			if ((pwd = getpwnam(buf))) tmp = pwd -> pw_dir;
 			else
 #endif
 			tmp = NULL;
@@ -110,90 +136,118 @@ int keepdelim;
 			tmp = pwd -> pw_dir;
 #endif
 
-		if (tmp) strcpy(buf, tmp);
+		if (tmp) {
+			strcpy(buf, tmp);
+			j = strlen(buf);
+		}
 		else {
 			strncpy(buf, path, cp - path);
-			buf[cp - path] = '\0';
+			j = cp - path;
 		}
 		path = cp;
 		if (path < eol) {
-			strcat(buf, _SS_);
+			buf[j++] = _SC_;
 			path++;
 		}
 	}
 	else if (*path == _SC_) {
-		strcpy(buf, _SS_);
+		buf[j++] = _SC_;
 		path++;
 	}
 #if	MSDOS
 	else if (isalpha(*path) && path[1] == ':') {
 		strncpy(buf, path, 2);
-		buf[2] = '\0';
+		j = 2;
 		path += 2;
 		if (*path == _SC_) {
-			strcat(buf, _SS_);
+			buf[j++] = _SC_;
 			path++;
 		}
 	}
 #endif
 	else *buf = '\0';
 
-	while (path < eol) {
-		if (*path == _SC_) {
-			if (keepdelim) strcat(buf, _SS_);
-			path++;
+	quote = paren = '\0';
+	env = -1;
+	for (i = 0; i < eol - path && path[i] && j < MAXPATHLEN; i++) {
+#if	!MSDOS
+		if (path[i] == '\\' && quote != '\'') {
+			buf[j++] = path[i++];
+			buf[j++] = path[i];
 			continue;
 		}
-		if (!(next = strchr(path, _SC_)) || next > eol) next = eol;
-		while ((cp = strchr(path, '$')) && cp < next) {
-			strncat(buf, path, cp - path);
-#if	MSDOS
-			if (*(cp + 1) == '$') {
-				path = cp + 2;
-#else
-			if (cp > path && *(cp - 1) == '\\') {
-				path = ++cp;
 #endif
-				strcat(buf, "$");
+		if (quote) {
+			if (path[i] == quote) {
+#if	MSDOS
+				if (i > 0 && path[i - 1] == quote)
+					buf[j++] = quote;
+#endif
+				quote = '\0';
 				continue;
 			}
-			if (*(++cp) == '{') cp++;
-			path = cp;
-			if (*cp == '_' || isalpha(*cp))
-				for (cp++; *cp == '_' || isalnum(*cp); cp++);
-			if (cp > path) {
-				tmp = buf + strlen(buf);
-				strncpy(tmp, path, cp - path);
-				tmp[cp - path] = '\0';
-				if (path = getenv2(tmp)) strcpy(tmp, path);
-				else *tmp = '\0';
+			if (quote == '\'') {
+				buf[j++] = path[i];
+				continue;
 			}
-			else strcat(buf, "$");
-			if (*cp == '}') cp++;
-			path = cp;
 		}
-		strncat(buf, path, next - path);
-		path = next;
-		if (path < eol) {
-			strcat(buf, _SS_);
-			path++;
+		if (env >= 0) {
+			if (paren) {
+				if (path[i] != '}') buf[j++] = path[i];
+				else {
+					j = evalenv(buf, env, j);
+					env = -1;
+					paren = 0;
+				}
+				continue;
+			}
+			if (path[i] != '_' && !isalpha(path[i])
+			&& (path[i] < '0' || path[i] > '9' || env == j)) {
+				if (env == j && path[i] == '$') {
+#if	MSDOS
+					buf[j++] = '$';
+#else
+					env = getpid();
+					sprintf(buf + j, "%d", env);
+					while (buf[j]) j++;
+#endif
+					env = -1;
+					continue;
+				}
+				j = evalenv(buf, env, j);
+				env = -1;
+			}
 		}
-	}
 
-	if (!(tmp = (char *)malloc(strlen(buf) + 1))) error(NULL);
+		if (evalq &&
+		(path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
+			quote = path[i];
+#if	MSDOS
+			if (i > 0 && path[i - 1] == quote) buf[j++] = quote;
+#endif
+		}
+		else if (env >= 0 && path[i] == '{' && env == j) paren = 1;
+		else if (path[i] == _SC_
+		&& i && path[i - 1] == _SC_ && keepdelim);
+		else if (path[i] == '$') env = j;
+		else buf[j++] = path[i];
+	}
+	buf[j = evalenv(buf, env, j)] = '\0';
+
+	if (!(tmp = (char *)malloc(j + 1))) error(NULL);
 	strcpy(tmp, buf);
 	return(tmp);
 }
 
-char *evalpath(path)
+char *evalpath(path, evalq)
 char *path;
+int evalq;
 {
-	char *cp, *eol;
+	char *cp;
 
 	if (!path || !(*path)) return(path);
 	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
-	eol = cp + strlen(cp);
-	cp = _evalpath(cp, eol, 0);
+	cp = _evalpath(cp, NULL, 0, evalq);
 	free(path);
 	return(cp);
 }
@@ -203,14 +257,16 @@ char *str;
 int exceptdot;
 {
 	char *cp, *pattern;
-	int i, flag;
+	int i;
+#if	defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
+	int flag = 0;
+#endif
 
 	if (!*str) str = "*";
 	if (!(pattern = (char *)malloc(1 + strlen(str) * 2 + 3))) error(NULL);
 	pattern[0] = (exceptdot && (*str == '*' || *str == '?')) ? '.' : ' ';
 	i = 1;
 	pattern[i++] = '^';
-	flag = 0;
 	for (cp = str; *cp; cp++) {
 #if	defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
 		if (flag) {
@@ -254,8 +310,8 @@ int exceptdot;
 }
 
 #ifdef	USERE_COMP
-extern char *re_comp __P_((char *));
-extern int re_exec __P_((char *));
+extern char *re_comp __P_((CONST char *));
+extern int re_exec __P_((CONST char *));
 
 reg_t *regexp_init(s)
 char *s;
@@ -310,6 +366,7 @@ int regexp_free(re)
 reg_t *re;
 {
 	if (re) regfree(re);
+	return(0);
 }
 
 # else	/* !USEREGCOMP */
@@ -318,6 +375,7 @@ int regexp_free(re)
 reg_t *re;
 {
 	if (re) free(re);
+	return(0);
 }
 
 #  ifdef	USEREGCMP
@@ -359,7 +417,7 @@ char *re, *s;
 
 	cp1 = re;
 	cp2 = s;
-	bank1 = NULL;
+	bank1 = bank2 = NULL;
 
 	if (skipdotfile && *s == '.') return(0);
 	while (cp1 && *cp1) {
@@ -422,7 +480,7 @@ char **matchp;
 	size = lastpointer(*matchp, matchno) - *matchp;
 	len = strlen(name);
 	setpwent();
-	while (pwd =getpwent()) {
+	while ((pwd =getpwent())) {
 		if (strncmp(name, pwd -> pw_name, len)) continue;
 		ptr = size;
 		size += 1 + strlen(pwd -> pw_name) + 1 + 1;
@@ -497,11 +555,11 @@ char **pathp, *dir, **eolp;
 {
 	struct dirent *dp;
 
-	if (dp = Xreaddir(*dirpp)) return(dp);
+	if ((dp = Xreaddir(*dirpp))) return(dp);
 	while (*pathp) {
 		Xclosedir(*dirpp);
 		if (!(*dirpp = opennextpath(pathp, dir, eolp))) return(NULL);
-		if (dp = Xreaddir(*dirpp)) return(dp);
+		if ((dp = Xreaddir(*dirpp))) return(dp);
 	}
 	return(NULL);
 }
@@ -520,17 +578,25 @@ int exe, full;
 
 	size = lastpointer(*matchp, matchno) - *matchp;
 	next = NULL;
-	if (file = strrchr(path, _SC_)) {
-		if (file == path) strcpy(dir, _SS_);
-#if	MSDOS
-		else if (isalpha(*path) && path[1] == ':' && file == &path[2]) {
-			strncpy(dir, path, 3);
-			dir[3] = '\0';
-		}
+	len = 0;
+#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+# ifdef	FD
+	if (_dospath(path)) {
+# else
+	if (isalpha(*path) && path[1] == ':') {
+# endif
+		dir[0] = path[0];
+		dir[1] = path[1];
+		dir[2] = '\0';
+		path += 2;
+		len = 2;
+	}
 #endif
+	if ((file = strrchr(path, _SC_))) {
+		if (file == path) strcpy(dir + len, _SS_);
 		else {
-			strncpy(dir, path, file - path);
-			dir[file - path] = '\0';
+			strncpy(dir + len, path, file - path);
+			dir[len + file - path] = '\0';
 		}
 		next = dir;
 		file++;
@@ -543,14 +609,14 @@ int exe, full;
 		file = path;
 	}
 	else {
-		strcpy(dir, ".");
+		strcpy(dir + len, ".");
 		next = dir;
 		file = path;
 	}
 	len = strlen(file);
 
 	if (!(dirp = opennextpath(&next, dir, &cp))) return(matchno);
-	while (dp = readnextpath(&dirp, &next, dir, &cp)) {
+	while ((dp = readnextpath(&dirp, &next, dir, &cp))) {
 		if (!len) {
 			if (!strcmp(dp -> d_name, ".")
 			|| !strcmp(dp -> d_name, "..")) continue;
