@@ -204,8 +204,6 @@ extern int strcasecmp2 __P_((char *, char *));
 #endif
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
-extern VOID readunitable __P_((VOID_A));
-extern VOID discardunitable __P_((VOID_A));
 extern u_short unifysjis __P_((u_short, int));
 extern u_short cnvunicode __P_((u_short, int));
 #else	/* !FD */
@@ -251,8 +249,6 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
-static VOID NEAR readunitable __P_((VOID_A));
-static VOID NEAR discardunitable __P_((VOID_A));
 static u_short NEAR unifysjis __P_((u_short, int));
 static u_short NEAR cnvunicode __P_((u_short, int));
 #define	UNICODETBL	"fd-unicd.tbl"
@@ -510,7 +506,6 @@ typedef struct _kconv_t {
 	u_short range;
 } kconv_t;
 char *unitblpath = NULL;
-static u_char *unitblbuf = NULL;
 static u_short unitblent = 0;
 static kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* strange Russian char */
@@ -1016,43 +1011,6 @@ struct tm *tm;
 #endif
 }
 
-static VOID NEAR readunitable(VOID_A)
-{
-	char path[MAXPATHLEN];
-	u_char *tmp, buf[2];
-	long size;
-	int fd;
-
-	if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
-	else strcatdelim2(path, unitblpath, UNICODETBL);
-
-	if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0) return;
-	if (read(fd, buf, 2) != 2) {
-		close(fd);
-		return;
-	}
-	unitblent = (((u_short)(buf[1]) << 8) | buf[0]);
-	size = (long)unitblent * 4;
-
-	if (!unitblbuf) tmp = (u_char *)malloc(size);
-	else tmp = (u_char *)realloc(unitblbuf, size);
-	if (!tmp) {
-		close(fd);
-		return;
-	}
-	unitblbuf = tmp;
-	if (read(fd, unitblbuf, size) != size) discardunitable();
-	close(fd);
-}
-
-static VOID NEAR discardunitable(VOID_A)
-{
-	if (unitblbuf) {
-		free(unitblbuf);
-		unitblbuf = NULL;
-	}
-}
-
 static u_short NEAR unifysjis(wc, russ)
 u_short wc;
 int russ;
@@ -1114,47 +1072,6 @@ int encode;
 				break;
 		}
 		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
-	}
-
-	if (unitblbuf) {
-		u_char *cp;
-
-		if (encode) {
-			wc = unifysjis(wc, 0);
-			cp = unitblbuf;
-			for (ofs = 0; ofs < unitblent; ofs++) {
-				w = (((u_short)(cp[3]) << 8) | cp[2]);
-				if (wc == w) {
-					r = (((u_short)(cp[1]) << 8) | cp[0]);
-					break;
-				}
-				cp += 4;
-			}
-		}
-		else {
-			min = 0;
-			max = unitblent + 1;
-			ofs = unitblent / 2 + 1;
-			for (;;) {
-				if (ofs == min || ofs == max) break;
-				cp = &(unitblbuf[(ofs - 1) * 4]);
-				w = (((u_short)(cp[1]) << 8) | cp[0]);
-				if (wc == w) {
-					r = (((u_short)(cp[3]) << 8) | cp[2]);
-					break;
-				}
-				else if (wc < w) {
-					max = ofs;
-					ofs = (ofs + min) / 2;
-				}
-				else {
-					min = ofs;
-					ofs = (ofs + max) / 2;
-				}
-			}
-		}
-
-		return(r);
 	}
 
 	if (fd < 0) {

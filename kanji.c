@@ -291,7 +291,7 @@ static u_char j2sjtable2[128] = {
 	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e,    0
 };
 #endif	/* !MSDOS && (!_NOKANJICONV || (!_NODOSDRIVE && CODEEUC)) */
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+#if	!MSDOS && !defined (_NOKANJIFCONV) && defined (FD) && (FD >= 2)
 static u_char hctypetable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
@@ -349,7 +349,7 @@ static u_char b2htable[256] = "0123456789abcdef";
 #define	iscap(s, i)	(((s)[i] == CAPTAG) \
 			&& (hctypetable[(u_char)(s)[(i) + 1]] & HC_CAP) \
 			&& (hctypetable[(u_char)(s)[(i) + 2]] & HC_HEX))
-#endif	/* !MSDOS && !_NOKANJIFCONV */
+#endif	/* !MSDOS && !_NOKANJIFCONV && FD && FD >= 2 */
 
 int onkanji1 __P_((char *, int));
 #if	(!MSDOS && !defined (_NOKANJICONV)) \

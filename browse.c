@@ -529,10 +529,18 @@ static VOID NEAR infobar(VOID_A)
 			len++;
 		}
 		if ((width -= len) > 0) {
+#ifndef	_NODOSDRIVE
+			char path[MAXPATHLEN];
+#endif
 			char *tmp;
 
 			tmp = malloc2(width * 2 + 1);
+#ifdef	_NODOSDRIVE
 			i = Xreadlink(filelist[filepos].name, tmp, width * 2);
+#else
+			i = Xreadlink(nodospath(path, filelist[filepos].name),
+				tmp, width * 2);
+#endif
 			if (i >= 0) {
 				tmp[i] = '\0';
 				strncpy3(buf + len, tmp, &width, 0);
@@ -1105,7 +1113,7 @@ char *file, *def;
 		blocksize = (off_t)getblocksize(".");
 		if (sorttype < 100) sorton = sorttype;
 #ifndef	_NOPRECEDE
-		if (includepath(NULL, fullpath, precedepath)) {
+		if (includepath(NULL, fullpath, &precedepath)) {
 			haste = 1;
 			dupsorton = sorton;
 			sorton = 0;
@@ -1432,9 +1440,18 @@ char *cur;
 		}
 
 		if (strcmp(file, ".")) {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+			char path[MAXPATHLEN];
+#endif
+
 			if (findpattern) free(findpattern);
 			findpattern = NULL;
-			if (chdir2(file) < 0) {
+#if	MSDOS || defined (_NODOSDRIVE)
+			if (chdir2(file) < 0)
+#else
+			if (chdir2(nodospath(path, file)) < 0)
+#endif
+			{
 				warning(-1, file);
 				strcpy(prev, file);
 				def = prev;

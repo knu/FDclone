@@ -223,7 +223,6 @@ extern int Xpclose __P_((FILE *));
 #endif	/* _NOORIGSHELL */
 
 /* libc.c */
-extern int rename2 __P_((char *, char *));
 extern int stat2 __P_((char *, struct stat *));
 extern char *realpath2 __P_((char *, char *, int));
 extern int _chdir2 __P_((char *));
@@ -254,6 +253,9 @@ extern time_t timelocal2 __P_((struct tm *));
 extern char *fgets2 __P_((FILE *, int));
 
 /* file.c */
+#if	!MSDOS && !defined (_NODOSDRIVE)
+char *nodospath __P_((char *, char *));
+#endif
 #if	MSDOS
 extern int logical_access __P_((u_short));
 #else
@@ -321,7 +323,7 @@ extern char *killmeta __P_((char *));
 #if	!MSDOS && defined (_NOORIGSHELL)
 extern VOID adjustpath __P_((VOID_A));
 #endif
-extern char *includepath __P_((char *, char *, char *));
+extern char *includepath __P_((char *, char *, char **));
 extern VOID freevar __P_((char **));
 #if	(FD < 2) && !defined (_NOARCHIVE)
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));

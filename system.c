@@ -4951,7 +4951,7 @@ int *tptrp;
 			else addarg(&trp, tok, tptrp, typep, *nump, 0);
 			break;
 		case ';':
-			if (*tptrp
+			if (*tptrp > 0
 			&& addarg(&trp, tok, tptrp, typep, *nump, 1) >= 0) {
 				int id, stype;
 
@@ -4988,6 +4988,10 @@ int *tptrp;
 			break;
 #endif
 		case '\n':
+			if (*tptrp < 0) {
+				syntaxerrno = ER_UNEXPNL;
+				break;
+			}
 			if (addarg(&trp, tok, tptrp, typep, *nump, 1) < 0)
 				break;
 			i = getstatid(parentshell(trp)) + 1;
@@ -5005,7 +5009,7 @@ int *tptrp;
 				&& s[*ptrp + 1] != '\n') (*ptrp)++;
 			else if (!strchr(IFS_SET, s[*ptrp])) {
 				if (*tptrp < 0) syntaxerrno = ER_UNEXPTOK;
-				tok[(*tptrp)++] = s[*ptrp];
+				else tok[(*tptrp)++] = s[*ptrp];
 			}
 			else if (*tptrp > 0) {
 				addarg(&trp, tok, tptrp, typep, *nump, 0);
@@ -5189,7 +5193,6 @@ int quiet;
 		if (!trp) {
 			if (tok) free(tok);
 			freestree(stree);
-			syntaxerrno = 0;
 			return(NULL);
 		}
 	}
@@ -9203,7 +9206,6 @@ syntaxtree *stree, *trp;
 			prepareexit(0);
 			Xexit2(RET_SYNTAXERR);
 		}
-		if (syntaxerrno) execerrno = syntaxerrno;
 		return(NULL);
 	}
 
@@ -9398,7 +9400,7 @@ int verbose;
 	while ((buf = readline(fd))) {
 		trp = execline(buf, stree, trp);
 		n++;
-		if (execerrno) {
+		if (syntaxerrno || execerrno) {
 			if (verbose) {
 				fputs(fname, stderr);
 				fputc(':', stderr);
@@ -9407,9 +9409,15 @@ int verbose;
 				fputs(buf, stderr);
 				fputc('\n', stderr);
 			}
-			free(buf);
 			ret_status = RET_FAIL;
-			ERRBREAK;
+#ifdef	BASHSTYLE
+			if (syntaxerrno)
+#endif
+			{
+				ret = ret_status;
+				free(buf);
+				break;
+			}
 		}
 		if (ret < ret_status) ret = ret_status;
 		free(buf);

@@ -129,11 +129,17 @@ char *path, *org;
 static int NEAR islowerdir(path, org)
 char *path, *org;
 {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char orgpath[MAXPATHLEN];
+#endif
 	char *cp, *top, *cwd, tmp[MAXPATHLEN];
 	int i;
 
 	cwd = getwd2();
 	if (!org) org = cwd;
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	else org = nodospath(orgpath, org);
+#endif
 	strcpy(tmp, path);
 	top = tmp;
 #if	MSDOS || !defined (_NODOSDRIVE)
@@ -923,10 +929,25 @@ int applyfile(func, endmes)
 int (*func)__P_((char *));
 char *endmes;
 {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char path[MAXPATHLEN];
+#endif
 	int i, ret, old, dupfilepos;
 
 	dupfilepos = filepos;
 	ret = old = filepos;
+
+	if (mark <= 0) {
+#if	MSDOS || defined (_NODOSDRIVE)
+		i = (*func)(filelist[filepos].name);
+#else
+		i = (*func)(nodospath(path, filelist[filepos].name));
+#endif
+		if (i < 0) warning(-1, filelist[filepos].name);
+		else if (!i) ret++;
+		return(ret);
+	}
+
 	helpbar();
 	for (filepos = 0; filepos < maxfile; filepos++) {
 		if (intrkey()) {
@@ -938,9 +959,13 @@ char *endmes;
 		movepos(old, 0);
 		locate(win_x, win_y);
 		tflush();
-		if ((i = (*func)(filelist[filepos].name)) < 0)
-			warning(-1, filelist[filepos].name);
-		if (!i && ret == filepos) ret++;
+#if	MSDOS || defined (_NODOSDRIVE)
+		i = (*func)(filelist[filepos].name);
+#else
+		i = (*func)(nodospath(path, filelist[filepos].name));
+#endif
+		if (i < 0) warning(-1, filelist[filepos].name);
+		else if (!i && ret == filepos) ret++;
 
 		old = filepos;
 	}
@@ -983,6 +1008,7 @@ int *maxp, depth;
 			}
 		}
 	}
+	if (cp > dir) *(cp - 1) = '\0';
 	Xclosedir(dirp);
 	return(dirlist);
 }
@@ -1013,10 +1039,11 @@ char *endmes;
 	tflush();
 
 	if (!funcd1 && !funcd2) order = 0;
-	fname = strcatdelim2(path, dir, NULL);
+	strcpy(path, dir);
 
 	ret = max = 0;
 	dirlist = getdirtree(path, NULL, &max, (order == 2) ? 0 : 1);
+	fname = strcatdelim(path);
 
 	destmtime = destatime = (time_t)-1;
 	if ((order == 1 || order == 2) && (ret = (*funcd1)(dir)) < 0) {
@@ -1093,6 +1120,9 @@ char *endmes;
 		realpath2(dir, path, 0);
 		dir = path;
 	}
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	else dir = nodospath(path, dir);
+#endif
 	return(_applydir(dir, funcf, funcd1, funcd2, order, endmes));
 }
 
@@ -1121,9 +1151,10 @@ int tr;
 #ifndef	_NODOSDRIVE
 	if (dospath3("")) waitmes();
 #endif
-	if (mark > 0) applyfile(safecopy, ENDCP_K);
-	else if (isdir(&(filelist[filepos]))
-	&& !islink(&(filelist[filepos]))) {
+	if (mark > 0
+	|| (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos]))))
+		applyfile(safecopy, ENDCP_K);
+	else {
 #ifdef	_NOEXTRACOPY
 		if (copypolicy) {
 			warning(EEXIST, filelist[filepos].name);
@@ -1135,8 +1166,7 @@ int tr;
 			(islowerdir(destpath, filelist[filepos].name)) ? 2 : 1,
 			ENDCP_K);
 	}
-	else if (safecopy(filelist[filepos].name) < 0)
-		warning(-1, filelist[filepos].name);
+
 	free(destpath);
 	if (destdir) free(destdir);
 #ifndef	_NOEXTRACOPY
@@ -1180,21 +1210,32 @@ int tr;
 	if (mark > 0) filepos = applyfile(safemove, ENDMV_K);
 	else if (islowerdir(destpath, filelist[filepos].name))
 		warning(EINVAL, filelist[filepos].name);
-	else if ((i = safemove(filelist[filepos].name)) < 0) {
-#ifdef	_NOEXTRACOPY
-		warning(-1, filelist[filepos].name);
+	else {
+#if	MSDOS || defined (_NODOSDRIVE)
+		i = safemove(filelist[filepos].name);
 #else
-		if (errno != EXDEV
-		|| !isdir(&(filelist[filepos]))
-		|| islink(&(filelist[filepos])))
-			warning(-1, filelist[filepos].name);
-		else if (applydir(filelist[filepos].name,
-			safemove, cpdir, mvdir,
-			(islowerdir(destpath, filelist[filepos].name)) ? 2 : 1,
-			ENDMV_K) >= 0) filepos++;
+		char path[MAXPATHLEN];
+
+		i = safemove(nodospath(path, filelist[filepos].name));
 #endif
+		if (!i) filepos++;
+		else if (i < 0) {
+#ifdef	_NOEXTRACOPY
+			warning(-1, filelist[filepos].name);
+#else
+			if (errno != EXDEV
+			|| !isdir(&(filelist[filepos]))
+			|| islink(&(filelist[filepos])))
+				warning(-1, filelist[filepos].name);
+			else if (applydir(filelist[filepos].name,
+				safemove, cpdir, mvdir,
+				(islowerdir(destpath, filelist[filepos].name))
+				? 2 : 1,
+				ENDMV_K) >= 0) filepos++;
+#endif
+		}
 	}
-	else if (!i) filepos++;
+
 	if (filepos >= maxfile) filepos = maxfile - 1;
 	free(destpath);
 	if (destdir) free(destdir);

@@ -1,3 +1,6 @@
+Ver. 2.01a	「a:」形式のファイル名を扱うと異常終了していた点を修正。
+ (06/10/02)	case の構文エラー時に freeze していた点を修正。
+
 Ver. 2.01	POSIX に合せて true/false/command/getopts/newgrp/fc の追加。
  (05/08/02)	POSIX に合せて set に -o, -b, -C option の追加。
 		-C option に伴いリダイレクト記述子 >|, &>| の追加。

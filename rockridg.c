@@ -180,7 +180,7 @@ int transfilelist(VOID_A)
 	char *cp, rpath[MAXPATHLEN];
 	int i;
 
-	if (!includepath(rpath, fullpath, rockridgepath)) return(0);
+	if (!includepath(rpath, fullpath, &rockridgepath)) return(0);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else tbl = readtranstbl();
@@ -222,7 +222,7 @@ char *file, *buf;
 	assoclist *tp, *start, *tbl;
 	char *cp, rpath[MAXPATHLEN];
 
-	if (!includepath(rpath, fullpath, rockridgepath)) return(file);
+	if (!includepath(rpath, fullpath, &rockridgepath)) return(file);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else tbl = readtranstbl();
@@ -307,7 +307,7 @@ int rdlink;
 	char *cp, *tmp, cwd[MAXPATHLEN], rpath[MAXPATHLEN];
 	int len;
 
-	if (!(cp = includepath(rpath, path, rockridgepath)) || !Xgetwd(cwd))
+	if (!(cp = includepath(rpath, path, &rockridgepath)) || !Xgetwd(cwd))
 		return(path);
 
 #if	MSDOS || !defined (_NODOSDRIVE)

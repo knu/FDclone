@@ -62,6 +62,7 @@ static int NEAR cpfile __P_((char *, char *, struct stat *, struct stat *));
 static VOID changemes __P_((VOID_A));
 #ifndef	_NOWRITEFS
 static int NEAR k_strlen __P_((char *));
+static int NEAR saferename __P_((char *, char *));
 static char *NEAR maketmpfile __P_((int, int, char *, char *));
 #if	!MSDOS
 static char *NEAR getentnum __P_((char *, int, int));
@@ -78,6 +79,18 @@ int inheritcopy = 0;
 static int dosdrv = -1;
 #endif
 
+
+#if	!MSDOS && !defined (_NODOSDRIVE)
+char *nodospath(path, file)
+char *path, *file;
+{
+	if (!_dospath(file)) return(file);
+	path[0] = '.';
+	path[1] = _SC_;
+	strcpy(path + 2, file);
+	return(path);
+}
+#endif
 
 #if	MSDOS
 int logical_access(mode)
@@ -167,15 +180,21 @@ namelist *list;
 	if (stat2(list -> name, &st) < 0) return(-1);
 	memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
 #else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
-	if (dospath(list -> name, NULL)) {
-		if (stat2(list -> name, &st) < 0) return(-1);
+	char *cp;
+
+# ifdef	_NODOSDRIVE
+	cp = list -> name;
+# else
+	char path[MAXPATHLEN];
+
+	cp = nodospath(path, list -> name);
+	if (dospath(cp, NULL)) {
+		if (stat2(cp, &st) < 0) return(-1);
 		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
 	}
 	else
 # endif
-	if (Xlstat(list -> name, &lst) < 0
-	|| stat2(list -> name, &st) < 0) return(-1);
+	if (Xlstat(cp, &lst) < 0 || stat2(cp, &st) < 0) return(-1);
 #endif	/* !MSDOS */
 	list -> flags = 0;
 	if ((st.st_mode & S_IFMT) == S_IFDIR) list -> flags |= F_ISDIR;
@@ -827,6 +846,11 @@ char *dir, *subdir, *file;
 	}
 	if (file) {
 		if (*file) {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+			char path[MAXPATHLEN];
+
+			file = nodospath(path, file);
+#endif
 			if (Xunlink(file) < 0) {
 				warning(-1, file);
 				subdir = NULL;
@@ -901,6 +925,9 @@ int single;
 {
 	struct stat st;
 	char *cp, path[MAXPATHLEN];
+# if	!MSDOS
+	char tmp[MAXPATHLEN];
+# endif
 	int i, drive;
 
 	if (!(drive = dospath2(dir))) return(0);
@@ -920,7 +947,13 @@ int single;
 		strcpy(cp, filelist[filepos].name);
 		st.st_mode = filelist[filepos].st_mode;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
-		if (cpfile(filelist[filepos].name, path, &st, NULL) < 0) {
+# if	MSDOS
+		if (cpfile(filelist[filepos].name, path, &st, NULL) < 0)
+# else
+		if (cpfile(nodospath(tmp, filelist[filepos].name),
+		path, &st, NULL) < 0)
+# endif
+		{
 			*(--cp) = '\0';
 			removetmp(path, NULL, NULL);
 			return(-1);
@@ -931,7 +964,13 @@ int single;
 		strcpy(cp, filelist[i].name);
 		st.st_mode = filelist[i].st_mode;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
-		if (cpfile(filelist[i].name, path, &st, NULL) < 0) {
+# if	MSDOS
+		if (cpfile(filelist[i].name, path, &st, NULL) < 0)
+# else
+		if (cpfile(nodospath(tmp, filelist[i].name),
+		path, &st, NULL) < 0)
+# endif
+		{
 			*(--cp) = '\0';
 			removetmp(path, NULL, "");
 			return(-1);
@@ -952,10 +991,16 @@ char *file;
 {
 	struct stat st;
 	char path[MAXPATHLEN];
+# if	!MSDOS
+	char tmp[MAXPATHLEN];
+# endif
 
 	path[0] = drive;
 	path[1] = ':';
 	strcpy(path + 2, file);
+# if	!MSDOS
+	file = nodospath(tmp, file);
+# endif
 	waitmes();
 	if (Xlstat(file, &st) < 0 || cpfile(file, path, &st, NULL) < 0)
 		return(-1);
@@ -987,6 +1032,21 @@ char *s;
 	return(i);
 }
 
+static int NEAR saferename(from, to)
+char *from, *to;
+{
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char fpath[MAXPATHLEN], tpath[MAXPATHLEN];
+#endif
+
+	if (!strpathcmp(from, to)) return(0);
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	from = nodospath(fpath, from);
+	to = nodospath(tpath, to);
+#endif
+	return(Xrename(from, to));
+}
+
 static char *NEAR maketmpfile(len, dos, tmpdir, old)
 int len, dos;
 char *tmpdir, *old;
@@ -1011,14 +1071,12 @@ char *tmpdir, *old;
 					if (isexist(fname));
 					else
 #endif
-					{
-						if (rename2(old, fname) >= 0)
-							return(fname);
+					if (saferename(old, fname) >= 0)
+						return(fname);
 #if	MSDOS
-						if (errno != EACCES)
+					else if (errno == EACCES);
 #endif
-						break;
-					}
+					else break;
 				}
 				else {
 					if ((fd = Xopen(fname,
@@ -1098,7 +1156,7 @@ int fnamp;
 		if (isdotdir(dp -> d_name)) continue;
 		else {
 			strcpy(path + fnamp, dp -> d_name);
-			if (rename2(path, dp -> d_name) < 0) error(path);
+			if (saferename(path, dp -> d_name) < 0) error(path);
 		}
 	}
 	Xclosedir(dirp);
@@ -1187,7 +1245,7 @@ int fs;
 		}
 		else {
 			strcpy(path + fnamp, dp -> d_name);
-			if (rename2(dp -> d_name, path) < 0) {
+			if (saferename(dp -> d_name, path) < 0) {
 				Xclosedir(dirp);
 				warning(-1, dp -> d_name);
 				restorefile(tmpdir, path, fnamp);
@@ -1245,7 +1303,7 @@ int fs;
 		}
 #endif	/* !MSDOS */
 		strcpy(path + fnamp, filelist[i].name);
-		if (rename2(path, filelist[i].name) < 0) error(path);
+		if (saferename(path, filelist[i].name) < 0) error(path);
 #if	!MSDOS
 		totalent += realdirsiz(filelist[i].name);
 		ptr++;
@@ -1259,7 +1317,7 @@ int fs;
 	free(tmpdir);
 	tmpdir = cp;
 	strcatdelim2(path, tmpdir, filelist[top].name);
-	if (rename2(path, filelist[top].name) < 0) error(path);
+	if (saferename(path, filelist[top].name) < 0) error(path);
 	restorefile(tmpdir, path, fnamp);
 
 #if	!MSDOS

@@ -17,6 +17,7 @@
 
 #if	!MSDOS
 #include <sys/file.h>
+#include <sys/param.h>
 #endif
 
 #ifndef	_NODOSDRIVE
@@ -585,12 +586,11 @@ char *arg;
 static int in_dir(arg)
 char *arg;
 {
-	if (
 #ifndef	_NOARCHIVE
-	!archivefile &&
+	if (archivefile);
+	else
 #endif
-	!strcmp(filelist[filepos].name, "."))
-		return(warning_bell(arg));
+	if (!strcmp(filelist[filepos].name, ".")) return(warning_bell(arg));
 	return(5);
 }
 
@@ -1079,6 +1079,9 @@ char *arg;
 static int rename_file(arg)
 char *arg;
 {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	char path[MAXPATHLEN];
+#endif
 	char *file;
 
 	if (isdotdir(filelist[filepos].name)) return(warning_bell(arg));
@@ -1104,7 +1107,12 @@ char *arg;
 		free(file);
 	}
 
-	if (Xrename(filelist[filepos].name, file) < 0) {
+#if	MSDOS || defined (_NODOSDRIVE)
+	if (Xrename(filelist[filepos].name, file) < 0)
+#else
+	if (Xrename(nodospath(path, filelist[filepos].name), file) < 0)
+#endif
+	{
 		warning(-1, file);
 		free(file);
 		return(1);
@@ -1120,8 +1128,6 @@ char *arg;
 static int delete_file(arg)
 char *arg;
 {
-	int ret;
-
 	removepolicy = 0;
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(1);
@@ -1130,9 +1136,7 @@ char *arg;
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 		if (!yesno(DELFL_K, filelist[filepos].name)) return(1);
-		if ((ret = rmvfile(filelist[filepos].name)) < 0)
-			warning(-1, filelist[filepos].name);
-		if (!ret) filepos++;
+		filepos = applyfile(rmvfile, NULL);
 	}
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
 	return(4);
@@ -1149,9 +1153,15 @@ char *arg;
 	if (islink(&(filelist[filepos]))) {
 		int ret;
 
-		if ((ret = rmvfile(filelist[filepos].name)) < 0)
-			warning(-1, filelist[filepos].name);
-		if (!ret) filepos++;
+# ifdef	_NODOSDRIVE
+		ret = rmvfile(filelist[filepos].name);
+# else
+		char path[MAXPATHLEN];
+
+		ret = rmvfile(nodospath(path, filelist[filepos].name));
+# endif
+		if (ret < 0) warning(-1, filelist[filepos].name);
+		else if (!ret) filepos++;
 	}
 	else
 #endif
@@ -1370,7 +1380,16 @@ char *arg;
 
 	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	if (archivefile) ret = unpack(archivefile, NULL, arg, 0, 0);
-	else ret = unpack(filelist[filepos].name, NULL, arg, 0, 1);
+	else {
+#if	MSDOS || defined (_NODOSDRIVE)
+		ret = unpack(filelist[filepos].name, NULL, arg, 0, 1);
+#else
+		char path[MAXPATHLEN];
+
+		ret = unpack(nodospath(path, filelist[filepos].name),
+			NULL, arg, 0, 1);
+#endif
+	}
 	if (ret < 0) return(warning_bell(arg));
 	if (!ret) return(1);
 	return(4);
@@ -1384,7 +1403,16 @@ char *arg;
 
 	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	if (archivefile) ret = unpack(archivefile, NULL, NULL, 1, 0);
-	else ret = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
+	else {
+#if	MSDOS || defined (_NODOSDRIVE)
+		ret = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
+#else
+		char path[MAXPATHLEN];
+
+		ret = unpack(nodospath(path, filelist[filepos].name),
+			NULL, NULL, 1, 1);
+#endif
+	}
 	if (ret <= 0) {
 		if (ret < 0) warning_bell(arg);
 		return(3);
@@ -1448,9 +1476,7 @@ char *arg;
 	while ((n = inputattr(&(filelist[i]), flag)) < 0) warning(0, ILTMS_K);
 	if (!n) return(2);
 
-	if (mark > 0) applyfile(setattr, NULL);
-	else if (setattr(filelist[filepos].name) < 0)
-		warning(-1, filelist[filepos].name);
+	applyfile(setattr, NULL);
 	return(4);
 }
 

@@ -460,16 +460,18 @@ VOID adjustpath(VOID_A)
 }
 #endif	/* !MSDOS && _NOORIGSHELL */
 
-char *includepath(buf, path, plist)
-char *buf, *path, *plist;
+char *includepath(buf, path, plistp)
+char *buf, *path, **plistp;
 {
 	char *cp, *next, tmp[MAXPATHLEN];
 	int len;
 
-	if (!plist || !*plist) return(NULL);
+	if (!plistp || !*plistp || !**plistp) return(NULL);
 	if (!buf) buf = tmp;
+	next = *plistp;
+	*plistp = NULL;
 	realpath2(path, buf, 1);
-	next = plist;
+	*plistp = next;
 	for (cp = next; cp && *cp; cp = next) {
 #if	MSDOS || !defined (_NODOSDRIVE)
 		if (_dospath(cp)) next = strchr(cp + 2, PATHDELIM);

@@ -78,13 +78,6 @@ static char *unixpath = NULL;
 #endif
 
 
-int rename2(from, to)
-char *from, *to;
-{
-	if (!strpathcmp(from, to)) return(0);
-	return(Xrename(from, to));
-}
-
 int stat2(path, stp)
 char *path;
 struct stat *stp;

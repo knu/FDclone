@@ -1,3 +1,6 @@
+Ver. 2.01a	Abortion when accessing filenames like as "a:" is fixed.
+ (06/10/02)	Freezing caused by syntax error in 'case' is fixed.
+
 Ver. 2.01	Add true/false/command/getopts/newgrp/fc builtins for POSIX.
  (05/08/02)	Add -o, -b, -C options in 'set' builtin for POSIX.
 		Add the redirectee '>|', '&>|' for -C option.

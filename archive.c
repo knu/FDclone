@@ -1465,22 +1465,37 @@ int single;
 	while (*subdir == _SC_) subdir++;
 	if (ret < 0) putterm(t_bell);
 	else if (ret > 0) {
+#if	!MSDOS && !defined (_NODOSDRIVE)
+		char tmp[MAXPATHLEN];
+#endif
 		if (*subdir && _chdir2(subdir) < 0) {
 			warning(-1, subdir);
 			ret = 0;
 		}
 		else if (single || mark <= 0) {
+#if	MSDOS || defined (_NODOSDRIVE)
 			if (Xaccess(filelist[filepos].name, F_OK) < 0)
+#else
+			if (Xaccess(nodospath(tmp, filelist[filepos].name),
+			F_OK) < 0)
+#endif
 				warning(-1, filelist[filepos].name);
 			else return(strdup2(path));
 		}
 		else {
-			for (i = 0; i < maxfile; i++)
-				if (ismark(&(filelist[i]))
-				&& Xaccess(filelist[i].name, F_OK) < 0) {
+			for (i = 0; i < maxfile; i++) {
+				if (!ismark(&(filelist[i]))) continue;
+#if	MSDOS || defined (_NODOSDRIVE)
+				if (Xaccess(filelist[i].name, F_OK) < 0)
+#else
+				if (Xaccess(nodospath(tmp, filelist[i].name),
+				F_OK) < 0)
+#endif
+				{
 					warning(-1, filelist[i].name);
 					break;
 				}
+			}
 			if (i >= maxfile) return(strdup2(path));
 		}
 	}
