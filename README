@@ -4,7 +4,7 @@
 #
 #       Takashi SHIRAI, Nintendo Co. Ltd.
 #       <shirai@red.nintendo.co.jp>
-#       Jun 9, 1995
+#       Jun 29, 1995
 #
 ############################################################
 
@@ -43,6 +43,7 @@ TODO		今後の課題 (βテストで行なうこと)
 Install		fd のインストール方法のドキュメント
 Makefile	メイクファイル
 Makefile.in	加工前のメイクファイル本体
+configure	環境設定用ヘッダの自動生成プログラム
 fd.man		man ページ (JIS版)
 
 mkmf.sed.c	メイクファイル加工用の sed スクリプト (cppで加工)
@@ -70,6 +71,7 @@ browse.c	ブラウザ画面関連
 
 fd.h		fd のカスタマイズ用ヘッダ
 machine.h	機種依存性を吸収するヘッダ
+config.h	ダミーで用意してある環境設定用ヘッダ
 types.h		各種型宣言
 kctype.h	漢字コードに関するヘッダ
 func.h		extern 宣言

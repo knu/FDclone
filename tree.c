@@ -14,7 +14,6 @@
 
 extern char fullpath[];
 extern char *archivefile;
-extern char **path_history;
 extern int subwindow;
 extern int sorton;
 extern int sorttree;
@@ -654,7 +653,6 @@ int cleanup;
 	free(cp);
 	freetree(list, 1);
 	if (ch == ESC) return(NULL);
-	path_history = entryhist(path_history, path);
 	if (cleanup) {
 		if (archivefile) rewritearc();
 		rewritefile();

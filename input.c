@@ -12,6 +12,7 @@
 #include <varargs.h>
 #include <signal.h>
 
+extern char **sh_history;
 extern int histsize;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
@@ -24,6 +25,7 @@ static VOID deletechar();
 static VOID truncline();
 static VOID displaystr();
 static int completestr();
+static int inputstr();
 static char *truncstr();
 static VOID yesnomes();
 static int selectmes();
@@ -250,11 +252,11 @@ int x, cx, len, max, linemax;
 	tflush();
 }
 
-static int completestr(str, x, cx, len, linemax, max)
+static int completestr(str, x, cx, len, linemax, max, comline)
 u_char *str;
-int x, cx, len, linemax, max;
+int x, cx, len, linemax, max, comline;
 {
-	char *cp1, *cp2;
+	char *cp1, *cp2, match[MAXLINESTR + 1];
 	int i, ins;
 
 	for (i = cx; i > 0; i--)
@@ -263,11 +265,14 @@ int x, cx, len, linemax, max;
 		putterm(t_bell);
 		return(0);
 	}
+	if (i > 0) comline = 0;
 
 	cp1 = (char *)malloc2(cx - i + 1);
 	strncpy2(cp1, (char *)str + i, cx - i);
 	cp2 = evalpath(cp1);
-	cp1 = completepath(cp2);
+	i = (comline) ? completealias(cp2, match) : 0;
+	cp1 = completepath(cp2, comline, i, match);
+	if (!cp1 && comline) cp1 = completepath(cp2, 0, 0, NULL);
 
 	if (!cp1 || (ins = (int)strlen(cp1) - (int)strlen(cp2)) <= 0) {
 		putterm(t_bell);
@@ -293,7 +298,7 @@ int x, cx, len, linemax, max;
 	return(ins);
 }
 
-int inputstr(str, x, max, linemax, def, hist)
+static int inputstr(str, x, max, linemax, def, hist)
 u_char *str;
 int x, max, linemax, def;
 char *hist[];
@@ -444,7 +449,8 @@ char *hist[];
 				break;
 			case '\t':
 				keyflush();
-				i = completestr(str, x, cx, len, linemax, max);
+				i = completestr(str, x, cx,
+					len, linemax, max, hist == sh_history);
 				cx += i;
 				len += i;
 				break;

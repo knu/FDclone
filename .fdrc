@@ -105,10 +105,11 @@ EDITOR	=	/usr/ucb/vi
 
 # key bind definition
 'I'	"dir -d %C"
-'g'	"gzip %C%K"
-'G'	"gunzip %C%K"
+'g'	"gzip %C%K"	WARNING_BELL
+'G'	"gunzip %C%K"	WARNING_BELL
 'R'	"grep %R %C"
 '~'	"!cd ~%N%K"
+'F1'	"trn%N%K"	;News
 
 # alias definition
 alias	dir "ls -laF"

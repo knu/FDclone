@@ -13,8 +13,8 @@ goal:	Makefile.tmp
 Makefile.tmp: Makefile.in mkmf.sed
 	$(SED) -f mkmf.sed Makefile.in > Makefile.tmp
 
-mkmf.sed: mkmf.sed.c machine.h
-	$(CPP) mkmf.sed.c |\
+mkmf.sed: mkmf.sed.c machine.h config.h
+	$(CPP) -DCCCOMMAND=$(CC) mkmf.sed.c |\
 	$(SED) -e '/^$$/d' -e '/^#/d' -e 's/[\"	]//g' > mkmf.sed
 
 install: Makefile.tmp
@@ -22,6 +22,9 @@ install: Makefile.tmp
 
 depend: Makefile.tmp
 	$(MAKE) -f Makefile.tmp depend
+
+config: Makefile.tmp
+	$(MAKE) -f Makefile.tmp config
 
 test: Makefile.tmp
 	$(MAKE) -f Makefile.tmp test

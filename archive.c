@@ -27,7 +27,6 @@ extern int fnameofs;
 extern int sorton;
 extern char fullpath[];
 extern char *findpattern;
-extern char **path_history;
 extern char *deftmpdir;
 
 #define	PM_LHA	2, 2,\
@@ -173,7 +172,8 @@ int max;
 
 	getfield(buf, line, list -> field[F_MODE], skip,
 		list -> delim[F_MODE], list -> width[F_MODE], list -> sep);
-	if ((ofs = (int)strlen(buf) - 9) < 0) ofs = 0;
+	for (i = ofs = strlen(buf); i < 9; i++) buf[i] = '\0';
+	if ((ofs -= 9) < 0) ofs = 0;
 	tmp -> st_mode = 0;
 	for (i = 0; i < 9; i++) {
 		tmp -> st_mode *= 2;
@@ -432,7 +432,7 @@ int *maxarcentp;
 		arcflist[0].st_nlink = -1;
 	}
 	for (i = 0; i < dmax; i++) free(dirlist[i]);
-	free(dirlist);
+	if (dirlist) free(dirlist);
 
 	if (stable_standout) putterms(t_clear);
 	title();
@@ -622,12 +622,11 @@ int max, tr;
 	else {
 		if (tr) dir = tree(0);
 		else {
-			dir = inputstr2(UNPAC_K, -1, NULL, path_history);
-			path_history = entryhist(path_history, path);
+			dir = inputstr2(UNPAC_K, -1, NULL, NULL);
 			dir = evalpath(dir);
 		}
 		if (!dir) return(0);
-		strcpy(path, dir);
+		strcpy(path, (*dir) ? dir : ".");
 		free(dir);
 	}
 
@@ -658,7 +657,7 @@ int max;
 	char *cp, path[MAXPATHLEN + 1];
 	int i, dupmark;
 
-	cp = evalpath(deftmpdir);
+	cp = evalpath(strdup2(deftmpdir));
 	sprintf(path, "%s/fd%d.%d", cp, getpid(), launchlevel);
 	free(cp);
 	if (mkdir(path, 0777) < 0) {

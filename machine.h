@@ -2,12 +2,20 @@
  *	Definition of Machine Depended Identifier
  */
 
+#if defined (__GNUC__)
+#define	EXTENDCCOPT		"-O -fsigned-char"
+#endif
+
 #if defined (sun)
 #define	CODEEUC
 #define	CPP7BIT
 # if defined (USGr4) || defined (__svr4__) || defined (__SVR4)
 # define	SVR4
 # define	OSTYPE		"SOLARIS"
+#  if defined (__SUNPRO_C)
+#  undef	CCCOMMAND
+#  define	CCCOMMAND	"acc"
+# endif
 # define	REGEXPLIB	"-lgen"
 # define	USESTATVFSH
 # define	USEMNTTABH
@@ -33,6 +41,7 @@
 # define	BSD43
 # define	USESYSDIRH
 # define	USERE_COMP
+# define	SIGARGINT
 #  if defined (__sony)
 #  define	OSTYPE		"NEWS_OS4"
 #  define	USESETENV
@@ -88,6 +97,7 @@
 # if defined (nec_ews_svr4) || defined (_nec_ews_svr4)
 # define	SVR4
 # define	OSTYPE		"EWSUXV"
+# undef	CCCOMMAND
 #  if defined (nec_ews)
 #  define	CCCOMMAND	"/usr/necccs/bin/cc"
 #  else
@@ -152,7 +162,7 @@
 # define	OSTYPE		"DECOSF1V3"
 # define	EXTENDLIB	"-lc_r"
 # define	USESTATVFSH
-# define	USEMNTINFO
+# define	USEMNTINFOR
 # define	USEREGCOMP
 # endif
 #endif
@@ -188,13 +198,14 @@
 #define	OSTYPE			"AUX"
 #define	CPP7BIT
 #define	TERMCAPLIB		"-ltermcap"
+#define	UNKNOWNFS		/* Because of the buggy (?) 'rename(2)' */
 #define	PWNEEDERROR
 #define	USETIMEH
 #endif
 
 #if defined (DGUX) || defined (__DGUX__)
 #define	SYSV
-#define	OSTYPE			"AVIION"
+#define	OSTYPE			"DGUX"
 #define	CODEEUC
 #define	TERMCAPLIB		"-ltermcap"
 #define	USESTATFSH
@@ -218,6 +229,7 @@
 #define	OSTYPE			"MIPS"
 #define	CODEEUC
 # if defined (SYSTYPE_SYSV)
+# undef	CCCOMMAND
 # define	CCCOMMAND	"/bsd43/bin/cc"
 # endif
 #define	EXTENDCCOPT	"-O -signed"
@@ -272,6 +284,10 @@
 #define	USEMOUNTH
 #define	USEFSTABH
 #define	USERE_COMP
+#include <sys/param.h>
+# if (BSD4_4 != 1)
+# define	USEFFSIZE
+# endif
 #endif
 
 /****************************************************************
@@ -300,8 +316,8 @@
 /*	DECOSF1V3	/* newer OSF/1 V3 (DEC) */
 /*	AIX		/* AIX (IBM) */
 /*	ULTRIX		/* Ultrix (DEC) */
-/*	AUX		/* A/UX */
-/*	AVIION		/* DG/UX AViiON (DG) */
+/*	AUX		/* A/UX (Apple) */
+/*	DGUX		/* DG/UX AViiON (DG) */
 /*	UXPM		/* UXP/M (Fujitsu) */
 /*	MIPS		/* RISC/os (MIPS) */
 /*	LINUX		/* Linux */
@@ -336,32 +352,29 @@
 /* #define USESYSDIRH	/* use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	/* use <time.h> for 'struct tm' */
 /* #define USETERMIO	/* use termio interface */
-/* #define SYSVDIRENT	/* dirent interface behaves as System V */
 /* #define USEDIRECT	/* use 'struct direct' instead of dirent */
+/* #define SYSVDIRENT	/* dirent interface behaves as System V */
 /* #define HAVETIMEZONE	/* have extern valiable 'timezone' */
 
-/* following 4 items are exclusive
+/* following 5 items are exclusive
 /* #define USESTATVFSH	/* use <sys/statvfs.h> as header of the FS status */
 /* #define USESTATFSH	/* use <sys/statfs.h> as header of the FS status */
-/* #define USEMOUNTH	/* use <mount.h> as header of the FS status */
 /* #define USEVFSH	/* use <sys/vfs.h> as header of the FS status */
-
-/* following 3 items are exclusive
-/* #define USESTATVFS	/* use 'struct statvfs' as structure of hte FS status */
+/* #define USEMOUNTH	/* use <sys/mount.h> as header of the FS status */
 /* #define USEFSDATA	/* use 'struct fs_data' as structure of hte FS status */
-/* #define USESTATFS	/* use 'struct statfs' as structure of hte FS status */
 
 /* #define USEFFSIZE	/* 'struct statfs' has 'f_fsize' as block size */
 /* #define STATFSARGS	/* the number of arguments in statfs() */
 
-/* following 5 items are exclusive
+/* following 7 items are exclusive
 /* #define USEMNTTABH	/* use <sys/mnttab.h> as header of the mount entry */
-/* #define USEFSTABH	/* use <fstab.h> as header of the mount entry */
 /* #define USEMNTCTL	/* use mntctl() to get the mount entry */
-/* #define USEMNTINFO	/* use getmntinfo_r() to get the mount entry */
-/* #define USEGETMNT	/* use getmnt() to get the mount entry */
-
 /* #define USEMNTENTH	/* use <mntent.h> as header of the mount entry */
+/* #define USEMNTINFOR	/* use getmntinfo_r() to get the mount entry */
+/* #define USEMNTINFO	/* use getmntinfo() to get the mount entry */
+/* #define USEGETMNT	/* use getmnt() to get the mount entry */
+/* #define USEFSTABH	/* use <fstab.h> as header of the mount entry */
+
 /* #define MOUNTED	/* means '/etc/mtab' defined in <mntent.h> */
 
 /* following 3 items are exclusive
@@ -376,6 +389,8 @@
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
 /* #define SIGARGINT	/* signal() needs the 2nd argument as int */
+
+#include "config.h"
 
 
 /*                             */
@@ -414,7 +429,6 @@
 #endif
 
 #if defined (USESTATVFSH)
-#define	USESTATVFS
 # ifdef	USESTATFSH
 # undef	USESTATFSH
 # endif
@@ -427,6 +441,13 @@
 #endif
 
 #if defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)
+# ifdef	USEFSDATA
+# undef	USEFSDATA
+# endif
+#endif
+
+#if defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)\
+|| defined (USEFSDATA)
 # ifdef	USEVFSH
 # undef	USEVFSH
 # endif
@@ -434,19 +455,7 @@
 #define	USEVFSH
 #endif
 
-
-#if defined (USESTATVFS)
-# ifdef	USEFSDATA
-# undef	USEFSDATA
-# endif
-#endif
-
-#if defined (USESTATVFS) || defined (USEFSDATA)
-# ifdef	USESTATFS
-# undef	USESTATFS
-# endif
-#else
-#define	USESTATFS
+#ifdef	USESTATFSH
 # ifndef	STATFSARGS
 # define	STATFSARGS	2
 # endif
@@ -459,27 +468,34 @@
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSTABH)
-# ifdef	USEMNTCTL
-# undef	USEMNTCTL
+#if defined (USEMNTTABH) || defined (USEMNTCTL)
+# ifdef	USEMNTINFOR
+# undef	USEMNTINFOR
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSTABH) || defined (USEMNTCTL)
+#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)
 # ifdef	USEMNTINFO
 # undef	USEMNTINFO
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSTABH) || defined (USEMNTCTL)\
+#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
  || defined (USEMNTINFO)
 # ifdef	USEGETMNT
 # undef	USEGETMNT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSTABH) || defined (USEMNTCTL)\
+#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
  || defined (USEMNTINFO) || defined (USEGETMNT)
+# ifdef	USEFSTABH
+# undef	USEFSTABH
+# endif
+#endif
+
+#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
+ || defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEFSTABH)
 # ifdef	USEMNTENTH
 # undef	USEMNTENTH
 # endif

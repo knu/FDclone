@@ -27,7 +27,7 @@ typedef struct mnttab	mnt_t;
 #ifdef	USEFSTABH
 #include <fstab.h>
 typedef struct fstab	mnt_t;
-#define	setmntent(filep, type)	(FILE *)(setfsent(), NULL)
+#define	setmntent(file, mode)	(FILE *)(setfsent(), NULL)
 #define	getmntent2(fp, mntp)	getfsent()
 #define	hasmntopt(mntp, opt)	strstr((mntp) -> fs_mntops, opt)
 #define	endmntent(fp)		endfsent()
@@ -43,7 +43,7 @@ typedef struct fstab	mnt_t;
 #include <sys/vmount.h>
 #endif
 
-#ifdef	USEMNTINFO
+#if defined (USEMNTINFO) || defined (USEMNTINFOR)
 #include <sys/mount.h>
 #endif
 
@@ -51,7 +51,8 @@ typedef struct fstab	mnt_t;
 #include <sys/fs_types.h>
 #endif
 
-#if defined (USEMNTCTL) || defined (USEMNTINFO) || defined (USEGETMNT)
+#if defined (USEMNTCTL) || defined (USEMNTINFO) || defined (USEMNTINFOR)\
+|| defined (USEGETMNT)
 typedef struct _mnt_t {
 	char *mnt_fsname;
 	char *mnt_dir;
@@ -75,32 +76,14 @@ typedef struct mntent	mnt_t;
 
 #ifdef	USESTATVFSH
 #include <sys/statvfs.h>
-#endif
+typedef struct statvfs	statfs_t;
+#define	statfs2		statvfs
+#define	blocksize(fs)	(fs).f_bsize
+#endif	/* USESTATVFSH */
+
 #ifdef	USESTATFSH
 #include <sys/statfs.h>
 #define	f_bavail	f_bfree
-#endif
-#ifdef	USEMOUNTH
-#include <sys/mount.h>
-#endif
-#ifdef	USEVFSH
-#include <sys/vfs.h>
-#endif
-
-
-#ifdef	USESTATVFS
-typedef struct statvfs	statfs_t;
-#define	statfs2			statvfs
-#endif	/* USESTATVFS */
-
-#ifdef	USEFSDATA
-typedef struct fs_data	statfs_t;
-#define	statfs2(path, buf)	(statfs(path, buf) - 1)
-#define	f_bsize		fd_req.bsize
-#define	f_files		fd_req.gtot
-#endif	/* USEFSDATA */
-
-#ifdef	USESTATFS
 typedef struct statfs	statfs_t;
 # if (STATFSARGS >= 4)
 # define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
@@ -111,7 +94,31 @@ typedef struct statfs	statfs_t;
 #  define	statfs2			statfs
 #  endif
 # endif
-#endif	/* USESTATFS */
+#define	blocksize(fs)	(fs).f_bsize
+#endif	/* USESTATFSH */
+
+#ifdef	USEVFSH
+#include <sys/vfs.h>
+typedef struct statfs	statfs_t;
+#define	statfs2		statfs
+#define	blocksize(fs)	(fs).f_bsize
+#endif	/* USEVFSH */
+
+#ifdef	USEMOUNTH
+#include <sys/mount.h>
+typedef struct statfs	statfs_t;
+#define	statfs2		statfs
+#define	blocksize(fs)	(fs).f_bsize
+#endif	/* USEMOUNTH */
+
+#ifdef	USEFSDATA
+#include <sys/mount.h>
+typedef struct fs_data	statfs_t;
+#define	statfs2(path, buf)	(statfs(path, buf) - 1)
+#define	blocksize(fs)		1024
+#define	f_bsize		fd_req.bsize
+#define	f_files		fd_req.gtot
+#endif	/* USEFSDATA */
 
 #ifdef	USEFFSIZE
 #define	f_bsize		f_fsize
@@ -358,18 +365,26 @@ mnt_t *mntp;
 }
 #endif	/* USEMNTCTL */
 
-#ifdef	USEMNTINFO
+#if defined (USEMNTINFO) || defined (USEMNTINFOR)
 static FILE *setmntent(file, mode)
 char *file, *mode;
 {
 	struct statfs *buf;
 	int size;
 
-	ptr = NULL;
+	buf = NULL;
 	mnt_ptr = mnt_size = size = 0;
+#ifdef	USEMNTINFO
+	mnt_size = getmntinfo(&buf, MNT_NOWAIT);
+#else
 	getmntinfo_r(&buf, MNT_WAIT, &mnt_size, &size);
+#endif
 	return((FILE *)buf);
 }
+
+#ifdef	USEMNTINFOR
+#define	MNT_RDONLY	M_RDONLY
+#endif
 
 static mnt_t *getmntent2(fp, mntp)
 FILE *fp;
@@ -379,21 +394,29 @@ mnt_t *mntp;
 	static char *dir = NULL;
 	static char *type = NULL;
 	struct statfs *buf;
+#ifdef	USEMNTINFO
+	struct vfsconf *conf;
+#endif
 	char *cp;
 	int len;
 
 	if (mnt_ptr >= mnt_size) return(NULL);
-	ptr = (struct statfs *)fp;
+	buf = (struct statfs *)fp;
 
-	len = strlen(buf[mnt_ptr] -> f_mntfromname) + 1;
+	len = strlen(buf[mnt_ptr].f_mntfromname) + 1;
 	fsname = (char *)realloc2(fsname, len);
-	strcpy(fsname, buf[mnt_ptr] -> f_mntfromname);
+	strcpy(fsname, buf[mnt_ptr].f_mntfromname);
 
-	len = strlen(buf[mnt_ptr] -> f_mntonname) + 1;
+	len = strlen(buf[mnt_ptr].f_mntonname) + 1;
 	dir = (char *)realloc2(dir, len);
-	strcpy(dir, buf[mnt_ptr] -> f_mntonname);
+	strcpy(dir, buf[mnt_ptr].f_mntonname);
 
-	cp = getvfsbynumber(buf[mnt_ptr] -> f_type);
+#ifdef	USEMNTINFO
+	conf = getvfsbytype(buf[mnt_ptr].f_type);
+	cp = conf -> vfc_name;
+#else
+	cp = getvfsbynumber(buf[mnt_ptr].f_type);
+#endif
 	if (cp) {
 		len = strlen(cp) + 1;
 		type = (char *)realloc2(type, len);
@@ -407,12 +430,12 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = type;
-	mntp -> mnt_opts = (buf[mnt_ptr] -> f_flags & M_RDONLY) ? "ro" : "";
+	mntp -> mnt_opts = (buf[mnt_ptr].f_flags & MNT_RDONLY) ? "ro" : "";
 
 	mnt_ptr++;
 	return(mntp);
 }
-#endif	/* USEMNTINFO */
+#endif	/* USEMNTINFO || USEMNTINFOR */
 
 #ifdef	USEGETMNT
 static FILE *setmntent(file, mode)
@@ -502,7 +525,9 @@ mnt_t *mntbuf;
 	if (!mntp) return(0);
 	memcpy(mntbuf, mntp, sizeof(mnt_t));
 
-	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) error(mntbuf -> mnt_dir);
+	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
+	&& (path == dir || statfs2(path, fsbuf) < 0))
+		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
 	return(1);
 }
 
@@ -576,6 +601,7 @@ char *str, *unit;
 static long calcKB(block, byte)
 long block, byte;
 {
+	if (block < 0 || byte <= 0) return(-1);
 	if (byte >= 1024) {
 		byte = (byte + 512) / 1024;
 		return(block * byte);
@@ -612,12 +638,12 @@ char *path;
 	y = info1line(y, FSAVL_K, fsbuf.fd_req.bfreen, NULL, "Kbytes");
 #else
 	y = info1line(y, FSTTL_K,
-		calcKB(fsbuf.f_blocks, fsbuf.f_bsize), NULL, "Kbytes");
+		calcKB(fsbuf.f_blocks, blocksize(fsbuf)), NULL, "Kbytes");
 	y = info1line(y, FSUSE_K,
-		calcKB(fsbuf.f_blocks - fsbuf.f_bfree, fsbuf.f_bsize),
+		calcKB(fsbuf.f_blocks - fsbuf.f_bfree, blocksize(fsbuf)),
 		NULL, "Kbytes");
 	y = info1line(y, FSAVL_K,
-		calcKB(fsbuf.f_bavail, fsbuf.f_bsize), NULL, "Kbytes");
+		calcKB(fsbuf.f_bavail, blocksize(fsbuf)), NULL, "Kbytes");
 #endif
 	y = info1line(y, FSBSZ_K, fsbuf.f_bsize, NULL, "bytes");
 	y = info1line(y, FSINO_K, fsbuf.f_files, NULL, UNIT_K);

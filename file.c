@@ -22,7 +22,6 @@ extern int sorton;
 extern char *destpath;
 extern int copypolicy;
 extern char fullpath[];
-extern char **path_history;
 
 #define	realdirsiz(name)		(((strlen(name) + boundary)\
 					& ~(boundary - 1)) + dirsize)
@@ -175,10 +174,8 @@ char *mes;
 	struct stat status;
 	char *dir;
 
-	if (!(dir = inputstr2(mes, -1, NULL, path_history))) return(NULL);
-	path_history = entryhist(path_history, dir);
-	if (*dir) dir = evalpath(dir);
-	else {
+	if (!(dir = inputstr2(mes, -1, NULL, NULL))) return(NULL);
+	if (!*(dir = evalpath(dir))) {
 		free(dir);
 		dir = strdup2(".");
 	}

@@ -313,7 +313,7 @@ int max, noconf, argset;
 	if (!st.needmark) for (;;) {
 		if (st.addoption >= 0 && noconf >= 0 && !argset
 		&& strlen(tmp) < i) {
-			cp = inputstr2("sh#", st.addoption, tmp, NULL);
+			cp = inputstr2("sh#", st.addoption, tmp, sh_history);
 			free(tmp);
 			if (!cp || !*cp) return(127);
 			tmp = evalcomstr(cp);
@@ -352,6 +352,31 @@ char *env, *arg;
 	tflush();
 	execmacro(command, arg, NULL, 0, 1, 0);
 	return(1);
+}
+
+int execshell()
+{
+	char *sh;
+	int status;
+
+	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
+	putterms(t_end);
+	putterms(t_nokeypad);
+	tflush();
+	sigvecreset();
+	cooked2();
+	echo2();
+	nl2();
+	kanjiputs(SHEXT_K);
+	status = system2(sh);
+	raw2();
+	noecho2();
+	nonl2();
+	sigvecset();
+	putterms(t_keypad);
+	putterms(t_init);
+
+	return(status);
 }
 
 char **entryhist(hist, str)
@@ -501,9 +526,7 @@ char *command;
 	else if (!strcmp(command, "history")) i = printhist();
 	else if (!strncmp(command, "cd", cp - command)) {
 		while (*cp == ' ' || *cp == '\t') cp++;
-		chdir2(cp);
-		if (findpattern) free(findpattern);
-		findpattern = NULL;
+		chdir3(cp);
 	}
 	else if (*command == '!' || *command == '-'
 	|| (*command >= '0' && *command <= '9')) i = dohistory(command);
@@ -544,7 +567,8 @@ char *command;
 	for (cp = command; *cp && *cp != ' ' && *cp != '\t'; cp++);
 	len = cp - command;
 	for (i = 0; i < maxalias; i++)
-		if (!strncmp(command, aliaslist[i].alias, len)) break;
+		if (!strncmp(command, aliaslist[i].alias, len)
+		&& !aliaslist[i].alias[len]) break;
 	if (i >= maxalias) return(NULL);
 
 	cp = (char *)malloc2(strlen(command) - len
@@ -552,4 +576,26 @@ char *command;
 	strcpy(cp, aliaslist[i].comm);
 	strcat(cp, command + len);
 	return(cp);
+}
+
+int completealias(com, match)
+char *com, *match;
+{
+	int i, j, len, matchno;
+
+	if (strchr(com, '/')) return(0);
+
+	matchno = 0;
+	len = strlen(com);
+	for (i = 0; i < maxalias; i++) {
+		if (strncmp(com, aliaslist[i].alias, len)) continue;
+		if (!matchno++) strcpy(match, aliaslist[i].alias);
+		else {
+			for (j = 0; match[j]; j++)
+				if (match[j] != aliaslist[i].alias[j]) break;
+			match[j] = '\0';
+		}
+	}
+	if (!matchno) *match = '\0';
+	return(matchno);
 }

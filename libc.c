@@ -34,6 +34,9 @@ char Error[1024];
 #endif
 
 extern char fullpath[];
+extern char *lastpath;
+extern char *origpath;
+extern char *findpattern;
 
 #define	BUFUNIT		32
 
@@ -143,13 +146,21 @@ char *path;
 #ifndef	USESETENV
 	static char pwd[4 + MAXPATHLEN + 1];
 #endif
+	char cwd[MAXPATHLEN + 1];
 
 	if (access(path, R_OK | X_OK) < 0 || chdir(path) < 0) return(-1);
 
+	strcpy(cwd, fullpath);
 	if (*path == '/') strcpy(fullpath, "/");
 	_chdir2(path);
 
-	if (chdir(fullpath) < 0) return(-1);
+	if (chdir(fullpath) < 0) {
+		if (chdir(cwd) < 0) error(cwd);
+		strcpy(fullpath, cwd);
+		return(-1);
+	}
+	if (lastpath) free(lastpath);
+	lastpath = strdup2(cwd);
 	if (getenv("PWD")) {
 #ifdef	USESETENV
 		setenv("PWD", fullpath, 1);
@@ -160,6 +171,31 @@ char *path;
 #endif
 	}
 	return(0);
+}
+
+char *chdir3(path)
+char *path;
+{
+	char *cwd;
+
+	cwd = path;
+	if (!strcmp(path, ".")) cwd = NULL;
+	else if (!strcmp(path, "?")) path = origpath;
+	else if (!strcmp(path, "-")) {
+		if (!lastpath) return(".");
+		path = lastpath;
+	}
+	if (chdir2(path) < 0) return(NULL);
+	if (!cwd) {
+		cwd = getwd2();
+		strcpy(fullpath, path);
+		free(cwd);
+	}
+	else {
+		if (findpattern) free(findpattern);
+		findpattern = NULL;
+	}
+	return(path);
 }
 
 int mkdir2(path, mode)

@@ -23,7 +23,6 @@
 
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
-#define	PATHHISTFILE	"~/.fd_pathhist"
 #define	CMDLINE_DELIM	"\t !&:;<>|"
 #define	METACHAR	"\t \"#$&'()*:;<>?[\\]^`|~"
 

@@ -42,15 +42,17 @@ int chgorder;
 int stackdepth = 0;
 namelist filestack[MAXSTACK];
 char fullpath[MAXPATHLEN + 1];
+char *lastpath = NULL;
+char *origpath;
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
-
-static namelist *filelist;
-static int maxfile;
-static char *helpindex[10] = {
+char *helpindex[10] = {
 	"Logdir", "eXec", "Copy", "Delete", "Rename",
 	"Sort", "Find", "Tree", "Editor", "Unpack"
 };
+
+static namelist *filelist;
+static int maxfile;
 
 
 static VOID pathbar()
@@ -362,9 +364,12 @@ int standout;
 				case S_IFIFO:
 					buf[i] = '|';
 					break;
-				default:
-					if (access(list[no].name, X_OK) >= 0)
+				case S_IFREG:
+					if (list[no].st_mode &
+					(S_IXUSR | S_IXGRP | S_IXOTH))
 						buf[i] = '*';
+					break;
+				default:
 					break;
 			}
 			break;
@@ -536,7 +541,7 @@ int *maxentp;
 	if (maxfile <= 0) {
 		filelist = (namelist *)addlist(filelist, 0,
 			maxentp, sizeof(namelist));
-		filelist[0].name = NOFIL_K;
+		filelist[0].name = strdup2(NOFIL_K);
 		filelist[0].st_nlink = -1;
 	}
 
@@ -635,11 +640,11 @@ VOID main_fd(cur)
 char *cur;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	char *cp, *def, *cwd;
+	char *cp, *def;
 	int ischgdir, maxent;
 
-	cwd = getwd2();
-	strcpy(fullpath, cwd);
+	origpath = getwd2();
+	strcpy(fullpath, origpath);
 
 	findpattern = def = NULL;
 	if (cur) {
@@ -704,13 +709,7 @@ char *cur;
 
 		ischgdir = browsedir(file, def, &maxent);
 		if (ischgdir < 0) break;
-		if (ischgdir) {
-			def = NULL;
-			if (!strcmp(file, "?")) {
-				if (chdir2(cwd) < 0) error(cwd);
-				strcpy(file, ".");
-			}
-		}
+		if (ischgdir) def = NULL;
 		else {
 			strcpy(prev, file);
 			strcpy(file, ".");
@@ -719,6 +718,6 @@ char *cur;
 	}
 
 	free(filelist);
-	if (chdir(cwd) < 0) error(cwd);
-	free(cwd);
+	if (chdir(origpath) < 0) error(origpath);
+	free(origpath);
 }

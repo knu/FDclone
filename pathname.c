@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <pwd.h>
+#include <sys/file.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -43,7 +44,7 @@ extern error();
 extern void error();
 # endif
 #else
-#define	getenv2 getenv
+#define	getenv2 (char *)getenv
 #define	error return
 #endif
 
@@ -95,10 +96,8 @@ char *path, *eol;
 			}
 			if (*(++cp) == '{') cp++;
 			path = cp;
-			if (*cp == '_' || isalpha(*cp)) {
-				for (cp++; *cp == '_' || isalpha(*cp)
-					|| isdigit(*cp); cp++);
-			}
+			if (*cp == '_' || isalpha(*cp))
+				for (cp++; *cp == '_' || isalnum(*cp); cp++);
 			if (cp > path) {
 				tmp = buf + strlen(buf);
 				strncpy(tmp, path, cp - path);
@@ -372,15 +371,19 @@ char *name;
 	return(cp);
 }
 
-char *completepath(path)
+char *completepath(path, exe, matchno, prematch)
 char *path;
+int exe, matchno;
+char *prematch;
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat status;
-	char *cp, dir[MAXPATHLEN + 1], match[MAXNAMLEN + 1];
-	int i, len, matchno;
+	char *cp, *ptr, *next, dir[MAXPATHLEN + 1], match[MAXNAMLEN + 1];
+	int i, len;
 
+	if (matchno) strcpy(match, prematch);
+	next = NULL;
 	if (cp = strrchr(path, '/')) {
 		if (cp == path) strcpy(dir, "/");
 		else {
@@ -390,20 +393,45 @@ char *path;
 		cp++;
 	}
 	else if (*path == '~') return(completeuser(path + 1));
+	else if (exe) {
+		ptr = (char *)getenv("PATH");
+		if (next = strchr(ptr, ':')) strncpy2(dir, ptr, (next++) - ptr);
+		else strcpy(dir, ptr);
+		cp = path;
+	}
 	else {
 		strcpy(dir, ".");
 		cp = path;
 	}
 	len = strlen(cp);
 
-	matchno = 0;
 	if (!(dirp = opendir(dir))) return(NULL);
-	while (dp = readdir(dirp)) {
+	ptr = dir + strlen(dir);
+	strcpy(ptr++, "/");
+	while ((dp = readdir(dirp)) || next) {
+		while (!dp && next) {
+			do {
+				if (dirp) closedir(dirp);
+				ptr = next;
+				if (next = strchr(ptr, ':'))
+					strncpy2(dir, ptr, (next++) - ptr);
+				else strcpy(dir, ptr);
+			} while (!(dirp = opendir(dir)) && next);
+			ptr = dir + strlen(dir);
+			strcpy(ptr++, "/");
+			dp = readdir(dirp);
+		}
+		if (!dp) break;
+
 		if (!len) {
 			if (!strcmp(dp -> d_name, ".")
 			|| !strcmp(dp -> d_name, "..")) continue;
 		}
 		else if (strncmp(cp, dp -> d_name, len)) continue;
+		else if (exe) {
+			strcpy(ptr, dp -> d_name);
+			if (access(dir, X_OK) < 0) continue;
+		}
 		if (!matchno++) strcpy(match, dp -> d_name);
 		else {
 			for (i = 0; match[i]; i++)
@@ -411,7 +439,7 @@ char *path;
 			match[i] = '\0';
 		}
 	}
-	closedir(dirp);
+	if (dirp) closedir(dirp);
 	if (!matchno) return(NULL);
 
 	len = cp - path;

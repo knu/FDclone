@@ -94,7 +94,6 @@ static int no_operation();
 char *findpattern = NULL;
 reg_t *findregexp = NULL;
 char **sh_history = NULL;
-char **path_history = NULL;
 bindtable bindlist[MAXBINDTABLE] = {
 	{K_UP,		CUR_UP,		255},
 	{K_DOWN,	CUR_DOWN,	255},
@@ -486,29 +485,14 @@ static int log_dir(list, maxp)
 namelist *list;
 int *maxp;
 {
-	char *path;
+	char *cp, *path;
 
-	if (!(path = inputstr2(LOGD_K, -1, NULL, path_history))) return(1);
-	path_history = entryhist(path_history, path);
-	path = evalpath(path);
-	if (!strcmp(path, "?")) {
-		free(list[filepos].name);
-		list[filepos].name = path;
-		return(5);
-	}
-	if (*path && chdir2(path) < 0) {
+	if (!(path = inputstr2(LOGD_K, -1, NULL, NULL))
+	|| !*(path = evalpath(path))) return(1);
+	if (!(cp = chdir3(path))) {
 		warning(-1, path);
 		free(path);
 		return(1);
-	}
-	if (!strcmp(path, ".")) {
-		free(path);
-		path = getwd2();
-		strcpy(fullpath, path);
-	}
-	else {
-		if (findpattern) free(findpattern);
-		findpattern = NULL;
 	}
 	free(path);
 	free(list[filepos].name);
@@ -704,10 +688,7 @@ namelist *list;
 int *maxp;
 {
 	if (!archivefile && !yesno(QUIT_K)) return(1);
-	if (savehist > 0) {
-		savehistory(sh_history, HISTORYFILE);
-		savehistory(path_history, PATHHISTFILE);
-	}
+	if (savehist > 0) savehistory(sh_history, HISTORYFILE);
 	return(-1);
 }
 
@@ -717,8 +698,9 @@ int *maxp;
 {
 	char *path;
 
-	if (!(path = evalpath(inputstr2(MAKED_K, -1, NULL, NULL)))) return(1);
-	if (*path && mkdir2(path, 0777) < 0) warning(-1, path);
+	if (!(path = inputstr2(MAKED_K, -1, NULL, NULL))
+	|| !*(path = evalpath(path))) return(1);
+	if (mkdir2(path, 0777) < 0) warning(-1, path);
 	free(path);
 	return(4);
 }
@@ -761,8 +743,9 @@ int *maxp;
 	if (!strcmp(list[filepos].name, ".")
 	|| !strcmp(list[filepos].name, "..")) return(warning_bell(list, maxp));
 	for (;;) {
-		if (!(file = evalpath(inputstr2(NEWNM_K, 0,
-			list[filepos].name, NULL)))) return(1);
+		if (!(file = inputstr2(NEWNM_K, 0, list[filepos].name, NULL)))
+			return(1);
+		file = evalpath(file);
 		if (lstat(file, &status) < 0) {
 			if (errno == ENOENT) break;
 			warning(-1, file);
@@ -889,29 +872,9 @@ int *maxp;
 
 	if (!(com = inputstr2("sh#", -1, NULL, sh_history))) return(1);
 	sh_history = entryhist(sh_history, com);
-	if (!*com) {
-		free(com);
-		if (!(com = getenv2("FD_SHELL"))) com = "/bin/sh";
-		putterms(t_end);
-		putterms(t_nokeypad);
-		tflush();
-		sigvecreset();
-		cooked2();
-		echo2();
-		nl2();
-		kanjiputs(SHEXT_K);
-		system2(com);
-		raw2();
-		noecho2();
-		nonl2();
-		sigvecset();
-		putterms(t_keypad);
-		putterms(t_init);
-	}
-	else {
-		execmacro(com, list[filepos].name, list, *maxp, 0, 1);
-		free(com);
-	}
+	if (*com) execmacro(com, list[filepos].name, list, *maxp, 0, 1);
+	else execshell();
+	free(com);
 	return(4);
 }
 
@@ -926,11 +889,12 @@ int *maxp;
 		strlen(list[filepos].name) + 1 : 0;
 	if (!(com = inputstr2("sh#", len, list[filepos].name, sh_history)))
 		return(1);
-	if (!*com) {
-		free(com);
-		return(1);
-	}
 	sh_history = entryhist(sh_history, com);
+	if (!*com) {
+		execshell();
+		free(com);
+		return(4);
+	}
 	if (archivefile && !(dir = tmpunpack(list, *maxp))) {
 		free(com);
 		return(1);
@@ -961,9 +925,8 @@ int *maxp;
 	char *file;
 	int i;
 
-	if (!(file = inputstr2(PACK_K, -1, NULL, path_history))) return(1);
-	path_history = entryhist(path_history, file);
-	file = evalpath(file);
+	if (!(file = inputstr2(PACK_K, -1, NULL, NULL))
+	|| !*(file = evalpath(file))) return(1);
 	i = pack(file, list, *maxp);
 	free(file);
 	if (i < 0) {
@@ -1010,10 +973,8 @@ int *maxp;
 	char *path;
 	int i;
 
-	if (!(path = inputstr2(FSDIR_K, -1, NULL, path_history))) return(1);
-	path_history = entryhist(path_history, path);
-	if (*path) path = evalpath(path);
-	else {
+	if (!(path = inputstr2(FSDIR_K, -1, NULL, NULL))) return(1);
+	if (!*(path = evalpath(path))) {
 		free(path);
 		path = strdup2(".");
 	}
@@ -1090,9 +1051,8 @@ int *maxp;
 	char *dev;
 	int i;
 
-	if (!(dev = inputstr2(BKUP_K, 5, "/dev/", path_history))) return(1);
-	path_history = entryhist(path_history, dev);
-	dev = evalpath(dev);
+	if (!(dev = inputstr2(BKUP_K, 5, "/dev/", NULL))
+	|| !*(dev = evalpath(dev))) return(1);
 	i = backup(dev, list, *maxp);
 	free(dev);
 	if (i <= 0) return(1);

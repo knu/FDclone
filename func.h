@@ -35,6 +35,7 @@ extern int rmdir2();
 extern int rename2();
 extern int stat2();
 extern int chdir2();
+extern char *chdir3();
 extern int mkdir2();
 extern int mkdir3();
 extern VOID_P malloc2();
@@ -64,7 +65,6 @@ extern char *getgrgid2();
 extern time_t timelocal2();
 
 /* input.c */
-extern int inputstr();
 extern char *inputstr2();
 extern int yesno();
 extern VOID warning();
@@ -74,12 +74,14 @@ extern int selectstr();
 extern char *evalcommand();
 extern int execmacro();
 extern int execenv();
+extern int execshell();
 extern char **entryhist();
 extern char **loadhistory();
 extern int savehistory();
 extern int execinternal();
 extern VOID adjustpath();
 extern char *evalalias();
+extern int completealias();
 
 /* info.c */
 extern VOID help();
