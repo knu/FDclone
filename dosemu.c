@@ -112,13 +112,9 @@ DIR *dirp;
 #endif
 	dp = readdir(dirp);
 	if (!dp) return(NULL);
-#ifdef	NODNAMLEN
-	memcpy(&buf, dp, sizeof(buf));
-#else
 	memcpy(&buf, dp,
 		(char *)(((struct dirent *)&buf) -> d_name) - (char *)&buf);
 	strcpy(((struct dirent *)&buf) -> d_name, dp -> d_name);
-#endif
 #if	defined (CODEEUC) && !defined (_NODOSDRIVE)
 	if (*((int *)dirp) < 0) {
 		i = sjis2ujis(((struct dirent *)&buf) -> d_name,

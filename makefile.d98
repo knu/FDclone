@@ -233,7 +233,7 @@ clean:
 	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe mkunitbl.exe
 	-rm -f $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
-	-rm -f core
+	-rm -f core $(UNITBL)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.o: fd.h

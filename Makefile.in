@@ -233,7 +233,7 @@ clean:
 	-rm -f kanjicnv__EXE__ mkfuncno__EXE__ expfunc__EXE__ mkunitbl__EXE__
 	-rm -f $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
-	-rm -f core
+	-rm -f core __UNITBL__
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main__OBJ__: fd.h

@@ -1389,6 +1389,18 @@ int plen, max, linemax, def, comline, h;
 	return(ch);
 }
 
+int cmdlinelen(plen)
+int plen;
+{
+	int i;
+
+	if (plen < 0) plen = evalprompt(NULL, MAXLINESTR) + 1;
+	i = (n_column - 1) * WCMDLINE - plen;
+	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
+	if (i > MAXLINESTR) i = MAXLINESTR;
+	return(i);
+}
+
 char *inputstr(prompt, delsp, ptr, def, h)
 char *prompt;
 int delsp, ptr;
@@ -1455,10 +1467,8 @@ int h;
 		}
 		input[j] = '\0';
 	}
-	i = (n_column - 1) * WCMDLINE - len;
-	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
-	if (i > MAXLINESTR) i = MAXLINESTR;
-	ch = _inputstr(input, len, i, n_column - 1, ptr, h == 0, h);
+	ch = _inputstr(input, len, cmdlinelen(len),
+		n_column - 1, ptr, h == 0, h);
 	for (i = 0; i < WCMDLINE; i++) {
 		if (ypos + i >= n_line) break;
 		locate(0, ypos + i);

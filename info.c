@@ -184,6 +184,7 @@ extern int dospath __P_((char *, char *));
 #if	!MSDOS && !defined (_NODOSDRIVE)
 extern int dosstatfs __P_((int, char *));
 #endif
+extern VOID_P realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strstr2 __P_((char *, char *));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));

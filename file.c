@@ -310,13 +310,18 @@ char *buf;
 
 	if (!buf) return(1);
 	if (!homedir && !(homedir = (char *)getenv("HOME"))) homedir = "";
+	cwd = getwd2();
 #else	/* !MSDOS */
 	struct passwd *pwd;
 
+	cwd = getwd2();
 	if (!homedir) {
 		if (!(homedir = (char *)getenv("HOME"))) {
-			if ((pwd = getpwuid(getuid()))) homedir = pwd -> pw_dir;
-			else return(-1);
+			if (!(pwd = getpwuid(getuid()))) {
+				free(cwd);
+				return(-1);
+			}
+			homedir = pwd -> pw_dir;
 		}
 		if (
 #ifndef	_NODOSDRIVE
@@ -324,15 +329,15 @@ char *buf;
 #endif
 		_chdir2(homedir) < 0) {
 			homedir = NULL;
+			free(cwd);
 			return(-1);
 		}
 		homedir = getwd2();
-		if (_chdir2(fullpath) < 0) error(fullpath);
+		if (_chdir2(cwd) < 0) error(cwd);
 	}
 #endif	/* !MSDOS */
 
 	len = strlen(homedir);
-	cwd = getwd2();
 	if (!len || strnpathcmp(cwd, homedir, len)) {
 		cp = NULL;
 		if (buf) *buf = '\0';

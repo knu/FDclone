@@ -43,6 +43,7 @@ extern u_short typelist[];
 extern char *findpattern;
 extern char *deftmpdir;
 extern char *tmpfilename;
+extern u_short today[];
 extern namelist *filelist;
 extern int maxfile;
 extern int maxent;
@@ -277,10 +278,6 @@ int max;
 #endif
 	tmp -> st_size = atol(getfield(buf, line, skip, list, F_SIZE));
 
-	getfield(buf, line, skip, list, F_YEAR);
-	tm.tm_year = (*buf) ? atoi(buf) : 1970;
-	if (tm.tm_year < 100 && (tm.tm_year += 1900) < 1970) tm.tm_year += 100;
-	tm.tm_year -= 1900;
 	getfield(buf, line, skip, list, F_MON);
 	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
 	else if (!strncmp(buf, "Feb", 3)) tm.tm_mon = 1;
@@ -296,13 +293,27 @@ int max;
 	else if (!strncmp(buf, "Dec", 3)) tm.tm_mon = 11;
 	else if ((tm.tm_mon = atoi(buf)) > 0) tm.tm_mon--;
 	tm.tm_mday = atoi(getfield(buf, line, skip, list, F_DAY));
+	getfield(buf, line, skip, list, F_YEAR);
+	if (!*buf) tm.tm_year = 1970;
+	else if (list -> field[F_YEAR] != list -> field[F_TIME]
+	|| !strchr(buf, ':')) tm.tm_year = atoi(buf);
+	else {
+		tm.tm_year = today[0];
+		if (tm.tm_mon > today[1]
+		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
+			tm.tm_year--;
+	}
+	if (tm.tm_year < 1900 && (tm.tm_year += 1900) < 1970) tm.tm_year += 100;
+	tm.tm_year -= 1900;
 
 	getfield(buf, line, skip, list, F_TIME);
 	tm.tm_hour = atoi(buf);
-	if (tm.tm_hour < 0 || tm.tm_hour > 23) tm.tm_hour = 0;
-	cp = strchr(buf, ':');
-	tm.tm_min = (cp) ? atoi(++cp) : 0;
+	tm.tm_min = (cp = strchr(buf, ':')) ? atoi(++cp) : 0;
 	tm.tm_sec = (cp && (cp = strchr(cp, ':'))) ? atoi(++cp) : 0;
+	if (tm.tm_hour < 0 || tm.tm_hour > 23)
+		tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+	else if (tm.tm_min < 0 || tm.tm_min > 59) tm.tm_min = tm.tm_sec = 0;
+	else if (tm.tm_sec < 0 || tm.tm_sec > 59) tm.tm_sec = 0;
 
 	tmp -> st_mtim = timelocal2(&tm);
 	tmp -> flags |=

@@ -33,8 +33,7 @@ extern functable funclist[];
 static int setarg __P_((char *, int, char *, char *, int));
 static int setargs __P_((char *, int, namelist *, int, int));
 static int insertarg __P_((char *, char *, char *, int));
-static char *addoption __P_((char *, char *, namelist *, int,
-		int, macrostat *));
+static char *addoption __P_((char *, char *, namelist *, int, macrostat *));
 static int dosystem __P_((char *, namelist *, int *, int));
 static char *evalargs __P_((char *, int, char *[]));
 static char *histfgets __P_((char *, int, FILE *));
@@ -297,18 +296,17 @@ macrostat *stp;
 	return(cp);
 }
 
-static char *addoption(command, arg, list, max, len, stp)
+static char *addoption(command, arg, list, max, stp)
 char *command, *arg;
 namelist *list;
-int max, len;
+int max;
 macrostat *stp;
 {
 	char *cp, line[MAXLINESTR + 1];
-	int i, j, n, p;
+	int i, j, n, p, len;
 
-	if (len > MAXLINESTR) len = MAXLINESTR;
-	len++;
 	while (stp -> addopt >= 0) {
+		len = cmdlinelen(-1) + 1;
 		n = stp -> needmark;
 		p = -1;
 		for (i = j = 0; i < len; i++, j++) {
@@ -335,11 +333,15 @@ macrostat *stp;
 		free(command);
 		if (p < 0) p = strlen(line);
 		cp = inputstr("", 0, p, line, 0);
-		if (!cp || !*cp) return(NULL);
+		if (!cp) return(NULL);
+		if (!*cp) {
+			free(cp);
+			return(NULL);
+		}
 		command = evalcommand(cp, arg, list, max, stp);
+		free(cp);
 		if (!command) return((char *)-1);
 		if (!*command) return(NULL);
-		free(cp);
 	}
 	return(command);
 }
@@ -386,12 +388,9 @@ int *maxp, noconf, argset;
 	st.flags = (argset) ? F_ARGSET : 0;
 	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-1);
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
-	i = (n_column - 1) * WCMDLINE - (evalprompt(NULL, MAXLINESTR) + 1);
-	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
-	if (i > MAXLINESTR) i = MAXLINESTR;
 	st.flags |= F_ARGSET;
-	if (noconf >= 0 && !argset && strlen(tmp) < i) {
-		cp = addoption(tmp, arg, list, max, i, &st);
+	if (noconf >= 0 && !argset) {
+		cp = addoption(tmp, arg, list, max, &st);
 		if (cp != tmp) status = 2;
 		if (!cp || cp == (char *)-1) return((cp) ? -1 : 2);
 		tmp = cp;
@@ -406,8 +405,8 @@ int *maxp, noconf, argset;
 		if (!(st.flags & F_REMAIN)
 		|| !(tmp = evalcommand(command, arg, list, max, &st)))
 			break;
-		if (noconf >= 0 && !argset && strlen(tmp) < i) {
-			cp = addoption(tmp, arg, list, max, i, &st);
+		if (noconf >= 0 && !argset) {
+			cp = addoption(tmp, arg, list, max, &st);
 			if (cp != tmp && status >= 0 && status < 2) status = 2;
 			if (!cp || cp == (char *)-1) return(status);
 			tmp = cp;

@@ -155,7 +155,7 @@ int mode;
 	if (!(path = preparefile(path, buf, 0))) return(-1);
 	if (access(path, mode) != 0) return(-1);
 	if (!(mode & X_OK)) return(0);
-	if (stat(path, &status) != 0
+	if (Xstat(path, &status) < 0
 	|| !(status.st_mode & S_IEXEC)) {
 		errno = EACCES;
 		return(-1);

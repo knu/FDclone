@@ -14,7 +14,8 @@
 #include "version.h"
 
 #if	MSDOS
-# include <process.h>
+#include <process.h>
+#include <sys/timeb.h>
 # ifdef	__GNUC__
 extern char *adjustfname __P_((char *));
 # endif
@@ -157,6 +158,7 @@ char *origpath = NULL;
 char *progpath = NULL;
 char *tmpfilename = NULL;
 int showsecond = 0;
+u_short today[3] = {0, 0, 0};
 
 static char *progname = NULL;
 static int timersec = 0;
@@ -384,7 +386,9 @@ static sigarg_t printtime(VOID_A)
 {
 	static time_t now;
 	struct tm *tm;
-#if	!MSDOS
+#if	MSDOS
+	struct timeb buffer;
+#else
 	struct timeval t_val;
 	struct timezone tz;
 #endif
@@ -393,15 +397,19 @@ static sigarg_t printtime(VOID_A)
 	if (timersec) now++;
 	else {
 #if	MSDOS
-		now = time(NULL);
+		ftime(&buffer);
+		now = (time_t)(buffer.time);
 #else
 		gettimeofday2(&t_val, &tz);
-		now = t_val.tv_sec;
+		now = (time_t)(t_val.tv_sec);
 #endif
 		timersec = CLOCKUPDATE;
 	}
 	if (showsecond || timersec == CLOCKUPDATE) {
 		tm = localtime(&now);
+		today[0] = tm -> tm_year;
+		today[1] = tm -> tm_mon;
+		today[2] = tm -> tm_mday;
 		locate(n_column - 16 - ((showsecond) ? 3 : 0), LTITLE);
 		putterm(t_standout);
 		cprintf2("%02d-%02d-%02d %02d:%02d",

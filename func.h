@@ -182,6 +182,7 @@ extern time_t timelocal2 __P_((struct tm *));
 
 /* input.c */
 extern int Xgetkey __P_((int));
+extern int cmdlinelen __P_((int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 #if	MSDOS || defined (__STDC__)
 extern int yesno(CONST char *, ...);
