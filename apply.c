@@ -256,9 +256,8 @@ struct stat *stp1, *stp2;
 		warning(-1, dest);
 		return(-1);
 	}
-	if ((stp2 -> st_mode & S_IFMT) != S_IFDIR)
-		n = (copypolicy & ~FLAG_SAMEDIR);
-	else if ((stp1 -> st_mode & S_IFMT) != S_IFDIR) n = 2;
+	if (!s_isdir(stp2)) n = (copypolicy & ~FLAG_SAMEDIR);
+	else if (!s_isdir(stp1)) n = 2;
 #ifdef	_NOEXTRACOPY
 	else return(1);
 #else
@@ -343,9 +342,7 @@ struct stat *stp1, *stp2;
 					warning(-1, dest);
 					return(-1);
 				}
-				if ((stp1 -> st_mode & S_IFMT) == S_IFDIR
-				&& (stp2 -> st_mode & S_IFMT) == S_IFDIR)
-					return(1);
+				if (s_isdir(stp1) && s_isdir(stp2)) return(1);
 				putterm(t_bell);
 				break;
 			case 3:
@@ -411,7 +408,7 @@ int mode;
 			warning(-1, path);
 			return(-1);
 		}
-		if ((st.st_mode & S_IFMT) == S_IFLNK) return(0);
+		if (s_islnk(&st)) return(0);
 
 		if (!(tmp = strrdelim(path, 0))) strcpy(dir, ".");
 		else if (tmp == path) strcpy(dir, _SS_);
@@ -1004,8 +1001,7 @@ int *maxp, depth;
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(cp, dp -> d_name);
 
-		if (Xlstat(dir, &st) < 0 || (st.st_mode & S_IFMT) != S_IFDIR)
-			continue;
+		if (Xlstat(dir, &st) < 0 || !s_isdir(&st)) continue;
 		dirlist = b_realloc(dirlist, *maxp, char *);
 		dirlist[(*maxp)++] = strdup2(dir);
 		if (!(d = depth)) /*EMPTY*/;
@@ -1103,7 +1099,7 @@ int verbose;
 			strcpy(fname, dp -> d_name);
 
 			if (Xlstat(path, &st) < 0) warning(-1, path);
-			else if ((st.st_mode & S_IFMT) == S_IFDIR) continue;
+			else if (s_isdir(&st)) continue;
 			else if ((ret = (*funcf)(path)) < 0) {
 				if (ret < -1) break;
 				warning(-1, path);
@@ -1301,7 +1297,7 @@ char *path;
 	{
 		if (errno != EEXIST) return(-1);
 		if (Xstat(dest, &st) < 0) return(-1);
-		if ((st.st_mode & S_IFMT) == S_IFDIR) break;
+		if (s_isdir(&st)) break;
 		if (Xunlink(dest) < 0) return(-1);
 	}
 	return(0);

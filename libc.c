@@ -97,8 +97,7 @@ struct stat *stp;
 			return(-1);
 		}
 # endif
-		if (nodoslstat(path, stp) < 0
-		|| (stp -> st_mode & S_IFMT) != S_IFLNK) {
+		if (nodoslstat(path, stp) < 0 || !s_islnk(stp)) {
 			errno = duperrno;
 			return(-1);
 		}
@@ -121,7 +120,7 @@ char *path, *delim;
 		errno = duperrno;
 		return(-1);
 	}
-	if ((st.st_mode & S_IFMT) != S_IFLNK) {
+	if (!s_islnk(&st)) {
 		errno = duperrno;
 		return(0);
 	}

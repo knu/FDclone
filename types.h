@@ -132,6 +132,10 @@ typedef struct _namelist {
 #define	wasmark(file)		((file) -> tmpflags & F_WSMRK)
 #define	isarg(file)		((file) -> tmpflags & F_ISARG)
 #define	havestat(file)		((file) -> tmpflags & F_STAT)
+#define	s_isdir(s)		((((s) -> st_mode) & S_IFMT) == S_IFDIR)
+#define	s_isreg(s)		((((s) -> st_mode) & S_IFMT) == S_IFREG)
+#define	s_islnk(s)		((((s) -> st_mode) & S_IFMT) == S_IFLNK)
+#define	s_isfifo(s)		((((s) -> st_mode) & S_IFMT) == S_IFIFO)
 
 typedef struct _strtable {
 	u_short no;

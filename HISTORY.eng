@@ -1,3 +1,8 @@
+Ver. 2.05g	Bug that startup options with directory cannot work is fixed.
+ (07/07/04)	Strange sorted order in the filename completion is fixed.
+		Delete 'mkdir'/'rmdir' builtin commands for UNIX.
+		Support the kernel who handles SIGSTOP/SIGCONT in own style.
+
 Ver. 2.05f	Failure to treat the command line ending with '\' is fixed.
  (06/23/04)	Failure to launch archived file with any marked files is fixed.
 		Bug that USEGETCURSOR cannot work is fixed.

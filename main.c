@@ -45,7 +45,11 @@ extern VOID killjob __P_((VOID_A));
 #ifdef	_NOORIGSHELL
 extern char **environ;
 extern char **environ2;
-#endif
+#else	/* !_NOORIGSHELL */
+# if	!MSDOS
+extern int sigconted;
+# endif
+#endif	/* !_NOORIGSHELL */
 extern bindtable bindlist[];
 #ifndef	_NOARCHIVE
 extern launchtable launchlist[];
@@ -318,7 +322,10 @@ static int ignore_cont(VOID_A)
 	signal2(SIGCONT, (sigcst_t)ignore_cont);
 # if	!MSDOS
 	suspended = 1;
-# endif
+#  ifndef	_NOORIGSHELL
+	sigconted = 1;
+#  endif
+# endif	/* !MSDOS */
 	return(0);
 }
 #endif
@@ -716,7 +723,7 @@ int exist;
 		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
 		strcpy(strcpy2(strcpy2(cp, file), "."), tmp);
 		tmp = evalpath(cp, 0);
-		if (stat2(tmp, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG) {
+		if (stat2(tmp, &st) < 0 || !s_isreg(&st)) {
 			free(tmp);
 			tmp = NULL;
 		}
@@ -829,9 +836,11 @@ char *argv[];
 	int i;
 
 	for (i = 1; argv[i]; i++) {
-		if (argv[i][0] != '-') return(i);
-		if (!argv[i][1] || (argv[i][1] == '-' && !argv[i][2]))
-			return(i + 1);
+		if (argv[i][0] != '-') break;
+		if (!argv[i][1] || (argv[i][1] == '-' && !argv[i][2])) {
+			i++;
+			break;
+		}
 		tmp = strdup2(&(argv[i][1]));
 		if ((cp = strchr(tmp, '='))) *(cp++) = '\0';
 		setenv2(tmp, cp, 0);

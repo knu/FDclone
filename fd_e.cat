@@ -1467,8 +1467,9 @@ DDEESSCCRRIIPPTTIIOONN
                    And you can use a wildcard in the description
                    for each _p_a_t_t the pattern.
 
-     mmdd _d_i_r
-     mmkkddiirr _d_i_r     Create the directory _d_i_r.
+     mmdd _d_i_r        Create the directory _d_i_r.
+
+     mmkkddiirr _d_i_r     Same as mmdd.  ((DDOOSS))
 
      nneewwggrrpp [_a_r_g ...]
                    Execute nneewwggrrpp(1) in place of the execution of
@@ -1577,9 +1578,10 @@ DDEESSCCRRIIPPTTIIOONN
                    specified, all of the readonly internal vari-
                    ables are listed.
 
-     rrdd _d_i_r
-     rrmmddiirr _d_i_r     Delete the directory _d_i_r.  You cannot delete
+     rrdd _d_i_r        Delete the directory _d_i_r.  You cannot delete
                    the non-empty directory.
+
+     rrmmddiirr _d_i_r     Same as rrdd.  ((DDOOSS))
 
      rreenn _o_l_d _n_e_w
      rreennaammee _o_l_d _n_e_w

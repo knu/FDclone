@@ -74,6 +74,7 @@ extern int physical_path;
 
 #ifndef	_NOCOLOR
 static int NEAR getcolorid __P_((namelist *));
+static int NEAR biascolor __P_((int));
 static int NEAR getcolor __P_((int));
 #endif
 static VOID NEAR pathbar __P_((VOID_A));
@@ -90,6 +91,7 @@ static int NEAR putsize2 __P_((char *, namelist *, int));
 static int NEAR putfilename __P_((char *, namelist *, int));
 static VOID NEAR infobar __P_((VOID_A));
 static int NEAR calclocate __P_((int));
+static int NEAR calcfilepos __P_((namelist *, int, char *));
 #ifndef	_NOSPLITWIN
 static int NEAR listupwin __P_((char *));
 #endif
@@ -98,6 +100,7 @@ static int NEAR searchmove __P_((int, char *));
 static VOID readstatus __P_((VOID_A));
 #endif
 static int NEAR readfilelist __P_((reg_t *, char *));
+static VOID NEAR getfilelist __P_((VOID_A));
 static int NEAR browsedir __P_((char *, char *));
 static char *NEAR initcwd __P_((char *, char *));
 
@@ -203,6 +206,16 @@ namelist *namep;
 	return(CL_NORM);
 }
 
+static int NEAR biascolor(color)
+int color;
+{
+	if (color == ANSI_FG)
+		color = (ansicolor == 3) ? ANSI_BLACK : ANSI_WHITE;
+	else if (color == ANSI_BG) color = (ansicolor == 2) ? ANSI_BLACK : -1;
+
+	return(color);
+}
+
 static int NEAR getcolor(id)
 int id;
 {
@@ -215,11 +228,7 @@ int id;
 		else color = defpalette[id];
 	}
 
-	if (color == ANSI_FG)
-		color = (ansicolor == 3) ? ANSI_BLACK : ANSI_WHITE;
-	else if (color == ANSI_BG) color = (ansicolor == 2) ? ANSI_BLACK : -1;
-
-	return(color);
+	return(biascolor(color));
 }
 #endif	/* !_NOCOLOR */
 
@@ -625,12 +634,11 @@ int width;
 	if (isdir(namep))
 		snprintf2(buf, width + 1, "%*.*s", width, width, "<DIR>");
 #if	MSDOS
-	else if ((namep -> st_mode & S_IFMT) == S_IFIFO)
+	else if (s_isfifo(namep))
 		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
 #else	/* !MSDOS */
 # ifndef	_NODOSDRIVE
-	else if (dospath2("")
-	&& (namep -> st_mode & S_IFMT) == S_IFIFO)
+	else if (dospath2("") && s_isfifo(namep))
 		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
 # endif
 	else if (isdev(namep))
@@ -928,6 +936,7 @@ int no, isstandout;
 
 	if (list != filelist) {
 		len = strlen3(list[no].name);
+		if (isdisptyp(dispmode) && s_isdir(&(list[no]))) len++;
 		if (col > len) col = len;
 		if (width > len) width = len;
 	}
@@ -960,12 +969,13 @@ int no, isstandout;
 		for (j = 0; j < MAXMODELIST; j++)
 			if ((list[no].st_mode & S_IFMT) == modelist[j]) break;
 		if (j < MAXSUFFIXLIST) buf[i] = suffixlist[j];
-		else if ((list[no].st_mode & S_IFMT) == S_IFREG
+		else if (s_isreg(&(list[no]))
 		&& (list[no].st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)))
 			buf[i] = '*';
 	}
 #ifndef	_NOCOLOR
-	color = getcolor(getcolorid(&(list[no])));
+	if (list == filelist) color = getcolor(getcolorid(&(list[no])));
+	else color = biascolor(ANSI_FG);
 #endif
 	len = width;
 	width += col - wid;
@@ -1027,77 +1037,77 @@ int no, isstandout;
 	return(col);
 }
 
-int listupfile(list, max, def)
+static int NEAR calcfilepos(list, max, def)
 namelist *list;
 int max;
 char *def;
 {
+	int i;
+
+	if (def) for (i = 0; i < max; i++)
+		if (!strpathcmp(def, list[i].name)) return(i);
+
+	if (list == filelist && max > 1 && !strcmp(list[1].name, ".."))
+		return(1);
+	return(0);
+}
+
+int listupfile(list, max, def, isstandout)
+namelist *list;
+int max;
+char *def;
+int isstandout;
+{
 	char *cp;
-	int i, count, start, ret;
+	int i, n, pos;
 
 	for (i = 0; i < FILEPERROW; i++) {
 		locate(0, i + LFILETOP);
 		putterm(l_clear);
 	}
 
-	if (max <= 0) {
+	if (!list || max <= 0) {
 		i = (n_column / FILEPERLINE) - 2 - 1;
 		locate(1, LFILETOP);
 		putch2(' ');
-		if (def) putterm(t_standout);
+		if (isstandout) putterm(t_standout);
 		cp = NOFIL_K;
 		if (i <= strlen2(cp)) cp = "NoFiles";
 		cprintf2("%-*.*k", i, i, cp);
-		if (def) putterm(end_standout);
+		if (isstandout) putterm(end_standout);
 		win_x = i + 2;
 		win_y = LFILETOP;
 		return(0);
 	}
 
-	ret = -1;
-	if (def && !(*def)) def = "..";
-
-	start = 0;
-	for (i = count = 0; i < max; i++, count++) {
-		if (count >= FILEPERPAGE) {
-			count = 0;
-			start = i;
-		}
-		if (def && !strpathcmp(def, list[i].name)) {
-			ret = i;
-			break;
-		}
-	}
-	if (ret < 0) {
-		start = 0;
-		ret = (max <= 1 || strcmp(list[1].name, "..")) ? 0 : 1;
-	}
+	pos = calcfilepos(list, max, def);
 
 	if (list == filelist) {
 #ifndef	_NOTRADLAYOUT
 		if (istradlayout()) {
 			locate(TC_PAGE + TW_PAGE, TL_SIZE);
-			cprintf2("%<*d", TD_PAGE, start / FILEPERPAGE + 1);
+			cprintf2("%<*d", TD_PAGE, pos / FILEPERPAGE + 1);
 		}
 		else
 #endif
 		{
 			locate(C_PAGE + W_PAGE, L_STATUS);
-			cprintf2("%<*d", D_PAGE, start / FILEPERPAGE + 1);
+			cprintf2("%<*d", D_PAGE, pos / FILEPERPAGE + 1);
 		}
 	}
 
-	for (i = start, count = 0; i < max; i++, count++) {
-		if (count >= FILEPERPAGE) break;
-		if (i != ret) putname(list, i, 0);
+	n = (pos / FILEPERPAGE) * FILEPERPAGE;
+	for (i = 0; i < FILEPERPAGE; i++, n++) {
+		if (n >= max) break;
+		if (!isstandout || n != pos) putname(list, n, 0);
 		else {
-			win_x = putname(list, i, 1) + 1;
+			win_x = putname(list, n, 1) + 1;
 			win_x += calc_x;
 			win_y = calc_y;
 		}
 	}
 
-	return(ret);
+	return(pos);
 }
 
 #ifndef	_NOSPLITWIN
@@ -1122,17 +1132,12 @@ char *def;
 #endif
 	n = -1;
 	for (win = 0; win < windows; win++) {
-		if (!filelist) continue;
 		if (win == duplwin) {
-			n = listupfile(filelist, maxfile, def);
+			n = listupfile(filelist, maxfile, def, 1);
 			x = win_x;
 			y = win_y;
 		}
-		else if (maxfile <= 0) listupfile(filelist, maxfile, NULL);
-		else {
-			listupfile(filelist, maxfile, filelist[filepos].name);
-			putname(filelist, filepos, -1);
-		}
+		else listupfile(filelist, maxfile, filelist[filepos].name, 0);
 	}
 	win = duplwin;
 
@@ -1195,8 +1200,8 @@ int old, funcstat;
 #endif
 	if (((funcstat & REWRITEMODE) >= RELIST)
 	|| old / FILEPERPAGE != filepos / FILEPERPAGE) {
-		filepos =
-			listupfile(filelist, maxfile, filelist[filepos].name);
+		filepos = listupfile(filelist, maxfile,
+			filelist[filepos].name, 1);
 		keyflush();
 	}
 	else if (((funcstat & REWRITEMODE) >= REWRITE) || old != filepos) {
@@ -1236,7 +1241,8 @@ int all;
 #endif
 		if (filelist && filepos < maxfile) {
 #ifdef	_NOSPLITWIN
-			listupfile(filelist, maxfile, filelist[filepos].name);
+			listupfile(filelist, maxfile,
+				filelist[filepos].name, 1);
 #else
 			listupwin(filelist[filepos].name);
 #endif
@@ -1358,7 +1364,7 @@ static VOID readstatus(VOID_A)
 	locate(win_x, win_y);
 	tflush();
 }
-#endif
+#endif	/* !_NOPRECEDE */
 
 static int NEAR readfilelist(re, arcre)
 reg_t *re;
@@ -1418,31 +1424,10 @@ char *arcre;
 	return(n);
 }
 
-static int NEAR browsedir(file, def)
-char *file, *def;
+static VOID NEAR getfilelist(VOID_A)
 {
-#ifndef	_NOPRECEDE
-	int dupsorton;
-#endif
 	reg_t *re;
-	char *cp, *arcre, buf[MAXNAMLEN + 1];
-	int ch, i, no, old, funcstat;
-
-#ifndef	_NOPRECEDE
-	haste = 0;
-	dupsorton = sorton;
-#endif
-#ifndef	_NOCOLOR
-	if (ansicolor) putterms(t_normal);
-#endif
-
-	mark = 0;
-	totalsize = marksize = (off_t)0;
-	chgorder = 0;
-
-	fnameofs = 0;
-	win_x = win_y = 0;
-	waitmes();
+	char *arcre;
 
 	re = NULL;
 	arcre = NULL;
@@ -1460,7 +1445,6 @@ char *file, *def;
 		blocksize = (off_t)1;
 		if (sorttype < 100) sorton = 0;
 		copyarcf(re, arcre);
-		def = (*file) ? file : "";
 	}
 	else
 #endif
@@ -1487,6 +1471,37 @@ char *file, *def;
 	maxstat = (haste) ? 0 : maxfile;
 #endif
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
+}
+
+static int NEAR browsedir(file, def)
+char *file, *def;
+{
+#ifndef	_NOPRECEDE
+	int dupsorton;
+#endif
+	char *cp, buf[MAXNAMLEN + 1];
+	int ch, i, no, old, funcstat;
+
+#ifndef	_NOPRECEDE
+	haste = 0;
+	dupsorton = sorton;
+#endif
+#ifndef	_NOCOLOR
+	if (ansicolor) putterms(t_normal);
+#endif
+
+	mark = 0;
+	totalsize = marksize = (off_t)0;
+	chgorder = 0;
+
+	fnameofs = 0;
+	win_x = win_y = 0;
+	waitmes();
+
+#ifndef	_NOARCHIVE
+	if (archivefile) def = (*file) ? file : "";
+#endif
+	getfilelist();
 
 	for (i = 0; i < maxfile; i++) {
 		if (!isfile(&(filelist[i])) || !filelist[i].st_size) continue;
@@ -1500,7 +1515,7 @@ char *file, *def;
 	helpbar();
 	rewritefile(-1);
 #ifdef	_NOSPLITWIN
-	old = filepos = listupfile(filelist, maxfile, def);
+	old = filepos = listupfile(filelist, maxfile, def, 1);
 #else
 	old = filepos = listupwin(def);
 #endif
@@ -1571,7 +1586,7 @@ char *file, *def;
 				maxfile += stackdepth;
 				stackdepth = 0;
 				filepos = listupfile(filelist, maxfile,
-					filelist[filepos].name);
+					filelist[filepos].name, 1);
 				stackbar();
 			}
 #ifndef	_NOARCHIVE
@@ -1737,7 +1752,7 @@ char **pathlist;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
 	char *def, *cwd;
-	int i, n, argc, ischgdir;
+	int i, argc, ischgdir;
 
 	if (!pathlist) argc = 0;
 	else for (argc = 0; argc < MAXINVOKEARGS; argc++)
@@ -1787,18 +1802,10 @@ char **pathlist;
 
 #ifndef	_NOSPLITWIN
 		winvar[i].v_fullpath = strdup2(fullpath);
-		if (!i) continue;
-
-		readfilelist(NULL, NULL);
-		if (sorton)
-			qsort(filelist, maxfile, sizeof(namelist), cmplist);
-		sorton = sorttype % 100;
-
-		if (def) for (n = 0; n < maxfile; n++) {
-			if (!strpathcmp(def, filelist[n].name)) {
-				filepos = n;
-				break;
-			}
+		if (i) {
+			getfilelist();
+			sorton = sorttype % 100;
+			filepos = calcfilepos(filelist, maxfile, def);
 		}
 #endif
 	}
@@ -1821,12 +1828,10 @@ char **pathlist;
 	_chdir2(fullpath);
 
 	for (;;) {
-		if (def) /*EMPTY*/;
-		else if (strcmp(file, "..")) def = "";
-		else {
-			def = prev;
+		if (!def && !strcmp(file, "..")) {
 			strcpy(prev, getbasename(fullpath));
-			if (!*prev) strcpy(file, ".");
+			if (*prev) def = prev;
+			else strcpy(file, ".");
 		}
 
 		if (strcmp(file, ".")) {

@@ -956,6 +956,8 @@ static int NEAR getworkdir __P_((char *));
 static int NEAR dopushd __P_((syntaxtree *));
 static int NEAR dopopd __P_((syntaxtree *));
 static int NEAR dodirs __P_((syntaxtree *));
+static int NEAR doenable __P_((syntaxtree *));
+static int NEAR dobuiltin __P_((syntaxtree *));
 #endif
 #ifdef	FD
 static int NEAR dofd __P_((syntaxtree *));
@@ -1042,6 +1044,9 @@ p_id_t ttypgrp = -1;
 int interrupted = 0;
 int nottyout = 0;
 int syntaxerrno = 0;
+#if	!MSDOS
+int sigconted = 0;
+#endif
 
 int verboseexec = 0;
 int notexec = 0;
@@ -1234,7 +1239,7 @@ static CONST opetable delimlist[] = {
 #define	DELIMLISTSIZ	((int)(sizeof(delimlist) / sizeof(opetable)))
 #endif	/* !BASHBUG && !MINIMUMSHELL */
 
-static CONST shbuiltintable shbuiltinlist[] = {
+static shbuiltintable shbuiltinlist[] = {
 	{donull, ":", BT_POSIXSPECIAL},
 	{dobreak, "break", BT_POSIXSPECIAL},
 	{docontinue, "continue", BT_POSIXSPECIAL},
@@ -1277,9 +1282,11 @@ static CONST shbuiltintable shbuiltinlist[] = {
 	{donull, "rem", 0},
 	{dodir, "dir", BT_NOGLOB},
 	{dochdir, "chdir", BT_RESTRICT},
+# if	MSDOS
 	{domkdir, "mkdir", BT_RESTRICT},
-	{domkdir, "md", BT_RESTRICT},
 	{dormdir, "rmdir", BT_RESTRICT},
+# endif
+	{domkdir, "md", BT_RESTRICT},
 	{dormdir, "rd", BT_RESTRICT},
 	{doerase, "erase", BT_NOGLOB | BT_RESTRICT},
 	{doerase, "del", BT_NOGLOB | BT_RESTRICT},
@@ -1313,6 +1320,8 @@ static CONST shbuiltintable shbuiltinlist[] = {
 	{dopushd, "pushd", BT_RESTRICT},
 	{dopopd, "popd", 0},
 	{dodirs, "dirs", 0},
+	{doenable, "enable", BT_DISABLE},
+	{dobuiltin, "builtin", BT_DISABLE},
 #endif
 #ifdef	FD
 	{dofd, "fd", 0},
@@ -1601,7 +1610,11 @@ signaltable signallist[] = {
 	{SIGTSTP, trap_tstp, "TSTP", MESTSTP, TR_STOP | TR_BLOCK},
 #endif
 #ifdef	SIGCONT
+# if	MSDOS
 	{SIGCONT, trap_cont, "CONT", MESCONT, TR_IGN},
+# else
+	{SIGCONT, trap_cont, "CONT", MESCONT, TR_IGN | TR_BLOCK},
+# endif
 #endif
 #ifdef	SIGCHLD
 # ifdef	NOJOB
@@ -2217,11 +2230,14 @@ int sig;
 			Xexit2(RET_FAIL);
 			break;
 #endif	/* SIGHUP */
-#if	!MSDOS && defined (SIGCONT) && defined (FD)
+#if	!MSDOS && defined (SIGCONT)
 		case SIGCONT:
+# ifdef	FD
 			suspended = 1;
+# endif
+			sigconted = 1;
 			break;
-#endif
+#endif	/* !MSDOS && SIGCONT */
 #ifdef	SIGINT
 		case SIGINT:
 			if (duptrapok > 0) interrupted = 1;
@@ -2950,6 +2966,7 @@ syntaxtree *trp;
 	int ret;
 
 	if (trapok >= 0) trapok = 1;
+	sigconted = 0;
 	for (;;) {
 		if (interrupted) {
 			if (trapok >= 0) trapok = 0;
@@ -2958,6 +2975,15 @@ syntaxtree *trp;
 		if ((ret = waitjob(pid, &w, WUNTRACED)) < 0) break;
 		if (!ret) continue;
 		if (!WIFSTOPPED(w)) break;
+
+		ret = WSTOPSIG(w);
+		if (sigconted) {
+			sigconted = 0;
+# ifdef	SIGSTOP
+			if (ret == SIGSTOP) continue;
+# endif
+		}
+
 # ifdef	NOJOB
 #  ifdef	SIGCONT
 		if (loginshell) VOID_C kill(pid, SIGCONT);
@@ -2970,7 +2996,6 @@ syntaxtree *trp;
 		if (mypid != orgpgrp) continue;
 
 		if (trapok >= 0) trapok = 0;
-		ret = WSTOPSIG(w);
 		gettermio(orgpgrp);
 		prevjob = lastjob;
 		lastjob = stackjob(pid, ret, trp);
@@ -4461,11 +4486,13 @@ static int NEAR _putshellvar(s, len)
 char *s;
 int len;
 {
-#if	!MSDOS || !defined (NOPOSIXUTIL)
+#if	(!MSDOS && (!defined (MINIMUMSHELL)) || defined (FD)) \
+|| !defined (NOPOSIXUTIL)
 	char *cp;
 #endif
 
-#if	!MSDOS || !defined (NOPOSIXUTIL)
+#if	(!MSDOS && (!defined (MINIMUMSHELL)) || defined (FD)) \
+|| !defined (NOPOSIXUTIL)
 	cp = &(s[len + 1]);
 #endif
 
@@ -6669,6 +6696,9 @@ int *idp, alias, func;
 #endif
 #ifdef	STRICTPOSIX
 		for (i = 0; i < SHBUILTINSIZ; i++) {
+# ifndef	MINIMUMSHELL
+			if (shbuiltinlist[i].flags & BT_DISABLE) continue;
+# endif
 			if (!(shbuiltinlist[i].flags & BT_POSIXSPECIAL))
 				continue;
 			if (!strcommcmp(s, shbuiltinlist[i].ident)) {
@@ -6691,6 +6721,9 @@ int *idp, alias, func;
 		}
 #endif
 		for (i = 0; i < SHBUILTINSIZ; i++) {
+#ifndef	MINIMUMSHELL
+			if (shbuiltinlist[i].flags & BT_DISABLE) continue;
+#endif
 #ifdef	STRICTPOSIX
 			if (shbuiltinlist[i].flags & BT_POSIXSPECIAL)
 				continue;
@@ -6762,6 +6795,9 @@ char ***argvp;
 		(*argvp)[argc++] = strdup2(statementlist[i].ident);
 	}
 	for (i = 0; i < SHBUILTINSIZ; i++) {
+# ifndef	MINIMUMSHELL
+		if (shbuiltinlist[i].flags & BT_DISABLE) continue;
+# endif
 		if (strncommcmp(s, shbuiltinlist[i].ident, len)
 		|| finddupl(shbuiltinlist[i].ident, argc, *argvp)) continue;
 		*argvp = (char **)realloc2(*argvp,
@@ -9177,6 +9213,83 @@ syntaxtree *trp;
 	fputnl(stdout);
 
 	return(RET_SUCCESS);
+}
+
+static int NEAR doenable(trp)
+syntaxtree *trp;
+{
+	char **argv;
+	int i, j, n, ret;
+
+	argv = (trp -> comm) -> argv;
+	n = 1;
+	if ((trp -> comm) -> argc > 1 && argv[n][0] == '-'
+	&& argv[n][1] == 'n' && argv[n][2] == '\0') n++;
+
+	ret = RET_SUCCESS;
+	if (n >= (trp -> comm) -> argc) for (j = 0; j < SHBUILTINSIZ; j++) {
+		if (n == 1) {
+			if (shbuiltinlist[j].flags & BT_DISABLE) continue;
+		}
+		else {
+			if (!(shbuiltinlist[j].flags & BT_DISABLE)) continue;
+		}
+
+		for (i = 0; i < (trp -> comm) -> argc; i++)
+			fprintf2(stdout, "%k ", argv[i]);
+		fprintf2(stdout, "%k\n", shbuiltinlist[j].ident);
+	}
+	else for (i = n; i < (trp -> comm) -> argc; i++) {
+		for (j = 0; j < SHBUILTINSIZ; j++)
+			if (!strcommcmp(argv[i], shbuiltinlist[j].ident))
+				break;
+		if (j >= SHBUILTINSIZ) {
+			execerror(argv[i], ER_COMNOFOUND, 0);
+			ret = RET_FAIL;
+			continue;
+		}
+
+		if (n == 1) shbuiltinlist[j].flags &= ~BT_DISABLE;
+		else shbuiltinlist[j].flags |= BT_DISABLE;
+	}
+
+	return(ret);
+}
+
+static int NEAR dobuiltin(trp)
+syntaxtree *trp;
+{
+	char **argv;
+	int i, ret, argc;
+
+	argc = (trp -> comm) -> argc;
+	argv = (trp -> comm) -> argv;
+
+	if (interrupted) return(RET_INTR);
+	if (argc <= 1) return(ret_status);
+
+	for (i = 0; i < SHBUILTINSIZ; i++) {
+		if (shbuiltinlist[i].flags & BT_DISABLE) continue;
+		if (!strcommcmp(argv[1], shbuiltinlist[i].ident)) break;
+	}
+
+	if (i >= SHBUILTINSIZ) {
+		execerror(argv[1], ER_COMNOFOUND, 0);
+		return(RET_FAIL);
+	}
+
+	if (restricted && (shbuiltinlist[i].flags & BT_RESTRICT)) {
+		execerror((trp -> comm) -> argv[0], ER_RESTRICTED, 0);
+		return(RET_FAIL);
+	}
+	if (!shbuiltinlist[i].func) return(RET_FAIL);
+	(trp -> comm) -> argc--;
+	(trp -> comm) -> argv++;
+	ret = (*shbuiltinlist[i].func)(trp);
+
+	(trp -> comm) -> argc = argc;
+	(trp -> comm) -> argv = argv;
+	return(ret);
 }
 #endif	/* !MINIMUMSHELL */
 

@@ -1326,8 +1326,9 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    パターン _p_a_t_t の記述にはいずれもワイルドカード
                    を用いることができます。
 
-     mmdd _d_i_r
-     mmkkddiirr _d_i_r     ディレクトリ _d_i_r を作成します。
+     mmdd _d_i_r        ディレクトリ _d_i_r を作成します。
+
+     mmkkddiirr _d_i_r     mmdd と同じ。((DDOOSS))
 
      nneewwggrrpp [_a_r_g ...]
                    ffdd の実行を nneewwggrrpp(1) に置換えて実行を続けます。
@@ -1427,9 +1428,10 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    行された場合は、現在読込み専用にされている内部
                    変数の一覧を表示します。
 
-     rrdd _d_i_r
-     rrmmddiirr _d_i_r     ディレクトリ _d_i_r を削除します。中身が空でない
+     rrdd _d_i_r        ディレクトリ _d_i_r を削除します。中身が空でない
                    ディレクトリは削除できません。
+
+     rrmmddiirr _d_i_r     rrdd と同じ。((DDOOSS))
 
      rreenn _o_l_d _n_e_w
      rreennaammee _o_l_d _n_e_w

@@ -147,8 +147,8 @@ namelist *namep;
 	cp = nodospath(path, namep -> name);
 	if (Xlstat(cp, &lst) < 0 || stat2(cp, &st) < 0) return(-1);
 	namep -> flags = 0;
-	if ((st.st_mode & S_IFMT) == S_IFDIR) namep -> flags |= F_ISDIR;
-	if ((lst.st_mode & S_IFMT) == S_IFLNK) namep -> flags |= F_ISLNK;
+	if (s_isdir(&st)) namep -> flags |= F_ISDIR;
+	if (s_islnk(&lst)) namep -> flags |= F_ISLNK;
 
 	if (isdisplnk(dispmode))
 		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
@@ -324,8 +324,7 @@ char *arcregstr;
 	}
 #ifndef	_NOARCHIVE
 	else if (arcregstr) while ((dp = Xreaddir(dirp))) {
-		if (stat2(dp -> d_name, &st) < 0
-		|| (st.st_mode & S_IFMT) == S_IFDIR) continue;
+		if (stat2(dp -> d_name, &st) < 0 || s_isdir(&st)) continue;
 
 		tmp.name = dp -> d_name;
 		tmp.flags = 0;
@@ -409,7 +408,7 @@ char *dir;
 			}
 			else if (stat2(dir, &st) < 0) return(-1);
 		}
-		if ((st.st_mode & S_IFMT) != S_IFDIR) {
+		if (!s_isdir(&st)) {
 			errno = ENOTDIR;
 			return(-1);
 		}
@@ -427,7 +426,7 @@ struct stat *stp;
 	int ret, duperrno;
 
 	if (Xlstat(path, &st) < 0) return(-1);
-	if ((st.st_mode & S_IFMT) == S_IFLNK) return(1);
+	if (s_islnk(&st)) return(1);
 
 	ret = 0;
 #ifdef	FAKEUNINIT
@@ -624,7 +623,7 @@ struct stat *stp1, *stp2;
 	if (stp2 && !(stp2 -> st_mode & S_IWRITE))
 		Xchmod(src, stp2 -> st_mode | S_IWRITE);
 #endif
-	if ((stp1 -> st_mode & S_IFMT) == S_IFLNK) {
+	if (s_islnk(stp1)) {
 		if ((i = Xreadlink(src, buf, BUFSIZ - 1)) < 0) return(-1);
 		buf[i] = '\0';
 		return(Xsymlink(buf, dest));
@@ -716,8 +715,7 @@ char *src, *dest;
 struct stat *stp1, *stp2;
 {
 	if (Xrename(src, dest) >= 0) return(0);
-	if (errno != EXDEV || (stp1 -> st_mode & S_IFMT) == S_IFDIR)
-		return(-1);
+	if (errno != EXDEV || s_isdir(stp1)) return(-1);
 	if (safecpfile(src, dest, stp1, stp2) < 0 || Xunlink(src) < 0)
 		return(-1);
 #ifdef	HAVEFLAGS

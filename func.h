@@ -536,7 +536,7 @@ extern int putflags __P_((char *, u_long));
 extern VOID waitmes __P_((VOID_A));
 extern int calcwidth __P_((VOID_A));
 extern int putname __P_((namelist *, int, int));
-extern int listupfile __P_((namelist *, int, char *));
+extern int listupfile __P_((namelist *, int, char *, int));
 #ifndef	_NOSPLITWIN
 extern int shutwin __P_((int));
 #endif

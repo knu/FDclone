@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05f 06/23/04
+.\" @(#)fd.1   2.05g 07/07/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "June 23, 2004"
+.TH FD 1 "July 7, 2004"
 .de sh
 .br
 .PP
@@ -2323,11 +2323,12 @@ And you can use a wildcard in the description for each
 .I patt
 the pattern.
 .IP "\fBmd\fP \fIdir\fR"
-.PD 0
-.IP "\fBmkdir\fP \fIdir\fR"
-.PD
 Create the directory
 .IR dir .
+.IP "\fBmkdir\fP \fIdir\fR"
+Same as
+.BR md .
+.B (DOS)
 .IP "\fBnewgrp\fP [\fIarg .\|.\|.\fR]"
 Execute
 .BR newgrp (1)
@@ -2500,12 +2501,13 @@ the internal variable is defined as a null.
 If no argument is specified,
 all of the readonly internal variables are listed.
 .IP "\fBrd\fP \fIdir\fR"
-.PD 0
-.IP "\fBrmdir\fP \fIdir\fR"
-.PD
 Delete the directory
 .IR dir .
 You cannot delete the non-empty directory.
+.IP "\fBrmdir\fP \fIdir\fR"
+Same as
+.BR rd .
+.B (DOS)
 .IP "\fBren\fP \fIold\fR \fInew\fR"
 .PD 0
 .IP "\fBrename\fP \fIold\fR \fInew\fR"

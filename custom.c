@@ -640,17 +640,19 @@ int max, col;
 char *def, *prompt, **mes;
 {
 	int ch, pos, old;
-	int dupwin_x, dupwin_y, dupminfilename, dupcolumns;
+	int dupwin_x, dupwin_y, dupminfilename, dupcolumns, dupdispmode;
 
 	dupminfilename = minfilename;
 	dupcolumns = curcolumns;
+	dupdispmode = dispmode;
 	minfilename = n_column;
 	curcolumns = col;
+	dispmode = 0;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
 	subwindow = 1;
-	pos = listupfile(list, max, def);
+	pos = listupfile(list, max, def, 1);
 
 	envcaption(prompt);
 	do {
@@ -715,7 +717,7 @@ char *def, *prompt, **mes;
 		}
 
 		if (old / FILEPERPAGE != pos / FILEPERPAGE)
-			pos = listupfile(list, max, list[pos].name);
+			pos = listupfile(list, max, list[pos].name, 1);
 		else if (old != pos) {
 			putname(list, old, -1);
 			win_x = putname(list, pos, 1) + 1;
@@ -729,6 +731,7 @@ char *def, *prompt, **mes;
 	subwindow = 0;
 	minfilename = dupminfilename;
 	curcolumns = dupcolumns;
+	dispmode = dupdispmode;
 
 	return((ch == K_CR) ? pos : -1);
 }

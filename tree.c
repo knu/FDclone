@@ -96,9 +96,7 @@ int disp;
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(&(path[len]), dp -> d_name);
-		if (limit-- <= 0
-		|| (stat2(path, &st) >= 0
-		&& (st.st_mode & S_IFMT) == S_IFDIR)) {
+		if (limit-- <= 0 || (stat2(path, &st) >= 0 && s_isdir(&st))) {
 			if (!disp) {
 				i++;
 				break;
@@ -184,7 +182,8 @@ int level, *maxp;
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)
 		|| Xstat(nodospath(tmp, dp -> d_name), &st) < 0
-		|| (st.st_mode & S_IFMT) != S_IFDIR) continue;
+		|| !s_isdir(&st))
+			continue;
 		list = b_realloc(list, *maxp, treelist);
 		if (!subdir) {
 			list[*maxp].name = strdup2(dp -> d_name);

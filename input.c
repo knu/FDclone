@@ -1480,27 +1480,38 @@ int argc;
 char **argv;
 {
 	static int maxselect, tmpcolumns;
-	int i, len, maxlen, dupminfilename, dupcolumns, dupsorton;
+	char *cp;
+	int i, len, maxlen, dupminfilename, dupcolumns, dupdispmode;
 
 	dupminfilename = minfilename;
 	dupcolumns = curcolumns;
+	dupdispmode = dispmode;
 	minfilename = n_column;
+	dispmode = 2;
 
 	if (argv) {
 		selectlist = (namelist *)malloc2(argc * sizeof(namelist));
 		maxlen = 0;
 		for (i = 0; i < argc; i++) {
 			memset((char *)&(selectlist[i]), 0, sizeof(namelist));
-			selectlist[i].name = strdup2(argv[i]);
+			cp = strrdelim(argv[i], 0);
+			if (cp && !cp[1]) len = cp - argv[i];
+			else {
+				len = strlen(argv[i]);
+				cp = NULL;
+			}
+
+			selectlist[i].name = strndup2(argv[i], len);
 			selectlist[i].flags = (F_ISRED | F_ISWRI);
+			selectlist[i].st_mode = (cp) ? S_IFDIR : S_IFREG;
 			selectlist[i].tmpflags = F_STAT;
 			len = strlen2(argv[i]);
 			if (maxlen < len) maxlen = len;
 		}
-		dupsorton = sorton;
+		i = sorton;
 		sorton = 1;
 		qsort(selectlist, argc, sizeof(namelist), cmplist);
-		sorton = dupsorton;
+		sorton = i;
 
 		if (lcmdline < 0) {
 			int j, n;
@@ -1559,6 +1570,7 @@ char **argv;
 			selectlist = NULL;
 			minfilename = dupminfilename;
 			curcolumns = dupcolumns;
+			dispmode = dupdispmode;
 
 			return;
 		}
@@ -1568,7 +1580,7 @@ char **argv;
 		else if ((n_column / 2) - 2 - 1 >= maxlen) tmpcolumns = 2;
 		else tmpcolumns = 1;
 		curcolumns = tmpcolumns;
-		tmpfilepos = listupfile(selectlist, argc, NULL);
+		tmpfilepos = listupfile(selectlist, argc, NULL, 1);
 		maxselect = argc;
 	}
 	else if (argc < 0) {
@@ -1583,7 +1595,7 @@ char **argv;
 			- ((maxselect - 1 - argc) % (argc - tmpfilepos));
 		if (argc / FILEPERPAGE != tmpfilepos / FILEPERPAGE)
 			tmpfilepos = listupfile(selectlist, maxselect,
-				selectlist[tmpfilepos].name);
+				selectlist[tmpfilepos].name, 1);
 		else if (argc != tmpfilepos) {
 			putname(selectlist, argc, -1);
 			putname(selectlist, tmpfilepos, 1);
@@ -1592,6 +1604,7 @@ char **argv;
 
 	minfilename = dupminfilename;
 	curcolumns = dupcolumns;
+	dispmode = dupdispmode;
 }
 
 static int NEAR completestr(sp, cx, len, plen, sizep, linemax, comline, cont)
@@ -1684,7 +1697,12 @@ int linemax, comline, cont;
 
 	if (selectlist && cont < 0) {
 		argv = (char **)malloc2(1 * sizeof(char *));
-		argv[0] = strdup2(selectlist[tmpfilepos].name);
+		l = strlen(selectlist[tmpfilepos].name);
+		i = (s_isdir(&(selectlist[tmpfilepos]))) ? 1 : 0;
+		argv[0] = (char *)malloc2(l + i + 1);
+		memcpy(argv[0], selectlist[tmpfilepos].name, l);
+		if (i) argv[0][l] = '/';
+		argv[0][l + i] = '\0';
 		argc = 1;
 	}
 # ifndef	_NOORIGSHELL

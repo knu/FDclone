@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05f 06/23/04
+.\" @(#)fd.1   2.05g 07/07/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "June 23, 2004"
+.TH FD 1 "July 7, 2004"
 .de sh
 .br
 .PP
@@ -2223,12 +2223,13 @@ RFC1321 の MD5 アルゴリズムに従って、
 .I " patt"
 の記述にはいずれもワイルドカードを用いることができます。
 .IP "\fBmd\fP \fIdir\fR"
-.PD 0
-.IP "\fBmkdir\fP \fIdir\fR"
-.PD
 ディレクトリ
 .I " dir"
 を作成します。
+.IP "\fBmkdir\fP \fIdir\fR"
+.B md
+と同じ。
+.B (DOS)
 .IP "\fBnewgrp\fP [\fIarg .\|.\|.\fR]"
 .B fd
 の実行を
@@ -2392,13 +2393,14 @@ symbolic リンクを含まない物理的なパス名を出力します。
 引数なしで実行された場合は、
 現在読込み専用にされている内部変数の一覧を表示します。
 .IP "\fBrd\fP \fIdir\fR"
-.PD 0
-.IP "\fBrmdir\fP \fIdir\fR"
-.PD
 ディレクトリ
 .I " dir"
 を削除します。
 中身が空でないディレクトリは削除できません。
+.IP "\fBrmdir\fP \fIdir\fR"
+.B rd
+と同じ。
+.B (DOS)
 .IP "\fBren\fP \fIold\fR \fInew\fR"
 .PD 0
 .IP "\fBrename\fP \fIold\fR \fInew\fR"

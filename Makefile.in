@@ -396,11 +396,11 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 		-e   'i \' \
 		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - ./data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
-		-e   '				"%a %u/%g %s %y-%m-%d %t %f"' \
+		-e   '				"%a %u/%g %s %y-%m-%d %t %*f"' \
 		-e   'i \' \
 		-e   'launch ".deb"	"ar -p %C data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
-		-e   '				"%a %u/%g %s %y-%m-%d %t %f"' \
+		-e   '				"%a %u/%g %s %y-%m-%d %t %*f"' \
 		-e  '}' \
 		-e '}' \
 		-e '/# archiver definition/,/^$$/ {' \

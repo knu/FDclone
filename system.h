@@ -330,6 +330,7 @@ typedef struct _shbuiltintable {
 #define	BT_RESTRICT	0002
 #define	BT_POSIXSPECIAL	0004
 #define	BT_NOKANJIFGET	0010
+#define	BT_DISABLE	0020
 
 #define	SMPREV	4
 typedef struct _statementtable {

@@ -4,9 +4,8 @@
  *	Preprocesser for "funcno.h"
  */
 
-#include <stdio.h>
-#include <string.h>
-#include "machine.h"
+#define	__FD_PRIMAL__
+#include "fd.h"
 
 #define	_TBL_(func, id, hlp, flg)	{NULL, id, NULL, 0}
 

@@ -864,8 +864,8 @@ int skip;
 	}
 
 	if (!(tmp -> st_mode & S_IFMT)) tmp -> st_mode |= S_IFREG;
-	if ((tmp -> st_mode & S_IFMT) == S_IFDIR) tmp -> flags |= F_ISDIR;
-	else if ((tmp -> st_mode & S_IFMT) == S_IFLNK) tmp -> flags |= F_ISLNK;
+	if (s_isdir(tmp)) tmp -> flags |= F_ISDIR;
+	else if (s_islnk(tmp)) tmp -> flags |= F_ISLNK;
 	if (tm.tm_year < 0) {
 		tm.tm_year = today[0];
 		if (tm.tm_mon < 0 || tm.tm_mday < 0) tm.tm_year = 1970 - 1900;
@@ -1026,8 +1026,8 @@ int max;
 	getfield(buf, line, skip, list, F_MODE);
 	if (!readattr(tmp, buf)) tmp -> st_mode = 0644;
 	if (!(tmp -> st_mode & S_IFMT)) tmp -> st_mode |= S_IFREG;
-	if ((tmp -> st_mode & S_IFMT) == S_IFDIR) tmp -> flags |= F_ISDIR;
-	else if ((tmp -> st_mode & S_IFMT) == S_IFLNK) tmp -> flags |= F_ISLNK;
+	if (s_isdir(tmp)) tmp -> flags |= F_ISDIR;
+	else if (s_islnk(tmp)) tmp -> flags |= F_ISLNK;
 
 # ifndef	NOUID
 	getfield(buf, line, skip, list, F_UID);
@@ -1851,7 +1851,9 @@ char *path;
 		if (*path == _SC_) len = 1;
 		else if ((cp = strdelim(path, 0))) len = cp - path;
 		else len = strlen(path);
-		if (len != 2 || strncmp(path, "..", len)) {
+
+		if (len == 1 && *path == '.') file = "..";
+		else if (len != 2 || strncmp(path, "..", len)) {
 			if (!searcharcdir(path, len)) {
 				strcpy(archivedir, duparcdir);
 				errno = ENOENT;
