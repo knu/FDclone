@@ -63,9 +63,7 @@
 # include <sys/disklabel.h>
 # else
 #  ifdef	LINUX
-#  include <linux/unistd.h>
 #  include <linux/hdreg.h>
-#  include <linux/fs.h>
 #  define	DIOCGDINFO	HDIO_GETGEO
 #  define	disklabel	hd_geometry
 #  define	d_ntracks	heads
@@ -78,6 +76,8 @@
 
 #ifdef	LINUX
 #include <mntent.h>
+#include <linux/unistd.h>
+#include <linux/fs.h>
 # ifndef	MOUNTED
 # define	MOUNTED		"/etc/mtab"
 # endif
@@ -123,9 +123,29 @@ extern int errno;
 #define	O_BINARY	0
 #endif
 
-#ifndef issjis1
-#define issjis1(c)	((0x81 <= (c) && (c) <= 0x9f) \
-			|| (0xe0 <= (c) && (c) <= 0xfc))
+#ifdef	LSI_C
+#include <jctype.h>
+#define	issjis1(c)	iskanji(c)
+#define	issjis2(c)	iskanji2(c)
+#endif
+
+#ifndef	issjis1
+#define	issjis1(c)	(((u_char)(c) >= 0x81 && (u_char)(c) <= 0x9f) \
+			|| ((u_char)(c) >= 0xe0 && (u_char)(c) <= 0xfc))
+#endif
+#ifndef	issjis2
+#define	issjis2(c)	((u_char)(c) >= 0x40 && (u_char)(c) <= 0xfc \
+			&& (u_char)(c) != 0x7f)
+#endif
+
+#ifndef	iseuc
+#define	iseuc(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xfe)
+#endif
+
+#ifdef	CODEEUC
+#define	iskanji1(s, i)	(iseuc((s)[i]) && iseuc((s)[(i) + 1]))
+#else
+#define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
 #endif
 
 #define	reterr(c)	{errno = doserrno; return(c);}
@@ -149,14 +169,22 @@ extern int errno;
 extern int toupper2 __P_((int));
 extern int _dospath __P_((char *));
 extern int isdelim __P_((char *, int));
+#if	MSDOS || !defined (_NODOSDRIVE)
 extern char *strdelim __P_((char *, int));
 extern char *strrdelim __P_((char *, int));
+#else
+#define	strdelim(s, d)	strchr(s, _SC_)
+#define	strrdelim(s, d)	strrchr(s, _SC_)
+#endif
 extern char *strrdelim2 __P_((char *, char *));
+#if	MSDOS
 extern char *strcatdelim __P_((char *));
+#endif
+extern char *strcatdelim2 __P_((char *, char *, char *));
 extern int strcasecmp2 __P_((char *, char *));
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
-#else
+#else	/* !FD */
 #ifndef	NOTZFILEH
 #include <tzfile.h>
 #endif
@@ -172,12 +200,20 @@ extern time_t timelocal2 __P_((struct tm *));
 			| (long)((((u_char *)cp)[1]) << (CHAR_BIT * 2)) \
 			| (long)((((u_char *)cp)[0]) << (CHAR_BIT * 3)) )
 static int toupper2 __P_((int));
-#define	_dospath(s)	((isalpha(*s) && s[1] == ':') ? *s : 0)
+#define	_dospath(s)	((isalpha(*(s)) && (s)[1] == ':') ? *(s) : 0)
 static int isdelim __P_((char *, int));
-static char *strdelim __P_((char *, int));
-static char *strrdelim __P_((char *, int));
+#if	MSDOS
+extern char *strdelim __P_((char *, int));
+extern char *strrdelim __P_((char *, int));
+#else
+#define	strdelim(s, d)	strchr(s, _SC_)
+#define	strrdelim(s, d)	strrchr(s, _SC_)
+#endif
 static char *strrdelim2 __P_((char *, char *));
+#if	MSDOS
 static char *strcatdelim __P_((char *));
+#endif
+static char *strcatdelim2 __P_((char *, char *, char *));
 static int strcasecmp2 __P_((char *, char *));
 static int isdotdir __P_((char *));
 #if	!MSDOS && !defined (NOTZFILEH) \
@@ -188,7 +224,7 @@ static int tmcmp __P_((struct tm *, struct tm *));
 static long gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t timelocal2 __P_((struct tm *));
-#endif
+#endif	/* !FD */
 
 #ifdef	LINUX
 static off64_t lseek64 __P_((int, off64_t, int));
@@ -197,10 +233,11 @@ static off64_t lseek64 __P_((int, off64_t, int));
 #endif
 #if	!MSDOS
 static int sectseek __P_((devstat *, u_long));
-#endif	/* !MSDOS */
+#endif
 static int realread __P_((devstat *, u_long, u_char *, int));
 static int realwrite __P_((devstat *, u_long, u_char *, int));
 static int killcache __P_((devstat *, int, int));
+static int flushcache __P_((devstat *));
 static int shiftcache __P_((devstat *, int, int));
 static int cachecpy __P_((int, int, int, int));
 static int uniqcache __P_((devstat *, int, u_long, u_long));
@@ -227,11 +264,10 @@ static long clustread __P_((devstat *, u_char *, long));
 static long clustwrite __P_((devstat *, u_char *, long));
 static long clustexpand __P_((devstat *, long, int));
 static int clustfree __P_((devstat *, long));
-#if	MSDOS
-static int readbpb __P_((devstat *));
-#else
-static int readbpb __P_((devstat *, bpb_t *));
+#if	!MSDOS
+static int _readbpb __P_((devstat *, bpb_t *));
 #endif
+static int readbpb __P_((devstat *, int));
 #ifdef	HDDMOUNT
 static off64_t *_readpt __P_((off64_t, int, int, int, int));
 #endif
@@ -270,6 +306,7 @@ static int creatdent __P_((char *, int));
 static int unlinklfn __P_((int, long, u_short, int));
 static int dosfilbuf __P_((int, int));
 static int dosflsbuf __P_((int));
+static int type2flags __P_((char *));
 
 #if	MSDOS
 int dependdosfunc = 0;
@@ -403,7 +440,7 @@ devinfo mediadescr[] = {
 int lastdrive = -1;
 char *unitblpath = NULL;
 int needbavail = 0;
-VOID_T (*waitfunc)__P_((VOID_A)) = NULL;
+VOID_T (*doswaitfunc)__P_((VOID_A)) = NULL;
 
 static char *curdir['Z' - 'A' + 1];
 static devstat devlist[DOSNOFILE];
@@ -480,16 +517,17 @@ int ptr;
 	if (ptr < 0 || s[ptr] != _SC_) return(0);
 #if	MSDOS
 	if (--ptr < 0) return(1);
-	if (!ptr) return(!issjis1((u_char)(s[0])));
+	if (!ptr) return(!iskanji1(s, 0));
 
-	for (i = 0; s[i] && i < ptr; i++) if (issjis1((u_char)(s[i]))) i++;
+	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
 	if (!s[i] || i > ptr) return(1);
-	return(!issjis1((u_char)(s[i])));
+	return(!iskanji1(s, i));
 #else
 	return(1);
 #endif
 }
 
+#if	MSDOS
 static char *strdelim(s, d)
 char *s;
 int d;
@@ -499,9 +537,7 @@ int d;
 	if (d && _dospath(s)) return(s + 1);
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) return(&(s[i]));
-#if	MSDOS
-		if (issjis1((u_char)(s[i])) && !s[++i]) break;
-#endif
+		if (iskanji1(s, i)) i++;
 	}
 	return(NULL);
 }
@@ -517,12 +553,11 @@ int d;
 	else cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) cp = &(s[i]);
-#if	MSDOS
-		if (issjis1((u_char)(s[i])) && !s[++i]) break;
-#endif
+		if (iskanji1(s, 1)) i++;
 	}
 	return(cp);
 }
+#endif	/* MSDOS */
 
 static char *strrdelim2(s, eol)
 char *s, *eol;
@@ -534,7 +569,7 @@ char *s, *eol;
 	cp = NULL;
 	for (i = 0; s[i] && &(s[i]) < eol; i++) {
 		if (s[i] == _SC_) cp = &(s[i]);
-		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+		if (iskanji1(s, 1)) i++;
 	}
 	return(cp);
 #else
@@ -543,21 +578,61 @@ char *s, *eol;
 #endif
 }
 
+#if	MSDOS
 static char *strcatdelim(s)
 char *s;
 {
 	char *cp;
 	int i;
 
+	if (_dospath(s)) i = 2;
+	else i = 0;
+	if (s[i] == _SC_ && !s[i + 1]) return(&(s[i + 1]));
+
 	cp = NULL;
-	for (i = 0; s[i]; i++) {
+	for (; s[i]; i++) {
 		if (s[i] == _SC_ && !cp) cp = &(s[i]);
 		else cp = NULL;
-#if	MSDOS
-		if (issjis1((u_char)(s[i])) && !s[++i]) break;
-#endif
+		if (iskanji1(s, 1)) i++;
 	}
 	if (!cp) *(cp = &(s[i])) = _SC_;
+	*(++cp) = '\0';
+	return(cp);
+}
+#endif	/* MSDOS */
+
+static char *strcatdelim2(buf, s1, s2)
+char *buf, *s1, *s2;
+{
+	char *cp;
+	int i;
+
+	if (_dospath(s1)) {
+		buf[0] = s1[0];
+		buf[1] = s1[1];
+		i = 2;
+	}
+	else i = 0;
+	if (s1[i] == _SC_ && !s1[i + 1]) *(cp = &(buf[i])) = _SC_;
+	else {
+		cp = NULL;
+		for (; s1[i]; i++) {
+			buf[i] = s1[i];
+			if (s1[i] == _SC_) {
+				if (!cp) cp = &(buf[i]);
+				continue;
+			}
+			cp = NULL;
+#if	MSDOS
+			if (iskanji1(s, 1)) {
+				if (!s1[++i]) break;
+				buf[i] = s1[i];
+			}
+#endif
+		}
+		if (!cp) *(cp = &(buf[i])) = _SC_;
+	}
+	if (s2) for (i = 0; s2[i]; i++) *(++cp) = s2[i];
 	*(++cp) = '\0';
 	return(cp);
 }
@@ -621,7 +696,7 @@ time_t t;
 	FILE *fp;
 	time_t tmp;
 	long i, tz, leap, nleap, ntime, ntype, nchar;
-	char *cp, buf[MAXPATHLEN + 1];
+	char *cp, buf[MAXPATHLEN];
 	u_char c;
 
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
@@ -637,10 +712,7 @@ time_t t;
 	cp = (char *)getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (*cp == _SC_) strcpy(buf, cp);
-	else {
-		strcpy(buf, TZDIR);
-		strcpy(strcatdelim(buf), cp);
-	}
+	else strcatdelim2(buf, TZDIR, cp);
 	if (!(fp = fopen(buf, "r"))) return(tz);
 	if (fread(&head, sizeof(struct tzhead), 1, fp) != 1) {
 		fclose(fp);
@@ -786,7 +858,7 @@ int whence;
 		return((off64_t)-1);
 	return(result);
 }
-#endif
+#endif	/* LINUX */
 
 #if	!MSDOS
 static int sectseek(devp, sect)
@@ -887,6 +959,21 @@ int n, size;
 		}
 		free(sectcache[n - i]);
 		cachewrite[n - i] = 0;
+	}
+	return(ret);
+}
+
+static int flushcache(devp)
+devstat *devp;
+{
+	int i, ret;
+
+	ret = 0;
+	for (i = maxsectcache - 1; i >= 0; i--) {
+		if (cachedrive[i] != devp -> drive) continue;
+		if (cachewrite[i] && !(devp -> flags & F_RONLY)
+		&& realwrite(devp, sectno[i], sectcache[i], 1) < 0) ret = -1;
+		cachewrite[i] = 0;
 	}
 	return(ret);
 }
@@ -1320,7 +1407,7 @@ devstat *devp;
 		return(-1);
 	}
 
-	if (waitfunc) (*waitfunc)();
+	if (doswaitfunc) (*doswaitfunc)();
 	n = 0;
 	clust = devp -> totalsize + 2;;
 	if (devp -> flags & F_FAT32)
@@ -1416,22 +1503,22 @@ devstat *devp;
 static int writefat(devp)
 devstat *devp;
 {
+	char *buf;
 	long i;
+	int n;
 
-	i = (devp -> flags & F_WRFAT);
-	devp -> flags &= ~F_WRFAT;
-	if (!i || !devp -> fatbuf) return(0);
-
-	if (devp -> flags & F_DUPL) for (i = 0; i < maxdev; i++)
-		if (devlist[i].drive == devp -> drive
-		&& !(devlist[i].flags & F_DUPL)) {
-			devlist[i].flags |= F_WRFAT;
-			return(0);
-		}
+	n = 0;
+	buf = devp -> fatbuf;
+	for (i = 0; i < maxdev; i++) {
+		if (devlist[i].drive != devp -> drive) continue;
+		n |= devlist[i].flags & F_WRFAT;
+		if (!buf) buf = devlist[i].fatbuf;
+		devlist[i].flags &= ~F_WRFAT;
+	}
+	if (!n || !buf) return(0);
 
 	for (i = devp -> fatofs; i < devp -> dirofs; i += devp -> fatsize)
-		if (sectwrite(devp, i,
-		(u_char *)(devp -> fatbuf), devp -> fatsize) < 0)
+		if (sectwrite(devp, i, (u_char *)buf, devp -> fatsize) < 0)
 			return(-1);
 	return(0);
 }
@@ -1724,10 +1811,11 @@ long clust;
 }
 
 #if	MSDOS
-static int readbpb(devp)
+static int readbpb(devp, drv)
 devstat *devp;
+int drv;
 #else
-static int readbpb(devp, bpbcache)
+static int _readbpb(devp, bpbcache)
 devstat *devp;
 bpb_t *bpbcache;
 #endif
@@ -1748,12 +1836,14 @@ bpb_t *bpbcache;
 		return(-1);
 	}
 	bpb = (bpb_t *)buf;
-	if (rawdiskio(devp -> drive, 0, buf, 1, MAXSECTSIZE, 0) < 0) {
+	if (rawdiskio(drv, 0, buf, 1, MAXSECTSIZE, 0) < 0) {
 		doserrno = errno;
 		free(buf);
 		errno = tmperrno;
 		return(-1);
 	}
+	memset((char *)devp, 0, sizeof(devstat));
+	devp -> drive = drv;
 #else	/* !MSDOS */
 	buf = NULL;
 	if (!(devp -> ch_head) || !(nsect = devp -> ch_sect)) return(0);
@@ -1922,6 +2012,39 @@ bpb_t *bpbcache;
 	return(1);
 }
 
+#if	!MSDOS
+static int readbpb(devp, drv)
+devstat * devp;
+int drv;
+{
+	bpb_t bpb;
+	char *cp;
+	int i, ret;
+
+	cp = NULL;
+	devp -> fd = -1;
+	for (i = 0; fdtype[i].name; i++) {
+		if (drv != (int)fdtype[i].drive) continue;
+		if (!cp || strcmp(cp, fdtype[i].name)) {
+			bpb.nfat = 0;
+			if ((devp -> fd) >= 0) close(devp -> fd);
+			memset((char *)devp, 0, sizeof(devstat));
+			devp -> fd = -1;
+		}
+		memcpy((char *)devp, (char *)&(fdtype[i]), sizeof(devinfo));
+		cp = fdtype[i].name;
+		if ((ret = _readbpb(devp, &bpb)) < 0) return(-1);
+		if (ret > 0) break;
+	}
+	if (!fdtype[i].name) {
+		if ((devp -> fd) >= 0) close(devp -> fd);
+		doserrno = ENODEV;
+		return(-1);
+	}
+	return(0);
+}
+#endif	/* !MSDOS */
+
 #ifdef	HDDMOUNT
 static off64_t *_readpt(offset, fd, head, sect, secsiz)
 off64_t offset;
@@ -2074,11 +2197,6 @@ int pc98;
 static int opendev(drive)
 int drive;
 {
-#if	!MSDOS
-	bpb_t bpb;
-	char *cp;
-	int ret;
-#endif
 	devstat dev;
 	int i, new, drv;
 
@@ -2102,32 +2220,7 @@ int drive;
 		dev.flags &= ~(F_CACHE | F_WRFAT);
 	}
 	else {
-#if	MSDOS
-		memset((char *)&dev, 0, sizeof(devstat));
-		dev.drive = drv;
-		if (readbpb(&dev) < 0) return(-1);
-#else
-		cp = NULL;
-		dev.fd = -1;
-		for (i = 0; fdtype[i].name; i++) {
-			if (drv != (int)fdtype[i].drive) continue;
-			if (!cp || strcmp(cp, fdtype[i].name)) {
-				bpb.nfat = 0;
-				memset((char *)&dev, 0, sizeof(devstat));
-				dev.fd = -1;
-			}
-			memcpy((char *)&dev, (char *)&(fdtype[i]),
-				sizeof(devinfo));
-			cp = fdtype[i].name;
-			if ((ret = readbpb(&dev, &bpb)) < 0) return(-1);
-			if (ret > 0) break;
-		}
-		if (!fdtype[i].name) {
-			if ((dev.fd) >= 0) close(dev.fd);
-			doserrno = ENODEV;
-			return(-1);
-		}
-#endif
+		if (readbpb(&dev, drv) < 0) return(-1);
 		dev.dircache = NULL;
 #if	MSDOS
 		dev.fatbuf = NULL;
@@ -2181,14 +2274,7 @@ int dd;
 	if (writefat(&(devlist[dd])) < 0) ret = -1;
 	if (devlist[dd].flags & F_CACHE) free(devlist[dd].dircache);
 
-	if (devlist[dd].flags & F_DUPL)
-	for (i = maxsectcache - 1; i >= 0; i--) {
-		if (cachedrive[i] == devlist[dd].drive
-		&& cachewrite[i] && !(devlist[dd].flags & F_RONLY)
-		&& realwrite(&(devlist[dd]), sectno[i], sectcache[i], 1) < 0)
-			ret = -1;
-		cachewrite[i] = 0;
-	}
+	if (devlist[dd].flags & F_DUPL) flushcache(&(devlist[dd]));
 	else {
 		for (i = maxsectcache - 1; i >= 0; i -= cachesize[i]) {
 			if (cachedrive[i] == devlist[dd].drive
@@ -2216,12 +2302,12 @@ int dd;
 int preparedrv(drive)
 int drive;
 {
-	int i;
+	int i, drv;
 
+	drv = toupper2(drive);
 	for (i = maxdev - 1; i >= 0; i--)
-		if (toupper2(drive) == (int)devlist[i].drive)
-			return(DOSNOFILE + i);
-	if (waitfunc) (*waitfunc)();
+		if (drv == (int)devlist[i].drive) return(DOSNOFILE + i);
+	if (doswaitfunc) (*doswaitfunc)();
 	if ((i = opendev(drive)) < 0) reterr(-1);
 	return(i);
 }
@@ -2234,6 +2320,76 @@ int dd;
 	if (dd >= DOSNOFILE) return(0);
 	if ((i = closedev(dd)) < 0) reterr(-1);
 	return(i);
+}
+
+int flushdrv(drive, func)
+int drive;
+VOID_T (*func)__P_((VOID_A));
+{
+	devstat dev;
+	int i, dd, drv, ret, tmperrno;
+
+	drv = toupper2(drive);
+	tmperrno = errno;
+	ret = 0;
+	dd = -1;
+	for (i = maxorder - 1; i >= 0; i--) {
+		if (drv != (int)devlist[devorder[i]].drive) continue;
+		if (writefat(&(devlist[devorder[i]])) < 0) {
+			tmperrno = doserrno;
+			ret = -1;
+		}
+		if (!(devlist[devorder[i]].flags & F_DUPL)) dd = devorder[i];
+		if (devlist[devorder[i]].flags & F_CACHE) {
+			free(devlist[devorder[i]].dircache);
+			devlist[devorder[i]].dircache = NULL;
+			devlist[devorder[i]].flags &= ~F_CACHE;
+		}
+	}
+	if (dd < 0) {
+		if (func) (*func)();
+		errno = tmperrno;
+		return(ret);
+	}
+
+	for (i = maxsectcache - 1; i >= 0; i -= cachesize[i]) {
+		if (drv != cachedrive[i]) continue;
+		if (shiftcache(&(devlist[dd]), i, -1) > SECTCACHESIZE) {
+			tmperrno = doserrno;
+			ret = -1;
+		}
+	}
+	if (devlist[dd].fatbuf) free(devlist[dd].fatbuf);
+	if (devlist[dd].dircache) free(devlist[dd].dircache);
+#if	!MSDOS
+	close(devlist[dd].fd);
+#endif
+	if (func) (*func)();
+#if	!MSDOS
+	sync();
+	sync();
+#endif
+	if (readbpb(&dev, drv) < 0) {
+		tmperrno = doserrno;
+		ret = -1;
+	}
+	else {
+		dev.dircache = NULL;
+#if	MSDOS
+		dev.fatbuf = NULL;
+#else
+		if (readfat(&dev) < 0) {
+			close(dev.fd);
+			return(-1);
+		}
+#endif
+	}
+	if (drive >= 'a' && drive <= 'z') dev.flags |= F_VFAT;
+	else dev.flags &= ~F_VFAT;
+
+	memcpy((char *)&(devlist[dd]), (char *)&dev, sizeof(devstat));
+	errno = tmperrno;
+	return(ret);
 }
 
 static int checksum(name)
@@ -2270,7 +2426,7 @@ int encode;
 	static int fd = -1;
 	static u_short total = 0;
 	u_char buf[4];
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	u_short r, w, min, max, ofs;
 
 	if (encode < 0) {
@@ -2280,10 +2436,7 @@ int encode;
 	}
 
 	if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
-	else {
-		strcpy(path, unitblpath);
-		strcpy(strcatdelim(path), UNICODETBL);
-	}
+	else strcatdelim2(path, unitblpath, UNICODETBL);
 	if (fd < 0) {
 		if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0
 		|| read(fd, buf, 2) != 2) return(0);
@@ -2424,7 +2577,7 @@ int len, part;
 	for (i = 0; i < len; i++) {
 		c1 = (u_char)(path1[i]);
 		c2 = (u_char)(path2[i]);
-		if (!issjis1((u_char)c1)) {
+		if (!issjis1(c1) || !issjis2(c2)) {
 			if (!c1 || !c2 || toupper2(c1) != toupper2(c2))
 				return(c1 - c2);
 		}
@@ -2484,7 +2637,7 @@ int vol;
 	cnv = 0;
 	for (i = 0; i < 8; i++) {
 		if (file == cp || file == eol || !*file) buf[i] = ' ';
-		else if (issjis1((u_char)(*file))) {
+		else if (issjis1(*file) && issjis2(file[1])) {
 			w = ((u_short)(*file) << 8) | (u_char)(file[1]);
 			w = unifysjis(w, vol);
 			buf[i++] = (w >> 8) & 0xff;
@@ -2517,7 +2670,7 @@ int vol;
 	if (cp) cp++;
 	for (i = 8; i < 11; i++) {
 		if (!cp || cp == eol || !*cp) buf[i] = ' ';
-		else if (issjis1((u_char)(*cp))) {
+		else if (issjis1(*cp) && issjis2(cp[1])) {
 			buf[i++] = *(cp++);
 			buf[i] = *(cp++);
 		}
@@ -2675,61 +2828,64 @@ char *buf, *path;
 int class;
 {
 	char *cp;
-	int i, drive;
+	int i, n, drv, drive;
 
 	cp = buf;
 	if ((drive = getdrive(path)) < 0) return(-1);
-	i = toupper2(drive) - 'A';
+	drv = toupper2(drive) - 'A';
 	path += 2;
 #if	MSDOS
 	if (*path != '/' && *path != '\\') {
 		*buf = _SC_;
-		if (checkdrive(i) <= 0) unixgetcurdir(buf + 1, i + 1);
-		else if (curdir[i]) strcpy(buf + 1, curdir[i]);
+		if (checkdrive(drv) <= 0) unixgetcurdir(buf + 1, drv + 1);
+		else if (curdir[drv]) strcpy(buf + 1, curdir[drv]);
 		else *buf = '\0';
 #else
-	if (*path != '/' && *path != '\\' && curdir[i]) {
+	if (*path != '/' && *path != '\\' && curdir[drv]) {
 		*buf = _SC_;
-		strcpy(buf + 1, curdir[i]);
+		strcpy(buf + 1, curdir[drv]);
 #endif
 		cp += strlen(buf);
 	}
 
 	while (*path) {
 		for (i = 0; path[i] && path[i] != '/' && path[i] != '\\'; i++)
-			if (issjis1((u_char)(path[i]))) i++;
+			if (issjis1(path[i]) && issjis2(path[i + 1])) i++;
 		if (class && !path[i]) {
-			if ((i == 1 && *path == '.')
-			|| (i == 2 && *path == '.' && *(path + 1) == '.')) {
+			if ((i == 1 && path[0] == '.')
+			|| (i == 2 && path[0] == '.' && path[1] == '.')) {
 				*(cp++) = _SC_;
 				strncpy(cp, path, i);
 				cp += i;
-			}
-			else if (cp + i + 1 - buf >= DOSMAXPATHLEN) {
-				doserrno = ENAMETOOLONG;
-				return(-1);
 			}
 			else {
+				n = i;
+				if (i && path[i - 1] == '.') n--;
+				if (cp + 1 + n - buf
+				>= DOSMAXPATHLEN - 2 - 1) {
+					doserrno = ENAMETOOLONG;
+					return(-1);
+				}
 				*(cp++) = _SC_;
-				strncpy(cp, path, i);
-				cp += i;
-				if (path[i - 1] == '.') cp--;
+				strncpy(cp, path, n);
+				cp += n;
 			}
 		}
-		else if (!i || (i == 1 && *path == '.'));
-		else if (i == 2 && *path == '.' && *(path + 1) == '.') {
+		else if (!i || (i == 1 && path[0] == '.'));
+		else if (i == 2 && path[0] == '.' && path[1] == '.') {
 			cp = strrdelim2(buf, cp);
 			if (!cp) cp = buf;
 		}
 		else {
-			if (cp + i + 1 - buf >= DOSMAXPATHLEN) {
+			n = i;
+			if (path[i - 1] == '.') n--;
+			if (cp + 1 + n - buf >= DOSMAXPATHLEN - 2 - 1) {
 				doserrno = ENAMETOOLONG;
 				return(-1);
 			}
 			*(cp++) = _SC_;
-			strncpy(cp, path, i);
-			cp += i;
-			if (path[i - 1] == '.') cp--;
+			strncpy(cp, path, n);
+			cp += n;
 		}
 		if (*(path += i)) path++;
 	}
@@ -2748,7 +2904,7 @@ int needlfn;
 	struct dirent *dp;
 	dent_t *dentp;
 	cache_t *cache;
-	char *cp, *cachepath, *tmp, buf[DOSMAXPATHLEN + 3 + 1];
+	char *cp, *cachepath, buf[DOSMAXPATHLEN - 2];
 	int len, dd, drive, rlen, tmperrno;
 
 	rlen = 0;
@@ -2824,13 +2980,15 @@ int needlfn;
 	*cachepath = '\0';
 
 	while (*path) {
-		if (!(cp = strdelim(path, 0))) cp = path + strlen(path);
-		len = cp - path;
-		tmp = path;
-		path = (*cp) ? cp + 1 : cp;
-		if (!len || (len == 1 && *tmp == '.')) continue;
+		cp = path;
+		if ((path = strdelim(path, 0))) len = (path++) - cp;
+		else {
+			len = strlen(cp);
+			path = cp + len;
+		}
+		if (!len || (len == 1 && *cp == '.')) continue;
 
-		if (!(dp = finddir(xdirp, tmp, len, needlfn))) {
+		if (!(dp = finddir(xdirp, cp, len, needlfn))) {
 			errno = (doserrno) ? doserrno : ENOENT;
 			_dosclosedir(xdirp);
 			doserrno = errno;
@@ -2838,18 +2996,26 @@ int needlfn;
 			return(NULL);
 		}
 		if (resolved) {
-			resolved[rlen++] = _SC_;
-			if (rlen + strlen(dp -> d_name) >= DOSMAXPATHLEN) {
+			char name[8 + 1 + 3 + 1];
+			int flen;
+
+			if (needlfn) cp = dp -> d_name;
+			else {
+				getdosname(name,
+					dd2dentp(xdirp -> dd_fd) -> name,
+					dd2dentp(xdirp -> dd_fd) -> ext);
+				cp = name;
+			}
+			flen = strlen(cp);
+			if (rlen + 1 + flen >= DOSMAXPATHLEN) {
 				_dosclosedir(xdirp);
 				doserrno = ENAMETOOLONG;
 				errno = tmperrno;
 				return(NULL);
 			}
-			if (needlfn) strcpy(resolved + rlen, dp -> d_name);
-			else getdosname(resolved + rlen,
-				dd2dentp(xdirp -> dd_fd) -> name,
-				dd2dentp(xdirp -> dd_fd) -> ext);
-			while (resolved[rlen]) rlen++;
+			resolved[rlen++] = _SC_;
+			strcpy(resolved + rlen, cp);
+			rlen += flen;
 		}
 
 		dentp = (dent_t *)&(xdirp -> dd_buf[dp -> d_fileno]);
@@ -3059,7 +3225,8 @@ DIR *dirp;
 	if (!(dp = _dosreaddir(xdirp, 0))) reterr(NULL);
 	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
 		for (i = 0; dp -> d_name[i]; i++) {
-			if (issjis1((u_char)(dp -> d_name[i]))) i++;
+			if (issjis1(dp -> d_name[i])
+			&& issjis2(dp -> d_name[i + 1])) i++;
 #if	!MSDOS
 			else if ((c = detranschar(dp -> d_name[i])))
 				dp -> d_name[i] = c;
@@ -3124,7 +3291,7 @@ int doschdir(path)
 char *path;
 {
 	dosDIR *xdirp;
-	char *tmp, buf[DOSMAXPATHLEN + 3 + 1];
+	char *tmp, buf[DOSMAXPATHLEN];
 	int drv, drive, needlfn;
 
 	if ((drive = getdrive(path)) < 0) reterr(-1);
@@ -3184,12 +3351,12 @@ static dosDIR *splitpath(pathp, resolved, needlfn)
 char **pathp, *resolved;
 int needlfn;
 {
-	char dir[MAXPATHLEN + 1];
+	char dir[DOSMAXPATHLEN];
 	int i, j;
 
 	strcpy(dir, *pathp);
 	for (i = 1, j = 2; dir[j]; j++) {
-		if (issjis1((u_char)(dir[j]))) j++;
+		if (issjis1(dir[j]) && issjis2(dir[j + 1])) j++;
 		else if (dir[j] == '/' || dir[j] == '\\') i = j;
 	}
 
@@ -3205,7 +3372,7 @@ char *path;
 int *ddp;
 {
 	dosDIR *xdirp;
-	char buf[2 + DOSMAXPATHLEN + 3 + 1];
+	char buf[DOSMAXPATHLEN];
 	int dd, drive, tmperrno;
 
 	if (ddp) *ddp = -1;
@@ -3312,7 +3479,7 @@ int mode;
 	dent_t *dentp;
 	u_char *cp, longfname[DOSMAXNAMLEN + 1];
 	char *file, tmp[8 + 1 + 3 + 1], fname[8 + 3 + 1];
-	char buf[2 + DOSMAXPATHLEN + 3 + 1];
+	char buf[DOSMAXPATHLEN];
 	long clust;
 	u_short c, offset;
 	int i, j, n, len, cnt, sum, ret;
@@ -3346,7 +3513,7 @@ int mode;
 		for (i = j = 0; file[i]; i++, j += 2) {
 			if (!strchr(PACKINALIAS, file[i])) n = -1;
 			else if (n < 0) n = i;
-			if (!issjis1((u_char)(file[i])))
+			if (!issjis1(file[i]) || !issjis2(file[i + 1]))
 				c = lfnencode(0, file[i]);
 			else {
 				c = lfnencode(file[i], file[i + 1]);
@@ -3387,8 +3554,7 @@ int mode;
 		return(-1);
 	}
 
-	if (!n || !strncmp(getdosname(tmp, fname, fname + 8), file, 8 + 3))
-		cnt = 1;
+	if (!n || !strcmp(getdosname(tmp, fname, fname + 8), file)) cnt = 1;
 	else sum = checksum(fname);
 
 	i = j = 0;
@@ -3540,7 +3706,7 @@ char *dosshortname(path, alias)
 char *path, *alias;
 {
 	dosDIR *xdirp;
-	char *cp, buf[2 + DOSMAXPATHLEN + 3 + 1], name[8 + 1 + 3 + 1];
+	char *cp, buf[DOSMAXPATHLEN], name[8 + 1 + 3 + 1];
 	int dd, drive;
 
 	name[0] = '\0';
@@ -3580,7 +3746,7 @@ char *path, *resolved;
 {
 	dosDIR *xdirp;
 	struct dirent *dp;
-	char *cp, buf[2 + DOSMAXPATHLEN + 3 + 1];
+	char *cp, buf[DOSMAXPATHLEN];
 	int dd, drive;
 
 	if ((drive = parsepath(buf + 2, path, 1)) < 0
@@ -3633,58 +3799,58 @@ char *buf;
 	return(0);
 }
 
-int dosstat(path, buf)
+int dosstat(path, stp)
 char *path;
-struct stat *buf;
+struct stat *stp;
 {
 	char *cp;
 	int dd;
 
 	if ((dd = getdent(path, NULL)) < 0) reterr(-1);
-	buf -> st_dev = dd;
-	buf -> st_ino = clust32(&(devlist[dd]), dd2dentp(dd));
-	buf -> st_mode = getdosmode(dd2dentp(dd) -> attr);
-	buf -> st_nlink = 1;
-	buf -> st_uid = -1;
-	buf -> st_gid = -1;
-	buf -> st_size = byte2dword(dd2dentp(dd) -> size);
-	buf -> st_atime =
-	buf -> st_mtime =
-	buf -> st_ctime = getdostime(byte2word(dd2dentp(dd) -> date),
+	stp -> st_dev = dd;
+	stp -> st_ino = clust32(&(devlist[dd]), dd2dentp(dd));
+	stp -> st_mode = getdosmode(dd2dentp(dd) -> attr);
+	stp -> st_nlink = 1;
+	stp -> st_uid = -1;
+	stp -> st_gid = -1;
+	stp -> st_size = byte2dword(dd2dentp(dd) -> size);
+	stp -> st_atime =
+	stp -> st_mtime =
+	stp -> st_ctime = getdostime(byte2word(dd2dentp(dd) -> date),
 		byte2word(dd2dentp(dd) -> time));
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
-	buf -> st_flags = 0;
+	stp -> st_flags = 0;
 #endif
 	closedev(dd);
 
-	if ((buf -> st_mode & S_IFMT) != S_IFDIR
+	if ((stp -> st_mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
 		if (!strcasecmp2(cp, "BAT") || !strcasecmp2(cp, "COM")
-		|| !strcasecmp2(cp, "EXE")) buf -> st_mode |= S_IEXEC_ALL;
+		|| !strcasecmp2(cp, "EXE")) stp -> st_mode |= S_IEXEC_ALL;
 	}
 	return(0);
 }
 
-int doslstat(path, buf)
+int doslstat(path, stp)
 char *path;
-struct stat *buf;
+struct stat *stp;
 {
-	return(dosstat(path, buf));
+	return(dosstat(path, stp));
 }
 
 int dosaccess(path, mode)
 char *path;
 int mode;
 {
-	struct stat status;
+	struct stat st;
 
-	if (dosstat(path, &status) < 0) return(-1);
+	if (dosstat(path, &st) < 0) return(-1);
 
-	if (((mode & R_OK) && !(status.st_mode & S_IREAD))
+	if (((mode & R_OK) && !(st.st_mode & S_IREAD))
 	|| ((mode & W_OK)
-		&& (!(status.st_mode & S_IWRITE)
-		|| (devlist[status.st_dev].flags & F_RONLY)))
-	|| ((mode & X_OK) && !(status.st_mode & S_IEXEC))) {
+		&& (!(st.st_mode & S_IWRITE)
+		|| (devlist[st.st_dev].flags & F_RONLY)))
+	|| ((mode & X_OK) && !(st.st_mode & S_IEXEC))) {
 		errno = EACCES;
 		return(-1);
 	}
@@ -3774,7 +3940,7 @@ char *path;
 int dosrename(from, to)
 char *from, *to;
 {
-	char buf[DOSMAXPATHLEN + 3 + 1];
+	char buf[DOSMAXPATHLEN];
 	long clust;
 	u_short offset;
 	int i, dd, fd, sum, ret;
@@ -3913,10 +4079,8 @@ int flags, mode;
 		sizeof(dent_t));
 	dosflist[fd]._clust = dd2clust(dd);
 	dosflist[fd]._offset = dd2offset(dd);
-
 	if ((flags & (O_WRONLY | O_RDWR)) && (flags & O_APPEND))
 		doslseek(fd, (off64_t)0, L_XTND);
-
 	if (fd >= maxdosf) maxdosf = fd + 1;
 	return(fd + DOSFDOFFSET);
 }
@@ -4065,7 +4229,12 @@ int nbytes;
 
 	total = 0;
 	while (nbytes > 0) {
-		if (dosflist[fd]._cnt <= 0 && dosfilbuf(fd, 1) < 0) reterr(-1);
+		if (dosflist[fd]._cnt <= 0 && dosfilbuf(fd, 1) < 0) {
+#if	MSDOS
+			if (doserrno = ENOSPC) return(total);
+#endif
+			reterr(-1);
+		}
 		size = dosflist[fd]._cnt;
 
 		if (size > nbytes) size = nbytes;
@@ -4243,15 +4412,10 @@ FILE *stream;
 	return(fd);
 }
 
-FILE *dosfopen(path, type)
-char *path, *type;
+static int type2flags(type)
+char *type;
 {
-	int fd, flags;
-
-	if (!type) {
-		errno = 0;
-		return(NULL);
-	}
+	int flags = 0;
 	switch(*type) {
 		case 'r':
 			if (*(type + 1) != '+') flags = O_RDONLY;
@@ -4259,8 +4423,8 @@ char *path, *type;
 			break;
 		case 'w':
 			if (*(type + 1) != '+') flags = O_WRONLY;
-			else flags = O_RDWR | O_TRUNC;
-			flags |= O_CREAT;
+			else flags = O_RDWR;
+			flags |= O_CREAT | O_TRUNC;
 			break;
 		case 'a':
 			if (*(type + 1) != '+') flags = O_WRONLY;
@@ -4271,9 +4435,43 @@ char *path, *type;
 			flags = 0;
 			break;
 	}
+	return(flags);
+}
 
-	if ((fd = dosopen(path, flags, 0666)) < 0) return(NULL);
+FILE *dosfopen(path, type)
+char *path, *type;
+{
+	int fd;
+
+	if (!type) {
+		errno = 0;
+		return(NULL);
+	}
+
+	if ((fd = dosopen(path, type2flags(type), 0666)) < 0) return(NULL);
 	return((FILE *)&(dosflist[fd - DOSFDOFFSET]));
+}
+
+FILE *dosfdopen(fd, type)
+int fd;
+char *type;
+{
+	int flags;
+
+	fd -= DOSFDOFFSET;
+	if (fd < 0 || fd >= maxdosf || !dosflist[fd]._base) {
+		errno = EBADF;
+		return(NULL);
+	}
+	flags = type2flags(type);
+	if ((dosflist[fd]._flag & O_RDWR) != O_RDWR
+	&& (flags & (O_RDONLY | O_WRONLY | O_RDWR))
+	!= (dosflist[fd]._flag & (O_RDONLY | O_WRONLY | O_RDWR))) {
+		errno = EINVAL;
+		return(NULL);
+	}
+	if (flags & O_APPEND) doslseek(fd, (off64_t)0, L_XTND);
+	return((FILE *)&(dosflist[fd]));
 }
 
 int dosfclose(stream)
@@ -4388,12 +4586,14 @@ FILE *stream;
 	}
 	rest = dosflist[fd]._bufsize
 		- (dosflist[fd]._ptr - dosflist[fd]._base);
-	if (rest == dosflist[fd]._cnt) return(0);
-	if (dosflsbuf(fd) < 0) {
-		dosflist[fd]._flag |= O_IOERR;
-		reterr(EOF);
+	if (rest != dosflist[fd]._cnt) {
+		if (dosflsbuf(fd) < 0) {
+			dosflist[fd]._flag |= O_IOERR;
+			reterr(EOF);
+		}
+		dosflist[fd]._cnt = rest;
 	}
-	dosflist[fd]._cnt = rest;
+	if (flushcache(&(devlist[dosflist[fd]._file])) < 0) reterr(EOF);
 	return(0);
 }
 

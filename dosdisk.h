@@ -38,6 +38,10 @@
 #define	DOSNOFILE	64
 #endif
 
+#ifndef	DEV_BSIZE
+#define	DEV_BSIZE	512
+#endif
+
 #ifdef	SYSVDIRENT
 #define	d_fileno	d_ino
 #endif
@@ -73,6 +77,9 @@
 || defined (NETBSD) ||	defined (BSDOS) || defined (BOW) \
 || defined (ORG_386BSD))
 #define	HDDMOUNT
+#endif
+
+#ifdef	LINUX
 typedef long long	off64_t;
 #else
 #define	off64_t		off_t
@@ -132,7 +139,7 @@ typedef struct _dent_t {
 #define	DS_IARCHIVE	040
 
 typedef struct _cache_t {
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	dent_t dent;
 	long clust;
 	u_short offset;
@@ -306,14 +313,26 @@ typedef struct _st_dirent {
 	char buf[sizeof(struct dirent) + MAXNAMLEN];
 } st_dirent;
 #else
-typedef struct dirent st_dirent;
+typedef struct dirent	st_dirent;
 #endif
+
+#ifndef	_NODOSDRIVE
+#if	MSDOS
+extern int dependdosfunc;
+#else
+extern devinfo fdtype[];
+#endif
+extern int lastdrive;
+extern int needbavail;
+extern char *unitblpath;
+extern VOID_T (*doswaitfunc)__P_((VOID_A));
 
 #ifdef	HDDMOUNT
 extern off64_t *readpt __P_((char *, int));
 #endif
 extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
+extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 extern DIR *dosopendir __P_((char *));
 extern int dosclosedir __P_((DIR *));
 extern struct dirent *dosreaddir __P_((DIR *));
@@ -349,6 +368,7 @@ extern int dosmkdir __P_((char *, int));
 extern int dosrmdir __P_((char *));
 extern int dosfileno __P_((FILE *));
 extern FILE *dosfopen __P_((char *, char *));
+extern FILE *dosfdopen __P_((int, char *));
 extern int dosfclose __P_((FILE *));
 extern int dosfread __P_((char *, int, int, FILE *));
 extern int dosfwrite __P_((char *, int, int, FILE *));
@@ -358,3 +378,4 @@ extern int dosfputc __P_((int, FILE *));
 extern char *dosfgets __P_((char *, int, FILE *));
 extern int dosfputs __P_((char *, FILE *));
 extern int dosallclose __P_((VOID_A));
+#endif	/* !_NODOSDRIVE */

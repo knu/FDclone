@@ -205,6 +205,11 @@ typedef struct _archivetable {
 typedef struct _treelist {
 	char *name;
 	int max;
+#if	!MSDOS
+	dev_t dev;
+	ino_t ino;
+	struct _treelist *parent;
+#endif
 	struct _treelist *sub;
 } treelist;
 #endif
@@ -220,6 +225,7 @@ typedef struct _macrostat {
 #define	F_REMAIN	004
 #define	F_NOEXT		010
 #define	F_TOSFN		020
+#define	F_ISARCH	040
 
 typedef struct _aliastable {
 	char *alias;
@@ -245,7 +251,3 @@ typedef struct _builtintable {
 #define	isdisptyp(n)		((n) & F_FILETYPE)
 #define	ishidedot(n)		((n) & F_DOTFILE)
 #define	isfileflg(n)		((n) & F_FILEFLAG)
-
-#define	QUOTE	('^' - '@')
-#define	C_BS	'\010'
-#define	C_DEL	'\177'

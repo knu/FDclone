@@ -4,6 +4,7 @@
 
 TITLE	= FD-
 PREFIX	= /usr/local
+MANSEC	= 1
 TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)/bin
 MANDIR	= $(TOPDIR)/man__LANGDIR__/man$(MANSEC)
@@ -13,7 +14,6 @@ DOSRC	= ~FD\\fdrc
 UNITBL	= fd-unicd.tbl
 INSTALL	= __INSTALL__
 CHMOD	= chmod
-MANSEC	= 1
 
 SRC	= main.c term.c pathname.c \
 	dosdisk.c dosemu.c mkunitbl.c \
@@ -32,7 +32,6 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin
 MANSRC	= fd.man
 MANCAT	= fd.cat
-MANSEC	= 1
 RUNCOM	= fdrc
 ARGS	= object.arg
 
@@ -60,7 +59,7 @@ ALLOC	=
 DEBUG	=
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__ $(ALLOC)
-CFLAGS	= -DFD=1 -D__OSTYPE__=1 -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__ $(DEBUG)
+CFLAGS	= -D__OSTYPE__=1 __CCOPTIONS__ $(DEBUG)
 
 .SUFFIXES: .h .c __OBJ__ __EXE__
 
@@ -81,8 +80,11 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ2) >> $(ARGS)
 	@echo $(OBJ3) >> $(ARGS)
 
+main__OBJ__: main.c
+	$(CC) -DFD=1 $(CFLAGS) -DDEFRUNCOM=__DEFRC__ $(CPPFLAGS) -c __OUT__ $*.c
+
 .c__OBJ__:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
+	$(CC) -DFD=1 $(CFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
 
 
 ############################################################
@@ -306,7 +308,8 @@ input__OBJ__: kctype.h
 input__OBJ__: kanji.h
 info__OBJ__: fd.h
 info__OBJ__: machine.h config.h
-info__OBJ__: types.h pathname.h term.h funcno.h kanji.h
+info__OBJ__: types.h pathname.h term.h funcno.h kctype.h
+info__OBJ__: kanji.h
 rockridg__OBJ__: fd.h
 rockridg__OBJ__: machine.h config.h
 rockridg__OBJ__: types.h pathname.h func.h
@@ -330,7 +333,8 @@ browse__OBJ__: fd.h
 browse__OBJ__: machine.h config.h
 browse__OBJ__: types.h pathname.h
 browse__OBJ__: term.h func.h
-browse__OBJ__: funcno.h kanji.h
+browse__OBJ__: funcno.h kctype.h
+browse__OBJ__: kanji.h
 mkfuncno__OBJ__: fd.h
 mkfuncno__OBJ__: machine.h config.h
 mkfuncno__OBJ__: types.h pathname.h functabl.h

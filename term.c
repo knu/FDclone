@@ -21,6 +21,10 @@
 #include <varargs.h>
 #endif
 
+#ifdef	DEBUG
+extern char *_mtrace_file;
+#endif
+
 #if	MSDOS
 #include <dos.h>
 #include <io.h>
@@ -31,7 +35,7 @@
 # include <dpmi.h>
 # include <go32.h>
 # include <sys/farptr.h>
-#  if defined (DJGPP) && (DJGPP >= 2)
+#  if	defined (DJGPP) && (DJGPP >= 2)
 #  include <libc/dosio.h>
 #  else
 #  define	__dpmi_regs	_go32_dpmi_registers
@@ -91,7 +95,7 @@ typedef struct termios	termioctl_t;
 #define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
 #define	getspeed(t)	cfgetospeed(&t)
 #define	REQGETP		0
-#define	REQSETP		TCSAFLUSH + 1
+#define	REQSETP		(TCSAFLUSH + 1)
 #endif
 
 #ifdef	USETERMIO
@@ -127,10 +131,6 @@ typedef struct sgttyb	termioctl_t;
 #define	MAXPRINTBUF	255
 #define	GETSIZE		"\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
-
-#define	STDIN		0
-#define	STDOUT		1
-#define	STDERR		2
 
 #if	!MSDOS
 extern int tgetent __P_((char *, char *));
@@ -200,7 +200,7 @@ typedef struct fd_set {
 
 static int err2 __P_((char *));
 static int defaultterm __P_((VOID_A));
-static int maxlocate __P_((VOID_A));
+static int maxlocate __P_((int *, int *));
 static int getxy __P_((int *, int *));
 #if	MSDOS
 # if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
@@ -285,6 +285,7 @@ VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
 #if	!MSDOS
 int usegetcursor = 0;
 #endif
+int ttyio = -1;
 
 #if	MSDOS
 #ifdef	PC98
@@ -327,7 +328,6 @@ static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
 static FILE *ttyout;
 #endif	/* !MSDOS */
-static int ttyio = -1;
 
 #if	MSDOS || !defined (TIOCSTI)
 static u_char ungetbuf[10];
@@ -353,7 +353,7 @@ int reset;
 #endif
 
 	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0)
-		ttyio = STDERR;
+		ttyio = dup(STDERR_FILENO);
 	if (reset && !(termflags & F_INITTTY)) return(0);
 	if (!reset) {
 #ifdef	NOTUSEBIOS
@@ -365,9 +365,11 @@ int reset;
 		dupbrk = reg.h.dl;
 #endif
 		if (((!(l = ftell(stdin)) || l == -1)
-		&& ((dupin = dup(STDIN)) < 0 || dup2(ttyio, STDIN) < 0))
+		&& ((dupin = dup(STDIN_FILENO)) < 0
+		|| dup2(ttyio, STDIN_FILENO) < 0))
 		|| ((!(l = ftell(stdout)) || l == -1)
-		&& ((dupout = dup(STDOUT)) < 0 || dup2(ttyio, STDOUT) < 0)))
+		&& ((dupout = dup(STDOUT_FILENO)) < 0
+		|| dup2(ttyio, STDOUT_FILENO) < 0)))
 			err2(NULL);
 		termflags |= F_INITTTY;
 	}
@@ -377,8 +379,8 @@ int reset;
 		reg.h.dl = dupbrk;
 		int86(0x21, &reg, &reg);
 #endif
-		if ((dupin >= 0 && dup2(dupin, STDIN) < 0)
-		|| (dupout >= 0 && dup2(dupout, STDOUT) < 0)) {
+		if ((dupin >= 0 && dup2(dupin, STDIN_FILENO) < 0)
+		|| (dupout >= 0 && dup2(dupout, STDOUT_FILENO) < 0)) {
 			termflags &= ~F_INITTTY;
 			err2(NULL);
 		}
@@ -479,7 +481,7 @@ int reset;
 	termioctl_t tty;
 
 	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0)
-		ttyio = STDERR;
+		ttyio = dup(STDERR_FILENO);
 	if (reset && !(termflags & F_INITTTY)) return(0);
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		termflags &= ~F_INITTTY;
@@ -564,7 +566,7 @@ int cooked2(VOID_A)
 #else
 	ttymode(ttyio, ISIG | ICANON | IEXTEN, not(PENDIN),
 		BRKINT | IXON, not(IGNBRK | ISTRIP),
-# if (VEOF == VMIN) || (VEOL == VTIME)
+# if	(VEOF == VMIN) || (VEOL == VTIME)
 		OPOST, 0, '\004', 255);
 # else
 		OPOST, 0, 0, 0);
@@ -683,6 +685,8 @@ int no;
 	keyflush();
 #ifdef	DEBUG
 	freeterment();
+	if (ttyio >= 0) close(ttyio);
+	if (ttyout != stdout) fclose(ttyout);
 	muntrace();
 #endif
 	exit(no);
@@ -698,7 +702,7 @@ char *mes;
 	fprintf(stderr, "\007\n");
 	if (mes) fprintf(stderr, "%s\n", mes);
 	else perror(TTYNAME);
-	exit(1);
+	exit(2);
 	return(0);
 }
 
@@ -858,12 +862,14 @@ static int defaultterm(VOID_A)
 	return(0);
 }
 
-static int maxlocate(VOID_A)
+static int maxlocate(yp, xp)
+int *yp, *xp;
 {
+	int i;
 #if	MSDOS
 	char *cp;
-	int i;
 
+	if (t_setcursor && t_resetcursor) putterms(t_setcursor);
 	if ((cp = tparamstr(c_locate, 0, 999))) {
 		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
 		free(cp);
@@ -873,10 +879,13 @@ static int maxlocate(VOID_A)
 		free(cp);
 	}
 #else
+	if (t_setcursor && t_resetcursor) putterms(t_setcursor);
 	locate(998, 998);
 	tflush();
 #endif
-	return(0);
+	i = getxy(yp, xp);
+	if (t_setcursor && t_resetcursor) putterms(t_resetcursor);
+	return(i);
 }
 
 static int getxy(yp, xp)
@@ -924,13 +933,13 @@ int *yp, *xp;
 }
 
 #if	MSDOS
-char *tparamstr(str, arg1, arg2)
-char *str;
+char *tparamstr(s, arg1, arg2)
+char *s;
 int arg1, arg2;
 {
 	char *cp, buf[MAXPRINTBUF + 1];
 
-	sprintf(buf, str, arg1, arg2);
+	sprintf(buf, s, arg1, arg2);
 	if (!(cp = (char *)malloc(strlen(buf) + 1))) err2(NULL);
 	strcpy(cp, buf);
 	return(cp);
@@ -946,30 +955,30 @@ int getterment(VOID_A)
 
 #else	/* !MSDOS */
 
-char *tparamstr(str, arg1, arg2)
-char *str;
+char *tparamstr(s, arg1, arg2)
+char *s;
 int arg1, arg2;
 {
 	char *buf;
-	int i, j, n, s, size, args[2];
+	int i, j, n, sw, size, args[2];
 
-	if (!str) return(NULL);
+	if (!s) return(NULL);
 	if (!(buf = (char *)malloc(size = BUFUNIT))) err2(NULL);
 	args[0] = arg1;
 	args[1] = arg2;
 
-	for (i = j = n = 0; str[i]; i++) {
+	for (i = j = n = 0; s[i]; i++) {
 		if (j + 5 >= size) {
 			size += BUFUNIT;
 			if (!(buf = (char *)realloc(buf, size))) err2(NULL);
 		}
-		if (str[i] != '%') buf[j++] = str[i];
-		else if (str[++i] == '%') buf[j++] = '%';
+		if (s[i] != '%') buf[j++] = s[i];
+		else if (s[++i] == '%') buf[j++] = '%';
 		else if (n >= 2) {
 			free(buf);
 			return(NULL);
 		}
-		else switch (str[i]) {
+		else switch (s[i]) {
 			case 'd':
 				sprintf(buf + j, "%d", args[n++]);
 				j += strlen(buf + j);
@@ -986,23 +995,23 @@ int arg1, arg2;
 				sprintf(buf + (j++), "%c", args[n++]);
 				break;
 			case '+':
-				if (!str[++i]) {
+				if (!s[++i]) {
 					free(buf);
 					return(NULL);
 				}
-				sprintf(buf + (j++), "%c", args[n++] + str[i]);
+				sprintf(buf + (j++), "%c", args[n++] + s[i]);
 				break;
 			case '>':
-				if (!str[++i] || !str[i + 1]) {
+				if (!s[++i] || !s[i + 1]) {
 					free(buf);
 					return(NULL);
 				}
-				if (args[n] > str[i++]) args[n] += str[i];
+				if (args[n] > s[i++]) args[n] += s[i];
 				break;
 			case 'r':
-				s = args[0];
+				sw = args[0];
 				args[0] = args[1];
-				args[1] = s;
+				args[1] = sw;
 				break;
 			case 'i':
 				args[0]++;
@@ -1031,15 +1040,15 @@ int arg1, arg2;
 	return(buf);
 }
 
-static int tgetstr2(term, str)
+static int tgetstr2(term, s)
 char **term;
-char *str;
+char *s;
 {
 	char strbuf[TERMCAPSIZE];
 	char *p, *cp;
 
 	p = strbuf;
-	if ((cp = tgetstr(str, &p)) || (cp = *term)) {
+	if ((cp = tgetstr(s, &p)) || (cp = *term)) {
 		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
 		strcpy(*term, cp);
 	}
@@ -1143,10 +1152,13 @@ static int sortkeyseq(VOID_A)
 int getterment(VOID_A)
 {
 	char *cp, *termname, buf[TERMCAPSIZE];
-	int i;
+	int i, j;
 
 	if (termflags & F_TERMENT) return(-1);
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
+#ifdef	DEBUG
+	_mtrace_file = "tgetent(x4)";
+#endif
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
 
 	if (!(ttyout = fopen(TTYNAME, "w+"))) ttyout = stdout;
@@ -1266,8 +1278,14 @@ int getterment(VOID_A)
 	}
 	keyseq[K_F('?') - K_MIN].code = CR;
 
-	for (i = 0; i <= K_MAX - K_MIN; i++)
-		keyseq[i].len = (keyseq[i].str) ? strlen(keyseq[i].str) : 0;
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		if (!(keyseq[i].str)) keyseq[i].len = 0;
+		else {
+			for (j = 0; keyseq[i].str[j]; j++)
+				keyseq[i].str[j] &= 0x7f;
+			keyseq[i].len = j;
+		}
+	}
 	sortkeyseq();
 
 	termflags |= F_TERMENT;
@@ -1449,7 +1467,7 @@ u_long usec;
 #ifdef	NOTUSEBIOS
 	if (nextchar) return(1);
 	reg.x.ax = 0x4406;
-	reg.x.bx = STDIN;
+	reg.x.bx = STDIN_FILENO;
 	putterms(t_metamode);
 	int86(0x21, &reg, &reg);
 	putterms(t_nometamode);
@@ -1465,9 +1483,9 @@ u_long usec;
 	timeout.tv_sec = 0L;
 	timeout.tv_usec = usec;
 	FD_ZERO(&readfds);
-	FD_SET(0, &readfds);
+	FD_SET(STDIN_FILENO, &readfds);
 
-	return(select(1, &readfds, NULL, NULL, &timeout));
+	return(select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout));
 #  else	/* !DJGPP || DJGPP < 2 */
 	reg.h.ah = 0x01;
 	int86(0x16, &reg, &reg);
@@ -1659,8 +1677,7 @@ int xmax, ymax;
 
 	if (xmax <= 0 || ymax <= 0) return(-1);
 	keyflush();
-	maxlocate();
-	if (getxy(&y, &x) != 2) x = y = -1;
+	if (maxlocate(&y, &x) != 2) x = y = -1;
 
 	if (x > 0) {
 		n_lastcolumn = (n_lastcolumn < n_column) ? x - 1 : x;
@@ -1682,6 +1699,12 @@ int c;
 	return(fputc(c, ttyout));
 }
 
+int putch3(c)
+int c;
+{
+	return(fputc(c & 0x7f, ttyout));
+}
+
 int cputs2(str)
 char *str;
 {
@@ -1700,9 +1723,9 @@ u_long usec;
 	timeout.tv_sec = 0L;
 	timeout.tv_usec = usec;
 	FD_ZERO(&readfds);
-	FD_SET(STDIN, &readfds);
+	FD_SET(STDIN_FILENO, &readfds);
 
-	return(select(1, &readfds, NULL, NULL, &timeout));
+	return(select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout));
 #endif
 }
 
@@ -1799,6 +1822,9 @@ int s, e;
 int locate(x, y)
 int x, y;
 {
+#ifdef	DEBUG
+	_mtrace_file = "tgoto(x2)";
+#endif
 	putterms(tgoto(c_locate, x, y));
 	return(0);
 }
@@ -1854,8 +1880,7 @@ int xmax, ymax;
 
 	if (usegetcursor || x < 0 || y < 0) {
 		setscroll(-1, -1);
-		maxlocate();
-		if (getxy(&ty, &tx) == 2) {
+		if (maxlocate(&ty, &tx) == 2) {
 			x = tx;
 			y = ty;
 #ifdef	TIOCGWINSZ

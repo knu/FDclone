@@ -19,6 +19,10 @@
 #include <stdlib.h>
 #endif
 
+#define	_NOPRECEDE
+#define	_NOUSEHASH
+#define	_NOORIGGLOB
+
 #include "types.h"
 #include "pathname.h"
 
@@ -36,7 +40,7 @@ extern char *_mtrace_file;
 #else
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
-#define	CMDLINE_DELIM	"\t !&:;<>|"
+#define	CMDLINE_DELIM	"\t !&:;()<>|"
 #define	METACHAR	" \"#$&'()*:;<=>?[\\]^`|"
 #define	DQ_METACHAR	"\"$\\`"
 #endif
@@ -111,9 +115,9 @@ extern char *_mtrace_file;
 #define	LSIZE		1
 #define	LSTATUS		(sizeinfo + 1)
 #define	LPATH		(sizeinfo + 2)
+#define	WFILEMIN	2
 #define	LFILETOP	(WHEADER)
 #define	LFILEBOTTOM	(LFILETOP + FILEPERLOW)
-#define	WFILEMIN	2
 #define	LSTACK		(n_line - 3)
 #define	LHELP		(n_line - 2)
 #define	LINFO		(n_line - 1)
@@ -154,5 +158,3 @@ extern char *_mtrace_file;
 #if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 #define	_NODOSDRIVE
 #endif
-
-#define	_NOPRECEDE

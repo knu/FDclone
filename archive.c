@@ -114,35 +114,33 @@ int maxlaunch = 0;
 int maxarchive = 0;
 launchtable launchlist[MAXLAUNCHTABLE] = {
 #if	MSDOS
-	{" ^.*\\.lzh$",		"lha v %S",		PM_LHA},
-	{" ^.*\\.tar$",		"tar tvf %S", 		PM_TAR},
-	{" ^.*\\.tar\\.Z$",	"gzip -cd %S | tar tvf -",	PM_TAR},
-	{" ^.*\\.tar\\.gz$",	"gzip -cd %S | tar tvf -",	PM_TAR},
+	{"*.lzh",	"lha v %S",		PM_LHA},
+	{"*.tar",	"tar tvf %S", 		PM_TAR},
+	{"*.tar.Z",	"gzip -cd %S | tar tvf -",	PM_TAR},
+	{"*.tar.gz",	"gzip -cd %S | tar tvf -",	PM_TAR},
 #else
-	{" ^.*\\.lzh$",		"lha l",		PM_LHA},
-	{" ^.*\\.tar$",		"tar tvf", 		PM_TAR},
-	{" ^.*\\.tar\\.Z$",	"zcat %C | tar tvf -",	PM_TAR},
-	{" ^.*\\.tar\\.gz$",	"gzip -cd %C | tar tvf -",	PM_TAR},
+	{"*.lzh",	"lha l",		PM_LHA},
+	{"*.tar",	"tar tvf", 		PM_TAR},
+	{"*.tar.Z",	"zcat %C | tar tvf -",	PM_TAR},
+	{"*.tar.gz",	"gzip -cd %C | tar tvf -",	PM_TAR},
 #endif
-	{NULL,			NULL,		255, 0, "", "", "", "", 1}
+	{NULL,		NULL,			255, 0, "", "", "", "", 1}
 };
 archivetable archivelist[MAXARCHIVETABLE] = {
 #if	MSDOS
-	{" ^.*\\.lzh$",		"lha a %S %TA",		"lha x %S %TA"},
-	{" ^.*\\.tar$",		"tar cf %C %T",		"tar xf %C %TA"},
-	{" ^.*\\.tar\\.Z$",	"tar cfZ %C %TA",
-						"gzip -cd %S | tar xf - %TA"},
-	{" ^.*\\.tar\\.gz$",	"tar cfz %C %TA",
-						"gzip -cd %S | tar xf - %TA"},
+	{"*.lzh",	"lha a %S %TA",		"lha x %S %TA"},
+	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA"},
+	{"*.tar.Z",	"tar cfZ %C %TA",	"gzip -cd %S | tar xf - %TA"},
+	{"*.tar.gz",	"tar cfz %C %TA",	"gzip -cd %S | tar xf - %TA"},
 #else
-	{" ^.*\\.lzh$",		"lha aq %C %TA",	"lha xq %C %TA"},
-	{" ^.*\\.tar$",		"tar cf %C %T",		"tar xf %C %TA"},
-	{" ^.*\\.tar\\.Z$",	"tar cf %X %T; compress %X",
+	{"*.lzh",	"lha aq %C %TA",	"lha xq %C %TA"},
+	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA"},
+	{"*.tar.Z",	"tar cf %X %T; compress %X",
 						"zcat %C | tar xf - %TA"},
-	{" ^.*\\.tar\\.gz$",	"tar cf %X %T; gzip %X",
+	{"*.tar.gz",	"tar cf %X %T; gzip %X",
 						"gzip -cd %C | tar xf - %TA"},
 #endif
-	{NULL,			NULL,			NULL}
+	{NULL,		NULL,			NULL}
 };
 
 static launchtable *launchp = NULL;
@@ -247,7 +245,7 @@ int max;
 
 	i = countfield(line, list -> sep, -1, NULL);
 	skip = (max > i) ? max - i : 0;
-	buf = (char *)malloc2(strlen(line) + 1);
+	buf = malloc2(strlen(line) + 1);
 
 	cp = line;
 	tmp -> flags = 0;
@@ -359,12 +357,8 @@ char *file, *dir;
 {
 	char *arch;
 
-	arch = (char *)malloc2(strlen(fullpath)
-		+ strlen(file) + strlen(dir) + 3);
-	strcpy(arch, fullpath);
-	strcpy(strcatdelim(arch), file);
-	strcat(arch, ":");
-	strcat(arch, dir);
+	arch = malloc2(strlen(fullpath) + strlen(file) + strlen(dir) + 3);
+	strcpy(strcpy2(strcatdelim2(arch, fullpath, file), ":"), dir);
 
 	locate(0, LPATH);
 	putterm(l_clear);
@@ -386,8 +380,7 @@ char *s1, *s2;
 	for (i = j = 0; s2[j]; i++, j++) {
 		if (s1[i] == s2[j]) {
 #if	MSDOS
-			if (issjis1((u_char)(s1[i]))
-			&& (s1[++i] != s2[++j] || !s2[j]))
+			if (iskanji1(s1, i) && (s1[++i] != s2[++j] || !s2[j]))
 				return(s1[i] - s2[j]);
 #endif
 			continue;
@@ -407,7 +400,7 @@ char *s1, *s2;
 	for (i = j = 0; s1[i]; i++, j++) {
 		if (s1[i] == s2[j]) {
 #if	MSDOS
-			if (issjis1((u_char)(s1[i]))) {
+			if (iskanji1(s1, i)) {
 				if (s1[++i] != s2[++j]) return(0);
 				if (s1[i]) continue;
 				if (s2[j]) j++;
@@ -448,12 +441,12 @@ int max;
 				break;
 		}
 		if (i >= max) {
-			tmp = (char *)malloc2(len + 1);
+			tmp = malloc2(len + 1);
 			strncpy2(tmp, namep -> name, len);
 			return(tmp);
 		}
 		if (strncmp(list[i].name, namep -> name, len)) {
-			list[i].name = (char *)realloc2(list[i].name, len + 1);
+			list[i].name = realloc2(list[i].name, len + 1);
 			strncpy2(list[i].name, namep -> name, len);
 		}
 		cp = tmp + 1;
@@ -476,28 +469,29 @@ int max;
 VOID rewritearc(all)
 int all;
 {
-#ifndef	_NOCOLOR
-	int i;
-#endif
-
-	archbar(archivefile, archivedir);
-	if (all) {
+	if (all > 0) {
+		title();
 		helpbar();
 		infobar(arcflist, filepos);
 	}
+	sizebar();
 	statusbar(maxarcf);
 	locate(0, LSTACK);
 	putterm(l_clear);
 #ifndef	_NOCOLOR
 	if (ansicolor == 2) {
+		int i;
+
 		chgcolor(ANSI_BLACK, 1);
 		for (i = 0; i < n_column; i++) putch2(' ');
 		putterm(t_normal);
 	}
 #endif
-	listupfile(arcflist, maxarcf, arcflist[filepos].name);
-	locate(0, 0);
-	tflush();
+	archbar(archivefile, archivedir);
+	if (all >= 0) {
+		listupfile(arcflist, maxarcf, arcflist[filepos].name);
+		locate(0, 0);
+	}
 }
 
 static int readarchive(file, list)
@@ -562,7 +556,7 @@ launchtable *list;
 				len = c;
 				continue;
 			}
-			buf = (char *)realloc2(buf, len + c + 2);
+			buf = realloc2(buf, len + c + 2);
 			buf[len++] = '\t';
 			memcpy(&(buf[len]), line, c);
 			free(line);
@@ -641,19 +635,11 @@ int max;
 	blocksize = 1;
 	if (sorttype < 100) sorton = 0;
 
-	if (!findpattern) {
-		re = NULL;
-		arcre = NULL;
-	}
-	else if (*findpattern == '/') {
-		re = NULL;
-		arcre = cnvregexp(findpattern + 1, 1);
-	}
-	else {
-		cp = cnvregexp(findpattern, 1);
-		re = regexp_init(cp);
-		free(cp);
-		arcre = NULL;
+	re = NULL;
+	arcre = NULL;
+	if (findpattern) {
+		if (*findpattern == '/') arcre = findpattern + 1;
+		else re = regexp_init(findpattern, -1);
 	}
 
 	for (i = 1; i < max; i++) {
@@ -671,7 +657,7 @@ int max;
 		}
 		if ((tmp = strdelim(cp, 0))) while (*(++tmp) == _SC_);
 		if ((!tmp || !*tmp)
-		&& (!re || regexp_exec(re, cp))
+		&& (!re || regexp_exec(re, cp, 1))
 		&& (!arcre || searcharc(arcre, filelist, max, i))) {
 			memcpy((char *)&(arcflist[maxarcf]),
 				(char *)&(filelist[i]), sizeof(namelist));
@@ -683,7 +669,6 @@ int max;
 		}
 	}
 	if (re) regexp_free(re);
-	if (arcre) free(arcre);
 	if (!maxarcf) {
 		arcflist[0].name = NOFIL_K;
 		arcflist[0].st_nlink = -1;
@@ -691,21 +676,12 @@ int max;
 
 	if (sorton) qsort(arcflist, maxarcf, sizeof(namelist), cmplist);
 
-	if (stable_standout) putterms(t_clear);
-	title();
-	archbar(archivefile, archivedir);
-	sizebar();
-	statusbar(maxarcf);
-	locate(0, LSTACK);
-	putterm(l_clear);
-#ifndef	_NOCOLOR
-	if (ansicolor == 2) {
-		chgcolor(ANSI_BLACK, 1);
-		for (i = 0; i < n_column; i++) putch2(' ');
-		putterm(t_normal);
+	if (stable_standout) {
+		putterms(t_clear);
+		title();
+		helpbar();
 	}
-#endif
-	helpbar();
+	rewritearc(-1);
 
 	old = filepos = listupfile(arcflist, maxarcf, file);
 	fstat = 0;
@@ -755,12 +731,8 @@ int max;
 		if (!(fstat & REWRITE)) fnameofs = 0;
 		if ((fstat & RELIST) == RELIST) {
 			title();
-			archbar(archivefile, archivedir);
-			sizebar();
-			statusbar(maxarcf);
-			locate(0, LSTACK);
-			putterm(l_clear);
 			helpbar();
+			rewritearc(-1);
 		}
 	}
 
@@ -772,9 +744,9 @@ int max;
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
 	if (filepos >= 0 && strcmp(arcflist[filepos].name, "..")) {
-		if (*archivedir && (*archivedir != _SC_ || *(archivedir + 1)))
-			strcat(archivedir, _SS_);
-		strcat(archivedir, arcflist[filepos].name);
+		if (*(cp = archivedir) && (*cp != _SC_ || *(cp + 1)))
+			cp = strcatdelim(archivedir);
+		strcpy(cp, arcflist[filepos].name);
 		*file = '\0';
 	}
 	else if (!*archivedir) no = -1;
@@ -803,15 +775,15 @@ int max;
 	namelist *duparcflist;
 	launchtable *duplaunchp;
 	char *dupfullpath, *duparchivefile, *duparchivedir, *dupfindpat;
-	char *cp, *dir, path[MAXPATHLEN + 1], file[MAXNAMLEN + 1];
+	char *cp, *dir, path[MAXPATHLEN], file[MAXNAMLEN + 1];
 	int i, dupmaxarcf, dupfilepos, dupdispmode, dupsorton;
 #ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
 
 	for (i = 0; i < maxlaunch; i++) {
-		re = regexp_init(launchlist[i].ext);
-		if (regexp_exec(re, list[filepos].name)) break;
+		re = regexp_init(launchlist[i].ext, -1);
+		if (regexp_exec(re, list[filepos].name, 0)) break;
 		regexp_free(re);
 	}
 	if (i >= maxlaunch) return(-1);
@@ -939,8 +911,8 @@ int max;
 	int i;
 
 	for (i = 0; i < maxarchive; i++) {
-		re = regexp_init(archivelist[i].ext);
-		if (archivelist[i].p_comm && regexp_exec(re, arc)) break;
+		re = regexp_init(archivelist[i].ext, -1);
+		if (archivelist[i].p_comm && regexp_exec(re, arc, 0)) break;
 		regexp_free(re);
 	}
 	if (i >= maxarchive) return(-1);
@@ -963,7 +935,7 @@ char *arg;
 int tr;
 {
 	reg_t *re;
-	char *tmpdir, path[MAXPATHLEN + 1];
+	char *tmp, *tmpdir, path[MAXPATHLEN];
 	int i;
 #ifndef	_NODOSDRIVE
 	namelist alist[1];
@@ -971,8 +943,8 @@ int tr;
 #endif
 
 	for (i = 0; i < maxarchive; i++) {
-		re = regexp_init(archivelist[i].ext);
-		if (archivelist[i].u_comm && regexp_exec(re, arc)) break;
+		re = regexp_init(archivelist[i].ext, -1);
+		if (archivelist[i].u_comm && regexp_exec(re, arc, 0)) break;
 		regexp_free(re);
 	}
 	if (i >= maxarchive) return(-1);
@@ -1000,9 +972,9 @@ int tr;
 		if (!dir) return(0);
 		if (!*dir) strcpy(path, ".");
 		else {
-			strcpy(path, dir);
+			tmp = strcpy2(path, dir);
 #if	MSDOS || !defined (_NODOSDRIVE)
-			if (_dospath(dir) && !dir[2]) strcat(path, ".");
+			if (_dospath(dir) && !dir[2]) strcpy(tmp, ".");
 #endif
 		}
 		free(dir);
@@ -1035,7 +1007,7 @@ int tr;
 #else
 	if (!(drive = dospath2(fullpath))) strcpy(path, fullpath);
 	else {
-		realpath2(deftmpdir, path);
+		realpath2(deftmpdir, path, 1);
 		free(deftmpdir);
 #if	MSDOS && !defined (_NODOSDRIVE)
 # ifdef	USEGETWD
@@ -1046,7 +1018,10 @@ int tr;
 #endif
 		deftmpdir = strdup2(path);
 		strcpy(strcatdelim(path), tmpfilename);
-		sprintf(strcatdelim(path), "D%c", drive);
+		tmp = strcatdelim(path);
+		*(tmp++) = 'D';
+		*(tmp++) = drive;
+		*tmp = '\0';
 	}
 #endif
 	strcpy(strcatdelim(path), arc);
@@ -1065,7 +1040,7 @@ char *tmpunpack(list, max, single)
 namelist *list;
 int max, single;
 {
-	char *subdir, path[MAXPATHLEN + 1];
+	char *subdir, path[MAXPATHLEN];
 	int i, ret, dupmark;
 
 	sprintf(path, "L%d", launchlevel);
@@ -1168,8 +1143,8 @@ int maxf, n;
 	}
 
 	for (i = 0; i < maxlaunch; i++) {
-		re = regexp_init(launchlist[i].ext);
-		if (launchlist[i].topskip < 255 && regexp_exec(re, file))
+		re = regexp_init(launchlist[i].ext, -1);
+		if (launchlist[i].topskip < 255 && regexp_exec(re, file, 0))
 			break;
 		regexp_free(re);
 	}
@@ -1219,7 +1194,7 @@ int maxf, n;
 
 	i = no = len = match = 0;
 	buf = NULL;
-	re = regexp_init(regstr);
+	re = regexp_init(regstr, -1);
 	while ((line = fgets2(fp))) {
 		if (match && match <= no - (int)(list -> bottomskip)) {
 			free(line);
@@ -1245,7 +1220,7 @@ int maxf, n;
 				len = c;
 				continue;
 			}
-			buf = (char *)realloc2(buf, len + c + 2);
+			buf = realloc2(buf, len + c + 2);
 			buf[len++] = '\t';
 			memcpy(&(buf[len]), line, c);
 			free(line);
@@ -1260,7 +1235,7 @@ int maxf, n;
 		free(buf);
 		buf = NULL;
 		if (c < 0) continue;
-		if (regexp_exec(re, tmp.name)) match = no;
+		if (regexp_exec(re, tmp.name, 1)) match = no;
 		free(tmp.name);
 	}
 	regexp_free(re);

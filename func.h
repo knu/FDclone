@@ -48,6 +48,10 @@ extern int errno;
 #define	b_realloc(ptr, n, type) \
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
+#define	c_malloc(size)	(malloc2((size) = BUFUNIT))
+#define	c_realloc(ptr, n, size) \
+			(((n) + 1 < (size)) \
+			? (ptr) : realloc2(ptr, (size) *= 2))
 
 #define	getblock(c)	((((c) + blocksize - 1) / blocksize) * blocksize)
 
@@ -66,8 +70,10 @@ extern int dospath __P_((char *, char *));
 #ifndef	_NODOSDRIVE
 # if	MSDOS
 extern int dospath2 __P_((char *));
+extern int dospath3 __P_((char *));
 # else
 #define	dospath2(path)	dospath(path, NULL)
+#define	dospath3(path)	dospath(path, NULL)
 # endif
 #endif
 extern DIR *_Xopendir __P_((char *));
@@ -87,6 +93,7 @@ extern int Xchdir __P_((char *));
 #endif
 extern char *Xgetcwd __P_((char *, int));
 extern int Xstat __P_((char *, struct stat *));
+#define	_Xlstat(p, s)	(lstat(p, s) ? -1 : 0)
 extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 extern int Xsymlink __P_((char *, char *));
@@ -115,9 +122,20 @@ extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
 #endif
+#if	!defined (LSI_C) && defined (_NODOSDRIVE)
+#define	Xdup		dup
+#define	Xdup2		dup2
+#else
+extern int Xdup __P_((int));
+extern int Xdup2 __P_((int, int));
+#endif
 #if	MSDOS && defined (_NOUSELFN)
-#define	_Xmkdir(p, m)	mkdir(p)
-#define	_Xrmdir		rmdir
+# ifdef	DJGPP
+#define	_Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+# else
+#define	_Xmkdir(p, m)	(mkdir(p) ? -1 : 0)
+# endif
+#define	_Xrmdir(p)	(rmdir(p) ? -1 : 0)
 #else
 # if	!MSDOS && defined (_NODOSDRIVE)
 #define	_Xmkdir		mkdir
@@ -129,8 +147,12 @@ extern int _Xrmdir __P_((char *));
 #endif
 #ifdef	_NOROCKRIDGE
 # if	MSDOS && defined (_NOUSELFN)
-#define	Xmkdir(p, m)	mkdir(p)
-#define	Xrmdir		rmdir
+#  ifdef	DJGPP
+#define	Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+#  else
+#define	Xmkdir(p, m)	(mkdir(p) ? -1 : 0)
+#  endif
+#define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
 # else
 #  if	!MSDOS && defined (_NODOSDRIVE)
 #define	Xmkdir		mkdir
@@ -155,6 +177,7 @@ extern FILE *_Xfopen __P_((char *, char *));
 extern FILE *Xfopen __P_((char *, char *));
 #endif
 #ifdef	_NODOSDRIVE
+#define	Xfdopen		fdopen
 #define	Xfclose		fclose
 #define	Xfeof		feof
 #define	Xfread		fread
@@ -165,6 +188,7 @@ extern FILE *Xfopen __P_((char *, char *));
 #define	Xfgets		fgets
 #define	Xfputs		fputs
 #else
+extern FILE *Xfdopen __P_((int, char *));
 extern int Xfclose __P_((FILE *));
 extern int Xfeof __P_((FILE *));
 extern int Xfread __P_((char *, int, int, FILE *));
@@ -186,17 +210,18 @@ extern int Xpclose __P_((FILE *));
 /* libc.c */
 extern int rename2 __P_((char *, char *));
 extern int stat2 __P_((char *, struct stat *));
-extern char *realpath2 __P_((char *, char *));
+extern char *realpath2 __P_((char *, char *, int));
 extern int _chdir2 __P_((char *));
 extern int chdir2 __P_((char *));
 extern char *chdir3 __P_((char *));
 extern int mkdir2 __P_((char *, int));
-extern VOID_P malloc2 __P_((ALLOC_T));
-extern VOID_P realloc2 __P_((VOID_P, ALLOC_T));
+extern char *malloc2 __P_((ALLOC_T));
+extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
 extern int toupper2 __P_((int));
 extern char *strchr2 __P_((char *, int));
 extern char *strrchr2 __P_((char *, int));
+extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int strncpy3 __P_((char *, char *, int *, int));
 extern int strcasecmp2 __P_((char *, char *));
@@ -242,7 +267,7 @@ extern int mktmpdir __P_((char *));
 extern int rmtmpdir __P_((char *));
 extern VOID removetmp __P_((char *, char *, char *));
 extern int forcecleandir __P_((char *, char *));
-#ifndef _NODOSDRIVE
+#ifndef	_NODOSDRIVE
 extern int tmpdosdupl __P_((char *, char **, namelist *, int, int));
 extern int tmpdosrestore __P_((int, char *));
 #endif
@@ -276,9 +301,10 @@ extern char *evalcomstr __P_((char *, char *, int));
 extern char *killmeta __P_((char *));
 extern VOID adjustpath __P_((VOID_A));
 #endif
-extern char *includepath __P_((char *, char *));
-extern int getargs __P_((char *, char *[], int));
-extern char *catargs __P_((int, char *[], int));
+extern char *includepath __P_((char *, char *, char *));
+extern int getargs __P_((char *, char ***));
+extern VOID freeargs __P_((char **));
+extern char *catargs __P_((char *[], int));
 #ifndef	_NOARCHIVE
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
@@ -287,9 +313,11 @@ extern int evalbool __P_((char *));
 extern VOID evalenv __P_((VOID_A));
 
 /* builtin.c */
+extern char *getkeysym __P_((int));
+extern int isinternal __P_((char *, int));
 extern int execbuiltin __P_((char *, namelist *, int *, int));
 #ifndef	_NOCOMPLETE
-extern int completebuiltin __P_((char *, int, char **));
+extern int completebuiltin __P_((char *, int, char ***));
 #endif
 #ifdef	DEBUG
 extern VOID freedefine __P_((VOID_A));
@@ -298,19 +326,17 @@ extern VOID freedefine __P_((VOID_A));
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, namelist *, int, macrostat *));
 extern int execmacro __P_((char *, char *, namelist *, int *, int, int));
-extern int execenv __P_((char *, char *));
-extern int execshell __P_((VOID_A));
 extern int execusercomm __P_((char *, char *, namelist *, int *, int, int));
 extern int entryhist __P_((int, char *, int));
 extern int loadhistory __P_((int, char *));
 extern int savehistory __P_((int, char *));
-extern int dohistory __P_((int, char *[], namelist *, int *));
+extern int dohistory __P_((char *[], namelist *, int *));
 #ifdef	DEBUG
 extern VOID freehistory __P_((int));
 #endif
 #ifndef	_NOCOMPLETE
-extern int completealias __P_((char *, int, char **));
-extern int completeuserfunc __P_((char *, int, char **));
+extern int completealias __P_((char *, int, char ***));
+extern int completeuserfunc __P_((char *, int, char ***));
 #endif
 
 /* kanji.c */
@@ -324,7 +350,6 @@ extern int sjis2ujis __P_((char *, u_char *));
 extern int ujis2sjis __P_((char *, u_char *));
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
-extern int jis7 __P_((char *, u_char *, int));
 extern int kanjiconv __P_((char *, char *, int, int));
 #endif
 extern int kanjiputs __P_((char *));
@@ -375,6 +400,7 @@ extern int searcharc __P_((char *, namelist *, int, int));
 
 /* tree.c */
 #ifndef	_NOTREE
+extern VOID rewritetree __P_((VOID_A));
 extern char *tree __P_((int, int *));
 #endif
 

@@ -9,6 +9,7 @@
 #include "fd.h"
 #include "term.h"
 #include "funcno.h"
+#include "kctype.h"
 #include "kanji.h"
 
 #ifdef	NOERRNO
@@ -32,6 +33,7 @@ extern int errno;
 #include <mntent.h>
 typedef struct mntent	mnt_t;
 #define	getmntent2(fp, mntp)	getmntent(fp)
+#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
 #endif	/* USEMNTENTH */
 
 #ifdef	USEMNTTABH
@@ -40,7 +42,7 @@ typedef struct mntent	mnt_t;
 typedef struct mnttab	mnt_t;
 #define	setmntent		fopen
 #define	getmntent2(fp, mntp)	(getmntent(fp, mntp) ? NULL : mntp)
-#define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_mntopts, opt)
+#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_mntopts, opt)
 #define	endmntent		fclose
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
@@ -57,7 +59,7 @@ typedef struct mnttab	mnt_t;
 #include <sys/vmount.h>
 #endif	/* USEMNTCTL */
 
-#if !defined (USEMOUNTH) && !defined (USEFSDATA) \
+#if	!defined (USEMOUNTH) && !defined (USEFSDATA) \
 && (defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))
 #include <sys/mount.h>
 #endif
@@ -76,7 +78,7 @@ typedef struct _mnt_t {
 } mnt_t;
 static FILE *setmntent __P_((char *, char *));
 static mnt_t *getmntent2 __P_((FILE *, mnt_t *));
-#define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
 #if	defined(USEMNTINFO) || defined(USEGETMNT)
 #define	endmntent(fp)
 #else
@@ -91,7 +93,7 @@ static int mnt_size = 0;
 typedef struct fstab	mnt_t;
 #define	setmntent(file, mode)	(FILE *)(setfsent(), NULL)
 #define	getmntent2(fp, mntp)	getfsent()
-#define	hasmntopt(mntp, opt)	strstr2((mntp) -> fs_mntops, opt)
+#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> fs_mntops, opt)
 #define	endmntent(fp)		endfsent()
 #define	mnt_dir		fs_file
 #define	mnt_fsname	fs_spec
@@ -105,7 +107,7 @@ typedef struct _mnt_t {
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
-#define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
 # if	PC98
 # define	PT_FAT12	0x81	/* 0x80 | 0x01 */
 # define	PT_FAT16	0x91	/* 0x80 | 0x11 */
@@ -187,6 +189,7 @@ extern int unixstatfs __P_((char *, statfs_t *));
 
 extern VOID error __P_((char *));
 extern int _chdir2 __P_((char *));
+extern char *strcpy2 __P_((char *, char *));
 extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #if	MSDOS || !defined (_NODOSDRIVE)
@@ -202,7 +205,8 @@ extern int checkdrive __P_((int));
 #ifndef	_NODOSDRIVE
 extern int dosstatfs __P_((int, char *));
 #endif
-extern VOID_P realloc2 __P_((VOID_P, ALLOC_T));
+extern char *malloc2 __P_((ALLOC_T));
+extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strstr2 __P_((char *, char *));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));
@@ -300,6 +304,10 @@ int code;
 	buf = buf + strlen(buf);
 	if (code >= K_F(1) && code <= K_F(20))
 		sprintf(buf, "F%-6d", code - K_F0);
+	else if ((code & ~0x7f) == 0x80
+	&& (((code & 0x7f) >= 'a' && (code & 0x7f) <= 'z')
+	|| ((code & 0x7f) >= 'A' && (code & 0x7f) <= 'Z')))
+		sprintf(buf, "Alt-%c  ", code & 0x7f);
 	else if (code == K_UP) sprintf(buf, "%-7.7s", UPAR_K);
 	else if (code == K_DOWN) sprintf(buf, "%-7.7s", DWNAR_K);
 	else if (code == K_RIGHT) sprintf(buf, "%-7.7s", RIGAR_K);
@@ -311,8 +319,9 @@ int code;
 			if (code == keycodelist[i]) break;
 		if (i < sizeof(keycodelist) / sizeof(int))
 			sprintf(buf, "%-7.7s", keystrlist[i]);
-		else if (code < ' ') sprintf(buf, "Ctrl-%c ", code + '@');
-		else if (code < 0x100) sprintf(buf, "'%c'    ", code);
+		else if (code < ' ' || code == C_DEL)
+			sprintf(buf, "Ctrl-%c ", (code + '@') & 0x7f);
+		else if (isprint(code)) sprintf(buf, "'%c'    ", code);
 		else return(0);
 	}
 	return(1);
@@ -397,7 +406,7 @@ char *file, *mode;
 	char *buf;
 
 	mntctl(MCTL_QUERY, sizeof(int), (struct vmount *)&mnt_size);
-	buf = (char *)malloc2(mnt_size);
+	buf = malloc2(mnt_size);
 	mntctl(MCTL_QUERY, mnt_size, (struct vmount *)buf);
 	mnt_ptr = 0;
 	return((FILE *)buf);
@@ -422,28 +431,28 @@ mnt_t *mntp;
 
 	cp = &(buf[mnt_ptr + vmntp -> vmt_data[VMT_OBJECT].vmt_off]);
 	len = strlen(cp) + 1;
-	if (!(vmntp -> vmt_flags & MNT_REMOTE))
-		*(fsname = (char *)realloc2(fsname, len)) = '\0';
+	if (!(vmntp -> vmt_flags & MNT_REMOTE)) {
+		fsname = realloc2(fsname, len);
+		strcpy(fsname, cp);
+	}
 	else {
 		host = &(buf[mnt_ptr
 			+ vmntp -> vmt_data[VMT_HOSTNAME].vmt_off]);
 		len += strlen(host) + 1;
-		fsname = (char *)realloc2(fsname, len);
-		strcpy(fsname, host);
-		strcat(fsname, ":");
+		fsname = realloc2(fsname, len);
+		strcpy(strcpy2(strcpy2(fsname, host), ":"), cp);
 	}
-	strcat(fsname, cp);
 
 	cp = &(buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off]);
 	len = strlen(cp) + 1;
-	dir = (char *)realloc2(dir, len);
+	dir = realloc2(dir, len);
 	strcpy(dir, cp);
 
 	entp = getvfsbytype(vmntp -> vmt_gfstype);
 	if (entp) {
 		cp = entp -> vfsent_name;
 		len = strlen(cp) + 1;
-		type = (char *)realloc2(type, len);
+		type = realloc2(type, len);
 		strcpy(type, cp);
 	}
 	else if (type) {
@@ -530,17 +539,17 @@ mnt_t *mntp;
 	buf = (struct statfs *)fp;
 
 	len = strlen(buf[mnt_ptr].f_mntfromname) + 1;
-	fsname = (char *)realloc2(fsname, len);
+	fsname = realloc2(fsname, len);
 	strcpy(fsname, buf[mnt_ptr].f_mntfromname);
 
 	len = strlen(buf[mnt_ptr].f_mntonname) + 1;
-	dir = (char *)realloc2(dir, len);
+	dir = realloc2(dir, len);
 	strcpy(dir, buf[mnt_ptr].f_mntonname);
 
 	cp = (char *)getvfsbynumber(buf[mnt_ptr].f_type);
 	if (cp) {
 		len = strlen(cp) + 1;
-		type = (char *)realloc2(type, len);
+		type = realloc2(type, len);
 		strcpy(type, cp);
 	}
 	else if (type) {
@@ -582,15 +591,15 @@ mnt_t *mntp;
 		NOSTAT_MANY, NULL) <= 0) return(NULL);
 
 	len = strlen(buf.fd_req.devname) + 1;
-	fsname = (char *)realloc2(fsname, len);
+	fsname = realloc2(fsname, len);
 	strcpy(fsname, buf.fd_req.devname);
 
 	len = strlen(buf.fd_req.path) + 1;
-	dir = (char *)realloc2(dir, len);
+	dir = realloc2(dir, len);
 	strcpy(dir, buf.fd_req.path);
 
 	len = strlen(gt_names[buf.fd_req.fstype]) + 1;
-	type = (char *)realloc2(type, len);
+	type = realloc2(type, len);
 	strcpy(type, gt_names[buf.fd_req.fstype]);
 
 	mntp -> mnt_fsname = fsname;
@@ -662,7 +671,7 @@ mnt_t *mntbuf;
 #else	/* !MSDOS */
 	mnt_t *mntp, mnt;
 	FILE *fp;
-	char *dir, fsname[MAXPATHLEN + 1];
+	char *dir, fsname[MAXPATHLEN];
 	int len, match;
 #ifndef	_NODOSDRIVE
 	int drv;
@@ -766,7 +775,7 @@ char *path;
 		return((drv >= 'A' && drv <= 'Z') ? 4 : 5);
 #endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0
-	|| hasmntopt(&mntbuf, "ro")) return(0);
+	|| hasmntopt2(&mntbuf, "ro")) return(0);
 
 #if	!MSDOS
 	if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
@@ -799,7 +808,7 @@ char *dir;
 	statfs_t fsbuf;
 	mnt_t mntbuf;
 #ifndef	DEV_BSIZE
-	struct stat buf;
+	struct stat st;
 #endif
 
 	if (!strcmp(dir, ".") && getfsinfo(dir, &fsbuf, &mntbuf) >= 0)
@@ -807,8 +816,8 @@ char *dir;
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
-	if (Xstat(dir, &buf) < 0) error(dir);
-	return((int)buf.st_size);
+	if (Xstat(dir, &st) < 0) error(dir);
+	return((int)(st.st_size));
 #endif
 #endif	/* !MSDOS */
 }
@@ -842,11 +851,11 @@ int digit, max;
 	return(buf);
 }
 
-static int info1line(y, ind, n, str, unit)
+static int info1line(y, ind, n, s, unit)
 int y;
 char *ind;
 long n;
-char *str, *unit;
+char *s, *unit;
 {
 	char buf[12 + 1];
 	int width;
@@ -856,9 +865,9 @@ char *str, *unit;
 	locate(n_column / 2 - 20, y);
 	kanjiprintf("%-20.20s", ind);
 	locate(n_column / 2 + 2, y);
-	if (str) {
+	if (s) {
 		width = n_column - (n_column / 2 + 2);
-		kanjiputs2(str, width, 0);
+		kanjiputs2(s, width, 0);
 	}
 	else {
 		cprintf2("%12.12s", inscomma(buf, n, 3, 12));

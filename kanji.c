@@ -29,8 +29,9 @@ typedef struct _kconv_t {
 
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
-static u_short sjis2jis __P_((char *, u_char *));
-static u_short jis2sjis __P_((char *, u_char *));
+static VOID sjis2jis __P_((char *, u_char *));
+static VOID jis2sjis __P_((char *, u_char *));
+static int tojis7 __P_((char *, u_char *));
 #endif
 
 #if	!MSDOS && !defined (_NOKANJICONV)
@@ -71,7 +72,7 @@ int ptr;
 	int i, j;
 
 	if (ptr < 0) return(0);
-	if (!ptr) return(iskanji1(s[0]));
+	if (!ptr) return(iskanji1(s, 0));
 
 	for (i = j = 0; i < ptr; i++, j++) {
 		if (!s[j]) return(0);
@@ -79,38 +80,39 @@ int ptr;
 		if (isekana(s, j)) j++;
 		else
 #endif
-		if (iskanji1(s[j])) {
+		if (iskanji1(s, j)) {
 			i++;
 			j++;
 		}
 	}
 	if (i > ptr) return(0);
-	return(iskanji1(s[j]));
+	return(iskanji1(s, j));
 }
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
 /*ARGSUSED*/
-int getlang(str, in)
-char *str;
-int in;
+int getlang(s, io)
+char *s;
+int io;
 {
 	int ret;
 
-	if (!str) ret = NOCNV;
+	if (!s) ret = NOCNV;
 #if	!MSDOS && !defined (_NOKANJICONV)
-	else if (strstr2(str, "SJIS") || strstr2(str, "sjis")) ret = SJIS;
-	else if (strstr2(str, "EUC") || strstr2(str, "euc")
-	|| strstr2(str, "UJIS") || strstr2(str, "ujis")) ret = EUC;
-	else if (strstr2(str, "JIS") || strstr2(str, "jis")) ret = JIS7;
+	else if (strstr2(s, "SJIS") || strstr2(s, "sjis")) ret = SJIS;
+	else if (strstr2(s, "EUC") || strstr2(s, "euc")
+	|| strstr2(s, "UJIS") || strstr2(s, "ujis")) ret = EUC;
+	else if (strstr2(s, "JIS") || strstr2(s, "jis")) ret = JIS7;
 #endif
 #ifndef	_NOENGMES
-	else if (strstr2(str, "ENG") || strstr2(str, "eng")
-	|| !strcmp(str, "C")) ret = ENG;
+	else if (io == L_OUTPUT
+	&& (strstr2(s, "ENG") || strstr2(s, "eng")
+	|| !strcmp(s, "C"))) ret = ENG;
 #endif
 	else ret = NOCNV;
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-	if (in) {
+	if (io == L_INPUT) {
 #ifdef	CODEEUC
 		if (ret != SJIS) ret = EUC;
 #else
@@ -132,17 +134,19 @@ char *jpn, *eng;
 
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
-static u_short sjis2jis(buf, str)
+static VOID sjis2jis(buf, s)
 char *buf;
-u_char *str;
+u_char *s;
 {
-	u_short w;
-	int i, s1, s2, j1, j2;
+	int s1, s2, j1, j2;
 
-	s1 = str[0] & 0xff;
-	s2 = str[1] & 0xff;
-	w = ((u_short)s1 << 8) | (u_char)s2;
-	if (w >= 0xf000) {
+	s1 = s[0] & 0xff;
+	s2 = s[1] & 0xff;
+	if (s1 >= 0xf0) {
+		u_short w;
+		int i;
+
+		w = ((u_short)s1 << 8) | (u_char)s2;
 		for (i = 0; i < CNVTBLSIZ; i++)
 			if (w >= convtable[i].start && w <= convtable[i].end)
 				break;
@@ -162,95 +166,96 @@ u_char *str;
 	}
 	buf[0] = j1;
 	buf[1] = j2;
-	return(w);
 }
 
-static u_short jis2sjis(buf, str)
+static VOID jis2sjis(buf, s)
 char *buf;
-u_char *str;
+u_char *s;
 {
 	u_short w;
 	int s1, s2, j1, j2;
 
-	j1 = str[0] & 0x7f;
-	j2 = str[1] & 0x7f;
+	j1 = s[0] & 0x7f;
+	j2 = s[1] & 0x7f;
 
 	s1 = ((j1 - 1) >> 1) + ((j1 < 0x5f) ? 0x71 : 0xb1);
-	if (j1 & 1) s2 = j2 + ((j2 < 0x60) ? 0x1f : 0x20);
-	else s2 = j2 + 0x7e;
+	s2 = j2 + ((j1 & 1) ? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
 	w = (s1 << 8) | s2;
 	buf[0] = s1;
 	buf[1] = s2;
-	return(w);
 }
 
-int sjis2ujis(buf, str)
+int sjis2ujis(buf, s)
 char *buf;
-u_char *str;
+u_char *s;
 {
 	int i, j;
 
-	for (i = j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
-		if (isskana(str, i)) {
+	for (i = j = 0; s[i] && j < MAXLINESTR - 1; i++, j++) {
+		if (isskana(s, i)) {
 			buf[j++] = 0x8e;
-			buf[j] = str[i];
+			buf[j] = s[i];
 		}
-		else if (issjis1(str[i])) {
-			sjis2jis(&(buf[j]), &(str[i++]));
+		else if (issjis1(s[i]) && issjis2(s[i + 1])) {
+			sjis2jis(&(buf[j]), &(s[i++]));
 			buf[j++] |= 0x80;
 			buf[j] |= 0x80;
 		}
-		else buf[j] = str[i];
+		else buf[j] = s[i];
 	}
 	return(j);
 }
 
-int ujis2sjis(buf, str)
+int ujis2sjis(buf, s)
 char *buf;
-u_char *str;
+u_char *s;
 {
 	int i, j;
 
-	for (i = j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
-		if (isekana(str, i)) buf[j] = str[++i];
-		else if (iseuc(str[i])) jis2sjis(&(buf[j++]), &(str[i++]));
-		else buf[j] = str[i];
+	for (i = j = 0; s[i] && j < MAXLINESTR - 1; i++, j++) {
+		if (isekana(s, i)) buf[j] = s[++i];
+		else if (iseuc(s[i])) jis2sjis(&(buf[j++]), &(s[i++]));
+		else buf[j] = s[i];
 	}
 	return(j);
 }
 #endif	/* !MSDOS && (!_NOKANJICONV || (!_NODOSDRIVE && CODEEUC)) */
 
 #if	!MSDOS && !defined (_NOKANJICONV)
-int jis7(buf, str, incode)
+static int tojis7(buf, s)
 char *buf;
-u_char *str;
-int incode;
+u_char *s;
 {
 	int i, j, mode;
 
 	mode = ASCII;
-	for (i = j = 0; str[i] && j < MAXLINESTR - 7 - 1; i++, j++) {
-		if ((incode == EUC) ? isekana(str, i) : isskana(str, i)) {
-			if (incode == EUC) i++;
+	for (i = j = 0; s[i] && j < MAXLINESTR - 7 - 1; i++, j++) {
+#ifdef	CODEEUC
+		if (isekana(s, i)) {
+			i++;
+#else
+		if (isskana(s, i)) {
+#endif
 			if (!(mode & KANA)) buf[j++] = '\016';
 			mode |= KANA;
-			buf[j] = str[i] & ~0x80;
+			buf[j] = s[i] & ~0x80;
 			continue;
 		}
 		if (mode & KANA) buf[j++] = '\017';
 		mode &= ~KANA;
-		if ((incode == EUC) ? iseuc(str[i]) : issjis1(str[i])) {
+		if (iskanji1(s, i)) {
 			if (!(mode & KANJI)) {
 				buf[j++] = '\033';
 				buf[j++] = '$';
 				buf[j++] = 'B';
 			}
 			mode |= KANJI;
-			if (incode != EUC) sjis2jis(&(buf[j++]), &(str[i++]));
-			else {
-				buf[j++] = str[i++] & ~0x80;
-				buf[j] = str[i] & ~0x80;
-			}
+#ifdef	CODEEUC
+			buf[j++] = s[i++] & ~0x80;
+			buf[j] = s[i] & ~0x80;
+#else
+			sjis2jis(&(buf[j++]), &(s[i++]));
+#endif
 		}
 		else {
 			if (mode & KANJI) {
@@ -259,7 +264,7 @@ int incode;
 				buf[j++] = 'B';
 			}
 			mode &= ~KANJI;
-			buf[j] = str[i];
+			buf[j] = s[i];
 		}
 	}
 	if (mode & KANA) buf[j++] = '\017';
@@ -271,44 +276,44 @@ int incode;
 	return(j);
 }
 
-int kanjiconv(buf, str, in, out)
-char *buf, *str;
+int kanjiconv(buf, s, in, out)
+char *buf, *s;
 int in, out;
 {
 	int len;
 
-	len = strlen(str);
+	len = strlen(s);
 	switch (out) {
 		case JIS7:
-			len = jis7(buf, (u_char *)str, in);
+			len = tojis7(buf, (u_char *)s);
 			break;
 		case SJIS:
-			if (in == EUC) len = ujis2sjis(buf, (u_char *)str);
-			else memcpy(buf, str, len);
+			if (in == EUC) len = ujis2sjis(buf, (u_char *)s);
+			else memcpy(buf, s, len);
 			break;
 		case EUC:
-			if (in == SJIS) len = sjis2ujis(buf, (u_char *)str);
-			else memcpy(buf, str, len);
+			if (in == SJIS) len = sjis2ujis(buf, (u_char *)s);
+			else memcpy(buf, s, len);
 			break;
 		default:
-			memcpy(buf, str, len);
+			memcpy(buf, s, len);
 			break;
 	}
 	return(len);
 }
 #endif	/* !MSDOS && !_NOKANJICONV */
 
-int kanjiputs(str)
-char *str;
+int kanjiputs(s)
+char *s;
 {
 #if	MSDOS || defined (_NOKANJICONV)
-	cputs2(str);
-	return(strlen(str));
+	cputs2(s);
+	return(strlen(s));
 #else
 	char buf[MAXLINESTR + 1];
 	int i;
 
-	i = kanjiconv(buf, str, DEFCODE, outputkcode);
+	i = kanjiconv(buf, s, DEFCODE, outputkcode);
 	buf[i] = '\0';
 	cputs2(buf);
 	return(i);

@@ -25,6 +25,9 @@ extern char *unixrealpath __P_((char *, char *));
 #include <sys/file.h>
 #include <sys/param.h>
 #endif
+#ifndef	_NODOSDRIVE
+extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
+#endif
 
 #ifdef	PWNEEDERROR
 char Error[1024];
@@ -47,7 +50,7 @@ extern char *findpattern;
 			| (((u_char *)cp)[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)cp)[0] << (CHAR_BIT * 3)) )
 
-static char *_realpath2 __P_((char *, char *));
+static char *_realpath2 __P_((char *, char *, int));
 static int _getenv2 __P_((char *, int, char **));
 static char **_putenv2 __P_((char *, char **));
 #if	!MSDOS && !defined (NOTZFILEH) \
@@ -72,42 +75,44 @@ char *from, *to;
 	return(Xrename(from, to));
 }
 
-int stat2(path, buf)
+int stat2(path, stp)
 char *path;
-struct stat *buf;
+struct stat *stp;
 {
 #if	MSDOS
-	return(Xstat(path, buf));
+	return(Xstat(path, stp));
 #else	/* !MSDOS */
 	int tmperr;
 
-	if (Xstat(path, buf) < 0) {
+	if (Xstat(path, stp) < 0) {
 #ifndef	_NODOSDRIVE
 		if (dospath2(path)) return(-1);
 #endif
 		tmperr = errno;
-		if (lstat(path, buf) < 0
-		|| (buf -> st_mode & S_IFMT) != S_IFLNK) {
+		if (_Xlstat(path, stp) < 0
+		|| (stp -> st_mode & S_IFMT) != S_IFLNK) {
 			errno = tmperr;
 			return(-1);
 		}
-		buf -> st_mode &= ~S_IFMT;
+		stp -> st_mode &= ~S_IFMT;
 	}
 	return(0);
 #endif	/* !MSDOS */
 }
 
-static char *_realpath2(path, resolved)
+/*ARGSUSED*/
+static char *_realpath2(path, resolved, rdlink)
 char *path, *resolved;
+int rdlink;
 {
 	char *cp;
 
 	if (!*path || !strcmp(path, ".")) return(resolved);
 	else if ((cp = strdelim(path, 0))) {
 		*cp = '\0';
-		_realpath2(path, resolved);
+		_realpath2(path, resolved, rdlink);
 		*(cp++) = _SC_;
-		_realpath2(cp, resolved);
+		_realpath2(cp, resolved, rdlink);
 		return(resolved);
 	}
 
@@ -132,21 +137,26 @@ char *path, *resolved;
 	}
 	else {
 		cp = strcatdelim(resolved);
-		strcpy(cp, path);
+		strncpy2(cp, path, MAXPATHLEN - 1 - (cp - resolved));
 #if	!MSDOS
-		if (!_dospath(resolved)) {
-			struct stat status;
-			char buf[MAXPATHLEN + 1];
+		if (!rdlink);
+# ifndef	_NODOSDRIVE
+		else if (_dospath(resolved));
+# endif
+		else {
+			struct stat st;
+			char buf[MAXPATHLEN];
 			int i;
 
-			if (lstat(resolved, &status) >= 0
-			&& (status.st_mode & S_IFMT) == S_IFLNK
-			&& (i = readlink(resolved, buf, MAXPATHLEN)) >= 0) {
+			if (_Xlstat(resolved, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFLNK
+			&& (i = readlink(resolved, buf, MAXPATHLEN - 1)) >= 0)
+			{
 				buf[i] = '\0';
 				if (*buf == _SC_) strcpy(resolved, buf);
 				else {
 					*(cp - 1) = '\0';
-					_realpath2(buf, resolved);
+					_realpath2(buf, resolved, rdlink);
 				}
 			}
 		}
@@ -155,10 +165,11 @@ char *path, *resolved;
 	return(resolved);
 }
 
-char *realpath2(path, resolved)
+char *realpath2(path, resolved, rdlink)
 char *path, *resolved;
+int rdlink;
 {
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 	int drv;
 
 	if (path == resolved) {
@@ -200,13 +211,13 @@ char *path, *resolved;
 		if (!Xgetcwd(resolved, MAXPATHLEN)) strcpy(resolved, _SS_);
 	}
 	else if (resolved != fullpath) strcpy(resolved, fullpath);
-	return(_realpath2(path, resolved));
+	return(_realpath2(path, resolved, rdlink));
 }
 
 int _chdir2(path)
 char *path;
 {
-	char cwd[MAXPATHLEN + 1];
+	char cwd[MAXPATHLEN];
 
 	if (!Xgetcwd(cwd, MAXPATHLEN)) strcpy(cwd, _SS_);
 	if (Xchdir(path) < 0) return(-1);
@@ -227,9 +238,9 @@ char *path;
 int chdir2(path)
 char *path;
 {
-	char *pwd, cwd[MAXPATHLEN + 1], tmp[MAXPATHLEN + 1];
+	char *pwd, cwd[MAXPATHLEN], tmp[MAXPATHLEN];
 
-	realpath2(path, tmp);
+	realpath2(path, tmp, 0);
 	if (_chdir2(path) < 0) return(-1);
 
 	strcpy(cwd, fullpath);
@@ -252,7 +263,7 @@ char *path;
 			unixpath = strdup2(cwd);
 		}
 		if (Xgetcwd(cwd, MAXPATHLEN)) strcpy(fullpath, cwd);
-		realpath2(fullpath, fullpath);
+		realpath2(fullpath, fullpath, 0);
 	}
 	else {
 		if (unixpath) free(unixpath);
@@ -263,9 +274,8 @@ char *path;
 #ifdef	DEBUG
 		_mtrace_file = "chdir2(PWD)";
 #endif
-		pwd = (char *)malloc2(strlen(fullpath) + 4 + 1);
-		strcpy(pwd, "PWD=");
-		strcpy(pwd + 4, fullpath);
+		pwd = malloc2(strlen(fullpath) + 4 + 1);
+		strcpy(strcpy2(pwd, "PWD="), fullpath);
 		if (putenv2(pwd) < 0) error("PWD");
 	}
 #if	MSDOS
@@ -280,6 +290,9 @@ char *chdir3(path)
 char *path;
 {
 	char *cwd;
+#ifndef	_NODOSDRIVE
+	int drive;
+#endif
 
 	cwd = path;
 	if (!strcmp(path, ".")) cwd = NULL;
@@ -293,6 +306,7 @@ char *path;
 		if (!unixpath) return(".");
 		path = unixpath;
 	}
+	if ((drive = dospath3(fullpath))) flushdrv(drive, NULL);
 #endif
 	if (chdir2(path) < 0) return(NULL);
 	if (!cwd) {
@@ -341,36 +355,35 @@ int mode;
 	return(0);
 }
 
-VOID_P malloc2(size)
+char *malloc2(size)
 ALLOC_T size;
-{
-	VOID_P tmp;
-
-	if (!size) error(NULL);
-	if (!(tmp = (VOID_P)malloc(size))) error(NULL);
-	return(tmp);
-}
-
-VOID_P realloc2(ptr, size)
-VOID_P ptr;
-ALLOC_T size;
-{
-	VOID_P tmp;
-
-	if (!size) error(NULL);
-	if (!ptr) return(malloc2(size));
-	if (!(tmp = (VOID_P)realloc(ptr, size))) error(NULL);
-	return(tmp);
-}
-
-char *strdup2(str)
-char *str;
 {
 	char *tmp;
 
-	if (!str) return(NULL);
-	if (!(tmp = (char *)malloc((ALLOC_T)strlen(str) + 1))) error(NULL);
-	strcpy(tmp, str);
+	if (!size || !(tmp = (char *)malloc(size))) error(NULL);
+	return(tmp);
+}
+
+char *realloc2(ptr, size)
+VOID_P ptr;
+ALLOC_T size;
+{
+	char *tmp;
+
+	if (!size
+	|| !(tmp = (ptr) ? (char *)realloc(ptr, size) : (char *)malloc(size)))
+		error(NULL);
+	return(tmp);
+}
+
+char *strdup2(s)
+char *s;
+{
+	char *tmp;
+
+	if (!s) return(NULL);
+	if (!(tmp = (char *)malloc((ALLOC_T)strlen(s) + 1))) error(NULL);
+	strcpy(tmp, s);
 	return(tmp);
 }
 
@@ -388,7 +401,7 @@ int c;
 
 	for (i = 0; s[i]; i++) {
 		if (s[i] == c) return(&(s[i]));
-		if (iskanji1(s[i]) && !s[++i]) break;
+		if (iskanji1(s, i)) i++;
 	}
 	return(NULL);
 }
@@ -403,18 +416,29 @@ int c;
 	cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == c) cp = &(s[i]);
-		if (iskanji1(s[i]) && !s[++i]) break;
+		if (iskanji1(s, i)) i++;
 	}
 	return(cp);
 }
 
+char *strcpy2(s1, s2)
+char *s1, *s2;
+{
+	int i;
+
+	for (i = 0; s2[i]; i++) s1[i] = s2[i];
+	s1[i] = '\0';
+	return(&(s1[i]));
+}
+
 char *strncpy2(s1, s2, n)
-char *s1;
-char *s2;
+char *s1, *s2;
 int n;
 {
-	strncpy(s1, s2, n);
-	s1[n] = '\0';
+	int i;
+
+	for (i = 0; i < n && s2[i]; i++) s1[i] = s2[i];
+	s1[i] = '\0';
 	return(s1);
 }
 
@@ -429,7 +453,7 @@ int *lenp, ptr;
 		if (isekana(s2, j)) j++;
 		else
 #endif
-		if (iskanji1(s2[j])) {
+		if (iskanji1(s2, j)) {
 			i++;
 			j++;
 		}
@@ -448,7 +472,7 @@ int *lenp, ptr;
 		}
 		else
 #endif
-		if (iskanji1(s2[j])) {
+		if (iskanji1(s2, j)) {
 			if (*lenp >= 0 && i >= *lenp - 1) {
 				s1[i++] = ' ';
 				break;
@@ -492,34 +516,34 @@ char *s1, *s2;
 	return(NULL);
 }
 
-int strlen2(str)
-char *str;
+int strlen2(s)
+char *s;
 {
 	int i, len;
 
-	for (i = len = 0; str[i]; i++, len++) if (isctl(str[i])) len++;
+	for (i = len = 0; s[i]; i++, len++) if (isctl(s[i])) len++;
 	return(len);
 }
 
-int strlen3(str)
-char *str;
+int strlen3(s)
+char *s;
 {
 	int i, len;
 
-	for (i = len = 0; str[i]; i++, len++) {
+	for (i = len = 0; s[i]; i++, len++) {
 #ifdef	CODEEUC
-		if (isekana(str, i)) i++;
+		if (isekana(s, i)) i++;
 		else
 #endif
-		if (isctl(str[i])) len++;
+		if (isctl(s[i])) len++;
 	}
 	return(len);
 }
 
-int atoi2(str)
-char *str;
+int atoi2(s)
+char *s;
 {
-	return((str && *str >= '0' && *str <= '9') ? atoi(str) : -1);
+	return((s && *s >= '0' && *s <= '9') ? atoi(s) : -1);
 }
 
 static int _getenv2(name, len, envp)
@@ -537,19 +561,19 @@ char **envp;
 	return(i);
 }
 
-static char **_putenv2(str, envp)
-char *str, **envp;
+static char **_putenv2(s, envp)
+char *s, **envp;
 {
 	char *cp, *tmp, **new;
 	int i, n, len;
 
-	if ((cp = strchr(str, '='))) len = (int)(cp - str);
-	else len = strlen(str);
+	if ((cp = strchr(s, '='))) len = (int)(cp - s);
+	else len = strlen(s);
 
-	if ((n = _getenv2(str, len, envp)) < 0) n = 0;
+	if ((n = _getenv2(s, len, envp)) < 0) n = 0;
 	else if (envp[n]) {
 		tmp = envp[n];
-		if (cp) envp[n] = str;
+		if (cp) envp[n] = s;
 		else for (i = n; envp[i]; i++) envp[i] = envp[i + 1];
 		free(tmp);
 		return(envp);
@@ -562,24 +586,24 @@ char *str, **envp;
 	if (!envp) new = (char **)malloc((n + 2) * sizeof(char *));
 	else new = (char **)realloc(envp, (n + 2) * sizeof(char *));
 	if (!new) {
-		free(str);
+		free(s);
 		return(NULL);
 	}
-	new[n] = str;
+	new[n] = s;
 	new[n + 1] = (char *)NULL;
 	return(new);
 }
 
-int putenv2(str)
-char *str;
+int putenv2(s)
+char *s;
 {
 	char **new;
 #if	MSDOS
 	char *cp;
 
-	for (cp = str; *cp && *cp != '='; cp++) *cp = toupper2(*cp);
+	for (cp = s; *cp && *cp != '='; cp++) *cp = toupper2(*cp);
 #endif	/* !MSDOS */
-	if (!(new = _putenv2(str, environ))) return(-1);
+	if (!(new = _putenv2(s, environ))) return(-1);
 	environ = new;
 	return(0);
 }
@@ -617,7 +641,7 @@ char *name, *value;
 	if (!value) cp = name;
 	else {
 		len = strlen(name);
-		cp = (char *)malloc2(len + strlen(value) + 2);
+		cp = malloc2(len + strlen(value) + 2);
 		memcpy(cp, name, len);
 #if	MSDOS
 		for (i = 0; i < len ; i++) cp[i] = toupper2(cp[i]);
@@ -676,7 +700,7 @@ int system2(command, noconf)
 char *command;
 int noconf;
 {
-	int status;
+	int ret;
 
 	if (!command || !*command) return(0);
 	if (noconf >= 0) {
@@ -691,22 +715,22 @@ int noconf;
 	echo2();
 	nl2();
 	tabs();
-	status = system(command);
+	ret = system(command);
 	raw2();
 	noecho2();
 	nonl2();
 	notabs();
-	if (status > 127 || !noconf) warning(0, HITKY_K);
+	if (ret > 127 || !noconf) warning(0, HITKY_K);
 	if (noconf >= 0) {
 		if (noconf) putterms(t_init);
 		putterms(t_keypad);
 	}
-	return(status);
+	return(ret);
 }
 
 char *getwd2(VOID_A)
 {
-	char cwd[MAXPATHLEN + 1];
+	char cwd[MAXPATHLEN];
 
 	if (!Xgetcwd(cwd, MAXPATHLEN)) error(NULL);
 	return(strdup2(cwd));
@@ -813,7 +837,7 @@ time_t t;
 	FILE *fp;
 	time_t tmp;
 	long i, tz, leap, nleap, ntime, ntype, nchar;
-	char *cp, buf[MAXPATHLEN + 1];
+	char *cp, buf[MAXPATHLEN];
 	u_char c;
 
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
@@ -829,10 +853,7 @@ time_t t;
 	cp = (char *)getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == _SC_) strcpy(buf, cp);
-	else {
-		strcpy(buf, TZDIR);
-		strcpy(strcatdelim(buf), cp);
-	}
+	else strcatdelim2(buf, TZDIR, cp);
 	if (!(fp = fopen(buf, "r"))) return(tz);
 	if (fread(&head, sizeof(struct tzhead), 1, fp) != 1) {
 		fclose(fp);
@@ -962,8 +983,7 @@ FILE *fp;
 	long i, size;
 	int c;
 
-	cp = (char *)malloc2((size = BUFUNIT));
-
+	cp = c_malloc(size);
 	for (i = 0; (c = Xfgetc(fp)) != '\n'; i++) {
 		if (c == EOF) {
 			if (!i || ferror(fp)) {
@@ -972,15 +992,7 @@ FILE *fp;
 			}
 			break;
 		}
-		if (i + 1 >= size) {
-			if (size < (1L << (BITSPERBYTE * sizeof(long) - 2)))
-				cp = (char *)realloc2(cp, (size *= 2));
-			else {
-				free(cp);
-				errno = ENOMEM;
-				error(NULL);
-			}
-		}
+		cp = c_realloc(cp, i, size);
 		cp[i] = (c) ? c : '\n';
 	}
 	cp[i++] = '\0';

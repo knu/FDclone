@@ -9,6 +9,7 @@
 #include "term.h"
 #include "func.h"
 #include "funcno.h"
+#include "kctype.h"
 #include "kanji.h"
 
 #if	MSDOS
@@ -19,6 +20,9 @@ extern int setcurdrv __P_((int));
 #include <sys/param.h>
 #endif
 
+#ifndef	_NOARCHIVE
+extern char *archivefile;
+#endif
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char *findpattern;
@@ -27,6 +31,9 @@ extern int writefs;
 #endif
 extern char *curfilename;
 extern char *origpath;
+#ifndef	_NOTREE
+extern char *treepath;
+#endif
 
 static VOID pathbar __P_((VOID_A));
 static VOID stackbar __P_((VOID_A));
@@ -41,10 +48,12 @@ static VOID readstatus __P_((VOID_A));
 static int browsedir __P_((char *, char *));
 
 int columns = 0;
+int defcolumns = 0;
 int minfilename = 0;
 int filepos = 0;
 int mark = 0;
 int fnameofs = 0;
+int displaymode = 0;
 int dispmode = 0;
 int sorton = 0;
 int sorttype = 0;
@@ -55,7 +64,7 @@ off_t marksize = 0;
 off_t totalsize = 0;
 off_t blocksize = 0;
 namelist filestack[MAXSTACK];
-char fullpath[MAXPATHLEN + 1] = "";
+char fullpath[MAXPATHLEN] = "";
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
 namelist *filelist = NULL;
@@ -348,12 +357,12 @@ static char *putowner(buf, uid)
 char *buf;
 uid_t uid;
 {
-	char *str;
+	char *s;
 	int i;
 
 	i = WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((str = getpwuid2(uid))) strncpy3(buf, str, &i, 0);
+	else if ((s = getpwuid2(uid))) strncpy3(buf, s, &i, 0);
 	else sprintf(buf, "%-*u", WOWNER, uid);
 
 	return(buf);
@@ -363,12 +372,12 @@ static char *putgroup(buf, gid)
 char *buf;
 gid_t gid;
 {
-	char *str;
+	char *s;
 	int i;
 
 	i = WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((str = getgrgid2(gid))) strncpy3(buf, str, &i, 0);
+	else if ((s = getgrgid2(gid))) strncpy3(buf, s, &i, 0);
 	else sprintf(buf, "%-*u", WGROUP, gid);
 
 	return(buf);
@@ -408,7 +417,7 @@ int no;
 	}
 #endif
 
-	buf = (char *)malloc2(n_lastcolumn * 2 + 1);
+	buf = malloc2(n_lastcolumn * 2 + 1);
 	tm = localtime(&(list[no].st_mtim));
 
 #ifdef	HAVEFLAGS
@@ -429,10 +438,10 @@ int no;
 #if	!MSDOS
 	putowner(buf + len, list[no].st_uid);
 	len += WOWNER;
-	strcpy(buf + (len++), " ");
+	buf[len++] = ' ';
 	putgroup(buf + len, list[no].st_gid);
 	len += WGROUP;
-	strcpy(buf + (len++), " ");
+	buf[len++] = ' ';
 #endif
 
 	if (isdev(&(list[no]))) sprintf(buf + len, "%3u, %3u ",
@@ -540,7 +549,7 @@ int no, standout;
 	}
 
 	width = calcwidth();
-	buf = (char *)malloc2((n_column / columns) * 2 + 1);
+	buf = malloc2((n_column / columns) * 2 + 1);
 	i = (standout && fnameofs > 0) ? fnameofs : 0;
 #ifdef	CODEEUC
 	wid = width;
@@ -673,6 +682,7 @@ char *def;
 	if (max <= 0) {
 		i = (n_column / columns) - 2 - 1;
 		locate(1, LFILETOP);
+		putch2(' ');
 		putterm(t_standout);
 		cp = NOFIL_K;
 		if (i > strlen(cp)) kanjiputs2(cp, i, 0);
@@ -730,16 +740,29 @@ u_char fstat;
 VOID rewritefile(all)
 int all;
 {
-	pathbar();
-	sizebar();
-	if (all) {
+#ifndef	_NOARCHIVE
+	if (archivefile) {
+		rewritearc(all);
+		return;
+	}
+#endif
+	if (all > 0) {
+		title();
 		helpbar();
 		infobar(filelist, filepos);
 	}
+	sizebar();
 	statusbar(maxfile);
 	stackbar();
-	listupfile(filelist, maxfile, filelist[filepos].name);
-	locate(0, 0);
+	pathbar();
+	if (all >= 0) {
+#ifndef	_NOTREE
+		if (treepath) rewritetree();
+		else
+#endif
+		listupfile(filelist, maxfile, filelist[filepos].name);
+		locate(0, 0);
+	}
 }
 
 int searchmove(list, max, ch, buf)
@@ -878,22 +901,16 @@ char *file, *def;
 	fnameofs = 0;
 	waitmes();
 
-	if (!findpattern) {
-		re = NULL;
-		cp = NULL;
-	}
+	re = NULL;
+	cp = NULL;
+	if (findpattern) {
 #ifndef	_NOARCHIVE
-	else if (*findpattern == '/') {
-		re = NULL;
-		cp = cnvregexp(findpattern + 1, 1);
-	}
+		if (*findpattern == '/') cp = findpattern + 1;
+		else
 #endif
-	else {
-		cp = cnvregexp(findpattern, 1);
-		re = regexp_init(cp);
-		free(cp);
-		cp = NULL;
+		re = regexp_init(findpattern, -1);
 	}
+
 	while ((dp = searchdir(dirp, re, cp))) {
 		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
 		&& !isdotdir(dp -> d_name)) continue;
@@ -918,10 +935,7 @@ char *file, *def;
 		maxfile++;
 	}
 	Xclosedir(dirp);
-	if (re) regexp_free(re);
-#ifndef	_NOARCHIVE
-	if (cp) free(cp);
-#endif
+	regexp_free(re);
 
 	if (!maxfile) {
 		addlist();
@@ -934,15 +948,10 @@ char *file, *def;
 #endif
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
 
-	if (stable_standout) {
-		putterms(t_clear);
-		helpbar();
-	}
+	putterms(t_clear);
 	title();
-	pathbar();
-	sizebar();
-	statusbar(maxfile);
-	stackbar();
+	helpbar();
+	rewritefile(-1);
 
 	old = filepos = listupfile(filelist, maxfile, def);
 	fstat = 0;
@@ -1039,11 +1048,8 @@ char *file, *def;
 		if (!(fstat & REWRITE) || old != filepos) fnameofs = 0;
 		if ((fstat & RELIST) == RELIST) {
 			title();
-			pathbar();
-			sizebar();
-			statusbar(maxfile);
-			stackbar();
 			helpbar();
+			rewritefile(-1);
 		}
 	}
 
@@ -1055,7 +1061,7 @@ VOID main_fd(cur)
 char *cur;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	char *cp, *def;
+	char *cp, *tmp, *def;
 	int i, ischgdir;
 
 	findpattern = def = NULL;
@@ -1063,33 +1069,31 @@ char *cur;
 		cp = evalpath(strdup2(cur), 1);
 #if	MSDOS
 		if (_dospath(cp)) {
-			if (setcurdrv(*cp) < 0) fullpath[0] = getcurdrv();
-			else {
-				def = getwd2();
-				strcpy(fullpath, def);
-				def = NULL;
+			if (setcurdrv(*cp) >= 0) {
+				tmp = getwd2();
+				strcpy(fullpath, tmp);
+				free(tmp);
 			}
 			for (i = 2; cp[i]; i++) cp[i - 2] = cp[i];
 			cp [i - 2] = '\0';
 		}
 		if (*cp == _SC_) fullpath[2] = '\0';
-		strcatdelim(fullpath);
+		tmp = strcatdelim(fullpath);
 #else	/* !MSDOS */
 		if (
 #ifndef	_NODOSDRIVE
 		_dospath(cp) ||
 #endif
-		*cp == _SC_) *fullpath = '\0';
-		else strcatdelim(fullpath);
+		*cp == _SC_) *(tmp = fullpath) = '\0';
+		else tmp = strcatdelim(fullpath);
 #endif	/* !MSDOS */
 		if (_chdir2(cp) >= 0) {
-			strcat(fullpath, cp);
+			strcpy(tmp, cp);
 			free(cp);
-			cp = fullpath + (int)strlen(fullpath) - 1;
 		}
 		else {
 			def = strrdelim(cp, 0);
-#if	MSDOS || !defined (_NODOSDRIVE)
+#if	!MSDOS && !defined (_NODOSDRIVE)
 			if (!def && _dospath(cp)) def = &(cp[2]);
 #endif
 			if (!def) def = cp;
@@ -1104,8 +1108,7 @@ char *cur;
 					strcpy(fullpath, _SS_);
 #endif
 				}
-				else if (_chdir2(cp) >= 0)
-					strcat(fullpath, cp);
+				else if (_chdir2(cp) >= 0) strcpy(tmp, cp);
 				else {
 					warning(-1, cp);
 					def = NULL;
@@ -1120,14 +1123,19 @@ char *cur;
 			}
 			free(cp);
 		}
-		realpath2(fullpath, fullpath);
+		realpath2(fullpath, fullpath, 0);
 		entryhist(1, fullpath, 1);
 	}
+#if	MSDOS
+	_chdir2(fullpath);
+#endif
 
 	filelist = NULL;
 	maxent = 0;
 	strcpy(file, ".");
 	sorton = sorttype % 100;
+	dispmode = displaymode;
+	columns = defcolumns;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {

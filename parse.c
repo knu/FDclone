@@ -23,12 +23,17 @@
 extern char fullpath[];
 extern short histno[];
 extern int sorttype;
+extern int displaymode;
 #ifndef	_NOTREE
 extern int sorttree;
 #endif
 #ifndef	_NOWRITEFS
 extern int writefs;
 #endif
+#if	!MSDOS
+extern int adjtty;
+#endif
+extern int defcolumns;
 extern int minfilename;
 extern short histsize[];
 extern int savehist;
@@ -82,21 +87,35 @@ char *s, *c;
 int evaldq;
 {
 	char *cp;
-	int q;
+	int quote;
 
-	q = '\0';
-	for (cp = s; *cp; cp++) {
-		if (*cp == '\\' && q != '\'') {
-			if (!*(++cp)) return(NULL);
-			else if (*cp == '\\' && (strchr(c, '\\')))
-				return(cp - 1);
+	for (cp = s, quote = '\0'; *cp; cp++) {
+		if (*cp == quote) {
+			quote = '\0';
 			continue;
 		}
-		if (q) {
-			if (*cp == q) q = '\0';
-			if (q == '\'' || q == '`' || !evaldq) continue;
+#ifdef	CODEEUC
+		else if (isekana(cp, 0)) {
+			cp++;
+			continue;
 		}
-		else if (*cp == '\'' || *cp == '"' || *cp == '`') q = *cp;
+#endif
+		else if (iskanji1(cp, 0)) {
+			cp++;
+			continue;
+		}
+		else if (quote == '\'') continue;
+		else if (ismeta(cp, 0, quote)) {
+			cp++;
+			if (*cp == META && strchr(c, *cp)) return(cp - 1);
+			continue;
+		}
+		else if (quote == '`' || (quote == '"' && !evaldq)) continue;
+		else if (*cp == '\'' || *cp == '"' || *cp == '`') {
+			quote = *cp;
+			continue;
+		}
+
 		if (strchr(c, *cp)) return(cp);
 	}
 	return(NULL);
@@ -123,7 +142,7 @@ char **strp;
 	if ((tmp = strtkbrk(*strp, " \t", 0))) len = tmp - *strp;
 	else len = strlen(*strp);
 	*strp += len;
-	tmp = (char *)malloc2(len + 1);
+	tmp = malloc2(len + 1);
 	strncpy2(tmp, cp, len);
 	return(tmp);
 }
@@ -173,14 +192,14 @@ char *argv[];
 		cp = argv[i];
 	}
 	*argcp = i + 1;
-	return(_evalpath(cp, NULL, 1, 1));
+	return(evalpath(strdup2(cp), 0));
 }
 
 char *evalcomstr(path, delim, ispath)
 char *path, *delim;
 int ispath;
 {
-	char *cp, *next, *tmp, *epath, buf[MAXPATHLEN + 1];
+	char *cp, *next, *tmp, *epath, buf[MAXPATHLEN];
 	int len;
 
 	epath = next = NULL;
@@ -197,14 +216,19 @@ int ispath;
 			cp = next;
 		}
 		if (ispath) {
-			realpath2(tmp, buf);
-			free(tmp);
-			tmp = buf;
+#if	MSDOS || !defined (_NODOSDRIVE)
+			if (*(_dospath(tmp) ? tmp + 2 : tmp) == _SC_) {
+#else
+			if (*tmp == _SC_) {
+#endif
+				realpath2(tmp, buf, 1);
+				free(tmp);
+				tmp = buf;
+			}
 		}
 		epath = (char *)realloc2(epath,
 			len + strlen(tmp) + (next - cp) + 1);
-		strcpy(epath + len, tmp);
-		len += strlen(tmp);
+		len = strcpy2(epath + len, tmp) - epath;
 		if (tmp != buf) free(tmp);
 		strncpy(epath + len, cp, next - cp);
 		len += next - cp;
@@ -219,9 +243,9 @@ char *killmeta(name)
 char *name;
 {
 #ifndef	_NOROCKRIDGE
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 #endif
-	char *cp, buf[MAXPATHLEN * 2 + 2 + 1];
+	char *cp, buf[MAXPATHLEN * 2 + 1];
 	int i;
 #ifndef	CODEEUC
 	int sjis;
@@ -237,13 +261,13 @@ char *name;
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
 #ifndef	CODEEUC
-		if (sjis && issjis1((u_char)(*cp))) buf[i++] = *(cp++);
+		if (sjis && issjis1(*cp) && issjis2(cp[1]))
+			buf[i++] = *(cp++);
 		else
 #endif
 		{
 			if (isctl(*cp) || strchr(METACHAR, *cp)) *buf = '"';
-			if (strchr(DQ_METACHAR, *cp))
-				buf[i++] = '\\';
+			if (strchr(DQ_METACHAR, *cp)) buf[i++] = META;
 		}
 		buf[i] = *cp;
 	}
@@ -262,23 +286,22 @@ VOID adjustpath(VOID_A)
 	path = evalcomstr(cp, ":", 1);
 	if (strpathcmp(path, cp)) {
 		cp = (char *)malloc2(strlen(path) + 5 + 1);
-		strcpy(cp, "PATH=");
-		strcpy(cp + 5, path);
+		strcpy(strcpy2(cp, "PATH="), path);
 		if (putenv2(cp) < 0) error("PATH");
 	}
 	free(path);
 }
 #endif	/* !MSDOS */
 
-char *includepath(buf, plist)
-char *buf, *plist;
+char *includepath(buf, path, plist)
+char *buf, *path, *plist;
 {
-	char *cp, *eol, tmp[MAXPATHLEN + 1];
+	char *cp, *eol, tmp[MAXPATHLEN];
 	int len;
 
 	if (!plist || !*plist) return(NULL);
 	if (!buf) buf = tmp;
-	realpath2(fullpath, buf);
+	realpath2(path, buf, 1);
 	for (cp = plist; cp && *cp; ) {
 		for (len = 0; cp[len]; len++) if (cp[len] == ';') break;
 		eol = (cp[len]) ? &(cp[len + 1]) : NULL;
@@ -293,41 +316,48 @@ char *buf, *plist;
 	return(NULL);
 }
 
-int getargs(args, argv, max)
-char *args, *argv[];
-int max;
+int getargs(s, argvp)
+char *s, ***argvp;
 {
 	char *cp;
 	int i;
 
-	cp = skipspace(args);
-	for (i = 0; i < max && *cp; i++) {
-		argv[i] = geteostr(&cp);
+	*argvp = (char **)malloc2(1 * sizeof(char *));
+	cp = skipspace(s);
+	for (i = 0; *cp; i++) {
+		*argvp = (char **)realloc2(*argvp, (i + 2) * sizeof(char *));
+		(*argvp)[i] = evalpath(geteostr(&cp), 0);
 		cp = skipspace(cp);
 	}
-	argv[i] = NULL;
-
+	(*argvp)[i] = NULL;
 	return(i);
 }
 
-char *catargs(argc, argv, delim)
-int argc;
+VOID freeargs(argv)
+char **argv;
+{
+	int i;
+
+	for (i = 0; argv[i]; i++) free(argv[i]);
+	free(argv);
+}
+
+char *catargs(argv, delim)
 char *argv[];
 int delim;
 {
 	char *cp;
 	int i, len;
 
-	if (argc < 1) return(NULL);
-	len = (delim) ? argc - 1 : 0;
-	for (i = 0; i < argc; i++) len += strlen(argv[i]);
+	if (!argv) return(NULL);
+	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
+	if (i < 1) return(NULL);
+	len += (delim) ? i - 1 : 0;
 	cp = (char *)malloc2(len + 1);
-	strcpy(cp, argv[0]);
-	len = strlen(argv[0]);
-	for (i = 1; i < argc; i++) {
+	len = strcpy2(cp, argv[0]) - cp;
+	for (i = 1; argv[i]; i++) {
 		if (delim) cp[len++] = delim;
-		strcpy(cp + len, argv[i]);
-		len += strlen(argv[i]);
+		len = strcpy2(cp + len, argv[i]) - cp;
 	}
 	return(cp);
 }
@@ -345,15 +375,17 @@ u_char *fp, *dp, *wp;
 	*fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
 	cp = skipnumeric(cp, 0);
 
-	if (*cp == '\'') {
-		*dp = *(++cp);
-		if (!*(cp++) || *(cp++) != '\'') return(NULL);
-	}
-	else if (*cp == '[') {
+	if (*cp == '[') {
 		if ((i = atoi(++cp)) >= 1) *dp = i - 1 + 128;
 		cp = skipnumeric(cp, 0);
 		if (*(cp++) != ']') return(NULL);
 	}
+	else if (*cp == '-') {
+		if (cp[1] == ',' || cp[1] == ':') *dp = *(cp++);
+		else if (cp[1] == '-' && cp[2] && cp[2] != ',' && cp[2] != ':')
+			*dp = *(cp++);
+	}
+	else if (*cp && *cp != ',' && *cp != ':') *dp = *(cp++);
 
 	if (*cp == '-') {
 		cp++;
@@ -361,10 +393,8 @@ u_char *fp, *dp, *wp;
 			*wp = atoi(cp) + 128;
 			cp = skipnumeric(cp, 0);
 		}
-		else if (*cp == '\'') {
-			*wp = (*(++cp)) % 128;
-			if (!*(cp++) || *(cp++) != '\'') return(NULL);
-		}
+		else if (*cp && *cp != ',' && *cp != ':') *wp = *(cp++) % 128;
+		else return(NULL);
 	}
 	return(cp);
 }
@@ -377,7 +407,7 @@ int max;
 #ifdef	USEUNAME
 	struct utsname uts;
 #endif
-	char *cp, *tmp, line[MAXPATHLEN + 1];
+	char *cp, *tmp, line[MAXPATHLEN];
 	int i, j, k, len, unprint;
 
 	unprint = 0;
@@ -391,7 +421,7 @@ int max;
 			if (isekana(promptstr, i)) line[k++] = promptstr[++i];
 			else
 #endif
-			if (iskanji1(promptstr[i])) line[k++] = promptstr[++i];
+			if (iskanji1(promptstr, i)) line[k++] = promptstr[++i];
 			line[k] = '\0';
 		}
 		else switch (promptstr[++i]) {
@@ -478,7 +508,7 @@ int max;
 				len++;
 			}
 #endif
-			else if (iskanji1(*cp)) {
+			else if (iskanji1(cp, 0)) {
 				prompt[j++] = *(cp++);
 				prompt[j] = *cp;
 				len += 2;
@@ -508,7 +538,7 @@ int max;
 				len++;
 			}
 #endif
-			else if (iskanji1(*cp)) {
+			else if (iskanji1(cp, 0)) {
 				j++;
 				cp++;
 				len += 2;
@@ -543,12 +573,14 @@ VOID evalenv(VOID_A)
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
 	if ((sorttype < 0 || (sorttype & 7) > 5)
 	&& (sorttype < 100 || ((sorttype - 100) & 7) > 5))
-#if	((SORTTYPE < 0) || ((SORTTYPE & 7) > 5)) \
-&& ((SORTTYPE < 100) || (((SORTTYPE - 100) & 7) > 5))
-		sorttype = 0;
-#else
 		sorttype = SORTTYPE;
+	displaymode = atoi2(getenv2("FD_DISPLAYMODE"));
+#ifdef	HAVEFLAGS
+	if (displaymode < 0 || displaymode > 15)
+#else
+	if (displaymode < 0 || displaymode > 7)
 #endif
+		displaymode = DISPLAYMODE;
 #ifndef	_NOTREE
 	if ((sorttree = evalbool(getenv2("FD_SORTTREE"))) < 0)
 		sorttree = SORTTREE;
@@ -556,6 +588,12 @@ VOID evalenv(VOID_A)
 #ifndef	_NOWRITEFS
 	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
 #endif
+#if	!MSDOS
+	if ((adjtty = evalbool(getenv2("FD_ADJTTY"))) < 0) adjtty = ADJTTY;
+#endif
+	defcolumns = atoi2(getenv2("FD_COLUMNS"));
+	if (defcolumns < 0 || defcolumns > 5 || defcolumns == 4)
+		defcolumns = COLUMNS;
 	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
 		minfilename = MINFILENAME;
 	if ((histsize[0] = atoi2(getenv2("FD_HISTSIZE"))) < 0)

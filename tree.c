@@ -22,10 +22,6 @@ extern int preparedrv __P_((int));
 
 
 extern char fullpath[];
-#ifndef	_NOARCHIVE
-extern char *archivefile;
-#endif
-extern int subwindow;
 extern int sorton;
 #ifndef	_NODOSDRIVE
 extern int lastdrv;
@@ -36,32 +32,36 @@ extern int sizeinfo;
 #define	TREEFIELD	(((dircountlimit > 0) \
 			? (n_column * 3) / 5 : n_column) - 2)
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
-#define	bufptr(buf, y)	(&(buf[(y - LFILETOP - 1) * (TREEFIELD + 1)]))
+#define	bufptr(y)	(&(tr_scr[(y - LFILETOP - 1) * (TREEFIELD + 1)]))
 
 static int evaldir __P_((char *, int));
-static treelist *maketree __P_((char *, treelist *, int, int *));
-static int _showtree __P_((char *, treelist *, int, int, int));
-static VOID showtree __P_((char *, char *, treelist *, int, int));
-static treelist *_searchtree __P_((char *, treelist *, int, int));
-static treelist *searchtree __P_((char *, treelist *, int, int));
-static int expandtree __P_((treelist *, char *));
-static int expandall __P_((treelist *, char *));
-static treelist *checkmisc __P_((treelist *, treelist *, char *));
-static treelist *treeup __P_((char *, treelist *));
-static treelist *treedown __P_((char *, treelist *));
+static treelist *maketree __P_((char *, treelist *, treelist *, int, int *));
+static int _showtree __P_((treelist *, int, int, int));
+static VOID showtree __P_((VOID_A));
+static VOID treebar __P_((VOID_A));
+static treelist *_searchtree __P_((treelist *, int, int));
+static VOID searchtree __P_((VOID_A));
+static int expandtree __P_((treelist *));
+static int expandall __P_((treelist *));
+static int treeup __P_((VOID_A));
+static int treedown __P_((VOID_A));
 static VOID freetree __P_((treelist *, int));
-static treelist *_tree_search __P_((char *, treelist *, treelist *));
-static int _tree_input __P_((char *, char **, treelist *, treelist **));
+static VOID _tree_search __P_((VOID_A));
+static int _tree_input __P_((VOID_A));
 static char *_tree __P_((VOID_A));
 
 int sorttree = 0;
 int dircountlimit = 0;
+char *treepath = NULL;
 
 static int redraw = 0;
 static int tr_no = 0;
 static int tr_line = 0;
 static int tr_top = 0;
 static int tr_bottom = 0;
+static char *tr_scr = NULL;
+static treelist *tr_root = NULL;
+static treelist *tr_cur = NULL;
 
 
 static int evaldir(dir, disp)
@@ -70,8 +70,8 @@ int disp;
 {
 	DIR *dirp;
 	struct dirent *dp;
-	struct stat status;
-	char path[MAXPATHLEN + 1];
+	struct stat st;
+	char path[MAXPATHLEN];
 	int i, x, y, w, len, limit;
 #if	MSDOS
 	char *cp;
@@ -101,8 +101,8 @@ int disp;
 		if (isdotdir(dp -> d_name)) continue;
 		strcpy(path + len, dp -> d_name);
 		if (limit-- <= 0
-		|| (stat2(path, &status) >= 0
-		&& (status.st_mode & S_IFMT) == S_IFDIR)) {
+		|| (stat2(path, &st) >= 0
+		&& (st.st_mode & S_IFMT) == S_IFDIR)) {
 			if (!disp) {
 				i++;
 				break;
@@ -127,19 +127,20 @@ int disp;
 	return(i);
 }
 
-static treelist *maketree(path, list, level, maxp)
+/*ARGSUSED*/
+static treelist *maketree(path, list, parent, level, maxp)
 char *path;
-treelist *list;
+treelist *list, *parent;
 int level, *maxp;
 {
 	DIR *dirp;
 	struct dirent *dp;
-	struct stat status;
+	struct stat st;
 	char *cp, *dir, *subdir;
 	int i, len;
 
 	if ((level + 1) * DIRFIELD + 2 > TREEFIELD) {
-		*maxp = -1;
+		*maxp = -2;
 		return(NULL);
 	}
 	if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
@@ -157,7 +158,7 @@ int level, *maxp;
 	}
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	else if (_dospath(path)) {
-		dir = (char *)malloc2(3 + 1);
+		dir = malloc2(3 + 1);
 		strncpy2(dir, path, 3);
 		subdir = path + 3;
 		if (!*subdir) subdir = NULL;
@@ -165,7 +166,7 @@ int level, *maxp;
 #endif
 	else {
 		len = (cp = strdelim(path, 0)) ? cp - path : strlen(path);
-		dir = (char *)malloc2(len + 1);
+		dir = malloc2(len + 1);
 		strncpy2(dir, path, len);
 		subdir = (cp) ? cp + 1 : NULL;
 	}
@@ -181,13 +182,18 @@ int level, *maxp;
 	i = 0;
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)
-		|| Xstat(dp -> d_name, &status) < 0
-		|| (status.st_mode & S_IFMT) != S_IFDIR) continue;
+		|| Xstat(dp -> d_name, &st) < 0
+		|| (st.st_mode & S_IFMT) != S_IFDIR) continue;
 		list = b_realloc(list, *maxp, treelist);
 		if (!subdir) {
 			list[*maxp].name = strdup2(dp -> d_name);
 			list[*maxp].sub = NULL;
 			list[*maxp].max = 0;
+#if	!MSDOS
+			list[*maxp].dev = st.st_dev;
+			list[*maxp].ino = st.st_ino;
+			list[*maxp].parent = parent;
+#endif
 			(*maxp)++;
 		}
 		else if (!strnpathcmp(dp -> d_name, subdir, len)
@@ -195,6 +201,11 @@ int level, *maxp;
 			list[0].name = strdup2(dp -> d_name);
 			list[0].sub = &(list[0]);
 			list[0].max = 0;
+#if	!MSDOS
+			list[0].dev = st.st_dev;
+			list[0].ino = st.st_ino;
+			list[0].parent = parent;
+#endif
 			if (++(*maxp) >= 2) break;
 		}
 		else if (!i) {
@@ -202,14 +213,32 @@ int level, *maxp;
 			list[1].name = NULL;
 			list[1].sub = NULL;
 			list[1].max = -1;
+#if	!MSDOS
+			list[1].dev = 0;
+			list[1].ino = 0;
+			list[1].parent = NULL;
+#endif
 			if (++(*maxp) >= 2) break;
 		}
 	}
 	Xclosedir(dirp);
 	if (list) for (i = 0; i < *maxp; i++) {
+#if	!MSDOS
+		treelist *lp;
+
+		if (!(list[i].name)) lp = NULL;
+		else for (lp = parent; lp; lp = lp -> parent)
+			if (lp -> dev == list[i].dev
+			&& lp -> ino == list[i].ino) break;
+		if (lp) {
+			list[i].sub = NULL;
+			list[i].max = 0;
+		}
+		else
+#endif
 		if (list[i].sub)
-			list[i].sub = maketree(subdir, NULL, level + 1,
-				&(list[i].max));
+			list[i].sub = maketree(subdir, NULL, &(list[i]),
+				level + 1, &(list[i].max));
 		else if (list[i].max >= 0 && evaldir(list[i].name, 0))
 			list[i].max = -1;
 	}
@@ -231,8 +260,7 @@ int level, *maxp;
 	return(list);
 }
 
-static int _showtree(buf, list, max, nest, y)
-char *buf;
+static int _showtree(list, max, nest, y)
 treelist *list;
 int max, nest, y;
 {
@@ -245,11 +273,10 @@ int max, nest, y;
 		if (nest > 0) {
 			for (j = tmp; j < y; j++)
 			if (j > LFILETOP && j < LFILEBOTTOM)
-				*(bufptr(buf, j) + (nest - 1) * DIRFIELD)
-					= '|';
+				*(bufptr(j) + (nest - 1) * DIRFIELD) = '|';
 		}
 		if (y > LFILETOP && y < LFILEBOTTOM) {
-			cp = bufptr(buf, y);
+			cp = bufptr(y);
 			if (nest > 0)
 				memcpy(&(cp[(nest - 1) * DIRFIELD]), "+--", 3);
 			if (!(list[i].name)) {
@@ -268,16 +295,12 @@ int max, nest, y;
 		y++;
 		tmp = y;
 		if (w >= DIRFIELD && list[i].sub)
-			y = _showtree(buf, list[i].sub, list[i].max,
-				nest + 1, y);
+			y = _showtree(list[i].sub, list[i].max, nest + 1, y);
 	}
 	return(y);
 }
 
-static VOID showtree(path, buf, list, max, nest)
-char *path, *buf;
-treelist *list;
-int max, nest;
+static VOID showtree(VOID_A)
 {
 	int i;
 
@@ -286,20 +309,38 @@ int max, nest;
 		putterm(l_clear);
 	}
 	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++)
-		sprintf(bufptr(buf, i), "%-*.*s", TREEFIELD, TREEFIELD, " ");
-	_showtree(buf, list, max, nest, tr_top);
+		sprintf(bufptr(i), "%-*.*s", TREEFIELD, TREEFIELD, " ");
+	_showtree(tr_root -> sub, 1, 0, tr_top);
 	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++) {
 		locate(1, i);
 		if (i == tr_line) putterm(t_standout);
-		kanjiputs2(bufptr(buf, i), TREEFIELD, 0);
+		kanjiputs2(bufptr(i), TREEFIELD, 0);
 		if (i == tr_line) putterm(end_standout);
 	}
-	evaldir(path, 1);
+	evaldir(treepath, 1);
 	keyflush();
 }
 
-static treelist *_searchtree(path, list, max, nest)
-char *path;
+static VOID treebar(VOID_A)
+{
+	locate(1, LFILETOP);
+	cputs2("Tree=");
+	kanjiputs2(treepath, n_column - 6, 0);
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	locate(0, 0);
+}
+
+VOID rewritetree(VOID_A)
+{
+	tr_scr = realloc2(tr_scr, (FILEPERLOW - 1) * (TREEFIELD + 1));
+	searchtree();
+	showtree();
+	treebar();
+	tflush();
+}
+
+static treelist *_searchtree(list, max, nest)
 treelist *list;
 int max, nest;
 {
@@ -310,58 +351,51 @@ int max, nest;
 	w = TREEFIELD - (nest * DIRFIELD) - 1;
 	for (i = 0; i < max; i++) {
 		if (tr_bottom == tr_line) {
-			lp = (treelist *)-1;
+			lp = tr_root;
 			tr_no = i;
-			if (list[i].name) strcpy(path, list[i].name);
-			else *path = '\0';
+			if (list[i].name) strcpy(treepath, list[i].name);
+			else *treepath = '\0';
 		}
 		tr_bottom++;
 		if (w >= DIRFIELD && list[i].sub) {
-			tmplp = _searchtree(path, list[i].sub, list[i].max,
+			tmplp = _searchtree(list[i].sub, list[i].max,
 				nest + 1);
 			if (tmplp) {
-				lp = (tmplp == (treelist *)-1)
-					? &(list[i]) : tmplp;
+				lp = (tmplp == tr_root) ? &(list[i]) : tmplp;
 				len = strlen(list[i].name);
 #if	MSDOS
 				if (!_dospath(list[i].name)
 				|| list[i].name[2] != _SC_) len++;
-				for (j = strlen(path); j >= 0; j--)
-					path[j + len] = path[j];
-				memcpy(path, list[i].name, len - 1);
+				for (j = strlen(treepath); j >= 0; j--)
+					treepath[j + len] = treepath[j];
+				memcpy(treepath, list[i].name, len - 1);
 #else
 				if (*list[i].name != _SC_
 #ifndef	_NODOSDRIVE
 				&& !_dospath(list[i].name)
 #endif
 				) len++;
-				for (j = strlen(path); j >= 0; j--)
-					path[j + len] = path[j];
+				for (j = strlen(treepath); j >= 0; j--)
+					treepath[j + len] = treepath[j];
 				if (*list[i].name != _SC_)
-					memcpy(path, list[i].name, len - 1);
+					memcpy(treepath, list[i].name,
+						len - 1);
 #endif
-				path[len - 1] = _SC_;
+				treepath[len - 1] = _SC_;
 			}
 		}
 	}
 	return(lp);
 }
 
-static treelist *searchtree(path, list, max, nest)
-char *path;
-treelist *list;
-int max, nest;
+static VOID searchtree(VOID_A)
 {
-	treelist *lp;
-
 	tr_bottom = tr_top;
-	lp = _searchtree(path, list, max, nest);
-	return((lp == (treelist *)-1) ? list : lp);
+	tr_cur = _searchtree(tr_root -> sub, 1, 0);
 }
 
-static int expandtree(list, path)
+static int expandtree(list)
 treelist *list;
-char *path;
 {
 	treelist *lp, *lptmp;
 	char *cp;
@@ -376,21 +410,23 @@ char *path;
 			if ((list -> sub[i]).name) free((list -> sub[i]).name);
 	}
 
-	if (_chdir2(path) < 0) {
-		if (list -> sub) error(path);
+	if (_chdir2(treepath) < 0) {
+		if (list -> sub) error(treepath);
 		list -> max = 0;
 		return(1);
 	}
-	for (cp = path, i = 0; (cp = strdelim(cp, 0)); cp++, i++);
-	lptmp = maketree(".", list -> sub, i, &(list -> max));
+	for (cp = treepath, i = 0; (cp = strdelim(cp, 0)); cp++, i++);
+	lptmp = maketree(".", list -> sub, list, i, &(list -> max));
 	if (_chdir2(fullpath) < 0) error(fullpath);
 	if (list -> max < 0) {
-		if (list -> sub) {
+		i = (list -> max < -1) ? 1 : 0;
+		if (!(list -> sub)) list -> max = -1;
+		else {
 			list -> max = 2;
 			(list -> sub[1]).name = NULL;
 			free(lp);
 		}
-		return(0);
+		return(i);
 	}
 	if (list -> sub) {
 		for (i = 0; i < list -> max; i++)
@@ -409,63 +445,39 @@ char *path;
 	return(1);
 }
 
-static int expandall(list, path)
+static int expandall(list)
 treelist *list;
-char *path;
 {
 	char *cp;
 	int i;
 
 	if (!list || list -> max >= 0) return(1);
-	if (!expandtree(list, path)) return(0);
+	if (!expandtree(list)) return(0);
 	if (!(list -> sub)) return(1);
-	cp = path + strlen(path);
-	if (cp > path + 1) {
-		strcatdelim(path);
+	cp = treepath + strlen(treepath);
+	if (cp > treepath + 1) {
+		strcatdelim(treepath);
 		cp++;
 	}
 	for (i = 0; i < list -> max; i++) {
 		strcpy(cp, (list -> sub[i]).name);
-		if (!expandall(&(list -> sub[i]), path)) return(0);
+		if (!expandall(&(list -> sub[i]))) return(0);
 	}
 	return(1);
 }
 
-static treelist *checkmisc(list, lp, path)
-treelist *list, *lp;
-char *path;
+static int treeup(VOID_A)
 {
-	char *cp;
-
-	if (!lp || !(lp -> sub)
-	|| (lp -> sub[tr_no]).max >= 0
-	|| ((lp -> sub[tr_no]).name)) return(NULL);
-
-	waitmes();
-	if ((cp = strrdelim(path, 0)) == strdelim(path, 0)) cp++;
-	*cp = '\0';
-	if (!(expandtree(lp, path))) return((treelist *)-1);
-	return(searchtree(path, list, 1, 0));
-}
-
-static treelist *treeup(path, list)
-char *path;
-treelist *list;
-{
-	treelist *lp;
-
 	if (tr_line > LFILETOP + 1) tr_line--;
 	else if (tr_top <= LFILETOP) tr_top++;
-	else return(NULL);
-	lp = searchtree(path, list, 1, 0);
-	return(lp);
+	else return(-1);
+	searchtree();
+	return(0);
 }
 
-static treelist *treedown(path, list)
-char *path;
-treelist *list;
+static int treedown(VOID_A)
 {
-	treelist *lp, *lptmp;
+	char *cp;
 	int oy, otop;
 
 	oy = tr_line;
@@ -473,19 +485,25 @@ treelist *list;
 	if (tr_line < tr_bottom - 1 && tr_line < LFILEBOTTOM - 2)
 		tr_line++;
 	else if (tr_bottom >= LFILEBOTTOM) tr_top--;
-	else return(NULL);
-	lp = searchtree(path, list, 1, 0);
-	lptmp = checkmisc(list, lp, path);
-	if (lptmp) {
-		if ((lp = lptmp) != (treelist *)-1) redraw = 1;
-		else {
-			tr_line = oy;
-			tr_top = otop;
-			searchtree(path, list, 1, 0);
-			lp = NULL;
-		}
+	else return(-1);
+	searchtree();
+
+	if (!tr_cur || !(tr_cur -> sub)
+	|| (tr_cur -> sub[tr_no]).max >= 0
+	|| ((tr_cur -> sub[tr_no]).name)) return(0);
+
+	waitmes();
+	if ((cp = strrdelim(treepath, 0)) == strdelim(treepath, 0)) cp++;
+	*cp = '\0';
+	if (!expandtree(tr_cur)) {
+		tr_line = oy;
+		tr_top = otop;
+		searchtree();
+		return(-1);
 	}
-	return(lp);
+	searchtree();
+	redraw = 1;
+	return(0);
 }
 
 static VOID freetree(list, max)
@@ -501,166 +519,142 @@ int max;
 	free(list);
 }
 
-static treelist *_tree_search(path, list, lp)
-char *path;
-treelist *list, *lp;
+static VOID _tree_search(VOID_A)
 {
-	treelist *lptmp;
 	int oy, otop;
 
 	oy = tr_line;
 	otop = tr_top;
 
-	while (strpathcmp(fullpath, path)) {
-		lptmp = treeup(path, list);
-		if (lptmp) lp = lptmp;
-		else break;
-	}
-	if (strpathcmp(fullpath, path)) {
+	while (strpathcmp(fullpath, treepath)) if (treeup() < 0) {
 		tr_top = otop;
 		tr_line = oy;
-		lp = searchtree(path, list, 1, 0);
+		searchtree();
 		do {
-			lptmp = treedown(path, list);
-			if (lptmp) lp = lptmp;
-			else break;
-		} while (strpathcmp(fullpath, path));
+			if (treedown() < 0) break;
+		} while (strpathcmp(fullpath, treepath));
+		break;
 	}
-
-	return(lp);
 }
 
-static int _tree_input(path, cpp, list, lpp)
-char *path, **cpp;
-treelist *list, **lpp;
+static int _tree_input(VOID_A)
 {
-	treelist *olp, *lptmp;
+	treelist *old;
 	char *cwd;
 	int ch, tmp, half;
 
-	olp = *lpp;
+	keyflush();
+#ifdef	_NOEDITMODE
+	ch = Xgetkey(SIGALRM);
+#else
+	Xgetkey(-1);
+	ch = Xgetkey(SIGALRM);
+	Xgetkey(-1);
+#endif
 
-	switch (ch = Xgetkey(SIGALRM)) {
+	old = tr_cur;
+	switch (ch) {
 		case K_UP:
-			lptmp = treeup(path, list);
-			if (lptmp) *lpp = lptmp;
+			treeup();
 			break;
 		case K_DOWN:
-			lptmp = treedown(path, list);
-			if (lptmp) *lpp = lptmp;
+			treedown();
 			break;
 		case K_PPAGE:
 			half = (FILEPERLOW - 1) / 2;
-			tr_line = LFILETOP + half + 1;
+			tmp = LFILETOP + half + 1 - tr_line;
 			if (tr_top + half > LFILETOP + 1)
 				half = LFILETOP - tr_top + 1;
 			if (half > 0) tr_top += half;
-			*lpp = searchtree(path, list, 1, 0);
+			for (;tmp > 0; tmp--) if (treedown() < 0) break;
+			tr_line += tmp;
+			searchtree();
 			break;
 		case K_NPAGE:
 			half = (FILEPERLOW - 1) / 2;
 			tmp = half + (LFILETOP + half + 1) - tr_line;
-			while (tmp-- > 0) {
-				lptmp = treedown(path, list);
-				if (lptmp) *lpp = lptmp;
-				else break;
-			}
+			while (tmp-- > 0) if (treedown() < 0) break;
 			tmp = tr_line - (LFILETOP + half + 1);
 			tr_line = LFILETOP + half + 1;
 			if (tr_bottom - tmp < LFILEBOTTOM - 1)
 				tmp = tr_bottom - LFILEBOTTOM + 1;
 			tr_top -= tmp;
-			*lpp = searchtree(path, list, 1, 0);
+			searchtree();
 			break;
 		case K_BEG:
 		case K_HOME:
 		case '<':
 			tr_line = tr_top = LFILETOP + 1;
-			*lpp = searchtree(path, list, 1, 0);
+			searchtree();
 			break;
 		case K_EOL:
 		case K_END:
 		case '>':
-			for (;;) {
-				lptmp = treedown(path, list);
-				if (lptmp) *lpp = lptmp;
-				else break;
-			}
+			while (treedown() >= 0);
 			break;
 		case '?':
-			*lpp = _tree_search(path, list, *lpp);
+			_tree_search();
 			break;
 		case '(':
 			tmp = tr_no - 1;
 			do {
-				lptmp = treeup(path, list);
-				if (lptmp) *lpp = lptmp;
-				else break;
-			} while (tmp >= 0 && (*lpp != olp || tr_no != tmp));
+				if (treeup() < 0) break;
+			} while (tmp >= 0 && (tr_cur != old || tr_no != tmp));
 			break;
 		case ')':
 			tmp = tr_no + 1;
 			do {
-				lptmp = treedown(path, list);
-				if (lptmp) *lpp = lptmp;
-				else break;
-			} while (tmp < olp -> max
-			&& (*lpp != olp || tr_no != tmp));
+				if (treedown() < 0) break;
+			} while (tmp < old -> max
+			&& (tr_cur != old || tr_no != tmp));
 			break;
 		case '\t':
-			if (!(*lpp) || !((*lpp) -> sub)
-			|| ((*lpp) -> sub[tr_no]).max >= 0) break;
+			if (!tr_cur || !(tr_cur -> sub)
+			|| (tr_cur -> sub[tr_no]).max >= 0) break;
 			waitmes();
-			expandall(&((*lpp) -> sub[tr_no]), path);
-			*lpp = searchtree(path, list, 1, 0);
+			expandall(&(tr_cur -> sub[tr_no]));
+			searchtree();
 			redraw = 1;
 			break;
 		case K_RIGHT:
-			if (!(*lpp) || !((*lpp) -> sub)) break;
-			if (((*lpp) -> sub[tr_no]).max >= 0) {
-				if (!(((*lpp) -> sub[tr_no]).sub)) break;
-				lptmp = treedown(path, list);
-				if (lptmp) *lpp = lptmp;
-				break;
+			if (!tr_cur || !(tr_cur -> sub)) break;
+			if ((tr_cur -> sub[tr_no]).max >= 0) {
+				if (!((tr_cur -> sub[tr_no]).sub)) break;
+				if (treedown() < 0) break;
 			}
 			waitmes();
-			expandtree(&((*lpp) -> sub[tr_no]), path);
-			*lpp = searchtree(path, list, 1, 0);
+			expandtree(&(tr_cur -> sub[tr_no]));
+			searchtree();
 			redraw = 1;
 			break;
 		case K_LEFT:
-			if ((*lpp) && ((*lpp) -> sub)
-			&& ((*lpp) -> sub[tr_no]).sub) {
-				freetree(((*lpp) -> sub[tr_no]).sub,
-					((*lpp) -> sub[tr_no]).max);
-				((*lpp) -> sub[tr_no]).max = -1;
-				((*lpp) -> sub[tr_no]).sub = NULL;
+			if (tr_cur && (tr_cur -> sub)
+			&& (tr_cur -> sub[tr_no]).sub) {
+				freetree((tr_cur -> sub[tr_no]).sub,
+					(tr_cur -> sub[tr_no]).max);
+				(tr_cur -> sub[tr_no]).max = -1;
+				(tr_cur -> sub[tr_no]).sub = NULL;
 				redraw = 1;
 				break;
 			}
 		case K_BS:
 			do {
-				lptmp = treeup(path, list);
-				if (lptmp) *lpp = lptmp;
-				else break;
-			} while (&((*lpp) -> sub[tr_no]) != olp);
+				if (treeup() < 0) break;
+			} while (&(tr_cur -> sub[tr_no]) != old);
 			break;
 		case 'l':
-			ch = '\0';
 			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, 1))
 			|| !*(cwd = evalpath(cwd, 1))) break;
 			if (chdir2(cwd) >= 0) {
 				free(cwd);
-				return('l');
+				break;
 			}
 			warning(-1, cwd);
+			ch = '\0';
 			free(cwd);
 			break;
 		case CTRL('L'):
-			*cpp = (char *)realloc2(*cpp,
-				(FILEPERLOW - 1) * (TREEFIELD + 1));
-			*lpp = searchtree(path, list, 1, 0);
-			redraw = 1;
+			rewritefile(1);
 			break;
 		case ESC:
 			break;
@@ -668,13 +662,11 @@ treelist *list, **lpp;
 			if (ch < 'A' || ch > 'Z') break;
 			if (tr_line == tr_bottom - 1) {
 				tr_line = tr_top = LFILETOP + 1;
-				*lpp = searchtree(path, list, 1, 0);
+				searchtree();
 			}
 			else do {
-				lptmp = treedown(path, list);
-				if (lptmp) *lpp = lptmp;
-				else break;
-				tmp = toupper2(*(((*lpp) -> sub[tr_no]).name));
+				if (treedown() < 0) break;
+				tmp = toupper2(*((tr_cur -> sub[tr_no]).name));
 			} while (ch != tmp);
 			break;
 	}
@@ -684,31 +676,48 @@ treelist *list, **lpp;
 
 static char *_tree(VOID_A)
 {
-	treelist *list, *lp;
-	char *cp, *cwd, path[MAXPATHLEN + 1];
+#if	!MSDOS
+	struct stat st;
+#endif
+	char *cp, *cwd, path[MAXPATHLEN];
 	int ch, oy, otop;
 
 	keyflush();
 	waitmes();
-	list = (treelist *)malloc2(sizeof(treelist));
+	tr_root = (treelist *)malloc2(sizeof(treelist));
+	tr_root -> name = NULL;
+	tr_root -> max = 1;
+	tr_root -> sub = tr_cur = (treelist *)malloc2(sizeof(treelist));
+#if	!MSDOS
+	tr_root -> ino = 0;
+	tr_root -> parent = NULL;
+#endif
+	treepath = path;
 #if	MSDOS
-	list[0].name = (char *)malloc2(3 + 1);
+	tr_cur[0].name = malloc2(3 + 1);
 	strcpy(path, fullpath);
-	strncpy2(list[0].name, path, 3);
+	strncpy2(tr_cur[0].name, path, 3);
 #else	/* !MSDOS */
 # ifndef	_NODOSDRIVE
 	if (dospath("", path)) {
-		list[0].name = (char *)malloc2(3 + 1);
-		strncpy2(list[0].name, path, 3);
+		tr_cur[0].name = malloc2(3 + 1);
+		strncpy2(tr_cur[0].name, path, 3);
 	}
 	else
 # endif
 	{
 		strcpy(path, fullpath);
-		list[0].name = strdup2(_SS_);
+		tr_cur[0].name = strdup2(_SS_);
 	}
+	if (Xstat(tr_cur[0].name, &st) < 0) tr_cur[0].dev = tr_cur[0].ino = 0;
+	else {
+		tr_cur[0].dev = st.st_dev;
+		tr_cur[0].ino = st.st_ino;
+	}
+	tr_cur[0].parent = NULL;
 #endif	/* !MSDOS */
-	list[0].sub = maketree(path, NULL, 0, &(list[0].max));
+	tr_cur[0].sub = maketree(path, NULL, &(tr_cur[0]),
+		0, &(tr_cur[0].max));
 
 	tr_line = 0;
 #if	MSDOS
@@ -719,52 +728,48 @@ static char *_tree(VOID_A)
 	if (_dospath(cwd)) cwd += 2;
 #endif
 #endif	/* !MSDOS */
-	if (strcmp(cwd, _SS_))
-		for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
-			if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD) break;
+	if (!strcmp(cwd, _SS_));
+	else for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
+		if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD
+		|| !(tr_cur = &(tr_cur -> sub[0]))) break;
 	tr_line += (tr_top = LFILETOP + 1);
 	if (tr_line >= LFILEBOTTOM - 2) {
 		tr_top += LFILEBOTTOM - 2 - tr_line;
 		tr_line = LFILEBOTTOM - 2;
 	}
 
-	cp = (char *)malloc2((FILEPERLOW - 1) * (TREEFIELD + 1));
-	lp = searchtree(path, list, 1, 0);
-	showtree(path, cp, list, 1, 0);
+	tr_scr = malloc2((FILEPERLOW - 1) * (TREEFIELD + 1));
+	searchtree();
+	showtree();
 	do {
-		locate(1, LFILETOP);
-		cputs2("Tree=");
-		kanjiputs2(path, n_column - 6, 0);
-		locate(0, LMESLINE);
-		putterm(l_clear);
-		locate(0, 0);
-		tflush();
+		treebar();
 		oy = tr_line;
 		otop = tr_top;
 		redraw = 0;
+		tflush();
 
-		if ((ch = _tree_input(path, &cp, list, &lp)) == 'l') {
-			free(cp);
-			freetree(list, 1);
+		if ((ch = _tree_input()) == 'l') {
+			free(tr_scr);
+			freetree(tr_root, 1);
 			return(fullpath);
 		}
 
-		if (redraw || tr_top != otop)
-			showtree(path, cp, list, 1, 0);
+		if (redraw || tr_top != otop) showtree();
 		else if (oy != tr_line) {
 			locate(1, tr_line);
 			putterm(t_standout);
-			kanjiputs2(bufptr(cp, tr_line), TREEFIELD, 0);
+			kanjiputs2(bufptr(tr_line), TREEFIELD, 0);
 			putterm(end_standout);
 			locate(1, oy);
 			if (stable_standout) putterm(end_standout);
-			else kanjiputs2(bufptr(cp, oy), TREEFIELD, 0);
+			else kanjiputs2(bufptr(oy), TREEFIELD, 0);
 			evaldir(path, 1);
 		}
 	} while (ch != ESC && ch != CR);
 
-	free(cp);
-	freetree(list, 1);
+	free(tr_scr);
+	freetree(tr_root, 1);
+	treepath = NULL;
 	if (ch == ESC) return(NULL);
 	return(strdup2(path));
 }
@@ -773,13 +778,9 @@ static char *_tree(VOID_A)
 char *tree(cleanup, ddp)
 int cleanup, *ddp;
 {
-	char *path, *treepath;
+	char *path, *dupfullpath;
 
-	subwindow = 1;
-#ifndef	_NOEDITMODE
-	Xgetkey(-1);
-#endif
-	treepath = strdup2(fullpath);
+	dupfullpath = strdup2(fullpath);
 	do {
 		path = _tree();
 	} while (path == fullpath);
@@ -792,20 +793,11 @@ int cleanup, *ddp;
 		*ddp = lastdrv;
 		lastdrv = -1;
 #endif
-		if (chdir2(treepath) < 0) error(treepath);
 	}
-	free(treepath);
+	if (chdir2(dupfullpath) < 0) error(dupfullpath);
+	free(dupfullpath);
 
-	if (cleanup) {
-#ifndef	_NOARCHIVE
-		if (archivefile) rewritearc(1);
-#endif
-		rewritefile(1);
-	}
-	subwindow = 0;
-#ifndef	_NOEDITMODE
-	Xgetkey(-1);
-#endif
+	if (cleanup) rewritefile(1);
 	return(path);
 }
 #endif	/* !_NOTREE */

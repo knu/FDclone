@@ -100,6 +100,13 @@ STRICTSTDC
 	大量に出るときに定義して下さい。
 NOVOID	void 型を用いることができません。
 NOUID_T	uid_t, gid_t が <sys/types.h> で定義されていません。
+DECLSIGLIST
+	大域変数 sys_siglist[] が <signal.h> の中で宣言され
+	ており、ソースリスト中で改めて宣言する必要がありませ
+	ん。
+NOSIGLIST
+	大域変数 sys_siglist[] が標準ライブラリの中に存在し
+	ません。
 DECLERRLIST
 	大域変数 sys_errlist[] が <stdio.h> または <errno.h>
 	の中で宣言されており、ソースリスト中で改めて宣言する
@@ -244,6 +251,24 @@ USEMKTIME
 USEUNAME
 	ホスト名取得関数 uname(2) を gethostname(2) の代わり
 	に用います。
+USEWAITPID
+	ソフトウェアシグナル待ち関数 waitpid(2) を wait3(2)
+	の代わりに用います。
+USERESOURCEH
+	リソース情報を取得・設定する際に <sys/resource.h> で
+	定義された関数群を用います。
+USEULIMITH
+	リソース情報を取得・設定する際に <ulimit.h> で定義さ
+	れた関数群を用います。
+USETIMESH
+	プロセス時間情報を取得する際に <sys/times.h> で定義
+	された関数群を用います。
+GETPGRPVOID
+	プロセスグループ取得関数 getpgrp(2) が引数を持ちませ
+	ん。
+USESETPGID
+	プロセスグループ設定関数 setpgid(2) を getpgrp(2) の
+	代わりに用います。
 SIGARGINT
 	ソフトウェアシグナル関数 signal(3) の第 2 引数として、
 	int 型を返す関数へのポインタが用いられます。

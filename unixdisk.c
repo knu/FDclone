@@ -5,6 +5,8 @@
  */
 
 #include <stdio.h>
+#include <fcntl.h>
+#include <io.h>
 #include "machine.h"
 #include "unixdisk.h"
 
@@ -18,19 +20,41 @@
 
 #include "dosdisk.h"
 
+#ifdef	LSI_C
+#include <jctype.h>
+#define	issjis1(c)	iskanji(c)
+#define	issjis2(c)	iskanji2(c)
+#endif
+
 #ifndef	issjis1
-#define	issjis1(c)	((0x81 <= (c) && (c) <= 0x9f) \
-			|| (0xe0 <= (c) && (c) <= 0xfc))
+#define	issjis1(c)	(((u_char)(c) >= 0x81 && (u_char)(c) <= 0x9f) \
+			|| ((u_char)(c) >= 0xe0 && (u_char)(c) <= 0xfc))
+#endif
+#ifndef	issjis2
+#define	issjis2(c)	((u_char)(c) >= 0x40 && (u_char)(c) <= 0xfc \
+			&& (u_char)(c) != 0x7f)
+#endif
+
+#ifndef	iseuc
+#define	iseuc(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xfe)
+#endif
+
+#ifdef	CODEEUC
+#define	iskanji1(s, i)	(iseuc((s)[i]) && iseuc((s)[(i) + 1]))
+#else
+#define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
 #endif
 
 #ifdef	FD
 extern int toupper2 __P_((int));
 extern int isdelim __P_((char *, int));
 extern char *strcatdelim __P_((char *));
+extern char *strcatdelim2 __P_((char *, char *, char *));
 #else
 static int toupper2 __P_((int));
 static int isdelim __P_((char *, int));
 static char *strcatdelim __P_((char *));
+static char *strcatdelim2 __P_((char *, char *, char *));
 #endif
 
 static int seterrno __P_((u_short));
@@ -54,10 +78,10 @@ static int lockdrive __P_((int));
 static int unlockdrive __P_((int, int));
 static int dosrawdiskio __P_((int, u_long, u_char *, int, int, int));
 #endif
-static int dos_findfirst __P_((char *, struct dosfind_t *, u_short));
+static int dos_findfirst __P_((char *, u_short, struct dosfind_t *));
 static int dos_findnext __P_((struct dosfind_t *));
 #ifndef	_NOUSELFN
-static long lfn_findfirst __P_((char *, struct lfnfind_t *, u_short));
+static long lfn_findfirst __P_((char *, u_short, struct lfnfind_t *));
 static int lfn_findnext __P_((u_short, struct lfnfind_t *));
 static int lfn_findclose __P_((u_short));
 #endif
@@ -70,8 +94,6 @@ static int putdostime __P_((u_short *, u_short *, time_t));
 
 #ifndef	_NODOSDRIVE
 int dosdrive = 0;
-extern int lastdrive;
-extern int dependdosfunc;
 static drvinfo drvlist['Z' - 'A' + 1];
 static int maxdrive = -1;
 #endif
@@ -83,7 +105,7 @@ static int unixerrlist[] = {
 	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
 	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, 0, EACCES, EEXIST
 };
-#if !defined (DJGPP) && !defined (_NODOSDRIVE)
+#if	!defined (DJGPP) && !defined (_NODOSDRIVE)
 static u_char int25bin[] = {
 	0x1e,				/* 0000: push ds */
 	0x06,				/* 0001: push es */
@@ -139,11 +161,11 @@ int ptr;
 
 	if (ptr < 0 || s[ptr] != _SC_) return(0);
 	if (--ptr < 0) return(1);
-	if (!ptr) return(!issjis1((u_char)s[0]));
+	if (!ptr) return(!iskanji1(s, 0));
 
-	for (i = 0; s[i] && i < ptr; i++) if (issjis1((u_char)s[i])) i++;
+	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
 	if (!s[i] || i > ptr) return(1);
-	return(!issjis1((u_char)s[i]));
+	return(!iskanji1(s, i));
 }
 
 static char *strcatdelim(s)
@@ -152,17 +174,55 @@ char *s;
 	char *cp;
 	int i;
 
+	if (_dospath(s)) i = 2;
+	else i = 0;
+	if (s[i] == _SC_ && !s[i + 1]) return(&(s[i + 1]));
+
 	cp = NULL;
-	for (i = 0; s[i]; i++) {
+	for (; s[i]; i++) {
 		if (s[i] == _SC_ && !cp) cp = &(s[i]);
 		else cp = NULL;
-		if (issjis1((u_char)(s[i])) && !s[++i]) break;
+		if (iskanji1(s, i)) i++;
 	}
 	if (!cp) *(cp = &(s[i])) = _SC_;
 	*(++cp) = '\0';
 	return(cp);
 }
-#endif
+
+static char *strcatdelim2(buf, s1, s2)
+char *buf, *s1, *s2;
+{
+	char *cp;
+	int i;
+
+	if (_dospath(s1)) {
+		buf[0] = s1[0];
+		buf[1] = s1[1];
+		i = 2;
+	}
+	else i = 0;
+	if (s1[i] == _SC_ && !s1[i + 1]) *(cp = &(buf[i])) = _SC_;
+	else {
+		cp = NULL;
+		for (; s1[i]; i++) {
+			buf[i] = s1[i];
+			if (s1[i] == _SC_) {
+				if (!cp) cp = &(buf[i]);
+				continue;
+			}
+			cp = NULL;
+			if (iskanji1(s, i)) {
+				if (!s1[++i]) break;
+				buf[i] = s1[i];
+			}
+		}
+		if (!cp) *(cp = &(buf[i])) = _SC_;
+	}
+	if (s2) for (i = 0; s2[i]; i++) *(++cp) = s2[i];
+	*(++cp) = '\0';
+	return(cp);
+}
+#endif	/* !FD */
 
 static int seterrno(doserr)
 u_short doserr;
@@ -190,7 +250,7 @@ int offset;
 static char *duplpath(path)
 char *path;
 {
-	static char buf[MAXPATHLEN + 1];
+	static char buf[MAXPATHLEN];
 	int i, j, ps;
 
 	if (path == buf) return(path);
@@ -199,16 +259,16 @@ char *path;
 		buf[j++] = path[i++];
 		buf[j++] = path[i++];
 	}
-	if (path[i] == '\\') buf[j++] = path[i++];
+	if (path[i] == _SC_) buf[j++] = path[i++];
 	for (; path[i]; i++) {
-		if (path[i] == '\\') ps = 1;
+		if (path[i] == _SC_) ps = 1;
 		else {
 			if (ps) {
 				ps = 0;
-				buf[j++] = '\\';
+				buf[j++] = _SC_;
 			}
 			buf[j++] = path[i];
-			if (issjis1((u_char)path[i])) buf[j++] = path[++i];
+			if (iskanji1(path, i)) buf[j++] = path[++i];
 		}
 	}
 	buf[j] = '\0';
@@ -418,7 +478,7 @@ int drive;
 	reg.x.si = PTR_OFF(pathname, 0);
 	if (int21call(&reg, &sreg) < 0) return(NULL);
 #ifdef	DJGPP
-	dosmemget(__tb, MAXPATHLEN, pathname);
+	dosmemget(__tb, MAXPATHLEN - 3, pathname);
 #endif
 	return(pathname);
 }
@@ -457,7 +517,7 @@ char *path, *alias;
 	if ((i = supportLFN(path)) <= 0) {
 # ifndef	_NODOSDRIVE
 		if (i == -1) {
-			char buf[MAXPATHLEN + 1];
+			char buf[MAXPATHLEN];
 
 			dependdosfunc = 0;
 			if (dosshortname(regpath(path, buf), alias))
@@ -493,7 +553,7 @@ char *unixrealpath(path, resolved)
 char *path, *resolved;
 {
 #ifndef	_NODOSDRIVE
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 #endif
 	int i, j;
 
@@ -579,7 +639,6 @@ char *path, *resolved;
 char *preparefile(path, alias)
 char *path, *alias;
 {
-	char *cp;
 	int i;
 
 	path = duplpath(path);
@@ -590,7 +649,7 @@ char *path, *alias;
 	if (i < -2) return(path);
 #endif	/* !_NODOSDRIVE */
 
-	if ((cp = shortname(path, alias))) return(cp);
+	if (shortname(path, alias)) return(alias);
 #ifndef	_NODOSDRIVE
 	else if (i < 0 && errno == EACCES) return(path);
 #endif
@@ -601,7 +660,7 @@ char *path, *alias;
 char *adjustfname(path)
 char *path;
 {
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 	int i;
 
 	if (supportLFN(path) > 0) {
@@ -1373,10 +1432,10 @@ int n, size, iswrite;
 #endif	/* !_NODOSDRIVE */
 #endif	/* !_NOUSELFN */
 
-static int dos_findfirst(path, result, attr)
+static int dos_findfirst(path, attr, result)
 char *path;
-struct dosfind_t *result;
 u_short attr;
+struct dosfind_t *result;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
@@ -1424,10 +1483,10 @@ struct dosfind_t *result;
 }
 
 #ifndef	_NOUSELFN
-static long lfn_findfirst(path, result, attr)
+static long lfn_findfirst(path, attr, result)
 char *path;
-struct lfnfind_t *result;
 u_short attr;
+struct lfnfind_t *result;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
@@ -1486,7 +1545,7 @@ DIR *unixopendir(dir)
 char *dir;
 {
 	DIR *dirp;
-	char path[MAXPATHLEN + 1];
+	char *cp, path[MAXPATHLEN];
 	int i;
 
 #ifndef	_NODOSDRIVE
@@ -1498,7 +1557,7 @@ char *dir;
 #endif
 
 	if (!unixrealpath(dir, path)) return(NULL);
-	i = (strcatdelim(path) - path) - 1;
+	cp = strcatdelim(path);
 
 	if (!(dirp = (DIR *)malloc(sizeof(DIR)))) return(NULL);
 	dirp -> dd_off = 0;
@@ -1506,22 +1565,21 @@ char *dir;
 #ifndef	_NOUSELFN
 	if (supportLFN(path) > 0) {
 		dirp -> dd_id = DID_IFLFN;
-		strcat(path, "*");
+		strcpy(cp, "*");
 		dirp -> dd_buf = (char *)malloc(sizeof(struct lfnfind_t));
 		if (!dirp -> dd_buf) {
 			free(dirp);
 			return(NULL);
 		}
-		if (i > 3) i = -1;
-		else i = dos_findfirst(path,
-			(struct dosfind_t *)dirp -> dd_buf, DS_IFLABEL);
+		if (cp - 1 > path + 3) i = -1;
+		else i = dos_findfirst(path, DS_IFLABEL,
+			(struct dosfind_t *)(dirp -> dd_buf));
 		if (i >= 0) dirp -> dd_id |= DID_IFLABEL;
 		else {
 			long fd;
 
-			fd = lfn_findfirst(path,
-				(struct lfnfind_t *)dirp -> dd_buf,
-				SEARCHATTRS);
+			fd = lfn_findfirst(path, SEARCHATTRS,
+				(struct lfnfind_t *)(dirp -> dd_buf));
 			if (fd >= 0) {
 				dirp -> dd_fd = (u_short)fd;
 				i = 0;
@@ -1536,19 +1594,18 @@ char *dir;
 #endif	/* !_NOUSELFN */
 	{
 		dirp -> dd_id = DID_IFNORMAL;
-		strcat(path, "*.*");
+		strcpy(cp, "*.*");
 		dirp -> dd_buf = (char *)malloc(sizeof(struct dosfind_t));
 		if (!dirp -> dd_buf) {
 			free(dirp);
 			return(NULL);
 		}
-		if (i > 3) i = -1;
-		else i = dos_findfirst(path,
-			(struct dosfind_t *)dirp -> dd_buf, DS_IFLABEL);
+		if (cp - 1 > path + 3) i = -1;
+		else i = dos_findfirst(path, DS_IFLABEL,
+			(struct dosfind_t *)(dirp -> dd_buf));
 		if (i >= 0) dirp -> dd_id |= DID_IFLABEL;
-		else i = dos_findfirst(path,
-			(struct dosfind_t *)dirp -> dd_buf,
-			(SEARCHATTRS | DS_IFLABEL));
+		else i = dos_findfirst(path, (SEARCHATTRS | DS_IFLABEL),
+			(struct dosfind_t *)(dirp -> dd_buf));
 	}
 
 	if (i < 0) {
@@ -1558,7 +1615,6 @@ char *dir;
 			if (dirp -> dd_id & DID_IFLFN)
 				lfn_findclose(dirp -> dd_fd);
 #endif
-			dirp -> dd_id &= ~DID_IFLFN;
 			free(dirp -> dd_buf);
 			free(dirp);
 			return(NULL);
@@ -1568,7 +1624,6 @@ char *dir;
 #ifndef	_NOUSELFN
 		if (dirp -> dd_id & DID_IFLFN) lfn_findclose(dirp -> dd_fd);
 #endif
-		dirp -> dd_id &= ~DID_IFLFN;
 		free(dirp -> dd_buf);
 		free(dirp);
 		return(NULL);
@@ -1596,7 +1651,7 @@ struct dirent *unixreaddir(dirp)
 DIR *dirp;
 {
 	static struct dirent d;
-	char path[MAXPATHLEN + 1];
+	char *cp, path[MAXPATHLEN];
 	int i;
 
 #ifndef	_NODOSDRIVE
@@ -1633,17 +1688,15 @@ DIR *dirp;
 		i = dos_findnext((struct dosfind_t *)(dirp -> dd_buf));
 	}
 	else {
-		strcpy(path, dirp -> dd_path);
-		i = strcatdelim(path) - path;
+		cp = strcatdelim2(path, dirp -> dd_path, NULL);
 
 #ifndef	_NOUSELFN
 		if (dirp -> dd_id & DID_IFLFN) {
 			long fd;
 
-			strcpy(path + i, "*");
-			fd = lfn_findfirst(path,
-				(struct lfnfind_t *)(dirp -> dd_buf),
-				SEARCHATTRS);
+			strcpy(cp, "*");
+			fd = lfn_findfirst(path, SEARCHATTRS,
+				(struct lfnfind_t *)(dirp -> dd_buf));
 			if (fd >= 0) {
 				dirp -> dd_fd = (u_short)fd;
 				i = 0;
@@ -1656,10 +1709,9 @@ DIR *dirp;
 		else
 #endif	/* !_NOUSELFN */
 		{
-			strcpy(path + i, "*.*");
-			i = dos_findfirst(path,
-				(struct dosfind_t *)dirp -> dd_buf,
-				SEARCHATTRS);
+			strcpy(cp, "*.*");
+			i = dos_findfirst(path, SEARCHATTRS,
+				(struct dosfind_t *)(dirp -> dd_buf));
 		}
 	}
 	if (i >= 0) dirp -> dd_off++;
@@ -1710,7 +1762,7 @@ char *path;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN + 1];
+		char buf[MAXPATHLEN];
 
 		if (dosunlink(regpath(path, buf)) >= 0) return(0);
 	}
@@ -1734,16 +1786,17 @@ char *from, *to;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 	int f, t;
 
-	from = strcpy(buf, duplpath(from));
+	strcpy(buf, duplpath(from));
+	from = buf;
 	to = duplpath(to);
 	f = supportLFN(from);
 	t = supportLFN(to);
 #ifndef	_NODOSDRIVE
 	if (((f < 0 && f > -3) || (t < 0 && t > -3)) && (f != -3 && t != -3)) {
-		char buf1[MAXPATHLEN + 1], buf2[MAXPATHLEN + 1];
+		char buf1[MAXPATHLEN], buf2[MAXPATHLEN];
 
 		dependdosfunc = 0;
 		if (dosrename(regpath(from, buf1), regpath(to, buf2)) >= 0)
@@ -1776,7 +1829,7 @@ int mode;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN + 1];
+		char buf[MAXPATHLEN];
 
 		dependdosfunc = 0;
 		if (dosmkdir(regpath(path, buf), mode) >= 0) return(0);
@@ -1805,7 +1858,7 @@ char *path;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN + 1];
+		char buf[MAXPATHLEN];
 
 		if (dosrmdir(regpath(path, buf)) >= 0) return(0);
 	}
@@ -1831,7 +1884,7 @@ char *path;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i == -1) {
-		char buf[MAXPATHLEN + 1];
+		char buf[MAXPATHLEN];
 
 		if (!(path = preparefile(path, buf))) return(-1);
 	}
@@ -1851,7 +1904,7 @@ char *pathname;
 int size;
 {
 #ifdef	DJGPP
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 #endif
 
 	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
@@ -1969,15 +2022,15 @@ statfs_t *buf;
 
 #ifndef	_NOUSELFN
 	i = supportLFN(path);
-# ifndef _NODOSDRIVE
+# ifndef	_NODOSDRIVE
 	if (i == -2) {
 		char tmp[sizeof(long) * 3 + 1];
 
 		if (dosstatfs(drive, tmp) < 0) return(-1);
-		buf -> f_bsize = *((long *)&(tmp[sizeof(long) * 0]));
-		buf -> f_blocks = *((long *)&(tmp[sizeof(long) * 1]));
+		buf -> f_bsize = *((u_long *)&(tmp[sizeof(long) * 0]));
+		buf -> f_blocks = *((u_long *)&(tmp[sizeof(long) * 1]));
 		buf -> f_bfree =
-		buf -> f_bavail = *((long *)&(tmp[sizeof(long) * 2]));
+		buf -> f_bavail = *((u_long *)&(tmp[sizeof(long) * 2]));
 		buf -> f_files = -1;
 	}
 	else
@@ -1996,11 +2049,11 @@ statfs_t *buf;
 # ifdef	DJGPP
 		dosmemget(__tb, sizeof(fsbuf), &fsbuf);
 # endif
-		buf -> f_bsize = (long)fsbuf.f_clustsize
+		buf -> f_bsize = (u_long)fsbuf.f_clustsize
 			* (long)fsbuf.f_sectsize;
-		buf -> f_blocks = (long)fsbuf.f_blocks;
+		buf -> f_blocks = (u_long)fsbuf.f_blocks;
 		buf -> f_bfree =
-		buf -> f_bavail = (long)fsbuf.f_bavail;
+		buf -> f_bavail = (u_long)fsbuf.f_bavail;
 		buf -> f_files = -1;
 	}
 	else
@@ -2018,10 +2071,11 @@ statfs_t *buf;
 			buf -> f_bsize = buf -> f_blocks =
 			buf -> f_bfree = buf -> f_bavail = -1L;
 		else {
-			buf -> f_bsize = (long)(reg.x.ax) * (long)(reg.x.cx);
-			buf -> f_blocks = (long)(reg.x.dx);
+			buf -> f_bsize = (u_long)(reg.x.ax)
+				* (u_long)(reg.x.cx);
+			buf -> f_blocks = (u_long)(reg.x.dx);
 			buf -> f_bfree =
-			buf -> f_bavail = (long)(reg.x.bx);
+			buf -> f_bavail = (u_long)(reg.x.bx);
 		}
 		buf -> f_files = -1;
 	}
@@ -2029,9 +2083,9 @@ statfs_t *buf;
 	return(0);
 }
 
-int unixstat(path, status)
+int unixstat(path, stp)
 char *path;
-struct stat *status;
+struct stat *stp;
 {
 #ifndef	_NOUSELFN
 	struct lfnfind_t lbuf;
@@ -2041,42 +2095,42 @@ struct stat *status;
 	int i;
 
 #ifdef	_NOUSELFN
-	if ((i = dos_findfirst(path, &dbuf, SEARCHATTRS)) < 0) {
+	if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
 		if (errno) return(-1);
 		if (!strcmp(path, ".."))
-			i = dos_findfirst(".", &dbuf, SEARCHATTRS);
-		else i = dos_findfirst(path, &dbuf, DS_IFLABEL);
+			i = dos_findfirst(".", SEARCHATTRS, &dbuf);
+		else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
 	}
 #else	/* !_NOUSELFN */
 	i = supportLFN(path);
 # ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN + 1];
+		char buf[MAXPATHLEN];
 
 		dependdosfunc = 0;
-		if (dosstat(regpath(path, buf), status) >= 0) return(0);
+		if (dosstat(regpath(path, buf), stp) >= 0) return(0);
 		else if (!dependdosfunc) return(-1);
 	}
 # endif	/* !_NODOSDRIVE */
 	if (i <= 0) {
 		fd = -1;
-		if ((i = dos_findfirst(path, &dbuf, SEARCHATTRS)) < 0) {
+		if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
 			if (errno) return(-1);
 			if (!strcmp(path, ".."))
-				i = dos_findfirst(".", &dbuf, SEARCHATTRS);
-			else i = dos_findfirst(path, &dbuf, DS_IFLABEL);
+				i = dos_findfirst(".", SEARCHATTRS, &dbuf);
+			else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
 		}
 	}
 	else {
-		if ((fd = lfn_findfirst(path, &lbuf, SEARCHATTRS)) < 0) {
+		if ((fd = lfn_findfirst(path, SEARCHATTRS, &lbuf)) < 0) {
 			if (errno && errno != ENOENT) return(-1);
 			if (!strcmp(path, "..")) {
-				fd = lfn_findfirst(".", &lbuf, SEARCHATTRS);
+				fd = lfn_findfirst(".", SEARCHATTRS, &lbuf);
 				i = (fd >= 0) ? 0 : -1;
 			}
 			else {
 				fd = -1;
-				i = dos_findfirst(path, &dbuf, DS_IFLABEL);
+				i = dos_findfirst(path, DS_IFLABEL, &dbuf);
 			}
 		}
 	}
@@ -2088,24 +2142,22 @@ struct stat *status;
 
 #ifndef	_NOUSELFN
 	if (fd >= 0) {
-		status -> st_mode = getdosmode(lbuf.attr);
-		status -> st_mtime = getdostime(lbuf.wrdate, lbuf.wrtime);
-		status -> st_size = lbuf.size_l;
+		stp -> st_mode = getdosmode(lbuf.attr);
+		stp -> st_mtime = getdostime(lbuf.wrdate, lbuf.wrtime);
+		stp -> st_size = lbuf.size_l;
 		lfn_findclose(fd);
 	}
 	else
 #endif	/* !_NOUSELFN */
 	{
-		status -> st_mode = getdosmode(dbuf.attr);
-		status -> st_mtime = getdostime(dbuf.wrdate, dbuf.wrtime);
-		status -> st_size = dbuf.size_l;
+		stp -> st_mode = getdosmode(dbuf.attr);
+		stp -> st_mtime = getdostime(dbuf.wrdate, dbuf.wrtime);
+		stp -> st_size = dbuf.size_l;
 	}
-	status -> st_ctime = status -> st_atime = status -> st_mtime;
-	status -> st_dev =
-	status -> st_ino = 0;
-	status -> st_nlink = 1;
-	status -> st_uid =
-	status -> st_gid = -1;
+	stp -> st_ctime = stp -> st_atime = stp -> st_mtime;
+	stp -> st_dev = stp -> st_ino = 0;
+	stp -> st_nlink = 1;
+	stp -> st_uid = stp -> st_gid = -1;
 	return(0);
 }
 
@@ -2116,7 +2168,7 @@ int mode;
 	struct SREGS sreg;
 	__dpmi_regs reg;
 #ifndef	_NOUSELFN
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 	int i;
 #endif
 
@@ -2155,7 +2207,7 @@ struct utimbuf *times;
 	time_t clock = times -> modtime;
 	__dpmi_regs reg;
 	struct SREGS sreg;
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 	int i;
 
 	path = duplpath(path);
@@ -2175,7 +2227,7 @@ struct timeval tvp[2];
 	time_t clock = tvp[1].tv_sec;
 	__dpmi_regs reg;
 	struct SREGS sreg;
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 	int i;
 
 	path = duplpath(path);
@@ -2205,7 +2257,7 @@ int flags, mode;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
-	char *cp, buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 	int i;
 
 	path = duplpath(path);
@@ -2225,10 +2277,9 @@ int flags, mode;
 	if (flags & O_WRONLY) reg.x.bx |= 0x0001;
 	else if (flags & O_RDWR) reg.x.bx |= 0x0002;
 	reg.x.cx = (u_short)putdosmode(mode);
-	reg.x.dx = 0x0000;
-	if (flags & O_CREAT) reg.x.dx |= 0x0010;
-	if (flags & O_TRUNC) reg.x.dx |= 0x0002;
-	else reg.x.dx |= 0x0001;
+	if ((flags & O_CREAT) && (flags & O_EXCL)) reg.x.dx = 0x0010;
+	else if (flags & O_TRUNC) reg.x.dx = 0x0002;
+	else reg.x.dx = 0x0001;
 #ifdef	DJGPP
 	dos_putpath(path, 0);
 #endif
@@ -2240,8 +2291,8 @@ int flags, mode;
 	reg.x.ax = 0x3e00;
 	int21call(&reg, &sreg);
 
-	if (!(cp = shortname(path, buf))) return(-1);
-	return(open(cp, flags, mode));
+	if (!shortname(path, buf)) return(-1);
+	return(open(buf, flags, mode));
 }
 
 FILE *unixfopen(path, type)
@@ -2254,7 +2305,7 @@ char *path, *type;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN + 1];
+		char buf[MAXPATHLEN];
 
 		dependdosfunc = 0;
 		if ((fp = dosfopen(regpath(path, buf), type))) return(fp);
@@ -2274,8 +2325,8 @@ char *path, *type;
 			break;
 		case 'w':
 			if (*(type + 1) != '+') flags = O_WRONLY;
-			else flags = O_RDWR | O_TRUNC;
-			flags |= O_CREAT;
+			else flags = O_RDWR;
+			flags |= O_CREAT | O_TRUNC;
 			break;
 		case 'a':
 			if (*(type + 1) != '+') flags = O_WRONLY;

@@ -26,8 +26,8 @@ extern char *archivefile;
 extern char *archivedir;
 #endif
 
-static int setarg __P_((char *, int, char *, char *, int));
-static int setargs __P_((char *, int, namelist *, int, int));
+static int setarg __P_((char *, int, char *, char *, u_char));
+static int setargs __P_((char *, int, namelist *, int, u_char));
 static int insertarg __P_((char *, char *, char *, int));
 static char *addoption __P_((char *, char *, namelist *, int, macrostat *));
 static int dosystem __P_((char *, namelist *, int *, int));
@@ -53,37 +53,65 @@ int ptr;
 char *dir, *arg;
 u_char flags;
 {
-#if	MSDOS && !defined (_NOUSELFN)
-	char tmp[MAXPATHLEN + 1];
-#endif
 	char *cp;
 	int d, l;
 
-	d = 0;
-	if (dir && *dir && ptr + (d = strlen(dir) + 1) + 1 < MAXCOMMSTR) {
-		strcpy(buf + ptr, dir);
-		buf[ptr + d - 1] = _SC_;
-	}
+	d = l = 0;
+	if (dir && *dir) d = strlen(dir) + 1;
 #if	!MSDOS
 	arg = killmeta(arg);
 #endif
-#if	MSDOS && !defined (_NOUSELFN)
-	if (flags & F_TOSFN) {
-		if (ptr + d + strlen(arg) + 1 >= MAXCOMMSTR) d = 0;
-		else {
-			strcpy(buf + ptr + d, arg);
-			if (shortname(buf + ptr, tmp)) {
-				arg = tmp;
-				d = 0;
+	l = strlen(arg);
+	if (ptr + d + l >= MAXCOMMSTR - 1) d = l = 0;
+	if (d) {
+#if	MSDOS && !defined (_NOARCHIVE)
+		if ((flags & F_ISARCH) && l) {
+			if (_dospath(dir)) {
+				buf[ptr] = dir[0];
+				buf[ptr + 1] = dir[1];
+				d = 2;
 			}
+			else d = 0;
+			if (dir[d] == _SC_ && !dir[d + 1])
+				buf[ptr + (d++)] = '/';
+			else {
+				cp = NULL;
+				for (; dir[d]; d++) {
+					if (dir[d] == _SC_) {
+						buf[ptr + d] = '/';
+						if (!cp) cp = &(buf[ptr + d]);
+						continue;
+					}
+					buf[ptr + d] = dir[d];
+					cp = NULL;
+					if (iskanji1(dir, d)) {
+						if (!dir[++d]) break;
+						buf[ptr + d] = dir[d];
+					}
+				}
+				if (!cp) buf[ptr + (d++)] = '/';
+			}
+		}
+		else
+#endif
+		d = strcatdelim2(buf + ptr, dir, NULL) - (buf + ptr) - 1;
+	}
+#if	MSDOS && !defined (_NOUSELFN)
+	if ((flags & F_TOSFN) && l) {
+		char tmp[MAXPATHLEN];
+
+		strcpy(buf + ptr + d, arg);
+		if (shortname(buf + ptr, tmp)) {
+			arg = tmp;
+			d = 0;
+			l = strlen(tmp);
+			if (ptr + l >= MAXCOMMSTR - 1) l = 0;
 		}
 	}
 #endif
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
 		l = cp - arg;
-	else l = strlen(arg);
-	if (ptr + d + l + 1 >= MAXCOMMSTR) d = l = 0;
-	else strncpy(buf + ptr + d, arg, l);
+	strncpy(buf + ptr + d, arg, l);
 #if	!MSDOS
 	free(arg);
 #endif
@@ -134,7 +162,7 @@ char *buf, *format, *arg;
 int needmark;
 {
 #if	MSDOS && !defined (_NOUSELFN)
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 #endif
 	char *cp, *src, *ins;
 	int i, len, ptr;
@@ -206,7 +234,7 @@ macrostat *stp;
 	stp -> needmark = 0;
 	uneval = '\0';
 
-	for (i = j = 0; command[i] && j < sizeof(line) / sizeof(char); i++) {
+	for (i = j = 0; command[i] && j < MAXCOMMSTR; i++) {
 		if (!uneval
 		&& ((flags & (F_NOEXT | F_TOSFN)) || command[i] == '%'))
 		switch ((c = toupper2(command[++i]))) {
@@ -223,17 +251,27 @@ macrostat *stp;
 #if	MSDOS && !defined (_NOUSELFN)
 			case 'S':
 				flags |= F_TOSFN;
+				c = toupper2(command[i + 1]);
+				if (c == 'T' || c == 'M') {
+					i--;
+					break;
+				}
 #endif
 			case 'C':
+				len = setarg(line, j, NULL, arg, flags);
+				if (!len) return(NULL);
+				j += len;
+				flags |= F_ARGSET;
+				flags &= ~(F_NOEXT | F_TOSFN);
+				break;
 			case 'X':
-				if (c == 'X') flags |= F_NOEXT;
-				if (command[i + 1]
-				&& ((c == 'X'
+				flags |= F_NOEXT;
+				c = toupper2(command[i + 1]);
 #if	MSDOS && !defined (_NOUSELFN)
-				&& strchr("TMS", toupper2(command[i + 1])))
-				|| (c == 'S'
+				if (c == 'T' || c == 'M' || c == 'S') {
+#else
+				if (c == 'T' || c == 'M') {
 #endif
-				&& strchr("TM", toupper2(command[i + 1]))))) {
 					i--;
 					break;
 				}
@@ -282,14 +320,11 @@ macrostat *stp;
 				break;
 #if	!MSDOS && !defined (_NOKANJICONV)
 			case 'J':
+				c = toupper2(command[i + 1]);
 				flags &= ~(F_NOEXT | F_TOSFN);
-				if (toupper2(command[i + 1]) == 'S')
-					tmpcode = SJIS;
-				else if (toupper2(command[i + 1]) == 'E'
-				|| toupper2(command[i + 1]) == 'U')
-					tmpcode = EUC;
-				else if (toupper2(command[i + 1]) == 'J')
-					tmpcode = JIS7;
+				if (c == 'S') tmpcode = SJIS;
+				else if (c == 'E' || c == 'U') tmpcode = EUC;
+				else if (c == 'J') tmpcode = JIS7;
 				else {
 					line[j++] = command[i];
 					break;
@@ -320,7 +355,7 @@ macrostat *stp;
 		else {
 			line[j++] = command[i];
 #if	!MSDOS
-			if (command[i] == '\\' && command[i + 1]
+			if (command[i] == META && command[i + 1]
 			&& uneval != '\'')
 				line[j++] = command[++i];
 			else
@@ -347,8 +382,7 @@ macrostat *stp;
 #if	!MSDOS
 		arg = killmeta(arg);
 #endif
-		strcpy(line + j, arg);
-		j += strlen(arg);
+		j = strcpy2(line + j, arg) - line;
 #if	!MSDOS
 		free(arg);
 #endif
@@ -360,9 +394,8 @@ macrostat *stp;
 	if ((flags & F_REMAIN) && !n_args) flags &= ~F_REMAIN;
 	stp -> flags = flags;
 
-	cp = (char *)malloc2(j + 1);
-	memcpy(cp, line, j);
-	cp[j] = '\0';
+	cp = malloc2(j + 1);
+	strncpy2(cp, line, j);
 	return(cp);
 }
 
@@ -450,30 +483,38 @@ namelist *list;
 int *maxp, noconf, argset;
 {
 	macrostat st;
-	char *cp, *tmp, buf[MAXCOMMSTR + 1];
-	int i, max, s, status;
+	char *cp, *tmp, **argv, buf[MAXCOMMSTR + 1];
+	int i, max, r, ret;
 
 	max = (maxp) ? *maxp : 0;
-	status = -2;
+	ret = -2;
 	for (i = 0; i < max; i++) {
 		if (ismark(&(list[i]))) list[i].tmpflags |= F_ISARG;
 		else list[i].tmpflags &= ~F_ISARG;
 	}
 	n_args = mark;
 
-	st.flags = (argset) ? F_ARGSET : 0;
+	if (argset) st.flags = F_ARGSET;
+	else {
+		st.flags = 0;
+		if (getargs(command, &argv) > 0
+		&& isinternal(argv[0], 1) >= 0) st.flags = F_ARGSET;
+		freeargs(argv);
+	}
+	if (noconf < 0) st.flags |= F_ISARCH;
+
 	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-1);
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	st.flags |= F_ARGSET;
 	if (noconf >= 0 && !argset) {
 		cp = addoption(tmp, arg, list, max, &st);
-		if (cp != tmp) status = 2;
+		if (cp != tmp) ret = 2;
 		if (!cp || cp == (char *)-1) return((cp) ? -1 : 2);
 		tmp = cp;
 	}
 	if (!st.needmark) for (;;) {
-		s = dosystem(tmp, list, maxp, noconf);
-		if (s >= status || s == -1) status = s;
+		r = dosystem(tmp, list, maxp, noconf);
+		if (r >= ret || r == -1) ret = r;
 		free(tmp);
 		tmp = NULL;
 
@@ -483,23 +524,23 @@ int *maxp, noconf, argset;
 			break;
 		if (noconf >= 0 && !argset) {
 			cp = addoption(tmp, arg, list, max, &st);
-			if (cp != tmp && status >= 0 && status < 2) status = 2;
-			if (!cp || cp == (char *)-1) return(status);
+			if (cp != tmp && ret >= 0 && ret < 2) ret = 2;
+			if (!cp || cp == (char *)-1) return(ret);
 			tmp = cp;
 		}
 	}
 	else if (n_args <= 0) {
 		if (insertarg(buf, tmp, list[filepos].name, st.needmark))
-			status = dosystem(buf, list, maxp, noconf);
-		else status = -2;
+			ret = dosystem(buf, list, maxp, noconf);
+		else ret = -2;
 	}
 	else for (i = 0; i < max; i++) if (isarg(&(list[i]))) {
 		if (insertarg(buf, tmp, list[i].name, st.needmark))
-			status = dosystem(buf, list, maxp, noconf);
-		else status = -2;
+			ret = dosystem(buf, list, maxp, noconf);
+		else ret = -2;
 	}
 	if (tmp) free(tmp);
-	if (status >= -1) return(status);
+	if (ret >= -1) return(ret);
 	if (list) {
 		for (i = 0; i < max; i++)
 			list[i].tmpflags &= ~(F_ISARG | F_ISMRK);
@@ -507,51 +548,6 @@ int *maxp, noconf, argset;
 		marksize = 0;
 	}
 	return(4);
-}
-
-int execenv(env, arg)
-char *env, *arg;
-{
-	char *command;
-
-	if (!(command = getenv2(env))) return(0);
-	putterms(t_clear);
-	tflush();
-	execmacro(command, arg, NULL, NULL, 1, 0);
-	return(1);
-}
-
-int execshell(VOID_A)
-{
-	char *sh;
-	int status;
-
-#if	MSDOS
-	if (!(sh = getenv2("FD_SHELL"))
-	&& !(sh = getenv2("FD_COMSPEC"))) sh = "command.com";
-#else
-	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
-#endif
-	putterms(t_end);
-	putterms(t_nokeypad);
-	tflush();
-	sigvecreset();
-	cooked2();
-	echo2();
-	nl2();
-	tabs();
-	kanjiputs(SHEXT_K);
-	tflush();
-	status = system(sh);
-	raw2();
-	noecho2();
-	nonl2();
-	notabs();
-	sigvecset();
-	putterms(t_keypad);
-	putterms(t_init);
-
-	return(status);
 }
 
 static char *evalargs(command, argc, argv)
@@ -584,31 +580,31 @@ char *command, *arg;
 namelist *list;
 int *maxp, noconf, argset;
 {
-	char *cp, *argv[MAXARGS + 2];
-	int i, j, s, status, argc;
+	char *cp, **argv;
+	int i, j, r, ret, argc;
 
-	if (!(argc = getargs(command, argv, MAXARGS + 1))) i = maxuserfunc;
+	if (!(argc = getargs(command, &argv))) i = maxuserfunc;
 	else for (i = 0; i < maxuserfunc; i++)
 		if (!strpathcmp(argv[0], userfunclist[i].func)) break;
 	if (i >= maxuserfunc)
-		status = execmacro(command, arg, list, maxp, noconf, argset);
+		ret = execmacro(command, arg, list, maxp, noconf, argset);
 	else {
-		status = -1;
+		ret = -1;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
-			s = execmacro(cp, arg, list, maxp, noconf, argset);
-			if (s >= status) status = s;
+			r = execmacro(cp, arg, list, maxp, noconf, argset);
+			if (r >= ret) ret = r;
 			free(cp);
 		}
-		if (status < 0) status = 4;
+		if (ret < 0) ret = 4;
 	}
-	for (i = 0; i < argc; i++) free(argv[i]);
-	return(status);
+	freeargs(argv);
+	return(ret);
 }
 
-int entryhist(n, str, uniq)
+int entryhist(n, s, uniq)
 int n;
-char *str;
+char *s;
 int uniq;
 {
 	int i, size;
@@ -628,7 +624,7 @@ int uniq;
 		histbufsize[n] = size;
 	}
 
-	if (!str || !*str) return(0);
+	if (!s || !*s) return(0);
 
 	if (histno[n]++ >= ~(short)(1L << (BITSPERBYTE * sizeof(short) - 1)))
 		histno[n] = 0;
@@ -637,16 +633,16 @@ int uniq;
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
 #if	MSDOS
-			if (*str != *(history[n][i])) continue;
+			if (*s != *(history[n][i])) continue;
 #endif
-			if (!strpathcmp(str, history[n][i])) break;
+			if (!strpathcmp(s, history[n][i])) break;
 		}
 		if (i < size) size = i;
 	}
 
 	if (history[n][size]) free(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
-	history[n][0] = strdup2(str);
+	history[n][0] = strdup2(s);
 	return(1);
 }
 
@@ -711,8 +707,7 @@ char *file;
 	return(0);
 }
 
-int dohistory(argc, argv, list, maxp)
-int argc;
+int dohistory(argv, list, maxp)
 char *argv[];
 namelist *list;
 int *maxp;
@@ -723,7 +718,7 @@ int *maxp;
 	size = histsize[0];
 	if (argv[0][1] == '!') {
 		cp = &(argv[0][2]);
-		n = 3;
+		n = 1;
 	}
 	else if (argv[0][1] == '-') {
 		cp = skipnumeric(&(argv[0][2]), 0);
@@ -751,13 +746,11 @@ int *maxp;
 		warning(0, HITKY_K);
 		return(0);
 	}
-	tmp = catargs(argc - 1, &(argv[1]), ' ');
+	tmp = catargs(&(argv[1]), ' ');
 	if (!tmp) cp = strdup2(history[0][n]);
 	else {
-		cp = (char *)malloc2(strlen(history[0][n]) + strlen(tmp) + 2);
-		strcpy(cp, history[0][n]);
-		strcat(cp, " ");
-		strcat(cp, tmp);
+		cp = malloc2(strlen(history[0][n]) + strlen(tmp) + 2);
+		strcpy(strcpy2(strcpy2(cp, history[0][n]), " "), tmp);
 	}
 	history[0][0] = cp;
 	kanjiputs2(cp, -1, -1);
@@ -793,55 +786,48 @@ char *command;
 		&& !aliaslist[i].alias[len]) break;
 	if (i >= maxalias) return(NULL);
 
-	cp = (char *)malloc2((int)strlen(command) - len
+	cp = malloc2((int)strlen(command) - len
 		+ strlen(aliaslist[i].comm) + 1);
-	strcpy(cp, aliaslist[i].comm);
-	strcat(cp, command + len);
+	strcpy(strcpy2(cp, aliaslist[i].comm), command + len);
 	return(cp);
 }
 
 #ifndef	_NOCOMPLETE
-int completealias(com, matchno, matchp)
+int completealias(com, argc, argvp)
 char *com;
-int matchno;
-char **matchp;
+int argc;
+char ***argvp;
 {
-	int i, len, ptr, size;
+	int i, len;
 
-	if (strdelim(com, 1)) return(0);
-
-	size = lastpointer(*matchp, matchno) - *matchp;
+	if (strdelim(com, 1)) return(argc);
 	len = strlen(com);
 	for (i = 0; i < maxalias; i++) {
-		if (strnpathcmp(com, aliaslist[i].alias, len)) continue;
-		ptr = size;
-		size += strlen(aliaslist[i].alias) + 1;
-		*matchp = (char *)realloc2(*matchp, size);
-		strcpy(*matchp + ptr, aliaslist[i].alias);
-		matchno++;
+		if (strnpathcmp(com, aliaslist[i].alias, len)
+		|| finddupl(aliaslist[i].alias, argc, *argvp)) continue;
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 1) * sizeof(char *));
+		(*argvp)[argc++] = strdup2(aliaslist[i].alias);
 	}
-	return(matchno);
+	return(argc);
 }
 
-int completeuserfunc(com, matchno, matchp)
+int completeuserfunc(com, argc, argvp)
 char *com;
-int matchno;
-char **matchp;
+int argc;
+char ***argvp;
 {
-	int i, len, ptr, size;
+	int i, len;
 
-	if (strdelim(com, 1)) return(0);
-
-	size = lastpointer(*matchp, matchno) - *matchp;
+	if (strdelim(com, 1)) return(argc);
 	len = strlen(com);
 	for (i = 0; i < maxuserfunc; i++) {
-		if (strnpathcmp(com, userfunclist[i].func, len)) continue;
-		ptr = size;
-		size += strlen(userfunclist[i].func) + 1;
-		*matchp = (char *)realloc2(*matchp, size);
-		strcpy(*matchp + ptr, userfunclist[i].func);
-		matchno++;
+		if (strnpathcmp(com, userfunclist[i].func, len)
+		|| finddupl(userfunclist[i].func, argc, *argvp)) continue;
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 1) * sizeof(char *));
+		(*argvp)[argc++] = strdup2(userfunclist[i].func);
 	}
-	return(matchno);
+	return(argc);
 }
 #endif	/* !_NOCOMPLETE */

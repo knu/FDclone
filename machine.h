@@ -19,11 +19,11 @@
 #define	USEMKTIME
 #define	SENSEPERSEC	20
 # ifdef	__GNUC__
+# define	SIGFNCINT
 #  ifndef	DJGPP
 #  define	DJGPP	1
 #  else
 #  define	USEREGCOMP
-#  define	SIGFNCINT
 #  endif
 # else	/* !__GNUC__ */
 # define	NOUID_T
@@ -38,6 +38,7 @@ typedef unsigned long	u_long;
 # endif
 # ifdef	__TURBOC__
 # define	FORCEDSTDC
+# define	SIGFNCINT
 typedef long	off_t;
 # endif
 #define	_SC_	'\\'
@@ -51,6 +52,7 @@ typedef long	off_t;
 #define	CODEEUC
 #define	CPP7BIT
 #define	USELEAPCNT
+#define	USERESOURCEH
 #include <sys/param.h>
 # if	!defined (MAXHOSTNAMELEN)
 # define	SVR4
@@ -90,6 +92,7 @@ typedef long	off_t;
 # define	USEMNTTABH
 # define	USEMKTIME
 # define	USEUTIME
+# define	USERESOURCEH
 # define	SIGFNCINT
 # define	GETTODARGS	1
 # else
@@ -100,6 +103,7 @@ typedef long	off_t;
 #  if	defined (__sony) || !defined (bsd43)
 #  define	OSTYPE		"NEWS_OS4"
 #  define	USESETENV
+#  define	USERESOURCEH
 #  else
 #  define	OSTYPE		"NEWS_OS3"
 #  define	NOERRNO
@@ -110,6 +114,7 @@ typedef long	off_t;
 #  define	NOTMGMTOFF
 #  define	NOVSPRINTF
 #  define	USEGETWD
+#  define	USETIMESH
 #  endif
 # endif
 #endif
@@ -132,6 +137,7 @@ typedef long	off_t;
 #define	STATFSARGS	4
 #define	USERE_COMP
 #define	USEMKTIME
+#define	USERESOURCEH
 #endif
 
 #if	defined (hpux) || defined (__hpux) \
@@ -146,6 +152,7 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USEUTIME
 #define	USEMKTIME
+#define	USERESOURCEH
 #endif
 
 #if	defined (nec_ews) || defined (_nec_ews)
@@ -188,8 +195,8 @@ typedef long	off_t;
 #define	NOSTDLIBH
 #define	USETIMEH
 #define	USETERMIO
-#define	HAVETIMEZONE
 #define	SYSVDIRENT
+#define	HAVETIMEZONE
 #define	USEREGCMP
 #define	WAITKEYPAD		720
 #define	WAITMETA		720
@@ -364,11 +371,11 @@ typedef long	off_t;
 #endif
 
 #if	defined (linux)
-#define	SVR4
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
 #define	USEMANLANG
 #define	BSDINSTALL
+#define	TARUSESPACE
 /*
  *	This is a fake '#if' for some buggy Slackware distribution.
  *	Will you please define 'Slackware' manually on Slackware.
@@ -386,12 +393,20 @@ typedef long	off_t;
 # else
 # define	TERMCAPLIB		"-lncurses"
 # endif
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	NOTZFILEH
+#define	USETERMIOS
+#define	SYSVDIRENT
+#define	HAVETIMEZONE
 #define	NOTMGMTOFF
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
@@ -401,6 +416,7 @@ typedef long	off_t;
 #define	CODEEUC
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
 #define	USEMOUNTH
@@ -408,6 +424,8 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
 #define	SIGFNCINT
 #endif
 
@@ -419,6 +437,7 @@ typedef long	off_t;
 #define	BSDINSTALL
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	NOTZFILEH
 #define	USETERMIOS
@@ -427,11 +446,15 @@ typedef long	off_t;
 # if	__FreeBSD__ < 3
 #define	USEVFCNAME
 # else
-#define USEFFSTYPE
+#define	USEFFSTYPE
 # endif
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
@@ -442,6 +465,7 @@ typedef long	off_t;
 #define	BSDINSTALL
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
 #define	USETERMIOS
@@ -451,6 +475,10 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
 #define	SIGFNCINT
 #include <sys/param.h>
 # if	defined (NetBSD1_0) && (NetBSD1_0 < 1)
@@ -465,12 +493,17 @@ typedef long	off_t;
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
 #define	STRICTSTDC
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
 #include <sys/param.h>
 # if	!defined (BSD) || (BSD < 199306)
 # define	USEFFSIZE
@@ -483,6 +516,7 @@ typedef long	off_t;
 #define	OSTYPE			"BOW"
 #define	TARUSESPACE
 #define	TERMCAPLIB		"-ltermcap"
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
@@ -490,6 +524,10 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
@@ -497,12 +535,17 @@ typedef long	off_t;
 #define	BSD43
 #define	OSTYPE			"ORG_386BSD"
 #define	TARUSESPACE
+#define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USESETENV
 #define	USEMKTIME
+#define	USEWAITPID
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
 #endif
 
 /****************************************************************
@@ -564,6 +607,8 @@ typedef long	off_t;
 /* #define STRICTSTDC	;cannot allow K&R type function declaration */
 /* #define NOVOID	;cannot use type 'void' */
 /* #define NOUID_T	;uid_t, gid_t is not defined in <sys/types.h> */
+/* #define DECLSIGLIST	;'sys_siglist[]' declared in <signal.h> */
+/* #define NOSIGLIST	;have not 'sys_siglist[]' in library */
 /* #define DECLERRLIST	;'sys_errlist[]' declared in <stdio.h> or <errno.h> */
 /* #define PWNEEDERROR	;/lib/libPW.a needs the extern variable 'Error[]' */
 /* #define NOERRNO	;'errno' not declared in <errno.h> */
@@ -621,6 +666,12 @@ typedef long	off_t;
 /* #define USETIMELOCAL	;have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	;use mktime() instead of timelocal() */
 /* #define USEUNAME	;use uname() instead of gethostname() */
+/* #define USEWAITPID	;use waitpid() instead of wait3() */
+/* #define USERESOURCEH	;use <sys/resource.h> for resource info. */
+/* #define USEULIMITH	;use <ulimit.h> for resource info. */
+/* #define USETIMESH	;use <sys/times.h> for resource info. */
+/* #define GETPGRPVOID	;getpgrp() needs void argument */
+/* #define USESETPGID	;use setpgid() instead of setpgrp() */
 /* #define SIGARGINT	;the 2nd argument function of signal() returns int */
 /* #define SIGFNCINT	;the 2nd argument function of signal() needs int */
 /* #define GETTODARGS	;the number of arguments in gettimeofday() */
@@ -652,6 +703,11 @@ typedef long	off_t;
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
+#endif
+
+#ifdef	SVR4
+#define	GETPGRPVOID
+#define	USESETPGID
 #endif
 
 #if	(defined (__STDC__) || defined (FORCEDSTDC)) \

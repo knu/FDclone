@@ -53,25 +53,15 @@ extern unsigned _stklen = 8000;
 
 extern char **environ;
 #ifndef	_NOARCHIVE
-extern char *archivefile;
 extern launchtable launchlist[];
 extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
 #endif
-#ifndef	_NODOSDRIVE
-# if	!MSDOS
-extern devinfo fdtype[];
-# endif
-extern char *unitblpath;
-extern VOID_T (*waitfunc)__P_((VOID_A));
-#endif
 extern char fullpath[];
 extern char **history[];
 extern char *helpindex[];
 extern int subwindow;
-extern int columns;
-extern int dispmode;
 extern char *deftmpdir;
 #if	DEBUG
 extern char *rockridgepath;
@@ -80,10 +70,10 @@ extern char *rockridgepath;
 #define	CLOCKUPDATE	10	/* sec */
 
 #ifndef	SIG_DFL
-#define	SIG_DFL		(sigarg_t (*)__P_((sigfnc_t)))0
+#define	SIG_DFL		((sigarg_t (*)__P_((sigfnc_t)))0)
 #endif
 #ifndef	SIG_IGN
-#define	SIG_IGN		(sigarg_t (*)__P_((sigfnc_t)))1
+#define	SIG_IGN		((sigarg_t (*)__P_((sigfnc_t)))1)
 #endif
 
 #if	!MSDOS && !defined (SIGWINCH)
@@ -163,6 +153,7 @@ static sigarg_t wintr __P_((VOID_A));
 #ifdef	SIGALRM
 static sigarg_t printtime __P_((VOID_A));
 #endif
+static int doexec __P_((char *, char *, int, char *));
 static int getoption __P_((int, char *[]));
 static VOID setexecname __P_((char *));
 static VOID setexecpath __P_((char *));
@@ -170,6 +161,9 @@ static VOID setexecpath __P_((char *));
 char *origpath = NULL;
 char *progpath = NULL;
 char *tmpfilename = NULL;
+#if	!MSDOS
+int adjtty = 0;
+#endif
 int showsecond = 0;
 u_short today[3] = {0, 0, 0};
 
@@ -188,19 +182,19 @@ u_short far *devhdr;
 }
 #endif
 
-VOID error(str)
-char *str;
+VOID error(s)
+char *s;
 {
 	forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
-	if (!str) str = progname;
+	if (!s) s = progname;
 	endterm();
 	inittty(1);
 	fputc('\007', stderr);
-	perror(str);
-	exit(1);
+	perror(s);
+	exit(2);
 }
 
 static VOID signalexit(sig)
@@ -391,11 +385,6 @@ static sigarg_t wintr(VOID_A)
 {
 	signal(SIGWINCH, SIG_IGN);
 	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
-	title();
-#ifndef	_NOARCHIVE
-	if (archivefile) rewritearc(1);
-	else
-#endif
 	rewritefile(1);
 	if (subwindow) ungetch2(CTRL('L'));
 	signal(SIGWINCH, (sigarg_t (*)__P_((sigfnc_t)))wintr);
@@ -430,6 +419,9 @@ static sigarg_t printtime(VOID_A)
 		timersec = CLOCKUPDATE;
 	}
 	if (showsecond || timersec == CLOCKUPDATE) {
+#ifdef	DEBUG
+		_mtrace_file = "localtime(x4)";
+#endif
 		tm = localtime(&now);
 		today[0] = tm -> tm_year;
 		today[1] = tm -> tm_mon;
@@ -495,12 +487,33 @@ VOID title(VOID_A)
 		eol++;
 	}
 	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
-		n_column - 32 - (int)(eol - cp), " (c)1995-99 T.Shirai  ");
+		n_column - 32 - (int)(eol - cp), " (c)1995-2000 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 #ifdef	SIGALRM
 	printtime();
 #endif
+}
+
+static int doexec(command, file, n, line)
+char *command, *file;
+int n;
+char *line;
+{
+	char *cp;
+	int i;
+
+	if (!(*(cp = skipspace(command)))) i = 4;
+	else i = execbuiltin(cp, NULL, NULL, 0);
+	if (i < 4) {
+		putterm(l_clear);
+		cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
+		putterm(l_clear);
+		cprintf2("\t%s\r\n", line);
+		tflush();
+	}
+	free(command);
+	return(i < 4 ? -1 : 0);
 }
 
 int loadruncom(file, exist)
@@ -513,15 +526,13 @@ int exist;
 #endif
 	FILE *fp;
 	char *cp, *fold, *line;
-	int i, n, er, cont;
+	int n, er, cont;
 
 #if	!MSDOS
 	tmp = NULL;
 	if (!exist && (cp = (char *)getenv("TERM"))) {
-		tmp = (char *)malloc2(strlen(file) + strlen(cp) + 1 + 1);
-		strcpy(tmp, file);
-		strcat(tmp, ".");
-		strcat(tmp, cp);
+		tmp = malloc2(strlen(file) + strlen(cp) + 1 + 1);
+		strcpy(strcpy2(strcpy2(tmp, file), "."), cp);
 		cp = evalpath(strdup2(tmp), 1);
 		if (stat2(cp, &status) >= 0
 		&& (status.st_mode & S_IFMT) == S_IFREG) file = tmp;
@@ -559,48 +570,30 @@ int exist;
 		*(cp + 1) = '\0';
 
 		cont = 0;
-		if (cp >= line && *cp == '\\'
-		&& (cp - 1 < line || *(cp - 1) != '\\')) {
+		if (cp >= line && *cp == META
+		&& (cp - 1 < line || *(cp - 1) != META)
+		&& !onkanji1(line, cp - line - 1)) {
 			*cp = '\0';
 			cont = 1;
 		}
 
 		if (!fold) fold = line;
-		else {
-			if (*line) {
-				fold = (char *)realloc2(fold,
-					strlen(fold) + strlen(line) + 1);
-				strcat(fold, line);
-			}
-			free(line);
+		else if (*line) {
+			fold = realloc2(fold, strlen(fold) + strlen(line) + 1);
+			strcat(fold, line);
 		}
 
-		if (cont) continue;
+		if (cont) {
+			if (fold != line) free(line);
+			continue;
+		}
 
-		if (!(*(cp = skipspace(fold)))) i = 4;
-		else i = execbuiltin(cp, NULL, NULL, 0);
-		free(fold);
+		if (doexec(fold, file, n, line) < 0) er++;
+		if (fold != line) free(line);
 		fold = NULL;
-		if (i < 4) {
-			er++;
-			cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
-			cprintf2("\t%s\r\n", line);
-			tflush();
-		}
 	}
 
-	if (fold) {
-		if (!(*(cp = skipspace(fold)))) i = 4;
-		else i = execbuiltin(cp, NULL, NULL, 0);
-		free(fold);
-		if (i < 4) {
-			er++;
-			cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
-			cprintf2("\t%s\r\n", line);
-			tflush();
-		}
-	}
-
+	if (fold && doexec(fold, file, n, line) < 0) er++;
 	fclose(fp);
 #if	!MSDOS
 	if (tmp) free(tmp);
@@ -673,14 +666,13 @@ char *argv;
 	if (strdelim(argv, 0)) cp = argv;
 	else {
 		adjustpath();
-		cp = NULL;
-		completepath(argv, 0, &cp, 2, 1);
+		cp = searchpath(argv);
 	}
-	if (!cp) progpath = origpath;
+	if (!cp) progpath = strdup2(origpath);
 	else
 #endif
 	{
-		realpath2(cp, buf);
+		realpath2(cp, buf, 1);
 		if (cp != argv) free(cp);
 		if ((cp = strrdelim(buf, 0))) *cp = '\0';
 		progpath = strdup2(buf);
@@ -801,7 +793,7 @@ char *argv[], *envp[];
 	setexecpath(argv[0]);
 #ifndef	_NODOSDRIVE
 	unitblpath = progpath;
-	waitfunc = waitmes;
+	doswaitfunc = waitmes;
 #endif
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);
@@ -811,34 +803,8 @@ char *argv[], *envp[];
 	adjustpath();
 #endif
 	evalenv();
-	dispmode = atoi2(getenv2("FD_DISPLAYMODE"));
-#ifdef	HAVEFLAGS
-	if (dispmode < 0 || dispmode > 15)
-# if	(DISPLAYMODE < 0) || (DISPLAYMODE > 15)
-		dispmode = 0;
-# else
-		dispmode = DISPLAYMODE;
-# endif
-#else
-	if (dispmode < 0 || dispmode > 7)
-# if	(DISPLAYMODE < 0) || (DISPLAYMODE > 7)
-		dispmode = 0;
-# else
-		dispmode = DISPLAYMODE;
-# endif
-#endif
-	columns = atoi2(getenv2("FD_COLUMNS"));
-	if (columns < 1 || columns == 4 || columns > 5)
-#if	(COLUMNS < 1) || (COLUMNS == 4) || (COLUMNS > 5)
-		columns = 2;
-#else
-		columns = COLUMNS;
-#endif
-#if	(ADJTTY == 0)
-	if (evalbool(getenv2("FD_ADJTTY")) > 0) {
-#else
-	{
-#endif
+#if	!MSDOS
+	if (adjtty) {
 		cooked2();
 		echo2();
 		nl2();
@@ -849,11 +815,11 @@ char *argv[], *envp[];
 		nonl2();
 		notabs();
 	}
+#endif	/* !MSDOS */
 
 	loadhistory(0, HISTORYFILE);
 	entryhist(1, origpath, 1);
 	putterms(t_clear);
-	title();
 	sigvecset();
 
 	main_fd(argv[i]);
@@ -862,16 +828,19 @@ char *argv[], *envp[];
 #ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
+	free(progpath);
 
 #ifdef	DEBUG
 	free(tmpfilename);
-	free(progpath);
 	freeenv();
 	freehistory(0);
 	freehistory(1);
 	if (deftmpdir) free(deftmpdir);
 	if (rockridgepath) free(rockridgepath);
 	freedefine();
+#ifndef	_NOUSEHASH
+	freehash(NULL);
+#endif
 #endif
 	exit2(0);
 	return(0);

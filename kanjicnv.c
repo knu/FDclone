@@ -23,8 +23,8 @@
 #define	VOID
 #endif
 
-static int fputs2 __P_((char *, FILE *));
-static char *convert __P_((int, int));
+static VOID fputc2 __P_((int, FILE *));
+static VOID convert __P_((int, int, FILE *));
 static VOID output __P_((FILE *, int, int));
 
 static int msboff = 0;
@@ -33,50 +33,38 @@ static int removebs = 0;
 static int kanjicode = SJIS;
 
 
-static int fputs2(s, fp)
-char *s;
+static VOID fputc2(c, fp)
+int c;
+FILE *fp;
+{
+	if (msboff && (c & 0x80)) fprintf(fp, "\\%03o", c);
+	else fputc(c, fp);
+}
+
+static VOID convert(j1, j2, fp)
+int j1, j2;
 FILE *fp;
 {
 	int c;
 
-	if (!msboff) return(fputs(s, fp));
-	while ((c = *(unsigned char *)(s++))) {
-		if (c & 0x80) fprintf(fp, "\\%o", c);
-		else fputc(c, fp);
-	}
-	return(0);
-}
-
-static char *convert(j1, j2)
-int j1, j2;
-{
-	static unsigned char cnv[4];
-
 	if (kanjicode == EUC) {
-		cnv[1] = j2 | 0x80;
-		if (j1) cnv[0] = j1 | 0x80;
-		else if (j2 > ' ') cnv[0] = 0x8e;
+		if (j1) {
+			fputc2(j1 | 0x80, fp);
+			fputc2(j2 | 0x80, fp);
+		}
+		else if (j2 <= 0x20 || j2 >= 0x60) fputc2(j2, fp);
 		else {
-			cnv[0] = j2;
-			cnv[1] = '\0';
+			fputc2(0x8e, fp);
+			fputc2(j2 | 0x80, fp);
 		}
-		cnv[2] = '\0';
 	}
-	else if (j1) {
-		cnv[0] = ((j1 - 1) >> 1) + ((j1 < 0x5f) ? 0x71 : 0xb1);
-		cnv[1] = j2 + ((j1 & 1) ? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
-		if (cnv[1] == '\\' && prefix) {
-			cnv[2] = '\\';
-			cnv[3] = '\0';
-		}
-		else cnv[2] = '\0';
-	}
-	else if (j2 >= 0x60) cnv[0] = '\0';
+	else if (!j1) fputc2((j2 <= 0x20 || j2 >= 0x60) ? j2 : j2 | 0x80, fp);
 	else {
-		cnv[0] = (j2 > ' ') ? j2 | 0x80 : j2;
-		cnv[1] = '\0';
+		fputc2(((j1 - 1) >> 1) + ((j1 < 0x5f) ? 0x71 : 0xb1), fp);
+		c = j2 + ((j1 & 1) ? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
+		fputc2(c, fp);
+		if (c == '\\' && (prefix || msboff)) fputc2('\\', fp);
 	}
-	return((char *)cnv);
 }
 
 static VOID output(fp, c, mode)
@@ -87,24 +75,25 @@ int c, mode;
 	static int kanji1 = 0;
 	static int bufp = 0;
 
-	if (!fp) bufp = kanji1 = 0;
+	if (!fp) {
+		bufp = kanji1 = 0;
+		return;
+	}
 
-	if (bufp > 1) {
-		fputs2(convert(buf[0], buf[1]), fp);
+	if (!bufp);
+	else if (bufp > 1) {
+		convert(buf[0], buf[1], fp);
 		bufp = 0;
-		kanji1 = mode;
 	}
-	else if (bufp > 0 && (kanji1 & (KANA | JKANA))) {
-		fputs2(convert(0, buf[0]), fp);
+	else if (kanji1 & (KANA | JKANA)) {
+		convert(0, buf[0], fp);
 		bufp = 0;
-		kanji1 = mode;
 	}
-	else if (bufp > 0 && !(kanji1 & KANJI)) {
-		fputc(buf[0], fp);
+	else if (!(kanji1 & KANJI)) {
+		fputc2(buf[0], fp);
 		bufp = 0;
-		kanji1 = mode;
 	}
-	else if (!bufp) kanji1 = mode;
+	kanji1 = mode;
 
 	if (c != EOF) buf[bufp++] = c;
 }

@@ -19,6 +19,16 @@
 #endif
 #endif
 
+#ifndef	STDIN_FILENO
+#define	STDIN_FILENO	0
+#endif
+#ifndef	STDOUT_FILENO
+#define	STDOUT_FILENO	1
+#endif
+#ifndef	STDERR_FILENO
+#define	STDERR_FILENO	2
+#endif
+
 #define	CR	'\r'
 #define	ESC	'\033'
 
@@ -132,13 +142,14 @@ extern VOID_T (*keywaitfunc)__P_((VOID_A));
 #if	!MSDOS
 extern int usegetcursor;
 #endif
+extern int ttyio;
 
 #if	MSDOS
-#define	putterm(str)	cputs2(str)
-#define	putterms(str)	cputs2(str)
+#define	putterm(s)	cputs2(s)
+#define	putterms(s)	cputs2(s)
 #else
-#define	putterm(str)	tputs(str, 1, putch2)
-#define	putterms(str)	tputs(str, n_line, putch2)
+#define	putterm(s)	tputs(s, 1, putch3)
+#define	putterms(s)	tputs(s, n_line, putch3)
 #endif
 
 extern int inittty __P_((int));
@@ -162,6 +173,9 @@ extern char *getkeyseq __P_((int, int *));
 extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
 extern int putch2 __P_((int));
+#if	!MSDOS
+extern int putch3 __P_((int));
+#endif
 extern int cputs2 __P_((char *));
 #if	MSDOS || defined (__STDC__)
 extern int cprintf2(CONST char *, ...);

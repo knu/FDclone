@@ -63,7 +63,7 @@
 # ifndef	random
 # define	random()		rand()
 # endif
-#define	kill(pid, sig)		raise(sig)
+#define	kill(pid, sig)		((raise(sig)) ? -1 : 0)
 #define	SIGALRM		11	/* SIGSEGV */
 #undef	SIGSEGV
 #undef	SIGTERM
@@ -106,7 +106,7 @@ typedef struct _dirdesc {
 #define	DID_IFLABEL	001
 #define	DID_IFLFN	002
 
-struct	dirent {
+struct dirent {
 	long	d_off;
 #ifndef	_NODOSDRIVE
 	u_long	d_fileno;

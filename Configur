@@ -17,9 +17,10 @@ trap "rm -f $TMPSRC $TMPEXE; exit 0" 0 1 2 15
 docc='$CC $TMPSRC -o $TMPEXE $INCLUDEDIR $LIBDIR $LIBS > /dev/null 2>&1'
 docpp='$CPP $TMPSRC $INCLUDEDIR > $TMPEXE 2> /dev/null'
 testcpp='$CPP $TMPSRC $INCLUDEDIR 2>&1 > /dev/null'
+i_unistdh=
 
 setheader() {
-	echo "" > $TMPSRC
+	echo "${i_unistdh}" > $TMPSRC
 	if [ -n "$1" ]; then
 		for i in $1""; do
 			echo "#include <${i}.h>" >> $TMPSRC
@@ -92,7 +93,8 @@ havelib() {
 cat ./config.hin
 
 for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
-NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
+NOVOID NOUID_T DECLSIGLIST NOSIGLIST \
+DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
 NOUNISTDH NOSTDLIBH NOTZFILEH USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
 USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
@@ -102,7 +104,9 @@ USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF \
-USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME SIGARGINT SIGFNCINT \
+USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME \
+USEWAITPID USERESOURCEH USEULIMITH USETIMESH \
+GETPGRPVOID USESETPGID SIGARGINT SIGFNCINT \
 GETTODARGS
 do
 	echo "#ifdef	$i"
@@ -198,18 +202,26 @@ fi
 if noinheader uid_t sys/types; then
 	echo "#define	NOUID_T"
 fi
+if inheader sys_siglist signal; then
+	echo "#define	DECLSIGLIST"
+elif noexist 'extern char *sys_siglist[]; return(*(sys_siglist[0]))' signal
+then
+	echo "#define	NOSIGLIST"
+fi
 if inheader sys_errlist "stdio errno"; then
 	echo "#define	DECLERRLIST"
 fi
 if noexist errno errno; then
 	echo "#define	NOERRNO"
 fi
-if noinheader ' *[0-7]+.*, *[0-7]+.*, *[0-7]+.*' sys/stat \
+if noinheader ' *\(* *[0-7]+.*, *\(* *[0-7]+.*, *\(* *[0-7]+.*' sys/stat \
 "S_IRUSR,S_IWGRP,S_IXOTH"; then
 	echo "#define	NOFILEMODE"
 fi
 if noheader unistd; then
 	echo "#define	NOUNISTDH"
+else
+	i_unistdh="#include <unistd.h>"
 fi
 if noheader stdlib; then
 	echo "#define	NOSTDLIBH"
@@ -220,16 +232,16 @@ elif isexist "struct tzhead t; t.tzh_leapcnt" tzfile; then
 	echo "#define	USELEAPCNT"
 fi
 
-if noinheader 'struct.*[^a-zA-Z_]fd_set' sys/types \
-&& inheader 'struct.*[^a-zA-Z_]fd_set' sys/select; then
+if noinheader 'struct.*[^a-zA-Z0-9_]fd_set[^a-zA-Z0-9_]' sys/types \
+&& inheader 'struct.*[^a-zA-Z0-9_]fd_set[^a-zA-Z0-9_]' sys/select; then
 	echo "#define	USESELECTH"
 fi
 if noinheader ' *0*x*[0-9a-fA-F ]* *' sys/param DEV_BSIZE \
 && inheader ' *0*x*[0-9a-fA-F ]* *' sys/dir DEV_BSIZE; then
 	echo "#define	USESYSDIRH"
 fi
-if inheader 'struct.*[^a-zA-Z_]tm[^a-zA-Z_]' "sys/types sys/time time" \
-&& noinheader 'struct.*[^a-zA-Z_]tm[^a-zA-Z_]' "sys/types sys/time"; then
+if inheader 'struct.*[^a-zA-Z0-9_]tm[^a-zA-Z0-9_]' "sys/types sys/time time" \
+&& noinheader 'struct.*[^a-zA-Z0-9_]tm[^a-zA-Z0-9_]' "sys/types sys/time"; then
 	echo "#define	USETIMEH"
 fi
 if noheader sgtty \
@@ -251,9 +263,9 @@ else
 		echo "#define	NODNAMLEN"
 	fi
 fi
-if (inheader 'extern.*[^a-zA-Z_]timezone' sys/time \
+if (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' sys/time \
 && isexist "extern time_t timezone; timezone" "sys/types sys/time") \
-|| (inheader 'extern.*[^a-zA-Z_]timezone' time \
+|| (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' time \
 && isexist "extern time_t timezone; timezone" "sys/types time"); then
 	echo "#define	HAVETIMEZONE"
 fi
@@ -264,22 +276,23 @@ fi
 
 
 arg=2
-if inheader 'struct.*[^a-zA-Z_]fs_data' sys/mount; then
+if inheader 'struct.*[^a-zA-Z0-9_]fs_data[^a-zA-Z0-9_]' sys/mount; then
 	echo "#define	USEFSDATA"
-elif inheader 'struct.*[^a-zA-Z_]statfs' sys/vfs; then
+elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' sys/vfs; then
 	echo "#define	USEVFSH"
-elif inheader 'struct.*[^a-zA-Z_]statfs' sys/mount; then {
+elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' sys/mount; then {
 	echo "#define	USEMOUNTH"
 	if inheader MOUNT_UFS sys/mount; then
 		echo "#define	USEFFSIZE"
 	elif isexist "statfs(0,0,0)" sys/mount; then arg=3; fi
 }
-elif inheader 'struct.*[^a-zA-Z_]statfs' "sys/types sys/statfs" \
+elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' \
+"sys/types sys/statfs" \
 && { { isexist "struct statfs f; statfs(0,&f,0,0)" "sys/types sys/statfs" \
 && arg=4; } \
 || isexist "struct statfs f; statfs(0,&f)" "sys/types sys/statfs"; }; then
 	echo "#define	USESTATFSH"
-elif inheader 'struct.*[^a-zA-Z_]statvfs' sys/statvfs; then
+elif inheader 'struct.*[^a-zA-Z0-9_]statvfs[^a-zA-Z0-9_]' sys/statvfs; then
 	echo "#define	USESTATVFSH"
 fi
 if [ "$arg" != "2" ]; then
@@ -309,7 +322,7 @@ elif isexist "getfsstat(0,0,0)"; then
 elif isexist "getmnt(0,0,0,0,0)"; then
 	echo "#define	USEGETMNT"
 elif isexist "getfsent()" \
-&& inheader 'char.*[^a-zA-Z_]fs_mntops' fstab; then
+&& inheader 'char.*[^a-zA-Z0-9_]fs_mntops[^a-zA-Z0-9_]' fstab; then
 	echo "#define	USEGETFSENT"
 fi
 
@@ -357,14 +370,35 @@ if isexist "mktime(0)" time; then
 elif isexist "timelocal(0)" time; then
 	echo "#define	USETIMELOCAL"
 fi
-if noexist "gethostname(0,0)"\
-&& isexist "uname(0)" sys/utsname; then
+if noexist "gethostname(0,0)" && isexist "uname(0)" sys/utsname; then
 	echo "#define	USEUNAME"
 fi
-if inheader 'int.*[^a-zA-Z_]signal' signal; then
+if isexist "waitpid(0,0,0)" sys/wait; then
+	echo "#define	USEWAITPID"
+fi
+if isexist "getrusage(0,0)" "sys/types sys/time sys/resource"\
+&& isexist "getrlimit(0,0)" "sys/types sys/time sys/resource"; then
+	echo "#define	USERESOURCEH"
+else
+	if isexist "ulimit(0,0)" ulimit; then
+	echo "#define	USEULIMITH"
+	fi
+	if isexist "times(0)" "sys/types sys/times"; then
+	echo "#define	USETIMESH"
+	fi
+fi
+if noexist "getpgrp(0)" && isexist "getpgrp()"; then
+	echo "#define	GETPGRPVOID"
+fi
+if isexist "setpgid(0,0)"; then
+	echo "#define	USESETPGID"
+fi
+if inheader 'int.*[^a-zA-Z0-9_]signal[^a-zA-Z0-9_]' signal; then
 	echo "#define	SIGARGINT"
 fi
-if inheader '[^a-zA-Z_]signal[^a-zA-Z_]*\(.*\( *int *\) *\)' signal; then
+if inheader '[^a-zA-Z0-9_]signal([^a-zA-Z0-9_].*\(|\()[ (]*int[ ),].*\) *;' \
+signal
+then
 	echo "#define	SIGFNCINT"
 fi
 if noexist "gettimeofday(0,0)" "sys/time time"\

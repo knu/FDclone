@@ -14,8 +14,10 @@
 #include <sys/param.h>
 #endif
 
-#define TRANSTBLFILE	"TRANS.TBL"
-#define TRANSTBLVAR	1
+extern char fullpath[];
+
+#define	TRANSTBLFILE	"TRANS.TBL"
+#define	TRANSTBLVAR	1
 #define	RR_TRANS	001
 #define	RR_LOWER	002
 #define	RR_VERNO	004
@@ -36,16 +38,16 @@ static char *getorgname(name, flag)
 char *name;
 u_char flag;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXNAMLEN + 1];
 	int i;
 
-	for (i = 0; i < MAXPATHLEN && name[i] && name[i] != ';'; i++) {
-		buf[i] = name[i];
+	for (i = 0; i < MAXNAMLEN && name[i] && name[i] != ';'; i++) {
 		if ((flag & RR_LOWER) && buf[i] >= 'A' && buf[i] <= 'Z')
-			buf[i] += 'a' - 'A';
+			buf[i] = name[i] + 'a' - 'A';
+		else buf[i] = name[i];
 	}
 
-	if ((flag & RR_VERNO) && name[i] == ';') {
+	if (i < MAXNAMLEN - 2 && (flag & RR_VERNO) && name[i] == ';') {
 		buf[i++] = (flag & RR_HYPHN) ? '-' : ';';
 		buf[i] = name[i];
 		i++;
@@ -136,7 +138,7 @@ static assoclist *readtranstbl(VOID_A)
 
 		new = (assoclist *)malloc2(sizeof(assoclist));
 		new -> org = org;
-		new -> assoc = (char *)malloc2(len + 1);
+		new -> assoc = malloc2(len + 1);
 		*(new -> assoc) = *line;
 		strcpy(new -> assoc + 1, cp);
 
@@ -181,10 +183,10 @@ namelist *list;
 int max;
 {
 	assoclist *tp, *start, *tbl;
-	char *cp, rpath[MAXPATHLEN + 1];
+	char *cp, rpath[MAXPATHLEN];
 	int i;
 
-	if (!includepath(rpath, rockridgepath)) return(0);
+	if (!includepath(rpath, fullpath, rockridgepath)) return(0);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else if (!(tbl = readtranstbl())) return(0);
@@ -224,9 +226,9 @@ char *transfile(file, buf)
 char *file, *buf;
 {
 	assoclist *tp, *start, *tbl;
-	char *cp, rpath[MAXPATHLEN + 1];
+	char *cp, rpath[MAXPATHLEN];
 
-	if (!includepath(rpath, rockridgepath)) return(file);
+	if (!includepath(rpath, fullpath, rockridgepath)) return(file);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
 	else if (!(tbl = readtranstbl())) return(file);
@@ -238,7 +240,7 @@ char *file, *buf;
 	}
 	if (!tp) cp = file;
 	else {
-		strcpy(buf, tp -> assoc + 1);
+		strncpy2(buf, tp -> assoc + 1, MAXNAMLEN);
 		cp = buf;
 		start = tp -> next;
 	}
@@ -257,7 +259,8 @@ char *path, *buf;
 int rdlink;
 {
 	assoclist *tp, *start, *tbl;
-	char *cp, dir[MAXPATHLEN + 1];
+	char *cp, *tmp, dir[MAXPATHLEN];
+	int len;
 
 	if (!(cp = strrdelim(path, 0)) || cp == path) return(NULL);
 	strncpy2(dir, path, (cp++) - path);
@@ -277,12 +280,14 @@ int rdlink;
 	if (!tp) cp = NULL;
 	else {
 		start = tp -> next;
-		strcatdelim(buf);
-		if (!rdlink || *(tp -> assoc) != 'L') strcat(buf, tp -> org);
+		tmp = strcatdelim(buf);
+		len = MAXPATHLEN - 1 - (tmp - buf);
+		if (!rdlink || *(tp -> assoc) != 'L')
+			strncpy2(tmp, tp -> org, len);
 		else {
 			for (cp = tp -> assoc + 1; *cp; cp++);
 			cp++;
-			strcat(buf, cp);
+			strncpy2(tmp, cp, len);
 			detransfile(buf, buf, 1);
 		}
 		cp = buf;
@@ -297,12 +302,13 @@ char *detransfile(path, buf, rdlink)
 char *path, *buf;
 int rdlink;
 {
-	char *cwd, rpath[MAXPATHLEN + 1];
+	char *cwd, rpath[MAXPATHLEN];
 
-	if (!includepath(rpath, rockridgepath)) return(path);
+	if (!includepath(rpath, path, rockridgepath)) return(path);
 
 	cwd = getwd2();
-	if (_detransfile(rpath, buf, rdlink)) path = realpath2(buf, buf);
+	if (_detransfile(rpath, buf, rdlink))
+		path = realpath2(buf, buf, rdlink);
 	_Xchdir(cwd);
 	free(cwd);
 	return(path);

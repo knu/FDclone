@@ -15,6 +15,10 @@
 #include <sys/file.h>
 #endif
 
+#ifndef	_NODOSDRIVE
+extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
+#endif
+
 extern int columns;
 extern int filepos;
 extern int mark;
@@ -72,6 +76,8 @@ static int log_top __P_((namelist *, int *, char *));
 #ifndef	PAGER
 static VOID dump __P_((char *));
 #endif
+static int execenv __P_((char *, char *));
+static int execshell __P_((VOID_A));
 static int view_file __P_((namelist *, int *, char *));
 static int edit_file __P_((namelist *, int *, char *));
 static int sort_dir __P_((namelist *, int *, char *));
@@ -399,18 +405,17 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-	int i;
+	int i, m;
 
 	if (islink(&(list[filepos]))) i = 0;
 	else {
 		i = calcwidth();
-		if (isdisptyp(dispmode)
-		&& ((list[filepos].st_mode & S_IFMT) == S_IFDIR
-		|| (list[filepos].st_mode & S_IFMT) == S_IFLNK
-		|| (list[filepos].st_mode & S_IFMT) == S_IFSOCK
-		|| (list[filepos].st_mode & S_IFMT) == S_IFIFO
-		|| (list[filepos].st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))))
-			i--;
+		if (isdisptyp(dispmode)) {
+			m = list[filepos].st_mode;
+			if (((m & S_IFMT) == S_IFDIR || (m & S_IFMT) == S_IFLNK
+			|| (m & S_IFMT) == S_IFSOCK || (m & S_IFMT) == S_IFIFO
+			|| (m & (S_IXUSR | S_IXGRP | S_IXOTH)))) i--;
+		}
 	}
 	if (i >= strlen3(list[filepos].name) - fnameofs) return(0);
 	fnameofs++;
@@ -566,7 +571,7 @@ static reg_t *prepareregexp(mes, arg)
 char *mes, *arg;
 {
 	reg_t *re;
-	char *cp, *wild;
+	char *wild;
 
 	if (arg && *arg) wild = strdup2(arg);
 	else if (!(wild = inputstr(mes, 0, 0, "*", -1))) return(NULL);
@@ -576,11 +581,8 @@ char *mes, *arg;
 		return(NULL);
 	}
 
-	cp = cnvregexp(wild, 1);
-	re = regexp_init(cp);
+	re = regexp_init(wild, -1);
 	free(wild);
-	free(cp);
-
 	return(re);
 }
 
@@ -596,7 +598,7 @@ char *arg;
 	if (!(re = prepareregexp(FINDF_K, arg))) return(1);
 	for (i = 0; i < *maxp; i++)
 		if (!isdir(&(list[i])) && !ismark(&(list[i]))
-		&& regexp_exec(re, list[i].name)) {
+		&& regexp_exec(re, list[i].name, 1)) {
 			list[i].tmpflags |= F_ISMRK;
 			mark++;
 			if (isfile(&(list[i])))
@@ -767,10 +769,10 @@ char *file;
 	buf = NEXT_K;
 	i = strlen3(file);
 	if (i + strlen(buf) > n_lastcolumn) i = n_lastcolumn - strlen(buf);
-	prompt = (char *)malloc2(i * KANAWID + strlen(buf) + 1);
+	prompt = malloc2(i * KANAWID + strlen(buf) + 1);
 	strncpy3(prompt, file, &i, 0);
 	strcat(prompt, buf);
-	buf = (char *)malloc2(n_column + 2);
+	buf = malloc2(n_column + 2);
 
 	i = 0;
 	while (Xfgets(buf, n_column + 1, fp)) {
@@ -794,6 +796,51 @@ char *file;
 	free(prompt);
 }
 #endif
+
+static int execenv(env, arg)
+char *env, *arg;
+{
+	char *command;
+
+	if (!(command = getenv2(env))) return(0);
+	putterms(t_clear);
+	tflush();
+	execmacro(command, arg, NULL, NULL, 1, 0);
+	return(1);
+}
+
+static int execshell(VOID_A)
+{
+	char *sh;
+	int ret;
+
+#if	MSDOS
+	if (!(sh = getenv2("FD_SHELL"))
+	&& !(sh = getenv2("FD_COMSPEC"))) sh = "command.com";
+#else
+	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
+#endif
+	putterms(t_end);
+	putterms(t_nokeypad);
+	tflush();
+	sigvecreset();
+	cooked2();
+	echo2();
+	nl2();
+	tabs();
+	kanjiputs(SHEXT_K);
+	tflush();
+	ret = system(sh);
+	raw2();
+	noecho2();
+	nonl2();
+	notabs();
+	sigvecset();
+	putterms(t_keypad);
+	putterms(t_init);
+
+	return(ret);
+}
 
 /*ARGSUSED*/
 static int view_file(list, maxp, arg)
@@ -966,14 +1013,13 @@ namelist *list;
 int *maxp;
 char *arg;
 {
+#ifndef	_NODOSDRIVE
+	int drive;
+#endif
+
 	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	if (dospath2("")) {
-		Xchdir(_SS_);
-		sync();
-		sync();
-		chdir2(".");
-	}
+#ifndef	_NODOSDRIVE
+	if ((drive = dospath3(""))) flushdrv(drive, NULL);
 #endif
 	return(4);
 }
@@ -1248,16 +1294,17 @@ char *arg;
 #endif
 
 #if	MSDOS
-	len = (isexec(&(list[filepos]))) ? strlen(list[filepos].name) + 1 : 0;
+	len = (!isdir(&(list[filepos])) && isexec(&(list[filepos])))
+		? strlen(list[filepos].name) + 1 : 0;
 	com = inputstr(NULL, 0, len, list[filepos].name, 0);
 #else
-	if (!isexec(&(list[filepos]))) {
+	if (isdir(&(list[filepos])) || !isexec(&(list[filepos]))) {
 		len = 0;
 		tmp = list[filepos].name;
 	}
 	else {
 		len = strlen(list[filepos].name) + 2 + 1;
-		tmp = (char *)malloc2(len + 1);
+		tmp = malloc2(len + 1);
 		tmp[0] = '.';
 		tmp[1] = _SC_;
 		strcpy(&(tmp[2]), list[filepos].name);

@@ -7,10 +7,10 @@ MAKE	= make
 CC	= cc
 SED	= sed
 
-all:	Makefile.tmp
+all: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp
 
-debug:	Makefile.tmp
+debug: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' \
 	-f Makefile.tmp
 

@@ -6,19 +6,33 @@
 
 #include <ctype.h>
 
+#define	QUOTE		('^' - '@')
+#define	C_BS		'\010'
+#define	C_DEL		'\177'
+
+#ifdef	LSI_C
+#include <jctype.h>
+#define	issjis1(c)	iskanji(c)
+#define	issjis2(c)	iskanji2(c)
+#endif
+
 #ifndef	issjis1
-#define	issjis1(c)	((0x81 <= (c) && (c) <= 0x9f) \
-			|| (0xe0 <= (c) && (c) <= 0xfc))
+#define	issjis1(c)	(((u_char)(c) >= 0x81 && (u_char)(c) <= 0x9f) \
+			|| ((u_char)(c) >= 0xe0 && (u_char)(c) <= 0xfc))
+#endif
+#ifndef	issjis2
+#define	issjis2(c)	((u_char)(c) >= 0x40 && (u_char)(c) <= 0xfc \
+			&& (u_char)(c) != 0x7f)
 #endif
 
 #ifndef	iseuc
-#define	iseuc(c)	(0xa1 <= (c) && (c) <= 0xfe)
+#define	iseuc(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xfe)
 #endif
 
-#define	isctl(c)	((u_char)(c) < ' ' || (c) == C_DEL)
+#define	isctl(c)	((u_char)(c) < ' ' || (u_char)(c) == C_DEL)
 #define	iskna(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xdf)
-#define	isekana(str, i)	((u_char)(str[i]) == 0x8e && iskna(str[(i) + 1]))
-#define	isskana(str, i)	iskna(str[i])
+#define	isekana(s, i)	((u_char)((s)[i]) == 0x8e && iskna((s)[(i) + 1]))
+#define	isskana(s, i)	iskna((s)[i])
 
 #define	NOCNV	0
 #define	ENG	1
@@ -41,20 +55,26 @@ extern int inputkcode;
 extern int outputkcode;
 #endif
 
-#if	MSDOS
-#define	iskanji1(c)	issjis1((u_char)(c))
-#define	isinkanji1(c)	issjis1((u_char)(c))
-#else	/* !MSDOS */
+#define	L_INPUT		0
+#define	L_OUTPUT	1
+
 #ifdef	CODEEUC
-#define	iskanji1(c)	iseuc((u_char)(c))
+#define	iskanji1(s, i)	(iseuc((s)[i]) && iseuc((s)[(i) + 1]))
 #else
-#define	iskanji1(c)	issjis1((u_char)(c))
+#define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
 #endif
 
+#if	MSDOS
+#define	isinkanji1(c)	issjis1(c)
+#else	/* !MSDOS */
+
 #ifdef	_NOKANJICONV
-#define	isinkanji1(c)	iskanji1(c)
-#else
-#define	isinkanji1(c)	((inputkcode == EUC) \
-			? iseuc((u_char)(c)) : issjis1((u_char)(c)))
-#endif
+# ifdef	CODEEUC
+# define	isinkanji1(c)	iseuc(c)
+# else
+# define	isinkanji1(c)	issjis1(c)
+# endif
+#else	/* !_NOKANJICONV */
+#define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : issjis1(c))
+#endif	/* !_NOKANJICONV */
 #endif	/* !MSDOS */

@@ -12,6 +12,9 @@
 
 extern char *deftmpdir;
 extern char *tmpfilename;
+#ifdef	LSI_C
+extern u_char _openfile[];
+#endif
 
 #ifndef	_NODOSDRIVE
 static int checkpath __P_((char *, char *));
@@ -27,7 +30,7 @@ char *path;
 int dospath(path, buf)
 char *path, *buf;
 {
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 #ifndef	_NOUSELFN
 	char *cp;
 #endif
@@ -58,10 +61,19 @@ char *path;
 	return(drive);
 }
 
+int dospath3(path)
+char *path;
+{
+	int drive;
+
+	if ((drive = supportLFN(path)) >= 0 || drive <= -3) return(0);
+	return((drive = _dospath(path)) ? drive : getcurdrv());
+}
+
 static int checkpath(path, buf)
 char *path, *buf;
 {
-	char *cp, tmp[MAXPATHLEN + 1];
+	char *cp, tmp[MAXPATHLEN];
 	int i, drive;
 
 	if ((drive = _dospath(path))) cp = path + 2;
@@ -100,7 +112,7 @@ char *path;
 DIR *Xopendir(path)
 char *path;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(unixopendir(path));
@@ -116,7 +128,18 @@ DIR *dirp;
 struct dirent *Xreaddir(dirp)
 DIR *dirp;
 {
+#ifdef	_NOROCKRIDGE
 	return(unixreaddir(dirp));
+#else
+	static struct dirent buf;
+	struct dirent *dp;
+	char tmp[MAXNAMLEN + 1];
+
+	if (!(dp = unixreaddir(dirp))) return(NULL);
+	memcpy(&buf, dp, sizeof(struct dirent));
+	if (transfile(buf.d_name, tmp) == tmp) strcpy(buf.d_name, tmp);
+	return(&buf);
+#endif
 }
 
 VOID Xrewinddir(dirp)
@@ -128,35 +151,34 @@ DIR *dirp;
 int _Xchdir(path)
 char *path;
 {
-#ifndef	_NODOSDRIVE
-	char buf[MAXPATHLEN + 1];
-	int dd;
-#endif
-	int drive;
-
-	drive = dospath(path, NULL);
-	if (setcurdrv(drive) < 0) return(-1);
 #ifdef	_NODOSDRIVE
-	return(unixchdir(path));
+	if (setcurdrv(dospath(path, NULL)) < 0 || unixchdir(path) < 0)
+		return(-1);
+	return(0);
 #else	/* !_NODOSDRIVE */
-	if (checkpath(path, buf)) {
-		if ((dd = preparedrv(drive)) < 0) return(-1);
-		if (doschdir(buf) < 0) {
-			shutdrv(dd);
+	char buf[MAXPATHLEN];
+	int drive, dd;
+
+	if (!(drive = dospath3(path))) {
+		if (setcurdrv(dospath(path, NULL)) < 0 || unixchdir(path) < 0)
 			return(-1);
-		}
-		if (lastdrv >= 0) {
-			if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
-				shutdrv(lastdrv);
-			else dd = lastdrv;
-		}
-		lastdrv = dd;
-	}
-	else {
-		if (unixchdir(path) < 0) return(-1);
 		if (lastdrv >= 0) shutdrv(lastdrv);
 		lastdrv = -1;
+		return(0);
 	}
+
+	if ((dd = preparedrv(drive)) < 0) return(-1);
+	if (setcurdrv(drive) < 0
+	|| (checkpath(path, buf) ? doschdir(buf) : unixchdir(path)) < 0) {
+		shutdrv(dd);
+		return(-1);
+	}
+	if (lastdrv >= 0) {
+		if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
+			shutdrv(lastdrv);
+		else dd = lastdrv;
+	}
+	lastdrv = dd;
 	return(0);
 #endif	/* !_NODOSDRIVE */
 }
@@ -165,7 +187,7 @@ char *path;
 int Xchdir(path)
 char *path;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(_Xchdir(path));
@@ -179,20 +201,20 @@ int size;
 	return(unixgetcwd(path, size));
 }
 
-int Xstat(path, statp)
+int Xstat(path, stp)
 char *path;
-struct stat *statp;
+struct stat *stp;
 {
 	char *cp;
 	u_short mode;
 #ifndef	_NOROCKRIDGE
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (strcmp(path, "..") && detransfile(path, buf, 1) == buf) path = buf;
 #endif
-	if (unixstat(path, statp) < 0) return(-1);
+	if (unixstat(path, stp) < 0) return(-1);
 
-	mode = (u_short)(statp -> st_mode);
+	mode = (u_short)(stp -> st_mode);
 	if ((mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
 		if (!stricmp(cp, "BAT")
@@ -201,16 +223,16 @@ struct stat *statp;
 	}
 	mode &= (S_IREAD | S_IWRITE | S_IEXEC);
 	mode |= (mode >> 3) | (mode >> 6);
-	statp -> st_mode |= mode;
+	stp -> st_mode |= mode;
 
 	return(0);
 }
 
-int Xlstat(path, statp)
+int Xlstat(path, stp)
 char *path;
-struct stat *statp;
+struct stat *stp;
 {
-	return(Xstat(path, statp));
+	return(Xstat(path, stp));
 }
 
 int Xaccess(path, mode)
@@ -218,9 +240,9 @@ char *path;
 int mode;
 {
 #if	!defined (_NOROCKRIDGE) || !defined (_NOUSELFN)
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 #endif
-	struct stat status;
+	struct stat st;
 
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 1) == buf) path = buf;
@@ -237,8 +259,8 @@ int mode;
 #endif
 	if (access(path, mode) != 0) return(-1);
 	if (!(mode & X_OK)) return(0);
-	if (Xstat(path, &status) < 0
-	|| !(status.st_mode & S_IEXEC)) {
+	if (Xstat(path, &st) < 0
+	|| !(st.st_mode & S_IEXEC)) {
 		errno = EACCES;
 		return(-1);
 	}
@@ -259,7 +281,7 @@ char *path, *buf;
 int bufsiz;
 {
 #ifndef	_NOROCKRIDGE
-	char tmp[MAXPATHLEN + 1];
+	char tmp[MAXPATHLEN];
 
 	if (detransfile(path, tmp, 0) == buf) {
 		detransfile(path, buf, 1);
@@ -275,7 +297,7 @@ char *path;
 int mode;
 {
 #ifndef	_NOROCKRIDGE
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
 #endif
@@ -288,7 +310,7 @@ char *path;
 struct utimbuf *times;
 {
 # ifndef	_NOROCKRIDGE
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
 # endif
@@ -299,7 +321,7 @@ char *path;
 struct timeval tvp[2];
 {
 # ifndef	_NOROCKRIDGE
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
 # endif
@@ -311,7 +333,7 @@ int Xunlink(path)
 char *path;
 {
 #if	!defined (_NOROCKRIDGE) || !defined (_NOUSELFN)
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 #endif
 
 #ifndef	_NOROCKRIDGE
@@ -330,7 +352,7 @@ int Xrename(from, to)
 char *from, *to;
 {
 #ifndef	_NOROCKRIDGE
-	char buf1[MAXPATHLEN + 1], buf2[MAXPATHLEN + 1];
+	char buf1[MAXPATHLEN], buf2[MAXPATHLEN];
 
 	if (detransfile(from, buf1, 0) == buf1) from = buf1;
 	if (detransfile(to, buf2, 0) == buf2) to = buf2;
@@ -347,7 +369,7 @@ int Xopen(path, flags, mode)
 char *path;
 int flags, mode;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 1) == buf) path = buf;
@@ -403,6 +425,46 @@ int whence;
 }
 #endif	/* !_NODOSDRIVE */
 
+#if	defined (LSI_C) || !defined (_NODOSDRIVE)
+int Xdup(oldd)
+int oldd;
+{
+	int fd;
+
+#ifndef	_NODOSDRIVE
+	if ((oldd >= DOSFDOFFSET)) {
+		errno = EBADF;
+		return(-1);
+	}
+#endif
+	if ((fd = dup(oldd)) < 0) return(-1);
+#ifdef	LSI_C
+	if (fd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
+		_openfile[fd] = _openfile[oldd];
+#endif
+	return(fd);
+}
+
+int Xdup2(oldd, newd)
+int oldd, newd;
+{
+	int fd;
+
+#ifndef	_NODOSDRIVE
+	if ((oldd >= DOSFDOFFSET || newd >= DOSFDOFFSET)) {
+		errno = EBADF;
+		return(-1);
+	}
+#endif
+	if ((fd = dup2(oldd, newd)) < 0) return(-1);
+#ifdef	LSI_C
+	if (newd >= 0 && newd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
+		_openfile[newd] = _openfile[oldd];
+#endif
+	return(fd);
+}
+#endif	/* LSI_C || !_NODOSDRIVE */
+
 #ifndef	_NOUSELFN
 int _Xmkdir(path, mode)
 char *path;
@@ -423,7 +485,7 @@ int Xmkdir(path, mode)
 char *path;
 int mode;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
 	return((unixmkdir(path, mode) != 0) ? -1 : 0);
@@ -432,7 +494,7 @@ int mode;
 int Xrmdir(path)
 char *path;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 0) == buf) path = buf;
 	return((unixrmdir(path) != 0) ? -1 : 0);
@@ -443,7 +505,7 @@ char *path;
 FILE *_Xfopen(path, type)
 char *path, *type;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 # ifndef	_NODOSDRIVE
 	if (checkpath(path, buf)) return(dosfopen(buf, type));
@@ -458,7 +520,7 @@ char *path, *type;
 FILE *Xfopen(path, type)
 char *path, *type;
 {
-	char buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN];
 
 	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(_Xfopen(path, type));
@@ -466,6 +528,14 @@ char *path, *type;
 #endif
 
 #ifndef	_NODOSDRIVE
+FILE *Xfdopen(fd, type)
+int fd;
+char *type;
+{
+	if ((fd >= DOSFDOFFSET)) return(dosfdopen(fd, type));
+	return(fdopen(fd, type));
+}
+
 int Xfclose(stream)
 FILE *stream;
 {
@@ -544,9 +614,9 @@ FILE *Xpopen(command, type)
 char *command, *type;
 {
 #ifndef	_NOUSELFN
-	char *tmp, buf[MAXPATHLEN + 1];
+	char *tmp, buf[MAXPATHLEN];
 #endif
-	char cmdline[128], path[MAXPATHLEN + 1];
+	char cmdline[128], path[MAXPATHLEN];
 
 	strcpy(path, PIPEDIR);
 	if (mktmpdir(path) < 0) return(NULL);
@@ -564,13 +634,12 @@ char *command, *type;
 int Xpclose(fp)
 FILE *fp;
 {
-	char *cp, path[MAXPATHLEN + 1];
+	char *cp, path[MAXPATHLEN];
 	int no;
 
 	no = 0;
 	if (fclose(fp) != 0) no = errno;
-	strcpy(path, deftmpdir);
-	strcpy(strcatdelim(path), tmpfilename);
+	strcatdelim2(path, deftmpdir, tmpfilename);
 	strcpy(strcatdelim(path), PIPEDIR);
 	strcpy((cp = strcatdelim(path)), PIPEFILE);
 
