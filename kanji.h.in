@@ -88,6 +88,7 @@
 #define	MRK_H	"FILEのマーク", "Mark file"
 #define	MRK2_H	"マークして下移動", "Mark & down"
 #define	MRKA_H	"全FILEにマーク", "Mark all"
+#define	MRKR_H	"マークを全反転", "Mark reversed"
 #define	MRKF_H	"検索FILEにマーク", "Mark selected"
 #define	PUSH_H	"FILEをスタックに", "File to stack"
 #define	POP_H	"スタックから取出", "File from stack"

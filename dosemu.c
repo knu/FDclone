@@ -84,6 +84,14 @@ DIR *dirp;
 		if (dp) for (i = 0; dp -> d_name[i]; i++)
 			if (isupper(dp -> d_name[i]))
 				dp -> d_name[i] += 'a' - 'A';
+			else if (dp -> d_name[i] == '`')
+				dp -> d_name[i] = '+';
+			else if (dp -> d_name[i] == '\'')
+				dp -> d_name[i] = ',';
+			else if (dp -> d_name[i] == '&')
+				dp -> d_name[i] = '[';
+			else if (dp -> d_name[i] == '$')
+				dp -> d_name[i] = '.';
 	}
 	if (!dp) return(NULL);
 	memcpy(&buf, dp, sizeof(buf));
@@ -94,7 +102,7 @@ int Xchdir(path)
 char *path;
 {
 	char buf[MAXPATHLEN + 1];
-	int i, dd, drive;
+	int dd, drive;
 
 	if (drive = dospath(path, buf)) {
 		if ((dd = preparedrv(drive, waitmes)) < 0) return(-1);
@@ -370,7 +378,6 @@ char *file;
 int mode;
 {
 	char *cp, path[MAXPATHLEN + 1];
-	int fd1, fd2;
 
 	sprintf(path, "%c:", drive);
 	if (mktmpdir(path) < 0) {
@@ -390,4 +397,18 @@ int mode;
 	*cp = '\0';
 	if (_chdir2(path) < 0) error(path);
 	return(strdup2(path));
+}
+
+int tmpdosrestore(drive, file, mode)
+int drive;
+char *file;
+int mode;
+{
+	char path[MAXPATHLEN + 1];
+
+	sprintf(path, "%c:%s", drive, file);
+	waitmes();
+	if (_cpfile(file, path, mode) < 0) return(-1);
+
+	return(0);
 }

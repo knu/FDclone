@@ -358,31 +358,28 @@ int no, standout;
 
 	width = calcwidth();
 	i = (standout && fnameofs > 0) ? fnameofs : 0;
-	strncpy3(buf, list[no].name, width, i);
-	if (isdisptyp(dispmode)) {
-		for (i = 0; i < width; i++) if (buf[i] == ' ') {
-			switch (list[no].st_mode & S_IFMT) {
-				case S_IFDIR:
-					buf[i] = '/';
-					break;
-				case S_IFLNK:
-					buf[i] = '@';
-					break;
-				case S_IFSOCK:
-					buf[i] = '=';
-					break;
-				case S_IFIFO:
-					buf[i] = '|';
-					break;
-				case S_IFREG:
-					if (list[no].st_mode &
-					(S_IXUSR | S_IXGRP | S_IXOTH))
-						buf[i] = '*';
-					break;
-				default:
-					break;
-			}
-			break;
+	i = strncpy3(buf, list[no].name, width, i);
+	if (isdisptyp(dispmode) && i < width) {
+		switch (list[no].st_mode & S_IFMT) {
+			case S_IFDIR:
+				buf[i] = '/';
+				break;
+			case S_IFLNK:
+				buf[i] = '@';
+				break;
+			case S_IFSOCK:
+				buf[i] = '=';
+				break;
+			case S_IFIFO:
+				buf[i] = '|';
+				break;
+			case S_IFREG:
+				if (list[no].st_mode &
+				(S_IXUSR | S_IXGRP | S_IXOTH))
+					buf[i] = '*';
+				break;
+			default:
+				break;
 		}
 	}
 	len = width;
@@ -391,6 +388,9 @@ int no, standout;
 	if (columns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&list[no]))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
+		else if (dospath("", NULL)
+		&& (list[no].st_mode & S_IFMT) == S_IFIFO)
+			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<VOL>");
 		else if (isdev(&list[no])) sprintf(buf + len, " %*u,%*u",
 			WSIZE / 2, ((unsigned)(list[no].st_size) >> 8) & 0xff,
 			WSIZE - (WSIZE / 2) - 1,

@@ -51,7 +51,9 @@ static int fname_right();
 static int fname_left();
 static int mark_file();
 static int mark_file2();
+static int mark_file3();
 static int mark_all();
+static int mark_reverse();
 static int mark_find();
 static int push_file();
 static int pop_file();
@@ -139,6 +141,7 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{')',		FNAME_LEFT,	255},
 	{' ',		MARK_FILE2,	255},
 	{'+',		MARK_ALL,	255},
+	{'-',		MARK_REVERSE,	255},
 	{'*',		MARK_FIND,	255},
 	{']',		PUSH_FILE,	255},
 	{'[',		POP_FILE,	255},
@@ -175,10 +178,11 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{'S',		SYMLINK_MODE,	255},
 	{'T',		FILETYPE_MODE,	255},
 	{'U',		UNPACK_TREE,	255},
-	{K_HOME,	CUR_TOP,	255},
-	{K_END,		CUR_BOTTOM,	255},
+	{K_HOME,	MARK_ALL,	255},
+	{K_END,		MARK_REVERSE,	255},
 	{K_BEG,		CUR_TOP,	255},
 	{K_EOL,		CUR_BOTTOM,	255},
+	{CTRL('@'),	MARK_FILE3,	255},
 	{CTRL('L'),	REREAD_DIR,	255},
 	{-1,		NO_OPERATION,	255}
 };
@@ -390,6 +394,18 @@ int *maxp;
 }
 
 /*ARGSUSED*/
+static int mark_file3(list, maxp)
+namelist *list;
+int *maxp;
+{
+	mark_file(list, maxp);
+	if (filepos < *maxp - 1
+	&& filepos / FILEPERPAGE == (filepos + 1) / FILEPERPAGE) filepos++;
+	else filepos = (filepos / FILEPERPAGE) * FILEPERPAGE;
+	return(2);
+}
+
+/*ARGSUSED*/
 static int mark_all(list, maxp)
 namelist *list;
 int *maxp;
@@ -407,6 +423,21 @@ int *maxp;
 			mark++;
 		}
 	}
+	locate(17, LSTATUS);
+	cprintf("%4d", mark);
+	return(2);
+}
+
+/*ARGSUSED*/
+static int mark_reverse(list, maxp)
+namelist *list;
+int *maxp;
+{
+	int i;
+
+	mark = 0;
+	for (i = 0; i < *maxp; i++) if (!isdir(&list[i]))
+		if (list[i].flags ^= F_ISMRK) mark++;
 	locate(17, LSTATUS);
 	cprintf("%4d", mark);
 	return(2);
@@ -617,11 +648,21 @@ static int edit_file(list, maxp)
 namelist *list;
 int *maxp;
 {
+	char *dir;
+	int drive;
+
 	if (isdir(&list[filepos])) return(warning_bell(list, maxp));
+	if ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
+	list[filepos].name, list[filepos].st_mode))) return(1);
 	if (!execenv("FD_EDITOR", list[filepos].name)) {
 #ifdef	EDITOR
 		execmacro(EDITOR, list[filepos].name, NULL, 0, 1, 0);
 #endif
+	}
+	if (drive) {
+		if (tmpdosrestore(drive, list[filepos].name,
+		list[filepos].st_mode) < 0) warning(-1, list[filepos].name);
+		removetmp(dir, NULL, list[filepos].name);
 	}
 	return(4);
 }
@@ -998,8 +1039,7 @@ static int unpack_file(list, maxp)
 namelist *list;
 int *maxp;
 {
-	char *dir;
-	int i, drive;
+	int i;
 
 	if (isdir(&list[filepos])) return(warning_bell(list, maxp));
 	if (archivefile) i = unpack(archivefile, NULL, list, *maxp, 0);

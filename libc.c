@@ -27,7 +27,6 @@
 #endif
 
 #ifdef	USEGETWD
-#define	getcwd(buf, size)	getwd(buf)
 #define	Xgetcwd(buf, size)	Xgetwd(buf)
 #endif
 
@@ -238,6 +237,7 @@ char *path;
 			unixpath = strdup2(cwd);
 		}
 		if (Xgetcwd(cwd, MAXPATHLEN)) strcpy(fullpath, cwd);
+		realpath2(fullpath, fullpath);
 	}
 	else {
 		if (unixpath) free(unixpath);
@@ -408,29 +408,32 @@ int n;
 	return(s1);
 }
 
-char *strncpy3(s1, s2, len, ptr)
+int strncpy3(s1, s2, len, ptr)
 char *s1, *s2;
 int len, ptr;
 {
 	char *cp;
-	int i;
+	int i, l;
 
 	cp = s1;
+	l = len;
 	if (ptr && onkanji1((u_char *)s2, ptr - 1)) {
 		*(cp++) = ' ';
 		ptr++;
+		l--;
+	}
+	if (l < strlen(s2 + ptr) && onkanji1((u_char *)s2, ptr + l - 1)) {
+		strncpy2(cp, s2 + ptr, --l);
+		strcat(cp, " ");
 		len--;
 	}
-	if (len < strlen(s2 + ptr) && onkanji1((u_char *)s2, ptr + len - 1)) {
-		strncpy2(cp, s2 + ptr, --len);
-		strcat(cp, " ");
-	}
 	else {
-		for (i = 0; i < len && s2[ptr + i]; i++) *(cp++) = s2[ptr + i];
-		for (; i < len; i++) *(cp++) = ' ';
+		for (i = 0; i < l && s2[ptr + i]; i++) *(cp++) = s2[ptr + i];
+		len = i;
+		for (; i < l; i++) *(cp++) = ' ';
 		*cp = '\0';
 	}
-	return(s1);
+	return(len);
 }
 
 #ifdef	NOSTRSTR
@@ -506,6 +509,7 @@ int overwrite;
 		free(ap -> assoc);
 	}
 	else {
+		if (!value) return(0);
 		ap = (assoclist *)malloc2(sizeof(assoclist));
 		ap -> org = strdup2(name);
 		ap -> next = environ2;

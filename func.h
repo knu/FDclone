@@ -74,6 +74,7 @@ extern int Xfputc();
 extern char *Xfgets();
 extern int Xfputs();
 extern char *tmpdosdupl();
+extern int tmpdosrestore();
 
 /* libc.c */
 extern int access2();
@@ -94,7 +95,7 @@ extern int toupper2();
 extern char *strchr2();
 extern char *strrchr2();
 extern char *strncpy2();
-extern char *strncpy3();
+extern int strncpy3();
 #ifdef	NOSTRSTR
 extern char *strstr();
 #endif

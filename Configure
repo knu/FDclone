@@ -90,9 +90,10 @@ USELEAPCNT NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
 NOUNISTDH NOSTDLIBH USESELECTH USESYSDIRH USETIMEH USETERMIO \
 USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
-USEFFSIZE USEFFSTYPE STATFSARGS \
+USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
+USEVFCNAME USEFFSTYPE\
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOSTRSTR NOVSPRINTF USEUTIME USEGETWD SIGARGINT
 do
@@ -278,7 +279,10 @@ elif isexist "getmntinfo_r(0,0,0,0)"; then
 	echo "#define	USEMNTINFOR"
 elif isexist "getmntinfo(0,0)"; then {
 	echo "#define	USEMNTINFO"
-	if isexist "struct statfs f; return(*(f.f_fstypename));" \
+	if isexist "struct vfsconf c; getvfsbytype(0); return(*(c.vfc_name));" \
+	"sys/param sys/mount"; then
+		echo "#define	USEVFCNAME"
+	elif isexist "struct statfs f; return(*(f.f_fstypename));" \
 	"sys/param sys/mount"; then
 		echo "#define	USEFFSTYPE"
 	fi

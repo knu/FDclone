@@ -329,7 +329,7 @@ static VOID insertchar(str, x, cx, len, linemax, ins)
 u_char *str;
 int x, cx, len, linemax, ins;
 {
-	u_char *cp, dupl[MAXLINESTR + 1];
+	u_char dupl[MAXLINESTR + 1];
 	int dy, i, j, l, f1, f2, ptr;
 
 	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);

@@ -123,6 +123,7 @@
 #define	USETIMEH
 #define	USETERMIO
 #define	HAVETIMEZONE
+#define	SYSVDIRENT
 #define	USEREGCMP
 #define	NOSTRSTR
 #define	WAITKEYPAD		720
@@ -275,6 +276,7 @@
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
+#define	USEVFCNAME
 #define	USERE_COMP
 #define	USESETENV
 #endif
@@ -309,7 +311,7 @@
 #define	USERE_COMP
 #define	USESETENV
 #include <sys/param.h>
-# if (BSD4_4 != 1)
+# if !defined (BSD) || (BSD < 199306)
 # define	USEFFSIZE
 # endif
 #endif
@@ -318,11 +320,23 @@
 #define	BSD43
 #define	OSTYPE			"BOW"
 #define	TARUSESPACE
-#define	TERMCAPLIB	"-ltermcap"
+#define	TERMCAPLIB		"-ltermcap"
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
+#define	USEVFCNAME
 #define	USEREGCOMP
+#define	USESETENV
+#endif
+
+#if defined (__386BSD__) && !defined (OSTYPE)
+#define	BSD43
+#define	OSTYPE			"ORG_386BSD"
+#define	TARUSESPACE
+#define	DECLERRLIST
+#define	SYSVDIRENT
+#define	USEMOUNTH
+#define	USEMNTINFO
 #define	USESETENV
 #endif
 
@@ -362,6 +376,7 @@
 /*	NETBSD		/* NetBSD */
 /*	BSDOS		/* BSD/OS (BSDI) */
 /*	BOW		/* BSD on Windows (ASCII) */
+/*	386BSD_ORG	/* 386BSD */
 
 /* #define CODEEUC	/* kanji code type is EUC */
 /* #define TARUSESPACE	/* tar(1) uses space to devide file mode from UID */
@@ -400,7 +415,6 @@
 /* #define USEFSDATA	/* use 'struct fs_data' as structure of hte FS status */
 
 /* #define USEFFSIZE	/* 'struct statfs' has 'f_fsize' as block size */
-/* #define USEFFSTYPE	/* 'struct statfs' has 'f_fstypename' as mount type */
 /* #define STATFSARGS	/* the number of arguments in statfs() */
 
 /* following 8 items are exclusive
@@ -412,6 +426,10 @@
 /* #define USEMNTINFO	/* use getmntinfo() to get the mount entry */
 /* #define USEGETMNT	/* use getmnt() to get the mount entry */
 /* #define USEGETFSENT	/* use getfsent() to get the mount entry */
+
+/* following 2 items are exclusive
+/* #define USEVFCNAME	/* 'struct vfsconf' has 'vfc_name' as the mount type */
+/* #define USEFFSTYPE	/* 'struct statfs' has 'f_fstypename' as mount type */
 
 /* following 3 items are exclusive
 /* #define USERE_COMP	/* use re_comp() family as search */

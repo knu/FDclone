@@ -292,13 +292,13 @@ int mode;
 
 		c = 0;
 		*buf = '\0';
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key > 0; j++)
+		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
 			if (i == (int)(bindlist[j].f_func)) {
 				if ((c += code2str(buf,
 					(int)(bindlist[j].key))) >= 2) break;
 			}
 		if (c < 2)
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key > 0; j++)
+		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
 			if (i == (int)(bindlist[j].d_func)) {
 				if ((c += code2str(buf,
 					(int)(bindlist[j].key))) >= 2) break;
@@ -385,7 +385,7 @@ mnt_t *mntp;
 
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
-	mntp -> mnt_type = type;
+	mntp -> mnt_type = (type) ? type : "???";
 	mntp -> mnt_opts = (opts) ? opts : "";
 
 	mnt_ptr += vmntp -> vmt_length;
@@ -431,20 +431,24 @@ mnt_t *mntp;
 	static char *type = NULL;
 	struct statfs *buf;
 #ifdef	USEMNTINFO
-# ifdef	USEFFSTYPE
-# define	getvfsbynumber(n)	(buf[mnt_ptr].f_fstypename)
-# else
-#  ifdef	INITMOUNTNAMES
-	static char *mnt_names[] = INITMOUNTNAMES;
-#  define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
-					mnt_names[n] : NULL)
-#  else
+# ifdef	USEVFCNAME
 	struct vfsconf *conf;
-#  define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
+# define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
 					conf -> vfc_name : NULL)
+# else
+#  ifdef	USEFFSTYPE
+#  define	getvfsbynumber(n)	(buf[mnt_ptr].f_fstypename)
+#  else
+#   ifdef	INITMOUNTNAMES
+	static char *mnt_names[] = INITMOUNTNAMES;
+#   define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
+					mnt_names[n] : NULL)
+#   else
+#   define	getvfsbynumber(n)	(NULL)
+#   endif
 #  endif
 # endif
-#else
+#else	/* USEMNTINFO */
 # ifdef	USEGETFSSTAT
 # define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
 					mnt_names[n] : NULL)
@@ -477,7 +481,7 @@ mnt_t *mntp;
 
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
-	mntp -> mnt_type = type;
+	mntp -> mnt_type = (type) ? type : "???";
 	mntp -> mnt_opts = (buf[mnt_ptr].f_flags & MNT_RDONLY) ? "ro" : "";
 
 	mnt_ptr++;

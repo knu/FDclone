@@ -16,8 +16,8 @@
 #define	KANJI	2
 
 static int jis7();
-static int sjis2euc();
-static int euc2sjis();
+static int sjis2ujis();
+static int ujis2sjis();
 
 int inputkcode;
 int outputkcode;
@@ -123,7 +123,7 @@ int incode;
 	return(j);
 }
 
-static int sjis2euc(buf, str)
+static int sjis2ujis(buf, str)
 char *buf;
 u_char *str;
 {
@@ -150,7 +150,7 @@ u_char *str;
 	return(j);
 }
 
-static int euc2sjis(buf, str)
+static int ujis2sjis(buf, str)
 char *buf;
 u_char *str;
 {
@@ -178,17 +178,17 @@ int in, out;
 {
 	int len;
 
-	len = strlen(str);
+	len = strlen((char *)str);
 	switch (out) {
 		case JIS7:
 			len = jis7(buf, str, in);
 			break;
 		case SJIS:
-			if (in == EUC) len = euc2sjis(buf, str);
+			if (in == EUC) len = ujis2sjis(buf, str);
 			else memcpy(buf, str, len);
 			break;
 		case EUC:
-			if (in == SJIS) len = sjis2euc(buf, str, strlen(str));
+			if (in == SJIS) len = sjis2ujis(buf, str);
 			else memcpy(buf, str, len);
 			break;
 		default:

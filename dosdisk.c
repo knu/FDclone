@@ -92,39 +92,87 @@ static int dosfilbuf();
 static int dosflsbuf();
 
 devinfo fdtype[MAXDRIVEENTRY] = {
-#if defined (sparc)
+#if defined (SUN_OS)
+# if defined (sparc)
 	{'A', "/dev/rfd0c", 2, 18, 80},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
+# endif
 #endif
-#if defined (sony)
-# ifdef	NEWS_OS3
+#if defined (NEWS_OS3) || defined (NEWS_OS4) || defined (NEWS_OS41)
+# if defined (news800) || defined (news900) \
+|| defined (news1800) || defined (news1900) || defined (news3800)
 	{'A', "/dev/rfh0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 9, 80},
+	{'A', "/dev/rfd0a", 2, 8 + 100, 80},
 # else
+#  if defined (news3100) || defined(news5000)
+	{'A', "/dev/rfd00a", 2, 18, 80},
+	{'A', "/dev/rfd00a", 2, 9, 80},
+	{'A', "/dev/rfd00a", 2, 8 + 100, 80},
+#  else
 	{'A', "/dev/rfd00a", 2, 18, 80},
 	{'A', "/dev/rfd01a", 2, 9, 80},
 	{'A', "/dev/rfd03a", 2, 8, 80},
+#  endif
 # endif
 #endif
-#if defined (__hp9000s700)
+#if defined (NEWS_OS6)
+	{'A', "/dev/rfloppy/c0d0u0p0", 2, 18, 80},
+	{'A', "/dev/rfloppy/c0d0u1p0", 2, 9, 80},
+	{'A', "/dev/rfloppy/c0d0u3p0", 2, 8, 80},
+#endif
+#if defined (HPUX)
+# if defined (__hp9000s700)
 	{'A', "/dev/rfloppy/c201d0s0", 2, 18, 80},
 	{'A', "/dev/rfloppy/c201d0s0", 2, 9, 80},
 	{'A', "/dev/rfloppy/c201d0s0", 2, 8 + 100, 80},
+# endif
 #endif
-#if defined (nec_ews) || (_nec_ews)
-	{'A', "/dev/if/f0h18", 2, 18, 80},
-	{'A', "/dev/if/f0h8", 2, 8, 77},
-	{'A', "/dev/if/f0c15", 2, 15, 80},
-	{'A', "/dev/if/f0d9", 2, 9, 80},
-	{'A', "/dev/if/f0d8", 2, 8, 80},
+#if defined (EWSUXV)
+	{'A', "/dev/rif/f0h18", 2, 18, 80},
+	{'A', "/dev/rif/f0h8", 2, 8, 77},
+	{'A', "/dev/rif/f0c15", 2, 15, 80},
+	{'A', "/dev/rif/f0d9", 2, 9, 80},
+	{'A', "/dev/rif/f0d8", 2, 8, 80},
 #endif
-#if defined (linux)
+#if defined (ULTRIX)
+	{'A', "/dev/rfh0a", 2, 18, 80},
+	{'A', "/dev/rfd0a", 2, 9, 80},
+	{'A', "/dev/rfd0a", 2, 8 + 100, 80},
+#endif
+#if defined (LINUX)
 	{'A', "/dev/fd0", 2, 18, 80},
 	{'A', "/dev/fd0", 2, 9, 80},
+	{'A', "/dev/fd0", 2, 8 + 100, 80},
 #endif
-#if defined (__NetBSD__) && defined (i386)
+#if defined (FREEBSD)
+# if #machine(prep)
+	{'A', "/dev/rfd0a", 2, 18, 80},
+	{'A', "/dev/rfd0b", 2, 8, 77},
+	{'A', "/dev/rfd0c", 2, 9, 80},
+	{'A', "/dev/rfd0d", 2, 8, 80},
+# endif
+#endif
+#if defined (NETBSD)
+# if defined (i386)
 	{'A', "/dev/rfd0a", 2, 15, 80},
+# endif
+#endif
+#if defined (BSDOS)
+# if defined (i386)
+	{'A', "/dev/rfd0c", 2, 18, 80},
+	{'A', "/dev/rfd0c", 2, 9, 80},
+	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
+# endif
+#endif
+#if defined (ORG_386BSD)
+# if defined (i386)
+	{'A', "/dev/rfd0a", 2, 15, 80},
+	{'A', "/dev/rfd0b", 2, 8, 77},
+	{'A', "/dev/rfd0c", 2, 9, 80},
+	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
+# endif
 #endif
 	{'\0', NULL, 0, 0, 0}
 };
@@ -181,16 +229,15 @@ int n;
 	return(1);
 }
 
-static int savecache(devp, sect, buf, n)
+static int savecache(devp, sect, buf)
 devstat *devp;
 long sect;
 char *buf;
-int n;
 {
 	char *cp;
 	int i, size;
 
-	size = n * (devp -> sectsize);
+	size = devp -> sectsize;
 	for (i = 0; i < maxsectcache; i++)
 	if (devp -> drive == cachedrive[i] && sect == sectno[i]) {
 		memcpy(sectcache[i], buf, size);
@@ -210,22 +257,20 @@ int n;
 	return(0);
 }
 
-static int loadcache(devp, sect, buf, n)
+static int loadcache(devp, sect, buf)
 devstat *devp;
 long sect;
 char *buf;
-int n;
 {
-	int i, size;
+	int i;
 
 	for (i = 0; i < maxsectcache; i++)
 	if (devp -> drive == cachedrive[i] && sect == sectno[i]) {
-		size = n * (devp -> sectsize);
-		memcpy(buf, sectcache[i], size);
+		memcpy(buf, sectcache[i], devp -> sectsize);
 		shiftcache(i);
-		return(size);
+		return(0);
 	}
-	return(0);
+	return(-1);
 }
 
 static int sectread(devp, sect, buf, n)
@@ -234,17 +279,15 @@ long sect;
 char *buf;
 int n;
 {
-	char *cp;
 	int i;
 
-	if ((i = loadcache(devp, sect, buf, n)) > 0) return(i);
-	for (i = 0, cp = buf; i < n; i++) {
-		if (sectseek(devp, sect + i) < 0) return(-1);
-		while (read(devp -> fd, cp, devp -> sectsize) < 0)
+	for (i = 0; i < n; i++, sect++, buf += devp -> sectsize) {
+		if (loadcache(devp, sect, buf) >= 0) continue;
+		if (sectseek(devp, sect) < 0) return(-1);
+		while (read(devp -> fd, buf, devp -> sectsize) < 0)
 			if (errno != EINTR) return(-1);
-		cp += devp -> sectsize;
+		savecache(devp, sect, buf);
 	}
-	savecache(devp, sect, buf, n);
 	return(n * (devp -> sectsize));
 }
 
@@ -260,12 +303,11 @@ int n;
 		errno = EROFS;
 		return(-1);
 	}
-	savecache(devp, sect, buf, n);
-	for (i = 0; i < n; i++, sect++) {
+	for (i = 0; i < n; i++, sect++, buf += devp -> sectsize) {
+		savecache(devp, sect, buf);
 		if (sectseek(devp, sect) < 0) return(-1);
 		if (write(devp -> fd, buf, devp -> sectsize) < 0)
 			if (errno != EINTR) return(-1);
-		buf += devp -> sectsize;
 	}
 	return(n * (devp -> sectsize));
 }
@@ -421,25 +463,30 @@ long prev;
 		errno = EIO;
 		return(-1);
 	}
-	if (sectwrite(devp, sect, buf, devp -> clustsize) < 0) return(-1);
+	if (buf && sectwrite(devp, sect, buf, devp -> clustsize) < 0)
+		return(-1);
 
 	if ((prev && putfat(devp, prev, clust) < 0)
 	|| putfat(devp, clust, 0xffff) < 0) return(-1);
 	return(clust);
 }
 
-static long clustexpand(devp, clust)
+static long clustexpand(devp, clust, fill)
 devstat *devp;
 long clust;
+int fill;
 {
 	char *buf;
-	long new;
+	long new, size;
 
-	if (!(buf = (char *)malloc((devp -> clustsize) * (devp -> sectsize))))
-		return(-1);
-	memset(buf, 0, (devp -> clustsize) * (devp -> sectsize));
+	if (!fill) buf = NULL;
+	else {
+		size = (devp -> clustsize) * (devp -> sectsize);
+		if (!(buf = (char *)malloc(size))) return(-1);
+		memset(buf, 0, size);
+	}
 	new = clustwrite(devp, buf, clust);
-	free(buf);
+	if (buf) free(buf);
 	return(new);
 }
 
@@ -458,8 +505,9 @@ long clust;
 	return(0);
 }
 
-static int readbpb(devp)
+static int readbpb(devp, bpbcache)
 devstat *devp;
+bpb_t *bpbcache;
 {
 	bpb_t *bpb;
 	char buf[SECTSIZE];
@@ -468,36 +516,43 @@ devstat *devp;
 
 	if (!(devp -> ch_head) || !(ch_sect = devp -> ch_sect)) return(0);
 
-	bpb = (bpb_t *)buf;
-	devp -> flags = 0;
-	if (ch_sect > 100) {
+	if (ch_sect <= 100) devp -> flags &= ~F_8SECT;
+	else {
 		ch_sect %= 100;
 		devp -> flags |= F_8SECT;
 	}
-	if ((fd = open(devp -> ch_name, O_RDWR, 0600)) < 0) {
-		if (errno == EIO) errno = ENXIO;
-		if (errno != EROFS
-		|| (fd = open(devp -> ch_name, O_RDONLY, 0600)) < 0) return(-1);
-		devp -> flags |= F_RONLY;
-	}
-	if (lseek(fd, 0L, L_SET) < 0) {
-		close(fd);
-		return(0);
-	}
 
-	errno = 0;
-	while ((i = read(fd, buf, SECTSIZE)) < 0 && errno == EINTR);
-	if (i < 0 || byte2word(bpb -> secttrack) != ch_sect
-	|| byte2word(bpb -> nhead) != devp -> ch_head) {
-		close(fd);
-		return(errno == EFAULT ? -1 : 0);
+	if (bpbcache -> nfat) bpb = bpbcache;
+	else {
+		devp -> fd = -1;
+		bpb = (bpb_t *)buf;
+		if ((fd = open(devp -> ch_name, O_RDWR, 0600)) < 0) {
+			if (errno == EIO) errno = ENXIO;
+			if (errno != EROFS
+			|| (fd = open(devp -> ch_name, O_RDONLY, 0600)) < 0)
+				return(-1);
+			devp -> flags |= F_RONLY;
+		}
+		if (lseek(fd, 0L, L_SET) < 0) {
+			close(fd);
+			return(0);
+		}
+
+		while ((i = read(fd, buf, SECTSIZE)) < 0 && errno == EINTR);
+		if (i < 0) {
+			close(fd);
+			return(0);
+		}
+		devp -> fd = fd;
 	}
 
 	total = byte2word(bpb -> total);
 	if (!total) total = byte2word(bpb -> bigtotal_l)
 		+ (byte2word(bpb -> bigtotal_h) << 16);
-	if (total / ((devp -> ch_head) * ch_sect) != devp -> ch_cyl) {
-		close(fd);
+	if (byte2word(bpb -> secttrack) != ch_sect
+	|| byte2word(bpb -> nhead) != devp -> ch_head
+	|| total / ((devp -> ch_head) * ch_sect) != devp -> ch_cyl) {
+		if (bpb != bpbcache) memcpy(bpbcache, bpb, sizeof(bpb_t));
 		return(0);
 	}
 
@@ -508,7 +563,6 @@ devstat *devp;
 	devp -> dirofs = (devp -> fatofs) + (devp -> fatsize) * (bpb -> nfat);
 	devp -> dirsize = byte2word(bpb -> maxdir) * DOSDIRENT
 		/ devp -> sectsize;
-	devp -> fd = fd;
 	total -= (devp -> dirofs) + (devp -> dirsize);
 	if (total / (devp -> clustsize) > MAX12BIT) devp -> flags |= F_16BIT;
 
@@ -518,7 +572,9 @@ devstat *devp;
 static int opendev(drive)
 int drive;
 {
+	bpb_t bpb;
 	devstat dev;
+	char *cp;
 	int i, ret;
 
 	if (!drive) {
@@ -540,14 +596,21 @@ int drive;
 	}
 
 	if (i < 0) {
+		cp = NULL;
 		for (i = 0; fdtype[i].name; i++) {
 			if (drive != (int)fdtype[i].drive) continue;
-			memset(&dev, 0, sizeof(devstat));
+			if (!cp || strcmp(cp, fdtype[i].name)) {
+				bpb.nfat = 0;
+				memset(&dev, 0, sizeof(devstat));
+				dev.fd = -1;
+			}
 			memcpy(&dev, &fdtype[i], sizeof(devinfo));
-			if ((ret = readbpb(&dev)) < 0) return(-1);
+			cp = fdtype[i].name;
+			if ((ret = readbpb(&dev, &bpb)) < 0) return(-1);
 			if (ret > 0) break;
 		}
 		if (!fdtype[i].name) {
+			if ((dev.fd) >= 0) close(dev.fd);
 			errno = ENODEV;
 			return(-1);
 		}
@@ -1154,13 +1217,12 @@ int dd;
 	long sect, offset;
 	int ret;
 
-	sect = clust2sect(&devlist[dd], dd2clust(dd));
-	if (sect < 0) {
+	if ((sect = clust2sect(&devlist[dd], dd2clust(dd))) < 0) {
 		errno = EIO;
 		return(-1);
 	}
 	offset = dd2offset(dd);
-	while (offset > devlist[dd].sectsize) {
+	while (offset >= devlist[dd].sectsize) {
 		sect++;
 		offset -= devlist[dd].sectsize;
 	}
@@ -1205,7 +1267,7 @@ int mode;
 				return(-1);
 			}
 			dd2clust(xdirp -> dd_fd) =
-				clustexpand(&devlist[xdirp -> dd_fd], prev);
+				clustexpand(&devlist[xdirp -> dd_fd], prev, 1);
 			if (dd2clust(xdirp -> dd_fd) < 0) {
 				dosclosedir((DIR *)xdirp);
 				return(-1);
@@ -1242,7 +1304,7 @@ char *path;
 struct stat *buf;
 {
 	char *cp, ext[4];
-	int i, dd;
+	int dd;
 
 	if ((dd = readdent(path, NULL)) < 0) return(-1);
 	buf -> st_dev = dd;
@@ -1544,7 +1606,7 @@ int fd, wrt;
 	if (dosflist[fd]._next < 0) {
 		if (errno) return(-1);
 		if (!wrt) return(0);
-		if ((new = clustexpand(fd2devp(fd), prev)) < 0) return(-1);
+		if ((new = clustexpand(fd2devp(fd), prev, 0)) < 0) return(-1);
 		if (!dosflist[fd]._off) {
 			dosflist[fd]._dent.clust[0] = new & 0xff;
 			dosflist[fd]._dent.clust[1] = (new >> 8) & 0xff;

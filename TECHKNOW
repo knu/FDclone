@@ -124,10 +124,6 @@ USEFFSIZE
 	は f_bsize を参照します。
 	USESTATVFSH, USEFSDATA を定義した場合は意味を持ちま
 	せん。
-USEFFSTYPE
-	構造体 statfs のメンバの中で、マウントタイプを表す文
-	字列として f_fstypename を参照します。
-	USEMNTINFO 以外を定義した場合は意味を持ちません。
 STATFSARGS
 	関数 statfs(2) の用いる引数の数を定義します。
 	USESTATVFSH, USEFSDATA を定義した場合は意味を持ちま
@@ -158,6 +154,17 @@ USEGETFSENT
 	す。
 	(この手法はマウント前の情報を取得してしまうのでお奨
 	めできません。窮余の策だと思って下さい。)
+
+(以下の 2 つは排他的です。同時に複数定義できません。上記の 8
+つの選択肢のうち USEMNTINFO 以外を定義した場合は意味を持ちま
+せん。)
+USEVFCNAME
+	構造体 vfsconf のメンバの中で、マウントタイプを表す
+	文字列として vfc_name を参照します。また、vfsconf 型
+	の取得に getvfsbytype() を用います。
+USEFFSTYPE
+	構造体 statfs のメンバの中で、マウントタイプを表す文
+	字列として f_fstypename を参照します。
 
 (以下の 3 つは排他的です。同時に複数定義できません。)
 USERE_COMP
@@ -466,8 +473,10 @@ drwxr-xr-x  9999/999         0 ****** Jun  8 12:04 demo/
 　後者の場合、ドライブ名は同じでもデバイスファイルにはそれぞ
 れのフォーマットに応じたスペシャルファイル名を記しておく必要
 があります。
+　また、ここでは選ぶデバイスファイルは、できるだけ raw デバ
+イスにしておいた方が良いでしょう。
 
-　以下は SPARCsystems と NWS-5000シリーズの内蔵ドライブに関
+　以下は SPARCsystems と NWS-3400シリーズの内蔵ドライブに関
 する設定例です。
 
 SPARC:
@@ -475,7 +484,7 @@ SPARC:
 	A:	"/dev/rfd0c", 2,  9, 80		(720KB	2DD)
 	A:	"/dev/rfd0c", 2, 108, 80	(640KB	2DD)
 
-NWS-5000:
+NWS-3400:
 	A:	"/dev/rfd00a", 2, 18, 80	(1440KB	2HD)
 	A:	"/dev/rfd01a", 2,  9, 80	(720KB	2DD)
 	A:	"/dev/rfd03a", 2,  8, 80	(640KB	2DD)
