@@ -25,11 +25,7 @@ int _dospath(path)
 char *path;
 {
 	if (!dosdrive) return(0);
-#ifdef	LFNCONVERT
 	return((isalpha(*path) && *(path + 1) == ':') ? *path : 0);
-#else
-	return((isalpha(*path) && *(path + 1) == ':') ? toupper2(*path) : 0);
-#endif
 }
 
 int dospath(path, buf)
@@ -48,18 +44,12 @@ char *path, *buf;
 		cp = tmp;
 	}
 	drive = *cp;
-#ifndef	LFNCONVERT
-	drive = toupper2(drive);
-#endif
 	if (!buf) return(drive);
 
 #ifdef	CODEEUC
 	buf[ujis2sjis(buf, cp)] = '\0';
 #else
 	strcpy(buf, cp);
-#endif
-#ifndef	LFNCONVERT
-	*buf = toupper2(*buf);
 #endif
 	if (cp != path && *path) {
 		if (*buf && buf[strlen(buf) - 1] != '/') strcat(buf, "/");
@@ -78,6 +68,7 @@ char *path;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(dospath(path, buf) ? dosopendir(buf) : opendir(path));
 }
 
@@ -94,6 +85,7 @@ DIR *dirp;
 {
 	static st_dirent buf;
 	struct dirent *dp;
+	char tmp[MAXNAMLEN + 1];
 	int i;
 
 	if (*((int *)dirp) >= 0) dp = readdir(dirp);
@@ -106,6 +98,8 @@ DIR *dirp;
 		((struct dirent *)&buf) -> d_name[i] = '\0';
 	}
 #endif
+	if (transfile(((struct dirent *)&buf) -> d_name, tmp) == tmp)
+		strcpy(((struct dirent *)&buf) -> d_name, tmp);
 	return((struct dirent *)(&buf));
 }
 
@@ -116,7 +110,7 @@ DIR *dirp;
 	else rewinddir(dirp);
 }
 
-int Xchdir(path)
+int _Xchdir(path)
 char *path;
 {
 	char buf[MAXPATHLEN + 1];
@@ -147,6 +141,16 @@ char *path;
 		Xgetcwd(pseudocwd, MAXPATHLEN);
 #endif
 	return(0);
+}
+
+int Xchdir(path)
+char *path;
+{
+	char buf[MAXPATHLEN + 1];
+	int dd, drive;
+
+	if (detransfile(path, buf, 1) == buf) path = buf;
+	return(_Xchdir(path));
 }
 
 #ifdef	USEGETWD
@@ -190,6 +194,7 @@ struct stat *statp;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(dospath(path, buf) ? dosstat(buf, statp) : stat(path, statp));
 }
 
@@ -199,6 +204,7 @@ struct stat *statp;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? doslstat(buf, statp) : lstat(path, statp));
 }
 
@@ -208,12 +214,16 @@ int mode;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(dospath(path, buf) ? dosaccess(buf, mode) : access(path, mode));
 }
 
 int Xsymlink(name1, name2)
 char *name1, *name2;
 {
+	char buf[MAXPATHLEN + 1];
+
+	if (detransfile(name1, buf, 0) == buf) name1 = buf;
 	return((dospath(name1, NULL) || dospath(name2, NULL)) ?
 		dossymlink(name1, name2) : symlink(name1, name2));
 }
@@ -222,6 +232,14 @@ int Xreadlink(path, buf, bufsiz)
 char *path, *buf;
 int bufsiz;
 {
+	char tmp[MAXPATHLEN + 1];
+
+	if (detransfile(path, tmp, 0) == buf) {
+		detransfile(path, buf, 1);
+		if (!strcmp(tmp, buf)) return(0);
+		errno = EINVAL;
+		return(-1);
+	}
 	return(dospath(path, NULL) ?
 		dosreadlink(path, buf, bufsiz) : readlink(path, buf, bufsiz));
 }
@@ -232,6 +250,7 @@ int mode;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? doschmod(buf, mode) : chmod(path, mode));
 }
 
@@ -242,6 +261,7 @@ struct utimbuf *times;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? dosutime(buf, times) : utime(path, times));
 #else
 int Xutimes(path, tvp)
@@ -250,6 +270,7 @@ struct timeval tvp[2];
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? dosutimes(buf, tvp) : utimes(path, tvp));
 #endif
 }
@@ -259,6 +280,7 @@ char *path;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? dosunlink(buf) : unlink(path));
 }
 
@@ -268,6 +290,8 @@ char *from, *to;
 	char buf1[MAXPATHLEN + 1], buf2[MAXPATHLEN + 1];
 
 	errno = EXDEV;
+	if (detransfile(from, buf1, 0) == buf1) from = buf1;
+	if (detransfile(to, buf2, 0) == buf2) to = buf2;
 	if (dospath(from, buf1))
 		return(dospath(to, buf2) ? dosrename(buf1, buf2) : -1);
 	else return(dospath(to, NULL) ? -1 : rename(from, to));
@@ -279,6 +303,7 @@ int flags, mode;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(dospath(path, buf) ?
 		dosopen(buf, flags, mode) : open(path, flags, mode));
 }
@@ -322,6 +347,7 @@ int mode;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? dosmkdir(buf, mode) : mkdir(path, mode));
 }
 
@@ -330,7 +356,16 @@ char *path;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 0) == buf) path = buf;
 	return(dospath(path, buf) ? dosrmdir(buf) : rmdir(path));
+}
+
+FILE *_Xfopen(path, type)
+char *path, *type;
+{
+	char buf[MAXPATHLEN + 1];
+
+	return(dospath(path, buf) ? dosfopen(buf, type) : fopen(path, type));
 }
 
 FILE *Xfopen(path, type)
@@ -338,6 +373,7 @@ char *path, *type;
 {
 	char buf[MAXPATHLEN + 1];
 
+	if (detransfile(path, buf, 1) == buf) path = buf;
 	return(dospath(path, buf) ? dosfopen(buf, type) : fopen(path, type));
 }
 

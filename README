@@ -1,6 +1,6 @@
 ############################################################
 #
-#	FDclone Ver. 1.01g に関して
+#	FDclone Ver. 1.02 に関して
 #
 #	Takashi SHIRAI, Nintendo Co. Ltd.
 #	<shirai@nintendo.co.jp>
@@ -67,6 +67,8 @@ info.c		各種情報表示用
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
 dosemu.c	システム関数群のフロッピードライブ対応版
+rockridge.c	iso-9660 RockRidge 拡張関連
+parse.c		文字列解析関連
 kanji.c		漢字コードコンバート関連
 file.c		ファイル操作関連
 apply.c		ファイルへの連続適用関連

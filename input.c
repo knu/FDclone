@@ -21,6 +21,7 @@ extern int filepos;
 extern int sorton;
 extern int minfilename;
 extern int inputkcode;
+extern int sizeinfo;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
 #endif
@@ -665,7 +666,11 @@ int x, cx, len, linemax, max, comline, cont;
 	}
 	else {
 		match = NULL;
-		i = (comline) ? completealias(cp2, 0, &match) : 0;
+		if (!comline) i = 0;
+		else {
+			i = completealias(cp2, 0, &match);
+			i = completeuserfunc(cp2, i, &match);
+		}
 		i = completepath(cp2, comline, i, &match);
 		if (!i && comline) {
 			match = NULL;

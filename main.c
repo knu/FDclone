@@ -30,31 +30,14 @@ extern launchtable launchlist[];
 extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
-extern char *macrolist[];
-extern int maxmacro;
-extern aliastable aliaslist[];
-extern int maxalias;
-extern bindtable bindlist[];
-extern functable funclist[];
 extern devinfo fdtype[];
 extern char *archivefile;
 extern char **sh_history;
 extern char *helpindex[];
 extern int subwindow;
 extern int columns;
-extern int sorttype;
-extern int sorttree;
-extern int writefs;
-extern int histsize;
-extern int savehist;
-extern int minfilename;
-extern int dircountlimit;
-extern int dosdrive;
-extern char *editmode;
-extern char *deftmpdir;
 extern int dispmode;
-extern int inputkcode;
-extern int outputkcode;
+extern char *deftmpdir;
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -104,18 +87,6 @@ static sigarg_t xsizerror();
 #endif
 static sigarg_t wintr();
 static sigarg_t printtime();
-static char *skipspace();
-static char *geteostr();
-static char *getrange();
-static char *getenvval();
-static int getlaunch();
-static int getcommand();
-static int getkeybind();
-static int getalias();
-static int getdosdrive();
-static int unalias();
-static int loadruncom();
-static VOID printext();
 static int getoption();
 
 char *tmpfilename;
@@ -247,7 +218,7 @@ static sigarg_t xsizerror()
 static sigarg_t wintr()
 {
 	signal(SIGWINCH, SIG_IGN);
-	getwsize(80, WHEADER + WFOOTER + 2);
+	getwsize(80, WHEADERMAX + WFOOTER + 2);
 	title();
 	if (archivefile) rewritearc(1);
 	else rewritefile(1);
@@ -289,7 +260,7 @@ static sigarg_t printtime()
 
 VOID sigvecset()
 {
-	getwsize(80, WHEADER + WFOOTER + 2);
+	getwsize(80, WHEADERMAX + WFOOTER + 2);
 	signal(SIGALRM, (sigarg_t (*)())printtime);
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGWINCH, (sigarg_t (*)())wintr);
@@ -320,636 +291,58 @@ VOID title()
 	printtime();
 }
 
-static char *skipspace(cp)
-char *cp;
-{
-	while (*cp && (*cp == ' ' || *cp == '\t')) cp++;
-	return(cp);
-}
-
-static char *geteostr(cp)
-char **cp;
-{
-	char *tmp, *str;
-	int c, len;
-
-	tmp = *cp;
-	if ((c = **cp) != '"' && c != '\'') {
-		len = (str = strpbrk(*cp, " \t")) ? str - *cp : strlen(*cp);
-		*cp += len;
-	}	
-	else {
-		for (*cp = ++tmp; *cp = strchr(*cp, c); (*cp)++)
-			if (*(*cp - 1) != '\\') break;
-		if (*cp) len = (*cp)++ - tmp;
-		else {
-			len = strlen(tmp);
-			*cp = tmp + len;
-		}
-	}
-	str = (char *)malloc2(len + 1);
-	strncpy2(str, tmp, len);
-	if (c != '\'') str = evalpath(str);
-	return(str);
-}
-
-static char *getrange(cp, fp, dp, wp)
-char *cp;
-u_char *fp, *dp, *wp;
-{
-	int i;
-
-	*fp = *wp = 0;
-	*dp = '\0';
-
-	if (*cp >= '0' && *cp <= '9') *fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
-	while (*cp >= '0' && *cp <= '9') cp++;
-
-	if (*cp == '\'') {
-		*dp = *(++cp);
-		if (*cp && *(++cp) == '\'') cp++;
-	}
-
-	if (*cp == '-') {
-		cp++;
-		if (*cp >= '0' && *cp <= '9') *wp = atoi(cp) + 128;
-		else if (*cp == '\'') *wp = (*(++cp)) % 128;
-	}
-	return(cp);
-}
-
-static char *getenvval(str)
-char *str;
-{
-	char *cp;
-	int ch;
-
-	if (cp = strpbrk(str, "= \t")) {
-		ch = *cp;
-		*cp = '\0';
-		if (ch == '=' || (cp = strchr(++cp, '='))) cp++;
-	}
-	if (!cp) return((char *)-1);
-	cp = skipspace(cp);
-	if (!*cp) return(NULL);
-	cp = geteostr(&cp);
-	return(cp);
-}
-
-static int getlaunch(line)
-char *line;
-{
-	char *cp, *tmp, *ext, *eol;
-	int i, ch, n;
-
-	cp = line;
-	eol = line + strlen(line);
-
-	tmp = geteostr(&cp);
-	ext = cnvregexp(tmp, 0);
-	if (*tmp != '*') {
-		free(tmp);
-		tmp = ext;
-		ext = (char *)malloc2(strlen(tmp) + 3);
-		*ext = *tmp;
-		strcpy(ext + 2, tmp);
-		memcpy(ext + 1, "^.*", 3);
-	}
-	free(tmp);
-
-	cp = skipspace(cp);
-	if (*cp == 'A') {
-		for (n = 0; n < maxarchive; n++)
-			if (!strcmp(archivelist[n].ext, ext)) break;
-		if (n < maxarchive) {
-			free(archivelist[n].ext);
-			free(archivelist[n].p_comm);
-			if (archivelist[n].u_comm) free(archivelist[n].u_comm);
-		}
-		else if (maxarchive < MAXARCHIVETABLE) maxarchive++;
-		else {
-			free(ext);
-			return(-1);
-		}
-
-		if ((cp = skipspace(++cp)) >= eol) {
-			maxarchive--;
-			for (; n < maxarchive; n++)
-				memcpy(&archivelist[n], &archivelist[n + 1],
-					sizeof(archivetable));
-			free(ext);
-			return(0);
-		}
-
-		archivelist[n].ext = ext;
-		archivelist[n].p_comm = geteostr(&cp);
-
-		if (cp >= eol || (cp = skipspace(cp)) >= eol)
-			archivelist[n].u_comm = NULL;
-		else archivelist[n].u_comm = geteostr(&cp);
-	}
-	else {
-		for (n = 0; n < maxlaunch; n++)
-			if (!strcmp(launchlist[n].ext, ext)) break;
-		if (n < maxlaunch) {
-			free(launchlist[n].ext);
-			free(launchlist[n].comm);
-		}
-		else if (maxlaunch < MAXLAUNCHTABLE) maxlaunch++;
-		else {
-			free(ext);
-			return(-1);
-		}
-
-		if (cp >= eol) {
-			maxlaunch--;
-			for (; n < maxlaunch; n++)
-				memcpy(&launchlist[n], &launchlist[n + 1],
-					sizeof(launchtable));
-			free(ext);
-			return(0);
-		}
-
-		launchlist[n].ext = ext;
-		launchlist[n].comm = geteostr(&cp);
-		cp = skipspace(cp);
-		if (cp >= eol) launchlist[n].topskip = 255;
-		else {
-			launchlist[n].topskip = atoi(cp);
-			if (!(tmp = strchr(cp, ','))) {
-				launchlist[n].topskip = 255;
-				return(0);
-			}
-			cp = skipspace(++tmp);
-			launchlist[n].bottomskip = atoi(cp);
-			ch = ':';
-			for (i = 0; i < MAXLAUNCHFIELD; i++) {
-				if (!(tmp = strchr(cp, ch))) {
-					launchlist[n].topskip = 255;
-					return(0);
-				}
-				cp = skipspace(++tmp);
-				cp = getrange(cp,
-					&(launchlist[n].field[i]),
-					&(launchlist[n].delim[i]),
-					&(launchlist[n].width[i]));
-				ch = ',';
-			}
-			ch = ':';
-			for (i = 0; i < MAXLAUNCHSEP; i++) {
-				if (!(tmp = strchr(cp, ch))) break;
-				cp = skipspace(++tmp);
-				launchlist[n].sep[i] =
-					((ch = atoi(cp)) >= 0) ? ch - 1 : 255;
-				ch = ',';
-			}
-			for (; i < MAXLAUNCHSEP; i++) launchlist[n].sep[i] = -1;
-		}
-	}
-	return(0);
-}
-
-static int getcommand(cp)
-char **cp;
-{
-	char *tmp;
-	int n;
-
-	if (**cp == '"' || **cp == '\'') {
-		if (maxmacro >= MAXMACROTABLE) n = -1;
-		else {
-			macrolist[maxmacro] = geteostr(cp);
-			n = NO_OPERATION + ++maxmacro;
-		}
-	}
-	else {
-		if (!(tmp = strpbrk(*cp, " \t"))) tmp = *cp + strlen(*cp);
-		*tmp = '\0';
-		for (n = 0; n < NO_OPERATION; n++)
-			if (!strcmp(*cp, funclist[n].ident)) break;
-		if (n >= NO_OPERATION) n = -1;
-		*cp = tmp;
-	}
-	return(n);
-}
-
-static int getkeybind(line)
-char *line;
-{
-	char *cp, *eol;
-	int i, j, ch, n1, n2;
-
-	for (eol = line, ch = '\0'; *eol; eol++) {
-		if (*eol == '\\' && *(eol + 1)) eol++;
-		else if (*eol == ch) ch = '\0';
-		else if ((*eol == '"' || *eol == '\'') && !ch) ch = *eol;
-		else if (*eol == ';' && !ch) break;
-	}
-
-	cp = line + 1;
-	switch (ch = *(cp++)) {
-		case '^':
-			if (*cp == '\'') break;
-			if (*cp < '@' || *cp > '_') return(-1);
-			ch = toupper2(*(cp++)) - '@';
-			break;
-		case 'F':
-			if (*cp == '\'') break;
-			if ((i = atoi2(cp)) < 1 || i > 20) return(-1);
-			for (; *cp >= '0' && *cp <= '9'; cp++);
-			ch = K_F(i);
-		default:
-			break;
-	}
-
-	if (ch == '\033' || *(cp++) != '\'') return(-1);
-
-	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-		if (ch == (int)(bindlist[i].key)) break;
-	if (i >= MAXBINDTABLE - 1) return(-1);
-	if (bindlist[i].key < 0)
-		memcpy(&bindlist[i + 1], &bindlist[i], sizeof(bindtable));
-	else {
-		n1 = bindlist[i].f_func;
-		n2 = bindlist[i].d_func;
-		bindlist[i].f_func = bindlist[i].d_func = NO_OPERATION;
-		if (n1 <= NO_OPERATION) n1 = 255;
-		else {
-			free(macrolist[n1 - NO_OPERATION - 1]);
-			maxmacro--;
-			for (j = n1 - NO_OPERATION - 1; j < maxmacro; j++)
-				memcpy(&macrolist[j], &macrolist[j + 1],
-					sizeof(char *));
-		}
-		if (n2 <= NO_OPERATION || n2 >= 255) n2 = 255;
-		else {
-			free(macrolist[n2 - NO_OPERATION - 1]);
-			maxmacro--;
-			for (j = n2 - NO_OPERATION - 1; j < maxmacro; j++)
-				memcpy(&macrolist[j], &macrolist[j + 1],
-					sizeof(char *));
-		}
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++) {
-			if (bindlist[j].f_func > n2) bindlist[j].f_func--;
-			if (bindlist[j].f_func >= n1) bindlist[j].f_func--;
-			if (bindlist[j].d_func < 255) {
-				if (bindlist[j].d_func > n2)
-					bindlist[j].d_func--;
-				if (bindlist[j].d_func >= n1)
-					bindlist[j].d_func--;
-			}
-		}
-	}
-
-	if ((cp = skipspace(cp)) >= eol) {
-		for (; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-			memcpy(&bindlist[i], &bindlist[i + 1],
-				sizeof(bindtable));
-		return(0);
-	}
-	if ((n1 = getcommand(&cp)) < 0) return(-1);
-	n2 = ((cp = skipspace(cp)) < eol) ? getcommand(&cp) : -1;
-	if (*(eol++) == ';' && ch >= K_F(1) && ch <= K_F(10)) {
-		free(helpindex[ch - K_F(1)]);
-		helpindex[ch - K_F(1)] = geteostr(&eol);
-	}
-
-	bindlist[i].key = (short)ch;
-	bindlist[i].f_func = (u_char)n1;
-	bindlist[i].d_func = (n2 >= 0) ? (u_char)n2 : 255;
-	return(0);
-}
-
-static int getalias(line)
-char *line;
-{
-	char *cp, *tmp;
-	int i;
-
-	cp = line;
-
-	if (!isalpha(*cp) && *cp != '_') return(-1);
-	for (cp++; isalnum(*cp) || *cp == '_'; cp++);
-	if (!strchr(" \t=", *cp)) return(-1);
-	*cp = '\0';
-	cp = skipspace(cp + 1);
-	if (*cp == '=') cp = skipspace(cp + 1);
-
-	tmp = geteostr(&cp);
-	for (i = 0; i < maxalias; i++)
-		if (!strcmp(aliaslist[i].alias, line)) break;
-	if (!*tmp) {
-		if (i < maxalias) kanjiprintf("%s\r\n", aliaslist[i].comm);
-		free(tmp);
-		return(0);
-	}
-	if (i == maxalias) {
-		if (maxalias < MAXALIASTABLE) maxalias++;
-		else {
-			free(tmp);
-			return(-1);
-		}
-	}
-	aliaslist[i].alias = strdup2(line);
-	aliaslist[i].comm = tmp;
-	return(0);
-}
-
-static int unalias(line)
-char *line;
-{
-	reg_t *re;
-	char *cp;
-	int i, j, n;
-
-	cp = cnvregexp(line, 0);
-	re = regexp_init(cp);
-	free(cp);
-	for (i = 0, n = 0; i < maxalias; i++)
-		if (regexp_exec(re, aliaslist[i].alias)) {
-			free(aliaslist[i].alias);
-			free(aliaslist[i].comm);
-			maxalias--;
-			for (j = i; j < maxalias; j++)
-				memcpy(&aliaslist[j], &aliaslist[j + 1],
-					sizeof(aliastable));
-			i--;
-			n++;
-		}
-	regexp_free(re);
-	return((n) ? 0 : -1);
-}
-
-static int getdosdrive(line)
-char *line;
-{
-	char *cp, *tmp;
-	int i, drive, head, sect, cyl;
-
-	for (i = 0; fdtype[i].name; i++);
-	if (i >= MAXDRIVEENTRY - 1) return(-1);
-	drive = toupper2(*line);
-	cp = skipspace(line + 2);
-	if (!*(tmp = geteostr(&cp))) {
-		free(tmp);
-		return(-1);
-	}
-	cp = skipspace(cp);
-	head = atoi(cp);
-	if (head <= 0 || !(cp = strchr(cp, ','))) {
-		free(tmp);
-		return(-1);
-	}
-	cp = skipspace(cp + 1);
-	sect = atoi(cp);
-	if (sect <= 0 || !(cp = strchr(cp, ','))) {
-		free(tmp);
-		return(-1);
-	}
-	cp = skipspace(cp + 1);
-	cyl = atoi(cp);
-	if (cyl <= 0) {
-		free(tmp);
-		return(-1);
-	}
-	if (*(line + 1) == '!') {
-		for (i = 0; fdtype[i].name; i++)
-		if (drive == fdtype[i].drive
-		&& head == fdtype[i].head
-		&& sect == fdtype[i].sect
-		&& cyl == fdtype[i].cyl
-		&& !strcmp(tmp, fdtype[i].name)) break;
-		free(tmp);
-		if (!fdtype[i].name) return(-1);
-		free(fdtype[i].name);
-		for (; fdtype[i + 1].name; i++) {
-			fdtype[i].drive = fdtype[i + 1].drive;
-			fdtype[i].name = fdtype[i + 1].name;
-			fdtype[i].head = fdtype[i + 1].head;
-			fdtype[i].sect = fdtype[i + 1].sect;
-			fdtype[i].cyl = fdtype[i + 1].cyl;
-		}
-		fdtype[i].name = NULL;
-		return(0);
-	}
-
-	fdtype[i].drive = drive;
-	fdtype[i].name = tmp;
-	fdtype[i].head = head;
-	fdtype[i].sect = sect;
-	fdtype[i].cyl = cyl;
-
-	return(0);
-}
-
-int evalconfigline(line)
-char *line;
-{
-	char *cp, *tmp;
-
-	cp = strpbrk(line, " \t");
-	if (!strncmp(line, "export", 6) && cp == line + 6) {
-		tmp = skipspace(cp + 1);
-		if ((cp = getenvval(tmp)) == (char *)-1) return(-1);
-#ifdef	USESETENV
-		if (!cp) unsetenv(tmp);
-		else {
-			if (setenv(tmp, cp, 1) < 0) error(cp);
-			free(cp);
-		}
-#else
-		strcat(tmp, "=");
-		if (cp) {
-			strcat(tmp, cp);
-			free(cp);
-		}
-		cp = strdup2(tmp);
-		if (putenv2(cp)) error(cp);
-#endif
-	}
-	else if (!strncmp(line, "alias", 5) && cp == line + 5)
-		getalias(skipspace(cp + 1));
-	else if (!strncmp(line, "unalias", 7) && cp == line + 7)
-		unalias(skipspace(cp + 1));
-	else if (!strncmp(line, "source", 6) && cp == line + 6) {
-		tmp = skipspace(cp + 1);
-		if (cp = strpbrk(tmp, " \t")) *cp = '\0';
-		loadruncom(tmp);
-	}
-	else if (isalpha(*line) && (*(line + 1) == ':' || *(line + 1) == '!'))
-		getdosdrive(line);
-	else if (isalpha(*line) || *line == '_') {
-		if ((cp = getenvval(line)) == (char *)-1) return(-1);
-		if (setenv2(line, cp, 1) < 0) error(line);
-		if (cp) free(cp);
-	}
-	else if (*line == '"') getlaunch(line);
-	else if (*line == '\'') getkeybind(line);
-	else return(-1);
-	return(0);
-}
-
-static int loadruncom(file)
+int loadruncom(file)
 char *file;
 {
 	FILE *fp;
-	char *cp, line[MAXLINESTR + 1];
+	char *cp, *pack, line[MAXLINESTR + 1];
+	int cont;
 
 	cp = evalpath(strdup2(file));
 	fp = fopen(cp, "r");
 	free(cp);
 	if (!fp) return(-1);
+
+	pack = NULL;
 	while (fgets(line, MAXLINESTR, fp)) {
+		if (*line == ';' || *line == '#') continue;
 		if (!(cp = strchr(line, '\n'))) cp = line + strlen(line);
 		for (cp--; cp >= line && (*cp == ' ' || *cp == '\t'); cp--);
 		*(cp + 1) = '\0';
-		if (*line && *line != ';' && *line != '#')
-			evalconfigline(skipspace(line));
+
+		cont = 0;
+		if (cp >= line && *cp == '\\'
+		&& (cp - 1 < line || *(cp - 1) != '\\')) {
+			*cp = '\0';
+			cont = 1;
+		}
+
+		if (*line) {
+			if (pack) {
+				pack = (char *)realloc2(pack,
+					strlen(pack) + strlen(line) + 1);
+				strcat(pack, line);
+			}
+			else if (cont) pack = strdup2(skipspace(line));
+		}
+
+		if (cont) continue;
+
+		if (pack) {
+			evalconfigline(pack);
+			free(pack);
+			pack = NULL;
+		}
+		else if (*(cp = skipspace(line))) evalconfigline(cp);
 	}
+
+	if (pack) {
+		evalconfigline(pack);
+		free(pack);
+	}
+
 	fclose(fp);
 	return(0);
-}
-
-int printmacro()
-{
-	int i, n;
-
-	n = 0;
-	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
-		if (bindlist[i].f_func <= NO_OPERATION
-		&& (bindlist[i].d_func <= NO_OPERATION
-		|| bindlist[i].d_func == 255)) continue;
-		if (bindlist[i].key < ' ')
-			cprintf("'^%c'\t", bindlist[i].key + '@');
-		else if (bindlist[i].key >= K_F(1))
-			cprintf("'F%d'\t", bindlist[i].key - K_F0);
-		else cprintf("'%c'\t", bindlist[i].key);
-		if (bindlist[i].f_func <= NO_OPERATION)
-			cputs(funclist[bindlist[i].f_func].ident);
-		else kanjiprintf("\"%s\"",
-			macrolist[bindlist[i].f_func - NO_OPERATION - 1]);
-		if (bindlist[i].d_func <= NO_OPERATION)
-			cprintf("\t%s", funclist[bindlist[i].d_func].ident);
-		else if (bindlist[i].d_func < 255) kanjiprintf("\t\"%s\"",
-			macrolist[bindlist[i].d_func - NO_OPERATION - 1]);
-		cputs("\r\n");
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
-	}
-	return(n);
-}
-
-static VOID printext(ext)
-char *ext;
-{
-	char *cp;
-
-	for (cp = ext + 1; *cp; cp++) {
-		if (*cp == '\\') {
-			if (!*(++cp)) break;
-			putch((int)(*(u_char *)cp));
-		}
-		else if (*cp == '.' && *(cp + 1) != '*') putch('?');
-		else if (!strchr(".^$", *cp)) putch((int)(*(u_char *)cp));
-	}
-}
-
-int printlaunch()
-{
-	int i, n;
-
-	n = 0;
-	for (i = 0; i < maxlaunch; i++) {
-		putch('"');
-		printext(launchlist[i].ext);
-		kanjiprintf("\"\t\"%s\"", launchlist[i].comm);
-		if (launchlist[i].topskip < 255) cputs(" (Arch)");
-		cputs("\r\n");
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
-	}
-	return(n);
-}
-
-int printarch()
-{
-	int i, n;
-
-	n = 0;
-	for (i = 0; i < maxarchive; i++) {
-		putch('"');
-		printext(archivelist[i].ext);
-		kanjiprintf("\"\tA \"%s\"", archivelist[i].p_comm);
-		kanjiprintf("\t\"%s\"\r\n", archivelist[i].u_comm);
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
-	}
-	return(n);
-}
-
-int printalias()
-{
-	int i, n;
-
-	n = 0;
-	for (i = 0; i < maxalias; i++) {
-		kanjiprintf("%s\t\"%s\"\r\n",
-			aliaslist[i].alias, aliaslist[i].comm);
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
-	}
-	return(n);
-}
-
-int printdrive()
-{
-	int i, n;
-
-	n = 0;
-	for (i = 0; fdtype[i].name; i++) {
-		kanjiprintf("%c:\t\"%s\"\t(%1d,%3d,%3d)\r\n",
-			fdtype[i].drive, fdtype[i].name,
-			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl);
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
-	}
-	return(n);
-}
-
-int printhist()
-{
-	int i, n;
-
-	n = 0;
-	for (i = histsize; i >= 1; i--) {
-		if (!sh_history[i]) continue;
-		kanjiprintf("%5d  %s\r\n", n + 1, sh_history[i]);
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
-	}
-	return(n);
-}
-
-VOID evalenv()
-{
-	sorttype = atoi2(getenv2("FD_SORTTYPE"));
-	if ((sorttype < 0 || sorttype > 12)
-	&& (sorttype < 100 || sorttype > 112))
-#if ((SORTTYPE < 0) || (SORTTYPE > 12)) \
-&& ((SORTTYPE < 100) || (SORTTYPE > 112))
-		sorttype = 0;
-#else
-		sorttype = SORTTYPE;
-#endif
-	if ((sorttree = atoi2(getenv2("FD_SORTTREE"))) < 0) sorttree = SORTTREE;
-	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
-	if ((histsize = atoi2(getenv2("FD_HISTSIZE"))) < 0) histsize = HISTSIZE;
-	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0) savehist = SAVEHIST;
-	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
-		minfilename = MINFILENAME;
-	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
-		dircountlimit = DIRCOUNTLIMIT;
-	if ((showsecond = atoi2(getenv2("FD_SECOND"))) < 0) showsecond = SECOND;
-	if ((dosdrive = atoi2(getenv2("FD_DOSDRIVE"))) < 0) dosdrive = DOSDRIVE;
-	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
-	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
-	deftmpdir = evalpath(strdup2(deftmpdir));
-	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
-	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
 }
 
 static int getoption(argc, argv)
@@ -1047,7 +440,6 @@ char *argv[];
 	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
 	for (i = 0; fdtype[i].name; i++)
 		fdtype[i].name = strdup2(fdtype[i].name);
-	maxalias = 0;
 
 	loadruncom(DEFRUNCOM);
 	loadruncom(RUNCOMFILE);
@@ -1068,7 +460,7 @@ char *argv[];
 		columns = COLUMNS;
 #endif
 #if (ADJTTY == 0)
-	if (atoi2(getenv2("FD_ADJTTY")) > 0) {
+	if (evalbool(getenv2("FD_ADJTTY")) > 0) {
 #else
 	{
 #endif

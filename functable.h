@@ -40,7 +40,7 @@ functable funclist[] = {
 	{rename_file,	"RENAME_FILE",	RENM_H,	KILLSTK},
 	{make_dir,	"MAKE_DIR",	MKDR_H,	KILLSTK | NO_FILE},
 	{sort_dir,	"SORT_DIR",	SORT_H,	RELIST | ARCH},
-	{execute_sh,	"EXECUTE_SH",	EXSH_H,	KILLSTK | REWRITE | ARCH},
+	{execute_sh,	"EXECUTE_SH",	EXSH_H,	KILLSTK | RELIST | ARCH},
 	{find_file,	"FIND_FILE",	FNDF_H,	KILLSTK | ARCH | NO_FILE},
 	{write_dir,	"WRITE_DIR",	WRIT_H,	KILLSTK},
 	{tree_dir,	"TREE_DIR",	TREE_H,	KILLSTK | RELIST | NO_FILE},

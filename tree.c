@@ -18,6 +18,7 @@ extern char *archivefile;
 extern int subwindow;
 extern int sorton;
 extern int lastdrv;
+extern int sizeinfo;
 
 #define	DIRFIELD	3
 #define	TREEFIELD	(((dircountlimit > 0) ? (n_column * 3) / 5 : n_column)\

@@ -142,6 +142,7 @@ extern int kanjiputs2();
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char fullpath[];
+extern int sizeinfo;
 
 #ifndef	MOUNTED
 #define	MOUNTED		"/etc/mtab"
@@ -178,7 +179,6 @@ extern char fullpath[];
 static int code2str();
 static int checkline();
 static int getfsinfo();
-static char *inscomma();
 static int info1line();
 #ifndef	USEFSDATA
 static long calcKB();
@@ -619,9 +619,10 @@ char *dir;
 #endif
 }
 
-static char *inscomma(buf, n, digit)
+char *inscomma(buf, n, digit)
 char *buf;
-int n, digit;
+long n;
+int digit;
 {
 	char tmp[12];
 	int i, j, len;
@@ -680,6 +681,26 @@ long block, byte;
 	}
 }
 #endif
+
+VOID getinfofs(path, totalp, freep)
+char *path;
+long *totalp, *freep;
+{
+	statfs_t fsbuf;
+	mnt_t mntbuf;
+
+	if (!getfsinfo(path, &fsbuf, &mntbuf))
+		*totalp = *freep = -1;
+	else {
+#ifdef	USEFSDATA
+		*totalp = fsbuf.fd_req.btot;
+		*freep = fsbuf.fd_req.bfreen;
+#else
+		*totalp = calcKB(fsbuf.f_blocks, blocksize(fsbuf));
+		*freep = calcKB(fsbuf.f_bavail, blocksize(fsbuf));
+#endif
+	}
+}
 
 int infofs(path)
 char *path;

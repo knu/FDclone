@@ -590,21 +590,7 @@ int printenv()
 	return(n);
 }
 
-int system2(command)
-char *command;
-{
-	char *cp, *alias;
-	int status;
-
-	for (cp = command; *cp == ' ' || *cp == '\t'; cp++);
-	if (alias = evalalias(cp)) command = alias;
-	if (*cp == '!') status = execinternal(cp + 1);
-	else status = system(command);
-	if (alias) free(alias);
-	return(status);
-}
-
-int system3(command, noconf)
+int system2(command, noconf)
 char *command;
 int noconf;
 {
@@ -618,12 +604,11 @@ int noconf;
 		putterms(t_nokeypad);
 		tflush();
 	}
-	sigvecreset();
 	cooked2();
 	echo2();
 	nl2();
 	tabs();
-	status = system2(command);
+	status = system(command);
 	raw2();
 	noecho2();
 	nonl2();
@@ -633,7 +618,6 @@ int noconf;
 		if (noconf) putterms(t_init);
 		putterms(t_keypad);
 	}
-	sigvecset();
 	return(status);
 }
 

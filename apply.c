@@ -26,6 +26,7 @@
 extern int filepos;
 extern reg_t *findregexp;
 extern int subwindow;
+extern int sizeinfo;
 
 static int judgecopy();
 static VOID showattr();

@@ -24,6 +24,7 @@ extern char *curfilename;
 
 static VOID pathbar();
 static VOID stackbar();
+static VOID sizebar();
 static char *putowner();
 static char *putgroup();
 static VOID calclocate();
@@ -39,6 +40,10 @@ int sorton;
 int sorttype;
 int chgorder;
 int stackdepth = 0;
+int sizeinfo;
+long marksize;
+long totalsize;
+int blocksize;
 namelist filestack[MAXSTACK];
 char fullpath[MAXPATHLEN + 1];
 char *origpath;
@@ -171,6 +176,42 @@ static VOID stackbar()
 		kanjiputs2(filestack[i].name, width - 2, 0);
 		putterm(end_standout);
 	}
+
+	tflush();
+}
+
+static VOID sizebar()
+{
+	char buf[16];
+	long total, free;
+
+	if (!sizeinfo) return;
+
+	locate(0, LSIZE);
+	putterm(l_clear);
+
+	locate(CSIZE, LSIZE);
+	putterm(t_standout);
+	cputs("Size:");
+	putterm(end_standout);
+	cprintf("%14.14s/", inscomma(buf, marksize, 3));
+	cprintf("%14.14s ", inscomma(buf, totalsize, 3));
+
+	getinfofs(".", &total, &free);
+
+	locate(CTOTAL, LSIZE);
+	putterm(t_standout);
+	cputs("Total:");
+	putterm(end_standout);
+	if (total < 0) cprintf("%15.15s ", "?");
+	else cprintf("%12.12s KB ", inscomma(buf, total, 3));
+
+	locate(CFREE, LSIZE);
+	putterm(t_standout);
+	cputs("Free:");
+	putterm(end_standout);
+	if (free < 0) cprintf("%15.15s ", "?");
+	else cprintf("%12.12s KB ", inscomma(buf, free, 3));
 
 	tflush();
 }
@@ -506,6 +547,7 @@ VOID rewritefile(all)
 int all;
 {
 	pathbar();
+	sizebar();
 	if (all) {
 		helpbar();
 		infobar(filelist, filepos);
@@ -528,6 +570,8 @@ char *file, *def;
 	int ch, i, no, old;
 
 	maxfile = mark = 0;
+	totalsize = marksize = 0;
+	blocksize = getblocksize(".");
 	chgorder = 0;
 	if (sorttype < 100) sorton = sorttype;
 
@@ -555,6 +599,9 @@ char *file, *def;
 		if (getstatus(filelist, maxfile, file) < 0) continue;
 		filelist[maxfile].name = strdup2(file);
 		filelist[maxfile].ent = maxfile;
+		if (!isdir(&filelist[maxfile]))
+			totalsize += (filelist[maxfile].st_size / blocksize + 1)
+				* blocksize;
 		maxfile++;
 	}
 	Xclosedir(dirp);
@@ -575,6 +622,7 @@ char *file, *def;
 	}
 	title();
 	pathbar();
+	sizebar();
 	statusbar(maxfile);
 	stackbar();
 
@@ -597,7 +645,7 @@ char *file, *def;
 		no = (bindlist[i].d_func < 255 && isdir(&filelist[filepos])) ?
 			(int)(bindlist[i].d_func) : (int)(bindlist[i].f_func);
 		fstat = (no <= NO_OPERATION) ? funclist[no].stat
-			: (KILLSTK | REWRITE);
+			: (KILLSTK | RELIST);
 
 		if (fstat & KILLSTK) {
 			if (stackdepth > 0) {
@@ -629,12 +677,12 @@ char *file, *def;
 		curfilename = filelist[filepos].name;
 		if (maxfile <= 0 && !(fstat & NO_FILE)) no = 0;
 		else if (no <= NO_OPERATION)
-			no = (*funclist[no].func)(filelist, &maxfile);
+			no = (*funclist[no].func)(filelist, &maxfile, NULL);
 		else {
-			execmacro(macrolist[no - NO_OPERATION - 1],
+			no = execusercomm(macrolist[no - NO_OPERATION - 1],
 				filelist[filepos].name,
-				filelist, maxfile, 0, 0);
-			no = 4;
+				filelist, &maxfile, 0, 0);
+			if (no < 0) no = 0;
 		}
 
 		if (no < 0) break;
@@ -653,6 +701,7 @@ char *file, *def;
 		if ((fstat & RELIST) == RELIST) {
 			title();
 			pathbar();
+			sizebar();
 			statusbar(maxfile);
 			stackbar();
 			helpbar();

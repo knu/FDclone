@@ -200,14 +200,15 @@ int underhome()
 	return(i ? 0 : 1);
 }
 
-static char *getdistdir(mes)
-char *mes;
+static char *getdistdir(mes, arg)
+char *mes, *arg;
 {
 	struct stat status;
 	char *dir;
 	int drive;
 
-	if (!(dir = inputstr(mes, 1, -1, NULL, NULL))) return(NULL);
+	if (arg && *arg) dir = evalpath(strdup2(arg));
+	else if (!(dir = inputstr(mes, 1, -1, NULL, NULL))) return(NULL);
 	if (!*(dir = evalpath(dir))) {
 		free(dir);
 		dir = strdup2(".");
@@ -238,16 +239,18 @@ char *mes;
 	return(dir);
 }
 
-int copyfile(list, max, tr)
+int copyfile(list, max, arg, tr)
 namelist *list;
-int max, tr;
+int max;
+char *arg;
+int tr;
 {
 	if (!mark && (!strcmp(list[filepos].name, ".")
 	|| !strcmp(list[filepos].name, ".."))) {
 		putterm(t_bell);
 		return(0);
 	}
-	destpath = (tr) ? tree(1, &distdrive) : getdistdir(COPYD_K);
+	destpath = (tr) ? tree(1, &distdrive) : getdistdir(COPYD_K, arg);
 	if (!destpath) return((tr) ? 2 : 1);
 	copypolicy = (iscurdir(destpath)) ? 2 : 0;
 	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
@@ -265,16 +268,18 @@ int max, tr;
 	return(4);
 }
 
-int movefile(list, max, tr)
+int movefile(list, max, arg, tr)
 namelist *list;
-int max, tr;
+int max;
+char *arg;
+int tr;
 {
 	if (!mark && (!strcmp(list[filepos].name, ".")
 	|| !strcmp(list[filepos].name, ".."))) {
 		putterm(t_bell);
 		return(0);
 	}
-	destpath = (tr) ? tree(1, &distdrive) : getdistdir(MOVED_K);
+	destpath = (tr) ? tree(1, &distdrive) : getdistdir(MOVED_K, arg);
 	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
 	copypolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);

@@ -47,11 +47,13 @@ typedef struct _namelist {
 #define	F_ISLNK	002
 #define	F_ISDEV	004
 #define	F_ISMRK	010
+#define	F_ISARG	020
 
 #define	isdir(file)		((file) -> flags & F_ISDIR)
 #define	islink(file)		((file) -> flags & F_ISLNK)
 #define	isdev(file)		((file) -> flags & F_ISDEV)
 #define	ismark(file)		((file) -> flags & F_ISMRK)
+#define	isarg(file)		((file) -> flags & F_ISARG)
 
 typedef struct _assoclist {
 	char *org;
@@ -135,6 +137,11 @@ typedef struct _aliastable {
 	char *alias;
 	char *comm;
 } aliastable;
+
+typedef struct _userfunctable {
+	char *func;
+	char **comm;
+} userfunctable;
 
 #define	F_SYMLINK	001
 #define	F_FILETYPE	002

@@ -69,6 +69,11 @@ SECOND		=	1
 #	>= 1: effective
 DOSDRIVE	=	1
 
+# whether if show the info. of filesize
+#	0 or ""(null): not show
+#	>= 1: show
+SIZEINFO	=	1
+
 # select edit mode with your favorite editor type
 #	emacs: ^P, ^N, ^F, ^B, ...
 #	wordstar ^E, ^X, ^D, ^S, ...
@@ -78,6 +83,10 @@ EDITMODE	=	emacs
 # temporary directory where archive file is unpacked
 #	default: /tmp
 TMPDIR		=	/usr/tmp
+
+# mount point of CD-ROM with iso-9660 rock ridge format
+#	default: none
+RRPATH		=	/cdrom;~/cdrom
 
 # language code type to display
 #	default: No convert
@@ -97,10 +106,12 @@ EDITOR	=	/usr/ucb/vi
 #".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
 #".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 #".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
-#".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+#".tar.gz"	"gunzip -c %C | tar tvf -"\
+#					0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 ".taZ"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 ".taz"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
-".tgz"		"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+".tgz"		"gunzip -c %C | tar tvf -"\
+					0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 ".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
 ".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
 ".Z"		"zcat %C | $PAGER"
@@ -109,16 +120,17 @@ EDITOR	=	/usr/ucb/vi
 # example for SVR4 (or GNU tar)
 #".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
 #".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#".tar.gz"	"gunzip -c %C | tar tvf -"\
+#					0,0:1,2-'/',2'/',3,7,4,5,6,8
 
 # archiver definition
 #".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
 #".tar"		A "tar cf %C %T"		"tar xf %C %TA"
 #".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
 #".tar.gz"	A "tar cf %X %T; gzip %X"	"gunzip -c %C | tar xf - %TA"
-".taZ"	A "tar cf %X.tar %T; compress %X.tar; mv %X.tar.Z %X.taZ"	"zcat %C | tar xf - %TA"
-".taz"	A "tar cf %X.tar %T; compress %X.tar; mv %X.tar.Z %X.taz"	"zcat %C | tar xf - %TA"
-".tgz"	A "tar cf %X.tar %T; gzip %X.tar; mv %X.tar.gz %X.tgz"	"gunzip -c %C | tar xf - %TA"
+".taZ"		A "maketaz compress Z taZ"	"zcat %C | tar xf - %TA"
+".taz"		A "maketaz compress Z taz"	"zcat %C | tar xf - %TA"
+".tgz"		A "maketaz gzip gz tgz"		"gunzip -c %C | tar xf - %TA"
 ".zip"		A "zip -q %C %TA"		"unzip -q %C %TA"
 ".zoo"		A "zoo aq %C %TA"		"zoo xq %C %TA"
 
@@ -132,3 +144,17 @@ EDITOR	=	/usr/ucb/vi
 
 # alias definition
 alias	dir "ls -laF"
+
+# function definition
+function rename() {\
+	!MARK_ALL 0;\
+	!MARK_FIND $1;\
+#	!RENAME_FILE $2;\
+	mv %M $2%K;\
+}
+
+function maketaz() {\
+	tar cf %X.tar %T;\
+	$1 %X.tar;\
+	mv %X.tar.$2 %X.$3;\
+}

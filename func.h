@@ -26,14 +26,7 @@ extern VOID error();
 extern VOID sigvecset();
 extern VOID sigvecreset();
 extern VOID title();
-extern int evalconfigline();
-extern int printmacro();
-extern int printlaunch();
-extern int printarch();
-extern int printalias();
-extern int printdrive();
-extern int printhist();
-extern VOID evalenv();
+extern int loadruncom();
 
 /* dosemu.c */
 extern int _dospath();
@@ -42,6 +35,7 @@ extern DIR *Xopendir();
 extern int Xclosedir();
 extern struct dirent *Xreaddir();
 extern VOID Xrewinddir();
+extern int _Xchdir();
 extern int Xchdir();
 #ifdef	USEGETWD
 extern char *Xgetwd();
@@ -68,6 +62,7 @@ extern int Xwrite();
 extern int Xlseek();
 extern int Xmkdir();
 extern int Xrmdir();
+extern FILE *_Xfopen();
 extern FILE *Xfopen();
 extern int Xfclose();
 extern int Xfread();
@@ -79,6 +74,29 @@ extern char *Xfgets();
 extern int Xfputs();
 extern char *tmpdosdupl();
 extern int tmpdosrestore();
+
+/* rockridge.c */
+extern char *transfile();
+extern char *detransfile();
+
+/* parse.c */
+extern char *skipspace();
+extern char *strtkbrk();
+extern char *strtkchr();
+extern char *evalcomstr();
+extern char *killmeta();
+extern VOID adjustpath();
+extern int getargs();
+extern int evalconfigline();
+extern int printmacro();
+extern int printlaunch();
+extern int printarch();
+extern int printalias();
+extern int printuserfunc();
+extern int printdrive();
+extern int printhist();
+extern int evalbool();
+extern VOID evalenv();
 
 /* libc.c */
 extern int access2();
@@ -110,7 +128,6 @@ extern int setenv2();
 extern char *getenv2();
 extern int printenv();
 extern int system2();
-extern int system3();
 extern char *getwd2();
 extern char *getpwuid2();
 extern char *getgrgid2();
@@ -128,18 +145,19 @@ extern char *evalcommand();
 extern int execmacro();
 extern int execenv();
 extern int execshell();
+extern int execusercomm();
 extern char **entryhist();
 extern char **loadhistory();
 extern int savehistory();
-extern int execinternal();
-extern VOID adjustpath();
-extern char *evalalias();
 extern int completealias();
+extern int completeuserfunc();
 
 /* info.c */
 extern VOID help();
 extern int getblocksize();
 extern int writablefs();
+extern char *inscomma();
+extern VOID getinfofs();
 extern int infofs();
 
 /* kanji.c */

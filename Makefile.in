@@ -15,6 +15,7 @@ MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
 	dosdisk.c dosemu.c\
+	rockridge.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c\
 	kanjicnv.c mkfuncno.c expfunc.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
@@ -37,6 +38,7 @@ SED	= sed
 PROGRAM	= fd
 OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
 	dosdisk.o dosemu.o\
+	rockridge.o parse.o \
 	kanji.o file.o apply.o archive.o tree.o command.o browse.o
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
@@ -188,7 +190,7 @@ input.o: kctype.h kanji.h
 shell.o: fd.h machine.h config.h 
 shell.o: types.h pathname.h
 shell.o: term.h func.h 
-shell.o: kctype.h kanji.h 
+shell.o: kctype.h kanji.h funcno.h
 info.o: fd.h machine.h config.h 
 info.o: types.h pathname.h term.h
 info.o: funcno.h kanji.h 
@@ -198,6 +200,13 @@ dosemu.o: fd.h machine.h config.h
 dosemu.o: types.h pathname.h
 dosemu.o: func.h dosdisk.h
 dosemu.o: kctype.h 
+rockridge.o: fd.h machine.h config.h 
+rockridge.o: types.h pathname.h
+rockridge.o: func.h 
+parse.o: fd.h machine.h config.h 
+parse.o: types.h pathname.h
+parse.o: term.h func.h 
+parse.o: kctype.h kanji.h funcno.h dosdisk.h
 kanji.o: fd.h machine.h config.h 
 kanji.o: types.h pathname.h
 kanji.o: term.h func.h 

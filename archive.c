@@ -39,6 +39,7 @@ extern namelist *filelist;
 extern int maxfile;
 extern int maxent;
 extern char *curfilename;
+extern int sizeinfo;
 
 #define	PM_LHA	2, 2,\
 		{0, 1, 1, 2, 6, 4, 5, 6, 7},\
@@ -248,7 +249,6 @@ int max;
 		list -> delim[F_YEAR], list -> width[F_YEAR], list -> sep);
 	tm.tm_year = (*buf) ? atoi(buf) : 1970;
 	if (tm.tm_year < 100 && (tm.tm_year += 1900) < 1970) tm.tm_year += 100;
-	tm.tm_year -= 1900;
 	getfield(buf, line, list -> field[F_MON], skip,
 		list -> delim[F_MON], list -> width[F_MON], list -> sep);
 	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
@@ -504,7 +504,7 @@ int max;
 		curfilename = arcflist[filepos].name;
 		if (!(fstat & ARCH) || (maxarcf <= 0 && !(fstat & NO_FILE)))
 			no = 0;
-		else no = (*funclist[no].func)(arcflist, &maxarcf);
+		else no = (*funclist[no].func)(arcflist, &maxarcf, NULL);
 
 		if (no < 0) break;
 		if (no == 1 || no == 3) helpbar();
@@ -570,8 +570,8 @@ int max;
 		return(1);
 	}
 	if (launchlist[i].topskip == 255) {
-		execmacro(launchlist[i].comm, list[filepos].name,
-			NULL, 0, 1, 0);
+		execusercomm(launchlist[i].comm, list[filepos].name,
+			NULL, NULL, 1, 0);
 		if (drive) removetmp(dir, NULL, list[filepos].name);
 		else if (archivefile)
 			removetmp(dir, archivedir, list[filepos].name);
@@ -677,14 +677,16 @@ int max;
 	regexp_free(re);
 
 	waitmes();
-	execmacro(archivelist[i].p_comm, arc, list, max, -1, 1);
+	execusercomm(archivelist[i].p_comm, arc, list, &max, -1, 1);
 	return(1);
 }
 
-int unpack(arc, dir, list, max, tr)
+int unpack(arc, dir, list, max, arg, tr)
 char *arc, *dir;
 namelist *list;
-int max, tr;
+int max;
+char *arg;
+int tr;
 {
 	reg_t *re;
 	char *tmpdir, path[MAXPATHLEN + 1];
@@ -707,7 +709,8 @@ int max, tr;
 			if (dd >= 0) shutdrv(dd);
 		}
 		else {
-			dir = inputstr(UNPAC_K, 0, -1, NULL, NULL);
+			if (arg && *arg) dir = strdup2(arg);
+			else dir = inputstr(UNPAC_K, 0, -1, NULL, NULL);
 			dir = evalpath(dir);
 		}
 		if (!dir) return(0);
@@ -733,7 +736,7 @@ int max, tr;
 	strcat(path, "/");
 	strcat(path, arc);
 	waitmes();
-	if (execmacro(archivelist[i].u_comm, path, list, max, -1, 1) < 0) {
+	if (execusercomm(archivelist[i].u_comm, path, list, &max, -1, 1) < 0) {
 		warning(E2BIG, archivelist[i].u_comm);
 		if (_chdir2(fullpath) < 0) error(fullpath);
 		return(0);
@@ -758,7 +761,7 @@ int max;
 
 	dupmark = mark;
 	mark = 0;
-	i = unpack(archivefile, path, list, max, 0);
+	i = unpack(archivefile, path, list, max, NULL, 0);
 	mark = dupmark;
 
 	if (_chdir2(path) < 0) error(path);
@@ -819,18 +822,23 @@ int max;
 {
 	macrostat st;
 	char *tmp;
+	int i;
 
 	waitmes();
+	for (i = 0; i < max; i++)
+		if (ismark(&list[i])) list[i].flags |= F_ISARG;
 	st.flags = 0;
 	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, &st))) {
 		warning(E2BIG, dev);
 		return(0);
 	}
 	for (;;) {
-		system3(tmp, -1);
+		system2(tmp, -1);
 		free(tmp);
 		if (!(st.flags & F_REMAIN)
-		|| !(tmp = evalcommand("tar rf %C %TA", dev, list, max, 0)))
-			return(1);
+		|| !(tmp = evalcommand("tar rf %C %TA", dev, list, max, NULL)))
+			break;
 	}
+	for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
+	return(1);
 }
