@@ -19,6 +19,7 @@
 #  ifndef	DJGPP
 #  define	DJGPP	1
 #  else
+#  define	USEREGCOMP
 #  define	SIGFNCINT
 #  endif
 # else	/* !__GNUC__ */
@@ -243,7 +244,7 @@ typedef	long	off_t;
 #if	defined (_IBMR2)
 #define	SVR4
 #define	OSTYPE			"AIX"
-#define	TERMCAPLIB		"-ltermcap"
+#define	TERMCAPLIB		"-lcurses"
 #define	NOTZFILEH
 #define	USESELECTH
 #define	USESYSDIRH
@@ -254,7 +255,12 @@ typedef	long	off_t;
 #define	STATFSARGS	4
 #define	USEMNTCTL
 #define	USERE_COMP
-#define	SIGARGINT
+# if	defined (_AIX41)
+# define	USEMKTIME
+# define	SIGFNCINT
+# else
+# define	SIGARGINT
+# endif
 #endif
 
 #if	defined (ultrix)
@@ -347,11 +353,7 @@ typedef	long	off_t;
 #define	DECLERRLIST
 #define	NOTZFILEH
 #define	NOTMGMTOFF
-# if	defined (__alpha)
-# define	USERE_COMP
-# else
-# define	USEREGCOMP
-# endif
+#define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
 #define	SIGFNCINT

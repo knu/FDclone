@@ -137,7 +137,7 @@ extern char *catargs __P_((int, char *[], int));
 #ifndef	_NOARCHIVE
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
-extern char *evalprompt __P_((VOID_A));
+extern int evalprompt __P_((char *, int));
 extern int evalbool __P_((char *));
 extern VOID evalenv __P_((VOID_A));
 
@@ -163,6 +163,7 @@ extern char *strncpy2 __P_((char *, char *, int));
 extern int strncpy3 __P_((char *, char *, int, int));
 extern int strcasecmp2 __P_((char *, char *));
 extern char *strstr2 __P_((char *, char *));
+extern int strlen2 __P_((char *));
 extern int atoi2 __P_((char *));
 #ifndef	USESETENV
 extern int putenv2 __P_((char *));

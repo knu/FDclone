@@ -501,28 +501,35 @@ int strncpy3(s1, s2, len, ptr)
 char *s1, *s2;
 int len, ptr;
 {
-	char *cp;
-	int i, l;
+	int i, j, l;
 
-	cp = s1;
-	l = len;
-	if (ptr && onkanji1(s2, ptr - 1)) {
-		*(cp++) = ' ';
-		ptr++;
-		l--;
+	i = 0;
+	j = ptr;
+	if ((j = ptr) < 0) j = 0;
+	if (j && onkanji1(s2, j - 1)) {
+		s1[i++] = ' ';
+		j++;
 	}
-	if (l < strlen(s2 + ptr) && onkanji1(s2, ptr + l - 1)) {
-		strncpy2(cp, s2 + ptr, --l);
-		strcat(cp, " ");
-		len--;
+	while ((len < 0 || i < len) && s2[j]) {
+		if (iskanji1(s2[j])) {
+			if (len >= 0 && i >= len - 1) {
+				s1[i++] = ' ';
+				break;
+			}
+			s1[i++] = s2[j++];
+		}
+		else if ((u_char)(s2[j]) < ' ' || s2[j] == C_DEL) {
+			s1[i++] = '^';
+			if (len >= 0 && i >= len) break;
+			s1[i++] = ((s2[j++] + '@') & 0x7f);
+			continue;
+		}
+		s1[i++] = s2[j++];
 	}
-	else {
-		for (i = 0; i < l && s2[ptr + i]; i++) *(cp++) = s2[ptr + i];
-		len = i;
-		for (; i < l; i++) *(cp++) = ' ';
-		*cp = '\0';
-	}
-	return(len);
+	l = i;
+	if (len >= 0 && ptr >= 0) while (i < len) s1[i++] = ' ';
+	s1[i] = '\0';
+	return(l);
 }
 
 int strcasecmp2(s1, s2)
@@ -545,6 +552,16 @@ char *s1, *s2;
 	for (cp = s1; (cp = strchr(cp, *s2)); cp++)
 		if (!strncmp(cp, s2, len)) return(cp);
 	return(NULL);
+}
+
+int strlen2(str)
+char *str;
+{
+	int i, len;
+
+	for (i = len = 0; str[i]; i++, len++)
+		if ((u_char)(str[i]) < ' ' || str[i] == C_DEL) len++;
+	return(len);
 }
 
 int atoi2(str)

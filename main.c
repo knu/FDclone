@@ -485,7 +485,7 @@ int exist;
 
 #if	!MSDOS
 	tmp = NULL;
-	if (cp = (char *)getenv("TERM")) {
+	if ((cp = (char *)getenv("TERM"))) {
 		tmp = (char *)malloc2(strlen(file) + strlen(cp) + 1 + 1);
 		strcpy(tmp, file);
 		strcat(tmp, ".");

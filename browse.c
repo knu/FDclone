@@ -105,12 +105,10 @@ static VOID pathbar(VOID_A)
 
 VOID helpbar(VOID_A)
 {
-	char *buf;
 	int i, j, width, len, ofs;
 
 	width = (n_column - 10) / 10 - 1;
 	ofs = (n_column - (width + 1) * 10 - 2) / 2;
-	buf = (char *)malloc2(width + 1);
 
 	locate(0, LHELP);
 	putterm(l_clear);
@@ -121,16 +119,11 @@ VOID helpbar(VOID_A)
 	for (i = 0; i < 10; i++) {
 		locate(ofs + (width + 1) * i + (i / 5) * 3, LHELP);
 		len = (width - strlen(helpindex[i])) / 2;
-		for (j = 0; j < len; j++) buf[j] = ' ';
-		strncpy2(buf + len, helpindex[i], width - len);
-		len = strlen(buf);
-		for (j = len; j < width; j++) buf[j] = ' ';
-		buf[j] = '\0';
 		putterm(t_standout);
-		cputs2(buf);
+		for (j = 0; j < len; j++) putch2(' ');
+		kanjiputs2(helpindex[i], width - len, 0);
 		putterm(end_standout);
 	}
-	free(buf);
 
 	tflush();
 }
@@ -691,7 +684,7 @@ char *buf;
 	}
 	else {
 		if (n == 1) buf[len = 0] = '\0';
-		if (ch < ' ' || ch >= K_MIN) pos = -1;
+		if (ch < ' ' || ch == C_DEL || ch >= K_MIN) pos = -1;
 		else if (len < MAXNAMLEN - 1) {
 			buf[len++] = ch;
 			buf[len] = '\0';
@@ -723,9 +716,9 @@ char *buf;
 	}
 
 	putterm(t_standout);
-	cputs2(str[2 - s - i]);
+	len = kanjiputs(str[2 - s - i]);
 	putterm(end_standout);
-	kanjiputs2(buf, n_column - (int)strlen(str[2 - s - i]) - 1, 0);
+	kanjiputs2(buf, n_column - len - 1, 0);
 	if (i) filepos = pos;
 	else if (n != 2 && ch != K_BS) putterm(t_bell);
 	isearch = s * (i + 2);

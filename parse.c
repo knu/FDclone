@@ -50,7 +50,8 @@ extern int sizeinfo;
 #ifndef	_NOCOLOR
 extern int ansicolor;
 #endif
-extern char *promptstr;
+
+char *promptstr = NULL;
 
 
 char *skipspace(cp)
@@ -214,7 +215,7 @@ char *name;
 #ifndef	_NOROCKRIDGE
 	char tmp[MAXPATHLEN + 1];
 #endif
-	char *cp, buf[MAXPATHLEN * 2 + 1];
+	char *cp, buf[MAXPATHLEN * 2 + 2 + 1];
 	int i;
 #if	!MSDOS && !defined (CODEEUC)
 	int sjis;
@@ -227,21 +228,33 @@ char *name;
 #ifndef	_NOROCKRIDGE
 	name = detransfile(name, tmp, 0);
 #endif
-	for (cp = name, i = 0; *cp; cp++, i++) {
+	*buf = '\0';
+	for (cp = name, i = 1; *cp; cp++, i++) {
 #if	MSDOS
 		if (iskanji1(*cp)) buf[i++] = *(cp++);
-		else if (*cp == '$') buf[i++] = *cp;
+		else
 #else	/* !MSDOS */
 # ifndef	CODEEUC
 		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
 		else
 # endif
-		if (strchr(METACHAR, *cp)) buf[i++] = '\\';
 #endif	/* !MSDOS */
+		{
+			if ((u_char)(*cp) < ' ' || *cp == C_DEL
+			|| strchr(METACHAR, *cp)) *buf = '"';
+			if (strchr(DQ_METACHAR, *cp))
+#if	MSDOS
+				buf[i++] = *cp;
+#else
+				buf[i++] = '\\';
+#endif
+		}
 		buf[i] = *cp;
 	}
+	if (*(cp = buf)) buf[i++] = *cp;
+	else cp++;
 	buf[i] = '\0';
-	return(strdup2(buf));
+	return(strdup2(cp));
 }
 
 #if	!MSDOS
@@ -343,73 +356,119 @@ u_char *fp, *dp, *wp;
 }
 #endif
 
-char *evalprompt(VOID_A)
+int evalprompt(prompt, max)
+char *prompt;
+int max;
 {
 #ifdef	USEUNAME
 	struct utsname uts;
 #endif
-	static char *prompt = NULL;
-	char *cp, line[MAXLINESTR + 1];
-	int i, j;
+	char *cp, line[MAXPATHLEN + 1];
+	int i, j, k, len, unprint;
 
-	if (!prompt) free(prompt);
-	for (i = j = 0; promptstr[i]; i++) {
+	unprint = 0;
+	for (i = j = len = 0; promptstr[i]; i++) {
+		cp = NULL;
+		*line = '\0';
 		if (promptstr[i] != '\\') {
-			line[j++] = promptstr[i];
-			continue;
+			*line = promptstr[i];
+			line[1] = '\0';
 		}
-		switch (promptstr[++i]) {
+		else switch (promptstr[++i]) {
 			case '\0':
 				i--;
-				line[j++] = '\\';
+				*line = '\\';
+				line[1] = '\0';
 				break;
 			case '!':
-				sprintf(&line[j], "%d", histno[0] + 1);
-				j += strlen(&line[j]);
+				sprintf(line, "%d", histno[0] + 1);
 				break;
 #if	!MSDOS
 			case 'u':
 				cp = getpwuid2(getuid());
-				while (*cp) line[j++] = *(cp++);
 				break;
 			case 'h':
 			case 'H':
 #ifdef	USEUNAME
 				uname(&uts);
-				strcpy(&line[j], uts.nodename);
+				strcpy(line, uts.nodename);
 #else
-				gethostname(&line[j], MAXLINESTR - j);
+				gethostname(line, MAXPATHLEN);
 #endif
 				if (promptstr[i] == 'h'
-				&& (cp = strchr(&line[j], '.'))) *cp = '\0';
-				j += strlen(&line[j]);
+				&& (cp = strchr(line, '.'))) *cp = '\0';
+				cp = line;
 				break;
 			case '$':
-				line[j++] = (getuid()) ? '$' : '#';
+				*line = (getuid()) ? '$' : '#';
+				line[1] = '\0';
 				break;
 #endif
 			case 'w':
-				for (cp = fullpath; *cp; cp++) line[j++] = *cp;
+				cp = fullpath;
 				break;
 			case 'W':
 				cp = strrchr(fullpath + 1, _SC_);
 				if (cp) cp++;
 				else cp = fullpath;
-				while (*cp) line[j++] = *(cp++);
 				break;
 			case '~':
-				if (underhome(&line[j + 1])) line[j++] = '~';
-				else strcpy(&line[j], fullpath);
-				j += strlen(&line[j]);
+				if (underhome(line)) {
+					if (j < max) prompt[j++] = '~';
+					if (!unprint) len++;
+				}
+				else cp = fullpath;
+				break;
+			case 'e':
+				*line = '\033';
+				line[1] = '\0';
+				break;
+			case '[':
+				unprint = 1;
+				break;
+			case ']':
+				unprint = 0;
 				break;
 			default:
-				line[j++] = promptstr[i];
+				if (promptstr[i] < '0' || promptstr[i] > '7') {
+					*line = promptstr[i];
+					line[1] = '\0';
+				}
+				else {
+					*line = promptstr[i] - '0';
+					for (k = 1; k < 3; k++) {
+						if (promptstr[i + 1] < '0'
+						|| promptstr[i + 1] > '7')
+							break;
+						*line = *line * 8
+							+ promptstr[++i] - '0';
+					}
+					line[1] = '\0';
+				}
 				break;
 		}
+		if (!cp) cp = line;
+		while (*cp && j < max) {
+			if (unprint) prompt[j] = *cp;
+			else if ((u_char)(*cp) >= ' ' && *cp != C_DEL) {
+				prompt[j] = *cp;
+				len++;
+			}
+			else if (j + 1 >= max) {
+				prompt[j] = '?';
+				len++;
+			}
+			else {
+				prompt[j++] = '^';
+				prompt[j] = ((*cp + '@') & 0x7f);
+				len += 2;
+			}
+			cp++;
+			j++;
+		}
 	}
-	line[j] = '\0';
-	prompt = (char *)strdup2(line);
-	return(prompt);
+	prompt[j] = '\0';
+	return(len);
 }
 
 int evalbool(cp)

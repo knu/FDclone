@@ -480,7 +480,7 @@ char *arg;
 		|| (list[filepos].st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))))
 			i--;
 	}
-	if (fnameofs + i >= strlen(list[filepos].name)) return(0);
+	if (i >= strlen2(list[filepos].name + fnameofs)) return(0);
 	fnameofs++;
 	return(2);
 }
@@ -746,7 +746,7 @@ char *file;
 	putterms(t_clear);
 	tflush();
 	buf = NEXT_K;
-	i = strlen(file);
+	i = strlen2(file);
 	if (i + strlen(buf) > n_lastcolumn) i = n_lastcolumn - strlen(buf);
 	prompt = (char *)malloc2(i + strlen(buf) + 1);
 	strncpy3(prompt, file, i, 0);
@@ -757,7 +757,7 @@ char *file;
 	while (Xfgets(buf, n_column + 1, fp)) {
 		locate(0, i);
 		putterm(l_clear);
-		kanjiputs(buf);
+		kanjiputs2(buf, n_column, -1);
 		if (++i >= n_line - 1) {
 			i = 0;
 			if (!yesno(prompt)) break;
@@ -765,8 +765,8 @@ char *file;
 	}
 
 	if (Xfeof(fp)) {
-		for (; i < n_line + 1; i++) {
-			locate(0, i);
+		while (i < n_line + 1) {
+			locate(0, i++);
 			putterm(l_clear);
 		}
 	}
@@ -1183,7 +1183,7 @@ char *arg;
 	int i;
 
 	if (arg) com = strdup2(arg);
-	else if (!(com = inputstr(evalprompt(), 0, -1, NULL, 0)))
+	else if (!(com = inputstr(NULL, 0, -1, NULL, 0)))
 		return(1);
 	if (*com) i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	else {
@@ -1209,8 +1209,8 @@ char *arg;
 	int drive = 0;
 #endif
 
-	len = (isexec(&list[filepos])) ? strlen(list[filepos].name) + 1 : 0;
-	if (!(com = inputstr(evalprompt(), 0, len, list[filepos].name, 0)))
+	len = (isexec(&list[filepos])) ? strlen2(list[filepos].name) + 1 : 0;
+	if (!(com = inputstr(NULL, 0, len, list[filepos].name, 0)))
 		return(1);
 	if (!*com) {
 		execshell();

@@ -42,7 +42,8 @@ static VOID insertchar __P_((char *, int, int, int, int, int, int, int));
 static VOID deletechar __P_((char *, int, int, int, int, int, int, int));
 static VOID truncline __P_((int, int, int, int, int, int));
 static VOID displaystr __P_((char *, int, int, int, int, int, int));
-static int insertstr __P_((char *, int, int, int, int, int, int, char *, int));
+static int insertstr __P_((char *, int, int, int, int,
+		int, int, char *, int, int));
 #ifndef	_NOCOMPLETE
 static VOID selectfile __P_((char *, int));
 static int completestr __P_((char *, int, int, int, int, int, int, int, int));
@@ -497,11 +498,11 @@ int x, cx, len, plen, max, linemax;
 	free(dupl);
 }
 
-static int insertstr(str, x, cx, len, plen, max, linemax, insstr, ins)
+static int insertstr(str, x, cx, len, plen, max, linemax, insstr, ins, quote)
 char *str;
 int x, cx, len, plen, max, linemax;
 char *insstr;
-int ins;
+int ins, quote;
 {
 	char dupl[MAXLINESTR + 1];
 	int i, j, dy, f, ptr;
@@ -511,10 +512,24 @@ int ins;
 	if (ins <= 0) return(0);
 	insertchar(str, x, cx, len, plen, max, linemax, ins);
 	for (i = j = 0; i < ins; i++, j++) {
-		if (insstr[i] >= ' ' && insstr[i] != C_DEL)
+		if (insstr[i] >= ' ' && insstr[i] != C_DEL
+		&& (
+#if	!MSDOS
+		quote != '"' ||
+#endif
+		!strchr(DQ_METACHAR, insstr[i])))
 			dupl[j] = str[cx + j] = insstr[i];
 		else if (len + ins + j - i >= max)
 			dupl[j] = str[cx + j] = '?';
+		else if (insstr[i] >= ' ' && insstr[i] != C_DEL) {
+#if	MSDOS
+			dupl[j] = str[cx + j] =
+#else
+			dupl[j] = str[cx + j] = '\\';
+#endif
+			dupl[j + 1] = str[cx + j + 1] = insstr[i];
+			j++;
+		}
 		else {
 			dupl[j] = '^';
 			str[cx + j] = QUOTE;
@@ -558,9 +573,9 @@ int max;
 			memset(&selectlist[i], 0, sizeof(namelist));
 			selectlist[i].name = strdup2(strs);
 			selectlist[i].flags = (F_ISRED | F_ISWRI);
-			len = strlen(strs);
+			len = strlen2(strs);
 			if (maxlen < len) maxlen = len;
-			strs += len + 1;
+			while (*strs++);
 		}
 		dupsorton = sorton;
 		sorton = 1;
@@ -686,7 +701,8 @@ int x, cx, len, plen, max, linemax, comline, cont;
 	l = 0;
 	if (!quote && len < max) {
 		for (i = 0; cp1[i]; i++)
-			if (strchr(CMDLINE_DELIM, cp1[i])) break;
+			if ((u_char)(cp1[i]) < ' ' || cp1[i] == C_DEL
+			|| strchr(METACHAR, cp1[i])) break;
 		if (cp1[i]) {
 			setcursor(x, top, plen, max, linemax);
 			insertchar(str, x, top, len++, plen, max, linemax, 1);
@@ -698,7 +714,7 @@ int x, cx, len, plen, max, linemax, comline, cont;
 	}
 
 	cp2 = cp1 + (int)strlen(cp1) - ins;
-	i = insertstr(str, x, cx, len, plen, max, linemax, cp2, ins);
+	i = insertstr(str, x, cx, len, plen, max, linemax, cp2, ins, quote);
 	l += i;
 	if (fix && (len += i) < max) {
 		cx += i;
@@ -724,6 +740,8 @@ char *str;
 int x, cx, *lenp, plen, max, linemax, *histnop, h;
 char **tmp;
 {
+	int i, j;
+
 	keyflush();
 #ifndef	_NOCOMPLETE
 	if (selectlist) {
@@ -742,7 +760,12 @@ char **tmp;
 			str[*lenp] = '\0';
 			*tmp = strdup2(str);
 		}
-		strcpy(str, history[h][*histnop]);
+		for (i = j = 0; history[h][*histnop][i]; i++) {
+			if ((u_char)(history[h][*histnop][i]) < ' '
+			|| history[h][*histnop][i] == C_DEL) str[j++] = QUOTE;
+			str[j++] = history[h][*histnop][i];
+		}
+		str[j] = '\0';
 		*lenp = strlen(str);
 		cx = *lenp;
 		displaystr(str, x, cx, *lenp, plen, max, linemax);
@@ -764,6 +787,8 @@ char *str;
 int x, cx, *lenp, plen, max, linemax, *histnop, h;
 char **tmp;
 {
+	int i, j;
+
 	keyflush();
 #ifndef	_NOCOMPLETE
 	if (selectlist) {
@@ -777,7 +802,15 @@ char **tmp;
 			putterm(t_bell);
 			return(cx);
 		}
-		if (--(*histnop) > 0) strcpy(str, history[h][*histnop - 1]);
+		if (--(*histnop) > 0) {
+			for (i = j = 0; history[h][*histnop - 1][i]; i++) {
+				if ((u_char)(history[h][*histnop - 1][i]) < ' '
+				|| history[h][*histnop - 1][i] == C_DEL)
+					str[j++] = QUOTE;
+				str[j++] = history[h][*histnop - 1][i];
+			}
+			str[j] = '\0';
+		}
 		else {
 			strcpy(str, *tmp);
 			free(*tmp);
@@ -895,6 +928,7 @@ int x, plen, max, linemax, def, comline, h;
 #endif
 			if (i < ' ' || i == C_DEL) {
 				keyflush();
+				ch = '\0';
 				if (!i) continue;
 				if (len + 1 >= max) {
 					putterm(t_bell);
@@ -1015,15 +1049,34 @@ int x, plen, max, linemax, def, comline, h;
 				break;
 			case K_ENTER:
 				keyflush();
+				for (i = 0; curfilename[i]; i++)
+					if ((u_char)(curfilename[i]) < ' '
+					|| curfilename[i] == C_DEL
+					|| strchr(METACHAR, curfilename[i]))
+						break;
+				if (curfilename[i]
+				&& len + strlen2(curfilename) + 2 <= max) {
+					insertchar(str, x, cx, len++, plen,
+						max, linemax, 1);
+					str[cx++] = quote = '"';
+					putch2(quote);
+				}
 				i = insertstr(str, x, cx, len, plen,
 					max, linemax, curfilename,
-					strlen(curfilename));
+					strlen(curfilename), quote);
 				if (!i) {
 					putterm(t_bell);
 					break;
 				}
 				cx += i;
 				len += i;
+				if (quote) {
+					insertchar(str, x, cx, len++, plen,
+						max, linemax, 1);
+					str[cx++] = quote;
+					putch2(quote);
+					quote = 0;
+				}
 				if (!((cx + plen) % linemax) && cx < max)
 					setcursor(x, cx, plen, max, linemax);
 				break;
@@ -1112,13 +1165,44 @@ int h;
 	locate(0, LCMDLINE);
 	putch2(' ');
 	putterm(t_standout);
-	kanjiputs(prompt);
+	if (prompt) {
+		kanjiputs(prompt);
+		len = strlen(prompt) + 1;
+	}
+	else {
+		len = evalprompt(input, MAXLINESTR) + 1;
+		kanjiputs(input);
+		putterm(t_normal);
+	}
 	putterm(end_standout);
 	tflush();
 
-	len = strlen(prompt) + 1;
-	if (def) strcpy(input, def);
-	else *input = '\0';
+	if (!def) *input = '\0';
+	else if (h != 0) strcpy(input, def);
+	else {
+		j = 0;
+		ch = '\0';
+		for (i = 0; def[i]; i++)
+			if ((u_char)(def[i]) < ' ' || def[i] == C_DEL
+			|| strchr(METACHAR, def[i])) break;
+		if (def[i]) {
+			input[j++] = ch = '"';
+			if (ptr) ptr += 2;
+		}
+		for (i = 0; def[i]; i++, j++) {
+			if ((u_char)(def[i]) < ' ' || def[i] == C_DEL)
+				input[j++] = QUOTE;
+			else if (strchr(DQ_METACHAR, def[i])) 
+#if	MSDOS
+				input[j++] = def[i];
+#else
+				input[j++] = '\\';
+#endif
+			input[j] = def[i];
+		}
+		if (ch) input[j++] = ch;
+		input[j] = '\0';
+	}
 	i = n_column - 1 - len + (n_column - 1) * (WCMDLINE - 1);
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
@@ -1135,7 +1219,6 @@ int h;
 		for (len--; len > 0 && input[len - 1] == ' '; len--);
 		input[len] = '\0';
 	}
-	if (h == 0) entryhist(h, input, 0);
 	tflush();
 	dupl = (char *)malloc2(len + 1);
 	for (i = j = 0; input[i]; i++, j++) {
@@ -1143,6 +1226,7 @@ int h;
 		dupl[j] = input[i];
 	}
 	dupl[j] = '\0';
+	if (h == 0) entryhist(h, dupl, 0);
 	return(dupl);
 }
 
@@ -1152,7 +1236,7 @@ char *str;
 	int len;
 	char *cp1, *cp2;
 
-	if ((len = (int)strlen(str) + 5 - n_lastcolumn) <= 0
+	if ((len = (int)strlen2(str) + 5 - n_lastcolumn) <= 0
 	|| !(cp1 = strchr2(str, '['))
 	|| !(cp2 = strchr2(cp1, ']'))) return(str);
 
@@ -1170,7 +1254,7 @@ char *mes;
 	locate(0, LMESLINE);
 	putterm(l_clear);
 	putterm(t_standout);
-	kanjiputs(mes);
+	kanjiputs2(mes, n_lastcolumn, -1);
 	cputs2("[Y/N]");
 	putterm(end_standout);
 	tflush();
@@ -1219,7 +1303,7 @@ char *fmt;
 #endif
 	truncstr(buf);
 
-	len = strlen(buf);
+	len = strlen2(buf);
 	yesnomes(buf);
 
 	do {
@@ -1281,12 +1365,8 @@ char *str;
 	}
 	else {
 		len = n_lastcolumn - (int)strlen(err) - 3;
-		tmp = (char *)malloc2(strlen(str) + strlen(err) + 3);
-		strcpy(tmp, str);
-		if (strlen(str) > len) {
-			if (onkanji1(str, len - 1)) len--;
-			tmp[len] = '\0';
-		}
+		tmp = (char *)malloc2(strlen2(str) + strlen(err) + 3);
+		strncpy3(tmp, str, len, -1);
 		strcat(tmp, ": ");
 		strcat(tmp, err);
 	}

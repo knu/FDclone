@@ -278,7 +278,7 @@ int max, nest;
 	for (i = WHEADER + 1; i < n_line - WFOOTER; i++) {
 		locate(1, i);
 		if (i == tr_line) putterm(t_standout);
-		kanjiputs(bufptr(buf, i));
+		kanjiputs2(bufptr(buf, i), TREEFIELD, 0);
 		if (i == tr_line) putterm(end_standout);
 	}
 	evaldir(path, 1);
@@ -739,11 +739,11 @@ static char *_tree(VOID_A)
 		else if (oy != tr_line) {
 			locate(1, tr_line);
 			putterm(t_standout);
-			kanjiputs(bufptr(cp, tr_line));
+			kanjiputs2(bufptr(cp, tr_line), TREEFIELD, 0);
 			putterm(end_standout);
 			locate(1, oy);
 			if (stable_standout) putterm(end_standout);
-			else kanjiputs(bufptr(cp, oy));
+			else kanjiputs2(bufptr(cp, oy), TREEFIELD, 0);
 			evaldir(path, 1);
 		}
 	} while (ch != ESC && ch != CR);

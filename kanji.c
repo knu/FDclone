@@ -271,20 +271,8 @@ char *s;
 int len, ptr;
 {
 	char dupl[MAXLINESTR + 1];
-	int i, p;
 
-	p = ptr;
-	if (ptr < 0) ptr = 0;
-	for (i = 0; i < len && s[ptr + i]; i++);
-	if (i < len) {
-		kanjiputs(s + ptr);
-		if (p >= 0) for (; i < len; i++) putch2(' ');
-	}
-	else {
-		memcpy(dupl, s + ptr, len);
-		dupl[len] = '\0';
-		if (onkanji1(dupl, len - 1)) dupl[len - 1] = ' ';
-		kanjiputs(dupl);
-	}
+	len = strncpy3(dupl, s, len, ptr);
+	kanjiputs(dupl);
 	return(len);
 }

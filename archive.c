@@ -905,7 +905,9 @@ int tr;
 #else
 	if (!(drive = _dospath(fullpath))) strcpy(path, fullpath);
 	else {
-		strcpy(path, deftmpdir);
+		realpath2(deftmpdir, path);
+		free(deftmpdir);
+		deftmpdir = strdup2(path);
 		strcat(path, _SS_);
 		strcat(path, tmpfilename);
 		strcat(path, _SS_);

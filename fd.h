@@ -27,13 +27,15 @@
 #define	RUNCOMFILE	"~\\fd.rc"
 #define	HISTORYFILE	"~\\fd.hst"
 #define	CMDLINE_DELIM	"\t ;<>|"
+#define	METACHAR	" \"'*,;<=>?[]|"
+#define	DQ_METACHAR	"\"$"
 #else
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
 #define	CMDLINE_DELIM	"\t !&:;<>|"
+#define	METACHAR	" \"#$&'()*:;<=>?[\\]^`|~"
+#define	DQ_METACHAR	"\"$\\`"
 #endif
-
-#define	METACHAR	"\t \"#$&'()*:;<>?[\\]^`|~"
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*

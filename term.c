@@ -257,12 +257,12 @@ static short keycode[K_MAX - K_MIN + 1];
 static int ttyio;
 static FILE *ttyout;
 static char *termname;
+#endif	/* !MSDOS */
 
-#ifndef	TIOCSTI
+#if	MSDOS || !defined (TIOCSTI)
 static u_char ungetbuf[10];
 static int ungetnum = 0;
 #endif
-#endif	/* !MSDOS */
 
 static int termflags;
 #define	F_INITTTY	001
@@ -432,11 +432,15 @@ int min, time;
 int cooked2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, not(CBREAK | RAW), 0, not(LLITOUT | LPENDIN));
+	ttymode(ttyio, 0, not(CBREAK | RAW), LPASS8, not(LLITOUT | LPENDIN));
 #else
 	ttymode(ttyio, ISIG | ICANON, not(PENDIN),
-		BRKINT | IGNPAR | IXON | IXANY | IXOFF, not(IGNBRK),
+		BRKINT | IXON, not(IGNBRK | ISTRIP),
+# if (VEOF == VMIN) || (VEOL == VTIME)
 		OPOST, 0, '\004', 255);
+# else
+		OPOST, 0, 0, 0);
+# endif
 #endif
 	return(0);
 }
@@ -468,7 +472,7 @@ int echo2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #else
-	ttymode(ttyio, ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE, not(ECHONL),
+	ttymode(ttyio, ECHO | ECHOE | ECHOCTL | ECHOKE, not(ECHONL),
 		0, 0, 0, 0, 0, 0);
 #endif
 	return(0);
@@ -997,7 +1001,7 @@ char *s;
 		putch2('n');
 		size = SIZEFMT;
 			
-		for (x = 0; (buf[x] = getch()) != '\r'; x++);
+		for (x = 0; (buf[x] = bdos(0x07, 0x00, 0)) != '\r'; x++);
 		buf[x] = '\0';
 		if (getxy(buf, size, &y, &x) != 2) x = 1;
 		do {
@@ -1051,14 +1055,17 @@ int getch2(VOID_A)
 		nextchar = '\0';
 		return(ch);
 	}
+#endif
+	if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 
+#ifdef	PC98
 	regs.h.ah = 0x00;
 	int86(0x18, &regs, &regs);
 
 	if (!(ch = regs.h.al)) nextchar = regs.h.ah;
 	return(ch);
 #else
-	return((u_char)getch());
+	return(bdos(0x07, 0x00, 0) & 0xff);
 #endif
 }
 
@@ -1138,7 +1145,9 @@ int sig;
 int ungetch2(c)
 u_char c;
 {
-	return(ungetch(c));
+	if (ungetnum >= sizeof(ungetbuf) / sizeof(u_char) - 1) return(EOF);
+	ungetbuf[ungetnum++] = c;
+	return(c);
 }
 
 int locate(x, y)
@@ -1162,7 +1171,7 @@ int xmax, ymax;
 	size = SIZEFMT;
 
 	for (i = 0; i < sizeof(GETSIZE) - 1; i++) putch2(GETSIZE[i]);
-	for (i = 0; (buf[i] = getch()) != '\r'; i++);
+	for (i = 0; (buf[i] = bdos(0x07, 0x00, 0)) != '\r'; i++);
 	buf[i] = '\0';
 	if (getxy(buf, size, &y, &x) != 2) x = y = -1;
 
@@ -1266,10 +1275,10 @@ u_char c;
 #ifdef	TIOCSTI
 	ioctl(ttyio, TIOCSTI, &c);
 #else
-	ungetbuf[ungetnum] = c;
-	if (ungetnum < sizeof(ungetbuf) / sizeof(u_char) - 1) ungetnum++;
+	if (ungetnum >= sizeof(ungetbuf) / sizeof(u_char) - 1) return(EOF);
+	ungetbuf[ungetnum++] = c;
 #endif
-	return(0);
+	return(c);
 }
 
 int locate(x, y)

@@ -47,7 +47,6 @@ char **history[2] = {NULL, NULL};
 short histsize[2] = {0, 0};
 short histno[2] = {0, 0};
 int savehist = 0;
-char *promptstr = NULL;
 
 static int n_args = 0;
 static short histbufsize[2] = {0, 0};
@@ -333,8 +332,8 @@ macrostat *stp;
 		if (i >= len) return(command);
 
 		free(command);
-		if (p < 0) p = strlen(line);
-		cp = inputstr(evalprompt(), 0, p, line, 0);
+		if (p < 0) p = strlen2(line);
+		cp = inputstr(NULL, 0, p, line, 0);
 		if (!cp || !*cp) return(NULL);
 		command = evalcommand(cp, arg, list, max, stp);
 		if (!command) return((char *)-1);
@@ -577,7 +576,7 @@ char *file;
 {
 	FILE *fp;
 	char *cp, line[MAXLINESTR + 1];
-	int i, j, len, size;
+	int i, j, size;
 
 	cp = evalpath(strdup2(file), 1);
 	fp = fopen(cp, "r");
@@ -596,15 +595,7 @@ char *file;
 		~(short)(1L << (BITSPERBYTE * sizeof(short) - 1)))
 			histno[n] = 0;
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
-		for (j = len = 0; line[j]; j++, len++)
-			if ((u_char)line[j] < ' ' || line[j] == C_DEL) len++;
-		history[n][0] = (char *)malloc2(len + 1);
-		for (j = len = 0; line[j]; j++, len++) {
-			if ((u_char)line[j] < ' ' || line[j] == C_DEL)
-				history[n][0][len++] = QUOTE;
-			history[n][0][len] = line[j];
-		}
-		history[n][0][len] = '\0';
+		history[n][0] = strdup2(line);
 		if (i < size) i++;
 	}
 	fclose(fp);
@@ -618,8 +609,8 @@ int n;
 char *file;
 {
 	FILE *fp;
-	char *cp, line[MAXLINESTR + 1];
-	int i, j, len, size;
+	char *cp;
+	int i, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
 	cp = evalpath(strdup2(file), 1);
@@ -629,11 +620,7 @@ char *file;
 
 	size = (savehist > histsize[n]) ? histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
-		for (j = 0, len = 0; history[n][i][j]; j++)
-			if (history[n][i][j] != QUOTE)
-				line[len++] = history[n][i][j];
-		line[len] = '\0';
-		fputs(line, fp);
+		fputs(history[n][i], fp);
 		fputc('\n', fp);
 	}
 	fclose(fp);
@@ -690,7 +677,8 @@ int *maxp;
 		strcat(cp, tmp);
 	}
 	history[0][0] = cp;
-	cprintf2("%s\r\n", cp);
+	kanjiputs2(cp, -1, -1);
+	cputs2("\r\n");
 	n = dosystem(cp, list, maxp, 0);
 	free(tmp);
 	return(n);

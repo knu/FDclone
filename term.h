@@ -4,10 +4,6 @@
  *	Variables for TERMCAP
  */
 
-#if	MSDOS
-#include <conio.h>
-#endif
-
 #define	CR	'\r'
 #define	ESC	'\033'
 

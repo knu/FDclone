@@ -479,7 +479,13 @@ char *dir;
 	char *cp, path[MAXPATHLEN + 1];
 	int no;
 
-	strcpy(path, deftmpdir);
+	if (!deftmpdir || !*deftmpdir || !dir || !*dir) {
+		errno = ENOENT;
+		return(-1);
+	}
+	realpath2(deftmpdir, path);
+	free(deftmpdir);
+	deftmpdir = strdup2(path);
 	strcat(path, _SS_);
 	strcat(path, tmpfilename);
 	if (_Xmkdir(path, 0777) < 0 && errno != EEXIST) return(-1);
@@ -569,6 +575,7 @@ char *dir, *file;
 	len += i;
 	buf[len] = '\0';
 
+	if (chdir(buf) != 0) return(0);
 	chdir(_SS_);
 #if	MSDOS
 	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);

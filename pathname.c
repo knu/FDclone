@@ -57,6 +57,9 @@ extern error __P_((char *));
 # else
 extern void error __P_((char *));
 # endif
+# if	MSDOS && !defined (NOLFNEMU)
+extern char *shortname __P_((char *, char *));
+# endif
 extern char *progpath;
 #else
 #define	getenv2		(char *)getenv
@@ -107,6 +110,11 @@ int keepdelim, evalq;
 {
 #if	!MSDOS
 	struct passwd *pwd;
+#else
+# if	defined (FD) && !defined (NOLFNEMU)
+	char alias[MAXPATHLEN + 1];
+	int top = -1;
+# endif
 #endif
 	char *cp, *tmp, buf[MAXPATHLEN + 1];
 	int i, j, env, quote, paren;
@@ -121,7 +129,12 @@ int keepdelim, evalq;
 #endif
 	) {
 		quote = *(path++);
-		if (!evalq) buf[j++] = quote;
+		if (!evalq) {
+#if	defined (FD) && MSDOS && !defined (NOLFNEMU)
+			top = j;
+#endif
+			buf[j++] = quote;
+		}
 	}
 
 	if (quote != '\'' && *path == '~') {
@@ -198,11 +211,34 @@ int keepdelim, evalq;
 					j = evalenv(buf, env, j);
 					env = -1;
 				}
-				if (!evalq
 #if	MSDOS
-				|| (i > 0 && path[i - 1] == quote)
+				if (i > 0 && path[i - 1] == quote)
+					buf[j++] = quote;
+				else if (!evalq) {
+# if	defined (FD) && !defined (NOLFNEMU)
+					cp = NULL;
+					if (quote == '"' &&
+					top >= 0 && top + 1 < j) {
+						buf[j] = '\0';
+						cp = shortname(buf + top + 1,
+							alias);
+					}
+					if (!cp) buf[j++] = quote;
+					else {
+						j = top + strlen(alias);
+						if (j > MAXPATHLEN)
+							j = MAXPATHLEN;
+						strncpy(buf + top, alias,
+							j - top);
+					}
+					top = -1;
+# else
+					buf[j++] = quote;
+# endif
+				}
+#else
+				if (!evalq) buf[j++] = quote;
 #endif
-				) buf[j++] = quote;
 				quote = '\0';
 				continue;
 			}
@@ -245,11 +281,17 @@ int keepdelim, evalq;
 
 		if (path[i] == '"' || path[i] == '\'' || path[i] == '`') {
 			quote = path[i];
-			if (!evalq
 #if	MSDOS
-			|| (i > 0 && path[i - 1] == quote)
+			if (i > 0 && path[i - 1] == quote) buf[j++] = quote;
+			else if (!evalq) {
+# if	defined (FD) && !defined (NOLFNEMU)
+				top = j;
+# endif
+				buf[j++] = quote;
+			}
+#else
+			if (!evalq) buf[j++] = quote;
 #endif
-			) buf[j++] = quote;
 		}
 		else if (path[i] == _SC_
 		&& i && path[i - 1] == _SC_ && keepdelim);
@@ -336,10 +378,16 @@ int exceptdot;
 #ifdef	USERE_COMP
 extern char *re_comp __P_((CONST char *));
 extern int re_exec __P_((CONST char *));
+# if	MSDOS
+extern int re_ignore_case;
+# endif
 
 reg_t *regexp_init(s)
 char *s;
 {
+# if	MSDOS
+	re_ignore_case = 1;
+# endif
 	skipdotfile = (*s == '.');
 	re_comp(s + 1);
 	return((reg_t *)1);
@@ -371,7 +419,11 @@ char *s;
 
 	skipdotfile = (*s == '.');
 	if (!(re = (reg_t *)malloc(sizeof(reg_t)))) error(NULL);
+# if	MSDOS
+	if (regcomp(re, s + 1, REG_EXTENDED | REG_ICASE)) {
+# else
 	if (regcomp(re, s + 1, REG_EXTENDED)) {
+# endif
 		free(re);
 		return(NULL);
 	}

@@ -156,7 +156,9 @@ static int savecache __P_((devstat *, long, u_char *));
 static int loadcache __P_((devstat *, long, u_char *));
 static int sectread __P_((devstat *, long, u_char *, int));
 static int sectwrite __P_((devstat *, long, u_char *, int));
+#if	!MSDOS
 static int readfat __P_((devstat *));
+#endif
 static int writefat __P_((devstat *));
 static long getfatofs __P_((devstat *, long));
 static u_char *readtmpfat __P_((devstat *, long));
@@ -317,7 +319,6 @@ char *unitblpath = NULL;
 #if	!MSDOS
 static char *curdir['Z' - 'A' + 1];
 #endif
-static cache_t *dentcache['Z' - 'A' + 1];
 static devstat devlist[DOSNOFILE];
 static int maxdev = 0;
 static dosFILE dosflist[DOSNOFILE];
@@ -712,12 +713,14 @@ int n;
 	return(n * (long)(devp -> sectsize));
 }
 
+#if	!MSDOS
 static int readfat(devp)
 devstat *devp;
 {
 	return(sectread(devp, devp -> fatofs,
 		devp -> fatbuf, devp -> fatsize));
 }
+#endif
 
 static int writefat(devp)
 devstat *devp;
@@ -1334,9 +1337,9 @@ u_char c1, c2;
 
 	if (!c1) {
 #if	MSDOS
-		if (strchr(NOTINLFN, c2)) return(0xffff);
+		if (c2 < ' ' || strchr(NOTINLFN, c2)) return(0xffff);
 #else
-		if (strchr(NOTINLFN, c2)) return('_');
+		if (c2 < ' ' || strchr(NOTINLFN, c2)) return('_');
 #endif
 		if (c2 < 0x80) return(c2);
 		if (c2 > 0xa0 && c2 <= 0xdf) return(0xff00 | (c2 - 0x40));
@@ -1388,7 +1391,7 @@ int c;
 	if (c == '[') return('&');
 	if (c == '.') return('$');
 #endif
-	if (strchr(NOTINLFN, c)) return(-2);
+	if (c < ' ' || strchr(NOTINLFN, c)) return(-2);
 	if (strchr(NOTINALIAS, c)) return(-1);
 	if (strchr(PACKINALIAS, c)) return(0);
 	return(toupper2(c));
@@ -1615,10 +1618,7 @@ char *path;
 	if (lastdrive < 0) {
 		int i;
 
-		for (i = 0; i < 'Z' - 'A' + 1; i++) {
-			curdir[i] = NULL;
-			dentcache[i] = NULL;
-		}
+		for (i = 0; i < 'Z' - 'A' + 1; i++) curdir[i] = NULL;
 		lastdrive = drive;
 	}
 #endif
@@ -1705,6 +1705,7 @@ int needlfn;
 	char *cp, *cachepath, *tmp, buf[DOSMAXPATHLEN + 3 + 1];
 	int len, dd, drive, rlen, tmperrno;
 
+	rlen = 0;
 	tmperrno = errno;
 	if ((drive = parsepath(buf, path, 0)) < 0
 	|| (dd = opendev(drive)) < 0) return(NULL);

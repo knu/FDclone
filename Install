@@ -23,7 +23,7 @@
 	NEC	EWS-UX/V(Rel4.x)(R7.1, R12.3, R13.1)
 	DEC	OSF/1		(V3.2, V4.0)
 	DEC	ULTRIX		(V4.x)
-	IBM	AIX		(3.x)
+	IBM	AIX		(3.x, 4.x)
 	Fujitsu	UXP/M		(4.1)
 	JCC	4.4BSD-Lite	(v1.0)
 		Linux		(2.x)
@@ -45,7 +45,6 @@
 	OMRON	UniOS-B		(2.00)
 	OMRON	Luna/Mach	(2.5)
 	DEC	OSF/1		(V1.2, V2.0)
-	IBM	AIX		(4.x)
 	Apple	A/UX		(3.0)
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0)
@@ -146,6 +145,17 @@
    がどうしても用意できない場合にはその行をコメントアウトし
    ておいて下さい。
    (PAGER: ファイル閲覧ソフト, EDITOR: テキストエディタ)
+
+   飯塚豊 <dude@is.s.u-tokyo.ac.jp> 氏作の正規表現ライブラリ
+   REXP <ftp://ftp.vector.co.jp/pack/dos/prog/lib/rexp005.lzh>
+   を持っている場合、ここで USERE_COMP を config.hin に追加
+   することでリンク可能になります。
+   この場合、makefile の LDFLAGS に REXP ライブラリファイル
+   を追加するのを忘れないで下さい。ライブラリの作り方や使い
+   方の詳細は、REXP のドキュメントを参照して下さい。
+   (djgpp 2.0x 以外のコンパイラでは、標準では正規表現ライブ
+   ラリが用意されていませんので、そのままコンパイルした場合
+   はファイル名検索機能等が多少貧弱になります。)
 
 3. make
 
