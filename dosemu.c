@@ -41,14 +41,14 @@ char *path, *buf;
 	}
 
 #ifdef	CODEEUC
-	buf[ujis2sjis(buf, (u_char *)cp)] = '\0';
+	buf[ujis2sjis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
 #else
 	strcpy(buf, cp);
 #endif
 	if (cp != path && *path) {
 		buf = strcatdelim(buf);
 #ifdef	CODEEUC
-		buf[ujis2sjis(buf, (u_char *)path)] = '\0';
+		buf[ujis2sjis(buf, (u_char *)path, MAXPATHLEN - 1)] = '\0';
 #else
 		strcpy(buf, path);
 #endif
@@ -112,7 +112,7 @@ DIR *dirp;
 	memcpy(&buf, dp, cp - (char *)&buf);
 #ifdef	CODEEUC
 	if (*((int *)dirp) < 0)
-		cp[sjis2ujis(cp, (u_char *)(dp -> d_name))] = '\0';
+		cp[sjis2ujis(cp, (u_char *)(dp -> d_name), MAXNAMLEN)] = '\0';
 	else
 #endif
 	strcpy(cp, dp -> d_name);
@@ -213,7 +213,7 @@ char *path;
 		}
 	}
 # ifdef	CODEEUC
-	buf[sjis2ujis(buf, (u_char *)cp)] = '\0';
+	buf[sjis2ujis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
 	strcpy(cp, buf);
 # endif
 	return(cp);

@@ -405,6 +405,7 @@ typedef long	off_t;
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	NOTZFILEH
+#define	USETIMEH
 #define	USETERMIOS
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
@@ -412,6 +413,9 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
+# if	!defined (__alpha__) && !defined (__alpha) && !defined (alpha)
+# define	USELLSEEK
+# endif
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
@@ -710,6 +714,7 @@ typedef long	off_t;
 /* #define USEGETWD	;use getwd() instead of getcwd() */
 /* #define USETIMELOCAL	;have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	;use mktime() instead of timelocal() */
+/* #define USELLSEEK	;use _llseek() for 64bits width instead of lseek() */
 /* #define USEUNAME	;use uname() instead of gethostname() */
 /* #define USEWAITPID	;use waitpid() instead of wait3() */
 /* #define USESIGPMASK	;use sigprocmask() instead of sigsetmask() */

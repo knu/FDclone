@@ -1321,10 +1321,9 @@ int comline;
 	return(i);
 }
 
-int execbuiltin(command, list, maxp, comline)
+int execbuiltin(command, comline, ignorelist)
 char *command;
-namelist *list;
-int *maxp, comline;
+int comline, ignorelist;
 {
 	char *cp, *comname, **argv;
 	int i, n, argc;
@@ -1355,14 +1354,13 @@ int *maxp, comline;
 	}
 	else if (argv[0][0] == '!') {
 		if (comline) {
-			n = dohistory(argv, list, maxp);
+			n = dohistory(argv);
 			if (n < 0) n = 4;
 			else if (n < 2) n = 2;
 		}
 	}
-	else if (list && maxp && (i = isinternal(comname, comline)) >= 0) {
-		if (argc <= 2)
-			n = (int)(*funclist[i].func)(list, maxp, argv[1]);
+	else if (!ignorelist && (i = isinternal(comname, comline)) >= 0) {
+		if (argc <= 2) n = (int)(*funclist[i].func)(argv[1]);
 		else {
 			if (comline) warning(0, ILFNC_K);
 			n = 2;

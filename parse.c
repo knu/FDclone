@@ -59,6 +59,8 @@ extern char *rockridgepath;
 extern char *precedepath;
 #endif
 
+static int NEAR evalbool __P_((char *));
+
 char *promptstr = NULL;
 
 
@@ -556,7 +558,7 @@ int max;
 	return(len);
 }
 
-int evalbool(cp)
+static int NEAR evalbool(cp)
 char *cp;
 {
 	if (!cp) return(-1);

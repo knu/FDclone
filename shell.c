@@ -16,21 +16,18 @@ extern char *shortname __P_((char *, char *));
 #include <sys/param.h>
 #endif
 
-extern int filepos;
 extern int mark;
 extern off_t marksize;
 extern char fullpath[];
 #ifndef	_NOARCHIVE
-extern char *archivefile;
-extern char *archivedir;
+extern char archivedir[];
 #endif
 
 static int NEAR setarg __P_((char *, int, char *, char *, u_char));
-static int NEAR setargs __P_((char *, int, namelist *, int, u_char));
+static int NEAR setargs __P_((char *, int, u_char));
 static int NEAR insertarg __P_((char *, char *, char *, int));
-static char *NEAR addoption __P_((char *, char *,
-		namelist *, int, macrostat *));
-static int NEAR dosystem __P_((char *, namelist *, int *, int));
+static char *NEAR addoption __P_((char *, char *, macrostat *, int));
+static int NEAR dosystem __P_((char *, int, int));
 static char *NEAR evalargs __P_((char *, int, char *[]));
 static char *NEAR evalalias __P_((char *));
 
@@ -118,11 +115,9 @@ u_char flags;
 	return(d + l);
 }
 
-static int NEAR setargs(buf, ptr, list, max, flags)
+static int NEAR setargs(buf, ptr, flags)
 char *buf;
 int ptr;
-namelist *list;
-int max;
 u_char flags;
 {
 	int i, n, len;
@@ -138,12 +133,15 @@ u_char flags;
 # endif
 #endif
 
-	if (!n_args) len = setarg(buf, ptr, dir, list[filepos].name, flags);
+	if (!n_args) len = setarg(buf, ptr, dir,
+		filelist[filepos].name, flags);
 	else {
-		for (i = n = len = 0; i < max; i++) if (isarg(&(list[i]))) {
-			n = setarg(buf, ptr + len, dir, list[i].name, flags);
+		for (i = n = len = 0; i < maxfile; i++)
+		if (isarg(&(filelist[i]))) {
+			n = setarg(buf, ptr + len, dir,
+				filelist[i].name, flags);
 			if (!n) break;
-			list[i].tmpflags &= ~F_ISARG;
+			filelist[i].tmpflags &= ~F_ISARG;
 			n_args--;
 			len += n;
 			buf[ptr + len++] = ' ';
@@ -208,11 +206,10 @@ int needmark;
 	return(1);
 }
 
-char *evalcommand(command, arg, list, max, stp)
+char *evalcommand(command, arg, stp, ignorelist)
 char *command, *arg;
-namelist *list;
-int max;
 macrostat *stp;
+int ignorelist;
 {
 #if	!MSDOS && !defined (_NOKANJICONV)
 	char tmpkanji[MAXCOMMSTR + 1];
@@ -283,9 +280,8 @@ macrostat *stp;
 				break;
 			case 'T':
 				if ((c = toupper2(command[i + 1])) == 'A') i++;
-				if (list) {
-					len = setargs(line, j,
-						list, max, flags);
+				if (!ignorelist) {
+					len = setargs(line, j, flags);
 					if (!len) return(NULL);
 					if (len < 0) {
 						len = -len;
@@ -298,7 +294,7 @@ macrostat *stp;
 				flags &= ~(F_NOEXT | F_TOSFN);
 				break;
 			case 'M':
-				if (list) {
+				if (!ignorelist) {
 					line[j++] = '\0';
 					(stp -> needmark)++;
 					line[j++] = flags;
@@ -336,7 +332,8 @@ macrostat *stp;
 						j - cnvptr);
 					tmpkanji[j - cnvptr] = '\0';
 					j = kanjiconv(line + cnvptr, tmpkanji,
-						DEFCODE, cnvcode) + cnvptr;
+						MAXCOMMSTR, DEFCODE, cnvcode)
+						+ cnvptr;
 					if (cnvcode == tmpcode) {
 						cnvcode = NOCNV;
 						cnvptr = -1;
@@ -372,13 +369,15 @@ macrostat *stp;
 	if (cnvcode && cnvptr >= 0) {
 		memcpy(tmpkanji, line + cnvptr, j - cnvptr);
 		tmpkanji[j - cnvptr] = '\0';
-		j = kanjiconv(line + cnvptr, tmpkanji, DEFCODE, cnvcode)
-			+ cnvptr;
+		j = kanjiconv(line + cnvptr, tmpkanji,
+			MAXCOMMSTR, DEFCODE, cnvcode) + cnvptr;
 	}
 #endif
 
 	if (!(flags & F_ARGSET)) {
 		line[j++] = ' ';
+		line[j++] = '.';
+		line[j++] = _SC_;
 #if	!MSDOS
 		arg = killmeta(arg);
 #endif
@@ -387,8 +386,8 @@ macrostat *stp;
 		free(arg);
 #endif
 	}
-	if (list && !(stp -> needmark) && !(flags & F_REMAIN)) {
-		for (i = 0; i < max; i++) list[i].tmpflags &= ~F_ISARG;
+	if (!ignorelist && !(stp -> needmark) && !(flags & F_REMAIN)) {
+		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISARG;
 		n_args = 0;
 	}
 	if ((flags & F_REMAIN) && !n_args) flags &= ~F_REMAIN;
@@ -400,11 +399,10 @@ macrostat *stp;
 	return(cp);
 }
 
-static char *NEAR addoption(command, arg, list, max, stp)
+static char *NEAR addoption(command, arg, stp, ignorelist)
 char *command, *arg;
-namelist *list;
-int max;
 macrostat *stp;
+int ignorelist;
 {
 	char *cp, line[MAXLINESTR + 1];
 	int i, j, n, p, len;
@@ -448,7 +446,7 @@ macrostat *stp;
 			free(cp);
 			return(NULL);
 		}
-		command = evalcommand(cp, arg, list, max, stp);
+		command = evalcommand(cp, arg, stp, ignorelist);
 		free(cp);
 		if (!command) return((char *)-1);
 		if (!*command) return(NULL);
@@ -456,10 +454,9 @@ macrostat *stp;
 	return(command);
 }
 
-static int NEAR dosystem(command, list, maxp, noconf)
+static int NEAR dosystem(command, noconf, ignorelist)
 char *command;
-namelist *list;
-int *maxp, noconf;
+int noconf, ignorelist;
 {
 	char *cp, *tmp;
 	int n;
@@ -468,7 +465,7 @@ int *maxp, noconf;
 	sigvecreset();
 	if ((cp = evalalias(command))) command = cp;
 
-	if ((n = execbuiltin(command, list, maxp, 1)) < -1) {
+	if ((n = execbuiltin(command, 1, ignorelist)) < -1) {
 		tmp = evalcomstr(command, CMDLINE_DELIM, 0);
 		system2(tmp, noconf);
 		free(tmp);
@@ -478,20 +475,19 @@ int *maxp, noconf;
 	return(n);
 }
 
-int execmacro(command, arg, list, maxp, noconf, argset)
+int execmacro(command, arg, noconf, argset, ignorelist)
 char *command, *arg;
-namelist *list;
-int *maxp, noconf, argset;
+int noconf, argset, ignorelist;
 {
 	macrostat st;
 	char *cp, *tmp, **argv, buf[MAXCOMMSTR + 1];
 	int i, max, r, ret;
 
-	max = (maxp) ? *maxp : 0;
+	max = (ignorelist) ? 0 : maxfile;
 	ret = -2;
 	for (i = 0; i < max; i++) {
-		if (ismark(&(list[i]))) list[i].tmpflags |= F_ISARG;
-		else list[i].tmpflags &= ~F_ISARG;
+		if (ismark(&(filelist[i]))) filelist[i].tmpflags |= F_ISARG;
+		else filelist[i].tmpflags &= ~F_ISARG;
 	}
 	n_args = mark;
 
@@ -504,17 +500,17 @@ int *maxp, noconf, argset;
 	}
 	if (noconf < 0) st.flags |= F_ISARCH;
 
-	if (!(tmp = evalcommand(command, arg, list, max, &st))) return(-2);
+	if (!(tmp = evalcommand(command, arg, &st, ignorelist))) return(-2);
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	st.flags |= F_ARGSET;
 	if (noconf >= 0 && !argset) {
-		cp = addoption(tmp, arg, list, max, &st);
+		cp = addoption(tmp, arg, &st, ignorelist);
 		if (cp != tmp) ret = 2;
 		if (!cp || cp == (char *)-1) return((cp) ? -2 : 2);
 		tmp = cp;
 	}
 	if (!st.needmark) for (;;) {
-		r = dosystem(tmp, list, maxp, noconf);
+		r = dosystem(tmp, noconf, ignorelist);
 		free(tmp);
 		tmp = NULL;
 		if (!argset) st.flags &= ~F_ARGSET;
@@ -526,30 +522,30 @@ int *maxp, noconf, argset;
 		if (r >= ret) ret = r;
 
 		if (!(st.flags & F_REMAIN)
-		|| !(tmp = evalcommand(command, arg, list, max, &st)))
+		|| !(tmp = evalcommand(command, arg, &st, ignorelist)))
 			break;
 		if (noconf >= 0 && !argset) {
-			cp = addoption(tmp, arg, list, max, &st);
+			cp = addoption(tmp, arg, &st, ignorelist);
 			if (cp != tmp && ret >= 0 && ret < 2) ret = 2;
 			if (!cp || cp == (char *)-1) return(ret);
 			tmp = cp;
 		}
 	}
 	else if (n_args <= 0) {
-		if (insertarg(buf, tmp, list[filepos].name, st.needmark))
-			ret = dosystem(buf, list, maxp, noconf);
+		if (insertarg(buf, tmp, filelist[filepos].name, st.needmark))
+			ret = dosystem(buf, noconf, ignorelist);
 		else ret = -2;
 	}
-	else for (i = 0; i < max; i++) if (isarg(&(list[i]))) {
-		if (insertarg(buf, tmp, list[i].name, st.needmark))
-			ret = dosystem(buf, list, maxp, noconf);
+	else for (i = 0; i < max; i++) if (isarg(&(filelist[i]))) {
+		if (insertarg(buf, tmp, filelist[i].name, st.needmark))
+			ret = dosystem(buf, noconf, ignorelist);
 		else ret = -2;
 	}
 	if (tmp) free(tmp);
 	if (ret >= -1) return(ret);
-	if (list) {
+	if (!ignorelist) {
 		for (i = 0; i < max; i++)
-			list[i].tmpflags &= ~(F_ISARG | F_ISMRK);
+			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
 		mark = 0;
 		marksize = 0;
 	}
@@ -583,10 +579,9 @@ char *argv[];
 	return(strdup2(line));
 }
 
-int execusercomm(command, arg, list, maxp, noconf, argset)
+int execusercomm(command, arg, noconf, argset, ignorelist)
 char *command, *arg;
-namelist *list;
-int *maxp, noconf, argset;
+int noconf, argset, ignorelist;
 {
 	char *cp, **argv;
 	int i, j, r, ret, argc;
@@ -595,12 +590,12 @@ int *maxp, noconf, argset;
 	else for (i = 0; i < maxuserfunc; i++)
 		if (!strpathcmp(argv[0], userfunclist[i].func)) break;
 	if (i >= maxuserfunc)
-		ret = execmacro(command, arg, list, maxp, noconf, argset);
+		ret = execmacro(command, arg, noconf, argset, ignorelist);
 	else {
 		ret = -2;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
-			r = execmacro(cp, arg, list, maxp, noconf, argset);
+			r = execmacro(cp, arg, noconf, argset, ignorelist);
 			free(cp);
 			if (r == -1) {
 				ret = r;
@@ -719,10 +714,8 @@ char *file;
 	return(0);
 }
 
-int dohistory(argv, list, maxp)
+int dohistory(argv)
 char *argv[];
-namelist *list;
-int *maxp;
 {
 	char *cp, *tmp;
 	int i, n, size;
@@ -768,7 +761,7 @@ int *maxp;
 	history[0][0] = cp;
 	kanjiputs2(cp, -1, -1);
 	cputs2("\r\n");
-	n = dosystem(cp, list, maxp, 0);
+	n = execusercomm(cp, filelist[filepos].name, 0, 1, 0);
 	return(n);
 }
 

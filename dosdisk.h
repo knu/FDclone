@@ -80,7 +80,7 @@
 #define	HDDMOUNT
 #endif
 
-#ifdef	LINUX
+#ifdef	USELLSEEK
 typedef long long	off64_t;
 #else
 #define	off64_t		off_t

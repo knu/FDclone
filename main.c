@@ -62,6 +62,8 @@ extern char fullpath[];
 extern char **history[];
 extern char *helpindex[];
 extern int subwindow;
+extern int win_x;
+extern int win_y;
 extern char *deftmpdir;
 #if	DEBUG
 extern char *rockridgepath;
@@ -437,7 +439,7 @@ static sigarg_t printtime(VOID_A)
 			tm -> tm_hour, tm -> tm_min);
 		if (showsecond) cprintf2(":%02d", tm -> tm_sec);
 		putterm(end_standout);
-		locate(0, 0);
+		locate(win_x, win_y);
 		tflush();
 	}
 	timersec--;
@@ -491,7 +493,7 @@ VOID title(VOID_A)
 		eol++;
 	}
 	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
-		n_column - 32 - (int)(eol - cp), " (c)1995-2000 T.Shirai  ");
+		n_column - 32 - (int)(eol - cp), " (c)1995-2001 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 #ifdef	SIGALRM
@@ -508,7 +510,7 @@ char *line;
 	int i;
 
 	if (!(*(cp = skipspace(command)))) i = 4;
-	else i = execbuiltin(cp, NULL, NULL, 0);
+	else i = execbuiltin(cp, 0, 1);
 	if (i < 4) {
 		putterm(l_clear);
 		cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
@@ -525,7 +527,7 @@ char *file;
 int exist;
 {
 #if	!MSDOS
-	struct stat status;
+	struct stat st;
 	char *tmp;
 #endif
 	FILE *fp;
@@ -538,8 +540,8 @@ int exist;
 		tmp = malloc2(strlen(file) + strlen(cp) + 1 + 1);
 		strcpy(strcpy2(strcpy2(tmp, file), "."), cp);
 		cp = evalpath(strdup2(tmp), 1);
-		if (stat2(cp, &status) >= 0
-		&& (status.st_mode & S_IFMT) == S_IFREG) file = tmp;
+		if (stat2(cp, &st) >= 0
+		&& (st.st_mode & S_IFMT) == S_IFREG) file = tmp;
 		else {
 			free(cp);
 			free(tmp);
@@ -843,9 +845,9 @@ char *argv[], *envp[];
 	if (deftmpdir) free(deftmpdir);
 	if (rockridgepath) free(rockridgepath);
 	freedefine();
-#ifndef	_NOUSEHASH
+# ifndef	_NOUSEHASH
 	freehash(NULL);
-#endif
+# endif
 #endif
 	exit2(0);
 	return(0);

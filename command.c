@@ -20,113 +20,119 @@ extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 #endif
 
 extern int columns;
-extern int filepos;
 extern int mark;
 extern off_t marksize;
 extern off_t blocksize;
 extern int isearch;
 extern int fnameofs;
-extern int dispmode;
-extern int sorton;
 extern int chgorder;
 extern int stackdepth;
 extern int removepolicy;
 extern namelist filestack[];
 #ifndef	_NOARCHIVE
-extern char *archivefile;
-extern char *archivedir;
+extern char archivedir[];
 #endif
+extern int win_x;
+extern int win_y;
 extern char *destpath;
 extern int savehist;
 extern int sizeinfo;
+#ifndef	_NOSPLITWIN
+extern char fullpath[];
+#endif
 
-static VOID NEAR replacefname __P_((namelist *, int *, char *));
-static int cur_up __P_((namelist *, int *, char *));
-static int cur_down __P_((namelist *, int *, char *));
-static int cur_right __P_((namelist *, int *, char *));
-static int cur_left __P_((namelist *, int *, char *));
-static int roll_up __P_((namelist *, int *, char *));
-static int roll_down __P_((namelist *, int *, char *));
-static int cur_top __P_((namelist *, int *, char *));
-static int cur_bottom __P_((namelist *, int *, char *));
-static int fname_right __P_((namelist *, int *, char *));
-static int fname_left __P_((namelist *, int *, char *));
-static int one_column __P_((namelist *, int *, char *));
-static int two_columns __P_((namelist *, int *, char *));
-static int three_columns __P_((namelist *, int *, char *));
-static int five_columns __P_((namelist *, int *, char *));
+static VOID NEAR replacefname __P_((char *));
+static int cur_up __P_((char *));
+static int cur_down __P_((char *));
+static int cur_right __P_((char *));
+static int cur_left __P_((char *));
+static int roll_up __P_((char *));
+static int roll_down __P_((char *));
+static int cur_top __P_((char *));
+static int cur_bottom __P_((char *));
+static int fname_right __P_((char *));
+static int fname_left __P_((char *));
+static int one_column __P_((char *));
+static int two_columns __P_((char *));
+static int three_columns __P_((char *));
+static int five_columns __P_((char *));
 static VOID NEAR markcount __P_((VOID_A));
-static int mark_file __P_((namelist *, int *, char *));
-static int mark_file2 __P_((namelist *, int *, char *));
-static int mark_file3 __P_((namelist *, int *, char *));
-static int mark_all __P_((namelist *, int *, char *));
-static int mark_reverse __P_((namelist *, int *, char *));
+static int mark_file __P_((char *));
+static int mark_file2 __P_((char *));
+static int mark_file3 __P_((char *));
+static int mark_all __P_((char *));
+static int mark_reverse __P_((char *));
 static reg_t *NEAR prepareregexp __P_((char *, char *));
-static int mark_find __P_((namelist *, int *, char *));
-static int in_dir __P_((namelist *, int *, char *));
-static int out_dir __P_((namelist *, int *, char *));
-static int push_file __P_((namelist *, int *, char *));
-static int pop_file __P_((namelist *, int *, char *));
-static int symlink_mode __P_((namelist *, int *, char *));
-static int filetype_mode __P_((namelist *, int *, char *));
-static int dotfile_mode __P_((namelist *, int *, char *));
-static int fileflg_mode __P_((namelist *, int *, char *));
-static int log_dir __P_((namelist *, int *, char *));
-static int log_top __P_((namelist *, int *, char *));
+static int mark_find __P_((char *));
+static int in_dir __P_((char *));
+static int out_dir __P_((char *));
+static int push_file __P_((char *));
+static int pop_file __P_((char *));
+static int symlink_mode __P_((char *));
+static int filetype_mode __P_((char *));
+static int dotfile_mode __P_((char *));
+static int fileflg_mode __P_((char *));
+static int log_dir __P_((char *));
+static int log_top __P_((char *));
 #ifndef	PAGER
 static VOID NEAR dump __P_((char *));
 #endif
 static int NEAR execenv __P_((char *, char *));
 static int NEAR execshell __P_((VOID_A));
-static int view_file __P_((namelist *, int *, char *));
-static int edit_file __P_((namelist *, int *, char *));
-static int sort_dir __P_((namelist *, int *, char *));
+static int view_file __P_((char *));
+static int edit_file __P_((char *));
+static int sort_dir __P_((char *));
 #ifndef	_NOWRITEFS
-static int write_dir __P_((namelist *, int *, char *));
+static int write_dir __P_((char *));
 #endif
-static int reread_dir __P_((namelist *, int *, char *));
-static int help_message __P_((namelist *, int *, char *));
-static int quit_system __P_((namelist *, int *, char *));
-static int make_dir __P_((namelist *, int *, char *));
-static int copy_file __P_((namelist *, int *, char *));
+static int reread_dir __P_((char *));
+static int help_message __P_((char *));
+static int quit_system __P_((char *));
+static int make_dir __P_((char *));
+static int copy_file __P_((char *));
 #ifndef	_NOTREE
-static int copy_tree __P_((namelist *, int *, char *));
+static int copy_tree __P_((char *));
 #endif
-static int move_file __P_((namelist *, int *, char *));
+static int move_file __P_((char *));
 #ifndef	_NOTREE
-static int move_tree __P_((namelist *, int *, char *));
+static int move_tree __P_((char *));
 #endif
-static int rename_file __P_((namelist *, int *, char *));
-static int delete_file __P_((namelist *, int *, char *));
-static int delete_dir __P_((namelist *, int *, char *));
-static int find_file __P_((namelist *, int *, char *));
-static int find_dir __P_((namelist *, int *, char *));
-static int execute_sh __P_((namelist *, int *, char *));
-static int execute_file __P_((namelist *, int *, char *));
+static int rename_file __P_((char *));
+static int delete_file __P_((char *));
+static int delete_dir __P_((char *));
+static int find_file __P_((char *));
+static int find_dir __P_((char *));
+static int execute_sh __P_((char *));
+static int execute_file __P_((char *));
 #ifndef	_NOARCHIVE
-static int launch_file __P_((namelist *, int *, char *));
-static int pack_file __P_((namelist *, int *, char *));
-static int unpack_file __P_((namelist *, int *, char *));
+static int launch_file __P_((char *));
+static int pack_file __P_((char *));
+static int unpack_file __P_((char *));
 #ifndef	_NOTREE
-static int unpack_tree __P_((namelist *, int *, char *));
+static int unpack_tree __P_((char *));
 #endif
 #endif	/* !_NOARCHIVE */
-static int info_filesys __P_((namelist *, int *, char *));
-static int attr_file __P_((namelist *, int *, char *));
+static int info_filesys __P_((char *));
+static int attr_file __P_((char *));
 #ifndef	_NOTREE
-static int tree_dir __P_((namelist *, int *, char *));
+static int tree_dir __P_((char *));
 #endif
 #ifndef	_NOARCHIVE
-static int backup_tape __P_((namelist *, int *, char *));
+static int backup_tape __P_((char *));
 #endif
-static int search_forw __P_((namelist *, int *, char *));
-static int search_back __P_((namelist *, int *, char *));
-static int warning_bell __P_((namelist *, int *, char *));
-static int no_operation __P_((namelist *, int *, char *));
+static int search_forw __P_((char *));
+static int search_back __P_((char *));
+#ifndef	_NOSPLITWIN
+static VOID NEAR duplwin __P_((int));
+static VOID NEAR movewin __P_((int));
+static int split_window __P_((char *));
+static int next_window __P_((char *));
+#endif
+static int warning_bell __P_((char *));
+static int no_operation __P_((char *));
 
 #include "functabl.h"
 
-char *findpattern = NULL;
 reg_t *findregexp = NULL;
 #ifndef	_NOWRITEFS
 int writefs = 0;
@@ -249,6 +255,10 @@ bindtable bindlist[MAXBINDTABLE] = {
 #if	!defined (_NOTREE) && !defined (_NOARCHIVE)
 	{'U',		UNPACK_TREE,	255},
 #endif
+#ifndef	_NOSPLITWIN
+	{'/',		SPLIT_WINDOW,	255},
+	{'^',		NEXT_WINDOW,	255},
+#endif
 	{K_HOME,	MARK_ALL,	255},
 	{K_END,		MARK_REVERSE,	255},
 	{K_BEG,		CUR_TOP,	255},
@@ -262,21 +272,17 @@ bindtable bindlist[MAXBINDTABLE] = {
 };
 
 
-static VOID NEAR replacefname(list, maxp, name)
-namelist *list;
-int *maxp;
+static VOID NEAR replacefname(name)
 char *name;
 {
-	if (filepos < *maxp) free(list[filepos].name);
-	else for (*maxp = 0; *maxp < filepos; (*maxp)++)
-		if (!list[*maxp].name) list[*maxp].name = strdup2("");
-	list[filepos].name = (name) ? name : strdup2("..");
+	if (filepos < maxfile) free(filelist[filepos].name);
+	else for (maxfile = 0; maxfile < filepos; maxfile++)
+		if (!filelist[maxfile].name)
+			filelist[maxfile].name = strdup2("");
+	filelist[filepos].name = (name) ? name : strdup2("..");
 }
 
-/*ARGSUSED*/
-static int cur_up(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int cur_up(arg)
 char *arg;
 {
 	int n;
@@ -287,48 +293,40 @@ char *arg;
 	return(2);
 }
 
-/*ARGSUSED*/
-static int cur_down(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int cur_down(arg)
 char *arg;
 {
 	int n;
 
-	if (filepos >= *maxp - 1) return(0);
+	if (filepos >= maxfile - 1) return(0);
 	if (!arg || (n = atoi(arg)) <= 0) n = 1;
-	if ((filepos += n) > *maxp - 1) filepos = *maxp - 1;
+	if ((filepos += n) > maxfile - 1) filepos = maxfile - 1;
 	return(2);
 }
 
-/*ARGSUSED*/
-static int cur_right(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int cur_right(arg)
 char *arg;
 {
 	int n;
 
 	if (!arg || (n = atoi(arg)) <= 0) n = 1;
-	if (filepos + FILEPERLOW * n < *maxp) filepos += FILEPERLOW * n;
-	else if (filepos / FILEPERPAGE == (*maxp - 1) / FILEPERPAGE)
+	if (filepos + FILEPERLOW * n < maxfile) filepos += FILEPERLOW * n;
+	else if (filepos / FILEPERPAGE == (maxfile - 1) / FILEPERPAGE)
 		return(0);
 	else {
-		filepos = ((*maxp - 1) / FILEPERLOW) * FILEPERLOW
+		filepos = ((maxfile - 1) / FILEPERLOW) * FILEPERLOW
 			+ filepos % FILEPERLOW;
-		if (filepos >= *maxp) {
+		if (filepos >= maxfile) {
 			filepos -= FILEPERLOW;
-			if (filepos / FILEPERPAGE < (*maxp - 1) / FILEPERPAGE)
-				filepos = *maxp - 1;
+			if (filepos / FILEPERPAGE
+			< (maxfile - 1) / FILEPERPAGE)
+				filepos = maxfile - 1;
 		}
 	}
 	return(2);
 }
 
-/*ARGSUSED*/
-static int cur_left(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int cur_left(arg)
 char *arg;
 {
 	int n;
@@ -340,36 +338,30 @@ char *arg;
 	return(2);
 }
 
-static int roll_up(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int roll_up(arg)
 char *arg;
 {
 	int i;
 
 	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
-	if (i + FILEPERPAGE >= *maxp) return(warning_bell(list, maxp, arg));
+	if (i + FILEPERPAGE >= maxfile) return(warning_bell(arg));
 	filepos = i + FILEPERPAGE;
 	return(2);
 }
 
-static int roll_down(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int roll_down(arg)
 char *arg;
 {
 	int i;
 
 	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
-	if (i - FILEPERPAGE < 0) return(warning_bell(list, maxp, arg));
+	if (i - FILEPERPAGE < 0) return(warning_bell(arg));
 	filepos = i - FILEPERPAGE;
 	return(2);
 }
 
 /*ARGSUSED*/
-static int cur_top(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int cur_top(arg)
 char *arg;
 {
 	if (filepos == 0) return(0);
@@ -378,20 +370,16 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int cur_bottom(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int cur_bottom(arg)
 char *arg;
 {
-	if (filepos == *maxp - 1) return(0);
-	filepos = *maxp - 1;
+	if (filepos == maxfile - 1) return(0);
+	filepos = maxfile - 1;
 	return(2);
 }
 
 /*ARGSUSED*/
-static int fname_right(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int fname_right(arg)
 char *arg;
 {
 	if (fnameofs <= 0) return(0);
@@ -400,32 +388,28 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int fname_left(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int fname_left(arg)
 char *arg;
 {
 	int i, m;
 
-	if (islink(&(list[filepos]))) i = 0;
+	if (islink(&(filelist[filepos]))) i = 0;
 	else {
 		i = calcwidth();
 		if (isdisptyp(dispmode)) {
-			m = list[filepos].st_mode;
-			if (((m & S_IFMT) == S_IFDIR || (m & S_IFMT) == S_IFLNK
+			m = filelist[filepos].st_mode;
+			if ((m & S_IFMT) == S_IFDIR || (m & S_IFMT) == S_IFLNK
 			|| (m & S_IFMT) == S_IFSOCK || (m & S_IFMT) == S_IFIFO
-			|| (m & (S_IXUSR | S_IXGRP | S_IXOTH)))) i--;
+			|| (m & (S_IXUSR | S_IXGRP | S_IXOTH))) i--;
 		}
 	}
-	if (i >= strlen3(list[filepos].name) - fnameofs) return(0);
+	if (i >= strlen3(filelist[filepos].name) - fnameofs) return(0);
 	fnameofs++;
 	return(2);
 }
 
 /*ARGSUSED*/
-static int one_column(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int one_column(arg)
 char *arg;
 {
 	columns = 1;
@@ -433,9 +417,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int two_columns(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int two_columns(arg)
 char *arg;
 {
 	columns = 2;
@@ -443,9 +425,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int three_columns(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int three_columns(arg)
 char *arg;
 {
 	columns = 3;
@@ -453,9 +433,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int five_columns(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int five_columns(arg)
 char *arg;
 {
 	columns = 5;
@@ -475,72 +453,61 @@ static VOID NEAR markcount(VOID_A)
 }
 
 /*ARGSUSED*/
-static int mark_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int mark_file(arg)
 char *arg;
 {
-	if (isdir(&(list[filepos]))) return(0);
-	list[filepos].tmpflags ^= F_ISMRK;
-	if (ismark(&(list[filepos]))) {
+	if (isdir(&(filelist[filepos]))) return(0);
+	filelist[filepos].tmpflags ^= F_ISMRK;
+	if (ismark(&(filelist[filepos]))) {
 		mark++;
-		if (isfile(&(list[filepos])))
-			marksize += getblock(list[filepos].st_size);
+		if (isfile(&(filelist[filepos])))
+			marksize += getblock(filelist[filepos].st_size);
 	}
 	else {
 		mark--;
-		if (isfile(&(list[filepos])))
-			marksize -= getblock(list[filepos].st_size);
+		if (isfile(&(filelist[filepos])))
+			marksize -= getblock(filelist[filepos].st_size);
 	}
 	markcount();
 	return(2);
 }
 
-/*ARGSUSED*/
-static int mark_file2(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int mark_file2(arg)
 char *arg;
 {
-	mark_file(list, maxp, arg);
-	if (filepos < *maxp - 1) filepos++;
+	mark_file(arg);
+	if (filepos < maxfile - 1) filepos++;
 	return(2);
 }
 
-/*ARGSUSED*/
-static int mark_file3(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int mark_file3(arg)
 char *arg;
 {
-	mark_file(list, maxp, arg);
-	if (filepos < *maxp - 1
+	mark_file(arg);
+	if (filepos < maxfile - 1
 	&& filepos / FILEPERPAGE == (filepos + 1) / FILEPERPAGE) filepos++;
 	else filepos = (filepos / FILEPERPAGE) * FILEPERPAGE;
 	return(2);
 }
 
-/*ARGSUSED*/
-static int mark_all(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int mark_all(arg)
 char *arg;
 {
 	int i;
 
 	if ((arg && atoi(arg) == 0) || (!arg && mark)) {
-		for (i = 0; i < *maxp; i++) list[i].tmpflags &= ~F_ISMRK;
+		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISMRK;
 		mark = 0;
 		marksize = 0;
 	}
 	else {
 		mark = 0;
 		marksize = 0;
-		for (i = 0; i < *maxp; i++) if (!isdir(&(list[i]))) {
-			list[i].tmpflags |= F_ISMRK;
+		for (i = 0; i < maxfile; i++) if (!isdir(&(filelist[i]))) {
+			filelist[i].tmpflags |= F_ISMRK;
 			mark++;
-			if (isfile(&(list[i])))
-				marksize += getblock(list[i].st_size);
+			if (isfile(&(filelist[i])))
+				marksize += getblock(filelist[i].st_size);
 		}
 	}
 	markcount();
@@ -548,20 +515,18 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int mark_reverse(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int mark_reverse(arg)
 char *arg;
 {
 	int i;
 
 	mark = 0;
 	marksize = 0;
-	for (i = 0; i < *maxp; i++) if (!isdir(&(list[i])))
-		if ((list[i].tmpflags ^= F_ISMRK) & F_ISMRK) {
+	for (i = 0; i < maxfile; i++) if (!isdir(&(filelist[i])))
+		if ((filelist[i].tmpflags ^= F_ISMRK) & F_ISMRK) {
 			mark++;
-			if (isfile(&(list[i])))
-				marksize += getblock(list[i].st_size);
+			if (isfile(&(filelist[i])))
+				marksize += getblock(filelist[i].st_size);
 		}
 	markcount();
 	return(2);
@@ -586,99 +551,87 @@ char *mes, *arg;
 	return(re);
 }
 
-/*ARGSUSED*/
-static int mark_find(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int mark_find(arg)
 char *arg;
 {
 	reg_t *re;
 	int i;
 
 	if (!(re = prepareregexp(FINDF_K, arg))) return(1);
-	for (i = 0; i < *maxp; i++)
-		if (!isdir(&(list[i])) && !ismark(&(list[i]))
-		&& regexp_exec(re, list[i].name, 1)) {
-			list[i].tmpflags |= F_ISMRK;
+	for (i = 0; i < maxfile; i++)
+		if (!isdir(&(filelist[i])) && !ismark(&(filelist[i]))
+		&& regexp_exec(re, filelist[i].name, 1)) {
+			filelist[i].tmpflags |= F_ISMRK;
 			mark++;
-			if (isfile(&(list[i])))
-				marksize += getblock(list[i].st_size);
+			if (isfile(&(filelist[i])))
+				marksize += getblock(filelist[i].st_size);
 		}
 	regexp_free(re);
 	markcount();
 	return(3);
 }
 
-static int in_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int in_dir(arg)
 char *arg;
 {
 	if (
 #ifndef	_NOARCHIVE
 	!archivefile &&
 #endif
-	!strcmp(list[filepos].name, "."))
-		return(warning_bell(list, maxp, arg));
+	!strcmp(filelist[filepos].name, "."))
+		return(warning_bell(arg));
 	return(5);
 }
 
 /*ARGSUSED*/
-static int out_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int out_dir(arg)
 char *arg;
 {
 #ifndef	_NOARCHIVE
 	if (archivefile) filepos = -1;
 	else
 #endif
-	replacefname(list, maxp, NULL);
+	replacefname(NULL);
 	return(5);
 }
 
 /*ARGSUSED*/
-static int push_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int push_file(arg)
 char *arg;
 {
 	int i;
 
-	if (stackdepth >= MAXSTACK || isdotdir(list[filepos].name)) return(0);
+	if (stackdepth >= MAXSTACK || isdotdir(filelist[filepos].name))
+		return(0);
 	memcpy((char *)&(filestack[stackdepth++]),
-		(char *)&(list[filepos]), sizeof(namelist));
-	(*maxp)--;
-	for (i = filepos; i < *maxp; i++)
-		memcpy((char *)&(list[i]),
-			(char *)&(list[i + 1]), sizeof(namelist));
-	if (filepos >= *maxp) filepos = *maxp - 1;
+		(char *)&(filelist[filepos]), sizeof(namelist));
+	maxfile--;
+	for (i = filepos; i < maxfile; i++)
+		memcpy((char *)&(filelist[i]),
+			(char *)&(filelist[i + 1]), sizeof(namelist));
+	if (filepos >= maxfile) filepos = maxfile - 1;
 	return(2);
 }
 
 /*ARGSUSED*/
-static int pop_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int pop_file(arg)
 char *arg;
 {
 	int i;
 
 	if (stackdepth <= 0) return(0);
-	for (i = *maxp; i > filepos + 1; i--)
-		memcpy((char *)&(list[i]),
-			(char *)&(list[i - 1]), sizeof(namelist));
-	(*maxp)++;
-	memcpy((char *)&(list[filepos + 1]),
+	for (i = maxfile; i > filepos + 1; i--)
+		memcpy((char *)&(filelist[i]),
+			(char *)&(filelist[i - 1]), sizeof(namelist));
+	maxfile++;
+	memcpy((char *)&(filelist[filepos + 1]),
 		(char *)&(filestack[--stackdepth]), sizeof(namelist));
 	chgorder = 1;
 	return(2);
 }
 
 /*ARGSUSED*/
-static int symlink_mode(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int symlink_mode(arg)
 char *arg;
 {
 	dispmode ^= F_SYMLINK;
@@ -686,9 +639,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int filetype_mode(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int filetype_mode(arg)
 char *arg;
 {
 	dispmode ^= F_FILETYPE;
@@ -696,9 +647,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int dotfile_mode(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int dotfile_mode(arg)
 char *arg;
 {
 	dispmode ^= F_DOTFILE;
@@ -706,19 +655,14 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int fileflg_mode(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int fileflg_mode(arg)
 char *arg;
 {
 	dispmode ^= F_FILEFLAG;
 	return(2);
 }
 
-/*ARGSUSED*/
-static int log_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int log_dir(arg)
 char *arg;
 {
 	char *path;
@@ -732,14 +676,12 @@ char *arg;
 		return(1);
 	}
 	free(path);
-	replacefname(list, maxp, NULL);
+	replacefname(NULL);
 	return(4);
 }
 
 /*ARGSUSED*/
-static int log_top(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int log_top(arg)
 char *arg;
 {
 	char *path;
@@ -748,7 +690,7 @@ char *arg;
 	if (chdir2(path) < 0) error(path);
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
-	replacefname(list, maxp, path);
+	replacefname(path);
 	return(4);
 }
 
@@ -805,7 +747,7 @@ char *env, *arg;
 	if (!(command = getenv2(env))) return(0);
 	putterms(t_clear);
 	tflush();
-	execmacro(command, arg, NULL, NULL, 1, 0);
+	execmacro(command, arg, 1, 0, 1);
 	return(1);
 }
 
@@ -843,9 +785,7 @@ static int NEAR execshell(VOID_A)
 }
 
 /*ARGSUSED*/
-static int view_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int view_file(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
@@ -855,39 +795,37 @@ char *arg;
 	int drive = 0;
 #endif
 
-	if (isdir(&(list[filepos]))
+	if (isdir(&(filelist[filepos]))
 #ifndef	_NOARCHIVE
-	|| (archivefile && !(dir = tmpunpack(list, *maxp, 1)))
+	|| (archivefile && !(dir = tmpunpack(1)))
 #endif
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, list, *maxp, 1)) < 0
+	|| (drive = tmpdosdupl("", &dir, 1)) < 0
 #endif
 	) return(1);
 
-	if (!execenv("FD_PAGER", list[filepos].name)) {
+	if (!execenv("FD_PAGER", filelist[filepos].name)) {
 #ifdef	PAGER
-		execmacro(PAGER, list[filepos].name, NULL, NULL, 1, 0);
+		execmacro(PAGER, filelist[filepos].name, 1, 0, 1);
 #else
 		do {
-			dump(list[filepos].name);
+			dump(filelist[filepos].name);
 		} while(!yesno(PEND_K));
 #endif
 	}
 #ifndef	_NODOSDRIVE
-	if (drive) removetmp(dir, NULL, list[filepos].name);
+	if (drive) removetmp(dir, NULL, filelist[filepos].name);
 	else
 #endif
 #ifndef	_NOARCHIVE
-	if (archivefile) removetmp(dir, archivedir, list[filepos].name);
+	if (archivefile) removetmp(dir, archivedir, filelist[filepos].name);
 	else
 #endif
 	;
 	return(2);
 }
 
-static int edit_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int edit_file(arg)
 char *arg;
 {
 #ifndef	_NODOSDRIVE
@@ -895,32 +833,29 @@ char *arg;
 	int drive = 0;
 #endif
 
-	if (isdir(&(list[filepos]))) return(warning_bell(list, maxp, arg));
+	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 #ifndef	_NOARCHIVE
 	if (archivefile) return(1);
 #endif
 #ifndef	_NODOSDRIVE
-	if ((drive = tmpdosdupl("", &dir, list, *maxp, 1)) < 0) return(1);
+	if ((drive = tmpdosdupl("", &dir, 1)) < 0) return(1);
 #endif
-	if (!execenv("FD_EDITOR", list[filepos].name)) {
+	if (!execenv("FD_EDITOR", filelist[filepos].name)) {
 #ifdef	EDITOR
-		execmacro(EDITOR, list[filepos].name, NULL, NULL, 1, 0);
+		execmacro(EDITOR, filelist[filepos].name, 1, 0, 1);
 #endif
 	}
 #ifndef	_NODOSDRIVE
 	if (drive) {
-		if (tmpdosrestore(drive, list[filepos].name) < 0)
-			warning(-1, list[filepos].name);
-		removetmp(dir, NULL, list[filepos].name);
+		if (tmpdosrestore(drive, filelist[filepos].name) < 0)
+			warning(-1, filelist[filepos].name);
+		removetmp(dir, NULL, filelist[filepos].name);
 	}
 #endif
 	return(4);
 }
 
-/*ARGSUSED*/
-static int sort_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int sort_dir(arg)
 char *arg;
 {
 	char *str[6];
@@ -959,7 +894,7 @@ char *arg;
 
 	if (!tmp1) {
 		sorton = 0;
-		qsort(list, *maxp, sizeof(namelist), cmplist);
+		qsort(filelist, maxfile, sizeof(namelist), cmplist);
 	}
 	else {
 		str[0] = OINC_K;
@@ -969,16 +904,16 @@ char *arg;
 		if (selectstr(&tmp2, 2, 56, str, val) == ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
-		dupl = (int *)malloc2(*maxp * sizeof(int));
-		for (i = 0; i < *maxp; i++) {
-			dupl[i] = list[i].ent;
-			list[i].ent = i;
+		dupl = (int *)malloc2(maxfile * sizeof(int));
+		for (i = 0; i < maxfile; i++) {
+			dupl[i] = filelist[i].ent;
+			filelist[i].ent = i;
 		}
 		waitmes();
-		qsort(list, *maxp, sizeof(namelist), cmplist);
-		for (i = 0; i < *maxp; i++) {
-			tmp1 = list[i].ent;
-			list[i].ent = dupl[tmp1];
+		qsort(filelist, maxfile, sizeof(namelist), cmplist);
+		for (i = 0; i < maxfile; i++) {
+			tmp1 = filelist[i].ent;
+			filelist[i].ent = dupl[tmp1];
 		}
 		free(dupl);
 		chgorder = 1;
@@ -987,30 +922,26 @@ char *arg;
 }
 
 #ifndef	_NOWRITEFS
-static int write_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int write_dir(arg)
 char *arg;
 {
 	int i;
 
-	if (writefs >= 2 || findpattern) return(warning_bell(list, maxp, arg));
+	if (writefs >= 2 || findpattern) return(warning_bell(arg));
 	if ((i = writablefs(".")) <= 0) {
 		warning(0, NOWRT_K);
 		return(1);
 	}
 	if (!yesno(WRTOK_K)) return(1);
 	if (underhome(NULL) <= 0 && !yesno(HOMOK_K)) return(1);
-	arrangedir(list, *maxp, i);
+	arrangedir(i);
 	chgorder = 0;
 	return(4);
 }
 #endif
 
 /*ARGSUSED*/
-static int reread_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int reread_dir(arg)
 char *arg;
 {
 #ifndef	_NODOSDRIVE
@@ -1025,9 +956,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int help_message(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int help_message(arg)
 char *arg;
 {
 #ifdef	_NOARCHIVE
@@ -1039,9 +968,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int quit_system(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int quit_system(arg)
 char *arg;
 {
 #ifndef	_NOARCHIVE
@@ -1052,10 +979,7 @@ char *arg;
 	return(-1);
 }
 
-/*ARGSUSED*/
-static int make_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int make_dir(arg)
 char *arg;
 {
 	char *path;
@@ -1068,55 +992,42 @@ char *arg;
 	return(4);
 }
 
-/*ARGSUSED*/
-static int copy_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int copy_file(arg)
 char *arg;
 {
-	return(copyfile(list, *maxp, arg, 0));
+	return(copyfile(arg, 0));
 }
 
 #ifndef	_NOTREE
 /*ARGSUSED*/
-static int copy_tree(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int copy_tree(arg)
 char *arg;
 {
-	return(copyfile(list, *maxp, NULL, 1));
+	return(copyfile(NULL, 1));
 }
 #endif	/* !_NOTREE */
 
-/*ARGSUSED*/
-static int move_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int move_file(arg)
 char *arg;
 {
-	return(movefile(list, *maxp, arg, 0));
+	return(movefile(arg, 0));
 }
 
 #ifndef	_NOTREE
 /*ARGSUSED*/
-static int move_tree(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int move_tree(arg)
 char *arg;
 {
-	return(movefile(list, *maxp, NULL, 1));
+	return(movefile(NULL, 1));
 }
 #endif	/* !_NOTREE */
 
-static int rename_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int rename_file(arg)
 char *arg;
 {
 	char *file;
 
-	if (isdotdir(list[filepos].name))
-		return(warning_bell(list, maxp, arg));
+	if (isdotdir(filelist[filepos].name)) return(warning_bell(arg));
 	if (arg && *arg) {
 		file = strdup2(arg);
 		errno = EEXIST;
@@ -1127,7 +1038,8 @@ char *arg;
 		}
 	}
 	else for (;;) {
-		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, -1))
+		if (!(file =
+		inputstr(NEWNM_K, 1, 0, filelist[filepos].name, -1))
 		|| !*(file = evalpath(file, 1)))
 			return(1);
 		if (Xaccess(file, F_OK) < 0) {
@@ -1138,7 +1050,7 @@ char *arg;
 		free(file);
 	}
 
-	if (Xrename(list[filepos].name, file) < 0) {
+	if (Xrename(filelist[filepos].name, file) < 0) {
 		warning(-1, file);
 		free(file);
 		return(1);
@@ -1147,13 +1059,11 @@ char *arg;
 		free(file);
 		file = strdup2("..");
 	}
-	replacefname(list, maxp, file);
+	replacefname(file);
 	return(4);
 }
 
-static int delete_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int delete_file(arg)
 char *arg;
 {
 	int i;
@@ -1161,49 +1071,43 @@ char *arg;
 	removepolicy = 0;
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(1);
-		filepos = applyfile(list, *maxp, rmvfile, NULL);
+		filepos = applyfile(rmvfile, NULL);
 	}
-	else if (isdir(&(list[filepos])))
-		return(warning_bell(list, maxp, arg));
+	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
-		if (!yesno(DELFL_K, list[filepos].name)) return(1);
-		if ((i = rmvfile(list[filepos].name)) < 0)
-			warning(-1, list[filepos].name);
+		if (!yesno(DELFL_K, filelist[filepos].name)) return(1);
+		if ((i = rmvfile(filelist[filepos].name)) < 0)
+			warning(-1, filelist[filepos].name);
 		if (!i) filepos++;
 	}
-	if (filepos >= *maxp && (filepos -= 2) < 0) filepos = 0;
+	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
 	return(4);
 }
 
-static int delete_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int delete_dir(arg)
 char *arg;
 {
-	if (!isdir(&(list[filepos])) || isdotdir(list[filepos].name))
-		return(warning_bell(list, maxp, arg));
-	if (!yesno(DELDR_K, list[filepos].name)) return(1);
+	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
+		return(warning_bell(arg));
+	if (!yesno(DELDR_K, filelist[filepos].name)) return(1);
 	removepolicy = 0;
 #if	!MSDOS
-	if (islink(&(list[filepos]))) {
+	if (islink(&(filelist[filepos]))) {
 		int i;
 
-		if ((i = rmvfile(list[filepos].name)) < 0)
-			warning(-1, list[filepos].name);
+		if ((i = rmvfile(filelist[filepos].name)) < 0)
+			warning(-1, filelist[filepos].name);
 		if (!i) filepos++;
 	}
 	else
 #endif
-	if (!applydir(list[filepos].name, rmvfile, rmvdir, 3, NULL))
+	if (!applydir(filelist[filepos].name, rmvfile, NULL, rmvdir, 3, NULL))
 		filepos++;
-	if (filepos >= *maxp && (filepos -= 2) < 0) filepos = 0;
+	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
 	return(4);
 }
 
-/*ARGSUSED*/
-static int find_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int find_file(arg)
 char *arg;
 {
 	char *wild;
@@ -1229,18 +1133,15 @@ char *arg;
 	return(4);
 }
 
-/*ARGSUSED*/
-static int find_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int find_dir(arg)
 char *arg;
 {
 	char *cp;
 
 	if (!(findregexp = prepareregexp(FINDD_K, arg))) return(1);
 	destpath = NULL;
-	cp = isdir(&(list[filepos])) ? list[filepos].name : ".";
-	applydir(cp, findfile, finddir, 1, NOFND_K);
+	cp = isdir(&(filelist[filepos])) ? filelist[filepos].name : ".";
+	applydir(cp, findfile, finddir, NULL, 1, NOFND_K);
 	regexp_free(findregexp);
 	if (!destpath) return(1);
 
@@ -1250,15 +1151,12 @@ char *arg;
 		chdir2(destpath);
 	}
 
-	replacefname(list, maxp, strdup2(cp));
+	replacefname(strdup2(cp));
 	free(destpath);
 	return(4);
 }
 
-/*ARGSUSED*/
-static int execute_sh(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int execute_sh(arg)
 char *arg;
 {
 	char *com;
@@ -1267,7 +1165,7 @@ char *arg;
 	if (arg) com = strdup2(arg);
 	else if (!(com = inputstr(NULL, 0, -1, NULL, 0))) return(1);
 	if (*com) {
-		i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
+		i = execusercomm(com, filelist[filepos].name, 0, 1, 0);
 		if (i < -1) i = 4;
 	}
 	else {
@@ -1279,9 +1177,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int execute_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int execute_file(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
@@ -1297,23 +1193,23 @@ char *arg;
 #endif
 
 #if	MSDOS
-	len = (!isdir(&(list[filepos])) && isexec(&(list[filepos])))
-		? strlen(list[filepos].name) + 1 : 0;
-	com = inputstr(NULL, 0, len, list[filepos].name, 0);
+	len = (!isdir(&(filelist[filepos])) && isexec(&(filelist[filepos])))
+		? strlen(filelist[filepos].name) + 1 : 0;
+	com = inputstr(NULL, 0, len, filelist[filepos].name, 0);
 #else
-	if (isdir(&(list[filepos])) || !isexec(&(list[filepos]))) {
+	if (isdir(&(filelist[filepos])) || !isexec(&(filelist[filepos]))) {
 		len = 0;
-		tmp = list[filepos].name;
+		tmp = filelist[filepos].name;
 	}
 	else {
-		len = strlen(list[filepos].name) + 2 + 1;
+		len = strlen(filelist[filepos].name) + 2 + 1;
 		tmp = malloc2(len + 1);
 		tmp[0] = '.';
 		tmp[1] = _SC_;
-		strcpy(&(tmp[2]), list[filepos].name);
+		strcpy(&(tmp[2]), filelist[filepos].name);
 	}
 	com = inputstr(NULL, 0, len, tmp, 0);
-	if (tmp != list[filepos].name) free(tmp);
+	if (tmp != filelist[filepos].name) free(tmp);
 #endif
 	if (!com) return(1);
 	if (!*com) {
@@ -1324,46 +1220,39 @@ char *arg;
 
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		if (!(dir = tmpunpack(list, *maxp, 1))) i = 1;
+		if (!(dir = tmpunpack(1))) i = 1;
 		else {
-			i = execusercomm(com, list[filepos].name,
-				NULL, NULL, 0, 1);
-			removetmp(dir, archivedir, list[filepos].name);
+			i = execusercomm(com, filelist[filepos].name, 0, 1, 1);
+			removetmp(dir, archivedir, filelist[filepos].name);
 		}
 	}
 	else
 #endif
 #ifndef	_NODOSDRIVE
-	if ((drive = tmpdosdupl("", &dir, list, *maxp, 1)) < 0) i = 1;
+	if ((drive = tmpdosdupl("", &dir, 1)) < 0) i = 1;
 	else if (drive) {
-		i = execusercomm(com, list[filepos].name, NULL, NULL, 0, 1);
-		removetmp(dir, NULL, list[filepos].name);
+		i = execusercomm(com, filelist[filepos].name, 0, 1, 1);
+		removetmp(dir, NULL, filelist[filepos].name);
 	}
 	else
 #endif
 	{
-		i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
+		i = execusercomm(com, filelist[filepos].name, 0, 1, 0);
 	}
-	free(com);
 	if (i < -1) i = 4;
+	free(com);
 	return(i);
 }
 
 #ifndef	_NOARCHIVE
-/*ARGSUSED*/
-static int launch_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int launch_file(arg)
 char *arg;
 {
-	if (launcher(list, *maxp) < 0) return(view_file(list, maxp, arg));
+	if (launcher() < 0) return(view_file(arg));
 	return(4);
 }
 
-/*ARGSUSED*/
-static int pack_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int pack_file(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
@@ -1379,14 +1268,14 @@ char *arg;
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
 	|| !*(file = evalpath(file, 1))
 #ifndef	_NOARCHIVE
-	|| (archivefile && !(dir = tmpunpack(list, *maxp, 0)))
+	|| (archivefile && !(dir = tmpunpack(0)))
 #endif
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, list, *maxp, 0)) < 0
+	|| (drive = tmpdosdupl("", &dir, 0)) < 0
 #endif
 	) return(1);
 
-	i = pack(file, list, *maxp);
+	i = pack(file);
 #ifndef	_NODOSDRIVE
 	if (drive) removetmp(dir, NULL, "");
 	else
@@ -1405,34 +1294,30 @@ char *arg;
 	return(4);
 }
 
-static int unpack_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int unpack_file(arg)
 char *arg;
 {
 	int i;
 
-	if (isdir(&(list[filepos]))) return(warning_bell(list, maxp, arg));
-	if (archivefile) i = unpack(archivefile, NULL, list, *maxp, arg, 0);
-	else i = unpack(list[filepos].name, NULL, NULL, 0, arg, 0);
-	if (i < 0) return(warning_bell(list, maxp, arg));
+	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
+	if (archivefile) i = unpack(archivefile, NULL, arg, 0, 0);
+	else i = unpack(filelist[filepos].name, NULL, arg, 0, 1);
+	if (i < 0) return(warning_bell(arg));
 	if (!i) return(1);
 	return(4);
 }
 
 #ifndef	_NOTREE
-static int unpack_tree(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int unpack_tree(arg)
 char *arg;
 {
 	int i;
 
-	if (isdir(&(list[filepos]))) return(warning_bell(list, maxp, arg));
-	if (archivefile) i = unpack(archivefile, NULL, list, *maxp, NULL, 1);
-	else i = unpack(list[filepos].name, NULL, NULL, 0, NULL, 1);
+	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
+	if (archivefile) i = unpack(archivefile, NULL, NULL, 1, 0);
+	else i = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
 	if (i <= 0) {
-		if (i < 0) warning_bell(list, maxp, arg);
+		if (i < 0) warning_bell(arg);
 		return(3);
 	}
 	return(4);
@@ -1440,10 +1325,7 @@ char *arg;
 #endif	/* !_NOTREE */
 #endif	/* !_NOARCHIVE */
 
-/*ARGSUSED*/
-static int info_filesys(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int info_filesys(arg)
 char *arg;
 {
 	char *path;
@@ -1462,9 +1344,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int attr_file(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int attr_file(arg)
 char *arg;
 {
 	char *str[2];
@@ -1476,8 +1356,9 @@ char *arg;
 	val[1] = 2;
 
 	if (mark > 0) {
-		for (i = 0; i < *maxp; i++) if (ismark(&(list[i]))) break;
-		if (i >= *maxp) i = filepos;
+		for (i = 0; i < maxfile; i++)
+			if (ismark(&(filelist[i]))) break;
+		if (i >= maxfile) i = filepos;
 		flag = 1;
 		locate(0, LINFO);
 		putterm(l_clear);
@@ -1486,7 +1367,7 @@ char *arg;
 	}
 	else {
 #if	!MSDOS
-		if (islink(&(list[filepos]))) {
+		if (islink(&(filelist[filepos]))) {
 			warning(0, ILLNK_K);
 			return(1);
 		}
@@ -1495,20 +1376,18 @@ char *arg;
 		flag = 3;
 	}
 
-	while ((n = inputattr(&(list[i]), flag)) < 0) warning(0, ILTMS_K);
+	while ((n = inputattr(&(filelist[i]), flag)) < 0) warning(0, ILTMS_K);
 	if (!n) return(2);
 
-	if (mark > 0) applyfile(list, *maxp, setattr, NULL);
-	else if (setattr(list[filepos].name) < 0)
-		warning(-1, list[filepos].name);
+	if (mark > 0) applyfile(setattr, NULL);
+	else if (setattr(filelist[filepos].name) < 0)
+		warning(-1, filelist[filepos].name);
 	return(4);
 }
 
 #ifndef	_NOTREE
 /*ARGSUSED*/
-static int tree_dir(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int tree_dir(arg)
 char *arg;
 {
 	char *path;
@@ -1522,16 +1401,13 @@ char *arg;
 	free(path);
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
-	replacefname(list, maxp, NULL);
+	replacefname(NULL);
 	return(4);
 }
 #endif	/* !_NOTREE */
 
 #ifndef	_NOARCHIVE
-/*ARGSUSED*/
-static int backup_tape(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int backup_tape(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
@@ -1551,14 +1427,14 @@ char *arg;
 #endif
 	|| !*(dev = evalpath(dev, 1))
 #ifndef	_NOARCHIVE
-	|| (archivefile && !(dir = tmpunpack(list, *maxp, 0)))
+	|| (archivefile && !(dir = tmpunpack(0)))
 #endif
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir, list, *maxp, 0)) < 0
+	|| (drive = tmpdosdupl("", &dir, 0)) < 0
 #endif
 	) return(1);
 
-	i = backup(dev, list, *maxp);
+	i = backup(dev);
 #ifndef	_NODOSDRIVE
 	if (drive) removetmp(dir, NULL, "");
 	else
@@ -1576,39 +1452,110 @@ char *arg;
 #endif	/* !_NOARCHIVE */
 
 /*ARGSUSED*/
-static int search_forw(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int search_forw(arg)
 char *arg;
 {
 	isearch = 1;
 	locate(0, LHELP);
 	putterm(l_clear);
 	putterm(t_standout);
-	kanjiputs(SEAF_K);
+	win_x = kanjiputs(SEAF_K);
+	win_y = LHELP;
 	putterm(end_standout);
 	return(0);
 }
 
 /*ARGSUSED*/
-static int search_back(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int search_back(arg)
 char *arg;
 {
 	isearch = -1;
 	locate(0, LHELP);
 	putterm(l_clear);
 	putterm(t_standout);
-	kanjiputs(SEAB_K);
+	win_x = kanjiputs(SEAB_K);
+	win_y = LHELP;
 	putterm(end_standout);
 	return(0);
 }
 
+#ifndef	_NOSPLITWIN
+static VOID NEAR duplwin(oldwin)
+int oldwin;
+{
+	int i;
+
+	for (i = 0; i < winvar[oldwin].v_maxfile; i++)
+		winvar[oldwin].v_filelist[i].tmpflags
+			&= ~(F_ISMRK | F_WSMRK | F_ISARG);
+	if (filelist) return;
+	maxfile = winvar[oldwin].v_maxfile;
+	addlist();
+	memcpy((char *)filelist, (char *)(winvar[oldwin].v_filelist),
+		winvar[oldwin].v_maxfile * sizeof(namelist));
+	for (i = 0; i < winvar[oldwin].v_maxfile; i++)
+		filelist[i].name = strdup2(winvar[oldwin].v_filelist[i].name);
+	filepos = winvar[oldwin].v_filepos;
+	sorton = winvar[oldwin].v_sorton;
+	dispmode = winvar[oldwin].v_dispmode;
+}
+
+static VOID NEAR movewin(oldwin)
+int oldwin;
+{
+	if (winvar[oldwin].v_fullpath) free(winvar[oldwin].v_fullpath);
+	winvar[oldwin].v_fullpath = strdup2(fullpath);
+	if (winvar[win].v_fullpath) strcpy(fullpath, winvar[win].v_fullpath);
+#ifndef	_NOARCHIVE
+	if (winvar[oldwin].v_archivedir) free(winvar[oldwin].v_archivedir);
+	winvar[oldwin].v_archivedir = strdup2(archivedir);
+	if (winvar[win].v_archivedir)
+		strcpy(archivedir, winvar[win].v_archivedir);
+#endif
+}
+
 /*ARGSUSED*/
-static int warning_bell(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int split_window(arg)
+char *arg;
+{
+	int i, oldwin;
+
+	oldwin = win;
+	if (windows < MAXWINDOWS) {
+		win = windows++;
+		duplwin(oldwin);
+		movewin(oldwin);
+	}
+	else {
+		if (win > 0) {
+			shutwin(0);
+			win = 0;
+			duplwin(oldwin);
+		}
+		for (i = 1; i < windows; i++) shutwin(i);
+		windows = 1;
+	}
+	return(4);
+}
+
+/*ARGSUSED*/
+static int next_window(arg)
+char *arg;
+{
+	int oldwin;
+
+	if (windows <= 1) return(0);
+	oldwin = win;
+	if (++win >= windows) win = 0;
+	duplwin(oldwin);
+	movewin(oldwin);
+	if (chdir2(fullpath) < 0) lostcwd(fullpath);
+	return(4);
+}
+#endif
+
+/*ARGSUSED*/
+static int warning_bell(arg)
 char *arg;
 {
 	putterm(t_bell);
@@ -1616,9 +1563,7 @@ char *arg;
 }
 
 /*ARGSUSED*/
-static int no_operation(list, maxp, arg)
-namelist *list;
-int *maxp;
+static int no_operation(arg)
 char *arg;
 {
 	return(0);

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #endif
 
+#define	_NOSPLITWIN
 #define	_NOPRECEDE
 #define	_NOUSEHASH
 #define	_NOORIGGLOB
@@ -62,6 +63,7 @@ extern char *_mtrace_file;
 #define	SORTTREE	0
 #define	WRITEFS		0
 #define	ADJTTY		0
+#define	WINDOWS		1
 #define	COLUMNS		2
 #define	MINFILENAME	12
 #define	HISTSIZE	50
@@ -98,13 +100,27 @@ extern char *_mtrace_file;
 #define	MAXSELECTSTRS	16
 #define	MAXSTACK	5
 #define	MAXARGS		128
+#define	MAXWINDOWS	2
+
+#ifdef	_NOSPLITWIN
+#undef	MAXWINDOWS
+#define	MAXWINDOWS	1
+#else
+# if	MAXWINDOWS <= 1
+# define	_NOSPLITWIN
+# endif
+#endif
 
 
 /****************************************************************
  *	Screen layout parameter					*
  ****************************************************************/
 #define	FILEPERLINE	(columns)
+#ifndef	_NOSPLITWIN
+#define	FILEPERLOW	((n_line - WHEADER - WFOOTER + 1) / windows - 1)
+#else
 #define	FILEPERLOW	(n_line - WHEADER - WFOOTER)
+#endif
 #define	FILEPERPAGE	(FILEPERLINE * FILEPERLOW)
 
 #define	WHEADERMIN	3
@@ -115,8 +131,13 @@ extern char *_mtrace_file;
 #define	LSIZE		1
 #define	LSTATUS		(sizeinfo + 1)
 #define	LPATH		(sizeinfo + 2)
+#ifndef	_NOSPLITWIN
+#define	WFILEMIN	(MAXWINDOWS * (WMODELINE + 6) - 1)
+#define	LFILETOP	(WHEADER + (win * (FILEPERLOW + 1)))
+#else
 #define	WFILEMIN	2
 #define	LFILETOP	(WHEADER)
+#endif
 #define	LFILEBOTTOM	(LFILETOP + FILEPERLOW)
 #define	LSTACK		(n_line - 3)
 #define	LHELP		(n_line - 2)
@@ -157,4 +178,8 @@ extern char *_mtrace_file;
 
 #if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 #define	_NODOSDRIVE
+#endif
+
+#if	defined (_NOENGMES) && defined (_NOJPNMES)
+#undef	_NOENGMES
 #endif

@@ -108,9 +108,9 @@ PROMPT		=	"sh#"
 
 # language code type to display
 #	Default: No convert
-#	jis, JIS: 7bit JIS
 #	euc, EUC: EUC
 #	sjis, SJIS: Shift JIS
+#	jis, JIS: 7bits JIS
 #	eng, ENG, C: English
 #LANGUAGE	=	$LANG
 
@@ -135,6 +135,9 @@ SHELL	=	/bin/sh
 #		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#launch ".tar.bz2"\
+#		"bzip2 -cd %C|tar tvf -"\
+#					0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #(Examples)
 #launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
@@ -143,6 +146,7 @@ SHELL	=	/bin/sh
 #launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
 #launch ".Z"	"zcat %C|$PAGER"
 #launch ".gz"	"gzip -cd %C|$PAGER"
+#launch ".bz2"	"bzip2 -cd %C|$PAGER"
 
 # examples for SVR4 (or GNU tar)
 #launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
@@ -150,6 +154,9 @@ SHELL	=	/bin/sh
 #		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar.bz2"\
+#		"bzip2 -cd %C|tar tvf -"\
+#					0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
@@ -160,6 +167,9 @@ SHELL	=	/bin/sh
 #		"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".tar.gz"\
 #		"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#launch ".tar.bz2"\
+#		"bzip2 -cd %C|tar tvf -"\
+#				0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".taZ"	"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".taz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".tgz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
@@ -170,6 +180,8 @@ SHELL	=	/bin/sh
 #		"zcat %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar.bz2"\
+#		"bzip2 -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".taZ"	"zcat %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".taz"	"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".tgz"	"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
@@ -180,6 +192,9 @@ SHELL	=	/bin/sh
 #		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar.bz2"\
+#		"bzip2 -cd %C|tar tvf -"\
+#					0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
@@ -194,6 +209,9 @@ SHELL	=	/bin/sh
 #		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tar.gz"\
 #		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar.bz2"\
+#		"bzip2 -cd %S|tar tvf -"\
+#					0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".zip"	"unzip -lqq %S"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
 #launch ".zip"	"pkunzip -vb %S"	14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
 
@@ -203,6 +221,8 @@ SHELL	=	/bin/sh
 #arch ".tar"	"tar cf %C %T"			"tar xf %C %TA"
 #arch ".tar.Z"	"tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
 #arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %C|tar xf - %TA"
+#arch ".tar.bz2"\
+#		"tar cf %X %T; bzip2 %X"	"bzip2 -cd %C|tar xf - %TA"
 #(Examples)
 #arch ".taZ"	"maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
 #arch ".taz"	"maketaz gzip gz taz"		"gzip -cd %C|tar xf - %TA"
@@ -214,6 +234,8 @@ SHELL	=	/bin/sh
 #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
 #arch ".tar.Z"	"tar cfZ %C %TA"		"gzip -cd %S|tar xf - %TA"
 #arch ".tar.gz"	"tar cfz %C %TA"		"gzip -cd %S|tar xf - %TA"
+#arch ".tar.bz2"\
+#		"tar cfI %C %TA"		"bzip2 -cd %S|tar xf - %TA"
 #arch ".zip"	"pkzip %S %TA"			"pkunzip %S %TA"
 
 # key bind definition

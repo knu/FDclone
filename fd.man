@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-2000 Takashi SHIRAI
+.\" Copyright (c) 1995-2001 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   1.03p 11/11/00
+.\" @(#)fd.1   1.03q 02/28/01
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "November 11, 2000"
+.TH FD 1 "February 28, 2001"
 .de sh
 .br
 .PP
@@ -1529,7 +1529,7 @@ MS-DOS 版にもそのまま継承されています。
 は
 .I " NAME"
 を後続の文字から分離します。
-.IP "\fB\\\\\\\\\\\\\\\\\fP\fIc\fR"
+.IP "\fB\e\fP\fIc\fR"
 文字
 .I " c"
 自身を示します。
@@ -2171,12 +2171,12 @@ MS-DOS 版での共通
 .B fd
 の起動ディレクトリに用意しておく。
 .TP
-.B $HOME\\\\\\\\\\\\\\\\fd.rc
+.B $HOME\efd.rc
 MS-DOS 版での個人用の
 .B " fd"
 初期設定ファイル。
 .TP
-.B $HOME\\\\\\\\\\\\\\\\fd.hst
+.B $HOME\efd.hst
 MS-DOS 版でのコマンド履歴のセーブファイル。
 .PD
 
@@ -2240,6 +2240,6 @@ MS-DOS 版でのコマンド履歴のセーブファイル。
 ユーザインタフェースが稚拙です。
 
 .SH 著作権
-Copyright (C) 1995-2000 by Takashi SHIRAI
+Copyright (C) 1995-2001 by Takashi SHIRAI
 .SH 著者
 白井 隆, <shirai@nintendo.co.jp>

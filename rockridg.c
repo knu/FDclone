@@ -174,9 +174,7 @@ assoclist *tbl;
 	}
 }
 
-int transfilelist(list, max)
-namelist *list;
-int max;
+int transfilelist(VOID_A)
 {
 	assoclist *tp, *start, *tbl;
 	char *cp, rpath[MAXPATHLEN];
@@ -188,12 +186,12 @@ int max;
 	else if (!(tbl = readtranstbl())) return(0);
 
 	start = tbl;
-	for (i = 0; i < max; i++) {
-		if (isdotdir(list[i].name)) continue;
+	for (i = 0; i < maxfile; i++) {
+		if (isdotdir(filelist[i].name)) continue;
 
 		tp = start;
 		while (tp) {
-			if (!strpathcmp(list[i].name, tp -> org)) break;
+			if (!strpathcmp(filelist[i].name, tp -> org)) break;
 			if ((tp = tp -> next) == start) tp = NULL;
 		}
 		if (!tp) continue;
@@ -201,12 +199,12 @@ int max;
 
 		cp = tp -> assoc;
 		if (*(cp++) == 'L') {
-			list[i].flags |= F_ISLNK;
-			list[i].st_mode &= ~S_IFMT;
-			list[i].st_mode |= S_IFLNK;
+			filelist[i].flags |= F_ISLNK;
+			filelist[i].st_mode &= ~S_IFMT;
+			filelist[i].st_mode |= S_IFLNK;
 		}
-		free(list[i].name);
-		list[i].name = strdup2(cp);
+		free(filelist[i].name);
+		filelist[i].name = strdup2(cp);
 	}
 
 	if (tbl != rr_curtbl) {

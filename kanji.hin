@@ -8,8 +8,13 @@
 #define	mesconv(jpn, eng)	(jpn)
 #define	meslist(jpn, eng)	jpn
 #else
+# ifdef	_NOJPNMES
+# define	mesconv(jpn, eng)	(eng)
+# define	meslist(jpn, eng)	eng
+# else
 extern char *mesconv __P_((char *, char *));
-#define	meslist(jpn, eng)	jpn, eng
+# define	meslist(jpn, eng)	jpn, eng
+# endif
 #endif
 
 #define	YESNO_K	mesconv("よろしいですか ?", "OK ?")
@@ -34,6 +39,7 @@ extern char *mesconv __P_((char *, char *));
 #define	ORAW_K	mesconv("X: しない", "X: No chg")
 #define	OINC_K	mesconv("U: 昇り順", "U: Up")
 #define	ODEC_K	mesconv("D: 降り順", "D: Down")
+#define	OMIT_K	mesconv("省略", "Omit")
 #define	KILOK_K	mesconv("ディレクトリスタックを破棄してもよろしいですか ?", "Directory stack will be broken, OK ?")
 #define	WRTOK_K	mesconv("表示ディレクトリをディスクに書込みますか ?", "Write this displayed directory on disk ?")
 #define	HOMOK_K	mesconv("現在このディレクトリを他のユーザが利用していないことを確認しましたか ?", "Are you the only user on this directory, now ?")
@@ -47,9 +53,11 @@ extern char *mesconv __P_((char *, char *));
 #define	OVERW_K	mesconv("O: 全て上書き", "Overwrite")
 #define	NOCPY_K	mesconv("N: 同名はコピーしない", "Not_copy_the_same_name")
 #define	NEWNM_K	mesconv("新しい名前:", "New name:")
+#define	NOSPC_K	mesconv("コピー先の空き容量が不足しています. ディスクを交換しますか？", "No space left on destination device. Do you change another disk?")
 #define	NOCWD_K	mesconv("作業ディレクトリを失ったので作業中断します.", "Working directory is lost, to abandon works.")
 #define	GOHOM_K	mesconv("カレントディレクトリを失ったので作業中断してホームディレクトリに移動します.", "Current directory is lost, to abandon works and move the home directory.")
 #define	GOROT_K	mesconv("カレントディレクトリを失ったので作業中断してルートディレクトリに移動します.", "Current directory is lost, to abandon works and move the root directory.")
+#define	CHGFD_K	mesconv("ディスク交換が済んだら何かキーを押して下さい.", "If new disk is ready, hit any key.")
 #define	ENDCP_K	mesconv("ファイルのコピーが終了しました. 何かキーを押して下さい.", "Copy finished. Hit any key.")
 #define	MOVED_K	mesconv("移動先のディレクトリ名:", "Directory to move:")
 #define	ENDMV_K	mesconv("ファイルの移動が終了しました. 何かキーを押して下さい.", "Move finished. Hit any key.")
@@ -153,6 +161,8 @@ extern char *mesconv __P_((char *, char *));
 #define	FLFL_H	meslist("FILEFLAGSの表示", "Show file flags")
 #define	SEAF_H	meslist("FILE名の前方検索", "Search forward")
 #define	SEAB_H	meslist("FILE名の後方検索", "Search backward")
+#define	SPWN_H	meslist("WINDOWの分割", "Split Windows")
+#define	NXWN_H	meslist("WINDOW間の移動", "Next Window")
 #define	LAUN_H	meslist("ランチャの起動", "Launcher")
 #define	HELP_H	meslist("HELP画面の表示", "Show help")
 #define	QUIT_H	meslist("FDの終了", "Quit FD")

@@ -153,9 +153,11 @@ typedef struct _bindtable {
 } bindtable;
 
 typedef struct _functable {
-	int (*func)__P_((namelist *, int *, char *));
+	int (*func)__P_((char *));
 	char *ident;
+#ifndef	_NOJPNMES
 	char *hmes;
+#endif
 #ifndef	_NOENGMES
 	char *hmes_eng;
 #endif
@@ -163,11 +165,13 @@ typedef struct _functable {
 } functable;
 
 #define	REWRITE	001
-#define	LISTUP	002
-#define	RELIST	(REWRITE | LISTUP)
-#define	KILLSTK	004
-#define	ARCH	010
-#define	NO_FILE	020
+#define	RELIST	002
+#define	REWIN	003
+#define	REWRITEMODE	003
+#define	RESCRN	004
+#define	KILLSTK	010
+#define	ARCH	020
+#define	NO_FILE	040
 
 #ifndef	_NOARCHIVE
 #define	MAXLAUNCHFIELD	9
@@ -214,6 +218,61 @@ typedef struct _treelist {
 } treelist;
 #endif
 
+typedef struct _winvartable {
+#ifndef	_NOARCHIVE
+	struct _winvartable *v_archduplp;
+	char *v_archivedir;
+	char *v_archivefile;
+	char *v_archtmpdir;
+	launchtable *v_launchp;
+	namelist *v_arcflist;
+	int v_maxarcf;
+# ifndef	_NODOSDRIVE
+	int v_archdrive;
+# endif
+#endif
+#ifndef	_NOTREE
+	char *v_treepath;
+#endif
+	char *v_fullpath;
+	char *v_findpattern;
+	namelist *v_filelist;
+	int v_maxfile;
+	int v_maxent;
+	int v_filepos;
+	int v_sorton;
+	int v_dispmode;
+} winvartable;
+
+extern winvartable winvar[];
+#ifdef	_NOSPLITWIN
+#define	win	0
+#else
+extern int windows;
+extern int win;
+#endif
+#ifndef	_NOARCHIVE
+#define	archduplp	(winvar[win].v_archduplp)
+#define	archivefile	(winvar[win].v_archivefile)
+#define	archtmpdir	(winvar[win].v_archtmpdir)
+#define	launchp		(winvar[win].v_launchp)
+#define	arcflist	(winvar[win].v_arcflist)
+#define	maxarcf		(winvar[win].v_maxarcf)
+# ifndef	_NODOSDRIVE
+#define	archdrive	(winvar[win].v_archdrive)
+# endif
+#endif
+#ifndef	_NOTREE
+#define	treepath	(winvar[win].v_treepath)
+#endif
+#define	findpattern	(winvar[win].v_findpattern)
+#define	filelist	(winvar[win].v_filelist)
+#define	maxfile		(winvar[win].v_maxfile)
+#define	maxent		(winvar[win].v_maxent)
+#define	filepos		(winvar[win].v_filepos)
+#define	sorton		(winvar[win].v_sorton)
+#define	dispmode	(winvar[win].v_dispmode)
+
 typedef struct _macrostat {
 	short addopt;
 	short needmark;
@@ -247,7 +306,12 @@ typedef struct _builtintable {
 #define	F_DOTFILE	004
 #define	F_FILEFLAG	010
 
-#define	isdisplnk(n)		((n) & F_SYMLINK)
 #define	isdisptyp(n)		((n) & F_FILETYPE)
 #define	ishidedot(n)		((n) & F_DOTFILE)
+#ifdef	_NOARCHIVE
+#define	isdisplnk(n)		((n) & F_SYMLINK)
 #define	isfileflg(n)		((n) & F_FILEFLAG)
+#else
+#define	isdisplnk(n)		(!archivefile && ((n) & F_SYMLINK))
+#define	isfileflg(n)		(!archivefile && ((n) & F_FILEFLAG))
+#endif

@@ -23,7 +23,8 @@ extern int preparedrv __P_((int));
 
 
 extern char fullpath[];
-extern int sorton;
+extern int win_x;
+extern int win_y;
 #ifndef	_NODOSDRIVE
 extern int lastdrv;
 #endif
@@ -54,7 +55,6 @@ static char *NEAR _tree __P_((VOID_A));
 
 int sorttree = 0;
 int dircountlimit = 0;
-char *treepath = NULL;
 
 static int redraw = 0;
 static int tr_no = 0;
@@ -329,7 +329,6 @@ static VOID NEAR treebar(VOID_A)
 	kanjiputs2(treepath, n_column - 6, 0);
 	locate(0, LMESLINE);
 	putterm(l_clear);
-	locate(0, 0);
 }
 
 VOID rewritetree(VOID_A)
@@ -742,11 +741,14 @@ static char *NEAR _tree(VOID_A)
 	tr_scr = malloc2((FILEPERLOW - 1) * (TREEFIELD + 1));
 	searchtree();
 	showtree();
+	win_x = 0;
 	do {
 		treebar();
 		oy = tr_line;
 		otop = tr_top;
 		redraw = 0;
+		win_y = tr_line;
+		locate(win_x, win_y);
 		tflush();
 
 		if ((ch = _tree_input()) == 'l') {

@@ -26,6 +26,15 @@
 #define	isnmeta(s, i, q, n) \
 			((s)[i] == PMETA && (i) + 1 < n \
 			&& (!(q) || (s)[(i) + 1] != (q) || (i) + 2 < n))
+#ifdef	LSI_C
+#define	toupper2	toupper
+#define	tolower2	tolower
+#else
+extern u_char uppercase[256];
+extern u_char lowercase[256];
+#define	toupper2(c)	(uppercase[(u_char)(c)])
+#define	tolower2(c)	(lowercase[(u_char)(c)])
+#endif
 
 #if	defined (_NOORIGGLOB) \
 && !defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
@@ -94,19 +103,14 @@ extern int isdelim __P_((char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
 #if	MSDOS
-#define	toupper2	toupper
-#define	tolower2	tolower
-#define	strnpathcmp	strnicmp
+#define	strnpathcmp	strnpathcmp2
 #define	strpathcmp	strpathcmp2
-#define	strnpathcmp2	strnicmp
 #else
-extern int toupper2 __P_((int));
-extern int tolower2 __P_((int));
 #define	strnpathcmp	strncmp
 #define	strpathcmp	strcmp
-extern int strnpathcmp2 __P_((char *, char *, int));
 #endif
 extern int strpathcmp2 __P_((char *, char *));
+extern int strnpathcmp2 __P_((char *, char *, int));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));

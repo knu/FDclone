@@ -36,7 +36,6 @@ char Error[1024];
 extern char **environ;
 extern char fullpath[];
 extern char *origpath;
-extern char *findpattern;
 
 #ifndef	CHAR_BIT
 # ifdef	NBBY

@@ -137,8 +137,17 @@ char *argv[];
 		return(1);
 	}
 
-	in = strcmp(argv[i], "-") ? fopen(argv[i], "r") : stdin;
-	out = (i + 1 < argc) ? fopen(argv[i + 1], "w") : stdout;
+	if (!strcmp(argv[i], "-")) in = stdin;
+	else if (!(in = fopen(argv[i], "r"))) {
+		fprintf(stderr, "\007%s: cannot open.\n", argv[i]);
+		return(1);
+	}
+	if (i + 1 >= argc) out = stdout;
+	else if (!(out = fopen(argv[i + 1], "w"))) {
+		fprintf(stderr, "\007%s: cannot open.\n", argv[i + 1]);
+		fclose(in);
+		return(1);
+	}
 
 	mode = ASCII;
 	esc = kanji = 0;

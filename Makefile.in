@@ -298,10 +298,8 @@ shell__OBJ__: machine.h config.h
 shell__OBJ__: types.h pathname.h term.h func.h
 shell__OBJ__: kctype.h
 shell__OBJ__: kanji.h
-kanji__OBJ__: fd.h
 kanji__OBJ__: machine.h config.h
-kanji__OBJ__: types.h pathname.h term.h func.h
-kanji__OBJ__: kctype.h
+kanji__OBJ__: term.h kctype.h
 input__OBJ__: fd.h
 input__OBJ__: machine.h config.h
 input__OBJ__: types.h pathname.h

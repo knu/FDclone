@@ -298,10 +298,8 @@ shell.o: machine.h config.h
 shell.o: types.h pathname.h term.h func.h
 shell.o: kctype.h
 shell.o: kanji.h
-kanji.o: fd.h
 kanji.o: machine.h config.h
-kanji.o: types.h pathname.h term.h func.h
-kanji.o: kctype.h
+kanji.o: term.h kctype.h
 input.o: fd.h
 input.o: machine.h config.h
 input.o: types.h pathname.h

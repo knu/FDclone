@@ -12,30 +12,41 @@
 
 #ifdef	LSI_C
 #include <jctype.h>
-#define	issjis1(c)	iskanji(c)
-#define	issjis2(c)	iskanji2(c)
-#define	isctl(c)	iscntrl(c)
-#define	iskna(c)	iskana(c)
-#else
-#define	isctl(c)	((u_char)(c) < ' ' || (u_char)(c) == C_DEL)
-#define	iskna(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xdf)
-#endif
+#define	issjis1		iskanji
+#define	issjis2		iskanji2
+#define	isctl		iscntrl
+#define	iskna		iskana
+#else	/* !LSI_C */
+extern u_char kctypetable[256];
+#define	KC_SJIS1	0001
+#define	KC_SJIS2	0002
+#define	KC_KANA		0004
+#define	KC_EUCJP	0010
+#define	KC_JIS		0020
+#define	KC_JKANA	0040
+#define	KC_CNTRL	0200
+#define	isctl(c)	(kctypetable[(u_char)(c)] & KC_CNTRL)
+#define	iskna(c)	(kctypetable[(u_char)(c)] & KC_KANA)
 
-#ifndef	issjis1
-#define	issjis1(c)	(((u_char)(c) >= 0x81 && (u_char)(c) <= 0x9f) \
-			|| ((u_char)(c) >= 0xe0 && (u_char)(c) <= 0xfc))
-#endif
-#ifndef	issjis2
-#define	issjis2(c)	((u_char)(c) >= 0x40 && (u_char)(c) <= 0xfc \
-			&& (u_char)(c) != 0x7f)
-#endif
+# ifndef	issjis1
+# define	issjis1(c)	(kctypetable[(u_char)(c)] & KC_SJIS1)
+# endif
+# ifndef	issjis2
+# define	issjis2(c)	(kctypetable[(u_char)(c)] & KC_SJIS2)
+# endif
 
-#ifndef	iseuc
-#define	iseuc(c)	((u_char)(c) >= 0xa1 && (u_char)(c) <= 0xfe)
-#endif
+# ifndef	iseuc
+# define	iseuc(c)	(kctypetable[(u_char)(c)] & KC_EUCJP)
+# endif
+
+# ifndef	isjis
+# define	isjis(c)	(kctypetable[(u_char)(c)] & KC_JIS)
+# endif
+#endif	/* !LSI_C */
 
 #define	isekana(s, i)	((u_char)((s)[i]) == 0x8e && iskna((s)[(i) + 1]))
 #define	isskana(s, i)	iskna((s)[i])
+#define	isjkana(s, i)	(kctypetable[(u_char)((s)[i])] & KC_JKANA)
 
 #define	NOCNV	0
 #define	ENG	1
@@ -54,7 +65,8 @@
 #if	!MSDOS && !defined (_NOKANJICONV)
 extern int inputkcode;
 #endif
-#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
+#if	(!MSDOS && !defined (_NOKANJICONV)) \
+|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
 extern int outputkcode;
 #endif
 
