@@ -59,6 +59,7 @@ int x, cx, len, linemax, max;
 	return(cx);
 }
 
+/*ARGSUSED*/
 static int leftchar(str, x, cx, len, linemax, max)
 u_char *str;
 int x, cx, len, linemax, max;
@@ -578,6 +579,7 @@ char *mes;
 }
 
 #ifndef	NOVSPRINTF
+/*VARARGS1*/
 int yesno(fmt, va_alist)
 char *fmt;
 va_dcl

@@ -183,6 +183,7 @@ char *str;
 }
 
 #ifndef	NOVSPRINTF
+/*VARARGS1*/
 int kanjiprintf(fmt, va_alist)
 char *fmt;
 va_dcl

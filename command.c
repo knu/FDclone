@@ -190,6 +190,7 @@ bindtable bindlist[MAXBINDTABLE] = {
 };
 
 
+/*ARGSUSED*/
 static int cur_up(list, maxp)
 namelist *list;
 int *maxp;
@@ -199,6 +200,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int cur_down(list, maxp)
 namelist *list;
 int *maxp;
@@ -208,6 +210,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int cur_right(list, maxp)
 namelist *list;
 int *maxp;
@@ -221,6 +224,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int cur_left(list, maxp)
 namelist *list;
 int *maxp;
@@ -230,6 +234,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int roll_up(list, maxp)
 namelist *list;
 int *maxp;
@@ -242,6 +247,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int roll_down(list, maxp)
 namelist *list;
 int *maxp;
@@ -254,6 +260,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int cur_top(list, maxp)
 namelist *list;
 int *maxp;
@@ -263,6 +270,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int cur_bottom(list, maxp)
 namelist *list;
 int *maxp;
@@ -272,6 +280,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int in_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -281,6 +290,7 @@ int *maxp;
 	return(5);
 }
 
+/*ARGSUSED*/
 static int out_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -290,6 +300,7 @@ int *maxp;
 	return(5);
 }
 
+/*ARGSUSED*/
 static int one_column(list, maxp)
 namelist *list;
 int *maxp;
@@ -298,6 +309,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int two_columns(list, maxp)
 namelist *list;
 int *maxp;
@@ -306,6 +318,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int three_columns(list, maxp)
 namelist *list;
 int *maxp;
@@ -314,6 +327,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int five_columns(list, maxp)
 namelist *list;
 int *maxp;
@@ -322,6 +336,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int fname_right(list, maxp)
 namelist *list;
 int *maxp;
@@ -331,6 +346,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int fname_left(list, maxp)
 namelist *list;
 int *maxp;
@@ -352,6 +368,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int mark_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -365,6 +382,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int mark_file2(list, maxp)
 namelist *list;
 int *maxp;
@@ -374,6 +392,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int mark_all(list, maxp)
 namelist *list;
 int *maxp;
@@ -396,6 +415,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int mark_find(list, maxp)
 namelist *list;
 int *maxp;
@@ -426,6 +446,7 @@ int *maxp;
 	return(3);
 }
 
+/*ARGSUSED*/
 static int push_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -443,6 +464,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int pop_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -458,6 +480,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int symlink_mode(list, maxp)
 namelist *list;
 int *maxp;
@@ -466,6 +489,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int filetype_mode(list, maxp)
 namelist *list;
 int *maxp;
@@ -474,6 +498,7 @@ int *maxp;
 	return(3);
 }
 
+/*ARGSUSED*/
 static int dotfile_mode(list, maxp)
 namelist *list;
 int *maxp;
@@ -482,6 +507,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int log_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -501,6 +527,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int log_top(list, maxp)
 namelist *list;
 int *maxp;
@@ -561,6 +588,7 @@ char *file;
 }
 #endif
 
+/*ARGSUSED*/
 static int view_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -582,6 +610,7 @@ int *maxp;
 	return(2);
 }
 
+/*ARGSUSED*/
 static int edit_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -595,6 +624,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int sort_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -646,6 +676,7 @@ int *maxp;
 	return(3);
 }
 
+/*ARGSUSED*/
 static int write_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -668,6 +699,7 @@ int *maxp;
 #endif
 }
 
+/*ARGSUSED*/
 static int reread_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -676,6 +708,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int help_message(list, maxp)
 namelist *list;
 int *maxp;
@@ -684,6 +717,7 @@ int *maxp;
 	return(3);
 }
 
+/*ARGSUSED*/
 static int quit_system(list, maxp)
 namelist *list;
 int *maxp;
@@ -693,6 +727,7 @@ int *maxp;
 	return(-1);
 }
 
+/*ARGSUSED*/
 static int make_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -706,6 +741,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int copy_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -713,6 +749,7 @@ int *maxp;
 	return(copyfile(list, *maxp, 0));
 }
 
+/*ARGSUSED*/
 static int copy_tree(list, maxp)
 namelist *list;
 int *maxp;
@@ -720,6 +757,7 @@ int *maxp;
 	return(copyfile(list, *maxp, 1));
 }
 
+/*ARGSUSED*/
 static int move_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -727,6 +765,7 @@ int *maxp;
 	return(movefile(list, *maxp, 0));
 }
 
+/*ARGSUSED*/
 static int move_tree(list, maxp)
 namelist *list;
 int *maxp;
@@ -734,6 +773,7 @@ int *maxp;
 	return(movefile(list, *maxp, 1));
 }
 
+/*ARGSUSED*/
 static int rename_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -768,6 +808,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int delete_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -790,6 +831,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int delete_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -812,6 +854,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int find_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -833,6 +876,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int find_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -867,6 +911,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int execute_sh(list, maxp)
 namelist *list;
 int *maxp;
@@ -880,6 +925,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int execute_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -909,6 +955,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int launch_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -917,6 +964,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int pack_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -935,6 +983,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int unpack_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -949,6 +998,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int unpack_tree(list, maxp)
 namelist *list;
 int *maxp;
@@ -965,6 +1015,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int info_filesys(list, maxp)
 namelist *list;
 int *maxp;
@@ -983,6 +1034,7 @@ int *maxp;
 	return(3);
 }
 
+/*ARGSUSED*/
 static int attr_file(list, maxp)
 namelist *list;
 int *maxp;
@@ -1023,6 +1075,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int tree_dir(list, maxp)
 namelist *list;
 int *maxp;
@@ -1043,6 +1096,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int backup_tape(list, maxp)
 namelist *list;
 int *maxp;
@@ -1058,6 +1112,7 @@ int *maxp;
 	return(4);
 }
 
+/*ARGSUSED*/
 static int warning_bell(list, maxp)
 namelist *list;
 int *maxp;
@@ -1066,6 +1121,7 @@ int *maxp;
 	return(0);
 }
 
+/*ARGSUSED*/
 static int no_operation(list, maxp)
 namelist *list;
 int *maxp;

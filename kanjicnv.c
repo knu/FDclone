@@ -35,6 +35,7 @@ FILE *fp;
 		if (c & 0x80) fprintf(fp, "\\%o", c);
 		else fputc(c, fp);
 	}
+	return(0);
 }
 #endif
 

@@ -332,7 +332,7 @@
 /*	UXPM		/* UXP/M (Fujitsu) */
 /*	MIPS		/* RISC/os (MIPS) */
 /*	LINUX		/* Linux */
-/*	FREEBSD		/* FreeBSD */
+/*	FREEBSD		/* 4.4BSD-Lite (JCC) or FreeBSD */
 /*	NETBSD		/* NetBSD */
 /*	BSDOS		/* BSD/OS (BSDI) */
 

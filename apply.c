@@ -97,6 +97,7 @@ time_t *atimep, *mtimep;
 			break;
 		default:
 			return(-1);
+/*NOTREACHED*/
 			break;
 	}
 	return((int)status1.st_mode);

@@ -575,6 +575,7 @@ char *path;
 	return(0);
 }
 
+/*ARGSUSED*/
 int getblocksize(dir)
 char *dir;
 {

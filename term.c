@@ -629,6 +629,7 @@ char *str;
 }
 
 #ifndef	NOVSPRINTF
+/*VARARGS1*/
 int cprintf(fmt, va_alist)
 char *fmt;
 va_dcl

@@ -207,6 +207,7 @@ char *s;
 	return((reg_t *)1);
 }
 
+/*ARGSUSED*/
 int regexp_exec(re, s)
 reg_t *re;
 char *s;
@@ -214,6 +215,7 @@ char *s;
 	return(re_exec(s) > 0);
 }
 
+/*ARGSUSED*/
 int regexp_free(re)
 reg_t *re;
 {

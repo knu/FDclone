@@ -11,8 +11,9 @@
 	TARUSESPACE	tar(1) の t オプションの出力で、各行
 			のファイルモード文字列の後ろに、必ず
 			空白文字がついている。
-   以下の OS では、これ以外の変更の必要は特にありません。次
-   のステップに進んで下さい。
+   以下の OS では、この 2 つ以外の変更の必要は特にありません。
+   無理に変更すると却って失敗しますので、そのまま次のステッ
+   プに進んで下さい。
 	Sun	SunOS		(4.1.x, 5.x)
 	SONY	NEWS-OS		(3.x, 4.x, 6.x)
 	SGI	IRIX		(R4.0.5, R5.x)
@@ -28,10 +29,11 @@
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0)
 	Mips	RISC/os		(4.x, 5.0x)
+	JCC	4.4BSD-Lite	(v1.0)
 		Linux		(1.x)
 		FreeBSD		(2.x)
 		NetBSD		(1.0)
-	BSDI	BSD/OS		(1.1, 2.0)
+	BSDI	BSD/OS		(2.0)
 
    これ以外の OS では、その OS の環境を自動判定するプログラ
    ムが付属されていますので、make config とすれば環境設定フ
