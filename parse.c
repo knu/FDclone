@@ -19,7 +19,7 @@
 #endif
 
 extern char fullpath[];
-extern char **sh_history;
+extern short histno[];
 extern int sorttype;
 #ifndef	_NOTREE
 extern int sorttree;
@@ -27,7 +27,7 @@ extern int sorttree;
 #ifndef	_NOWRITEFS
 extern int writefs;
 #endif
-extern int histsize;
+extern short histsize[];
 extern int savehist;
 extern int minfilename;
 #ifndef	_NOTREE
@@ -55,6 +55,19 @@ char *skipspace(cp)
 char *cp;
 {
 	while (*cp == ' ' || *cp == '\t') cp++;
+	return(cp);
+}
+
+char *skipnumeric(cp, plus)
+char *cp;
+int plus;
+{
+	if (plus < 0 && *cp == '-') cp++;
+	else if (plus > 0) {
+		if (*cp >= '1' && *cp <= '9') cp++;
+		else return(cp);
+	}
+	while (*cp >= '0' && *cp <= '9') cp++;
 	return(cp);
 }
 
@@ -314,23 +327,30 @@ u_char *fp, *dp, *wp;
 
 	*fp = *dp = *wp = 0;
 
-	if (*cp >= '0' && *cp <= '9') *fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
-	while (*cp >= '0' && *cp <= '9') cp++;
+	if (*cp < '0' || *cp > '9') return(NULL);
+	*fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
+	cp = skipnumeric(cp, 0);
 
 	if (*cp == '\'') {
 		*dp = *(++cp);
-		if (*cp && *(++cp) == '\'') cp++;
+		if (!*(cp++) || *(cp++) != '\'') return(NULL);
 	}
 	else if (*cp == '[') {
 		if ((i = atoi(++cp)) >= 1) *dp = i - 1 + 128;
-		while (*cp >= '0' && *cp <= '9') cp++;
-		if (*cp == ']') cp++;
+		cp = skipnumeric(cp, 0);
+		if (*(cp++) != ']') return(NULL);
 	}
 
 	if (*cp == '-') {
 		cp++;
-		if (*cp >= '0' && *cp <= '9') *wp = atoi(cp) + 128;
-		else if (*cp == '\'') *wp = (*(++cp)) % 128;
+		if (*cp >= '0' && *cp <= '9') {
+			*wp = atoi(cp) + 128;
+			cp = skipnumeric(cp, 0);
+		}
+		else if (*cp == '\'') {
+			*wp = (*(++cp)) % 128;
+			if (!*(cp++) || *(cp++) != '\'') return(NULL);
+		}
 	}
 	return(cp);
 }
@@ -340,7 +360,7 @@ char *evalprompt()
 {
 	static char *prompt = NULL;
 	char *cp, line[MAXLINESTR + 1];
-	int i, j, k;
+	int i, j;
 
 	if (!prompt) free(prompt);
 	for (i = j = 0; promptstr[i]; i++) {
@@ -354,8 +374,7 @@ char *evalprompt()
 				line[j++] = '\\';
 				break;
 			case '!':
-				sprintf(&line[j], "%d",
-					counthistory(sh_history) + 1);
+				sprintf(&line[j], "%d", histno[0] + 1);
 				j += strlen(&line[j]);
 				break;
 #if	!MSDOS
@@ -403,7 +422,7 @@ VOID evalenv()
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
 	if ((sorttype < 0 || (sorttype & 7) > 5)
 	&& (sorttype < 100 || ((sorttype - 100) & 7) > 5))
-#if ((SORTTYPE < 0) || ((SORTTYPE & 7) > 5)) \
+#if	((SORTTYPE < 0) || ((SORTTYPE & 7) > 5)) \
 && ((SORTTYPE < 100) || (((SORTTYPE - 100) & 7) > 5))
 		sorttype = 0;
 #else
@@ -416,7 +435,10 @@ VOID evalenv()
 #ifndef	_NOWRITEFS
 	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
 #endif
-	if ((histsize = atoi2(getenv2("FD_HISTSIZE"))) < 0) histsize = HISTSIZE;
+	if ((histsize[0] = atoi2(getenv2("FD_HISTSIZE"))) < 0)
+		histsize[0] = HISTSIZE;
+	if ((histsize[1] = atoi2(getenv2("FD_DIRHIST"))) < 0)
+		histsize[1] = DIRHIST;
 	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0) savehist = SAVEHIST;
 	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
 		minfilename = MINFILENAME;

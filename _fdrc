@@ -49,9 +49,13 @@ COLUMNS		=	2
 #	default: 12
 MINFILENAME	=	12
 
-# history size of sh mode or path input
+# history size of sh mode
 #	default: 50
 HISTSIZE	=	50
+
+# history size of path input
+#	default: 50
+DIRHIST		=	50
 
 # size of saved history
 #	default: 50
@@ -97,7 +101,7 @@ TMPDIR		=	/tmp
 RRPATH		=	""
 
 # shell prompt strings
-#	defalut: "sh#"
+#	default: "sh#"
 PROMPT		=	"sh#"
 
 # language code type to display
@@ -122,7 +126,7 @@ EDITOR	=	/usr/ucb/vi
 #launch ".tar.gz"\
 #		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-launch ".taz"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
 launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
@@ -140,15 +144,15 @@ launch ".gz"	"gzip -cd %C|$PAGER"
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 
 # archiver definition
-#arch ".lzh"	A "lha aq %C %TA"		"lha xq %C %TA"
-#arch ".tar"	A "tar cf %C %T"		"tar xf %C %TA"
-#arch ".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
-#arch ".tar.gz"	A "tar cf %X %T; gzip %X"	"gzip -cd %C|tar xf - %TA"
-arch ".taZ"	A "maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
-arch ".taz"	A "maketaz compress Z taz"	"zcat %C|tar xf - %TA"
-arch ".tgz"	A "maketaz gzip gz tgz"		"gzip -cd %C|tar xf - %TA"
-arch ".zip"	A "zip -q %C %TA"		"unzip -q %C %TA"
-arch ".zoo"	A "zoo aq %C %TA"		"zoo xq %C %TA"
+#arch ".lzh"	"lha aq %C %TA"			"lha xq %C %TA"
+#arch ".tar"	"tar cf %C %T"			"tar xf %C %TA"
+#arch ".tar.Z"	"tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
+#arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %C|tar xf - %TA"
+arch ".taZ"	"maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
+arch ".taz"	"maketaz compress Z taz"	"zcat %C|tar xf - %TA"
+arch ".tgz"	"maketaz gzip gz tgz"		"gzip -cd %C|tar xf - %TA"
+arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
+arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
 
 # key bind definition
 bind 'I'	"dir -d %C"
@@ -174,10 +178,11 @@ function maketaz() {\
 	mv %X.tar.$2 %X.$3;\
 }
 
-setdrv B	"/dev/rfd00a"	2, 18, 80
+# MS-DOS drive definition
+#setdrv B	"/dev/rfd00a"	2, 18, 80
 
 # alias definition
-alias	dir "ls -laF"
+#alias dir "ls -laF"
 
 # keymap definition
-keymap	DEL	"\033[3~"
+#keymap DEL	"\033[3~"

@@ -8,12 +8,13 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 形形式式
      ffdd [ --SSOORRTTTTYYPPEE== _n_u_m ] [ --DDIISSPPLLAAYYMMOODDEE== _n_u_m ] [ --SSOORRTTTTRREEEE==
      _b_o_o_l ] [ --WWRRIITTEEFFSS== _n_u_m ] [ --AADDJJTTTTYY== _b_o_o_l ] [ --CCOOLLUUMMNNSS== _n_u_m ]
-     [ --MMIINNFFIILLEENNAAMMEE== _n_u_m ] [ --HHIISSTTSSIIZZEE== _n_u_m ] [ --SSAAVVEEHHIISSTT== _n_u_m ]
-     [ --DDIIRRCCOOUUNNTTLLIIMMIITT== _n_u_m ] [ --DDOOSSDDRRIIVVEE== _b_o_o_l ] [ --SSEECCOONNDD== _b_o_o_l
-     ] [ --SSIIZZEEIINNFFOO== _b_o_o_l ] [ --AANNSSIICCOOLLOORR== _n_u_m ] [ --EEDDIITTMMOODDEE== _s_t_r ]
-     [ --TTMMPPDDIIRR== _d_i_r ] [ --RRRRPPAATTHH== _p_a_t_h ] [ --PPRROOMMPPTT== _s_t_r ] [
-     --LLAANNGGUUAAGGEE== _l_a_n_g ] [ --IINNPPUUTTKKCCOODDEE== _l_a_n_g ] [ --PPAAGGEERR== _c_o_m_m_a_n_d ]
-     [ --EEDDIITTOORR== _c_o_m_m_a_n_d ] [ --SSHHEELLLL== _c_o_m_m_a_n_d ] [ _d_i_r_e_c_t_o_r_y ]
+     [ --MMIINNFFIILLEENNAAMMEE== _n_u_m ] [ --HHIISSTTSSIIZZEE== _n_u_m ] [ --DDIIRRHHIISSTT== _n_u_m ] [
+     --SSAAVVEEHHIISSTT== _n_u_m ] [ --DDIIRRCCOOUUNNTTLLIIMMIITT== _n_u_m ] [ --DDOOSSDDRRIIVVEE== _b_o_o_l ]
+     [ --SSEECCOONNDD== _b_o_o_l ] [ --SSIIZZEEIINNFFOO== _b_o_o_l ] [ --AANNSSIICCOOLLOORR== _n_u_m ] [
+     --EEDDIITTMMOODDEE== _s_t_r ] [ --TTMMPPDDIIRR== _d_i_r ] [ --RRRRPPAATTHH== _p_a_t_h ] [
+     --PPRROOMMPPTT== _s_t_r ] [ --LLAANNGGUUAAGGEE== _l_a_n_g ] [ --IINNPPUUTTKKCCOODDEE== _l_a_n_g ] [
+     --PPAAGGEERR== _c_o_m_m_a_n_d ] [ --EEDDIITTOORR== _c_o_m_m_a_n_d ] [ --SSHHEELLLL== _c_o_m_m_a_n_d ] [
+     _d_i_r_e_c_t_o_r_y ]
 
 解解説説
      ffdd は、UNIX 汎用のテキスト端末用に考えられた、ファイルやディ
@@ -921,8 +922,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      パス名などの文字列を入力する場合には、以下のキー入力が有効で
      す。
      ←←, →→    カーソル移動。
-     ↑↑, ↓↓    これまでの実行コマンド履歴の参照。またはカーソル移
-               動。
+     ↑↑, ↓↓    これまでの履歴 (コマンド及びディレクトリのみ) の参
+               照。またはカーソル移動。
      BBeegg       文字列の先頭にカーソル移動。
      EEooll       文字列の最後尾にカーソル移動。
      DDeell       カーソル位置の一文字を消去。
@@ -1179,13 +1180,20 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    サイズ、の順で情報を減じていきます。デフォルト
                    は 1122 文字です。
 
-     HHIISSTTSSIIZZEE      EEXXEECCUUTTEE_FFIILLEE や EEXXEECCUUTTEE_SSHH で参照できる履歴の
-                   数の上限を設定します。デフォルトは 5500 個です。
-                   この値が 00 の時には履歴参照ができません。
+     HHIISSTTSSIIZZEE      EEXXEECCUUTTEE_FFIILLEE や EEXXEECCUUTTEE_SSHH で参照できるコマン
+                   ド履歴の数の上限を設定します。デフォルトは 5500
+                   個です。この値が 00 の時にはコマンド履歴参照が
+                   できません。
 
-     SSAAVVEEHHIISSTT      履歴セーブファイルに保存する数の上限を設定しま
-                   す。デフォルトは 5500 個です。この値が 00 の時に
-                   はセーブファイルを作成しません。
+     DDIIRRHHIISSTT       ディレクトリ入力行で参照できるディレクトリ履歴
+                   の数の上限を設定します。デフォルトは 5500 個です。
+                   この値が 00 の時にはディレクトリ履歴参照ができ
+                   ません。
+
+
+     SSAAVVEEHHIISSTT      コマンド履歴セーブファイルに保存する数の上限を
+                   設定します。デフォルトは 5500 個です。この値が 00
+                   の時にはセーブファイルを作成しません。
 
      DDIIRRCCOOUUNNTTLLIIMMIITT ツリー表示モードで、ディレクトリ内のファイルを
                    調べる上限数を設定します。後ろに '>>' のついた
@@ -1256,7 +1264,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        \\hh   ホスト名
                        \\ww   カレントディレクトリのフルパス
                        \\WW   カレントディレクトリ名
-                       \\!!   履歴番号
+                       \\!!   コマンド履歴番号
                        \\$$   root 時のみ ## それ以外では $$
                        \\\\   \ 自身
 
@@ -1309,7 +1317,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      //eettcc//ffddrrcc システム共通の ffdd 初期設定ファイル。
      ~~//..ffddrrcc   個人用の ffdd 初期設定ファイル。
      ~~//..ffdd_hhiissttoorryy
-               実行コマンド履歴のセーブファイル。
+               コマンド履歴のセーブファイル。
      //bbiinn//sshh   環境変数 SSHHEELLLL が未定義だった場合のユーザシェル。
      //bbiinn//rrmm   異常終了時に不要ファイルを消去するためのシェルコマ
                ンド。

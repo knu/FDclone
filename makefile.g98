@@ -9,7 +9,6 @@ MANDIR	= $(TOPDIR)\\man\\man$(MANSEC)
 CATDIR	= $(TOPDIR)\\man\\cat$(MANSEC)
 DEFRC	= \\etc\\fdrc
 DOSRC	= ~FD\\fdrc
-SHELL	= \\bin\\sh
 INSTALL	= cp -p
 CHMOD	= chmod
 MANSEC	= 1
@@ -35,8 +34,9 @@ ARGS	= object.arg
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.lpc \
+	makefile.dpc makefile.dpc \
 	makefile.g98 makefile.l98 \
-	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
+	config.hin mkmfsed.c mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 
@@ -44,11 +44,12 @@ CC	= gcc
 CPP	= cpp
 SED	= sed
 PROGRAM	= fd
-OBJ1	= main.o term.o pathname.o libc.o input.o \
-	shell.o info.o unixemu.obj unixdisk.obj
-OBJ2	= rockridg.o builtin.o parse.o \
-	kanji.o file.o apply.o archive.o tree.o \
-	command.o browse.o
+OBJ1	= main.o term.o pathname.o libc.o \
+	input.o shell.o info.o
+OBJ2	= unixemu.o unixdisk.o \
+	rockridg.o builtin.o parse.o
+OBJ3	= kanji.o file.o apply.o archive.o \
+	tree.o command.o browse.o
 
 LDFLAGS	= -lpc  
 CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
@@ -61,15 +62,16 @@ CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
 
 goal:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
 
-$(PROGRAM).exe: $(OBJ1) $(OBJ2) $(ARGS)
+$(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	$(CC) $(CFLAGS) -o $@ @$(ARGS) $(LDFLAGS)
 	@ren $@ $(PROGRAM)
 	@aout2exe $(PROGRAM)
 	@del $(PROGRAM)
 
-$(ARGS): $(OBJ1) $(OBJ2)
+$(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ1) > $(ARGS)
 	@echo $(OBJ2) >> $(ARGS)
+	@echo $(OBJ3) >> $(ARGS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
@@ -190,20 +192,21 @@ tar: $(SOURCES)
 
 lzh: $(SOURCES)
 	($(GETVER);\
-	rm -f $(TITLE)"$$VER".lzh;\
+	-rm -f $(TITLE)"$$VER".lzh;\
 	lha a $(TITLE)"$$VER".lzh $(SOURCES))
 
 shar: $(SOURCES)
 	($(GETVER);\
-	rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
+	-rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
 	shar -L50 -apc -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar \
 	-C $(JSRCS) -T $(ESRCS))
 
 clean:
-	rm -f core *.o funcno.h kanji.h
-	rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
-	rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
-	rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f *.o funcno.h kanji.h
+	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
+	-rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
+	-rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f core
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.o: fd.h machine.h config.h

@@ -4,11 +4,14 @@
  *	Terminal Module
  */
 
-#include "machine.h"
-
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include "machine.h"
+
+#if	defined (DJGPP) && (DJGPP >= 2)
+#include <time.h>
+#endif
 
 #if	MSDOS
 #include <dos.h>
@@ -239,7 +242,7 @@ int keyflush()
 	keybuf[1] = keybuf[0];
 	keybuf[2] = 0;
 #else
-	while (kbhit()) getch();
+	while (kbhit2(1000000L / SENSEPERSEC)) getch();
 #endif
 	return(0);
 }
@@ -257,7 +260,7 @@ int reset;
 #endif
 	u_long request;
 
-	if (reset && !(termflags & F_INITTTY)) return;
+	if (reset && !(termflags & F_INITTTY)) return(0);
 #ifdef	USETERMIO
 	request = (reset) ? TCSETAW : TCGETA;
 #else
@@ -835,7 +838,7 @@ int initterm()
 
 int endterm()
 {
-	if (!(termflags & F_INITTERM)) return;
+	if (!(termflags & F_INITTERM)) return(0);
 	putterms(t_nokeypad);
 	putterms(t_end);
 	tflush();
@@ -895,7 +898,9 @@ int cprintf2(const char *fmt, ...)
 	return(cputs2(buf));
 }
 
-int kbhit2()
+/*ARGSUSED*/
+int kbhit2(usec)
+u_long usec;
 {
 #ifdef	PC98
 	union REGS regs;
@@ -906,6 +911,17 @@ int kbhit2()
 	int86(0x18, &regs, &regs);
 	return(regs.h.bh != 0);
 #else
+# if	defined (DJGPP) && (DJGPP >= 2)
+	fd_set readfds;
+	struct timeval timeout;
+
+	timeout.tv_sec = 0L;
+	timeout.tv_usec = usec;
+	FD_ZERO(&readfds);
+	FD_SET(0, &readfds);
+
+	return(select(1, &readfds, NULL, NULL, &timeout));
+# endif	/* DJGPP >= 2 */
 	return(kbhit());
 #endif
 }
@@ -958,10 +974,10 @@ int sig;
 	int i, ch;
 
 #ifdef	__GNUC__
-	while (!kbhit2());
+	while (!kbhit2(1000000L / SENSEPERSEC));
 #else
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
-	while (!kbhit()) {
+	while (!kbhit2(1000000L / SENSEPERSEC)) {
 		dosgettime(tbuf2);
 		if (memcmp(tbuf1, tbuf2, sizeof(tbuf1))) {
 			if (sig) raise(sig);
@@ -981,11 +997,11 @@ int sig;
 		default:
 			break;
 	}
-#if	defined (__GNUC__) && !defined (PC98)
-	else {
-#else
-	else if (kbhit2()) {
+	else
+#if	!defined (__GNUC__) || defined (PC98) || (defined (DJGPP) && (DJGPP >= 2))
+	if (kbhit2(WAITKEYPAD * 1000L))
 #endif
+	{
 		ch = getch2();
 		for (i = 0; i < sizeof(specialkey) / sizeof(u_char); i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
@@ -1175,6 +1191,7 @@ int sig;
 			else if (end < 0) start = j + 1;
 			else break;
 		}
+		if (start < 0) start = s;
 		if (start > end || !kbhit2(WAITKEYPAD * 1000L)) return(key);
 		ch = getch2();
 	}

@@ -33,6 +33,10 @@ typedef u_short	gid_t;
 #define	S_IXOTH	00001
 #endif
 
+#ifndef	BITSPERBYTE
+#define	BITSPERBYTE	8
+#endif
+
 typedef struct _namelist {
 	char *name;
 	u_short ent;

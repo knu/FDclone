@@ -9,7 +9,6 @@ MANDIR	= $(TOPDIR)/man/man$(MANSEC)
 CATDIR	= $(TOPDIR)/man/cat$(MANSEC)
 DEFRC	= /etc/fdrc
 DOSRC	= ~FD/fdrc
-SHELL	= /bin/sh
 INSTALL	= cp -p
 CHMOD	= chmod
 MANSEC	= 1
@@ -35,8 +34,9 @@ ARGS	= object.arg
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.lpc \
+	makefile.dpc makefile.dpc \
 	makefile.g98 makefile.l98 \
-	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
+	config.hin mkmfsed.c mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 
@@ -44,11 +44,12 @@ CC	= __CC__
 CPP	= __CPP__
 SED	= sed
 PROGRAM	= fd
-OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ libc__OBJ__ input__OBJ__ \
-	shell__OBJ__ info__OBJ__ __OBJS__
-OBJ2	= rockridg__OBJ__ builtin__OBJ__ parse__OBJ__ \
-	kanji__OBJ__ file__OBJ__ apply__OBJ__ archive__OBJ__ tree__OBJ__ \
-	command__OBJ__ browse__OBJ__
+OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ libc__OBJ__ \
+	input__OBJ__ shell__OBJ__ info__OBJ__
+OBJ2	= __OBJS__ \
+	rockridg__OBJ__ builtin__OBJ__ parse__OBJ__
+OBJ3	= kanji__OBJ__ file__OBJ__ apply__OBJ__ archive__OBJ__ \
+	tree__OBJ__ command__OBJ__ browse__OBJ__
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
 CFLAGS	= -DFD -D__OSTYPE__ -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__
@@ -61,15 +62,16 @@ CFLAGS	= -DFD -D__OSTYPE__ -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__
 
 goal:	$(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC)
 
-$(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(ARGS)
+$(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	$(CC) $(CFLAGS) -o $@ __OBJLIST__ $(LDFLAGS)
 	__RENAME__ $@ $(PROGRAM)
 	__AOUT2EXE__ $(PROGRAM)
 	__REMOVE__ $(PROGRAM)
 
-$(ARGS): $(OBJ1) $(OBJ2)
+$(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ1) > $(ARGS)
 	@echo $(OBJ2) >> $(ARGS)
+	@echo $(OBJ3) >> $(ARGS)
 
 .c__OBJ__:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
@@ -190,20 +192,21 @@ tar: $(SOURCES)
 
 lzh: $(SOURCES)
 	($(GETVER);\
-	rm -f $(TITLE)"$$VER".lzh;\
+	-rm -f $(TITLE)"$$VER".lzh;\
 	lha a $(TITLE)"$$VER".lzh $(SOURCES))
 
 shar: $(SOURCES)
 	($(GETVER);\
-	rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
+	-rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
 	shar -L50 -apc -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar \
 	-C $(JSRCS) -T $(ESRCS))
 
 clean:
-	rm -f core *__OBJ__ funcno.h kanji.h
-	rm -f kanjicnv__EXE__ mkfuncno__EXE__ expfunc__EXE__
-	rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
-	rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f *__OBJ__ funcno.h kanji.h
+	-rm -f kanjicnv__EXE__ mkfuncno__EXE__ expfunc__EXE__
+	-rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
+	-rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f core
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main__OBJ__: fd.h machine.h config.h

@@ -4,12 +4,12 @@
  *	Configuration File for FD
  */
 
-#include "machine.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include "machine.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -54,6 +54,7 @@
 #define	COLUMNS		2
 #define	MINFILENAME	12
 #define	HISTSIZE	50
+#define	DIRHIST		50
 #define	SAVEHIST	50
 #define	DIRCOUNTLIMIT	50
 #define	SECOND		0

@@ -9,8 +9,6 @@
 #include "dosdisk.h"
 #include "kctype.h"
 
-#include <sys/stat.h>
-
 #if	MSDOS
 #include "unixemu.h"
 #else
@@ -216,9 +214,10 @@ int size;
 #endif
 	else if (!dosgetcwd(path, size)) return(NULL);
 
-	if (isupper(path[0])) for (i = 2; path[i]; i++) {
+	if (path[0] >= 'A' && path[0] <= 'Z') for (i = 2; path[i]; i++) {
 		if (issjis1((u_char)(path[i]))) i++;
-		else if (isupper(path[i])) path[i] += 'a' - 'A';
+		else if (path[i] >= 'A' && path[i] <= 'Z')
+			path[i] += 'a' - 'A';
 	}
 #ifdef	CODEEUC
 	tmpbuf[sjis2ujis(tmpbuf, path)] = '\0';

@@ -4,13 +4,11 @@
  *	Apply Function to Files
  */
 
+#include <fcntl.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
 #include "kanji.h"
-
-#include <fcntl.h>
-#include <sys/stat.h>
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -95,7 +93,7 @@ time_t *atimep, *mtimep;
 			cp = strrchr(dest, _SC_) + 1;
 			do {
 				if (!(tmp = inputstr(NEWNM_K, 1,
-					-1, NULL, NULL))) return(-1);
+					-1, NULL, -1))) return(-1);
 				strcpy(cp, tmp);
 				free(tmp);
 			} while (Xlstat(dest, &status2) >= 0

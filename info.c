@@ -4,13 +4,11 @@
  *	Information Module
  */
 
+#include <ctype.h>
 #include "fd.h"
 #include "term.h"
 #include "funcno.h"
 #include "kanji.h"
-
-#include <ctype.h>
-#include <sys/stat.h>
 
 #ifdef	USESYSDIRH
 #include <sys/dir.h>
@@ -55,16 +53,16 @@ typedef struct mnttab	mnt_t;
 #include <sys/vmount.h>
 #endif	/* USEMNTCTL */
 
-#if (defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))\
+#if	(defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))\
 && !defined (USEMOUNTH) && !defined (USEFSDATA)
 #include <sys/mount.h>
 #endif
 
-#if defined (USEGETFSSTAT) || defined (USEGETMNT)
+#if	defined (USEGETFSSTAT) || defined (USEGETMNT)
 #include <sys/fs_types.h>
 #endif
 
-#if defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
 typedef struct _mnt_t {
 	char *mnt_fsname;
@@ -99,7 +97,7 @@ typedef struct fstab	mnt_t;
 #if	MSDOS
 typedef struct _mnt_t {
 	char *mnt_fsname;
-	char *mnt_dir;
+	char mnt_dir[4];
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
@@ -146,11 +144,11 @@ typedef struct fs_data	statfs_t;
 #define	f_bsize		f_fsize
 #endif
 
-#if defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
-# if (STATFSARGS >= 4)
+#if	defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
+# if	(STATFSARGS >= 4)
 # define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
 # else
-#  if (STATFSARGS == 3)
+#  if	(STATFSARGS == 3)
 #  define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
 #  else
 #  define	statfs2			statfs
@@ -178,9 +176,13 @@ extern int dospath();
 #endif
 extern char *strstr2();
 extern int kanjiputs();
-extern int kanjiprintf();
 extern int kanjiputs2();
 extern int Xaccess();
+#if	MSDOS
+extern int kanjiprintf(const char *, ...);
+#else
+extern int kanjiprintf();
+#endif
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -402,7 +404,7 @@ mnt_t *mntp;
 }
 #endif	/* USEMNTCTL */
 
-#if defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETFSSTAT)
+#if	defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETFSSTAT)
 /*ARGSUSED*/
 static FILE *setmntent(file, mode)
 char *file, *mode;
@@ -428,7 +430,7 @@ char *file, *mode;
 	return((FILE *)buf);
 }
 
-#if !defined (MNT_RDONLY) && defined (M_RDONLY)
+#if	!defined (MNT_RDONLY) && defined (M_RDONLY)
 #define	MNT_RDONLY	M_RDONLY
 #endif
 
@@ -564,10 +566,10 @@ statfs_t *buf;
 		return(-1);
 	}
 
-	buf -> f_bsize = (long)regs.x.ax * regs.x.cx;
-	buf -> f_blocks = regs.x.dx;
-	buf -> f_bfree = regs.x.bx;
-	buf -> f_bavail = regs.x.bx;
+	buf -> f_bsize = (long)((u_short)(regs.x.ax) * (u_short)(regs.x.cx));
+	buf -> f_blocks = (u_short)(regs.x.dx);
+	buf -> f_bfree = (u_short)(regs.x.bx);
+	buf -> f_bavail = (u_short)(regs.x.bx);
 	buf -> f_files = -1;
 
 	return(0);
@@ -580,13 +582,13 @@ statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
 #if	MSDOS
-	char *dir, drv[4];
+	char *dir;
 
 	mntbuf -> mnt_fsname = "";
-	mntbuf -> mnt_dir = drv;
-	drv[0] = dospath(path, NULL);
-	strcpy(&(drv[1]), ":\\");
-	mntbuf -> mnt_type = (supportLFN(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
+	mntbuf -> mnt_dir[0] = dospath(path, NULL);
+	strcpy(&(mntbuf -> mnt_dir[1]), ":\\");
+	mntbuf -> mnt_type =
+		(supportLFN(mntbuf -> mnt_dir)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
 	mntbuf -> mnt_opts = "";
 	dir = path;
 #else	/* !MSDOS */
@@ -651,7 +653,7 @@ char *path;
 	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	if (drv = dospath(path, NULL))
-		return((isupper(drv)) ? 4 : 5);
+		return((drv >= 'A' && drv <= 'Z') ? 4 : 5);
 #endif
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
 	|| hasmntopt(&mntbuf, "ro")) return(0);

@@ -9,7 +9,6 @@ MANDIR	= $(TOPDIR)\\man\\man$(MANSEC)
 CATDIR	= $(TOPDIR)\\man\\cat$(MANSEC)
 DEFRC	= \\etc\\fdrc
 DOSRC	= ~FD\\fdrc
-SHELL	= \\bin\\sh
 INSTALL	= cp -p
 CHMOD	= chmod
 MANSEC	= 1
@@ -35,8 +34,9 @@ ARGS	= object.arg
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.lpc \
+	makefile.dpc makefile.dpc \
 	makefile.g98 makefile.l98 \
-	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
+	config.hin mkmfsed.c mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 
@@ -44,11 +44,12 @@ CC	= lcc
 CPP	= cpp
 SED	= sed
 PROGRAM	= fd
-OBJ1	= main.obj term.obj pathname.obj libc.obj input.obj \
-	shell.obj info.obj unixemu.obj unixdisk.obj
-OBJ2	= rockridg.obj builtin.obj parse.obj \
-	kanji.obj file.obj apply.obj archive.obj tree.obj \
-	command.obj browse.obj
+OBJ1	= main.obj term.obj pathname.obj libc.obj \
+	input.obj shell.obj info.obj
+OBJ2	= unixemu.obj unixdisk.obj \
+	rockridg.obj builtin.obj parse.obj
+OBJ3	= kanji.obj file.obj apply.obj archive.obj \
+	tree.obj command.obj browse.obj
 
 LDFLAGS	=   -lintlib -ltinymain.obj -k'-M -s 5000'
 CFLAGS	= -DFD -DPC98 -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O
@@ -61,15 +62,16 @@ CFLAGS	= -DFD -DPC98 -DDEFRUNCOM="'"'"'$(DOSRC)'"'"'" -O
 
 goal:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
 
-$(PROGRAM).exe: $(OBJ1) $(OBJ2) $(ARGS)
+$(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	$(CC) $(CFLAGS) -o $@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
 
-$(ARGS): $(OBJ1) $(OBJ2)
+$(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ1) > $(ARGS)
 	@echo $(OBJ2) >> $(ARGS)
+	@echo $(OBJ3) >> $(ARGS)
 
 .c.obj:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
@@ -190,20 +192,21 @@ tar: $(SOURCES)
 
 lzh: $(SOURCES)
 	($(GETVER);\
-	rm -f $(TITLE)"$$VER".lzh;\
+	-rm -f $(TITLE)"$$VER".lzh;\
 	lha a $(TITLE)"$$VER".lzh $(SOURCES))
 
 shar: $(SOURCES)
 	($(GETVER);\
-	rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
+	-rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
 	shar -L50 -apc -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar \
 	-C $(JSRCS) -T $(ESRCS))
 
 clean:
-	rm -f core *.obj funcno.h kanji.h
-	rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
-	rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
-	rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f *.obj funcno.h kanji.h
+	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
+	-rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
+	-rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f core
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.obj: fd.h machine.h config.h

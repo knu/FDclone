@@ -4,6 +4,7 @@
  *	by T.Shirai <shirai@red.nintendo.co.jp>
  */
 
+#include <signal.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
@@ -11,8 +12,6 @@
 #include "kanji.h"
 #include "funcno.h"
 #include "version.h"
-
-#include <signal.h>
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -32,7 +31,7 @@ extern char *adjustfname();
 # endif
 #endif	/* !MSDOS */
 
-#if defined (SIGARGINT) || defined (NOVOID)
+#if	defined (SIGARGINT) || defined (NOVOID)
 #define	sigarg_t	int
 #else
 #define	sigarg_t	void
@@ -49,7 +48,7 @@ extern int maxarchive;
 extern devinfo fdtype[];
 #endif
 extern char fullpath[];
-extern char **sh_history;
+extern char **history[];
 extern char *helpindex[];
 extern int subwindow;
 extern int columns;
@@ -58,11 +57,11 @@ extern char *deftmpdir;
 
 #define	CLOCKUPDATE	10	/* sec */
 
-#if !MSDOS && !defined (SIGWINCH)
-# if defined (SIGWINDOW)
+#if	!MSDOS && !defined (SIGWINCH)
+# if	defined (SIGWINDOW)
 # define	SIGWINCH	SIGWINDOW
 # else
-#  if defined (NSIG)
+#  if	defined (NSIG)
 #  define	SIGWINCH	NSIG
 #  else
 #  define	SIGWINCH	28
@@ -70,7 +69,7 @@ extern char *deftmpdir;
 # endif
 #endif	/* !MSDOS && !SIGWINCH */
 
-#if !defined (SIGIOT) && defined (SIGABRT)
+#if	!defined (SIGIOT) && defined (SIGABRT)
 #define	SIGIOT	SIGABRT
 #endif
 
@@ -314,7 +313,7 @@ static sigarg_t printtime()
 	static time_t now;
 	struct tm *tm;
 #if	!MSDOS
-	struct timeval t;
+	struct timeval t_val;
 	struct timezone tz;
 #endif
 
@@ -324,8 +323,8 @@ static sigarg_t printtime()
 #if	MSDOS
 		now = time(NULL);
 #else
-		gettimeofday(&t, &tz);
-		now = t.tv_sec;
+		gettimeofday(&t_val, &tz);
+		now = t_val.tv_sec;
 #endif
 		timersec = CLOCKUPDATE;
 	}
@@ -391,20 +390,27 @@ VOID title()
 	printtime();
 }
 
-int loadruncom(file)
+int loadruncom(file, exist)
 char *file;
+int exist;
 {
 	FILE *fp;
-	char *cp, *pack, line[MAXLINESTR + 1];
-	int cont;
+	char *cp, *fold, line[MAXLINESTR + 1];
+	int i, n, er, cont;
 
 	cp = evalpath(strdup2(file));
 	fp = fopen(cp, "r");
 	free(cp);
-	if (!fp) return(-1);
+	if (!fp) {
+		if (!exist) return(0);
+		cprintf2("%s: Not found\r\n", file);
+		return(-1);
+	}
 
-	pack = NULL;
+	fold = NULL;
+	n = er = 0;
 	while (fgets(line, MAXLINESTR, fp)) {
+		n++;
 		if (*line == ';' || *line == '#') continue;
 		if (!(cp = strchr(line, '\n'))) cp = line + strlen(line);
 		for (cp--; cp >= line && (*cp == ' ' || *cp == '\t'); cp--);
@@ -418,32 +424,45 @@ char *file;
 		}
 
 		if (*line) {
-			if (pack) {
-				pack = (char *)realloc2(pack,
-					strlen(pack) + strlen(line) + 1);
-				strcat(pack, line);
+			if (fold) {
+				fold = (char *)realloc2(fold,
+					strlen(fold) + strlen(line) + 1);
+				strcat(fold, line);
 			}
-			else if (cont) pack = strdup2(skipspace(line));
+			else if (cont) fold = strdup2(skipspace(line));
 		}
 
 		if (cont) continue;
 
-		if (pack) {
-			execbuiltin(pack, NULL, NULL, 0);
-			free(pack);
-			pack = NULL;
+		if (fold) {
+			i = execbuiltin(fold, NULL, NULL, 0);
+			free(fold);
+			fold = NULL;
 		}
 		else if (*(cp = skipspace(line)))
-			execbuiltin(cp, NULL, NULL, 0);
+			i = execbuiltin(cp, NULL, NULL, 0);
+		else i = 4;
+		if (i < 4) {
+			er++;
+			cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
+			cprintf2("\t%s\r\n", line);
+			tflush();
+		}
 	}
 
-	if (pack) {
-		execbuiltin(pack, NULL, NULL, 0);
-		free(pack);
+	if (fold) {
+		i = execbuiltin(fold, NULL, NULL, 0);
+		free(fold);
+		if (i < 4) {
+			er++;
+			cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
+			cprintf2("\t%s\r\n", line);
+			tflush();
+		}
 	}
 
 	fclose(fp);
-	return(0);
+	return(er ? -1 : 0);
 }
 
 static int getoption(argc, argv)
@@ -455,7 +474,7 @@ char *argv[];
 
 	for (i = 1; i < argc; i++) {
 		env = argv[i] + 1;
-		if (*argv[i] != '-' || !isupper(*env)) return(i);
+		if (*argv[i] != '-' || *env < 'A' || *env > 'Z') return(i);
 
 		if (cp = strpbrk(env, "= \t")) {
 			ch = *cp;
@@ -537,7 +556,8 @@ char *argv[];
 	notabs();
 	getterment();
 	initterm();
-	sigvecset();
+	getwsize(80, WHEADERMAX + WFOOTER + 2);
+	sigvecreset();
 
 #ifdef	SIGHUP
 	signal(SIGHUP, (sigarg_t (*)())hangup);
@@ -613,27 +633,28 @@ char *argv[];
 #endif
 
 	setexecpath(argv[0]);
-	loadruncom(DEFRUNCOM);
-	loadruncom(RUNCOMFILE);
+	i = loadruncom(DEFRUNCOM, 0);
+	i += loadruncom(RUNCOMFILE, 0);
+	if (i < 0) warning(0, HITKY_K);
 	i = getoption(argc, argv);
 #if	!MSDOS
 	adjustpath();
 #endif
 	evalenv();
 	if ((dispmode = atoi2(getenv2("FD_DISPLAYMODE"))) < 0)
-#if (DISPLAYMODE < 0) || (DISPLAYMODE > 7)
+#if	(DISPLAYMODE < 0) || (DISPLAYMODE > 7)
 		dispmode = 0;
 #else
 		dispmode = DISPLAYMODE;
 #endif
 	columns = atoi2(getenv2("FD_COLUMNS"));
 	if (columns < 1 || columns == 4 || columns > 5)
-#if (COLUMNS < 1) || (COLUMNS == 4) || (COLUMNS > 5)
+#if	(COLUMNS < 1) || (COLUMNS == 4) || (COLUMNS > 5)
 		columns = 2;
 #else
 		columns = COLUMNS;
 #endif
-#if (ADJTTY == 0)
+#if	(ADJTTY == 0)
 	if (evalbool(getenv2("FD_ADJTTY")) > 0) {
 #else
 	{
@@ -649,9 +670,11 @@ char *argv[];
 		notabs();
 	}
 
-	sh_history = loadhistory(HISTORYFILE);
+	loadhistory(0, HISTORYFILE);
+	entryhist(1, origpath, 1);
 	putterms(t_clear);
 	title();
+	sigvecset();
 
 	main_fd(argv[i]);
 	if (_chdir2(origpath) < 0) error(origpath);

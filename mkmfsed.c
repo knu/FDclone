@@ -4,8 +4,8 @@
  *	sed script maker for Makefile
  */
 
-#include "machine.h"
 #include <stdio.h>
+#include "machine.h"
 
 int main (argc, argv)
 int argc;
@@ -14,7 +14,7 @@ char *argv[];
 	printf("s:__EXE__::g\n");
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__OBJS__:dosemu.o dosdisk.o:\n");
-	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2):\n");
+	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
 	printf("s:	__RENAME__:#	mv:\n");

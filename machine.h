@@ -19,17 +19,17 @@
 #  ifndef	DJGPP
 #  define	DJGPP	1
 #  endif
-#  if (DJGPP < 2)
-#  define	NOLFNEMU
-#  endif
+# define	NOLFNEMU
 # else	/* !__GNUC__ */
 # define	NOUID_T
 # define	NOFILEMODE
+# endif	/* !__GNUC__ */
+# if	!defined (__GNUC__) || (DJGPP >= 2)
 typedef unsigned int	u_int;
 typedef unsigned char	u_char;
 typedef unsigned short	u_short;
 typedef unsigned long	u_long;
-# endif	/* !__GNUC__ */
+# endif
 #define	_SC_	'\\'
 #define	_SS_	"\\"
 #else	/* !MSDOS */
@@ -37,14 +37,14 @@ typedef unsigned long	u_long;
 #define	_SS_	"/"
 #endif	/* !MSDOS */
 
-#if defined (sun)
+#if	defined (sun)
 #define	CODEEUC
 #define	CPP7BIT
-# if defined (USGr4) || defined (__svr4__) || defined (__SVR4)
+# if	defined (USGr4) || defined (__svr4__) || defined (__SVR4)
 # define	SVR4
 # define	OSTYPE		"SOLARIS"
 # include <stdio.h>
-#  if defined (__SUNPRO_C) && defined (BSD)
+#  if	defined (__SUNPRO_C) && defined (BSD)
 #  define	USEDIRECT
 #  define	USERE_COMP
 #  endif
@@ -62,9 +62,9 @@ typedef unsigned long	u_long;
 # endif
 #endif
 
-#if defined (sony)
+#if	defined (sony)
 #define	USELEAPCNT
-# if defined (USGr4) || defined (SYSTYPE_SYSV)
+# if	defined (USGr4) || defined (SYSTYPE_SYSV)
 # define	SVR4
 # define	OSTYPE		"NEWS_OS6"
 # define	REGEXPLIB	"-lgen"
@@ -77,7 +77,7 @@ typedef unsigned long	u_long;
 # define	BSD43
 # define	USERE_COMP
 # define	SIGARGINT
-#  if defined (__sony)
+#  if	defined (__sony)
 #  define	OSTYPE		"NEWS_OS4"
 #  define	USESETENV
 #  else
@@ -94,14 +94,14 @@ typedef unsigned long	u_long;
 # endif
 #endif
 
-#if defined (sgi)
+#if	defined (sgi)
 #define	SYSV
 #define	OSTYPE			"IRIX"
 #define	CODEEUC
-# if defined (_COMPILER_VERSION) && (_COMPILER_VERSION >= 600)
+# if	defined (_COMPILER_VERSION) && (_COMPILER_VERSION >= 600)
 # define	EXTENDCCOPT	"-32 -O"
 # endif
-# if !defined (SYSTYPE_SVR4)
+# if	!defined (SYSTYPE_SVR4)
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
@@ -113,7 +113,7 @@ typedef unsigned long	u_long;
 #define	USEMKTIME
 #endif
 
-#if defined (hpux) || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
+#if	defined (hpux) || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SVR4
 #define	OSTYPE			"HPUX"
 #define	EXTENDCCOPT
@@ -125,13 +125,13 @@ typedef unsigned long	u_long;
 #define	USEMKTIME
 #endif
 
-#if defined (nec_ews) || defined (_nec_ews)
+#if	defined (nec_ews) || defined (_nec_ews)
 #define	CODEEUC
-# if defined (nec_ews_svr4) || defined (_nec_ews_svr4)
+# if	defined (nec_ews_svr4) || defined (_nec_ews_svr4)
 # define	SVR4
 # define	OSTYPE		"EWSUXV"
 # undef	CCCOMMAND
-#  if defined (nec_ews)
+#  if	defined (nec_ews)
 #  define	CCCOMMAND	"/usr/necccs/bin/cc"
 #  else
 #  define	CCCOMMAND	"/usr/abiccs/bin/cc"
@@ -148,7 +148,7 @@ typedef unsigned long	u_long;
 # endif
 #endif
 
-#if defined (uniosu)
+#if	defined (uniosu)
 #define	BSD43
 #define	OSTYPE			"UNIOSU"
 #define	CODEEUC
@@ -168,7 +168,7 @@ typedef unsigned long	u_long;
 #define	WAITKEYPAD		720
 #endif
 
-#if defined (uniosb)
+#if	defined (uniosb)
 #define	BSD43
 #define	OSTYPE			"UNIOSB"
 #define	NOERRNO
@@ -183,7 +183,7 @@ typedef unsigned long	u_long;
 #define	SIGARGINT
 #endif
 
-#if defined (luna88k)
+#if	defined (luna88k)
 #define	BSD43
 #define	OSTYPE			"LUNA88K"
 #define	CODEEUC
@@ -196,10 +196,10 @@ typedef unsigned long	u_long;
 #define	SIGARGINT
 #endif
 
-#if (defined (__alpha) || defined (alpha)) && !defined (linux)
+#if	(defined (__alpha) || defined (alpha)) && !defined (linux)
 #define	CODEEUC
 #define	TARUSESPACE
-# if defined (SYSTYPE_BSD)
+# if	defined (SYSTYPE_BSD)
 # define	BSD43
 # define	OSTYPE		"DECOSF1V2"
 # define	EXTENDLIB	"-lsys5"
@@ -219,7 +219,7 @@ typedef unsigned long	u_long;
 # endif
 #endif
 
-#if defined (_IBMR2)
+#if	defined (_IBMR2)
 #define	SVR4
 #define	OSTYPE			"AIX"
 #define	TERMCAPLIB		"-ltermcap"
@@ -235,7 +235,7 @@ typedef unsigned long	u_long;
 #define	SIGARGINT
 #endif
 
-#if defined (ultrix)
+#if	defined (ultrix)
 #define	BSD43
 #define	OSTYPE			"ULTRIX"
 #define	CODEEUC
@@ -248,7 +248,7 @@ typedef unsigned long	u_long;
 #define	USEMKTIME
 #endif
 
-#if defined (_AUX_SOURCE)
+#if	defined (_AUX_SOURCE)
 #define	SYSV
 #define	OSTYPE			"AUX"
 #define	CPP7BIT
@@ -259,7 +259,7 @@ typedef unsigned long	u_long;
 #define	USETIMEH
 #endif
 
-#if defined (DGUX) || defined (__DGUX__)
+#if	defined (DGUX) || defined (__DGUX__)
 #define	SYSV
 #define	OSTYPE			"DGUX"
 #define	CODEEUC
@@ -271,7 +271,7 @@ typedef unsigned long	u_long;
 #define	USERE_COMP
 #endif
 
-#if defined (__uxpm__)
+#if	defined (__uxpm__)
 #define	SVR4
 #define	OSTYPE			"UXPM"
 #define	CODEEUC
@@ -283,11 +283,11 @@ typedef unsigned long	u_long;
 #define	USEUTIME
 #endif
 
-#if defined (mips) && !defined (OSTYPE)
+#if	defined (mips) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"MIPS"
 #define	CODEEUC
-# if defined (SYSTYPE_SYSV)
+# if	defined (SYSTYPE_SYSV)
 # undef	CCCOMMAND
 # define	CCCOMMAND	"/bsd43/bin/cc"
 # endif
@@ -303,7 +303,7 @@ typedef unsigned long	u_long;
 #define	SIGARGINT
 #endif
 
-#if defined (NeXT)
+#if	defined (NeXT)
 #define	BSD43
 #define	OSTYPE			"NEXTSTEP"
 #define	CODEEUC
@@ -314,7 +314,7 @@ typedef unsigned long	u_long;
 #define	USEGETWD
 #endif
 
-#if defined (linux)
+#if	defined (linux)
 #define	SVR4
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
@@ -322,7 +322,7 @@ typedef unsigned long	u_long;
 #define	DECLERRLIST
 #define	NOTZFILEH
 #define	NOTMGMTOFF
-# if defined (__alpha)
+# if	defined (__alpha)
 # define	USERE_COMP
 # else
 # define	USEREGCOMP
@@ -331,7 +331,7 @@ typedef unsigned long	u_long;
 #define	USEMKTIME
 #endif
 
-#if defined (__FreeBSD__) && defined (__powerpc__)
+#if	defined (__FreeBSD__) && defined (__powerpc__)
 #define	BSD43
 #define	OSTYPE			"JCCBSD"
 #define	CODEEUC
@@ -345,7 +345,7 @@ typedef unsigned long	u_long;
 #define	USESETENV
 #endif
 
-#if defined (__FreeBSD__) && !defined (OSTYPE)
+#if	defined (__FreeBSD__) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"FREEBSD"
 #define	CODEEUC
@@ -361,7 +361,7 @@ typedef unsigned long	u_long;
 #define	USEMKTIME
 #endif
 
-#if defined (__NetBSD__)
+#if	defined (__NetBSD__)
 #define	BSD43
 #define	OSTYPE			"NETBSD"
 #define	CODEEUC
@@ -375,12 +375,12 @@ typedef unsigned long	u_long;
 #define	USERE_COMP
 #define	USESETENV
 #include <sys/param.h>
-# if defined (NetBSD1_0) && (NetBSD1_0 < 1)
+# if	defined (NetBSD1_0) && (NetBSD1_0 < 1)
 # define	USEFFSIZE
 # endif
 #endif
 
-#if defined (__bsdi__)
+#if	defined (__bsdi__)
 #define	BSD43
 #define	OSTYPE			"BSDOS"
 #define	CODEEUC
@@ -393,12 +393,12 @@ typedef unsigned long	u_long;
 #define	USESETENV
 #define	USEMKTIME
 #include <sys/param.h>
-# if !defined (BSD) || (BSD < 199306)
+# if	!defined (BSD) || (BSD < 199306)
 # define	USEFFSIZE
 # endif
 #endif
 
-#if defined (__386BSD__) && defined (__BSD_NET2) && !defined (OSTYPE)
+#if	defined (__386BSD__) && defined (__BSD_NET2) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"BOW"
 #define	TARUSESPACE
@@ -411,7 +411,7 @@ typedef unsigned long	u_long;
 #define	USESETENV
 #endif
 
-#if defined (__386BSD__) && !defined (OSTYPE)
+#if	defined (__386BSD__) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"ORG_386BSD"
 #define	TARUSESPACE
@@ -542,18 +542,18 @@ typedef unsigned long	u_long;
 /* DO NOT DELETE or EDIT BELOW */
 /*                             */
 
-#if defined (SVR4) || defined (SYSV)
+#if	defined (SVR4) || defined (SYSV)
 #define	TARUSESPACE
 #define	USETERMIO
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
 #define	USERAND48
-# if !defined (USERE_COMP) && !defined (USEREGCOMP)
+# if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
 #endif
 
-#if defined (USEREGCMP) && !defined (REGEXPLIB)
+#if	defined (USEREGCMP) && !defined (REGEXPLIB)
 #define	REGEXPLIB		"-lPW"
 #endif
 
@@ -573,25 +573,25 @@ typedef unsigned long	u_long;
 #define	EXTENDLIB		""
 #endif
 
-#if defined (USESTATVFSH)
+#if	defined (USESTATVFSH)
 # ifdef	USESTATFSH
 # undef	USESTATFSH
 # endif
 #endif
 
-#if defined (USESTATVFSH) || defined (USESTATFSH)
+#if	defined (USESTATVFSH) || defined (USESTATFSH)
 # ifdef	USEMOUNTH
 # undef	USEMOUNTH
 # endif
 #endif
 
-#if defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)
+#if	defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)
 # ifdef	USEFSDATA
 # undef	USEFSDATA
 # endif
 #endif
 
-#if defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)\
+#if	defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)\
 || defined (USEFSDATA)
 # ifdef	USEVFSH
 # undef	USEVFSH
@@ -600,53 +600,53 @@ typedef unsigned long	u_long;
 #define	USEVFSH
 #endif
 
-#if defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
+#if	defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
 # ifndef	STATFSARGS
 # define	STATFSARGS	2
 # endif
 #endif
 
 
-#if defined (USEMNTTABH)
+#if	defined (USEMNTTABH)
 # ifdef	USEGETFSSTAT
 # undef	USEGETFSSTAT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEGETFSSTAT)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT)
 # ifdef	USEMNTCTL
 # undef	USEMNTCTL
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)
 # ifdef	USEMNTINFOR
 # undef	USEMNTINFOR
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR)
 # ifdef	USEMNTINFO
 # undef	USEMNTINFO
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO)
 # ifdef	USEGETMNT
 # undef	USEGETMNT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
 # ifdef	USEGETFSENT
 # undef	USEGETFSENT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)\
 || defined (USEGETFSENT)
 # ifdef	USEMNTENTH

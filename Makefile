@@ -2,13 +2,14 @@
 #	Makefile for fd
 #
 
+SHELL	= /bin/sh
 MAKE	= make
 CC	= cc
 CPP	= $(CC) -E
 SED	= sed
 
 goal:	Makefile.tmp
-	$(MAKE) -f Makefile.tmp
+	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp
 
 Makefile.tmp: Makefile.in mkmf.sed
 	$(SED) -f mkmf.sed Makefile.in > $@ ||\
@@ -21,6 +22,16 @@ makefile.gpc: Makefile.in mkmfdosg.sed
 
 makefile.g98: Makefile.in mkmfdosg.sed
 	$(SED) -f mkmfdosg.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.dpc: Makefile.in mkmfdosd.sed
+	$(SED) -f mkmfdosd.sed Makefile.in |\
+	$(SED) 's/__OSTYPE__/DOSV/g' > $@ ||\
+	(rm -f $@; exit 1)
+
+makefile.d98: Makefile.in mkmfdosd.sed
+	$(SED) -f mkmfdosd.sed Makefile.in |\
 	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
 	(rm -f $@; exit 1)
 
@@ -46,14 +57,17 @@ config.h: config.hin
 install catman catman-b compman compman-b \
 fd.doc history.doc \
 depend config: Makefile.tmp
-	$(MAKE) -f Makefile.tmp $@
+	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
 
 tar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
+makefile.dpc makefile.d98 \
 makefile.lpc makefile.l98
-	$(MAKE) -f Makefile.tmp $@
+	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
 
 clean: Makefile.tmp
-	$(MAKE) -f Makefile.tmp clean
-	rm -f makefile.gpc makefile.g98 Makefile.tmp
-	rm -f makefile.lpc makefile.l98 mkmf.sed config.h
-	rm -f mkmfsed
+	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp clean
+	-rm -f Makefile.tmp mkmf.sed config.h
+	-rm -f makefile.gpc makefile.g98
+	-rm -f makefile.dpc makefile.d98
+	-rm -f makefile.lpc makefile.l98
+	-rm -f mkmfsed

@@ -4,6 +4,7 @@
  *	Command Execute Module
  */
 
+#include <time.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
@@ -11,10 +12,7 @@
 
 #ifndef	CPP
 #include "funcno.h"
-#endif
-
-#include <time.h>
-#include <sys/stat.h>
+#endif	/* !CPP */
 
 #if	MSDOS
 #include "unixemu.h"
@@ -126,7 +124,6 @@ static int no_operation();
 
 char *findpattern = NULL;
 reg_t *findregexp = NULL;
-char **sh_history = NULL;
 #ifndef	_NOWRITEFS
 int writefs;
 #endif
@@ -332,7 +329,7 @@ char *arg;
 	int i;
 
 	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
-	if (i + FILEPERPAGE >= *maxp) return(warning_bell(list, maxp));
+	if (i + FILEPERPAGE >= *maxp) return(warning_bell(list, maxp, arg));
 	filepos = i + FILEPERPAGE;
 	return(2);
 }
@@ -346,7 +343,7 @@ char *arg;
 	int i;
 
 	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
-	if (i - FILEPERPAGE < 0) return(warning_bell(list, maxp));
+	if (i - FILEPERPAGE < 0) return(warning_bell(list, maxp, arg));
 	filepos = i - FILEPERPAGE;
 	return(2);
 }
@@ -384,7 +381,7 @@ char *arg;
 	!archivefile &&
 #endif
 	!strcmp(list[filepos].name, "."))
-		return(warning_bell(list, maxp));
+		return(warning_bell(list, maxp, arg));
 	return(5);
 }
 
@@ -584,7 +581,7 @@ char *mes, *arg;
 	char *cp, *wild;
 
 	if (arg && *arg) wild = strdup2(arg);
-	else if (!(wild = inputstr(mes, 0, 0, "*", NULL))) return(NULL);
+	else if (!(wild = inputstr(mes, 0, 0, "*", -1))) return(NULL);
 	if (!*wild || strchr(wild, _SC_)) {
 		warning(ENOENT, wild);
 		free(wild);
@@ -693,7 +690,7 @@ char *arg;
 	char *path;
 
 	if (arg && *arg) path = evalpath(strdup2(arg));
-	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, NULL))
+	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, 1))
 	|| !*(path = evalpath(path))) return(1);
 	if (!chdir3(path)) {
 		warning(-1, path);
@@ -820,7 +817,7 @@ char *arg;
 	int drive;
 #endif
 
-	if (isdir(&list[filepos])) return(warning_bell(list, maxp));
+	if (isdir(&list[filepos])) return(warning_bell(list, maxp, arg));
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	if ((drive = dospath("", NULL)) && !(dir = tmpdosdupl(drive,
 	list[filepos].name, list[filepos].st_mode))) return(1);
@@ -914,7 +911,7 @@ char *arg;
 {
 	int i;
 
-	if (writefs >= 2 || findpattern) return(warning_bell(list, maxp));
+	if (writefs >= 2 || findpattern) return(warning_bell(list, maxp, arg));
 	if ((i = writablefs(".")) <= 0) {
 		warning(0, NOWRT_K);
 		return(1);
@@ -962,7 +959,7 @@ char *arg;
 	!archivefile &&
 #endif
 	!yesno(QUIT_K)) return(1);
-	if (savehist > 0) savehistory(sh_history, HISTORYFILE);
+	if (savehist > 0) savehistory(0, HISTORYFILE);
 	return(-1);
 }
 
@@ -975,7 +972,7 @@ char *arg;
 	char *path;
 
 	if (arg && *arg) path = evalpath(strdup2(arg));
-	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, NULL))
+	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, 1))
 	|| !*(path = evalpath(path))) return(1);
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
 	free(path);
@@ -1030,7 +1027,7 @@ char *arg;
 {
 	char *file;
 
-	if (isdotdir(list[filepos].name)) return(warning_bell(list, maxp));
+	if (isdotdir(list[filepos].name)) return(warning_bell(list, maxp, arg));
 	if (arg && *arg) {
 		file = evalpath(strdup2(arg));
 		errno = EEXIST;
@@ -1041,7 +1038,7 @@ char *arg;
 		}
 	}
 	else for (;;) {
-		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, NULL)))
+		if (!(file = inputstr(NEWNM_K, 1, 0, list[filepos].name, -1)))
 			return(1);
 		file = evalpath(file);
 		if (Xaccess(file, F_OK) < 0) {
@@ -1079,7 +1076,7 @@ char *arg;
 		if (!yesno(DELMK_K)) return(1);
 		filepos = applyfile(list, *maxp, unlink2, NULL);
 	}
-	else if (isdir(&list[filepos])) return(warning_bell(list, maxp));
+	else if (isdir(&list[filepos])) return(warning_bell(list, maxp, arg));
 	else {
 		if (!yesno(DELFL_K, list[filepos].name)) return(1);
 		if ((i = unlink2(list[filepos].name)) < 0)
@@ -1097,7 +1094,7 @@ int *maxp;
 char *arg;
 {
 	if (!isdir(&list[filepos]) || isdotdir(list[filepos].name))
-		return(warning_bell(list, maxp));
+		return(warning_bell(list, maxp, arg));
 	if (!yesno(DELDR_K, list[filepos].name)) return(1);
 	copypolicy = 0;
 #if	!MSDOS
@@ -1125,7 +1122,7 @@ char *arg;
 	char *wild;
 
 	if (arg && *arg) wild = strdup2(arg);
-	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", NULL))) return(1);
+	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", -1))) return(1);
 	if (strchr(wild, _SC_)) {
 		warning(ENOENT, wild);
 		free(wild);
@@ -1177,7 +1174,7 @@ char *arg;
 	int i;
 
 	if (arg) com = strdup2(arg);
-	else if (!(com = inputstr(evalprompt(), 0, -1, NULL, &sh_history)))
+	else if (!(com = inputstr(evalprompt(), 0, -1, NULL, 0)))
 		return(1);
 	if (*com) i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	else {
@@ -1204,8 +1201,7 @@ char *arg;
 #endif
 
 	len = (isexec(&list[filepos])) ? strlen(list[filepos].name) + 1 : 0;
-	if (!(com = inputstr(evalprompt(), 0, len,
-	list[filepos].name, &sh_history)))
+	if (!(com = inputstr(evalprompt(), 0, len, list[filepos].name, 0)))
 		return(1);
 	if (!*com) {
 		execshell();
@@ -1270,7 +1266,7 @@ char *arg;
 	int i;
 
 	if (arg && *arg) file = evalpath(strdup2(arg));
-	else if (!(file = inputstr(PACK_K, 1, -1, NULL, NULL))
+	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
 	|| !*(file = evalpath(file))) return(1);
 	i = pack(file, list, *maxp);
 	free(file);
@@ -1289,10 +1285,10 @@ char *arg;
 {
 	int i;
 
-	if (isdir(&list[filepos])) return(warning_bell(list, maxp));
+	if (isdir(&list[filepos])) return(warning_bell(list, maxp, arg));
 	if (archivefile) i = unpack(archivefile, NULL, list, *maxp, arg, 0);
 	else i = unpack(list[filepos].name, NULL, NULL, 0, arg, 0);
-	if (i < 0) return(warning_bell(list, maxp));
+	if (i < 0) return(warning_bell(list, maxp, arg));
 	if (!i) return(1);
 	return(4);
 }
@@ -1306,11 +1302,11 @@ char *arg;
 {
 	int i;
 
-	if (isdir(&list[filepos])) return(warning_bell(list, maxp));
+	if (isdir(&list[filepos])) return(warning_bell(list, maxp, arg));
 	if (archivefile) i = unpack(archivefile, NULL, list, *maxp, NULL, 1);
 	else i = unpack(list[filepos].name, NULL, NULL, 0, NULL, 1);
 	if (i <= 0) {
-		if (i < 0) warning_bell(list, maxp);
+		if (i < 0) warning_bell(list, maxp, arg);
 		return(3);
 	}
 	return(4);
@@ -1328,7 +1324,7 @@ char *arg;
 	int i;
 
 	if (arg && *arg) path = evalpath(strdup2(arg));
-	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, NULL))) return(1);
+	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, 1))) return(1);
 	if (!*(path = evalpath(path))) {
 		free(path);
 		path = strdup2(".");
@@ -1418,9 +1414,9 @@ char *arg;
 
 	if (arg && *arg) dev = strdup2(arg);
 #if	MSDOS
-	else if (!(dev = inputstr(BKUP_K, 1, -1, NULL, NULL))
+	else if (!(dev = inputstr(BKUP_K, 1, -1, NULL, 1))
 #else
-	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", NULL))
+	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))
 #endif
 	|| !*(dev = evalpath(dev))) return(1);
 	i = backup(dev, list, *maxp);

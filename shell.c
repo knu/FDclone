@@ -22,7 +22,6 @@ extern int mark;
 extern long marksize;
 extern char fullpath[];
 extern char *findpattern;
-extern char **sh_history;
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 extern char *archivedir;
@@ -41,11 +40,14 @@ aliastable aliaslist[MAXALIASTABLE];
 int maxalias = 0;
 userfunctable userfunclist[MAXFUNCTABLE];
 int maxuserfunc = 0;
-int histsize;
+char **history[2] = { NULL, NULL };
+short histsize[2] = {0, 0};
+short histno[2] = {0, 0};
 int savehist;
 char *promptstr = NULL;
 
 static int n_args;
+static short histbufsize[2] = {0, 0};
 
 
 static int setarg(buf, ptr, dir, arg, noext)
@@ -341,7 +343,7 @@ macrostat *stp;
 
 		free(command);
 		if (p < 0) p = strlen(line);
-		cp = inputstr(evalprompt(), 0, p, line, &sh_history);
+		cp = inputstr(evalprompt(), 0, p, line, 0);
 		if (!cp || !*cp) return(NULL);
 		command = evalcommand(cp, arg, list, max, stp);
 		if (!command) return((char *)-1);
@@ -511,7 +513,7 @@ namelist *list;
 int *maxp, noconf, argset;
 {
 	char *cp, *argv[MAXARGS + 2];
-	int i, j, len, s, status, argc;
+	int i, j, s, status, argc;
 
 	argc = getargs(command, argv, MAXARGS + 1);
 	for (i = 0; i < maxuserfunc; i++)
@@ -532,97 +534,107 @@ int *maxp, noconf, argset;
 	return(status);
 }
 
-char **entryhist(hist, str)
-char **hist, *str;
+int entryhist(n, str, uniq)
+int n;
+char *str;
+int uniq;
 {
 	int i, size;
 
-	if (!hist) {
-		hist = (char **)malloc2(sizeof(char *) * (histsize + 3));
-		for (i = 0; i <= histsize; i++) hist[i + 2] = NULL;
-		hist[0] = (char *)histsize;
-		hist[1] = (char *)0;
+	size = histsize[n];
+	if (!history[n]) {
+		history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
+		for (i = 0; i <= size; i++) history[n][i] = NULL;
+		histbufsize[n] = size;
+		histno[n] = 0;
 	}
-	else if (histsize > (int)(hist[0])) {
-		hist = (char **)realloc2(hist, sizeof(char *) * (histsize + 3));
-		for (i = (int)hist[0] + 1; i <= histsize; i++)
-			hist[i + 2] = NULL;
-		hist[0] = (char *)histsize;
+	else if (size > histbufsize[n]) {
+		history[n] = (char **)realloc2(history[n],
+			sizeof(char *) * (size + 1));
+		for (i = histbufsize[n] + 1; i <= size; i++)
+			history[n][i] = NULL;
+		histbufsize[n] = size;
 	}
 
-	size = (int)(hist[0]);
-	if (!str || !*str) return(hist);
-	else {
-		if (hist[size + 2]) {
-			free(hist[size + 2]);
-			i = (int)(hist[1]);
-			hist[1] = (char *)(++i);
+	if (!str || !*str) return(0);
+
+	if (histno[n]++ >= (1 << (BITSPERBYTE * sizeof(short) - 1) - 1))
+		histno[n] = 0;
+
+	if (uniq) {
+		for (i = 0; i <= size; i++) {
+			if (!history[n][i]) continue;
+			if (!strcmp(str, history[n][i])) break;
 		}
-		for (i = size; i >= 1; i--) hist[i + 2] = hist[i + 1];
+		if (i < size) size = i;
 	}
 
-	hist[2] = strdup2(str);
-	return(hist);
+	if (history[n][size]) free(history[n][size]);
+	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
+	history[n][0] = strdup2(str);
+	return(1);
 }
 
-char **loadhistory(file)
+int loadhistory(n, file)
+int n;
 char *file;
-{
-	FILE *fp;
-	char *cp, **hist, line[MAXLINESTR + 1];
-	int i, j, len;
-
-	cp = evalpath(strdup2(file));
-	fp = fopen(cp, "r");
-	free(cp);
-	if (!fp) return(NULL);
-
-	hist = (char **)malloc2(sizeof(char *) * (histsize + 3));
-	hist[0] = (char *)histsize;
-	hist[1] = (char *)0;
-
-	i = 2;
-	while (fgets(line, MAXLINESTR, fp)) {
-		if (cp = strchr(line, '\n')) *cp = '\0';
-		for (j = i; j > 2; j--) hist[j] = hist[j - 1];
-		for (j = len = 0; line[j]; j++, len++)
-			if ((u_char)line[j] < ' ' || line[j] == C_DEL) len++;
-		hist[2] = (char *)malloc2(len + 1);
-		for (j = len = 0; line[j]; j++, len++) {
-			if ((u_char)line[j] < ' ' || line[j] == C_DEL)
-				hist[2][len++] = QUOTE;
-			hist[2][len] = line[j];
-		}
-		hist[2][len] = '\0';
-		if (i < histsize + 2) i++;
-		else {
-			j = (int)(hist[1]);
-			hist[1] = (char *)(++j);
-		}
-	}
-	fclose(fp);
-	for (; i <= histsize + 2; i++) hist[i] = NULL;
-
-	return(hist);
-}
-
-int savehistory(hist, file)
-char **hist, *file;
 {
 	FILE *fp;
 	char *cp, line[MAXLINESTR + 1];
 	int i, j, len, size;
 
-	if (!hist || !hist[2]) return(-1);
+	cp = evalpath(strdup2(file));
+	fp = fopen(cp, "r");
+	free(cp);
+	if (!fp) return(-1);
+
+	size = histsize[n];
+	history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
+	histbufsize[n] = size;
+	histno[n] = 0;
+
+	i = 0;
+	while (fgets(line, MAXLINESTR, fp)) {
+		if (cp = strchr(line, '\n')) *cp = '\0';
+		if (histno[n]++ >= (1 << (BITSPERBYTE * sizeof(short) - 1) - 1))
+			histno[n] = 0;
+		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
+		for (j = len = 0; line[j]; j++, len++)
+			if ((u_char)line[j] < ' ' || line[j] == C_DEL) len++;
+		history[n][0] = (char *)malloc2(len + 1);
+		for (j = len = 0; line[j]; j++, len++) {
+			if ((u_char)line[j] < ' ' || line[j] == C_DEL)
+				history[n][0][len++] = QUOTE;
+			history[n][0][len] = line[j];
+		}
+		history[n][0][len] = '\0';
+		if (i < size) i++;
+	}
+	fclose(fp);
+
+	for (; i <= size; i++) history[n][i] = NULL;
+	return(0);
+}
+
+int savehistory(n, file)
+int n;
+char *file;
+{
+	FILE *fp;
+	char *cp, line[MAXLINESTR + 1];
+	int i, j, len, size;
+
+	if (!history[n] || !history[n][0]) return(-1);
 	cp = evalpath(strdup2(file));
 	fp = fopen(cp, "w");
 	free(cp);
 	if (!fp) return(-1);
 
-	size = (savehist > (int)(hist[0])) ? (int)(hist[0]) : savehist;
-	for (i = size + 1; i >= 2; i--) if (hist[i] && *hist[i]) {
-		for (j = 0, len = 0; hist[i][j]; j++)
-			if (hist[i][j] != QUOTE) line[len++] = hist[i][j];
+	size = (savehist > histsize[n]) ? histsize[n] : savehist;
+	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
+		for (j = 0, len = 0; history[n][i][j]; j++)
+			if (history[n][i][j] != QUOTE)
+				line[len++] = history[n][i][j];
 		line[len] = '\0';
 		fputs(line, fp);
 		fputc('\n', fp);
@@ -630,17 +642,6 @@ char **hist, *file;
 	fclose(fp);
 
 	return(0);
-}
-
-int counthistory(hist)
-char **hist;
-{
-	int i, size;
-
-	size = (int)(hist[0]);
-	for (i = size; i >= 0; i--) if (sh_history[i + 2]) break;
-	i += (int)(hist[1]) + 1;
-	return(i);
 }
 
 int dohistory(argc, argv, list, maxp)
@@ -652,37 +653,37 @@ int *maxp;
 	char *cp, *tmp;
 	int i, n, size;
 
-	size = (int)(sh_history[0]);
+	size = histsize[0];
 	if (argv[0][1] == '!') {
 		cp = &argv[0][2];
-		n = 1 + 3;
+		n = 3;
 	}
 	else if (argv[0][1] == '-') {
-		for (cp = &argv[0][2]; *cp >= '0' && *cp <= '9'; cp++);
-		n = atoi(&argv[0][2]) + 2;
+		cp = skipnumeric(&argv[0][2], 0);
+		n = atoi(&argv[0][2]);
 	}
 	else {
-		for (cp = &argv[0][1]; *cp >= '0' && *cp <= '9'; cp++);
-		n = counthistory(sh_history) - atoi(&argv[0][1]) + 2;
+		cp = skipnumeric(&argv[0][1], 0);
+		n = histno[0] - atoi(&argv[0][1]);
 	}
-	free(sh_history[2]);
-	if (*cp || n <= 2 || n > size + 2 || !sh_history[n]) {
-		for (i = 0; i <= size && sh_history[i]; i++)
-			sh_history[i + 2] = sh_history[i + 3];
-		if (i >= size) sh_history[size + 2] = NULL;
+	free(history[0][0]);
+	if (*cp || n <= 0 || n > size || !history[0][n]) {
+		for (i = 0; i < size && history[0][i]; i++)
+			history[0][i] = history[0][i + 1];
+		if (i >= size) history[0][size] = NULL;
 		cprintf2("%s: Event not found.\r\n", &argv[0][1]);
 		warning(0, HITKY_K);
 		return(0);
 	}
 	tmp = catargs(argc - 1, &argv[1]);
-	if (!tmp) cp = strdup2(sh_history[n]);
+	if (!tmp) cp = strdup2(history[0][n]);
 	else {
-		cp = (char *)malloc2(strlen(sh_history[n]) + strlen(tmp) + 2);
-		strcpy(cp, sh_history[n]);
+		cp = (char *)malloc2(strlen(history[0][n]) + strlen(tmp) + 2);
+		strcpy(cp, history[0][n]);
 		strcat(cp, " ");
 		strcat(cp, tmp);
 	}
-	sh_history[2] = cp;
+	history[0][0] = cp;
 	cprintf2("%s\r\n", cp);
 	n = dosystem(cp, list, maxp, 0);
 	free(tmp);

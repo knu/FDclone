@@ -4,8 +4,6 @@
  *	MSDOS Disk Access Module
  */
 
-#include "machine.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -13,6 +11,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include "machine.h"
 
 #ifndef	_NODOSDRIVE
 
@@ -50,7 +49,7 @@
 extern int errno;
 #endif
 
-#if !defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
+#if	!defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
 #define	ENOTEMPTY	ENFSNOTEMPTY
 #endif
 
@@ -137,28 +136,28 @@ static int dosfilbuf();
 static int dosflsbuf();
 
 devinfo fdtype[MAXDRIVEENTRY] = {
-#if defined (SOLARIS)
-# if defined (i386)
+#if	defined (SOLARIS)
+# if	defined (i386)
 	{'A', "/dev/rfd0a", 2, 18, 80},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
 #endif
-#if defined (SUN_OS)
-# if defined (sparc)
+#if	defined (SUN_OS)
+# if	defined (sparc)
 	{'A', "/dev/rfd0c", 2, 18, 80},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
 #endif
-#if defined (NEWS_OS3) || defined (NEWS_OS4)
-# if defined (news800) || defined (news900) \
+#if	defined (NEWS_OS3) || defined (NEWS_OS4)
+# if	defined (news800) || defined (news900) \
 || defined (news1800) || defined (news1900) || defined (news3800)
 	{'A', "/dev/rfh0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 9, 80},
 	{'A', "/dev/rfd0a", 2, 8 + 100, 80},
 # else
-#  if defined (news3100) || defined (news5000)
+#  if	defined (news3100) || defined (news5000)
 	{'A', "/dev/rfd00a", 2, 18, 80},
 	{'A', "/dev/rfd00a", 2, 9, 80},
 	{'A', "/dev/rfd00a", 2, 8 + 100, 80},
@@ -169,68 +168,68 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 #  endif
 # endif
 #endif
-#if defined (NEWS_OS6)
+#if	defined (NEWS_OS6)
 	{'A', "/dev/rfloppy/c0d0u0p0", 2, 18, 80},
 	{'A', "/dev/rfloppy/c0d0u1p0", 2, 9, 80},
 	{'A', "/dev/rfloppy/c0d0u3p0", 2, 8, 80},
 #endif
-#if defined (HPUX)
-# if defined (__hp9000s700)
+#if	defined (HPUX)
+# if	defined (__hp9000s700)
 	{'A', "/dev/rfloppy/c201d0s0", 2, 18, 80},
 	{'A', "/dev/rfloppy/c201d0s0", 2, 9, 80},
 	{'A', "/dev/rfloppy/c201d0s0", 2, 8 + 100, 80},
 # endif
 #endif
-#if defined (EWSUXV)
+#if	defined (EWSUXV)
 	{'A', "/dev/if/f0h18", 2, 18, 80},
 	{'A', "/dev/if/f0h8", 2, 8, 77},
 	{'A', "/dev/if/f0c15", 2, 15, 80},
 	{'A', "/dev/if/f0d9", 2, 9, 80},
 	{'A', "/dev/if/f0d8", 2, 8, 80},
 #endif
-#if defined (AIX)
+#if	defined (AIX)
 	{'A', "/dev/rfd0h", 2, 18, 80},
 	{'A', "/dev/rfd0l", 2, 9, 80},
 	{'A', "/dev/rfd0l", 2, 8 + 100, 80},
 #endif
-#if defined (ULTRIX)
+#if	defined (ULTRIX)
 	{'A', "/dev/rfh0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 9, 80},
 	{'A', "/dev/rfd0a", 2, 8 + 100, 80},
 #endif
-#if defined (LINUX)
+#if	defined (LINUX)
 	{'A', "/dev/fd0", 2, 18, 80},
 	{'A', "/dev/fd0", 2, 9, 80},
 	{'A', "/dev/fd0", 2, 8 + 100, 80},
 #endif
-#if defined (JCCBSD)
+#if	defined (JCCBSD)
 	{'A', "/dev/rfd0a", 2, 18, 80},
 	{'A', "/dev/rfd0b", 2, 8, 77},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0d", 2, 8, 80},
 #endif
-#if defined (FREEBSD)
+#if	defined (FREEBSD)
 	{'A', "/dev/rfd0.1440", 2, 18, 80},
 	{'A', "/dev/rfd0.720", 2, 9, 80},
 	{'A', "/dev/rfd0.720", 2, 8 + 100, 80},
 #endif
-#if defined (NETBSD)
-# if defined (i386)
+#if	defined (NETBSD)
+# if	defined (i386)
 	{'A', "/dev/rfd0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 15, 80},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
 #endif
-#if defined (BSDOS)
-# if defined (i386)
+#if	defined (BSDOS)
+# if	defined (i386)
 	{'A', "/dev/rfd0c", 2, 18, 80},
 	{'A', "/dev/rfd0c", 2, 9, 80},
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 # endif
 #endif
-#if defined (ORG_386BSD)
-# if defined (i386)
+#if	defined (ORG_386BSD)
+# if	defined (i386)
 	{'A', "/dev/fd0a", 2, 18, 80},
 	{'A', "/dev/fd0a", 2, 15, 80},
 	{'A', "/dev/fd0b", 2, 8, 77},
@@ -262,7 +261,7 @@ static int doserrno = 0;
 static int toupper2(c)
 int c;
 {
-	return(islower(c) ? c - 'a' + 'A' : c);
+	return((c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c);
 }
 
 static int strcasecmp2(s1, s2)
@@ -291,9 +290,9 @@ struct tm *tm1, *tm2;
 	return (tm1 -> tm_sec - tm2 -> tm_sec);
 }
 
-static long gettimezone(tm, time)
+static long gettimezone(tm, t)
 struct tm *tm;
-time_t time;
+time_t t;
 {
 #ifdef	NOTMGMTOFF
 	struct timeval t_val;
@@ -315,7 +314,7 @@ time_t time;
 	gettimeofday(&t_val, &t_zone);
 	tz = t_zone.tz_minuteswest * 60L;
 #else
-	tz = -(localtime(&time) -> tm_gmtoff);
+	tz = -(localtime(&t) -> tm_gmtoff);
 #endif
 
 #ifndef	NOTZFILEH
@@ -409,40 +408,40 @@ struct tm *tm;
 # ifdef	USETIMELOCAL
 	return(timelocal(tm));
 # else
-	time_t date, time;
-	int i, year;
+	time_t d, t;
+	int i, y;
 
-	year = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
+	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
 
-	date = (year - 1970) * 365;
-	date += ((year - 1 - 1968) / 4)
-		- ((year - 1 - 1900) / 100)
-		+ ((year - 1 - 1600) / 400);
+	d = (y - 1970) * 365;
+	d += ((y - 1 - 1968) / 4)
+		- ((y - 1 - 1900) / 100)
+		+ ((y - 1 - 1600) / 400);
 	for (i = 1; i < tm -> tm_mon + 1; i++) {
 		switch (i) {
 			case 2:
-				if (!(year % 4)
-				&& ((year % 100)
-				|| !(year % 400))) date++;
-				date += 28;
+				if (!(y % 4)
+				&& ((y % 100)
+				|| !(y % 400))) d++;
+				d += 28;
 				break;
 			case 4:
 			case 6:
 			case 9:
 			case 11:
-				date += 30;
+				d += 30;
 				break;
 			default:
-				date += 31;
+				d += 31;
 				break;
 		}
 	}
-	date += tm -> tm_mday - 1;
-	time = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
-	time += date * 60 * 60 * 24;
-	time += gettimezone(tm, time);
+	d += tm -> tm_mday - 1;
+	t = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
+	t += d * 60 * 60 * 24;
+	t += gettimezone(tm, t);
 
-	return(time);
+	return(t);
 # endif
 #endif
 }
@@ -917,7 +916,7 @@ int drive;
 			return(-1);
 		}
 	}
-	if (islower(drive)) dev.flags |= F_VFAT;
+	if (drive >= 'a' && drive <= 'z') dev.flags |= F_VFAT;
 	else dev.flags &= ~F_VFAT;
 
 	memcpy(&devlist[maxdev], &dev, sizeof(devstat));
@@ -1068,7 +1067,7 @@ int c;
 	if (c == '\'') return(',');
 	if (c == '&') return('[');
 	if (c == '$') return('.');
-	return(isupper(c) ? c + 'a' - 'A' : c);
+	return((c >= 'A' && c <= 'Z') ? c + 'a' - 'A' : c);
 }
 
 static int transname(buf, path, len)
@@ -1240,18 +1239,18 @@ u_short mode;
 	return(attr);
 }
 
-static time_t getdostime(date, time)
-u_short date, time;
+static time_t getdostime(d, t)
+u_short d, t;
 {
 	struct tm tm;
 
-	tm.tm_year = 1980 + ((date >> 9) & 0x7f);
+	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
 	tm.tm_year -= 1900;
-	tm.tm_mon = ((date >> 5) & 0x0f) - 1;
-	tm.tm_mday = (date & 0x1f);
-	tm.tm_hour = ((time >> 11) & 0x1f);
-	tm.tm_min = ((time >> 5) & 0x3f);
-	tm.tm_sec = ((time << 1) & 0x3e);
+	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
+	tm.tm_mday = (d & 0x1f);
+	tm.tm_hour = ((t >> 11) & 0x1f);
+	tm.tm_min = ((t >> 5) & 0x3f);
+	tm.tm_sec = ((t << 1) & 0x3e);
 
 	return(timelocal2(&tm));
 }
@@ -1260,26 +1259,26 @@ static u_char *putdostime(buf, clock)
 u_char *buf;
 time_t clock;
 {
-	struct timeval t;
+	struct timeval t_val;
 	struct timezone tz;
 	struct tm *tm;
-	int date, time;
+	int d, t;
 
-	if (clock < 0) gettimeofday(&t, &tz);
-	else t.tv_sec = clock;
-	tm = localtime(&(t.tv_sec));
-	date = (((tm -> tm_year - 80) & 0x7f) << 9)
+	if (clock < 0) gettimeofday(&t_val, &tz);
+	else t_val.tv_sec = clock;
+	tm = localtime(&(t_val.tv_sec));
+	d = (((tm -> tm_year - 80) & 0x7f) << 9)
 		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
 		+ (tm -> tm_mday & 0x1f);
-	time = ((tm -> tm_hour & 0x1f) << 11)
+	t = ((tm -> tm_hour & 0x1f) << 11)
 		+ ((tm -> tm_min & 0x3f) << 5)
 		+ ((tm -> tm_sec & 0x3e) >> 1);
 
-	if (!time && clock < 0) time = 0x0001;
-	buf[0] = time & 0xff;
-	buf[1] = (time >> 8) & 0xff;
-	buf[2] = date & 0xff;
-	buf[3] = (date >> 8) & 0xff;
+	if (!t && clock < 0) t = 0x0001;
+	buf[0] = t & 0xff;
+	buf[1] = (t >> 8) & 0xff;
+	buf[2] = d & 0xff;
+	buf[3] = (d >> 8) & 0xff;
 
 	return(buf);
 }
@@ -1311,7 +1310,7 @@ char *buf, *path;
 int class;
 {
 	char *cp;
-	int i, len, drive;
+	int i, drive;
 
 	cp = buf;
 	if ((drive = getdrive(path)) < 0) return(-1);
@@ -1741,7 +1740,6 @@ char *path;
 int *ddp;
 {
 	dosDIR *xdirp;
-	struct dirent *dp;
 	char buf[2 + DOSMAXPATHLEN + 3 + 1];
 	int dd, drive;
 
@@ -1773,7 +1771,7 @@ int *ddp;
 		dd2dentp(dd) -> attr |= DS_IFDIR;
 		return(dd);
 	}
-	if (!(dp = finddir(xdirp, path, 0))) {
+	if (!finddir(xdirp, path, 0)) {
 		dosclosedir((DIR *)xdirp);
 		if (ddp && !doserrno) *ddp = dd;
 		else closedev(dd);
@@ -1970,10 +1968,8 @@ u_short offset;
 int sum;
 {
 	dosDIR xdir;
-	struct dirent *dp;
 	long dupclust;
 	u_short dupoffset;
-	int i;
 
 	if (clust < 0) return(0);
 	dupclust = dd2clust(dd);

@@ -4,6 +4,7 @@
  *	UNIXlike Disk Access Module
  */
 
+#include "machine.h"
 #include "unixdisk.h"
 
 #ifndef	NOLFNEMU
@@ -27,6 +28,11 @@ static int unixerrlist[] = {
 	EBADF, ENOMEM, ENOMEM, ENOMEM, EACCES, EEXIST
 };
 static int dos7access = 1;
+
+#if	defined (DJGPP) && (DJGPP >= 2)
+#include <crt0.h>
+int _crt0_startup_flags = _CRT0_FLAG_PRESERVE_FILENAME_CASE;
+#endif
 
 
 #ifndef	NOLFNEMU
@@ -84,7 +90,7 @@ char *path;
 
 	if (path && path[0] && path[1] == ':') drv[0] = path[0];
 	else drv[0] = getcurdrv();
-	if (isupper(drv[0])) return(0);
+	if (drv[0] >= 'A' && drv[0] <= 'Z') return(0);
 	strcpy(&drv[1], ":\\");
 
 	regs.x.ax = 0x71a0;
@@ -121,7 +127,7 @@ char *path, *alias;
 	}
 	if (path && path[0] && path[1] == ':') drv = path[0];
 	else drv = getcurdrv();
-	if (islower(drv)) *alias += 'a' - 'A';
+	if (drv >= 'a' && drv <= 'z') *alias += 'a' - 'A';
 
 	return(alias);
 }
@@ -135,9 +141,12 @@ char *path, *resolved;
 
 	_fixpath(path, resolved);
 	for (i = 0; resolved[i]; i++) {
-		if (resolved[i] >= 'a' && resolved[i] <= 'z')
+		if (resolved[i] == '/') resolved[i] = _SC_;
+#if	defined (DJGPP) && (DJGPP >= 2)
+		else if (_USE_LFN);
+#endif
+		else if (resolved[i] >= 'a' && resolved[i] <= 'z')
 			resolved[i] -= 'a' - 'A';
-		else if (resolved[i] == '/') resolved[i] = _SC_;
 	}
 #else	/* !NOLFNEMU */
 	union REGS regs;
@@ -186,7 +195,7 @@ int iscreat;
 		seterrno(regs.x.ax);
 		return(NULL);
 	}
-	regs.x.bx = regs.x.ax;
+	regs.x.bx = (u_short)(regs.x.ax);
 	regs.x.ax = 0x3e00;
 	intdosx(&regs, &regs, &segs);
 
@@ -199,10 +208,39 @@ char *adjustfname(path)
 char *path;
 {
 	int i;
+#if	defined (DJGPP) && (DJGPP >= 2)
+	struct ffblk dbuf;
+	char *cp, tmp[MAXPATHLEN + 1];
+	int j;
 
+	if (_USE_LFN) {
+		cp = NULL;
+		strcpy(tmp, path);
+		for (i = j = 0; tmp[i]; i++) {
+			if (tmp[i] != '/' && tmp[i] != _SC_) {
+				path[j++] = tmp[i];
+				continue;
+			}
+			path[j] = '\0';
+			if (cp && !findfirst(path, &dbuf, SEARCHATTRS)) {
+				strcpy(cp, dbuf.ff_name);
+				j = strlen(path);
+			}
+			path[j++] = _SC_;
+			cp = &path[j];
+		}
+		path[j] = '\0';
+		if (!cp) cp = path;
+		if ((cp[0] != '.' || (cp[1] && (cp[1] != '.' || cp[2])))
+		&& !findfirst(path, &dbuf, SEARCHATTRS))
+			strcpy(cp, dbuf.ff_name);
+	}
+	else
+#endif	/* DJGPP >= 2 */
 	for (i = 0; path[i]; i++) {
-		if (islower(path[i])) path[i] -= 'a' - 'A';
-		else if (path[i] == '/') path[i] = '\\';
+		if (path[i] == '/') path[i] = _SC_;
+		else if (path[i] >= 'a' && path[i] <= 'z')
+			path[i] -= 'a' - 'A';
 	}
 	return(path);
 }
@@ -227,7 +265,7 @@ struct dosfind_t *result;
 	regs.x.dx = FP_OFF(path);
 	intdosx(&regs, &regs, &segs);
 	if (regs.x.cflag) {
-		seterrno((regs.x.ax != 0x12) ? regs.x.ax : 0);
+		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
 		return(-1);
 	}
 
@@ -248,7 +286,7 @@ struct dosfind_t *result;
 	regs.x.ax = 0x4f00;
 	intdos(&regs, &regs);
 	if (regs.x.cflag) {
-		seterrno((regs.x.ax != 0x12) ? regs.x.ax : 0);
+		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
 		return(-1);
 	}
 
@@ -271,11 +309,11 @@ struct lfnfind_t *result;
 	regs.x.si = DATETIMEFORMAT;
 	intdosx(&regs, &regs, &segs);
 	if (regs.x.cflag) {
-		seterrno((regs.x.ax != 0x12) ? regs.x.ax : 0);
+		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
 		return((u_short)-1);
 	}
 
-	return(regs.x.ax);
+	return((u_short)(regs.x.ax));
 }
 
 static int lfn_findnext(fd, result)
@@ -293,7 +331,7 @@ struct lfnfind_t *result;
 	regs.x.si = DATETIMEFORMAT;
 	intdosx(&regs, &regs, &segs);
 	if (regs.x.cflag) {
-		seterrno((regs.x.ax != 0x12) ? regs.x.ax : 0);
+		seterrno(((u_short)(regs.x.ax) != 0x12) ? regs.x.ax : 0);
 		return(-1);
 	}
 
@@ -548,9 +586,13 @@ struct stat *status;
 #ifdef	NOLFNEMU
 	struct ffblk dbuf;
 
-	if (findfirst(path, &dbuf, SEARCHATTRS) < 0
+	if (findfirst(path, &dbuf, SEARCHATTRS) != 0
+#if	defined (DJGPP) && (DJGPP >= 2)
+	&& (errno != ENOENT || strcmp(path, "..")
+#else
 	&& (errno != ENMFILE || strcmp(path, "..")
-	|| findfirst(".", &dbuf, SEARCHATTRS) < 0)) {
+#endif
+	|| findfirst(".", &dbuf, SEARCHATTRS) != 0)) {
 		if (!errno) errno = ENOENT;
 		return(-1);
 	}
@@ -620,7 +662,7 @@ int mode;
 	regs.x.dx = (unsigned)path;
 	intdos(&regs, &regs);
 	if (regs.x.cflag) {
-		errno = regs.x.ax;
+		errno = (u_short)(regs.x.ax);
 		return(-1);
 	}
 #else

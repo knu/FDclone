@@ -12,7 +12,6 @@
 #ifndef	_NOTREE
 
 #include <signal.h>
-#include <sys/stat.h>
 
 #if	MSDOS
 #include "unixemu.h"
@@ -623,7 +622,7 @@ treelist *list, **lpp;
 			break;
 		case 'l':
 			ch = '\0';
-			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, NULL))
+			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, 1))
 			|| !*(cwd = evalpath(cwd))) break;
 			if (chdir2(cwd) >= 0) {
 				free(cwd);

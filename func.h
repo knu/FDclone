@@ -8,7 +8,7 @@
 extern int errno;
 #endif
 
-#if !defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
+#if	!defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
 #define	ENOTEMPTY	ENFSNOTEMPTY
 #endif
 
@@ -103,6 +103,7 @@ extern int execbuiltin();
 
 /* parse.c */
 extern char *skipspace();
+extern char *skipnumeric();
 extern char *strtkbrk();
 extern char *strtkchr();
 extern char *geteostr();
@@ -176,10 +177,9 @@ extern int execmacro();
 extern int execenv();
 extern int execshell();
 extern int execusercomm();
-extern char **entryhist();
-extern char **loadhistory();
+extern int entryhist();
+extern int loadhistory();
 extern int savehistory();
-extern int counthistory();
 extern int dohistory();
 #ifndef	_NOCOMPLETE
 extern int completealias();
@@ -224,6 +224,7 @@ extern int cmptree();
 #endif
 extern struct dirent *searchdir();
 extern int underhome();
+extern int preparedir();
 extern int copyfile();
 extern int movefile();
 extern int mktmpdir();

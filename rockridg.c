@@ -4,13 +4,11 @@
  *	ISO-9660 RockRidge Format Filter
  */
 
+#include <ctype.h>
 #include "fd.h"
 #include "func.h"
 
 #ifndef	_NOROCKRIDGE
-
-#include <ctype.h>
-#include <sys/stat.h>
 
 #if	MSDOS
 #include "unixemu.h"
@@ -68,7 +66,8 @@ u_char stat;
 
 	for (i = 0; i < MAXPATHLEN && name[i] && name[i] != ';'; i++) {
 		buf[i] = name[i];
-		if ((stat & RR_LOWER) && isupper(buf[i])) buf[i] += 'a' - 'A';
+		if ((stat & RR_LOWER) && buf[i] >= 'A' && buf[i] <= 'Z')
+			buf[i] += 'a' - 'A';
 	}
 
 	if ((stat & RR_VERNO) && name[i] == ';') {
@@ -104,7 +103,8 @@ static assoclist *readtranstbl()
 
 		for (i = 0; i < sizeof(TRANSTBLFILE); i++) {
 			line[i] = TRANSTBLFILE[i];
-			if (isupper(line[i])) line[i] += 'a' - 'A';
+			if (line[i] >= 'A' && line[i] <= 'Z')
+				line[i] += 'a' - 'A';
 		}
 		line[i] = '\0';
 

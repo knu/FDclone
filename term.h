@@ -150,13 +150,11 @@ extern int tflush();
 extern int getwsize();
 extern int chgcolor();
 
-#if	!MSDOS
-# ifndef	SENSEPERSEC
-# define	SENSEPERSEC	50
-# endif
-# ifndef	WAITKEYPAD
-# define	WAITKEYPAD	360		/* msec */
-# endif
+#ifndef	SENSEPERSEC
+#define	SENSEPERSEC	50
+#endif
+#ifndef	WAITKEYPAD
+#define	WAITKEYPAD	360		/* msec */
 #endif
 
 #if	MSDOS && defined (__GNUC__)

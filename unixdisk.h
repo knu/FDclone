@@ -4,15 +4,19 @@
  *	Type Definition for "unixdisk.c"
  */
 
-#include "machine.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <time.h>
 #include <dos.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#if	defined(DJGPP) && (DJGPP >= 2)
+#include <dir.h>
+#endif
 
 #include "unixemu.h"
 

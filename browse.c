@@ -6,15 +6,13 @@
 
 extern char *archivefile;
 
+#include <time.h>
+#include <signal.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
 #include "funcno.h"
 #include "kanji.h"
-
-#include <time.h>
-#include <signal.h>
-#include <sys/stat.h>
 
 #if	MSDOS
 #include "unixemu.h"
@@ -238,7 +236,7 @@ static VOID stackbar()
 VOID sizebar()
 {
 	char buf[16];
-	long total, free;
+	long total, fre;
 
 	if (!sizeinfo) return;
 
@@ -252,7 +250,7 @@ VOID sizebar()
 	cprintf2("%14.14s/", inscomma(buf, marksize, 3));
 	cprintf2("%14.14s ", inscomma(buf, totalsize, 3));
 
-	getinfofs(".", &total, &free);
+	getinfofs(".", &total, &fre);
 
 	locate(CTOTAL, LSIZE);
 	putterm(t_standout);
@@ -265,8 +263,8 @@ VOID sizebar()
 	putterm(t_standout);
 	cputs2("Free:");
 	putterm(end_standout);
-	if (free < 0) cprintf2("%15.15s ", "?");
-	else cprintf2("%12.12s KB ", inscomma(buf, free, 3));
+	if (fre < 0) cprintf2("%15.15s ", "?");
+	else cprintf2("%12.12s KB ", inscomma(buf, fre, 3));
 
 	tflush();
 }
@@ -802,7 +800,12 @@ char *cur;
 		cp = evalpath(strdup2(cur));
 #if	MSDOS
 		if (_dospath(cp)) {
-			fullpath[0] = (setcurdrv(*cp) < 0) ? getcurdrv() : *cp;
+			if (setcurdrv(*cp) < 0) fullpath[0] = getcurdrv();
+			else {
+				def = getwd2();
+				strcpy(fullpath, def);
+				def = NULL;
+			}
 			for (i = 2; cp[i]; i++) cp[i - 2] = cp[i];
 			cp [i - 2] = '\0';
 		}
@@ -854,6 +857,7 @@ char *cur;
 			free(cp);
 		}
 		realpath2(fullpath, fullpath);
+		entryhist(1, fullpath, 1);
 	}
 
 	filelist = NULL;

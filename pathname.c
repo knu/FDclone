@@ -4,14 +4,13 @@
  *	Path Name Management Module
  */
 
-#include "machine.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <sys/stat.h>
+#include "machine.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -196,7 +195,7 @@ int exceptdot;
 	pattern[i++] = '^';
 	flag = 0;
 	for (cp = str; *cp; cp++) {
-#if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
+#if	defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
 		if (flag) {
 			if (*cp == ']') flag = 0;
 			pattern[i++] = *cp;
@@ -216,7 +215,7 @@ int exceptdot;
 				pattern[i++] = '.';
 				pattern[i++] = '*';
 				break;
-#if defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
+#if	defined (USERE_COMP) || defined (USEREGCOMP) || defined (USEREGCMP)
 			case '[':
 				flag = 1;
 				pattern[i++] = *cp;

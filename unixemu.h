@@ -4,16 +4,22 @@
  *	UNIX Emulate Functions
  */
 
-#undef	MAXPATHLEN
-#define	MAXPATHLEN	260
-
-#ifndef	__GNUC__
-#undef	MAXNAMLEN
-#define	MAXNAMLEN	255
-#endif
-
 #ifndef	_UNIXEMU_H
 #define	_UNIXEMU_H
+
+#ifdef	NOLFNEMU
+#include <dirent.h>
+#endif
+
+#ifdef	MAXPATHLEN
+#undef	MAXPATHLEN
+#endif
+#define	MAXPATHLEN	260
+
+#ifdef	MAXNAMLEN
+#undef	MAXNAMLEN
+#endif
+#define	MAXNAMLEN	255
 
 #define	PIPEDIR		"FD-PIPE"
 #define	PIPEFILE	"FAKEPIPE"
@@ -30,15 +36,18 @@
 #define	S_IFSOCK	0140000
 #define	S_ISVTX		0001000
 
+#if	!defined (DJGPP) || (DJGPP < 2)
 #define	ENOTEMPTY	EACCES
+#endif
 
 #ifdef	__GNUC__
-#define	S_ISUID		0004000
-#define	S_ISGID		0002000
-#define	S_ISVTX		0001000
+# if	defined (DJGPP) && (DJGPP < 2)
+# define	S_ISUID		0004000
+# define	S_ISGID		0002000
+# define	S_ISVTX		0001000
+# endif
 #define	FP_SEG(p)	0
 #define	FP_OFF(p)	(unsigned)(p)
-#include <dirent.h>
 #else	/* !__GNUC__ */
 #define	random()		rand()
 #define	kill(pid, sig)		raise(sig)
@@ -50,7 +59,9 @@
 #undef	SIGILL
 #define	EINTR		0
 #define	ENOTDIR		ENOENT
+#endif	/* !__GNUC__ */
 
+#ifndef	NOLFNEMU
 typedef struct _dirdesc {
 	u_short	dd_fd;
 /*
@@ -74,7 +85,7 @@ struct	dirent {
 
 	char	d_alias[14];
 };
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 
 struct utimbuf {
 	time_t	actime;

@@ -10,8 +10,6 @@
 #include "kanji.h"
 #include "kctype.h"
 
-#include <sys/stat.h>
-
 #if	MSDOS
 #include "unixemu.h"
 extern char *preparefile();
@@ -48,7 +46,7 @@ extern char *tmpfilename;
 					& ~(boundary - 1)) - 1))
 
 static int iscurdir();
-static char *getdistdir();
+static char *getdestdir();
 #ifndef	_NOWRITEFS
 static int k_strlen();
 static VOID touch();
@@ -62,7 +60,7 @@ static VOID restorefile();
 char *deftmpdir;
 
 #if	!MSDOS && !defined (_NODOSDRIVE)
-static int distdrive = -1;
+static int destdrive = -1;
 #endif
 
 
@@ -122,8 +120,10 @@ char *file;
 	list[i].flags = 0;
 	if ((status.st_mode & S_IFMT) == S_IFDIR) list[i].flags |= F_ISDIR;
 	if ((lstatus.st_mode & S_IFMT) == S_IFLNK) list[i].flags |= F_ISLNK;
+#if	!MSDOS
 	if ((lstatus.st_mode & S_IFMT) == S_IFCHR
 	|| (lstatus.st_mode & S_IFMT) == S_IFBLK) list[i].flags |= F_ISDEV;
+#endif
 
 	if (isdisplnk(dispmode)) memcpy(&lstatus, &status, sizeof(struct stat));
 
@@ -302,47 +302,53 @@ int underhome()
 #endif	/* !MSDOS */
 }
 
-static char *getdistdir(mes, arg)
-char *mes, *arg;
+int preparedir(dir)
+char *dir;
 {
 	struct stat status;
+	char tmp[MAXPATHLEN + 1];
+
+	if (stat2(dir, &status) < 0) {
+		if (errno != ENOENT || Xmkdir(dir, 0777) < 0
+		|| stat2(dir, &status) < 0) return(-1);
+	}
+	if ((status.st_mode & S_IFMT) != S_IFDIR) {
+		errno = ENOTDIR;
+		return(-1);
+	}
+	entryhist(1, realpath2(dir, tmp), 1);
+	return(0);
+}
+
+static char *getdestdir(mes, arg)
+char *mes, *arg;
+{
 	char *dir;
 #if	!MSDOS
 	int drive;
 #endif
 
 	if (arg && *arg) dir = evalpath(strdup2(arg));
-	else if (!(dir = inputstr(mes, 1, -1, NULL, NULL))) return(NULL);
+	else if (!(dir = inputstr(mes, 1, -1, NULL, 1))) return(NULL);
 	if (!*(dir = evalpath(dir))) {
 		free(dir);
 		dir = strdup2(".");
 	}
 
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	distdrive = -1;
+	destdrive = -1;
 	if ((drive = dospath(dir, NULL))
-	&& (distdrive = preparedrv(drive, waitmes)) < 0) {
+	&& (destdrive = preparedrv(drive, waitmes)) < 0) {
 		warning(-1, dir);
 		free(dir);
 		return(NULL);
 	}
 #endif
-	if (stat2(dir, &status) < 0) {
-		if (errno != ENOENT || Xmkdir(dir, 0777) < 0
-		|| stat2(dir, &status) < 0) {
-			warning(-1, dir);
-			free(dir);
-#if	!MSDOS && !defined (_NODOSDRIVE)
-			if (distdrive >= 0) shutdrv(distdrive);
-#endif
-			return(NULL);
-		}
-	}
-	if ((status.st_mode & S_IFMT) != S_IFDIR) {
-		warning(ENOTDIR, dir);
+	if (preparedir(dir) < 0) {
+		warning(-1, dir);
 		free(dir);
 #if	!MSDOS && !defined (_NODOSDRIVE)
-		if (distdrive >= 0) shutdrv(distdrive);
+		if (destdrive >= 0) shutdrv(destdrive);
 #endif
 		return(NULL);
 	}
@@ -365,10 +371,10 @@ int tr;
 # if	MSDOS || defined (_NODOSDRIVE)
 	(tr) ? tree(1, NULL) :
 # else
-	(tr) ? tree(1, &distdrive) :
+	(tr) ? tree(1, &destdrive) :
 # endif
 #endif	/* !_NOTREE */
-	getdistdir(COPYD_K, arg);
+	getdestdir(COPYD_K, arg);
 
 	if (!destpath) return((tr) ? 2 : 1);
 	copypolicy = (iscurdir(destpath)) ? 2 : 0;
@@ -384,7 +390,7 @@ int tr;
 		warning(-1, list[filepos].name);
 	free(destpath);
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	if (distdrive >= 0) shutdrv(distdrive);
+	if (destdrive >= 0) shutdrv(destdrive);
 #endif
 	return(4);
 }
@@ -405,10 +411,10 @@ int tr;
 # if	MSDOS || defined (_NODOSDRIVE)
 	(tr) ? tree(1, NULL) :
 # else
-	(tr) ? tree(1, &distdrive) :
+	(tr) ? tree(1, &destdrive) :
 # endif
 #endif	/* !_NOTREE */
-	getdistdir(MOVED_K, arg);
+	getdestdir(MOVED_K, arg);
 
 	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
 	copypolicy = 0;
@@ -419,7 +425,7 @@ int tr;
 	if (filepos >= max) filepos = max - 1;
 	free(destpath);
 #if	!MSDOS && !defined (_NODOSDRIVE)
-	if (distdrive >= 0) shutdrv(distdrive);
+	if (destdrive >= 0) shutdrv(destdrive);
 #endif
 	return(4);
 }

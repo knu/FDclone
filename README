@@ -54,11 +54,14 @@ mkmfsed.c	メイクファイル加工用の sed スクリプト生成プログラム
 kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
-mkmfsedg.sed	djgpp 向けメイクファイル加工用スクリプト
+mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
+mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
 mkmfdosl.sed	LSI-C 向けメイクファイル加工用スクリプト
 
-makefile.gpc	DOS/V 用 djgpp 版メイクファイル
-makefile.g98	PC-9801 用 djgpp 版メイクファイル
+makefile.gpc	DOS/V 用 djgpp v1.xx 版メイクファイル
+makefile.g98	PC-9801 用 djgpp v1.xx 版メイクファイル
+makefile.dpc	DOS/V 用 djgpp v2.xx 版メイクファイル
+makefile.d98	PC-9801 用 djgpp v2.xx 版メイクファイル
 makefile.lpc	DOS/V 用 LSI-C 版メイクファイル
 makefile.l98	PC-9801 用 LSI-C 版メイクファイル
 

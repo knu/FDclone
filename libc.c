@@ -4,14 +4,12 @@
  *	Arrangememt of Library Function
  */
 
+#include <fcntl.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "kanji.h"
-
-#include <fcntl.h>
-#include <sys/stat.h>
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -243,8 +241,13 @@ char *path, *resolved;
 	}
 
 #if	MSDOS
+# if	defined (DJGPP) && (DJGPP >= 2)
+	if (tmp != path) strcpy(tmp, path);
+	adjustfname(tmp);
+	path = tmp;
+# endif
 	drv = dospath("", NULL);
-	if (resolved[0] = toupper2(_dospath(path))) path += 2;
+	if (resolved[0] = _dospath(path)) path += 2;
 	if (*path == _SC_) {
 		if (!resolved[0]) resolved[0] = drv;
 		resolved[1] = ':';
@@ -258,7 +261,7 @@ char *path, *resolved;
 	}
 #else	/* !MSDOS */
 	if (*path == _SC_) strcpy(resolved, _SS_);
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 	else if (drv = _dospath(path)) {
 		path += 2;
 		resolved[0] = drv;
@@ -266,7 +269,7 @@ char *path, *resolved;
 		resolved[2] = _SC_;
 		resolved[3] = '\0';
 	}
-#endif
+# endif
 #endif	/* !MSDOS */
 	else if (resolved != fullpath) strcpy(resolved, fullpath);
 	return(_realpath2(path, resolved));
@@ -329,7 +332,6 @@ char *path;
 		unixpath = NULL;
 	}
 #endif
-
 	if (getenv("PWD")) {
 #ifdef	USESETENV
 		setenv("PWD", fullpath, 1);
@@ -342,6 +344,7 @@ char *path;
 #if	MSDOS
 	dospath(fullpath, fullpath);
 #endif
+	entryhist(1, fullpath, 1);
 	return(0);
 }
 
@@ -458,7 +461,7 @@ int i, *max, size;
 int toupper2(c)
 int c;
 {
-	return(islower(c) ? c - 'a' + 'A' : c);
+	return((c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c);
 }
 
 char *strchr2(s, c)
@@ -641,6 +644,7 @@ char *name;
 	return(strncmp(name, "FD_", 3) ? NULL : (char *)getenv(name + 3));
 }
 
+/*ARGSUSED*/
 int printenv(argc, argv, comline)
 int argc;
 char *argv[];
@@ -649,6 +653,7 @@ int comline;
 	assoclist *ap;
 	int n;
 
+	if (argc >= 3) return(-1);
 	if (!comline) return(0);
 	n = 1;
 	if (argc <= 1) for (ap = environ2, n = 0; ap; ap = ap -> next) {
@@ -728,6 +733,7 @@ uid_t uid;
 		maxuid++;
 		return(uidlist[i].str);
 	}
+	return(NULL);
 }
 
 char *getgrgid2(gid)
@@ -771,9 +777,9 @@ struct tm *tm1, *tm2;
 }
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long gettimezone(tm, time)
+static long gettimezone(tm, t)
 struct tm *tm;
-time_t time;
+time_t t;
 {
 #if	MSDOS
 	struct timeb buffer;
@@ -800,7 +806,7 @@ time_t time;
 	gettimeofday(&t_val, &t_zone);
 	tz = t_zone.tz_minuteswest * 60L;
 #else
-	tz = -(localtime(&time) -> tm_gmtoff);
+	tz = -(localtime(&t) -> tm_gmtoff);
 #endif
 
 #ifndef	NOTZFILEH
@@ -896,40 +902,40 @@ struct tm *tm;
 # ifdef	USETIMELOCAL
 	return(timelocal(tm));
 # else
-	time_t date, time;
-	int i, year;
+	time_t d, t;
+	int i, y;
 
-	year = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
+	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
 
-	date = (year - 1970) * 365;
-	date += ((year - 1 - 1968) / 4)
-		- ((year - 1 - 1900) / 100)
-		+ ((year - 1 - 1600) / 400);
+	d = (y - 1970) * 365;
+	d += ((y - 1 - 1968) / 4)
+		- ((y - 1 - 1900) / 100)
+		+ ((y - 1 - 1600) / 400);
 	for (i = 1; i < tm -> tm_mon + 1; i++) {
 		switch (i) {
 			case 2:
-				if (!(year % 4)
-				&& ((year % 100)
-				|| !(year % 400))) date++;
-				date += 28;
+				if (!(y % 4)
+				&& ((y % 100)
+				|| !(y % 400))) d++;
+				d += 28;
 				break;
 			case 4:
 			case 6:
 			case 9:
 			case 11:
-				date += 30;
+				d += 30;
 				break;
 			default:
-				date += 31;
+				d += 31;
 				break;
 		}
 	}
-	date += tm -> tm_mday - 1;
-	time = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
-	time += date * 60 * 60 * 24;
-	time += gettimezone(tm, time);
+	d += tm -> tm_mday - 1;
+	t = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
+	t += d * 60 * 60 * 24;
+	t += gettimezone(tm, t);
 
-	return(time);
+	return(t);
 # endif
 #endif
 }

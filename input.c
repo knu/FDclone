@@ -4,13 +4,12 @@
  *	Input Module
  */
 
+#include <signal.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "kanji.h"
-
-#include <signal.h>
 
 #if	MSDOS
 #include <stdarg.h>
@@ -19,7 +18,8 @@
 #include <varargs.h>
 #endif
 
-extern char **sh_history;
+extern char **history[];
+extern short histsize[];
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 #endif
@@ -536,6 +536,7 @@ int max;
 		for (i = 0; i < max; i++) {
 			memset(&selectlist[i], 0, sizeof(namelist));
 			selectlist[i].name = strdup2(strs);
+			selectlist[i].flags = (F_ISRED | F_ISWRI);
 			len = strlen(strs);
 			if (maxlen < len) maxlen = len;
 			strs += len + 1;
@@ -560,7 +561,9 @@ int max;
 	}
 	else {
 		columns = tmpcolumns;
-		if (tmpfilepos >= maxselect) tmpfilepos = 0;
+		if (tmpfilepos >= maxselect) tmpfilepos %= (tmpfilepos - max);
+		else if (tmpfilepos < 0) tmpfilepos = maxselect - 1
+			- ((maxselect - 1 - max) % (max - tmpfilepos));
 		if (max / FILEPERPAGE != tmpfilepos / FILEPERPAGE)
 			tmpfilepos = listupfile(selectlist, maxselect,
 				selectlist[tmpfilepos].name);
@@ -582,9 +585,7 @@ int x, cx, len, linemax, max, comline, cont;
 	int i, ins;
 
 	if (selectlist && cont > 0) {
-		i = tmpfilepos;
-		tmpfilepos++;
-		selectfile(NULL, i);
+		selectfile(NULL, tmpfilepos++);
 		locate(x + cx % linemax, LCMDLINE + cx / linemax);
 		return(0);
 	}
@@ -651,15 +652,22 @@ int x, cx, len, linemax, max, comline, cont;
 }
 #endif	/* !_NOCOMPLETE */
 
-static int _inputstr_up(str, x, cx, lenp, max, linemax, histnop, hist, tmp)
+static int _inputstr_up(str, x, cx, lenp, max, linemax, histnop, h, tmp)
 char *str;
-int x, cx, *lenp, max, linemax, *histnop;
-char *hist[], **tmp;
+int x, cx, *lenp, max, linemax, *histnop, h;
+char **tmp;
 {
 	keyflush();
+#ifndef	_NOCOMPLETE
+	if (selectlist) {
+		selectfile(NULL, tmpfilepos--);
+		locate(x + cx % linemax, LCMDLINE + cx / linemax);
+	}
+	else
+#endif
 	if (cx < linemax) {
-		if (!hist || *histnop >= (int)(hist[0])
-		|| !hist[*histnop + 2]) {
+		if (h < 0 || *histnop >= histsize[h]
+		|| !history[h][*histnop]) {
 			putterm(t_bell);
 			return(cx);
 		}
@@ -667,7 +675,7 @@ char *hist[], **tmp;
 			str[*lenp] = '\0';
 			*tmp = strdup2(str);
 		}
-		strcpy(str, hist[*histnop + 2]);
+		strcpy(str, history[h][*histnop]);
 		*lenp = strlen(str);
 		cx = *lenp;
 		displaystr(str, x, cx, *lenp, max, linemax);
@@ -684,18 +692,25 @@ char *hist[], **tmp;
 	return(cx);
 }
 
-static int _inputstr_down(str, x, cx, lenp, max, linemax, histnop, hist, tmp)
+static int _inputstr_down(str, x, cx, lenp, max, linemax, histnop, h, tmp)
 char *str;
-int x, cx, *lenp, max, linemax, *histnop;
-char *hist[], **tmp;
+int x, cx, *lenp, max, linemax, *histnop, h;
+char **tmp;
 {
 	keyflush();
+#ifndef	_NOCOMPLETE
+	if (selectlist) {
+		selectfile(NULL, tmpfilepos++);
+		locate(x + cx % linemax, LCMDLINE + cx / linemax);
+	}
+	else
+#endif
 	if (cx + linemax > *lenp) {
-		if (!hist || *histnop <= 0) {
+		if (h < 0 || *histnop <= 0) {
 			putterm(t_bell);
 			return(cx);
 		}
-		if (--(*histnop) > 0) strcpy(str, hist[*histnop + 1]);
+		if (--(*histnop) > 0) strcpy(str, history[h][*histnop - 1]);
 		else {
 			strcpy(str, *tmp);
 			free(*tmp);
@@ -767,13 +782,12 @@ int x, cx, *lenp, max, linemax, ch;
 }
 
 
-static int _inputstr(str, x, max, linemax, def, comline, hist)
+static int _inputstr(str, x, max, linemax, def, comline, h)
 char *str;
-int x, max, linemax, def, comline;
-char *hist[];
+int x, max, linemax, def, comline, h;
 {
 	char *tmphist;
-	int len, cx, i, histno, ch, ch2, quote;
+	int len, cx, i, hist, ch, ch2, quote;
 
 	subwindow = 1;
 #ifndef	_NOEDITMODE
@@ -787,7 +801,7 @@ char *hist[];
 	}
 	displaystr(str, x, cx, len, max, linemax);
 	keyflush();
-	histno = 0;
+	hist = 0;
 	tmphist = NULL;
 	quote = 0;
 	ch = -1;
@@ -830,12 +844,32 @@ char *hist[];
 		switch (ch) {
 			case K_RIGHT:
 				keyflush();
+#ifndef	_NOCOMPLETE
+				if (selectlist) {
+					i = tmpfilepos;
+					tmpfilepos += FILEPERLOW;
+					selectfile(NULL, i);
+					locate(x + cx % linemax,
+						LCMDLINE + cx / linemax);
+				}
+				else
+#endif
 				if (cx >= len) putterm(t_bell);
 				else cx = rightchar(str, x, cx,
 					len, linemax, max);
 				break;
 			case K_LEFT:
 				keyflush();
+#ifndef	_NOCOMPLETE
+				if (selectlist) {
+					i = tmpfilepos;
+					tmpfilepos -= FILEPERLOW;
+					selectfile(NULL, i);
+					locate(x + cx % linemax,
+						LCMDLINE + cx / linemax);
+				}
+				else
+#endif
 				if (cx <= 0) putterm(t_bell);
 				else cx = leftchar(str, x, cx,
 					len, linemax, max);
@@ -899,11 +933,11 @@ char *hist[];
 				break;
 			case K_UP:
 				cx = _inputstr_up(str, x, cx, &len,
-					max, linemax, &histno, hist, &tmphist);
+					max, linemax, &hist, h, &tmphist);
 				break;
 			case K_DOWN:
 				cx = _inputstr_down(str, x, cx, &len,
-					max, linemax, &histno, hist, &tmphist);
+					max, linemax, &hist, h, &tmphist);
 				break;
 			case K_IL:
 				keyflush();
@@ -922,6 +956,10 @@ char *hist[];
 #ifndef	_NOCOMPLETE
 			case '\t':
 				keyflush();
+				if (selectlist) {
+					putterm(t_bell);
+					break;
+				}
 				i = completestr(str, x, cx, len, linemax, max,
 					comline, (ch2 == ch) ? 1 : 0);
 				cx += i;
@@ -952,7 +990,9 @@ char *hist[];
 				break;
 		}
 #ifndef	_NOCOMPLETE
-		if (selectlist && ch != '\t') {
+		if (selectlist && ch != '\t'
+		&& ch != K_RIGHT && ch != K_LEFT
+		&& ch != K_UP && ch != K_DOWN) {
 			selectfile(NULL, -1);
 #ifndef	_NOARCHIVE
 			if (archivefile) rewritearc(0);
@@ -977,10 +1017,11 @@ char *hist[];
 	return(ch);
 }
 
-char *inputstr(prompt, delsp, ptr, def, hist)
+char *inputstr(prompt, delsp, ptr, def, h)
 char *prompt;
 int delsp, ptr;
-char *def, **hist[];
+char *def;
+int h;
 {
 	char *dupl, input[MAXLINESTR + 1];
 	int i, j, len, ch;
@@ -1003,7 +1044,7 @@ char *def, **hist[];
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
 	ch = _inputstr(input, len + 1, i, n_column - len - 1,
-		ptr, hist == &sh_history, (hist) ? *hist : NULL);
+		ptr, h == 0, h);
 	for (i = 0; i < WCMDLINE; i++) {
 		locate(0, LCMDLINE + i);
 		putterm(l_clear);
@@ -1016,7 +1057,7 @@ char *def, **hist[];
 		for (len--; len > 0 && input[len - 1] == ' '; len--);
 		input[len] = '\0';
 	}
-	if (hist) *hist = entryhist(*hist, input);
+	if (h == 0) entryhist(h, input, 0);
 	tflush();
 	dupl = (char *)malloc2(len + 1);
 	for (i = 0, j = 0; input[i]; i++, j++) {
@@ -1226,7 +1267,7 @@ int val[];
 #endif
 	xx[0] = 0;
 	for (i = 0; i < max; i++) {
-		initial[i] = (isupper(*str[i])) ? *str[i] : -1;
+		initial[i] = (*str[i] >= 'A' && *str[i] <= 'Z') ? *str[i] : -1;
 		xx[i + 1] = xx[i] + strlen(str[i]) + 1;
 	}
 	new = selectmes(*num, max, x, str, val, xx);

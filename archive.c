@@ -4,6 +4,8 @@
  *	Archive File Access Module
  */
 
+#include <signal.h>
+#include <ctype.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
@@ -11,10 +13,6 @@
 #include "kanji.h"
 
 #ifndef	_NOARCHIVE
-
-#include <signal.h>
-#include <ctype.h>
-#include <sys/stat.h>
 
 #ifdef	USETIMEH
 #include <time.h>
@@ -792,7 +790,7 @@ int tr;
 #endif	/* !_NOTREE */
 		{
 			if (arg && *arg) dir = strdup2(arg);
-			else dir = inputstr(UNPAC_K, 0, -1, NULL, NULL);
+			else dir = inputstr(UNPAC_K, 1, -1, NULL, 1);
 			dir = evalpath(dir);
 		}
 		if (!dir) return(0);
@@ -811,7 +809,7 @@ int tr;
 		return(0);
 	}
 #endif
-	if (_chdir2(path) < 0) {
+	if (preparedir(path) < 0 || _chdir2(path) < 0) {
 		warning(-1, path);
 		return(0);
 	}

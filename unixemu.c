@@ -4,11 +4,9 @@
  *	UNIX Function Emulation on DOS
  */
 
+#include <fcntl.h>
 #include "fd.h"
 #include "func.h"
-
-#include <fcntl.h>
-
 #include "unixdisk.h"
 
 extern char *deftmpdir;
@@ -171,6 +169,7 @@ int mode;
 	return(0);
 }
 
+/*ARGSUSED*/
 int Xsymlink(name1, name2)
 char *name1, *name2;
 {
@@ -178,6 +177,7 @@ char *name1, *name2;
 	return(-1);
 }
 
+/*ARGSUSED*/
 int Xreadlink(path, buf, bufsiz)
 char *path, *buf;
 int bufsiz;
