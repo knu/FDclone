@@ -676,6 +676,9 @@ char *arg;
 static int log_dir(arg)
 char *arg;
 {
+#ifndef	_NOARCHIVE
+	char *cp, dupfullpath[MAXPATHLEN];
+#endif
 	char *path;
 
 	if (arg && *arg) path = strdup2(arg);
@@ -684,12 +687,32 @@ char *arg;
 		free(path);
 		return(1);
 	}
+#ifndef	_NOARCHIVE
+	if (archivefile && *path != '/') {
+		if (!(cp = archchdir(path))) {
+			warning(-1, path);
+			free(path);
+			return(1);
+		}
+		free(path);
+		filelist[filepos].name = cp;
+		return(4);
+	}
+	else
+#endif
 	if (chdir3(path) < 0) {
 		warning(-1, path);
 		free(path);
 		return(1);
 	}
 	free(path);
+#ifndef	_NOARCHIVE
+	if (archivefile) {
+		strcpy(dupfullpath, fullpath);
+		while (archivefile) poparchdupl();
+		strcpy(fullpath, dupfullpath);
+	}
+#endif
 	replacefname(NULL);
 	return(4);
 }
@@ -1327,27 +1350,20 @@ char *arg;
 static int pack_file(arg)
 char *arg;
 {
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
-	char *dir;
-#endif
+	char *dir, *file;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
-	char *file;
 	int ret;
 
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	dir = NULL;
-#endif
 #ifndef	_NODOSDRIVE
 	drive = 0;
 #endif
 	if (arg && *arg) file = strdup2(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
 	|| !*(file = evalpath(file, 1))
-#ifndef	_NOARCHIVE
 	|| (archivefile && !(dir = tmpunpack(0)))
-#endif
 #ifndef	_NODOSDRIVE
 	|| (drive = tmpdosdupl("", &dir, 0)) < 0
 #endif
@@ -1358,11 +1374,7 @@ char *arg;
 	if (drive) removetmp(dir, NULL, "");
 	else
 #endif
-#ifndef	_NOARCHIVE
 	if (archivefile) removetmp(dir, archivedir, "");
-	else
-#endif
-	;
 
 	free(file);
 	if (ret < 0) {
@@ -1378,8 +1390,8 @@ char *arg;
 {
 	int ret;
 
-	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	if (archivefile) ret = unpack(archivefile, NULL, arg, 0, 0);
+	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 #if	MSDOS || defined (_NODOSDRIVE)
 		ret = unpack(filelist[filepos].name, NULL, arg, 0, 1);
@@ -1401,8 +1413,8 @@ char *arg;
 {
 	int ret;
 
-	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	if (archivefile) ret = unpack(archivefile, NULL, NULL, 1, 0);
+	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 #if	MSDOS || defined (_NODOSDRIVE)
 		ret = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
@@ -1505,18 +1517,13 @@ char *arg;
 static int backup_tape(arg)
 char *arg;
 {
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
-	char *dir;
-#endif
+	char *dir, *dev;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
-	char *dev;
 	int ret;
 
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	dir = NULL;
-#endif
 #ifndef	_NODOSDRIVE
 	drive = 0;
 #endif
@@ -1527,9 +1534,7 @@ char *arg;
 	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))
 #endif
 	|| !*(dev = evalpath(dev, 1))
-#ifndef	_NOARCHIVE
 	|| (archivefile && !(dir = tmpunpack(0)))
-#endif
 #ifndef	_NODOSDRIVE
 	|| (drive = tmpdosdupl("", &dir, 0)) < 0
 #endif
@@ -1540,11 +1545,7 @@ char *arg;
 	if (drive) removetmp(dir, NULL, "");
 	else
 #endif
-#ifndef	_NOARCHIVE
 	if (archivefile) removetmp(dir, archivedir, "");
-	else
-#endif
-	;
 
 	free(dev);
 	if (ret <= 0) return(1);

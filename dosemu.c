@@ -33,9 +33,10 @@ char *noconvpath = NULL;
 #endif
 
 #ifndef	_NODOSDRIVE
-static char pseudocwd[MAXPATHLEN] = "";
 int lastdrv = -1;
 int dosdrive = 0;
+
+static char pseudocwd[MAXPATHLEN] = "";
 
 
 int _dospath(path)

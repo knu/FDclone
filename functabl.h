@@ -54,7 +54,7 @@ functable funclist[] = {
 	_TBL_(reread_dir,	"REREAD_DIR",	READ_H,	000110000),
 	_TBL_(push_file,	"PUSH_FILE",	PUSH_H,	000010110),
 	_TBL_(pop_file,		"POP_FILE",	POP_H,	000010110),
-	_TBL_(log_dir,		"LOG_DIR",	LOGD_H,	001101000),
+	_TBL_(log_dir,		"LOG_DIR",	LOGD_H,	001111000),
 	_TBL_(attr_file,	"ATTR_FILE",	ATTR_H,	001001110),
 	_TBL_(execute_file,	"EXECUTE_FILE",	EXEF_H,	000011111),
 	_TBL_(info_filesys,	"INFO_FILESYS",	INFO_H,	000110010),

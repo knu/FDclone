@@ -18,8 +18,10 @@ extern u_char _openfile[];
 
 #ifndef	_NODOSDRIVE
 static int NEAR checkpath __P_((char *, char *));
+
 int lastdrv = -1;
 #endif
+
 
 int _dospath(path)
 char *path;

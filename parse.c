@@ -95,6 +95,7 @@ strtable keyidentlist[] = {
 	{0,		NULL}
 };
 #define	KEYIDENTSIZ	((int)(sizeof(keyidentlist) / sizeof(strtable)) - 1)
+
 static char escapechar[] = "abefnrtv";
 static char escapevalue[] = {0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b};
 

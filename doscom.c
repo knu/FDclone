@@ -227,19 +227,6 @@ struct filestat_t {
 	time_t mtim;
 	time_t atim;
 };
-static char dirsort[sizeof("NSEDGA")] = "";
-static char dirattr[sizeof("DRHSA")] = "";
-static int dirtype = '\0';
-static int dirflag = 0;
-#define	DF_LOWER	001
-#define	DF_PAUSE	002
-#define	DF_SUBDIR	004
-static int copyflag = 0;
-#define	CF_BINARY	001
-#define	CF_TEXT		002
-#define	CF_VERIFY	004
-#define	CF_NOCONFIRM	010
-#define	CF_VERBOSE	020
 
 #ifndef	O_BINARY
 #define	O_BINARY	0
@@ -290,6 +277,20 @@ static char *doserrstr[] = {
 	"File cannot be copied onto itself",
 };
 #define	DOSERRSIZ	((int)(sizeof(doserrstr) / sizeof(char *)))
+
+static char dirsort[sizeof("NSEDGA")] = "";
+static char dirattr[sizeof("DRHSA")] = "";
+static int dirtype = '\0';
+static int dirflag = 0;
+#define	DF_LOWER	001
+#define	DF_PAUSE	002
+#define	DF_SUBDIR	004
+static int copyflag = 0;
+#define	CF_BINARY	001
+#define	CF_TEXT		002
+#define	CF_VERIFY	004
+#define	CF_NOCONFIRM	010
+#define	CF_VERBOSE	020
 
 
 #ifndef	FD

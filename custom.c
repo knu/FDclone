@@ -227,6 +227,10 @@ static VOID NEAR movecust __P_((int, int));
 static int NEAR editcust __P_((VOID_A));
 #endif	/* !_NOCUSTOMIZE */
 
+#ifndef	_NOCUSTOMIZE
+int custno = -1;
+#endif
+
 static envtable envlist[] = {
 	{"FD_SORTTYPE", &sorttype, (char *)SORTTYPE, STTP_E, T_SORT},
 	{"FD_DISPLAYMODE", &displaymode, (char *)DISPLAYMODE, DPMD_E, T_DISP},
@@ -309,8 +313,8 @@ static envtable envlist[] = {
 #endif	/* !MSDOS && !_NOKANJIFCONV */
 };
 #define	ENVLISTSIZ	((int)(sizeof(envlist) / sizeof(envtable)))
+
 #ifndef	_NOCUSTOMIZE
-int custno = -1;
 # if	!MSDOS && !defined (_NODOSDRIVE)
 static devinfo mediadescr[] = {
 	{0xf0, "2HD(PC/AT)", 2, 18, 80},

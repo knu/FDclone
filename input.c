@@ -1010,6 +1010,9 @@ char **argv;
 			for (i = 0; i < argc; i++) free(selectlist[i].name);
 			free(selectlist);
 			selectlist = NULL;
+			minfilename = dupminfilename;
+			curcolumns = dupcolumns;
+
 			return;
 		}
 
@@ -1085,10 +1088,6 @@ int cx, len, plen, max, linemax, comline, cont;
 		else if (s[i] == '=' || strchr(CMDLINE_DELIM, s[i]))
 			top = i + 1;
 	}
-	if (top == cx) {
-		putterm(t_bell);
-		return(0);
-	}
 	if (comline && top > 0) {
 		for (i = top - 1; i >= 0; i--)
 			if (s[i] != ' ' && s[i] != '\t') break;
@@ -1117,15 +1116,20 @@ int cx, len, plen, max, linemax, comline, cont;
 		argc = 0;
 		l = strlen(cp1);
 		if (comline && !strdelim(cp1, 1)) {
-#ifdef	_NOORIGSHELL
+# ifdef	_NOORIGSHELL
 			argc = completeuserfunc(cp1, l, argc, &argv);
 			argc = completealias(cp1, l, argc, &argv);
 			argc = completebuiltin(cp1, l, argc, &argv);
 			argc = completeinternal(cp1, l, argc, &argv);
-#else
+# else
 			argc = completeshellcomm(cp1, l, argc, &argv);
-#endif
+# endif
 		}
+# ifndef	_NOARCHIVE
+		if (archivefile && !comline && *cp1 != _SC_)
+			argc = completearch(cp1, l, argc, &argv);
+		else
+# endif
 		argc = completepath(cp1, l, argc, &argv, comline);
 		if (!argc && comline)
 			argc = completepath(cp1, l, argc, &argv, 0);

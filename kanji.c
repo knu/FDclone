@@ -112,6 +112,9 @@ int outputkcode = 0;
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 int fnamekcode = 0;
 #endif
+#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NODOSDRIVE)
+char *unitblpath = NULL;
+#endif
 #ifndef	LSI_C
 u_char kctypetable[256] = {
 	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,	/* 0x00 */
@@ -148,8 +151,8 @@ u_char kctypetable[256] = {
 	0013, 0013, 0013, 0013, 0013, 0010, 0010,    0
 };
 #endif	/* !LSI_C */
+
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NODOSDRIVE)
-char *unitblpath = NULL;
 static u_char *unitblbuf = NULL;
 static u_short unitblent = 0;
 static kconv_t rsjistable[] = {

@@ -143,6 +143,7 @@ static int NEAR dircmp __P_((char *, char *));
 static int NEAR dirmatchlen __P_((char *, char *));
 static char *NEAR pseudodir __P_((namelist *));
 static int NEAR readarchive __P_((char *, launchtable *));
+static char *NEAR searcharcdir __P_((char *, int));
 static char *NEAR genfullpath __P_((char *, char *));
 
 int maxlaunch = 0;
@@ -196,6 +197,29 @@ archivetable archivelist[MAXARCHIVETABLE] = {
 };
 char archivedir[MAXPATHLEN];
 
+#if	FD >= 2
+static char *autoformat[] = {
+# if	MSDOS
+	"%f\n%s %x %x %y-%m-%d %t",		/* LHa (-v) */
+	" %f %s %x %x %y-%m-%d %t",		/* LHa (-l) */
+	"%a %u/%g %s %m %d %t %y %f",		/* tar (traditional) */
+	"%a %u/%g %s %y-%m-%d %t %f",		/* tar (GNU 1.12<=) */
+	"%s %y-%m-%d %t %f",			/* zip */
+	"%s %x %x %x %y-%m-%d %t %f",		/* pkunzip */
+# else
+	"%9a %u/%g %s %m %d %t %y %f",		/* tar (traditional) */
+	"%a %u/%g %s %m %d %t %y %f",		/* tar (SVR4) */
+	"%a %u/%g %s %y-%m-%d %t %f",		/* tar (GNU 1.12<=) */
+	"%10a %u/%g %s %m %d %t %y %f",		/* tar (UXP/DS) */
+	"%9a %u/%g %s %x %m %d %{yt} %f",	/* LHa */
+	"%a %u/%g %s %x %m %d %{yt} %f",	/* LHa (1.14<=) */
+	"%a %x %u %g %s %m %d %{yt} %f",	/* pax */
+	"%s %m-%d-%y %t %f",			/* zip */
+# endif
+	"%s %x %x %d %m %x %t+ %f",		/* zoo */
+};
+#define	AUTOFORMATSIZ	((int)(sizeof(autoformat) / sizeof(char *)))
+#endif
 
 static VOID NEAR pusharchdupl(VOID_A)
 {
@@ -319,7 +343,7 @@ int skip;
 	tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
 
 	while (*form) if (strchr(IFS_SET, *form)) {
-		while (strchr(IFS_SET, *line)) line++;
+		while (*line && strchr(IFS_SET, *line)) line++;
 		form++;
 	}
 	else if (*form != '%') {
@@ -518,11 +542,15 @@ int skip;
 		}
 		free(buf);
 		line += len;
-		if (!ch) while (strchr(IFS_SET, *line)) line++;
+		if (!ch) while (*line && strchr(IFS_SET, *line)) line++;
 		form = next;
 	}
 
 	if (!(tmp -> name)) return((skip) ? -1 : 0);
+	else if (!*(tmp -> name)) {
+		free(tmp -> name);
+		return((skip) ? -1 : 0);
+	}
 
 	if ((tmp -> st_mode & S_IFMT) == S_IFDIR) tmp -> flags |= F_ISDIR;
 	else if ((tmp -> st_mode & S_IFMT) == S_IFLNK) tmp -> flags |= F_ISLNK;
@@ -986,12 +1014,20 @@ launchtable *list;
 		buf[len] = '\0';
 		len = 0;
 
-		c = readfileent(&tmp, buf, form, skip);
-		if (!c && !skip) {
-			do {
-				skip++;
-				c = readfileent(&tmp, buf, form, skip);
-			} while (!c);
+		if (!(c = readfileent(&tmp, buf, form, skip))) {
+			for (skip = 0; skip < AUTOFORMATSIZ; skip++) {
+				cp = autoformat[skip];
+				if ((c = readfileent(&tmp, buf, cp, 0)))
+					break;
+			}
+			if (skip < AUTOFORMATSIZ) {
+				free(form);
+				cp = form = strdup2(cp);
+				skip = 0;
+			}
+			else for (skip = 1; ; skip++)
+				if ((c = readfileent(&tmp, buf, form, skip)))
+					break;
 		}
 #else	/* FD < 2 */
 		if (++i < list -> lines) continue;
@@ -1100,38 +1136,150 @@ char *arcre;
 	}
 }
 
-int archchdir(file)
+static char *NEAR searcharcdir(file, flen)
 char *file;
+int flen;
 {
-	char *cp;
+	char *cp, *tmp;
+	int i, len;
+
+	errno = ENOENT;
+	for (i = 1; i < maxarcf; i++) {
+		if (!*archivedir) len = 0;
+		else if (!(len = dirmatchlen(archivedir, arcflist[i].name)))
+			continue;
+
+		cp = arcflist[i].name + len;
+		if (len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
+		if (!arcflist[i].name[len]) {
+			if (file) continue;
+		}
+		else {
+			if (!file) continue;
+			if (!(tmp = strdelim(cp, 0))) len = strlen(cp);
+			else {
+				len = (tmp == cp) ? 1 : tmp - cp;
+				while (*(++tmp) == _SC_);
+			}
+			if ((tmp && *tmp) || len != flen
+			|| strnpathcmp(file, cp, flen))
+				continue;
+			if (!isdir(&(arcflist[i]))) {
+				errno = ENOTDIR;
+				continue;
+			}
+		}
+		return(arcflist[i].name);
+	}
+	return(NULL);
+}
+
+char *archchdir(path)
+char *path;
+{
+	char *cp, *file, duparcdir[MAXPATHLEN];
+	int len;
 
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
-	if (filepos >= 0 && strcmp(filelist[filepos].name, "..")) {
-		if (*(cp = archivedir)) {
-			if (*cp == _SC_ && !*(cp + 1)) cp++;
-			else cp = strcatdelim(archivedir);
+	if (!path || !*path) path = "..";
+	strcpy(duparcdir, archivedir);
+	do {
+		if (*path == _SC_) len = 1;
+		else if ((cp = strdelim(path, 0))) len = cp - path;
+		else len = strlen(path);
+		if (strncmp(path, "..", len)) {
+			if (!searcharcdir(path, len)) {
+				strcpy(archivedir, duparcdir);
+				return(NULL);
+			}
+			if (*(cp = archivedir)) cp = strcatdelim(archivedir);
+			strncpy2(cp, path, len);
+			file = "..";
 		}
-		strcpy(cp, filelist[filepos].name);
-		*file = '\0';
-	}
-	else if (!*archivedir) return(-1);
-	else {
-		cp = archivedir + (int)strlen(archivedir) - 1;
-		while (cp > archivedir && *cp == _SC_) cp--;
-#if	MSDOS
-		if (onkanji1(archivedir, cp - archivedir)) cp++;
-#endif
-		cp = strrdelim2(archivedir, cp);
-		if (cp) strcpy(file, cp + 1);
+		else if (!*archivedir) return((char *)-1);
 		else {
-			strcpy(file, archivedir);
-			cp = archivedir;
+			if (!(file = searcharcdir(NULL, 0))) {
+				strcpy(archivedir, duparcdir);
+				return(NULL);
+			}
+			cp = file + (int)strlen(file) - 1;
+			while (cp > file && *cp == _SC_) cp--;
+#if	MSDOS
+			if (onkanji1(file, cp - file)) cp++;
+#endif
+			cp = strrdelim2(file, cp);
+			if (!cp) *archivedir = '\0';
+			else {
+				if (cp == file) strcpy(archivedir, _SS_);
+				else strncpy2(archivedir, file, cp - file);
+				file = cp + 1;
+			}
 		}
-		*cp = '\0';
-	}
-	return(0);
+		path += len;
+		while (*path == _SC_) path++;
+	} while (*path);
+
+	return(file);
 }
+
+#ifndef	_NOCOMPLETE
+int completearch(path, flen, argc, argvp)
+char *path;
+int flen, argc;
+char ***argvp;
+{
+	char *cp, *tmp, *new, *file, dir[MAXPATHLEN], duparcdir[MAXPATHLEN];
+	int i, len;
+
+#if	MSDOS || !defined (_NODOSDRIVE)
+	if (_dospath(path)) return(argc);
+#endif
+
+	strcpy(duparcdir, archivedir);
+	if (!(file = strrdelim(path, 0))) file = path;
+	else {
+		strncpy2(dir, path, (file == path) ? 1 : file - path);
+		if (!(cp = archchdir(dir)) || cp == (char *)-1) {
+			strcpy(archivedir, duparcdir);
+			return(argc);
+		}
+		flen -= ++file - path;
+	}
+
+        for (i = 1; i < maxarcf; i++) {
+		if (!*archivedir) len = 0;
+		else if (!(len = dirmatchlen(archivedir, arcflist[i].name)))
+			continue;
+
+		cp = arcflist[i].name + len;
+		if (len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
+		if (!arcflist[i].name[len]) continue;
+
+		if (!(tmp = strdelim(cp, 0))) len = strlen(cp);
+		else {
+			len = (tmp == cp) ? 1 : tmp - cp;
+			while (*(++tmp) == _SC_);
+		}
+		if ((tmp && *tmp) || strnpathcmp(file, cp, flen)) continue;
+
+		new = malloc2(len + 1 + 1);
+		strncpy(new, cp, len);
+		if (isdir(&(arcflist[i]))) new[len++] = _SC_;
+		new[len] = '\0';
+		if (finddupl(new, argc, *argvp)) {
+			free(new);
+			continue;
+		}
+
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 1) * sizeof(char *));
+		(*argvp)[argc++] = new;
+	}
+	strcpy(archivedir, duparcdir);
+	return(argc);
+}
+#endif	/* !_NOCOMPLETE */
 
 int launcher(VOID_A)
 {

@@ -224,9 +224,6 @@ static int NEAR evalhome __P_((char **, int, char **));
 			(((n) + 1 < (size)) \
 			? (ptr) : realloc2(ptr, (size) *= 2))
 
-static int skipdotfile = 0;
-static char *wildsymbol1 = "?";
-static char *wildsymbol2 = "*";
 #ifndef	_NOUSEHASH
 hashlist **hashtable = NULL;
 #endif
@@ -242,10 +239,6 @@ VOID (*exitfunc)__P_((VOID_A)) = NULL;
 char *(*backquotefunc)__P_((char *)) = NULL;
 #if	!MSDOS
 int pathignorecase = 0;
-static uidtable *uidlist = NULL;
-static int maxuid = 0;
-static gidtable *gidlist = NULL;
-static int maxgid = 0;
 #endif	/* !MSDOS */
 #ifndef	LSI_C
 u_char uppercase[256] = {
@@ -355,6 +348,16 @@ u_char kctypetable[256] = {
 };
 # endif	/* FD || FDSH */
 #endif	/* !LSI_C */
+
+static int skipdotfile = 0;
+static char *wildsymbol1 = "?";
+static char *wildsymbol2 = "*";
+#if	!MSDOS
+static uidtable *uidlist = NULL;
+static int maxuid = 0;
+static gidtable *gidlist = NULL;
+static int maxgid = 0;
+#endif	/* !MSDOS */
 
 
 #ifndef	FD

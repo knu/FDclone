@@ -302,6 +302,7 @@ static char *keystrlist[] = {
 	"Bs", "Tab", "Ret", "Esc"
 };
 
+
 static int NEAR code2str(buf, code)
 char *buf;
 int code;

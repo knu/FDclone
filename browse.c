@@ -122,30 +122,34 @@ u_long flaglist[] = {
 };
 #endif
 winvartable winvar[MAXWINDOWS];
+#ifndef	_NOCOLOR
+int ansicolor = 0;
+#endif
+#ifndef	_NOPRECEDE
+char *precedepath = NULL;
+#endif
 #ifndef	_NOSPLITWIN
 int windows = WINDOWS;
 int win = 0;
 #endif
+int calc_x = -1;
+int calc_y = -1;
 
 static u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO
 };
 static char suffixlist[] = "/@=|";
 #ifndef	_NOCOLOR
-int ansicolor = 0;
 static u_char colorlist[] = {
 	ANSI_CYAN, ANSI_YELLOW, ANSI_MAGENTA, ANSI_RED
 };
 #endif
 #ifndef	_NOPRECEDE
-char *precedepath = NULL;
 static int maxstat = 0;
 static int haste = 0;
 #endif
 static int search_x = -1;
 static int search_y = -1;
-int calc_x = -1;
-int calc_y = -1;
 
 
 static VOID NEAR pathbar(VOID_A)
@@ -1291,9 +1295,23 @@ char *file, *def;
 
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		if (no < 0 || (no > 4 && archchdir(file) < 0)) {
+		if (no < 0) {
 			poparchdupl();
 			strcpy(file, filelist[filepos].name);
+		}
+		else if (no > 4) {
+			char *tmp;
+
+			tmp = (filepos < 0) ? ".." : filelist[filepos].name;
+			if (!(cp = archchdir(tmp))) {
+				warning(-1, tmp);
+				strcpy(file, tmp);
+			}
+			else if (cp != (char *)-1) strcpy(file, cp);
+			else {
+				poparchdupl();
+				strcpy(file, filelist[filepos].name);
+			}
 		}
 		else if (no == 4) {
 			if (filepos < 0) *file = '\0';
@@ -1302,7 +1320,7 @@ char *file, *def;
 		no = 0;
 	}
 	else
-#endif
+#endif	/* !_NOARCHIVE */
 	if (no >= 4) {
 		no -= 4;
 		strcpy(file, filelist[filepos].name);

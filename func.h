@@ -478,7 +478,10 @@ extern char *detransfile __P_((char *, char *, int));
 extern VOID poparchdupl __P_((VOID_A));
 extern VOID archbar __P_((char *, char *));
 extern VOID copyarcf __P_((reg_t *, char *));
-extern int archchdir __P_((char *));
+extern char *archchdir __P_((char *));
+# ifndef	_NOCOMPLETE
+extern int completearch __P_((char *, int, int, char ***));
+# endif
 extern int launcher __P_((VOID_A));
 extern int pack __P_((char *));
 extern int unpack __P_((char *, char *, char *, int, int));

@@ -72,6 +72,7 @@ static long NEAR gettimezone __P_((struct tm *, time_t));
 #ifdef	_NOORIGSHELL
 char **environ2 = NULL;
 #endif
+
 static char *lastpath = NULL;
 #ifndef	_NODOSDRIVE
 static char *unixpath = NULL;

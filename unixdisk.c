@@ -100,10 +100,15 @@ static int NEAR putdostime __P_((u_short *, u_short *, time_t));
 
 #ifndef	_NODOSDRIVE
 int dosdrive = 0;
+#endif
+
+#ifndef	_NODOSDRIVE
 static drvinfo drvlist['Z' - 'A' + 1];
 static int maxdrive = -1;
 #endif
-
+static int dos7access = 0;
+#define	D7_DOSVER	017
+#define	D7_CAPITAL	020
 static u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
 };
@@ -148,9 +153,7 @@ static u_char int25bin[] = {
 };
 static int (far *doint25)__P_((VOID_A)) = NULL;
 #endif
-static int dos7access = 0;
-#define	D7_DOSVER	017
-#define	D7_CAPITAL	020
+
 #ifndef	LSI_C
 # ifdef	FD
 extern u_char uppercase[256];
