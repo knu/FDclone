@@ -18,6 +18,7 @@
 #if	MSDOS
 #include <dos.h>
 #include <io.h>
+#define	FR_CARRY	00001
 # ifdef	PC98
 # define	NOTUSEBIOS
 # else
@@ -125,18 +126,12 @@ typedef struct sgttyb	termioctl_t;
 extern int errno;
 #endif
 
+#include "printf.h"
 #include "term.h"
 
-#define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
 #define	BUFUNIT		16
 #define	GETSIZE		"\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
-#define	VF_PLUS		0001
-#define	VF_MINUS	0002
-#define	VF_SPACE	0004
-#define	VF_ZERO		0010
-#define	VF_LONG		0020
-#define	VF_UNSIGNED	0040
 #define	WINTERMNAME	"iris"
 #ifdef	USESTRERROR
 #define	strerror2		strerror
@@ -153,10 +148,14 @@ extern char *_mtrace_file;
 #endif
 
 #if	!MSDOS
+# if	defined (USETERMINFO) && defined (SVR4)
+typedef char	tputs_t;
+# else
+typedef int	tputs_t;
+# endif
 # ifdef	USETERMINFO
 # include <curses.h>
 # include <term.h>
-typedef char	tputs_t;
 # define	tgetnum2(s)		(s)
 # define	tgetflag2(s)		(s)
 # define	tgoto2(s, p1, p2)	tparm(s, p2, p1, \
@@ -262,7 +261,6 @@ typedef char	tputs_t;
 # define	TERM_at1		key_beg
 # define	TERM_at7		key_end
 # else	/* !USETERMINFO */
-typedef int	tputs_t;
 extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
@@ -448,11 +446,6 @@ static char *NEAR tstrdup __P_((char *));
 #endif
 static int NEAR defaultterm __P_((VOID_A));
 static int NEAR maxlocate __P_((int *, int *));
-static int NEAR getnum __P_((CONST char *, int *));
-static char *NEAR setchar __P_((int, char *, int *, int *));
-static char *NEAR setint __P_((long, int,
-		char *, int *, int *, int, int, int));
-static char *NEAR setstr __P_((char *, char *, int *, int *, int, int, int));
 #if	MSDOS
 # ifdef	USEVIDEOBIOS
 static int NEAR bioslocate __P_((int, int));
@@ -813,14 +806,19 @@ int opentty(VOID_A)
 static int NEAR newdup(fd)
 int fd;
 {
-	struct stat st;
+	__dpmi_regs reg;
 	int n;
 
 	if (fd < 0
 	|| fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO)
 		return(fd);
 
-	for (n = 20 - 1; n > fd; n--) if (fstat(n, &st) != 0) break;
+	for (n = 20 - 1; n > fd; n--) {
+		reg.x.ax = 0x4400;
+		reg.x.bx = (u_int)n;
+		intdos2(&reg);
+		if (reg.x.flags & FR_CARRY) break;
+	}
 	if (n <= fd || safe_dup2(fd, n) < 0) return(fd);
 	close(fd);
 	return(n);
@@ -1297,14 +1295,11 @@ char *mes;
 		tabs();
 	}
 	if (dumbterm <= 2) fputc('\007', stderr);
-	fputc('\n', stderr);
+	fputnl(stderr);
 	fputs(mes, stderr);
 
-	if (duperrno) {
-		fputs(": ", stderr);
-		fputs(strerror2(duperrno), stderr);
-	}
-	fputc('\n', stderr);
+	if (duperrno) fprintf2(stderr, ": %s", strerror2(duperrno));
+	fputnl(stderr);
 	inittty(1);
 	exit(2);
 /*NOTREACHED*/
@@ -1365,7 +1360,7 @@ static int NEAR defaultterm(VOID_A)
 #if	!MSDOS
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
 	for (i = 21; i <= 30; i++)
-		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) & 01000;
+		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | 01000;
 	for (i = 31; K_F(i) < K_DL; i++)
 		if (defkeyseq[K_F(i) - K_MIN]) keyseq[K_F(i) - K_MIN].code = i;
 	keyseq[K_F('?') - K_MIN].code = K_CR;
@@ -1482,284 +1477,6 @@ int *yp, *xp;
 }
 #endif	/* !MSDOS || !USEVIDEOBIOS */
 
-static int NEAR getnum(s, ptrp)
-CONST char *s;
-int *ptrp;
-{
-	int i, n;
-
-	i = *ptrp;
-	for (n = 0; isdigit(s[i]); i++) n = n * 10 + (s[i] - '0');
-	if (i <= *ptrp) n = -1;
-	*ptrp = i;
-	return(n);
-}
-
-static char *NEAR setchar(n, buf, ptrp, sizep)
-int n;
-char *buf;
-int *ptrp, *sizep;
-{
-	char *tmp;
-
-	if (*ptrp + 1 >= *sizep) {
-		*sizep += BUFUNIT;
-		if ((tmp = (char *)realloc(buf, *sizep))) buf = tmp;
-		else {
-			free(buf);
-			return(NULL);
-		}
-	}
-	buf[(*ptrp)++] = n;
-	return(buf);
-}
-
-static char *NEAR setint(n, base, buf, ptrp, sizep, flags, width, prec)
-long n;
-int base;
-char *buf;
-int *ptrp, *sizep, flags, width, prec;
-{
-	char num[MAXLONGWIDTH + 1];
-	u_long ul;
-	int i, len, sign, cap, bit;
-
-	cap = 0;
-	if (base >= 256) {
-		cap++;
-		base -= 256;
-	}
-
-	ul = (u_long)n;
-	bit = 0;
-	if (base != 10) {
-		sign = 0;
-		flags &= ~(VF_PLUS | VF_SPACE);
-		i = 1;
-		for (i = 1; i < base; i <<= 1) bit++;
-		base--;
-	}
-	else if (n >= 0 || (flags & VF_UNSIGNED))
-		sign = (flags & VF_PLUS) ? 1 : 0;
-	else {
-		sign = -1;
-		n = -n;
-	}
-	if (sign || (flags & VF_SPACE)) width--;
-	if ((flags & VF_ZERO) && prec < 0) prec = width;
-	len = 0;
-	while (len < sizeof(num) / sizeof(char)) {
-		if (!bit) i = (((flags & VF_UNSIGNED) ? ul : n) % base) + '0';
-		else if ((i = (ul & base)) < 10) i += '0';
-		else if (cap) i += 'A' - 10;
-		else i += 'a' - 10;
-
-		num[len++] = i;
-		if (bit) {
-			ul >>= bit;
-			if (!ul) break;
-		}
-		else if (flags & VF_UNSIGNED) {
-			ul /= base;
-			if (!ul) break;
-		}
-		else {
-			n /= base;
-			if (!n) break;
-		}
-	}
-	if (!(flags & VF_MINUS) && width >= 0 && len < width) {
-		while (len < width--) {
-			if (prec >= 0 && prec > width) break;
-			if (!(buf = setchar(' ', buf, ptrp, sizep)))
-				return(NULL);
-		}
-	}
-
-	i = '\0';
-	if (sign) i = (sign > 0) ? '+' : '-';
-	else if (flags & VF_SPACE) i = ' ';
-	if (i && !(buf = setchar(i, buf, ptrp, sizep))) return(NULL);
-
-	if (prec >= 0 && len < prec) {
-		while (len < prec--) {
-			width--;
-			if (!(buf = setchar('0', buf, ptrp, sizep)))
-				return(NULL);
-		}
-	}
-	for (i = 0; i < len; i++) {
-		if (!(buf = setchar(num[len - i - 1], buf, ptrp, sizep)))
-			return(NULL);
-	}
-
-	if (width >= 0) for (; i < width; i++) {
-		if (!(buf = setchar(' ', buf, ptrp, sizep))) return(NULL);
-	}
-
-	return(buf);
-}
-
-static char *NEAR setstr(s, buf, ptrp, sizep, flags, width, prec)
-char *s, *buf;
-int *ptrp, *sizep, flags, width, prec;
-{
-	int i, len;
-
-	if (s) {
-		len = strlen(s);
-		if (prec >= 0 && len > prec) len = prec;
-	}
-	else {
-		s = "(null)";
-		len = strlen(s);
-		if (prec >= 0 && len > prec) len = 0;
-	}
-
-	if (!(flags & VF_MINUS) && width >= 0 && len < width) {
-		while (len < width--) {
-			if (!(buf = setchar(' ', buf, ptrp, sizep)))
-				return(NULL);
-		}
-	}
-	for (i = 0; i < len; i++) {
-		if (!(buf = setchar(s[i], buf, ptrp, sizep)))
-			return(NULL);
-	}
-
-	if (width >= 0) for (; i < width; i++) {
-		if (!(buf = setchar(' ', buf, ptrp, sizep)))
-			return(NULL);
-	}
-
-	return(buf);
-}
-
-int vasprintf2(sp, fmt, args)
-char **sp;
-CONST char *fmt;
-va_list args;
-{
-	char *buf;
-	long l;
-	int i, j, base, size, flags, width, prec;
-
-	if (!(buf = (char *)malloc(size = BUFUNIT))) return(-1);
-	for (i = j = 0; fmt[i]; i++) {
-		if (fmt[i] != '%') {
-			if (!(buf = setchar(fmt[i], buf, &j, &size)))
-				return(-1);
-			continue;
-		}
-
-		i++;
-		flags = 0;
-		width = prec = -1;
-		for (;;) {
-			if (fmt[i] == '+') flags |= VF_PLUS;
-			else if (fmt[i] == '-') flags |= VF_MINUS;
-			else if (fmt[i] == ' ') flags |= VF_SPACE;
-			else if (fmt[i] == '0') flags |= VF_ZERO;
-			else break;
-
-			i++;
-		}
-
-		if (fmt[i] != '*') width = getnum(fmt, &i);
-		else {
-			i++;
-			width = (int)va_arg(args, int);
-		}
-		if (fmt[i] == '.') {
-			i++;
-			if (fmt[i] != '*') prec = getnum(fmt, &i);
-			else {
-				i++;
-				prec = va_arg(args, int);
-			}
-		}
-		if (fmt[i] == 'l') {
-			i++;
-			flags |= VF_LONG;
-		}
-
-		base = 0;
-		switch (fmt[i]) {
-			case 'd':
-				base = 10;
-				break;
-			case 's':
-				buf = setstr(va_arg(args, char *),
-					buf, &j, &size, flags, width, prec);
-				break;
-			case 'c':
-				buf = setchar(va_arg(args, int),
-					buf, &j, &size);
-				break;
-			case 'p':
-				flags |= VF_LONG;
-/*FALLTHRU*/
-			case 'x':
-				base = 16;
-				break;
-			case 'X':
-				base = 16 + 256;
-				break;
-			case 'o':
-				base = 8;
-				break;
-			case 'u':
-				flags |= VF_UNSIGNED;
-				base = 10;
-				break;
-			default:
-				buf = setchar(fmt[i], buf, &j, &size);
-				break;
-		}
-
-		if (base) {
-			if (flags & VF_LONG) l = va_arg(args, long);
-			else l = (long)va_arg(args, int);
-			buf = setint(l, base,
-				buf, &j, &size, flags, width, prec);
-		}
-
-		if (!buf) return(-1);
-	}
-	va_end(args);
-
-	buf[j] = '\0';
-	if (sp) *sp = buf;
-	else free(buf);
-	return(j);
-}
-
-#ifdef	USESTDARGH
-/*VARARGS2*/
-int asprintf2(char **sp, CONST char *fmt, ...)
-#else
-/*VARARGS2*/
-int asprintf2(sp, fmt, va_alist)
-char **sp;
-CONST char *fmt;
-va_dcl
-#endif
-{
-	va_list args;
-	int n;
-
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
-
-	n = vasprintf2(sp, fmt, args);
-	va_end(args);
-	if (n < 0) err2("malloc()");
-	return(n);
-}
-
 #if	MSDOS
 char *tparamstr(s, arg1, arg2)
 char *s;
@@ -1767,7 +1484,7 @@ int arg1, arg2;
 {
 	char *cp;
 
-	asprintf2(&cp, s, arg1, arg2);
+	if (asprintf2(&cp, s, arg1, arg2) < 0) err2("malloc()");
 	return(cp);
 }
 
@@ -1819,7 +1536,7 @@ int arg1, arg2;
 	for (i = j = n = 0; s[i]; i++) {
 		tmp = NULL;
 		if (s[i] != '%' || s[++i] == '%') {
-			if (!(buf = setchar(s[i], buf, &j, &size)))
+			if (!(buf = setchar(s[i], buf, &j, &size, 1)))
 				err2("realloc()");
 		}
 		else if (n >= 2) {
@@ -1828,23 +1545,29 @@ int arg1, arg2;
 		}
 		else switch (s[i]) {
 			case 'd':
-				asprintf2(&tmp, "%d", args[n++]);
+				if (asprintf2(&tmp, "%d", args[n++]) < 0)
+					err2("malloc()");
 				break;
 			case '2':
-				asprintf2(&tmp, "%02d", args[n++]);
+				if (asprintf2(&tmp, "%02d", args[n++]) < 0)
+					err2("malloc()");
 				break;
 			case '3':
-				asprintf2(&tmp, "%03d", args[n++]);
+				if (asprintf2(&tmp, "%03d", args[n++]) < 0)
+					err2("malloc()");
 				break;
 			case '.':
-				asprintf2(&tmp, "%c", args[n++]);
+				if (asprintf2(&tmp, "%c", args[n++]) < 0)
+					err2("malloc()");
 				break;
 			case '+':
 				if (!s[++i]) {
 					free(buf);
 					return(NULL);
 				}
-				asprintf2(&tmp, "%c", args[n++] + s[i]);
+				if (asprintf2(&tmp, "%c",
+				args[n++] + s[i]) < 0)
+					err2("malloc()");;
 				break;
 			case '>':
 				if (!s[++i] || !s[i + 1]) {
@@ -2008,9 +1731,16 @@ static int NEAR cmpkeyseq(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
-	if (!((keyseq_t *)vp1) -> str) return(-1);
-	if (!((keyseq_t *)vp2) -> str) return(1);
-	return(strcmp(((keyseq_t *)vp1) -> str, ((keyseq_t *)vp2) -> str));
+	keyseq_t *kp1, *kp2;
+	int n;
+
+	kp1 = (keyseq_t *)vp1;
+	kp2 = (keyseq_t *)vp2;
+	if (!(kp1 -> str)) return(-1);
+	if (!(kp2 -> str)) return(1);
+	n = (kp1 -> len < kp2 -> len) ? kp1 -> len : kp2 -> len;
+	if ((n = memcmp(kp1 -> str, kp2 -> str, n))) return(n);
+	return((int)(kp1 -> len) - (int)(kp2 -> len));
 }
 
 static int NEAR sortkeyseq(VOID_A)
@@ -2318,7 +2048,10 @@ int len;
 		keyseq[i].len = len;
 		break;
 	}
-	if (i > K_MAX - K_MIN) return(-1);
+	if (i > K_MAX - K_MIN) {
+		free(str);
+		return(-1);
+	}
 
 	if (str) {
 		for (i = 0; i <= K_MAX - K_MIN; i++) {
@@ -2338,17 +2071,20 @@ int len;
 	return(0);
 }
 
-char *getkeyseq(n, lenp)
-int n, *lenp;
+int getkeyseq(kp)
+keyseq_t *kp;
 {
 	int i;
 
-	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].code == n) {
-		if (lenp) *lenp = keyseq[i].len;
-		return((keyseq[i].str) ? keyseq[i].str : "");
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		if (keyseq[i].code == kp -> code) {
+			memcpy((char *)kp, (char *)&(keyseq[i]),
+				sizeof(keyseq_t));
+			return(0);
+		}
 	}
-	if (lenp) *lenp = 0;
-	return(NULL);
+	kp -> len = 0;
+	return(-1);
 }
 
 keyseq_t *copykeyseq(list)
@@ -3379,6 +3115,19 @@ va_dcl
 	cputs2(buf);
 	free(buf);
 	return(n);
+}
+
+int cputnl(VOID_A)
+{
+	cputs2("\r\n");
+	tflush();
+	return(0);
+}
+
+int kanjiputs(s)
+char *s;
+{
+	return(cprintf2("%k", s));
 }
 
 int chgcolor(color, reverse)

@@ -52,7 +52,7 @@ extern char *mesconv __P_((char *, char *));
 #define	QUIT_K	mesconv("FD を終了しますか ?", "Quit from FD ?")
 #define	MAKED_K	mesconv("新しいディレクトリ名:", "New directory name:")
 #define	COPYD_K	mesconv("コピー先のディレクトリ名:", "Directory to copy:")
-#define	SAMEF_K	mesconv("] 同名のファイルがあります.", "] The same named file exists.")
+#define	SAMEF_K	mesconv("[%.*s] 同名のファイルがあります.", "[%.*s] The same named file exists.")
 #define	UPDAT_K	mesconv("U: 新しい日付を", "Update")
 #define	RENAM_K	mesconv("R: 名前を変えて", "Rename")
 #define	OVERW_K	mesconv("O: 全て上書き", "Overwrite")
@@ -69,10 +69,10 @@ extern char *mesconv __P_((char *, char *));
 #define	MOVED_K	mesconv("移動先のディレクトリ名:", "Directory to move:")
 #define	ENDMV_K	mesconv("ファイルの移動が終了しました. 何かキーを押して下さい.", "Move finished. Hit any key.")
 #define	WRONG_K	mesconv("既に存在するファイル名です.", "Filename already exists.")
-#define	DELFL_K	mesconv("[%s] を削除します. よろしいですか ?", "Deleting the file [%s], OK ?")
+#define	DELFL_K	mesconv("[%.*s] を削除します. よろしいですか ?", "Deleting the file [%.*s], OK ?")
 #define	DELMK_K	mesconv("マークファイルを削除します. よろしいですか ?", "Deleting the marked files, OK ?")
-#define	DELDR_K	mesconv("[%s] ディレクトリを削除します. よろしいですか ?", "Deleting the directory [%s], OK ?")
-#define	DELPM_K	mesconv("] ファイルのアクセス権は制限されていますが削除しますか ?", "] The file is restricted on permission, delete really ?")
+#define	DELDR_K	mesconv("[%.*s] ディレクトリを削除します. よろしいですか ?", "Deleting the directory [%.*s], OK ?")
+#define	DELPM_K	mesconv("[%.*s] ファイルのアクセス権は制限されていますが削除しますか ?", "[%.*s] The file is restricted on permission, delete really ?")
 #define	ANYES_K	mesconv("Y: はい", "Yes")
 #define	ANNO_K	mesconv("N: いいえ", "No")
 #define	ANALL_K	mesconv("A: 全て削除", "All")
@@ -234,6 +234,9 @@ extern char *mesconv __P_((char *, char *));
 #define	SCND_E \
 	meslist("タイトル行の時計に秒針を表示します.", \
 		"Display the second hand of clock at title line.")
+#define	TRLO_E \
+	meslist("『ＦＤ』準拠の画面レイアウトにします.", \
+		"Use the screen layout based on the traditional \"FD\"")
 #define	SZIF_E \
 	meslist("ファイルサイズ情報行を表示します.", \
 		"Display the filesize information line.")
@@ -246,6 +249,9 @@ extern char *mesconv __P_((char *, char *));
 #define	EDMD_E \
 	meslist("キー入力時の編集モードを設定します.", \
 		"Select the edit mode with your favorite editor type.")
+#define	LPCS_E \
+	meslist("カーソル移動を同一ページ内でループさせます.", \
+		"Loop cursor moving within the same page.")
 #define	TMPD_E \
 	meslist("一時的作業ディレクトリを指定します.", \
 		"Define the temporary directory.")
@@ -264,6 +270,9 @@ extern char *mesconv __P_((char *, char *));
 #define	LANG_E \
 	meslist("表示する文字の漢字コードまたは言語を設定します.", \
 		"Set the language code to display.")
+#define	UNBF_E \
+	meslist("UNICODE の変換テーブルをオンメモリで持ち続けます.", \
+		"Hold the UNICODE translation table on memory.")
 #define	IPKC_E \
 	meslist("キーボード入力文字の漢字コードを設定します.", \
 		"Set the language code to input.")
@@ -303,6 +312,9 @@ extern char *mesconv __P_((char *, char *));
 #define	UTF8P_E \
 	meslist("UTF-8 コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes UTF-8 code filename.")
+#define	UTF8MACP_E \
+	meslist("Mac OS X 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
+		"Define the directories includes Mac OS X UTF-8 code filename.")
 #define	NCVP_E \
 	meslist("漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
@@ -357,6 +369,8 @@ extern char *mesconv __P_((char *, char *));
 #define	VENG_K	mesconv("英語", "English")
 #define	VNJIS_K	mesconv("新JIS", "NewJIS")
 #define	VOJIS_K	mesconv("旧JIS", "OldJIS")
+#define	VUTF8_K	mesconv("汎用", "normal")
+#define	VUTFM_K	mesconv("Mac用", "forMac")
 #define	VDEF_K	mesconv("(既定値)", "(default)")
 
 #define	NEWET_K	mesconv("新規登録", "NewEntry")

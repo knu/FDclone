@@ -115,6 +115,9 @@ typedef union wait	wait_pid_t;
 #define	Xexit		exit
 #define	DEFPATH		":"
 #else
+# if	defined (FD) && !defined (_NODOSCOMMAND)
+# define	DOSCOMMAND
+# endif
 #define	Xexit		_exit
 #define	DEFPATH		":/bin:/usr/bin"
 #define	DEFTERM		"dumb"
@@ -460,8 +463,6 @@ extern VOID Xexit2 __P_((int));
 extern VOID execerror __P_((char *, int, int));
 extern VOID doperror __P_((char *, char *));
 extern int isnumeric __P_((char *));
-extern VOID fputlong __P_((long, FILE *));
-extern VOID fputstr __P_((char *, int, FILE *));
 #if	!MSDOS
 extern VOID dispsignal __P_((int, int, FILE *));
 extern int waitjob __P_((p_id_t, wait_pid_t *, int));

@@ -26,7 +26,7 @@ RM	= del
 CHMOD	= chmod
 LN	= copy /y
 
-SRC	= main.c term.c pathname.c \
+SRC	= main.c printf.c term.c pathname.c \
 	system.c posixsh.c doscom.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
@@ -36,7 +36,7 @@ SRC	= main.c term.c pathname.c \
 	info.c rockridg.c archive.c tree.c \
 	custom.c command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
-HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
+HEADER	= fd.h machine.h types.h kctype.h printf.h term.h pathname.h \
 	system.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
@@ -77,22 +77,24 @@ HOSTCC	= $(CC)
 SED	= sed
 PROGRAM	= fd
 FDSHELL	= fdsh
-OBJ1	= main.obj term.obj pathname.obj \
-	system.obj posixsh.obj doscom.obj \
-	dosdisk.obj unixemu.obj unixdisk.obj
-OBJ2	= libc.obj file.obj apply.obj \
-	parse.obj builtin.obj shell.obj \
-	kanji.obj input.obj
-OBJ3	= info.obj rockridg.obj archive.obj tree.obj \
+OBJ1	= main.obj printf.obj term.obj \
+	pathname.obj system.obj posixsh.obj doscom.obj
+OBJ2	= dosdisk.obj unixemu.obj unixdisk.obj \
+	libc.obj file.obj apply.obj \
+	parse.obj builtin.obj shell.obj
+OBJ3	= kanji.obj input.obj \
+	info.obj rockridg.obj archive.obj tree.obj \
 	custom.obj command.obj browse.obj
-SOBJ	= ssystem.obj sposixsh.obj sdoscom.obj spathnam.obj
-BOBJ	= bsystem.obj bdoscom.obj bpathnam.obj
+SOBJ	= ssystem.obj sposixsh.obj sdoscom.obj \
+	spathnam.obj sprintf.obj
+BOBJ	= bsystem.obj bdoscom.obj \
+	bpathnam.obj bprintf.obj
 ALLOC	=
 DEBUG	=
 
 LDFLAGS	=    $(ALLOC)
-CFLAGS	= -DPC98=1 -O -N -d -w-par -w-pia $(DEBUG)
-HOSTCFLAGS = -DPC98=1 -O -N -d -w-par -w-pia
+CFLAGS	= -DPC98=1 -O -N -d -w-par -w-rch -w-ccc -w-pia $(DEBUG)
+HOSTCFLAGS = -DPC98=1 -O -N -d -w-par -w-rch -w-ccc -w-pia
 SLDFLAGS =   $(ALLOC)
 BCFLAGS	= $(CFLAGS) -DMINIMUMSHELL
 
@@ -299,17 +301,20 @@ fdsh.exe: $(SOBJ)
 #	aout2exe fdsh
 #	del fdsh
 
-ssystem.obj: system.c machine.h config.h kctype.h pathname.h system.h
+ssystem.obj: system.c machine.h config.h printf.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mm $(CPPFLAGS) -c -o$@ system.c
 
-sposixsh.obj: posixsh.c machine.h config.h kctype.h pathname.h system.h
+sposixsh.obj: posixsh.c machine.h config.h printf.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mm $(CPPFLAGS) -c -o$@ posixsh.c
 
-sdoscom.obj: doscom.c machine.h config.h kctype.h pathname.h system.h
+sdoscom.obj: doscom.c machine.h config.h printf.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mm $(CPPFLAGS) -c -o$@ doscom.c
 
-spathnam.obj: pathname.c machine.h config.h pathname.h
+spathnam.obj: pathname.c machine.h config.h printf.h pathname.h
 	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mm $(CPPFLAGS) -c -o$@ pathname.c
+
+sprintf.obj: printf.c machine.h config.h printf.h kctype.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mm $(CPPFLAGS) -c -o$@ printf.c
 
 
 ############################################################
@@ -323,14 +328,17 @@ fdbsh.exe: $(BOBJ)
 #	aout2exe fdbsh
 #	del fdbsh
 
-bsystem.obj: system.c machine.h config.h kctype.h pathname.h system.h
+bsystem.obj: system.c machine.h config.h printf.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -mm $(CPPFLAGS) -c -o$@ system.c
 
-bdoscom.obj: doscom.c machine.h config.h kctype.h pathname.h system.h
+bdoscom.obj: doscom.c machine.h config.h printf.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -mm $(CPPFLAGS) -c -o$@ doscom.c
 
-bpathnam.obj: pathname.c machine.h config.h pathname.h
+bpathnam.obj: pathname.c machine.h config.h printf.h pathname.h
 	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -mm $(CPPFLAGS) -c -o$@ pathname.c
+
+bprintf.obj: printf.c machine.h config.h printf.h kctype.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -mm $(CPPFLAGS) -c -o$@ printf.c
 
 
 ############################################################
@@ -477,122 +485,147 @@ clean:
 
 main.obj: fd.h
 main.obj: machine.h config.h
-main.obj: pathname.h types.h term.h
-main.obj: func.h
+main.obj: printf.h
+main.obj: pathname.h term.h types.h func.h
 main.obj: dosdisk.h kanji.h
 main.obj: version.h system.h
+printf.obj: machine.h config.h printf.h
+printf.obj: kctype.h
 term.obj: machine.h config.h
-term.obj: term.h
+term.obj: printf.h term.h
 pathname.obj: fd.h
 pathname.obj: machine.h config.h
-pathname.obj: pathname.h types.h
-system.obj: machine.h config.h kctype.h
-system.obj: pathname.h
-system.obj: system.h term.h
-posixsh.obj: machine.h config.h kctype.h
-posixsh.obj: pathname.h system.h
-posixsh.obj: term.h
-doscom.obj: machine.h config.h kctype.h
-doscom.obj: pathname.h system.h
-doscom.obj: term.h
+pathname.obj: printf.h
+pathname.obj: pathname.h term.h types.h
+system.obj: fd.h
+system.obj: machine.h config.h
+system.obj: printf.h pathname.h
+system.obj: term.h types.h kctype.h
+system.obj: system.h
+posixsh.obj: fd.h
+posixsh.obj: machine.h config.h
+posixsh.obj: printf.h
+posixsh.obj: pathname.h term.h types.h kctype.h
+posixsh.obj: system.h
+doscom.obj: fd.h
+doscom.obj: machine.h config.h
+doscom.obj: printf.h pathname.h
+doscom.obj: term.h types.h kctype.h
+doscom.obj: system.h
 dosdisk.obj: machine.h config.h
 dosdisk.obj: dosdisk.h
 dosemu.obj: fd.h
 dosemu.obj: machine.h config.h
-dosemu.obj: pathname.h types.h func.h
+dosemu.obj: printf.h pathname.h
+dosemu.obj: term.h types.h func.h
 dosemu.obj: dosdisk.h kctype.h
+mkunitbl.obj: machine.h config.h
 unixdisk.obj: machine.h config.h
 unixdisk.obj: unixdisk.h
 unixdisk.obj: unixemu.h
 unixdisk.obj: dosdisk.h
 unixemu.obj: fd.h
 unixemu.obj: machine.h config.h
-unixemu.obj: pathname.h types.h func.h
+unixemu.obj: printf.h
+unixemu.obj: pathname.h term.h types.h func.h
 unixemu.obj: dosdisk.h unixdisk.h
 unixemu.obj: unixemu.h
 libc.obj: fd.h
 libc.obj: machine.h config.h
-libc.obj: pathname.h types.h term.h
-libc.obj: func.h
+libc.obj: printf.h pathname.h
+libc.obj: term.h types.h func.h
 libc.obj: dosdisk.h kctype.h
 libc.obj: kanji.h system.h
 file.obj: fd.h
 file.obj: machine.h config.h
-file.obj: pathname.h types.h func.h
+file.obj: printf.h pathname.h
+file.obj: term.h types.h func.h
 file.obj: dosdisk.h kctype.h
 file.obj: kanji.h
 apply.obj: fd.h
 apply.obj: machine.h config.h
-apply.obj: pathname.h types.h term.h
-apply.obj: func.h
+apply.obj: printf.h pathname.h
+apply.obj: term.h types.h func.h
 apply.obj: dosdisk.h kanji.h
 parse.obj: fd.h
 parse.obj: machine.h config.h
-parse.obj: pathname.h types.h term.h
-parse.obj: func.h
+parse.obj: printf.h pathname.h
+parse.obj: term.h types.h func.h
 parse.obj: dosdisk.h kctype.h
+parse.obj: system.h
 builtin.obj: fd.h
 builtin.obj: machine.h config.h
-builtin.obj: pathname.h types.h term.h
-builtin.obj: func.h
+builtin.obj: printf.h
+builtin.obj: pathname.h term.h types.h func.h
 builtin.obj: dosdisk.h kctype.h
 builtin.obj: funcno.h kanji.h system.h
 shell.obj: fd.h
 shell.obj: machine.h config.h
-shell.obj: pathname.h types.h term.h
-shell.obj: func.h
+shell.obj: printf.h pathname.h
+shell.obj: term.h types.h func.h
 shell.obj: dosdisk.h kctype.h
 shell.obj: kanji.h system.h
+kanji.obj: fd.h
 kanji.obj: machine.h config.h
-kanji.obj: term.h kctype.h
-kanji.obj: pathname.h
+kanji.obj: printf.h pathname.h
+kanji.obj: term.h types.h kctype.h
+kanji.obj: func.h
+kanji.obj: dosdisk.h
 input.obj: fd.h
 input.obj: machine.h config.h
-input.obj: pathname.h types.h
-input.obj: term.h func.h
+input.obj: printf.h pathname.h
+input.obj: term.h types.h func.h
 input.obj: dosdisk.h kctype.h
 input.obj: kanji.h system.h
 info.obj: fd.h
-info.obj: machine.h config.h
-info.obj: pathname.h types.h term.h
-info.obj: funcno.h kctype.h kanji.h
+info.obj: machine.h
+info.obj: config.h
+info.obj: printf.h pathname.h
+info.obj: term.h types.h funcno.h kctype.h
+info.obj: kanji.h
 rockridg.obj: fd.h
 rockridg.obj: machine.h config.h
-rockridg.obj: pathname.h types.h func.h
+rockridg.obj: printf.h
+rockridg.obj: pathname.h term.h types.h func.h
 rockridg.obj: dosdisk.h
 archive.obj: fd.h
 archive.obj: machine.h config.h
-archive.obj: pathname.h types.h term.h
-archive.obj: func.h
+archive.obj: printf.h
+archive.obj: pathname.h term.h types.h func.h
 archive.obj: dosdisk.h kctype.h
 archive.obj: kanji.h system.h
 tree.obj: fd.h
 tree.obj: machine.h config.h
-tree.obj: pathname.h types.h term.h
-tree.obj: func.h
+tree.obj: printf.h
+tree.obj: pathname.h term.h types.h func.h
 tree.obj: dosdisk.h kanji.h
 custom.obj: fd.h
 custom.obj: machine.h config.h
-custom.obj: pathname.h types.h
-custom.obj: term.h func.h
+custom.obj: printf.h pathname.h
+custom.obj: term.h types.h func.h
 custom.obj: dosdisk.h funcno.h
-custom.obj: kctype.h kanji.h system.h
+custom.obj: kctype.h kanji.h
+custom.obj: system.h
 command.obj: fd.h
 command.obj: machine.h config.h
-command.obj: pathname.h types.h term.h
-command.obj: func.h
-command.obj: dosdisk.h funcno.h
-command.obj: kctype.h kanji.h system.h
+command.obj: printf.h
+command.obj: pathname.h term.h types.h func.h
+command.obj: dosdisk.h funcno.h kctype.h
+command.obj: kanji.h system.h
 command.obj: functabl.h
 browse.obj: fd.h
 browse.obj: machine.h config.h
-browse.obj: pathname.h types.h term.h
-browse.obj: func.h
+browse.obj: printf.h pathname.h
+browse.obj: term.h types.h func.h
 browse.obj: dosdisk.h funcno.h
 browse.obj: kctype.h kanji.h
+kanjicnv.obj: machine.h config.h
 mkfuncno.obj: fd.h
 mkfuncno.obj: machine.h config.h
-mkfuncno.obj: pathname.h types.h functabl.h
+mkfuncno.obj: printf.h
+mkfuncno.obj: pathname.h term.h types.h functabl.h
+expfunc.obj: machine.h config.h
 mkmfsed.obj: fd.h
 mkmfsed.obj: machine.h config.h
-mkmfsed.obj: pathname.h types.h
+mkmfsed.obj: printf.h
+mkmfsed.obj: pathname.h term.h types.h

@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "machine.h"
 
 #define	ASCII	000
 #define	KANA	001
@@ -14,14 +15,6 @@
 
 #define	SJIS	010
 #define	EUC	020
-
-#if	defined (__STDC__) && !defined (__STRICT_ANSI__)
-#define	__P_(args)	args
-#define	VOID		void
-#else
-#define	__P_(args)	()
-#define	VOID
-#endif
 
 static VOID fputc2 __P_((int, FILE *));
 static VOID convert __P_((int, int, FILE *));

@@ -11,6 +11,8 @@
 #include <string.h>
 #include <errno.h>
 #include "machine.h"
+#include "printf.h"
+#include "pathname.h"
 
 # ifndef	NOUNISTDH
 # include <unistd.h>
@@ -26,6 +28,7 @@
 #include <process.h>
 #include "unixemu.h"
 # ifndef	FD
+# include <fcntl.h>
 # include <dos.h>
 # include <io.h>
 # define	DS_IRDONLY	001
@@ -38,13 +41,19 @@
 			| DS_IFDIR | DS_IARCHIVE)
 # endif	/* !FD */
 #define	EXTWIDTH	4
-# if	defined (DJGPP) && DJGPP < 2
+# if	defined (__TURBOC__) || (defined (DJGPP) && DJGPP < 2)
 # include <dir.h>
+# endif
+# if	defined (DJGPP) && DJGPP < 2
 # define	find_t	ffblk
 # define	_dos_findfirst(p, a, f)	findfirst(p, f, a)
 # define	_dos_findnext		findnext
 # define	_ENOENT_		ENMFILE
 # else
+# define	ff_attrib		attrib
+# define	ff_ftime		wr_time
+# define	ff_fdate		wr_date
+# define	ff_fsize		size
 # define	ff_name			name
 # define	_ENOENT_		ENOENT
 # endif
@@ -62,8 +71,6 @@
 # endif
 #endif	/* !MSDOS */
 
-#include "pathname.h"
-
 #ifdef	NOERRNO
 extern int errno;
 #endif
@@ -80,7 +87,6 @@ extern char *strdup2 __P_((char *));
 extern char *strndup2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
-extern int snprintf2 __P_((char *, int, CONST char *, ...));
 # ifdef	_USEDOSPATH
 extern int _dospath __P_((char *));
 # endif
@@ -97,7 +103,7 @@ extern VOID demacroarg __P_((char **));
 extern char *progpath;
 #else	/* !FD */
 #define	getenv2		(char *)getenv
-static VOID NEAR allocerror __P_((VOID_A));
+VOID error __P_((char *));
 char *malloc2 __P_((ALLOC_T));
 char *realloc2 __P_((VOID_P, ALLOC_T));
 char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
@@ -105,16 +111,19 @@ char *strdup2 __P_((char *));
 char *strndup2 __P_((char *, int));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
-char *ascnumeric __P_((char *, off_t, int, int));
 # if	MSDOS
 # define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
 DIR *Xopendir __P_((char *));
 int Xclosedir __P_((DIR *));
 struct dirent *Xreaddir __P_((DIR *));
+static u_int NEAR getdosmode __P_((u_int));
+static time_t NEAR getdostime __P_((u_int, u_int));
+int Xstat __P_((char *, struct stat *));
 # else
 # define	Xopendir	opendir
 # define	Xclosedir	closedir
 # define	Xreaddir	readdir
+# define	Xstat		stat
 # endif
 # ifdef	DJGPP
 char *Xgetwd __P_((char *));
@@ -125,11 +134,10 @@ char *Xgetwd __P_((char *));
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
 # endif
-#define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
 #define	Xaccess		access
 #endif	/* !FD */
 
-static char *NEAR getvar __P_((char *, int));
+static char *NEAR getenvvar __P_((char *, int));
 static int NEAR setvar __P_((char *, char *, int));
 static int NEAR ismeta __P_((char *s, int, int, int));
 #ifdef	_NOORIGGLOB
@@ -217,7 +225,7 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 #define	b_realloc(ptr, n, type) \
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
-#define	getconstvar(s)	(getvar(s, sizeof(s) - 1))
+#define	getconstvar(s)	(getenvvar(s, sizeof(s) - 1))
 
 char **argvar = NULL;
 #ifndef	_NOUSEHASH
@@ -361,10 +369,12 @@ static int maxgid = 0;
 
 
 #ifndef	FD
-static VOID NEAR allocerror(VOID_A)
+VOID error(s)
+char *s;
 {
-	fputs("fatal error: memory allocation error\n", stderr);
-	fflush(stderr);
+	fputs(s, stderr);
+	fputs(": memory allocation error", stderr);
+	fputnl(stderr);
 	exit(2);
 }
 
@@ -374,7 +384,7 @@ ALLOC_T size;
 	char *tmp;
 
 	if (!size || !(tmp = (char *)malloc(size))) {
-		allocerror();
+		error("malloc()");
 #ifdef	FAKEUNINIT
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
@@ -391,7 +401,7 @@ ALLOC_T size;
 	if (!size
 	|| !(tmp = (ptr) ? (char *)realloc(ptr, size) : (char *)malloc(size)))
 	{
-		allocerror();
+		error("realloc()");
 #ifdef	FAKEUNINIT
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
@@ -419,7 +429,7 @@ char *s;
 
 	if (!s) return(NULL);
 	n = strlen(s);
-	if (!(tmp = (char *)malloc((ALLOC_T)n + 1))) allocerror();
+	if (!(tmp = (char *)malloc((ALLOC_T)n + 1))) error("malloc()");
 	memcpy(tmp, s, n + 1);
 	return(tmp);
 }
@@ -433,7 +443,7 @@ int n;
 
 	if (!s) return(NULL);
 	for (i = 0; i < n; i++) if (!s[i]) break;
-	if (!(tmp = (char *)malloc((ALLOC_T)i + 1))) allocerror();
+	if (!(tmp = (char *)malloc((ALLOC_T)i + 1))) error("malloc()");
 	memcpy(tmp, s, i);
 	tmp[i] = '\0';
 	return(tmp);
@@ -458,50 +468,6 @@ int n;
 	for (i = 0; i < n && s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
 	return(&(s1[i]));
-}
-
-/*
- *	ascnumeric(buf, n, 0, max): same as sprintf(buf, "%d", n)
- *	ascnumeric(buf, n, max + 1, max): same as sprintf(buf, "%0*d", max, n)
- *	ascnumeric(buf, n, max, max): same as sprintf(buf, "%*d", max, n)
- *	ascnumeric(buf, n, -1, max): same as sprintf(buf, "%-*d", max, n)
- *	ascnumeric(buf, n, x, max): like as sprintf(buf, "%*d", max, n)
- *	ascnumeric(buf, n, -x, max): like as sprintf(buf, "%-*d", max, n)
- */
-char *ascnumeric(buf, n, digit, max)
-char *buf;
-off_t n;
-int digit, max;
-{
-	char tmp[MAXLONGWIDTH * 2 + 1];
-	int i, j, d;
-
-	i = j = 0;
-	d = digit;
-	if (digit < 0) digit = -digit;
-	if (n < 0) tmp[i++] = '?';
-	else if (!n) tmp[i++] = '0';
-	else {
-		for (;;) {
-			tmp[i++] = '0' + n % 10;
-			if (!(n /= 10) || i >= max) break;
-			if (digit > 1 && ++j >= digit) {
-				if (i >= max - 1) break;
-				tmp[i++] = ',';
-				j = 0;
-			}
-		}
-		if (n) for (j = 0; j < i; j++) if (tmp[j] != ',') tmp[j] = '9';
-	}
-
-	if (d <= 0) j = 0;
-	else if (d > max) for (j = 0; j < max - i; j++) buf[j] = '0';
-	else for (j = 0; j < max - i; j++) buf[j] = ' ';
-	while (i--) buf[j++] = tmp[i];
-	if (d < 0) for (; j < max; j++) buf[j] = ' ';
-	buf[j] = '\0';
-
-	return(buf);
 }
 
 # if	MSDOS
@@ -568,6 +534,57 @@ DIR *dirp;
 	dirp -> dd_id &= ~DID_IFLABEL;
 
 	return(&d);
+}
+
+static u_int NEAR getdosmode(attr)
+u_int attr;
+{
+	u_int mode;
+
+	mode = 0;
+	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
+	if (!(attr & DS_IHIDDEN)) mode |= S_IREAD;
+	if (!(attr & DS_IRDONLY)) mode |= S_IWRITE;
+	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IEXEC);
+	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
+	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
+	else mode |= S_IFREG;
+
+	return(mode);
+}
+
+static time_t NEAR getdostime(d, t)
+u_int d, t;
+{
+	struct tm tm;
+
+	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
+	tm.tm_year -= 1900;
+	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
+	tm.tm_mday = (d & 0x1f);
+	tm.tm_hour = ((t >> 11) & 0x1f);
+	tm.tm_min = ((t >> 5) & 0x3f);
+	tm.tm_sec = ((t << 1) & 0x3e);
+	tm.tm_isdst = -1;
+
+	return(mktime(&tm));
+}
+
+int Xstat(path, stp)
+char *path;
+struct stat *stp;
+{
+	struct find_t find;
+
+	if (_dos_findfirst(path, SEARCHATTRS, &find) != 0) return(-1);
+	stp -> st_mode = getdosmode(find.ff_attrib);
+	stp -> st_mtime = getdostime(find.ff_fdate, find.ff_ftime);
+	stp -> st_size = find.ff_fsize;
+	stp -> st_ctime = stp -> st_atime = stp -> st_mtime;
+	stp -> st_dev = stp -> st_ino = 0;
+	stp -> st_nlink = 1;
+	stp -> st_uid = stp -> st_gid = -1;
+	return(0);
 }
 # endif	/* MSDOS */
 
@@ -805,7 +822,7 @@ int n;
 }
 #endif	/* !PATHNOCASE */
 
-static char *NEAR getvar(ident, len)
+static char *NEAR getenvvar(ident, len)
 char *ident;
 int len;
 {
@@ -929,19 +946,6 @@ int ptr, quote, len;
 	}
 	return(1);
 #endif	/* !FAKEMETA */
-}
-
-char *long2str(s, n, size)
-char *s;
-long n;
-int size;
-{
-#ifdef	FD
-	snprintf2(s, size, "%ld", n);
-	return(s);
-#else
-	return(ascnumeric(s, (off_t)n, 0, size - 1));
-#endif
 }
 
 #ifdef	_NOORIGGLOB
@@ -1938,7 +1942,7 @@ char *com, *search;
 	return(CM_NOTFOUND);
 }
 
-char *searchpath(path, search)
+char *searchexecpath(path, search)
 char *path, *search;
 {
 	hashlist *hp;
@@ -2241,6 +2245,24 @@ char **var;
 		free(var);
 	}
 	errno = duperrno;
+}
+
+char **duplvar(var, margin)
+char **var;
+int margin;
+{
+	char **dupl;
+	int i, n;
+
+	if (margin < 0) {
+		if (!var) return(NULL);
+		margin = 0;
+	}
+	n = countvar(var);
+	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
+	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
+	dupl[i] = NULL;
+	return(dupl);
 }
 
 int parsechar(s, len, spc, qflag, qp, pqp)
@@ -2595,21 +2617,22 @@ int plen, *modep;
 			break;
 		case '#':
 			if (!argvar) break;
-			cp = long2str(tmp, countvar(argvar + 1), sizeof(tmp));
+			cp = snprintf2(tmp, sizeof(tmp), "%d",
+				countvar(argvar + 1));
 			break;
 		case '?':
-			i = (getretvalfunc) ? (*getretvalfunc)() : 0;
-			cp = long2str(tmp, i, sizeof(tmp));
+			cp = snprintf2(tmp, sizeof(tmp), "%d",
+				(getretvalfunc) ? (*getretvalfunc)() : 0);
 			break;
 		case '$':
 			if (!getpidfunc) pid = getpid();
 			else pid = (*getpidfunc)();
-			cp = long2str(tmp, pid, sizeof(tmp));
+			cp = snprintf2(tmp, sizeof(tmp), "%id", pid);
 			break;
 		case '!':
 			if (getlastpidfunc
 			&& (pid = (*getlastpidfunc)()) >= 0)
-				cp = long2str(tmp, pid, sizeof(tmp));
+				cp = snprintf2(tmp, sizeof(tmp), "%id", pid);
 			break;
 		case '-':
 			if (getflagfunc) cp = (*getflagfunc)();
@@ -2669,14 +2692,11 @@ int s, len, vlen, mode, quoted;
 		demacroarg(cpp);
 #endif
 		for (i = 0; i < len; i++) fputc(arg[i], stderr);
-		fputs(": ", stderr);
-		if (vlen <= 0)
-			fputs("parameter null or not set", stderr);
-		else for (i = 0; (*cpp)[i]; i++) fputc((*cpp)[i], stderr);
+		fprintf2(stderr, ": %k",
+			(vlen > 0) ? *cpp : "parameter null or not set");
+		fputnl(stderr);
 		free(*cpp);
 		*cpp = NULL;
-		fputc('\n', stderr);
-		fflush(stderr);
 		if (exitfunc) (*exitfunc)();
 		return(-2);
 	}
@@ -2753,7 +2773,7 @@ int quoted;
 
 	c = '\0';
 	if ((cp = new)) /*EMPTY*/;
-	else if (isidentchar(*top)) cp = getvar(top, len);
+	else if (isidentchar(*top)) cp = getenvvar(top, len);
 	else if (isdigit(*top)) {
 		if (len > 1) return(-1);
 		if (!argvar) {
@@ -2787,7 +2807,8 @@ int quoted;
 
 #ifndef	MINIMUMSHELL
 	if (mode == 'n')
-		cp = long2str(tmp, (cp) ? strlen(cp) : 0, sizeof(tmp));
+		cp = snprintf2(tmp, sizeof(tmp), "%d",
+			(cp) ? strlen(cp) : 0);
 	else if (nul == -1) {
 		new = removeword(cp, top + s, vlen, mode);
 		if (new) cp = new;
@@ -2917,7 +2938,7 @@ char *name;
 	gidlist = b_realloc(gidlist, maxgid, gidtable);
 	gidlist[maxgid].gid = grp -> gr_gid;
 	gidlist[maxgid].name = strdup2(grp -> gr_name);
-	gidlist[maxgid].gr_mem = grp -> gr_mem;
+	gidlist[maxgid].gr_mem = duplvar(grp -> gr_mem, -1);
 	gidlist[maxgid].ismem = 0;
 	return(&(gidlist[maxgid++]));
 }
@@ -2932,13 +2953,15 @@ gid_t gid;
 	if (!(gp = findgid(gid, NULL))) return(0);
 	if (!(gp -> ismem)) {
 		gp -> ismem++;
-		if ((up = finduid(geteuid(), NULL)))
+		if (gp -> gr_mem && (up = finduid(geteuid(), NULL)))
 		for (i = 0; gp -> gr_mem[i]; i++) {
 			if (!strpathcmp(up -> name, gp -> gr_mem[i])) {
 				gp -> ismem++;
 				break;
 			}
 		}
+		freevar(gp -> gr_mem);
+		gp -> gr_mem = NULL;
 	}
 
 	return(gp -> ismem - 1);
@@ -2957,7 +2980,10 @@ VOID freeidlist(VOID_A)
 		free(uidlist);
 	}
 	if (gidlist) {
-		for (i = 0; i < maxgid; i++) free(gidlist[i].name);
+		for (i = 0; i < maxgid; i++) {
+			free(gidlist[i].name);
+			freevar(gidlist[i].gr_mem);
+		}
 		free(gidlist);
 	}
 	uidlist = NULL;
@@ -3021,6 +3047,7 @@ char *gethomedir(VOID_A)
 	return(NULL);
 }
 
+#ifndef	MINIMUMSHELL
 int evalhome(bufp, ptr, argp)
 char **bufp;
 int ptr;
@@ -3033,26 +3060,26 @@ char **argp;
 
 	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
 	if (!len) cp = gethomedir();
-#ifdef	FD
+# ifdef	FD
 	else if (len == sizeof("FD") - 1 && !strnpathcmp(top, "FD", len))
 		cp = progpath;
-#endif
+# endif
 	else {
-#ifdef	NOUID
+# ifdef	NOUID
 		cp = NULL;
-#else	/* !NOUID */
-# ifdef	FD
+# else	/* !NOUID */
+#  ifdef	FD
 		uidtable *up;
 
 		cp = strndup2(top, len);
 		up = finduid(0, cp);
 		free(cp);
 		cp = (up) ? up -> home : NULL;
-# else	/* !FD */
+#  else	/* !FD */
 		struct passwd *pwd;
 
 		cp = strndup2(top, len);
-#  ifdef	DEBUG
+#   ifdef	DEBUG
 		_mtrace_file = "getpwnam(start)";
 		pwd = getpwnam(cp);
 		if (_mtrace_file) _mtrace_file = NULL;
@@ -3060,13 +3087,13 @@ char **argp;
 			_mtrace_file = "getpwnam(end)";
 			malloc(0);	/* dummy alloc */
 		}
-#  else
+#   else
 		pwd = getpwnam(cp);
-#  endif
+#   endif
 		free(cp);
 		cp = (pwd) ? pwd -> pw_dir : NULL;
-# endif	/* !FD */
-#endif	/* !NOUID */
+#  endif	/* !FD */
+# endif	/* !NOUID */
 	}
 
 	if (!cp) {
@@ -3083,6 +3110,7 @@ char **argp;
 	*argp += len;
 	return(ptr);
 }
+#endif	/* !MINIMUMSHELL */
 
 char *evalarg(arg, stripq, backq, qed)
 char *arg;
@@ -3157,7 +3185,11 @@ int stripq, backq, qed;
 			tmpq = (q) ? q : qed;
 			if (!cp[1]) buf[i++] = *cp;
 #ifdef	FAKEMETA
+# ifdef	MINIMUMSHELL
+			else if (cp[1] == '$') cp++;
+# else
 			else if (cp[1] == '$' || cp[1] == '~') cp++;
+# endif
 #endif
 			else if ((i = evalvar(&buf, i, &cp, tmpq)) < 0) {
 				if (bbuf) free(bbuf);
@@ -3180,8 +3212,10 @@ int stripq, backq, qed;
 			else if (!stripq) buf[i++] = *cp;
 		}
 		else if (pc != PC_NORMAL) /*EMPTY*/;
+#ifndef	MINIMUMSHELL
 		else if (*cp == '~' && (!prev || prev == ':' || prev == '='))
 			i = evalhome(&buf, i, &cp);
+#endif
 		else buf[i++] = *cp;
 	}
 #ifndef	BASHSTYLE

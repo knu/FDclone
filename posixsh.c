@@ -12,6 +12,7 @@
 #include <string.h>
 #include <errno.h>
 #include "machine.h"
+#include "printf.h"
 #include "pathname.h"
 
 #ifndef	NOUNISTDH
@@ -43,24 +44,24 @@
 extern int Xstat __P_((char *, struct stat *));
 extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
-extern int kanjifputs __P_((char *, FILE *));
 #else	/* !FD */
 extern int ttyio;
 extern FILE *ttyout;
-#define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
 # if	MSDOS
-# define	Xlstat(f, s)	(stat(f, s) ? -1 : 0)
+extern int Xstat __P_((char *, struct stat *));
+# define	Xlstat		Xstat
 # else
+# define	Xstat		stat
 # define	Xlstat		lstat
 # endif
 #define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
-#define	kanjifputs	fputs
 #endif	/* !FD */
 
 #ifndef	EPERM
 #define	EPERM		EACCES
 #endif
 
+extern VOID error __P_((char *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
@@ -190,14 +191,8 @@ p_id_t pgrp;
 	Xsigblock(omask, mask);
 
 #ifdef	JOBVERBOSE
-	fputs("gettermio: ", ttyout);
-	fputlong(mypid, ttyout);
-	fputs(": ", ttyout);
-	fputlong(ttypgrp, ttyout);
-	fputs(" -> ", ttyout);
-	fputlong(pgrp, ttyout);
-	fputc('\n', ttyout);
-	fflush(ttyout);
+	fprintf2(ttyout, "gettermio: %id: %id -> %id", mypid, ttypgrp, pgrp);
+	fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
 	Xsigsetmask(omask);
@@ -230,20 +225,14 @@ FILE *fp;
 	int i, sig;
 
 	if (n < 0 || n >= maxjobs || !(joblist[n].pids)) return;
-	fputc('[', fp);
-	fputlong(n + 1, fp);
-	fputc(']', fp);
-	if (n == lastjob) fputc('+', fp);
-	else if (n == prevjob) fputc('-', fp);
-	else fputc(' ', fp);
-	fputc(' ', fp);
 	i = joblist[n].npipe;
-	fputlong(joblist[n].pids[i], fp);
-	fputc(' ', fp);
+	fprintf2(fp, "[%d]%c %id ",
+		n + 1, (n == lastjob) ? '+' : ((n == prevjob) ? '-' : ' '),
+		joblist[n].pids[i]);
 	sig = joblist[n].stats[i];
 
-	if (!sig) fputstr("Running", 28, fp);
-	else if (sig < 0) fputstr("Done", 28, fp);
+	if (sig <= 0)
+		fprintf2(fp, "%-28.28s", (sig) ? "Done" : "Running");
 	else {
 		if (sig >= 128) sig -= 128;
 		dispsignal(sig, 28, fp);
@@ -254,8 +243,7 @@ FILE *fp;
 			joblist[n].trp -> type = OP_NONE;
 		printstree(joblist[n].trp, -1, fp);
 	}
-	fputc('\n', fp);
-	fflush(fp);
+	fputnl(fp);
 }
 
 int searchjob(pid, np)
@@ -384,19 +372,10 @@ syntaxtree *trp;
 	}
 
 #ifdef	JOBVERBOSE
-	fputs("stackjob: ", ttyout);
-	fputlong(mypid, ttyout);
-	fputs(": ", ttyout);
-	fputlong(pid, ttyout);
-	fputs(", ", ttyout);
-	fputlong(i, ttyout);
-	fputc(':', ttyout);
-	for (j = 0; j <= joblist[i].npipe; j++) {
-		fputlong(joblist[i].pids[j], ttyout);
-		fputc(' ', ttyout);
-	}
-	fputc('\n', ttyout);
-	fflush(ttyout);
+	fprintf2(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
+	for (j = 0; j <= joblist[i].npipe; j++)
+		fprintf2(ttyout, "%id ", joblist[i].pids[j]);
+	fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 	return(i);
 }
@@ -741,7 +720,7 @@ char *evalposixsubst(s, ptrp)
 char *s;
 int *ptrp;
 {
-	char *cp, buf[MAXLONGWIDTH + 1];
+	char *cp;
 	long n;
 	int i, len;
 
@@ -785,14 +764,7 @@ int *ptrp;
 		}
 
 		if (*ptrp < 0) cp = NULL;
-		else if (n >= 0L)
-			cp = strdup2(long2str(buf, n, sizeof(buf)));
-		else {
-			long2str(buf, -n, sizeof(buf));
-			cp = malloc2(strlen(buf) + 2);
-			cp[0] = '-';
-			strcpy(&(cp[1]), buf);
-		}
+		else if (asprintf2(&cp, "%d", n) < 0) error("malloc()");
 	}
 	free(s);
 
@@ -951,12 +923,8 @@ syntaxtree *trp;
 		prepareexit(-1);
 		Xexit(RET_FATALERR);
 	}
-	fputc('[', stderr);
-	fputlong(i + 1, stderr);
-	fputs("] ", stderr);
-	fputlong(joblist[i].pids[n], stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	fprintf2(stderr, "[%d] %id", i + 1, joblist[i].pids[n]);
+	fputnl(stderr);
 	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
 # ifdef	USESGTTY
 	if (joblist[i].ttyflag) ioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
@@ -1019,14 +987,11 @@ syntaxtree *trp;
 		for (i = 0; alias[i].ident; i++);
 		if (i > 1) qsort(alias, i, sizeof(shaliastable), cmpalias);
 		for (i = 0; alias[i].ident; i++) {
-			fputs("alias ", stdout);
-			kanjifputs(alias[i].ident, stdout);
-			fputs("='", stdout);
-			kanjifputs(alias[i].comm, stdout);
-			fputs("'\n", stdout);
+			fprintf2(stdout, "alias %k='%k'",
+				alias[i].ident, alias[i].comm);
+			fputnl(stdout);
 		}
 		freealias(alias);
-		fflush(stdout);
 		return(RET_SUCCESS);
 	}
 
@@ -1051,12 +1016,9 @@ syntaxtree *trp;
 				ret = RET_FAIL;
 				ERRBREAK;
 			}
-			fputs("alias ", stdout);
-			kanjifputs(shellalias[i].ident, stdout);
-			fputs("='", stdout);
-			kanjifputs(shellalias[i].comm, stdout);
-			fputs("'\n", stdout);
-			fflush(stdout);
+			fprintf2(stdout, "alias %k='%k'",
+				shellalias[i].ident, shellalias[i].comm);
+			fputnl(stdout);
 		}
 		else if (shellalias[i].ident) {
 			free(shellalias[i].comm);
@@ -1124,8 +1086,8 @@ syntaxtree *trp;
 
 	if ((trp -> comm) -> argc <= 1) {
 		fputs("usage: kill [ -sig ] pid ...\n", stderr);
-		fputs("for a list of signals: kill -l\n", stderr);
-		fflush(stderr);
+		fputs("for a list of signals: kill -l", stderr);
+		fputnl(stderr);
 		return(RET_SYNTAXERR);
 	}
 #ifdef	SIGTERM
@@ -1141,10 +1103,11 @@ syntaxtree *trp;
 				for (i = 0; signallist[i].sig >= 0; i++)
 					if (sig == signallist[i].sig) break;
 				if (signallist[i].sig < 0) continue;
-				fputs(signallist[i].ident, stdout);
-				fputc((++n % 16) ? ' ' : '\n', stdout);
+				fprintf2(stdout, "%s%c",
+					signallist[i].ident,
+					(++n % 16) ? ' ' : '\n');
 			}
-			if (n % 16) fputc('\n', stdout);
+			if (n % 16) fputnl(stdout);
 			fflush(stdout);
 			return(RET_SUCCESS);
 		}
@@ -1182,8 +1145,8 @@ syntaxtree *trp;
 #endif	/* !NOJOB */
 		if ((pid = isnumeric(s)) < 0L) {
 			fputs("usage: kill [ -sig ] pid ...\n", stderr);
-			fputs("for a list of signals: kill -l\n", stderr);
-			fflush(stderr);
+			fputs("for a list of signals: kill -l", stderr);
+			fputnl(stderr);
 			return(RET_SYNTAXERR);
 		}
 #if	MSDOS
@@ -1437,8 +1400,8 @@ syntaxtree *trp;
 	if (argc <= 0) return(RET_FAIL);
 	if (argv[0][0] == '[' && !argv[0][1]
 	&& (--argc <= 0 || argv[argc][0] != ']' || argv[argc][1])) {
-		fputs("] missing\n", stderr);
-		fflush(stderr);
+		fputs("] missing", stderr);
+		fputnl(stderr);
 		return(RET_NOTICE);
 	}
 	if (argc <= 1) return(RET_FAIL);
@@ -1448,18 +1411,17 @@ syntaxtree *trp;
 	if (ret < 0) {
 		switch (ret) {
 			case -1:
-				fputs("argument expected\n", stderr);
+				fputs("argument expected", stderr);
 				break;
 			case -2:
-				fputs("unknown operator ", stderr);
-				fputs(argv[ptr], stderr);
-				fputc('\n', stderr);
+				fprintf2(stderr, "unknown operator %k",
+					argv[ptr]);
 				break;
 			default:
-				fputs("syntax error\n", stderr);
+				fputs("syntax error", stderr);
 				break;
 		}
-		fflush(stderr);
+		fputnl(stderr);
 		return(RET_NOTICE);
 	}
 	return(ret);
@@ -1494,7 +1456,6 @@ syntaxtree *trp;
 # endif
 			}
 		}
-		fflush(stdout);
 		return(ret);
 	}
 	else if (flag == 'v') {
@@ -1521,14 +1482,13 @@ syntaxtree *trp;
 			}
 
 			if (cp) {
-				fputs(cp, stdout);
-				fputc('\n', stdout);
+				kanjifputs(cp, stdout);
+				fputnl(stdout);
 # ifdef	BASHSTYLE
 				ret = RET_SUCCESS;
 # endif
 			}
 		}
-		fflush(stdout);
 		return(ret);
 	}
 
@@ -1538,14 +1498,10 @@ syntaxtree *trp;
 	type = checktype(argv[n], &id, 0, 0);
 #endif
 	if (verboseexec) {
-		fputs("+ ", stderr);
-		kanjifputs(argv[n], stderr);
-		for (i = n + 1; i < argc; i++) {
-			fputc(' ', stderr);
-			kanjifputs(argv[i], stderr);
-		}
-		fputc('\n', stderr);
-		fflush(stderr);
+		fprintf2(stderr, "+ %k", argv[n]);
+		for (i = n + 1; i < argc; i++)
+			fprintf2(stderr, " %k", argv[i]);
+		fputnl(stderr);
 	}
 
 	(trp -> comm) -> argc -= n;
@@ -1671,7 +1627,7 @@ syntaxtree *trp;
 	setenv2(name, buf, 0);
 
 	n = posixoptind;
-	setenv2("OPTIND", long2str(buf, n, sizeof(buf)), 0);
+	setenv2("OPTIND", snprintf2(buf, sizeof(buf), "%d", n), 0);
 	posixoptind = n;
 
 	return(ret);

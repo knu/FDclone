@@ -5,7 +5,6 @@
  */
 
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "kanji.h"
@@ -52,7 +51,7 @@ static int NEAR setarg __P_((char **, int, ALLOC_T *, char *, char *, int));
 static int NEAR flag2str __P_((char *, int, int));
 static int NEAR skipquote __P_((char *, int *));
 #if	!defined (MACROMETA) || !defined (_NOEXTRAMACRO)
-static char *NEAR restorearg __P_((char *));
+static char *NEAR _restorearg __P_((char *));
 static char *NEAR _demacroarg __P_((char *));
 #endif
 #ifdef	_NOEXTRAMACRO
@@ -271,7 +270,7 @@ int *ptrp;
 }
 
 #if	!defined (MACROMETA) || !defined (_NOEXTRAMACRO)
-static char *NEAR restorearg(s)
+static char *NEAR _restorearg(s)
 char *s;
 {
 	char *buf;
@@ -313,7 +312,7 @@ char *s;
 {
 	char *buf;
 
-	if ((buf = restorearg(s)) != s) free(s);
+	if ((buf = _restorearg(s)) != s) free(s);
 	return(buf);
 }
 #endif	/* !MACROMETA || !_NOEXTRAMACRO */
@@ -643,6 +642,7 @@ int ignorelist;
 				else if (c == 'H') tmpcode = HEX;
 				else if (c == 'C') tmpcode = CAP;
 				else if (c == 'U') tmpcode = UTF8;
+				else if (c == 'M') tmpcode = M_UTF8;
 #  ifndef	_NOKANJIFCONV
 				else if (c == 'A') tmpcode = -1;
 #  endif
@@ -1091,42 +1091,24 @@ char **argp;
 }
 #endif	/* !_NOEXTRAMACRO */
 
-#if	!defined (MACROMETA) || defined (_NOEXTRAMACRO)
-int argfputs(s, fp)
+char *restorearg(s)
 char *s;
-FILE *fp;
 {
-	return(kanjifputs(s, fp));
+#if	defined (MACROMETA) && !defined (_NOEXTRAMACRO)
+	return(_restorearg(s));
+#else
+	return(s);
+#endif
 }
 
 /*ARGSUSED*/
 VOID demacroarg(argp)
 char **argp;
 {
-	return;
-}
-
-#else	/* MACROMETA && !_NOEXTRAMACRO */
-
-int argfputs(s, fp)
-char *s;
-FILE *fp;
-{
-	char *buf;
-	int n;
-
-	buf = restorearg(s);
-	n = kanjifputs(buf, fp);
-	if (buf != s) free(buf);
-	return(n);
-}
-
-VOID demacroarg(argp)
-char **argp;
-{
+#if	defined (MACROMETA) && !defined (_NOEXTRAMACRO)
 	*argp = _demacroarg(*argp);
+#endif
 }
-#endif	/* MACROMETA && !_NOEXTRAMACRO */
 
 char *inputshellstr(prompt, ptr, def)
 char *prompt;
@@ -1271,10 +1253,7 @@ int ignorelist;
 	if (!wastty) stdiomode();
 	free(command);
 	if (!cp) {
-		if (!wastty) {
-			fputc('\n', stdout);
-			fflush(stdout);
-		}
+		if (!wastty) fputnl(stdout);
 		return(NULL);
 	}
 	if (!*cp) {
@@ -1746,8 +1725,8 @@ char *command;
 					continue;
 				}
 				command[++i] = '\0';
-				fputs(&(command[len]), stderr);
-				fputs(": Event not found.\n", stderr);
+				fprintf2(stderr, "%k: Event not found.\n",
+					&(command[len]));
 				free(cp);
 				return(NULL);
 			}
@@ -1763,7 +1742,7 @@ char *command;
 	cp[j] = '\0';
 	if (hit) {
 		kanjifputs(cp, stderr);
-		fputc('\n', stderr);
+		fputnl(stderr);
 		free(command);
 		return(cp);
 	}

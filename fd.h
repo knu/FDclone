@@ -33,10 +33,13 @@
 #define	_NOORIGGLOB
 #define	_NOKANJIFCONV
 #define	_NOBROWSE
-#define	_NOEXTRAMAXRO
+#define	_NOEXTRAMACRO
+#define	_NOTRADLAYOUT
 #endif	/* FD < 2 */
 
+#include "printf.h"
 #include "pathname.h"
+#include "term.h"
 #include "types.h"
 
 #ifdef	DEBUG
@@ -125,10 +128,12 @@ extern char *_mtrace_file;
 #define	DIRCOUNTLIMIT	50
 #define	SECOND		0
 #define	DOSDRIVE	0
+#define	TRADLAYOUT	0
 #define	SIZEINFO	0
 #define	ANSICOLOR	0
 #define	ANSIPALETTE	""
 #define	EDITMODE	"emacs"
+#define	LOOPCURSOR	0
 #if	MSDOS
 #define	TMPDIR		"."
 #else
@@ -136,6 +141,7 @@ extern char *_mtrace_file;
 #endif
 #define	RRPATH		""
 #define	PRECEDEPATH	""
+#define	UNICODEBUFFER	0
 #define	SJISPATH	""
 #define	EUCPATH		""
 #define	JISPATH		""
@@ -147,6 +153,7 @@ extern char *_mtrace_file;
 #define	HEXPATH		""
 #define	CAPPATH		""
 #define	UTF8PATH	""
+#define	UTF8MACPATH	""
 #define	NOCONVPATH	""
 #if	FD >= 2
 #define	PROMPT		"$ "
@@ -196,14 +203,19 @@ extern char *_mtrace_file;
 #endif
 #define	FILEPERPAGE	(FILEPERLINE * FILEPERROW)
 
+#define	istradlayout()	(tradlayout && n_column >= WCOLUMNSTD)
+#define	hassizeinfo()	(sizeinfo || istradlayout())
 #define	WHEADERMIN	3
 #define	WHEADERMAX	4
-#define	WHEADER		(sizeinfo + WHEADERMIN)
+#define	WHEADER		(WHEADERMIN + ((hassizeinfo()) ? 1 : 0))
 #define	WFOOTER		3
 #define	L_TITLE		0
 #define	L_SIZE		1
 #define	L_STATUS	(sizeinfo + 1)
 #define	L_PATH		(sizeinfo + 2)
+#define	TL_SIZE		1
+#define	TL_STATUS	3
+#define	TL_PATH		2
 #ifdef	HAVEFLAGS
 #define	WMODELINE	2
 #else
@@ -229,16 +241,108 @@ extern char *_mtrace_file;
 #define	WCOLUMNOMIT	58
 #define	WCOLUMNHARD	42
 #define	WCOLUMNMIN	34
-#define	C_PAGE		1
-#define	C_MARK		12
-#define	C_SORT		27
-#define	C_FIND		47
-#define	C_SIZE		1
-#define	C_TOTAL		37
-#define	C_FREE		59
+#define	S_BYTES		" bytes"
+#define	S_KBYTES	" KB"
+#define	S_MBYTES	" MB"
+#define	W_BYTES		(sizeof(S_BYTES) - 1)
+#define	W_KBYTES	(sizeof(S_KBYTES) - 1)
+#define	W_MBYTES	(sizeof(S_MBYTES) - 1)
+#define	S_PAGE		"Page:"
+#define	S_MARK		"Mark:"
+#define	S_INFO		""
+#define	S_SORT		"Sort:"
+#define	S_FIND		"Find:"
+#define	S_PATH		"Path:"
+#define	S_BROWSE	"Browse:"
+#define	S_ARCH		"Arch:"
+#define	S_SIZE		"Size:"
+#define	S_TOTAL		"Total:"
+#define	S_USED		""
+#define	S_FREE		"Free:"
+#define	TS_PAGE		"Page:"
+#define	TS_MARK		"Marked"
+#define	TS_INFO		"Info:"
+#define	TS_SORT		""
+#define	TS_FIND		""
+#define	TS_PATH		"Path="
+#define	TS_BROWSE	"Browse="
+#define	TS_ARCH		"Arch="
+#define	TS_SIZE		"Files "
+#define	TS_TOTAL	"Total:"
+#define	TS_USED		"Used:"
+#define	TS_FREE		"Free:"
+#define	W_PAGE		(sizeof(S_PAGE) - 1)
+#define	W_MARK		(sizeof(S_MARK) - 1)
+#define	W_INFO		(sizeof(S_INFO) - 1)
+#define	W_SORT		(sizeof(S_SORT) - 1)
+#define	W_FIND		(sizeof(S_FIND) - 1)
+#define	W_PATH		(sizeof(S_PATH) - 1)
+#define	W_BROWSE	(sizeof(S_BROWSE) - 1)
+#define	W_ARCH		(sizeof(S_ARCH) - 1)
+#define	W_SIZE		(sizeof(S_SIZE) - 1)
+#define	W_TOTAL		(sizeof(S_TOTAL) - 1)
+#define	W_USED		(sizeof(S_USED) - 1)
+#define	W_FREE		(sizeof(S_FREE) - 1)
+#define	TW_PAGE		(sizeof(TS_PAGE) - 1)
+#define	TW_MARK		(sizeof(TS_MARK) - 1)
+#define	TW_INFO		(sizeof(TS_INFO) - 1)
+#define	TW_SORT		(sizeof(TS_SORT) - 1)
+#define	TW_FIND		(sizeof(TS_FIND) - 1)
+#define	TW_PATH		(sizeof(TS_PATH) - 1)
+#define	TW_BROWSE	(sizeof(TS_BROWSE) - 1)
+#define	TW_ARCH		(sizeof(TS_ARCH) - 1)
+#define	TW_SIZE		(sizeof(TS_SIZE) - 1)
+#define	TW_TOTAL	(sizeof(TS_TOTAL) - 1)
+#define	TW_USED		(sizeof(TS_USED) - 1)
+#define	TW_FREE		(sizeof(TS_FREE) - 1)
+#define	D_PAGE		2
+#define	D_MARK		4
+#define	D_INFO		0
+#define	D_SORT		14
+#define	D_FIND		(n_column - C_FIND - W_FIND)
+#define	D_PATH		(n_column - C_PATH - W_PATH)
+#define	D_BROWSE	(n_column - C_PATH - W_BROWSE)
+#define	D_ARCH		(n_column - C_PATH - W_ARCH)
+#define	D_SIZE		14
+#define	D_TOTAL		15
+#define	D_USED		0
+#define	D_FREE		15
+#define	TD_PAGE		2
+#define	TD_MARK		4
+#define	TD_INFO		(TC_SIZE - TC_INFO - TW_INFO)
+#define	TD_SORT		0
+#define	TD_FIND		0
+#define	TD_PATH		(TC_MARK - TC_PATH - TW_PATH)
+#define	TD_BROWSE	(TC_MARK - TC_PATH - TW_BROWSE)
+#define	TD_ARCH		(TC_MARK - TC_PATH - TW_ARCH)
+#define	TD_SIZE		13
+#define	TD_TOTAL	14
+#define	TD_USED		13
+#define	TD_FREE		14
+#define	C_PAGE		((isleftshift()) ? 0 : 1)
+#define	C_MARK		(C_PAGE + W_PAGE + D_PAGE + 1 + D_PAGE + 1)
+#define	C_INFO		-1
+#define	C_SORT		(C_MARK + W_MARK + D_MARK + 1 + D_MARK + 1)
+#define	C_FIND		(C_SORT + ((ishardomit()) ? 0 : W_SORT + D_SORT + 1))
+#define	C_PATH		((isleftshift()) ? 0 : 1)
+#define	C_SIZE		((isleftshift()) ? 0 : 1)
+#define	C_TOTAL		(C_SIZE + W_SIZE + D_SIZE + 1 + D_SIZE + 2)
+#define	C_USED		-1
+#define	C_FREE		(C_TOTAL + W_TOTAL + D_TOTAL + 1)
+#define	TC_PAGE		2
+#define	TC_MARK		(n_column - TD_MARK - TW_MARK - TD_SIZE - 2)
+#define	TC_INFO		2
+#define	TC_SORT		-1
+#define	TC_FIND		-1
+#define	TC_PATH		2
+#define	TC_SIZE		(n_column - TD_MARK - TW_SIZE - TD_SIZE - 2)
+#define	TC_TOTAL	(TC_PAGE + TW_PAGE + TD_PAGE + 1 + TD_PAGE + 3)
+#define	TC_USED		(TC_TOTAL + TW_TOTAL + TD_TOTAL + 3)
+#define	TC_FREE		(TC_USED + TW_USED + TD_USED + 3)
 
 #define	WSIZE		9
 #define	WSIZE2		8
+#define	TWSIZE2		10
 #define	WDATE		8
 #define	WTIME		5
 #define	WSECOND		2
@@ -247,6 +351,8 @@ extern char *_mtrace_file;
 #else
 #define	WMODE		10
 #endif
+#define	TWMODE		9
+#define	WNLINK		2
 #ifndef	NOUID
 #define	WOWNER		8
 #define	WGROUP		8

@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "kanji.h"
@@ -647,11 +646,10 @@ char *s;
 	int i, len;
 
 	for (i = len = 0; s[i]; i++, len++) {
-#ifdef	CODEEUC
-		if (isekana(s, i)) i++;
-		else
-#endif
 		if (isctl(s[i])) len++;
+#ifdef	CODEEUC
+		else if (isekana(s, i)) i++;
+#endif
 	}
 	return(len);
 }
@@ -670,17 +668,16 @@ char *s;
 
 #ifdef	USESTDARGH
 /*VARARGS2*/
-int fprintf2(FILE *fp, CONST char *fmt, ...)
+char *asprintf3(CONST char *fmt, ...)
 #else
 /*VARARGS2*/
-int fprintf2(fp, fmt, va_alist)
-FILE *fp;
+char *asprintf3(fmt, va_alist)
 CONST char *fmt;
 va_dcl
 #endif
 {
 	va_list args;
-	char *buf;
+	char *cp;
 	int n;
 
 #ifdef	USESTDARGH
@@ -689,42 +686,10 @@ va_dcl
 	va_start(args);
 #endif
 
-	n = vasprintf2(&buf, fmt, args);
+	n = vasprintf2(&cp, fmt, args);
 	va_end(args);
 	if (n < 0) error("malloc()");
-	fputs(buf, fp);
-	free(buf);
-	return(n);
-}
-
-#ifdef	USESTDARGH
-/*VARARGS3*/
-int snprintf2(char *s, int size, CONST char *fmt, ...)
-#else
-/*VARARGS3*/
-int snprintf2(s, size, fmt, va_alist)
-char *s;
-int size;
-CONST char *fmt;
-va_dcl
-#endif
-{
-	va_list args;
-	char *buf;
-	int n;
-
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
-
-	n = vasprintf2(&buf, fmt, args);
-	va_end(args);
-	if (n < 0) error("malloc()");
-	strncpy2(s, buf, size - 1);
-	free(buf);
-	return(n);
+	return(cp);
 }
 
 VOID perror2(s)
@@ -733,14 +698,10 @@ char *s;
 	int duperrno;
 
 	duperrno = errno;
-	if (s) {
-		kanjifputs(s, stderr);
-		fputs(": ", stderr);
-	}
+	if (s) fprintf2(stderr, "%k: ", s);
 	fputs(strerror2(duperrno), stderr);
 	if (isttyiomode) fputc('\r', stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	fputnl(stderr);
 }
 
 #ifdef	_NOORIGSHELL
@@ -893,14 +854,13 @@ int noconf;
 	sigvecset(n);
 	if (ret >= 127 && noconf > 0) {
 		if (dumbterm <= 2) fputc('\007', stderr);
-		fputc('\n', stderr);
-		kanjifputs(HITKY_K, stderr);
+		fprintf2(stderr, "\n%k", HITKY_K);
 		fflush(stderr);
 		ttyiomode(1);
 		keyflush();
 		getkey2(0);
 		stdiomode();
-		fputc('\n', stderr);
+		fputnl(stderr);
 	}
 
 	if (wastty) {
@@ -953,14 +913,14 @@ char *command, *type;
 	}
 	else {
 		if (dumbterm <= 2) fputc('\007', stderr);
-		fputc('\n', stderr);
+		fputnl(stderr);
 		perror2(command);
 		fflush(stderr);
 		ttyiomode(1);
 		keyflush();
 		getkey2(0);
 		stdiomode();
-		fputc('\n', stderr);
+		fputnl(stderr);
 		if (wasttyflags & TF_TTYIOMODE)
 			ttyiomode((wasttyflags & TF_TTYNL) ? 1 : 0);
 	}

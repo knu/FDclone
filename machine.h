@@ -200,7 +200,6 @@ typedef long	off_t;
 #define	USEPID_T
 #define	NOSIGLIST
 #define	NOTZFILEH
-#define	USEMKNODH
 #define	NOTMGMTOFF
 #define	USEREGCOMP
 #define	NOTERMVAR
@@ -943,14 +942,30 @@ typedef long	off_t;
 #if	(defined (__STDC__) || defined (FORCEDSTDC)) \
 && !defined (__STRICT_ANSI__) && !defined (STRICTSTDC)
 #define	__P_(args)	args
+#else
+#define	__P_(args)	()
+#endif
+
+#if	(defined (__STDC__) || defined (FORCEDSTDC))
 #define	CONST		const
 #define	ALLOC_T		size_t
 #define	VOID_A		void
 #else
-#define	__P_(args)	()
 #define	CONST
 #define	ALLOC_T		unsigned
 #define	VOID_A
+#endif
+
+#ifdef	NOVOID
+#define	VOID
+#define	VOID_T	int
+#define	VOID_P	char *
+#define	VOID_C
+#else
+#define	VOID	void
+#define	VOID_T	void
+#define	VOID_P	void *
+#define	VOID_C	(void)
 #endif
 
 #if	defined (USEREGCMP) && !defined (REGEXPLIB)

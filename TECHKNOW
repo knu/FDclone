@@ -860,6 +860,8 @@ NWS-3400:
 	_NOEXTRACOPY	強化されたコピー機能が使用不能
 	_NOBROWSE	組込みコマンド browse が使用不能
 	_NOEXTRAMACRO	%T, %M マクロがステートメント中で使用不能
+	_NOTRADLAYOUT	オリジナル版『ＦＤ』準拠の画面レイアウトが使用不能
+	_NODOSCOMMAND	UNIX 版で COMMAND.COM 内蔵コマンドが使用不能
 
 　config.hin を編集してこれらの識別子の定義を追加しておけば、
 機能を縮小してサイズを小さくしたり、エンドユーザに使用させた

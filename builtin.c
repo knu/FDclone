@@ -5,7 +5,6 @@
  */
 
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "funcno.h"
@@ -39,6 +38,9 @@ extern char **history[];
 extern short histsize[];
 extern short histno[];
 extern char *helpindex[];
+#ifndef	_NOCUSTOMIZE
+extern char **orighelpindex;
+#endif
 extern int fd_restricted;
 #if	FD >= 2
 extern char *progpath;
@@ -58,6 +60,9 @@ extern int win_y;
 extern int hideclock;
 #endif
 extern int inruncom;
+#ifndef	_NOKANJICONV
+extern int unicodebuffer;
+#endif
 
 static VOID NEAR builtinerror __P_((char *[], char *, int));
 #ifdef	_NOORIGSHELL
@@ -79,7 +84,7 @@ static char **NEAR readargv __P_((char **, char **));
 static int NEAR custbrowse __P_((int, char *[]));
 # endif
 #endif
-static int NEAR getcommand __P_((char *));
+static int NEAR getmacro __P_((char *));
 static int NEAR setkeybind __P_((int, char *[]));
 static int NEAR printbind __P_((int, char *[]));
 #ifdef	_USEDOSEMU
@@ -229,17 +234,11 @@ int n;
 
 	duperrno = errno;
 	if (n >= BUILTINERRSIZ || (n < 0 && !errno)) return;
-	if (argv && argv[0]) {
-		kanjifputs(argv[0], stderr);
-		fputs(": ", stderr);
-	}
-	if (s) {
-		kanjifputs(s, stderr);
-		fputs(": ", stderr);
-	}
-	fprintf2(stderr, "%s.\n",
+	if (argv && argv[0]) fprintf2(stderr, "%k: ", argv[0]);
+	if (s) fprintf2(stderr, "%k: ", s);
+	fprintf2(stderr, "%s.",
 		(n >= 0) ? builtinerrstr[n] : strerror2(duperrno));
-	fflush(stderr);
+	fputnl(stderr);
 }
 
 #ifdef	_NOORIGSHELL
@@ -292,10 +291,10 @@ FILE *fp;
 
 #ifndef	_NOARCHIVE
 # if	FD >= 2
-static int NEAR getlaunchopt(n, argv, opts, list)
+static int NEAR getlaunchopt(n, argv, opts, lp)
 int n;
 char *argv[], *opts;
-launchtable *list;
+launchtable *lp;
 {
 	char *cp;
 	int i, c;
@@ -304,49 +303,52 @@ launchtable *list;
 	c = argv[n][1];
 	if (!c || c == '-') return(++n);
 	else if (!strchr(opts, c)) {
-		builtinerror(argv, argv[n], ER_UNKNOWNOPT);
+		lp -> topskip = ER_UNKNOWNOPT;
+		lp -> bottomskip = n;
 		return(-1);
 	}
 
 	if (argv[n][2]) cp = &(argv[n][2]);
 	else if (argv[n + 1]) cp = argv[++n];
 	else {
-		builtinerror(argv, argv[n], ER_NOARGSPEC);
+		lp -> topskip = ER_NOARGSPEC;
+		lp -> bottomskip = n;
 		return(-1);
 	}
 
 	if (c == 'f') {
-		i = countvar(list -> format);
-		list -> format = (char **)realloc2(list -> format,
+		i = countvar(lp -> format);
+		lp -> format = (char **)realloc2(lp -> format,
 			sizeof(char *) * (i + 2));
-		list -> format[i++] = strdup2(cp);
-		list -> format[i] = NULL;
+		lp -> format[i++] = strdup2(cp);
+		lp -> format[i] = NULL;
 	}
 	else if (c == 'i') {
-		i = countvar(list -> lignore);
-		list -> lignore = (char **)realloc2(list -> lignore,
+		i = countvar(lp -> lignore);
+		lp -> lignore = (char **)realloc2(lp -> lignore,
 			sizeof(char *) * (i + 2));
-		list -> lignore[i++] = strdup2(cp);
-		list -> lignore[i] = NULL;
+		lp -> lignore[i++] = strdup2(cp);
+		lp -> lignore[i] = NULL;
 	}
 	else if (c == 'e') {
-		i = countvar(list -> lerror);
-		list -> lerror = (char **)realloc2(list -> lerror,
+		i = countvar(lp -> lerror);
+		lp -> lerror = (char **)realloc2(lp -> lerror,
 			sizeof(char *) * (i + 2));
-		list -> lerror[i++] = strdup2(cp);
-		list -> lerror[i] = NULL;
+		lp -> lerror[i++] = strdup2(cp);
+		lp -> lerror[i] = NULL;
 	}
 	else if (c == 't' || c == 'b') {
 		if ((i = atoi2(cp)) < 0) {
-			builtinerror(argv, cp, ER_SYNTAXERR);
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = n;
 			return(-1);
 		}
-		if (c == 't') list -> topskip = i;
-		else list -> bottomskip = i;
+		if (c == 't') lp -> topskip = i;
+		else lp -> bottomskip = i;
 	}
 	else if (c == 'p') {
-		if (list -> ext) free (list -> ext);
-		list -> ext = strdup2(cp);
+		if (lp -> ext) free (lp -> ext);
+		lp -> ext = strdup2(cp);
 	}
 	else {
 		if (!strcmp(cp, "loop"))
@@ -354,10 +356,11 @@ launchtable *list;
 		else if (!strcmp(cp, "noprep"))
 			i = (c == 'd') ? LF_DIRNOPREP : LF_FILENOPREP;
 		else {
-			builtinerror(argv, cp, ER_SYNTAXERR);
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = n;
 			return(-1);
 		}
-		list -> flags |= i;
+		lp -> flags |= i;
 	}
 	n++;
 
@@ -365,9 +368,35 @@ launchtable *list;
 }
 # endif
 
-static int NEAR setlaunch(argc, argv)
+VOID freelaunch(lp)
+launchtable *lp;
+{
+	if (lp -> ext) free(lp -> ext);
+	if (lp -> comm) free(lp -> comm);
+# if	FD >= 2
+	freevar(lp -> format);
+	freevar(lp -> lignore);
+	freevar(lp -> lerror);
+# endif
+}
+
+int searchlaunch(list, max, lp)
+launchtable *list;
+int max;
+launchtable *lp;
+{
+	int i;
+
+	for (i = 0; i < max; i++)
+		if (!extcmp(lp -> ext, lp -> flags,
+		list[i].ext, list[i].flags, 1)) break;
+	return(i);
+}
+
+int parselaunch(argc, argv, lp)
 int argc;
 char *argv[];
+launchtable *lp;
 {
 # if	FD >= 2
 	int j, opt, err;
@@ -376,59 +405,39 @@ char *argv[];
 	long l;
 	int ch;
 # endif
-	launchtable list;
 	int i, n;
 
-	if (argc <= 1) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
-		return(-1);
-	}
-
-	list.flags = 0;
-	list.ext = getext(argv[1], &(list.flags));
-
-	for (n = 0; n < maxlaunch; n++)
-		if (!extcmp(list.ext, list.flags,
-		launchlist[n].ext, launchlist[n].flags, 1)) break;
-
-	if (n >= MAXLAUNCHTABLE) {
-		builtinerror(argv, NULL, ER_OUTOFLIMIT);
-		free(list.ext);
-		return(-1);
-	}
-
-	if (argc < 3) {
-		free(list.ext);
-		if (n >= maxlaunch) {
-			builtinerror(argv, argv[1], ER_NOENTRY);
-			return(-1);
-		}
-
-		free(launchlist[n].ext);
-		free(launchlist[n].comm);
+	lp -> comm = NULL;
 # if	FD >= 2
-		freevar(launchlist[n].format);
-		freevar(launchlist[n].lignore);
-		freevar(launchlist[n].lerror);
+	lp -> format = lp -> lignore = lp -> lerror = NULL;
 # endif
-		maxlaunch--;
-		for (; n < maxlaunch; n++)
-			memcpy((char *)&(launchlist[n]),
-				(char *)&(launchlist[n + 1]),
-				sizeof(launchtable));
-		return(0);
+
+	if (argc <= 1) {
+		lp -> topskip = ER_FEWMANYARG;
+		lp -> bottomskip = 0;
+		return(-1);
 	}
 
+	lp -> ext = getext(argv[1], &(lp -> flags));
+
+	n = searchlaunch(launchlist, maxlaunch, lp);
+	if (n >= MAXLAUNCHTABLE) {
+		free(lp -> ext);
+		lp -> topskip = ER_OUTOFLIMIT;
+		lp -> bottomskip = 0;
+		return(-1);
+	}
+
+	if (argc < 3) return(n);
+
 # if	FD >= 2
-	list.format = list.lignore = list.lerror = NULL;
-	list.comm = NULL;
-	list.topskip = list.bottomskip = 0;
+	lp -> topskip = lp -> bottomskip = 0;
 	opt = err = 0;
 	for (i = 2; i < argc; i++) {
-		j = getlaunchopt(i, argv, "fietb", &list);
+		j = getlaunchopt(i, argv, "fietb", lp);
 		if (!j) {
-			if (list.comm) break;
-			list.comm = strdup2(argv[i]);
+			if (lp -> comm) break;
+			lp -> comm = strdup2(argv[i]);
 		}
 		else if (j > 0) {
 			opt++;
@@ -441,90 +450,86 @@ char *argv[];
 	}
 
 	if (err);
-	else if (!(list.comm)) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+	else if (!(lp -> comm)) {
+		lp -> topskip = ER_FEWMANYARG;
+		lp -> bottomskip = 0;
 		err++;
 	}
 	else if (i + 3 < argc) {
-		builtinerror(argv, argv[i + 3], ER_FEWMANYARG);
+		lp -> topskip = ER_FEWMANYARG;
+		lp -> bottomskip = i + 3;
 		err++;
 	}
 	else if (i < argc && opt) {
-		builtinerror(argv, argv[i], ER_FEWMANYARG);
+		lp -> topskip = ER_FEWMANYARG;
+		lp -> bottomskip = i;
 		err++;
 	}
 	if (err) {
-		free(list.ext);
-		free(list.comm);
-		freevar(list.format);
-		freevar(list.lignore);
-		freevar(list.lerror);
+		freelaunch(lp);
 		return(-1);
 	}
 
 	if (i < argc) {
-		list.format = (char **)malloc2(sizeof(char *) * 2);
-		list.format[0] = strdup2(argv[i]);
-		list.format[1] = NULL;
+		lp -> format = (char **)malloc2(sizeof(char *) * 2);
+		lp -> format[0] = strdup2(argv[i]);
+		lp -> format[1] = NULL;
 	}
 
 	if (i + 1 >= argc);
-	else if ((j = atoi2(argv[i + 1])) >= 0) list.topskip = j;
+	else if ((j = atoi2(argv[i + 1])) >= 0) lp -> topskip = j;
 	else {
-		builtinerror(argv, argv[i + 1], ER_SYNTAXERR);
-		free(list.ext);
-		free(list.comm);
-		freevar(list.format);
-		freevar(list.lignore);
-		freevar(list.lerror);
+		lp -> topskip = ER_SYNTAXERR;
+		lp -> bottomskip = i + 1;
+		freelaunch(lp);
 		return(-1);
 	}
 
 	if (i + 2 >= argc);
-	else if ((j = atoi2(argv[i + 2])) >= 0) list.bottomskip = j;
+	else if ((j = atoi2(argv[i + 2])) >= 0) lp -> bottomskip = j;
 	else {
-		builtinerror(argv, argv[i + 2], ER_SYNTAXERR);
-		free(list.ext);
-		free(list.comm);
-		freevar(list.format);
-		freevar(list.lignore);
-		freevar(list.lerror);
+		lp -> topskip = ER_SYNTAXERR;
+		lp -> bottomskip = i + 2;
+		freelaunch(lp);
 		return(-1);
 	}
 
 # else	/* FD < 2 */
-	list.comm = strdup2(argv[2]);
-	if (argc <= 3) list.topskip = list.bottomskip = 255;
+	lp -> comm = strdup2(argv[2]);
+	if (argc <= 3) lp -> topskip = lp -> bottomskip = 255;
 	else {
 		cp = tmp = catvar(&(argv[3]), '\0');
 		if (!(cp = evalnumeric(cp, &l, 0)) || *cp != ',') {
-			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(list.ext);
-			free(list.comm);
-			free(tmp);
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = (u_char)-1;
+			free(lp -> ext);
+			free(lp -> comm);
+			lp -> ext = tmp;
 			return(-1);
 		}
-		list.topskip = l;
+		lp -> topskip = l;
 		if (!(cp = evalnumeric(++cp, &l, 0))) {
-			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(list.ext);
-			free(list.comm);
-			free(tmp);
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = (u_char)-1;
+			free(lp -> ext);
+			free(lp -> comm);
+			lp -> ext = tmp;
 			return(-1);
 		}
-		list.bottomskip = l;
+		lp -> bottomskip = l;
 
 		ch = ':';
 		for (i = 0; i < MAXLAUNCHFIELD; i++) {
 			if (!cp || *cp != ch) {
-				builtinerror(argv, tmp, ER_SYNTAXERR);
-				free(list.ext);
-				free(list.comm);
-				free(tmp);
+				lp -> topskip = ER_SYNTAXERR;
+				lp -> bottomskip = (u_char)-1;
+				free(lp -> ext);
+				free(lp -> comm);
+				lp -> ext = tmp;
 				return(-1);
 			}
-			cp = getrange(++cp, &(list.field[i]),
-				&(list.delim[i]), &(list.width[i]));
+			cp = getrange(++cp, &(lp -> field[i]),
+				&(lp -> delim[i]), &(lp -> width[i]));
 			ch = ',';
 		}
 
@@ -532,196 +537,272 @@ char *argv[];
 		for (i = 0; i < MAXLAUNCHSEP; i++) {
 			if (*cp != ch) break;
 			if (!(cp = evalnumeric(++cp, &l, 0))) {
-				builtinerror(argv, tmp, ER_SYNTAXERR);
-				free(list.ext);
-				free(list.comm);
-				free(tmp);
+				lp -> topskip = ER_SYNTAXERR;
+				lp -> bottomskip = (u_char)-1;
+				free(lp -> ext);
+				free(lp -> comm);
+				lp -> ext = tmp;
 				return(-1);
 			}
-			list.sep[i] = (l > 0) ? l - 1 : 255;
+			lp -> sep[i] = (l > 0) ? l - 1 : 255;
 			ch = ',';
 		}
-		for (; i < MAXLAUNCHSEP; i++) list.sep[i] = 255;
+		for (; i < MAXLAUNCHSEP; i++) lp -> sep[i] = 255;
 
-		if (!cp || *cp != ':') list.lines = 1;
+		if (!cp || *cp != ':') lp -> lines = 1;
 		else {
 			if (!(cp = evalnumeric(++cp, &l, 0))) {
-				builtinerror(argv, tmp, ER_SYNTAXERR);
-				free(list.ext);
-				free(list.comm);
-				free(tmp);
+				lp -> topskip = ER_SYNTAXERR;
+				lp -> bottomskip = (u_char)-1;
+				free(lp -> ext);
+				free(lp -> comm);
+				lp -> ext = tmp;
 				return(-1);
 			}
-			list.lines = (l > 0) ? l : 1;
+			lp -> lines = (l > 0) ? l : 1;
 		}
 
 		if (*cp) {
-			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(list.ext);
-			free(list.comm);
-			free(tmp);
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = (u_char)-1;
+			free(lp -> ext);
+			free(lp -> comm);
+			lp -> ext = tmp;
 			return(-1);
 		}
 		free(tmp);
 	}
 # endif	/* FD < 2 */
 
-	if (n >= maxlaunch) maxlaunch++;
-	else {
-		free(launchlist[n].comm);
-		free(launchlist[n].ext);
-# if	FD >= 2
-		freevar(launchlist[n].format);
-		freevar(launchlist[n].lignore);
-		freevar(launchlist[n].lerror);
+	return(n);
+}
+
+static int NEAR setlaunch(argc, argv)
+int argc;
+char *argv[];
+{
+	launchtable launch;
+	int n;
+
+	if ((n = parselaunch(argc, argv, &launch)) < 0) {
+# if	FD < 2
+		if (launch.bottomskip == (u_char)-1) {
+			builtinerror(argv, launch.ext, launch.topskip);
+			free(launch.ext);
+		}
+		else
 # endif
+		builtinerror(argv,
+			(launch.bottomskip) ? argv[launch.bottomskip] : NULL,
+			launch.topskip);
+		return(-1);
 	}
-	memcpy((char *)&(launchlist[n]), (char *)&list, sizeof(list));
+
+	if (!(launch.comm)) {
+		free(launch.ext);
+		if (n >= maxlaunch) {
+			builtinerror(argv, argv[1], ER_NOENTRY);
+			return(-1);
+		}
+
+		freelaunch(&(launchlist[n]));
+		maxlaunch--;
+		for (; n < maxlaunch; n++)
+			memcpy((char *)&(launchlist[n]),
+				(char *)&(launchlist[n + 1]),
+				sizeof(launchtable));
+		return(0);
+	}
+
+	if (n >= maxlaunch) maxlaunch++;
+	else freelaunch(&(launchlist[n]));
+	memcpy((char *)&(launchlist[n]), (char *)&launch, sizeof(launch));
 	return(0);
+}
+
+VOID freearch(ap)
+archivetable *ap;
+{
+	if (ap -> ext) free(ap -> ext);
+	if (ap -> p_comm) free(ap -> p_comm);
+	if (ap -> u_comm) free(ap -> u_comm);
+}
+
+int searcharch(list, max, ap)
+archivetable *list;
+int max;
+archivetable *ap;
+{
+	int i;
+
+	for (i = 0; i < max; i++)
+		if (!extcmp(ap -> ext, ap -> flags,
+		list[i].ext, list[i].flags, 1)) break;
+	return(i);
+}
+
+int parsearch(argc, argv, ap)
+int argc;
+char *argv[];
+archivetable *ap;
+{
+	int n;
+
+	ap -> p_comm = ap -> u_comm = NULL;
+
+	if (argc <= 1 || argc >= 5) {
+		ap -> flags = ER_FEWMANYARG;
+		ap -> ext = NULL;
+		return(-1);
+	}
+
+	ap -> ext = getext(argv[1], &(ap -> flags));
+
+	n = searcharch(archivelist, maxarchive, ap);
+	if (n >= MAXARCHIVETABLE) {
+		free(ap -> ext);
+		ap -> flags = ER_OUTOFLIMIT;
+		ap -> ext = NULL;
+		return(-1);
+	}
+
+	if (argc < 3) return(n);
+
+	if (argv[2][0]) ap -> p_comm = strdup2(argv[2]);
+	if (argc > 3 && argv[3][0]) ap -> u_comm = strdup2(argv[3]);
+	if (!(ap -> p_comm) && !(ap -> u_comm)) {
+		free(ap -> ext);
+		ap -> flags = ER_FEWMANYARG;
+		ap -> ext = NULL;
+		return(-1);
+	}
+
+	return(n);
 }
 
 static int NEAR setarch(argc, argv)
 int argc;
 char *argv[];
 {
-	char *ext;
-	int i;
-	u_char flags;
+	archivetable arch;
+	int n;
 
-	if (argc <= 1 || argc >= 5) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+	if ((n = parsearch(argc, argv, &arch)) < 0) {
+		builtinerror(argv, arch.ext, arch.flags);
 		return(-1);
 	}
 
-	ext = getext(argv[1], &flags);
-
-	for (i = 0; i < maxarchive; i++)
-		if (!extcmp(ext, flags,
-		archivelist[i].ext, archivelist[i].flags, 1)) break;
-
-	if (i >= MAXARCHIVETABLE) {
-		builtinerror(argv, NULL, ER_OUTOFLIMIT);
-		free(ext);
-		return(-1);
-	}
-
-	if (argc < 3) {
-		free(ext);
-		if (i >= maxarchive) {
+	if (!(arch.p_comm) && !(arch.u_comm)) {
+		free(arch.ext);
+		if (n >= maxarchive) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
 		}
 
-		free(archivelist[i].ext);
-		if (archivelist[i].p_comm) free(archivelist[i].p_comm);
-		if (archivelist[i].u_comm) free(archivelist[i].u_comm);
+		freearch(&(archivelist[n]));
 		maxarchive--;
-		for (; i < maxarchive; i++)
-			memcpy((char *)&(archivelist[i]),
-				(char *)&(archivelist[i + 1]),
+		for (; n < maxarchive; n++)
+			memcpy((char *)&(archivelist[n]),
+				(char *)&(archivelist[n + 1]),
 				sizeof(archivetable));
 		return(0);
 	}
 
-	if (i >= maxarchive) maxarchive++;
-	else {
-		free(archivelist[i].ext);
-		if (archivelist[i].p_comm) free(archivelist[i].p_comm);
-		if (archivelist[i].u_comm) free(archivelist[i].u_comm);
-	}
-	archivelist[i].ext = ext;
-	archivelist[i].p_comm = (argv[2][0]) ? strdup2(argv[2]) : NULL;
-	archivelist[i].u_comm =
-		(argc > 3 && argv[3][0]) ? strdup2(argv[3]) : NULL;
-# if	FD < 2
-	flags = 0;
-# endif
-	archivelist[i].flags = flags;
+	if (n >= maxarchive) maxarchive++;
+	else freearch(&(archivelist[n]));
+	memcpy((char *)&(archivelist[n]), (char *)&arch, sizeof(arch));
 	return(0);
 }
 
 /*ARGSUSED*/
-VOID printlaunchcomm(n, omit, fp)
-int n, omit;
+VOID printlaunchcomm(list, n, isset, omit, fp)
+launchtable *list;
+int n, isset, omit;
 FILE *fp;
 {
 	int i, ch;
 
-	fputs(BL_LAUNCH, fp);
-	fputc(' ', fp);
-	if (launchlist[n].flags & LF_IGNORECASE) fputc('/', fp);
-	fputsmeta(&(launchlist[n].ext[1]), fp);
-	fputc('\t', fp);
-
-	fputsmeta(launchlist[n].comm, fp);
+	fprintf2(fp, "%s ", BL_LAUNCH);
 # if	FD >= 2
-	if (!launchlist[n].format) return;
+	if (list[n].flags & LF_IGNORECASE) fputc('/', fp);
+# endif
+	fputsmeta(&(list[n].ext[1]), fp);
+	if (isset) for (;;) {
+		fputc('\t', fp);
 
-	ch = 0;
-	for (i = 0; launchlist[n].format[i]; i++) {
-		if (i) {
-			fputs(" \\\n", fp);
-			ch++;
+		fputsmeta(list[n].comm, fp);
+# if	FD >= 2
+		if (!list[n].format) break;
+
+		ch = 0;
+		for (i = 0; list[n].format[i]; i++) {
+			if (i) {
+				fputs(" \\\n", fp);
+				ch++;
+			}
+			fputs("\t-f ", fp);
+			fputsmeta(list[n].format[i], fp);
 		}
-		fputs("\t-f ", fp);
-		fputsmeta(launchlist[n].format[i], fp);
-	}
-	if (launchlist[n].lignore) for (i = 0; launchlist[n].lignore[i]; i++) {
-		fputs(" \\\n\t-i ", fp);
-		ch++;
-		fputsmeta(launchlist[n].lignore[i], fp);
-	}
-	if (launchlist[n].lerror) for (i = 0; launchlist[n].lerror[i]; i++) {
-		fputs(" \\\n\t-e ", fp);
-		ch++;
-		fputsmeta(launchlist[n].lerror[i], fp);
-	}
-	if (!launchlist[n].topskip && !launchlist[n].bottomskip) return;
+		if (list[n].lignore) for (i = 0; list[n].lignore[i]; i++) {
+			fputs(" \\\n\t-i ", fp);
+			ch++;
+			fputsmeta(list[n].lignore[i], fp);
+		}
+		if (list[n].lerror) for (i = 0; list[n].lerror[i]; i++) {
+			fputs(" \\\n\t-e ", fp);
+			ch++;
+			fputsmeta(list[n].lerror[i], fp);
+		}
+		if (!list[n].topskip && !list[n].bottomskip) break;
 
-	if (launchlist[n].topskip) {
-		if (ch) fputs(" \\\n", fp);
-		fprintf2(fp, "\t-t %d", launchlist[n].topskip);
-	}
-	if (launchlist[n].bottomskip) {
-		if (launchlist[n].topskip) fputc(' ', fp);
-		else if (ch) fputs(" \\\n\t", fp);
-		else fputc('\t', fp);
-		fprintf2(fp, "-b %d", launchlist[n].bottomskip);
-	}
+		if (list[n].topskip) {
+			if (ch) fputs(" \\\n", fp);
+			fprintf2(fp, "\t-t %d", list[n].topskip);
+		}
+		if (list[n].bottomskip) {
+			if (list[n].topskip) fputc(' ', fp);
+			else if (ch) fputs(" \\\n\t", fp);
+			else fputc('\t', fp);
+			fprintf2(fp, "-b %d", list[n].bottomskip);
+		}
 # else	/* FD < 2 */
-	if (launchlist[n].topskip >= 255) return;
-	if (omit) {
-		fputs("\t(Arch)", fp);
-		return;
-	}
-	fprintf2(fp, "\t%d,%d",
-		launchlist[n].topskip, launchlist[n].bottomskip);
-	ch = ':';
-	for (i = 0; i < MAXLAUNCHFIELD; i++) {
-		fputc(ch, fp);
-		if (launchlist[n].field[i] >= 255) fputc('0', fp);
-		else fprintf2(fp, "%d", launchlist[n].field[i] + 1);
-		if (launchlist[n].delim[i] >= 128)
-			fprintf2(fp, "[%d]", launchlist[n].delim[i] - 128);
-		else if (launchlist[n].delim[i])
-			fprintf2(fp, "'%c'", launchlist[n].delim[i]);
-		if (!(launchlist[n].width[i])) /*EMPTY*/;
-		else if (launchlist[n].width[i] >= 128)
-			fprintf2(fp, "-%d", launchlist[n].width[i] - 128);
-		else fprintf2(fp, "-'%c'", launchlist[n].width[i]);
-		ch = ',';
-	}
-	ch = ':';
-	for (i = 0; i < MAXLAUNCHSEP; i++) {
-		if (launchlist[n].sep[i] >= 255) break;
-		fprintf2(fp, "%c%d", ch, launchlist[n].sep[i] + 1);
-		ch = ',';
-	}
-	if (launchlist[n].lines > 1) {
-		if (!i) fputc(':', fp);
-		fprintf2(fp, "%d", launchlist[n].lines);
-	}
+		if (list[n].topskip >= 255) break;
+		if (omit) {
+			fputs("\t(Arch)", fp);
+			break;
+		}
+		fprintf2(fp, "\t%d,%d",
+			list[n].topskip, list[n].bottomskip);
+		ch = ':';
+		for (i = 0; i < MAXLAUNCHFIELD; i++) {
+			fputc(ch, fp);
+			if (list[n].field[i] >= 255) fputc('0', fp);
+			else fprintf2(fp, "%d", list[n].field[i] + 1);
+			if (list[n].delim[i] >= 128)
+				fprintf2(fp, "[%d]", list[n].delim[i] - 128);
+			else if (list[n].delim[i])
+				fprintf2(fp, "'%c'", list[n].delim[i]);
+			if (!(list[n].width[i])) /*EMPTY*/;
+			else if (list[n].width[i] >= 128)
+				fprintf2(fp, "-%d", list[n].width[i] - 128);
+			else fprintf2(fp, "-'%c'", list[n].width[i]);
+			ch = ',';
+		}
+		ch = ':';
+		for (i = 0; i < MAXLAUNCHSEP; i++) {
+			if (list[n].sep[i] >= 255) break;
+			fprintf2(fp, "%c%d", ch, list[n].sep[i] + 1);
+			ch = ',';
+		}
+		if (list[n].lines > 1) {
+			if (!i) fputc(':', fp);
+			fprintf2(fp, "%d", list[n].lines);
+		}
 # endif	/* FD < 2 */
+		break;
+	}
+
+	fputnl(fp);
 }
 
 static int NEAR printlaunch(argc, argv)
@@ -738,8 +819,7 @@ char *argv[];
 	}
 	hitkey(2);
 	if (argc <= 1) for (i = 0; i < maxlaunch; i++) {
-		printlaunchcomm(i, 1, stdout);
-		fputc('\n', stdout);
+		printlaunchcomm(launchlist, i, 1, 1, stdout);
 		hitkey(0);
 	}
 	else {
@@ -752,27 +832,30 @@ char *argv[];
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
 		}
-		printlaunchcomm(i, 0, stdout);
-		fputc('\n', stdout);
+		printlaunchcomm(launchlist, i, 1, 0, stdout);
 	}
-	fflush(stdout);
 	return(0);
 }
 
-VOID printarchcomm(n, fp)
-int n;
+VOID printarchcomm(list, n, isset, fp)
+archivetable *list;
+int n, isset;
 FILE *fp;
 {
-	fputs(BL_ARCH, fp);
-	fputc(' ', fp);
-	if (archivelist[n].flags & LF_IGNORECASE) fputc('/', fp);
-	fputsmeta(&(archivelist[n].ext[1]), fp);
-	fputc('\t', fp);
+	fprintf2(fp, "%s ", BL_ARCH);
+# if	FD >= 2
+	if (list[n].flags & LF_IGNORECASE) fputc('/', fp);
+# endif
+	fputsmeta(&(list[n].ext[1]), fp);
+	if (isset) {
+		fputc('\t', fp);
 
-	if (archivelist[n].p_comm) fputsmeta(archivelist[n].p_comm, fp);
-	if (!archivelist[n].u_comm) return;
-	fputc('\t', fp);
-	fputsmeta(archivelist[n].u_comm, fp);
+		if (list[n].p_comm) fputsmeta(list[n].p_comm, fp);
+		if (!list[n].u_comm) return;
+		fputc('\t', fp);
+		fputsmeta(list[n].u_comm, fp);
+	}
+	fputnl(fp);
 }
 
 static int NEAR printarch(argc, argv)
@@ -789,8 +872,7 @@ char *argv[];
 	}
 	hitkey(2);
 	if (argc <= 1) for (i = 0; i < maxarchive; i++) {
-		printarchcomm(i, stdout);
-		fputc('\n', stdout);
+		printarchcomm(archivelist, i, 1, stdout);
 		hitkey(0);
 	}
 	else {
@@ -803,10 +885,8 @@ char *argv[];
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
 		}
-		printarchcomm(i, stdout);
-		fputc('\n', stdout);
+		printarchcomm(archivelist, i, 1, stdout);
 	}
-	fflush(stdout);
 	return(0);
 }
 
@@ -939,13 +1019,7 @@ launchtable *list;
 		}
 	}
 	if (!list) return;
-	for (i = 0; list[i].comm; i++) {
-		if (list[i].ext) free(list[i].ext);
-		free(list[i].comm);
-		freevar(list[i].format);
-		freevar(list[i].lignore);
-		freevar(list[i].lerror);
-	}
+	for (i = 0; list[i].comm; i++) freelaunch(&(list[i]));
 	free(list);
 }
 
@@ -992,9 +1066,14 @@ char *argv[];
 			if (!i) break;
 			else if (i > 0) n = i;
 			else {
+				builtinerror(argv,
+					(list[lvl].bottomskip)
+					? argv[list[lvl].bottomskip] : NULL,
+					list[lvl].topskip);
 				freevar(argv2);
 				freebrowse(list);
 				return(-1);
+/*NOTREACHED*/
 				break;
 			}
 		}
@@ -1022,20 +1101,21 @@ char *argv[];
 # endif	/* !_NOBROWSE */
 #endif	/* !_NOARCHIVE */
 
-static int NEAR getcommand(cp)
+static int NEAR getmacro(cp)
 char *cp;
 {
-	int n;
-
-	for (n = 0; n < FUNCLISTSIZ; n++)
-		if (!strcommcmp(cp, funclist[n].ident)) break;
-	if (n < FUNCLISTSIZ) /*EMPTY*/;
-	else if (maxmacro >= MAXMACROTABLE) n = -1;
+	if (maxmacro >= MAXMACROTABLE) return(0);
 	else {
 		macrolist[maxmacro] = strdup2(cp);
 		return(FUNCLISTSIZ + maxmacro++);
 	}
-	return(n);
+}
+
+int ismacro(n)
+int n;
+{
+	if (n < FUNCLISTSIZ || n >= FUNCLISTSIZ + MAXMACROTABLE) return(0);
+	return(1);
 }
 
 int freemacro(n)
@@ -1043,7 +1123,7 @@ int n;
 {
 	int i;
 
-	if (n < FUNCLISTSIZ || n >= 255) return(-1);
+	if (!ismacro(n)) return(-1);
 
 	free(macrolist[n - FUNCLISTSIZ]);
 	maxmacro--;
@@ -1051,37 +1131,102 @@ int n;
 		macrolist[i] = macrolist[i + 1];
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
-		if (bindlist[i].f_func > n) bindlist[i].f_func--;
-		if (bindlist[i].d_func > n && bindlist[i].d_func < 255)
+		if (ismacro(bindlist[i].f_func) && bindlist[i].f_func > n)
+			bindlist[i].f_func--;
+		if (ismacro(bindlist[i].d_func) && bindlist[i].d_func > n)
 			bindlist[i].d_func--;
 	}
 
 	return(0);
 }
 
-static int NEAR setkeybind(argc, argv)
+int searchkeybind(list, bindp)
+bindtable *list, *bindp;
+{
+	int i;
+
+	for (i = 0; i < MAXBINDTABLE && list[i].key >= 0; i++)
+		if (list[i].key == bindp -> key) break;
+	return(i);
+}
+
+int parsekeybind(argc, argv, bindp)
 int argc;
 char *argv[];
+bindtable *bindp;
 {
-	int i, j, ch, n1, n2;
+	int i, n;
 
 	if (argc <= 1 || argc >= 6) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+		bindp -> key = ER_FEWMANYARG;
+		bindp -> f_func = 0;
 		return(-1);
 	}
-	if ((ch = getkeycode(argv[1], 0)) < 0 || ch == '\033') {
-		builtinerror(argv, argv[1], ER_SYNTAXERR);
+	if ((i = getkeycode(argv[1], 0)) < 0 || i == '\033') {
+		bindp -> key = ER_SYNTAXERR;
+		bindp -> f_func = 1;
 		return(-1);
 	}
+	bindp -> key = i;
 
-	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-		if (ch == (int)(bindlist[i].key)) break;
-	if (i >= MAXBINDTABLE - 1) {
-		builtinerror(argv, NULL, ER_OUTOFLIMIT);
+	n = searchkeybind(bindlist, bindp);
+	if (n >= MAXBINDTABLE - 1) {
+		bindp -> key = ER_OUTOFLIMIT;
+		bindp -> f_func = 0;
 		return(-1);
 	}
 
 	if (argc == 2) {
+		bindp -> f_func = bindp -> d_func = 255;
+		return(n);
+	}
+
+	for (i = 0; i < FUNCLISTSIZ; i++)
+		if (!strcommcmp(argv[2], funclist[i].ident)) break;
+	bindp -> f_func = (i < FUNCLISTSIZ) ? i : 254;
+
+	if (argc <= 3 || argv[3][0] == BINDCOMMENT) {
+		bindp -> d_func = 255;
+		i = 3;
+	}
+	else {
+		for (i = 0; i < FUNCLISTSIZ; i++)
+			if (!strcommcmp(argv[3], funclist[i].ident)) break;
+		bindp -> d_func = (i < FUNCLISTSIZ) ? i : 254;
+		i = 4;
+	}
+
+	if (argc > i + 1) {
+		bindp -> key = ER_FEWMANYARG;
+		bindp -> f_func = 0;
+		return(-1);
+	}
+	else if (argc > i) {
+		if (argv[i][0] != BINDCOMMENT
+		|| bindp -> key < K_F(1) || bindp -> key > K_F(10)) {
+			bindp -> key = ER_SYNTAXERR;
+			bindp -> f_func = i;
+			return(-1);
+		}
+	}
+
+	return(n);
+}
+
+static int NEAR setkeybind(argc, argv)
+int argc;
+char *argv[];
+{
+	bindtable bind;
+	int i, n;
+
+	if ((i = parsekeybind(argc, argv, &bind)) < 0) {
+		builtinerror(argv,
+			(bind.f_func) ? argv[bind.f_func] : NULL, bind.key);
+		return(-1);
+	}
+
+	if (bind.f_func == 255) {
 		if (bindlist[i].key < 0) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -1089,9 +1234,9 @@ char *argv[];
 
 		freemacro(bindlist[i].f_func);
 		freemacro(bindlist[i].d_func);
-		if (ch >= K_F(1) && ch <= K_F(10)) {
-			free(helpindex[ch - K_F(1)]);
-			helpindex[ch - K_F(1)] = strdup2("");
+		if (bind.key >= K_F(1) && bind.key <= K_F(10)) {
+			free(helpindex[bind.key - K_F(1)]);
+			helpindex[bind.key - K_F(1)] = strdup2("");
 		}
 		for (; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			memcpy((char *)&(bindlist[i]),
@@ -1100,68 +1245,74 @@ char *argv[];
 		return(0);
 	}
 
-	if ((n1 = getcommand(argv[2])) < 0) {
+	if (bind.f_func == 254 && !(bind.f_func = getmacro(argv[2]))) {
 		builtinerror(argv, argv[2], ER_OUTOFLIMIT);
 		return(-1);
 	}
-
-	n2 = 255;
-	j = 4;
-	if (argc > 3) {
-		if (argv[3][0] == BINDCOMMENT) j = 3;
-		else if ((n2 = getcommand(argv[3])) < 0) {
-			builtinerror(argv, argv[3], ER_OUTOFLIMIT);
-			freemacro(n1);
-			return(-1);
-		}
+	if (bind.d_func == 254 && !(bind.d_func = getmacro(argv[3]))) {
+		builtinerror(argv, argv[3], ER_OUTOFLIMIT);
+		freemacro(bind.f_func);
+		return(-1);
 	}
-	if (argc > j) {
-		if (argv[j][0] != BINDCOMMENT || ch < K_F(1) || ch > K_F(10)) {
-			builtinerror(argv, NULL, ER_FEWMANYARG);
-			freemacro(n1);
-			freemacro(n2);
-			return(-1);
-		}
-		free(helpindex[ch - K_F(1)]);
-		helpindex[ch - K_F(1)] = strdup2(&(argv[j][1]));
+
+	n = (bind.d_func == 255) ? 3 : 4;
+	if (argc > n) {
+		free(helpindex[bind.key - K_F(1)]);
+		helpindex[bind.key - K_F(1)] = strdup2(&(argv[n][1]));
 	}
 
 	if (bindlist[i].key < 0) {
 		memcpy((char *)&(bindlist[i + 1]), (char *)&(bindlist[i]),
 			sizeof(bindtable));
-		bindlist[i].f_func = (u_char)n1;
-		bindlist[i].d_func = (u_char)n2;
 	}
 	else {
-		j = bindlist[i].f_func;
-		bindlist[i].f_func = (u_char)n1;
-		freemacro(j);
-		j = bindlist[i].d_func;
-		bindlist[i].d_func = (u_char)n2;
-		freemacro(j);
+		freemacro(bindlist[i].f_func);
+		freemacro(bindlist[i].d_func);
 	}
-	bindlist[i].key = (short)ch;
+	memcpy((char *)&(bindlist[i]), (char *)&bind, sizeof(bindtable));
 	return(0);
 }
 
-VOID printmacro(n, fp)
-int n;
+char *gethelp(bindp)
+bindtable *bindp;
+{
+	int n;
+
+	if (bindp -> key < K_F(1) || bindp -> key > K_F(10)) return(NULL);
+	n = bindp -> key - K_F(1);
+#ifndef	_NOCUSTOMIZE
+	if (!strcmp(helpindex[n], orighelpindex[n])) return(NULL);
+#endif
+	return(helpindex[n]);
+}
+
+VOID printmacro(list, n, isset, fp)
+bindtable *list;
+int n, isset;
 FILE *fp;
 {
-	fputs(BL_BIND, fp);
-	fputc(' ', fp);
-	fputsmeta(getkeysym(bindlist[n].key, 0), fp);
-	fputc('\t', fp);
+	char *cp;
 
-	if (bindlist[n].f_func < FUNCLISTSIZ)
-		fputs(funclist[bindlist[n].f_func].ident, fp);
-	else fputsmeta(macrolist[bindlist[n].f_func - FUNCLISTSIZ], fp);
-	if (bindlist[n].d_func < FUNCLISTSIZ)
-		fprintf2(fp, "\t%s", funclist[bindlist[n].d_func].ident);
-	else if (bindlist[n].d_func < 255) {
+	fprintf2(fp, "%s ", BL_BIND);
+	fputsmeta(getkeysym(list[n].key, 0), fp);
+	if (isset) {
 		fputc('\t', fp);
-		fputsmeta(macrolist[bindlist[n].d_func - FUNCLISTSIZ], fp);
+
+		if (list[n].f_func < FUNCLISTSIZ)
+			fputs(funclist[list[n].f_func].ident, fp);
+		else if (ismacro(list[n].f_func))
+			fputsmeta(macrolist[list[n].f_func - FUNCLISTSIZ], fp);
+		else fputs("\"\"", fp);
+		if (list[n].d_func < FUNCLISTSIZ)
+			fprintf2(fp, "\t%s", funclist[list[n].d_func].ident);
+		else if (ismacro(list[n].d_func)) {
+			fputc('\t', fp);
+			fputsmeta(macrolist[list[n].d_func - FUNCLISTSIZ], fp);
+		}
+		if ((cp = gethelp(&(list[n]))))
+			fprintf2(fp, "\t%c%k", BINDCOMMENT, cp);
 	}
+	fputnl(fp);
 }
 
 static int NEAR printbind(argc, argv)
@@ -1177,11 +1328,10 @@ char *argv[];
 	hitkey(2);
 	if (argc <= 1)
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
-		if (bindlist[i].f_func < FUNCLISTSIZ
-		&& (bindlist[i].d_func < FUNCLISTSIZ
-		|| bindlist[i].d_func == 255)) continue;
-		printmacro(i, stdout);
-		fputc('\n', stdout);
+		if (!ismacro(bindlist[i].f_func)
+		&& !ismacro(bindlist[i].d_func))
+			continue;
+		printmacro(bindlist, i, 1, stdout);
 		hitkey(0);
 	}
 	else if ((c = getkeycode(argv[1], 0)) < 0) {
@@ -1195,31 +1345,27 @@ char *argv[];
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
 		}
-		printmacro(i, stdout);
-		fputc('\n', stdout);
+		printmacro(bindlist, i, 1, stdout);
 	}
-	fflush(stdout);
 	return(0);
 }
 
 #ifdef	_USEDOSEMU
 /*ARGSUSED*/
-int searchdrv(list, drive, name, head, sect, cyl, set)
-devinfo *list;
-int drive;
-char *name;
-int head, sect, cyl, set;
+int searchdrv(list, devp, isset)
+devinfo *list, *devp;
+int isset;
 {
 	int i;
 
-	for (i = 0; list[i].name; i++) if (drive == list[i].drive) {
+	for (i = 0; list[i].name; i++) if (devp -> drive == list[i].drive) {
 # ifdef	HDDMOUNT
-		if (!list[i].cyl && set) break;
+		if (!list[i].cyl && isset) break;
 # endif
-		if (head == list[i].head
-		&& sect == list[i].sect
-		&& cyl == list[i].cyl
-		&& !strpathcmp(name, list[i].name)) break;
+		if (devp -> head == list[i].head
+		&& devp -> sect == list[i].sect
+		&& devp -> cyl == list[i].cyl
+		&& !strpathcmp(devp -> name, list[i].name)) break;
 	}
 	return(i);
 }
@@ -1238,10 +1384,12 @@ int no;
 		dev = fdtype[no].name;
 		for (s = 0; s < no; s++) {
 			if (fdtype[no - s - 1].cyl
+			|| fdtype[no - s - 1].drive + 1 != fdtype[no - s].drive
 			|| strpathcmp(dev, fdtype[no - s - 1].name)) break;
 		}
 		for (n = 1; fdtype[no + n].name; n++) {
 			if (fdtype[no + n].cyl
+			|| fdtype[no + n].drive != fdtype[no + n - 1].drive + 1
 			|| strpathcmp(dev, fdtype[no + n].name)) break;
 		}
 		no -= s;
@@ -1256,10 +1404,9 @@ int no;
 	return(no);
 }
 
-int insertdrv(no, drive, dev, head, sect, cyl)
-int no, drive;
-char *dev;
-int head, sect, cyl;
+int insertdrv(no, devp)
+int no;
+devinfo *devp;
 {
 # ifdef	HDDMOUNT
 	l_off_t *sp;
@@ -1272,7 +1419,7 @@ int head, sect, cyl;
 	max = -1;	/* fake for -Wuninitialized */
 # endif
 	for (i = 0; fdtype[i].name; i++)
-	if (!strpathcmp(dev, fdtype[i].name)) {
+	if (!strpathcmp(devp -> name, fdtype[i].name)) {
 		if (min < 0) min = i;
 		max = i;
 	}
@@ -1287,10 +1434,10 @@ int head, sect, cyl;
 	n = 1;
 # ifdef	HDDMOUNT
 	sp = NULL;
-	if (!cyl) {
-		int j;
+	if (!(devp -> cyl)) {
+		int j, drive;
 
-		if (!(sp = readpt(dev, sect))) return(-1);
+		if (!(sp = readpt(devp -> name, devp -> sect))) return(-1);
 		for (n = 0; sp[n + 1]; n++);
 		if (!n) {
 			free(sp);
@@ -1300,10 +1447,10 @@ int head, sect, cyl;
 			free(sp);
 			return(-2);
 		}
-		sect = sp[0];
+		devp -> sect = sp[0];
 
 		drvlist = malloc2(n);
-		drvlist[0] = drive;
+		drvlist[0] = devp -> drive;
 		for (i = 0; i < n - 1; i++) {
 			for (drive = drvlist[i] + 1; drive <= 'Z'; drive++) {
 				for (j = 0; fdtype[j].name; j++)
@@ -1331,13 +1478,12 @@ int head, sect, cyl;
 	}
 
 # ifdef	HDDMOUNT
-	if (!cyl) {
+	if (!(devp -> cyl)) {
 		for (i = 0; i < n; i++) {
+			memcpy((char *)&(fdtype[no + i]), (char *)devp,
+				sizeof(devinfo));
 			fdtype[no + i].drive = drvlist[i];
-			fdtype[no + i].name = strdup2(dev);
-			fdtype[no + i].head = head;
-			fdtype[no + i].sect = sect;
-			fdtype[no + i].cyl = cyl;
+			fdtype[no + i].name = strdup2(devp -> name);
 			fdtype[no + i].offset = sp[i + 1];
 		}
 		free(sp);
@@ -1346,54 +1492,60 @@ int head, sect, cyl;
 	}
 	fdtype[no].offset = 0;
 # endif	/* HDDMOUNT */
-	fdtype[no].drive = drive;
-	fdtype[no].name = strdup2(dev);
-	fdtype[no].head = head;
-	fdtype[no].sect = sect;
-	fdtype[no].cyl = cyl;
+	memcpy((char *)&(fdtype[no]), (char *)devp, sizeof(devinfo));
+	fdtype[no].name = strdup2(devp -> name);
 	return(no);
 }
 
-static int NEAR _setdrive(argc, argv, set)
+int parsesetdrv(argc, argv, devp)
 int argc;
 char *argv[];
-int set;
+devinfo *devp;
 {
-	int i, n, drive, head, sect, cyl;
+	int head, sect, cyl;
 
 	if (argc <= 3) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+		devp -> drive = ER_FEWMANYARG;
+		devp -> head = 0;
 		return(-1);
 	}
 # if	FD >= 2
 	if (argc >= 7) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+		devp -> drive = ER_FEWMANYARG;
+		devp -> head = 0;
 		return(-1);
 	}
 # endif
-	if (!isalpha(drive = toupper2(argv[1][0]))) {
-		builtinerror(argv, argv[1], ER_SYNTAXERR);
+
+	devp -> drive = toupper2(argv[1][0]);
+	devp -> name = argv[2];
+	if (!isalpha(devp -> drive)) {
+		devp -> drive = ER_SYNTAXERR;
+		devp -> head = 1;
 		return(-1);
 	}
 
 # ifdef	HDDMOUNT
-	if (!strncmp(argv[3], "HDD", 3)) {
+	if (!strncmp(argv[3], "HDD", sizeof("HDD") - 1)) {
 		if (argc > 5) {
-			builtinerror(argv, NULL, ER_FEWMANYARG);
+			devp -> drive = ER_FEWMANYARG;
+			devp -> head = 0;
 			return(-1);
 		}
 		cyl = 0;
 		if (!argv[3][3]) sect = 0;
 		else if (!strcmp(&(argv[3][3]), "98")) sect = 98;
 		else {
-			builtinerror(argv, argv[3], ER_SYNTAXERR);
+			devp -> drive = ER_SYNTAXERR;
+			devp -> head = 3;
 			return(-1);
 		}
 		if (argc < 5) head = 'n';
 		else if (!strcmp(argv[4], "ro")) head = 'r';
 		else if (!strcmp(argv[4], "rw")) head = 'w';
 		else {
-			builtinerror(argv, argv[4], ER_SYNTAXERR);
+			devp -> drive = ER_SYNTAXERR;
+			devp -> head = 4;
 			return(-1);
 		}
 		if (sect) head = toupper2(head);
@@ -1402,19 +1554,38 @@ int set;
 # endif	/* HDDMOUNT */
 # if	FD >= 2
 	if (argc != 6) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+		devp -> drive = ER_FEWMANYARG;
+		devp -> head = 0;
 		return(-1);
 	}
 	else if ((head = atoi2(argv[3])) <= 0) {
-		builtinerror(argv, argv[3], ER_SYNTAXERR);
+		devp -> drive = ER_SYNTAXERR;
+		devp -> head = 3;
+		return(-1);
+	}
+	else if (head > MAXUTYPE(u_char)) {
+		devp -> drive = ER_OUTOFLIMIT;
+		devp -> head = 3;
 		return(-1);
 	}
 	else if ((sect = atoi2(argv[4])) <= 0) {
-		builtinerror(argv, argv[4], ER_SYNTAXERR);
+		devp -> drive = ER_SYNTAXERR;
+		devp -> head = 4;
+		return(-1);
+	}
+	else if (sect > MAXUTYPE(u_short)) {
+		devp -> drive = ER_OUTOFLIMIT;
+		devp -> head = 4;
 		return(-1);
 	}
 	else if ((cyl = atoi2(argv[5])) <= 0) {
-		builtinerror(argv, argv[5], ER_SYNTAXERR);
+		devp -> drive = ER_SYNTAXERR;
+		devp -> head = 5;
+		return(-1);
+	}
+	else if (cyl > MAXUTYPE(u_short)) {
+		devp -> drive = ER_OUTOFLIMIT;
+		devp -> head = 5;
 		return(-1);
 	}
 # else	/* FD < 2 */
@@ -1425,42 +1596,80 @@ int set;
 		cp = tmp = catvar(&(argv[3]), '\0');
 
 		if (!(cp = evalnumeric(cp, &l, 1)) || *cp != DRIVESEP) {
-			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(tmp);
+			devp -> drive = ER_SYNTAXERR;
+			devp -> head = (u_char)-1;
+			devp -> name = tmp;
 			return(-1);
 		}
 		head = l;
 		if (!(cp = evalnumeric(++cp, &l, 1)) || *cp != DRIVESEP) {
-			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(tmp);
+			devp -> drive = ER_SYNTAXERR;
+			devp -> head = (u_char)-1;
+			devp -> name = tmp;
 			return(-1);
 		}
 		sect = l;
 		if (!(cp = evalnumeric(++cp, &l, 1)) || *cp) {
-			builtinerror(argv, tmp, ER_SYNTAXERR);
-			free(tmp);
+			devp -> drive = ER_SYNTAXERR;
+			devp -> head = (u_char)-1;
+			devp -> name = tmp;
 			return(-1);
 		}
 		cyl = l;
+		if (head > MAXUTYPE(u_char)
+		|| sect > MAXUTYPE(u_short)
+		|| cyl > MAXUTYPE(u_short)) {
+			devp -> drive = ER_OUTOFLIMIT;
+			devp -> head = (u_char)-1;
+			devp -> name = tmp;
+			return(-1);
+		}
 		free(tmp);
 	}
 # endif	/* FD < 2 */
+	devp -> head = head;
+	devp -> sect = sect;
+	devp -> cyl = cyl;
+
+	return(0);
+}
+
+static int NEAR _setdrive(argc, argv, isset)
+int argc;
+char *argv[];
+int isset;
+{
+	devinfo dev;
+	int i, n;
+
+	if (parsesetdrv(argc, argv, &dev) < 0) {
+# if	FD < 2
+		if (dev.head == (u_char)-1) {
+			builtinerror(argv, dev.name, dev.drive);
+			free(dev.name);
+		}
+		else
+# endif
+		builtinerror(argv,
+			(dev.head) ? argv[dev.head] : NULL, dev.drive);
+		return(-1);
+	}
 
 # ifdef	HDDMOUNT
-	if (!cyl) for (i = 0; fdtype[i].name; i++) {
-		if (drive == fdtype[i].drive) break;
+	if (!(dev.cyl)) for (i = 0; fdtype[i].name; i++) {
+		if (dev.drive == fdtype[i].drive) break;
 	}
 	else
 # endif
-	i = searchdrv(fdtype, drive, argv[2], head, sect, cyl, set);
+	i = searchdrv(fdtype, &dev, isset);
 
-	if (!set) {
+	if (!isset) {
 		if (!fdtype[i].name) {
 			builtinerror(argv, argv[2], ER_NOENTRY);
 			return(-1);
 		}
 # ifdef	HDDMOUNT
-		if (!cyl
+		if (!(dev.cyl)
 		&& (fdtype[i].cyl || strpathcmp(argv[2], fdtype[i].name))) {
 			builtinerror(argv, argv[2], ER_NOENTRY);
 			return(-1);
@@ -1478,7 +1687,7 @@ int set;
 			return(-1);
 		}
 
-		n = insertdrv(i, drive, argv[2], head, sect, cyl);
+		n = insertdrv(i, &dev);
 		if (n < -1) {
 			builtinerror(argv, NULL, ER_OUTOFLIMIT);
 			return(-1);
@@ -1507,34 +1716,29 @@ char *argv[];
 }
 
 /*ARGSUSED*/
-VOID printsetdrv(n, verbose, fp)
-int n, verbose;
+VOID printsetdrv(fdlist, n, isset, verbose, fp)
+devinfo fdlist[];
+int n, isset, verbose;
 FILE *fp;
 {
-	fputs(BL_SDRIVE, fp);
-	fputc(' ', fp);
-	fputc(fdtype[n].drive, fp);
-	fputc('\t', fp);
+	fprintf2(fp, "%s %c\t",
+		(isset) ? BL_SDRIVE : BL_UDRIVE, fdlist[n].drive);
 
-	fputsmeta(fdtype[n].name, fp);
+	fputsmeta(fdlist[n].name, fp);
 	fputc('\t', fp);
 # ifdef	HDDMOUNT
-	if (!fdtype[n].cyl) {
-		char buf[MAXCOLSCOMMA(3) + 1];
-
+	if (!fdlist[n].cyl) {
 		fputs("HDD", fp);
-		if (fdtype[n].head >= 'A' && fdtype[n].head <= 'Z')
+		if (fdlist[n].head >= 'A' && fdlist[n].head <= 'Z')
 			fputs("98", fp);
-		if (!verbose) return;
-		ascnumeric(buf, fdtype[n].offset / fdtype[n].sect,
-			-3, MAXCOLSCOMMA(3));
-		fputs(" #offset=", fp);
-		fputs(buf, fp);
+		if (verbose) fprintf2(fp, " #offset=%'Ld",
+			fdlist[n].offset / fdlist[n].sect);
 		return;
 	}
 # endif	/* HDDMOUNT */
-	fprintf2(fp, "%d%c%d%c%d", fdtype[n].head, DRIVESEP,
-		fdtype[n].sect, DRIVESEP, fdtype[n].cyl);
+	fprintf2(fp, "%d%c%d%c%d", fdlist[n].head, DRIVESEP,
+		fdlist[n].sect, DRIVESEP, fdlist[n].cyl);
+	fputnl(fp);
 }
 
 static int NEAR printdrive(argc, argv)
@@ -1549,16 +1753,14 @@ char *argv[];
 	}
 	hitkey(2);
 	if (argc <= 1) for (i = 0; fdtype[i].name; i++) {
-		printsetdrv(i, 1, stdout);
-		fputc('\n', stdout);
+		printsetdrv(fdtype, i, 1, 1, stdout);
 		hitkey(0);
 	}
 	else {
 		for (i = n = 0; fdtype[i].name; i++)
 		if (toupper2(argv[1][0]) == fdtype[i].drive) {
 			n++;
-			printsetdrv(i, 1, stdout);
-			fputc('\n', stdout);
+			printsetdrv(fdtype, i, 1, 1, stdout);
 			hitkey(0);
 		}
 		if (!n) {
@@ -1566,87 +1768,112 @@ char *argv[];
 			return(-1);
 		}
 	}
-	fflush(stdout);
 	return(0);
 }
 #endif	/* _USEDOSEMU */
 
 #ifndef	_NOKEYMAP
-VOID printkeymap(key, s, len, fp)
-int key;
-char *s;
-int len;
+VOID printkeymap(kp, isset, fp)
+keyseq_t *kp;
+int isset;
 FILE *fp;
 {
 	char *cp;
 
-	fputs(BL_KEYMAP, fp);
-	fputc(' ', fp);
-	fputsmeta(getkeysym(key, 1), fp);
-	fputc('\t', fp);
+	fprintf2(fp, "%s ", BL_KEYMAP);
+	fputsmeta(getkeysym(kp -> code, 1), fp);
+	if (isset) {
+		fputc('\t', fp);
 
-	cp = encodestr(s, len);
-	fputsmeta(cp, fp);
-	free(cp);
+		cp = encodestr(kp -> str, kp -> len);
+		fputsmeta(cp, fp);
+		free(cp);
+	}
+	fputnl(fp);
+}
+
+int parsekeymap(argc, argv, kp)
+int argc;
+char *argv[];
+keyseq_t *kp;
+{
+	kp -> code = (short)-1;
+	kp -> len = 0;
+	kp -> str = NULL;
+
+	if (argc >= 4) {
+		kp -> code = ER_FEWMANYARG;
+		kp -> len = 0;
+		return(-1);
+	}
+
+	if (argc <= 1) return(0);
+	if ((kp -> code = getkeycode(argv[1], 1)) < 0) {
+		kp -> code = ER_SYNTAXERR;
+		kp -> len = 1;
+		return(-1);
+	}
+	if (argc == 2) return(0);
+
+	if (!(argv[2][0])) {
+		kp -> len = (u_char)-1;
+		return(0);
+	}
+
+	kp -> str = decodestr(argv[2], &(kp -> len), 1);
+	if (!(kp -> len)) {
+		free(kp -> str);
+		kp -> code = ER_SYNTAXERR;
+		kp -> len = 2;
+		return(-1);
+	}
+
+	return(0);
 }
 
 static int NEAR setkeymap(argc, argv)
 int argc;
 char *argv[];
 {
-	char *cp;
-	int i, ch, l;
+	keyseq_t key;
+	int i;
 
-	if (argc >= 4) {
-		builtinerror(argv, NULL, ER_FEWMANYARG);
+	if (parsekeymap(argc, argv, &key) < 0) {
+		builtinerror(argv, (key.len) ? argv[key.len] : NULL, key.code);
 		return(-1);
 	}
-	if (argc <= 1) {
+
+	if (key.code < 0) {
 		hitkey(2);
 		for (i = 1; i <= 20; i++) {
-			ch = K_F(i);
-			if (!(cp = getkeyseq(ch, &l)) || !l) continue;
-			printkeymap(ch, cp, l, stdout);
-			fputc('\n', stdout);
+			key.code = K_F(i);
+			if (getkeyseq(&key) < 0 || !(key.len)) continue;
+			printkeymap(&key, 1, stdout);
 			hitkey(0);
 		}
-		for (i = 0; (ch = keyidentlist[i].no) > 0; i++) {
-			if (!(cp = getkeyseq(ch, &l)) || !l) continue;
-			printkeymap(ch, cp, l, stdout);
-			fputc('\n', stdout);
+		for (i = 0; (key.code = keyidentlist[i].no) > 0; i++) {
+			if (getkeyseq(&key) < 0 || !(key.len)) continue;
+			printkeymap(&key, 1, stdout);
 			hitkey(0);
 		}
-		fflush(stdout);
 		return(0);
 	}
 
-	if ((ch = getkeycode(argv[1], 1)) < 0) {
-		builtinerror(argv, argv[1], ER_SYNTAXERR);
-		return(-1);
-	}
-	if (argc == 2) {
-		if (!(cp = getkeyseq(ch, &l)) || !l) {
+	if (!(key.len)) {
+		if (getkeyseq(&key) < 0 || !(key.len)) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
 		}
 		hitkey(2);
-		printkeymap(ch, cp, l, stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		printkeymap(&key, 1, stdout);
 		return(0);
 	}
-	if (!argv[2][0]) {
-		setkeyseq(ch, NULL, 0);
+	if (!(key.str)) {
+		setkeyseq(key.code, NULL, 0);
 		return(0);
 	}
 
-	cp = decodestr(argv[2], &i, 1);
-	if (!i) {
-		builtinerror(argv, argv[2], ER_SYNTAXERR);
-		free(cp);
-		return(-1);
-	}
-	setkeyseq(ch, cp, i);
+	setkeyseq(key.code, key.str, key.len);
 
 	return(0);
 }
@@ -1694,7 +1921,8 @@ char *argv[];
 			cputs2(cp);
 			free(cp);
 		} while (next);
-		cputs2("\"\r\n");
+		putch2('"');
+		cputnl();
 		if (n) {
 			if (++i >= n) break;
 		}
@@ -1733,13 +1961,11 @@ char *argv[];
 
 	hitkey(2);
 	for (i = max; i >= 0; i--) {
-		fprintf2(stdout, "%5d  ", n + 1);
+		fprintf2(stdout, "%5d  %k", n + 1, history[0][i]);
+		fputnl(stdout);
 		if (n++ >= MAXHISTNO) n = 0;
-		kanjifputs(history[0][i], stdout);
-		fputc('\n', stdout);
 		hitkey(0);
 	}
-	fflush(stdout);
 	return(0);
 }
 
@@ -1797,12 +2023,10 @@ char *argv[];
 		}
 	}
 	if (skip) {
-		kanjifputs(argv[0], stderr);
-		fputs(": usage: ", stderr);
-		kanjifputs(argv[0], stderr);
-		fputs(" [-ls] [-nr] [-e editor] [old=new] [first] [last]\n",
-			stderr);
-		fflush(stderr);
+		fprintf2(stderr,
+	"%k: usage: %k [-ls] [-nr] [-e editor] [old=new] [first] [last]",
+			argv[0], argv[0]);
+		fputnl(stderr);
 		return(-1);
 	}
 
@@ -1843,8 +2067,7 @@ char *argv[];
 			strncpy(cp, r, l2);
 		}
 		kanjifputs(s, stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		fputnl(stdout);
 		entryhist(0, s, 0);
 		if ((ret = execmacro(s, NULL, 1, -1, 1)) < 0) ret = 0;
 		free(s);
@@ -1910,8 +2133,10 @@ char *argv[];
 				if (n++ >= MAXHISTNO) n = 0;
 			}
 			kanjifputs(history[0][i], fp);
-			fputc('\n', fp);
+			fputnl(fp);
+#ifdef	_NOORIGSHELL
 			if (list) hitkey(0);
+#endif
 		}
 	}
 	else for (i = f; i <= l; i++) {
@@ -1921,8 +2146,10 @@ char *argv[];
 				if (--n < 0) n = MAXHISTNO;
 			}
 			kanjifputs(history[0][i], fp);
-			fputc('\n', fp);
+			fputnl(fp);
+#ifdef	_NOORIGSHELL
 			if (list) hitkey(0);
+#endif
 		}
 	}
 
@@ -1957,8 +2184,7 @@ char *argv[];
 			continue;
 		}
 		kanjifputs(cp, stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		fputnl(stdout);
 		entryhist(0, cp, 0);
 		ret = execmacro(cp, NULL, 1, -1, 1);
 		free(cp);
@@ -2165,18 +2391,9 @@ FILE *fp;
 	x[15] = ch;
 	calcmd5(sum, x);
 
-	fputs("MD5 (", fp);
-	fputs(path, fp);
-	fputs(") = ", fp);
-	for (i = 0; i < 4; i++) {
-		for (n = 0; n < 4; n++) {
-			c = (sum[i] & 0xf0) >> 4;
-			fputc((c >= 10) ? c + 'a' - 10 : c + '0', fp);
-			c = (sum[i] & 0xf);
-			fputc((c >= 10) ? c + 'a' - 10 : c + '0', fp);
-			sum[i] >>= 8;
-		}
-	}
+	fprintf2(fp, "MD5 (%k) = ", path);
+	for (i = 0; i < 4; i++) fprintf2(fp, "%08lx", sum[i]);
+	fputnl(fp);
 	return(0);
 }
 
@@ -2198,8 +2415,6 @@ char *argv[];
 			builtinerror(argv, path, -1);
 			return(-1);
 		}
-		fputc('\n', stdout);
-		fflush(stdout);
 		return(0);
 	}
 
@@ -2210,10 +2425,8 @@ char *argv[];
 			ret = -1;
 			continue;
 		}
-		fputc('\n', stdout);
 		hitkey(0);
 	}
-	fflush(stdout);
 	return(ret);
 }
 
@@ -2271,11 +2484,10 @@ char *argv[];
 				break;
 		}
 		if (err) {
-			fputs("Usage: ", stderr);
-			fputs(argv[0], stderr);
-			fputs("[-i inputcode] [-o outputcode] [filename]\n",
-				stderr);
-			fflush(stderr);
+			fprintf2(stderr,
+		"Usage: %s [-i inputcode] [-o outputcode] [filename]",
+				argv[0]);
+			fputnl(stderr);
 			return(-1);
 		}
 	}
@@ -2295,7 +2507,8 @@ char *argv[];
 		return(-1);
 	}
 
-	if (in == UTF8 || out == UTF8) readunitable();
+	if (in == M_UTF8 || out == M_UTF8) readunitable(1);
+	else if (in == UTF8 || out == UTF8) readunitable(0);
 	while ((src = fgets2(fpin, 0))) {
 		if (in != DEFCODE) {
 			len = strlen(src);
@@ -2313,12 +2526,11 @@ char *argv[];
 		free(src);
 		dest[len] = '\0';
 		fputs(dest, fpout);
-		fputc('\n', fpout);
+		fputnl(fpout);
 		free(dest);
 	}
-	fflush(fpout);
 
-	discardunitable();
+	if (!unicodebuffer) discardunitable();
 	if (fpin != stdin) Xfclose(fpin);
 	else clearerr(fpin);
 	if (fpout != stdout) Xfclose(fpout);
@@ -2346,8 +2558,7 @@ char *argv[];
 	if (!s) return(-1);
 
 	kanjifputs(s, stdout);
-	fputc('\n', stdout);
-	fflush(stdout);
+	fputnl(stdout);
 	free(s);
 	return(0);
 }
@@ -2406,28 +2617,24 @@ char *argv[];
 			return(-1);
 		}
 		kanjifputs(environ2[i], stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		fputnl(stdout);
 		return(0);
 	}
 # endif
 
 	hitkey(2);
-	if (environ2) {
-		for (i = 0; environ2[i]; i++) {
-			kanjifputs(environ2[i], stdout);
-			fputc('\n', stdout);
-			hitkey(0);
-		}
+	if (environ2) for (i = 0; environ2[i]; i++) {
+		kanjifputs(environ2[i], stdout);
+		fputnl(stdout);
+		hitkey(0);
 	}
 # if	FD >= 2
 	for (i = 0; i < maxuserfunc; i++) {
 		printfunction(i, 0, stdout);
-		fputc('\n', stdout);
+		fputnl(stdout);
 		hitkey(0);
 	}
 # endif
-	fflush(stdout);
 	return(0);
 }
 
@@ -2435,10 +2642,7 @@ VOID printalias(n, fp)
 int n;
 FILE *fp;
 {
-	fputs(BL_ALIAS, fp);
-	fputc(' ', fp);
-	kanjifputs(aliaslist[n].alias, fp);
-	fputc(ALIASSEP, fp);
+	fprintf2(fp, "%s %k%c\n", BL_ALIAS, aliaslist[n].alias, ALIASSEP);
 	fputsmeta(aliaslist[n].comm, fp);
 }
 
@@ -2465,10 +2669,9 @@ char *argv[];
 		hitkey(2);
 		for (i = 0; i < maxalias; i++) {
 			printalias(i, stdout);
-			fputc('\n', stdout);
+			fputnl(stdout);
 			hitkey(0);
 		}
-		fflush(stdout);
 		return(0);
 	}
 
@@ -2501,8 +2704,7 @@ char *argv[];
 		}
 		hitkey(2);
 		printalias(i, stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		fputnl(stdout);
 		return(0);
 	}
 
@@ -2565,17 +2767,13 @@ FILE *fp;
 	int i;
 
 # if	FD < 2
-	fputs(BL_FUNCTION, fp);
-	fputc(' ', fp);
+	fprintf2(fp, "%s ", BL_FUNCTION);
 # endif
-	kanjifputs(userfunclist[no].func, fp);
-	fputs("() {", fp);
-	if (verbose) fputc('\n', fp);
+	fprintf2(fp, "%k() {", userfunclist[no].func);
+	if (verbose) fputnl(fp);
 	for (i = 0; userfunclist[no].comm[i]; i++) {
-		fputc((verbose) ? '\t' : ' ', fp);
-		kanjifputs(userfunclist[no].comm[i], fp);
-		fputc(';', fp);
-		if (verbose) fputc('\n', fp);
+		if (verbose) fprintf2(fp, "\t%k;\n", userfunclist[no].comm[i]);
+		else fprintf2(fp, " %k;", userfunclist[no].comm[i]);
 	}
 	fputs(" }", fp);
 }
@@ -2627,10 +2825,9 @@ char *argv[];
 		hitkey(2);
 		for (i = 0; i < maxuserfunc; i++) {
 			printfunction(i, 0, stdout);
-			fputc('\n', stdout);
+			fputnl(stdout);
 			hitkey(0);
 		}
-		fflush(stdout);
 		return(0);
 # endif	/* FD < 2 */
 	}
@@ -2653,8 +2850,7 @@ char *argv[];
 		}
 		hitkey(2);
 		printfunction(i, 1, stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		fputnl(stdout);
 		return(0);
 	}
 # endif	/* FD < 2 */
@@ -2822,19 +3018,13 @@ char *argv[];
 		return(-1);
 	}
 	if (fd_restricted && (funclist[n].status & RESTRICT)) {
-		fputs(argv[0], stderr);
-		fputs(": ", stderr);
-		kanjifputs(RESTR_K, stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fprintf2(stderr, "%s: %k", argv[0], RESTR_K);
+		fputnl(stderr);
 		return(RET_NOTICE);
 	}
 	if (argc > 2 || !filelist || maxfile <= 0) {
-		fputs(argv[0], stderr);
-		fputs(": ", stderr);
-		kanjifputs(ILFNC_K, stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fprintf2(stderr, "%s: %k", argv[0], ILFNC_K);
+		fputnl(stderr);
 		return(RET_NOTICE);
 	}
 	ttyiomode(0);
@@ -2962,20 +3152,8 @@ VOID freedefine(VOID_A)
 	int i;
 
 # ifndef	_NOARCHIVE
-	for (i = 0; i < maxlaunch; i++) {
-		free(launchlist[i].ext);
-		free(launchlist[i].comm);
-# if	FD >= 2
-		freevar(launchlist[i].format);
-		freevar(launchlist[i].lignore);
-		freevar(launchlist[i].lerror);
-# endif
-	}
-	for (i = 0; i < maxarchive; i++) {
-		free(archivelist[i].ext);
-		if (archivelist[i].p_comm) free(archivelist[i].p_comm);
-		if (archivelist[i].u_comm) free(archivelist[i].u_comm);
-	}
+	for (i = 0; i < maxlaunch; i++) freelaunch(&(launchlist[i]));
+	for (i = 0; i < maxarchive; i++) freearch(&(archivelist[i]));
 # endif	/* !_NOARCHIVE */
 	for (i = 0; i < maxmacro; i++) free(macrolist[i]);
 # ifdef	_NOORIGSHELL

@@ -13,12 +13,6 @@
 #include <sys/select.h>
 #endif
 
-#ifdef	NOVOID
-#define	VOID
-#else
-#define	VOID	void
-#endif
-
 #if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
 #define	MAXOPENFILE	sysconf(_SC_OPEN_MAX)
 #else

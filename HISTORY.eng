@@ -1,3 +1,11 @@
+Ver. 2.05	Support 'utf8-mac' as an additional Kanji code.
+ (12/03/03)	Add 'LOOPCURSOR' and 'TRADLAYOUT' internal variables.
+		Add 'UNICODEBUFFER' internal variable.
+		Add builtin commands in COMMAND.COM also for UNIX.
+		Abortion when some file group differs from others is fixed.
+		Bug that customizer sets key binding incorrectly is fixed.
+		Bug that customizer overwrites a file destructively is fixed.
+
 Ver. 2.04c	Support Cygwin.
  (10/15/03)	Strange behaviors with redirected stdin are fixed.
 		Invisible file info. when set 'PRECEDEPATH' is fixed. (MS-DOS)
@@ -13,7 +21,7 @@ Ver. 2.04a	Failure to compile on some environments using varargs is fixed.
 		Failure to count amount of file system on Linux/Alpha is fixed.
 		Bug that 'dir' builtin shows wrong timestamp is fixed. (MS-DOS)
 
-Ver. 2.04	Add 'DUMBSHELL' and 'HISTFILE' internal variable.
+Ver. 2.04	Add 'DUMBSHELL' and 'HISTFILE' internal variables.
  (06/25/03)	Add 'ENV'/'LINENO'/'PPID'/'PS4' internal variables for POSIX.
 		Support dynamic variation of 'TERM' internal variable.
 		Support 'PWD' internal varable for current directory.

@@ -80,6 +80,7 @@
 #endif
 #define	MINTYPE(t)	((t)(-1L << (BITSPERBYTE * sizeof(t) - 1)))
 #define	MAXTYPE(t)	((t)~MINTYPE(t))
+#define	MAXUTYPE(t)	((t)(~(t)0))
 #define	MAXCOLSCOMMA(d)	(MAXLONGWIDTH + (MAXLONGWIDTH / (d)))
 #define	MAXHISTNO	MAXTYPE(short)
 

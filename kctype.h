@@ -68,6 +68,7 @@ extern u_char kctypetable[256];
 #define	HEX	10
 #define	CAP	11
 #define	UTF8	12
+#define	M_UTF8	13
 
 #ifdef	CODEEUC
 #define	DEFCODE	EUC

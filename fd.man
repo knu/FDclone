@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2003 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.04c 10/15/03
+.\" @(#)fd.1   2.05 12/03/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "October 15, 2003"
+.TH FD 1 "December 3, 2003"
 .de sh
 .br
 .PP
@@ -1501,6 +1501,9 @@ F10 のように文字列で記述します。
 オプションを記述した場合は、
 再帰的に引数ファイルが参照されます。
 .IP "\fBcd\fP [\fB\-LP\fP] [\fIdir\fR]"
+.PD 0
+.IP "\fBchdir\fP [\fB\-LP\fP] [\fIdir\fR]"
+.PD
 .B fd
 内のカレントディレクトリを
 .I " dir"
@@ -1525,10 +1528,6 @@ symbolic リンクを辿らずに物理的なディレクトリ移動を行ないます。
 の
 .B " physical"
 オプションに従います。
-.IP "\fBchdir\fP [\fIdir\fR]"
-.B cd
-と同等です。
-.B (DOS)
 .IP "\fBcheckid\fP [\fIfile\fR .\|.\|.]"
 RFC1321 の MD5 アルゴリズムに従って、
 指定されたファイルの一意な ID を計算し表示します。
@@ -1544,7 +1543,6 @@ RFC1321 の MD5 アルゴリズムに従って、
 ファイルの同一性を確認する手段として有効です。
 .IP "\fBcls\fP"
 画面を消去します。
-.B (DOS)
 .IP "\fBcommand\fP [\fB\-p\fP | \fB\-v\fP | \fB\-V\fP] \fIarg\fR .\|.\|."
 単純なコマンドとして
 .I " arg"
@@ -1580,7 +1578,7 @@ RFC1321 の MD5 アルゴリズムに従って、
 が指定されていると
 .I " n"
 - 1 段階上層のループの中で次の繰返しを開始します。
-.IP "\fBcopy\fP [\fB/ABVY\-Y\fP] \fIsrc\fR [\fB/AB\fP] [\fB\+\fP \fIsrc2\fR [\fB/AB\fP] [\fB\+\fP .\|.\|.]] [\fIdest\fR [\fB/AB\fP]]"
+.IP "\fBcopy\fP [\fB\-ABVY\-Y\fP] \fIsrc\fR [\fB\-AB\fP] [\fB\+\fP \fIsrc2\fR [\fB\-AB\fP] [\fB\+\fP .\|.\|.]] [\fIdest\fR [\fB\-AB\fP]]"
 .I src
 で示されるファイルを
 .I " dest"
@@ -1599,41 +1597,52 @@ RFC1321 の MD5 アルゴリズムに従って、
 ワイルドカードを用いた場合は、
 コピー先がディレクトリなら一つずつコピーし、
 コピー先がファイルなら連結してコピーします。
-.B (DOS)
 
-.B /A
+.B \-A
 を指定すると ASCII テキストファイルとして扱います。
-.B /B
+.B \-B
 を指定するとバイナリファイルとして扱います。
-.B /V
+.B \-V
 を指定するとコピーの正否を照合します。
-.B /Y
+.B \-Y
 を指定するとコピー先の上書き確認のキー入力待ちをしません。
-.B /\-Y
+.B \-\-Y
 を指定するとコピー先の上書き確認のキー入力待ちをします。
-.IP "\fBdel\fP [\fB/P\fP] \fIfile\fR"
+
+(MS-DOS 版では COMMAND.COM との互換性のために、
+オプション識別用文字として
+.B " \-"
+の代わりに
+.B " /"
+を用います。)
+.IP "\fBdel\fP [\fB\-P\fP] \fIfile\fR"
 .PD 0
-.IP "\fBerase\fP [\fB/P\fP] \fIfile\fR"
+.IP "\fBerase\fP [\fB\-P\fP] \fIfile\fR"
 .PD
 .I file
 で示されるファイルを削除します。
 ファイルはワイルドカードを用いて複数指定できます。
-.B (DOS)
 
-.B /P
+.B \-P
 を指定すると削除する前に確認のキー入力待ちをします。
-.IP "\fBdir\fP [\fB/\fP[\fB\-\fP]\fBPWSBLV4\fP] [\fB/A\fP[\fBDRHSA\-\fP]] [\fB/O\fP[\fBNSEDGA\-\fP]] [\fIdir\fR]"
+
+(MS-DOS 版では COMMAND.COM との互換性のために、
+オプション識別用文字として
+.B " \-"
+の代わりに
+.B " /"
+を用います。)
+.IP "\fBdir\fP [\fB\-\fP[\fB\-\fP]\fBPWSBLV4\fP] [\fB\-A\fP[\fBDRHSA\-\fP]] [\fB\-O\fP[\fBNSEDGA\-\fP]] [\fIdir\fR]"
 .I dir
 で表されるディレクトリ中のファイルとサブディレクトリを一覧表示します。
 .I dir
 省略時にはカレントディレクトリの情報を表示します。
-.B (DOS)
 
-.B /P
+.B \-P
 を指定すると一画面毎にキー入力待ちになります。
-.B /W
+.B \-W
 を指定するとワイド一覧形式で表示します。
-.B /A
+.B \-A
 を指定するとその後続文字で表される属性のファイルのみ表示します。
 .RS 20
 .ta 0.3i 2i 2.3i
@@ -1644,7 +1653,7 @@ RFC1321 の MD5 アルゴリズムに従って、
 .fi
 .RE
 .RS
-.B /O
+.B \-O
 を指定するとその後続文字で表されるソート形式でソートします。
 .RE
 .RS 20
@@ -1657,21 +1666,28 @@ RFC1321 の MD5 アルゴリズムに従って、
 .fi
 .RE
 .RS
-.B /S
+.B \-S
 を指定するとサブディレクトリの中のファイルも表示します。
-.B /B
+.B \-B
 を指定するとファイル名とディレクトリ名のみを表示します。
-.B /L
+.B \-L
 を指定すると小文字で表示します。
-.B /V
+.B \-V
 を指定すると詳細情報を表示します。
-.B /4
+.B \-4
 を指定すると西暦を 4 桁で表示します。
 また、
 これらのオプション文字の前に
 .B " \-"
 を冠すると、
 そのオプションを上書きして無効にします。
+
+(MS-DOS 版では COMMAND.COM との互換性のために、
+オプション識別用文字として
+.B " \-"
+の代わりに
+.B " /"
+を用います。)
 .RE
 .IP "\fBdirs\fP"
 現在のディレクトリスタックの一覧を表示します。
@@ -1701,7 +1717,6 @@ RFC1321 の MD5 アルゴリズムに従って、
 .IP "\fBdtype\fP \fIfile\fR"
 .I file
 で示されるファイルの内容を表示します。
-.B (DOS)
 .IP "\fBecho\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
 .I arg
 を標準出力に出力します。
@@ -2214,7 +2229,6 @@ RFC1321 の MD5 アルゴリズムに従って、
 ディレクトリ
 .I " dir"
 を作成します。
-.B (DOS)
 .IP "\fBnewgrp\fP [\fIarg .\|.\|.\fR]"
 .B fd
 の実行を
@@ -2385,7 +2399,6 @@ symbolic リンクを含まない物理的なパス名を出力します。
 .I " dir"
 を削除します。
 中身が空でないディレクトリは削除できません。
-.B (DOS)
 .IP "\fBren\fP \fIold\fR \fInew\fR"
 .PD 0
 .IP "\fBrename\fP \fIold\fR \fInew\fR"
@@ -2399,12 +2412,10 @@ symbolic リンクを含まない物理的なパス名を出力します。
 や
 .I " new"
 にワイルドカードを指定して複数のファイル名を一括して変更することもできます。
-.B (DOS)
 .IP "\fBrem\fP [\fIarg\fR .\|.\|.]"
 何もしません。
 .B :
 と同等です。
-.B (DOS)
 .IP "\fBreturn\fP [\fIn\fR]"
 .I n
 で指定された返り値で関数を終了します。
@@ -3624,6 +3635,10 @@ CAP に変換します。
 このマクロで囲まれた範囲の文字列の漢字コードを、
 UTF-8 に変換します。
 .B (UNIX)
+.IP "\fB%JM\fP"
+このマクロで囲まれた範囲の文字列の漢字コードを、
+Mac OS X 用の UTF-8 に変換します。
+.B (UNIX)
 .IP "\fB%JA\fP"
 このマクロで囲まれた範囲の文字列の漢字コードを、
 その文字列で表されるパス名で使用されている漢字コードに変換します。
@@ -3946,7 +3961,6 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 組込みコマンド
 .B " copy"
 で使うデフォルトオプションを指定します。
-.B (DOS)
 .IP "\fBDEFCOLUMNS\fP"
 .B fd
 起動時の画面表示列を設定します。
@@ -3983,7 +3997,6 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 組込みコマンド
 .B " dir"
 で使うデフォルトオプションを指定します。
-.B (DOS)
 .IP "\fBDIRHIST\fP"
 ディレクトリ入力行で参照できる
 ディレクトリ履歴の数の上限を設定します。
@@ -4114,6 +4127,7 @@ OS を経由せずにディスク I/O を行なうため、
 \fBHEX\fP, \fBhex\fP	HEX
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 デフォルト	変換しない
 .fi
 .RE
@@ -4206,6 +4220,7 @@ OS を経由せずにディスク I/O を行なうため、
 \fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
 \fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
 \fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 \fBENG\fP, \fBeng\fP, \fBC\fP	英語 (メッセージのみ)
 デフォルト	変換しない
 .fi
@@ -4224,6 +4239,11 @@ OS を経由せずにディスク I/O を行なうため、
 したり再定義すると、
 この変数の特殊な意味は失われ、
 一般の変数と同等の扱いになります。
+.IP "\fBLOOPCURSOR\fP"
+カーソル移動の際に、
+カーソルが同一ページ内でループするようにします。
+.B 0
+かナル以外の値であれば、何を定義しても有効です。
 .IP "\fBMAIL\fP\(**"
 内蔵シェルがメイルの新着チェックを行なう際のスプールファイル名を示します。
 .B MAILPATH
@@ -4464,6 +4484,23 @@ TRANS.TBL が不整合な一部の CD-ROM では正しく機能しません。
 実際に用いられるマスク値はこの値と
 .B " umask"
 値との論理和になります。
+.IP "\fBTRADLAYOUT\fP"
+オリジナル版の『ＦＤ』準拠の画面レイアウトにします。
+このレイアウトでは、
+.B SIZEINFO
+指定の有無に拘らずファイルサイズ情報が表示されます。
+但し、
+画面の横幅が
+.B 80
+桁以上ない場合にはこの指定は無効となります。
+.B 0
+かナル以外の値であれば、何を定義しても有効です。
+.IP "\fBUNICODEBUFFER\fP"
+UNICODE 変換テーブルをオンメモリで持ち続けるようにします。
+フロッピードライブのアクセスや UTF-8 の変換が高速化するので、
+メモリ資源が潤沢にある環境では有用でしょう。
+.B 0
+かナル以外の値であれば、何を定義しても有効です。
 .IP "\fBUSEGETCURSOR\fP"
 端末サイズ取得時に、
 VT100 互換のカーソル位置取得エスケープシーケンスを用います。
@@ -4500,6 +4537,8 @@ VT100 互換のカーソル位置取得エスケープシーケンスを用います。
 .IP "\fBOJUNETPATH\fP"
 .IP "\fBHEXPATH\fP"
 .IP "\fBCAPPATH\fP"
+.IP "\fBUTF8PATH\fP"
+.IP "\fBUTF8MACPATH\fP"
 .IP "\fBNOCONVPATH\fP"
 .PD
 ファイル名に用いる漢字コードを、ディレクトリ単位で

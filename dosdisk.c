@@ -28,16 +28,6 @@ typedef u_short	uid_t;
 typedef u_short	gid_t;
 #endif
 
-#ifdef	NOVOID
-#define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
-#else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
-#endif
-
 #if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 #define	_NODOSDRIVE
 #endif
@@ -118,11 +108,11 @@ extern int errno;
 #ifndef	EPERM
 #define	EPERM	EACCES
 #endif
-#ifndef	EIO
-#define	EIO	EACCES
+#ifndef	ENODEV
+#define	ENODEV	EACCES
 #endif
-#ifndef	ENXIO
-#define	ENXIO	EACCES
+#ifndef	EIO
+#define	EIO	ENODEV
 #endif
 #ifndef	EFAULT
 #define	EFAULT	ENODEV
@@ -253,8 +243,10 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
+static int NEAR openunitbl __P_((char *));
 static u_int NEAR unifysjis __P_((u_int, int));
 static u_int NEAR cnvunicode __P_((u_int, int));
+#define	getword(s, n)	(((u_int)((s)[(n) + 1]) << 8) | (s)[n])
 #define	Xlseek		lseek
 #define	UNICODETBL	"fd-unicd.tbl"
 #define	MINUNICODE	0x00a7
@@ -287,9 +279,7 @@ static int NEAR loadcache __P_((devstat *, u_long, u_char *, int));
 static long NEAR sectread __P_((devstat *, u_long, u_char *, int));
 static long NEAR sectwrite __P_((devstat *, u_long, u_char *, int));
 static int NEAR availfat __P_((devstat *));
-#if	!MSDOS
 static int NEAR readfat __P_((devstat *));
-#endif
 static int NEAR writefat __P_((devstat *));
 static long NEAR getfatofs __P_((devstat *, long));
 static u_char *NEAR readtmpfat __P_((devstat *, long, int));
@@ -1040,6 +1030,36 @@ struct tm *tm;
 #endif	/* !USEMKTIME */
 }
 
+static int NEAR openunitbl(file)
+char *file;
+{
+	static int fd = -1;
+	u_char buf[2];
+	char path[MAXPATHLEN];
+
+	if (!file) {
+		if (fd >= 0) close(fd);
+		fd = -1;
+		return(0);
+	}
+
+	if (fd >= 0) return(fd);
+
+	if (!unitblpath || !*unitblpath) strcpy(path, file);
+	else strcatdelim2(path, unitblpath, file);
+
+	if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0) return(-1);
+	if (!unitblent) {
+		if (read(fd, buf, 2) != 2) {
+			close(fd);
+			fd = -1;
+			return(-1);
+		}
+		unitblent = getword(buf, 0);
+	}
+	return(fd);
+}
+
 static u_int NEAR unifysjis(wc, russ)
 u_int wc;
 int russ;
@@ -1062,27 +1082,27 @@ static u_int NEAR cnvunicode(wc, encode)
 u_int wc;
 int encode;
 {
-	static int fd = -1;
-	u_char buf[4];
-	char path[MAXPATHLEN];
+	u_char *cp, buf[4];
 	u_int r, w, min, max, ofs;
+	int fd;
 
 	wc &= 0xffff;
 	if (encode < 0) {
-		if (fd >= 0) close(fd);
-		fd = -1;
+		openunitbl(NULL);
 		return(0);
 	}
 
 	if (encode) {
 		r = 0xff00;
-		if (wc < 0x80) return(wc);
-		if (wc > 0xa0 && wc <= 0xdf) return(0xff00 | (wc - 0x40));
+		if (wc < 0x0080) return(wc);
+		if (wc >= 0x00a1 && wc <= 0x00df)
+			return(0xff00 | (wc - 0x00a1 + 0x61));
 		if (wc >= 0x8260 && wc <= 0x8279)
 			return(0xff00 | (wc - 0x8260 + 0x21));
 		if (wc >= 0x8281 && wc <= 0x829a)
 			return(0xff00 | (wc - 0x8281 + 0x41));
 		if (wc < MINKANJI || wc > MAXKANJI) return(r);
+		wc = unifysjis(wc, 0);
 	}
 	else {
 		r = '?';
@@ -1092,12 +1112,12 @@ int encode;
 				break;
 			case 0xff00:
 				w = wc & 0xff;
-				if (w > 0x20 && w <= 0x3a)
+				if (w >= 0x21 && w <= 0x3a)
 					return(w + 0x8260 - 0x21);
-				if (w > 0x40 && w <= 0x5a)
+				if (w >= 0x41 && w <= 0x5a)
 					return(w + 0x8281 - 0x41);
-				if (w > 0x60 && w <= 0x9f)
-					return(w + 0x40);
+				if (w >= 0x61 && w <= 0x9f)
+					return(w + 0x00a1 - 0x61);
 				break;
 			default:
 				break;
@@ -1105,32 +1125,18 @@ int encode;
 		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
 	}
 
-	if (fd < 0) {
-		if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
-		else strcatdelim2(path, unitblpath, UNICODETBL);
-
-		if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0)
-			return(r);
-		if (!unitblent) {
-			if (read(fd, buf, 2) != 2) {
-				close(fd);
-				fd = -1;
-				return(r);
-			}
-			unitblent = (((u_int)(buf[1]) << 8) | buf[0]);
-		}
-	}
-
-	if (encode) {
-		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) return(r);
-		wc = unifysjis(wc, 0);
-		for (ofs = 0; ofs < unitblent; ofs++) {
-			if (read(fd, buf, 4) != 4) break;
-			w = (((u_int)(buf[3]) << 8) | buf[2]);
-			if (wc == w) {
-				r = (((u_int)(buf[1]) << 8) | buf[0]);
+	cp = buf;
+	ofs = min = max = 0;
+	if ((fd = openunitbl(UNICODETBL)) < 0) ofs = unitblent;
+	else if (encode) {
+		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
+		else for (ofs = 0; ofs < unitblent; ofs++) {
+			if (read(fd, cp, 4) != 4) {
+				ofs = unitblent;
 				break;
 			}
+			w = getword(cp, 2);
+			if (wc == w) break;
 		}
 	}
 	else {
@@ -1141,12 +1147,12 @@ int encode;
 			if (ofs == min || ofs == max) break;
 			if (Xlseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET)
 			< (off_t)0
-			|| read(fd, buf, 4) != 4) break;
-			w = (((u_int)(buf[1]) << 8) | buf[0]);
-			if (wc == w) {
-				r = (((u_int)(buf[3]) << 8) | buf[2]);
+			|| read(fd, cp, 4) != 4) {
+				ofs = min = max = 0;
 				break;
 			}
+			w = getword(cp, 0);
+			if (wc == w) break;
 			else if (wc < w) {
 				max = ofs;
 				ofs = (ofs + min) / 2;
@@ -1156,6 +1162,13 @@ int encode;
 				ofs = (ofs + max) / 2;
 			}
 		}
+	}
+
+	if (encode) {
+		if (ofs < unitblent) r = getword(cp, 0);
+	}
+	else {
+		if (ofs > min && ofs < max) r = getword(cp, 2);
 	}
 
 	return(r);
@@ -1812,7 +1825,6 @@ devstat *devp;
 	return(0);
 }
 
-#if	!MSDOS
 static int NEAR readfat(devp)
 devstat *devp;
 {
@@ -1834,7 +1846,6 @@ devstat *devp;
 	errno = duperrno;
 	return(0);
 }
-#endif	/* !MSDOS */
 
 static int NEAR writefat(devp)
 devstat *devp;
@@ -2195,10 +2206,10 @@ bpb_t *bpbcache;
 	buf = NULL;
 	if (!(devp -> ch_head) || !(nsect = devp -> ch_sect)) return(0);
 
-#ifdef	HDDMOUNT
+# ifdef	HDDMOUNT
 	if (!(devp -> ch_cyl));
 	else
-#endif
+# endif
 	if (nsect <= 100) devp -> flags &= ~F_8SECT;
 	else {
 		nsect %= 100;
@@ -2209,13 +2220,13 @@ bpb_t *bpbcache;
 	else {
 		devp -> fd = -1;
 		i = (O_BINARY | O_RDWR);
-#ifdef	HDDMOUNT
+# ifdef	HDDMOUNT
 		if (!(devp -> ch_cyl) && toupper2(devp -> ch_head) != 'W') {
 			i = (O_BINARY | O_RDONLY);
 			devp -> flags |= F_RONLY;
 		}
-#endif
-#ifdef	LINUX
+# endif
+# ifdef	LINUX
 		if (i == (O_BINARY | O_RDWR)) {
 			struct stat st1, st2;
 			struct mntent *mntp;
@@ -2228,10 +2239,10 @@ bpb_t *bpbcache;
 			}
 			if ((fp = setmntent(MOUNTED, "r"))) {
 				while ((mntp = getmntent(fp))) {
-#if	1
+#  if	1
 					if (strstr(mntp -> mnt_opts, "ro"))
 						continue;
-#endif
+#  endif
 					if (stat(mntp -> mnt_fsname, &st2) < 0)
 						continue;
 					if (st1.st_ino == st2.st_ino) {
@@ -2243,15 +2254,15 @@ bpb_t *bpbcache;
 				endmntent(fp);
 			}
 		}
-#endif	/* LINUX */
+# endif	/* LINUX */
 		if ((fd = open(devp -> ch_name, i, 0600)) < 0) {
-#ifdef	EFORMAT
+# ifdef	EFORMAT
 			if (errno == EFORMAT) {
 				errno = duperrno;
 				return(0);
 			}
-#endif
-			if (errno == EIO) errno = ENXIO;
+# endif
+			if (errno == EIO) errno = ENODEV;
 			if ((errno != EROFS && errno != EACCES)
 			|| i == (O_BINARY | O_RDONLY)
 			|| (fd = open(devp -> ch_name,
@@ -2262,9 +2273,9 @@ bpb_t *bpbcache;
 			}
 			devp -> flags |= F_RONLY;
 		}
-#if	defined (LINUX) && defined (BLKFLSBUF)
+# if	defined (LINUX) && defined (BLKFLSBUF)
 		ioctl(fd, BLKFLSBUF, 0);
-#endif
+# endif
 
 		cc = 0;
 		for (i = 0; i < SLISTSIZ; i++)
@@ -2276,11 +2287,11 @@ bpb_t *bpbcache;
 			return(-1);
 		}
 		for (i = 0; i < SLISTSIZ; i++) {
-#ifdef	HDDMOUNT
+# ifdef	HDDMOUNT
 			if (Xllseek(fd, devp -> offset, L_SET) < (l_off_t)0)
-#else
+# else
 			if (Xllseek(fd, (l_off_t)0, L_SET) < (l_off_t)0)
-#endif
+# endif
 			{
 				i = SLISTSIZ;
 				break;
@@ -2528,7 +2539,7 @@ int pc98;
 	int fd, head, sect, size;
 
 	if ((fd = open(devfile, O_BINARY | O_RDONLY, 0600)) < 0) {
-		if (errno == EIO) errno = ENXIO;
+		if (errno == EIO) errno = ENODEV;
 		return(NULL);
 	}
 
@@ -2597,14 +2608,12 @@ int drive;
 	else {
 		if (readbpb(&dev, drv) < 0) return(-1);
 		dev.dircache = NULL;
-#if	MSDOS
-		dev.fatbuf = NULL;
-#else
 		if (readfat(&dev) < 0) {
+#if	!MSDOS
 			close(dev.fd);
+#endif
 			return(-1);
 		}
-#endif
 	}
 	if (drive >= 'a' && drive <= 'z') dev.flags |= F_VFAT;
 	else dev.flags &= ~F_VFAT;
@@ -2753,14 +2762,12 @@ VOID_T (*func)__P_((VOID_A));
 	else {
 		dev.dircache = NULL;
 		dev.availsize = avail;
-#if	MSDOS
-		dev.fatbuf = NULL;
-#else
 		if (readfat(&dev) < 0) {
+#if	!MSDOS
 			close(dev.fd);
+#endif
 			return(-1);
 		}
-#endif
 	}
 	if (drive >= 'a' && drive <= 'z') dev.flags |= F_VFAT;
 	else dev.flags &= ~F_VFAT;

@@ -95,6 +95,11 @@
 #	>= 1: display
 #SECOND=0
 
+# whether if use the screen layout based on the traditional "FD"
+#	0: original layout (Default)
+#	>= 1: traditional layout
+#TRADLAYOUT=0
+
 # whether if show the info. of filesize
 #	0: not show (Default)
 #	>= 1: show
@@ -139,6 +144,11 @@
 #	vi: k, j, l, h, ...
 #EDITMODE=emacs
 
+# whether if loop cursor moving within the same page
+#	0: not loop (Default)
+#	>= 1: loop
+#LOOPCURSOR=0
+
 # temporary directory where archive file is unpacked
 #	Default: /tmp
 #TMPDIR=/tmp
@@ -168,6 +178,11 @@
 #	>= 1: not use
 #DUMBSHELL=0
 
+# whether if hold the UNICODE translation table on memory
+#	0: not hold (Default)
+#	>= 1: hold
+#UNICODEBUFFER=0
+
 # language code type to display
 #	Default: No convert
 #	euc, EUC: EUC-JP
@@ -179,6 +194,7 @@
 #	ojis8, OJIS8: old 8bits JIS
 #	ojunet, OJUNET: old ISO-2022-JP
 #	utf8, UTF8: UTF-8
+#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 #	eng, ENG, C: English
 #LANGUAGE=""
 
@@ -201,6 +217,7 @@
 #	hex, HEX: HEX
 #	cap, CAP: CAP
 #	utf8, UTF8: UTF-8
+#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 #FNAMEKCODE=""
 
 # directories on which language code type in filename is SJIS
@@ -246,6 +263,10 @@
 # directories on which language code type in filename is UTF-8
 #	Default: none
 #UTF8PATH=""
+
+# directories on which language code type in filename is UTF-8 for Mac OS X
+#	Default: none
+#UTF8MACPATH=""
 
 # directories on which language code type in filename is not converted
 #	Default: none

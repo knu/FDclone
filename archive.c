@@ -5,7 +5,6 @@
  */
 
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "kanji.h"
@@ -25,6 +24,9 @@ extern char *unixgetcurdir __P_((char *, int));
 
 extern int mark;
 extern int stackdepth;
+#ifndef	_NOTRADLAYOUT
+extern int tradlayout;
+#endif
 extern int sizeinfo;
 extern off_t marksize;
 extern off_t totalsize;
@@ -1139,27 +1141,58 @@ char *file, *dir;
 		strcpy(strcpy2(strcatdelim2(arch, fullpath, file), ":"), dir);
 	}
 
+#ifndef	_NOTRADLAYOUT
+	if (istradlayout()) {
+		locate(0, TL_PATH);
+		putterm(l_clear);
+
+		locate(TC_PATH, TL_PATH);
+		putterm(t_standout);
+#ifndef	_NOBROWSE
+		if (browselist) {
+			cputs2(TS_BROWSE);
+			len = TD_BROWSE;
+		}
+		else
+#endif
+		{
+			cputs2(TS_ARCH);
+			len = TD_ARCH;
+		}
+		putterm(end_standout);
+		cprintf2("%-*.*k", len, len, arch);
+		free(arch);
+
+		locate(TC_MARK, TL_PATH);
+		cprintf2("%<*d", TD_MARK, mark);
+		putterm(t_standout);
+		cputs2(TS_MARK);
+		putterm(end_standout);
+		cprintf2("%<'*qd", TD_SIZE, marksize);
+
+		tflush();
+		return;
+	}
+#endif	/* !_NOTRADLAYOUT */
+
 	locate(0, L_PATH);
 	putterm(l_clear);
-	len = 0;
-	if (!isleftshift()) {
-		putch2(' ');
-		len++;
-	}
+
+	locate(C_PATH, L_PATH);
 	putterm(t_standout);
 #ifndef	_NOBROWSE
 	if (browselist) {
-		cputs2("Browse:");
-		len += 7;
+		cputs2(S_BROWSE);
+		len = D_BROWSE;
 	}
 	else
 #endif
 	{
-		cputs2("Arch:");
-		len += 5;
+		cputs2(S_ARCH);
+		len = D_ARCH;
 	}
 	putterm(end_standout);
-	kanjiputs2(arch, n_column - len, 0);
+	cprintf2("%-*.*k", len, len, arch);
 	free(arch);
 
 	tflush();
@@ -1323,10 +1356,10 @@ char *s, **argv;
 }
 #endif	/* FD >= 2 */
 
-static int NEAR parsearchive(fp, list, flist, linenop)
+static int NEAR parsearchive(fp, list, namep, linenop)
 FILE *fp;
 launchtable *list;
-namelist *flist;
+namelist *namep;
 int *linenop;
 {
 #if	FD >= 2
@@ -1395,9 +1428,9 @@ int *linenop;
 		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
 			max = (int)(list -> field[i]);
 #endif	/* FD < 2 */
-	flist -> name = NULL;
+	namep -> name = NULL;
 #ifndef	NOSYMLINK
-	flist -> linkname = NULL;
+	namep -> linkname = NULL;
 #endif
 
 	needline = 0;
@@ -1438,11 +1471,11 @@ int *linenop;
 						formlist[i] = formlist[i + 1];
 					continue;
 				}
-				if (flist -> name) free(flist -> name);
-				flist -> name = NULL;
+				if (namep -> name) free(namep -> name);
+				namep -> name = NULL;
 # ifndef	NOSYMLINK
-				if (flist -> linkname) free(flist -> linkname);
-				flist -> linkname = NULL;
+				if (namep -> linkname) free(namep -> linkname);
+				namep -> linkname = NULL;
 # endif
 				if (form0) free(form0);
 				free(scorelist);
@@ -1497,11 +1530,11 @@ int *linenop;
 
 		if (score >= MAXSCORE);
 		else if (!i) {
-			if (flist -> name) free(flist -> name);
+			if (namep -> name) free(namep -> name);
 # ifndef	NOSYMLINK
-			if (flist -> linkname) free(flist -> linkname);
+			if (namep -> linkname) free(namep -> linkname);
 # endif
-			memcpy((char *)flist, (char *)&tmp, sizeof(tmp));
+			memcpy((char *)namep, (char *)&tmp, sizeof(tmp));
 		}
 		else {
 			if (tmp.name) free(tmp.name);
@@ -1512,7 +1545,7 @@ int *linenop;
 
 		if (!score) break;
 #else	/* FD < 2 */
-		score = readfileent(flist, cp, list, max);
+		score = readfileent(namep, cp, list, max);
 		free(cp);
 		break;
 /*NOTREACHED*/
@@ -1521,11 +1554,11 @@ int *linenop;
 
 #if	FD >= 2
 	if (score < 0) {
-		if (flist -> name) free(flist -> name);
-		flist -> name = NULL;
+		if (namep -> name) free(namep -> name);
+		namep -> name = NULL;
 # ifndef	NOSYMLINK
-		if (flist -> linkname) free(flist -> linkname);
-		flist -> linkname = NULL;
+		if (namep -> linkname) free(namep -> linkname);
+		namep -> linkname = NULL;
 # endif
 	}
 #endif	/* FD >= 2 */
@@ -1548,16 +1581,15 @@ int *linenop;
 
 static VOID NEAR unpackerror(VOID_A)
 {
-	if (isttyiomode) {
-		locate(0, n_line - 1);
-		cputs2("\r\n");
-		tflush();
-		hideclock = 1;
-		warning(0, UNPNG_K);
+	if (!isttyiomode) {
+		kanjifputs(UNPNG_K, stderr);
+		fputnl(stderr);
 	}
 	else {
-		fputs(UNPNG_K, stderr);
-		fputc('\n', stderr);
+		locate(0, n_line - 1);
+		cputnl();
+		hideclock = 1;
+		warning(0, UNPNG_K);
 	}
 }
 

@@ -1048,6 +1048,7 @@ DDEESSCCRRIIPPTTIIOONN
                    is referred recursively.
 
      ccdd [--LLPP] [_d_i_r]
+     cchhddiirr [--LLPP] [_d_i_r]
                    Change the current directory in ffdd to _d_i_r.  If
                    _d_i_r is omitted, it moves to the directory
                    indicated by HHOOMMEE the internal variable.  If
@@ -1061,8 +1062,6 @@ DDEESSCCRRIIPPTTIIOONN
                    ccaall option for sseett the builtin command is
                    effective.
 
-     cchhddiirr [_d_i_r]   Same as ccdd.  ((DDOOSS))
-
      cchheecckkiidd [_f_i_l_e ...]
                    Calculate the unique ID of the specified file
                    and display it, according to the MD5 algorithm
@@ -1075,7 +1074,7 @@ DDEESSCCRRIIPPTTIIOONN
                    secure, it is available to confirm the iden-
                    tity of files.
 
-     ccllss           Clear the screen.  ((DDOOSS))
+     ccllss           Clear the screen.
 
      ccoommmmaanndd [--pp | --vv | --VV] _a_r_g ...
                    Execute _a_r_g as a simple command.  When the
@@ -1094,7 +1093,7 @@ DDEESSCCRRIIPPTTIIOONN
                    specified, it resumes the next iteration in
                    the loop _n - 1 levels out of the loop.
 
-     ccooppyy [//AABBVVYY--YY] _s_r_c [//AABB] [++ _s_r_c_2 [//AABB] [++ ...]] [_d_e_s_t [//AABB]]
+     ccooppyy [--AABBVVYY--YY] _s_r_c [--AABB] [++ _s_r_c_2 [--AABB] [++ ...]] [_d_e_s_t [--AABB]]
                    Copy the file indicated by _s_r_c into the file
                    or the directory indicated by _d_e_s_t.  When _d_e_s_t
                    indicates a directory, the filename in the
@@ -1107,54 +1106,65 @@ DDEESSCCRRIIPPTTIIOONN
                    use the wildcard, they are copied one by one
                    in case that the destination is a directory,
                    and they are concatenated in case that the
-                   destination is a file.  ((DDOOSS))
+                   destination is a file.
 
-                   When you specify //AA, it is treated as the
-                   ASCII text file.  When you specify //BB, it is
+                   When you specify --AA, it is treated as the
+                   ASCII text file.  When you specify --BB, it is
                    treated as the binary file.  When you specify
-                   //VV, it is verified to copy.  When you specify
-                   //YY, it doesn't prompts for confirming to
+                   --VV, it is verified to copy.  When you specify
+                   --YY, it doesn't prompts for confirming to
                    overwrite into the destination.  When you
-                   specify //--YY,, it prompts for confirmation
+                   specify ----YY, it prompts for confirmation
                    before overwriting into the destination.
 
-     ddeell [//PP] _f_i_l_e
-     eerraassee [//PP] _f_i_l_e
+                   (MS-DOS version requires to use // instead of --
+                   as an option prefix for compatibility with
+                   COMMAND.COM.)
+
+     ddeell [--PP] _f_i_l_e
+     eerraassee [--PP] _f_i_l_e
                    Delete the files indicated by _f_i_l_e.  You can
                    specify multiple files by using wildcard.
-                   ((DDOOSS))
 
-                   When you specify //PP, it prompts for confirma-
+                   When you specify --PP, it prompts for confirma-
                    tion before deleting files.
 
-     ddiirr [//[--]PPWWSSBBLLVV44] [//AA[DDRRHHSSAA--]] [//OO[NNSSEEDDGGAA--]] [_d_i_r]
+                   (MS-DOS version requires to use // instead of --
+                   as an option prefix for compatibility with
+                   COMMAND.COM.)
+
+     ddiirr [--[--]PPWWSSBBLLVV44] [--AA[DDRRHHSSAA--]] [--OO[NNSSEEDDGGAA--]] [_d_i_r]
                    List files and sub directories in the direc-
                    tory indicated by _d_i_r.  If _d_i_r is omitted, the
                    information in the the current directory is
-                   listed.  ((DDOOSS))
+                   listed.
 
-                   When you specify //PP, it prompts for every
-                   screen.  When you specify //WW, it is listed in
-                   the wide view.  When you specify //AA, it lists
+                   When you specify --PP, it prompts for every
+                   screen.  When you specify --WW, it is listed in
+                   the wide view.  When you specify --AA, it lists
                    only the files which have the attribute indi-
                    cated by the trailing character.
                          DD  directory        RR  read only file
                          HH  hidden file      SS  system file
                          AA  ready to archive --  except it
-                   When you specify //OO, it sorts with the sorted
+                   When you specify --OO, it sorts with the sorted
                    type indicated by the trailing character.
                          NN  by name          SS  by size
                          EE  by extension     DD  by date & time
                          GG  directory first  AA  by last access time
                          --  reverse order
-                   When you specify //SS, it lists files in all sub
-                   directories.  When you specify //BB, it displays
+                   When you specify --SS, it lists files in all sub
+                   directories.  When you specify --BB, it displays
                    only names of files and directories.  When you
-                   specify //LL, it uses lowercase.  When you
-                   specify //VV, it lists the verbose information.
-                   When you specify //44, it displays year with 4
+                   specify --LL, it uses lowercase.  When you
+                   specify --VV, it lists the verbose information.
+                   When you specify --44, it displays year with 4
                    digits.  And you can prefix -- to any option
                    letter to override the option.
+
+                   (MS-DOS version requires to use // instead of --
+                   as an option prefix for compatibility with
+                   COMMAND.COM.)
 
      ddiirrss          Display the list of the current directory
                    stack.  ppuusshhdd and ppooppdd the builtin command can
@@ -1172,7 +1182,7 @@ DDEESSCCRRIIPPTTIIOONN
                    from the shell control.
 
      ddttyyppee _f_i_l_e    Display the contents of the file indicated by
-                   _f_i_l_e.  ((DDOOSS))
+                   _f_i_l_e.
 
      eecchhoo [--nn] [_a_r_g ...]
                    Echo _a_r_g to the standard output.  When you
@@ -1458,7 +1468,7 @@ DDEESSCCRRIIPPTTIIOONN
                    for each _p_a_t_t the pattern.
 
      mmdd _d_i_r
-     mmkkddiirr _d_i_r     Create the directory _d_i_r.  ((DDOOSS))
+     mmkkddiirr _d_i_r     Create the directory _d_i_r.
 
      nneewwggrrpp [_a_r_g ...]
                    Execute nneewwggrrpp(1) in place of the execution of
@@ -1569,16 +1579,16 @@ DDEESSCCRRIIPPTTIIOONN
 
      rrdd _d_i_r
      rrmmddiirr _d_i_r     Delete the directory _d_i_r.  You cannot delete
-                   the non-empty directory.  ((DDOOSS))
+                   the non-empty directory.
 
      rreenn _o_l_d _n_e_w
      rreennaammee _o_l_d _n_e_w
                    Rename the filename or the directory name _o_l_d
                    into _n_e_w.  You can specify the wildcard in _o_l_d
                    and _n_e_w to rename the multiple filenames all
-                   together.  ((DDOOSS))
+                   together.
 
-     rreemm [_a_r_g ...] No effect, same as ::.  ((DDOOSS))
+     rreemm [_a_r_g ...] No effect, same as ::.
 
      rreettuurrnn [_n]    Return from a function with the return value
                    specified by _n.  If _n is omitted, the return
@@ -2343,7 +2353,10 @@ DDEESSCCRRIIPPTTIIOONN
      %%JJUU     The Kanji code of the string enclosed by this macro
              is converted into UTF-8.  ((UUNNIIXX))
 
-     %%JJUU     The Kanji code of the string enclosed by this macro
+     %%JJMM     The Kanji code of the string enclosed by this macro
+             is converted into UTF-8 for Mac OS X.  ((UUNNIIXX))
+
+     %%JJAA     The Kanji code of the string enclosed by this macro
              is converted into the Kanji code which is used in
              the pathname indicated by the string.  The variables
              SSJJIISSPPAATTHH, EEUUCCPPAATTHH, etc. can specify what kanji code
@@ -2579,7 +2592,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    ((DDOOSS))
 
      CCOOPPYYCCMMDD*      Specify the default options used by ccooppyy the
-                   builtin command.  ((DDOOSS))
+                   builtin command.
 
      DDEEFFCCOOLLUUMMNNSS    Specify the columns displayed in the screen
                    when ffdd is invoked.  The default value is 22.
@@ -2601,7 +2614,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    value is 5500 files.
 
      DDIIRRCCMMDD*       Specify the default options used by ddiirr the
-                   builtin command.  ((DDOOSS))
+                   builtin command.
 
      DDIIRRHHIISSTT       Specify the maximum number of the directory
                    histories which can be referred by the direc-
@@ -2699,6 +2712,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        HHEEXX, hheexx       HEX
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        default        no convert
 
      HHIISSTTFFIILLEE      Specify the name of the command history file
@@ -2764,6 +2778,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
                        OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
                        UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        EENNGG, eenngg, CC    English (message only)
                        default        no convert
 
@@ -2776,6 +2791,10 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    reset this value, this variable will lose its
                    special meaning to be treated as a general
                    variable.
+
+     LLOOOOPPCCUURRSSOORR    Loop a cursor moving within the same page,
+                   when you move a cursor.  Any value except 00
+                   and null effects valid.
 
      MMAAIILL*         Specify the spool filename when the internal
                    shell will check new mails.  If MMAAIILLPPAATTHH is
@@ -2963,6 +2982,20 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    actual mask value is the logical OR of this
                    value and uummaasskk value.
 
+     TTRRAADDLLAAYYOOUUTT    Use the traditional screen layout based on the
+                   original "FD".  In this layout, the file size
+                   information will be always displayed, whether
+                   SSIIZZEEIINNFFOO is set or not.  When the screen width
+                   is less than 8800 columns, this specification is
+                   invalid.  Any value except 00 and null effects
+                   valid.
+
+     UUNNIICCOODDEEBBUUFFFFEERR Hold the UNICODE translation table on memory.
+                   It will be fast to access the floppy drive and
+                   to translate from/to UTF-8.  You should set
+                   this if you have enough memory.  Any value
+                   except 00 and null effects valid.
+
      UUSSEEGGEETTCCUURRSSOORR  Use the VT100 compatible escape sequence get-
                    ting the cursor position in order to get the
                    terminal size.  When the screen size of ffdd
@@ -2993,6 +3026,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      OOJJUUNNEETTPPAATTHH
      HHEEXXPPAATTHH
      CCAAPPPPAATTHH
+     UUTTFF88PPAATTHH
+     UUTTFF88MMAACCPPAATTHH
      NNOOCCOONNVVPPAATTHH    Specify the Kanji code for filename per direc-
                    tory, which is prior to FFNNAAMMEEKKCCOODDEE.  You can
                    specify multiple pathnames separating with

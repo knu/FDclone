@@ -286,13 +286,14 @@ struct fat32statfs_t {
 };
 
 typedef struct _statfs_t {
-	long	f_bsize;
-	long	f_blocks;
-	long	f_bfree;
-	long	f_bavail;
-	long	f_files;
+	long f_bsize;
+	long f_blocks;
+	long f_bfree;
+	long f_bavail;
+	long f_files;
 } statfs_t;
 
+extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));
 #ifndef	_NOUSELFN

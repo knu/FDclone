@@ -12,6 +12,7 @@
 #include <string.h>
 #include <errno.h>
 #include "machine.h"
+#include "printf.h"
 #include "pathname.h"
 
 #ifndef	NOUNISTDH
@@ -38,6 +39,9 @@
 #if	MSDOS
 #include <dos.h>
 #define	FR_CARRY	00001
+# ifdef	__TURBOC__
+# include <dir.h>
+# endif
 # ifdef	DJGPP
 # include <dpmi.h>
 # include <go32.h>
@@ -335,8 +339,6 @@ extern int Xfclose __P_((FILE *));
 extern int Xdup __P_((int));
 extern int Xdup2 __P_((int, int));
 # endif
-extern int kanjifputs __P_((char *, FILE *));
-extern int argfputs __P_((char *, FILE *));
 #else	/* !FD */
 # if	MSDOS
 # define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
@@ -349,7 +351,7 @@ extern char *Xgetwd __P_((char *));
 #  else
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
-#  define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
+extern int Xstat __P_((char *, struct stat *));
 # endif	/* !DJGPP */
 #define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
 #define	Xunlink(p)	(unlink(p) ? -1 : 0)
@@ -376,8 +378,6 @@ int Xmkdir __P_((char *, int));
 # define	Xmkdir		mkdir
 # endif
 #define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
-#define	kanjifputs	fputs
-#define	argfputs	fputs
 #endif	/* !FD */
 
 #ifndef	O_BINARY
@@ -541,7 +541,6 @@ extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
 extern char *strndup2 __P_((char *, int));
 extern char *strncpy2 __P_((char *, char *, int));
-extern char *ascnumeric __P_((char *, off_t, int, int));
 
 #ifdef	DEBUG
 extern VOID mtrace __P_ ((VOID));
@@ -568,8 +567,8 @@ extern int posixoptind;
 #ifdef	FD
 extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((char *));
-extern char **duplvar __P_((char **, int));
 # if	MSDOS
+extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 extern int setcurdrv __P_((int, int));
 # endif
 extern int chdir3 __P_((char *));
@@ -590,12 +589,12 @@ static int NEAR genrand __P_((int));
 static char *NEAR genrandname __P_((char *, int));
 static int NEAR mktmpfile __P_((char *));
 static int NEAR rmtmpfile __P_((char *));
-static char **NEAR duplvar __P_((char **, int));
 # ifdef	DJGPP
 int dos_putpath __P_((char *, int));
 # endif
 # if	MSDOS
-int int21call __P_((__dpmi_regs *, struct SREGS *));
+static int NEAR seterrno __P_((u_int));
+int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 static int NEAR setcurdrv __P_((int, int));
 int chdir3 __P_((char *));
 # else	/* !MSDOS */
@@ -723,8 +722,12 @@ static int trap_usr1 __P_((VOID_A));
 #ifdef	SIGUSR2
 static int trap_usr2 __P_((VOID_A));
 #endif
+#ifdef	FD
+static VOID NEAR argfputs __P_((char *, FILE *));
+#else
+#define	argfputs	fputs
+#endif
 static VOID NEAR syntaxerror __P_((char *));
-static VOID NEAR fputoctal __P_((int, int, FILE *));
 #if	!MSDOS
 static int NEAR closeonexec __P_((int));
 static VOID NEAR setstopsig __P_((int));
@@ -1362,7 +1365,8 @@ static char *adjustvar[] = {
 	"FD_SJISPATH", "FD_EUCPATH",
 	"FD_JISPATH", "FD_JIS8PATH", "FD_JUNETPATH",
 	"FD_OJISPATH", "FD_OJIS8PATH", "FD_OJUNETPATH",
-	"FD_HEXPATH", "FD_CAPPATH", "FD_UTF8PATH", "FD_NOCONVPATH",
+	"FD_HEXPATH", "FD_CAPPATH", "FD_UTF8PATH", "FD_UTF8MACPATH",
+	"FD_NOCONVPATH",
 #  endif
 # endif	/* FD */
 };
@@ -1668,7 +1672,22 @@ static int NEAR opentty(VOID_A)
 	return(ttyio);
 }
 
-# if	!MSDOS || !defined (MINIMUMSHELL)
+# if	MSDOS && defined (MINIMUMSHELL)
+static int NEAR genrand(max)
+int max;
+{
+	static u_int last = 0;
+	static int init = 0;
+
+	if (!init) {
+		init++;
+		last = getpid();
+	}
+	last = last * 12345 + 101;
+
+	return(last % max);
+}
+# else	/* !MSDOS || !MINIMUMSHELL */
 time_t time2(VOID_A)
 {
 #  if	MSDOS
@@ -1684,30 +1703,15 @@ time_t time2(VOID_A)
 	return((time_t)(t_val.tv_sec));
 #  endif
 }
-# endif	/* !MSDOS || !MINIMUMSHELL */
 
 static int NEAR genrand(max)
 int max;
 {
-# if	MSDOS && defined (MINIMUMSHELL)
-	struct SREGS sreg;
-	__dpmi_regs reg;
-# endif
 	static long last = -1L;
 	time_t now;
 
 	if (last < 0L) {
-# if	!MSDOS || !defined (MINIMUMSHELL)
 		now = time2();
-# else
-		reg.x.ax = 0x2a00;
-		now = -1L;
-		if (int21call(&reg, &sreg) >= 0)
-			now ^= ((long)reg.x.cx << 16) | reg.x.dx;
-		reg.x.ax = 0x2c00;
-		if (int21call(&reg, &sreg) >= 0)
-			now ^= ((long)reg.x.cx << 16) | reg.x.dx;
-# endif
 		last = ((now & 0xff) << 16) + (now & ~0xff) + getpid();
 	}
 
@@ -1717,6 +1721,7 @@ int max;
 
 	return((last / 65537L) % max);
 }
+# endif	/* !MSDOS || !MINIMUMSHELL */
 
 static char *NEAR genrandname(buf, len)
 char *buf;
@@ -1789,24 +1794,6 @@ char *file;
 	return(0);
 }
 
-static char **NEAR duplvar(var, margin)
-char **var;
-int margin;
-{
-	char **dupl;
-	int i, n;
-
-	if (margin < 0) {
-		if (!var) return(NULL);
-		margin = 0;
-	}
-	n = countvar(var);
-	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
-	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
-	dupl[i] = NULL;
-	return(dupl);
-}
-
 # ifdef	DJGPP
 int dos_putpath(path, offset)
 char *path;
@@ -1862,7 +1849,27 @@ int mode;
 }
 #  endif	/* !DJGPP */
 
-int int21call(regp, sregp)
+static u_short doserrlist[] = {
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
+};
+#define	DOSERRLISTSIZ	((int)(sizeof(doserrlist) / sizeof(u_short)))
+static int unixerrlist[] = {
+	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
+	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, 0, EACCES, EEXIST
+};
+
+static int NEAR seterrno(doserr)
+u_int doserr;
+{
+	int i;
+
+	for (i = 0; i < DOSERRLISTSIZ; i++)
+		if (doserr == doserrlist[i]) return(errno = unixerrlist[i]);
+	return(errno = EINVAL);
+}
+
+int intcall(vect, regp, sregp)
+int vect;
 __dpmi_regs *regp;
 struct SREGS *sregp;
 {
@@ -1904,8 +1911,9 @@ struct SREGS *sregp;
 	int86x(0x21, regp, regp, sregp);
 #   endif
 #  endif	/* !__TURBOC__ */
-	if (((*regp).x.flags & FR_CARRY)) return(-1);
-	return(0);
+	if (!((*regp).x.flags & FR_CARRY)) return(0);
+	seterrno((*regp).x.ax);
+	return(-1);
 }
 
 /*ARGSUSED*/
@@ -1950,7 +1958,7 @@ char *dir;
 #  endif
 	sreg.ds = PTR_SEG(dir);
 	reg.x.dx = PTR_OFF(dir, 0);
-	if (int21call(&reg, &sreg) < 0) {
+	if (intcall(0x21, &reg, &sreg) < 0) {
 		drv = errno;
 		if (olddrv >= 0) bdos(0x0e, olddrv, 0);
 		errno = drv;
@@ -2053,8 +2061,7 @@ int forced;
 #endif	/* !MSDOS */
 	if (havetty() && interrupted && interactive && !nottyout) {
 		fflush(stdout);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fputnl(stderr);
 	}
 	interrupted = 0;
 	if (setsigflag) {
@@ -2168,8 +2175,7 @@ int sig;
 	}
 	else if (trapped < 0 && *(signallist[i].mes)) {
 		fputs(signallist[i].mes, stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fputnl(stderr);
 	}
 
 	if (trapped < 0) Xexit2(sig + 128);
@@ -2592,6 +2598,15 @@ int n;
 	exit(n);
 }
 
+#ifdef	FD
+static VOID NEAR argfputs(s, fp)
+char *s;
+FILE *fp;
+{
+	fprintf2(fp, "%a", s);
+}
+#endif	/* FD */
+
 static VOID NEAR syntaxerror(s)
 char *s;
 {
@@ -2601,19 +2616,11 @@ char *s;
 	if (interactive) /*EMPTY*/;
 	else
 #endif
-	if (argvar && argvar[0]) {
-		kanjifputs(argvar[0], stderr);
-		fputs(": ", stderr);
-	}
-	if (s) {
-		if (!*s || syntaxerrno == ER_UNEXPNL)
-			fputs("syntax error", stderr);
-		else argfputs(s, stderr);
-		fputs(": ", stderr);
-	}
+	if (argvar && argvar[0]) fprintf2(stderr, "%k: ", argvar[0]);
+	if (s) fprintf2(stderr, "%a: ",
+		(*s && syntaxerrno != ER_UNEXPNL) ? s : "syntax error");
 	fputs(syntaxerrstr[syntaxerrno], stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	fputnl(stderr);
 	ret_status = RET_SYNTAXERR;
 	if (errorexit) {
 #ifndef	NOJOB
@@ -2638,17 +2645,10 @@ int n, noexit;
 	if (interactive) /*EMPTY*/;
 	else
 #endif
-	if (argvar && argvar[0]) {
-		kanjifputs(argvar[0], stderr);
-		fputs(": ", stderr);
-	}
-	if (s) {
-		argfputs(s, stderr);
-		fputs(": ", stderr);
-	}
+	if (argvar && argvar[0]) fprintf2(stderr, "%k: ", argvar[0]);
+	if (s) fprintf2(stderr, "%a: ", s);
 	fputs(execerrstr[n], stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	fputnl(stderr);
 	execerrno = n;
 #ifndef	BASHSTYLE
 	/* bash does not break any statement on error */
@@ -2675,15 +2675,10 @@ char *command, *s;
 	duperrno = errno;
 	if (errno < 0) return;
 	if (!command) command = (argvar && argvar[0]) ? argvar[0] : shellname;
-	kanjifputs(command, stderr);
-	fputs(": ", stderr);
-	if (s) {
-		argfputs(s, stderr);
-		fputs(": ", stderr);
-	}
+	fprintf2(stderr, "%k: ", command);
+	if (s) fprintf2(stderr, "%a: ", s);
 	fputs(strerror2(duperrno), stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	fputnl(stderr);
 	errno = 0;
 
 #ifndef	BASHSTYLE
@@ -2723,41 +2718,6 @@ char *s;
 	return(n);
 }
 
-VOID fputlong(n, fp)
-long n;
-FILE *fp;
-{
-	char buf[MAXLONGWIDTH + 1];
-
-	fputs(long2str(buf, n, sizeof(buf)), fp);
-}
-
-VOID fputstr(s, max, fp)
-char *s;
-int max;
-FILE *fp;
-{
-	int i;
-
-	for (i = 0; s[i] && i < max; i++) fputc(s[i], fp);
-	while (i++ < max) fputc(' ', fp);
-}
-
-static VOID NEAR fputoctal(n, max, fp)
-int n, max;
-FILE *fp;
-{
-	char buf[(64 / 3) + 1 + 1];
-	int i;
-
-	if (max > sizeof(buf) - 1) max = sizeof(buf) - 1;
-	for (i = 0; i < max; i++) {
-		buf[i] = '0' + (n & 7);
-		n >>= 3;
-	}
-	while (--i >= 0) fputc(buf[i], fp);
-}
-
 #if	!MSDOS
 static int NEAR closeonexec(fd)
 int fd;
@@ -2773,23 +2733,16 @@ VOID dispsignal(sig, width, fp)
 int sig, width;
 FILE *fp;
 {
-	char buf[80 + 1];
 	int i;
 
 	for (i = 0; signallist[i].sig >= 0; i++)
 		if (sig == signallist[i].sig) break;
 	if (signallist[i].sig < 0) {
-		fputs("Signal ", fp);
-		if ((width -= 7) > 0) i = -width;
-		else {
-			i = 0;
-			width = sizeof(buf) - 1;
-		}
-		ascnumeric(buf, (off_t)sig, i, width);
-		fputs(buf, fp);
+		if ((width -= sizeof("Signal ") - 1) < 0) width = 0;
+		fprintf2(fp, "Signal %-*d", width, sig);
 	}
 	else if (!width) fputs(signallist[i].mes, fp);
-	else fputstr(signallist[i].mes, width, fp);
+	else fprintf2(fp, "%-*.*s", width, width, signallist[i].mes);
 }
 
 int waitjob(pid, wp, opt)
@@ -2837,7 +2790,7 @@ int opt;
 
 			if (sig) {
 				usleep(100000L);
-				kill(tmp, SIGCONT);
+				VOID_C kill(tmp, SIGCONT);
 			}
 #  endif	/* SIGCONT  && (SIGTTIN || SIGTTOU) */
 			continue;
@@ -2997,7 +2950,7 @@ syntaxtree *trp;
 		if (!WIFSTOPPED(w)) break;
 # ifdef	NOJOB
 #  ifdef	SIGCONT
-		if (loginshell) kill(pid, SIGCONT);
+		if (loginshell) VOID_C kill(pid, SIGCONT);
 #  endif
 # else	/* !NOJOB */
 #  ifdef	BASHBUG
@@ -3087,15 +3040,10 @@ syntaxtree *trp;
 		else
 # endif
 		if (!nottyout) {
-			if (!interactive && argvar && argvar[0]) {
-				kanjifputs(argvar[0], stderr);
-				fputs(": ", stderr);
-				fputlong(pid, stderr);
-				fputc(' ', stderr);
-			}
+			if (!interactive && argvar && argvar[0])
+				fprintf2(stderr, "%k: %id ", argvar[0], pid);
 			dispsignal((int)ret, 0, stderr);
-			fputc('\n', stderr);
-			fflush(stderr);
+			fputnl(stderr);
 		}
 		ret += 128;
 	}
@@ -3158,38 +3106,40 @@ char *argv[];
 int isopt;
 {
 	u_long flags;
-	char *cp;
+	char *cp, *arg;
 	int i, j, com;
 
-	if (argc <= 1 || (argv[1][0] != '-' && argv[1][0] != '+')) return(1);
-	else if (argv[1][1] == '-') return(2);
+	if (argc <= 1) return(1);
+	arg = argv[1];
+	if (arg[0] != '-' && arg[0] != '+') return(1);
+	else if (arg[1] == '-') return(2);
 
 	cp = (isopt) ? getflags : setflags;
 	com = 0;
 	flags = (u_long)0;
-	for (i = 1; argv[1][i]; i++) {
+	for (i = 1; arg[i]; i++) {
 		if (isopt) {
-			if (argv[1][i] == 'c' && !com && argc > 2) {
+			if (arg[i] == 'c' && !com && argc > 2) {
 				com = 1;
 				continue;
 			}
 		}
 		else {
-			if (argv[1][i] == 'o' && !com) {
-				com = (argv[1][0] == '-') ? 1 : 2;
+			if (arg[i] == 'o' && !com) {
+				com = (arg[0] == '-') ? 1 : 2;
 				continue;
 			}
 		}
-		for (j = 0; j < FLAGSSIZ; j++) if (argv[1][i] == cp[j]) break;
+		for (j = 0; j < FLAGSSIZ; j++) if (arg[i] == cp[j]) break;
 		if (j < FLAGSSIZ) flags |= ((u_long)1 << j);
-		else if (argv[1][0] == '-') {
-			execerror(argv[1], ER_BADOPTIONS, 0);
+		else if (arg[0] == '-') {
+			execerror(arg, ER_BADOPTIONS, 0);
 			return(-1);
 		}
 	}
 	for (j = 0; j < FLAGSSIZ; j++) {
 		if (flags & (u_long)1)
-			*(setvals[j]) = (argv[1][0] == '-') ? 1 : 0;
+			*(setvals[j]) = (arg[0] == '-') ? 1 : 0;
 		flags >>= 1;
 	}
 
@@ -3724,18 +3674,12 @@ static int NEAR isvalidfd(fd)
 int fd;
 {
 #if	MSDOS
-# ifdef	FD
-	struct stat st;
-
-	return((fstat(fd, &st)) ? -1 : 0);
-# else
 	struct SREGS sreg;
 	__dpmi_regs reg;
 
 	reg.x.ax = 0x4400;
 	reg.x.bx = fd;
-	return(int21call(&reg, &sreg));
-# endif
+	return(intcall(0x21, &reg, &sreg));
 #else	/* !MSDOS */
 	return(fcntl(fd, F_GETFD, NULL));
 #endif	/* !MSDOS */
@@ -4047,7 +3991,7 @@ int old;
 				}
 			}
 			if (c == READ_EOF) break;
-			if (ret == RET_SUCCESS) fputc('\n', stdout);
+			if (ret == RET_SUCCESS) fputnl(stdout);
 			continue;
 		}
 		cp = c_realloc(cp, i, &size);
@@ -4346,13 +4290,12 @@ time_t *mtimep;
 
 	if (!path || stat(path, &st) < 0) return;
 	if (st.st_size > 0 && *mtimep && st.st_mtime > *mtimep) {
-# ifndef	MINIMUMSHELL
-		if (msg) kanjifputs(msg, stderr);
-		else
-# endif
+# ifdef	MINIMUMSHELL
 		fputs("you have mail", stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+# else
+		kanjifputs((msg) ? msg : "you have mail", stderr);
+# endif
+		fputnl(stderr);
 	}
 	*mtimep = st.st_mtime;
 }
@@ -4449,7 +4392,7 @@ int len;
 # endif
 			}
 		}
-#endif
+#endif	/* MSDOS */
 	}
 	return(var);
 }
@@ -4503,9 +4446,13 @@ static int NEAR _putshellvar(s, len)
 char *s;
 int len;
 {
+#if	!MSDOS || !defined (NOPOSIXUTIL)
 	char *cp;
+#endif
 
+#if	!MSDOS || !defined (NOPOSIXUTIL)
 	cp = &(s[len + 1]);
+#endif
 
 	if (checkrestrict(s, len) < 0) return(-1);
 #ifdef	BASHSTYLE
@@ -4676,9 +4623,7 @@ long n;
 	if (shlineno < 0L) return;
 
 	shlineno = n;
-	memcpy(tmp, "LINENO", LINENOSIZ);
-	tmp[LINENOSIZ] = '=';
-	long2str(&(tmp[LINENOSIZ + 1]), n, sizeof(tmp));
+	snprintf2(tmp, sizeof(tmp), "LINENO=%ld", n);
 	shellvar = putvar(shellvar, strdup2(tmp), LINENOSIZ);
 }
 #endif	/* !MINIMUMSHELL */
@@ -6433,7 +6378,7 @@ p_id_t ppid;
 				else
 # endif
 				{
-					kill(pid, SIGPIPE);
+					VOID_C kill(pid, SIGPIPE);
 					while (!waitjob(pid, NULL, WUNTRACED))
 						if (interrupted) break;
 				}
@@ -6612,7 +6557,7 @@ int fd;
 # ifdef	NOJOB
 		wait_pid_t w;
 
-		kill(pl -> pid, SIGPIPE);
+		VOID_C kill(pl -> pid, SIGPIPE);
 		while (!(ret = waitjob(pl -> pid, &w, WUNTRACED)))
 			if (interrupted) break;
 		if (ret < 0) {
@@ -6643,23 +6588,19 @@ static VOID NEAR disphash(VOID_A)
 	char buf[7 + 1];
 	int i, j;
 
-	fputs("hits    cost    command\n", stdout);
+	fputs("hits    cost    command", stdout);
+	fputnl(stdout);
 	if (hashtable) for (i = 0; i < MAXHASH; i++)
 		for (hp = hashtable[i]; hp; hp = hp -> next) {
-			long2str(buf, hp -> hits, sizeof(buf));
+			snprintf2(buf, sizeof(buf), "%d", hp -> hits);
 			j = strlen(buf);
 			buf[j++] = (hp -> type & CM_RECALC) ? '*' : ' ';
 			while (j < 7) buf[j++] = ' ';
 			buf[j] = '\0';
-			fputs(buf, stdout);
-			fputc(' ', stdout);
-			ascnumeric(buf, (off_t)(hp -> cost), -1, 7);
-			fputs(buf, stdout);
-			fputc(' ', stdout);
-			kanjifputs(hp -> path, stdout);
-			fputc('\n', stdout);
+			fprintf2(stdout, "%s %-7d %k",
+				buf, hp -> cost, hp -> path);
+			fputnl(stdout);
 		}
-	fflush(stdout);
 }
 #endif	/* !_NOUSEHASH */
 
@@ -7038,7 +6979,7 @@ FILE *fp;
 {
 	if (n < 0) fputc(' ', fp);
 	else {
-		fputc('\n', fp);
+		fputnl(fp);
 		printindent(n, fp);
 	}
 }
@@ -7056,7 +6997,8 @@ FILE *fp;
 	fputc(' ', fp);
 	switch (rp -> type & MD_RDWR) {
 		case MD_READ:
-			if (rp -> fd != STDIN_FILENO) fputlong(rp -> fd, fp);
+			if (rp -> fd != STDIN_FILENO)
+				fprintf2(fp, "%d", rp -> fd);
 			fputc('<', fp);
 			if (rp -> type & MD_HEREDOC) {
 				fputc('<', fp);
@@ -7064,7 +7006,8 @@ FILE *fp;
 			}
 			break;
 		case MD_WRITE:
-			if (rp -> fd != STDOUT_FILENO) fputlong(rp -> fd, fp);
+			if (rp -> fd != STDOUT_FILENO)
+				fprintf2(fp, "%d", rp -> fd);
 			if (rp -> type & MD_WITHERR) fputc('&', fp);
 			fputc('>', fp);
 			if (rp -> type & MD_APPEND) fputc('>', fp);
@@ -7073,7 +7016,8 @@ FILE *fp;
 #endif
 			break;
 		case MD_RDWR:
-			if (rp -> fd != STDOUT_FILENO) fputlong(rp -> fd, fp);
+			if (rp -> fd != STDOUT_FILENO)
+				fprintf2(fp, "%d", rp -> fd);
 			fputs("<>", fp);
 			break;
 		default:
@@ -7083,7 +7027,8 @@ FILE *fp;
 	else {
 		if (rp -> type & MD_FILEDESC) fputc('&', fp);
 		else fputc(' ', fp);
-		if (!(rp -> type & MD_HEREDOC)) argfputs(rp -> filename, fp);
+		if (!(rp -> type & MD_HEREDOC))
+			argfputs(rp -> filename, fp);
 		else {
 			hdp = (heredoc_t *)(rp -> filename);
 #ifdef	MINIMUMSHELL
@@ -7127,7 +7072,7 @@ FILE *fp;
 	hdp = (heredoc_t *)(rp -> filename);
 	fd = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
 	if (fd >= 0) {
-		fputc('\n', stdout);
+		fputnl(stdout);
 		while ((c = readchar(fd)) != READ_EOF) {
 			if (c < 0) break;
 			fputc(c, stdout);
@@ -7325,10 +7270,8 @@ FILE *fp;
 
 	for (id = 0; id < OPELISTSIZ; id++)
 		if (trp -> type == opelist[id].op) break;
-	if (id < OPELISTSIZ && !isopfg(trp)) {
-		fputc(' ', fp);
-		fputs(opelist[id].symbol, fp);
-	}
+	if (id < OPELISTSIZ && !isopfg(trp))
+		fprintf2(fp, " %s", opelist[id].symbol);
 #ifndef	MINIMUMSHELL
 	if (!rlist || opelist[id].level < 4) nl = 0;
 	else {
@@ -7342,7 +7285,7 @@ FILE *fp;
 	if (trp -> next && (trp -> next) -> comm) {
 #ifndef	MINIMUMSHELL
 		if (nl) {
-			fputc('\n', fp);
+			fputnl(fp);
 			printindent(indent, fp);
 		}
 		else
@@ -7355,7 +7298,7 @@ FILE *fp;
 #else
 			if (indent < 0) fputc(';', fp);
 			else {
-				fputc('\n', fp);
+				fputnl(fp);
 				printindent(indent, fp);
 			}
 #endif
@@ -7395,12 +7338,11 @@ static VOID NEAR printshfunc(f, fp)
 shfunctable *f;
 FILE *fp;
 {
-	kanjifputs(f -> ident, fp);
 #ifdef	BASHSTYLE
 	/* bash type pretty print */
-	fputs(" ()\n", fp);
+	fprintf2(fp, "%k ()\n", f -> ident);
 #else
-	fputs("()", fp);
+	fprintf2(fp, "%k()", f -> ident);
 #endif
 	if (getstatid(statementcheck(f -> func, SM_STATEMENT)) == SM_LIST - 1)
 		printstree(f -> func, 0, fp);
@@ -7948,8 +7890,7 @@ syntaxtree *trp;
 	/* bash displays arguments of "eval", in -v mode */
 	if (verboseinput) {
 		argfputs(cp, stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fputnl(stderr);
 	}
 #endif
 #ifndef	MINIMUMSHELL
@@ -8105,7 +8046,7 @@ syntaxtree *trp;
 		if (i > 1) qsort(var, i, sizeof(char *), cmppath);
 		for (i = 0; var[i]; i++) {
 			kanjifputs(var[i], stdout);
-			fputc('\n', stdout);
+			fputnl(stdout);
 		}
 		freevar(var);
 
@@ -8114,10 +8055,9 @@ syntaxtree *trp;
 		if (i > 1) qsort(func, i, sizeof(shfunctable), cmpfunc);
 		for (i = 0; func[i].ident; i++) {
 			printshfunc(&(func[i]), stdout);
-			fputc('\n', stdout);
+			fputnl(stdout);
 		}
 		freefunc(func);
-		fflush(stdout);
 		return(RET_SUCCESS);
 	}
 
@@ -8130,11 +8070,11 @@ syntaxtree *trp;
 		if (argc <= 2) {
 			for (i = 0; i < FLAGSSIZ; i++) {
 				if (!optionflags[i]) continue;
-				fputstr(optionflags[i], 16, stdout);
-				fputs((*(setvals[i])) ? "on" : "off", stdout);
-				fputc('\n', stdout);
+				fprintf2(stdout, "%-16.16s%s",
+					optionflags[i],
+					(*(setvals[i])) ? "on" : "off");
+				fputnl(stdout);
 			}
-			fflush(stdout);
 		}
 #ifndef	MINIMUMSHELL
 		else if (!strcmp(argv[2], "ignoreeof"))
@@ -8293,8 +8233,7 @@ syntaxtree *trp;
 			strncpy2(&(path[dlen]), dir, len);
 			if (chdir3(path) >= 0) {
 				kanjifputs(path, stdout);
-				fputc('\n', stdout);
-				fflush(stdout);
+				fputnl(stdout);
 				free(path);
 #ifdef	FD
 				physical_path = dupphysical_path;
@@ -8331,8 +8270,7 @@ syntaxtree *trp;
 		return(RET_FAIL);
 	}
 	kanjifputs(buf, stdout);
-	fputc('\n', stdout);
-	fflush(stdout);
+	fputnl(stdout);
 	return(RET_SUCCESS);
 }
 
@@ -8406,11 +8344,9 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; exportlist[i]; i++) {
-			fputs("export ", stdout);
-			kanjifputs(exportlist[i], stdout);
-			fputc('\n', stdout);
+			fprintf2(stdout, "export %k", exportlist[i]);
+			fputnl(stdout);
 		}
-		fflush(stdout);
 		return(RET_SUCCESS);
 	}
 
@@ -8461,11 +8397,9 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; ronlylist[i]; i++) {
-			fputs("readonly ", stdout);
-			kanjifputs(ronlylist[i], stdout);
-			fputc('\n', stdout);
+			fprintf2(stdout, "readonly %k", ronlylist[i]);
+			fputnl(stdout);
 		}
-		fflush(stdout);
 		return(RET_SUCCESS);
 	}
 
@@ -8524,15 +8458,9 @@ syntaxtree *trp;
 	usrtime = systime = 0;
 # endif
 #endif	/* !USEGETRUSAGE */
-	fputlong(usrtime / 60, stdout);
-	fputc('m', stdout);
-	fputlong(usrtime % 60, stdout);
-	fputs("s ", stdout);
-	fputlong(systime / 60, stdout);
-	fputc('m', stdout);
-	fputlong(systime % 60, stdout);
-	fputs("s\n", stdout);
-	fflush(stdout);
+	fprintf2(stdout, "%dm%ds %dm%ds",
+		usrtime / 60, usrtime % 60, systime / 60, systime % 60);
+	fputnl(stdout);
 	return(RET_SUCCESS);
 }
 
@@ -8614,14 +8542,12 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		n = umask(022);
 		umask(n);
-		n &= 0777;
 #ifdef	BASHSTYLE
-		fputoctal(n, 3, stdout);
+		fprintf2(stdout, "%03o", n & 0777);
 #else
-		fputoctal(n, 4, stdout);
+		fprintf2(stdout, "%04o", n & 0777);
 #endif
-		fputc('\n', stdout);
-		fflush(stdout);
+		fputnl(stdout);
 	}
 	else {
 		s = (trp -> comm) -> argv[1];
@@ -8726,13 +8652,11 @@ syntaxtree *trp;
 #  else
 		fp = stdout;
 #  endif
-		fputs("usage: ", fp);
-		kanjifputs(argv[0], fp);
-		fputs(" [ -HSa", fp);
+		fprintf2(fp, "usage: %k [ -HSa", argv[0]);
 		for (j = 0; j < ULIMITSIZ; j++)
 			fputc(ulimitlist[j].opt, fp);
-		fputs(" ] [ limit ]\n", fp);
-		fflush(fp);
+		fputs(" ] [ limit ]", fp);
+		fputnl(fp);
 #  ifdef	BASHSTYLE
 		return(RET_SYNTAXERR);
 #  else
@@ -8742,10 +8666,8 @@ syntaxtree *trp;
 
 	if (n >= argc) {
 		for (i = 0; i < ULIMITSIZ; i++) if (flags & ((u_long)1 << i)) {
-			if (res < 0) {
-				fputs(ulimitlist[i].mes, stdout);
-				fputc(' ', stdout);
-			}
+			if (res < 0)
+				fprintf2(stdout, "%s ", ulimitlist[i].mes);
 			if (getrlimit(ulimitlist[i].res, &lim) < 0) {
 				execerror(NULL, ER_BADULIMIT, 0);
 				return(RET_FAIL);
@@ -8753,19 +8675,17 @@ syntaxtree *trp;
 			if (hs & 2) {
 				if (lim.rlim_cur == RLIM_INFINITY)
 					fputs(UNLIMITED, stdout);
-				else if (lim.rlim_cur)
-					fputlong(lim.rlim_cur
-					/ ulimitlist[i].unit, stdout);
+				else if (lim.rlim_cur) fprintf2(stdout, "%ld",
+					lim.rlim_cur / ulimitlist[i].unit);
 			}
 			if (hs & 1) {
 				if (hs & 2) fputc(':', stdout);
 				if (lim.rlim_max == RLIM_INFINITY)
 					fputs(UNLIMITED, stdout);
-				else if (lim.rlim_max)
-					fputlong(lim.rlim_max
-					/ ulimitlist[i].unit, stdout);
+				else if (lim.rlim_max) fprintf2(stdout, "%ld",
+					lim.rlim_max / ulimitlist[i].unit);
 			}
-			fputc('\n', stdout);
+			fputnl(stdout);
 		}
 	}
 	else {
@@ -8787,8 +8707,8 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		if (val == RLIM_INFINITY) fputs(UNLIMITED, stdout);
-		else fputlong(val * 512L, stdout);
-		fputc('\n', stdout);
+		else fprintf2(stdout, "%ld", val * 512L);
+		fputnl(stdout);
 	}
 	else {
 		if (!strcmp(argv[1], UNLIMITED)) val = RLIM_INFINITY;
@@ -8805,7 +8725,6 @@ syntaxtree *trp;
 		}
 	}
 # endif	/* !USERESOURCEH */
-	fflush(stdout);
 	return(RET_SUCCESS);
 #endif	/* USERESOURCEH || USEULIMITH */
 }
@@ -8820,12 +8739,9 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; i < NSIG; i++) {
 			if ((trapmode[i] & TR_STAT) != TR_TRAP) continue;
-			fputlong(i, stdout);
-			fputs(": ", stdout);
-			kanjifputs(trapcomm[i], stdout);
-			fputc('\n', stdout);
+			fprintf2(stdout, "%d: %k", i, trapcomm[i]);
+			fputnl(stdout);
 		}
-		fflush(stdout);
 		return(RET_SUCCESS);
 	}
 
@@ -8948,11 +8864,8 @@ FILE *fp;
 		printshfunc(&(shellfunc[id]), fp);
 	}
 #ifndef	NOALIAS
-	else if (type == CT_ALIAS) {
-		fputs(" is a aliased to `", fp);
-		kanjifputs(shellalias[id].comm, fp);
-		fputc('\'', fp);
-	}
+	else if (type == CT_ALIAS)
+		fprintf2(fp, " is a aliased to `%k'", shellalias[id].comm);
 #endif
 	else {
 		type = searchhash(&hp, s, NULL);
@@ -8964,15 +8877,13 @@ FILE *fp;
 		if (restricted && (type & CM_FULLPATH))
 			fputs(": restricted", fp);
 		else if ((type & CM_NOTFOUND) || Xaccess(s, X_OK) < 0) {
-			fputs(" not found\n", fp);
+			fputs(" not found", fp);
+			fputnl(fp);
 			return(-1);
 		}
-		else {
-			fputs(" is ", fp);
-			kanjifputs(s, fp);
-		}
+		else fprintf2(fp, " is %k", s);
 	}
-	fputc('\n', fp);
+	fputnl(fp);
 	return(0);
 }
 
@@ -8995,7 +8906,6 @@ syntaxtree *trp;
 #endif
 		}
 	}
-	fflush(stdout);
 	return(ret);
 }
 
@@ -9078,7 +8988,7 @@ syntaxtree *trp;
 		if (i > n) fputc(' ', stdout);
 		if (argv[i]) kanjifputs(argv[i], stdout);
 	}
-	if (n == 1) fputc('\n', stdout);
+	if (n == 1) fputnl(stdout);
 	fflush(stdout);
 	return(RET_SUCCESS);
 }
@@ -9225,12 +9135,10 @@ syntaxtree *trp;
 
 	if (getworkdir(path) < 0) return(RET_FAIL);
 	kanjifputs(path, stdout);
-	if (dirstack) for (i = 0; dirstack[i]; i++) {
-		fputc(' ', stdout);
-		kanjifputs(dirstack[i], stdout);
-	}
-	fputc('\n', stdout);
-	fflush(stdout);
+	if (dirstack)
+		for (i = 0; dirstack[i]; i++)
+			fprintf2(stdout, " %k", dirstack[i]);
+	fputnl(stdout);
 
 	return(RET_SUCCESS);
 }
@@ -9328,7 +9236,8 @@ int lvl;
 	}
 	else if (!(trp -> comm)) {
 		printindent(lvl, stdout);
-		fputs("body: NULL\n", stdout);
+		fputs("body: NULL", stdout);
+		fputnl(stdout);
 	}
 	else {
 		printindent(lvl, stdout);
@@ -9346,32 +9255,22 @@ int lvl;
 			if (!((trp -> comm) -> argv[i])) fputs("NULL", stdout);
 			else if (!i && isbuiltin(trp -> comm))
 				argfputs((trp -> comm) -> argv[i], stdout);
-			else {
-				fputc('"', stdout);
-				argfputs((trp -> comm) -> argv[i], stdout);
-				fputc('"', stdout);
-			}
+			else fprintf2(stdout, "\"%a\"",
+				(trp -> comm) -> argv[i]);
 			fputc((i < (trp -> comm) -> argc) ? ' ' : '\n',
 				stdout);
 		}
 		for (rp = (trp -> comm) -> redp; rp; rp = rp -> next) {
 			printindent(lvl, stdout);
-			fputs("redirect ", stdout);
-			fputlong(rp -> fd, stdout);
+			fprintf2(stdout, "redirect %d", rp -> fd);
 			if (!(rp -> filename)) fputs(">-: ", stdout);
-			else if (rp -> type & MD_HEREDOC) {
-				fputs(">> \"", stdout);
-				argfputs(((heredoc_t *)(rp -> filename))
-					-> eof, stdout);
-				fputs("\": ", stdout);
-			}
-			else {
-				fputs("> \"", stdout);
-				argfputs(rp -> filename, stdout);
-				fputs("\": ", stdout);
-			}
-			fputoctal(rp -> type, 6, stdout);
-			fputc('\n', stdout);
+			else if (rp -> type & MD_HEREDOC)
+				fprintf2(stdout, ">> \"%a\": ",
+					((heredoc_t *)(rp -> filename))
+						-> eof);
+			else fprintf2(stdout, "> \"%a\": ", rp -> filename);
+			fprintf2(stdout, "%06o", rp -> type);
+			fputnl(stdout);
 		}
 	}
 	if (trp -> type) {
@@ -9380,23 +9279,22 @@ int lvl;
 		if (i < OPELISTSIZ) {
 			printindent(lvl, stdout);
 			fputs(opelist[i].symbol, stdout);
-			fputc('\n', stdout);
+			fputnl(stdout);
 		}
 	}
 	if (trp -> next) {
 		if (trp -> cont & (CN_QUOT | CN_META)) {
 			rp = (redirectlist *)(trp -> next);
 			printindent(lvl, stdout);
-			fputs("continuing...\"", stdout);
-			fputs(rp -> filename, stdout);
-			fputs("\"\n", stdout);
+			fprintf2(stdout, "continuing...\"%a\"",
+				rp -> filename);
+			fputnl(stdout);
 		}
 # ifndef	MINIMUMSHELL
 		else if (trp -> flags & ST_BUSY);
 # endif
 		else show_stree(trp -> next, lvl);
 	}
-	fflush(stdout);
 }
 #endif	/* SHOWSTREE */
 
@@ -9763,10 +9661,7 @@ int *contp, bg;
 #endif
 			argfputs(subst[nsubst], stderr);
 			if (nsubst) fputc(' ', stderr);
-			else {
-				fputc('\n', stderr);
-				fflush(stderr);
-			}
+			else fputnl(stderr);
 		}
 	}
 	free(subst);
@@ -9775,12 +9670,9 @@ int *contp, bg;
 	if (verboseexec && comm -> argc) {
 		if (ps) fputs(ps, stderr);
 		argfputs(comm -> argv[0], stderr);
-		for (i = 1; i < comm -> argc; i++) {
-			fputc(' ', stderr);
-			argfputs(comm -> argv[i], stderr);
-		}
-		fputc('\n', stderr);
-		fflush(stderr);
+		for (i = 1; i < comm -> argc; i++)
+			fprintf2(stderr, " %a", comm -> argv[i]);
+		fputnl(stderr);
 	}
 #ifndef	MINIMUMSHELL
 	if (ps) free(ps);
@@ -9977,20 +9869,16 @@ int cond;
 # ifndef	NOJOB
 			if (jobok && !isopnown(trp)) {
 				if (mypid == orgpgrp) {
-					fputc('[', stderr);
-					fputlong(lastjob + 1, stderr);
-					fputs("] ", stderr);
-					fputlong(pid, stderr);
-					fputc('\n', stderr);
-					fflush(stderr);
+					fprintf2(stderr, "[%d] %id",
+						lastjob + 1, pid);
+					fputnl(stderr);
 				}
 			}
 			else
 # endif	/* !NOJOB */
 			{
-				fputlong(pid, stderr);
-				fputc('\n', stderr);
-				fflush(stderr);
+				fprintf2(stderr, "%id", pid);
+				fputnl(stderr);
 			}
 		}
 		lastpid = pid;
@@ -10186,8 +10074,7 @@ char *command;
 	setsignal();
 	if (verboseinput && command != (char *)-1) {
 		argfputs(command, stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fputnl(stderr);
 	}
 	if (!stree) trp = stree = newstree(NULL);
 
@@ -10374,13 +10261,8 @@ int verbose;
 		if (ret_status == RET_NOTICE || syntaxerrno || execerrno) {
 			ret++;
 			if (verbose) {
-				fputs(fname, stderr);
-				fputc(':', stderr);
-				fputlong(n, stderr);
-				fputs(": ", stderr);
-				fputs(buf, stderr);
-				fputc('\n', stderr);
-				fflush(stderr);
+				fprintf2(stderr, "%k:%d: %s", fname, n, buf);
+				fputnl(stderr);
 			}
 			ret_status = RET_FAIL;
 		}
@@ -10600,9 +10482,8 @@ char *argv[];
 	else {
 		definput = newdup(Xopen(argv[n], O_BINARY | O_RDONLY, 0666));
 		if (definput < 0) {
-			kanjifputs(argv[n], stderr);
-			fputs(": cannot open\n", stderr);
-			fflush(stderr);
+			fprintf2(stderr, "%k: cannot open", argv[n]);
+			fputnl(stderr);
 			return(-1);
 		}
 		if (!interactive_io || !isatty(definput)) {
@@ -10613,9 +10494,8 @@ char *argv[];
 		}
 		else {
 			if (Xdup2(definput, STDIN_FILENO) < 0) {
-				kanjifputs(argv[n], stderr);
-				fputs(": cannot open\n", stderr);
-				fflush(stderr);
+				fprintf2(stderr, "%k: cannot open", argv[n]);
+				fputnl(stderr);
 				return(-1);
 			}
 			safeclose(definput);
@@ -10700,7 +10580,7 @@ char *argv[];
 	if (!getconstvar("PS4")) setenv2("PS4", PS4STR, 0);
 	setshlineno(1L);
 # if	!MSDOS
-	setenv2("PPID", long2str(buf, getppid(), sizeof(buf)), 0);
+	setenv2("PPID", snprintf2(buf, sizeof(buf), "%id", getppid()), 0);
 # endif
 #endif
 	setenv2("IFS", IFS_SET, 0);
@@ -10766,7 +10646,7 @@ char *argv[];
 # ifdef	SIGTTIN
 		while (ttypgrp >= 0L && ttypgrp != orgpgrp) {
 			signal2(SIGTTIN, SIG_DFL);
-			kill(0, SIGTTIN);
+			VOID_C kill(0, SIGTTIN);
 			signal2(SIGTTIN, oldsigfunc[SIGTTIN]);
 			gettcpgrp(ttyio, ttypgrp);
 		}
@@ -10797,7 +10677,7 @@ char *argv[];
 			kanjifputs(argv[2], stderr);
 #ifdef	BASHSTYLE
 	/* bash displays a newline with single string command, in -v mode */
-			fputc('\n', stderr);
+			fputnl(stderr);
 #endif
 			fflush(stderr);
 		}
@@ -10808,8 +10688,8 @@ char *argv[];
 	}
 
 	if (loginshell && chdir3(getconstvar("HOME")) < 0) {
-		fputs("No directory\n", stderr);
-		fflush(stderr);
+		fputs("No directory", stderr);
+		fputnl(stderr);
 		Xexit2(RET_FAIL);
 	}
 	if (!tmprestricted && (cp = getconstvar("SHELL")))
@@ -10879,12 +10759,11 @@ int pseudoexit;
 					syntaxerror("");
 				}
 				else {
-					fputs("Use \"", stderr);
-					fputs((loginshell) ? "logout" : "exit",
-						stderr);
-					fputs("\" to leave to the shell.\n",
-						stderr);
-					fflush(stderr);
+					fprintf2(stderr,
+					"Use \"%s\" to leave to the shell.",
+						(loginshell)
+							? "logout" : "exit");
+					fputnl(stderr);
 				}
 				cont = 0;
 				continue;

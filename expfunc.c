@@ -7,18 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "machine.h"
 
 #define	MAXLINEBUF	255
 #define	MAXFUNCNO	32
 #define	MAXARGS		10
-
-#if	defined (__STDC__) && !defined (__STRICT_ANSI__)
-#define	__P_(args)	args
-#define	VOID		void
-#else
-#define	__P_(args)	()
-#define	VOID
-#endif
 
 extern VOID exit __P_((int));
 

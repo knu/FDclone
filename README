@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 2.04 に関して
+#	FDclone Ver. 2.05 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Oct 15, 2003
+#	Dec 3, 2003
 #
 ############################################################
 
@@ -81,10 +81,13 @@ makefile.b98	PC-98x1 用 Borland C++ 版メイクファイル
 main.c		FDclone のメインソース
 term.c		termcap ライブラリソース
 term.h		term.c 用のヘッダ
+printf.c	フォーマット出力関数モジュール
+printf.h	printf.c 用のヘッダ
 pathname.c	パス名操作に関するモジュール
 pathname.h	pathname.c 用のヘッダ
 system.c	/bin/sh 互換の system(3) 相当モジュール
 system.h	system.c 用のヘッダ
+posixsh.c	system.c で使う POSIX 互換コマンド
 doscom.c	system.c で使う COMMAND.COM 内部コマンド
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ

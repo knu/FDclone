@@ -200,8 +200,7 @@ extern int strncpy3 __P_((char *, char *, int *, int));
 extern int strlen2 __P_((char *));
 extern int strlen3 __P_((char *));
 extern int atoi2 __P_((char *));
-extern int fprintf2 __P_((FILE *, CONST char *, ...));
-extern int snprintf2 __P_((char *, int, CONST char *, ...));
+extern char *asprintf3 __P_((CONST char *, ...));
 extern VOID perror2 __P_((char *));
 extern int setenv2 __P_((char *, char *, int));
 extern char *getenv2 __P_((char *));
@@ -281,7 +280,6 @@ extern int forcemovefile __P_((char *));
 /* parse.c */
 extern char *skipspace __P_((char *));
 extern char *evalnumeric __P_((char *, long *, int));
-extern char *ascnumeric __P_((char *, off_t, int, int));
 #ifdef	_NOORIGSHELL
 extern char *strtkchr __P_((char *, int, int));
 extern int getargs __P_((char *, char ***));
@@ -303,38 +301,47 @@ extern char *includepath __P_((char *, char *));
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
 extern int evalprompt __P_((char **, char *));
-#if	FD >= 2
-extern char **duplvar __P_((char **, int));
-#endif
 #ifndef	_NOARCHIVE
 extern char *getext __P_((char *, u_char *));
 extern int extcmp __P_((char *, int, char *, int, int));
 #endif
 extern int getkeycode __P_((char *, int));
 extern char *getkeysym __P_((int, int));
-extern char *decodestr __P_((char *, int *, int));
+extern char *decodestr __P_((char *, u_char *, int));
 #ifndef	_NOKEYMAP
 extern char *encodestr __P_((char *, int));
 #endif
 
 /* builtin.c */
 #ifndef	_NOARCHIVE
-extern VOID printlaunchcomm __P_((int, int, FILE *));
-extern VOID printarchcomm __P_((int, FILE *));
+extern VOID freelaunch __P_((launchtable *));
+extern int searchlaunch __P_((launchtable *, int, launchtable *));
+extern int parselaunch __P_((int, char *[], launchtable *));
+extern VOID printlaunchcomm __P_((launchtable *, int, int, int, FILE *));
+extern VOID freearch __P_((archivetable *));
+extern int searcharch __P_((archivetable *, int, archivetable *));
+extern int parsearch __P_((int, char *[], archivetable *));
+extern VOID printarchcomm __P_((archivetable *, int, int, FILE *));
 # ifndef	_NOBROWSE
 extern VOID freebrowse __P_((launchtable *));
 # endif
 #endif
+extern int ismacro __P_((int));
 extern int freemacro __P_((int));
-extern VOID printmacro __P_((int, FILE *));
+extern int searchkeybind __P_((bindtable *, bindtable *));
+extern int parsekeybind __P_((int, char *[], bindtable *));
+extern char *gethelp __P_((bindtable *));
+extern VOID printmacro __P_((bindtable *, int, int, FILE *));
 #ifdef	_USEDOSEMU
-extern int searchdrv __P_((devinfo *, int, char *, int, int, int, int));
+extern int searchdrv __P_((devinfo *, devinfo *, int));
 extern int deletedrv __P_((int));
-extern int insertdrv __P_((int, int, char *, int, int, int));
-extern VOID printsetdrv __P_((int, int, FILE *));
+extern int insertdrv __P_((int, devinfo *));
+extern VOID printsetdrv __P_((devinfo [], int, int, int, FILE *));
+extern int parsesetdrv __P_((int, char *[], devinfo *));
 #endif
 #ifndef	_NOKEYMAP
-extern VOID printkeymap __P_((int, char *, int, FILE *));
+extern int parsekeymap __P_((int, char *[], keyseq_t *));
+extern VOID printkeymap __P_((keyseq_t *, int, FILE *));
 #endif
 #ifdef	_NOORIGSHELL
 extern VOID printalias __P_((int, FILE *));
@@ -387,10 +394,10 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_DOT		"."
 
 /* shell.c */
+extern char *restorearg __P_((char *));
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
 extern int replaceargs __P_((int *, char ***, char **, int));
 extern int replacearg __P_((char **));
-extern int argfputs __P_((char *, FILE *));
 extern VOID demacroarg __P_((char **));
 extern char *inputshellstr __P_((char *, int, char *));
 extern char *inputshellloop __P_((int, char *));
@@ -428,7 +435,7 @@ extern int sjis2ujis __P_((char *, u_char *, int));
 extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
 #if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
-extern VOID readunitable __P_((VOID_A));
+extern VOID readunitable __P_((int));
 extern VOID discardunitable __P_((VOID_A));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
@@ -439,10 +446,6 @@ extern int kanjiconv __P_((char *, char *, int, int, int, int));
 extern char *kanjiconv2 __P_((char *, char *, int, int, int));
 # endif
 #endif
-extern int kanjifputs __P_((char *, FILE *));
-extern int kanjiputs __P_((char *));
-extern int kanjiprintf __P_((CONST char *, ...));
-extern int kanjiputs2 __P_((char *, int, int));
 #ifndef	_NOKANJIFCONV
 extern int getkcode __P_((char *));
 #endif
@@ -452,6 +455,7 @@ extern char *convput __P_((char *, char *, int, int, char *, int *));
 /* input.c */
 extern int intrkey __P_((VOID_A));
 extern int Xgetkey __P_((int, int));
+extern int kanjiputs2 __P_((char *, int, int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 extern int yesno __P_((CONST char *, ...));
 extern VOID warning __P_((int, char *));
@@ -507,10 +511,10 @@ extern VOID freestrarray __P_((char **, int));
 extern char **copystrarray __P_((char **, char **, int *, int));
 extern bindtable *copybind __P_((bindtable *, bindtable *));
 # ifndef	_NOARCHIVE
-extern VOID freelaunch __P_((launchtable *, int));
+extern VOID freelaunchlist __P_((launchtable *, int));
 extern launchtable *copylaunch __P_((launchtable *, launchtable *,
 	int *, int));
-extern VOID freearch __P_((archivetable *, int));
+extern VOID freearchlist __P_((archivetable *, int));
 extern archivetable *copyarch __P_((archivetable *, archivetable *,
 	int *, int));
 # endif
@@ -526,7 +530,7 @@ extern int customize __P_((VOID_A));
 
 /* browse.c */
 extern VOID helpbar __P_((VOID_A));
-extern int putmode __P_((char *, u_int));
+extern int putmode __P_((char *, u_int, int));
 #ifdef	HAVEFLAGS
 extern int putflags __P_((char *, u_long));
 #endif

@@ -6,7 +6,6 @@
 
 #include <ctype.h>
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kanji.h"
 
@@ -23,6 +22,7 @@ extern int win_y;
 #ifndef	_NODOSDRIVE
 extern int lastdrv;
 #endif
+extern int tradlayout;
 extern int sizeinfo;
 
 #define	DIRFIELD	3
@@ -107,7 +107,7 @@ int disp;
 		}
 		else if (disp) {
 			locate(x + TREEFIELD + 4, y);
-			kanjiputs2(dp -> d_name, w, 0);
+			cprintf2("%-*.*k", w, w, dp -> d_name);
 			i++;
 			if (++y >= LFILEBOTTOM) {
 				y = LFILETOP + 1;
@@ -118,7 +118,7 @@ int disp;
 	}
 	if (disp && !i) {
 		locate(x + TREEFIELD + 4, LFILETOP + 1);
-		kanjiputs2("[No Files]", w, 0);
+		cprintf2("%-*.*s", w, w, "[No Files]");
 	}
 	Xclosedir(dirp);
 	return(i);
@@ -332,7 +332,7 @@ static VOID NEAR showtree(VOID_A)
 	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++) {
 		locate(1, i);
 		if (i == tr_line) putterm(t_standout);
-		kanjiputs2(bufptr(i), TREEFIELD, 0);
+		cprintf2("%-*.*k", TREEFIELD, TREEFIELD, bufptr(i));
 		if (i == tr_line) putterm(end_standout);
 	}
 	evaldir(treepath, 1);
@@ -342,8 +342,7 @@ static VOID NEAR showtree(VOID_A)
 static VOID NEAR treebar(VOID_A)
 {
 	locate(1, LFILETOP);
-	cputs2("Tree=");
-	kanjiputs2(treepath, n_column - 6, 0);
+	cprintf2("Tree=%-*.*k", n_column - 6, n_column - 6, treepath);
 	locate(0, L_MESLINE);
 	putterm(l_clear);
 }
@@ -790,11 +789,13 @@ static char *NEAR _tree(VOID_A)
 		else if (oy != tr_line) {
 			locate(1, tr_line);
 			putterm(t_standout);
-			kanjiputs2(bufptr(tr_line), TREEFIELD, 0);
+			cprintf2("%-*.*k",
+				TREEFIELD, TREEFIELD, bufptr(tr_line));
 			putterm(end_standout);
 			locate(1, oy);
 			if (stable_standout) putterm(end_standout);
-			else kanjiputs2(bufptr(oy), TREEFIELD, 0);
+			else cprintf2("%-*.*k",
+				TREEFIELD, TREEFIELD, bufptr(oy));
 			evaldir(path, 1);
 		}
 	} while (ch != K_ESC && ch != K_CR);

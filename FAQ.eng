@@ -65,6 +65,13 @@ A1-07.	The owner/group name of a file has a meaning only on
 	owner/group name is treated as numeric, then it cannot
 	be helped.
 
+	(The tar which supports the new USTAR format can hold
+	the owner/group name up to 32 characters in archives,
+	to display the original owner/group name in the different
+	environment.
+	The ustar of System V and GNU tar are known as the tar
+	which supports the USTAR format.)
+
 
 <2.Customization Problem>
 
@@ -104,6 +111,9 @@ A2-05.	You can confirm with some builtin commands in EXECUTE_SH
 	command. For example, "printbind" for the key binding,
 	"printenv" for the internal variable definition. See
 	man page for details.
+
+	(You can confirm and set up the configurations with
+	the customizer all at once, from Ver. 2.00 downward.)
 
 Q2-06.	As a system administrator, I want to prepare a
 	configuration file common to users.
@@ -292,6 +302,10 @@ A3-05.	Perhaps it may be compiled at a wrong kanji code, or
 	think that it occurs some troubles to refer to the file
 	with kanji filename or the Japanese man page.
 
+	(Kanji filename will also be converted dynamically
+	according to the internal variable FNAMEKCODE,
+	from Ver. 2.00 downward.)
+
 Q3-06.	When I bring it to a machine with the different
 	environment, it works strangely.
 A3-06.	It is generally the principle to re-compile for the
@@ -348,6 +362,9 @@ A3-09.	Try to exit from FDclone and do manually "tar tvf
 	Or, you may register the archive browser with any
 	mistake, see enough #5 of TECHKNOW.eng or the clause
 	of "ARCHIVE BROWSER" in man page.
+
+	(The value of LANG will be changed automatically
+	before executing archivers, from Ver. 2.04 downward.)
 
 Q3-10.	I cannot read a file to the end.
 A3-10.	Some pager, e.g. "more" which is a standard command
@@ -441,7 +458,11 @@ A3-15.	For binary circulation, it is a rule to prepare the
 
 Q3-16.	I'm a MS-DOS user without compile environment.
 A3-16.	You can get a executable binary package compiled
-	by LSI C-86 3.5 from the following URL.
+	by LSI C-86 3.5 from the following URL.  And this
+	URL will provide you the package to compile them
+	automatically with DJGPP.
+
+	(Sorry, this URL page is written by Japanese only.)
 
 	http://hp.vector.co.jp/authors/VA012337/soft/fd/
 
@@ -676,6 +697,10 @@ A4-11.	It is the first thing you should understand that
 	when invoked to the directory explicitly specified
 	by PWD the environment variable, and then the displayed
 	pathname will be logical one.
+
+	(The logical directory held with PWD will be refered
+	automatically without this description, from Ver. 2.04
+	downward.)
 
 	By the way, referring to each shell, Bourne shell
 	and ash cannot treat any logical directories. Korn

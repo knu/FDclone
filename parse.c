@@ -5,7 +5,6 @@
  */
 
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kctype.h"
 
@@ -141,50 +140,6 @@ int plus;
 	if (cp <= top) return(NULL);
 	if (np) *np = n;
 	return(cp);
-}
-
-/*
- *	ascnumeric(buf, n, 0, max): same as sprintf(buf, "%d", n)
- *	ascnumeric(buf, n, max + 1, max): same as sprintf(buf, "%0*d", max, n)
- *	ascnumeric(buf, n, max, max): same as sprintf(buf, "%*d", max, n)
- *	ascnumeric(buf, n, -1, max): same as sprintf(buf, "%-*d", max, n)
- *	ascnumeric(buf, n, x, max): like as sprintf(buf, "%*d", max, n)
- *	ascnumeric(buf, n, -x, max): like as sprintf(buf, "%-*d", max, n)
- */
-char *ascnumeric(buf, n, digit, max)
-char *buf;
-off_t n;
-int digit, max;
-{
-	char tmp[MAXLONGWIDTH * 2 + 1];
-	int i, j, d;
-
-	i = j = 0;
-	d = digit;
-	if (digit < 0) digit = -digit;
-	if (n < 0) tmp[i++] = '?';
-	else if (!n) tmp[i++] = '0';
-	else {
-		for (;;) {
-			tmp[i++] = '0' + n % 10;
-			if (!(n /= 10) || i >= max) break;
-			if (digit > 1 && ++j >= digit) {
-				if (i >= max - 1) break;
-				tmp[i++] = ',';
-				j = 0;
-			}
-		}
-		if (n) for (j = 0; j < i; j++) if (tmp[j] != ',') tmp[j] = '9';
-	}
-
-	if (d <= 0) j = 0;
-	else if (d > max) for (j = 0; j < max - i; j++) buf[j] = '0';
-	else for (j = 0; j < max - i; j++) buf[j] = ' ';
-	while (i--) buf[j++] = tmp[i];
-	if (d < 0) for (; j < max; j++) buf[j] = ' ';
-	buf[j] = '\0';
-
-	return(buf);
 }
 
 #ifdef	_NOORIGSHELL
@@ -556,7 +511,8 @@ char **bufp, *prompt;
 				line[1] = '\0';
 				break;
 			case '!':
-				long2str(line, histno[0] + 1, sizeof(line));
+				snprintf2(line, sizeof(line), "%d",
+					(int)(histno[0] + 1));
 				break;
 #ifndef	NOUID
 			case 'u':
@@ -664,26 +620,6 @@ char **bufp, *prompt;
 	return(len);
 }
 
-#if	FD >= 2
-char **duplvar(var, margin)
-char **var;
-int margin;
-{
-	char **dupl;
-	int i, n;
-
-	if (margin < 0) {
-		if (!var) return(NULL);
-		margin = 0;
-	}
-	n = countvar(var);
-	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
-	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
-	dupl[i] = NULL;
-	return(dupl);
-}
-#endif	/* FD >= 2 */
-
 #ifndef	_NOARCHIVE
 char *getext(ext, flagsp)
 char *ext;
@@ -692,10 +628,12 @@ u_char *flagsp;
 	char *tmp;
 
 	*flagsp = 0;
+# if	FD >= 2
 	if (*ext == '/') {
 		ext++;
 		*flagsp |= LF_IGNORECASE;
 	}
+# endif
 
 	if (*ext == '*') tmp = strdup2(ext);
 	else {
@@ -824,9 +762,9 @@ int c, tenkey;
 		}
 		else if (ismsb(c)) {
 			buf[i++] = '\\';
-			buf[i++] = (c / (8 * 8)) + '0';
-			buf[i++] = ((c % (8 * 8)) / 8) + '0';
-			buf[i++] = (c % 8) + '0';
+			buf[i++] = (c & 0700 >> 6) + '0';
+			buf[i++] = (c & 0070 >> 3) + '0';
+			buf[i++] = (c & 0007) + '0';
 		}
 		else buf[i++] = c;
 	}
@@ -836,7 +774,8 @@ int c, tenkey;
 
 char *decodestr(s, lenp, evalhat)
 char *s;
-int *lenp, evalhat;
+u_char *lenp;
+int evalhat;
 {
 	char *cp;
 	int i, j, n;

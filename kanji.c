@@ -12,6 +12,7 @@
 #include <string.h>
 #include "machine.h"
 #include "pathname.h"
+#include "term.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -33,7 +34,6 @@
 #include <time.h>
 #endif
 
-#include "term.h"
 #include "kctype.h"
 
 #if	MSDOS
@@ -49,11 +49,7 @@ extern int norockridge;
 #else	/* !FD */
 #define	realpath2(p, r, l)	realpath(p, r)
 extern char *malloc2 __P_((ALLOC_T));
-extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strncpy2 __P_((char *, char *, int));
-static int NEAR strncpy3 __P_((char *, char *, int *, int));
-static int NEAR strlen3 __P_((char *));
-static VOID NEAR error __P_((char *));
 #define	Xlseek	lseek
 # ifndef	_NOKANJIFCONV
 static char *NEAR includepath __P_((char *, char *));
@@ -65,6 +61,13 @@ static char *NEAR includepath __P_((char *, char *));
 # define	L_SET	SEEK_SET
 # else
 # define	L_SET	0
+# endif
+#endif
+#ifndef	L_INCR
+# ifdef	SEEK_CUR
+# define	L_INCR	SEEK_CUR
+# else
+# define	L_INCR	1
 # endif
 #endif
 
@@ -91,7 +94,7 @@ typedef struct _kconv_t {
 } kconv_t;
 
 #ifndef	_NOKANJIFCONV
-typedef	struct _kpathtable {
+typedef struct _kpathtable {
 	char **path;
 	u_short code;
 } kpathtable;
@@ -106,14 +109,28 @@ static char *NEAR strstr2 __P_((char *, char *));
 static VOID NEAR sj2j __P_((char *, u_char *));
 static VOID NEAR j2sj __P_((char *, u_char *));
 #endif
+#if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
+static int NEAR openunitbl __P_((char *));
+static u_char * NEAR tblmalloc __P_((ALLOC_T));
+#define	getword(s, n)	(((u_int)((s)[(n) + 1]) << 8) | (s)[n])
+#endif
 #ifndef	_NOKANJICONV
+static int NEAR opennftbl __P_((char *, int, u_int *));
 static int NEAR toenglish __P_((char *, u_char *, int));
 static int NEAR tojis7 __P_((char *, u_char *, int, int, int, int));
 static int NEAR fromjis __P_((char *, u_char *, int, int));
 static int NEAR tojis8 __P_((char *, u_char *, int, int, int, int));
 static int NEAR tojunet __P_((char *, u_char *, int, int, int, int));
+static VOID NEAR ucs2normalization __P_((u_int *, int *, int, u_int, int));
+static u_int NEAR ucs2denormalization __P_((u_int *, int *, int));
+static u_int NEAR toucs2 __P_((u_char *, int *));
+static VOID NEAR fromucs2 __P_((char *, int *, u_int));
+static VOID NEAR ucs2toutf8 __P_((char *, int *, u_int));
+static u_int NEAR ucs2fromutf8 __P_((u_char *, int *));
 static int NEAR toutf8 __P_((char *, u_char *, int));
 static int NEAR fromutf8 __P_((char *, u_char *, int));
+static int NEAR toutf8nf __P_((char *, u_char *, int, int));
+static int NEAR fromutf8nf __P_((char *, u_char *, int, int));
 static int NEAR bin2hex __P_((char *, int));
 static int NEAR tohex __P_((char *, u_char *, int));
 static int NEAR fromhex __P_((char *, u_char *, int));
@@ -145,10 +162,12 @@ char *ojunetpath = NULL;
 char *hexpath = NULL;
 char *cappath = NULL;
 char *utf8path = NULL;
+char *utf8macpath = NULL;
 char *noconvpath = NULL;
 #endif	/* !_NOKANJIFCONV */
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 char *unitblpath = NULL;
+int unicodebuffer = 0;
 #endif
 #ifndef	LSI_C
 u_char kctypetable[256] = {
@@ -334,6 +353,11 @@ static u_char j2sjtable2[128] = {
 };
 #endif	/* !_NOKANJICONV || (FD && _USEDOSEMU && CODEEUC) */
 #ifndef	_NOKANJICONV
+static u_int nftblnum = 0;
+static u_int nflen = 0;
+static u_char **nftblbuf = NULL;
+static u_int *nftblent = 0;
+#define	NF_MAC		1
 static u_char hctypetable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
@@ -405,6 +429,7 @@ static kpathtable kpathlist[] = {
 	{ &hexpath, HEX },
 	{ &cappath, CAP },
 	{ &utf8path, UTF8 },
+	{ &utf8macpath, M_UTF8 },
 	{ &noconvpath, NOCNV },
 };
 #define	MAXKPATHLIST	(sizeof(kpathlist) / sizeof(kpathtable))
@@ -425,7 +450,7 @@ int sjis2ujis __P_((char *, u_char *, int));
 int ujis2sjis __P_((char *, u_char *, int));
 #endif
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
-VOID readunitable __P_((VOID_A));
+VOID readunitable __P_((int));
 VOID discardunitable __P_((VOID_A));
 u_int unifysjis __P_((u_int, int));
 u_int cnvunicode __P_((u_int, int));
@@ -436,10 +461,6 @@ int kanjiconv __P_((char *, char *, int, int, int, int));
 char *kanjiconv2 __P_((char *, char *, int, int, int));
 # endif
 #endif	/* !_NOKANJICONV */
-int kanjifputs __P_((char *, FILE *));
-int kanjiputs __P_((char *));
-int kanjiprintf __P_((CONST char *, ...));
-int kanjiputs2 __P_((char *, int, int));
 #ifndef	_NOKANJIFCONV
 int getkcode __P_((char *));
 #endif
@@ -447,129 +468,6 @@ char *convget __P_((char *, char *, int));
 char *convput __P_((char *, char *, int, int, char *, int *));
 #endif	/* !FD */
 
-
-#ifndef	FD
-/*
- *	strncpy3(buf, s, &(x), 0): same as sprintf(buf, "%-*.*s", x, x, s);
- *	strncpy3(buf, s, &(-x), 0): same as sprintf(buf, "%s", s);
- */
-static int NEAR strncpy3(s1, s2, lenp, ptr)
-char *s1, *s2;
-int *lenp, ptr;
-{
-	int i, j, l;
-
-	for (i = j = 0; i < ptr && s2[j]; i++, j++) {
-# ifdef	CODEEUC
-		if (isekana(s2, j)) j++;
-		else
-# endif
-		if (iskanji1(s2, j)) {
-			i++;
-			j++;
-		}
-	}
-	if (!i || i <= ptr) i = 0;
-	else {
-		s1[0] = ' ';
-		i = 1;
-	}
-
-	while ((*lenp < 0 || i < *lenp) && s2[j]) {
-# ifdef	CODEEUC
-		if (isekana(s2, j)) {
-			if (*lenp >= 0) (*lenp)++;
-			s1[i++] = s2[j++];
-		}
-# else
-		if (iskna(s2[j])) /*EMPTY*/;
-# endif
-		else if (iskanji1(s2, j)) {
-			if (*lenp >= 0 && i >= *lenp - 1) {
-				if (ptr >= 0) s1[i++] = ' ';
-				break;
-			}
-			s1[i++] = s2[j++];
-		}
-		else if (isctl(s2[j])) {
-			s1[i++] = '^';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = ((s2[j++] + '@') & 0x7f);
-			continue;
-		}
-		else if (ismsb(s2[j])) {
-			int c;
-
-			c = s2[j++] & 0xff;
-			s1[i++] = '\\';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = (c / (8 * 8)) + '0';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = ((c % (8 * 8)) / 8) + '0';
-			if (*lenp >= 0 && i >= *lenp) break;
-			s1[i++] = (c % 8) + '0';
-			continue;
-		}
-		s1[i++] = s2[j++];
-	}
-
-	l = i;
-	if (*lenp >= 0 && ptr >= 0) while (i < *lenp) s1[i++] = ' ';
-	s1[i] = '\0';
-	return(l);
-}
-
-static int NEAR strlen3(s)
-char *s;
-{
-	int i, len;
-
-	for (i = len = 0; s[i]; i++, len++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) i++;
-		else
-# endif
-		if (isctl(s[i])) len++;
-	}
-	return(len);
-}
-
-static VOID NEAR error(s)
-char *s;
-{
-	fputc('\007', stderr);
-	fputs(s, stderr);
-	fputc('\n', stderr);
-	exit(2);
-}
-
-# ifndef	_NOKANJIFCONV
-static char *NEAR includepath(path, plist)
-char *path, *plist;
-{
-	char *cp, *next;
-	int len;
-
-	if (!plist || !*plist) return(NULL);
-	next = plist;
-	for (cp = next; cp && *cp; cp = next) {
-#  ifdef	_USEDOSPATH
-		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
-		else
-#  endif
-		next = strchr(cp, PATHDELIM);
-		len = (next) ? (next++) - cp : strlen(cp);
-		while (len > 1 && cp[len - 1] == _SC_) len--;
-#  ifdef	BSPATHDELIM
-		if (onkanji1(cp, len - 1)) len++;
-#  endif
-		if (len > 0 && !strnpathcmp(path, cp, len)
-		&& (!path[len] || path[len] == _SC_)) return(path + len);
-	}
-	return(NULL);
-}
-# endif	/* !_NOKANJIFCONV */
-#endif	/* !FD */
 
 int onkanji1(s, ptr)
 char *s;
@@ -634,6 +532,7 @@ int io;
 	else if (io == L_FNAME && strstr2(s, "cap")) ret = CAP;
 	else if (strstr2(s, "sjis")) ret = SJIS;
 	else if (strstr2(s, "euc") || strstr2(s, "ujis")) ret = EUC;
+	else if (strstr2(s, "utf8-mac") || strstr2(s, "mac")) ret = M_UTF8;
 	else if (strstr2(s, "utf8") || strstr2(s, "utf-8")) ret = UTF8;
 	else if (strstr2(s, "ojunet")) ret = O_JUNET;
 	else if (strstr2(s, "ojis8")) ret = O_JIS8;
@@ -683,7 +582,7 @@ u_char *s;
 		u_int w;
 		int i;
 
-		w = ((u_int)s1 << 8) | (u_char)s2;
+		w = (((u_int)s1 << 8) | s2);
 		for (i = 0; i < CNVTBLSIZ; i++)
 			if (w >= convtable[i].start
 			&& w < convtable[i].start + convtable[i].range)
@@ -715,7 +614,7 @@ u_char *s;
 
 	s1 = j2sjtable1[j1];
 	s2 = (j1 & 1) ? j2sjtable2[j2] : (j2 + 0x7e);
-	w = (s1 << 8) | s2;
+	w = (((u_int)s1 << 8) | s2);
 
 	for (i = 0; i < CNVTBLSIZ; i++)
 	if (w >= convtable[i].cnv
@@ -771,27 +670,122 @@ int max;
 #endif	/* !_NOKANJICONV || (FD && _USEDOSEMU && CODEEUC) */
 
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
-VOID readunitable(VOID_A)
+static int NEAR openunitbl(file)
+char *file;
 {
-	char path[MAXPATHLEN];
+	static int fd = -1;
 	u_char buf[2];
-	long size;
+	char path[MAXPATHLEN];
+
+	if (!file) {
+		if (fd >= 0) close(fd);
+		fd = -1;
+		return(0);
+	}
+
+	if (fd >= 0) return(fd);
+
+	if (!unitblpath || !*unitblpath) strcpy(path, file);
+	else strcatdelim2(path, unitblpath, file);
+
+	if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0) return(-1);
+	if (!unitblent) {
+		if (read(fd, buf, 2) != 2) {
+			close(fd);
+			fd = -1;
+			return(-1);
+		}
+		unitblent = getword(buf, 0);
+	}
+	return(fd);
+}
+
+static u_char *NEAR tblmalloc(size)
+ALLOC_T size;
+{
+	u_char *tbl;
+
+	if ((tbl = (u_char *)malloc(size))) return(tbl);
+	openunitbl(NULL);
+	if (unicodebuffer) unicodebuffer = 0;
+	return(NULL);
+}
+
+/*ARGSUSED*/
+VOID readunitable(nf)
+int nf;
+{
+	u_char *tbl;
+	ALLOC_T size;
 	int fd;
 
-	if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
-	else strcatdelim2(path, unitblpath, UNICODETBL);
-
-	if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0) return;
-	if (read(fd, buf, 2) != 2) {
-		close(fd);
+	if (unitblbuf) {
+# ifndef	_NOKANJICONV
+		if (nf && !nftblbuf) /*EMPTY*/;
+		else
+# endif
 		return;
 	}
-	unitblent = (((u_int)(buf[1]) << 8) | buf[0]);
-	size = (long)unitblent * 4;
+	if ((fd = openunitbl(UNICODETBL)) < 0) return;
+	size = (ALLOC_T)unitblent * 4;
 
-	unitblbuf = (u_char *)realloc2(unitblbuf, size);
-	if (read(fd, unitblbuf, size) != size) discardunitable();
-	close(fd);
+	if (!unitblbuf) {
+		if (!(tbl = tblmalloc(size))) return;
+		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0
+		|| read(fd, tbl, size) != size) {
+			free(tbl);
+			openunitbl(NULL);
+			return;
+		}
+		unitblbuf = tbl;
+	}
+
+# ifndef	_NOKANJICONV
+	if (nf && !nftblbuf) {
+		u_char buf[2], **tblbuf;
+		u_int *tblent;
+		int i;
+
+		if (Xlseek(fd, (off_t)size + 2, L_SET) < (off_t)0
+		|| read(fd, buf, 2) != 2) {
+			openunitbl(NULL);
+			return;
+		}
+		nftblnum = buf[0];
+		nflen = buf[1];
+		tblbuf = (u_char **)malloc2(nftblnum * sizeof(u_char *));
+		tblent = (u_int *)malloc2(nftblnum * sizeof(u_int));
+
+		for (i = 0; i < nftblnum; i++) {
+			if (read(fd, buf, 2) != 2) {
+				while (i > 0) free(tblbuf[--i]);
+				free(tblbuf);
+				free(tblent);
+				openunitbl(NULL);
+				return;
+			}
+			tblent[i] = getword(buf, 0);
+			size = (ALLOC_T)tblent[i] * (2 + nflen * 2);
+
+			if (!(tblbuf[i] = tblmalloc(size))) {
+				while (i > 0) free(tblbuf[--i]);
+				free(tblbuf);
+				free(tblent);
+				return;
+			}
+			if (read(fd, tblbuf[i], size) != size) {
+				while (i >= 0) free(tblbuf[i--]);
+				free(tblbuf);
+				free(tblent);
+				openunitbl(NULL);
+				return;
+			}
+		}
+		nftblbuf = tblbuf;
+		nftblent = tblent;
+	}
+# endif	/* !_NOKANJICONV */
+	openunitbl(NULL);
 }
 
 VOID discardunitable(VOID_A)
@@ -800,6 +794,20 @@ VOID discardunitable(VOID_A)
 		free(unitblbuf);
 		unitblbuf = NULL;
 	}
+# ifndef	_NOKANJICONV
+	if (nftblbuf) {
+		int i;
+
+		for (i = 0; i < nftblnum; i++)
+			if (nftblbuf[i]) free(nftblbuf[i]);
+		free(nftblbuf);
+		nftblbuf = NULL;
+	}
+	if (nftblent) {
+		free(nftblent);
+		nftblent = NULL;
+	}
+# endif	/* !_NOKANJICONV */
 }
 
 u_int unifysjis(wc, russ)
@@ -824,27 +832,28 @@ u_int cnvunicode(wc, encode)
 u_int wc;
 int encode;
 {
-	static int fd = -1;
-	u_char buf[4];
-	char path[MAXPATHLEN];
+	u_char *cp, buf[4];
 	u_int r, w, min, max, ofs;
+	int fd;
 
 	wc &= 0xffff;
 	if (encode < 0) {
-		if (fd >= 0) close(fd);
-		fd = -1;
+		openunitbl(NULL);
+		if (!unicodebuffer) discardunitable();
 		return(0);
 	}
 
 	if (encode) {
 		r = 0xff00;
-		if (wc < 0x80) return(wc);
-		if (wc > 0xa0 && wc <= 0xdf) return(0xff00 | (wc - 0x40));
+		if (wc < 0x0080) return(wc);
+		if (wc >= 0x00a1 && wc <= 0x00df)
+			return(0xff00 | (wc - 0x00a1 + 0x61));
 		if (wc >= 0x8260 && wc <= 0x8279)
 			return(0xff00 | (wc - 0x8260 + 0x21));
 		if (wc >= 0x8281 && wc <= 0x829a)
 			return(0xff00 | (wc - 0x8281 + 0x41));
 		if (wc < MINKANJI || wc > MAXKANJI) return(r);
+		wc = unifysjis(wc, 0);
 	}
 	else {
 		r = '?';
@@ -854,12 +863,12 @@ int encode;
 				break;
 			case 0xff00:
 				w = wc & 0xff;
-				if (w > 0x20 && w <= 0x3a)
+				if (w >= 0x21 && w <= 0x3a)
 					return(w + 0x8260 - 0x21);
-				if (w > 0x40 && w <= 0x5a)
+				if (w >= 0x41 && w <= 0x5a)
 					return(w + 0x8281 - 0x41);
-				if (w > 0x60 && w <= 0x9f)
-					return(w + 0x40);
+				if (w >= 0x61 && w <= 0x9f)
+					return(w + 0x00a1 - 0x61);
 				break;
 			default:
 				break;
@@ -867,18 +876,15 @@ int encode;
 		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
 	}
 
+	if (unicodebuffer && !unitblbuf) readunitable(0);
+	cp = buf;
+	ofs = min = max = 0;
 	if (unitblbuf) {
-		u_char *cp;
-
 		if (encode) {
-			wc = unifysjis(wc, 0);
 			cp = unitblbuf;
 			for (ofs = 0; ofs < unitblent; ofs++) {
-				w = (((u_int)(cp[3]) << 8) | cp[2]);
-				if (wc == w) {
-					r = (((u_int)(cp[1]) << 8) | cp[0]);
-					break;
-				}
+				w = getword(cp, 2);
+				if (wc == w) break;
 				cp += 4;
 			}
 		}
@@ -889,11 +895,8 @@ int encode;
 			for (;;) {
 				if (ofs == min || ofs == max) break;
 				cp = &(unitblbuf[(ofs - 1) * 4]);
-				w = (((u_int)(cp[1]) << 8) | cp[0]);
-				if (wc == w) {
-					r = (((u_int)(cp[3]) << 8) | cp[2]);
-					break;
-				}
+				w = getword(cp, 0);
+				if (wc == w) break;
 				else if (wc < w) {
 					max = ofs;
 					ofs = (ofs + min) / 2;
@@ -904,36 +907,17 @@ int encode;
 				}
 			}
 		}
-
-		return(r);
 	}
-
-	if (fd < 0) {
-		if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
-		else strcatdelim2(path, unitblpath, UNICODETBL);
-
-		if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0)
-			return(r);
-		if (!unitblent) {
-			if (read(fd, buf, 2) != 2) {
-				close(fd);
-				fd = -1;
-				return(r);
-			}
-			unitblent = (((u_int)(buf[1]) << 8) | buf[0]);
-		}
-	}
-
-	if (encode) {
-		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) return(r);
-		wc = unifysjis(wc, 0);
-		for (ofs = 0; ofs < unitblent; ofs++) {
-			if (read(fd, buf, 4) != 4) break;
-			w = (((u_int)(buf[3]) << 8) | buf[2]);
-			if (wc == w) {
-				r = (((u_int)(buf[1]) << 8) | buf[0]);
+	else if ((fd = openunitbl(UNICODETBL)) < 0) ofs = unitblent;
+	else if (encode) {
+		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
+		else for (ofs = 0; ofs < unitblent; ofs++) {
+			if (read(fd, cp, 4) != 4) {
+				ofs = unitblent;
 				break;
 			}
+			w = getword(cp, 2);
+			if (wc == w) break;
 		}
 	}
 	else {
@@ -944,12 +928,12 @@ int encode;
 			if (ofs == min || ofs == max) break;
 			if (Xlseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET)
 			< (off_t)0
-			|| read(fd, buf, 4) != 4) break;
-			w = (((u_int)(buf[1]) << 8) | buf[0]);
-			if (wc == w) {
-				r = (((u_int)(buf[3]) << 8) | buf[2]);
+			|| read(fd, cp, 4) != 4) {
+				ofs = min = max = 0;
 				break;
 			}
+			w = getword(cp, 0);
+			if (wc == w) break;
 			else if (wc < w) {
 				max = ofs;
 				ofs = (ofs + min) / 2;
@@ -961,11 +945,50 @@ int encode;
 		}
 	}
 
+	if (encode) {
+		if (ofs < unitblent) r = getword(cp, 0);
+	}
+	else {
+		if (ofs > min && ofs < max) r = getword(cp, 2);
+	}
+
 	return(r);
 }
 #endif	/* !_NOKANJICONV || (FD && !_NODOSDRIVE) */
 
 #ifndef	_NOKANJICONV
+static int NEAR opennftbl(file, nf, entp)
+char *file;
+int nf;
+u_int *entp;
+{
+	u_char buf[2];
+	off_t ofs;
+	int i, fd;
+
+	if ((fd = openunitbl(file)) < 0) return(-1);
+	ofs = (off_t)unitblent * 4 + 2;
+
+	if (!nftblnum) {
+		if (Xlseek(fd, ofs, L_SET) < (off_t)0
+		|| read(fd, buf, 2) != 2) return(-1);
+		nftblnum = buf[0];
+		nflen = buf[1];
+	}
+
+	if (nf > nftblnum) return(-1);
+
+	*entp = 0;
+	for (i = 0; i < nf; i++) {
+		ofs += 2 + (off_t)*entp * (2 + nflen * 2);
+		if (Xlseek(fd, ofs, L_SET) < (off_t)0
+		|| read(fd, buf, 2) != 2) return(-1);
+		*entp = getword(buf, 0);
+	}
+
+	return(fd);
+}
+
 static int NEAR toenglish(buf, s, max)
 char *buf;
 u_char *s;
@@ -1258,42 +1281,241 @@ int max, knj, asc, io;
 	return(j);
 }
 
+static VOID NEAR ucs2normalization(buf, ptrp, max, wc, nf)
+u_int *buf;
+int *ptrp, max;
+u_int wc;
+int nf;
+{
+	u_char *cp, *new;
+	u_int w, ofs, ent;
+	int n, fd;
+
+	cp = new = NULL;
+	ofs = ent = 0;
+	if (unicodebuffer && !nftblbuf) readunitable(1);
+
+	if (wc < MINUNICODE || wc > MAXUNICODE);
+	else if (nftblbuf && nf <= nftblnum) {
+		n = 2 + nflen * 2;
+		cp = nftblbuf[nf - 1];
+		ent = nftblent[nf - 1];
+		for (ofs = 0; ofs < ent; ofs++) {
+			w = getword(cp, 0);
+			if (wc == w) break;
+			cp += n;
+		}
+	}
+	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0) ent = 0;
+	else {
+		n = 2 + nflen * 2;
+		cp = new = (u_char *)malloc2(n);
+		for (ofs = 0; ofs < ent; ofs++) {
+			if (read(fd, cp, n) != n) {
+				ofs = ent;
+				break;
+			}
+			w = getword(cp, 0);
+			if (wc == w) break;
+		}
+	}
+
+	if (ofs >= ent) buf[(*ptrp)++] = wc;
+	else for (n = 0; n < nflen && *ptrp < max; n++) {
+		cp += 2;
+		w = getword(cp, 0);
+		if (!w) break;
+		buf[(*ptrp)++] = w;
+	}
+	if (new) free(new);
+}
+
+static u_int NEAR ucs2denormalization(buf, ptrp, nf)
+u_int *buf;
+int *ptrp, nf;
+{
+	u_char *cp, *new;
+	off_t top;
+	u_int w, min, max, ofs, ent;
+	int i, j, n, fd;
+
+	cp = new = NULL;
+	ofs = min = max = 0;
+	i = 0;
+	if (unicodebuffer && !nftblbuf) readunitable(1);
+
+	if (buf[*ptrp] < MINUNICODE || buf[*ptrp] > MAXUNICODE);
+	else if (nftblbuf && nf <= nftblnum) {
+		n = 2 + nflen * 2;
+		max = nftblent[nf - 1] + 1;
+		ofs = nftblent[nf - 1] / 2 + 1;
+		for (;;) {
+			if (ofs == min || ofs == max) break;
+			cp = &(nftblbuf[nf - 1][(ofs - 1) * n]);
+			w = 0xffff;
+			for (i = 0, j = 2; i < nflen; i++, j += 2) {
+				w = getword(cp, j);
+				if (!w) break;
+				if (buf[*ptrp + i] != w) break;
+			}
+			if (!w) break;
+			else if (buf[*ptrp + i] < w) {
+				max = ofs;
+				ofs = (ofs + min) / 2;
+			}
+			else {
+				min = ofs;
+				ofs = (ofs + max) / 2;
+			}
+		}
+	}
+	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0
+	|| (top = Xlseek(fd, (off_t)0, L_INCR)) < (off_t)0) /*EMPTY*/;
+	else {
+		n = 2 + nflen * 2;
+		cp = new = (u_char *)malloc2(n);
+		max = ent + 1;
+		ofs = ent / 2 + 1;
+		for (;;) {
+			if (ofs == min || ofs == max) break;
+			if (Xlseek(fd, (off_t)(ofs - 1) * n + top, L_SET)
+			< (off_t)0
+			|| read(fd, cp, n) != n) {
+				ofs = min = max = 0;
+				break;
+			}
+			w = 0xffff;
+			for (i = 0, j = 2; i < nflen; i++, j += 2) {
+				w = getword(cp, j);
+				if (!w) break;
+				if (buf[*ptrp + i] != w) break;
+			}
+			if (!w) break;
+			else if (buf[*ptrp + i] < w) {
+				max = ofs;
+				ofs = (ofs + min) / 2;
+			}
+			else {
+				min = ofs;
+				ofs = (ofs + max) / 2;
+			}
+		}
+	}
+
+	if (ofs == min || ofs == max) w = buf[(*ptrp)++];
+	else {
+		w = getword(cp, 0);
+		*ptrp += i;
+	}
+	if (new) free(new);
+	return(w);
+}
+
+static u_int NEAR toucs2(s, ptrp)
+u_char *s;
+int *ptrp;
+{
+	u_int w;
+
+# ifdef	CODEEUC
+	if (isekana(s, *ptrp)) {
+		w = s[++(*ptrp)];
+		(*ptrp)++;
+	}
+	else if (iseuc(s[*ptrp]) && iseuc(s[*ptrp + 1])) {
+		u_char tmp[2];
+
+		j2sj((char *)tmp, &(s[*ptrp]));
+		*ptrp += 2;
+		w = (((u_int)(tmp[0]) << 8) | tmp[1]);
+	}
+# else
+	if (isskana(s, *ptrp)) w = s[(*ptrp)++];
+	else if (issjis1(s[*ptrp]) && issjis2(s[*ptrp + 1])) {
+		w = (((u_int)(s[*ptrp]) << 8) | s[*ptrp + 1]);
+		*ptrp += 2;
+	}
+# endif
+	else w = s[(*ptrp)++];
+	return(cnvunicode(w, 1));
+}
+
+static VOID NEAR fromucs2(buf, ptrp, wc)
+char *buf;
+int *ptrp;
+u_int wc;
+{
+	int c1, c2;
+
+	wc = cnvunicode(wc, 0);
+	c1 = (wc >> 8) & 0xff;
+	c2 = wc & 0xff;
+	if (wc > 0xa0 && wc <= 0xdf) {
+# ifdef	CODEEUC
+		buf[(*ptrp)++] = 0x8e;
+# endif
+		buf[(*ptrp)++] = wc;
+	}
+	else if (issjis1(c1) && issjis2(c2)) {
+# ifdef	CODEEUC
+		u_char tmp[2];
+
+		tmp[0] = c1;
+		tmp[1] = c2;
+		sj2j(&(buf[*ptrp]), tmp);
+		buf[(*ptrp)++] |= 0x80;
+		buf[(*ptrp)++] |= 0x80;
+# else
+		buf[(*ptrp)++] = c1;
+		buf[(*ptrp)++] = c2;
+# endif
+	}
+	else buf[(*ptrp)++] = wc;
+}
+
+static VOID NEAR ucs2toutf8(buf, ptrp, wc)
+char *buf;
+int *ptrp;
+u_int wc;
+{
+	if (wc < 0x80) buf[(*ptrp)++] = wc;
+	else if (wc < 0x800) {
+		buf[(*ptrp)++] = 0xc0 | (wc >> 6);
+		buf[(*ptrp)++] = 0x80 | (wc & 0x3f);
+	}
+	else {
+		buf[(*ptrp)++] = 0xe0 | (wc >> 12);
+		buf[(*ptrp)++] = 0x80 | ((wc >> 6) & 0x3f);
+		buf[(*ptrp)++] = 0x80 | (wc & 0x3f);
+	}
+}
+
+static u_int NEAR ucs2fromutf8(s, ptrp)
+u_char *s;
+int *ptrp;
+{
+	u_int w;
+
+	w = s[(*ptrp)++];
+	if (w < 0x80);
+	else if ((w & 0xe0) == 0xc0 && (s[(*ptrp)++] & 0xc0) == 0x80)
+		w = ((w & 0x1f) << 6) | (s[(*ptrp)++] & 0x3f);
+	else {
+		w = ((w & 0x0f) << 6) | (s[(*ptrp)++] & 0x3f);
+		w = (w << 6) | (s[(*ptrp)++] & 0x3f);
+	}
+	return(w);
+}
+
 static int NEAR toutf8(buf, s, max)
 char *buf;
 u_char *s;
 int max;
 {
-	u_int w;
 	int i, j;
 
-	for (i = j = 0; s[i] && j < max - 3; i++, j++) {
-# ifdef	CODEEUC
-		if (isekana(s, i)) w = s[++i];
-		else if (iseuc(s[i]) && iseuc(s[i + 1])) {
-			u_char tmp[2];
-
-			j2sj((char *)tmp, &(s[i++]));
-			w = (tmp[0] << 8) | tmp[1];
-		}
-# else
-		if (isskana(s, i)) w = s[i];
-		else if (issjis1(s[i]) && issjis2(s[i + 1]))
-			w = (s[0] << 8) | s[1];
-# endif
-		else w = s[i];
-		w = cnvunicode(w, 1);
-
-		if (w < 0x80) buf[j] = w;
-		else if (w < 0x800) {
-			buf[j] = 0xc0 | (w >> 6);
-			buf[j] = 0x80 | (w & 0x3f);
-		}
-		else {
-			buf[j++] = 0xe0 | (w >> 12);
-			buf[j++] = 0x80 | ((w >> 6) & 0x3f);
-			buf[j] = 0x80 | (w & 0x3f);
-		}
-	}
+	i = j = 0;
+	while (s[i] && j < max - 3) ucs2toutf8(buf, &j, toucs2(s, &i));
 	cnvunicode(0, -1);
 	return(j);
 }
@@ -1303,44 +1525,58 @@ char *buf;
 u_char *s;
 int max;
 {
-	u_int w;
-	int i, j, c1, c2;
+	int i, j;
 
-	for (i = j = 0; s[i] && j < max - 2; i++, j++) {
-		w = s[i];
-		if (w < 0x80);
-		else if ((w & 0xe0) == 0xc0 && (s[i + 1] & 0xc0) == 0x80)
-			w = ((w & 0x1f) << 6) | (s[++i] & 0x3f);
-		else {
-			w = ((w & 0x0f) << 6) | (s[++i] & 0x3f);
-			w = (w << 6) | (s[++i] & 0x3f);
-		}
+	i = j = 0;
+	while (s[i] && j < max - 2) fromucs2(buf, &j, ucs2fromutf8(s, &i));
+	cnvunicode(0, -1);
+	return(j);
+}
 
-		w = cnvunicode(w, 0);
-		c1 = (w >> 8) & 0xff;
-		c2 = w & 0xff;
-		if (w > 0xa0 && w <= 0xdf) {
-# ifdef	CODEEUC
-			buf[j++] = 0x8e;
-# endif
-			buf[j] = w;
-		}
-		else if (issjis1(c1) && issjis2(c2)) {
-# ifdef	CODEEUC
-			u_char tmp[2];
+static int NEAR toutf8nf(buf, s, max, nf)
+char *buf;
+u_char *s;
+int max, nf;
+{
+	u_int *u1, *u2;
+	int i, j;
 
-			tmp[0] = c1;
-			tmp[1] = c2;
-			sj2j(&(buf[j]), tmp);
-			buf[j++] |= 0x80;
-			buf[j] |= 0x80;
-# else
-			buf[j++] = c1;
-			buf[j] = c2;
-# endif
-		}
-		else buf[j] = w;
-	}
+	u1 = (u_int *)malloc2((max + 1) * sizeof(u_int));
+	u2 = (u_int *)malloc2((max + 1) * sizeof(u_int));
+
+	for (i = j = 0; s[i] && j < max; j++) u1[j] = toucs2(s, &i);
+	u1[j] = 0;
+	for (i = j = 0; u1[i] && j < max; i++)
+		ucs2normalization(u2, &j, max, u1[i], nf);
+	u2[j] = 0;
+	for (i = j = 0; u2[i] && j < max - 3; i++) ucs2toutf8(buf, &j, u2[i]);
+
+	free(u1);
+	free(u2);
+	cnvunicode(0, -1);
+	return(j);
+}
+
+static int NEAR fromutf8nf(buf, s, max, nf)
+char *buf;
+u_char *s;
+int max, nf;
+{
+	u_int *u1, *u2;
+	int i, j;
+
+	u1 = (u_int *)malloc2((max + 1) * sizeof(u_int));
+	u2 = (u_int *)malloc2((max + 1) * sizeof(u_int));
+
+	for (i = j = 0; s[i] && j < max; j++) u1[j] = ucs2fromutf8(s, &i);
+	u1[j] = 0;
+	for (i = j = 0; u1[i] && j < max; j++)
+		u2[j] = ucs2denormalization(u1, &i, nf);
+	u2[j] = 0;
+	for (i = j = 0; u2[i] && j < max - 2; i++) fromucs2(buf, &j, u2[i]);
+
+	free(u1);
+	free(u2);
 	cnvunicode(0, -1);
 	return(j);
 }
@@ -1571,6 +1807,10 @@ int max, in, out, *lenp, io;
 					*lenp = fromutf8(buf, (u_char *)s,
 						max);
 					break;
+				case M_UTF8:
+					*lenp = fromutf8nf(buf, (u_char *)s,
+						max, NF_MAC);
+					break;
 				case HEX:
 					*lenp = fromhex(buf, (u_char *)s, max);
 					break;
@@ -1607,6 +1847,9 @@ int max, in, out, *lenp, io;
 		case UTF8:
 			*lenp = toutf8(buf, (u_char *)s, max);
 			break;
+		case M_UTF8:
+			*lenp = toutf8nf(buf, (u_char *)s, max, NF_MAC);
+			break;
 		case HEX:
 			*lenp = tohex(buf, (u_char *)s, max);
 			break;
@@ -1637,109 +1880,15 @@ char *kanjiconv2(buf, s, max, in, out)
 char *buf, *s;
 int max, in, out;
 {
-	char *cp;
 	int len;
 
-	if ((cp = _kanjiconv(buf, s, max, in, out, &len, L_FNAME)) == buf)
-		cp[len] = '\0';
-	return(cp);
+	if (_kanjiconv(buf, s, max, in, out, &len, L_FNAME) != buf)
+		return(s);
+	buf[len] = '\0';
+	return(buf);
 }
 # endif	/* !_NOKANJIFCONV */
 #endif	/* !_NOKANJICONV */
-
-int kanjifputs(s, fp)
-char *s;
-FILE *fp;
-{
-#ifdef	_NOKANJICONV
-	return(fputs(s, fp));
-#else	/* !_NOKANJICONV */
-	char *cp, *buf;
-	int len, max;
-
-	len = strlen(s);
-	max = len * 3 + 3;
-	buf = malloc2(max + 1);
-	cp = _kanjiconv(buf, s, max, DEFCODE, outputkcode, &len, L_OUTPUT);
-	if (cp == buf) {
-		buf[len] = '\0';
-		s = buf;
-	}
-	if (fputs(s, fp) < 0) len = -1;
-	free(buf);
-	return(len);
-#endif	/* !_NOKANJICONV */
-}
-
-int kanjiputs(s)
-char *s;
-{
-#ifdef	_NOKANJICONV
-	cputs2(s);
-	return(strlen(s));
-#else	/* !_NOKANJICONV */
-	char *cp, *buf;
-	int len, max;
-
-	len = strlen(s);
-	max = len * 3 + 3;
-	buf = malloc2(max + 1);
-	cp = _kanjiconv(buf, s, max, DEFCODE, outputkcode, &len, L_OUTPUT);
-	if (cp == buf) {
-		buf[len] = '\0';
-		s = buf;
-	}
-	cputs2(s);
-	free(buf);
-	return(len);
-#endif	/* !_NOKANJICONV */
-}
-
-#ifdef	USESTDARGH
-/*VARARGS1*/
-int kanjiprintf(CONST char *fmt, ...)
-#else
-/*VARARGS1*/
-int kanjiprintf(fmt, va_alist)
-CONST char *fmt;
-va_dcl
-#endif
-{
-	va_list args;
-	char *buf;
-	int n;
-
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
-
-	n = vasprintf2(&buf, fmt, args);
-	va_end(args);
-	if (n < 0) error("malloc()");
-	n = strlen3(buf);
-	kanjiputs(buf);
-	free(buf);
-	return(n);
-}
-
-int kanjiputs2(s, len, ptr)
-char *s;
-int len, ptr;
-{
-	char *buf;
-	int n;
-
-	if (len >= 0) buf = malloc2(len * KANAWID + 1);
-	else if (ptr < 0) buf = malloc2(strlen(s) + 1);
-	else buf = malloc2(strlen(&(s[ptr])) + 1);
-	strncpy3(buf, s, &len, ptr);
-	n = strlen3(buf);
-	kanjiputs(buf);
-	free(buf);
-	return(n);
-}
 
 #ifndef	_NOKANJIFCONV
 int getkcode(path)

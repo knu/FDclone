@@ -5,7 +5,6 @@
  */
 
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "funcno.h"
 #include "kctype.h"
@@ -81,12 +80,15 @@ static int NEAR getcolor __P_((int));
 static VOID NEAR pathbar __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
+static VOID NEAR cputbytes __P_((off_t, off_t, int));
 static VOID NEAR sizebar __P_((VOID_A));
 #ifndef	NOUID
 static int NEAR putowner __P_((char *, uid_t));
 static int NEAR putgroup __P_((char *, gid_t));
 #endif
 static int NEAR putsize __P_((char *, off_t, int, int));
+static int NEAR putsize2 __P_((char *, namelist *, int));
+static int NEAR putfilename __P_((char *, namelist *, int));
 static VOID NEAR infobar __P_((VOID_A));
 static int NEAR calclocate __P_((int));
 #ifndef	_NOSPLITWIN
@@ -108,6 +110,7 @@ int displaymode = 0;
 int sorttype = 0;
 int chgorder = 0;
 int stackdepth = 0;
+int tradlayout = 0;
 int sizeinfo = 0;
 off_t marksize = (off_t)0;
 off_t totalsize = (off_t)0;
@@ -187,15 +190,15 @@ static int search_y = -1;
 
 
 #ifndef	_NOCOLOR
-static int NEAR getcolorid(list)
-namelist *list;
+static int NEAR getcolorid(namep)
+namelist *namep;
 {
 	int i;
 
-	if (!isread(list)) return(CL_HIDDEN);
-	if (!iswrite(list)) return(CL_RONLY);
+	if (!isread(namep)) return(CL_HIDDEN);
+	if (!iswrite(namep)) return(CL_RONLY);
 	for (i = 0; i < MAXMODELIST; i++)
-		if ((list -> st_mode & S_IFMT) == modelist[i])
+		if ((namep -> st_mode & S_IFMT) == modelist[i])
 			return(colorlist[i]);
 	return(CL_NORM);
 }
@@ -222,24 +225,37 @@ int id;
 
 static VOID NEAR pathbar(VOID_A)
 {
-	char *path;
-	int len;
+#ifndef	_NOTRADLAYOUT
+	if (istradlayout()) {
+		locate(0, TL_PATH);
+		putterm(l_clear);
 
-	path = strdup2(fullpath);
+		locate(TC_PATH, TL_PATH);
+		putterm(t_standout);
+		cputs2(TS_PATH);
+		putterm(end_standout);
+		cprintf2("%-*.*k", TD_PATH, TD_PATH, fullpath);
+
+		locate(TC_MARK, TL_PATH);
+		cprintf2("%<*d", TD_MARK, mark);
+		putterm(t_standout);
+		cputs2(TS_MARK);
+		putterm(end_standout);
+		cprintf2("%<'*qd", TD_SIZE, marksize);
+
+		tflush();
+		return;
+	}
+#endif	/* !_NOTRADLAYOUT */
 
 	locate(0, L_PATH);
 	putterm(l_clear);
-	len = 0;
-	if (!isleftshift()) {
-		putch2(' ');
-		len++;
-	}
+
+	locate(C_PATH, L_PATH);
 	putterm(t_standout);
-	cputs2("Path:");
-	len += 5;
+	cputs2(S_PATH);
 	putterm(end_standout);
-	kanjiputs2(path, n_column - len, 0);
-	free(path);
+	cprintf2("%-*.*k", D_PATH, D_PATH, fullpath);
 
 	tflush();
 }
@@ -287,7 +303,7 @@ VOID helpbar(VOID_A)
 		if (len < 0) len = 0;
 		putterm(t_standout);
 		for (j = 0; j < len; j++) putch2(' ');
-		kanjiputs2(helpindex[i], width - len, 0);
+		cprintf2("%-*.*k", width - len, width - len, helpindex[i]);
 		putterm(end_standout);
 	}
 
@@ -296,37 +312,50 @@ VOID helpbar(VOID_A)
 
 static VOID NEAR statusbar(VOID_A)
 {
-	char *str[6], buf[4 + 1];
-	int x, width;
+	char *str[6];
 
-	x = (isleftshift()) ? 1 : 0;
+#ifndef	_NOTRADLAYOUT
+	if (istradlayout()) {
+
+		locate(0, TL_STATUS);
+		putterm(l_clear);
+
+		locate(TC_INFO, TL_STATUS);
+		putterm(t_standout);
+		cputs2(TS_INFO);
+		putterm(end_standout);
+
+		locate(TC_SIZE, TL_STATUS);
+		cprintf2("%<*d", TD_MARK, maxfile);
+		putterm(t_standout);
+		cputs2(TS_SIZE);
+		putterm(end_standout);
+		cprintf2("%<'*qd", TD_SIZE, totalsize);
+
+		return;
+	}
+#endif	/* !_NOTRADLAYOUT */
+
 	locate(0, L_STATUS);
 	putterm(l_clear);
 
-	locate(C_PAGE - x, L_STATUS);
+	locate(C_PAGE, L_STATUS);
 	putterm(t_standout);
-	cputs2("Page:");
+	cputs2(S_PAGE);
 	putterm(end_standout);
-	cputs2(ascnumeric(buf, (off_t)(filepos / FILEPERPAGE + 1), 2, 2));
-	putch2('/');
-	cputs2(ascnumeric(buf,
-		(off_t)((maxfile - 1) / FILEPERPAGE + 1), 2, 2));
-	putch2(' ');
+	cprintf2("%<*d/%<*d", D_PAGE, filepos / FILEPERPAGE + 1,
+		D_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
-	locate(C_MARK - x, L_STATUS);
+	locate(C_MARK, L_STATUS);
 	putterm(t_standout);
-	cputs2("Mark:");
+	cputs2(S_MARK);
 	putterm(end_standout);
-	cputs2(ascnumeric(buf, (off_t)mark, 4, 4));
-	putch2('/');
-	cputs2(ascnumeric(buf, (off_t)maxfile, 4, 4));
-	putch2(' ');
+	cprintf2("%<*d/%<*d", D_MARK, mark, D_MARK, maxfile);
 
-	if (ishardomit()) x += C_FIND - C_SORT;
-	else {
-		locate(C_SORT - x, L_STATUS);
+	if (!ishardomit()) {
+		locate(C_SORT, L_STATUS);
 		putterm(t_standout);
-		cputs2("Sort:");
+		cputs2(S_SORT);
 		putterm(end_standout);
 
 #ifndef	_NOPRECEDE
@@ -343,21 +372,16 @@ static VOID NEAR statusbar(VOID_A)
 
 			str[0] = OINC_K;
 			str[1] = ODEC_K;
-			putch2('(');
-			kanjiputs(&(str[sorton / 8][3]));
-			putch2(')');
+			cprintf2("(%k)", &(str[sorton / 8][3]));
 		}
 		else kanjiputs(ORAW_K + 3);
 	}
 
-	locate(C_FIND - x, L_STATUS);
+	locate(C_FIND, L_STATUS);
 	putterm(t_standout);
-	cputs2("Find:");
+	cputs2(S_FIND);
 	putterm(end_standout);
-	if (findpattern) {
-		width = n_column - (C_FIND + 5 - x);
-		kanjiputs2(findpattern, width, 0);
-	}
+	if (findpattern) cprintf2("%-*.*k", D_FIND, D_FIND, findpattern);
 
 	tflush();
 }
@@ -390,7 +414,7 @@ static VOID NEAR stackbar(VOID_A)
 		else
 #endif
 		putterm(t_standout);
-		kanjiputs2(filestack[i].name, width - 2, 0);
+		cprintf2("%-*.*k", width - 2, width - 2, filestack[i].name);
 #ifndef	_NOCOLOR
 		x += width - 2;
 		if (bgcolor >= 0) chgcolor(bgcolor, 1);
@@ -409,85 +433,105 @@ static VOID NEAR stackbar(VOID_A)
 	tflush();
 }
 
+static VOID NEAR cputbytes(size, bsize, width)
+off_t size, bsize;
+int width;
+{
+	off_t kb;
+
+	if (size < (off_t)0) cprintf2("%*s", width, "?");
+	else if (size < (off_t)10000000 / bsize)
+		cprintf2("%<'*qd%s", width - W_BYTES, size * bsize, S_BYTES);
+	else if ((kb = calcKB(size, bsize)) < (off_t)1000000000)
+		cprintf2("%<'*qd%s", width - W_KBYTES, kb, S_KBYTES);
+	else cprintf2("%<'*qd%s",
+		width - W_MBYTES, kb / (off_t)1024, S_MBYTES);
+}
+
 static VOID NEAR sizebar(VOID_A)
 {
-	char buf[14 + 1];
-	off_t total, fre, bsize, kb;
-	int x;
+	off_t total, fre, bsize;
 
-	if (!sizeinfo || !*fullpath) return;
+	if (!hassizeinfo() || !*fullpath) return;
+	if (getinfofs(".", &total, &fre, &bsize) < 0) total = fre = -1L;
 
-	x = (isleftshift()) ? 1 : 0;
+#ifndef	_NOTRADLAYOUT
+	if (istradlayout()) {
+		locate(0, TL_SIZE);
+		putterm(l_clear);
+
+		locate(TC_PAGE, TL_SIZE);
+		putterm(t_standout);
+		cputs2(TS_PAGE);
+		putterm(end_standout);
+		cprintf2("%<*d/%<*d", TD_PAGE, filepos / FILEPERPAGE + 1,
+			TD_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
+
+		locate(TC_TOTAL, TL_SIZE);
+		putterm(t_standout);
+		cputs2(TS_TOTAL);
+		putterm(end_standout);
+		cputbytes(total, bsize, TD_TOTAL);
+
+		locate(TC_USED, TL_SIZE);
+		putterm(t_standout);
+		cputs2(TS_USED);
+		putterm(end_standout);
+		cputbytes(total - fre, bsize, TD_USED);
+
+		locate(TC_FREE, TL_SIZE);
+		putterm(t_standout);
+		cputs2(TS_FREE);
+		putterm(end_standout);
+		cputbytes(fre, bsize, TD_FREE);
+
+		return;
+	}
+#endif	/* !_NOTRADLAYOUT */
+
 	locate(0, L_SIZE);
 	putterm(l_clear);
 
-	locate(C_SIZE - x, L_SIZE);
+	locate(C_SIZE, L_SIZE);
 	putterm(t_standout);
-	cputs2("Size:");
+	cputs2(S_SIZE);
 	putterm(end_standout);
-	cputs2(ascnumeric(buf, marksize, 3, 14));
-	putch2('/');
-	cputs2(ascnumeric(buf, totalsize, 3, 14));
-	putch2(' ');
-
-	if (getinfofs(".", &total, &fre, &bsize) < 0) total = fre = -1L;
+	cprintf2("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
 
 	if (!ishardomit()) {
-		locate(C_TOTAL - x, L_SIZE);
+		locate(C_TOTAL, L_SIZE);
 		putterm(t_standout);
-		cputs2("Total:");
+		cputs2(S_TOTAL);
 		putterm(end_standout);
-		if (total < 0L) cputs2(ascnumeric(buf, total, 3, 15));
-		else if (total < 10000000L / bsize) {
-			cputs2(ascnumeric(buf, total * bsize, 3, 9));
-			cputs2(" bytes");
-		}
-		else if ((kb = calcKB(total, bsize)) < (off_t)1000000000) {
-			cputs2(ascnumeric(buf, kb, 3, 12));
-			cputs2(" KB");
-		}
-		else {
-			cputs2(ascnumeric(buf, kb / 1024L, 3, 12));
-			cputs2(" MB");
-		}
-		putch2(' ');
+		cputbytes(total, bsize, D_TOTAL);
 	}
 
 	if (!iswellomit()) {
-		locate(C_FREE - x, L_SIZE);
+		locate(C_FREE, L_SIZE);
 		putterm(t_standout);
-		cputs2("Free:");
+		cputs2(S_FREE);
 		putterm(end_standout);
-		if (fre < 0L) cputs2(ascnumeric(buf, fre, 3, 15));
-		else if (fre < 10000000L / bsize) {
-			cputs2(ascnumeric(buf, fre * bsize, 3, 9));
-			cputs2(" bytes");
-		}
-		else if ((kb = calcKB(fre, bsize)) < (off_t)1000000000) {
-			cputs2(ascnumeric(buf, kb, 3, 12));
-			cputs2(" KB");
-		}
-		else {
-			cputs2(ascnumeric(buf, kb / 1024L, 3, 12));
-			cputs2(" MB");
-		}
-		if (isrightomit()) putch2(' ');
+		cputbytes(fre, bsize, D_FREE);
 	}
 
 	tflush();
 }
 
-int putmode(buf, mode)
+int putmode(buf, mode, notype)
 char *buf;
 u_int mode;
+int notype;
 {
-	int i;
+	int i, j;
 
-	for (i = 0; i < sizeof(typelist) / sizeof(u_short); i++)
-		if ((mode & S_IFMT) == typelist[i]) break;
-	buf[0] = (i < sizeof(typelist) / sizeof(u_short))
-		? typesymlist[i] : '-';
-	i = 1;
+	i = 0;
+	if (!notype) {
+		for (j = 0; j < sizeof(typelist) / sizeof(u_short); j++)
+			if ((mode & S_IFMT) == typelist[j]) break;
+		buf[i++] = (j < sizeof(typelist) / sizeof(u_short))
+			? typesymlist[j] : '-';
+	}
+
 	buf[i++] = (mode & S_IRUSR) ? 'r' : '-';
 	buf[i++] = (mode & S_IWUSR) ? 'w' : '-';
 #if	MSDOS
@@ -557,36 +601,161 @@ gid_t gid;
 }
 #endif	/* !NOUID */
 
-static int NEAR putsize(buf, n, min, max)
+static int NEAR putsize(buf, n, width, max)
 char *buf;
 off_t n;
-int min, max;
+int width, max;
 {
 	char tmp[MAXLONGWIDTH + 1];
 	int i, len;
 
 	if (max > MAXLONGWIDTH) max = MAXLONGWIDTH;
-	ascnumeric(tmp, n, max, max);
-	for (i = max - min; i > 0; i--) if (tmp[i - 1] == ' ') break;
+	snprintf2(tmp, sizeof(tmp), "%<*qd", max, n);
+	for (i = max - width; i > 0; i--) if (tmp[i - 1] == ' ') break;
 	len = max - i;
 	strncpy(buf, &(tmp[i]), len);
 	return(len);
 }
 
-static VOID NEAR infobar(VOID_A)
+static int NEAR putsize2(buf, namep, width)
+char *buf;
+namelist *namep;
+int width;
 {
-#if	!MSDOS
+	if (isdir(namep))
+		snprintf2(buf, width + 1, "%*.*s", width, width, "<DIR>");
+#if	MSDOS
+	else if ((namep -> st_mode & S_IFMT) == S_IFIFO)
+		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
+#else	/* !MSDOS */
+# ifndef	_NODOSDRIVE
+	else if (dospath2("")
+	&& (namep -> st_mode & S_IFMT) == S_IFIFO)
+		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
+# endif
+	else if (isdev(namep))
+		snprintf2(buf, width + 1, "%<*d,%<*d",
+			width / 2, major((u_long)(namep -> st_size)),
+			width - (width / 2) - 1,
+			minor((u_long)(namep -> st_size)));
+#endif	/* !MSDOS */
+	else snprintf2(buf, width + 1, "%<*qd", width, namep -> st_size);
+
+	return(width);
+}
+
+static int NEAR putfilename(buf, namep, width)
+char *buf;
+namelist *namep;
+int width;
+{
+#ifdef	NOSYMLINK
+	strncpy3(buf, namep -> name, &width, fnameofs);
+#else	/* !NOSYMLINK */
 # ifndef	_NODOSDRIVE
 	char path[MAXPATHLEN];
 # endif
 	char *tmp;
-	int i, l;
-#endif
+	int i, w, len;
+
+	i = strncpy3(buf, namep -> name, &width, fnameofs);
+	if (!islink(namep)) return(width);
+
+	len = fnameofs - strlen3(namep -> name);
+	if (--len < 0) i++;
+	if (--len < 0 && i < width) buf[i++] = '-';
+	if (--len < 0 && i < width) buf[i++] = '>';
+	if (--len < 0) {
+		i++;
+		len = 0;
+	}
+	buf += i;
+
+	if ((w = width - i) <= 0) /*EMPTY*/;
+# ifndef	_NOARCHIVE
+	else if (archivefile) {
+		if (namep -> linkname)
+			strncpy3(buf, &(namep -> linkname[len]), &w, 0);
+	}
+# endif
+	else {
+		tmp = malloc2(width * 2 + len + 1);
+		i = Xreadlink(nodospath(path, namep -> name),
+			tmp, width * 2 + len);
+		if (i >= 0) {
+			tmp[i] = '\0';
+			strncpy3(buf, &(tmp[len]), &w, 0);
+		}
+		free(tmp);
+	}
+#endif	/* !NOSYMLINK */
+	return(width);
+}
+
+static VOID NEAR infobar(VOID_A)
+{
 	char *buf;
 	struct tm *tm;
-	int len, width;
+	int len;
 
 	if (!filelist || maxfile < 0) return;
+
+#ifndef	_NOTRADLAYOUT
+	if (istradlayout()) {
+		locate(TC_INFO + TW_INFO, TL_STATUS);
+		cprintf2("%*s", TD_INFO, "");
+
+		locate(TC_INFO + TW_INFO, TL_STATUS);
+		if (filepos >= maxfile) {
+			if (filelist[0].st_nlink < 0 && filelist[0].name)
+				kanjiputs(filelist[0].name);
+			tflush();
+			return;
+		}
+		len = TD_INFO
+			- (1 + TWSIZE2 + 1 + WDATE + 1 + WTIME + 1 + TWMODE);
+# ifndef	_NOPRECEDE
+		if (!havestat(&(filelist[filepos]))) {
+			kanjiputs2(filelist[filepos].name, len, fnameofs);
+			tflush();
+			return;
+		}
+# endif
+
+		buf = malloc2(TD_INFO * KANAWID + 1);
+		tm = localtime(&(filelist[filepos].st_mtim));
+
+		len = putfilename(buf, &(filelist[filepos]), len);
+		buf[len++] = ' ';
+
+		len += putsize2(&(buf[len]), &(filelist[filepos]), TWSIZE2);
+		buf[len++] = ' ';
+
+		snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
+			"%02d-%02d-%02d %02d:%02d ",
+			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
+			tm -> tm_hour, tm -> tm_min);
+		len += WDATE + 1 + WTIME + 1;
+
+# ifdef	HAVEFLAGS
+		if (isfileflg(dispmode)) {
+			len += putflags(&(buf[len]),
+				filelist[filepos].st_flags);
+			while (len < TWMODE) buf[len++] = ' ';
+		}
+		else
+# endif
+		len += putmode(&(buf[len]),
+			(!isdisplnk(dispmode) && islink(&(filelist[filepos])))
+			? (S_IFLNK | 0777) : filelist[filepos].st_mode, 1);
+
+		kanjiputs(buf);
+		free(buf);
+		tflush();
+		return;
+	}
+#endif	/* !_NOTRADLAYOUT */
+
 	locate(0, L_INFO);
 
 	if (filepos >= maxfile) {
@@ -601,16 +770,16 @@ static VOID NEAR infobar(VOID_A)
 		putterm(l_clear);
 		len = WMODE + WSIZE2 + 1 + WDATE + 1 + WTIME + 1;
 		if (!ishardomit()) {
-			len += 4;
+			len += 1 + WNLINK + 1;
 # ifndef	NOUID
 			len += (iswellomit())
 				? WOWNERMIN + 1 + WGROUPMIN + 1
 				: WOWNER + 1 + WGROUP + 1;
 # endif
 		}
-		width = n_lastcolumn - len;
 		locate(len, L_INFO);
-		kanjiputs2(filelist[filepos].name, width, fnameofs);
+		kanjiputs2(filelist[filepos].name,
+			n_lastcolumn - len, fnameofs);
 		tflush();
 		return;
 	}
@@ -628,11 +797,12 @@ static VOID NEAR infobar(VOID_A)
 #endif
 	else len = putmode(buf,
 		(!isdisplnk(dispmode) && islink(&(filelist[filepos])))
-		? (S_IFLNK | 0777) : filelist[filepos].st_mode);
+		? (S_IFLNK | 0777) : filelist[filepos].st_mode, 0);
 
 	if (!ishardomit()) {
-		snprintf2(&(buf[len]), 5, " %2d ", filelist[filepos].st_nlink);
-		len += 4;
+		snprintf2(&(buf[len]), 1 + WNLINK + 1 + 1, " %<*d ",
+			WNLINK, filelist[filepos].st_nlink);
+		len += 1 + WNLINK + 1;
 
 #ifndef	NOUID
 		len += putowner(&(buf[len]), filelist[filepos].st_uid);
@@ -645,12 +815,12 @@ static VOID NEAR infobar(VOID_A)
 #if	!MSDOS
 	if (isdev(&(filelist[filepos]))) {
 		len += putsize(&(buf[len]),
-			(off_t)(major((u_long)(filelist[filepos].st_size))),
+			(off_t)major((u_long)(filelist[filepos].st_size)),
 			3, n_lastcolumn - len);
 		buf[len++] = ',';
 		buf[len++] = ' ';
 		len += putsize(&(buf[len]),
-			(off_t)(minor((u_long)(filelist[filepos].st_size))),
+			(off_t)minor((u_long)(filelist[filepos].st_size)),
 			3, n_lastcolumn - len);
 	}
 	else
@@ -664,45 +834,8 @@ static VOID NEAR infobar(VOID_A)
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
-	width = n_lastcolumn - len;
 
-#ifdef	NOSYMLINK
-	strncpy3(&(buf[len]), filelist[filepos].name, &width, fnameofs);
-#else	/* !NOSYMLINK */
-	i = strncpy3(&(buf[len]), filelist[filepos].name, &width, fnameofs);
-	if (islink(&(filelist[filepos]))) {
-		width += len;
-		len += i;
-		l = fnameofs - strlen3(filelist[filepos].name);
-		if (--l < 0) len++;
-		if (--l < 0 && len < width) buf[len++] = '-';
-		if (--l < 0 && len < width) buf[len++] = '>';
-		if (--l < 0) {
-			len++;
-			l = 0;
-		}
-		if ((width -= len) <= 0) /*EMPTY*/;
-# ifndef	_NOARCHIVE
-		else if (archivefile) {
-			if (filelist[filepos].linkname)
-				strncpy3(&(buf[len]),
-					&(filelist[filepos].linkname[l]),
-					&width, 0);
-		}
-# endif
-		else {
-			tmp = malloc2(width * 2 + l + 1);
-			i = Xreadlink(fnodospath(path, filepos),
-				tmp, width * 2 + l);
-			if (i >= 0) {
-				tmp[i] = '\0';
-				strncpy3(&(buf[len]), &(tmp[l]), &width, 0);
-			}
-			free(tmp);
-		}
-	}
-#endif	/* !NOSYMLINK */
-
+	putfilename(&(buf[len]), &(filelist[filepos]), n_lastcolumn - len);
 	kanjiputs(buf);
 	free(buf);
 	tflush();
@@ -839,44 +972,7 @@ int no, isstandout;
 	tm = NULL;
 	if (curcolumns < 5 && len + WIDTH3 <= width) {
 		buf[len++] = ' ';
-		if (isdir(&(list[no]))) {
-			snprintf2(&(buf[len]), WSIZE + 1,
-				"%*.*s", WSIZE, WSIZE, "<DIR>");
-			len += WSIZE;
-		}
-#if	MSDOS
-		else if ((list[no].st_mode & S_IFMT) == S_IFIFO) {
-			snprintf2(&(buf[len]), WSIZE + 1,
-				"%*.*s", WSIZE, WSIZE, "<VOL>");
-			len += WSIZE;
-		}
-#else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
-		else if (dospath2("")
-		&& (list[no].st_mode & S_IFMT) == S_IFIFO) {
-			snprintf2(&(buf[len]), WSIZE + 1,
-				"%*.*s", WSIZE, WSIZE, "<VOL>");
-			len += WSIZE;
-		}
-# endif
-		else if (isdev(&(list[no]))) {
-			ascnumeric(&(buf[len]),
-				(off_t)major((u_long)(list[no].st_size)),
-				WSIZE / 2, WSIZE / 2);
-			len += WSIZE / 2;
-			buf[len++] = ',';
-			ascnumeric(&(buf[len]),
-				(off_t)minor((u_long)(list[no].st_size)),
-				WSIZE - (WSIZE / 2) - 1,
-				WSIZE - (WSIZE / 2) - 1);
-			len += WSIZE - (WSIZE / 2) - 1;
-		}
-#endif	/* !MSDOS */
-		else {
-			ascnumeric(&(buf[len]),
-				list[no].st_size, WSIZE, WSIZE);
-			len += WSIZE;
-		}
+		len += putsize2(&(buf[len]), &(list[no]), WSIZE);
 	}
 	if (curcolumns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&(list[no].st_mtim));
@@ -906,7 +1002,7 @@ int no, isstandout;
 #endif
 		len += putmode(&(buf[len]),
 			(!isdisplnk(dispmode) && islink(&(list[no])))
-			? (S_IFLNK | 0777) : list[no].st_mode);
+			? (S_IFLNK | 0777) : list[no].st_mode, 0);
 	}
 	while (len < width) buf[len++] = ' ';
 	buf[len] = '\0';
@@ -935,7 +1031,7 @@ namelist *list;
 int max;
 char *def;
 {
-	char *cp, buf[2 + 1];
+	char *cp;
 	int i, count, start, ret;
 
 	for (i = 0; i < FILEPERROW; i++) {
@@ -950,7 +1046,7 @@ char *def;
 		putterm(t_standout);
 		cp = NOFIL_K;
 		if (i <= (int)strlen(cp)) cp = "NoFiles";
-		kanjiputs2(cp, i, 0);
+		cprintf2("%-*.*k", i, i, cp);
 		putterm(end_standout);
 		win_x = i + 2;
 		win_y = LFILETOP;
@@ -977,9 +1073,17 @@ char *def;
 	}
 
 	if (list == filelist) {
-		locate(C_PAGE + 5 - ((isleftshift()) ? 1 : 0), L_STATUS);
-		cputs2(ascnumeric(buf,
-			(off_t)(start / FILEPERPAGE + 1), 2, 2));
+#ifndef	_NOTRADLAYOUT
+		if (istradlayout()) {
+			locate(TC_PAGE + TW_PAGE, TL_SIZE);
+			cprintf2("%<*d", TD_PAGE, start / FILEPERPAGE + 1);
+		}
+		else
+#endif
+		{
+			locate(C_PAGE + W_PAGE, L_STATUS);
+			cprintf2("%<*d", D_PAGE, start / FILEPERPAGE + 1);
+		}
 	}
 
 	for (i = start, count = 0; i < max; i++, count++) {
@@ -1213,7 +1317,7 @@ char *buf;
 	search_x = len;
 	len = kanjiputs(str[2 - s - i]);
 	putterm(end_standout);
-	kanjiputs2(buf, n_column - len - 1, 0);
+	cprintf2("%-*.*k", n_column - len - 1, n_column - len - 1, buf);
 	if ((search_x += len) >= n_column) search_x = n_column - 1;
 	search_y = L_HELP;
 	if (i) filepos = pos;

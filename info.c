@@ -6,7 +6,6 @@
 
 #include <errno.h>
 #include "fd.h"
-#include "term.h"
 #include "funcno.h"
 #include "kctype.h"
 #include "kanji.h"
@@ -182,11 +181,11 @@ typedef struct fs_data	statfs_t;
 
 #if	MSDOS
 typedef struct _statfs_t {
-	long	f_bsize;
-	long	f_blocks;
-	long	f_bfree;
-	long	f_bavail;
-	long	f_files;
+	long f_bsize;
+	long f_blocks;
+	long f_bfree;
+	long f_bavail;
+	long f_files;
 } statfs_t;
 extern int unixstatfs __P_((char *, statfs_t *));
 #define	statfs2		unixstatfs
@@ -196,7 +195,6 @@ extern int unixstatfs __P_((char *, statfs_t *));
 extern VOID error __P_((char *));
 extern int _chdir2 __P_((char *));
 extern char *strcpy2 __P_((char *, char *));
-extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #ifdef	_USEDOSPATH
@@ -219,15 +217,12 @@ extern int dosstatfs __P_((int, char *));
 #endif
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
-extern char *ascnumeric __P_((char *, off_t, int, int));
-extern int kanjiputs __P_((char *));
-extern int kanjiputs2 __P_((char *, int, int));
 extern int Xaccess __P_((char *, int));
-extern int kanjiprintf __P_((CONST char *, ...));
 
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char fullpath[];
+extern int tradlayout;
 extern int sizeinfo;
 extern char *distributor;
 #ifndef	_NODOSDRIVE
@@ -339,20 +334,21 @@ int code;
 	else if ((code & ~0x7f) == 0x80 && isalpha(code & 0x7f))
 		snprintf2(buf, KEYWID + 1, "Alt-%c  ", code & 0x7f);
 	else if (code == K_UP)
-		snprintf2(buf, KEYWID + 1, "%-7.7s", UPAR_K);
+		snprintf2(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, UPAR_K);
 	else if (code == K_DOWN)
-		snprintf2(buf, KEYWID + 1, "%-7.7s", DWNAR_K);
+		snprintf2(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, DWNAR_K);
 	else if (code == K_RIGHT)
-		snprintf2(buf, KEYWID + 1, "%-7.7s", RIGAR_K);
+		snprintf2(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, RIGAR_K);
 	else if (code == K_LEFT)
-		snprintf2(buf, KEYWID + 1, "%-7.7s", LEFAR_K);
+		snprintf2(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, LEFAR_K);
 	else {
 		int i;
 
 		for (i = 0; i < KEYCODESIZ; i++)
 			if (code == keycodelist[i]) break;
 		if (i < KEYCODESIZ)
-			snprintf2(buf, KEYWID + 1, "%-7.7s", keystrlist[i]);
+			snprintf2(buf, KEYWID + 1, "%-*.*s",
+				KEYWID, KEYWID, keystrlist[i]);
 #ifndef	CODEEUC
 		else if (iskna(code))
 			snprintf2(buf, KEYWID + 1, "'%c'    ", code);
@@ -421,10 +417,9 @@ int mode;
 		if (!c) continue;
 
 		cputs2("  ");
-		if (c < 2) cprintf2("%-7.7s", " ");
-		kanjiputs(buf);
-		cputs2(": ");
-		kanjiputs(mesconv(funclist[i].hmes, funclist[i].hmes_eng));
+		if (c < 2) cprintf2("%*s", KEYWID, "");
+		cprintf2("%k: %k",
+			buf, mesconv(funclist[i].hmes, funclist[i].hmes_eng));
 
 		y = checkline(y);
 	}
@@ -706,10 +701,7 @@ mnt_t *mntbuf;
 # endif	/* !_NOUSELFN */
 	mntbuf -> mnt_opts = "";
 
-	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) {
-		if (errno == ENOENT) return(-1);
-		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
-	}
+	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
 #else	/* !MSDOS */
 # if	!defined (USEMNTENTH) && !defined (USEGETFSENT)
 	mnt_t mnt;
@@ -750,13 +742,13 @@ mnt_t *mntbuf;
 			(off_t)(*((long *)&(buf[sizeof(long) * 2]))));
 # else	/* !USEFSDATA */
 #  ifdef	USESTATVFSH
-		fsbuf -> f_frsize = 0;
+		fsbuf -> f_frsize = 0L;
 #  endif
 		fsbuf -> f_blocks = *((long *)&(buf[sizeof(long) * 1]));
 		fsbuf -> f_bfree =
 		fsbuf -> f_bavail = *((long *)&(buf[sizeof(long) * 2]));
 # endif	/* !USEFSDATA */
-		fsbuf -> f_files = -1;
+		fsbuf -> f_files = -1L;
 		return(0);
 	}
 #endif	/* !_NODOSDRIVE */
@@ -808,8 +800,7 @@ mnt_t *mntbuf;
 	memcpy((char *)mntbuf, (char *)mntp, sizeof(mnt_t));
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
-	&& (path == dir || statfs2(path, fsbuf) < 0))
-		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
+	&& (path == dir || statfs2(path, fsbuf) < 0)) return(-1);
 #endif	/* !MSDOS */
 	return(0);
 }
@@ -916,22 +907,18 @@ char *ind;
 off_t n;
 char *s, *unit;
 {
-	char buf[MAXCOLSCOMMA(3) + 1];
 	int width;
 
 	locate(0, y);
 	putterm(l_clear);
 	locate(n_column / 2 - 20, y);
-	kanjiprintf("%-20.20s", ind);
+	cprintf2("%-20.20k", ind);
 	locate(n_column / 2 + 2, y);
 	if (s) {
 		width = n_column - (n_column / 2 + 2);
-		kanjiputs2(s, width, 0);
+		cprintf2("%-*.*k", width, width, s);
 	}
-	else {
-		cputs2(ascnumeric(buf, n, 3, MAXCOLSCOMMA(3)));
-		kanjiprintf(" %s", unit);
-	}
+	else cprintf2("%<'*qd %k", MAXCOLSCOMMA(3), n, unit);
 	return(checkline(++y));
 }
 
@@ -956,22 +943,20 @@ off_t *totalp, *freep, *bsizep;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;
+	int n;
 
 #ifndef	_NODOSDRIVE
 	needbavail++;
 #endif
-	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) {
-#ifndef	_NODOSDRIVE
-		needbavail--;
-#endif
-		return(-1);
-	}
-	*totalp = fsbuf.f_blocks;
-	*freep = fsbuf.f_bavail;
-	*bsizep = blocksize(fsbuf);
+	n = getfsinfo(path, &fsbuf, &mntbuf);
 #ifndef	_NODOSDRIVE
 	needbavail--;
 #endif
+	if (n < 0) return(-1);
+
+	*totalp = fsbuf.f_blocks;
+	*freep = fsbuf.f_bavail;
+	*bsizep = blocksize(fsbuf);
 	return(0);
 }
 

@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kanji.h"
 
@@ -30,6 +29,7 @@ extern int subwindow;
 extern int win_x;
 extern int win_y;
 extern int lcmdline;
+extern int tradlayout;
 extern int sizeinfo;
 extern int mark;
 #ifdef	HAVEFLAGS
@@ -278,10 +278,11 @@ struct stat *stp1, *stp2;
 		if (!n || n == 2) {
 			locate(0, L_CMDLINE);
 			putterm(l_clear);
-			putch2('[');
 			cp = SAMEF_K;
-			kanjiputs2(dest, n_column - (int)strlen(cp) - 1, -1);
+			i = (int)strlen(cp) - (sizeof("%.*s") - 1);
+			cp = asprintf3(cp, n_column - i, dest);
 			kanjiputs(cp);
+			free(cp);
 		}
 		if (!n) {
 			str[0] = UPDAT_K;
@@ -395,7 +396,7 @@ char *path;
 int mode;
 {
 	char *cp, *str[4];
-	int val[4];
+	int len, val[4];
 #if	MSDOS
 
 	if (Xaccess(path, mode) >= 0) return(0);
@@ -455,10 +456,11 @@ int mode;
 	if (removepolicy > 0) return(removepolicy - 2);
 	locate(0, L_CMDLINE);
 	putterm(l_clear);
-	putch2('[');
 	cp = DELPM_K;
-	kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
+	len = (int)strlen(cp) - (sizeof("%.*s") - 1);
+	cp = asprintf3(cp, n_column - len, path);
 	kanjiputs(cp);
+	free(cp);
 	str[0] = ANYES_K;
 	str[1] = ANNO_K;
 	str[2] = ANALL_K;
@@ -599,9 +601,7 @@ char *path;
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
 		locate(0, L_CMDLINE);
 		putterm(l_clear);
-		putch2('[');
-		kanjiputs2(path, n_column - 2, -1);
-		putch2(']');
+		cprintf2("[%.*k]", n_column - 2, path);
 		if (yesno(FOUND_K)) {
 			destpath = strdup2(path);
 			return(-2);
@@ -622,8 +622,8 @@ char *path;
 	return(0);
 }
 
-static VOID NEAR showattr(listp, attr, y)
-namelist *listp;
+static VOID NEAR showattr(namep, attr, y)
+namelist *namep;
 attrib_t *attr;
 int y;
 {
@@ -631,7 +631,7 @@ int y;
 	char buf[WMODE + 1];
 	int x1, x2, w;
 
-	tm = localtime(&(listp -> st_mtim));
+	tm = localtime(&(namep -> st_mtim));
 	if (isbestomit()) {
 		x1 = n_column / 2 - 16;
 		x2 = n_column / 2 - 3;
@@ -649,9 +649,7 @@ int y;
 	locate(0, ++y);
 	putterm(l_clear);
 	locate(x1, y);
-	putch2('[');
-	kanjiputs2(listp -> name, w, 0);
-	putch2(']');
+	cprintf2("[%-*.*k]", w, w, namep -> name);
 	locate(x2 + 3, y);
 	kanjiputs(TOLD_K);
 	locate(x2 + 13, y);
@@ -662,11 +660,11 @@ int y;
 	locate(x1, y);
 	kanjiputs(TMODE_K);
 	locate(x2, y);
-	putmode(buf, listp -> st_mode);
-	cputs2(&(buf[1]));
+	putmode(buf, namep -> st_mode, 1);
+	cputs2(buf);
 	locate(x2 + 10, y);
-	putmode(buf, attr -> mode);
-	cputs2(&(buf[1]));
+	putmode(buf, attr -> mode, 1);
+	cputs2(buf);
 
 #ifdef	HAVEFLAGS
 	locate(0, ++y);
@@ -674,7 +672,7 @@ int y;
 	locate(x1, y);
 	kanjiputs(TFLAG_K);
 	locate(x2, y);
-	putflags(buf, listp -> st_flags);
+	putflags(buf, namep -> st_flags);
 	cputs2(buf);
 	locate(x2 + 10, y);
 	putflags(buf, attr -> flags);
@@ -705,8 +703,8 @@ int y;
 	putterm(l_clear);
 }
 
-int inputattr(listp, flag)
-namelist *listp;
+int inputattr(namep, flag)
+namelist *namep;
 int flag;
 {
 	struct tm *tm;
@@ -725,16 +723,16 @@ int flag;
 	if (yy <= L_TITLE) yy = L_TITLE + 1;
 	xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
 
-	attr.mode = listp -> st_mode;
+	attr.mode = namep -> st_mode;
 #ifdef	HAVEFLAGS
-	attr.flags = listp -> st_flags;
+	attr.flags = namep -> st_flags;
 #endif
-	tm = localtime(&(listp -> st_mtim));
+	tm = localtime(&(namep -> st_mtim));
 	snprintf2(attr.timestr[0], sizeof(attr.timestr[0]), "%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	snprintf2(attr.timestr[1], sizeof(attr.timestr[1]), "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-	showattr(listp, &attr, yy);
+	showattr(namep, &attr, yy);
 	y = ymin = (flag & 1) ? 0 : WMODELINE;
 	ymax = (flag & 2) ? WMODELINE + 1 : 0;
 	x = 0;
@@ -836,7 +834,7 @@ int flag;
 				while (yy + WMODELINE + 5 > n_line - 1) yy--;
 				if (yy <= L_TITLE) yy = L_TITLE + 1;
 				xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
-				showattr(listp, &attr, yy);
+				showattr(namep, &attr, yy);
 				break;
 			case ' ':
 #ifdef	HAVEFLAGS
@@ -869,8 +867,8 @@ int flag;
 				attr.mode ^= tmp;
 #endif
 				locate(xx, yy + y + 2);
-				putmode(buf, attr.mode);
-				cputs2(&(buf[1]));
+				putmode(buf, attr.mode, 1);
+				cputs2(buf);
 				break;
 			default:
 				break;
@@ -910,11 +908,11 @@ int flag;
 #endif
 	attrtime = (flag & 2) ? timelocal2(tm) : (time_t)-1;
 	if (flag == 3) {
-		if (attrmode == listp -> st_mode) attrmode = 0xffff;
+		if (attrmode == namep -> st_mode) attrmode = 0xffff;
 #ifdef	HAVEFLAGS
-		if (attrflags == listp -> st_flags) attrflags = 0xffffffff;
+		if (attrflags == namep -> st_flags) attrflags = 0xffffffff;
 #endif
-		if (attrtime == listp -> st_mtim) attrtime = (time_t)-1;
+		if (attrtime == namep -> st_mtim) attrtime = (time_t)-1;
 	}
 	return(1);
 }
@@ -1031,10 +1029,8 @@ int verbose;
 	if (verbose) {
 		locate(0, L_CMDLINE);
 		putterm(l_clear);
-		putch2('[');
 		cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
-		kanjiputs2(cp, n_column - 2, -1);
-		putch2(']');
+		cprintf2("[%.*k]", n_column - 2, cp);
 		tflush();
 	}
 #ifdef	FAKEUNINIT
@@ -1080,9 +1076,7 @@ int verbose;
 		if (verbose) {
 			locate(0, L_CMDLINE);
 			putterm(l_clear);
-			putch2('[');
-			kanjiputs2(cp, n_column - 2, -1);
-			putch2(']');
+			cprintf2("[%.*k]", n_column - 2, cp);
 			tflush();
 		}
 	}

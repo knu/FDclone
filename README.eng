@@ -1,9 +1,9 @@
 ############################################################
 #
-#	About FDclone Ver. 2.04
+#	About FDclone Ver. 2.05
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Oct 15, 2003
+#	Dec 3, 2003
 #
 ############################################################
 
@@ -61,7 +61,7 @@ mkmfsed.c	sed script generator for filtering Makefile
 kanjicnv.c	simple kanji code converter
 mkfunkno.c	command serial number generator
 expfunc.c	shell function expander (for obsolete /bin/sh)
-mkunitbl.c	UNICODE transfer table generator
+mkunitbl.c	UNICODE translation table generator
 mkmfsedg.sed	sed script filtering Makefile for djgpp v1.xx
 mkmfsedd.sed	sed script filtering Makefile for djgpp v2.xx
 mkmfdosl.sed	sed script filtering Makefile for LSI C-86 3.5
@@ -79,10 +79,13 @@ makefile.b98	Makefile for Borland C++ on PC-98x1
 main.c		FDclone main source
 term.c		termcap library source
 term.h		header for term.c
+printf.c	formatted printing module
+printf.h	header for printf.c
 pathname.c	pathname operation module
 pathname.h	header for pathname.c
 system.c	/bin/sh compatible system(3) module
 system.h	header for system.c
+posixsh.c	POSIX based builtin commands used in system.c
 doscom.c	COMMAND.COM builtin commands used in system.c
 dosdisk.c	floppy drive driver
 dosdisk.h	header for dosdisk.c

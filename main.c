@@ -7,7 +7,6 @@
 #include <ctype.h>
 #include <signal.h>
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kanji.h"
 #include "version.h"
@@ -58,6 +57,7 @@ extern int maxarchive;
 extern char fullpath[];
 extern char *histfile;
 extern char *helpindex[];
+extern int tradlayout;
 extern int sizeinfo;
 extern int subwindow;
 extern int win_x;
@@ -96,7 +96,7 @@ extern char *unitblpath;
 #endif
 
 #if	MSDOS && !defined (PROTECTED_MODE)
-static harderr_t far criticalerror __P_((u_short, u_short, u_short far *));
+static harderr_t far criticalerror __P_((u_int, u_int, u_short far *));
 #endif
 static VOID NEAR signalexit __P_((int));
 #ifdef	SIGALRM
@@ -214,7 +214,7 @@ static int winched = 0;
 #if	MSDOS && !defined (PROTECTED_MODE)
 /*ARGSUSED*/
 static harderr_t far criticalerror(deverr, errval, devhdr)
-u_short deverr, errval;
+u_int deverr, errval;
 u_short far *devhdr;
 {
 	if ((deverr & 0x8800) == 0x0800) _hardresume(_HARDERR_FAIL);
@@ -241,7 +241,7 @@ char *s;
 	if (errno) perror2(s);
 	else {
 		fputs(s, stderr);
-		fputc('\n', stderr);
+		fputnl(stderr);
 	}
 	inittty(1);
 	keyflush();
@@ -278,7 +278,7 @@ int sig;
 	endterm();
 	inittty(1);
 	signal2(sig, SIG_DFL);
-	kill(getpid(), sig);
+	VOID_C kill(getpid(), sig);
 }
 
 #ifdef	SIGALRM
@@ -468,9 +468,8 @@ int xmax, ymax;
 			cputs2(cp);
 			putterm(end_standout);
 		}
-		cputs2("\r\n");
 		putterm(t_bell);
-		tflush();
+		cputnl();
 		keyflush();
 		if (kbhit2(1000000L) && getkey2(0) == K_ESC) {
 			errno = 0;
@@ -519,7 +518,7 @@ static int printtime(VOID_A)
 		timersec = CLOCKUPDATE;
 	}
 	if (showsecond || timersec == CLOCKUPDATE) {
-#ifdef	DEBUG
+# ifdef	DEBUG
 		_mtrace_file = "localtime(start)";
 		tm = localtime(&now);
 		if (_mtrace_file) _mtrace_file = NULL;
@@ -527,9 +526,9 @@ static int printtime(VOID_A)
 			_mtrace_file = "localtime(end)";
 			malloc(0);	/* dummy malloc */
 		}
-#else
+# else
 		tm = localtime(&now);
-#endif
+# endif
 		today[0] = tm -> tm_year;
 		today[1] = tm -> tm_mon;
 		today[2] = tm -> tm_mday;
@@ -549,7 +548,7 @@ static int printtime(VOID_A)
 		}
 	}
 	timersec--;
-#ifdef	SIGWINCH
+# ifdef	SIGWINCH
 	if (!winchok) winchok++;
 	else if (winched) {
 		signal2(SIGWINCH, SIG_IGN);
@@ -559,12 +558,12 @@ static int printtime(VOID_A)
 		if (subwindow) ungetch2(K_CTRL('L'));
 		signal2(SIGWINCH, (sigcst_t)wintr);
 	}
-#endif
+# endif
 	signal2(SIGALRM, (sigcst_t)printtime);
 	errno = duperrno;
 	return(0);
 }
-#endif
+#endif	/* SIGALRM */
 
 int sigvecset(set)
 int set;
@@ -686,10 +685,11 @@ char *line;
 	else i = execpseudoshell(cp, 0, 1);
 	if (i) {
 		putterm(l_clear);
-		cprintf2("%s, line %d: %s\r\n", file, n, ILFNC_K);
+		cprintf2("%s, line %d: %s", file, n, ILFNC_K);
+		cputnl();
 		putterm(l_clear);
-		cprintf2("\t%s\r\n", line);
-		tflush();
+		cprintf2("\t%s", line);
+		cputnl();
 	}
 	free(command);
 	return((i) ? -1 : 0);
@@ -731,7 +731,8 @@ int exist;
 			free(tmp);
 			return(0);
 		}
-		cprintf2("%s: Not found\r\n", tmp);
+		cprintf2("%s: Not found", tmp);
+		cputnl();
 		free(tmp);
 		return(-1);
 	}
@@ -890,7 +891,7 @@ char *argv, *envp[];
 	cp = argv;
 #else
 	if (strdelim(argv, 0)) cp = argv;
-	else if ((cp = searchenv("PATH", envp))) cp = searchpath(argv, cp);
+	else if ((cp = searchenv("PATH", envp))) cp = searchexecpath(argv, cp);
 	if (!cp) progpath = strdup2(origpath);
 	else
 #endif
@@ -936,11 +937,11 @@ static VOID NEAR prepareexitfd(VOID_A)
 #  endif
 #  ifndef	_NOARCHIVE
 	if (origlaunchlist) {
-		freelaunch(origlaunchlist, origmaxlaunch);
+		freelaunchlist(origlaunchlist, origmaxlaunch);
 		free(origlaunchlist);
 	}
 	if (origarchivelist) {
-		freearch(origarchivelist, origmaxarchive);
+		freearchlist(origarchivelist, origmaxarchive);
 		free(origarchivelist);
 	}
 #  endif
@@ -964,6 +965,9 @@ static VOID NEAR prepareexitfd(VOID_A)
 # endif
 # ifndef	_NOROCKRIDGE
 	detranspath(NULL, NULL);
+# endif
+# if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+	discardunitable();
 # endif
 #endif	/* DEBUG */
 	if (*cwd) rawchdir(cwd);

@@ -5,7 +5,6 @@
  */
 
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "funcno.h"
 #include "kctype.h"
@@ -37,6 +36,7 @@ extern int win_y;
 extern char *destpath;
 extern char *histfile;
 extern int savehist;
+extern int tradlayout;
 extern int sizeinfo;
 extern char fullpath[];
 #ifndef	_NOORIGSHELL
@@ -141,6 +141,9 @@ static int no_operation __P_((char *));
 reg_t *findregexp = NULL;
 #ifndef	_NOWRITEFS
 int writefs = 0;
+#endif
+#if	FD >= 2
+int loopcursor = 0;
 #endif
 int internal_status = -2;
 bindtable bindlist[MAXBINDTABLE] = {
@@ -294,75 +297,146 @@ char *name;
 static int cur_up(arg)
 char *arg;
 {
-	int n;
+	int n, old;
 
-	if (filepos <= 0) return(0);
+	old = filepos;
 	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
-	if ((filepos -= n) < 0) filepos = 0;
-	return(2);
+	filepos -= n;
+#if	FD >= 2
+	if (loopcursor) {
+		int p;
+
+		p = FILEPERPAGE;
+		while (filepos < 0 || filepos / p < old / p)
+			filepos += p;
+		if (filepos >= maxfile) filepos = maxfile - 1;
+	}
+	else
+#endif
+	if (filepos < 0) filepos = 0;
+	return((filepos != old) ? 2 : 0);
 }
 
 static int cur_down(arg)
 char *arg;
 {
-	int n;
+	int n, old;
 
-	if (filepos >= maxfile - 1) return(0);
+	old = filepos;
 	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
-	if ((filepos += n) > maxfile - 1) filepos = maxfile - 1;
-	return(2);
+	filepos += n;
+#if	FD >= 2
+	if (loopcursor) {
+		int p;
+
+		p = FILEPERPAGE;
+		if (filepos >= maxfile) filepos = (filepos / p) * p;
+		while (filepos / p > old / p) {
+			filepos -= p;
+			if (filepos < 0) break;
+		}
+		if (filepos < 0) filepos = 0;
+	}
+	else
+#endif
+	if (filepos >= maxfile) filepos = maxfile - 1;
+	return((filepos != old) ? 2 : 0);
 }
 
 static int cur_right(arg)
 char *arg;
 {
-	int n;
+	int n, r, p, old;
 
+	old = filepos;
 	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
-	if (filepos + FILEPERROW * n < maxfile) filepos += FILEPERROW * n;
-	else if (filepos / FILEPERPAGE == (maxfile - 1) / FILEPERPAGE)
-		return(0);
+	r = FILEPERROW;
+	p = FILEPERPAGE;
+	filepos += r * n;
+
+#if	FD >= 2
+	if (loopcursor) {
+		if (filepos >= maxfile)
+			filepos = (filepos / p) * p + (old % r);
+		while (filepos / p > old / p) {
+			filepos -= p;
+			if (filepos < 0) break;
+		}
+		if (filepos < 0) filepos = 0;
+	}
+	else
+#endif
+	if (filepos < maxfile) /*EMPTY*/;
+	else if (old / p == (maxfile - 1) / p) filepos = old;
 	else {
-		filepos = ((maxfile - 1) / FILEPERROW) * FILEPERROW
-			+ filepos % FILEPERROW;
+		filepos = ((maxfile - 1) / r) * r + (old % r);
 		if (filepos >= maxfile) {
-			filepos -= FILEPERROW;
-			if (filepos / FILEPERPAGE
-			< (maxfile - 1) / FILEPERPAGE)
+			filepos -= r;
+			if (filepos / p < (maxfile - 1) / p)
 				filepos = maxfile - 1;
 		}
 	}
-	return(2);
+	return((filepos != old) ? 2 : 0);
 }
 
 static int cur_left(arg)
 char *arg;
 {
-	int n;
+	int n, r, old;
 
-	if (filepos < FILEPERROW) return(0);
+	old = filepos;
 	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
-	if (filepos - FILEPERROW * n >= 0) filepos -= FILEPERROW * n;
-	else filepos = filepos % FILEPERROW;
-	return(2);
+	r = FILEPERROW;
+	filepos -= r * n;
+
+#if	FD >= 2
+	if (loopcursor) {
+		int p;
+
+		p = FILEPERPAGE;
+		while (filepos < 0 || filepos / p < old / p)
+			filepos += p;
+		if (filepos >= maxfile) {
+			filepos = (maxfile - 1) / r * r + (old % r);
+			if (filepos >= maxfile) filepos -= r;
+		}
+	}
+	else
+#endif
+	if (filepos >= 0) /*EMPTY*/;
+	else filepos = old % r;
+	return((filepos != old) ? 2 : 0);
 }
 
 static int roll_up(arg)
 char *arg;
 {
-	int i;
+	int n, p, old;
 
-	i = (filepos / FILEPERPAGE + 1) * FILEPERPAGE;
-	if (i >= maxfile) return(warning_bell(arg));
-	filepos = i;
+	old = filepos;
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	p = FILEPERPAGE;
+	filepos = (filepos / p + n) * p;
+	if (filepos >= maxfile) {
+		filepos = old;
+		return(warning_bell(arg));
+	}
 	return(2);
 }
 
 static int roll_down(arg)
 char *arg;
 {
-	if (filepos < FILEPERPAGE) return(warning_bell(arg));
-	filepos = (filepos / FILEPERPAGE - 1) * FILEPERPAGE;
+	int n, p, old;
+
+	old = filepos;
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	p = FILEPERPAGE;
+	filepos = (filepos / p - n) * p;
+	if (filepos < 0) {
+		filepos = old;
+		return(warning_bell(arg));
+	}
 	return(2);
 }
 
@@ -471,15 +545,21 @@ char *arg;
 
 static VOID NEAR markcount(VOID_A)
 {
-	char buf[14 + 1];
-	int x;
+#ifndef	_NOTRADLAYOUT
+	if (istradlayout()) {
+		locate(TC_MARK, TL_PATH);
+		cprintf2("%<*d", TD_MARK, mark);
+		locate(TC_MARK + TD_MARK + TW_MARK, TL_PATH);
+		cprintf2("%<'*qd", TD_SIZE, marksize);
 
-	x = (isleftshift()) ? 1 : 0;
-	locate(C_MARK + 5 - x, L_STATUS);
-	cputs2(ascnumeric(buf, (off_t)mark, 4, 4));
+		return;
+	}
+#endif
+	locate(C_MARK + W_MARK, L_STATUS);
+	cprintf2("%<*d", D_MARK, mark);
 	if (sizeinfo) {
-		locate(C_SIZE + 5 - x, L_SIZE);
-		cputs2(ascnumeric(buf, marksize, 3, 14));
+		locate(C_SIZE + W_SIZE, L_SIZE);
+		cprintf2("%<'*qd", D_SIZE, marksize);
 	}
 }
 
@@ -786,7 +866,7 @@ char *file;
 	while ((buf = fgets2(fp, 0))) {
 		locate(0, i);
 		putterm(l_clear);
-		kanjiputs2(buf, n_column, -1);
+		cprintf2("%.*k", n_column, buf);
 		free(buf);
 		if (++i >= n_line - 1) {
 			i = 0;
@@ -847,7 +927,7 @@ static int NEAR execshell(VOID_A)
 	mode = termmode(0);
 	nl = stdiomode();
 	kanjifputs(SHEXT_K, stderr);
-	fputc('\n', stderr);
+	fputnl(stderr);
 #ifdef	_NOORIGSHELL
 	ret = system(sh);
 #else
@@ -1172,6 +1252,9 @@ char *arg;
 static int delete_file(arg)
 char *arg;
 {
+	char *cp;
+	int len;
+
 	removepolicy = 0;
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(1);
@@ -1179,7 +1262,10 @@ char *arg;
 	}
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
-		if (!yesno(DELFL_K, filelist[filepos].name)) return(1);
+		cp = DELFL_K;
+		len = (int)strlen(cp) - (sizeof("%.*s") - 1);
+		if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
+			return(1);
 		filepos = applyfile(rmvfile, NULL);
 	}
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
@@ -1189,9 +1275,14 @@ char *arg;
 static int delete_dir(arg)
 char *arg;
 {
+	char *cp;
+	int len;
+
 	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
 		return(warning_bell(arg));
-	if (!yesno(DELDR_K, filelist[filepos].name)) return(1);
+	cp = DELDR_K;
+	len = (int)strlen(cp) - (sizeof("%.*s") - 1);
+	if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name)) return(1);
 	removepolicy = 0;
 #ifndef	NOSYMLINK
 	if (islink(&(filelist[filepos]))) {

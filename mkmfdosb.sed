@@ -21,8 +21,8 @@ s:__LN__:copy /y:
 s:__INSTSTRIP__::
 s:__CC__:bcc:
 s:__HOSTCC__:$(CC):
-s:__CCOPTIONS__:-O -N -d -w-par -w-pia:
-s:__HOSTCCOPTIONS__:-O -N -d -w-par -w-pia:
+s:__CCOPTIONS__:-O -N -d -w-par -w-rch -w-ccc -w-pia:
+s:__HOSTCCOPTIONS__:-O -N -d -w-par -w-rch -w-ccc -w-pia:
 s:__FDSETSIZE__::
 s:__MEM__:-ml:
 s:__SHMEM__:-mm:

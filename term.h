@@ -13,24 +13,6 @@
 #include <sys/stat.h>
 #endif
 
-#ifdef	USESTDARGH
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
-#ifndef	VOID_P
-#ifdef	NOVOID
-#define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
-#else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
-#endif
-#endif
-
 #ifndef	STDIN_FILENO
 #define	STDIN_FILENO	0
 #endif
@@ -183,14 +165,12 @@ extern int stdiomode __P_((VOID_A));
 extern int termmode __P_((int));
 extern int exit2 __P_((int));
 extern int getxy __P_((int *, int *));
-extern int vasprintf2 __P_((char **, CONST char *, va_list));
-extern int asprintf2 __P_((char **, CONST char *, ...));
 extern char *tparamstr __P_((char *, int, int));
 extern int getterment __P_((char *));
 #if	!MSDOS
 extern int freeterment __P_((VOID_A));
 extern int setkeyseq __P_((int, char *, int));
-extern char *getkeyseq __P_((int, int *));
+extern int getkeyseq __P_((keyseq_t *));
 extern keyseq_t *copykeyseq __P_((keyseq_t *));
 extern int freekeyseq __P_((keyseq_t *));
 #endif
@@ -205,7 +185,6 @@ extern int cputs2 __P_((char *));
 extern int putterm __P_((char *));
 extern int putterms __P_((char *));
 #endif
-extern int cprintf2 __P_((CONST char *, ...));
 extern int kbhit2 __P_((u_long));
 extern int getch2 __P_((VOID_A));
 extern int getkey2 __P_((int));
@@ -214,6 +193,9 @@ extern int setscroll __P_((int, int));
 extern int locate __P_((int, int));
 extern int tflush __P_((VOID_A));
 extern char *getwsize __P_((int, int));
+extern int cprintf2 __P_((CONST char *, ...));
+extern int cputnl __P_((VOID_A));
+extern int kanjiputs __P_((char *));
 extern int chgcolor __P_((int, int));
 
 #ifndef	SENSEPERSEC

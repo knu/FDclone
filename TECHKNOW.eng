@@ -907,6 +907,8 @@ not implemented.
 	_NOEXTRACOPY	cannot use extra copy
 	_NOBROWSE	cannot use browse the builtin command
 	_NOEXTRAMACRO	cannot use %T, %M the macro in statements
+	_NOTRADLAYOUT	cacnot use the traditional screen layout
+	_NODOSCOMMAND	cannot use COMMAND.COM builtins on UNIX
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,
@@ -1126,7 +1128,7 @@ not include the last positional parameter. Since the last
 positional parameter holds the filename selected first, it
 is the host name in this case.
   The 11th line orders "Execute the same command as the last
-one instead of stepping the next, if the selected file is 
+one instead of stepping the next, if the selected file is
 a directory". Whenever you select any directory, rsh will be
 used.
   As a result, it is repeated that whenever you continue to

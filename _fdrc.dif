@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Wed Oct 15 00:00:00 2003
++++ _fdrc	Wed Dec  3 00:00:00 2003
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-113: preserve previous sort type
@@ -9,7 +9,7 @@
  
  # to set default display mode
  #	0: normal (Default)
-@@ -21,146 +21,338 @@
+@@ -21,146 +21,359 @@
  #	5: sym-link status &				invisible dot file
  #	6: 			file type symbol &	invisible dot file
  #	7: sym-link status &	file type symbol &	invisible dot file
@@ -98,6 +98,11 @@
  #	>= 1: display
 -#SECOND		=	0
 +#SECOND=0
++
++# whether if use the screen layout based on the traditional "FD"
++#	0: original layout (Default)
++#	>= 1: traditional layout
++#TRADLAYOUT=0
  
  # whether if show the info. of filesize
  #	0: not show (Default)
@@ -145,6 +150,11 @@
  #	vi: k, j, l, h, ...
 -#EDITMODE	=	emacs
 +#EDITMODE=emacs
++
++# whether if loop cursor moving within the same page
++#	0: not loop (Default)
++#	>= 1: loop
++#LOOPCURSOR=0
  
  # temporary directory where archive file is unpacked
  #	Default: /tmp
@@ -178,6 +188,11 @@
 +#	0: use (Default)
 +#	>= 1: not use
 +#DUMBSHELL=0
++
++# whether if hold the UNICODE translation table on memory
++#	0: not hold (Default)
++#	>= 1: hold
++#UNICODEBUFFER=0
  
  # language code type to display
  #	Default: No convert
@@ -190,6 +205,7 @@
 +#	ojis8, OJIS8: old 8bits JIS
 +#	ojunet, OJUNET: old ISO-2022-JP
 +#	utf8, UTF8: UTF-8
++#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
  #	eng, ENG, C: English
 -#LANGUAGE	=	""
 +#LANGUAGE=""
@@ -217,6 +233,7 @@
 +#	hex, HEX: HEX
 +#	cap, CAP: CAP
 +#	utf8, UTF8: UTF-8
++#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 +#FNAMEKCODE=""
 +
 +# directories on which language code type in filename is SJIS
@@ -262,6 +279,10 @@
 +# directories on which language code type in filename is UTF-8
 +#	Default: none
 +#UTF8PATH=""
++
++# directories on which language code type in filename is UTF-8 for Mac OS X
++#	Default: none
++#UTF8MACPATH=""
 +
 +# directories on which language code type in filename is not converted
 +#	Default: none
@@ -398,7 +419,7 @@
  
  # archiver definition
  #(Default)
-@@ -196,22 +388,52 @@
+@@ -196,22 +409,52 @@
  #bind '{'	ROLL_UP
  #bind '}'	ROLL_DOWN
  #bind '~'	"cd ~%N%K"
@@ -461,7 +482,7 @@
  #}
  
  # MS-DOS drive definition
-@@ -220,7 +442,7 @@
+@@ -220,7 +463,7 @@
  
  # alias definition
  #(Example)

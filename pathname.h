@@ -121,21 +121,9 @@ typedef u_short	gid_t;
 #endif
 
 #ifdef	USEPID_T
-typedef	pid_t		p_id_t;
+typedef pid_t		p_id_t;
 # else
-typedef	long		p_id_t;
-#endif
-
-#ifndef	VOID_P
-#ifdef	NOVOID
-#define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
-#else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
-#endif
+typedef long		p_id_t;
 #endif
 
 #if	defined (SIGARGINT) || defined (NOVOID)
@@ -212,7 +200,6 @@ extern int isdotdir __P_((char *));
 extern char *isrootdir __P_((char *));
 extern char *getbasename __P_((char *));
 extern char *getshellname __P_((char *, int *, int *));
-extern char *long2str __P_((char *, long, int));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));
@@ -222,7 +209,7 @@ extern char **evalwild __P_((char *));
 hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, char *, char *));
-extern char *searchpath __P_((char *, char *));
+extern char *searchexecpath __P_((char *, char *));
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 extern char *finddupl __P_((char *, int, char **));
 extern int completepath __P_((char *, int, int, char ***, int));
@@ -231,6 +218,7 @@ extern char *findcommon __P_((int, char **));
 extern char *catvar __P_((char *[], int));
 extern int countvar __P_((char **));
 extern VOID freevar __P_((char **));
+extern char **duplvar __P_((char **, int));
 extern int parsechar __P_((char *, int, int, int, int *, int *));
 #if	defined (FD) && !defined (NOUID)
 extern uidtable *finduid __P_((uid_t, char *));
@@ -241,7 +229,9 @@ extern VOID freeidlist __P_((VOID_A));
 # endif
 #endif	/* FD && !NOUID */
 extern char *gethomedir __P_((VOID_A));
+#ifndef	MINIMUMSHELL
 extern int evalhome __P_((char **, int, char **));
+#endif
 extern char *evalarg __P_((char *, int, int, int));
 extern int evalifs __P_((int, char ***, char *));
 extern int evalglob __P_((int, char ***, int));

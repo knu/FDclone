@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2003 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.04c 10/15/03
+.\" @(#)fd.1   2.05 12/03/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "October 15, 2003"
+.TH FD 1 "December 3, 2003"
 .de sh
 .br
 .PP
@@ -1536,6 +1536,9 @@ option in
 .IR file ,
 the argument file is referred recursively.
 .IP "\fBcd\fP [\fB\-LP\fP] [\fIdir\fR]"
+.PD 0
+.IP "\fBchdir\fP [\fB\-LP\fP] [\fIdir\fR]"
+.PD
 Change the current directory in
 .B fd
 to
@@ -1564,10 +1567,6 @@ the
 option for
 .B set
 the builtin command is effective.
-.IP "\fBchdir\fP [\fIdir\fR]"
-Same as
-.BR cd .
-.B (DOS)
 .IP "\fBcheckid\fP [\fIfile\fR .\|.\|.]"
 Calculate the unique ID of the specified file and display it,
 according to the MD5 algorithm in RFC1321.
@@ -1583,7 +1582,6 @@ Since this algorithm is guaranteed to be secure,
 it is available to confirm the identity of files.
 .IP "\fBcls\fP"
 Clear the screen.
-.B (DOS)
 .IP "\fBcommand\fP [\fB\-p\fP | \fB\-v\fP | \fB\-V\fP] \fIarg\fR .\|.\|."
 Execute
 .I arg
@@ -1626,7 +1624,7 @@ it resumes the next iteration in the loop
 .I n
 - 1 levels
 out of the loop.
-.IP "\fBcopy\fP [\fB/ABVY\-Y\fP] \fIsrc\fR [\fB/AB\fP] [\fB\+\fP \fIsrc2\fR [\fB/AB\fP] [\fB\+\fP .\|.\|.]] [\fIdest\fR [\fB/AB\fP]]"
+.IP "\fBcopy\fP [\fB\-ABVY\-Y\fP] \fIsrc\fR [\fB\-AB\fP] [\fB\+\fP \fIsrc2\fR [\fB\-AB\fP] [\fB\+\fP .\|.\|.]] [\fIdest\fR [\fB\-AB\fP]]"
 Copy the file indicated by
 .I src
 into the file or the directory indicated by
@@ -1649,52 +1647,61 @@ those files are concatenated and copied.
 When you use the wildcard,
 they are copied one by one in case that the destination is a directory,
 and they are concatenated in case that the destination is a file.
-.B (DOS)
 
 When you specify
-.BR /A ,
+.BR \-A ,
 it is treated as the ASCII text file.
 When you specify
-.BR /B ,
+.BR \-B ,
 it is treated as the binary file.
 When you specify
-.BR /V ,
+.BR \-V ,
 it is verified to copy.
 When you specify
-.BR /Y ,
+.BR \-Y ,
 it doesn't prompts for confirming to overwrite into the destination.
 When you specify
-.BR /\-Y,
+.BR \-\-Y ,
 it prompts for confirmation before overwriting into the destination.
-.IP "\fBdel\fP [\fB/P\fP] \fIfile\fR"
+
+(MS-DOS version requires to use
+.B /
+instead of
+.B \-
+as an option prefix for compatibility with COMMAND.COM.)
+.IP "\fBdel\fP [\fB\-P\fP] \fIfile\fR"
 .PD 0
-.IP "\fBerase\fP [\fB/P\fP] \fIfile\fR"
+.IP "\fBerase\fP [\fB\-P\fP] \fIfile\fR"
 .PD
 Delete the files indicated by
 .IR file .
 You can specify multiple files by using wildcard.
-.B (DOS)
 
 When you specify
-.BR /P ,
+.BR \-P ,
 it prompts for confirmation before deleting files.
-.IP "\fBdir\fP [\fB/\fP[\fB\-\fP]\fBPWSBLV4\fP] [\fB/A\fP[\fBDRHSA\-\fP]] [\fB/O\fP[\fBNSEDGA\-\fP]] [\fIdir\fR]"
+
+(MS-DOS version requires to use
+.B /
+instead of
+.B \-
+as an option prefix for compatibility with COMMAND.COM.)
+.IP "\fBdir\fP [\fB\-\fP[\fB\-\fP]\fBPWSBLV4\fP] [\fB\-A\fP[\fBDRHSA\-\fP]] [\fB\-O\fP[\fBNSEDGA\-\fP]] [\fIdir\fR]"
 List files and sub directories in the directory indicated by
 .IR dir .
 If
 .I dir
 is omitted,
 the information in the the current directory is listed.
-.B (DOS)
 
 When you specify
-.BR /P ,
+.BR \-P ,
 it prompts for every screen.
 When you specify
-.BR /W ,
+.BR \-W ,
 it is listed in the wide view.
 When you specify
-.BR /A ,
+.BR \-A ,
 it lists only the files
 which have the attribute indicated by the trailing character.
 .RS 20
@@ -1707,7 +1714,7 @@ which have the attribute indicated by the trailing character.
 .RE
 .RS
 When you specify
-.BR /O ,
+.BR \-O ,
 it sorts with the sorted type indicated by the trailing character.
 .RE
 .RS 20
@@ -1721,23 +1728,29 @@ it sorts with the sorted type indicated by the trailing character.
 .RE
 .RS
 When you specify
-.BR /S ,
+.BR \-S ,
 it lists files in all sub directories.
 When you specify
-.BR /B ,
+.BR \-B ,
 it displays only names of files and directories.
 When you specify
-.BR /L ,
+.BR \-L ,
 it uses lowercase.
 When you specify
-.BR /V ,
+.BR \-V ,
 it lists the verbose information.
 When you specify
-.BR /4 ,
+.BR \-4 ,
 it displays year with 4 digits.
 And you can prefix
 .B \-
 to any option letter to override the option.
+
+(MS-DOS version requires to use
+.B /
+instead of
+.B \-
+as an option prefix for compatibility with COMMAND.COM.)
 .RE
 .IP "\fBdirs\fP"
 Display the list of the current directory stack.
@@ -1769,7 +1782,6 @@ the current job is removed from the shell control.
 .IP "\fBdtype\fP \fIfile\fR"
 Display the contents of the file indicated by
 .IR file .
-.B (DOS)
 .IP "\fBecho\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
 Echo
 .I arg
@@ -2316,7 +2328,6 @@ the pattern.
 .PD
 Create the directory
 .IR dir .
-.B (DOS)
 .IP "\fBnewgrp\fP [\fIarg .\|.\|.\fR]"
 Execute
 .BR newgrp (1)
@@ -2495,7 +2506,6 @@ all of the readonly internal variables are listed.
 Delete the directory
 .IR dir .
 You cannot delete the non-empty directory.
-.B (DOS)
 .IP "\fBren\fP \fIold\fR \fInew\fR"
 .PD 0
 .IP "\fBrename\fP \fIold\fR \fInew\fR"
@@ -2509,12 +2519,10 @@ You can specify the wildcard in
 and
 .I new
 to rename the multiple filenames all together.
-.B (DOS)
 .IP "\fBrem\fP [\fIarg\fR .\|.\|.]"
 No effect,
 same as
 .BR : .
-.B (DOS)
 .IP "\fBreturn\fP [\fIn\fR]"
 Return from a function with the return value specified by
 .IR n .
@@ -3774,7 +3782,11 @@ is converted into CAP.
 The Kanji code of the string enclosed by this macro
 is converted into UTF-8.
 .B (UNIX)
-.IP "\fB%JU\fP"
+.IP "\fB%JM\fP"
+The Kanji code of the string enclosed by this macro
+is converted into UTF-8 for Mac OS X.
+.B (UNIX)
+.IP "\fB%JA\fP"
 The Kanji code of the string enclosed by this macro
 is converted into the Kanji code
 which is used in the pathname indicated by the string.
@@ -4112,7 +4124,6 @@ the environment variable or \eCOMMAND.COM is used.
 Specify the default options used by
 .B copy
 the builtin command.
-.B (DOS)
 .IP "\fBDEFCOLUMNS\fP"
 Specify the columns displayed in the screen when
 .B fd
@@ -4151,7 +4162,6 @@ files.
 Specify the default options used by
 .B dir
 the builtin command.
-.B (DOS)
 .IP "\fBDIRHIST\fP"
 Specify the maximum number of the directory histories
 which can be referred by the directory input line.
@@ -4281,6 +4291,7 @@ etc. among them are the Kanji codes used in Samba.
 \fBHEX\fP, \fBhex\fP	HEX
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 default	no convert
 .fi
 .RE
@@ -4378,6 +4389,7 @@ etc. among them are the Kanji codes used in Samba.
 \fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
 \fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
 \fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 \fBENG\fP, \fBeng\fP, \fBC\fP	English (message only)
 default	no convert
 .fi
@@ -4395,6 +4407,12 @@ If you
 .B unset
 or reset this value,
 this variable will lose its special meaning to be treated as a general variable.
+.IP "\fBLOOPCURSOR\fP"
+Loop a cursor moving within the same page,
+when you move a cursor.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBMAIL\fP\(**"
 Specify the spool filename when the internal shell will check new mails.
 If
@@ -4636,6 +4654,27 @@ the builtin command is prior,
 then actual mask value is the logical OR of this value and
 .B umask
 value.
+.IP "\fBTRADLAYOUT\fP"
+Use the traditional screen layout based on the original "FD".
+In this layout,
+the file size information will be always displayed,
+whether
+.B SIZEINFO
+is set or not.
+When the screen width is less than
+.B 80
+columns,
+this specification is invalid.
+Any value except
+.B 0
+and null effects valid.
+.IP "\fBUNICODEBUFFER\fP"
+Hold the UNICODE translation table on memory.
+It will be fast to access the floppy drive and to translate from/to UTF-8.
+You should set this if you have enough memory.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBUSEGETCURSOR\fP"
 Use the VT100 compatible escape sequence getting the cursor position
 in order to get the terminal size.
@@ -4675,6 +4714,8 @@ the directory writing is quite forbidden.
 .IP "\fBOJUNETPATH\fP"
 .IP "\fBHEXPATH\fP"
 .IP "\fBCAPPATH\fP"
+.IP "\fBUTF8PATH\fP"
+.IP "\fBUTF8MACPATH\fP"
 .IP "\fBNOCONVPATH\fP"
 .PD
 Specify the Kanji code for filename per directory,

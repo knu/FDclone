@@ -93,17 +93,17 @@
 #endif	/* !DJGPP */
 
 typedef struct _dirdesc {
-	int	dd_id;
-	u_short	dd_fd;
+	int dd_id;
+	u_short dd_fd;
 #if	0
-	long	dd_loc;
-	long	dd_size;
-	long	dd_bsize;
+	long dd_loc;
+	long dd_size;
+	long dd_bsize;
 #endif
-	long	dd_off;
-	char	*dd_buf;
+	long dd_off;
+	char *dd_buf;
 
-	char	*dd_path;
+	char *dd_path;
 } DIR;
 
 #define	DID_IFNORMAL	000
@@ -111,25 +111,25 @@ typedef struct _dirdesc {
 #define	DID_IFLFN	002
 
 struct dirent {
-	long	d_off;
+	long d_off;
 #ifndef	_NODOSDRIVE
-	u_long	d_fileno;
-	u_short	d_reclen;
+	u_long d_fileno;
+	u_short d_reclen;
 #endif
-	char	d_name[MAXNAMLEN + 1];
+	char d_name[MAXNAMLEN + 1];
 
-	char	d_alias[14];
+	char d_alias[14];
 };
 
 struct utimbuf {
-	time_t	actime;
-	time_t	modtime;
+	time_t actime;
+	time_t modtime;
 };
 
 #ifdef	LSI_C
-extern	int utime __P_((CONST char *, CONST time_t[]));
+extern int utime __P_((CONST char *, CONST time_t[]));
 #else
-extern	int utime __P_((CONST char *, CONST struct utimbuf *));
+extern int utime __P_((CONST char *, CONST struct utimbuf *));
 #endif
 
 #endif	/* !_UNIXEMU_H */
