@@ -25,6 +25,7 @@
 	DEC	ULTRIX		(V4.x)
 	IBM	AIX		(3.x, 4.x)
 	Fujitsu	UXP/M		(4.1)
+	Fujitsu	UXP/DS		(V10, V20)
 	JCC	4.4BSD-Lite	(v1.0)
 		Linux		(2.x)
 		FreeBSD		(2.x)

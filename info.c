@@ -269,9 +269,10 @@ int code;
 	else {
 		int i;
 
-		for (i = 0; keycodelist[i]; i++)
+		for (i = 0; i < sizeof(keycodelist) / sizeof(int); i++)
 			if (code == keycodelist[i]) break;
-		if (keycodelist[i]) sprintf(buf, "%-7.7s", keystrlist[i]);
+		if (i < sizeof(keycodelist) / sizeof(int))
+			sprintf(buf, "%-7.7s", keystrlist[i]);
 		else if (code < ' ') sprintf(buf, "Ctrl-%c ", code + '@');
 		else if (code < 0x100) sprintf(buf, "'%c'    ", code);
 		else return(0);
@@ -298,7 +299,7 @@ int mode;
 	int i, j, c, x, y;
 
 	if (distributor && *distributor) {
-		i = n_column - strlen(distributor) - 26;
+		i = n_column - strlen(distributor) - 24;
 		locate(i, LHELP);
 		putch2('[');
 		putterm(t_standout);

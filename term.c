@@ -97,11 +97,10 @@ typedef	struct sgttyb	termioctl_t;
 #include "term.h"
 
 #define	MAXPRINTBUF	255
+#define	GETSIZE		"\033[0;999H\033[999B\033[6n"
 #define	SIZEFMT		"\033[%d;%dR"
 
-#if	MSDOS
-#define	GETSIZE		"\033[0;999H\033[999B\033[6n"
-#else	/* !MSDOS */
+#if	!MSDOS
 extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
@@ -113,7 +112,6 @@ extern int tputs __P_((char *, int, int (*)__P_((int))));
 #define	STDOUT		1
 #define	STDERR		2
 #define	TTYNAME		"/dev/tty"
-#define	GETSIZE		"\0337\033[r\033[999;999H\033[6n"
 
 #ifndef	PENDIN
 #define	PENDIN		0
@@ -199,6 +197,7 @@ int n_line = 0;
 int stable_standout = 0;
 char *t_init = NULL;
 char *t_end = NULL;
+char *t_scroll = NULL;
 char *t_keypad = NULL;
 char *t_nokeypad = NULL;
 char *t_normalcursor = NULL;
@@ -225,8 +224,8 @@ char *c_insert = NULL;
 char *c_delete = NULL;
 char *c_store = NULL;
 char *c_restore = NULL;
-char *c_home = NULL;
 char *c_locate = NULL;
+char *c_home = NULL;
 char *c_return = NULL;
 char *c_newline = NULL;
 char *c_scrollforw = NULL;
@@ -607,9 +606,15 @@ static int defaultterm(VOID_A)
 	n_lastcolumn = 80;
 	n_line = 24;
 #endif
+#ifdef	PC98
+	t_init = "\033[>1h";
+	t_end = "\033[>1l";
+#else
 	t_init = "";
 	t_end = "";
+#endif
 #if	MSDOS
+	t_scroll = "";
 	t_keypad = "";
 	t_nokeypad = "";
 	t_normalcursor = "\033[>5l";
@@ -618,6 +623,7 @@ static int defaultterm(VOID_A)
 	t_setcursor = "\033[s";
 	t_resetcursor = "\033[u";
 #else
+	t_scroll = "\033[%i%d;%dr";
 	t_keypad = "\033[?1h\033=";
 	t_nokeypad = "\033[?1l\033>";
 	t_normalcursor = "\033[?25h";
@@ -643,14 +649,16 @@ static int defaultterm(VOID_A)
 	l_delete = "\033[M";
 	c_insert = "";
 	c_delete = "";
+#ifdef	MSDOS
 	c_store = "\033[s";
 	c_restore = "\033[u";
-	c_home = "\033[H";
-#ifdef	MSDOS
 	c_locate = "\033[%d;%dH";
 #else
+	c_store = "\0337";
+	c_restore = "\0338";
 	c_locate = "\033[%i%d;%dH";
 #endif
+	c_home = "\033[H";
 	c_return = "\r";
 	c_newline = "\n";
 	c_scrollforw = "\n";
@@ -843,6 +851,7 @@ int getterment(VOID_A)
 	stable_standout = tgetflag("xs");
 	tgetstr2(&t_init, "ti");
 	tgetstr2(&t_end, "te");
+	tgetstr2(&t_scroll, "cs");
 	tgetstr2(&t_keypad, "ks");
 	tgetstr2(&t_nokeypad, "ke");
 	tgetstr2(&t_normalcursor, "ve");
@@ -869,8 +878,8 @@ int getterment(VOID_A)
 	tgetstr3(&c_delete, "dc", "DC");
 	tgetstr2(&c_store, "sc");
 	tgetstr2(&c_restore, "rc");
-	tgetstr2(&c_home, "ho");
 	tgetstr2(&c_locate, "cm");
+	tgetstr2(&c_home, "ho");
 	tgetstr2(&c_return, "cr");
 	tgetstr2(&c_newline, "nl");
 	tgetstr2(&c_scrollforw, "sf");
@@ -985,6 +994,7 @@ int initterm(VOID_A)
 	if (!(termflags & F_TERMENT)) getterment();
 	putterms(t_keypad);
 	putterms(t_init);
+	setscroll(-1, -1);
 	tflush();
 	termflags |= F_INITTERM;
 	return(0);
@@ -1180,6 +1190,13 @@ u_char c;
 	return(c);
 }
 
+/*ARGSUSED*/
+int setscroll(s, e)
+int s, e;
+{
+	return(0);
+}
+
 int locate(x, y)
 int x, y;
 {
@@ -1318,6 +1335,13 @@ u_char c;
 	return(c);
 }
 
+int setscroll(s, e)
+int s, e;
+{
+	if (t_scroll) putterms(tgoto(t_scroll, s, e));
+	return(0);
+}
+
 int locate(x, y)
 int x, y;
 {
@@ -1334,10 +1358,8 @@ int tflush(VOID_A)
 int getwsize(xmax, ymax)
 int xmax, ymax;
 {
-	FILE *fp;
 	char *size, buf[sizeof(SIZEFMT) + 4];
-	int x, y;
-	int i, fd;
+	int i, x, y;
 #ifdef	TIOCGWINSZ
 	struct winsize ws;
 #else
@@ -1362,18 +1384,14 @@ int xmax, ymax;
 #endif
 #endif
 
-	if ((x < 0 || y < 0)
-	&& !strncmp(termname + 1, "term", 4) && strchr("xkjhtm", *termname)) {
-		if (!(fp = fopen(TTYNAME, "r+"))) err2("Can't open terminal");
-		fd = fileno(fp);
-
+	if (x < 0 || y < 0) {
 		size = SIZEFMT;
 
-		write(fd, GETSIZE, sizeof(GETSIZE) - 1);
-		for (i = 0; (buf[i] = fgetc(fp)) != size[sizeof(SIZEFMT) - 2];
+		setscroll(-1, -1);
+		write(ttyio, GETSIZE, sizeof(GETSIZE) - 1);
+		for (i = 0; (buf[i] = getch2()) != size[sizeof(SIZEFMT) - 2];
 			i++);
 		buf[++i] = '\0';
-		fclose(fp);
 
 		if (getxy(buf, size, &y, &x) != 2) x = y = -1;
 	}

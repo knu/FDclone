@@ -33,6 +33,7 @@ static int seterrno __P_((u_short));
 #ifdef	DJGPP
 static int dos_putpath __P_((char *, int));
 #endif
+static char *duplpath __P_((char *));
 static long int21call __P_((__dpmi_regs *, struct SREGS *));
 #ifndef	_NODOSDRIVE
 static char *regpath __P_((char *, char *));
@@ -107,11 +108,11 @@ int ptr;
 
 	if (ptr < 0 || s[ptr] != _SC_) return(0);
 	if (--ptr < 0) return(1);
-	if (!ptr) return(!issjis1(s[0]));
+	if (!ptr) return(!issjis1((u_char)s[0]));
 
-	for (i = 0; s[i] && i < ptr; i++) if (issjis1(s[i])) i++;
+	for (i = 0; s[i] && i < ptr; i++) if (issjis1((u_char)s[i])) i++;
 	if (!s[i] || i > ptr) return(1);
-	return(!issjis1(s[i]));
+	return(!issjis1((u_char)s[i]));
 }
 #endif
 
@@ -134,6 +135,33 @@ int offset;
 	return(offset);
 }
 #endif
+
+static char *duplpath(path)
+char *path;
+{
+	static char buf[MAXPATHLEN + 1];
+	int i, j, ps;
+
+	i = j = ps = 0;
+	if (isalpha(path[0]) && path[1] == ':') {
+		buf[j++] = path[i++];
+		buf[j++] = path[i++];
+	}
+	if (path[i] == '\\') buf[j++] = path[i++];
+	for (; path[i]; i++) {
+		if (path[i] == '\\') ps = 1;
+		else {
+			if (ps) {
+				ps = 0;
+				buf[j++] = '\\';
+			}
+			buf[j++] = path[i];
+			if (issjis1((u_char)path[i])) buf[j++] = path[++i];
+		}
+	}
+	buf[j] = '\0';
+	return(buf);
+}
 
 static long int21call(regp, sregp)
 __dpmi_regs *regp;
@@ -289,6 +317,7 @@ char *path, *alias;
 	__dpmi_regs reg;
 	int i;
 
+	path = duplpath(path);
 	if ((i = supportLFN(path)) <= 0) {
 # ifndef	_NODOSDRIVE
 		if (i == -1) {
@@ -336,6 +365,7 @@ char *path, *resolved;
 	int i;
 
 #ifdef	NOLFNEMU
+	path = duplpath(path);
 	_fixpath(path, resolved);
 	for (i = 2; resolved[i]; i++) {
 		if (resolved[i] == '/') resolved[i] = _SC_;
@@ -346,6 +376,7 @@ char *path, *resolved;
 	struct SREGS sreg;
 	__dpmi_regs reg;
 
+	path = duplpath(path);
 	switch (supportLFN(path)) {
 		case 1:
 			reg.x.ax = 0x7160;
@@ -406,12 +437,14 @@ int iscreat;
 	char *cp;
 
 # ifdef	_NODOSDRIVE
+	path = duplpath(path);
 	if (supportLFN(path) < 0) return(path);
 	if ((cp = shortname(path, alias))) return(cp);
 	if (!iscreat || errno != ENOENT) return(NULL);
 # else	/* !_NODOSDRIVE */
 	int i;
 
+	path = duplpath(path);
 	if ((i = supportLFN(path)) < -1) return(path);
 	if ((cp = shortname(path, alias))) return(cp);
 	else if (i < 0 && errno == EACCES) return(path);
@@ -583,7 +616,10 @@ u_short attr;
 	__dpmi_regs reg;
 # ifdef	DJGPP
 	int i;
+# endif
 
+	path = duplpath(path);
+# ifdef	DJGPP
 	i = strlen(path) + 1;
 	sreg.ds = __tb_segment;
 	reg.x.dx = __tb_offset + i;
@@ -641,13 +677,14 @@ char *path;
 struct lfnfind_t *result;
 u_short attr;
 {
-# ifdef	DJGPP
-	int i;
-# endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	long fd;
+# ifdef	DJGPP
+	int i;
+# endif
 
+	path = duplpath(path);
 	reg.x.ax = 0x714e;
 	reg.x.cx = attr;
 	reg.x.si = DATETIMEFORMAT;
@@ -895,8 +932,11 @@ char *from, *to;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
+	char buf[MAXPATHLEN + 1];
 	int f, t;
 
+	from = strcpy(buf, duplpath(from));
+	to = duplpath(to);
 	f = supportLFN(from);
 	t = supportLFN(to);
 # ifndef	_NODOSDRIVE
@@ -935,7 +975,10 @@ int mode;
 	__dpmi_regs reg;
 # ifndef	_NODOSDRIVE
 	int i;
+# endif
 
+	path = duplpath(path);
+# ifndef	_NODOSDRIVE
 	if ((i = supportLFN(path)) == -1) {
 		char buf[MAXPATHLEN + 1];
 
@@ -1146,7 +1189,10 @@ int mode;
 # ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN + 1];
 	int i;
+# endif
 
+	path = duplpath(path);
+# ifndef	_NODOSDRIVE
 	if ((i = supportLFN(path)) == -1) path = preparefile(path, buf, 0);
 	if (i <= 0) reg.x.ax = 0x4301;
 # else	/* !_NODOSDRIVE */

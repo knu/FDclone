@@ -71,6 +71,13 @@ extern int ansicolor;
 		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
 		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0},\
 		{9, 255, 255}, 1
+#ifdef	UXPDS
+#define	PM_TAR	0, 0,\
+		{0, 1, 1, 2, 6, 3, 4, 5, 7},\
+		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
+		{128 + 10, '/', 0, 0, 0, 0, 0, 0, 0},\
+		{10, 255, 255}, 1
+#else	/* !UXPDS */
 #ifdef	TARUSESPACE
 #define	PM_TAR	0, 0,\
 		{0, 1, 1, 2, 6, 3, 4, 5, 7},\
@@ -84,6 +91,7 @@ extern int ansicolor;
 		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0},\
 		{9, 255, 255}, 1
 #endif
+#endif	/* !UXPDS */
 #endif	/* !MSDOS */
 
 static int countfield __P_((char *, u_char [], int, int *));

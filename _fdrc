@@ -163,6 +163,26 @@ SHELL	=	/bin/sh
 #launch ".taz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".tgz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 
+# examples for UXP/DS V10 tar
+#launch ".tar"	"tar tvf 2>&1"			0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar.Z"\
+#		"zcat %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar.gz"\
+#		"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".taZ"	"zcat %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".taz"	"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tgz"	"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+
+# examples for UXP/DS V20 tar
+#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar.Z"\
+#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar.gz"\
+#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+
 # example for LHa >=1.14
 #launch ".lzh"	"lha -lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
 

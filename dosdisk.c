@@ -288,6 +288,11 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0a", 2, 9, 80},
 	{'A', "/dev/rfd0a", 2, 8 + 100, 80},
 #endif
+#if	defined (UXPDS)
+	{'A', "/dev/fpd0", 2, 18, 80},
+	{'A', "/dev/fpd0", 2, 9, 80},
+	{'A', "/dev/fpd0", 2, 8 + 100, 80},
+#endif
 #if	defined (LINUX)
 	{'A', "/dev/fd0", 2, 18, 80},
 	{'A', "/dev/fd0", 2, 9, 80},
@@ -329,6 +334,20 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 # endif
 #endif
 	{'\0', NULL, 0, 0, 0}
+};
+devinfo mediadescr[] = {
+	{0xff, "2D-8SECT", 2, 8, 40},
+	{0xfe, "1D-8SECT", 1, 8, 40},
+	{0xfd, "2D-9SECT", 2, 9, 40},
+	{0xfc, "1D-9SECT", 1, 9, 40},
+	{0xfb, "2DD-8SECT", 2, 8 + 100, 80},
+	{0xf9, "2DD-9SECT", 2, 9, 80},
+	{0xf9, "2HD-15SECT", 2, 15, 80},
+	{0xf8, "HDD", 0, 0, 0},
+	{0xf0, "2HD-18SECT", 2, 18, 80},
+	{0x02, "2HD-15SECT", 2, 15, 80},
+	{0x01, "2HD-8SECT", 2, 8, 77},
+	{0x00, NULL, 0, 0, 0}
 };
 int lastdrive = -1;
 #endif	/* !MSDOS */

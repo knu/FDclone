@@ -311,6 +311,20 @@ typedef	long	off_t;
 #define	USESTATVFSH
 #define	USEMNTTABH
 #define	USEUTIME
+#define	USEMKTIME
+#endif
+
+#if	defined (__uxps__)
+#define	SVR4
+#define	OSTYPE			"UXPDS"
+#define	CODEEUC
+#define	REGEXPLIB		"-lgen"
+#define	NODNAMLEN
+#define	NOTMGMTOFF
+#define	USESTATVFSH
+#define	USEMNTTABH
+#define	USEUTIME
+#define	USEMKTIME
 #endif
 
 #if	defined (mips) && !defined (OSTYPE)
