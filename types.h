@@ -5,6 +5,7 @@
  */
 
 #ifdef	NOUID_T
+#undef	NOUID_T
 typedef u_short	uid_t;
 typedef u_short	gid_t;
 #endif
@@ -93,6 +94,10 @@ typedef u_short	gid_t;
 #ifndef	BITSPERBYTE
 #define	BITSPERBYTE	8
 #endif
+#define	MINTYPE(t)	((t)(-1L << (BITSPERBYTE * sizeof(t) - 1)))
+#define	MAXTYPE(t)	((t)~MINTYPE(t))
+#define	MAXNUMCOLS	10
+#define	MAXCOLSCOMMA(d)	(MAXNUMCOLS + (MAXNUMCOLS / (d)))
 
 typedef struct _namelist {
 	char *name;
@@ -152,6 +157,12 @@ typedef struct _bindtable {
 	u_char d_func;
 } bindtable;
 
+typedef struct _keymaptable {
+	short key;
+	u_char len;
+	char *str;
+} keymaptable;
+
 typedef struct _functable {
 	int (*func)__P_((char *));
 	char *ident;
@@ -164,14 +175,15 @@ typedef struct _functable {
 	u_char stat;
 } functable;
 
-#define	REWRITE	001
-#define	RELIST	002
-#define	REWIN	003
-#define	REWRITEMODE	003
-#define	RESCRN	004
-#define	KILLSTK	010
-#define	ARCH	020
-#define	NO_FILE	040
+#define	REWRITE		0001
+#define	RELIST		0002
+#define	REWIN		0003
+#define	REWRITEMODE	0003
+#define	RESCRN		0004
+#define	KILLSTK		0010
+#define	ARCH		0020
+#define	NO_FILE		0040
+#define	RESTRICT	0100
 
 #ifndef	_NOARCHIVE
 #define	MAXLAUNCHFIELD	9
@@ -286,6 +298,7 @@ typedef struct _macrostat {
 #define	F_TOSFN		020
 #define	F_ISARCH	040
 
+#ifdef	_NOORIGSHELL
 typedef struct _aliastable {
 	char *alias;
 	char *comm;
@@ -295,9 +308,10 @@ typedef struct _userfunctable {
 	char *func;
 	char **comm;
 } userfunctable;
+#endif	/* _NOORIGSHELL */
 
 typedef struct _builtintable {
-	int (*func)__P_((int, char *[], int));
+	int (NEAR *func)__P_((int, char *[]));
 	char *ident;
 } builtintable;
 

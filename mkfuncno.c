@@ -12,6 +12,7 @@
 #include "functabl.h"
 
 
+/*ARGSUSED*/
 int main(argc, argv)
 int argc;
 char *argv[];
@@ -38,6 +39,7 @@ char *argv[];
 		while ((len += 8) < 16) fputc('\t', fp);
 		fprintf(fp, "%d\n", i);
 	}
+	fprintf(fp, "\n#define\tFUNCLISTSIZ\t%d\n", i);
 
 	if (fp != stdout) fclose(fp);
 

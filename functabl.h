@@ -19,14 +19,15 @@
 			| (((oct) >> 14) & 0200))
 
 functable funclist[] = {
-	/*						   +-------- NO_FILE
-	 *						   |+------- ARCH
-	 *						   ||+------ KILLSTK
-	 *						   |||+----- RESCRN
-	 *						   ||||++-- 01: REWRITE
-	 *						   ||||||   10: RELIST
-	 *						   ||||||   11: REWIN
-	 *						   ||||||   */
+	/*						  +--------- RESTRICT
+	 *						  |+-------- NO_FILE
+	 *						  ||+------- ARCH
+	 *						  |||+------ KILLSTK
+	 *						  ||||+----- RESCRN
+	 *						  |||||++-- 01: REWRITE
+	 *						  |||||||   10: RELIST
+	 *						  |||||||   11: REWIN
+	 *						  |||||||   */
 	_TBL_(cur_up,		"CUR_UP",	CUP_H,	000010000),
 	_TBL_(cur_down,		"CUR_DOWN",	CDWN_H,	000010000),
 	_TBL_(cur_right,	"CUR_RIGHT",	CRIG_H,	000010000),
@@ -45,49 +46,49 @@ functable funclist[] = {
 	_TBL_(mark_file2,	"MARK_FILE2",	MRK2_H,	000010001),
 	_TBL_(mark_all,		"MARK_ALL",	MRKA_H,	000010010),
 	_TBL_(mark_reverse,	"MARK_REVERSE",	MRKR_H,	000010010),
-	_TBL_(in_dir,		"IN_DIR",	IND_H,	000011000),
-	_TBL_(out_dir,		"OUT_DIR",	OUTD_H,	000111000),
-	_TBL_(log_top,		"LOG_TOP",	LOGT_H,	000101000),
+	_TBL_(in_dir,		"IN_DIR",	IND_H,	001011000),
+	_TBL_(out_dir,		"OUT_DIR",	OUTD_H,	001111000),
+	_TBL_(log_top,		"LOG_TOP",	LOGT_H,	001101000),
 	_TBL_(reread_dir,	"REREAD_DIR",	READ_H,	000110000),
 	_TBL_(push_file,	"PUSH_FILE",	PUSH_H,	000000110),
 	_TBL_(pop_file,		"POP_FILE",	POP_H,	000000110),
-	_TBL_(log_dir,		"LOG_DIR",	LOGD_H,	000101000),
-	_TBL_(attr_file,	"ATTR_FILE",	ATTR_H,	000001110),
+	_TBL_(log_dir,		"LOG_DIR",	LOGD_H,	001101000),
+	_TBL_(attr_file,	"ATTR_FILE",	ATTR_H,	001001110),
 	_TBL_(execute_file,	"EXECUTE_FILE",	EXEF_H,	000011111),
 	_TBL_(info_filesys,	"INFO_FILESYS",	INFO_H,	000110010),
-	_TBL_(copy_file,	"COPY_FILE",	COPY_H,	000001000),
-	_TBL_(move_file,	"MOVE_FILE",	MOVE_H,	000001000),
-	_TBL_(delete_file,	"DELETE_FILE",	DELF_H,	000001000),
-	_TBL_(delete_dir,	"DELETE_DIR",	DELD_H,	000001000),
-	_TBL_(rename_file,	"RENAME_FILE",	RENM_H,	000001000),
-	_TBL_(make_dir,		"MAKE_DIR",	MKDR_H,	000101000),
+	_TBL_(copy_file,	"COPY_FILE",	COPY_H,	001001000),
+	_TBL_(move_file,	"MOVE_FILE",	MOVE_H,	001001000),
+	_TBL_(delete_file,	"DELETE_FILE",	DELF_H,	001001000),
+	_TBL_(delete_dir,	"DELETE_DIR",	DELD_H,	001001000),
+	_TBL_(rename_file,	"RENAME_FILE",	RENM_H,	001001000),
+	_TBL_(make_dir,		"MAKE_DIR",	MKDR_H,	001101000),
 	_TBL_(sort_dir,		"SORT_DIR",	SORT_H,	000010110),
 	_TBL_(execute_sh,	"EXECUTE_SH",	EXSH_H,	000111111),
 	_TBL_(find_file,	"FIND_FILE",	FNDF_H,	000111000),
 #ifndef	_NOWRITEFS
-	_TBL_(write_dir,	"WRITE_DIR",	WRIT_H,	000001000),
+	_TBL_(write_dir,	"WRITE_DIR",	WRIT_H,	001001000),
 #endif
 #ifndef	_NOTREE
-	_TBL_(tree_dir,		"TREE_DIR",	TREE_H,	000101110),
+	_TBL_(tree_dir,		"TREE_DIR",	TREE_H,	001101110),
 #endif
 #ifndef	_NOARCHIVE
-	_TBL_(backup_tape,	"BACKUP_TAPE",	BACK_H,	000011000),
+	_TBL_(backup_tape,	"BACKUP_TAPE",	BACK_H,	001011000),
 #endif
-	_TBL_(edit_file,	"EDIT_FILE",	EDIT_H,	000001000),
+	_TBL_(edit_file,	"EDIT_FILE",	EDIT_H,	001001000),
 	_TBL_(view_file,	"VIEW_FILE",	VIEW_H,	000010111),
 #ifndef	_NOARCHIVE
-	_TBL_(unpack_file,	"UNPACK_FILE",	UNPK_H,	000011000),
-	_TBL_(pack_file,	"PACK_FILE",	PACK_H,	000011000),
+	_TBL_(unpack_file,	"UNPACK_FILE",	UNPK_H,	001011000),
+	_TBL_(pack_file,	"PACK_FILE",	PACK_H,	001011000),
 #endif
 #ifndef	_NOTREE
-	_TBL_(tree_dir,		"LOG_TREE",	LGTR_H,	000101110),
-	_TBL_(copy_tree,	"COPY_TREE",	CPTR_H,	000001110),
-	_TBL_(move_tree,	"MOVE_TREE",	MVTR_H,	000001110),
+	_TBL_(tree_dir,		"LOG_TREE",	LGTR_H,	001101110),
+	_TBL_(copy_tree,	"COPY_TREE",	CPTR_H,	001001110),
+	_TBL_(move_tree,	"MOVE_TREE",	MVTR_H,	001001110),
 #ifndef	_NOARCHIVE
-	_TBL_(unpack_tree,	"UNPACK_TREE",	UPTR_H,	000011110),
+	_TBL_(unpack_tree,	"UNPACK_TREE",	UPTR_H,	001011110),
 #endif
 #endif	/* !_NOTREE */
-	_TBL_(find_dir,		"FIND_DIR",	FNDD_H,	000001110),
+	_TBL_(find_dir,		"FIND_DIR",	FNDD_H,	001001110),
 	_TBL_(symlink_mode,	"SYMLINK_MODE",	SYLN_H,	000100000),
 	_TBL_(filetype_mode,	"FILETYPE_MODE",FLTY_H,	000110110),
 	_TBL_(dotfile_mode,	"DOTFILE_MODE",	DTFL_H,	000101000),
@@ -105,9 +106,9 @@ functable funclist[] = {
 #endif
 	_TBL_(help_message,	"HELP_MESSAGE",	HELP_H,	000110110),
 #ifndef	_NOCUSTOMIZE
-	_TBL_(edit_runcom,	"EDIT_RUNCOM",	EDRC_H,	000111110),
+	_TBL_(edit_config,	"EDIT_CONFIG",	EDCF_H,	000111110),
 #endif
 	_TBL_(quit_system,	"QUIT_SYSTEM",	QUIT_H,	000111000),
-	_TBL_(warning_bell,	"WARNING_BELL",	NULL_H,	000110000),
-	_TBL_(no_operation,	"NO_OPERATION",	NULL_H,	000110000)
+	_TBL_(warning_bell,	"WARNING_BELL",	WARN_H,	000110000),
+	_TBL_(no_operation,	"NO_OPERATION",	NOOP_H,	000110000)
 };

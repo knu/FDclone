@@ -533,7 +533,7 @@ char *path, *type;
 # ifndef	_NODOSDRIVE
 	if (checkpath(path, buf)) return(dosfopen(buf, type));
 # endif
-	if (strchr(type, 'w')) return(unixfopen(buf, type));
+	if (strchr(type, 'w')) return(unixfopen(path, type));
 	else if (!(path = preparefile(path, buf))) return(NULL);
 	return(fopen(path, type));
 }
@@ -633,6 +633,8 @@ FILE *stream;
 }
 #endif	/* !_NODOSDRIVE */
 
+static int popenstat = 0;
+
 FILE *Xpopen(command, type)
 char *command, *type;
 {
@@ -650,7 +652,7 @@ char *command, *type;
 	strcpy(strcatdelim(path), PIPEFILE);
 
 	sprintf(cmdline, "%s > %s", command, path);
-	system(cmdline);
+	popenstat = system(cmdline);
 	return(fopen(path, type));
 }
 
@@ -673,5 +675,5 @@ FILE *fp;
 	if (unixunlink(path) != 0) no = errno;
 	*(--cp) = '\0';
 	if (rmtmpdir(path) < 0) no = errno;
-	return((errno = no) ? -1 : 0);
+	return((errno = no) ? -1 : popenstat);
 }

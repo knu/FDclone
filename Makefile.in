@@ -22,7 +22,7 @@ SRC	= main.c term.c pathname.c \
 	parse.c builtin.c shell.c \
 	kanji.c input.c \
 	info.c rockridg.c archive.c tree.c \
-	command.c browse.c \
+	custom.c command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
@@ -54,7 +54,7 @@ OBJ2	= libc__OBJ__ file__OBJ__ apply__OBJ__ \
 	parse__OBJ__ builtin__OBJ__ shell__OBJ__ \
 	kanji__OBJ__ input__OBJ__
 OBJ3	= info__OBJ__ rockridg__OBJ__ archive__OBJ__ tree__OBJ__ \
-	command__OBJ__ browse__OBJ__
+	custom__OBJ__ command__OBJ__ browse__OBJ__
 ALLOC	=
 DEBUG	=
 
@@ -285,9 +285,8 @@ apply__OBJ__: types.h pathname.h term.h func.h
 apply__OBJ__: kanji.h
 parse__OBJ__: fd.h
 parse__OBJ__: machine.h config.h
-parse__OBJ__: types.h pathname.h func.h
+parse__OBJ__: types.h pathname.h term.h func.h
 parse__OBJ__: kctype.h
-parse__OBJ__: dosdisk.h
 builtin__OBJ__: fd.h
 builtin__OBJ__: machine.h config.h
 builtin__OBJ__: types.h pathname.h term.h func.h
@@ -299,7 +298,7 @@ shell__OBJ__: types.h pathname.h term.h func.h
 shell__OBJ__: kctype.h
 shell__OBJ__: kanji.h
 kanji__OBJ__: machine.h config.h
-kanji__OBJ__: term.h kctype.h
+kanji__OBJ__: term.h kctype.h pathname.h
 input__OBJ__: fd.h
 input__OBJ__: machine.h config.h
 input__OBJ__: types.h pathname.h
@@ -314,15 +313,21 @@ rockridg__OBJ__: fd.h
 rockridg__OBJ__: machine.h config.h
 rockridg__OBJ__: types.h pathname.h func.h
 archive__OBJ__: fd.h
-archive__OBJ__: machine.h
-archive__OBJ__: config.h types.h
-archive__OBJ__: pathname.h term.h func.h
-archive__OBJ__: funcno.h kctype.h kanji.h
+archive__OBJ__: machine.h config.h
+archive__OBJ__: types.h pathname.h term.h func.h
+archive__OBJ__: kctype.h
+archive__OBJ__: kanji.h
 tree__OBJ__: fd.h
 tree__OBJ__: machine.h config.h
 tree__OBJ__: types.h pathname.h term.h
 tree__OBJ__: func.h
 tree__OBJ__: kanji.h
+custom__OBJ__: fd.h
+custom__OBJ__: machine.h config.h
+custom__OBJ__: types.h pathname.h
+custom__OBJ__: term.h func.h
+custom__OBJ__: funcno.h kctype.h
+custom__OBJ__: kanji.h dosdisk.h
 command__OBJ__: fd.h
 command__OBJ__: machine.h config.h
 command__OBJ__: types.h pathname.h term.h func.h

@@ -181,7 +181,7 @@ typedef struct _partition_t {
 	u_char t_sect[4] __attribute__ ((packed));
 #endif
 } partition_t;
-#define	PART_SIZE	sizeof(partition_t)
+#define	PART_SIZE	((int)sizeof(partition_t))
 
 typedef struct _xparam_t {
 	u_char size[2] __attribute__ ((packed));
@@ -202,7 +202,7 @@ typedef struct _xparam_t {
 	u_char reserved2 __attribute__ ((packed));
 	u_char checksum __attribute__ ((packed));
 } xparam_t;
-#define	XPARAM_SIZE	sizeof(xparam_t)
+#define	XPARAM_SIZE	((int)sizeof(xparam_t))
 
 typedef struct _xpacket_t {
 	u_char size __attribute__ ((packed));
@@ -211,7 +211,7 @@ typedef struct _xpacket_t {
 	u_char bufptr[4] __attribute__ ((packed));
 	u_char sect[8] __attribute__ ((packed));
 } xpacket_t;
-#define	XPACKET_SIZE	sizeof(xpacket_t)
+#define	XPACKET_SIZE	((int)sizeof(xpacket_t))
 
 typedef struct _drvinfo {
 	u_long head;

@@ -5,6 +5,7 @@
  */
 
 #include "fd.h"
+#include "term.h"
 #include "func.h"
 #include "kctype.h"
 
@@ -13,71 +14,87 @@
 #endif
 
 #if	!MSDOS
-# ifdef	_NODOSDRIVE
 # include <sys/param.h>
-# else
-# include "dosdisk.h"
-# endif
 #endif
 
 extern char fullpath[];
 extern short histno[];
-extern int sorttype;
-extern int displaymode;
-#ifndef	_NOTREE
-extern int sorttree;
-#endif
-#ifndef	_NOWRITEFS
-extern int writefs;
-#endif
-#ifndef	_NOEXTRACOPY
-extern int inheritcopy;
-#endif
-#if	!MSDOS
-extern int adjtty;
-#endif
-extern int defcolumns;
-extern int minfilename;
-extern short histsize[];
-extern int savehist;
-#ifndef	_NOTREE
-extern int dircountlimit;
-#endif
-#ifndef	_NODOSDRIVE
-extern int dosdrive;
-#endif
-extern int showsecond;
-extern int sizeinfo;
-#ifndef	_NOCOLOR
-extern int ansicolor;
-#endif
-#ifndef	_NOEDITMODE
-extern char *editmode;
-#endif
-extern char *deftmpdir;
-#ifndef	_NOROCKRIDGE
-extern char *rockridgepath;
-#endif
-#ifndef	_NOPRECEDE
-extern char *precedepath;
-#endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-extern char *sjispath;
-extern char *eucpath;
-extern char *jis7path;
-extern char *jis8path;
-extern char *junetpath;
-extern char *ojis7path;
-extern char *ojis8path;
-extern char *ojunetpath;
-extern char *hexpath;
-extern char *cappath;
-extern char *noconvpath;
-#endif	/* !MSDOS && !_NOKANJIFCONV */
 
-static int NEAR evalbool __P_((char *));
+static char *NEAR strtkbrk __P_((char *, char *, int));
+static char *NEAR geteostr __P_((char **));
 
-char *promptstr = NULL;
+strtable keyidentlist[] = {
+	{K_DOWN,	"DOWN"},
+	{K_UP,		"UP"},
+	{K_LEFT,	"LEFT"},
+	{K_RIGHT,	"RIGHT"},
+	{K_HOME,	"HOME"},
+	{K_BS,		"BS"},
+
+	{'*',		"ASTER"},
+	{'+',		"PLUS"},
+	{',',		"COMMA"},
+	{'-',		"MINUS"},
+	{'.',		"DOT"},
+	{'/',		"SLASH"},
+	{'0',		"TK0"},
+	{'1',		"TK1"},
+	{'2',		"TK2"},
+	{'3',		"TK3"},
+	{'4',		"TK4"},
+	{'5',		"TK5"},
+	{'6',		"TK6"},
+	{'7',		"TK7"},
+	{'8',		"TK8"},
+	{'9',		"TK9"},
+	{'=',		"EQUAL"},
+	{CR,		"RET"},
+
+	{ESC,		"ESC"},
+	{'\t',		"TAB"},
+	{' ',		"SPACE"},
+
+	{K_DL,		"DELLIN"},
+	{K_IL,		"INSLIN"},
+	{K_DC,		"DEL"},
+	{K_IC,		"INS"},
+	{K_EIC,		"EIC"},
+	{K_CLR,		"CLR"},
+	{K_EOS,		"EOS"},
+	{K_EOL,		"EOL"},
+	{K_ESF,		"ESF"},
+	{K_ESR,		"ESR"},
+	{K_NPAGE,	"NPAGE"},
+	{K_PPAGE,	"PPAGE"},
+	{K_STAB,	"STAB"},
+	{K_CTAB,	"CTAB"},
+	{K_CATAB,	"CATAB"},
+	{K_ENTER,	"ENTER"},
+	{K_SRST,	"SRST"},
+	{K_RST,		"RST"},
+	{K_PRINT,	"PRINT"},
+	{K_LL,		"LL"},
+	{K_A1,		"A1"},
+	{K_A3,		"A3"},
+	{K_B2,		"B2"},
+	{K_C1,		"C1"},
+	{K_C3,		"C3"},
+	{K_BTAB,	"BTAB"},
+	{K_BEG,		"BEG"},
+	{K_CANC,	"CANC"},
+	{K_CLOSE,	"CLOSE"},
+	{K_COMM,	"COMM"},
+	{K_COPY,	"COPY"},
+	{K_CREAT,	"CREAT"},
+	{K_END,		"END"},
+	{K_EXIT,	"EXIT"},
+	{K_FIND,	"FIND"},
+	{K_HELP,	"HELP"},
+	{0,		NULL}
+};
+#define	KEYIDENTSIZ	((int)(sizeof(keyidentlist) / sizeof(strtable)) - 1)
+static char escapechar[] = "abefnrtv";
+static char escapevalue[] = {0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b};
 
 
 char *skipspace(cp)
@@ -87,20 +104,81 @@ char *cp;
 	return(cp);
 }
 
-char *skipnumeric(cp, plus)
+char *evalnumeric(cp, np, plus)
 char *cp;
+long *np;
 int plus;
 {
-	if (plus < 0 && *cp == '-') cp++;
-	else if (plus > 0) {
-		if (*cp >= '1' && *cp <= '9') cp++;
-		else return(cp);
+	char *top;
+	long n;
+
+	top = cp;
+	n = 0;
+	if (plus < 0 && *cp == '-') {
+		for (cp++; isdigit(*cp); cp++) {
+			if (n == MINTYPE(long));
+			else if (n <= MINTYPE(long) / 10
+			&& *cp >= MINTYPE(long) % 10 + '0')
+				n = MINTYPE(long);
+			else n = n * 10 - (*cp - '0');
+		}
 	}
-	while (*cp >= '0' && *cp <= '9') cp++;
+	else {
+		if (plus > 0) {
+			if (*cp < '1' || *cp > '9') return(NULL);
+			n = *(cp++) - '0';
+		}
+		for (; isdigit(*cp); cp++) {
+			if (n == MAXTYPE(long));
+			else if (n >= MAXTYPE(long) / 10
+			&& *cp >= MAXTYPE(long) % 10 + '0')
+				n = MAXTYPE(long);
+			else n = n * 10 + (*cp - '0');
+		}
+	}
+	if (cp <= top) return(NULL);
+	if (np) *np = n;
 	return(cp);
 }
 
-char *strtkbrk(s, c, evaldq)
+char *ascnumeric(buf, n, digit, max)
+char *buf;
+long n;
+int digit, max;
+{
+	char tmp[20 * 2 + 1];
+	int i, j, d;
+
+	i = j = 0;
+	d = digit;
+	if (digit < 0) digit = -digit;
+	if (n < 0) tmp[i++] = '?';
+	else if (!n) tmp[i++] = '0';
+	else {
+		for (;;) {
+			tmp[i++] = '0' + n % 10;
+			if (!(n /= 10) || i >= max) break;
+			if (digit > 1 && ++j >= digit) {
+				if (i >= max - 1) break;
+				tmp[i++] = ',';
+				j = 0;
+			}
+		}
+		if (n) for (j = 0; j < i; j++) if (tmp[j] != ',') tmp[j] = '9';
+	}
+
+	if (d <= 0) j = 0;
+	else if (d > max) for (j = 0; j < max - i; j++) buf[j] = '0';
+	else for (j = 0; j < max - i; j++) buf[j] = ' ';
+	while (i--) buf[j++] = tmp[i];
+	if (d < 0) for (; j < max; j++) buf[j] = ' ';
+	buf[j] = '\0';
+
+	return(buf);
+}
+
+#ifdef	_NOORIGSHELL
+static char *NEAR strtkbrk(s, c, evaldq)
 char *s, *c;
 int evaldq;
 {
@@ -112,12 +190,12 @@ int evaldq;
 			quote = '\0';
 			continue;
 		}
-#ifdef	CODEEUC
+# ifdef	CODEEUC
 		else if (isekana(cp, 0)) {
 			cp++;
 			continue;
 		}
-#endif
+# endif
 		else if (iskanji1(cp, 0)) {
 			cp++;
 			continue;
@@ -150,7 +228,7 @@ int c, evaldq;
 	return(strtkbrk(s, tmp, evaldq));
 }
 
-char *geteostr(strp)
+static char *NEAR geteostr(strp)
 char **strp;
 {
 	char *cp, *tmp;
@@ -165,22 +243,29 @@ char **strp;
 	return(tmp);
 }
 
-char *gettoken(strp, delim)
-char **strp, *delim;
+int getargs(s, argvp)
+char *s, ***argvp;
 {
-	char *cp, *tmp;
-	int len;
+	char *cp;
+	int i;
 
-	cp = *strp;
-	if (!isalpha(**strp) && **strp != '_') return(NULL);
-	for ((*strp)++; isalnum(**strp) || **strp == '_'; (*strp)++);
-	if (**strp && delim && !strchr(delim, **strp)) return(NULL);
+	*argvp = (char **)malloc2(1 * sizeof(char *));
+	cp = skipspace(s);
+	for (i = 0; *cp; i++) {
+		*argvp = (char **)realloc2(*argvp, (i + 2) * sizeof(char *));
+		(*argvp)[i] = evalpath(geteostr(&cp), 0);
+		cp = skipspace(cp);
+	}
+	(*argvp)[i] = NULL;
+	return(i);
+}
 
-	len = *strp - cp;
-	*strp = skipspace(*strp);
-	tmp = (char *)malloc2(len + 1);
-	strncpy2(tmp, cp, len);
-	return(tmp);
+char *gettoken(s)
+char *s;
+{
+	if (!isalpha(*s) && *s != '_') return(NULL);
+	for (s++; isalnum(*s) || *s == '_'; s++);
+	return(s);
 }
 
 char *getenvval(argcp, argv)
@@ -213,91 +298,121 @@ char *argv[];
 	return(evalpath(strdup2(cp), 0));
 }
 
-char *evalcomstr(path, delim, ispath)
+char *evalcomstr(path, delim)
 char *path, *delim;
-int ispath;
 {
-	char *cp, *next, *tmp, *epath, buf[MAXPATHLEN];
-	int len;
+# if	!MSDOS && !defined (_NOKANJIFCONV)
+	char buf[MAXLINESTR + 1];
+# endif
+	char *cp, *next, *tmp, *epath;
+	int i, len, size;
 
 	epath = next = NULL;
-	len = 0;
+	size = 0;
 	for (cp = path; cp && *cp; cp = next) {
-		if ((next = strtkbrk(cp, delim, 0))) {
-			tmp = _evalpath(cp, next, 0, 0);
-			cp = next;
-			while (*(++next) && strchr(delim, *next));
-		}
+		next = strtkbrk(cp, delim, 0);
+		len = (next) ? (next++) - cp : strlen(cp);
+		if (!len) next = cp;
 		else {
-			next = cp + strlen(cp);
+			next = cp + len;
 			tmp = _evalpath(cp, next, 0, 0);
-			cp = next;
+# if	!MSDOS && !defined (_NOKANJIFCONV)
+			cp = kanjiconv2(buf, tmp,
+				MAXLINESTR, DEFCODE, getkcode(tmp));
+# else
+			cp = tmp;
+# endif
+			len = strlen(cp);
 		}
-		if (ispath) {
-#if	MSDOS || !defined (_NODOSDRIVE)
-			if (*(_dospath(tmp) ? tmp + 2 : tmp) == _SC_) {
-#else
-			if (*tmp == _SC_) {
-#endif
-				realpath2(tmp, buf, 1);
-				free(tmp);
-				tmp = buf;
-			}
-		}
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-		else {
-			char *cp2;
+		for (i = 1; next[i] && strchr(delim, next[i]); i++);
 
-			cp2 = kanjiconv2(buf, tmp,
-				MAXPATHLEN - 1, DEFCODE, getkcode(tmp));
-			if (cp2 == buf) {
-				free(tmp);
-				tmp = buf;
-			}
+		epath = (char *)realloc2(epath, size + len + i + 1);
+		if (len) {
+			strcpy(epath + size, cp);
+			free(tmp);
 		}
-#endif
-		epath = (char *)realloc2(epath,
-			len + strlen(tmp) + (next - cp) + 1);
-		len = strcpy2(epath + len, tmp) - epath;
-		if (tmp != buf) free(tmp);
-		strncpy(epath + len, cp, next - cp);
-		len += next - cp;
-		epath[len] = '\0';
+		size += len;
+		strncpy(epath + size, next, i);
+		size += i;
+		next += i;
 	}
 
-	return((epath) ? epath : strdup2(""));
+	if (!epath) return(strdup2(""));
+	epath[size] = '\0';
+	return(epath);
+}
+#endif	/* _NOORIGSHELL */
+
+char *evalpaths(paths, delim)
+char *paths;
+int delim;
+{
+	char *cp, *tmp, *next, *epath, buf[MAXPATHLEN];
+	int len, size;
+
+	epath = next = NULL;
+	size = 0;
+	for (cp = paths; cp; cp = next) {
+#if	MSDOS || !defined (_NODOSDRIVE)
+		if (_dospath(cp)) next = strchr(cp + 2, delim);
+		else
+#endif
+		next = strchr(cp, delim);
+		len = (next) ? (next++) - cp : strlen(cp);
+		if (len) {
+			tmp = _evalpath(cp, cp + len, 1, 1);
+#if	MSDOS || !defined (_NODOSDRIVE)
+			if ((_dospath(cp) ? cp[2] : cp[0]) != _SC_) cp = tmp;
+#else
+			if (cp[0] != _SC_) cp = tmp;
+#endif
+			else cp = realpath2(tmp, buf, 1);
+			len = strlen(cp);
+		}
+		epath = (char *)realloc2(epath, size + len + 1 + 1);
+		if (len) {
+			strcpy(epath + size, cp);
+			free(tmp);
+		}
+		size += len;
+		if (next) epath[size++] = delim;
+	}
+
+	if (!epath) return(strdup2(""));
+	epath[size] = '\0';
+	return(epath);
 }
 
-#if	!MSDOS
+#if	!MSDOS || !defined (_NOORIGSHELL)
 char *killmeta(name)
 char *name;
 {
-#ifndef	_NOROCKRIDGE
+# ifndef	_NOROCKRIDGE
 	char tmp[MAXPATHLEN];
-#endif
+# endif
 	char *cp, buf[MAXPATHLEN * 2 + 1];
 	int i;
-#ifndef	CODEEUC
+# ifndef	CODEEUC
 	int sjis;
 
 	cp = (char *)getenv("LANG");
 	sjis = (cp && toupper2(*cp) == 'J'
 		&& strchr("AP", toupper2(*(cp + 1))));
-#endif
+# endif
 
-#ifndef	_NOROCKRIDGE
+# ifndef	_NOROCKRIDGE
 	name = detransfile(name, tmp, 0);
-#endif
+# endif
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
-#ifndef	CODEEUC
-		if (sjis && issjis1(*cp) && issjis2(cp[1]))
+# ifndef	CODEEUC
+		if (sjis && issjis1(cp[0]) && issjis2(cp[1]))
 			buf[i++] = *(cp++);
 		else
-#endif
-		{
-			if (isctl(*cp) || strchr(METACHAR, *cp)) *buf = '"';
-			if (strchr(DQ_METACHAR, *cp)) buf[i++] = META;
+# endif
+		if (strchr(METACHAR, *cp)) {
+			*buf = '"';
+			if (strchr(DQ_METACHAR, *cp)) buf[i++] = PMETA;
 		}
 		buf[i] = *cp;
 	}
@@ -306,14 +421,16 @@ char *name;
 	buf[i] = '\0';
 	return(strdup2(cp));
 }
+#endif	/* !MSDOS || !_NOORIGSHELL */
 
+#if	!MSDOS && defined (_NOORIGSHELL)
 VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
 
 	if (!(cp = (char *)getenv("PATH"))) return;
 
-	path = evalcomstr(cp, ":", 1);
+	path = evalpaths(cp, PATHDELIM);
 	if (strpathcmp(path, cp)) {
 		cp = (char *)malloc2(strlen(path) + 5 + 1);
 		strcpy(strcpy2(cp, "PATH="), path);
@@ -321,75 +438,44 @@ VOID adjustpath(VOID_A)
 	}
 	free(path);
 }
-#endif	/* !MSDOS */
+#endif	/* !MSDOS && _NOORIGSHELL */
 
 char *includepath(buf, path, plist)
 char *buf, *path, *plist;
 {
-	char *cp, *eol, tmp[MAXPATHLEN];
+	char *cp, *next, tmp[MAXPATHLEN];
 	int len;
 
 	if (!plist || !*plist) return(NULL);
 	if (!buf) buf = tmp;
 	realpath2(path, buf, 1);
-	for (cp = plist; cp && *cp; ) {
-		for (len = 0; cp[len]; len++) if (cp[len] == ';') break;
-		eol = (cp[len]) ? &(cp[len + 1]) : NULL;
-		while (len > 0 && cp[len - 1] == _SC_) len--;
+	next = plist;
+	for (cp = next; cp && *cp; cp = next) {
+#if	MSDOS || !defined (_NODOSDRIVE)
+		if (_dospath(cp)) next = strchr(cp + 2, PATHDELIM);
+		else
+#endif
+		next = strchr(cp, PATHDELIM);
+		len = (next) ? (next++) - cp : strlen(cp);
+		while (len > 1 && cp[len - 1] == _SC_) len--;
 #if	MSDOS
 		if (onkanji1(cp, len - 1)) len++;
 #endif
 		if (len > 0 && !strnpathcmp(buf, cp, len)
-		&& (!buf[len] || buf[len] == _SC_)) return(buf);
-		cp = eol;
+		&& (!buf[len] || buf[len] == _SC_)) return(path);
 	}
 	return(NULL);
 }
 
-int getargs(s, argvp)
-char *s, ***argvp;
-{
-	char *cp;
-	int i;
-
-	*argvp = (char **)malloc2(1 * sizeof(char *));
-	cp = skipspace(s);
-	for (i = 0; *cp; i++) {
-		*argvp = (char **)realloc2(*argvp, (i + 2) * sizeof(char *));
-		(*argvp)[i] = evalpath(geteostr(&cp), 0);
-		cp = skipspace(cp);
-	}
-	(*argvp)[i] = NULL;
-	return(i);
-}
-
-VOID freeargs(argv)
-char **argv;
+VOID freevar(var)
+char **var;
 {
 	int i;
 
-	for (i = 0; argv[i]; i++) free(argv[i]);
-	free(argv);
-}
-
-char *catargs(argv, delim)
-char *argv[];
-int delim;
-{
-	char *cp;
-	int i, len;
-
-	if (!argv) return(NULL);
-	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
-	if (i < 1) return(strdup2(""));
-	len += (delim) ? i - 1 : 0;
-	cp = (char *)malloc2(len + 1);
-	len = strcpy2(cp, argv[0]) - cp;
-	for (i = 1; argv[i]; i++) {
-		if (delim) cp[len++] = delim;
-		len = strcpy2(cp + len, argv[i]) - cp;
+	if (var) {
+		for (i = 0; var[i]; i++) free(var[i]);
+		free(var);
 	}
-	return(cp);
 }
 
 #ifndef	_NOARCHIVE
@@ -397,17 +483,17 @@ char *getrange(cp, fp, dp, wp)
 char *cp;
 u_char *fp, *dp, *wp;
 {
-	int i;
+	char *tmp;
+	long n;
 
 	*fp = *dp = *wp = 0;
 
-	if (*cp < '0' || *cp > '9') return(NULL);
-	*fp = ((i = atoi(cp)) > 0) ? i - 1 : 255;
-	cp = skipnumeric(cp, 0);
+	if (!(cp = evalnumeric(cp, &n, 0))) return(NULL);
+	*fp = (n > 0) ? n - 1 : 255;
 
 	if (*cp == '[') {
-		if ((i = atoi(++cp)) >= 1) *dp = i - 1 + 128;
-		cp = skipnumeric(cp, 0);
+		if (!(cp = evalnumeric(++cp, &n, 0))) return(NULL);
+		if (n > 0) *dp = n - 1 + 128;
 		if (*(cp++) != ']') return(NULL);
 	}
 	else if (*cp == '-') {
@@ -418,10 +504,9 @@ u_char *fp, *dp, *wp;
 	else if (*cp && *cp != ',' && *cp != ':') *dp = *(cp++);
 
 	if (*cp == '-') {
-		cp++;
-		if (*cp >= '0' && *cp <= '9') {
-			*wp = atoi(cp) + 128;
-			cp = skipnumeric(cp, 0);
+		if ((tmp = evalnumeric(++cp, &n, 0))) {
+			cp = tmp;
+			*wp = n + 128;
 		}
 		else if (*cp && *cp != ',' && *cp != ':') *wp = *(cp++) % 128;
 		else return(NULL);
@@ -430,10 +515,13 @@ u_char *fp, *dp, *wp;
 }
 #endif
 
-int evalprompt(prompt, max)
-char *prompt;
+int evalprompt(buf, prompt, max)
+char *buf, *prompt;
 int max;
 {
+#if	!MSDOS
+	uidtable *up;
+#endif
 #ifdef	USEUNAME
 	struct utsname uts;
 #endif
@@ -441,31 +529,33 @@ int max;
 	int i, j, k, len, unprint;
 
 	unprint = 0;
-	for (i = j = len = 0; promptstr[i]; i++) {
+	for (i = j = len = 0; prompt[i]; i++) {
 		cp = NULL;
 		*line = '\0';
-		if (promptstr[i] != META) {
+		if (prompt[i] != META) {
 			k = 0;
-			line[k++] = promptstr[i];
+			line[k++] = prompt[i];
 #ifdef	CODEEUC
-			if (isekana(promptstr, i)) line[k++] = promptstr[++i];
+			if (isekana(prompt, i)) line[k++] = prompt[++i];
 			else
 #endif
-			if (iskanji1(promptstr, i)) line[k++] = promptstr[++i];
+			if (iskanji1(prompt, i)) line[k++] = prompt[++i];
 			line[k] = '\0';
 		}
-		else switch (promptstr[++i]) {
+		else switch (prompt[++i]) {
 			case '\0':
 				i--;
 				*line = META;
 				line[1] = '\0';
 				break;
 			case '!':
-				sprintf(line, "%d", histno[0] + 1);
+				ascnumeric(line, histno[0] + 1,
+					0, MAXPATHLEN - 1);
 				break;
 #if	!MSDOS
 			case 'u':
-				cp = getpwuid2(getuid());
+				if (up = finduid(getuid(), NULL))
+					cp = up -> name;
 				break;
 			case 'h':
 			case 'H':
@@ -475,7 +565,7 @@ int max;
 #else
 				gethostname(line, MAXPATHLEN);
 #endif
-				if (promptstr[i] == 'h'
+				if (prompt[i] == 'h'
 				&& (tmp = strchr(line, '.'))) *tmp = '\0';
 				break;
 			case '$':
@@ -510,18 +600,18 @@ int max;
 				unprint = 0;
 				break;
 			default:
-				if (promptstr[i] < '0' || promptstr[i] > '7') {
-					*line = promptstr[i];
+				if (prompt[i] < '0' || prompt[i] > '7') {
+					*line = prompt[i];
 					line[1] = '\0';
 				}
 				else {
-					*line = promptstr[i] - '0';
+					*line = prompt[i] - '0';
 					for (k = 1; k < 3; k++) {
-						if (promptstr[i + 1] < '0'
-						|| promptstr[i + 1] > '7')
+						if (prompt[i + 1] < '0'
+						|| prompt[i + 1] > '7')
 							break;
 						*line = *line * 8
-							+ promptstr[++i] - '0';
+							+ prompt[++i] - '0';
 					}
 					line[1] = '\0';
 				}
@@ -529,31 +619,31 @@ int max;
 		}
 		if (!cp) cp = line;
 
-		if (prompt) while (*cp && j < max) {
-			if (unprint) prompt[j] = *cp;
+		if (buf) while (*cp && j < max) {
+			if (unprint) buf[j] = *cp;
 #ifdef	CODEEUC
 			else if (isekana(cp, 0)) {
-				prompt[j++] = *(cp++);
-				prompt[j] = *cp;
+				buf[j++] = *(cp++);
+				buf[j] = *cp;
 				len++;
 			}
 #endif
 			else if (iskanji1(cp, 0)) {
-				prompt[j++] = *(cp++);
-				prompt[j] = *cp;
+				buf[j++] = *(cp++);
+				buf[j] = *cp;
 				len += 2;
 			}
 			else if (!isctl(*cp)) {
-				prompt[j] = *cp;
+				buf[j] = *cp;
 				len++;
 			}
 			else if (j + 1 >= max) {
-				prompt[j] = '?';
+				buf[j] = '?';
 				len++;
 			}
 			else {
-				prompt[j++] = '^';
-				prompt[j] = ((*cp + '@') & 0x7f);
+				buf[j++] = '^';
+				buf[j] = ((*cp + '@') & 0x7f);
 				len += 2;
 			}
 			cp++;
@@ -582,144 +672,207 @@ int max;
 			j++;
 		}
 	}
-	if (prompt) prompt[j] = '\0';
+	if (buf) buf[j] = '\0';
 	return(len);
 }
 
-static int NEAR evalbool(cp)
+#ifndef	_NOARCHIVE
+char *getext(ext)
+char *ext;
+{
+	char *tmp;
+
+	if (*ext == '*') tmp = strdup2(ext);
+	else {
+		tmp = malloc2(strlen(ext) + 2);
+		*tmp = '*';
+		strcpy(tmp + 1, ext);
+	}
+	return(tmp);
+}
+
+int extcmp(s, ext)
+char *s, *ext;
+{
+	if (*s != '*' && *ext == '*') {
+		ext++;
+		if (*s != '.' && *ext == '.') ext++;
+	}
+	return(strpathcmp(s, ext));
+}
+#endif	/* !_NOARCHIVE */
+
+int getkeycode(cp, identonly)
 char *cp;
+int identonly;
 {
-	if (!cp) return(-1);
-	if (!*cp || !atoi2(cp)) return(0);
-	return(1);
-}
+	long n;
+	int i, ch;
 
-VOID evalenv(VOID_A)
-{
-#ifndef	_NODOSDRIVE
-	char *cp;
-#endif
-
-	sorttype = atoi2(getenv2("FD_SORTTYPE"));
-	if ((sorttype < 0 || (sorttype & 7) > 5)
-	&& (sorttype < 100 || ((sorttype - 100) & 7) > 5))
-		sorttype = SORTTYPE;
-	displaymode = atoi2(getenv2("FD_DISPLAYMODE"));
-#ifdef	HAVEFLAGS
-	if (displaymode < 0 || displaymode > 15)
+	ch = *(cp++);
+	if (!*cp) {
+		if (identonly) return(-1);
+		return(ch);
+	}
+	switch (ch) {
+		case '\\':
+			if (identonly) return(-1);
+			if (*cp >= '0' && *cp <= '7') {
+				ch = *(cp++) - '0';
+				for (i = 1; i < 3; i++) {
+					if (*cp < '0' || *cp > '7') break;
+					ch = ch * 8 + *(cp++) - '0';
+				}
+			}
+			else {
+				for (i = 0; escapechar[i]; i++)
+					if (*cp == escapechar[i]) break;
+				ch = (escapechar[i]) ? escapevalue[i] : *cp;
+				cp++;
+			}
+			break;
+		case '^':
+			if (identonly) return(-1);
+			ch = toupper2(*(cp++));
+			if (ch < '?' || ch > '_') return(-1);
+			ch = ((ch - '@') & 0x7f);
+			break;
+		case '@':
+			if (identonly) return(-1);
+#if	MSDOS
+			ch = (isalpha(*cp)) ? (tolower2(*(cp++)) | 0x80) : -1;
 #else
-	if (displaymode < 0 || displaymode > 7)
+			ch = (isalpha(*cp)) ? (*(cp++) | 0x80) : -1;
 #endif
-		displaymode = DISPLAYMODE;
-#ifndef	_NOTREE
-	if ((sorttree = evalbool(getenv2("FD_SORTTREE"))) < 0)
-		sorttree = SORTTREE;
-#endif
-#ifndef	_NOWRITEFS
-	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
-#endif
-#ifndef	_NOEXTRACOPY
-	if ((inheritcopy = evalbool(getenv2("FD_INHERITCOPY"))) < 0)
-		inheritcopy = INHERITCOPY;
-#endif
-#if	!MSDOS
-	if ((adjtty = evalbool(getenv2("FD_ADJTTY"))) < 0) adjtty = ADJTTY;
-#endif
-	defcolumns = atoi2(getenv2("FD_COLUMNS"));
-	if (defcolumns < 0 || defcolumns > 5 || defcolumns == 4)
-		defcolumns = COLUMNS;
-	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
-		minfilename = MINFILENAME;
-	if ((histsize[0] = atoi2(getenv2("FD_HISTSIZE"))) < 0)
-		histsize[0] = HISTSIZE;
-	if ((histsize[1] = atoi2(getenv2("FD_DIRHIST"))) < 0)
-		histsize[1] = DIRHIST;
-	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0)
-		savehist = SAVEHIST;
-#ifndef	_NOTREE
-	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
-		dircountlimit = DIRCOUNTLIMIT;
-#endif
-#ifndef	_NODOSDRIVE
-	if ((dosdrive = evalbool(cp = getenv2("FD_DOSDRIVE"))) < 0)
-		dosdrive = DOSDRIVE;
-# if	MSDOS
-	if (cp && (cp = strchr(cp, ',')) && !strcmp(++cp, "BIOS"))
-		dosdrive |= 2;
-# endif
-#endif
-	if ((showsecond = evalbool(getenv2("FD_SECOND"))) < 0)
-		showsecond = SECOND;
-	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) < 0)
-		sizeinfo = SIZEINFO;
-#ifndef	_NOCOLOR
-	if ((ansicolor = atoi2(getenv2("FD_ANSICOLOR"))) < 0)
-		ansicolor = ANSICOLOR;
-#endif
-#ifndef	_NOEDITMODE
-	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
-#endif
-	if (deftmpdir) free(deftmpdir);
-	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
-	deftmpdir = evalpath(strdup2(deftmpdir), 1);
-#ifndef	_NOROCKRIDGE
-	if (rockridgepath) free(rockridgepath);
-	if (!(rockridgepath = getenv2("FD_RRPATH"))) rockridgepath = RRPATH;
-	rockridgepath = evalcomstr(rockridgepath, ";", 1);
-#endif
-#ifndef	_NOPRECEDE
-	if (precedepath) free(precedepath);
-	if (!(precedepath = getenv2("FD_PRECEDEPATH")))
-		precedepath = PRECEDEPATH;
-	precedepath = evalcomstr(precedepath, ";", 1);
-#endif
-	if (!(promptstr = getenv2("FD_PROMPT"))) promptstr = PROMPT;
-#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
-	outputkcode = getlang(getenv2("FD_LANGUAGE"), L_OUTPUT);
-# if	defined (LINUX) && defined (O_REILLY_JAPAN)
-	/* See P.200 in "Linux Japanese Environment" (ISBN4-87310-016-5) */
-	if (outputkcode == NOCNV)
-		outputkcode = getlang(getenv("LANG"), L_OUTPUT);
-	/* This code is just a joke, not to be implemented in FDclone 2. */
-# endif
-#endif
-#if	!MSDOS && !defined (_NOKANJICONV)
-	inputkcode = getlang(getenv2("FD_INPUTKCODE"), L_INPUT);
-#endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
-	fnamekcode = getlang(getenv2("FD_FNAMEKCODE"), L_FNAME);
-	if (sjispath) free(sjispath);
-	if (!(sjispath = getenv2("FD_SJISPATH"))) sjispath = SJISPATH;
-	sjispath = evalcomstr(sjispath, ";", 1);
-	if (eucpath) free(eucpath);
-	if (!(eucpath = getenv2("FD_EUCPATH"))) eucpath = EUCPATH;
-	eucpath = evalcomstr(eucpath, ";", 1);
-	if (jis7path) free(jis7path);
-	if (!(jis7path = getenv2("FD_JISPATH"))) jis7path = JISPATH;
-	jis7path = evalcomstr(jis7path, ";", 1);
-	if (jis8path) free(jis8path);
-	if (!(jis8path = getenv2("FD_JIS8PATH"))) jis8path = JIS8PATH;
-	jis8path = evalcomstr(jis8path, ";", 1);
-	if (junetpath) free(junetpath);
-	if (!(junetpath = getenv2("FD_JUNETPATH"))) junetpath = JUNETPATH;
-	junetpath = evalcomstr(junetpath, ";", 1);
-	if (ojis7path) free(ojis7path);
-	if (!(ojis7path = getenv2("FD_OJISPATH"))) ojis7path = OJISPATH;
-	ojis7path = evalcomstr(ojis7path, ";", 1);
-	if (ojis8path) free(ojis8path);
-	if (!(ojis8path = getenv2("FD_OJIS8PATH"))) ojis8path = OJIS8PATH;
-	ojis8path = evalcomstr(ojis8path, ";", 1);
-	if (ojunetpath) free(ojunetpath);
-	if (!(ojunetpath = getenv2("FD_OJUNETPATH"))) ojunetpath = OJUNETPATH;
-	ojunetpath = evalcomstr(ojunetpath, ";", 1);
-	if (hexpath) free(hexpath);
-	if (!(hexpath = getenv2("FD_HEXPATH"))) hexpath = HEXPATH;
-	hexpath = evalcomstr(hexpath, ";", 1);
-	if (cappath) free(cappath);
-	if (!(cappath = getenv2("FD_CAPPATH"))) cappath = CAPPATH;
-	cappath = evalcomstr(cappath, ";", 1);
-	if (noconvpath) free(noconvpath);
-	if (!(noconvpath = getenv2("FD_NOCONVPATH"))) noconvpath = NOCONVPATH;
-	noconvpath = evalcomstr(noconvpath, ";", 1);
-#endif	/* !MSDOS && !_NOKANJIFCONV */
+			break;
+		case 'F':
+			if ((n = atoi2(cp)) >= 1 && n <= 20) return(K_F(n));
+		default:
+			cp--;
+			for (i = 0; i < KEYIDENTSIZ; i++)
+				if (!strcmp(keyidentlist[i].str, cp)) break;
+			if (i >= KEYIDENTSIZ) ch = -1;
+			else {
+				ch = keyidentlist[i].no;
+				cp += strlen(cp);
+			}
+			break;
+	}
+	if (*cp) ch = -1;
+	return(ch);
 }
+
+char *getkeysym(c, tenkey)
+int c, tenkey;
+{
+	static char buf[5];
+	int i, j;
+
+	i = 0;
+	if (c >= K_F(1) && c <= K_F(20)) {
+		c -= K_F0;
+		buf[i++] = 'F';
+		if (c >= 10) buf[i++] = (c / 10) + '0';
+		buf[i++] = (c % 10) + '0';
+	}
+	else if ((c & ~0x7f) == 0x80 && isalpha(c & 0x7f)) {
+		buf[i++] = '@';
+		buf[i++] = c & 0x7f;
+	}
+	else {
+		for (j = 0; j < KEYIDENTSIZ; j++)
+			if ((u_short)(c) == keyidentlist[j].no) break;
+		if (j < KEYIDENTSIZ) {
+			if (tenkey || c <= ' ' || c == C_DEL
+			|| keyidentlist[j].no >= K_MIN)
+				return(keyidentlist[j].str);
+		}
+
+		if (isprint(c)) buf[i++] = c;
+		else if (c < ' ' || c == C_DEL) {
+			buf[i++] = '^';
+			buf[i++] = (c + '@') & 0x7f;
+		}
+		else {
+			buf[i++] = '\\';
+			buf[i++] = (c / (8 * 8)) + '0';
+			buf[i++] = ((c % (8 * 8)) / 8) + '0';
+			buf[i++] = (c % 8) + '0';
+		}
+	}
+	buf[i] = '\0';
+	return(buf);
+}
+
+char *decodestr(s, lenp, evalhat)
+char *s;
+int *lenp, evalhat;
+{
+	char *cp;
+	int i, j, n;
+
+	cp = malloc2(strlen(s) + 1);
+	for (i = j = 0; s[i]; i++, j++) {
+		if (s[i] == '\\') {
+			i++;
+			if (s[i] >= '0' && s[i] <= '7') {
+				cp[j] = s[i] - '0';
+				for (n = 1; n < 3; n++) {
+					if (s[i + 1] < '0' || s[i + 1] > '7')
+						break;
+					cp[j] = cp[j] * 8 + (s[++i] - '0');
+				}
+				continue;
+			}
+			for (n = 0; escapechar[n]; n++)
+				if (s[i] == escapechar[n]) break;
+			cp[j] = (escapechar[n]) ? escapevalue[n] : s[i];
+		}
+		else if (evalhat && s[i] == '^'
+		&& (n = toupper2(s[i + 1])) >= '?' && n <= '_') {
+			i++;
+			cp[j] = ((n - '@') & 0x7f);
+		}
+		else cp[j] = s[i];
+	}
+
+	s = malloc2(j + 1);
+	memcpy(s, cp, j);
+	s[j] = '\0';
+	free(cp);
+	if (lenp) *lenp = j;
+	return(s);
+}
+
+#if	!MSDOS && !defined (_NOKEYMAP)
+char *encodestr(s, len)
+char *s;
+int len;
+{
+	char *cp;
+	int i, j, c, n;
+
+	cp = malloc2(len * 4 + 1);
+	j = 0;
+	if (s) for (i = 0; i < len; i++) {
+		if (isprint(s[i])) {
+			cp[j++] = s[i];
+			continue;
+		}
+		cp[j++] = '\\';
+		for (n = 0; escapechar[n]; n++)
+			if (s[i] == escapevalue[n]) break;
+		if (escapechar[n]) cp[j++] = escapechar[n];
+		else {
+			c = s[i];
+			for (n = 2; n >= 0; n--) {
+				cp[j + n] = (c & 7) + '0';
+				c >>= 3;
+			}
+			j += 3;
+		}
+	}
+	cp[j] = '\0';
+	return(cp);
+}
+#endif	/* !MSDOS && !_NOKEYMAP */

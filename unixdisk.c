@@ -107,6 +107,7 @@ static int maxdrive = -1;
 static u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
 };
+#define	DOSERRLISTSIZ	((int)(sizeof(doserrlist) / sizeof(u_short)))
 static int unixerrlist[] = {
 	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
 	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, 0, EACCES, EEXIST
@@ -349,7 +350,7 @@ u_short doserr;
 {
 	int i;
 
-	for (i = 0; i < sizeof(doserrlist) / sizeof(u_short); i++)
+	for (i = 0; i < DOSERRLISTSIZ; i++)
 		if (doserr == doserrlist[i]) return(errno = unixerrlist[i]);
 	return(errno = EINVAL);
 }
@@ -489,6 +490,7 @@ int drive, nodir;
 	olddrv = (bdos(0x19, 0, 0) & 0xff);
 	if ((bdos(0x0e, drv, 0) & 0xff) < drv
 	|| (drive = (bdos(0x19, 0, 0) & 0xff)) != drv) {
+		bdos(0x0e, olddrv, 0);
 		seterrno(0x0f);		/* Invarid drive */
 		return(-1);
 	}
@@ -677,10 +679,9 @@ char *path, *resolved;
 #ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN];
 #endif
-	int i, j;
-
 	struct SREGS sreg;
 	__dpmi_regs reg;
+	int i, j;
 
 	path = duplpath(path);
 #ifdef	_NOUSELFN
@@ -1910,7 +1911,7 @@ char *from, *to;
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	char buf[MAXPATHLEN];
-	int f, t;
+	int ax, f, t;
 
 	strcpy(buf, duplpath(from));
 	from = buf;
@@ -1928,6 +1929,7 @@ char *from, *to;
 	}
 #endif	/* !_NODOSDRIVE */
 	reg.x.ax = ((f > 0 || t > 0) && (f >= 0 && t >= 0)) ? 0x7156 : 0x5600;
+	ax = reg.x.ax;
 #ifdef	DJGPP
 	f = dos_putpath(from, 0);
 	t = dos_putpath(to, f);
@@ -1936,6 +1938,13 @@ char *from, *to;
 	reg.x.dx = PTR_OFF(from, 0);
 	sreg.es = PTR_SEG(to);
 	reg.x.di = PTR_OFF(to, f);
+	if (int21call(&reg, &sreg) >= 0) return(0);
+	if (reg.x.ax != 0x05) return(-1);
+	if (unixunlink(to) < 0) {
+		errno = EACCES;
+		return(-1);
+	}
+	reg.x.ax = ax;
 	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
 }
 
@@ -2403,7 +2412,10 @@ int flags, mode;
 	else if (flags & O_RDWR) reg.x.bx |= 0x0002;
 	reg.x.cx = (u_short)putdosmode(mode);
 	if (flags & O_CREAT) {
-		if (flags & O_EXCL) reg.x.dx = 0x0010;
+		if (flags & O_EXCL) {
+			reg.x.dx = 0x0010;
+			flags &= ~(O_CREAT | O_EXCL);
+		}
 		else if (flags & O_TRUNC) reg.x.dx = 0x0012;
 		else reg.x.dx = 0x0011;
 	}

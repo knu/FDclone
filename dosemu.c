@@ -28,6 +28,7 @@ char *ojis8path = NULL;
 char *ojunetpath = NULL;
 char *hexpath = NULL;
 char *cappath = NULL;
+char *utf8path = NULL;
 char *noconvpath = NULL;
 #endif
 
@@ -102,6 +103,7 @@ char *path;
 	else if (includepath(NULL, path, ojunetpath)) c = O_JUNET;
 	else if (includepath(NULL, path, hexpath)) c = HEX;
 	else if (includepath(NULL, path, cappath)) c = CAP;
+	else if (includepath(NULL, path, utf8path)) c = UTF8;
 	else if (includepath(NULL, path, noconvpath)) c = NOCNV;
 	else c = fnamekcode;
 	recurse = 0;

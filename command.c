@@ -11,6 +11,10 @@
 #include "kctype.h"
 #include "kanji.h"
 
+#ifndef	_NOORIGSHELL
+#include "system.h"
+#endif
+
 #if	!MSDOS
 #include <sys/file.h>
 #endif
@@ -88,7 +92,7 @@ static int write_dir __P_((char *));
 static int reread_dir __P_((char *));
 static int help_message __P_((char *));
 #ifndef	_NOCUSTOMIZE
-static int edit_runcom __P_((char *));
+static int edit_config __P_((char *));
 #endif
 static int quit_system __P_((char *));
 static int make_dir __P_((char *));
@@ -140,6 +144,7 @@ reg_t *findregexp = NULL;
 #ifndef	_NOWRITEFS
 int writefs = 0;
 #endif
+int internal_status = -2;
 bindtable bindlist[MAXBINDTABLE] = {
 	{K_UP,		CUR_UP,		255},
 	{K_DOWN,	CUR_DOWN,	255},
@@ -244,7 +249,7 @@ bindtable bindlist[MAXBINDTABLE] = {
 #endif
 	{'D',		DELETE_DIR,	255},
 #ifndef	_NOCUSTOMIZE
-	{'E',		EDIT_RUNCOM,	255},
+	{'E',		EDIT_CONFIG,	255},
 #endif
 	{'F',		FIND_DIR,	255},
 	{'H',		DOTFILE_MODE,	255},
@@ -294,7 +299,7 @@ char *arg;
 	int n;
 
 	if (filepos <= 0) return(0);
-	if (!arg || (n = atoi(arg)) <= 0) n = 1;
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
 	if ((filepos -= n) < 0) filepos = 0;
 	return(2);
 }
@@ -305,7 +310,7 @@ char *arg;
 	int n;
 
 	if (filepos >= maxfile - 1) return(0);
-	if (!arg || (n = atoi(arg)) <= 0) n = 1;
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
 	if ((filepos += n) > maxfile - 1) filepos = maxfile - 1;
 	return(2);
 }
@@ -315,7 +320,7 @@ char *arg;
 {
 	int n;
 
-	if (!arg || (n = atoi(arg)) <= 0) n = 1;
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
 	if (filepos + FILEPERLOW * n < maxfile) filepos += FILEPERLOW * n;
 	else if (filepos / FILEPERPAGE == (maxfile - 1) / FILEPERPAGE)
 		return(0);
@@ -338,7 +343,7 @@ char *arg;
 	int n;
 
 	if (filepos < FILEPERLOW) return(0);
-	if (!arg || (n = atoi(arg)) <= 0) n = 1;
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
 	if (filepos - FILEPERLOW * n >= 0) filepos -= FILEPERLOW * n;
 	else filepos = filepos % FILEPERLOW;
 	return(2);
@@ -349,20 +354,17 @@ char *arg;
 {
 	int i;
 
-	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
-	if (i + FILEPERPAGE >= maxfile) return(warning_bell(arg));
-	filepos = i + FILEPERPAGE;
+	i = (filepos / FILEPERPAGE + 1) * FILEPERPAGE;
+	if (i >= maxfile) return(warning_bell(arg));
+	filepos = i;
 	return(2);
 }
 
 static int roll_down(arg)
 char *arg;
 {
-	int i;
-
-	i = (filepos / FILEPERPAGE) * FILEPERPAGE;
-	if (i - FILEPERPAGE < 0) return(warning_bell(arg));
-	filepos = i - FILEPERPAGE;
+	if (filepos < FILEPERPAGE) return(warning_bell(arg));
+	filepos = (filepos / FILEPERPAGE - 1) * FILEPERPAGE;
 	return(2);
 }
 
@@ -451,10 +453,10 @@ static VOID NEAR markcount(VOID_A)
 	char buf[14 + 1];
 
 	locate(CMARK + 5, LSTATUS);
-	cprintf2("%4d", mark);
+	cputs2(ascnumeric(buf, mark, 4, 4));
 	if (sizeinfo) {
 		locate(CSIZE + 5, LSIZE);
-		cprintf2("%14.14s", inscomma(buf, marksize, 3, 14));
+		cputs2(ascnumeric(buf, marksize, 3, 14));
 	}
 }
 
@@ -501,7 +503,7 @@ char *arg;
 {
 	int i;
 
-	if ((arg && atoi(arg) == 0) || (!arg && mark)) {
+	if ((arg && atoi2(arg) == 0) || (!arg && mark)) {
 		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISMRK;
 		mark = 0;
 		marksize = 0;
@@ -674,9 +676,12 @@ char *arg;
 	char *path;
 
 	if (arg && *arg) path = strdup2(arg);
-	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, 1))
-	|| !*(path = evalpath(path, 1))) return(1);
-	if (!chdir3(path)) {
+	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, 1))) return(1);
+	else if (!*(path = evalpath(path, 1))) {
+		free(path);
+		return(1);
+	}
+	if (chdir3(path) < 0) {
 		warning(-1, path);
 		free(path);
 		return(1);
@@ -720,13 +725,13 @@ char *file;
 	prompt = malloc2(i * KANAWID + strlen(buf) + 1);
 	strncpy3(prompt, file, &i, 0);
 	strcat(prompt, buf);
-	buf = malloc2(n_column + 2);
 
 	i = 0;
-	while (Xfgets(buf, n_column + 1, fp)) {
+	while ((buf = fgets2(fp, 0))) {
 		locate(0, i);
 		putterm(l_clear);
 		kanjiputs2(buf, n_column, -1);
+		free(buf);
 		if (++i >= n_line - 1) {
 			i = 0;
 			if (!yesno(prompt)) break;
@@ -740,7 +745,6 @@ char *file;
 		}
 	}
 	Xfclose(fp);
-	free(buf);
 	free(prompt);
 }
 #endif
@@ -762,30 +766,46 @@ static int NEAR execshell(VOID_A)
 	char *sh;
 	int ret;
 
+	sh = getenv2("FD_SHELL");
 #if	MSDOS
-	if (!(sh = getenv2("FD_SHELL"))
-	&& !(sh = getenv2("FD_COMSPEC"))) sh = "command.com";
-#else
-	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
+	if (!sh) sh = getenv2("FD_COMSPEC");
 #endif
-	putterms(t_end);
-	putterms(t_nokeypad);
-	tflush();
-	sigvecreset();
-	cooked2();
-	echo2();
-	nl2();
-	tabs();
+#ifndef	_NOORIGSHELL
+	if (sh) {
+		char *cp;
+
+		if ((cp = strrdelim(sh, 1))) cp++;
+		else cp = sh;
+		if (!strpathcmp(cp, "fdsh")) sh = NULL;
+	}
+#endif
+
+	locate(0, n_line - 1);
+	putterm(l_clear);
 	kanjiputs(SHEXT_K);
-	tflush();
-	ret = system(sh);
-	raw2();
-	noecho2();
-	nonl2();
-	notabs();
-	sigvecset();
-	putterms(t_keypad);
-	putterms(t_init);
+	cputs2("\r\n");
+	if (sh) ret = system2(sh, 1);
+	else {
+#ifdef	_NOORIGSHELL
+# if	MSDOS
+		ret = system2("command.com", 1);
+# else
+		ret = system2("/bin/sh", 1);
+# endif
+#else	/* !_NOORIGSHELL */
+		putterms(t_end);
+		putterms(t_nokeypad);
+		tflush();
+		sigvecreset();
+		stdiomode();
+		ret = shell_loop(1);
+		ttyiomode();
+		sigvecset();
+		putterms(t_init);
+		putterms(t_keypad);
+		tflush();
+#endif	/* !_NOORIGSHELL */
+	}
 
 	return(ret);
 }
@@ -883,7 +903,7 @@ char *arg;
 	tmp1 = sorton & 7;
 	tmp2 = sorton & ~7;
 	if (arg && *arg) {
-		i = atoi(arg);
+		i = atoi2(arg);
 		if ((i >= 0 && i <= 13) || (i & 7) <= 5) {
 			tmp1 = i & 7;
 			tmp2 = i & ~7;
@@ -931,16 +951,16 @@ char *arg;
 static int write_dir(arg)
 char *arg;
 {
-	int i;
+	int fs;
 
 	if (writefs >= 2 || findpattern) return(warning_bell(arg));
-	if ((i = writablefs(".")) <= 0) {
+	if ((fs = writablefs(".")) <= 0) {
 		warning(0, NOWRT_K);
 		return(1);
 	}
 	if (!yesno(WRTOK_K)) return(1);
 	if (underhome(NULL) <= 0 && !yesno(HOMOK_K)) return(1);
-	arrangedir(i);
+	arrangedir(fs);
 	chgorder = 0;
 	return(4);
 }
@@ -963,10 +983,10 @@ char *arg;
 
 #ifndef	_NOCUSTOMIZE
 /*ARGSUSED*/
-static int edit_runcom(arg)
+static int edit_config(arg)
 char *arg;
 {
-	if (customize() >= 0) evalenv();
+	customize();
 	return(4);
 }
 #endif
@@ -1082,7 +1102,7 @@ char *arg;
 static int delete_file(arg)
 char *arg;
 {
-	int i;
+	int ret;
 
 	removepolicy = 0;
 	if (mark > 0) {
@@ -1092,9 +1112,9 @@ char *arg;
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 		if (!yesno(DELFL_K, filelist[filepos].name)) return(1);
-		if ((i = rmvfile(filelist[filepos].name)) < 0)
+		if ((ret = rmvfile(filelist[filepos].name)) < 0)
 			warning(-1, filelist[filepos].name);
-		if (!i) filepos++;
+		if (!ret) filepos++;
 	}
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
 	return(4);
@@ -1109,11 +1129,11 @@ char *arg;
 	removepolicy = 0;
 #if	!MSDOS
 	if (islink(&(filelist[filepos]))) {
-		int i;
+		int ret;
 
-		if ((i = rmvfile(filelist[filepos].name)) < 0)
+		if ((ret = rmvfile(filelist[filepos].name)) < 0)
 			warning(-1, filelist[filepos].name);
-		if (!i) filepos++;
+		if (!ret) filepos++;
 	}
 	else
 #endif
@@ -1176,20 +1196,21 @@ static int execute_sh(arg)
 char *arg;
 {
 	char *com;
-	int i;
+	int ret;
 
 	if (arg) com = strdup2(arg);
-	else if (!(com = inputstr(NULL, 0, -1, NULL, 0))) return(1);
+	else if (!(com = inputshellloop(-1, NULL))) return(1);
 	if (*com) {
-		i = execusercomm(com, filelist[filepos].name, 0, 1, 0);
-		if (i < -1) i = 4;
+		ret = execusercomm(com, filelist[filepos].name, 0, 1, 0);
+		ret = (ret < 0) ? 1 :
+			(internal_status >= -1) ? internal_status: 4;
 	}
 	else {
 		execshell();
-		i = 4;
+		ret = 4;
 	}
 	free(com);
-	return(i);
+	return(ret);
 }
 
 /*ARGSUSED*/
@@ -1200,18 +1221,18 @@ char *arg;
 	char *dir = NULL;
 #endif
 	char *com;
-#if	!MSDOS
+#if	!MSDOS || defined (DISMISS_CURPATH)
 	char *tmp;
 #endif
-	int i, len;
+	int ret, len;
 #ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
 
-#if	MSDOS
+#if	MSDOS && !defined (DISMISS_CURPATH)
 	len = (!isdir(&(filelist[filepos])) && isexec(&(filelist[filepos])))
 		? strlen(filelist[filepos].name) + 1 : 0;
-	com = inputstr(NULL, 0, len, filelist[filepos].name, 0);
+	com = inputshellloop(len, filelist[filepos].name);
 #else
 	if (isdir(&(filelist[filepos])) || !isexec(&(filelist[filepos]))) {
 		len = 0;
@@ -1224,7 +1245,7 @@ char *arg;
 		tmp[1] = _SC_;
 		strcpy(&(tmp[2]), filelist[filepos].name);
 	}
-	com = inputstr(NULL, 0, len, tmp, 0);
+	com = inputshellloop(len, tmp);
 	if (tmp != filelist[filepos].name) free(tmp);
 #endif
 	if (!com) return(1);
@@ -1236,28 +1257,29 @@ char *arg;
 
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		if (!(dir = tmpunpack(1))) i = 1;
+		if (!(dir = tmpunpack(1))) ret = -1;
 		else {
-			i = execusercomm(com, filelist[filepos].name, 0, 1, 1);
+			ret = execusercomm(com,
+				filelist[filepos].name, 0, 1, 1);
 			removetmp(dir, archivedir, filelist[filepos].name);
 		}
 	}
 	else
 #endif
 #ifndef	_NODOSDRIVE
-	if ((drive = tmpdosdupl("", &dir, 1)) < 0) i = 1;
+	if ((drive = tmpdosdupl("", &dir, 1)) < 0) ret = -1;
 	else if (drive) {
-		i = execusercomm(com, filelist[filepos].name, 0, 1, 1);
+		ret = execusercomm(com, filelist[filepos].name, 0, 1, 1);
 		removetmp(dir, NULL, filelist[filepos].name);
 	}
 	else
 #endif
 	{
-		i = execusercomm(com, filelist[filepos].name, 0, 1, 0);
+		ret = execusercomm(com, filelist[filepos].name, 0, 1, 0);
 	}
-	if (i < -1) i = 4;
+	ret = (ret < 0) ? 1 : (internal_status >= -1) ? internal_status: 4;
 	free(com);
-	return(i);
+	return(ret);
 }
 
 #ifndef	_NOARCHIVE
@@ -1278,7 +1300,7 @@ char *arg;
 	int drive = 0;
 #endif
 	char *file;
-	int i;
+	int ret;
 
 	if (arg && *arg) file = strdup2(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
@@ -1291,7 +1313,7 @@ char *arg;
 #endif
 	) return(1);
 
-	i = pack(file);
+	ret = pack(file);
 #ifndef	_NODOSDRIVE
 	if (drive) removetmp(dir, NULL, "");
 	else
@@ -1303,23 +1325,24 @@ char *arg;
 	;
 
 	free(file);
-	if (i < 0) {
+	if (ret < 0) {
 		putterm(t_bell);
 		return(1);
 	}
+	if (!ret) return(1);
 	return(4);
 }
 
 static int unpack_file(arg)
 char *arg;
 {
-	int i;
+	int ret;
 
 	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
-	if (archivefile) i = unpack(archivefile, NULL, arg, 0, 0);
-	else i = unpack(filelist[filepos].name, NULL, arg, 0, 1);
-	if (i < 0) return(warning_bell(arg));
-	if (!i) return(1);
+	if (archivefile) ret = unpack(archivefile, NULL, arg, 0, 0);
+	else ret = unpack(filelist[filepos].name, NULL, arg, 0, 1);
+	if (ret < 0) return(warning_bell(arg));
+	if (!ret) return(1);
 	return(4);
 }
 
@@ -1327,13 +1350,13 @@ char *arg;
 static int unpack_tree(arg)
 char *arg;
 {
-	int i;
+	int ret;
 
 	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
-	if (archivefile) i = unpack(archivefile, NULL, NULL, 1, 0);
-	else i = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
-	if (i <= 0) {
-		if (i < 0) warning_bell(arg);
+	if (archivefile) ret = unpack(archivefile, NULL, NULL, 1, 0);
+	else ret = unpack(filelist[filepos].name, NULL, NULL, 1, 1);
+	if (ret <= 0) {
+		if (ret < 0) warning_bell(arg);
 		return(3);
 	}
 	return(4);
@@ -1345,7 +1368,7 @@ static int info_filesys(arg)
 char *arg;
 {
 	char *path;
-	int i;
+	int ret;
 
 	if (arg && *arg) path = evalpath(strdup2(arg), 1);
 	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, 1))) return(1);
@@ -1353,9 +1376,9 @@ char *arg;
 		free(path);
 		path = strdup2(".");
 	}
-	i = infofs(path);
+	ret = infofs(path);
 	free(path);
-	if (!i) return(1);
+	if (!ret) return(1);
 	return(3);
 }
 
@@ -1433,7 +1456,7 @@ char *arg;
 	int drive = 0;
 #endif
 	char *dev;
-	int i;
+	int ret;
 
 	if (arg && *arg) dev = strdup2(arg);
 #if	MSDOS
@@ -1450,7 +1473,7 @@ char *arg;
 #endif
 	) return(1);
 
-	i = backup(dev);
+	ret = backup(dev);
 #ifndef	_NODOSDRIVE
 	if (drive) removetmp(dir, NULL, "");
 	else
@@ -1462,7 +1485,7 @@ char *arg;
 	;
 
 	free(dev);
-	if (i <= 0) return(1);
+	if (ret <= 0) return(1);
 	return(4);
 }
 #endif	/* !_NOARCHIVE */

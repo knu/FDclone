@@ -164,6 +164,8 @@ extern int nonl2 __P_((VOID_A));
 extern int tabs __P_((VOID_A));
 extern int notabs __P_((VOID_A));
 extern int keyflush __P_((VOID_A));
+extern int ttyiomode __P_((VOID_A));
+extern int stdiomode __P_((VOID_A));
 extern int exit2 __P_((int));
 extern char *tparamstr __P_((char *, int, int));
 extern int getterment __P_((VOID_A));

@@ -4,7 +4,6 @@
  *	Information Module
  */
 
-#include <ctype.h>
 #include <errno.h>
 #include "fd.h"
 #include "term.h"
@@ -213,6 +212,7 @@ extern int dosstatfs __P_((int, char *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strstr2 __P_((char *, char *));
+extern char *ascnumeric __P_((char *, long, int, int));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));
 extern int Xaccess __P_((char *, int));
@@ -283,7 +283,6 @@ VOID help __P_((int));
 static int NEAR getfsinfo __P_((char *, statfs_t *, mnt_t *));
 int writablefs __P_((char *));
 long getblocksize __P_((char *));
-char *inscomma __P_((char *, off_t, int, int));
 static int NEAR info1line __P_((int, char *, long, char *, char *));
 #if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
 static long NEAR calcKB __P_((long, long));
@@ -296,6 +295,7 @@ static int keycodelist[] = {
 	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER,
 	K_BS, '\t', CR, ESC
 };
+#define	KEYCODESIZ	((int)(sizeof(keycodelist) / sizeof(int)))
 static char *keystrlist[] = {
 	"Home", "End", "DelLin", "InsLin", "Del", "Ins",
 	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter",
@@ -318,10 +318,9 @@ int code;
 	else {
 		int i;
 
-		for (i = 0; i < sizeof(keycodelist) / sizeof(int); i++)
+		for (i = 0; i < KEYCODESIZ; i++)
 			if (code == keycodelist[i]) break;
-		if (i < sizeof(keycodelist) / sizeof(int))
-			sprintf(buf, "%-7.7s", keystrlist[i]);
+		if (i < KEYCODESIZ) sprintf(buf, "%-7.7s", keystrlist[i]);
 		else if (code < ' ' || code == C_DEL)
 			sprintf(buf, "Ctrl-%c ", (code + '@') & 0x7f);
 		else if (isprint(code)) sprintf(buf, "'%c'    ", code);
@@ -361,12 +360,8 @@ int mode;
 	locate(0, y++);
 	putterm(l_clear);
 
-	for (i = 0; i < NO_OPERATION; i++) {
-#ifdef	_NOJPNMES
-		if (!funclist[i].hmes_eng) continue;
-#else
-		if (!funclist[i].hmes) continue;
-#endif
+	for (i = 0; i < FUNCLISTSIZ ; i++) {
+		if (i == NO_OPERATION || i == WARNING_BELL) continue;
 		locate(x * (n_column / 2), y);
 		if (x ^= 1) putterm(l_clear);
 		else y++;
@@ -730,10 +725,19 @@ mnt_t *mntbuf;
 		match = 0;
 
 		fp = setmntent(MOUNTED, "r");
+		for (;;) {
 #ifdef	DEBUG
-		_mtrace_file = "getmntent(x2)";
+			_mtrace_file = "getmntent(start)";
+			mntp = getmntent2(fp, &mnt);
+			if (_mtrace_file) _mtrace_file = NULL;
+			else {
+				_mtrace_file = "getmntent(end)";
+				malloc(0);	/* dummy malloc */
+			}
+			if (!mntp) break;
+#else
+			if (!(mntp = getmntent2(fp, &mnt))) break;
 #endif
-		while ((mntp = getmntent2(fp, &mnt))) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)
 			|| (mntp -> mnt_dir[len - 1] != _SC_
@@ -829,42 +833,13 @@ char *dir;
 #endif	/* !MSDOS */
 }
 
-char *inscomma(buf, n, digit, max)
-char *buf;
-off_t n;
-int digit, max;
-{
-	char tmp[20 * 2 + 1];
-	int i, j;
-
-	j = 0;
-	if (n < 0 || digit < 1) buf[j++] = '?';
-	else if (!n) buf[j++] = '0';
-	else {
-		for (i = 0;; i++) {
-			tmp[i] = '0' + n % 10;
-			if (!(n /= 10) || i >= max - 1) break;
-			if (++j >= digit) {
-				if (i >= max - 2) break;
-				tmp[++i] = ',';
-				j = 0;
-			}
-		}
-		if (!n) for (j = 0; j <= i; j++) buf[j] = tmp[i - j];
-		else for (j = 0; j <= i; j++)
-			buf[j] = (tmp[i - j] == ',') ? ',' : '9';
-	}
-	buf[j] = '\0';
-	return(buf);
-}
-
 static int NEAR info1line(y, ind, n, s, unit)
 int y;
 char *ind;
 long n;
 char *s, *unit;
 {
-	char buf[12 + 1];
+	char buf[MAXCOLSCOMMA(3) + 1];
 	int width;
 
 	locate(0, y);
@@ -877,7 +852,7 @@ char *s, *unit;
 		kanjiputs2(s, width, 0);
 	}
 	else {
-		cprintf2("%12.12s", inscomma(buf, n, 3, 12));
+		cputs2(ascnumeric(buf, n, 3, MAXCOLSCOMMA(3)));
 		kanjiprintf(" %s", unit);
 	}
 	return(checkline(++y));

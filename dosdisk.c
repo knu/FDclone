@@ -145,13 +145,16 @@ extern int errno;
 #define	KC_EUCJP	0010
 
 # ifndef	issjis1
+# define	USEKCTYPETABLE
 # define	issjis1(c)	(kctypetable[(u_char)(c)] & KC_SJIS1)
 # endif
 # ifndef	issjis2
+# define	USEKCTYPETABLE
 # define	issjis2(c)	(kctypetable[(u_char)(c)] & KC_SJIS2)
 # endif
 
 # ifndef	iseuc
+# define	USEKCTYPETABLE
 # define	iseuc(c)	(kctypetable[(u_char)(c)] & KC_EUCJP)
 # endif
 #endif	/* !LSI_C */
@@ -164,11 +167,6 @@ extern int errno;
 
 #define	reterr(c)	{errno = doserrno; return(c);}
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
-#define	UNICODETBL	"fd-unicd.tbl"
-#define	MINUNICODE	0x00a7
-#define	MAXUNICODE	0xffe5
-#define	MINKANJI	0x8140
-#define	MAXKANJI	0xfc4b
 #define	ENDCLUST	((u_long)(0x0fffffff))
 #define	ERRCLUST	((u_long)(0x0ffffff7))
 #define	ROOTCLUST	((u_long)(0x10000000))
@@ -196,6 +194,8 @@ extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
+extern u_short unifysjis __P_((u_short, int));
+extern u_short cnvunicode __P_((u_short, int));
 #else	/* !FD */
 #ifndef	NOTZFILEH
 #include <tzfile.h>
@@ -234,6 +234,13 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
+static u_short NEAR unifysjis __P_((u_short, int));
+static u_short NEAR cnvunicode __P_((u_short, int));
+#define	UNICODETBL	"fd-unicd.tbl"
+#define	MINUNICODE	0x00a7
+#define	MAXUNICODE	0xffe5
+#define	MINKANJI	0x8140
+#define	MAXKANJI	0xfc4b
 #endif	/* !FD */
 
 #if	MSDOS
@@ -290,8 +297,6 @@ static off64_t *NEAR _readpt __P_((off64_t, off64_t, int, int, int, int));
 static int NEAR opendev __P_((int));
 static int NEAR closedev __P_((int));
 static int NEAR checksum __P_((char *));
-static u_short NEAR unifysjis __P_((u_short, int));
-static u_short NEAR cnvunicode __P_((u_short, int));
 static u_short NEAR lfnencode __P_((u_char, u_char));
 static u_short NEAR lfndecode __P_((u_char, u_char));
 #if	!MSDOS
@@ -450,7 +455,6 @@ devinfo mediadescr[] = {
 #endif
 #endif	/* !MSDOS */
 int lastdrive = -1;
-char *unitblpath = NULL;
 int needbavail = 0;
 VOID_T (*doswaitfunc)__P_((VOID_A)) = NULL;
 int (*dosintrfunc)__P_((VOID_A)) = NULL;
@@ -474,47 +478,57 @@ static u_short lfn_offset = 0;
 static int doserrno = 0;
 #if	!MSDOS
 static short sectsizelist[] = SECTSIZE;
-#define	SLISTSIZ	(sizeof(sectsizelist) / sizeof(short))
+#define	SLISTSIZ	((int)(sizeof(sectsizelist) / sizeof(short)))
 #endif
 static char *inhibitname[] = INHIBITNAME;
-#define	INHIBITNAMESIZ	(sizeof(inhibitname) / sizeof(char *))
-static sfntable_t sfntable[] = {
-	{0x8470, 0x847e, 0x8440},	/* strange Russian char */
-	{0x8480, 0x8491, 0x844f},	/* Why they converted ? */
+#define	INHIBITNAMESIZ	((int)(sizeof(inhibitname) / sizeof(char *)))
+#ifndef	FD
+typedef struct _kconv_t {
+	u_short start;
+	u_short cnv;
+	u_short range;
+} kconv_t;
+char *unitblpath = NULL;
+static kconv_t rsjistable[] = {
+	{0x8470, 0x8440, 0x0f},		/* strange Russian char */
+	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
 #define	EXCEPTRUSS	2
-	{0x8754, 0x875d, 0xfa4a},
-	{0x8782, 0x8782, 0xfa59},
-	{0x8784, 0x8784, 0xfa5a},
-	{0x878a, 0x878a, 0xfa58},
-	{0x8790, 0x8790, 0x81e0},
-	{0x8791, 0x8791, 0x81df},
-	{0x8792, 0x8792, 0x81e7},
-	{0x8795, 0x8795, 0x81e3},
-	{0x8796, 0x8796, 0x81db},
-	{0x8797, 0x8797, 0x81da},
-	{0x879a, 0x879a, 0x81e6},
-	{0x879b, 0x879b, 0x81bf},
-	{0x879c, 0x879c, 0x81be},
-	{0xed40, 0xed62, 0xfa5c},
-	{0xed63, 0xed7e, 0xfa80},
-	{0xed80, 0xede0, 0xfa9c},
-	{0xede1, 0xedfc, 0xfb40},
-	{0xee40, 0xee62, 0xfb5c},
-	{0xee63, 0xee7e, 0xfb80},
-	{0xee80, 0xeee0, 0xfb9c},
-	{0xeee1, 0xeeec, 0xfc40},
-	{0xeeef, 0xeef8, 0xfa40},
-	{0xeef9, 0xeef9, 0x81ca},
-	{0xeefa, 0xeefc, 0xfa55},
-	{0xfa54, 0xfa54, 0x81ca},
-	{0xfa5b, 0xfa5b, 0x81e6}
+	{0x8754, 0xfa4a, 0x0a},
+	{0x8782, 0xfa59, 0x01},
+	{0x8784, 0xfa5a, 0x01},
+	{0x878a, 0xfa58, 0x01},
+	{0x8790, 0x81e0, 0x01},
+	{0x8791, 0x81df, 0x01},
+	{0x8792, 0x81e7, 0x01},
+	{0x8795, 0x81e3, 0x01},
+	{0x8796, 0x81db, 0x01},
+	{0x8797, 0x81da, 0x01},
+	{0x879a, 0x81e6, 0x01},
+	{0x879b, 0x81bf, 0x01},
+	{0x879c, 0x81be, 0x01},
+	{0xed40, 0xfa5c, 0x23},
+	{0xed63, 0xfa80, 0x1c},
+	{0xed80, 0xfa9c, 0x61},
+	{0xede1, 0xfb40, 0x1c},
+	{0xee40, 0xfb5c, 0x23},
+	{0xee63, 0xfb80, 0x1c},
+	{0xee80, 0xfb9c, 0x61},
+	{0xeee1, 0xfc40, 0x0c},
+	{0xeeef, 0xfa40, 0x0a},
+	{0xeef9, 0x81ca, 0x01},
+	{0xeefa, 0xfa55, 0x03},
+	{0xfa54, 0x81ca, 0x01},
+	{0xfa5b, 0x81e6, 0x01},
 };
-#define	SFNTBLSIZ	(sizeof(sfntable) / sizeof(sfntable_t))
+#define	RSJISTBLSIZ	((int)(sizeof(rsjistable) / sizeof(kconv_t)))
+#endif	/* !FD */
 #ifndef	LSI_C
 # ifdef	FD
 extern u_char uppercase[256];
 extern u_char lowercase[256];
+#  ifdef	USEKCTYPETABLE
 extern u_char kctypetable[256];
+#  endif
 # else	/* !FD */
 static u_char uppercase[256] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,	/* 0x00 */
@@ -584,6 +598,7 @@ static u_char lowercase[256] = {
 	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,	/* 0xf0 */
 	0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
 };
+#  ifdef	USEKCTYPETABLE
 static u_char kctypetable[256] = {
 	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,	/* 0x00 */
 	0200, 0200, 0200, 0200, 0200, 0200, 0200, 0200,
@@ -618,6 +633,7 @@ static u_char kctypetable[256] = {
 	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,	/* 0xf0 */
 	0013, 0013, 0013, 0013, 0013, 0010, 0010,    0
 };
+#  endif	/* USEKCTYPETABLE */
 # endif	/* !FD */
 #endif	/* !LSI_C */
 
@@ -950,6 +966,118 @@ struct tm *tm;
 	return(t);
 # endif
 #endif
+}
+
+static u_short NEAR unifysjis(wc, russ)
+u_short wc;
+int russ;
+{
+	int i;
+
+	for (i = ((russ) ? 0 : EXCEPTRUSS); i < RSJISTBLSIZ; i++)
+		if (wc >= rsjistable[i].start
+		&& wc < rsjistable[i].start + rsjistable[i].range)
+			break;
+	if (i < RSJISTBLSIZ) {
+		wc -= rsjistable[i].start;
+		wc += rsjistable[i].cnv;
+	}
+	return(wc);
+}
+
+static u_short NEAR cnvunicode(wc, encode)
+u_short wc;
+int encode;
+{
+	static int fd = -1;
+	static u_short total = 0;
+	u_char buf[4];
+	char path[MAXPATHLEN];
+	u_short r, w, min, max, ofs;
+
+	if (encode < 0) {
+		if (fd >= 0) close(fd);
+		fd = -1;
+		return(0);
+	}
+
+	if (encode) {
+		r = 0xff00;
+		if (wc < 0x80) return(wc);
+		if (wc > 0xa0 && wc <= 0xdf) return(0xff00 | (wc - 0x40));
+		if (wc >= 0x8260 && wc <= 0x8279)
+			return(0xff00 | (wc - 0x8260 + 0x21));
+		if (wc >= 0x8281 && wc <= 0x829a)
+			return(0xff00 | (wc - 0x8281 + 0x41));
+		if (wc < MINKANJI || wc > MAXKANJI) return(r);
+	}
+	else {
+		r = '?';
+		switch (wc & 0xff00) {
+			case 0:
+				if ((wc & 0xff) < 0x80) return(wc);
+				break;
+			case 0xff00:
+				w = wc & 0xff;
+				if (w > 0x20 && w <= 0x3a)
+					return(w + 0x8260 - 0x21);
+				if (w > 0x40 && w <= 0x5a)
+					return(w + 0x8281 - 0x41);
+				if (w > 0x60 && w <= 0x9f)
+					return(w + 0x40);
+				break;
+			default:
+				break;
+		}
+		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
+	}
+
+	if (fd < 0) {
+		if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
+		else strcatdelim2(path, unitblpath, UNICODETBL);
+
+		if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0
+		|| read(fd, buf, 2) != 2) return(r);
+		total = (((u_short)(buf[1]) << 8) | buf[0]);
+	}
+
+	if (encode) {
+		if (lseek(fd, (off_t)2, 0) < 0) return(r);
+		wc = unifysjis(wc, 0);
+		for (ofs = 0; ofs < total; ofs++) {
+			if (read(fd, buf, 4) != 4) break;
+			w = (((u_short)(buf[3]) << 8) | buf[2]);
+			if (wc == w) {
+				r = (((u_short)(buf[1]) << 8) | buf[0]);
+				break;
+			}
+		}
+	}
+	else {
+		min = 0;
+		max = total + 1;
+		ofs = total / 2 + 1;
+		for (;;) {
+			if (ofs == min || ofs == max) break;
+			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, 0) < 0
+			|| read(fd, buf, 4) != 4) break;
+			w = (((u_short)(buf[1]) << 8) | buf[0]);
+			if (wc == w) {
+				r = (((u_short)(buf[3]) << 8) | buf[2]);
+				break;
+			}
+			else if (wc < w) {
+				max = ofs;
+				ofs = (ofs + min) / 2;
+			}
+			else {
+				min = ofs;
+				ofs = (ofs + max) / 2;
+			}
+		}
+	}
+
+	return(r);
 }
 #endif	/* !FD */
 
@@ -2018,7 +2146,7 @@ bpb_t *bpbcache;
 		devp -> fd = -1;
 		i = O_RDWR | O_BINARY;
 #ifdef	HDDMOUNT
-		if (!(devp -> ch_cyl) && devp -> ch_head != 'w') {
+		if (!(devp -> ch_cyl) && toupper2(devp -> ch_head) != 'W') {
 			i = O_RDONLY | O_BINARY;
 			devp -> flags |= F_RONLY;
 		}
@@ -2589,135 +2717,21 @@ char *name;
 	return(sum & 0xff);
 }
 
-static u_short NEAR unifysjis(wc, russ)
-u_short wc;
-int russ;
-{
-	int i;
-
-	for (i = ((russ) ? 0 : EXCEPTRUSS); i < SFNTBLSIZ; i++)
-		if (wc >= sfntable[i].start && wc <= sfntable[i].end) break;
-	if (i < SFNTBLSIZ) {
-		wc -= sfntable[i].start;
-		wc += sfntable[i].sfn;
-	}
-	return(wc);
-}
-
-static u_short NEAR cnvunicode(wc, encode)
-u_short wc;
-int encode;
-{
-	static int fd = -1;
-	static u_short total = 0;
-	u_char buf[4];
-	char path[MAXPATHLEN];
-	u_short r, w, min, max, ofs;
-
-	if (encode < 0) {
-		if (fd >= 0) close(fd);
-		fd = -1;
-		return(0);
-	}
-
-	if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
-	else strcatdelim2(path, unitblpath, UNICODETBL);
-	if (fd < 0) {
-		if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0
-		|| read(fd, buf, 2) != 2) return(0);
-		total = (((u_short)(buf[1]) << 8) | buf[0]);
-	}
-
-	r = 0;
-	if (encode) {
-		if (lseek(fd, (off_t)2, 0) < 0) return(0);
-		wc = unifysjis(wc, 0);
-		for (ofs = 0; ofs < total; ofs++) {
-			if (read(fd, buf, 4) != 4) break;
-			w = (((u_short)(buf[3]) << 8) | buf[2]);
-			if (wc == w) {
-				r = (((u_short)(buf[1]) << 8) | buf[0]);
-				break;
-			}
-		}
-	}
-	else {
-		min = 0;
-		max = total + 1;
-		ofs = total / 2 + 1;
-		for (;;) {
-			if (ofs == min || ofs == max) break;
-			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, 0) < 0
-			|| read(fd, buf, 4) != 4) break;
-			w = (((u_short)(buf[1]) << 8) | buf[0]);
-			if (wc == w) {
-				r = (((u_short)(buf[3]) << 8) | buf[2]);
-				break;
-			}
-			else if (wc < w) {
-				max = ofs;
-				ofs = (ofs + min) / 2;
-			}
-			else {
-				min = ofs;
-				ofs = (ofs + max) / 2;
-			}
-		}
-	}
-
-	return(r);
-}
-
 static u_short NEAR lfnencode(c1, c2)
 u_char c1, c2;
 {
-	u_short kanji, unicode;
-
-	if (!c1) {
 #if	MSDOS
-		if (c2 < ' ' || strchr(NOTINLFN, c2)) return(0xffff);
+	if (!c1 && (c2 < ' ' || strchr(NOTINLFN, c2))) return(0xffff);
 #else
-		if (c2 < ' ' || strchr(NOTINLFN, c2)) return('_');
+	if (!c1 && (c2 < ' ' || strchr(NOTINLFN, c2))) return('_');
 #endif
-		if (c2 < 0x80) return(c2);
-		if (c2 > 0xa0 && c2 <= 0xdf) return(0xff00 | (c2 - 0x40));
-	}
-	else {
-		kanji = ((u_short)c1 << 8) | c2;
-		if (kanji >= 0x8260 && kanji <= 0x8279)
-			return(0xff00 | (kanji - 0x8260 + 0x21));
-		if (kanji >= 0x8281 && kanji <= 0x829a)
-			return(0xff00 | (kanji - 0x8281 + 0x41));
-		if (kanji < MINKANJI || kanji > MAXKANJI) return(0xff00);
-		if ((unicode = cnvunicode(kanji, 1))) return(unicode);
-	}
-
-	return(0xff00);
+	return(cnvunicode(((u_short)c1 << 8) | c2, 1));
 }
 
 static u_short NEAR lfndecode(c1, c2)
 u_char c1, c2;
 {
-	u_short kanji, unicode;
-
-	switch (c1) {
-		case 0:
-			if (c2 < 0x80) return(c2);
-			break;
-		case 0xff:
-			if (c2 > 0x20 && c2 <= 0x3a)
-				return(c2 + 0x8260 - 0x21);
-			if (c2 > 0x40 && c2 <= 0x5a)
-				return(c2 + 0x8281 - 0x41);
-			if (c2 > 0x60 && c2 <= 0x9f) return(c2 + 0x40);
-			break;
-		default:
-			break;
-	}
-	unicode = ((u_short)c1 << 8) | c2;
-	if (unicode < MINUNICODE || unicode > MAXUNICODE) return('?');
-	if ((kanji = cnvunicode(unicode, 0))) return(kanji);
-	return('?');
+	return(cnvunicode(((u_short)c1 << 8) | c2, 0));
 }
 
 #if	!MSDOS
@@ -4135,7 +4149,7 @@ int dosrename(from, to)
 char *from, *to;
 {
 	char buf[DOSMAXPATHLEN];
-	long clust;
+	long clust, rmclust;
 	u_short offset;
 	int i, dd, fd, sum, ret;
 
@@ -4160,11 +4174,12 @@ char *from, *to;
 		errno = EACCES;
 		return(-1);
 	}
-	if ((fd = dosopen(to, O_RDWR | O_CREAT | O_EXCL, 0666)) < 0) {
+	if ((fd = dosopen(to, O_RDWR | O_CREAT, 0666)) < 0) {
 		closedev(dd);
 		return(-1);
 	}
 	fd -= DOSFDOFFSET;
+	rmclust = clust32(fd2devp(fd), fd2dentp(fd));
 	sum = checksum(dd2dentp(dd) -> name);
 	memcpy((char *)&(fd2dentp(fd) -> attr),
 		(char *)&(dd2dentp(dd) -> attr),
@@ -4181,6 +4196,7 @@ char *from, *to;
 	ret = 0;
 	if (writedent(dosflist[fd]._file) < 0 || writedent(dd) < 0
 	|| unlinklfn(dd, clust, offset, sum) < 0
+	|| (rmclust && clustfree(&(devlist[dd]), rmclust) < 0)
 	|| writefat(&(devlist[dd])) < 0) {
 		errno = doserrno;
 		ret = -1;

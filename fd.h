@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #endif
 
+#define	_NOORIGSHELL
 #define	_NOSPLITWIN
 #define	_NOPRECEDE
 #define	_NOCUSTOMIZE
@@ -38,13 +39,17 @@ extern char *_mtrace_file;
 #if	MSDOS
 #define	RUNCOMFILE	"~\\fd.rc"
 #define	HISTORYFILE	"~\\fd.hst"
-#define	CMDLINE_DELIM	"\t ;<>|"
-#define	METACHAR	" \"'*,;<=>?[]|"
 #else
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
-#define	CMDLINE_DELIM	"\t !&:;()<>|"
-#define	METACHAR	" \"#$&'()*:;<=>?[\\]^`|"
+#endif
+
+#if	MSDOS && defined (_NOORIGSHELL)
+#define	SHELL_OPERAND	"|"
+#define	CMDLINE_DELIM	"\t ;<>|"
+#else
+#define	SHELL_OPERAND	"&;(`|"
+#define	CMDLINE_DELIM	"\t &;()<>`|"
 #endif
 
 /****************************************************************
@@ -96,8 +101,10 @@ extern char *_mtrace_file;
 #define	OJUNETPATH	""
 #define	HEXPATH		""
 #define	CAPPATH		""
+#define	UTF8PATH	""
 #define	NOCONVPATH	""
 #define	PROMPT		"sh#"
+#define	PROMPT2		"> "
 
 
 /****************************************************************
@@ -111,10 +118,13 @@ extern char *_mtrace_file;
 #define	MAXFUNCTABLE	32
 #define	MAXFUNCLINES	16
 #define	MAXLINESTR	255
+#if	MSDOS
+#define	MAXCOMMSTR	(128 - 2)
+#else
 #define	MAXCOMMSTR	1023
+#endif
 #define	MAXSELECTSTRS	16
 #define	MAXSTACK	5
-#define	MAXARGS		128
 #define	MAXWINDOWS	2
 
 #ifdef	_NOSPLITWIN

@@ -9225,7 +9225,7 @@ static convtable unitable[] = {
 	{0xffe4, 0xfa55},
 	{0xffe5, 0x818f}
 };
-#define	UNITBLSIZE	(sizeof(unitable) / sizeof(convtable))
+#define	UNITBLSIZE	((int)(sizeof(unitable) / sizeof(convtable)))
 
 int main(argc, argv)
 int argc;

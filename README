@@ -1,193 +1,194 @@
 ############################################################
 #
-#	FDclone Ver. 1.03 に関して
+#	FDclone Ver. 1.03 に関して
 #
 #	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	May 22, 2001
+#	Aug 23, 2001
 #
 ############################################################
 
-　FDclone は、1989年に A.Idei <SDI00544@niftyserve.or.jp> 氏
-の手によって MS-DOS 用に作成された『ＦＤ』を模した、UNIX ベ
-ースの OS (以下便宜上単に "UNIX" と呼ぶ) 汎用のファイル & デ
-ィレクトリ管理ツールです。
-　仕様部分に関しては、できるだけオリジナルの『ＦＤ』に近付け
-るようにしましたが、インプリメントに関しては全くのオリジナル
-作品です。
+　FDclone は、1989年に A.Idei <SDI00544@niftyserve.or.jp> 氏
+の手によって MS-DOS 用に作成された『ＦＤ』を模した、UNIX ベ
+ースの OS (以下便宜上単に "UNIX" と呼ぶ) 汎用のファイル & デ
+ィレクトリ管理ツールです。
+　仕様部分に関しては、できるだけオリジナルの『ＦＤ』に近付け
+るようにしましたが、インプリメントに関しては全くのオリジナル
+作品です。
 
-　クローンと称している理由は、『ＦＤ』が余りに普及したため、
-MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
-ールの代名詞として定着してしまっていることに起因します。
-　かつて、筆者も作成に関わったことのある UNIX 用ファイル管理
-ツールに、fu (田代 卓 <PDC02432@niftyserve.or.jp> 氏作)とい
-うものがありましたが、この公開後の利用状況を聞いてみると、シ
-ェルの alias 機能で "fd" に改名して使っているというユーザも
-かなり多かったということです。
-　MS-DOS から UNIX に入ったユーザにとっては、タイプし易さも
-含めて、この名称が一番馴染んでいると思えます。
-　となれば、できれば仕様上もこれに準じたものを UNIX 上で作る
-ことは、MS-DOS ユーザ出身の UNIX 初心者にとって、自然に UNIX
-環境に慣れていくために有効なことではないかと考えました。
+　クローンと称している理由は、『ＦＤ』が余りに普及したため、
+MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
+ールの代名詞として定着してしまっていることに起因します。
+　かつて、筆者も作成に関わったことのある UNIX 用ファイル管理
+ツールに、fu (田代 卓 <PDC02432@niftyserve.or.jp> 氏作)とい
+うものがありましたが、この公開後の利用状況を聞いてみると、シ
+ェルの alias 機能で "fd" に改名して使っているというユーザも
+かなり多かったということです。
+　MS-DOS から UNIX に入ったユーザにとっては、タイプし易さも
+含めて、この名称が一番馴染んでいると思えます。
+　となれば、できれば仕様上もこれに準じたものを UNIX 上で作る
+ことは、MS-DOS ユーザ出身の UNIX 初心者にとって、自然に UNIX
+環境に慣れていくために有効なことではないかと考えました。
 
-　以上のような理由から、この FDclone は作られました。途中、
-長き変遷と苦難の道を経はしましたが、ようやく完成の運びとなり
-公開にこぎ着けることとなり幸いです。
-
-
---
-　FDclone-1.03 のパッケージには、以下のファイルが含まれます。
-
-README		このファイル
-HISTORY		これまでの改定履歴
-FAQ		Q&A 集 (Frequently Asked Question)
-TECHKNOW	テクニカルノウハウ
-Install		FDclone のインストール方法のドキュメント
-ToAdmin		FDclone を運用する管理者用ドキュメント
-Configur	環境設定用ヘッダの自動生成プログラム (Makefile 内で実行)
-Makefile	メイクファイル
-Makefile.in	メイクファイル本体 (雛型)
-fd.man		man ページ用 roff ファイル (JIS 版)
-fd.cat		man ページ用 プレーンテキスト (JIS 版)
-
-mkmfsed.c	メイクファイル加工用の sed スクリプト生成プログラム
-kanjicnv.c	簡易漢字コードコンバータ
-mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
-expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
-mkunitbl.c	UNICODE 変換テーブルファイル生成プログラム
-mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
-mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
-mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト
-mkmfdosb.sed	Borland C++ 向けメイクファイル加工用スクリプト
-
-makefile.gpc	DOS/V 用 djgpp v1.xx 版メイクファイル
-makefile.g98	PC-9801 用 djgpp v1.xx 版メイクファイル
-makefile.dpc	DOS/V 用 djgpp v2.xx 版メイクファイル
-makefile.d98	PC-9801 用 djgpp v2.xx 版メイクファイル
-makefile.lpc	DOS/V 用 LSI C-86 3.5 版メイクファイル
-makefile.l98	PC-9801 用 LSI C-86 3.5 版メイクファイル
-makefile.bpc	DOS/V 用 Borland C++ 版メイクファイル
-makefile.b98	PC-9801 用 Borland C++ 版メイクファイル
-
-main.c		FDclone のメインソース
-term.c		termcap ライブラリソース
-term.h		term.c 用のヘッダ
-pathname.c	パス名操作に関するモジュール
-pathname.h	pathname.c 用のヘッダ
-dosdisk.c	フロッピードライブドライバ部分
-dosdisk.h	dosdisk.c 用のヘッダ
-dosemu.c	システム関数群のフロッピードライブ対応版
-unixdisk.c	MS-DOS 用 ファイル制御関数群
-unixdisk.h	unixdisk.c 用のヘッダ
-unixemu.c	システム関数群の MS-DOS 版
-unixemu.h	unixemu.c 用のヘッダ
-libc.c		cc の標準関数のアレンジ
-file.c		ファイル操作関連
-apply.c		ファイルへの連続適用関連
-parse.c		文字列解析関連
-builtin.c	組込みコマンド関連
-shell.c		シェルコマンド関連
-kanji.c		漢字コードコンバート関連
-input.c		ユーザ入力関連
-info.c		各種情報表示用
-rockridg.c	iso-9660 RockRidge 拡張関連
-archive.c	アーカイバ関連
-tree.c		ツリー表示関連
-command.c	内部コマンド関連
-browse.c	ブラウザ画面関連
-
-fd.h		FDclone のカスタマイズ用ヘッダ
-machine.h	機種依存性を吸収するヘッダ
-config.hin	ダミーで用意してある環境設定用ヘッダ
-types.h		各種型宣言
-kctype.h	漢字コードに関するヘッダ
-func.h		プロトタイプ宣言
-functabl.h	内部コマンドの属性定義用
-kanji.hin	日本語文字列のソース (JIS版)
-version.h	バージョン
-
-_fdrc		.fdrc のお手本
-_fdrc.dif	.fdrc に関する 1.01h からの変更点
+　以上のような理由から、この FDclone は作られました。途中、
+長き変遷と苦難の道を経はしましたが、ようやく完成の運びとなり
+公開にこぎ着けることとなり幸いです。
 
 
 --
-　FDclone の著作権は、[ 白井 隆 <shirai@nintendo.co.jp> ] が
-保持します。但し、全てのソースの配布、改変、引用、2 次利用に
-ついては、何ら束縛されることなく自由に行なって頂いて構いませ
-ん。
-　FDclone のソースを元に、私の著作物からまた新たな発展が見ら
-れるならば、作者としても本望ですので、自由に再利用して下さい。
+　FDclone-1.03 のパッケージには、以下のファイルが含まれます。
 
-　但し、FDclone の利用・配布に制限を加えてしまうような行為、
-例えば、無断で FDclone に関するパテント申請を行なうといった
-ことは、フリーソフトウェアの理念に反する行為となるので、一切
-これを禁止させて頂きます。
+README		このファイル
+HISTORY		これまでの改定履歴
+FAQ		Q&A 集 (Frequently Asked Question)
+TECHKNOW	テクニカルノウハウ
+Install		FDclone のインストール方法のドキュメント
+ToAdmin		FDclone を運用する管理者用ドキュメント
+Configur	環境設定用ヘッダの自動生成プログラム (Makefile 内で実行)
+Makefile	メイクファイル
+Makefile.in	メイクファイル本体 (雛型)
+fd.man		man ページ用 roff ファイル (JIS 版)
+fd.cat		man ページ用 プレーンテキスト (JIS 版)
 
+mkmfsed.c	メイクファイル加工用の sed スクリプト生成プログラム
+kanjicnv.c	簡易漢字コードコンバータ
+mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
+expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
+mkunitbl.c	UNICODE 変換テーブルファイル生成プログラム
+mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
+mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
+mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト
+mkmfdosb.sed	Borland C++ 向けメイクファイル加工用スクリプト
 
-　CD-ROM や各種ネットワークにおける実行バイナリの頒布につい
-ては、別途個別にご相談下さい。
-　但し、既に頒布されているバイナリの二次配布については、各々
-の頒布元の条件に従いますので、条件の詳細は頒布元にお問い合わ
-せ下さい。
+makefile.gpc	DOS/V 用 djgpp v1.xx 版メイクファイル
+makefile.g98	PC-9801 用 djgpp v1.xx 版メイクファイル
+makefile.dpc	DOS/V 用 djgpp v2.xx 版メイクファイル
+makefile.d98	PC-9801 用 djgpp v2.xx 版メイクファイル
+makefile.lpc	DOS/V 用 LSI C-86 3.5 版メイクファイル
+makefile.l98	PC-9801 用 LSI C-86 3.5 版メイクファイル
+makefile.bpc	DOS/V 用 Borland C++ 版メイクファイル
+makefile.b98	PC-9801 用 Borland C++ 版メイクファイル
 
-　頒布バイナリの頒布元の連絡先は、HELP_MESSAGE コマンドで表
-示されるヘルプ画面のファンクション行に表示されています。
-　この表示のない場合、及びタイトル行のバージョン番号末尾に #
-の文字が添えられていない場合、作者の許諾を受けていない非公式
-の頒布バイナリですので、ご使用を控えることをお奨めします。
+main.c		FDclone のメインソース
+term.c		termcap ライブラリソース
+term.h		term.c 用のヘッダ
+pathname.c	パス名操作に関するモジュール
+pathname.h	pathname.c 用のヘッダ
+dosdisk.c	フロッピードライブドライバ部分
+dosdisk.h	dosdisk.c 用のヘッダ
+dosemu.c	システム関数群のフロッピードライブ対応版
+unixdisk.c	MS-DOS 用 ファイル制御関数群
+unixdisk.h	unixdisk.c 用のヘッダ
+unixemu.c	システム関数群の MS-DOS 版
+unixemu.h	unixemu.c 用のヘッダ
+libc.c		cc の標準関数のアレンジ
+file.c		ファイル操作関連
+apply.c		ファイルへの連続適用関連
+parse.c		文字列解析関連
+builtin.c	組込みコマンド関連
+shell.c		シェルコマンド関連
+kanji.c		漢字コードコンバート関連
+input.c		ユーザ入力関連
+info.c		各種情報表示用
+rockridg.c	iso-9660 RockRidge 拡張関連
+archive.c	アーカイバ関連
+tree.c		ツリー表示関連
+custom.c	設定変更関連
+command.c	内部コマンド関連
+browse.c	ブラウザ画面関連
+
+fd.h		FDclone のカスタマイズ用ヘッダ
+machine.h	機種依存性を吸収するヘッダ
+config.hin	ダミーで用意してある環境設定用ヘッダ
+types.h		各種型宣言
+kctype.h	漢字コードに関するヘッダ
+func.h		プロトタイプ宣言
+functabl.h	内部コマンドの属性定義用
+kanji.hin	日本語文字列のソース (JIS版)
+version.h	バージョン
+
+_fdrc		.fdrc のお手本
+_fdrc.dif	.fdrc に関する 1.01h からの変更点
 
 
 --
-　詳細は各種ドキュメントを参照して下さい。`Install' の指示に
-従ってコンパイルし、機能詳細はインストール後の man ページを
-参照して下さい。
-　FAQ 集も用意してありますので、何か支障のあった場合、作者に
-連絡する前にまずこれらのドキュメントをお読みになることをお奨
-めします。ほとんどの支障は FAQ と man ページで解決されるはず
-です。
-　各種 UNIX 環境の他、MS-DOS でもコンパイル可能にしてありま
-すが、この際には Makefile の差替えが必要となります。
+　FDclone の著作権は、[ 白井 隆 <shirai@nintendo.co.jp> ] が
+保持します。但し、全てのソースの配布、改変、引用、2 次利用に
+ついては、何ら束縛されることなく自由に行なって頂いて構いませ
+ん。
+　FDclone のソースを元に、私の著作物からまた新たな発展が見ら
+れるならば、作者としても本望ですので、自由に再利用して下さい。
+
+　但し、FDclone の利用・配布に制限を加えてしまうような行為、
+例えば、無断で FDclone に関するパテント申請を行なうといった
+ことは、フリーソフトウェアの理念に反する行為となるので、一切
+これを禁止させて頂きます。
+
+
+　CD-ROM や各種ネットワークにおける実行バイナリの頒布につい
+ては、別途個別にご相談下さい。
+　但し、既に頒布されているバイナリの二次配布については、各々
+の頒布元の条件に従いますので、条件の詳細は頒布元にお問い合わ
+せ下さい。
+
+　頒布バイナリの頒布元の連絡先は、HELP_MESSAGE コマンドで表
+示されるヘルプ画面のファンクション行に表示されています。
+　この表示のない場合、及びタイトル行のバージョン番号末尾に #
+の文字が添えられていない場合、作者の許諾を受けていない非公式
+の頒布バイナリですので、ご使用を控えることをお奨めします。
 
 
 --
-　UNIX は、X/Open Company Ltd. がライセンスする登録商標です。
-しかし、FDclone の各ドキュメント内で呼び示される UNIX という
-呼称は、X/Open によって許諾された UNIX OS を指すものではなく、
-1969 年、AT&T ベル研で開発された unics から派生するシリーズ
-の OS 全般を指すものとします。
-　これは、X/Open の権利を侵害する目的ではなく、これらを総称
-する呼称が消失してしまったことに起因する、便宜上の表現である
-ことをご理解下さい。
+　詳細は各種ドキュメントを参照して下さい。`Install' の指示に
+従ってコンパイルし、機能詳細はインストール後の man ページを
+参照して下さい。
+　FAQ 集も用意してありますので、何か支障のあった場合、作者に
+連絡する前にまずこれらのドキュメントをお読みになることをお奨
+めします。ほとんどの支障は FAQ と man ページで解決されるはず
+です。
+　各種 UNIX 環境の他、MS-DOS でもコンパイル可能にしてありま
+すが、この際には Makefile の差替えが必要となります。
 
 
 --
-謝辞
+　UNIX は、X/Open Company Ltd. がライセンスする登録商標です。
+しかし、FDclone の各ドキュメント内で呼び示される UNIX という
+呼称は、X/Open によって許諾された UNIX OS を指すものではなく、
+1969 年、AT&T ベル研で開発された unics から派生するシリーズ
+の OS 全般を指すものとします。
+　これは、X/Open の権利を侵害する目的ではなく、これらを総称
+する呼称が消失してしまったことに起因する、便宜上の表現である
+ことをご理解下さい。
 
-　最後になりましたが、FDclone の完成に際してお世話になった以
-下の方々に、この場を借りて感謝の意を表させて頂きます。
-(敬称略、アルファベット順)
 
-・『ＦＤ』の作者で FDclone の公開を快諾して頂きました。
-	SDI00544@niftyserve.or.jp (出射　厚)
+--
+謝辞
 
-・WINC 勉強会 ML にて、ファイルシステムに関する相談に乗って
-　頂きました。
+　最後になりましたが、FDclone の完成に際してお世話になった以
+下の方々に、この場を借りて感謝の意を表させて頂きます。
+(敬称略、アルファベット順)
+
+・『ＦＤ』の作者で FDclone の公開を快諾して頂きました。
+	SDI00544@niftyserve.or.jp (出射　厚)
+
+・WINC 勉強会 ML にて、ファイルシステムに関する相談に乗って
+　頂きました。
 	kenji@reseau.toyonaka.osaka.jp (Kenji Rikitake)
-	mori@chuo-computer.co.jp (森　秀和)
-	ohm@kyoto.wide.ad.jp (森島晃年)
-	saitoh@ics.es.osaka-u.ac.jp (齊藤明紀)
+	mori@chuo-computer.co.jp (森　秀和)
+	ohm@kyoto.wide.ad.jp (森島晃年)
+	saitoh@ics.es.osaka-u.ac.jp (齊藤明紀)
 
-・βテスト用 ML の管理運営を担当して頂きました。
+・βテスト用 ML の管理運営を担当して頂きました。
 	matusita@ics.es.osaka-u.ac.jp (Makoto MATSUSHITA)
 
-・fj.sources.d での募集を受けてβテストに協力して頂きました。
-	7m2vej@ritp.ye.IHI.co.jp (UENO Fumihiro  上野文裕)
+・fj.sources.d での募集を受けてβテストに協力して頂きました。
+	7m2vej@ritp.ye.IHI.co.jp (UENO Fumihiro  上野文裕)
 	aki@pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
 	ao@orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
-	daikoku@lang2.bs1.fc.nec.co.jp (大黒洋史)
+	daikoku@lang2.bs1.fc.nec.co.jp (大黒洋史)
 	fuku@amorph.rim.or.jp (FUKUSHIMA Osamu)
 	go@cclub.tutcc.tut.ac.jp (Go Watanabe)
 	h-inoue@is.aist-nara.ac.jp (Hiroyuki Inoue)
-	h-yagi@zero0.nsis.cl.nec.co.jp (八木英雄)
+	h-yagi@zero0.nsis.cl.nec.co.jp (八木英雄)
 	hashi@star.rcast.u-tokyo.ac.jp (TAKAHASHI Katsuyuki)
 	hide@mamoru.ee.sophia.ac.jp (Takahide Yamaguchi)
 	hiro@akinus1.aki.che.tohoku.ac.jp (Akiyasu Hirotani)
@@ -197,10 +198,10 @@ _fdrc.dif	.fdrc に関する 1.01h からの変更点
 	j0442@cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
 	j9194169@ed.yama.sut.ac.jp (Keitarou Yoshimura)
 	jt@ng.nefs.nec.co.jp (Jiro_Takabatake)
-	katsu@cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
+	katsu@cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
 	ke3057yt@ex.ecip.osaka-u.ac.jp (yosioka tuneo)
 	kimai@av.crl.sony.co.jp (IMAI Kenichi)
-	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
+	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
 	kkubota@crl.go.jp (Kazuo Kubota)
 	kmiya@mm.rd.nttdata.jp (Kunio Miyamoto)
 	kobashi@comp.eng.himeji-tech.ac.jp (kobashi)
@@ -216,18 +217,18 @@ _fdrc.dif	.fdrc に関する 1.01h からの変更点
 	ohishi@otc.qnes.nec.co.jp (Isao Ohishi)
 	okubo@mem.cl.nec.co.jp (Shuichi OHKUBO)
 	ozawa@prince.pe.u-tokyo.ac.jp
-	roy@lit.cs.uec.ac.jp (SATOU Masaki / 佐藤雅規)
+	roy@lit.cs.uec.ac.jp (SATOU Masaki / 佐藤雅規)
 	ryoji@kgupyr.kwansei.ac.jp (Ryoji Nagai)
 	sakai@csl.cl.nec.co.jp (Junji SAKAI)
 	sakanaga@ds.kyoto.omronsoft.co.jp (Toshiyuki Sakanaga)
 	sawada@h3news1.kais.kyoto-u.ac.jp (Yutaka SAWADA)
-	senshu@astro.yamagata-cit.ac.jp (Hiroyuki Senshu / 千秋)
+	senshu@astro.yamagata-cit.ac.jp (Hiroyuki Senshu / 千秋)
 	shige@luck.imasy.or.jp (Shigechika Aikawa)
 	shirai@atropos.gen.u-tokyo.ac.jp (Izuru Shirai)
 	taka-mm@super.win.or.jp (Takahasi Mamoru)
 	tan@kei-n.huap.hokudai.ac.jp (Takushi Tanaka)
 	tanaka@inf.ptg.sony.co.jp ("T.Tanaka")
-	tomiyan@cv.sony.co.jp (富田 光彦)
+	tomiyan@cv.sony.co.jp (富田 光彦)
 	tsuka@ohsaki.meidensha.co.jp (Yoshihiro Tsukamoto)
 	uno@meleager.mel.go.jp
 	wakui@casiogw.rd.casio.co.jp (WAKUI Kazuhiko)

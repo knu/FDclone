@@ -271,6 +271,7 @@ FILE *fp;
 	return(buf);
 }
 
+/*ARGSUSED*/
 int main(argc, argv)
 int argc;
 char *argv[];

@@ -6,7 +6,6 @@
 
 #ifdef	FD
 #include "fd.h"
-#define	EVALMACRO
 #else	/* !FD */
 #include <stdio.h>
 #include <string.h>
@@ -53,6 +52,7 @@
 # endif
 #else	/* !MSDOS */
 #include <pwd.h>
+#include <grp.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #define	EXTWIDTH	0
@@ -89,7 +89,6 @@ extern char *strdup2 __P_((char *));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int isdotdir __P_((char *));
-extern char *catargs __P_((char *[], int));
 # ifdef	_NOROCKRIDGE
 extern DIR *_Xopendir __P_((char *));
 # define	Xopendir	_Xopendir
@@ -116,7 +115,6 @@ char *strdup2 __P_((char *));
 char *strcpy2 __P_((char *, char *));
 char *strncpy2 __P_((char *, char *, int));
 int isdotdir __P_((char *));
-static char *NEAR catargs __P_((char *[], int));
 # if	MSDOS
 DIR *Xopendir __P_((char *));
 int Xclosedir __P_((DIR *));
@@ -157,10 +155,11 @@ static int NEAR extaccess __P_((char *, char *, int));
 #endif
 #ifndef	_NOCOMPLETE
 # if	!MSDOS
-static int NEAR completeuser __P_((char *, int, char ***));
+static int NEAR completeuser __P_((char *, int, int, char ***));
 # endif
-static int NEAR completefile __P_((char *, char *, int, int, int, char ***));
-static int NEAR completeexe __P_((char *, int, char ***));
+static int NEAR completefile __P_((char *, int, int, char ***,
+	char *, int, int));
+static int NEAR completeexe __P_((char *, int, int, char ***));
 #endif
 static int NEAR addmeta __P_((char *, char *, int, int));
 static char *NEAR evalshellparam __P_((int, int));
@@ -201,10 +200,13 @@ static int NEAR evalhome __P_((char **, int, char **));
 #define	iskanji1(s, i)	(issjis1((s)[i]) && issjis2((s)[(i) + 1]))
 #endif
 
-#define	IFS_SET		" \t\n"
 #define	MAXLONGWIDTH	10
 #define	BUFUNIT		32
 #define	n_size(n)	((((n) / BUFUNIT) + 1) * BUFUNIT)
+#define	b_size(n, type) ((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type) \
+			(((n) % BUFUNIT) ? ((type *)(ptr)) \
+			: (type *)realloc2(ptr, b_size(n, type)))
 #define	c_malloc(size)	(malloc2((size) = BUFUNIT))
 #define	c_realloc(ptr, n, size) \
 			(((n) + 1 < (size)) \
@@ -227,6 +229,10 @@ VOID (*exitfunc)__P_((VOID_A)) = NULL;
 char *(*backquotefunc)__P_((char *)) = NULL;
 #if	!MSDOS
 int pathignorecase = 0;
+static uidtable *uidlist = NULL;
+static int maxuid = 0;
+static gidtable *gidlist = NULL;
+static int maxgid = 0;
 #endif	/* !MSDOS */
 #ifndef	LSI_C
 u_char uppercase[256] = {
@@ -407,26 +413,6 @@ char *name;
 	return(0);
 }
 
-static char *NEAR catargs(argv, delim)
-char *argv[];
-int delim;
-{
-	char *cp;
-	int i, len;
-
-	if (!argv) return(NULL);
-	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
-	if (i < 1) return(strdup2(""));
-	len += (delim) ? i - 1 : 0;
-	cp = malloc2(len + 1);
-	len = strcpy2(cp, argv[0]) - cp;
-	for (i = 1; argv[i]; i++) {
-		if (delim) cp[len++] = delim;
-		len = strcpy2(cp + len, argv[i]) - cp;
-	}
-	return(cp);
-}
-
 # if	MSDOS
 DIR *Xopendir(dir)
 char *dir;
@@ -582,6 +568,7 @@ char *s;
 	else
 #endif
 	i = 0;
+	if (!s[i]) return(&(s[i]));
 	if (s[i] == _SC_ && !s[i + 1]) return(&(s[i + 1]));
 
 	cp = NULL;
@@ -619,13 +606,17 @@ char *buf, *s1, *s2;
 	else
 #endif
 	i = 0;
-	if (s1[i] == _SC_ && !s1[i + 1]) *(cp = &(buf[i])) = _SC_;
+	if (!s1[i]) cp = &(buf[i]);
+	else if (s1[i] == _SC_ && !s1[i + 1]) {
+		cp = &(buf[i]);
+		*(cp++) = _SC_;
+	}
 	else {
 		cp = NULL;
 		for (; s1[i]; i++) {
 			buf[i] = s1[i];
 			if (s1[i] == _SC_) {
-				if (!cp) cp = &(buf[i]);
+				if (!cp) cp = &(buf[i]) + 1;
 				continue;
 			}
 			cp = NULL;
@@ -642,14 +633,14 @@ char *buf, *s1, *s2;
 				*cp = '\0';
 				return(cp);
 			}
-			*cp = _SC_;
+			*(cp++) = _SC_;
 		}
 	}
 	if (s2) {
 		len = MAXPATHLEN - 1 - (cp - buf);
-		for (i = 0; s2[i] && i < len; i++) *(++cp) = s2[i];
+		for (i = 0; s2[i] && i < len; i++) *(cp++) = s2[i];
 	}
-	*(++cp) = '\0';
+	*cp = '\0';
 	return(cp);
 }
 
@@ -862,7 +853,7 @@ int len;
 # if	MSDOS
 	if (regcomp(re, s, REG_EXTENDED | REG_ICASE)) {
 # else
-	if (regcomp(re, s, REG_EXTENDED)) {
+	if (regcomp(re, s, REG_EXTENDED | (pathignorecase ? REG_ICASE : 0))) {
 # endif
 		free(re);
 		re = NULL;
@@ -883,7 +874,10 @@ int fname;
 VOID regexp_free(re)
 reg_t *re;
 {
-	if (re) regfree(re);
+	if (re) {
+		regfree(re);
+		free(re);
+	}
 }
 
 # else	/* !USEREGCOMP */
@@ -1339,6 +1333,13 @@ devino_t *ino;
 			dupino[n].ino = st.st_ino;
 #endif
 			if (!re) {
+				if (*(dp -> d_name) == '.') {
+					free(cp);
+#if	!MSDOS
+					free(dupino);
+#endif
+					continue;
+				}
 #if	MSDOS
 				argc = _evalwild(argc, argvp, s, cp, l);
 #else
@@ -1483,6 +1484,7 @@ hashlist **htable;
 		for (hp = htable[i]; hp; hp = hp -> next) {
 			*nextp = newhash(hp -> command,
 				strdup2(hp -> path), hp -> cost, NULL);
+			(*nextp) -> type = hp -> type;
 			(*nextp) -> hits = hp -> hits;
 			nextp = &((*nextp) -> next);
 		}
@@ -1551,8 +1553,8 @@ int searchhash(hpp, com)
 hashlist **hpp;
 char *com;
 {
-	char *cp, *next, *path;
-	int l, len, cost, size, ret;
+	char *cp, *tmp, *next, *path;
+	int len, dlen, cost, size, ret;
 #if	MSDOS
 	char *ext;
 #endif
@@ -1616,18 +1618,25 @@ char *com;
 			else
 #endif
 			next = strchr(cp, PATHDELIM);
-			l = (next) ? (next++) - cp : strlen(cp);
-			if (l + 1 + len + EXTWIDTH + 1 > size) {
-				size = l + len + 1 + EXTWIDTH + 1;
+			dlen = (next) ? (next++) - cp : strlen(cp);
+			if (!dlen) tmp = NULL;
+			else {
+				tmp = _evalpath(cp, cp + dlen, 1, 1);
+				dlen = strlen(tmp);
+			}
+			if (dlen + len + 1 + EXTWIDTH + 1 > size) {
+				size = dlen + len + 1 + EXTWIDTH + 1;
 				path = realloc2(path, size);
 			}
-			if (l) {
-				strncpy2(path, cp, l);
-				l = strcatdelim(path) - path;
+			if (tmp) {
+				strncpy2(path, tmp, dlen);
+				free(tmp);
+				dlen = strcatdelim(path) - path;
 			}
-			l = strcpy2(path + l, com) - path;
+			strncpy2(path + dlen, com, len);
+			dlen += len;
 #if	MSDOS
-			if ((ret = extaccess(path, ext, l)) >= 0) break;
+			if ((ret = extaccess(path, ext, dlen)) >= 0) break;
 #else
 			if (Xaccess(path, F_OK) >= 0) break;
 #endif
@@ -1638,7 +1647,7 @@ char *com;
 			*hpp = (hashlist *)path;
 #else
 			*hpp = newhash(com, path, cost, hashtable[n]);
-			hashtable[n] = 	*hpp;
+			hashtable[n] = *hpp;
 			(*hpp) -> type = (ret |= CM_HASH);
 #endif
 			return(ret);
@@ -1675,18 +1684,57 @@ char **argv;
 }
 
 #if	!MSDOS
-static int NEAR completeuser(name, argc, argvp)
+static int NEAR completeuser(name, len, argc, argvp)
 char *name;
-int argc;
+int len, argc;
 char ***argvp;
 {
 	struct passwd *pwd;
 	char *new;
-	int len, size;
+	int size;
 
 	len = strlen(name);
+# ifdef	DEBUG
+	_mtrace_file = "setpwent(start)";
 	setpwent();
-	while ((pwd =getpwent())) {
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "setpwent(end)";
+		malloc(0);	/* dummy alloc */
+	}
+	for (;;) {
+		_mtrace_file = "getpwent(start)";
+		pwd = getpwent();
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getpwent(end)";
+			malloc(0);	/* dummy alloc */
+		}
+		if (!pwd) break;
+		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
+		size = strlen(pwd -> pw_name);
+		new = malloc2(size + 2 + 1);
+		new[0] = '~';
+		strcatdelim2(new + 1, pwd -> pw_name, NULL);
+		if (finddupl(new, argc, *argvp)) {
+			free(new);
+			continue;
+		}
+
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 1) * sizeof(char *));
+		(*argvp)[argc++] = new;
+	}
+	_mtrace_file = "endpwent(start)";
+	endpwent();
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "endpwent(end)";
+		malloc(0);	/* dummy alloc */
+	}
+# else	/* !DEBUG */
+	setpwent();
+	while ((pwd = getpwent())) {
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
 		size = strlen(pwd -> pw_name);
 		new = malloc2(size + 2 + 1);
@@ -1702,22 +1750,23 @@ char ***argvp;
 		(*argvp)[argc++] = new;
 	}
 	endpwent();
+# endif	/* !DEBUG */
 	return(argc);
 }
 #endif	/* !MSDOS */
 
-static int NEAR completefile(file, dir, dlen, exe, argc, argvp)
-char *file, *dir;
-int dlen, exe, argc;
-char ***argvp;
+static int NEAR completefile(file, len, argc, argvp, dir, dlen, exe)
+char *file;
+int len, argc;
+char ***argvp, *dir;
+int dlen, exe;
 {
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
 	char *cp, *new, path[MAXPATHLEN];
-	int len, size;
+	int size;
 
-	len = strlen(file);
 	if (dlen >= MAXPATHLEN - 2) return(argc);
 	strncpy2(path, dir, dlen);
 	if (!(dirp = Xopendir(path))) return(argc);
@@ -1751,57 +1800,63 @@ char ***argvp;
 	return(argc);
 }
 
-static int NEAR completeexe(file, argc, argvp)
+static int NEAR completeexe(file, len, argc, argvp)
 char *file;
-int argc;
+int len, argc;
 char ***argvp;
 {
-	char *cp, *path;
-	int len;
+	char *cp, *tmp, *next;
+	int dlen;
 
 #if	MSDOS && !defined (DISMISS_CURPATH)
-	argc = completefile(file, ".", 1, 1, argc, argvp);
+	argc = completefile(file, len, argc, argvp, ".", 1, 1);
 #endif
-	if (!(path = getvar("PATH", -1))) return(argc);
-	do {
+	if (!(next = getvar("PATH", -1))) return(argc);
+	for (cp = next; cp; cp = next) {
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
-		if (_dospath(path)) cp = strchr(path + 2, PATHDELIM);
+		if (_dospath(cp)) next = strchr(cp + 2, PATHDELIM);
 		else
 #endif
-		cp = strchr(path, PATHDELIM);
-		len = (cp) ? cp++ - path : strlen(path);
-		argc = completefile(file, path, len, 1, argc, argvp);
-		path = cp;
-	} while(path);
+		next = strchr(cp, PATHDELIM);
+		dlen = (next) ? (next++) - cp : strlen(cp);
+		tmp = _evalpath(cp, cp + dlen, 1, 1);
+		dlen = strlen(tmp);
+		argc = completefile(file, len, argc, argvp, tmp, dlen, 1);
+		free(tmp);
+	}
 	return(argc);
 }
 
-int completepath(path, exe, argc, argvp)
+int completepath(path, len, argc, argvp, exe)
 char *path;
-int exe, argc;
+int len, argc;
 char ***argvp;
+int exe;
 {
 	char *file, *dir;
-	int len;
+	int dlen;
 
 	dir = path;
-	len = 0;
+	dlen = 0;
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 	if (_dospath(path)) {
 		dir += 2;
-		len = 2;
+		dlen = 2;
 	}
 #endif
 
 	if ((file = strrdelim(dir, 0))) {
-		len += (file == dir) ? 1 : file - dir;
-		return(completefile(file + 1, path, len, exe, argc, argvp));
+		dlen += (file == dir) ? 1 : file - dir;
+		return(completefile(file + 1, strlen(file + 1), argc, argvp,
+			path, dlen, exe));
 	}
 #if	!MSDOS
-	else if (*path == '~') return(completeuser(path + 1, argc, argvp));
+	else if (*path == '~')
+		return(completeuser(path + 1, len - 1, argc, argvp));
 #endif
-	else if (exe && dir == path) return(completeexe(path, argc, argvp));
-	return(completefile(path, ".", 1, exe, argc, argvp));
+	else if (exe && dir == path)
+		return(completeexe(path, len, argc, argvp));
+	return(completefile(path, len, argc, argvp, ".", 1, exe));
 }
 
 char *findcommon(argc, argv)
@@ -1865,6 +1920,26 @@ int stripm, quoted;
 	return(j);
 }
 
+char *catvar(argv, delim)
+char *argv[];
+int delim;
+{
+	char *cp;
+	int i, len;
+
+	if (!argv) return(NULL);
+	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
+	if (i < 1) return(strdup2(""));
+	len += (delim) ? i - 1 : 0;
+	cp = malloc2(len + 1);
+	len = strcpy2(cp, argv[0]) - cp;
+	for (i = 1; argv[i]; i++) {
+		if (delim) cp[len++] = delim;
+		len = strcpy2(cp + len, argv[i]) - cp;
+	}
+	return(cp);
+}
+
 static char *NEAR evalshellparam(c, quoted)
 int c, quoted;
 {
@@ -1879,7 +1954,7 @@ int c, quoted;
 			|| !(arglist = (*getarglistfunc)())) break;
 			sp = ' ';
 			if (!quoted) {
-				cp = catargs(&(arglist[1]), sp);
+				cp = catvar(&(arglist[1]), sp);
 				break;
 			}
 #ifdef	BASHSTYLE
@@ -1912,7 +1987,7 @@ int c, quoted;
 			if (quoted && (cp = getvar("IFS", -1)))
 				sp = (*cp) ? *cp : '\0';
 #endif
-			cp = catargs(&(arglist[1]), sp);
+			cp = catvar(&(arglist[1]), sp);
 			break;
 		case '#':
 			if (getarglistfunc
@@ -2175,16 +2250,133 @@ int quoted;
 	return(ptr);
 }
 
+#if	!MSDOS
+uidtable *finduid(uid, name)
+uid_t uid;
+char *name;
+{
+	struct passwd *pwd;
+	int i;
+
+	if (name) {
+		for (i = 0; i < maxuid; i++)
+			if (!strpathcmp(name, uidlist[i].name))
+				return(&(uidlist[i]));
+# ifdef	DEBUG
+		_mtrace_file = "getpwnam(start)";
+		pwd = getpwnam(name);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getpwnam(end)";
+			malloc(0);	/* dummy alloc */
+		}
+# else
+		pwd = getpwnam(name);
+# endif
+	}
+	else {
+		for (i = 0; i < maxuid; i++)
+			if (uid == uidlist[i].uid) return(&(uidlist[i]));
+# ifdef	DEBUG
+		_mtrace_file = "getpwuid(start)";
+		pwd = getpwuid(uid);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getpwuid(end)";
+			malloc(0);	/* dummy alloc */
+		}
+# else
+		pwd = getpwuid(uid);
+# endif
+	}
+
+	if (!pwd) return(NULL);
+	uidlist = b_realloc(uidlist, maxuid, uidtable);
+	uidlist[maxuid].uid = pwd -> pw_uid;
+	uidlist[maxuid].name = strdup2(pwd -> pw_name);
+	uidlist[maxuid].home = strdup2(pwd -> pw_dir);
+	return(&(uidlist[maxuid++]));
+}
+
+gidtable *findgid(gid, name)
+gid_t gid;
+char *name;
+{
+	struct group *grp;
+	int i;
+
+	if (name) {
+		for (i = 0; i < maxgid; i++)
+			if (!strpathcmp(name, gidlist[i].name))
+				return(&(gidlist[i]));
+# ifdef	DEBUG
+		_mtrace_file = "getgrnam(start)";
+		grp = getgrnam(name);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getgrnam(end)";
+			malloc(0);	/* dummy alloc */
+		}
+# else
+		grp = getgrnam(name);
+# endif
+	}
+	else {
+		for (i = 0; i < maxgid; i++)
+			if (gid == gidlist[i].gid) return(&(gidlist[i]));
+# ifdef	DEBUG
+		_mtrace_file = "getgrgid(start)";
+		grp = getgrgid(gid);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getgrgid(end)";
+			malloc(0);	/* dummy alloc */
+		}
+# else
+		grp = getgrgid(gid);
+# endif
+	}
+
+	if (!grp) return(NULL);
+	gidlist = b_realloc(gidlist, maxgid, gidtable);
+	gidlist[maxgid].gid = grp -> gr_gid;
+	gidlist[maxgid].name = strdup2(grp -> gr_name);
+	return(&(gidlist[maxgid++]));
+}
+
+# ifdef	DEBUG
+VOID freeidlist(VOID_A)
+{
+	int i;
+
+	if (uidlist) {
+		for (i = 0; i < maxuid; i++) {
+			free(uidlist[i].name);
+			free(uidlist[i].home);
+		}
+		free(uidlist);
+	}
+	if (gidlist) {
+		for (i = 0; i < maxgid; i++) free(gidlist[i].name);
+		free(gidlist);
+	}
+	uidlist = NULL;
+	gidlist = NULL;
+	maxuid = maxgid = 0;
+}
+# endif
+#endif	/* !MSDOS */
+
 char *gethomedir(VOID_A)
 {
 #if	!MSDOS
-	struct passwd *pwd;
+	uidtable *up;
 #endif
 	char *cp;
 
 	if ((cp = getvar("HOME", -1))) return(cp);
 #if	!MSDOS
-	if ((pwd = getpwuid(getuid()))) return(pwd -> pw_dir);
+	if ((up = finduid(getuid(), NULL))) return(up -> home);
 #endif
 	return(NULL);
 }
@@ -2207,13 +2399,13 @@ char **argp;
 #endif
 	else {
 #if	!MSDOS
-		struct passwd *pwd;
+		uidtable *up;
 
 		cp = malloc2(len + 1);
 		strncpy2(cp, top, len);
-		pwd = getpwnam(cp);
+		up = finduid(0, cp);
 		free(cp);
-		if (pwd) cp = pwd -> pw_dir;
+		if (up) cp = up -> home;
 		else
 #endif
 		cp = NULL;
@@ -2238,9 +2430,27 @@ char *evalarg(arg, stripq, backq)
 char *arg;
 int stripq, backq;
 {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+	char path[MAXPATHLEN], alias[MAXPATHLEN];
+#endif
 	char *cp, *buf, *bbuf;
 	int i, j, prev, quote;
 
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+	if (*arg == '"' && (cp = strchr(arg + 1, '"')) && !*(cp + 1)) {
+		strncpy2(path, arg + 1, cp - arg - 1);
+		if (shortname(path, alias) && strpathcmp(path, alias)) {
+			if (stripq) return(strdup2(alias));
+			i = strlen(alias);
+			buf = malloc2(i + 2 + 1);
+			buf[0] = '"';
+			memcpy(&(buf[1]), alias, i);
+			buf[++i] = '"';
+			buf[++i] = '\0';
+			return(buf);
+		}
+	}
+#endif
 	i = strlen(arg) + 1;
 	buf = malloc2(i);
 	bbuf = (backq) ? malloc2(i) : NULL;
@@ -2382,10 +2592,10 @@ int iscom;
 	return(argc);
 }
 
-int evalglob(argc, argvp, iscom)
+int evalglob(argc, argvp, stripq, iscom)
 int argc;
 char ***argvp;
-int iscom;
+int stripq, iscom;
 {
 	char *cp, **wild;
 	int i, j, n, w, size, quote;
@@ -2396,7 +2606,7 @@ int iscom;
 			cp = c_realloc(cp, j + 1, size);
 			if ((*argvp)[n][i] == quote) {
 				quote = '\0';
-				continue;
+				if (stripq) continue;
 			}
 #ifdef	CODEEUC
 			else if (isekana((*argvp)[n], i))
@@ -2404,14 +2614,7 @@ int iscom;
 #endif
 			else if (iskanji1((*argvp)[n], i))
 				cp[j++] = (*argvp)[n][i++];
-			else if (quote == '\'') {
-#ifdef	EVALMACRO
-				if ((*argvp)[n][i] == '%') {
-					cp = c_realloc(cp, j + 2, size);
-					cp[j++] = (*argvp)[n][i];
-				}
-#endif
-			}
+			else if (quote == '\'');
 			else if (ismeta((*argvp)[n], i, quote)) {
 				i++;
 				if (quote
@@ -2422,7 +2625,7 @@ int iscom;
 			else if ((*argvp)[n][i] == '\''
 			|| (*argvp)[n][i] == '"') {
 				quote = (*argvp)[n][i];
-				continue;
+				if (stripq) continue;
 			}
 			else if (iscom && !n);
 			else if (!strchr("?*[", (*argvp)[n][i]));
@@ -2464,32 +2667,22 @@ int iscom;
 	return(argc);
 }
 
-char *stripquote(arg)
+char *stripquote(arg, stripq)
 char *arg;
+int stripq;
 {
 	int i, j, quote;
 
 	for (i = j = 0, quote = '\0'; arg[i]; i++) {
 		if (arg[i] == quote) {
 			quote = '\0';
-			continue;
+			if (stripq) continue;
 		}
 #ifdef	CODEEUC
 		else if (isekana(arg, i)) arg[j++] = arg[i++];
 #endif
 		else if (iskanji1(arg, i)) arg[j++] = arg[i++];
-		else if (quote == '\'') {
-#ifdef	EVALMACRO
-			if (arg[i] == '%') {
-				int k;
-
-				k = strlen(&(arg[i])) + 1;
-				arg = realloc2(arg, i + k + 1);
-				while (--k > 0) arg[j + k + 1] = arg[i + k];
-				arg[j++] = arg[i];
-			}
-#endif
-		}
+		else if (quote == '\'');
 		else if (ismeta(arg, i, quote)) {
 			i++;
 			if (quote && arg[i] != quote && arg[i] != PMETA)
@@ -2498,7 +2691,7 @@ char *arg;
 		else if (quote);
 		else if (arg[i] == '\'' || arg[i] == '"') {
 			quote = arg[i];
-			continue;
+			if (stripq) continue;
 		}
 
 		arg[j++] = arg[i];

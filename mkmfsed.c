@@ -18,6 +18,7 @@ extern char *getenv __P_((char *));
 #endif
 
 
+/*ARGSUSED*/
 int main(argc, argv)
 int argc;
 char *argv[];

@@ -213,8 +213,9 @@ static int NEAR ttymode __P_((int, u_short, u_short, u_short, u_short));
 static int NEAR ttymode __P_((int, u_short, u_short, u_short, u_short,
 		u_short, u_short, int, int));
 # endif
-static int NEAR tgetstr2 __P_((char **, char *));
-static int NEAR tgetstr3 __P_((char **, char *, char *));
+static char *NEAR tgetstr2 __P_((char **, char *));
+static char *NEAR tgetstr3 __P_((char **, char *, char *));
+static char *NEAR tgetkeyseq __P_((int, char *));
 static kstree_t *NEAR newkeyseq __P_((kstree_t *, int));
 static int NEAR freekeyseq __P_((kstree_t *, int));
 static int NEAR cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
@@ -324,6 +325,7 @@ static int specialkeycode[] = {
 	K_F(11), K_F(12), K_F(13), K_F(14), K_F(15),
 	K_F(16), K_F(17), K_F(18), K_F(19), K_F(20), K_HELP
 };
+#define	SPECIALKEYSIZ	((int)(sizeof(specialkeycode) / sizeof(int)))
 #else	/* !MSDOS */
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
@@ -676,6 +678,24 @@ int keyflush(VOID_A)
 }
 #endif	/* !MSDOS */
 
+int ttyiomode(VOID_A)
+{
+	raw2();
+	noecho2();
+	nonl2();
+	notabs();
+	return(0);
+}
+
+int stdiomode(VOID_A)
+{
+	cooked2();
+	echo2();
+	nl2();
+	tabs();
+	return(0);
+}
+
 int exit2(no)
 int no;
 {
@@ -684,7 +704,9 @@ int no;
 	inittty(1);
 	keyflush();
 #ifdef	DEBUG
+# if	!MSDOS
 	freeterment();
+# endif
 	if (ttyio >= 0) close(ttyio);
 	if (ttyout && ttyout != stdout) fclose(ttyout);
 	muntrace();
@@ -746,7 +768,7 @@ static int NEAR defaultterm(VOID_A)
 	t_nocursor = "\033[>5h";
 	t_setcursor = "\033[s";
 	t_resetcursor = "\033[u";
-#else
+#else	/* !MSDOS */
 	t_scroll = "\033[%i%d;%dr";
 	t_keypad = "\033[?1h\033=";
 	t_nokeypad = "\033[?1l\033>";
@@ -755,7 +777,7 @@ static int NEAR defaultterm(VOID_A)
 	t_nocursor = "\033[?25l";
 	t_setcursor = "\0337";
 	t_resetcursor = "\0338";
-#endif
+#endif	/* !MSDOS */
 	t_bell = "\007";
 	t_vbell = "\007";
 	t_clear = "\033[;H\033[2J";
@@ -862,7 +884,7 @@ static int NEAR defaultterm(VOID_A)
 	keyseq[K_NPAGE - K_MIN].str = "\033[6~";
 	keyseq[K_ENTER - K_MIN].str = "\033[9~";
 	keyseq[K_END - K_MIN].str = "\033[1~";
-#endif
+#endif	/* !MSDOS */
 	return(0);
 }
 
@@ -988,11 +1010,11 @@ int arg1, arg2;
 				j += strlen(buf + j);
 				break;
 			case '2':
-				sprintf(buf + j, "%2d", args[n++]);
+				sprintf(buf + j, "%02d", args[n++]);
 				j += 2;
 				break;
 			case '3':
-				sprintf(buf + j, "%3d", args[n++]);
+				sprintf(buf + j, "%03d", args[n++]);
 				j += 3;
 				break;
 			case '.':
@@ -1044,9 +1066,8 @@ int arg1, arg2;
 	return(buf);
 }
 
-static int NEAR tgetstr2(term, s)
-char **term;
-char *s;
+static char *NEAR tgetstr2(term, s)
+char **term, *s;
 {
 	char strbuf[TERMCAPSIZE];
 	char *p, *cp;
@@ -1056,12 +1077,11 @@ char *s;
 		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
 		strcpy(*term, cp);
 	}
-	return(0);
+	return(*term);
 }
 
-static int NEAR tgetstr3(term, str1, str2)
-char **term;
-char *str1, *str2;
+static char *NEAR tgetstr3(term, str1, str2)
+char **term, *str1, *str2;
 {
 	char strbuf[TERMCAPSIZE];
 	char *p, *cp;
@@ -1073,7 +1093,35 @@ char *str1, *str2;
 		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
 		strcpy(*term, cp);
 	}
-	return(0);
+	return(*term);
+}
+
+static char *NEAR tgetkeyseq(n, s)
+int n;
+char *s;
+{
+	char *cp;
+	int i, j;
+
+	n -= K_MIN;
+	cp = NULL;
+	if (!tgetstr2(&cp, s)) return(NULL);
+	if (keyseq[n].str) {
+		free(keyseq[n].str);
+		keyseq[n].str = NULL;
+	}
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		if (!(keyseq[i].str)) continue;
+		for (j = 0; cp[j]; j++)
+			if ((cp[j] & 0x7f) != (keyseq[i].str[j] & 0x7f))
+				break;
+		if (!cp[j]) {
+			free(keyseq[i].str);
+			keyseq[i].str = NULL;
+		}
+	}
+	keyseq[n].str = cp;
+	return(cp);
 }
 
 static kstree_t *NEAR newkeyseq(parent, num)
@@ -1160,10 +1208,18 @@ int getterment(VOID_A)
 
 	if (termflags & F_TERMENT) return(-1);
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
-#ifdef	DEBUG
-	_mtrace_file = "tgetent(x4)";
-#endif
-	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
+# ifdef	DEBUG
+	_mtrace_file = "tgetent(start)";
+	i = tgetent(buf, termname);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "tgetent(end)";
+		malloc(0);	/* dummy malloc */
+	}
+	if (i <= 0) err2("No TERMCAP is prepared");
+# else
+	if (tgetent(buf, termname) <= 0) err2("No TERMCAP is prepared");
+# endif
 
 	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stdout;
 
@@ -1174,6 +1230,17 @@ int getterment(VOID_A)
 	free(cp);
 	tgetstr2(&BC, "bc");
 	tgetstr2(&UP, "up");
+
+	cp = NULL;
+	if (tgetstr2(&cp, "ku") || tgetstr2(&cp, "kd")
+	|| tgetstr2(&cp, "kr") || tgetstr2(&cp, "kl")) {
+		free(cp);
+		t_keypad = t_nokeypad = "";
+		keyseq[K_UP - K_MIN].str =
+		keyseq[K_DOWN - K_MIN].str =
+		keyseq[K_RIGHT - K_MIN].str =
+		keyseq[K_LEFT - K_MIN].str = NULL;
+	}
 
 	n_column = n_lastcolumn = tgetnum("co");
 	n_line = tgetnum("li");
@@ -1225,61 +1292,57 @@ int getterment(VOID_A)
 	tgetstr2(&c_nright, "RI");
 	tgetstr2(&c_nleft, "LE");
 
-	tgetstr2(&(keyseq[K_UP - K_MIN].str), "ku");
-	tgetstr2(&(keyseq[K_DOWN - K_MIN].str), "kd");
-	tgetstr2(&(keyseq[K_RIGHT - K_MIN].str), "kr");
-	tgetstr2(&(keyseq[K_LEFT - K_MIN].str), "kl");
-	tgetstr2(&(keyseq[K_HOME - K_MIN].str), "kh");
-	tgetstr2(&(keyseq[K_BS - K_MIN].str), "kb");
-	tgetstr2(&(keyseq[K_F(1) - K_MIN].str), "l1");
-	tgetstr2(&(keyseq[K_F(2) - K_MIN].str), "l2");
-	tgetstr2(&(keyseq[K_F(3) - K_MIN].str), "l3");
-	tgetstr2(&(keyseq[K_F(4) - K_MIN].str), "l4");
-	tgetstr2(&(keyseq[K_F(5) - K_MIN].str), "l5");
-	tgetstr2(&(keyseq[K_F(6) - K_MIN].str), "l6");
-	tgetstr2(&(keyseq[K_F(7) - K_MIN].str), "l7");
-	tgetstr2(&(keyseq[K_F(8) - K_MIN].str), "l8");
-	tgetstr2(&(keyseq[K_F(9) - K_MIN].str), "l9");
-	tgetstr2(&(keyseq[K_F(10) - K_MIN].str), "la");
-	tgetstr2(&(keyseq[K_F(21) - K_MIN].str), "k1");
-	tgetstr2(&(keyseq[K_F(22) - K_MIN].str), "k2");
-	tgetstr2(&(keyseq[K_F(23) - K_MIN].str), "k3");
-	tgetstr2(&(keyseq[K_F(24) - K_MIN].str), "k4");
-	tgetstr2(&(keyseq[K_F(25) - K_MIN].str), "k5");
-	tgetstr2(&(keyseq[K_F(26) - K_MIN].str), "k6");
-	tgetstr2(&(keyseq[K_F(27) - K_MIN].str), "k7");
-	tgetstr2(&(keyseq[K_F(28) - K_MIN].str), "k8");
-	tgetstr2(&(keyseq[K_F(29) - K_MIN].str), "k9");
-	tgetstr2(&(keyseq[K_F(30) - K_MIN].str), "k0");
-	tgetstr2(&(keyseq[K_DL - K_MIN].str), "kL");
-	tgetstr2(&(keyseq[K_IL - K_MIN].str), "kA");
-	tgetstr2(&(keyseq[K_DC - K_MIN].str), "kD");
-	tgetstr2(&(keyseq[K_IC - K_MIN].str), "kI");
-	tgetstr2(&(keyseq[K_CLR - K_MIN].str), "kC");
-	tgetstr2(&(keyseq[K_EOL - K_MIN].str), "kE");
-	tgetstr2(&(keyseq[K_PPAGE - K_MIN].str), "kP");
-	tgetstr2(&(keyseq[K_NPAGE - K_MIN].str), "kN");
-	tgetstr2(&(keyseq[K_ENTER - K_MIN].str), "@8");
-	tgetstr2(&(keyseq[K_BEG - K_MIN].str), "@1");
-	tgetstr2(&(keyseq[K_END - K_MIN].str), "@7");
+	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].str) {
+		cp = (char *)malloc(strlen(keyseq[i].str) + 1);
+		if (!cp) err2(NULL);
+		strcpy(cp, keyseq[i].str);
+		keyseq[i].str = cp;
+	}
+
+	tgetkeyseq(K_UP, "ku");
+	tgetkeyseq(K_DOWN, "kd");
+	tgetkeyseq(K_RIGHT, "kr");
+	tgetkeyseq(K_LEFT, "kl");
+	tgetkeyseq(K_HOME, "kh");
+	tgetkeyseq(K_BS, "kb");
+	tgetkeyseq(K_F(1), "l1");
+	tgetkeyseq(K_F(2), "l2");
+	tgetkeyseq(K_F(3), "l3");
+	tgetkeyseq(K_F(4), "l4");
+	tgetkeyseq(K_F(5), "l5");
+	tgetkeyseq(K_F(6), "l6");
+	tgetkeyseq(K_F(7), "l7");
+	tgetkeyseq(K_F(8), "l8");
+	tgetkeyseq(K_F(9), "l9");
+	tgetkeyseq(K_F(10), "la");
+	tgetkeyseq(K_F(21), "k1");
+	tgetkeyseq(K_F(22), "k2");
+	tgetkeyseq(K_F(23), "k3");
+	tgetkeyseq(K_F(24), "k4");
+	tgetkeyseq(K_F(25), "k5");
+	tgetkeyseq(K_F(26), "k6");
+	tgetkeyseq(K_F(27), "k7");
+	tgetkeyseq(K_F(28), "k8");
+	tgetkeyseq(K_F(29), "k9");
+	tgetkeyseq(K_F(30), "k0");
+	tgetkeyseq(K_DL, "kL");
+	tgetkeyseq(K_IL, "kA");
+	tgetkeyseq(K_DC, "kD");
+	tgetkeyseq(K_IC, "kI");
+	tgetkeyseq(K_CLR, "kC");
+	tgetkeyseq(K_EOL, "kE");
+	tgetkeyseq(K_PPAGE, "kP");
+	tgetkeyseq(K_NPAGE, "kN");
+	tgetkeyseq(K_ENTER, "@8");
+	tgetkeyseq(K_BEG, "@1");
+	tgetkeyseq(K_END, "@7");
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
-	for (i = 11; i <= 20; i++) {
+	for (i = 11; i <= 20; i++)
 		keyseq[K_F(i + 10) - K_MIN].code = K_F(i - 10);
-		if (!keyseq[K_F(i) - K_MIN].str) continue;
-		cp = (char *)malloc(strlen(keyseq[K_F(i) - K_MIN].str) + 1);
-		if (!cp) err2(NULL);
-		strcpy(cp, keyseq[K_F(i) - K_MIN].str);
-		keyseq[K_F(i) - K_MIN].str = cp;
-	}
-	for (i = 31; K_F(i) < K_DL; i++) {
-		if (!keyseq[K_F(i) - K_MIN].str) continue;
-		cp = (char *)malloc(strlen(keyseq[K_F(i) - K_MIN].str) + 1);
-		if (!cp) err2(NULL);
-		strcpy(cp, keyseq[K_F(i) - K_MIN].str);
-		keyseq[K_F(i) - K_MIN].str = cp;
-		keyseq[K_F(i) - K_MIN].code = i;
-	}
+	for (i = 31; K_F(i) < K_DL; i++)
+		if (keyseq[K_F(i) - K_MIN].str)
+			keyseq[K_F(i) - K_MIN].code = i;
 	keyseq[K_F('?') - K_MIN].code = CR;
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) {
@@ -1296,7 +1359,7 @@ int getterment(VOID_A)
 	return(0);
 }
 
-#ifdef	DEBUG
+# ifdef	DEBUG
 static int NEAR freeterment(VOID_A)
 {
 	int i;
@@ -1358,14 +1421,14 @@ static int NEAR freeterment(VOID_A)
 	termflags &= ~F_TERMENT;
 	return(0);
 }
-#endif
+# endif	/* DEBUG */
 
 int setkeyseq(n, str, len)
 int n;
 char *str;
 int len;
 {
-	int i, j;
+	int i;
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].code == n) {
 		if (keyseq[i].str) free(keyseq[i].str);
@@ -1379,9 +1442,7 @@ int len;
 		if (keyseq[i].code == n
 		|| !(keyseq[i].str) || keyseq[i].len != len)
 			continue;
-		for (j = 0; j < len; j++)
-			if (keyseq[i].str[j] != str[j]) break;
-		if (j >= len) {
+		if (!memcmp(str, keyseq[i].str, len)) {
 			free(keyseq[i].str);
 			keyseq[i].str = NULL;
 			keyseq[i].len = 0;
@@ -1398,7 +1459,7 @@ int n, *lenp;
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].code == n) {
 		if (lenp) *lenp = keyseq[i].len;
-		return(keyseq[i].str);
+		return((keyseq[i].str) ? keyseq[i].str : "");
 	}
 	if (lenp) *lenp = 0;
 	return(NULL);
@@ -1638,7 +1699,7 @@ int sig;
 #endif
 	{
 		ch = getch2();
-		for (i = 0; i < sizeof(specialkey) / sizeof(u_char) - 1; i++)
+		for (i = 0; i < SPECIALKEYSIZ; i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
 		for (i = 0; i <= 'z' - 'a'; i++)
 			if (ch == metakey[i]) return(('a' + i) | 0x80);
@@ -1827,9 +1888,19 @@ int locate(x, y)
 int x, y;
 {
 #ifdef	DEBUG
-	_mtrace_file = "tgoto(x2)";
-#endif
+	char *cp;
+
+	_mtrace_file = "tgoto(start)";
+	cp = tgoto(c_locate, x, y);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "tgoto(end)";
+		malloc(0);	/* dummy malloc */
+	}
+	putterms(cp);
+#else
 	putterms(tgoto(c_locate, x, y));
+#endif
 	return(0);
 }
 

@@ -46,6 +46,8 @@ extern int win_y;
 #ifndef	_NOCUSTOMIZE
 extern int custno;
 #endif
+extern int fd_restricted;
+extern int internal_status;
 
 static VOID NEAR pathbar __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
@@ -128,8 +130,8 @@ static int haste = 0;
 #endif
 static int search_x = -1;
 static int search_y = -1;
-static int calc_x = -1;
-static int calc_y = -1;
+int calc_x = -1;
+int calc_y = -1;
 
 
 static VOID NEAR pathbar(VOID_A)
@@ -180,7 +182,7 @@ VOID helpbar(VOID_A)
 
 static VOID NEAR statusbar(VOID_A)
 {
-	char *str[6];
+	char *str[6], buf[4 + 1];
 	int width;
 
 	locate(0, LSTATUS);
@@ -190,14 +192,19 @@ static VOID NEAR statusbar(VOID_A)
 	putterm(t_standout);
 	cputs2("Page:");
 	putterm(end_standout);
-	cprintf2("%2d/%2d ",
-		filepos / FILEPERPAGE + 1, (maxfile - 1) / FILEPERPAGE + 1);
+	cputs2(ascnumeric(buf, filepos / FILEPERPAGE + 1, 2, 2));
+	putch2('/');
+	cputs2(ascnumeric(buf, (maxfile - 1) / FILEPERPAGE + 1, 2, 2));
+	putch2(' ');
 
 	locate(CMARK, LSTATUS);
 	putterm(t_standout);
 	cputs2("Mark:");
 	putterm(end_standout);
-	cprintf2("%4d/%4d ", mark, maxfile);
+	cputs2(ascnumeric(buf, mark, 4, 4));
+	putch2('/');
+	cputs2(ascnumeric(buf, maxfile, 4, 4));
+	putch2(' ');
 
 	locate(CSORT, LSTATUS);
 	putterm(t_standout);
@@ -308,8 +315,10 @@ static VOID NEAR sizebar(VOID_A)
 	putterm(t_standout);
 	cputs2("Size:");
 	putterm(end_standout);
-	cprintf2("%14.14s/", inscomma(buf, marksize, 3, 14));
-	cprintf2("%14.14s ", inscomma(buf, totalsize, 3, 14));
+	cputs2(ascnumeric(buf, marksize, 3, 14));
+	putch2('/');
+	cputs2(ascnumeric(buf, totalsize, 3, 14));
+	putch2(' ');
 
 	getinfofs(".", &total, &fre);
 
@@ -317,15 +326,23 @@ static VOID NEAR sizebar(VOID_A)
 	putterm(t_standout);
 	cputs2("Total:");
 	putterm(end_standout);
-	if (total < 0) cprintf2("%15.15s ", "?");
-	else cprintf2("%12.12s KB ", inscomma(buf, total, 3, 12));
+	if (total < 0) cputs2(ascnumeric(buf, total, 3, 15));
+	else {
+		cputs2(ascnumeric(buf, total, 3, 12));
+		cputs2(" KB");
+	}
+	putch2(' ');
 
 	locate(CFREE, LSIZE);
 	putterm(t_standout);
 	cputs2("Free:");
 	putterm(end_standout);
-	if (fre < 0) cprintf2("%15.15s ", "?");
-	else cprintf2("%12.12s KB ", inscomma(buf, fre, 3, 12));
+	if (fre < 0) cputs2(ascnumeric(buf, fre, 3, 15));
+	else {
+		cputs2(ascnumeric(buf, fre, 3, 12));
+		cputs2(" KB");
+	}
+	putch2(' ');
 
 	tflush();
 }
@@ -383,13 +400,13 @@ static char *NEAR putowner(buf, uid)
 char *buf;
 uid_t uid;
 {
-	char *s;
+	uidtable *up;
 	int i;
 
 	i = WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((s = getpwuid2(uid))) strncpy3(buf, s, &i, 0);
-	else sprintf(buf, "%-*u", WOWNER, uid);
+	else if ((up = finduid(uid, NULL))) strncpy3(buf, up -> name, &i, 0);
+	else ascnumeric(buf, uid, -1, WOWNER);
 
 	return(buf);
 }
@@ -398,13 +415,13 @@ static char *NEAR putgroup(buf, gid)
 char *buf;
 gid_t gid;
 {
-	char *s;
+	gidtable *gp;
 	int i;
 
 	i = WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((s = getgrgid2(gid))) strncpy3(buf, s, &i, 0);
-	else sprintf(buf, "%-*u", WGROUP, gid);
+	else if ((gp = findgid(gid, NULL))) strncpy3(buf, gp -> name, &i, 0);
+	else ascnumeric(buf, gid, -1, WGROUP);
 
 	return(buf);
 }
@@ -715,7 +732,7 @@ namelist *list;
 int max;
 char *def;
 {
-	char *cp;
+	char *cp, buf[2 + 1];
 	int i, count, start, ret;
 
 	for (i = 0; i < FILEPERLOW; i++) {
@@ -729,8 +746,8 @@ char *def;
 		putch2(' ');
 		putterm(t_standout);
 		cp = NOFIL_K;
-		if (i > strlen(cp)) kanjiputs2(cp, i, 0);
-		else cprintf2("%-*.*s", i, i, "No Files");
+		if (i <= strlen(cp)) cp = "NoFiles";
+		kanjiputs2(cp, i, 0);
 		putterm(end_standout);
 		win_x = i + 2;
 		win_y = LFILETOP;
@@ -756,8 +773,10 @@ char *def;
 		ret = (max <= 1 || strcmp(list[1].name, "..")) ? 0 : 1;
 	}
 
-	locate(6, LSTATUS);
-	cprintf2("%2d", start / FILEPERPAGE + 1);
+	if (list == filelist) {
+		locate(6, LSTATUS);
+		cputs2(ascnumeric(buf, start / FILEPERPAGE + 1, 2, 2));
+	}
 
 	for (i = start, count = 0; i < max; i++, count++) {
 		if (count >= FILEPERPAGE) break;
@@ -872,6 +891,7 @@ u_char fstat;
 VOID rewritefile(all)
 int all;
 {
+	if (!filelist || maxfile <= 0) return;
 	if (all > 0) {
 		title();
 		helpbar();
@@ -901,8 +921,9 @@ int all;
 			listupwin(filelist[filepos].name);
 #endif
 		}
-		tflush();
 	}
+	locate(win_x, win_y);
+	tflush();
 }
 
 static int NEAR searchmove(ch, buf)
@@ -1039,7 +1060,6 @@ char *file, *def;
 
 	mark = 0;
 	totalsize = marksize = 0;
-	buf[0] = '\0';
 	chgorder = 0;
 
 	fnameofs = 0;
@@ -1062,6 +1082,7 @@ char *file, *def;
 		blocksize = 1;
 		if (sorttype < 100) sorton = 0;
 		copyarcf(re, cp);
+		def = (*file) ? file : NULL;
 	}
 	else
 #endif
@@ -1084,12 +1105,12 @@ char *file, *def;
 		while ((dp = searchdir(dirp, re, cp))) {
 			if (ishidedot(dispmode) && *(dp -> d_name) == '.'
 			&& !isdotdir(dp -> d_name)) continue;
-			strcpy(file, dp -> d_name);
+			strcpy(buf, dp -> d_name);
 			for (i = 0; i < stackdepth; i++)
-				if (!strcmp(file, filestack[i].name)) break;
+				if (!strcmp(buf, filestack[i].name)) break;
 			if (i < stackdepth) continue;
 			addlist();
-			filelist[maxfile].name = strdup2(file);
+			filelist[maxfile].name = strdup2(buf);
 			filelist[maxfile].ent = maxfile;
 			filelist[maxfile].tmpflags = 0;
 #ifndef	_NOPRECEDE
@@ -1131,6 +1152,7 @@ char *file, *def;
 	no = 1;
 
 	keyflush();
+	buf[0] = '\0';
 	for (;;) {
 		if (no) movepos(old, fstat);
 		if (search_x >= 0 && search_y >= 0) {
@@ -1166,7 +1188,7 @@ char *file, *def;
 		no = (bindlist[i].d_func < 255 && isdir(&(filelist[filepos])))
 			? (int)(bindlist[i].d_func)
 			: (int)(bindlist[i].f_func);
-		if (no <= NO_OPERATION) fstat = funclist[no].stat;
+		if (no < FUNCLISTSIZ) fstat = funclist[no].stat;
 #ifndef	_NOARCHIVE
 		else if (archivefile) continue;
 #endif
@@ -1197,6 +1219,7 @@ char *file, *def;
 #endif
 #ifndef	_NOWRITEFS
 			else if (chgorder && writefs < 1 && no != WRITE_DIR
+			&& !fd_restricted
 			&& (i = writablefs(".")) > 0 && underhome(NULL) > 0) {
 				chgorder = 0;
 				if (yesno(WRTOK_K)) arrangedir(i);
@@ -1210,11 +1233,19 @@ char *file, *def;
 		|| (archivefile && !(fstat & ARCH))
 #endif
 		) no = 0;
-		else if (no <= NO_OPERATION) no = (*funclist[no].func)(NULL);
+		else if (no < FUNCLISTSIZ) {
+			if (!fd_restricted || !(fstat & RESTRICT))
+				no = (*funclist[no].func)(NULL);
+			else {
+				warning(0, RESTR_K);
+				no = 0;
+			}
+		}
 		else {
-			no = execusercomm(macrolist[no - NO_OPERATION - 1],
+			no = execusercomm(macrolist[no - FUNCLISTSIZ],
 				filelist[filepos].name, 0, 0, 0);
-			if (no < -1) no = 0;
+			no = (no < 0) ? 1 :
+				(internal_status >= -1) ? internal_status: 4;
 		}
 #ifndef	_NOPRECEDE
 		if (sorton) haste = 0;
@@ -1241,6 +1272,10 @@ char *file, *def;
 		if (no < 0 || (no > 4 && archchdir(file) < 0)) {
 			poparchdupl();
 			strcpy(file, filelist[filepos].name);
+		}
+		else if (no == 4) {
+			if (filepos < 0) *file = '\0';
+			else strcpy(file, filelist[filepos].name);
 		}
 		no = 0;
 	}

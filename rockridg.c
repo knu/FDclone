@@ -97,7 +97,7 @@ static assoclist *NEAR readtranstbl(VOID_A)
 
 	top = NULL;
 	bottom = &top;
-	for (line = NULL; (line = fgets2(fp)); free(line)) {
+	for (line = NULL; (line = fgets2(fp, 0)); free(line)) {
 		cp = line;
 		switch (*cp) {
 			case 'F':

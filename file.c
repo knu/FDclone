@@ -61,7 +61,6 @@ static int NEAR cpfile __P_((char *, char *, struct stat *, struct stat *));
 static VOID changemes __P_((VOID_A));
 #ifndef	_NOWRITEFS
 static int NEAR k_strlen __P_((char *));
-static int NEAR nofile __P_((char *));
 static char *NEAR maketmpfile __P_((int, int, char *, char *));
 #if	!MSDOS
 static char *NEAR getentnum __P_((char *, int, int));
@@ -91,8 +90,8 @@ gid_t gid;
 {
 #if	!MSDOS
 	struct group *gp;
+	uidtable *up;
 	uid_t euid;
-	char *name;
 	int i;
 #endif
 	int dir;
@@ -104,12 +103,46 @@ gid_t gid;
 	euid = geteuid();
 	if (uid == euid) mode >>= 6;
 	else if (gid == getegid()) mode >>= 3;
-	else if ((name = getpwuid2(euid))) {
+	else if ((up = finduid(euid, NULL))) {
+# ifdef	DEBUG
+		_mtrace_file = "setgrent(start)";
+		setgrent();
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "setgrent(end)";
+			malloc(0);	/* dummy alloc */
+		}
+		for (;;) {
+			_mtrace_file = "getgrent(start)";
+			gp = getgrent();
+			if (_mtrace_file) _mtrace_file = NULL;
+			else {
+				_mtrace_file = "getgrent(end)";
+				malloc(0);	/* dummy alloc */
+			}
+			if (!gp) break;
+			if (gid != gp -> gr_gid) continue;
+			for (i = 0; gp -> gr_mem[i]; i++) {
+				if (!strcmp(up -> name, gp -> gr_mem[i])) {
+					mode >>= 3;
+					break;
+				}
+			}
+			break;
+		}
+		_mtrace_file = "endgrent(start)";
+		endgrent();
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "endgrent(end)";
+			malloc(0);	/* dummy alloc */
+		}
+# else	/* !DEBUG */
 		setgrent();
 		while ((gp = getgrent())) {
 			if (gid != gp -> gr_gid) continue;
 			for (i = 0; gp -> gr_mem[i]; i++) {
-				if (!strcmp(name, gp -> gr_mem[i])) {
+				if (!strcmp(up -> name, gp -> gr_mem[i])) {
 					mode >>= 3;
 					break;
 				}
@@ -117,6 +150,7 @@ gid_t gid;
 			break;
 		}
 		endgrent();
+# endif	/* !DEBUG */
 	}
 #endif
 	if (dir && !(mode & F_ISEXE)) mode &= ~(F_ISRED | F_ISWRI);
@@ -131,7 +165,7 @@ namelist *list;
 #if	MSDOS
 	if (stat2(list -> name, &st) < 0) return(-1);
 	memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
-#else
+#else	/* !MSDOS */
 # ifndef	_NODOSDRIVE
 	if (dospath(list -> name, NULL)) {
 		if (stat2(list -> name, &st) < 0) return(-1);
@@ -141,7 +175,7 @@ namelist *list;
 # endif
 	if (Xlstat(list -> name, &lst) < 0
 	|| stat2(list -> name, &st) < 0) return(-1);
-#endif
+#endif	/* !MSDOS */
 	list -> flags = 0;
 	if ((st.st_mode & S_IFMT) == S_IFDIR) list -> flags |= F_ISDIR;
 	if ((lst.st_mode & S_IFMT) == S_IFLNK) list -> flags |= F_ISLNK;
@@ -862,6 +896,19 @@ char *file;
 }
 #endif	/* !_NODOSDRIVE */
 
+int isexist(file)
+char *file;
+{
+#if	MSDOS && !defined (_NOUSELFN)
+	char *cp, buf[MAXPATHLEN];
+
+	if (!(cp = preparefile(file, buf, 0)) && errno == ENOENT) return(0);
+	if (cp != file) return(1);
+#endif
+	if (Xaccess(file, F_OK) < 0 && errno == ENOENT) return(0);
+	return(1);
+}
+
 #ifndef	_NOWRITEFS
 static int NEAR k_strlen(s)
 char *s;
@@ -870,19 +917,6 @@ char *s;
 
 	for (i = 0; s[i]; i++) if (iskanji1(s, i)) i++;
 	return(i);
-}
-
-static int NEAR nofile(file)
-char *file;
-{
-#if	MSDOS && !defined (_NOUSELFN)
-	char *cp, buf[MAXPATHLEN];
-
-	if (!(cp = preparefile(file, buf, 0)) && errno == ENOENT) return(1);
-	if (cp != file) return(0);
-#endif
-	if (Xaccess(file, F_OK) < 0 && errno == ENOENT) return(1);
-	return(0);
 }
 
 static char *NEAR maketmpfile(len, dos, tmpdir, old)
@@ -895,18 +929,18 @@ char *tmpdir, *old;
 	if (len < 0) return(NULL);
 	fname = malloc2(len + 1);
 
-	for (i = 0; i < len; i++) fname[i] = '_';
-	fname[i] = '\0';
+	memset(fname, '_', len);
+	fname[len] = '\0';
 
 	if (tmpdir) l = strcatdelim2(path, tmpdir, NULL) - path;
 
 	for (;;) {
 		if (tmpdir) {
 			strcpy(path + l, fname);
-			if (nofile(path)) {
+			if (!isexist(path)) {
 				if (old) {
 #if	!MSDOS
-					if (!nofile(fname));
+					if (isexist(fname));
 					else
 #endif
 					{

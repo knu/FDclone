@@ -11,6 +11,12 @@
 #include "kctype.h"
 #include "kanji.h"
 
+#ifdef	_NOORIGSHELL
+#define	dosystem(s)		system(s)
+#else
+#include "system.h"
+#endif
+
 #ifndef	NOTZFILEH
 #include <tzfile.h>
 #endif
@@ -20,8 +26,6 @@
 extern int setcurdrv __P_((int, int));
 extern char *unixrealpath __P_((char *, char *));
 #else
-#include <pwd.h>
-#include <grp.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #endif
@@ -36,6 +40,7 @@ char Error[1024];
 extern char **environ;
 extern char fullpath[];
 extern char *origpath;
+extern int hideclock;
 
 #ifndef	CHAR_BIT
 # ifdef	NBBY
@@ -60,7 +65,7 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 
-static char **environ2 = NULL;
+char **environ2 = NULL;
 static char *lastpath = NULL;
 #ifndef	_NODOSDRIVE
 static char *unixpath = NULL;
@@ -290,7 +295,7 @@ char *path;
 	return(0);
 }
 
-char *chdir3(path)
+int chdir3(path)
 char *path;
 {
 	char *cwd;
@@ -302,17 +307,23 @@ char *path;
 	if (!strcmp(path, ".")) cwd = NULL;
 	else if (!strcmp(path, "?")) path = origpath;
 	else if (!strcmp(path, "-")) {
-		if (!lastpath) return(".");
+		if (!lastpath) {
+			errno = ENOENT;
+			return(-1);
+		}
 		path = lastpath;
 	}
 #ifndef	_NODOSDRIVE
 	else if (!strcmp(path, "@")) {
-		if (!unixpath) return(".");
+		if (!unixpath) {
+			errno = ENOENT;
+			return(-1);
+		}
 		path = unixpath;
 	}
 	if ((drive = dospath3(fullpath))) flushdrv(drive, NULL);
 #endif
-	if (chdir2(path) < 0) return(NULL);
+	if (chdir2(path) < 0) return(-1);
 	if (!cwd) {
 		if (!Xgetwd(fullpath)) lostcwd(fullpath);
 	}
@@ -320,7 +331,7 @@ char *path;
 		if (findpattern) free(findpattern);
 		findpattern = NULL;
 	}
-	return(path);
+	return(0);
 }
 
 int mkdir2(path, mode)
@@ -529,7 +540,13 @@ char *s;
 int atoi2(s)
 char *s;
 {
-	return((s && *s >= '0' && *s <= '9') ? atoi(s) : -1);
+	long n;
+
+	if (!s || !(s = evalnumeric(s, &n, 0)) || *s) return(-1);
+#if	MSDOS
+	if (n > MAXTYPE(int)) return(-1);
+#endif
+	return((int)n);
 }
 
 static int NEAR _getenv2(name, len, envp)
@@ -567,7 +584,7 @@ char *s, **envp;
 	if (!cp) return(envp);
 
 #ifdef	DEBUG
-	_mtrace_file = "putenv";
+	_mtrace_file = "_putenv2";
 #endif
 	if (!envp) new = (char **)malloc((n + 2) * sizeof(char *));
 	else new = (char **)realloc(envp, (n + 2) * sizeof(char *));
@@ -624,16 +641,16 @@ char *name, *value;
 	int i;
 #endif
 
+	len = strlen(name);
 	if (!value) cp = name;
 	else {
-		len = strlen(name);
 		cp = malloc2(len + strlen(value) + 2);
 		memcpy(cp, name, len);
 #if	MSDOS
 		for (i = 0; i < len ; i++) cp[i] = toupper2(cp[i]);
 #endif
-		cp[len++] = '=';
-		strcpy(&(cp[len]), value);
+		cp[len] = '=';
+		strcpy(&(cp[len + 1]), value);
 	}
 	if (!(new = _putenv2(cp, environ2))) return(-1);
 	environ2 = new;
@@ -656,32 +673,6 @@ VOID freeenv(VOID_A)
 }
 #endif
 
-/*ARGSUSED*/
-int printenv(argc, argv, comline)
-int argc;
-char *argv[];
-int comline;
-{
-	int i, n;
-
-	if (argc >= 3) return(-1);
-	if (!comline) return(0);
-	if (argc == 2) {
-		n = _getenv2(argv[1], strlen(argv[1]), environ2);
-		if (n >= 0 && environ2[n]) cprintf2("%s\r\n", environ2[n]);
-		return(1);
-	}
-	if (!environ2) return(0);
-	for (i = n = 0; environ2[i]; i++) {
-		cprintf2("%s\r\n", environ2[i]);
-		if (++n >= n_line - 1) {
-			n = 0;
-			warning(0, HITKY_K);
-		}
-	}
-	return(n);
-}
-
 int system2(command, noconf)
 char *command;
 int noconf;
@@ -692,24 +683,23 @@ int noconf;
 	if (noconf >= 0) {
 		locate(0, n_line - 1);
 		putterm(l_clear);
-		tflush();
 		if (noconf) putterms(t_end);
 		putterms(t_nokeypad);
 		tflush();
 	}
-	cooked2();
-	echo2();
-	nl2();
-	tabs();
-	ret = system(command);
-	raw2();
-	noecho2();
-	nonl2();
-	notabs();
-	if (ret > 127 || !noconf) warning(0, HITKY_K);
+	sigvecreset();
+	stdiomode();
+	ret = dosystem(command);
+	ttyiomode();
+	sigvecset();
+	if (ret > 127 || !noconf) {
+		hideclock = 1;
+		warning(0, HITKY_K);
+	}
 	if (noconf >= 0) {
 		if (noconf) putterms(t_init);
 		putterms(t_keypad);
+		tflush();
 	}
 	return(ret);
 }
@@ -721,66 +711,6 @@ char *getwd2(VOID_A)
 	if (!Xgetwd(cwd)) error(NULL);
 	return(strdup2(cwd));
 }
-
-#if	!MSDOS
-char *getpwuid2(uid)
-uid_t uid;
-{
-	static strtable *uidlist = NULL;
-	static int maxuid = 0;
-	struct passwd *pwd;
-	int i;
-
-	for (i = 0; i < maxuid; i++)
-		if (uid == uidlist[i].no) return(uidlist[i].str);
-
-#ifdef	DEBUG
-	_mtrace_file = "getpwuid";
-#endif
-	if ((pwd = getpwuid(uid))) {
-#ifdef	DEBUG
-		_mtrace_file = "getpwuid2(1)";
-#endif
-		uidlist = b_realloc(uidlist, maxuid, strtable);
-		uidlist[maxuid].no = pwd -> pw_uid;
-#ifdef	DEBUG
-		_mtrace_file = "getpwuid2(2)";
-#endif
-		uidlist[maxuid].str = strdup2(pwd -> pw_name);
-		return(uidlist[maxuid++].str);
-	}
-	return(NULL);
-}
-
-char *getgrgid2(gid)
-gid_t gid;
-{
-	static strtable *gidlist = NULL;
-	static int maxgid = 0;
-	struct group *grp;
-	int i;
-
-	for (i = 0; i < maxgid; i++)
-		if (gid == gidlist[i].no) return(gidlist[i].str);
-
-#ifdef	DEBUG
-	_mtrace_file = "getgrgid";
-#endif
-	if ((grp = getgrgid(gid))) {
-#ifdef	DEBUG
-		_mtrace_file = "getgrgid2(1)";
-#endif
-		gidlist = b_realloc(gidlist, maxgid, strtable);
-		gidlist[maxgid].no = grp -> gr_gid;
-#ifdef	DEBUG
-		_mtrace_file = "getgrgid2(2)";
-#endif
-		gidlist[maxgid].str = strdup2(grp -> gr_name);
-		return(gidlist[maxgid++].str);
-	}
-	return(NULL);
-}
-#endif
 
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
@@ -962,8 +892,9 @@ struct tm *tm;
 #endif
 }
 
-char *fgets2(fp)
+char *fgets2(fp, nulcnv)
 FILE *fp;
+int nulcnv;
 {
 	char *cp;
 	long i, size;
@@ -979,8 +910,12 @@ FILE *fp;
 			break;
 		}
 		cp = c_realloc(cp, i, size);
-		cp[i] = (c) ? c : '\n';
+		if (nulcnv && !c) c = '\n';
+		cp[i] = c;
 	}
+#if	MSDOS
+	if (i > 0 && cp[i - 1] == '\r') i--;
+#endif
 	cp[i++] = '\0';
 	return(realloc2(cp, i));
 }

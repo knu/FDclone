@@ -256,7 +256,7 @@ typedef struct _partition_t {
 	u_char f_sect[4] __attribute__ ((packed));
 	u_char t_sect[4] __attribute__ ((packed));
 } partition_t;
-#define	PART_SIZE	sizeof(partition_t)
+#define	PART_SIZE	((int)sizeof(partition_t))
 #define	PART_TABLE	0x01be
 #define	PART_NUM	4
 
@@ -289,7 +289,7 @@ typedef struct _partition98_t {
 	u_char e_cyl[2] __attribute__ ((packed));
 	u_char name[16] __attribute__ ((packed));
 } partition98_t;
-#define	PART98_SIZE	sizeof(partition98_t)
+#define	PART98_SIZE	((int)sizeof(partition98_t))
 #define	PART98_TABLE	0x0200
 #define	PART98_NUM	16
 
@@ -302,12 +302,6 @@ typedef struct _partition98_t {
 #define	PT98_FAT32	0xe1	/* 0x80 | 0x61 */
 #define	PT98_LINUX	0xe2	/* 0x80 | 0x62 */
 #endif	/* HDDMOUNT */
-
-typedef struct _sfntable_t {
-	u_short start;
-	u_short end;
-	u_short sfn;
-} sfntable_t;
 
 #ifdef	NODNAMLEN
 typedef struct _st_dirent {

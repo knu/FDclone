@@ -430,7 +430,7 @@ int mode;
 	}
 #if	!MSDOS
 	if (stp) {
-		int mode, duperrno;
+		int duperrno;
 
 		duperrno = errno;
 		mode = logical_access(stp -> st_mode,
@@ -495,7 +495,7 @@ char *path;
 		/* Already exist, but not directory */
 			if (Xunlink(dest) < 0) return(-1);
 		case 0:
-		/* No exist */
+		/* Not exist */
 #if	MSDOS
 			if (Xmkdir(dest, st1.st_mode | S_IWRITE) < 0)
 #else
@@ -521,6 +521,7 @@ char *path;
 	return(0);
 }
 
+/*ARGSUSED*/
 static int touchdir(path)
 char *path;
 {

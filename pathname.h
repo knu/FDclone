@@ -7,22 +7,27 @@
 #ifndef	__PATHNAME_H_
 #define	__PATHNAME_H_
 
+#define	IFS_SET		" \t\n"
 #define	META		'\\'
 #if	!MSDOS
 #define	PATHDELIM	':'
 #define	PMETA		META
+#define	METACHAR	"\t\n !\"#$&'()*;<=>?[\\]`|"
 #define	DQ_METACHAR	"\"$\\`"
-#else
-#define	PATHDELIM	';'
-# ifdef	_NOORIGGLOB
+#else	/* MSDOS */
+# ifdef	_NOORIGSHELL
 # define	FAKEMETA
 # define	PMETA		'$'
+# define	METACHAR	"\t\n !\"$'*<>?|"
 # define	DQ_METACHAR	"\"$"
+# define	PATHDELIM	';'
 # else
 # define	PMETA		'%'
+# define	METACHAR	"\t\n !\"#$%&'()*;<=>?[]`|"
 # define	DQ_METACHAR	"\"$%`"
+# define	PATHDELIM	':'
 # endif
-#endif
+#endif	/* MSDOS */
 
 #define	ismeta(s, i, q)	((s)[i] == PMETA && (s)[(i) + 1] \
 			&& (!(q) || (s)[(i) + 1] != (q) || (s)[(i) + 2]))
@@ -92,6 +97,23 @@ typedef struct _devino_t {
 } devino_t;
 #endif
 
+#ifdef	NOUID_T
+#undef	NOUID_T
+typedef u_short	uid_t;
+typedef u_short	gid_t;
+#endif
+
+typedef struct _uidtable {
+	uid_t uid;
+	char *name;
+	char *home;
+} uidtable;
+
+typedef struct _gidtable {
+	gid_t gid;
+	char *name;
+} gidtable;
+
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 extern char *strdelim __P_((char *, int));
 extern char *strrdelim __P_((char *, int));
@@ -125,14 +147,22 @@ extern int searchhash __P_((hashlist **, char *));
 extern char *searchpath __P_((char *));
 #ifndef	_NOCOMPLETE
 extern char *finddupl __P_((char *, int, char **));
-extern int completepath __P_((char *, int, int, char ***));
+extern int completepath __P_((char *, int, int, char ***, int));
 extern char *findcommon __P_((int, char **));
+extern char *catvar __P_((char *[], int));
+#endif
+#if	!MSDOS
+extern uidtable *finduid __P_((uid_t, char *));
+extern gidtable *findgid __P_((gid_t, char *));
+# ifdef	DEBUG
+extern VOID freeidlist __P_((VOID_A));
+# endif
 #endif
 extern char *gethomedir __P_((VOID_A));
 extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, char *, int));
-extern int evalglob __P_((int, char ***, int));
-extern char *stripquote __P_((char *));
+extern int evalglob __P_((int, char ***, int, int));
+extern char *stripquote __P_((char *, int));
 extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));
 

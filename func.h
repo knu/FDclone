@@ -227,7 +227,7 @@ extern int stat2 __P_((char *, struct stat *));
 extern char *realpath2 __P_((char *, char *, int));
 extern int _chdir2 __P_((char *));
 extern int chdir2 __P_((char *));
-extern char *chdir3 __P_((char *));
+extern int chdir3 __P_((char *));
 extern int mkdir2 __P_((char *, int));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
@@ -247,15 +247,10 @@ extern char *getenv2 __P_((char *));
 #ifdef	DEBUG
 extern VOID freeenv __P_((VOID_A));
 #endif
-extern int printenv __P_((int, char *[], int));
 extern int system2 __P_((char *, int));
 extern char *getwd2 __P_((VOID_A));
-#if	!MSDOS
-extern char *getpwuid2 __P_((uid_t));
-extern char *getgrgid2 __P_((gid_t));
-#endif
 extern time_t timelocal2 __P_((struct tm *));
-extern char *fgets2 __P_((FILE *));
+extern char *fgets2 __P_((FILE *, int));
 
 /* file.c */
 #if	MSDOS
@@ -285,6 +280,7 @@ extern int forcecleandir __P_((char *, char *));
 extern int tmpdosdupl __P_((char *, char **, int));
 extern int tmpdosrestore __P_((int, char *));
 #endif
+int isexist __P_((char *));
 #ifndef	_NOWRITEFS
 extern VOID arrangedir __P_((int));
 #endif
@@ -304,52 +300,112 @@ extern int movefile __P_((char *, int));
 
 /* parse.c */
 extern char *skipspace __P_((char *));
-extern char *skipnumeric __P_((char *, int));
-extern char *strtkbrk __P_((char *, char *, int));
+extern char *evalnumeric __P_((char *, long *, int));
+extern char *ascnumeric __P_((char *, long, int, int));
+#ifdef	_NOORIGSHELL
 extern char *strtkchr __P_((char *, int, int));
-extern char *geteostr __P_((char **));
-extern char *gettoken __P_((char **, char *));
+extern int getargs __P_((char *, char ***));
+extern char *gettoken __P_((char *));
 extern char *getenvval __P_((int *, char *[]));
-extern char *evalcomstr __P_((char *, char *, int));
-#if	!MSDOS
+extern char *evalcomstr __P_((char *, char *));
+#endif
+extern char *evalpaths __P_((char *, int));
+#if	MSDOS && defined (_NOORIGSHELL)
+#define	killmeta(s)	strdup2(s)
+#else
 extern char *killmeta __P_((char *));
+#endif
+#if	!MSDOS && defined (_NOORIGSHELL)
 extern VOID adjustpath __P_((VOID_A));
 #endif
 extern char *includepath __P_((char *, char *, char *));
-extern int getargs __P_((char *, char ***));
-extern VOID freeargs __P_((char **));
-extern char *catargs __P_((char *[], int));
+extern VOID freevar __P_((char **));
 #ifndef	_NOARCHIVE
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
-extern int evalprompt __P_((char *, int));
-extern VOID evalenv __P_((VOID_A));
+extern int evalprompt __P_((char *, char *, int));
+#ifndef	_NOARCHIVE
+extern char *getext __P_((char *));
+extern int extcmp __P_((char *, char *));
+#endif
+extern int getkeycode __P_((char *, int));
+extern char *getkeysym __P_((int, int));
+extern char *decodestr __P_((char *, int *, int));
+#if	!MSDOS && !defined (_NOKEYMAP)
+extern char *encodestr __P_((char *, int));
+#endif
 
 /* builtin.c */
-extern char *getkeysym __P_((int));
-extern int isinternal __P_((char *, int));
-extern int execbuiltin __P_((char *, int, int));
+extern VOID printlaunchcomm __P_((int, int, FILE *));
+extern VOID printarchcomm __P_((int, FILE *));
+extern int freemacro __P_((int));
+extern VOID printmacro __P_((int, FILE *));
+extern int deletedrv __P_((int));
+extern int insertdrv __P_((int, int, char *, int, int, int));
+extern VOID printsetdrv __P_((int, int, FILE *));
+#if	!MSDOS && !defined (_NOKEYMAP)
+extern VOID printkeymap __P_((int, char *, int, FILE *));
+#endif
+#ifdef	_NOORIGSHELL
+extern VOID printalias __P_((int, FILE *));
+extern VOID printfunction __P_((int, int, FILE *));
+#endif
+extern int checkbuiltin __P_((char *));
+extern int checkinternal __P_((char *));
+extern int execbuiltin __P_((int, int, char *[]));
+extern int execinternal __P_((int, int, char *[]));
+#ifdef	_NOORIGSHELL
+extern int execpseudoshell __P_((char *, int, int));
+#endif
 #ifndef	_NOCOMPLETE
-extern int completebuiltin __P_((char *, int, char ***));
+extern int completebuiltin __P_((char *, int, int, char ***));
+extern int completeinternal __P_((char *, int, int, char ***));
 #endif
 #ifdef	DEBUG
 extern VOID freedefine __P_((VOID_A));
 #endif
 
+#define	BL_PENV		"printenv"
+#define	BL_LAUNCH	"launch"
+#define	BL_ARCH		"arch"
+#define	BL_PLAUNCH	"printlaunch"
+#define	BL_PARCH	"printarch"
+#define	BL_BIND		"bind"
+#define	BL_PBIND	"printbind"
+#define	BL_SDRIVE	"setdrv"
+#define	BL_UDRIVE	"unsetdrv"
+#define	BL_PDRIVE	"printdrv"
+#define	BL_KEYMAP	"keymap"
+#define	BL_GETKEY	"getkey"
+#define	BL_HISTORY	"history"
+#define	BL_ALIAS	"alias"
+#define	BL_UALIAS	"unalias"
+#define	BL_FUNCTION	"function"
+#define	BL_EXPORT	"export"
+#define	BL_CHDIR	"chdir"
+#define	BL_CD		"cd"
+#define	BL_SOURCE	"source"
+
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
+extern char *inputshellstr __P_((char *, int, char *));
+extern char *inputshellloop __P_((int, char *));
 extern int execmacro __P_((char *, char *, int, int, int));
+#ifdef	_NOORIGSHELL
 extern int execusercomm __P_((char *, char *, int, int, int));
+#else
+#define	execusercomm	execmacro
+#endif
 extern int entryhist __P_((int, char *, int));
 extern int loadhistory __P_((int, char *));
 extern int savehistory __P_((int, char *));
-extern int dohistory __P_((char *[]));
+extern char *evalhistory __P_((char *));
 #ifdef	DEBUG
 extern VOID freehistory __P_((int));
 #endif
-#ifndef	_NOCOMPLETE
-extern int completealias __P_((char *, int, char ***));
-extern int completeuserfunc __P_((char *, int, char ***));
+#if	!defined (_NOCOMPLETE) && defined (_NOORIGSHELL)
+extern int completealias __P_((char *, int, int, char ***));
+extern int completeuserfunc __P_((char *, int, int, char ***));
 #endif
 
 /* kanji.c */
@@ -363,13 +419,18 @@ extern int getlang __P_((char *, int));
 extern int sjis2ujis __P_((char *, u_char *, int));
 extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
+#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NODOSDRIVE)
+extern u_short unifysjis __P_((u_short, int));
+extern u_short cnvunicode __P_((u_short, int));
+#endif
 #if	!MSDOS && !defined (_NOKANJICONV)
-extern int kanjiconv __P_((char *, char *, int, int, int));
+extern int kanjiconv __P_((char *, char *, int, int, int, int));
 #endif
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 extern char *kanjiconv2 __P_((char *, char *, int, int, int));
 #endif
 extern int kanjiputs __P_((char *));
+extern int kanjifputs __P_((char *, FILE *));
 extern int kanjiprintf __P_((CONST char *, ...));
 extern int kanjiputs2 __P_((char *, int, int));
 
@@ -386,7 +447,6 @@ extern int selectstr __P_((int *, int, int, char *[], int []));
 extern VOID help __P_((int));
 extern int writablefs __P_((char *));
 extern long getblocksize __P_((char *));
-extern char *inscomma __P_((char *, off_t, int, int));
 extern VOID getinfofs __P_((char *, long *, long *));
 extern int infofs __P_((char *));
 
@@ -416,6 +476,22 @@ extern int searcharc __P_((char *, namelist *, int, int));
 extern VOID rewritetree __P_((VOID_A));
 extern char *tree __P_((int, int *));
 #endif
+
+/* custom.c */
+extern VOID evalenv __P_((VOID_A));
+#ifdef	DEBUG
+extern VOID freeenvpath __P_((VOID_A));
+#endif
+#ifndef	_NOCUSTOMIZE
+char **copystrarray __P_((char **, char **, int *, int));
+extern bindtable *copybind __P_((bindtable *, bindtable *));
+# if	!MSDOS && !defined (_NOKEYMAP)
+extern keymaptable *copykeymap __P_((keymaptable *));
+extern VOID freekeymap __P_((keymaptable *));
+# endif
+extern VOID rewritecust __P_((int));
+extern int customize __P_((VOID_A));
+#endif	/* !_NOCUSTOMIZE */
 
 /* command.c */
 
