@@ -61,12 +61,11 @@ extern int toupper2();
 extern int strcasecmp2();
 extern time_t timelocal2();
 #else
-#ifdef	USELEAPCNT
 #include <tzfile.h>
-#endif
 static int toupper2();
 static int strcasecmp2();
 static time_t timelocal2();
+static int tmcmp();
 static long gettimezone();
 #endif
 
@@ -214,7 +213,7 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 #if defined (ORG_386BSD)
 # if defined (i386)
 	{'A', "/dev/fd0a", 2, 18, 80},
-	{'A', "/dev/fd0a", 2, 18, 80},
+	{'A', "/dev/fd0a", 2, 15, 80},
 	{'A', "/dev/fd0b", 2, 8, 77},
 	{'A', "/dev/fd0c", 2, 9, 80},
 	{'A', "/dev/fd0c", 2, 8 + 100, 80},
@@ -256,51 +255,123 @@ char *s1, *s2;
 	return(c1 - c2);
 }
 
-static long gettimezone()
+static int tmcmp(tm1, tm2)
+struct tm *tm1, *tm2;
 {
-#ifdef	USELEAPCNT
-	struct tzhead buf;
-	FILE *fp;
-	char path[MAXPATHLEN + 1];
-#endif
-	long tz;
-#ifdef	HAVETIMEZONE
-	extern time_t timezone;
+	if (tm1 -> tm_year != tm2 -> tm_year)
+		return (tm1 -> tm_year - tm2 -> tm_year);
+	if (tm1 -> tm_mon != tm2 -> tm_mon)
+		return (tm1 -> tm_mon - tm2 -> tm_mon);
+	if (tm1 -> tm_mday != tm2 -> tm_mday)
+		return (tm1 -> tm_mday - tm2 -> tm_mday);
+	if (tm1 -> tm_hour != tm2 -> tm_hour)
+		return (tm1 -> tm_hour - tm2 -> tm_hour);
+	if (tm1 -> tm_min != tm2 -> tm_min)
+		return (tm1 -> tm_min - tm2 -> tm_min);
+	return (tm1 -> tm_sec - tm2 -> tm_sec);
+}
 
-	tzset();
-	tz = timezone;
-#else
-# ifdef	NOTMGMTOFF
+static long gettimezone(tm, time)
+struct tm *tm;
+int time;
+{
+#ifdef	NOTMGMTOFF
 	struct timeval t_val;
 	struct timezone t_zone;
+#endif
+	struct tzhead buf;
+	struct tm tmbuf;
+	FILE *fp;
+	long tz, tmp, leap, nleap, ntime, ntype, nchar;
+	char *cp, path[MAXPATHLEN + 1];
+	u_char c;
+	int i;
 
+	memcpy(&tmbuf, tm, sizeof(struct tm));
+	if (tmbuf.tm_year >= 1900) tmbuf.tm_year -= 1900;
+
+#ifdef	NOTMGMTOFF
 	gettimeofday(&t_val, &t_zone);
 	tz = t_zone.tz_minuteswest * 60L;
-# else
-	tz = time(0);
-	tz = -(localtime(&tz) -> tm_gmtoff);
-# endif
+#else
+	tz = -(localtime(&time) -> tm_gmtoff);
 #endif
-#ifdef	USELEAPCNT
-	if (TZDEFAULT[0] == '/') strcpy(path, TZDEFAULT);
+
+	cp = (char *)getenv("TZ");
+	if (!cp || !*cp) cp = TZDEFAULT;
+	if (cp[0] == '/') strcpy(path, cp);
 	else {
 		strcpy(path, TZDIR);
 		strcat(path, "/");
-		strcat(path, TZDEFAULT);
+		strcat(path, cp);
 	}
-	if (fp = fopen(path, "r")) {
-		if (fread(&buf, sizeof(struct tzhead), 1, fp) == 1)
-			tz += *((long *)(buf.tzh_leapcnt));
+	if (!(fp = fopen(path, "r"))) return(tz);
+	if (fread(&buf, sizeof(struct tzhead), 1, fp) != 1) {
 		fclose(fp);
+		return(tz);
 	}
-#endif
+	memcpy(&nleap, buf.tzh_leapcnt, sizeof(long));
+	memcpy(&ntime, buf.tzh_timecnt, sizeof(long));
+	memcpy(&ntype, buf.tzh_typecnt, sizeof(long));
+	memcpy(&nchar, buf.tzh_charcnt, sizeof(long));
+
+	for (i = 0; i < ntime; i++) {
+		if (fread(&tmp, sizeof(long), 1, fp) != 1) {
+			fclose(fp);
+			return(tz);
+		}
+		if (tmcmp(&tmbuf, localtime(&tmp)) < 0) break;
+	}
+	if (i > 0) {
+		i--;
+		i *= sizeof(char);
+		i += sizeof(struct tzhead) + ntime * sizeof(long);
+		if (fseek(fp, i, 0) < 0
+		|| fread(&c, sizeof(char), 1, fp) != 1) {
+			fclose(fp);
+			return(tz);
+		}
+		i = c;
+	}
+	i *= sizeof(long) + sizeof(char) + sizeof(char);
+	i += sizeof(struct tzhead) + ntime * (sizeof(long) + sizeof(char));
+	if (fseek(fp, i, 0) < 0
+	|| fread(&tmp, sizeof(long), 1, fp) != 1) {
+		fclose(fp);
+		return(tz);
+	}
+	tz = -tmp;
+
+	i = sizeof(struct tzhead) + ntime * (sizeof(long) + sizeof(char))
+		+ ntype * (sizeof(long) + sizeof(char) + sizeof(char))
+		+ nchar * sizeof(char);
+	if (fseek(fp, i, 0) < 0) {
+		fclose(fp);
+		return(tz);
+	}
+	leap = 0;
+	for (i = 0; i < nleap; i++) {
+		if (fread(&tmp, sizeof(long), 1, fp) != 1) {
+			fclose(fp);
+			return(tz);
+		}
+		if (tmcmp(&tmbuf, localtime(&tmp)) <= 0) break;
+		if (fread(&leap, sizeof(long), 1, fp) != 1) {
+			fclose(fp);
+			return(tz);
+		}
+	}
+
+	tz += leap;
+	fclose(fp);
 	return(tz);
 }
 
 static time_t timelocal2(tm)
 struct tm *tm;
 {
-	int i, date, time;
+	time_t date, time;
+	int i;
 
 	if (tm -> tm_year < 1900) tm -> tm_year += 1900;
 
@@ -329,8 +400,10 @@ struct tm *tm;
 	}
 	date += tm -> tm_mday - 1;
 	time = (tm -> tm_hour * 60 + tm -> tm_min) * 60 + tm -> tm_sec;
+	time += date * 60 * 60 * 24;
+	time += gettimezone(tm, time);
 
-	return(((time_t)date * 60 * 60 * 24) + (time_t)time + gettimezone());
+	return(time);
 }
 #endif
 

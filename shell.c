@@ -10,6 +10,8 @@
 #include "kctype.h"
 #include "kanji.h"
 
+#include <sys/param.h>
+
 extern int filepos;
 extern int mark;
 extern char fullpath[];
@@ -76,7 +78,7 @@ char *path;
 static char *killmeta(name)
 char *name;
 {
-	char *cp, *buf;
+	char *cp, buf[MAXPATHLEN * 2 + 1];
 	int i;
 #ifndef	CODEEUC
 	int sjis;
@@ -86,7 +88,6 @@ char *name;
 		&& strchr("AP", toupper2(*(cp + 1))));
 #endif
 
-	buf = (char *)malloc2(strlen(name) * 2 + 1);
 	for (cp = name, i = 0; *cp; cp++, i++) {
 #ifndef	CODEEUC
 		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
@@ -96,7 +97,7 @@ char *name;
 		buf[i] = *cp;
 	}
 	buf[i] = '\0';
-	return(buf);
+	return(strdup2(buf));
 }
 
 static int setarg(buf, ptr, dir, arg, noext)

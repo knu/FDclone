@@ -123,7 +123,6 @@ depend: $(SRC) kanji.h funcno.h
 		>> Makefile.in
 	$(SED) -e "1,/^# DO NOT DELETE THIS LINE/d"\
 		-e "s/\/[^ ]* *//g"\
-		-e "s/\(kanjicnv\).o/\1/g"\
 		-e "/: *$$/d" Makefile.tmp >> Makefile.in
 	rm -f Makefile.in.bak Makefile.tmp
 
@@ -189,7 +188,7 @@ input.o: kctype.h kanji.h
 shell.o: fd.h machine.h config.h 
 shell.o: types.h pathname.h
 shell.o: term.h func.h 
-shell.o: kctype.h kanji.h
+shell.o: kctype.h kanji.h 
 info.o: fd.h machine.h config.h 
 info.o: types.h pathname.h term.h
 info.o: funcno.h kanji.h 
@@ -226,4 +225,3 @@ browse.o: fd.h machine.h config.h
 browse.o: types.h pathname.h
 browse.o: term.h func.h 
 browse.o: funcno.h kanji.h 
-kanjicnv: machine.h config.h

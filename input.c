@@ -646,6 +646,7 @@ int x, cx, len, linemax, max, comline, cont;
 
 	for (i = cx; i > 0; i--)
 		if (strchr(CMDLINE_DELIM, str[i - 1])) break;
+	if (i > 1 && str[i - 1] == ':' && isalpha(str[i - 2])) i -= 2;
 	if (i == cx) {
 		putterm(t_bell);
 		return(0);

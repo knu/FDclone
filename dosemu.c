@@ -35,7 +35,7 @@ char *path;
 int dospath(path, buf)
 char *path, *buf;
 {
-	char *cp;
+	char *cp, tmp[MAXPATHLEN + 1];
 	int drive;
 
 	if (!dosdrive) return(0);
@@ -43,6 +43,10 @@ char *path, *buf;
 	else if (*path == '/' || !_dospath(pseudocwd)) return(0);
 	else cp = pseudocwd;
 
+	if (cp == buf) {
+		strcpy(tmp, cp);
+		cp = tmp;
+	}
 	drive = *cp;
 #ifndef	LFNCONVERT
 	drive = toupper2(drive);
@@ -210,7 +214,7 @@ int mode;
 int Xsymlink(name1, name2)
 char *name1, *name2;
 {
-	return((dospath(name1, NULL) || dospath(name1, NULL)) ?
+	return((dospath(name1, NULL) || dospath(name2, NULL)) ?
 		dossymlink(name1, name2) : symlink(name1, name2));
 }
 
