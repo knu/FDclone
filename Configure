@@ -110,11 +110,14 @@ if [ "$LANG" = "ja_JP.EUC" ]; then
 	echo "#define	CODEEUC"
 fi
 
-me=`whoami`
+me=`whoami 2>/dev/null`
+touch $TMPSRC
+if [ -z "$me" ]; then
+	me=`ls -l $TMPSRC | awk '{print $3}' 2>/dev/null`
+fi
 uidlen=`egrep "^$me:" /etc/passwd | awk -F: '{print length($3)}'`
 if expr $uidlen \> 2 > /dev/null; then
 	echo "Checking for tar(1)..." 1>&2
-	touch $TMPSRC
 	$TAR cf $TMPEXE $TMPSRC
 	if $TAR tvf $TMPEXE | \
 	(read mode other; echo $mode | egrep '/' 2>&1 > /dev/null); then
@@ -250,10 +253,10 @@ elif inheader 'struct.*[^a-zA-Z_]statfs' sys/mount; then {
 		echo "#define	USEFFSIZE"
 	elif isexist "statfs(0,0,0)" sys/mount; then arg=3; fi
 }
-elif inheader 'struct.*[^a-zA-Z_]statfs' sys/statfs \
-&& { isexist "struct statfs f; statfs(0,&f)" sys/statfs \
-|| { isexist "struct statfs f; statfs(0,&f,0,0)" sys/statfs \
-&& arg=4; }; }; then
+elif inheader 'struct.*[^a-zA-Z_]statfs' "sys/types sys/statfs" \
+&& { { isexist "struct statfs f; statfs(0,&f,0,0)" "sys/types sys/statfs" \
+&& arg=4; } \
+|| isexist "struct statfs f; statfs(0,&f)" "sys/types sys/statfs"; }; then
 	echo "#define	USESTATFSH"
 elif inheader 'struct.*[^a-zA-Z_]statvfs' sys/statvfs; then
 	echo "#define	USESTATVFSH"

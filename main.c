@@ -378,7 +378,6 @@ char *line;
 	char *cp, *eol;
 	int i, j, ch, n1, n2;
 
-	cp = line;
 	for (eol = line, ch = '\0'; *eol; eol++) {
 		if (*eol == '\\' && *(eol + 1)) eol++;
 		else if (*eol == ch) ch = '\0';
@@ -386,6 +385,7 @@ char *line;
 		else if (*eol == ';' && !ch) break;
 	}
 
+	cp = line + 1;
 	switch (ch = *(cp++)) {
 		case '^':
 			if (*cp == '\'') break;
@@ -401,8 +401,7 @@ char *line;
 			break;
 	}
 
-	if (ch == '\033') return(-1);
-	if (*cp == '\'') cp++;
+	if (ch == '\033' || *(cp++) != '\'') return(-1);
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 		if (ch == (int)(bindlist[i].key)) break;
@@ -559,7 +558,7 @@ char *line;
 		if (cp) free(cp);
 	}
 	else if (*line == '"') getlaunch(line);
-	else if (*line == '\'') getkeybind(line + 1);
+	else if (*line == '\'') getkeybind(line);
 	else return(-1);
 	return(0);
 }

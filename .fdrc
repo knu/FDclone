@@ -106,7 +106,7 @@ EDITOR	=	/usr/ucb/vi
 'G'	"gunzip %C%K"	WARNING_BELL
 'R'	"grep %R %C"
 '~'	"!cd ~%N%K"
-'F1'	"trn%N%K"	;News
+'F1'	"man fd%N%K"	;Manual
 
 # alias definition
 alias	dir "ls -laF"

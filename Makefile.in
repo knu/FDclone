@@ -8,6 +8,7 @@ MANDIR	= /usr/local/man/man$(MANSEC)
 DEFRC	= /etc/fdrc
 SHELL	= /bin/sh
 INSTALL	= cp
+CHMOD	= chmod
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
@@ -73,9 +74,12 @@ mkfuncno: mkfuncno.c
 
 install: $(PROGRAM) $(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM) $(BINDIR)
+	$(CHMOD) a+rx $(BINDIR)/$(PROGRAM)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(MANDIR)/$(PROGRAM).$(MANSEC)
 	-if [ -f $(RUNCOM) ]; then \
 		$(INSTALL) $(RUNCOM) $(DEFRC); \
+		$(CHMOD) a+r $(DEFRC); \
 	fi
 
 
