@@ -120,11 +120,13 @@ int mode;
 		return(-1);
 	}
 
-	while ((i = read(fd1, buf, BUFSIZ)) >= BUFSIZ) {
-		if (write(fd2, buf, BUFSIZ) < 0) error(dest);
+	for (;;) {
+		while ((i = read(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
+		if (i < BUFSIZ) break;
+		if (write(fd2, buf, BUFSIZ) < 0 && errno != EINTR) error(dest);
 	}
 	if (i < 0) error(src);
-	if (i > 0 && write(fd2, buf, i) < 0) error(dest);
+	if (i > 0 && write(fd2, buf, i) < 0 && errno != EINTR) error(dest);
 
 	close(fd2);
 	close(fd1);

@@ -20,6 +20,7 @@
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
 	NEC	EWS-UX/V(Rel4.x)(R5.3, R8.1, R9.1, R10.1)
 	OMRON	UniOS-U		(Ver3.00)
+	OMRON	UniOS-B		(2.00)
 	OMRON	Luna/Mach	(2.5)
 	DEC	OSF/1		(V1.2, V2.0)
 	IBM	AIX		(3.x, 4.x)

@@ -45,10 +45,12 @@ typedef struct _namelist {
 
 #define	F_ISDIR	001
 #define	F_ISLNK	002
-#define	F_ISMRK	004
+#define	F_ISDEV	004
+#define	F_ISMRK	010
 
 #define	isdir(file)		((file) -> flags & F_ISDIR)
 #define	islink(file)		((file) -> flags & F_ISLNK)
+#define	isdev(file)		((file) -> flags & F_ISDEV)
 #define	ismark(file)		((file) -> flags & F_ISMRK)
 
 typedef struct _assoclist {

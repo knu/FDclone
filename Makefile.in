@@ -34,7 +34,7 @@ OBJ	= main.o term.o pathname.o libc.o input.o shell.o info.o\
 	kanji.o file.o apply.o archive.o tree.o command.o browse.o
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
-CFLAGS	= -DFD -DDEFRUNCOM=\"$(DEFRC)\" __CCOPTIONS__
+CFLAGS	= -DFD -D__OSTYPE__ -DDEFRUNCOM=\"$(DEFRC)\" __CCOPTIONS__
 
 ############################################################
 #	Dependency Rules

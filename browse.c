@@ -273,7 +273,9 @@ int no;
 	len += WGROUP;
 	strcpy(buf + (len++), " ");
 
-	sprintf(buf + len, "%8d ", list[no].st_size);
+	if (isdev(&list[no])) sprintf(buf + len, "%3u, %3u ",
+		(list[no].st_size >> 8) & 0xff, list[no].st_size & 0xff);
+	else sprintf(buf + len, "%8d ", list[no].st_size);
 	len = strlen(buf);
 
 	sprintf(buf + len, "%02d-%02d-%02d %02d:%02d ",
@@ -381,6 +383,11 @@ int standout;
 	if (columns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&list[no]))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
+		else if (isdev(&list[no]))
+			sprintf(buf + len, " %*u,%*u",
+				WSIZE / 2, (list[no].st_size >> 8) & 0xff,
+				WSIZE - (WSIZE / 2) - 1,
+				list[no].st_size & 0xff);
 		else sprintf(buf + len, " %*d", WSIZE, list[no].st_size);
 		if (strlen(buf + len) > WSIZE + 1)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "OVERFLOW");

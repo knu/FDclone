@@ -49,13 +49,15 @@ char *file;
 	list[i].flags = 0;
 	if ((status.st_mode & S_IFMT) == S_IFDIR) list[i].flags |= F_ISDIR;
 	if ((lstatus.st_mode & S_IFMT) == S_IFLNK) list[i].flags |= F_ISLNK;
+	if ((lstatus.st_mode & S_IFMT) == S_IFCHR
+	|| (lstatus.st_mode & S_IFMT) == S_IFBLK) list[i].flags |= F_ISDEV;
 
 	if (isdisplnk(dispmode)) memcpy(&lstatus, &status, sizeof(struct stat));
 
 	list[i].st_nlink = lstatus.st_nlink;
 	list[i].st_uid = lstatus.st_uid;
 	list[i].st_gid = lstatus.st_gid;
-	list[i].st_size = lstatus.st_size;
+	list[i].st_size = isdev(&list[i]) ? lstatus.st_rdev : lstatus.st_size;
 	list[i].st_mtim = lstatus.st_mtime;
 }
 

@@ -110,23 +110,20 @@ if [ "$LANG" = "ja_JP.EUC" ]; then
 	echo "#define	CODEEUC"
 fi
 
-me=`whoami 2>/dev/null`
+echo "Checking for tar(1)..." 1>&2
 touch $TMPSRC
-if [ -z "$me" ]; then
-	me=`ls -l $TMPSRC | awk '{print $3}' 2>/dev/null`
-fi
-uidlen=`egrep "^$me:" /etc/passwd | awk -F: '{print length($3)}'`
-if expr $uidlen \> 2 > /dev/null; then
-	echo "Checking for tar(1)..." 1>&2
-	$TAR cf $TMPEXE $TMPSRC
-	if $TAR tvf $TMPEXE | \
-	(read mode other; echo $mode | egrep '/' 2>&1 > /dev/null); then
-		:
-	else
+$TAR cfo $TMPEXE $TMPSRC 2> /dev/null
+set dummy `$TAR tvf $TMPEXE 2> /dev/null`
+if echo $3 | egrep '/' 2>&1 > /dev/null; then
+	ORGIFS=$IFS
+	IFS=/
+	set dummy $3
+	if expr "$2" \> 100 2>&1 > /dev/null; then
 		echo "#define	TARUSESPACE"
-	fi
-	rm -f $TMPEXE
+	fi;
+	IFS=$ORGIFS
 fi
+rm -f $TMPEXE
 
 echo "Checking for cpp(1)..." 1>&2
 echo '#define test "01"' | tr '01' '\376\376' > $TMPSRC
@@ -276,7 +273,7 @@ elif isexist "getmntinfo_r(0,0,0,0)"; then
 elif isexist "getmntinfo(0,0)"; then
 	echo "#define	USEMNTINFO"
 elif isexist "getfsstat(0,0,0)"; then
-	echo "#define	USEFSSTAT"
+	echo "#define	USEGETFSSTAT"
 elif isexist "getmnt(0,0,0,0,0)"; then
 	echo "#define	USEGETMNT"
 elif isexist "getfsent()" \

@@ -8,10 +8,11 @@
 # if defined (USGr4) || defined (__svr4__) || defined (__SVR4)
 # define	SVR4
 # define	OSTYPE		"SOLARIS"
-#  if defined (__SUNPRO_C)
-#  undef	CCCOMMAND
-#  define	CCCOMMAND	"acc"
-# endif
+# include <stdio.h>
+#  if defined (__SUNPRO_C) && defined (BSD)
+#  define	USEDIRECT
+#  define	USERE_COMP
+#  endif
 # define	REGEXPLIB	"-lgen"
 # define	USESTATVFSH
 # define	USEMNTTABH
@@ -105,7 +106,7 @@
 
 #if defined (uniosu)
 #define	BSD43
-#define	OSTYPE			"UNIOS"
+#define	OSTYPE			"UNIOSU"
 #define	CODEEUC
 #define	EXTENDCCOPT		"-O -Zs"
 #define	TERMCAPLIB		"-lcurses"
@@ -121,6 +122,22 @@
 #define	USEREGCMP
 #define	NOSTRSTR
 #define	WAITKEYPAD		720
+#endif
+
+#if defined (uniosb)
+#define	BSD43
+#define	OSTYPE			"UNIOSB"
+#define	NOERRNO
+#define	NOFILEMODE
+#define	NOUNISTDH
+#define	NOSTDLIBH
+#define	USEDIRECT
+#define	USERE_COMP
+#define	USESETENV
+#define	NOSTRSTR
+#define	NOVSPRINTF
+#define	USEGETWD
+#define	SIGARGINT
 #endif
 
 #if defined (luna88k)
@@ -262,7 +279,7 @@
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEFFSIZE
-#define	USEGETFSENT
+#define	USEMNTINFO
 #define	USERE_COMP
 #endif
 
@@ -303,7 +320,8 @@
 /*	IRIX		/* IRIX (SGI) */
 /*	HPUX		/* HP-UX (HP) */
 /*	EWSUXV		/* EWS-UX/V (NEC) */
-/*	UNIOS		/* UniOS-U (OMRON) */
+/*	UNIOSU		/* UniOS-U (OMRON) */
+/*	UNIOSB		/* UniOS-B (OMRON) */
 /*	LUNA88K		/* Luna/Mach (OMRON) */
 /*	DECOSF1V2	/* older OSF/1 V2 (DEC) */
 /*	DECOSF1V3	/* newer OSF/1 V3 (DEC) */
@@ -456,45 +474,45 @@
 
 
 #if defined (USEMNTTABH)
-# ifdef	USEFSSTAT
-# undef	USEFSSTAT
+# ifdef	USEGETFSSTAT
+# undef	USEGETFSSTAT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSSTAT)
+#if defined (USEMNTTABH) || defined (USEGETFSSTAT)
 # ifdef	USEMNTCTL
 # undef	USEMNTCTL
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)
+#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)
 # ifdef	USEMNTINFOR
 # undef	USEMNTINFOR
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR)
 # ifdef	USEMNTINFO
 # undef	USEMNTINFO
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO)
 # ifdef	USEGETMNT
 # undef	USEGETMNT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
 # ifdef	USEGETFSENT
 # undef	USEGETFSENT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+#if defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)\
 || defined (USEGETFSENT)
 # ifdef	USEMNTENTH

@@ -4,6 +4,8 @@
 
 #include "machine.h"
 
+s:__OSTYPE__:OSTYPE:
+
 s:__CC__:CCCOMMAND:
 s:__CCOPTIONS__:EXTENDCCOPT:
 

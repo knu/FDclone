@@ -78,7 +78,7 @@ EDITOR	=	/usr/ucb/vi
 #export	LANG=C
 
 # launcher definition
-#".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,0,5,6,7,8
+#".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
 #".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 #".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 #".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
