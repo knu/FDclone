@@ -188,7 +188,7 @@ char *path;
 	if (chdir2(path) < 0) return(NULL);
 	if (!cwd) {
 		cwd = getwd2();
-		strcpy(fullpath, path);
+		strcpy(fullpath, cwd);
 		free(cwd);
 	}
 	else {

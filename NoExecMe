@@ -26,10 +26,8 @@ setheader() {
 
 compile() {
 	(setheader "$2")
-	echo "$3 test() { $1; } main() {}" >> $TMPSRC
-	if eval $docc; then ret=0; else ret=1; fi
-	rm -f $TMPEXE
-	return $ret
+	echo "$3 int test() { $1; } int main() { exit(test()); }" >> $TMPSRC
+	if eval $docc; then return 0; else return 1; fi
 }
 
 useheader() {
@@ -64,7 +62,9 @@ noinheader() { if (inheader "$1" "$2" "$3"); then return 1; else return 0; fi }
 
 isexist() {
 	echo "Checking for $1..." 1>&2
-	if (compile "$1" "$2" "$3"); then return 0; else return 1; fi
+	if (compile "$1" "$2" "$3"); then ret=0; else ret=1; fi
+	rm -f $TMPEXE
+	return $ret
 }
 
 noexist() { if (isexist "$1" "$2" "$3"); then return 1; else return 0; fi }
@@ -75,18 +75,20 @@ havelib() {
 	LIBS="$LIBS -l$1"
 	if (compile "$2" "$3" "$4"); then ret=0; else ret=1; fi
 	LIBS=$ORGLIBS
+	rm -f $TMPEXE
 	return $ret
 }
 
 
 cat ./config.h.in
 
-for i in TARUSESPACE TERMCAPLIB REGEXPLIB EXTENDLIB \
+for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
 USELEAPCNT NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
 NOUNISTDH NOSTDLIBH USESELECTH USESYSDIRH USETIMEH USETERMIO \
 USEDIRECT SYSVDIRENT HAVETIMEZONE \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA USEFFSIZE STATFSARGS \
-USEMNTTABH USEMNTCTL USEMNTENTH USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
+USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
+USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOSTRSTR USEUTIME USEGETWD SIGARGINT
 do
@@ -109,6 +111,16 @@ if $TAR tvf $TMPEXE |
 	:
 else
 	echo "#define	TARUSESPACE"
+fi
+rm -f $TMPEXE
+
+echo "Checking for cpp(1)..." 1>&2
+echo '#define test \"01\"' | tr '01' '\376\376' > $TMPSRC
+echo 'main() {char *cp=test;}' >> $TMPSRC
+if [ -z "`eval $testcpp`" ]; then
+	:
+else
+	echo "#define	CPP7BIT"
 fi
 rm -f $TMPEXE
 
@@ -238,13 +250,14 @@ elif inheader 'struct.*[^a-zA-Z_]statfs' sys/mount; then {
 	echo "#define	USEMOUNTH"
 	if inheader MOUNT_UFS sys/mount; then
 		echo "#define	USEFFSIZE"
+	elif isexist "statfs(0,0,0)" sys/mount; then
+		echo "#define	STATFSARGS	3"
 	fi
 }
-elif inheader 'struct.*[^a-zA-Z_]statfs' sys/statfs; then {
+elif inheader 'struct.*[^a-zA-Z_]statfs' sys/statfs \
+&& isexist "struct statfs f; statfs()" sys/statfs; then {
 	echo "#define	USESTATFSH"
-	if inheader f_nlsdirtype sys/statfs; then
-		echo "#define	STATFSARGS	2"
-	else
+	if isexist "statfs(0,0,0,0)" sys/statfs; then
 		echo "#define	STATFSARGS	4"
 	fi
 }
@@ -252,10 +265,12 @@ elif inheader 'struct.*[^a-zA-Z_]statvfs' sys/statvfs; then
 	echo "#define	USESTATVFSH"
 fi
 
-if isexist "getmntent(0,0)" "stdio sys/mnttab"; then
-	echo "#define	USEMNTTABH"
-elif isexist "getmntent(0)" "stdio mntent"; then
+if isexist "getmntent(0)" "stdio mntent"; then
 	echo "#define	USEMNTENTH"
+elif isexist "getmntent(0,0)" "stdio sys/mnttab"; then
+	echo "#define	USEMNTTABH"
+elif isexist "getfsstat(0,0,0)"; then
+	echo "#define	USEFSSTAT"
 elif isexist "mntctl(0,0,0)"; then
 	echo "#define	USEMNTCTL"
 elif isexist "getmntinfo_r(0,0,0,0)"; then

@@ -143,7 +143,7 @@
 # define	USEMOUNTH
 # define	USEFFSIZE
 # define	STATFSARGS	3
-# define	USEGETFSENT
+# define	USEGETFSSTAT
 # define	USERE_COMP
 # else
 # define	SVR4
@@ -173,7 +173,6 @@
 #define	CODEEUC
 #define	TARUSESPACE
 #define	CPP7BIT
-#define	USESYSDIRH
 #define	USEFSDATA
 #define	USEGETMNT
 #define	USERE_COMP
@@ -265,8 +264,9 @@
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
-#define	USEGETFSENT
+#define	USEGETFSINFO
 #define	USERE_COMP
+#define	USESETENV
 #include <sys/param.h>
 # if (BSD4_4 != 1)
 # define	USEFFSIZE
@@ -346,9 +346,10 @@
 /* #define USEFFSIZE	/* 'struct statfs' has 'f_fsize' as block size */
 /* #define STATFSARGS	/* the number of arguments in statfs() */
 
-/* following 7 items are exclusive
-/* #define USEMNTTABH	/* use <sys/mnttab.h> as header of the mount entry */
+/* following 8 items are exclusive
 /* #define USEMNTENTH	/* use <mntent.h> as header of the mount entry */
+/* #define USEMNTTABH	/* use <sys/mnttab.h> as header of the mount entry */
+/* #define USEGETFSSTAT	/* use getfsstat() to get the mount entry */
 /* #define USEMNTCTL	/* use mntctl() to get the mount entry */
 /* #define USEMNTINFOR	/* use getmntinfo_r() to get the mount entry */
 /* #define USEMNTINFO	/* use getmntinfo() to get the mount entry */
@@ -433,7 +434,7 @@
 #define	USEVFSH
 #endif
 
-#ifdef	USESTATFSH
+#if defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
 # ifndef	STATFSARGS
 # define	STATFSARGS	2
 # endif
@@ -441,39 +442,47 @@
 
 
 #if defined (USEMNTTABH)
+# ifdef	USEFSSTAT
+# undef	USEFSSTAT
+# endif
+#endif
+
+#if defined (USEMNTTABH) || defined (USEFSSTAT)
 # ifdef	USEMNTCTL
 # undef	USEMNTCTL
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEMNTCTL)
+#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)
 # ifdef	USEMNTINFOR
 # undef	USEMNTINFOR
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)
+#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+|| defined (USEMNTINFOR)
 # ifdef	USEMNTINFO
 # undef	USEMNTINFO
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
- || defined (USEMNTINFO)
+#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+|| defined (USEMNTINFOR) || defined (USEMNTINFO)
 # ifdef	USEGETMNT
 # undef	USEGETMNT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
- || defined (USEMNTINFO) || defined (USEGETMNT)
+#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
 # ifdef	USEGETFSENT
 # undef	USEGETFSENT
 # endif
 #endif
 
-#if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
- || defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEGETFSENT)
+#if defined (USEMNTTABH) || defined (USEFSSTAT) || defined (USEMNTCTL)\
+|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)\
+|| defined (USEGETFSENT)
 # ifdef	USEMNTENTH
 # undef	USEMNTENTH
 # endif

@@ -382,7 +382,7 @@ static int getkeybind(line)
 char *line;
 {
 	char *cp, *eol;
-	int i, ch, n1, n2;
+	int i, j, ch, n1, n2;
 
 	cp = line;
 	for (eol = line, ch = '\0'; *eol; eol++) {
@@ -416,22 +416,34 @@ char *line;
 	if (bindlist[i].key < 0)
 		memcpy(&bindlist[i + 1], &bindlist[i], sizeof(bindtable));
 	else {
-		n1 = (int)(bindlist[i].f_func) - NO_OPERATION;
-		n2 = (int)(bindlist[i].d_func) - NO_OPERATION;
+		n1 = bindlist[i].f_func;
+		n2 = bindlist[i].d_func;
 		bindlist[i].f_func = bindlist[i].d_func = NO_OPERATION;
-		if (n1 >= 0) {
-			free(macrolist[n1]);
+		if (n1 <= NO_OPERATION) n1 = 255;
+		else {
+			free(macrolist[n1 - NO_OPERATION - 1]);
 			maxmacro--;
-			for (; n1 < maxmacro; n1++)
-				memcpy(&macrolist[n1], &macrolist[n1 + 1],
+			for (j = n1 - NO_OPERATION - 1; j < maxmacro; j++)
+				memcpy(&macrolist[j], &macrolist[j + 1],
 					sizeof(char *));
 		}
-		if (n2 >= 0 && n2 < 255 - NO_OPERATION) {
-			free(macrolist[n2]);
+		if (n2 <= NO_OPERATION || n2 >= 255) n2 = 255;
+		else {
+			free(macrolist[n2 - NO_OPERATION - 1]);
 			maxmacro--;
-			for (; n2 < maxmacro; n2++)
-				memcpy(&macrolist[n2], &macrolist[n2 + 1],
+			for (j = n2 - NO_OPERATION - 1; j < maxmacro; j++)
+				memcpy(&macrolist[j], &macrolist[j + 1],
 					sizeof(char *));
+		}
+		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++) {
+			if (bindlist[j].f_func > n2) bindlist[j].f_func--;
+			if (bindlist[j].f_func >= n1) bindlist[j].f_func--;
+			if (bindlist[j].d_func < 255) {
+				if (bindlist[j].d_func > n2)
+					bindlist[j].d_func--;
+				if (bindlist[j].d_func >= n1)
+					bindlist[j].d_func--;
+			}
 		}
 	}
 

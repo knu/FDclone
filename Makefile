@@ -17,7 +17,7 @@ Makefile.tmp: Makefile.in mkmf.sed
 
 mkmf.sed: mkmf.sed.c machine.h config.h
 	$(CPP) -DCCCOMMAND=$(CC) mkmf.sed.c |\
-	$(SED) -e '/^$$/d' -e '/^#/d' -e 's/[\"	]//g' > mkmf.sed
+	$(SED) -n -e 's/[\"	]//g' -e '/^s:.*:.*:$$/p' > mkmf.sed
 
 config.h: config.h.in
 	cp config.h.in config.h

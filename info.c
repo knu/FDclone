@@ -13,6 +13,12 @@
 #include <sys/param.h>
 #include <sys/file.h>
 
+#ifdef	USEMNTENTH
+#include <mntent.h>
+typedef struct mntent	mnt_t;
+#define	getmntent2(fp, mntp)	getmntent(fp)
+#endif	/* USEMNTENTH */
+
 #ifdef	USEMNTTABH
 #include <sys/mnttab.h>
 #define	MOUNTED		MNTTAB
@@ -26,6 +32,38 @@ typedef struct mnttab	mnt_t;
 #define	mnt_type	mnt_fstype
 #endif	/* USEMNTTABH */
 
+#ifdef	USEMNTCTL
+#include <fshelp.h>
+#include <sys/vfs.h>
+#include <sys/mntctl.h>
+#include <sys/vmount.h>
+#endif
+
+#if (defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))\
+&& !defined (USEMOUNTH) && !defined (USEFSDATA)
+#include <sys/mount.h>
+#endif
+
+#if defined (USEGETFSSTAT) || defined (USEGETMNT)
+#include <sys/fs_types.h>
+#endif
+
+#if defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
+typedef struct _mnt_t {
+	char *mnt_fsname;
+	char *mnt_dir;
+	char *mnt_type;
+	char *mnt_opts;
+} mnt_t;
+static FILE *setmntent();
+static mnt_t *getmntent2();
+#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
+#define	endmntent(fp)		(if (fp) free(fp))
+static int mnt_ptr;
+static int mnt_size;
+#endif
+
 #ifdef	USEGETFSENT
 #include <fstab.h>
 typedef struct fstab	mnt_t;
@@ -37,43 +75,6 @@ typedef struct fstab	mnt_t;
 #define	mnt_fsname	fs_spec
 #define	mnt_type	fs_vfstype
 #endif	/* USEGETFSENT */
-
-#ifdef	USEMNTCTL
-#include <fshelp.h>
-#include <sys/vfs.h>
-#include <sys/mntctl.h>
-#include <sys/vmount.h>
-#endif
-
-#if defined (USEMNTINFO) || defined (USEMNTINFOR)
-#include <sys/mount.h>
-#endif
-
-#ifdef	USEGETMNT
-#include <sys/fs_types.h>
-#endif
-
-#if defined (USEMNTCTL) || defined (USEMNTINFO) || defined (USEMNTINFOR)\
-|| defined (USEGETMNT)
-typedef struct _mnt_t {
-	char *mnt_fsname;
-	char *mnt_dir;
-	char *mnt_type;
-	char *mnt_opts;
-} mnt_t;
-static FILE *setmntent();
-static mnt_t *getmntent2();
-#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
-#define	endmntent		free
-static int mnt_ptr;
-static int mnt_size;
-#endif
-
-#ifdef	USEMNTENTH
-#include <mntent.h>
-typedef struct mntent	mnt_t;
-#define	getmntent2(fp, mntp)	getmntent(fp)
-#endif	/* USEMNTENTH */
 
 
 #ifdef	USESTATVFSH
@@ -360,7 +361,7 @@ mnt_t *mntp;
 }
 #endif	/* USEMNTCTL */
 
-#if defined (USEMNTINFO) || defined (USEMNTINFOR)
+#if defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETFSSTAT)
 static FILE *setmntent(file, mode)
 char *file, *mode;
 {
@@ -372,7 +373,15 @@ char *file, *mode;
 #ifdef	USEMNTINFO
 	mnt_size = getmntinfo(&buf, MNT_NOWAIT);
 #else
+# ifdef	USEMNTINFOR
 	getmntinfo_r(&buf, MNT_WAIT, &mnt_size, &size);
+# else
+	size = (getfsstat(NULL, 0, MNT_WAIT) + 1) * sizeof(struct statfs);
+	if (size > 0) {
+		buf = (struct statfs *)malloc2(mnt_size);
+		mnt_size = getfsstat(buf, mnt_size, MNT_WAIT);
+	}
+# endif
 #endif
 	return((FILE *)buf);
 }
@@ -390,7 +399,20 @@ mnt_t *mntp;
 	static char *type = NULL;
 	struct statfs *buf;
 #ifdef	USEMNTINFO
+# ifdef	INITMOUNTNAMES
+	static char *mnt_names[] = INITMOUNTNAMES;
+# define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
+					mnt_names[n] : NULL)
+# else
 	struct vfsconf *conf;
+# define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
+					conf -> vfc_name : NULL)
+# endif
+#else
+# ifdef	USEGETFSSTAT
+# define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
+					mnt_names[n] : NULL)
+# endif
 #endif
 	char *cp;
 	int len;
@@ -406,12 +428,7 @@ mnt_t *mntp;
 	dir = (char *)realloc2(dir, len);
 	strcpy(dir, buf[mnt_ptr].f_mntonname);
 
-#ifdef	USEMNTINFO
-	conf = getvfsbytype(buf[mnt_ptr].f_type);
-	cp = conf -> vfc_name;
-#else
 	cp = getvfsbynumber(buf[mnt_ptr].f_type);
-#endif
 	if (cp) {
 		len = strlen(cp) + 1;
 		type = (char *)realloc2(type, len);
@@ -430,7 +447,7 @@ mnt_t *mntp;
 	mnt_ptr++;
 	return(mntp);
 }
-#endif	/* USEMNTINFO || USEMNTINFOR */
+#endif	/* USEMNTINFOR || USEMNTINFO || USEGETFSSTAT */
 
 #ifdef	USEGETMNT
 static FILE *setmntent(file, mode)

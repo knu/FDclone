@@ -28,6 +28,7 @@ extern char fullpath[];
 #define	getnamlen(ent)			((((ent) - dirsize)\
 					& ~(boundary - 1)) - 1)
 
+static int iscurdir();
 static char *getdistdir();
 static VOID touch();
 static char *maketmpfile();
@@ -148,24 +149,46 @@ reg_t *regexp;
 	return(dp);
 }
 
+static int iscurdir(path)
+char *path;
+{
+	char *cwd;
+	int i;
+
+	cwd = getwd2();
+	if (chdir(path) < 0) path = NULL;
+	else {
+		path = getwd2();
+		if (chdir(cwd) < 0) error(cwd);
+	}
+	i = (path) ? !strcmp(cwd, path) : 0;
+	free(cwd);
+	return(i);
+}
+
 int underhome()
 {
 	static char *homedir = NULL;
 	struct passwd *pwd;
 	char *cp;
+	int i;
 
 	if (!homedir) {
 		if (!(homedir = (char *)getenv("HOME"))) {
 			if (pwd = getpwuid(getuid())) homedir = pwd -> pw_dir;
 			else return(-1);
 		}
-		if (chdir(homedir) < 0) return(-1);
+		if (chdir(homedir) < 0) {
+			homedir = NULL;
+			return(-1);
+		}
 		homedir = getwd2();
 		if (chdir(fullpath) < 0) error(fullpath);
 	}
 	cp = getwd2();
-	if (strncmp(cp, homedir, strlen(homedir))) return(0);
-	else return(1);
+	i = strncmp(cp, homedir, strlen(homedir));
+	free(cp);
+	return(i ? 0 : 1);
 }
 
 static char *getdistdir(mes)
@@ -207,7 +230,7 @@ int max, tr;
 	}
 	destpath = (tr) ? tree(1) : getdistdir(COPYD_K);
 	if (!destpath) return((tr) ? 3 : 1);
-	copypolicy = 0;
+	copypolicy = (iscurdir(destpath)) ? 2 : 0;
 	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
 	else if (isdir(&list[filepos]) && !islink(&list[filepos]))
 		applydir(list[filepos].name, cpfile, cpdir, NULL, ENDCP_K);
@@ -222,7 +245,7 @@ namelist *list;
 int max, tr;
 {
 	destpath = (tr) ? tree(1) : getdistdir(MOVED_K);
-	if (!destpath) return((tr) ? 3 : 1);
+	if (!destpath || iscurdir(destpath)) return((tr) ? 3 : 1);
 	copypolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
 	else if (mvfile(list[filepos].name) < 0)
