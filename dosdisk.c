@@ -136,6 +136,11 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rif/f0d9", 2, 9, 80},
 	{'A', "/dev/rif/f0d8", 2, 8, 80},
 #endif
+#if defined (AIX)
+	{'A', "/dev/rfd0h", 2, 18, 80},
+	{'A', "/dev/rfd0l", 2, 9, 80},
+	{'A', "/dev/rfd0l", 2, 8 + 100, 80},
+#endif
 #if defined (ULTRIX)
 	{'A', "/dev/rfh0a", 2, 18, 80},
 	{'A', "/dev/rfd0a", 2, 9, 80},

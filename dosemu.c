@@ -110,6 +110,7 @@ char *path;
 			shutdrv(dd);
 			return(-1);
 		}
+		if (chdir("/") < 0) return(-1);
 		if (lastdrv >= 0) {
 			if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
 				shutdrv(lastdrv);

@@ -99,7 +99,7 @@ EDITOR	=	/usr/ucb/vi
 #".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 #".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 ".taZ"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
-".taz"		"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+".taz"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 ".tgz"		"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 ".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
 ".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
@@ -117,7 +117,7 @@ EDITOR	=	/usr/ucb/vi
 #".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
 #".tar.gz"	A "tar cf %X %T; gzip %X"	"gunzip -c %C | tar xf - %TA"
 ".taZ"	A "tar cf %X.tar %T; compress %X.tar; mv %X.tar.Z %X.taZ"	"zcat %C | tar xf - %TA"
-".taz"	A "tar cf %X.tar %T; gzip %X.tar; mv %X.tar.gz %X.taz"	"gunzip -c %C | tar xf - %TA"
+".taz"	A "tar cf %X.tar %T; compress %X.tar; mv %X.tar.Z %X.taz"	"zcat %C | tar xf - %TA"
 ".tgz"	A "tar cf %X.tar %T; gzip %X.tar; mv %X.tar.gz %X.tgz"	"gunzip -c %C | tar xf - %TA"
 ".zip"		A "zip -q %C %TA"		"unzip -q %C %TA"
 ".zoo"		A "zoo aq %C %TA"		"zoo xq %C %TA"

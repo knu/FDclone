@@ -17,7 +17,7 @@
 	Sun	SunOS		(4.1.x, 5.x)
 	SONY	NEWS-OS		(3.x, 4.x, 6.x)
 	SGI	IRIX		(R4.0.5, R5.x)
-	HP	HP-UX		(9.x)
+	HP	HP-UX		(9.x, 10.01)
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
 	NEC	EWS-UX/V(Rel4.x)(R5.3, R8.1, R9.1, R10.1)
 	OMRON	UniOS-U		(Ver3.00)
@@ -32,8 +32,8 @@
 	JCC	4.4BSD-Lite	(v1.0)
 		Linux		(1.x)
 		FreeBSD		(2.x)
-		NetBSD		(1.0)
-	BSDI	BSD/OS		(2.0)
+		NetBSD		(1.0, 2.0)
+	BSDI	BSD/OS		(1.1, 2.0)
 	ASCII	BSD on Windows	(1.0)
 
    これ以外の OS では、その OS の環境を自動判定するプログラ

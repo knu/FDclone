@@ -203,7 +203,7 @@ char *path;
 	if (Xchdir(path) < 0) return(-1);
 	if (!dospath("", NULL)) {
 		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
-			if (chdir(cwd) < 0) error(cwd);
+			if (Xchdir(cwd) < 0) error(cwd);
 			return(-1);
 		}
 		close(fd);

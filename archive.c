@@ -472,15 +472,13 @@ int max;
 		arcflist[0].st_nlink = -1;
 	}
 
-	if (stable_standout) {
-		putterms(t_clear);
-		helpbar();
-	}
+	if (stable_standout) putterms(t_clear);
 	title();
 	archbar(archivefile, archivedir);
 	statusbar(maxarcf);
 	locate(0, LSTACK);
 	putterm(l_clear);
+	helpbar();
 
 	old = filepos = listupfile(arcflist, maxarcf, file);
 	fstat = 0;
@@ -579,14 +577,17 @@ int max;
 		return(0);
 	}
 
-	if (archivefile) {
+	if (drive) {
+		dupfullpath = strdup2(fullpath);
+		strcpy(fullpath, dir);
+	}
+	else if (archivefile) {
 		dupfullpath = strdup2(fullpath);
 		strcpy(fullpath, dir);
 		if (*archivedir) {
 			strcat(fullpath, "/");
 			strcat(fullpath, archivedir);
 		}
-		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
 	duparchivefile = archivefile;
 	duparchivedir = archivedir;
@@ -624,6 +625,8 @@ int max;
 	launchp = duplaunchp;
 
 	if (drive) {
+		strcpy(fullpath, dupfullpath);
+		free(dupfullpath);
 		removetmp(dir, NULL, cp);
 		filelist[0].name = cp;
 		filepos = 0;
@@ -779,7 +782,7 @@ char *dir, *subdir, *file;
 		warning(-1, dir);
 		return;
 	}
-	if (subdir && _chdir2(subdir) < 0) {
+	if (subdir && *subdir && _chdir2(subdir) < 0) {
 		warning(-1, subdir);
 		return;
 	}

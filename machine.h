@@ -225,6 +225,9 @@
 #define	TERMCAPLIB		"-ltermcap"
 #define	USESTATFSH
 #define	STATFSARGS	4
+#define	USESYSDIRH
+#define	NODNAMLEN
+#define	USERE_COMP
 #endif
 
 #if defined (__uxpm__)
@@ -263,7 +266,7 @@
 #define	SVR4
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
-#define	TERMCAPLIB		"-lncurses"
+#define	TERMCAPLIB		"-ltermcap"
 #define	USERE_COMP
 #endif
 
