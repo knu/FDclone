@@ -198,6 +198,13 @@ typedef struct fd_set {
 #endif
 #endif	/* !MSDOS */
 
+#ifndef	LSI_C
+#define	safe_dup	dup
+#define	safe_dup2	dup2
+#else
+static int NEAR safe_dup __P_((int));
+static int NEAR safe_dup2 __P_((int, int));
+#endif
 static int NEAR err2 __P_((char *));
 static int NEAR defaultterm __P_((VOID_A));
 static int NEAR maxlocate __P_((int *, int *));
@@ -225,10 +232,15 @@ static int NEAR freeterment __P_((VOID_A));
 # endif
 #endif	/* !MSDOS */
 
-short ospeed = 0;
-char PC ='\0';
-char *BC = NULL;
-char *UP = NULL;
+#ifdef	LSI_C
+extern u_char _openfile[];
+#endif
+#if	!MSDOS
+extern short ospeed;
+extern char PC;
+extern char *BC;
+extern char *UP;
+#endif
 int n_column = 0;
 int n_lastcolumn = 0;
 int n_line = 0;
@@ -329,6 +341,7 @@ static int specialkeycode[] = {
 #else	/* !MSDOS */
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
+static int ttychanged = 0;
 #endif	/* !MSDOS */
 
 #if	MSDOS || !defined (TIOCSTI)
@@ -342,6 +355,38 @@ static int termflags = 0;
 #define	F_INITTERM	004
 
 
+#ifdef	LSI_C
+static int NEAR safe_dup(oldd)
+int oldd;
+{
+	int fd;
+
+	if ((fd = dup(oldd)) < 0) return(-1);
+	if (fd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
+		_openfile[fd] = _openfile[oldd];
+	return(fd);
+}
+
+static int NEAR safe_dup2(oldd, newd)
+int oldd, newd;
+{
+	int fd;
+
+	if ((fd = dup2(oldd, newd)) < 0) return(-1);
+	if (newd >= 0 && newd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
+		_openfile[newd] = _openfile[oldd];
+	return(fd);
+}
+#endif	/* LSI_C */
+
+int opentty(VOID_A)
+{
+	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
+	&& (ttyio = safe_dup(STDERR_FILENO)) < 0)
+		err2(0);
+	return(ttyio);
+}
+
 #if	MSDOS
 int inittty(reset)
 int reset;
@@ -354,8 +399,7 @@ int reset;
 	union REGS reg;
 #endif
 
-	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0)
-		ttyio = dup(STDERR_FILENO);
+	opentty();
 	if (reset && !(termflags & F_INITTTY)) return(0);
 	if (!reset) {
 #ifdef	NOTUSEBIOS
@@ -367,11 +411,11 @@ int reset;
 		dupbrk = reg.h.dl;
 #endif
 		if (((!(l = ftell(stdin)) || l == -1)
-		&& ((dupin = dup(STDIN_FILENO)) < 0
-		|| dup2(ttyio, STDIN_FILENO) < 0))
+		&& ((dupin = safe_dup(STDIN_FILENO)) < 0
+		|| safe_dup2(ttyio, STDIN_FILENO) < 0))
 		|| ((!(l = ftell(stdout)) || l == -1)
-		&& ((dupout = dup(STDOUT_FILENO)) < 0
-		|| dup2(ttyio, STDOUT_FILENO) < 0)))
+		&& ((dupout = safe_dup(STDOUT_FILENO)) < 0
+		|| safe_dup2(ttyio, STDOUT_FILENO) < 0)))
 			err2(NULL);
 		termflags |= F_INITTTY;
 	}
@@ -381,8 +425,8 @@ int reset;
 		reg.h.dl = dupbrk;
 		int86(0x21, &reg, &reg);
 #endif
-		if ((dupin >= 0 && dup2(dupin, STDIN_FILENO) < 0)
-		|| (dupout >= 0 && dup2(dupout, STDOUT_FILENO) < 0)) {
+		if ((dupin >= 0 && safe_dup2(dupin, STDIN_FILENO) < 0)
+		|| (dupout >= 0 && safe_dup2(dupout, STDOUT_FILENO) < 0)) {
 			termflags &= ~F_INITTTY;
 			err2(NULL);
 		}
@@ -482,11 +526,15 @@ int reset;
 	static termioctl_t dupttyio;
 	termioctl_t tty;
 
-	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0)
-		ttyio = dup(STDERR_FILENO);
-	if (reset && !(termflags & F_INITTTY)) return(0);
+	opentty();
+	if (!reset) {
+		if (!ttychanged) return(0);
+	}
+	else if (!(termflags & F_INITTTY)) return(0);
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		termflags &= ~F_INITTTY;
+		close(ttyio);
+		ttyio = -1;
 		err2(NULL);
 	}
 	if (!reset) {
@@ -516,6 +564,8 @@ int reset;
 #endif
 	) {
 		termflags &= ~F_INITTTY;
+		close(ttyio);
+		ttyio = -1;
 		err2(NULL);
 	}
 
@@ -558,6 +608,7 @@ int min, time;
 	}
 #endif
 	if (tioctl(d, REQSETP, &tty) < 0) err2(NULL);
+	ttychanged = 1;
 	return(0);
 }
 
@@ -684,6 +735,8 @@ int ttyiomode(VOID_A)
 	noecho2();
 	nonl2();
 	notabs();
+	putterms(t_keypad);
+	tflush();
 	return(0);
 }
 
@@ -693,6 +746,8 @@ int stdiomode(VOID_A)
 	echo2();
 	nl2();
 	tabs();
+	putterms(t_nokeypad);
+	tflush();
 	return(0);
 }
 
@@ -721,13 +776,18 @@ char *mes;
 	int duperrno;
 
 	duperrno = errno;
-	if (termflags & F_TERMENT) putterm(t_normal);
-	endterm();
-	inittty(1);
-	fprintf(stderr, "\007\n");
+	if (termflags & F_INITTTY) {
+		if (termflags & F_TERMENT) putterm(t_normal);
+		endterm();
+		inittty(1);
+	}
+	fputs("\007\n", stderr);
 	errno = duperrno;
-	if (mes) fprintf(stderr, "%s\n", mes);
-	else perror(TTYNAME);
+	if (!mes) perror(TTYNAME);
+	else {
+		fputs(mes, stderr);
+		fputc('\n', stderr);
+	}
 	exit(2);
 	return(0);
 }
@@ -738,13 +798,14 @@ static int NEAR defaultterm(VOID_A)
 	int i;
 #endif
 
-	BC = "\010";
-	UP = "\033[A";
 	n_column = 80;
 #if	MSDOS
 	n_lastcolumn = 79;
 	n_line = 25;
 #else
+	PC ='\0';
+	BC = "\010";
+	UP = "\033[A";
 	n_lastcolumn = 80;
 	n_line = 24;
 #endif
@@ -1315,6 +1376,16 @@ int getterment(VOID_A)
 	tgetkeyseq(K_F(8), "l8");
 	tgetkeyseq(K_F(9), "l9");
 	tgetkeyseq(K_F(10), "la");
+	tgetkeyseq(K_F(11), "F1");
+	tgetkeyseq(K_F(12), "F2");
+	tgetkeyseq(K_F(13), "F3");
+	tgetkeyseq(K_F(14), "F4");
+	tgetkeyseq(K_F(15), "F5");
+	tgetkeyseq(K_F(16), "F6");
+	tgetkeyseq(K_F(17), "F7");
+	tgetkeyseq(K_F(18), "F8");
+	tgetkeyseq(K_F(19), "F9");
+	tgetkeyseq(K_F(20), "FA");
 	tgetkeyseq(K_F(21), "k1");
 	tgetkeyseq(K_F(22), "k2");
 	tgetkeyseq(K_F(23), "k3");
@@ -1324,6 +1395,7 @@ int getterment(VOID_A)
 	tgetkeyseq(K_F(27), "k7");
 	tgetkeyseq(K_F(28), "k8");
 	tgetkeyseq(K_F(29), "k9");
+	tgetkeyseq(K_F(30), "k;");
 	tgetkeyseq(K_F(30), "k0");
 	tgetkeyseq(K_DL, "kL");
 	tgetkeyseq(K_IL, "kA");
@@ -1338,8 +1410,8 @@ int getterment(VOID_A)
 	tgetkeyseq(K_END, "@7");
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
-	for (i = 11; i <= 20; i++)
-		keyseq[K_F(i + 10) - K_MIN].code = K_F(i - 10);
+	for (i = 21; i <= 30; i++)
+		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) & 01000;
 	for (i = 31; K_F(i) < K_DL; i++)
 		if (keyseq[K_F(i) - K_MIN].str)
 			keyseq[K_F(i) - K_MIN].code = i;
@@ -1439,7 +1511,7 @@ int len;
 	if (i > K_MAX - K_MIN) return(-1);
 
 	if (str) for (i = 0; i <= K_MAX - K_MIN; i++) {
-		if (keyseq[i].code == n
+		if ((keyseq[i].code & 0777) == n
 		|| !(keyseq[i].str) || keyseq[i].len != len)
 			continue;
 		if (!memcmp(str, keyseq[i].str, len)) {
@@ -1740,7 +1812,6 @@ int xmax, ymax;
 {
 	int x, y;
 
-	if (xmax <= 0 || ymax <= 0) return(-1);
 	keyflush();
 	if (maxlocate(&y, &x) != 2) x = y = -1;
 
@@ -1750,8 +1821,8 @@ int xmax, ymax;
 	}
 	if (y > 0) n_line = y;
 
-	if (n_column < xmax) err2("Column size too small");
-	if (n_line < ymax) err2("Line size too small");
+	if (n_column <= 0 || n_column < xmax) err2("Column size too small");
+	if (n_line <= 0 || n_line < ymax) err2("Line size too small");
 
 	return(0);
 }
@@ -1835,14 +1906,16 @@ int sig;
 			if (key == keyseq[p -> next[j].key].str[0]) break;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
+		if (keyseq[p -> key].len == 1)
+			return(keyseq[p -> key].code & 0777);
 	}
 	else {
 		for (j = 0; j < p -> num; j++)
 			if (key == keyseq[p -> next[j].key].str[0]) break;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
+		if (keyseq[p -> key].len == 1)
+			return(keyseq[p -> key].code & 0777);
 		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
 		ch = getch2();
 	}
@@ -1853,7 +1926,7 @@ int sig;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == i + 1)
-			return(keyseq[p -> key].code);
+			return(keyseq[p -> key].code & 0777);
 		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
 		ch = getch2();
 	}
@@ -1926,8 +1999,6 @@ int xmax, ymax;
 #endif
 #endif
 
-	if (xmax <= 0 || ymax <= 0) return(-1);
-
 	x = y = -1;
 #ifdef	TIOCGWINSZ
 	if (ioctl(ttyio, TIOCGWINSZ, &ws) >= 0) {
@@ -1994,10 +2065,10 @@ int xmax, ymax;
 	}
 	if (y > 0) n_line = y;
 
-	if (n_column < xmax) err2("Column size too small");
-	if (n_line < ymax) err2("Line size too small");
+	if (n_column <= 0 || n_column < xmax) err2("Column size too small");
+	if (n_line <= 0 || n_line < ymax) err2("Line size too small");
 
-	setscroll(-1, n_line - 1);
+	if (xmax > 0 && ymax > 0) setscroll(-1, n_line - 1);
 	return(0);
 }
 #endif	/* !MSDOS */

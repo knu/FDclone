@@ -776,36 +776,35 @@ static int NEAR execshell(VOID_A)
 
 		if ((cp = strrdelim(sh, 1))) cp++;
 		else cp = sh;
-		if (!strpathcmp(cp, "fdsh")) sh = NULL;
+# if	MSDOS
+		if (*cp == 'r' || *cp == 'R') cp++;
+# else
+		if (*cp == 'r') cp++;
+# endif
+		if (!strpathcmp(cp, FDSHELL)) sh = NULL;
 	}
 #endif
 
-	locate(0, n_line - 1);
-	putterm(l_clear);
-	kanjiputs(SHEXT_K);
-	cputs2("\r\n");
-	if (sh) ret = system2(sh, 1);
+	sigvecreset();
+	putterms(t_end);
+	stdiomode();
+	kanjifputs(SHEXT_K, stderr);
+	fputc('\n', stderr);
+	if (sh) ret = system(sh);
 	else {
 #ifdef	_NOORIGSHELL
 # if	MSDOS
-		ret = system2("command.com", 1);
+		ret = system("COMMAND.COM");
 # else
-		ret = system2("/bin/sh", 1);
+		ret = system("/bin/sh");
 # endif
 #else	/* !_NOORIGSHELL */
-		putterms(t_end);
-		putterms(t_nokeypad);
-		tflush();
-		sigvecreset();
-		stdiomode();
 		ret = shell_loop(1);
-		ttyiomode();
-		sigvecset();
-		putterms(t_init);
-		putterms(t_keypad);
-		tflush();
 #endif	/* !_NOORIGSHELL */
 	}
+	putterms(t_init);
+	ttyiomode();
+	sigvecset();
 
 	return(ret);
 }

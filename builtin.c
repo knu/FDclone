@@ -59,6 +59,7 @@ extern int hideclock;
 #ifndef	DECLERRLIST
 extern char *sys_errlist[];
 #endif
+extern int inruncom;
 
 static VOID NEAR builtinerror __P_((char *[], char *, int));
 #ifdef	_NOORIGSHELL
@@ -95,7 +96,12 @@ static int NEAR setuserfunc __P_((int, char *[]));
 static int NEAR exportenv __P_((int, char *[]));
 static int NEAR dochdir __P_((int, char *[]));
 static int NEAR loadsource __P_((int, char *[]));
-#endif
+#endif	/* _NOORIGSHELL */
+
+#define	BINDCOMMENT	';'
+#define	DRIVESEP	','
+#define	ALIASSEP	'\t'
+#define	FUNCNAME	1
 
 #define	ER_FEWMANYARG	1
 #define	ER_OUTOFLIMIT	2
@@ -142,7 +148,7 @@ static builtintable builtinlist[] = {
 	{dochdir,	BL_CHDIR},
 	{dochdir,	BL_CD},
 	{loadsource,	BL_SOURCE},
-#endif
+#endif	/* _NOORIGSHELL */
 };
 #define	BUILTINSIZ	((int)(sizeof(builtinlist) / sizeof(builtintable)))
 
@@ -212,24 +218,31 @@ static int NEAR setlaunch(argc, argv)
 int argc;
 char *argv[];
 {
-	char *cp, *tmp, *ext;
+	char *ext;
 	long n;
-	int i, j, ch;
+	int i, flags;
+	char *cp, *tmp;
+	int j, ch;
 
 	if (argc <= 1) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	ext = getext(argv[1]);
+
+	flags = 0;
+	ext = getext(argv[1], &flags);
+
 	for (i = 0; i < maxlaunch; i++)
-		if (!strpathcmp(launchlist[i].ext, ext)) break;
+		if (!extcmp(ext, flags,
+		launchlist[i].ext, launchlist[i].flags, 1)) break;
+
 	if (i >= MAXLAUNCHTABLE) {
 		builtinerror(argv, NULL, ER_OUTOFLIMIT);
 		free(ext);
 		return(-1);
 	}
 
-	if (argc == 2) {
+	if (argc < 3) {
 		free(ext);
 		if (i >= maxlaunch) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
@@ -320,6 +333,8 @@ char *argv[];
 	}
 	launchlist[i].ext = ext;
 	launchlist[i].comm = strdup2(argv[2]);
+	flags = 0;
+	launchlist[i].flags = flags;
 	return(0);
 }
 
@@ -328,15 +343,20 @@ int argc;
 char *argv[];
 {
 	char *ext;
-	int i;
+	int i, flags;
 
 	if (argc <= 1 || argc >= 5) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	ext = getext(argv[1]);
+
+	flags = 0;
+	ext = getext(argv[1], &flags);
+
 	for (i = 0; i < maxarchive; i++)
-		if (!strpathcmp(archivelist[i].ext, ext)) break;
+		if (!extcmp(ext, flags,
+		archivelist[i].ext, archivelist[i].flags, 1)) break;
+
 	if (i >= MAXARCHIVETABLE) {
 		builtinerror(argv, NULL, ER_OUTOFLIMIT);
 		free(ext);
@@ -371,9 +391,12 @@ char *argv[];
 	archivelist[i].p_comm = (argv[2][0]) ? strdup2(argv[2]) : NULL;
 	archivelist[i].u_comm =
 		(argc > 3 && argv[3][0]) ? strdup2(argv[3]) : NULL;
+	flags = 0;
+	archivelist[i].flags = flags;
 	return(0);
 }
 
+/*ARGSUSED*/
 VOID printlaunchcomm(n, omit, fp)
 int n, omit;
 FILE *fp;
@@ -383,6 +406,7 @@ FILE *fp;
 
 	fputs(BL_LAUNCH, fp);
 	fputc(' ', fp);
+	if (launchlist[n].flags & LF_IGNORECASE) fputc('/', fp);
 	fputs(launchlist[n].ext + 1, fp);
 	fputc('\t', fp);
 
@@ -456,7 +480,8 @@ static int NEAR printlaunch(argc, argv)
 int argc;
 char *argv[];
 {
-	int i;
+	char *ext;
+	int i, flags;
 
 	if (argc >= 3) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -469,8 +494,12 @@ char *argv[];
 		hitkey(0);
 	}
 	else {
+		flags = 0;
+		ext = getext(argv[1], &flags);
 		for (i = 0; i < maxlaunch; i++)
-			if (!extcmp(argv[1], launchlist[i].ext)) break;
+			if (!extcmp(ext, flags,
+			launchlist[i].ext, launchlist[i].flags, 0)) break;
+		free(ext);
 		if (i >= maxlaunch) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -488,6 +517,7 @@ FILE *fp;
 {
 	fputs(BL_ARCH, fp);
 	fputc(' ', fp);
+	if (archivelist[n].flags & LF_IGNORECASE) fputc('/', fp);
 	fputs(archivelist[n].ext + 1, fp);
 	fputc('\t', fp);
 
@@ -504,7 +534,8 @@ static int NEAR printarch(argc, argv)
 int argc;
 char *argv[];
 {
-	int i;
+	char *ext;
+	int i, flags;
 
 	if (argc >= 3) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -517,8 +548,12 @@ char *argv[];
 		hitkey(0);
 	}
 	else {
+		flags = 0;
+		ext = getext(argv[1], &flags);
 		for (i = 0; i < maxarchive; i++)
-			if (!extcmp(argv[1], archivelist[i].ext)) break;
+			if (!extcmp(ext, flags,
+			archivelist[i].ext, archivelist[i].flags, 0)) break;
+		free(ext);
 		if (i >= maxarchive) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -617,7 +652,7 @@ char *argv[];
 	n2 = 255;
 	j = 4;
 	if (argc > 3) {
-		if (argv[3][0] == ';') j = 3;
+		if (argv[3][0] == BINDCOMMENT) j = 3;
 		else if ((n2 = getcommand(argv[3])) < 0) {
 			builtinerror(argv, argv[3], ER_OUTOFLIMIT);
 			freemacro(n1);
@@ -625,7 +660,7 @@ char *argv[];
 		}
 	}
 	if (argc > j) {
-		if (argv[j][0] != ';' || ch < K_F(1) || ch > K_F(10)) {
+		if (argv[j][0] != BINDCOMMENT || ch < K_F(1) || ch > K_F(10)) {
 			builtinerror(argv, NULL, ER_FEWMANYARG);
 			freemacro(n1);
 			freemacro(n2);
@@ -889,13 +924,13 @@ int set;
 
 		cp = tmp = catvar(&(argv[3]), '\0');
 
-		if (!(cp = evalnumeric(cp, &l, 1)) || *cp != ',') {
+		if (!(cp = evalnumeric(cp, &l, 1)) || *cp != DRIVESEP) {
 			builtinerror(argv, tmp, ER_SYNTAXERR);
 			free(tmp);
 			return(-1);
 		}
 		head = l;
-		if (!(cp = evalnumeric(++cp, &l, 1)) || *cp != ',') {
+		if (!(cp = evalnumeric(++cp, &l, 1)) || *cp != DRIVESEP) {
 			builtinerror(argv, tmp, ER_SYNTAXERR);
 			free(tmp);
 			return(-1);
@@ -951,9 +986,12 @@ int set;
 		}
 
 		n = insertdrv(i, drive, argv[2], head, sect, cyl);
-		if (n < 0) {
-			if (n < -1) builtinerror(argv, NULL, ER_OUTOFLIMIT);
-			else builtinerror(argv, argv[2], ER_INVALDEV);
+		if (n < -1) {
+			builtinerror(argv, NULL, ER_OUTOFLIMIT);
+			return(-1);
+		}
+		if (!inruncom && n < 0) {
+			builtinerror(argv, argv[2], ER_INVALDEV);
 			return(-1);
 		}
 	}
@@ -1005,10 +1043,10 @@ FILE *fp;
 # endif	/* HDDMOUNT */
 	ascnumeric(buf, fdtype[n].head, 0, MAXCOLSCOMMA(3));
 	fputs(buf, fp);
-	fputc(',', fp);
+	fputc(DRIVESEP, fp);
 	ascnumeric(buf, fdtype[n].sect, 0, MAXCOLSCOMMA(3));
 	fputs(buf, fp);
-	fputc(',', fp);
+	fputc(DRIVESEP, fp);
 	ascnumeric(buf, fdtype[n].cyl, 0, MAXCOLSCOMMA(3));
 	fputs(buf, fp);
 }
@@ -1223,16 +1261,9 @@ char *argv[];
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	hitkey(2);
-	if (argc <= 1) {
-		if (!environ2) return(0);
-		for (i = 0; environ2[i]; i++) {
-			kanjifputs(environ2[i], stdout);
-			fputc('\n', stdout);
-			hitkey(0);
-		}
-	}
-	else {
+
+	if (argc > 1) {
+		hitkey(2);
 		len = strlen(argv[1]);
 		for (i = 0; environ2[i]; i++)
 			if (!strnpathcmp(environ2[i], argv[1], len)
@@ -1243,6 +1274,17 @@ char *argv[];
 		}
 		kanjifputs(environ2[i], stdout);
 		fputc('\n', stdout);
+		fflush(stdout);
+		return(0);
+	}
+
+	hitkey(2);
+	if (environ2) {
+		for (i = 0; environ2[i]; i++) {
+			kanjifputs(environ2[i], stdout);
+			fputc('\n', stdout);
+			hitkey(0);
+		}
 	}
 	fflush(stdout);
 	return(0);
@@ -1255,7 +1297,7 @@ FILE *fp;
 	fputs(BL_ALIAS, fp);
 	fputc(' ', fp);
 	kanjifputs(aliaslist[n].alias, fp);
-	fputc('\t', fp);
+	fputc(ALIASSEP, fp);
 	fputc('"', fp);
 	kanjifputs(aliaslist[n].comm, fp);
 	fputc('"', fp);
@@ -1266,12 +1308,13 @@ int argc;
 char *argv[];
 {
 	char *cp;
-	int i;
+	int i, len;
 
 	if (argc >= 4) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
+
 	if (argc <= 1) {
 		hitkey(2);
 		for (i = 0; i < maxalias; i++) {
@@ -1287,10 +1330,13 @@ char *argv[];
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
-	for (i = 0; i < maxalias; i++)
-		if (!strpathcmp(argv[1], aliaslist[i].alias)) break;
+	len = strlen(argv[1]);
 
-	if (argc == 2) {
+	for (i = 0; i < maxalias; i++)
+		if (!strnpathcmp(argv[1], aliaslist[i].alias, len)) break;
+
+	if (argc > 2);
+	else {
 		if (i >= maxalias) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -1313,10 +1359,10 @@ char *argv[];
 	}
 	aliaslist[i].alias = strdup2(argv[1]);
 	aliaslist[i].comm = strdup2(argv[2]);
-#if	MSDOS
+# if	MSDOS
 	for (cp = aliaslist[i].alias; cp && *cp; cp++)
 		if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
-#endif
+# endif
 	return(0);
 }
 
@@ -1424,17 +1470,17 @@ char *argv[];
 		return(0);
 	}
 
-	if ((n = checkuserfunc(argc - 1, &(argv[1]))) < 0) {
-		builtinerror(argv, argv[1], ER_SYNTAXERR);
+	if ((n = checkuserfunc(argc - 1, &(argv[FUNCNAME]))) < 0) {
+		builtinerror(argv, argv[FUNCNAME], ER_SYNTAXERR);
 		return(-1);
 	}
 
 	for (i = 0; i < maxuserfunc; i++)
-		if (!strpathcmp(argv[1], userfunclist[i].func)) break;
+		if (!strpathcmp(argv[FUNCNAME], userfunclist[i].func)) break;
 
 	if (!n) {
 		if (i >= maxuserfunc) {
-			builtinerror(argv, argv[1], ER_NOENTRY);
+			builtinerror(argv, argv[FUNCNAME], ER_NOENTRY);
 			return(-1);
 		}
 		hitkey(2);
@@ -1444,7 +1490,7 @@ char *argv[];
 		return(0);
 	}
 
-	cp = line = catvar(&(argv[2]), ' ');
+	cp = line = catvar(&(argv[FUNCNAME + 1]), ' ');
 	for (n = 0; n < MAXFUNCLINES && *cp; n++) {
 		if (!(tmp = strtkchr(cp, ';', 0))) break;
 		*(tmp++) = '\0';
@@ -1465,7 +1511,7 @@ char *argv[];
 	else if (!n) {
 		free(line);
 		if (i >= maxuserfunc) {
-			builtinerror(argv, argv[1], ER_NOENTRY);
+			builtinerror(argv, argv[FUNCNAME], ER_NOENTRY);
 			return(-1);
 		}
 
@@ -1489,11 +1535,11 @@ char *argv[];
 	}
 
 	if (i >= maxuserfunc) {
-		userfunclist[i].func = strdup2(argv[1]);
-#if	MSDOS
+		userfunclist[i].func = strdup2(argv[FUNCNAME]);
+# if	MSDOS
 		for (cp = userfunclist[i].func; *cp; cp++)
 			if (*cp >= 'A' && *cp <= 'Z') *cp += 'a' - 'A';
-#endif
+# endif
 		maxuserfunc++;
 	}
 	else {
@@ -1537,9 +1583,9 @@ char *argv[];
 		free(cp);
 	}
 	if (putenv2(env) < 0) error(argv[1]);
-#if	!MSDOS
+# if	!MSDOS
 	adjustpath();
-#endif
+# endif
 	evalenv();
 	return(0);
 }
@@ -1563,11 +1609,16 @@ static int NEAR loadsource(argc, argv)
 int argc;
 char *argv[];
 {
+	int ret;
+
 	if (argc != 2) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	if (loadruncom(argv[1], 1) < 0) {
+	ttyiomode();
+	ret = loadruncom(argv[1], 1);
+	stdiomode();
+	if (ret < 0) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
@@ -1621,14 +1672,10 @@ char *argv[];
 		fputc('\n', stderr);
 		return(RET_NOTICE);
 	}
-	putterms(t_keypad);
-	tflush();
 	ttyiomode();
 	internal_status = (*funclist[n].func)(argv[1]);
-	stdiomode();
-	putterms(t_nokeypad);
 	locate(0, n_line - 1);
-	tflush();
+	stdiomode();
 	return(RET_SUCCESS);
 }
 
@@ -1653,11 +1700,9 @@ int comline, ignorelist;
 			tflush();
 		}
 		hitkey((comline) ? 1 : -1);
-		sigvecreset();
 		stdiomode();
 		n = execbuiltin(i, argc, argv);
 		ttyiomode();
-		sigvecset();
 		if (n == RET_SUCCESS) hitkey(3);
 		else if (comline) {
 			hideclock = 1;
@@ -1669,11 +1714,9 @@ int comline, ignorelist;
 			locate(0, n_line - 1);
 			tflush();
 		}
-		sigvecreset();
 		stdiomode();
 		n = execinternal(i, argc, argv);
 		ttyiomode();
-		sigvecset();
 		if (n == RET_SUCCESS);
 		else if (comline) {
 			hideclock = 1;

@@ -582,6 +582,32 @@ typedef long	off_t;
 #define	SIGFNCINT
 #endif
 
+#if	defined (__APPLE__) && defined (__MACH__) && !defined (OSTYPE)
+#define	BSD43
+#define	OSTYPE			"DARWIN"	/* aka Mac OS X */
+#define	USEMANLANG
+#define	BSDINSTALL
+#define	TARFROMPAX
+#define	TERMCAPLIB		"-lcurses"
+#define	DECLSIGLIST
+#define	DECLERRLIST
+#define	USELEAPCNT
+#define	USETERMIOS
+#define	USEMOUNTH
+#define	USEMNTINFO
+#define	USEFFSTYPE
+#define	USEREGCOMP
+#define	USESETENV
+#define	USEMKTIME
+#define	USESYSCONF
+#define	USEWAITPID
+#define	USESIGPMASK
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
+#define	SIGFNCINT
+#endif
+
 #if	defined (__386BSD__) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"ORG_386BSD"
@@ -638,7 +664,8 @@ typedef long	off_t;
 /*	BSDOS		;BSD/OS (BSDI) */
 /*	BOW		;BSD on Windows (ASCII) */
 /*	OPENBSD		;OpenBSD */
-/*	386BSD_ORG	;386BSD */
+/*	DARWIN		;Darwin (Apple) */
+/*	ORG_386BSD	;386BSD */
 
 /* #define CODEEUC	;kanji code type is EUC */
 /* #define USEMANLANG	;man(1) directory includes LANG environment value */

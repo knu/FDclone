@@ -37,7 +37,9 @@ extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 char Error[1024];
 #endif
 
+#ifdef	_NOORIGSHELL
 extern char **environ;
+#endif
 extern char fullpath[];
 extern char *origpath;
 extern int hideclock;
@@ -55,8 +57,10 @@ extern int hideclock;
 			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
 static char *NEAR _realpath2 __P_((char *, char *, int));
+#ifdef	_NOORIGSHELL
 static int NEAR _getenv2 __P_((char *, int, char **));
 static char **NEAR _putenv2 __P_((char *, char **));
+#endif
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static int NEAR tmcmp __P_((struct tm *, struct tm *));
@@ -65,7 +69,9 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 
+#ifdef	_NOORIGSHELL
 char **environ2 = NULL;
+#endif
 static char *lastpath = NULL;
 #ifndef	_NODOSDRIVE
 static char *unixpath = NULL;
@@ -477,9 +483,10 @@ int *lenp, ptr;
 			if (*lenp >= 0) (*lenp)++;
 			s1[i++] = s2[j++];
 		}
-		else
+#else
+		if (iskna(s2[j]));
 #endif
-		if (iskanji1(s2, j)) {
+		else if (iskanji1(s2, j)) {
 			if (*lenp >= 0 && i >= *lenp - 1) {
 				s1[i++] = ' ';
 				break;
@@ -490,6 +497,19 @@ int *lenp, ptr;
 			s1[i++] = '^';
 			if (*lenp >= 0 && i >= *lenp) break;
 			s1[i++] = ((s2[j++] + '@') & 0x7f);
+			continue;
+		}
+		else if (ismsb(s2[j])) {
+			int c;
+
+			c = s2[j++] & 0xff;
+			s1[i++] = '\\';
+			if (*lenp >= 0 && i >= *lenp) break;
+			s1[i++] = (c / (8 * 8)) + '0';
+			if (*lenp >= 0 && i >= *lenp) break;
+			s1[i++] = ((c % (8 * 8)) / 8) + '0';
+			if (*lenp >= 0 && i >= *lenp) break;
+			s1[i++] = (c % 8) + '0';
 			continue;
 		}
 		s1[i++] = s2[j++];
@@ -549,6 +569,7 @@ char *s;
 	return((int)n);
 }
 
+#ifdef	_NOORIGSHELL
 static int NEAR _getenv2(name, len, envp)
 char *name;
 int len;
@@ -583,9 +604,9 @@ char *s, **envp;
 	}
 	if (!cp) return(envp);
 
-#ifdef	DEBUG
+# ifdef	DEBUG
 	_mtrace_file = "_putenv2";
-#endif
+# endif
 	if (!envp) new = (char **)malloc((n + 2) * sizeof(char *));
 	else new = (char **)realloc(envp, (n + 2) * sizeof(char *));
 	if (!new) {
@@ -596,24 +617,30 @@ char *s, **envp;
 	new[n + 1] = (char *)NULL;
 	return(new);
 }
+#endif	/* _NOORIGSHELL */
 
 int putenv2(s)
 char *s;
 {
+#ifdef	_NOORIGSHELL
 	char **new;
-#if	MSDOS
+# if	MSDOS
 	char *cp;
 
 	for (cp = s; *cp && *cp != '='; cp++) *cp = toupper2(*cp);
-#endif	/* !MSDOS */
+# endif
 	if (!(new = _putenv2(s, environ))) return(-1);
 	environ = new;
 	return(0);
+#else	/* !_NOORIGSHELL */
+	return(putexportvar(s, -1));
+#endif	/* !_NOORIGSHELL */
 }
 
 char *getenv2(name)
 char *name;
 {
+#ifdef	_NOORIGSHELL
 	char **envpp[2];
 	int i, c, n, len;
 
@@ -629,16 +656,26 @@ char *name;
 		n = _getenv2(name + 3, len - 3, envpp[i]);
 		if (n >= 0 && envpp[i][n]) return(&(envpp[i][n][len - 3 + 1]));
 	}
+#else	/* !_NOORIGSHELL */
+	char *cp;
+
+	if ((cp = getshellvar(name, -1))) return(cp);
+	if (!strnpathcmp(name, "FD_", 3) && (cp = getshellvar(name + 3, -1)))
+		return(cp);
+#endif	/* !_NOORIGSHELL */
 	return(NULL);
 }
 
 int setenv2(name, value)
 char *name, *value;
 {
-	char *cp, **new;
+	char *cp;
 	int len;
-#if	MSDOS
+#ifdef	_NOORIGSHELL
+	char **new;
+# if	MSDOS
 	int i;
+# endif
 #endif
 
 	len = strlen(name);
@@ -646,18 +683,25 @@ char *name, *value;
 	else {
 		cp = malloc2(len + strlen(value) + 2);
 		memcpy(cp, name, len);
-#if	MSDOS
+#if	MSDOS && defined (_NOORIGSHELL)
 		for (i = 0; i < len ; i++) cp[i] = toupper2(cp[i]);
 #endif
 		cp[len] = '=';
 		strcpy(&(cp[len + 1]), value);
 	}
+#ifdef	_NOORIGSHELL
 	if (!(new = _putenv2(cp, environ2))) return(-1);
 	environ2 = new;
+#else	/* !_NOORIGSHELL */
+	if (putshellvar(cp, len) < 0) {
+		free(cp);
+		return(-1);
+	}
+#endif	/* !_NOORIGSHELL */
 	return(0);
 }
 
-#ifdef	DEBUG
+#if	defined (DEBUG) && defined (_NOORIGSHELL)
 VOID freeenv(VOID_A)
 {
 	int i;
@@ -671,7 +715,7 @@ VOID freeenv(VOID_A)
 		free(environ2);
 	}
 }
-#endif
+#endif	/* DEBUG && _NOORIGSHELL */
 
 int system2(command, noconf)
 char *command;
@@ -680,26 +724,32 @@ int noconf;
 	int ret;
 
 	if (!command || !*command) return(0);
+	sigvecreset();
 	if (noconf >= 0) {
 		locate(0, n_line - 1);
 		putterm(l_clear);
 		if (noconf) putterms(t_end);
-		putterms(t_nokeypad);
-		tflush();
 	}
-	sigvecreset();
 	stdiomode();
 	ret = dosystem(command);
+	if (noconf > 0) {
+		if (ret >= 127) {
+			fputs("\007\n", stderr);
+			kanjifputs(HITKY_K, stderr);
+			fflush(stderr);
+			ttyiomode();
+			keyflush();
+			getkey2(0);
+			stdiomode();
+			fputc('\n', stderr);
+		}
+		putterms(t_init);
+	}
 	ttyiomode();
 	sigvecset();
-	if (ret > 127 || !noconf) {
+	if (!noconf || (noconf < 0 && ret >= 127)) {
 		hideclock = 1;
 		warning(0, HITKY_K);
-	}
-	if (noconf >= 0) {
-		if (noconf) putterms(t_init);
-		putterms(t_keypad);
-		tflush();
 	}
 	return(ret);
 }

@@ -21,6 +21,8 @@
 #include <varargs.h>
 #endif
 
+#define	LIMITSELECTWARN	100
+
 extern char **history[];
 extern short histsize[];
 extern int columns;
@@ -36,14 +38,9 @@ extern int shellmode;
 extern char *sys_errlist[];
 #endif
 
-static int NEAR trquote __P_((char *, int));
-#ifdef	CODEEUC
+static char *NEAR trquote __P_((char *, int, int *));
 static int NEAR vlen __P_((char *, int));
 static int NEAR rlen __P_((char *, int));
-#else
-#define	vlen(s, len)	(len)
-#define	rlen(s, len)	(len)
-#endif
 static VOID NEAR putcursor __P_((int, int));
 static VOID NEAR rightcursor __P_((VOID_A));
 static VOID NEAR leftcursor __P_((VOID_A));
@@ -59,6 +56,7 @@ static VOID NEAR insshift __P_((char *, int, int, int));
 static VOID NEAR delshift __P_((char *, int, int, int));
 static VOID NEAR truncline __P_((int, int, int, int, int));
 static VOID NEAR displaystr __P_((char *, int, int, int, int, int));
+static int NEAR preparestr __P_((char *, int, int *, int, int, int, int, int));
 static int NEAR insertstr __P_((char *, int, int, int, int, int,
 		char *, int, int));
 #ifndef	_NOCOMPLETE
@@ -72,6 +70,10 @@ static int NEAR _inputstr_down __P_((char *, int *, int, int *, int, int, int,
 static int NEAR _inputstr_delete __P_((char *, int, int, int, int, int));
 static int NEAR _inputstr_enter __P_((char *, int *, int, int *, int, int,
 		int));
+#if	FD >= 2
+static int NEAR _inputstr_case __P_((char *, int *, int, int, int, int, int,
+		int));
+#endif
 static int NEAR _inputstr_input __P_((char *, int *, int, int *, int, int, int,
 		int));
 static int NEAR _inputstr __P_((char *, int, int, int, int, int, int));
@@ -125,6 +127,7 @@ static int tmpfilepos = -1;
 #endif
 static int xpos = 0;
 static int ypos = 0;
+static int overwrite = 0;
 
 
 int intrkey(VOID_A)
@@ -166,16 +169,20 @@ int sig;
 		vimode |= 1;
 		if (vimode & 2) switch (ch) {
 			case CTRL('V'):
+				if (vimode & 4) vimode = 1;
 				ch = K_IL;
 				break;
 			case ESC:
+				vimode = (vimode & 4) ? 0 : 1;
 				ch = K_LEFT;
+				break;
 			case CR:
 				vimode = 1;
 				break;
 			case K_BS:
 				break;
 			default:
+				if (vimode & 4) vimode = 1;
 				if (ch < K_MIN) break;
 				putterm(t_bell);
 				vimode &= ~1;
@@ -189,18 +196,32 @@ int sig;
 			switch (ch) {
 				case ':':
 					vimode = 2;
+					overwrite = 0;
 					break;
 				case 'A':
 					vimode = 3;
+					overwrite = 0;
 					ch = K_EOL;
 					break;
 				case 'i':
 					vimode = 2;
+					overwrite = 0;
 					break;
 				case 'a':
 					vimode = 3;
+					overwrite = 0;
 					ch = K_RIGHT;
 					break;
+#if	FD >= 2
+				case 'R':
+					vimode = 2;
+					overwrite = 1;
+					break;
+				case 'r':
+					vimode = 6;
+					overwrite = 1;
+					break;
+#endif	/* FD >= 2 */
 				case K_BS:
 					ch = K_LEFT;
 					break;
@@ -230,23 +251,84 @@ int sig;
 	return(ch);
 }
 
-static int NEAR trquote(s, cx)
+static char *NEAR trquote(s, len, widthp)
 char *s;
-int cx;
+int len, *widthp;
 {
-	if (s[cx] == QUOTE) return('^');
-	else if (cx > 0 && (s[cx - 1] == QUOTE)) return((s[cx] + '@') & 0x7f);
-	else return(s[cx]);
+	char *cp;
+	int c, i, j, v;
+
+	cp = malloc2(len * 4 + 1);
+	v = 0;
+	for (i = j = 0; i < len; i++) {
+#ifdef	CODEEUC
+		if (i + 1 < len && isekana(s, i)) {
+			cp[j++] = s[i++];
+			cp[j++] = s[i];
+			v++;
+		}
+#else
+		if (iskna(s[i])) {
+			cp[j++] = s[i];
+			v++;
+		}
+#endif
+		else if (i + 1 < len && iskanji1(s, i)) {
+			cp[j++] = s[i++];
+			cp[j++] = s[i];
+			v += 2;
+		}
+		else if (i + 1 < len && s[i] == QUOTE) {
+			cp[j++] = '^';
+			cp[j++] = (s[++i] + '@') & 0x7f;
+			v += 2;
+		}
+		else if (ismsb(s[i])) {
+			c = s[i] & 0xff;
+			cp[j++] = '\\';
+			cp[j++] = (c / (8 * 8)) + '0';
+			cp[j++] = ((c % (8 * 8)) / 8) + '0';
+			cp[j++] = (c % 8) + '0';
+			v += 4;
+		}
+		else {
+			cp[j++] = s[i];
+			v++;
+		}
+	}
+	cp[j] = '\0';
+	if (widthp) *widthp = v;
+
+	return(cp);
 }
 
-#ifdef	CODEEUC
 static int NEAR vlen(s, len)
 char *s;
 int len;
 {
-	int v, r;
+	int v, r, rw, vw;
 
-	for (v = r = 0; r < len; v++, r++) if (isekana(s, r)) r++;
+	v = r = 0;
+	while (r < len) {
+#ifdef	CODEEUC
+		if (r + 1 < len && isekana(s, r)) {
+			rw = 2;
+			vw = 1;
+		}
+#else
+		if (iskna(s[r])) rw = vw = 1;
+#endif
+		else if (r + 1 < len && (iskanji1(s, r) || s[r] == QUOTE))
+			rw = vw = 2;
+		else if (ismsb(s[r])) {
+			rw = 1;
+			vw = 4;
+		}
+		else rw = vw = 1;
+
+		r += rw;
+		v += vw;
+	}
 	return(v);
 }
 
@@ -254,12 +336,31 @@ static int NEAR rlen(s, len)
 char *s;
 int len;
 {
-	int v, r;
+	int v, r, rw, vw;
 
-	for (v = r = 0; v < len; v++, r++) if (isekana(s, r)) r++;
+	v = r = 0;
+	while (v < len) {
+#ifdef	CODEEUC
+		if (isekana(s, r)) {
+			rw = 2;
+			vw = 1;
+		}
+#else
+		if (iskna(s[r])) rw = vw = 1;
+#endif
+		else if (v + 1 < len && (iskanji1(s, r) || s[r] == QUOTE))
+			rw = vw = 2;
+		else if (v + 3 < len && ismsb(s[r])) {
+			rw = 1;
+			vw = 4;
+		}
+		else rw = vw = 1;
+
+		r += rw;
+		v += vw;
+	}
 	return(r);
 }
-#endif
 
 static VOID NEAR putcursor(c, n)
 int c, n;
@@ -320,30 +421,34 @@ static int NEAR rightchar(s, cxp, cx2, len, plen, max, linemax)
 char *s;
 int *cxp, cx2, len, plen, max, linemax;
 {
-	if (!iskanji1(s, *cxp) && s[*cxp] != QUOTE) {
+	int rw, vw;
+
 #ifdef	CODEEUC
-		if (isekana(s, *cxp)) (*cxp)++;
+	if (*cxp + 1 < len && isekana(s, *cxp)) {
+		rw = 2;
+		vw = 1;
+	}
+#else
+	if (iskna(s[*cxp])) rw = vw = 1;
 #endif
-		(*cxp)++;
-		cx2++;
-		if (*cxp < max && (cx2 + plen) % linemax < 1)
-			setcursor(cx2, plen, max, linemax);
-		else rightcursor();
+	else if (*cxp + 1 < len && (iskanji1(s, *cxp) || s[*cxp] == QUOTE))
+		rw = vw = 2;
+	else if (ismsb(s[*cxp])) {
+		rw = 1;
+		vw = 4;
 	}
-	else {
-		if (*cxp + 1 >= len) {
-			putterm(t_bell);
-			return(cx2);
-		}
-		*cxp += 2;
-		cx2 += 2;
-		if (*cxp < max && (cx2 + plen) % linemax < 2)
-			setcursor(cx2, plen, max, linemax);
-		else {
-			rightcursor();
-			rightcursor();
-		}
+	else rw = vw = 1;
+
+	if (*cxp + rw > len) {
+		putterm(t_bell);
+		return(cx2);
 	}
+	*cxp += rw;
+	cx2 += vw;
+	if (*cxp < max && (cx2 + plen) % linemax < vw)
+		setcursor(cx2, plen, max, linemax);
+	else while (vw--) rightcursor();
+
 	return(cx2);
 }
 
@@ -352,31 +457,31 @@ static int NEAR leftchar(s, cxp, cx2, len, plen, max, linemax)
 char *s;
 int *cxp, cx2, len, plen, max, linemax;
 {
+	int rw, vw, ocx2;
+
 #ifdef	CODEEUC
 	if (*cxp >= 2 && isekana(s, *cxp - 2)) {
-		*cxp -= 2;
-		if (((cx2--) + plen) % linemax < 1)
-			setcursor(cx2, plen, max, linemax);
-		else leftcursor();
+		rw = 2;
+		vw = 1;
 	}
-	else
+#else
+	if (iskna(s[*cxp - 1])) rw = vw = 1;
 #endif
-	if (cx2 < 2 || (!onkanji1(s, cx2 - 2) && s[*cxp - 2] != QUOTE)) {
-		(*cxp)--;
-		if (((cx2--) + plen) % linemax < 1)
-			setcursor(cx2, plen, max, linemax);
-		else leftcursor();
+	else if (cx2 >= 2 && onkanji1(s, cx2 - 2)) rw = vw = 2;
+	else if (*cxp >= 2 && s[*cxp - 2] == QUOTE) rw = vw = 2;
+	else if (ismsb(s[*cxp - 1])) {
+		rw = 1;
+		vw = 4;
 	}
-	else {
-		(*cxp) -= 2;
-		cx2 -= 2;
-		if ((cx2 + 2 + plen) % linemax < 2)
-			setcursor(cx2, plen, max, linemax);
-		else {
-			leftcursor();
-			leftcursor();
-		}
-	}
+	else rw = vw = 1;
+
+	ocx2 = cx2;
+	*cxp -= rw;
+	cx2 -= vw;
+	if ((ocx2 + plen) % linemax < vw)
+		setcursor(cx2, plen, max, linemax);
+	else while (vw--) leftcursor();
+
 	return(cx2);
 }
 
@@ -384,18 +489,15 @@ static VOID NEAR insertchar(s, cx, len, plen, max, linemax, ins)
 char *s;
 int cx, len, plen, max, linemax, ins;
 {
-	char dupl[MAXLINESTR + 1];
+	char *dupl;
 	int dx, dy, i, j, l, f1, ptr;
 #if	!MSDOS
 	int f2;
 #endif
 
-	for (i = 0; i < len - cx; i++) dupl[i] = trquote(s, i + cx);
-	dupl[i] = '\0';
-#ifdef	CODEEUC
+	dupl = trquote(&(s[cx]), len - cx, &l);
 	cx = vlen(s, cx);
-	len = vlen(s, len);
-#endif
+	len = cx + l;
 	len += ins;
 	dy = (cx + plen) / linemax;
 	i = (dy + 1) * linemax - plen;
@@ -517,24 +619,22 @@ int cx, len, plen, max, linemax, ins;
 		hideclock = 1;
 		setcursor(cx, plen, max, linemax);
 	}
+	free(dupl);
 }
 
 static VOID NEAR deletechar(s, cx, len, plen, max, linemax, del)
 char *s;
 int cx, len, plen, max, linemax, del;
 {
-	char dupl[MAXLINESTR + 1];
+	char *dupl;
 	int dy, i, j, l, f1, ptr;
 #if	!MSDOS
 	int f2;
 #endif
 
-	for (i = 0; i < len - cx; i++) dupl[i] = trquote(s, i + cx);
-	dupl[i] = '\0';
-#ifdef	CODEEUC
+	dupl = trquote(&(s[cx]), len - cx, &l);
 	cx = vlen(s, cx);
-	len = vlen(s, len);
-#endif
+	len = cx + l;
 	len -= del;
 	dy = (cx + plen) / linemax;
 	i = (dy + 1) * linemax - plen;
@@ -600,6 +700,7 @@ int cx, len, plen, max, linemax, del;
 		putterm(l_clear);
 		setcursor(cx, plen, max, linemax);
 	}
+	free(dupl);
 }
 
 static VOID NEAR insshift(s, cx, len, ins)
@@ -648,13 +749,8 @@ int cx, len, plen, max, linemax;
 	int i, y, width;
 
 	Xlocate(plen, 0);
-	dupl = malloc2(len + 1);
-	for (i = 0; i < len; i++) dupl[i] = trquote(s, i);
-	dupl[i] = '\0';
-#ifdef	CODEEUC
+	dupl = trquote(s, len, &len);
 	cx = vlen(s, cx);
-	len = vlen(s, len);
-#endif
 	width = linemax - plen;
 	for (i = 0, y = 1; i + width < len; y++) {
 		putterm(l_clear);
@@ -685,6 +781,52 @@ int cx, len, plen, max, linemax;
 	free(dupl);
 }
 
+static int NEAR preparestr(s, cx, lenp, plen, max, linemax, rins, vins)
+char *s;
+int cx, *lenp, plen, max, linemax, rins, vins;
+{
+	int rw, vw;
+
+	if (*lenp + rins > max || vlen(s, *lenp) + vins > max) return(-1);
+
+	if (!overwrite) {
+		insertchar(s, cx, *lenp, plen, max, linemax, vins);
+		insshift(s, cx, *lenp, rins);
+		*lenp += rins;
+		return(0);
+	}
+
+	if (cx >= *lenp) rw = vw = 0;
+#ifdef	CODEEUC
+	else if (cx + 1 < *lenp && isekana(s, cx)) {
+		rw = 2;
+		vw = 1;
+	}
+#else
+	else if (iskna(s[cx])) rw = vw = 1;
+#endif
+	else if (cx + 1 < *lenp && (iskanji1(s, cx) || s[cx] == QUOTE))
+		rw = vw = 2;
+	else if (ismsb(s[cx])) {
+		rw = 1;
+		vw = 4;
+	}
+	else rw = vw = 1;
+
+	if (!vw);
+	else if (vins > vw)
+		insertchar(s, cx, *lenp, plen, max, linemax, vins - vw);
+	else if (vins < vw)
+		deletechar(s, cx, *lenp, plen, max, linemax, vw - vins);
+
+	if (!rw);
+	else if (rins > rw) insshift(s, cx, *lenp, rins - rw);
+	else if (rins < rw) delshift(s, cx, *lenp, rw - rins);
+
+	*lenp += rins - rw;
+	return(0);
+}
+
 static int NEAR insertstr(s, cx, len, plen, max, linemax, insstr, ins, quote)
 char *s;
 int cx, len, plen, max, linemax;
@@ -695,11 +837,13 @@ int ins, quote;
 	int i, j, dy, f, ptr;
 
 	if (len + ins > max) ins = max - len;
-	if (ins > 0 && (onkanji1(insstr, vlen(insstr, ins) - 1)
+	if (ins > 0) {
 #ifdef	CODEEUC
-	|| isekana(insstr, ins - 1)
+		if (isekana(insstr, ins - 1)) ins--;
+		else
 #endif
-	)) ins--;
+		if (onkanji1(insstr, vlen(insstr, ins) - 1)) ins--;
+	}
 	if (ins <= 0) return(0);
 
 	dupl = malloc2(ins * 2 + 1);
@@ -714,6 +858,26 @@ int ins, quote;
 				s[cx + j] = QUOTE;
 				dupl[++j] = (insstr[i] + '@') & 0x7f;
 				s[cx + j] = insstr[i];
+			}
+		}
+#ifdef	CODEEUC
+		else if (isekana(insstr, i)) {
+			if (len + ins + j - i >= max)
+				dupl[j] = s[cx + j] = '?';
+			else {
+				dupl[j] = s[cx + j] = insstr[i];
+				dupl[j + 1] = s[cx + j + 1] = insstr[++i];
+				j++;
+			}
+		}
+#endif
+		else if (iskanji1(insstr, i)) {
+			if (len + ins + j - i >= max)
+				dupl[j] = s[cx + j] = '?';
+			else {
+				dupl[j] = s[cx + j] = insstr[i];
+				dupl[j + 1] = s[cx + j + 1] = insstr[++i];
+				j++;
 			}
 		}
 #if	MSDOS && defined (_NOORIGSHELL)
@@ -737,9 +901,7 @@ int ins, quote;
 	}
 	dupl[j] = '\0';
 
-#ifdef	CODEEUC
 	cx = vlen(s, cx);
-#endif
 	len = vlen(dupl, j);
 	dy = (cx + plen) / linemax;
 	i = (dy + 1) * linemax - plen - cx;
@@ -796,13 +958,35 @@ char **argv;
 		sorton = dupsorton;
 
 		if (lcmdline > 0) {
+			char buf[20 + 1];
 			int j;
 
 			locate(n_lastcolumn - 1, n_line - 1);
 			cputs2("\r\n");
-			if (n_column < maxlen + 2) for (i = 0; i < argc; i++) {
-				kanjiputs(selectlist[i].name);
+			if (argc < LIMITSELECTWARN) i = 'Y';
+			else {
+				ascnumeric(buf, argc, 0, 20);
+				cputs2("There are ");
+				cputs2(buf);
+				cputs2(" possibilities.  ");
+				cputs2("Do you really\r\n");
+				cputs2("wish to see them all? (y or n)");
+				tflush();
+				for (;;) {
+					i = toupper2(getkey2(0));
+					if (i == 'Y' || i == 'N') break;
+					putterm(t_bell);
+					tflush();
+				}
 				cputs2("\r\n");
+			}
+
+			if (i == 'N');
+			else if (n_column < maxlen + 2) {
+				for (i = 0; i < argc; i++) {
+					kanjiputs(selectlist[i].name);
+					cputs2("\r\n");
+				}
 			}
 			else {
 				tmpcolumns = n_column / (maxlen + 2);
@@ -813,8 +997,9 @@ char **argv;
 							maxlen + 2, 0);
 					cputs2("\r\n");
 				}
-				dispprompt(NULL, 0);
 			}
+
+			for (i = 0; i < argc; i++) free(selectlist[i].name);
 			free(selectlist);
 			selectlist = NULL;
 			return;
@@ -866,13 +1051,19 @@ int cx, len, plen, max, linemax, comline, cont;
 
 	for (i = top = 0, quote = '\0'; i < cx; i++) {
 		if (s[i] == quote) quote = '\0';
+		else if (iskanji1(s, i)) i++;
 		else if (quote);
 # if	MSDOS && defined (_NOORIGSHELL)
 		else if (s[i] == '"') quote = s[i];
 # else
 		else if (s[i] == '"' || s[i] == '\'') quote = s[i];
+		else if (s[i] == '`') {
+			top = i + 1;
+			quote = s[i];
+		}
 # endif
-		else if (strchr(CMDLINE_DELIM, s[i])) top = i + 1;
+		else if (s[i] == '=' || strchr(CMDLINE_DELIM, s[i]))
+			top = i + 1;
 	}
 	if (top == cx) {
 		putterm(t_bell);
@@ -881,6 +1072,7 @@ int cx, len, plen, max, linemax, comline, cont;
 # if	MSDOS && defined (_NOORIGSHELL)
 	quoted = (!quote && cx > 0 && s[cx - 1] == '"')
 # else
+	if (quote == '`') quote = '\0';
 	quoted = (!quote && cx > 0 && s[cx - 1] == '"' || s[cx - 1] == '\'')
 # endif
 		? s[cx - 1] : '\0';
@@ -936,24 +1128,33 @@ int cx, len, plen, max, linemax, comline, cont;
 	}
 
 	if (!cp1 || ((ins = (int)strlen(cp1) - ins) <= 0 && fix <= 0)) {
-		if (cont <= 0) putterm(t_bell);
+		if (cont <= 0) {
+			putterm(t_bell);
+			l = 0;
+		}
 		else {
 			selectfile(argc, argv);
-			if (lcmdline > 0)
+			if (lcmdline > 0) {
+				dispprompt(NULL, 0);
 				displaystr(s, cx, len, plen, max, linemax);
+			}
 			setcursor(vlen(s, cx), plen, max, linemax);
+			l = -1;
 		}
 		for (i = 0; i < argc; i++) free(argv[i]);
 		free(argv);
 		if (cp1) free(cp1);
-		return(0);
+		return(l);
 	}
 	for (i = 0; i < argc; i++) free(argv[i]);
 	free(argv);
 
 	l = 0;
 	if (!quote && !quoted && len < max) {
-		for (i = 0; cp1[i]; i++) if (strchr(METACHAR, cp1[i])) break;
+		for (i = 0; cp1[i]; i++) {
+			if (strchr(METACHAR, cp1[i])) break;
+			if (iskanji1(cp1, i)) i++;
+		}
 		if (cp1[i]) {
 			setcursor(vlen(s, top), plen, max, linemax);
 			insertchar(s, top, len, plen, max, linemax, 1);
@@ -1117,30 +1318,37 @@ static int NEAR _inputstr_delete(s, cx, len, plen, max, linemax)
 char *s;
 int cx, len, plen, max, linemax;
 {
-	int n, n2;
+	int rw, vw;
 
 	if (cx >= len) {
 		putterm(t_bell);
 		return(len);
 	}
+
 #ifdef	CODEEUC
 	if (isekana(s, cx)) {
-		n = 2;
-		n2 = 1;
+		rw = 2;
+		vw = 1;
 	}
-	else
+#else
+	if (iskna(s[cx])) rw = vw = 1;
 #endif
-	if (!iskanji1(s, cx) && s[cx] != QUOTE) n = n2 = 1;
-	else {
+	else if (iskanji1(s, cx) || s[cx] == QUOTE) {
 		if (cx + 1 >= len) {
 			putterm(t_bell);
 			return(len);
 		}
-		n = n2 = 2;
+		rw = vw = 2;
 	}
-	deletechar(s, cx, len, plen, max, linemax, n2);
-	delshift(s, cx, len, n);
-	return(len -= n);
+	else if (ismsb(s[cx])) {
+		rw = 1;
+		vw = 4;
+	}
+	else rw = vw = 1;
+
+	deletechar(s, cx, len, plen, max, linemax, vw);
+	delshift(s, cx, len, rw);
+	return(len -= rw);
 }
 
 static int NEAR _inputstr_enter(s, cxp, cx2, lenp, plen, max, linemax)
@@ -1151,8 +1359,10 @@ int *cxp, cx2, *lenp, plen, max, linemax;
 
 	quote = 0;
 	keyflush();
-	if (curfilename[i = 0] != '~') for (; curfilename[i]; i++)
+	if (curfilename[i = 0] != '~') for (; curfilename[i]; i++) {
 		if (strchr(METACHAR, curfilename[i])) break;
+		if (iskanji1(curfilename, i)) i++;
+	}
 	if (curfilename[i] && *lenp + strlen2(curfilename) + 2 <= max) {
 		insertchar(s, *cxp, *lenp, plen, max, linemax, 1);
 		insshift(s, *cxp, (*lenp)++, 1);
@@ -1179,6 +1389,39 @@ int *cxp, cx2, *lenp, plen, max, linemax;
 	return(cx2);
 }
 
+#if	FD >= 2
+static int NEAR _inputstr_case(s, cxp, cx2, len, plen, max, linemax, upper)
+char *s;
+int *cxp, cx2, len, plen, max, linemax, upper;
+{
+	int ch;
+
+	keyflush();
+	if (*cxp >= len) {
+		putterm(t_bell);
+		return(cx2);
+	}
+	if (iskanji1(s, *cxp));
+# ifdef	CODEEUC
+	else if (isekana(s, *cxp));
+# endif
+	else {
+		ch = (upper) ? toupper2(s[*cxp]) : tolower2(s[*cxp]);
+		if (ch != s[*cxp]) {
+			s[(*cxp)++] = ch;
+			cx2++;
+			putch2(ch);
+			if (*cxp < max && (cx2 + plen) % linemax < 1)
+				setcursor(cx2, plen, max, linemax);
+			else win_x++;
+			return(cx2);
+		}
+	}
+
+	return(rightchar(s, cxp, cx2, len, plen, max, linemax));
+}
+#endif	/* FD >= 2 */
+
 static int NEAR _inputstr_input(s, cxp, cx2, lenp, plen, max, linemax, ch)
 char *s;
 int *cxp, cx2, *lenp, plen, max, linemax, ch;
@@ -1186,13 +1429,15 @@ int *cxp, cx2, *lenp, plen, max, linemax, ch;
 #if	!MSDOS && !defined (_NOKANJICONV)
 	char tmpkanji[3];
 #endif
-	int w, ch2;
+	int rw, vw, ch2;
 
-	w = 1;
 #if	!MSDOS && !defined (_NOKANJICONV)
 	if (inputkcode == EUC && ch == 0x8e) {
-		ch2 = getkey2(0);
-		if (ch2 < 0xa1 || ch2 > 0xdf) {
+		rw = KANAWID;
+		vw = 1;
+		ch2 = (kbhit2(WAITMETA * 1000L)) ? getkey2(0) : '\0';
+		if (!iskna(ch2)
+		|| preparestr(s, *cxp, lenp, plen, max, linemax, rw, vw) < 0) {
 			putterm(t_bell);
 			keyflush();
 			return(cx2);
@@ -1200,29 +1445,26 @@ int *cxp, cx2, *lenp, plen, max, linemax, ch;
 		tmpkanji[0] = ch;
 		tmpkanji[1] = ch2;
 		tmpkanji[2] = '\0';
-		insertchar(s, *cxp, *lenp, plen, max, linemax, 1);
-		insshift(s, *cxp, *lenp, KANAWID);
 		kanjiconv(&(s[*cxp]), tmpkanji, 2,
 			inputkcode, DEFCODE, L_INPUT);
 		win_x += kanjiputs2(&(s[*cxp]), 1, -1);
-		*lenp += KANAWID;
 		*cxp += KANAWID;
 	}
 	else
 #else
 # ifdef	CODEEUC
 	if (ch == 0x8e) {
-		ch2 = getkey2(0);
-		if (ch2 < 0xa1 || ch2 > 0xdf) {
+		rw = KANAWID;
+		vw = 1;
+		ch2 = (kbhit2(WAITMETA * 1000L)) ? getkey2(0) : '\0';
+		if (!iskna(ch2)
+		|| preparestr(s, *cxp, lenp, plen, max, linemax, rw, vw) < 0) {
 			putterm(t_bell);
 			keyflush();
 			return(cx2);
 		}
-		insertchar(s, *cxp, *lenp, plen, max, linemax, 1);
-		insshift(s, *cxp, *lenp, KANAWID);
 		s[(*cxp)++] = ch;
 		s[(*cxp)++] = ch2;
-		*lenp += KANAWID;
 		putch2(ch);
 		putcursor(ch2, 1);
 	}
@@ -1230,14 +1472,14 @@ int *cxp, cx2, *lenp, plen, max, linemax, ch;
 # endif
 #endif
 	if (isinkanji1(ch)) {
-		ch2 = getkey2(0);
-		if (*lenp + 1 >= max) {
+		rw = vw = 2;
+		ch2 = (kbhit2(WAITMETA * 1000L)) ? getkey2(0) : '\0';
+		if (!isinkanji2(ch2)
+		|| preparestr(s, *cxp, lenp, plen, max, linemax, rw, vw) < 0) {
 			putterm(t_bell);
 			keyflush();
 			return(cx2);
 		}
-		insertchar(s, *cxp, *lenp, plen, max, linemax, 2);
-		insshift(s, *cxp, *lenp, 2);
 
 #if	MSDOS || defined (_NOKANJICONV)
 		s[*cxp] = ch;
@@ -1250,24 +1492,21 @@ int *cxp, cx2, *lenp, plen, max, linemax, ch;
 			inputkcode, DEFCODE, L_INPUT);
 #endif
 		win_x += kanjiputs2(&(s[*cxp]), 2, -1);
-		*lenp += 2;
 		*cxp += 2;
-		w = 2;
 	}
 	else {
-		if (ch < ' ' || ch >= K_MIN || ch == C_DEL || *lenp >= max) {
+		rw = vw = 1;
+		if (isctl(ch) || ismsb(ch) || ch >= K_MIN
+		|| preparestr(s, *cxp, lenp, plen, max, linemax, rw, vw) < 0) {
 			putterm(t_bell);
 			keyflush();
 			return(cx2);
 		}
-		insertchar(s, *cxp, *lenp, plen, max, linemax, 1);
-		insshift(s, *cxp, *lenp, 1);
-		(*lenp)++;
 		s[(*cxp)++] = ch;
 		putcursor(ch, 1);
 	}
 	cx2 = vlen(s, *cxp);
-	if (*cxp < max && ((cx2 + plen) % linemax) < w)
+	if (*cxp < max && ((cx2 + plen) % linemax) < vw)
 		setcursor(cx2, plen, max, linemax);
 	return(cx2);
 }
@@ -1327,17 +1566,15 @@ int plen, max, linemax, def, comline, h;
 #else
 			if ((cp = getkeyseq(i, &l)) && l == 1) i = *cp;
 #endif
-			if (i < ' ' || i == C_DEL) {
+			if (isctl(i)) {
 				keyflush();
 				ch = '\0';
 				if (!i) continue;
-				if (len + 1 >= max) {
+				if (preparestr(s, cx, &len, plen, max, linemax,
+				2, 2) < 0) {
 					putterm(t_bell);
 					continue;
 				}
-				insertchar(s, cx, len, plen, max, linemax, 2);
-				insshift(s, cx, len, 2);
-				len += 2;
 				s[cx++] = QUOTE;
 				cx2++;
 				putcursor('^', 1);
@@ -1346,6 +1583,45 @@ int plen, max, linemax, def, comline, h;
 				s[cx++] = i;
 				cx2++;
 				putcursor((i + '@') & 0x7f, 1);
+				if (cx < max && !((cx2 + plen) % linemax))
+					setcursor(cx2, plen, max, linemax);
+				continue;
+			}
+#if	!MSDOS && defined (_NOKANJICONV)
+			else if (inputkcode == EUC
+			&& i == 0x8e && kbhit2(WAITMETA * 1000L));
+			else if (inputkcode != EUC && iskna(i));
+#else
+# ifdef	CODEEUC
+			else if (i == 0x8e && kbhit2(WAITMETA * 1000L));
+# else
+			else if (iskna(i));
+# endif
+#endif
+			else if (isinkanji1(i) && kbhit2(WAITMETA * 1000L));
+			else if (ismsb(i)) {
+				keyflush();
+				ch = '\0';
+				if (preparestr(s, cx, &len, plen, max, linemax,
+				1, 4) < 0) {
+					putterm(t_bell);
+					continue;
+				}
+				s[cx++] = i;
+				cx2++;
+				putcursor('\\', 1);
+				if (cx < max && !((cx2 + plen) % linemax))
+					setcursor(cx2, plen, max, linemax);
+				cx2++;
+				putcursor((i / (8 * 8)) + '0', 1);
+				if (cx < max && !((cx2 + plen) % linemax))
+					setcursor(cx2, plen, max, linemax);
+				cx2++;
+				putcursor(((i % (8 * 8)) / 8) + '0', 1);
+				if (cx < max && !((cx2 + plen) % linemax))
+					setcursor(cx2, plen, max, linemax);
+				cx2++;
+				putcursor((i % 8) + '0', 1);
 				if (cx < max && !((cx2 + plen) % linemax))
 					setcursor(cx2, plen, max, linemax);
 				continue;
@@ -1449,6 +1725,20 @@ int plen, max, linemax, def, comline, h;
 				ocx2 = cx2 = _inputstr_enter(s, &cx, cx2,
 					&len, plen, max, linemax);
 				break;
+#if	FD >= 2
+			case K_IC:
+				keyflush();
+				overwrite = 1 - overwrite;
+				break;
+			case K_PPAGE:
+				ocx2 = cx2 = _inputstr_case(s, &cx, cx2,
+					len, plen, max, linemax, 0);
+				break;
+			case K_NPAGE:
+				ocx2 = cx2 = _inputstr_case(s, &cx, cx2,
+					len, plen, max, linemax, 1);
+				break;
+#endif	/* FD >= 2 */
 #ifndef	_NOCOMPLETE
 			case '\t':
 				keyflush();
@@ -1459,8 +1749,8 @@ int plen, max, linemax, def, comline, h;
 				i = completestr(s, cx, len, plen,
 					max, linemax, comline,
 					(ch2 == ch) ? 1 : 0);
-				if (!i) {
-					putterm(t_bell);
+				if (i <= 0) {
+					if (!i) putterm(t_bell);
 					break;
 				}
 				cx += i;
@@ -1509,6 +1799,7 @@ int plen, max, linemax, def, comline, h;
 #endif
 	} while (ch != CR);
 
+	if (selectlist) selectfile(-1, NULL);
 	setcursor(vlen(s, len), plen, max, linemax);
 	win_x = dupwin_x;
 	win_y = dupwin_y;
@@ -1605,8 +1896,10 @@ int h;
 		j = 0;
 		ch = '\0';
 		if (!prompt) {
-			if (def[i = 0] != '~') for (; def[i]; i++)
+			if (def[i = 0] != '~') for (; def[i]; i++) {
 				if (strchr(METACHAR, def[i])) break;
+				if (iskanji1(def, i)) i++;
+			}
 			if (def[i]) {
 				input[j++] = ch = '"';
 				if (ptr) ptr++;
@@ -1617,6 +1910,13 @@ int h;
 				input[j++] = QUOTE;
 				if (ptr >= j) ptr++;
 			}
+#ifdef	CODEEUC
+			else if (isekana(def, i)) {
+				input[j++] = def[i++];
+				if (ptr >= j) ptr++;
+			}
+#endif
+			else if (iskanji1(def, i)) input[j++] = def[i++];
 			else if (!prompt && strchr(DQ_METACHAR, def[i])) {
 #if	MSDOS && defined (_NOORIGSHELL)
 				input[j++] = def[i];
@@ -1689,11 +1989,10 @@ char *s;
 	cp1++;
 	len = cp2 - cp1 - len;
 	if (len <= 0) len = 0;
-	else if (onkanji1(cp1, vlen(cp1, len) - 1)
 #ifdef	CODEEUC
-	|| isekana(cp1, len - 1)
+	else if (isekana(cp1, len - 1)) len--;
 #endif
-	) len--;
+	else if (onkanji1(cp1, vlen(cp1, len) - 1)) len--;
 	strcpy(cp1 + len, cp2);
 	return(s);
 }

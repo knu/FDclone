@@ -98,6 +98,13 @@ extern int hideclock;
 #  endif	/* !TARFROMPAX */
 # endif	/* !UXPDS */
 #endif	/* !MSDOS */
+#define	PM_NULL	255, 0, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{255, 255, 255}, 1
+#define	LINESEP	'\t'
+#define	isarchbr(l)	(((l) -> topskip) < 255)
 
 static VOID NEAR pusharchdupl __P_((VOID_A));
 static int NEAR countfield __P_((char *, u_char [], int, int *));
@@ -113,38 +120,41 @@ int maxlaunch = 0;
 int maxarchive = 0;
 launchtable launchlist[MAXLAUNCHTABLE] = {
 #if	MSDOS
-	{"*.lzh",	"lha v %S",		PM_LHA},
-	{"*.tar",	"tar tvf %S", 		PM_TAR},
-	{"*.tar.Z",	"gzip -cd %S | tar tvf -",	PM_TAR},
-	{"*.tar.gz",	"gzip -cd %S | tar tvf -",	PM_TAR},
-	{"*.tar.bz2",	"bzip2 -cd %S | tar tvf -",	PM_TAR},
+	{"*.lzh",	"lha v %S",		PM_LHA, 0},
+	{"*.tar",	"tar tvf %S", 		PM_TAR, 0},
+	{"*.tar.Z",	"gzip -cd %S | tar tvf -",	PM_TAR, 0},
+	{"*.tar.gz",	"gzip -cd %S | tar tvf -",	PM_TAR, 0},
+	{"*.tar.bz2",	"bzip2 -cd %S | tar tvf -",	PM_TAR, 0},
 #else
-	{"*.lzh",	"lha l",		PM_LHA},
-	{"*.tar",	"tar tvf", 		PM_TAR},
-	{"*.tar.Z",	"zcat %C | tar tvf -",	PM_TAR},
-	{"*.tar.gz",	"gzip -cd %C | tar tvf -",	PM_TAR},
-	{"*.tar.bz2",	"bzip2 -cd %C | tar tvf -",	PM_TAR},
+	{"*.lzh",	"lha l",		PM_LHA, 0},
+	{"*.tar",	"tar tvf", 		PM_TAR, 0},
+	{"*.tar.Z",	"zcat %C | tar tvf -",	PM_TAR, 0},
+	{"*.tar.gz",	"gzip -cd %C | tar tvf -",	PM_TAR, 0},
+	{"*.tar.bz2",	"bzip2 -cd %C | tar tvf -",	PM_TAR, 0},
 #endif
-	{NULL,		NULL,			255, 0, "", "", "", "", 1}
+	{NULL,		NULL,			PM_NULL, 0}
 };
 archivetable archivelist[MAXARCHIVETABLE] = {
 #if	MSDOS
-	{"*.lzh",	"lha a %S %TA",		"lha x %S %TA"},
-	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA"},
-	{"*.tar.Z",	"tar cfZ %C %TA",	"gzip -cd %S | tar xf - %TA"},
-	{"*.tar.gz",	"tar cfz %C %TA",	"gzip -cd %S | tar xf - %TA"},
-	{"*.tar.bz2",	"tar cfI %C %TA",	"bzip2 -cd %S | tar xf - %TA"},
+	{"*.lzh",	"lha a %S %TA",		"lha x %S %TA", 0},
+	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA", 0},
+	{"*.tar.Z",	"tar cfZ %C %TA",
+					"gzip -cd %S | tar xf - %TA", 0},
+	{"*.tar.gz",	"tar cfz %C %TA",
+					"gzip -cd %S | tar xf - %TA", 0},
+	{"*.tar.bz2",	"tar cfI %C %TA",
+					"bzip2 -cd %S | tar xf - %TA", 0},
 #else
-	{"*.lzh",	"lha aq %C %TA",	"lha xq %C %TA"},
-	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA"},
+	{"*.lzh",	"lha aq %C %TA",	"lha xq %C %TA", 0},
+	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA", 0},
 	{"*.tar.Z",	"tar cf %X %T; compress %X",
-						"zcat %C | tar xf - %TA"},
+					"zcat %C | tar xf - %TA", 0},
 	{"*.tar.gz",	"tar cf %X %T; gzip %X",
-						"gzip -cd %C | tar xf - %TA"},
+					"gzip -cd %C | tar xf - %TA", 0},
 	{"*.tar.bz2",	"tar cf %X %T; bzip2 %X",
-						"bzip2 -cd %C | tar xf - %TA"},
+					"bzip2 -cd %C | tar xf - %TA", 0},
 #endif
-	{NULL,		NULL,			NULL}
+	{NULL,		NULL,			NULL, 0}
 };
 char archivedir[MAXPATHLEN];
 
@@ -416,7 +426,7 @@ int max;
 	if (!*buf) tm.tm_year = 1970;
 	else if ((cp = evalnumeric(buf, &n, 0)) && !*cp) tm.tm_year = n;
 	else if (list -> field[F_YEAR] == list -> field[F_TIME]
-	&& *cp == ':') {
+	&& strchr(buf, ':')) {
 		tm.tm_year = today[0];
 		if (tm.tm_mon > today[1]
 		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
@@ -574,7 +584,8 @@ launchtable *list;
 	namelist tmp;
 	FILE *fp;
 	char *cp, *buf, *dir, *line;
-	int i, c, no, len, max;
+	int i, c, no, len;
+	int max;
 
 	if (!(cp = evalcommand(list -> comm, file, NULL, 1))) return(-1);
 	waitmes();
@@ -622,7 +633,8 @@ launchtable *list;
 	tmp.st_flags = 0;
 #endif
 
-	i = no = len = 0;
+	i = 0;
+	no = len = 0;
 	buf = NULL;
 	while ((line = fgets2(fp, 0))) {
 		if (intrkey()) {
@@ -638,7 +650,7 @@ launchtable *list;
 		if (!buf) buf = line;
 		else {
 			buf = realloc2(buf, len + c + 1 + 1);
-			buf[len++] = '\t';
+			buf[len++] = LINESEP;
 			memcpy(&(buf[len]), line, c);
 			free(line);
 		}
@@ -787,11 +799,21 @@ int launcher(VOID_A)
 #ifndef	_NODOSDRIVE
 	int drive = 0;
 #endif
+#if	!MSDOS
+	int dupignorecase;
+#endif
 
 	for (i = 0; i < maxlaunch; i++) {
+#if	!MSDOS
+		dupignorecase = pathignorecase;
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase = 1;
+#endif
 		re = regexp_init(launchlist[i].ext, -1);
 		n = regexp_exec(re, filelist[filepos].name, 0);
 		regexp_free(re);
+#if	!MSDOS
+		pathignorecase = dupignorecase;
+#endif
 		if (n) break;
 	}
 	if (i >= maxlaunch) return(-1);
@@ -805,7 +827,7 @@ int launcher(VOID_A)
 		putterm(t_bell);
 		return(1);
 	}
-	if (launchlist[i].topskip == 255) {
+	if (!isarchbr(&(launchlist[i]))) {
 		execusercomm(launchlist[i].comm, filelist[filepos].name,
 			1, 0, 1);
 #ifndef	_NODOSDRIVE
@@ -927,12 +949,22 @@ char *arc;
 	reg_t *re;
 	char *duparchivefile, path[MAXPATHLEN], dupfullpath[MAXPATHLEN];
 	int i, n, ret;
+#if	!MSDOS
+	int dupignorecase;
+#endif
 
 	for (i = 0; i < maxarchive; i++) {
 		if (!archivelist[i].p_comm) continue;
+#if	!MSDOS
+		dupignorecase = pathignorecase;
+		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase = 1;
+#endif
 		re = regexp_init(archivelist[i].ext, -1);
 		n = regexp_exec(re, arc, 0);
 		regexp_free(re);
+#if	!MSDOS
+		pathignorecase = dupignorecase;
+#endif
 		if (n) break;
 	}
 	if (i >= maxarchive) return(-1);
@@ -967,12 +999,22 @@ int tr, ignorelist;
 	namelist alist[1], *dupfilelist;
 	int dd, drive, dupmaxfile, dupfilepos;
 #endif
+#if	!MSDOS
+	int dupignorecase;
+#endif
 
 	for (i = 0; i < maxarchive; i++) {
 		if (!archivelist[i].u_comm) continue;
+#if	!MSDOS
+		dupignorecase = pathignorecase;
+		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase = 1;
+#endif
 		re = regexp_init(archivelist[i].ext, -1);
 		n = regexp_exec(re, arc, 0);
 		regexp_free(re);
+#if	!MSDOS
+		pathignorecase = dupignorecase;
+#endif
 		if (n) break;
 	}
 	if (i >= maxarchive) return(-1);
@@ -1141,7 +1183,11 @@ int maxf, n;
 	reg_t *re;
 	FILE *fp;
 	char *cp, *buf, *dir, *file, *line;
-	int i, c, no, len, max, match, dupmaxfile, dupfilepos;
+	int i, c, no, len, match, dupmaxfile, dupfilepos;
+	int max;
+#if	!MSDOS
+	int dupignorecase;
+#endif
 
 	if (n < 0) {
 		file = flist -> name;
@@ -1153,15 +1199,22 @@ int maxf, n;
 	}
 
 	for (i = 0; i < maxlaunch; i++) {
-		if (launchlist[i].topskip >= 255) continue;
+		if (!isarchbr(&(launchlist[i]))) continue;
+#if	!MSDOS
+		dupignorecase = pathignorecase;
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase = 1;
+#endif
 		re = regexp_init(launchlist[i].ext, -1);
 		c = regexp_exec(re, file, 0);
 		regexp_free(re);
+#if	!MSDOS
+		pathignorecase = dupignorecase;
+#endif
 		if (c) break;
 	}
 	if (i >= maxlaunch) return(0);
-	list = &(launchlist[i]);
 
+	list = &(launchlist[i]);
 	if (n >= 0) {
 		dupfilelist = filelist;
 		dupmaxfile = maxfile;
@@ -1221,7 +1274,8 @@ int maxf, n;
 		free(line);
 	}
 
-	i = no = len = match = 0;
+	i = 0;
+	no = len = match = 0;
 	buf = NULL;
 	re = regexp_init(regstr, -1);
 	while ((line = fgets2(fp, 0))) {
@@ -1244,7 +1298,7 @@ int maxf, n;
 		if (!buf) buf = line;
 		else {
 			buf = realloc2(buf, len + c + 1 + 1);
-			buf[len++] = '\t';
+			buf[len++] = LINESEP;
 			memcpy(&(buf[len]), line, c);
 			free(line);
 		}

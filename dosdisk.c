@@ -30,9 +30,11 @@
 #ifdef	NOVOID
 #define	VOID
 #define	VOID_T	int
+#define	VOID_P	char *
 #else
 #define	VOID	void
 #define	VOID_T	void
+#define	VOID_P	void *
 #endif
 
 #if	MSDOS
@@ -86,6 +88,9 @@
 #include <mntent.h>
 #include <sys/mount.h>
 #include <linux/unistd.h>
+# ifndef	BLKFLSBUF
+# include <linux/fs.h>
+# endif
 # ifndef	MOUNTED
 # define	MOUNTED		"/etc/mtab"
 # endif
@@ -192,8 +197,15 @@ extern char *strrdelim2 __P_((char *, char *));
 extern char *strcatdelim __P_((char *));
 #endif
 extern char *strcatdelim2 __P_((char *, char *, char *));
+#if	MSDOS
+#define	strcasecmp2	stricmp
+#else
+extern int strcasecmp2 __P_((char *, char *));
+#endif
 extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
+extern VOID readunitbl __P_((VOID_A));
+extern VOID discardunitbl __P_((VOID_A));
 extern u_short unifysjis __P_((u_short, int));
 extern u_short cnvunicode __P_((u_short, int));
 #else	/* !FD */
@@ -225,6 +237,11 @@ static char *NEAR strrdelim2 __P_((char *, char *));
 static char *NEAR strcatdelim __P_((char *));
 #endif
 static char *NEAR strcatdelim2 __P_((char *, char *, char *));
+#if	MSDOS
+#define	strcasecmp2	stricmp
+#else
+static int NEAR strcasecmp2 __P_((char *, char *));
+#endif
 static int NEAR isdotdir __P_((char *));
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
@@ -234,6 +251,8 @@ static int NEAR tmcmp __P_((struct tm *, struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
+static VOID NEAR readunitbl __P_((VOID_A));
+static VOID NEAR discardunitbl __P_((VOID_A));
 static u_short NEAR unifysjis __P_((u_short, int));
 static u_short NEAR cnvunicode __P_((u_short, int));
 #define	UNICODETBL	"fd-unicd.tbl"
@@ -243,11 +262,6 @@ static u_short NEAR cnvunicode __P_((u_short, int));
 #define	MAXKANJI	0xfc4b
 #endif	/* !FD */
 
-#if	MSDOS
-#define	strcasecmp2	stricmp
-#else
-static int NEAR strcasecmp2 __P_((char *, char *));
-#endif
 #ifdef	USELLSEEK
 static off64_t NEAR lseek64 __P_((int, off64_t, int));
 #else
@@ -489,6 +503,8 @@ typedef struct _kconv_t {
 	u_short range;
 } kconv_t;
 char *unitblpath = NULL;
+static u_char *unitblbuf = NULL;
+static u_short unitblent = 0;
 static kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* strange Russian char */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
@@ -780,6 +796,31 @@ char *buf, *s1, *s2;
 	return(cp);
 }
 
+#if	!MSDOS
+static int NEAR strcasecmp2(s1, s2)
+char *s1, *s2;
+{
+	int c1, c2;
+
+	for (;;) {
+		c1 = toupper2(*s1);
+		c2 = toupper2(*s2);
+		if (c1 != c2) return(c1 - c2);
+# ifndef	CODEEUC
+		if (issjis1(c1)) {
+			s1++;
+			s2++;
+			if (*s1 != *s2) return(*s1 - *s2);
+		}
+# endif
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	return(0);
+}
+#endif	/* !MSDOS */
+
 static int NEAR isdotdir(name)
 char *name;
 {
@@ -968,6 +1009,43 @@ struct tm *tm;
 #endif
 }
 
+static VOID NEAR readunitable(VOID_A)
+{
+	char path[MAXPATHLEN];
+	u_char *tmp, buf[2];
+	long size;
+	int fd;
+
+	if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
+	else strcatdelim2(path, unitblpath, UNICODETBL);
+
+	if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0) return;
+	if (read(fd, buf, 2) != 2) {
+		close(fd);
+		return;
+	}
+	unitblent = (((u_short)(buf[1]) << 8) | buf[0]);
+	size = (long)unitblent * 4;
+
+	if (!unitblbuf) tmp = (u_char *)malloc(size);
+	else tmp = (u_char *)realloc(unitblbuf, size);
+	if (!tmp) {
+		close(fd);
+		return;
+	}
+	unitblbuf = tmp;
+	if (read(fd, unitblbuf, size) != size) discardunitable();
+	close(fd);
+}
+
+static VOID NEAR discardunitable(VOID_A)
+{
+	if (unitblbuf) {
+		free(unitblbuf);
+		unitblbuf = NULL;
+	}
+}
+
 static u_short NEAR unifysjis(wc, russ)
 u_short wc;
 int russ;
@@ -990,7 +1068,6 @@ u_short wc;
 int encode;
 {
 	static int fd = -1;
-	static u_short total = 0;
 	u_char buf[4];
 	char path[MAXPATHLEN];
 	u_short r, w, min, max, ofs;
@@ -1032,19 +1109,67 @@ int encode;
 		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
 	}
 
+	if (unitblbuf) {
+		u_char *cp;
+
+		if (encode) {
+			wc = unifysjis(wc, 0);
+			cp = unitblbuf;
+			for (ofs = 0; ofs < unitblent; ofs++) {
+				w = (((u_short)(cp[3]) << 8) | cp[2]);
+				if (wc == w) {
+					r = (((u_short)(cp[1]) << 8) | cp[0]);
+					break;
+				}
+				cp += 4;
+			}
+		}
+		else {
+			min = 0;
+			max = unitblent + 1;
+			ofs = unitblent / 2 + 1;
+			for (;;) {
+				if (ofs == min || ofs == max) break;
+				cp = &(unitblbuf[(ofs - 1) * 4]);
+				w = (((u_short)(cp[1]) << 8) | cp[0]);
+				if (wc == w) {
+					r = (((u_short)(cp[3]) << 8) | cp[2]);
+					break;
+				}
+				else if (wc < w) {
+					max = ofs;
+					ofs = (ofs + min) / 2;
+				}
+				else {
+					min = ofs;
+					ofs = (ofs + max) / 2;
+				}
+			}
+		}
+
+		return(r);
+	}
+
 	if (fd < 0) {
 		if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
 		else strcatdelim2(path, unitblpath, UNICODETBL);
 
-		if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0
-		|| read(fd, buf, 2) != 2) return(r);
-		total = (((u_short)(buf[1]) << 8) | buf[0]);
+		if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0)
+			return(r);
+		if (!unitblent) {
+			if (read(fd, buf, 2) != 2) {
+				close(fd);
+				fd = -1;
+				return(r);
+			}
+			unitblent = (((u_short)(buf[1]) << 8) | buf[0]);
+		}
 	}
 
 	if (encode) {
 		if (lseek(fd, (off_t)2, 0) < 0) return(r);
 		wc = unifysjis(wc, 0);
-		for (ofs = 0; ofs < total; ofs++) {
+		for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, buf, 4) != 4) break;
 			w = (((u_short)(buf[3]) << 8) | buf[2]);
 			if (wc == w) {
@@ -1055,8 +1180,8 @@ int encode;
 	}
 	else {
 		min = 0;
-		max = total + 1;
-		ofs = total / 2 + 1;
+		max = unitblent + 1;
+		ofs = unitblent / 2 + 1;
 		for (;;) {
 			if (ofs == min || ofs == max) break;
 			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, 0) < 0
@@ -1080,24 +1205,6 @@ int encode;
 	return(r);
 }
 #endif	/* !FD */
-
-#if	!MSDOS
-static int NEAR strcasecmp2(s1, s2)
-char *s1, *s2;
-{
-	int c1, c2;
-
-	for (;;) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
-		if (c1 != c2) return(c1 - c2);
-		if (!*s1) break;
-		s1++;
-		s2++;
-	}
-	return(0);
-}
-#endif
 
 #ifdef	USELLSEEK
 static _syscall5(int, _llseek,
@@ -2198,7 +2305,7 @@ bpb_t *bpbcache;
 			}
 			devp -> flags |= F_RONLY;
 		}
-#ifdef	LINUX
+#if	defined (LINUX) && defined (BLKFLSBUF)
 		ioctl(fd, BLKFLSBUF, 0);
 #endif
 

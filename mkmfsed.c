@@ -4,17 +4,12 @@
  *	sed script maker for Makefile
  */
 
-#include <stdio.h>
-#include "machine.h"
+#include "fd.h"
 
 #ifdef	NOVOID
 #define	VOID
 #else
 #define	VOID	void
-#endif
-
-#ifdef	USEMANLANG
-extern char *getenv __P_((char *));
 #endif
 
 
@@ -27,10 +22,17 @@ char *argv[];
 	char *cp;
 #endif
 
+	printf("s:__VERSION__:%d:g\n", FD);
+#if	FD >= 2
+	printf("s:__RCVERSION__:%d:g\n", FD);
+#else
+	printf("s:__RCVERSION__::g\n");
+#endif
 	printf("s:__EXE__::g\n");
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__OBJS__:dosemu.o:\n");
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
+	printf("s:__SOBJLIST__:$(SOBJ):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
 	printf("s:	__RENAME__:#	mv:\n");
@@ -41,7 +43,8 @@ char *argv[];
 	printf("s:__OSTYPE__:%s:\n", OSTYPE);
 
 #ifdef	USEMANLANG
-	if ((cp = getenv("LANG")) && *cp) printf("s:__LANGDIR__:/%s:\n", cp);
+	if ((cp = (char *)getenv("LANG")) && *cp)
+		printf("s:__LANGDIR__:/%s:\n", cp);
 	else
 #endif
 	printf("s:__LANGDIR__::\n");
@@ -57,6 +60,7 @@ char *argv[];
 	printf("s:__INSTALL__:cp -p:\n");
 	printf("s:__INSTSTRIP__::\n");
 #endif
+	printf("s:__LN__:ln:\n");
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
@@ -74,7 +78,11 @@ char *argv[];
 #endif
 
 	printf("s:__TERMLIBS__:%s:\n", TERMCAPLIB);
+#ifdef	_NOORIGGLOB
 	printf("s:__REGLIBS__:%s:\n", REGEXPLIB);
+#else
+	printf("s:__REGLIBS__::\n");
+#endif
 	printf("s:__OTHERLIBS__:%s:\n", EXTENDLIB);
 
 #ifdef	CODEEUC

@@ -321,9 +321,12 @@ int code;
 		for (i = 0; i < KEYCODESIZ; i++)
 			if (code == keycodelist[i]) break;
 		if (i < KEYCODESIZ) sprintf(buf, "%-7.7s", keystrlist[i]);
-		else if (code < ' ' || code == C_DEL)
+#ifndef	CODEEUC
+		else if (iskna(code)) sprintf(buf, "'%c'    ", code);
+#endif
+		else if (isctl(code))
 			sprintf(buf, "Ctrl-%c ", (code + '@') & 0x7f);
-		else if (isprint(code)) sprintf(buf, "'%c'    ", code);
+		else if (!ismsb(code)) sprintf(buf, "'%c'    ", code);
 		else return(0);
 	}
 	return(1);

@@ -153,6 +153,7 @@ extern FILE *ttyout;
 #define	putterms(s)	tputs(s, n_line, putch3)
 #endif
 
+extern int opentty __P_((VOID_A));
 extern int inittty __P_((int));
 extern int cooked2 __P_((VOID_A));
 extern int cbreak2 __P_((VOID_A));

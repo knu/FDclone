@@ -180,7 +180,7 @@ static envtable envlist[] = {
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 	{"FD_LANGUAGE", &outputkcode, (char *)NOCNV, LANG_E, T_KOUT},
 #endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+#if	!MSDOS && !defined (_NOKANJICONV)
 	{"FD_INPUTKCODE", &inputkcode, (char *)NOCNV, IPKC_E, T_KIN},
 #endif
 #if	!MSDOS && !defined (_NOKANJIFCONV)

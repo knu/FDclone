@@ -28,12 +28,13 @@
 	Fujitsu	UXP/M		(4.1)
 	Fujitsu	UXP/DS		(V10, V20)
 	JCC	4.4BSD-Lite	(v1.0)
-		Linux		(2.x)
-		FreeBSD		(2.x, 3.x, 4,x)
-		NetBSD		(1.x)
-		OpenBSD		(2.x)
+	(free)	Linux		(2.x)
+	(free)	FreeBSD		(2.x, 3.x, 4,x)
+	(free)	NetBSD		(1.x)
+	(free)	OpenBSD		(2.x)
 	BSDI	BSD/OS		(2.x, 3.0)
 	ASCII	BSD on Windows	(1.0, 1.5)
+	Apple	Mac OS X	(10.x)
 
    また、以下の OS は、Ver. 1.03 での動作確認は行なわれてい
    ませんが、各 OS 用のコードが記述されていますので、多分変
@@ -52,16 +53,26 @@
 	Fujitsu	UXP/M		(4.0)
 	Mips	RISC/os		(4.x, 5.0x)
 	NeXT	NEXTSTEP	(3.0)
-		386BSD		(R0.1)
+	(free)	386BSD		(R0.1)
 	BSDI	BSD/OS		(1.1)
 
-   これ以外の OS では、その OS の環境を自動判定するプログラ
-   ムが付属されていますので、make config とすれば環境設定フ
-   ァイルが作成されます。
+   このどちらにも挙げられていない OS では、その OS の環境を
+   自動判定するプログラムが付属されていますので、make config
+   とすれば環境設定ファイルが作成されます。
    但し、この自動判定も完璧ではないので、うまくコンパイルで
    きないようなら、make config で作成される config.h を編集
    し直して下さい。修正についての詳細は TECHKNOW を参照して
    下さい。
+
+   逆に、上記のどちらかに挙げられている OS では、make config
+   が却って不適切な結果をもたらすことがあるので、make config
+   はしないで下さい。
+   特に Linux は UNIX の中でもかなり特殊な部類に属しますので、
+   Linux 用の特殊な処理が幾つか含まれています。これらの処理
+   は make config では自動認識されませんので、Linux では絶対
+   に make config をしてはいけません。
+   もし誤って make config を行なってしまった場合は、次のステ
+   ップに進む前に make realclean を実行して下さい。
 
 2. fd.h で定義されている定数の幾つかを、自分の好みに合わせて
    変更します。各定数の意味は、マニュアルに書かれている環境

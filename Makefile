@@ -2,6 +2,7 @@
 #	Makefile for fd
 #
 
+VERSION	= 1
 SHELL	= /bin/sh
 MAKE	= make
 CC	= cc
@@ -61,8 +62,8 @@ makefile.b98: Makefile.in mkmfdosb.sed
 mkmf.sed: mkmfsed
 	./mkmfsed > mkmf.sed
 
-mkmfsed: mkmfsed.c machine.h config.h
-	$(CC) $(CFLAGS) -DCCCOMMAND='"$(CC)"' -o $@ mkmfsed.c
+mkmfsed: mkmfsed.c fd.h machine.h config.h
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -DCCCOMMAND='"$(CC)"' -o $@ mkmfsed.c
 
 config.h: config.hin
 	cp config.hin config.h

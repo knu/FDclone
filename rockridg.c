@@ -26,7 +26,7 @@ extern char fullpath[];
 static char *NEAR getorgname __P_((char *, u_char));
 static assoclist *NEAR readtranstbl __P_((VOID_A));
 static VOID NEAR freetranstbl __P_((assoclist *));
-static char *NEAR _detransfile __P_((char *, char *, int));
+static char *NEAR _detransfile __P_((char *, char *, int, int));
 
 char *rockridgepath = NULL;
 
@@ -69,11 +69,11 @@ static assoclist *NEAR readtranstbl(VOID_A)
 		flag = RR_TRANS;
 		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
+		sprintf(file + sizeof(TRANSTBLFILE) - 1, ";%d", TRANSTBLVAR);
 		flag |= RR_VERNO;
 		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
+		sprintf(file + sizeof(TRANSTBLFILE) - 1, "-%d", TRANSTBLVAR);
 		flag |= RR_HYPHN;
 		if ((fp = _Xfopen(file, "r"))) break;
 
@@ -84,11 +84,11 @@ static assoclist *NEAR readtranstbl(VOID_A)
 		flag = RR_TRANS | RR_LOWER;
 		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE), ";%d", TRANSTBLVAR);
+		sprintf(file + sizeof(TRANSTBLFILE) - 1, ";%d", TRANSTBLVAR);
 		flag |= RR_VERNO;
 		if ((fp = _Xfopen(file, "r"))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE), "-%d", TRANSTBLVAR);
+		sprintf(file + sizeof(TRANSTBLFILE) - 1, "-%d", TRANSTBLVAR);
 		flag |= RR_HYPHN;
 		if ((fp = _Xfopen(file, "r"))) break;
 
@@ -183,10 +183,10 @@ int transfilelist(VOID_A)
 	if (!includepath(rpath, fullpath, rockridgepath)) return(0);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
-	else if (!(tbl = readtranstbl())) return(0);
+	else tbl = readtranstbl();
 
 	start = tbl;
-	for (i = 0; i < maxfile; i++) {
+	if (tbl) for (i = 0; i < maxfile; i++) {
 		if (isdotdir(filelist[i].name)) continue;
 
 		tp = start;
@@ -213,7 +213,7 @@ int transfilelist(VOID_A)
 		rr_curtbl = tbl;
 		rr_cwd = strdup2(rpath);
 	}
-	return(1);
+	return(tbl != NULL);
 }
 
 char *transfile(file, buf)
@@ -225,18 +225,21 @@ char *file, *buf;
 	if (!includepath(rpath, fullpath, rockridgepath)) return(file);
 
 	if (rr_cwd && !strpathcmp(rpath, rr_cwd)) tbl = rr_curtbl;
-	else if (!(tbl = readtranstbl())) return(file);
+	else tbl = readtranstbl();
 
 	start = tp = tbl;
-	while (tp) {
-		if (!strpathcmp(file, tp -> org)) break;
-		if ((tp = tp -> next) == start) tp = NULL;
-	}
-	if (!tp) cp = file;
+	if (!tbl) cp = file;
 	else {
-		strncpy2(buf, tp -> assoc + 1, MAXNAMLEN);
-		cp = buf;
-		start = tp -> next;
+		while (tp) {
+			if (!strpathcmp(file, tp -> org)) break;
+			if ((tp = tp -> next) == start) tp = NULL;
+		}
+		if (!tp) cp = file;
+		else {
+			strncpy2(buf, tp -> assoc + 1, MAXNAMLEN);
+			cp = buf;
+			start = tp -> next;
+		}
 	}
 
 	if (tbl != rr_curtbl) {
@@ -248,43 +251,48 @@ char *file, *buf;
 	return(cp);
 }
 
-static char *NEAR _detransfile(path, buf, rdlink)
+static char *NEAR _detransfile(path, buf, rdlink, plen)
 char *path, *buf;
-int rdlink;
+int rdlink, plen;
 {
 	assoclist *tp, *start, *tbl;
 	char *cp, *tmp, dir[MAXPATHLEN];
 	int len;
 
 	if (!(cp = strrdelim(path, 0)) || cp == path) return(NULL);
-	strncpy2(dir, path, (cp++) - path);
-	if (!_detransfile(dir, buf, 1)) strcpy(buf, dir);
+	len = (cp++) - path;
+	strncpy2(dir, path, len);
+	if (len < plen) return(NULL);
+	if (!_detransfile(dir, buf, 1, plen)) strcpy(buf, dir);
 
 	if (rr_cwd && !strpathcmp(buf, rr_cwd)) tbl = rr_curtbl;
 	else {
 		_Xchdir(buf);
-		if (!(tbl = readtranstbl())) return(NULL);
+		tbl = readtranstbl();
 	}
 
 	start = tp = tbl;
-	while (tp) {
-		if (!strpathcmp(cp, tp -> assoc + 1)) break;
-		if ((tp = tp -> next) == start) tp = NULL;
-	}
-	if (!tp) cp = NULL;
+	if (!tbl) cp = NULL;
 	else {
-		start = tp -> next;
-		tmp = strcatdelim(buf);
-		len = MAXPATHLEN - 1 - (tmp - buf);
-		if (!rdlink || *(tp -> assoc) != 'L')
-			strncpy2(tmp, tp -> org, len);
-		else {
-			for (cp = tp -> assoc + 1; *cp; cp++);
-			cp++;
-			strncpy2(tmp, cp, len);
-			detransfile(buf, buf, 1);
+		while (tp) {
+			if (!strpathcmp(cp, tp -> assoc + 1)) break;
+			if ((tp = tp -> next) == start) tp = NULL;
 		}
-		cp = buf;
+		if (!tp) cp = NULL;
+		else {
+			start = tp -> next;
+			tmp = strcatdelim(buf);
+			len = MAXPATHLEN - 1 - (tmp - buf);
+			if (!rdlink || *(tp -> assoc) != 'L')
+				strncpy2(tmp, tp -> org, len);
+			else {
+				for (cp = tp -> assoc + 1; *cp; cp++);
+				cp++;
+				strncpy2(tmp, cp, len);
+				detransfile(buf, buf, 1);
+			}
+			cp = buf;
+		}
 	}
 
 	if (tbl != rr_curtbl) freetranstbl(tbl);
@@ -296,12 +304,24 @@ char *detransfile(path, buf, rdlink)
 char *path, *buf;
 int rdlink;
 {
-	char cwd[MAXPATHLEN], rpath[MAXPATHLEN];
+	char *cp, *tmp, cwd[MAXPATHLEN], rpath[MAXPATHLEN];
+	int len;
 
-	if (!includepath(rpath, path, rockridgepath) || !Xgetwd(cwd))
+	if (!(cp = includepath(rpath, path, rockridgepath)) || !Xgetwd(cwd))
 		return(path);
 
-	if (_detransfile(rpath, buf, rdlink))
+#if	MSDOS || !defined (_NODOSDRIVE)
+	if (_dospath(cp)) tmp = strchr(cp + 2, PATHDELIM);
+	else
+#endif
+	tmp = strchr(cp, PATHDELIM);
+	len = (tmp) ? tmp - cp : strlen(cp);
+	while (len > 1 && cp[len - 1] == _SC_) len--;
+#if	MSDOS
+	if (onkanji1(cp, len - 1)) len++;
+#endif
+
+	if (_detransfile(rpath, buf, rdlink, len))
 		path = realpath2(buf, buf, rdlink);
 	_Xchdir(cwd);
 	return(path);

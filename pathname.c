@@ -97,6 +97,7 @@ extern DIR *Xopendir __P_((char *));
 # endif
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
+extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 # if	MSDOS || !defined (_NODOSDRIVE)
@@ -124,6 +125,15 @@ struct dirent *Xreaddir __P_((DIR *));
 # define	Xclosedir	closedir
 # define	Xreaddir	readdir
 # endif
+# ifdef DJGPP
+extern char *Xgetwd __P_((char *));
+# else
+#  ifdef	USEGETWD
+#  define	Xgetwd		(char *)getwd
+#  else
+#  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
+#  endif
+# endif
 #define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
 #define	Xaccess		access
 #define	_dospath(s)	(isalpha(*(s)) && (s)[1] == ':')
@@ -150,8 +160,9 @@ static hashlist *NEAR newhash __P_((char *, char *, int, hashlist *));
 static hashlist *NEAR findhash __P_((char *, int));
 static VOID NEAR rmhash __P_((char *, int));
 #endif
+static int NEAR isexecute __P_((char *, int, int));
 #if	MSDOS
-static int NEAR extaccess __P_((char *, char *, int));
+static int NEAR extaccess __P_((char *, char *, int, int));
 #endif
 #ifndef	_NOCOMPLETE
 # if	!MSDOS
@@ -643,6 +654,31 @@ char *buf, *s1, *s2;
 	*cp = '\0';
 	return(cp);
 }
+
+#if	!MSDOS
+int strcasecmp2(s1, s2)
+char *s1, *s2;
+{
+	int c1, c2;
+
+	for (;;) {
+		c1 = toupper2(*s1);
+		c2 = toupper2(*s2);
+		if (c1 != c2) return(c1 - c2);
+# ifndef	CODEEUC
+		if (issjis1(c1)) {
+			s1++;
+			s2++;
+			if (*s1 != *s2) return(*s1 - *s2);
+		}
+# endif
+		if (!*s1) break;
+		s1++;
+		s2++;
+	}
+	return(0);
+}
+#endif	/* !MSDOS */
 
 int strpathcmp2(s1, s2)
 char *s1, *s2;
@@ -1524,13 +1560,27 @@ int n;
 }
 #endif	/* !_NOUSEHASH */
 
+static int NEAR isexecute(path, dirok, exe)
+char *path;
+int dirok, exe;
+{
+	struct stat st;
+	int d;
+
+	if (Xstat(path, &st) < 0) return(-1);
+	d = ((st.st_mode & S_IFMT) == S_IFDIR);
+	if (!exe) return(d);
+	if (d) return(dirok ? d : -1);
+	return(Xaccess(path, X_OK));
+}
+
 #if	MSDOS
-static int NEAR extaccess(path, ext, len)
+static int NEAR extaccess(path, ext, len, exe)
 char *path, *ext;
-int len;
+int len, exe;
 {
 	if (ext) {
-		if (Xaccess(path, F_OK) >= 0) {
+		if (isexecute(path, 0, exe) >= 0) {
 			if (!(strpathcmp(ext, "COM"))) return(0);
 			else if (!(strpathcmp(ext, "EXE"))) return(CM_EXE);
 			else if (!(strpathcmp(ext, "BAT"))) return(CM_BATCH);
@@ -1539,26 +1589,28 @@ int len;
 	else {
 		path[len++] = '.';
 		strcpy(path + len, "COM");
-		if (Xaccess(path, F_OK) >= 0) return(CM_ADDEXT);
+		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT);
 		strcpy(path + len, "EXE");
-		if (Xaccess(path, F_OK) >= 0) return(CM_ADDEXT | CM_EXE);
+		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_EXE);
 		strcpy(path + len, "BAT");
-		if (Xaccess(path, F_OK) >= 0) return(CM_ADDEXT | CM_BATCH);
+		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_BATCH);
 	}
 	return(-1);
 }
 #endif
 
-int searchhash(hpp, com)
+int searchhash(hpp, com, search)
 hashlist **hpp;
-char *com;
+char *com, *search;
 {
 	char *cp, *tmp, *next, *path;
-	int len, dlen, cost, size, ret;
+	int len, dlen, cost, size, ret, recalc;
 #if	MSDOS
 	char *ext;
 #endif
 #ifndef	_NOUSEHASH
+	static char *searchcwd = NULL;
+	char buf[MAXPATHLEN];
 	int n;
 #endif
 
@@ -1570,11 +1622,11 @@ char *com;
 		len = strlen(com);
 		path = malloc2(len + EXTWIDTH + 1);
 		strcpy(path, com);
-		ret = extaccess(path, ext, len);
+		ret = extaccess(path, ext, len, 0);
 		free(path);
 		if (ret >= 0) return(ret | CM_FULLPATH);
 #else
-		if (Xaccess(com, F_OK) >= 0) return(CM_FULLPATH);
+		if (isexecute(com, 0, 0) >= 0) return(CM_FULLPATH);
 #endif
 		return(CM_NOTFOUND | CM_FULLPATH);
 	}
@@ -1584,7 +1636,9 @@ char *com;
 	n = calchash(com);
 	if ((*hpp = findhash(com, n))) {
 		path = (*hpp) -> path;
-		if (Xaccess(path, F_OK) >= 0) return((*hpp) -> type);
+		if (((*hpp) -> type & CM_RECALC)
+		&& (!searchcwd || strcmp(searchcwd, Xgetwd(buf))));
+		else if (isexecute(path, 0, 1) >= 0) return((*hpp) -> type);
 		rmhash(com, n);
 	}
 #endif
@@ -1595,29 +1649,34 @@ char *com;
 	path[0] = '.';
 	path[1] = _SC_;
 	strcpy(path + 2, com);
-	if ((ret = extaccess(path, ext, len + 2)) < 0) free(path);
+	if ((ret = extaccess(path, ext, len + 2, 1)) < 0) free(path);
 	else {
 # ifdef	_NOUSEHASH
 		*hpp = (hashlist *)path;
 # else
 		*hpp = newhash(com, path, 0, hashtable[n]);
 		hashtable[n] = *hpp;
-		(*hpp) -> type = (ret |= CM_HASH);
+		(*hpp) -> type = (ret |= (CM_HASH | CM_RECALC));
+		if (searchcwd) free(searchcwd);
+		searchcwd = strdup2(Xgetwd(buf));
 # endif
 		return(ret);
 	}
-#endif
-	if ((next = getvar("PATH", -1))) {
+#endif	/* MSDOS && !DISMISS_CURPATH */
+
+	recalc = 0;
+	if ((next = (search) ? search : getvar("PATH", -1))) {
 		len = strlen(com);
 		size = ret = 0;
 		path = NULL;
 		cost = 1;
 		for (cp = next; cp; cp = next) {
+			next = cp;
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
-			if (_dospath(cp)) next = strchr(cp + 2, PATHDELIM);
-			else
+			if (_dospath(cp)) next += 2;
 #endif
-			next = strchr(cp, PATHDELIM);
+			if (*next != _SC_) recalc = CM_RECALC;
+			next = strchr(next, PATHDELIM);
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;
 			else {
@@ -1636,9 +1695,9 @@ char *com;
 			strncpy2(path + dlen, com, len);
 			dlen += len;
 #if	MSDOS
-			if ((ret = extaccess(path, ext, dlen)) >= 0) break;
+			if ((ret = extaccess(path, ext, dlen, 1)) >= 0) break;
 #else
-			if (Xaccess(path, F_OK) >= 0) break;
+			if (isexecute(path, 0, 1) >= 0) break;
 #endif
 			cost++;
 		}
@@ -1648,21 +1707,24 @@ char *com;
 #else
 			*hpp = newhash(com, path, cost, hashtable[n]);
 			hashtable[n] = *hpp;
-			(*hpp) -> type = (ret |= CM_HASH);
+			(*hpp) -> type = (ret |= (CM_HASH | recalc));
+			if (searchcwd) free(searchcwd);
+			searchcwd = strdup2(Xgetwd(buf));
 #endif
 			return(ret);
 		}
+		if (path) free(path);
 	}
-	free(path);
+
 	return(CM_NOTFOUND);
 }
 
-char *searchpath(path)
-char *path;
+char *searchpath(path, search)
+char *path, *search;
 {
 	hashlist *hp;
 
-	if (searchhash(&hp, path) & CM_NOTFOUND) return(NULL);
+	if (searchhash(&hp, path, search) & CM_NOTFOUND) return(NULL);
 #ifdef	_NOUSEHASH
 	return((char *)hp);
 #else
@@ -1763,9 +1825,8 @@ int dlen, exe;
 {
 	DIR *dirp;
 	struct dirent *dp;
-	struct stat st;
 	char *cp, *new, path[MAXPATHLEN];
-	int size;
+	int d, size;
 
 	if (dlen >= MAXPATHLEN - 2) return(argc);
 	strncpy2(path, dir, dlen);
@@ -1779,13 +1840,11 @@ int dlen, exe;
 		if (size + (cp - path) >= MAXPATHLEN) continue;
 		strncpy2(cp, dp -> d_name, size);
 
-		if (Xstat(path, &st) < 0
-		|| (exe && (st.st_mode & S_IFMT) != S_IFDIR
-		&& Xaccess(path, X_OK) < 0)) continue;
+		if ((d = isexecute(path, 1, exe)) < 0) continue;
 
 		new = malloc2(size + 1 + 1);
 		strncpy(new, dp -> d_name, size);
-		if ((st.st_mode & S_IFMT) == S_IFDIR) new[size++] = _SC_;
+		if (d) new[size++] = _SC_;
 		new[size] = '\0';
 		if (finddupl(new, argc, *argvp)) {
 			free(new);
@@ -2667,15 +2726,17 @@ int stripq, iscom;
 	return(argc);
 }
 
-char *stripquote(arg, stripq)
+int stripquote(arg, stripq)
 char *arg;
 int stripq;
 {
-	int i, j, quote;
+	int i, j, quote, stripped;
 
+	stripped = 0;
 	for (i = j = 0, quote = '\0'; arg[i]; i++) {
 		if (arg[i] == quote) {
 			quote = '\0';
+			stripped = 1;
 			if (stripq) continue;
 		}
 #ifdef	CODEEUC
@@ -2685,19 +2746,21 @@ int stripq;
 		else if (quote == '\'');
 		else if (ismeta(arg, i, quote)) {
 			i++;
+			stripped = 1;
 			if (quote && arg[i] != quote && arg[i] != PMETA)
 				arg[j++] = PMETA;
 		}
 		else if (quote);
 		else if (arg[i] == '\'' || arg[i] == '"') {
 			quote = arg[i];
+			stripped = 1;
 			if (stripq) continue;
 		}
 
 		arg[j++] = arg[i];
 	}
 	arg[j] = '\0';
-	return(arg);
+	return(stripped);
 }
 
 char *_evalpath(path, eol, uniqdelim, evalq)
@@ -2752,7 +2815,12 @@ int uniqdelim, evalq;
 #endif
 		else if (iskanji1(cp, i)) tmp[j++] = cp[i++];
 		else if (quote == '\'');
-		else if (ismeta(cp, i, quote)) tmp[j++] = cp[i++];
+		else if (ismeta(cp, i, quote)) {
+			i++;
+			if (!evalq
+			|| (quote && !strchr(DQ_METACHAR, cp[i])))
+				tmp[j++] = PMETA;
+		}
 		else if (quote);
 		else if (cp[i] == '\'' || cp[i] == '"') {
 #if	defined (FD) && MSDOS && !defined (_NOUSELFN)

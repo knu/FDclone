@@ -891,7 +891,7 @@ u_char fstat;
 VOID rewritefile(all)
 int all;
 {
-	if (!filelist || maxfile <= 0) return;
+	if (!filelist || maxfile < 0) return;
 	if (all > 0) {
 		title();
 		helpbar();
@@ -962,7 +962,7 @@ char *buf;
 	}
 	else {
 		if (n == 1) buf[len = 0] = '\0';
-		if (ch < ' ' || ch == C_DEL || ch >= K_MIN) isearch = 0;
+		if (isctl(ch) || ch >= K_MIN) isearch = 0;
 		else if (len < MAXNAMLEN - 1) {
 			buf[len++] = ch;
 			buf[len] = '\0';

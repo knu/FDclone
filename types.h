@@ -198,6 +198,7 @@ typedef struct _launchtable {
 	u_char width[MAXLAUNCHFIELD];
 	u_char sep[MAXLAUNCHSEP];
 	u_char lines;
+	u_char flags;
 } launchtable;
 
 #define	F_MODE	0
@@ -209,12 +210,16 @@ typedef struct _launchtable {
 #define	F_DAY	6
 #define	F_TIME	7
 #define	F_NAME	8
+#define	LF_IGNORECASE	0001
 
 typedef struct _archivetable {
 	char *ext;
 	char *p_comm;
 	char *u_comm;
+	u_char flags;
 } archivetable;
+
+#define	AF_IGNORECASE	0001	/* must be the same as LF_IGNORECASE */
 #endif
 
 #ifndef	_NOTREE

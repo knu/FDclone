@@ -320,13 +320,13 @@ extern VOID adjustpath __P_((VOID_A));
 #endif
 extern char *includepath __P_((char *, char *, char *));
 extern VOID freevar __P_((char **));
-#ifndef	_NOARCHIVE
+#if	(FD < 2) && !defined (_NOARCHIVE)
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
 extern int evalprompt __P_((char *, char *, int));
 #ifndef	_NOARCHIVE
-extern char *getext __P_((char *));
-extern int extcmp __P_((char *, char *));
+extern char *getext __P_((char *, int *));
+extern int extcmp __P_((char *, int, char *, int, int));
 #endif
 extern int getkeycode __P_((char *, int));
 extern char *getkeysym __P_((int, int));
@@ -365,6 +365,7 @@ extern int completeinternal __P_((char *, int, int, char ***));
 extern VOID freedefine __P_((VOID_A));
 #endif
 
+#define	BL_SET		"set"
 #define	BL_PENV		"printenv"
 #define	BL_LAUNCH	"launch"
 #define	BL_ARCH		"arch"
@@ -378,6 +379,9 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_KEYMAP	"keymap"
 #define	BL_GETKEY	"getkey"
 #define	BL_HISTORY	"history"
+#define	BL_CHECKID	"checkid"
+#define	BL_KCONV	"kconv"
+#define	BL_EVALMACRO	"evalmacro"
 #define	BL_ALIAS	"alias"
 #define	BL_UALIAS	"unalias"
 #define	BL_FUNCTION	"function"
@@ -385,6 +389,7 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_CHDIR	"chdir"
 #define	BL_CD		"cd"
 #define	BL_SOURCE	"source"
+#define	BL_DOT		"."
 
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
@@ -419,15 +424,18 @@ extern int getlang __P_((char *, int));
 extern int sjis2ujis __P_((char *, u_char *, int));
 extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
-#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NODOSDRIVE)
+#if	(!MSDOS && defined (FD) && (FD >= 2) && !defined (_NOKANJICONV)) \
+|| !defined (_NODOSDRIVE)
+extern VOID readunitbl __P_((VOID_A));
+extern VOID discardunitbl __P_((VOID_A));
 extern u_short unifysjis __P_((u_short, int));
 extern u_short cnvunicode __P_((u_short, int));
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 extern int kanjiconv __P_((char *, char *, int, int, int, int));
-#endif
-#if	!MSDOS && !defined (_NOKANJIFCONV)
+# ifndef	_NOKANJIFCONV
 extern char *kanjiconv2 __P_((char *, char *, int, int, int));
+# endif
 #endif
 extern int kanjiputs __P_((char *));
 extern int kanjifputs __P_((char *, FILE *));

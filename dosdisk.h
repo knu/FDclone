@@ -319,7 +319,9 @@ extern devinfo fdtype[];
 #endif
 extern int lastdrive;
 extern int needbavail;
+#ifndef	FD
 extern char *unitblpath;
+#endif
 extern VOID_T (*doswaitfunc)__P_((VOID_A));
 extern int (*dosintrfunc)__P_((VOID_A));
 

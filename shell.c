@@ -67,6 +67,9 @@ int ptr;
 char *dir, *arg;
 u_char flags;
 {
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+	char conv[MAXPATHLEN];
+#endif
 	char *cp, path[MAXPATHLEN];
 	int l;
 
@@ -89,6 +92,14 @@ u_char flags;
 		}
 #endif
 	}
+
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+	cp = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, getkcode(arg));
+	if (cp != arg) {
+		free(arg);
+		arg = strdup2(cp);
+	}
+#endif
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
 		l = cp - arg;
 	else l = strlen(arg);
@@ -211,16 +222,19 @@ int ignorelist;
 		else if (c == '%') c = command[++i];
 		else {
 			line[j++] = command[i];
-#if	!MSDOS || !defined (_NOORIGSHELL)
+#if	MSDOS && defined (_NOORIGSHELL)
+			if (command[i] == uneval) uneval = 0;
+			else if (command[i] == '"' || command[i] == '\'')
+				uneval = command[i];
+#else
 			if (command[i] == PMETA && command[i + 1]
 			&& uneval != '\'')
 				line[j++] = command[++i];
-			else
-#endif
-			if (command[i] == uneval) uneval = 0;
+			else if (command[i] == uneval) uneval = 0;
 			else if (command[i] == '"' || command[i] == '\''
 			|| command[i] == '`')
 				uneval = command[i];
+#endif
 			continue;
 		}
 
@@ -296,16 +310,16 @@ int ignorelist;
 				c = toupper2(command[i + 1]);
 				if (c == 'S') tmpcode = SJIS;
 				else if (c == 'E') tmpcode = EUC;
-#ifdef	_NOKANJIFCONV
+# if	FD < 2
 				else if (c == 'J') tmpcode = JIS7;
-#else
+# else
 				else if (c == '7') tmpcode = JIS7;
 				else if (c == '8') tmpcode = JIS8;
 				else if (c == 'J') tmpcode = JUNET;
 				else if (c == 'H') tmpcode = HEX;
 				else if (c == 'C') tmpcode = CAP;
 				else if (c == 'U') tmpcode = UTF8;
-#endif
+# endif
 				else {
 					line[j++] = command[i];
 					break;
@@ -352,6 +366,12 @@ int ignorelist;
 #endif
 
 	if (!(flags & F_ARGSET)) {
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+		char conv[MAXPATHLEN];
+
+		arg = kanjiconv2(conv, arg, MAXPATHLEN - 1,
+			DEFCODE, getkcode(arg));
+#endif
 		line[j++] = ' ';
 		cp = malloc2(strlen(arg) + 2 + 1);
 		cp[0] = '.';
@@ -530,11 +550,13 @@ int noconf, ignorelist;
 	while (*command == ' ' || *command == '\t') command++;
 	if ((cp = evalalias(command))) command = cp;
 
+	sigvecreset();
 	if ((n = execpseudoshell(command, 1, ignorelist)) < 0) {
 		tmp = evalcomstr(command, CMDLINE_DELIM);
 		n = system2(tmp, noconf);
 		free(tmp);
 	}
+	sigvecset();
 	if (cp) free(cp);
 	return(n);
 }
@@ -576,7 +598,7 @@ int noconf, argset, ignorelist;
 				i = (stree -> comm) -> argc;
 				(stree -> comm) -> argc =
 					getsubst(i, argv, &subst, &len);
-				argv[0] = stripquote(argv[0], 1);
+				stripquote(argv[0], 1);
 				if (argv[0] && checkinternal(argv[0]) < 0)
 					st.flags = 0;
 				freevar(subst);
@@ -607,7 +629,7 @@ int noconf, argset, ignorelist;
 		tmp = NULL;
 		if (!argset) st.flags &= ~F_ARGSET;
 
-		if (r > ret && (ret = r) > 127) break;
+		if (r > ret && (ret = r) >= 127) break;
 		if (internal_status < -1) status = 4;
 		else if (internal_status > status) status = internal_status;
 
@@ -628,7 +650,7 @@ int noconf, argset, ignorelist;
 	else for (i = 0; i < max; i++) if (isarg(&(filelist[i]))) {
 		if (insertarg(buf, tmp, filelist[i].name, st.needmark)) {
 			r = system3(buf, noconf, ignorelist);
-			if (r > ret && (ret = r) > 127) break;
+			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status < -1) status = 4;
 			else if (internal_status > status)
 				status = internal_status;
@@ -692,7 +714,7 @@ int noconf, argset, ignorelist;
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
 			r = execmacro(cp, arg, noconf, argset, ignorelist);
 			free(cp);
-			if (r > ret && (ret = r) > 127) break;
+			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status < -1) status = 4;
 			else if (internal_status > status)
 				status = internal_status;
@@ -836,14 +858,24 @@ int *ptrp;
 
 	size = histsize[0];
 	if (str[*ptrp] == '!') n = 0;
+	else if (str[*ptrp] == '=' || strchr(IFS_SET, str[*ptrp])) {
+		*ptrp = -1;
+		return(NULL);
+	}
 	else if ((cp = evalnumeric(&(str[*ptrp]), &n, -1))) {
 		if (n < 0) n--;
 		else n = histno[0] - n;
 		*ptrp = cp - str - 1;
 	}
 	else {
-		for (i = 0; str[*ptrp + i]; i++)
-			if (strchr(IFS_SET, str[*ptrp + i])) break;
+		for (i = 0; str[*ptrp + i]; i++) {
+			if (strchr(CMDLINE_DELIM, str[*ptrp + i])) break;
+			if (iskanji1(str, *ptrp + i)) i++;
+		}
+		if (!i) {
+			*ptrp = -1;
+			return(NULL);
+		}
 		for (n = 0; n < size; n++) {
 			if (!history[0][n]) break;
 			cp = skipspace(history[0][n]);
@@ -877,6 +909,11 @@ char *command;
 		else if (command[i] == '!') {
 			len = i++;
 			if (!(tmp = parsehist(command, &i))) {
+				if (i < 0) {
+					cp[j] = '!';
+					i = len;
+					continue;
+				}
 				command[++i] = '\0';
 				fputs(&(command[len]), stderr);
 				fputs(": Event not found.\n", stderr);

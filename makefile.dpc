@@ -3,6 +3,7 @@
 #
 
 TITLE	= FD-
+VERSION	= 1
 PREFIX	= \usr\local
 MANSEC	= 1
 TOPDIR	= $(PREFIX)
@@ -14,6 +15,7 @@ DOSRC	= ~FD\\fdrc
 UNITBL	= fd-unicd.tbl
 INSTALL	= copy
 CHMOD	= chmod
+LN	= copy
 
 SRC	= main.c term.c pathname.c \
 	dosdisk.c dosemu.c mkunitbl.c \
@@ -48,6 +50,7 @@ SOURCES	= $(JSRCS) $(ESRCS)
 CC	= gcc
 SED	= sed
 PROGRAM	= fd
+FDSHELL	= fdsh
 OBJ1	= main.o term.o pathname.o \
 	dosdisk.o unixemu.o unixdisk.o
 OBJ2	= libc.o file.o apply.o \
@@ -81,10 +84,10 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main.o: main.c
-	$(CC) -DFD=1 $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"' $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"' $*.c
 
 .c.o:
-	$(CC) -DFD=1 $(CFLAGS)  $(CPPFLAGS) -c -o $@ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
@@ -125,7 +128,7 @@ funcno.h: mkfuncno.exe
 	.\mkfuncno.exe $@
 
 mkfuncno.exe: mkfuncno.c functabl.h fd.h config.h
-	$(CC) $(CFLAGS) -o $@ mkfuncno.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -o $@ mkfuncno.c
 #	@ren $@ mkfuncno
 #	@aout2exe mkfuncno
 #	@del mkfuncno
@@ -185,6 +188,7 @@ compman-b: catman-b
 depend: $(SRC) kanji.h funcno.h
 	mv Makefile.in Makefile.in.bak
 	makedepend -s "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+		-DFD=$(VERSION) \
 		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
 	rm -f Makefile.tmp.bak
 	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' Makefile.in.bak\
@@ -253,8 +257,9 @@ main.o: kanji.h version.h
 main.o: dosdisk.h
 term.o: machine.h config.h
 term.o: term.h
+pathname.o: fd.h
 pathname.o: machine.h config.h
-pathname.o: pathname.h
+pathname.o: types.h pathname.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
 dosemu.o: fd.h
@@ -343,4 +348,6 @@ browse.o: kanji.h
 mkfuncno.o: fd.h
 mkfuncno.o: machine.h config.h
 mkfuncno.o: types.h pathname.h functabl.h
+mkmfsed.o: fd.h
 mkmfsed.o: machine.h config.h
+mkmfsed.o: types.h pathname.h

@@ -141,6 +141,13 @@ int plus;
 	return(cp);
 }
 
+/*
+ *	ascnumeric(buf, n, 0, max): same as sprintf(buf, "%d", n)
+ *	ascnumeric(buf, n, max, max): same as sprintf(buf, "%*d", max, n)
+ *	ascnumeric(buf, n, -1, max): same as sprintf(buf, "%-*d", max, n)
+ *	ascnumeric(buf, n, x, max): like as sprintf(buf, "%*d", max, n)
+ *	ascnumeric(buf, n, -x, max): like as sprintf(buf, "%-*d", max, n)
+ */
 char *ascnumeric(buf, n, digit, max)
 char *buf;
 long n;
@@ -206,8 +213,13 @@ int evaldq;
 			if (*cp == PMETA && strchr(c, *cp)) return(cp - 1);
 			continue;
 		}
+# if	MSDOS
+		else if (quote == '"' && !evaldq) continue;
+		else if (*cp == '\'' || *cp == '"') {
+# else
 		else if (quote == '`' || (quote == '"' && !evaldq)) continue;
 		else if (*cp == '\'' || *cp == '"' || *cp == '`') {
+# endif
 			quote = *cp;
 			continue;
 		}
@@ -462,7 +474,7 @@ char *buf, *path, *plist;
 		if (onkanji1(cp, len - 1)) len++;
 #endif
 		if (len > 0 && !strnpathcmp(buf, cp, len)
-		&& (!buf[len] || buf[len] == _SC_)) return(path);
+		&& (!buf[len] || buf[len] == _SC_)) return(cp);
 	}
 	return(NULL);
 }
@@ -478,7 +490,7 @@ char **var;
 	}
 }
 
-#ifndef	_NOARCHIVE
+#if	(FD < 2) && !defined (_NOARCHIVE)
 char *getrange(cp, fp, dp, wp)
 char *cp;
 u_char *fp, *dp, *wp;
@@ -513,7 +525,7 @@ u_char *fp, *dp, *wp;
 	}
 	return(cp);
 }
-#endif
+#endif	/* (FD < 2) && !_NOARCHIVE */
 
 int evalprompt(buf, prompt, max)
 char *buf, *prompt;
@@ -677,10 +689,19 @@ int max;
 }
 
 #ifndef	_NOARCHIVE
-char *getext(ext)
+/*ARGSUSED*/
+char *getext(ext, flagsp)
 char *ext;
+int *flagsp;
 {
 	char *tmp;
+
+	if (*ext == '/') {
+		ext++;
+# if	!MSDOS
+		*flagsp |= LF_IGNORECASE;
+# endif
+	}
 
 	if (*ext == '*') tmp = strdup2(ext);
 	else {
@@ -691,14 +712,21 @@ char *ext;
 	return(tmp);
 }
 
-int extcmp(s, ext)
-char *s, *ext;
+/*ARGSUSED*/
+int extcmp(ext1, flags1, ext2, flags2, strict)
+char *ext1;
+int flags1;
+char *ext2;
+int flags2, strict;
 {
-	if (*s != '*' && *ext == '*') {
-		ext++;
-		if (*s != '.' && *ext == '.') ext++;
-	}
-	return(strpathcmp(s, ext));
+	if (*ext1 == '*') ext1++;
+	if (*ext2 == '*') ext2++;
+	if (!strict && *ext1 != '.' && *ext2 == '.') ext2++;
+# if	!MSDOS
+	if ((flags1 & LF_IGNORECASE) || (flags2 & LF_IGNORECASE))
+		return(strcasecmp2(ext1, ext2));
+# endif
+	return(strpathcmp(ext1, ext2));
 }
 #endif	/* !_NOARCHIVE */
 
@@ -783,22 +811,26 @@ int c, tenkey;
 		for (j = 0; j < KEYIDENTSIZ; j++)
 			if ((u_short)(c) == keyidentlist[j].no) break;
 		if (j < KEYIDENTSIZ) {
-			if (tenkey || c <= ' ' || c == C_DEL
+			if (tenkey || c == ' ' || isctl(c)
 			|| keyidentlist[j].no >= K_MIN)
 				return(keyidentlist[j].str);
 		}
 
-		if (isprint(c)) buf[i++] = c;
-		else if (c < ' ' || c == C_DEL) {
+#ifndef	CODEEUC
+		if (iskna(c)) buf[i++] = c;
+		else
+#endif
+		if (isctl(c)) {
 			buf[i++] = '^';
 			buf[i++] = (c + '@') & 0x7f;
 		}
-		else {
+		else if (ismsb(c)) {
 			buf[i++] = '\\';
 			buf[i++] = (c / (8 * 8)) + '0';
 			buf[i++] = ((c % (8 * 8)) / 8) + '0';
 			buf[i++] = (c % 8) + '0';
 		}
+		else buf[i++] = c;
 	}
 	buf[i] = '\0';
 	return(buf);
@@ -850,27 +882,42 @@ char *s;
 int len;
 {
 	char *cp;
-	int i, j, c, n;
+	int i, j, n;
 
 	cp = malloc2(len * 4 + 1);
 	j = 0;
 	if (s) for (i = 0; i < len; i++) {
-		if (isprint(s[i])) {
-			cp[j++] = s[i];
+#ifdef	CODEEUC
+		if (isekana(s, i)) cp[j++] = s[i++];
+		else
+#else
+		if (iskna(s[i]));
+		else
+#endif
+		if (iskanji1(s, i)) cp[j++] = s[i++];
+		else if (isctl(s[i]) || ismsb(s[i])) {
+			for (n = 0; escapechar[n]; n++)
+				if (s[i] == escapevalue[n]) break;
+			if (escapechar[n]) {
+				cp[j++] = '\\';
+				cp[j++] = escapechar[n];
+			}
+			else if (isctl(s[i])) {
+				cp[j++] = '^';
+				cp[j++] = ((s[i] + '@') & 0x7f);
+			}
+			else {
+				int c;
+
+				c = s[i] & 0xff;
+				cp[j++] = '\\';
+				cp[j++] = (c / (8 * 8)) + '0';
+				cp[j++] = ((c % (8 * 8)) / 8) + '0';
+				cp[j++] = (c % 8) + '0';
+			}
 			continue;
 		}
-		cp[j++] = '\\';
-		for (n = 0; escapechar[n]; n++)
-			if (s[i] == escapevalue[n]) break;
-		if (escapechar[n]) cp[j++] = escapechar[n];
-		else {
-			c = s[i];
-			for (n = 2; n >= 0; n--) {
-				cp[j + n] = (c & 7) + '0';
-				c >>= 3;
-			}
-			j += 3;
-		}
+		cp[j++] = s[i];
 	}
 	cp[j] = '\0';
 	return(cp);

@@ -43,6 +43,7 @@ extern u_char kctypetable[256];
 # define	isjis(c)	(kctypetable[(u_char)(c)] & KC_JIS)
 # endif
 #endif	/* !LSI_C */
+#define	ismsb(c)	(((u_char)(c)) & 0x80)
 
 #define	isekana(s, i)	((u_char)((s)[i]) == 0x8e && iskna((s)[(i) + 1]))
 #define	isskana(s, i)	iskna((s)[i])
@@ -93,15 +94,19 @@ extern int fnamekcode;
 
 #if	MSDOS
 #define	isinkanji1(c)	issjis1(c)
+#define	isinkanji2(c)	issjis2(c)
 #else	/* !MSDOS */
 
 #ifdef	_NOKANJICONV
 # ifdef	CODEEUC
 # define	isinkanji1(c)	iseuc(c)
+# define	isinkanji2(c)	iseuc(c)
 # else
 # define	isinkanji1(c)	issjis1(c)
+# define	isinkanji2(c)	issjis2(c)
 # endif
 #else	/* !_NOKANJICONV */
 #define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : issjis1(c))
+#define	isinkanji2(c)	((inputkcode == EUC) ? iseuc(c) : issjis2(c))
 #endif	/* !_NOKANJICONV */
 #endif	/* !MSDOS */

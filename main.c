@@ -58,7 +58,9 @@ extern unsigned _stklen = 0x6800;
 
 #define	sigcst_t	sigarg_t (*)__P_((sigfnc_t))
 
+#ifdef	_NOORIGSHELL
 extern char **environ;
+#endif
 extern bindtable bindlist[];
 #ifndef	_NOARCHIVE
 extern launchtable launchlist[];
@@ -73,6 +75,9 @@ extern int subwindow;
 extern int win_x;
 extern int win_y;
 extern char *deftmpdir;
+#ifndef	_NODOSDRIVE
+extern char *unitblpath;
+#endif
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -166,7 +171,7 @@ static int NEAR doexec __P_((char *, char *, int, char *));
 static int NEAR initoption __P_((int, char *[], char *[]));
 static int NEAR evaloption __P_((char *[]));
 static VOID NEAR setexecname __P_((char *));
-static VOID NEAR setexecpath __P_((char *));
+static VOID NEAR setexecpath __P_((char *, char *[]));
 
 char *origpath = NULL;
 char *progpath = NULL;
@@ -186,6 +191,7 @@ bindtable *origbindlist = NULL;
 keymaptable *origkeymaplist = NULL;
 # endif
 #endif
+int inruncom = 0;
 
 static int timersec = 0;
 
@@ -218,6 +224,12 @@ char *s;
 	fputc('\007', stderr);
 	errno = duperrno;
 	perror(s);
+#ifndef	_NOORIGSHELL
+# if	!MSDOS && !defined (NOJOB)
+	killjob();
+# endif
+	prepareexit();
+#endif
 	exit(2);
 }
 
@@ -229,6 +241,7 @@ int sig;
 #ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
+	endterm();
 	inittty(1);
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);
@@ -449,7 +462,6 @@ static int printtime(VOID_A)
 
 VOID sigvecset(VOID_A)
 {
-	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
 #ifdef	SIGALRM
 	signal(SIGALRM, (sigcst_t)printtime);
 #endif
@@ -611,12 +623,10 @@ int exist;
 	free(tmp);
 #else	/* !_NOORIGSHELL */
 	file = evalpath(strdup2(file), 1);
-	sigvecreset();
 	stdiomode();
 	er = execruncom(file, 1);
-	free(file);
 	ttyiomode();
-	sigvecset();
+	free(file);
 #endif	/* !_NOORIGSHELL */
 
 	return(er ? -1 : 0);
@@ -653,8 +663,11 @@ char *argv[], *envp[];
 		}
 	}
 
-#ifndef	_NOORIGSHELL
-	if ((fd_restricted = initshell(optc, optv, envp)) < 0) exit(RET_FAIL);
+#ifdef	_NOORIGSHELL
+	inittty(0);
+	getterment();
+#else
+	if ((fd_restricted = initshell(optc, optv, envp)) < 0) exit2(RET_FAIL);
 #endif	/* !_NOORIGSHELL */
 	free(optv);
 	return(argc);
@@ -698,8 +711,8 @@ char *argv;
 	tmpfilename = strdup2(buf);
 }
 
-static VOID NEAR setexecpath(argv)
-char *argv;
+static VOID NEAR setexecpath(argv, envp)
+char *argv, *envp[];
 {
 	char *cp, buf[MAXPATHLEN];
 
@@ -710,7 +723,15 @@ char *argv;
 	cp = argv;
 #else
 	if (strdelim(argv, 0)) cp = argv;
-	else cp = searchpath(argv);
+	else {
+		int i;
+
+		for (i = 0; envp[i]; i++)
+			if (!strncmp(envp[i], "PATH=", sizeof("PATH=") - 1))
+				break;
+		if (!envp[i]) cp = NULL;
+		else cp = searchpath(argv, envp[i] + sizeof("PATH=") - 1);
+	}
 	if (!cp) progpath = strdup2(origpath);
 	else
 #endif
@@ -726,7 +747,9 @@ int main(argc, argv, envp)
 int argc;
 char *argv[], *envp[];
 {
-	char **ep;
+#ifndef	_NOORIGSHELL
+	char *cp;
+#endif
 	int i;
 
 #ifdef	DEBUG
@@ -818,19 +841,18 @@ char *argv[], *envp[];
 	}
 #endif
 
+#ifdef	_NOORIGSHELL
 	for (i = 0; envp[i]; i++);
-	ep = (char **)malloc2((i + 1) * sizeof(char *));
-	for (i = 0; envp[i]; i++) ep[i] = strdup2(envp[i]);
-	ep[i] = NULL;
-	environ = ep;
+	environ = (char **)malloc2((i + 1) * sizeof(char *));
+	for (i = 0; envp[i]; i++) environ[i] = strdup2(envp[i]);
+	environ[i] = NULL;
+#endif
 
-	setexecpath(argv[0]);
+	setexecpath(argv[0], envp);
 #ifndef	_NODOSDRIVE
 	unitblpath = progpath;
 #endif
 
-	inittty(0);
-	getterment();
 #ifndef	_NOCUSTOMIZE
 	orighelpindex = copystrarray(NULL, helpindex, NULL, 10);
 	origbindlist = copybind(NULL, bindlist);
@@ -840,20 +862,30 @@ char *argv[], *envp[];
 #endif	/* !_NOCUSTOMIZE */
 
 #ifndef	_NOORIGSHELL
-	if (!strpathcmp(progname, "fdsh")) {
+	cp = progname;
+	if (*cp == '-') cp++;
+# if	MSDOS
+	if (*cp == 'r' || *cp == 'R') cp++;
+# else
+	if (*cp == 'r') cp++;
+# endif
+	if (!strpathcmp(cp, FDSHELL)) {
 		if (!Xgetwd(fullpath)) exit(1);
 		exit2(main_shell(argc, argv, envp));
 	}
 #endif
 
-	sigvecset();
 	argc = initoption(argc, argv, envp);
 	ttyiomode();
 	initterm();
 	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
 
+	locate(0, n_line - 1);
+	inruncom = 1;
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);
+	inruncom = 0;
+	sigvecset();
 	if (i < 0) {
 		hideclock = 1;
 		warning(0, HITKY_K);
@@ -887,7 +919,9 @@ char *argv[], *envp[];
 
 #ifdef	DEBUG
 	free(tmpfilename);
+# ifdef	_NOORIGSHELL
 	freeenv();
+# endif
 # ifndef	_NOCUSTOMIZE
 	freevar(orighelpindex);
 	free(origbindlist);
@@ -908,6 +942,9 @@ char *argv[], *envp[];
 #endif
 	stdiomode();
 #ifndef	_NOORIGSHELL
+# if	!MSDOS && !defined (NOJOB)
+	killjob();
+# endif
 	prepareexit();
 #endif
 	exit2(0);

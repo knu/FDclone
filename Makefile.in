@@ -3,17 +3,19 @@
 #
 
 TITLE	= FD-
+VERSION	= __VERSION__
 PREFIX	= /usr/local
 MANSEC	= 1
 TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)/bin
 MANDIR	= $(TOPDIR)/man__LANGDIR__/man$(MANSEC)
 CATDIR	= $(TOPDIR)/man__LANGDIR__/cat$(MANSEC)
-DEFRC	= /etc/fdrc
-DOSRC	= ~FD\\fdrc
+DEFRC	= /etc/fd__RCVERSION__rc
+DOSRC	= ~FD\\fd__RCVERSION__rc
 UNITBL	= fd-unicd.tbl
 INSTALL	= __INSTALL__
 CHMOD	= chmod
+LN	= __LN__
 
 SRC	= main.c term.c pathname.c \
 	dosdisk.c dosemu.c mkunitbl.c \
@@ -48,6 +50,7 @@ SOURCES	= $(JSRCS) $(ESRCS)
 CC	= __CC__
 SED	= sed
 PROGRAM	= fd
+FDSHELL	= fdsh
 OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ \
 	dosdisk__OBJ__ __OBJS__
 OBJ2	= libc__OBJ__ file__OBJ__ apply__OBJ__ \
@@ -81,10 +84,10 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main__OBJ__: main.c
-	$(CC) -DFD=1 $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ $*.c
 
 .c__OBJ__:
-	$(CC) -DFD=1 $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ $*.c
 
 
 ############################################################
@@ -125,7 +128,7 @@ funcno.h: mkfuncno__EXE__
 	./mkfuncno__EXE__ $@
 
 mkfuncno__EXE__: mkfuncno.c functabl.h fd.h config.h
-	$(CC) $(CFLAGS) __LNK__ mkfuncno.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) __LNK__ mkfuncno.c
 	__RENAME__ $@ mkfuncno
 	__AOUT2EXE__ mkfuncno
 	__REMOVE__ mkfuncno
@@ -185,6 +188,7 @@ compman-b: catman-b
 depend: $(SRC) kanji.h funcno.h
 	mv Makefile.in Makefile.in.bak
 	makedepend -s "# DO NOT DELETE THIS LINE -- make depend depends on it."\
+		-DFD=$(VERSION) \
 		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
 	rm -f Makefile.tmp.bak
 	$(SED) -e '/^# DO NOT DELETE THIS LINE/,$$d' Makefile.in.bak\
@@ -253,8 +257,9 @@ main__OBJ__: kanji.h version.h
 main__OBJ__: dosdisk.h
 term__OBJ__: machine.h config.h
 term__OBJ__: term.h
+pathname__OBJ__: fd.h
 pathname__OBJ__: machine.h config.h
-pathname__OBJ__: pathname.h
+pathname__OBJ__: types.h pathname.h
 dosdisk__OBJ__: machine.h config.h
 dosdisk__OBJ__: dosdisk.h
 dosemu__OBJ__: fd.h
@@ -343,4 +348,6 @@ browse__OBJ__: kanji.h
 mkfuncno__OBJ__: fd.h
 mkfuncno__OBJ__: machine.h config.h
 mkfuncno__OBJ__: types.h pathname.h functabl.h
+mkmfsed__OBJ__: fd.h
 mkmfsed__OBJ__: machine.h config.h
+mkmfsed__OBJ__: types.h pathname.h

@@ -45,12 +45,15 @@ extern char *_mtrace_file;
 #endif
 
 #if	MSDOS && defined (_NOORIGSHELL)
+/*	Using COMMAND.COM */
 #define	SHELL_OPERAND	"|"
-#define	CMDLINE_DELIM	"\t ;<>|"
+#define	CMDLINE_DELIM	"\t\n <>|"
 #else
 #define	SHELL_OPERAND	"&;(`|"
-#define	CMDLINE_DELIM	"\t &;()<>`|"
+#define	CMDLINE_DELIM	"\t\n &;()<>|"
 #endif
+
+#define	FDSHELL		"fdsh"
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*

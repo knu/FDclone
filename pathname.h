@@ -89,6 +89,7 @@ typedef struct _hashlist {
 #define	CM_BATCH	0010
 #define	CM_EXE		0020
 #define	CM_ADDEXT	0040
+#define	CM_RECALC	0100
 
 #if	!MSDOS
 typedef struct _devino_t {
@@ -128,9 +129,11 @@ extern char *strcatdelim2 __P_((char *, char *, char *));
 #if	MSDOS
 #define	strnpathcmp	strnpathcmp2
 #define	strpathcmp	strpathcmp2
+#define	strcasecmp2	stricmp
 #else
 #define	strnpathcmp	strncmp
 #define	strpathcmp	strcmp
+extern int strcasecmp2 __P_((char *, char *));
 #endif
 extern int strpathcmp2 __P_((char *, char *));
 extern int strnpathcmp2 __P_((char *, char *, int));
@@ -143,8 +146,8 @@ extern char **evalwild __P_((char *));
 VOID freehash __P_((hashlist **));
 hashlist **duplhash __P_((hashlist **));
 #endif
-extern int searchhash __P_((hashlist **, char *));
-extern char *searchpath __P_((char *));
+extern int searchhash __P_((hashlist **, char *, char *));
+extern char *searchpath __P_((char *, char *));
 #ifndef	_NOCOMPLETE
 extern char *finddupl __P_((char *, int, char **));
 extern int completepath __P_((char *, int, int, char ***, int));
@@ -162,7 +165,7 @@ extern char *gethomedir __P_((VOID_A));
 extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, char *, int));
 extern int evalglob __P_((int, char ***, int, int));
-extern char *stripquote __P_((char *, int));
+extern int stripquote __P_((char *, int));
 extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));
 
