@@ -12,10 +12,11 @@
 #define	KANA	1
 #define	KANJI	2
 
-#ifndef	CPP7BIT
-#define	fputs2	fputs
-#else
+#ifdef	CPP7BIT
 static int fputs2();
+static int through;
+#else
+#define	fputs2	fputs
 #endif
 
 static unsigned char *convert();
@@ -29,6 +30,7 @@ FILE *fp;
 {
 	unsigned char c;
 
+	if (through) return(fputs(s, fp));
 	while (c = *(unsigned char *)(s++)) {
 		if (c & 0x80) fprintf(fp, "\\%o", c);
 		else fputc(c, fp);
@@ -94,8 +96,13 @@ int argc;
 char *argv[];
 {
 	FILE *in, *out;
-	int mode, esc, kanji;
-	int c;
+	int c, mode, esc, kanji;
+
+#ifdef	CPP7BIT
+	char *cp;
+
+	through = ((cp = strrchr(argv[2], '.')) && !strcmp(++cp, "h")) ? 0 : 1;
+#endif
 
 	in = fopen(argv[1], "r");
 	out = fopen(argv[2], "w");

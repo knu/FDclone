@@ -64,8 +64,6 @@ launchtable launchlist[MAXLAUNCHTABLE] = {
 	{"^.*\\.tar$",		"tar tvf", 		PM_TAR},
 	{"^.*\\.tar\\.Z$",	"zcat %C | tar tvf -",	PM_TAR},
 	{"^.*\\.tar\\.gz$",	"gunzip -c %C | tar tvf -", PM_TAR},
-	{"^.*\\.Z$",		"zcat %C | $PAGER",	-1, 0, "", "", "", ""},
-	{"^.*\\.gz$",		"gunzip -c %C | $PAGER",-1, 0, "", "", "", ""},
 	{NULL,			NULL,			-1, 0, "", "", "", ""}
 };
 archivetable archivelist[MAXARCHIVETABLE] = {
@@ -80,6 +78,7 @@ archivetable archivelist[MAXARCHIVETABLE] = {
 
 static namelist *arcflist;
 static int maxarcf;
+static int launchlevel = 0;
 
 static int countfield(line, sep, field)
 char *line, *sep;
@@ -326,10 +325,11 @@ int *maxarcentp;
 	for (i = 0; i < list -> topskip; i++)
 		if (!fgets(line, MAXLINESTR, fp)) break;
 
-	maxarcf = curdir = 0;
+	maxarcf = curdir = no = 0;
 	while (fgets(line, MAXLINESTR, fp)) {
+		no++;
 		if (cp = strchr(line, '\n')) *cp = '\0';
-		if (!(tmp = readfileent(line, list, max))) break;
+		if (!(tmp = readfileent(line, list, max))) continue;
 
 		if (!curdir
 		&& (!*archivedir || !strcmp(archivedir, "."))
@@ -357,7 +357,7 @@ int *maxarcentp;
 			arcflist = (namelist *)addlist(arcflist, maxarcf,
 				maxarcentp, sizeof(namelist));
 			memcpy(&arcflist[maxarcf], tmp, sizeof(namelist));
-			arcflist[maxarcf].ent = maxarcf;
+			arcflist[maxarcf].ent = no;
 			maxarcf++;
 		}
 		free(tmp);
@@ -365,9 +365,11 @@ int *maxarcentp;
 	pclose(fp);
 	if (re) regexp_free(re);
 	for (i = 0; i < list -> bottomskip; i++) {
-		if (--maxarcf < 0) break;
-		free(arcflist[maxarcf].name);
+		if (maxarcf < 1
+		|| arcflist[maxarcf - 1].ent <= no - list -> bottomskip) break;
+		free(arcflist[--maxarcf].name);
 	}
+	for (i = 0; i < maxarcf; i++) arcflist[i].ent = i;
 	if (maxarcf <= 0) {
 		maxarcf = 0;
 		arcflist = (namelist *)addlist(arcflist, 0,
@@ -448,8 +450,10 @@ namelist *list;
 int max;
 {
 	reg_t *re;
+	namelist *duparcflist;
+	char *dupfullpath, *duparchivefile, *duparchivedir;
 	char *dir, *dupfindpat, path[MAXPATHLEN + 1], file[MAXNAMLEN + 1];
-	int i, dupfilepos, dupsorton, maxarcent;
+	int i, dupmaxarcf, dupfilepos, dupsorton, maxarcent;
 
 	for (i = 0; i < maxlaunch; i++) {
 		re = regexp_init(launchlist[i].ext);
@@ -459,41 +463,60 @@ int max;
 	if (i >= maxlaunch) return(-1);
 	regexp_free(re);
 
-	if (archivefile) {
-		if (launchlist[i].topskip >= 0 ||
-		!(dir = tmpunpack(list, max))) {
-			putterm(t_bell);
-			return(1);
-		}
-		execmacro(launchlist[i].comm, list[filepos].name,
-			NULL, 0, -1, 0);
-		removetmp(dir, list[filepos].name);
-		return(0);
+	if (archivefile && !(dir = tmpunpack(list, max))) {
+		putterm(t_bell);
+		return(1);
 	}
 	if (launchlist[i].topskip < 0) {
 		execmacro(launchlist[i].comm, list[filepos].name,
-			NULL, 0, -1, 0);
+			NULL, 0, 1, 0);
+		if (archivefile) removetmp(dir, list[filepos].name);
 		return(0);
 	}
+
+	if (archivefile) {
+		dupfullpath = strdup2(fullpath);
+		strcpy(fullpath, dir);
+		if (*archivedir) {
+			strcat(fullpath, "/");
+			strcat(fullpath, archivedir);
+		}
+		if (chdir(fullpath) < 0) error(fullpath);
+	}
+	duparchivefile = archivefile;
+	duparchivedir = archivedir;
+	duparcflist = arcflist;
+	dupmaxarcf = maxarcf;
+	dupfilepos = filepos;
+	dupfindpat = findpattern;
+	dupsorton = sorton;
 
 	archivefile = list[filepos].name;
 	archivedir = path;
 	arcflist = NULL;
 	maxarcent = 0;
-	dupfilepos = filepos;
-	dupfindpat = findpattern;
-	dupsorton = sorton;
 	findpattern = NULL;
 	sorton = 0;
 
 	*path = *file = '\0';
+	launchlevel++;
 	while (archbrowse(file, &launchlist[i], &maxarcent) >= 0);
-
-	archivefile = NULL;
+	launchlevel--;
 	free(arcflist);
+
+	archivefile = duparchivefile;
+	archivedir = duparchivedir;
+	arcflist = duparcflist;
+	maxarcf = dupmaxarcf;
 	filepos = dupfilepos;
 	findpattern = dupfindpat;
 	sorton = dupsorton;
+
+	if (archivefile) {
+		strcpy(fullpath, dupfullpath);
+		free(dupfullpath);
+		removetmp(dir, list[filepos].name);
+	}
 
 	return(0);
 }
@@ -580,7 +603,7 @@ int max;
 	int i, dupmark;
 
 	if (!(cp = getenv2("FD_TMPDIR"))) cp = TMPDIR;
-	sprintf(path, "%s/fd.%d", cp, getpid());
+	sprintf(path, "%s/fd%d.%d", cp, getpid(), launchlevel);
 	if (mkdir(path, 0777) < 0) {
 		warning(-1, path);
 		return(NULL);

@@ -38,6 +38,9 @@ typedef struct fstab	mnt_t;
 
 #ifdef	USEMNTCTL
 #include <fshelp.h>
+#include <sys/vfs.h>
+#include <sys/mntctl.h>
+#include <sys/vmount.h>
 #endif
 
 #ifdef	USEMNTINFO
@@ -57,7 +60,7 @@ typedef struct _mnt_t {
 } mnt_t;
 static FILE *setmntent();
 static mnt_t *getmntent2();
-#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_mntopts, opt)
+#define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
 #define	endmntent		free
 static int mnt_ptr;
 static int mnt_size;
@@ -101,11 +104,12 @@ typedef struct fs_data	statfs_t;
 typedef struct statfs	statfs_t;
 # if (STATFSARGS >= 4)
 # define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-# endif
-# if (STATFSARGS >= 3)
-# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
 # else
-# define	statfs2			statfs
+#  if (STATFSARGS >= 3)
+#  define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
+#  else
+#  define	statfs2			statfs
+#  endif
 # endif
 #endif	/* USESTATFS */
 
@@ -131,17 +135,24 @@ extern char fullpath[];
 #ifndef	MOUNTED
 #define	MOUNTED		"/etc/mtab"
 #endif
+
 #ifndef	MNTTYPE_43
-#define	MNTTYPE_43	"4.3"
+#define	MNTTYPE_43	"4.3"	/* NEWS-OS 3-4, HP-UX, HI-UX */
 #endif
 #ifndef	MNTTYPE_42
-#define	MNTTYPE_42	"4.2"
+#define	MNTTYPE_42	"4.2"	/* SunOS 4 */
 #endif
 #ifndef	MNTTYPE_UFS
-#define	MNTTYPE_UFS	"ufs"
+#define	MNTTYPE_UFS	"ufs"	/* SVR4, OSF/1, FreeBSD, NetBSD */
+#endif
+#ifndef	MNTTYPE_EXT2
+#define	MNTTYPE_EXT2	"ext2"	/* Linux */
+#endif
+#ifndef	MNTTYPE_JFS
+#define	MNTTYPE_JFS	"jfs"	/* AIX */
 #endif
 #ifndef	MNTTYPE_EFS
-#define	MNTTYPE_EFS	"efs"
+#define	MNTTYPE_EFS	"efs"	/* IRIX */
 #endif
 
 static int code2str();
@@ -277,7 +288,7 @@ char *file, *mode;
 {
 	char *buf;
 
-	mntctl(MCTL_QUERY, sizeof(int) (struct vmount *)(&mnt_size);
+	mntctl(MCTL_QUERY, sizeof(int), (struct vmount *)(&mnt_size);
 	buf = (char *)malloc2(mnt_size);
 	mntctl(MCTL_QUERY, mnt_size, (struct vmount *)buf);
 	mnt_ptr = 0;
@@ -304,11 +315,11 @@ mnt_t *mntp;
 	cp = &buf[mnt_ptr + vmntp -> vmt_data[VMT_OBJECT].vmt_off];
 	len = strlen(cp) + 1;
 	if (!(vmntp -> vmt_flags & MNT_REMOTE))
-		*(fsname = realloc2(fsname, len)) = '\0';
+		*(fsname = (char *)realloc2(fsname, len)) = '\0';
 	else {
 		host = &buf[mnt_ptr + vmntp -> vmt_data[VMT_HOSTNAME].vmt_off];
 		len += strlen(host) + 1;
-		fsname = realloc2(fsname, len);
+		fsname = (char *)realloc2(fsname, len);
 		strcpy(fsname, host);
 		strcat(fsname, ":");
 	}
@@ -316,14 +327,14 @@ mnt_t *mntp;
 
 	cp = &buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off];
 	len = strlen(cp) + 1;
-	dir = realloc2(dir, len);
+	dir = (char *)realloc2(dir, len);
 	strcpy(dir, cp);
 
 	entp = getvfsbytype(vmntp -> vmt_gfstype);
 	if (entp) {
 		cp = entp -> vfsent_name;
 		len = strlen(cp) + 1;
-		type = realloc2(type, len);
+		type = (char *)realloc2(type, len);
 		strcpy(type, cp);
 	}
 	else if (type) {
@@ -334,7 +345,7 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = type;
-	mntp -> mnt_opts = opts;
+	mntp -> mnt_opts = (opts) ? opts : "";
 
 	mnt_ptr += vmntp -> vmt_length;
 	return(mntp);
@@ -369,17 +380,17 @@ mnt_t *mntp;
 	ptr = (struct statfs *)fp;
 
 	len = strlen(buf[mnt_ptr] -> f_mntfromname) + 1;
-	fsname = realloc2(fsname, len);
+	fsname = (char *)realloc2(fsname, len);
 	strcpy(fsname, buf[mnt_ptr] -> f_mntfromname);
 
 	len = strlen(buf[mnt_ptr] -> f_mntonname) + 1;
-	dir = realloc2(dir, len);
+	dir = (char *)realloc2(dir, len);
 	strcpy(dir, buf[mnt_ptr] -> f_mntonname);
 
 	cp = getvfsbynumber(buf[mnt_ptr] -> f_type);
 	if (cp) {
 		len = strlen(cp) + 1;
-		type = realloc2(type, len);
+		type = (char *)realloc2(type, len);
 		strcpy(type, cp);
 	}
 	else if (type) {
@@ -390,7 +401,7 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = type;
-	mntp -> mnt_opts = (buf[mnt_ptr] -> f_flags & M_RDONLY) ? "ro" : NULL;
+	mntp -> mnt_opts = (buf[mnt_ptr] -> f_flags & M_RDONLY) ? "ro" : "";
 
 	mnt_ptr++;
 	return(mntp);
@@ -402,7 +413,7 @@ static FILE *setmntent(file, mode)
 char *file, *mode;
 {
 	mnt_ptr = 0;
-	return(malloc2(1));
+	return(NULL);
 }
 
 static mnt_t *getmntent2(fp, mntp)
@@ -412,32 +423,34 @@ mnt_t *mntp;
 	static char *fsname = NULL;
 	static char *dir = NULL;
 	static char *type = NULL;
-	static char *opts = NULL;
 	struct fs_data buf;
 	int len;
 
 	if (getmnt(&mnt_ptr, &buf, sizeof(struct fs_data),
 		NOSTAT_MANY, NULL) <= 0) return(NULL);
 
-	len = strlen(buf.fdreq.devname) + 1;
-	fsname = realloc2(fsname, len);
-	strcpy(fsname, buf.fdreq.devname);
+	len = strlen(buf.fd_req.devname) + 1;
+	fsname = (char *)realloc2(fsname, len);
+	strcpy(fsname, buf.fd_req.devname);
 
-	len = strlen(buf.fdreq.path) + 1;
-	dir = realloc2(dir, len);
-	strcpy(dir, buf.fdreq.path);
+	len = strlen(buf.fd_req.path) + 1;
+	dir = (char *)realloc2(dir, len);
+	strcpy(dir, buf.fd_req.path);
 
-	len = strlen(gt_names[buf.fdreq.fstype]) + 1;
-	type = realloc2(type, len);
-	strcpy(type, gt_names[buf.fdreq.fstype]);
+	len = strlen(gt_names[buf.fd_req.fstype]) + 1;
+	type = (char *)realloc2(type, len);
+	strcpy(type, gt_names[buf.fd_req.fstype]);
 
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = type;
-	mntp -> mnt_opts = opts;
+	mntp -> mnt_opts = (buf.fd_req.fstype & M_RONLY) ? "ro" : "";
 
 	return(mntp);
 }
+
+#undef	endmntent
+#define	endmntent(fp)
 #endif	/* USEGETMNT */
 
 static int getfsinfo(path, fsbuf, mntbuf)
@@ -464,7 +477,9 @@ mnt_t *mntbuf;
 		fp = setmntent(MOUNTED, "r");
 		while (mntp = getmntent2(fp, &mnt)) {
 			if ((len = strlen(mntp -> mnt_dir)) < match
-			|| strncmp(mntp -> mnt_dir, dir, len)) continue;
+			|| strncmp(mntp -> mnt_dir, dir, len)
+			|| (mntp -> mnt_dir[len - 1] != '/'
+			&& dir[len] && dir[len] != '/')) continue;
 			match = len;
 			strcpy(fsname, mntp -> mnt_fsname);
 		}
@@ -493,12 +508,15 @@ char *path;
 
 	if (access(path, R_OK | W_OK | X_OK) < 0) return(-1);
 	if (!getfsinfo(path, &fsbuf, &mntbuf)
-	|| hasmntopt(&mntbuf, "ro")
-	|| (strcmp(mntbuf.mnt_type, MNTTYPE_43)
-	&& strcmp(mntbuf.mnt_type, MNTTYPE_42)
-	&& strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
-	&& strcmp(mntbuf.mnt_type, MNTTYPE_EFS))) return(0);
-	return(1);
+	|| hasmntopt(&mntbuf, "ro")) return(0);
+
+	if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_42)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_JFS)) return(1);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);
+	return(0);
 }
 
 static char *inscomma(buf, n, digit)

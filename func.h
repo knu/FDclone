@@ -17,8 +17,8 @@ extern int errno;
 /* main.c */
 extern VOID error();
 extern VOID usage();
-extern VOID sigset();
-extern VOID sigreset();
+extern VOID sigvecset();
+extern VOID sigvecreset();
 extern VOID title();
 extern int evalconfigline();
 extern int printmacro();
@@ -47,8 +47,8 @@ extern char *strncpy3();
 extern char *strstr();
 #endif
 extern int atoi2();
-#ifdef	NOPUTENV
-extern int putenv();
+#ifdef	USESETENV
+extern int putenv2();
 #endif
 extern int setenv2();
 extern char *getenv2();

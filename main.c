@@ -114,14 +114,14 @@ static VOID printtime()
 	signal(SIGALRM, printtime);
 }
 
-VOID sigset()
+VOID sigvecset()
 {
 	getwsize(80, WHEADER + WFOOTER + 2);
 	signal(SIGWINCH, wintr);
 	signal(SIGALRM, printtime);
 }
 
-VOID sigreset()
+VOID sigvecreset()
 {
 	signal(SIGWINCH, SIG_IGN);
 	signal(SIGALRM, SIG_IGN);
@@ -377,7 +377,7 @@ char *line;
 		tmp[len++] = '=';
 		if (cp) strcpy(tmp + len, cp);
 		cp = strdup2(tmp);
-		if (putenv(cp)) error(cp);
+		if (putenv2(cp)) error(cp);
 #endif
 	}
 	else if (isalpha(*line) || *line == '_') {
@@ -527,7 +527,7 @@ char *argv[];
 	tabs();
 	getterment();
 	initterm();
-	sigset();
+	sigvecset();
 
 	loadruncom(RUNCOMFILE);
 	i = getoption(argc, argv);

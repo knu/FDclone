@@ -313,8 +313,8 @@ char *str;
 	return((str && *str >= '0' && *str <= '9') ? atoi(str) : -1);
 }
 
-#ifdef	NOPUTENV
-int putenv(str)
+#ifndef	USESETENV
+int putenv2(str)
 char *str;
 {
 	extern char **environ;
@@ -413,7 +413,7 @@ int noconf;
 		putterms(t_nokeypad);
 		tflush();
 	}
-	sigreset();
+	sigvecreset();
 	cooked2();
 	echo2();
 	nl2();
@@ -421,7 +421,7 @@ int noconf;
 	raw2();
 	noecho2();
 	nonl2();
-	sigset();
+	sigvecset();
 	if (status > 127 || !noconf) warning(0, HITKY_K);
 	if (noconf >= 0) {
 		if (noconf) putterms(t_init);

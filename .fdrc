@@ -42,15 +42,22 @@ LANGUAGE	=	$LANG
 
 PAGER	=	/usr/local/bin/less
 EDITOR	=	/usr/ucb/vi
-export	LANG=C
+
+# for Mischievous Japanese OS (see `man fd')
+#export	LANG=C
+
+# for Strange Version EMACS (see `man fd')
+#export	PWD=
 
 # launcher definition
-#".lzh"		"lha l"			2,2:1,2-'/',2'/',3,0,5,6,7,8
+#".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,0,5,6,7,8
 #".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 #".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 #".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
-#".Z"		"zcat %C | $PAGER"
-#".gz"		"gunzip -c %C | $PAGER"
+".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
+".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
+".Z"		"zcat %C | $PAGER"
+".gz"		"gunzip -c %C | $PAGER"
 
 # example for SVR4
 #".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
@@ -62,6 +69,8 @@ export	LANG=C
 #".tar"		A "tar cf %C %T"		"tar xf %C %TA"
 #".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
 #".tar.gz"	A "tar cf %X %T; gzip %X"	"gunzip -c %C | tar xf - %TA"
+".zip"		A "zip -q %C %TA"		"unzip -q %C %TA"
+".zoo"		A "zoo aq %C %TA"		"zoo xq %C %TA"
 
 # key bind definition
 'I'	"ls -ld %C"

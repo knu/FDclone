@@ -43,7 +43,6 @@
 #  define	NOSTDLIBH
 #  define	USEDIRECT
 #  define	HAVETIMEZONE
-#  define	NOPUTENV
 #  define	NOSTRSTR
 #  define	USEGETWD
 #  endif
@@ -285,7 +284,6 @@
 /* #define USEREGCOMP	/* use regcomp() family as search */
 /* #define USEREGCMP	/* use regcmp() family as search */
 /* #define USESETENV	/* use setenv() instead of putenv() */
-/* #define NOPUTENV	/* have neither putenv() nor setenv() */
 /* #define NOSTRSTR	/* have not strstr() */
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */

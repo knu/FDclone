@@ -30,10 +30,16 @@ char *path;
 	epath = NULL;
 	len = 0;
 	for (cp = path; cp && *cp; cp = next) {
-		if (next = strpbrk(cp, CMDLINE_DELIM)) {
+		if ((next = strchr(cp, '\''))
+		|| (next = strpbrk(cp, CMDLINE_DELIM))) {
 			tmp = _evalpath(cp, next);
 			cp = next;
-			while (*(++next) && strchr(CMDLINE_DELIM, *next));
+			if (*next != '\'') {
+				while (*(++next)
+				&& strchr(CMDLINE_DELIM, *next));
+			}
+			else if (next = strchr(next + 1, '\'')) next++;
+			else next = cp + strlen(cp);
 		}
 		else {
 			next = cp + strlen(cp);
@@ -227,6 +233,7 @@ int max, argset;
 				break;
 		}
 		else if (command[i] == '\\') {
+			line[j++] = command[i];
 			if (command[i + 1]) line[j++] = command[++i];
 		}
 		else line[j++] = command[i];

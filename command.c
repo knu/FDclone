@@ -610,17 +610,19 @@ int *maxp;
 #if (WRITEFS >= 2)
 	return(warning_bell(list, maxp));
 #else
+	int i;
+
 	if (atoi2(getenv2("FD_WRITEFS")) >= 2 || findpattern)
 		return(warning_bell(list, maxp));
-	if (writablefs(".") <= 0) {
+	if ((i = writablefs(".")) <= 0) {
 		warning(0, NOWRT_K);
 		return(1);
 	}
 	if (!yesno(WRTOK_K)) return(1);
 	if (underhome() <= 0 && !yesno(HOMOK_K)) return(1);
-	arrangedir(list, *maxp);
+	arrangedir(list, *maxp, i);
 	chgorder = 0;
-	return(3);
+	return(4);
 #endif
 }
 
@@ -832,7 +834,7 @@ int *maxp;
 		putterms(t_end);
 		putterms(t_nokeypad);
 		tflush();
-		sigreset();
+		sigvecreset();
 		cooked2();
 		echo2();
 		nl2();
@@ -841,7 +843,7 @@ int *maxp;
 		raw2();
 		noecho2();
 		nonl2();
-		sigset();
+		sigvecset();
 		putterms(t_keypad);
 		putterms(t_init);
 	}

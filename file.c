@@ -24,22 +24,10 @@ extern int copypolicy;
 extern char fullpath[];
 extern char **path_history;
 
-#ifdef	IRIXFS
-#define	realdirsiz(name)		(((strlen(name) + 2) & ~1)\
-					+ sizeof(u_long))
-#define	getptrsiz(total, ptr)		(((total) > (ptr)) ? (total) : (ptr))
-#define	getnamlen(ent)			((((ent) - sizeof(u_long)) & ~1) - 1)
-#define	HEADBYTE			4
-#else
-#define	realdirsiz(name)		(((strlen(name) + 4) & ~3)\
-					+ sizeof(u_long)\
-					+ sizeof(u_short) + sizeof(u_short))
-#define	getptrsiz(total, ptr)		0
-#define	getnamlen(ent)			((((ent) - sizeof(u_long)\
-					- sizeof(u_short) - sizeof(u_short))\
-					& ~3) - 1)
-#define	HEADBYTE			0
-#endif
+#define	realdirsiz(name)		(((strlen(name) + boundary)\
+					& ~(boundary - 1)) + dirsize)
+#define	getnamlen(ent)			((((ent) - dirsize)\
+					& ~(boundary - 1)) - 1)
 
 static char *getdistdir();
 static VOID touch();
@@ -257,9 +245,9 @@ int len;
 	}
 }
 
-static char *getentnum(dir, bsiz)
+static char *getentnum(dir, bsiz, fs)
 char *dir;
-int bsiz;
+int bsiz, fs;
 {
 	FILE *fp;
 	struct stat status;
@@ -270,17 +258,20 @@ int bsiz;
 	n = status.st_size / bsiz;
 	tmp = (char *)malloc2(n + 1);
 
-#ifdef	IRIXFS
-	fp = fopen(dir, "r");
-	for (i = 0; i < n; i++) {
-		fseek(fp, i * bsiz + 3, 0);
-		tmp[i] = fgetc(fp) + 1;
+	switch (fs) {
+		case 2:	/* IRIX File System */
+			fp = fopen(dir, "r");
+			for (i = 0; i < n; i++) {
+				fseek(fp, i * bsiz + 3, 0);
+				tmp[i] = fgetc(fp) + 1;
+			}
+			tmp[i] = 0;
+			fclose(fp);
+			break;
+		default:
+			for (i = 0; i <= n; i++) tmp[i] = 0;
+			break;
 	}
-	tmp[i] = 0;
-	fclose(fp);
-#else
-	for (i = 0; i <= n; i++) tmp[i] = 0;
-#endif
 
 	return(tmp);
 }
@@ -319,17 +310,30 @@ char *dir;
 #endif
 }
 
-VOID arrangedir(list, max)
+VOID arrangedir(list, max, fs)
 namelist *list;
-int max;
+int max, fs;
 {
 	DIR *dirp;
 	struct dirent *dp;
 	char **tmpfile;
-	int maxtmp;
-	int persec;
+	int maxtmp, persec;
+	int headbyte, boundary, dirsize;
 	int i, top, len, fnamp, tmpno, block, ent, totalent, ptr, totalptr;
 	char *cp, *tmpdir, *entnum, path[MAXPATHLEN + 1];
+
+	switch (fs) {
+		case 2:	/* IRIX File System */
+			headbyte = 4;
+			boundary = 2;
+			dirsize = sizeof(u_long);
+			break;
+		default:
+			headbyte = 0;
+			boundary = 4;
+			dirsize = sizeof(u_long) + sizeof(u_short) * 2;
+			break;
+	}
 
 	for (i = 0; i < max; i++) {
 		if (strcmp(list[i].name, ".")
@@ -380,8 +384,8 @@ int max;
 		strcat(path, "/");
 	}
 
-	entnum = getentnum(".", persec);
-	totalent = HEADBYTE + realdirsiz(".") + realdirsiz("..")
+	entnum = getentnum(".", persec, fs);
+	totalent = headbyte + realdirsiz(".") + realdirsiz("..")
 		+ realdirsiz(tmpdir);
 	block = tmpno = 0;
 	ptr = 3;
@@ -395,7 +399,15 @@ int max;
 		|| i == top) continue;
 
 #ifndef	SVR3FS
-		ent = persec - totalent - getptrsiz(totalptr, ptr + 1);
+		ent = persec - totalent;
+		switch (fs) {
+			case 2:	/* IRIX File System */
+ 				if (totalptr > ptr + 1) ent -= totalptr;
+ 				else ent -= ptr + 1;
+				break;
+			default:
+				break;
+		}
 		if (ent < realdirsiz(list[i].name)) {
 			tmpfile = (char **)addlist(tmpfile, tmpno,
 				&maxtmp, sizeof(char *));
@@ -403,7 +415,7 @@ int max;
 			if (tmpfile[tmpno]) touch(tmpfile[tmpno]);
 			tmpno++;
 			ptr = 0;
-			totalent = HEADBYTE;
+			totalent = headbyte;
 			totalptr = entnum[++block];
 		}
 #endif

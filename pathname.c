@@ -87,6 +87,11 @@ char *path, *eol;
 		if (!(next = strchr(path, '/')) || next > eol) next = eol;
 		while ((cp = strchr(path, '$')) && cp < next) {
 			strncat(buf, path, cp - path);
+			if (cp > path && *(cp - 1) == '\\') {
+				strcat(buf, "$");
+				path = ++cp;
+				continue;
+			}
 			if (*(++cp) == '{') cp++;
 			path = cp;
 			if (*cp == '_' || isalpha(*cp)) {
@@ -100,6 +105,7 @@ char *path, *eol;
 				if (path = getenv2(tmp)) strcpy(tmp, path);
 				else *tmp = '\0';
 			}
+			else strcat(buf, "$");
 			if (*cp == '}') cp++;
 			path = cp;
 		}

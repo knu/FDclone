@@ -745,7 +745,7 @@ int xmax, ymax;
 #endif
 
 	if ((x < 0 || y < 0)
-	&& !strcmp(termname + 1, "term") && strchr("xkjhtm", termname)) {
+	&& !strncmp(termname + 1, "term", 4) && strchr("xkjhtm", *termname)) {
 		if (!(fp = fopen(TTYNAME, "r+"))) err2("Can't open terminal");
 		fd = fileno(fp);
 

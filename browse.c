@@ -553,10 +553,10 @@ int *maxentp;
 			}
 #if (WRITEFS < 1)
 			else if (chgorder && atoi2(getenv2("FD_WRITEFS")) < 1
-			&& writablefs(".") > 0 && underhome() > 0) {
+			&& (i = writablefs(".")) > 0 && underhome() > 0) {
 				chgorder = 0;
 				if (yesno(WRTOK_K))
-					arrangedir(filelist, maxfile);
+					arrangedir(filelist, maxfile, i);
 			}
 #endif
 		}
