@@ -56,17 +56,20 @@ extern int dispmode;
 # endif
 #endif
 
+#if !defined(SIGIOT) && defined(SIGABRT)
+#define	SIGIOT	SIGABRT
+#endif
+
 static VOID signalexit();
-static sigarg_t ignore();
+static sigarg_t ignore_alrm();
+static sigarg_t ignore_winch();
+static sigarg_t ignore_int();
+static sigarg_t ignore_quit();
 static sigarg_t hungup();
 static sigarg_t illerror();
 static sigarg_t traperror();
 #ifdef	SIGIOT
 static sigarg_t ioerror();
-#else
-# ifdef	SIGABRT
-static sigarg_t oldabort();
-# endif
 #endif
 #ifdef	SIGEMT
 static sigarg_t emuerror();
@@ -137,8 +140,24 @@ int sig;
 	kill(getpid(), sig);
 }
 
-static sigarg_t ignore()
+static sigarg_t ignore_alrm()
 {
+	signal(SIGALRM, (sigarg_t (*)())ignore_alrm);
+}
+
+static sigarg_t ignore_winch()
+{
+	signal(SIGWINCH, (sigarg_t (*)())ignore_winch);
+}
+
+static sigarg_t ignore_int()
+{
+	signal(SIGINT, (sigarg_t (*)())ignore_int);
+}
+
+static sigarg_t ignore_quit()
+{
+	signal(SIGQUIT, (sigarg_t (*)())ignore_quit);
 }
 
 static sigarg_t hangup()
@@ -161,13 +180,6 @@ static sigarg_t ioerror()
 {
 	signalexit(SIGIOT);
 }
-#else
-# ifdef	SIGABRT
-static sigarg_t oldabort()
-{
-	signalexit(SIGABRT);
-}
-# endif
 #endif
 
 #ifdef	SIGEMT
@@ -269,9 +281,9 @@ VOID sigvecset()
 
 VOID sigvecreset()
 {
-	signal(SIGALRM, (sigarg_t (*)())ignore);
+	signal(SIGALRM, (sigarg_t (*)())ignore_alrm);
 	signal(SIGTSTP, SIG_DFL);
-	signal(SIGWINCH, (sigarg_t (*)())ignore);
+	signal(SIGWINCH, (sigarg_t (*)())ignore_winch);
 }
 
 VOID title()
@@ -886,16 +898,12 @@ char *argv[];
 	sigvecset();
 
 	signal(SIGHUP, (sigarg_t (*)())hangup);
-	signal(SIGINT, (sigarg_t (*)())ignore);
-	signal(SIGQUIT, (sigarg_t (*)())ignore);
+	signal(SIGINT, (sigarg_t (*)())ignore_int);
+	signal(SIGQUIT, (sigarg_t (*)())ignore_quit);
 	signal(SIGILL, (sigarg_t (*)())illerror);
 	signal(SIGTRAP, (sigarg_t (*)())traperror);
 #ifdef	SIGIOT
 	signal(SIGIOT, (sigarg_t (*)())ioerror);
-# else
-# ifdef	SIGABRT
-	signal(SIGABRT, (sigarg_t (*)())oldabort);
-# endif
 #endif
 #ifdef	SIGEMT
 	signal(SIGEMT, (sigarg_t (*)())emuerror);
