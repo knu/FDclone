@@ -329,9 +329,10 @@ static VOID insertchar(str, x, cx, len, linemax, ins)
 u_char *str;
 int x, cx, len, linemax, ins;
 {
-	u_char *dupl;
-	int dy, i, j, f1, f2;
+	u_char *cp, dupl[MAXLINESTR + 1];
+	int dy, i, j, l, f1, f2, ptr;
 
+	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
 	len += ins;
 	dy = cx / linemax;
 	i = (dy + 1) * linemax;
@@ -341,8 +342,10 @@ int x, cx, len, linemax, ins;
 
 		if (i < len) {
 			while (i < len) {
-				f1 = (onkanji1(str, i - ins - 1)) ? 1 : 0;
-				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
+				ptr = i - 1 - cx;
+				if (ptr < ins) f1 = 0;
+				else f1 = (onkanji1(dupl, ptr - ins)) ? 1 : 0;
+				f2 = (onkanji1(dupl, ptr)) ? 1 : 0;
 				if (f1) {
 					locate(x + linemax - 1, LCMDLINE + dy);
 					putch(' ');
@@ -353,9 +356,20 @@ int x, cx, len, linemax, ins;
 				}
 				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < ins; j++) putterm(c_insert);
-				putch((f1) ? trquote(str, i - ins - 1) : ' ');
-				for (j = 0; j < ins - f2 && i + j < len; j++)
-					putch(trquote(str, i + j - ins));
+				l = ins;
+				if (ptr < ins) {
+					ptr++;
+					locate(x + ins - ptr, LCMDLINE + dy);
+					l = ptr - f2;
+					ptr = 0;
+				}
+				else {
+					ptr -= ins;
+					if (!f1) dupl[ptr] = ' ';
+					if (!f2) l++;
+				}
+				if (ptr + l > len - cx) l = len - cx - ptr;
+				kanjiputs2(dupl + ptr, l, 0);
 				i += linemax;
 			}
 			locate (x + cx % linemax, LCMDLINE + cx / linemax);
@@ -363,30 +377,38 @@ int x, cx, len, linemax, ins;
 	}
 	else {
 		for (j = 0; j < ins; j++) putch(' ');
-		dupl = (u_char *)strdup2((char *)str);
-		for (j = cx; str[j]; j++) dupl[j] = trquote(str, j);
 
-		if (i >= len) f2 = cx;
-		else {
-			j = linemax - cx % linemax - ins;
-			f2 = cx;
-			while (i < len) {
-				f1 = (onkanji1(dupl, i - ins - 1)) ? 1 : 0;
-				if ((j -= f1) > 0) kanjiputs2(dupl, j, f2);
-				if (f1) putch(' ');
+		f2 = cx;
+		j = 0;
+		l = i - cx - ins;
+		while (i < len) {
+			ptr = i - 1 - cx;
+			if (ptr < ins) f1 = l = 0;
+			else f1 = (onkanji1(dupl, ptr - ins)) ? 1 : 0;
+			if ((l -= f1) > 0) kanjiputs2(dupl, l, j);
+			if (f1) putch(' ');
 
-				locate(x - 1, LCMDLINE + ++dy);
-				putch((f1) ? (int)dupl[i - ins - 1] : ' ');
-				j = linemax - ins;
-				f2 = i - ins;
-				i += linemax;
+			locate(x - 1, LCMDLINE + ++dy);
+			l = linemax;
+			if (ptr < ins) {
+				putch(' ');
+				ptr++;
+				locate(x + ins - ptr, LCMDLINE + dy);
+				l -= ptr;
+				ptr = 0;
 			}
+			else {
+				ptr -= ins;
+				if (!f1) dupl[ptr] = ' ';
+			}
+			if (ptr + l > len - ins - cx) l = len - ins - cx - ptr;
+			j = ptr;
+			i += linemax;
 		}
 
-		j = len - f2 - ins;
-		if (j > 0) kanjiputs2(dupl, j, f2);
+		l = len - ins - cx - j;
+		if (l > 0) kanjiputs2(dupl, l, j);
 		locate (x + cx % linemax, LCMDLINE + cx / linemax);
-		free(dupl);
 	}
 
 	for (i = len - ins - 1; i >= cx; i--) str[i + ins] = str[i];
@@ -396,9 +418,10 @@ static VOID deletechar(str, x, cx, len, linemax, del)
 u_char *str;
 int x, cx, len, linemax, del;
 {
-	u_char *dupl;
-	int dy, i, j, f1, f2;
+	u_char dupl[MAXLINESTR + 1];
+	int dy, i, j, l, f1, f2, ptr;
 
+	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
 	len -= del;
 	dy = cx / linemax;
 	i = (dy + 1) * linemax;
@@ -408,13 +431,23 @@ int x, cx, len, linemax, del;
 
 		if (i < len + del) {
 			while (i < len + del) {
-				if (i - 1 >= len) f1 = 0;
-				else f1 = (onkanji1(str, i + del - 1)) ? 1 : 0;
-				f2 = (onkanji1(str, i - 1)) ? 1 : 0;
-				for (j = -f2; i + j - del < cx; j++);
-				locate(x + linemax - del + j, LCMDLINE + dy);
-				while (j < del - f1 && i + j < len + del)
-					putch(trquote(str, i + (j++)));
+				ptr = i - 1 - cx;
+				if (ptr >= len - cx) f1 = 0;
+				else f1 = (onkanji1(dupl, ptr + del)) ? 1 : 0;
+				f2 = (onkanji1(dupl, ptr)) ? 1 : 0;
+				j = linemax - del - f2;
+				if (j < linemax - (++ptr)) {
+					j = linemax - ptr;
+					l = ptr - f1;
+					ptr = del;
+				}
+				else {
+					l = del + f2 - f1;
+					ptr -= f2;
+				}
+				locate(x + j, LCMDLINE + dy);
+				if (ptr + l > len) l = len - ptr;
+				if (l > 0) kanjiputs2(dupl, l, ptr);
 				if (f1) putch(' ');
 				locate(x - 1, LCMDLINE + ++dy);
 				for (j = 0; j < del; j++) putterm(c_delete);
@@ -425,37 +458,35 @@ int x, cx, len, linemax, del;
 		}
 	}
 	else {
-		dupl = (u_char *)strdup2((char *)str);
-		for (j = cx; str[j]; j++) dupl[j] = trquote(str, j);
+		j = del;
+		l = i - cx;
+		while (i < len + del) {
+			ptr = i - 1 - cx;
+			if (ptr >= len - cx) f1 = 0;
+			else f1 = (onkanji1(dupl, ptr + del)) ? 1 : 0;
+			if ((l -= f1) > 0) kanjiputs2(dupl, l, j);
+			if (f1) putch(' ');
 
-		if (i >= len) f2 = cx + del;
-		else {
-			j = linemax - cx % linemax;
-			f2 = cx + del;
-
-			while (i < len) {
-				f1 = (onkanji1(dupl, i + del - 1)) ? 1 : 0;
-				if ((j -= f1) > 0) kanjiputs2(dupl, j, f2);
-				if (f1) putch(' ');
-
-				locate(x - 1, LCMDLINE + ++dy);
-				putch((f1) ? (int)dupl[i + del - 1] : ' ');
-				j = linemax - 1;
-				f2 = i + del;
-				i += linemax;
+			locate(x - 1, LCMDLINE + ++dy);
+			l = linemax + 1;
+			if (ptr < del) {
+				putch(' ');
+				ptr = del;
+				l--;
 			}
+			else {
+				ptr += del;
+				if (!f1) dupl[ptr] = ' ';
+			}
+			if (ptr + l > len + del - cx) l = len + del - cx - ptr;
+			j = ptr;
+			i += linemax;
 		}
 
-		j = len - f2 + del;
-		if (j > 0) kanjiputs2(dupl, j, f2);
-		else --dy;
-		for (j = 0; j < del; j++) {
-			if (!((len + j) % linemax)) locate(x, LCMDLINE + ++dy);
-			putch(' ');
-		}
-
+		l = len + del - cx - j;
+		if (l > 0) kanjiputs2(dupl, l, j);
+		putterm(l_clear);
 		locate (x + cx % linemax, LCMDLINE + cx / linemax);
-		free(dupl);
 	}
 
 	for (i = cx; i < len; i++) str[i] = str[i + del];
@@ -504,7 +535,7 @@ int x, cx, len, max, linemax;
 	if (stable_standout) putterm(end_standout);
 	kanjiputs((char *)dupl + i);
 	for (; y * linemax < max; y++) {
-		locate(x, LCMDLINE + y);
+		locate(x - 1, LCMDLINE + y);
 		putterm(l_clear);
 	}
 	locate(x + cx % linemax, LCMDLINE + cx / linemax);
@@ -518,23 +549,27 @@ int x, cx, len, linemax, max;
 u_char *insstr;
 int ins;
 {
-	int i;
+	char dupl[MAXLINESTR + 1];
+	int i, dy, f, ptr;
 
 	if (len + ins > max) ins = max - len;
 	if (onkanji1(insstr, ins - 1)) ins--;
 	insertchar(str, x, cx, len, linemax, ins);
-	for (i = 0; i < ins; i++) {
-		str[cx] = insstr[i];
-		if ((cx % linemax) == linemax - 1 && onkanji1(str, cx)) {
-			locate(x - 1, LCMDLINE + (cx + 1) / linemax);
-			putch((int)str[cx]);
-		}
-		else {
-			putch((int)str[cx]);
-			if (!(++cx % linemax) && cx < max)
-				locate(x, LCMDLINE + cx / linemax);
-		}
+	for (i = 0; i < ins; i++) dupl[i] = str[cx + i] = insstr[i];
+
+	dy = cx / linemax;
+	i = (dy + 1) * linemax - cx;
+	len = ins;
+	ptr = 0;
+	while (i < len) {
+		f = (onkanji1(dupl, i - 1)) ? 1 : 0;
+		kanjiputs2(dupl, i - ptr - f, ptr);
+		locate(x - 1, LCMDLINE + ++dy);
+		if (!f) dupl[i - 1] = ' ';
+		ptr = i - 1;
+		i += linemax;
 	}
+	if (len > ptr) kanjiputs2(dupl, len - ptr, ptr);
 	return(ins);
 }
 
@@ -669,8 +704,8 @@ u_char *str;
 int x, max, linemax, def, comline;
 char *hist[];
 {
+	char *tmphist, tmpkanji[3];
 	int len, cx, i, histno, ch, ch2, quote;
-	char *tmphist;
 
 	subwindow = 1;
 	getkey2(-1);
@@ -857,6 +892,8 @@ char *hist[];
 					len, linemax, max, curfilename, i);
 				cx += i;
 				len += i;
+				if (!(cx % linemax) && len < max)
+					locate(x, LCMDLINE + cx / linemax);
 				break;
 			case '\t':
 				keyflush();
@@ -864,21 +901,25 @@ char *hist[];
 					comline, (ch2 == ch) ? 1 : 0);
 				cx += i;
 				len += i;
+				if (!(cx % linemax) && len < max)
+					locate(x, LCMDLINE + cx / linemax);
 				break;
 			case CR:
-				if (selectlist) {
-					i = completestr(str, x, cx,
-						len, linemax, max, 0, -1);
-					cx += i;
-					len += i;
-					ch = '\0';
-					break;
-				}
+				keyflush();
+				if (!selectlist) break;
+				i = completestr(str, x, cx, len, linemax, max,
+					0, -1);
+				cx += i;
+				len += i;
+				if (!(cx % linemax) && len < max)
+					locate(x, LCMDLINE + cx / linemax);
+				ch = '\0';
+				break;
 			case ESC:
 				keyflush();
 				break;
 			default:
-				if (iskanji1((int)ch)) {
+				if (isinkanji1((int)ch)) {
 					ch2 = getkey(0);
 					if (len + 1 >= max) {
 						putterm(t_bell);
@@ -886,15 +927,19 @@ char *hist[];
 						break;
 					}
 					insertchar(str, x, cx, len, linemax, 2);
+
+					tmpkanji[0] = ch;
+					tmpkanji[1] = ch2;
+					tmpkanji[2] = '\0';
+					kanjiconv(&str[cx], tmpkanji,
+						inputkcode, DEFCODE);
 					len += 2;
-					str[cx++] = (u_char)ch;
-					str[cx++] = (u_char)ch2;
+					cx += 2;
 					i = (cx % linemax);
 					if (i == 1)
 						locate(x - 1, LCMDLINE
 							+ cx / linemax);
-					putch((int)ch);
-					putch((int)ch2);
+					kanjiputs2(str, 2, cx - 2);
 					if (!i && len < max)
 						locate(x, LCMDLINE
 							+ cx / linemax);

@@ -16,15 +16,15 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-#ifndef NOUNISTDH
+#ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
 
-#ifndef NOSTDLIBH
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 
-#ifdef  USETIMEH
+#ifdef	USETIMEH
 #include <time.h>
 #endif
 
@@ -32,15 +32,16 @@
 #include <utime.h>
 #endif
 
-#ifdef  USEDIRECT
+#ifdef	USEDIRECT
 #include <sys/dir.h>
+#define	dirent	direct
 #else
 #include <dirent.h>
 #endif
 
 #include "dosdisk.h"
 
-#ifdef  NOERRNO
+#ifdef	NOERRNO
 extern int errno;
 #endif
 
@@ -97,9 +98,30 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
 #endif
 #if defined (sony)
+# ifdef	NEWS_OS3
+	{'A', "/dev/rfh0a", 2, 18, 80},
+	{'A', "/dev/rfd0a", 2, 9, 80},
+# else
 	{'A', "/dev/rfd00a", 2, 18, 80},
 	{'A', "/dev/rfd01a", 2, 9, 80},
 	{'A', "/dev/rfd03a", 2, 8, 80},
+# endif
+#endif
+#if defined (__hp9000s700)
+	{'A', "/dev/rfloppy/c201d0s0", 2, 18, 80},
+	{'A', "/dev/rfloppy/c201d0s0", 2, 9, 80},
+	{'A', "/dev/rfloppy/c201d0s0", 2, 8 + 100, 80},
+#endif
+#if defined (nec_ews) || (_nec_ews)
+	{'A', "/dev/if/f0h18", 2, 18, 80},
+	{'A', "/dev/if/f0h8", 2, 8, 77},
+	{'A', "/dev/if/f0c15", 2, 15, 80},
+	{'A', "/dev/if/f0d9", 2, 9, 80},
+	{'A', "/dev/if/f0d8", 2, 8, 80},
+#endif
+#if defined (linux)
+	{'A', "/dev/fd0", 2, 18, 80},
+	{'A', "/dev/fd0", 2, 9, 80},
 #endif
 #if defined (__NetBSD__) && defined (i386)
 	{'A', "/dev/rfd0a", 2, 15, 80},
@@ -484,7 +506,7 @@ devstat *devp;
 	devp -> fatofs = byte2word(bpb -> bootsect);
 	devp -> fatsize = byte2word(bpb -> fatsize);
 	devp -> dirofs = (devp -> fatofs) + (devp -> fatsize) * (bpb -> nfat);
-	devp -> dirsize = byte2word(bpb -> maxdir) * DIRENTSIZE
+	devp -> dirsize = byte2word(bpb -> maxdir) * DOSDIRENT
 		/ devp -> sectsize;
 	devp -> fd = fd;
 	total -= (devp -> dirofs) + (devp -> dirsize);
@@ -959,7 +981,7 @@ dent_t *dentp;
 	memcpy(dentp, (dent_t *)&(xdirp -> dd_buf[xdirp -> dd_loc]),
 		sizeof(dent_t));
 	if (dentp -> name[0]) {
-		xdirp -> dd_loc += DIRENTSIZE;
+		xdirp -> dd_loc += DOSDIRENT;
 		if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0;
 	}
 	return(0);
@@ -969,10 +991,16 @@ struct dirent *dosreaddir(dirp)
 DIR *dirp;
 {
 	dosDIR *xdirp;
+#ifdef	NODNAMLEN
+	static char d[sizeof(struct dirent) + MAXNAMLEN];
+#else
 	static struct dirent d;
+#endif
+	struct dirent *dp;
 	char *cp;
 	long loc;
 
+	dp = (struct dirent *)(&d);
 	xdirp = (dosDIR *)dirp;
 	errno = 0;
 	for (;;) {
@@ -982,15 +1010,15 @@ DIR *dirp;
 		if (!(dd2dentp(xdirp -> dd_fd) -> name[0])) return(NULL);
 		else if (dd2dentp(xdirp -> dd_fd) -> name[0] != 0xe5) break;
 	}
-	d.d_fileno = loc;
-	d.d_reclen = DIRENTSIZE;
-	getdosname(d.d_name, dd2dentp(xdirp -> dd_fd) -> name,
+	dp -> d_fileno = loc;
+	dp -> d_reclen = DOSDIRENT;
+	getdosname(dp -> d_name, dd2dentp(xdirp -> dd_fd) -> name,
 		dd2dentp(xdirp -> dd_fd) -> ext);
 	if (cp = strrchr(dd2path(xdirp -> dd_fd), '/')) cp++;
 	else cp = dd2path(xdirp -> dd_fd);
-	strcpy(cp, d.d_name);
+	strcpy(cp, dp -> d_name);
 
-	return(&d);
+	return(dp);
 }
 
 int doschdir(path)
@@ -1213,8 +1241,8 @@ int dosstat(path, buf)
 char *path;
 struct stat *buf;
 {
-	char *cp;
-	int dd;
+	char *cp, ext[4];
+	int i, dd;
 
 	if ((dd = readdent(path, NULL)) < 0) return(-1);
 	buf -> st_dev = dd;
@@ -1229,16 +1257,14 @@ struct stat *buf;
 	buf -> st_mtime =
 	buf -> st_ctime = getdostime(byte2word(dd2dentp(dd) -> date),
 		byte2word(dd2dentp(dd) -> time));
-	buf -> st_blksize = dd2offset(dd);
-	buf -> st_blocks = dd2clust(dd);
 	closedev(dd);
 
 	if ((buf -> st_mode & S_IFMT) == S_IFDIR) buf -> st_mode |= S_IEXEC_ALL;
-	else if ((cp = strrchr(path, '.'))
-	&& !strchr(cp, '/') && !strchr(cp, '\\')) {
-		cp++;
-		if (!strcasecmp(cp, "BAT") || !strcasecmp(cp, "COM")
-		|| !strcasecmp(cp, "EXE")) buf -> st_mode |= S_IEXEC_ALL;
+	else if ((cp = strrchr(path, '.')) && strlen(++cp) == 3) {
+		strcpy(ext, cp);
+		for (cp = ext; *cp; cp++) if (islower(*cp)) (*cp) += 'A' - 'a';
+		if (!strcmp(ext, "BAT") || !strcmp(ext, "COM")
+		|| !strcmp(ext, "EXE")) buf -> st_mode |= S_IEXEC_ALL;
 	}
 	return(0);
 }
@@ -1302,7 +1328,7 @@ int dosutime(path, times)
 char *path;
 struct utimbuf *times;
 {
-	time_t clock = times -> mtime;
+	time_t clock = times -> modtime;
 #else
 int dosutimes(path, tvp)
 char *path;
@@ -1442,7 +1468,7 @@ int flags, mode;
 
 	dosflist[fd]._cnt = 0;
 	dosflist[fd]._ptr = dosflist[fd]._base;
-	dosflist[fd]._bufsiz =
+	dosflist[fd]._bufsize =
 		devlist[dd].clustsize * devlist[dd].sectsize;
 	dosflist[fd]._flag = flags;
 	dosflist[fd]._file = dd;
@@ -1507,7 +1533,7 @@ int fd, wrt;
 {
 	int size, new, prev;
 
-	size = (wrt) ? dosflist[fd]._bufsiz :
+	size = (wrt) ? dosflist[fd]._bufsize :
 		dosflist[fd]._size - dosflist[fd]._loc;
 	errno = 0;
 	prev = dosflist[fd]._off;
@@ -1525,9 +1551,9 @@ int fd, wrt;
 		}
 		dosflist[fd]._off = new;
 		dosflist[fd]._next = 0xffff;
-		memset(dosflist[fd]._base, 0, dosflist[fd]._bufsiz);
+		memset(dosflist[fd]._base, 0, dosflist[fd]._bufsize);
 	}
-	if (size > dosflist[fd]._bufsiz) size = dosflist[fd]._bufsiz;
+	if (size > dosflist[fd]._bufsize) size = dosflist[fd]._bufsize;
 	dosflist[fd]._cnt = size;
 	dosflist[fd]._ptr = dosflist[fd]._base;
 
@@ -1546,7 +1572,7 @@ int fd;
 	if (sectwrite(fd2devp(fd), sect, dosflist[fd]._base,
 	fd2devp(fd) -> clustsize) < 0) return(-1);
 
-	return(dosflist[fd]._bufsiz);
+	return(dosflist[fd]._bufsize);
 }
 
 int dosread(fd, buf, nbytes)
@@ -1804,7 +1830,7 @@ FILE *stream;
 		return(0);
 	}
 
-	rest = dosflist[fd]._bufsiz - (dosflist[fd]._ptr - dosflist[fd]._base);
+	rest = dosflist[fd]._bufsize - (dosflist[fd]._ptr - dosflist[fd]._base);
 	if (rest < dosflist[fd]._cnt) {
 		if (dosflsbuf(fd) < 0) {
 			dosflist[fd]._flag |= O_IOERR;
@@ -1842,7 +1868,7 @@ FILE *stream;
 	total = 0;
 	nbytes = size * nitems;
 
-	rest = dosflist[fd]._bufsiz - (dosflist[fd]._ptr - dosflist[fd]._base);
+	rest = dosflist[fd]._bufsize - (dosflist[fd]._ptr - dosflist[fd]._base);
 	while (nbytes >= rest) {
 		memcpy(dosflist[fd]._ptr, buf, rest);
 		buf += rest;
@@ -1856,10 +1882,10 @@ FILE *stream;
 			dosflist[fd]._flag |= O_IOERR;
 			return(0);
 		}
-		rest = dosflist[fd]._bufsiz;
+		rest = dosflist[fd]._bufsize;
 	}
 	if (nbytes > 0) {
-		if (rest >= dosflist[fd]._bufsiz && dosfilbuf(fd, 1) < 0) {
+		if (rest >= dosflist[fd]._bufsize && dosfilbuf(fd, 1) < 0) {
 			dosflist[fd]._flag |= O_IOERR;
 			return(0);
 		}
@@ -1879,7 +1905,7 @@ FILE *stream;
 		errno = EINVAL;
 		return(EOF);
 	}
-	rest = dosflist[fd]._bufsiz - (dosflist[fd]._ptr - dosflist[fd]._base);
+	rest = dosflist[fd]._bufsize - (dosflist[fd]._ptr - dosflist[fd]._base);
 	if (rest == dosflist[fd]._cnt) return(0);
 	if (dosflsbuf(fd) < 0) {
 		dosflist[fd]._flag |= O_IOERR;

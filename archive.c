@@ -472,13 +472,15 @@ int max;
 		arcflist[0].st_nlink = -1;
 	}
 
-	if (stable_standout) putterms(t_clear);
+	if (stable_standout) {
+		putterms(t_clear);
+		helpbar();
+	}
 	title();
 	archbar(archivefile, archivedir);
 	statusbar(maxarcf);
 	locate(0, LSTACK);
 	putterm(l_clear);
-	helpbar();
 
 	old = filepos = listupfile(arcflist, maxarcf, file);
 	fstat = 0;

@@ -6,7 +6,7 @@
 
 #include <sys/param.h>
 
-#define	DIRENTSIZE	32
+#define	DOSDIRENT	32
 #define	SECTCACHESIZE	20
 #define	SECTSIZE	512
 #define	MAX12BIT	(0xff0 - 0x002)
@@ -17,6 +17,32 @@
 #define	DOSNOFILE	NOFILE
 #else
 #define	DOSNOFILE	64
+#endif
+
+#ifdef	SYSVDIRENT
+#define	d_fileno	d_ino
+#endif
+
+#ifndef	L_SET
+# ifdef	SEEK_SET
+# define	L_SET	SEEK_SET
+# else
+# define	L_SET	0
+# endif
+#endif
+#ifndef	L_INCR
+# ifdef	SEEK_CUR
+# define	L_INCR	SEEK_CUR
+# else
+# define	L_INCR	1
+# endif
+#endif
+#ifndef	L_XTND
+# ifdef	SEEK_END
+# define	L_XTND	SEEK_END
+# else
+# define	L_XTND	2
+# endif
 #endif
 
 typedef struct _bpb_t {
@@ -100,7 +126,7 @@ typedef struct _dosiobuf {
 	int _cnt;
 	char *_ptr;
 	char *_base;
-	int _bufsiz;
+	int _bufsize;
 	short _flag;
 	int _file;
 	long _top;
@@ -160,7 +186,7 @@ extern int dosreadlink();
 extern int doschmod();
 #ifdef	USEUTIME
 extern int dosutime();
-else
+#else
 extern int dosutimes();
 #endif
 extern int dosunlink();

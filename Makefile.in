@@ -149,9 +149,9 @@ clean:
 main.o: fd.h machine.h config.h 
 main.o: types.h pathname.h term.h
 main.o: func.h kctype.h
-main.o: kanji.h funcno.h version.h 
-term.o: machine.h
-term.o: config.h term.h 
+main.o: kanji.h funcno.h version.h dosdisk.h
+term.o: machine.h config.h 
+term.o: term.h
 pathname.o: machine.h config.h 
 pathname.o: pathname.h
 libc.o: fd.h machine.h config.h 
@@ -170,11 +170,10 @@ info.o: fd.h machine.h config.h
 info.o: types.h pathname.h term.h
 info.o: funcno.h kanji.h 
 dosdisk.o: machine.h config.h 
-dosdisk.o: dosdisk.h
+dosdisk.o: dosdisk.h 
 dosemu.o: fd.h machine.h config.h 
 dosemu.o: types.h pathname.h
-dosemu.o: func.h 
-dosemu.o: dosdisk.h
+dosemu.o: func.h dosdisk.h
 kanji.o: fd.h machine.h config.h 
 kanji.o: types.h pathname.h
 kanji.o: term.h func.h 

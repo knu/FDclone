@@ -34,6 +34,7 @@
 		FreeBSD		(2.x)
 		NetBSD		(1.0)
 	BSDI	BSD/OS		(2.0)
+	ASCII	BSD on Windows	(1.0)
 
    これ以外の OS では、その OS の環境を自動判定するプログラ
    ムが付属されていますので、make config とすれば環境設定フ

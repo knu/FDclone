@@ -30,8 +30,8 @@
  *	If you don't like the following tools as each uses,	*
  *	you should rewrite another suitable command name.	*
  ****************************************************************/
-#define PAGER		"more%K"	/* to view file */
-#define EDITOR		"vi"		/* to edit file */
+#define	PAGER		"more%K"	/* to view file */
+#define	EDITOR		"vi"		/* to edit file */
 
 
 /****************************************************************

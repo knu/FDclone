@@ -59,7 +59,15 @@ extern char *tgoto();
 #define	ECHOKE		0
 #endif
 
-#ifndef FD_SET
+#ifndef	FREAD
+# ifdef	_FREAD
+# define	FREAD	_FREAD
+# else
+# define	FREAD	(O_RDONLY + 1)
+# endif
+#endif
+
+#ifndef	FD_SET
 typedef struct fd_set {
 	int fds_bits[1];
 } fd_set;

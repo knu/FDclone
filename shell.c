@@ -296,6 +296,7 @@ macrostat *stp;
 		for (i = 0; i < max; i++) list[i].flags &= ~F_ISMRK;
 		mark = 0;
 	}
+	if (((stp -> flags) & F_REMAIN) && mark == 0) stp -> flags &= ~F_REMAIN;
 	*(line + j) = '\0';
 	return(evalcomstr(line));
 }
@@ -416,7 +417,8 @@ char **loadhistory(file)
 char *file;
 {
 	FILE *fp;
-	char *cp, line[MAXLINESTR + 1], **hist;
+	u_char line[MAXLINESTR + 1];
+	char *cp, **hist;
 	int i, j, len;
 
 	cp = evalpath(strdup2(file));
@@ -428,8 +430,8 @@ char *file;
 	hist[0] = (char *)histsize;
 
 	i = 1;
-	while (fgets(line, MAXLINESTR, fp)) {
-		if (cp = strchr(line, '\n')) *cp = '\0';
+	while (fgets((char *)line, MAXLINESTR, fp)) {
+		if (cp = strchr((char *)line, '\n')) *cp = '\0';
 		for (j = i; j > 1; j--) hist[j] = hist[j - 1];
 		for (j = len = 0; line[j]; j++, len++)
 			if (line[j] < ' ' || line[j] == C_DEL) len++;
@@ -437,7 +439,7 @@ char *file;
 		for (j = len = 0; line[j]; j++, len++) {
 			if (line[j] < ' ' || line[j] == C_DEL)
 				hist[1][len++] = QUOTE;
-			hist[1][len] = line[j];
+			hist[1][len] = (char)(line[j]);
 		}
 		hist[1][len] = '\0';
 		if (i < histsize) i++;

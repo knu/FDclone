@@ -9,6 +9,8 @@
 #include "dosdisk.h"
 
 #include <ctype.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 
 #ifdef	USEUTIME
 #include <utime.h>
@@ -60,13 +62,19 @@ char *path;
 int Xclosedir(dirp)
 DIR *dirp;
 {
-	return((*((int *)dirp) < 0) ? dosclosedir(dirp) : closedir(dirp));
+	if (*((int *)dirp) < 0) return(dosclosedir(dirp));
+	closedir(dirp);
+	return(0);
 }
 
 struct dirent *Xreaddir(dirp)
 DIR *dirp;
 {
+#ifdef	NODNAMLEN
+	static char buf[sizeof(struct dirent) + MAXNAMLEN];
+#else
 	static struct dirent buf;
+#endif
 	struct dirent *dp;
 	int i;
 
@@ -78,8 +86,8 @@ DIR *dirp;
 				dp -> d_name[i] += 'a' - 'A';
 	}
 	if (!dp) return(NULL);
-	memcpy(&buf, dp, sizeof(struct dirent));
-	return(&buf);
+	memcpy(&buf, dp, sizeof(buf));
+	return((struct dirent *)(&buf));
 }
 
 int Xchdir(path)
@@ -114,7 +122,7 @@ char *path;
 	return(0);
 }
 
-#ifdef  USEGETWD
+#ifdef	USEGETWD
 char *Xgetwd(path)
 char *path;
 {
@@ -188,7 +196,7 @@ int mode;
 	return(dospath(path, buf) ? doschmod(buf, mode) : chmod(path, mode));
 }
 
-#ifdef  USEUTIME
+#ifdef	USEUTIME
 int Xutime(path, times)
 char *path;
 struct utimbuf *times;
@@ -201,10 +209,10 @@ int Xutimes(path, tvp)
 char *path;
 struct timeval tvp[2];
 {
-#endif
 	char buf[MAXPATHLEN + 1];
 
 	return(dospath(path, buf) ? dosutimes(buf, tvp) : utimes(path, tvp));
+#endif
 }
 
 int Xunlink(path)

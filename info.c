@@ -371,7 +371,7 @@ mnt_t *mntp;
 	dir = (char *)realloc2(dir, len);
 	strcpy(dir, cp);
 
-	entp = (char *)getvfsbytype(vmntp -> vmt_gfstype);
+	entp = getvfsbytype(vmntp -> vmt_gfstype);
 	if (entp) {
 		cp = entp -> vfsent_name;
 		len = strlen(cp) + 1;
@@ -464,7 +464,7 @@ mnt_t *mntp;
 	dir = (char *)realloc2(dir, len);
 	strcpy(dir, buf[mnt_ptr].f_mntonname);
 
-	cp = getvfsbynumber(buf[mnt_ptr].f_type);
+	cp = (char *)getvfsbynumber(buf[mnt_ptr].f_type);
 	if (cp) {
 		len = strlen(cp) + 1;
 		type = (char *)realloc2(type, len);

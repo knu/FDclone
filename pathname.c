@@ -51,11 +51,11 @@ extern void error();
 # endif
 #else
 #define	getenv2		(char *)getenv
-#define Xopendir	opendir
-#define Xclosedir	closedir
-#define Xreaddir	readdir
-#define Xstat		stat
-#define Xaccess		access
+#define	Xopendir	opendir
+#define	Xclosedir	closedir
+#define	Xreaddir	readdir
+#define	Xstat		stat
+#define	Xaccess		access
 #define	error		return
 #endif
 

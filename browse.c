@@ -567,7 +567,10 @@ char *file, *def;
 
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
 
-	if (stable_standout) putterms(t_clear);
+	if (stable_standout) {
+		putterms(t_clear);
+		helpbar();
+	}
 	title();
 	pathbar();
 	statusbar(maxfile);

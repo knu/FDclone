@@ -11,46 +11,46 @@
 
 #include <varargs.h>
 
-extern char *language;
-
 #define	ASCII	0
 #define	KANA	1
 #define	KANJI	2
 
-#define	NOCNV	0
-#define	ENG	1
-#define	JIS7	2
-#define	SJIS	3
-#define	EUC	4
+static int jis7();
+static int sjis2euc();
+static int euc2sjis();
 
-#ifdef	CODEEUC
-#define	iskana3(str, i)	(str[i] == 0x8e && str[++i])
-#else
-#define	iskana3(str, i)	(str[i] >= 0xa1 && str[i] <= 0xdf)
-#endif
-
-static int getlang();
-static char *jis7();
-static char *another();
+int inputkcode;
+int outputkcode;
 
 
-static int getlang()
+int getlang(str, in)
+char *str;
+int in;
 {
-	char *cp;
+	int ret;
 
-	if (!(cp = language)) return(NOCNV);
-	else if (strstr(cp, "SJIS") || strstr(cp, "sjis")) return(SJIS);
-	else if (strstr(cp, "EUC") || strstr(cp, "euc")) return(EUC);
-	else if (strstr(cp, "JIS") || strstr(cp, "jis")) return(JIS7);
-	else if (strstr(cp, "ENG") || strstr(cp, "eng") || !strcmp(cp, "C"))
-		return(ENG);
-	else return(NOCNV);
+	if (!str) ret = NOCNV;
+	else if (strstr(str, "SJIS") || strstr(str, "sjis")) ret = SJIS;
+	else if (strstr(str, "EUC") || strstr(str, "euc")) ret = EUC;
+	else if (strstr(str, "JIS") || strstr(str, "jis")) ret = JIS7;
+	else if (strstr(str, "ENG") || strstr(str, "eng") || !strcmp(str, "C"))
+		ret = ENG;
+	else ret = NOCNV;
+
+	if (in) {
+#ifdef	CODEEUC
+		if (ret != SJIS) ret = EUC;
+#else
+		if (ret != EUC) ret = SJIS;
+#endif
+	}
+	return(ret);
 }
 
 char *mesconv(jpn, eng)
 char *jpn, *eng;
 {
-	return((getlang() == ENG) ? eng : jpn);
+	return((outputkcode == ENG) ? eng : jpn);
 }
 
 int onkanji1(s, ptr)
@@ -67,15 +67,16 @@ int ptr;
 	return(iskanji1((int)s[ptr]));
 }
 
-static char *jis7(buf, str)
+static int jis7(buf, str, incode)
 char *buf;
 u_char *str;
+int incode;
 {
 	int i, j, mode;
 
 	mode = ASCII;
 	for (i = 0, j = 0; str[i] && j < MAXLINESTR - 8; i++, j++) {
-		if (iskana3(str, i)) {
+		if ((incode == EUC) ? isekana(str, i) : isskana(str, i)) {
 			if (!(mode & KANA)) buf[j++] = '\016';
 			mode |= KANA;
 			buf[j] = str[i] & ~0x80;
@@ -83,30 +84,31 @@ u_char *str;
 		}
 		if (mode & KANA) buf[j++] = '\017';
 		mode &= ~KANA;
-		if (iskanji1(str[i])) {
+		if ((incode == EUC) ? iseuc(str[i]) : issjis1(str[i])) {
 			if (!(mode & KANJI)) {
-				strcpy(&buf[j], "\033$B");
+				memcpy(&buf[j], "\033$B", 3);
 				j += 3;
 			}
 			mode |= KANJI;
-#ifdef	CODEEUC
-			buf[j++] = str[i++] & ~0x80;
-			buf[j] = str[i] & ~0x80;
-#else
-			buf[j++] = str[i] * 2
-				- ((str[i] <= 0x9f) ? 0xe1 : 0x161);
-			buf[j] = str[++i];
-			if (str[i] < 0x9f)
-				buf[j] -= (str[i] > 0x7f) ? 0x20 : 0x1f;
-			else {
-				buf[j] -= 0x7e;
-				buf[j - 1]++;
+			if (incode == EUC) {
+				buf[j++] = str[i++] & ~0x80;
+				buf[j] = str[i] & ~0x80;
 			}
-#endif
+			else {
+				buf[j++] = str[i] * 2
+					- ((str[i] <= 0x9f) ? 0xe1 : 0x161);
+				buf[j] = str[++i];
+				if (str[i] < 0x9f)
+					buf[j] -= (str[i] > 0x7f) ? 0x20 : 0x1f;
+				else {
+					buf[j] -= 0x7e;
+					buf[j - 1]++;
+				}
+			}
 		}
 		else {
 			if (mode & KANJI) {
-				strcpy(&buf[j], "\033(B");
+				memcpy(&buf[j], "\033(B", 3);
 				j += 3;
 			}
 			mode &= ~KANJI;
@@ -114,33 +116,25 @@ u_char *str;
 		}
 	}
 	if (mode & KANA) buf[j++] = '\017';
-	if (mode & KANJI) strcpy(&buf[j], "\033(B");
-	else buf[j] = '\0';
-	return(buf);
+	if (mode & KANJI) {
+		memcpy(&buf[j], "\033(B", 3);
+		j += 3;
+	}
+	return(j);
 }
 
-static char *another(buf, str)
+static int sjis2euc(buf, str)
 char *buf;
 u_char *str;
 {
 	int i, j;
 
 	for (i = 0, j = 0; str[i] && j < MAXLINESTR; i++, j++) {
-		if (iskana3(str, i)) {
-#ifndef	CODEEUC
+		if (isskana(str, i)) {
 			buf[j++] = 0x8e;
-#endif
 			buf[j] = str[i];
 		}
-		else if (iskanji1(str[i])) {
-#ifdef	CODEEUC
-			buf[j++] = ((str[i] - 0x81) >> 1)
-				+ ((str[i] < 0xde) ? 0x71 : 0xb1);
-			buf[j] = str[++i] - 0x80;
-			if (str[i - 1] & 1)
-				buf[j] += (str[i] < 0xe0) ? 0x1f : 0x20;
-			else buf[j] += 0x7e;
-#else
+		else if (issjis1(str[i])) {
 			buf[j++] = str[i] * 2
 				- ((str[i] <= 0x9f) ? 0xe1 : 0x161) + 0x80;
 			buf[j] = str[++i];
@@ -150,36 +144,70 @@ u_char *str;
 				buf[j] += 2;
 				buf[j - 1]++;
 			}
-#endif
 		}
 		else buf[j] = str[i];
 	}
-	buf[j] = '\0';
-	return(buf);
+	return(j);
+}
+
+static int euc2sjis(buf, str)
+char *buf;
+u_char *str;
+{
+	int i, j;
+
+	for (i = 0, j = 0; str[i] && j < MAXLINESTR; i++, j++) {
+		if (isekana(str, i)) buf[j] = str[i];
+		else if (iseuc(str[i])) {
+			buf[j++] = ((str[i] - 0x81) >> 1)
+				+ ((str[i] < 0xde) ? 0x71 : 0xb1);
+			buf[j] = str[++i] - 0x80;
+			if (str[i - 1] & 1)
+				buf[j] += (str[i] < 0xe0) ? 0x1f : 0x20;
+			else buf[j] += 0x7e;
+		}
+		else buf[j] = str[i];
+	}
+	return(j);
+}
+
+int kanjiconv(buf, str, in, out)
+char *buf;
+u_char *str;
+int in, out;
+{
+	int len;
+
+	len = strlen(str);
+	switch (out) {
+		case JIS7:
+			len = jis7(buf, str, in);
+			break;
+		case SJIS:
+			if (in == EUC) len = euc2sjis(buf, str);
+			else memcpy(buf, str, len);
+			break;
+		case EUC:
+			if (in == SJIS) len = sjis2euc(buf, str, strlen(str));
+			else memcpy(buf, str, len);
+			break;
+		default:
+			memcpy(buf, str, len);
+			break;
+	}
+	return(len);
 }
 
 int kanjiputs(str)
 char *str;
 {
-	char *cp, buf[MAXLINESTR + 1];
+	char buf[MAXLINESTR + 1];
+	int i;
 
-	cp = str;
-	switch (getlang()) {
-		case JIS7:
-			cp = jis7(buf, str);
-			break;
-#ifdef	CODEEUC
-		case SJIS:
-#else
-		case EUC:
-#endif
-			cp = another(buf, str);
-			break;
-		default:
-			break;
-	}
-	cputs(cp);
-	return(strlen(cp));
+	i = kanjiconv(buf, str, DEFCODE, outputkcode);
+	buf[i] = '\0';
+	cputs(buf);
+	return(strlen(buf));
 }
 
 #ifndef	NOVSPRINTF
@@ -209,21 +237,21 @@ int kanjiputs2(s, len, ptr)
 char *s;
 int len, ptr;
 {
-	char *dupl;
-	int i;
+	char dupl[MAXLINESTR + 1];
+	int i, p;
 
-	i = ptr;
+	p = ptr;
 	if (ptr < 0) ptr = 0;
-	if (len >= strlen(s + ptr)) {
+	for (i = 0; i < len && s[ptr + i]; i++);
+	if (i < len) {
 		kanjiputs(s + ptr);
-		if (i >= 0) for (i = strlen(s + ptr); i < len; i++) putch(' ');
+		if (p >= 0) for (; i < len; i++) putch(' ');
 	}
 	else {
-		dupl = strdup2(s + ptr);
+		memcpy(dupl, s + ptr, len);
 		dupl[len] = '\0';
-		if (onkanji1((u_char *)s, len - 1)) dupl[len - 1] = ' ';
+		if (onkanji1((u_char *)dupl, len - 1)) dupl[len - 1] = ' ';
 		kanjiputs(dupl);
-		free(dupl);
 	}
 	return(len);
 }

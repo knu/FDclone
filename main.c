@@ -45,6 +45,8 @@ extern int columns;
 extern int dispmode;
 extern int dosdrive;
 extern char *editmode;
+extern int inputkcode;
+extern int outputkcode;
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -118,7 +120,6 @@ int dircountlimit;
 int showsecond;
 char *deftmpdir;
 char *tmpfilename;
-char *language;
 
 static char *progname;
 static int timersec = 0;
@@ -922,7 +923,8 @@ VOID evalenv()
 	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
 	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
 	deftmpdir = evalpath(strdup2(deftmpdir));
-	language = getenv2("FD_LANGUAGE");
+	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
+	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
 }
 
 static int getoption(argc, argv)

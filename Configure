@@ -88,7 +88,7 @@ cat ./config.h.in
 for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
 USELEAPCNT NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
 NOUNISTDH NOSTDLIBH USESELECTH USESYSDIRH USETIMEH USETERMIO \
-USEDIRECT SYSVDIRENT HAVETIMEZONE \
+USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USEFFSIZE USEFFSTYPE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
@@ -229,8 +229,13 @@ if noheader sgtty \
 fi
 if noheader dirent; then
 	echo "#define	USEDIRECT"
-elif noexist "struct dirent d; d.d_namlen" "sys/types dirent"; then
-	echo "#define	SYSVDIRENT"
+else
+	if isexist "struct dirent d; d.d_ino" "sys/types dirent"; then
+		echo "#define	SYSVDIRENT"
+	fi
+	if noexist "struct dirent d; d.d_namlen" "sys/types dirent"; then
+		echo "#define	NODNAMLEN"
+	fi
 fi
 if (inheader 'extern.*[^a-zA-Z_]timezone' sys/time \
 && isexist "extern time_t timezone; timezone" "sys/types sys/time") \

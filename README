@@ -36,7 +36,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-1.00 のパッケージには、以下のファイルが含まれます。
+　FDclone-1.01 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 HISTORY		これまでの改定履歴
@@ -62,6 +62,9 @@ libc.c		cc の標準関数のアレンジ
 input.c		ユーザ入力関連
 shell.c		シェルコマンド関連
 info.c		各種情報表示用
+dosdisk.c	フロッピードライブドライバ部分
+dosdisk.h	dosdisk.c 用のヘッダ
+dosemu.c	システム関数群のフロッピードライブ対応版
 kanji.c		漢字コードコンバート関連
 file.c		ファイル操作関連
 apply.c		ファイルへの連続適用関連
@@ -132,6 +135,7 @@ version.h	バージョン
 	saitoh@ics.es.osaka-u.ac.jp (齊藤明紀)
 
 ・fj.sources.d での募集を受けてβテストに協力して頂きました。
+	7m2vej@ritp.ye.IHI.co.jp (UENO Fumihiro  上野文裕)
 	aki@pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
 	ao@orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
 	daikoku@lang2.bs1.fc.nec.co.jp (大黒洋史)
@@ -144,7 +148,7 @@ version.h	バージョン
 	ishida@econ.shinshu-u.ac.jp (Akira Ishida)
 	ito@getz.isc.chubu.ac.jp (Maki ITO)
 	j0442@cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
-	j9194169@ke.yama.sut.ac.jp (Keitarou Yoshimura)
+	j9194169@ed.yama.sut.ac.jp (Keitarou Yoshimura)
 	katsu@cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
 	kimai@av.crl.sony.co.jp (IMAI Kenichi)
 	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
@@ -171,7 +175,6 @@ version.h	バージョン
 	tanaka@inf.ptg.sony.co.jp ("T.Tanaka")
 	tomiyan@cv.sony.co.jp (富田 光彦)
 	tsuka@ohsaki.meidensha.co.jp (Yoshihiro Tsukamoto)
-	ueno@azalea.ihitri.ihi.co.jp (UENO Fumihiro  上野文裕)
 	uno@meleager.mel.go.jp
 	wakui@casiogw.rd.casio.co.jp (WAKUI Kazuhiko)
 	watanabe@jis.ptg.sony.co.jp (ebaN)

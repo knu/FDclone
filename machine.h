@@ -14,6 +14,7 @@
 #  define	USERE_COMP
 #  endif
 # define	REGEXPLIB	"-lgen"
+# define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEMNTTABH
 # else
@@ -29,6 +30,7 @@
 # define	SVR4
 # define	OSTYPE		"NEWS_OS6"
 # define	REGEXPLIB	"-lgen"
+# define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME
@@ -69,6 +71,7 @@
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
+#define	NODNAMLEN
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USERE_COMP
@@ -96,6 +99,7 @@
 #  endif
 # define	TERMCAPLIB	"-lcurses"
 # define	REGEXPLIB	"-lgen"
+# define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME
@@ -170,6 +174,7 @@
 # define	SVR4
 # define	OSTYPE		"DECOSF1V3"
 # define	EXTENDLIB	"-lc_r"
+# define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEMNTINFOR
 # define	USEREGCOMP
@@ -226,6 +231,7 @@
 #define	OSTYPE			"UXPM"
 #define	CODEEUC
 #define	REGEXPLIB		"-lgen"
+#define	NODNAMLEN
 #define	USESTATVFSH
 #define	USEMNTTABH
 #define	USEUTIME
@@ -383,6 +389,7 @@
 /* #define USETERMIO	/* use termio interface */
 /* #define USEDIRECT	/* use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	/* dirent interface behaves as System V */
+/* #define NODNAMLEN	/* struct dirent haven't d_namlen */
 /* #define HAVETIMEZONE	/* have extern valiable 'timezone' */
 
 /* following 5 items are exclusive
@@ -445,19 +452,19 @@
 #define	REGEXPLIB		"-lPW"
 #endif
 
-#ifndef CCCOMMAND
+#ifndef	CCCOMMAND
 #define	CCCOMMAND		"cc"
 #endif
-#ifndef EXTENDCCOPT
+#ifndef	EXTENDCCOPT
 #define	EXTENDCCOPT		"-O"
 #endif
-#ifndef TERMCAPLIB
+#ifndef	TERMCAPLIB
 #define	TERMCAPLIB		"-ltermlib"
 #endif
-#ifndef REGEXPLIB
+#ifndef	REGEXPLIB
 #define	REGEXPLIB
 #endif
-#ifndef EXTENDLIB
+#ifndef	EXTENDLIB
 #define	EXTENDLIB
 #endif
 
