@@ -9,10 +9,10 @@ typedef u_short	gid_t;
 
 #ifdef	NOVOID
 #define	VOID
-typedef char	*VOID_P;
+#define VOID_P	char *
 #else
-typedef void	VOID;
-typedef void	*VOID_P;
+#define VOID	void
+#define VOID_P	void *
 #endif
 
 #ifdef	USEDIRECT

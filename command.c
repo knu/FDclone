@@ -870,8 +870,7 @@ int *maxp;
 {
 	char *com;
 
-	if (!(com = inputstr2("sh#", -1, NULL, sh_history))) return(1);
-	sh_history = entryhist(sh_history, com);
+	if (!(com = inputstr2("sh#", -1, NULL, &sh_history))) return(1);
 	if (*com) execmacro(com, list[filepos].name, list, *maxp, 0, 1);
 	else execshell();
 	free(com);
@@ -887,9 +886,8 @@ int *maxp;
 
 	len = (access(list[filepos].name, X_OK) >= 0) ?
 		strlen(list[filepos].name) + 1 : 0;
-	if (!(com = inputstr2("sh#", len, list[filepos].name, sh_history)))
+	if (!(com = inputstr2("sh#", len, list[filepos].name, &sh_history)))
 		return(1);
-	sh_history = entryhist(sh_history, com);
 	if (!*com) {
 		execshell();
 		free(com);

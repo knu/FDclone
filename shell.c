@@ -198,7 +198,7 @@ macrostat *stp;
 {
 	macrostat st;
 	char line[MAXCOMMSTR + 1];
-	int i, j, len, noext, argset;
+	int i, j, len, noext, argset, uneval;
 
 	if (stp) argset = (stp -> flags) & F_ARGSET;
 	else {
@@ -208,9 +208,10 @@ macrostat *stp;
 	stp -> addoption = -1;
 	stp -> needmark = 0;
 	noext = 0;
+	uneval = '\0';
 
 	for (i = j = 0; command[i] && j < sizeof(line); i++) {
-		if (noext || command[i] == '%')
+		if (!uneval && (noext || command[i] == '%'))
 		switch (toupper2(command[++i])) {
 			case '\0':
 				i--;
@@ -272,11 +273,14 @@ macrostat *stp;
 				line[j++] = command[i];
 				break;
 		}
-		else if (command[i] == '\\') {
+		else {
 			line[j++] = command[i];
-			if (command[i + 1]) line[j++] = command[++i];
+			if (command[i] == '\\' && command[i + 1])
+				line[j++] = command[++i];
+			else if (command[i] == uneval) uneval = 0;
+			else if (command[i] == '"' || command[i] == '\'')
+				uneval = command[i];
 		}
-		else line[j++] = command[i];
 	}
 	if (command[i]) return(NULL);
 

@@ -19,10 +19,10 @@
 #include <time.h>
 #endif
 
-#ifdef	SIGARGINT
-typedef	int	sigarg_t;
+#if defined (SIGARGINT) || defined (NOVOID)
+#define	sigarg_t	int
 #else
-#define	sigarg_t	VOID
+#define	sigarg_t	void
 #endif
 
 extern launchtable launchlist[];
@@ -109,7 +109,7 @@ static sigarg_t wintr()
 	if (archivefile) rewritearc();
 	else rewritefile();
 	if (subwindow) ungetch2(CTRL_L);
-	signal(SIGWINCH, wintr);
+	signal(SIGWINCH, (sigarg_t (*))wintr);
 }
 
 static sigarg_t printtime()
@@ -135,14 +135,14 @@ static sigarg_t printtime()
 		timersec = CLOCKUPDATE;
 	}
 	timersec--;
-	signal(SIGALRM, printtime);
+	signal(SIGALRM, (sigarg_t (*))printtime);
 }
 
 VOID sigvecset()
 {
 	getwsize(80, WHEADER + WFOOTER + 2);
-	signal(SIGWINCH, wintr);
-	signal(SIGALRM, printtime);
+	signal(SIGWINCH, (sigarg_t (*))wintr);
+	signal(SIGALRM, (sigarg_t (*))printtime);
 }
 
 VOID sigvecreset()
@@ -388,7 +388,7 @@ char *line;
 	for (eol = line, ch = '\0'; *eol; eol++) {
 		if (*eol == '\\' && *(eol + 1)) eol++;
 		else if (*eol == ch) ch = '\0';
-		else if (*eol == '"' || *eol == '\'') ch = *eol;
+		else if ((*eol == '"' || *eol == '\'') && !ch) ch = *eol;
 		else if (*eol == ';' && !ch) break;
 	}
 

@@ -11,6 +11,9 @@
 #include "kanji.h"
 
 #include <signal.h>
+#include <ctype.h>
+#include <pwd.h>
+#include <grp.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -157,6 +160,8 @@ int max;
 {
 	namelist *tmp;
 	struct tm tm;
+	struct passwd *pw;
+	struct group *gr;
 	int i, ofs, skip;
 	char *cp, buf[MAXLINESTR + 1];
 
@@ -211,10 +216,14 @@ int max;
 	}
 
 	tmp -> st_nlink = 1;
-	tmp -> st_uid = atoi2(getfield(buf, line, list -> field[F_UID], skip,
-		list -> delim[F_UID], list -> width[F_UID], list -> sep));
-	tmp -> st_gid = atoi2(getfield(buf, line, list -> field[F_GID], skip,
-		list -> delim[F_GID], list -> width[F_GID], list -> sep));
+	getfield(buf, line, list -> field[F_UID], skip,
+		list -> delim[F_UID], list -> width[F_UID], list -> sep);
+	if (isdigit(*buf)) tmp -> st_uid = atoi2(buf);
+	else tmp -> st_uid = (pw = getpwnam(buf)) ? pw -> pw_uid : -1;
+	getfield(buf, line, list -> field[F_GID], skip,
+		list -> delim[F_GID], list -> width[F_GID], list -> sep);
+	if (isdigit(*buf)) tmp -> st_gid = atoi2(buf);
+	else tmp -> st_gid = (gr = getgrnam(buf)) ? gr -> gr_gid : -1;
 	tmp -> st_size = atol(getfield(buf, line, list -> field[F_SIZE], skip,
 		list -> delim[F_SIZE], list -> width[F_SIZE], list -> sep));
 	if (tmp -> st_mode <= 0 && tmp -> st_uid <= 0 && !tmp -> st_gid) {

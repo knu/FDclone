@@ -2,10 +2,6 @@
  *	Definition of Machine Depended Identifier
  */
 
-#if defined (__GNUC__)
-#define	EXTENDCCOPT		"-O -fsigned-char"
-#endif
-
 #if defined (sun)
 #define	CODEEUC
 #define	CPP7BIT
@@ -19,7 +15,6 @@
 # define	REGEXPLIB	"-lgen"
 # define	USESTATVFSH
 # define	USEMNTTABH
-# define	MOUNTED		MNTTAB
 # else
 # define	BSD43
 # define	OSTYPE		"SUN_OS"
@@ -35,11 +30,9 @@
 # define	REGEXPLIB	"-lgen"
 # define	USESTATVFSH
 # define	USEMNTTABH
-# define	MOUNTED		MNTTAB
 # define	USEUTIME
 # else
 # define	BSD43
-# define	USESYSDIRH
 # define	USERE_COMP
 # define	SIGARGINT
 #  if defined (__sony)
@@ -52,7 +45,6 @@
 #   define	USESETENV
 #   else
 #   define	OSTYPE		"NEWS_OS3"
-#   define	NOVOID
 #   define	NOERRNO
 #   define	NOFILEMODE
 #   define	NOUNISTDH
@@ -69,15 +61,12 @@
 #define	OSTYPE			"IRIX"
 #define	CODEEUC
 # if defined (_COMPILER_VERSION) && (_COMPILER_VERSION >= 600)
-# define	EXTENDCCOPT	"-32 -O -signed"
-# else
-# define	EXTENDCCOPT	"-O -signed"
+# define	EXTENDCCOPT	"-32 -O"
 # endif
 # if !defined (SYSTYPE_SVR4)
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
-#define	IRIXFS
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USERE_COMP
@@ -108,7 +97,6 @@
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME
-# define	SIGARGINT
 # else
 # define	SYSV
 # endif
@@ -155,7 +143,7 @@
 # define	USEMOUNTH
 # define	USEFFSIZE
 # define	STATFSARGS	3
-# define	USEFSTABH
+# define	USEGETFSENT
 # define	USERE_COMP
 # else
 # define	SVR4
@@ -170,7 +158,6 @@
 #if defined (_IBMR2)
 #define	SVR4
 #define	OSTYPE			"AIX"
-#define	EXTENDCCOPT		"-O -qchars=signed"
 #define	TERMCAPLIB		"-ltermcap"
 #define	USESELECTH
 #define	USESYSDIRH
@@ -187,7 +174,6 @@
 #define	TARUSESPACE
 #define	CPP7BIT
 #define	USESYSDIRH
-#define	USEMOUNTH
 #define	USEFSDATA
 #define	USEGETMNT
 #define	USERE_COMP
@@ -210,7 +196,6 @@
 #define	TERMCAPLIB		"-ltermcap"
 #define	USESTATFSH
 #define	STATFSARGS	4
-#define	SVR3FS
 #endif
 
 #if defined (__uxpm__)
@@ -220,8 +205,7 @@
 #define	REGEXPLIB		"-lgen"
 #define	USESTATVFSH
 #define	USEMNTTABH
-#define	USEUTIME
-#define	SIGARGINT
+#define	USERE_COMP
 #endif
 
 #if defined (mips) && !defined (OSTYPE)
@@ -232,7 +216,6 @@
 # undef	CCCOMMAND
 # define	CCCOMMAND	"/bsd43/bin/cc"
 # endif
-#define	EXTENDCCOPT	"-O -signed"
 #define	TERMCAPLIB	"-lcurses -ltermcap"
 #define	NOERRNO
 #define	NOFILEMODE
@@ -260,7 +243,7 @@
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
-#define	USEFSTABH
+#define	USEMNTINFO
 #define	USERE_COMP
 #endif
 
@@ -270,7 +253,7 @@
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEFFSIZE
-#define	USEFSTABH
+#define	USEGETFSENT
 #define	USERE_COMP
 #endif
 
@@ -282,7 +265,7 @@
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USEMOUNTH
-#define	USEFSTABH
+#define	USEGETFSENT
 #define	USERE_COMP
 #include <sys/param.h>
 # if (BSD4_4 != 1)
@@ -334,15 +317,12 @@
 /* #define REGEXPLIB	/* library needed for regular expression */
 /* #define EXTENDLIB	/* library needed for the other extended */
 
-/* following 3 items are exclusive
-/* #define SVR3FS	/* use SVR3 type FileSystem */
-/* #define IRIXFS	/* use IRIX type FileSystem */
 /* #define UNKNOWNFS	/* use unsupported type FileSystem */
 
 /* #define USELEAPCNT	/* TZFILE includes tzh_leapcnt as leap second */
 /* #define NOVOID	/* cannot use type 'void' */
 /* #define NOUID_T	/* uid_t, gid_t is not defined in <sys/types.h> */
-/* #define DECLERRLIST	/* 'sys_errlist' already declared in <stdio.h> */
+/* #define DECLERRLIST	/* 'sys_errlist[]' already declared in <stdio.h> */
 /* #define PWNEEDERROR	/* /lib/libPW.a needs the extern variable 'Error[]' */
 /* #define NOERRNO	/* 'errno' not declared in <errno.h> */
 /* #define NOFILEMODE	/* 'S_I?{USR|GRP|OTH}' not defined in <sys/stat.h> */
@@ -368,14 +348,12 @@
 
 /* following 7 items are exclusive
 /* #define USEMNTTABH	/* use <sys/mnttab.h> as header of the mount entry */
-/* #define USEMNTCTL	/* use mntctl() to get the mount entry */
 /* #define USEMNTENTH	/* use <mntent.h> as header of the mount entry */
+/* #define USEMNTCTL	/* use mntctl() to get the mount entry */
 /* #define USEMNTINFOR	/* use getmntinfo_r() to get the mount entry */
 /* #define USEMNTINFO	/* use getmntinfo() to get the mount entry */
 /* #define USEGETMNT	/* use getmnt() to get the mount entry */
-/* #define USEFSTABH	/* use <fstab.h> as header of the mount entry */
-
-/* #define MOUNTED	/* means '/etc/mtab' defined in <mntent.h> */
+/* #define USEGETFSENT	/* use getfsent() to get the mount entry */
 
 /* following 3 items are exclusive
 /* #define USERE_COMP	/* use re_comp() family as search */
@@ -463,8 +441,8 @@
 
 
 #if defined (USEMNTTABH)
-# ifdef	USEFSTABH
-# undef	USEFSTABH
+# ifdef	USEMNTCTL
+# undef	USEMNTCTL
 # endif
 #endif
 
@@ -489,13 +467,13 @@
 
 #if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
  || defined (USEMNTINFO) || defined (USEGETMNT)
-# ifdef	USEFSTABH
-# undef	USEFSTABH
+# ifdef	USEGETFSENT
+# undef	USEGETFSENT
 # endif
 #endif
 
 #if defined (USEMNTTABH) || defined (USEMNTCTL) || defined (USEMNTINFOR)\
- || defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEFSTABH)
+ || defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEGETFSENT)
 # ifdef	USEMNTENTH
 # undef	USEMNTENTH
 # endif

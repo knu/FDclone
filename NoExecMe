@@ -1,0 +1,302 @@
+#!/bin/sh
+
+CC=cc
+CPP="$CC -E"
+TAR=tar
+LIBDIR=
+#LIBDIR=-L/usr/local/lib
+INCLUDEDIR=
+#INCLUDEDIR=-I/usr/local/include
+
+TMPSRC=tmptest.c
+TMPEXE=tmptest
+LIBS=
+trap "rm -f $TMPSRC $TMPEXE; exit 0" 0 1 2 15
+docc='$CC $TMPSRC -o $TMPEXE $INCLUDEDIR $LIBDIR $LIBS > /dev/null 2>&1'
+docpp='$CPP $TMPSRC $INCLUDEDIR > $TMPEXE 2> /dev/null'
+testcpp='$CPP $TMPSRC $INCLUDEDIR 2>&1 > /dev/null'
+
+setheader() {
+	echo "" > $TMPSRC
+	if [ -z "$1" ]; then return; fi
+	for i in $1""; do
+		echo "#include <${i}.h>" >> $TMPSRC
+	done;
+}
+
+compile() {
+	(setheader "$2")
+	echo "$3 test() { $1; } main() {}" >> $TMPSRC
+	if eval $docc; then ret=0; else ret=1; fi
+	rm -f $TMPEXE
+	return $ret
+}
+
+useheader() {
+	echo "Checking for <$1.h>..." 1>&2
+	(setheader "$1")
+	if [ -z "`eval $testcpp`" ]; then ret=0; else ret=1; fi
+	rm -f $TMPEXE
+	return $ret
+}
+
+noheader() { if (useheader "$1"); then return 1; else return 0; fi }
+
+inheader() {
+	re=$1
+	func=$3
+	if [ -z "$3" ]; then
+		echo "Checking for \"$1\" in <$2.h>..." 1>&2
+	else
+		echo "Checking for \"$3\" in <$2.h>..." 1>&2
+		re="CONFIGURE\($re\)"
+		func="CONFIGURE($func)"
+	fi
+	(setheader "$2")
+	echo "test() { $func; } main() {}" >> $TMPSRC
+	eval $docpp
+	if egrep "$re" $TMPEXE 2>&1 > /dev/null; then ret=0; else ret=1; fi
+	rm -f $TMPEXE
+	return $ret
+}
+
+noinheader() { if (inheader "$1" "$2" "$3"); then return 1; else return 0; fi }
+
+isexist() {
+	echo "Checking for $1..." 1>&2
+	if (compile "$1" "$2" "$3"); then return 0; else return 1; fi
+}
+
+noexist() { if (isexist "$1" "$2" "$3"); then return 1; else return 0; fi }
+
+havelib() {
+	echo "Checking for -l$1..." 1>&2
+	ORGLIBS=$LIBS
+	LIBS="$LIBS -l$1"
+	if (compile "$2" "$3" "$4"); then ret=0; else ret=1; fi
+	LIBS=$ORGLIBS
+	return $ret
+}
+
+
+cat ./config.h.in
+
+for i in TARUSESPACE TERMCAPLIB REGEXPLIB EXTENDLIB \
+USELEAPCNT NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
+NOUNISTDH NOSTDLIBH USESELECTH USESYSDIRH USETIMEH USETERMIO \
+USEDIRECT SYSVDIRENT HAVETIMEZONE \
+USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA USEFFSIZE STATFSARGS \
+USEMNTTABH USEMNTCTL USEMNTENTH USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
+USERE_COMP USEREGCOMP USEREGCMP \
+USERAND48 USESETENV NOSELECT NOSTRSTR USEUTIME USEGETWD SIGARGINT
+do
+	echo "#ifdef	$i"
+	echo "#undef	$i"
+	echo "#endif"
+done
+echo
+echo "/*"
+echo " *	OS Oriented Definitions"
+echo " */"
+echo
+
+
+echo "Checking for tar(1)..." 1>&2
+touch $TMPSRC
+$TAR cf $TMPEXE $TMPSRC
+if $TAR tvf $TMPEXE |
+(read mode other; echo $mode | egrep '/' 2>&1 > /dev/null); then
+	:
+else
+	echo "#define	TARUSESPACE"
+fi
+rm -f $TMPEXE
+
+lib=
+if havelib termlib "char b[1024]; tgetent(b,\"T\")"; then
+	lib=-ltermlib
+elif havelib ncurses "char b[1024]; tgetent(b,\"T\")"; then
+	lib=-lncurses
+elif havelib termcap "char b[1024]; tgetent(b,\"T\")"; then
+	lib=-ltermcap
+elif havelib curses "char b[1024]; tgetent(b,\"T\")"; then
+	lib=-lcurses
+elif havelib "curses -ltermcap" "char b[1024]; tgetent(b,\"T\")"; then
+	lib=-l"curses -ltermcap"
+fi
+if [ -n "$lib" ]; then
+	echo "#define	TERMCAPLIB	\"$lib\""
+	LIBS="$LIBS $lib"
+fi
+
+lib=
+if havelib compat "extern char *re_comp(); re_comp(0)" ctype; then
+	lib=-lcompat
+elif havelib gen "regex_t *re; regfree(re)" "sys/types regex"; then
+	lib=-lgen
+elif havelib PW "regex_t *re; regfree(re)" "sys/types regex"; then
+	lib=-lPW
+elif havelib PW "regex_t *re; regfree(re)" "sys/types regex" "char Error[1024];"
+then
+	lib=-lPW
+	echo "#define	PWNEEDERROR"
+fi
+if [ -n "$lib" ]; then
+	echo "#define	REGEXPLIB	\"$lib\""
+	LIBS="$LIBS $lib"
+fi
+
+lib=
+if noexist "getmntent(0)" "stdio mntent" \
+&& havelib sun "getmntent(0)" "stdio mntent"; then
+	lib="$lib -lsun"
+fi
+if noexist "getmntinfo_r(0,0,0,0)" "stdio sys/mount" \
+&& havelib c_r "getmntinfo_r(0,0,0,0)" "stdio sys/mount"; then
+	lib="$lib -lc_r"
+fi
+if [ -n "$lib" ]; then
+	echo "#define	EXTENDLIB	\"$lib\""
+	LIBS="$LIBS $lib"
+fi
+
+
+echo "Checking for leapcnt..." 1>&2
+(setheader "stdio tzfile")
+cat >> $TMPSRC << EOF
+int main() {
+	struct tzhead t;
+	FILE *fp;
+	if (chdir(TZDIR) < 0 || !(fp = fopen(TZDEFAULT, "r"))
+	|| fread(&t, sizeof(t), 1, fp) != 1) return(0);
+	fclose(fp);
+	return(*((long *)t.tzh_leapcnt));
+}
+EOF
+if eval $docc; then
+	if ./$TMPEXE; then
+		:
+	else
+		echo "#define	USELEAPCNT"
+	fi
+fi
+rm -f $TMPEXE
+
+if noexist "void *p"; then
+	echo "#define	NOVOID"
+fi
+if noinheader uid_t sys/types; then
+	echo "#define	NOUID_T"
+fi
+if inheader sys_errlist stdio; then
+	echo "#define	DECLERRLIST"
+fi
+if noexist errno errno; then
+	echo "#define	NOERRNO"
+fi
+if noinheader '[0-7]+.*,[0-7]+.*,[0-7]+.*' sys/stat "S_IRUSR,S_IWGRP,S_IXOTH"
+then
+	echo "#define	NOFILEMODE"
+fi
+if noheader unistd; then
+	echo "#define	NOUNISTDH"
+fi
+if noheader stdlib; then
+	echo "#define	NOSTDLIBH"
+fi
+if noinheader 'struct.*[^a-zA-Z_]fd_set' sys/types \
+&& inheader 'struct.*[^a-zA-Z_]fd_set' sys/select; then
+	echo "#define	USESELECTH"
+fi
+if noinheader '0*x*[0-9a-fA-F ]*' sys/param DEV_BSIZE \
+&& inheader '0*x*[0-9a-fA-F ]*' sys/dir DEV_BSIZE; then
+	echo "#define	USESYSDIRH"
+fi
+if isexist "struct tm *t" "sys/types sys/time time" \
+&& noexist "struct tm *t" "sys/types sys/time"; then
+	echo "#define	USETIMEH"
+fi
+if noheader sgtty; then
+	echo "#define	USETERMIO"
+fi
+if noheader dirent; then
+	echo "#define	USEDIRECT"
+elif noexist "struct dirent d; d.d_namlen" "sys/types dirent"; then
+	echo "#define	USESYSVDIRENT"
+fi
+if inheader 'extern.*[^a-zA-Z_]timezone' sys/time \
+&& isexist "extern time_t timezone; timezone" sys/time; then
+	echo "#define	HAVETIMEZONE"
+fi
+
+
+if inheader 'struct.*[^a-zA-Z_]fs_data' sys/mount; then
+	echo "#define	USEFSDATA"
+elif inheader 'struct.*[^a-zA-Z_]statfs' sys/vfs; then
+	echo "#define	USEVFSH"
+elif inheader 'struct.*[^a-zA-Z_]statfs' sys/mount; then {
+	echo "#define	USEMOUNTH"
+	if inheader MOUNT_UFS sys/mount; then
+		echo "#define	USEFFSIZE"
+	fi
+}
+elif inheader 'struct.*[^a-zA-Z_]statfs' sys/statfs; then {
+	echo "#define	USESTATFSH"
+	if inheader f_nlsdirtype sys/statfs; then
+		echo "#define	STATFSARGS	2"
+	else
+		echo "#define	STATFSARGS	4"
+	fi
+}
+elif inheader 'struct.*[^a-zA-Z_]statvfs' sys/statvfs; then
+	echo "#define	USESTATVFSH"
+fi
+
+if isexist "getmntent(0,0)" "stdio sys/mnttab"; then
+	echo "#define	USEMNTTABH"
+elif isexist "getmntent(0)" "stdio mntent"; then
+	echo "#define	USEMNTENTH"
+elif isexist "mntctl(0,0,0)"; then
+	echo "#define	USEMNTCTL"
+elif isexist "getmntinfo_r(0,0,0,0)"; then
+	echo "#define	USEMNTINFOR"
+elif isexist "getmntinfo(0,0)"; then
+	echo "#define	USEMNTINFO"
+elif isexist "getmnt(0,0,0,0,0)"; then
+	echo "#define	USEGETMNT"
+elif isexist "getfsent()" \
+&& inheader 'char.*[^a-zA-Z_]fs_mntops' fstab; then
+	echo "#define	USEGETFSENT"
+fi
+
+
+if isexist "extern char *re_comp(); re_comp(0)" ctype; then
+	echo "#define	USERE_COMP"
+elif isexist "regex_t *re; regfree(re)" "sys/types regex"; then
+	echo "#define	USEREGCOMP"
+elif isexist "extern char *regcmp(); regcmp(0,0)" ctype; then
+	echo "#define	USEREGCMP"
+fi
+
+
+if isexist "rand48()"; then
+	echo "#define	USERAND48"
+fi
+if isexist "setenv(0,0,0)"; then
+	echo "#define	USESETENV"
+fi
+if noexist "select(0,0,0,0,0)"; then
+	echo "#define	NOSELECT"
+fi
+if noexist "strstr(0,0)"; then
+	echo "#define	NOSTRSTR"
+fi
+if noexist "utimes(0,0)"; then
+	echo "#define	USEUTIME"
+fi
+if noexist "getcwd(0,0)"; then
+	echo "#define	USEGETWD"
+fi
+if inheader 'int.*[^a-zA-Z_]signal' signal; then
+	echo "#define	SIGARGINT"
+fi

@@ -1,10 +1,10 @@
 ############################################################
 #
-#       FDclone Ver. 0.99 に関して
+#       FDclone Ver. 1.00 に関して
 #
 #       Takashi SHIRAI, Nintendo Co. Ltd.
 #       <shirai@red.nintendo.co.jp>
-#       Jun 29, 1995
+#       Jul 24, 1995
 #
 ############################################################
 
@@ -35,22 +35,22 @@ PC ユーザにとってはこの "FD" という呼称がファイル管理ツール
 
 
 --
-　FDclone-0.99のパッケージには、以下のファイルが含まれます。
+　FDclone-1.00 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 HISTORY		これまでの改定履歴
-TODO		今後の課題 (βテストで行なうこと)
+FAQ		Q&A 集 (Frequently Asked Question)
+TECHKNOW	テクニカルノウハウ
 Install		fd のインストール方法のドキュメント
 Makefile	メイクファイル
-Makefile.in	加工前のメイクファイル本体
-configure	環境設定用ヘッダの自動生成プログラム
-fd.man		man ページ (JIS版)
+Makefile.in	メイクファイル本体 (雛型)
+NoExecMe	環境設定用ヘッダの自動生成プログラム (Makefile内で実行)
+fd.man		man ページ用 roff ファイル (JIS版)
 
-mkmf.sed.c	メイクファイル加工用の sed スクリプト (cppで加工)
-kanjicnv.c	簡易漢字コードコンバータのソース
+mkmf.sed.c	メイクファイル加工用の sed スクリプト (雛型)
+kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
-checkfs.c	ファイルシステムのチェック用 (β版のみ)
-getkey.c	キーコードのチェック用 (β版のみ)
+expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 
 main.c		fd のメインソース
 term.c		termcap ライブラリソース
@@ -71,10 +71,10 @@ browse.c	ブラウザ画面関連
 
 fd.h		fd のカスタマイズ用ヘッダ
 machine.h	機種依存性を吸収するヘッダ
-config.h	ダミーで用意してある環境設定用ヘッダ
+config.h.in	ダミーで用意してある環境設定用ヘッダ
 types.h		各種型宣言
 kctype.h	漢字コードに関するヘッダ
-func.h		extern 宣言
+func.h		プロトタイプ宣言
 functable.h	内部コマンドの属性定義用
 kanji.h.in	日本語文字列のソース (JIS版)
 version.h	バージョン
@@ -95,7 +95,73 @@ version.h	バージョン
 ことは、フリーソフトウェアの理念に反する行為となるので、一切
 これを禁止させて頂きます。
 
+
 --
-　詳細は各種ドキュメントを参照して下さい。βテストに協力して
-下さる方は、まず `TODO' を読んでから `Install' の指示に従っ
-てコンパイルして下さい。
+　詳細は各種ドキュメントを参照して下さい。`Install' の指示に
+従ってコンパイルし、機能詳細はインストール後の man ページを
+参照して下さい。
+
+
+--
+　最後になりましたが、FDclone の完成に際してお世話になった以
+下の方々に、この場を借りて感謝の意を表させて頂きます。
+(敬称略、アルファベット順)
+
+・『ＦＤ』の作者で FDclone の公開を快諾して頂きました。
+	SDI00544@niftyserve.or.jp (出射　厚)
+
+・WINC 勉強会 ML にて、ファイルシステムに関する相談に乗って
+　頂きました。
+	kenji@reseau.toyonaka.osaka.jp (Kenji Rikitake)
+	mori@chuo-computer.co.jp (森　秀和)
+	ohm@kyoto.wide.ad.jp (森島晃年)
+	saitoh@ics.es.osaka-u.ac.jp (齊藤明紀)
+
+・fj.sources.d での募集を受けてβテストに協力して頂きました。
+	aki@pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
+	ao@orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
+	daikoku@lang2.bs1.fc.nec.co.jp (大黒洋史)
+	fuku@amorph.rim.or.jp (FUKUSHIMA Osamu)
+	h-inoue@is.aist-nara.ac.jp (Hiroyuki Inoue)
+	h-yagi@zero0.nsis.cl.nec.co.jp (八木英雄)
+	hashi@star.rcast.u-tokyo.ac.jp (TAKAHASHI Katsuyuki)
+	hiro@akinus1.aki.che.tohoku.ac.jp (Akiyasu Hirotani)
+	i4579@info.nara-k.ac.jp (Kimura Masashi)
+	ishida@econ.shinshu-u.ac.jp (Akira Ishida)
+	ito@getz.isc.chubu.ac.jp (Maki ITO)
+	j0442@cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
+	j9194169@ke.yama.sut.ac.jp (Keitarou Yoshimura)
+	katsu@cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
+	kimai@av.crl.sony.co.jp (IMAI Kenichi)
+	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
+	kkubota@crl.go.jp (Kazuo Kubota)
+	kmiya@mm.rd.nttdata.jp (Kunio Miyamoto)
+	kobashi@comp.eng.himeji-tech.ac.jp (kobashi)
+	manabu@saskg.semicon.sony.co.jp (Niizato -Gamer- Manabu)
+	mat@azalea.gose.nara.jp (Matsuo Kazunori)
+	mats@cc.tuat.ac.jp (Seiji Matsumoto)
+	mino@kis-gw.msk.kis.co.jp (MINOMO Kazutoshi)
+	mori@isc.mew.co.jp (Shigeki Morimoto)
+	nyoshi@kaba.or.jp (YOSHIDA Nobuaki)
+	ohishi@otc.qnes.nec.co.jp (Isao Ohishi)
+	okubo@mem.cl.nec.co.jp (Shuichi OHKUBO)
+	ozawa@prince.pe.u-tokyo.ac.jp
+	sakai@csl.cl.nec.co.jp (Junji SAKAI)
+	sakanaga@ds.kyoto.omronsoft.co.jp (Toshiyuki Sakanaga)
+	sawada@h3news1.kais.kyoto-u.ac.jp (Yutaka SAWADA)
+	senshu@astro.yamagata-cit.ac.jp (Hiroyuki Senshu / 千秋)
+	shige@luck.imasy.or.jp (Shigechika Aikawa)
+	shirai@atropos.gen.u-tokyo.ac.jp (Izuru Shirai)
+	taka-mm@super.win.or.jp (Takahasi Mamoru)
+	tan@kei-n.huap.hokudai.ac.jp (Takushi Tanaka)
+	tanaka@inf.ptg.sony.co.jp ("T.Tanaka")
+	tomiyan@cv.sony.co.jp (富田 光彦)
+	tsuka@ohsaki.meidensha.co.jp (Yoshihiro Tsukamoto)
+	ueno@azalea.ihitri.ihi.co.jp (UENO Fumihiro  上野文裕)
+	uno@meleager.mel.go.jp
+	wakui@casiogw.rd.casio.co.jp (WAKUI Kazuhiko)
+	watanabe@jis.ptg.sony.co.jp (ebaN)
+	yajima@ccedu.sendai-ct.ac.jp (Kuniaki YAJIMA)
+	yaku@jedi.seg.kobe-u.ac.jp (Masao Yakushijin)
+	yamakawa@crdl.pioneer.co.jp (Yuzo Yamakawa)
+	yamamoto@ogw.ei.hosei.ac.jp (Kouya Yamamoto)

@@ -6,6 +6,7 @@
 
 #include "fd.h"
 #include "term.h"
+#include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
@@ -14,6 +15,7 @@
 
 #ifdef	USEMNTTABH
 #include <sys/mnttab.h>
+#define	MOUNTED		MNTTAB
 typedef struct mnttab	mnt_t;
 #define	setmntent		fopen
 #define	getmntent2(fp, mntp)	(getmntent(fp, mntp) ? NULL : mntp)
@@ -24,7 +26,7 @@ typedef struct mnttab	mnt_t;
 #define	mnt_type	mnt_fstype
 #endif	/* USEMNTTABH */
 
-#ifdef	USEFSTABH
+#ifdef	USEGETFSENT
 #include <fstab.h>
 typedef struct fstab	mnt_t;
 #define	setmntent(file, mode)	(FILE *)(setfsent(), NULL)
@@ -34,7 +36,7 @@ typedef struct fstab	mnt_t;
 #define	mnt_dir		fs_file
 #define	mnt_fsname	fs_spec
 #define	mnt_type	fs_vfstype
-#endif	/* USEFSTABH */
+#endif	/* USEGETFSENT */
 
 #ifdef	USEMNTCTL
 #include <fshelp.h>
@@ -78,36 +80,25 @@ typedef struct mntent	mnt_t;
 #include <sys/statvfs.h>
 typedef struct statvfs	statfs_t;
 #define	statfs2		statvfs
-#define	blocksize(fs)	(fs).f_bsize
+#define	blocksize(fs)	((fs).f_frsize ? (fs).f_frsize : (fs).f_bsize)
 #endif	/* USESTATVFSH */
 
 #ifdef	USESTATFSH
 #include <sys/statfs.h>
 #define	f_bavail	f_bfree
 typedef struct statfs	statfs_t;
-# if (STATFSARGS >= 4)
-# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-# else
-#  if (STATFSARGS >= 3)
-#  define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
-#  else
-#  define	statfs2			statfs
-#  endif
-# endif
 #define	blocksize(fs)	(fs).f_bsize
 #endif	/* USESTATFSH */
 
 #ifdef	USEVFSH
 #include <sys/vfs.h>
 typedef struct statfs	statfs_t;
-#define	statfs2		statfs
 #define	blocksize(fs)	(fs).f_bsize
 #endif	/* USEVFSH */
 
 #ifdef	USEMOUNTH
 #include <sys/mount.h>
 typedef struct statfs	statfs_t;
-#define	statfs2		statfs
 #define	blocksize(fs)	(fs).f_bsize
 #endif	/* USEMOUNTH */
 
@@ -124,16 +115,17 @@ typedef struct fs_data	statfs_t;
 #define	f_bsize		f_fsize
 #endif
 
-
-#ifdef	USESYSDIRH
-#include <sys/dir.h>
+#if defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
+# if (STATFSARGS >= 4)
+# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+# else
+#  if (STATFSARGS == 3)
+#  define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
+#  else
+#  define	statfs2			statfs
+#  endif
+# endif
 #endif
-
-extern char *strdup2();
-extern char *getwd2();
-extern VOID warning();
-extern char *mesconv();
-extern int kanjiputs2();
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -161,8 +153,11 @@ extern char fullpath[];
 #ifndef	MNTTYPE_EFS
 #define	MNTTYPE_EFS	"efs"	/* IRIX */
 #endif
+#ifndef	MNTTYPE_SYSV
+#define	MNTTYPE_SYSV	"sysv"	/* SystemV Rel.3 */
+#endif
 #ifndef	MNTTYPE_DGUX
-#define	MNTTYPE_DGUX	"dg/ux"	/* DGUX */
+#define	MNTTYPE_DGUX	"dg/ux"	/* DG/UX */
 #endif
 
 static int code2str();
@@ -343,7 +338,7 @@ mnt_t *mntp;
 	dir = (char *)realloc2(dir, len);
 	strcpy(dir, cp);
 
-	entp = getvfsbytype(vmntp -> vmt_gfstype);
+	entp = (char *)getvfsbytype(vmntp -> vmt_gfstype);
 	if (entp) {
 		cp = entp -> vfsent_name;
 		len = strlen(cp) + 1;
@@ -547,7 +542,8 @@ char *path;
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_JFS)) return(1);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);
-	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
+	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_SYSV)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
 	return(0);
 }
 

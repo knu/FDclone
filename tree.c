@@ -19,10 +19,10 @@ extern int sorton;
 extern int sorttree;
 extern int dircountlimit;
 
-/* #define	DEBUG */
-
-#define	TREEFIELD	((n_column * 3) / 5 - 2)
-#define	FILEFIELD	((n_column * 2) / 5 - 3)
+#define	DIRFIELD	3
+#define	TREEFIELD	(((dircountlimit > 0) ? (n_column * 3) / 5 : n_column)\
+			- 2)
+#define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
 #define	bufptr(buf, y)	(&buf[(y - WHEADER - 1) * (TREEFIELD + 1)])
 
 static int includedir();
@@ -110,14 +110,18 @@ char *dir;
 			}
 		}
 	}
+	if (limit == dircountlimit) {
+		locate(x + TREEFIELD + 4, WHEADER + 1);
+		kanjiputs2("[No Files]", w, 0);
+	}
 	closedir(dirp);
 	return(i);
 }
 
-static treelist *maketree(path, list, maxp, maxentp)
+static treelist *maketree(path, list, level, maxp, maxentp)
 char *path;
 treelist *list;
-int *maxp, *maxentp;
+int level, *maxp, *maxentp;
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -125,7 +129,7 @@ int *maxp, *maxentp;
 	char *cp, *dir, *subdir;
 	int i, len;
 
-	if (kbhit2(0)) {
+	if ((level + 1) * DIRFIELD + 2 > TREEFIELD || kbhit2(0)) {
 		*maxp = -1;
 		return(NULL);
 	}
@@ -167,7 +171,7 @@ int *maxp, *maxentp;
 		else if (!strncmp(dp -> d_name, subdir, len)
 		&& strlen(dp -> d_name) == len) {
 			list[0].name = strdup2(dp -> d_name);
-			list[0].next = maketree(subdir, NULL,
+			list[0].next = maketree(subdir, NULL, level + 1,
 				&(list[0].max), &(list[0].maxent));
 			if (list[0].max < 0) list[0].maxent = -1;
 			if (++(*maxp) >= 2) break;
@@ -198,27 +202,27 @@ int max, nest, y;
 	char *cp;
 	int i, j, w, tmp;
 
-	w = TREEFIELD - (nest * 3) - 1;
+	w = TREEFIELD - (nest * DIRFIELD) - 1;
 	tmp = y;
 	for (i = 0; i < max; i++) {
 		if (nest > 0) {
 			for (j = tmp; j < y; j++)
 			if (j > WHEADER && j < n_line - WFOOTER)
-				*(bufptr(buf, j) + (nest - 1) * 3) = '|';
+				*(bufptr(buf, j) + (nest - 1) * DIRFIELD) = '|';
 		}
 		if (y > WHEADER && y < n_line - WFOOTER) {
 			cp = bufptr(buf, y);
-			if (nest > 0) memcpy(&cp[(nest - 1) * 3], "+--", 3);
+			if (nest > 0)
+				memcpy(&cp[(nest - 1) * DIRFIELD], "+--", 3);
 			if ((tmp = strlen(list[i].name)) > w) tmp = w;
-			memcpy(&cp[nest * 3], list[i].name, tmp);
-			if (list[i].maxent < 0) cp[nest * 3 + tmp] = '>';
+			memcpy(&cp[nest * DIRFIELD], list[i].name, tmp);
+			if (list[i].maxent < 0) cp[nest * DIRFIELD + tmp] = '>';
 		}
 		y++;
 		tmp = y;
-		if (w >= 3 && list[i].next) {
+		if (w >= DIRFIELD && list[i].next)
 			y = _showtree(buf, list[i].next, list[i].max,
 				nest + 1, y);
-		}
 	}
 	return(y);
 }
@@ -257,7 +261,7 @@ int max, *ip, nest, *yp, y;
 	int i, j, w, len;
 
 	lp = NULL;
-	w = TREEFIELD - (nest * 3) - 1;
+	w = TREEFIELD - (nest * DIRFIELD) - 1;
 	for (i = 0; i < max; i++) {
 		if (*yp == y) {
 			if (*yp == y) {
@@ -267,7 +271,7 @@ int max, *ip, nest, *yp, y;
 			}
 		}
 		(*yp)++;
-		if (w >= 3 && list[i].next) {
+		if (w >= DIRFIELD && list[i].next) {
 			tmplp = _searchtree(path, list[i].next, list[i].max,
 				ip, nest + 1, yp, y);
 			if (tmplp) {
@@ -307,6 +311,7 @@ treelist *list;
 char *path;
 {
 	treelist *lp, *lptmp;
+	char *cp;
 	int i;
 
 	if (list -> next) {
@@ -320,7 +325,9 @@ char *path;
 		list -> max = list -> maxent = 0;
 		return(1);
 	}
-	lptmp = maketree(".", list -> next, &(list -> max), &(list -> maxent));
+	for (cp = path, i = 0; cp = strchr(cp, '/'); cp++, i++);
+	lptmp = maketree(".", list -> next, i,
+		&(list -> max), &(list -> maxent));
 	if (chdir(fullpath) < 0) error(fullpath);
 	if (list -> max < 0) {
 		if (list -> next) {
@@ -455,12 +462,13 @@ int cleanup;
 	keyflush();
 	list = (treelist *)malloc2(sizeof(treelist));
 	list[0].name = strdup2("/");
-	list[0].next = maketree(fullpath, NULL,
+	list[0].next = maketree(fullpath, NULL, 0,
 		&(list[0].max), &(list[0].maxent));
 
-	y = top = WHEADER + 1;
 	if (strcmp(fullpath, "/"))
-		for (cp = fullpath; cp = strchr(cp, '/'); cp++) y++;
+		for (cp = fullpath, y = 0; cp = strchr(cp, '/'); cp++, y++)
+			if ((y + 1) * DIRFIELD + 2 > TREEFIELD) break;
+	y += (top = WHEADER + 1);
 	if (y >= n_line - WFOOTER - 2) {
 		top += n_line - WFOOTER - 2 - y;
 		y = n_line - WFOOTER - 2;
@@ -612,12 +620,6 @@ int cleanup;
 					&i, 0, top, &bottom, y);
 				redraw = 1;
 				break;
-#ifdef	DEBUG
-			case ' ':
-				locate(0, 0);
-				cprintf("<%d, %d, %d>", y, top, bottom);
-				tflush();
-#endif
 			case ESC:
 				break;
 			default:

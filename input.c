@@ -298,9 +298,9 @@ int x, cx, len, linemax, max, comline;
 	return(ins);
 }
 
-static int inputstr(str, x, max, linemax, def, hist)
+static int inputstr(str, x, max, linemax, def, comline, hist)
 u_char *str;
-int x, max, linemax, def;
+int x, max, linemax, def, comline;
 char *hist[];
 {
 	int len, cx, i, histno, ch, ch2;
@@ -450,7 +450,7 @@ char *hist[];
 			case '\t':
 				keyflush();
 				i = completestr(str, x, cx,
-					len, linemax, max, hist == sh_history);
+					len, linemax, max, comline);
 				cx += i;
 				len += i;
 				break;
@@ -511,7 +511,7 @@ char *hist[];
 char *inputstr2(prompt, ptr, def, hist)
 char *prompt;
 int ptr;
-char *def, *hist[];
+char *def, **hist[];
 {
 	char input[MAXLINESTR + 1];
 	int i, len, ch;
@@ -533,7 +533,8 @@ char *def, *hist[];
 	i = (n_column - len - 1) * WCMDLINE;
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
-	ch = inputstr(input, len + 1, i, n_column - len - 1, ptr, hist);
+	ch = inputstr(input, len + 1, i, n_column - len - 1,
+		ptr, hist == &sh_history, (hist) ? *hist : NULL);
 	for (i = 0; i < WCMDLINE; i++) {
 		locate(0, LCMDLINE + i);
 		putterm(l_clear);
@@ -541,6 +542,7 @@ char *def, *hist[];
 
 	if (ch == ESC) return(NULL);
 
+	if (hist) *hist = entryhist(*hist, input);
 	tflush();
 	return(strdup2(input));
 }

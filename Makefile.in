@@ -4,24 +4,25 @@
 
 TITLE	= FD-
 BINDIR	= /usr/local/bin
-MANDIR	= /usr/local/man/ja_JP.SJIS/man1
+MANDIR	= /usr/local/man/man$(MANSEC)
 DEFRC	= /etc/fdrc
+SHELL	= /bin/sh
 INSTALL	= cp
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c\
-	kanjicnv.c mkfuncno.c checkfs.c getkey.c
-HEADER	= fd.h machine.h config.h types.h kctype.h term.h pathname.h\
+	kanjicnv.c mkfuncno.c expfunc.c
+HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
 	func.h functable.h
 
-DOC	= README HISTORY TODO Install
+DOC	= README HISTORY FAQ TECHKNOW Install
 MANSRC	= fd.man
 MANSEC	= 1
 RUNCOM	= .fdrc
 
-SOURCES	= $(DOC) configure Makefile Makefile.in $(MANSRC) $(SRC) $(HEADER)\
-	kanji.h.in mkmf.sed.c version.h .fdrc
+SOURCES	= $(DOC) NoExecMe Makefile Makefile.in $(MANSRC) $(SRC) $(HEADER)\
+	config.h.in kanji.h.in mkmf.sed.c version.h .fdrc
 
 CC	= __CC__
 SED	= sed
@@ -66,33 +67,14 @@ mkfuncno: mkfuncno.c
 
 
 ############################################################
-# function list using module
-#
-#version.h: $(SRC) $(HEADER)
-#	./verup.sh $@ $(SRC) $(HEADER)
-
-############################################################
 # to install all
 
 install: $(PROGRAM) $(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM) $(BINDIR)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)/$(PROGRAM).$(MANSEC)
-	if [ -f $(RUNCOM) ]; then \
+	-if [ -f $(RUNCOM) ]; then \
 		$(INSTALL) $(RUNCOM) $(DEFRC); \
 	fi
-
-
-############################################################
-# to test structure of file system
-
-test: checkfs
-	./checkfs test1
-
-checkfs: checkfs.c
-	$(CC) $(CFLAGS) -o $@ $@.c
-
-getkey: getkey.o term.o term.h
-	$(CC) $(CFLAGS) -o $@ $@.o term.o $(LDFLAGS)
 
 
 ############################################################
@@ -110,8 +92,6 @@ depend: $(SRC) kanji.h funcno.h
 	$(SED) -e "1,/^# DO NOT DELETE THIS LINE/d"\
 		-e "s/\/[^ ]* *//g"\
 		-e "s/\(kanjicnv\).o/\1/g"\
-		-e "s/\(checkfs\).o/\1/g"\
-		-e "s/\(getkey\).o/\1/g"\
 		-e "/: *$$/d" Makefile.tmp >> Makefile.in
 	rm -f Makefile.in.bak Makefile.tmp
 
@@ -119,8 +99,15 @@ depend: $(SRC) kanji.h funcno.h
 ############################################################
 # to make configuration file manually
 
-config: configure
-	./configure > config.h
+config: NoExecMe expfunc.c
+	-if (echo 't() { echo $1; }; t test' | sh >/dev/null 2>&1) ; then \
+		./NoExecMe > config.h; \
+	else \
+		if [ ! -f expfunc ]; then \
+			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
+		fi; \
+		./expfunc < NoExecMe | sh > config.h; \
+	fi
 
 
 ############################################################
@@ -145,8 +132,7 @@ shar: $(SOURCES)
 	shar -L50 -ac -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar $(SOURCES))
 
 clean:
-	rm -f core *.o funcno.h kanji.h Makefile.tmp \
-	kanjicnv mkfuncno checkfs getkey mkmf.sed \
+	rm -f core *.o funcno.h kanji.h kanjicnv mkfuncno expfunc \
 	$(PROGRAM) $(PROGRAM).$(MANSEC)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
@@ -200,5 +186,3 @@ browse.o: types.h pathname.h
 browse.o: term.h func.h 
 browse.o: funcno.h kanji.h 
 kanjicnv: machine.h config.h
-checkfs: machine.h config.h 
-getkey: term.h

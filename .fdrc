@@ -77,9 +77,6 @@ EDITOR	=	/usr/ucb/vi
 # for Mischievous Japanese OS (see `man fd')
 #export	LANG=C
 
-# for Strange Version EMACS (see `man fd')
-#export	PWD=
-
 # launcher definition
 #".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,0,5,6,7,8
 #".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
