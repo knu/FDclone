@@ -187,11 +187,10 @@ char *fmt;
 va_dcl
 {
 	va_list args;
-	int len;
 	char buf[MAXLINESTR + 1];
 
 	va_start(args);
-	len = vsprintf(buf, fmt, args);
+	vsprintf(buf, fmt, args);
 	va_end(args);
 
 	return(kanjiputs(buf));
@@ -201,7 +200,7 @@ int kanjiputs2(s, len, ptr)
 char *s;
 int len, ptr;
 {
-	char *dup;
+	char *dupl;
 	int i;
 
 	i = ptr;
@@ -211,11 +210,11 @@ int len, ptr;
 		if (i >= 0) for (i = strlen(s + ptr); i < len; i++) putch(' ');
 	}
 	else {
-		dup = strdup2(s + ptr);
-		dup[len] = '\0';
-		if (onkanji1((u_char *)s, len - 1)) dup[len - 1] = ' ';
-		kanjiputs(dup);
-		free(dup);
+		dupl = strdup2(s + ptr);
+		dupl[len] = '\0';
+		if (onkanji1((u_char *)s, len - 1)) dupl[len - 1] = ' ';
+		kanjiputs(dupl);
+		free(dupl);
 	}
 	return(len);
 }

@@ -175,7 +175,7 @@ archive.o: term.h func.h
 archive.o: funcno.h kanji.h 
 tree.o: fd.h machine.h config.h 
 tree.o: types.h pathname.h term.h
-tree.o: func.h 
+tree.o: func.h kanji.h
 command.o: fd.h machine.h config.h 
 command.o: types.h pathname.h
 command.o: term.h func.h 

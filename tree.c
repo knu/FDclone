@@ -7,6 +7,7 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
+#include "kanji.h"
 
 #include <signal.h>
 #include <sys/stat.h>
@@ -387,6 +388,10 @@ int top, *bottomp, y;
 	if (!lp || !(lp -> next)
 	|| lp -> next[*ip].max >= 0 || lp -> next[*ip].maxent < 0) return(NULL);
 
+	locate(1, WHEADER);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
 	if ((cp = strrchr(path, '/')) == path) cp++;
 	*cp = '\0';
 	if (!(expandtree(lp, path))) return((treelist *)-1);
@@ -460,13 +465,18 @@ int cleanup;
 	subwindow = 1;
 
 	keyflush();
+	locate(1, WHEADER);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
 	list = (treelist *)malloc2(sizeof(treelist));
 	list[0].name = strdup2("/");
 	list[0].next = maketree(fullpath, NULL, 0,
 		&(list[0].max), &(list[0].maxent));
 
+	y = 0;
 	if (strcmp(fullpath, "/"))
-		for (cp = fullpath, y = 0; cp = strchr(cp, '/'); cp++, y++)
+		for (cp = fullpath; cp = strchr(cp, '/'); cp++, y++)
 			if ((y + 1) * DIRFIELD + 2 > TREEFIELD) break;
 	y += (top = WHEADER + 1);
 	if (y >= n_line - WFOOTER - 2) {
@@ -589,6 +599,10 @@ int cleanup;
 			case '\t':
 				if (!lp || !lp -> next
 				|| lp -> next[i].maxent >= 0) break;
+				locate(1, WHEADER);
+				putterm(l_clear);
+				kanjiputs(WAIT_K);
+				tflush();
 				expandall(&(lp -> next[i]), path);
 				lp = searchtree(path, list, 1,
 					&i, 0, top, &bottom, y);
@@ -598,6 +612,10 @@ int cleanup;
 			case K_RIGHT:
 				if (!lp || !lp -> next
 				|| lp -> next[i].maxent >= 0) break;
+				locate(1, WHEADER);
+				putterm(l_clear);
+				kanjiputs(WAIT_K);
+				tflush();
 				expandtree(&(lp -> next[i]), path);
 				lp = searchtree(path, list, 1,
 					&i, 0, top, &bottom, y);

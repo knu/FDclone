@@ -95,12 +95,6 @@ char *str;
 	exit2(1);
 }
 
-VOID usage(no)
-int no;
-{
-	exit2(no);
-}
-
 static sigarg_t wintr()
 {
 	signal(SIGWINCH, SIG_IGN);
@@ -530,7 +524,6 @@ int evalconfigline(line)
 char *line;
 {
 	char *cp, *tmp;
-	int len;
 
 	cp = strpbrk(line, " \t");
 	if (!strncmp(line, "export", 6) && cp == line + 6) {
@@ -637,7 +630,6 @@ char *ext;
 
 int printlaunch()
 {
-	char *cp;
 	int i, n;
 
 	n = 0;
@@ -654,7 +646,6 @@ int printlaunch()
 
 int printarch()
 {
-	char *cp;
 	int i, n;
 
 	n = 0;
@@ -670,8 +661,6 @@ int printarch()
 
 int printalias()
 {
-	char *cp;
-
 	int i, n;
 
 	n = 0;
@@ -685,8 +674,6 @@ int printalias()
 
 int printhist()
 {
-	char *cp;
-
 	int i, n;
 
 	n = 0;

@@ -33,6 +33,7 @@
 char Error[1024];
 #endif
 
+extern int copypolicy;
 extern char fullpath[];
 extern char *lastpath;
 extern char *origpath;
@@ -50,8 +51,9 @@ int access2(path, mode)
 char *path;
 int mode;
 {
-	char *name, dir[MAXPATHLEN + 1];
 	struct stat status;
+	char *cp, *name, dir[MAXPATHLEN + 1], *str[4];
+	int val[4];
 
 	if (lstat(path, &status) < 0) error(path);
 	if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
@@ -70,8 +72,26 @@ int mode;
 	if (access(path, mode) < 0) {
 		if (errno == ENOENT) return(0);
 		if (errno != EACCES) error(path);
-		if (status.st_uid == getuid() && !yesno(DELPM_K, path))
-			return(-1);
+		if (status.st_uid == getuid()) {
+			if (copypolicy > 0) return(copypolicy - 2);
+			locate(0, LCMDLINE);
+			putterm(l_clear);
+			putch('[');
+			cp = DELPM_K;
+			kanjiputs2(path, n_column - strlen(cp) - 1, -1);
+			kanjiputs(cp);
+			str[0] = ANYES_K;
+			str[1] = ANNO_K;
+			str[2] = ANALL_K;
+			str[3] = ANKEP_K;
+			val[0] = 0;
+			val[1] = -1;
+			val[2] = 2;
+			val[3] = 1;
+			if (selectstr(&copypolicy, 4, 0, str, val) == ESC)
+				copypolicy = 2;
+			return((copypolicy > 0) ? copypolicy - 2 : copypolicy);
+		}
 	}
 	return(0);
 }

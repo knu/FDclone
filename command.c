@@ -22,6 +22,7 @@ extern int dispmode;
 extern int sorton;
 extern int chgorder;
 extern int stackdepth;
+extern int copypolicy;
 extern namelist filestack[];
 extern char fullpath[];
 extern char *archivefile;
@@ -485,11 +486,11 @@ static int log_dir(list, maxp)
 namelist *list;
 int *maxp;
 {
-	char *cp, *path;
+	char *path;
 
 	if (!(path = inputstr2(LOGD_K, -1, NULL, NULL))
 	|| !*(path = evalpath(path))) return(1);
-	if (!(cp = chdir3(path))) {
+	if (!chdir3(path)) {
 		warning(-1, path);
 		free(path);
 		return(1);
@@ -599,7 +600,7 @@ namelist *list;
 int *maxp;
 {
 	char *str[5];
-	int i, tmp1, tmp2, val[5], *dup;
+	int i, tmp1, tmp2, val[5], *dupl;
 
 	str[0] = ONAME_K;
 	str[1] = OEXT_K;
@@ -629,17 +630,17 @@ int *maxp;
 		if (selectstr(&tmp2, 2, 48, str, val) == ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
-		dup = (int *)malloc(*maxp * sizeof(int));
+		dupl = (int *)malloc(*maxp * sizeof(int));
 		for (i = 0; i < *maxp; i++) {
-			dup[i] = list[i].ent;
+			dupl[i] = list[i].ent;
 			list[i].ent = i;
 		}
 		qsort(list, *maxp, sizeof(namelist), cmplist);
 		for (i = 0; i < *maxp; i++) {
 			tmp1 = list[i].ent;
-			list[i].ent = dup[tmp1];
+			list[i].ent = dupl[tmp1];
 		}
-		free(dup);
+		free(dupl);
 		chgorder = 1;
 	}
 	return(3);
@@ -773,6 +774,7 @@ int *maxp;
 {
 	int i;
 
+	copypolicy = 0;
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(1);
 		filepos = applyfile(list, *maxp, unlink2, NULL);
@@ -798,6 +800,7 @@ int *maxp;
 	|| !strcmp(list[filepos].name, ".")
 	|| !strcmp(list[filepos].name, "..")) return(warning_bell(list, maxp));
 	if (!yesno(DELDR_K, list[filepos].name)) return(1);
+	copypolicy = 0;
 	if (islink(&list[filepos])) {
 		if ((i = unlink2(list[filepos].name)) < 0)
 			warning(-1, list[filepos].name);
@@ -910,8 +913,6 @@ static int launch_file(list, maxp)
 namelist *list;
 int *maxp;
 {
-	char *path;
-
 	if (launcher(list, *maxp) < 0) return(view_file(list, maxp));
 	return(4);
 }

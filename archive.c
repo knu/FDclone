@@ -324,7 +324,7 @@ static char *pullfilename(dir, list)
 char *dir;
 namelist *list;
 {
-	char *cp, *tmp;
+	char *cp;
 	int len;
 
 	cp = list -> name;
@@ -332,7 +332,7 @@ namelist *list;
 		if (strncmp(cp, dir, len) || cp[len] != '/') return(NULL);
 		cp += len + 1;
 	}
-	if (!*cp || isdir(list) || (tmp = strchr(cp, '/'))) return(NULL);
+	if (!*cp || isdir(list) || strchr(cp, '/')) return(NULL);
 	return(strdup2(cp));
 }
 

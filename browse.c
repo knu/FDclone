@@ -513,6 +513,11 @@ int *maxentp;
 	if (!(dirp = opendir("."))) error(".");
 	fnameofs = 0;
 
+	locate(0, LMESLINE);
+	putterm(l_clear);
+	kanjiputs(WAIT_K);
+	tflush();
+
 	if (!findpattern) re = NULL;
 	else {
 		cp = cnvregexp(findpattern, 1);

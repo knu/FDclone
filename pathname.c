@@ -395,8 +395,11 @@ char *prematch;
 	else if (*path == '~') return(completeuser(path + 1));
 	else if (exe) {
 		ptr = (char *)getenv("PATH");
-		if (next = strchr(ptr, ':')) strncpy2(dir, ptr, (next++) - ptr);
-		else strcpy(dir, ptr);
+		if (!(next = strchr(ptr, ':'))) strcpy(dir, ptr);
+		else {
+			strncpy(dir, ptr, next - ptr);
+			dir[(next++) - ptr] = '\0';
+		}
 		cp = path;
 	}
 	else {
@@ -413,9 +416,12 @@ char *prematch;
 			do {
 				if (dirp) closedir(dirp);
 				ptr = next;
-				if (next = strchr(ptr, ':'))
-					strncpy2(dir, ptr, (next++) - ptr);
-				else strcpy(dir, ptr);
+				if (!(next = strchr(ptr, ':')))
+					strcpy(dir, ptr);
+				else {
+					strncpy(dir, ptr, next - ptr);
+					dir[(next++) - ptr] = '\0';
+				}
 			} while (!(dirp = opendir(dir)) && next);
 			ptr = dir + strlen(dir);
 			strcpy(ptr++, "/");

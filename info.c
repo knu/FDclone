@@ -6,12 +6,16 @@
 
 #include "fd.h"
 #include "term.h"
-#include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
 #include <sys/param.h>
 #include <sys/file.h>
+
+#ifdef	SYSDIRH
+#include <sys/dir.h>
+#endif
+
 
 #ifdef	USEMNTENTH
 #include <mntent.h>
@@ -59,7 +63,7 @@ typedef struct _mnt_t {
 static FILE *setmntent();
 static mnt_t *getmntent2();
 #define	hasmntopt(mntp, opt)	strstr((mntp) -> mnt_opts, opt)
-#define	endmntent(fp)		(if (fp) free(fp))
+#define	endmntent(fp)		((fp) && free(fp))
 static int mnt_ptr;
 static int mnt_size;
 #endif
@@ -127,6 +131,12 @@ typedef struct fs_data	statfs_t;
 #  endif
 # endif
 #endif
+
+extern VOID error();
+extern char *getwd2();
+extern VOID warning();
+extern char *mesconv();
+extern int kanjiputs2();
 
 extern bindtable bindlist[];
 extern functable funclist[];
@@ -562,6 +572,19 @@ char *path;
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_SYSV)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
 	return(0);
+}
+
+int getblocksize(dir)
+char *dir;
+{
+#ifdef	DEV_BSIZE
+	return(DEV_BSIZE);
+#else
+	struct stat buf;
+
+	if (stat(dir, &buf) < 0) error(dir);
+	return((int)buf.st_size);
+#endif
 }
 
 static char *inscomma(buf, n, digit)

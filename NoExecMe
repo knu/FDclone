@@ -115,7 +115,7 @@ fi
 rm -f $TMPEXE
 
 echo "Checking for cpp(1)..." 1>&2
-echo '#define test \"01\"' | tr '01' '\376\376' > $TMPSRC
+echo '#define test "01"' | tr '01' '\376\376' > $TMPSRC
 echo 'main() {char *cp=test;}' >> $TMPSRC
 if [ -z "`eval $testcpp`" ]; then
 	:

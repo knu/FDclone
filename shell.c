@@ -150,7 +150,7 @@ char *arg;
 int needmark;
 {
 	char *cp, *src, *body;
-	int i, len, ptr, arglen, bodylen;
+	int i, len, ptr;
 
 	arg = killmeta(arg);
 	if ((cp = strrchr(arg, '.')) && cp != arg) {

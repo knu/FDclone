@@ -16,7 +16,6 @@ extern int errno;
 
 /* main.c */
 extern VOID error();
-extern VOID usage();
 extern VOID sigvecset();
 extern VOID sigvecreset();
 extern VOID title();
@@ -37,7 +36,6 @@ extern int stat2();
 extern int chdir2();
 extern char *chdir3();
 extern int mkdir2();
-extern int mkdir3();
 extern VOID_P malloc2();
 extern VOID_P realloc2();
 extern char *strdup2();
@@ -51,7 +49,7 @@ extern char *strncpy3();
 extern char *strstr();
 #endif
 extern int atoi2();
-#ifdef	USESETENV
+#ifndef	USESETENV
 extern int putenv2();
 #endif
 extern int setenv2();
@@ -85,6 +83,7 @@ extern int completealias();
 
 /* info.c */
 extern VOID help();
+extern int getblocksize();
 extern int writablefs();
 extern int infofs();
 
@@ -118,6 +117,7 @@ extern int applyfile();
 extern int applydir();
 
 /* archive.c */
+extern VOID rewritearc();
 extern int launcher();
 extern int pack();
 extern int unpack();
