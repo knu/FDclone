@@ -23,11 +23,25 @@ extern int setcurdrv __P_((int, int));
 #ifdef	USEMKDEVH
 #include <sys/mkdev.h>
 #else
-# ifndef	major
-# define	major(n)	(((unsigned)(n) >> 8) & 0xff)
-# endif
-# ifndef	minor
-# define	minor(n)	((unsigned)((n) & 0xff))
+# ifdef	USEMKNODH
+# include <sys/mknod.h>
+# else
+#  ifdef	SVR4
+#  include <sys/sysmacros.h>
+#   ifndef	major
+#   define	major(n)	(((unsigned long)(n) >> 18) & 0x3fff)
+#   endif
+#   ifndef	minor
+#   define	minor(n)	((unsigned long)((n) & 0x3ffff))
+#   endif
+#  else
+#   ifndef	major
+#   define	major(n)	(((unsigned)(n) >> 8) & 0xff)
+#   endif
+#   ifndef	minor
+#   define	minor(n)	((unsigned)((n) & 0xff))
+#   endif
+#  endif
 # endif
 #endif
 
@@ -68,7 +82,7 @@ static VOID readstatus __P_((VOID_A));
 #endif
 static int NEAR browsedir __P_((char *, char *));
 
-int columns = 0;
+int curcolumns = 0;
 int defcolumns = 0;
 int minfilename = 0;
 int mark = 0;
@@ -170,7 +184,7 @@ VOID helpbar(VOID_A)
 
 	for (i = 0; i < 10; i++) {
 		locate(ofs + (width + 1) * i + (i / 5) * 3, LHELP);
-		len = (width - strlen(helpindex[i])) / 2;
+		len = (width - (int)strlen(helpindex[i])) / 2;
 		putterm(t_standout);
 		for (j = 0; j < len; j++) putch2(' ');
 		kanjiputs2(helpindex[i], width - len, 0);
@@ -572,10 +586,10 @@ int calcwidth(VOID_A)
 {
 	int width;
 
-	width = (n_column / columns) - 2 - 1;
-	if (columns < 2 && width - WIDTH1 >= minfilename) width -= WIDTH1;
-	if (columns < 3 && width - WIDTH2 >= minfilename) width -= WIDTH2;
-	if (columns < 4 && width - WIDTH3 >= minfilename) width -= WIDTH3;
+	width = (n_column / curcolumns) - 2 - 1;
+	if (curcolumns < 2 && width - WIDTH1 >= minfilename) width -= WIDTH1;
+	if (curcolumns < 3 && width - WIDTH2 >= minfilename) width -= WIDTH2;
+	if (curcolumns < 4 && width - WIDTH3 >= minfilename) width -= WIDTH3;
 	return(width);
 }
 
@@ -599,11 +613,11 @@ int no, standout;
 	if (standout < 0 && stable_standout) {
 		putterm(end_standout);
 		calclocate(no);
-		return((n_column / columns) - 2 - 1);
+		return((n_column / curcolumns) - 2 - 1);
 	}
 
 	width = calcwidth();
-	buf = malloc2((n_column / columns) * 2 + 1);
+	buf = malloc2((n_column / curcolumns) * 2 + 1);
 	i = (standout && fnameofs > 0) ? fnameofs : 0;
 #ifdef	CODEEUC
 	wid = width;
@@ -649,13 +663,13 @@ int no, standout;
 #endif
 	len = width;
 #ifdef	CODEEUC
-	width += (n_column / columns) - 2 - 1 - wid;
+	width += (n_column / curcolumns) - 2 - 1 - wid;
 #else
-	width = (n_column / columns) - 2 - 1;
+	width = (n_column / curcolumns) - 2 - 1;
 #endif
 
 	tm = NULL;
-	if (columns < 5 && len + WIDTH3 <= width) {
+	if (curcolumns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&(list[no])))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
 #if	MSDOS || !defined (_NODOSDRIVE)
@@ -674,18 +688,18 @@ int no, standout;
 #endif
 		else sprintf(buf + len, " %*ld",
 			WSIZE, (long)(list[no].st_size));
-		if (strlen(buf + len) > WSIZE + 1)
+		if ((int)strlen(buf + len) > WSIZE + 1)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "OVERFLOW");
 		len += WIDTH3;
 	}
-	if (columns < 3 && len + WIDTH2 <= width) {
+	if (curcolumns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&(list[no].st_mtim));
 		sprintf(buf + len, " %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		len += WIDTH2;
 	}
-	if (columns < 2 && len + WIDTH1 <= width) {
+	if (curcolumns < 2 && len + WIDTH1 <= width) {
 		if (!tm) tm = localtime(&(list[no].st_mtim));
 		sprintf(buf + len, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
@@ -724,7 +738,7 @@ int no, standout;
 	else
 #endif
 	if (standout > 0) putterm(end_standout);
-	return((n_column / columns) - 2 - 1);
+	return((n_column / curcolumns) - 2 - 1);
 }
 
 int listupfile(list, max, def)
@@ -741,12 +755,12 @@ char *def;
 	}
 
 	if (max <= 0) {
-		i = (n_column / columns) - 2 - 1;
+		i = (n_column / curcolumns) - 2 - 1;
 		locate(1, LFILETOP);
 		putch2(' ');
 		putterm(t_standout);
 		cp = NOFIL_K;
-		if (i <= strlen(cp)) cp = "NoFiles";
+		if (i <= (int)strlen(cp)) cp = "NoFiles";
 		kanjiputs2(cp, i, 0);
 		putterm(end_standout);
 		win_x = i + 2;
@@ -974,8 +988,8 @@ char *buf;
 		search_x = search_y = -1;
 		win_x = calc_x;
 		win_y = calc_y;
-		if (ch == CR) return(-1);
-		else if (ch != ESC) putterm(t_bell);
+		if (ch == K_CR) return(-1);
+		else if (ch != K_ESC) putterm(t_bell);
 		return(0);
 	}
 
@@ -1339,7 +1353,7 @@ char *cur;
 	strcpy(file, ".");
 	sorton = sorttype % 100;
 	dispmode = displaymode;
-	columns = defcolumns;
+	curcolumns = defcolumns;
 
 	def = NULL;
 	if (cur) {

@@ -61,7 +61,7 @@
 #ifdef	HDDMOUNT
 #include <sys/ioctl.h>
 #define	D_SECSIZE(dl)	(dl).d_secsize
-# if	defined (BSD4) || defined (BSD43)
+# ifdef	BSD4
 # include <sys/disklabel.h>
 # else
 #  ifdef	SOLARIS
@@ -416,9 +416,16 @@ devinfo fdtype[MAXDRIVEENTRY] = {
 	{'A', "/dev/rfd0d", 2, 8, 80},
 #endif
 #if	defined (FREEBSD)
+# if	__FreeBSD__ < 5
 	{'A', "/dev/rfd0.1440", 2, 18, 80},
 	{'A', "/dev/rfd0.720", 2, 9, 80},
 	{'A', "/dev/rfd0.720", 2, 8 + 100, 80},
+# else
+	/* FreeBSD >=5.0 has not any buffered device */
+	{'A', "/dev/fd0.1440", 2, 18, 80},
+	{'A', "/dev/fd0.720", 2, 9, 80},
+	{'A', "/dev/fd0.720", 2, 8 + 100, 80},
+# endif
 #endif
 #if	defined (NETBSD)
 # if	defined (i386)
@@ -1167,7 +1174,7 @@ int encode;
 	}
 
 	if (encode) {
-		if (lseek(fd, (off_t)2, 0) < 0) return(r);
+		if (lseek(fd, (off_t)2, L_SET) < 0) return(r);
 		wc = unifysjis(wc, 0);
 		for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, buf, 4) != 4) break;
@@ -1184,7 +1191,7 @@ int encode;
 		ofs = unitblent / 2 + 1;
 		for (;;) {
 			if (ofs == min || ofs == max) break;
-			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, 0) < 0
+			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET) < 0
 			|| read(fd, buf, 4) != 4) break;
 			w = (((u_short)(buf[1]) << 8) | buf[0]);
 			if (wc == w) {
@@ -4396,9 +4403,9 @@ int flags, mode;
 		sizeof(dent_t));
 	dosflist[fd]._clust = dd2clust(dd);
 	dosflist[fd]._offset = dd2offset(dd);
-	if ((flags & (O_WRONLY | O_RDWR)) && (flags & O_APPEND))
-		doslseek(fd, (off64_t)0, L_XTND);
 	if (fd >= maxdosf) maxdosf = fd + 1;
+	if ((flags & (O_WRONLY | O_RDWR)) && (flags & O_APPEND))
+		doslseek(fd + DOSFDOFFSET, (off64_t)0, L_XTND);
 	return(fd + DOSFDOFFSET);
 }
 
@@ -4502,6 +4509,7 @@ char *buf;
 int nbytes;
 {
 	long size, total;
+	int wrt;
 
 	fd -= DOSFDOFFSET;
 	if (fd < 0 || fd >= maxdosf
@@ -4509,10 +4517,12 @@ int nbytes;
 		errno = EBADF;
 		return(-1);
 	}
+	wrt = (dosflist[fd]._flag & (O_WRONLY | O_RDWR)) ? 1 : 0;
 
 	total = 0;
 	while (nbytes > 0 && dosflist[fd]._loc < dosflist[fd]._size) {
-		if (dosflist[fd]._cnt <= 0 && dosfilbuf(fd, 0) < 0) reterr(-1);
+		if (dosflist[fd]._cnt <= 0 && dosfilbuf(fd, wrt) < 0)
+			reterr(-1);
 		if (!(size = dosflist[fd]._cnt)) return(total);
 
 		if (size > nbytes) size = nbytes;
@@ -4605,7 +4615,7 @@ int whence;
 		dosflist[fd]._next = dosflist[fd]._top;
 	}
 
-	if (dosread(fd, NULL, (int)offset) < 0) return(-1);
+	if (dosread(fd + DOSFDOFFSET, NULL, (int)offset) < 0) return(-1);
 	return(dosflist[fd]._loc);
 }
 
@@ -4790,7 +4800,8 @@ char *type;
 		errno = EINVAL;
 		return(NULL);
 	}
-	if (flags & O_APPEND) doslseek(fd, (off64_t)0, L_XTND);
+	if ((flags & (O_WRONLY | O_RDWR)) && (flags & O_APPEND))
+		doslseek(fd + DOSFDOFFSET, (off64_t)0, L_XTND);
 	return((FILE *)&(dosflist[fd]));
 }
 

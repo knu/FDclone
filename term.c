@@ -132,12 +132,230 @@ extern int errno;
 #define	SIZEFMT		"\033[%d;%dR"
 
 #if	!MSDOS
+# ifdef	USETERMINFO
+# include <curses.h>
+# include <term.h>
+# define	tgetnum2(s)		(s)
+# define	tgetflag2(s)		(s)
+# define	tgoto2(s, p1, p2)	tparm(s, p2, p1, \
+					0, 0, 0, 0, 0, 0, 0)
+# define	TERM_pc			pad_char
+# define	TERM_bc			NULL
+# define	TERM_co			columns
+# define	TERM_li			lines
+# define	TERM_xn			eat_newline_glitch
+# define	TERM_xs			ceol_standout_glitch
+# define	TERM_ti			enter_ca_mode
+# define	TERM_te			exit_ca_mode
+# define	TERM_mm			meta_on
+# define	TERM_mo			meta_off
+# define	TERM_cs			change_scroll_region
+# define	TERM_ks			keypad_xmit
+# define	TERM_ke			keypad_local
+# define	TERM_ve			cursor_normal
+# define	TERM_vs			cursor_visible
+# define	TERM_vi			cursor_invisible
+# define	TERM_sc			save_cursor
+# define	TERM_rc			restore_cursor
+# define	TERM_bl			bell
+# define	TERM_vb			flash_screen
+# define	TERM_cl			clear_screen
+# define	TERM_me			exit_attribute_mode
+# define	TERM_md			enter_bold_mode
+# define	TERM_mr			enter_reverse_mode
+# define	TERM_mh			enter_dim_mode
+# define	TERM_mb			enter_blink_mode
+# define	TERM_so			enter_standout_mode
+# define	TERM_us			enter_underline_mode
+# define	TERM_se			exit_standout_mode
+# define	TERM_ue			exit_underline_mode
+# define	TERM_ce			clr_eol
+# define	TERM_al			insert_line
+# define	TERM_dl			delete_line
+# define	TERM_ic			insert_character
+# define	TERM_IC			parm_ich
+# define	TERM_dc			delete_character
+# define	TERM_DC			parm_dch
+# define	TERM_cm			cursor_address
+# define	TERM_ho			cursor_home
+# define	TERM_cr			carriage_return
+# define	TERM_nl			NULL
+# define	TERM_sf			scroll_forward
+# define	TERM_sr			scroll_reverse
+# define	TERM_up			cursor_up
+# define	TERM_UP			parm_up_cursor
+# define	TERM_do			cursor_down
+# define	TERM_DO			parm_down_cursor
+# define	TERM_nd			cursor_right
+# define	TERM_RI			parm_right_cursor
+# define	TERM_le			cursor_left
+# define	TERM_LE			parm_left_cursor
+# define	TERM_UP			parm_up_cursor
+# define	TERM_DO			parm_down_cursor
+# define	TERM_RI			parm_right_cursor
+# define	TERM_LE			parm_left_cursor
+# define	TERM_ku			key_up
+# define	TERM_kd			key_down
+# define	TERM_kr			key_right
+# define	TERM_kl			key_left
+# define	TERM_kh			key_home
+# define	TERM_kb			key_backspace
+# define	TERM_l1			lab_f1
+# define	TERM_l2			lab_f2
+# define	TERM_l3			lab_f3
+# define	TERM_l4			lab_f4
+# define	TERM_l5			lab_f5
+# define	TERM_l6			lab_f6
+# define	TERM_l7			lab_f7
+# define	TERM_l8			lab_f8
+# define	TERM_l9			lab_f9
+# define	TERM_la			lab_f10
+# define	TERM_F1			key_f11
+# define	TERM_F2			key_f12
+# define	TERM_F3			key_f13
+# define	TERM_F4			key_f14
+# define	TERM_F5			key_f15
+# define	TERM_F6			key_f16
+# define	TERM_F7			key_f17
+# define	TERM_F8			key_f18
+# define	TERM_F9			key_f19
+# define	TERM_FA			key_f20
+# define	TERM_k1			key_f1
+# define	TERM_k2			key_f2
+# define	TERM_k3			key_f3
+# define	TERM_k4			key_f4
+# define	TERM_k5			key_f5
+# define	TERM_k6			key_f6
+# define	TERM_k7			key_f7
+# define	TERM_k8			key_f8
+# define	TERM_k9			key_f9
+# define	TERM_k10		key_f10
+# define	TERM_k0			key_f0
+# define	TERM_kL			key_dl
+# define	TERM_kA			key_il
+# define	TERM_kD			key_dc
+# define	TERM_kI			key_ic
+# define	TERM_kC			key_clear
+# define	TERM_kE			key_eol
+# define	TERM_kP			key_ppage
+# define	TERM_kN			key_npage
+# define	TERM_at8		key_enter
+# define	TERM_at1		key_beg
+# define	TERM_at7		key_end
+# else	/* !USETERMINFO */
 extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
 extern char *tgetstr __P_((char *, char **));
 extern char *tgoto __P_((char *, int, int));
 extern int tputs __P_((char *, int, int (*)__P_((int))));
+# define	tgetnum2		tgetnum
+# define	tgetflag2		tgetflag
+# define	tgoto2			tgoto
+# define	TERM_pc			"pc"
+# define	TERM_bc			"bc"
+# define	TERM_co			"co"
+# define	TERM_li			"li"
+# define	TERM_xn			"xn"
+# define	TERM_xs			"xs"
+# define	TERM_ti			"ti"
+# define	TERM_te			"te"
+# define	TERM_mm			"mm"
+# define	TERM_mo			"mo"
+# define	TERM_cs			"cs"
+# define	TERM_ks			"ks"
+# define	TERM_ke			"ke"
+# define	TERM_ve			"ve"
+# define	TERM_vs			"vs"
+# define	TERM_vi			"vi"
+# define	TERM_sc			"sc"
+# define	TERM_rc			"rc"
+# define	TERM_bl			"bl"
+# define	TERM_vb			"vb"
+# define	TERM_cl			"cl"
+# define	TERM_me			"me"
+# define	TERM_md			"md"
+# define	TERM_mr			"mr"
+# define	TERM_mh			"mh"
+# define	TERM_mb			"mb"
+# define	TERM_so			"so"
+# define	TERM_us			"us"
+# define	TERM_se			"se"
+# define	TERM_ue			"ue"
+# define	TERM_ce			"ce"
+# define	TERM_al			"al"
+# define	TERM_dl			"dl"
+# define	TERM_ic			"ic"
+# define	TERM_IC			"IC"
+# define	TERM_dc			"dc"
+# define	TERM_DC			"DC"
+# define	TERM_cm			"cm"
+# define	TERM_ho			"ho"
+# define	TERM_cr			"cr"
+# define	TERM_nl			"nl"
+# define	TERM_sf			"sf"
+# define	TERM_sr			"sr"
+# define	TERM_up			"up"
+# define	TERM_UP			"UP"
+# define	TERM_do			"do"
+# define	TERM_DO			"DO"
+# define	TERM_nd			"nd"
+# define	TERM_RI			"RI"
+# define	TERM_le			"le"
+# define	TERM_LE			"LE"
+# define	TERM_UP			"UP"
+# define	TERM_DO			"DO"
+# define	TERM_RI			"RI"
+# define	TERM_LE			"LE"
+# define	TERM_ku			"ku"
+# define	TERM_kd			"kd"
+# define	TERM_kr			"kr"
+# define	TERM_kl			"kl"
+# define	TERM_kh			"kh"
+# define	TERM_kb			"kb"
+# define	TERM_l1			"l1"
+# define	TERM_l2			"l2"
+# define	TERM_l3			"l3"
+# define	TERM_l4			"l4"
+# define	TERM_l5			"l5"
+# define	TERM_l6			"l6"
+# define	TERM_l7			"l7"
+# define	TERM_l8			"l8"
+# define	TERM_l9			"l9"
+# define	TERM_la			"la"
+# define	TERM_F1			"F1"
+# define	TERM_F2			"F2"
+# define	TERM_F3			"F3"
+# define	TERM_F4			"F4"
+# define	TERM_F5			"F5"
+# define	TERM_F6			"F6"
+# define	TERM_F7			"F7"
+# define	TERM_F8			"F8"
+# define	TERM_F9			"F9"
+# define	TERM_FA			"FA"
+# define	TERM_k1			"k1"
+# define	TERM_k2			"k2"
+# define	TERM_k3			"k3"
+# define	TERM_k4			"k4"
+# define	TERM_k5			"k5"
+# define	TERM_k6			"k6"
+# define	TERM_k7			"k7"
+# define	TERM_k8			"k8"
+# define	TERM_k9			"k9"
+# define	TERM_k10		"k;"
+# define	TERM_k0			"k0"
+# define	TERM_kL			"kL"
+# define	TERM_kA			"kA"
+# define	TERM_kD			"kD"
+# define	TERM_kI			"kI"
+# define	TERM_kC			"kC"
+# define	TERM_kE			"kE"
+# define	TERM_kP			"kP"
+# define	TERM_kN			"kN"
+# define	TERM_at8		"@8"
+# define	TERM_at1		"@1"
+# define	TERM_at7		"@7"
+# endif	/* !USETERMINFO */
 
 #define	BUFUNIT		16
 #define	TERMCAPSIZE	2048
@@ -233,11 +451,16 @@ static int NEAR freeterment __P_((VOID_A));
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
-#if	!MSDOS
-extern short ospeed;
-extern char PC;
-extern char *BC;
-extern char *UP;
+#if	!MSDOS && !defined (USETERMINFO)
+# ifdef	NOTERMVAR
+# define	T_EXTERN
+# else
+# define	T_EXTERN	extern
+# endif
+T_EXTERN short ospeed;
+T_EXTERN char PC;
+T_EXTERN char *BC;
+T_EXTERN char *UP;
 #endif
 int n_column = 0;
 int n_lastcolumn = 0;
@@ -272,8 +495,6 @@ char *l_insert = NULL;
 char *l_delete = NULL;
 char *c_insert = NULL;
 char *c_delete = NULL;
-char *c_store = NULL;
-char *c_restore = NULL;
 char *c_locate = NULL;
 char *c_home = NULL;
 char *c_return = NULL;
@@ -553,7 +774,9 @@ int reset;
 		cc_eof = dupttyio.c_cc[VEOF];
 		cc_eol = dupttyio.c_cc[VEOL];
 #endif
+#ifndef	USETERMINFO
 		ospeed = getspeed(dupttyio);
+#endif
 		termflags |= F_INITTTY;
 	}
 	else if (tioctl(ttyio, REQSETP, &dupttyio) < 0
@@ -801,9 +1024,11 @@ static int NEAR defaultterm(VOID_A)
 	n_lastcolumn = 79;
 	n_line = 25;
 #else
+# ifndef	USETERMINFO
 	PC ='\0';
 	BC = "\010";
 	UP = "\033[A";
+# endif
 	n_lastcolumn = 80;
 	n_line = 24;
 #endif
@@ -855,12 +1080,8 @@ static int NEAR defaultterm(VOID_A)
 	c_insert = "";
 	c_delete = "";
 #ifdef	MSDOS
-	c_store = "\033[s";
-	c_restore = "\033[u";
 	c_locate = "\033[%d;%dH";
 #else
-	c_store = "\0337";
-	c_restore = "\0338";
 	c_locate = "\033[%i%d;%dH";
 #endif
 	c_home = "\033[H";
@@ -1055,6 +1276,24 @@ char *s;
 int arg1, arg2;
 {
 	char *buf;
+# ifdef	USETERMINFO
+#  ifdef	DEBUG
+	if (!s) return(NULL);
+	_mtrace_file = "tparm(start)";
+	s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "tparm(end)";
+		malloc(0);	/* dummy alloc */
+	}
+	if (!s) return(NULL);
+#  else
+	if (!s || !(s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0)))
+		return(NULL);
+#  endif
+	if (!(buf = (char *)malloc(strlen(s) + 1))) err2(NULL);
+	strcpy(buf, s);
+# else	/* USETERMINFO */
 	int i, j, n, sw, size, args[2];
 
 	if (!s) return(NULL);
@@ -1132,19 +1371,23 @@ int arg1, arg2;
 	}
 
 	buf[j] = '\0';
+# endif	/* USETERMINFO */
 	return(buf);
 }
 
 static char *NEAR tgetstr2(term, s)
 char **term, *s;
 {
+# ifndef	USETERMINFO
 	char strbuf[TERMCAPSIZE];
-	char *p, *cp;
+	char *p;
 
 	p = strbuf;
-	if ((cp = tgetstr(s, &p)) || (cp = *term)) {
-		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
-		strcpy(*term, cp);
+	s = tgetstr(s, &p);
+# endif
+	if (s || (s = *term)) {
+		if (!(*term = (char *)malloc(strlen(s) + 1))) err2(NULL);
+		strcpy(*term, s);
 	}
 	return(*term);
 }
@@ -1152,15 +1395,19 @@ char **term, *s;
 static char *NEAR tgetstr3(term, str1, str2)
 char **term, *str1, *str2;
 {
+# ifdef	USETERMINFO
+	if (!str1 && (str1 = tparamstr(str2, 1, 1))) *term = str1;
+# else
 	char strbuf[TERMCAPSIZE];
-	char *p, *cp;
+	char *p;
 
 	p = strbuf;
-	if (!(cp = tgetstr(str1, &p))
-	&& (cp = tparamstr(tgetstr(str2, &p), 1, 1))) *term = cp;
-	else if (cp || (cp = *term)) {
-		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
-		strcpy(*term, cp);
+	if (!(str1 = tgetstr(str1, &p))
+	&& (str1 = tparamstr(tgetstr(str2, &p), 1, 1))) *term = str1;
+# endif
+	else if (str1 || (str1 = *term)) {
+		if (!(*term = (char *)malloc(strlen(str1) + 1))) err2(NULL);
+		strcpy(*term, str1);
 	}
 	return(*term);
 }
@@ -1276,8 +1523,24 @@ int getterment(VOID_A)
 	int i, j;
 
 	if (termflags & F_TERMENT) return(-1);
+	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stdout;
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
-# ifdef	DEBUG
+# ifdef	USETERMINFO
+#  ifdef	DEBUG
+	_mtrace_file = "setupterm(start)";
+	setupterm(termname, fileno(ttyout), &i);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "setupterm(end)";
+		malloc(0);	/* dummy alloc */
+	}
+#  else
+	setupterm(termname, fileno(ttyout), &i);
+#  endif
+	if (i != 1) err2("No TERMINFO is prepared");
+	defaultterm();
+# else	/* !USETERMINFO */
+#  ifdef	DEBUG
 	_mtrace_file = "tgetent(start)";
 	i = tgetent(buf, termname);
 	if (_mtrace_file) _mtrace_file = NULL;
@@ -1286,23 +1549,22 @@ int getterment(VOID_A)
 		malloc(0);	/* dummy malloc */
 	}
 	if (i <= 0) err2("No TERMCAP is prepared");
-# else
+#  else
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP is prepared");
-# endif
-
-	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stdout;
+#  endif
 
 	defaultterm();
 	cp = "";
-	tgetstr2(&cp, "pc");
+	tgetstr2(&cp, TERM_pc);
 	PC = *cp;
 	free(cp);
-	tgetstr2(&BC, "bc");
-	tgetstr2(&UP, "up");
+	tgetstr2(&BC, TERM_bc);
+	tgetstr2(&UP, TERM_up);
+# endif
 
 	cp = NULL;
-	if (tgetstr2(&cp, "ku") || tgetstr2(&cp, "kd")
-	|| tgetstr2(&cp, "kr") || tgetstr2(&cp, "kl")) {
+	if (tgetstr2(&cp, TERM_ku) || tgetstr2(&cp, TERM_kd)
+	|| tgetstr2(&cp, TERM_kr) || tgetstr2(&cp, TERM_kl)) {
 		free(cp);
 		t_keypad = t_nokeypad = "";
 		keyseq[K_UP - K_MIN].str =
@@ -1311,55 +1573,53 @@ int getterment(VOID_A)
 		keyseq[K_LEFT - K_MIN].str = NULL;
 	}
 
-	n_column = n_lastcolumn = tgetnum("co");
-	n_line = tgetnum("li");
-	if (!tgetflag("xn")) n_lastcolumn--;
-	stable_standout = tgetflag("xs");
-	tgetstr2(&t_init, "ti");
-	tgetstr2(&t_end, "te");
-	tgetstr2(&t_metamode, "mm");
-	tgetstr2(&t_nometamode, "mo");
-	tgetstr2(&t_scroll, "cs");
-	tgetstr2(&t_keypad, "ks");
-	tgetstr2(&t_nokeypad, "ke");
-	tgetstr2(&t_normalcursor, "ve");
-	tgetstr2(&t_highcursor, "vs");
-	tgetstr2(&t_nocursor, "vi");
-	tgetstr2(&t_setcursor, "sc");
-	tgetstr2(&t_resetcursor, "rc");
-	tgetstr2(&t_bell, "bl");
-	tgetstr2(&t_vbell, "vb");
-	tgetstr2(&t_clear, "cl");
-	tgetstr2(&t_normal, "me");
-	tgetstr2(&t_bold, "md");
-	tgetstr2(&t_reverse, "mr");
-	tgetstr2(&t_dim, "mh");
-	tgetstr2(&t_blink, "mb");
-	tgetstr2(&t_standout, "so");
-	tgetstr2(&t_underline, "us");
-	tgetstr2(&end_standout, "se");
-	tgetstr2(&end_underline, "ue");
-	tgetstr2(&l_clear, "ce");
-	tgetstr2(&l_insert, "al");
-	tgetstr2(&l_delete, "dl");
-	tgetstr3(&c_insert, "ic", "IC");
-	tgetstr3(&c_delete, "dc", "DC");
-	tgetstr2(&c_store, "sc");
-	tgetstr2(&c_restore, "rc");
-	tgetstr2(&c_locate, "cm");
-	tgetstr2(&c_home, "ho");
-	tgetstr2(&c_return, "cr");
-	tgetstr2(&c_newline, "nl");
-	tgetstr2(&c_scrollforw, "sf");
-	tgetstr2(&c_scrollrev, "sr");
-	tgetstr3(&c_up, "up", "UP");
-	tgetstr3(&c_down, "do", "DO");
-	tgetstr3(&c_right, "nd", "RI");
-	tgetstr3(&c_left, "le", "LE");
-	tgetstr2(&c_nup, "UP");
-	tgetstr2(&c_ndown, "DO");
-	tgetstr2(&c_nright, "RI");
-	tgetstr2(&c_nleft, "LE");
+	n_column = n_lastcolumn = tgetnum2(TERM_co);
+	n_line = tgetnum2(TERM_li);
+	if (!tgetflag2(TERM_xn)) n_lastcolumn--;
+	stable_standout = tgetflag2(TERM_xs);
+	tgetstr2(&t_init, TERM_ti);
+	tgetstr2(&t_end, TERM_te);
+	tgetstr2(&t_metamode, TERM_mm);
+	tgetstr2(&t_nometamode, TERM_mo);
+	tgetstr2(&t_scroll, TERM_cs);
+	tgetstr2(&t_keypad, TERM_ks);
+	tgetstr2(&t_nokeypad, TERM_ke);
+	tgetstr2(&t_normalcursor, TERM_ve);
+	tgetstr2(&t_highcursor, TERM_vs);
+	tgetstr2(&t_nocursor, TERM_vi);
+	tgetstr2(&t_setcursor, TERM_sc);
+	tgetstr2(&t_resetcursor, TERM_rc);
+	tgetstr2(&t_bell, TERM_bl);
+	tgetstr2(&t_vbell, TERM_vb);
+	tgetstr2(&t_clear, TERM_cl);
+	tgetstr2(&t_normal, TERM_me);
+	tgetstr2(&t_bold, TERM_md);
+	tgetstr2(&t_reverse, TERM_mr);
+	tgetstr2(&t_dim, TERM_mh);
+	tgetstr2(&t_blink, TERM_mb);
+	tgetstr2(&t_standout, TERM_so);
+	tgetstr2(&t_underline, TERM_us);
+	tgetstr2(&end_standout, TERM_se);
+	tgetstr2(&end_underline, TERM_ue);
+	tgetstr2(&l_clear, TERM_ce);
+	tgetstr2(&l_insert, TERM_al);
+	tgetstr2(&l_delete, TERM_dl);
+	tgetstr3(&c_insert, TERM_ic, TERM_IC);
+	tgetstr3(&c_delete, TERM_dc, TERM_DC);
+	tgetstr2(&c_locate, TERM_cm);
+	tgetstr2(&c_home, TERM_ho);
+	tgetstr2(&c_return, TERM_cr);
+	tgetstr2(&c_newline, TERM_nl);
+	tgetstr2(&c_scrollforw, TERM_sf);
+	tgetstr2(&c_scrollrev, TERM_sr);
+	tgetstr3(&c_up, TERM_up, TERM_UP);
+	tgetstr3(&c_down, TERM_do, TERM_DO);
+	tgetstr3(&c_right, TERM_nd, TERM_RI);
+	tgetstr3(&c_left, TERM_le, TERM_LE);
+	tgetstr2(&c_nup, TERM_UP);
+	tgetstr2(&c_ndown, TERM_DO);
+	tgetstr2(&c_nright, TERM_RI);
+	tgetstr2(&c_nleft, TERM_LE);
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) if (keyseq[i].str) {
 		cp = (char *)malloc(strlen(keyseq[i].str) + 1);
@@ -1368,54 +1628,54 @@ int getterment(VOID_A)
 		keyseq[i].str = cp;
 	}
 
-	tgetkeyseq(K_UP, "ku");
-	tgetkeyseq(K_DOWN, "kd");
-	tgetkeyseq(K_RIGHT, "kr");
-	tgetkeyseq(K_LEFT, "kl");
-	tgetkeyseq(K_HOME, "kh");
-	tgetkeyseq(K_BS, "kb");
-	tgetkeyseq(K_F(1), "l1");
-	tgetkeyseq(K_F(2), "l2");
-	tgetkeyseq(K_F(3), "l3");
-	tgetkeyseq(K_F(4), "l4");
-	tgetkeyseq(K_F(5), "l5");
-	tgetkeyseq(K_F(6), "l6");
-	tgetkeyseq(K_F(7), "l7");
-	tgetkeyseq(K_F(8), "l8");
-	tgetkeyseq(K_F(9), "l9");
-	tgetkeyseq(K_F(10), "la");
-	tgetkeyseq(K_F(11), "F1");
-	tgetkeyseq(K_F(12), "F2");
-	tgetkeyseq(K_F(13), "F3");
-	tgetkeyseq(K_F(14), "F4");
-	tgetkeyseq(K_F(15), "F5");
-	tgetkeyseq(K_F(16), "F6");
-	tgetkeyseq(K_F(17), "F7");
-	tgetkeyseq(K_F(18), "F8");
-	tgetkeyseq(K_F(19), "F9");
-	tgetkeyseq(K_F(20), "FA");
-	tgetkeyseq(K_F(21), "k1");
-	tgetkeyseq(K_F(22), "k2");
-	tgetkeyseq(K_F(23), "k3");
-	tgetkeyseq(K_F(24), "k4");
-	tgetkeyseq(K_F(25), "k5");
-	tgetkeyseq(K_F(26), "k6");
-	tgetkeyseq(K_F(27), "k7");
-	tgetkeyseq(K_F(28), "k8");
-	tgetkeyseq(K_F(29), "k9");
-	tgetkeyseq(K_F(30), "k;");
-	tgetkeyseq(K_F(30), "k0");
-	tgetkeyseq(K_DL, "kL");
-	tgetkeyseq(K_IL, "kA");
-	tgetkeyseq(K_DC, "kD");
-	tgetkeyseq(K_IC, "kI");
-	tgetkeyseq(K_CLR, "kC");
-	tgetkeyseq(K_EOL, "kE");
-	tgetkeyseq(K_PPAGE, "kP");
-	tgetkeyseq(K_NPAGE, "kN");
-	tgetkeyseq(K_ENTER, "@8");
-	tgetkeyseq(K_BEG, "@1");
-	tgetkeyseq(K_END, "@7");
+	tgetkeyseq(K_UP, TERM_ku);
+	tgetkeyseq(K_DOWN, TERM_kd);
+	tgetkeyseq(K_RIGHT, TERM_kr);
+	tgetkeyseq(K_LEFT, TERM_kl);
+	tgetkeyseq(K_HOME, TERM_kh);
+	tgetkeyseq(K_BS, TERM_kb);
+	tgetkeyseq(K_F(1), TERM_l1);
+	tgetkeyseq(K_F(2), TERM_l2);
+	tgetkeyseq(K_F(3), TERM_l3);
+	tgetkeyseq(K_F(4), TERM_l4);
+	tgetkeyseq(K_F(5), TERM_l5);
+	tgetkeyseq(K_F(6), TERM_l6);
+	tgetkeyseq(K_F(7), TERM_l7);
+	tgetkeyseq(K_F(8), TERM_l8);
+	tgetkeyseq(K_F(9), TERM_l9);
+	tgetkeyseq(K_F(10), TERM_la);
+	tgetkeyseq(K_F(11), TERM_F1);
+	tgetkeyseq(K_F(12), TERM_F2);
+	tgetkeyseq(K_F(13), TERM_F3);
+	tgetkeyseq(K_F(14), TERM_F4);
+	tgetkeyseq(K_F(15), TERM_F5);
+	tgetkeyseq(K_F(16), TERM_F6);
+	tgetkeyseq(K_F(17), TERM_F7);
+	tgetkeyseq(K_F(18), TERM_F8);
+	tgetkeyseq(K_F(19), TERM_F9);
+	tgetkeyseq(K_F(20), TERM_FA);
+	tgetkeyseq(K_F(21), TERM_k1);
+	tgetkeyseq(K_F(22), TERM_k2);
+	tgetkeyseq(K_F(23), TERM_k3);
+	tgetkeyseq(K_F(24), TERM_k4);
+	tgetkeyseq(K_F(25), TERM_k5);
+	tgetkeyseq(K_F(26), TERM_k6);
+	tgetkeyseq(K_F(27), TERM_k7);
+	tgetkeyseq(K_F(28), TERM_k8);
+	tgetkeyseq(K_F(29), TERM_k9);
+	tgetkeyseq(K_F(30), TERM_k10);
+	tgetkeyseq(K_F(30), TERM_k0);
+	tgetkeyseq(K_DL, TERM_kL);
+	tgetkeyseq(K_IL, TERM_kA);
+	tgetkeyseq(K_DC, TERM_kD);
+	tgetkeyseq(K_IC, TERM_kI);
+	tgetkeyseq(K_CLR, TERM_kC);
+	tgetkeyseq(K_EOL, TERM_kE);
+	tgetkeyseq(K_PPAGE, TERM_kP);
+	tgetkeyseq(K_NPAGE, TERM_kN);
+	tgetkeyseq(K_ENTER, TERM_at8);
+	tgetkeyseq(K_BEG, TERM_at1);
+	tgetkeyseq(K_END, TERM_at7);
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
 	for (i = 21; i <= 30; i++)
@@ -1423,7 +1683,7 @@ int getterment(VOID_A)
 	for (i = 31; K_F(i) < K_DL; i++)
 		if (keyseq[K_F(i) - K_MIN].str)
 			keyseq[K_F(i) - K_MIN].code = i;
-	keyseq[K_F('?') - K_MIN].code = CR;
+	keyseq[K_F('?') - K_MIN].code = K_CR;
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) {
 		if (!(keyseq[i].str)) keyseq[i].len = 0;
@@ -1446,8 +1706,10 @@ static int NEAR freeterment(VOID_A)
 
 	if (!(termflags & F_TERMENT)) return(-1);
 
+#  ifndef	USETERMINFO
 	if (BC) free(BC);
 	if (UP) free(UP);
+#  endif
 	if (t_init) free(t_init);
 	if (t_end) free(t_end);
 	if (t_metamode) free(t_metamode);
@@ -1477,8 +1739,6 @@ static int NEAR freeterment(VOID_A)
 	if (l_delete) free(l_delete);
 	if (c_insert) free(c_insert);
 	if (c_delete) free(c_delete);
-	if (c_store) free(c_store);
-	if (c_restore) free(c_restore);
 	if (c_locate) free(c_locate);
 	if (c_home) free(c_home);
 	if (c_return) free(c_return);
@@ -1862,9 +2122,9 @@ char *str;
 int kbhit2(usec)
 u_long usec;
 {
-#ifdef	NOSELECT
+# ifdef	NOSELECT
 	return((usec) ? 1 : 0);
-#else
+# else
 	fd_set readfds;
 	struct timeval timeout;
 	int n;
@@ -1878,7 +2138,7 @@ u_long usec;
 		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
 	} while (n < 0);
 	return(n);
-#endif
+# endif
 }
 
 int getch2(VOID_A)
@@ -1905,15 +2165,15 @@ int sig;
 			kill(getpid(), sig);
 		}
 		if (keywaitfunc) (*keywaitfunc)();
-#ifndef	TIOCSTI
+# ifndef	TIOCSTI
 		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
-#endif
+# endif
 	} while (!key);
 
 	key = ch = getch2();
 	if (!(p = keyseqtree)) return(key);
 
-	if (key == ESC) {
+	if (key == K_ESC) {
 		if (!kbhit2(WAITKEYPAD * 1000L)) return(key);
 		ch = getch2();
 		if (isalpha(ch) && !kbhit2(WAITMETA * 1000L))
@@ -1952,12 +2212,12 @@ int sig;
 int ungetch2(c)
 u_char c;
 {
-#ifdef	TIOCSTI
+# ifdef	TIOCSTI
 	ioctl(ttyio, TIOCSTI, &c);
-#else
+# else
 	if (ungetnum >= sizeof(ungetbuf) / sizeof(u_char) - 1) return(EOF);
 	ungetbuf[ungetnum++] = c;
-#endif
+# endif
 	return(c);
 }
 
@@ -1976,20 +2236,20 @@ int s, e;
 int locate(x, y)
 int x, y;
 {
-#ifdef	DEBUG
+# ifdef	DEBUG
 	char *cp;
 
 	_mtrace_file = "tgoto(start)";
-	cp = tgoto(c_locate, x, y);
+	cp = tgoto2(c_locate, x, y);
 	if (_mtrace_file) _mtrace_file = NULL;
 	else {
 		_mtrace_file = "tgoto(end)";
 		malloc(0);	/* dummy malloc */
 	}
 	putterms(cp);
-#else
-	putterms(tgoto(c_locate, x, y));
-#endif
+# else
+	putterms(tgoto2(c_locate, x, y));
+# endif
 	return(0);
 }
 
@@ -2003,26 +2263,26 @@ int getwsize(xmax, ymax)
 int xmax, ymax;
 {
 	int x, y, tx, ty;
-#ifdef	TIOCGWINSZ
+# ifdef	TIOCGWINSZ
 	struct winsize ws;
-#else
-#ifdef	WIOCGETD
+# else
+#  ifdef	WIOCGETD
 	struct uwdate ws;
-#else
-#ifdef	TIOCGSIZE
+#  else
+#   ifdef	TIOCGSIZE
 	struct ttysize ts;
-#endif
-#endif
-#endif
+#   endif
+#  endif
+# endif
 
 	x = y = -1;
-#ifdef	TIOCGWINSZ
+# ifdef	TIOCGWINSZ
 	if (ioctl(ttyio, TIOCGWINSZ, &ws) >= 0) {
 		if (ws.ws_col > 0) x = ws.ws_col;
 		if (ws.ws_row > 0) y = ws.ws_row;
 	}
-#else
-#ifdef	WIOCGETD
+# else	/* !TIOCGWINSZ */
+#  ifdef	WIOCGETD
 	ws.uw_hs = ws.uw_vs = 0;
 	if (ioctl(ttyio, WIOCGETD, &ws) >= 0) {
 		if (ws.uw_width > 0 && ws.uw_hs > 0)
@@ -2030,22 +2290,22 @@ int xmax, ymax;
 		if (ws.uw_height > 0 && ws.uw_vs > 0)
 			y = ws.uw_height / ws.uw_vs;
 	}
-#else
-#ifdef	TIOCGSIZE
+#  else	/* !WIOCGETD */
+#   ifdef	TIOCGSIZE
 	if (ioctl(ttyio, TIOCGSIZE, &ts) >= 0) {
 		if (ts.ts_cols > 0) x = ts.ts_cols;
 		if (ts.ts_lines > 0) y = ts.ts_lines;
 	}
-#endif
-#endif
-#endif
+#   endif
+#  endif	/* !WIOCGETD */
+# endif	/* !TIOCGWINSZ */
 
 	if (usegetcursor || x < 0 || y < 0) {
 		setscroll(-1, -1);
 		if (maxlocate(&ty, &tx) >= 0) {
 			x = tx;
 			y = ty;
-#ifdef	TIOCGWINSZ
+# ifdef	TIOCGWINSZ
 			if (ws.ws_col <= 0 || ws.ws_xpixel <= 0)
 				ws.ws_xpixel = 0;
 			else ws.ws_xpixel += (x - ws.ws_col)
@@ -2057,21 +2317,21 @@ int xmax, ymax;
 			ws.ws_col = x;
 			ws.ws_row = y;
 			ioctl(ttyio, TIOCSWINSZ, &ws);
-#else
-#ifdef	WIOCGETD
+# else	/* !TIOCGWINSZ */
+#  ifdef	WIOCGETD
 			if (ws.uw_hs > 0 && ws.uw_vs > 0) {
 				ws.uw_width = x * ws.uw_hs;
 				ws.uw_height = y * ws.uw_vs;
 				ioctl(ttyio, WIOCSETD, &ws);
 			}
-#else
-#ifdef	TIOCGSIZE
+#  else	/* !WIOCGETD */
+#   ifdef	TIOCGSIZE
 			ts.ts_cols = x;
 			ts.ts_lines = y;
 			ioctl(ttyio, TIOCSSIZE, &ts);
-#endif
-#endif
-#endif
+#   endif
+#  endif	/* !WIOCGETD */
+# endif	/* !TIOCGWINSZ */
 		}
 	}
 

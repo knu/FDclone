@@ -27,18 +27,18 @@
 #if	MSDOS
 #include <process.h>
 #include "unixemu.h"
-#ifndef	FD
-#include <dos.h>
-#include <io.h>
-#define	DS_IRDONLY	001
-#define	DS_IHIDDEN	002
-#define	DS_IFSYSTEM	004
-#define	DS_IFLABEL	010
-#define	DS_IFDIR	020
-#define	DS_IARCHIVE	040
-#define	SEARCHATTRS	(DS_IRDONLY | DS_IHIDDEN | DS_IFSYSTEM \
+# ifndef	FD
+# include <dos.h>
+# include <io.h>
+# define	DS_IRDONLY	001
+# define	DS_IHIDDEN	002
+# define	DS_IFSYSTEM	004
+# define	DS_IFLABEL	010
+# define	DS_IFDIR	020
+# define	DS_IARCHIVE	040
+# define	SEARCHATTRS	(DS_IRDONLY | DS_IHIDDEN | DS_IFSYSTEM \
 			| DS_IFDIR | DS_IARCHIVE)
-#endif
+# endif	/* !FD */
 #define	EXTWIDTH	4
 # if defined (DJGPP) && DJGPP < 2
 # include <dir.h>
@@ -157,6 +157,7 @@ static int NEAR _evalwild __P_((int, char ***, char *, char *, int,
 static int NEAR calchash __P_((char *));
 static VOID NEAR inithash __P_((VOID_A));
 static hashlist *NEAR newhash __P_((char *, char *, int, hashlist *));
+static VOID NEAR freehash __P_((hashlist **));
 static hashlist *NEAR findhash __P_((char *, int));
 static VOID NEAR rmhash __P_((char *, int));
 #endif
@@ -232,6 +233,7 @@ hashlist **hashtable = NULL;
 char *(*getvarfunc)__P_((char *, int)) = NULL;
 int (*putvarfunc)__P_((char *, int)) = NULL;
 int (*getretvalfunc)__P_((VOID_A)) = NULL;
+long (*getpidfunc)__P_((VOID_A)) = NULL;
 long (*getlastpidfunc)__P_((VOID_A)) = NULL;
 char **(*getarglistfunc)__P_((VOID_A)) = NULL;
 char *(*getflagfunc)__P_((VOID_A)) = NULL;
@@ -987,7 +989,7 @@ int len;
 
 			if (quote || meta) {
 #ifdef	BASHSTYLE
-	/* bash treats a meta character in "[]" as a character itself */
+	/* bash treats a character quoted by \ in "[]" as a character itself */
 				paren[plen++] = PMETA;
 # if	!MSDOS
 				if (!pathignorecase) paren[plen++] = s[i];
@@ -1142,11 +1144,11 @@ char *s;
 		c2 = '\0';
 		for (; re[n1][i]; i++) {
 #ifdef	BASHSTYLE
-	/* bash treats a meta character in "[]" as a character itself */
+	/* bash treats a character quoted by \ in "[]" as a character itself */
 			if (re[n1][i] == PMETA && re[n1][i + 1]) i++;
-			if (re[n1][i] == '-' && re[n1][i + 1] && c2)
+			else if (re[n1][i] == '-' && re[n1][i + 1] && c2)
 #else
-			if (re[n1][i] == '-')
+			if (re[n1][i] == '-' && c2)
 #endif
 			{
 				beg = c2;
@@ -1155,7 +1157,7 @@ char *s;
 			c2 = (u_char)(re[n1][i]);
 #ifdef	CODEEUC
 			if (isekana(re[n1], i))
-				c1 = (c1 << 8) + (u_char)(re[n1][++i]);
+				c2 = (c2 << 8) + (u_char)(re[n1][++i]);
 			else
 #endif
 			if (iskanji1(re[n1], i))
@@ -1208,31 +1210,30 @@ char *path, *file;
 int *plenp, flen, overwrite;
 {
 	char *new;
-	int i;
+	int i, sc;
 
-	if (!*plenp) {
-		new = malloc2(flen + 1);
-		strncpy2(new, file, flen);
-	}
-	else {
-#if	MSDOS
-		if (_dospath(path)) i = 2;
-		else
+#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+	if (*plenp >= 2 && _dospath(path)) i = 2;
+	else
 #endif
-		i = 0;
+	i = 0;
 
+	if (*plenp <= i) sc = 0;
+	else {
+		sc = 1;
 		if (path[i] == _SC_) {
-			for (i++; path[i] == _SC_; i++);
-			if (!path[i]) *plenp = i - 1;
+			for (i++; i < *plenp; i++) if (path[i] != _SC_) break;
+			if (i >= *plenp) sc = 0;
 		}
-		if (overwrite) new = realloc2(path, *plenp + 1 + flen + 1);
-		else {
-			new = malloc2(*plenp + 1 + flen + 1);
-			strncpy(new, path, *plenp);
-		}
-		new[(*plenp)++] = _SC_;
-		strncpy2(new + *plenp, file, flen);
 	}
+
+	if (overwrite) new = realloc2(path, *plenp + sc + flen + 1);
+	else {
+		new = malloc2(*plenp + sc + flen + 1);
+		strncpy(new, path, *plenp);
+	}
+	if (sc) new[(*plenp)++] = _SC_;
+	strncpy2(new + *plenp, file, flen);
 	*plenp += flen;
 	return(new);
 }
@@ -1510,7 +1511,8 @@ hashlist *next;
 	return(new);
 }
 
-VOID freehash(hashlist **htable)
+static VOID NEAR freehash(htable)
+hashlist **htable;
 {
 	hashlist *hp, *next;
 	int i;
@@ -1639,6 +1641,13 @@ char *com, *search;
 	static char *searchcwd = NULL;
 	char buf[MAXPATHLEN];
 	int n;
+
+	if (!com && !search) {
+		freehash(hpp);
+		if (searchcwd) free(searchcwd);
+		searchcwd = NULL;
+		return(CM_NOTFOUND);
+	}
 #endif
 
 #if	MSDOS
@@ -2093,7 +2102,9 @@ int c, quoted;
 			cp = tmp;
 			break;
 		case '$':
-			sprintf(tmp, "%ld", (long)getpid());
+			if (!getpidfunc) pid = getpid();
+			else pid = (*getpidfunc)();
+			sprintf(tmp, "%ld", pid);
 			cp = tmp;
 			break;
 		case '!':
@@ -2173,7 +2184,7 @@ char *arg;
 int olen, nlen;
 {
 	if (nlen <= olen) return(buf);
-	buf = realloc2(buf, ptr + nlen + strlen(arg) - olen + 1);
+	buf = realloc2(buf, ptr + nlen + (int)strlen(arg) - olen + 1);
 	return(buf);
 }
 
@@ -2573,7 +2584,7 @@ int stripq, backq;
 			}
 		}
 		else if (ismeta(cp, 0, quote)) {
-			if (j >= 0);
+			if (j >= 0) bbuf[j++] = *cp;
 			else buf[i++] = *cp;
 			cp++;
 		}

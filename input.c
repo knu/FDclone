@@ -25,7 +25,7 @@
 
 extern char **history[];
 extern short histsize[];
-extern int columns;
+extern int curcolumns;
 extern int minfilename;
 extern int sizeinfo;
 extern int hideclock;
@@ -97,27 +97,27 @@ static int emulatekey[] = {
 	K_UP, K_DOWN, K_RIGHT, K_LEFT,
 	K_IC, K_DC, K_IL, K_DL,
 	K_HOME, K_END, K_BEG, K_EOL,
-	K_PPAGE, K_NPAGE, K_ENTER, ESC
+	K_PPAGE, K_NPAGE, K_ENTER, K_ESC
 };
 static char emacskey[] = {
 	CTRL('P'), CTRL('N'), CTRL('F'), CTRL('B'),
-	ESC, CTRL('D'), CTRL('Q'), CTRL('K'),
-	ESC, ESC, CTRL('A'), CTRL('E'),
+	K_ESC, CTRL('D'), CTRL('Q'), CTRL('K'),
+	K_ESC, K_ESC, CTRL('A'), CTRL('E'),
 	CTRL('V'), CTRL('Y'), CTRL('O'), CTRL('G')
 };
 #define	EMACSKEYSIZ	((int)(sizeof(emacskey) / sizeof(char)))
 static char vikey[] = {
 	'k', 'j', 'l', 'h',
-	ESC, 'x', ESC, 'D',
+	K_ESC, 'x', K_ESC, 'D',
 	'g', 'G', '0', '$',
-	CTRL('B'), CTRL('F'), 'o', ESC
+	CTRL('B'), CTRL('F'), 'o', K_ESC
 };
 #define	VIKEYSIZ	((int)(sizeof(vikey) / sizeof(char)))
 static char wordstarkey[] = {
 	CTRL('E'), CTRL('X'), CTRL('D'), CTRL('S'),
 	CTRL('V'), CTRL('G'), CTRL(']'), CTRL('Y'),
 	CTRL('W'), CTRL('Z'), CTRL('A'), CTRL('F'),
-	CTRL('R'), CTRL('C'), CTRL('N'), ESC
+	CTRL('R'), CTRL('C'), CTRL('N'), K_ESC
 };
 #define	WORDSTARKEYSIZ	((int)(sizeof(wordstarkey) / sizeof(char)))
 #endif
@@ -134,7 +134,7 @@ int intrkey(VOID_A)
 {
 	int c;
 
-	if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == ESC)) {
+	if (kbhit2(0) && ((c = getkey2(0)) == cc_intr || c == K_ESC)) {
 		warning(0, INTR_K);
 		return(1);
 	}
@@ -161,7 +161,7 @@ int sig;
 	if (!editmode) return(ch);
 	else if (!strcmp(editmode, "emacs")) {
 		for (i = 0; i < EMACSKEYSIZ; i++) {
-			if (emacskey[i] == ESC) continue;
+			if (emacskey[i] == K_ESC) continue;
 			if (ch == emacskey[i]) return(emulatekey[i]);
 		}
 	}
@@ -172,11 +172,11 @@ int sig;
 				if (vimode & 4) vimode = 1;
 				ch = K_IL;
 				break;
-			case ESC:
+			case K_ESC:
 				vimode = (vimode & 4) ? 0 : 1;
 				ch = K_LEFT;
 				break;
-			case CR:
+			case K_CR:
 				vimode = 1;
 				break;
 			case K_BS:
@@ -190,7 +190,7 @@ int sig;
 		}
 		else {
 			for (i = 0; i < VIKEYSIZ; i++) {
-				if (vikey[i] == ESC) continue;
+				if (vikey[i] == K_ESC) continue;
 				if (ch == vikey[i]) return(emulatekey[i]);
 			}
 			switch (ch) {
@@ -228,8 +228,8 @@ int sig;
 				case ' ':
 					ch = K_RIGHT;
 					break;
-				case ESC:
-				case CR:
+				case K_ESC:
+				case K_CR:
 				case '\t':
 					break;
 				default:
@@ -242,7 +242,7 @@ int sig;
 	} while ((!(vimode & 1)) && (ch = getkey2(sig)));
 	else if (!strcmp(editmode, "wordstar")) {
 		for (i = 0; i < WORDSTARKEYSIZ; i++) {
-			if (wordstarkey[i] == ESC) continue;
+			if (wordstarkey[i] == K_ESC) continue;
 			if (ch == wordstarkey[i]) return(emulatekey[i]);
 		}
 	}
@@ -771,7 +771,7 @@ int cx, len, plen, max, linemax;
 	}
 	putterm(l_clear);
 	if (stable_standout) putterm(end_standout);
-	kanjiputs2(dupl, width, i);
+	kanjiputs2(dupl, len - i, i);
 	for (; y * linemax - plen < max; y++) {
 		if (ypos + y >= n_line) break;
 		locate(xpos, ypos + y);
@@ -940,7 +940,7 @@ char **argv;
 	int i, len, maxlen, dupminfilename, dupcolumns, dupsorton;
 
 	dupminfilename = minfilename;
-	dupcolumns = columns;
+	dupcolumns = curcolumns;
 	minfilename = n_column;
 
 	if (argv) {
@@ -961,9 +961,9 @@ char **argv;
 
 		if (lcmdline > 0) {
 			char buf[20 + 1];
-			int j;
+			int j, n;
 
-			locate(n_lastcolumn - 1, n_line - 1);
+			n = 1;
 			cputs2("\r\n");
 			if (argc < LIMITSELECTWARN) i = 'Y';
 			else {
@@ -981,10 +981,12 @@ char **argv;
 					tflush();
 				}
 				cputs2("\r\n");
+				n += 2;
 			}
 
 			if (i == 'N');
 			else if (n_column < maxlen + 2) {
+				n += argc;
 				for (i = 0; i < argc; i++) {
 					kanjiputs(selectlist[i].name);
 					cputs2("\r\n");
@@ -993,6 +995,7 @@ char **argv;
 			else {
 				tmpcolumns = n_column / (maxlen + 2);
 				len = (argc + tmpcolumns - 1) / tmpcolumns;
+				n += len;
 				for (i = 0; i < len; i++) {
 					for (j = i; j < argc; j += len)
 						kanjiputs2(selectlist[j].name,
@@ -1001,6 +1004,8 @@ char **argv;
 				}
 			}
 
+			if (ypos + n < n_line - 1) ypos += n;
+			else ypos = n_line - 1;
 			for (i = 0; i < argc; i++) free(selectlist[i].name);
 			free(selectlist);
 			selectlist = NULL;
@@ -1011,7 +1016,7 @@ char **argv;
 		else if ((n_column / 3) - 2 - 1 >= maxlen) tmpcolumns = 3;
 		else if ((n_column / 2) - 2 - 1 >= maxlen) tmpcolumns = 2;
 		else tmpcolumns = 1;
-		columns = tmpcolumns;
+		curcolumns = tmpcolumns;
 		tmpfilepos = listupfile(selectlist, argc, NULL);
 		maxselect = argc;
 	}
@@ -1021,7 +1026,7 @@ char **argv;
 		selectlist = NULL;
 	}
 	else {
-		columns = tmpcolumns;
+		curcolumns = tmpcolumns;
 		if (tmpfilepos >= maxselect) tmpfilepos %= (tmpfilepos - argc);
 		else if (tmpfilepos < 0) tmpfilepos = maxselect - 1
 			- ((maxselect - 1 - argc) % (argc - tmpfilepos));
@@ -1035,7 +1040,7 @@ char **argv;
 	}
 
 	minfilename = dupminfilename;
-	columns = dupcolumns;
+	curcolumns = dupcolumns;
 }
 
 static int NEAR completestr(s, cx, len, plen, max, linemax, comline, cont)
@@ -1498,7 +1503,7 @@ int *cxp, cx2, *lenp, plen, max, linemax, ch;
 	}
 	else {
 		rw = vw = 1;
-		if (isctl(ch) || ismsb(ch) || ch >= K_MIN
+		if (ch >= K_MIN || isctl(ch) || ismsb(ch)
 		|| preparestr(s, *cxp, lenp, plen, max, linemax, rw, vw) < 0) {
 			putterm(t_bell);
 			keyflush();
@@ -1568,7 +1573,11 @@ int plen, max, linemax, def, comline, h;
 #else
 			if ((cp = getkeyseq(i, &l)) && l == 1) i = *cp;
 #endif
-			if (isctl(i)) {
+			if (i >= K_MIN) {
+				putterm(t_bell);
+				continue;
+			}
+			else if (isctl(i)) {
 				keyflush();
 				ch = '\0';
 				if (!i) continue;
@@ -1762,7 +1771,7 @@ int plen, max, linemax, def, comline, h;
 					ocx2 = -1;
 				break;
 #endif	/* !_NOCOMPLETE */
-			case CR:
+			case K_CR:
 				keyflush();
 #ifndef	_NOCOMPLETE
 				if (!selectlist) break;
@@ -1776,7 +1785,7 @@ int plen, max, linemax, def, comline, h;
 				ch = '\0';
 #endif	/* !_NOCOMPLETE */
 				break;
-			case ESC:
+			case K_ESC:
 				keyflush();
 				break;
 			default:
@@ -1795,11 +1804,11 @@ int plen, max, linemax, def, comline, h;
 		if (ocx2 != cx2) setcursor(cx2, plen, max, linemax);
 #endif	/* !_NOCOMPLETE */
 #ifdef	_NOORIGSHELL
-		if (ch == ESC) break;
+		if (ch == K_ESC) break;
 #else
-		if (!shellmode && ch == ESC) break;
+		if (!shellmode && ch == K_ESC) break;
 #endif
-	} while (ch != CR);
+	} while (ch != K_CR);
 
 	if (selectlist) selectfile(-1, NULL);
 	setcursor(vlen(s, len), plen, max, linemax);
@@ -1811,7 +1820,7 @@ int plen, max, linemax, def, comline, h;
 #endif
 	if (tmphist) free(tmphist);
 
-	if (ch == ESC) len = 0;
+	if (ch == K_ESC) len = 0;
 	s[len] = '\0';
 
 	tflush();
@@ -1949,7 +1958,7 @@ int h;
 #endif
 	ch = _inputstr(input, len, cmdlinelen(len),
 		n_column - 1, ptr, comline, h);
-	if (ch != ESC && (!prompt || !*prompt)) cputs2("\r\n");
+	if (ch != K_ESC && (!prompt || !*prompt)) cputs2("\r\n");
 	else {
 		for (i = 0; i < WCMDLINE; i++) {
 			if (ypos + i >= n_line) break;
@@ -1963,7 +1972,7 @@ int h;
 	|| (lcmdline < 0 && ypos < lcmdline + n_line)) rewritefile(1);
 	lcmdline = 0;
 
-	if (ch == ESC) return(NULL);
+	if (ch == K_ESC) return(NULL);
 
 	len = strlen(input);
 	if (delsp && len > 0 && input[len - 1] == ' ' && yesno(DELSP_K)) {
@@ -2069,14 +2078,14 @@ char *fmt;
 			case 'y':
 			case 'Y':
 				ret = 1;
-				ch = CR;
+				ch = K_CR;
 				break;
 			case 'n':
 			case 'N':
 			case ' ':
-			case ESC:
+			case K_ESC:
 				ret = 0;
-				ch = CR;
+				ch = K_CR;
 				break;
 			case K_RIGHT:
 				ret = 0;
@@ -2090,7 +2099,7 @@ char *fmt;
 			default:
 				break;
 		}
-	} while (ch != CR);
+	} while (ch != K_CR);
 
 	locate(0, LMESLINE);
 	putterm(l_clear);
@@ -2259,7 +2268,7 @@ int val[];
 				if (i >= max) break;
 				new = i;
 				if (num) {
-					ch = CR;
+					ch = K_CR;
 					break;
 				}
 				val[new] = (val[new]) ? 0 : 1;
@@ -2278,7 +2287,7 @@ int val[];
 			if (stable_standout) putterm(end_standout);
 			else kanjiputs(str[old]);
 		}
-	} while (ch != ESC && ch != CR);
+	} while (ch != K_ESC && ch != K_CR);
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
@@ -2292,7 +2301,7 @@ int val[];
 		putterm(l_clear);
 	}
 	if (num) {
-		if (ch == ESC) new = -1;
+		if (ch == K_ESC) new = -1;
 		else *num = val[new];
 		for (i = 0; i < max; i++) {
 			if (!str[i]) continue;
@@ -2302,10 +2311,10 @@ int val[];
 		}
 	}
 	else {
-		if (ch == ESC) for (i = 0; i < max; i++) val[i] = 0;
+		if (ch == K_ESC) for (i = 0; i < max; i++) val[i] = 0;
 		else {
 			for (i = 0; i < max; i++) if (val[i]) break;
-			if (i >= max) ch = ESC;
+			if (i >= max) ch = K_ESC;
 		}
 		for (i = 0; i < max; i++) {
 			if (!str[i]) continue;

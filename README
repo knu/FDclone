@@ -3,7 +3,7 @@
 #	FDclone Ver. 2.00 に関して
 #
 #	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	Jan 11, 2002
+#	Feb 6, 2002
 #
 ############################################################
 
@@ -40,6 +40,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 README		このファイル
 README.eng	このファイル (英文)
 HISTORY		これまでの改定履歴
+HISTORY.eng	これまでの改定履歴 (英文)
 FAQ		Q&A 集 (Frequently Asked Question)
 FAQ.eng		Q&A 集 (Frequently Asked Question, 英文)
 TECHKNOW	テクニカルノウハウ
@@ -101,7 +102,7 @@ shell.c		シェルコマンド関連
 kanji.c		漢字コードコンバート関連
 input.c		ユーザ入力関連
 info.c		各種情報表示用
-rockridg.c	iso-9660 RockRidge 拡張関連
+rockridg.c	ISO 9660 RockRidge 拡張関連
 archive.c	アーカイバ関連
 tree.c		ツリー表示関連
 custom.c	設定変更関連

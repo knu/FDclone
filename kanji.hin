@@ -263,8 +263,8 @@ extern char *mesconv __P_((char *, char *));
 	meslist("ファイル名に用いる文字の漢字コードを設定します.", \
 		"Set the language code used in filename.")
 #define	SJSP_E \
-	meslist("ShiftJIS をファイル名に使うディレクトリを指定します.", \
-		"Define the directories includes ShiftJIS filename.")
+	meslist("Shift JIS をファイル名に使うディレクトリを指定します.", \
+		"Define the directories includes Shift JIS filename.")
 #define	EUCP_E \
 	meslist("EUC 漢字をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes EUC-JP filename.")

@@ -51,7 +51,7 @@ extern u_char lowercase[256];
 
 #ifdef	_NOORIGGLOB
 # ifdef	USEREGCOMP
-#include <regex.h>
+# include <regex.h>
 typedef regex_t	reg_t;
 # else
 typedef char	reg_t;
@@ -143,7 +143,6 @@ extern VOID regexp_free __P_((reg_t *));
 extern int cmppath __P_((CONST VOID_P, CONST VOID_P));
 extern char **evalwild __P_((char *));
 #ifndef	_NOUSEHASH
-VOID freehash __P_((hashlist **));
 hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, char *, char *));
@@ -175,6 +174,7 @@ extern hashlist **hashtable;
 extern char *(*getvarfunc)__P_((char *, int));
 extern int (*putvarfunc)__P_((char *, int));
 extern int (*getretvalfunc)__P_((VOID_A));
+extern long (*getpidfunc)__P_((VOID_A));
 extern long (*getlastpidfunc)__P_((VOID_A));
 extern char **(*getarglistfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));

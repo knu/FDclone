@@ -170,8 +170,8 @@
 	例: #define _NOTREE	(ツリー表示画面が仕様不能)
 
 5. make fd.doc でマニュアルファイルが作成されます。同様に、
-   README.doc, HISTORY.doc, FAQ.doc の各種ドキュメントファイ
-   ルも作成できます。
+   README.doc, HISTORY.doc, FAQ.doc, LICENSES.doc の各種ドキ
+   ュメントファイルも作成できます。
 
 6. fd.exe と fd-unicd.tbl を、パスが通った同一のディレクトリ
    にコピーします。旧 DOS での LFN アクセス機能が必要でなけ

@@ -14,7 +14,7 @@
 #endif
 
 #if	!MSDOS
-# include <sys/param.h>
+#include <sys/param.h>
 #endif
 
 extern char fullpath[];
@@ -48,9 +48,9 @@ strtable keyidentlist[] = {
 	{'8',		"TK8"},
 	{'9',		"TK9"},
 	{'=',		"EQUAL"},
-	{CR,		"RET"},
+	{K_CR,		"RET"},
 
-	{ESC,		"ESC"},
+	{K_ESC,		"ESC"},
 	{'\t',		"TAB"},
 	{' ',		"SPACE"},
 
@@ -322,11 +322,16 @@ char *path, *delim;
 	epath = next = NULL;
 	size = 0;
 	for (cp = path; cp && *cp; cp = next) {
-		next = strtkbrk(cp, delim, 0);
-		len = (next) ? (next++) - cp : strlen(cp);
-		if (!len) next = cp;
+		if ((next = strtkbrk(cp, delim, 0))) {
+			len = next - cp;
+			for (i = 1; next[i] && strchr(delim, next[i]); i++);
+		}
 		else {
-			next = cp + len;
+			len = strlen(cp);
+			i = 0;
+		}
+		next = cp + len;
+		if (len) {
 			tmp = _evalpath(cp, next, 0, 0);
 # if	!MSDOS && !defined (_NOKANJIFCONV)
 			cp = kanjiconv2(buf, tmp,
@@ -336,17 +341,18 @@ char *path, *delim;
 # endif
 			len = strlen(cp);
 		}
-		for (i = 1; next[i] && strchr(delim, next[i]); i++);
 
 		epath = (char *)realloc2(epath, size + len + i + 1);
 		if (len) {
 			strcpy(epath + size, cp);
 			free(tmp);
+			size += len;
 		}
-		size += len;
-		strncpy(epath + size, next, i);
-		size += i;
-		next += i;
+		if (i) {
+			strncpy(epath + size, next, i);
+			size += i;
+			next += i;
+		}
 	}
 
 	if (!epath) return(strdup2(""));
@@ -816,11 +822,14 @@ int c, tenkey;
 				return(keyidentlist[j].str);
 		}
 
+		if (c >= K_MIN) {
+			buf[i++] = '?';
+			buf[i++] = '?';
+		}
 #ifndef	CODEEUC
-		if (iskna(c)) buf[i++] = c;
-		else
+		else if (iskna(c)) buf[i++] = c;
 #endif
-		if (isctl(c)) {
+		else if (isctl(c)) {
 			buf[i++] = '^';
 			buf[i++] = (c + '@') & 0x7f;
 		}

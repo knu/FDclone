@@ -36,7 +36,16 @@
 #include <io.h>
 #include "unixemu.h"
 #else
+#include <sys/file.h>
 #include <sys/param.h>
+#endif
+
+#ifndef	L_SET
+# ifdef	SEEK_SET
+# define	L_SET	SEEK_SET
+# else
+# define	L_SET	0
+# endif
 #endif
 
 #define	ASCII		000
@@ -714,7 +723,7 @@ int encode;
 	}
 
 	if (encode) {
-		if (lseek(fd, (off_t)2, 0) < 0) return(r);
+		if (lseek(fd, (off_t)2, L_SET) < 0) return(r);
 		wc = unifysjis(wc, 0);
 		for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, buf, 4) != 4) break;
@@ -731,7 +740,7 @@ int encode;
 		ofs = unitblent / 2 + 1;
 		for (;;) {
 			if (ofs == min || ofs == max) break;
-			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, 0) < 0
+			if (lseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET) < 0
 			|| read(fd, buf, 4) != 4) break;
 			w = (((u_short)(buf[1]) << 8) | buf[0]);
 			if (wc == w) {

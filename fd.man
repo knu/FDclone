@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.00 01/11/02
+.\" @(#)fd.1   2.00a 02/06/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "January 11, 2002"
+.TH FD 1 "February 6, 2002"
 .de sh
 .br
 .PP
@@ -486,7 +486,7 @@ MS-DOS $BHG$G$O!"(B
 $B$r;2>H$7$^$9!#(B
 .IP "\fB$B%"!<%+%$%V%U%!%$%k$N?-D9(B\fP (Unpack)"
 $B%+!<%=%k0LCV$N%"!<%+%$%V%U%!%$%k$r;XDj%G%#%l%/%H%j@h$K?-D9$7$^$9!#(B
-$B%G%U%)%k%H$G$O!"(Btar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B lha $B05=L%U%!%$%k$7$+(B
+$B%G%U%)%k%H$G$O!"(Btar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B LHa $B05=L%U%!%$%k$7$+(B
 $B?-D9$G$-$^$;$s$,!"=i4|@_Dj%U%!%$%k$K5-=R$9$k$3$H$G!"(B
 $B$3$l0J30$N%"!<%+%$%P$K$bBP1~$G$-$k$h$&$K$J$j$^$9!#(B
 .IP "\fB$B%U%!%$%kB0@-$NJQ99(B\fP (Attr)"
@@ -633,7 +633,7 @@ NFS $B%^%&%s%H$5$l$?%G%#%l%/%H%j$d0lIt$NFC<l%G%#%l%/%H%j>e$G$O=q9~$_$G$-$^$;$s!
 $BF~NO$7$?%"!<%+%$%V%U%!%$%k$N3HD%;R$r8+$F!"(B
 $B$=$l$>$l$K1~$8$?%"!<%+%$%P$r<+F0E*$KA*Br$7$^$9!#(B
 $B%G%U%)%k%H$G$O!"(B
-tar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B lha $B05=L%U%!%$%k$K$7$+05=L$G$-$^$;$s$,!"(B
+tar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B LHa $B05=L%U%!%$%k$K$7$+05=L$G$-$^$;$s$,!"(B
 $B=i4|@_Dj%U%!%$%k$K5-=R$9$k$3$H$G!"(B
 $B$3$l0J30$N%"!<%+%$%P$K$bBP1~$G$-$k$h$&$K$J$j$^$9!#(B
 
@@ -677,7 +677,7 @@ tar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B lha $B05=L%U%!%$%k$K$7$+05=L$G$-$^$;$s
 $B$r2!$9$H!"(B
 $B$=$l$>$l$N%U%!%$%k3HD%;R$K1~$8$?F0:n$r$7$^$9!#(B
 $B%G%U%)%k%H$G$O!"(B
-tar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B lha $B05=L%U%!%$%k$KBP$7!"(B
+tar $B%U%!%$%k$H$=$N05=L%U%!%$%k5Z$S(B LHa $B05=L%U%!%$%k$KBP$7!"(B
 $B%"!<%+%$%V%V%i%&%6$,EPO?$5$l$F$$$^$9!#(B
 $B=i4|@_Dj%U%!%$%k$K5-=R$9$k$3$H$G!"(B
 $B$3$l0J30$N%3%^%s%I$b%i%s%A%c$H$7$FEPO?$9$k$3$H$,$G$-$^$9!#(B
@@ -2833,7 +2833,7 @@ MS-DOS $BHG$G$OF1MM$K(B
 .B (D)
 .IP "\fB%JS\fP"
 $B$3$N%^%/%m$G0O$^$l$?HO0O$NJ8;zNs$N4A;z%3!<%I$r!"(B
-$B%7%U%H(B JIS $B$KJQ49$7$^$9!#(B
+Shift JIS $B$KJQ49$7$^$9!#(B
 .B (U)
 .IP "\fB%JE\fP"
 $B$3$N%^%/%m$G0O$^$l$?HO0O$NJ8;zNs$N4A;z%3!<%I$r!"(B
@@ -3439,7 +3439,7 @@ TRANS.TBL $B$,IT@09g$J0lIt$N(B CD-ROM $B$G$O@5$7$/5!G=$7$^$;$s!#(B
 .RS 18
 .ta 1.5i
 .nf
-\fBSJIS\fP, \fBsjis\fP	$B%7%U%H(B JIS
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC $B4A;z(B
 \fBJIS\fP, \fBjis\fP	7bit JIS
 \fBJIS8\fP, \fBjis8\fP	8bit JIS
@@ -3464,7 +3464,7 @@ TRANS.TBL $B$,IT@09g$J0lIt$N(B CD-ROM $B$G$O@5$7$/5!G=$7$^$;$s!#(B
 .RS 18
 .ta 1.5i
 .nf
-\fBSJIS\fP, \fBsjis\fP	$B%7%U%H(B JIS
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC $B4A;z(B
 .fi
 .RE
@@ -3484,7 +3484,7 @@ TRANS.TBL $B$,IT@09g$J0lIt$N(B CD-ROM $B$G$O@5$7$/5!G=$7$^$;$s!#(B
 .RS 18
 .ta 1.5i
 .nf
-\fBSJIS\fP, \fBsjis\fP	$B%7%U%H(B JIS
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC $B4A;z(B
 \fBJIS\fP, \fBjis\fP	7bit JIS
 \fBJIS8\fP, \fBjis8\fP	8bit JIS
@@ -3527,7 +3527,7 @@ TRANS.TBL $B$,IT@09g$J0lIt$N(B CD-ROM $B$G$O@5$7$/5!G=$7$^$;$s!#(B
 .B (U)
 .SH $BB?9q8lBP1~(B
 $B%3%s%Q%$%k;~$N@_Dj$K$h$j!"(B
-$B!V(BEUC $B4A;z!W$H!V%7%U%H(B JIS$B!W$G4A;z$rF~=PNO$G$-$^$9!#(B
+$B!V(BEUC $B4A;z!W$H!V(BShift JIS$B!W$G4A;z$rF~=PNO$G$-$^$9!#(B
 $B4A;z$r4^$`%Q%9L>$NI=<($K$O!"4A;z$N(B 2byte $BL\$KBP$9$k9MN8$,$5$l$F$$$^$9!#(B
 $BF~=PNO$K4X$7$F$O!"(B
 $BFbItJQ?t(B

@@ -8,7 +8,7 @@
    referring to an attached comment content.
    Especially, in the following two configurations,
    the administrator sometimes setups differently from the
-   OS defalut setups. Then you must be careful to select.
+   OS default setups. Then you must be careful to select.
 	CODEEUC		This OS uses the EUC-JP Kanji code.
 			(If undefined, it means Shift JIS is used.)
 	TARUSESPACE	tar(1) with t option will output the
@@ -61,8 +61,8 @@
    and you can do "make config" to build the configuration
    file.
    But, this automatic judgment is not perfect. If you can
-   not compile it, you must mamually edit config.h which
-   is built by "make config". And you can refer TECHNOW.eng
+   not compile it, you must manually edit config.h which
+   is built by "make config". And you can refer TECHKNOW.eng
    for the detail of changes.
 
    Reversely, in the OS which is listed in either of above
@@ -75,7 +75,7 @@
    When you've done "make config" accidentally, do "make
    realclean" before the next step.
 
-2. You can change some constats defined in fd.h, if you
+2. You can change some constants defined in fd.h, if you
    want. The meaning of each constant is described in the
    manual as the ENVIRONMENT VARIABLES.
    These constants and the environment variables have the
@@ -93,10 +93,10 @@
 4. Confirm whether the compiled one will run with no problem.
 
 5. You can rewrite the macros (TOPDIR etc.) in Makefile.in
-   acording to your environment.
+   according to your environment.
    If you rewrite DEFRC at this point, you must do "make
    clean" and do "make" again. In this case, while each
-   description in documantation is different from the fact,
+   description in documentation is different from the fact,
    there is no problem in executing this program.
 
 6. You can copy _fdrc as the name of fdrc, and rewrite fdrc
@@ -117,7 +117,7 @@
 
    Sometimes the manual is not installed correctly, for the
    reason that nroff is not support Japanese, or so. For
-   example, the meaningless chanacters is outputted, or the
+   example, the meaningless characters is output, or the
    man command outputs any error message.
    In this case, if you install the plain text manual, you
    can refer the manual correctly.
@@ -137,7 +137,7 @@
    can install the only English one with the following targets.
 	ecatman -> ecatman-b -> ecompman -> ecompman-b
    Each target can install the manual as well as the above
-   tergets, except that the Japanese manual is not installed.
+   targets, except that the Japanese manual is not installed.
 
 9. Finish.
 
@@ -159,7 +159,7 @@
 
    (You cannot compile with LSI C-86 trial version.)
 
-2. You can change some constats defined in fd.h, if you
+2. You can change some constants defined in fd.h, if you
    want. The meaning of each constant is described in the
    manual as the ENVIRONMENT VARIABLES.
    These constants and the environment variables have the
@@ -179,11 +179,12 @@
    You can define the identifier to reduce function in
    config.hin, referring the #8 in TECHKNOW.eng, and
    re-compile.
-	Ex: #define _NOTREE	(cannout use tree screen)
+	Ex: #define _NOTREE	(cannot use tree screen)
 
 5. You can convert the Kanji code with "make fd.doc" for the
-   Japanese manual. Similarly, you can alse create README.doc,
-   HISTORY.doc, and FAQ.doc for the Japanese documents.
+   Japanese manual. Similarly, you can also create README.doc,
+   HISTORY.doc, FAQ.doc and LICENSES.doc for the Japanese
+   documents.
    (If you cannot read Japanese, these files are needless.)
 
 6. You will copy the file of fd.exe and fd-unicd.tbl to the

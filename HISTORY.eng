@@ -1,0 +1,18 @@
+Ver. 2.00a	Some fixes for HP-UX.
+ (02/06/02)	Support terminfo(5) library.
+		Restriction error of fd invoked from fdsh is fixed.
+		Redirection on fdsh supports floppy drives.
+		Strange display of filename completion list on fdsh is fixed.
+		Support the terminal whose columns are over 255.
+		Adjust some behaviors with a sub shell to Bourne shell.
+		Substitution error of $$ in a sub shell is fixed.
+		Some expanding errors of wildcards are fixed.
+		Displaying error of some special keys in HELP_MESSAGE is fixed.
+		Bug when select unsupported items in customizer is fixed.
+		Bug when set INPUTKCODE in customizer is fixed.
+		Bug that "make install" could not overwrite is fixed.
+		Misspelling for several documents is fixed.
+		Comment out all written in _fdrc for safety.
+
+Ver. 2.00	The second edition release.
+ (01/11/02)	Includes English documents.

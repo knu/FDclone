@@ -24,14 +24,14 @@ novice, should be used to the UNIX world well.
   If he is used to FDclone in daily administrations, he will
 not be able to raise the skill of the special operation in
 some accidents and the shell programming.
-  And the most important problem is a secutity. There is not
+  And the most important problem is a security. There is not
 only the risk that a miss operation can cause damages widely,
 but also the problem that any FDclone operation can remain
 in no log.
 
   You should keep a awareness of the problem for just root,
 and walk on the road of UNIX administrator not invoking
-FDclone with root permission easely.
+FDclone with root permission easily.
 
 
 2.Administration of End Users
@@ -57,7 +57,7 @@ for a man page and FAQ.
 to have the minimum knowledge as the UNIX administrator.
   It seems the work of each administrator to support end users
 in order to use FDclone comfortably. I wish you endeavor not
-to neglect the beginer education and support with expecting
+to neglect the beginner education and support with expecting
 FDclone to be more than a tool.
 
   You should avoid that any complaint and question from end
@@ -87,7 +87,7 @@ not have any root permission.
 of FDclone in such environment, I have continued the development
 with a long time and earnest approval from some users.
 
-  It still has poor imprementation in the view of some UNIX
+  It still has poor implementation in the view of some UNIX
 wizards, and may keep some security holes possibly. If you
 have some anxiety for them, FDclone don't hold the reliability
 enough to sweep off the anxiety.

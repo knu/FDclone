@@ -362,7 +362,7 @@ int offset;
 {
 	int i;
 
-	i = (int)strlen(path) + 1;
+	i = strlen(path) + 1;
 	dosmemput(path, i, __tb + offset);
 	return(i);
 }

@@ -499,6 +499,7 @@ VOID sigvecreset(VOID_A)
 VOID title(VOID_A)
 {
 	char *cp, *eol;
+	int i;
 
 	locate(0, LTITLE);
 	putterm(t_standout);
@@ -506,13 +507,16 @@ VOID title(VOID_A)
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
-	cprintf2("%-*.*s", (int)(eol - cp), (int)(eol - cp), cp);
+	i = eol - cp;
+	cprintf2("%-*.*s", i, i, cp);
 	if (distributor) {
 		putch2('#');
-		eol++;
+		i++;
 	}
-	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
-		n_column - 32 - (int)(eol - cp), " (c)1995-2002 T.Shirai  ");
+	cp = " (c)1995-2002 T.Shirai  ";
+	cputs2(cp);
+	i = n_column - 32 - strlen(cp) - i;
+	while (i-- > 0) putch2(' ');
 	putterm(end_standout);
 	timersec = 0;
 #ifdef	SIGALRM
@@ -669,7 +673,7 @@ char *argv[], *envp[];
 	inittty(0);
 	getterment();
 #else
-	if ((fd_restricted = initshell(optc, optv, envp)) < 0) exit2(RET_FAIL);
+	if (initshell(optc, optv, envp) < 0) exit2(RET_FAIL);
 #endif	/* !_NOORIGSHELL */
 	free(optv);
 	return(argc);
@@ -774,7 +778,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 	freeidlist();
 # endif
 # if	!defined (_NOUSEHASH) && defined (_NOORIGSHELL)
-	freehash(NULL);
+	searchhash(NULL, NULL, NULL);
 # endif
 #endif	/* DEBUG */
 }

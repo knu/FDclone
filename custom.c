@@ -85,7 +85,7 @@ extern char *utf8path;
 extern char *noconvpath;
 #endif	/* !MSDOS && !_NOKANJIFCONV */
 #ifndef	_NOCUSTOMIZE
-extern int columns;
+extern int curcolumns;
 extern int subwindow;
 extern int win_x;
 extern int win_y;
@@ -753,7 +753,7 @@ int no;
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 2, 0, str, val) == K_ESC) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_SHORT:
@@ -801,13 +801,13 @@ int no;
 			tmp = n & ~7;
 			n &= 7;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 6, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 6, 0, str, val) == K_ESC) return(0);
 			if (n) {
 				str[0] = OINC_K;
 				str[1] = ODEC_K;
 				val[0] = 0;
 				val[1] = 8;
-				if (selectstr(&tmp, 2, 56, str, val) == ESC)
+				if (selectstr(&tmp, 2, 56, str, val) == K_ESC)
 					return(0);
 				n += tmp;
 			}
@@ -816,7 +816,7 @@ int no;
 			str[1] = VSRT1_K;
 			val[0] = 0;
 			val[1] = 100;
-			if (selectstr(&p, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&p, 2, 0, str, val) == K_ESC) return(0);
 			n += p;
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
@@ -826,26 +826,30 @@ int no;
 			str[0] = VDS10_K;
 			str[1] = VDS11_K;
 			tmp = n & 1;
-			if (selectstr(&tmp, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
+				return(0);
 			n = (n & ~1) | tmp;
 			envcaption(VDS2B_K);
 			str[0] = VDS20_K;
 			str[1] = VDS21_K;
 			tmp = (n & 2) >> 1;
-			if (selectstr(&tmp, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
+				return(0);
 			n = (n & ~2) | (tmp << 1);
 			envcaption(VDS3B_K);
 			str[0] = VDS30_K;
 			str[1] = VDS31_K;
 			tmp = (n & 4) >> 2;
-			if (selectstr(&tmp, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
+				return(0);
 			n = (n & ~4) | (tmp << 2);
 # ifdef	HAVEFLAGS
 			envcaption(VDS4B_K);
 			str[0] = VDS40_K;
 			str[1] = VDS41_K;
 			tmp = (n & 8) >> 3;
-			if (selectstr(&tmp, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
+				return(0);
 			n = (n & ~8) | (tmp << 3);
 # endif
 			ascnumeric(buf, n, 0, MAXLINESTR);
@@ -856,7 +860,7 @@ int no;
 			str[1] = VWFS1_K;
 			str[2] = VWFS2_K;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 3, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 3, 0, str, val) == K_ESC) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_COLUMN:
@@ -870,7 +874,7 @@ int no;
 			val[2] = 3;
 			val[3] = 5;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 4, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 4, 0, str, val) == K_ESC) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_COLOR:
@@ -880,7 +884,7 @@ int no;
 			str[2] = VCOL2_K;
 			str[3] = VCOL3_K;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 4, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 4, 0, str, val) == K_ESC) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_EDIT:
@@ -892,7 +896,7 @@ int no;
 			else for (n = 2; n > 0; n--)
 				if (!strcmp(cp, str[n])) break;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 3, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 3, 0, str, val) == K_ESC) return(0);
 			strcpy(buf, str[n]);
 			break;
 # if	!MSDOS && !defined (_NOKANJICONV)
@@ -903,9 +907,9 @@ int no;
 			val[0] = SJIS;
 			val[1] = EUC;
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 2, 0, str, val) == ESC) return(0);
-			str[0] = "sjis";
-			str[1] = "euc";
+			if (selectstr(&n, 2, 0, str, val) == K_ESC) return(0);
+			str[SJIS] = "sjis";
+			str[EUC] = "euc";
 			strcpy(buf, str[n]);
 			break;
 # endif	/* !MSDOS && !_NOKANJICONV */
@@ -919,7 +923,7 @@ int no;
 			val[1] = ENG;
 #  if	MSDOS || defined (_NOKANJICONV)
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 2, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 2, 0, str, val) == K_ESC) return(0);
 #  else	/* !MSDOS && !_NOKANJICONV */
 
 			str[2] = "SJIS";
@@ -940,13 +944,13 @@ int no;
 				n--;
 			}
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 8, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 8, 0, str, val) == K_ESC) return(0);
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
 				str[1] = VOJIS_K;
 				val[0] = 0;
 				val[1] = 1;
-				if (selectstr(&p, 2, 64, str, val) == ESC)
+				if (selectstr(&p, 2, 64, str, val) == K_ESC)
 					return(0);
 				n += p;
 			}
@@ -992,13 +996,13 @@ int no;
 				n--;
 			}
 			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 9, 0, str, val) == ESC) return(0);
+			if (selectstr(&n, 9, 0, str, val) == K_ESC) return(0);
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
 				str[1] = VOJIS_K;
 				val[0] = 0;
 				val[1] = 1;
-				if (selectstr(&p, 2, 64, str, val) == ESC)
+				if (selectstr(&p, 2, 64, str, val) == K_ESC)
 					return(0);
 				n += p;
 			}
@@ -1193,9 +1197,9 @@ char *prompt;
 
 	max += FUNCLISTSIZ;
 	dupminfilename = minfilename;
-	dupcolumns = columns;
+	dupcolumns = curcolumns;
 	minfilename = n_column;
-	columns = 5;
+	curcolumns = 5;
 
 	list = (namelist *)malloc2((FUNCLISTSIZ + 2) * sizeof(namelist));
 	for (i = 0; i < FUNCLISTSIZ; i++) {
@@ -1304,19 +1308,19 @@ char *prompt;
 			win_x += calc_x;
 			win_y = calc_y;
 		}
-	} while (ch != ESC && ch != CR);
+	} while (ch != K_ESC && ch != K_CR);
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 	subwindow = 0;
 	minfilename = dupminfilename;
-	columns = dupcolumns;
+	curcolumns = dupcolumns;
 
 	if (pos < FUNCLISTSIZ) pos = list[pos].ent;
 	for (i = 0; i < FUNCLISTSIZ + 2; i++) free(list[i].name);
 	free(list);
 
-	return ((ch == CR) ? pos : -1);
+	return ((ch == K_CR) ? pos : -1);
 }
 
 static int NEAR editbind(no)
@@ -1357,7 +1361,7 @@ int no;
 				(char *)&(bindlist[i]), sizeof(bindtable));
 		no = i;
 	}
-	if (key == ESC) {
+	if (key == K_ESC) {
 		warning(0, ESCNG_K);
 		return(0);
 	}
@@ -1653,7 +1657,7 @@ int no;
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 
-	if (len == 1 && buf[0] == ESC) {
+	if (len == 1 && buf[0] == K_ESC) {
 		if (!yesno(DELKM_K, cp)) return(0);
 		setkeyseq(key, NULL, 0);
 		return(1);
@@ -2275,7 +2279,7 @@ int no;
 
 		envcaption(DRNAM_K);
 		drive = val[0];
-		if (selectstr(&drive, n, 0, str, val) == ESC) return(0);
+		if (selectstr(&drive, n, 0, str, val) == K_ESC) return(0);
 
 		fdtype[no].name = NULL;
 	}
@@ -2312,7 +2316,7 @@ int no;
 		str[n] = USRDF_K;
 		val[n++] = i;
 		i = val[0];
-		if (selectstr(&i, n, 0, str, val) == ESC) {
+		if (selectstr(&i, n, 0, str, val) == K_ESC) {
 			free(dev);
 			dev = NULL;
 			continue;
@@ -2673,7 +2677,8 @@ int no;
 	switch (no) {
 		case 0:
 			envcaption(SREST_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val) == ESC)
+			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
+			== K_ESC)
 				return(0);
 			if (val[0]) copyenv(tmpenvlist);
 			if (val[1]) {
@@ -2698,7 +2703,8 @@ int no;
 			break;
 		case 1:
 			envcaption(SCLEA_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val) == ESC)
+			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
+			== K_ESC)
 				return(0);
 			if (val[0]) cleanupenv();
 			if (val[1]) cleanupbind();
@@ -2733,7 +2739,8 @@ int no;
 				return(0);
 			}
 			envcaption(SSAVE_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val) == ESC)
+			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
+			== K_ESC)
 				return(0);
 			if (!(fp = Xfopen(file, "w"))) {
 				warning(-1, file);
@@ -2767,7 +2774,8 @@ int no;
 				return(0);
 			}
 			envcaption(SOVWR_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val) == ESC)
+			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
+			== K_ESC)
 				return(0);
 			if (overwriteconfig(val, file) < 0) return(0);
 			break;
@@ -2998,8 +3006,11 @@ static int NEAR editcust(VOID_A)
 			}
 			break;
 # endif
-		default:
+		case 6:
 			n = editsave(cs_item);
+			break;
+		default:
+			n = 0;
 			break;
 	}
 	return(n);
@@ -3121,7 +3132,7 @@ int customize(VOID_A)
 			case CTRL('L'):
 				rewritefile(1);
 				break;
-			case CR:
+			case K_CR:
 				if (!editcust()) {
 					helpbar();
 					old = cs_max;
@@ -3137,13 +3148,13 @@ int customize(VOID_A)
 				}
 				rewritefile(1);
 				break;
-			case ESC:
+			case K_ESC:
 				if (changed && !yesno(NOSAV_K)) ch = '\0';
 				break;
 			default:
 				break;
 		}
-	} while (ch != ESC);
+	} while (ch != K_ESC);
 
 	custno = -1;
 	free(cs_len);

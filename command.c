@@ -23,7 +23,7 @@
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 #endif
 
-extern int columns;
+extern int curcolumns;
 extern int mark;
 extern off_t marksize;
 extern off_t blocksize;
@@ -190,15 +190,15 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{K_F(19),	VIEW_FILE,	255},
 #ifndef	_NOARCHIVE
 	{K_F(20),	PACK_FILE,	255},
-	{CR,		LAUNCH_FILE,	IN_DIR},
+	{K_CR,		LAUNCH_FILE,	IN_DIR},
 #else
-	{CR,		VIEW_FILE,	IN_DIR},
+	{K_CR,		VIEW_FILE,	IN_DIR},
 #endif
 	{K_BS,		OUT_DIR,	255},
 	{K_DC,		PUSH_FILE,	255},
 	{K_IC,		POP_FILE,	255},
 	{'\t',		MARK_FILE,	255},
-	{ESC,		QUIT_SYSTEM,	255},
+	{K_ESC,		QUIT_SYSTEM,	255},
 
 	{'<',		CUR_TOP,	255},
 	{'>',		CUR_BOTTOM,	255},
@@ -423,7 +423,7 @@ char *arg;
 static int one_column(arg)
 char *arg;
 {
-	columns = 1;
+	curcolumns = 1;
 	return(2);
 }
 
@@ -431,7 +431,7 @@ char *arg;
 static int two_columns(arg)
 char *arg;
 {
-	columns = 2;
+	curcolumns = 2;
 	return(2);
 }
 
@@ -439,7 +439,7 @@ char *arg;
 static int three_columns(arg)
 char *arg;
 {
-	columns = 3;
+	curcolumns = 3;
 	return(2);
 }
 
@@ -447,7 +447,7 @@ char *arg;
 static int five_columns(arg)
 char *arg;
 {
-	columns = 5;
+	curcolumns = 5;
 	return(2);
 }
 
@@ -724,7 +724,8 @@ char *file;
 	tflush();
 	buf = NEXT_K;
 	i = strlen3(file);
-	if (i + strlen(buf) > n_lastcolumn) i = n_lastcolumn - strlen(buf);
+	if (i + strlen(buf) > n_lastcolumn)
+		i = n_lastcolumn - (int)strlen(buf);
 	prompt = malloc2(i * KANAWID + strlen(buf) + 1);
 	strncpy3(prompt, file, &i, 0);
 	strcat(prompt, buf);
@@ -932,7 +933,7 @@ char *arg;
 			i = 5;
 			tmp1 = val[0];
 		}
-		if (selectstr(&tmp1, i, 0, str, val) == ESC) return(1);
+		if (selectstr(&tmp1, i, 0, str, val) == K_ESC) return(1);
 	}
 
 	if (!tmp1) {
@@ -944,7 +945,7 @@ char *arg;
 		str[1] = ODEC_K;
 		val[0] = 0;
 		val[1] = 8;
-		if (selectstr(&tmp2, 2, 56, str, val) == ESC)
+		if (selectstr(&tmp2, 2, 56, str, val) == K_ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
 		dupl = (int *)malloc2(maxfile * sizeof(int));
@@ -1431,7 +1432,7 @@ char *arg;
 		locate(0, LINFO);
 		putterm(l_clear);
 		kanjiputs(ATTRM_K);
-		if (selectstr(&flag, 2, 35, str, val) == ESC) return(1);
+		if (selectstr(&flag, 2, 35, str, val) == K_ESC) return(1);
 	}
 	else {
 #if	!MSDOS

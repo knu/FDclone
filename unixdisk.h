@@ -40,7 +40,7 @@
 #define	PTR_FAR(ptr)		((u_long)(__tb))
 #define	PTR_SEG(ptr)		(__tb_segment)
 #define	PTR_OFF(ptr, ofs)	(__tb_offset + (ofs))
-#else
+#else	/* !DJGPP */
 # ifdef	__TURBOC__	/* Oops!! Borland C++ has not x.bp !! */
 typedef union DPMI_REGS {
 	struct XREGS {
@@ -60,7 +60,7 @@ typedef union REGS	__dpmi_regs;
 #define	PTR_FAR(ptr)		(((u_long)FP_SEG(ptr) << 4) + FP_OFF(ptr))
 #define	PTR_SEG(ptr)		FP_SEG(ptr)
 #define	PTR_OFF(ptr, ofs)	FP_OFF(ptr)
-#endif
+#endif	/* !DJGPP */
 
 #define	FR_CARRY	00001
 #define	FR_PARITY	00004

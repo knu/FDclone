@@ -292,13 +292,13 @@ int infofs __P_((char *));
 
 static int keycodelist[] = {
 	K_HOME, K_END, K_DL, K_IL, K_DC, K_IC,
-	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER,
-	K_BS, '\t', CR, ESC
+	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER, K_HELP,
+	K_BS, '\t', K_CR, K_ESC
 };
 #define	KEYCODESIZ	((int)(sizeof(keycodelist) / sizeof(int)))
 static char *keystrlist[] = {
 	"Home", "End", "DelLin", "InsLin", "Del", "Ins",
-	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter",
+	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter", "Help",
 	"Bs", "Tab", "Ret", "Esc"
 };
 
@@ -326,7 +326,8 @@ int code;
 #endif
 		else if (isctl(code))
 			sprintf(buf, "Ctrl-%c ", (code + '@') & 0x7f);
-		else if (!ismsb(code)) sprintf(buf, "'%c'    ", code);
+		else if (code < K_MIN && !ismsb(code))
+			sprintf(buf, "'%c'    ", code);
 		else return(0);
 	}
 	return(1);
@@ -349,7 +350,7 @@ int mode;
 	int i, j, c, x, y;
 
 	if (distributor && *distributor) {
-		i = n_column - strlen(distributor) - 24;
+		i = n_column - (int)strlen(distributor) - 24;
 		locate(i, LHELP);
 		putch2('[');
 		putterm(t_standout);

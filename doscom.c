@@ -32,6 +32,7 @@
 #define	C_EOF		('Z' & 037)
 #else	/* !MSDOS */
 #include <sys/time.h>
+#include <sys/file.h>
 #include <sys/param.h>
 # ifdef	USEDIRECT
 # include <sys/dir.h>
@@ -65,6 +66,21 @@
 # endif
 #define	S_IRUSR	00400
 #define	S_IWUSR	00200
+#endif
+
+#ifndef	L_SET
+# ifdef	SEEK_SET
+# define	L_SET	SEEK_SET
+# else
+# define	L_SET	0
+# endif
+#endif
+#ifndef	L_INCR
+# ifdef	SEEK_CUR
+# define	L_INCR	SEEK_CUR
+# else
+# define	L_INCR	1
+# endif
 #endif
 
 #include "term.h"
@@ -1322,7 +1338,7 @@ char *file, *src;
 		key = -1;
 		for (;;) {
 			c = inputkey();
-			if (c == CR && key >= 0) break;
+			if (c == K_CR && key >= 0) break;
 			if (!strchr("ynaYNA", c)) continue;
 			key = toupper2(c);
 			fputc(c, stderr);
@@ -1405,7 +1421,7 @@ int sbin, dbin, dfd;
 		return(-1);
 	if (dfd >= 0) {
 		fd2 = dfd;
-		ofs = lseek(fd2, 0L, SEEK_CUR);
+		ofs = lseek(fd2, 0L, L_INCR);
 	}
 	else if ((fd2 = writeopen(dest, src)) <= 0) {
 		Xclose(fd1);
@@ -1433,8 +1449,8 @@ int sbin, dbin, dfd;
 		}
 
 		if (i < 0 || !(copyflag & CF_VERIFY)
-		|| lseek(fd1, 0L, SEEK_SET) < 0
-		|| lseek(fd2, ofs, SEEK_SET) < 0) break;
+		|| lseek(fd1, 0L, L_SET) < 0
+		|| lseek(fd2, ofs, L_SET) < 0) break;
 		for (;;) {
 			while ((i = textread(fd1, buf, BUFSIZ, sbin)) < 0
 			&& errno == EINTR);

@@ -71,8 +71,6 @@ typedef long	off_t;
 #define	CODEEUC
 #define	CPP7BIT
 #define	USELEAPCNT
-#define	USESYSCONF
-#define	USERESOURCEH
 #include <sys/param.h>
 # if	!defined (MAXHOSTNAMELEN) \
 || defined (USGr4) || defined (__svr4__) || defined (__SVR4)
@@ -91,13 +89,16 @@ typedef long	off_t;
 # define	USEMNTTABH
 # define	USEMKTIME
 # define	SIGFNCINT
-# else
+# else	/* MAXHOSTNAMELEN && !USGr4 && !__svr4__ && !__SVR4 */
 # define	BSD43
 # define	OSTYPE		"SUN_OS"
 # define	BSDINSTALL
 # define	USERE_COMP
 # define	USETIMELOCAL
-# endif
+# define	USESYSCONF
+# define	USERESOURCEH
+# define	USESETVBUF
+# endif	/* MAXHOSTNAMELEN && !USGr4 && !__svr4__ && !__SVR4 */
 #endif
 
 #if	defined (sony)
@@ -113,10 +114,9 @@ typedef long	off_t;
 # define	USEMNTTABH
 # define	USEMKTIME
 # define	USEUTIME
-# define	USERESOURCEH
 # define	SIGFNCINT
 # define	GETTODARGS	1
-# else
+# else	/* !USGr4 && !SYSTYPE_SYSV */
 # define	BSD43
 # define	BSDINSTALL
 # define	USERE_COMP
@@ -125,7 +125,7 @@ typedef long	off_t;
 #  define	OSTYPE		"NEWS_OS4"
 #  define	USESETENV
 #  define	USERESOURCEH
-#  else
+#  else	/* !__sony && bsd43 */
 #  define	OSTYPE		"NEWS_OS3"
 #  define	NOERRNO
 #  define	NOFILEMODE
@@ -136,8 +136,8 @@ typedef long	off_t;
 #  define	NOVSPRINTF
 #  define	USEGETWD
 #  define	USETIMESH
-#  endif
-# endif
+#  endif	/* !__sony && bsd43 */
+# endif	/* !USGr4 && !SYSTYPE_SYSV */
 #endif
 
 #if	defined (sgi)
@@ -158,22 +158,37 @@ typedef long	off_t;
 #define	STATFSARGS	4
 #define	USERE_COMP
 #define	USEMKTIME
+#define	WAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
+#define	USESETVBUF
 #endif
 
 #if	defined (hpux) || defined (__hpux) \
 || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
-#define	SVR4
+#define	SYSV
 #define	OSTYPE			"HPUX"
 #define	EXTENDCCOPT		""
+#define	USETERMINFO
 #define	TERMCAPLIB		"-lcurses"
 #define	STRICTSTDC
 #define	NOTZFILEH
+#define	USEMKNODH
 #define	NOTMGMTOFF
 #define	USEREGCOMP
+#define	NOTERMVAR
 #define	USEUTIME
 #define	USEMKTIME
+#define	USESYSCONF
+#define	USEWAITPID
+#define	USESIGPMASK
 #define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
+#define	USESETVBUF
+#define	SIGFNCINT
 #endif
 
 #if	defined (nec_ews) || defined (_nec_ews)
@@ -195,11 +210,11 @@ typedef long	off_t;
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME
-# define	SIGFNCINT
 # define	USEMKTIME
-# else
+# define	SIGFNCINT
+# else	/* !nec_ews_svr4 && !_nec_ews_svr4 */
 # define	SYSV
-# endif
+# endif	/* !nec_ews_svr4 && !_nec_ews_svr4 */
 #endif
 
 #if	defined (uniosu)
@@ -265,13 +280,13 @@ typedef long	off_t;
 # define	USEMOUNTH
 # define	STATFSARGS	3
 # define	USERE_COMP
-# else
+# else	/* !SYSTYPE_BSD */
 # define	SVR4
 # define	OSTYPE		"DECOSF1V3"
 # define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEREGCOMP
-# endif
+# endif	/* !SYSTYPE_BSD */
 #endif
 
 #if	defined (_IBMR2)
@@ -309,6 +324,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	USESYSCONF
+#define	USESIGPMASK
 #endif
 
 #if	defined (_AUX_SOURCE)
@@ -394,6 +410,7 @@ typedef long	off_t;
 
 #if	defined (linux)
 #define	OSTYPE			"LINUX"
+#define	POSIX
 #define	CODEEUC
 #define	USEMANLANG
 #define	BSDINSTALL
@@ -419,27 +436,20 @@ typedef long	off_t;
 #define	DECLERRLIST
 #define	NOTZFILEH
 #define	USETIMEH
-#define	USETERMIOS
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
 #define	NOTMGMTOFF
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USESYSCONF
 # if	!defined (__alpha__) && !defined (__alpha) && !defined (alpha)
 # define	USELLSEEK
 # endif
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
 #if	defined (__FreeBSD__) && defined (__powerpc__)
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"JCCBSD"
 #define	CODEEUC
 #define	TARUSESPACE
@@ -452,14 +462,11 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
 #define	SIGFNCINT
 #endif
 
 #if	defined (__FreeBSD__) && !defined (OSTYPE) && !defined (__BOW__)
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"FREEBSD"
 #define	CODEEUC
 #define	USEMANLANG
@@ -469,28 +476,21 @@ typedef long	off_t;
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	NOTZFILEH
-#define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
 # if	__FreeBSD__ < 3
-#define	USEVFCNAME
+# define	USEVFCNAME
 # else
-#define	USEFFSTYPE
+# define	USEFFSTYPE
 # endif
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USESYSCONF
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
 #if	defined (__NetBSD__)
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"NETBSD"
 #define	CODEEUC
 #define	BSDINSTALL
@@ -499,19 +499,12 @@ typedef long	off_t;
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
-#define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEFFSTYPE
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USESYSCONF
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #define	SIGFNCINT
 #include <sys/param.h>
 # if	defined (NetBSD1_0) && (NetBSD1_0 < 1)
@@ -520,7 +513,7 @@ typedef long	off_t;
 #endif
 
 #if	defined (__bsdi__)
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"BSDOS"
 #define	CODEEUC
 #define	TARUSESPACE
@@ -533,11 +526,6 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #include <sys/param.h>
 # if	!defined (BSD) || (BSD < 199306)
 # define	USEFFSIZE
@@ -546,7 +534,7 @@ typedef long	off_t;
 
 #if	defined (__BOW__) \
 || (defined (__386BSD__) && defined (__BSD_NET2) && !defined (OSTYPE))
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"BOW"
 #define	TARUSESPACE
 #define	TERMCAPLIB		"-ltermcap"
@@ -554,20 +542,21 @@ typedef long	off_t;
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
-#define	USEVFCNAME
+# ifdef	__FreeBSD__
+#  if	__FreeBSD__ < 3
+#  define	USEVFCNAME
+#  else
+#  define	USEFFSTYPE
+#  endif
+# endif	/* __FreeBSD__ */
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
 #if	defined (__OpenBSD__)
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"OPENBSD"
 #define	CODEEUC
 #define	BSDINSTALL
@@ -576,24 +565,17 @@ typedef long	off_t;
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
-#define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEFFSTYPE
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USESYSCONF
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
 #if	defined (__APPLE__) && defined (__MACH__) && !defined (OSTYPE)
-#define	BSD43
+#define	BSD44
 #define	OSTYPE			"DARWIN"	/* aka Mac OS X */
 #define	USEMANLANG
 #define	BSDINSTALL
@@ -602,19 +584,12 @@ typedef long	off_t;
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
-#define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEFFSTYPE
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
-#define	USESYSCONF
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #define	SIGFNCINT
 #endif
 
@@ -632,8 +607,6 @@ typedef long	off_t;
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
-#define	GETPGRPVOID
-#define	USESETPGID
 #endif
 
 /****************************************************************
@@ -641,10 +614,12 @@ typedef long	off_t;
  *	comment out below manually to apply your environment.	*
  ****************************************************************/
 
-/* #define SYSV		;OS type is System V older Rel.3 */
+/* #define SYSV		;OS type is System V Rel.3 */
 /* #define SVR4		;OS type is System V Rel.4 */
-/* #define BSD4		;OS type is older BSD 4.2 */
-/* #define BSD43	;OS type is newer BSD 4.3 */
+/* #define BSD4		;OS type is BSD 4.2 */
+/* #define BSD43	;OS type is BSD 4.3 */
+/* #define BSD44	;OS type is BSD 4.4 */
+/* #define POSIX	;OS type is based on POSIX */
 
 /* #define OSTYPE	;OS type is one of the followings */
 /*	SOLARIS		;newer Solalis 2.0 (Sun) */
@@ -688,6 +663,7 @@ typedef long	off_t;
 /* #define EXTENDCCOPT	;additional option on cc(1) */
 /* #define CCOUTOPT	;option for output file name on cc(1) with -c */
 /* #define CCLNKOPT	;option for output file name on cc(1) without -c */
+/* #define USETERMINFO	;use terminfo library instead of termcap */
 /* #define TERMCAPLIB	;library needed for termcap */
 /* #define REGEXPLIB	;library needed for regular expression */
 /* #define EXTENDLIB	;library needed for the other extended */
@@ -713,6 +689,7 @@ typedef long	off_t;
 /* #define USETIMEH	;use <time.h> for 'struct tm' */
 /* #define USESTDARGH	;use <stdarg.h> for va_list */
 /* #define USEMKDEVH	;use <sys/mkdev.h> for major()/minor() */
+/* #define USEMKNODH	;use <sys/mknod.h> for major()/minor() */
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
@@ -754,6 +731,7 @@ typedef long	off_t;
 /* #define USESETENV	;use setenv() instead of putenv() */
 /* #define NOSELECT	;have not select() */
 /* #define NOVSPRINTF	;have not vsprintf() */
+/* #define NOTERMVAR	;have not termcap variables such as PC, ospeed, etc. */
 /* #define USEUTIME	;use utime() instead of utimes() */
 /* #define USEGETWD	;use getwd() instead of getcwd() */
 /* #define USETIMELOCAL	;have timelocal() as inverse of localtime() */
@@ -768,6 +746,7 @@ typedef long	off_t;
 /* #define USETIMESH	;use <sys/times.h> for resource info. */
 /* #define GETPGRPVOID	;getpgrp() needs void argument */
 /* #define USESETPGID	;use setpgid() instead of setpgrp() */
+/* #define USESETVBUF	;use setvbuf() instead of setbuf() or setlinebuf() */
 /* #define SIGARGINT	;the 2nd argument function of signal() returns int */
 /* #define SIGFNCINT	;the 2nd argument function of signal() needs int */
 /* #define GETTODARGS	;the number of arguments in gettimeofday() */
@@ -783,14 +762,36 @@ typedef long	off_t;
 /* DO NOT DELETE or EDIT BELOW */
 /*                             */
 
-#if	defined (SVR4) || defined (SYSV)
+#if	defined (BSD43) || defined (BSD44)
+#define	BSD4
+#endif
+
+#if	defined (BSD44) || defined (SVR4)
+#define	POSIX
+#endif
+
+#ifdef	POSIX
+# if	!defined (USETERMIOS) && !defined (USETERMIO)
+# define	USETERMIOS
+# endif
+#define	USESYSCONF
+#define	USEWAITPID
+#define	USESIGPMASK
+#define	USERESOURCEH
+#define	GETPGRPVOID
+#define	USESETPGID
+#define	USESETVBUF
+#endif
+
+#ifdef	SVR4
+#define	SYSV
+#define	USEMKDEVH
+#endif
+
+#ifdef	SYSV
 #define	TARUSESPACE
 # if	!defined (USETERMIOS) && !defined (USETERMIO)
-#  ifdef	SVR4
-#  define	USETERMIOS
-#  else
-#  define	USETERMIO
-#  endif
+# define	USETERMIO
 # endif
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
@@ -799,14 +800,6 @@ typedef long	off_t;
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
-#endif
-
-#ifdef	SVR4
-#define	USEMKDEVH
-#define	USEWAITPID
-#define	USESIGPMASK
-#define	GETPGRPVOID
-#define	USESETPGID
 #endif
 
 #if	defined (__STDC__) || defined (FORCEDSTDC)
@@ -844,7 +837,11 @@ typedef long	off_t;
 #define	EXTENDCCOPT		"-O"
 #endif
 #ifndef	TERMCAPLIB
-#define	TERMCAPLIB		"-ltermlib"
+# ifdef	USETERMINFO
+# define	TERMCAPLIB		"-lcurses"
+# else
+# define	TERMCAPLIB		"-ltermlib"
+# endif
 #endif
 #ifndef	REGEXPLIB
 #define	REGEXPLIB		""

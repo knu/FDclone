@@ -29,8 +29,8 @@
 #define	STDERR_FILENO	2
 #endif
 
-#define	CR	'\r'
-#define	ESC	'\033'
+#define	K_CR	'\r'
+#define	K_ESC	'\033'
 
 #define	K_MIN	K_NOKEY
 #define	K_NOKEY	0401
@@ -118,8 +118,6 @@ extern char *l_insert;
 extern char *l_delete;
 extern char *c_insert;
 extern char *c_delete;
-extern char *c_store;
-extern char *c_restore;
 extern char *c_home;
 extern char *c_locate;
 extern char *c_return;
@@ -200,7 +198,7 @@ extern int chgcolor __P_((int, int));
 #define	WAITKEYPAD	360		/* msec */
 #endif
 #ifndef	WAITMETA
-#define	WAITMETA	60		/* msec */
+#define	WAITMETA	120		/* msec */
 #endif
 
 #define	ANSI_BLACK	0

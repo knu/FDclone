@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.00 01/11/02
+.\" @(#)fd.1   2.00a 02/06/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "January 11, 2002"
+.TH FD 1 "February 6, 2002"
 .de sh
 .br
 .PP
@@ -129,7 +129,7 @@ or
 it becomes this restricted shell automatically.
 .RE
 
-In adition,
+In addition,
 the options described below in the description of
 .B set
 builtin command are available.
@@ -179,7 +179,7 @@ It displays the total size of the marked files in the directory
 (and the total size of all files),
 the total capacity and the free size of the file system
 including the current directory.
-Thie line appears by the environment variable
+This line appears by the environment variable
 .B SIZEINFO
 setting.
 When this line is displayed,
@@ -193,7 +193,7 @@ The function line.
 It displays the operations of function keys.
 .IP "\fBbottom\fP"
 The status line.
-It displays the status of the file on the cursor posision.
+It displays the status of the file on the cursor position.
 It also displays warning messages when command is executed with some troubles.
 .SS Internal Commands
 You can use the following internal commands on
@@ -232,8 +232,8 @@ Identifier	Command	Key
 \fBMARK_FIND\fP	Mark the matched files	\fB\(**\fP
 \fBIN_DIR\fP	Change to a sub directory	\fBReturn\fP
 \fBOUT_DIR\fP	Change to a parent directory	\fBBs\fP
-\fBLOG_TOP\fP	Change to a root direcroty	\fB\e\fP
-\fBREREAD_DIR\fP	Reread the curent directory	\fB^L\fP
+\fBLOG_TOP\fP	Change to a root directory	\fB\e\fP
+\fBREREAD_DIR\fP	Reread the current directory	\fB^L\fP
 \fBPUSH_FILE\fP	Push a file to the stack	\fBDel\fP(])
 \fBPOP_FILE\fP	Pop a file from the stack	\fBIns\fP([)
 \fBLOG_DIR\fP	Change to a logical directory	\fBF1\fP(l)
@@ -324,7 +324,7 @@ additionally marks the file which matches the wildcard.
 You must input the wildcard string whenever you push
 .RB [ \(** ].
 
-Merked files are used as the target of
+Marked files are used as the target of
 .BR ATTR_FILE ,
 .BR COPY_FILE ,
 .BR DELETE_FILE ,
@@ -353,7 +353,7 @@ files.
 .RB [ Ins ]
 pops the file from the file stack
 and insert it on the cursor position.
-Tha last pushed file is poped first.
+The last pushed file is popped first.
 But this order is expediently displayed in
 .BR fd ,
 and it is reset by Directory move.
@@ -378,7 +378,7 @@ it means not the relative move but the absolute move.
 When you input the pathname "\fB.\fP",
 the pathname of the current directory is adjusted into absolute expression.
 Except this case,
-the current directory always is showen as the virtual pathname,
+the current directory always is shown as the virtual pathname,
 by reason of a link and so on.
 When you input the pathname "\fB?\fP",
 you can move to the current directory when
@@ -407,7 +407,7 @@ Execute the file on the cursor position with some parameters,
 as the child process.
 The cursor position in command line exists
 after the filename in case of the executable file,
-and bofore the filename except it.
+and before the filename except it.
 You should fill suitable parameters or command name in each case.
 The up/down cursor keys can provide the command history
 which you executed before.
@@ -423,19 +423,19 @@ otherwise it is never replaced including \fB"\fP.
 .IP "\fBCopy file\fP (Copy)"
 Copy the file on the cursor position to the specified directory.
 When the cursor position indicates a directory,
-its contents are copyed recursively.
+its contents are copied recursively.
 When some files are marked,
 the target is not the file on the cursor position but the marked files.
 
 When the same named file exists in the destination,
 you can select the operation from the following:
 "Update (by timestamp)",
-"Rename (each copyed file)",
+"Rename (each copied file)",
 "Overwrite",
 "Not_copy_the_same_name",
 "Forward".
 If you select "Forward",
-you should specify the directory as the distination to forward.
+you should specify the directory as the destination to forward.
 All files which have the same names are moved to the specified directory.
 .IP "\fBDelete file\fP (Delete)"
 Delete the file on the cursor position.
@@ -479,7 +479,7 @@ or do
 again and input a null line.
 
 When the current directory has the files
-which have the extention registered to associate with an archive browser,
+which have the extension registered to associate with an archive browser,
 the string which starts with '/' is used
 to find not the filename but the filename in archive files,
 and only the archive files which contain matched files are displayed.
@@ -503,7 +503,7 @@ when the internal variable is undefined.
 Unpack the archive file on the cursor position into the specified directory.
 In builtin configuration,
 you can unpack only the tar file and its compressed file
-and the lha compressed file.
+and the LHa compressed file.
 You can describe configurations in the initial configuration file
 to support archivers except these.
 .IP "\fBChange attribute\fP (Attr)"
@@ -523,7 +523,7 @@ You should notice that
 the attribute of the execution bit is not a binary toggle but a triple toggle,
 which includes setuid bit, setgid bit, and sticky bit respectively.
 When you input the timestamp,
-you move a cursor to the posision you want to change,
+you move a cursor to the position you want to change,
 and input a numeric value.
 Finally,
 .RB [ Return ]
@@ -543,12 +543,12 @@ On the OS which has the attribute of file flags,
 you can change the file flags as well as the mode.
 But the value of flags which you can change is based on your permission.
 .IP "\fBFile system information\fP (Info)"
-Displey the information of the specified file system.
+Display the information of the specified file system.
 When the inputted pathname is not the special file
 which indicates a file system,
 the information of the file system including the pathname is displayed.
 .IP "\fBMove file\fP (Move)"
-Move the file on the curor position to the specified directory.
+Move the file on the cursor position to the specified directory.
 When the cursor position indicates a directory,
 the directory itself is moved.
 When some files are marked,
@@ -557,7 +557,7 @@ the target is not the file on the cursor position but the marked files.
 When the same named file exists in the destination,
 you can select the operation as well as
 .BR COPY_FILE .
-When the distination belongs to the different file system,
+When the destination belongs to the different file system,
 copy and delete are just executed continuously.
 .IP "\fBDelete directory\fP (rmDir)"
 Delete the directory on the cursor position recursively.
@@ -624,7 +624,7 @@ you will be confirmed whether if you write the directory or not,
 just before the internal command is executed.
 For this function,
 you can write the directory
-without intentionally executing this Derectory write command.
+without intentionally executing this Directory write command.
 But when the displayed directory is not under your home directory,
 this confirmation is not done.
 .IP "\fBBackup tape\fP (Backup)"
@@ -653,11 +653,11 @@ all of its contents are packed into the archive file.
 When some files are marked,
 the target is not the file on the cursor position but the marked files.
 
-According to the extention of the inputted archive file,
+According to the extension of the inputted archive file,
 the associated archiver is automatically selected.
 In builtin configuration,
 you can pack only the tar file and its compressed file
-and the lha compressed file.
+and the LHa compressed file.
 You can describe configurations in the initial configuration file
 to support archivers except these.
 
@@ -697,15 +697,15 @@ unless the target file is displayed.
 .IP "\fBInvoke launcher\fP"
 .RB [ Return ]
 executes the operation according to
-the extention of the file on the cursor position,
+the extension of the file on the cursor position,
 unless the cursor position indicates a directory.
 In builtin configuration,
 the archive browser is registered with the tar file and its compressed file
-and the lha compressed file.
+and the LHa compressed file.
 You can describe configurations in the initial configuration file
 to register launchers except these.
 
-When the file on the cursor position has the unregistered extention,
+When the file on the cursor position has the unregistered extension,
 it will behave as same as
 .BR VIEW_FILE .
 In the archive browser,
@@ -732,7 +732,7 @@ The each symbol means the following.
 .RS 10
 .ta 0.5i
 .nf
-\fB/\fP	derectory
+\fB/\fP	directory
 \fB@\fP	symbolic link
 \fB\(**\fP	executable file
 \fB=\fP	socket
@@ -776,10 +776,10 @@ The each symbol means the following respectively.
 \fBA\fP	Archived
 \fBN\fP	Nodump
 \fBa\fP	system Append-only
-\fBc\fP	system unChangable (immutable)
+\fBc\fP	system unChangeable (immutable)
 \fBu\fP	system Undeletable
 \fBa\fP	user Append-only
-\fBc\fP	user unChangable (immutable)
+\fBc\fP	user unChangeable (immutable)
 \fBu\fP	user Undeletable
 .fi
 .RE
@@ -1080,7 +1080,7 @@ then
 .B until
 returns a 0 exit status.
 .IP "\fBfor\fP \fINAME\fR [\fBin\fP \fIvalue\fR .\|.\|.] \fBdo\fP \fIlist\fR \fBdone\fP"
-The internal valiable
+The internal variable
 .I NAME
 is substituted for values of
 .I value
@@ -1224,10 +1224,10 @@ If both
 and
 .I name
 are omitted,
-all the current alias definition list is desplayed.
+all the current alias definition list is displayed.
 .IP "\fBarch\fP \fIext\fR [\fIpack unpack\fR]"
 Register the archiver command associated with the archive file
-which has extention
+which has extension
 .IR ext .
 The pack command is specified as
 .IR pack ,
@@ -1238,14 +1238,14 @@ When
 .I ext
 starts with
 .BR / ,
-uppercase/lowercase is ignored in the comparison of any extention.
+uppercase/lowercase is ignored in the comparison of any extension.
 
 If both
 .I pack
 and
 .I unpack
 are omitted,
-the archiver command registration for the extention
+the archiver command registration for the extension
 .I ext
 is deleted.
 .IP "\fBbg\fP [\fIjob\fR]"
@@ -1296,7 +1296,7 @@ you can prefix
 into 2 characters,
 such as @a.
 When you want to specify a function key and a special key,
-you can use each indentifier described in
+you can use each identifier described in
 .B keymap
 command after,
 such as F10.
@@ -1340,7 +1340,7 @@ If both
 and
 .I com2
 are omitted,
-the resigtration of key binding for the key
+the registration of key binding for the key
 .I c
 is deleted.
 .IP "\fBbreak\fP [\fIn\fR]"
@@ -1374,7 +1374,7 @@ Same as
 .B (D)
 .IP "\fBcheckid\fP [\fIfile\fR .\|.\|.]"
 Calculate the unique ID of the specified file and display it,
-according to the MD5 algorism in RFC1321.
+according to the MD5 algorithm in RFC1321.
 When you specify multiple
 .IR file s,
 the IDs of all specified files are calculated and displayed.
@@ -1383,7 +1383,7 @@ the ID of running
 .B fd
 itself is displayed.
 
-Since this algorism is guaranteed to be secure,
+Since this algorithm is guaranteed to be secure,
 it is available to confirm the identity of files.
 .IP "\fBcls\fP"
 Clear the screen.
@@ -1414,15 +1414,15 @@ If
 .I dest
 is omitted,
 it is copied into the current directory.
-You can specify multiple source files by describing to separete them with
+You can specify multiple source files by describing to separate them with
 .BR \+ ,
 or by using the wildcard.
 When you separate them with
 .BR \+ ,
-those files are concatinated and copied.
+those files are concatenated and copied.
 When you use the wildcard,
 they are copied one by one in case that the destination is a directory,
-and they are concatinated in case that the destination is a file.
+and they are concatenated in case that the destination is a file.
 .B (D)
 
 When you specify
@@ -1488,7 +1488,7 @@ it sorts with the sorted type indicated by the trailing character.
 .ta 0.3i 2i 2.3i
 .nf
 \fBN\fP	by name	\fBS\fP	by size
-\fBE\fP	by extention	\fBD\fP	by date & time
+\fBE\fP	by extension	\fBD\fP	by date & time
 \fBG\fP	directory first	\fBA\fP	by last access time
 \fB-\fP	reverse order
 .fi
@@ -1619,7 +1619,7 @@ the current job is continued in the foreground.
 .IP "\fBgetkey\fP [\fInum\fR]"
 Get the key code sequence for the pushed key.
 It prompts after executed,
-and displays the key code seqence for the key which you push to specify.
+and displays the key code sequence for the key which you push to specify.
 It continues until you push any key
 .I num
 times.
@@ -1650,7 +1650,7 @@ it is regarded as
 .B 1
 time is specified.
 .IP "\fBhash\fP [\fB\-r\fP \(bv \fIcom\fR .\|.\|.]"
-Seahch the absolute path for
+Search the absolute path for
 .I com
 referring to
 .BR PATH ,
@@ -1661,7 +1661,7 @@ When you specify
 .B \-r
 instead of
 .IR com ,
-all the memoried hash table are discarded.
+all the memorized hash table are discarded.
 If
 .I com
 is omitted,
@@ -1689,7 +1689,7 @@ command histories with the history number.
 If
 .I n
 is omitted,
-all of the memoried command histories are listed.
+all of the memorized command histories are listed.
 .IP "\fBjobs\fP"
 List the running jobs.
 .B (U)
@@ -1807,7 +1807,7 @@ it lists the signal names which can be used as
 .I signal
 instead of sending a signal.
 .IP "\fBlaunch\fP \fIext\fR [\fIcom\fR [\fIformat\fR [\fItop\fR \fIbottom\fR]]]"
-Register the behavior for the extention
+Register the behavior for the extension
 .I ext
 as the launcher.
 You should the macro representation quoted with \fB"\fP as
@@ -1827,7 +1827,7 @@ When
 .I ext
 starts with
 .BR / ,
-uppercase/lowercase is ignored in the comparison of any extention.
+uppercase/lowercase is ignored in the comparison of any extension.
 
 If
 .I com
@@ -1844,7 +1844,7 @@ Create the directory
 .B (D)
 .IP "\fBprintarch\fP [\fIext\fR]"
 Print the archiver commands registered for the archive file
-which has the extention
+which has the extension
 .IR ext .
 
 If
@@ -1875,7 +1875,7 @@ If
 is omitted,
 all of the registered floppy drives are listed.
 .IP "\fBprintlaunch\fP [\fIext\fR]"
-Print the command macro registered as the launcher for the extention
+Print the command macro registered as the launcher for the extension
 .IR ext .
 When it is registered as the archive browser,
 the format for listing is also printed.
@@ -1885,7 +1885,7 @@ If
 is omitted,
 all of the registered launchers are listed.
 .IP "\fBpwd\fP"
-Dispray the current directory with the absolute representation.
+Display the current directory with the absolute representation.
 .IP "\fBread\fP [\fINAME .\|.\|.\fR]"
 Read one line from the standard input
 and substitute that string for the internal variable
@@ -1964,7 +1964,7 @@ List internal variables and functions, without any argument.
 When you specify
 .IR arg ,
 .I arg
-is substituted for the posisional parameter
+is substituted for the positional parameter
 .BR $1 ,
 .BR $2 ,
 \&.\|.\|.,
@@ -2070,7 +2070,7 @@ Rename the positional parameters from
 into ones from
 .B $1
 in order.
-The original positinal parameters from
+The original positional parameters from
 .B $1
 to
 .BI $ n
@@ -2091,7 +2091,7 @@ See
 .BR test (1)
 for details.
 .IP "\fBtimes\fP"
-Display the accumlated user and system time for the processes
+Display the accumulated user and system time for the processes
 which has so far been executed.
 .IP "\fBtrap\fP [\fIcom\fR] [\fIn\fR .\|.\|.]"
 Read and execute the command
@@ -2128,11 +2128,11 @@ would be treated when it is used as a command name.
 .IP "\fBulimit\fP [\fB\-SH\fP] [\fB\-a\fP \(bv \fB\-cdflmnstv\fP] \fIn\fR"
 Set the resource limits for
 .B fd
-and its child processes to the value indiceted by
+and its child processes to the value indicated by
 .IR n .
 You can use the string
 .B unlimited
-or the numelic value in
+or the numeric value in
 .IR n ,
 .B unlimited
 means the maximum specifiable value.
@@ -2171,7 +2171,7 @@ maximum file size (in blocks)
 .IP "\fB\-l\fP"
 maximum size of locked in memory (in KB)
 .IP "\fB\-m\fP"
-muximum size of resident set (in KB)
+maximum size of resident set (in KB)
 .IP "\fB\-n\fP"
 maximum number of open file files
 .IP "\fB\-s\fP"
@@ -2320,7 +2320,7 @@ whose name starts with the character or its lowercase.
 Change the directory tree into the specified directory.
 Moving to the floppy drive is also available.
 .IP "\fB^L\fP"
-Redraw the tree structiure.
+Redraw the tree structure.
 .IP "\fBReturn\fP"
 Select the directory.
 .IP "\fBEsc\fP"
@@ -2331,14 +2331,14 @@ Cancel.
 When directories are recursively expanded,
 the machine operation is so late that it maybe seems to freeze.
 In this case,
-you can input any key while oparating.
+you can input any key while operating.
 If key input is recognized while expanding directories,
 expanding has been stopped at that moment in spite of not finishing.
 Even if key repeat keeps effective,
 any operation will be delayed for this function.
 .SS Archive Browser
 When the launcher is invoked on the position of the file
-whose extention is registered to associate with an archive browser,
+whose extension is registered to associate with an archive browser,
 the archive browser screen has come.
 In this screen,
 you can browse files in the archive file as well as in the normal directory.
@@ -2382,7 +2382,7 @@ One format string represents the format for 1 file in the list.
 \fB%x\fP	Field which is needless (ignored)
 \fB%%\fP	% itself
 \fB\en\fP	Newline
-\fBSpace Tab\fP 0 or more charachers of spaces or tabs
+\fBSpace Tab\fP 0 or more characters of spaces or tabs
 .fi
 .RE
 .PD
@@ -2463,7 +2463,7 @@ and set the environ variable
 .B DOSDRIVE
 which makes this function effective, in advance.
 
-Each registered drive is distiguished with the drive name.
+Each registered drive is distinguished with the drive name.
 You should tag the physically different drive as the different drive name.
 When the same physical drive supports multiple formats,
 you can register each format with the same drive name,
@@ -2472,7 +2472,7 @@ If you tag the same drive name,
 the justice of the format is tried in registered order,
 so that you should register the format which you often use in the first place.
 
-Each drive of the floppy drive has the its own current diratory.
+Each drive of the floppy drive has the its own current directory.
 The default value of this is a root directory,
 and the current directory is moved back to a root directory again
 whenever you change a floppy disk.
@@ -2580,7 +2580,7 @@ when it is the beginning of filename.
 .PD 0
 .IP "\fB${\fP\fINAME\fR\fB}\fP"
 .PD
-Indicate the value of the internal variable or the exvironment variable
+Indicate the value of the internal variable or the environment variable
 .IR NAME .
 When both are defined,
 the internal variable is prior.
@@ -2764,7 +2764,7 @@ Match any 0 or more length string including
 .IP "\fB[\fP.\|.\|.\fB]\fP"
 Match any one of the characters enclosed by
 .BR "[ ]" .
-When encluded characters include
+When enclosed characters include
 .BR \- ,
 it matches any character
 whose character code is between characters before/after
@@ -2873,10 +2873,10 @@ The filename on the cursor position.
 Or, it indicates the archive filename,
 in the macro to register the archiver command.
 .IP "\fB%X\fP"
-The filename except its extention on the cursor position.
-Or, it indicates the archive filename except its extention,
+The filename except its extension on the cursor position.
+Or, it indicates the archive filename except its extension,
 in the macro to register the archiver command.
-Only the last one extention is removed.
+Only the last one extension is removed.
 .BR T ,
 .BR TA ,
 .B M
@@ -2886,7 +2886,7 @@ are replaced by
 .BR %T ,
 .BR %TA ,
 .B %M
-except its extention respectively.
+except its extension respectively.
 On MS-DOS version,
 you can describe a trailing
 .B S
@@ -3015,7 +3015,7 @@ it is prior in this order.
 You can execute builtin commands for each registration for
 the internal variable definition,
 the environment variable definition,
-the aliase definition,
+the alias definition,
 the function definition,
 the key binding,
 the keymap changing,
@@ -3124,15 +3124,15 @@ when you are prompted to push the key,
 the existent key mapping is deleted.
 .B (U)
 .IP "\fBLauncher\fP"
-Change the launcher registration for each extention.
-When you newly register a launcher for the extention with no registration,
+Change the launcher registration for each extension.
+When you newly register a launcher for the extension with no registration,
 you should select "NewEntry".
 If you input a null line when you input a command for the launcher,
 the existent launcher registration is deleted.
 .IP "\fBArchiver\fP"
-Change the archiver command registration for each extention.
+Change the archiver command registration for each extension.
 When you newly register a archiver command
-for the extention with no registration,
+for the extension with no registration,
 you should select "NewEntry".
 If you input a null line both when you input a command for pack/unpack,
 the existent archiver command registration is deleted.
@@ -3183,7 +3183,7 @@ If you try to exit from the customizer without saving
 after changing any configuration,
 you will be confirmed whether if it is right to exit without saving.
 While the changed configurations themselves are valid 
-even if you exit without saveing,
+even if you exit without saving,
 when you want them to be valid in the next invoked
 .BR fd ,
 you must save them into the initial configuration file.
@@ -3192,10 +3192,10 @@ The following environment variables are valid in
 .BR fd .
 These environment variables can be valid
 if they are defined as the internal variables.
-You can spacify them as the command line options in
+You can specify them as the command line options in
 .RI ` \fB\-\fPNAME\fB=\fPvalue '
 form.
-But the variables followed by \(** cannot be use with the prifex
+But the variables followed by \(** cannot be use with the prefix
 .B FD_
 as the environment variables.
 .IP "\fBCDPATH\fP\(**" 14
@@ -3262,7 +3262,7 @@ The following are specifiable values.
 .nf
 \fB0\fP	not sort
 \fB1\fP	by filename	\fB9\fP	by filename(reverse)
-\fB2\fP	by extention	\fB10\fP	by extention(reverse)
+\fB2\fP	by extension	\fB10\fP	by extension(reverse)
 \fB3\fP	by size	\fB11\fP	by size(reverse)
 \fB4\fP	by timestamp	\fB12\fP	by timestamp(reverse)
 \fB5\fP	by length	\fB13\fP	by length(reverse)
@@ -3277,13 +3277,13 @@ just after invoked,
 the last specified sorted type is kept when moving directory.
 .RE
 .IP "\fBDISPLAYMODE\fP"
-Specify the filaname display mode of the file list when
+Specify the filename display mode of the file list when
 .B fd
 is invoked.
 Each of the symbolic link mode,
 the file type symbol mode and the dot file display mode
 can be selected individually.
-The defalut value is
+The default value is
 .BR 0 .
 The following are specifiable values.
 .RS 18
@@ -3349,7 +3349,7 @@ and null effects valid.
 .B (U)
 
 (On MS-DOS version,
-the distination timestamp is always inherited,
+the destination timestamp is always inherited,
 if this variable is effective or not.)
 .IP "\fBADJTTY\fP"
 Reset the terminal mode forcedly to the normal state,
@@ -3478,7 +3478,7 @@ Display the second in the clock of the title line.
 But the clock is adjusted correctly every
 .B 10
 seconds,
-and some gap from the real time will be occured in this span.
+and some gap from the real time will be occurred in this span.
 Any value except
 .B 0
 and null effects valid.
@@ -3523,14 +3523,14 @@ The default value is
 .BR /tmp .
 .IP "\fBRRPATH\fP"
 Display files under the directory mounted by CD-ROM,
-with the pseudo ISO 9660 RockRidge Extention,
-for the OS which cannot support RockRidge Extention.
+with the pseudo ISO 9660 RockRidge Extension,
+for the OS which cannot support RockRidge Extension.
 You can specify multiple mount points separating with
 .RB ' : '.
 You are enough to specify only the top directory mounted by CD-ROM,
-then the pseudo RockRidge Extention function is valid
+then the pseudo RockRidge Extension function is valid
 in all of the directories under that directory.
-This is no more than a pseudo extention,
+This is no more than a pseudo extension,
 which only replaces filenames according to TRANS.TBL,
 and cannot handle some CD-ROM which has an inconsistent TRANS.TBL.
 No mount point is specified by default.
@@ -3542,7 +3542,7 @@ You can specify multiple pathnames separating with
 .RB ' : '.
 You are enough to specify only the top directory
 where you want to realize the file preceding function,
-then the file preceding funtion is valid
+then the file preceding function is valid
 in all of the directories under that directory.
 When the file preceding function is effective,
 any files are not sorted in that directory,
@@ -3578,7 +3578,7 @@ Specify the prompt string when more continuous input is needed in
 .BR EXECUTE_SH .
 The default value is "\fB>\fP\|\ \|".
 .IP "\fBLANGUAGE\fP"
-Specify the languege for display characher.
+Specify the language for display character.
 It means not only each messages displayed by
 .BR fd ,
 but also a Kanji code of filename to be converted.
@@ -3676,7 +3676,7 @@ then you can use the Kanji code
 in all of the directories under that directory.
 In the directory which is described in
 .BR NOCONVPATH ,
-no Kanji code is converted ignoreing the value of
+no Kanji code is converted ignoring the value of
 .BR FNAMEKCODE .
 No pathname is specified by default.
 .B (U)
@@ -3686,7 +3686,7 @@ processes the Kanji character-set to input/output
 as "EUC-JP" or "Shift JIS" according to setting in compile.
 The the pathname including Kanji is displayed
 in consideration for the 2nd byte character in Kanji.
-You can dinamically select Kanji code to input/output
+You can dynamically select Kanji code to input/output
 with the internal variable
 .BR LANGUAGE ,
 .B INPUTKCODE
@@ -3822,7 +3822,7 @@ due to be brought by this is not available.
 .BR umask (2),
 .BR termcap (5)
 .SH BUGS
-When files in an archive file are packed with a pathname includeing ".\|.",
+When files in an archive file are packed with a pathname including ".\|.",
 the archive browser cannot work normally.
 The symbolic links in an archive file cannot be unpacked individually.
 

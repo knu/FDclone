@@ -92,10 +92,10 @@ havelib() {
 
 cat ./config.hin
 
-for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
+for i in TARUSESPACE CPP7BIT USETERMINFO TERMCAPLIB REGEXPLIB EXTENDLIB \
 NOVOID NOUID_T DECLSIGLIST NOSIGLIST \
 DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
-USELEAPCNT USESELECTH USESYSDIRH USETIMEH USESTDARGH USEMKDEVH\
+USELEAPCNT USESELECTH USESYSDIRH USETIMEH USESTDARGH USEMKDEVH USEMKNODH \
 USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USEFFSIZE STATFSARGS \
@@ -103,10 +103,10 @@ USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
-USERAND48 USESETENV NOSELECT NOVSPRINTF \
+USERAND48 USESETENV NOSELECT NOVSPRINTF NOTERMVAR \
 USEUTIME USEGETWD USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
 USEWAITPID USESIGPMASK USERESOURCEH USEULIMITH USETIMESH \
-GETPGRPVOID USESETPGID SIGARGINT SIGFNCINT \
+GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
 GETTODARGS
 do
 	echo "#ifdef	$i"
@@ -120,25 +120,28 @@ echo " */"
 echo
 
 
-if [ " $LANG" = " ja_JP.EUC" ]; then
-	echo "#ifndef	CODEEUC"
-	echo "#define	CODEEUC"
-	echo "#endif"
-	if [ -d /usr/man/$LANG ]; then
-		echo "#ifndef	USEMANLANG"
-		echo "#define	USEMANLANG"
+case "$LANG" in
+	ja_JP.EUC*|ja_JP.euc*|ja_JP.ujis)
+		echo "#ifndef	CODEEUC"
+		echo "#define	CODEEUC"
 		echo "#endif"
-	fi
-elif [ " $LANG" = " ja_JP.SJIS" ]; then
-	echo "#ifdef	CODEEUC"
-	echo "#undef	CODEEUC"
-	echo "#endif"
-	if [ -d /usr/man/$LANG ]; then
-		echo "#ifndef	USEMANLANG"
-		echo "#define	USEMANLANG"
+		if [ -d /usr/man/$LANG ]; then
+			echo "#ifndef	USEMANLANG"
+			echo "#define	USEMANLANG"
+			echo "#endif"
+		fi
+	;;
+	ja_JP.SJIS)
+		echo "#ifdef	CODEEUC"
+		echo "#undef	CODEEUC"
 		echo "#endif"
-	fi
-fi
+		if [ -d /usr/man/$LANG ]; then
+			echo "#ifndef	USEMANLANG"
+			echo "#define	USEMANLANG"
+			echo "#endif"
+		fi
+	;;
+esac
 
 echo "Checking for tar(1)..." 1>&2
 touch $TMPSRC
@@ -168,10 +171,16 @@ rm -f $TMPEXE
 lib=
 if havelib termlib "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-ltermlib
+elif havelib ncurses "setupterm(\"T\",0,0)" "curses term"; then
+	lib=-lncurses
+	echo "#define	USETERMINFO"
 elif havelib ncurses "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-lncurses
 elif havelib termcap "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-ltermcap
+elif havelib curses "setupterm(\"T\",0,0)" "curses term"; then
+	lib=-lcurses
+	echo "#define	USETERMINFO"
 elif havelib curses "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-lcurses
 elif havelib "curses -ltermcap" "tgetent(b,\"T\")" "" "char b[1024];"; then
@@ -244,13 +253,15 @@ if inheader 'struct.*[^a-zA-Z0-9_]tm[^a-zA-Z0-9_]' "sys/types sys/time time" \
 && noinheader 'struct.*[^a-zA-Z0-9_]tm[^a-zA-Z0-9_]' "sys/types sys/time"; then
 	echo "#define	USETIMEH"
 fi
-if inheader 'va_list' stdarg; then
+if inheader va_list stdarg; then
 	echo "#define	USESTDARGH"
 fi
-if inheader 'major' sys/mkdev; then
+if isexist "return(major(0))" sys/mkdev; then
 	echo "#define	USEMKDEVH"
 fi
-if noheader sgtty \
+if isexist "return(major(0))" sys/mknod; then
+	echo "#define	USEMKNODH"
+fi
 if noheader sgtty \
 || inheader 'TIOCFLUSH' sgtty "TIOCFLUSH"; then
 	if noheader termio; then
@@ -271,12 +282,12 @@ else
 	fi
 fi
 if (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' sys/time \
-&& isexist "timezone" "sys/types sys/time" "extern time_t timezone;") \
+&& isexist "timezone=0" "sys/types sys/time" "extern time_t timezone;") \
 || (inheader 'extern.*[^a-zA-Z0-9_]timezone[^a-zA-Z0-9_]' time \
-&& isexist "timezone" "sys/types time" "extern time_t timezone;"); then
+&& isexist "timezone=0" "sys/types time" "extern time_t timezone;"); then
 	echo "#define	HAVETIMEZONE"
 fi
-if (noexist "t.tm_gmtoff" "sys/types sys/time" "struct tm t;"\
+if (noexist "t.tm_gmtoff" "sys/types sys/time" "struct tm t;" \
 && noexist "t.tm_gmtoff" "sys/types time" "struct tm t;"); then
 	echo "#define	NOTMGMTOFF"
 fi
@@ -295,7 +306,7 @@ elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' sys/mount; then {
 }
 elif inheader 'struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]' \
 "sys/types sys/statfs" \
-&& { { isexist "statfs(0,&f,0,0)" "sys/types sys/statfs" "struct statfs f;"\
+&& { { isexist "statfs(0,&f,0,0)" "sys/types sys/statfs" "struct statfs f;" \
 && arg=4; } \
 || isexist "statfs(0,&f)" "sys/types sys/statfs" "struct statfs f;"; }; then
 	echo "#define	USESTATFSH"
@@ -319,7 +330,7 @@ elif isexist "getmntinfo(0,0)"; then {
 	if isexist 'getvfsbytype(0); return(*(c.vfc_name));' \
 	"sys/param sys/mount" "struct vfsconf c;"; then
 		echo "#define	USEVFCNAME"
-	elif isexist 'return(*(f.f_fstypename));' \
+	elif isexist 'return(*(f.f_fstypename))' \
 	"sys/param sys/mount" "struct statfs f;"; then
 		echo "#define	USEFFSTYPE"
 	fi
@@ -335,13 +346,13 @@ fi
 
 
 lib=
-if isexist "re_comp(0)" ctype 'extern char *re_comp();'\
-|| { havelib compat "re_comp(0)" ctype 'extern char *re_comp();'\
+if isexist "re_comp(0)" ctype 'extern char *re_comp();' \
+|| { havelib compat "re_comp(0)" ctype 'extern char *re_comp();' \
 && lib=-lcompat; }; then
 	echo "#define	USERE_COMP"
 elif isexist "regfree(re)" "sys/types regex" 'regex_t *re;'; then
 	echo "#define	USEREGCOMP"
-elif isexist "regcmp(0,0)" ctype 'extern char *regcmp();'\
+elif isexist "regcmp(0,0)" ctype 'extern char *regcmp();' \
 || { havelib gen "regcmp(0,0)" ctype 'extern char *regcmp();' && lib=-lgen; } \
 || { havelib PW "regcmp(0,0)" ctype 'extern char *regcmp();' && lib=-lPW; } \
 || { havelib PW "regcmp(0,0)" ctype 'extern char *regcmp(); char Error[1024];' \
@@ -365,6 +376,10 @@ if noexist "select(0,0,0,0,0)"; then
 fi
 if noexist "vsprintf(0,0,0)" "stdio varargs"; then
 	echo "#define	NOVSPRINTF"
+fi
+if noexist "ospeed=0" "" "extern short ospeed;" \
+|| noexist "BC=NULL" "" "extern char *BC;"; then
+	echo "#define	NOTERMVAR"
 fi
 if noexist "utimes(0,0)"; then
 	echo "#define	USEUTIME"
@@ -398,7 +413,7 @@ fi
 if isexist "sigprocmask(0,0,0)" signal; then
 	echo "#define	USESIGPMASK"
 fi
-if isexist "getrusage(0,0)" "sys/types sys/time sys/resource"\
+if isexist "getrusage(0,0)" "sys/types sys/time sys/resource" \
 && isexist "getrlimit(0,0)" "sys/types sys/time sys/resource"; then
 	echo "#define	USERESOURCEH"
 else
@@ -415,15 +430,17 @@ fi
 if isexist "setpgid(0,0)"; then
 	echo "#define	USESETPGID"
 fi
+if isexist "setvbuf(0,0,0,0)" stdio; then
+	echo "#define	USESETVBUF"
+fi
 if inheader 'int.*[^a-zA-Z0-9_]signal[^a-zA-Z0-9_]' signal; then
 	echo "#define	SIGARGINT"
 fi
 if inheader '[^a-zA-Z0-9_]signal([^a-zA-Z0-9_].*\(|\()[ (]*int[ ),].*\) *;' \
-signal
-then
+signal; then
 	echo "#define	SIGFNCINT"
 fi
-if noexist "gettimeofday(0,0)" "sys/time time"\
+if noexist "gettimeofday(0,0)" "sys/time time" \
 && isexist "gettimeofday(0)" "sys/time time"; then
 	echo "#define	GETTODARGS	1"
 fi

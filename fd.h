@@ -157,7 +157,7 @@ extern char *_mtrace_file;
 /****************************************************************
  *	Screen layout parameter					*
  ****************************************************************/
-#define	FILEPERLINE	(columns)
+#define	FILEPERLINE	(curcolumns)
 #ifndef	_NOSPLITWIN
 #define	FILEPERLOW	((n_line - WHEADER - WFOOTER + 1) / windows - 1)
 #else

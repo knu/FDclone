@@ -292,7 +292,7 @@ struct stat *stp1, *stp2;
 			val[4] = 5;
 #endif
 			i = 1;
-			if (selectstr(&i, MAXCOPYITEM, 0, str, val) == ESC)
+			if (selectstr(&i, MAXCOPYITEM, 0, str, val) == K_ESC)
 				return(-1);
 #ifndef	_NOEXTRACOPY
 			if (i == 5) {
@@ -300,7 +300,7 @@ struct stat *stp1, *stp2;
 				str[1] = OVERW_K;
 				val[0] = 5;
 				val[1] = 6;
-				if (selectstr(&i, 2, 0, str, val) == ESC)
+				if (selectstr(&i, 2, 0, str, val) == K_ESC)
 					continue;
 # ifndef	_NODOSDRIVE
 				dupdestdrive = destdrive;
@@ -457,7 +457,8 @@ int mode;
 	val[1] = -1;
 	val[2] = 2;
 	val[3] = 1;
-	if (selectstr(&removepolicy, 4, 0, str, val) == ESC) removepolicy = -1;
+	if (selectstr(&removepolicy, 4, 0, str, val) == K_ESC)
+		removepolicy = -1;
 	return((removepolicy > 0) ? removepolicy - 2 : removepolicy);
 }
 
@@ -853,7 +854,7 @@ u_short flag;
 			default:
 				break;
 		}
-	} while (ch != ESC && ch != CR);
+	} while (ch != K_ESC && ch != K_CR);
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
@@ -862,7 +863,7 @@ u_short flag;
 	Xgetkey(-1);
 #endif
 
-	if (ch == ESC) return(0);
+	if (ch == K_ESC) return(0);
 
 	tm -> tm_year = (attr.timestr[0][0] - '0') * 10
 		+ attr.timestr[0][1] - '0';

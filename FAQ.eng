@@ -7,7 +7,7 @@ Q1-01.	A long UNIX filename is not displayed to the end.
 A1-01.	You can scroll a display position of a filename by
 	`(' and `)' key, on the default key binding. Put a
 	cursor on the objective file and push `)' key several
-	times, to disdlay the whole filename.
+	times, to display the whole filename.
 
 Q1-02.	When FDclone is finished, it is returned the startup
 	directory. How I can do?
@@ -50,8 +50,8 @@ A1-07.	The owner/group name of a file has a meaning only on
 	no guarantee to mean the same owner/group name.
 	The owner/group name in archive files is named on the
 	machine archiving them.
-	Sence MS-DOS has no such file attribute, there is
-	not the onwer/group name in files of the floppy drive.
+	Since MS-DOS has no such file attribute, there is
+	not the owner/group name in files of the floppy drive.
 	In that case, the owner/group name doesn't indicate
 	any real owner/group. UNIX is implemented so that the
 	owner/group name is treated as numeric, then it cannot
@@ -60,7 +60,7 @@ A1-07.	The owner/group name of a file has a meaning only on
 
 <2.Customization Problem>
 
-Q2-01.	I want to execute an external command accoding to the
+Q2-01.	I want to execute an external command according to the
 	extension of a filename. Can I customize?
 Q2-02.	How I can change the key binding?
 A2-01.
@@ -106,7 +106,7 @@ A2-06.	Make a file named /etc/fd2rc. It is referred to before
 Q2-07.	I want to register a new archive form in the archive
 	browser. How can I do?
 A2-07.	I've explained in #5 of TECHKNOW.eng, see it with the
-	clause of "ARCHIVE BROWER" in man page.
+	clause of "ARCHIVE BROWSER" in man page.
 
 Q2-08.	It is always sorted.
 Q2-09.	I want to see the information of a linked file in the
@@ -148,7 +148,7 @@ A2-24.	These configurations are set by the internal variables
 	or the environment variables. There was not only the
 	case each user configure them intentionally, but also
 	the case the system administrator prepares the
-	configuration file common to users, or hardcoated them
+	configuration file common to users, or hardcodes them
 	when compiled. See the clause of "ENVIRONMENT VARIABLES"
 	in man page well, to set a suitable configuration by
 	.fd2rc and so on.
@@ -191,7 +191,7 @@ A2-28.	Is it set up validly the configuration about the floppy
 	variable) DOSDRIVE, and must register the floppy drive.
 	See #6 of TECHKNOW.eng as details.
 	And, sometimes a general user cannot use the floppy
-	drive because of the parmission of the device file
+	drive because of the permission of the device file
 	assigned for the floppy disk drive. In this case, try
 	to tell the administrator of a machine.
 
@@ -213,14 +213,14 @@ A2-29.	In some case, /usr/local is shared by some machines
 
 Q2-30.	What I should prepare as the common configuration
 	file.
-Q2-31.	I don't know what I shuold write in the configuration
+Q2-31.	I don't know what I should write in the configuration
 	file.
 A2-30.
 A2-31.	It is no need to prepare /etc/fd2rc as the common
 	configuration file, nor .fd2rc as the configuration
 	file for each user.
-	If you don't prepare them, it is varid the default
-	configurations hardcoated in executable file. So
+	If you don't prepare them, it is valid the default
+	configurations hardcoded in executable file. So
 	these defaults is set with considering the difference
 	from each OS, usually, it should run normally even
 	if as is.
@@ -233,7 +233,7 @@ A2-31.	It is no need to prepare /etc/fd2rc as the common
 <3.Environment Problem>
 
 Q3-01.	When I try to refer to the contents of a file, page
-	control is not mageged, or a screen is broken.
+	control is not managed, or a screen is broken.
 A3-01.	It depends on the specification of a pager. If you
 	change the pager software defined in the internal
 	variable (or the environment variable) PAGER, the
@@ -244,7 +244,7 @@ A3-01.	It depends on the specification of a pager. If you
 Q3-02.	Some special keys or function keys don't respond.
 Q3-03.	DEL key and BS key has a strange behavior.
 A3-02.
-A3-03.	Parhaps the key code of special keys and function
+A3-03.	Perhaps the key code of special keys and function
 	keys may be different from the expected one. See the
 	man page of termcap(5) or terminfo(5), to re-register
 	the entry for your terminal suitably.
@@ -271,13 +271,13 @@ A3-04.	It means that the terminal column size is too small
 	that it can be terminated in spite of working.
 
 Q3-05.	I cannot read a kanji because it is broken.
-A3-05.	Parhaps it may be compiled at a wrong kanji code, or
+A3-05.	Perhaps it may be compiled at a wrong kanji code, or
 	you execute it in the terminal which use the different
 	kanji code.
 	In the latter case, set any of sjis, jis, or euc to
 	the internal variable LANGUAGE, according to your
-	terimnal. FDclone will change the code internally.
-	In the formar case, you must re-compile with modifying
+	terminal. FDclone will change the code internally.
+	In the former case, you must re-compile with modifying
 	the original kanji code, but you can manage like as
 	the latter case in half measures. In this case, I
 	think that it occurs some troubles to refer to the file
@@ -287,7 +287,7 @@ Q3-06.	When I bring it to a machine with the different
 	environment, it works strangely.
 A3-06.	It is generally the principle to re-compile for the
 	different environment. Even if it may seem the same
-	apparently, some troubles will be occured in spite of
+	apparently, some troubles will be occurred in spite of
 	just running because of the difference of OS version
 	or the difference of configuration.
 	Besides, don't forget to compile after executing
@@ -299,7 +299,7 @@ A3-07.	Auto configuration is not perfect. Then see #1 of
 	TECHKNOW.eng to modify config.h manually. It needs you
 	have some knowledge of the C language, but each man page
 	guides you without the advanced knowledge.
-	If you use the OS which is writen as the supported OS
+	If you use the OS which is written as the supported OS
 	in Install, "make config" may sometimes makes a
 	rather unsuitable configuration, so that you should not
 	do "make config". When you've done accidentally, do
@@ -337,7 +337,7 @@ A3-09.	Try to exit from FDclone and do manually "tar tvf
 	so that execute "export LANG=C" in .fd2rc and so on,
 	to let tar done in English mode.
 	Or, you may register the archive browser with any
-	miskate, see enough #5 of TECHKNOW.eng or the clause
+	mistake, see enough #5 of TECHKNOW.eng or the clause
 	of "ARCHIVE BROWSER" in man page.
 
 Q3-10.	I cannot read a file to the end.
@@ -345,7 +345,7 @@ A3-10.	Some pager, e.g. "more" which is a standard command
 	included in OS, will immediately return to FDclone
 	at the as soon as it has read through the end of a
 	file, not to read to the end.
-	In that case, you shuold use the "%K" macro in order
+	In that case, you should use the "%K" macro in order
 	to prompt once before returning.
 	Specifically, you should add 2 characters "%K" after
 	a pager name at the point to set up the internal
@@ -397,15 +397,15 @@ A3-13.	It is the cause that description for winterm is
 	new-line key).
 	Although some keyboards have Ret key (mostly located
 	above a right SHIFT) on which stamped "Enter" with
-	its key-top, Enter key sayed here is a special key
+	its key-top, Enter key mentioned here is a special key
 	prepared in some other keyboards, unlike this. It
 	may be called as a send key.
 	It seems the main cause of this trouble that this
-	confusion occured in the implementation of IRIX.
+	confusion occurred in the implementation of IRIX.
 
 Q3-14.	Although compiled on BSD on Windows 1.5, it is regarded
-	as FreeBSD, so that a kanji code is set to EUC instead
-	of ShiftJIS.
+	as FreeBSD, so that a kanji code is set to EUC-JP
+	instead of Shift JIS.
 A3-14.	Because there is a trouble in the installer of BSD
 	on Windows 1.5, which an identifier due to be
 	pre-defined is not defined.
@@ -426,7 +426,7 @@ A3-15.	For binary circulation, it is a rule to prepare the
 	The binary with this display will show an address of
 	the circulation manager on the function line of a
 	help screen, so that try to push `?'.
-	When some trouble has occured about a circulated
+	When some trouble has occurred about a circulated
 	binary, you should contact with simultaneously not
 	only the author but also this circulation manager.
 
@@ -457,7 +457,7 @@ Q3-18.	On Fujitsu UXP/DS, I cannot refer to a tar file by
 A3-18.	Since tar on UXP/DS is special in the output form
 	about the file mode, you cannot use an archive browser
 	format for the other SVR4 type OS.
-	The format hardcoated by the default can treat this
+	The format hardcoded by the default can treat this
 	special output form, but you should describe with
 	care in the format when writing to .fd2rc etc.
 	manually.
@@ -479,7 +479,7 @@ A3-19.	Some of SMARTDRV.EXE which is included MS-DOS made
 	buffer for MS-DOS after a certain processing. Since
 	this key buffer is invisible when the keyboard BIOS
 	is used, the key input will be thrown away.
-	Although this key input can caturally also be read
+	Although this key input can naturally also be read
 	if using only MS-DOS function call, MS-DOS made by
 	NEC is specified that a cursor key cannot be got unless
 	the keyboard BIOS is used.
@@ -514,7 +514,7 @@ Q3-21.	On PC-UNIX, I've used a MS-DOS filesystem with mounting,
 A3-21.	It is generally forbidden to access a single medium
 	with multiple ways, so that you must not use the
 	floppy drive function to the mounted disk.
-	It is a general solution to use after umount, or to
+	It is a general solution to use after "umount", or to
 	give up using the floppy drive function.
 	When you want to use simultaneously in the knowledge
 	of danger, I write about the details of these situation
@@ -535,7 +535,7 @@ A3-22.	Doesn't vold (Volume Management daemon) work? Since
 
 	Moreover, if you are going to substitute /dev/rfd0a
 	because /dev/rfd0c is unavailable owing to vold, the
-	last cylinder of a froppy disk will be unable to
+	last cylinder of a floppy disk will be unable to
 	access. Don't use rfd0a
 
 
@@ -587,7 +587,7 @@ A4-05.	In Ver. 2.00, a great specification change was given
 Q4-06.	I found a bug.
 A4-06.	Please report the following address via E-mail.
 		<shirai@nintendo.co.jp>
-	If I find the solusion, will fix the bug on the next
+	If I find the solution, will fix the bug on the next
 	version.
 
 Q4-07.	When sorted, only directories always come previous.
@@ -599,12 +599,12 @@ A4-08.	It is made such specification.
 Q4-09.	Although I set up to display Japanese both in compile
 	and in execution, some English error messages are
 	displayed.
-A4-09.	Among the error messages outputted, the one in
+A4-09.	Among the error messages output, the one in
 	connection with the fundamental part of OS, e.g.
 	filesystem etc., uses the error string in the library
 	prepared by OS.
 	Therefore, when OS supports Japanese, conversely,
-	any Japanese error masseges may be displayed even if
+	any Japanese error messages may be displayed even if
 	you set up to display English.
 	This error message is quite closely related to the
 	function specification of OS, and message specification
@@ -643,7 +643,7 @@ A5-01.	It is confirmed that it exists in the following URL
 	ftp://ftp.vector.co.jp/pack/unix/util/file/filer/fd/
 
 Q5-02.	I have a question which has not appeared in FAQ.
-A5-02.	Really? Over 90% of quiestion mails brought after
+A5-02.	Really? Over 90% of question mails brought after
 	FDclone release is indicated by the included documents,
 	and the most of them was the question as it is in
 	this FAQ.

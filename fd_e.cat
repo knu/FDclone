@@ -67,7 +67,7 @@ DDEESSCCRRIIPPTTIIOONN
           When invoked as rrffdd or rrffddsshh, it becomes this res-
           tricted shell automatically.
 
-     In adition, the options described below in the description
+     In addition, the options described below in the description
      of sseett builtin command are available.
 
      SSccrreeeenn LLaayyoouutt
@@ -104,7 +104,7 @@ DDEESSCCRRIIPPTTIIOONN
                total size of the marked files in the directory
                (and the total size of all files), the total capa-
                city and the free size of the file system includ-
-               ing the current directory.  Thie line appears by
+               ing the current directory.  This line appears by
                the environment variable SSIIZZEEIINNFFOO setting.  When
                this line is displayed, The information line and
                the path line are displayed 1 line under each.
@@ -118,7 +118,7 @@ DDEESSCCRRIIPPTTIIOONN
                function keys.
 
      bboottttoomm    The status line.  It displays the status of the
-               file on the cursor posision.  It also displays
+               file on the cursor position.  It also displays
                warning messages when command is executed with
                some troubles.
 
@@ -154,8 +154,8 @@ DDEESSCCRRIIPPTTIIOONN
      MMAARRKK_FFIINNDD           Mark the matched files        **
      IINN_DDIIRR              Change to a sub directory     RReettuurrnn
      OOUUTT_DDIIRR             Change to a parent directory  BBss
-     LLOOGG_TTOOPP             Change to a root direcroty    \\
-     RREERREEAADD_DDIIRR          Reread the curent directory   ^^LL
+     LLOOGG_TTOOPP             Change to a root directory    \\
+     RREERREEAADD_DDIIRR          Reread the current directory  ^^LL
      PPUUSSHH_FFIILLEE           Push a file to the stack      DDeell(])
      PPOOPP_FFIILLEE            Pop a file from the stack     IInnss([)
      LLOOGG_DDIIRR             Change to a logical directory FF11(l)
@@ -244,7 +244,7 @@ DDEESSCCRRIIPPTTIIOONN
              card.  You must input the wildcard string whenever
              you push [**].
 
-             Merked files are used as the target of AATTTTRR_FFIILLEE,
+             Marked files are used as the target of AATTTTRR_FFIILLEE,
              CCOOPPYY_FFIILLEE, DDEELLEETTEE_FFIILLEE, MMOOVVEE_FFIILLEE, UUNNPPAACCKK_FFIILLEE and
              the user defined command macros.
 
@@ -263,8 +263,8 @@ DDEESSCCRRIIPPTTIIOONN
              file stack up to 55 files.
 
              [IInnss] pops the file from the file stack and insert
-             it on the cursor position.  Tha last pushed file is
-             poped first.  But this order is expediently
+             it on the cursor position.  The last pushed file is
+             popped first.  But this order is expediently
              displayed in ffdd, and it is reset by Directory move.
 
         RReeddrraaww ssccrreeeenn
@@ -287,7 +287,7 @@ DDEESSCCRRIIPPTTIIOONN
              When you input the pathname "..", the pathname of the
              current directory is adjusted into absolute expres-
              sion.  Except this case, the current directory
-             always is showen as the virtual pathname, by reason
+             always is shown as the virtual pathname, by reason
              of a link and so on.  When you input the pathname
              "??", you can move to the current directory when ffdd
              was invoked.  When you input the pathname "--", you
@@ -312,7 +312,7 @@ DDEESSCCRRIIPPTTIIOONN
              Execute the file on the cursor position with some
              parameters, as the child process.  The cursor posi-
              tion in command line exists after the filename in
-             case of the executable file, and bofore the filename
+             case of the executable file, and before the filename
              except it.  You should fill suitable parameters or
              command name in each case.  The up/down cursor keys
              can provide the command history which you executed
@@ -330,16 +330,16 @@ DDEESSCCRRIIPPTTIIOONN
         CCooppyy ffiillee (Copy)
              Copy the file on the cursor position to the speci-
              fied directory.  When the cursor position indicates
-             a directory, its contents are copyed recursively.
+             a directory, its contents are copied recursively.
              When some files are marked, the target is not the
              file on the cursor position but the marked files.
 
              When the same named file exists in the destination,
              you can select the operation from the following:
-             "Update (by timestamp)", "Rename (each copyed
+             "Update (by timestamp)", "Rename (each copied
              file)", "Overwrite", "Not_copy_the_same_name", "For-
              ward".  If you select "Forward", you should specify
-             the directory as the distination to forward.  All
+             the directory as the destination to forward.  All
              files which have the same names are moved to the
              specified directory.
 
@@ -386,7 +386,7 @@ DDEESSCCRRIIPPTTIIOONN
              again and input a null line.
 
              When the current directory has the files which have
-             the extention registered to associate with an
+             the extension registered to associate with an
              archive browser, the string which starts with '/' is
              used to find not the filename but the filename in
              archive files, and only the archive files which con-
@@ -410,7 +410,7 @@ DDEESSCCRRIIPPTTIIOONN
              Unpack the archive file on the cursor position into
              the specified directory.  In builtin configuration,
              you can unpack only the tar file and its compressed
-             file and the lha compressed file.  You can describe
+             file and the LHa compressed file.  You can describe
              configurations in the initial configuration file to
              support archivers except these.
 
@@ -429,7 +429,7 @@ DDEESSCCRRIIPPTTIIOONN
              binary toggle but a triple toggle, which includes
              setuid bit, setgid bit, and sticky bit respectively.
              When you input the timestamp, you move a cursor to
-             the posision you want to change, and input a numeric
+             the position you want to change, and input a numeric
              value.  Finally, [RReettuurrnn] executes the change.  You
              can cancel with [EEsscc].  Be careful that the limit
              check of date is not perfect.
@@ -443,22 +443,22 @@ DDEESSCCRRIIPPTTIIOONN
              your permission.
 
         FFiillee ssyysstteemm iinnffoorrmmaattiioonn (Info)
-             Displey the information of the specified file sys-
+             Display the information of the specified file sys-
              tem.  When the inputted pathname is not the special
              file which indicates a file system, the information
              of the file system including the pathname is
              displayed.
 
         MMoovvee ffiillee (Move)
-             Move the file on the curor position to the specified
-             directory.  When the cursor position indicates a
-             directory, the directory itself is moved.  When some
-             files are marked, the target is not the file on the
-             cursor position but the marked files.
+             Move the file on the cursor position to the speci-
+             fied directory.  When the cursor position indicates
+             a directory, the directory itself is moved.  When
+             some files are marked, the target is not the file on
+             the cursor position but the marked files.
 
              When the same named file exists in the destination,
              you can select the operation as well as CCOOPPYY_FFIILLEE.
-             When the distination belongs to the different file
+             When the destination belongs to the different file
              system, copy and delete are just executed continu-
              ously.
 
@@ -517,7 +517,7 @@ DDEESSCCRRIIPPTTIIOONN
              confirmed whether if you write the directory or not,
              just before the internal command is executed.  For
              this function, you can write the directory without
-             intentionally executing this Derectory write com-
+             intentionally executing this Directory write com-
              mand.  But when the displayed directory is not under
              your home directory, this confirmation is not done.
 
@@ -548,11 +548,11 @@ DDEESSCCRRIIPPTTIIOONN
              the target is not the file on the cursor position
              but the marked files.
 
-             According to the extention of the inputted archive
+             According to the extension of the inputted archive
              file, the associated archiver is automatically
              selected.  In builtin configuration, you can pack
              only the tar file and its compressed file and the
-             lha compressed file.  You can describe configura-
+             LHa compressed file.  You can describe configura-
              tions in the initial configuration file to support
              archivers except these.
 
@@ -583,16 +583,16 @@ DDEESSCCRRIIPPTTIIOONN
 
         IInnvvookkee llaauunncchheerr
              [RReettuurrnn] executes the operation according to the
-             extention of the file on the cursor position, unless
+             extension of the file on the cursor position, unless
              the cursor position indicates a directory.  In buil-
              tin configuration, the archive browser is registered
              with the tar file and its compressed file and the
-             lha compressed file.  You can describe configura-
+             LHa compressed file.  You can describe configura-
              tions in the initial configuration file to register
              launchers except these.
 
              When the file on the cursor position has the unre-
-             gistered extention, it will behave as same as
+             gistered extension, it will behave as same as
              VVIIEEWW_FFIILLEE.  In the archive browser, the registered
              launcher is available, so that you can invoke the
              archive browser recursively.
@@ -614,7 +614,7 @@ DDEESSCCRRIIPPTTIIOONN
              the display in -F option of llss(1).  It is toggle to
              switch if display the symbol or not.  The each sym-
              bol means the following.
-                  //    derectory
+                  //    directory
                   @@    symbolic link
                   **    executable file
                   ==    socket
@@ -649,10 +649,10 @@ DDEESSCCRRIIPPTTIIOONN
                   AA    Archived
                   NN    Nodump
                   aa    system Append-only
-                  cc    system unChangable (immutable)
+                  cc    system unChangeable (immutable)
                   uu    system Undeletable
                   aa    user Append-only
-                  cc    user unChangable (immutable)
+                  cc    user unChangeable (immutable)
                   uu    user Undeletable
 
              In the mode of displaying the file flag, 'FF'(Flags)
@@ -816,7 +816,7 @@ DDEESSCCRRIIPPTTIIOONN
                    uunnttiill returns a 0 exit status.
 
      ffoorr _N_A_M_E [iinn _v_a_l_u_e ...] ddoo _l_i_s_t ddoonnee
-                   The internal valiable _N_A_M_E is substituted for
+                   The internal variable _N_A_M_E is substituted for
                    values of _v_a_l_u_e one by one, and _l_i_s_t is exe-
                    cuted according to the each value.  If iinn
                    _v_a_l_u_e is omitted, then each positional parame-
@@ -896,20 +896,20 @@ DDEESSCCRRIIPPTTIIOONN
                    If _c_o_m is omitted, the alias of _n_a_m_e is
                    displayed.  If both _c_o_m and _n_a_m_e are omitted,
                    all the current alias definition list is
-                   desplayed.
+                   displayed.
 
      aarrcchh _e_x_t [_p_a_c_k _u_n_p_a_c_k]
                    Register the archiver command associated with
-                   the archive file which has extention _e_x_t.  The
+                   the archive file which has extension _e_x_t.  The
                    pack command is specified as _p_a_c_k, and the
                    unpack command is specified as _u_n_p_a_c_k, using
                    the macro representation quoted with "".  When
                    _e_x_t starts with //, uppercase/lowercase is
-                   ignored in the comparison of any extention.
+                   ignored in the comparison of any extension.
 
                    If both _p_a_c_k and _u_n_p_a_c_k are omitted, the
                    archiver command registration for the exten-
-                   tion _e_x_t is deleted.
+                   sion _e_x_t is deleted.
 
      bbgg [_j_o_b]      Continue the execution of the job specified
                    with _j_o_b in the background.  The following
@@ -935,8 +935,8 @@ DDEESSCCRRIIPPTTIIOONN
                    META key (or the ALT key on MS-DOS version),
                    you can prefix @@ into 2 characters, such as
                    @a.  When you want to specify a function key
-                   and a special key, you can use each indentif-
-                   ier described in kkeeyymmaapp command after, such as
+                   and a special key, you can use each identifier
+                   described in kkeeyymmaapp command after, such as
                    F10.  Or you can describe the escape sequence,
                    such as \\nn and \\ee, and the octal expression,
                    such as \\oooooo.
@@ -960,7 +960,7 @@ DDEESSCCRRIIPPTTIIOONN
                    mode described below is prior to the key bind-
                    ing.
 
-                   If both _c_o_m_1 and _c_o_m_2 are omitted, the resig-
+                   If both _c_o_m_1 and _c_o_m_2 are omitted, the regis-
                    tration of key binding for the key _c is
                    deleted.
 
@@ -979,13 +979,13 @@ DDEESSCCRRIIPPTTIIOONN
 
      cchheecckkiidd [_f_i_l_e ...]
                    Calculate the unique ID of the specified file
-                   and display it, according to the MD5 algorism
+                   and display it, according to the MD5 algorithm
                    in RFC1321.  When you specify multiple _f_i_l_es,
                    the IDs of all specified files are calculated
                    and displayed.  When you specify nothing, the
                    ID of running ffdd itself is displayed.
 
-                   Since this algorism is guaranteed to be
+                   Since this algorithm is guaranteed to be
                    secure, it is available to confirm the iden-
                    tity of files.
 
@@ -1003,12 +1003,12 @@ DDEESSCCRRIIPPTTIIOONN
                    destination is _s_r_c.  If _d_e_s_t is omitted, it is
                    copied into the current directory.  You can
                    specify multiple source files by describing to
-                   separete them with ++, or by using the wild-
+                   separate them with ++, or by using the wild-
                    card.  When you separate them with ++, those
-                   files are concatinated and copied.  When you
+                   files are concatenated and copied.  When you
                    use the wildcard, they are copied one by one
                    in case that the destination is a directory,
-                   and they are concatinated in case that the
+                   and they are concatenated in case that the
                    destination is a file.  ((DD))
 
                    When you specify //AA, it is treated as the
@@ -1045,7 +1045,7 @@ DDEESSCCRRIIPPTTIIOONN
                    When you specify //OO, it sorts with the sorted
                    type indicated by the trailing character.
                          NN  by name          SS  by size
-                         EE  by extention     DD  by date & time
+                         EE  by extension     DD  by date & time
                          GG  directory first  AA  by last access time
                          --  reverse order
                    When you specify //LL, it uses lowercase.  When
@@ -1121,41 +1121,42 @@ DDEESSCCRRIIPPTTIIOONN
 
      ggeettkkeeyy [_n_u_m]  Get the key code sequence for the pushed key.
                    It prompts after executed, and displays the
-                   key code seqence for the key which you push to
-                   specify.  It continues until you push any key
-                   _n_u_m times.  When _n_u_m is more than 11 time, you
-                   can stop it with pushing [SSppaaccee].  When _n_u_m is
-                   00 time, it continues forever until [SSppaaccee] is
-                   pushed.  The displayed sequence can be used as
-                   the key code sequence for kkeeyymmaapp command.  ((UU))
+                   key code sequence for the key which you push
+                   to specify.  It continues until you push any
+                   key _n_u_m times.  When _n_u_m is more than 11 time,
+                   you can stop it with pushing [SSppaaccee].  When
+                   _n_u_m is 00 time, it continues forever until
+                   [SSppaaccee] is pushed.  The displayed sequence can
+                   be used as the key code sequence for kkeeyymmaapp
+                   command.  ((UU))
 
                    If _n_u_m is omitted, it is regarded as 11 time is
                    specified.
 
      hhaasshh [--rr | _c_o_m ...]
-                   Seahch the absolute path for _c_o_m referring to
+                   Search the absolute path for _c_o_m referring to
                    PPAATTHH, which indicates the search path when the
                    external command is executed, and register the
                    result in the hash table.
 
                    When you specify --rr instead of _c_o_m, all the
-                   memoried hash table are discarded.  If _c_o_m is
+                   memorized hash table are discarded.  If _c_o_m is
                    omitted, the hash table information is listed.
                    hhiittss, ccoosstt, ccoommmmaanndd indicate the number of
                    times the command has been executed, the meas-
                    ure of the work required to search it in the
                    search path, and the absolute path for the
                    command, respectively.  When the command is
-                   searched in a relative directory, it is
-                   necessary to re-search whenever the current
-                   directory is moved, because it is not
-                   registered as the absolute path.  In such com-
-                   mand, ** trailing hhiittss is displayed.
+                   searched in a relative directory, it is neces-
+                   sary to re-search whenever the current direc-
+                   tory is moved, because it is not registered as
+                   the absolute path.  In such command, ** trail-
+                   ing hhiittss is displayed.
 
      hhiissttoorryy [_n]   List the last _n command histories with the
                    history number.
 
-                   If _n is omitted, all of the memoried command
+                   If _n is omitted, all of the memorized command
                    histories are listed.
 
      jjoobbss          List the running jobs.  ((UU))
@@ -1217,7 +1218,7 @@ DDEESSCCRRIIPPTTIIOONN
                    a signal.
 
      llaauunncchh _e_x_t [_c_o_m [_f_o_r_m_a_t [_t_o_p _b_o_t_t_o_m]]]
-                   Register the behavior for the extention _e_x_t as
+                   Register the behavior for the extension _e_x_t as
                    the launcher.  You should the macro represen-
                    tation quoted with "" as _c_o_m.  When you regis-
                    ter the archive browser, you should describe
@@ -1227,7 +1228,7 @@ DDEESSCCRRIIPPTTIIOONN
                    specify unnecessary lines in the list as the
                    number of lines from the top/bottom line.
                    When _e_x_t starts with //, uppercase/lowercase is
-                   ignored in the comparison of any extention.
+                   ignored in the comparison of any extension.
 
                    If _c_o_m is omitted, the launcher registration
                    for _e_x_t is canceled.
@@ -1237,7 +1238,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      pprriinnttaarrcchh [_e_x_t]
                    Print the archiver commands registered for the
-                   archive file which has the extention _e_x_t.
+                   archive file which has the extension _e_x_t.
 
                    If _e_x_t is omitted, all of the registered
                    archiver commands are listed.
@@ -1260,14 +1261,14 @@ DDEESSCCRRIIPPTTIIOONN
 
      pprriinnttllaauunncchh [_e_x_t]
                    Print the command macro registered as the
-                   launcher for the extention _e_x_t.  When it is
+                   launcher for the extension _e_x_t.  When it is
                    registered as the archive browser, the format
                    for listing is also printed.
 
                    If _e_x_t is omitted, all of the registered
                    launchers are listed.
 
-     ppwwdd           Dispray the current directory with the abso-
+     ppwwdd           Display the current directory with the abso-
                    lute representation.
 
      rreeaadd [_N_A_M_E ...]
@@ -1316,7 +1317,7 @@ DDEESSCCRRIIPPTTIIOONN
      sseett [----aaeeffhhkkmmnnttuuvvxx] [_a_r_g ...]
                    List internal variables and functions, without
                    any argument.  When you specify _a_r_g, _a_r_g is
-                   substituted for the posisional parameter $$11,
+                   substituted for the positional parameter $$11,
                    $$22, ..., $$_n in order.  When you specify any
                    option, each option means the following.  When
                    you use ++ instead of --, the option parameter
@@ -1384,7 +1385,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      sshhiifftt [_n]     Rename the positional parameters from $$_n+_1
                    into ones from $$11 in order.  The original
-                   positinal parameters from $$11 to $$_n are dis-
+                   positional parameters from $$11 to $$_n are dis-
                    carded.  If _n is omitted, it is regard as 11 is
                    specified.
 
@@ -1392,7 +1393,7 @@ DDEESSCCRRIIPPTTIIOONN
      [[ _e_x_p_r ]]      Evaluate the conditional expression _e_x_p_r.  See
                    tteesstt(1) for details.
 
-     ttiimmeess         Display the accumlated user and system time
+     ttiimmeess         Display the accumulated user and system time
                    for the processes which has so far been exe-
                    cuted.
 
@@ -1411,8 +1412,8 @@ DDEESSCCRRIIPPTTIIOONN
 
      uulliimmiitt [--SSHH] [--aa | --ccddffllmmnnssttvv] _n
                    Set the resource limits for ffdd and its child
-                   processes to the value indiceted by _n.  You
-                   can use the string uunnlliimmiitteedd or the numelic
+                   processes to the value indicated by _n.  You
+                   can use the string uunnlliimmiitteedd or the numeric
                    value in _n, uunnlliimmiitteedd means the maximum
                    specifiable value.  ((UU))
 
@@ -1431,7 +1432,7 @@ DDEESSCCRRIIPPTTIIOONN
                    --dd   maximum size of data segment (in KB)
                    --ff   maximum file size (in blocks)
                    --ll   maximum size of locked in memory (in KB)
-                   --mm   muximum size of resident set (in KB)
+                   --mm   maximum size of resident set (in KB)
                    --nn   maximum number of open file files
                    --ss   maximum size of stack segment (in KB)
                    --tt   maximum CPU time (in seconds)
@@ -1519,13 +1520,13 @@ DDEESSCCRRIIPPTTIIOONN
           ll         Change the directory tree into the specified
                     directory.  Moving to the floppy drive is
                     also available.
-          ^^LL        Redraw the tree structiure.
+          ^^LL        Redraw the tree structure.
           RReettuurrnn    Select the directory.
           EEsscc       Cancel.
 
      When directories are recursively expanded, the machine
      operation is so late that it maybe seems to freeze.  In this
-     case, you can input any key while oparating.  If key input
+     case, you can input any key while operating.  If key input
      is recognized while expanding directories, expanding has
      been stopped at that moment in spite of not finishing.  Even
      if key repeat keeps effective, any operation will be delayed
@@ -1533,7 +1534,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      AArrcchhiivvee BBrroowwsseerr
      When the launcher is invoked on the position of the file
-     whose extention is registered to associate with an archive
+     whose extension is registered to associate with an archive
      browser, the archive browser screen has come.  In this
      screen, you can browse files in the archive file as well as
      in the normal directory.  But you cannot use the following
@@ -1562,7 +1563,7 @@ DDEESSCCRRIIPPTTIIOONN
           %%xx        Field which is needless (ignored)
           %%%%        % itself
           \\nn        Newline
-          SSppaaccee TTaabb 0 or more charachers of spaces or tabs
+          SSppaaccee TTaabb 0 or more characters of spaces or tabs
 
      In this description, the field means the area separated by
      spaces, tabs or newlines.  When the string which indicates
@@ -1611,7 +1612,7 @@ DDEESSCCRRIIPPTTIIOONN
      environ variable DDOOSSDDRRIIVVEE which makes this function effec-
      tive, in advance.
 
-     Each registered drive is distiguished with the drive name.
+     Each registered drive is distinguished with the drive name.
      You should tag the physically different drive as the dif-
      ferent drive name.  When the same physical drive supports
      multiple formats, you can register each format with the same
@@ -1620,9 +1621,9 @@ DDEESSCCRRIIPPTTIIOONN
      in registered order, so that you should register the format
      which you often use in the first place.
 
-     Each drive of the floppy drive has the its own current dira-
-     tory.  The default value of this is a root directory, and
-     the current directory is moved back to a root directory
+     Each drive of the floppy drive has the its own current
+     directory.  The default value of this is a root directory,
+     and the current directory is moved back to a root directory
      again whenever you change a floppy disk.  When you describe
      the directory name as starting with '/' after '::', it means
      the absolute path representation of that drive.  If this '/'
@@ -1697,7 +1698,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      $$_N_A_M_E
      $${{_N_A_M_E}} Indicate the value of the internal variable or the
-             exvironment variable _N_A_M_E.  When both are defined,
+             environment variable _N_A_M_E.  When both are defined,
              the internal variable is prior.  When both are unde-
              fined, it is replaced a null.  The brace {{ }}
              separates _N_A_M_E from its trailing characters.
@@ -1802,7 +1803,7 @@ DDEESSCCRRIIPPTTIIOONN
              ****   Match any 0 or more length string including //.
              [[...]]
                   Match any one of the characters enclosed by [[
-                  ]].  When encluded characters include --, it
+                  ]].  When enclosed characters include --, it
                   matches any character whose character code is
                   between characters before/after --.
              [[!!...]]
@@ -1878,12 +1879,12 @@ DDEESSCCRRIIPPTTIIOONN
              cates the archive filename, in the macro to register
              the archiver command.
 
-     %%XX      The filename except its extention on the cursor
+     %%XX      The filename except its extension on the cursor
              position.  Or, it indicates the archive filename
-             except its extention, in the macro to register the
-             archiver command.  Only the last one extention is
+             except its extension, in the macro to register the
+             archiver command.  Only the last one extension is
              removed.  TT, TTAA, MM trailing %%XX are replaced by %%TT,
-             %%TTAA, %%MM except its extention respectively.  On MS-
+             %%TTAA, %%MM except its extension respectively.  On MS-
              DOS version, you can describe a trailing SS as well
              as them.
 
@@ -1968,7 +1969,7 @@ DDEESSCCRRIIPPTTIIOONN
                   You can execute builtin commands for each
                   registration for the internal variable defini-
                   tion, the environment variable definition, the
-                  aliase definition, the function definition, the
+                  alias definition, the function definition, the
                   key binding, the keymap changing, the launcher
                   registration, the archiver command registra-
                   tion, and the floppy drive registration.
@@ -2043,14 +2044,14 @@ DDEESSCCRRIIPPTTIIOONN
                   to push the key, the existent key mapping is
                   deleted.  ((UU))
         LLaauunncchheerr  Change the launcher registration for each
-                  extention.  When you newly register a launcher
-                  for the extention with no registration, you
+                  extension.  When you newly register a launcher
+                  for the extension with no registration, you
                   should select "NewEntry".  If you input a null
                   line when you input a command for the launcher,
                   the existent launcher registration is deleted.
         AArrcchhiivveerr  Change the archiver command registration for
-                  each extention.  When you newly register a
-                  archiver command for the extention with no
+                  each extension.  When you newly register a
+                  archiver command for the extension with no
                   registration, you should select "NewEntry".  If
                   you input a null line both when you input a
                   command for pack/unpack, the existent archiver
@@ -2098,15 +2099,15 @@ DDEESSCCRRIIPPTTIIOONN
      changing any configuration, you will be confirmed whether if
      it is right to exit without saving.  While the changed con-
      figurations themselves are valid even if you exit without
-     saveing, when you want them to be valid in the next invoked
+     saving, when you want them to be valid in the next invoked
      ffdd, you must save them into the initial configuration file.
 
 EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      The following environment variables are valid in ffdd.  These
      environment variables can be valid if they are defined as
-     the internal variables.  You can spacify them as the command
+     the internal variables.  You can specify them as the command
      line options in `--_N_A_M_E==_v_a_l_u_e' form.  But the variables fol-
-     lowed by * cannot be use with the prifex FFDD_ as the environ-
+     lowed by * cannot be use with the prefix FFDD_ as the environ-
      ment variables.
 
      CCDDPPAATTHH*       Specify the search path when an argument of
@@ -2154,7 +2155,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    lowing are specifiable values.
                        00    not sort
                        11    by filename    99    by filename(reverse)
-                       22    by extention   1100   by extention(reverse)
+                       22    by extension   1100   by extension(reverse)
                        33    by size        1111   by size(reverse)
                        44    by timestamp   1122   by timestamp(reverse)
                        55    by length      1133   by length(reverse)
@@ -2166,11 +2167,11 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    specified sorted type is kept when moving
                    directory.
 
-     DDIISSPPLLAAYYMMOODDEE   Specify the filaname display mode of the file
+     DDIISSPPLLAAYYMMOODDEE   Specify the filename display mode of the file
                    list when ffdd is invoked.  Each of the symbolic
                    link mode, the file type symbol mode and the
                    dot file display mode can be selected indivi-
-                   dually.  The defalut value is 00.  The follow-
+                   dually.  The default value is 00.  The follow-
                    ing are specifiable values.
                        00    standard
                        11    SYMLINK
@@ -2212,7 +2213,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    executed.  Any value except 00 and null effects
                    valid.  ((UU))
 
-                   (On MS-DOS version, the distination timestamp
+                   (On MS-DOS version, the destination timestamp
                    is always inherited, if this variable is
                    effective or not.)
 
@@ -2300,7 +2301,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      SSEECCOONNDD        Display the second in the clock of the title
                    line.  But the clock is adjusted correctly
                    every 1100 seconds, and some gap from the real
-                   time will be occured in this span.  Any value
+                   time will be occurred in this span.  Any value
                    except 00 and null effects valid.
 
      SSIIZZEEIINNFFOO      Display the file size information line at the
@@ -2332,14 +2333,14 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      RRRRPPAATTHH        Display files under the directory mounted by
                    CD-ROM, with the pseudo ISO 9660 RockRidge
-                   Extention, for the OS which cannot support
-                   RockRidge Extention.  You can specify multiple
+                   Extension, for the OS which cannot support
+                   RockRidge Extension.  You can specify multiple
                    mount points separating with '::'.  You are
                    enough to specify only the top directory
                    mounted by CD-ROM, then the pseudo RockRidge
-                   Extention function is valid in all of the
+                   Extension function is valid in all of the
                    directories under that directory.  This is no
-                   more than a pseudo extention, which only
+                   more than a pseudo extension, which only
                    replaces filenames according to TRANS.TBL, and
                    cannot handle some CD-ROM which has an incon-
                    sistent TRANS.TBL.  No mount point is speci-
@@ -2352,7 +2353,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    multiple pathnames separating with '::'.  You
                    are enough to specify only the top directory
                    where you want to realize the file preceding
-                   function, then the file preceding funtion is
+                   function, then the file preceding function is
                    valid in all of the directories under that
                    directory.  When the file preceding function
                    is effective, any files are not sorted in that
@@ -2383,7 +2384,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    input is needed in EEXXEECCUUTTEE_SSHH.  The default
                    value is ">> ".
 
-     LLAANNGGUUAAGGEE      Specify the languege for display characher.
+     LLAANNGGUUAAGGEE      Specify the language for display character.
                    It means not only each messages displayed by
                    ffdd, but also a Kanji code of filename to be
                    converted.  The following is the kind of
@@ -2453,7 +2454,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    code, then you can use the Kanji code in all
                    of the directories under that directory.  In
                    the directory which is described in
-                   NNOOCCOONNVVPPAATTHH, no Kanji code is converted ignore-
+                   NNOOCCOONNVVPPAATTHH, no Kanji code is converted ignor-
                    ing the value of FFNNAAMMEEKKCCOODDEE.  No pathname is
                    specified by default.  ((UU))
 
@@ -2461,7 +2462,7 @@ MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
      ffdd processes the Kanji character-set to input/output as
      "EUC-JP" or "Shift JIS" according to setting in compile.
      The the pathname including Kanji is displayed in considera-
-     tion for the 2nd byte character in Kanji.  You can dinami-
+     tion for the 2nd byte character in Kanji.  You can dynami-
      cally select Kanji code to input/output with the internal
      variable LLAANNGGUUAAGGEE, IINNPPUUTTKKCCOODDEE and FFNNAAMMEEKKCCOODDEE.  You can input
      Kanji string with some Japanese input methods.
@@ -2540,7 +2541,7 @@ SSEEEE AALLSSOO
 
 BBUUGGSS
      When files in an archive file are packed with a pathname
-     includeing "..", the archive browser cannot work normally.
+     including "..", the archive browser cannot work normally.
      The symbolic links in an archive file cannot be unpacked
      individually.
 

@@ -15,9 +15,9 @@ ECATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 DEFRC	= \etc\fd2rc
 DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
-INSTALL	= copy
+INSTALL	= copy /y
 CHMOD	= chmod
-LN	= copy
+LN	= copy /y
 
 SRC	= main.c term.c pathname.c \
 	system.c doscom.c \
@@ -36,7 +36,8 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	func.h functabl.h
 
 DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin LICENSES
-EDOC	= README.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
+EDOC	= README.eng HISTORY.eng FAQ.eng TECHKNOW.eng \
+	Install.eng ToAdmin.eng LICENSES.eng
 MANSRC	= fd.man
 MANCAT	= fd.cat
 EMANSRC	= fd_e.man
@@ -46,8 +47,8 @@ ARGS	= object.arg
 SARGS	= sobject.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
-ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
-	$(EDOC) $(EMANSRC) $(EMANCAT) \
+ESRCS	= $(EDOC) $(EMANSRC) $(EMANCAT) \
+	Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.g98 \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
@@ -166,7 +167,7 @@ mkfuncno.exe: mkfuncno.c functabl.h fd.h config.h
 	@del mkfuncno
 
 config.h: config.hin
-	copy config.hin config.h
+	copy /y config.hin config.h
 
 
 ############################################################
@@ -188,6 +189,7 @@ mkunitbl.exe: mkunitbl.c
 install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 	$(INSTALL)  $(PROGRAM).exe $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM).exe
+	-del $(BINDIR)\$(FDSHELL).exe
 	$(LN) $(BINDIR)\$(PROGRAM).exe $(BINDIR)\$(FDSHELL).exe
 	$(CHMOD) a+rx $(BINDIR)\$(FDSHELL).exe
 	$(INSTALL) $(EMANSRC) $(EMANDIR)\$(PROGRAM).$(MANSEC)

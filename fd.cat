@@ -374,7 +374,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
         アアーーカカイイブブフファァイイルルのの伸伸長長 (Unpack)
              カーソル位置のアーカイブファイルを指定ディレクトリ先
              に伸長します。デフォルトでは、tar ファイルとその圧縮
-             ファイル及び lha 圧縮ファイルしか伸長できませんが、
+             ファイル及び LHa 圧縮ファイルしか伸長できませんが、
              初期設定ファイルに記述することで、これ以外のアーカイ
              バにも対応できるようになります。
 
@@ -498,7 +498,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
              入力したアーカイブファイルの拡張子を見て、それぞれに
              応じたアーカイバを自動的に選択します。デフォルトでは、
-             tar ファイルとその圧縮ファイル及び lha 圧縮ファイル
+             tar ファイルとその圧縮ファイル及び LHa 圧縮ファイル
              にしか圧縮できませんが、初期設定ファイルに記述するこ
              とで、これ以外のアーカイバにも対応できるようになりま
              す。
@@ -530,7 +530,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
         ラランンチチャャのの起起動動
              サブディレクトリ以外のカーソル位置で [RReettuurrnn] を押す
              と、それぞれのファイル拡張子に応じた動作をします。デ
-             フォルトでは、tar ファイルとその圧縮ファイル及び lha
+             フォルトでは、tar ファイルとその圧縮ファイル及び LHa
              圧縮ファイルに対し、アーカイブブラウザが登録されてい
              ます。初期設定ファイルに記述することで、これ以外のコ
              マンドもランチャとして登録することができます。
@@ -1751,8 +1751,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
              部コマンドを用いる時に使います。また、%%XX と同様に、
              %%SS に続けて TT, TTAA, MM を記述できます。((DD))
 
-     %%JJSS     このマクロで囲まれた範囲の文字列の漢字コードを、シフ
-             ト JIS に変換します。((UU))
+     %%JJSS     このマクロで囲まれた範囲の文字列の漢字コードを、
+             Shift JIS に変換します。((UU))
 
      %%JJEE     このマクロで囲まれた範囲の文字列の漢字コードを、EUC
              漢字に変換します。((UU))
@@ -2167,7 +2167,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    れば判別しますので、環境変数 LLAANNGG の値をそのま
                    ま用いても有効です。このうち JJIISS88, JJUUNNEETT 等は
                    Samba で用いられている漢字コードです。
-                       SSJJIISS, ssjjiiss     シフト JIS
+                       SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
                        JJIISS, jjiiss       7bit JIS
                        JJIISS88, jjiiss88     8bit JIS
@@ -2185,7 +2185,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      IINNPPUUTTKKCCOODDEE    キーボード入力時の漢字コードを指定します。これ
                    ら以外の設定にすると、コンパイル時の設定による
                    漢字コードが採用されます。((UU))
-                       SSJJIISS, ssjjiiss     シフト JIS
+                       SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
 
      FFNNAAMMEEKKCCOODDEE    ファイル名に用いる漢字コードを指定します。ファ
@@ -2195,7 +2195,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ァイルを参照することも可能です。このうち JJIISS88,
                    JJUUNNEETT, HHEEXX, CCAAPP 等は Samba で用いられている漢
                    字コードです。((UU))
-                       SSJJIISS, ssjjiiss     シフト JIS
+                       SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
                        JJIISS, jjiiss       7bit JIS
                        JJIISS88, jjiiss88     8bit JIS
@@ -2230,7 +2230,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    もパス名は一つも指定されていません。((UU))
 
 多多国国語語対対応応
-     コンパイル時の設定により、「EUC 漢字」と「シフト JIS」で漢字
+     コンパイル時の設定により、「EUC 漢字」と「Shift JIS」で漢字
      を入出力できます。漢字を含むパス名の表示には、漢字の 2byte
      目に対する考慮がされています。入出力に関しては、内部変数
      LLAANNGGUUAAGGEE, IINNPPUUTTKKCCOODDEE 及び FFNNAAMMEEKKCCOODDEE により、動的に漢字コー

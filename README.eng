@@ -3,7 +3,7 @@
 #	About FDclone Ver. 2.00
 #
 #	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	Jan 11, 2002
+#	Feb 6, 2002
 #
 ############################################################
 
@@ -16,7 +16,7 @@ implement it quite originally.
 
   The reason why I called it a clone is based on the fact that
 "FD" is so popular that Japanese MS-DOS users treat the name
-of "FD" as the sysnonym of file maintenance tools.
+of "FD" as the synonym of file maintenance tools.
   Once, there was a file maintenance tool for UNIX named 'fu'
 (made by Mr. Takashi Tashiro <PDC02432@niftyserve.or.jp>),
 with which I was concerned to develop. I heard that many users
@@ -38,6 +38,7 @@ I complete and release it. I dare say I'm happy.
 README		this file (in Japanese)
 README.eng	this file
 HISTORY		amendment history up to now (in Japanese)
+HISTORY.eng	amendment history up to now
 FAQ		Q&A (Frequently Asked Question in Japanese)
 FAQ.eng		Q&A (Frequently Asked Question)
 TECHKNOW	technical knowhow (in Japanese)
@@ -97,14 +98,14 @@ parse.c		strings parser module
 builtin.c	builtin command module
 shell.c		shell command module
 kanji.c		kanji code convert module
-input.c		user input moduke
+input.c		user input module
 info.c		various information module
-rockridg.c	iso-9660 RockRidge extention module
+rockridg.c	ISO 9660 RockRidge extension module
 archive.c	archiver module
 tree.c		tree screen module
 custom.c	customizer module
 command.c	internal command module
-browse.c	broeser screen module
+browse.c	browser screen module
 
 fd.h		header for customizing FDclone
 machine.h	header for machine dependency
@@ -137,7 +138,7 @@ becomes the act against the ideology of free software.
 
 
   Please tell me individually about distribution of the
-executable bynary via CD-ROM or various networks.
+executable binary via CD-ROM or various networks.
   However, secondary distribution of the already distributed
 binary follows licenses of each distributor, then you
 should tell them details.
@@ -164,11 +165,11 @@ Makefile.
 
 
 --
-  UNIX is the registrated trademark licensed by X/Open Company
-Ltd. However, the name of UNIX called in each documant of
+  UNIX is the registered trademark licensed by X/Open Company
+Ltd. However, the name of UNIX called in each document of
 FDclone is not means UNIX OS licensed by X/Open, but means
 the any OS derived from unics, AT&T Bell Laboratory developed.
-  Though I don't indend to invade the copyright of X/Open,
+  Though I don't intend to invade the copyright of X/Open,
 the generic name means these all is disappeared, so I use
 this name expediently.
 
@@ -180,7 +181,7 @@ Acknowledgement
 FDclone development.
 (in alphabetical order)
 
-o He is the auther of "FD", and permit to release FDclone.
+o He is the author of "FD", and permit to release FDclone.
 	SDI00544@niftyserve.or.jp (Atsushi Idei)
 
 o They guided me about file systems in the WINC workshop ML.

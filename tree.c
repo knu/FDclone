@@ -48,7 +48,7 @@ static int NEAR expandtree __P_((treelist *));
 static int NEAR expandall __P_((treelist *));
 static int NEAR treeup __P_((VOID_A));
 static int NEAR treedown __P_((VOID_A));
-static VOID NEAR freetree __P_((treelist *, int));
+static int NEAR freetree __P_((treelist *, int));
 static VOID NEAR _tree_search __P_((VOID_A));
 static int NEAR _tree_input __P_((VOID_A));
 static char *NEAR _tree __P_((VOID_A));
@@ -506,17 +506,19 @@ static int NEAR treedown(VOID_A)
 	return(0);
 }
 
-static VOID NEAR freetree(list, max)
+static int NEAR freetree(list, max)
 treelist *list;
 int max;
 {
-	int i;
+	int i, n;
 
-	for (i = 0; i < max; i++) {
+	for (i = n = 0; i < max; i++) {
+		n++;
 		if (list[i].name) free(list[i].name);
-		if (list[i].sub) freetree(list[i].sub, list[i].max);
+		if (list[i].sub) n += freetree(list[i].sub, list[i].max);
 	}
 	free(list);
+	return(n);
 }
 
 static VOID NEAR _tree_search(VOID_A)
@@ -630,8 +632,9 @@ static int NEAR _tree_input(VOID_A)
 		case K_LEFT:
 			if (tr_cur && (tr_cur -> sub)
 			&& (tr_cur -> sub[tr_no]).sub) {
-				freetree((tr_cur -> sub[tr_no]).sub,
+				tmp = freetree((tr_cur -> sub[tr_no]).sub,
 					(tr_cur -> sub[tr_no]).max);
+				tr_bottom -= tmp;
 				(tr_cur -> sub[tr_no]).max = -1;
 				(tr_cur -> sub[tr_no]).sub = NULL;
 				redraw = 1;
@@ -656,7 +659,7 @@ static int NEAR _tree_input(VOID_A)
 		case CTRL('L'):
 			rewritefile(1);
 			break;
-		case ESC:
+		case K_ESC:
 			break;
 		default:
 			if (ch < 'A' || ch > 'Z') break;
@@ -768,12 +771,12 @@ static char *NEAR _tree(VOID_A)
 			else kanjiputs2(bufptr(oy), TREEFIELD, 0);
 			evaldir(path, 1);
 		}
-	} while (ch != ESC && ch != CR);
+	} while (ch != K_ESC && ch != K_CR);
 
 	free(tr_scr);
 	freetree(tr_root, 1);
 	treepath = NULL;
-	if (ch == ESC) return(NULL);
+	if (ch == K_ESC) return(NULL);
 	return(strdup2(path));
 }
 

@@ -33,6 +33,10 @@ typedef struct _redirectlist {
 	u_char type;
 	int new;
 	int old;
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	char *fakepipe;
+	int dosfd;
+#endif
 	struct _redirectlist *next;
 } redirectlist;
 

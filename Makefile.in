@@ -36,7 +36,8 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	func.h functabl.h
 
 DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin LICENSES
-EDOC	= README.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
+EDOC	= README.eng HISTORY.eng FAQ.eng TECHKNOW.eng \
+	Install.eng ToAdmin.eng LICENSES.eng
 MANSRC	= fd.man
 MANCAT	= fd.cat
 EMANSRC	= fd_e.man
@@ -46,8 +47,8 @@ ARGS	= object.arg
 SARGS	= sobject.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
-ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
-	$(EDOC) $(EMANSRC) $(EMANCAT) \
+ESRCS	= $(EDOC) $(EMANSRC) $(EMANCAT) \
+	Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.g98 \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
@@ -188,6 +189,7 @@ mkunitbl__EXE__: mkunitbl.c
 install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 	$(INSTALL) __INSTSTRIP__ $(PROGRAM)__EXE__ $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)/$(PROGRAM)__EXE__
+	-__RM__ $(BINDIR)/$(FDSHELL)__EXE__
 	$(LN) $(BINDIR)/$(PROGRAM)__EXE__ $(BINDIR)/$(FDSHELL)__EXE__
 	$(CHMOD) a+rx $(BINDIR)/$(FDSHELL)__EXE__
 	$(INSTALL) $(EMANSRC) $(EMANDIR)/$(PROGRAM).$(MANSEC)

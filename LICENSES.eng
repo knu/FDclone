@@ -1,14 +1,14 @@
 [LICENSES FOR FDCLONE2]
 
 (NOTICE:
- The official licenses is writen in Japanese language. This
+ The official licenses is written in Japanese language. This
  version in English language is only a translation, and is
  NOT VALID LEGALLY.)
 
 
 <0.Intro>
 
-  This document is writen for licenses to use, modify, duplicate,
+  This document is written for licenses to use, modify, duplicate,
 and distribute `FDclone'.
 
   `FDclone' is a free software, not to restrict users to any
@@ -20,7 +20,7 @@ author's wishful desire.
 
   First of all, the terms used in this document are defined as
 following. In this document, these terms are used in their
-specific meanings writen here, as long as there is no notice.
+specific meanings written here, as long as there is no notice.
 
 source
 	A set of a source program. Or a set of a package which
@@ -39,7 +39,7 @@ distribution
 
 circulation
 	A form of distribution in a broad sense. To give the
-	dulpicate of a source or a binary to the general public,
+	duplicate of a source or a binary to the general public,
 	widely at a public space.
 
 primary distribution, primary circulation
@@ -74,7 +74,7 @@ can do it freely in any purpose, profit or not. Re-distribution
 after the secondary one is as free as this.
 
   However, the author doesn't take any responsibility for the
-re-distrubuted package. If you want any guarantees to keep
+re-distributed package. If you want any guarantees to keep
 original or to work normally, the re-distributor himself will
 needs to guarantee.
 
@@ -104,7 +104,7 @@ invalid. Then, the author doesn't take any responsibility,
 unless circulation is registered again.
 
   However, if a secondary circulator adds some licenses on
-the socond circulation with registration, the licenses for
+the second circulation with registration, the licenses for
 distribution after the secondary one follow them.
   If registered, a secondary circulator can freely set up
 the licenses for re-distribution after the secondary one,
@@ -115,7 +115,7 @@ you should tell a secondary circulator.
 keep out of re-distribution after the secondary one.
 
 
-<4.Auther's Responsibility>
+<4.Author's Responsibility>
 
   The author take care of the primary distribution and the
 registered re-circulation.
@@ -138,9 +138,9 @@ this program, each user will need to use it at their own
 risk.
 
 
-<5.Source Circuration Registration>
+<5.Source Circulation Registration>
 
-  The author take care of the unregisterd circulation of a
+  The author take care of the unregistered circulation of a
 source, only if the contents of its package have no
 modification.
   The package which has some modification on its contents,
@@ -171,8 +171,8 @@ circulation registration according to the following procedure,
 if modified or not.
 
   It is suggested from the author that you will make surely
-circulation registraton, because the circulation of a binary
-is especially dengerous.
+circulation registration, because the circulation of a binary
+is especially dangerous.
 
 
 <7.Adaptation of Program>
@@ -191,7 +191,7 @@ the secondary author.
 
   It is regarded as re-circulation to broadcast through the
 commercial books by the media, such as CD-ROM.
-  If the auther's guarantee is required, you should make
+  If the author's guarantee is required, you should make
 each circulation registration according to whether it is
 a source or a binary. It is treated as same as the other
 re-circulation.
@@ -202,7 +202,7 @@ the licenses by the circulator who made circulation registration.
   In case of not broadcasting but introducing as an article,
 it has no need to register, because neither a guarantee nor
 responsibility can be generated. No need to contact the
-auther.
+author.
 
   As the author's hope, it is preferable to contact or
 contribute books if you broadcast or introduce.
@@ -214,7 +214,7 @@ whether it is suitable.
 
 <9.Procedure of Circulation registration>
 
-  If you want circulation regstration, the following procedure
+  If you want circulation registration, the following procedure
 is authorized.
 
 1. Define the circulation manager.
@@ -243,7 +243,7 @@ is authorized.
 
   In the registration letter, you should better declare whether
 source circulation registration or binary circulation
-registration. You can make source circulation registraton
+registration. You can make source circulation registration
 and binary circulation registration simultaneously in the same
 registration letter.
   When you make binary circulation registration on multiple

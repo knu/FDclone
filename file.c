@@ -252,7 +252,8 @@ CONST VOID_P vp2;
 
 	switch (sorton & 7) {
 		case 5:
-			tmp = strlen(list1 -> name) - strlen(list2 -> name);
+			tmp = (int)strlen(list1 -> name)
+				- (int)strlen(list2 -> name);
 			if (tmp != 0) break;
 		case 1:
 			tmp = strpathcmp2(list1 -> name, list2 -> name);

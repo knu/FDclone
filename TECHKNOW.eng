@@ -1,7 +1,7 @@
 [TECHNICAL KNOWHOW ABOUT FDCLONE2]
 
 
-1.Identifiers for Machine Dependancy
+1.Identifiers for Machine Dependency
 
   In machine.h, or config.h built by "make config", the
 various identifiers are defined. These identifiers are
@@ -81,6 +81,9 @@ CCLNKOPT
 	-c option). This must include the make(1) macro for
 	output filename. You must define this, when you don't
 	need the default value "-o $@".
+USETERMINFO
+	The terminfo(5) library is used as the terminal database
+	instead of the termcap(5) library.
 TERMCAPLIB
 	This indicates the library which is need to be link
 	as the termcap(5) library. If undefined, -ltermcap
@@ -105,9 +108,9 @@ FORCEDSTDC
 	declaration and so on. If you trust it is based on
 	ANSI, it is no problem to define this unconditionally.
 STRICTSTDC
-	The compiler has the strict ANSI standars C specifications
+	The compiler has the strict ANSI standard C specifications
 	not to allow the coexistence of the modern type
-	prototype declaretion and the classical type function
+	prototype declaration and the classical type function
 	declaration of K&R. You should define this, when
 	there are a number of errors concerned the type of
 	function argument.
@@ -152,19 +155,22 @@ USESTDARGH
 	The type va_list for variable argument is defined
 	in <stdarg.h>.
 USEMKDEVH
-	The macro major()/minor() for the device number is
-	defined <sys/mkdev.h>.
+	The macro (or function) major()/minor() for the device
+	number is defined <sys/mkdev.h>.
+USEMKNODH
+	The macro (or function) major()/minor() for the device
+	number is defined <sys/mknod.h>.
 USETERMIO
-	The structure termio is used as the teminal interface.
+	The structure termio is used as the terminal interface.
 USETERMIOS
-	The structure termios is used as the teminal interface.
+	The structure termios is used as the terminal interface.
 	If both USETERMIO and USETERMIOS is undefined, the
 	structure sgttyb is used.
 USEDIRECT
 	The structure direct is used instead of dirent.
 SYSVDIRENT
-	The structure dirent doesn't have the menber d_fileno
-	and has the menber d_ino.
+	The structure dirent doesn't have the member d_fileno
+	and has the member d_ino.
 NODNAMLEN
 	The structure dirent doesn't have the member d_namlen.
 HAVETIMEZONE
@@ -194,7 +200,7 @@ USEFSDATA
 USEFFSIZE
 	The structure statfs has the member f_fsize, which
 	indicates the block size of the filesystem. If undefined,
-	membet f_bsize is referred.
+	member f_bsize is referred.
 	In case of that USESTATVFSH, USEFSDATA is defined,
 	this is meaningless.
 STATFSARGS
@@ -206,10 +212,10 @@ STATFSARGS
 (The following 8 identifiers is exclusive. These can not be
 defined simultaneously.)
 USEMNTENTH
-	The functions delcared in <mntent.h> is used to get
+	The functions declared in <mntent.h> is used to get
 	the mount information.
 USEMNTTABH
-	The functions delcared in <sys/mnttab.h> is used to
+	The functions declared in <sys/mnttab.h> is used to
 	get the mount information.
 USEGETFSSTAT
 	The function getfsstat(3) is used to get the mount
@@ -269,6 +275,9 @@ NOSELECT
 NOVSPRINTF
 	The function vsprintf(3) is unavailable for the
 	formatted output.
+NOTERMVAR
+	The termcap(5) library has not the global variables;
+	PC, ospeed, BC and UP.
 USEUTIME
 	The function utimes(2) is unavailable to set the
 	timestamp, and utime(3) is used instead.
@@ -299,13 +308,13 @@ USESIGPMASK
 	The function sigprocmask(2) is used instead of
 	sigsetmask(2) to control the signals.
 USERESOURCEH
-	The functions delcared in <sys/resource.h> is used to
+	The functions declared in <sys/resource.h> is used to
 	get/set the resource information.
 USEULIMITH
-	The functions delcared in <ulimit.h> is used to get/set
+	The functions declared in <ulimit.h> is used to get/set
 	the resource information.
 USETIMESH
-	The functions delcared in <sys/times.h> is used to
+	The functions declared in <sys/times.h> is used to
 	get the process time information.
 GETPGRPVOID
 	The function getpgrp(2) has no argument, to get the
@@ -313,6 +322,9 @@ GETPGRPVOID
 USESETPGID
 	The function setpgid(2) is used instead of getpgrp(2)
 	to set the process group.
+USESETVBUF
+	The function setvbuf(3) is used instead of setlinebuf(3)
+	to buffer the stream.
 SIGARGINT
 	The second argument of the software signal function
 	signal(3) must be the pointer to the function which
@@ -350,7 +362,7 @@ HDDMOUNT
   The command WRITE_DIR (w) can write the directory entry to
 the file system according to the displayed order.
   But, this function is only established by analyzing the
-structure and behaviour of the file system on the each OS,
+structure and behavior of the file system on the each OS,
 so that the directory writing function is unavailable in
 the unanalyzed file systems.
   The string which means the file system type is referred
@@ -381,14 +393,14 @@ function is unavailable in your own file system, I suggest
 trying to rewrite writablefs() in info.c.
   Writing is possibly successful, or fail to make a mess of
 the directory contents.
-  If you are a heavier explorer, you should maybe analize
+  If you are a heavier explorer, you should maybe analyze
 the structure of the file system at your hand, and change
 the directory writing algorithm itself.
   If these changes can add to the supported object of the
 directory writing function, let the author know please. It
 will be reflected in the next release.
 
-  On the other hand, although the directory wrinting function
+  On the other hand, although the directory writing function
 should be available in your file system type, this function
 sometimes doesn't work well because of the trouble from OS.
   Or, some OS may be unable to write directory in any file
@@ -403,7 +415,7 @@ give top priority to safety.
 	  which will be placed ahead.
 	2.It is confirmed if TMP is physically ahead in the
 	  directory entry.
-	3.The all file but TMP (incluiding directories) is
+	3.The all file but TMP (including directories) is
 	  moved under TMP.
 	4.If it is not ahead at 2., the name of TMP is renamed,
 	  to guarantee that TMP is ahead in this entry.
@@ -446,10 +458,10 @@ If you succeeds to compile it, try to the command INFO_FILESYS (i)
 to the various directory path.
   The output of the command INFO_FILESYS is almost the same
 as the output of df(1). If the obviously strange value is
-outputed considering a rounding error, it may be a mistaken
-choise.
+output considering a rounding error, it may be a mistaken
+choice.
 
-  The abnormal output value caused by mistalen choise seems
+  The abnormal output value caused by mistaken choice seems
 to result from 2 reasons.
 	1.mistake the mount point.
 	2.mistake to get the file system information.
@@ -464,7 +476,7 @@ information.
 right output. In this case, you cannot but abandon.
   But, though this output is wrong, these mistaken informations
 is not connected with any fatal faults in FDclone. Since
-these are used only in the command INFO_SILESYS, there is
+these are used only in the command INFO_FILESYS, there is
 no problem as long as this command is not used.
 
   However, any OS must prepare the right method to get these
@@ -481,9 +493,9 @@ the normal key. But, the keyboard sends some sequence beginning
 with ESC, in case of the special key.
   In order to correctly distinguish these sequences and the
 ESC input itself, FDclone waits for 360ms after the ESC code
-is received, and regards it as the input of ESC itselt when
+is received, and regards it as the input of ESC itself when
 no input code follows it.
-  However, this value is experimantal value at the environment
+  However, this value is experimental value at the environment
 around the author, and don't have any absolute reason. If
 this value is not suitable in some environment, you should
 try to define the value of WAITKEYPAD in machine.h as some
@@ -512,14 +524,14 @@ is not mentioned in the manual, in this sentence.
 bottom, both of these values will be 0. If the both are 0,
 you can skip these descriptions.
   Only if the excessive lines, such as a copyright, are displayed
-in adittion to the archive file information, you must specify
+in addition to the archive file information, you must specify
 the number of lines from the top/bottom line, which is to be
 deleted.
 
   The string showing the format is so similar to the format
 of printf(3) and scanf(3) that who is familiar with the C
 language will not be very puzzled.
-  It is perplexing that each field is not separeted by spaces
+  It is perplexing that each field is not separated by spaces
 nor tabs. Some archivers display the independent informations
 continuously.
   The next example is from the BSDish tar.
@@ -542,13 +554,13 @@ visibility.
   Since it is on the nod that each field is separated by spaces
 or tabs, the spaces or tabs appears in the format string are
 the verbose information.
-  Then, in analyzing, the spaces ot tabs in the format string
+  Then, in analyzing, the spaces or tabs in the format string
 are ignored to read.
 
 
   By the way, some archivers cannot display a year nor a time,
 or use a field as these double purpose. The following is the
-example of output by lha.
+example of output by LHa.
 
 drwxr-xr-x  9999/999         0 ****** Jun  8 12:04 demo/
 -rw-r--r--  9999/999        49 100.0% Dec  8  1994 demo/Makefile
@@ -580,7 +592,7 @@ of fd(4).
 
   Generally, some formats are supported in one physical drive.
 These formats may be automatically identified, or may be
-classified by the name of spacial file.
+classified by the name of special file.
   In the former case, you can describe the same special file
 name as the item of device file in the drive registration
 line, and each format is distinguished with parameters for
@@ -603,9 +615,9 @@ NWS-3400:
 	A:	"/dev/rfd01a"	2   9 80	(720KB	2DD)
 	A:	"/dev/rfd03a"	2   8 80	(640KB	2DD)
 
-  These configurations depend on machines and sutructures even
+  These configurations depend on machines and structures even
 if they have the same OS, so that had better be set in the
-common configration file rather than in the builtin setting
+common configuration file rather than in the builtin setting
 when compiled.
   Conversely, if it is the only machine which may use the compiled
 binary of FDclone, it is available to compile as builtin
@@ -642,7 +654,7 @@ of Windows 95/98.
 
   On PC-UNIX, the hard disk drive can be registered as well
 as the floppy disk drive. How to register is written in the
-manual. It is to discribe the string "HDD" or "HDD98" instead
+manual. It is to describe the string "HDD" or "HDD98" instead
 of the item value of the number of heads, and so on.
   The special file specified at this time must not be the one
 separated for each partition (slice), but the one prepared
@@ -663,19 +675,19 @@ it means '0' next to 'd')
 7.Function
 
   It is the same as the function definition of sh(1). For your
-confirmation, the differences from the fuction implementation
+confirmation, the differences from the function implementation
 in version 1.x is following.
 	1.It can be described in separate lines without '\'.
-	2.It is regarded as the function evan if it appears
-	  at the beggining of the command line.
+	2.It is regarded as the function even if it appears
+	  at the beginning of the command line.
 	3.It can be used with the pipe and the redirectee.
 	4.It is impossible to use the parameter macro in the
 	  argument in the function definition.
   1.-3. result from the FDclone shell-izing, as the bad effect,
 the extension as 4., it is just for FDclone, has been lost.
-  Then, in vesion 2.0, the builtin command evalmacro is
+  Then, in version 2.00, the builtin command evalmacro is
 prepared, which can make it possible to use the parameter
-macro, in the way to execute after avaluating the macro
+macro, in the way to execute after evaluating the macro
 explicitly in the function.
 
   I think that the merit from using the parameter macro is
@@ -691,7 +703,7 @@ searched with the wildcard.
 
   As an example to use, "delete '*.bak'" can delete all files
 that has the extension ".bak" in the current directory.
-  Note that "*.bak" is evaluated before this argument is gavin
+  Note that "*.bak" is evaluated before this argument is given
 to the function delete, without ''.
 
   In this case, the command line argument "*.bak" is substituted
@@ -734,11 +746,11 @@ continuous execution, we don't use the ability of mv(1) but
 the ability of the parameter macro. This is %M in the 3rd
 line.
 
-  Suppose thet you input as "rename '*.c' '%XM.c.bak'" from
-the command line, all files which has the extention ".c" will
-be replaced the extention ".c.bak".
+  Suppose that you input as "rename '*.c' '%XM.c.bak'" from
+the command line, all files which has the extension ".c" will
+be replaced the extension ".c.bak".
   Note that "*.c" and "%XM" is evaluated before this argument
-is gavin to the function rename, without ''.
+is given to the function rename, without ''.
 
   In this example, since $1="*.c", $2="%XM.c.bak", the 3rd
 line is evaluated into "mv %M %XM.c.bak". %M is the parameter
@@ -769,7 +781,7 @@ of the source command, or in the fdsh (it runs by inputting
 the null line in EXECUTE_SH.).
 
   This method to combine MARK_FIND something reminds us the
-RISC programming, and seems incomplehensible.
+RISC programming, and seems incomprehensible.
   But, simply listing commands can be achieved also by the
 alias. If you intend to use perfectly the ability of just
 the function, you had better know such a usage.
@@ -789,8 +801,8 @@ not implemented.
 	_NOCOMPLETE	cannot use filename completion
 	_NOWRITEFS	cannot use directory writing
 	_NOEDITMODE	cannot use alternative key in edit mode
-	_NOKANJICONV	cannot change kanji code dinamically
-	_NOKANJIFCONV	cannot change filename kanji code dinamically
+	_NOKANJICONV	cannot change kanji code dynamically
+	_NOKANJIFCONV	cannot change filename kanji code dynamically
 	_NOENGMES	cannot display English messages
 	_NOJPNMES	cannot display Japanese messages
 	_NOCOLOR	cannot use color display
@@ -813,7 +825,7 @@ end users.
 
   In the floppy drive function, the cached memory is used for
 the purpose of fast disk access.
-  When accesing the same place of the disk in succession, it
+  When accessing the same place of the disk in succession, it
 refers to the saved data in the cached memory instead of the
 actual disk access, in after the 2nd access.
   Therefore, if any process except FDclone accesses this disk
@@ -843,16 +855,16 @@ them at the same time.
 is written in the cached memory of FDclone, and at the later
 point in time it is written in the actual disk.
   Even after written in the actual disk by the floppy drive,
-a file system generally accesses the disk with bufferring
+a file system generally accesses the disk with buffering
 and then will keep referring to the old data in its cached
 buffer while they exists in it.
   The contents of cached memory in FDclone is synchronized
 with the actual disk, by closing the floppy drive or
 REREAD_DIR command. But the MS-DOS file system doesn't always
 reload them.
-  In this case, you must umount the MS-DOS file system and
-re-mount it again after closing the floppy drive or REREAD_DIR
-command, to surely reload the contents.
+  In this case, you must do "umount" the MS-DOS file system
+and re-do "mount" it again after closing the floppy drive or
+REREAD_DIR command, to surely reload the contents.
 
 
   However, Linux has more problems. It is because Linux has
@@ -862,15 +874,15 @@ no raw device as specific issue.
 name used in setting the floppy drive function, FDclone can
 access the device and the actual disk simultaneously.
   But since Linux has no raw device and the device itself
-accesses the disk with bufferring, this synchronization can
+accesses the disk with buffering, this synchronization can
 never be realized.
 
   First, about writing into the floppy drive, both of the
 buffer written by the floppy drive and the buffer read by
 the file system are written into the actual disk by calling
 sync(2).
-  Therefore, while the floppy drive rewtires data again and
-again, they are always overwrited by the buffer of the file
+  Therefore, while the floppy drive rewrites data again and
+again, they are always overwritten by the buffer of the file
 system, not to be affected.
   In order to avoid it, if the floppy drive has been already
 mounted as the file system when it is opened, FDclone treats
@@ -881,16 +893,16 @@ has the permission to realize synchronization, general users
 can never know the contents of the actual disk.
   Therefore, if you want to refer to the contents written by
 the MS-DOS file system from the MS-DOS file system, it is
-necessary to umount the MS-DOS file system, as well as writing
-into the floppy drive.
-  But, while the device buffer is canceled by umount in the
-case that the disk is removable media like a floppy disk, it
-is not canceled by umount is the case of the fixed media like
-a hard disk, in specifications.
+necessary to do "umount" the MS-DOS file system, as well as
+writing into the floppy drive.
+  But, while the device buffer is canceled by "umount" in the
+case that the disk is a removable medium like a floppy disk,
+it is not canceled by "umount" in the case of a fixed medium
+like a hard disk, in specifications.
   In order to force it canceled, you cannot help ordering it
 with the root permission.
-  Opening the flopy drive and REREAD_DIR command call this
-order to calcel the Linux buffer, only when FDclone is running
+  Opening the floppy drive and REREAD_DIR command call this
+order to cancel the Linux buffer, only when FDclone is running
 with the root permission.
   If you want synchronize in any way on Linux, you should
 invoke FDclone with the root permission, and use the floppy
@@ -901,7 +913,7 @@ drive function.
 accessing one disk medium in two ways, I think that it is
 best to avoid by employment of not accessing simultaneously
 in different ways.
-  While you use the floppy drive function, you should magage
-to cover it, for example, you umount the corresponding MS-DOS
-file system in advanse, or you take care that the other users
-or processes may not access it, etc.
+  While you use the floppy drive function, you should manage
+to cover it, for example, you do "umount" the corresponding
+MS-DOS file system in advance, or you take care that the other
+users or processes may not access it, etc.
