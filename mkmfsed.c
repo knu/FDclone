@@ -12,9 +12,10 @@ s:__OBJS__:dosemu.o dosdisk.o:
 s:__OBJLIST__:$(OBJ1) $(OBJ2):
 s:__DEFRC__:'"'$(DEFRC)'"':
 
-s:__RENAME__:#:
-s:__AOUT2EXE__:#:
-s:__REMOVE__:#:
+s:[	]__RENAME__:#	mv:
+s:[	]__AOUT2EXE__:#	aout2exe:
+s:[	]__REMOVE__:#	rm -f:
+s:__COPY__:cp:
 
 s:__OSTYPE__:OSTYPE:
 

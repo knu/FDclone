@@ -77,8 +77,9 @@ DOSDRIVE	=	0
 SIZEINFO	=	0
 
 # whether if support ANSI color escape sequence
-#	0: not supported (Default)
-#	>= 1: supported
+#	0: monochrome (Default)
+#	1: color
+#	2: color & force background to blacken
 ANSICOLOR	=	0
 
 # select edit mode with your favorite editor type

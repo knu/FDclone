@@ -6,7 +6,7 @@
 
 #include "unixdisk.h"
 
-#ifndef	__GNUC__
+#ifndef	NOLFNEMU
 static int seterrno();
 static char *shortname();
 static int dos_findfirst();
@@ -29,7 +29,7 @@ static int unixerrlist[] = {
 static int dos7access = 1;
 
 
-#ifndef	__GNUC__
+#ifndef	NOLFNEMU
 static int seterrno(doserr)
 u_short doserr;
 {
@@ -39,7 +39,7 @@ u_short doserr;
 		if (doserr == doserrlist[i]) return(errno = unixerrlist[i]);
 	return(errno = EINVAL);
 }
-#endif
+#endif	/* !NOLFNEMU */
 
 int getcurdrv()
 {
@@ -73,9 +73,9 @@ int drive;
 int supportLFN(path)
 char *path;
 {
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	return(0);
-#else	/* !__GNUC__ */
+#else	/* !NOLFNEMU */
 	union REGS regs;
 	struct SREGS segs;
 	char buf[128], drv[4];
@@ -97,10 +97,10 @@ char *path;
 	if (regs.x.cflag) return(0);
 
 	return(1);
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 }
 
-#ifndef	__GNUC__
+#ifndef	NOLFNEMU
 static char *shortname(path, alias)
 char *path, *alias;
 {
@@ -125,12 +125,12 @@ char *path, *alias;
 
 	return(alias);
 }
-#endif
+#endif	/* !NOLFNEMU */
 
 char *unixrealpath(path, resolved)
 char *path, *resolved;
 {
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	int i;
 
 	_fixpath(path, resolved);
@@ -139,7 +139,7 @@ char *path, *resolved;
 			resolved[i] -= 'a' - 'A';
 		else if (resolved[i] == '/') resolved[i] = _SC_;
 	}
-#else	/* !__GNUC__ */
+#else	/* !NOLFNEMU */
 	union REGS regs;
 	struct SREGS segs;
 
@@ -156,7 +156,7 @@ char *path, *resolved;
 		return(NULL);
 	}
 
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 	return(resolved);
 }
 
@@ -164,9 +164,9 @@ char *preparefile(path, alias, iscreat)
 char *path, *alias;
 int iscreat;
 {
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	return(path);
-#else	/* !__GNUC__ */
+#else	/* !NOLFNEMU */
 	union REGS regs;
 	struct SREGS segs;
 	char *cp;
@@ -191,7 +191,7 @@ int iscreat;
 	intdosx(&regs, &regs, &segs);
 
 	return(shortname(path, alias));
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 }
 
 #ifdef	__GNUC__
@@ -206,8 +206,9 @@ char *path;
 	}
 	return(path);
 }
-#else	/* !__GNUC__ */
+#endif	/* __GNUC__ */
 
+#ifndef	NOLFNEMU
 static int dos_findfirst(path, result)
 char *path;
 struct dosfind_t *result;
@@ -488,7 +489,7 @@ int mode;
 	}
 	return(0);
 }
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 
 static u_short getdosmode(attr)
 u_char attr;
@@ -544,7 +545,7 @@ int unixstat(path, status)
 char *path;
 struct stat *status;
 {
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	struct ffblk dbuf;
 
 	if (findfirst(path, &dbuf, SEARCHATTRS) < 0
@@ -556,7 +557,7 @@ struct stat *status;
 	status -> st_mode = getdosmode(dbuf.ff_attrib);
 	status -> st_mtime = getdostime(dbuf.ff_fdate, dbuf.ff_ftime);
 	status -> st_size = dbuf.ff_fsize;
-#else	/* !__GNUC__ */
+#else	/* !NOLFNEMU */
 	if (!supportLFN(path)) {
 		struct dosfind_t dbuf;
 
@@ -586,7 +587,7 @@ struct stat *status;
 
 		lfn_findclose(fd);
 	}
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 	status -> st_ctime = status -> st_atime = status -> st_mtime;
 	status -> st_dev =
 	status -> st_ino = 0;
@@ -601,11 +602,11 @@ char *path;
 int mode;
 {
 	union REGS regs;
-#ifndef	__GNUC__
+#ifndef	NOLFNEMU
 	struct SREGS segs;
 #endif
 
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	regs.x.ax = 0x4301;
 #else
 	if (!supportLFN(path)) regs.x.ax = 0x4301;
@@ -615,7 +616,7 @@ int mode;
 	}
 #endif
 	regs.x.cx = putdosmode(mode);
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	regs.x.dx = (unsigned)path;
 	intdos(&regs, &regs);
 	if (regs.x.cflag) {

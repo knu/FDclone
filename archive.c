@@ -34,7 +34,7 @@ extern int Xpclose();
 #include <sys/param.h>
 #endif
 
-#if	!MSDOS
+#if	!MSDOS && !defined(_NODOSDRIVE)
 extern int shutdrv();
 #endif
 
@@ -252,12 +252,16 @@ int max;
 	if (buf[ofs + 5] == 's') tmp -> st_mode |= S_ISGID;
 	if (buf[ofs + 8] == 't') tmp -> st_mode |= S_ISVTX;
 
-	if (ofs <= 0) tmp -> st_mode |= S_IFREG;
-	else if (!(tmp -> st_mode & S_IFMT)) {
+	if (ofs <= 0) i = -1;
+	else {
 		for (i = 0; typesymlist[i]; i++)
 			if (buf[ofs - 1] == typesymlist[i]) break;
-		tmp -> st_mode |= (typesymlist[i]) ? typelist[i] : S_IFREG;
 	}
+	if (i >= 0 && typesymlist[i]) {
+		tmp -> st_mode &= ~S_IFMT;
+		tmp -> st_mode |= typelist[i];
+	}
+	else if (!(tmp -> st_mode & S_IFMT)) tmp -> st_mode |= S_IFREG;
 	if ((tmp -> st_mode & S_IFMT) == S_IFDIR) tmp -> flags |= F_ISDIR;
 	else if ((tmp -> st_mode & S_IFMT) == S_IFLNK) tmp -> flags |= F_ISLNK;
 
@@ -781,7 +785,7 @@ int tr;
 	else {
 #ifndef	_NOTREE
 		if (tr) {
-#if	MSDOS
+#if	MSDOS || defined(_NODOSDRIVE)
 			dir = tree(0, NULL);
 #else
 			dir = tree(0, &dd);

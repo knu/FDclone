@@ -343,7 +343,7 @@ int Xutime(path, times)
 char *path;
 struct utimbuf *times;
 {
-#if	defined (_NOROCKRIDGE) || defined (_NODOSDRIVE)
+#if	!defined (_NOROCKRIDGE) || !defined (_NODOSDRIVE)
 	char buf[MAXPATHLEN + 1];
 #endif
 

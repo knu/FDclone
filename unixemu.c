@@ -62,7 +62,7 @@ DIR *dirp;
 struct dirent *Xreaddir(dirp)
 DIR *dirp;
 {
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	struct dirent *dp;
 
 	if (!(dp = unixreaddir(dirp))) return(NULL);
@@ -106,7 +106,7 @@ char *Xgetcwd(path, size)
 char *path;
 int size;
 {
-#ifdef	__GNUC__
+#ifdef	NOLFNEMU
 	if (!unixgetcwd(path, size)) return(NULL);
 	adjustfname(path + 2);
 	return(path);

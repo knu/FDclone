@@ -1,6 +1,6 @@
 ############################################################
 #
-#	FDclone Ver. 1.02 に関して
+#	Fdclone Ver. 1.03 に関して
 #
 #	Takashi SHIRAI, Nintendo Co. Ltd.
 #	<shirai@nintendo.co.jp>
@@ -54,6 +54,13 @@ mkmfsed.c	メイクファイル加工用の sed スクリプト (雛型)
 kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
+mkmfsedg.sed	djgpp 向けメイクファイル加工用スクリプト
+mkmfdosl.sed	LSI-C 向けメイクファイル加工用スクリプト
+
+makefile.gpc	DOS/V 用 djgpp 版メイクファイル
+makefile.g98	PC-9801 用 djgpp 版メイクファイル
+makefile.lpc	DOS/V 用 LSI-C 版メイクファイル
+makefile.l98	PC-9801 用 LSI-C 版メイクファイル
 
 main.c		FDclone のメインソース
 term.c		termcap ライブラリソース
@@ -67,6 +74,10 @@ info.c		各種情報表示用
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
 dosemu.c	システム関数群のフロッピードライブ対応版
+unixdisk.c	MS-DOS 用 ファイル制御関数群
+unixdisk.h	unixdisk.c 用のヘッダ
+unixemu.c	システム関数群の MS-DOS 版
+unixemu.h	unixemu.c 用のヘッダ
 rockridg.c	iso-9660 RockRidge 拡張関連
 parse.c		文字列解析関連
 kanji.c		漢字コードコンバート関連
@@ -88,7 +99,6 @@ kanji.hin	日本語文字列のソース (JIS版)
 version.h	バージョン
 
 _fdrc		.fdrc のお手本
-_fdrc.dif	.fdrc に関する 1.00 からの変更点
 
 
 --

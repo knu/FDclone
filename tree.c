@@ -37,7 +37,7 @@ extern int sizeinfo;
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
 #define	bufptr(buf, y)	(&buf[(y - WHEADER - 1) * (TREEFIELD + 1)])
 
-static int scandir();
+static int evaldir();
 static treelist *maketree();
 static int _showtree();
 static VOID showtree();
@@ -63,7 +63,7 @@ static int tr_top;
 static int tr_bottom;
 
 
-static int scandir(dir, disp)
+static int evaldir(dir, disp)
 char *dir;
 int disp;
 {
@@ -183,7 +183,7 @@ int level, *maxp, *maxentp;
 			list[*maxp].name = strdup2(dp -> d_name);
 			list[*maxp].next = NULL;
 			list[*maxp].max = list[*maxp].maxent =
-				(scandir(dp -> d_name, 0)) ? -1 : 0;
+				(evaldir(dp -> d_name, 0)) ? -1 : 0;
 			(*maxp)++;
 		}
 		else if (!strnpathcmp(dp -> d_name, subdir, len)
@@ -274,7 +274,7 @@ int max, nest;
 		kanjiputs(bufptr(buf, i));
 		if (i == tr_line) putterm(end_standout);
 	}
-	scandir(path, 1);
+	evaldir(path, 1);
 	keyflush();
 }
 
@@ -736,7 +736,7 @@ static char *_tree()
 			locate(1, oy);
 			if (stable_standout) putterm(end_standout);
 			else kanjiputs(bufptr(cp, oy));
-			scandir(path, 1);
+			evaldir(path, 1);
 		}
 	} while (ch != ESC && ch != CR);
 

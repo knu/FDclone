@@ -4,9 +4,10 @@ s:__OBJ__:.obj:g
 s:__OBJS__:unixemu.obj unixdisk.obj:
 s:__OBJLIST__:@$(ARGS):
 s:__DEFRC__:"'"'"'$(DOSRC)'"'"'":
-s:__RENAME__:#:
-s:__AOUT2EXE__:#:
-s:__REMOVE__:#:
+s:[	]__RENAME__:#	ren:
+s:[	]__AOUT2EXE__:#	aout2exe:
+s:[	]__REMOVE__:#	del:
+s:__COPY__:copy:
 s:__CC__:lcc:
 s:__CPP__:cpp:
 s:__CCOPTIONS__:-O:

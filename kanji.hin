@@ -30,6 +30,7 @@ extern char *mesconv();
 #define	OEXT_K	mesconv("E: 拡張子", "E: Extension")
 #define	OSIZE_K	mesconv("S: サイズ", "S: Size")
 #define	ODATE_K	mesconv("T: 日付順", "T: Timestamp")
+#define	OLEN_K	mesconv("L: 長さ順", "L: Length")
 #define	ORAW_K	mesconv("X: しない", "X: No chg")
 #define	OINC_K	mesconv("U: 昇り順", "U: Up")
 #define	ODEC_K	mesconv("D: 降り順", "D: Down")

@@ -14,8 +14,9 @@
 #if	MSDOS
 #include "unixemu.h"
 #else
-#include <sys/param.h>
-# ifndef	_NODOSDRIVE
+# ifdef	_NODOSDRIVE
+# include <sys/param.h>
+# else
 # include "dosdisk.h"
 # endif
 #endif
@@ -953,7 +954,7 @@ int printdrive()
 	}
 	return(n);
 }
-#endif !MSDOS && !_NODOSDRIVE
+#endif /* !MSDOS && !_NODOSDRIVE */
 
 int printhist()
 {
@@ -979,10 +980,10 @@ char *cp;
 VOID evalenv()
 {
 	sorttype = atoi2(getenv2("FD_SORTTYPE"));
-	if ((sorttype < 0 || sorttype > 12)
-	&& (sorttype < 100 || sorttype > 112))
-#if ((SORTTYPE < 0) || (SORTTYPE > 12)) \
-&& ((SORTTYPE < 100) || (SORTTYPE > 112))
+	if ((sorttype < 0 || (sorttype & 7) > 5)
+	&& (sorttype < 100 || ((sorttype - 100) & 7) > 5))
+#if ((SORTTYPE < 0) || ((SORTTYPE & 7) > 5)) \
+&& ((SORTTYPE < 100) || (((SORTTYPE - 100) & 7) > 5))
 		sorttype = 0;
 #else
 		sorttype = SORTTYPE;
@@ -1026,7 +1027,7 @@ VOID evalenv()
 	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) <= 0)
 		sizeinfo = SIZEINFO;
 #ifndef	_NOCOLOR
-	if ((ansicolor = evalbool(getenv2("FD_ANSICOLOR"))) <= 0)
+	if ((ansicolor = atoi2(getenv2("FD_ANSICOLOR"))) < 0)
 		ansicolor = ANSICOLOR;
 #endif
 }

@@ -7,23 +7,38 @@
 #include <stdio.h>
 #include <string.h>
 
+static int fgetc2();
 static int readfunctable();
 
+
+static int fgetc2(fp)
+FILE *fp;
+{
+	static int prev = '\n';
+	int c;
+
+	if ((c = fgetc(fp)) == '#' && prev == '\n') {
+		while ((c = fgetc(fp)) != EOF && c != '\n');
+	}
+	prev = c;
+
+	return(c);
+}
 
 static int readfunctable(in, out)
 FILE *in, *out;
 {
-	int c, lebel, cp, no, isstr, done;
+	int c, lebel, cp, no, isstr, ignore, done;
 	char buf[32];
 
-	lebel = no = isstr = done = 0;
+	lebel = no = isstr = ignore = done = 0;
 	cp = -1;
 
-	while ((c = fgetc(in)) != EOF) {
+	while ((c = fgetc2(in)) != EOF) {
 		if (isstr) {
 			if (c == '"') {
 				isstr = 0;
-				if (cp >= 0) {
+				if (cp > 0) {
 					buf[cp] = '\0';
 					fprintf(out, "#define\t%s\t", buf);
 					while ((cp += 8) < 16) fputc('\t', out);
@@ -39,8 +54,14 @@ FILE *in, *out;
 			case '\t':
 			case ' ':
 				break;
+			case '(':
+				ignore++;
+				break;
+			case ')':
+				if (ignore) ignore--;
+				break;
 			case '{':
-				if (++lebel == 2) cp = 0;
+				if (++lebel == 2 && !ignore) cp = 0;
 				break;
 			case '}':
 				if (--lebel == 0 && done) return(0);
@@ -64,6 +85,11 @@ char *argv[];
 	in = (strcmp(argv[1], "-")) ? fopen(argv[1], "r") : stdin;
 	out = (strcmp(argv[2], "-")) ? fopen(argv[2], "w") : stdout;
 
+	if (!in || !out) {
+		fprintf(stderr, "Cannot open file.\n");
+		exit(127);
+	}
+
 	fprintf(out, "/*\n");
 	fprintf(out, " *\t%s\n", (out != stdout) ? argv[2] : "STDOUT");
 	fprintf(out, " *\n");
@@ -72,9 +98,10 @@ char *argv[];
 	fprintf(out, "\n");
 
 	readfunctable(in, out);
+	while (fgetc(in) != EOF);
 
-	if (out != stdout) fclose(out);
 	if (in != stdin) fclose(in);
+	if (out != stdout) fclose(out);
 
 	exit(0);
 }

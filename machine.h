@@ -7,7 +7,7 @@
 #ifdef	MSDOS
 #undef	MSDOS
 #endif
-#define	MSDOS		(DOSV || PC98 || J3100)
+#define	MSDOS		(DOSV || PC98)
 
 #if	MSDOS
 #define	NOUNISTDH
@@ -15,20 +15,27 @@
 #define	USETIMEH
 #define	USEUTIME
 #define	USEMKTIME
-# ifndef	__GNUC__
+# ifdef	__GNUC__
+#  ifndef	DJGPP
+#  define	DJGPP	1
+#  endif
+#  if (DJGPP < 2)
+#  define	NOLFNEMU
+#  endif
+# else	/* !__GNUC__ */
 # define	NOUID_T
 # define	NOFILEMODE
 typedef unsigned int	u_int;
 typedef unsigned char	u_char;
 typedef unsigned short	u_short;
 typedef unsigned long	u_long;
-# endif
+# endif	/* !__GNUC__ */
 #define	_SC_	'\\'
 #define	_SS_	"\\"
-#else
+#else	/* !MSDOS */
 #define	_SC_	'/'
 #define	_SS_	"/"
-#endif
+#endif	/* !MSDOS */
 
 #if defined (sun)
 #define	CODEEUC
@@ -62,6 +69,7 @@ typedef unsigned long	u_long;
 # define	OSTYPE		"NEWS_OS6"
 # define	REGEXPLIB	"-lgen"
 # define	NODNAMLEN
+# define	NOTMGMTOFF
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME

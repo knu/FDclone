@@ -142,7 +142,7 @@ VOID helpbar()
 VOID statusbar(max)
 int max;
 {
-	char *str[5];
+	char *str[6];
 	int width;
 
 	locate(0, LSTATUS);
@@ -171,6 +171,7 @@ int max;
 		str[1] = OEXT_K;
 		str[2] = OSIZE_K;
 		str[3] = ODATE_K;
+		str[4] = OLEN_K;
 		kanjiputs(str[(sorton & 7) - 1] + 3);
 
 		str[0] = OINC_K;
@@ -216,15 +217,16 @@ static VOID stackbar()
 				== modelist[j]) break;
 			if (j < sizeof(modelist) / sizeof(u_short))
 				color = colorlist[j];
-			else color = 0;
+			else color = ANSI_WHITE;
 		}
-		if (ansicolor && color) chgcolor(color, 1);
+		if (ansicolor) chgcolor(color, 1);
 		else
 #endif
 		putterm(t_standout);
 		kanjiputs2(filestack[i].name, width - 2, 0);
 #ifndef	_NOCOLOR
-		if (ansicolor && color) chgcolor(ANSI_BLACK, 1);
+		if (ansicolor > 1) chgcolor(ANSI_BLACK, 1);
+		else if (ansicolor) putterms(t_normal);
 		else
 #endif
 		putterm(end_standout);
@@ -476,7 +478,7 @@ int no, standout;
 	if (!isread(&list[no])) color = ANSI_BLUE;
 	else if (!iswrite(&list[no])) color = ANSI_GREEN;
 	else if (j < sizeof(modelist) / sizeof(u_short)) color = colorlist[j];
-	else color = 0;
+	else color = ANSI_WHITE;
 #endif
 	len = width;
 	width = (n_column / columns) - 2 - 1;
@@ -524,15 +526,14 @@ int no, standout;
 	}
 
 #ifndef	_NOCOLOR
-	if (ansicolor && color) chgcolor(color, standout > 0);
+	if (ansicolor) chgcolor(color, standout > 0);
 	else
 #endif
 	if (standout > 0) putterm(t_standout);
 	kanjiputs(buf);
 #ifndef	_NOCOLOR
-	if (ansicolor && color)
-		chgcolor(((standout > 0) ? ANSI_BLACK : ANSI_WHITE),
-			standout > 0);
+	if (ansicolor > 1) chgcolor(ANSI_BLACK, 1);
+	else if (ansicolor) putterms(t_normal);
 	else
 #endif
 	if (standout > 0) putterm(end_standout);
@@ -636,6 +637,11 @@ char *file, *def;
 	u_char fstat;
 	char *cp;
 	int ch, i, no, old;
+
+#ifndef	_NOCOLOR
+	if (ansicolor > 1) chgcolor(ANSI_BLACK, 1);
+	else if (ansicolor) putterms(t_normal);
+#endif
 
 	maxfile = mark = 0;
 	totalsize = marksize = 0;

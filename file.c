@@ -20,8 +20,10 @@ extern char *preparefile();
 #include <grp.h>
 #include <sys/file.h>
 #include <sys/param.h>
+# ifndef	_NODOSDRIVE
 extern int preparedrv();
 extern int shutdrv();
+# endif
 #endif
 
 extern int filepos;
@@ -168,6 +170,9 @@ namelist *listp1, *listp2;
 	&& listp2 -> name[2] == '\0') return(1);
 
 	switch (sorton & 7) {
+		case 5:
+			tmp = strlen(listp1 -> name) - strlen(listp2 -> name);
+			if (tmp != 0) break;
 		case 1:
 			tmp = strpathcmp(listp1 -> name, listp2 -> name);
 			break;

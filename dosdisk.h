@@ -4,11 +4,7 @@
  *	Type Definition for "dosdisk.c"
  */
 
-#if	MSDOS
-#include "unixemu.h"
-#else
 #include <sys/param.h>
-#endif
 
 #define	DOSDIRENT	32
 #define	SECTCACHESIZE	20
@@ -166,9 +162,9 @@ typedef struct _dosiobuf {
 #define	fd2clust(fd)	(dd2clust(dosflist[fd]._file))
 #define	fd2offset(fd)	(dd2offset(dosflist[fd]._file))
 
-#define	dosfeof(p)	((((p) -> _flag) & O_IOEOF) != 0)
-#define	dosferror(p)	((((p) -> _flag) & O_IOERR) != 0)
-#define	dosclearerr(p)	((p) -> _flag &= ~(O_IOERR | O_IOEOF))
+#define	dosfeof(p)	(((((dosFILE *)(p)) -> _flag) & O_IOEOF) != 0)
+#define	dosferror(p)	(((((dosFILE *)(p)) -> _flag) & O_IOERR) != 0)
+#define	dosclearerr(p)	(((dosFILE *)(p)) -> _flag &= ~(O_IOERR | O_IOEOF))
 
 typedef struct _dosdirdesc {
 	int dd_id;

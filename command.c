@@ -7,8 +7,11 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
-#include "funcno.h"
 #include "kanji.h"
+
+#ifndef	CPP
+#include "funcno.h"
+#endif
 
 #include <time.h>
 #include <sys/stat.h>
@@ -843,31 +846,33 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-	char *str[5];
-	int i, tmp1, tmp2, val[5], *dupl;
+	char *str[6];
+	int i, tmp1, tmp2, val[6], *dupl;
 
 	str[0] = ONAME_K;
 	str[1] = OEXT_K;
 	str[2] = OSIZE_K;
 	str[3] = ODATE_K;
-	str[4] = ORAW_K;
+	str[4] = OLEN_K;
+	str[5] = ORAW_K;
 	val[0] = 1;
 	val[1] = 2;
 	val[2] = 3;
 	val[3] = 4;
-	val[4] = 0;
+	val[4] = 5;
+	val[5] = 0;
 
 	tmp1 = sorton & 7;
 	tmp2 = sorton & ~7;
 	if (arg && *arg) {
 		i = atoi(arg);
-		if (i >= 0 && i <= 12 || (i & 7) <= 4) {
+		if (i >= 0 && i <= 13 || (i & 7) <= 5) {
 			tmp1 = i & 7;
 			tmp2 = i & ~7;
 		}
 	}
 	else {
-		i = (tmp1) ? 5 : 4;
+		i = (tmp1) ? 6 : 5;
 		if (!tmp1) tmp1 = val[0];
 		if (selectstr(&tmp1, i, 0, str, val) == ESC) return(1);
 	}
@@ -881,7 +886,7 @@ char *arg;
 		str[1] = ODEC_K;
 		val[0] = 0;
 		val[1] = 8;
-		if (selectstr(&tmp2, 2, 48, str, val) == ESC)
+		if (selectstr(&tmp2, 2, 56, str, val) == ESC)
 			return(1);
 		sorton = tmp1 + tmp2;
 		dupl = (int *)malloc2(*maxp * sizeof(int));

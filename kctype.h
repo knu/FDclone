@@ -31,7 +31,7 @@ extern int outputkcode;
 #if	MSDOS
 #define	iskanji1(c)	issjis1((u_char)(c))
 #define	isinkanji1(c)	issjis1((u_char)(c))
-#else	/ !MSDOS */
+#else	/* !MSDOS */
 #ifdef	CODEEUC
 #define	DEFCODE	EUC
 #define	iskanji1(c)	iseuc((u_char)(c))

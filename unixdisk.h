@@ -55,6 +55,8 @@ extern char *unixrealpath();
 extern char *preparefile();
 #ifdef	__GNUC__
 extern char *adjustfname();
+#endif
+#ifdef	NOLFNEMU
 #define	unixopendir		opendir
 #define	unixclosedir		closedir
 #define	unixreaddir		readdir
@@ -62,7 +64,7 @@ extern char *adjustfname();
 #define	unixgetcwd		getcwd
 #define	unixrename		rename
 #define	unixmkdir		mkdir
-#else	/* !__GNUC__ */
+#else	/* !NOLFNEMU */
 extern DIR *unixopendir();
 extern int unixclosedir();
 extern struct dirent *unixreaddir();
@@ -70,6 +72,6 @@ extern int unixrewinddir();
 extern char *unixgetcwd();
 extern int unixrename();
 extern int unixmkdir();
-#endif	/* !__GNUC__ */
+#endif	/* !NOLFNEMU */
 extern int unixstat();
 extern int unixchmod();

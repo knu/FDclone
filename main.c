@@ -25,7 +25,9 @@ extern char *adjustfname();
 # endif
 #else	/* !MSDOS */
 #include <sys/time.h>
-# ifndef	_NODOSDRIVE
+# ifdef	_NODOSDRIVE
+# include <sys/param.h>
+# else
 # include "dosdisk.h"
 # endif
 #endif	/* !MSDOS */

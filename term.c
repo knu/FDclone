@@ -1207,7 +1207,7 @@ int color, reverse;
 	if (!reverse) cprintf2("\033[%dm", color + ANSI_NORMAL);
 	else if (color == ANSI_BLACK)
 		cprintf2("\033[%dm\033[%dm",
-			color + ANSI_REVERSE, ANSI_WHITE + ANSI_NORMAL);
+			ANSI_WHITE + ANSI_NORMAL, color + ANSI_REVERSE);
 	else cprintf2("\033[%dm\033[%dm",
 			ANSI_BLACK + ANSI_NORMAL, color + ANSI_REVERSE);
 #endif

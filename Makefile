@@ -24,11 +24,6 @@ makefile.g98: Makefile.in mkmfdosg.sed
 	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
 	(rm -f $@; exit 1)
 
-makefile.g31: Makefile.in mkmfdosg.sed
-	$(SED) -f mkmfdosg.sed Makefile.in |\
-	$(SED) 's/__OSTYPE__/J3100/g' > $@ ||\
-	(rm -f $@; exit 1)
-
 makefile.lpc: Makefile.in mkmfdosl.sed
 	$(SED) -f mkmfdosl.sed Makefile.in |\
 	$(SED) 's/__OSTYPE__/DOSV/g' > $@ ||\
@@ -37,11 +32,6 @@ makefile.lpc: Makefile.in mkmfdosl.sed
 makefile.l98: Makefile.in mkmfdosl.sed
 	$(SED) -f mkmfdosl.sed Makefile.in |\
 	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
-	(rm -f $@; exit 1)
-
-makefile.l31: Makefile.in mkmfdosl.sed
-	$(SED) -f mkmfdosl.sed Makefile.in |\
-	$(SED) 's/__OSTYPE__/J3100/g' > $@ ||\
 	(rm -f $@; exit 1)
 
 mkmf.sed: mkmfsed.c machine.h config.h
@@ -56,11 +46,11 @@ fd.doc history.doc \
 depend config: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@
 
-tar lzh shar: Makefile.tmp makefile.gpc makefile.g98 makefile.g31 \
-makefile.lpc makefile.l98 makefile.l31
+tar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
+makefile.lpc makefile.l98
 	$(MAKE) -f Makefile.tmp $@
 
 clean: Makefile.tmp
 	$(MAKE) -f Makefile.tmp clean
-	rm -f makefile.gpc makefile.g98 makefile.g31 Makefile.tmp
-	rm -f makefile.lpc makefile.l98 makefile.l31 mkmf.sed config.h
+	rm -f makefile.gpc makefile.g98 Makefile.tmp
+	rm -f makefile.lpc makefile.l98 mkmf.sed config.h

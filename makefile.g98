@@ -34,10 +34,10 @@ ARGS	= object.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
-	makefile.gpc makefile.g98 makefile.g31 \
-	makefile.lpc makefile.l98 makefile.l31 \
+	makefile.gpc makefile.lpc \
+	makefile.g98 makefile.l98 \
 	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
-	version.h _fdrc _fdrc.dif
+	version.h _fdrc
 SOURCES	= $(JSRCS) $(ESRCS)
 
 CC	= gcc
@@ -61,9 +61,9 @@ goal:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(ARGS)
 	$(CC) $(CFLAGS) -o $@ $(LDFLAGS)
-	@mv $@ $(PROGRAM)
+	@ren $@ $(PROGRAM)
 	@aout2exe $(PROGRAM)
-	@rm -f $(PROGRAM)
+	@del $(PROGRAM)
 
 $(ARGS): $(OBJ1) $(OBJ2)
 	@echo $(OBJ1) > $(ARGS)
@@ -90,25 +90,25 @@ history.doc: kanjicnv.exe HISTORY
 
 kanjicnv.exe: kanjicnv.c
 	$(CC) $(CFLAGS) -o $@ kanjicnv.c
-	@mv $@ kanjicnv
+	@ren $@ kanjicnv
 	@aout2exe kanjicnv
-	@rm -f kanjicnv
+	@del kanjicnv
 
 
 ############################################################
 # function list using module
 
 funcno.h: mkfuncno.exe functabl.h fd.h config.h
-	-$(CPP) command.c | .\\mkfuncno.exe - $@
+	-$(CPP) -DCPP command.c | .\\mkfuncno.exe - $@
 
 mkfuncno.exe: mkfuncno.c
 	$(CC) $(CFLAGS) -o $@ mkfuncno.c
-	@mv $@ mkfuncno
+	@ren $@ mkfuncno
 	@aout2exe mkfuncno
-	@rm -f mkfuncno
+	@del mkfuncno
 
 config.h: config.hin
-	cp config.hin config.h
+	copy config.hin config.h
 
 
 ############################################################
@@ -161,14 +161,14 @@ depend: $(SRC) kanji.h funcno.h
 ############################################################
 # to make configuration file manually
 
-config: Configure expfunc.c
+config: Configur expfunc.c
 	-if (echo 't() { echo $1; }; t test' | $(SHELL) >\\dev\\null 2>&1); then \
-		$(SED) "2,3d" Configure | $(SHELL) > config.h; \
+		$(SED) "2,3d" Configur | $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
 			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
 		fi; \
-		$(SED) "2,3d" Configure | .\\expfunc | $(SHELL) > config.h; \
+		$(SED) "2,3d" Configur | .\\expfunc | $(SHELL) > config.h; \
 	fi
 
 
