@@ -1,5 +1,5 @@
 --- .fdrc.FD-1.01h	Fri Oct  6 15:38:41 1995
-+++ _fdrc	Thu Aug  7 11:45:33 1997
++++ _fdrc	Tue Aug 19 12:59:12 1997
 @@ -55,2 +55,6 @@
  
 +# history size of path input
@@ -49,19 +49,19 @@
 -#".taZ"		"zcat %C|tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 -#".taz"		"gzip -cd %C|tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
 -#".tgz"		"gzip -cd %C|tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
--#".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
+-#".zip"		"unzip -lqq"		0,0:0,0,0,1,2[7],2-'-',2'-'-'-',3,4
 -#".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
 -#".Z"		"zcat %C|$PAGER"
 -#".gz"		"gzip -cd %C|$PAGER"
 +#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 +#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 +#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-+#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
++#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2[7],2-'-',2'-'-'-',3,4
 +#launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
 +#launch ".Z"	"zcat %C|$PAGER"
 +#launch ".gz"	"gzip -cd %C|$PAGER"
  
-@@ -120,8 +146,31 @@
+@@ -120,8 +146,33 @@
  # examples for SVR4 (or GNU tar)
 -#".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
 -#".tar.Z"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
@@ -78,17 +78,17 @@
 +#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 +#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 +
-+# examples for GNU tar >1.12
-+#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
++# examples for GNU tar >=1.12
++#launch ".tar"	"tar tvf"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 +#launch ".tar.Z"\
-+#		"tar tvfZ -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
++#		"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 +#launch ".tar.gz"\
-+#		"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
-+#launch ".taZ"	"tar tvfZ -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
-+#launch ".taz"	"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
-+#launch ".tgz"	"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
++#		"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
++#launch ".taZ"	"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
++#launch ".taz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
++#launch ".tgz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 +
-+# example for LHa >1.14
++# example for LHa >=1.14
 +#launch ".lzh"	"lha -lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
 +
 +# examples for MS-DOS
@@ -98,8 +98,10 @@
 +#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 +#launch ".tar.gz"\
 +#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
++#launch ".zip"	"pkunzip -vb"		14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
  
-@@ -129,12 +178,17 @@
+@@ -129,12 +180,18 @@
  #(Default)
 -#".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
 -#".tar"		A "tar cf %C %T"		"tar xf %C %TA"
@@ -125,8 +127,9 @@
 +#arch ".lzh"	"lha a %C %TA"			"lha x %S %TA"
 +#arch ".tar.Z"	"tar cf %X %T; compress %X"	"gzip -cd %S|tar xf - %TA"
 +#arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %S|tar xf - %TA"
++#arch ".zip"	"pkzip %C %TA"			"pkunzip %C %TA"
  
-@@ -142,10 +196,26 @@
+@@ -142,10 +199,26 @@
  #(Examples)
 -#'I'	"dir -d %C"
 -#'g'	"gzip %C%K"	WARNING_BELL
@@ -161,12 +164,12 @@
 +#	mv %X.tar.$2 %X.$3;\
 +#}
  
-@@ -153,3 +223,3 @@
+@@ -153,3 +226,3 @@
  #(Example)
 -#B:	"/dev/rfd00a"	2, 18, 80
 +#setdrv B	"/dev/rfd00a"	2, 18, 80
  
-@@ -158 +228,5 @@
+@@ -158 +231,5 @@
  #alias dir "ls -laF"
 +
 +# keymap definition

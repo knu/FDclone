@@ -182,13 +182,13 @@ char *path, *delim;
 	len = 0;
 	for (cp = path; cp && *cp; cp = next) {
 		if ((next = strtkbrk(cp, delim, 0))) {
-			tmp = _evalpath(cp, next, 1, 1);
+			tmp = _evalpath(cp, next, 1, 0);
 			cp = next;
 			while (*(++next) && strchr(delim, *next));
 		}
 		else {
 			next = cp + strlen(cp);
-			tmp = _evalpath(cp, next, 1, 1);
+			tmp = _evalpath(cp, next, 1, 0);
 			if (!epath) {
 				epath = tmp;
 				break;

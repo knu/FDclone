@@ -113,17 +113,28 @@ int keepdelim, evalq;
 
 	if (!eol) eol = path + strlen(path);
 	j = 0;
-	if (*path == '~') {
+
+	quote = '\0';
+	if ((*path == '"' || *path == '\'' || *path == '`')
+#if	MSDOS
+	&& *path != *(path + 1)
+#endif
+	) {
+		quote = *(path++);
+		if (!evalq) buf[j++] = quote;
+	}
+
+	if (quote != '\'' && *path == '~') {
 		if (!(cp = strchr(path + 1, _SC_)) || cp > eol) cp = eol;
 		if (cp > path + 1) {
-			strncpy(buf, path + 1, cp - path - 1);
-			buf[cp - path - 1] = '\0';
+			strncpy(buf + j, path + 1, cp - path - 1);
+			buf[j + cp - path - 1] = '\0';
 #ifdef	FD
-			if (!strpathcmp(buf, "FD")) tmp = progpath;
+			if (!strpathcmp(buf + j, "FD")) tmp = progpath;
 			else
 #endif
 #if	!MSDOS
-			if ((pwd = getpwnam(buf))) tmp = pwd -> pw_dir;
+			if ((pwd = getpwnam(buf + j))) tmp = pwd -> pw_dir;
 			else
 #endif
 			tmp = NULL;
@@ -137,12 +148,12 @@ int keepdelim, evalq;
 #endif
 
 		if (tmp) {
-			strcpy(buf, tmp);
+			strcpy(buf + j, tmp);
 			j = strlen(buf);
 		}
 		else {
-			strncpy(buf, path, cp - path);
-			j = cp - path;
+			strncpy(buf + j, path, cp - path);
+			j += cp - path;
 		}
 		path = cp;
 		if (path < eol) {
@@ -156,8 +167,8 @@ int keepdelim, evalq;
 	}
 #if	MSDOS
 	else if (isalpha(*path) && path[1] == ':') {
-		strncpy(buf, path, 2);
-		j = 2;
+		strncpy(buf + j, path, 2);
+		j += 2;
 		path += 2;
 		if (*path == _SC_) {
 			buf[j++] = _SC_;
@@ -165,13 +176,17 @@ int keepdelim, evalq;
 		}
 	}
 #endif
-	else *buf = '\0';
+	else buf[j] = '\0';
 
-	quote = paren = '\0';
+	paren = '\0';
 	env = -1;
 	for (i = 0; i < eol - path && path[i] && j < MAXPATHLEN; i++) {
 #if	!MSDOS
 		if (path[i] == '\\' && quote != '\'') {
+			if (env >= 0) {
+				j = evalenv(buf, env, j);
+				env = -1;
+			}
 			buf[j++] = path[i++];
 			buf[j++] = path[i];
 			continue;
@@ -179,10 +194,15 @@ int keepdelim, evalq;
 #endif
 		if (quote) {
 			if (path[i] == quote) {
+				if (env >= 0) {
+					j = evalenv(buf, env, j);
+					env = -1;
+				}
+				if (!evalq
 #if	MSDOS
-				if (i > 0 && path[i - 1] == quote)
-					buf[j++] = quote;
+				|| (i > 0 && path[i - 1] == quote)
 #endif
+				) buf[j++] = quote;
 				quote = '\0';
 				continue;
 			}
@@ -223,12 +243,13 @@ int keepdelim, evalq;
 			}
 		}
 
-		if (evalq &&
-		(path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
+		if (path[i] == '"' || path[i] == '\'' || path[i] == '`') {
 			quote = path[i];
+			if (!evalq
 #if	MSDOS
-			if (i > 0 && path[i - 1] == quote) buf[j++] = quote;
+			|| (i > 0 && path[i - 1] == quote)
 #endif
+			) buf[j++] = quote;
 		}
 		else if (path[i] == _SC_
 		&& i && path[i - 1] == _SC_ && keepdelim);
@@ -668,11 +689,6 @@ int max;
 		cp += strlen(cp) + 1;
 		for (j = 0; common[j]; j++) if (common[j] != cp[j]) break;
 		common[j] = '\0';
-	}
-	if (max == 1
-	&& (cp = common + (int)strlen(common) - 1) >= common && *cp != _SC_) {
-		*(++cp) = ' ';
-		*(++cp) = '\0';
 	}
 
 	if (!*common) return(NULL);

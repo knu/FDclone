@@ -138,7 +138,7 @@ SHELL	=	/bin/sh
 #launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
+#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2[7],2-'-',2'-'-'-',3,4
 #launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
 #launch ".Z"	"zcat %C|$PAGER"
 #launch ".gz"	"gzip -cd %C|$PAGER"
@@ -153,17 +153,17 @@ SHELL	=	/bin/sh
 #launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 
-# examples for GNU tar >1.12
-#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+# examples for GNU tar >=1.12
+#launch ".tar"	"tar tvf"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".tar.Z"\
-#		"tar tvfZ -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#		"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 #launch ".tar.gz"\
-#		"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
-#launch ".taZ"	"tar tvfZ -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
-#launch ".taz"	"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
-#launch ".tgz"	"tar tvfz -"		0,0:1,2-'/',2'/',3,4,4[6],4[9],5,6
+#		"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#launch ".taZ"	"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#launch ".taz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#launch ".tgz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
 
-# example for LHa >1.14
+# example for LHa >=1.14
 #launch ".lzh"	"lha -lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
 
 # examples for MS-DOS
@@ -173,6 +173,8 @@ SHELL	=	/bin/sh
 #		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 #launch ".tar.gz"\
 #		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
+#launch ".zip"	"pkunzip -vb"		14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
 
 # archiver definition
 #(Default)
@@ -191,6 +193,7 @@ SHELL	=	/bin/sh
 #arch ".lzh"	"lha a %C %TA"			"lha x %S %TA"
 #arch ".tar.Z"	"tar cf %X %T; compress %X"	"gzip -cd %S|tar xf - %TA"
 #arch ".tar.gz"	"tar cf %X %T; gzip %X"		"gzip -cd %S|tar xf - %TA"
+#arch ".zip"	"pkzip %C %TA"			"pkunzip %C %TA"
 
 # key bind definition
 #(Examples)

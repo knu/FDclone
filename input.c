@@ -504,17 +504,28 @@ char *insstr;
 int ins;
 {
 	char dupl[MAXLINESTR + 1];
-	int i, dy, f, ptr;
+	int i, j, dy, f, ptr;
 
 	if (len + ins > max) ins = max - len;
 	if (onkanji1(insstr, ins - 1)) ins--;
 	if (ins <= 0) return(0);
 	insertchar(str, x, cx, len, plen, max, linemax, ins);
-	for (i = 0; i < ins; i++) dupl[i] = str[cx + i] = insstr[i];
+	for (i = j = 0; i < ins; i++, j++) {
+		if (insstr[i] >= ' ' && insstr[i] != C_DEL)
+			dupl[j] = str[cx + j] = insstr[i];
+		else if (len + ins + j - i >= max)
+			dupl[j] = str[cx + j] = '?';
+		else {
+			dupl[j] = '^';
+			str[cx + j] = QUOTE;
+			dupl[++j] = (insstr[i] + '@') & 0x7f;
+			str[cx + j] = insstr[i];
+		}
+	}
 
 	dy = (cx + plen) / linemax;
 	i = (dy + 1) * linemax - plen - cx;
-	len = ins;
+	len = j;
 	ptr = 0;
 	while (i < len) {
 		f = (onkanji1(dupl, i - 1)) ? 1 : 0;
@@ -525,7 +536,7 @@ int ins;
 		i += linemax;
 	}
 	if (len > ptr) kanjiputs2(dupl, len - ptr, ptr);
-	return(ins);
+	return(j);
 }
 
 #ifndef	_NOCOMPLETE
@@ -592,7 +603,7 @@ char *str;
 int x, cx, len, plen, max, linemax, comline, cont;
 {
 	char *cp1, *cp2, *match;
-	int i, ins;
+	int i, l, ins, top, fix, quote;
 
 	if (selectlist && cont > 0) {
 		selectfile(NULL, tmpfilepos++);
@@ -600,17 +611,27 @@ int x, cx, len, plen, max, linemax, comline, cont;
 		return(0);
 	}
 
-	for (i = cx; i > 0; i--)
-		if (strchr(CMDLINE_DELIM, str[i - 1])) break;
-	if (i > 1 && str[i - 1] == ':' && isalpha(str[i - 2])) i -= 2;
-	if (i == cx) {
+	quote = '\0';
+	for (i = top = 0; i < cx; i++) {
+		if (quote) {
+			if (str[i] == quote) quote = '\0';
+		}
+		else if (str[i] == '"'
+#if	!MSDOS
+		|| str[i] == '\''
+#endif
+		) quote = str[i];
+		else if (strchr(CMDLINE_DELIM, str[i])) top = i + 1;
+	}
+	if (top > 1 && str[top - 1] == ':' && isalpha(str[top - 2])) top -= 2;
+	if (top == cx) {
 		putterm(t_bell);
 		return(0);
 	}
-	if (i > 0) comline = 0;
+	if (top > 0) comline = 0;
 
-	cp1 = (char *)malloc2(cx - i + 1);
-	strncpy2(cp1, str + i, cx - i);
+	cp1 = (char *)malloc2(cx - top + 1);
+	strncpy2(cp1, str + top, cx - top);
 	cp2 = evalpath(cp1, 1);
 
 	if (selectlist && cont < 0) {
@@ -646,7 +667,11 @@ int x, cx, len, plen, max, linemax, comline, cont;
 	}
 
 	cp1 = findcommon(match, i);
-	if (!cp1 || (ins = (int)strlen(cp1) - ins) <= 0) {
+	fix = 0;
+	if (i == 1 && cp1 && *cp1 && *(cp1 + (int)strlen(cp1) - 1) != _SC_)
+		fix++;
+
+	if (!cp1 || ((ins = (int)strlen(cp1) - ins) <= 0 && !fix)) {
 		if (cont <= 0) {
 			putterm(t_bell);
 			return(0);
@@ -658,11 +683,39 @@ int x, cx, len, plen, max, linemax, comline, cont;
 		return(0);
 	}
 
+	l = 0;
+	if (!quote && len < max) {
+		for (i = 0; cp1[i]; i++)
+			if (strchr(CMDLINE_DELIM, cp1[i])) break;
+		if (cp1[i]) {
+			setcursor(x, top, plen, max, linemax);
+			insertchar(str, x, top, len++, plen, max, linemax, 1);
+			l++;
+			str[top] = quote = '"';
+			putch2(quote);
+			setcursor(x, ++cx, plen, max, linemax);
+		}
+	}
+
 	cp2 = cp1 + (int)strlen(cp1) - ins;
 	i = insertstr(str, x, cx, len, plen, max, linemax, cp2, ins);
+	l += i;
+	if (fix && (len += i) < max) {
+		cx += i;
+		if (quote && len + 1 < max) {
+			insertchar(str, x, cx, len++, plen, max, linemax, 1);
+			l++;
+			str[cx++] = quote;
+			putch2(quote);
+		}
+		insertchar(str, x, cx, len, plen, max, linemax, 1);
+		l++;
+		str[cx] = ' ';
+		putch2(' ');
+	}
 
 	free(cp1);
-	return(i);
+	return(l);
 }
 #endif	/* !_NOCOMPLETE */
 
