@@ -145,7 +145,15 @@ STRICTSTDC
 	declaration of K&R. You should define this, when
 	there are a number of errors concerned the type of
 	function argument.
-NOVOID	The void type cannot be used.
+NOCONST	Although __STDC__ is pre-defined, the compiler expects
+	the classical C language specifications of K&R.
+NOCONST	Although __STDC__ is pre-defined, the compiler does
+	not support the "const" qualifier.
+NOVOID	The "void" type cannot be used.
+NOLONGLONG
+	The "long long" type cannot be used.
+HAVELONGLONG
+	The "long long" type is supported.
 NOUID_T	uid_t, gid_t is not defined in <sys/type.h>
 USEPID_T
 	fork(2) and wait(2) treat a prosess ID as a type of
@@ -200,6 +208,8 @@ USETERMIOS
 	The structure termios is used as the terminal interface.
 	If both USETERMIO and USETERMIOS is undefined, the
 	structure sgttyb is used.
+HAVECLINE
+	The structure termios has the member c_line.
 USEDIRECT
 	The structure direct is used instead of dirent.
 SYSVDIRENT

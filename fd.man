@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05e 06/09/04
+.\" @(#)fd.1   2.05f 06/23/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "June 9, 2004"
+.TH FD 1 "June 23, 2004"
 .de sh
 .br
 .PP
@@ -2539,6 +2539,11 @@ symbolic リンクを辿った論理的なディレクトリ構造を用いる代わりに、
 .B \-x
 と同等です。
 .RE
+.RS
+.IR option
+が省略されると、
+現在のオプション設定値を一覧表示します。
+.RE
 .IP "\fB\-t\fP"
 現在のコマンド入力行を実行し終えた時点で即座に終了します。
 .IP "\fB\-u\fP"
@@ -3479,7 +3484,7 @@ MS-DOS 版にもそのまま継承されています。
 .ta 0.5i 1.5i 2i 3i 3.5i
 .nf
 (コマンドモード)
-\fBk\fP	= \fB↑\fP	\fB0\fP	= \fBBeg\fP	\fBI\fP	= \fBIns\fP
+\fBk\fP	= \fB↑\fP	\fB0\fP	= \fBBeg\fP
 \fBj\fP	= \fB↓\fP	\fB$\fP	= \fBEol\fP	\fBx\fP	= \fBDel\fP
 \fBl\fP	= \fB→\fP	\fBg\fP	= \fBHome\fP
 \fBh\fP	= \fB←\fP	\fBG\fP	= \fBEnd\fP	\fBD\fP	= \fBDelLine\fP
@@ -3488,6 +3493,7 @@ MS-DOS 版にもそのまま継承されています。
 \fB^[\fP	= \fBEsc\fP
 (コマンドモードから挿入モードへ)
 \fBi\fP, \fB:\fP	= モードの移行のみ
+		\fBI\fP	= + \fBBeg\fP
 \fBa\fP	= + \fB→\fP	\fBA\fP	= + \fBEol\fP
 \fBR\fP	= 上書	\fBr\fP	= 一文字上書
 (挿入モード)

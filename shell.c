@@ -1346,7 +1346,8 @@ int noconf, argset, ignorelist;
 	haslist = (filelist && !ignorelist);
 	ret = 0;
 	internal_status = -2;
-	if (!haslist) n_args = 0;
+
+	if (!haslist || !mark) n_args = 0;
 	else {
 		for (i = 0; i < maxfile; i++) {
 			if (ismark(&(filelist[i])))

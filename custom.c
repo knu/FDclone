@@ -138,10 +138,14 @@ extern int inruncom;
 typedef struct _envtable {
 	char *env;
 	VOID_P var;
+#ifdef	FORCEDSTDC
 	union {
 		char *str;
 		int num;
 	} def;
+#else
+	char *def;
+#endif
 #ifndef	_NOJPNMES
 	char *hmes;
 #endif
@@ -150,6 +154,16 @@ typedef struct _envtable {
 #endif
 	u_char type;
 } envtable;
+
+#ifdef	FORCEDSTDC
+#define	def_str(n)	(envlist[n].def.str)
+#define	def_num(n)	(envlist[n].def.num)
+#define	DEFVAL(d)	{(char *)(d)}
+#else
+#define	def_str(n)	(envlist[n].def)
+#define	def_num(n)	((int)(envlist[n].def))
+#define	DEFVAL(d)	(char *)(d)
+#endif
 
 #define	T_BOOL		0
 #define	T_SHORT		1
@@ -271,107 +285,107 @@ int custno = -1;
 #endif
 
 static CONST envtable envlist[] = {
-	{"FD_SORTTYPE", &sorttype, {(char *)SORTTYPE}, STTP_E, T_SORT},
-	{"FD_DISPLAYMODE", &displaymode, {(char *)DISPLAYMODE}, DPMD_E, T_DISP},
+	{"FD_SORTTYPE", &sorttype, DEFVAL(SORTTYPE), STTP_E, T_SORT},
+	{"FD_DISPLAYMODE", &displaymode, DEFVAL(DISPLAYMODE), DPMD_E, T_DISP},
 #ifndef	_NOTREE
-	{"FD_SORTTREE", &sorttree, {(char *)SORTTREE}, STTR_E, T_BOOL},
+	{"FD_SORTTREE", &sorttree, DEFVAL(SORTTREE), STTR_E, T_BOOL},
 #endif
 #ifndef	_NOWRITEFS
-	{"FD_WRITEFS", &writefs, {(char *)WRITEFS}, WRFS_E, T_WRFS},
+	{"FD_WRITEFS", &writefs, DEFVAL(WRITEFS), WRFS_E, T_WRFS},
 #endif
 #if	!defined (PATHNOCASE) && (FD >= 2)
-	{"FD_IGNORECASE", &pathignorecase,
-		{(char *)IGNORECASE}, IGNC_E, T_BOOL},
+	{"FD_IGNORECASE", &pathignorecase, DEFVAL(IGNORECASE), IGNC_E, T_BOOL},
 #endif
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
-	{"FD_INHERITCOPY", &inheritcopy, {(char *)INHERITCOPY}, IHTM_E, T_BOOL},
+	{"FD_INHERITCOPY", &inheritcopy, DEFVAL(INHERITCOPY), IHTM_E, T_BOOL},
 #endif
 #if	!MSDOS
-	{"FD_ADJTTY", &adjtty, {(char *)ADJTTY}, AJTY_E, T_BOOL},
+	{"FD_ADJTTY", &adjtty, DEFVAL(ADJTTY), AJTY_E, T_BOOL},
 # if	FD >= 2
 	{"FD_USEGETCURSOR", &usegetcursor,
-		{(char *)USEGETCURSOR}, UGCS_E, T_BOOL},
+		DEFVAL(USEGETCURSOR), UGCS_E, T_BOOL},
 # endif
 #endif	/* !MSDOS */
-	{"FD_DEFCOLUMNS", &defcolumns, {(char *)DEFCOLUMNS}, CLMN_E, T_COLUMN},
+	{"FD_DEFCOLUMNS", &defcolumns, DEFVAL(DEFCOLUMNS), CLMN_E, T_COLUMN},
 	{"FD_MINFILENAME", &minfilename,
-		{(char *)MINFILENAME}, MINF_E, T_NATURAL},
-	{"FD_HISTFILE", &histfile, {HISTFILE}, HSFL_E, T_PATH},
-	{"FD_HISTSIZE", &(histsize[0]), {(char *)HISTSIZE}, HSSZ_E, T_SHORT},
-	{"FD_DIRHIST", &(histsize[1]), {(char *)DIRHIST}, DRHS_E, T_SHORT},
-	{"FD_SAVEHIST", &savehist, {(char *)SAVEHIST}, SVHS_E, T_INT},
+		DEFVAL(MINFILENAME), MINF_E, T_NATURAL},
+	{"FD_HISTFILE", &histfile, DEFVAL(HISTFILE), HSFL_E, T_PATH},
+	{"FD_HISTSIZE", &(histsize[0]), DEFVAL(HISTSIZE), HSSZ_E, T_SHORT},
+	{"FD_DIRHIST", &(histsize[1]), DEFVAL(DIRHIST), DRHS_E, T_SHORT},
+	{"FD_SAVEHIST", &savehist, DEFVAL(SAVEHIST), SVHS_E, T_INT},
 #ifndef	_NOTREE
 	{"FD_DIRCOUNTLIMIT", &dircountlimit,
-		{(char *)DIRCOUNTLIMIT}, DCLM_E, T_INT},
+		DEFVAL(DIRCOUNTLIMIT), DCLM_E, T_INT},
 #endif
 #ifndef	_NODOSDRIVE
-	{"FD_DOSDRIVE", &dosdrive, {(char *)DOSDRIVE}, DOSD_E, T_DDRV},
+	{"FD_DOSDRIVE", &dosdrive, DEFVAL(DOSDRIVE), DOSD_E, T_DDRV},
 #endif
-	{"FD_SECOND", &showsecond, {(char *)SECOND}, SCND_E, T_BOOL},
+	{"FD_SECOND", &showsecond, DEFVAL(SECOND), SCND_E, T_BOOL},
 #ifndef	_NOTRADLAYOUT
-	{"FD_TRADLAYOUT", &tradlayout, {(char *)TRADLAYOUT}, TRLO_E, T_BOOL},
+	{"FD_TRADLAYOUT", &tradlayout, DEFVAL(TRADLAYOUT), TRLO_E, T_BOOL},
 #endif
-	{"FD_SIZEINFO", &sizeinfo, {(char *)SIZEINFO}, SZIF_E, T_BOOL},
+	{"FD_SIZEINFO", &sizeinfo, DEFVAL(SIZEINFO), SZIF_E, T_BOOL},
 #ifndef	_NOCOLOR
-	{"FD_ANSICOLOR", &ansicolor, {(char *)ANSICOLOR}, ACOL_E, T_COLOR},
+	{"FD_ANSICOLOR", &ansicolor, DEFVAL(ANSICOLOR), ACOL_E, T_COLOR},
 # if	FD >= 2
-	{"FD_ANSIPALETTE", &ansipalette,
-		{(char *)ANSIPALETTE}, APAL_E, T_CHARP},
+	{"FD_ANSIPALETTE", &ansipalette, DEFVAL(ANSIPALETTE), APAL_E, T_CHARP},
 # endif
 #endif
 #ifndef	_NOEDITMODE
-	{"FD_EDITMODE", &editmode, {EDITMODE}, EDMD_E, T_EDIT},
+	{"FD_EDITMODE", &editmode, DEFVAL(EDITMODE), EDMD_E, T_EDIT},
 #endif
 #if	FD >= 2
-	{"FD_LOOPCURSOR", &loopcursor, {(char *)LOOPCURSOR}, LPCS_E, T_BOOL},
+	{"FD_LOOPCURSOR", &loopcursor, DEFVAL(LOOPCURSOR), LPCS_E, T_BOOL},
 #endif
-	{"FD_TMPDIR", &deftmpdir, {TMPDIR}, TMPD_E, T_PATH},
+	{"FD_TMPDIR", &deftmpdir, DEFVAL(TMPDIR), TMPD_E, T_PATH},
+#if	FD >= 2
+	{"FD_TMPUMASK", &tmpumask, DEFVAL(TMPUMASK), TUMSK_E, T_OCTAL},
+#endif
 #ifndef	_NOROCKRIDGE
-	{"FD_RRPATH", &rockridgepath, {RRPATH}, RRPT_E, T_PATHS},
+	{"FD_RRPATH", &rockridgepath, DEFVAL(RRPATH), RRPT_E, T_PATHS},
 #endif
 #ifndef	_NOPRECEDE
-	{"FD_PRECEDEPATH", &precedepath, {PRECEDEPATH}, PCPT_E, T_PATHS},
+	{"FD_PRECEDEPATH", &precedepath, DEFVAL(PRECEDEPATH), PCPT_E, T_PATHS},
 #endif
 #if	FD >= 2
-	{"FD_PS1", &promptstr, {PROMPT}, PRMP_E, T_CHARP},
+	{"FD_PS1", &promptstr, DEFVAL(PROMPT), PRMP_E, T_CHARP},
 #else
-	{"FD_PROMPT", &promptstr, {PROMPT}, PRMP_E, T_CHARP},
+	{"FD_PROMPT", &promptstr, DEFVAL(PROMPT), PRMP_E, T_CHARP},
 #endif
 #ifndef	_NOORIGSHELL
-	{"FD_PS2", &promptstr2, {PROMPT2}, PRM2_E, T_CHARP},
+	{"FD_PS2", &promptstr2, DEFVAL(PROMPT2), PRM2_E, T_CHARP},
+#endif
+#ifndef	_NOORIGSHELL
+	{"FD_DUMBSHELL", &dumbshell, DEFVAL(DUMBSHELL), DMSHL_E, T_BOOL},
 #endif
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
-	{"FD_UNICODEBUFFER", &unicodebuffer, {UNICODEBUFFER}, UNBF_E, T_BOOL},
+	{"FD_UNICODEBUFFER", &unicodebuffer,
+		DEFVAL(UNICODEBUFFER), UNBF_E, T_BOOL},
 #endif
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-	{"FD_LANGUAGE", &outputkcode, {(char *)NOCNV}, LANG_E, T_KOUT},
+	{"FD_LANGUAGE", &outputkcode, DEFVAL(NOCNV), LANG_E, T_KOUT},
 #endif
 #ifndef	_NOKANJICONV
-	{"FD_INPUTKCODE", &inputkcode, {(char *)NOCNV}, IPKC_E, T_KIN},
+	{"FD_INPUTKCODE", &inputkcode, DEFVAL(NOCNV), IPKC_E, T_KIN},
 #endif
 #ifndef	_NOKANJIFCONV
-	{"FD_FNAMEKCODE", &fnamekcode, {(char *)NOCNV}, FNKC_E, T_KNAM},
-	{"FD_SJISPATH", &sjispath, {SJISPATH}, SJSP_E, T_PATHS},
-	{"FD_EUCPATH", &eucpath, {EUCPATH}, EUCP_E, T_PATHS},
-	{"FD_JISPATH", &jis7path, {JISPATH}, JISP_E, T_PATHS},
-	{"FD_JIS8PATH", &jis8path, {JIS8PATH}, JS8P_E, T_PATHS},
-	{"FD_JUNETPATH", &junetpath, {JUNETPATH}, JNTP_E, T_PATHS},
-	{"FD_OJISPATH", &ojis7path, {OJISPATH}, OJSP_E, T_PATHS},
-	{"FD_OJIS8PATH", &ojis8path, {OJIS8PATH}, OJ8P_E, T_PATHS},
-	{"FD_OJUNETPATH", &ojunetpath, {OJUNETPATH}, OJNP_E, T_PATHS},
-	{"FD_HEXPATH", &hexpath, {HEXPATH}, HEXP_E, T_PATHS},
-	{"FD_CAPPATH", &cappath, {CAPPATH}, CAPP_E, T_PATHS},
-	{"FD_UTF8PATH", &utf8path, {UTF8PATH}, UTF8P_E, T_PATHS},
-	{"FD_UTF8MACPATH", &utf8macpath, {UTF8MACPATH}, UTF8MACP_E, T_PATHS},
-	{"FD_NOCONVPATH", &noconvpath, {NOCONVPATH}, NCVP_E, T_PATHS},
+	{"FD_FNAMEKCODE", &fnamekcode, DEFVAL(NOCNV), FNKC_E, T_KNAM},
+	{"FD_SJISPATH", &sjispath, DEFVAL(SJISPATH), SJSP_E, T_PATHS},
+	{"FD_EUCPATH", &eucpath, DEFVAL(EUCPATH), EUCP_E, T_PATHS},
+	{"FD_JISPATH", &jis7path, DEFVAL(JISPATH), JISP_E, T_PATHS},
+	{"FD_JIS8PATH", &jis8path, DEFVAL(JIS8PATH), JS8P_E, T_PATHS},
+	{"FD_JUNETPATH", &junetpath, DEFVAL(JUNETPATH), JNTP_E, T_PATHS},
+	{"FD_OJISPATH", &ojis7path, DEFVAL(OJISPATH), OJSP_E, T_PATHS},
+	{"FD_OJIS8PATH", &ojis8path, DEFVAL(OJIS8PATH), OJ8P_E, T_PATHS},
+	{"FD_OJUNETPATH", &ojunetpath, DEFVAL(OJUNETPATH), OJNP_E, T_PATHS},
+	{"FD_HEXPATH", &hexpath, DEFVAL(HEXPATH), HEXP_E, T_PATHS},
+	{"FD_CAPPATH", &cappath, DEFVAL(CAPPATH), CAPP_E, T_PATHS},
+	{"FD_UTF8PATH", &utf8path, DEFVAL(UTF8PATH), UTF8P_E, T_PATHS},
+	{"FD_UTF8MACPATH", &utf8macpath,
+		DEFVAL(UTF8MACPATH), UTF8MACP_E, T_PATHS},
+	{"FD_NOCONVPATH", &noconvpath, DEFVAL(NOCONVPATH), NCVP_E, T_PATHS},
 #endif	/* !_NOKANJIFCONV */
-#if	FD >= 2
-	{"FD_TMPUMASK", &tmpumask, {(char *)TMPUMASK}, TUMSK_E, T_OCTAL},
-#endif
-#ifndef	_NOORIGSHELL
-	{"FD_DUMBSHELL", &dumbshell, {(char *)DUMBSHELL}, DMSHL_E, T_BOOL},
-#endif
 };
 #define	ENVLISTSIZ	((int)(sizeof(envlist) / sizeof(envtable)))
 
@@ -435,31 +449,31 @@ int no;
 	cp = getenv2(envlist[no].env);
 	switch (envlist[no].type) {
 		case T_BOOL:
-			if (!cp) n = envlist[no].def.num;
+			if (!cp) n = def_num(no);
 			else n = (*cp && atoi2(cp)) ? 1 : 0;
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_SHORT:
-			if ((n = atoi2(cp)) < 0) n = envlist[no].def.num;
+			if ((n = atoi2(cp)) < 0) n = def_num(no);
 			*((short *)(envlist[no].var)) = n;
 			break;
 		case T_INT:
-			if ((n = atoi2(cp)) < 0) n = envlist[no].def.num;
+			if ((n = atoi2(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_NATURAL:
-			if ((n = atoi2(cp)) <= 0) n = envlist[no].def.num;
+			if ((n = atoi2(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_PATH:
-			if (!cp) cp = envlist[no].def.str;
+			if (!cp) cp = def_str(no);
 			cp = evalpath(strdup2(cp), 0);
 			if (*((char **)(envlist[no].var)))
 				free(*((char **)(envlist[no].var)));
 			*((char **)(envlist[no].var)) = cp;
 			break;
 		case T_PATHS:
-			if (!cp) cp = envlist[no].def.str;
+			if (!cp) cp = def_str(no);
 			cp = evalpaths(cp, ':');
 			if (*((char **)(envlist[no].var)))
 				free(*((char **)(envlist[no].var)));
@@ -468,7 +482,7 @@ int no;
 		case T_SORT:
 			if (((n = atoi2(cp)) < 0 || (n & 7) > 5)
 			&& (n < 100 || ((n - 100) & 7) > 5))
-				n = envlist[no].def.num;
+				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_DISP:
@@ -477,24 +491,23 @@ int no;
 #else
 			if ((n = atoi2(cp)) < 0 || n > 7)
 #endif
-				n = envlist[no].def.num;
+				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #ifndef	_NOWRITEFS
 		case T_WRFS:
-			if ((n = atoi2(cp)) < 0 || n > 2)
-				n = envlist[no].def.num;
+			if ((n = atoi2(cp)) < 0 || n > 2) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
 		case T_COLUMN:
 			if ((n = atoi2(cp)) < 0 || n > 5 || n == 4)
-				n = envlist[no].def.num;
+				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #if	MSDOS && !defined (_NODOSDRIVE)
 		case T_DDRV:
-			if (!cp) n = envlist[no].def.num;
+			if (!cp) n = def_num(no);
 			else {
 				char *dupl;
 
@@ -512,14 +525,13 @@ int no;
 #endif	/* MSDOS && !_NODOSDRIVE */
 #ifndef	_NOCOLOR
 		case T_COLOR:
-			if ((n = atoi2(cp)) < 0 || n > 3)
-				n = envlist[no].def.num;
+			if ((n = atoi2(cp)) < 0 || n > 3) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
 #ifndef	_NOEDITMODE
 		case T_EDIT:
-			if (!cp) cp = envlist[no].def.str;
+			if (!cp) cp = def_str(no);
 			else if (strcmp(cp, "emacs")
 			&& strcmp(cp, "vi")
 			&& strcmp(cp, "wordstar")) cp = NULL;
@@ -537,12 +549,12 @@ int no;
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
 #if	FD >= 2
 		case T_OCTAL:
-			if ((n = atooctal(cp)) < 0) n = envlist[no].def.num;
+			if ((n = atooctal(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
 		default:
-			if (!cp) cp = envlist[no].def.str;
+			if (!cp) cp = def_str(no);
 			*((char **)(envlist[no].var)) = cp;
 			break;
 	}
@@ -857,7 +869,7 @@ static VOID NEAR cleanupenv(VOID_A)
 
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		setenv2(envlist[i].env, NULL, 0);
-		cp = (envlist[i].type == T_CHARP) ? envlist[i].def.str : NULL;
+		cp = (envlist[i].type == T_CHARP) ? def_str(i) : NULL;
 		setenv2(&(envlist[i].env[FDESIZ]), cp, 0);
 		_evalenv(i);
 	}
@@ -1036,7 +1048,7 @@ int no;
 # endif
 		default:
 			if (!(cp = getenv2(envlist[no].env))) {
-				cp = strdup2(envlist[no].def.str);
+				cp = strdup2(def_str(no));
 				if (cp && *cp) cp = strcatalloc(cp, " ");
 				cp = new = strcatalloc(cp, VDEF_K);
 			}
@@ -1094,8 +1106,7 @@ int no;
 			cp = int2str(buf, n);
 			break;
 		case T_PATH:
-			if (!(cp = getenv2(envlist[no].env)))
-				cp = envlist[no].def.str;
+			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
 			new = inputcuststr(env, 1, cp, 1);
 			if (!new) return(0);
 			cp = new;
@@ -1387,8 +1398,7 @@ int no;
 			break;
 # endif	/* FD >= 2 */
 		default:
-			if (!(cp = getenv2(envlist[no].env)))
-				cp = envlist[no].def.str;
+			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
 			new = inputcuststr(env, 0, cp, -1);
 			if (!new) return(0);
 			cp = new;
@@ -1412,8 +1422,8 @@ FILE *fp;
 	for (i = n = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
 		&& (cp = getshellvar(&(envlist[i].env[FDESIZ]), -1))
-		&& (envlist[i].type != T_CHARP
-		|| strenvcmp(cp, envlist[i].def.str))) n++;
+		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i))))
+			n++;
 		if ((!flaglist || !(flaglist[i] & 1))
 		&& getshellvar(envlist[i].env, -1)) n++;
 	}
@@ -1424,8 +1434,7 @@ FILE *fp;
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
 		&& (cp = getshellvar(&(envlist[i].env[FDESIZ]), -1))
-		&& (envlist[i].type != T_CHARP
-		|| strenvcmp(cp, envlist[i].def.str))) {
+		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i)))) {
 			cp = killmeta(cp);
 			fprintf2(fp, "%s=%s\n", &(envlist[i].env[FDESIZ]), cp);
 			free(cp);
@@ -1491,7 +1500,7 @@ FILE *fp;
 			if (flaglist) flaglist[i] |= f;
 			if ((cp = getshellvar(ident, -1))
 			&& (envlist[i].type != T_CHARP
-			|| strenvcmp(cp, envlist[i].def.str))) {
+			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) fputc(' ', fp);
 				cp = killmeta(cp);
 				fprintf2(fp, "%s=%s", ident, cp);
@@ -1573,7 +1582,7 @@ FILE *fp;
 			if (flaglist) flaglist[i] |= f;
 			if ((cp = getshellvar(ident, -1))
 			&& (envlist[i].type != T_CHARP
-			|| strenvcmp(cp, envlist[i].def.str))) {
+			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) fputc(' ', fp);
 				cp = killmeta(cp);
 				fprintf2(fp, "%s=%s", ident, cp);

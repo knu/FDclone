@@ -543,4 +543,4 @@ extern int shutwin __P_((int));
 extern VOID movepos __P_((int, int));
 extern VOID rewritefile __P_((int));
 extern VOID addlist __P_((VOID_A));
-extern VOID main_fd __P_((char *));
+extern VOID main_fd __P_((char **));

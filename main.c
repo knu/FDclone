@@ -837,6 +837,8 @@ char *argv[];
 		setenv2(tmp, cp, 0);
 		free(tmp);
 	}
+
+	evalenv();
 	return(i);
 }
 
@@ -1099,6 +1101,7 @@ char *argv[], *envp[];
 	inittty(0);
 	getterment(NULL);
 	argc = initoption(argc, argv, envp);
+	adjustpath();
 #else	/* !_NOORIGSHELL */
 	cp = getshellname(progname, NULL, NULL);
 	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, "su")) {
@@ -1128,16 +1131,9 @@ char *argv[], *envp[];
 
 	locate(0, n_line - 1);
 	inruncom = 1;
-#if	MSDOS && !defined (BSPATHDELIM)
 	/* DEFRUNCOM is gave from command line, not to convert previously */
 /*NOTDEFINED*/
-	cp = strdup2(DEFRUNCOM);
-	i = loadruncom(adjustpname(cp), 0);
-	free(cp);
-#else
-/*NOTDEFINED*/
 	i = loadruncom(DEFRUNCOM, 0);
-#endif
 	i += loadruncom(RUNCOMFILE, 0);
 	inruncom = 0;
 	sigvecset(1);
@@ -1145,11 +1141,8 @@ char *argv[], *envp[];
 		hideclock = 1;
 		warning(0, HITKY_K);
 	}
+
 	i = evaloption(argv);
-#ifdef	_NOORIGSHELL
-	adjustpath();
-#endif
-	evalenv();
 #if	!MSDOS
 	if (adjtty) {
 		stdiomode();
@@ -1165,7 +1158,7 @@ char *argv[], *envp[];
 #ifdef	SIGWINCH
 	winchok = 1;
 #endif
-	main_fd(argv[i]);
+	main_fd(&(argv[i]));
 	sigvecset(0);
 	prepareexitfd();
 

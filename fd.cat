@@ -1513,6 +1513,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                         vvii   EEDDIITTMMOODDEE==vvii と同等です。
                         xxttrraaccee
                              --xx と同等です。
+                        _o_p_t_i_o_n が省略されると、現在のオプション設
+                        定値を一覧表示します。
                    --tt   現在のコマンド入力行を実行し終えた時点で
                         即座に終了します。
                    --uu   未定義の変数が参照された場合にエラーとし
@@ -2041,7 +2043,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
              で、一般のキー入力を行なうには挿入モードへ移行する 4
              種類のキーのいずれかを入力する必要があります。
                  (コマンドモード)
-                 kk    = ↑↑      00    = BBeegg     II    = IInnss
+                 kk    = ↑↑      00    = BBeegg
                  jj    = ↓↓      $$    = EEooll     xx    = DDeell
                  ll    = →→      gg    = HHoommee
                  hh    = ←←      GG    = EEnndd     DD    = DDeellLLiinnee
@@ -2050,6 +2052,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                  ^^[[   = EEsscc
                  (コマンドモードから挿入モードへ)
                  ii, :: = モードの移行のみ
+                                II    = + BBeegg
                  aa    = + →→    AA    = + EEooll
                  RR    = 上書    rr    = 一文字上書
                  (挿入モード)

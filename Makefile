@@ -68,7 +68,7 @@ mkmf.sed: mkmfsed
 	./mkmfsed > mkmf.sed
 
 mkmfsed: mkmfsed.c fd.h machine.h config.h
-	$(HOSTCC) -DFD=$(VERSION) $(CFLAGS) -DCCCOMMAND='"'$(CC)'"' -DHOSTCCCOMMAND='"'$(HOSTCC)'"' -DPREFIX='"'$(PREFIX)'"' -o $@ mkmfsed.c
+	$(HOSTCC) -DFD=$(VERSION) $(CFLAGS) -DCCCOMMAND='"$(CC)"' -DHOSTCCCOMMAND='"$(HOSTCC)"' -DPREFIX='"'$(PREFIX)'"' -o $@ mkmfsed.c
 
 config.h: config.hin
 	cp config.hin config.h
@@ -81,8 +81,11 @@ fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
 depend sh bsh clean: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@
 
-config: Makefile.tmp
+config: rmconfig Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
+
+rmconfig:
+	cp config.hin config.h
 
 ipk: Makefile.tmp
 	$(MAKE) STRIP=$(STRIP) -f Makefile.tmp $@

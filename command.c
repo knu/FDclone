@@ -1145,17 +1145,18 @@ char *arg;
 static int quit_system(arg)
 char *arg;
 {
-	char *str[3];
-	int n, val[3];
+	int n;
 
 #ifndef	_NOARCHIVE
 	if (archivefile) return(-1);
 #endif
 	n = 0;
-	if (fdmode) {
-		if (!yesno(QUIT_K)) return(1);
-	}
-	else {
+
+#ifndef	_NOORIGSHELL
+	if (!fdmode) {
+		char *str[3];
+		int val[3];
+
 		locate(0, L_MESLINE);
 		putterm(l_clear);
 		kanjiputs(QUIT_K);
@@ -1168,6 +1169,10 @@ char *arg;
 		if (selectstr(&n, 3, 20, str, val) == K_ESC || n == 1)
 			return(1);
 	}
+	else
+#endif	/* _NOORIGSHELL */
+	if (!yesno(QUIT_K)) return(1);
+
 	if (savehist > 0) savehistory(0, histfile);
 	return((n) ? -2 : -1);
 }

@@ -137,7 +137,9 @@ typedef union wait	wait_pid_t;
 typedef struct termios	termioctl_t;
 typedef struct termios	ldiscioctl_t;
 #define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
-#define	ldisc(a)	((a).c_line)
+# ifdef	HAVECLINE
+# define	ldisc(a)	((a).c_line)
+# endif
 #define	REQGETP		0
 #define	REQSETP		(TCSAFLUSH + 1)
 #define	REQGETD		0
@@ -418,6 +420,12 @@ typedef struct _ulimittable {
 	int unit;
 	char *mes;
 } ulimittable;
+
+typedef struct _shflagtable {
+	char *ident;
+	int *var;
+	u_char letter;
+} shflagtable;
 
 extern int shellmode;
 extern p_id_t mypid;

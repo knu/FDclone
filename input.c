@@ -45,6 +45,9 @@ extern char *promptstr2;
 #define	sigalrm(sig)	0
 #endif
 
+#ifndef	_NOEDITMODE
+static int NEAR getemulatekey __P_((int, CONST char []));
+#endif
 static char *NEAR trquote __P_((char *, int, int *));
 static int NEAR vlen __P_((char *, int));
 static int NEAR rlen __P_((char *, int));
@@ -126,28 +129,33 @@ static CONST int emulatekey[] = {
 	K_HOME, K_END, K_BEG, K_EOL,
 	K_PPAGE, K_NPAGE, K_ENTER, K_ESC
 };
+#define	EMULATEKEYSIZ	((int)(sizeof(emulatekey) / sizeof(int)))
 static CONST char emacskey[] = {
 	K_CTRL('P'), K_CTRL('N'), K_CTRL('F'), K_CTRL('B'),
 	K_ESC, K_CTRL('D'), K_CTRL('Q'), K_CTRL('K'),
 	K_ESC, K_ESC, K_CTRL('A'), K_CTRL('E'),
 	K_CTRL('V'), K_CTRL('Y'), K_CTRL('O'), K_CTRL('G')
 };
-#define	EMACSKEYSIZ	((int)(sizeof(emacskey) / sizeof(char)))
 static CONST char vikey[] = {
 	'k', 'j', 'l', 'h',
 	K_ESC, 'x', K_ESC, 'D',
 	'g', 'G', '0', '$',
 	K_CTRL('B'), K_CTRL('F'), 'o', K_ESC
 };
-#define	VIKEYSIZ	((int)(sizeof(vikey) / sizeof(char)))
 static CONST char wordstarkey[] = {
 	K_CTRL('E'), K_CTRL('X'), K_CTRL('D'), K_CTRL('S'),
 	K_CTRL('V'), K_CTRL('G'), K_CTRL(']'), K_CTRL('Y'),
 	K_CTRL('W'), K_CTRL('Z'), K_CTRL('A'), K_CTRL('F'),
 	K_CTRL('R'), K_CTRL('C'), K_CTRL('N'), K_ESC
 };
-#define	WORDSTARKEYSIZ	((int)(sizeof(wordstarkey) / sizeof(char)))
-#endif
+static int vimode = 0;
+#define	VI_NEXT		001
+#define	VI_INSERT	002
+#define	VI_ONCE		004
+#define	VI_VIMODE	010
+#define	isvimode()	((vimode & (VI_VIMODE | VI_INSERT)) == VI_VIMODE)
+#endif	/* !_NOEDITMODE */
+
 #ifndef	_NOCOMPLETE
 static namelist *selectlist = NULL;
 static int tmpfilepos = -1;
@@ -172,19 +180,31 @@ int intrkey(VOID_A)
 	return(0);
 }
 
+#ifndef	_NOEDITMODE
+static int NEAR getemulatekey(ch, table)
+int ch;
+CONST char table[];
+{
+	int i;
+
+	for (i = 0; i < EMULATEKEYSIZ; i++) {
+		if (table[i] == K_ESC) continue;
+		if (ch == table[i]) return(emulatekey[i]);
+	}
+
+	return(ch);
+}
+#endif
+
 int Xgetkey(sig, eof)
 int sig, eof;
 {
-#ifndef	_NOEDITMODE
-	static int vimode = 0;
-	int i;
-#endif
 	static int prev = -1;
 	int ch;
 
 	if (sig < 0) {
 #ifndef	_NOEDITMODE
-		vimode = 0;
+		vimode = eof;
 #endif
 		prev = -1;
 		return('\0');
@@ -198,93 +218,89 @@ int sig, eof;
 
 #ifndef	_NOEDITMODE
 	if (!editmode) /*EMPTY*/;
-	else if (!strcmp(editmode, "emacs")) {
-		for (i = 0; i < EMACSKEYSIZ; i++) {
-			if (emacskey[i] == K_ESC) continue;
-			if (ch == emacskey[i]) return(emulatekey[i]);
-		}
-	}
+	else if (!strcmp(editmode, "emacs"))
+		ch = getemulatekey(ch, emacskey);
 	else if (!strcmp(editmode, "vi")) do {
-		vimode |= 1;
-		if (vimode & 2) switch (ch) {
+		vimode |= VI_VIMODE;
+		vimode &= ~VI_NEXT;
+		if (vimode & VI_INSERT) switch (ch) {
 			case K_CTRL('V'):
-				if (vimode & 4) vimode = 1;
+				if (vimode & VI_ONCE)
+					vimode &= ~(VI_INSERT | VI_ONCE);
 				ch = K_IL;
 				break;
 			case K_ESC:
-				vimode = (vimode & 4) ? 0 : 1;
+				if (vimode & VI_ONCE) vimode |= VI_NEXT;
+				vimode &= ~(VI_INSERT | VI_ONCE);
 				ch = K_LEFT;
 				break;
 			case K_CR:
-				vimode = 1;
+				vimode &= ~(VI_INSERT | VI_ONCE);
 				break;
 			case K_BS:
+				if (vimode & VI_ONCE)
+					vimode &= ~(VI_INSERT | VI_ONCE);
 				break;
 			default:
-				if (vimode & 4) vimode = 1;
+				if (vimode & VI_ONCE)
+					vimode &= ~(VI_INSERT | VI_ONCE);
 				if (ch < K_MIN) break;
 				ringbell();
-				vimode &= ~1;
+				vimode |= VI_NEXT;
 				break;
 		}
-		else {
-			for (i = 0; i < VIKEYSIZ; i++) {
-				if (vikey[i] == K_ESC) continue;
-				if (ch == vikey[i]) return(emulatekey[i]);
-			}
-			switch (ch) {
-				case ':':
-					vimode = 2;
-					overwritemode = 0;
-					break;
-				case 'A':
-					vimode = 3;
-					overwritemode = 0;
-					ch = K_EOL;
-					break;
-				case 'i':
-					vimode = 2;
-					overwritemode = 0;
-					break;
-				case 'a':
-					vimode = 3;
-					overwritemode = 0;
-					ch = K_RIGHT;
-					break;
+		else if ((ch = getemulatekey(ch, vikey)) < K_MIN) switch (ch) {
+			case ':':
+				vimode |= (VI_NEXT | VI_INSERT);
+				overwritemode = 0;
+				break;
+			case 'I':
+				vimode |= VI_INSERT;
+				overwritemode = 0;
+				ch = K_BEG;
+				break;
+			case 'A':
+				vimode |= VI_INSERT;
+				overwritemode = 0;
+				ch = K_EOL;
+				break;
+			case 'i':
+				vimode |= (VI_NEXT | VI_INSERT);
+				overwritemode = 0;
+				break;
+			case 'a':
+				vimode |= VI_INSERT;
+				overwritemode = 0;
+				ch = K_RIGHT;
+				break;
 # if	FD >= 2
-				case 'R':
-					vimode = 2;
-					overwritemode = 1;
-					break;
-				case 'r':
-					vimode = 6;
-					overwritemode = 1;
-					break;
+			case 'R':
+				vimode |= (VI_NEXT | VI_INSERT);
+				overwritemode = 1;
+				break;
+			case 'r':
+				vimode |= (VI_NEXT | VI_INSERT | VI_ONCE);
+				overwritemode = 1;
+				break;
 # endif	/* FD >= 2 */
-				case K_BS:
-					ch = K_LEFT;
-					break;
-				case ' ':
-					ch = K_RIGHT;
-					break;
-				case K_ESC:
-				case K_CR:
-				case '\t':
-					break;
-				default:
-					if (ch >= K_MIN) break;
-					ringbell();
-					vimode &= ~1;
-					break;
-			}
+			case K_BS:
+				ch = K_LEFT;
+				break;
+			case ' ':
+				ch = K_RIGHT;
+				break;
+			case K_ESC:
+			case K_CR:
+			case '\t':
+				break;
+			default:
+				ringbell();
+				vimode |= VI_NEXT;
+				break;
 		}
-	} while ((!(vimode & 1)) && (ch = getkey2(sig)));
-	else if (!strcmp(editmode, "wordstar")) {
-		for (i = 0; i < WORDSTARKEYSIZ; i++) {
-			if (wordstarkey[i] == K_ESC) continue;
-			if (ch == wordstarkey[i]) return(emulatekey[i]);
-		}
-	}
+	} while ((vimode & VI_NEXT) && (ch = getkey2(sig)));
+	else if (!strcmp(editmode, "wordstar"))
+		ch = getemulatekey(ch, wordstarkey);
 #endif	/* !_NOEDITMODE */
 
 	return(ch);
@@ -2273,7 +2289,7 @@ int linemax, def, comline, h;
 	else
 #endif
 	sig = 1;
-	Xgetkey(-1, 0);
+	Xgetkey(-1, VI_INSERT);
 #ifndef	_NOCOMPLETE
 	tmpfilepos = -1;
 #endif
@@ -2397,6 +2413,10 @@ int linemax, def, comline, h;
 				else
 #endif
 				if (cx >= len) ringbell();
+#ifndef	_NOEDITMODE
+				if (isvimode() && len && cx >= len - 1)
+					ringbell();
+#endif
 				else ocx2 = cx2 = rightchar(*sp, &cx, cx2,
 					len, plen, linemax);
 				break;
@@ -2422,6 +2442,9 @@ int linemax, def, comline, h;
 			case K_EOL:
 				keyflush();
 				cx = len;
+#ifndef	_NOEDITMODE
+				if (isvimode() && len) cx--;
+#endif
 				cx2 = vlen(*sp, cx);
 				break;
 			case K_BS:
@@ -2439,6 +2462,11 @@ int linemax, def, comline, h;
 				keyflush();
 				len = _inputstr_delete(*sp, cx,
 					len, plen, linemax);
+#ifndef	_NOEDITMODE
+				if (isvimode() && len && cx >= len)
+					ocx2 = cx2 = leftchar(*sp, &cx, cx2,
+						len, plen, linemax);
+#endif
 				break;
 			case K_DL:
 				keyflush();
@@ -2446,6 +2474,11 @@ int linemax, def, comline, h;
 					truncline(*sp, cx, cx2,
 						len, plen, linemax);
 				len = cx;
+#ifndef	_NOEDITMODE
+				if (isvimode() && len)
+					ocx2 = cx2 = leftchar(*sp, &cx, cx2,
+						len, plen, linemax);
+#endif
 				break;
 			case K_CTRL('L'):
 				keyflush();

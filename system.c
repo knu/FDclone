@@ -176,6 +176,9 @@ extern int savehistory __P_((int, char *));
 extern int evalprompt __P_((char **, char *));
 extern char *histfile;
 extern int savehist;
+#ifndef	_NOEDITMODE
+extern char *editmode;
+#endif
 extern int internal_status;
 extern char fullpath[];
 extern char *origpath;
@@ -944,8 +947,7 @@ static int NEAR dofalse __P_((syntaxtree *));
 static int NEAR docommand __P_((syntaxtree *));
 static int NEAR dogetopts __P_((syntaxtree *));
 static int NEAR donewgrp __P_((syntaxtree *));
-# if	0
-/* exists in FD original builtin */
+# if	0				/* exists in FD original builtin */
 static int NEAR dofc __P_((syntaxtree *));
 # endif
 #endif	/* !NOPOSIXUTIL */
@@ -990,15 +992,9 @@ static VOID NEAR adjustdelim __P_((char **));
 static VOID NEAR initrc __P_((int));
 
 #if	MSDOS
-# ifdef	BSPATHDELIM
-# define	LSH_DEFRUNCOM	"\\etc\\profile"
-# define	LSH_RUNCOMFILE	"~\\profile.rc"
-# define	SH_RUNCOMFILE	"~\\fdsh.rc"
-# else
-# define	LSH_DEFRUNCOM	"/etc/profile"
-# define	LSH_RUNCOMFILE	"~/profile.rc"
-# define	SH_RUNCOMFILE	"~/fdsh.rc"
-# endif
+#define	LSH_DEFRUNCOM	"\\etc\\profile"
+#define	LSH_RUNCOMFILE	"~\\profile.rc"
+#define	SH_RUNCOMFILE	"~\\fdsh.rc"
 #else	/* !MSDOS */
 #define	LSH_DEFRUNCOM	"/etc/profile"
 #define	LSH_RUNCOMFILE	"~/.profile"
@@ -1034,6 +1030,19 @@ int main __P_((int, char *[], char *[]));
 int shellmode = 0;
 p_id_t mypid = -1;
 int ret_status = RET_SUCCESS;
+int interactive = 0;
+#ifndef	NOJOB
+int lastjob = -1;
+int prevjob = -1;
+int stopped = 0;
+p_id_t orgpgrp = -1;
+p_id_t childpgrp = -1;
+p_id_t ttypgrp = -1;
+#endif
+int interrupted = 0;
+int nottyout = 0;
+int syntaxerrno = 0;
+
 int verboseexec = 0;
 int notexec = 0;
 int verboseinput = 0;
@@ -1053,24 +1062,18 @@ int noglob = 0;
 int autoexport = 0;
 #ifndef	MINIMUMSHELL
 int noclobber = 0;
-# ifndef	NOJOB
+int ignoreeof = 0;
+#endif
+#ifndef	NOJOB
 int bgnotify = 0;
 int jobok = -1;
-# endif
-int ignoreeof = 0;
-#endif	/* !MINIMUMSHELL */
-int interactive = 0;
-#ifndef	NOJOB
-int lastjob = -1;
-int prevjob = -1;
-int stopped = 0;
-p_id_t orgpgrp = -1;
-p_id_t childpgrp = -1;
-p_id_t ttypgrp = -1;
 #endif
-int interrupted = 0;
-int nottyout = 0;
-int syntaxerrno = 0;
+#if	defined (FD) && !defined (_NOEDITMODE)
+int emacsmode = 0;
+int vimode = 0;
+#endif
+int loginshell = 0;
+int noruncom = 0;
 
 static char **shellvar = NULL;
 static char **exportvar = NULL;
@@ -1091,7 +1094,6 @@ static p_id_t oldttypgrp = -1;
 static int setsigflag = 0;
 static int trapok = 0;
 static int readtrap = 0;
-static int loginshell = 0;
 static int errorexit = 0;
 static shfunctable *shellfunc = NULL;
 static pipelist *pipetop = NULL;
@@ -1107,6 +1109,7 @@ static long shlineno = 0L;
 #endif
 static int isshellbuiltin = 0;
 static int execerrno = 0;
+
 static CONST char *syntaxerrstr[] = {
 	"",
 #define	ER_UNEXPTOK	1
@@ -1117,6 +1120,7 @@ static CONST char *syntaxerrstr[] = {
 	"unexpected end of file",
 };
 #define	SYNTAXERRSIZ	((int)(sizeof(syntaxerrstr) / sizeof(char *)))
+
 static CONST char *execerrstr[] = {
 	"",
 #define	ER_COMNOFOUND	1
@@ -1181,6 +1185,7 @@ static CONST char *execerrstr[] = {
 #endif
 };
 #define	EXECERRSIZ	((int)(sizeof(execerrstr) / sizeof(char *)))
+
 static CONST opetable opelist[] = {
 	{OP_FG, 4, ";"},
 	{OP_BG, 4, "&"},
@@ -1195,6 +1200,7 @@ static CONST opetable opelist[] = {
 #endif
 };
 #define	OPELISTSIZ	((int)(sizeof(opelist) / sizeof(opetable)))
+
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
 static CONST opetable delimlist[] = {
 	{OP_NONE, 1, "{"},
@@ -1227,6 +1233,7 @@ static CONST opetable delimlist[] = {
 };
 #define	DELIMLISTSIZ	((int)(sizeof(delimlist) / sizeof(opetable)))
 #endif	/* !BASHBUG && !MINIMUMSHELL */
+
 static CONST shbuiltintable shbuiltinlist[] = {
 	{donull, ":", BT_POSIXSPECIAL},
 	{dobreak, "break", BT_POSIXSPECIAL},
@@ -1298,8 +1305,7 @@ static CONST shbuiltintable shbuiltinlist[] = {
 	{docommand, "command", BT_NOKANJIFGET},
 	{dogetopts, "getopts", 0},
 	{donewgrp, "newgrp", BT_RESTRICT},
-# if	0
-/* exists in FD original builtin */
+# if	0				/* exists in FD original builtin */
 	{dofc, "fc", 0},
 # endif
 #endif
@@ -1313,6 +1319,7 @@ static CONST shbuiltintable shbuiltinlist[] = {
 #endif
 };
 #define	SHBUILTINSIZ	((int)(sizeof(shbuiltinlist) / sizeof(shbuiltintable)))
+
 statementtable statementlist[] = {
 	{doif, "if", STT_NEEDLIST, {0, 0, 0, 0}},
 	{NULL, "then", STT_NEEDLIST, {SM_IF, SM_ELIF, 0, 0}},
@@ -1336,6 +1343,7 @@ statementtable statementlist[] = {
 	{NULL, "}", STT_NEEDNONE, {SM_LIST, 0, 0, 0}},
 };
 #define	STATEMENTSIZ	((int)(sizeof(statementlist) / sizeof(statementtable)))
+
 static char *primalvar[] = {
 	"PATH", "PS1", "PS2", "IFS",
 #if	!MSDOS && !defined (MINIMUMSHELL)
@@ -1343,6 +1351,7 @@ static char *primalvar[] = {
 #endif
 };
 #define	PRIMALVARSIZ	((int)(sizeof(primalvar) / sizeof(char *)))
+
 static char *restrictvar[] = {
 	"PATH", "SHELL",
 #ifndef	MINIMUMSHELL
@@ -1350,6 +1359,7 @@ static char *restrictvar[] = {
 #endif
 };
 #define	RESTRICTVARSIZ	((int)(sizeof(restrictvar) / sizeof(char *)))
+
 #if	MSDOS && !defined (BSPATHDELIM)
 static CONST char *adjustvar[] = {
 	"PATH", "HOME", "SHELL", "COMSPEC",
@@ -1375,53 +1385,43 @@ static CONST char *adjustvar[] = {
 };
 #define	ADJUSTVARSIZ	((int)(sizeof(adjustvar) / sizeof(char *)))
 #endif	/* MSDOS && !BSPATHDELIM */
-static char getflags[] = "xnvtsierkuhfaCbm";
-static char setflags[] = "xnvt\0\0e\0kuhfaCbm";
-static CONST char *optionflags[] = {
-	"xtrace",
-	"noexec",
-	"verbose",
-	"onecmd",
-	NULL,
-	NULL,
-	"errexit",
-	NULL,
-	"keyword",
-	"nounset",
-	"hashahead",
-	"noglob",
-	"allexport",
+
+static CONST shflagtable shflaglist[] = {
+	{"xtrace", &verboseexec, 'x'},
+	{"noexec", &notexec, 'n'},
+	{"verbose", &verboseinput, 'v'},
+	{"onecmd", &terminated, 't'},
+	{NULL, &forcedstdin, 's'},
+	{NULL, &interactive_io, 'i'},
+	{"errexit", &tmperrorexit, 'e'},
+	{NULL, &restricted, 'r'},
+	{"keyword", &freeenviron, 'k'},
+	{"nounset", &undeferror, 'u'},
+	{"hashahead", &hashahead, 'h'},
+	{"noglob", &noglob, 'f'},
+	{"allexport", &autoexport, 'a'},
 #ifndef	MINIMUMSHELL
-	"noclobber",
+	{"noclobber", &noclobber, 'C'},
+	{"ignoreeof", &ignoreeof, '\0'},
 #endif
 #ifndef	NOJOB
-	"notify",
-	"monitor",
+	{"notify", &bgnotify, 'b'},
+	{"monitor", &jobok, 'm'},
+#endif
+#ifdef	FD
+	{"physical", &physical_path, '\0'},
+# ifndef	_NOEDITMODE
+	{"emacs", &emacsmode, '\0'},
+	{"vi", &vimode, '\0'},
+# endif
+#endif
+#if	0						/* Future plan */
+	{NULL, &loginshell, 'l'},
+	{NULL, &noruncom, 'N'},
 #endif
 };
-static int *setvals[] = {
-	&verboseexec,
-	&notexec,
-	&verboseinput,
-	&terminated,
-	&forcedstdin,
-	&interactive_io,
-	&tmperrorexit,
-	&restricted,
-	&freeenviron,
-	&undeferror,
-	&hashahead,
-	&noglob,
-	&autoexport,
-#ifndef	MINIMUMSHELL
-	&noclobber,
-#endif
-#ifndef	NOJOB
-	&bgnotify,
-	&jobok,
-#endif
-};
-#define	FLAGSSIZ	((int)(sizeof(setvals) / sizeof(int)))
+#define	FLAGSSIZ	((int)(sizeof(shflaglist) / sizeof(shflagtable)))
+
 #ifdef	USERESOURCEH
 static CONST ulimittable ulimitlist[] = {
 #ifdef	RLIMIT_CPU
@@ -1457,6 +1457,7 @@ static CONST ulimittable ulimitlist[] = {
 };
 #define	ULIMITSIZ	((int)(sizeof(ulimitlist) / sizeof(ulimittable)))
 #endif	/* USERESOURCEH */
+
 #ifdef	PSIGNALSTYLE
 #define	MESHUP		"Hangup"
 #define	MESINT		"Interrupt"
@@ -1532,6 +1533,7 @@ static CONST ulimittable ulimitlist[] = {
 #define	MESUSR1		"User defined signal 1"
 #define	MESUSR2		"User defined signal 2"
 #endif	/* !PSIGNALSTYLE */
+
 signaltable signallist[] = {
 #ifdef	SIGHUP
 	{SIGHUP, trap_hup, "HUP", MESHUP, TR_TERM},
@@ -1661,6 +1663,7 @@ signaltable signallist[] = {
 #endif
 	{-1, NULL, NULL, NULL, 0}
 };
+
 static int trapmode[NSIG];
 static char *trapcomm[NSIG];
 static sigarg_t (*oldsigfunc[NSIG])__P_((sigfnc_t));
@@ -3113,15 +3116,22 @@ char *argv[];
 int isopt;
 {
 	u_long flags;
-	char *cp, *arg;
+	char *arg;
 	int i, j, com;
+
+#if	defined (FD) && !defined (_NOEDITMODE)
+	emacsmode = vimode = 0;
+	if (editmode) {
+		if (!strcmp(editmode, "emacs")) emacsmode = 1;
+		else if (!strcmp(editmode, "vi")) vimode = 1;
+	}
+#endif
 
 	if (argc <= 1) return(1);
 	arg = argv[1];
 	if (arg[0] != '-' && arg[0] != '+') return(1);
 	else if (arg[1] == '-') return(2);
 
-	cp = (isopt) ? getflags : setflags;
 	com = 0;
 	flags = (u_long)0;
 	for (i = 1; arg[i]; i++) {
@@ -3137,7 +3147,10 @@ int isopt;
 				continue;
 			}
 		}
-		for (j = 0; j < FLAGSSIZ; j++) if (arg[i] == cp[j]) break;
+		for (j = 0; j < FLAGSSIZ; j++) {
+			if (!isopt && !(shflaglist[j].ident)) continue;
+			if (arg[i] == shflaglist[j].letter) break;
+		}
 		if (j < FLAGSSIZ) flags |= ((u_long)1 << j);
 		else if (arg[0] == '-') {
 			execerror(arg, ER_BADOPTIONS, 0);
@@ -3145,7 +3158,8 @@ int isopt;
 		}
 	}
 	for (j = 0; j < FLAGSSIZ; j++) {
-		if (flags & (u_long)1) *(setvals[j]) = (arg[0] == '-') ? 1 : 0;
+		if (flags & (u_long)1)
+			*(shflaglist[j].var) = (arg[0] == '-') ? 1 : 0;
 		flags >>= 1;
 	}
 
@@ -4811,7 +4825,8 @@ static char *getflagstr(VOID_A)
 
 	cp = malloc2(FLAGSSIZ + 1);
 	for (i = j = 0; i < FLAGSSIZ; i++)
-		if (*(setvals[i])) cp[j++] = getflags[i];
+		if (*(shflaglist[i].var) && shflaglist[i].letter)
+			cp[j++] = shflaglist[i].letter;
 	cp[j] = '\0';
 	return(cp);
 }
@@ -5795,11 +5810,12 @@ int quiet;
 			}
 		}
 
-		pc = parsechar(&(s[i]), -1,
+		pc = parsechar(&(s[i]), -1, '$', EA_BACKQ | EA_EOLMETA,
 #ifdef	BASHSTYLE
-			'$', EA_BACKQ, &(rp -> new), &(rp -> old));
+	/* bash can include `...` in "..." */
+			&(rp -> new), &(rp -> old));
 #else
-			'$', EA_BACKQ, &(rp -> new), NULL);
+			&(rp -> new), NULL);
 #endif
 
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_SQUOTE)
@@ -8018,6 +8034,9 @@ syntaxtree *trp;
 static int NEAR doset(trp)
 syntaxtree *trp;
 {
+#if	defined (FD) && !defined (_NOEDITMODE)
+	char *cp;
+#endif
 	shfunctable *func;
 	char **var, **argv;
 	int i, n, argc;
@@ -8053,40 +8072,49 @@ syntaxtree *trp;
 	if (n > 2) {
 		if (argc <= 2) {
 			for (i = 0; i < FLAGSSIZ; i++) {
-				if (!optionflags[i]) continue;
+				if (!(shflaglist[i].ident)) continue;
 				fprintf2(stdout, "%-16.16s%s",
-					optionflags[i],
-					(*(setvals[i])) ? "on" : "off");
+					shflaglist[i].ident,
+					(*(shflaglist[i].var)) ? "on" : "off");
 				fputnl(stdout);
 			}
 		}
-#ifndef	MINIMUMSHELL
-		else if (!strcmp(argv[2], "ignoreeof"))
-			ignoreeof = (n <= 3) ? 1 : 0;
-#endif
-#ifdef	FD
-		else if (!strcmp(argv[2], "physical"))
-			physical_path = (n <= 3) ? 1 : 0;
-#endif
-#if	defined (FD) && !defined (_NOEDITMODE)
-		else if (!strcmp(argv[2], "vi") || !strcmp(argv[2], "emacs")) {
-			extern char *editmode;
-
-			setenv2("FD_EDITMODE", argv[2], 0);
-			editmode = getconstvar("FD_EDITMODE");
-		}
-#endif
 		else {
 			for (i = 0; i < FLAGSSIZ; i++) {
-				if (!optionflags[i]) continue;
-				if (!strcmp(argv[2], optionflags[i]))
+				if (!(shflaglist[i].ident)) continue;
+				if (!strcmp(argv[2], shflaglist[i].ident))
 					break;
 			}
 			if (i >= FLAGSSIZ) {
 				execerror(argv[2], ER_BADOPTIONS, 0);
 				return(RET_FAIL);
 			}
-			*(setvals[i]) = (n <= 3) ? 1 : 0;
+
+#if	defined (FD) && !defined (_NOEDITMODE)
+			if (shflaglist[i].var == &emacsmode) cp = "emacs";
+			else if (shflaglist[i].var == &vimode) cp = "vi";
+			else cp = NULL;
+	
+			if (cp) {
+				emacsmode = vimode = 0;
+				if (editmode && !strcmp(editmode, cp))
+					cp = NULL;
+
+				/*
+				 * The stupid HP cc says that
+				 * ternary operator with NULL is const char *,
+				 * not to be converted to char *.
+				 */
+				if (n > 3) cp = (cp) ? (char *)NULL : "";
+
+				if (cp) {
+					setenv2("FD_EDITMODE", cp, 0);
+					editmode = getconstvar("FD_EDITMODE");
+				}
+			}
+#endif	/* FD && !_NOEDITMODE */
+
+			*(shflaglist[i].var) = (n <= 3) ? 1 : 0;
 		}
 		n = 3;
 	}
@@ -9047,8 +9075,7 @@ syntaxtree *trp;
 #endif	/* !MSDOS */
 }
 
-# if	0
-/* exists in FD original builtin */
+# if	0				/* exists in FD original builtin */
 static int NEAR dofc(trp)
 syntaxtree *trp;
 {
@@ -10310,15 +10337,19 @@ int verbose;
 	char **dupargvar;
 	int fd, ret, duprestricted;
 
-#ifdef	FD
-	inruncom = 1;
-#endif
 	setsignal();
-	fname = evalpath(strdup2(fname), 0);
-	if (!isrootdir(fname)
+	fname = strdup2(fname);
+#if	MSDOS && !defined (BSPATHDELIM)
+	fname = adjustpname(fname);
+#endif
+	fname = evalpath(fname, 0);
+	if (noruncom || !isrootdir(fname)
 	|| (fd = newdup(Xopen(fname, O_BINARY | O_RDONLY, 0666))) < 0)
 		ret = RET_SUCCESS;
 	else {
+#ifdef	FD
+		inruncom = 1;
+#endif
 		duprestricted = restricted;
 		restricted = 0;
 		dupargvar = argvar;
@@ -10329,12 +10360,14 @@ int verbose;
 		freevar(argvar);
 		argvar = dupargvar;
 		restricted = duprestricted;
+#ifdef	FD
+		inruncom = 0;
+		evalenv();
+#endif
 	}
 	resetsignal(0);
 	free(fname);
-#ifdef	FD
-	inruncom = 0;
-#endif
+
 	return(ret);
 }
 
@@ -10362,7 +10395,7 @@ char **var;
 		adjustpname(cp);
 	}
 }
-#endif
+#endif	/* MSDOS && !BSPATHDELIM */
 
 VOID setshellvar(envp)
 char *envp[];
@@ -10433,16 +10466,9 @@ int verbose;
 #endif
 
 #ifdef	FD
-# if	MSDOS && !defined (BSPATHDELIM)
 	/* DEFRUNCOM is gave from command line, not to convert previously */
 /*NOTDEFINED*/
-	cp = strdup2(DEFRUNCOM);
-	execruncom(adjustpname(cp), verbose);
-	free(cp);
-# else
-/*NOTDEFINED*/
 	execruncom(DEFRUNCOM, verbose);
-# endif
 #else	/* !FD */
 	if (loginshell) {
 		execruncom(LSH_DEFRUNCOM, verbose);
@@ -10459,7 +10485,6 @@ int verbose;
 #ifdef	FD
 	if (loginshell) execruncom(SH_RUNCOMFILE, verbose);
 	else execruncom(RUNCOMFILE, verbose);
-	evalenv();
 #endif
 }
 
@@ -10468,7 +10493,7 @@ int argc;
 char *argv[];
 {
 #if	!MSDOS
-# if	!defined (NOJOB) && defined (NTTYDISC)
+# if	!defined (NOJOB) && defined (NTTYDISC) && defined (ldisc)
 	ldiscioctl_t tty;
 # endif
 # ifndef	MINIMUMSHELL
@@ -10478,7 +10503,7 @@ char *argv[];
 	sigmask_t mask;
 #endif	/* !MSDOS */
 	char *cp;
-	int i, n, tmprestricted;
+	int i, n, isstdin, tmprestricted;
 
 	shellname = argv[0];
 	getshellname(getbasename(shellname), &loginshell, &tmprestricted);
@@ -10500,8 +10525,10 @@ char *argv[];
 	noclobber = 0;
 #endif
 	errorexit = tmperrorexit;
+	isstdin = forcedstdin;
+
 	if (n > 2) interactive = interactive_io;
-	else if (n >= argc || forcedstdin) forcedstdin = 1;
+	else if (n >= argc || isstdin) isstdin = 1;
 	else {
 		definput = newdup(Xopen(argv[n], O_BINARY | O_RDONLY, 0666));
 		if (definput < 0) {
@@ -10563,12 +10590,12 @@ char *argv[];
 #ifndef	_NOUSEHASH
 	searchhash(NULL, NULL, NULL);
 #endif
-	if ((!interactive || forcedstdin) && n < argc) {
-		argvar = (char **)malloc2((argc - n + 1 + forcedstdin)
+	if ((!interactive || isstdin) && n < argc) {
+		argvar = (char **)malloc2((argc - n + 1 + isstdin)
 			* sizeof(char *));
 		for (i = 0; i < argc - n + 1; i++)
-			argvar[i + forcedstdin] = strdup2(argv[i + n]);
-		if (forcedstdin) argvar[0] = strdup2(argv[0]);
+			argvar[i + isstdin] = strdup2(argv[i + n]);
+		if (isstdin) argvar[0] = strdup2(argv[0]);
 	}
 	else {
 		argvar = (char **)malloc2(2 * sizeof(char *));
@@ -10656,7 +10683,6 @@ char *argv[];
 #ifndef	NOJOB
 	if (!interactive) jobok = 0;
 	else {
-		if (jobok < 0) jobok = 1;
 		if (!orgpgrp) {
 			orgpgrp = mypid;
 			if (setpgroup(0, mypid) < (p_id_t)0
@@ -10674,14 +10700,25 @@ char *argv[];
 			gettcpgrp(ttyio, ttypgrp);
 		}
 # endif
-# ifdef	NTTYDISC
-		if (tioctl(ttyio, REQGETD, &tty) < 0
-		|| (ldisc(tty) != NTTYDISC && (ldisc(tty) = NTTYDISC) > 0
-		&& tioctl(ttyio, REQSETD, &tty) < 0)) {
+# if	defined (NTTYDISC) && defined (ldisc)
+		if (tioctl(ttyio, REQGETD, &tty) < 0) {
 			doperror(NULL, NULL);
 			return(-1);
 		}
-# endif
+		else if (ldisc(tty) != NTTYDISC && (ldisc(tty) = NTTYDISC) > 0
+		&& tioctl(ttyio, REQSETD, &tty) < 0) {
+#  ifdef	USESGTTY
+			doperror(NULL, NULL);
+			return(-1);
+#  else
+#   ifdef	ENODEV
+			if (errno == ENODEV) /*EMPTY*/;
+			else
+#   endif
+			jobok = 0;
+#  endif
+		}
+# endif	/* NTTYDISC && ldisc */
 		if (orgpgrp != mypid) {
 			orgpgrp = mypid;
 			if (setpgroup(0, mypid) < (p_id_t)0
@@ -10690,6 +10727,8 @@ char *argv[];
 				return(-1);
 			}
 		}
+
+		if (jobok < 0) jobok = 1;
 	}
 #endif	/* !NOJOB */
 #if	!MSDOS
@@ -10718,12 +10757,13 @@ char *argv[];
 		fputnl(stderr);
 		Xexit2(RET_FAIL);
 	}
-	if (!tmprestricted && (cp = getconstvar("SHELL")))
-		getshellname(getbasename(cp), NULL, &tmprestricted);
+
+	if (!restricted) restricted = tmprestricted;
+	if (!restricted && (cp = getconstvar("SHELL")))
+		getshellname(getbasename(cp), NULL, &restricted);
 #ifdef	FD
-	fd_restricted =
+	fd_restricted = restricted;
 #endif
-	restricted = tmprestricted;
 
 	return(0);
 }

@@ -129,6 +129,7 @@ typedef struct _wild_t {
 #define	EA_NOEVALQ	0010
 #define	EA_STRIPQLATER	0020
 #define	EA_NOUNIQDELIM	0040
+#define	EA_EOLMETA	0100
 
 #ifdef	NOUID_T
 typedef u_short	uid_t;
@@ -210,7 +211,7 @@ extern int strnpathcmp2 __P_((char *, char *, int));
 #define	strenvcmp	strcmp
 #define	strnenvcmp	strncmp
 #endif
-extern char *underpath(char *, char *, int);
+extern char *underpath __P_((char *, char *, int));
 extern int isidentchar __P_((int));
 extern int isidentchar2 __P_((int));
 extern int isdotdir __P_((char *));

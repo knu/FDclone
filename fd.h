@@ -9,20 +9,6 @@
 #include <errno.h>
 #include "machine.h"
 
-#ifndef	__SYS_TYPES_STAT_H_
-#define	__SYS_TYPES_STAT_H_
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
 #if	FD < 2
 #define	_NOORIGSHELL
 #define	_NOSPLITWIN
@@ -37,11 +23,13 @@
 #define	_NOTRADLAYOUT
 #endif	/* FD < 2 */
 
+#ifndef	__FD_PRIMAL__
+#include "types.h"
 #include "printf.h"
 #include "kctype.h"
 #include "pathname.h"
 #include "term.h"
-#include "types.h"
+#endif
 
 #ifdef	DEBUG
 extern VOID mtrace __P_ ((VOID));
@@ -127,8 +115,8 @@ extern char *_mtrace_file;
 #define	DIRHIST		50
 #define	SAVEHIST	50
 #define	DIRCOUNTLIMIT	50
-#define	SECOND		0
 #define	DOSDRIVE	0
+#define	SECOND		0
 #define	TRADLAYOUT	0
 #define	SIZEINFO	0
 #define	ANSICOLOR	0
@@ -140,8 +128,16 @@ extern char *_mtrace_file;
 #else
 #define	TMPDIR		"/tmp"
 #endif
+#define	TMPUMASK	022
 #define	RRPATH		""
 #define	PRECEDEPATH	""
+#if	FD >= 2
+#define	PROMPT		"$ "
+#else
+#define	PROMPT		"sh#"
+#endif
+#define	PROMPT2		"> "
+#define	DUMBSHELL	0
 #define	UNICODEBUFFER	0
 #define	SJISPATH	""
 #define	EUCPATH		""
@@ -156,14 +152,6 @@ extern char *_mtrace_file;
 #define	UTF8PATH	""
 #define	UTF8MACPATH	""
 #define	NOCONVPATH	""
-#if	FD >= 2
-#define	PROMPT		"$ "
-#else
-#define	PROMPT		"sh#"
-#endif
-#define	PROMPT2		"> "
-#define	TMPUMASK	022
-#define	DUMBSHELL	0
 
 
 /****************************************************************
@@ -183,6 +171,7 @@ extern char *_mtrace_file;
 #define	MAXSTACK	5
 #define	MAXWINDOWS	2
 #define	MAXHISTNO	MAXTYPE(short)
+#define	MAXINVOKEARGS	1
 
 #ifdef	_NOSPLITWIN
 #undef	MAXWINDOWS

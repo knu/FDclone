@@ -48,10 +48,6 @@ typedef struct _printbuf_t {
 #define	MINTYPE(t)	((t)(MAXUTYPE(t) << (BITSPERBYTE * sizeof(t) - 1)))
 #define	MAXTYPE(t)	((t)~MINTYPE(t))
 
-#ifdef	__STDC__
-#define	HAVELONGLONG
-#endif
-
 #ifdef	HAVELONGLONG
 typedef long long		long_t;
 typedef unsigned long long	u_long_t;

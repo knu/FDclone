@@ -32,9 +32,6 @@ extern int checkdrive __P_((int));
 #endif
 
 extern int mark;
-extern off_t marksize;
-extern off_t totalsize;
-extern off_t blocksize;
 extern char fullpath[];
 extern char *tmpfilename;
 extern int physical_path;
@@ -182,10 +179,6 @@ namelist *namep;
 		logical_access((u_int)(st.st_mode), st.st_uid, st.st_gid);
 #endif
 
-	if (isfile(namep) && namep -> st_size) {
-		totalsize += getblock(namep -> st_size);
-		if (ismark(namep)) marksize += getblock(namep -> st_size);
-	}
 	namep -> tmpflags |= F_STAT;
 	return(0);
 }

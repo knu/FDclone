@@ -97,6 +97,7 @@ static int NEAR searchmove __P_((int, char *));
 #ifndef	_NOPRECEDE
 static VOID readstatus __P_((VOID_A));
 #endif
+static int NEAR readfilelist __P_((reg_t *, char *));
 static int NEAR browsedir __P_((char *, char *));
 static char *NEAR initcwd __P_((char *, char *));
 
@@ -361,7 +362,8 @@ static VOID NEAR statusbar(VOID_A)
 		if (haste) kanjiputs(OMIT_K);
 		else
 #endif
-		if (sorton & 7) {
+		if (!(sorton & 7)) kanjiputs(ORAW_K + 3);
+		else {
 			str[0] = ONAME_K;
 			str[1] = OEXT_K;
 			str[2] = OSIZE_K;
@@ -373,7 +375,6 @@ static VOID NEAR statusbar(VOID_A)
 			str[1] = ODEC_K;
 			cprintf2("(%k)", &(str[sorton / 8][3]));
 		}
-		else kanjiputs(ORAW_K + 3);
 	}
 
 	locate(C_FIND, L_STATUS);
@@ -1043,18 +1044,18 @@ char *def;
 		i = (n_column / FILEPERLINE) - 2 - 1;
 		locate(1, LFILETOP);
 		putch2(' ');
-		putterm(t_standout);
+		if (def) putterm(t_standout);
 		cp = NOFIL_K;
 		if (i <= strlen2(cp)) cp = "NoFiles";
 		cprintf2("%-*.*k", i, i, cp);
-		putterm(end_standout);
+		if (def) putterm(end_standout);
 		win_x = i + 2;
 		win_y = LFILETOP;
 		return(0);
 	}
 
 	ret = -1;
-	if (!def) def = "..";
+	if (def && !(*def)) def = "..";
 
 	start = 0;
 	for (i = count = 0; i < max; i++, count++) {
@@ -1062,7 +1063,7 @@ char *def;
 			count = 0;
 			start = i;
 		}
-		if (!strpathcmp(def, list[i].name)) {
+		if (def && !strpathcmp(def, list[i].name)) {
 			ret = i;
 			break;
 		}
@@ -1127,6 +1128,7 @@ char *def;
 			x = win_x;
 			y = win_y;
 		}
+		else if (maxfile <= 0) listupfile(filelist, maxfile, NULL);
 		else {
 			listupfile(filelist, maxfile, filelist[filepos].name);
 			putname(filelist, filepos, -1);
@@ -1358,24 +1360,77 @@ static VOID readstatus(VOID_A)
 }
 #endif
 
+static int NEAR readfilelist(re, arcre)
+reg_t *re;
+char *arcre;
+{
+#ifndef	_NOPRECEDE
+	char cwd[MAXPATHLEN];
+#endif
+	DIR *dirp;
+	struct dirent *dp;
+	char buf[MAXNAMLEN + 1];
+	int i, n;
+
+	n = 0;
+#ifndef	_NOPRECEDE
+	if (Xgetwd(cwd) && includepath(cwd, precedepath)) {
+		n = 1;
+		sorton = 0;
+	}
+#endif
+
+	if (!(dirp = Xopendir("."))) {
+		lostcwd(NULL);
+		if (!(dirp = Xopendir("."))) error(".");
+	}
+
+	while ((dp = searchdir(dirp, re, arcre))) {
+		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
+		&& !isdotdir(dp -> d_name)) continue;
+		strcpy(buf, dp -> d_name);
+		for (i = 0; i < stackdepth; i++)
+			if (!strcmp(buf, filestack[i].name)) break;
+		if (i < stackdepth) continue;
+
+		addlist();
+		filelist[maxfile].name = strdup2(buf);
+		filelist[maxfile].ent = maxfile;
+		filelist[maxfile].tmpflags = 0;
+#ifndef	_NOPRECEDE
+		if (n) {
+			if (isdotdir(dp -> d_name)) {
+				filelist[maxfile].flags = F_ISDIR;
+				filelist[maxfile].st_mode = S_IFDIR;
+			}
+		}
+		else
+#endif
+		if (getstatus(&(filelist[maxfile])) < 0) {
+			free(filelist[maxfile].name);
+			continue;
+		}
+
+		maxfile++;
+	}
+
+	Xclosedir(dirp);
+	return(n);
+}
+
 static int NEAR browsedir(file, def)
 char *file, *def;
 {
 #ifndef	_NOPRECEDE
-	char cwd[MAXPATHLEN];
 	int dupsorton;
 #endif
-	DIR *dirp;
-	struct dirent *dp;
 	reg_t *re;
-	char *cp, buf[MAXNAMLEN + 1];
+	char *cp, *arcre, buf[MAXNAMLEN + 1];
 	int ch, i, no, old, funcstat;
 
 #ifndef	_NOPRECEDE
 	haste = 0;
-# ifdef	FAKEUNINIT
-	dupsorton = sorton;	/* fake for -Wuninitialized */
-# endif
+	dupsorton = sorton;
 #endif
 #ifndef	_NOCOLOR
 	if (ansicolor) putterms(t_normal);
@@ -1390,10 +1445,10 @@ char *file, *def;
 	waitmes();
 
 	re = NULL;
-	cp = NULL;
+	arcre = NULL;
 	if (findpattern) {
 #ifndef	_NOARCHIVE
-		if (*findpattern == '/') cp = findpattern + 1;
+		if (*findpattern == '/') arcre = findpattern + 1;
 		else
 #endif
 		re = regexp_init(findpattern, -1);
@@ -1404,8 +1459,8 @@ char *file, *def;
 		maxfile = (*archivedir) ? 1 : 0;
 		blocksize = (off_t)1;
 		if (sorttype < 100) sorton = 0;
-		copyarcf(re, cp);
-		def = (*file) ? file : NULL;
+		copyarcf(re, arcre);
+		def = (*file) ? file : "";
 	}
 	else
 #endif
@@ -1413,47 +1468,12 @@ char *file, *def;
 		maxfile = 0;
 		blocksize = getblocksize(".");
 		if (sorttype < 100) sorton = sorttype;
+		if (readfilelist(re, arcre)) {
 #ifndef	_NOPRECEDE
-		if (Xgetwd(cwd) && includepath(cwd, precedepath)) {
 			haste = 1;
-			dupsorton = sorton;
 			sorton = 0;
-		}
 #endif
-		if (!(dirp = Xopendir("."))) {
-			lostcwd(NULL);
-			if (!(dirp = Xopendir("."))) error(".");
 		}
-
-		while ((dp = searchdir(dirp, re, cp))) {
-			if (ishidedot(dispmode) && *(dp -> d_name) == '.'
-			&& !isdotdir(dp -> d_name)) continue;
-			strcpy(buf, dp -> d_name);
-			for (i = 0; i < stackdepth; i++)
-				if (!strcmp(buf, filestack[i].name)) break;
-			if (i < stackdepth) continue;
-			addlist();
-			filelist[maxfile].name = strdup2(buf);
-			filelist[maxfile].ent = maxfile;
-			filelist[maxfile].tmpflags = 0;
-#ifndef	_NOPRECEDE
-			if (haste) {
-				if (isdotdir(dp -> d_name)) {
-					filelist[maxfile].flags = F_ISDIR;
-					filelist[maxfile].st_mode = S_IFDIR;
-				}
-			}
-			else
-#endif
-			{
-				if (getstatus(&(filelist[maxfile])) < 0) {
-					free(filelist[maxfile].name);
-					continue;
-				}
-			}
-			maxfile++;
-		}
-		Xclosedir(dirp);
 	}
 	regexp_free(re);
 
@@ -1467,6 +1487,13 @@ char *file, *def;
 	maxstat = (haste) ? 0 : maxfile;
 #endif
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
+
+	for (i = 0; i < maxfile; i++) {
+		if (!isfile(&(filelist[i])) || !filelist[i].st_size) continue;
+		totalsize += getblock(filelist[i].st_size);
+		if (ismark(&(filelist[i])))
+			marksize += getblock(filelist[i].st_size);
+	}
 
 	putterms(t_clear);
 	title();
@@ -1636,7 +1663,7 @@ char *file, *def;
 #endif	/* !_NOARCHIVE */
 	if (no >= 4) {
 		no -= 4;
-		strcpy(file, filelist[filepos].name);
+		strcpy(file, (maxfile) ? filelist[filepos].name : ".");
 	}
 #ifndef	_NOARCHIVE
 	if (!archivefile)
@@ -1646,6 +1673,7 @@ char *file, *def;
 		filelist[i].name = NULL;
 	}
 	maxfile = filepos = 0;
+
 #ifndef	_NOPRECEDE
 	if (haste && !sorton) sorton = dupsorton;
 #endif
@@ -1704,21 +1732,28 @@ char *path, *buf;
 	return(file);
 }
 
-VOID main_fd(path)
-char *path;
+VOID main_fd(pathlist)
+char **pathlist;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
 	char *def, *cwd;
-	int i, ischgdir;
+	int i, n, argc, ischgdir;
 
-	for (i = 0; i < MAXWINDOWS; i++) {
+	if (!pathlist) argc = 0;
+	else for (argc = 0; argc < MAXINVOKEARGS; argc++)
+		if (!pathlist[argc]) break;
+
+	cwd = getwd2();
+	def = NULL;
+	for (i = MAXWINDOWS - 1; i >= 0; i--) {
 #ifndef	_NOSPLITWIN
 		win = i;
 		winvar[i].v_fullpath = NULL;
 # ifndef	_NOARCHIVE
 		winvar[i].v_archivedir = NULL;
 # endif
-#endif
+#endif	/* !_NOSPLITWIN */
+
 #ifndef	_NOARCHIVE
 		archduplp = NULL;
 		archivefile = NULL;
@@ -1733,35 +1768,65 @@ char *path;
 		browselist = NULL;
 		browselevel = 0;
 # endif
-#endif
+#endif	/* !_NOARCHIVE */
+
 #ifndef	_NOTREE
 		treepath = NULL;
 #endif
 		findpattern = NULL;
 		filelist = NULL;
-		maxfile = maxent = filepos = sorton = dispmode = 0;
+		maxfile = maxent = filepos = 0;
+		sorton = sorttype % 100;
+		dispmode = displaymode;
+		curcolumns = defcolumns;
+
+		if (i >= argc) continue;
+
+		chdir2(cwd);
+		def = initcwd(pathlist[i], prev);
+
+#ifndef	_NOSPLITWIN
+		winvar[i].v_fullpath = strdup2(fullpath);
+		if (!i) continue;
+
+		readfilelist(NULL, NULL);
+		if (sorton)
+			qsort(filelist, maxfile, sizeof(namelist), cmplist);
+		sorton = sorttype % 100;
+
+		if (def) for (n = 0; n < maxfile; n++) {
+			if (!strpathcmp(def, filelist[n].name)) {
+				filepos = n;
+				break;
+			}
+		}
+#endif
 	}
+
 #ifndef	_NOSPLITWIN
 	win = 0;
+	while (windows < argc) {
+		windows++;
+		if (FILEPERROW < WFILEMIN) {
+			windows--;
+			hideclock = 1;
+			warning(0, NOROW_K);
+			for (i = windows; i < argc; i++) shutwin(i);
+			break;
+		}
+	}
 #endif
 
 	strcpy(file, ".");
-	sorton = sorttype % 100;
-	dispmode = displaymode;
-	curcolumns = defcolumns;
-
-	cwd = getwd2();
-	def = initcwd(path, prev);
 	_chdir2(fullpath);
 
 	for (;;) {
-		if (!def && !strcmp(file, "..")) {
+		if (def) /*EMPTY*/;
+		else if (strcmp(file, "..")) def = "";
+		else {
+			def = prev;
 			strcpy(prev, getbasename(fullpath));
-			if (*prev) def = prev;
-			else {
-				strcpy(file, ".");
-				def = NULL;
-			}
+			if (!*prev) strcpy(file, ".");
 		}
 
 		if (strcmp(file, ".")) {

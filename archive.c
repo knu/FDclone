@@ -25,8 +25,6 @@ extern int tradlayout;
 #endif
 extern int sizeinfo;
 extern off_t marksize;
-extern off_t totalsize;
-extern off_t blocksize;
 extern namelist filestack[];
 extern char fullpath[];
 extern char typesymlist[];
@@ -190,7 +188,7 @@ static int NEAR parsearchive __P_((FILE *, launchtable *, namelist *, int *));
 static VOID NEAR unpackerror __P_((VOID_A));
 static int NEAR readarchive __P_((char *, launchtable *, int));
 static char *NEAR searcharcdir __P_((char *, int));
-static int NEAR undertmp(char *);
+static int NEAR undertmp __P_((char *));
 #ifdef	_NODOSDRIVE
 static char *NEAR genfullpath __P_((char *, char *, char *));
 #else
@@ -1751,8 +1749,6 @@ char *arcre;
 #ifndef	NOSYMLINK
 		filelist[maxfile].linkname = arcflist[i].linkname;
 #endif
-		if (isfile(&(filelist[maxfile])))
-			totalsize += getblock(filelist[maxfile].st_size);
 		maxfile++;
 	}
 }

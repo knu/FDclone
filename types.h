@@ -4,6 +4,20 @@
  *	Type Definition
  */
 
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
+
+#ifndef	NOSTDLIBH
+#include <stdlib.h>
+#endif
+
 #ifdef	USEDIRECT
 #define	dirent	direct
 #endif

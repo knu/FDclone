@@ -4,8 +4,17 @@
  *	sed script maker for Makefile
  */
 
+#define	__FD_PRIMAL__
 #include "fd.h"
 #include <sys/param.h>
+
+#ifndef NOUNISTDH
+#include <unistd.h>
+#endif
+
+#ifndef NOSTDLIBH
+#include <stdlib.h>
+#endif
 
 #ifdef	USESELECTH
 #include <sys/select.h>

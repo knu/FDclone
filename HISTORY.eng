@@ -1,3 +1,10 @@
+Ver. 2.05f	Failure to treat the command line ending with '\' is fixed.
+ (06/23/04)	Failure to launch archived file with any marked files is fixed.
+		Bug that USEGETCURSOR cannot work is fixed.
+		Bug that the startup option -r cannot work is fixed.
+		Refine line editing in vi mode.
+		Ingore unsupported error for the new tty line discipline.
+
 Ver. 2.05e	Failure to copy files to destination suffixed by '/' is fixed.
  (06/09/04)	Bug that wildcard out of quotation cannot be expanded is fixed.
 		Make meta characters in directory history to be escaped.

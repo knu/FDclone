@@ -193,10 +193,32 @@ typedef long	off_t;
 || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SYSV
 #define	OSTYPE			"HPUX"
-#define	EXTENDCCOPT		"-D_FILE_OFFSET_BITS=64"
-#define	USETERMINFO
-#define	TERMCAPLIB		"-lcurses"
-#define	STRICTSTDC
+# ifdef	__CLASSIC_C__
+# define	NOSTDC
+# endif
+# ifdef	__STDC_EXT__
+# define	EXTENDCCOPT		"-D_FILE_OFFSET_BITS=64"
+# endif
+/*
+ *	This is a fake '#if' for some buggy HP-UX terminfo library.
+ *	Will you please define 'BUGGY_HPUX' manually on such environment.
+ *
+ *	Some HP-UX has buggy libcurses/terminfo, to use libtermcap/termcap.
+ *	Another HP-UX has buggy libtermlib/termcap, to use libcurses/terminfo.
+ *	Or another HP-UX does not support termcap at all.
+ *	If you use HP-UX and the terminal trouble occured,
+ *	you should try to define 'BUGGY_HPUX' here and to re-compile.
+ *
+#define	BUGGY_HPUX
+ *
+ */
+# ifndef	__HP_cc
+# define	BUGGY_HPUX		/* Maybe HP-UX 10.20 */
+# endif
+# if	!defined (BUGGY_HPUX)
+# define	USETERMINFO
+# define	TERMCAPLIB		"-lcurses"
+# endif
 #define	USEPID_T
 #define	NOSIGLIST
 #define	NOTZFILEH
@@ -446,9 +468,10 @@ typedef long	off_t;
 #define	USEMANLANG
 #define	BSDINSTALL
 #define	TARUSESPACE
-#define	TERMCAPLIB		"-lncurses"
+#define	TERMCAPLIB		"-ltermcap"
 #define	NOSIGLIST
 #define	DECLERRLIST
+#define	HAVECLINE
 #define	SYSVDIRENT
 #define	NODNAMLEN
 #define	NODRECLEN
@@ -495,6 +518,7 @@ typedef long	off_t;
 #define	DECLERRLIST
 #define	NOTZFILEH
 #define	USETIMEH
+#define	HAVECLINE
 #define	SYSVDIRENT
 #define	NODNAMLEN
 #define	HAVETIMEZONE
@@ -506,7 +530,8 @@ typedef long	off_t;
 && !defined (ia64) && !defined (__ia64) && !defined (__ia64__) \
 && !defined (x86_64) && !defined (__x86_64) && !defined (__x86_64__) \
 && !defined (s390x) && !defined (__s390x) && !defined (__s390x__) \
-&& !defined (CONFIG_ARCH_S390X)
+&& !defined (CONFIG_ARCH_S390X) \
+&& (!defined (PPC) || !defined (__GNUC__) || __GNUC__ >= 3)	/* for bug */
 # define	USELLSEEK
 # endif
 #define	SIGFNCINT
@@ -770,7 +795,11 @@ typedef long	off_t;
 
 /* #define FORCEDSTDC	;not defined __STDC__, but expect standard C */
 /* #define STRICTSTDC	;cannot allow K&R type function declaration */
+/* #define NOSTDC	;defined __STDC__, but expect traditional C */
+/* #define NOCONST	;defined __STDC__, but cannot use 'const' qualifier */
 /* #define NOVOID	;cannot use type 'void' */
+/* #define NOLONGLONG	;cannot use type 'long long' */
+/* #define HAVELONGLONG	;have type 'long long' */
 /* #define NOUID_T	;uid_t, gid_t is not defined in <sys/types.h> */
 /* #define USEPID_T	;pid_t is defined in <sys/types.h> as process ID */
 /* #define DECLSIGLIST	;'sys_siglist[]' declared in <signal.h> */
@@ -792,6 +821,7 @@ typedef long	off_t;
 /* #define USESGTTY	;use sgtty interface */
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
+/* #define HAVECLINE	;struct termios has c_line */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	;dirent interface behaves as System V */
 /* #define NODNAMLEN	;struct dirent hasn't d_namlen */
@@ -863,8 +893,6 @@ typedef long	off_t;
 /* #define WAITKEYPAD	;interval to wait after getting input of ESC [ms] */
 /* #define WAITMETA	;interval to wait after getting input of META [ms] */
 
-#include "config.h"
-
 
 /*                             */
 /* DO NOT DELETE or EDIT BELOW */
@@ -921,6 +949,13 @@ typedef long	off_t;
 # endif
 #endif
 
+/*                                 */
+/* Eval configurations by Configur */
+/*                                 */
+
+#include "config.h"
+
+
 #ifdef	USETERMIOS
 # ifdef	USETERMIO
 # undef	USETERMIO
@@ -935,23 +970,39 @@ typedef long	off_t;
 #define	USESGTTY
 #endif
 
-#if	defined (__STDC__) || defined (FORCEDSTDC)
+#if	defined (__STDC__) && !defined (NOSTDC) && !defined (FORCEDSTDC)
+#define	FORCEDSTDC
+#endif
+
+#if	defined (__STRICT_ANSI__) && !defined (STRICTSTDC)
+#define	STRICTSTDC
+#endif
+
+#if	defined (FORCEDSTDC) && !defined (USESTDARGH)
 #define	USESTDARGH
 #endif
 
-#if	(defined (__STDC__) || defined (FORCEDSTDC)) \
-&& !defined (__STRICT_ANSI__) && !defined (STRICTSTDC)
+#if	defined (__STDC__) && !defined (NOSTDC) \
+&& !defined (NOLONGLONG) && !defined (HAVELONGLONG)
+#define	HAVELONGLONG
+#endif
+
+#if	defined (FORCEDSTDC) && !defined (STRICTSTDC)
 #define	__P_(args)	args
 #else
 #define	__P_(args)	()
 #endif
 
-#if	(defined (__STDC__) || defined (FORCEDSTDC))
+#if	defined (FORCEDSTDC) && !defined (NOCONST)
 #define	CONST		const
+#else
+#define	CONST
+#endif
+
+#ifdef	FORCEDSTDC
 #define	ALLOC_T		size_t
 #define	VOID_A		void
 #else
-#define	CONST
 #define	ALLOC_T		unsigned
 #define	VOID_A
 #endif

@@ -1473,18 +1473,20 @@ int *yp, *xp;
 		buf[0] = tmp;
 # endif
 	} while (buf[0] != format[0]);
-	for (i = 1; i < sizeof(buf) - 1; i++) {
+
+	i = 1;
+	while (i < sizeof(buf) - 1) {
 		if (!kbhit2(WAITKEYPAD * 1000L)) return(-1);
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
 		if ((tmp = getch2()) == EOF) return(-1);
-		buf[0] = tmp;
+		buf[i] = tmp;
 # endif
-		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
+		if (buf[i++] == format[sizeof(SIZEFMT) - 2]) break;
 	}
 	keyflush();
-	buf[++i] = '\0';
+	buf[i] = '\0';
 
 	count = 0;
 	val[0] = yp;
@@ -1967,16 +1969,26 @@ char *s;
 	tgetstr2(&c_ndown, TERM_DO);
 	tgetstr2(&c_nright, TERM_RI);
 	tgetstr2(&c_nleft, TERM_LE);
+
+# if	!defined (HPUX) || !defined (USETERMINFO) \
+|| (defined (set_a_foreground) && defined (set_foreground))
+	/* Hack for HP-UX 10.20 */
 	cp = NULL;
 	if (tgetstr2(&cp, TERM_AF) || tgetstr2(&cp, TERM_Sf)) {
 		if (t_fgcolor) free(t_fgcolor);
 		t_fgcolor = cp;
 	}
+# endif
+
+# if	!defined (HPUX) || !defined (USETERMINFO) \
+|| (defined (set_a_background) && defined (set_background))
+	/* Hack for HP-UX 10.20 */
 	cp = NULL;
 	if (tgetstr2(&cp, TERM_AB) || tgetstr2(&cp, TERM_Sb)) {
 		if (t_fgcolor) free(t_bgcolor);
 		t_bgcolor = cp;
 	}
+# endif
 
 	tgetkeyseq(K_UP, TERM_ku);
 	tgetkeyseq(K_DOWN, TERM_kd);
@@ -2027,9 +2039,14 @@ char *s;
 	if (winterm);
 	else
 # endif
+
+# if	!defined (HPUX) || !defined (USETERMINFO) \
+|| (defined (key_enter) && defined (key_beg) && defined (key_end))
+	/* Hack for HP-UX 10.20 */
 	tgetkeyseq(K_ENTER, TERM_at8);
 	tgetkeyseq(K_BEG, TERM_at1);
 	tgetkeyseq(K_END, TERM_at7);
+# endif
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) {
 		if (!(keyseq[i].str)) keyseq[i].len = 0;

@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2004 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.05e 06/09/04
+.\" @(#)fd.1   2.05f 06/23/04
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "June 9, 2004"
+.TH FD 1 "June 23, 2004"
 .de sh
 .br
 .PP
@@ -2645,6 +2645,12 @@ Same as
 Same as
 .BR \-x .
 .RE
+.RS
+If
+.IR option
+is omitted,
+the values of the current options are displayed.
+.RE
 .IP "\fB\-t\fP"
 Exit immediately after executing the current command input.
 .IP "\fB\-u\fP"
@@ -3628,7 +3634,7 @@ in order to input normal keys.
 .ta 0.5i 1.5i 2i 3i 3.5i
 .nf
 (command mode)
-\fBk\fP	= \fBUp\fP	\fB0\fP	= \fBBeg\fP	\fBI\fP	= \fBIns\fP
+\fBk\fP	= \fBUp\fP	\fB0\fP	= \fBBeg\fP
 \fBj\fP	= \fBDown\fP	\fB$\fP	= \fBEol\fP	\fBx\fP	= \fBDel\fP
 \fBl\fP	= \fBRight\fP	\fBg\fP	= \fBHome\fP
 \fBh\fP	= \fBLeft\fP	\fBG\fP	= \fBEnd\fP	\fBD\fP	= \fBDelLine\fP
@@ -3637,6 +3643,7 @@ in order to input normal keys.
 \fB^[\fP	= \fBEsc\fP
 (from command mode to insert mode)
 \fBi\fP, \fB:\fP	= only switch its mode
+		\fBI\fP	= + \fBBeg\fP
 \fBa\fP	= + \fBRight\fP	\fBA\fP	= + \fBEol\fP
 \fBR\fP	= overwrite
 \fBr\fP	= overwrite once

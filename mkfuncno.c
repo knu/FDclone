@@ -5,10 +5,12 @@
  */
 
 #include <stdio.h>
-#include "fd.h"
+#include <string.h>
+#include "machine.h"
 
 #define	_TBL_(func, id, hlp, flg)	{NULL, id, NULL, 0}
 
+#include "types.h"
 #include "functabl.h"
 
 
