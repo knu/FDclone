@@ -228,7 +228,7 @@
 #define	REGEXPLIB		"-lgen"
 #define	USESTATVFSH
 #define	USEMNTTABH
-#define	USERE_COMP
+#define	USEUTIME
 #endif
 
 #if defined (mips) && !defined (OSTYPE)

@@ -56,8 +56,8 @@ extern int dispmode;
 # endif
 #endif
 
-static VOID abandon();
 static VOID signalexit();
+static sigarg_t ignore();
 static sigarg_t hungup();
 static sigarg_t illerror();
 static sigarg_t traperror();
@@ -77,6 +77,7 @@ static sigarg_t segerror();
 #ifdef	SIGSYS
 static sigarg_t syserror();
 #endif
+static sigarg_t pipeerror();
 static sigarg_t terminate();
 #ifdef	SIGXCPU
 static sigarg_t xcpuerror();
@@ -107,23 +108,12 @@ int histsize;
 int savehist;
 int dircountlimit;
 char *deftmpdir;
+char *tmpfilename;
 char *language;
 
 static char *progname;
 static int timersec = 0;
 
-
-static VOID abandon(no)
-int no;
-{
-	char *cp, tmpfile[2 + sizeof(int) + 1];
-
-	cp = evalpath(strdup2(deftmpdir));
-	sprintf(tmpfile, "fd%d", getpid());
-	forcecleandir(cp, tmpfile);
-	free(cp);
-	exit(no);
-}
 
 VOID error(str)
 char *str;
@@ -133,48 +123,48 @@ char *str;
 	inittty(1);
 	fputc('\007', stderr);
 	perror(str);
-	abandon(1);
+	forcecleandir(deftmpdir, tmpfilename);
+	exit(127);
 }
 
-static VOID signalexit(str)
-char *str;
+static VOID signalexit(sig)
+int sig;
 {
-	endterm();
-	inittty(1);
-	fprintf(stderr, "\007%s\n", str);
-	abandon(1);
+	signal(sig, SIG_IGN);
+	forcecleandir(deftmpdir, tmpfilename);
+	signal(sig, SIG_DFL);
+	kill(getpid(), sig);
+}
+
+static sigarg_t ignore()
+{
 }
 
 static sigarg_t hangup()
 {
-	signal(SIGHUP, SIG_IGN);
-	signalexit("Hangup");
+	signalexit(SIGHUP);
 }
 
 static sigarg_t illerror()
 {
-	signal(SIGILL, SIG_IGN);
-	signalexit("Illegal instruction");
+	signalexit(SIGILL);
 }
 
 static sigarg_t traperror()
 {
-	signal(SIGTRAP, SIG_IGN);
-	signalexit("Trace/BPT trap");
+	signalexit(SIGTRAP);
 }
 
 #ifdef	SIGIOT
 static sigarg_t ioerror()
 {
-	signal(SIGIOT, SIG_IGN);
-	signalexit("IOT trap");
+	signalexit(SIGIOT);
 }
 #else
 # ifdef	SIGABRT
 static sigarg_t oldabort()
 {
-	signal(SIGABRT, SIG_IGN);
-	signalexit("Abort");
+	signalexit(SIGABRT);
 }
 # endif
 #endif
@@ -182,56 +172,53 @@ static sigarg_t oldabort()
 #ifdef	SIGEMT
 static sigarg_t emuerror()
 {
-	signal(SIGEMT, SIG_IGN);
-	signalexit("EMT trap");
+	signalexit(SIGEMT);
 }
 #endif
 
 static sigarg_t floaterror()
 {
-	signal(SIGFPE, SIG_IGN);
-	signalexit("Floating point exception");
+	signalexit(SIGFPE);
 }
 
 static sigarg_t buserror()
 {
-	signal(SIGBUS, SIG_IGN);
-	signalexit("Bus error");
+	signalexit(SIGBUS);
 }
 
 static sigarg_t segerror()
 {
-	signal(SIGSEGV, SIG_IGN);
-	signalexit("Segmemtation fault");
+	signalexit(SIGSEGV);
 }
 
 #ifdef	SIGSYS
 static sigarg_t syserror()
 {
-	signal(SIGSYS, SIG_IGN);
-	signalexit("Bad system call");
+	signalexit(SIGSYS);
 }
 #endif
 
+static sigarg_t pipeerror()
+{
+	signalexit(SIGPIPE);
+}
+
 static sigarg_t terminate()
 {
-	signal(SIGTERM, SIG_IGN);
-	signalexit("Terminated");
+	signalexit(SIGTERM);
 }
 
 #ifdef	SIGXCPU
 static sigarg_t xcpuerror()
 {
-	signal(SIGXCPU, SIG_IGN);
-	signalexit("Cputime limit exceeded");
+	signalexit(SIGXCPU);
 }
 #endif
 
 #ifdef	SIGXFSZ
 static sigarg_t xsizerror()
 {
-	signal(SIGXFSZ, SIG_IGN);
-	signalexit("Filesize limit exceeded");
+	signalexit(SIGXFSZ);
 }
 #endif
 
@@ -274,14 +261,16 @@ static sigarg_t printtime()
 VOID sigvecset()
 {
 	getwsize(80, WHEADER + WFOOTER + 2);
-	signal(SIGWINCH, (sigarg_t (*)())wintr);
 	signal(SIGALRM, (sigarg_t (*)())printtime);
+	signal(SIGTSTP, SIG_IGN);
+	signal(SIGWINCH, (sigarg_t (*)())wintr);
 }
 
 VOID sigvecreset()
 {
-	signal(SIGWINCH, SIG_IGN);
-	signal(SIGALRM, SIG_IGN);
+	signal(SIGALRM, (sigarg_t (*)())ignore);
+	signal(SIGTSTP, SIG_DFL);
+	signal(SIGWINCH, (sigarg_t (*)())ignore);
 }
 
 VOID title()
@@ -843,6 +832,7 @@ VOID evalenv()
 	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
 		dircountlimit = DIRCOUNTLIMIT;
 	if (!(deftmpdir = getenv2("FD_TMPDIR"))) deftmpdir = TMPDIR;
+	deftmpdir = evalpath(strdup2(deftmpdir));
 	language = getenv2("FD_LANGUAGE");
 }
 
@@ -877,10 +867,13 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {
+	char buf[MAXNAMLEN + 1];
 	int i;
 
 	if (progname = strrchr(argv[0], '/')) progname++;
 	else progname = argv[0];
+	sprintf(buf, "%s%d", progname, getpid());
+	tmpfilename = strdup2(buf);
 
 	inittty(0);
 	raw2();
@@ -892,8 +885,8 @@ char *argv[];
 	sigvecset();
 
 	signal(SIGHUP, (sigarg_t (*)())hangup);
-	signal(SIGINT, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
+	signal(SIGINT, (sigarg_t (*)())ignore);
+	signal(SIGQUIT, (sigarg_t (*)())ignore);
 	signal(SIGILL, (sigarg_t (*)())illerror);
 	signal(SIGTRAP, (sigarg_t (*)())traperror);
 #ifdef	SIGIOT
@@ -912,9 +905,8 @@ char *argv[];
 #ifdef	SIGSYS
 	signal(SIGSYS, (sigarg_t (*)())syserror);
 #endif
-	signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, (sigarg_t (*)())pipeerror);
 	signal(SIGTERM, (sigarg_t (*)())terminate);
-	signal(SIGTSTP, SIG_IGN);
 #ifdef	SIGXCPU
 	signal(SIGXCPU, (sigarg_t (*)())xcpuerror);
 #endif

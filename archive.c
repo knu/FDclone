@@ -32,6 +32,7 @@ extern int sorton;
 extern char fullpath[];
 extern char *findpattern;
 extern char *deftmpdir;
+extern char *tmpfilename;
 
 #define	PM_LHA	2, 2,\
 		{0, 1, 1, 2, 6, 4, 5, 6, 7},\
@@ -665,9 +666,7 @@ int max;
 	char *cp, path[MAXPATHLEN + 1];
 	int i, dupmark;
 
-	cp = evalpath(strdup2(deftmpdir));
-	sprintf(path, "%s/fd%d.%d", cp, getpid(), launchlevel);
-	free(cp);
+	sprintf(path, "%s/%s.%d", deftmpdir, tmpfilename, launchlevel);
 	if (mkdir(path, 0777) < 0) {
 		warning(-1, path);
 		return(NULL);

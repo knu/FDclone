@@ -262,30 +262,27 @@ int max, tr;
 int forcecleandir(dir, file)
 char *dir, *file;
 {
-	DIR *dirp;
-	struct dirent *dp;
-	struct stat status;
-	char path[MAXPATHLEN + 1];
-	int len;
+	extern char **environ;
+	char *rm, buf[MAXPATHLEN + 1];
+	int i, len, pid;
 
-	if (!(dirp = opendir(dir))) return(-1);
-	while (dp = readdir(dirp)) {
-		if (!strcmp(dp -> d_name, ".")
-		|| !strcmp(dp -> d_name, "..")) continue;
-		if (file && (len = strlen(file)) > 0
-		&& strncmp(dp -> d_name, file, len)) continue;
+	rm = "/bin/rm -rf ";
+	for (i = 0; rm[i]; i++) buf[i] = rm[i];
+	len = i;
+	for (i = 0; dir[i]; i++) buf[len + i] = dir[i];
+	len += i;
+	buf[len++] = '/';
+	for (i = 0; file[i]; i++) buf[len + i] = file[i];
+	len += i;
+	buf[len++] = '*';
+	buf[len] = '\0';
 
-		strcpy(path, dir);
-		strcat(path, "/");
-		strcat(path, dp -> d_name);
-		if (lstat(path, &status) < 0
-		|| (status.st_mode & S_IFMT) != S_IFDIR) unlink(path);
-		else {
-			forcecleandir(path, NULL);
-			rmdir(path);
-		}
+	if ((pid = fork()) < 0) return(-1);
+	else if (pid) while ((i = wait(0)) != pid) if (i < 0) return(-1);
+	else {
+		execle("/bin/sh", "sh", "-c", buf, NULL, environ);
+		_exit(127);
 	}
-	closedir(dirp);
 	return(0);
 }
 
