@@ -10,10 +10,6 @@
 
 #ifndef	_NOROCKRIDGE
 
-#if	!MSDOS
-#include <sys/param.h>
-#endif
-
 extern char fullpath[];
 
 #define	TRANSTBLFILE	"TRANS.TBL"
@@ -67,30 +63,30 @@ static assoclist *NEAR readtranstbl(VOID_A)
 	for (;;) {
 		strcpy(file, TRANSTBLFILE);
 		flag = RR_TRANS;
-		if ((fp = _Xfopen(file, "r"))) break;
+		if ((fp = _Xfopen(file, "r", 1))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE) - 1, ";%d", TRANSTBLVAR);
+		sprintf(&(file[sizeof(TRANSTBLFILE) - 1]), ";%d", TRANSTBLVAR);
 		flag |= RR_VERNO;
-		if ((fp = _Xfopen(file, "r"))) break;
+		if ((fp = _Xfopen(file, "r", 1))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE) - 1, "-%d", TRANSTBLVAR);
+		sprintf(&(file[sizeof(TRANSTBLFILE) - 1]), "-%d", TRANSTBLVAR);
 		flag |= RR_HYPHN;
-		if ((fp = _Xfopen(file, "r"))) break;
+		if ((fp = _Xfopen(file, "r", 1))) break;
 
 		for (i = 0; i < sizeof(TRANSTBLFILE) - 1; i++)
 			file[i] = tolower2(TRANSTBLFILE[i]);
 		file[i] = '\0';
 
 		flag = RR_TRANS | RR_LOWER;
-		if ((fp = _Xfopen(file, "r"))) break;
+		if ((fp = _Xfopen(file, "r", 1))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE) - 1, ";%d", TRANSTBLVAR);
+		sprintf(&(file[sizeof(TRANSTBLFILE) - 1]), ";%d", TRANSTBLVAR);
 		flag |= RR_VERNO;
-		if ((fp = _Xfopen(file, "r"))) break;
+		if ((fp = _Xfopen(file, "r", 1))) break;
 
-		sprintf(file + sizeof(TRANSTBLFILE) - 1, "-%d", TRANSTBLVAR);
+		sprintf(&(file[sizeof(TRANSTBLFILE) - 1]), "-%d", TRANSTBLVAR);
 		flag |= RR_HYPHN;
-		if ((fp = _Xfopen(file, "r"))) break;
+		if ((fp = _Xfopen(file, "r", 1))) break;
 
 		return(NULL);
 	}
@@ -136,7 +132,7 @@ static assoclist *NEAR readtranstbl(VOID_A)
 		new -> org = org;
 		new -> assoc = malloc2(len + 1);
 		*(new -> assoc) = *line;
-		strcpy(new -> assoc + 1, cp);
+		strcpy(&(new -> assoc[1]), cp);
 
 		if (*line == 'L') {
 			cp = eol;
@@ -236,7 +232,7 @@ char *file, *buf;
 		}
 		if (!tp) cp = file;
 		else {
-			strncpy2(buf, tp -> assoc + 1, MAXNAMLEN);
+			strncpy2(buf, &(tp -> assoc[1]), MAXNAMLEN);
 			cp = buf;
 			start = tp -> next;
 		}
@@ -267,7 +263,7 @@ int rdlink, plen;
 
 	if (rr_cwd && !strpathcmp(buf, rr_cwd)) tbl = rr_curtbl;
 	else {
-		_Xchdir(buf);
+		_Xchdir(buf, 1);
 		tbl = readtranstbl();
 	}
 
@@ -275,7 +271,7 @@ int rdlink, plen;
 	if (!tbl) cp = NULL;
 	else {
 		while (tp) {
-			if (!strpathcmp(cp, tp -> assoc + 1)) break;
+			if (!strpathcmp(cp, &(tp -> assoc[1]))) break;
 			if ((tp = tp -> next) == start) tp = NULL;
 		}
 		if (!tp) cp = NULL;
@@ -286,7 +282,7 @@ int rdlink, plen;
 			if (!rdlink || *(tp -> assoc) != 'L')
 				strncpy2(tmp, tp -> org, len);
 			else {
-				for (cp = tp -> assoc + 1; *cp; cp++);
+				for (cp = &(tp -> assoc[1]); *cp; cp++);
 				cp++;
 				strncpy2(tmp, cp, len);
 				detransfile(buf, buf, 1);
@@ -307,11 +303,12 @@ int rdlink;
 	char *cp, *tmp, cwd[MAXPATHLEN], rpath[MAXPATHLEN];
 	int len;
 
-	if (!(cp = includepath(rpath, path, &rockridgepath)) || !Xgetwd(cwd))
+	if (!(cp = includepath(rpath, path, &rockridgepath))
+	|| !_Xgetwd(cwd, 1))
 		return(path);
 
 #if	MSDOS || !defined (_NODOSDRIVE)
-	if (_dospath(cp)) tmp = strchr(cp + 2, PATHDELIM);
+	if (_dospath(cp)) tmp = strchr(&(cp[2]), PATHDELIM);
 	else
 #endif
 	tmp = strchr(cp, PATHDELIM);
@@ -323,7 +320,7 @@ int rdlink;
 
 	if (_detransfile(rpath, buf, rdlink, len))
 		path = realpath2(buf, buf, rdlink);
-	_Xchdir(cwd);
+	_Xchdir(cwd, 1);
 	return(path);
 }
 #endif	/* !_NOROCKRIDGE */

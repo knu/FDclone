@@ -7,6 +7,10 @@
 #ifndef	_UNIXEMU_H
 #define	_UNIXEMU_H
 
+#ifdef	USETIMEH
+#include <time.h>
+#endif
+
 #ifdef	MAXPATHLEN
 #undef	MAXPATHLEN
 #endif

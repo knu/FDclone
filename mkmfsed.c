@@ -32,8 +32,15 @@ char *argv[];
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__OBJS__:dosemu.o:\n");
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
-	printf("s:__SOBJLIST__:$(SOBJ):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
+
+#ifdef	USEDATADIR
+	printf("s:__UNITBLPATH__:-DDATADIR='\"'$(DATADIR)'\"':\n");
+	printf("s:__DATADIR__:$(DATADIR):\n");
+#else
+	printf("s:__UNITBLPATH__::\n");
+	printf("s:__DATADIR__:$(BINDIR):\n");
+#endif
 
 	printf("s:	__RENAME__:#	mv:\n");
 	printf("s:	__AOUT2EXE__:#	aout2exe:\n");
@@ -67,6 +74,7 @@ char *argv[];
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
 	printf("s:__MEM__::\n");
 	printf("s:__SHMEM__::\n");
+	printf("s:__BSHMEM__::\n");
 #ifdef	CCOUTOPT
 	printf("s:__OUT__:%s:\n", CCOUTOPT);
 #else

@@ -16,6 +16,8 @@ extern int errno;
 #include "unixemu.h"
 #else
 #include <sys/time.h>
+#include <sys/param.h>
+#include <sys/file.h>
 # ifdef	USEDIRECT
 # include <sys/dir.h>
 #  ifdef	DIRSIZ
@@ -31,6 +33,10 @@ extern int errno;
 
 #ifdef	USETIMEH
 #include <time.h>
+#endif
+
+#ifndef	_NODOSDRIVE
+#include "dosdisk.h"
 #endif
 
 #if	(GETTODARGS == 1)
@@ -54,7 +60,10 @@ extern int errno;
 /* main.c */
 extern VOID error __P_((char *));
 extern int sigvecset __P_((int));
-extern VOID title __P_((void));
+extern VOID title __P_((VOID_A));
+#ifndef	_NOCUSTOMIZE
+VOID saveorigenviron __P_((VOID_A));
+#endif
 extern int loadruncom __P_((char *, int));
 
 /* dosemu.c or unixemu.c */
@@ -74,39 +83,24 @@ extern int dospath3 __P_((char *));
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 extern int getkcode __P_((char *));
 #endif
-extern DIR *_Xopendir __P_((char *));
-#ifdef	_NOROCKRIDGE
-#define	Xopendir	_Xopendir
-#else
-extern DIR *Xopendir __P_((char *));
-#endif
+extern DIR *_Xopendir __P_((char *, int));
+#define	Xopendir(p)	_Xopendir(p, 0)
 extern int Xclosedir __P_((DIR *));
-extern struct dirent *Xreaddir __P_((DIR *));
+extern struct dirent *_Xreaddir __P_((DIR *, int));
+#define	Xreaddir(d)	_Xreaddir(d, 0)
 extern VOID Xrewinddir __P_((DIR *));
 #if	MSDOS
 extern int rawchdir __P_((char *));
 #else
 #define	rawchdir	chdir
 #endif
-#if	MSDOS && defined (_NODOSDRIVE)
-#define	_Xchdir		rawchdir
-#else
-extern int _Xchdir __P_((char *));
-#endif
-#ifdef	_NOROCKRIDGE
-#define	Xchdir		_Xchdir
-#else
-extern int Xchdir __P_((char *));
-#endif
-extern char *_Xgetwd __P_((char *));
-extern char *Xgetwd __P_((char *));
+extern int _Xchdir __P_((char *, int));
+#define	Xchdir(p)	_Xchdir(p, 0)
+extern char *_Xgetwd __P_((char *, int));
+#define	Xgetwd(p)	_Xgetwd(p, 0)
 extern int Xstat __P_((char *, struct stat *));
-#if	MSDOS || defined (_NOKANJIFCONV)
-#define	_Xlstat(p, s)	(lstat(p, s) ? -1 : 0)
-#else
-extern int _Xlstat __P_((char *, struct stat *));
-#endif
-extern int Xlstat __P_((char *, struct stat *));
+extern int _Xlstat __P_((char *, struct stat *, int, int));
+#define	Xlstat(p, s)	_Xlstat(p, s, 0, 0)
 extern int Xaccess __P_((char *, int));
 extern int Xsymlink __P_((char *, char *));
 extern int Xreadlink __P_((char *, char *, int));
@@ -117,12 +111,10 @@ extern int Xutime __P_((char *, struct utimbuf *));
 extern int Xutimes __P_((char *, struct timeval []));
 #endif
 extern int Xunlink __P_((char *));
-extern int Xrename __P_((char *, char *));
-#if	MSDOS && defined (_NOROCKRIDGE) && defined (_NOUSELFN)
-#define	Xopen		open
-#else
-extern int Xopen __P_((char *, int, int));
-#endif
+extern int _Xrename __P_((char *, char *, int));
+#define	Xrename(f, t)	_Xrename(f, t, 0)
+extern int _Xopen __P_((char *, int, int, int));
+#define	Xopen(p, f, m)	_Xopen(p, f, m, 0)
 #ifdef	_NODOSDRIVE
 #define	Xclose		close
 #define	Xread		read
@@ -141,54 +133,12 @@ extern off_t Xlseek __P_((int, off_t, int));
 extern int Xdup __P_((int));
 extern int Xdup2 __P_((int, int));
 #endif
-#if	MSDOS && defined (_NOUSELFN)
-# ifdef	DJGPP
-#define	_Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
-# else
-extern int _Xmkdir __P_((char *, int));
-# endif
-#define	_Xrmdir(p)	(rmdir(p) ? -1 : 0)
-#else
-# if	!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJIFCONV)
-#define	_Xmkdir		mkdir
-#define	_Xrmdir		rmdir
-# else
-extern int _Xmkdir __P_((char *, int));
-extern int _Xrmdir __P_((char *));
-# endif
-#endif
-#ifdef	_NOROCKRIDGE
-# if	MSDOS && defined (_NOUSELFN)
-#  ifdef	DJGPP
-#define	Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
-#  else
-#define	Xmkdir(p, m)	(mkdir(p) ? -1 : 0)
-#  endif
-#define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
-# else
-#  if	!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJIFCONV)
-#define	Xmkdir		mkdir
-#define	Xrmdir		rmdir
-#  else
-#define	Xmkdir		_Xmkdir
-#define	Xrmdir		_Xrmdir
-#  endif
-# endif
-#else
-extern int Xmkdir __P_((char *, int));
-extern int Xrmdir __P_((char *));
-#endif
-#if	(MSDOS && defined (_NOUSELFN)) \
-|| (!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJIFCONV))
-#define	_Xfopen		fopen
-#else
-extern FILE *_Xfopen __P_((char *, char *));
-#endif
-#ifdef	_NOROCKRIDGE
-#define	Xfopen		_Xfopen
-#else
-extern FILE *Xfopen __P_((char *, char *));
-#endif
+extern int _Xmkdir __P_((char *, int, int, int));
+#define	Xmkdir(p, m)	_Xmkdir(p, m, 0, 0)
+extern int _Xrmdir __P_((char *, int, int));
+#define	Xrmdir(p)	_Xrmdir(p, 0, 0)
+extern FILE *_Xfopen __P_((char *, char *, int));
+#define	Xfopen(p, t)	_Xfopen(p, t, 0)
 #ifdef	_NODOSDRIVE
 #define	Xfdopen		fdopen
 #define	Xfclose		fclose
@@ -244,11 +194,9 @@ extern int atoi2 __P_((char *));
 extern int putenv2 __P_((char *));
 extern int setenv2 __P_((char *, char *));
 extern char *getenv2 __P_((char *));
-#ifdef	DEBUG
-extern VOID freeenv __P_((VOID_A));
-#endif
 extern int system2 __P_((char *, int));
 extern char *getwd2 __P_((VOID_A));
+extern time_t time2 __P_((VOID_A));
 extern time_t timelocal2 __P_((struct tm *));
 extern char *fgets2 __P_((FILE *, int));
 
@@ -265,7 +213,6 @@ extern int logical_access __P_((u_short));
 extern int logical_access __P_((u_short, uid_t, gid_t));
 #endif
 extern int getstatus __P_((namelist *));
-extern int isdotdir __P_((char *));
 extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
 #ifndef	_NOTREE
 extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
@@ -278,6 +225,7 @@ extern VOID lostcwd __P_((char *));
 extern int safewrite __P_((int, char *, int));
 extern int safecpfile __P_((char *, char *, struct stat *, struct stat *));
 extern int safemvfile __P_((char *, char *, struct stat *, struct stat *));
+extern char *genrandname __P_((char *, int));
 extern int mktmpdir __P_((char *));
 extern int rmtmpdir __P_((char *));
 extern int mktmpfile __P_((char *, char *));
@@ -298,7 +246,7 @@ extern int rmvfile __P_((char *));
 extern int rmvdir __P_((char *));
 extern int findfile __P_((char *));
 extern int finddir __P_((char *));
-extern int inputattr __P_((namelist *, u_short));
+extern int inputattr __P_((namelist *, int));
 extern int setattr __P_((char *));
 extern int applyfile __P_((int (*)__P_((char *)), char *));
 extern int applydir __P_((char *, int (*)__P_((char *)),
@@ -327,7 +275,6 @@ extern char *killmeta __P_((char *));
 extern VOID adjustpath __P_((VOID_A));
 #endif
 extern char *includepath __P_((char *, char *, char **));
-extern VOID freevar __P_((char **));
 #if	(FD < 2) && !defined (_NOARCHIVE)
 extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
 #endif
@@ -348,9 +295,12 @@ extern VOID printlaunchcomm __P_((int, int, FILE *));
 extern VOID printarchcomm __P_((int, FILE *));
 extern int freemacro __P_((int));
 extern VOID printmacro __P_((int, FILE *));
+#if	!MSDOS && !defined (_NODOSDRIVE)
+extern int searchdrv __P_((devinfo *, int, char *, int, int, int, int));
 extern int deletedrv __P_((int));
 extern int insertdrv __P_((int, int, char *, int, int, int));
 extern VOID printsetdrv __P_((int, int, FILE *));
+#endif
 #if	!MSDOS && !defined (_NOKEYMAP)
 extern VOID printkeymap __P_((int, char *, int, FILE *));
 #endif
@@ -402,7 +352,7 @@ extern VOID freedefine __P_((VOID_A));
 
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
-extern char *inputshellstr __P_((char *, int, int, char *));
+extern char *inputshellstr __P_((char *, int, char *));
 extern char *inputshellloop __P_((int, char *));
 extern int execmacro __P_((char *, char *, int, int, int));
 #ifdef	_NOORIGSHELL
@@ -466,7 +416,8 @@ extern int selectstr __P_((int *, int, int, char *[], int []));
 extern VOID help __P_((int));
 extern int writablefs __P_((char *));
 extern long getblocksize __P_((char *));
-extern VOID getinfofs __P_((char *, long *, long *));
+extern long calcKB __P_((long, long));
+extern int getinfofs __P_((char *, long *, long *, long *));
 extern int infofs __P_((char *));
 
 /* rockridge.c */
@@ -474,6 +425,9 @@ extern int infofs __P_((char *));
 extern int transfilelist __P_((VOID_A));
 extern char *transfile __P_((char *, char *));
 extern char *detransfile __P_((char *, char *, int));
+#else
+#define	transfile(p, b)		(p)
+#define	detransfile(p, b, l)	(p)
 #endif
 
 /* archive.c */
@@ -505,11 +459,24 @@ extern VOID evalenv __P_((VOID_A));
 extern VOID freeenvpath __P_((VOID_A));
 #endif
 #ifndef	_NOCUSTOMIZE
+VOID freestrarray __P_((char **, int));
 char **copystrarray __P_((char **, char **, int *, int));
 extern bindtable *copybind __P_((bindtable *, bindtable *));
 # if	!MSDOS && !defined (_NOKEYMAP)
-extern keymaptable *copykeymap __P_((keymaptable *));
 extern VOID freekeymap __P_((keymaptable *));
+extern keymaptable *copykeymap __P_((keymaptable *));
+# endif
+# ifndef	_NOARCHIVE
+extern VOID freelaunch __P_((launchtable *, int));
+extern launchtable *copylaunch __P_((launchtable *, launchtable *,
+	int *, int));
+extern VOID freearch __P_((archivetable *, int));
+extern archivetable *copyarch __P_((archivetable *, archivetable *,
+	int *, int));
+# endif
+# if	!MSDOS && !defined (_NODOSDRIVE)
+extern VOID freedrive __P_((devinfo *));
+extern devinfo *copydrive __P_((devinfo *, devinfo *));
 # endif
 extern VOID rewritecust __P_((int));
 extern int customize __P_((VOID_A));

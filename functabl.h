@@ -19,15 +19,16 @@
 			| (((oct) >> 14) & 0200))
 
 functable funclist[] = {
-	/*						  +--------- RESTRICT
-	 *						  |+-------- NO_FILE
-	 *						  ||+------- ARCH
-	 *						  |||+------ KILLSTK
-	 *						  ||||+----- RESCRN
-	 *						  |||||++-- 01: REWRITE
-	 *						  |||||||   10: RELIST
-	 *						  |||||||   11: REWIN
-	 *						  |||||||   */
+	/*						 +---------- NEEDSTAT
+	 *						 |+--------- RESTRICT
+	 *						 ||+-------- NO_FILE
+	 *						 |||+------- ARCH
+	 *						 ||||+------ KILLSTK
+	 *						 |||||+----- RESCRN
+	 *						 ||||||++-- 01: REWRITE
+	 *						 ||||||||   10: RELIST
+	 *						 ||||||||   11: REWIN
+	 *						 ||||||||   */
 	_TBL_(cur_up,		"CUR_UP",	CUP_H,	000010000),
 	_TBL_(cur_down,		"CUR_DOWN",	CDWN_H,	000010000),
 	_TBL_(cur_right,	"CUR_RIGHT",	CRIG_H,	000010000),
@@ -42,26 +43,26 @@ functable funclist[] = {
 	_TBL_(two_columns,	"TWO_COLUMNS",	COL2_H,	000110111),
 	_TBL_(three_columns,	"THREE_COLUMNS",COL3_H,	000110111),
 	_TBL_(five_columns,	"FIVE_COLUMNS",	COL5_H,	000110111),
-	_TBL_(mark_file,	"MARK_FILE",	MRK_H,	000010001),
-	_TBL_(mark_file2,	"MARK_FILE2",	MRK2_H,	000010001),
-	_TBL_(mark_file3,	"MARK_FILE3",	MRK2_H,	000010001),
-	_TBL_(mark_all,		"MARK_ALL",	MRKA_H,	000010010),
-	_TBL_(mark_reverse,	"MARK_REVERSE",	MRKR_H,	000010010),
-	_TBL_(mark_find,	"MARK_FIND",	MRKF_H,	000010010),
-	_TBL_(in_dir,		"IN_DIR",	IND_H,	001011000),
+	_TBL_(mark_file,	"MARK_FILE",	MRK_H,	010010001),
+	_TBL_(mark_file2,	"MARK_FILE2",	MRK2_H,	010010001),
+	_TBL_(mark_file3,	"MARK_FILE3",	MRK2_H,	010010001),
+	_TBL_(mark_all,		"MARK_ALL",	MRKA_H,	010010010),
+	_TBL_(mark_reverse,	"MARK_REVERSE",	MRKR_H,	010010010),
+	_TBL_(mark_find,	"MARK_FIND",	MRKF_H,	010010010),
+	_TBL_(in_dir,		"IN_DIR",	IND_H,	011011000),
 	_TBL_(out_dir,		"OUT_DIR",	OUTD_H,	001111000),
 	_TBL_(log_top,		"LOG_TOP",	LOGT_H,	001101000),
 	_TBL_(reread_dir,	"REREAD_DIR",	READ_H,	000110000),
 	_TBL_(push_file,	"PUSH_FILE",	PUSH_H,	000010110),
 	_TBL_(pop_file,		"POP_FILE",	POP_H,	000010110),
 	_TBL_(log_dir,		"LOG_DIR",	LOGD_H,	001111000),
-	_TBL_(attr_file,	"ATTR_FILE",	ATTR_H,	001001110),
-	_TBL_(execute_file,	"EXECUTE_FILE",	EXEF_H,	000011111),
+	_TBL_(attr_file,	"ATTR_FILE",	ATTR_H,	011001110),
+	_TBL_(execute_file,	"EXECUTE_FILE",	EXEF_H,	010011111),
 	_TBL_(info_filesys,	"INFO_FILESYS",	INFO_H,	000110010),
-	_TBL_(copy_file,	"COPY_FILE",	COPY_H,	001001000),
-	_TBL_(move_file,	"MOVE_FILE",	MOVE_H,	001001000),
-	_TBL_(delete_file,	"DELETE_FILE",	DELF_H,	001001000),
-	_TBL_(delete_dir,	"DELETE_DIR",	DELD_H,	001001000),
+	_TBL_(copy_file,	"COPY_FILE",	COPY_H,	011001000),
+	_TBL_(move_file,	"MOVE_FILE",	MOVE_H,	011001000),
+	_TBL_(delete_file,	"DELETE_FILE",	DELF_H,	011001000),
+	_TBL_(delete_dir,	"DELETE_DIR",	DELD_H,	011001000),
 	_TBL_(rename_file,	"RENAME_FILE",	RENM_H,	001001000),
 	_TBL_(make_dir,		"MAKE_DIR",	MKDR_H,	001101000),
 	_TBL_(sort_dir,		"SORT_DIR",	SORT_H,	000010110),
@@ -76,27 +77,27 @@ functable funclist[] = {
 #ifndef	_NOARCHIVE
 	_TBL_(backup_tape,	"BACKUP_TAPE",	BACK_H,	001011000),
 #endif
-	_TBL_(edit_file,	"EDIT_FILE",	EDIT_H,	001001000),
-	_TBL_(view_file,	"VIEW_FILE",	VIEW_H,	000010111),
+	_TBL_(edit_file,	"EDIT_FILE",	EDIT_H,	011001000),
+	_TBL_(view_file,	"VIEW_FILE",	VIEW_H,	010010111),
 #ifndef	_NOARCHIVE
-	_TBL_(unpack_file,	"UNPACK_FILE",	UNPK_H,	001011000),
+	_TBL_(unpack_file,	"UNPACK_FILE",	UNPK_H,	011011000),
 	_TBL_(pack_file,	"PACK_FILE",	PACK_H,	001011000),
 #endif
 #ifndef	_NOTREE
 	_TBL_(tree_dir,		"LOG_TREE",	LGTR_H,	001101110),
-	_TBL_(copy_tree,	"COPY_TREE",	CPTR_H,	001001110),
-	_TBL_(move_tree,	"MOVE_TREE",	MVTR_H,	001001110),
+	_TBL_(copy_tree,	"COPY_TREE",	CPTR_H,	011001110),
+	_TBL_(move_tree,	"MOVE_TREE",	MVTR_H,	011001110),
 #ifndef	_NOARCHIVE
-	_TBL_(unpack_tree,	"UNPACK_TREE",	UPTR_H,	001011110),
+	_TBL_(unpack_tree,	"UNPACK_TREE",	UPTR_H,	011011110),
 #endif
 #endif	/* !_NOTREE */
-	_TBL_(find_dir,		"FIND_DIR",	FNDD_H,	001001110),
+	_TBL_(find_dir,		"FIND_DIR",	FNDD_H,	011001110),
 	_TBL_(symlink_mode,	"SYMLINK_MODE",	SYLN_H,	000100000),
 	_TBL_(filetype_mode,	"FILETYPE_MODE",FLTY_H,	000110110),
 	_TBL_(dotfile_mode,	"DOTFILE_MODE",	DTFL_H,	000101000),
 	_TBL_(fileflg_mode,	"FILEFLG_MODE",	FLFL_H,	000100110),
 #ifndef	_NOARCHIVE
-	_TBL_(launch_file,	"LAUNCH_FILE",	LAUN_H,	000011111),
+	_TBL_(launch_file,	"LAUNCH_FILE",	LAUN_H,	010011111),
 #endif
 	_TBL_(search_forw,	"SEARCH_FORW",	SEAF_H,	000010000),
 	_TBL_(search_back,	"SEARCH_BACK",	SEAB_H,	000010000),

@@ -4,7 +4,13 @@
  *	Type Definition & Function Prototype Declaration for "system.c"
  */
 
+#include <signal.h>
+#if	!MSDOS
+#include <sys/wait.h>
+#endif
+
 #ifdef	BASHSTYLE
+#define	BASHBUG
 #define	ERRBREAK	continue
 #else
 #define	ERRBREAK	break
@@ -22,10 +28,91 @@
 #define	RET_NOTEXEC	126
 #define	RET_NOTFOUND	127
 #define	RET_NOTICE	255
+#define	RET_NULSYSTEM	256
+#define	READ_EOF	0x100
+
+#ifdef	USESIGPMASK
+typedef sigset_t	sigmask_t;
+#define	Xsigemptyset(m)	sigemptyset(&m);
+#define	Xsigaddset(m,s)	sigaddset(&m, s);
+#define	Xsigdelset(m,s)	sigdelset(&m, s);
+#define	Xsigsetmask(m)	sigprocmask(SIG_SETMASK, &m, NULL)
+#define	Xsigblock(o,m)	sigprocmask(SIG_BLOCK, &m, &o)
+#else	/* !USESIGPMASK */
+typedef int		sigmask_t;
+#define	Xsigemptyset(m)	((m) = 0);
+#define	Xsigaddset(m,s)	((m) |= sigmask(s));
+#define	Xsigdelset(m,s)	((m) &= ~sigmask(s));
+#define	Xsigsetmask(m)	sigsetmask(m)
+#define	Xsigblock(o,m)	((o) = sigblock(m))
+#endif	/* !USESIGPMASK */
+
+#ifdef	TIOCGPGRP
+#define	gettcpgrp(f, g)	((ioctl(f, TIOCGPGRP, &g) < 0) ? (g = -1) : g)
+#else
+#define	gettcpgrp(f, g)	(g = tcgetpgrp(f))
+#endif
+#ifdef	TIOCSPGRP
+#define	settcpgrp(f, g)	ioctl(f, TIOCSPGRP, &(g))
+#else
+#define	settcpgrp(f, g)	tcsetpgrp(f, g)
+#endif
+
+#if	!MSDOS
+# ifdef	USEWAITPID
+typedef int		wait_t;
+# else
+typedef union wait	wait_t;
+# endif
+#endif
+
+#ifndef	WSTOPPED
+#define	WSTOPPED	0177
+#endif
+#ifndef	WNOHANG
+#define	WNOHANG		1
+#endif
+#ifndef	WUNTRACED
+#define	WUNTRACED	2
+#endif
+
+#ifndef	STDIN_FILENO
+#define	STDIN_FILENO	0
+#endif
+#ifndef	STDOUT_FILENO
+#define	STDOUT_FILENO	1
+#endif
+#ifndef	STDERR_FILENO
+#define	STDERR_FILENO	2
+#endif
+
+#ifndef	NSIG
+# ifdef	_NSIG
+# define	NSIG	_NSIG
+# else
+# define	NSIG	64
+# endif
+#endif
 
 #if	MSDOS || defined (DEBUG)
 #define	DOSCOMMAND
 #endif
+
+#ifdef	MINIMUMSHELL
+#define	NOJOB
+#define	NOALIAS
+#define	NOPOSIXUTIL
+#endif
+
+typedef struct _heredoc_t {
+	char *eof;
+	char *filename;
+	int fd;
+	u_char flags;
+} heredoc_t;
+
+#define	HD_IGNORETAB	0001
+#define	HD_QUOTED	0002
 
 typedef struct _redirectlist {
 	int fd;
@@ -106,16 +193,10 @@ typedef struct _syntaxtree {
 	command_t *comm;
 	struct _syntaxtree *parent;
 	struct _syntaxtree *next;
+	u_char type;
+	u_char cont;
 	u_char flags;
 } syntaxtree;
-
-#define	ST_TYPE	0007
-#define	ST_CONT	0070
-#define	ST_META	0010
-#define	ST_QUOT	0020
-#define	ST_STAT	0040
-#define	ST_NODE	0100
-#define	ST_NEXT	0200
 
 #define	OP_NONE	0
 #define	OP_FG	1
@@ -126,6 +207,46 @@ typedef struct _syntaxtree {
 #define	OP_NOT	6
 #define	OP_NOWN	7
 
+#define	CN_META	0001
+#define	CN_QUOT	0002
+#define	CN_STAT	0004
+#define	CN_INHR	0170
+#define	CN_SBST	0070
+#define	CN_VAR	0010
+#define	CN_COMM	0020
+#define	CN_EXPR	0030
+#define	CN_CASE	0040
+#define	CN_HDOC	0100
+
+#define	ST_NODE	0001
+#define	ST_NEXT	0002
+#define	ST_TOP	0004
+#define	ST_NOWN	0010
+#define	ST_BUSY	0020
+
+#ifdef	MINIMUMSHELL
+#define	hasparent(trp)	((trp) -> parent)
+#define	getparent(trp)	((trp) -> parent)
+#else
+#define	hasparent(trp)	(!((trp) -> flags & ST_TOP) && (trp) -> parent)
+#define	getparent(trp)	(((trp) -> flags & ST_TOP) ? NULL : (trp) -> parent)
+#endif
+#define	statementbody(trp) \
+			((syntaxtree *)(((trp) -> comm) -> argv))
+#define	hascomm(trp)	((trp) -> comm && ((trp) -> comm) -> argc >= 0)
+#define	isopfg(trp)	((trp) -> type == OP_FG)
+#define	isopbg(trp)	((trp) -> type == OP_BG)
+#define	isopand(trp)	((trp) -> type == OP_AND)
+#define	isopor(trp)	((trp) -> type == OP_OR)
+#define	isoppipe(trp)	((trp) -> type == OP_PIPE)
+#ifdef	MINIMUMSHELL
+#define	isopnot(trp)	(0)
+#define	isopnown(trp)	(0)
+#else
+#define	isopnot(trp)	((trp) -> type == OP_NOT)
+#define	isopnown(trp)	((trp) -> type == OP_NOWN)
+#endif
+
 typedef struct _shbuiltintable {
 	int (NEAR *func)__P_((syntaxtree *));
 	char *ident;
@@ -135,6 +256,7 @@ typedef struct _shbuiltintable {
 #define	BT_NOGLOB	0001
 #define	BT_RESTRICT	0002
 #define	BT_POSIXSPECIAL	0004
+#define	BT_NOKANJIFGET	0010
 
 #define	SMPREV	4
 typedef struct _statementtable {
@@ -211,6 +333,7 @@ typedef struct _signaltable {
 #define	TR_BLOCK	0010
 #define	TR_NOTRAP	0020
 #define	TR_CATCH	0040
+#define	TR_READBL	0100
 
 typedef struct _ulimittable {
 	u_char opt;
@@ -219,30 +342,102 @@ typedef struct _ulimittable {
 	char *mes;
 } ulimittable;
 
-extern char *ifs_set;
-extern char **shellvar;
-extern char **envvar;
+extern int shellmode;
+extern long mypid;
+extern int ret_status;
+extern int verboseexec;
+extern int notexec;
+extern int verboseinput;
+extern int terminated;
+extern int forcedstdin;
+extern int interactive_io;
+extern int tmperrorexit;
+extern int restricted;
+extern int freeenviron;
+extern int undeferror;
+extern int hashahead;
+extern int noglob;
+extern int autoexport;
+#ifndef	MINIMUMSHELL
+extern int noclobber;
+# if	!MSDOS && !defined (NOJOB)
+extern int bgnotify;
+extern int jobok;
+# endif
+extern int ignoreeof;
+#endif
+extern int interactive;
+#if	!MSDOS && !defined (NOJOB)
+extern int lastjob;
+extern int prevjob;
+extern int stopped;
+extern long orgpgrp;
+extern long childpgrp;
+#endif
+extern long ttypgrp;
+extern int interrupted;
+extern int nottyout;
+extern int syntaxerrno;
+extern statementtable statementlist[];
+extern signaltable signallist[];
 
 extern VOID prepareexit __P_((int));
-#ifndef	NOJOB
-extern VOID killjob __P_((VOID_A));
+extern VOID execerror __P_((char *, int, int));
+extern VOID doperror __P_((char *, char *));
+extern int isnumeric __P_((char *));
+extern VOID fputlong __P_((long, FILE *));
+extern VOID fputstr __P_((char *, int, FILE *));
+#if	!MSDOS
+extern VOID dispsignal __P_((int, int, FILE *));
+extern int waitjob __P_((long, wait_t *, int));
+extern int waitchild __P_((long, syntaxtree *));
 #endif
-extern char *readline __P_((int));
+extern char *evalvararg __P_((char *, int, int, int, int, int));
 extern syntaxtree *newstree __P_((syntaxtree *));
 extern VOID freestree __P_((syntaxtree *));
+extern syntaxtree *parentshell __P_((syntaxtree *));
+#if	!MSDOS
+extern VOID cmpmail __P_((char *, char *, time_t *));
+#endif
 extern char *getshellvar __P_((char *, int));
 extern int putexportvar __P_((char *, int));
 extern int putshellvar __P_((char *, int));
-extern syntaxtree *analyze __P_((char *, syntaxtree *, int));
+extern int unset __P_((char *, int));
+extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *));
+extern int getstatid __P_((syntaxtree *trp));
+#if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
+extern syntaxtree *startvar __P_((syntaxtree *, char *, int *,
+		int *, int *, char *, int *, int));
+#endif
+extern syntaxtree *analyze __P_((char *, syntaxtree *, int, int));
+extern char *evalbackquote __P_((char *));
+#ifdef	NOALIAS
+extern int checktype __P_((char *, int *, int));
+#else
+extern int checktype __P_((char *, int *, int, int));
+#endif
 #if	defined (FD) && !defined (_NOCOMPLETE)
 extern int completeshellcomm __P_((char *, int, int, char ***));
 #endif
 extern int getsubst __P_((int, char **, char ***, int **));
+extern VOID printstree __P_((syntaxtree *, int, FILE *));
+#if	defined (FD) || !defined (NOPOSIXUTIL)
+extern int tinygetopt __P_((syntaxtree *, char *, int *));
+#endif
+extern int typeone __P_((char *, FILE *));
+#ifndef	FDSH
 extern char **getsimpleargv __P_((syntaxtree *));
-extern int exec_line __P_((char *));
+#endif
+#if	MSDOS
+extern int exec_simplecom __P_((syntaxtree *, int, int));
+#else
+extern int exec_simplecom __P_((syntaxtree *, int, int, int));
+#endif
+#ifndef	FDSH
 extern int dosystem __P_((char *));
 extern FILE *dopopen __P_((char *));
 extern int dopclose __P_((FILE *));
+#endif
 extern int execruncom __P_((char *, int));
 extern int initshell __P_((int, char *[], char *[]));
 extern int shell_loop __P_((int));

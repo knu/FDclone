@@ -73,7 +73,7 @@ char *line;
 		line = "";
 	}
 	else for (cp = line; *cp; cp++) {
-		if (*cp == '\\' && *(cp + 1)) cp++;
+		if (*cp == '\\' && cp[1]) cp++;
 		else if (*cp == c) c = '\0';
 		else if ((*cp == '\'' || *cp == '"') && !c) c = *cp;
 		else if (*cp == '}' && !c) {
@@ -107,11 +107,11 @@ char *line;
 
 	c = '\0';
 	for (cp = line; *cp; cp++) {
-		if (*cp == '\\' && *(cp + 1)) (cp)++;
+		if (*cp == '\\' && cp[1]) (cp)++;
 		else if (*cp == c) c = '\0';
 		else if ((*cp == '\'' || *cp == '"') && !c)
 			c = *cp;
-		else if (!c && *cp == '<' && *(cp + 1) == '<') break;
+		else if (!c && *cp == '<' && cp[1] == '<') break;
 	}
 	if (*cp != '<') return(NULL);
 	cp += 2;

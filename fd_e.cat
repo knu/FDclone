@@ -20,10 +20,10 @@ DDEESSCCRRIIPPTTIIOONN
      invoked it.  You can input some key which is bound each com-
      mand, to execute various operations.
 
-     (In the following description, ((UU)) means that the operation
-     is implemented only on UNIX version and not effective on
-     MS-DOS version.  As well as it, ((DD)) means that the operation
-     is implemented only on MS-DOS version.)
+     (In the following description, ((UUNNIIXX)) means that the opera-
+     tion is implemented only on UNIX version and not effective
+     on MS-DOS version.  As well as it, ((DDOOSS)) means that the
+     operation is implemented only on MS-DOS version.)
 
      OOppttiioonnss
      The command line option is used for setting internal shell
@@ -68,7 +68,7 @@ DDEESSCCRRIIPPTTIIOONN
           tricted shell automatically.
 
      In addition, the options described below in the description
-     of sseett builtin command are available.
+     of the sseett builtin command are available.
 
      SSccrreeeenn LLaayyoouutt
      ffdd has the 3 major screen modes.  In the browser screen, you
@@ -275,7 +275,7 @@ DDEESSCCRRIIPPTTIIOONN
 
              Moreover, when you use the terminal which doesn't
              raise SSIIGGWWIINNCCHH signal at changing the screen size
-             (like kktteerrmm(1) on HP-UX, etc.), you must intention-
+             (like kktteerrmm(1) on HP-UX etc.), you must intention-
              ally redraw after you change the screen size.
 
         CChhaannggee llooggiiccaall ddiirreeccttoorryy (Logdir)
@@ -296,7 +296,7 @@ DDEESSCCRRIIPPTTIIOONN
              Moreover, When you input the pathname "@@" in floppy
              drive, you can move to the directory on UNIX file
              system, where you existed before moving to floppy
-             drive.  ((UU))
+             drive.  ((UUNNIIXX))
 
              (Note: This command is called as "Loddsk" in the
              original FD on MS-DOS, which is short for "LOGical
@@ -602,7 +602,7 @@ DDEESSCCRRIIPPTTIIOONN
              tion displayed in the file column and the status
              line shows not the status of its referential file
              but the status of the link itself.  It switches to
-             show the status of the referential file.  ((UU))
+             show the status of the referential file.  ((UUNNIIXX))
 
              In the mode of showing the status of the referential
              file, 'SS'(Symbolic Link) is displayed on the left
@@ -645,7 +645,7 @@ DDEESSCCRRIIPPTTIIOONN
              is toggle to switch if display the file flag or the
              file mode.  This is not available on any OS without
              the file flag.  The each symbol means the following
-             respectively.  ((UU))
+             respectively.  ((UUNNIIXX))
                   AA    Archived
                   NN    Nodump
                   aa    system Append-only
@@ -720,9 +720,9 @@ DDEESSCCRRIIPPTTIIOONN
      end with ;;, && or &&||.  These separators mean the following.
         ;;    Execute commands sequentially.
         &&    Execute commands synchronously, not waiting for the
-             preceding pipeline to finish.  ((UU))
+             preceding pipeline to finish.  ((UUNNIIXX))
         &&||   Same as &&, except to immediately ddiissoowwnn the job.
-             ((UU))
+             ((UUNNIIXX))
         &&&&   Execute the following pipeline only if the preceding
              pipeline returns a 00 exit status.
         ||||   Execute the following pipeline only if the preceding
@@ -745,7 +745,7 @@ DDEESSCCRRIIPPTTIIOONN
                   before output.
         _n>>||_f_i_l_e   Same as >>, except to force to overwrite
                   existent files even if --CC option is set by the
-                  builtin sseett.
+                  sseett builtin command.
         _n>>>>_f_i_l_e   Redirect the output indicated by the file
                   descriptor _n into the output to _f_i_l_e.  If _n is
                   omitted, it is regarded as the standard output
@@ -765,7 +765,7 @@ DDEESSCCRRIIPPTTIIOONN
                   is truncated to 0 length before output.
         &&>>||_f_i_l_e   Same as &&>>, except to force to overwrite
                   existent files even if --CC option is set by the
-                  builtin sseett.
+                  sseett builtin command.
         &&>>>>_f_i_l_e   Redirect both the standard output and the stan-
                   dard error output into the output to _f_i_l_e.  If
                   _f_i_l_e doesn't exist it is created, otherwise
@@ -861,7 +861,7 @@ DDEESSCCRRIIPPTTIIOONN
                    If _v_a_l_u_e is omitted, the value of the internal
                    variable _N_A_M_E is defined as a null.  If you
                    want to delete the definition of a internal
-                   variable, use uunnsseett.
+                   variable, use the uunnsseett builtin command.
 
      _n_a_m_e(()) {{ _l_i_s_t; }}
                    Define a function whose body is _l_i_s_t, as the
@@ -876,7 +876,8 @@ DDEESSCCRRIIPPTTIIOONN
                    Although you cannot omit {{ }} and _l_i_s_t, you can
                    omit {{ }} before/after _l_i_s_t which consists of a
                    single command.  If you want to delete the
-                   definition of a function, use uunnsseett.
+                   definition of a function, use the uunnsseett buil-
+                   tin command.
 
      !!_n_u_m          Execute the command which has the history
                    number specified with the numeric value _n_u_m.
@@ -928,7 +929,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      bbgg [_j_o_b]      Continue the execution of the job specified
                    with _j_o_b in the background.  The following
-                   format is available to specify a job.  ((UU))
+                   format is available to specify a job.  ((UUNNIIXX))
                          %%
                          %%++   the current job
                          %%--   the previous job
@@ -983,14 +984,21 @@ DDEESSCCRRIIPPTTIIOONN
                    statement and so on.  If _n is specified, it
                    breaks _n levels from the loop.
 
-     ccdd [_d_i_r]      Change the current directory in ffdd to _d_i_r.  If
+     ccdd [--LLPP] [_d_i_r]
+                   Change the current directory in ffdd to _d_i_r.  If
                    _d_i_r is omitted, it moves to the directory
-                   indicated by the internal variable HHOOMMEE.  It
-                   is useful to define the key macro as "cd
-                   $HOME".  If you specify the pathname as "..",
-                   "??", "--", "@@", it behaves like as LLOOGG_DDIIRR.
+                   indicated by the internal variable HHOOMMEE.  If
+                   you specify the pathname as "..", "??", "--",
+                   "@@", it behaves like as LLOOGG_DDIIRR.
 
-     cchhddiirr [_d_i_r]   Same as ccdd.  ((DD))
+                   If --LL is specified, the logical pathname
+                   following symbolic links is used.  If --PP is
+                   specified, the physical pathname following no
+                   symbolic links is used.  Otherwise, the pphhyyssii--
+                   ccaall option for the sseett builtin command is
+                   effective.
+
+     cchhddiirr [_d_i_r]   Same as ccdd.  ((DDOOSS))
 
      cchheecckkiidd [_f_i_l_e ...]
                    Calculate the unique ID of the specified file
@@ -1004,7 +1012,7 @@ DDEESSCCRRIIPPTTIIOONN
                    secure, it is available to confirm the iden-
                    tity of files.
 
-     ccllss           Clear the screen.  ((DD))
+     ccllss           Clear the screen.  ((DDOOSS))
 
      ccoommmmaanndd [--pp | --vv | --VV] _a_r_g ...
                    Execute _a_r_g as a simple command.  When the
@@ -1036,7 +1044,7 @@ DDEESSCCRRIIPPTTIIOONN
                    use the wildcard, they are copied one by one
                    in case that the destination is a directory,
                    and they are concatenated in case that the
-                   destination is a file.  ((DD))
+                   destination is a file.  ((DDOOSS))
 
                    When you specify //AA, it is treated as the
                    ASCII text file.  When you specify //BB, it is
@@ -1050,16 +1058,17 @@ DDEESSCCRRIIPPTTIIOONN
      ddeell [//PP] _f_i_l_e
      eerraassee [//PP] _f_i_l_e
                    Delete the files indicated by _f_i_l_e.  You can
-                   specify multiple files by using wildcard.  ((DD))
+                   specify multiple files by using wildcard.
+                   ((DDOOSS))
 
                    When you specify //PP, it prompts for confirma-
                    tion before deleting files.
 
-     ddiirr [//PPWWSSBBLLVV] [//AA[DDRRHHSSAA--]] [//OO[NNSSEEDDGGAA--]] [_d_i_r]
+     ddiirr [//[--]PPWWSSBBLLVV44] [//AA[DDRRHHSSAA--]] [//OO[NNSSEEDDGGAA--]] [_d_i_r]
                    List files and sub directories in the direc-
                    tory indicated by _d_i_r.  If _d_i_r is omitted, the
                    information in the the current directory is
-                   listed.  ((DD))
+                   listed.  ((DDOOSS))
 
                    When you specify //PP, it prompts for every
                    screen.  When you specify //WW, it is listed in
@@ -1075,19 +1084,32 @@ DDEESSCCRRIIPPTTIIOONN
                          EE  by extension     DD  by date & time
                          GG  directory first  AA  by last access time
                          --  reverse order
-                   When you specify //LL, it uses lowercase.  When
-                   you specify //VV, it lists the verbose informa-
-                   tion.
+                   When you specify //SS, it lists files in all sub
+                   directories.  When you specify //BB, it displays
+                   only names of files and directories.  When you
+                   specify //LL, it uses lowercase.  When you
+                   specify //VV, it lists the verbose information.
+                   When you specify //44, it displays year with 4
+                   digits.  And you can prefix -- to any option
+                   letter to override the option.
+
+     ddiirrss          Display the list of the current directory
+                   stack.  The ppuusshhdd and ppooppdd builtin command can
+                   load/unload directories onto the directory
+                   stack.
 
      ddiissoowwnn [_j_o_b]  Remove the job specified with _j_o_b from the
                    shell control.  The job to be ddiissoowwnned cannot
                    be controlled by jjoobbss, ffgg and bbgg.  If invoked
                    as a login shell, any jobs not to be ddiissoowwnned
                    will be forced to exit when the shell finish.
-                   ((UU))
+                   ((UUNNIIXX))
 
                    If _j_o_b is omitted, the current job is removed
                    from the shell control.
+
+     ddttyyppee _f_i_l_e    Display the contents of the file indicated by
+                   _f_i_l_e.  ((DDOOSS))
 
      eecchhoo [--nn] [_a_r_g ...]
                    Echo _a_r_g to the standard output.  When you
@@ -1130,7 +1152,7 @@ DDEESSCCRRIIPPTTIIOONN
                    fied, all of the eexxppoorrtted environment vari-
                    ables are listed.  When you want to delete the
                    definition of the environment variable, you
-                   can use uunnsseett.
+                   can use the uunnsseett builtin command.
 
      ffaallssee         Only return with a 11 exit status.
 
@@ -1148,10 +1170,9 @@ DDEESSCCRRIIPPTTIIOONN
                    listed without their history numbers.  If --rr
                    is specified, command histories are listed in
                    reverse order.  If --ee is specified, the editor
-                   named by _e_d_i_t_o_r is used to edit command
-                   histories, otherwise the editor specified by
-                   the internal variable FFCCEEDDIITT or EEDDIITTOORR is
-                   used.
+                   named by _e_d_i_t_o_r is used to edit command his-
+                   tories, otherwise the editor specified by the
+                   internal variable FFCCEEDDIITT or EEDDIITTOORR is used.
 
                    When --ll is specified, selected command his-
                    tories are listed to the standard output.  In
@@ -1185,7 +1206,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      ffgg [_j_o_b]      Continue the execution of the job specified
                    with _j_o_b in the foreground.  The following
-                   format is available to specify a job.  ((UU))
+                   format is available to specify a job.  ((UUNNIIXX))
                          %%
                          %%++   the current job
                          %%--   the previous job
@@ -1208,7 +1229,7 @@ DDEESSCCRRIIPPTTIIOONN
                    _n_u_m is 00 time, it continues forever until
                    [SSppaaccee] is pushed.  The displayed sequence can
                    be used as the key code sequence for kkeeyymmaapp
-                   command.  ((UU))
+                   command.  ((UUNNIIXX))
 
                    If _n_u_m is omitted, it is regarded as 11 time is
                    specified.
@@ -1276,7 +1297,7 @@ DDEESSCCRRIIPPTTIIOONN
                    If _n is omitted, all of the memorized command
                    histories are listed.
 
-     jjoobbss          List the running jobs.  ((UU))
+     jjoobbss          List the running jobs.  ((UUNNIIXX))
 
      kkccoonnvv [--ii _i_n] [--oo _o_u_t] [_i_n_f_i_l_e [_o_u_t_f_i_l_e]]
                    Read from _i_n_f_i_l_e and convert its Kanji code
@@ -1288,12 +1309,12 @@ DDEESSCCRRIIPPTTIIOONN
                    fied in compile is specified.  If _o_u_t_f_i_l_e is
                    omitted, it outputs to the standard output.
                    If also _i_n_f_i_l_e is omitted, it reads from the
-                   standard input.  ((UU))
+                   standard input.  ((UUNNIIXX))
 
      kkeeyymmaapp [_c [_s_t_r]]
                    Map the sequence _s_t_r as key code of the spe-
                    cial key _c.  You can use only the following
-                   identifiers as _c.  ((UU))
+                   identifiers as _c.  ((UUNNIIXX))
                          UUPP       Up         DDOOWWNN     Down
                          RRIIGGHHTT    Right      LLEEFFTT     Left
                          BBEEGG      Begin      EEOOLL      Eol
@@ -1351,20 +1372,25 @@ DDEESSCCRRIIPPTTIIOONN
                    for _e_x_t is canceled.
 
      mmdd _d_i_r
-     mmkkddiirr _d_i_r     Create the directory _d_i_r.  ((DD))
+     mmkkddiirr _d_i_r     Create the directory _d_i_r.  ((DDOOSS))
 
      nneewwggrrpp [_a_r_g ...]
                    Execute nneewwggrrpp(1) in place of the execution of
                    ffdd.  You can specify _a_r_g as arguments of
-                   nneewwggrrpp(1).  See nneewwggrrpp(1) for details.  ((UU))
+                   nneewwggrrpp(1).  See nneewwggrrpp(1) for details.  ((UUNNIIXX))
 
      llooggiinn [_a_r_g ...]
                    Execute llooggiinn(1) in place of the execution of
                    ffdd.  You can specify _a_r_g as arguments of
-                   llooggiinn(1).  See llooggiinn(1) for details.  ((UU))
+                   llooggiinn(1).  See llooggiinn(1) for details.  ((UUNNIIXX))
 
      llooggoouutt [_n]    Exit from a login shell.  When you specify _n,
                    it exits with the exit status _n.
+
+     ppooppdd          Unload the top directory onto the directory
+                   stack, and change the current directory in ffdd
+                   to the directory.  This command is failed when
+                   the directory stack is empty.
 
      pprriinnttaarrcchh [_e_x_t]
                    Print the archiver commands registered for the
@@ -1384,7 +1410,7 @@ DDEESSCCRRIIPPTTIIOONN
 
      pprriinnttddrrvv [_c]  Print the device file and the number of
                    heads/sectors/cylinders of the floppy drive
-                   registered for the drive name _c.  ((UU))
+                   registered for the drive name _c.  ((UUNNIIXX))
 
                    If _c is omitted, all of the registered floppy
                    drives are listed.
@@ -1398,8 +1424,26 @@ DDEESSCCRRIIPPTTIIOONN
                    If _e_x_t is omitted, all of the registered
                    launchers are listed.
 
-     ppwwdd           Display the current directory with the abso-
-                   lute representation.
+     ppuusshhdd [_d_i_r]   Load the current directory onto the directory
+                   stack, and change the current directory in ffdd
+                   to _d_i_r.  If you specify the pathname as "..",
+                   "??", "--", "@@", it behaves like as LLOOGG_DDIIRR.
+                   The pphhyyssiiccaall option for the sseett builtin com-
+                   mand is effective for symbolic links.
+
+                   If _d_i_r is omitted, change the current direc-
+                   tory to the top directory of the directory
+                   stack, and replace it with the current direc-
+                   tory.  In this case, this command is failed
+                   when the directory stack is empty.
+
+     ppwwdd [--LLPP]     Display the current directory with the abso-
+                   lute representation.  If --LL is specified, the
+                   logical pathname following symbolic links is
+                   displayed.  If --PP is specified, the physical
+                   pathname following no symbolic links is
+                   displayed.  Otherwise, the pphhyyssiiccaall option for
+                   the sseett builtin command is effective.
 
      rreeaadd [_N_A_M_E ...]
                    Read one line from the standard input and sub-
@@ -1428,16 +1472,16 @@ DDEESSCCRRIIPPTTIIOONN
 
      rrdd _d_i_r
      rrmmddiirr _d_i_r     Delete the directory _d_i_r.  You cannot delete
-                   the non-empty directory.  ((DD))
+                   the non-empty directory.  ((DDOOSS))
 
      rreenn _o_l_d _n_e_w
      rreennaammee _o_l_d _n_e_w
                    Rename the filename or the directory name _o_l_d
                    into _n_e_w.  You can specify the wildcard in _o_l_d
                    and _n_e_w to rename the multiple filenames all
-                   together.  ((DD))
+                   together.  ((DDOOSS))
 
-     rreemm [_a_r_g ...] No effect, same as ::.  ((DD))
+     rreemm [_a_r_g ...] No effect, same as ::.  ((DDOOSS))
 
      rreettuurrnn [_n]    Return from a function with the return value
                    specified by _n.  If _n is omitted, the return
@@ -1475,7 +1519,7 @@ DDEESSCCRRIIPPTTIIOONN
                         are not placed on the beginning of com-
                         mand line string.
                    --mm   Enable the job control.  This option is
-                        valid by default.  ((UU))
+                        valid by default.  ((UUNNIIXX))
                    --nn   Read command inputs but don't execute
                         them.
                    --oo _o_p_t_i_o_n
@@ -1508,6 +1552,11 @@ DDEESSCCRRIIPPTTIIOONN
                              Same as --uu.
                         oonneeccmmdd
                              Same as --tt.
+                        pphhyyssiiccaall
+                             The builtin command ccdd and ppwwdd use
+                             the physical directory structure
+                             instead of the logical directory
+                             structure following symbolic links.
                         vveerrbboossee
                              Same as --vv.
                         vvii   Same as EEDDIITTMMOODDEE==vvii.
@@ -1515,8 +1564,8 @@ DDEESSCCRRIIPPTTIIOONN
                              Same as --xx.
                    --tt   Exit immediately after executing the
                         current command input.
-                   --uu   Treat the reference of undefined vari-
-                        ables as an error.
+                   --uu   Treat the reference of undefined
+                        variables as an error.
                    --vv   Display the command inputs whenever they
                         are read.
                    --xx   Display the command strings whenever they
@@ -1536,7 +1585,7 @@ DDEESSCCRRIIPPTTIIOONN
                    the driver which can treat only the
                    820KB2DD(hd=2/sc=9/cl=80) floppy disk, you
                    should specify the value adding 110000 (108) as
-                   the value of _s_c.  ((UU))
+                   the value of _s_c.  ((UUNNIIXX))
 
                    On the PC-UNIX environment which is worked on
                    PC, specifying the string HHDDDD or HHDDDD9988 instead
@@ -1589,7 +1638,7 @@ DDEESSCCRRIIPPTTIIOONN
                    processes to the value indicated by _n.  You
                    can use the string uunnlliimmiitteedd or the numeric
                    value in _n, uunnlliimmiitteedd means the maximum
-                   specifiable value.  ((UU))
+                   specifiable value.  ((UUNNIIXX))
 
                    When you specify --HH, a hard limit is set.
                    When you specify --SS, a soft limit is set.
@@ -1628,12 +1677,13 @@ DDEESSCCRRIIPPTTIIOONN
                    tion for each _N_A_M_E.  But the following vari-
                    able definition cannot be deleted.
                          PPAATTHH      PPSS11       PPSS22       IIFFSS
+                         MMAAIILLCCHHEECCKK
 
      uunnsseettddrrvv _c _d_e_v_i_c_e _h_d _s_c _c_l
                    Delete the registered floppy drive.  Only the
                    registration with which all of _d_e_v_i_c_e, _h_d, _s_c,
                    _c_l are corresponded is deleted, then you
-                   should confirm to delete very well.  ((UU))
+                   should confirm to delete very well.  ((UUNNIIXX))
 
                    When it is registered as HHDDDD or HHDDDD9988 in
                    sseettddrrvv, you should describe HHDDDD or HHDDDD9988
@@ -1643,7 +1693,7 @@ DDEESSCCRRIIPPTTIIOONN
                    Wait for the process indicated by _p_i_d or for
                    the job indicated by _j_o_b, and return its exit
                    status.  If both _p_i_d and _j_o_b are omitted, the
-                   current job is waited.  ((UU))
+                   current job is waited.  ((UUNNIIXX))
 
      _C_O_M_M_A_N_D [_a_r_g] Execute the internal command _C_O_M_M_A_N_D of ffdd.
                    You can describe each command identifier in
@@ -1779,7 +1829,7 @@ DDEESSCCRRIIPPTTIIOONN
      file, or specify LLAANNGG in the description of listing command,
      such as `_L_A_N_G=_C _t_a_r _t_v_f'.
 
-     FFllooppppyy DDrriivvee ((UU))
+     FFllooppppyy DDrriivvee ((UUNNIIXX))
      You can access the MS-DOS formatted floppy disk, by
      representing to prefix "_c::" to the directory name.  But, it
      is necessary to register the floppy drive and set the
@@ -1865,7 +1915,7 @@ DDEESSCCRRIIPPTTIIOONN
              ning of filename.
 
      ~~_u_s_e_r   Indicate _u_s_e_r's home directory, when it is the
-             beginning of filename.  ((UU))
+             beginning of filename.  ((UUNNIIXX))
 
      ~~FFDD     Indicate the directory where the invoked ffdd is
              exists, when it is the beginning of filename.
@@ -1887,7 +1937,7 @@ DDEESSCCRRIIPPTTIIOONN
                     from $$11.  ""$$@@"" is replaced by ""$$11"" ""$$22"" ... .
              ##      The number of positional parameters.
              --      The option flags which is set by options when
-                    invoked or sseett command.
+                    invoked or the sseett builtin command.
              ??      The exit status of the last executed command.
              $$      The process number of the current shell.
              !!      The process number of the last executed back-
@@ -1929,8 +1979,8 @@ DDEESSCCRRIIPPTTIIOONN
              _w_o_r_d.
 
      $${{_N_A_M_E==_w_o_r_d}}
-             If any value is substituted for the internal
-             variable or the environment variable _N_A_M_E, it is
+             If any value is substituted for the internal vari-
+             able or the environment variable _N_A_M_E, it is
              replaced by the value, otherwise _w_o_r_d is substituted
              for the internal variable _N_A_M_E, and this expression
              itself is replaces by _w_o_r_d.  But you cannot substi-
@@ -1950,6 +2000,43 @@ DDEESSCCRRIIPPTTIIOONN
              replaced by _w_o_r_d, otherwise it is replaced by a
              null.
 
+     $${{##_N_A_M_E}}
+             It is replaced by the length in characters of the
+             value of the internal variable or the environment
+             variable _N_A_M_E.  If _N_A_M_E is ** or @@, it is replaced by
+             the number of positional parameters instead of the
+             length of characters.
+
+     $${{_N_A_M_E%%_w_o_r_d}}
+             It is replaced by the string in which the smallest
+             portion of the suffix matched by the _w_o_r_d pattern is
+             deleted from the value of the internal variable or
+             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             each positional parameter is replaced.  ( \\ is used
+             instead of %% on MS-DOS version.)
+
+     $${{_N_A_M_E%%%%_w_o_r_d}}
+             It is replaced by the string in which the largest
+             portion of the suffix matched by the _w_o_r_d pattern is
+             deleted from the value of the internal variable or
+             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             each positional parameter is replaced.  ( \\\\ is used
+             instead of %%%% on MS-DOS version.)
+
+     $${{_N_A_M_E##_w_o_r_d}}
+             It is replaced by the string in which the smallest
+             portion of the prefix matched by the _w_o_r_d pattern is
+             deleted from the value of the internal variable or
+             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             each positional parameter is replaced.
+
+     $${{_N_A_M_E####_w_o_r_d}}
+             It is replaced by the string in which the largest
+             portion of the prefix matched by the _w_o_r_d pattern is
+             deleted from the value of the internal variable or
+             the environment variable _N_A_M_E.  If _N_A_M_E is ** or @@,
+             each positional parameter is replaced.
+
      \\_c      It indicates a character _c itself.  You can use it
              when you want to use the preceding meta-character as
              a character with no evaluation, such as ~~ or $$.  You
@@ -1963,6 +2050,24 @@ DDEESSCCRRIIPPTTIIOONN
 
      ``_l_i_s_t``  _l_i_s_t is executed and this string is replaced by its
              standard output.
+
+     $$((_l_i_s_t)) _l_i_s_t is executed and this string is replaced by its
+             standard output like as ``_l_i_s_t``.  This differs from
+             ``_l_i_s_t`` in the point that nested expressions are
+             allowed.  And any meta-characters such as quotes in
+             _l_i_s_t are evaluated as it is.
+
+     $$((((_e_x_p_r_e_s_s_i_o_n))))
+             _e_x_p_r_e_s_s_i_o_n the arithmetic expression is evaluated
+             and this string is replaced by its result value.
+             You can specify numeric values, variables and
+             integral calculations with the following operators
+             in _e_x_p_r_e_s_s_i_o_n.
+                                   (unary) (binary)
+                 arithmetic        ++ --     ++ -- ** // %%
+                 boolean           !!       ==== !!== << >> <<== >>== &&&& ||||
+                 bit operator      ~~       && || ^^ <<<< >>>>
+                 parenthesis       (( ))
 
      ??
      **
@@ -2101,31 +2206,37 @@ DDEESSCCRRIIPPTTIIOONN
              filename on the cursor position is replaced.  You
              can use it when you use external commands which can
              treat only 8+3 formed arguments.  TT, TTAA, MM trailing
-             %%SS can be described as well as %%XX.  ((DD))
+             %%SS can be described as well as %%XX.  ((DDOOSS))
 
      %%JJSS     The Kanji code of the string enclosed by this macro
-             is converted into Shift JIS.  ((UU))
+             is converted into Shift JIS.  ((UUNNIIXX))
 
      %%JJEE     The Kanji code of the string enclosed by this macro
-             is converted into EUC-JP.  ((UU))
+             is converted into EUC-JP.  ((UUNNIIXX))
 
      %%JJ77     The Kanji code of the string enclosed by this macro
-             is converted into 7bit JIS.  ((UU))
+             is converted into 7bit JIS.  ((UUNNIIXX))
 
      %%JJ88     The Kanji code of the string enclosed by this macro
-             is converted into 8bit JIS.  ((UU))
+             is converted into 8bit JIS.  ((UUNNIIXX))
 
      %%JJJJ     The Kanji code of the string enclosed by this macro
-             is converted into ISO-2022-JP.  ((UU))
+             is converted into ISO-2022-JP.  ((UUNNIIXX))
 
      %%JJHH     The Kanji code of the string enclosed by this macro
-             is converted into HEX.  ((UU))
+             is converted into HEX.  ((UUNNIIXX))
 
      %%JJCC     The Kanji code of the string enclosed by this macro
-             is converted into CAP.  ((UU))
+             is converted into CAP.  ((UUNNIIXX))
 
      %%JJUU     The Kanji code of the string enclosed by this macro
-             is converted into UTF-8.  ((UU))
+             is converted into UTF-8.  ((UUNNIIXX))
+
+     %%JJUU     The Kanji code of the string enclosed by this macro
+             is converted into the Kanji code which is used in
+             the pathname indicated by the string.  The variables
+             SSJJIISSPPAATTHH, EEUUCCPPAATTHH, etc. can specify what kanji code
+             is used in each pathname.  ((UUNNIIXX))
 
      When no filename parameter, such as %%CC and %%TT, is taken with
      the result to expand parameter macros in a command macro,
@@ -2181,19 +2292,19 @@ DDEESSCCRRIIPPTTIIOONN
                   $$HHOOMMEE\\ffdd22..rrcc, $$HHOOMMEE\\ffddsshh..rrcc and ~~FFDD\\ffdd22rrcc.)
 
         EEnnvviirroonnmmeenntt vvaarriiaabblleess
-                  Any valid variable name as the internal vari-
-                  able can be valid to be defined as the environ-
-                  ment variable in advance.  But the internal
-                  variable is always prior to the environment
-                  variable in ffdd.  When the same named environ-
-                  ment variable is used in another application,
-                  you can also use the name which FFDD_ is prefixed
-                  to each environment variable for ffdd only.  This
-                  environment variable with FFDD_ is always prior
-                  to the environment variable without it, then
-                  the definition of the environment variable with
-                  FFDD_ is prior to the definition of the internal
-                  variable without FFDD_.
+                  Any valid variable name as the internal
+                  variable can be valid to be defined as the
+                  environment variable in advance.  But the
+                  internal variable is always prior to the
+                  environment variable in ffdd.  When the same
+                  named environment variable is used in another
+                  application, you can also use the name which
+                  FFDD_ is prefixed to each environment variable
+                  for ffdd only.  This environment variable with
+                  FFDD_ is always prior to the environment variable
+                  without it, then the definition of the environ-
+                  ment variable with FFDD_ is prior to the defini-
+                  tion of the internal variable without FFDD_.
 
      CCuussttoommiizzeerr
      EEDDIITT_CCOONNFFIIGG command invokes the customizer to set up confi-
@@ -2216,7 +2327,7 @@ DDEESSCCRRIIPPTTIIOONN
         KKeeyy mmaapp   Change the key code mapping for each special
                   key.  If you push [EEsscc] when you are prompted
                   to push the key, the existent key mapping is
-                  deleted.  ((UU))
+                  deleted.  ((UUNNIIXX))
         LLaauunncchheerr  Change the launcher registration for each
                   extension.  When you newly register a launcher
                   for the extension with no registration, you
@@ -2235,7 +2346,7 @@ DDEESSCCRRIIPPTTIIOONN
                   name with no registration, you should select
                   "NewEntry".  If you input a null line when you
                   input a device name, the existent floppy drive
-                  registration is deleted.  ((UU))
+                  registration is deleted.  ((UUNNIIXX))
         SSaavvee      Save the configurations changed with the cus-
                   tomizer into a file, or cancel configurations
                   to restore to the previous state.
@@ -2292,13 +2403,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      CCOOMMSSPPEECC*      Specify the shell used to invoke a batch file.
                    If undefined, the shell defined by the
                    environment variable SSHHEELLLL or \COMMAND.COM is
-                   used.  ((DD))
+                   used.  ((DDOOSS))
 
-     CCOOPPYYCCMMDD*      Specify the default options used by the
-                   builtin command ccooppyy.  ((DD))
+     CCOOPPYYCCMMDD*      Specify the default options used by the buil-
+                   tin command ccooppyy.  ((DDOOSS))
 
      DDIIRRCCMMDD*       Specify the default options used by the buil-
-                   tin command ddiirr.  ((DD))
+                   tin command ddiirr.  ((DDOOSS))
 
      HHOOMMEE*         Specify the default value when no argument of
                    the builtin command ccdd is specified.  When
@@ -2327,6 +2438,23 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    tricted shell as well as --rr option when
                    invoked.  This variable also specify the shell
                    which can be invoked from EEXXEECCUUTTEE_SSHH.
+
+     MMAAIILL*         Specify the spool filename when the internal
+                   shell will check new mails.  If MMAAIILLPPAATTHH is
+                   set, it is prior to this.  ((UUNNIIXX))
+
+     MMAAIILLPPAATTHH*     Specify the multiple spool filenames, as the
+                   list separated by ::, when the internal shell
+                   will check new mails.  The any specified files
+                   will be checked.  Each filenames can be fol-
+                   lowed by %% and a arrival message of new mails.
+                   The default message is yyoouu hhaavvee mmaaiill.  ((UUNNIIXX))
+
+     MMAAIILLCCHHEECCKK*    Specify the interval of checking new mails in
+                   seconds, for the spool files specified by
+                   MMAAIILLPPAATTHH or MMAAIILL.  The default value is 660000
+                   seconds.  If the value is 00, it will be
+                   checked before each prompt.  ((UUNNIIXX))
 
      EEDDIITTOORR        Specify the editor command used for editing
                    files.
@@ -2395,12 +2523,12 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      IIGGNNOORREECCAASSEE    Ignore uppercase/lowercase when filenames are
                    compared.  Any value except 00 and null effects
-                   valid.  ((UU))
+                   valid.  ((UUNNIIXX))
 
      IINNHHEERRIITTCCOOPPYY   Inherit the destination timestamp from the
                    source timestamp when CCOOPPYY_FFIILLEE command is
                    executed.  Any value except 00 and null effects
-                   valid.  ((UU))
+                   valid.  ((UUNNIIXX))
 
                    (On MS-DOS version, the destination timestamp
                    is always inherited, if this variable is
@@ -2410,7 +2538,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    state, when ffdd is finished.  Invoking ffdd can
                    adjust the terminal rightly from the state
                    displaying broken characters.  Any value
-                   except 00 and null effects valid.  ((UU))
+                   except 00 and null effects valid.  ((UUNNIIXX))
 
      UUSSEEGGEETTCCUURRSSOORR  Use the VT100 compatible escape sequence get-
                    ting the cursor position in order to get the
@@ -2422,7 +2550,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    operation may be stopped.  In this case, it is
                    continued by inputting 'R' from the keyboard.
                    Any value except 00 and null effects valid.
-                   ((UU))
+                   ((UUNNIIXX))
 
                    And, if this variable is ineffective, a com-
                    mand line of ffddsshh always begins at the end of
@@ -2553,17 +2681,17 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      PPSS11           Specify the prompt string of input line in
                    EEXXEECCUUTTEE_SSHH.  The default value is "$$ ".  The
                    following escape sequences are available.
-                       \\uu   username ((UU))
-                       \\hh   hostname ((UU))
-                       \\HH   hostname (including domain name) ((UU))
+                       \\uu   username ((UUNNIIXX))
+                       \\hh   hostname ((UUNNIIXX))
+                       \\HH   hostname (including domain name) ((UUNNIIXX))
                        \\ww   fullpath of current directory
                        \\~~   fullpath of current directory
                             (to simplify home directory with ~~)
                        \\WW   current directory name
                        \\!!   command history number
-                       \\$$   if UID is 0, a ##, otherwise a $$ ((UU))
+                       \\$$   if UID is 0, a ##, otherwise a $$ ((UUNNIIXX))
                        \\[[   beginning of non-printing sequence
-                            (terminal control character, etc.)
+                            (terminal control character etc.)
                        \\]]   ending of non-printing sequence
                        \\ee   ESC (\033)
                        \\_o_o_o character indicated by the octal _o_o_o
@@ -2580,7 +2708,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    languages, it doesn't have to be the string
                    itself and is enough to contain the string,
                    the value of the environment variable LLAANNGG
-                   also can be used.  JJIISS88, JJUUNNEETT,, etc. among
+                   also can be used.  JJIISS88, JJUUNNEETT, etc. among
                    them are the Kanji codes used in Samba.
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
@@ -2600,7 +2728,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      IINNPPUUTTKKCCOODDEE    Specify the Kanji code for input from key-
                    board.  When the value except the following is
                    specified, the Kanji code specified in compile
-                   is valid.  ((UU))
+                   is valid.  ((UUNNIIXX))
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
 
@@ -2611,7 +2739,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    filename from another machine on network which
                    use a different Kanji code.  JJIISS88, JJUUNNEETT, HHEEXX,
                    CCAAPP, etc. among them are the Kanji codes used
-                   in Samba.  ((UU))
+                   in Samba.  ((UUNNIIXX))
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
                        JJIISS, jjiiss       7bit JIS
@@ -2645,7 +2773,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    the directory which is described in
                    NNOOCCOONNVVPPAATTHH, no Kanji code is converted ignor-
                    ing the value of FFNNAAMMEEKKCCOODDEE.  No pathname is
-                   specified by default.  ((UU))
+                   specified by default.  ((UUNNIIXX))
 
 MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
      ffdd processes the Kanji character-set to input/output as

@@ -19,14 +19,6 @@
 #include "system.h"
 #endif
 
-#if	!MSDOS
-# ifdef	_NODOSDRIVE
-# include <sys/param.h>
-# else
-# include "dosdisk.h"
-# endif
-#endif
-
 extern int sorttype;
 extern int displaymode;
 #ifndef	_NOTREE
@@ -104,12 +96,17 @@ extern keymaptable *origkeymaplist;
 # endif
 # ifndef	_NOARCHIVE
 extern launchtable launchlist[];
+extern launchtable *origlaunchlist;
 extern int maxlaunch;
+extern int origmaxlaunch;
 extern archivetable archivelist[];
+extern archivetable *origarchivelist;
 extern int maxarchive;
+extern int origmaxarchive;
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
 extern devinfo fdtype[];
+extern devinfo *origfdtype;
 # endif
 extern int inruncom;
 #endif	/* !_NOCUSTOMIZE */
@@ -119,6 +116,8 @@ extern int inruncom;
 #define	MAXCUSTVAL	(n_column - MAXCUSTNAM - 3)
 #define	inputcuststr(p, d, s, h) \
 			(inputstr(p, d, ((s) ? strlen(s) : 0), s, h))
+#define	noselect(n, m, x, s, v) \
+			(selectstr(n, m, x, s, v) == K_ESC)
 #define	MAXSAVEMENU	5
 #define	MAXTNAMLEN	8
 #ifndef	O_BINARY
@@ -161,8 +160,8 @@ static VOID NEAR _evalenv __P_((int));
 static VOID NEAR custtitle __P_((VOID_A));
 static VOID NEAR calcmax __P_((int [], int));
 static VOID NEAR envcaption __P_((char *));
-static VOID NEAR cleanupenv __P_((VOID_A));
 static char **NEAR copyenv __P_((char **));
+static VOID NEAR cleanupenv __P_((VOID_A));
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
 static int NEAR dumpenv __P_((char *, FILE *));
@@ -181,34 +180,32 @@ static int NEAR checkbind __P_((char *, int, char **, FILE *));
 static VOID NEAR cleanupkeymap __P_((VOID_A));
 static int NEAR dispkeymap __P_((int));
 static int NEAR editkeymap __P_((int));
+static int NEAR searchkeymap __P_((keymaptable *, int));
 static int NEAR dumpkeymap __P_((char *, FILE *));
 #  ifndef	_NOORIGSHELL
 static int NEAR checkkeymap __P_((char *, int, char **, FILE *));
 #  endif
 # endif
 # ifndef	_NOARCHIVE
-static VOID NEAR cleanuplaunch __P_((launchtable *, int *));
-static launchtable *NEAR copylaunch __P_((launchtable *, launchtable *,
-	int *, int));
+static VOID NEAR cleanuplaunch __P_((VOID_A));
 static int NEAR displaunch __P_((int));
 static int NEAR editlaunch __P_((int));
+static int NEAR searchlaunch __P_((launchtable *, int, launchtable *));
 static int NEAR dumplaunch __P_((char *, FILE *));
 #  ifndef	_NOORIGSHELL
 static int NEAR checklaunch __P_((char *, int, char **, FILE *));
 #  endif
-static VOID NEAR cleanuparch __P_((archivetable *, int *));
-static archivetable *NEAR copyarch __P_((archivetable *, archivetable *,
-	int *, int));
+static VOID NEAR cleanuparch __P_((VOID_A));
 static int NEAR disparch __P_((int));
 static int NEAR editarch __P_((int));
+static int NEAR searcharch __P_((archivetable *, int, archivetable *));
 static int NEAR dumparch __P_((char *, FILE *));
 #  ifndef	_NOORIGSHELL
 static int NEAR checkarch __P_((char *, int, char **, FILE *));
 #  endif
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-static VOID NEAR cleanupdrive __P_((devinfo *));
-static devinfo *NEAR copydrive __P_((devinfo *, devinfo *));
+static VOID NEAR cleanupdrive __P_((VOID_A));
 static int NEAR dispdrive __P_((int));
 static int NEAR editdrive __P_((int));
 static int NEAR dumpdrive __P_((char *, FILE *));
@@ -445,8 +442,8 @@ int no;
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
-			*((int *)(envlist[no].var))
-				= getlang(cp, envlist[no].type - T_KIN);
+			*((int *)(envlist[no].var)) =
+				getlang(cp, envlist[no].type - T_KIN);
 			break;
 #endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
 		default:
@@ -557,36 +554,26 @@ char *s;
 	putterm(end_standout);
 }
 
+VOID freestrarray(list, max)
+char **list;
+int max;
+{
+	int i;
+
+	for (i = 0; i < max; i++) free(list[i]);
+}
+
 char **copystrarray(dest, src, ndestp, nsrc)
 char **dest, **src;
 int *ndestp, nsrc;
 {
-	int i, n;
+	int i;
 
-	if (dest) {
-		n = (ndestp) ? *ndestp : nsrc;
-		for (i = 0; i < n; i++) free(dest[i]);
-	}
-	else {
-		dest = (char **)malloc2((nsrc + 1) * sizeof(char *));
-		dest[nsrc] = NULL;
-	}
+	if (dest) freestrarray(dest, (ndestp) ? *ndestp : nsrc);
+	else if (nsrc > 0) dest = (char **)malloc2(nsrc * sizeof(char *));
 	for (i = 0; i < nsrc; i++) dest[i] = strdup2(src[i]);
 	if (ndestp) *ndestp = nsrc;
 	return(dest);
-}
-
-static VOID NEAR cleanupenv(VOID_A)
-{
-	char *cp;
-	int i;
-
-	for (i = 0; i < ENVLISTSIZ; i++) {
-		setenv2(envlist[i].env, NULL);
-		cp = (envlist[i].type == T_CHARP) ? envlist[i].def : NULL;
-		setenv2(envlist[i].env + 3, cp);
-		_evalenv(i);
-	}
 }
 
 static char **NEAR copyenv(list)
@@ -597,7 +584,7 @@ char **list;
 	if (list) {
 		for (i = 0; i < ENVLISTSIZ; i++) {
 			setenv2(envlist[i].env, list[i * 2]);
-			setenv2(envlist[i].env + 3, list[i * 2 + 1]);
+			setenv2(&(envlist[i].env[3]), list[i * 2 + 1]);
 			_evalenv(i);
 		}
 	}
@@ -606,10 +593,23 @@ char **list;
 		for (i = 0; i < ENVLISTSIZ; i++) {
 			list[i * 2] = strdup2(getshellvar(envlist[i].env, -1));
 			list[i * 2 + 1] =
-				strdup2(getshellvar(envlist[i].env + 3, -1));
+				strdup2(getshellvar(&(envlist[i].env[3]), -1));
 		}
 	}
 	return(list);
+}
+
+static VOID NEAR cleanupenv(VOID_A)
+{
+	char *cp;
+	int i;
+
+	for (i = 0; i < ENVLISTSIZ; i++) {
+		setenv2(envlist[i].env, NULL);
+		cp = (envlist[i].type == T_CHARP) ? envlist[i].def : NULL;
+		setenv2(&(envlist[i].env[3]), cp);
+		_evalenv(i);
+	}
 }
 
 static int NEAR dispenv(no)
@@ -647,13 +647,13 @@ int no;
 			str[5] = OLEN_K;
 			p = (n >= 100) ? 1 : 0;
 			n %= 100;
-			tmp = strcpy2(buf, str[n & 7] + 3);
+			tmp = strcpy2(buf, &(str[n & 7][3]));
 
 			if (n & 7) {
 				str[0] = OINC_K;
 				str[1] = ODEC_K;
 				tmp = strcpy2(tmp, "(");
-				tmp = strcpy2(tmp, str[n / 8] + 3);
+				tmp = strcpy2(tmp, &(str[n / 8][3]));
 				tmp = strcpy2(tmp, ")");
 			}
 			if (p) strcpy(strcpy2(tmp, ", "), VSORT_K);
@@ -752,14 +752,14 @@ int no;
 			n = *((int *)(envlist[no].var));
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 2, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 2, 0, str, val)) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_SHORT:
 			ascnumeric(buf, *((short *)(envlist[no].var)),
 				0, MAXLINESTR);
-			cp = inputcuststr(envlist[no].env + 3, 1, buf, -1);
+			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
 			if (!cp) return(0);
 			ascnumeric(buf, atoi2(cp), 0, MAXLINESTR);
 			free(cp);
@@ -768,13 +768,13 @@ int no;
 		case T_NATURAL:
 			ascnumeric(buf, *((int *)(envlist[no].var)),
 				0, MAXLINESTR);
-			cp = inputcuststr(envlist[no].env + 3, 1, buf, -1);
+			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
 			if (!cp) return(0);
 			ascnumeric(buf, atoi2(cp), 0, MAXLINESTR);
 			free(cp);
 			break;
 		case T_PATH:
-			cp = inputcuststr(envlist[no].env + 3, 1,
+			cp = inputcuststr(&(envlist[no].env[3]), 1,
 				*((char **)(envlist[no].var)), 1);
 			if (!cp) return(0);
 			strcpy(buf, cp);
@@ -798,15 +798,14 @@ int no;
 			n %= 100;
 			tmp = n & ~7;
 			n &= 7;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 6, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 6, 0, str, val)) return(0);
 			if (n) {
 				str[0] = OINC_K;
 				str[1] = ODEC_K;
 				val[0] = 0;
 				val[1] = 8;
-				if (selectstr(&tmp, 2, 56, str, val) == K_ESC)
-					return(0);
+				if (noselect(&tmp, 2, 56, str, val)) return(0);
 				n += tmp;
 			}
 			envcaption(VSORT_K);
@@ -814,7 +813,7 @@ int no;
 			str[1] = VSRT1_K;
 			val[0] = 0;
 			val[1] = 100;
-			if (selectstr(&p, 2, 0, str, val) == K_ESC) return(0);
+			if (noselect(&p, 2, 0, str, val)) return(0);
 			n += p;
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
@@ -824,30 +823,26 @@ int no;
 			str[0] = VDS10_K;
 			str[1] = VDS11_K;
 			tmp = n & 1;
-			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
-				return(0);
+			if (noselect(&tmp, 2, 0, str, val)) return(0);
 			n = (n & ~1) | tmp;
 			envcaption(VDS2B_K);
 			str[0] = VDS20_K;
 			str[1] = VDS21_K;
 			tmp = (n & 2) >> 1;
-			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
-				return(0);
+			if (noselect(&tmp, 2, 0, str, val)) return(0);
 			n = (n & ~2) | (tmp << 1);
 			envcaption(VDS3B_K);
 			str[0] = VDS30_K;
 			str[1] = VDS31_K;
 			tmp = (n & 4) >> 2;
-			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
-				return(0);
+			if (noselect(&tmp, 2, 0, str, val)) return(0);
 			n = (n & ~4) | (tmp << 2);
 # ifdef	HAVEFLAGS
 			envcaption(VDS4B_K);
 			str[0] = VDS40_K;
 			str[1] = VDS41_K;
 			tmp = (n & 8) >> 3;
-			if (selectstr(&tmp, 2, 0, str, val) == K_ESC)
-				return(0);
+			if (noselect(&tmp, 2, 0, str, val)) return(0);
 			n = (n & ~8) | (tmp << 3);
 # endif
 			ascnumeric(buf, n, 0, MAXLINESTR);
@@ -857,8 +852,8 @@ int no;
 			str[0] = VWFS0_K;
 			str[1] = VWFS1_K;
 			str[2] = VWFS2_K;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 3, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 3, 0, str, val)) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_COLUMN:
@@ -871,8 +866,8 @@ int no;
 			val[1] = 2;
 			val[2] = 3;
 			val[3] = 5;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 4, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 4, 0, str, val)) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_COLOR:
@@ -881,8 +876,8 @@ int no;
 			str[1] = VBOL1_K;
 			str[2] = VCOL2_K;
 			str[3] = VCOL3_K;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 4, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 4, 0, str, val)) return(0);
 			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_EDIT:
@@ -893,8 +888,8 @@ int no;
 			if (!cp) n = 0;
 			else for (n = 2; n > 0; n--)
 				if (!strcmp(cp, str[n])) break;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 3, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 3, 0, str, val)) return(0);
 			strcpy(buf, str[n]);
 			break;
 # if	!MSDOS && !defined (_NOKANJICONV)
@@ -904,8 +899,8 @@ int no;
 			str[1] = "EUC-JP";
 			val[0] = SJIS;
 			val[1] = EUC;
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 2, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 2, 0, str, val)) return(0);
 			str[SJIS] = "sjis";
 			str[EUC] = "euc";
 			strcpy(buf, str[n]);
@@ -920,8 +915,8 @@ int no;
 			val[0] = NOCNV;
 			val[1] = ENG;
 #  if	MSDOS || defined (_NOKANJICONV)
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 2, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 2, 0, str, val)) return(0);
 #  else	/* !MSDOS && !_NOKANJICONV */
 
 			str[2] = "SJIS";
@@ -941,15 +936,14 @@ int no;
 				p = 1;
 				n--;
 			}
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 8, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 8, 0, str, val)) return(0);
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
 				str[1] = VOJIS_K;
 				val[0] = 0;
 				val[1] = 1;
-				if (selectstr(&p, 2, 64, str, val) == K_ESC)
-					return(0);
+				if (noselect(&p, 2, 64, str, val)) return(0);
 				n += p;
 			}
 			str[SJIS] = "sjis";
@@ -993,15 +987,14 @@ int no;
 				p = 1;
 				n--;
 			}
-			envcaption(envlist[no].env + 3);
-			if (selectstr(&n, 9, 0, str, val) == K_ESC) return(0);
+			envcaption(&(envlist[no].env[3]));
+			if (noselect(&n, 9, 0, str, val)) return(0);
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
 				str[1] = VOJIS_K;
 				val[0] = 0;
 				val[1] = 1;
-				if (selectstr(&p, 2, 64, str, val) == K_ESC)
-					return(0);
+				if (noselect(&p, 2, 64, str, val)) return(0);
 				n += p;
 			}
 			str[NOCNV] = "";
@@ -1020,7 +1013,7 @@ int no;
 			break;
 # endif	/* !MSDOS && !_NOKANJIFCONV */
 		default:
-			cp = inputcuststr(envlist[no].env + 3, 0,
+			cp = inputcuststr(&(envlist[no].env[3]), 0,
 				*((char **)(envlist[no].var)), -1);
 			if (!cp) return(0);
 			strcpy(buf, cp);
@@ -1041,7 +1034,7 @@ FILE *fp;
 
 	for (i = n = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
-		&& (cp = getshellvar(envlist[i].env + 3, -1))
+		&& (cp = getshellvar(&(envlist[i].env[3]), -1))
 		&& (envlist[i].type != T_CHARP
 		|| strcmp(cp, envlist[i].def))) n++;
 		if ((!flaglist || !(flaglist[i] & 1))
@@ -1053,10 +1046,10 @@ FILE *fp;
 	fputs("# shell variables definition\n", fp);
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
-		&& (cp = getshellvar(envlist[i].env + 3, -1))
+		&& (cp = getshellvar(&(envlist[i].env[3]), -1))
 		&& (envlist[i].type != T_CHARP
 		|| strcmp(cp, envlist[i].def))) {
-			fputs(envlist[i].env + 3, fp);
+			fputs(&(envlist[i].env[3]), fp);
 			fputc('=', fp);
 			cp = killmeta(cp);
 			fputs(cp, fp);
@@ -1088,7 +1081,7 @@ FILE *fp;
 
 	for (n = 0; argv[n]; n++) {
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			if (!strnpathcmp(argv[n], envlist[i].env + 3, len[n])
+			if (!strnpathcmp(argv[n], &(envlist[i].env[3]), len[n])
 			|| !strnpathcmp(argv[n], envlist[i].env, len[n]))
 				break;
 		}
@@ -1118,9 +1111,11 @@ FILE *fp;
 			cp = getshellvar(ident, -1);
 			fputs(ident, fp);
 			fputc('=', fp);
-			cp = killmeta(cp);
-			fputs(cp, fp);
-			free(cp);
+			if (cp) {
+				cp = killmeta(cp);
+				fputs(cp, fp);
+				free(cp);
+			}
 		}
 	}
 	fputc('\n', fp);
@@ -1128,31 +1123,29 @@ FILE *fp;
 }
 # endif	/* !_NOORIGSHELL */
 
-static VOID NEAR cleanupbind(VOID_A)
-{
-	int i;
-
-	for (i = 0; i < maxmacro; i++) free(macrolist[i]);
-	maxmacro = 0;
-	copybind(bindlist, origbindlist);
-	copystrarray(helpindex, orighelpindex, NULL, 10);
-}
-
 bindtable *copybind(dest, src)
 bindtable *dest, *src;
 {
 	int i;
 
-	if (!dest) {
-		for (i = 0; src[i].key >= 0; i++);
-		dest = (bindtable *)malloc2((i + 1) * sizeof(bindtable));
+	if (!src) {
+		if (dest) dest[0].key = -1;
 	}
-	for (i = 0; i < MAXBINDTABLE; i++) {
-		memcpy((char *)&(dest[i]),
-			(char *)&(src[i]), sizeof(bindtable));
-		if (src[i].key < 0) break;
+	else {
+		for (i = 0; src[i].key >= 0; i++);
+		if (dest);
+		else dest = (bindtable *)malloc2((i + 1) * sizeof(bindtable));
+		memcpy((char *)dest, (char *)src, (i + 1) * sizeof(bindtable));
 	}
 	return(dest);
+}
+
+static VOID NEAR cleanupbind(VOID_A)
+{
+	freestrarray(macrolist, maxmacro);
+	maxmacro = 0;
+	copybind(bindlist, origbindlist);
+	copystrarray(helpindex, orighelpindex, NULL, 10);
 }
 
 static int NEAR dispbind(no)
@@ -1538,13 +1531,16 @@ FILE *fp;
 # endif	/* !_NOORIGSHELL */
 
 # if	!MSDOS && !defined (_NOKEYMAP)
-static VOID NEAR cleanupkeymap(VOID_A)
+VOID freekeymap(list)
+keymaptable *list;
 {
 	int i;
 
-	for (i = 0; origkeymaplist[i].key >= 0; i++)
-		setkeyseq(origkeymaplist[i].key, NULL, 0);
-	copykeymap(origkeymaplist);
+	if (list) {
+		for (i = 0; list[i].key >= 0; i++)
+			if (list[i].str) free(list[i].str);
+		free(list);
+	}
 }
 
 keymaptable *copykeymap(list)
@@ -1599,14 +1595,13 @@ keymaptable *list;
 	return(list);
 }
 
-VOID freekeymap(list)
-keymaptable *list;
+static VOID NEAR cleanupkeymap(VOID_A)
 {
 	int i;
 
-	for (i = 0; list[i].key >= 0; i++)
-		if (list[i].str) free(list[i].str);
-	free(list);
+	for (i = 0; origkeymaplist[i].key >= 0; i++)
+		setkeyseq(origkeymaplist[i].key, NULL, 0);
+	copykeymap(origkeymaplist);
 }
 
 static int NEAR dispkeymap(no)
@@ -1672,25 +1667,36 @@ int no;
 	return(1);
 }
 
+static int NEAR searchkeymap(list, key)
+keymaptable *list;
+int key;
+{
+	char *cp;
+	int i, len;
+
+	for (i = 0; list[i].key >= 0; i++) if (key == list[i].key) break;
+	if (list[i].key < 0) return(-1);
+
+	cp = getkeyseq(key, &len);
+	if (!len) return((list[i].len) ? -1 : i);
+	else if (!(list[i].len)) return(-1);
+	else if (!cp || !(list[i].str) || memcmp(cp, list[i].str, len))
+		return(-1);
+
+	return(i);
+}
+
 static int NEAR dumpkeymap(flaglist, fp)
 char *flaglist;
 FILE *fp;
 {
 	char *cp;
-	int i, j, n, key, len;
+	int i, n, key, len;
 
 	for (i = n = 0; tmpkeymaplist[i].key >= 0; i++) {
 		if (flaglist && flaglist[i]) continue;
-		key = tmpkeymaplist[i].key;
-		cp = getkeyseq(key, &len);
-		for (j = 0; origkeymaplist[j].key >= 0; j++)
-			if (key == origkeymaplist[j].key) break;
-		if (origkeymaplist[j].key >= 0) {
-			if (!len && !(origkeymaplist[j].len)) continue;
-			if (cp && origkeymaplist[j].str
-			&& len == origkeymaplist[j].len
-			&& !memcmp(cp, origkeymaplist[j].str, len)) continue;
-		}
+		if (searchkeymap(origkeymaplist, tmpkeymaplist[i].key) >= 0)
+			continue;
 		n++;
 	}
 	if (!n || !fp) return(n);
@@ -1700,16 +1706,9 @@ FILE *fp;
 	for (i = 0; tmpkeymaplist[i].key >= 0; i++) {
 		if (flaglist && flaglist[i]) continue;
 		key = tmpkeymaplist[i].key;
-		cp = getkeyseq(key, &len);
-		for (j = 0; origkeymaplist[j].key >= 0; j++)
-			if (key == origkeymaplist[j].key) break;
-		if (origkeymaplist[j].key >= 0) {
-			if (!len && !(origkeymaplist[j].len)) continue;
-			if (cp && origkeymaplist[j].str
-			&& len == origkeymaplist[j].len
-			&& !memcmp(cp, origkeymaplist[j].str, len)) continue;
-		}
+		if (searchkeymap(origkeymaplist, key) >= 0) continue;
 
+		cp = getkeyseq(key, &len);
 		printkeymap(key, cp, len, fp);
 		fputc('\n', fp);
 	}
@@ -1746,28 +1745,28 @@ FILE *fp;
 # endif	/* !MSDOS && !_NOKEYMAP */
 
 # ifndef	_NOARCHIVE
-static VOID NEAR cleanuplaunch(list, np)
+VOID freelaunch(list, max)
 launchtable *list;
-int *np;
+int max;
 {
 	int i;
 
-	for (i = 0; i < *np; i++) {
+	for (i = 0; i < max; i++) {
 		free(list[i].ext);
 		free(list[i].comm);
 		if (list[i].format) free(list[i].format);
 	}
-	*np = 0;
 }
 
-static launchtable *NEAR copylaunch(dest, src, ndestp, nsrc)
+launchtable *copylaunch(dest, src, ndestp, nsrc)
 launchtable *dest, *src;
 int *ndestp, nsrc;
 {
 	int i;
 
-	if (dest) cleanuplaunch(dest, ndestp);
-	else dest = (launchtable *)malloc2(nsrc * sizeof(launchtable));
+	if (dest) freelaunch(dest, *ndestp);
+	else if (nsrc > 0)
+		dest = (launchtable *)malloc2(nsrc * sizeof(launchtable));
 	for (i = 0; i < nsrc; i++) {
 		dest[i].ext = strdup2(src[i].ext);
 		dest[i].comm = strdup2(src[i].comm);
@@ -1778,6 +1777,11 @@ int *ndestp, nsrc;
 	}
 	*ndestp = nsrc;
 	return(dest);
+}
+
+static VOID NEAR cleanuplaunch(VOID_A)
+{
+	copylaunch(launchlist, origlaunchlist, &maxlaunch, origmaxlaunch);
 }
 
 static int NEAR displaunch(no)
@@ -1931,20 +1935,52 @@ int no;
 	return(1);
 }
 
+static int NEAR searchlaunch(list, max, launch)
+launchtable *list;
+int max;
+launchtable *launch;
+{
+	int i;
+
+	for (i = 0; i < max; i++)
+		if (!extcmp(launch -> ext, 0, list[i].ext, 0, 1)) break;
+	if (i >= max || launch -> flags != list[i].flags) return(-1);
+
+	if (!(launch -> format)) {
+		if (list[i].format) return(-1);
+	}
+	else if (!(list[i].format)) return(-1);
+	else if (launch -> topskip != list[i].topskip
+	|| launch -> bottomskip != list[i].bottomskip
+	|| strcmp(launch -> format, list[i].format))
+		return(-1);
+	if (strcmp(launch -> comm, list[i].comm)) return(-1);
+
+	return(i);
+}
+
 static int NEAR dumplaunch(flaglist, fp)
 char *flaglist;
 FILE *fp;
 {
 	int i, n;
 
-	for (i = n = 0; i < maxlaunch; i++)
-		if (!flaglist || !flaglist[i]) n++;
+	for (i = n = 0; i < maxlaunch; i++) {
+		if (flaglist && flaglist[i]) continue;
+		if (searchlaunch(origlaunchlist, origmaxlaunch,
+		&(launchlist[i])) >= 0)
+			continue;
+		n++;
+	}
 	if (!n || !fp) return(n);
 
 	fputc('\n', fp);
 	fputs("# launchar definition\n", fp);
 	for (i = 0; i < maxlaunch; i++) {
 		if (flaglist && flaglist[i]) continue;
+		if (searchlaunch(origlaunchlist, origmaxlaunch,
+		&(launchlist[i])) >= 0)
+			continue;
 		printlaunchcomm(i, 0, fp);
 		fputc('\n', fp);
 	}
@@ -1978,28 +2014,28 @@ FILE *fp;
 }
 #  endif	/* !_NOORIGSHELL */
 
-static VOID NEAR cleanuparch(list, np)
+VOID freearch(list, max)
 archivetable *list;
-int *np;
+int max;
 {
 	int i;
 
-	for (i = 0; i < *np; i++) {
+	for (i = 0; i < max; i++) {
 		free(list[i].ext);
 		if (list[i].p_comm) free(list[i].p_comm);
 		if (list[i].u_comm) free(list[i].u_comm);
 	}
-	*np = 0;
 }
 
-static archivetable *NEAR copyarch(dest, src, ndestp, nsrc)
+archivetable *copyarch(dest, src, ndestp, nsrc)
 archivetable *dest, *src;
 int *ndestp, nsrc;
 {
 	int i;
 
-	if (dest) cleanuparch(dest, ndestp);
-	else dest = (archivetable *)malloc2(nsrc * sizeof(archivetable));
+	if (dest) freearch(dest, *ndestp);
+	else if (nsrc > 0)
+		dest = (archivetable *)malloc2(nsrc * sizeof(archivetable));
 	for (i = 0; i < nsrc; i++) {
 		dest[i].ext = strdup2(src[i].ext);
 		dest[i].p_comm = strdup2(src[i].p_comm);
@@ -2008,6 +2044,11 @@ int *ndestp, nsrc;
 	}
 	*ndestp = nsrc;
 	return(dest);
+}
+
+static VOID NEAR cleanuparch(VOID_A)
+{
+	copyarch(archivelist, origarchivelist, &maxarchive, origmaxarchive);
 }
 
 static int NEAR disparch(no)
@@ -2116,20 +2157,49 @@ int no;
 	return(1);
 }
 
+static int NEAR searcharch(list, max, arch)
+archivetable *list;
+int max;
+archivetable *arch;
+{
+	int i;
+
+	for (i = 0; i < max; i++)
+		if (!extcmp(arch -> ext, 0, list[i].ext, 0, 1)) break;
+	if (i >= max || arch -> flags != list[i].flags) return(-1);
+
+	if (!arch -> p_comm) {
+		if (list[i].p_comm) return(-1);
+	}
+	else if (!(list[i].p_comm)) return(-1);
+	else if (strcmp(arch -> p_comm, list[i].p_comm)) return(-1);
+	if (strcmp(arch -> u_comm, list[i].u_comm)) return(-1);
+
+	return(i);
+}
+
 static int NEAR dumparch(flaglist, fp)
 char *flaglist;
 FILE *fp;
 {
 	int i, n;
 
-	for (i = n = 0; i < maxarchive; i++)
-		if (!flaglist || !flaglist[i]) n++;
+	for (i = n = 0; i < maxarchive; i++) {
+		if (flaglist && flaglist[i]) continue;
+		if (searcharch(origarchivelist, origmaxarchive,
+		&(archivelist[i])) >= 0)
+			continue;
+		n++;
+	}
 	if (!n || !fp) return(n);
 
 	fputc('\n', fp);
 	fputs("# archiver definition\n", fp);
 	for (i = 0; i < maxarchive; i++) {
 		if (flaglist && flaglist[i]) continue;
+		if (searcharch(origarchivelist, origmaxarchive,
+		&(archivelist[i])) >= 0)
+			continue;
 		printarchcomm(i, fp);
 		fputc('\n', fp);
 	}
@@ -2165,40 +2235,49 @@ FILE *fp;
 # endif	/* !_NOARCHIVE */
 
 # if	!MSDOS && !defined (_NODOSDRIVE)
-static VOID NEAR cleanupdrive(list)
+VOID freedrive(list)
 devinfo *list;
 {
 	int i;
 
 	for (i = 0; list[i].name; i++) free(list[i].name);
-	list[0].name = NULL;
 }
 
-static devinfo *NEAR copydrive(dest, src)
+devinfo *copydrive(dest, src)
 devinfo *dest, *src;
 {
 	int i;
 
-	if (dest) cleanupdrive(dest);
+	if (dest) freedrive(dest);
+	if (!src) {
+		if (dest) dest[0].name = NULL;
+	}
 	else {
 		for (i = 0; src[i].name; i++);
-		dest = (devinfo *)malloc2((i + 1) * sizeof(devinfo));
+		if (dest);
+		else dest = (devinfo *)malloc2((i + 1) * sizeof(devinfo));
+		for (i = 0; src[i].name; i++) {
+			dest[i].drive = src[i].drive;
+			dest[i].name = strdup2(src[i].name);
+			dest[i].head = src[i].head;
+			dest[i].sect = src[i].sect;
+			dest[i].cyl = src[i].cyl;
+		}
+		dest[i].name = NULL;
 	}
-	for (i = 0; src[i].name; i++) {
-		dest[i].drive = src[i].drive;
-		dest[i].name = strdup2(src[i].name);
-		dest[i].head = src[i].head;
-		dest[i].sect = src[i].sect;
-		dest[i].cyl = src[i].cyl;
-	}
-	dest[i].name = NULL;
 	return(dest);
+}
+
+static VOID NEAR cleanupdrive(VOID_A)
+{
+	copydrive(fdtype, origfdtype);
 }
 
 static int NEAR dispdrive(no)
 int no;
 {
-	int w, width;
+	char *cp, buf[sizeof("HDD98 #offset=") + 14];
+	int i, len, w, width;
 
 	if (!fdtype[no].name) {
 		kanjiputs2("", MAXCUSTVAL, 0);
@@ -2213,8 +2292,6 @@ int no;
 	width = MAXCUSTVAL - 1 - width;
 #  ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
-		char buf[sizeof("HDD98 #offset=") + 14];
-
 		strcpy(buf, "HDD");
 		if (fdtype[no].head >= 'A' && fdtype[no].head <= 'Z')
 			strcat(buf, "98");
@@ -2226,23 +2303,38 @@ int no;
 	else
 #  endif	/* HDDMOUNT */
 	{
-		char *buf;
+		len = 0;
+		for (i = 0; i < MEDIADESCRSIZ; i++) {
+			w = strlen(mediadescr[i].name);
+			if (len < w) len = w;
+		}
 
-		w = (width - 2) / 3;
-		buf = malloc2(width + 1);
-		ascnumeric(buf, fdtype[no].head, -1, w);
-		cputs2(buf);
+		w = (width - len) / 3 - 1;
+		cp = malloc2(w + 1);
+		ascnumeric(cp, fdtype[no].head, -1, w);
+		cputs2(cp);
 		putterm(t_standout);
 		putch2(' ');
 		putterm(end_standout);
-		ascnumeric(buf, fdtype[no].sect, -1, w);
-		cputs2(buf);
+		ascnumeric(cp, fdtype[no].sect, -1, w);
+		cputs2(cp);
 		putterm(t_standout);
 		putch2(' ');
 		putterm(end_standout);
-		ascnumeric(buf, fdtype[no].cyl, -1, width - 2 - w * 2);
-		cputs2(buf);
-		free(buf);
+		ascnumeric(cp, fdtype[no].cyl, -1, w);
+		cputs2(cp);
+		putterm(t_standout);
+		putch2(' ');
+		putterm(end_standout);
+		free(cp);
+
+		for (i = 0; i < MEDIADESCRSIZ; i++) {
+			if (fdtype[no].head == mediadescr[i].head
+			&& fdtype[no].sect == mediadescr[i].sect
+			&& fdtype[no].cyl == mediadescr[i].cyl) break;
+		}
+		if (i >= MEDIADESCRSIZ) kanjiputs2("", width - (w + 1) * 3, 0);
+		else kanjiputs2(mediadescr[i].name, width - (w + 1) * 3, 0);
 	}
 	return(strlen3(fdtype[no].name));
 }
@@ -2277,7 +2369,7 @@ int no;
 
 		envcaption(DRNAM_K);
 		drive = val[0];
-		if (selectstr(&drive, n, 0, str, val) == K_ESC) return(0);
+		if (noselect(&drive, n, 0, str, val)) return(0);
 
 		fdtype[no].name = NULL;
 	}
@@ -2314,13 +2406,12 @@ int no;
 		str[n] = USRDF_K;
 		val[n++] = i;
 		i = val[0];
-		if (selectstr(&i, n, 0, str, val) == K_ESC) {
+		if (noselect(&i, n, 0, str, val)) {
 			free(dev);
 			dev = NULL;
 			continue;
 		}
 
-		i = val[i];
 		if (i < MEDIADESCRSIZ) {
 			head = mediadescr[i].head;
 			sect = mediadescr[i].sect;
@@ -2329,8 +2420,9 @@ int no;
 		}
 
 		for (;;) {
-			if (fdtype[no].name) cp = NULL;
-			else ascnumeric(buf, fdtype[no].head, 0, MAXLINESTR);
+			if (!(fdtype[no].name)) cp = NULL;
+			else cp = ascnumeric(buf, fdtype[no].head,
+				0, MAXLINESTR);
 
 			if (!(cp = inputcuststr(DRHED_K, 1, cp, -1))) break;
 			head = atoi2(cp);
@@ -2341,8 +2433,9 @@ int no;
 		if (!cp) continue;
 
 		for (;;) {
-			if (fdtype[no].name) cp = NULL;
-			else ascnumeric(buf, fdtype[no].sect, 0, MAXLINESTR);
+			if (!(fdtype[no].name)) cp = NULL;
+			else cp = ascnumeric(buf, fdtype[no].sect,
+				0, MAXLINESTR);
 
 			if (!(cp = inputcuststr(DRSCT_K, 1, cp, -1))) break;
 			sect = atoi2(cp);
@@ -2353,8 +2446,9 @@ int no;
 		if (!cp) continue;
 
 		for (;;) {
-			if (fdtype[no].name) cp = NULL;
-			else ascnumeric(buf, fdtype[no].cyl, 0, MAXLINESTR);
+			if (!(fdtype[no].name)) cp = NULL;
+			else cp = ascnumeric(buf, fdtype[no].cyl,
+				0, MAXLINESTR);
 
 			if (!(cp = inputcuststr(DRCYL_K, 1, cp, -1))) break;
 			cyl = atoi2(cp);
@@ -2363,6 +2457,12 @@ int no;
 			warning(0, VALNG_K);
 		}
 		if (cp) break;
+	}
+
+	n = searchdrv(fdtype, drive, dev, head, sect, cyl, 1);
+	if (fdtype[n].name) {
+		if (n != no) warning(0, DUPLD_K);
+		return(0);
 	}
 
 	if (fdtype[no].name) no = deletedrv(no);
@@ -2381,16 +2481,24 @@ static int NEAR dumpdrive(flaglist, fp)
 char *flaglist;
 FILE *fp;
 {
-	int i, n;
+	int i, j, n;
 
-	for (i = n = 0; fdtype[i].name; i++)
-		if (!flaglist || !flaglist[i]) n++;
+	for (i = n = 0; fdtype[i].name; i++) {
+		if (flaglist && flaglist[i]) continue;
+		j = searchdrv(origfdtype, fdtype[i].drive, fdtype[i].name,
+			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl, 1);
+		if (origfdtype[j].name) continue;
+		n++;
+	}
 	if (!n || !fp) return(n);
 
 	fputc('\n', fp);
 	fputs("# MS-DOS drive definition\n", fp);
 	for (i = 0; fdtype[i].name; i++) {
 		if (flaglist && flaglist[i]) continue;
+		j = searchdrv(origfdtype, fdtype[i].drive, fdtype[i].name,
+			fdtype[i].head, fdtype[i].sect, fdtype[i].cyl, 1);
+		if (origfdtype[j].name) continue;
 		printsetdrv(i, 0, fp);
 		fputc('\n', fp);
 	}
@@ -2470,10 +2578,14 @@ char *file;
 	}
 
 	strcpy(path, file);
-	if (!(cp = strrdelim(path, 1))) cp = path;
-	memset(cp, '\0', sizeof(path) - (cp - path));
-	cp[0] = '_';
+	if ((cp = strrdelim(path, 1))) cp++;
+	else cp = path;
+	len = sizeof(path) - 1 - (cp - path);
+	if (len > MAXTNAMLEN) len = MAXTNAMLEN;
+	genrandname(NULL, 0);
+
 	for (;;) {
+		genrandname(cp, len);
 		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0666);
 		if (fd >= 0) break;
 		if (errno != EEXIST) {
@@ -2481,24 +2593,6 @@ char *file;
 			if (fpin) Xfclose(fpin);
 			return(-1);
 		}
-
-		for (i = 0; i < MAXTNAMLEN; i++) {
-			if (!cp[i]) cp[i] = '_';
-			else if (cp[i] == '9') {
-				cp[i] = '_';
-				continue;
-			}
-			else if (cp[i] == '_') cp[i] = 'a';
-#  if	MSDOS
-			else if (cp[i] == 'z') cp[i] = '0';
-#  else
-			else if (cp[i] == 'z') cp[i] = 'A';
-			else if (cp[i] == 'Z') cp[i] = '0';
-#  endif
-			else cp[i]++;
-			break;
-		}
-		if (i >= MAXTNAMLEN) break;
 	}
 	if (fd < 0) {
 		warning(EEXIST, path);
@@ -2537,12 +2631,12 @@ char *file;
 			strcpy(&(buf[len]), cp);
 			len += n;
 		}
-		trp = analyze(cp, trp, 1);
+		trp = analyze(cp, trp, 0, 1);
 		free(cp);
 
 		n = 0;
 		if (!trp);
-		else if (trp -> flags & ST_CONT) continue;
+		else if (trp -> cont) continue;
 		else if ((argv = getsimpleargv(stree))) {
 			argc = (stree -> comm) -> argc;
 			argc = (stree -> comm) -> argc =
@@ -2652,7 +2746,7 @@ int no;
 {
 	FILE *fp;
 	char *file, *str[MAXCUSTOM - 1];
-	int i, n, val[MAXCUSTOM - 1];
+	int i, n, done, val[MAXCUSTOM - 1];
 
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
 		str[i] = NULL;
@@ -2672,12 +2766,12 @@ int no;
 	str[5] = TSDRV_K;
 # endif
 
+	done = 0;
 	switch (no) {
 		case 0:
 			envcaption(SREST_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
-			== K_ESC)
-				return(0);
+			if (noselect(NULL, MAXCUSTOM - 1, 0, str, val)) break;
+			done = 1;
 			if (val[0]) copyenv(tmpenvlist);
 			if (val[1]) {
 				copystrarray(macrolist, tmpmacrolist,
@@ -2701,25 +2795,25 @@ int no;
 			break;
 		case 1:
 			envcaption(SCLEA_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
-			== K_ESC)
-				return(0);
+			if (noselect(NULL, MAXCUSTOM - 1, 0, str, val)) break;
+			done = 1;
 			if (val[0]) cleanupenv();
 			if (val[1]) cleanupbind();
 # if	!MSDOS && !defined (_NOKEYMAP)
 			if (val[2]) cleanupkeymap();
 # endif
 # ifndef	_NOARCHIVE
-			if (val[3]) cleanuplaunch(launchlist, &maxlaunch);
-			if (val[4]) cleanuparch(archivelist, &maxarchive);
+			if (val[3]) cleanuplaunch();
+			if (val[4]) cleanuparch();
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-			if (val[5]) cleanupdrive(fdtype);
+			if (val[5]) cleanupdrive();
 # endif
 			break;
 		case 2:
 			if (!(file = inputcuststr(FLOAD_K, 1, RUNCOMFILE, 1)))
-				return(0);
+				break;
+			done = 1;
 			n = sigvecset(0);
 			locate(0, n_line - 1);
 			inruncom = 1;
@@ -2730,23 +2824,22 @@ int no;
 			break;
 		case 3:
 			if (!(file = inputcuststr(FSAVE_K, 1, RUNCOMFILE, 1)))
-				return(0);
+				break;
+			done = 1;
 			file = evalpath(file, 1);
-			if (isexist(file) && yesno(FSVOK_K)) {
-				free(file);
-				return(0);
-			}
-			envcaption(SSAVE_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
-			== K_ESC)
-				return(0);
-			if (!(fp = Xfopen(file, "w"))) {
-				warning(-1, file);
-				free(file);
-				return(0);
+			if (isexist(file) && yesno(FSVOK_K)) done = 0;
+			else {
+				envcaption(SSAVE_K);
+				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
+					done = 0;
+				else if (!(fp = Xfopen(file, "w"))) {
+					warning(-1, file);
+					done = 0;
+				}
 			}
 			free(file);
 
+			if (!done) break;
 			fputs("# configurations by customizer\n", fp);
 			if (val[0]) dumpenv(NULL, fp);
 			if (val[1]) dumpbind(NULL, fp);
@@ -2765,23 +2858,24 @@ int no;
 		case 4:
 # ifndef	_NOORIGSHELL
 			if (!(file = inputcuststr(FOVWR_K, 1, RUNCOMFILE, 1)))
-				return(0);
+				break;
+			done = 1;
 			file = evalpath(file, 1);
-			if (!isexist(file) && !yesno(FOVOK_K)) {
-				free(file);
-				return(0);
+			if (!isexist(file) && !yesno(FOVOK_K)) done = 0;
+			else {
+				envcaption(SOVWR_K);
+				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
+					done = 0;
+				else if (overwriteconfig(val, file) < 0)
+					done = 0;
 			}
-			envcaption(SOVWR_K);
-			if (selectstr(NULL, MAXCUSTOM - 1, 0, str, val)
-			== K_ESC)
-				return(0);
-			if (overwriteconfig(val, file) < 0) return(0);
+			free(file);
 			break;
 # endif	/* !_NOORIGSHELL */
 		default:
 			break;
 	}
-	return(1);
+	return(done);
 }
 
 static VOID NEAR dispname(no, y, isstandout)
@@ -2794,7 +2888,7 @@ int no, y, isstandout;
 	cp = NEWET_K;
 	switch (custno) {
 		case 0:
-			cp = envlist[no].env + 3;
+			cp = &(envlist[no].env[3]);
 			break;
 		case 1:
 			if (bindlist[no].key >= 0)
@@ -3159,21 +3253,33 @@ int customize(VOID_A)
 	for (i = 0; i < ENVLISTSIZ * 2; i++)
 		if (tmpenvlist[i]) free(tmpenvlist[i]);
 	free(tmpenvlist);
-	freevar(tmpmacrolist);
-	freevar(tmphelpindex);
-	free(tmpbindlist);
+	if (tmpmacrolist) {
+		freestrarray(tmpmacrolist, tmpmaxmacro);
+		free(tmpmacrolist);
+	}
+	if (tmphelpindex) {
+		freestrarray(tmphelpindex, 10);
+		free(tmphelpindex);
+	}
+	if (tmpbindlist) free(tmpbindlist);
 # if	!MSDOS && !defined (_NOKEYMAP)
 	freekeymap(tmpkeymaplist);
 # endif
 # ifndef	_NOARCHIVE
-	cleanuplaunch(tmplaunchlist, &tmpmaxlaunch);
-	free(tmplaunchlist);
-	cleanuparch(tmparchivelist, &tmpmaxarchive);
-	free(tmparchivelist);
+	if (tmplaunchlist) {
+		freelaunch(tmplaunchlist, tmpmaxlaunch);
+		free(tmplaunchlist);
+	}
+	if (tmparchivelist) {
+		freearch(tmparchivelist, tmpmaxarchive);
+		free(tmparchivelist);
+	}
 # endif
 # if	!MSDOS && !defined (_NODOSDRIVE)
-	cleanupdrive(tmpfdtype);
-	free(tmpfdtype);
+	if (tmpfdtype) {
+		freedrive(tmpfdtype);
+		free(tmpfdtype);
+	}
 # endif
 	return(0);
 }

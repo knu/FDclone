@@ -8,6 +8,7 @@ PREFIX	= \usr\local
 MANSEC	= 1
 TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)\bin
+DATADIR	= $(TOPDIR)\share
 MANDIR	= $(TOPDIR)\man\man$(MANSEC)
 CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 EMANDIR	= $(TOPDIR)\man\man$(MANSEC)
@@ -20,7 +21,7 @@ CHMOD	= chmod
 LN	= copy /y
 
 SRC	= main.c term.c pathname.c \
-	system.c doscom.c \
+	system.c posixsh.c doscom.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	libc.c file.c apply.c \
@@ -44,7 +45,6 @@ EMANSRC	= fd_e.man
 EMANCAT	= fd_e.cat
 RUNCOM	= fdrc
 ARGS	= object.arg
-SARGS	= sobject.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= $(EDOC) $(EMANSRC) $(EMANCAT) \
@@ -56,10 +56,8 @@ ESRCS	= $(EDOC) $(EMANSRC) $(EMANCAT) \
 	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
-SHSOURCES = machine.h pathname.h system.h unixemu.h \
-	term.h kctype.h \
-	pathname.c system.c doscom.c \
-	term.c kanji.c \
+SHSOURCES = system.c posixsh.c doscom.c pathname.c \
+	machine.h kctype.h system.h pathname.h unixemu.h \
 	kanjicnv.c expfunc.c mkmfsed.c \
 	TECHKNOW Configur Makefile Makefile.in \
 	makefile.gpc makefile.g98 \
@@ -73,20 +71,22 @@ SED	= sed
 PROGRAM	= fd
 FDSHELL	= fdsh
 OBJ1	= main.obj term.obj pathname.obj \
-	system.obj doscom.obj \
+	system.obj posixsh.obj doscom.obj \
 	dosdisk.obj unixemu.obj unixdisk.obj
 OBJ2	= libc.obj file.obj apply.obj \
 	parse.obj builtin.obj shell.obj \
 	kanji.obj input.obj
 OBJ3	= info.obj rockridg.obj archive.obj tree.obj \
 	custom.obj command.obj browse.obj
-SOBJ	= ssystem.obj sdoscom.obj spathnam.obj \
-	sterm.obj skanji.obj
+SOBJ	= ssystem.obj sposixsh.obj sdoscom.obj spathnam.obj
+BOBJ	= bsystem.obj bdoscom.obj bpathnam.obj
 ALLOC	=
 DEBUG	=
 
-LDFLAGS	=   -lintlib -ltinymain.obj -k"-s 5800" $(ALLOC)
-CFLAGS	= -DPC98=1 -O -h $(DEBUG)
+LDFLAGS	=   -lintlib -ltinymain.obj $(ALLOC)
+CFLAGS	= -DPC98=1 -O $(DEBUG)
+SLDFLAGS =  -lintlib -ltinymain.obj $(ALLOC)
+BCFLAGS	= $(CFLAGS) -DMINIMUMSHELL
 
 .SUFFIXES: .h .c .obj .exe
 
@@ -97,7 +97,7 @@ CFLAGS	= -DPC98=1 -O -h $(DEBUG)
 all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) $(CFLAGS) -ml -o $@ @$(ARGS) $(LDFLAGS)
+	$(CC) -ml -h -k"-s 5000" -o $@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
@@ -108,13 +108,13 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main.obj: main.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 5000" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\"  $*.c
 
 system.obj: system.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 5000" $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" $*.c
 
 .c.obj:
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) -ml -h -k"-s 5000" $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
@@ -282,29 +282,44 @@ config: Configur expfunc.c
 
 sh: fdsh.exe
 
-fdsh.exe: $(SOBJ) $(SARGS)
-	$(CC) $(CFLAGS) -ml -o $@ @$(SARGS) $(LDFLAGS)
+fdsh.exe: $(SOBJ)
+	$(CC) -mp -h -k"-s 8000" -o $@ $(SOBJ) $(SLDFLAGS)
 #	ren $@ fdsh
 #	aout2exe fdsh
 #	del fdsh
 
-$(SARGS): $(SOBJ)
-	@echo $(SOBJ) > $(SARGS)
+ssystem.obj: system.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mp -h -k"-s 8000" $(CPPFLAGS) -c -o $@ system.c
 
-ssystem.obj: system.c machine.h config.h kctype.h term.h pathname.h system.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ -DDEFRUNCOM=\\\"$(DOSRC)\\\" system.c
+sposixsh.obj: posixsh.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mp -h -k"-s 8000" $(CPPFLAGS) -c -o $@ posixsh.c
 
-sdoscom.obj: doscom.c machine.h config.h kctype.h term.h pathname.h system.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ doscom.c
+sdoscom.obj: doscom.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mp -h -k"-s 8000" $(CPPFLAGS) -c -o $@ doscom.c
 
 spathnam.obj: pathname.c machine.h config.h pathname.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ pathname.c
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -mp -h -k"-s 8000" $(CPPFLAGS) -c -o $@ pathname.c
 
-sterm.obj: term.c machine.h config.h term.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ term.c
 
-skanji.obj: kanji.c machine.h config.h term.h kctype.h pathname.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) -ml $(CPPFLAGS) -c -o $@ kanji.c
+############################################################
+# Bourne shell
+
+bsh: fdbsh.exe
+
+fdbsh.exe: $(BOBJ)
+	$(CC) -ms -k"-s 8000" -o $@ $(BOBJ) $(SLDFLAGS)
+#	ren $@ fdsh
+#	aout2exe fdsh
+#	del fdsh
+
+bsystem.obj: system.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -ms -k"-s 8000" $(CPPFLAGS) -c -o $@ system.c
+
+bdoscom.obj: doscom.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -ms -k"-s 8000" $(CPPFLAGS) -c -o $@ doscom.c
+
+bpathnam.obj: pathname.c machine.h config.h pathname.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) -ms -k"-s 8000" $(CPPFLAGS) -c -o $@ pathname.c
 
 
 ############################################################
@@ -337,30 +352,30 @@ shar: $(SOURCES)
 clean:
 	-rm -f *.obj funcno.h kanji.h
 	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe mkunitbl.exe
-	-rm -f fdsh.exe
+	-rm -f fdsh.exe fdbsh.exe
 	-rm -f $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
-	-rm -f $(SARGS)
 	-rm -f core $(UNITBL)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.obj: fd.h
 main.obj: machine.h config.h
-main.obj: types.h pathname.h term.h
-main.obj: func.h
-main.obj: kanji.h version.h
-main.obj: system.h dosdisk.h
+main.obj: types.h pathname.h term.h func.h
+main.obj: kanji.h version.h dosdisk.h
+main.obj: system.h
 term.obj: machine.h config.h
 term.obj: term.h
 pathname.obj: fd.h
 pathname.obj: machine.h config.h
 pathname.obj: types.h pathname.h
 system.obj: machine.h config.h kctype.h
-system.obj: term.h pathname.h
-system.obj: system.h
+system.obj: term.h pathname.h system.h
+posixsh.obj: machine.h config.h
+posixsh.obj: kctype.h
+posixsh.obj: term.h pathname.h
+posixsh.obj: system.h
 doscom.obj: machine.h config.h kctype.h
-doscom.obj: term.h pathname.h
-doscom.obj: system.h
+doscom.obj: term.h pathname.h system.h
 dosdisk.obj: machine.h config.h
 dosdisk.obj: dosdisk.h
 dosemu.obj: fd.h
@@ -398,18 +413,19 @@ builtin.obj: fd.h
 builtin.obj: machine.h config.h
 builtin.obj: types.h pathname.h term.h func.h
 builtin.obj: kctype.h
-builtin.obj: funcno.h kanji.h system.h dosdisk.h
+builtin.obj: funcno.h kanji.h dosdisk.h
+builtin.obj: system.h
 shell.obj: fd.h
 shell.obj: machine.h config.h
 shell.obj: types.h pathname.h term.h func.h
 shell.obj: kctype.h
-shell.obj: kanji.h system.h
+shell.obj: kanji.h
+shell.obj: system.h
 kanji.obj: machine.h config.h
 kanji.obj: term.h kctype.h pathname.h
 input.obj: fd.h
 input.obj: machine.h config.h
-input.obj: types.h pathname.h
-input.obj: term.h func.h
+input.obj: types.h pathname.h term.h func.h
 input.obj: kctype.h
 input.obj: kanji.h system.h
 info.obj: fd.h
@@ -423,7 +439,8 @@ archive.obj: fd.h
 archive.obj: machine.h config.h
 archive.obj: types.h pathname.h term.h func.h
 archive.obj: kctype.h
-archive.obj: kanji.h system.h
+archive.obj: kanji.h
+archive.obj: system.h
 tree.obj: fd.h
 tree.obj: machine.h config.h
 tree.obj: types.h pathname.h term.h
@@ -434,13 +451,14 @@ custom.obj: machine.h config.h
 custom.obj: types.h pathname.h
 custom.obj: term.h func.h
 custom.obj: funcno.h kctype.h
-custom.obj: kanji.h system.h dosdisk.h
+custom.obj: kanji.h dosdisk.h
+custom.obj: system.h
 command.obj: fd.h
 command.obj: machine.h config.h
 command.obj: types.h pathname.h term.h func.h
 command.obj: funcno.h kctype.h
-command.obj: kanji.h system.h
-command.obj: functabl.h
+command.obj: kanji.h
+command.obj: system.h functabl.h
 browse.obj: fd.h
 browse.obj: machine.h config.h
 browse.obj: types.h pathname.h

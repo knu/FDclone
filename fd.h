@@ -30,8 +30,8 @@
 #define	_NOKANJIFCONV
 #endif	/* FD < 2 */
 
-#include "types.h"
 #include "pathname.h"
+#include "types.h"
 
 #ifdef	DEBUG
 extern char *_mtrace_file;

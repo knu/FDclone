@@ -10,11 +10,11 @@
 #include <fcntl.h>
 #include "machine.h"
 
-#ifndef NOUNISTDH
+#ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
 
-#ifndef NOSTDLIBH
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 
@@ -582,7 +582,7 @@ VOID readunitable(VOID_A)
 	if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
 	else strcatdelim2(path, unitblpath, UNICODETBL);
 
-	if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0) return;
+	if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0) return;
 	if (read(fd, buf, 2) != 2) {
 		close(fd);
 		return;
@@ -711,7 +711,7 @@ int encode;
 		if (!unitblpath || !*unitblpath) strcpy(path, UNICODETBL);
 		else strcatdelim2(path, unitblpath, UNICODETBL);
 
-		if ((fd = open(path, O_RDONLY | O_BINARY, 0600)) < 0)
+		if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0)
 			return(r);
 		if (!unitblent) {
 			if (read(fd, buf, 2) != 2) {

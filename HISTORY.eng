@@ -1,3 +1,25 @@
+Ver. 2.02	Add 'pushd', 'popd' and 'dirs' builtins.
+ (11/26/02)	Add -L, -P options in 'cd', 'pwd' builtins.
+		Add -o physical option in 'set' builtin.
+		Add %JA macro.
+		Add 'MAIL', 'MAILPATH', 'MAILCHECK' internal variables.
+		Add ${#foo}, ${foo%bar}, ${foo#bar} substitutions for POSIX.
+		Add $(command), $((expression)) expansions for POSIX.
+		Add 'dtype' builtin. (MS-DOS)
+		Add /S, /4 options in 'dir' builtin. (MS-DOS)
+		Expand the length of fdsh's command line into 255 characters.
+		Temporary filenames will be generated randomly for security.
+		Bug that '.' and '..' are invisible on floppy drives is fixed.
+		Bug that no here-documents can be used in statements is fixed.
+		Broken path when invoked with a floppy drive argument is fixed.
+		Bug that file preceding makes some commands illegal is fixed.
+		Evaluation for arguments in shell command line is revised.
+		Bug that each RRPATH and FNAMEKCODE works exclusively is fixed.
+		Useless redirected CON on DJGPP and Borland C++ is fixed.
+		Miscalculation of free disk space on floppy drives is fixed.
+		Bug that customizer cannot save configurations is fixed.
+		Bug that pure MS-DOS cannot write some directories is fixed.
+
 Ver. 2.01c	Enlarge range of the filename shift for symbolic link.
  (10/01/02)	Mis-parsing for the archived file with '.' directory is fixed.
 		Trivial fixes about the filename completion.

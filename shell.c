@@ -10,14 +10,12 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#ifndef	_NOORIGSHELL
-#include "system.h"
+#if	MSDOS && !defined (_NOUSELFN)
+extern char *shortname __P_((char *, char *));
 #endif
 
-#if	MSDOS
-extern char *shortname __P_((char *, char *));
-#else
-#include <sys/param.h>
+#ifndef	_NOORIGSHELL
+#include "system.h"
 #endif
 
 extern int mark;
@@ -70,7 +68,7 @@ int ptr;
 char *arg;
 {
 	if (!arg || !*arg);
-	else if (*arg == _SC_);
+	else if (*arg == _SC_ || isdotdir(arg));
 #if	MSDOS
 	else if (_dospath(arg));
 #endif
@@ -93,6 +91,13 @@ int ptr, eol, code;
 	char *cp, tmp[MAXCOMMSTR + 1];
 	int len, total;
 
+# ifndef	_NOKANJIFCONV
+	if (code < 0) {
+		cp = _evalpath(&(buf[ptr]), &(buf[eol]), 0, 0);
+		code = getkcode(cp);
+		free(cp);
+	}
+# endif
 	buf[eol] = '\0';
 	cp = &(buf[ptr]);
 	total = 0;
@@ -110,7 +115,7 @@ int ptr, eol, code;
 	memcpy(&(buf[ptr]), tmp, total);
 	return(total);
 }
-#endif
+#endif	/* !MSDOS && !_NOKANJICONV */
 
 static int NEAR setarg(buf, ptr, dir, arg, flags)
 char *buf;
@@ -121,6 +126,9 @@ u_char flags;
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 	char conv[MAXPATHLEN];
 #endif
+#ifndef	_NOROCKRIDGE
+	char rbuf[MAXPATHLEN];
+#endif
 	char *cp, path[MAXPATHLEN];
 	int len, optr;
 
@@ -129,15 +137,13 @@ u_char flags;
 	if (!arg || !*arg) return(ptr - optr);
 	if (!dir || !*dir) {
 #if	MSDOS && !defined (_NOUSELFN)
-		if ((flags & F_TOSFN) && shortname(arg, path))
-			arg = strdup2(path);
-		else
+		if ((flags & F_TOSFN) && shortname(arg, path) == path)
+			arg = path;
 #endif
-		arg = killmeta(arg);
 	}
 	else {
 		strcatdelim2(path, dir, arg);
-		arg = killmeta(path);
+		arg = path;
 #if	MSDOS && !defined (_NOARCHIVE)
 		if (flags & F_ISARCH) for (len = 0; arg[len]; len++) {
 			if (iskanji1(arg, len)) len++;
@@ -146,13 +152,15 @@ u_char flags;
 #endif
 	}
 
+	cp = arg;
 #if	!MSDOS && !defined (_NOKANJIFCONV)
-	cp = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, getkcode(arg));
-	if (cp != arg) {
-		free(arg);
-		arg = strdup2(cp);
-	}
+	arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, getkcode(arg));
 #endif
+#ifndef	_NOROCKRIDGE
+	if (cp != path) arg = detransfile(cp, rbuf, 0);
+#endif
+	arg = killmeta(arg);
+
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
 		len = cp - arg;
 	else len = strlen(arg);
@@ -239,16 +247,29 @@ static int NEAR insertarg(buf, format, arg, needmark)
 char *buf, *format, *arg;
 int needmark;
 {
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+	char conv[MAXPATHLEN];
+#endif
 #if	MSDOS && !defined (_NOUSELFN)
-	char tmp[MAXPATHLEN];
+	char *org, alias[MAXPATHLEN];
+#endif
+#ifndef	_NOROCKRIDGE
+	char rbuf[MAXPATHLEN];
 #endif
 	char *cp, *src, *ins;
 	int i, len, ptr;
 
-	arg = killmeta(arg);
 #if	MSDOS && !defined (_NOUSELFN)
-	*tmp = '\0';
+	org = arg;
+	*alias = '\0';
 #endif
+#if	!MSDOS && !defined (_NOKANJIFCONV)
+	arg = kanjiconv2(conv, arg, MAXPATHLEN - 1, DEFCODE, getkcode(arg));
+#endif
+#ifndef	_NOROCKRIDGE
+	arg = detransfile(arg, rbuf, 0);
+#endif
+	arg = killmeta(arg);
 	ptr = strlen(format);
 	if (ptr > MAXCOMMSTR) i = 0;
 	else {
@@ -258,9 +279,14 @@ int needmark;
 			ins = arg;
 #if	MSDOS && !defined (_NOUSELFN)
 			if (*src & F_TOSFN) {
-				if (!*tmp && !shortname(arg, tmp))
-					strcpy(tmp, arg);
-				ins = tmp;
+				if (!*alias) {
+					if (shortname(org, alias) == alias)
+						org = alias;
+					org = killmeta(org);
+					strcpy(alias, org);
+					free(org);
+				}
+				ins = alias;
 			}
 #endif
 			if ((*src & F_NOEXT) && (cp = strrchr(ins, '.')))
@@ -408,14 +434,17 @@ int ignorelist;
 				else if (c == 'E') tmpcode = EUC;
 # if	FD < 2
 				else if (c == 'J') tmpcode = JIS7;
-# else
+# else	/* FD >= 2 */
 				else if (c == '7') tmpcode = JIS7;
 				else if (c == '8') tmpcode = JIS8;
 				else if (c == 'J') tmpcode = JUNET;
 				else if (c == 'H') tmpcode = HEX;
 				else if (c == 'C') tmpcode = CAP;
 				else if (c == 'U') tmpcode = UTF8;
-# endif
+#  ifndef	_NOKANJIFCONV
+				else if (c == 'A') tmpcode = -1;
+#  endif
+# endif	/* FD >= 2 */
 				else {
 					line[j++] = command[i];
 					break;
@@ -433,7 +462,7 @@ int ignorelist;
 				cnvcode = tmpcode;
 				cnvptr = j;
 				break;
-#endif
+#endif	/* !MSDOS && !_NOKANJICONV */
 			default:
 				line[j++] = command[i];
 				break;
@@ -473,21 +502,27 @@ int ignorelist;
 	}
 
 	if (!(flags & F_ARGSET) && arg && *arg) {
+#ifndef	_NOROCKRIDGE
+		char rbuf[MAXPATHLEN];
+#endif
 #if	!MSDOS && !defined (_NOKANJIFCONV)
 		char conv[MAXPATHLEN];
 
 		arg = kanjiconv2(conv, arg, MAXPATHLEN - 1,
 			DEFCODE, getkcode(arg));
 #endif
+#ifndef	_NOROCKRIDGE
+		arg = detransfile(arg, rbuf, 0);
+#endif
 		line[j++] = ' ';
-		if (checksc(NULL, 0, arg) < 0) arg = killmeta(arg);
-		else {
+		arg = killmeta(arg);
+		if (checksc(NULL, 0, arg) >= 0) {
 			cp = malloc2(strlen(arg) + 2 + 1);
 			cp[0] = '.';
 			cp[1] = _SC_;
 			strcpy(&(cp[2]), arg);
-			arg = killmeta(cp);
-			free(cp);
+			free(arg);
+			arg = cp;
 		}
 
 		len = strlen(arg);
@@ -510,20 +545,15 @@ int ignorelist;
 	return(cp);
 }
 
-char *inputshellstr(prompt, ptr, cursor, def)
+char *inputshellstr(prompt, ptr, def)
 char *prompt;
-int ptr, cursor;
+int ptr;
 char *def;
 {
 	char *cp, *tmp, *duppromptstr;
-	int x, y;
 
 	duppromptstr = promptstr;
-	if (prompt) {
-		promptstr = prompt;
-		lcmdline = n_line;
-	}
-	if (cursor && getxy(&y, &x) >= 0) lcmdline = y;
+	if (prompt) promptstr = prompt;
 	cp = inputstr(NULL, 0, ptr, def, 0);
 	promptstr = duppromptstr;
 	if (!cp) return((char *)-1);
@@ -550,7 +580,7 @@ char *def;
 #endif
 	char *cp;
 
-	cp = inputshellstr(NULL, ptr, 0, def);
+	cp = inputshellstr(NULL, ptr, def);
 	if (cp == (char *)-1) return(NULL);
 	else if (!cp) {
 		hideclock = 1;
@@ -566,14 +596,14 @@ char *def;
 	trp = stree = newstree(NULL);
 	for (;;) {
 		if (cp) {
-			trp = analyze(cp, trp, 1);
+			trp = analyze(cp, trp, 0, 1);
 			free(cp);
-			if (!trp || !(trp -> flags & ST_CONT)) break;
+			if (!trp || !(trp -> cont)) break;
 		}
 
-		lcmdline = n_line;
+		lcmdline = -1;
 		hideclock = 1;
-		cp = inputshellstr(promptstr2, -1, 0, NULL);
+		cp = inputshellstr(promptstr2, -1, NULL);
 		if (cp == (char *)-1) break;
 		else if (!cp) continue;
 
@@ -707,7 +737,7 @@ int noconf, argset, ignorelist;
 		int *len;
 
 		stree = newstree(NULL);
-		if (analyze(command, stree, 1)) {
+		if (analyze(command, stree, 0, 1)) {
 			if ((argv = getsimpleargv(stree))) {
 				i = (stree -> comm) -> argc;
 				(stree -> comm) -> argc =
@@ -794,7 +824,8 @@ char *argv[];
 	while ((cp = strtkchr(&(command[i]), '$', 1))) {
 		while (&(command[i]) < cp && j < MAXCOMMSTR)
 			line[j++] = command[i++];
-		if (command[++i] < '0' || command[i] > '9') {
+		i++;
+		if (!isdigit(command[i])) {
 			if (j > MAXCOMMSTR - 2) break;
 			line[j++] = '$';
 			line[j++] = command[i++];

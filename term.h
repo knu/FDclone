@@ -147,6 +147,7 @@ extern FILE *ttyout;
 #define	putterm(s)	cputs2(s)
 #define	putterms(s)	cputs2(s)
 #else
+extern int tputs __P_((char *, int, int (*)__P_((int))));
 #define	putterm(s)	tputs(s, 1, putch3)
 #define	putterms(s)	tputs(s, n_line, putch3)
 #endif

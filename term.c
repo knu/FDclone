@@ -28,6 +28,7 @@ extern char *_mtrace_file;
 #if	MSDOS
 #include <dos.h>
 #include <io.h>
+#include <sys/stat.h>
 # ifdef	PC98
 # define	NOTUSEBIOS
 # else
@@ -57,7 +58,6 @@ extern char *_mtrace_file;
 # define	getbiosbyte(o)	_farpeekb(_dos_ds, BIOSSEG * 0x10 + o)
 # else	/* !DJGPP */
 # include <sys/types.h>
-# include <sys/timeb.h>
 typedef union REGS	__dpmi_regs;
 # define	intdos2(rp)	int86(0x21, rp, rp)
 # define	getkeybuf(o)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)))
@@ -255,7 +255,6 @@ extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
 extern char *tgetstr __P_((char *, char **));
 extern char *tgoto __P_((char *, int, int));
-extern int tputs __P_((char *, int, int (*)__P_((int))));
 # define	tgetnum2		tgetnum
 # define	tgetflag2		tgetflag
 # define	tgoto2			tgoto
@@ -424,6 +423,9 @@ typedef struct fd_set {
 #else
 static int NEAR safe_dup __P_((int));
 static int NEAR safe_dup2 __P_((int, int));
+#endif
+#if	MSDOS
+static int NEAR newdup __P_((int));
 #endif
 static int NEAR err2 __P_((char *));
 static int NEAR defaultterm __P_((VOID_A));
@@ -626,6 +628,22 @@ int opentty(VOID_A)
 }
 
 #if	MSDOS
+static int NEAR newdup(fd)
+int fd;
+{
+	struct stat st;
+	int n;
+
+	if (fd < 0
+	|| fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO)
+		return(fd);
+
+	for (n = 20 - 1; n > fd; n--) if (fstat(n, &st) != 0) break;
+	if (n <= fd || safe_dup2(fd, n) < 0) return(fd);
+	close(fd);
+	return(n);
+}
+
 int inittty(reset)
 int reset;
 {
@@ -649,10 +667,10 @@ int reset;
 		dupbrk = reg.h.dl;
 #endif
 		if (((!(l = ftell(stdin)) || l == -1)
-		&& ((dupin = safe_dup(STDIN_FILENO)) < 0
+		&& ((dupin = newdup(safe_dup(STDIN_FILENO))) < 0
 		|| safe_dup2(ttyio, STDIN_FILENO) < 0))
 		|| ((!(l = ftell(stdout)) || l == -1)
-		&& ((dupout = safe_dup(STDOUT_FILENO)) < 0
+		&& ((dupout = newdup(safe_dup(STDOUT_FILENO))) < 0
 		|| safe_dup2(ttyio, STDOUT_FILENO) < 0)))
 			err2(NULL);
 		termflags |= F_INITTTY;
@@ -1108,7 +1126,7 @@ static int NEAR defaultterm(VOID_A)
 	l_delete = "\033[M";
 	c_insert = "";
 	c_delete = "";
-#ifdef	MSDOS
+#if	MSDOS
 	c_locate = "\033[%d;%dH";
 #else
 	c_locate = "\033[%i%d;%dH";
@@ -1266,7 +1284,7 @@ int *yp, *xp;
 # if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
 # else
-	        buf[0] = getch2();
+		buf[0] = getch2();
 # endif
 	} while (buf[0] != format[0]);
 	for (i = 1; i < sizeof(buf) - 1; i++) {
@@ -1368,26 +1386,26 @@ int arg1, arg2;
 		}
 		else switch (s[i]) {
 			case 'd':
-				sprintf(buf + j, "%d", args[n++]);
-				j += strlen(buf + j);
+				sprintf(&(buf[j]), "%d", args[n++]);
+				j += strlen(&(buf[j]));
 				break;
 			case '2':
-				sprintf(buf + j, "%02d", args[n++]);
+				sprintf(&(buf[j]), "%02d", args[n++]);
 				j += 2;
 				break;
 			case '3':
-				sprintf(buf + j, "%03d", args[n++]);
+				sprintf(&(buf[j]), "%03d", args[n++]);
 				j += 3;
 				break;
 			case '.':
-				sprintf(buf + (j++), "%c", args[n++]);
+				sprintf(&(buf[j++]), "%c", args[n++]);
 				break;
 			case '+':
 				if (!s[++i]) {
 					free(buf);
 					return(NULL);
 				}
-				sprintf(buf + (j++), "%c", args[n++] + s[i]);
+				sprintf(&(buf[j++]), "%c", args[n++] + s[i]);
 				break;
 			case '>':
 				if (!s[++i] || !s[i + 1]) {

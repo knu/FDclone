@@ -5,8 +5,9 @@ s:__EXE__:.exe:g
 s:__OBJ__:.obj:g
 s:__OBJS__:unixemu.obj unixdisk.obj:
 s:__OBJLIST__:@$(ARGS):
-s:__SOBJLIST__:@$(SARGS):
 s:__DEFRC__:\\"$(DOSRC)\\":
+s:__UNITBLPATH__::
+s:__DATADIR__:$(BINDIR):
 s:	__RENAME__:#	ren:
 s:	__AOUT2EXE__:#	aout2exe:
 s:	__REMOVE__:#	del:
@@ -17,9 +18,10 @@ s:__INSTALL__:copy /y:
 s:__LN__:copy /y:
 s:__INSTSTRIP__::
 s:__CC__:bcc:
-s:__CCOPTIONS__:-O -N -w-par -w-pia:
+s:__CCOPTIONS__:-O -N -d -w-par -w-pia:
 s:__MEM__:-ml:
-s:__SHMEM__:-ml:
+s:__SHMEM__:-mm:
+s:__BSHMEM__:-mm:
 s:__OUT__:-o$@:
 s:__LNK__:-e$@:
 s:__TERMLIBS__::

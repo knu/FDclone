@@ -75,8 +75,11 @@ config.h: config.hin
 install catman catman-b compman compman-b \
 ecatman ecatman-b ecompman ecompman-b \
 fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
-depend config sh clean: Makefile.tmp
+depend config sh bsh clean: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
+
+everything: Makefile.tmp
+	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp sh bsh all
 
 tar shtar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
 makefile.dpc makefile.d98 \

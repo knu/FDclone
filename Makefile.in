@@ -8,6 +8,7 @@ PREFIX	= /usr/local
 MANSEC	= 1
 TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)/bin
+DATADIR	= $(TOPDIR)/share
 MANDIR	= $(TOPDIR)/man__LANGDIR__/man$(MANSEC)
 CATDIR	= $(TOPDIR)/man__LANGDIR__/cat$(MANSEC)
 EMANDIR	= $(TOPDIR)/man/man$(MANSEC)
@@ -20,7 +21,7 @@ CHMOD	= chmod
 LN	= __LN__
 
 SRC	= main.c term.c pathname.c \
-	system.c doscom.c \
+	system.c posixsh.c doscom.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	libc.c file.c apply.c \
@@ -44,7 +45,6 @@ EMANSRC	= fd_e.man
 EMANCAT	= fd_e.cat
 RUNCOM	= fdrc
 ARGS	= object.arg
-SARGS	= sobject.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= $(EDOC) $(EMANSRC) $(EMANCAT) \
@@ -56,10 +56,8 @@ ESRCS	= $(EDOC) $(EMANSRC) $(EMANCAT) \
 	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
-SHSOURCES = machine.h pathname.h system.h unixemu.h \
-	term.h kctype.h \
-	pathname.c system.c doscom.c \
-	term.c kanji.c \
+SHSOURCES = system.c posixsh.c doscom.c pathname.c \
+	machine.h kctype.h system.h pathname.h unixemu.h \
 	kanjicnv.c expfunc.c mkmfsed.c \
 	TECHKNOW Configur Makefile Makefile.in \
 	makefile.gpc makefile.g98 \
@@ -73,20 +71,22 @@ SED	= sed
 PROGRAM	= fd
 FDSHELL	= fdsh
 OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ \
-	system__OBJ__ doscom__OBJ__ \
+	system__OBJ__ posixsh__OBJ__ doscom__OBJ__ \
 	dosdisk__OBJ__ __OBJS__
 OBJ2	= libc__OBJ__ file__OBJ__ apply__OBJ__ \
 	parse__OBJ__ builtin__OBJ__ shell__OBJ__ \
 	kanji__OBJ__ input__OBJ__
 OBJ3	= info__OBJ__ rockridg__OBJ__ archive__OBJ__ tree__OBJ__ \
 	custom__OBJ__ command__OBJ__ browse__OBJ__
-SOBJ	= ssystem__OBJ__ sdoscom__OBJ__ spathnam__OBJ__ \
-	sterm__OBJ__ skanji__OBJ__
+SOBJ	= ssystem__OBJ__ sposixsh__OBJ__ sdoscom__OBJ__ spathnam__OBJ__
+BOBJ	= bsystem__OBJ__ bdoscom__OBJ__ bpathnam__OBJ__
 ALLOC	=
 DEBUG	=
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__ $(ALLOC)
 CFLAGS	= -D__OSTYPE__=1 __CCOPTIONS__ $(DEBUG)
+SLDFLAGS = __REGLIBS__ __OTHERLIBS__ $(ALLOC)
+BCFLAGS	= $(CFLAGS) -DMINIMUMSHELL
 
 .SUFFIXES: .h .c __OBJ__ __EXE__
 
@@ -97,7 +97,7 @@ CFLAGS	= -D__OSTYPE__=1 __CCOPTIONS__ $(DEBUG)
 all:	$(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 
 $(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) $(CFLAGS) __MEM__ __LNK__ __OBJLIST__ $(LDFLAGS)
+	$(CC) __MEM__ __LNK__ __OBJLIST__ $(LDFLAGS)
 	__RENAME__ $@ $(PROGRAM)
 	__AOUT2EXE__ $(PROGRAM)
 	__REMOVE__ $(PROGRAM)
@@ -108,7 +108,7 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@echo $(OBJ3) >> $(ARGS)
 
 main__OBJ__: main.c
-	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ $*.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ __UNITBLPATH__ $*.c
 
 system__OBJ__: system.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS) __MEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ $*.c
@@ -201,8 +201,8 @@ install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 		$(CHMOD) a+r $(DEFRC); \
 	fi
 	-if [ -f $(UNITBL) ]; then \
-		$(INSTALL) $(UNITBL) $(BINDIR); \
-		$(CHMOD) a+r $(BINDIR)/$(UNITBL); \
+		$(INSTALL) $(UNITBL) __DATADIR__; \
+		$(CHMOD) a+r __DATADIR__/$(UNITBL); \
 	fi
 
 catman: $(PROGRAM).$(MANSEC)c $(EMANCAT)
@@ -282,29 +282,44 @@ config: Configur expfunc.c
 
 sh: fdsh__EXE__
 
-fdsh__EXE__: $(SOBJ) $(SARGS)
-	$(CC) $(CFLAGS) __SHMEM__ __LNK__ __SOBJLIST__ $(LDFLAGS)
+fdsh__EXE__: $(SOBJ)
+	$(CC) __SHMEM__ __LNK__ $(SOBJ) $(SLDFLAGS)
 	__RENAME__ $@ fdsh
 	__AOUT2EXE__ fdsh
 	__REMOVE__ fdsh
 
-$(SARGS): $(SOBJ)
-	@echo $(SOBJ) > $(SARGS)
+ssystem__OBJ__: system.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ system.c
 
-ssystem__OBJ__: system.c machine.h config.h kctype.h term.h pathname.h system.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ -DDEFRUNCOM=__DEFRC__ system.c
+sposixsh__OBJ__: posixsh.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ posixsh.c
 
-sdoscom__OBJ__: doscom.c machine.h config.h kctype.h term.h pathname.h system.h
+sdoscom__OBJ__: doscom.c machine.h config.h kctype.h pathname.h system.h
 	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ doscom.c
 
 spathnam__OBJ__: pathname.c machine.h config.h pathname.h
 	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ pathname.c
 
-sterm__OBJ__: term.c machine.h config.h term.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ term.c
 
-skanji__OBJ__: kanji.c machine.h config.h term.h kctype.h pathname.h
-	$(CC) -DFDSH=$(VERSION) $(CFLAGS) __SHMEM__ $(CPPFLAGS) -c __OUT__ kanji.c
+############################################################
+# Bourne shell
+
+bsh: fdbsh__EXE__
+
+fdbsh__EXE__: $(BOBJ)
+	$(CC) __BSHMEM__ __LNK__ $(BOBJ) $(SLDFLAGS)
+	__RENAME__ $@ fdsh
+	__AOUT2EXE__ fdsh
+	__REMOVE__ fdsh
+
+bsystem__OBJ__: system.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) __BSHMEM__ $(CPPFLAGS) -c __OUT__ system.c
+
+bdoscom__OBJ__: doscom.c machine.h config.h kctype.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) __BSHMEM__ $(CPPFLAGS) -c __OUT__ doscom.c
+
+bpathnam__OBJ__: pathname.c machine.h config.h pathname.h
+	$(CC) -DFDSH=$(VERSION) $(BCFLAGS) __BSHMEM__ $(CPPFLAGS) -c __OUT__ pathname.c
 
 
 ############################################################
@@ -337,30 +352,30 @@ shar: $(SOURCES)
 clean:
 	-rm -f *__OBJ__ funcno.h kanji.h
 	-rm -f kanjicnv__EXE__ mkfuncno__EXE__ expfunc__EXE__ mkunitbl__EXE__
-	-rm -f fdsh__EXE__
+	-rm -f fdsh__EXE__ fdbsh__EXE__
 	-rm -f $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
-	-rm -f $(SARGS)
 	-rm -f core __UNITBL__
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main__OBJ__: fd.h
 main__OBJ__: machine.h config.h
-main__OBJ__: types.h pathname.h term.h
-main__OBJ__: func.h
-main__OBJ__: kanji.h version.h
-main__OBJ__: system.h dosdisk.h
+main__OBJ__: types.h pathname.h term.h func.h
+main__OBJ__: kanji.h version.h dosdisk.h
+main__OBJ__: system.h
 term__OBJ__: machine.h config.h
 term__OBJ__: term.h
 pathname__OBJ__: fd.h
 pathname__OBJ__: machine.h config.h
 pathname__OBJ__: types.h pathname.h
 system__OBJ__: machine.h config.h kctype.h
-system__OBJ__: term.h pathname.h
-system__OBJ__: system.h
+system__OBJ__: term.h pathname.h system.h
+posixsh__OBJ__: machine.h config.h
+posixsh__OBJ__: kctype.h
+posixsh__OBJ__: term.h pathname.h
+posixsh__OBJ__: system.h
 doscom__OBJ__: machine.h config.h kctype.h
-doscom__OBJ__: term.h pathname.h
-doscom__OBJ__: system.h
+doscom__OBJ__: term.h pathname.h system.h
 dosdisk__OBJ__: machine.h config.h
 dosdisk__OBJ__: dosdisk.h
 dosemu__OBJ__: fd.h
@@ -398,18 +413,19 @@ builtin__OBJ__: fd.h
 builtin__OBJ__: machine.h config.h
 builtin__OBJ__: types.h pathname.h term.h func.h
 builtin__OBJ__: kctype.h
-builtin__OBJ__: funcno.h kanji.h system.h dosdisk.h
+builtin__OBJ__: funcno.h kanji.h dosdisk.h
+builtin__OBJ__: system.h
 shell__OBJ__: fd.h
 shell__OBJ__: machine.h config.h
 shell__OBJ__: types.h pathname.h term.h func.h
 shell__OBJ__: kctype.h
-shell__OBJ__: kanji.h system.h
+shell__OBJ__: kanji.h
+shell__OBJ__: system.h
 kanji__OBJ__: machine.h config.h
 kanji__OBJ__: term.h kctype.h pathname.h
 input__OBJ__: fd.h
 input__OBJ__: machine.h config.h
-input__OBJ__: types.h pathname.h
-input__OBJ__: term.h func.h
+input__OBJ__: types.h pathname.h term.h func.h
 input__OBJ__: kctype.h
 input__OBJ__: kanji.h system.h
 info__OBJ__: fd.h
@@ -423,7 +439,8 @@ archive__OBJ__: fd.h
 archive__OBJ__: machine.h config.h
 archive__OBJ__: types.h pathname.h term.h func.h
 archive__OBJ__: kctype.h
-archive__OBJ__: kanji.h system.h
+archive__OBJ__: kanji.h
+archive__OBJ__: system.h
 tree__OBJ__: fd.h
 tree__OBJ__: machine.h config.h
 tree__OBJ__: types.h pathname.h term.h
@@ -434,13 +451,14 @@ custom__OBJ__: machine.h config.h
 custom__OBJ__: types.h pathname.h
 custom__OBJ__: term.h func.h
 custom__OBJ__: funcno.h kctype.h
-custom__OBJ__: kanji.h system.h dosdisk.h
+custom__OBJ__: kanji.h dosdisk.h
+custom__OBJ__: system.h
 command__OBJ__: fd.h
 command__OBJ__: machine.h config.h
 command__OBJ__: types.h pathname.h term.h func.h
 command__OBJ__: funcno.h kctype.h
-command__OBJ__: kanji.h system.h
-command__OBJ__: functabl.h
+command__OBJ__: kanji.h
+command__OBJ__: system.h functabl.h
 browse__OBJ__: fd.h
 browse__OBJ__: machine.h config.h
 browse__OBJ__: types.h pathname.h

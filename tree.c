@@ -4,6 +4,7 @@
  *	Tree Mode Module
  */
 
+#include <ctype.h>
 #include <signal.h>
 #include "fd.h"
 #include "term.h"
@@ -12,13 +13,8 @@
 
 #ifndef	_NOTREE
 
-#if	MSDOS
-#include <ctype.h>
-# ifndef	_NODOSDRIVE
+#if	MSDOS && !defined (_NODOSDRIVE)
 extern int preparedrv __P_((int));
-# endif
-#else
-#include <sys/param.h>
 #endif
 
 
@@ -101,7 +97,7 @@ int disp;
 	if (!(dirp = Xopendir(dir))) return(0);
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		strcpy(path + len, dp -> d_name);
+		strcpy(&(path[len]), dp -> d_name);
 		if (limit-- <= 0
 		|| (stat2(path, &st) >= 0
 		&& (st.st_mode & S_IFMT) == S_IFDIR)) {
@@ -138,7 +134,7 @@ int level, *maxp;
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
-	char *cp, *dir, *subdir;
+	char *cp, *dir, *subdir, cwd[MAXPATHLEN];
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	char tmp[MAXPATHLEN];
 #endif
@@ -152,6 +148,11 @@ int level, *maxp;
 		*maxp = -1;
 		return(NULL);
 	}
+	if (!Xgetwd(cwd)) {
+		*maxp = 0;
+		return(NULL);
+	}
+
 #if	MSDOS
 	if (_dospath(path)) path += 2;
 #endif
@@ -162,16 +163,14 @@ int level, *maxp;
 	}
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	else if (_dospath(path)) {
-		dir = malloc2(3 + 1);
-		strncpy2(dir, path, 3);
+		dir = strdupcpy(path, 3);
 		subdir = path + 3;
 		if (!*subdir) subdir = NULL;
 	}
 #endif
 	else {
 		len = (cp = strdelim(path, 0)) ? cp - path : strlen(path);
-		dir = malloc2(len + 1);
-		strncpy2(dir, path, len);
+		dir = strdupcpy(path, len);
 		subdir = (cp) ? cp + 1 : NULL;
 	}
 
@@ -256,14 +255,14 @@ int level, *maxp;
 	if (*path == _SC_) {
 #else	/* !MSDOS */
 	if (*path == _SC_
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 	|| _dospath(path)
-#endif
+# endif
 	) {
 #endif	/* !MSDOS */
 		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
-	else if (strcmp(path, ".") && _chdir2("..") < 0) error("..");
+	else if (strcmp(path, ".") && _chdir2(cwd) < 0) error("..");
 	return(list);
 }
 
@@ -375,18 +374,18 @@ int max, nest;
 				for (j = strlen(treepath); j >= 0; j--)
 					treepath[j + len] = treepath[j];
 				memcpy(treepath, list[i].name, len - 1);
-#else
+#else	/* !MSDOS */
 				if (*list[i].name != _SC_
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 				&& !_dospath(list[i].name)
-#endif
+# endif
 				) len++;
 				for (j = strlen(treepath); j >= 0; j--)
 					treepath[j + len] = treepath[j];
 				if (*list[i].name != _SC_)
 					memcpy(treepath, list[i].name,
 						len - 1);
-#endif
+#endif	/* !MSDOS */
 				treepath[len - 1] = _SC_;
 			}
 		}
@@ -715,10 +714,7 @@ static char *NEAR _tree(VOID_A)
 	strcpy(path, fullpath);
 	tr_cur[0].name = strdup2(_SS_);
 # else
-	if (dospath("", path)) {
-		tr_cur[0].name = malloc2(3 + 1);
-		strncpy2(tr_cur[0].name, path, 3);
-	}
+	if (dospath("", path)) tr_cur[0].name = strdupcpy(path, 3);
 	else {
 		strcpy(path, fullpath);
 		tr_cur[0].name = strdup2(_SS_);
@@ -741,9 +737,9 @@ static char *NEAR _tree(VOID_A)
 	cwd = path + 2;
 #else	/* !MSDOS */
 	cwd = path;
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 	if (_dospath(cwd)) cwd += 2;
-#endif
+# endif
 #endif	/* !MSDOS */
 	if (!strcmp(cwd, _SS_));
 	else for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)

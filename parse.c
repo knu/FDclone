@@ -13,12 +13,9 @@
 #include <sys/utsname.h>
 #endif
 
-#if	!MSDOS
-#include <sys/param.h>
-#endif
-
 extern char fullpath[];
 extern short histno[];
+extern int physical_path;
 
 #ifdef	_NOORIGSHELL
 static char *NEAR strtkbrk __P_((char *, char *, int));
@@ -146,6 +143,7 @@ int plus;
 
 /*
  *	ascnumeric(buf, n, 0, max): same as sprintf(buf, "%d", n)
+ *	ascnumeric(buf, n, max + 1, max): same as sprintf(buf, "%0*d", max, n)
  *	ascnumeric(buf, n, max, max): same as sprintf(buf, "%*d", max, n)
  *	ascnumeric(buf, n, -1, max): same as sprintf(buf, "%-*d", max, n)
  *	ascnumeric(buf, n, x, max): like as sprintf(buf, "%*d", max, n)
@@ -156,7 +154,7 @@ char *buf;
 long n;
 int digit, max;
 {
-	char tmp[20 * 2 + 1];
+	char tmp[MAXLONGWIDTH * 2 + 1];
 	int i, j, d;
 
 	i = j = 0;
@@ -253,9 +251,7 @@ char **strp;
 	if ((tmp = strtkbrk(*strp, " \t", 0))) len = tmp - *strp;
 	else len = strlen(*strp);
 	*strp += len;
-	tmp = malloc2(len + 1);
-	strncpy2(tmp, cp, len);
-	return(tmp);
+	return(strdupcpy(cp, len));
 }
 
 int getargs(s, argvp)
@@ -278,8 +274,8 @@ char *s, ***argvp;
 char *gettoken(s)
 char *s;
 {
-	if (!isalpha(*s) && *s != '_') return(NULL);
-	for (s++; isalnum(*s) || *s == '_'; s++);
+	if (!isidentchar(*s)) return(NULL);
+	for (s++; isidentchar(*s) || isdigit(*s); s++);
 	return(s);
 }
 
@@ -293,8 +289,8 @@ char *argv[];
 	if (*argcp <= 0) return((char *)-1);
 	i = 0;
 	for (cp = argv[i]; *cp; cp++)
-		if (*cp != '_' && !isalpha(*cp)
-		&& (cp == argv[i] || *cp < '0' || *cp > '9')) break;
+		if (!isidentchar(*cp) && (cp == argv[i] || !isdigit(*cp)))
+			break;
 
 	if (cp == argv[i]) return((char *)-1);
 	cp = skipspace(cp);
@@ -347,12 +343,12 @@ char *path, *delim;
 
 		epath = (char *)realloc2(epath, size + len + i + 1);
 		if (len) {
-			strcpy(epath + size, cp);
+			strcpy(&(epath[size]), cp);
 			free(tmp);
 			size += len;
 		}
 		if (i) {
-			strncpy(epath + size, next, i);
+			strncpy(&(epath[size]), next, i);
 			size += i;
 			next += i;
 		}
@@ -375,7 +371,7 @@ int delim;
 	size = 0;
 	for (cp = paths; cp; cp = next) {
 #if	MSDOS || !defined (_NODOSDRIVE)
-		if (_dospath(cp)) next = strchr(cp + 2, delim);
+		if (_dospath(cp)) next = strchr(&(cp[2]), delim);
 		else
 #endif
 		next = strchr(cp, delim);
@@ -392,7 +388,7 @@ int delim;
 		}
 		epath = (char *)realloc2(epath, size + len + 1 + 1);
 		if (len) {
-			strcpy(epath + size, cp);
+			strcpy(&(epath[size]), cp);
 			free(tmp);
 		}
 		size += len;
@@ -408,22 +404,15 @@ int delim;
 char *killmeta(name)
 char *name;
 {
-# ifndef	_NOROCKRIDGE
-	char tmp[MAXPATHLEN];
-# endif
 	char *cp, buf[MAXPATHLEN * 2 + 1];
 	int i;
 # ifndef	CODEEUC
 	int sjis;
 
 	cp = (char *)getenv("LANG");
-	sjis = (cp && toupper2(*cp) == 'J'
-		&& strchr("AP", toupper2(*(cp + 1))));
+	sjis = (cp && toupper2(*cp) == 'J' && strchr("AP", toupper2(cp[1])));
 # endif
 
-# ifndef	_NOROCKRIDGE
-	name = detransfile(name, tmp, 0);
-# endif
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
 # ifndef	CODEEUC
@@ -475,7 +464,7 @@ char *buf, *path, **plistp;
 	*plistp = next;
 	for (cp = next; cp && *cp; cp = next) {
 #if	MSDOS || !defined (_NODOSDRIVE)
-		if (_dospath(cp)) next = strchr(cp + 2, PATHDELIM);
+		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
 		else
 #endif
 		next = strchr(cp, PATHDELIM);
@@ -488,17 +477,6 @@ char *buf, *path, **plistp;
 		&& (!buf[len] || buf[len] == _SC_)) return(cp);
 	}
 	return(NULL);
-}
-
-VOID freevar(var)
-char **var;
-{
-	int i;
-
-	if (var) {
-		for (i = 0; var[i]; i++) free(var[i]);
-		free(var);
-	}
 }
 
 #if	(FD < 2) && !defined (_NOARCHIVE)
@@ -597,20 +575,24 @@ int max;
 				break;
 #endif
 			case 'w':
-				cp = fullpath;
+				if (!physical_path || !Xgetwd(line))
+					cp = fullpath;
 				break;
 			case 'W':
-				tmp = fullpath;
+				if (!physical_path || !Xgetwd(line))
+					tmp = fullpath;
+				else tmp = line;
 #if	MSDOS || !defined (_NODOSDRIVE)
 				if (_dospath(tmp)) tmp += 2;
 #endif
 				cp = strrdelim(tmp, 0);
-				if (cp && (cp != tmp || *(cp + 1))) cp++;
+				if (cp && (cp != tmp || cp[1])) cp++;
 				else cp = tmp;
 				break;
 			case '~':
 				if (underhome(line + 1)) line[0] = '~';
-				else cp = fullpath;
+				else if (!physical_path || !Xgetwd(line))
+					cp = fullpath;
 				break;
 			case 'e':
 				*line = '\033';
@@ -718,7 +700,7 @@ int *flagsp;
 	else {
 		tmp = malloc2(strlen(ext) + 2);
 		*tmp = '*';
-		strcpy(tmp + 1, ext);
+		strcpy(&(tmp[1]), ext);
 	}
 	return(tmp);
 }

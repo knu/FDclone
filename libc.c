@@ -11,12 +11,6 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#ifdef	_NOORIGSHELL
-#define	dosystem(s)		system(s)
-#else
-#include "system.h"
-#endif
-
 #ifndef	NOTZFILEH
 #include <tzfile.h>
 #endif
@@ -25,12 +19,16 @@
 #include <sys/timeb.h>
 extern int setcurdrv __P_((int, int));
 extern char *unixrealpath __P_((char *, char *));
-#else
-#include <sys/file.h>
-#include <sys/param.h>
 #endif
+
 #ifndef	_NODOSDRIVE
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
+#endif
+
+#ifdef	_NOORIGSHELL
+#define	dosystem(s)		system(s)
+#else
+#include "system.h"
 #endif
 
 #ifdef	PWNEEDERROR
@@ -56,6 +54,7 @@ extern int hideclock;
 			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
+static int evallink __P_((char *, char *));
 static char *NEAR _realpath2 __P_((char *, char *, int));
 #ifdef	_NOORIGSHELL
 static int NEAR _getenv2 __P_((char *, int, char **));
@@ -72,6 +71,7 @@ static long NEAR gettimezone __P_((struct tm *, time_t));
 #ifdef	_NOORIGSHELL
 char **environ2 = NULL;
 #endif
+int physical_path = 0;
 
 static char *lastpath = NULL;
 #ifndef	_NODOSDRIVE
@@ -93,7 +93,7 @@ struct stat *stp;
 		if (dospath2(path)) return(-1);
 #endif
 		tmperr = errno;
-		if (_Xlstat(path, stp) < 0
+		if (_Xlstat(path, stp, 0, 1) < 0
 		|| (stp -> st_mode & S_IFMT) != S_IFLNK) {
 			errno = tmperr;
 			return(-1);
@@ -104,12 +104,37 @@ struct stat *stp;
 #endif	/* !MSDOS */
 }
 
+#if	!MSDOS
+static int evallink(path, delim)
+char *path, *delim;
+{
+	struct stat st;
+	char buf[MAXPATHLEN];
+	int i;
+
+	if (_Xlstat(path, &st, 0, 1) < 0) return(-1);
+	if ((st.st_mode & S_IFMT) != S_IFLNK) return(0);
+	if ((i = readlink(path, buf, MAXPATHLEN - 1)) < 0) return(-1);
+
+	if (*buf == _SC_) strncpy2(path, buf, i);
+	else {
+		if (!delim || delim == path) {
+			*path = _SC_;
+			delim = path + 1;
+		}
+		buf[i] = *delim = '\0';
+		_realpath2(buf, path, 1);
+	}
+	return(1);
+}
+#endif	/* !MSDOS */
+
 /*ARGSUSED*/
 static char *NEAR _realpath2(path, resolved, rdlink)
 char *path, *resolved;
 int rdlink;
 {
-	char *cp;
+	char *cp, *top;
 
 	if (!*path || !strcmp(path, ".")) return(resolved);
 	else if ((cp = strdelim(path, 0))) {
@@ -122,22 +147,22 @@ int rdlink;
 
 	if (!strcmp(path, "..")) {
 		cp = strrdelim(resolved, 0);
+		top = resolved;
 #if	MSDOS
-		if (cp && cp != &(resolved[2])) *cp = '\0';
-		else resolved[3] = '\0';
+		top += 2;
 #else	/* !MSDOS */
-#ifndef	_NODOSDRIVE
-		if (_dospath(resolved)) {
-			if (cp && cp != &(resolved[2])) *cp = '\0';
-			else resolved[3] = '\0';
-		}
+# ifndef	_NODOSDRIVE
+		if (_dospath(resolved)) top += 2;
 		else
-#endif
-		{
-			if (cp && cp != resolved) *cp = '\0';
-			else resolved[1] = '\0';
-		}
+# endif
+		if (rdlink && evallink(resolved, cp) > 0)
+			return(_realpath2(path, resolved, 1));
 #endif	/* !MSDOS */
+		if (!cp || cp == top) {
+			*top = _SC_;
+			cp = top + 1;
+		}
+		*cp = '\0';
 	}
 	else {
 		cp = strcatdelim(resolved);
@@ -147,25 +172,8 @@ int rdlink;
 # ifndef	_NODOSDRIVE
 		else if (_dospath(resolved));
 # endif
-		else {
-			struct stat st;
-			char buf[MAXPATHLEN];
-			int i;
-
-			if (_Xlstat(resolved, &st) >= 0
-			&& (st.st_mode & S_IFMT) == S_IFLNK
-			&& (i = readlink(resolved, buf, MAXPATHLEN - 1)) >= 0)
-			{
-				buf[i] = '\0';
-				if (*buf == _SC_) strcpy(resolved, buf);
-				else {
-					if (cp - 1 > resolved) cp--;
-					*cp = '\0';
-					_realpath2(buf, resolved, rdlink);
-				}
-			}
-		}
-#endif
+		else evallink(resolved, cp - 1);
+#endif	/* !MSDOS */
 	}
 	return(resolved);
 }
@@ -250,7 +258,7 @@ char *path;
 {
 	char *pwd, cwd[MAXPATHLEN], tmp[MAXPATHLEN];
 
-	realpath2(path, tmp, 0);
+	realpath2(path, tmp, physical_path);
 	if (_chdir2(path) < 0) return(-1);
 
 	strcpy(cwd, fullpath);
@@ -289,8 +297,7 @@ char *path;
 		if (putenv2(pwd) < 0) error("PWD");
 	}
 #if	MSDOS
-	unixrealpath(fullpath, tmp);
-	strcpy(fullpath, tmp);
+	if (unixrealpath(fullpath, tmp)) strcpy(fullpath, tmp);
 #endif
 	entryhist(1, fullpath, 1);
 	return(0);
@@ -450,6 +457,10 @@ int n;
 	return(s1);
 }
 
+/*
+ *	strncpy3(buf, s, &(x), 0): same as sprintf(buf, "%-*.*s", x, x, s);
+ *	strncpy3(buf, s, &(-x), 0): same as sprintf(buf, "%s", s);
+ */
 int strncpy3(s1, s2, lenp, ptr)
 char *s1, *s2;
 int *lenp, ptr;
@@ -648,14 +659,14 @@ char *name;
 		n = _getenv2(name, len, envpp[i]);
 		if (n >= 0 && envpp[i][n]) return(&(envpp[i][n][len + 1]));
 		if (c) continue;
-		n = _getenv2(name + 3, len - 3, envpp[i]);
+		n = _getenv2(&(name[3]), len - 3, envpp[i]);
 		if (n >= 0 && envpp[i][n]) return(&(envpp[i][n][len - 3 + 1]));
 	}
 #else	/* !_NOORIGSHELL */
 	char *cp;
 
 	if ((cp = getshellvar(name, -1))) return(cp);
-	if (!strnpathcmp(name, "FD_", 3) && (cp = getshellvar(name + 3, -1)))
+	if (!strnpathcmp(name, "FD_", 3) && (cp = getshellvar(&(name[3]), -1)))
 		return(cp);
 #endif	/* !_NOORIGSHELL */
 	return(NULL);
@@ -674,7 +685,13 @@ char *name, *value;
 #endif
 
 	len = strlen(name);
-	if (!value) cp = name;
+	if (!value) {
+#ifdef	_NOORIGSHELL
+		cp = name;
+#else
+		return(unset(name, len));
+#endif
+	}
 	else {
 		cp = malloc2(len + strlen(value) + 2);
 		memcpy(cp, name, len);
@@ -695,22 +712,6 @@ char *name, *value;
 #endif	/* !_NOORIGSHELL */
 	return(0);
 }
-
-#if	defined (DEBUG) && defined (_NOORIGSHELL)
-VOID freeenv(VOID_A)
-{
-	int i;
-
-	if (environ) {
-		for (i = 0; environ[i]; i++) free(environ[i]);
-		free(environ);
-	}
-	if (environ2) {
-		for (i = 0; environ2[i]; i++) free(environ2[i]);
-		free(environ2);
-	}
-}
-#endif	/* DEBUG && _NOORIGSHELL */
 
 int system2(command, noconf)
 char *command;
@@ -889,16 +890,32 @@ time_t t;
 }
 #endif	/* !USEMKTIME && !USETIMELOCAL */
 
+time_t time2(VOID_A)
+{
+#if	MSDOS
+	struct timeb buffer;
+
+	ftime(&buffer);
+	return((time_t)(buffer.time));
+#else
+	struct timeval t_val;
+	struct timezone tz;
+
+	gettimeofday2(&t_val, &tz);
+	return((time_t)(t_val.tv_sec));
+#endif
+}
+
 time_t timelocal2(tm)
 struct tm *tm;
 {
 #ifdef	USEMKTIME
 	tm -> tm_isdst = -1;
 	return(mktime(tm));
-#else
+#else	/* !USEMKTIME */
 # ifdef	USETIMELOCAL
 	return(timelocal(tm));
-# else
+# else	/* !USETIMELOCAL */
 	time_t d, t;
 	int i, y;
 
@@ -933,8 +950,8 @@ struct tm *tm;
 	t += gettimezone(tm, t);
 
 	return(t);
-# endif
-#endif
+# endif	/* !USETIMELOCAL */
+#endif	/* !USEMKTIME */
 }
 
 char *fgets2(fp, nulcnv)

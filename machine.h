@@ -44,6 +44,7 @@ typedef unsigned long	u_long;
 # ifdef	__TURBOC__
 #  ifndef	BCC32
 #  define	NEAR		near
+#  define	DOS16
 #  endif
 # define	FORCEDSTDC
 # define	SIGFNCINT
@@ -51,6 +52,7 @@ typedef long	off_t;
 # endif
 # ifdef	LSI_C
 # define	NEAR		near
+# define	DOS16
 # define	FORCEDSTDC
 # endif
 # if	defined (DJGPP) || defined (BCC32)
@@ -443,8 +445,8 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
-#if !defined(__alpha__) && !defined(__ia64__) && !defined(__x86_64__) \
-&& !defined(CONFIG_ARCH_S390X)
+#if	!defined (__alpha__) && !defined (__ia64__) && !defined (__x86_64__) \
+&& !defined (CONFIG_ARCH_S390X)
 # define	USELLSEEK
 # endif
 #define	SIGFNCINT

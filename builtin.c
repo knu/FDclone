@@ -18,14 +18,6 @@
 #include "system.h"
 #endif
 
-#if	!MSDOS
-# ifdef	_NODOSDRIVE
-# include <sys/param.h>
-# else
-# include "dosdisk.h"
-# endif
-#endif
-
 #ifndef	_NOARCHIVE
 extern launchtable launchlist[];
 extern int maxlaunch;
@@ -71,6 +63,7 @@ static VOID NEAR hitkey __P_((int));
 #else
 #define	hitkey(n)
 #endif
+static VOID NEAR fputsmeta __P_((char *, FILE *));
 #ifndef	_NOARCHIVE
 static int NEAR setlaunch __P_((int, char *[]));
 static int NEAR setarch __P_((int, char *[]));
@@ -260,6 +253,20 @@ int init;
 	}
 }
 #endif	/* _NOORIGSHELL */
+
+static VOID NEAR fputsmeta(arg, fp)
+char *arg;
+FILE *fp;
+{
+	char *cp;
+
+	if (!arg) fputs("\"\"", fp);
+	else {
+		cp = killmeta(arg);
+		kanjifputs(cp, fp);
+		free(cp);
+	}
+}
 
 #ifndef	_NOARCHIVE
 static int NEAR setlaunch(argc, argv)
@@ -494,18 +501,15 @@ FILE *fp;
 	fputs(BL_LAUNCH, fp);
 	fputc(' ', fp);
 	if (launchlist[n].flags & LF_IGNORECASE) fputc('/', fp);
-	fputs(launchlist[n].ext + 1, fp);
+	fputsmeta(&(launchlist[n].ext[1]), fp);
 	fputc('\t', fp);
 
-	fputc('"', fp);
-	kanjifputs(launchlist[n].comm, fp);
-	fputc('"', fp);
+	fputsmeta(launchlist[n].comm, fp);
 # if	FD >= 2
 	if (!launchlist[n].format) return;
 
-	fputs("\t\"", fp);
-	fputs(launchlist[n].format, fp);
-	fputc('"', fp);
+	fputc('\t', fp);
+	fputsmeta(launchlist[n].format, fp);
 	if (!launchlist[n].topskip && !launchlist[n].bottomskip) return;
 	fputc('\t', fp);
 
@@ -621,16 +625,13 @@ FILE *fp;
 	fputs(BL_ARCH, fp);
 	fputc(' ', fp);
 	if (archivelist[n].flags & LF_IGNORECASE) fputc('/', fp);
-	fputs(archivelist[n].ext + 1, fp);
+	fputsmeta(&(archivelist[n].ext[1]), fp);
 	fputc('\t', fp);
 
-	fputc('"', fp);
-	if (archivelist[n].p_comm) kanjifputs(archivelist[n].p_comm, fp);
-	fputc('"', fp);
+	if (archivelist[n].p_comm) fputsmeta(archivelist[n].p_comm, fp);
 	if (!archivelist[n].u_comm) return;
-	fputs("\t\"", fp);
-	kanjifputs(archivelist[n].u_comm, fp);
-	fputc('"', fp);
+	fputc('\t', fp);
+	fputsmeta(archivelist[n].u_comm, fp);
 }
 
 static int NEAR printarch(argc, argv)
@@ -797,24 +798,19 @@ FILE *fp;
 {
 	fputs(BL_BIND, fp);
 	fputc(' ', fp);
-	fputs(getkeysym(bindlist[n].key, 0), fp);
+	fputsmeta(getkeysym(bindlist[n].key, 0), fp);
 	fputc('\t', fp);
 
 	if (bindlist[n].f_func < FUNCLISTSIZ)
 		fputs(funclist[bindlist[n].f_func].ident, fp);
-	else {
-		fputc('"', fp);
-		kanjifputs(macrolist[bindlist[n].f_func - FUNCLISTSIZ], fp);
-		fputc('"', fp);
-	}
+	else fputsmeta(macrolist[bindlist[n].f_func - FUNCLISTSIZ], fp);
 	if (bindlist[n].d_func < FUNCLISTSIZ) {
 		fputc('\t', fp);
 		fputs(funclist[bindlist[n].d_func].ident, fp);
 	}
 	else if (bindlist[n].d_func < 255) {
-		fputs("\t\"", fp);
-		kanjifputs(macrolist[bindlist[n].d_func - FUNCLISTSIZ], fp);
-		fputc('"', fp);
+		fputc('\t', fp);
+		fputsmeta(macrolist[bindlist[n].d_func - FUNCLISTSIZ], fp);
 	}
 }
 
@@ -857,6 +853,27 @@ char *argv[];
 }
 
 #if	!MSDOS && !defined (_NODOSDRIVE)
+/*ARGSUSED*/
+int searchdrv(list, drive, name, head, sect, cyl, set)
+devinfo *list;
+int drive;
+char *name;
+int head, sect, cyl, set;
+{
+	int i;
+
+	for (i = 0; list[i].name; i++) if (drive == list[i].drive) {
+# ifdef	HDDMOUNT
+		if (!list[i].cyl && set) break;
+# endif
+		if (head == list[i].head
+		&& sect == list[i].sect
+		&& cyl == list[i].cyl
+		&& !strpathcmp(name, list[i].name)) break;
+	}
+	return(i);
+}
+
 int deletedrv(no)
 int no;
 {
@@ -1079,15 +1096,7 @@ int set;
 	}
 	else
 # endif
-	for (i = 0; fdtype[i].name; i++) if (drive == fdtype[i].drive) {
-# ifdef	HDDMOUNT
-		if (!fdtype[i].cyl && set) break;
-# endif
-		if (head == fdtype[i].head
-		&& sect == fdtype[i].sect
-		&& cyl == fdtype[i].cyl
-		&& !strpathcmp(argv[2], fdtype[i].name)) break;
-	}
+	i = searchdrv(fdtype, drive, argv[2], head, sect, cyl, set);
 
 	if (!set) {
 		if (!fdtype[i].name) {
@@ -1153,9 +1162,8 @@ FILE *fp;
 	fputc(fdtype[n].drive, fp);
 	fputc('\t', fp);
 
-	fputc('"', fp);
-	kanjifputs(fdtype[n].name, fp);
-	fputs("\"\t", fp);
+	fputsmeta(fdtype[n].name, fp);
+	fputc('\t', fp);
 # ifdef	HDDMOUNT
 	if (!fdtype[n].cyl) {
 		fputs("HDD", fp);
@@ -1224,14 +1232,12 @@ FILE *fp;
 
 	fputs(BL_KEYMAP, fp);
 	fputc(' ', fp);
-	fputs(getkeysym(key, 1), fp);
+	fputsmeta(getkeysym(key, 1), fp);
 	fputc('\t', fp);
 
-	fputc('"', fp);
 	cp = encodestr(s, len);
-	fputs(cp, fp);
+	fputsmeta(cp, fp);
 	free(cp);
-	fputc('"', fp);
 }
 
 static int NEAR setkeymap(argc, argv)
@@ -1883,7 +1889,7 @@ char *argv[];
 	if (argc < 2) return(0);
 	cp = catvar(&(argv[1]), ' ');
 	ttyiomode();
-	if ((ret = execmacro(cp, NULL, 1, 0, 0)) < 0) {
+	if ((ret = execmacro(cp, NULL, 1, 1, 0)) < 0) {
 		internal_status = 1;
 		ret = 0;
 	}
@@ -2048,9 +2054,7 @@ FILE *fp;
 	fputc(' ', fp);
 	kanjifputs(aliaslist[n].alias, fp);
 	fputc(ALIASSEP, fp);
-	fputc('"', fp);
-	kanjifputs(aliaslist[n].comm, fp);
-	fputc('"', fp);
+	fputsmeta(aliaslist[n].comm, fp);
 }
 
 static int NEAR setalias(argc, argv)
@@ -2520,7 +2524,7 @@ int comline, ignorelist;
 		}
 	}
 # endif
-	else if (isalpha(*command) || *command == '_') {
+	else if (isidentchar(*command)) {
 		i = argc;
 		if ((cp = getenvval(&i, argv)) != (char *)-1 && i == argc) {
 			if (setenv2(argv[0], cp) < 0) error(argv[0]);

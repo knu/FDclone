@@ -12,13 +12,8 @@
 #include "kanji.h"
 #include "version.h"
 
-#ifndef	_NOORIGSHELL
-#include "system.h"
-#endif
-
 #if	MSDOS
 #include <process.h>
-#include <sys/timeb.h>
 # ifdef	DJGPP
 extern char *adjustfname __P_((char *));
 # else
@@ -30,14 +25,10 @@ extern unsigned _stklen = 0x5800;
 #  define	harderr_t	int
 #  endif
 # endif
-#else
-# ifdef	_NODOSDRIVE
-# include <sys/param.h>
-# endif
 #endif	/* !MSDOS */
 
-#ifndef	_NODOSDRIVE
-#include "dosdisk.h"
+#ifndef	_NOORIGSHELL
+#include "system.h"
 #endif
 
 #if	defined (SIGARGINT) || defined (NOVOID)
@@ -58,8 +49,13 @@ extern unsigned _stklen = 0x5800;
 
 #define	sigcst_t	sigarg_t (*)__P_((sigfnc_t))
 
+#if	!MSDOS && !defined (_NOORIGSHELL) && !defined (NOJOB)
+extern VOID killjob __P_((VOID_A));
+#endif
+
 #ifdef	_NOORIGSHELL
 extern char **environ;
+extern char **environ2;
 #endif
 extern bindtable bindlist[];
 #ifndef	_NOARCHIVE
@@ -166,7 +162,7 @@ static int wintr __P_((VOID_A));
 static int printtime __P_((VOID_A));
 #endif
 #ifdef	_NOORIGSHELL
-static int NEAR doexec __P_((char *, char *, int, char *));
+static int NEAR execruncomline __P_((char *, char *, int, char *));
 #endif
 static int NEAR initoption __P_((int, char *[], char *[]));
 static int NEAR evaloption __P_((char *[]));
@@ -191,7 +187,16 @@ bindtable *origbindlist = NULL;
 # if	!MSDOS && !defined (_NOKEYMAP)
 keymaptable *origkeymaplist = NULL;
 # endif
-#endif
+# ifndef	_NOARCHIVE
+launchtable *origlaunchlist = NULL;
+int origmaxlaunch = 0;
+archivetable *origarchivelist = NULL;
+int origmaxarchive = 0;
+# endif
+# if	!MSDOS && !defined (_NODOSDRIVE)
+devinfo *origfdtype = NULL;
+# endif
+#endif	/* !_NOCUSTOMIZE */
 int inruncom = 0;
 int fdmode = 0;
 
@@ -407,25 +412,13 @@ static int printtime(VOID_A)
 {
 	static time_t now;
 	struct tm *tm;
-#if	MSDOS
-	struct timeb buffer;
-#else
-	struct timeval t_val;
-	struct timezone tz;
-#endif
 	int duperrno;
 
 	duperrno = errno;
 	signal(SIGALRM, SIG_IGN);
 	if (timersec) now++;
 	else {
-#if	MSDOS
-		ftime(&buffer);
-		now = (time_t)(buffer.time);
-#else
-		gettimeofday2(&t_val, &tz);
-		now = (time_t)(t_val.tv_sec);
-#endif
+		now = time2();
 		timersec = CLOCKUPDATE;
 	}
 	if (showsecond || timersec == CLOCKUPDATE) {
@@ -535,8 +528,28 @@ VOID title(VOID_A)
 #endif
 }
 
+#ifndef	_NOCUSTOMIZE
+VOID saveorigenviron(VOID_A)
+{
+	orighelpindex = copystrarray(NULL, helpindex, NULL, 10);
+	origbindlist = copybind(NULL, bindlist);
+# if	!MSDOS && !defined (_NOKEYMAP)
+	origkeymaplist = copykeymap(NULL);
+# endif
+# ifndef	_NOARCHIVE
+	origlaunchlist = copylaunch(NULL, launchlist,
+		&origmaxlaunch, maxlaunch);
+	origarchivelist = copyarch(NULL, archivelist,
+		&origmaxarchive, maxarchive);
+# endif
+# if	!MSDOS && !defined (_NODOSDRIVE)
+	origfdtype = copydrive(NULL, fdtype);
+# endif
+}
+#endif	/* !_NOCUSTOMIZE */
+
 #ifdef	_NOORIGSHELL
-static int NEAR doexec(command, file, n, line)
+static int NEAR execruncomline(command, file, n, line)
 char *command, *file;
 int n;
 char *line;
@@ -609,7 +622,7 @@ int exist;
 
 		cp = line + strlen(line);
 		for (cp--; cp >= line && (*cp == ' ' || *cp == '\t'); cp--);
-		*(cp + 1) = '\0';
+		cp[1] = '\0';
 
 		cont = 0;
 		if (cp >= line && *cp == META
@@ -630,12 +643,12 @@ int exist;
 			continue;
 		}
 
-		if (doexec(fold, tmp, n, line) < 0) er++;
+		if (execruncomline(fold, tmp, n, line) < 0) er++;
 		if (fold != line) free(line);
 		fold = NULL;
 	}
 
-	if (fold && doexec(fold, tmp, n, line) < 0) er++;
+	if (fold && execruncomline(fold, tmp, n, line) < 0) er++;
 	fclose(fp);
 	free(tmp);
 #else	/* !_NOORIGSHELL */
@@ -667,9 +680,8 @@ char *argv[], *envp[];
 		else if (argv[i][0] != '-' || !argv[i][1]
 		|| (argv[i][1] == '-' && !argv[i][2])) break;
 		else for (cp = &(argv[i][1]); *cp; cp++) {
-			if (*cp != '_' && !isalpha(*cp)
-			&& (cp == &(argv[i][1]) || *cp < '0' || *cp > '9'))
-				break;
+			if (!isidentchar(*cp)
+			&& (cp == &(argv[i][1]) || !isdigit(*cp))) break;
 		}
 		if (cp <= &(argv[i][1]) || *cp != '=') {
 			optv[optc++] = argv[i];
@@ -772,15 +784,35 @@ static VOID NEAR prepareexitfd(VOID_A)
 #ifdef	DEBUG
 	free(tmpfilename);
 # ifdef	_NOORIGSHELL
-	freeenv();
+	freevar(environ);
+	freevar(environ2);
 # endif
 # ifndef	_NOCUSTOMIZE
-	freevar(orighelpindex);
+	if (orighelpindex) {
+		freestrarray(orighelpindex, 10);
+		free(orighelpindex);
+	}
 	free(origbindlist);
 #  if	!MSDOS && !defined (_NOKEYMAP)
 	freekeymap(origkeymaplist);
 #  endif
-# endif
+#  ifndef	_NOARCHIVE
+	if (origlaunchlist) {
+		freelaunch(origlaunchlist, origmaxlaunch);
+		free(origlaunchlist);
+	}
+	if (origarchivelist) {
+		freearch(origarchivelist, origmaxarchive);
+		free(origarchivelist);
+	}
+#  endif
+#  if	!MSDOS && !defined (_NODOSDRIVE)
+	if (origfdtype) {
+		freedrive(origfdtype);
+		free(origfdtype);
+	}
+#  endif
+# endif	/* !_NOCUSTOMIZE */
 	freeenvpath();
 	freehistory(0);
 	freehistory(1);
@@ -905,16 +937,12 @@ char *argv[], *envp[];
 
 	setexecpath(argv[0], envp);
 #ifndef	_NODOSDRIVE
+# ifdef	DATADIR
+	unitblpath = DATADIR;
+# else
 	unitblpath = progpath;
-#endif
-
-#ifndef	_NOCUSTOMIZE
-	orighelpindex = copystrarray(NULL, helpindex, NULL, 10);
-	origbindlist = copybind(NULL, bindlist);
-# if	!MSDOS && !defined (_NOKEYMAP)
-	origkeymaplist = copykeymap(NULL);
 # endif
-#endif	/* !_NOCUSTOMIZE */
+#endif
 
 #ifndef	_NOORIGSHELL
 	cp = progname;
@@ -937,6 +965,9 @@ char *argv[], *envp[];
 	ttyiomode();
 	initterm();
 	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
+#ifndef	_NOCUSTOMIZE
+	saveorigenviron();
+#endif
 
 	locate(0, n_line - 1);
 	inruncom = 1;

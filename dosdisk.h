@@ -23,8 +23,8 @@
 #define	PACKINALIAS	" ."
 #define	LFNENTSIZ	13
 #define	DOSMAXNAMLEN	255
-#define	INHIBITNAME	{ "CON     ", "AUX     ", "PRN     ", \
-			  "CLOCK$  ", "CONFIG$ ", "NUL     " }
+#define	INHIBITNAME	{"CON     ", "AUX     ", "PRN     ", \
+			 "CLOCK$  ", "CONFIG$ ", "NUL     "}
 #define	INHIBITCOM	"COM"
 #define	INHIBITCOMMAX	4
 #define	INHIBITLPT	"LPT"
@@ -75,7 +75,7 @@
 #if	(defined (i386) || defined (__i386) || defined (__i386__)) \
 && (defined (SOLARIS) || defined (LINUX) \
 || defined (JCCBSD) || defined (FREEBSD) \
-|| defined (NETBSD) ||	defined (BSDOS) || defined (BOW) \
+|| defined (NETBSD) || defined (BSDOS) || defined (BOW) \
 || defined (OPENBSD) || defined (ORG_386BSD))
 #define	HDDMOUNT
 #endif

@@ -15,9 +15,6 @@
 #if	MSDOS
 extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));
-#else
-#include <sys/file.h>
-#include <sys/param.h>
 #endif
 
 #ifdef	USEMKDEVH
@@ -60,8 +57,9 @@ extern int win_y;
 #ifndef	_NOCUSTOMIZE
 extern int custno;
 #endif
-extern int fd_restricted;
 extern int internal_status;
+extern int fd_restricted;
+extern int physical_path;
 
 static VOID NEAR pathbar __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
@@ -81,6 +79,7 @@ static int NEAR searchmove __P_((int, char *));
 static VOID readstatus __P_((VOID_A));
 #endif
 static int NEAR browsedir __P_((char *, char *));
+static char *NEAR initcwd __P_((char *, char *));
 
 int curcolumns = 0;
 int defcolumns = 0;
@@ -239,12 +238,12 @@ static VOID NEAR statusbar(VOID_A)
 		str[2] = OSIZE_K;
 		str[3] = ODATE_K;
 		str[4] = OLEN_K;
-		kanjiputs(str[(sorton & 7) - 1] + 3);
+		kanjiputs(&(str[(sorton & 7) - 1][3]));
 
 		str[0] = OINC_K;
 		str[1] = ODEC_K;
 		putch2('(');
-		kanjiputs(str[sorton / 8] + 3);
+		kanjiputs(&(str[sorton / 8][3]));
 		putch2(')');
 	}
 	else kanjiputs(ORAW_K + 3);
@@ -322,7 +321,7 @@ static VOID NEAR stackbar(VOID_A)
 static VOID NEAR sizebar(VOID_A)
 {
 	char buf[14 + 1];
-	long total, fre;
+	long total, fre, bsize;
 
 	if (!sizeinfo || !*fullpath) return;
 
@@ -338,15 +337,19 @@ static VOID NEAR sizebar(VOID_A)
 	cputs2(ascnumeric(buf, totalsize, 3, 14));
 	putch2(' ');
 
-	getinfofs(".", &total, &fre);
+	if (getinfofs(".", &total, &fre, &bsize) < 0) total = fre = -1L;
 
 	locate(CTOTAL, LSIZE);
 	putterm(t_standout);
 	cputs2("Total:");
 	putterm(end_standout);
-	if (total < 0) cputs2(ascnumeric(buf, total, 3, 15));
+	if (total < 0L) cputs2(ascnumeric(buf, total, 3, 15));
+	else if (total < 10000000L / bsize) {
+		cputs2(ascnumeric(buf, total * bsize, 3, 9));
+		cputs2(" bytes");
+	}
 	else {
-		cputs2(ascnumeric(buf, total, 3, 12));
+		cputs2(ascnumeric(buf, calcKB(total, bsize), 3, 12));
 		cputs2(" KB");
 	}
 	putch2(' ');
@@ -355,9 +358,13 @@ static VOID NEAR sizebar(VOID_A)
 	putterm(t_standout);
 	cputs2("Free:");
 	putterm(end_standout);
-	if (fre < 0) cputs2(ascnumeric(buf, fre, 3, 15));
+	if (fre < 0L) cputs2(ascnumeric(buf, fre, 3, 15));
+	else if (fre < 10000000L / bsize) {
+		cputs2(ascnumeric(buf, fre * bsize, 3, 9));
+		cputs2(" bytes");
+	}
 	else {
-		cputs2(ascnumeric(buf, fre, 3, 12));
+		cputs2(ascnumeric(buf, calcKB(fre, bsize), 3, 12));
 		cputs2(" KB");
 	}
 	putch2(' ');
@@ -454,7 +461,7 @@ static VOID NEAR infobar(VOID_A)
 	int i, l;
 #endif
 
-	if (!filelist || maxfile <= 0) return;
+	if (!filelist || maxfile < 0) return;
 	locate(0, LINFO);
 
 	if (filelist[filepos].st_nlink < 0) {
@@ -495,35 +502,35 @@ static VOID NEAR infobar(VOID_A)
 		? (S_IFLNK | 0777) : filelist[filepos].st_mode);
 	len = WMODE;
 
-	sprintf(buf + len, " %2d ", filelist[filepos].st_nlink);
+	sprintf(&(buf[len]), " %2d ", filelist[filepos].st_nlink);
 	len += 4;
 
 #if	!MSDOS
-	putowner(buf + len, filelist[filepos].st_uid);
+	putowner(&(buf[len]), filelist[filepos].st_uid);
 	len += WOWNER;
 	buf[len++] = ' ';
-	putgroup(buf + len, filelist[filepos].st_gid);
+	putgroup(&(buf[len]), filelist[filepos].st_gid);
 	len += WGROUP;
 	buf[len++] = ' ';
 
-	if (isdev(&(filelist[filepos]))) sprintf(buf + len, "%3u, %3u ",
+	if (isdev(&(filelist[filepos]))) sprintf(&(buf[len]), "%3u, %3u ",
 		major(filelist[filepos].st_size) & 0xff,
 		minor(filelist[filepos].st_size) & 0xff);
 	else
 #endif
-	sprintf(buf + len, "%8ld ", (long)(filelist[filepos].st_size));
+	sprintf(&(buf[len]), "%8ld ", (long)(filelist[filepos].st_size));
 	len = strlen(buf);
 
-	sprintf(buf + len, "%02d-%02d-%02d %02d:%02d ",
+	sprintf(&(buf[len]), "%02d-%02d-%02d %02d:%02d ",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
 	width = n_lastcolumn - len;
 
 #if	MSDOS
-	strncpy3(buf + len, filelist[filepos].name, &width, fnameofs);
+	strncpy3(&(buf[len]), filelist[filepos].name, &width, fnameofs);
 #else	/* !MSDOS */
-	i = strncpy3(buf + len, filelist[filepos].name, &width, fnameofs);
+	i = strncpy3(&(buf[len]), filelist[filepos].name, &width, fnameofs);
 	if (islink(&(filelist[filepos]))) {
 		width += len;
 		len += i;
@@ -546,7 +553,7 @@ static VOID NEAR infobar(VOID_A)
 				tmp, width * 2 + l);
 			if (i >= 0) {
 				tmp[i] = '\0';
-				strncpy3(buf + len, tmp + l, &width, 0);
+				strncpy3(&(buf[len]), &(tmp[l]), &width, 0);
 			}
 			free(tmp);
 		}
@@ -682,53 +689,54 @@ int no, isstandout;
 	tm = NULL;
 	if (curcolumns < 5 && len + WIDTH3 <= width) {
 		if (isdir(&(list[no])))
-			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
+			sprintf(&(buf[len]), " %*.*s", WSIZE, WSIZE, "<DIR>");
 #if	MSDOS || !defined (_NODOSDRIVE)
 		else if (
 # if	!MSDOS
 		dospath2("") &&
 # endif
 		(list[no].st_mode & S_IFMT) == S_IFIFO)
-			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<VOL>");
+			sprintf(&(buf[len]), " %*.*s", WSIZE, WSIZE, "<VOL>");
 #endif
 #if	!MSDOS
-		else if (isdev(&(list[no]))) sprintf(buf + len, " %*u,%*u",
+		else if (isdev(&(list[no]))) sprintf(&(buf[len]), " %*u,%*u",
 			WSIZE / 2, major(list[no].st_size) & 0xff,
 			WSIZE - (WSIZE / 2) - 1,
 			minor(list[no].st_size) & 0xff);
 #endif
-		else sprintf(buf + len, " %*ld",
+		else sprintf(&(buf[len]), " %*ld",
 			WSIZE, (long)(list[no].st_size));
-		if ((int)strlen(buf + len) > WSIZE + 1)
-			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "OVERFLOW");
+		if ((int)strlen(&(buf[len])) > WSIZE + 1)
+			sprintf(&(buf[len]), " %*.*s",
+				WSIZE, WSIZE, "OVERFLOW");
 		len += WIDTH3;
 	}
 	if (curcolumns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&(list[no].st_mtim));
-		sprintf(buf + len, " %02d-%02d-%02d %2d:%02d",
+		sprintf(&(buf[len]), " %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		len += WIDTH2;
 	}
 	if (curcolumns < 2 && len + WIDTH1 <= width) {
 		if (!tm) tm = localtime(&(list[no].st_mtim));
-		sprintf(buf + len, ":%02d", tm -> tm_sec);
+		sprintf(&(buf[len]), ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
 #if	!MSDOS
-		putowner(buf + len, list[no].st_uid);
+		putowner(&(buf[len]), list[no].st_uid);
 		len += WOWNER;
 		buf[len++] = ' ';
-		putgroup(buf + len, list[no].st_gid);
+		putgroup(&(buf[len]), list[no].st_gid);
 		len += WGROUP;
 		buf[len++] = ' ';
 #endif
 #ifdef	HAVEFLAGS
 		if (isfileflg(dispmode))
-			putflags(buf + len, list[no].st_flags);
+			putflags(&(buf[len]), list[no].st_flags);
 		else
 #endif
-		putmode(buf + len,
+		putmode(&(buf[len]),
 			(!isdisplnk(dispmode) && islink(&(list[no])))
 			? (S_IFLNK | 0777) : list[no].st_mode);
 	}
@@ -1139,7 +1147,13 @@ char *file, *def;
 			filelist[maxfile].ent = maxfile;
 			filelist[maxfile].tmpflags = 0;
 #ifndef	_NOPRECEDE
-			if (!haste)
+			if (haste) {
+				if (isdotdir(dp -> d_name)) {
+					filelist[maxfile].flags = F_ISDIR;
+					filelist[maxfile].st_mode = S_IFDIR;
+				}
+			}
+			else
 #endif
 			{
 				if (getstatus(&(filelist[maxfile])) < 0) {
@@ -1210,6 +1224,14 @@ char *file, *def;
 		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
+#ifndef	_NOPRECEDE
+		if (haste && !havestat(&(filelist[filepos]))
+		&& (bindlist[i].d_func < 255
+		|| (funclist[bindlist[i].f_func].stat & NEEDSTAT))
+		&& getstatus(&(filelist[filepos])) < 0)
+			no = WARNING_BELL;
+		else
+#endif
 		no = (bindlist[i].d_func < 255 && isdir(&(filelist[filepos])))
 			? (int)(bindlist[i].d_func)
 			: (int)(bindlist[i].f_func);
@@ -1338,11 +1360,63 @@ char *file, *def;
 	return(no);
 }
 
-VOID main_fd(cur)
-char *cur;
+static char *NEAR initcwd(path, buf)
+char *path, *buf;
+{
+	char *cp, *file;
+	int i;
+
+	if (!path) return(NULL);
+
+	cp = evalpath(strdup2(path), 1);
+#if	MSDOS
+	if (_dospath(cp)) {
+		if (setcurdrv(*cp, 0) >= 0) {
+			if (!Xgetwd(fullpath)) error(NULL);
+		}
+		for (i = 0; cp[i + 2]; i++) cp[i] = cp[i + 2];
+		cp[i] = '\0';
+	}
+#endif	/* !MSDOS */
+
+	if (chdir2(cp) >= 0) file = NULL;
+	else {
+		file = strrdelim(cp, 0);
+#if	!MSDOS && !defined (_NODOSDRIVE)
+		if (!file && dospath2(cp)) file = &(cp[2]);
+#endif
+
+		if (!file) file = cp;
+		else {
+			i = *file;
+			*file = '\0';
+			if (file == cp) {
+				if (chdir2(_SS_) < 0) error(_SS_);
+			}
+			else if (chdir2(cp) < 0) {
+				warning(-1, cp);
+#if	MSDOS
+				strcpy(fullpath, origpath);
+#endif
+				free(cp);
+				return(NULL);
+			}
+			if (i == _SC_) file++;
+			else *file = i;
+		}
+		strcpy(buf, file);
+		file = buf;
+	}
+
+	free(cp);
+	return(file);
+}
+
+VOID main_fd(path)
+char *path;
 {
 	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	char *cp, *tmp, *def;
+	char *cp, *def;
 	int i, ischgdir;
 
 	for (i = 0; i < MAXWINDOWS; i++) {
@@ -1380,66 +1454,7 @@ char *cur;
 	dispmode = displaymode;
 	curcolumns = defcolumns;
 
-	def = NULL;
-	if (cur) {
-		cp = evalpath(strdup2(cur), 1);
-#if	MSDOS
-		if (_dospath(cp)) {
-			if (setcurdrv(*cp, 0) >= 0) {
-				if (!Xgetwd(fullpath)) error(NULL);
-			}
-			for (i = 2; cp[i]; i++) cp[i - 2] = cp[i];
-			cp [i - 2] = '\0';
-		}
-		if (*cp == _SC_) fullpath[2] = '\0';
-		tmp = strcatdelim(fullpath);
-#else	/* !MSDOS */
-		if (
-# ifndef	_NODOSDRIVE
-		_dospath(cp) ||
-# endif
-		*cp == _SC_) *(tmp = fullpath) = '\0';
-		else tmp = strcatdelim(fullpath);
-#endif	/* !MSDOS */
-		if (_chdir2(cp) >= 0) {
-			strcpy(tmp, cp);
-			free(cp);
-		}
-		else {
-			def = strrdelim(cp, 0);
-#if	!MSDOS && !defined (_NODOSDRIVE)
-			if (!def && _dospath(cp)) def = &(cp[2]);
-#endif
-			if (!def) def = cp;
-			else {
-				i = *def;
-				*def = '\0';
-				if (def == cp) {
-					if (_chdir2(_SS_) < 0) error(_SS_);
-#if	MSDOS
-					strcpy(fullpath + 2, _SS_);
-#else
-					strcpy(fullpath, _SS_);
-#endif
-				}
-				else if (_chdir2(cp) >= 0) strcpy(tmp, cp);
-				else {
-					warning(-1, cp);
-					def = NULL;
-					strcpy(fullpath, origpath);
-				}
-				if (def && (*def = i) == _SC_) def++;
-			}
-
-			if (def) {
-				strcpy(prev, def);
-				def = prev;
-			}
-			free(cp);
-		}
-		realpath2(fullpath, fullpath, 0);
-		entryhist(1, fullpath, 1);
-	}
+	def = initcwd(path, prev);
 #if	MSDOS
 	_chdir2(fullpath);
 #endif
@@ -1458,12 +1473,12 @@ char *cur;
 
 		if (strcmp(file, ".")) {
 #if	!MSDOS && !defined (_NODOSDRIVE)
-			char path[MAXPATHLEN];
+			char buf[MAXPATHLEN];
 #endif
 
 			if (findpattern) free(findpattern);
 			findpattern = NULL;
-			if (chdir2(nodospath(path, file)) < 0) {
+			if (chdir2(nodospath(buf, file)) < 0) {
 				warning(-1, file);
 				strcpy(prev, file);
 				def = prev;

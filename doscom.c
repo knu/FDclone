@@ -25,11 +25,47 @@
 #include <time.h>
 #endif
 
+#if	!defined (FD) && MSDOS
+#include <dos.h>
+#define	VOL_FAT32	"FAT32"
+# ifdef	DJGPP
+# include <dpmi.h>
+# include <go32.h>
+# include <sys/farptr.h>
+#  if	(DJGPP >= 2)
+#  include <libc/dosio.h>
+#  else
+#  define	__dpmi_regs	_go32_dpmi_registers
+#  define	__tb	_go32_info_block.linear_address_of_transfer_buffer
+#  define	__tb_offset	(__tb & 15)
+#  define	__tb_segment	(__tb / 16)
+#  endif
+# define	PTR_SEG(ptr)		(__tb_segment)
+# define	PTR_OFF(ptr, ofs)	(__tb_offset + (ofs))
+# else	/* !DJGPP */
+#  ifdef	__TURBOC__	/* Oops!! Borland C++ has not x.bp !! */
+typedef union DPMI_REGS {
+	struct XREGS {
+		u_short ax, bx, cx, dx, si, di, bp, flags;
+	} x;
+	struct HREGS {
+		u_char al, ah, bl, bh, cl, ch, dl, dh;
+	} h;
+} __dpmi_regs;
+#  else
+typedef union REGS	__dpmi_regs;
+#  endif
+# define	__attribute__(x)
+# define	PTR_SEG(ptr)		FP_SEG(ptr)
+# define	PTR_OFF(ptr, ofs)	FP_OFF(ptr)
+# endif	/* !DJGPP */
+#endif	/* !FD && MSDOS */
+
 #if	MSDOS
 #include <io.h>
 #include "unixemu.h"
 #define	DOSCOMOPT	'/'
-#define	C_EOF		('Z' & 037)
+#define	C_EOF		CTRL('z')
 #else	/* !MSDOS */
 #include <sys/time.h>
 #include <sys/file.h>
@@ -44,18 +80,71 @@
 # include <utime.h>
 # endif
 #define	DOSCOMOPT	'-'
-#define	C_EOF		('D' & 037)
+#define	C_EOF		CTRL('d')
 #endif	/* !MSDOS */
 
-#ifdef	NOVOID
-#define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
-#else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
-#endif
+#ifndef	FD
+# if	MSDOS
+typedef struct _statfs_t {
+	u_short f_type __attribute__ ((packed));
+	u_short f_version __attribute__ ((packed));
+	u_long f_clustsize __attribute__ ((packed));
+	u_long f_sectsize __attribute__ ((packed));
+	u_long f_bavail __attribute__ ((packed));
+	u_long f_blocks __attribute__ ((packed));
+	u_long f_real_bavail_sect __attribute__ ((packed));
+	u_long f_real_blocks_sect __attribute__ ((packed));
+	u_long f_real_bavail __attribute__ ((packed));
+	u_long f_real_blocks __attribute__ ((packed));
+	u_char reserved[8] __attribute__ ((packed));
+} statfs_t;
+# else	/* !MSDOS */
+#  ifdef	USESTATVFSH
+#include <sys/statvfs.h>
+typedef struct statvfs		statfs_t;
+#  define	statfs2		statvfs
+#  define	blocksize(fs)	((fs).f_frsize ? (fs).f_frsize : (fs).f_bsize)
+#  endif	/* USESTATVFSH */
+#  ifdef	USESTATFSH
+#include <sys/statfs.h>
+typedef struct statfs		statfs_t;
+#  define	f_bavail	f_bfree
+#  define	blocksize(fs)	(fs).f_bsize
+#  endif	/* USESTATFSH */
+#  ifdef	USEVFSH
+#include <sys/vfs.h>
+typedef struct statfs		statfs_t;
+#  define	blocksize(fs)	(fs).f_bsize
+#  endif	/* USEVFSH */
+#  ifdef	USEMOUNTH
+#include <sys/mount.h>
+typedef struct statfs		statfs_t;
+#  define	blocksize(fs)	(fs).f_bsize
+#  endif	/* USEMOUNTH */
+#  ifdef	USEFSDATA
+#include <sys/mount.h>
+typedef struct fs_data		statfs_t;
+#  define	statfs2(path, buf)	(statfs(path, buf) - 1)
+#  define	blocksize(fs)	1024
+#  define	f_blocks	fd_req.btot
+#  define	f_bavail	fd_req.bfreen
+#  endif	/* USEFSDATA */
+#  ifdef	USEFFSIZE
+#  define	f_bsize		f_fsize
+#  endif
+#  if	defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
+#   if	(STATFSARGS >= 4)
+#   define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+#   else
+#    if	(STATFSARGS == 3)
+#    define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
+#    else
+#    define	statfs2		statfs
+#    endif
+#   endif
+#  endif	/* USESTATFSH || USEVFSH || USEMOUNTH */
+# endif	/* !MSDOS */
+#endif	/* !FD */
 
 #ifdef	NOFILEMODE
 # ifdef	S_IRUSR
@@ -66,6 +155,196 @@
 # endif
 #define	S_IRUSR	00400
 #define	S_IWUSR	00200
+#endif
+
+#ifdef	NOERRNO
+extern int errno;
+#endif
+#ifdef	DEBUG
+extern char *_mtrace_file;
+#endif
+#ifdef	LSI_C
+extern u_char _openfile[];
+#endif
+#ifndef	DECLERRLIST
+extern char *sys_errlist[];
+#endif
+
+#ifdef	FD
+#include "term.h"
+#else	/* !FD */
+# if	MSDOS
+# include <conio.h>
+# define	cc_intr		CTRL('c')
+# define	K_CR		'\r'
+# else	/* !MSDOS */
+extern int ttyio;
+static int cc_intr = -1;
+# define	K_CR		'\n'
+#  ifdef	USETERMIOS
+#  include <termios.h>
+#  include <sys/ioctl.h>	/* for Linux libc6 */
+typedef struct termios	termioctl_t;
+#  define	tioctl(d, r, a)	((r) \
+				? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
+#  define	REQGETP		0
+#  define	REQSETP		(TCSAFLUSH + 1)
+#  else		/* !USETERMIOS */
+#   ifdef	USETERMIO
+#   include <termio.h>
+typedef struct termio	termioctl_t;
+#   define	tioctl		ioctl
+#   define	REQGETP		TCGETA
+#   define	REQSETP		TCSETAF
+#   else	/* !USETERMIO */
+#   include <sgtty.h>
+typedef struct sgttyb	termioctl_t;
+#   define	tioctl		ioctl
+#   define	REQGETP		TIOCGETP
+#   define	REQSETP		TIOCSETP
+#   endif	/* !USETERMIO */
+#  endif	/* !USETERMIOS */
+# endif	/* !MSDOS */
+# ifdef	CTRL
+# undef	CTRL
+# endif
+#define	CTRL(c)		((c) & 037)
+#define	K_BS		010
+#define	n_line		24
+#define	t_clear		"\033[;H\033[2J"
+#define	c_left		"\010"
+#endif	/* !FD */
+
+#include "pathname.h"
+#include "system.h"
+
+#if	!defined (_NOORIGSHELL) && defined (DOSCOMMAND) \
+&& (!defined (FD) || (FD >= 2))
+
+#ifdef	FD
+extern DIR *_Xopendir __P_((char *, int));
+#define	Xopendir(p)	_Xopendir(p, 0)
+extern int Xclosedir __P_((DIR *));
+extern struct dirent *_Xreaddir __P_((DIR *, int));
+#define	Xreaddir(d)	_Xreaddir(d, 0)
+extern char *_Xgetwd __P_((char *, int));
+#define	Xgetwd(p)	_Xgetwd(p, 0)
+extern int Xstat __P_((char *, struct stat *));
+extern int _Xlstat __P_((char *, struct stat *, int, int));
+#define	Xlstat(p, s)	_Xlstat(p, s, 0, 0)
+extern int Xaccess __P_((char *, int));
+extern int Xsymlink __P_((char *, char *));
+extern int Xreadlink __P_((char *, char *, int));
+extern int Xchmod __P_((char *, int));
+# ifdef	USEUTIME
+extern int Xutime __P_((char *, struct utimbuf *));
+# else
+extern int Xutimes __P_((char *, struct timeval []));
+# endif
+extern int Xunlink __P_((char *));
+extern int _Xrename __P_((char *, char *, int));
+#define	Xrename(f, t)	_Xrename(f, t, 0)
+extern int _Xopen __P_((char *, int, int, int));
+#define	Xopen(p, f, m)	_Xopen(p, f, m, 0)
+# ifdef	_NODOSDRIVE
+# define	Xclose		close
+# define	Xread		read
+# define	Xwrite		write
+# else	/* !_NODOSDRIVE */
+extern int Xclose __P_((int));
+extern int Xread __P_((int, char *, int));
+extern int Xwrite __P_((int, char *, int));
+# endif	/* !_NODOSDRIVE */
+extern int _Xmkdir __P_((char *, int, int, int));
+#define	Xmkdir(p, m)	_Xmkdir(p, m, 0, 0)
+extern int _Xrmdir __P_((char *, int, int));
+#define	Xrmdir(p)	_Xrmdir(p, 0, 0)
+extern int chdir3 __P_((char *));
+extern int kanjifputs __P_((char *, FILE *));
+#else	/* !FD */
+# if	MSDOS
+extern DIR *Xopendir __P_((char *));
+extern int Xclosedir __P_((DIR *));
+extern struct dirent *Xreaddir __P_((DIR *));
+# else
+# define	Xopendir	opendir
+# define	Xclosedir	closedir
+# define	Xreaddir	readdir
+# endif
+# ifdef	DJGPP
+extern dos_putpath __P_((char *, int));
+extern char *Xgetwd __P_((char *));
+# else	/* !DJGPP */
+#  ifdef	USEGETWD
+#  define	Xgetwd		(char *)getwd
+#  else
+#  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
+#  endif
+# endif	/* !DJGPP */
+#define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
+# if	MSDOS
+# define	Xlstat(f, s)	(stat(f, s) ? -1 : 0)
+# else
+# define	Xlstat		lstat
+# endif
+#define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
+#define	Xsymlink(o, n)	(symlink(o, n) ? -1 : 0)
+#define	Xreadlink	readlink
+#define	Xchmod		chmod
+#define	Xutime(f, t)	(utime(f, t) ? -1 : 0)
+#define	Xutimes(f, t)	(utimes(f, t) ? -1 : 0)
+#define	Xunlink		unlink
+#define	Xrename(o, n)	(rename(o, n) ? -1 : 0)
+#define	Xopen		open
+#define	Xclose		close
+#define	Xread		read
+#define	Xwrite		write
+# if	MSDOS
+#  ifdef	DJGPP
+#  define	Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+#  else
+extern int Xmkdir __P_((char *, int));
+#  endif
+# else
+# define	Xmkdir		mkdir
+# endif
+#define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
+# if	MSDOS
+extern int int21call __P_((__dpmi_regs *, struct SREGS *));
+extern int chdir3 __P_((char *));
+# else
+# define	chdir3(p)	(chdir(p) ? -1 : 0)
+# endif
+#define	kanjifputs	fputs
+#endif	/* !FD */
+
+struct filestat_t {
+	char *nam;
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+	char *d_alias;
+#else
+#define	d_alias		nam
+#endif
+	u_short mod;
+	off_t siz;
+	time_t mtim;
+	time_t atim;
+	u_char flags;
+};
+
+#define	FS_NOTMATCH	0001
+
+#ifndef	O_BINARY
+#define	O_BINARY	0
+#endif
+#ifndef	O_TEXT
+#define	O_TEXT		0
+#endif
+#ifndef	ENOSPC
+#define	ENOSPC		EACCES
+#endif
+#ifndef	DEV_BSIZE
+#define	DEV_BSIZE	512
 #endif
 
 #ifndef	L_SET
@@ -83,252 +362,270 @@
 # endif
 #endif
 
-#include "term.h"
-#include "pathname.h"
-#include "system.h"
-
-#if	!defined (_NOORIGSHELL) && defined (DOSCOMMAND) \
-&& (!defined (FD) || (FD >= 2))
-
-#ifdef	NOERRNO
-extern int errno;
-#endif
-#ifdef	DEBUG
-extern char *_mtrace_file;
-#endif
-#ifdef	LSI_C
-extern u_char _openfile[];
-#endif
-#ifndef	DECLERRLIST
-extern char *sys_errlist[];
-#endif
-
-#ifdef	FD
-extern char *Xgetwd __P_((char *));
-extern int Xstat __P_((char *, struct stat *));
-extern int Xlstat __P_((char *, struct stat *));
-extern int Xaccess __P_((char *, int));
-extern int Xsymlink __P_((char *, char *));
-extern int Xreadlink __P_((char *, char *, int));
-extern int Xchmod __P_((char *, int));
-# ifdef	USEUTIME
-extern int Xutime __P_((char *, struct utimbuf *));
-# else
-extern int Xutimes __P_((char *, struct timeval []));
-# endif
-extern int Xunlink __P_((char *));
-extern int Xrename __P_((char *, char *));
-# if	MSDOS && defined (_NOROCKRIDGE) && defined (_NOUSELFN)
-#define	Xopen		open
-# else
-extern int Xopen __P_((char *, int, int));
-# endif
-# ifdef	_NODOSDRIVE
-#define	Xclose		close
-#define	Xread		read
-#define	Xwrite		write
-# else	/* !_NODOSDRIVE */
-extern int Xclose __P_((int));
-extern int Xread __P_((int, char *, int));
-extern int Xwrite __P_((int, char *, int));
-# endif	/* !_NODOSDRIVE */
-# if	MSDOS && defined (_NOUSELFN)
-#  ifdef	DJGPP
-#  define	_Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
-#  else
-extern int _Xmkdir __P_((char *, int));
-#  endif
-# define	_Xrmdir(p)	(rmdir(p) ? -1 : 0)
-# else	/* !MSDOS || !_NOUSELFN */
-#  if	!MSDOS && defined (_NODOSDRIVE) && defined (_NOKANJICONV)
-#  define	_Xmkdir		mkdir
-#  define	_Xrmdir		rmdir
-#  else
-extern int _Xmkdir __P_((char *, int));
-extern int _Xrmdir __P_((char *));
-#  endif
-# endif	/* !MSDOS || !_NOUSELFN */
-extern int chdir3 __P_((char *));
-extern char *realpath2 __P_((char *, char *, int));
-extern long getblocksize __P_((char *));
-# ifdef	_NOROCKRIDGE
-extern DIR *_Xopendir __P_((char *));
-# define	Xopendir	_Xopendir
-# else
-extern DIR *Xopendir __P_((char *));
-# endif
-extern int Xclosedir __P_((DIR *));
-extern struct dirent *Xreaddir __P_((DIR *));
-extern char *ascnumeric __P_((char *, long, int, int));
-extern int touchfile __P_((char *, time_t, time_t));
-extern int safewrite __P_((int, char *, int));
-extern VOID getinfofs __P_((char *, long *, long *));
-#else	/* !FD */
-# ifdef DJGPP
-extern char *Xgetwd __P_((char *));
-# else
-#  ifdef	USEGETWD
-#  define	Xgetwd		(char *)getwd
-#  else
-#  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
-#  endif
-# endif
-#define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
-#define	Xsymlink(o, n)	(symlink(o, n) ? -1 : 0)
-#define	Xreadlink	readlink
-#define	Xchmod		chmod
-#define	Xunlink		unlink
-#define	Xutime(f, t)	(utime(f, t) ? -1 : 0)
-#define	Xutimes(f, t)	(utimes(f, t) ? -1 : 0)
-#define	Xrename(o, n)	(rename(o, n) ? -1 : 0)
-#define	Xopen		open
-#define	Xclose		close
-#define	Xread		read
-#define	Xwrite		write
-#define	_Xrmdir(p)	(rmdir(p) ? -1 : 0)
-# if	MSDOS
-#  ifdef	DJGPP
-#  define	_Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
-#  else
-extern int _Xmkdir __P_((char *, int));
-#  endif
-# define	Xstat(f, s)	(stat(f, s) ? -1 : 0)
-# define	Xlstat(f, s)	(stat(f, s) ? -1 : 0)
-extern VOID getinfofs __P_((char *, long *, long *));
-extern int chdir3 __P_((char *));
-extern char *realpath2 __P_((char *, char *, int));
-extern long getblocksize __P_((char *));
-extern DIR *Xopendir __P_((char *));
-extern int Xclosedir __P_((DIR *));
-extern struct dirent *Xreaddir __P_((DIR *));
-# else	/* !MSDOS */
-# define	_Xmkdir		mkdir
-# define	Xstat		stat
-# define	Xlstat		lstat
-# define	getinfofs(p, t, f) \
-				(*(t) = *(f) = -1L)
-# define	chdir3(p)	(chdir(p) ? -1 : 0)
-# define	realpath2(p, r, f) \
-				realpath(p, r)
-# define	getblocksize(s)	DEV_BSIZE
-# define	Xopendir	opendir
-# define	Xclosedir	closedir
-# define	Xreaddir	readdir
-# endif	/* !MSDOS */
-static char *NEAR ascnumeric __P_((char *, long, int, int));
-static int NEAR touchfile __P_((char *, time_t, time_t));
-static int NEAR safewrite __P_((int, char *, int));
-#endif	/* !FD */
-
-struct filestat_t {
-	char *nam;
-	u_short mod;
-	off_t siz;
-	time_t mtim;
-	time_t atim;
-};
-
-#ifndef	O_BINARY
-#define	O_BINARY	0
-#endif
-#ifndef	ENOSPC
-#define	ENOSPC		EACCES
-#endif
-
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strdup2 __P_((char *));
-extern int isdotdir __P_((char *));
-extern int kanjifputs __P_((char *, FILE *));
-extern VOID freevar __P_((char **));
+extern char *ascnumeric __P_((char *, long, int, int));
+
+#ifdef	FD
+extern int getinfofs __P_((char *, long *, long *, long *));
+extern char *realpath2 __P_((char *, char *, int));
+extern int touchfile __P_((char *, time_t, time_t));
+extern int safewrite __P_((int, char *, int));
+extern char *inputstr __P_((char *, int, int, char *, int));
+#else	/* !FD */
+static int NEAR getinfofs __P_((char *, long *, long *, long *));
+# if	MSDOS
+static char *NEAR realpath2 __P_((char *, char *, int));
+# define	ttyiomode()
+# define	stdiomode()
+# define	getkey2(n)	getch();
+# else	/* !MSDOS */
+# define	realpath2(p, r, f) \
+				realpath(p, r)
+static VOID NEAR ttymode __P_((int));
+# define	ttyiomode()	(ttymode(1))
+# define	stdiomode()	(ttymode(0))
+static int NEAR getkey2 __P_((int));
+# endif	/* !MSDOS */
+static int NEAR touchfile __P_((char *, time_t, time_t));
+static int NEAR safewrite __P_((int, char *, int));
+static char * NEAR inputstr __P_((char *, int, int, char *, int));
+#endif	/* !FD */
 
 static VOID NEAR doserror __P_((char *, int));
 static VOID NEAR dosperror __P_((char *));
+static VOID NEAR fputnum __P_((long, int, int));
+static VOID NEAR fputsize __P_((long *, long *));
 static int NEAR inputkey __P_((VOID_A));
 static int cmpdirent __P_((CONST VOID_P, CONST VOID_P));
 static VOID NEAR evalenvopt __P_((char *, char *,
 		int (NEAR *)__P_((int, char *[]))));
 static int NEAR getdiropt __P_((int, char *[]));
-static VOID NEAR showfname __P_((struct filestat_t *, long, int));
+static int NEAR showstr __P_((char *, int, int));
+#ifdef	MINIMUMSHELL
+static VOID NEAR showfname __P_((struct filestat_t *, long *));
+#else
+static VOID NEAR showfname __P_((struct filestat_t *, long *, int));
+#endif
 static VOID NEAR showfnamew __P_((struct filestat_t *));
 static VOID NEAR showfnameb __P_((struct filestat_t *));
-static VOID NEAR checkline __P_((int *, char *));
+#ifdef	MINIMUMSHELL
+static int NEAR _checkline __P_((VOID_A));
+#define	checkline(n)		_checkline()
+#else
+static int NEAR _checkline __P_((int));
+#define	checkline		_checkline
+#endif
+static VOID NEAR dosdirheader __P_((VOID_A));
+#ifdef	MINIMUMSHELL
+static VOID NEAR dosdirfooter __P_((long *, int, int, long *, long *));
+static int NEAR dosdir __P_((reg_t *, long *, int *, int *, long *));
+#else
+static VOID NEAR dosdirfooter __P_((long *, int, int,
+		long *, long *, long *, long *));
+static int NEAR dosdir __P_((reg_t *, long *, int *, int *, long *, long *));
+#endif
+static int NEAR checkarg __P_((int, char *[]));
 static char *NEAR convwild __P_((char *, char *, char *, char *));
 static int NEAR getcopyopt __P_((int, char *[]));
-static int NEAR getbinmode __P_((char *, char *[], int));
+static int NEAR getbinmode __P_((char *, int));
 static int NEAR writeopen __P_((char *, char *));
 static int NEAR textread __P_((int, u_char *, int, int));
 static int NEAR textclose __P_((int, int));
 static int NEAR doscopy __P_((char *, char *, struct stat *, int, int, int));
 
-#define	ER_REQPARAM	1
-#define	ER_TOOMANYPARAM	2
-#define	ER_FILENOTFOUND	3
-#define	ER_INVALIDPARAM	4
-#define	ER_DUPLFILENAME	5
-#define	ER_COPIEDITSELF	6
+#define	BUFUNIT		32
+#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type) \
+			(((n) % BUFUNIT) ? ((type *)(ptr)) \
+			: (type *)realloc2(ptr, b_size(n, type)))
+#define	c_malloc(size)	(malloc2((size) = BUFUNIT))
+#define	c_realloc(ptr, n, size) \
+			(((n) + 1 < (size)) \
+			? (ptr) : realloc2(ptr, (size) *= 2))
+#define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
+
+
 static char *doserrstr[] = {
 	"",
+#define	ER_REQPARAM	1
 	"Required parameter missing",
+#define	ER_TOOMANYPARAM	2
 	"Too many parameters",
+#define	ER_FILENOTFOUND	3
 	"File not found",
+#define	ER_INVALIDPARAM	4
 	"Invalid parameter",
+#define	ER_DUPLFILENAME	5
 	"Duplicate file name or file in use",
+#define	ER_COPIEDITSELF	6
 	"File cannot be copied onto itself",
+#define	ER_INVALIDSW	7
+	"Invalid switch",
 };
 #define	DOSERRSIZ	((int)(sizeof(doserrstr) / sizeof(char *)))
 
 static char dirsort[sizeof("NSEDGA")] = "";
 static char dirattr[sizeof("DRHSA")] = "";
+static int dirline = 0;
+static char *dirwd = NULL;
 static int dirtype = '\0';
 static int dirflag = 0;
 #define	DF_LOWER	001
 #define	DF_PAUSE	002
 #define	DF_SUBDIR	004
+#define	DF_CANCEL	010
 static int copyflag = 0;
 #define	CF_BINARY	001
 #define	CF_TEXT		002
 #define	CF_VERIFY	004
 #define	CF_NOCONFIRM	010
 #define	CF_VERBOSE	020
+#define	CF_CANCEL	040
 
 
 #ifndef	FD
-static char *NEAR ascnumeric(buf, n, digit, max)
-char *buf;
-long n;
-int digit, max;
+static int NEAR getinfofs(path, totalp, freep, bsizep)
+char *path;
+long *totalp, *freep, *bsizep;
 {
-	char tmp[20 * 2 + 1];
-	int i, j, d;
+# if	MSDOS
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	char buf[128];
+# endif
+	statfs_t fsbuf;
+	char *cp, dupl[MAXPATHLEN];
 
-	i = j = 0;
-	d = digit;
-	if (digit < 0) digit = -digit;
-	if (n < 0) tmp[i++] = '?';
-	else if (!n) tmp[i++] = '0';
-	else {
-		for (;;) {
-			tmp[i++] = '0' + n % 10;
-			if (!(n /= 10) || i >= max) break;
-			if (digit > 1 && ++j >= digit) {
-				if (i >= max - 1) break;
-				tmp[i++] = ',';
-				j = 0;
-			}
-		}
-		if (n) for (j = 0; j < i; j++) if (tmp[j] != ',') tmp[j] = '9';
+	strcpy(dupl, path);
+	if (!(cp = strdelim(dupl, 0))) *(cp = dupl + strlen(dupl)) = _SC_;
+	*(++cp) = '\0';
+	path = dupl;
+
+# if	MSDOS
+	reg.x.ax = 0x71a0;
+	reg.x.bx = 0;
+	reg.x.cx = sizeof(buf);
+#  ifdef	DJGPP
+	dos_putpath(path, sizeof(buf));
+#  endif
+	sreg.ds = PTR_SEG(path);
+	reg.x.dx = PTR_OFF(path, sizeof(buf));
+	sreg.es = PTR_SEG(buf);
+	reg.x.di = PTR_OFF(buf, 0);
+	if (int21call(&reg, &sreg) >= 0 && (reg.x.bx & 0x4000)
+#  ifdef	DJGPP
+	&& (dosmemget(__tb, sizeof(buf), buf), 1)
+#  endif
+	&& !strcmp(buf, VOL_FAT32)) {
+		reg.x.ax = 0x7303;
+		reg.x.cx = sizeof(fsbuf);
+#  ifdef	DJGPP
+		dos_putpath(path, sizeof(fsbuf));
+#  endif
+		sreg.es = PTR_SEG(&fsbuf);
+		reg.x.di = PTR_OFF(&fsbuf, 0);
+		sreg.ds = PTR_SEG(path);
+		reg.x.dx = PTR_OFF(path, sizeof(fsbuf));
+		if (int21call(&reg, &sreg) < 0) return(-1);
+#  ifdef	DJGPP
+		dosmemget(__tb, sizeof(fsbuf), &fsbuf);
+#  endif
+		*totalp = (long)(fsbuf.f_blocks);
+		*freep = (long)(fsbuf.f_bavail);
+		*bsizep = (long)(fsbuf.f_clustsize) * (long)(fsbuf.f_sectsize);
 	}
+	else {
+		reg.x.ax = 0x3600;
+		reg.h.dl = toupper2(*path) - 'A' + 1;
+		int21call(&reg, &sreg);
+		if (reg.x.ax == 0xffff || !reg.x.ax || !reg.x.cx || !reg.x.dx
+		&& reg.x.dx < reg.x.bx) return(-1);
 
-	if (d <= 0) j = 0;
-	else if (d > max) for (j = 0; j < max - i; j++) buf[j] = '0';
-	else for (j = 0; j < max - i; j++) buf[j] = ' ';
-	while (i--) buf[j++] = tmp[i];
-	if (d < 0) for (; j < max; j++) buf[j] = ' ';
-	buf[j] = '\0';
+		*totalp = (long)(reg.x.dx);
+		*freep = (long)(reg.x.bx);
+		*bsizep = (long)(reg.x.ax) * (long)(reg.x.cx);
+	}
+# else	/* !MSDOS */
+	if (statfs2(path, &fsbuf) < 0) return(-1);
+	*totalp = fsbuf.f_blocks;
+	*freep = fsbuf.f_bavail;
+	*bsizep = blocksize(fsbuf);
+# endif	/* !MSDOS */
 
-	return(buf);
+	return(0);
 }
+
+# if	MSDOS
+/*ARGSUSED*/
+static char *NEAR realpath2(path, resolved, rdlink)
+char *path, *resolved;
+int rdlink;
+{
+	struct SREGS sreg;
+	__dpmi_regs reg;
+#   ifdef	DJGPP
+	int i;
+#   endif
+
+	reg.x.ax = 0x6000;
+	reg.x.cx = 0;
+#   ifdef	DJGPP
+	i = dos_putpath(path, 0);
+#   endif
+	sreg.ds = PTR_SEG(path);
+	reg.x.si = PTR_OFF(path, 0);
+	sreg.es = PTR_SEG(resolved);
+	reg.x.di = PTR_OFF(resolved, i);
+	if (int21call(&reg, &sreg) < 0) return(NULL);
+#   ifdef	DJGPP
+	dosmemget(__tb + i, MAXPATHLEN, resolved);
+#   endif
+	return(resolved);
+}
+# else	/* !MSDOS */
+static VOID NEAR ttymode(on)
+int on;
+{
+	termioctl_t tty;
+
+	if (tioctl(ttyio, REQGETP, &tty) < 0) return;
+#  if	defined (USETERMIOS) || defined (USETERMIO)
+	if (cc_intr < 0) cc_intr = tty.c_cc[VINTR];
+	if (on) tty.c_lflag &= ~(ECHO | ICANON | ISIG);
+	else tty.c_lflag |= (ECHO | ICANON | ISIG);
+#  else	/* !USETERMIO && !USETERMIO */
+	if (cc_intr < 0) {
+		struct tchars cc;
+
+		if (tioctl(ttyio, TIOCGETC, &cc) < 0) cc_intr = CTRL('c');
+		else cc_intr = cc.t_intrc;
+	}
+	if (on) {
+		tty.sg_flags |= RAW;
+		tty.sg_flags &= ~ECHO;
+	}
+	else {
+		tty.sg_flags &= ~RAW;
+		tty.sg_flags |= ECHO;
+	}
+#  endif	/* !USETERMIOS && !USETERMIO */
+	tioctl(ttyio, REQSETP, &tty);
+}
+
+/*ARGSUSED*/
+static int NEAR getkey2(sig)
+int sig;
+{
+	u_char ch;
+	int i;
+
+	while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
+	if (i < sizeof(u_char)) return(EOF);
+	return((int)ch);
+}
+# endif	/* !MSDOS */
 
 static int NEAR touchfile(path, atime, mtime)
 char *path;
@@ -360,14 +657,57 @@ int size;
 
 	n = Xwrite(fd, buf, size);
 # if	MSDOS
-	if (n < size) n = 0;
-# else
-	if (n < 0) {
-		if (errno == EINTR) n = size;
-		else if (errno == ENOSPC) n = 0;
+	if (n >= 0 && n < size) {
+		n = -1;
+		errno = ENOSPC;
 	}
+# else
+	if (n < 0 && errno == EINTR) n = size;
 # endif
 	return(n);
+}
+
+/*ARGSUSED*/
+static char *NEAR inputstr(prompt, delsp, ptr, def, h)
+char *prompt;
+int delsp, ptr;
+char *def;
+int h;
+{
+	char *cp;
+	int i, c, size;
+
+	fputs(prompt, stdout);
+	fflush(stdout);
+
+	cp = c_malloc(size);
+	for (i = 0; (c = inputkey()) != '\n'; i++) {
+		if (c < 0) {
+			free(cp);
+			return(NULL);
+		}
+		if (c != K_BS) {
+			cp = c_realloc(cp, i, size);
+			cp[i] = c;
+			if (!isctl(c)) fputc(c, stdout);
+			else {
+				fputc('^', stdout);
+				fputc((c + '@') & 0x7f, stdout);
+			}
+			fflush(stdout);
+		}
+		else if (i <= 0) i--;
+		else {
+			i -= 2;
+			fputs("\b \b", stdout);
+			if (isctl(cp[i + 1])) fputs("\b \b", stdout);
+			fflush(stdout);
+		}
+	}
+	cp[i++] = '\0';
+	fputc('\n', stdout);
+	fflush(stdout);
+	return(realloc2(cp, i));
 }
 #endif	/* !FD */
 
@@ -406,6 +746,34 @@ char *s;
 	errno = 0;
 }
 
+static VOID NEAR fputnum(n, digit, max)
+long n;
+int digit, max;
+{
+	char buf[MAXLONGWIDTH + 1];
+
+	fputs(ascnumeric(buf, n, digit, max), stdout);
+}
+
+static VOID NEAR fputsize(np, bsizep)
+long *np, *bsizep;
+{
+	long s, mb;
+
+	s = (1024L * 1024L + (*bsizep / 2)) / *bsizep;
+	mb = *np / s;
+	if (mb < 1024L) {
+		fputnum(*np * *bsizep, 3, 15);
+		fputs(" bytes", stdout);
+	}
+	else {
+		fputnum(mb, 3, 12);
+		fputc('.', stdout);
+		fputnum(((*np - mb * s) * 100L) / s, 3, 2);
+		fputs(" MB", stdout);
+	}
+}
+
 static int NEAR inputkey(VOID_A)
 {
 	int c;
@@ -413,10 +781,14 @@ static int NEAR inputkey(VOID_A)
 	ttyiomode();
 	c = getkey2(0);
 	stdiomode();
+	if (c == EOF) c = -1;
+	else if (c == cc_intr) {
+		fputs("^C\n", stdout);
+		fflush(stdout);
+		c = -1;
+	}
 	return(c);
 }
-
-#define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
 
 static int cmpdirent(vp1, vp2)
 CONST VOID_P vp1;
@@ -509,8 +881,7 @@ int (NEAR *getoptcmd)__P_((int, char *[]));
 		doserror(argv[n], ER_TOOMANYPARAM);
 	}
 	if (er) fputs("(Error occurred in environment variable)\n\n", stdout);
-	for (n = 0; n < argc; n++) free(argv[n]);
-	free(argv);
+	freevar(argv);
 }
 
 static int NEAR getdiropt(argc, argv)
@@ -567,7 +938,7 @@ char *argv[];
 						}
 /*FALLTHRU*/
 					default:
-						doserror(cp, ER_REQPARAM);
+						doserror(cp, ER_INVALIDSW);
 						return(-1);
 /*NOTREACHED*/
 						break;
@@ -575,7 +946,7 @@ char *argv[];
 				if (n) dirattr[n] = '\0';
 				else strcpy(dirattr, "DRHSA");
 				if (r) {
-					doserror(cp, ER_REQPARAM);
+					doserror(cp, ER_INVALIDSW);
 					return(-1);
 				}
 				cp += j - 2;
@@ -611,7 +982,7 @@ char *argv[];
 						}
 /*FALLTHRU*/
 					default:
-						doserror(cp, ER_REQPARAM);
+						doserror(cp, ER_INVALIDSW);
 						return(-1);
 /*NOTREACHED*/
 						break;
@@ -619,7 +990,7 @@ char *argv[];
 				if (!n) dirsort[n++] = 'N';
 				dirsort[n] = '\0';
 				if (r) {
-					doserror(cp, ER_REQPARAM);
+					doserror(cp, ER_INVALIDSW);
 					return(-1);
 				}
 				cp += j - 2;
@@ -639,6 +1010,7 @@ char *argv[];
 				if (rr) dirflag &= ~DF_LOWER;
 				else dirflag |= DF_LOWER;
 				break;
+#ifndef	MINIMUMSHELL
 			case 'V':
 				if (rr) {
 					if (dirtype == 'V') dirtype = '\0';
@@ -646,76 +1018,110 @@ char *argv[];
 				}
 				if (!dirtype) dirtype = 'V';
 				break;
+			case '4':
+				if (rr) {
+					if (dirtype == '4') dirtype = '\0';
+					break;
+				}
+				if (!dirtype) dirtype = '4';
+				break;
+#endif	/* !MINIMUMSHELL */
 			default:
-				doserror(argv[i], ER_REQPARAM);
+				doserror(argv[i], ER_INVALIDSW);
 				return(-1);
 /*NOTREACHED*/
 				break;
 		}
 		if (*(cp += 2 + rr)) {
-			doserror(cp, ER_REQPARAM);
+			doserror(cp, ER_INVALIDSW);
 			return(-1);
 		}
 	}
 	return(i);
 }
 
-static VOID NEAR showfname(dirp, bsize, verbose)
+static int NEAR showstr(s, len, lower)
+char *s;
+int len, lower;
+{
+	int i, olen;
+
+	olen = len;
+	if (len < 0) len = -len;
+
+	for (i = 0; s[i] && len > 0; i++, len--) {
+#ifdef	CODEEUC
+		if (isekana(s, i)) i++;
+#endif
+		if (iskanji1(s, i)) {
+			if (len <= 1) break;
+			i++;
+			len--;
+		}
+	}
+	if (olen >= 0) while (len-- > 0) s[i++] = ' ';
+	else olen = -olen - len;
+	s[i] = '\0';
+	if (lower) for (i = 0; s[i]; i++) s[i] = tolower2(s[i]);
+	else for (i = 0; s[i]; i++) s[i] = toupper2(s[i]);
+	kanjifputs(s, stdout);
+	return(olen);
+}
+
+#ifdef	MINIMUMSHELL
+static VOID NEAR showfname(dirp, bsizep)
 struct filestat_t *dirp;
-long bsize;
+long *bsizep;
+#else
+static VOID NEAR showfname(dirp, bsizep, verbose)
+struct filestat_t *dirp;
+long *bsizep;
 int verbose;
+#endif
 {
 	struct tm *tm;
 	char *ext, buf[MAXNAMLEN + 1];
 	int i;
 
-	strcpy(buf, dirp -> nam);
+	strcpy(buf, dirp -> d_alias);
 	if (isdotdir(buf)) ext = NULL;
 	else if ((ext = strrchr(buf, '.'))) {
-		*(ext++) = '\0';
-		i = ext - buf;
-		ext = &(dirp -> nam[i]);
+		if (ext == buf) {
+			ext = NULL;
+			strcpy(buf, &(dirp -> d_alias[1]));
+		}
+		else {
+			*(ext++) = '\0';
+			i = ext - buf;
+			ext = &(dirp -> d_alias[i]);
+		}
 	}
-	for (i = 0; i < 8; i++) {
-		if (!buf[i]) break;
-		if (iskanji1(buf, i)) i++;
-	}
-	if (i > 8) i -= 2;
-	for (; i < 9; i++) buf[i] = ' ';
-	buf[i] = '\0';
-	if (dirflag & DF_LOWER)
-		for (i = 0; i < 9; i++) buf[i] = tolower2(buf[i]);
-	kanjifputs(buf, stdout);
+	showstr(buf, 8, (dirflag & DF_LOWER));
+	fputc(' ', stdout);
 
-	if (!ext) i = 0;
+	if (!ext) fputs("   ", stdout);
 	else {
 		strcpy(buf, ext);
-		for (i = 0; i < 4; i++) {
-			if (!buf[i]) break;
-			if (iskanji1(buf, i)) i++;
-		}
-		if (i > 4) i -= 2;
+		showstr(buf, 3, (dirflag & DF_LOWER));
 	}
-	for (; i < 5; i++) buf[i] = ' ';
-	buf[i] = '\0';
-	if (dirflag & DF_LOWER)
-		for (i = 0; i < 5; i++) buf[i] = tolower2(buf[i]);
-	kanjifputs(buf, stdout);
+	fputc(' ', stdout);
 
-	if (dir_isdir(dirp)) fputs(" <DIR>      ", stdout);
+	if (dir_isdir(dirp)) fputs("  <DIR>      ", stdout);
 	else if ((dirp -> mod & S_IFMT) == S_IFREG)
-		fputs(ascnumeric(buf, dirp -> siz, 3, 12), stdout);
-	else fputs("            ", stdout);
+		fputnum(dirp -> siz, 3, 13);
+	else fputs("             ", stdout);
 
-	if (verbose) {
+#ifndef	MINIMUMSHELL
+	if (verbose > 0) {
 		if ((dirp -> mod & S_IFMT) != S_IFREG)
 			fputs("              ", stdout);
 		else {
-			dirp -> siz = ((dirp -> siz + bsize - 1) / bsize)
-				* bsize;
-			fputs(ascnumeric(buf, dirp -> siz, 3, 12), stdout);
+			dirp -> siz = ((dirp -> siz + *bsizep - 1) / *bsizep)
+				* *bsizep;
+			fputnum(dirp -> siz, 3, 14);
 		}
 	}
+#endif	/* !MINIMUMSHELL */
 
 #ifdef	DEBUG
 	_mtrace_file = "localtime(start)";
@@ -728,12 +1134,25 @@ int verbose;
 #else
 	tm = localtime(&(dirp -> mtim));
 #endif
-	fprintf(stdout, "  %02d-%02d-%02d  %2d:%02d ",
-		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
-		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
+	fputs("  ", stdout);
+#ifndef	MINIMUMSHELL
+	if (verbose < 0) fputnum(tm -> tm_year + 1900, 5, 4);
+	else
+#endif
+	fputnum(tm -> tm_year % 100, 3, 2);
+	fputc('-', stdout);
+	fputnum(tm -> tm_mon + 1, 3, 2);
+	fputc('-', stdout);
+	fputnum(tm -> tm_mday, 3, 2);
+	fputs("  ", stdout);
+	fputnum(tm -> tm_hour, 2, 2);
+	fputc(':', stdout);
+	fputnum(tm -> tm_sec, 3, 2);
+	fputc(' ', stdout);
 
-	if (verbose) {
-#ifdef	DEBUG
+#ifndef	MINIMUMSHELL
+	if (verbose > 0) {
+# ifdef	DEBUG
 		_mtrace_file = "localtime(start)";
 		tm = localtime(&(dirp -> atim));
 		if (_mtrace_file) _mtrace_file = NULL;
@@ -741,11 +1160,16 @@ int verbose;
 			_mtrace_file = "localtime(end)";
 			malloc(0);	/* dummy malloc */
 		}
-#else
+# else
 		tm = localtime(&(dirp -> atim));
-#endif
-		fprintf(stdout, " %02d-%02d-%02d  ",
-			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
+# endif
+		fputc(' ', stdout);
+		fputnum(tm -> tm_year % 100, 3, 2);
+		fputc('-', stdout);
+		fputnum(tm -> tm_mon + 1, 3, 2);
+		fputc('-', stdout);
+		fputnum(tm -> tm_mday, 3, 2);
+		fputs("  ", stdout);
 		strcpy(buf, "           ");
 		if (!(dirp -> mod & S_IWUSR)) buf[0] = 'R';
 		if (!(dirp -> mod & S_IRUSR)) buf[1] = 'H';
@@ -755,6 +1179,7 @@ int verbose;
 		if (dirp -> mod & S_ISVTX) buf[5] = 'A';
 		fputs(buf, stdout);
 	}
+#endif	/* !MINIMUMSHELL */
 
 	kanjifputs(dirp -> nam, stdout);
 	fputc('\n', stdout);
@@ -766,56 +1191,48 @@ struct filestat_t *dirp;
 	char *ext, buf[MAXNAMLEN + 1];
 	int i, len;
 
-	strcpy(buf, dirp -> nam);
+	if (dir_isdir(dirp)) fputc('[', stdout);
+	strcpy(buf, dirp -> d_alias);
 	if (isdotdir(buf)) ext = NULL;
 	else if ((ext = strrchr(buf, '.'))) {
-		*(ext++) = '\0';
-		i = ext - buf;
-		ext = &(dirp -> nam[i]);
-	}
-	for (i = 0; i < 8; i++) {
-		if (!buf[i]) break;
-		if (iskanji1(buf, i)) i++;
-	}
-	if (i > 8) i -= 2;
-	buf[i] = '\0';
-	len = i;
-
-	if (!ext) {
-		buf[len] = '\0';
-		i = 0;
-	}
-	else {
-		buf[len++] = '.';
-		strcpy(&(buf[len]), ext);
-		for (i = 0; i < 4; i++) {
-			if (!buf[len + i]) break;
-			if (iskanji1(buf, len + i)) i++;
+		if (ext == buf) {
+			ext = NULL;
+			strcpy(buf, &(dirp -> d_alias[1]));
 		}
-		if (i > 4) i -= 2;
+		else {
+			*(ext++) = '\0';
+			i = ext - buf;
+			ext = &(dirp -> d_alias[i]);
+		}
 	}
-	buf[len + i] = '\0';
-	len += i;
-	if (dirflag & DF_LOWER)
-		for (i = 0; buf[i]; i++) buf[i] = tolower2(buf[i]);
+	len = showstr(buf, -8, (dirflag & DF_LOWER));
 
-	if (dir_isdir(dirp)) {
-		fputc('[', stdout);
-		kanjifputs(buf, stdout);
-		fputc(']', stdout);
+	if (ext) {
+		fputc('.', stdout);
+		len++;
+		strcpy(buf, ext);
+		len += showstr(buf, -3, (dirflag & DF_LOWER));
 	}
-	else if ((dirp -> mod & S_IFMT) == S_IFREG)
-		kanjifputs(buf, stdout);
-	else len = 0;
+
+	if (dir_isdir(dirp)) fputc(']', stdout);
 	for (; len < 8 + 1 + 3; len++) fputc(' ', stdout);
 }
 
 static VOID NEAR showfnameb(dirp)
 struct filestat_t *dirp;
 {
+	char buf[MAXPATHLEN];
 	int i;
 
-	if (isdotdir(dirp -> nam)) return;
+	if (dirflag & DF_SUBDIR) {
+		if (dirflag & DF_LOWER) {
+			for (i = 0; dirwd[i]; i++) buf[i] = tolower2(dirwd[i]);
+			dirwd = buf;
+		}
+		kanjifputs(dirwd, stdout);
+		fputc(_SC_, stdout);
+	}
+
 	if (dirflag & DF_LOWER)
 		for (i = 0; dirp -> nam[i]; i++)
 			dirp -> nam[i] = tolower2(dirp -> nam[i]);
@@ -823,147 +1240,216 @@ struct filestat_t *dirp;
 	fputc('\n', stdout);
 }
 
-static VOID NEAR checkline(linep, dir)
-int *linep;
-char *dir;
+#ifdef	MINIMUMSHELL
+#define	n_incline	1
+static int NEAR _checkline(VOID_A)
+#else
+static int NEAR _checkline(n_incline)
+int n_incline;
+#endif
 {
-	if (!(dirflag & DF_PAUSE)) return;
-	if (++(*linep) >= n_line) {
+	if (!(dirflag & DF_PAUSE)) return(0);
+	if (dirflag & DF_CANCEL) return(-1);
+	if ((dirline += n_incline) >= n_line - 2) {
 		fputs("Press any key to continue . . .\n", stdout);
 		fflush(stdout);
-		inputkey();
+		if (inputkey() < 0) {
+			dirflag |= DF_CANCEL;
+			return(-1);
+		}
 		fputs("\n(continuing ", stdout);
-		fputs(dir, stdout);
+		fputs(dirwd, stdout);
 		fputs(")\n", stdout);
-		*linep = 3;
+		dirline = n_incline;
 	}
+	return(0);
 }
 
-int doscomdir(argc, argv)
-int argc;
-char *argv[];
+static VOID NEAR dosdirheader(VOID_A)
 {
-	struct filestat_t *dirlist;
-	reg_t *re;
-	DIR *dirp;
-	struct dirent *dp;
-	struct stat st;
-	char *dir, *file;
-	char wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
-	long size, bsize, fre;
-	int i, n, nf, nd, max, line;
-
-	strcpy(dirattr, "hs");
-	dirsort[0] = dirtype = '\0';
-	dirflag = 0;
-	evalenvopt(argv[0], "DIRCMD", getdiropt);
-	if ((n = getdiropt(argc, argv)) < 0)
-		return(RET_FAIL);
-	if (argc <= n) {
-		dir = ".";
-		file = "*";
-	}
-	else if (argc > n + 1) {
-		doserror(argv[n + 1], ER_TOOMANYPARAM);
-		return(RET_FAIL);
-	}
-	else if (Xstat(argv[n], &st) >= 0
-	&& (st.st_mode & S_IFMT) == S_IFDIR) {
-		strcpy(buf, argv[n]);
-		dir = buf;
-		file = "*";
-	}
-	else {
-		strcpy(buf, argv[n]);
-		if (!(file = strrdelim(buf, 1))) {
-			dir = ".";
-			file = argv[n];
+	if (dirtype != 'B') {
+		if (checkline(1) < 0) return;
+		if (dirflag & DF_SUBDIR) {
+			fputc('\n', stdout);
+			if (checkline(1) < 0) return;
 		}
-		else {
-			i = file - buf;
-			*(++file) = '\0';
-			dir = buf;
-			file = &(argv[n][++i]);
-			if (!(*file)) file = "*";
-		}
+		else fputc(' ', stdout);
+		fputs("Directory of ", stdout);
+		kanjifputs(dirwd, stdout);
+		fputc('\n', stdout);
 	}
-
-	if (Xgetwd(cwd) < 0) {
-		dosperror(NULL);
-		return(RET_FAIL);
-	}
-	if (dir != buf) strcpy(wd, cwd);
-	else {
-		if (chdir3(buf) < 0) {
-			dosperror(buf);
-			return(RET_FAIL);
-		}
-		if (Xgetwd(wd) < 0) {
-			dosperror(NULL);
-			return(RET_FAIL);
-		}
-		if (chdir3(cwd) < 0) {
-			dosperror(cwd);
-			return(RET_FAIL);
-		}
-	}
-	getinfofs(wd, &size, &fre);
-
-	if (!(dirp = Xopendir(dir))) {
-		dosperror(dir);
-		return(RET_FAIL);
-	}
-	fputc('\n', stdout);
-	fputs(" Directory of ", stdout);
-	kanjifputs(wd, stdout);
-	fputc('\n', stdout);
+#ifndef	MINIMUMSHELL
 	if (dirtype == 'V') {
+		if (checkline(1) < 0) return;
 		fputs("File Name         ", stdout);
 		fputs("Size        ", stdout);
 		fputs("Allocated      ", stdout);
 		fputs("Modified      ", stdout);
 		fputs("Accessed  ", stdout);
-		fputs("Attrib\n\n", stdout);
+		fputs("Attrib\n", stdout);
+		if (checkline(1) < 0) return;
+		fputc('\n', stdout);
+		if (checkline(1) < 0) return;
+		fputc('\n', stdout);
 	}
-	fputc('\n', stdout);
+#endif	/* !MINIMUMSHELL */
+	if (dirtype != 'B') {
+		if (checkline(1) < 0) return;
+		fputc('\n', stdout);
+	}
+}
+
+#ifdef	MINIMUMSHELL
+static VOID NEAR dosdirfooter(bsizep, nf, nd, sump, fp)
+long *bsizep;
+int nf, nd;
+long *sump, *fp;
+#else
+static VOID NEAR dosdirfooter(bsizep, nf, nd, sump, bsump, fp, tp)
+long *bsizep;
+int nf, nd;
+long *sump, *bsump, *fp, *tp;
+#endif
+{
+	if (dirtype == 'B') return;
+	if (!nf && !nd) {
+		if (!fp) return;
+		if (checkline(1) < 0) return;
+		fputs("File not found\n", stdout);
+		nd = -1;
+	}
+	else {
+		if (fp && (dirflag & DF_SUBDIR)) {
+			if (checkline(1) < 0) return;
+			fputc('\n', stdout);
+			if (checkline(1) < 0) return;
+			fputs("Total files listed:\n", stdout);
+		}
+		if (checkline(1) < 0) return;
+		fputnum(nf, 10, 10);
+		fputs(" file(s)", stdout);
+		fputnum(*sump, 3, 15);
+		fputs(" bytes\n", stdout);
+#ifndef	MINIMUMSHELL
+		if (dirtype == 'V') {
+			if (checkline(1) < 0) return;
+			fputnum(nd, 10, 10);
+			fputs(" dir(s) ", stdout);
+			fputsize(bsump, bsizep);
+			fputs(" allocated\n", stdout);
+			nd = -1;
+		}
+#endif	/* !MINIMUMSHELL */
+	}
+	if (!fp) return;
+
+	if (checkline(1) < 0) return;
+	if (nd < 0) fputs("                  ", stdout);
+	else {
+		fputnum(nd, 10, 10);
+		fputs(" dir(s) ", stdout);
+	}
+
+	fputsize(fp, bsizep);
+	fputs(" free\n", stdout);
+
+#ifndef	MINIMUMSHELL
+	if (tp && dirtype == 'V') {
+		if (checkline(1) < 0) return;
+		fputs("                  ", stdout);
+		fputsize(tp, bsizep);
+		fputs(" total disk space, ", stdout);
+		fputnum(((*tp - *fp) * 100L) / *tp, 3, 3);
+		fputs("% in use\n", stdout);
+	}
+#endif	/* !MINIMUMSHELL */
+}
+
+#ifdef	MINIMUMSHELL
+static int NEAR dosdir(re, bsizep, nfp, ndp, sump)
+reg_t *re;
+long *bsizep;
+int *nfp, *ndp;
+long *sump;
+#else
+static int NEAR dosdir(re, bsizep, nfp, ndp, sump, bsump)
+reg_t *re;
+long *bsizep;
+int *nfp, *ndp;
+long *sump, *bsump;
+#endif
+{
+#ifndef	MINIMUMSHELL
+	long bsum;
+#endif
+	struct filestat_t *dirlist;
+	DIR *dirp;
+	struct dirent *dp;
+	struct stat st;
+	char *file;
+	long sum;
+	int i, c, n, nf, nd, f, len, max;
+
+	if (!(dirp = Xopendir(dirwd))) return(-1);
 
 	n = nf = nd = 0;
-	size = 0L;
-	bsize = getblocksize(dir);
-	line = 4;
-	i = strlen(wd);
-	dir = strcatdelim(wd);
+#ifndef	MINIMUMSHELL
+	bsum =
+#endif
+	sum = 0L;
+	len = strlen(dirwd);
+	file = strcatdelim(dirwd);
 	dirlist = NULL;
-	if ((re = regexp_init(file, -1))) while ((dp = Xreaddir(dirp))) {
-		strcpy(dir, dp -> d_name);
-		if (Xstat(wd, &st) < 0) continue;
-		if (!regexp_exec(re, dp -> d_name, 0)) continue;
+	while ((dp = Xreaddir(dirp))) {
+		strcpy(file, dp -> d_name);
+		if (Xstat(dirwd, &st) < 0) continue;
 
-		dirlist = (struct filestat_t *)realloc2(dirlist,
-			sizeof(struct filestat_t) * (n + 1));
+		dirlist = b_realloc(dirlist, n, struct filestat_t);
 		dirlist[n].nam = strdup2(dp -> d_name);
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+		dirlist[n].d_alias = (dp -> d_alias[0])
+			? strdup2(dp -> d_alias) : dirlist[n].nam;
+#endif
 		dirlist[n].mod = st.st_mode;
 		dirlist[n].siz = st.st_size;
 		dirlist[n].mtim = st.st_mtime;
 		dirlist[n].atim = st.st_atime;
-		if ((st.st_mode & S_IFMT) == S_IFDIR) nd++;
-		else if ((st.st_mode & S_IFMT) == S_IFREG) {
+		dirlist[n].flags = 0;
+		if (re && !regexp_exec(re, dirlist[n].nam, 0))
+			dirlist[n].flags |= FS_NOTMATCH;
+		else if ((st.st_mode & S_IFMT) == S_IFDIR) nd++;
+		else {
 			nf++;
-			size += dirlist[n].siz;
+			if ((st.st_mode & S_IFMT) == S_IFREG) {
+				sum += dirlist[n].siz;
+#ifndef	MINIMUMSHELL
+				bsum += (dirlist[n].siz + *bsizep - 1)
+					/ *bsizep;
+#endif
+			}
 		}
 		n++;
 	}
 	Xclosedir(dirp);
-	wd[i] = '\0';
-	if (re) regexp_free(re);
+	dirwd[len] = '\0';
 	max = n;
 	if (*dirsort)
 		qsort(dirlist, max, sizeof(struct filestat_t), cmpdirent);
 
-	for (n = 0; n < max; n++) {
-		for (i = 0; dirattr[i]; i++) {
-			int f;
+	if (nf || nd) {
+		*nfp += nf;
+		*ndp += nd;
+		*sump += sum;
+#ifndef	MINIMUMSHELL
+		*bsump += bsum;
+#endif
+		dosdirheader();
+	}
 
+	for (n = c = 0; n < max; n++) {
+		if (dirflag & DF_CANCEL) break;
+		if (dirlist[n].flags & FS_NOTMATCH) continue;
+		for (i = 0; dirattr[i]; i++) {
 			f = 0;
 			switch (dirattr[i]) {
 				case 'D':
@@ -1007,71 +1493,199 @@ char *argv[];
 
 		switch (dirtype) {
 			case 'W':
+				if (!(c % 5) && checkline(1) < 0) break;
 				showfnamew(&(dirlist[n]));
-				if (n != max - 1 && (n % 5) != 5 - 1)
+				if (c != (nf + nd - 1) && (c % 5) != 5 - 1)
 					fputc('\t', stdout);
-				else {
-					fputc('\n', stdout);
-					checkline(&line, wd);
-				}
+				else fputc('\n', stdout);
 				break;
 			case 'B':
-				showfnameb(&(dirlist[n]));
-				checkline(&line, wd);
+				if (isdotdir(dirlist[n].nam)) break;
+				if (checkline(1) >= 0)
+					showfnameb(&(dirlist[n]));
 				break;
+#ifndef	MINIMUMSHELL
+			case 'V':
+				if (checkline(2) >= 0)
+					showfname(&(dirlist[n]), bsizep, 1);
+				break;
+#endif
 			default:
-				showfname(&(dirlist[n]), bsize,
-					dirtype == 'V');
-				checkline(&line, wd);
+				if (checkline(1) >= 0)
+#ifdef	MINIMUMSHELL
+					showfname(&(dirlist[n]), bsizep);
+#else
+					showfname(&(dirlist[n]), bsizep,
+						(dirtype == '4') ? -1 : 0);
+#endif
 				break;
 		}
+		c++;
+	}
+
+	if (dirflag & DF_SUBDIR) for (;;) {
+#ifdef	MINIMUMSHELL
+		dosdirfooter(bsizep, nf, nd, &sum, NULL);
+#else
+		dosdirfooter(bsizep, nf, nd, &sum, &bsum, NULL, NULL);
+#endif
+		file = strcatdelim(dirwd);
+		for (n = 0; n < max; n++) {
+			if (dirflag & DF_CANCEL) break;
+			if (!dir_isdir(&(dirlist[n]))
+			|| isdotdir(dirlist[n].nam))
+				continue;
+			strcpy(file, dirlist[n].nam);
+#ifdef	MINIMUMSHELL
+			c = dosdir(re, bsizep, nfp, ndp, sump);
+#else
+			c = dosdir(re, bsizep, nfp, ndp, sump, bsump);
+#endif
+			if (c < 0) {
+				dosperror(dirwd);
+				break;
+			}
+		}
+		break;
+	}
+	dirwd[len] = '\0';
+
+	for (n = 0; n < max; n++) {
 		free(dirlist[n].nam);
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+		if (dirlist[n].d_alias != dirlist[n].nam)
+			free(dirlist[n].d_alias);
+#endif
 	}
 	if (dirlist) free(dirlist);
+	return(max);
+}
 
-	if (!nf && !nd) {
-		fputs("File not found\n", stdout);
-		fputs("                  ", stdout);
+int doscomdir(argc, argv)
+int argc;
+char *argv[];
+{
+#ifndef	MINIMUMSHELL
+	long bsum;
+#endif
+	reg_t *re;
+	struct stat st;
+	char *dir, *file;
+	char wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
+	long sum, total, fre, bsize;
+	int i, n, nf, nd;
+
+	strcpy(dirattr, "hs");
+	dirsort[0] = dirtype = '\0';
+	dirflag = 0;
+	evalenvopt(argv[0], "DIRCMD", getdiropt);
+	if ((n = getdiropt(argc, argv)) < 0)
+		return(RET_FAIL);
+	if (argc <= n) {
+		dir = ".";
+		file = "*";
+	}
+	else if (argc > n + 1) {
+		doserror(argv[n + 1], ER_TOOMANYPARAM);
+		return(RET_FAIL);
+	}
+	else if (Xstat(argv[n], &st) >= 0
+	&& (st.st_mode & S_IFMT) == S_IFDIR) {
+		strcpy(buf, argv[n]);
+		dir = buf;
+		file = "*";
 	}
 	else {
-		fputs(ascnumeric(buf, nf, 10, 10), stdout);
-		fputs(" file(s)", stdout);
-		fputs(ascnumeric(buf, size, 3, 15), stdout);
-		fputs(" bytes\n", stdout);
-		fputs(ascnumeric(buf, nd, 10, 10), stdout);
-		fputs(" dir(s) ", stdout);
+		strcpy(buf, argv[n]);
+		if (!(file = strrdelim(buf, 1))) {
+			dir = ".";
+			file = argv[n];
+		}
+		else {
+			i = file - buf;
+			*(++file) = '\0';
+			dir = buf;
+			file = &(argv[n][++i]);
+			if (!(*file)) file = "*";
+		}
 	}
 
-	if (fre < 1024L * 1024L) {
-		fputs(ascnumeric(buf, fre * 1024L, 3, 15), stdout);
-		fputs(" bytes", stdout);
+	if (!Xgetwd(cwd)) {
+		dosperror(NULL);
+		return(RET_FAIL);
 	}
+	if (dir != buf) strcpy(wd, cwd);
 	else {
-		fputs(ascnumeric(buf, fre / 1024L, 3, 12), stdout);
-		fre = ((fre * 100L) / 1024L) % 100;
-		fputc('.', stdout);
-		fputs(ascnumeric(buf, fre, 3, 2), stdout);
-		fputs(" MB", stdout);
+		if (chdir3(buf) < 0) {
+			dosperror(buf);
+			return(RET_FAIL);
+		}
+		if (!Xgetwd(wd)) {
+			dosperror(NULL);
+			return(RET_FAIL);
+		}
+		if (chdir3(cwd) < 0) {
+			dosperror(cwd);
+			return(RET_FAIL);
+		}
 	}
-	fputs(" free\n\n", stdout);
+	if (getinfofs(wd, &total, &fre, &bsize) < 0) {
+		dosperror(wd);
+		return(RET_FAIL);
+	}
+
+	if (dirtype != 'B') fputc('\n', stdout);
+
+	dirline = nf = nd = 0;
+#ifndef	MINIMUMSHELL
+	bsum =
+#endif
+	sum = 0L;
+	dirwd = wd;
+	re = regexp_init(file, -1);
+#ifdef	MINIMUMSHELL
+	n = dosdir(re, &bsize, &nf, &nd, &sum);
+#else
+	n = dosdir(re, &bsize, &nf, &nd, &sum, &bsum);
+#endif
+	if (re) regexp_free(re);
+	if (n < 0) {
+		dosperror(dir);
+		return(RET_FAIL);
+	}
+
+#ifdef	MINIMUMSHELL
+	dosdirfooter(&bsize, nf, nd, &sum, &fre);
+#else
+	dosdirfooter(&bsize, nf, nd, &sum, &bsum, &fre, &total);
+#endif
+
 	fflush(stdout);
 	return(RET_SUCCESS);
+}
+
+static int NEAR checkarg(argc, argv)
+int argc;
+char *argv[];
+{
+	if (argc <= 1) {
+		doserror(NULL, ER_REQPARAM);
+		return(-1);
+	}
+	else if (argc > 2) {
+		doserror(argv[2], ER_TOOMANYPARAM);
+		return(-1);
+	}
+	return(0);
 }
 
 int doscommkdir(argc, argv)
 int argc;
 char *argv[];
 {
-	if (argc <= 1) {
-		doserror(NULL, ER_REQPARAM);
-		return(RET_FAIL);
-	}
-	else if (argc > 2) {
-		doserror(argv[2], ER_TOOMANYPARAM);
-		return(RET_FAIL);
-	}
+	if (checkarg(argc, argv) < 0) return(RET_FAIL);
 
-	if (_Xmkdir(argv[1], 0777) < 0) {
+	if (Xmkdir(argv[1], 0777) < 0) {
 		dosperror(argv[1]);
 		return(RET_FAIL);
 	}
@@ -1082,16 +1696,9 @@ int doscomrmdir(argc, argv)
 int argc;
 char *argv[];
 {
-	if (argc <= 1) {
-		doserror(NULL, ER_REQPARAM);
-		return(RET_FAIL);
-	}
-	else if (argc > 2) {
-		doserror(argv[2], ER_TOOMANYPARAM);
-		return(RET_FAIL);
-	}
+	if (checkarg(argc, argv) < 0) return(RET_FAIL);
 
-	if (_Xrmdir(argv[1]) < 0) {
+	if (Xrmdir(argv[1]) < 0) {
 		dosperror(argv[1]);
 		return(RET_FAIL);
 	}
@@ -1115,7 +1722,7 @@ char *argv[];
 		if ((argv[n][1] == 'P' || argv[n][1] == 'p') && !argv[n][2])
 			flag = 1;
 		else {
-			doserror(argv[n], ER_REQPARAM);
+			doserror(argv[n], ER_INVALIDSW);
 			return(RET_FAIL);
 		}
 	}
@@ -1128,13 +1735,18 @@ char *argv[];
 		return(RET_FAIL);
 	}
 
-	if (!strcmp(argv[n], "*") || !strcmp(argv[n], "*.*")) {
+	buf = strrdelim(argv[n], 1);
+	if (buf) buf++;
+	else buf = argv[n];
+	if (!flag && (!strcmp(buf, "*") || !strcmp(buf, "*.*"))) {
 		do {
 			fputs("All files in directory will be deleted!\n",
 				stdout);
-			fputs("Are you sure (Y/N)?", stdout);
 			fflush(stdout);
-			buf = readline(STDIN_FILENO);
+			ttyiomode();
+			buf = inputstr("Are you sure (Y/N)?", 0, 0, NULL, -1);
+			stdiomode();
+			if (!buf) return(RET_SUCCESS);
 			if (!isatty(STDIN_FILENO)) {
 				fputc('\n', stdout);
 				fflush(stdout);
@@ -1142,7 +1754,7 @@ char *argv[];
 			key = *buf;
 			free(buf);
 		} while (!strchr("ynYN", key));
-		if (key == 'n' || key == 'N') return(RET_FAIL);
+		if (key == 'n' || key == 'N') return(RET_SUCCESS);
 	}
 	if (!(wild = evalwild(argv[n]))) {
 		doserror(argv[n], ER_FILENOTFOUND);
@@ -1155,7 +1767,10 @@ char *argv[];
 				kanjifputs(wild[i], stdout);
 				fputs(",    Delete (Y/N)?", stdout);
 				fflush(stdout);
-				key = inputkey();
+				if ((key = inputkey()) < 0) {
+					freevar(wild);
+					return(ret);
+				}
 				fputc(key, stdout);
 				fputc('\n', stdout);
 				fflush(stdout);
@@ -1255,7 +1870,7 @@ char *argv[];
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] != DOSCOMOPT) break;
 		if (!argv[i][1] || (argv[i][2] && argv[i][3])) {
-			doserror(argv[i], ER_REQPARAM);
+			doserror(argv[i], ER_INVALIDSW);
 			return(-1);
 		}
 		if (argv[i][1] == '-') switch (argv[i][2]) {
@@ -1264,7 +1879,7 @@ char *argv[];
 				copyflag &= ~CF_NOCONFIRM;
 				break;
 			default:
-				doserror(argv[i], ER_REQPARAM);
+				doserror(argv[i], ER_INVALIDSW);
 				return(-1);
 /*NOTREACHED*/
 				break;
@@ -1295,8 +1910,8 @@ char *argv[];
 	return(i);
 }
 
-static int NEAR getbinmode(name, argv, bin)
-char *name, *argv[];
+static int NEAR getbinmode(name, bin)
+char *name;
 int bin;
 {
 	char *cp;
@@ -1304,7 +1919,7 @@ int bin;
 	if (bin < 0) return(-1);
 	if ((cp = strchr(name, DOSCOMOPT))) {
 		if (!cp[1] || (cp[2] && cp[3])) {
-			doserror(cp, ER_REQPARAM);
+			doserror(cp, ER_INVALIDSW);
 			return(-1);
 		}
 		*(cp++) = '\0';
@@ -1340,7 +1955,10 @@ char *file, *src;
 		fflush(stderr);
 		key = -1;
 		for (;;) {
-			c = inputkey();
+			if ((c = inputkey()) < 0) {
+				copyflag |= CF_CANCEL;
+				return(0);
+			}
 			if (c == K_CR && key >= 0) break;
 			if (!strchr("ynaYNA", c)) continue;
 			key = toupper2(c);
@@ -1373,31 +1991,39 @@ int size, bin;
 	int i, n;
 
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
-	if (!(bin & CF_TEXT)) return(Xread(fd, buf, size));
-	for (i = 0; i < size; i++) {
-		while ((n = Xread(fd, &ch, sizeof(u_char))) < 0
+	if (!(bin & CF_TEXT))
+		while ((n = Xread(fd, buf, size)) < 0 && errno == EINTR);
+	else for (n = 0; n < size; n++) {
+		while ((i = Xread(fd, &ch, sizeof(u_char))) < 0
 		&& errno == EINTR);
-		if (n < 0) return(n);
-		else if (n < sizeof(u_char) || ch == C_EOF) return(i);
-		buf[i] = ch;
+		if (i < 0) return(-1);
+#if	MSDOS
+		if (i >= sizeof(u_char) && ch != C_EOF) buf[n] = ch;
+#else
+		if (i < sizeof(u_char)) break;
+		else if (ch != C_EOF) buf[n] = ch;
+#endif
+		else for (;;) {
+			while ((i = Xread(fd, &ch, sizeof(u_char))) < 0
+			&& errno == EINTR);
+			if (i < 0) return(-1);
+			if (i < sizeof(u_char) || ch == '\n') return(n);
+		}
 	}
-	return(i);
+	return(n);
 }
 
 static int NEAR textclose(fd, bin)
 int fd, bin;
 {
 	u_char ch;
-	int n, ret;
+	int ret;
 
 	ret = 0;
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
 	if (bin & CF_TEXT) {
 		ch = C_EOF;
-		if ((n = safewrite(fd, &ch, sizeof(u_char))) <= 0) {
-			if (!n) errno = ENOSPC;
-			ret = -1;
-		}
+		if (safewrite(fd, &ch, sizeof(u_char)) < 0) ret = -1;
 	}
 	Xclose(fd);
 	return(ret);
@@ -1420,7 +2046,7 @@ int sbin, dbin, dfd;
 	}
 #endif
 
-	if ((fd1 = Xopen(src, O_RDONLY | O_BINARY, stp -> st_mode)) < 0)
+	if ((fd1 = Xopen(src, O_TEXT | O_RDONLY, stp -> st_mode)) < 0)
 		return(-1);
 	if (dfd >= 0) {
 		fd2 = dfd;
@@ -1432,56 +2058,62 @@ int sbin, dbin, dfd;
 	}
 	else ofs = 0L;
 
-	if (isatty(fd1)) sbin = CF_TEXT;
+#if	MSDOS && !defined (LSI_C)
+# ifdef	DJGPP
+	if (isatty(fd1)) setmode(fd2, O_TEXT);
+	else
+# endif
+	{
+		setmode(fd1, O_BINARY);
+		setmode(fd2, O_BINARY);
+	}
+#endif
+	if (isatty(fd1) || isatty(fd2)) sbin = CF_TEXT;
 	tty = isatty(fd2);
 
 	for (retry = 0; retry < 10; retry++) {
 		for (;;) {
-			while ((i = textread(fd1, buf, BUFSIZ, sbin)) < 0
-			&& errno == EINTR);
-			if (i <= 0) {
+			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {
 				tmperrno = errno;
 				break;
 			}
-			if ((n = safewrite(fd2, buf, i)) <= 0) {
-				tmperrno = (n < 0) ? errno : ENOSPC;
-				i = -1;
+			if ((i = safewrite(fd2, buf, i)) < 0) {
+				tmperrno = errno;
 				break;
 			}
 			if (i < BUFSIZ) break;
 		}
+		if (i >= 0 && !(copyflag & CF_VERIFY)) break;
+		if (lseek(fd1, 0L, L_SET) < 0 || lseek(fd2, ofs, L_SET) < 0)
+			break;
+		if (i < 0) continue;
 
-		if (i < 0 || !(copyflag & CF_VERIFY)
-		|| lseek(fd1, 0L, L_SET) < 0
-		|| lseek(fd2, ofs, L_SET) < 0) break;
 		for (;;) {
-			while ((i = textread(fd1, buf, BUFSIZ, sbin)) < 0
-			&& errno == EINTR);
-			if (i <= 0) {
+			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {
 				tmperrno = errno;
 				break;
 			}
-			while ((n = textread(fd2, buf2, BUFSIZ, CF_BINARY)) < 0
-			&& errno == EINTR);
-			if (n < 0) {
+			if ((n = textread(fd2, buf2, BUFSIZ, CF_BINARY)) < 0) {
 				tmperrno = errno;
 				i = -1;
 				break;
 			}
 			if (n != i || memcmp(buf, buf2, i)) {
 				tmperrno = EINVAL;
-				n = -1;
+				i = -1;
 				break;
 			}
 			if (i < BUFSIZ) break;
 		}
-		if (i < 0 || n >= 0) break;
+		if (i >= 0) break;
+		if (lseek(fd1, 0L, L_SET) < 0 || lseek(fd2, ofs, L_SET) < 0)
+			break;
 	}
 
 	if (dfd < 0) textclose(fd2, dbin);
 	Xclose(fd1);
 
-	if (i < 0 || retry >= 10) {
+	if (i < 0) {
 		Xunlink(dest);
 		errno = tmperrno;
 		return(dfd < 0 ? -1 : -2);
@@ -1540,10 +2172,10 @@ char *argv[];
 	sbin[0] = copyflag;
 	for (i = 1; i < nf; i++) {
 		arg[i] = arg[i - 1] + strlen(arg[i - 1]) + 1;
-		sbin[i - 1] = getbinmode(arg[i - 1], argv, sbin[i - 1]);
+		sbin[i - 1] = getbinmode(arg[i - 1], sbin[i - 1]);
 		sbin[i] = sbin[i - 1];
 	}
-	sbin[i - 1] = getbinmode(arg[i - 1], argv, sbin[i - 1]);
+	sbin[i - 1] = getbinmode(arg[i - 1], sbin[i - 1]);
 
 	if (n >= argc) {
 		*dest = '\0';
@@ -1560,7 +2192,7 @@ char *argv[];
 #endif
 	else {
 		strcpy(dest, argv[n]);
-		dbin = getbinmode(dest, argv, sbin[i - 1]);
+		dbin = getbinmode(dest, sbin[i - 1]);
 	}
 
 	if (dbin < 0) {
@@ -1639,6 +2271,7 @@ char *argv[];
 				ERRBREAK;
 			}
 			if (j > 0) nc++;
+			if (copyflag & CF_CANCEL) break;
 		}
 		freevar(wild);
 		if (ret == RET_FAIL) ERRBREAK;
@@ -1650,8 +2283,11 @@ char *argv[];
 		if (fd > 0) textclose(fd, dbin);
 		if (nc > 0) nc = 1;
 	}
-	fprintf(stdout, "%9d file(s) copied\n\n", nc);
-	fflush(stdout);
+	if (!(copyflag & CF_CANCEL)) {
+		fputnum(nc, 9, 9);
+		fputs(" file(s) copied\n", stdout);
+		fflush(stdout);
+	}
 	return(ret);
 }
 
@@ -1660,10 +2296,74 @@ int doscomcls(argc, argv)
 int argc;
 char *argv[];
 {
+#ifdef	FD
+	putterms(t_clear);
+	tflush();
+#else
 	fputs(t_clear, stdout);
 	fflush(stdout);
+#endif
 	fputc('\n', stderr);
 	fflush(stderr);
+	return(RET_SUCCESS);
+}
+
+int doscomtype(argc, argv)
+int argc;
+char *argv[];
+{
+	char *cp;
+	u_char ch;
+	int i, n, fd, size;
+#if	MSDOS && !defined (LSI_C)
+	int omode;
+#endif
+
+	if (checkarg(argc, argv) < 0) return(RET_FAIL);
+
+	if ((fd = Xopen(argv[1], O_TEXT | O_RDONLY, 0666)) < 0) {
+		dosperror(argv[1]);
+		return(RET_FAIL);
+	}
+#if	MSDOS && !defined (LSI_C)
+# ifdef	DJGPP
+	if (isatty(fd)) omode = setmode(STDOUT_FILENO, O_TEXT);
+	else
+# endif
+	{
+		setmode(fd, O_BINARY);
+		omode = setmode(STDOUT_FILENO, O_BINARY);
+	}
+#endif	/* MSDOS && !LSI_C */
+
+	cp = c_malloc(size);
+	i = 0;
+	for (;;) {
+		if ((n = textread(fd, &ch, sizeof(ch), CF_TEXT)) < 0) break;
+		if (n < sizeof(ch)) {
+			n = safewrite(STDOUT_FILENO, cp, i);
+			break;
+		}
+		else if (ch == '\n') {
+			cp[i++] = '\n';
+			if ((n = safewrite(STDOUT_FILENO, cp, i)) < 0) break;
+			i = 0;
+		}
+		else {
+			cp = c_realloc(cp, i, size);
+			cp[i++] = ch;
+		}
+	}
+	free(cp);
+	Xclose(fd);
+#if	MSDOS && !defined (LSI_C)
+	if (omode >= 0) setmode(STDOUT_FILENO, omode);
+#endif
+
+	if (n < 0) {
+		dosperror(argv[1]);
+		return(RET_FAIL);
+	}
 	return(RET_SUCCESS);
 }
 #endif	/* !_NOORIGSHELL && DOSCOMMAND && (!FD || (FD >= 2)) */

@@ -11,11 +11,6 @@
 #include "func.h"
 #include "kanji.h"
 
-#if	!MSDOS
-#include <sys/file.h>
-#include <sys/param.h>
-#endif
-
 typedef struct _attr_t {
 	u_short mode;
 #ifdef	HAVEFLAGS
@@ -339,7 +334,7 @@ struct stat *stp1, *stp2;
 			case 2:
 				if ((cp = strrdelim(dest, 1))) cp++;
 				else cp = dest;
-				lcmdline = LINFO - n_line;
+				lcmdline = LINFO;
 				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, -1))) return(-1);
 				strcpy(cp, tmp);
@@ -412,7 +407,7 @@ int mode;
 	{
 		char *tmp, dir[MAXPATHLEN];
 
-		if (_Xlstat(path, &st) < 0) {
+		if (_Xlstat(path, &st, 0, 1) < 0) {
 			warning(-1, path);
 			return(-1);
 		}
@@ -422,7 +417,7 @@ int mode;
 		else if (tmp == path) strcpy(dir, _SS_);
 		else strncpy2(dir, path, tmp - path);
 
-		if (_Xlstat(dir, &st) < 0) {
+		if (_Xlstat(dir, &st, 0, 1) < 0) {
 			warning(-1, dir);
 			return(-1);
 		}
@@ -526,7 +521,7 @@ char *path;
 			break;
 	}
 	if (destdir) free(destdir);
-	destdir = strdup2(dest + strlen(destpath) + 1);
+	destdir = strdup2(&(dest[strlen(destpath) + 1]));
 	return(0);
 }
 
@@ -653,10 +648,10 @@ int y;
 	kanjiputs(TMODE_K);
 	locate(n_column / 2, y);
 	putmode(buf, listp -> st_mode);
-	cputs2(buf + 1);
+	cputs2(&(buf[1]));
 	locate(n_column / 2 + 10, y);
 	putmode(buf, attr -> mode);
-	cputs2(buf + 1);
+	cputs2(&(buf[1]));
 
 #ifdef	HAVEFLAGS
 	locate(0, ++y);
@@ -697,7 +692,7 @@ int y;
 
 int inputattr(listp, flag)
 namelist *listp;
-u_short flag;
+int flag;
 {
 	struct tm *tm;
 	attr_t attr;
@@ -858,7 +853,7 @@ u_short flag;
 #endif
 				locate(n_column / 2 + 10, yy + y + 2);
 				putmode(buf, attr.mode);
-				cputs2(buf + 1);
+				cputs2(&(buf[1]));
 				break;
 			default:
 				break;

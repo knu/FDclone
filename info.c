@@ -11,6 +11,8 @@
 #include "kctype.h"
 #include "kanji.h"
 
+#undef	CTRL
+
 #ifdef	NOERRNO
 extern int errno;
 #endif
@@ -155,6 +157,9 @@ typedef struct fs_data	statfs_t;
 #define	blocksize(fs)		1024
 #define	f_bsize		fd_req.bsize
 #define	f_files		fd_req.gtot
+#define	f_blocks	fd_req.btot
+#define	f_bfree		fd_req.bfree
+#define	f_bavail	fd_req.bfreen
 #endif	/* USEFSDATA */
 
 #ifdef	USEFFSIZE
@@ -242,6 +247,9 @@ extern int needbavail;
 #ifndef	MNTTYPE_FFS
 #define	MNTTYPE_FFS	"ffs"	/* NetBSD, OpenBSD */
 #endif
+#ifndef	MNTTYPE_HFS
+#define	MNTTYPE_HFS	"hfs"	/* Darwin, HP-UX */
+#endif
 #ifndef	MNTTYPE_EXT2
 #define	MNTTYPE_EXT2	"ext2"	/* Linux */
 #endif
@@ -284,10 +292,8 @@ static char *NEAR strmntopt __P_((char *, char *));
 int writablefs __P_((char *));
 long getblocksize __P_((char *));
 static int NEAR info1line __P_((int, char *, long, char *, char *));
-#if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
-static long NEAR calcKB __P_((long, long));
-#endif
-VOID getinfofs __P_((char *, long *, long *));
+long calcKB __P_((long, long));
+int getinfofs __P_((char *, long *, long *, long *));
 int infofs __P_((char *));
 
 static int keycodelist[] = {
@@ -675,7 +681,10 @@ mnt_t *mntbuf;
 		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
 	}
 #else	/* !MSDOS */
-	mnt_t *mntp, mnt;
+# if	!defined (USEMNTENTH) && !defined (USEGETFSENT)
+	mnt_t mnt;
+# endif
+	mnt_t *mntp;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN];
 	int len, match;
@@ -703,20 +712,20 @@ mnt_t *mntbuf;
 		if (buf[sizeof(long) * 3] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
 		fsbuf -> f_bsize = *((long *)&(buf[sizeof(long) * 0]));
-#ifdef	USEFSDATA
+# ifdef	USEFSDATA
 		fsbuf -> fd_req.btot = calcKB(fsbuf -> f_bsize,
 			*((long *)&(buf[sizeof(long) * 1])));
 		fsbuf -> fd_req.bfree =
 		fsbuf -> fd_req.bfreen = calcKB(fsbuf -> f_bsize,
 			*((long *)&(buf[sizeof(long) * 2])));
-#else	/* !USEFSDATA */
-#ifdef	USESTATVFSH
+# else	/* !USEFSDATA */
+#  ifdef	USESTATVFSH
 		fsbuf -> f_frsize = 0;
-#endif
+#  endif
 		fsbuf -> f_blocks = *((long *)&(buf[sizeof(long) * 1]));
 		fsbuf -> f_bfree =
 		fsbuf -> f_bavail = *((long *)&(buf[sizeof(long) * 2]));
-#endif	/* !USEFSDATA */
+# endif	/* !USEFSDATA */
 		fsbuf -> f_files = -1;
 		return(0);
 	}
@@ -819,6 +828,11 @@ char *path;
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_DGUX)) return(3);
 	else
 #endif
+#ifdef	DARWIN
+	/* Macintosh HFS+ is pseudo file system covered with skin */
+	if (!strcmp(mntbuf.mnt_type, MNTTYPE_HFS)) return(0);
+	else
+#endif
 	if (!strcmp(mntbuf.mnt_type, MNTTYPE_PC)) return(4);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_DOS7)) return(5);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_FAT32)) return(5);
@@ -877,12 +891,12 @@ char *s, *unit;
 	return(checkline(++y));
 }
 
-#if	!defined (USEFSDATA) || !defined (_NODOSDRIVE)
-static long NEAR calcKB(block, byte)
+long calcKB(block, byte)
 long block, byte;
 {
-	if (block < 0 || byte <= 0) return(-1);
-	if (byte >= 1024) {
+	if (block < 0 || byte <= 0) return(-1L);
+	if (byte == 1024) return(block);
+	else if (byte > 1024) {
 		byte = (byte + 512) / 1024;
 		return(block * byte);
 	}
@@ -891,11 +905,10 @@ long block, byte;
 		return(block / byte);
 	}
 }
-#endif
 
-VOID getinfofs(path, totalp, freep)
+int getinfofs(path, totalp, freep, bsizep)
 char *path;
-long *totalp, *freep;
+long *totalp, *freep, *bsizep;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;
@@ -903,20 +916,14 @@ long *totalp, *freep;
 #ifndef	_NODOSDRIVE
 	needbavail = 1;
 #endif
-	if (getfsinfo(path, &fsbuf, &mntbuf) < 0)
-		*totalp = *freep = -1;
-	else {
-#ifdef	USEFSDATA
-		*totalp = fsbuf.fd_req.btot;
-		*freep = fsbuf.fd_req.bfreen;
-#else
-		*totalp = calcKB(fsbuf.f_blocks, blocksize(fsbuf));
-		*freep = calcKB(fsbuf.f_bavail, blocksize(fsbuf));
-#endif
-	}
+	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) return(-1);
+	*totalp = fsbuf.f_blocks;
+	*freep = fsbuf.f_bavail;
+	*bsizep = blocksize(fsbuf);
 #ifndef	_NODOSDRIVE
 	needbavail = 0;
 #endif
+	return(0);
 }
 
 int infofs(path)
@@ -943,12 +950,6 @@ char *path;
 	y = info1line(y, FSNAM_K, 0L, mntbuf.mnt_fsname, NULL);
 	y = info1line(y, FSMNT_K, 0L, mntbuf.mnt_dir, NULL);
 	y = info1line(y, FSTYP_K, 0L, mntbuf.mnt_type, NULL);
-#ifdef	USEFSDATA
-	y = info1line(y, FSTTL_K, fsbuf.fd_req.btot, NULL, "Kbytes");
-	y = info1line(y, FSUSE_K,
-		fsbuf.fd_req.btot - fsbuf.fd_req.bfree, NULL, "Kbytes");
-	y = info1line(y, FSAVL_K, fsbuf.fd_req.bfreen, NULL, "Kbytes");
-#else
 	y = info1line(y, FSTTL_K,
 		calcKB(fsbuf.f_blocks, blocksize(fsbuf)), NULL, "Kbytes");
 	y = info1line(y, FSUSE_K,
@@ -956,7 +957,6 @@ char *path;
 		NULL, "Kbytes");
 	y = info1line(y, FSAVL_K,
 		calcKB(fsbuf.f_bavail, blocksize(fsbuf)), NULL, "Kbytes");
-#endif
 	y = info1line(y, FSBSZ_K, fsbuf.f_bsize, NULL, "bytes");
 	y = info1line(y, FSINO_K, fsbuf.f_files, NULL, UNIT_K);
 	if (y > LFILETOP + 1) {

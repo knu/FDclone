@@ -13,7 +13,7 @@
 #define	PATHDELIM	':'
 #define	PMETA		META
 #define	METACHAR	"\t\n !\"#$&'()*;<=>?[\\]`|"
-#define	DQ_METACHAR	"\"$\\`"
+#define	DQ_METACHAR	"\"$`"
 #else	/* MSDOS */
 # ifdef	_NOORIGSHELL
 # define	FAKEMETA
@@ -24,16 +24,12 @@
 # else
 # define	PMETA		'%'
 # define	METACHAR	"\t\n !\"#$%&'()*;<=>?[]`|"
-# define	DQ_METACHAR	"\"$%`"
+# define	DQ_METACHAR	"\"$`"
 # define	PATHDELIM	':'
 # endif
 #endif	/* MSDOS */
 
-#define	ismeta(s, i, q)	((s)[i] == PMETA && (s)[(i) + 1] \
-			&& (!(q) || (s)[(i) + 1] != (q) || (s)[(i) + 2]))
-#define	isnmeta(s, i, q, n) \
-			((s)[i] == PMETA && (i) + 1 < n \
-			&& (!(q) || (s)[(i) + 1] != (q) || (i) + 2 < n))
+#define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
 #ifdef	LSI_C
 #define	toupper2	toupper
 #define	tolower2	tolower
@@ -99,9 +95,18 @@ typedef struct _devino_t {
 #endif
 
 #ifdef	NOUID_T
-#undef	NOUID_T
 typedef u_short	uid_t;
 typedef u_short	gid_t;
+#endif
+
+#ifdef	NOVOID
+#define	VOID
+#define	VOID_T	int
+#define	VOID_P	char *
+#else
+#define	VOID	void
+#define	VOID_T	void
+#define	VOID_P	void *
 #endif
 
 typedef struct _uidtable {
@@ -137,6 +142,11 @@ extern int strcasecmp2 __P_((char *, char *));
 #endif
 extern int strpathcmp2 __P_((char *, char *));
 extern int strnpathcmp2 __P_((char *, char *, int));
+extern char *strdupcpy __P_((char *, int));
+extern int isidentchar __P_((int));
+extern int isdotdir __P_((char *));
+extern int ismeta __P_((char *s, int, int));
+extern int isnmeta __P_((char *s, int, int, int));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));
@@ -147,12 +157,14 @@ hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, char *, char *));
 extern char *searchpath __P_((char *, char *));
-#ifndef	_NOCOMPLETE
+#if	!defined (FDSH) && !defined (_NOCOMPLETE)
 extern char *finddupl __P_((char *, int, char **));
 extern int completepath __P_((char *, int, int, char ***, int));
 extern char *findcommon __P_((int, char **));
-extern char *catvar __P_((char *[], int));
 #endif
+extern char *catvar __P_((char *[], int));
+extern int countvar __P_((char **));
+extern VOID freevar __P_((char **));
 #if	!MSDOS
 extern uidtable *finduid __P_((uid_t, char *));
 extern gidtable *findgid __P_((gid_t, char *));
@@ -162,13 +174,14 @@ extern VOID freeidlist __P_((VOID_A));
 #endif
 extern char *gethomedir __P_((VOID_A));
 extern int evalhome __P_((char **, int, char **));
-extern char *evalarg __P_((char *, int, int));
+extern char *evalarg __P_((char *, int, int, int));
 extern int evalifs __P_((int, char ***, char *));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *, int));
 extern char *_evalpath __P_((char *, char *, int, int));
 extern char *evalpath __P_((char *, int));
 
+extern char **argvar;
 #ifndef	_NOUSEHASH
 extern hashlist **hashtable;
 #endif
@@ -177,11 +190,13 @@ extern int (*putvarfunc)__P_((char *, int));
 extern int (*getretvalfunc)__P_((VOID_A));
 extern long (*getpidfunc)__P_((VOID_A));
 extern long (*getlastpidfunc)__P_((VOID_A));
-extern char **(*getarglistfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));
 extern int (*checkundeffunc)__P_((char *, char *, int));
 extern VOID (*exitfunc)__P_((VOID_A));
 extern char *(*backquotefunc)__P_((char *));
+#ifndef	MINIMUMSHELL
+extern char *(*posixsubstfunc)__P_((char *, int *));
+#endif
 #if	!MSDOS
 extern int pathignorecase;
 #endif

@@ -15,11 +15,6 @@
 #include "system.h"
 #endif
 
-#if	!MSDOS
-#include <sys/file.h>
-#include <sys/param.h>
-#endif
-
 #ifndef	_NODOSDRIVE
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 #endif
@@ -42,7 +37,7 @@ extern int win_y;
 extern char *destpath;
 extern int savehist;
 extern int sizeinfo;
-#ifndef	_NOSPLITWIN
+#if	!defined (_NOARCHIVE) || !defined (_NOSPLITWIN)
 extern char fullpath[];
 #endif
 #ifndef	_NOORIGSHELL
@@ -602,7 +597,8 @@ char *arg;
 	if (archivefile);
 	else
 #endif
-	if (!strcmp(filelist[filepos].name, ".")) return(warning_bell(arg));
+	if (!isdir(&(filelist[filepos]))
+	|| !strcmp(filelist[filepos].name, ".")) return(warning_bell(arg));
 	return(5);
 }
 
@@ -887,7 +883,7 @@ char *arg;
 #else
 		do {
 			dump(filelist[filepos].name);
-		} while(!yesno(PEND_K));
+		} while (!yesno(PEND_K));
 #endif
 	}
 #ifndef	_NODOSDRIVE
@@ -1650,7 +1646,7 @@ char *arg;
 	if (chdir2(fullpath) < 0) lostcwd(fullpath);
 	return(4);
 }
-#endif
+#endif	/* !_NOSPLITWIN */
 
 /*ARGSUSED*/
 static int warning_bell(arg)

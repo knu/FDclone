@@ -18,11 +18,6 @@
 #include "system.h"
 #endif
 
-#if	!MSDOS
-#include <sys/file.h>
-#include <sys/param.h>
-#endif
-
 #ifndef	_NODOSDRIVE
 extern int shutdrv __P_((int));
 # if	MSDOS
@@ -413,8 +408,7 @@ int skip;
 			}
 		}
 
-		buf = malloc2(len + 1);
-		strncpy2(buf, line, len);
+		buf = strdupcpy(line, len);
 		while (l--) switch (form[l]) {
 			case 'a':
 				if (len <= 0) break;
@@ -888,11 +882,7 @@ namelist *namep;
 			&& len == dirmatchlen(filelist[i].name, namep -> name))
 				break;
 		}
-		if (i >= maxfile) {
-			tmp = malloc2(len + 1);
-			strncpy2(tmp, namep -> name, len);
-			return(tmp);
-		}
+		if (i >= maxfile) return(strdupcpy(namep -> name, len));
 		if (strncmp(filelist[i].name, namep -> name, len)) {
 			filelist[i].name = realloc2(filelist[i].name, len + 1);
 			strncpy2(filelist[i].name, namep -> name, len);
@@ -1253,7 +1243,7 @@ char ***argvp;
 		flen -= ++file - path;
 	}
 
-        for (i = 1; i < maxarcf; i++) {
+	for (i = 1; i < maxarcf; i++) {
 		if (!*archivedir) len = 0;
 		else if (!(len = dirmatchlen(archivedir, arcflist[i].name)))
 			continue;
@@ -1413,7 +1403,8 @@ char *path, *file;
 		realpath2(deftmpdir, path, 1);
 		free(deftmpdir);
 # if	MSDOS
-		if (checkdrive(toupper2(path[0]) - 'A')) if (!_Xgetwd(path)) {
+		if (checkdrive(toupper2(path[0]) - 'A'))
+		if (!_Xgetwd(path, 1)) {
 			lostcwd(path);
 			deftmpdir = NULL;
 			return(NULL);
@@ -1433,7 +1424,7 @@ char *path, *file;
 		path[0] = *file;
 		path[1] = ':';
 		path[2] = _SC_;
-		if (!unixgetcurdir(path + 3, drive - 'A' + 1)) return(NULL);
+		if (!unixgetcurdir(&(path[3]), drive - 'A' + 1)) return(NULL);
 	}
 #endif
 	else strcpy(path, fullpath);

@@ -4,22 +4,6 @@
  *	Type Definition
  */
 
-#ifdef	NOUID_T
-#undef	NOUID_T
-typedef u_short	uid_t;
-typedef u_short	gid_t;
-#endif
-
-#ifdef	NOVOID
-#define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
-#else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
-#endif
-
 #ifdef	USEDIRECT
 #define	dirent	direct
 #endif
@@ -185,6 +169,7 @@ typedef struct _functable {
 #define	ARCH		0020
 #define	NO_FILE		0040
 #define	RESTRICT	0100
+#define	NEEDSTAT	0200
 
 #ifndef	_NOARCHIVE
 #define	MAXLAUNCHFIELD	9

@@ -35,6 +35,11 @@ USEMANLANG
 	The search pathname referred to man(1) includes the
 	string shown by the environment variable LANG, such
 	as '/usr/man/ja_JP.SJIS/', to support M17N.
+USEDATADIR
+	fd-unicd.tbl, which is the transformation table for
+	UNICODE, is not placed on the same directory as the
+	executable binary of fd, but on the directory which
+	is specified by DATADIR in Makefile.in.
 SUPPORTSJIS
 	cc(1) or man(1) supports Shift JIS perfectly. Even
 	for the Kanji whose second byte is '\', this '\' is

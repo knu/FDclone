@@ -66,7 +66,7 @@ extern char *mesconv __P_((char *, char *));
 #define	ENDCP_K	mesconv("ファイルのコピーが終了しました. 何かキーを押して下さい.", "Copy finished. Hit any key.")
 #define	MOVED_K	mesconv("移動先のディレクトリ名:", "Directory to move:")
 #define	ENDMV_K	mesconv("ファイルの移動が終了しました. 何かキーを押して下さい.", "Move finished. Hit any key.")
-#define	WRONG_K	mesconv("名前が間違っています.", "Illegal filename.")
+#define	WRONG_K	mesconv("既に存在するファイル名です.", "Filename already exists.")
 #define	DELFL_K	mesconv("[%s] を削除します. よろしいですか ?", "Deleting the file [%s], OK ?")
 #define	DELMK_K	mesconv("マークファイルを削除します. よろしいですか ?", "Deleting the marked files, OK ?")
 #define	DELDR_K	mesconv("[%s] ディレクトリを削除します. よろしいですか ?", "Deleting the directory [%s], OK ?")
@@ -401,6 +401,8 @@ extern char *mesconv __P_((char *, char *));
 #define	DRHED_K	mesconv("へッド数:", "Head(s):")
 #define	DRSCT_K	mesconv("セクタ数:", "Sector(s):")
 #define	DRCYL_K	mesconv("シリンダ数:", "Cylinder(s):")
+#define	DUPLD_K	mesconv("既に同じフロッピードライブが登録済です.", \
+			"The same floppy drive entry already exists.")
 #define	CCNCL_K	mesconv("設定変更を破棄し元の状態に戻します.", \
 			"Cancel this customizing and restore old configurations.")
 #define	CCLEA_K	mesconv("設定を削除しデフォルト値に戻します.", \

@@ -33,6 +33,10 @@ USEMANLANG
 	man(1) の参照する検索パス名が、/usr/man/ja_JP.SJIS/
 	のように環境変数 LANG で示される文字列を含み、多国語
 	対応されています。
+USEDATADIR
+	UNICODE 変換テーブル fd-unicd.tbl を fd の起動ディレ
+	クトリでなく Makefile.in の DATADIR で指定されたディ
+	レクトリに置きます。
 SUPPORTSJIS
 	cc(1) や man(1) が完全に Shift JIS を正しく扱えます。
 	2 byte 目に '\' が来るような漢字に対しても、この '\'

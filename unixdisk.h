@@ -22,7 +22,6 @@
 #include <dpmi.h>
 #include <go32.h>
 #include <sys/farptr.h>
-#define	FAR
 #define	NOP	0x00
 #define	RETF	0xc3
 # if	(DJGPP >= 2)
@@ -54,7 +53,6 @@ typedef union DPMI_REGS {
 typedef union REGS	__dpmi_regs;
 # endif
 #define	__attribute__(x)
-#define	FAR	far
 #define	NOP	0x90
 #define	RETF	0xcb
 #define	PTR_FAR(ptr)		(((u_long)FP_SEG(ptr) << 4) + FP_OFF(ptr))
