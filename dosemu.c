@@ -94,7 +94,7 @@ int dospath(path, buf)
 char *path, *buf;
 {
 	char *cp, tmp[MAXPATHLEN];
-	int drive;
+	int drive, len;
 
 	if (!dosdrive) return(0);
 	if (_dospath(path)) cp = path;
@@ -103,25 +103,26 @@ char *path, *buf;
 
 	drive = *cp;
 	if (!buf) return(drive);
+	len = MAXPATHLEN - 1;
 	if (cp == buf) {
-		strcpy(tmp, cp);
+		strncpy2(tmp, cp, len);
 		cp = tmp;
 	}
 
 # ifdef	CODEEUC
-	if (!noconv) buf[ujis2sjis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
+	if (!noconv || cp != path)
+		buf[ujis2sjis(buf, (u_char *)cp, len)] = '\0';
 	else
 # endif
-	strcpy(buf, cp);
+	strncpy2(buf, cp, len);
 	if (cp != path && *path) {
-		buf = strcatdelim(buf);
+		cp = strcatdelim(buf);
+		len -= cp - buf;
 # ifdef	CODEEUC
-		if (!noconv)
-			buf[ujis2sjis(buf, (u_char *)path, MAXPATHLEN - 1)] =
-				'\0';
+		if (!noconv) cp[ujis2sjis(cp, (u_char *)path, len)] = '\0';
 		else
 # endif
-		strcpy(buf, path);
+		strncpy2(cp, path, len);
 	}
 
 	return(drive);
@@ -158,18 +159,7 @@ int dos;
 #endif
 	char *cp;
 
-	if (noconv) {
-#ifndef	_NODOSDRIVE
-		if (dos) {
-# ifdef	CODEEUC
-			buf[sjis2ujis(buf, (u_char *)path, MAXPATHLEN - 1)] =
-				'\0';
-			return(buf);
-# endif
-		}
-#endif
-		return(path);
-	}
+	if (noconv) return(path);
 #ifndef	_NOKANJIFCONV
 	fgetok = (nokanjifconv) ? 0 : 1;
 #endif
@@ -182,6 +172,7 @@ int dos;
 	if (dos) {
 # ifdef	CODEEUC
 		buf[sjis2ujis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
+		cp = buf;
 # endif
 # ifndef	_NOKANJIFCONV
 		fgetok = 0;
@@ -581,7 +572,7 @@ int bufsiz;
 #else
 	path = lbuf;
 #endif
-	strncpy(buf, path, bufsiz);
+	for (len = 0; len < bufsiz && path[len]; len++) buf[len] = path[len];
 	return(len);
 }
 

@@ -1249,7 +1249,7 @@ int linemax, comline, cont;
 	int bq, hadmeta;
 # endif
 	char *cp1, *cp2, **argv;
-	int i, l, ins, top, fix, argc, quote, quoted, hasmeta;
+	int i, l, pc, ins, top, fix, argc, quote, quoted, hasmeta;
 
 	if (selectlist && cont > 0) {
 		selectfile(tmpfilepos++, NULL);
@@ -1263,25 +1263,21 @@ int linemax, comline, cont;
 	quote = '\0';
 	quoted = 0;
 	for (i = top = 0; i < cx; i++) {
-		if ((*sp)[i] == quote) {
-			if (quote == '"') quoted = i;
-# ifndef	FAKEMETA
-			if (quote == '\'') quoted = i;
+# ifdef	FAKEMETA
+		pc = parsechar(&((*sp)[i]), cx, '\0', -1, &quote, NULL);
+# else
+		pc = parsechar(&((*sp)[i]), cx, '\0', 0, &quote, NULL);
 # endif
-			quote = '\0';
-		}
-		else if (iskanji1(*sp, i)) i++;
+		if (pc == PC_CLQUOTE) quoted = i;
+		else if (pc == PC_WORD) i++;
 # ifndef	FAKEMETA
-		else if (quote == '\'');
-		else if (isnmeta(*sp, i, quote, cx)) {
+		else if (pc == PC_META) {
 			i++;
 			hadmeta++;
 		}
 # endif
-		else if (quote);
-		else if ((*sp)[i] == '"') quote = (*sp)[i];
+		else if (pc != PC_NORMAL);
 # ifndef	FAKEMETA
-		else if ((*sp)[i] == '\'') quote = (*sp)[i];
 		else if ((*sp)[i] == '`') {
 			if ((bq = 1 - bq)) top = i + 1;
 		}
@@ -1424,11 +1420,13 @@ int linemax, comline, cont;
 			}
 # ifndef	FAKEMETA
 			if (hadmeta) for (i = top; i < cx; i++) {
-				if (iskanji1(*sp, i)) {
+				pc = parsechar(&((*sp)[i]), cx,
+					'\0', 0, &quote, NULL);
+				if (pc == PC_WORD) {
 					i++;
 					continue;
 				}
-				if (!isnmeta(*sp, i, '\0', cx)) continue;
+				if (pc != PC_META) continue;
 				if (strchr(DQ_METACHAR, (*sp)[i + 1]))
 					continue;
 				setcursor(vlen(*sp, i), plen, linemax);

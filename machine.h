@@ -762,6 +762,7 @@ typedef long	off_t;
 /* #define USELLSEEK	;use _llseek() for 64bits width instead of lseek() */
 /* #define USEUNAME	;use uname() instead of gethostname() */
 /* #define USEWAITPID	;use waitpid() instead of wait3() */
+/* #define USESIGACTION	;use sigaction() instead of signal() */
 /* #define USESIGPMASK	;use sigprocmask() instead of sigsetmask() */
 /* #define USERESOURCEH	;use <sys/resource.h> for resource info. */
 /* #define USEULIMITH	;use <ulimit.h> for resource info. */
@@ -799,6 +800,7 @@ typedef long	off_t;
 #define	USEPID_T
 #define	USESYSCONF
 #define	USEWAITPID
+#define	USESIGACTION
 #define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID

@@ -185,6 +185,7 @@ typedef struct _redirectlist {
 #define	MD_WITHERR	0020
 #define	MD_HEREDOC	0040
 #define	MD_FORCED	0100
+#define	MD_REST		0200
 
 typedef struct _command_t {
 	hashlist *hash;

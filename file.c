@@ -46,23 +46,17 @@ extern int noconv;
 extern int dosdrive;
 #endif
 
-#define	MAXTMPNAMLEN		8
+#define	MAXTMPNAMLEN	8
 #ifndef	O_BINARY
-#define	O_BINARY		0
+#define	O_BINARY	0
 #endif
 #ifdef	_NODOSDRIVE
 #define	DOSDIRENT	32
 #define	LFNENTSIZ	13
 #endif
-
-#define	realdirsiz(name)	((dos) ? ((k_strlen(name) / LFNENTSIZ + 1) \
-					* DOSDIRENT + DOSDIRENT) \
-				:	(((strlen(name) + boundary) \
-					& ~(boundary - 1)) + dirsize))
-#define	getnamlen(ent)		((dos) ? ((((ent) - DOSDIRENT) \
-					/ DOSDIRENT) * LFNENTSIZ - 1) \
-				:	((((ent) - dirsize) \
-					& ~(boundary - 1)) - 1))
+#define	LFNONLY		" +,;=[]"
+#define	DOSBODYLEN	8
+#define	DOSEXTLEN	3
 
 #ifdef	_NODOSDRIVE
 #define	nodoschdir	Xchdir
@@ -81,9 +75,10 @@ static int NEAR genrand __P_((int));
 static int dounlink __P_((char *));
 #ifndef	_NOWRITEFS
 static int NEAR isexist __P_((char *));
-static int NEAR k_strlen __P_((char *));
+static int NEAR realdirsiz __P_((char *, int, int, int));
+static int NEAR getnamlen __P_((int, int, int, int));
 static int NEAR saferename __P_((char *, char *));
-static char *NEAR maketmpfile __P_((int, char *, char *));
+static char *NEAR maketmpfile __P_((int, int, char *, char *));
 #if	!MSDOS
 static char *NEAR getentnum __P_((char *, long));
 #endif
@@ -674,7 +669,7 @@ struct stat *stp1, *stp2;
 	struct stat st;
 #endif
 	char buf[BUFSIZ];
-	int i, fd1, fd2, tmperrno;
+	int i, fd1, fd2, duperrno;
 
 #if	MSDOS
 	if (!stp2 && Xlstat(dest, &st) >= 0) stp2 = &st;
@@ -703,21 +698,21 @@ struct stat *stp1, *stp2;
 
 	for (;;) {
 		while ((i = Xread(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
-		tmperrno = errno;
+		duperrno = errno;
 		if (i < BUFSIZ) break;
 		if ((i = safewrite(fd2, buf, BUFSIZ)) < 0) {
-			tmperrno = errno;
+			duperrno = errno;
 			break;
 		}
 	}
-	if (i > 0 && (i = safewrite(fd2, buf, i)) < 0) tmperrno = errno;
+	if (i > 0 && (i = safewrite(fd2, buf, i)) < 0) duperrno = errno;
 
 	Xclose(fd2);
 	Xclose(fd1);
 
 	if (i < 0) {
 		Xunlink(dest);
-		errno = tmperrno;
+		errno = duperrno;
 		return(-1);
 	}
 #ifdef	HAVEFLAGS
@@ -1148,13 +1143,63 @@ char *file;
 	return(1);
 }
 
-static int NEAR k_strlen(s)
+static int NEAR realdirsiz(s, dos, boundary, dirsize)
 char *s;
+int dos, boundary, dirsize;
 {
-	int i;
+	int len;
 
-	for (i = 0; s[i]; i++) if (iskanji1(s, i)) i++;
-	return(i);
+	if (!dos) {
+		len = (strlen(s) + boundary) & ~(boundary - 1);
+		return(len + dirsize);
+	}
+
+#if	MSDOS || !defined (_NODOSDRIVE)
+	if (dos > 1 && !isdotdir(s)) {
+		int i, lfn, dot;
+
+		lfn = dot = 0;
+		for (i = len = 0; s[i]; i++, len++) {
+			if (s[i] == '.') {
+				if (dot) lfn = 1;
+				else if (i > DOSBODYLEN) lfn = 1;
+				dot = i + 1;
+			}
+			else if (issjis1(s[i]) && issjis2(s[i + 1])) {
+				i++;
+				lfn = 1;
+			}
+			else if (!lfn && strchr(LFNONLY, s[i])) lfn = 1;
+		}
+		if (lfn);
+		else if (dot) {
+			if (i - dot > DOSEXTLEN) lfn = 1;
+		}
+		else if (i > DOSBODYLEN) lfn = 1;
+
+		if (lfn) return((len / LFNENTSIZ + 1) * DOSDIRENT + DOSDIRENT);
+	}
+#endif	/* MSDOS || !defined (_NODOSDRIVE) */
+
+	return(DOSDIRENT);
+}
+
+static int NEAR getnamlen(size, dos, boundary, dirsize)
+int size, dos, boundary, dirsize;
+{
+	if (!dos) {
+		size -= dirsize;
+		return((size & ~(boundary - 1)) - 1);
+	}
+
+#if	MSDOS || !defined (_NODOSDRIVE)
+	if (size > DOSDIRENT) {
+		size -= DOSDIRENT;
+		return((size / DOSDIRENT) * LFNENTSIZ - 1);
+	}
+#endif
+
+	return(DOSBODYLEN);
 }
 
 static int NEAR saferename(from, to)
@@ -1172,8 +1217,9 @@ char *from, *to;
 	return(Xrename(from, to));
 }
 
-static char *NEAR maketmpfile(len, tmpdir, old)
-int len;
+/*ARGSUSED*/
+static char *NEAR maketmpfile(len, dos, tmpdir, old)
+int len, dos;
 char *tmpdir, *old;
 {
 	char *fname, path[MAXPATHLEN];
@@ -1190,6 +1236,14 @@ char *tmpdir, *old;
 
 	for (;;) {
 		genrandname(fname, len);
+#if	!MSDOS
+		if (dos) {
+			int i;
+
+			for (i = 0; fname[i]; i++)
+				fname[i] = toupper2(fname[i]);
+		}
+#endif
 		if (tmpdir) {
 			strcpy(&(path[l]), fname);
 			if (!isexist(path)) {
@@ -1282,12 +1336,12 @@ int fs;
 #if	!MSDOS
 	long persec;
 	char *entnum, **tmpfile;
-	int tmpno, block, totalent, ptr, totalptr;
+	int n, tmpno, block, totalent, ptr, totalptr;
 #endif
 	DIR *dirp;
 	struct dirent *dp;
 	int dos, headbyte, boundary, dirsize;
-	int i, top, len, fnamp, ent;
+	int i, top, size, len, fnamp, ent;
 	char *cp, *tmpdir, **fnamelist, path[MAXPATHLEN];
 
 	switch (fs) {
@@ -1333,6 +1387,9 @@ int fs;
 			if (top < 0) top = i;
 			cp = convput(path, filelist[i].name, 1, 0, NULL, NULL);
 		}
+#if	!MSDOS && !defined (_NODOSDRIVE)
+		if (_dospath(cp)) cp += 2;
+#endif
 		fnamelist[i] = strdup2(cp);
 	}
 	fnamelist[i] = NULL;
@@ -1342,9 +1399,9 @@ int fs;
 	}
 
 	noconv++;
-	if (dos == 1) len = 8;
-	else len = getnamlen(realdirsiz(fnamelist[top]));
-	if (!(tmpdir = maketmpfile(len, NULL, NULL))) {
+	size = realdirsiz(fnamelist[top], dos, boundary, dirsize);
+	len = getnamlen(size, dos, boundary, dirsize);
+	if (!(tmpdir = maketmpfile(len, dos, NULL, NULL))) {
 		warning(0, NOWRT_K);
 		freevar(fnamelist);
 		noconv--;
@@ -1367,9 +1424,10 @@ int fs;
 		if (isdotdir(dp -> d_name)) continue;
 		else if (!strpathcmp(dp -> d_name, tmpdir)) {
 #if	MSDOS
-			if (!(dp -> d_alias[0])) len = 8;
+			if (!(dp -> d_alias[0])) len = DOSBODYLEN;
 #else
-			if (dos == 2 && dp -> d_reclen == DOSDIRENT) len = 8;
+			if (dos == 2 && dp -> d_reclen == DOSDIRENT)
+				len = DOSBODYLEN;
 #endif
 			ent = i;
 		}
@@ -1389,7 +1447,7 @@ int fs;
 	Xclosedir(dirp);
 
 	if (ent > 0) {
-		if (!(cp = maketmpfile(len, tmpdir, tmpdir))) {
+		if (!(cp = maketmpfile(len, dos, tmpdir, tmpdir))) {
 			warning(-1, tmpdir);
 			restorefile(tmpdir, path, fnamp);
 			freevar(fnamelist);
@@ -1410,8 +1468,9 @@ int fs;
 		noconv--;
 		return;
 	}
-	totalent = headbyte + realdirsiz(".") + realdirsiz("..")
-		+ realdirsiz(tmpdir);
+	totalent = headbyte + realdirsiz(tmpdir, dos, boundary, dirsize)
+		+ realdirsiz(".", dos, boundary, dirsize)
+		+ realdirsiz("..", dos, boundary, dirsize);
 	block = tmpno = 0;
 	ptr = 3;
 	totalptr = 0;
@@ -1423,6 +1482,7 @@ int fs;
 		if (isdotdir(fnamelist[i]) || i == top) continue;
 #if	!MSDOS
 		ent = persec - totalent;
+		size = realdirsiz(fnamelist[i], dos, boundary, dirsize);
 		switch (fs) {
 			case 2:	/* IRIX File System */
 				if (totalptr > ptr + 1) ent -= totalptr;
@@ -1431,15 +1491,15 @@ int fs;
 			case 3:	/* SystemV R3 File System */
 			case 4:	/* MS-DOS File System */
 			case 5:	/* Windows95 File System */
-				ent = realdirsiz(fnamelist[i]);
+				ent = size;
 				break;
 			default:
 				break;
 		}
-		if (ent < realdirsiz(fnamelist[i])) {
+		if (ent < size) {
 			tmpfile = b_realloc(tmpfile, tmpno, char *);
-			tmpfile[tmpno] =
-				maketmpfile(getnamlen(ent), tmpdir, NULL);
+			n = getnamlen(ent, dos, boundary, dirsize);
+			tmpfile[tmpno] = maketmpfile(n, dos, tmpdir, NULL);
 			tmpno++;
 			ptr = 0;
 			totalent = headbyte;
@@ -1452,7 +1512,7 @@ int fs;
 			break;
 		}
 #if	!MSDOS
-		totalent += realdirsiz(fnamelist[i]);
+		totalent += size;
 		ptr++;
 #endif
 	}
@@ -1460,7 +1520,7 @@ int fs;
 	if (entnum) free(entnum);
 #endif
 
-	if (!(cp = maketmpfile(len, tmpdir, tmpdir))) warning(-1, tmpdir);
+	if (!(cp = maketmpfile(len, dos, tmpdir, tmpdir))) warning(-1, tmpdir);
 	else {
 		free(tmpdir);
 		tmpdir = cp;

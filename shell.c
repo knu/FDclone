@@ -28,11 +28,9 @@ extern int lcmdline;
 extern int hideclock;
 extern int internal_status;
 
+#if	0
 #define	MACROMETA	((char)-1)
-#define	isneedburst(s, i) \
-			((s)[i] == MACROMETA && ((s)[(i) + 1] & F_BURST))
-#define	isneedmark(s, i) \
-			((s)[i] == MACROMETA && ((s)[(i) + 1] & F_MARK))
+#endif
 #ifdef	ARG_MAX
 #define	MAXARGNUM	ARG_MAX
 #else
@@ -45,10 +43,20 @@ static int NEAR checksc __P_((char *, int, char *));
 #if	!MSDOS && !defined (_NOKANJICONV)
 static int NEAR extconv __P_((char **, int, int, ALLOC_T *, int));
 #endif
-static int NEAR setarg __P_((char **, int, ALLOC_T *, char *, char *, u_char));
+static int NEAR isneedargs __P_((char *, int, int *));
+static int NEAR setarg __P_((char **, int, ALLOC_T *, char *, char *, int));
+static int NEAR flag2str __P_((char *, int, int));
+static int NEAR skipquote __P_((char *, int *));
+#if	!defined (MACROMETA) || !defined (_NOEXTRAMACRO)
+static char *NEAR restorearg __P_((char *));
+static char *NEAR _demacroarg __P_((char *));
+#endif
 #ifdef	_NOEXTRAMACRO
-static int NEAR setargs __P_((char **, int, int, int, ALLOC_T *, macrostat *));
+static int NEAR setargs __P_((char **, int, ALLOC_T *,
+	int, int, int, macrostat *, int));
 static char *NEAR insertarg __P_((char *, char *, int));
+#else
+static int NEAR _replaceargs __P_((int *, char ***, char **, int));
 #endif
 static char *NEAR addoption __P_((char *, char *, macrostat *, int));
 #ifdef	_NOORIGSHELL
@@ -132,12 +140,53 @@ int code;
 }
 #endif	/* !MSDOS && !_NOKANJICONV */
 
+static int NEAR isneedargs(s, n, flagsp)
+char *s;
+int n, *flagsp;
+{
+	int i;
+
+	i = n;
+	*flagsp = 0;
+#ifdef	MACROMETA
+	if (s[i++] != MACROMETA) return(0);
+	*flagsp = s[i++];
+#else	/* !MACROMETA */
+	if (s[i++] != '%') return(0);
+	if (s[i] == '%') return(2);
+	if (s[i] == 'X') {
+		i++;
+		*flagsp |= F_NOEXT;
+	}
+# if	MSDOS
+	if (s[i] == 'S') {
+		i++;
+		*flagsp |= F_TOSFN;
+	}
+# endif
+	if (s[i] == 'M') {
+		i++;
+		*flagsp |= F_MARK;
+	}
+	else if (s[i] == 'T') {
+		i++;
+		*flagsp |= F_BURST;
+		if (s[i] == 'A') {
+			i++;
+			*flagsp |= F_REMAIN;
+		}
+	}
+	else return(0);
+#endif	/* !MACROMETA */
+	return(i - n);
+}
+
 static int NEAR setarg(bufp, ptr, sizep, dir, arg, flags)
 char **bufp;
 int ptr;
 ALLOC_T *sizep;
 char *dir, *arg;
-u_char flags;
+int flags;
 {
 	char *cp, path[MAXPATHLEN], conv[MAXPATHLEN];
 	int len, optr;
@@ -182,20 +231,105 @@ u_char flags;
 	return(len + ptr - optr);
 }
 
+static int NEAR flag2str(s, ptr, flags)
+char *s;
+int ptr, flags;
+{
+	s[ptr++] = '%';
+	if (flags & F_NOEXT) s[ptr++] = 'X';
+#if	MSDOS
+	if (flags & F_TOSFN) s[ptr++] = 'S';
+#endif
+	if (flags & F_MARK) s[ptr++] = 'M';
+	else if (flags & F_BURST) {
+		s[ptr++] = 'T';
+		if (flags & F_REMAIN) s[ptr++] = 'A';
+	}
+	else s[ptr++] = '%';
+
+	return(ptr);
+}
+
+static int NEAR skipquote(s, ptrp)
+char *s;
+int *ptrp;
+{
+	static int q = '\0';
+	int pc;
+
+	if (!*ptrp) q = '\0';
+	pc = parsechar(&(s[*ptrp]), -1, '\0', 0, &q, NULL);
+	if (pc == PC_NORMAL) return(0);
+	if (pc == PC_WORD || pc == PC_META) {
+		(*ptrp)++;
+		return(2);
+	}
+	return(1);
+}
+
+#if	!defined (MACROMETA) || !defined (_NOEXTRAMACRO)
+static char *NEAR restorearg(s)
+char *s;
+{
+	char *buf;
+	int i, j, m, flags;
+
+	i = strlen(s);
+# ifdef	MACROMETA
+	buf = malloc2(i * 3 + 1);	/* MACROMETA+flags -> %XSTA (x2.5) */
+# else
+	buf = malloc2(i + 1);
+# endif
+	flags = 0;
+	for (i = j = 0; s[i]; i++) {
+# ifdef	MACROMETA
+		if (!(m = isneedargs(s, i, &flags))) buf[j++] = s[i];
+		else {
+			i += m - 1;
+			j = flag2str(buf, j, flags);
+		}
+# else	/* !MACROMETA */
+		if ((m = skipquote(s, &i)) == 2) buf[j++] = s[i - 1];
+		else if (!m && s[i] == '%' && s[i + 1] == '%') {
+			i++;
+			flags++;
+		}
+		buf[j++] = s[i];
+# endif	/* !MACROMETA */
+	}
+	if (!flags) {
+		free(buf);
+		return(s);
+	}
+	buf[j] = '\0';
+	return(buf);
+}
+
+static char *NEAR _demacroarg(s)
+char *s;
+{
+	char *buf;
+
+	if ((buf = restorearg(s)) != s) free(s);
+	return(buf);
+}
+#endif	/* !MACROMETA || !_NOEXTRAMACRO */
+
 #ifdef	_NOEXTRAMACRO
 /*ARGSUSED*/
-static int NEAR setargs(bufp, ptr, blen, eol, sizep, stp)
+static int NEAR setargs(bufp, ptr, sizep, blen, mlen, eol, stp, flags)
 char **bufp;
-int ptr, blen, eol;
+int ptr;
 ALLOC_T *sizep;
+int blen, mlen, eol;
 macrostat *stp;
+int flags;
 {
 # ifdef	MAXCOMMSTR
 	int optr;
 # endif
 	char *cp, *s, *dir, *tmp;
 	int i, n, len, flen, rlen;
-	u_char flags;
 
 # ifdef	_NOARCHIVE
 	dir = NULL;
@@ -204,12 +338,10 @@ macrostat *stp;
 # endif
 
 	len = eol - ptr;
-	tmp = malloc2(len + 1);
-	memcpy(tmp, &((*bufp)[ptr]), len);
+	tmp = strdupcpy(&((*bufp)[ptr]), len);
 	tmp[len] = '\0';
-	cp = tmp + blen;
-	flags = *(++cp);
-	for (s = ++cp; *s; s++) {
+	cp = &(tmp[blen + mlen]);
+	for (s = cp; *s; s++) {
 		if (strchr(CMDLINE_DELIM, *s)) break;
 		if (iskanji1(s, 0)) s++;
 	}
@@ -222,7 +354,7 @@ macrostat *stp;
 			dir, filelist[filepos].name, flags);
 		ptr += len;
 # ifdef	MAXCOMMSTR
-		if (ptr > MAXCOMMSTR || ptr + flen > MAXCOMMSTR) {
+		if (ptr + flen > MAXCOMMSTR) {
 			free(tmp);
 			return(-1);
 		}
@@ -248,7 +380,7 @@ macrostat *stp;
 		len = setarg(bufp, ptr, sizep, dir, filelist[i].name, flags);
 		ptr += len;
 # ifdef	MAXCOMMSTR
-		if (ptr > MAXCOMMSTR || ptr + flen > MAXCOMMSTR) {
+		if (ptr + flen > MAXCOMMSTR) {
 			if (!n) {
 				free(tmp);
 				return(-1);
@@ -267,14 +399,22 @@ macrostat *stp;
 
 # ifdef	MAXCOMMSTR
 	if (ptr + rlen > MAXCOMMSTR) {
-		for (i = MAXCOMMSTR - ptr; i < rlen; i++)
-			if (isneedmark(s, i)) {
-				(stp -> needmark)--;
-				i++;
+		int m, f;
+
+		cp = &(s[MAXCOMMSTR - ptr]);
+		len = rlen - (MAXCOMMSTR - ptr);
+		for (i = 0; i < len; i++) {
+#  ifndef	MACROMETA
+			if (skipquote(cp, &i)) continue;
+#  endif
+			if ((m = isneedargs(cp, i, &f))) {
+				if (f & F_MARK) (stp -> needmark)--;
+				i += m - 1;
 			}
+		}
 		rlen = MAXCOMMSTR - ptr;
 	}
-# endif
+# endif	/* MAXCOMMSTR */
 	*bufp = c_realloc(*bufp, ptr + rlen + 1, sizep);
 	memcpy(&((*bufp)[ptr]), s, rlen);
 	ptr += rlen;
@@ -291,14 +431,26 @@ int needmark;
 # endif
 	char *cp, *src, *ins, *buf, conv[MAXPATHLEN];
 	ALLOC_T size;
-	int i, j, len;
+	int i, j, m, len, flags;
 
 # if	MSDOS && !defined (_NOUSELFN)
 	org = arg;
 	*alias = '\0';
 # endif
 	arg = convput(conv, arg, 1, 0, NULL, NULL);
-	for (j = 0; format[j]; j++) if (isneedmark(format, j)) break;
+# ifdef	FAKEUNINIT
+	m = 0;	/* fake for -Wuninitialized */
+# endif
+	for (j = 0; format[j]; j++) {
+# ifndef	MACROMETA
+		if (skipquote(format, &j)) continue;
+# endif
+		if ((m = isneedargs(format, j, &flags))) {
+			if (flags & F_MARK) break;
+			j += m - 1;
+		}
+	}
+	if (!(format[j])) return(strdup2(format));
 	buf = c_realloc(NULL, 0, &size);
 # ifdef	MAXCOMMSTR
 	if (j > MAXCOMMSTR) i = j = 0;
@@ -307,11 +459,11 @@ int needmark;
 	{
 		buf = c_realloc(buf, j + 1, &size);
 		memcpy(buf, format, j);
-		src = format + j + 1;
+		src = format + j + m;
 		for (i = 0; i < needmark; i++) {
 			ins = arg;
 # if	MSDOS && !defined (_NOUSELFN)
-			if (*src & F_TOSFN) {
+			if (flags & F_TOSFN) {
 				if (!*alias) {
 					if (shortname(org, alias) == alias)
 						org = alias;
@@ -321,28 +473,34 @@ int needmark;
 			}
 # endif
 			j = checksc(buf, j, ins);
-			cp = killmeta(ins);
+			ins = killmeta(ins);
 
-			if ((*src & F_NOEXT) && (cp = strrchr(cp, '.')))
-				len = cp - cp;
-			else len = strlen(cp);
+			if ((flags & F_NOEXT) && (cp = strrchr(ins, '.')))
+				len = cp - ins;
+			else len = strlen(ins);
 # ifdef	MAXCOMMSTR
 			if (j + len > MAXCOMMSTR) break;
 # endif
 			buf = c_realloc(buf, j + len + 1, &size);
-			strncpy(&(buf[j]), cp, len);
-			free(cp);
+			strncpy(&(buf[j]), ins, len);
+			free(ins);
 			j += len;
-			src++;
-			for (len = 0; src[len]; len++)
-				if (isneedmark(src, len)) break;
+			for (len = 0; src[len]; len++) {
+# ifndef	MACROMETA
+				if (skipquote(src, &len)) continue;
+# endif
+				if ((m = isneedargs(src, len, &flags))) {
+					if (flags & F_MARK) break;
+					len += m - 1;
+				}
+			}
 # ifdef	MAXCOMMSTR
 			if (j + len > MAXCOMMSTR) break;
 # endif
 			buf = c_realloc(buf, j + len + 1, &size);
 			memcpy(&(buf[j]), src, len);
 			j += len;
-			src += len + 1;
+			src += len + m;
 		}
 	}
 	buf[j] = '\0';
@@ -366,8 +524,7 @@ int ignorelist;
 	macrostat st;
 	char *cp, *line;
 	ALLOC_T size;
-	int i, j, c, len, quote, setflag;
-	u_char flags;
+	int i, j, c, pc, len, setflag, flags;
 
 	if (stp) flags = stp -> flags;
 	else {
@@ -376,7 +533,6 @@ int ignorelist;
 	}
 	stp -> addopt = -1;
 	stp -> needmark = stp -> needburst = 0;
-	quote = '\0';
 #if	!MSDOS && !defined (_NOKANJICONV)
 	cnvptr = 0;
 #endif
@@ -386,16 +542,8 @@ int ignorelist;
 		line = c_realloc(line, j + 1, &size);
 
 		c = '\0';
-		if (command[i] == quote) quote = '\0';
-#ifdef	CODEEUC
-		else if (isekana(command, i)) line[j++] = command[i++];
-#endif
-		else if (iskanji1(command, i)) line[j++] = command[i++];
-		else if (quote == '\'');
-		else if (ismeta(command, i, quote)) line[j++] = command[i++];
-		else if (quote);
-		else if (command[i] == '\'' || command[i] == '"')
-			quote = command[i];
+		if ((pc = skipquote(command, &i)) == 1);
+		else if (pc) line[j++] = command[i - 1];
 		else if (command[i] == '%') c = command[++i];
 		else if (flags & (F_NOEXT | F_TOSFN)) c = command[i];
 
@@ -405,7 +553,7 @@ int ignorelist;
 		}
 
 		len = setflag = 0;
-		switch (toupper2(c)) {
+		switch (c) {
 			case 'P':
 				len = setarg(&line, j, &size,
 					NULL, fullpath, flags);
@@ -413,7 +561,7 @@ int ignorelist;
 #if	MSDOS
 			case 'S':
 				flags |= F_TOSFN;
-				c = toupper2(command[i + 1]);
+				c = command[i + 1];
 				if (c == 'T' || c == 'M') {
 					setflag++;
 					break;
@@ -427,7 +575,7 @@ int ignorelist;
 				break;
 			case 'X':
 				flags |= F_NOEXT;
-				c = toupper2(command[i + 1]);
+				c = command[i + 1];
 #if	MSDOS
 				if (c == 'T' || c == 'M' || c == 'S') {
 #else
@@ -441,23 +589,31 @@ int ignorelist;
 				flags |= F_ARGSET;
 				break;
 			case 'T':
-				c = toupper2(command[i + 1]);
+				c = command[i + 1];
 				if (c == 'A') {
 					flags |= F_REMAIN;
 					i++;
 				}
 				if (!ignorelist) {
+#ifdef	MACROMETA
 					line[j++] = MACROMETA;
-					(stp -> needburst)++;
 					line[j++] = flags | F_BURST;
+#else
+					j = flag2str(line, j, flags | F_BURST);
+#endif
+					(stp -> needburst)++;
 					flags |= F_ARGSET;
 				}
 				break;
 			case 'M':
 				if (!ignorelist) {
+#ifdef	MACROMETA
 					line[j++] = MACROMETA;
-					(stp -> needmark)++;
 					line[j++] = flags | F_MARK;
+#else
+					j = flag2str(line, j, flags | F_MARK);
+#endif
+					(stp -> needmark)++;
 					flags |= F_ARGSET;
 				}
 				break;
@@ -472,7 +628,7 @@ int ignorelist;
 				break;
 #if	!MSDOS && !defined (_NOKANJICONV)
 			case 'J':
-				c = toupper2(command[i + 1]);
+				c = command[i + 1];
 				if (c == 'S') tmpcode = SJIS;
 				else if (c == 'E') tmpcode = EUC;
 # if	FD < 2
@@ -506,8 +662,15 @@ int ignorelist;
 				cnvptr = j;
 				break;
 #endif	/* !MSDOS && !_NOKANJICONV */
+			case '%':
+#ifndef	MACROMETA
+				line[j++] = '%';
+#endif
+				line[j++] = c;
+				break;
 			default:
-				line[j++] = command[i];
+				line[j++] = '%';
+				line[j++] = c;
 				break;
 		}
 		if (!setflag) flags &= ~(F_NOEXT | F_TOSFN);
@@ -531,26 +694,37 @@ int ignorelist;
 
 #ifdef	_NOEXTRAMACRO
 	if (stp -> needburst) for (i = c = 0; i < j; i++) {
+		int m, f;
+
+# ifndef	MACROMETA
+		if (skipquote(line, &i)) continue;
+# endif
 		if (strchr(CMDLINE_DELIM, line[i])) c = -1;
 		else if (c < 0) c = i;
-		if (!isneedburst(line, i)) {
-			if (iskanji1(line, i)) i++;
+		if (!(m = isneedargs(line, i, &f))) continue;
+		else if (!(f & F_BURST)) {
+			i += m - 1;
 			continue;
 		}
 
 		if (stp -> needburst <= 0) {
-			memmove(&(line[i]), &(line[i + 2]), j - i - 2);
-			j -= 2;
+			memmove(&(line[i]), &(line[i + m]), j - i - m);
+			j -= m;
 			i--;
 			continue;
 		}
 
 		(stp -> needburst)--;
-		len = setargs(&line, c, i - c, j, &size, stp);
+		len = setargs(&line, c, &size, i - c, m, j, stp, f);
 		if (len < 0) {
-			for (i += 2; i < j; i++) if (isneedmark(line, i)) {
-				(stp -> needmark)--;
-				i++;
+			for (i += m; i < j; i++) {
+# ifndef	MACROMETA
+				if (skipquote(line, &i)) continue;
+# endif
+				if ((m = isneedargs(line, i, &f))) {
+					if (f & F_MARK) (stp -> needmark)--;
+					i += m - 1;
+				}
 			}
 			j = c;
 			break;
@@ -600,24 +774,38 @@ int ignorelist;
 	return(cp);
 }
 
+#ifdef	_NOEXTRAMACRO
 /*ARGSUSED*/
 int replaceargs(argcp, argvp, env, iscomm)
 int *argcp;
 char ***argvp, **env;
 int iscomm;
 {
-#ifdef	_NOEXTRAMACRO
 	return(0);
+}
+
+/*ARGSUSED*/
+int replacearg(argp)
+char **argp;
+{
+	return(0);
+}
+
 #else	/* !_NOEXTRAMACRO */
+
+static int NEAR _replaceargs(argcp, argvp, env, iscomm)
+int *argcp;
+char ***argvp, **env;
+int iscomm;
+{
 	static int lastptr = 0;
 	char *cp, *arg, *buf, *dir, **argv, **argv2;
 	ALLOC_T size;
-	int i, j, n, argc, argc2, len, maxarg, min, next, ret;
-	u_char flags;
+	int i, j, n, m, argc, argc2, len, maxarg, min, next, ret, hit, flags;
 
 	if (!argcp || !argvp) {
 		lastptr = 0;
-		return(0);
+		return(-1);
 	}
 
 	argc = *argcp;
@@ -632,17 +820,29 @@ int iscomm;
 	dir = (archivefile) ? archivedir : NULL;
 # endif
 
-	maxarg = i = 0;
-	for (n = 0; n < argc; n++) {
+# ifdef	MAXCOMMSTR
+	maxarg = 0;
+# endif
+	for (n = i = 0; n < argc; n++) {
+# ifdef	MAXCOMMSTR
 		if (n) maxarg++;
+# endif
 		for (len = 0; argv[n][len]; len++) {
-			if (!isneedburst(argv[n], len)
-			&& !isneedmark(argv[n], len))
-				maxarg++;
-			else {
-				len++;
-				i++;
+# ifndef	MACROMETA
+			if ((m = skipquote(argv[n], &len))) {
+#  ifdef	MAXCOMMSTR
+				maxarg += m;
+#  endif
+				continue;
 			}
+# endif	/* !MACROMETA */
+			if ((m = isneedargs(argv[n], len, &flags))) {
+				if (flags) i++;
+				len += m - 1;
+			}
+# ifdef	MAXCOMMSTR
+			else maxarg++;
+# endif
 		}
 	}
 	if (!i) return(ret);
@@ -652,7 +852,7 @@ int iscomm;
 		errno = E2BIG;
 		return(-1);
 	}
-# else
+# else	/* !MAXCOMMSTR */
 #  ifdef	MAXARGNUM
 	maxarg = MAXARGNUM - 2048;
 	if (maxarg > 20 * 1024) maxarg = 20 * 1024;
@@ -662,7 +862,7 @@ int iscomm;
 		return(-1);
 	}
 #  endif
-# endif
+# endif	/* !MAXCOMMSTR */
 
 	argc2 = 0;
 	argv2 = NULL;
@@ -677,14 +877,33 @@ int iscomm;
 	arg = (min >= 0) ? filelist[min].name : filelist[filepos].name;
 
 	for (n = 0; n < argc; n++) {
-		flags = 0;
+		hit = 0;
 		for (i = j = 0; argv[n][i]; i++) {
-			buf = c_realloc(buf, j + 1, &size);
-			if (!isneedburst(argv[n], i)
-			&& (iscomm >= 0 || !isneedmark(argv[n], i)))
+# ifndef	MACROMETA
+			if ((m = skipquote(argv[n], &i))) {
+				buf = c_realloc(buf, j + m - 1, &size);
+				memcpy(&(buf[j]), &(argv[n][i - m + 1]), m);
+				i += m - 1;
+				j += m;
+				continue;
+			}
+# endif
+			m = isneedargs(argv[n], i, &flags);
+			if (iscomm < 0 && (flags & F_MARK)) flags |= F_BURST;
+
+			if (!m) {
+				buf = c_realloc(buf, j, &size);
 				buf[j++] = argv[n][i];
+			}
+			else if (!(flags & F_BURST)) {
+				buf = c_realloc(buf, j + m - 1, &size);
+				memcpy(&(buf[j]), &(argv[n][i]), m);
+				i += m - 1;
+				j += m;
+			}
 			else {
-				flags = argv[n][++i];
+				hit++;
+				i += m - 1;
 				cp = (iscomm < 0 || n) ? arg : NULL;
 
 				len = setarg(&buf, j, &size, dir, cp, flags);
@@ -704,7 +923,7 @@ int iscomm;
 		argv2 = (char **)realloc2(argv2, (argc2 + 2) * sizeof(char *));
 		argv2[argc2++] = strdup2(buf);
 		argv2[argc2] = NULL;
-		if (min < 0 || !flags || (iscomm >= 0 && !n)) continue;
+		if (min < 0 || !hit || (iscomm >= 0 && !n)) continue;
 
 		while (next < maxfile) {
 # if	!defined (MAXCOMMSTR) && defined (MAXARGNUM)
@@ -715,12 +934,32 @@ int iscomm;
 # endif
 			arg = filelist[next].name;
 			for (i = j = 0; argv[n][i]; i++) {
-				buf = c_realloc(buf, j + 1, &size);
-				if (!isneedburst(argv[n], i)
-				&& (iscomm >= 0 || !isneedmark(argv[n], i)))
+# ifndef	MACROMETA
+				if ((m = skipquote(argv[n], &i))) {
+					buf = c_realloc(buf, j + m - 1, &size);
+					memcpy(&(buf[j]),
+						&(argv[n][i - m + 1]), m);
+					i += m - 1;
+					j += m;
+					continue;
+				}
+# endif
+				m = isneedargs(argv[n], i, &flags);
+				if (iscomm < 0 && (flags & F_MARK))
+					flags |= F_BURST;
+
+				if (!m) {
+					buf = c_realloc(buf, j, &size);
 					buf[j++] = argv[n][i];
+				}
+				else if (!(flags & F_BURST)) {
+					buf = c_realloc(buf, j + m - 1, &size);
+					memcpy(&(buf[j]), &(argv[n][i]), m);
+					i += m - 1;
+					j += m;
+				}
 				else {
-					flags = argv[n][++i];
+					i += m - 1;
 
 					len = setarg(&buf, j, &size,
 						dir, arg, flags);
@@ -752,6 +991,11 @@ int iscomm;
 	*argcp = argc = argc2;
 	*argvp = argv = argv2;
 
+	if (iscomm < 0) {
+		free(buf);
+		return(ret);
+	}
+
 	min = -1;
 	for (next = lastptr; next < maxfile; next++)
 	if (isarg(&(filelist[next]))) {
@@ -760,14 +1004,32 @@ int iscomm;
 	}
 	arg = (min >= 0) ? filelist[min].name : filelist[filepos].name;
 
-	flags = 0;
+	hit = 0;
 	for (n = 0; n < argc; n++) {
 		for (i = j = 0; argv[n][i]; i++) {
-			buf = c_realloc(buf, j + 1, &size);
-			if (!isneedmark(argv[n], i)) buf[j++] = argv[n][i];
+# ifndef	MACROMETA
+			if ((m = skipquote(argv[n], &i))) {
+				buf = c_realloc(buf, j + m - 1, &size);
+				memcpy(&(buf[j]), &(argv[n][i - m + 1]), m);
+				i += m - 1;
+				j += m;
+				continue;
+			}
+# endif
+			if (!(m = isneedargs(argv[n], i, &flags))) {
+				buf = c_realloc(buf, j, &size);
+				buf[j++] = argv[n][i];
+			}
+			else if (!(flags & F_MARK)) {
+				buf = c_realloc(buf, j + m - 1, &size);
+				memcpy(&(buf[j]), &(argv[n][i]), m);
+				i += m - 1;
+				j += m;
+			}
 			else {
-				flags = argv[n][++i];
-				cp = (iscomm < 0 || n) ? arg : NULL;
+				hit++;
+				i += m - 1;
+				cp = (!env || n) ? arg : NULL;
 				if (min >= 0 && next < maxfile) ret++;
 
 				len = setarg(&buf, j, &size, NULL, cp, flags);
@@ -787,11 +1049,81 @@ int iscomm;
 		free(argv[n]);
 		argv[n] = strdup2(buf);
 	}
-	if (flags) lastptr = next;
+	if (hit) lastptr = next;
 	free(buf);
 	return(ret);
-#endif	/* !_NOEXTRAMACRO */
 }
+
+int replaceargs(argcp, argvp, env, iscomm)
+int *argcp;
+char ***argvp, **env;
+int iscomm;
+{
+# ifdef	MACROMETA
+	return(_replaceargs(argcp, argvp, env, iscomm));
+# else	/* !MACROMETA */
+	int n, ret;
+
+	if ((ret = _replaceargs(argcp, argvp, env, iscomm)) < 0) return(-1);
+
+	for (n = 0; n < *argcp; n++) (*argvp)[n] = _demacroarg((*argvp)[n]);
+	return(ret);
+# endif	/* !MACROMETA */
+}
+
+int replacearg(argp)
+char **argp;
+{
+	char **argv;
+	int n, argc;
+
+	argv = (char **)malloc2(2 * sizeof(char *));
+	argv[0] = *argp;
+	argv[1] = NULL;
+	argc = 1;
+	n = replaceargs(&argc, &argv, NULL, 0);
+	*argp = argv[0];
+	free(argv);
+	return(n);
+}
+#endif	/* !_NOEXTRAMACRO */
+
+#if	!defined (MACROMETA) || defined (_NOEXTRAMACRO)
+int argfputs(s, fp)
+char *s;
+FILE *fp;
+{
+	return(kanjifputs(s, fp));
+}
+
+/*ARGSUSED*/
+VOID demacroarg(argp)
+char **argp;
+{
+	return;
+}
+
+#else	/* MACROMETA && !_NOEXTRAMACRO */
+
+int argfputs(s, fp)
+char *s;
+FILE *fp;
+{
+	char *buf;
+	int n;
+
+	buf = restorearg(s);
+	n = kanjifputs(buf, fp);
+	if (buf != s) free(buf);
+	return(n);
+}
+
+VOID demacroarg(argp)
+char **argp;
+{
+	*argp = _demacroarg(*argp);
+}
+#endif	/* MACROMETA && !_NOEXTRAMACRO */
 
 char *inputshellstr(prompt, ptr, def)
 char *prompt;
@@ -877,71 +1209,66 @@ char *command, *arg;
 macrostat *stp;
 int ignorelist;
 {
-	char *cp, *line;
+	char *cp;
+	int p, wastty;
+#ifdef	MACROMETA
+	char *line;
 	ALLOC_T size;
-	int i, j, nb, nm, p, flags, quote;
+	int i, j, pc, m, nb, nm, flags;
 
 	nb = stp -> needburst;
 	nm = stp -> needmark;
 	p = -1;
 	line = c_realloc(NULL, 0, &size);
-	quote = '\0';
 	for (i = j = 0; command[i]; i++) {
 		if (i >= stp -> addopt && p < 0) p = j;
-		flags = 0;
+		m = flags = 0;
 
 		line = c_realloc(line, j + 1, &size);
-		if (command[i] == quote) quote = '\0';
-#ifdef	CODEEUC
-		else if (isekana(command, i)) line[j++] = command[i++];
-#endif
-		else if (iskanji1(command, i)) line[j++] = command[i++];
-		else if (quote == '\'');
-		else if (ismeta(command, i, quote)) line[j++] = command[i++];
-		else if (quote);
-		else if (command[i] == '\'' || command[i] == '"')
-			quote = command[i];
+		if ((pc = skipquote(command, &i)) == 1);
+		else if (pc) line[j++] = command[i - 1];
 		else if (command[i] == '%') line[j++] = command[i];
-		else if (isneedburst(command, i)) {
-			if (nb > 0) {
-				nb--;
-				flags = command[++i];
+		else if ((m = isneedargs(command, i, &flags))) {
+			if (flags & F_BURST) {
+				if (nb > 0) nb--;
+				else flags = 0;
 			}
-		}
-		else if (isneedmark(command, i)) {
-			if (nm > 0) {
-				nm--;
-				flags = command[++i];
+			else if (flags & F_MARK) {
+				if (nm > 0) nm--;
+				else flags = 0;
 			}
 		}
 
 		if (!flags) {
-			line[j++] = command[i];
+			if (!m) line[j++] = command[i];
+			else {
+				line = c_realloc(line, j + m - 1, &size);
+				memcpy(&(line[j]), &(command[i]), m);
+				i += m - 1;
+				j += m;
+			}
 			continue;
 		}
 
+		i += m - 1;
 		line = c_realloc(line, j + 4, &size);
-		line[j++] = '%';
-		if (flags & F_NOEXT) line[j++] = 'X';
-#if	MSDOS
-		if (flags & F_TOSFN) line[j++] = 'S';
-#endif
-		if (flags & F_MARK) line[j++] = 'M';
-		else if (flags & F_BURST) {
-			line[j++] = 'T';
-			if (flags & F_REMAIN) line[j++] = 'A';
-		}
+		j = flag2str(line, j, flags);
 	}
 	line[j] = '\0';
 	free(command);
 
 	if (p < 0) p = strlen(line);
-	if (!(i = isttyiomode)) ttyiomode(1);
-	cp = inputstr("", 0, p, line, 0);
-	if (!i) stdiomode();
-	free(line);
+	command = line;
+#else	/* MACROMETA */
+	p = stp -> addopt;
+#endif	/* MACROMETA */
+
+	if (!(wastty = isttyiomode)) ttyiomode(1);
+	cp = inputstr("", 0, p, command, 0);
+	if (!wastty) stdiomode();
+	free(command);
 	if (!cp) {
-		if (!i) {
+		if (!wastty) {
 			fputc('\n', stdout);
 			fflush(stdout);
 		}
@@ -1064,6 +1391,9 @@ int noconf, argset, ignorelist;
 #ifdef	_NOEXTRAMACRO
 	status = internal_status;
 	if (!haslist || !st.needmark) for (;;) {
+# ifndef	MACROMETA
+		tmp = _demacroarg(tmp);
+# endif
 		r = system3(tmp, noconf, ignorelist);
 		free(tmp);
 		tmp = NULL;
@@ -1083,6 +1413,9 @@ int noconf, argset, ignorelist;
 	else if (n_args <= 0) {
 		buf = insertarg(tmp, filelist[filepos].name, st.needmark);
 		if (buf) {
+# ifndef	MACROMETA
+			buf = _demacroarg(buf);
+# endif
 			ret = system3(buf, noconf, ignorelist);
 			free(buf);
 			status = internal_status;
@@ -1091,6 +1424,9 @@ int noconf, argset, ignorelist;
 	else for (i = 0; i < maxfile; i++) if (isarg(&(filelist[i]))) {
 		buf = insertarg(tmp, filelist[i].name, st.needmark);
 		if (buf) {
+# ifndef	MACROMETA
+			buf = _demacroarg(buf);
+# endif
 			r = system3(buf, noconf, ignorelist);
 			free(buf);
 			if (r > ret && (ret = r) >= 127) break;
@@ -1390,21 +1726,15 @@ char *command;
 {
 	char *cp;
 	ALLOC_T size;
-	int i, j, n, len, quote, hit;
+	int i, j, n, pc, len, quote, hit;
 
 	hit = 0;
 	cp = c_realloc(NULL, 0, &size);
 	for (i = j = 0, quote = '\0'; command[i]; i++) {
 		cp = c_realloc(cp, j + 1, &size);
-		if (command[i] == quote) quote = '\0';
-#ifdef	CODEEUC
-		else if (isekana(command, i)) cp[j++] = command[i++];
-#endif
-		else if (iskanji1(command, i)) cp[j++] = command[i++];
-		else if (quote);
-		else if (ismeta(command, i, quote)) cp[j++] = command[i++];
-		else if (command[i] == '\'') quote = command[i];
-		else if (command[i] == '!') {
+		pc = parsechar(&(command[i]), -1, '!', 0, &quote, NULL);
+		if (pc == PC_WORD || pc == PC_META) cp[j++] = command[i++];
+		else if (pc == '!'){
 			len = i++;
 			if ((n = parsehist(command, &i)) < 0) {
 				if (i < 0) {

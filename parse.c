@@ -191,37 +191,26 @@ char *s, *c;
 int evaldq;
 {
 	char *cp;
-	int quote;
+	int pc, quote;
 
 	for (cp = s, quote = '\0'; *cp; cp++) {
-		if (*cp == quote) {
-			quote = '\0';
-			continue;
-		}
-# ifdef	CODEEUC
-		else if (isekana(cp, 0)) {
-			cp++;
-			continue;
-		}
+# if	MSDOS
+		pc = parsechar(cp, -1, '\0', 0, &quote, NULL);
+# else
+		pc = parsechar(cp, -1, '\0', 1, &quote, NULL);
 # endif
-		else if (iskanji1(cp, 0)) {
+		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) continue;
+		else if (pc == PC_SQUOTE || pc == PC_BQUOTE) continue;
+		else if (pc == PC_DQUOTE) {
+			if (!evaldq) continue;
+		}
+		else if (pc == PC_WORD) {
 			cp++;
 			continue;
 		}
-		else if (quote == '\'') continue;
-		else if (ismeta(cp, 0, quote)) {
+		else if (pc == PC_META) {
 			cp++;
 			if (*cp == PMETA && strchr(c, *cp)) return(cp - 1);
-			continue;
-		}
-# if	MSDOS
-		else if (quote == '"' && !evaldq) continue;
-		else if (*cp == '\'' || *cp == '"') {
-# else
-		else if (quote == '`' || (quote == '"' && !evaldq)) continue;
-		else if (*cp == '\'' || *cp == '"' || *cp == '`') {
-# endif
-			quote = *cp;
 			continue;
 		}
 

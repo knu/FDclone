@@ -33,24 +33,6 @@ extern unsigned _stklen = 0x5800;
 #include "system.h"
 #endif
 
-#if	defined (SIGARGINT) || defined (NOVOID)
-#define	sigarg_t	int
-#else
-#define	sigarg_t	void
-#endif
-
-#ifdef	SIGFNCINT
-#define	sigfnc_t	int
-#else
-# ifdef	NOVOID
-# define	sigfnc_t
-# else
-# define	sigfnc_t	void
-# endif
-#endif
-
-#define	sigcst_t	sigarg_t (*)__P_((sigfnc_t))
-
 #if	!MSDOS && !defined (_NOORIGSHELL) && !defined (NOJOB)
 extern VOID killjob __P_((VOID_A));
 #endif
@@ -275,21 +257,21 @@ char *s;
 static VOID NEAR signalexit(sig)
 int sig;
 {
-	signal(sig, SIG_IGN);
+	signal2(sig, SIG_IGN);
 	forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
 	endterm();
 	inittty(1);
-	signal(sig, SIG_DFL);
+	signal2(sig, SIG_DFL);
 	kill(getpid(), sig);
 }
 
 #ifdef	SIGALRM
 static int ignore_alrm(VOID_A)
 {
-	signal(SIGALRM, (sigcst_t)ignore_alrm);
+	signal2(SIGALRM, (sigcst_t)ignore_alrm);
 	return(0);
 }
 #endif
@@ -297,7 +279,7 @@ static int ignore_alrm(VOID_A)
 #ifdef	SIGWINCH
 static int ignore_winch(VOID_A)
 {
-	signal(SIGWINCH, (sigcst_t)ignore_winch);
+	signal2(SIGWINCH, (sigcst_t)ignore_winch);
 	return(0);
 }
 #endif
@@ -305,7 +287,7 @@ static int ignore_winch(VOID_A)
 #ifdef	SIGINT
 static int ignore_int(VOID_A)
 {
-	signal(SIGINT, (sigcst_t)ignore_int);
+	signal2(SIGINT, (sigcst_t)ignore_int);
 	return(0);
 }
 #endif
@@ -313,7 +295,7 @@ static int ignore_int(VOID_A)
 #ifdef	SIGQUIT
 static int ignore_quit(VOID_A)
 {
-	signal(SIGQUIT, (sigcst_t)ignore_quit);
+	signal2(SIGQUIT, (sigcst_t)ignore_quit);
 	return(0);
 }
 #endif
@@ -321,7 +303,7 @@ static int ignore_quit(VOID_A)
 #ifdef	SIGCONT
 static int ignore_cont(VOID_A)
 {
-	signal(SIGCONT, (sigcst_t)ignore_cont);
+	signal2(SIGCONT, (sigcst_t)ignore_cont);
 # if	!MSDOS
 	suspended = 1;
 # endif
@@ -482,14 +464,14 @@ static int wintr(VOID_A)
 	int duperrno;
 
 	duperrno = errno;
-	signal(SIGWINCH, SIG_IGN);
+	signal2(SIGWINCH, SIG_IGN);
 	if (!winchok) winched++;
 	else {
 		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
 		rewritefile(1);
 		if (subwindow) ungetch2(K_CTRL('L'));
 	}
-	signal(SIGWINCH, (sigcst_t)wintr);
+	signal2(SIGWINCH, (sigcst_t)wintr);
 	errno = duperrno;
 	return(0);
 }
@@ -503,7 +485,7 @@ static int printtime(VOID_A)
 	int x, duperrno;
 
 	duperrno = errno;
-	signal(SIGALRM, SIG_IGN);
+	signal2(SIGALRM, SIG_IGN);
 	if (timersec) now++;
 	else {
 		now = time2();
@@ -543,15 +525,15 @@ static int printtime(VOID_A)
 #ifdef	SIGWINCH
 	if (!winchok) winchok++;
 	else if (winched) {
-		signal(SIGWINCH, SIG_IGN);
+		signal2(SIGWINCH, SIG_IGN);
 		winched = 0;
 		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
 		rewritefile(1);
 		if (subwindow) ungetch2(K_CTRL('L'));
-		signal(SIGWINCH, (sigcst_t)wintr);
+		signal2(SIGWINCH, (sigcst_t)wintr);
 	}
 #endif
-	signal(SIGALRM, (sigcst_t)printtime);
+	signal2(SIGALRM, (sigcst_t)printtime);
 	errno = duperrno;
 	return(0);
 }
@@ -567,15 +549,15 @@ int set;
 	if (set == old);
 	else if (set) {
 #ifdef	SIGALRM
-		signal(SIGALRM, (sigcst_t)printtime);
+		signal2(SIGALRM, (sigcst_t)printtime);
 		noalrm = 0;
 #endif
 #ifdef	SIGTSTP
-		signal(SIGTSTP, SIG_IGN);
+		signal2(SIGTSTP, SIG_IGN);
 #endif
 #ifdef	SIGWINCH
 		winchok = winched = 0;
-		signal(SIGWINCH, (sigcst_t)wintr);
+		signal2(SIGWINCH, (sigcst_t)wintr);
 #endif
 #ifndef	_NODOSDRIVE
 		doswaitfunc = waitmes;
@@ -585,14 +567,14 @@ int set;
 	}
 	else {
 #ifdef	SIGALRM
-		signal(SIGALRM, (sigcst_t)ignore_alrm);
+		signal2(SIGALRM, (sigcst_t)ignore_alrm);
 		noalrm = 1;
 #endif
 #ifdef	SIGTSTP
-		signal(SIGTSTP, SIG_DFL);
+		signal2(SIGTSTP, SIG_DFL);
 #endif
 #ifdef	SIGWINCH
-		signal(SIGWINCH, (sigcst_t)ignore_winch);
+		signal2(SIGWINCH, (sigcst_t)ignore_winch);
 #endif
 #ifndef	_NODOSDRIVE
 		doswaitfunc = NULL;
@@ -966,52 +948,52 @@ char *argv[], *envp[];
 #endif
 
 #ifdef	SIGHUP
-	signal(SIGHUP, (sigcst_t)hanguperror);
+	signal2(SIGHUP, (sigcst_t)hanguperror);
 #endif
 #ifdef	SIGINT
-	signal(SIGINT, (sigcst_t)ignore_int);
+	signal2(SIGINT, (sigcst_t)ignore_int);
 #endif
 #ifdef	SIGQUIT
-	signal(SIGQUIT, (sigcst_t)ignore_quit);
+	signal2(SIGQUIT, (sigcst_t)ignore_quit);
 #endif
 #ifdef	SIGCONT
-	signal(SIGCONT, (sigcst_t)ignore_cont);
+	signal2(SIGCONT, (sigcst_t)ignore_cont);
 #endif
 #ifdef	SIGILL
-	signal(SIGILL, (sigcst_t)illerror);
+	signal2(SIGILL, (sigcst_t)illerror);
 #endif
 #ifdef	SIGTRAP
-	signal(SIGTRAP, (sigcst_t)traperror);
+	signal2(SIGTRAP, (sigcst_t)traperror);
 #endif
 #ifdef	SIGIOT
-	signal(SIGIOT, (sigcst_t)ioerror);
+	signal2(SIGIOT, (sigcst_t)ioerror);
 #endif
 #ifdef	SIGEMT
-	signal(SIGEMT, (sigcst_t)emuerror);
+	signal2(SIGEMT, (sigcst_t)emuerror);
 #endif
 #ifdef	SIGFPE
-	signal(SIGFPE, (sigcst_t)floaterror);
+	signal2(SIGFPE, (sigcst_t)floaterror);
 #endif
 #ifdef	SIGBUS
-	signal(SIGBUS, (sigcst_t)buserror);
+	signal2(SIGBUS, (sigcst_t)buserror);
 #endif
 #ifdef	SIGSEGV
-	signal(SIGSEGV, (sigcst_t)segerror);
+	signal2(SIGSEGV, (sigcst_t)segerror);
 #endif
 #ifdef	SIGSYS
-	signal(SIGSYS, (sigcst_t)syserror);
+	signal2(SIGSYS, (sigcst_t)syserror);
 #endif
 #ifdef	SIGPIPE
-	signal(SIGPIPE, (sigcst_t)pipeerror);
+	signal2(SIGPIPE, (sigcst_t)pipeerror);
 #endif
 #ifdef	SIGTERM
-	signal(SIGTERM, (sigcst_t)terminate);
+	signal2(SIGTERM, (sigcst_t)terminate);
 #endif
 #ifdef	SIGXCPU
-	signal(SIGXCPU, (sigcst_t)xcpuerror);
+	signal2(SIGXCPU, (sigcst_t)xcpuerror);
 #endif
 #ifdef	SIGXFSZ
-	signal(SIGXFSZ, (sigcst_t)xsizerror);
+	signal2(SIGXFSZ, (sigcst_t)xsizerror);
 #endif
 	sigvecset(0);
 

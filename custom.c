@@ -498,9 +498,11 @@ int no;
 
 VOID evalenv(VOID_A)
 {
-	int i;
+	int i, duperrno;
 
+	duperrno = errno;
 	for (i = 0; i < ENVLISTSIZ; i++) _evalenv(i);
+	errno = duperrno;
 }
 
 #ifdef	DEBUG

@@ -29,6 +29,15 @@
 # endif
 #endif	/* MSDOS */
 
+#define	PC_NORMAL	0
+#define	PC_OPQUOTE	1
+#define	PC_CLQUOTE	2
+#define	PC_SQUOTE	3
+#define	PC_DQUOTE	4
+#define	PC_BQUOTE	5
+#define	PC_WORD		6
+#define	PC_META		7
+
 #define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
 #ifdef	LSI_C
 #define	toupper2	toupper
@@ -117,6 +126,24 @@ typedef	long		p_id_t;
 #endif
 #endif
 
+#if	defined (SIGARGINT) || defined (NOVOID)
+#define	sigarg_t	int
+#else
+#define	sigarg_t	void
+#endif
+
+#ifdef	SIGFNCINT
+#define	sigfnc_t	int
+#else
+# ifdef	NOVOID
+# define	sigfnc_t
+# else
+# define	sigfnc_t	void
+# endif
+#endif
+
+typedef sigarg_t (*sigcst_t)__P_((sigfnc_t));
+
 typedef struct _uidtable {
 	uid_t uid;
 	char *name;
@@ -153,8 +180,6 @@ extern char *strdupcpy __P_((char *, int));
 extern int isidentchar __P_((int));
 extern int isdotdir __P_((char *));
 extern char *isrootdir __P_((char *));
-extern int ismeta __P_((char *s, int, int));
-extern int isnmeta __P_((char *s, int, int, int));
 extern reg_t *regexp_init __P_((char *, int));
 extern int regexp_exec __P_((reg_t *, char *, int));
 extern VOID regexp_free __P_((reg_t *));
@@ -173,6 +198,7 @@ extern char *findcommon __P_((int, char **));
 extern char *catvar __P_((char *[], int));
 extern int countvar __P_((char **));
 extern VOID freevar __P_((char **));
+extern int parsechar __P_((char *, int, int, int, int *, int *));
 #if	!MSDOS
 extern uidtable *finduid __P_((uid_t, char *));
 extern gidtable *findgid __P_((gid_t, char *));

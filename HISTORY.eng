@@ -1,3 +1,10 @@
+Ver. 2.03b	Bug that %T, %M macros cannot be except in arguments is fixed.
+ (05/15/03)	Bug that Japanese filename in floppy drive is broken is fixed.
+		Bug that directory in floppy drive cannot be written is fixed.
+		Abortion when the directory has some symbolic links is fixed.
+		Support the unreliable signal() on System V.
+		Bug that ${%}/${#} for null variable work strangely is fixed.
+
 Ver. 2.03a	Bug that the default palette differs in color mode is fixed.
  (04/15/03)	Bug that the function name can include any character is fixed.
 		Some troubles when missing the current directory is fixed.

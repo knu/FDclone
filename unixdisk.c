@@ -1605,6 +1605,9 @@ int n, size, iswrite;
 	}
 
 	ret = 0;
+#ifdef	FAKEUNINIT
+	level = 0;	/* fake for -Wuninitialized */
+#endif
 #ifdef	DJGPP
 	if ((long)size * n > tbsize / 2) {
 		if (checkdrive(drv) > 0) while (n-- > 0) {

@@ -508,7 +508,7 @@ long *totalp, *freep, *bsizep;
 		reg.h.dl = toupper2(*path) - 'A' + 1;
 		int21call(&reg, &sreg);
 		if (reg.x.ax == 0xffff || !reg.x.ax || !reg.x.cx || !reg.x.dx
-		&& reg.x.dx < reg.x.bx) return(-1);
+		|| reg.x.dx < reg.x.bx) return(-1);
 
 		*totalp = (long)(reg.x.dx);
 		*freep = (long)(reg.x.bx);
@@ -2004,7 +2004,7 @@ int sbin, dbin, dfd;
 {
 	off_t ofs;
 	char buf[BUFSIZ], buf2[BUFSIZ];
-	int i, n, fd1, fd2, tty, retry, tmperrno;
+	int i, n, fd1, fd2, tty, retry, duperrno;
 
 #if	!MSDOS
 	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK) {
@@ -2040,16 +2040,16 @@ int sbin, dbin, dfd;
 	tty = isatty(fd2);
 
 #ifdef	FAKEUNINIT
-	tmperrno = errno;	/* fake for -Wuninitialized */
+	duperrno = errno;	/* fake for -Wuninitialized */
 #endif
 	for (retry = 0; retry < 10; retry++) {
 		for (;;) {
 			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {
-				tmperrno = errno;
+				duperrno = errno;
 				break;
 			}
 			if ((i = safewrite(fd2, buf, i)) < 0) {
-				tmperrno = errno;
+				duperrno = errno;
 				break;
 			}
 			if (i < BUFSIZ) break;
@@ -2061,16 +2061,16 @@ int sbin, dbin, dfd;
 
 		for (;;) {
 			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {
-				tmperrno = errno;
+				duperrno = errno;
 				break;
 			}
 			if ((n = textread(fd2, buf2, BUFSIZ, CF_BINARY)) < 0) {
-				tmperrno = errno;
+				duperrno = errno;
 				i = -1;
 				break;
 			}
 			if (n != i || memcmp(buf, buf2, i)) {
-				tmperrno = EINVAL;
+				duperrno = EINVAL;
 				i = -1;
 				break;
 			}
@@ -2086,7 +2086,7 @@ int sbin, dbin, dfd;
 
 	if (i < 0) {
 		Xunlink(dest);
-		errno = tmperrno;
+		errno = duperrno;
 		return(dfd < 0 ? -1 : -2);
 	}
 

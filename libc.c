@@ -27,6 +27,7 @@ extern char *dosgetcwd __P_((char *, int));
 #endif
 
 #ifdef	_NOORIGSHELL
+#include <signal.h>
 #define	dosystem(s)		system(s)
 #else
 #include "system.h"
@@ -49,6 +50,9 @@ extern char *sys_errlist[];
 extern int lastdrv;
 #endif
 
+#ifndef	SIG_ERR
+#define	SIG_ERR		((sigcst_t)-1)
+#endif
 #ifndef	CHAR_BIT
 # ifdef	NBBY
 # define	CHAR_BIT	NBBY
@@ -61,7 +65,9 @@ extern int lastdrv;
 			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
 			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
+#if	!MSDOS
 static int NEAR evallink __P_((char *, char *));
+#endif
 static char *NEAR _realpath2 __P_((char *, char *, int));
 #ifdef	_NOORIGSHELL
 static int NEAR _getenv2 __P_((char *, int, char **));
@@ -121,11 +127,21 @@ char *path, *delim;
 {
 	struct stat st;
 	char buf[MAXPATHLEN];
-	int i;
+	int i, duperrno;
 
-	if (nodoslstat(path, &st) < 0) return(-1);
-	if ((st.st_mode & S_IFMT) != S_IFLNK) return(0);
-	if ((i = Xreadlink(path, buf, MAXPATHLEN - 1)) < 0) return(-1);
+	duperrno = errno;
+	if (nodoslstat(path, &st) < 0) {
+		errno = duperrno;
+		return(-1);
+	}
+	if ((st.st_mode & S_IFMT) != S_IFLNK) {
+		errno = duperrno;
+		return(0);
+	}
+	if ((i = Xreadlink(path, buf, MAXPATHLEN - 1)) < 0) {
+		errno = duperrno;
+		return(-1);
+	}
 
 	if (*buf == _SC_) strncpy2(path, buf, i);
 	else {
@@ -136,6 +152,7 @@ char *path, *delim;
 		buf[i] = *delim = '\0';
 		_realpath2(buf, path, 1);
 	}
+	errno = duperrno;
 	return(1);
 }
 #endif	/* !MSDOS */
@@ -801,6 +818,22 @@ char *name, *value;
 #endif	/* !_NOORIGSHELL */
 	return(0);
 }
+
+#ifdef	USESIGACTION
+sigcst_t signal2(sig, func)
+int sig;
+sigcst_t func;
+{
+	struct sigaction act, oact;
+
+	act.sa_handler = func;
+	act.sa_flags = 0;
+	sigemptyset(&(act.sa_mask));
+	sigemptyset(&(oact.sa_mask));
+	if (sigaction(sig, &act, &oact) < 0) return(SIG_ERR);
+	return(oact.sa_handler);
+}
+#endif	/* USESIGACTION */
 
 int system2(command, noconf)
 char *command;

@@ -193,6 +193,11 @@ extern VOID perror2 __P_((char *));
 extern int putenv2 __P_((char *));
 extern int setenv2 __P_((char *, char *));
 extern char *getenv2 __P_((char *));
+#ifdef	USESIGACTION
+extern sigcst_t signal2 __P_((int, sigcst_t));
+#else
+#define	signal2	signal
+#endif
 extern int system2 __P_((char *, int));
 extern FILE *popen2 __P_((char *, char *));
 extern int pclose2 __P_((FILE *));
@@ -371,6 +376,9 @@ extern VOID freedefine __P_((VOID_A));
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
 extern int replaceargs __P_((int *, char ***, char **, int));
+extern int replacearg __P_((char **));
+extern int argfputs __P_((char *, FILE *));
+extern VOID demacroarg __P_((char **));
 extern char *inputshellstr __P_((char *, int, char *));
 extern char *inputshellloop __P_((int, char *));
 extern int isinternalcomm __P_((char *));
