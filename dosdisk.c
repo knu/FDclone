@@ -61,12 +61,14 @@ extern int toupper2();
 extern int strcasecmp2();
 extern time_t timelocal2();
 #else
+#ifndef	NOTZFILEH
 #include <tzfile.h>
+#endif
 static int toupper2();
 static int strcasecmp2();
-static time_t timelocal2();
 static int tmcmp();
 static long gettimezone();
+static time_t timelocal2();
 #endif
 
 static int shiftcache();
@@ -288,7 +290,6 @@ int time;
 	int i;
 
 	memcpy(&tmbuf, tm, sizeof(struct tm));
-	if (tmbuf.tm_year >= 1900) tmbuf.tm_year -= 1900;
 
 #ifdef	NOTMGMTOFF
 	gettimeofday(&t_val, &t_zone);
@@ -297,6 +298,7 @@ int time;
 	tz = -(localtime(&time) -> tm_gmtoff);
 #endif
 
+#ifndef	NOTZFILEH
 	cp = (char *)getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == '/') strcpy(path, cp);
@@ -310,7 +312,12 @@ int time;
 		fclose(fp);
 		return(tz);
 	}
-	memcpy(&nleap, buf.tzh_leapcnt, sizeof(long));
+#ifdef	USELEAPCNT
+	cp = buf.tzh_leapcnt;
+#else
+	cp = buf.tzh_reserved + 28;
+#endif
+	memcpy(&nleap, cp, sizeof(long));
 	memcpy(&ntime, buf.tzh_timecnt, sizeof(long));
 	memcpy(&ntype, buf.tzh_typecnt, sizeof(long));
 	memcpy(&nchar, buf.tzh_charcnt, sizeof(long));
@@ -364,27 +371,36 @@ int time;
 
 	tz += leap;
 	fclose(fp);
+#endif	/* NOTZFILEH */
+
 	return(tz);
 }
 
 static time_t timelocal2(tm)
 struct tm *tm;
 {
+#ifdef	USEMKTIME
+	tm -> tm_isdst = -1;
+	return(mktime(tm));
+#else
+# ifdef	USETIMELOCAL
+	return(timelocal(tm));
+# else
 	time_t date, time;
-	int i;
+	int i, year;
 
-	if (tm -> tm_year < 1900) tm -> tm_year += 1900;
+	year = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
 
-	date = (tm -> tm_year - 1970) * 365;
-	date += ((tm -> tm_year - 1 - 1968) / 4)
-		- ((tm -> tm_year - 1 - 1900) / 100)
-		+ ((tm -> tm_year - 1 - 1600) / 400);
+	date = (year - 1970) * 365;
+	date += ((year - 1 - 1968) / 4)
+		- ((year - 1 - 1900) / 100)
+		+ ((year - 1 - 1600) / 400);
 	for (i = 1; i < tm -> tm_mon + 1; i++) {
 		switch (i) {
 			case 2:
-				if (!(tm -> tm_year % 4)
-				&& ((tm -> tm_year % 100)
-				|| !(tm -> tm_year % 400))) date++;
+				if (!(year % 4)
+				&& ((year % 100)
+				|| !(year % 400))) date++;
 				date += 28;
 				break;
 			case 4:
@@ -404,8 +420,10 @@ struct tm *tm;
 	time += gettimezone(tm, time);
 
 	return(time);
-}
+# endif
 #endif
+}
+#endif	/* !FD */
 
 static int sectseek(devp, sect)
 devstat *devp;

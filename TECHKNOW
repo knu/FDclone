@@ -64,8 +64,6 @@ UNKNOWNFS
 	く実現できない場合にも、安全のため定義しておきます。
 	詳細は 2. の項目を参照して下さい。
 
-USELEAPCNT
-	OS が、タイムゾーン情報として閏秒を採用しています。
 NOVOID	void 型を用いることができません。
 NOUID_T	uid_t, gid_t が <sys/types.h> で定義されていません。
 DECLERRLIST
@@ -82,6 +80,10 @@ NOUNISTDH
 	<unistd.h> が存在しません。
 NOSTDLIBH
 	<stdlib.h> が存在しません。
+NOTZFILEH
+	<tzfile.h> が存在しません。
+USELEAPCNT
+	構造体 tzhead がメンバ tzh_leapcnt を持ちます。
 USESELECTH
 	関数 select(2) を利用する際に必要な構造体 fd_set が、
 	<sys/select.h> の中で定義されています。
@@ -195,6 +197,12 @@ USEUTIME
 USEGETWD
 	カレントディレクトリ検査関数として、getcwd(3) を用い
 	られず、代わりに getwd(3) を用います。
+USETIMELOCAL
+	時間変換関数 timelocal(3) が localtime(3) の逆関数と
+	して使えます。
+USEMKTIME
+	時間変換関数 mktime(3) を timelocal(3) の代わりに用
+	います。
 SIGARGINT
 	ソフトウェアシグナル関数 signal(3) の第 2 引数として、
 	int 型を返す関数へのポインタが用いられます。

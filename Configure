@@ -169,24 +169,24 @@ if [ -n "$lib" ]; then
 fi
 
 
-echo "Checking for leapcnt..." 1>&2
+echo "Checking for tzfile..." 1>&2
 (setheader "stdio tzfile")
 cat >> $TMPSRC << EOF
 int main() {
 	struct tzhead t;
 	FILE *fp;
 	if (chdir(TZDIR) < 0 || !(fp = fopen(TZDEFAULT, "r"))
-	|| fread(&t, sizeof(t), 1, fp) != 1) return(0);
+	|| fread(&t, sizeof(t), 1, fp) != 1) return(1);
 	fclose(fp);
-	return(*((long *)t.tzh_leapcnt));
+	return(0);
 }
 EOF
-if eval $docc; then
-	if ./$TMPEXE; then
-		:
-	else
+if eval $docc && ./$TMPEXE; then
+	if isexist "struct tzhead t; t.tzh_leapcnt" tzfile; then
 		echo "#define	USELEAPCNT"
 	fi
+else
+	echo "#define	NOTZFILEH"
 fi
 rm -f $TMPEXE
 
@@ -338,6 +338,12 @@ if noexist "utimes(0,0)"; then
 fi
 if noexist "getcwd(0,0)"; then
 	echo "#define	USEGETWD"
+fi
+if isexist "timelocal(0)" time; then
+	echo "#define	USETIMELOCAL"
+fi
+if isexist "mktime(0)" time; then
+	echo "#define	USEMKTIME"
 fi
 if inheader 'int.*[^a-zA-Z_]signal' signal; then
 	echo "#define	SIGARGINT"

@@ -20,7 +20,9 @@
 # else
 # define	BSD43
 # define	OSTYPE		"SUN_OS"
+# define	USELEAPCNT
 # define	USERE_COMP
+# define	USETIMELOCAL
 # endif
 #endif
 
@@ -66,10 +68,12 @@
 # define	TERMCAPLIB	"-lcurses"
 # define	EXTENDLIB	"-lsun"
 # endif
+#define	NOTZFILEH
 #define	NODNAMLEN
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USERE_COMP
+#define	USEMKTIME
 #endif
 
 #if defined (hpux) || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
@@ -77,8 +81,10 @@
 #define	OSTYPE			"HPUX"
 #define	EXTENDCCOPT
 #define	TERMCAPLIB		"-lcurses"
+#define	NOTZFILEH
 #define	USEREGCOMP
 #define	USEUTIME
+#define	USEMKTIME
 #endif
 
 #if defined (nec_ews) || defined (_nec_ews)
@@ -95,6 +101,7 @@
 # define	TERMCAPLIB	"-lcurses"
 # define	REGEXPLIB	"-lgen"
 # define	NODNAMLEN
+# define	NOTMGMTOFF
 # define	USESTATVFSH
 # define	USEMNTTABH
 # define	USEUTIME
@@ -228,6 +235,7 @@
 #define	CODEEUC
 #define	REGEXPLIB		"-lgen"
 #define	NODNAMLEN
+#define	NOTMGMTOFF
 #define	USESTATVFSH
 #define	USEMNTTABH
 #define	USEUTIME
@@ -282,8 +290,8 @@
 #define	CODEEUC
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
-#define	USELEAPCNT
 #define	DECLERRLIST
+#define	USELEAPCNT
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USERE_COMP
@@ -413,7 +421,6 @@
 
 /* #define UNKNOWNFS	/* use unsupported type FileSystem */
 
-/* #define USELEAPCNT	/* TZFILE includes tzh_leapcnt as leap second */
 /* #define NOVOID	/* cannot use type 'void' */
 /* #define NOUID_T	/* uid_t, gid_t is not defined in <sys/types.h> */
 /* #define DECLERRLIST	/* 'sys_errlist[]' already declared in <stdio.h> */
@@ -422,6 +429,8 @@
 /* #define NOFILEMODE	/* 'S_I?{USR|GRP|OTH}' not defined in <sys/stat.h> */
 /* #define NOUNISTDH	/* have not <unistd.h> */
 /* #define NOSTDLIBH	/* have not <stdlib.h> */
+/* #define NOTZFILEH	/* have not <tzfile.h> */
+/* #define USELEAPCNT	/* struct tzhead have tzh_leapcnt as leap second */
 /* #define USESELECTH	/* use <sys/select.h> for select() */
 /* #define USESYSDIRH	/* use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	/* use <time.h> for 'struct tm' */
@@ -467,6 +476,8 @@
 /* #define NOVSPRINTF	/* have not vsprintf() */
 /* #define USEUTIME	/* use utime() instead of utimes() */
 /* #define USEGETWD	/* use getwd() instead of getcwd() */
+/* #define USETIMELOCAL	/* have timelocal() as inverse of localtime() */
+/* #define USEMKTIME	/* use mktime() instead of timelocal() */
 /* #define SIGARGINT	/* signal() needs the 2nd argument as int */
 
 /* #define SENSEPERSEC	/* ratio of key sense per 1 second */
