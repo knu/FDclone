@@ -495,7 +495,7 @@ char *dir, *subdir, *file;
 		warning(-1, subdir);
 		subdir = file = NULL;
 	}
-	if (file && unlink(file) < 0) {
+	if (file && Xunlink(file) < 0) {
 		warning(-1, file);
 		subdir = NULL;
 	}
@@ -508,7 +508,7 @@ char *dir, *subdir, *file;
 			tmp = strrchr(dupdir, _SC_);
 			if (tmp) tmp++;
 			else tmp = dupdir;
-			if ((strcmp(tmp, ".") && rmdir(dupdir) < 0)
+			if ((*tmp && strcmp(tmp, ".") && _Xrmdir(dupdir) < 0)
 			|| tmp == dupdir) break;
 			cp = tmp - 1;
 		}

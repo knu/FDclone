@@ -78,8 +78,9 @@ static struct dirent *readnextpath();
 static int skipdotfile;
 
 
-char *_evalpath(path, eol)
+char *_evalpath(path, eol, keepdelim)
 char *path, *eol;
+int keepdelim;
 {
 #if	!MSDOS
 	struct passwd *pwd;
@@ -139,6 +140,7 @@ char *path, *eol;
 
 	while (path < eol) {
 		if (*path == _SC_) {
+			if (keepdelim) strcat(buf, _SS_);
 			path++;
 			continue;
 		}
@@ -191,7 +193,7 @@ char *path;
 	if (!path || !(*path)) return(path);
 	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
 	eol = cp + strlen(cp);
-	cp = _evalpath(cp, eol);
+	cp = _evalpath(cp, eol, 0);
 	free(path);
 	return(cp);
 }

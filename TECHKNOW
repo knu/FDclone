@@ -36,6 +36,10 @@ BSDINSTALL
 	BSD ライクな install(1) が標準のコマンド検索パス上に
 	実装されており、-c (copy) や -s (strip) といったオプ
 	ションが使えます。
+BSDINSTCMD
+	BSD ライクな install(1) のコマンド名が "install" 以
+	外の場合、そのコマンド名を定義します。BSDINSTALL を
+	定義していない場合は意味を持ちません。
 TARUSESPACE
 	tar(1) の t オプションの出力の際に、各行のファイルモ
 	ード文字列 (Ex:rw-rw-rw-) の直後に必ず空白が入ってい

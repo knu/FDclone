@@ -383,8 +383,12 @@ VOID title()
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
 	cprintf2("%-*.*s", eol - cp, eol - cp, cp);
+	if (distributor) {
+		putch2('#');
+		eol++;
+	}
 	cprintf2("%-*.*s", n_column - 32 - (eol - cp),
-		n_column - 32 - (eol - cp), " (c)1995,96 T.Shirai  ");
+		n_column - 32 - (eol - cp), " (c)1995-97 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 	printtime();

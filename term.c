@@ -16,11 +16,20 @@
 #if	MSDOS
 #include <dos.h>
 #include <stdarg.h>
-#ifndef	__GNUC__
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/timeb.h>
-#endif
+# ifdef	__GNUC__
+# include <dpmi.h>
+# include <go32.h>
+# include <sys/farptr.h>
+#  if (DJGPP >= 2)
+#  include <libc/dosio.h>
+#  else
+#  define	_dos_ds		_go32_info_block.selector_for_linear_memory
+#  endif
+# else	/* !__GNUC__ */
+# include <signal.h>
+# include <sys/types.h>
+# include <sys/timeb.h>
+# endif	/* !__GNUC__ */
 extern int initdir();
 #define	TTYNAME		""
 #else	/* !MSDOS */
@@ -187,6 +196,8 @@ char *c_left;
 
 #if	MSDOS
 #ifdef	PC98
+#define	KEYBUFWORKSEG	0x40
+#define	KEYBUFWORKOFF	0x124
 static int nextchar = '\0';
 static u_char specialkey[] = ":=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
 #else
@@ -276,10 +287,18 @@ int notabs()
 int keyflush()
 {
 #ifdef	PC98
-	unsigned short far *keybuf = MK_FP(0x40, 0x124);
+# ifdef	__GNUC__
+	unsigned short keybufp;
+
+	keybufp = _farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF);
+	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF + 2, keybufp);
+	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + KEYBUFWORKOFF + 4, 0);
+# else
+	unsigned short far *keybuf = MK_FP(KEYBUFWORKSEG, KEYBUFWORKOFF);
 
 	keybuf[1] = keybuf[0];
 	keybuf[2] = 0;
+# endif
 #else
 	while (kbhit2(1000000L / SENSEPERSEC)) getch();
 #endif
@@ -1011,7 +1030,7 @@ u_char tbuf[];
 #endif
 
 /*ARGSUSED*/
-int _getkey2(sig)
+int getkey2(sig)
 int sig;
 {
 #ifndef	__GNUC__
@@ -1213,7 +1232,7 @@ int getch2()
 	return((int)ch);
 }
 
-int _getkey2(sig)
+int getkey2(sig)
 int sig;
 {
 	static int count = SENSEPERSEC;

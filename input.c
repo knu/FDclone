@@ -36,6 +36,7 @@ extern char *sys_errlist[];
 #endif
 
 static int trquote();
+static VOID setcursor();
 static int rightchar();
 static int leftchar();
 static VOID insertchar();
@@ -93,7 +94,7 @@ static namelist *selectlist = NULL;
 #endif
 static int tmpfilepos;
 
-int getkey2(sig)
+int Xgetkey(sig)
 int sig;
 {
 	int ch;
@@ -107,7 +108,7 @@ int sig;
 	}
 #endif
 
-	ch = _getkey2(sig);
+	ch = getkey2(sig);
 
 #ifndef	_NOEDITMODE
 	if (!editmode) return(ch);
@@ -175,7 +176,7 @@ int sig;
 					break;
 			}
 		}
-	} while ((!(vimode & 1)) && (ch = _getkey2(sig)));
+	} while ((!(vimode & 1)) && (ch = getkey2(sig)));
 	else if (!strcmp(editmode, "wordstar")) {
 		for (i = 0; i < sizeof(wordstarkey) / sizeof(char); i++) {
 			if (wordstarkey[i] == ESC) continue;
@@ -197,86 +198,86 @@ int cx;
 	else return(str[cx]);
 }
 
-static int rightchar(str, x, cx, len, linemax, max)
-char *str;
-int x, cx, len, linemax, max;
+static VOID setcursor(x, cx, plen, max, linemax)
+int x, cx, plen, max, linemax;
 {
-	int i;
+	int f;
 
-	if (iskanji1(str[cx])) {
+	f = (cx < max) ? 0 : 1;
+	cx -= f;
+	locate(x + (cx + plen) % linemax, LCMDLINE + (cx + plen) / linemax);
+	if (f) putterm(c_right);
+}
+
+static int rightchar(str, x, cx, len, plen, max, linemax)
+char *str;
+int x, cx, len, plen, max, linemax;
+{
+	if (!iskanji1(str[cx]) && str[cx] != QUOTE) {
+		cx++;
+		if (cx < max && (cx + plen) % linemax < 1)
+			setcursor(x, cx, plen, max, linemax);
+		else putterm(c_right);
+	}
+	else {
 		if (cx + 1 >= len) {
 			putterm(t_bell);
 			return(cx);
 		}
 		cx += 2;
-		i = cx % linemax;
-		if (i <= 1 && cx < max) locate(x + i, LCMDLINE + cx / linemax);
+		if (cx < max && (cx + plen) % linemax < 2)
+			setcursor(x, cx, plen, max, linemax);
 		else {
 			putterm(c_right);
 			putterm(c_right);
 		}
-	}
-	else if (str[cx] == QUOTE) {
-		cx += 2;
-		if ((cx % linemax) > 1 || cx >= max) {
-			putterm(c_right);
-			putterm(c_right);
-		}
-		else locate(x + (cx % linemax), LCMDLINE + cx / linemax);
-	}
-	else {
-		if (++cx % linemax || cx >= max) putterm(c_right);
-		else locate(x, LCMDLINE + cx / linemax);
 	}
 	return(cx);
 }
 
 /*ARGSUSED*/
-static int leftchar(str, x, cx, len, linemax, max)
+static int leftchar(str, x, cx, len, plen, max, linemax)
 char *str;
-int x, cx, len, linemax, max;
+int x, cx, len, plen, max, linemax;
 {
-	int i;
-
-	if (onkanji1(str, cx - 2)) {
-		i = cx % linemax;
-		cx -= 2;
-		if (i < 2) locate(x + linemax + i - 2, LCMDLINE + cx / linemax);
+	if (cx < 2 || (!onkanji1(str, cx - 2) && str[cx - 2] != QUOTE)) {
+		if ((cx + plen) % linemax < 1)
+			setcursor(x, cx - 1, plen, max, linemax);
+		else putterm(c_left);
+		cx--;
+	}
+	else {
+		if ((cx + plen) % linemax < 2)
+			setcursor(x, cx - 2, plen, max, linemax);
 		else {
 			putterm(c_left);
 			putterm(c_left);
 		}
-	}
-	else if (cx > 1 && str[cx - 2] == QUOTE) {
 		cx -= 2;
-		if (((cx + 2) % linemax) > 1) {
-			putterm(c_left);
-			putterm(c_left);
-		}
-		else locate(x + (cx % linemax), LCMDLINE + cx / linemax);
-	}
-	else {
-		if (cx-- % linemax) putterm(c_left);
-		else locate(x + linemax - 1, LCMDLINE + cx / linemax);
 	}
 	return(cx);
 }
 
-static VOID insertchar(str, x, cx, len, linemax, ins)
+static VOID insertchar(str, x, cx, len, plen, max, linemax, ins)
 char *str;
-int x, cx, len, linemax, ins;
+int x, cx, len, plen, max, linemax, ins;
 {
 	char dupl[MAXLINESTR + 1];
-	int dy, i, j, l, f1, f2, ptr;
+	int dy, i, j, l, f1, ptr;
+#if	!MSDOS
+	int f2;
+#endif
 
 	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
 	len += ins;
-	dy = cx / linemax;
-	i = (dy + 1) * linemax;
+	dy = (cx + plen) / linemax;
+	i = (dy + 1) * linemax - plen;
+	j = linemax - (cx + plen) % linemax;
+	if (j > ins) j = ins;
 
 #if	!MSDOS
 	if (*c_insert) {
-		for (j = 0; j < ins; j++) putterm(c_insert);
+		while (j--) putterm(c_insert);
 
 		if (i < len) {
 			while (i < len) {
@@ -284,62 +285,64 @@ int x, cx, len, linemax, ins;
 				if (ptr < ins) f1 = 0;
 				else f1 = (onkanji1(dupl, ptr - ins)) ? 1 : 0;
 				f2 = (onkanji1(dupl, ptr)) ? 1 : 0;
-				if (f1) {
-					locate(x + linemax - 1, LCMDLINE + dy);
-					putch2(' ');
-				}
 				if (x + linemax < n_column) {
 					locate(x + linemax, LCMDLINE + dy);
-					for (j = 1; j < ins; j++) putch2(' ');
+					j = n_column - x - linemax;
+					if (j > ins) j = ins;
+					if (f2) j++;
+					if (f1) {
+						putterm(c_right);
+						j--;
+					}
+					while (j--) putch2(' ');
 				}
-				locate(x - 1, LCMDLINE + ++dy);
+				locate(x, LCMDLINE + ++dy);
 				for (j = 0; j < ins; j++) putterm(c_insert);
 				l = ins;
 				if (ptr < ins) {
 					ptr++;
 					locate(x + ins - ptr, LCMDLINE + dy);
-					l = ptr - f2;
+					l = ptr + f2;
 					ptr = 0;
 				}
 				else {
-					ptr -= ins;
-					if (!f1) dupl[ptr] = ' ';
-					if (!f2) l++;
+					ptr -= ins - 1;
+					if (f1) dupl[ptr] = ' ';
+					if (f2) l++;
 				}
 				if (ptr + l > len - cx) l = len - cx - ptr;
 				kanjiputs2(dupl + ptr, l, 0);
 				i += linemax;
 			}
-			locate (x + cx % linemax, LCMDLINE + cx / linemax);
+			setcursor(x, cx, plen, max, linemax);
 		}
 	}
 	else
 #endif	/* !MSDOS */
 	{
-		for (j = 0; j < ins; j++) putch2(' ');
-
-		f2 = cx;
+		while (j--) putch2(' ');
 		j = 0;
 		l = i - cx - ins;
+
 		while (i < len) {
 			ptr = i - 1 - cx;
 			if (ptr < ins) f1 = l = 0;
 			else f1 = (onkanji1(dupl, ptr - ins)) ? 1 : 0;
-			if ((l -= f1) > 0) kanjiputs2(dupl, l, j);
-			if (f1) putch2(' ');
+			if ((l += f1) > 0) kanjiputs2(dupl, l, j);
+			if (!f1) putch2(' ');
 
-			locate(x - 1, LCMDLINE + ++dy);
+			locate(x, LCMDLINE + ++dy);
 			l = linemax;
-			if (ptr < ins) {
+			if (ptr < ins - 1) {
 				putch2(' ');
 				ptr++;
 				locate(x + ins - ptr, LCMDLINE + dy);
-				l -= ptr;
+				l -= ins - ptr;
 				ptr = 0;
 			}
 			else {
-				ptr -= ins;
-				if (!f1) dupl[ptr] = ' ';
+				ptr -= ins - 1;
+				if (f1) dupl[ptr] = ' ';
 			}
 			if (ptr + l > len - ins - cx) l = len - ins - cx - ptr;
 			j = ptr;
@@ -348,15 +351,15 @@ int x, cx, len, linemax, ins;
 
 		l = len - ins - cx - j;
 		if (l > 0) kanjiputs2(dupl, l, j);
-		locate (x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 	}
 
 	for (i = len - ins - 1; i >= cx; i--) str[i + ins] = str[i];
 }
 
-static VOID deletechar(str, x, cx, len, linemax, del)
+static VOID deletechar(str, x, cx, len, plen, max, linemax, del)
 char *str;
-int x, cx, len, linemax, del;
+int x, cx, len, plen, max, linemax, del;
 {
 	char dupl[MAXLINESTR + 1];
 	int dy, i, j, l, f1, ptr;
@@ -366,12 +369,14 @@ int x, cx, len, linemax, del;
 
 	for (i = 0; i < len - cx; i++) dupl[i] = trquote(str, i + cx);
 	len -= del;
-	dy = cx / linemax;
-	i = (dy + 1) * linemax;
+	dy = (cx + plen) / linemax;
+	i = (dy + 1) * linemax - plen;
 
 #if	!MSDOS
 	if (*c_delete) {
-		for (j = 0; j < del; j++) putterm(c_delete);
+		j = linemax - (cx + plen) % linemax;
+		if (j > del) j = del;
+		while (j--) putterm(c_delete);
 
 		if (i < len + del) {
 			while (i < len + del) {
@@ -379,26 +384,26 @@ int x, cx, len, linemax, del;
 				if (ptr >= len - cx) f1 = 0;
 				else f1 = (onkanji1(dupl, ptr + del)) ? 1 : 0;
 				f2 = (onkanji1(dupl, ptr)) ? 1 : 0;
-				j = linemax - del - f2;
+				j = linemax - del + f2;
 				if (j < linemax - (++ptr)) {
 					j = linemax - ptr;
-					l = ptr - f1;
+					l = ptr + f1;
 					ptr = del;
 				}
 				else {
-					l = del + f2 - f1;
-					ptr -= f2;
+					l = del - f2 + f1;
+					ptr += f2;
 				}
 				locate(x + j, LCMDLINE + dy);
 				if (ptr + l > len) l = len - ptr;
 				if (l > 0) kanjiputs2(dupl, l, ptr);
-				if (f1) putch2(' ');
-				locate(x - 1, LCMDLINE + ++dy);
-				for (j = 0; j < del; j++) putterm(c_delete);
 				if (!f1) putch2(' ');
+				locate(x, LCMDLINE + ++dy);
+				for (j = 0; j < del; j++) putterm(c_delete);
+				if (f1) putch2(' ');
 				i += linemax;
 			}
-			locate (x + cx % linemax, LCMDLINE + cx / linemax);
+			setcursor(x, cx, plen, max, linemax);
 		}
 	}
 	else
@@ -406,24 +411,18 @@ int x, cx, len, linemax, del;
 	{
 		j = del;
 		l = i - cx;
+
 		while (i < len + del) {
 			ptr = i - 1 - cx;
 			if (ptr >= len - cx) f1 = 0;
 			else f1 = (onkanji1(dupl, ptr + del)) ? 1 : 0;
-			if ((l -= f1) > 0) kanjiputs2(dupl, l, j);
-			if (f1) putch2(' ');
+			if ((l += f1) > 0) kanjiputs2(dupl, l, j);
+			if (!f1) putch2(' ');
 
-			locate(x - 1, LCMDLINE + ++dy);
+			locate(x, LCMDLINE + ++dy);
 			l = linemax + 1;
-			if (ptr < del) {
-				putch2(' ');
-				ptr = del;
-				l--;
-			}
-			else {
-				ptr += del;
-				if (!f1) dupl[ptr] = ' ';
-			}
+			ptr += del + 1;
+			if (f1) dupl[ptr] = ' ';
 			if (ptr + l > len + del - cx) l = len + del - cx - ptr;
 			j = ptr;
 			i += linemax;
@@ -432,66 +431,75 @@ int x, cx, len, linemax, del;
 		l = len + del - cx - j;
 		if (l > 0) kanjiputs2(dupl, l, j);
 		putterm(l_clear);
-		locate (x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 	}
 
 	for (i = cx; i < len; i++) str[i] = str[i + del];
 }
 
-static VOID truncline(x, cx, len, linemax)
-int x, cx, len, linemax;
+static VOID truncline(x, cx, len, plen, max, linemax)
+int x, cx, len, plen, max, linemax;
 {
 	int dy, i;
 
 	putterm(l_clear);
 
-	dy = cx / linemax;
-	if ((dy + 1) * linemax < len) {
-		for (i = (dy + 1) * linemax; i < len; i += linemax) {
-			locate(x - 1, LCMDLINE + ++dy);
+	dy = (cx + plen) / linemax;
+	i = (dy + 1) * linemax - plen;
+	if (i < len) {
+		while (i < len) {
+			locate(x, LCMDLINE + ++dy);
 			putterm(l_clear);
+			i += linemax;
 		}
-		locate (x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 	}
 }
 
-static VOID displaystr(str, x, cx, len, max, linemax)
+static VOID displaystr(str, x, cx, len, plen, max, linemax)
 char *str;
-int x, cx, len, max, linemax;
+int x, cx, len, plen, max, linemax;
 {
 	char *dupl;
 	int i, y, width;
 
-	locate(x, LCMDLINE);
+	locate(x + plen, LCMDLINE);
 	str[len] = '\0';
 	dupl = (char *)malloc2(strlen(str) + 1);
 	for (i = 0; str[i]; i++) dupl[i] = trquote(str, i);
 	dupl[i] = '\0';
-	width = linemax;
-	for (i = 0, y = 1; i + linemax < len; i += width, y++) {
-		width = linemax;
-		if (onkanji1(dupl, i + linemax - 1)) width--;
+	width = linemax - plen;
+	for (i = 0, y = 1; i + width < len; y++) {
 		putterm(l_clear);
 		if (stable_standout) putterm(end_standout);
-		kanjiputs2(dupl, width, i);
-		locate(x - 1, LCMDLINE + y);
-		if (width == linemax) putch2(' ');
+		if (onkanji1(dupl, i + width - 1)) {
+			kanjiputs2(dupl, ++width, i);
+			locate(x, LCMDLINE + y);
+			putch2(' ');
+		}
+		else {
+			kanjiputs2(dupl, width, i);
+			putch2(' ');
+			locate(x, LCMDLINE + y);
+		}
+		i += width;
+		width = linemax;
 	}
 	putterm(l_clear);
 	if (stable_standout) putterm(end_standout);
 	kanjiputs(dupl + i);
-	for (; y * linemax < max; y++) {
-		locate(x - 1, LCMDLINE + y);
+	for (; y * linemax - plen < max; y++) {
+		locate(x, LCMDLINE + y);
 		putterm(l_clear);
 	}
-	locate(x + cx % linemax, LCMDLINE + cx / linemax);
+	setcursor(x, cx, plen, max, linemax);
 	tflush();
 	free(dupl);
 }
 
-static int insertstr(str, x, cx, len, linemax, max, insstr, ins)
+static int insertstr(str, x, cx, len, plen, max, linemax, insstr, ins)
 char *str;
-int x, cx, len, linemax, max;
+int x, cx, len, plen, max, linemax;
 char *insstr;
 int ins;
 {
@@ -500,19 +508,20 @@ int ins;
 
 	if (len + ins > max) ins = max - len;
 	if (onkanji1(insstr, ins - 1)) ins--;
-	insertchar(str, x, cx, len, linemax, ins);
+	if (ins <= 0) return(0);
+	insertchar(str, x, cx, len, plen, max, linemax, ins);
 	for (i = 0; i < ins; i++) dupl[i] = str[cx + i] = insstr[i];
 
-	dy = cx / linemax;
-	i = (dy + 1) * linemax - cx;
+	dy = (cx + plen) / linemax;
+	i = (dy + 1) * linemax - plen - cx;
 	len = ins;
 	ptr = 0;
 	while (i < len) {
 		f = (onkanji1(dupl, i - 1)) ? 1 : 0;
-		kanjiputs2(dupl, i - ptr - f, ptr);
-		locate(x - 1, LCMDLINE + ++dy);
-		if (!f) dupl[i - 1] = ' ';
-		ptr = i - 1;
+		kanjiputs2(dupl, i - ptr + f, ptr);
+		locate(x, LCMDLINE + ++dy);
+		if (f) dupl[i] = ' ';
+		ptr = i;
 		i += linemax;
 	}
 	if (len > ptr) kanjiputs2(dupl, len - ptr, ptr);
@@ -578,16 +587,16 @@ int max;
 	columns = dupcolumns;
 }
 
-static int completestr(str, x, cx, len, linemax, max, comline, cont)
+static int completestr(str, x, cx, len, plen, max, linemax, comline, cont)
 char *str;
-int x, cx, len, linemax, max, comline, cont;
+int x, cx, len, plen, max, linemax, comline, cont;
 {
 	char *cp1, *cp2, *match;
 	int i, ins;
 
 	if (selectlist && cont > 0) {
 		selectfile(NULL, tmpfilepos++);
-		locate(x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 		return(0);
 	}
 
@@ -640,30 +649,30 @@ int x, cx, len, linemax, max, comline, cont;
 			return(0);
 		}
 		selectfile(match, i);
-		locate(x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 		free(match);
 		free(cp1);
 		return(0);
 	}
 
 	cp2 = cp1 + (int)strlen(cp1) - ins;
-	insertstr(str, x, cx, len, linemax, max, cp2, ins);
+	i = insertstr(str, x, cx, len, plen, max, linemax, cp2, ins);
 
 	free(cp1);
-	return(ins);
+	return(i);
 }
 #endif	/* !_NOCOMPLETE */
 
-static int _inputstr_up(str, x, cx, lenp, max, linemax, histnop, h, tmp)
+static int _inputstr_up(str, x, cx, lenp, plen, max, linemax, histnop, h, tmp)
 char *str;
-int x, cx, *lenp, max, linemax, *histnop, h;
+int x, cx, *lenp, plen, max, linemax, *histnop, h;
 char **tmp;
 {
 	keyflush();
 #ifndef	_NOCOMPLETE
 	if (selectlist) {
 		selectfile(NULL, tmpfilepos--);
-		locate(x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 	}
 	else
 #endif
@@ -680,7 +689,7 @@ char **tmp;
 		strcpy(str, history[h][*histnop]);
 		*lenp = strlen(str);
 		cx = *lenp;
-		displaystr(str, x, cx, *lenp, max, linemax);
+		displaystr(str, x, cx, *lenp, plen, max, linemax);
 		(*histnop)++;
 	}
 	else {
@@ -694,16 +703,16 @@ char **tmp;
 	return(cx);
 }
 
-static int _inputstr_down(str, x, cx, lenp, max, linemax, histnop, h, tmp)
+static int _inputstr_down(str, x, cx, lenp, plen, max, linemax, histnop, h, tmp)
 char *str;
-int x, cx, *lenp, max, linemax, *histnop, h;
+int x, cx, *lenp, plen, max, linemax, *histnop, h;
 char **tmp;
 {
 	keyflush();
 #ifndef	_NOCOMPLETE
 	if (selectlist) {
 		selectfile(NULL, tmpfilepos++);
-		locate(x + cx % linemax, LCMDLINE + cx / linemax);
+		setcursor(x, cx, plen, max, linemax);
 	}
 	else
 #endif
@@ -720,7 +729,7 @@ char **tmp;
 		}
 		*lenp = strlen(str);
 		cx = *lenp;
-		displaystr(str, x, cx, *lenp, max, linemax);
+		displaystr(str, x, cx, *lenp, plen, max, linemax);
 	}
 	else {
 		cx += linemax;
@@ -733,23 +742,23 @@ char **tmp;
 	return(cx);
 }
 
-static int _inputstr_input(str, x, cx, lenp, max, linemax, ch)
+static int _inputstr_input(str, x, cx, lenp, plen, max, linemax, ch)
 char *str;
-int x, cx, *lenp, max, linemax, ch;
+int x, cx, *lenp, plen, max, linemax, ch;
 {
 #if	!MSDOS && !defined (_NOKANJICONV)
 	char tmpkanji[3];
 #endif
-	int i, ch2;
+	int ch2;
 
 	if (isinkanji1(ch)) {
-		ch2 = _getkey2(0);
+		ch2 = getkey2(0);
 		if (*lenp + 1 >= max) {
 			putterm(t_bell);
 			keyflush();
 			return(cx);
 		}
-		insertchar(str, x, cx, *lenp, linemax, 2);
+		insertchar(str, x, cx, *lenp, plen, max, linemax, 2);
 
 #if	MSDOS || defined (_NOKANJICONV)
 		str[cx] = ch;
@@ -762,10 +771,7 @@ int x, cx, *lenp, max, linemax, ch;
 #endif
 		*lenp += 2;
 		cx += 2;
-		i = (cx % linemax);
-		if (i == 1) locate(x - 1, LCMDLINE + cx / linemax);
 		kanjiputs2(str, 2, cx - 2);
-		if (!i && *lenp < max) locate(x, LCMDLINE + cx / linemax);
 	}
 	else {
 		if (ch < ' ' || ch >= K_MIN || *lenp >= max) {
@@ -773,26 +779,29 @@ int x, cx, *lenp, max, linemax, ch;
 			keyflush();
 			return(cx);
 		}
-		insertchar(str, x, cx, *lenp, linemax, 1);
+		insertchar(str, x, cx, *lenp, plen, max, linemax, 1);
 		(*lenp)++;
 		str[cx++] = ch;
 		putch2(ch);
-		if (!(cx % linemax) && *lenp < max)
-			locate(x, LCMDLINE + cx / linemax);
 	}
+	if (!((cx + plen) % linemax) && cx < max)
+		setcursor(x, cx, plen, max, linemax);
 	return(cx);
 }
 
-static int _inputstr(str, x, max, linemax, def, comline, h)
+static int _inputstr(str, x, plen, max, linemax, def, comline, h)
 char *str;
-int x, max, linemax, def, comline, h;
+int x, plen, max, linemax, def, comline, h;
 {
-	char *cp, *tmphist;
+	char *tmphist;
 	int len, cx, i, hist, ch, ch2, quote;
+#if	!MSDOS
+	char *cp;
+#endif
 
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	tmpfilepos = -1;
 	cx = len = strlen(str);
@@ -800,7 +809,7 @@ int x, max, linemax, def, comline, h;
 		while (def > len) str[len++] = ' ';
 		cx = def;
 	}
-	displaystr(str, x, cx, len, max, linemax);
+	displaystr(str, x, cx, len, plen, max, linemax);
 	keyflush();
 	hist = 0;
 	tmphist = NULL;
@@ -810,28 +819,41 @@ int x, max, linemax, def, comline, h;
 	do {
 		tflush();
 		ch2 = ch;
-		if (!quote) ch = getkey2(0);
+		if (!quote) ch = Xgetkey(0);
 		else {
-			i = ch = _getkey2(0);
+			i = ch = getkey2(0);
 			quote = 0;
+#if	MSDOS
+			switch (i) {
+				case K_BS:
+					i = C_BS;
+					break;
+				case K_DC:
+					i = C_DEL;
+					break;
+				default:
+					break;
+			}
+#else
 			if ((cp = getkeyseq(i)) && *cp && !*(cp + 1)) i = *cp;
+#endif
 			if (i < ' ' || i == C_DEL) {
 				keyflush();
 				if (len + 1 >= max) {
 					putterm(t_bell);
 					continue;
 				}
-				insertchar(str, x, cx, len, linemax, 2);
+				insertchar(str, x, cx, len, plen,
+					max, linemax, 2);
 				len += 2;
 				str[cx++] = QUOTE;
 				putch2('^');
-				if (!(cx % linemax) && len - 1 < max)
-					locate(x, LCMDLINE
-						+ cx / linemax);
+				if (!((cx + plen) % linemax) && cx < max)
+					setcursor(x, cx, plen, max, linemax);
 				str[cx++] = i;
 				putch2((i + '@') & 0x7f);
-				if (!(cx % linemax) && len < max)
-					locate(x, LCMDLINE + cx / linemax);
+				if (!((cx + plen) % linemax) && cx < max)
+					setcursor(x, cx, plen, max, linemax);
 				continue;
 			}
 		}
@@ -843,14 +865,13 @@ int x, max, linemax, def, comline, h;
 					i = tmpfilepos;
 					tmpfilepos += FILEPERLOW;
 					selectfile(NULL, i);
-					locate(x + cx % linemax,
-						LCMDLINE + cx / linemax);
+					setcursor(x, cx, plen, max, linemax);
 				}
 				else
 #endif
 				if (cx >= len) putterm(t_bell);
 				else cx = rightchar(str, x, cx,
-					len, linemax, max);
+					len, plen, max, linemax);
 				break;
 			case K_LEFT:
 				keyflush();
@@ -859,14 +880,13 @@ int x, max, linemax, def, comline, h;
 					i = tmpfilepos;
 					tmpfilepos -= FILEPERLOW;
 					selectfile(NULL, i);
-					locate(x + cx % linemax,
-						LCMDLINE + cx / linemax);
+					setcursor(x, cx, plen, max, linemax);
 				}
 				else
 #endif
 				if (cx <= 0) putterm(t_bell);
 				else cx = leftchar(str, x, cx,
-					len, linemax, max);
+					len, plen, max, linemax);
 				break;
 			case K_BEG:
 				keyflush();
@@ -876,13 +896,7 @@ int x, max, linemax, def, comline, h;
 			case K_EOL:
 				keyflush();
 				cx = len;
-				if (cx < max) locate(x + cx % linemax,
-					LCMDLINE + cx / linemax);
-				else {
-					locate(x + cx % linemax + linemax - 1,
-						LCMDLINE + cx / linemax - 1);
-					putterm(c_right);
-				}
+				setcursor(x, cx, plen, max, linemax);
 				break;
 			case K_BS:
 				keyflush();
@@ -890,7 +904,8 @@ int x, max, linemax, def, comline, h;
 					putterm(t_bell);
 					break;
 				}
-				cx = leftchar(str, x, cx, len, linemax, max);
+				cx = leftchar(str, x, cx,
+					len, plen, max, linemax);
 			case K_DC:
 				keyflush();
 				if (cx >= len) {
@@ -906,14 +921,16 @@ int x, max, linemax, def, comline, h;
 						break;
 					}
 				}
-				deletechar(str, x, cx, len, linemax, i);
+				deletechar(str, x, cx, len, plen,
+					max, linemax, i);
 				len -= i;
 				break;
 			case K_DL:
 				keyflush();
 				if (cx >= len) putterm(t_bell);
 				else {
-					truncline(x, cx, len, linemax);
+					truncline(x, cx, len, plen,
+						max, linemax);
 					len = cx;
 				}
 				break;
@@ -923,14 +940,14 @@ int x, max, linemax, def, comline, h;
 					locate(x, LCMDLINE + i);
 					putterm(l_clear);
 				}
-				displaystr(str, x, cx, len, max, linemax);
+				displaystr(str, x, cx, len, plen, max, linemax);
 				break;
 			case K_UP:
-				cx = _inputstr_up(str, x, cx, &len,
+				cx = _inputstr_up(str, x, cx, &len, plen,
 					max, linemax, &hist, h, &tmphist);
 				break;
 			case K_DOWN:
-				cx = _inputstr_down(str, x, cx, &len,
+				cx = _inputstr_down(str, x, cx, &len, plen,
 					max, linemax, &hist, h, &tmphist);
 				break;
 			case K_IL:
@@ -939,13 +956,17 @@ int x, max, linemax, def, comline, h;
 				break;
 			case K_ENTER:
 				keyflush();
-				i = strlen(curfilename);
-				insertstr(str, x, cx,
-					len, linemax, max, curfilename, i);
+				i = insertstr(str, x, cx, len, plen,
+					max, linemax, curfilename,
+					strlen(curfilename));
+				if (!i) {
+					putterm(t_bell);
+					break;
+				}
 				cx += i;
 				len += i;
-				if (!(cx % linemax) && len < max)
-					locate(x, LCMDLINE + cx / linemax);
+				if (!((cx + plen) % linemax) && cx < max)
+					setcursor(x, cx, plen, max, linemax);
 				break;
 #ifndef	_NOCOMPLETE
 			case '\t':
@@ -954,24 +975,29 @@ int x, max, linemax, def, comline, h;
 					putterm(t_bell);
 					break;
 				}
-				i = completestr(str, x, cx, len, linemax, max,
-					comline, (ch2 == ch) ? 1 : 0);
+				i = completestr(str, x, cx, len, plen,
+					max, linemax, comline,
+					(ch2 == ch) ? 1 : 0);
+				if (!i) {
+					putterm(t_bell);
+					break;
+				}
 				cx += i;
 				len += i;
-				if (!(cx % linemax) && len < max)
-					locate(x, LCMDLINE + cx / linemax);
+				if (!((cx + plen) % linemax) && cx < max)
+					setcursor(x, cx, plen, max, linemax);
 				break;
 #endif
 			case CR:
 				keyflush();
 #ifndef	_NOCOMPLETE
 				if (!selectlist) break;
-				i = completestr(str, x, cx, len, linemax, max,
-					0, -1);
+				i = completestr(str, x, cx, len, plen,
+					max, linemax, 0, -1);
 				cx += i;
 				len += i;
-				if (!(cx % linemax) && len < max)
-					locate(x, LCMDLINE + cx / linemax);
+				if (!((cx + plen) % linemax) && cx < max)
+					setcursor(x, cx, plen, max, linemax);
 				ch = '\0';
 #endif
 				break;
@@ -979,7 +1005,7 @@ int x, max, linemax, def, comline, h;
 				keyflush();
 				break;
 			default:
-				cx = _inputstr_input(str, x, cx, &len,
+				cx = _inputstr_input(str, x, cx, &len, plen,
 					max, linemax, ch);
 				break;
 		}
@@ -993,14 +1019,14 @@ int x, max, linemax, def, comline, h;
 			else
 #endif
 			rewritefile(0);
-			locate(x + cx % linemax, LCMDLINE + cx / linemax);
+			setcursor(x, cx, plen, max, linemax);
 		}
 #endif	/* !_NOCOMPLETE */
 	} while (ch != ESC && ch != CR);
 
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	if (tmphist) free(tmphist);
 
@@ -1031,14 +1057,13 @@ int h;
 	putterm(end_standout);
 	tflush();
 
-	len = strlen(prompt);
+	len = strlen(prompt) + 1;
 	if (def) strcpy(input, def);
 	else *input = '\0';
-	i = (n_column - len - 1) * WCMDLINE;
+	i = n_column - 1 - len + (n_column - 1) * (WCMDLINE - 1);
 	if (LCMDLINE + WCMDLINE - n_line >= 0) i -= n_column - n_lastcolumn;
 	if (i > MAXLINESTR) i = MAXLINESTR;
-	ch = _inputstr(input, len + 1, i, n_column - len - 1,
-		ptr, h == 0, h);
+	ch = _inputstr(input, 0, len, i, n_column - 1, ptr, h == 0, h);
 	for (i = 0; i < WCMDLINE; i++) {
 		locate(0, LCMDLINE + i);
 		putterm(l_clear);
@@ -1131,7 +1156,7 @@ char *fmt;
 #endif	/* !NOVSPRINTF */
 #endif	/* !MSDOS */
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	truncstr(buf);
 
@@ -1142,7 +1167,7 @@ char *fmt;
 		keyflush();
 		locate(len + 1 + (1 - ret) * 2, LMESLINE);
 		tflush();
-		switch (ch = getkey2(0)) {
+		switch (ch = Xgetkey(0)) {
 			case 'y':
 			case 'Y':
 				ret = 1;
@@ -1171,7 +1196,7 @@ char *fmt;
 
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	locate(0, LMESLINE);
 	putterm(l_clear);
@@ -1216,7 +1241,7 @@ char *str;
 	tflush();
 
 	keyflush();
-	_getkey2(SIGALRM);
+	getkey2(SIGALRM);
 	subwindow = 0;
 
 	locate(0, LMESLINE);
@@ -1257,7 +1282,7 @@ int val[];
 
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	xx[0] = 0;
 	for (i = 0; i < max; i++) {
@@ -1272,7 +1297,7 @@ int val[];
 		old = new;
 
 		keyflush();
-		switch (ch = getkey2(SIGALRM)) {
+		switch (ch = Xgetkey(SIGALRM)) {
 			case K_RIGHT:
 				if (old < max - 1) new = old + 1;
 				else new = 0;
@@ -1306,7 +1331,7 @@ int val[];
 
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	if (stable_standout) {
 		locate(x + 1, LMESLINE);

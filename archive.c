@@ -232,7 +232,10 @@ int max;
 	tmp -> st_mode = 0;
 	getfield(buf, line, skip, list, F_NAME);
 	if (!*buf) return(-1);
-	if (buf[(i = (int)strlen(buf) - 1)] == '/') {
+#if	MSDOS
+	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[j] = _SC_;
+#endif
+	if (buf[(i = (int)strlen(buf) - 1)] == _SC_) {
 		if (i > 0) buf[i] = '\0';
 		tmp -> st_mode |= S_IFDIR;
 	}
@@ -347,7 +350,9 @@ int max;
 	int i, len;
 
 	cp = namep -> name;
-	while (tmp = strchr(cp, '/')) {
+	while (tmp = strchr(cp, _SC_)) {
+		while (*(tmp + 1) == _SC_) tmp++;
+		if (!*(tmp + 1)) break;
 		len = tmp - (namep -> name);
 		for (i = 0; i < max; i++) {
 			if (isdir(&list[i]) && len == strlen(list[i].name)
@@ -489,7 +494,7 @@ int max;
 {
 	reg_t *re;
 	u_char fstat;
-	char *cp, buf[MAXNAMLEN + 1];
+	char *cp, *tmp, buf[MAXNAMLEN + 1];
 	int ch, i, no, len, old;
 
 	if (!findpattern) re = NULL;
@@ -511,7 +516,8 @@ int max;
 			memcpy(&arcflist[0], &filelist[i], sizeof(namelist));
 			arcflist[0].name = filelist[0].name;
 		}
-		else if (!strchr(cp, '/') && (!re || regexp_exec(re, cp))) {
+		else if ((!(tmp = strchr(cp, _SC_)) || !*(tmp + 1))
+		&& (!re || regexp_exec(re, cp))) {
 			memcpy(&arcflist[maxarcf], &filelist[i],
 				sizeof(namelist));
 			arcflist[maxarcf].name = cp;
@@ -543,11 +549,11 @@ int max;
 		locate(0, 0);
 		tflush();
 #ifdef	_NOEDITMODE
-		ch = getkey2(SIGALRM);
+		ch = Xgetkey(SIGALRM);
 #else
-		getkey2(-1);
-		ch = getkey2(SIGALRM);
-		getkey2(-1);
+		Xgetkey(-1);
+		ch = Xgetkey(SIGALRM);
+		Xgetkey(-1);
 #endif
 
 		old = filepos;
@@ -597,7 +603,11 @@ int max;
 	}
 	else if (!*archivedir) no = -1;
 	else {
-		if (cp = strrchr(archivedir, _SC_)) strcpy(file, cp + 1);
+		cp = archivedir + (int)strlen(archivedir) - 1;
+		while (cp > archivedir && *cp == _SC_) cp--;
+		for (cp--; cp >= archivedir; cp--)
+			if (*cp == _SC_) break;
+		if (cp >= archivedir) strcpy(file, cp + 1);
 		else {
 			strcpy(file, archivedir);
 			cp = archivedir;
@@ -725,7 +735,7 @@ int max;
 		}
 		else {
 			i = arcflist[filepos].ent;
-			if (cp = strrchr(filelist[i].name, '/')) cp++;
+			if (cp = strrchr(filelist[i].name, _SC_)) cp++;
 			else cp = filelist[i].name;
 			arcflist[filepos].name = cp;
 		}
@@ -805,6 +815,7 @@ int tr;
 		if (!dir) return(0);
 		strcpy(path, (*dir) ? dir : ".");
 		free(dir);
+		dir = NULL;
 	}
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	if (dospath(path, NULL)) {
@@ -818,7 +829,7 @@ int tr;
 		return(0);
 	}
 #endif
-	if (preparedir(path) < 0 || _chdir2(path) < 0) {
+	if ((!dir && preparedir(path) < 0) || _chdir2(path) < 0) {
 		warning(-1, path);
 		return(0);
 	}

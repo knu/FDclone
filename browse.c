@@ -788,11 +788,11 @@ char *file, *def;
 		locate(0, 0);
 		tflush();
 #ifdef	_NOEDITMODE
-		ch = getkey2(SIGALRM);
+		ch = Xgetkey(SIGALRM);
 #else
-		getkey2(-1);
-		ch = getkey2(SIGALRM);
-		getkey2(-1);
+		Xgetkey(-1);
+		ch = Xgetkey(SIGALRM);
+		Xgetkey(-1);
 #endif
 
 		old = filepos;

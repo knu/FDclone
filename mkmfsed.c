@@ -37,7 +37,11 @@ char *argv[];
 	printf("s:__LANGDIR__::\n");
 
 #ifdef	BSDINSTALL
+# ifdef	BSDINSTCMD
+	printf("s:__INSTALL__:%s -c:\n", BSDINSTCMD);
+# else
 	printf("s:__INSTALL__:install -c:\n");
+# endif
 	printf("s:__INSTSTRIP__:-s:\n");
 #else
 	printf("s:__INSTALL__:cp -p:\n");

@@ -801,7 +801,8 @@ time_t t;
 #endif
 	struct tm tmbuf;
 	FILE *fp;
-	long i, tz, tmp, leap, nleap, ntime, ntype, nchar;
+	time_t tmp;
+	long i, tz, leap, nleap, ntime, ntype, nchar;
 	char *cp, buf[MAXPATHLEN + 1];
 	u_char c;
 
@@ -838,7 +839,7 @@ time_t t;
 	nchar = char2long(head.tzh_charcnt);
 
 	for (i = 0; i < ntime; i++) {
-		if (fread(buf, sizeof(char), 4, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 4) {
 			fclose(fp);
 			return(tz);
 		}
@@ -859,7 +860,7 @@ time_t t;
 	i *= sizeof(char) * (4 + 1 + 1);
 	i += sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1);
 	if (fseek(fp, i, 0) < 0
-	|| fread(buf, sizeof(char), 4, fp) != 1) {
+	|| fread(buf, sizeof(char), 4, fp) != 4) {
 		fclose(fp);
 		return(tz);
 	}
@@ -875,13 +876,13 @@ time_t t;
 	}
 	leap = 0;
 	for (i = 0; i < nleap; i++) {
-		if (fread(buf, sizeof(char), 4, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 4) {
 			fclose(fp);
 			return(tz);
 		}
 		tmp = char2long(buf);
 		if (tmcmp(&tmbuf, localtime(&tmp)) <= 0) break;
-		if (fread(buf, sizeof(char), 4, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 4) {
 			fclose(fp);
 			return(tz);
 		}

@@ -1,5 +1,5 @@
 /*
- *	rockridge.c
+ *	rockridg.c
  *
  *	ISO-9660 RockRidge Format Filter
  */

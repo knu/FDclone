@@ -53,7 +53,7 @@ OBJ3	= kanji.o file.o apply.o archive.o \
 	tree.o command.o browse.o
 
 LDFLAGS	= -lpc  
-CFLAGS	= -DFD -DDOSV -DDEFRUNCOM='"'$(DOSRC)'"' -O
+CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
 
 .SUFFIXES: .h .c .o .exe
 

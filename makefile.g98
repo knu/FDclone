@@ -19,7 +19,7 @@ SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
 	unixdisk.c unixemu.c \
 	rockridg.c builtin.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
-	kanjicnv.c mkfuncno.c expfunc.c
+	kanjicnv.c mkfuncno.c expfunc.c functabl.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
@@ -34,9 +34,9 @@ ARGS	= object.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
-	makefile.gpc makefile.lpc \
-	makefile.dpc makefile.dpc \
-	makefile.g98 makefile.l98 \
+	makefile.lpc makefile.l98 \
+	makefile.dpc makefile.d98 \
+	makefile.gpc makefile.g98 \
 	config.hin mkmfsed.c mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
@@ -106,8 +106,8 @@ kanjicnv.exe: kanjicnv.c
 ############################################################
 # function list using module
 
-funcno.h: mkfuncno.exe functabl.h fd.h config.h
-	-$(CPP) -DCPP functabl.h | .\\mkfuncno.exe - $@
+funcno.h: mkfuncno.exe functabl.c functabl.h fd.h config.h
+	-$(CPP) functabl.c | .\\mkfuncno.exe - $@
 
 mkfuncno.exe: mkfuncno.c
 	$(CC) $(CFLAGS) -o $@ mkfuncno.c

@@ -88,7 +88,7 @@ cat ./config.hin
 for i in TARUSESPACE CPP7BIT TERMCAPLIB REGEXPLIB EXTENDLIB \
 NOVOID NOUID_T DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE \
 NOUNISTDH NOSTDLIBH NOTZFILEH USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
-USETERMIO USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
+USETERMIO USETERMIOS USEDIRECT SYSVDIRENT NODNAMLEN HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
@@ -96,7 +96,7 @@ USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT NOVSPRINTF \
-USEUTIME USEGETWD USETIMELOCAL USEMKTIME SIGARGINT
+USEUTIME USEGETWD USETIMELOCAL USEMKTIME USEUNAME SIGARGINT
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -109,12 +109,24 @@ echo " */"
 echo
 
 
-if [ "$LANG" = "ja_JP.EUC" ]; then
+if [ " $LANG" = " ja_JP.EUC" ]; then
+	echo "#ifndef	CODEEUC"
 	echo "#define	CODEEUC"
-elif [ "$LANG" = "ja_JP.SJIS" ]; then
+	echo "#endif"
+	if [ -d /usr/man/$LANG ]; then
+		echo "#ifndef	USEMANLANG"
+		echo "#define	USEMANLANG"
+		echo "#endif"
+	fi
+elif [ " $LANG" = " ja_JP.SJIS" ]; then
 	echo "#ifdef	CODEEUC"
 	echo "#undef	CODEEUC"
 	echo "#endif"
+	if [ -d /usr/man/$LANG ]; then
+		echo "#ifndef	USEMANLANG"
+		echo "#define	USEMANLANG"
+		echo "#endif"
+	fi
 fi
 
 echo "Checking for tar(1)..." 1>&2
@@ -215,7 +227,11 @@ if inheader 'struct.*[^a-zA-Z_]tm[^a-zA-Z_]' "sys/types sys/time time" \
 fi
 if noheader sgtty \
 || inheader 'TIOCFLUSH' sgtty "TIOCFLUSH"; then
-	echo "#define	USETERMIO"
+	if noheader termio; then
+		echo "#define	USETERMIOS"
+	else
+		echo "#define	USETERMIO"
+	fi
 fi
 if noheader dirent; then
 	echo "#define	USEDIRECT"
@@ -334,6 +350,9 @@ if isexist "timelocal(0)" time; then
 fi
 if isexist "mktime(0)" time; then
 	echo "#define	USEMKTIME"
+fi
+if isexist "uname(0)" sys/utsname; then
+	echo "#define	USEUNAME"
 fi
 if inheader 'int.*[^a-zA-Z_]signal' signal; then
 	echo "#define	SIGARGINT"

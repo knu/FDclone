@@ -53,6 +53,7 @@ fd.cat		man ページ用 プレーンテキスト (JIS 版)
 mkmfsed.c	メイクファイル加工用の sed スクリプト生成プログラム
 kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
+functabl.c	functabl.h を cpp に通すためのダミーファイル
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
 mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
@@ -118,6 +119,8 @@ _fdrc.dif	.fdrc に関する 1.02 からの変更点
 例えば、無断で FDclone に関するパテント申請を行なうといった
 ことは、フリーソフトウェアの理念に反する行為となるので、一切
 これを禁止させて頂きます。
+　また、CD-ROM や各種ネットワークにおける実行バイナリの頒布
+については、別途個別にご相談下さい。
 
 
 --

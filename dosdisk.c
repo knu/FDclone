@@ -303,10 +303,10 @@ time_t t;
 #endif
 	struct tm tmbuf;
 	FILE *fp;
-	long tz, tmp, leap, nleap, ntime, ntype, nchar;
+	time_t tmp;
+	long i, tz, leap, nleap, ntime, ntype, nchar;
 	char *cp, buf[MAXPATHLEN + 1];
 	u_char c;
-	int i;
 
 	memcpy(&tmbuf, tm, sizeof(struct tm));
 
@@ -341,7 +341,7 @@ time_t t;
 	nchar = char2long(head.tzh_charcnt);
 
 	for (i = 0; i < ntime; i++) {
-		if (fread(buf, sizeof(char), 4, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 4) {
 			fclose(fp);
 			return(tz);
 		}
@@ -362,7 +362,7 @@ time_t t;
 	i *= sizeof(char) * (4 + 1 + 1);
 	i += sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1);
 	if (fseek(fp, i, 0) < 0
-	|| fread(buf, sizeof(char), 4, fp) != 1) {
+	|| fread(buf, sizeof(char), 4, fp) != 4) {
 		fclose(fp);
 		return(tz);
 	}
@@ -378,13 +378,13 @@ time_t t;
 	}
 	leap = 0;
 	for (i = 0; i < nleap; i++) {
-		if (fread(buf, sizeof(char), 4, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 4) {
 			fclose(fp);
 			return(tz);
 		}
 		tmp = char2long(buf);
 		if (tmcmp(&tmbuf, localtime(&tmp)) <= 0) break;
-		if (fread(buf, sizeof(char), 4, fp) != 1) {
+		if (fread(buf, sizeof(char), 4, fp) != 4) {
 			fclose(fp);
 			return(tz);
 		}
@@ -1262,11 +1262,13 @@ time_t clock;
 	struct timeval t_val;
 	struct timezone tz;
 	struct tm *tm;
+	time_t tmp;
 	int d, t;
 
 	if (clock < 0) gettimeofday(&t_val, &tz);
 	else t_val.tv_sec = clock;
-	tm = localtime(&(t_val.tv_sec));
+	tmp = (time_t)(t_val.tv_sec);
+	tm = localtime(&tmp);
 	d = (((tm -> tm_year - 80) & 0x7f) << 9)
 		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
 		+ (tm -> tm_mday & 0x1f);

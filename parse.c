@@ -201,7 +201,7 @@ char *path, *delim;
 	for (cp = path; cp && *cp; cp = next) {
 		if ((next = strtkchr(cp, '\'', 0))
 		|| (next = strtkbrk(cp, delim, 0))) {
-			tmp = _evalpath(cp, next);
+			tmp = _evalpath(cp, next, 1);
 			cp = next;
 			if (*next != '\'')
 				while (*(++next) && strchr(delim, *next));
@@ -210,7 +210,7 @@ char *path, *delim;
 		}
 		else {
 			next = cp + strlen(cp);
-			tmp = _evalpath(cp, next);
+			tmp = _evalpath(cp, next, 1);
 			if (!epath) {
 				epath = tmp;
 				break;

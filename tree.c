@@ -514,7 +514,7 @@ treelist *list, **lpp;
 
 	olp = *lpp;
 
-	switch (ch = getkey2(SIGALRM)) {
+	switch (ch = Xgetkey(SIGALRM)) {
 		case K_UP:
 			lptmp = treeup(path, list);
 			if (lptmp) *lpp = lptmp;
@@ -753,7 +753,7 @@ int cleanup, *ddp;
 
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	treepath = strdup2(fullpath);
 	do {
@@ -776,7 +776,7 @@ int cleanup, *ddp;
 	}
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	return(path);
 }

@@ -69,7 +69,7 @@ static int printdrive();
 static int setuserfunc();
 #if	!MSDOS && !defined (_NOKEYMAP)
 static int setkeymap();
-static int getkey();
+static int keytest();
 #endif
 static int exportenv();
 static int dochdir();
@@ -97,7 +97,7 @@ static builtintable builtinlist[] = {
 	{setuserfunc, "function"},
 #if	!MSDOS && !defined (_NOKEYMAP)
 	{setkeymap, "keymap"},
-	{getkey, "getkey"},
+	{keytest, "getkey"},
 #endif
 	{exportenv, "export"},
 	{dochdir, "chdir"},
@@ -1080,7 +1080,7 @@ int comline;
 }
 
 /*ARGSUSED*/
-static int getkey(argc, argv, comline)
+static int keytest(argc, argv, comline)
 int argc;
 char *argv[];
 int comline;

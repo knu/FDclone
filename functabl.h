@@ -1,12 +1,8 @@
 /*
- *	functable.h
+ *	functabl.h
  *
  *	Function Status Table
  */
-
-#ifdef	CPP
-#include "fd.h"
-#endif
 
 functable funclist[] = {
 	{cur_up,	"CUR_UP",	CUP_H,	ARCH},
@@ -80,7 +76,7 @@ functable funclist[] = {
 #endif
 	{search_forw,	"SEARCH_FORW",	SEAF_H,	ARCH},
 	{search_back,	"SEARCH_BACK",	SEAB_H,	ARCH},
-	{help_message,	"HELP_MESSAGE",	HELP_H,	LISTUP | ARCH | NO_FILE},
+	{help_message,	"HELP_MESSAGE",	HELP_H,	RELIST | ARCH | NO_FILE},
 	{quit_system,	"QUIT_SYSTEM",	QUIT_H,	KILLSTK | ARCH | NO_FILE},
 	{warning_bell,	"WARNING_BELL",	NULL_H,	ARCH | NO_FILE},
 	{no_operation,	"NO_OPERATION",	NULL_H,	ARCH | NO_FILE}

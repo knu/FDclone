@@ -164,7 +164,7 @@ extern char *getgrgid2();
 extern time_t timelocal2();
 
 /* input.c */
-extern int getkey2();
+extern int Xgetkey();
 extern char *inputstr();
 #if	MSDOS
 extern int yesno(const char *, ...);

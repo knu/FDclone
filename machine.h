@@ -19,7 +19,6 @@
 # ifdef	__GNUC__
 #  ifndef	DJGPP
 #  define	DJGPP	1
-#  define	NOLFNEMU
 #  endif
 # else	/* !__GNUC__ */
 # define	NOUID_T
@@ -49,6 +48,7 @@ typedef unsigned long	u_long;
 #  define	USEDIRECT
 #  define	USERE_COMP
 #  endif
+# define	USEMANLANG
 # define	REGEXPLIB	"-lgen"
 # define	NODNAMLEN
 # define	NOTMGMTOFF
@@ -117,7 +117,8 @@ typedef unsigned long	u_long;
 #define	USEMKTIME
 #endif
 
-#if	defined (hpux) || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
+#if	defined (hpux) || defined (__hpux) \
+|| defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SVR4
 #define	OSTYPE			"HPUX"
 #define	EXTENDCCOPT		""
@@ -203,22 +204,21 @@ typedef unsigned long	u_long;
 #if	(defined (__alpha) || defined (alpha)) && !defined (linux)
 #define	CODEEUC
 #define	TARUSESPACE
+#define	EXTENDLIB	"-lc_r"
+#define	USEMNTINFOR
 # if	defined (SYSTYPE_BSD)
 # define	BSD43
 # define	OSTYPE		"DECOSF1V2"
-# define	EXTENDLIB	"-lsys5"
+# define	BSDINSTALL
+# define	BSDINSTCMD	"installbsd"
 # define	USEMOUNTH
-# define	USEFFSIZE
 # define	STATFSARGS	3
-# define	USEGETFSSTAT
 # define	USERE_COMP
 # else
 # define	SVR4
 # define	OSTYPE		"DECOSF1V3"
-# define	EXTENDLIB	"-lc_r"
 # define	NODNAMLEN
 # define	USESTATVFSH
-# define	USEMNTINFOR
 # define	USEREGCOMP
 # endif
 #endif
@@ -231,6 +231,7 @@ typedef unsigned long	u_long;
 #define	USESELECTH
 #define	USESYSDIRH
 #define	USETIMEH
+#define	USETERMIO
 #define	NOTMGMTOFF
 #define	USESTATFSH
 #define	STATFSARGS	4
@@ -243,6 +244,7 @@ typedef unsigned long	u_long;
 #define	BSD43
 #define	OSTYPE			"ULTRIX"
 #define	CODEEUC
+#define	BSDINSTALL
 #define	TARUSESPACE
 #define	CPP7BIT
 #define	USEFSDATA
@@ -472,6 +474,7 @@ typedef unsigned long	u_long;
 /* #define CODEEUC	/* kanji code type is EUC */
 /* #define USEMANLANG	/* man(1) directory includes LANG environment value */
 /* #define BSDINSTALL	/* install(1) with option -c is valid like BSD */
+/* #define BSDINSTCMD	/* command name except "install" to install like BSD */
 /* #define TARUSESPACE	/* tar(1) uses space to devide file mode from UID */
 /* #define CPP7BIT	/* cpp(1) cannot through 8bit */
 /* #define CCCOMMAND	/* fullpath of suitable cc(1) */
@@ -555,10 +558,12 @@ typedef unsigned long	u_long;
 
 #if	defined (SVR4) || defined (SYSV)
 #define	TARUSESPACE
-# ifdef	SVR4
-# define	USETERMIOS
-# else
-# define	USETERMIO
+# if	!defined (USETERMIOS) && !defined (USETERMIO)
+#  ifdef	SVR4
+#  define	USETERMIOS
+#  else
+#  define	USETERMIO
+#  endif
 # endif
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
@@ -573,6 +578,13 @@ typedef unsigned long	u_long;
 #define	REGEXPLIB		"-lPW"
 #endif
 
+#if	defined (BSDINSTALL) && !defined (BSDINSTCMD)
+#define	BSDINSTCMD		"install"
+#endif
+
+#ifndef	OSTYPE
+#define	OSTYPE			"UNKNOWN"
+#endif
 #ifndef	CCCOMMAND
 #define	CCCOMMAND		"cc"
 #endif

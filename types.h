@@ -205,4 +205,5 @@ typedef struct _builtintable {
 #define	ishidedot(n)		((n) & F_DOTFILE)
 
 #define	QUOTE	('^' - '@')
+#define	C_BS	'\010'
 #define	C_DEL	'\177'

@@ -188,6 +188,7 @@ extern bindtable bindlist[];
 extern functable funclist[];
 extern char fullpath[];
 extern int sizeinfo;
+extern char *distributor;
 
 #ifndef	MOUNTED
 #define	MOUNTED		"/etc/mtab"
@@ -287,6 +288,16 @@ int mode;
 {
 	char buf[20];
 	int i, j, c, x, y;
+
+	if (distributor && *distributor) {
+		i = n_column - strlen(distributor) - 26;
+		locate(i, LHELP);
+		putch2('[');
+		putterm(t_standout);
+		cprintf2(" Distributed by: <%s> ", distributor);
+		putterm(end_standout);
+		putch2(']');
+	}
 
 	x = 0;
 	y = WHEADER;

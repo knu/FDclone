@@ -146,7 +146,7 @@ u_char *str;
 {
 	int i, j;
 
-	for (i = 0, j = 0; str[i] && j < MAXLINESTR; i++, j++) {
+	for (i = 0, j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
 		if (isskana(str, i)) {
 			buf[j++] = 0x8e;
 			buf[j] = str[i];
@@ -173,11 +173,11 @@ u_char *str;
 {
 	int i, j;
 
-	for (i = 0, j = 0; str[i] && j < MAXLINESTR; i++, j++) {
+	for (i = 0, j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
 		if (isekana(str, i)) buf[j] = str[i];
 		else if (iseuc(str[i])) {
 			buf[j++] = ((str[i] - 0x81) >> 1)
-				+ ((str[i] < 0xde) ? 0x71 : 0xb1);
+				+ ((str[i] < 0xdf) ? 0x71 : 0xb1);
 			buf[j] = str[++i] - 0x80;
 			if (str[i - 1] & 1)
 				buf[j] += (str[i] < 0xe0) ? 0x1f : 0x20;

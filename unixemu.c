@@ -73,7 +73,7 @@ DIR *dirp;
 VOID Xrewinddir(dirp)
 DIR *dirp;
 {
-	unixrewinddir(dirp, 0L);
+	unixseekdir(dirp, 0L);
 }
 
 int _Xchdir(path)

@@ -8,6 +8,9 @@
 #include "unixdisk.h"
 
 static int seterrno();
+#ifdef	DJGPP
+static int dos_putpath();
+#endif
 #ifndef	NOLFNEMU
 static long int21call();
 static int dos_findfirst();
@@ -40,6 +43,16 @@ u_short doserr;
 	return(errno = EINVAL);
 }
 
+#ifdef	DJGPP
+static int dos_putpath(path, offset)
+char *path;
+int offset;
+{
+	dosmemput(path, strlen(path) + 1, __tb + offset);
+	return(offset);
+}
+#endif
+
 #ifndef	NOLFNEMU
 /*ARGSUSED*/
 static long int21call(regsp, segsp)
@@ -47,6 +60,7 @@ __dpmi_regs *regsp;
 struct SREGS *segsp;
 {
 	int n;
+
 # ifdef	DJGPP
 	__dpmi_int(0x21, regsp);
 	n = ((*regsp).x.flags & 1);
@@ -116,7 +130,7 @@ char *path;
 	regs.x.ax = 0x71a0;
 	regs.x.cx = sizeof(buf);
 # ifdef	DJGPP
-	_put_path(drv);
+	dos_putpath(drv, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.dx = __tb_offset;
 	regs.x.es = regs.x.ds;
@@ -146,7 +160,7 @@ char *path, *alias;
 	regs.x.cx = 0x8001;
 # ifdef	DJGPP
 	i = strlen(path) + 1;
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.si = __tb_offset;
 	regs.x.es = regs.x.ds;
@@ -198,7 +212,7 @@ char *path, *resolved;
 	}
 # ifdef	DJGPP
 	i = strlen(path) + 1;
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.si = __tb_offset;
 	regs.x.es = regs.x.ds;
@@ -242,7 +256,7 @@ int iscreat;
 	regs.x.cx = DS_IARCHIVE;
 	regs.x.dx = 0x0012;	/* O_CREAT | O_TRUNC */
 # ifdef	DJGPP
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.si = __tb_offset;
 # else
@@ -306,7 +320,7 @@ struct dosfind_t *result;
 	regs.x.ax = 0x4e00;
 	regs.x.cx = SEARCHATTRS;
 # ifdef	DJGPP
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.dx = __tb_offset;
 	if (int21call(&regs, &segs) < 0) return(-1);
@@ -361,7 +375,7 @@ struct lfnfind_t *result;
 	regs.x.si = DATETIMEFORMAT;
 # ifdef	DJGPP
 	i = strlen(path) + 1;
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.dx = __tb_offset;
 	regs.x.es = regs.x.ds;
@@ -502,7 +516,7 @@ DIR *dirp;
 	return(&d);
 }
 
-int unixrewinddir(dirp, loc)
+int unixseekdir(dirp, loc)
 DIR *dirp;
 long loc;
 {
@@ -536,9 +550,9 @@ char *from, *to;
 	regs.x.ax =
 		(supportLFN(from) > 0 || supportLFN(to) > 0) ? 0x7156 : 0x5600;
 # ifdef	DJGPP
-	_put_path(from);
+	dos_putpath(from, 0);
 	i = strlen(from) + 1;
-	_put_path2(to, i);
+	dos_putpath(to, i);
 	regs.x.ds = __tb_segment;
 	regs.x.dx = __tb_offset;
 	regs.x.es = regs.x.ds;
@@ -562,7 +576,7 @@ int mode;
 
 	regs.x.ax = (supportLFN(path) > 0) ? 0x7139 : 0x3900;
 # ifdef	DJGPP
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.dx = __tb_offset;
 # else
@@ -753,7 +767,7 @@ int mode;
 	return(0);
 #else
 # ifdef	DJGPP
-	_put_path(path);
+	dos_putpath(path, 0);
 	regs.x.ds = __tb_segment;
 	regs.x.dx = __tb_offset;
 # else

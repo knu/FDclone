@@ -14,10 +14,20 @@
 #include <time.h>
 #include <dos.h>
 
-#if	defined (DJGPP) && (DJGPP >= 2)
+#ifdef	__GNUC__
 #include <dpmi.h>
 #include <go32.h>
-#include <libc/dosio.h>
+#include <sys/farptr.h>
+# if	(DJGPP >= 2)
+# include <libc/dosio.h>
+# else
+# define	__dpmi_regs	_go32_dpmi_registers
+# define	__dpmi_int	_go32_dpmi_simulate_int
+# define	_dos_ds		_go32_info_block.selector_for_linear_memory
+# define	__tb	_go32_info_block.linear_address_of_transfer_buffer
+# define	__tb_offset	(__tb & 15)
+# define	__tb_segment	(__tb / 16)
+# endif
 #else
 typedef union REGS	__dpmi_regs;
 #define	__attribute__(x)
@@ -70,14 +80,14 @@ extern char *adjustfname();
 #define	unixopendir		opendir
 #define	unixclosedir		closedir
 #define	unixreaddir		readdir
-#define	unixrewinddir		rewinddir
+#define	unixseekdir		seekdir
 #define	unixrename		rename
 #define	unixmkdir		mkdir
 #else	/* !NOLFNEMU */
 extern DIR *unixopendir();
 extern int unixclosedir();
 extern struct dirent *unixreaddir();
-extern int unixrewinddir();
+extern int unixseekdir();
 extern int unixrename();
 extern int unixmkdir();
 #endif	/* !NOLFNEMU */

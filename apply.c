@@ -125,8 +125,13 @@ u_short mode;
 		buf[i] = '\0';
 		return(Xsymlink(buf, dest));
 	}
+#if	MSDOS && defined (O_BINARY)
+	if ((fd1 = Xopen(src, O_RDONLY|O_BINARY, mode)) < 0) return(-1);
+	if ((fd2 = Xopen(dest, O_WRONLY|O_BINARY|O_CREAT|O_TRUNC, mode)) < 0) {
+#else
 	if ((fd1 = Xopen(src, O_RDONLY, mode)) < 0) return(-1);
 	if ((fd2 = Xopen(dest, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
+#endif
 		Xclose(fd1);
 		return(-1);
 	}
@@ -309,7 +314,7 @@ u_short flag;
 
 	subwindow = 1;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 	yy = WHEADER;
 	while (n_line - yy < 7) yy--;
@@ -330,7 +335,7 @@ u_short flag;
 		tflush();
 
 		keyflush();
-		switch (ch = getkey2(0)) {
+		switch (ch = Xgetkey(0)) {
 			case K_UP:
 				if (y > ymin) y--;
 				else y = ymax;
@@ -438,7 +443,7 @@ u_short flag;
 
 	subwindow = 0;
 #ifndef	_NOEDITMODE
-	getkey2(-1);
+	Xgetkey(-1);
 #endif
 
 	if (ch == ESC) return(0);

@@ -145,7 +145,7 @@ extern int cprintf2();
 #endif
 extern int kbhit2();
 extern int getch2();
-extern int _getkey2();
+extern int getkey2();
 extern int ungetch2();
 extern int locate();
 extern int tflush();
