@@ -1360,7 +1360,8 @@ int *ptrp, nf;
 		}
 	}
 	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0
-	|| (top = Xlseek(fd, (off_t)0, L_INCR)) < (off_t)0) /*EMPTY*/;
+	|| (top = Xlseek(fd, (off_t)0, L_INCR)) < (off_t)0)
+		/*EMPTY*/;
 	else {
 		n = 2 + nflen * 2;
 		cp = new = (u_char *)malloc2(n);
@@ -1946,8 +1947,9 @@ int dos;
 	}
 #endif	/* FD && _USEDOSEMU */
 #ifndef	_NOKANJIFCONV
-	if (fgetok) cp = kanjiconv2(buf, cp,
-		MAXPATHLEN - 1, getkcode(cp), DEFCODE, L_FNAME);
+	if (fgetok)
+		cp = kanjiconv2(buf, cp,
+			MAXPATHLEN - 1, getkcode(cp), DEFCODE, L_FNAME);
 #endif
 #if	defined (FD) && !defined (_NOROCKRIDGE)
 	if (cp == rbuf) {

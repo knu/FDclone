@@ -1,3 +1,6 @@
+Ver. 2.06c	Add the function to unset variables on customizer.
+ (02/23/05)	Mis-handling for archived file with meta characters is fixed.
+
 Ver. 2.06b	Support the key input by UTF-8 code.
  (12/14/04)	Support some OS environments displaying every file size as 0.
 		Suppress the useless access to FDD on Cygwin.

@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Wed Feb  4 00:00:00 2004
++++ _fdrc	Wed Feb 23 00:00:00 2005
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-113: preserve previous sort type
@@ -9,7 +9,7 @@
  
  # to set default display mode
  #	0: normal (Default)
-@@ -21,146 +21,359 @@
+@@ -21,98 +21,182 @@
  #	5: sym-link status &				invisible dot file
  #	6: 			file type symbol &	invisible dot file
  #	7: sym-link status &	file type symbol &	invisible dot file
@@ -212,8 +212,10 @@
  
  # language code type to input
  #	Default: No convert
- #	euc, EUC: EUC-JP
+@@ -120,49 +204,195 @@
  #	sjis, SJIS: Shift JIS
+ #	utf8, UTF8: UTF-8
+ #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 -#INPUTKCODE	=	""
 +#INPUTKCODE=""
  
@@ -369,6 +371,23 @@
 -#launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
 +#launch ".zip"	"unzip -lqq"		" %s %m-%d-%y %t %*f"
 +#launch ".zoo"	"zoo lq"		" %s %x %x %d %m %y %t %*f"
++#launch ".rar"	"unrar v" \
++#		-f " %*f\n%s %x %x %d-%m-%y %t %a" \
++#		-i "UNRAR *" \
++#		-i "RAR *" \
++#		-i "Shareware version *" \
++#		-i "Verifying authenticity *" \
++#		-i "Solid archive *" \
++#		-i "Archive *" \
++#		-i "Pathname/Comment" \
++#		-i "Size * Packed *" \
++#		-i "----------*" \
++#		-i "* * * ??%" \
++#		-i "Old style *" \
++#		-i "Archive *.rar" \
++#		-i "created at ??:??:?? *" \
++#		-i "by * *" \
++#		-i ""
  #launch ".Z"	"zcat %C|$PAGER"
  #launch ".gz"	"gzip -cd %C|$PAGER"
  #launch ".bz2"	"bzip2 -cd %C|$PAGER"
@@ -419,7 +438,15 @@
  
  # archiver definition
  #(Default)
-@@ -196,22 +409,52 @@
+@@ -178,6 +408,7 @@
+ #(Examples)
+ #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
+ #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
++#arch ".rar"	"rar a -inul %C %TA"		"unrar x -inul %C %TA"
+ 
+ # examples for MS-DOS
+ #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
+@@ -198,22 +429,52 @@
  #bind '{'	ROLL_UP
  #bind '}'	ROLL_DOWN
  #bind '~'	"cd ~%N%K"
@@ -482,7 +509,7 @@
  #}
  
  # MS-DOS drive definition
-@@ -220,7 +463,7 @@
+@@ -222,7 +483,7 @@
  
  # alias definition
  #(Example)

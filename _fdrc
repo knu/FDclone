@@ -202,6 +202,8 @@
 #	Default: No convert
 #	euc, EUC: EUC-JP
 #	sjis, SJIS: Shift JIS
+#	utf8, UTF8: UTF-8
+#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 #INPUTKCODE=""
 
 # language code type in filename
@@ -339,6 +341,23 @@
 #(Examples)
 #launch ".zip"	"unzip -lqq"		" %s %m-%d-%y %t %*f"
 #launch ".zoo"	"zoo lq"		" %s %x %x %d %m %y %t %*f"
+#launch ".rar"	"unrar v" \
+#		-f " %*f\n%s %x %x %d-%m-%y %t %a" \
+#		-i "UNRAR *" \
+#		-i "RAR *" \
+#		-i "Shareware version *" \
+#		-i "Verifying authenticity *" \
+#		-i "Solid archive *" \
+#		-i "Archive *" \
+#		-i "Pathname/Comment" \
+#		-i "Size * Packed *" \
+#		-i "----------*" \
+#		-i "* * * ??%" \
+#		-i "Old style *" \
+#		-i "Archive *.rar" \
+#		-i "created at ??:??:?? *" \
+#		-i "by * *" \
+#		-i ""
 #launch ".Z"	"zcat %C|$PAGER"
 #launch ".gz"	"gzip -cd %C|$PAGER"
 #launch ".bz2"	"bzip2 -cd %C|$PAGER"
@@ -389,6 +408,7 @@
 #(Examples)
 #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
 #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
+#arch ".rar"	"rar a -inul %C %TA"		"unrar x -inul %C %TA"
 
 # examples for MS-DOS
 #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"

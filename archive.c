@@ -260,7 +260,8 @@ char **browsevar = NULL;
 #if	FD >= 2
 static char *autoformat[] = {
 # if	MSDOS
-	"%*f\n%s %x %x %y-%m-%d %t %a",		/* LHa (-v) */
+	"%*f\n%s %x %x %y-%m-%d %t %a",		/* LHa (v) */
+	" %*f\n%s %x %x %d-%m-%y %t %a",	/* RAR (v) */
 	"%a %u/%g %s %m %d %t %y %*f",		/* tar (traditional) */
 	"%a %u/%g %s %y-%m-%d %t %*f",		/* tar (GNU >=1.12) */
 	"%a %l %u %g %s %m %d %{yt} %*f",	/* ls or pax */
@@ -268,8 +269,10 @@ static char *autoformat[] = {
 	" %s %y-%m-%d %t %*f",			/* zip */
 	" %s %x %x %x %y-%m-%d %t %*f",		/* pkunzip */
 	" %s %x %x %d %m %y %t %*f",		/* zoo */
-	"%1x %12f %s %x %x %y-%m-%d %t %a",	/* LHa (-l) */
+	"%1x %12f %s %x %x %y-%m-%d %t %a",	/* LHa (l) */
+	" %f %s %x %x %d-%m-%y %t %a",		/* RAR (l) */
 # else	/* !MSDOS */
+	" %*f\n%s %x %x %d-%m-%y %t %a",	/* RAR (v) */
 	"%a %u/%g %s %m %d %t %y %*f",		/* tar (SVR4) */
 	"%a %u/%g %s %y-%m-%d %t %*f",		/* tar (GNU >=1.12) */
 	"%a %l %u %g %s %m %d %{yt} %*f",	/* ls or pax */
@@ -280,6 +283,7 @@ static char *autoformat[] = {
 	"%9a %u/%g %s %m %d %t %y %*f",		/* tar (traditional) */
 	"%9a %u/%g %s %x %m %d %{yt} %*f",	/* LHa */
 	"%a %u/%g %m %d %t %y %*f",		/* tar (IRIX) */
+	" %f %s %x %x %d-%m-%y %t %a",		/* RAR (l) */
 # endif	/* !MSDOS */
 };
 #define	AUTOFORMATSIZ	((int)(sizeof(autoformat) / sizeof(char *)))
@@ -482,6 +486,7 @@ char *buf;
 					break;
 				case 'w':
 				case '-':
+				case '.':
 				case ' ':
 					break;
 				case 'v':
@@ -675,7 +680,8 @@ int skip;
 
 		if (len < 0) {
 			if (!iswhitespace(*form)
-			&& (*form != '%' || *(form + 1) == '%')) ch = *form;
+			&& (*form != '%' || *(form + 1) == '%'))
+				ch = *form;
 			for (len = 0; line[len]; len++) {
 				if (ch) {
 					if (ch == line[len]) break;
@@ -929,7 +935,8 @@ int field, *eolp;
 			if (eolp) {
 				for (j = i; line[j]; j++) {
 					if ((sp < 255 && j >= sp)
-					|| iswhitespace(line[j])) break;
+					|| iswhitespace(line[j]))
+						break;
 				}
 				*eolp = j;
 			}
@@ -1880,7 +1887,8 @@ char *path;
 		}
 
 		if (browselist[n + 1].comm
-		&& !(browselist[n].flags & LF_DIRLOOP)) n++;
+		&& !(browselist[n].flags & LF_DIRLOOP))
+			n++;
 		if (dolaunch(&(browselist[n]), 1) < 0
 		|| !isarchbr(&(browselist[n]))) {
 			popbrowsevar();
@@ -2094,7 +2102,8 @@ int launcher(VOID_A)
 			execusercomm(cp, filelist[filepos].name, 1, 1, 1);
 
 		if (browselist[n + 1].comm
-		&& !(browselist[n].flags & LF_FILELOOP)) n++;
+		&& !(browselist[n].flags & LF_FILELOOP))
+			n++;
 		if (dolaunch(&(browselist[n]), 1) < 0
 		|| !isarchbr(&(browselist[n]))) {
 			popbrowsevar();

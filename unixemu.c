@@ -273,7 +273,8 @@ struct stat *stp;
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
 		if (!stricmp(cp, "BAT")
 		|| !stricmp(cp, "COM")
-		|| !stricmp(cp, "EXE")) mode |= S_IEXEC;
+		|| !stricmp(cp, "EXE"))
+			mode |= S_IEXEC;
 	}
 	mode &= (S_IREAD | S_IWRITE | S_IEXEC);
 	mode |= (mode >> 3) | (mode >> 6);
@@ -406,7 +407,8 @@ char *path;
 	if (unixunlink(path) != 0) {
 		if (errno != EACCES
 		|| unixchmod(path, (S_IREAD | S_IWRITE | S_ISVTX)) < 0
-		|| unixunlink(path) != 0) return(-1);
+		|| unixunlink(path) != 0)
+			return(-1);
 	}
 	return(0);
 }

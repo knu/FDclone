@@ -1123,9 +1123,7 @@ struct tm *tm;
 	for (i = 1; i < tm -> tm_mon + 1; i++) {
 		switch (i) {
 			case 2:
-				if (!(y % 4)
-				&& ((y % 100)
-				|| !(y % 400))) d++;
+				if (!(y % 4) && ((y % 100) || !(y % 400))) d++;
 				d += 28;
 				break;
 			case 4:

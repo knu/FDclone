@@ -196,6 +196,7 @@ static char *NEAR strcatalloc __P_((char *, char *));
 static VOID NEAR putsep __P_((VOID_A));
 static VOID NEAR fillline __P_((int, int));
 static char *NEAR inputcuststr __P_((char *, int, char *, int));
+static char *NEAR inputcustenvstr __P_((char *, int, char *, int));
 static VOID NEAR setnamelist __P_((int, namelist *, char *));
 static int NEAR browsenamelist __P_((namelist *, int,
 		int, char *, char *, char **));
@@ -533,7 +534,8 @@ int no;
 			if (!cp) cp = def_str(no);
 			else if (strcmp(cp, "emacs")
 			&& strcmp(cp, "vi")
-			&& strcmp(cp, "wordstar")) cp = NULL;
+			&& strcmp(cp, "wordstar"))
+				cp = NULL;
 			*((char **)(envlist[no].var)) = cp;
 			break;
 #endif	/* !_NOEDITMODE */
@@ -631,6 +633,20 @@ int h;
 
 	len = (s) ? strlen(s) : 0;
 	return(inputstr(prompt, delsp, len, s, h));
+}
+
+static char *NEAR inputcustenvstr(prompt, delsp, s, h)
+char *prompt;
+int delsp;
+char *s;
+int h;
+{
+	if (!(s = inputcuststr(prompt, delsp, s, h))) return((char *)-1);
+	if (!*s && yesno(USENV_K, prompt)) {
+		free(s);
+		return(NULL);
+	}
+	return(s);
 }
 
 static VOID NEAR setnamelist(n, list, s)
@@ -1061,13 +1077,13 @@ int no;
 			break;
 # endif
 		default:
-			if (!(cp = getenv2(envlist[no].env))) {
-				cp = strdup2(def_str(no));
-				if (cp && *cp) cp = strcatalloc(cp, " ");
-				cp = new = strcatalloc(cp, VDEF_K);
-			}
+			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
 			break;
 	}
+
+	if (!getenv2(envlist[no].env))
+		cp = new = strcatalloc(strdup2(cp),
+			(cp && *cp) ? VDEF_K : VUDEF_K);
 	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
 	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
@@ -1090,14 +1106,17 @@ int no;
 			n = (*((int *)(envlist[no].var))) ? 1 : 0;
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
+			str[2] = VUSET_K;
+			val[2] = -1;
 			envcaption(env);
-			if (noselect(&n, 2, 0, str, val)) return(0);
-			cp = int2str(buf, n);
+			if (noselect(&n, 3, 0, str, val)) return(0);
+			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			break;
 		case T_SHORT:
 			int2str(buf, *((short *)(envlist[no].var)));
-			cp = inputcuststr(env, 1, buf, -1);
-			if (!cp) return(0);
+			cp = inputcustenvstr(env, 1, buf, -1);
+			if (cp == (char *)-1) return(0);
+			if (!cp) break;
 			n = atoi2(cp);
 			free(cp);
 			if (n < 0) {
@@ -1109,8 +1128,9 @@ int no;
 		case T_INT:
 		case T_NATURAL:
 			int2str(buf, *((int *)(envlist[no].var)));
-			cp = inputcuststr(env, 1, buf, -1);
-			if (!cp) return(0);
+			cp = inputcustenvstr(env, 1, buf, -1);
+			if (cp == (char *)-1) return(0);
+			if (!cp) break;
 			n = atoi2(cp);
 			free(cp);
 			if (n < 0) {
@@ -1120,9 +1140,10 @@ int no;
 			cp = int2str(buf, n);
 			break;
 		case T_PATH:
+		case T_PATHS:
 			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
-			new = inputcuststr(env, 1, cp, 1);
-			if (!new) return(0);
+			new = inputcustenvstr(env, 1, cp, 1);
+			if (new == (char *)-1) return(0);
 			cp = new;
 			break;
 		case T_SORT:
@@ -1133,18 +1154,24 @@ int no;
 			str[3] = ODATE_K;
 			str[4] = OLEN_K;
 			str[5] = ORAW_K;
+			str[6] = OUST_K;
 			val[0] = 1;
 			val[1] = 2;
 			val[2] = 3;
 			val[3] = 4;
 			val[4] = 5;
 			val[5] = 0;
+			val[6] = -1;
 			p = (n >= 100) ? 100 : 0;
 			n %= 100;
 			tmp = n & ~7;
 			n &= 7;
 			envcaption(env);
-			if (noselect(&n, 6, 0, str, val)) return(0);
+			if (noselect(&n, 7, 0, str, val)) return(0);
+			if (n < 0) {
+				cp = NULL;
+				break;
+			}
 			if (n) {
 				str[0] = OINC_K;
 				str[1] = ODEC_K;
@@ -1167,8 +1194,14 @@ int no;
 			envcaption(VDS1B_K);
 			str[0] = VDS10_K;
 			str[1] = VDS11_K;
+			str[2] = VUSET_K;
+			val[2] = -1;
 			tmp = n & 1;
-			if (noselect(&tmp, 2, 0, str, val)) return(0);
+			if (noselect(&tmp, 3, 0, str, val)) return(0);
+			if (tmp < 0) {
+				cp = NULL;
+				break;
+			}
 			n = (n & ~1) | tmp;
 			envcaption(VDS2B_K);
 			str[0] = VDS20_K;
@@ -1198,9 +1231,11 @@ int no;
 			str[0] = VWFS0_K;
 			str[1] = VWFS1_K;
 			str[2] = VWFS2_K;
+			str[3] = VUSET_K;
+			val[3] = -1;
 			envcaption(env);
-			if (noselect(&n, 3, 0, str, val)) return(0);
-			cp = int2str(buf, n);
+			if (noselect(&n, 4, 0, str, val)) return(0);
+			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			break;
 # endif	/* !_NOWRITEFS */
 # if	MSDOS && !defined (_NODOSDRIVE)
@@ -1208,10 +1243,12 @@ int no;
 			n = (*((int *)(envlist[no].var)) & 1);
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
+			str[2] = VUSET_K;
+			val[2] = -1;
 			envcaption(env);
-			if (noselect(&n, 2, 0, str, val)) return(0);
-			cp = int2str(buf, n);
-			if (*((int *)(envlist[no].var)) & 2) {
+			if (noselect(&n, 3, 0, str, val)) return(0);
+			cp = (n >= 0) ? int2str(buf, n) : NULL;
+			if (cp && *((int *)(envlist[no].var)) & 2) {
 				cp = strdup2(cp);
 				cp = new = strcatalloc(cp, ",BIOS");
 			}
@@ -1223,13 +1260,15 @@ int no;
 			str[1] = "2";
 			str[2] = "3";
 			str[3] = "5";
+			str[4] = VUSET_K;
 			val[0] = 1;
 			val[1] = 2;
 			val[2] = 3;
 			val[3] = 5;
+			val[4] = -1;
 			envcaption(env);
-			if (noselect(&n, 4, 0, str, val)) return(0);
-			cp = int2str(buf, n);
+			if (noselect(&n, 5, 0, str, val)) return(0);
+			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			break;
 # ifndef	_NOCOLOR
 		case T_COLOR:
@@ -1238,9 +1277,11 @@ int no;
 			str[1] = VBOL1_K;
 			str[2] = VCOL2_K;
 			str[3] = VCOL3_K;
+			str[4] = VUSET_K;
+			val[4] = -1;
 			envcaption(env);
-			if (noselect(&n, 4, 0, str, val)) return(0);
-			cp = int2str(buf, n);
+			if (noselect(&n, 5, 0, str, val)) return(0);
+			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			break;
 # endif	/* !_NOCOLOR */
 # ifndef	_NOEDITMODE
@@ -1249,12 +1290,14 @@ int no;
 			str[0] = "emacs";
 			str[1] = "wordstar";
 			str[2] = "vi";
+			str[3] = VUSET_K;
+			val[3] = -1;
 			if (!cp) n = 0;
 			else for (n = 2; n > 0; n--)
 				if (!strcmp(cp, str[n])) break;
 			envcaption(env);
-			if (noselect(&n, 3, 0, str, val)) return(0);
-			cp = str[n];
+			if (noselect(&n, 4, 0, str, val)) return(0);
+			cp = (n >= 0) ? str[n] : NULL;
 			break;
 # endif	/* !_NOEDITMODE */
 # if	!defined (_NOKANJICONV) \
@@ -1283,8 +1326,11 @@ int no;
 			str[tmp] = "UTF-8";
 			val[tmp++] = UTF8;
 #  endif	/* !_NOKANJICONV */
+			str[tmp] = VUSET_K;
+			val[tmp++] = -1;
 			p = envlist[no].type - T_KIN;
 			for (n = 0; n < tmp; n++) {
+				if (val[n] < 0) continue;
 				switch (kanjiiomode[val[n]]) {
 					case L_INPUT:
 						if (p != L_INPUT) continue;
@@ -1311,7 +1357,8 @@ int no;
 			n = *((int *)(envlist[no].var));
 #  ifndef	_NOKANJICONV
 			if (n != O_JIS7 && n != O_JIS8 && n != O_JUNET
-			&& n != M_UTF8) p = 0;
+			&& n != M_UTF8)
+				p = 0;
 			else {
 				p = 1;
 				n--;
@@ -1319,6 +1366,10 @@ int no;
 #  endif	/* !_NOKANJICONV */
 			envcaption(env);
 			if (noselect(&n, tmp, 0, str, val)) return(0);
+			if (n < 0) {
+				cp = NULL;
+				break;
+			}
 #  ifndef	_NOKANJICONV
 			if (n >= JIS7 && n <= JUNET) {
 				str[0] = VNJIS_K;
@@ -1361,8 +1412,9 @@ int no;
 # if	FD >= 2
 		case T_OCTAL:
 			ascoctal(*((int *)(envlist[no].var)), buf);
-			cp = inputcuststr(env, 1, buf, -1);
-			if (!cp) return(0);
+			cp = inputcustenvstr(env, 1, buf, -1);
+			if (cp == (char *)-1) return(0);
+			if (!cp) break;
 			n = atooctal(cp);
 			free(cp);
 			if (n < 0) {
@@ -1374,8 +1426,8 @@ int no;
 # endif	/* FD >= 2 */
 		default:
 			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
-			new = inputcuststr(env, 0, cp, -1);
-			if (!new) return(0);
+			new = inputcustenvstr(env, 0, cp, -1);
+			if (new == (char *)-1) return(0);
 			cp = new;
 			break;
 	}
@@ -1400,7 +1452,8 @@ FILE *fp;
 		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i))))
 			n++;
 		if ((!flaglist || !(flaglist[i] & 1))
-		&& getshellvar(envlist[i].env, -1)) n++;
+		&& getshellvar(envlist[i].env, -1))
+			n++;
 	}
 	if (!n || !fp) return(n);
 
@@ -1755,7 +1808,8 @@ int no;
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
 			if (bindlist[no].key < 0
-			|| bindlist[no].f_func < FUNCLISTSIZ) cp = NULL;
+			|| bindlist[no].f_func < FUNCLISTSIZ)
+				cp = NULL;
 			else cp = macrolist[bindlist[no].f_func - FUNCLISTSIZ];
 			buf = asprintf3(BNDFC_K, str);
 			cp = inputcuststr(buf, 0, cp, 0);
@@ -1918,7 +1972,8 @@ FILE *fp;
 			if (!origflaglist || origflaglist[j]) return(-1);
 			if (argc <= n
 			&& bind.f_func == origbindlist[j].f_func
-			&& bind.d_func == origbindlist[j].d_func) return(-1);
+			&& bind.d_func == origbindlist[j].d_func)
+				return(-1);
 			origflaglist[j] = 1;
 		}
 	}
@@ -2347,8 +2402,12 @@ char *prompt, **var;
 		if (n < 0) break;
 		cp = list[n].name;
 		if (n >= max) {
-			if (!(tmp = inputcuststr(prompt, 0, NULL, -1)))
+			if (!(tmp = inputcuststr(prompt, 1, NULL, -1)))
 				continue;
+			if (!*tmp) {
+				free(tmp);
+				continue;
+			}
 			list = (namelist *)realloc2(list,
 				(max + 2) * sizeof(namelist));
 			mes = (char **)realloc2(mes,
@@ -2369,8 +2428,12 @@ char *prompt, **var;
 		if (noselect(&i, sizeof(val) / sizeof(int), 0, str, val))
 			continue;
 		if (i == 0) {
-			if (!(tmp = inputcuststr(prompt, 0, cp, -1)))
+			if (!(tmp = inputcuststr(prompt, 1, cp, -1)))
 				continue;
+			if (!*tmp) {
+				free(tmp);
+				continue;
+			}
 			free(cp);
 			cp = list[n].name = tmp;
 		}
@@ -2472,7 +2535,7 @@ int no;
 {
 	launchtable list;
 	char *cp, *ext;
-	int i;
+	int i, n;
 
 	if (no < maxlaunch) {
 		ext = NULL;
@@ -2494,9 +2557,11 @@ int no;
 			return(0);
 		}
 
-		for (i = 0; i < maxlaunch; i++)
-			if (!extcmp(list.ext, list.flags,
-			launchlist[i].ext, launchlist[i].flags, 1)) break;
+		for (i = 0; i < maxlaunch; i++) {
+			n = extcmp(list.ext, list.flags,
+				launchlist[i].ext, launchlist[i].flags, 1);
+			if (!n) break;
+		}
 		if (i >= maxlaunch) {
 			launchlist[i].comm = NULL;
 			launchlist[i].format =
@@ -2515,8 +2580,8 @@ int no;
 		list.topskip = launchlist[no].topskip;
 		list.bottomskip = launchlist[no].bottomskip;
 
-		if (!(list.comm =
-		inputcuststr(LNCHC_K, 0, launchlist[no].comm, 0))) {
+		list.comm = inputcuststr(LNCHC_K, 0, launchlist[no].comm, 0);
+		if (!(list.comm)) {
 			if (ext) free(ext);
 			freevar(list.format);
 			freevar(list.lignore);
@@ -2634,9 +2699,9 @@ FILE *fp;
 			&(launchlist[i]));
 		if (j < origmaxlaunch) {
 			origflaglist[j] = 1;
-			if (issamelaunch(&(launchlist[i]),
-			&(origlaunchlist[j])))
-				continue;
+			j = issamelaunch(&(launchlist[i]),
+				&(origlaunchlist[j]));
+			if (j) continue;
 		}
 		n++;
 	}
@@ -2776,7 +2841,7 @@ int no;
 {
 	archivetable list;
 	char *cp, *ext;
-	int i;
+	int i, n;
 
 	if (no < maxarchive) {
 		ext = NULL;
@@ -2797,9 +2862,11 @@ int no;
 			return(0);
 		}
 
-		for (i = 0; i < maxarchive; i++)
-			if (!extcmp(list.ext, list.flags,
-			archivelist[i].ext, archivelist[i].flags, 1)) break;
+		for (i = 0; i < maxarchive; i++) {
+			n = extcmp(list.ext, list.flags,
+				archivelist[i].ext, archivelist[i].flags, 1);
+			if (!n) break;
+		}
 		if (i >= maxarchive) {
 			archivelist[i].p_comm = archivelist[i].u_comm = NULL;
 			archivelist[i].flags = list.flags;
@@ -2808,8 +2875,9 @@ int no;
 	}
 
 	for (;;) {
-		if (!(list.p_comm =
-		inputcuststr(PACKC_K, 0, archivelist[no].p_comm, 0))) {
+		list.p_comm = inputcuststr(PACKC_K, 0,
+			archivelist[no].p_comm, 0);
+		if (!(list.p_comm)) {
 			if (ext) free(ext);
 			return(0);
 		}
@@ -2818,12 +2886,13 @@ int no;
 			list.p_comm = NULL;
 		}
 
-		if (!(list.u_comm =
-		inputcuststr(UPCKC_K, 0, archivelist[no].u_comm, 0))) {
+		list.u_comm = inputcuststr(UPCKC_K, 0,
+			archivelist[no].u_comm, 0);
+		if (!(list.u_comm)) {
 			if (list.p_comm) free(list.p_comm);
 			continue;
 		}
-		if (!*(list.u_comm)) {
+		else if (!*(list.u_comm)) {
 			free(list.u_comm);
 			list.u_comm = NULL;
 		}
@@ -2888,9 +2957,9 @@ FILE *fp;
 			&(archivelist[i]));
 		if (j < origmaxarchive) {
 			origflaglist[j] = 1;
-			if (issamearch(&(archivelist[i]),
-			&(origarchivelist[j])))
-				continue;
+			j = issamearch(&(archivelist[i]),
+				&(origarchivelist[j]));
+			if (j) continue;
 		}
 		n++;
 	}
@@ -3053,7 +3122,8 @@ int no;
 		for (i = 0; i < MEDIADESCRSIZ; i++) {
 			if (fdtype[no].head == mediadescr[i].head
 			&& fdtype[no].sect == mediadescr[i].sect
-			&& fdtype[no].cyl == mediadescr[i].cyl) break;
+			&& fdtype[no].cyl == mediadescr[i].cyl)
+				break;
 		}
 		w1 -= (w2 + 1) * 3;
 		if (i >= MEDIADESCRSIZ) cprintf2("%*s", w1, "");
@@ -3311,14 +3381,16 @@ FILE *fp;
 			if (!flaglist || flaglist[j]) break;
 			if (fdtype[j].cyl
 			|| fdtype[j].drive != fdtype[j - 1].drive + 1
-			|| strpathcmp(fdtype[j].name, dev.name)) break;
+			|| strpathcmp(fdtype[j].name, dev.name))
+				break;
 			flaglist[j] = 1;
 		}
 		for (; i > 0; i--) {
 			if (!flaglist || flaglist[i - 1]) break;
 			if (fdtype[i - 1].cyl
 			|| fdtype[i - 1].drive + 1 != fdtype[i].drive
-			|| strpathcmp(fdtype[i - 1].name, dev.name)) break;
+			|| strpathcmp(fdtype[i - 1].name, dev.name))
+				break;
 			flaglist[i] = 1;
 		}
 	}
@@ -3649,11 +3721,16 @@ int no;
 		case 2:
 			if (!(file = inputcuststr(FLOAD_K, 1, RUNCOMFILE, 1)))
 				break;
+			if (!*file) {
+				free(file);
+				break;
+			}
 			done = 1;
 			n = sigvecset(0);
 			locate(0, n_line - 1);
 			inruncom = 1;
 			i = loadruncom(file, 0);
+			free(file);
 			inruncom = 0;
 			sigvecset(n);
 			if (i < 0) {
@@ -4027,7 +4104,8 @@ int customize(VOID_A)
 				break;
 			case K_DOWN:
 				if (cs_item < cs_max - 1
-				&& !(++cs_item % cs_row)) old = -1;
+				&& !(++cs_item % cs_row))
+					old = -1;
 				break;
 			case K_RIGHT:
 				if (custno < MAXCUSTOM - 1) {

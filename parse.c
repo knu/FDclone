@@ -642,7 +642,8 @@ char **bufp, *prompt;
 				gethostname(line, MAXPATHLEN);
 # endif
 				if (prompt[i] == 'h'
-				&& (tmp = strchr(line, '.'))) *tmp = '\0';
+				&& (tmp = strchr(line, '.')))
+					*tmp = '\0';
 				break;
 			case '$':
 				*line = (getuid()) ? '$' : '#';

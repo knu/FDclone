@@ -10233,7 +10233,8 @@ unsigned int w;
 FILE *fp;
 {
 	if (fputbyte((int)(w & 0xff), fp) < 0
-	|| fputbyte((int)((w >> 8) & 0xff), fp) < 0) return(-1);
+	|| fputbyte((int)((w >> 8) & 0xff), fp) < 0)
+		return(-1);
 	return(0);
 }
 
@@ -10253,7 +10254,8 @@ char *argv[];
 	if (fputword(UNITBLSIZ, fp) < 0) return(1);
 	for (i = 0; i < UNITBLSIZ; i++) {
 		if (fputword(unitable[i].unicode, fp) < 0
-		|| fputword(unitable[i].org, fp) < 0) return(1);
+		|| fputword(unitable[i].org, fp) < 0)
+			return(1);
 	}
 
 	if (fputbyte(1, fp) < 0) return(1);

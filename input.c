@@ -1643,8 +1643,10 @@ char **argv;
 	else {
 		curcolumns = tmpcolumns;
 		if (tmpfilepos >= maxselect) tmpfilepos %= (tmpfilepos - argc);
-		else if (tmpfilepos < 0) tmpfilepos = maxselect - 1
-			- ((maxselect - 1 - argc) % (argc - tmpfilepos));
+		else if (tmpfilepos < 0)
+			tmpfilepos = maxselect - 1
+				- ((maxselect - 1 - argc)
+				% (argc - tmpfilepos));
 		if (argc / FILEPERPAGE != tmpfilepos / FILEPERPAGE)
 			tmpfilepos = listupfile(selectlist, maxselect,
 				selectlist[tmpfilepos].name, 1);
@@ -1968,8 +1970,7 @@ int ch;
 				inputkcode, DEFCODE, L_INPUT);
 			return(n);
 		}
-		else if (!kbhit2(WAITMETA * 1000L)
-		|| (n = getch2()) == EOF) {
+		else if (!kbhit2(WAITMETA * 1000L) || (n = getch2()) == EOF) {
 			buf[0] = '\0';
 			return(-1);
 		}
@@ -2159,8 +2160,9 @@ char **tmp;
 		}
 
 		*cxp = -1;
-		if (--(*histnop) > 0) cx2 = copyhist(sp, cxp, lenp,
-			sizep, history[h][*histnop - 1]);
+		if (--(*histnop) > 0)
+			cx2 = copyhist(sp, cxp, lenp,
+				sizep, history[h][*histnop - 1]);
 		else {
 			cx2 = copyhist(sp, cxp, lenp, sizep, *tmp);
 			if (*tmp) free(*tmp);
@@ -2541,8 +2543,9 @@ int def, comline, h;
 			}
 
 			(*sp)[cx++] = buf[0];
-			if (n == 2) snprintf2(buf, sizeof(buf), "^%c",
-				(i + '@') & 0x7f);
+			if (n == 2)
+				snprintf2(buf, sizeof(buf), "^%c",
+					(i + '@') & 0x7f);
 			else snprintf2(buf, sizeof(buf), "\\%03o", i);
 			cx2 = putstr(buf, *sp, cx, cx2, len);
 
@@ -3053,7 +3056,8 @@ int h;
 		locate(win_x, win_y);
 		tflush();
 		if ((!lcmdline && ypos < L_CMDLINE)
-		|| (lcmdline > 0 && ypos < lcmdline + n_line)) rewritefile(1);
+		|| (lcmdline > 0 && ypos < lcmdline + n_line))
+			rewritefile(1);
 	}
 	lcmdline = 0;
 
@@ -3077,7 +3081,8 @@ char *s;
 	char *cp, *tmp;
 
 	if ((len = strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
-	|| !(cp = strchr2(s, '[')) || !(tmp = strchr2(cp, ']'))) return(s);
+	|| !(cp = strchr2(s, '[')) || !(tmp = strchr2(cp, ']')))
+		return(s);
 
 	cp++;
 	len = tmp - cp - len;
@@ -3457,10 +3462,8 @@ int val[];
 				win_y = L_MESLINE;
 				tmpx = selectadj(max, x,
 					str, tmpstr, xx, (num) ? 0 : 1);
-				if (num) selectmes(val[new], max, tmpx,
-					tmpstr, val, xx);
-				else selectmes(-1 - new, max, tmpx,
-					tmpstr, val, xx);
+				selectmes((num) ? val[new] : -1 - new,
+					max, tmpx, tmpstr, val, xx);
 				break;
 			case ' ':
 				if (num) break;

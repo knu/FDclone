@@ -381,11 +381,13 @@ launchtable *list;
 int max;
 launchtable *lp;
 {
-	int i;
+	int i, n;
 
-	for (i = 0; i < max; i++)
-		if (!extcmp(lp -> ext, lp -> flags,
-		list[i].ext, list[i].flags, 1)) break;
+	for (i = 0; i < max; i++) {
+		n = extcmp(lp -> ext, lp -> flags,
+			list[i].ext, list[i].flags, 1);
+		if (!n) break;
+	}
 	return(i);
 }
 
@@ -621,11 +623,13 @@ archivetable *list;
 int max;
 archivetable *ap;
 {
-	int i;
+	int i, n;
 
-	for (i = 0; i < max; i++)
-		if (!extcmp(ap -> ext, ap -> flags,
-		list[i].ext, list[i].flags, 1)) break;
+	for (i = 0; i < max; i++) {
+		n = extcmp(ap -> ext, ap -> flags,
+			list[i].ext, list[i].flags, 1);
+		if (!n) break;
+	}
 	return(i);
 }
 
@@ -801,7 +805,7 @@ int argc;
 char *argv[];
 {
 	char *ext;
-	int i;
+	int i, n;
 	u_char flags;
 
 	if (argc >= 3) {
@@ -815,9 +819,11 @@ char *argv[];
 	}
 	else {
 		ext = getext(argv[1], &flags);
-		for (i = 0; i < maxlaunch; i++)
-			if (!extcmp(ext, flags,
-			launchlist[i].ext, launchlist[i].flags, 0)) break;
+		for (i = 0; i < maxlaunch; i++) {
+			n = extcmp(ext, flags,
+				launchlist[i].ext, launchlist[i].flags, 0);
+			if (!n) break;
+		}
 		free(ext);
 		if (i >= maxlaunch) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
@@ -854,7 +860,7 @@ int argc;
 char *argv[];
 {
 	char *ext;
-	int i;
+	int i, n;
 	u_char flags;
 
 	if (argc >= 3) {
@@ -868,9 +874,11 @@ char *argv[];
 	}
 	else {
 		ext = getext(argv[1], &flags);
-		for (i = 0; i < maxarchive; i++)
-			if (!extcmp(ext, flags,
-			archivelist[i].ext, archivelist[i].flags, 0)) break;
+		for (i = 0; i < maxarchive; i++) {
+			n = extcmp(ext, flags,
+				archivelist[i].ext, archivelist[i].flags, 0);
+			if (!n) break;
+		}
 		free(ext);
 		if (i >= maxarchive) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
@@ -1360,7 +1368,8 @@ int isset;
 		if (devp -> head == list[i].head
 		&& devp -> sect == list[i].sect
 		&& devp -> cyl == list[i].cyl
-		&& !strpathcmp(devp -> name, list[i].name)) break;
+		&& !strpathcmp(devp -> name, list[i].name))
+			break;
 	}
 	return(i);
 }
@@ -1380,12 +1389,14 @@ int no;
 		for (s = 0; s < no; s++) {
 			if (fdtype[no - s - 1].cyl
 			|| fdtype[no - s - 1].drive + 1 != fdtype[no - s].drive
-			|| strpathcmp(dev, fdtype[no - s - 1].name)) break;
+			|| strpathcmp(dev, fdtype[no - s - 1].name))
+				break;
 		}
 		for (n = 1; fdtype[no + n].name; n++) {
 			if (fdtype[no + n].cyl
 			|| fdtype[no + n].drive != fdtype[no + n - 1].drive + 1
-			|| strpathcmp(dev, fdtype[no + n].name)) break;
+			|| strpathcmp(dev, fdtype[no + n].name))
+				break;
 		}
 		no -= s;
 		n += s;
@@ -1420,7 +1431,8 @@ devinfo *devp;
 	}
 	if (min < 0) {
 		if (no > 0 && no < i
-		&& !strpathcmp(fdtype[no - 1].name, fdtype[no].name)) no = i;
+		&& !strpathcmp(fdtype[no - 1].name, fdtype[no].name))
+			no = i;
 	}
 	else if (no < min) no = min;
 	else if (no > max + 1) no = max + 1;
@@ -2598,7 +2610,8 @@ char *argv[];
 		len = strlen(argv[1]);
 		for (i = 0; environ2[i]; i++)
 			if (!strnenvcmp(environ2[i], argv[1], len)
-			&& environ2[i][len] == '=') break;
+			&& environ2[i][len] == '=')
+				break;
 		if (!environ2[i]) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -3105,7 +3118,8 @@ char ***argvp;
 
 	for (i = 0; i < BUILTINSIZ; i++) {
 		if (strncommcmp(com, builtinlist[i].ident, len)
-		|| finddupl(builtinlist[i].ident, argc, *argvp)) continue;
+		|| finddupl(builtinlist[i].ident, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(builtinlist[i].ident);
@@ -3122,7 +3136,8 @@ char ***argvp;
 
 	for (i = 0; i < FUNCLISTSIZ; i++) {
 		if (strncommcmp(com, funclist[i].ident, len)
-		|| finddupl(funclist[i].ident, argc, *argvp)) continue;
+		|| finddupl(funclist[i].ident, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(funclist[i].ident);

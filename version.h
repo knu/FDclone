@@ -5,4 +5,4 @@
  */
 
 char *distributor = NULL;
-static char version[] = "@(#)fd.c  2.06b 12/14/04";
+static char version[] = "@(#)fd.c  2.06c 02/23/05";

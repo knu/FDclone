@@ -154,7 +154,8 @@ namelist *namep;
 		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
 #if	!MSDOS
 	if ((lst.st_mode & S_IFMT) == S_IFCHR
-	|| (lst.st_mode & S_IFMT) == S_IFBLK) namep -> flags |= F_ISDEV;
+	|| (lst.st_mode & S_IFMT) == S_IFBLK)
+		namep -> flags |= F_ISDEV;
 #endif
 
 	namep -> st_mode = lst.st_mode;
@@ -206,9 +207,11 @@ CONST VOID_P vp2;
 	if (namep1 -> name[0] == '.' && namep1 -> name[1] == '\0') return(-1);
 	if (namep2 -> name[0] == '.' && namep2 -> name[1] == '\0') return(1);
 	if (namep1 -> name[0] == '.' && namep1 -> name[1] == '.'
-	&& namep1 -> name[2] == '\0') return(-1);
+	&& namep1 -> name[2] == '\0')
+		return(-1);
 	if (namep2 -> name[0] == '.' && namep2 -> name[1] == '.'
-	&& namep2 -> name[2] == '\0') return(1);
+	&& namep2 -> name[2] == '\0')
+		return(1);
 
 	switch (sorton & 7) {
 		case 5:
@@ -354,11 +357,10 @@ char *buf;
 	}
 	if (!homedir) {
 		if (!(cp = gethomedir())) return(-1);
-		if (
 #ifndef	_NODOSDRIVE
-		dospath2(cp) ||
+		if (dospath2(cp)) return(-1);
 #endif
-		_chdir2(cp) < 0) return(-1);
+		if (_chdir2(cp) < 0) return(-1);
 		homedir = getwd2();
 		if (_chdir2(cwd) < 0) lostcwd(cwd);
 	}
@@ -1239,8 +1241,9 @@ char *tmpdir, *old;
 					else break;
 				}
 				else {
-					if ((fd = Xopen(fname,
-					O_CREAT | O_EXCL, 0600))) {
+					fd = Xopen(fname,
+						O_CREAT | O_EXCL, 0600);
+					if (fd >= 0) {
 						Xclose(fd);
 						return(fname);
 					}

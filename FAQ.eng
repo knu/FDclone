@@ -364,7 +364,7 @@ A3-09.	Try to exit from FDclone and do manually "tar tvf
 	of "ARCHIVE BROWSER" in man page.
 
 	(The value of LANG will be changed automatically
-	before executing archivers, from Ver. 2.04 downward.)
+	before executing archivers, from Ver. 2.04c downward.)
 
 Q3-10.	I cannot read a file to the end.
 A3-10.	Some pager, e.g. "more" which is a standard command

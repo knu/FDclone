@@ -1395,7 +1395,8 @@ char *arcre;
 
 	while ((dp = searchdir(dirp, re, arcre))) {
 		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
-		&& !isdotdir(dp -> d_name)) continue;
+		&& !isdotdir(dp -> d_name))
+			continue;
 		strcpy(buf, dp -> d_name);
 		for (i = 0; i < stackdepth; i++)
 			if (!strcmp(buf, filestack[i].name)) break;
@@ -1604,11 +1605,10 @@ char *file, *def;
 		}
 
 		curfilename = filelist[filepos].name;
-		if ((maxfile <= 0 && !(funcstat & NO_FILE))
+		if (maxfile <= 0 && !(funcstat & NO_FILE)) no = 0;
 #ifndef	_NOARCHIVE
-		|| (archivefile && !(funcstat & ARCH))
+		else if (archivefile && !(funcstat & ARCH)) no = 0;
 #endif
-		) no = 0;
 		else if (no < FUNCLISTSIZ) {
 			if (!fd_restricted || !(funcstat & RESTRICT))
 				no = (*funclist[no].func)(NULL);

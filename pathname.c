@@ -1993,7 +1993,8 @@ int dlen, exe;
 
 	while ((dp = Xreaddir(dirp))) {
 		if ((!len && isdotdir(dp -> d_name))
-		|| strnpathcmp(file, dp -> d_name, len)) continue;
+		|| strnpathcmp(file, dp -> d_name, len))
+			continue;
 		size = strlen(dp -> d_name);
 		if (size + (cp - path) >= MAXPATHLEN) continue;
 		strncpy2(cp, dp -> d_name, size);

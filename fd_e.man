@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-2004 Takashi SHIRAI
+.\" Copyright (c) 1995-2005 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.06b 12/14/04
+.\" @(#)fd.1   2.06c 02/23/05
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "December 14, 2004"
+.TH FD 1 "February 23, 2005"
 .de sh
 .br
 .PP
@@ -4924,4 +4924,4 @@ The symbolic links in an archive file cannot be unpacked individually.
 
 The user interface is cheap.
 .SH COPYRIGHT
-Copyright (C) 1995-2004 by Takashi SHIRAI
+Copyright (C) 1995-2005 by Takashi SHIRAI

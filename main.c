@@ -647,7 +647,7 @@ VOID title(VOID_A)
 		putch2('#');
 		i++;
 	}
-	cp = (iswellomit()) ? "" : " (c)1995-2004 T.Shirai  ";
+	cp = (iswellomit()) ? "" : " (c)1995-2005 T.Shirai  ";
 	cputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) putch2(' ');
@@ -807,7 +807,8 @@ char *argv[], *envp[];
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] == '+') /*EMPTY*/;
 		else if (argv[i][0] != '-' || !argv[i][1]
-		|| (argv[i][1] == '-' && !argv[i][2])) break;
+		|| (argv[i][1] == '-' && !argv[i][2]))
+			break;
 		else if (!isidentchar(argv[i][1])) /*EMPTY*/;
 		else {
 			for (cp = &(argv[i][2]); *cp; cp++)

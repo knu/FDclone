@@ -151,7 +151,7 @@ int n, *flagsp;
 	*flagsp = 0;
 #ifdef	MACROMETA
 	if (s[i++] != MACROMETA) return(0);
-	*flagsp = s[i++];
+	*flagsp = (u_char)(s[i++]);
 #else	/* !MACROMETA */
 	if (s[i++] != '%') return(0);
 	if (s[i] == '%') return(2);
@@ -217,10 +217,6 @@ int flags;
 #endif
 	optr = ptr;
 	ptr = checksc(*bufp, ptr, arg);
-#ifndef	_NOEXTRAMACRO
-	if (flags & (F_BURST | F_MARK)) arg = strdup2(arg);
-	else
-#endif
 	arg = killmeta(arg);
 
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
@@ -1533,7 +1529,8 @@ char *command;
 
 	for (i = 0; i < maxalias; i++)
 		if (!strncommcmp(command, aliaslist[i].alias, len)
-		&& !aliaslist[i].alias[len]) break;
+		&& !aliaslist[i].alias[len])
+			break;
 	if (i >= maxalias) return(NULL);
 
 	cp = malloc2((int)strlen(command) - len
@@ -1771,7 +1768,8 @@ char ***argvp;
 
 	for (i = 0; i < maxalias; i++) {
 		if (strncommcmp(com, aliaslist[i].alias, len)
-		|| finddupl(aliaslist[i].alias, argc, *argvp)) continue;
+		|| finddupl(aliaslist[i].alias, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(aliaslist[i].alias);
@@ -1788,7 +1786,8 @@ char ***argvp;
 
 	for (i = 0; i < maxuserfunc; i++) {
 		if (strncommcmp(com, userfunclist[i].func, len)
-		|| finddupl(userfunclist[i].func, argc, *argvp)) continue;
+		|| finddupl(userfunclist[i].func, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(userfunclist[i].func);

@@ -858,9 +858,7 @@ struct tm *tm;
 	for (i = 1; i < tm -> tm_mon + 1; i++) {
 		switch (i) {
 			case 2:
-				if (!(y % 4)
-				&& ((y % 100)
-				|| !(y % 400))) d++;
+				if (!(y % 4) && ((y % 100) || !(y % 400))) d++;
 				d += 28;
 				break;
 			case 4:
@@ -1146,8 +1144,8 @@ int n, size;
 				doserrno = EROFS;
 				ret = -1;
 			}
-			if (realwrite(devp, sectno[n - i],
-			sectcache[n - i], 1) < 0)
+			if (realwrite(devp, sectno[n - i], sectcache[n - i], 1)
+			< 0)
 				ret = -1;
 		}
 		free(sectcache[n - i]);
@@ -1165,7 +1163,8 @@ devstat *devp;
 	for (i = maxsectcache - 1; i >= 0; i--) {
 		if (cachedrive[i] != devp -> drive) continue;
 		if (cachewrite[i] && !(devp -> flags & F_RONLY)
-		&& realwrite(devp, sectno[i], sectcache[i], 1) < 0) ret = -1;
+		&& realwrite(devp, sectno[i], sectcache[i], 1) < 0)
+			ret = -1;
 		cachewrite[i] = 0;
 	}
 	return(ret);
@@ -1580,7 +1579,8 @@ int n;
 		return(-1);
 	}
 	if (savecache(devp, sect, buf, n, 1) < 0
-	&& realwrite(devp, sect, buf, n) < 0) return(-1);
+	&& realwrite(devp, sect, buf, n) < 0)
+		return(-1);
 	return((long)n * devp -> sectsize);
 }
 
@@ -1610,7 +1610,7 @@ devstat *devp;
 			free(buf);
 			return(0);
 		}
-		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0) {
+		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0L) {
 			free(buf);
 			return(-1);
 		}
@@ -1618,7 +1618,8 @@ devstat *devp;
 			if (clust) clust--;
 			else break;
 			if (!buf[j] && !buf[j + 1]
-			&& !buf[j + 2] && !buf[j + 3]) n++;
+			&& !buf[j + 2] && !buf[j + 3])
+				n++;
 		}
 		if (!clust) break;
 	}
@@ -1628,7 +1629,7 @@ devstat *devp;
 			free(buf);
 			return(0);
 		}
-		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0) {
+		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0L) {
 			free(buf);
 			return(-1);
 		}
@@ -1644,7 +1645,7 @@ devstat *devp;
 			free(buf);
 			return(0);
 		}
-		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0) {
+		if (sectread(devp, devp -> fatofs + i, buf, 1) < 0L) {
 			free(buf);
 			return(-1);
 		}
@@ -1652,7 +1653,8 @@ devstat *devp;
 			if (clust) clust--;
 			else break;
 			if (((gap & 3) == 2 && !buf[0])
-			|| ((gap & 3) == 1 && !(buf[0] & 0x0f))) n++;
+			|| ((gap & 3) == 1 && !(buf[0] & 0x0f)))
+				n++;
 		}
 		for (j = (gap & 3); j < (devp -> sectsize - 1) * 2; j += 3) {
 			if (clust) clust--;
@@ -1690,7 +1692,7 @@ devstat *devp;
 	if (size > MAXFATMEM) devp -> fatbuf = NULL;
 	else if ((devp -> fatbuf = (char *)malloc(size))
 	&& sectread(devp, devp -> fatofs,
-	(u_char *)(devp -> fatbuf), devp -> fatsize) < 0) {
+	(u_char *)(devp -> fatbuf), devp -> fatsize) < 0L) {
 		doserrno = errno;
 		free(devp -> fatbuf);
 		errno = duperrno;
@@ -1719,7 +1721,7 @@ devstat *devp;
 	if (!n || !buf) return(0);
 
 	for (i = devp -> fatofs; i < devp -> dirofs; i += devp -> fatsize)
-		if (sectwrite(devp, i, (u_char *)buf, devp -> fatsize) < 0)
+		if (sectwrite(devp, i, (u_char *)buf, devp -> fatsize) < 0L)
 			return(-1);
 	return(0);
 }
@@ -1737,7 +1739,7 @@ long clust;
 	if (ofs < bit
 	|| ofs >= (long)(devp -> fatsize) * (long)(devp -> sectsize)) {
 		doserrno = EIO;
-		return(-1);
+		return(-1L);
 	}
 	return(ofs);
 }
@@ -1757,7 +1759,7 @@ int nsect;
 		return(NULL);
 	}
 	ofs /= (devp -> sectsize);
-	if (sectread(devp, (u_long)(devp -> fatofs) + ofs, buf, nsect) < 0) {
+	if (sectread(devp, (u_long)(devp -> fatofs) + ofs, buf, nsect) < 0L) {
 		free(buf);
 		return(NULL);
 	}
@@ -1772,7 +1774,7 @@ long clust;
 	long ofs;
 	int nsect;
 
-	if ((ofs = getfatofs(devp, clust)) < 0) return(-1);
+	if ((ofs = getfatofs(devp, clust)) < 0L) return(-1L);
 	if ((devp -> fatbuf)) {
 		buf = NULL;
 		fatp = (u_char *)&(devp -> fatbuf[ofs]);
@@ -1780,8 +1782,9 @@ long clust;
 	else {
 		nsect = 1;
 		if (!(devp -> flags & (F_16BIT | F_FAT32))
-		&& (ofs % devp -> sectsize) >= devp -> sectsize - 1) nsect = 2;
-		if (!(buf = readtmpfat(devp, ofs, nsect))) return(-1);
+		&& (ofs % devp -> sectsize) >= devp -> sectsize - 1)
+			nsect = 2;
+		if (!(buf = readtmpfat(devp, ofs, nsect))) return(-1L);
 		fatp = buf + (ofs % (devp -> sectsize));
 	}
 
@@ -1797,7 +1800,8 @@ long clust;
 		else if (ofs == 0x0fff7) ofs = ERRCLUST;
 	}
 	else {
-		if (clust % 2) ofs = (((*fatp) & 0xf0) >> 4)
+		if (clust % 2)
+			ofs = (((*fatp) & 0xf0) >> 4)
 				+ ((long)(*(fatp + 1) & 0xff) << 4);
 		else ofs = (*fatp & 0xff) + ((long)(*(fatp + 1) & 0x0f) << 8);
 		if (ofs >= 0x0ff8) ofs = ENDCLUST;
@@ -1815,7 +1819,7 @@ long clust, n;
 	long ofs;
 	int old, nsect;
 
-	if ((ofs = getfatofs(devp, clust)) < 0) return(-1);
+	if ((ofs = getfatofs(devp, clust)) < 0L) return(-1);
 	if ((devp -> fatbuf)) {
 		buf = NULL;
 #ifdef	FAKEUNINIT
@@ -1826,7 +1830,8 @@ long clust, n;
 	else {
 		nsect = 1;
 		if (!(devp -> flags & (F_16BIT | F_FAT32))
-		&& (ofs % devp -> sectsize) >= devp -> sectsize - 1) nsect = 2;
+		&& (ofs % devp -> sectsize) >= devp -> sectsize - 1)
+			nsect = 2;
 		if (!(buf = readtmpfat(devp, ofs, nsect))) return(-1);
 		fatp = buf + (ofs % (devp -> sectsize));
 	}
@@ -1861,7 +1866,7 @@ long clust, n;
 		for (i = devp -> fatofs; i < devp -> dirofs;
 		i += devp -> fatsize) {
 			if (sectwrite(devp, i + (ofs / (devp -> sectsize)),
-			buf, nsect) < 0) {
+			buf, nsect) < 0L) {
 				free(buf);
 				return(-1);
 			}
@@ -1933,11 +1938,11 @@ devstat *devp;
 {
 	long clust, used;
 
-	for (clust = MINCLUST; (used = getfatent(devp, clust)) >= 0; clust++)
+	for (clust = MINCLUST; (used = getfatent(devp, clust)) >= 0L; clust++)
 		if (!used) break;
 	if (used < 0 || clust > devp -> totalsize) {
 		doserrno = ENOSPC;
-		return(-1);
+		return(-1L);
 	}
 	return(clust);
 }
@@ -1950,14 +1955,14 @@ long clust;
 	u_long sect;
 	long next;
 
-	if (!(sect = clust2sect(devp, clust))) return(-1);
+	if (!(sect = clust2sect(devp, clust))) return(-1L);
 	if (!(devp -> flags & F_FAT32)
 	&& sect < (long)(devp -> dirofs) + (long)(devp -> dirsize))
 		next = ROOTCLUST + sect + (long)(devp -> clustsize);
 	else next = getfatent(devp, clust);
 
-	if (buf && sectread(devp, sect, buf, devp -> clustsize) < 0)
-		return(-1);
+	if (buf && sectread(devp, sect, buf, devp -> clustsize) < 0L)
+		return(-1L);
 	return(next);
 }
 
@@ -1969,16 +1974,16 @@ long prev;
 	u_long sect;
 	long clust;
 
-	if ((clust = newclust(devp)) < 0) return(-1);
+	if ((clust = newclust(devp)) < 0L) return(-1L);
 	if (!(sect = clust2sect(devp, clust))) {
 		doserrno = EIO;
-		return(-1);
+		return(-1L);
 	}
-	if (buf && sectwrite(devp, sect, buf, devp -> clustsize) < 0)
-		return(-1);
+	if (buf && sectwrite(devp, sect, buf, devp -> clustsize) < 0L)
+		return(-1L);
 
 	if ((prev && putfatent(devp, prev, clust) < 0)
-	|| putfatent(devp, clust, ENDCLUST) < 0) return(-1);
+	|| putfatent(devp, clust, ENDCLUST) < 0) return(-1L);
 	return(clust);
 }
 
@@ -1998,7 +2003,7 @@ int fill;
 		if (!(buf = (u_char *)malloc(size))) {
 			doserrno = errno;
 			errno = duperrno;
-			return(-1);
+			return(-1L);
 		}
 		for (n = 0; n < size; n++) buf[n] = 0;
 	}
@@ -2014,8 +2019,8 @@ long clust;
 	long next;
 
 	if (clust) for (;;) {
-		if ((next = getfatent(devp, clust)) < 0
-		|| putfatent(devp, clust, 0) < 0) return(-1);
+		next = getfatent(devp, clust);
+		if (next < 0L || putfatent(devp, clust, 0) < 0) return(-1);
 		if (next == ENDCLUST || next == ERRCLUST) break;
 		clust = next;
 	}
@@ -2312,7 +2317,8 @@ int fd, head, sect, secsiz;
 			if (pt -> filesys != PT98_FAT12
 			&& pt -> filesys != PT98_FAT16
 			&& pt -> filesys != PT98_FAT16X
-			&& pt -> filesys != PT98_FAT32) continue;
+			&& pt -> filesys != PT98_FAT32)
+				continue;
 			ofs = byte2word(pt -> s_cyl);
 			ofs = ofs * head + pt -> s_head;
 			ofs = ofs * sect + pt -> s_sect;
@@ -2331,8 +2337,8 @@ int fd, head, sect, secsiz;
 				if (extoffset) ofs += extoffset;
 				else extoffset = ofs;
 
-				if (!(sp = _readpt(ofs, extoffset,
-				fd, 0, 0, secsiz))) {
+				sp = _readpt(ofs, extoffset, fd, 0, 0, secsiz);
+				if (!sp) {
 					free(buf);
 					free(slice);
 					return(NULL);
@@ -2363,7 +2369,8 @@ int fd, head, sect, secsiz;
 			&& pt -> filesys != PT_FAT16X
 			&& pt -> filesys != PT_FAT32
 			&& pt -> filesys != PT_FAT32LBA
-			&& pt -> filesys != PT_FAT16XLBA) continue;
+			&& pt -> filesys != PT_FAT16XLBA)
+				continue;
 
 			ofs += offset;
 		}
@@ -2493,7 +2500,8 @@ int dd;
 	if (!(devlist[dd].flags & F_DUPL)) {
 		for (i = 0; i < maxdev; i++)
 			if (i != dd && devlist[i].drive == devlist[dd].drive
-			&& (devlist[i].flags & F_DUPL)) break;
+			&& (devlist[i].flags & F_DUPL))
+				break;
 		if (i < maxdev) {
 			devlist[i].flags &= ~F_DUPL;
 			if ((devlist[dd].flags & F_CACHE)
@@ -3064,7 +3072,8 @@ int needlfn;
 	rlen = 0;
 	duperrno = errno;
 	if ((drive = parsepath(buf, path, 0)) < 0
-	|| (dd = opendev(drive)) < 0) return(NULL);
+	|| (dd = opendev(drive)) < 0)
+		return(NULL);
 
 	path = buf + 1;
 	if (!devlist[dd].dircache) {
@@ -3232,13 +3241,16 @@ long clust, offset;
 		return(-1);
 	}
 	xdirp -> dd_off = clust;
-	if ((next = clustread(&(devlist[xdirp -> dd_fd]),
-	(u_char *)(xdirp -> dd_buf), xdirp -> dd_off)) < 0) return(-1);
+	next = clustread(&(devlist[xdirp -> dd_fd]),
+		(u_char *)(xdirp -> dd_buf), xdirp -> dd_off);
+	if (next < 0L) return(-1);
 	dd2clust(xdirp -> dd_fd) = xdirp -> dd_off;
 	xdirp -> dd_off = next;
 	dd2offset(xdirp -> dd_fd) = xdirp -> dd_loc = offset;
-	if (dentp) memcpy((char *)dentp,
-		(char *)&(xdirp -> dd_buf[xdirp -> dd_loc]), sizeof(dent_t));
+	if (dentp)
+		memcpy((char *)dentp,
+			(char *)&(xdirp -> dd_buf[xdirp -> dd_loc]),
+			sizeof(dent_t));
 	xdirp -> dd_loc += DOSDIRENT;
 	if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0L;
 	return(0);
@@ -3256,8 +3268,9 @@ int force;
 		return(-1);
 	}
 	if (!xdirp -> dd_loc) {
-		if ((next = clustread(&(devlist[xdirp -> dd_fd]),
-		(u_char *)(xdirp -> dd_buf), xdirp -> dd_off)) < 0) return(-1);
+		next = clustread(&(devlist[xdirp -> dd_fd]),
+			(u_char *)(xdirp -> dd_buf), xdirp -> dd_off);
+		if (next < 0L) return(-1);
 		dd2clust(xdirp -> dd_fd) = xdirp -> dd_off;
 		xdirp -> dd_off = next;
 	}
@@ -3388,7 +3401,8 @@ DIR *dirp;
 	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
 		for (i = 0; dp -> d_name[i]; i++) {
 			if (issjis1(dp -> d_name[i])
-			&& issjis2(dp -> d_name[i + 1])) i++;
+			&& issjis2(dp -> d_name[i + 1]))
+				i++;
 #if	!MSDOS
 			else if ((c = detranschar(dp -> d_name[i])))
 				dp -> d_name[i] = c;
@@ -3461,7 +3475,8 @@ char *path;
 	needlfn = islower2(drive);
 	if (!(xdirp = _dosopendir(path, buf, needlfn))) {
 		if (path[2] == '/' || path[2] == '\\'
-		|| !(tmp = curdir[drv - 'A'])) reterr(-1);
+		|| !(tmp = curdir[drv - 'A']))
+			reterr(-1);
 		curdir[drv - 'A'] = NULL;
 		xdirp = _dosopendir(path, buf, needlfn);
 		curdir[drv - 'A'] = tmp;
@@ -3543,7 +3558,8 @@ int *ddp;
 
 	if (ddp) *ddp = -1;
 	if ((drive = parsepath(&(buf[2]), path, 1)) < 0
-	|| (dd = opendev(drive)) < 0) return(-1);
+	|| (dd = opendev(drive)) < 0)
+		return(-1);
 	if (devlist[dd].dircache
 	&& buf[2] && buf[3] && !cmpdospath(dd2path(dd), &(buf[3]), -1, 0))
 		return(dd);
@@ -3612,13 +3628,13 @@ int dd;
 		offset -= (long)(devlist[dd].sectsize);
 	}
 	if (!(buf = (u_char *)malloc(devlist[dd].sectsize))) return(-1);
-	if ((ret = sectread(&(devlist[dd]), sect, buf, 1)) >= 0) {
+	if ((ret = sectread(&(devlist[dd]), sect, buf, 1)) >= 0L) {
 		memcpy((char *)&(buf[offset]), (char *)dd2dentp(dd),
 			sizeof(dent_t));
 		ret = sectwrite(&(devlist[dd]), sect, buf, 1);
 	}
 	free(buf);
-	return(ret < 0 ? -1 : 0);
+	return(ret < 0L ? -1 : 0);
 }
 
 static int NEAR expanddent(dd)
@@ -3631,7 +3647,7 @@ int dd;
 		doserrno = ENOSPC;
 		return(-1);
 	}
-	if ((dd2clust(dd) = clustexpand(&(devlist[dd]), prev, 1)) < 0)
+	if ((dd2clust(dd) = clustexpand(&(devlist[dd]), prev, 1)) < 0L)
 		return(-1);
 	memset((char *)dd2dentp(dd), 0, sizeof(dent_t));
 	dd2offset(dd) = 0L;
@@ -3867,7 +3883,8 @@ int sum;
 		if (!dd2dentp(dd) -> name[0] || dd2dentp(dd) -> name[0] == 0xe5
 		|| (dd2clust(dd) == dupclust && dd2offset(dd) == dupoffset)
 		|| dd2dentp(dd) -> attr != 0x0f
-		|| dd2dentp(dd) -> checksum != sum) break;
+		|| dd2dentp(dd) -> checksum != sum)
+			break;
 		*(dd2dentp(dd) -> name) = 0xe5;
 		writedent(dd);
 	}
@@ -3885,7 +3902,8 @@ char *path, *alias;
 
 	name[0] = '\0';
 	if ((drive = parsepath(&(buf[2]), path, 1)) < 0
-	|| (dd = opendev(drive)) < 0) reterr(NULL);
+	|| (dd = opendev(drive)) < 0)
+		reterr(NULL);
 	if (devlist[dd].dircache
 	&& buf[2] && buf[3] && !cmpdospath(dd2path(dd), &(buf[3]), -1, 0))
 		getdosname(name, dd2dentp(dd) -> name, dd2dentp(dd) -> ext);
@@ -3924,7 +3942,8 @@ char *path, *resolved;
 	int dd, drive;
 
 	if ((drive = parsepath(&(buf[2]), path, 1)) < 0
-	|| (dd = opendev(drive)) < 0) reterr(NULL);
+	|| (dd = opendev(drive)) < 0)
+		reterr(NULL);
 	buf[0] = drive;
 	buf[1] = ':';
 	path = buf;
@@ -4001,7 +4020,8 @@ struct stat *stp;
 	if ((stp -> st_mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
 		if (!strcasecmp2(cp, "BAT") || !strcasecmp2(cp, "COM")
-		|| !strcasecmp2(cp, "EXE")) stp -> st_mode |= S_IEXEC_ALL;
+		|| !strcasecmp2(cp, "EXE"))
+			stp -> st_mode |= S_IEXEC_ALL;
 	}
 	return(0);
 }
@@ -4333,9 +4353,10 @@ int fd, wrt;
 	}
 
 	if (dosflist[fd]._next < 0L) {
-		if (doserrno) return(-1);
-		if (!wrt) return(0);
-		if ((new = clustexpand(fd2devp(fd), prev, 0)) < 0) return(-1);
+		if (doserrno) return(-1L);
+		if (!wrt) return(0L);
+		if ((new = clustexpand(fd2devp(fd), prev, 0)) < 0L)
+			return(-1L);
 		if (!dosflist[fd]._off) {
 			dosflist[fd]._dent.clust[0] = new & 0xff;
 			dosflist[fd]._dent.clust[1] = (new >> 8) & 0xff;
@@ -4364,10 +4385,11 @@ int fd;
 
 	if (!(sect = clust2sect(fd2devp(fd), dosflist[fd]._off))) {
 		doserrno = EIO;
-		return(-1);
+		return(-1L);
 	}
-	if (sectwrite(fd2devp(fd), sect, (u_char *)(dosflist[fd]._base),
-	fd2devp(fd) -> clustsize) < 0) return(-1);
+	sect = sectwrite(fd2devp(fd), sect,
+		(u_char *)(dosflist[fd]._base), fd2devp(fd) -> clustsize);
+	if (sect < 0L) return(-1L);
 
 	return(dosflist[fd]._bufsize);
 }
@@ -4521,7 +4543,7 @@ int mode;
 		sizeof(dent_t));
 	memset(dent[0].name, ' ', 8 + 3);
 	dent[0].name[0] = '.';
-	if ((clust = newclust(fd2devp(fd))) < 0) {
+	if ((clust = newclust(fd2devp(fd))) < 0L) {
 		errno = doserrno;
 		dosflist[fd]._dent.name[0] = 0xe5;
 		*fd2path(fd) = '\0';

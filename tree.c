@@ -241,7 +241,8 @@ int level, *maxp;
 		if (!(list[i].name)) lp = NULL;
 		else for (lp = parent; lp; lp = lp -> parent)
 			if (lp -> dev == list[i].dev
-			&& lp -> ino == list[i].ino) break;
+			&& lp -> ino == list[i].ino)
+				break;
 		if (lp) {
 			list[i].sub = NULL;
 			list[i].max = 0;
@@ -379,7 +380,8 @@ int max, nest;
 				len = strlen(list[i].name);
 #if	MSDOS
 				if (!_dospath(list[i].name)
-				|| list[i].name[2] != _SC_) len++;
+				|| list[i].name[2] != _SC_)
+					len++;
 				memmove(&(treepath[len]), treepath,
 					strlen(treepath) + 1);
 				memcpy(treepath, list[i].name, len - 1);
@@ -388,7 +390,8 @@ int max, nest;
 				if (*list[i].name != _SC_) len++;
 # else
 				if (*list[i].name != _SC_
-				&& !_dospath(list[i].name)) len++;
+				&& !_dospath(list[i].name))
+					len++;
 # endif
 				memmove(&(treepath[len]), treepath,
 					strlen(treepath) + 1);
@@ -450,7 +453,8 @@ treelist *list;
 		if (!(lp -> name)) i = list -> max;
 		else for (i = 0; i < list -> max; i++)
 			if (lptmp[i].name
-			&& !strpathcmp(lp -> name, lptmp[i].name)) break;
+			&& !strpathcmp(lp -> name, lptmp[i].name))
+				break;
 		if (i < list -> max) {
 			free(lptmp[i].name);
 			for (; i > 0; i--) memcpy((char *)&(lptmp[i]),
@@ -510,7 +514,8 @@ static int NEAR treedown(VOID_A)
 
 	if (!tr_cur || !(tr_cur -> sub)
 	|| (tr_cur -> sub[tr_no]).max >= 0
-	|| ((tr_cur -> sub[tr_no]).name)) return(0);
+	|| ((tr_cur -> sub[tr_no]).name))
+		return(0);
 
 	waitmes();
 	if ((cp = strrdelim(treepath, 0)) == strdelim(treepath, 0)) cp++;
@@ -628,7 +633,8 @@ static int NEAR _tree_input(VOID_A)
 			break;
 		case '\t':
 			if (!tr_cur || !(tr_cur -> sub)
-			|| (tr_cur -> sub[tr_no]).max >= 0) break;
+			|| (tr_cur -> sub[tr_no]).max >= 0)
+				break;
 			waitmes();
 			expandall(&(tr_cur -> sub[tr_no]));
 			searchtree();
@@ -664,7 +670,8 @@ static int NEAR _tree_input(VOID_A)
 			break;
 		case 'l':
 			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, 1))
-			|| !*(cwd = evalpath(cwd, 0))) break;
+			|| !*(cwd = evalpath(cwd, 0)))
+				break;
 			if (chdir2(cwd) >= 0) {
 				free(cwd);
 				break;
@@ -757,7 +764,8 @@ static char *NEAR _tree(VOID_A)
 	if (!strcmp(cwd, _SS_)) /*EMPTY*/;
 	else for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
 		if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD
-		|| !(tr_cur = &(tr_cur -> sub[0]))) break;
+		|| !(tr_cur = &(tr_cur -> sub[0])))
+			break;
 	tr_line += (tr_top = LFILETOP + 1);
 	if (tr_line >= LFILEBOTTOM - 2) {
 		tr_top += LFILEBOTTOM - 2 - tr_line;

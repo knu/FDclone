@@ -41,6 +41,7 @@ extern char *mesconv __P_((char *, char *));
 #define	ODATE_K	mesconv("T: 日付順", "T: Timestamp")
 #define	OLEN_K	mesconv("L: 長さ順", "L: Length")
 #define	ORAW_K	mesconv("X: しない", "X: No chg")
+#define	OUST_K	mesconv("U: 定義削除", "U: Unset")
 #define	OINC_K	mesconv("U: 昇り順", "U: Up")
 #define	ODEC_K	mesconv("D: 降り順", "D: Down")
 #define	OMIT_K	mesconv("省略", "Omit")
@@ -375,8 +376,12 @@ extern char *mesconv __P_((char *, char *));
 #define	VOJIS_K	mesconv("旧JIS", "OldJIS")
 #define	VUTF8_K	mesconv("汎用", "normal")
 #define	VUTFM_K	mesconv("Mac用", "forMac")
-#define	VDEF_K	mesconv("(既定値)", "(default)")
+#define	VUSET_K	mesconv("(定義削除)", "(unset)")
+#define	VDEF_K	mesconv(" (既定値)", " (default)")
+#define	VUDEF_K	mesconv("(未定義)", "(undefined)")
 
+#define	USENV_K mesconv("内部変数 %s の定義を削除しますか ?", \
+			"Do you unset the variable %s ?")
 #define	NEWET_K	mesconv("新規登録", "NewEntry")
 #define	NIMPL_K	mesconv("この機能は実装されていません.", \
 			"Cannot available on this implementation.")

@@ -2656,7 +2656,8 @@ char *s;
 int n, noexit;
 {
 	if (n == ER_BADSUBST
-	&& (execerrno == ER_ISREADONLY || execerrno == ER_PARAMNOTSET)) return;
+	&& (execerrno == ER_ISREADONLY || execerrno == ER_PARAMNOTSET))
+		return;
 
 	if (!n || n >= EXECERRSIZ) return;
 #ifndef	BASHSTYLE
@@ -4866,7 +4867,8 @@ syntaxtree *trp;
 	int id;
 
 	if (!trp || !isstatement(trp -> comm)
-	|| (id = (trp -> comm) -> id) <= 0 || id > STATEMENTSIZ) return(-1);
+	|| (id = (trp -> comm) -> id) <= 0 || id > STATEMENTSIZ)
+		return(-1);
 	return(id - 1);
 }
 
@@ -5071,7 +5073,8 @@ int *lenp, notok;
 	}
 	else {
 		if (redirect(*trpp, STDIN_FILENO, tok, type) < 0
-		|| redirect(*trpp, STDOUT_FILENO, tok, type) < 0) return(-1);
+		|| redirect(*trpp, STDOUT_FILENO, tok, type) < 0)
+			return(-1);
 	}
 	return(0);
 }
@@ -5679,7 +5682,8 @@ int *ptrp, *tptrp;
 
 				/* for "esac " */
 				if ((stype = getparenttype(trp)) != STT_INCASE
-				&& stype != STT_CASEEND) (*ptrp)--;
+				&& stype != STT_CASEEND)
+					(*ptrp)--;
 				else if (!(s[*ptrp]) || s[*ptrp] == '\n')
 					syntaxerrno = ER_UNEXPNL;
 				else if (s[*ptrp] == ')' || s[*ptrp] == '|')
@@ -6096,7 +6100,8 @@ syntaxtree *trp;
 			trp = analyze(NULL, trp, 0);
 	/* bash does not allow the format like as "foo |" */
 		else if ((trp -> flags & ST_NEXT) && hasparent(trp)
-		&& isoppipe(trp -> parent)) break;
+		&& isoppipe(trp -> parent))
+			break;
 #endif
 		else {
 			syntaxerrno = ER_UNEXPEOF;
@@ -6551,7 +6556,8 @@ int fd;
 		if (rmtmpfile(pl -> file) < 0) {
 #ifdef	DJGPP
 			if (errno == EACCES && dupl >= 0 && Xclose(dupl) >= 0
-			&& rmtmpfile(pl -> file) >= 0) /*EMPTY*/;
+			&& rmtmpfile(pl -> file) >= 0)
+				/*EMPTY*/;
 			else
 #endif
 			doperror(NULL, pl -> file);
@@ -6743,7 +6749,8 @@ char ***argvp;
 
 	if (shellvar) for (i = 0; shellvar[i]; i++) {
 		if (strnenvcmp(s, shellvar[i], len)
-		|| !(cp = strchr(shellvar[i], '='))) continue;
+		|| !(cp = strchr(shellvar[i], '=')))
+			continue;
 		cp = strndup2(shellvar[i], cp - shellvar[i]);
 		if (finddupl(cp, argc, *argvp)) free(cp);
 		else {
@@ -6765,7 +6772,8 @@ char ***argvp;
 # ifndef	NOALIAS
 	for (i = 0; shellalias[i].ident; i++) {
 		if (strncommcmp(s, shellalias[i].ident, len)
-		|| finddupl(shellalias[i].ident, argc, *argvp)) continue;
+		|| finddupl(shellalias[i].ident, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(shellalias[i].ident);
@@ -6773,7 +6781,8 @@ char ***argvp;
 # endif	/* !NOALIAS */
 	for (i = 0; i < STATEMENTSIZ; i++) {
 		if (strncommcmp(s, statementlist[i].ident, len)
-		|| finddupl(statementlist[i].ident, argc, *argvp)) continue;
+		|| finddupl(statementlist[i].ident, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(statementlist[i].ident);
@@ -6783,7 +6792,8 @@ char ***argvp;
 		if (shbuiltinlist[i].flags & BT_DISABLE) continue;
 # endif
 		if (strncommcmp(s, shbuiltinlist[i].ident, len)
-		|| finddupl(shbuiltinlist[i].ident, argc, *argvp)) continue;
+		|| finddupl(shbuiltinlist[i].ident, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(shbuiltinlist[i].ident);
@@ -6794,7 +6804,8 @@ char ***argvp;
 # endif
 	for (i = 0; shellfunc[i].ident; i++) {
 		if (strncommcmp(s, shellfunc[i].ident, len)
-		|| finddupl(shellfunc[i].ident, argc, *argvp)) continue;
+		|| finddupl(shellfunc[i].ident, argc, *argvp))
+			continue;
 		*argvp = (char **)realloc2(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(shellfunc[i].ident);
@@ -8418,7 +8429,8 @@ syntaxtree *trp;
 
 		for (i = 0; exportlist[i]; i++)
 			if (!strnenvcmp(argv[n], exportlist[i], len)
-			&& !exportlist[i][len]) break;
+			&& !exportlist[i][len])
+				break;
 		if (!exportlist[i]) {
 			exportlist = (char **)realloc2(exportlist,
 				(i + 2) * sizeof(char *));
@@ -8428,7 +8440,8 @@ syntaxtree *trp;
 
 		for (i = 0; shellvar[i]; i++)
 			if (!strnenvcmp(argv[n], shellvar[i], len)
-			&& shellvar[i][len] == '=') break;
+			&& shellvar[i][len] == '=')
+				break;
 		if (!shellvar[i]) continue;
 		exportvar = putvar(exportvar, strdup2(shellvar[i]), len);
 	}
@@ -8471,7 +8484,8 @@ syntaxtree *trp;
 
 		for (i = 0; ronlylist[i]; i++)
 			if (!strnenvcmp(argv[n], ronlylist[i], len)
-			&& !ronlylist[i][len]) break;
+			&& !ronlylist[i][len])
+				break;
 		if (!ronlylist[i]) {
 			ronlylist = (char **)realloc2(ronlylist,
 				(i + 2) * sizeof(char *));
@@ -9039,7 +9053,8 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	n = 1;
 	if ((trp -> comm) -> argc > 1 && argv[n][0] == '-'
-	&& argv[n][1] == 'n' && argv[n][2] == '\0') n++;
+	&& argv[n][1] == 'n' && argv[n][2] == '\0')
+		n++;
 
 	for (i = n; i < (trp -> comm) -> argc; i++) {
 		if (i > n) fputc(' ', stdout);
@@ -9208,7 +9223,8 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	n = 1;
 	if ((trp -> comm) -> argc > 1 && argv[n][0] == '-'
-	&& argv[n][1] == 'n' && argv[n][2] == '\0') n++;
+	&& argv[n][1] == 'n' && argv[n][2] == '\0')
+		n++;
 
 	ret = RET_SUCCESS;
 	if (n >= (trp -> comm) -> argc) for (j = 0; j < SHBUILTINSIZ; j++) {
@@ -9496,7 +9512,8 @@ int len;
 	if (checkronly(ident, len) < 0) return(-1);
 	for (i = 0; shellfunc[i].ident; i++)
 		if (!strncommcmp(ident, shellfunc[i].ident, len)
-		&& !shellfunc[i].ident[len]) break;
+		&& !shellfunc[i].ident[len])
+			break;
 	if (!shellfunc[i].ident) return(0);
 	free(shellfunc[i].ident);
 	freestree(shellfunc[i].func);
@@ -10481,11 +10498,13 @@ char **var;
 		len = cp - var[i];
 		for (j = 0; j < ADJUSTVARSIZ; j++) {
 			if (strnenvcmp(var[i], adjustvar[j], len)
-			&& !adjustvar[j][len]) break;
+			&& !adjustvar[j][len])
+				break;
 # ifdef	FD
 			if (strnenvcmp(adjustvar[j], FDENV, FDESIZ)
 			&& strnenvcmp(var[i], adjustvar[j] + FDESIZ, len)
-			&& !adjustvar[j][len + FDESIZ]) break;
+			&& !adjustvar[j][len + FDESIZ])
+				break;
 # endif
 		}
 		if (j >= ADJUSTVARSIZ) continue;
@@ -10548,7 +10567,8 @@ int prepareterm(VOID_A)
 		getterment((term) ? term : "");
 #else
 		if (!(ttyout = fdopen(ttyio, "w+b"))
-		&& !(ttyout = fopen(TTYNAME, "w+b"))) ttyout = stderr;
+		&& !(ttyout = fopen(TTYNAME, "w+b")))
+			ttyout = stderr;
 #endif
 	}
 	return(0);

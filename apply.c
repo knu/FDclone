@@ -333,8 +333,8 @@ struct stat *stp1, *stp2;
 				break;
 			case 2:
 				lcmdline = L_INFO;
-				if (!(tmp = inputstr(NEWNM_K, 1,
-					-1, NULL, -1))) return(-1);
+				tmp = inputstr(NEWNM_K, 1, -1, NULL, -1);
+				if (!tmp) return(-1);
 				strcpy(getbasename(dest), tmp);
 				free(tmp);
 				if (Xlstat(dest, stp2) < 0) {
@@ -419,8 +419,8 @@ int mode;
 			warning(-1, dir);
 			return(-1);
 		}
-		stp = &st;
 		if (Xaccess(path, mode) >= 0) return(0);
+		stp = &st;
 	}
 #endif	/* !MSDOS */
 	if (errno == ENOENT) return(0);
@@ -579,7 +579,7 @@ char *path;
 	st.st_flags = (u_long)-1;
 # endif
 	if (touchfile(dest, &st) < 0) return(-1);
-	if ((n = checkrmv(path, R_OK | W_OK | X_OK) < 0))
+	if ((n = checkrmv(path, R_OK | W_OK | X_OK)) < 0)
 		return((n < -1) ? -2 : 1);
 	return(Xrmdir(path));
 }
@@ -1082,7 +1082,8 @@ int verbose;
 	dupatime = destatime;
 
 	if (order) for (ndir = 0; ndir < max; ndir++) {
-		if (order != 2) ret = _applydir(dirlist[ndir], funcf,
+		if (order != 2)
+			ret = _applydir(dirlist[ndir], funcf,
 				funcd1, funcd2, order, NULL, verbose);
 		else if ((ret = (*funcd1)(dirlist[ndir])) < 0) {
 			if (ret == -1) warning(-1, dir);
@@ -1225,6 +1226,9 @@ int movefile(arg, tr)
 char *arg;
 int tr;
 {
+#ifdef	_USEDOSEMU
+	char path[MAXPATHLEN];
+#endif
 	int i;
 
 	if (!mark && isdotdir(filelist[filepos].name)) {
@@ -1248,13 +1252,9 @@ int tr;
 	else if (islowerdir(destpath, filelist[filepos].name))
 		warning(EINVAL, filelist[filepos].name);
 	else {
-#ifdef	_USEDOSEMU
-		char path[MAXPATHLEN];
-#endif
-
 		i = safemove(fnodospath(path, filepos));
 		if (!i) filepos++;
-		else if (i < 0) {
+		else if (i == -1) {
 #ifdef	_NOEXTRACOPY
 			warning(-1, filelist[filepos].name);
 #else
@@ -1266,7 +1266,8 @@ int tr;
 				safemove, cpdir, mvdir,
 				(islowerdir(destpath, filelist[filepos].name))
 				? 2 : 1,
-				ENDMV_K) >= 0) filepos++;
+				ENDMV_K) >= 0)
+					filepos++;
 #endif
 		}
 	}

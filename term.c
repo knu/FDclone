@@ -1259,8 +1259,8 @@ int stdiomode(VOID_A)
 		(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
 		OPOST | ONLCR, (OCRNL|ONOCR|ONLRET) | TAB3,
 		VAL_VMIN, VAL_VTIME);
-	if (dumbterm > 2) ttymode(0, ECHO,
-		0, ICRNL, 0, ONLCR, VAL_VMIN, VAL_VTIME);
+	if (dumbterm > 2)
+		ttymode(0, ECHO, 0, ICRNL, 0, ONLCR, VAL_VMIN, VAL_VTIME);
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	if (!dumbterm) {
@@ -1494,8 +1494,8 @@ int *yp, *xp;
 
 	for (i = j = 0; format[i] && buf[j]; i++) {
 		if (format[i] == '%' && format[++i] == 'd' && count < 2) {
-			if ((tmp = getnum(buf, &j)) < 0
-			|| buf[j] != format[i + 1]) break;
+			tmp = getnum(buf, &j);
+			if (tmp < 0 || buf[j] != format[i + 1]) break;
 			*val[count++] = tmp;
 		}
 		else if (format[i] != buf[j++]) break;
@@ -1786,7 +1786,8 @@ static int NEAR sortkeyseq(VOID_A)
 		for (j = 0; j < keyseq[i].len; j++) {
 			for (k = 0; k < p -> num; k++) {
 				if (keyseq[i].str[j]
-				== keyseq[p -> next[k].key].str[j]) break;
+				== keyseq[p -> next[k].key].str[j])
+					break;
 			}
 			if (k >= p -> num) {
 				newkeyseqtree(p, k + 1);
@@ -1815,7 +1816,8 @@ char *s;
 	if (termflags & F_TERMENT) return(-1);
 	if (!ttyout) {
 		if (!(ttyout = fdopen(ttyio, "w+b"))
-		&& !(ttyout = fopen(TTYNAME, "w+b"))) ttyout = stderr;
+		&& !(ttyout = fopen(TTYNAME, "w+b")))
+			ttyout = stderr;
 	}
 	dupdumbterm = dumbterm;
 	dumbterm = dumb = 0;

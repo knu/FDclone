@@ -498,7 +498,8 @@ char *arg;
 			m = filelist[filepos].st_mode;
 			if ((m & S_IFMT) == S_IFDIR || (m & S_IFMT) == S_IFLNK
 			|| (m & S_IFMT) == S_IFSOCK || (m & S_IFMT) == S_IFIFO
-			|| (m & (S_IXUSR | S_IXGRP | S_IXOTH))) i--;
+			|| (m & (S_IXUSR | S_IXGRP | S_IXOTH)))
+				i--;
 		}
 	}
 	if (i >= strlen3(filelist[filepos].name) - fnameofs) return(0);
@@ -591,7 +592,8 @@ char *arg;
 {
 	mark_file(arg);
 	if (filepos < maxfile - 1
-	&& filepos / FILEPERPAGE == (filepos + 1) / FILEPERPAGE) filepos++;
+	&& filepos / FILEPERPAGE == (filepos + 1) / FILEPERPAGE)
+		filepos++;
 	else filepos = (filepos / FILEPERPAGE) * FILEPERPAGE;
 	return(2);
 }
@@ -685,7 +687,8 @@ char *arg;
 	else
 #endif
 	if (!isdir(&(filelist[filepos]))
-	|| !strcmp(filelist[filepos].name, ".")) return(warning_bell(arg));
+	|| !strcmp(filelist[filepos].name, "."))
+		return(warning_bell(arg));
 	return(5);
 }
 
@@ -1328,11 +1331,11 @@ char *arg;
 	if (arg && *arg) wild = strdup2(arg);
 	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", -1))) return(1);
 
-	if (
 #ifndef	_NOARCHIVE
-	*wild != '/' &&
+	if (*wild == '/') /*EMPTY*/;
+	else
 #endif
-	strdelim(wild, 1)) {
+	if (strdelim(wild, 1)) {
 		warning(ENOENT, wild);
 		free(wild);
 		return(1);

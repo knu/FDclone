@@ -1478,10 +1478,12 @@ off_t *sump, *bsump;
 					break;
 				case 'S':
 					if ((dirlist[n].mod & S_IFMT)
-					!= S_IFSOCK) f ^= 1;
+					!= S_IFSOCK)
+						f ^= 1;
 					break;
 				case 'A':
-					if (!(dirlist[n].mod & S_ISVTX)) f ^= 1;
+					if (!(dirlist[n].mod & S_ISVTX))
+						f ^= 1;
 					break;
 				default:
 					break;

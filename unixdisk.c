@@ -715,7 +715,8 @@ char *path, *resolved;
 			resolved[1] = ':';
 			i = 2;
 			if (isalpha2(resolved[2])
-			&& resolved[3] == '.' && resolved[4] == _SC_) i = 5;
+			&& resolved[3] == '.' && resolved[4] == _SC_)
+				i = 5;
 			while (resolved[i]) if (resolved[i++] == _SC_) break;
 			resolved[2] = _SC_;
 			for (j = 0; resolved[i + j]; j++)
@@ -1249,14 +1250,16 @@ int drive;
 
 #ifdef	PC98
 		for (i = 0; i < MAX_HDD && maxdrive < 'Z' - 'A' + 1; i++) {
-			if (getdrvparam(BIOS_HDD | i,
-				&(drvlist[maxdrive])) <= 0) continue;
+			if (getdrvparam(BIOS_HDD | i, &(drvlist[maxdrive]))
+			<= 0)
+				continue;
 			if (_checkdrive(0, 1, 0, (u_long)0, (u_long)0) < 0)
 				return(-1);
 		}
 		for (i = 0; i < MAX_SCSI && maxdrive < 'Z' - 'A' + 1; i++) {
-			if (getdrvparam(BIOS_SCSI | i,
-				&(drvlist[maxdrive])) <= 0) continue;
+			if (getdrvparam(BIOS_SCSI | i, &(drvlist[maxdrive]))
+			<= 0)
+				continue;
 			if (_checkdrive(0, 1, 0, (u_long)0, (u_long)0) < 0)
 				return(-1);
 		}
@@ -1267,8 +1270,8 @@ int drive;
 		n = reg.h.dl;
 
 		for (i = 0; i < n && maxdrive < 'Z' - 'A' + 1; i++) {
-			if (!(j = getdrvparam(BIOS_HDD | i,
-				&(drvlist[maxdrive])))) continue;
+			j = getdrvparam(BIOS_HDD | i, &(drvlist[maxdrive]));
+			if (!j) continue;
 			if (j < 0
 			|| _checkdrive(0, 0, 0, (u_long)0, (u_long)0) < 0)
 				return(-1);
@@ -1323,10 +1326,12 @@ int n, size, iswrite;
 	head = sect / drvlist[drive].sect;
 	sect %= drvlist[drive].sect;
 
-	if (!iswrite) return(_biosdiskio(drive, head, sect, cyl,
-		buf, n, BIOS_READ, BIOSRETRY));
+	if (!iswrite)
+		return(_biosdiskio(drive, head, sect, cyl,
+			buf, n, BIOS_READ, BIOSRETRY));
 	else if (_biosdiskio(drive, head, sect, cyl,
-	buf, n, BIOS_WRITE, BIOSRETRY) < 0) return(-1);
+	buf, n, BIOS_WRITE, BIOSRETRY) < 0)
+		return(-1);
 	else return(_biosdiskio(drive, head, sect, cyl,
 		buf, n, BIOS_VERIFY, 1));
 }
@@ -1967,7 +1972,8 @@ char *from, *to;
 		tp = &(to[tp - fbuf]);
 	}
 	if (!(to = unixrealpath(fbuf, tbuf))
-	|| !(from = unixrealpath(from, fbuf))) return(-1);
+	|| !(from = unixrealpath(from, fbuf)))
+		return(-1);
 	strcpy(strcatdelim(tbuf), tp);
 
 	for (i = 0; from[i]; i++) if (from[i] != to[i]) break;
@@ -2042,7 +2048,8 @@ char *from, *to;
 		if (i == 1) {
 			if (ax != 0x5600
 			|| dos_findfirst(from, SEARCHATTRS, &dbuf) < 0
-			|| !(dbuf.attr & DS_IFDIR)) break;
+			|| !(dbuf.attr & DS_IFDIR))
+				break;
 
 			if (t > -3) {
 				if ((f = gendosname(to)) < 0) break;

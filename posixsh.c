@@ -494,14 +494,16 @@ int len, delim;
 	if (!trp || (trp -> flags & ST_NODE) || hascomm(trp)
 	|| !interactive
 	|| ((i = getstatid(parentstree(trp))) >= 0
-	&& !(statementlist[i].type & STT_NEEDLIST))) return(-1);
+	&& !(statementlist[i].type & STT_NEEDLIST)))
+		return(-1);
 
 	if ((!strchr(IFS_SET, delim) && !strchr(ALIASDELIMIT, delim)))
 		return(-1);
 	for (i = 0; shellalias[i].ident; i++)
 		if (!(shellalias[i].flags & AL_USED)
 		&& !strncommcmp(ident, shellalias[i].ident, len)
-		&& !(shellalias[i].ident[len])) break;
+		&& !(shellalias[i].ident[len]))
+			break;
 	if (!(shellalias[i].ident)) return(-1);
 
 	*ident = '\0';
@@ -1301,7 +1303,8 @@ int *ptrp;
 		if ((ret = testsub3(argc, argv, ptrp, 0)) < 0)
 			return(ret);
 		if (*ptrp >= argc
-		|| argv[*ptrp][0] != ')' || argv[*ptrp][1]) return(-1);
+		|| argv[*ptrp][0] != ')' || argv[*ptrp][1])
+			return(-1);
 		(*ptrp)++;
 		return(ret);
 	}

@@ -79,7 +79,7 @@ static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
 #if	defined (USEMNTINFO) || defined (USEGETMNT)
 #define	endmntent(fp)
 #else
-#define	endmntent(fp)		{ if (fp) free(fp); }
+#define	endmntent(fp)		do { if (fp) free(fp); } while(0)
 #endif
 static int mnt_ptr = 0;
 static int mnt_size = 0;
@@ -447,14 +447,14 @@ int mode;
 		buf[0] = '\0';
 		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
 			if (i == (int)(bindlist[j].f_func)) {
-				if ((c += code2str(buf,
-					(int)(bindlist[j].key))) >= 2) break;
+				c += code2str(buf, (int)(bindlist[j].key));
+				if (c >= 2) break;
 			}
 		if (c < 2)
 		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
 			if (i == (int)(bindlist[j].d_func)) {
-				if ((c += code2str(buf,
-					(int)(bindlist[j].key))) >= 2) break;
+				c += code2str(buf, (int)(bindlist[j].key));
+				if (c >= 2) break;
 			}
 		if (!c) continue;
 
@@ -666,8 +666,8 @@ mnt_t *mntp;
 	struct fs_data buf;
 	int len;
 
-	if (getmnt(&mnt_ptr, &buf, sizeof(struct fs_data),
-		NOSTAT_MANY, NULL) <= 0) return(NULL);
+	if (getmnt(&mnt_ptr, &buf, sizeof(buf), NOSTAT_MANY, NULL) <= 0)
+		return(NULL);
 
 	len = strlen(buf.fd_req.devname) + 1;
 	fsname = realloc2(fsname, len);
@@ -824,7 +824,8 @@ mnt_t *mntbuf;
 			if ((len = strlen(mntp -> mnt_dir)) < match
 			|| strncmp(mntp -> mnt_dir, dir, len)
 			|| (mntp -> mnt_dir[len - 1] != _SC_
-			&& dir[len] && dir[len] != _SC_)) continue;
+			&& dir[len] && dir[len] != _SC_))
+				continue;
 			match = len;
 			strcpy(fsname, mntp -> mnt_fsname);
 		}
@@ -848,7 +849,8 @@ mnt_t *mntbuf;
 	memcpy((char *)mntbuf, (char *)mntp, sizeof(mnt_t));
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
-	&& (path == dir || statfs2(path, fsbuf) < 0)) return(-1);
+	&& (path == dir || statfs2(path, fsbuf) < 0))
+		return(-1);
 #endif	/* !MSDOS */
 
 	return(0);
