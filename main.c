@@ -429,15 +429,16 @@ char *file;
 		if (cont) continue;
 
 		if (pack) {
-			evalconfigline(pack);
+			execbuiltin(pack, NULL, NULL, 0);
 			free(pack);
 			pack = NULL;
 		}
-		else if (*(cp = skipspace(line))) evalconfigline(cp);
+		else if (*(cp = skipspace(line)))
+			execbuiltin(cp, NULL, NULL, 0);
 	}
 
 	if (pack) {
-		evalconfigline(pack);
+		execbuiltin(pack, NULL, NULL, 0);
 		free(pack);
 	}
 

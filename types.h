@@ -160,6 +160,11 @@ typedef struct _userfunctable {
 	char **comm;
 } userfunctable;
 
+typedef struct _builtintable {
+	int (*func)();
+	char *ident;
+} builtintable;
+
 #define	F_SYMLINK	001
 #define	F_FILETYPE	002
 #define	F_DOTFILE	004

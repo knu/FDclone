@@ -128,6 +128,10 @@ extern int notabs();
 extern int keyflush();
 extern int exit2();
 extern int getterment();
+#if	!MSDOS
+extern int setkeyseq();
+extern char *getkeyseq();
+#endif
 extern int initterm();
 extern int endterm();
 extern int putch2();
@@ -145,6 +149,15 @@ extern int locate();
 extern int tflush();
 extern int getwsize();
 extern int chgcolor();
+
+#if	!MSDOS
+# ifndef	SENSEPERSEC
+# define	SENSEPERSEC	50
+# endif
+# ifndef	WAITKEYPAD
+# define	WAITKEYPAD	360		/* msec */
+# endif
+#endif
 
 #if	MSDOS && defined (__GNUC__)
 #define	ANSI_BLACK	0

@@ -640,6 +640,7 @@ NWS-3400:
 	_NOKANJICONV	漢字コードが動的に変更不能
 	_NOENGMES	英語メッセージが表示不能
 	_NOCOLOR	カラー表示機能が使用不能
+	_NOKEYMAP	keymap, getkey 組込みコマンドが使用不能
 	
 　config.hin を編集してこれらの識別子の定義を追加しておけば、
 機能を縮小してサイズを小さくしたり、エンドユーザに使用させた

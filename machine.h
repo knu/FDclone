@@ -567,10 +567,10 @@ typedef unsigned long	u_long;
 #define	TERMCAPLIB		"-ltermlib"
 #endif
 #ifndef	REGEXPLIB
-#define	REGEXPLIB
+#define	REGEXPLIB		""
 #endif
 #ifndef	EXTENDLIB
-#define	EXTENDLIB
+#define	EXTENDLIB		""
 #endif
 
 #if defined (USESTATVFSH)

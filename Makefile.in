@@ -17,7 +17,7 @@ MANSEC	= 1
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
 	dosdisk.c dosemu.c \
 	unixdisk.c unixemu.c \
-	rockridg.c parse.c \
+	rockridg.c builtin.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
@@ -37,7 +37,7 @@ ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.lpc \
 	makefile.g98 makefile.l98 \
 	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
-	version.h _fdrc
+	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 
 CC	= __CC__
@@ -46,12 +46,14 @@ SED	= sed
 PROGRAM	= fd
 OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ libc__OBJ__ input__OBJ__ \
 	shell__OBJ__ info__OBJ__ __OBJS__
-OBJ2	= rockridg__OBJ__ parse__OBJ__ \
+OBJ2	= rockridg__OBJ__ builtin__OBJ__ parse__OBJ__ \
 	kanji__OBJ__ file__OBJ__ apply__OBJ__ archive__OBJ__ tree__OBJ__ \
 	command__OBJ__ browse__OBJ__
 
-LDFLAGS	= __OBJLIST__ __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
+LDFLAGS	= __TERMLIBS__ __REGLIBS__ __OTHERLIBS__
 CFLAGS	= -DFD -D__OSTYPE__ -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__
+
+.SUFFIXES: .h .c __OBJ__ __EXE__
 
 ############################################################
 #	Dependency Rules
@@ -60,7 +62,7 @@ CFLAGS	= -DFD -D__OSTYPE__ -DDEFRUNCOM=__DEFRC__ __CCOPTIONS__
 goal:	$(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC)
 
 $(PROGRAM)__EXE__: $(OBJ1) $(OBJ2) $(ARGS)
-	$(CC) $(CFLAGS) -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ __OBJLIST__ $(LDFLAGS)
 	__RENAME__ $@ $(PROGRAM)
 	__AOUT2EXE__ $(PROGRAM)
 	__REMOVE__ $(PROGRAM)
@@ -69,6 +71,8 @@ $(ARGS): $(OBJ1) $(OBJ2)
 	@echo $(OBJ1) > $(ARGS)
 	@echo $(OBJ2) >> $(ARGS)
 
+.c__OBJ__:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
 
 ############################################################
 # kanji using module
@@ -154,6 +158,7 @@ depend: $(SRC) kanji.h funcno.h
 	$(SED) -e '1,/^# DO NOT DELETE THIS LINE/d'\
 		-e 's/\/[^ ]* *//g'\
 		-e 's/\.o/\_\_OBJ\_\_/g'\
+		-e 's/ *$$//'\
 		-e '/: *$$/d' Makefile.tmp >> Makefile.in
 	rm -f Makefile.in.bak Makefile.tmp
 
@@ -201,76 +206,79 @@ clean:
 	rm -f $(PROGRAM).doc $(ARGS)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-main__OBJ__: fd.h machine.h config.h 
+main__OBJ__: fd.h machine.h config.h
 main__OBJ__: types.h pathname.h term.h
 main__OBJ__: func.h kctype.h
-main__OBJ__: kanji.h funcno.h version.h 
-main__OBJ__: dosdisk.h 
-term__OBJ__: machine.h config.h 
+main__OBJ__: kanji.h funcno.h version.h
+main__OBJ__: dosdisk.h
+term__OBJ__: machine.h config.h
 term__OBJ__: term.h
-pathname__OBJ__: machine.h config.h 
+pathname__OBJ__: machine.h config.h
 pathname__OBJ__: pathname.h
-libc__OBJ__: fd.h machine.h config.h 
+libc__OBJ__: fd.h machine.h config.h
 libc__OBJ__: types.h pathname.h term.h
 libc__OBJ__: func.h kctype.h
-libc__OBJ__: kanji.h 
-input__OBJ__: fd.h machine.h config.h 
+libc__OBJ__: kanji.h
+input__OBJ__: fd.h machine.h config.h
 input__OBJ__: types.h pathname.h
-input__OBJ__: term.h func.h 
-input__OBJ__: kctype.h kanji.h 
-shell__OBJ__: fd.h machine.h config.h 
+input__OBJ__: term.h func.h
+input__OBJ__: kctype.h kanji.h
+shell__OBJ__: fd.h machine.h config.h
 shell__OBJ__: types.h pathname.h
-shell__OBJ__: term.h func.h 
+shell__OBJ__: term.h func.h
 shell__OBJ__: kctype.h kanji.h funcno.h
-info__OBJ__: fd.h machine.h config.h 
+info__OBJ__: fd.h machine.h config.h
 info__OBJ__: types.h pathname.h term.h
-info__OBJ__: funcno.h kanji.h 
-dosdisk__OBJ__: machine.h config.h 
-dosdisk__OBJ__: dosdisk.h 
-dosemu__OBJ__: fd.h machine.h config.h 
+info__OBJ__: funcno.h kanji.h
+dosdisk__OBJ__: machine.h config.h
+dosdisk__OBJ__: dosdisk.h
+dosemu__OBJ__: fd.h machine.h config.h
 dosemu__OBJ__: types.h pathname.h
 dosemu__OBJ__: func.h dosdisk.h
-dosemu__OBJ__: kctype.h 
-unixdisk__OBJ__: unixdisk.h machine.h config.h 
+dosemu__OBJ__: kctype.h
+unixdisk__OBJ__: unixdisk.h machine.h config.h
 unixdisk__OBJ__: unixemu.h
-unixemu__OBJ__: fd.h machine.h config.h 
+unixemu__OBJ__: fd.h machine.h config.h
 unixemu__OBJ__: types.h pathname.h
-unixemu__OBJ__: func.h 
+unixemu__OBJ__: func.h
 unixemu__OBJ__: unixdisk.h
 unixemu__OBJ__: unixemu.h
-rockridg__OBJ__: fd.h machine.h config.h 
+rockridg__OBJ__: fd.h machine.h config.h
 rockridg__OBJ__: types.h pathname.h
-rockridg__OBJ__: func.h 
-parse__OBJ__: fd.h machine.h config.h 
+rockridg__OBJ__: func.h
+builtin__OBJ__: fd.h machine.h config.h
+builtin__OBJ__: types.h pathname.h
+builtin__OBJ__: term.h func.h
+builtin__OBJ__: kanji.h kctype.h funcno.h dosdisk.h
+parse__OBJ__: fd.h machine.h config.h
 parse__OBJ__: types.h pathname.h
-parse__OBJ__: term.h func.h 
-parse__OBJ__: kctype.h kanji.h funcno.h
+parse__OBJ__: func.h kctype.h
 parse__OBJ__: dosdisk.h
-kanji__OBJ__: fd.h machine.h config.h 
+kanji__OBJ__: fd.h machine.h config.h
 kanji__OBJ__: types.h pathname.h
-kanji__OBJ__: term.h func.h 
-kanji__OBJ__: kctype.h 
-file__OBJ__: fd.h machine.h config.h 
+kanji__OBJ__: term.h func.h
+kanji__OBJ__: kctype.h
+file__OBJ__: fd.h machine.h config.h
 file__OBJ__: types.h pathname.h term.h
 file__OBJ__: func.h kanji.h
-file__OBJ__: kctype.h 
-apply__OBJ__: fd.h machine.h config.h 
+file__OBJ__: kctype.h
+apply__OBJ__: fd.h machine.h config.h
 apply__OBJ__: types.h pathname.h
-apply__OBJ__: term.h func.h 
-apply__OBJ__: kanji.h 
-archive__OBJ__: fd.h machine.h config.h 
+apply__OBJ__: term.h func.h
+apply__OBJ__: kanji.h
+archive__OBJ__: fd.h machine.h config.h
 archive__OBJ__: types.h pathname.h
-archive__OBJ__: term.h func.h 
-archive__OBJ__: funcno.h kanji.h 
-tree__OBJ__: fd.h machine.h config.h 
+archive__OBJ__: term.h func.h
+archive__OBJ__: funcno.h kanji.h
+tree__OBJ__: fd.h machine.h config.h
 tree__OBJ__: types.h pathname.h term.h
 tree__OBJ__: func.h kanji.h
-command__OBJ__: fd.h machine.h config.h 
+command__OBJ__: fd.h machine.h config.h
 command__OBJ__: types.h pathname.h
-command__OBJ__: term.h func.h 
-command__OBJ__: funcno.h kanji.h 
+command__OBJ__: term.h func.h
+command__OBJ__: kanji.h funcno.h
 command__OBJ__: functabl.h
-browse__OBJ__: fd.h machine.h config.h 
+browse__OBJ__: fd.h machine.h config.h
 browse__OBJ__: types.h pathname.h
-browse__OBJ__: term.h func.h 
-browse__OBJ__: funcno.h kanji.h 
+browse__OBJ__: term.h func.h
+browse__OBJ__: funcno.h kanji.h

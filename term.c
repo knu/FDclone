@@ -6,6 +6,7 @@
 
 #include "machine.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -53,12 +54,6 @@ extern int tgetflag();
 extern char *tgetstr();
 extern char *tgoto();
 
-#ifndef	SENSEPERSEC
-#define	SENSEPERSEC	50
-#endif
-#ifndef	WAITKEYPAD
-#define	WAITKEYPAD	360		/* msec */
-#endif
 #define	STDIN		0
 #define	STDOUT		1
 #define	STDERR		2
@@ -188,42 +183,52 @@ int inittty(reset)
 int reset;
 {
 	termflags |= F_INITTTY;
+	return(0);
 }
 
 int cooked2()
 {
+	return(0);
 }
 
 int cbreak2()
 {
+	return(0);
 }
 
 int raw2()
 {
+	return(0);
 }
 
 int echo2()
 {
+	return(0);
 }
 
 int noecho2()
 {
+	return(0);
 }
 
 int nl2()
 {
+	return(0);
 }
 
 int nonl2()
 {
+	return(0);
 }
 
 int tabs()
 {
+	return(0);
 }
 
 int notabs()
 {
+	return(0);
 }
 
 int keyflush()
@@ -236,6 +241,7 @@ int keyflush()
 #else
 	while (kbhit()) getch();
 #endif
+	return(0);
 }
 
 #else	/* !MSDOS */
@@ -268,6 +274,7 @@ int reset;
 #endif
 		termflags |= F_INITTTY;
 	}
+	return(0);
 }
 
 #ifdef	USETERMIO
@@ -307,6 +314,7 @@ u_short set, reset, lset, lreset;
 	if (ioctl(d, TIOCSETP, &tty) < 0) err2(NULL);
 	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
 #endif
+	return(0);
 }
 
 int cooked2()
@@ -318,6 +326,7 @@ int cooked2()
 #else
 	ttymode(ttyio, 0, ~(CBREAK | RAW), 0, ~(LLITOUT | LPENDIN));
 #endif
+	return(0);
 }
 
 int cbreak2()
@@ -328,6 +337,7 @@ int cbreak2()
 #else
 	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
 #endif
+	return(0);
 }
 
 int raw2()
@@ -337,6 +347,7 @@ int raw2()
 #else
 	ttymode(ttyio, RAW, 0, LLITOUT, 0);
 #endif
+	return(0);
 }
 
 int echo2()
@@ -347,6 +358,7 @@ int echo2()
 #else
 	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #endif
+	return(0);
 }
 
 int noecho2()
@@ -356,6 +368,7 @@ int noecho2()
 #else
 	ttymode(ttyio, 0, ~ECHO, 0, ~(LCRTBS | LCRTERA));
 #endif
+	return(0);
 }
 
 int nl2()
@@ -365,6 +378,7 @@ int nl2()
 #else
 	ttymode(ttyio, CRMOD, 0, 0, 0);
 #endif
+	return(0);
 }
 
 int nonl2()
@@ -374,6 +388,7 @@ int nonl2()
 #else
 	ttymode(ttyio, 0, ~CRMOD, 0, 0);
 #endif
+	return(0);
 }
 
 int tabs()
@@ -383,6 +398,7 @@ int tabs()
 #else
 	ttymode(ttyio, 0, ~XTABS, 0, 0);
 #endif
+	return(0);
 }
 
 int notabs()
@@ -392,6 +408,7 @@ int notabs()
 #else
 	ttymode(ttyio, XTABS, 0, 0, 0);
 #endif
+	return(0);
 }
 
 int keyflush()
@@ -402,6 +419,7 @@ int keyflush()
 	int i = FREAD;
 	ioctl(ttyio, TIOCFLUSH, &i);
 #endif
+	return(0);
 }
 #endif	/* !MSDOS */	
 
@@ -413,6 +431,7 @@ int no;
 	inittty(1);
 	keyflush();
 	exit(no);
+	return(0);
 }
 
 static int err2(mes)
@@ -425,6 +444,7 @@ char *mes;
 	if (mes) fprintf(stderr, "%s\n", mes);
 	else perror(TTYNAME);
 	exit(127);
+	return(0);
 }
 
 static int defaultterm()
@@ -559,6 +579,7 @@ static int defaultterm()
 	keyseq[K_ENTER - K_MIN] = "\033[9~";
 	keyseq[K_END - K_MIN] = "\033[1~";
 #endif
+	return(0);
 }
 
 static int getxy(s, format, yp, xp)
@@ -591,6 +612,7 @@ int getterment()
 {
 	defaultterm();
 	termflags |= F_TERMENT;
+	return(0);
 }
 
 #else	/* !MSDOS */
@@ -603,10 +625,11 @@ char *str;
 	char *p, *cp;
 
 	p = strbuf;
-	if (cp = tgetstr(str, &p)) {
+	if ((cp = tgetstr(str, &p)) || (cp = *term)) {
 		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
 		strcpy(*term, cp);
 	}
+	return(0);
 }
 
 static int tgetstr3(term, str1, str2)
@@ -623,34 +646,13 @@ char *str1, *str2;
 		if (!(*term = (char *)malloc(strlen(cp) + 1))) err2(NULL);
 		strcpy(*term, cp);
 	}
+	return(0);
 }
 
 static int sortkeyseq()
 {
 	int i, j, tmp;
 	char *str;
-
-	for (i = 0; i <= K_MAX - K_MIN; i++) keycode[i] = K_MIN + i;
-	for (i = 1; i <= 10; i++) keycode[K_F(i + 20) - K_MIN] = K_F(i);
-
-	keycode[K_F('*') - K_MIN] = '*';
-	keycode[K_F('+') - K_MIN] = '+';
-	keycode[K_F(',') - K_MIN] = ',';
-	keycode[K_F('-') - K_MIN] = '-';
-	keycode[K_F('.') - K_MIN] = '.';
-	keycode[K_F('/') - K_MIN] = '/';
-	keycode[K_F('0') - K_MIN] = '0';
-	keycode[K_F('1') - K_MIN] = '1';
-	keycode[K_F('2') - K_MIN] = '2';
-	keycode[K_F('3') - K_MIN] = '3';
-	keycode[K_F('4') - K_MIN] = '4';
-	keycode[K_F('5') - K_MIN] = '5';
-	keycode[K_F('6') - K_MIN] = '6';
-	keycode[K_F('7') - K_MIN] = '7';
-	keycode[K_F('8') - K_MIN] = '8';
-	keycode[K_F('9') - K_MIN] = '9';
-	keycode[K_F('=') - K_MIN] = '=';
-	keycode[K_F('?') - K_MIN] = CR;
 
 	for (i = 0; i < K_MAX - K_MIN; i++)
 		for (j = i + 1; j <= K_MAX - K_MIN; j++)
@@ -666,11 +668,13 @@ static int sortkeyseq()
 
 	for (i = 0; i <= K_MAX - K_MIN; i++)
 		keyseqlen[i] = (keyseq[i]) ? strlen(keyseq[i]) : 0;
+	return(0);
 }
 
 int getterment()
 {
 	char *cp, buf[1024];
+	int i;
 
 	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
 	if (tgetent(buf, termname) <= 0) err2("No TERMCAP prepared");
@@ -761,9 +765,58 @@ int getterment()
 	tgetstr2(&keyseq[K_ENTER - K_MIN], "@8");
 	tgetstr2(&keyseq[K_BEG - K_MIN], "@1");
 	tgetstr2(&keyseq[K_END - K_MIN], "@7");
+
+	for (i = 0; i <= K_MAX - K_MIN; i++) keycode[i] = K_MIN + i;
+	for (i = 1; i <= 10; i++) keycode[K_F(i + 20) - K_MIN] = K_F(i);
+
+	keycode[K_F('*') - K_MIN] = '*';
+	keycode[K_F('+') - K_MIN] = '+';
+	keycode[K_F(',') - K_MIN] = ',';
+	keycode[K_F('-') - K_MIN] = '-';
+	keycode[K_F('.') - K_MIN] = '.';
+	keycode[K_F('/') - K_MIN] = '/';
+	keycode[K_F('0') - K_MIN] = '0';
+	keycode[K_F('1') - K_MIN] = '1';
+	keycode[K_F('2') - K_MIN] = '2';
+	keycode[K_F('3') - K_MIN] = '3';
+	keycode[K_F('4') - K_MIN] = '4';
+	keycode[K_F('5') - K_MIN] = '5';
+	keycode[K_F('6') - K_MIN] = '6';
+	keycode[K_F('7') - K_MIN] = '7';
+	keycode[K_F('8') - K_MIN] = '8';
+	keycode[K_F('9') - K_MIN] = '9';
+	keycode[K_F('=') - K_MIN] = '=';
+	keycode[K_F('?') - K_MIN] = CR;
+
 	sortkeyseq();
 
 	termflags |= F_TERMENT;
+	return(0);
+}
+
+int setkeyseq(n, str)
+int n;
+char *str;
+{
+	int i;
+
+	for (i = 0; i <= K_MAX - K_MIN; i++) if (keycode[i] == n) {
+		if (keyseq[i]) free(keyseq[i]);
+		keyseq[i] = str;
+		sortkeyseq();
+		return(0);
+	}
+	return(-1);
+}
+
+char *getkeyseq(n)
+int n;
+{
+	int i;
+
+	for (i = 0; i <= K_MAX - K_MIN; i++)
+		if (keycode[i] == n) return(keyseq[i]);
+	return(NULL);
 }
 #endif	/* !MSDOS */
 
@@ -777,6 +830,7 @@ int initterm()
 	putterms(t_init);
 	tflush();
 	termflags |= F_INITTERM;
+	return(0);
 }
 
 int endterm()
@@ -786,6 +840,7 @@ int endterm()
 	putterms(t_end);
 	tflush();
 	termflags &= ~F_INITTERM;
+	return(0);
 }
 
 #if	MSDOS
@@ -825,6 +880,7 @@ char *s;
 			putch(' ');
 		} while (x++ % 8);
 	}
+	return(0);
 }
 
 /*VARARGS1*/
@@ -887,6 +943,7 @@ u_char tbuf[];
 	tbuf[0] = regs.h.ch;
 	tbuf[1] = regs.h.cl;
 	tbuf[2] = regs.h.dh;
+	return(0);
 }
 #endif
 
@@ -990,6 +1047,8 @@ char *str;
 			gotoxy(++x, y);
 	}
 	else cputs2(str);
+
+	return(0);
 }
 #endif
 
@@ -1001,15 +1060,18 @@ int x, y;
 #else
 	cprintf2(c_locate, ++y, ++x);
 #endif
+	return(0);
 }
 
 int tflush()
 {
+	return(0);
 }
 
 int getwsize(xmax, ymax)
 int xmax, ymax;
 {
+	return(0);
 }
 
 #else	/* !MSDOS */
@@ -1081,7 +1143,7 @@ int _getkey2(sig)
 int sig;
 {
 	static int count = SENSEPERSEC;
-	int i, j, ch, key, start;
+	int i, j, ch, key, start, end, s, e;
 
 	do {
 		key = kbhit2(1000000L / SENSEPERSEC);
@@ -1098,15 +1160,22 @@ int sig;
 	} while (!key);
 
 	key = ch = getch2();
-	for (i = start = 0; ; i++) {
-		for (j = start, start = -1; j <= K_MAX - K_MIN; j++) {
+	start = 0;
+	end = K_MAX - K_MIN;
+
+	for (i = 0; ; i++) {
+		s = start;
+		e = end;
+		start = end = -1;
+		for (j = s; j <= e; j++) {
 			if (keyseqlen[j] > i && ch == keyseq[j][i]) {
 				if (keyseqlen[j] == i + 1) return(keycode[j]);
-				if (start < 0) start = j;
+				end = j;
 			}
-			else if (start >= 0) break;
+			else if (end < 0) start = j + 1;
+			else break;
 		}
-		if (start < 0 || !kbhit2(WAITKEYPAD * 1000L)) return(key);
+		if (start > end || !kbhit2(WAITKEYPAD * 1000L)) return(key);
 		ch = getch2();
 	}
 }
@@ -1120,17 +1189,20 @@ u_char c;
 	ungetbuf[ungetnum] = c;
 	if (ungetnum < sizeof(ungetbuf) / sizeof(u_char) - 1) ungetnum++;
 #endif
+	return(0);
 }
 
 int locate(x, y)
 int x, y;
 {
 	putterms(tgoto(c_locate, x, y));
+	return(0);
 }
 
 int tflush()
 {
 	fflush(ttyout);
+	return(0);
 }
 
 int getwsize(xmax, ymax)
@@ -1188,6 +1260,8 @@ int xmax, ymax;
 
 	if (n_column < xmax) err2("Column size too small");
 	if (n_line < ymax) err2("Line size too small");
+
+	return(0);
 }
 #endif	/* !MSDOS */
 
@@ -1211,4 +1285,5 @@ int color, reverse;
 	else cprintf2("\033[%dm\033[%dm",
 			ANSI_BLACK + ANSI_NORMAL, color + ANSI_REVERSE);
 #endif
+	return(0);
 }

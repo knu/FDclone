@@ -17,7 +17,7 @@ MANSEC	= 1
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
 	dosdisk.c dosemu.c \
 	unixdisk.c unixemu.c \
-	rockridg.c parse.c \
+	rockridg.c builtin.c parse.c \
 	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
@@ -37,21 +37,23 @@ ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	makefile.gpc makefile.lpc \
 	makefile.g98 makefile.l98 \
 	config.hin mkmfsed.c mkmfdosg.sed mkmfdosl.sed \
-	version.h _fdrc
+	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
 
 CC	= gcc
 CPP	= cpp
 SED	= sed
 PROGRAM	= fd
-OBJ1	= main.obj term.obj pathname.obj libc.obj input.obj \
-	shell.obj info.obj unixemu.obj unixdisk.obj
-OBJ2	= rockridg.obj parse.obj \
-	kanji.obj file.obj apply.obj archive.obj tree.obj \
-	command.obj browse.obj
+OBJ1	= main.o term.o pathname.o libc.o input.o \
+	shell.o info.o unixemu.obj unixdisk.obj
+OBJ2	= rockridg.o builtin.o parse.o \
+	kanji.o file.o apply.o archive.o tree.o \
+	command.o browse.o
 
-LDFLAGS	= @$(ARGS) -lpc  
+LDFLAGS	= -lpc  
 CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
+
+.SUFFIXES: .h .c .o .exe
 
 ############################################################
 #	Dependency Rules
@@ -60,7 +62,7 @@ CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
 goal:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(ARGS)
-	$(CC) $(CFLAGS) -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ @$(ARGS) $(LDFLAGS)
 	@ren $@ $(PROGRAM)
 	@aout2exe $(PROGRAM)
 	@del $(PROGRAM)
@@ -69,6 +71,8 @@ $(ARGS): $(OBJ1) $(OBJ2)
 	@echo $(OBJ1) > $(ARGS)
 	@echo $(OBJ2) >> $(ARGS)
 
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
 
 ############################################################
 # kanji using module
@@ -154,6 +158,7 @@ depend: $(SRC) kanji.h funcno.h
 	$(SED) -e '1,\\^# DO NOT DELETE THIS LINE\\d'\
 		-e 's\\\\\[^ ]* *\\\\g'\
 		-e 's\\\.o\\\_\_OBJ\_\_\\g'\
+		-e 's\\ *$$\\\\'\
 		-e '\\: *$$\\d' Makefile.tmp >> Makefile.in
 	rm -f Makefile.in.bak Makefile.tmp
 
@@ -195,82 +200,85 @@ shar: $(SOURCES)
 	-C $(JSRCS) -T $(ESRCS))
 
 clean:
-	rm -f core *.obj funcno.h kanji.h
+	rm -f core *.o funcno.h kanji.h
 	rm -f kanjicnv.exe mkfuncno.exe expfunc.exe
 	rm -f $(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	rm -f $(PROGRAM).doc $(ARGS)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-main.obj: fd.h machine.h config.h 
-main.obj: types.h pathname.h term.h
-main.obj: func.h kctype.h
-main.obj: kanji.h funcno.h version.h 
-main.obj: dosdisk.h 
-term.obj: machine.h config.h 
-term.obj: term.h
-pathname.obj: machine.h config.h 
-pathname.obj: pathname.h
-libc.obj: fd.h machine.h config.h 
-libc.obj: types.h pathname.h term.h
-libc.obj: func.h kctype.h
-libc.obj: kanji.h 
-input.obj: fd.h machine.h config.h 
-input.obj: types.h pathname.h
-input.obj: term.h func.h 
-input.obj: kctype.h kanji.h 
-shell.obj: fd.h machine.h config.h 
-shell.obj: types.h pathname.h
-shell.obj: term.h func.h 
-shell.obj: kctype.h kanji.h funcno.h
-info.obj: fd.h machine.h config.h 
-info.obj: types.h pathname.h term.h
-info.obj: funcno.h kanji.h 
-dosdisk.obj: machine.h config.h 
-dosdisk.obj: dosdisk.h 
-dosemu.obj: fd.h machine.h config.h 
-dosemu.obj: types.h pathname.h
-dosemu.obj: func.h dosdisk.h
-dosemu.obj: kctype.h 
-unixdisk.obj: unixdisk.h machine.h config.h 
-unixdisk.obj: unixemu.h
-unixemu.obj: fd.h machine.h config.h 
-unixemu.obj: types.h pathname.h
-unixemu.obj: func.h 
-unixemu.obj: unixdisk.h
-unixemu.obj: unixemu.h
-rockridg.obj: fd.h machine.h config.h 
-rockridg.obj: types.h pathname.h
-rockridg.obj: func.h 
-parse.obj: fd.h machine.h config.h 
-parse.obj: types.h pathname.h
-parse.obj: term.h func.h 
-parse.obj: kctype.h kanji.h funcno.h
-parse.obj: dosdisk.h
-kanji.obj: fd.h machine.h config.h 
-kanji.obj: types.h pathname.h
-kanji.obj: term.h func.h 
-kanji.obj: kctype.h 
-file.obj: fd.h machine.h config.h 
-file.obj: types.h pathname.h term.h
-file.obj: func.h kanji.h
-file.obj: kctype.h 
-apply.obj: fd.h machine.h config.h 
-apply.obj: types.h pathname.h
-apply.obj: term.h func.h 
-apply.obj: kanji.h 
-archive.obj: fd.h machine.h config.h 
-archive.obj: types.h pathname.h
-archive.obj: term.h func.h 
-archive.obj: funcno.h kanji.h 
-tree.obj: fd.h machine.h config.h 
-tree.obj: types.h pathname.h term.h
-tree.obj: func.h kanji.h
-command.obj: fd.h machine.h config.h 
-command.obj: types.h pathname.h
-command.obj: term.h func.h 
-command.obj: funcno.h kanji.h 
-command.obj: functabl.h
-browse.obj: fd.h machine.h config.h 
-browse.obj: types.h pathname.h
-browse.obj: term.h func.h 
-browse.obj: funcno.h kanji.h 
+main.o: fd.h machine.h config.h
+main.o: types.h pathname.h term.h
+main.o: func.h kctype.h
+main.o: kanji.h funcno.h version.h
+main.o: dosdisk.h
+term.o: machine.h config.h
+term.o: term.h
+pathname.o: machine.h config.h
+pathname.o: pathname.h
+libc.o: fd.h machine.h config.h
+libc.o: types.h pathname.h term.h
+libc.o: func.h kctype.h
+libc.o: kanji.h
+input.o: fd.h machine.h config.h
+input.o: types.h pathname.h
+input.o: term.h func.h
+input.o: kctype.h kanji.h
+shell.o: fd.h machine.h config.h
+shell.o: types.h pathname.h
+shell.o: term.h func.h
+shell.o: kctype.h kanji.h funcno.h
+info.o: fd.h machine.h config.h
+info.o: types.h pathname.h term.h
+info.o: funcno.h kanji.h
+dosdisk.o: machine.h config.h
+dosdisk.o: dosdisk.h
+dosemu.o: fd.h machine.h config.h
+dosemu.o: types.h pathname.h
+dosemu.o: func.h dosdisk.h
+dosemu.o: kctype.h
+unixdisk.o: unixdisk.h machine.h config.h
+unixdisk.o: unixemu.h
+unixemu.o: fd.h machine.h config.h
+unixemu.o: types.h pathname.h
+unixemu.o: func.h
+unixemu.o: unixdisk.h
+unixemu.o: unixemu.h
+rockridg.o: fd.h machine.h config.h
+rockridg.o: types.h pathname.h
+rockridg.o: func.h
+builtin.o: fd.h machine.h config.h
+builtin.o: types.h pathname.h
+builtin.o: term.h func.h
+builtin.o: kanji.h kctype.h funcno.h dosdisk.h
+parse.o: fd.h machine.h config.h
+parse.o: types.h pathname.h
+parse.o: func.h kctype.h
+parse.o: dosdisk.h
+kanji.o: fd.h machine.h config.h
+kanji.o: types.h pathname.h
+kanji.o: term.h func.h
+kanji.o: kctype.h
+file.o: fd.h machine.h config.h
+file.o: types.h pathname.h term.h
+file.o: func.h kanji.h
+file.o: kctype.h
+apply.o: fd.h machine.h config.h
+apply.o: types.h pathname.h
+apply.o: term.h func.h
+apply.o: kanji.h
+archive.o: fd.h machine.h config.h
+archive.o: types.h pathname.h
+archive.o: term.h func.h
+archive.o: funcno.h kanji.h
+tree.o: fd.h machine.h config.h
+tree.o: types.h pathname.h term.h
+tree.o: func.h kanji.h
+command.o: fd.h machine.h config.h
+command.o: types.h pathname.h
+command.o: term.h func.h
+command.o: kanji.h funcno.h
+command.o: functabl.h
+browse.o: fd.h machine.h config.h
+browse.o: types.h pathname.h
+browse.o: term.h func.h
+browse.o: funcno.h kanji.h

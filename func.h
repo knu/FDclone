@@ -98,28 +98,27 @@ extern char *transfile();
 extern char *detransfile();
 #endif
 
+/* builtin.c */
+extern int execbuiltin();
+
 /* parse.c */
 extern char *skipspace();
 extern char *strtkbrk();
 extern char *strtkchr();
+extern char *geteostr();
+extern char *gettoken();
+extern char *getenvval();
 extern char *evalcomstr();
 #if	!MSDOS
 extern char *killmeta();
 extern VOID adjustpath();
 #endif
 extern int getargs();
-extern int evalconfigline();
-extern int printmacro();
+extern char *catargs();
 #ifndef	_NOARCHIVE
-extern int printlaunch();
-extern int printarch();
+extern char *getrange();
 #endif
-extern int printalias();
-extern int printuserfunc();
-#if	!MSDOS && !defined (_NODOSDRIVE)
-extern int printdrive();
-#endif
-extern int printhist();
+extern char *evalprompt();
 extern int evalbool();
 extern VOID evalenv();
 
@@ -180,6 +179,8 @@ extern int execusercomm();
 extern char **entryhist();
 extern char **loadhistory();
 extern int savehistory();
+extern int counthistory();
+extern int dohistory();
 #ifndef	_NOCOMPLETE
 extern int completealias();
 extern int completeuserfunc();

@@ -234,7 +234,7 @@ int max;
 	getfield(buf, line, skip, list, F_NAME);
 	if (!*buf) return(-1);
 	if (buf[(i = (int)strlen(buf) - 1)] == '/') {
-		buf[i] = '\0';
+		if (i > 0) buf[i] = '\0';
 		tmp -> st_mode |= S_IFDIR;
 	}
 	tmp -> name = strdup2(buf);
@@ -273,10 +273,6 @@ int max;
 	getfield(buf, line, skip, list, F_GID);
 	if (isdigit(*buf)) tmp -> st_gid = atoi2(buf);
 	else tmp -> st_gid = (gr = getgrnam(buf)) ? gr -> gr_gid : -1;
-	if (tmp -> st_uid < 0 && tmp -> st_gid < 0) {
-		free(tmp -> name);
-		return(-1);
-	}
 #endif
 	tmp -> st_size = atol(getfield(buf, line, skip, list, F_SIZE));
 

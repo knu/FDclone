@@ -75,7 +75,11 @@ typedef struct _mnt_t {
 static FILE *setmntent();
 static mnt_t *getmntent2();
 #define	hasmntopt(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#if	defined(USEMNTINFO) || defined(USEGETMNT)
+#define	endmntent(fp)
+#else
 #define	endmntent(fp)		{ if (fp) free(fp); }
+#endif
 static int mnt_ptr;
 static int mnt_size;
 #endif
@@ -195,6 +199,9 @@ extern int sizeinfo;
 #endif
 #ifndef	MNTTYPE_UFS
 #define	MNTTYPE_UFS	"ufs"	/* SVR4, OSF/1, FreeBSD, NetBSD */
+#endif
+#ifndef	MNTTYPE_FFS
+#define	MNTTYPE_FFS	"ffs"	/* NetBSD, OpenBSD */
 #endif
 #ifndef	MNTTYPE_EXT2
 #define	MNTTYPE_EXT2	"ext2"	/* Linux */
@@ -534,9 +541,6 @@ mnt_t *mntp;
 
 	return(mntp);
 }
-
-#undef	endmntent
-#define	endmntent(fp)
 #endif	/* USEGETMNT */
 
 #if	MSDOS
@@ -656,6 +660,7 @@ char *path;
 	if (!strcmp(mntbuf.mnt_type, MNTTYPE_43)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_42)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_UFS)
+	|| !strcmp(mntbuf.mnt_type, MNTTYPE_FFS)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_EXT2)
 	|| !strcmp(mntbuf.mnt_type, MNTTYPE_JFS)) return(1);
 	else if (!strcmp(mntbuf.mnt_type, MNTTYPE_EFS)) return(2);

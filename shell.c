@@ -35,8 +35,6 @@ static int insertarg();
 static char *addoption();
 static int dosystem();
 static char *evalargs();
-static int dohistory();
-static int execinternal();
 static char *evalalias();
 
 aliastable aliaslist[MAXALIASTABLE];
@@ -45,6 +43,7 @@ userfunctable userfunclist[MAXFUNCTABLE];
 int maxuserfunc = 0;
 int histsize;
 int savehist;
+char *promptstr = NULL;
 
 static int n_args;
 
@@ -342,7 +341,7 @@ macrostat *stp;
 
 		free(command);
 		if (p < 0) p = strlen(line);
-		cp = inputstr("sh#", 0, p, line, &sh_history);
+		cp = inputstr(evalprompt(), 0, p, line, &sh_history);
 		if (!cp || !*cp) return(NULL);
 		command = evalcommand(cp, arg, list, max, stp);
 		if (!command) return((char *)-1);
@@ -364,11 +363,8 @@ int *maxp, noconf;
 	sigvecreset();
 	if (cp = evalalias(command)) command = cp;
 
-	if (*command == '!') n = execinternal(command + 1, list, maxp);
-	else {
+	if ((n = execbuiltin(command, list, maxp, 1)) < -1)
 		system2(command, noconf);
-		n = -1;
-	}
 	sigvecset();
 	if (cp) free(cp);
 	return(n);
@@ -384,7 +380,7 @@ int *maxp, noconf, argset;
 	int i, max, s, status;
 
 	max = (maxp) ? *maxp : 0;
-	status = -1;
+	status = -2;
 	for (i = 0; i < max; i++) {
 		if (ismark(&list[i])) list[i].flags |= F_ISARG;
 		else list[i].flags &= ~F_ISARG;
@@ -406,7 +402,7 @@ int *maxp, noconf, argset;
 	}
 	if (!st.needmark) for (;;) {
 		s = dosystem(tmp, list, maxp, noconf);
-		if (s >= status) status = s;
+		if (s >= status || s == -1) status = s;
 		free(tmp);
 		tmp = NULL;
 
@@ -416,7 +412,7 @@ int *maxp, noconf, argset;
 			break;
 		if (noconf >= 0 && !argset && strlen(tmp) < i) {
 			cp = addoption(tmp, arg, list, max, i, &st);
-			if (cp != tmp && status < 2) status = 2;
+			if (cp != tmp && status >= 0 && status < 2) status = 2;
 			if (!cp || cp == (char *)-1) return(status);
 			tmp = cp;
 		}
@@ -424,15 +420,15 @@ int *maxp, noconf, argset;
 	else if (n_args <= 0) {
 		if (insertarg(buf, tmp, list[filepos].name, st.needmark))
 			status = dosystem(buf, list, maxp, noconf);
-		else status = -1;
+		else status = -2;
 	}
 	else for (i = 0; i < max; i++) if (isarg(&list[i])) {
 		if (insertarg(buf, tmp, list[i].name, st.needmark))
 			status = dosystem(buf, list, maxp, noconf);
-		else status = -1;
+		else status = -2;
 	}
 	if (tmp) free(tmp);
-	if (status >= 0) return(status);
+	if (status >= -1) return(status);
 	for (i = 0; i < max; i++) list[i].flags &= ~(F_ISARG | F_ISMRK);
 	mark = 0;
 	marksize = 0;
@@ -514,58 +510,58 @@ char *command, *arg;
 namelist *list;
 int *maxp, noconf, argset;
 {
-	char *cp, *argv[MAXARGS + 1];
+	char *cp, *argv[MAXARGS + 2];
 	int i, j, len, s, status, argc;
 
-	while (*command == ' ' || *command == '\t') command++;
-	len = (cp = strpbrk(command, " \t")) ? cp - command : strlen(command);
-
+	argc = getargs(command, argv, MAXARGS + 1);
 	for (i = 0; i < maxuserfunc; i++)
-		if (!strncmp(command, userfunclist[i].func, len)
-		&& !userfunclist[i].func[len]) break;
+		if (!strcmp(command, userfunclist[i].func)) break;
 	if (i >= maxuserfunc)
-		return(execmacro(command, arg, list, maxp, noconf, argset));
-
-	argv[0] = (char *)malloc2(len + 1);
-	strncpy2(argv[0], command, len);
-	argc = getargs(command + len, &argv[1], MAXARGS - 1) + 1;
-
-	status = -1;
-	for (j = 0; userfunclist[i].comm[j]; j++) {
-		cp = evalargs(userfunclist[i].comm[j], argc, argv);
-		s = execmacro(cp, arg, list, maxp, noconf, argset);
-		if (s >= status) status = s;
-		free(cp);
+		status = execmacro(command, arg, list, maxp, noconf, argset);
+	else {
+		status = -1;
+		for (j = 0; userfunclist[i].comm[j]; j++) {
+			cp = evalargs(userfunclist[i].comm[j], argc, argv);
+			s = execmacro(cp, arg, list, maxp, noconf, argset);
+			if (s >= status) status = s;
+			free(cp);
+		}
+		if (status < 0) status = 4;
 	}
-
 	for (i = 0; i < argc; i++) free(argv[i]);
-	if (status < 0) status = 4;
 	return(status);
 }
 
 char **entryhist(hist, str)
 char **hist, *str;
 {
-	int i;
+	int i, size;
 
 	if (!hist) {
-		hist = (char **)malloc2(sizeof(char *) * (histsize + 2));
-		for (i = 0; i <= histsize; i++) hist[i + 1] = NULL;
+		hist = (char **)malloc2(sizeof(char *) * (histsize + 3));
+		for (i = 0; i <= histsize; i++) hist[i + 2] = NULL;
 		hist[0] = (char *)histsize;
+		hist[1] = (char *)0;
 	}
-	else if (histsize > (int)hist[0]) {
-		hist = (char **)realloc2(hist, sizeof(char *) * (histsize + 2));
-		for (i = (int)hist[0]; i <= histsize; i++) hist[i + 1] = NULL;
+	else if (histsize > (int)(hist[0])) {
+		hist = (char **)realloc2(hist, sizeof(char *) * (histsize + 3));
+		for (i = (int)hist[0] + 1; i <= histsize; i++)
+			hist[i + 2] = NULL;
 		hist[0] = (char *)histsize;
 	}
 
+	size = (int)(hist[0]);
 	if (!str || !*str) return(hist);
 	else {
-		if (hist[histsize]) free(hist[histsize]);
-		for (i = histsize; i > 1; i--) hist[i] = hist[i - 1];
+		if (hist[size + 2]) {
+			free(hist[size + 2]);
+			i = (int)(hist[1]);
+			hist[1] = (char *)(++i);
+		}
+		for (i = size; i >= 1; i--) hist[i + 2] = hist[i + 1];
 	}
 
-	hist[1] = strdup2(str);
+	hist[2] = strdup2(str);
 	return(hist);
 }
 
@@ -581,26 +577,31 @@ char *file;
 	free(cp);
 	if (!fp) return(NULL);
 
-	hist = (char **)malloc2(sizeof(char *) * (histsize + 2));
+	hist = (char **)malloc2(sizeof(char *) * (histsize + 3));
 	hist[0] = (char *)histsize;
+	hist[1] = (char *)0;
 
-	i = 1;
+	i = 2;
 	while (fgets(line, MAXLINESTR, fp)) {
 		if (cp = strchr(line, '\n')) *cp = '\0';
-		for (j = i; j > 1; j--) hist[j] = hist[j - 1];
+		for (j = i; j > 2; j--) hist[j] = hist[j - 1];
 		for (j = len = 0; line[j]; j++, len++)
 			if ((u_char)line[j] < ' ' || line[j] == C_DEL) len++;
-		hist[1] = (char *)malloc2(len + 1);
+		hist[2] = (char *)malloc2(len + 1);
 		for (j = len = 0; line[j]; j++, len++) {
 			if ((u_char)line[j] < ' ' || line[j] == C_DEL)
-				hist[1][len++] = QUOTE;
-			hist[1][len] = line[j];
+				hist[2][len++] = QUOTE;
+			hist[2][len] = line[j];
 		}
-		hist[1][len] = '\0';
-		if (i < histsize) i++;
+		hist[2][len] = '\0';
+		if (i < histsize + 2) i++;
+		else {
+			j = (int)(hist[1]);
+			hist[1] = (char *)(++j);
+		}
 	}
 	fclose(fp);
-	if (i < histsize) for (; i <= histsize; i++) hist[i] = NULL;
+	for (; i <= histsize + 2; i++) hist[i] = NULL;
 
 	return(hist);
 }
@@ -612,14 +613,14 @@ char **hist, *file;
 	char *cp, line[MAXLINESTR + 1];
 	int i, j, len, size;
 
-	if (!hist || !hist[1]) return(-1);
+	if (!hist || !hist[2]) return(-1);
 	cp = evalpath(strdup2(file));
 	fp = fopen(cp, "w");
 	free(cp);
 	if (!fp) return(-1);
 
-	size = (histsize < savehist) ? histsize : savehist;
-	for (i = size; i >= 1; i--) if (hist[i] && *hist[i]) {
+	size = (savehist > (int)(hist[0])) ? (int)(hist[0]) : savehist;
+	for (i = size + 1; i >= 2; i--) if (hist[i] && *hist[i]) {
 		for (j = 0, len = 0; hist[i][j]; j++)
 			if (hist[i][j] != QUOTE) line[len++] = hist[i][j];
 		line[len] = '\0';
@@ -631,121 +632,60 @@ char **hist, *file;
 	return(0);
 }
 
-static int dohistory(command, list, maxp)
-char *command;
-namelist *list;
-int *maxp;
+int counthistory(hist)
+char **hist;
 {
-	char *cp;
-	int i, j, n;
+	int i, size;
 
-	if (*command == '!') {
-		cp = command + 1;
-		i = 2;
-	}
-	else if (*command == '-') {
-		for (cp = command + 1; *cp >= '0' && *cp <= '9'; cp++);
-		i = atoi(command + 1);
-		n = -(i++);
-	}
-	else {
-		for (cp = command; *cp >= '0' && *cp <= '9'; cp++);
-		n = atoi(command);
-		for (i = histsize, j = 0; i >= 1; i--)
-			if (sh_history[i] && ++j == n) break;
-	}
-	free(sh_history[1]);
-	if (i <= 1 || !sh_history[i]) {
-		for (i = 1; i < histsize && sh_history[i]; i++)
-			sh_history[i] = sh_history[i + 1];
-		if (i >= histsize) sh_history[histsize] = NULL;
-		cprintf2("%d: Event not found.\r\n", n);
-		return(-1);
-	}
-	command = (char *)malloc2(strlen(sh_history[i]) + strlen(cp) + 1);
-	strcpy(command, sh_history[i]);
-	strcat(command, cp);
-	sh_history[1] = strdup2(command);
-	cprintf2("%s\r\n", command);
-	n = dosystem(command, list, maxp, 0);
-	free(command);
-	return(n);
+	size = (int)(hist[0]);
+	for (i = size; i >= 0; i--) if (sh_history[i + 2]) break;
+	i += (int)(hist[1]) + 1;
+	return(i);
 }
 
-static int execinternal(command, list, maxp)
-char *command;
+int dohistory(argc, argv, list, maxp)
+int argc;
+char *argv[];
 namelist *list;
 int *maxp;
 {
-	char *cp, *argv[2];
-	int i, n;
+	char *cp, *tmp;
+	int i, n, size;
 
-	raw2();
-	noecho2();
-	nonl2();
-	notabs();
-
-	n = -1;
-	locate(0, n_line - 1);
-	putterm(l_clear);
-	tflush();
-
-	while (*command == ' ' || *command == '\t') command++;
-	for (cp = command + (int)strlen(command) - 1;
-		cp >= command && (*cp == ' ' || *cp == '\t'); cp--);
-	*(cp + 1) = '\0';
-	if (!(cp = strpbrk(command, " \t"))) cp = command + strlen(command);
-	if (!strcmp(command, "printenv")) printenv();
-	else if (!strcmp(command, "printmacro")) printmacro();
-#ifndef	_NOARCHIVE
-	else if (!strcmp(command, "printlaunch")) printlaunch();
-	else if (!strcmp(command, "printarch")) printarch();
-#endif
-	else if (!strcmp(command, "alias")) printalias();
-	else if (!strcmp(command, "function")) printuserfunc();
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	else if (!strcmp(command, "printdrive")) printdrive();
-#endif
-	else if (!strcmp(command, "history")) printhist();
-	else if (!strncmp(command, "cd", cp - command)) {
-		while (*cp == ' ' || *cp == '\t') cp++;
-		if (!*cp) n = 2;
-		else {
-			chdir3(cp);
-			n = 4;
-		}
+	size = (int)(sh_history[0]);
+	if (argv[0][1] == '!') {
+		cp = &argv[0][2];
+		n = 1 + 3;
 	}
-	else if (*command == '!' || *command == '-'
-	|| (*command >= '0' && *command <= '9')) {
-		n = dohistory(command, list, maxp);
-		if (n < 0) n = 4;
-		else if (n < 2) n = 2;
+	else if (argv[0][1] == '-') {
+		for (cp = &argv[0][2]; *cp >= '0' && *cp <= '9'; cp++);
+		n = atoi(&argv[0][2]) + 2;
 	}
-	else if ((n = evalconfigline(command)) >= 0) {
-#if	!MSDOS
-		adjustpath();
-#endif
-		evalenv();
-		if (n > 0) warning(0, HITKY_K);
-		n = 4;
+	else {
+		for (cp = &argv[0][1]; *cp >= '0' && *cp <= '9'; cp++);
+		n = counthistory(sh_history) - atoi(&argv[0][1]) + 2;
 	}
-	else if (list && maxp) {
-		for (i = 0; i <= NO_OPERATION; i++)
-			if (!strncmp(command, funclist[i].ident, cp - command))
-				break;
-		n = 2;
-		if (i > NO_OPERATION) warning(0, NOCOM_K);
-		else {
-			getargs(++cp, argv, 1);
-			n = (*funclist[i].func)(list, maxp, argv[0]);
-			free(argv[0]);
-		}
-	}
-
-	if (n < 0) {
+	free(sh_history[2]);
+	if (*cp || n <= 2 || n > size + 2 || !sh_history[n]) {
+		for (i = 0; i <= size && sh_history[i]; i++)
+			sh_history[i + 2] = sh_history[i + 3];
+		if (i >= size) sh_history[size + 2] = NULL;
+		cprintf2("%s: Event not found.\r\n", &argv[0][1]);
 		warning(0, HITKY_K);
-		n = 2;
+		return(0);
 	}
+	tmp = catargs(argc - 1, &argv[1]);
+	if (!tmp) cp = strdup2(sh_history[n]);
+	else {
+		cp = (char *)malloc2(strlen(sh_history[n]) + strlen(tmp) + 2);
+		strcpy(cp, sh_history[n]);
+		strcat(cp, " ");
+		strcat(cp, tmp);
+	}
+	sh_history[2] = cp;
+	cprintf2("%s\r\n", cp);
+	n = dosystem(cp, list, maxp, 0);
+	free(tmp);
 	return(n);
 }
 

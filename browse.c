@@ -365,7 +365,7 @@ int no;
 	if (isdev(&list[no])) sprintf(buf + len, "%3u, %3u ",
 		((unsigned)(list[no].st_size) >> 8) & 0xff,
 		(unsigned)(list[no].st_size) & 0xff);
-	else sprintf(buf + len, "%8ld ", list[no].st_size);
+	else sprintf(buf + len, "%8ld ", (long)(list[no].st_size));
 	len = strlen(buf);
 
 	sprintf(buf + len, "%02d-%02d-%02d %02d:%02d ",
@@ -497,7 +497,7 @@ int no, standout;
 			WSIZE - (WSIZE / 2) - 1,
 			(unsigned)(list[no].st_size) & 0xff);
 		else sprintf(buf + len, " %*ld",
-			WSIZE, list[no].st_size);
+			WSIZE, (long)(list[no].st_size));
 		if (strlen(buf + len) > WSIZE + 1)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "OVERFLOW");
 		len += WIDTH3;

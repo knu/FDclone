@@ -641,18 +641,31 @@ char *name;
 	return(strncmp(name, "FD_", 3) ? NULL : (char *)getenv(name + 3));
 }
 
-int printenv()
+int printenv(argc, argv, comline)
+int argc;
+char *argv[];
+int comline;
 {
 	assoclist *ap;
 	int n;
 
-	n = 0;
-	for (ap = environ2; ap; ap = ap -> next) {
+	if (!comline) return(0);
+	n = 1;
+	if (argc <= 1) for (ap = environ2, n = 0; ap; ap = ap -> next) {
 		cprintf2("%s=%s\r\n", ap -> org,
 			(ap -> assoc) ? ap -> assoc : "");
-		if (!(++n % (n_line - 1))) warning(0, HITKY_K);
+		if (++n >= n_line - 1) {
+			n = 0;
+			warning(0, HITKY_K);
+		}
 	}
-	return(n);
+	else for (ap = environ2; ap; ap = ap -> next)
+	if (!strcmp(argv[1], ap -> org)) {
+		cprintf2("%s=%s\r\n", ap -> org,
+			(ap -> assoc) ? ap -> assoc : "");
+		break;
+	}
+	return(ap != environ2 ? n : 1);
 }
 
 int system2(command, noconf)

@@ -67,6 +67,7 @@
 #define	TMPDIR		"/tmp"
 #endif
 #define	RRPATH		""
+#define	PROMPT		"sh#"
 
 
 /****************************************************************
@@ -82,7 +83,7 @@
 #define	MAXLINESTR	255
 #define	MAXCOMMSTR	1023
 #define	MAXSTACK	5
-#define	MAXARGS		10
+#define	MAXARGS		128
 
 
 /****************************************************************

@@ -67,7 +67,7 @@ FILE *in, *out;
 				if (--lebel == 0 && done) return(0);
 				break;
 			case '"':
-				isstr = 1;
+				if (!ignore) isstr = 1;
 				break;
 			default:
 				break;

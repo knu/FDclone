@@ -96,6 +96,10 @@ TMPDIR		=	/tmp
 #	default: none
 RRPATH		=	""
 
+# shell prompt strings
+#	defalut: "sh#"
+PROMPT		=	"sh#"
+
 # language code type to display
 #	default: No convert
 #	jis, JIS: 7bit JIS
@@ -111,56 +115,56 @@ EDITOR	=	/usr/ucb/vi
 #export	LANG=C
 
 # launcher definition
-#".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8:10
-#".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#".tar.gz"	"gzip -cd %C | tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-".taZ"		"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-".taz"		"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-".tgz"		"gzip -cd %C | tar tvf -"\
-					0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
-".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
-".Z"		"zcat %C | $PAGER"
-".gz"		"gzip -cd %C | $PAGER"
+#launch ".lzh"	"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8:10
+#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#launch ".tar.Z"\
+#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#launch ".tar.gz"\
+#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+launch ".taz"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
+launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
+launch ".Z"	"zcat %C|$PAGER"
+launch ".gz"	"gzip -cd %C|$PAGER"
 
 # example for SVR4 (or GNU tar)
-#".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
-#".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#".tar.gz"	"gzip -cd %C | tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8
-#".taZ"		"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#".taz"		"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#".tgz"		"gzip -cd %C | tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar.Z"\
+#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar.gz"\
+#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".taz"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
 
 # archiver definition
-#".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
-#".tar"		A "tar cf %C %T"		"tar xf %C %TA"
-#".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
-#".tar.gz"	A "tar cf %X %T; gzip %X"	"gzip -cd %C | tar xf - %TA"
-".taZ"		A "maketaz compress Z taZ"	"zcat %C | tar xf - %TA"
-".taz"		A "maketaz compress Z taz"	"zcat %C | tar xf - %TA"
-".tgz"		A "maketaz gzip gz tgz"		"gzip -cd %C | tar xf - %TA"
-".zip"		A "zip -q %C %TA"		"unzip -q %C %TA"
-".zoo"		A "zoo aq %C %TA"		"zoo xq %C %TA"
+#arch ".lzh"	A "lha aq %C %TA"		"lha xq %C %TA"
+#arch ".tar"	A "tar cf %C %T"		"tar xf %C %TA"
+#arch ".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
+#arch ".tar.gz"	A "tar cf %X %T; gzip %X"	"gzip -cd %C|tar xf - %TA"
+arch ".taZ"	A "maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
+arch ".taz"	A "maketaz compress Z taz"	"zcat %C|tar xf - %TA"
+arch ".tgz"	A "maketaz gzip gz tgz"		"gzip -cd %C|tar xf - %TA"
+arch ".zip"	A "zip -q %C %TA"		"unzip -q %C %TA"
+arch ".zoo"	A "zoo aq %C %TA"		"zoo xq %C %TA"
 
 # key bind definition
-'I'	"dir -d %C"
-'g'	"gzip %C%K"	WARNING_BELL
-'G'	"gzip -d %C%K"	WARNING_BELL
-'R'	"grep %R %C"
-'{'	ROLL_UP
-'{'	ROLL_DOWN
-'~'	"!cd ~%N%K"
-'F1'	"man fd%N%K"	;Manual
+bind 'I'	"dir -d %C"
+bind 'g'	"gzip %C%K"	WARNING_BELL
+bind 'G'	"gzip -d %C%K"	WARNING_BELL
+bind 'R'	"grep %R %C"
+bind '{'	ROLL_UP
+bind '}'	ROLL_DOWN
+bind '~'	"cd ~%N%K"
+bind 'F1'	"man fd%N%K"	;Manual
 
 # function definition
 function rename() {\
-	!MARK_ALL 0;\
-	!MARK_FIND $1;\
-#	!RENAME_FILE $2;\
+	MARK_ALL 0;\
+	MARK_FIND $1;\
+#	RENAME_FILE $2;\
 	mv %M $2%K;\
 }
 
@@ -170,7 +174,10 @@ function maketaz() {\
 	mv %X.tar.$2 %X.$3;\
 }
 
-B:	"/dev/rfd00a"	2, 18, 80
+setdrv B	"/dev/rfd00a"	2, 18, 80
 
 # alias definition
 alias	dir "ls -laF"
+
+# keymap definition
+keymap	DEL	"\033[3~"

@@ -1177,7 +1177,8 @@ char *arg;
 	int i;
 
 	if (arg) com = strdup2(arg);
-	else if (!(com = inputstr("sh#", 0, -1, NULL, &sh_history))) return(1);
+	else if (!(com = inputstr(evalprompt(), 0, -1, NULL, &sh_history)))
+		return(1);
 	if (*com) i = execusercomm(com, list[filepos].name, list, maxp, 0, 1);
 	else {
 		execshell();
@@ -1203,7 +1204,8 @@ char *arg;
 #endif
 
 	len = (isexec(&list[filepos])) ? strlen(list[filepos].name) + 1 : 0;
-	if (!(com = inputstr("sh#", 0, len, list[filepos].name, &sh_history)))
+	if (!(com = inputstr(evalprompt(), 0, len,
+	list[filepos].name, &sh_history)))
 		return(1);
 	if (!*com) {
 		execshell();

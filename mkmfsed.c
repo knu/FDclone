@@ -1,42 +1,50 @@
 /*
  *	mkmfsed.c
  *
- *	sed script for Makefile
+ *	sed script maker for Makefile
  */
 
 #include "machine.h"
+#include <stdio.h>
 
-s:__EXE__::g
-s:__OBJ__:.o:g
-s:__OBJS__:dosemu.o dosdisk.o:
-s:__OBJLIST__:$(OBJ1) $(OBJ2):
-s:__DEFRC__:'"'$(DEFRC)'"':
+int main (argc, argv)
+int argc;
+char *argv[];
+{
+	printf("s:__EXE__::g\n");
+	printf("s:__OBJ__:.o:g\n");
+	printf("s:__OBJS__:dosemu.o dosdisk.o:\n");
+	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2):\n");
+	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
-s:[	]__RENAME__:#	mv:
-s:[	]__AOUT2EXE__:#	aout2exe:
-s:[	]__REMOVE__:#	rm -f:
-s:__COPY__:cp:
+	printf("s:	__RENAME__:#	mv:\n");
+	printf("s:	__AOUT2EXE__:#	aout2exe:\n");
+	printf("s:	__REMOVE__:#	rm -f:\n");
+	printf("s:__COPY__:cp:\n");
 
-s:__OSTYPE__:OSTYPE:
+	printf("s:__OSTYPE__:%s:\n", OSTYPE);
 
-s:__CC__:CCCOMMAND:
-s:__CPP__:$(CC) -E:
-s:__CCOPTIONS__:EXTENDCCOPT:
+	printf("s:__CC__:%s:\n", CCCOMMAND);
+	printf("s:__CPP__:$(CC) -E:\n");
+	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
 
-s:__TERMLIBS__:TERMCAPLIB:
-s:__REGLIBS__:REGEXPLIB:
-s:__OTHERLIBS__:EXTENDLIB:
+	printf("s:__TERMLIBS__:%s:\n", TERMCAPLIB);
+	printf("s:__REGLIBS__:%s:\n", REGEXPLIB);
+	printf("s:__OTHERLIBS__:%s:\n", EXTENDLIB);
 
 #ifdef	CODEEUC
-s:__KCODEOPTION__:-e:
+	printf("s:__KCODEOPTION__:-e:\n");
 #else
-s:__KCODEOPTION__:-s:
+	printf("s:__KCODEOPTION__:-s:\n");
 #endif
 
 #ifdef	CPP7BIT
-s:__MSBOPTION__:-7:
+	printf("s:__MSBOPTION__:-7:\n");
 #else
-s:__MSBOPTION__::
+	printf("s:__MSBOPTION__::\n");
 #endif
 
-s:__PREFIXOPTION__:-c:
+	printf("s:__PREFIXOPTION__:-c:\n");
+
+	exit(0);
+}

@@ -34,9 +34,11 @@ makefile.l98: Makefile.in mkmfdosl.sed
 	$(SED) 's/__OSTYPE__/PC98/g' > $@ ||\
 	(rm -f $@; exit 1)
 
-mkmf.sed: mkmfsed.c machine.h config.h
-	$(CPP) -DCCCOMMAND=$(CC) mkmfsed.c |\
-	$(SED) -n -e 's/[\" 	]*:[\" 	]*/:/g' -e '/^s:.*:.*:g*$$/p' > mkmf.sed
+mkmf.sed: mkmfsed
+	./mkmfsed > mkmf.sed
+
+mkmfsed: mkmfsed.c machine.h config.h
+	$(CC) $(CFLAGS) -DCCCOMMAND='"'$(CC)'"' -o $@ mkmfsed.c
 
 config.h: config.hin
 	cp config.hin config.h
@@ -54,3 +56,4 @@ clean: Makefile.tmp
 	$(MAKE) -f Makefile.tmp clean
 	rm -f makefile.gpc makefile.g98 Makefile.tmp
 	rm -f makefile.lpc makefile.l98 mkmf.sed config.h
+	rm -f mkmfsed

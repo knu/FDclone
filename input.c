@@ -20,7 +20,6 @@
 #endif
 
 extern char **sh_history;
-extern int histsize;
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 #endif
@@ -659,7 +658,8 @@ char *hist[], **tmp;
 {
 	keyflush();
 	if (cx < linemax) {
-		if (!hist || *histnop > histsize || !hist[*histnop]) {
+		if (!hist || *histnop >= (int)(hist[0])
+		|| !hist[*histnop + 2]) {
 			putterm(t_bell);
 			return(cx);
 		}
@@ -667,7 +667,7 @@ char *hist[], **tmp;
 			str[*lenp] = '\0';
 			*tmp = strdup2(str);
 		}
-		strcpy(str, hist[*histnop]);
+		strcpy(str, hist[*histnop + 2]);
 		*lenp = strlen(str);
 		cx = *lenp;
 		displaystr(str, x, cx, *lenp, max, linemax);
@@ -691,11 +691,11 @@ char *hist[], **tmp;
 {
 	keyflush();
 	if (cx + linemax > *lenp) {
-		if (!hist || *histnop <= 1) {
+		if (!hist || *histnop <= 0) {
 			putterm(t_bell);
 			return(cx);
 		}
-		if (--(*histnop) > 1) strcpy(str, hist[*histnop - 1]);
+		if (--(*histnop) > 0) strcpy(str, hist[*histnop + 1]);
 		else {
 			strcpy(str, *tmp);
 			free(*tmp);
@@ -787,7 +787,7 @@ char *hist[];
 	}
 	displaystr(str, x, cx, len, max, linemax);
 	keyflush();
-	histno = 1;
+	histno = 0;
 	tmphist = NULL;
 	quote = 0;
 	ch = -1;

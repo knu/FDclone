@@ -1,81 +1,238 @@
---- ../old/FD-1.01/.fdrc	Fri Oct  6 15:38:41 1995
-+++ ./.fdrc	Tue Apr 23 16:31:19 1996
-@@ -69,6 +69,11 @@
- #	>= 1: effective
- DOSDRIVE	=	1
+--- ../old/FD-1.02-b1/.fdrc	Tue Apr 23 16:31:19 1996
++++ _fdrc	Thu Nov 28 19:15:38 1996
+@@ -2,7 +2,7 @@
+ #
  
-+# whether if show the info. of filesize
-+#	0 or ""(null): not show
-+#	>= 1: show
-+SIZEINFO	=	1
+ # to set default sort type
+-#	0: not sort
++#	0: not sort (Default)
+ #	1: alphabetical	9: alphabetical (reversal)
+ #	2: extention	10: extension (reversal)
+ #	3: size		11: size (reversal)
+@@ -9,10 +9,10 @@
+ #	4: date		12: date (reversal)
+ #	100-112: preserve previous sort type
+ #		(the least 2 digits are effective just after initialize)
+-SORTTYPE	=	1
++SORTTYPE	=	0
+ 
+ # to set default display mode
+-#	0: normal
++#	0: normal (Default)
+ #	1: sym-link status
+ #	2: 			file type symbol
+ #	3: sym-link status &	file type symbol
+@@ -20,27 +20,29 @@
+ #	5: sym-link status &				invisible dot file
+ #	6: 			file type symbol &	invisible dot file
+ #	7: sym-link status &	file type symbol &	invisible dot file
+-DISPLAYMODE	=	6
++DISPLAYMODE	=	0
+ 
+ # whether if sort or not in tree mode
+-#	0 or ""(null): not sort
++#	0: not sort (Default)
+ #	>= 1: sort according to SORTTYPE
+-SORTTREE	=	1
++SORTTREE	=	0
+ 
+ # behavior about writing over direcotory on file system
+-#	0 or ""(null): confirm to write or not, after directory arranged
++#	0: confirm to write or not, after directory arranged (Default)
+ #	1: write directory only if commanded
+ #	2: never write over directory even if commanded
+-WRITEFS		=	1
++WRITEFS		=	0
+ 
+ # whether if adjust tty or not when exiting
+-#	0 or ""(null): not adjust
++#	0: not adjust (Default)
+ #	>= 1: adjust
+-ADJTTY		=	1
++ADJTTY		=	0
+ 
+ # to set default columns of file in 1 line
+-#	1, 2, 3, 5: 1, 2, 3, 5 columns
+-#	default: 2
++#	1: 1 column
++#	2: 2 columns (Default)
++#	3: 3 columns
++#	5: 5 columns
+ COLUMNS		=	2
+ 
+ # minimum columns of filename field
+@@ -49,33 +51,39 @@
+ 
+ # history size of sh mode or path input
+ #	default: 50
+-HISTSIZE	=	100
++HISTSIZE	=	50
+ 
+ # size of saved history
+ #	default: 50
+-SAVEHIST	=	0
++SAVEHIST	=	50
+ 
+ # limit of counting file in directory, on tree mode
+ #	default: 50
+-DIRCOUNTLIMIT	=	0
++DIRCOUNTLIMIT	=	50
+ 
+ # whether if display the second hand of clock
+-#	0 or ""(null): not display
++#	0: not display (Default)
+ #	>= 1: display
+-SECOND		=	1
++SECOND		=	0
+ 
+ # whether if make MS-DOS drive effective
+-#	0 or ""(null): not use
++#	0: not use (Default)
+ #	>= 1: effective
+-DOSDRIVE	=	1
++DOSDRIVE	=	0
+ 
+ # whether if show the info. of filesize
+-#	0 or ""(null): not show
++#	0: not show (Default)
+ #	>= 1: show
+-SIZEINFO	=	1
++SIZEINFO	=	0
+ 
++# whether if support ANSI color escape sequence
++#	0: monochrome (Default)
++#	1: color
++#	2: color & force background to blacken
++ANSICOLOR	=	0
 +
  # select edit mode with your favorite editor type
- #	emacs: ^P, ^N, ^F, ^B, ...
+-#	emacs: ^P, ^N, ^F, ^B, ...
++#	emacs: ^P, ^N, ^F, ^B, ... (Default)
  #	wordstar ^E, ^X, ^D, ^S, ...
-@@ -79,6 +84,10 @@
- #	default: /tmp
- TMPDIR		=	/usr/tmp
+ #	vi: k, j, l, h, ...
+ EDITMODE	=	emacs
+@@ -82,11 +90,15 @@
  
-+# mount point of CD-ROM with iso-9660 rock ridge format
-+#	default: none
-+RRPATH		=	/cdrom;~/cdrom
+ # temporary directory where archive file is unpacked
+ #	default: /tmp
+-TMPDIR		=	/usr/tmp
++TMPDIR		=	/tmp
+ 
+ # mount point of CD-ROM with iso-9660 rock ridge format
+ #	default: none
+-RRPATH		=	/cdrom;~/cdrom
++RRPATH		=	""
 +
++# shell prompt strings
++#	defalut: "sh#"
++PROMPT		=	"sh#"
+ 
  # language code type to display
  #	default: No convert
- #	jis, JIS: 7bit JIS
-@@ -97,10 +106,12 @@
- #".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
- #".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
- #".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
--#".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
-+#".tar.gz"	"gunzip -c %C | tar tvf -"\
-+#					0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
- ".taZ"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
- ".taz"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
--".tgz"		"gunzip -c %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
-+".tgz"		"gunzip -c %C | tar tvf -"\
-+					0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
- ".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
- ".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
- ".Z"		"zcat %C | $PAGER"
-@@ -109,7 +120,8 @@
+@@ -103,53 +115,56 @@
+ #export	LANG=C
+ 
+ # launcher definition
+-#".lzh"		"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
+-#".tar"		"tar tvf"		0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+-#".tar.Z"	"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+-#".tar.gz"	"gunzip -c %C | tar tvf -"\
+-#					0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+-".taZ"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+-".taz"		"zcat %C | tar tvf -"	0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+-".tgz"		"gunzip -c %C | tar tvf -"\
+-					0,0:1-9,2-'/',2'/',3,7,4,5,6,8:10
+-".zip"		"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
+-".zoo"		"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
+-".Z"		"zcat %C | $PAGER"
+-".gz"		"gunzip -c %C | $PAGER"
++#launch ".lzh"	"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8:10
++#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:10
++#launch ".tar.Z"\
++#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
++#launch ".tar.gz"\
++#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
++launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
++launch ".taz"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
++launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
++launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,4,2,3,5,6:13,16
++launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
++launch ".Z"	"zcat %C|$PAGER"
++launch ".gz"	"gzip -cd %C|$PAGER"
+ 
  # example for SVR4 (or GNU tar)
- #".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
- #".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
--#".tar.gz"	"gunzip -c %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-+#".tar.gz"	"gunzip -c %C | tar tvf -"\
-+#					0,0:1,2-'/',2'/',3,7,4,5,6,8
+-#".tar"		"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
+-#".tar.Z"	"zcat %C | tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+-#".tar.gz"	"gunzip -c %C | tar tvf -"\
+-#					0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".tar.Z"\
++#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".tar.gz"\
++#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".taz"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
++#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
  
  # archiver definition
- #".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
-@@ -116,9 +128,9 @@
- #".tar"		A "tar cf %C %T"		"tar xf %C %TA"
- #".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
- #".tar.gz"	A "tar cf %X %T; gzip %X"	"gunzip -c %C | tar xf - %TA"
--".taZ"	A "tar cf %X.tar %T; compress %X.tar; mv %X.tar.Z %X.taZ"	"zcat %C | tar xf - %TA"
--".taz"	A "tar cf %X.tar %T; compress %X.tar; mv %X.tar.Z %X.taz"	"zcat %C | tar xf - %TA"
--".tgz"	A "tar cf %X.tar %T; gzip %X.tar; mv %X.tar.gz %X.tgz"	"gunzip -c %C | tar xf - %TA"
-+".taZ"		A "maketaz compress Z taZ"	"zcat %C | tar xf - %TA"
-+".taz"		A "maketaz compress Z taz"	"zcat %C | tar xf - %TA"
-+".tgz"		A "maketaz gzip gz tgz"		"gunzip -c %C | tar xf - %TA"
- ".zip"		A "zip -q %C %TA"		"unzip -q %C %TA"
- ".zoo"		A "zoo aq %C %TA"		"zoo xq %C %TA"
+-#".lzh"		A "lha aq %C %TA"		"lha xq %C %TA"
+-#".tar"		A "tar cf %C %T"		"tar xf %C %TA"
+-#".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C | tar xf - %TA"
+-#".tar.gz"	A "tar cf %X %T; gzip %X"	"gunzip -c %C | tar xf - %TA"
+-".taZ"		A "maketaz compress Z taZ"	"zcat %C | tar xf - %TA"
+-".taz"		A "maketaz compress Z taz"	"zcat %C | tar xf - %TA"
+-".tgz"		A "maketaz gzip gz tgz"		"gunzip -c %C | tar xf - %TA"
+-".zip"		A "zip -q %C %TA"		"unzip -q %C %TA"
+-".zoo"		A "zoo aq %C %TA"		"zoo xq %C %TA"
++#arch ".lzh"	A "lha aq %C %TA"		"lha xq %C %TA"
++#arch ".tar"	A "tar cf %C %T"		"tar xf %C %TA"
++#arch ".tar.Z"	A "tar cf %X %T; compress %X"	"zcat %C|tar xf - %TA"
++#arch ".tar.gz"	A "tar cf %X %T; gzip %X"	"gzip -cd %C|tar xf - %TA"
++arch ".taZ"	A "maketaz compress Z taZ"	"zcat %C|tar xf - %TA"
++arch ".taz"	A "maketaz compress Z taz"	"zcat %C|tar xf - %TA"
++arch ".tgz"	A "maketaz gzip gz tgz"		"gzip -cd %C|tar xf - %TA"
++arch ".zip"	A "zip -q %C %TA"		"unzip -q %C %TA"
++arch ".zoo"	A "zoo aq %C %TA"		"zoo xq %C %TA"
  
-@@ -132,3 +144,17 @@
+ # key bind definition
+-'I'	"dir -d %C"
+-'g'	"gzip %C%K"	WARNING_BELL
+-'G'	"gunzip %C%K"	WARNING_BELL
+-'R'	"grep %R %C"
+-'~'	"!cd ~%N%K"
+-'F1'	"man fd%N%K"	;Manual
+-
+-# alias definition
+-alias	dir "ls -laF"
++bind 'I'	"dir -d %C"
++bind 'g'	"gzip %C%K"	WARNING_BELL
++bind 'G'	"gzip -d %C%K"	WARNING_BELL
++bind 'R'	"grep %R %C"
++bind '{'	ROLL_UP
++bind '}'	ROLL_DOWN
++bind '~'	"cd ~%N%K"
++bind 'F1'	"man fd%N%K"	;Manual
  
- # alias definition
- alias	dir "ls -laF"
+ # function definition
+ function rename() {\
+-	!MARK_ALL 0;\
+-	!MARK_FIND $1;\
+-#	!RENAME_FILE $2;\
++	MARK_ALL 0;\
++	MARK_FIND $1;\
++#	RENAME_FILE $2;\
+ 	mv %M $2%K;\
+ }
+ 
+@@ -158,3 +173,11 @@
+ 	$1 %X.tar;\
+ 	mv %X.tar.$2 %X.$3;\
+ }
 +
-+# function definition
-+function rename() {\
-+	!MARK_ALL 0;\
-+	!MARK_FIND $1;\
-+#	!RENAME_FILE $2;\
-+	mv %M $2%K;\
-+}
++setdrv B	"/dev/rfd00a"	2, 18, 80
 +
-+function maketaz() {\
-+	tar cf %X.tar %T;\
-+	$1 %X.tar;\
-+	mv %X.tar.$2 %X.$3;\
-+}
++# alias definition
++alias	dir "ls -laF"
++
++# keymap definition
++keymap	DEL	"\033[3~"
