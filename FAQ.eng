@@ -536,7 +536,17 @@ A3-22.	Doesn't vold (Volume Management daemon) work? Since
 	Moreover, if you are going to substitute /dev/rfd0a
 	because /dev/rfd0c is unavailable owing to vold, the
 	last cylinder of a floppy disk will be unable to
-	access. Don't use rfd0a
+	access. Don't use rfd0a.
+
+Q3-23.	On PC-DOS (IBM-DOS), strange characters sometimes
+	appear in screen, like as ">5h" or ">5l".
+A3-23.	PC-DOS (IBM-DOS) standard ANSI.SYS is inferior to
+	MS-DOS one in some functions, to display the invalid
+	sequence as it is.
+	PANSI.SYS, the ANSI.SYS emulator equivalent to MS-DOS
+	one, has been released, you should better use it
+	instead of standard ANSI.SYS.
+	http://hp.vector.co.jp/authors/VA003655/en/down.html
 
 
 <4.Specification Problem>

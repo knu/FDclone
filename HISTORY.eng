@@ -1,3 +1,11 @@
+Ver. 2.00b	Allow ambiguity in decoding JIS type encoded strings.
+ (03/27/02)	Support to decode ISO-2022-JP-3 encoding.
+		The different rule from Windows in generating LFN is adjusted.
+		Evaluation error for shell variables is fixed.
+		Bug that ADJTTY has been always effective is fixed.
+		Probe error of readonly attribute in mount option is fixed.
+		An expanding error of continuous wildcards is fixed.
+
 Ver. 2.00a	Some fixes for HP-UX.
  (02/06/02)	Support terminfo(5) library.
 		Restriction error of fd invoked from fdsh is fixed.

@@ -958,7 +958,7 @@ int len;
 {
 	reg_t *re;
 	char *cp, *paren;
-	int i, j, n, plen, size, meta, quote;
+	int i, j, n, plen, size, metachar, quote;
 
 	skipdotfile = (*s == '*' || *s == '?');
 	if (len < 0) len = strlen(s);
@@ -968,14 +968,14 @@ int len;
 	re[0] = NULL;
 	for (i = 0, quote = '\0'; i < len; i++) {
 		cp = NULL;
-		meta = 0;
+		metachar = 0;
 		if (s[i] == quote) {
 			quote = '\0';
 			continue;
 		}
 		else if (quote == '\'');
 		else if (isnmeta(s, i, quote, len)) {
-			meta = 1;
+			metachar = 1;
 			i++;
 		}
 		else if (quote);
@@ -987,7 +987,7 @@ int len;
 		if (paren) {
 			paren = c_realloc(paren, plen + 1, size);
 
-			if (quote || meta) {
+			if (quote || metachar) {
 #ifdef	BASHSTYLE
 	/* bash treats a character quoted by \ in "[]" as a character itself */
 				paren[plen++] = PMETA;
@@ -1075,6 +1075,8 @@ int len;
 			case '[':
 				paren = c_malloc(size);
 				plen = 0;
+				break;
+			default:
 				break;
 		}
 
@@ -1205,9 +1207,9 @@ reg_t *re;
 # endif		/* !USEREGCOMP */
 #endif		/* !USERE_COMP */
 
-static char *NEAR catpath(path, file, plenp, flen, overwrite)
+static char *NEAR catpath(path, file, plenp, flen, isoverwrite)
 char *path, *file;
-int *plenp, flen, overwrite;
+int *plenp, flen, isoverwrite;
 {
 	char *new;
 	int i, sc;
@@ -1227,7 +1229,7 @@ int *plenp, flen, overwrite;
 		}
 	}
 
-	if (overwrite) new = realloc2(path, *plenp + sc + flen + 1);
+	if (isoverwrite) new = realloc2(path, *plenp + sc + flen + 1);
 	else {
 		new = malloc2(*plenp + sc + flen + 1);
 		strncpy(new, path, *plenp);
@@ -2236,6 +2238,7 @@ int quoted;
 			else if (quote == '\'');
 			else if (ismeta(top, i, quote)) {
 				if (len < 0) return(-1);
+				i++;
 			}
 			else if (quote);
 			else if (top[i] == '\'' || top[i] == '"') {
@@ -2584,9 +2587,12 @@ int stripq, backq;
 			}
 		}
 		else if (ismeta(cp, 0, quote)) {
-			if (j >= 0) bbuf[j++] = *cp;
-			else buf[i++] = *cp;
 			cp++;
+			if (*cp == '$');
+			else if (backq && *cp == '`');
+			else if (stripq && (*cp == '\'' || *cp == '"'));
+			else if (j >= 0) bbuf[j++] = PMETA;
+			else buf[i++] = PMETA;
 		}
 		else if (backq && backquotefunc && *cp == '`') {
 			if (j < 0) j = 0;
@@ -2629,10 +2635,9 @@ int stripq, backq;
 	return(buf);
 }
 
-int evalifs(argc, argvp, ifs, iscom)
+int evalifs(argc, argvp, ifs)
 int argc;
 char ***argvp, *ifs;
-int iscom;
 {
 	char *cp;
 	int i, j, n, quote;
@@ -2674,7 +2679,7 @@ int iscom;
 				break;
 			}
 		}
-		if (iscom && !i) {
+		if (!i) {
 			free((*argvp)[n]);
 			for (i = n; i < argc; i++)
 				(*argvp)[i] = (*argvp)[i + 1];
@@ -2685,10 +2690,10 @@ int iscom;
 	return(argc);
 }
 
-int evalglob(argc, argvp, stripq, iscom)
+int evalglob(argc, argvp, stripq)
 int argc;
 char ***argvp;
-int stripq, iscom;
+int stripq;
 {
 	char *cp, **wild;
 	int i, j, n, w, size, quote;
@@ -2720,7 +2725,6 @@ int stripq, iscom;
 				quote = (*argvp)[n][i];
 				if (stripq) continue;
 			}
-			else if (iscom && !n);
 			else if (!strchr("?*[", (*argvp)[n][i]));
 			else if (wild = evalwild((*argvp)[n])) {
 				for (w = 0; wild[w]; w++);
@@ -2744,7 +2748,7 @@ int stripq, iscom;
 				for (w = 0; wild[w]; w++)
 					(*argvp)[n + w] = wild[w];
 				free(wild);
-				n += w;
+				n += w - 1;
 				break;
 			}
 

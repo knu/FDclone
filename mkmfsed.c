@@ -104,7 +104,11 @@ char *argv[];
 	printf("s:__UNITBL__:$(UNITBL):\n");
 #endif
 
+#ifdef	SUPPORTSJIS
+	printf("s:__PREFIXOPTION__::\n");
+#else
 	printf("s:__PREFIXOPTION__:-c:\n");
+#endif
 
 	return(0);
 }

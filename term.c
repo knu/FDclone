@@ -560,7 +560,6 @@ static int specialkeycode[] = {
 #else	/* !MSDOS */
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
-static int ttychanged = 0;
 #endif	/* !MSDOS */
 
 #if	MSDOS || !defined (TIOCSTI)
@@ -572,6 +571,8 @@ static int termflags = 0;
 #define	F_INITTTY	001
 #define	F_TERMENT	002
 #define	F_INITTERM	004
+#define	F_TTYCHANGED	010
+#define	F_RESETTTY	(F_INITTTY | F_TTYCHANGED)
 
 
 #ifdef	LSI_C
@@ -746,10 +747,7 @@ int reset;
 	termioctl_t tty;
 
 	opentty();
-	if (!reset) {
-		if (!ttychanged) return(0);
-	}
-	else if (!(termflags & F_INITTTY)) return(0);
+	if (reset && (termflags & F_RESETTTY) != F_RESETTTY) return(0);
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		termflags &= ~F_INITTTY;
 		close(ttyio);
@@ -809,10 +807,10 @@ u_short set, reset, lset, lreset;
 	if (lreset) lflag &= lreset;
 	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
 #else
-static int NEAR ttymode(d, set, reset, iset, ireset, oset, oreset, min, time)
+static int NEAR ttymode(d, set, reset, iset, ireset, oset, oreset, vmin, vtime)
 int d;
 u_short set, reset, iset, ireset, oset, oreset;
-int min, time;
+int vmin, vtime;
 {
 	termioctl_t tty;
 
@@ -823,13 +821,13 @@ int min, time;
 	if (ireset) tty.c_iflag &= ireset;
 	if (oset) tty.c_oflag |= oset;
 	if (oreset) tty.c_oflag &= oreset;
-	if (min) {
-		tty.c_cc[VMIN] = min;
-		tty.c_cc[VTIME] = time;
+	if (vmin) {
+		tty.c_cc[VMIN] = vmin;
+		tty.c_cc[VTIME] = vtime;
 	}
 #endif
 	if (tioctl(d, REQSETP, &tty) < 0) err2(NULL);
-	ttychanged = 1;
+	termflags |= F_TTYCHANGED;
 	return(0);
 }
 
@@ -1000,7 +998,10 @@ char *mes;
 	if (termflags & F_INITTTY) {
 		if (termflags & F_TERMENT) putterm(t_normal);
 		endterm();
-		inittty(1);
+		cooked2();
+		echo2();
+		nl2();
+		tabs();
 	}
 	fputs("\007\n", stderr);
 	errno = duperrno;
@@ -1009,6 +1010,7 @@ char *mes;
 		fputs(mes, stderr);
 		fputc('\n', stderr);
 	}
+	inittty(1);
 	exit(2);
 	return(0);
 }
@@ -1519,30 +1521,30 @@ static int NEAR sortkeyseq(VOID_A)
 
 int getterment(VOID_A)
 {
-	char *cp, *termname, buf[TERMCAPSIZE];
+	char *cp, *terminalname, buf[TERMCAPSIZE];
 	int i, j;
 
 	if (termflags & F_TERMENT) return(-1);
 	if (!(ttyout = fdopen(ttyio, "w+"))) ttyout = stdout;
-	if (!(termname = (char *)getenv("TERM"))) termname = "unknown";
+	if (!(terminalname = (char *)getenv("TERM"))) terminalname = "unknown";
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 	_mtrace_file = "setupterm(start)";
-	setupterm(termname, fileno(ttyout), &i);
+	setupterm(terminalname, fileno(ttyout), &i);
 	if (_mtrace_file) _mtrace_file = NULL;
 	else {
 		_mtrace_file = "setupterm(end)";
 		malloc(0);	/* dummy alloc */
 	}
 #  else
-	setupterm(termname, fileno(ttyout), &i);
+	setupterm(terminalname, fileno(ttyout), &i);
 #  endif
 	if (i != 1) err2("No TERMINFO is prepared");
 	defaultterm();
 # else	/* !USETERMINFO */
 #  ifdef	DEBUG
 	_mtrace_file = "tgetent(start)";
-	i = tgetent(buf, termname);
+	i = tgetent(buf, terminalname);
 	if (_mtrace_file) _mtrace_file = NULL;
 	else {
 		_mtrace_file = "tgetent(end)";
@@ -1550,7 +1552,7 @@ int getterment(VOID_A)
 	}
 	if (i <= 0) err2("No TERMCAP is prepared");
 #  else
-	if (tgetent(buf, termname) <= 0) err2("No TERMCAP is prepared");
+	if (tgetent(buf, terminalname) <= 0) err2("No TERMCAP is prepared");
 #  endif
 
 	defaultterm();
@@ -1864,7 +1866,7 @@ u_long usec;
 #else
 # ifndef	PC98
 	fd_set readfds;
-	struct timeval timeout;
+	struct timeval tv;
 	int n;
 # endif
 #endif
@@ -1886,13 +1888,13 @@ u_long usec;
 	return(reg.h.bh != 0);
 # else	/* !PC98 */
 #  if	defined (DJGPP) && (DJGPP >= 2)
-	timeout.tv_sec = 0L;
-	timeout.tv_usec = usec;
+	tv.tv_sec = 0L;
+	tv.tv_usec = usec;
 	FD_ZERO(&readfds);
 	FD_SET(STDIN_FILENO, &readfds);
 
 	do {
-		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
 	} while (n < 0);
 	return(n);
 #  else	/* !DJGPP || DJGPP < 2 */
@@ -2126,16 +2128,16 @@ u_long usec;
 	return((usec) ? 1 : 0);
 # else
 	fd_set readfds;
-	struct timeval timeout;
+	struct timeval tv;
 	int n;
 
-	timeout.tv_sec = 0L;
-	timeout.tv_usec = usec;
+	tv.tv_sec = 0L;
+	tv.tv_usec = usec;
 	FD_ZERO(&readfds);
 	FD_SET(STDIN_FILENO, &readfds);
 
 	do {
-		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+		n = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
 	} while (n < 0);
 	return(n);
 # endif

@@ -104,6 +104,7 @@ typedef long	off_t;
 #if	defined (sony)
 #define	USELEAPCNT
 #define	USEMANLANG
+#define	SUPPORTSJIS
 # if	defined (USGr4) || defined (SYSTYPE_SYSV)
 # define	SVR4
 # define	OSTYPE		"NEWS_OS6"
@@ -654,6 +655,7 @@ typedef long	off_t;
 
 /* #define CODEEUC	;kanji code type is EUC */
 /* #define USEMANLANG	;man(1) directory includes LANG environment value */
+/* #define SUPPORTSJIS	;cc(1) or man(1) supports Shift JIS perfectly */
 /* #define BSDINSTALL	;install(1) with option -c is valid like BSD */
 /* #define BSDINSTCMD	;command name except "install" to install like BSD */
 /* #define TARUSESPACE	;tar(1) uses space to devide file mode from UID */

@@ -58,12 +58,17 @@ FILE *fp;
 			fputc2(j2 | 0x80, fp);
 		}
 	}
-	else if (!j1) fputc2((j2 <= 0x20 || j2 >= 0x60) ? j2 : j2 | 0x80, fp);
 	else {
-		fputc2(((j1 - 1) >> 1) + ((j1 < 0x5f) ? 0x71 : 0xb1), fp);
-		c = j2 + ((j1 & 1) ? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
-		fputc2(c, fp);
-		if (c == '\\' && (prefix || msboff)) fputc2('\\', fp);
+		if (j1) {
+			c = ((j1 - 1) >> 1) + ((j1 < 0x5f) ? 0x71 : 0xb1);
+			fputc2(c, fp);
+			c = j2 + ((j1 & 1)
+				? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
+			fputc2(c, fp);
+			if (c == '\\' && (prefix || msboff)) fputc2('\\', fp);
+		}
+		else if (j2 <= 0x20 || j2 >= 0x60) fputc2(j2, fp);
+		else fputc2(j2 | 0x80, fp);
 	}
 }
 
@@ -155,38 +160,83 @@ char *argv[];
 	while ((c = fgetc(in)) != EOF) {
 		switch (c) {
 			case '\033':	/* ESC */
+				if (esc) output(out, '\033', mode);
+				else if (kanji > 0) {
+					output(out, '\033', mode);
+					output(out, '$', mode);
+				}
+				else if (kanji < 0) {
+					output(out, '\033', mode);
+					output(out, '(', mode);
+				}
 				esc = 1;
+				kanji = 0;
 				break;
 			case '$':
-				if (!esc) output(out, c, mode);
+				if (!esc) {
+					if (!kanji) output(out, c, mode);
+				}
 				else {
 					mode &= ~JKANA;
-					kanji = 1;
 					esc = 0;
+					kanji = 1;
 				}
 				break;
 			case '(':
-				if (!esc) output(out, c, mode);
+				if (!esc) {
+					if (!kanji) output(out, c, mode);
+				}
 				else {
 					mode &= ~JKANA;
-					kanji = -1;
 					esc = 0;
+					kanji = -1;
 				}
 				break;
 			case '\016':	/* SO */
+				if (esc) output(out, '\033', mode);
+				else if (kanji > 0) {
+					output(out, '\033', mode);
+					output(out, '$', mode);
+				}
+				else if (kanji < 0) {
+					output(out, '\033', mode);
+					output(out, '(', mode);
+				}
 				mode |= KANA;
+				esc = kanji = 0;
 				break;
 			case '\017':	/* SI */
+				if (esc) output(out, '\033', mode);
+				else if (kanji > 0) {
+					output(out, '\033', mode);
+					output(out, '$', mode);
+				}
+				else if (kanji < 0) {
+					output(out, '\033', mode);
+					output(out, '(', mode);
+				}
 				mode &= ~KANA;
+				esc = kanji = 0;
 				break;
 			case '\b':
 				if (removebs) {
+					if (esc) output(out, '\033', mode);
+					else if (kanji > 0) {
+						output(out, '\033', mode);
+						output(out, '$', mode);
+					}
+					else if (kanji < 0) {
+						output(out, '\033', mode);
+						output(out, '(', mode);
+					}
 					output(NULL, EOF, mode);
+					esc = kanji = 0;
 					break;
 				}
+/*FALLTHRU*/
 			default:
 				if (esc) output(out, '\033', mode);
-				if (kanji > 0) mode |= KANJI;
+				else if (kanji > 0) mode |= KANJI;
 				else if (kanji < 0) {
 					if (c == 'I') mode |= JKANA;
 					else mode &= ~KANJI;

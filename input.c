@@ -127,7 +127,7 @@ static int tmpfilepos = -1;
 #endif
 static int xpos = 0;
 static int ypos = 0;
-static int overwrite = 0;
+static int overwritemode = 0;
 
 
 int intrkey(VOID_A)
@@ -196,30 +196,30 @@ int sig;
 			switch (ch) {
 				case ':':
 					vimode = 2;
-					overwrite = 0;
+					overwritemode = 0;
 					break;
 				case 'A':
 					vimode = 3;
-					overwrite = 0;
+					overwritemode = 0;
 					ch = K_EOL;
 					break;
 				case 'i':
 					vimode = 2;
-					overwrite = 0;
+					overwritemode = 0;
 					break;
 				case 'a':
 					vimode = 3;
-					overwrite = 0;
+					overwritemode = 0;
 					ch = K_RIGHT;
 					break;
 #if	FD >= 2
 				case 'R':
 					vimode = 2;
-					overwrite = 1;
+					overwritemode = 1;
 					break;
 				case 'r':
 					vimode = 6;
-					overwrite = 1;
+					overwritemode = 1;
 					break;
 #endif	/* FD >= 2 */
 				case K_BS:
@@ -791,7 +791,7 @@ int cx, *lenp, plen, max, linemax, rins, vins;
 
 	if (*lenp + rins > max || vlen(s, *lenp) + vins > max) return(-1);
 
-	if (!overwrite) {
+	if (!overwritemode) {
 		insertchar(s, cx, *lenp, plen, max, linemax, vins);
 		insshift(s, cx, *lenp, rins);
 		*lenp += rins;
@@ -829,10 +829,10 @@ int cx, *lenp, plen, max, linemax, rins, vins;
 	return(0);
 }
 
-static int NEAR insertstr(s, cx, len, plen, max, linemax, insstr, ins, quote)
+static int NEAR insertstr(s, cx, len, plen, max, linemax, strins, ins, quote)
 char *s;
 int cx, len, plen, max, linemax;
-char *insstr;
+char *strins;
 int ins, quote;
 {
 	char *dupl;
@@ -841,51 +841,51 @@ int ins, quote;
 	if (len + ins > max) ins = max - len;
 	if (ins > 0) {
 #ifdef	CODEEUC
-		if (isekana(insstr, ins - 1)) ins--;
+		if (isekana(strins, ins - 1)) ins--;
 		else
 #endif
-		if (onkanji1(insstr, vlen(insstr, ins) - 1)) ins--;
+		if (onkanji1(strins, vlen(strins, ins) - 1)) ins--;
 	}
 	if (ins <= 0) return(0);
 
 	dupl = malloc2(ins * 2 + 1);
-	insertchar(s, cx, len, plen, max, linemax, vlen(insstr, ins));
+	insertchar(s, cx, len, plen, max, linemax, vlen(strins, ins));
 	insshift(s, cx, len, ins);
 	for (i = j = 0; i < ins; i++, j++) {
-		if (isctl(insstr[i])) {
+		if (isctl(strins[i])) {
 			if (len + ins + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
 			else {
 				dupl[j] = '^';
 				s[cx + j] = QUOTE;
-				dupl[++j] = (insstr[i] + '@') & 0x7f;
-				s[cx + j] = insstr[i];
+				dupl[++j] = (strins[i] + '@') & 0x7f;
+				s[cx + j] = strins[i];
 			}
 		}
 #ifdef	CODEEUC
-		else if (isekana(insstr, i)) {
+		else if (isekana(strins, i)) {
 			if (len + ins + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
 			else {
-				dupl[j] = s[cx + j] = insstr[i];
-				dupl[j + 1] = s[cx + j + 1] = insstr[++i];
+				dupl[j] = s[cx + j] = strins[i];
+				dupl[j + 1] = s[cx + j + 1] = strins[++i];
 				j++;
 			}
 		}
 #endif
-		else if (iskanji1(insstr, i)) {
+		else if (iskanji1(strins, i)) {
 			if (len + ins + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
 			else {
-				dupl[j] = s[cx + j] = insstr[i];
-				dupl[j + 1] = s[cx + j + 1] = insstr[++i];
+				dupl[j] = s[cx + j] = strins[i];
+				dupl[j + 1] = s[cx + j + 1] = strins[++i];
 				j++;
 			}
 		}
 #if	MSDOS && defined (_NOORIGSHELL)
-		else if (strchr(DQ_METACHAR, insstr[i])) {
+		else if (strchr(DQ_METACHAR, strins[i])) {
 #else
-		else if (quote == '"' && strchr(DQ_METACHAR, insstr[i])) {
+		else if (quote == '"' && strchr(DQ_METACHAR, strins[i])) {
 #endif
 			if (len + ins + j - i >= max)
 				dupl[j] = s[cx + j] = '?';
@@ -895,11 +895,11 @@ int ins, quote;
 #else
 				dupl[j] = s[cx + j] = PMETA;
 #endif
-				dupl[j + 1] = s[cx + j + 1] = insstr[i];
+				dupl[j + 1] = s[cx + j + 1] = strins[i];
 				j++;
 			}
 		}
-		else dupl[j] = s[cx + j] = insstr[i];
+		else dupl[j] = s[cx + j] = strins[i];
 	}
 	dupl[j] = '\0';
 
@@ -1739,7 +1739,7 @@ int plen, max, linemax, def, comline, h;
 #if	FD >= 2
 			case K_IC:
 				keyflush();
-				overwrite = 1 - overwrite;
+				overwritemode = 1 - overwritemode;
 				break;
 			case K_PPAGE:
 				ocx2 = cx2 = _inputstr_case(s, &cx, cx2,

@@ -499,7 +499,7 @@ int (NEAR *getoptcmd)__P_((int, char *[]));
 	argv[0] = strdup2(cmd);
 	argv[1] = strdup2(cp);
 	argv[2] = NULL;
-	argc = evalifs(argc, &argv, IFS_SET, 1);
+	argc = evalifs(argc, &argv, IFS_SET);
 
 	er = 0;
 	if ((n = (*getoptcmd)(argc, argv)) < 0) er++;
@@ -564,6 +564,7 @@ char *argv[];
 							r = 1;
 							break;
 						}
+/*FALLTHRU*/
 					default:
 						doserror(cp, ER_REQPARAM);
 						return(-1);
@@ -607,6 +608,7 @@ char *argv[];
 							r = 1;
 							break;
 						}
+/*FALLTHRU*/
 					default:
 						doserror(cp, ER_REQPARAM);
 						return(-1);

@@ -84,12 +84,10 @@ static VOID NEAR j2sj __P_((char *, u_char *));
 #if	!MSDOS && !defined (_NOKANJICONV)
 static int NEAR toenglish __P_((char *, u_char *, int));
 static int NEAR tojis7 __P_((char *, u_char *, int, int, int, int));
-static int NEAR fromjis7 __P_((char *, u_char *, int, int, int, int));
+static int NEAR fromjis __P_((char *, u_char *, int, int));
 # if	defined (FD) && (FD >= 2)
 static int NEAR tojis8 __P_((char *, u_char *, int, int, int, int));
-static int NEAR fromjis8 __P_((char *, u_char *, int, int, int, int));
 static int NEAR tojunet __P_((char *, u_char *, int, int, int, int));
-static int NEAR fromjunet __P_((char *, u_char *, int, int, int, int));
 static int NEAR toutf8 __P_((char *, u_char *, int));
 static int NEAR fromutf8 __P_((char *, u_char *, int));
 #  ifndef	_NOKANJIFCONV
@@ -846,10 +844,10 @@ int max, knj, asc, io;
 	return(j);
 }
 
-static int NEAR fromjis7(buf, s, max, knj, asc, io)
+static int NEAR fromjis(buf, s, max, io)
 char *buf;
 u_char *s;
-int max, knj, asc, io;
+int max, io;
 {
 	int i, j, mode;
 
@@ -863,18 +861,48 @@ int max, knj, asc, io;
 			mode &= ~KANA;
 			break;
 		case '\033':	/* ESC */
-			if (s[i + 1] == '$' && s[i + 2] == knj) {
-				mode |= KANJI;
-				i += 2;
-				break;
+			if (s[i + 1] == '$') {
+				if (s[i + 2] == '@' || s[i + 2] == 'B') {
+					mode &= ~JKANA;
+					mode |= KANJI;
+					i += 2;
+					break;
+				}
+				else if (s[i + 2] == '('
+				&& (s[i + 3] == '@' || s[i + 3] == 'B'
+				|| s[i + 3] == 'O')) {
+					mode &= ~JKANA;
+					mode |= KANJI;
+					i += 3;
+					break;
+				}
 			}
-			else if (s[i + 1] == '(' && s[i + 2] == asc) {
-				mode &= ~KANJI;
-				i += 2;
-				break;
+			else if (s[i + 1] == '(') {
+				if (s[i + 2] == 'J' || s[i + 2] == 'B'
+				|| s[i + 2] == 'H') {
+					mode &= ~(KANJI | JKANA);
+					i += 2;
+					break;
+				}
+				else if (s[i + 2] == 'I') {
+					mode &= ~KANJI;
+					mode |= JKANA;
+					i += 2;
+					break;
+				}
 			}
+			else if (s[i + 1] == '&') {
+				if (s[i + 2] == '@' && s[i + 3] == '\033'
+				&& s[i + 4] == '$' && s[i + 5] == 'B') {
+					mode &= ~JKANA;
+					mode |= KANJI;
+					i += 5;
+					break;
+				}
+			}
+/*FALLTHRU*/
 		default:
-			if (mode & KANA) {
+			if (mode & (KANA | JKANA)) {
 				if (!isjkana(s, i)) buf[j++] = s[i];
 				else {
 # ifdef	CODEEUC
@@ -902,6 +930,12 @@ int max, knj, asc, io;
 # endif
 				}
 			}
+#  ifdef	CODEEUC
+			else if (iskna(s[i])) {
+				buf[j++] = 0x8e;
+				buf[j++] = s[i];
+			}
+#  endif
 			else buf[j++] = s[i];
 			break;
 	}
@@ -963,59 +997,6 @@ int max, knj, asc, io;
 	return(j);
 }
 
-static int NEAR fromjis8(buf, s, max, knj, asc, io)
-char *buf;
-u_char *s;
-int max, knj, asc, io;
-{
-	int i, j, mode;
-
-	mode = ASCII;
-	for (i = j = 0; s[i] && j < max - 1; i++)
-	switch (s[i]) {
-		case '\033':	/* ESC */
-			if (s[i + 1] == '$' && s[i + 2] == knj) {
-				mode = KANJI;
-				i += 2;
-				break;
-			}
-			else if (s[i + 1] == '(' && s[i + 2] == asc) {
-				mode = ASCII;
-				i += 2;
-				break;
-			}
-		default:
-			if (mode & KANJI) {
-				if (!isjis(s[i]) || !isjis(s[i + 1])) {
-					buf[j++] = s[i++];
-					buf[j++] = s[i];
-				}
-				else {
-#  ifdef	CODEEUC
-					buf[j++] = s[i++] | 0x80;
-					buf[j++] = jdecnv(s[i], io) | 0x80;
-#  else
-					u_char tmp[2];
-
-					tmp[0] = s[i++];
-					tmp[1] = jdecnv(s[i], io);
-					j2sj(&(buf[j]), tmp);
-					j += 2;
-#  endif
-				}
-			}
-#  ifdef	CODEEUC
-			else if (iskna(s[i])) {
-				buf[j++] = 0x8e;
-				buf[j++] = s[i];
-			}
-#  endif
-			else buf[j++] = s[i];
-			break;
-	}
-	return(j);
-}
-
 static int NEAR tojunet(buf, s, max, knj, asc, io)
 char *buf;
 u_char *s;
@@ -1069,69 +1050,6 @@ int max, knj, asc, io;
 		buf[j++] = '\033';
 		buf[j++] = '(';
 		buf[j++] = asc;
-	}
-	return(j);
-}
-
-static int NEAR fromjunet(buf, s, max, knj, asc, io)
-char *buf;
-u_char *s;
-int max, knj, asc, io;
-{
-	int i, j, mode;
-
-	mode = ASCII;
-	for (i = j = 0; s[i] && j < max - 1; i++)
-	switch (s[i]) {
-		case '\033':	/* ESC */
-			if (s[i + 1] == '$' && s[i + 2] == knj) {
-				mode = KANJI;
-				i += 2;
-				break;
-			}
-			else if (s[i + 1] == '(') {
-				if (s[i + 2] == 'I') {
-					mode = JKANA;
-					i += 2;
-					break;
-				}
-				else if (s[i + 2] == asc) {
-					mode = ASCII;
-					i += 2;
-					break;
-				}
-			}
-		default:
-			if (mode == JKANA) {
-				if (!isjkana(s, i)) buf[j++] = s[i];
-				else {
-#  ifdef	CODEEUC
-					buf[j++] = 0x8e;
-#  endif
-					buf[j++] = jdecnv(s[i], io) | 0x80;
-				}
-			}
-			else if (mode == KANJI) {
-				if (!isjis(s[i]) || !isjis(s[i + 1])) {
-					buf[j++] = s[i++];
-					buf[j++] = s[i];
-				}
-				else {
-#  ifdef	CODEEUC
-					buf[j++] = s[i++] | 0x80;
-					buf[j++] = jdecnv(s[i], io) | 0x80;
-#  else
-					u_char tmp[2];
-
-					tmp[0] = s[i];
-					tmp[1] = jdecnv(s[i], io);
-					j2sj(&(buf[j]), tmp);
-					j += 2;
-#  endif
-				}
-			}
-			else buf[j++] = s[i];
-			break;
 	}
 	return(j);
 }
@@ -1440,30 +1358,17 @@ int max, in, out, *lenp, io;
 # endif
 					break;
 				case JIS7:
-					*lenp = fromjis7(buf, (u_char *)s,
-						max, 'B', 'B', io);
-					break;
 # if	defined (FD) && (FD >= 2)
 				case O_JIS7:
-					*lenp = fromjis7(buf, (u_char *)s,
-						max, '@', 'J', io);
-					break;
 				case JIS8:
-					*lenp = fromjis8(buf, (u_char *)s,
-						max, 'B', 'B', io);
-					break;
 				case O_JIS8:
-					*lenp = fromjis8(buf, (u_char *)s,
-						max, '@', 'J', io);
-					break;
 				case JUNET:
-					*lenp = fromjunet(buf, (u_char *)s,
-						max, 'B', 'B', io);
-					break;
 				case O_JUNET:
-					*lenp = fromjunet(buf, (u_char *)s,
-						max, '@', 'J', io);
+# endif	/* FD && (FD >= 2) */
+					*lenp = fromjis(buf, (u_char *)s,
+						max, io);
 					break;
+# if	defined (FD) && (FD >= 2)
 				case UTF8:
 					*lenp = fromutf8(buf, (u_char *)s,
 						max);

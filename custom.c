@@ -2786,8 +2786,8 @@ int no;
 	return(1);
 }
 
-static VOID NEAR dispname(no, y, standout)
-int no, y, standout;
+static VOID NEAR dispname(no, y, isstandout)
+int no, y, isstandout;
 {
 	char *cp, buf[MAXLINESTR + 1], *name[MAXSAVEMENU];
 
@@ -2859,7 +2859,7 @@ int no, y, standout;
 	locate(0, y);
 	putterm(t_standout);
 	for (len = strlen3(cp); len <= MAXCUSTNAM; len++) putch2(' ');
-	if (standout) kanjiputs(cp);
+	if (isstandout) kanjiputs(cp);
 	else {
 		putterm(end_standout);
 		if (!stable_standout) kanjiputs(cp);

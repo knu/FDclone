@@ -255,6 +255,7 @@ int ignorelist;
 					setflag++;
 					break;
 				}
+/*FALLTHRU*/
 #endif
 			case 'C':
 				len = setarg(line, j, NULL, arg, flags);
@@ -828,7 +829,7 @@ int n;
 char *file;
 {
 	FILE *fp;
-	char *cp, *nl;
+	char *cp, *eol;
 	int i, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
@@ -839,8 +840,8 @@ char *file;
 
 	size = (savehist > histsize[n]) ? histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
-		for (cp = history[n][i]; (nl = strchr(cp, '\n')); cp = nl) {
-			fwrite(cp, sizeof(char), nl++ - cp, fp);
+		for (cp = history[n][i]; (eol = strchr(cp, '\n')); cp = eol) {
+			fwrite(cp, sizeof(char), eol++ - cp, fp);
 			fputc('\0', fp);
 		}
 		fputs(cp, fp);

@@ -4772,6 +4772,7 @@ int *tptrp;
 					break;
 				}
 			}
+/*FALLTHRU*/
 		case '{':
 		case '}':
 		case '(':
@@ -5782,9 +5783,9 @@ int *typep, valid;
 	trapok = 1;
 #ifdef	BASHSTYLE
 	/* bash does not use IFS as a command separator */
-	comm -> argc = evalifs(comm -> argc, &(comm -> argv), " \t", 1);
+	comm -> argc = evalifs(comm -> argc, &(comm -> argv), " \t");
 #else
-	comm -> argc = evalifs(comm -> argc, &(comm -> argv), getifs(), 1);
+	comm -> argc = evalifs(comm -> argc, &(comm -> argv), getifs());
 #endif
 	if (!(comm -> argc)) {
 		*typep = CT_NONE;
@@ -5799,7 +5800,7 @@ int *typep, valid;
 #if	MSDOS
 	if (*typep == CT_COMMAND) {
 		if (!noglob) comm -> argc = evalglob(comm -> argc,
-				&(comm -> argv), 0, 1);
+				&(comm -> argv), 0);
 		else {
 			stripquote(comm -> argv[0], 1);
 			for (i = 1; i < comm -> argc; i++)
@@ -5813,7 +5814,7 @@ int *typep, valid;
 	&& *typep != CT_FDINTERNAL
 #endif
 	&& (*typep != CT_BUILTIN || !(shbuiltinlist[id].flags & BT_NOGLOB)))
-		comm -> argc = evalglob(comm -> argc, &(comm -> argv), 1, 1);
+		comm -> argc = evalglob(comm -> argc, &(comm -> argv), 1);
 	else for (i = 0; i < comm -> argc; i++) stripquote(comm -> argv[i], 1);
 	trapok = 0;
 
@@ -6339,8 +6340,8 @@ syntaxtree *trp;
 			tmpargv[i] = tmp;
 		}
 		tmpargv[i] = NULL;
-		argc = evalifs(comm -> argc, &tmpargv, getifs(), 0);
-		if (!noglob) argc = evalglob(argc, &tmpargv, 1, 0);
+		argc = evalifs(comm -> argc, &tmpargv, getifs());
+		if (!noglob) argc = evalglob(argc, &tmpargv, 1);
 		else for (i = 0; i < argc; i++) stripquote(tmpargv[i], 1);
 		argv = tmpargv;
 	}

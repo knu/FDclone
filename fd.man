@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.00a 02/06/02
+.\" @(#)fd.1   2.00b 03/27/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "February 6, 2002"
+.TH FD 1 "March 27, 2002"
 .de sh
 .br
 .PP
@@ -3669,7 +3669,8 @@ MS-DOS 版でのコマンド履歴のセーブファイル。
 .BR gunzip (1),
 .BR lha (1),
 .BR umask (2),
-.BR termcap (5)
+.BR termcap (5),
+.BR terminfo (5)
 .SH バグ
 アーカイブファイル内に ".\|." を含んだパス名で圧縮してある場合は、
 アーカイブブラウザが正常に働きません。

@@ -2297,7 +2297,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
 関関連連事事項項
      eecchhoo(1), tteesstt(1), llss(1), rrmm(1), ttaarr(1), ccoommpprreessss(1),
-     zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), uummaasskk(2), tteerrmmccaapp(5)
+     zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), uummaasskk(2), tteerrmmccaapp(5),
+     tteerrmmiinnffoo(5)
 
 ババググ
      アーカイブファイル内に ".." を含んだパス名で圧縮してある場合

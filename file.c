@@ -255,6 +255,7 @@ CONST VOID_P vp2;
 			tmp = (int)strlen(list1 -> name)
 				- (int)strlen(list2 -> name);
 			if (tmp != 0) break;
+/*FALLTHRU*/
 		case 1:
 			tmp = strpathcmp2(list1 -> name, list2 -> name);
 			break;

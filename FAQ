@@ -526,6 +526,17 @@ A3-22.	vold (Volume Management daemon) が動いていませんか？
 	クの最終シリンダがアクセス不能になってしまいますので、
 	rfd0a は使わないようにして下さい。
 
+Q3-23.	PC-DOS (IBM-DOS) で使用していると、画面に「>5h」とか
+	「>5l」とかいったゴミが表示されることがあります。
+A3-23.	PC-DOS (IBM-DOS) 標準の ANSI.SYS は、MS-DOS (Windows)
+	標準の ANSI.SYS と比べて一部機能が実装されていません
+	ので、MS-DOS 版でしか扱えない escape sequence がその
+	まま端末に表示されてしまいます。
+	MS-DOS 版の ANSI.SYS と同等の機能を持つ PANSI.SYS と
+	いう emulator が公開されていますので、ANSI.SYS の代
+	わりにそれを使うと良いでしょう。
+	http://hp.vector.co.jp/authors/VA003655/jp/down.html
+
 
 <4.仕様の話>
 

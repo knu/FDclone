@@ -593,9 +593,9 @@ int calcwidth(VOID_A)
 	return(width);
 }
 
-int putname(list, no, standout)
+int putname(list, no, isstandout)
 namelist *list;
-int no, standout;
+int no, isstandout;
 {
 	char *buf;
 	struct tm *tm;
@@ -610,7 +610,7 @@ int no, standout;
 	calclocate(no);
 	putch2(ismark(&(list[no])) ? '*' : ' ');
 
-	if (standout < 0 && stable_standout) {
+	if (isstandout < 0 && stable_standout) {
 		putterm(end_standout);
 		calclocate(no);
 		return((n_column / curcolumns) - 2 - 1);
@@ -618,7 +618,7 @@ int no, standout;
 
 	width = calcwidth();
 	buf = malloc2((n_column / curcolumns) * 2 + 1);
-	i = (standout && fnameofs > 0) ? fnameofs : 0;
+	i = (isstandout && fnameofs > 0) ? fnameofs : 0;
 #ifdef	CODEEUC
 	wid = width;
 #endif
@@ -626,10 +626,10 @@ int no, standout;
 
 #ifndef	_NOPRECEDE
 	if (!havestat(&(list[no]))) {
-		if (standout > 0) putterm(t_standout);
+		if (isstandout > 0) putterm(t_standout);
 		kanjiputs(buf);
 		free(buf);
-		if (standout > 0) putterm(end_standout);
+		if (isstandout > 0) putterm(end_standout);
 # ifdef	CODEEUC
 		return(wid);
 # else
@@ -723,10 +723,10 @@ int no, standout;
 	}
 
 #ifndef	_NOCOLOR
-	if (ansicolor) chgcolor(color, standout > 0);
+	if (ansicolor) chgcolor(color, isstandout > 0);
 	else
 #endif
-	if (standout > 0) putterm(t_standout);
+	if (isstandout > 0) putterm(t_standout);
 	kanjiputs(buf);
 	free(buf);
 #ifndef	_NOCOLOR
@@ -737,7 +737,7 @@ int no, standout;
 	if (ansicolor) putterms(t_normal);
 	else
 #endif
-	if (standout > 0) putterm(end_standout);
+	if (isstandout > 0) putterm(end_standout);
 	return((n_column / curcolumns) - 2 - 1);
 }
 
@@ -809,9 +809,9 @@ char *def;
 static int NEAR listupwin(def)
 char *def;
 {
-	int i, x, y, n, dupwin;
+	int i, x, y, n, duplwin;
 
-	dupwin = win;
+	duplwin = win;
 	for (n = 1; n < windows; n++) {
 		locate(0, WHEADER - 1 + (n * (FILEPERLOW + 1)));
 		putterm(l_clear);
@@ -825,7 +825,7 @@ char *def;
 	n = -1;
 	for (win = 0; win < windows; win++) {
 		if (!filelist) continue;
-		if (win == dupwin) {
+		if (win == duplwin) {
 			n = listupfile(filelist, maxfile, def);
 			x = win_x;
 			y = win_y;
@@ -835,7 +835,7 @@ char *def;
 			putname(filelist, filepos, -1);
 		}
 	}
-	win = dupwin;
+	win = duplwin;
 
 	win_x = x;
 	win_y = y;
@@ -845,9 +845,9 @@ char *def;
 int shutwin(n)
 int n;
 {
-	int i, dupwin;
+	int i, duplwin;
 
-	dupwin = win;
+	duplwin = win;
 	win = n;
 #ifndef	_NOARCHIVE
 	while (archivefile) poparchdupl();
@@ -871,7 +871,7 @@ int n;
 		free(findpattern);
 		findpattern = NULL;
 	}
-	win = dupwin;
+	win = duplwin;
 	return(n);
 }
 #endif	/* !_NOSPLITWIN */

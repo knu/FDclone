@@ -781,6 +781,7 @@ int identonly;
 			break;
 		case 'F':
 			if ((n = atoi2(cp)) >= 1 && n <= 20) return(K_F(n));
+/*FALLTHRU*/
 		default:
 			cp--;
 			for (i = 0; i < KEYIDENTSIZ; i++)

@@ -35,6 +35,10 @@ USEMANLANG
 	The search pathname referred to man(1) includes the
 	string shown by the environment variable LANG, such
 	as '/usr/man/ja_JP.SJIS/', to support M17N.
+SUPPORTSJIS
+	cc(1) or man(1) supports Shift JIS perfectly. Even
+	for the Kanji whose second byte is '\', this '\' is
+	not treated as a meta character.
 BSDINSTALL
 	The BSD-like install(1) is installed on the standard
 	command search path, and can use the option -c (copy)

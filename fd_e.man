@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2002 Takashi SHIRAI
 .\"                    <shirai@nintendo.co.jp>
 .\"
-.\" @(#)fd.1   2.00a 02/06/02
+.\" @(#)fd.1   2.00b 03/27/02
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "February 6, 2002"
+.TH FD 1 "March 27, 2002"
 .de sh
 .br
 .PP
@@ -3820,7 +3820,8 @@ due to be brought by this is not available.
 .BR gunzip (1),
 .BR lha (1),
 .BR umask (2),
-.BR termcap (5)
+.BR termcap (5),
+.BR terminfo (5)
 .SH BUGS
 When files in an archive file are packed with a pathname including ".\|.",
 the archive browser cannot work normally.

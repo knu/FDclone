@@ -640,6 +640,7 @@ static int NEAR _tree_input(VOID_A)
 				redraw = 1;
 				break;
 			}
+/*FALLTHRU*/
 		case K_BS:
 			do {
 				if (treeup() < 0) break;

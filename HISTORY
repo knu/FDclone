@@ -1,3 +1,11 @@
+Ver. 2.00b	JIS 系 encoding の decode 時に曖昧性を許容。
+ (03/27/02)	ISO-2022-JP-3 encoding の decode に対応。
+		Windows と異なる LFN 生成ルールを修正。
+		shell 変数の評価ミスを修正。
+		ADJTTY が常に有効になってしまっていた点を修正。
+		mount option の readonly 属性検知ミスを修正。
+		連続する wild card の展開ミスを修正。
+
 Ver. 2.00a	HP-UX 用に若干の調整。
  (02/06/02)	terminfo(5) library に対応。
 		fdsh から fd を起動した時の制限ミスを修正。

@@ -357,6 +357,7 @@ struct stat *stp1, *stp2;
 			case 5:
 				if (stp1 -> st_mtime < stp2 -> st_mtime)
 					return(-1);
+/*FALLTHRU*/
 			case 6:
 				strcatdelim2(path, forwardpath, file);
 				cp = strrdelim(path, 0);
@@ -495,6 +496,7 @@ char *path;
 		case 2:
 		/* Already exist, but not directory */
 			if (Xunlink(dest) < 0) return(-1);
+/*FALLTHRU*/
 		case 0:
 		/* Not exist */
 #if	MSDOS
@@ -774,6 +776,7 @@ u_short flag;
 				if (y < WMODELINE) break;
 				putch2(ch);
 				attr.timestr[y - WMODELINE][x] = ch;
+/*FALLTHRU*/
 			case K_RIGHT:
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {

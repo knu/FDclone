@@ -221,11 +221,12 @@ char *s;
 	dosallclose();
 #endif
 	if (!s) s = progname;
+	stdiomode();
 	endterm();
-	inittty(1);
 	fputc('\007', stderr);
 	errno = duperrno;
 	perror(s);
+	inittty(1);
 #ifndef	_NOORIGSHELL
 # if	!MSDOS && !defined (NOJOB)
 	killjob();

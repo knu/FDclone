@@ -4,8 +4,9 @@
 - In Case of UNIX
 
 1. In machine.h, you can find the part which is commented out.
-   Then you will delete the "/*" on beginning of the line,
-   referring to an attached comment content.
+   Then you will move the "/*" on beginning of the line to the
+   place before ';' after it, referring to an attached comment
+   content.
    Especially, in the following two configurations,
    the administrator sometimes setups differently from the
    OS default setups. Then you must be careful to select.

@@ -2887,6 +2887,7 @@ int len, part;
 	int i, c1, c2;
 
 	if (len < 0) len = strlen(path1);
+	while (len > 0 && strchr(PACKINALIAS, path1[len - 1])) len--;
 	for (i = 0; i < len; i++) {
 		c1 = (u_char)(path1[i]);
 		c2 = (u_char)(path2[i]);
@@ -3847,9 +3848,14 @@ int mode;
 		cnvunicode(0, -1);
 		if (n >= 0) j = n * 2;
 		n = 1;
-		cnt = j / (LFNENTSIZ * 2) + 2;
-		longfname[j] = longfname[j + 1] = '\0';
-		len = j + 2;
+		cnt = j / (LFNENTSIZ * 2);
+		len = j;
+		if (j > cnt * LFNENTSIZ * 2) {
+			longfname[j] = longfname[j + 1] = '\0';
+			len += 2;
+			cnt++;
+		}
+		cnt++;
 	}
 
 	sum = -1;

@@ -32,7 +32,7 @@ extern int errno;
 #include <mntent.h>
 typedef struct mntent	mnt_t;
 #define	getmntent2(fp, mntp)	getmntent(fp)
-#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
 #endif	/* USEMNTENTH */
 
 #ifdef	USEMNTTABH
@@ -41,7 +41,7 @@ typedef struct mntent	mnt_t;
 typedef struct mnttab	mnt_t;
 #define	setmntent		fopen
 #define	getmntent2(fp, mntp)	(getmntent(fp, mntp) ? NULL : mntp)
-#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_mntopts, opt)
+#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_mntopts, opt)
 #define	endmntent		fclose
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
@@ -77,7 +77,7 @@ typedef struct _mnt_t {
 } mnt_t;
 static FILE *NEAR setmntent __P_((char *, char *));
 static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
-#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
 #if	defined (USEMNTINFO) || defined (USEGETMNT)
 #define	endmntent(fp)
 #else
@@ -92,7 +92,7 @@ static int mnt_size = 0;
 typedef struct fstab	mnt_t;
 #define	setmntent(file, mode)	(FILE *)(setfsent(), NULL)
 #define	getmntent2(fp, mntp)	getfsent()
-#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> fs_mntops, opt)
+#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> fs_mntops, opt)
 #define	endmntent(fp)		endfsent()
 #define	mnt_dir		fs_file
 #define	mnt_fsname	fs_spec
@@ -106,7 +106,7 @@ typedef struct _mnt_t {
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
-#define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
 # ifdef	PC98
 # define	PT_FAT12	0x81	/* 0x80 | 0x01 */
 # define	PT_FAT16	0x91	/* 0x80 | 0x11 */
@@ -211,7 +211,6 @@ extern int dosstatfs __P_((int, char *));
 #endif
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
-extern char *strstr2 __P_((char *, char *));
 extern char *ascnumeric __P_((char *, long, int, int));
 extern int kanjiputs __P_((char *));
 extern int kanjiputs2 __P_((char *, int, int));
@@ -281,6 +280,7 @@ static int NEAR code2str __P_((char *, int));
 static int NEAR checkline __P_((int));
 VOID help __P_((int));
 static int NEAR getfsinfo __P_((char *, statfs_t *, mnt_t *));
+static char *NEAR strmntopt __P_((char *, char *));
 int writablefs __P_((char *));
 long getblocksize __P_((char *));
 static int NEAR info1line __P_((int, char *, long, char *, char *));
@@ -425,7 +425,6 @@ mnt_t *mntp;
 	static char *fsname = NULL;
 	static char *dir = NULL;
 	static char *type = NULL;
-	static char *opts = NULL;
 	struct vfs_ent *entp;
 	struct vmount *vmntp;
 	char *cp, *buf, *host;
@@ -469,7 +468,7 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = (type) ? type : "???";
-	mntp -> mnt_opts = (opts) ? opts : "";
+	mntp -> mnt_opts = (vmntp -> vmt_flags & MNT_READONLY) ? "ro" : "";
 
 	mnt_ptr += vmntp -> vmt_length;
 	return(mntp);
@@ -773,6 +772,21 @@ mnt_t *mntbuf;
 		memset((char *)fsbuf, 0xff, sizeof(statfs_t));
 #endif	/* !MSDOS */
 	return(0);
+}
+
+static char *NEAR strmntopt(s1, s2)
+char *s1, *s2;
+{
+	char *cp;
+	int len;
+
+	len = strlen(s2);
+	for (cp = s1; cp && *cp;) {
+		if (!strncmp(cp, s2, len) && (!cp[len] || cp[len] == ','))
+			return(cp);
+		if ((cp = strchr(cp, ','))) cp++;
+	}
+	return(NULL);
 }
 
 int writablefs(path)

@@ -708,6 +708,7 @@ char *path, *resolved;
 				strcpy(resolved, path);
 				return(resolved);
 			}
+/*FALLTHRU*/
 # endif	/* !_NODOSDRIVE */
 		default:
 			reg.x.ax = 0x6000;
@@ -2097,18 +2098,18 @@ u_short mode;
 	return(attr);
 }
 
-static time_t NEAR getdostime(date, time)
-u_short date, time;
+static time_t NEAR getdostime(d, t)
+u_short d, t;
 {
 	struct tm tm;
 
-	tm.tm_year = 1980 + ((date >> 9) & 0x7f);
+	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
 	tm.tm_year -= 1900;
-	tm.tm_mon = ((date >> 5) & 0x0f) - 1;
-	tm.tm_mday = (date & 0x1f);
-	tm.tm_hour = ((time >> 11) & 0x1f);
-	tm.tm_min = ((time >> 5) & 0x3f);
-	tm.tm_sec = ((time << 1) & 0x3e);
+	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
+	tm.tm_mday = (d & 0x1f);
+	tm.tm_hour = ((t >> 11) & 0x1f);
+	tm.tm_min = ((t >> 5) & 0x3f);
+	tm.tm_sec = ((t << 1) & 0x3e);
 	tm.tm_isdst = -1;
 
 	return(mktime(&tm));
