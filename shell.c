@@ -94,7 +94,7 @@ u_char flags;
 		}
 		else
 #endif
-		d = strcatdelim2(buf + ptr, dir, NULL) - (buf + ptr) - 1;
+		d = strcatdelim2(buf + ptr, dir, NULL) - (buf + ptr);
 	}
 #if	MSDOS && !defined (_NOUSELFN)
 	if ((flags & F_TOSFN) && l) {

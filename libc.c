@@ -45,10 +45,10 @@ extern char *findpattern;
 # define	CHAR_BIT	0x8
 # endif
 #endif
-#define	char2long(cp)	(  ((u_char *)cp)[3] \
-			| (((u_char *)cp)[2] << (CHAR_BIT * 1)) \
-			| (((u_char *)cp)[1] << (CHAR_BIT * 2)) \
-			| (((u_char *)cp)[0] << (CHAR_BIT * 3)) )
+#define	char2long(cp)	(  ((u_char *)(cp))[3] \
+			| (((u_char *)(cp))[2] << (CHAR_BIT * 1)) \
+			| (((u_char *)(cp))[1] << (CHAR_BIT * 2)) \
+			| (((u_char *)(cp))[0] << (CHAR_BIT * 3)) )
 
 static char *_realpath2 __P_((char *, char *, int));
 static int _getenv2 __P_((char *, int, char **));

@@ -72,7 +72,7 @@ static int _biosdiskio __P_((int, int, int, int, u_char *, int, int, int));
 static int xbiosdiskio __P_((int, u_long, u_long, u_char *, int, int, int));
 #endif
 static int getdrvparam __P_((int, drvinfo *));
-static int _checkdrive __P_((int, int, int, u_long));
+static int _checkdrive __P_((int, int, int, u_long, u_long));
 static int biosdiskio __P_((int, u_long, u_char *, int, int, int));
 static int lockdrive __P_((int));
 static int unlockdrive __P_((int, int));
@@ -193,7 +193,7 @@ static char *strcatdelim2(buf, s1, s2)
 char *buf, *s1, *s2;
 {
 	char *cp;
-	int i;
+	int i, len;
 
 	if (_dospath(s1)) {
 		buf[0] = s1[0];
@@ -211,14 +211,24 @@ char *buf, *s1, *s2;
 				continue;
 			}
 			cp = NULL;
-			if (iskanji1(s, i)) {
+			if (iskanji1(s1, i)) {
 				if (!s1[++i]) break;
 				buf[i] = s1[i];
 			}
 		}
-		if (!cp) *(cp = &(buf[i])) = _SC_;
+		if (!cp) {
+			cp = &(buf[i]);
+			if (i >= MAXPATHLEN - 1) {
+				*cp = '\0';
+				return(cp);
+			}
+			*cp = _SC_;
+		}
 	}
-	if (s2) for (i = 0; s2[i]; i++) *(++cp) = s2[i];
+	if (s2) {
+		len = MAXPATHLEN - 1 - (cp - buf);
+		for (i = 0; s2[i] && i < len; i++) *(++cp) = s2[i];
+	}
 	*(++cp) = '\0';
 	return(cp);
 }
@@ -954,8 +964,9 @@ drvinfo *buf;
 #ifdef	DJGPP
 			dosmemget(__tb, sizeof(xparam_t), &pbuf);
 #endif
-			buf -> flags = DI_LBA;
-			if (!(buf -> flags & 2)) buf -> flags |= DI_INVALIDCHS;
+			buf -> flags |= DI_LBA;
+			if (!(pbuf.flags[0] & 2))
+				buf -> flags |= DI_INVALIDCHS;
 		}
 	}
 #endif
@@ -986,25 +997,27 @@ drvinfo *buf;
 	return(1);
 }
 
-static int _checkdrive(head, sect, cyl, l_sect)
+/*ARGSUSED*/
+static int _checkdrive(head, sect, cyl, l_sect, e_sect)
 int head, sect, cyl;
-u_long l_sect;
+u_long l_sect, e_sect;
 {
 	partition_t *pt;
 	u_char *buf;
 	int i, j, sh, ss, sc, ofs, size;
 #ifndef	PC98
-	u_long ls;
-#endif
+	u_long ls, ps;
 
+	ps = l_sect;
+#endif
 	ofs = size = drvlist[maxdrive].sectsize;
 	if (!(buf = (u_char *)malloc(size))) return(0);
 
 	for (i = 0; i < PART_NUM; i++, ofs += PART_SIZE) {
 		if (PART_TABLE + ofs >= size) {
 #ifndef	PC98
-			if (l_sect) {
-				if (xbiosdiskio(maxdrive, l_sect, 0L,
+			if (ps) {
+				if (xbiosdiskio(maxdrive, ps++, 0L,
 				buf, 1, BIOS_XREAD, BIOSRETRY) < 0
 				&& ((drvlist[maxdrive].flags & DI_INVALIDCHS)
 				|| _biosdiskio(maxdrive, head, sect, cyl,
@@ -1027,7 +1040,6 @@ u_long l_sect;
 			}
 #endif
 			sect++;
-			l_sect++;
 			ofs = 0;
 		}
 
@@ -1041,33 +1053,33 @@ u_long l_sect;
 		ss = pt -> s_sect;
 		sc = byte2word(pt -> s_cyl);
 		if (!(pt -> filesys & 0x80)) continue;
-#else
+#else	/* !PC98 */
 		ss = (pt -> s_sect & 0x3f) - 1;
 		sc = pt -> s_cyl + ((u_short)(pt -> s_sect & 0xc0) << 2);
 		ls = byte2dword(pt -> f_sect);
 		if (pt -> filesys == PT_EXTENDLBA) {
-			if (_checkdrive(sh, ss, sc, ls) < 0) {
+			if (e_sect) ls += e_sect;
+			else e_sect = ls;
+			if (_checkdrive(sh, ss, sc, ls, e_sect) < 0) {
 				free(buf);
 				return(-1);
 			}
 			continue;
 		}
 		if (pt -> filesys == PT_EXTEND) {
-			if (_checkdrive(sh, ss, sc, 0L) < 0) {
+			if (_checkdrive(sh, ss, sc, 0L, 0L) < 0) {
 				free(buf);
 				return(-1);
 			}
 			continue;
 		}
-#endif
 
-#ifndef	PC98
 		drvlist[maxdrive].f_sect = 0L;
 		if (pt -> filesys == PT_FAT16XLBA
 		|| pt -> filesys == PT_FAT32LBA)
-			drvlist[maxdrive].f_sect = ls;
+			drvlist[maxdrive].f_sect = ls + l_sect;
 		else
-#endif
+#endif	/* !PC98 */
 		if (pt -> filesys != PT_FAT12 && pt -> filesys != PT_FAT16
 		&& pt -> filesys != PT_FAT16X && pt -> filesys != PT_FAT32)
 			continue;
@@ -1126,12 +1138,12 @@ int drive;
 		for (i = 0; i < MAX_HDD && maxdrive < 'Z' - 'A' + 1; i++) {
 			if (getdrvparam(BIOS_HDD | i,
 				&(drvlist[maxdrive])) <= 0) continue;
-			if (_checkdrive(0, 1, 0, 0L) < 0) return(-1);
+			if (_checkdrive(0, 1, 0, 0L, 0L) < 0) return(-1);
 		}
 		for (i = 0; i < MAX_SCSI && maxdrive < 'Z' - 'A' + 1; i++) {
 			if (getdrvparam(BIOS_SCSI | i,
 				&(drvlist[maxdrive])) <= 0) continue;
-			if (_checkdrive(0, 1, 0, 0L) < 0) return(-1);
+			if (_checkdrive(0, 1, 0, 0L, 0L) < 0) return(-1);
 		}
 #else
 		reg.h.ah = BIOS_PARAM;
@@ -1142,7 +1154,8 @@ int drive;
 		for (i = 0; i < n && maxdrive < 'Z' - 'A' + 1; i++) {
 			if (!(j = getdrvparam(BIOS_HDD | i,
 				&(drvlist[maxdrive])))) continue;
-			if (j < 0 || _checkdrive(0, 0, 0, 0L) < 0) return(-1);
+			if (j < 0 || _checkdrive(0, 0, 0, 0L, 0L) < 0)
+				return(-1);
 		}
 #endif
 	}
@@ -1328,7 +1341,6 @@ int n, size, iswrite;
 		reg.x.ss = reg.x.sp = 0;
 		_go32_dpmi_simulate_fcall(&reg);
 		err = (reg.x.flags & FR_CARRY) ? reg.x.ax : 0;
-		if (err == 0x0207) err = 0x0001;
 #else
 		int25bin[0x09] = (PTR_SEG(&pac) & 0xff);
 		int25bin[0x0a] = ((PTR_SEG(&pac) >> 8) & 0xff);
@@ -1338,8 +1350,9 @@ int n, size, iswrite;
 		int25bin[0x12] = ((PTR_OFF(&pac, 0) >> 8) & 0xff);
 		int25bin[0x14] = (0xffff & 0xff);
 		int25bin[0x15] = ((0xffff >> 8) & 0xff);
-		if ((err = doint25()) == 0x0207) err =0x0001;
+		err = doint25();
 #endif
+		if (err == 0x0207) err = 0x0001;
 	}
 	if (err == 0x0001) {
 		pac.sect = sect;
@@ -2277,7 +2290,11 @@ int flags, mode;
 	if (flags & O_WRONLY) reg.x.bx |= 0x0001;
 	else if (flags & O_RDWR) reg.x.bx |= 0x0002;
 	reg.x.cx = (u_short)putdosmode(mode);
-	if ((flags & O_CREAT) && (flags & O_EXCL)) reg.x.dx = 0x0010;
+	if (flags & O_CREAT) {
+		if (flags & O_EXCL) reg.x.dx = 0x0010;
+		else if (flags & O_TRUNC) reg.x.dx = 0x0012;
+		else reg.x.dx = 0x0011;
+	}
 	else if (flags & O_TRUNC) reg.x.dx = 0x0002;
 	else reg.x.dx = 0x0001;
 #ifdef	DJGPP

@@ -29,6 +29,10 @@ extern char *preparefile __P_((char *, char *, int));
 #if	MSDOS && !defined (_NODOSDRIVE)
 extern int checkdrive __P_((int));
 #endif
+#ifndef	_NODOSDRIVE
+extern int shutdrv __P_((int));
+extern int lastdrv;
+#endif
 
 extern int filepos;
 extern int mark;
@@ -67,6 +71,10 @@ static VOID restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir = NULL;
+
+#ifndef	_NODOSDRIVE
+static int dosdrv = -1;
+#endif
 
 
 #if	MSDOS
@@ -637,6 +645,13 @@ char *dir, *subdir, *file;
 #if	MSDOS && !defined (_NODOSDRIVE)
 	if (_chdir2(deftmpdir) < 0) error(deftmpdir);
 #endif
+#ifndef	_NODOSDRIVE
+	if (dosdrv >= 0) {
+		if (lastdrv >= 0) shutdrv(lastdrv);
+		lastdrv = dosdrv;
+		dosdrv = -1;
+	}
+#endif
 	if (_chdir2(fullpath) < 0) error(fullpath);
 	if (dir) {
 		if (rmtmpdir(dir) < 0) warning(-1, dir);
@@ -699,6 +714,7 @@ int max, single;
 		st.st_atime =
 		st.st_mtime = list[filepos].st_mtim;
 		if (cpfile(list[filepos].name, path, &st) < 0) {
+			*(--cp) = '\0';
 			removetmp(path, NULL, NULL);
 			return(-1);
 		}
@@ -709,12 +725,15 @@ int max, single;
 		st.st_mode = list[i].st_mode;
 		st.st_atime = st.st_mtime = list[i].st_mtim;
 		if (cpfile(list[i].name, path, &st) < 0) {
+			*(--cp) = '\0';
 			removetmp(path, NULL, "");
 			return(-1);
 		}
 	}
 
 	*(--cp) = '\0';
+	dosdrv = lastdrv;
+	lastdrv = -1;
 	if (_chdir2(path) < 0) error(path);
 	*dirp = strdup2(path);
 	return(drive);

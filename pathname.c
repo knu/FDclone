@@ -142,7 +142,6 @@ struct dirent *Xreaddir __P_((DIR *));
 
 static char *getvar __P_((char *, int));
 static int setvar __P_((char *, char *, int));
-static int evalenvvar __P_((char *, int, int));
 #ifdef	_NOORIGGLOB
 static char *cnvregexp __P_((char *, int));
 #else
@@ -573,24 +572,6 @@ int len;
 	ret = (putvarfunc) ? (*putvarfunc)(cp, len) : putenv(cp);
 	if (ret < 0) free(cp);
 	return(ret);
-}
-
-static int evalenvvar(s, off, len)
-char *s;
-int off, len;
-{
-	char *env;
-
-	if (off < 0) return(len);
-	if (off == len) {
-		s[off] = '$';
-		return(off + 1);
-	}
-	if (!(env = getvar(s + off, len - off))) return(len);
-	len = strlen(env);
-	if (off + len >= MAXPATHLEN) len = MAXPATHLEN - 1 - off;
-	strncpy2(s + off, env, len);
-	return(len + off);
 }
 
 #ifdef	_NOORIGGLOB

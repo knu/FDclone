@@ -195,16 +195,16 @@ extern time_t timelocal2 __P_((struct tm *));
 # define	CHAR_BIT	0x8
 # endif
 #endif
-#define	char2long(cp)	( (long) (((u_char *)cp)[3]) \
-			| (long)((((u_char *)cp)[2]) << (CHAR_BIT * 1)) \
-			| (long)((((u_char *)cp)[1]) << (CHAR_BIT * 2)) \
-			| (long)((((u_char *)cp)[0]) << (CHAR_BIT * 3)) )
+#define	char2long(cp)	( (long) (((u_char *)(cp))[3]) \
+			| (long)((((u_char *)(cp))[2]) << (CHAR_BIT * 1)) \
+			| (long)((((u_char *)(cp))[1]) << (CHAR_BIT * 2)) \
+			| (long)((((u_char *)(cp))[0]) << (CHAR_BIT * 3)) )
 static int toupper2 __P_((int));
 #define	_dospath(s)	((isalpha(*(s)) && (s)[1] == ':') ? *(s) : 0)
 static int isdelim __P_((char *, int));
 #if	MSDOS
-extern char *strdelim __P_((char *, int));
-extern char *strrdelim __P_((char *, int));
+static char *strdelim __P_((char *, int));
+static char *strrdelim __P_((char *, int));
 #else
 #define	strdelim(s, d)	strchr(s, _SC_)
 #define	strrdelim(s, d)	strrchr(s, _SC_)
@@ -269,7 +269,7 @@ static int _readbpb __P_((devstat *, bpb_t *));
 #endif
 static int readbpb __P_((devstat *, int));
 #ifdef	HDDMOUNT
-static off64_t *_readpt __P_((off64_t, int, int, int, int));
+static off64_t *_readpt __P_((off64_t, off64_t, int, int, int, int));
 #endif
 static int opendev __P_((int));
 static int closedev __P_((int));
@@ -606,7 +606,7 @@ static char *strcatdelim2(buf, s1, s2)
 char *buf, *s1, *s2;
 {
 	char *cp;
-	int i;
+	int i, len;
 
 	if (_dospath(s1)) {
 		buf[0] = s1[0];
@@ -625,15 +625,25 @@ char *buf, *s1, *s2;
 			}
 			cp = NULL;
 #if	MSDOS
-			if (iskanji1(s, 1)) {
+			if (iskanji1(s1, i)) {
 				if (!s1[++i]) break;
 				buf[i] = s1[i];
 			}
 #endif
 		}
-		if (!cp) *(cp = &(buf[i])) = _SC_;
+		if (!cp) {
+			cp = &(buf[i]);
+			if (i >= MAXPATHLEN - 1) {
+				*cp = '\0';
+				return(cp);
+			}
+			*cp = _SC_;
+		}
 	}
-	if (s2) for (i = 0; s2[i]; i++) *(++cp) = s2[i];
+	if (s2) {
+		len = MAXPATHLEN - 1 - (cp - buf);
+		for (i = 0; s2[i] && i < len; i++) *(++cp) = s2[i];
+	}
 	*(++cp) = '\0';
 	return(cp);
 }
@@ -1679,8 +1689,16 @@ long clust, n;
 	}
 
 	if (devp -> availsize != (u_long)0xffffffff) {
-		if (!n && old) devp -> availsize++;
-		else if (n && !old && devp -> availsize) devp -> availsize--;
+		long avail;
+		int i;
+
+		avail = devp -> availsize;
+		if (!n && old) avail++;
+		else if (n && !old && avail) avail--;
+		if (avail != devp -> availsize)
+			for (i = 0; i < maxdev; i++)
+				if (devlist[i].drive == devp -> drive)
+					devlist[i].availsize = avail;
 	}
 
 	return(0);
@@ -2059,8 +2077,8 @@ int drv;
 #endif	/* !MSDOS */
 
 #ifdef	HDDMOUNT
-static off64_t *_readpt(offset, fd, head, sect, secsiz)
-off64_t offset;
+static off64_t *_readpt(offset, extoffset, fd, head, sect, secsiz)
+off64_t offset, extoffset;
 int fd, head, sect, secsiz;
 {
 	u_char *cp, *buf;
@@ -2081,20 +2099,24 @@ int fd, head, sect, secsiz;
 	beg = (pofs / DEV_BSIZE) * DEV_BSIZE;
 	siz = ((pofs + ps * pn - 1) / DEV_BSIZE + 1) * DEV_BSIZE - beg;
 
-	if (lseek64(fd, offset + beg, L_SET) < 0
-	|| !(buf = (u_char *)malloc(siz))) return(NULL);
+	if (!(slice = (off64_t *)malloc(2 * sizeof(off64_t)))) return(NULL);
+	slice[nslice = 0] = (off64_t)secsiz;
+	slice[++nslice] = (off64_t)0;
+
+	if (lseek64(fd, offset + beg, L_SET) < 0) return(slice);
+	if (!(buf = (u_char *)malloc(siz))) {
+		free(slice);
+		return(NULL);
+	}
 
 	while ((i = read(fd, buf, siz)) < 0 && errno == EINTR);
 	if (i < 0
-	|| (!head && (buf[siz - 2] != 0x55 || buf[siz - 1] != 0xaa))
-	|| !(slice = (off64_t *)malloc(2 * sizeof(off64_t)))) {
+	|| (!head && (buf[siz - 2] != 0x55 || buf[siz - 1] != 0xaa))) {
 		free(buf);
-		return(NULL);
+		return(slice);
 	}
 	cp = &(buf[pofs - beg]);
 
-	slice[nslice = 0] = (off64_t)secsiz;
-	slice[++nslice] = (off64_t)0;
 	for (i = 0; i < pn; i++, cp += ps) {
 		if (head) {
 			partition98_t *pt;
@@ -2117,10 +2139,13 @@ int fd, head, sect, secsiz;
 			pt = (partition_t *)cp;
 			ofs = byte2dword(pt -> f_sect);
 			ofs *= secsiz;
-			ofs += offset;
 			if (pt -> filesys == PT_EXTEND
 			|| pt -> filesys == PT_EXTENDLBA) {
-				if (!(sp = _readpt(ofs, fd, 0, 0, secsiz))) {
+				if (extoffset) ofs += extoffset;
+				else extoffset = ofs;
+
+				if (!(sp = _readpt(ofs, extoffset,
+				fd, 0, 0, secsiz))) {
 					free(buf);
 					free(slice);
 					return(NULL);
@@ -2152,6 +2177,8 @@ int fd, head, sect, secsiz;
 			&& pt -> filesys != PT_FAT32
 			&& pt -> filesys != PT_FAT32LBA
 			&& pt -> filesys != PT_FAT16XLBA) continue;
+
+			ofs += offset;
 		}
 
 		siz = (nslice + 1 + 1) * sizeof(off64_t);
@@ -2196,7 +2223,7 @@ int pc98;
 		sect = dl.d_nsectors;
 	}
 
-	slice = _readpt((off64_t)0, fd, head, sect, D_SECSIZE(dl));
+	slice = _readpt((off64_t)0, (off64_t)0, fd, head, sect, D_SECSIZE(dl));
 
 	close(fd);
 	return(slice);
@@ -4419,10 +4446,11 @@ FILE *stream;
 {
 	int fd;
 
-	for (fd = 0; fd < DOSNOFILE; fd++)
-		if (stream == (FILE *)&(dosflist[fd])) break;
-	if (fd >= DOSNOFILE) return(-1);
-	return(fd);
+	for (fd = 0; fd < maxdosf; fd++) {
+		if (!dosflist[fd]._base) continue;
+		if (stream == (FILE *)&(dosflist[fd])) return(fd);
+	}
+	return(-1);
 }
 
 static int type2flags(type)

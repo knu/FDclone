@@ -943,7 +943,7 @@ int tr;
 {
 	reg_t *re;
 	char *tmp, *tmpdir, path[MAXPATHLEN];
-	int i;
+	int i, ret;
 #ifndef	_NODOSDRIVE
 	namelist alist[1];
 	int dd, drive, dupfilepos;
@@ -1033,15 +1033,15 @@ int tr;
 #endif
 	strcpy(strcatdelim(path), arc);
 	waitmes();
-	if (execusercomm(archivelist[i].u_comm, path, list, &max, -1, 1) < -1)
-	{
+	ret = execusercomm(archivelist[i].u_comm, path, list, &max, -1, 1);
+	if (ret >= -1) ret = 1;
+	else {
 		warning(E2BIG, archivelist[i].u_comm);
-		if (_chdir2(fullpath) < 0) error(fullpath);
-		return(0);
+		ret = 0;
 	}
 	if (tmpdir) removetmp(tmpdir, NULL, arc);
 	if (_chdir2(fullpath) < 0) error(fullpath);
-	return(1);
+	return(ret);
 }
 
 char *tmpunpack(list, max, single)
