@@ -191,13 +191,18 @@ typedef struct _functable {
 typedef struct _launchtable {
 	char *ext;
 	char *comm;
+# if	FD >= 2
+	char *format;
+# endif
 	u_char topskip;
 	u_char bottomskip;
+# if	FD < 2
 	u_char field[MAXLAUNCHFIELD];
 	u_char delim[MAXLAUNCHFIELD];
 	u_char width[MAXLAUNCHFIELD];
 	u_char sep[MAXLAUNCHSEP];
 	u_char lines;
+# endif
 	u_char flags;
 } launchtable;
 

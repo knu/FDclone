@@ -3,21 +3,24 @@
 #
 
 TITLE	= FD-
-VERSION	= 1
+VERSION	= 2
 PREFIX	= \usr\local
 MANSEC	= 1
 TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)\bin
 MANDIR	= $(TOPDIR)\man\man$(MANSEC)
 CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
-DEFRC	= \etc\fdrc
-DOSRC	= ~FD\\fdrc
+EMANDIR	= $(TOPDIR)\man\man$(MANSEC)
+ECATDIR	= $(TOPDIR)\man\cat$(MANSEC)
+DEFRC	= \etc\fd2rc
+DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
 INSTALL	= copy
 CHMOD	= chmod
 LN	= copy
 
 SRC	= main.c term.c pathname.c \
+	system.c doscom.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	libc.c file.c apply.c \
@@ -27,18 +30,24 @@ SRC	= main.c term.c pathname.c \
 	custom.c command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
+	system.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
 	func.h functabl.h
 
-DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin
+DOC	= README HISTORY FAQ TECHKNOW Install ToAdmin LICENSES
+EDOC	= README.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
 MANSRC	= fd.man
 MANCAT	= fd.cat
+EMANSRC	= fd_e.man
+EMANCAT	= fd_e.cat
 RUNCOM	= fdrc
 ARGS	= object.arg
+SARGS	= sobject.arg
 
 JSRCS	= $(DOC) kanji.hin $(MANSRC) $(MANCAT)
 ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
+	$(EDOC) $(EMANSRC) $(EMANCAT) \
 	makefile.gpc makefile.g98 \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
@@ -46,18 +55,32 @@ ESRCS	= Configur Makefile Makefile.in $(SRC) $(HEADER) \
 	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
 	version.h _fdrc _fdrc.dif
 SOURCES	= $(JSRCS) $(ESRCS)
+SHSOURCES = machine.h pathname.h system.h unixemu.h \
+	term.h kctype.h \
+	pathname.c system.c doscom.c \
+	term.c kanji.c \
+	kanjicnv.c expfunc.c mkmfsed.c \
+	TECHKNOW Configur Makefile Makefile.in \
+	makefile.gpc makefile.g98 \
+	makefile.dpc makefile.d98 \
+	makefile.lpc makefile.l98 \
+	makefile.bpc makefile.b98 \
+	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed
 
 CC	= gcc
 SED	= sed
 PROGRAM	= fd
 FDSHELL	= fdsh
 OBJ1	= main.o term.o pathname.o \
+	system.o doscom.o \
 	dosdisk.o unixemu.o unixdisk.o
 OBJ2	= libc.o file.o apply.o \
 	parse.o builtin.o shell.o \
 	kanji.o input.o
 OBJ3	= info.o rockridg.o archive.o tree.o \
 	custom.o command.o browse.o
+SOBJ	= ssystem.o sdoscom.o spathnam.o \
+	sterm.o skanji.o
 ALLOC	=
 DEBUG	=
 
@@ -86,6 +109,9 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 main.o: main.c
 	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"' $*.c
 
+system.o: system.c
+	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"' $*.c
+
 .c.o:
 	$(CC) -DFD=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ $*.c
 
@@ -105,6 +131,9 @@ $(PROGRAM).$(MANSEC)c: kanjicnv.exe $(MANCAT) machine.h config.h
 $(PROGRAM).doc: kanjicnv.exe $(MANCAT) machine.h config.h
 	.\kanjicnv.exe -s -b $(MANCAT) $@
 
+$(PROGRAM).eng: kanjicnv.exe $(EMANCAT) machine.h config.h
+	.\kanjicnv.exe -b $(EMANCAT) $@
+
 README.doc: kanjicnv.exe README machine.h config.h
 	.\kanjicnv.exe -s README $@
 
@@ -113,6 +142,9 @@ HISTORY.doc: kanjicnv.exe HISTORY machine.h config.h
 
 FAQ.doc: kanjicnv.exe FAQ machine.h config.h
 	.\kanjicnv.exe -s FAQ $@
+
+LICENSES.doc: kanjicnv.exe LICENSES machine.h config.h
+	.\kanjicnv.exe -s LICENSES $@
 
 kanjicnv.exe: kanjicnv.c
 	$(CC) $(CFLAGS) -o $@ kanjicnv.c
@@ -156,6 +188,10 @@ mkunitbl.exe: mkunitbl.c
 install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 	$(INSTALL)  $(PROGRAM).exe $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM).exe
+	$(LN) $(BINDIR)\$(PROGRAM).exe $(BINDIR)\$(FDSHELL).exe
+	$(CHMOD) a+rx $(BINDIR)\$(FDSHELL).exe
+	$(INSTALL) $(EMANSRC) $(EMANDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(EMANDIR)\$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r $(MANDIR)\$(PROGRAM).$(MANSEC)
 	-if [ -f $(RUNCOM) ]; then \
@@ -167,19 +203,39 @@ install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 		$(CHMOD) a+r $(BINDIR)\$(UNITBL); \
 	fi
 
-catman: $(PROGRAM).$(MANSEC)c
+catman: $(PROGRAM).$(MANSEC)c $(EMANCAT)
+	$(INSTALL) $(EMANCAT) $(ECATDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(ECATDIR)\$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).$(MANSEC)c $(CATDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r $(CATDIR)\$(PROGRAM).$(MANSEC)
 
-catman-b: $(PROGRAM).doc
+catman-b: $(PROGRAM).doc $(PROGRAM).eng
+	$(INSTALL) $(PROGRAM).eng $(ECATDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(ECATDIR)\$(PROGRAM).$(MANSEC)
 	$(INSTALL) $(PROGRAM).doc $(CATDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r $(CATDIR)\$(PROGRAM).$(MANSEC)
 
 compman: catman
+	compress -f $(ECATDIR)\$(PROGRAM).$(MANSEC)
 	compress -f $(CATDIR)\$(PROGRAM).$(MANSEC)
 
 compman-b: catman-b
+	compress -f $(ECATDIR)\$(PROGRAM).$(MANSEC)
 	compress -f $(CATDIR)\$(PROGRAM).$(MANSEC)
+
+ecatman: $(EMANCAT)
+	$(INSTALL) $(EMANCAT) $(ECATDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(ECATDIR)\$(PROGRAM).$(MANSEC)
+
+ecatman-b: $(PROGRAM).eng
+	$(INSTALL) $(PROGRAM).eng $(ECATDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(ECATDIR)\$(PROGRAM).$(MANSEC)
+
+ecompman: ecatman
+	compress -f $(ECATDIR)\$(PROGRAM).$(MANSEC)
+
+ecompman-b: ecatman-b
+	compress -f $(ECATDIR)\$(PROGRAM).$(MANSEC)
 
 
 ############################################################
@@ -220,6 +276,36 @@ config: Configur expfunc.c
 
 
 ############################################################
+# sample program for pseudo system(3)
+
+sh: fdsh.exe
+
+fdsh.exe: $(SOBJ) $(SARGS)
+	$(CC) $(CFLAGS)  -o $@ @$(SARGS) $(LDFLAGS)
+	@ren $@ fdsh
+	@aout2exe fdsh
+	@del fdsh
+
+$(SARGS): $(SOBJ)
+	@echo $(SOBJ) > $(SARGS)
+
+ssystem.o: system.c machine.h config.h kctype.h term.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ -DDEFRUNCOM='"'$(DOSRC)'"' system.c
+
+sdoscom.o: doscom.c machine.h config.h kctype.h term.h pathname.h system.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ doscom.c
+
+spathnam.o: pathname.c machine.h config.h pathname.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ pathname.c
+
+sterm.o: term.c machine.h config.h term.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ term.c
+
+skanji.o: kanji.c machine.h config.h term.h kctype.h pathname.h
+	$(CC) -DFDSH=$(VERSION) $(CFLAGS)  $(CPPFLAGS) -c -o $@ kanji.c
+
+
+############################################################
 # for programer's maintenance
 
 GETVER	= HEAD="`tail -1 version.h`";\
@@ -229,6 +315,11 @@ tar: $(SOURCES)
 	($(GETVER);\
 	tar cvf $(TITLE)"$$VER".tar $(SOURCES);\
 	compress -f $(TITLE)"$$VER".tar)
+
+shtar: $(SHSOURCES)
+	(VER=`date '+%y%m%d'`;\
+	tar cvf $(TITLE)sh-"$$VER".tar $(SHSOURCES);\
+	gzip -f $(TITLE)sh-"$$VER".tar)
 
 lzh: $(SOURCES)
 	($(GETVER);\
@@ -244,8 +335,10 @@ shar: $(SOURCES)
 clean:
 	-rm -f *.o funcno.h kanji.h
 	-rm -f kanjicnv.exe mkfuncno.exe expfunc.exe mkunitbl.exe
+	-rm -f fdsh.exe
 	-rm -f $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
 	-rm -f $(PROGRAM).doc $(ARGS)
+	-rm -f $(SARGS)
 	-rm -f core $(UNITBL)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
@@ -254,12 +347,18 @@ main.o: machine.h config.h
 main.o: types.h pathname.h term.h
 main.o: func.h
 main.o: kanji.h version.h
-main.o: dosdisk.h
+main.o: system.h dosdisk.h
 term.o: machine.h config.h
 term.o: term.h
 pathname.o: fd.h
 pathname.o: machine.h config.h
 pathname.o: types.h pathname.h
+system.o: machine.h config.h kctype.h
+system.o: term.h pathname.h
+system.o: system.h
+doscom.o: machine.h config.h kctype.h
+doscom.o: term.h pathname.h
+doscom.o: system.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
 dosemu.o: fd.h
@@ -280,6 +379,7 @@ libc.o: fd.h
 libc.o: machine.h config.h
 libc.o: types.h pathname.h term.h func.h
 libc.o: kctype.h kanji.h
+libc.o: system.h
 file.o: fd.h
 file.o: machine.h config.h
 file.o: types.h pathname.h func.h
@@ -296,12 +396,12 @@ builtin.o: fd.h
 builtin.o: machine.h config.h
 builtin.o: types.h pathname.h term.h func.h
 builtin.o: kctype.h
-builtin.o: funcno.h kanji.h dosdisk.h
+builtin.o: funcno.h kanji.h system.h dosdisk.h
 shell.o: fd.h
 shell.o: machine.h config.h
 shell.o: types.h pathname.h term.h func.h
 shell.o: kctype.h
-shell.o: kanji.h
+shell.o: kanji.h system.h
 kanji.o: machine.h config.h
 kanji.o: term.h kctype.h pathname.h
 input.o: fd.h
@@ -309,7 +409,7 @@ input.o: machine.h config.h
 input.o: types.h pathname.h
 input.o: term.h func.h
 input.o: kctype.h
-input.o: kanji.h
+input.o: kanji.h system.h
 info.o: fd.h
 info.o: machine.h config.h
 info.o: types.h pathname.h term.h funcno.h kctype.h
@@ -321,7 +421,7 @@ archive.o: fd.h
 archive.o: machine.h config.h
 archive.o: types.h pathname.h term.h func.h
 archive.o: kctype.h
-archive.o: kanji.h
+archive.o: kanji.h system.h
 tree.o: fd.h
 tree.o: machine.h config.h
 tree.o: types.h pathname.h term.h
@@ -332,12 +432,12 @@ custom.o: machine.h config.h
 custom.o: types.h pathname.h
 custom.o: term.h func.h
 custom.o: funcno.h kctype.h
-custom.o: kanji.h dosdisk.h
+custom.o: kanji.h system.h dosdisk.h
 command.o: fd.h
 command.o: machine.h config.h
 command.o: types.h pathname.h term.h func.h
 command.o: funcno.h kctype.h
-command.o: kanji.h
+command.o: kanji.h system.h
 command.o: functabl.h
 browse.o: fd.h
 browse.o: machine.h config.h

@@ -1,0 +1,251 @@
+############################################################
+#
+#	About FDclone Ver. 2.00
+#
+#	Takashi SHIRAI, <shirai@nintendo.co.jp>
+#	Jan 11, 2002
+#
+############################################################
+
+  FDclone is a file & directory maintenance tool for the UNIX
+based OS (called as "UNIX" expediently below). It is a clone
+of "FD" for MS-DOS, made by Mr. A.Idei <SDI00544@niftyserve.or.jp>
+in 1989.
+  I make it as similar as possible in its specifications, but
+implement it quite originally.
+
+  The reason why I called it a clone is based on the fact that
+"FD" is so popular that Japanese MS-DOS users treat the name
+of "FD" as the sysnonym of file maintenance tools.
+  Once, there was a file maintenance tool for UNIX named 'fu'
+(made by Mr. Takashi Tashiro <PDC02432@niftyserve.or.jp>),
+with which I was concerned to develop. I heard that many users
+rename it "fd" as alias.
+  I think that the users came from MS-DOS to UNIX adapt to
+this name, because of easy typing.
+  Therefore, it seemed effective that development of the tool
+based on it as its specifications made UNIX novices who came
+from MS-DOS adapt the UNIX environment naturally.
+
+  From the above reason, this FDclone is made. While there
+ware long transitions and difficulties on its way, at last,
+I complete and release it. I dare say I'm happy.
+
+
+--
+  FDclone-2.00 package includes the following files.
+
+README		this file (in Japanese)
+README.eng	this file
+HISTORY		amendment history up to now (in Japanese)
+FAQ		Q&A (Frequently Asked Question in Japanese)
+FAQ.eng		Q&A (Frequently Asked Question)
+TECHKNOW	technical knowhow (in Japanese)
+TECHKNOW.eng	technical knowhow
+LICENSES	document for licenses (in Japanese)
+LICENSES.eng	document for licenses
+Install		document to install FDclone (in Japanese)
+Install.eng	document to install FDclone
+ToAdmin		document for the administrator of FDclone (in Japanese)
+ToAdmin.eng	document for the administrator of FDclone
+Configur	auto configuration program (used in Makefile)
+Makefile	Makefile
+Makefile.in	template of Makefile
+fd.man		roff file for man page (in Japanese)
+fd_e.man	roff file for man page
+fd.cat		plain text for man page (in Japanese)
+fd_e.cat	plain text for man page
+
+mkmfsed.c	sed script generator for filtering Makefile
+kanjicnv.c	simple kanji code converter
+mkfunkno.c	command serial number generator
+expfunc.c	shell function expander (for obsolete /bin/sh)
+mkunitbl.c	UNICODE transfer table generator
+mkmfsedg.sed	sed script filtering Makefile for djgpp v1.xx
+mkmfsedd.sed	sed script filtering Makefile for djgpp v2.xx
+mkmfdosl.sed	sed script filtering Makefile for LSI C-86 3.5
+mkmfdosb.sed	sed script filtering Makefile for Borland C++
+
+makefile.gpc	Makefile for djgpp v1.xx on DOS/V
+makefile.g98	Makefile for djgpp v1.xx on PC-98x1
+makefile.dpc	Makefile for djgpp v2.xx on DOS/V
+makefile.d98	Makefile for djgpp v2.xx on PC-98x1
+makefile.lpc	Makefile for LSI C-86 3.5 on DOS/V
+makefile.l98	Makefile for LSI C-86 3.5 on PC-98x1
+makefile.bpc	Makefile Borland C++ on DOS/V
+makefile.b98	Makefile for Borland C++ on PC-98x1
+
+main.c		FDclone main source
+term.c		termcap library source
+term.h		header for term.c
+pathname.c	pathname operation module
+pathname.h	header for pathname.c
+system.c	/bin/sh compatible system(3) module
+system.h	header for system.c
+doscom.c	COMMAND.COM builtin commands used in system.c
+dosdisk.c	floppy drive driver
+dosdisk.h	header for dosdisk.c
+dosemu.c	system call wrapper for floppy drive
+unixdisk.c	file I/O functions for MS-DOS
+unixdisk.h	header for unixdisk.c
+unixemu.c	system call emulation on MS-DOS
+unixemu.h	header for unixemu.c
+libc.c		arrangement of C standard library
+file.c		file I/O module
+apply.c		applying one after another module
+parse.c		strings parser module
+builtin.c	builtin command module
+shell.c		shell command module
+kanji.c		kanji code convert module
+input.c		user input moduke
+info.c		various information module
+rockridg.c	iso-9660 RockRidge extention module
+archive.c	archiver module
+tree.c		tree screen module
+custom.c	customizer module
+command.c	internal command module
+browse.c	broeser screen module
+
+fd.h		header for customizing FDclone
+machine.h	header for machine dependency
+config.hin	dummy header for environment setting
+types.h		variable type declarations
+kctype.h	header for kanji code
+func.h		prototype declarations
+functabl.h	header for attribute on internal command
+kanji.hin	Japanese strings
+version.h	version
+
+_fdrc		template for .fd2rc
+_fdrc.dif	changes from 1.03 about .fd2rc
+
+
+--
+  The copyright of FDclone belongs to:
+	[ Takashi Shirai <shirai@nintendo.co.jp> ]
+  However, you are allowed freely to distribute, change,
+include and use secondarily the all sources, without any
+restriction.
+  New development from my products, based on the source of
+FDclone, will satisfy me as author. You can recycle it
+freely.
+
+  But, an act which adds restriction to use and distribution
+of FDclone, for example applying the patent about FDclone
+without permission, is forbidden entirely, because it
+becomes the act against the ideology of free software.
+
+
+  Please tell me individually about distribution of the
+executable bynary via CD-ROM or various networks.
+  However, secondary distribution of the already distributed
+binary follows licenses of each distributor, then you
+should tell them details.
+
+  The distributor's address of a distributed binary is
+displayed on the function line of the help screen, it is
+shown by HELP_MESSAGE command.
+  If there is not this address, or the version number in
+a title line don't suffix the character of '#', it is
+revealed to be an unofficial distributed binary. Then I
+have no responsibilities for it.
+
+
+--
+  Please refer to each document for details. Compile
+according to `Install', and see man page for operational
+details after installation.
+  I've prepared FAQ. When you got some troubles, read
+these documents before asking me. Almost troubles will
+be solved with FAQ and man page.
+  You can compile this not only on each UNIX but also on
+MS-DOS, compiling on MS-DOS makes you need to replace
+Makefile.
+
+
+--
+  UNIX is the registrated trademark licensed by X/Open Company
+Ltd. However, the name of UNIX called in each documant of
+FDclone is not means UNIX OS licensed by X/Open, but means
+the any OS derived from unics, AT&T Bell Laboratory developed.
+  Though I don't indend to invade the copyright of X/Open,
+the generic name means these all is disappeared, so I use
+this name expediently.
+
+
+--
+Acknowledgement
+
+  At last, thank the following persons for taking care of
+FDclone development.
+(in alphabetical order)
+
+o He is the auther of "FD", and permit to release FDclone.
+	SDI00544@niftyserve.or.jp (Atsushi Idei)
+
+o They guided me about file systems in the WINC workshop ML.
+	kenji@reseau.toyonaka.osaka.jp (Kenji Rikitake)
+	mori@chuo-computer.co.jp (Hidekazu Mori)
+	ohm@kyoto.wide.ad.jp (Akitoshi Morishima)
+	saitoh@ics.es.osaka-u.ac.jp (Akinori Saito)
+
+o Administrator of the beta test ML
+	matusita@ics.es.osaka-u.ac.jp (Makoto MATSUSHITA)
+
+o Beta testers
+	7m2vej@ritp.ye.IHI.co.jp (UENO Fumihiro)
+	aki@pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
+	ao@orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
+	daikoku@lang2.bs1.fc.nec.co.jp (Hirosi Daikoku)
+	fuku@amorph.rim.or.jp (FUKUSHIMA Osamu)
+	go@cclub.tutcc.tut.ac.jp (Go Watanabe)
+	h-inoue@is.aist-nara.ac.jp (Hiroyuki Inoue)
+	h-yagi@zero0.nsis.cl.nec.co.jp (Hideo Yagi)
+	hashi@star.rcast.u-tokyo.ac.jp (TAKAHASHI Katsuyuki)
+	hide@mamoru.ee.sophia.ac.jp (Takahide Yamaguchi)
+	hiro@akinus1.aki.che.tohoku.ac.jp (Akiyasu Hirotani)
+	i4579@info.nara-k.ac.jp (Kimura Masashi)
+	ishida@econ.shinshu-u.ac.jp (Akira Ishida)
+	ito@getz.isc.chubu.ac.jp (Maki ITO)
+	j0442@cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
+	j9194169@ed.yama.sut.ac.jp (Keitarou Yoshimura)
+	jt@ng.nefs.nec.co.jp (Jiro_Takabatake)
+	katsu@cs.uec.ac.jp (Katsuaki Suzuki)
+	ke3057yt@ex.ecip.osaka-u.ac.jp (yosioka tuneo)
+	kimai@av.crl.sony.co.jp (IMAI Kenichi)
+	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime)
+	kkubota@crl.go.jp (Kazuo Kubota)
+	kmiya@mm.rd.nttdata.jp (Kunio Miyamoto)
+	kobashi@comp.eng.himeji-tech.ac.jp (kobashi)
+	manabu@saskg.semicon.sony.co.jp (Niizato -Gamer- Manabu)
+	mat@azalea.gose.nara.jp (Matsuo Kazunori)
+	mats@cc.tuat.ac.jp (Seiji Matsumoto)
+	mhirano@avkk.yamaha.co.jp (Mitsuyuki HIRANO)
+	mino@kis-gw.msk.kis.co.jp (MINOMO Kazutoshi)
+	mori@isc.mew.co.jp (Shigeki Morimoto)
+	nino@windy.mech.utsunomiya-u.ac.jp (Nao NINOMIYA)
+	nyoshi@kaba.or.jp (YOSHIDA Nobuaki)
+	ohge@enzan.ee.kansai-u.ac.jp (Hiroki Ohge)
+	ohishi@otc.qnes.nec.co.jp (Isao Ohishi)
+	okubo@mem.cl.nec.co.jp (Shuichi OHKUBO)
+	ozawa@prince.pe.u-tokyo.ac.jp
+	roy@lit.cs.uec.ac.jp (SATOU Masaki)
+	ryoji@kgupyr.kwansei.ac.jp (Ryoji Nagai)
+	sakai@csl.cl.nec.co.jp (Junji SAKAI)
+	sakanaga@ds.kyoto.omronsoft.co.jp (Toshiyuki Sakanaga)
+	sawada@h3news1.kais.kyoto-u.ac.jp (Yutaka SAWADA)
+	senshu@astro.yamagata-cit.ac.jp (Hiroyuki Senshu)
+	shige@luck.imasy.or.jp (Shigechika Aikawa)
+	shirai@atropos.gen.u-tokyo.ac.jp (Izuru Shirai)
+	taka-mm@super.win.or.jp (Takahasi Mamoru)
+	tan@kei-n.huap.hokudai.ac.jp (Takushi Tanaka)
+	tanaka@inf.ptg.sony.co.jp ("T.Tanaka")
+	tomiyan@cv.sony.co.jp (Mitsuhiko Tomita)
+	tsuka@ohsaki.meidensha.co.jp (Yoshihiro Tsukamoto)
+	uno@meleager.mel.go.jp
+	wakui@casiogw.rd.casio.co.jp (WAKUI Kazuhiko)
+	watanabe@jis.ptg.sony.co.jp (ebaN)
+	yajima@ccedu.sendai-ct.ac.jp (Kuniaki YAJIMA)
+	yaku@jedi.seg.kobe-u.ac.jp (Masao Yakushijin)
+	yamakawa@crdl.pioneer.co.jp (Yuzo Yamakawa)
+	yamamoto@ogw.ei.hosei.ac.jp (Kouya Yamamoto)

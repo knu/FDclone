@@ -1175,7 +1175,7 @@ int fs;
 			totalent = headbyte;
 			if (entnum) totalptr = entnum[++block];
 		}
-#endif
+#endif	/* !MSDOS */
 		strcpy(path + fnamp, filelist[i].name);
 		if (rename2(path, filelist[i].name) < 0) error(path);
 #if	!MSDOS

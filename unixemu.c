@@ -86,8 +86,8 @@ char *path, *buf;
 	if (!buf) return(drive);
 
 	if (path == buf) {
-		strcpy(tmp, path);
-		path = tmp;
+		strcpy(tmp, cp);
+		cp = tmp;
 	}
 	if (*cp == _SC_) {
 		*(buf++) = drive;
@@ -346,7 +346,6 @@ char *path;
 
 #ifndef	_NOROCKRIDGE
 	if (detransfile(path, buf, 0) == buf) path = buf;
-	else
 #endif
 	if (unixunlink(path) != 0) {
 		if (errno != EACCES
@@ -633,6 +632,7 @@ FILE *stream;
 }
 #endif	/* !_NODOSDRIVE */
 
+#ifdef	_NOORIGSHELL
 static int popenstat = 0;
 
 FILE *Xpopen(command, type)
@@ -677,3 +677,4 @@ FILE *fp;
 	if (rmtmpdir(path) < 0) no = errno;
 	return((errno = no) ? -1 : popenstat);
 }
+#endif	/* _NOORIGSHELL */

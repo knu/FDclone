@@ -1,6 +1,6 @@
 s:/:\\:g
-s:__VERSION__:1:g
-s:__RCVERSION__::g
+s:__VERSION__:2:g
+s:__RCVERSION__:2:g
 s:__EXE__:.exe:g
 s:__OBJ__:.obj:g
 s:__OBJS__:unixemu.obj unixdisk.obj:
@@ -23,7 +23,7 @@ s:__OUT__:-o $@:
 s:__LNK__:-o $@:
 s:__TERMLIBS__::
 s:__REGLIBS__::
-s:__OTHERLIBS__:-lintlib -ltinymain.obj -k"-s 7800":
+s:__OTHERLIBS__:-lintlib -ltinymain.obj -k"-s 6000":
 s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
 s:__UNITBL__:$(UNITBL):

@@ -1,0 +1,255 @@
+[LICENSES FOR FDCLONE2]
+
+(NOTICE:
+ The official licenses is writen in Japanese language. This
+ version in English language is only a translation, and is
+ NOT VALID LEGALLY.)
+
+
+<0.Intro>
+
+  This document is writen for licenses to use, modify, duplicate,
+and distribute `FDclone'.
+
+  `FDclone' is a free software, not to restrict users to any
+use. This document says the details based on each case, including
+author's wishful desire.
+
+
+<1.Definition>
+
+  First of all, the terms used in this document are defined as
+following. In this document, these terms are used in their
+specific meanings writen here, as long as there is no notice.
+
+source
+	A set of a source program. Or a set of a package which
+	contained any document or something else in it.
+
+binary
+	An executable binary gotten with compiling a set of
+	a source program. Or a set of a package which contained
+	any document or something else in it.
+
+distribution
+	In a broad sense, to create the duplicate (if modified
+	or not) of a source or a binary, and give the third
+	party. In a narrow sense, to give the duplicate to the
+	specific persons.
+
+circulation
+	A form of distribution in a broad sense. To give the
+	dulpicate of a source or a binary to the general public,
+	widely at a public space.
+
+primary distribution, primary circulation
+	distribution (or circulation) by the hand of the author
+	himself.
+
+secondary distribution, secondary circulation
+	distribution (or circulation) of the primary distribution
+	or the primary circulation by the hand of someone except
+	the author. It counts similarly as the 3rd distribution
+	(or the 3rd circulation), the 4th distribution (or the
+	4th circulation).
+
+re-distribution, re-circulation
+	A general term for distribution (or circulation) after
+	the primary one.
+
+modification
+	To make several change on the original source or
+	the binary.
+
+secondary use
+	To use a part of the original source, by including
+	it in another software.
+
+
+<2.Re-Distribution>
+
+  About re-distribution in a narrow sense, re-distribution of
+a source and a binary is permitted, if modified or not. You
+can do it freely in any purpose, profit or not. Re-distribution
+after the secondary one is as free as this.
+
+  However, the author doesn't take any responsibility for the
+re-distrubuted package. If you want any guarantees to keep
+original or to work normally, the re-distributor himself will
+needs to guarantee.
+
+
+<3.Re-Circulation>
+
+  Re-circulation of a source and a binary is permitted, if
+modified or not. You can do it freely in any purpose, like
+re-distribution in a narrow sense,
+
+  But, in order to take care of the re-circulated package as
+possible, a circulation registration system is established
+for a part of circulation form. The author cannot take any
+responsibility for the re-circulated one with no registration,
+like the re-distributed one.
+  The author takes care of the registered re-circulation
+equivalent to the primary circulation. If you don't need
+this, you don't have to make circulation registration.
+
+  When you circulate the re-circulation already registered,
+and don't make any modification on the package form and it's
+contents against the registered re-circulation, the author
+shall take care of it equivalent to the re-circulation.
+  In the case of making some modification on the package,
+at the moment you've done, circulation registration becomes
+invalid. Then, the author doesn't take any responsibility,
+unless circulation is registered again.
+
+  However, if a secondary circulator adds some licenses on
+the socond circulation with registration, the licenses for
+distribution after the secondary one follow them.
+  If registered, a secondary circulator can freely set up
+the licenses for re-distribution after the secondary one,
+except they break the licenses for the primary circulation.
+So, if you think to re-circulate the secondary circulation,
+you should tell a secondary circulator.
+  As far as circulation registration is made, the author will
+keep out of re-distribution after the secondary one.
+
+
+<4.Auther's Responsibility>
+
+  The author take care of the primary distribution and the
+registered re-circulation.
+  Specifically, replying to questions and requests from users,
+changing the program if need, and guaranteeing that the
+program never includes the operation against specifications
+to work normally.
+  If it doesn't work by according to specifications on each
+document, the author should accept changing.
+
+  The author doesn't take any responsibility for the
+re-circulated packages with no registration, and cannot
+reply to questions nor requests from users.
+  If the contact from users occurs, it is hoped that the
+re-circulator accepts the contact and manages it with
+responsibility.
+
+  However, the author guarantees no warranty in the use of
+this program, each user will need to use it at their own
+risk.
+
+
+<5.Source Circuration Registration>
+
+  The author take care of the unregisterd circulation of a
+source, only if the contents of its package have no
+modification.
+  The package which has some modification on its contents,
+in which the program source part has no modification and its
+modification is only the additional documents or programs,
+will be treated equivalent to the case which has no
+modification.
+  In these cases, modification of package form is ignored,
+that is modification of an archiving method or a package
+name.
+
+  When there is some modification in the program source part,
+or in the files which have effect on the executable binary,
+e.g. `Makefile' etc., source circulation registration will
+make the author take care of it.
+  You can make circulation registration according to the
+following procedure.
+
+
+<6.Binary Circulation Registration>
+
+  The author doesn't take any responsibility for the circulation
+of a binary, if it is re-circulation with no registration.
+Even if it has no modification from the primary circulation,
+it is the same.
+  If you want any guarantees from the author, you need to make
+circulation registration according to the following procedure,
+if modified or not.
+
+  It is suggested from the author that you will make surely
+circulation registraton, because the circulation of a binary
+is especially dengerous.
+
+
+<7.Adaptation of Program>
+
+  When a user makes some modification partly on the program
+and uses it, and treats as quite different from the original
+program, it is regarded as secondary use, not depending on
+the volume of modification.
+  The modification which can not be regarded as the secondary
+use follows above rule for re-distribution. On the other
+hand, the secondary use can be treated freely as a work of
+the secondary author.
+
+
+<8.Broadcast through Books>
+
+  It is regarded as re-circulation to broadcast through the
+commercial books by the media, such as CD-ROM.
+  If the auther's guarantee is required, you should make
+each circulation registration according to whether it is
+a source or a binary. It is treated as same as the other
+re-circulation.
+  However, broadcasting the re-circulation already registered
+doesn't need any registration again, then you should follow
+the licenses by the circulator who made circulation registration.
+
+  In case of not broadcasting but introducing as an article,
+it has no need to register, because neither a guarantee nor
+responsibility can be generated. No need to contact the
+auther.
+
+  As the author's hope, it is preferable to contact or
+contribute books if you broadcast or introduce.
+  Especially in case of an introduction report, if you show
+a manuscript in advance, the author will be able to confirm
+whether it is suitable.
+  Who intend to broadcast is be wanted to consider.
+
+
+<9.Procedure of Circulation registration>
+
+  If you want circulation regstration, the following procedure
+is authorized.
+
+1. Define the circulation manager.
+2. Rewrite from `NULL' to the E-mail address of the circulation
+   manager, variable `distributor' in `version.h'.
+   ex.:
+   char *distributor = "shirai@nintendo.co.jp (Takashi SHIRAI)";
+3. Make the differential in modification from the package of
+   the primary circulation, including the additional files if
+   exist.
+4. Create a circulation package.
+5. Check the MD5 checksum of the package, and note it. In case
+   of the binary circulation, check it for the executable binary
+   of FDclone, too.
+   If you have no way to check it, FDclone has a builtin command
+   `checkid', so that you can use it. Compile and run FDclone,
+   and push the `h' key for executing EXECUTE_SH command, and
+   then run `checkid NAME_OF_FILE' to display the MD5 checksum.
+6. Send the registration letter to the author via E-mail, with
+   the differential and the package's MD5. In case of the binary
+   circulation, you must refer to the environment(OS, machine,
+   etc.) in which the circulated executable binary works, and
+   MD5 of the executable binary.
+7. Explain in the registration letter that you change the
+   licenses of re-circulation, if need.
+
+  In the registration letter, you should better declare whether
+source circulation registration or binary circulation
+registration. You can make source circulation registraton
+and binary circulation registration simultaneously in the same
+registration letter.
+  When you make binary circulation registration on multiple
+environments with the same differential, listing each environment
+can regard one registration as registration for all environment
+simultaneously.
+
+  If you are anxious about the operation in detail, please
+tell the author before registration.

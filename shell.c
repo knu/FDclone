@@ -399,18 +399,20 @@ int ignorelist;
 	return(cp);
 }
 
-char *inputshellstr(prompt, ptr, def)
+char *inputshellstr(prompt, ptr, cursor, def)
 char *prompt;
-int ptr;
+int ptr, cursor;
 char *def;
 {
 	char *cp, *tmp, *duppromptstr;
+	int x, y;
 
 	duppromptstr = promptstr;
 	if (prompt) {
 		promptstr = prompt;
-		lcmdline = n_line - 1;
+		lcmdline = n_line;
 	}
+	if (cursor && getxy(&y, &x) >= 0) lcmdline = y;
 	cp = inputstr(NULL, 0, ptr, def, 0);
 	promptstr = duppromptstr;
 	if (!cp) return((char *)-1);
@@ -437,7 +439,8 @@ char *def;
 #endif
 	char *cp;
 
-	if ((cp = inputshellstr(NULL, ptr, def)) == (char *)-1) return(NULL);
+	cp = inputshellstr(NULL, ptr, 0, def);
+	if (cp == (char *)-1) return(NULL);
 	else if (!cp) {
 		hideclock = 1;
 		warning(0, HITKY_K);
@@ -457,10 +460,10 @@ char *def;
 			if (!trp || !(trp -> flags & ST_CONT)) break;
 		}
 
-		lcmdline = n_line - 1;
+		lcmdline = n_line;
 		hideclock = 1;
-		if ((cp = inputshellstr(promptstr2, -1, NULL)) == (char *)-1)
-			break;
+		cp = inputshellstr(promptstr2, -1, 0, NULL);
+		if (cp == (char *)-1) break;
 		else if (!cp) continue;
 
 		l = strlen(cp);

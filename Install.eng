@@ -1,0 +1,207 @@
+[HOW TO INSTALL FDCLONE2]
+
+
+- In Case of UNIX
+
+1. In machine.h, you can find the part which is commented out.
+   Then you will delete the "/*" on beginning of the line,
+   referring to an attached comment content.
+   Especially, in the following two configurations,
+   the administrator sometimes setups differently from the
+   OS defalut setups. Then you must be careful to select.
+	CODEEUC		This OS uses the EUC-JP Kanji code.
+			(If undefined, it means Shift JIS is used.)
+	TARUSESPACE	tar(1) with t option will output the
+			list in which each file mode string
+			is always followed by spaces.
+   In the following OS, there is need to change nothing except
+   these two configurations. If you force to change anything,
+   you will fail. So, you should go to the next step.
+	Sun	SunOS		(4.1.x, 5.x)
+	SONY	NEWS-OS		(3.2, 4.x, 6.x)
+	SGI	IRIX		(R5.x, R6.x)
+	HP	HP-UX		(9.x, 10.01)
+	NEC	EWS-UX/V(Rel4.x)(R7.1, R12.3, R13.1)
+	DEC	OSF/1		(V3.2, V4.0)
+	DEC	ULTRIX		(V4.x)
+	IBM	AIX		(3.x, 4.x)
+	Fujitsu	UXP/M		(4.1)
+	Fujitsu	UXP/DS		(V10, V20)
+	JCC	4.4BSD-Lite	(v1.0)
+	(free)	Linux		(2.x)
+	(free)	FreeBSD		(2.x, 3.x, 4,x)
+	(free)	NetBSD		(1.x)
+	(free)	OpenBSD		(2.x)
+	BSDI	BSD/OS		(2.x, 3.0)
+	ASCII	BSD on Windows	(1.0, 1.5)
+	Apple	Mac OS X	(10.x)
+
+   In the following OS, while it is not confirmed whether Ver.
+   2.00 will be running normally, the codes for these OS are
+   described. Then you seem to need no change.
+   At least, if you can compile it with no change, it seems
+   that any changes are not necessary.
+	SGI	IRIX		(R4.0.5)
+	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
+	NEC	EWS-UX/V(Rel4.x)(R5.3, R8.1, R9.1, R10.1)
+	OMRON	UniOS-U		(Ver3.00)
+	OMRON	UniOS-B		(2.00)
+	OMRON	Luna/Mach	(2.5)
+	DEC	OSF/1		(V1.2, V2.0)
+	Apple	A/UX		(3.0)
+	DG	DG/UX		(5.4)
+	Fujitsu	UXP/M		(4.0)
+	Mips	RISC/os		(4.x, 5.0x)
+	NeXT	NEXTSTEP	(3.0)
+	(free)	386BSD		(R0.1)
+	BSDI	BSD/OS		(1.1)
+
+   In the other OS which is not listed in both these lists,
+   the program which judges the OS environment is prepared,
+   and you can do "make config" to build the configuration
+   file.
+   But, this automatic judgment is not perfect. If you can
+   not compile it, you must mamually edit config.h which
+   is built by "make config". And you can refer TECHNOW.eng
+   for the detail of changes.
+
+   Reversely, in the OS which is listed in either of above
+   lists, don't do "make config" because "make config" may
+   sometimes cause rather unsuitable result.
+   Especially in Linux, it is one of the most strange OS as
+   UNIX, some special codes for Linux are prepared. Since
+   these codes will never be judged automatically, you must
+   never do "make config" in Linux.
+   When you've done "make config" accidentally, do "make
+   realclean" before the next step.
+
+2. You can change some constats defined in fd.h, if you
+   want. The meaning of each constant is described in the
+   manual as the ENVIRONMENT VARIABLES.
+   These constants and the environment variables have the
+   same name. If you cannot decide, there is no problem as
+   it is.
+
+   Moreover, it is better to change PAGER and EDITOR to the
+   suitable commands according to environment. But, if you
+   can not prepare any applicable command, you should comment
+   out that line.
+   (PAGER: file viewer, EDITOR: text editor)
+
+3. do "make".
+
+4. Confirm whether the compiled one will run with no problem.
+
+5. You can rewrite the macros (TOPDIR etc.) in Makefile.in
+   acording to your environment.
+   If you rewrite DEFRC at this point, you must do "make
+   clean" and do "make" again. In this case, while each
+   description in documantation is different from the fact,
+   there is no problem in executing this program.
+
+6. You can copy _fdrc as the name of fdrc, and rewrite fdrc
+   according to your environment. Or, you can create it from
+   scratch.
+   The prepared _fdrc is just an example. The configurations
+   in it becomes the configurations common to your whole
+   system. Then you should consider with the policy as an
+   administrator.
+   If you don't create fdrc, the configuration file common
+   to whole system is not installed. In this case, only a
+   configuration file of each user is valid.
+
+7. do "make install".
+
+8. If the manual is installed correctly (you can do "man fd"),
+   all step is over.
+
+   Sometimes the manual is not installed correctly, for the
+   reason that nroff is not support Japanese, or so. For
+   example, the meaningless chanacters is outputted, or the
+   man command outputs any error message.
+   In this case, if you install the plain text manual, you
+   can refer the manual correctly.
+
+   You can try the following targets for make in this rotation,
+   and confirm to be able to do "man fd".
+	catman -> catman-b -> compman -> compman-b
+   If you do "make catman" and can not install correctly,
+   then you do "make catman-b" ... you will continue.
+
+   The target with -b will install for the terminal which
+   cannot interpret the backspace (^H). The target with comp
+   will install the textfile after compress it.
+
+   If your OS doesn't support locale, the Japanese manual
+   sometimes overwrite the English manual. In this case, you
+   can install the only English one with the following targets.
+	ecatman -> ecatman-b -> ecompman -> ecompman-b
+   Each target can install the manual as well as the above
+   tergets, except that the Japanese manual is not installed.
+
+9. Finish.
+
+
+--------
+- In Case of MS-DOS
+
+1. The following compilers are confirmed.
+	djgpp 1.1x			(g)
+	djgpp 2.0x			(d)
+	LSI C-86 Ver. 3.5		(l)
+	Borland C++ 5.xx		(b)
+
+   It is prepared makefile.?pc for DOS/V, makefile.?98 for
+   PC-9800 series, then use it. `?' means the above letter in
+   "()" according to each compiler.
+   You can rename each file to makefile, or you can explicitly
+   do "make -f makefile.xxx" when you do make.
+
+   (You cannot compile with LSI C-86 trial version.)
+
+2. You can change some constats defined in fd.h, if you
+   want. The meaning of each constant is described in the
+   manual as the ENVIRONMENT VARIABLES.
+   These constants and the environment variables have the
+   same name. If you cannot decide, there is no problem as
+   it is.
+
+   Moreover, it is better to change PAGER and EDITOR to the
+   suitable commands according to environment. But, if you
+   can not prepare any applicable command, you should comment
+   out that line.
+   (PAGER: file viewer, EDITOR: text editor)
+
+3. do "make".
+
+4. If it will become any error in compile by the shortage
+   of memories or so, you can reduce some functions partially.
+   You can define the identifier to reduce function in
+   config.hin, referring the #8 in TECHKNOW.eng, and
+   re-compile.
+	Ex: #define _NOTREE	(cannout use tree screen)
+
+5. You can convert the Kanji code with "make fd.doc" for the
+   Japanese manual. Similarly, you can alse create README.doc,
+   HISTORY.doc, and FAQ.doc for the Japanese documents.
+   (If you cannot read Japanese, these files are needless.)
+
+6. You will copy the file of fd.exe and fd-unicd.tbl to the
+   same directory where PATH passed. If you don't need the
+   function to access LFN on the old MS-DOS, fd-unicd.tbl is
+   not required.
+
+7. You can copy _fdrc as the name of fd2rc to the directory
+   where you copy fd.exe, and rewrite fd2rc according to your
+   environment. Or, you can create it from scratch. The
+   prepared _fdrc is just an example. Especially, it contains
+   also the configurations nonexistent in MS-DOS version,
+   you should consider and build it.
+   If you want to prepare the configuration file for every
+   user, you can set the environment variable HOME as the
+   home directory of each user, and build fd2.rc in that
+   directory.
+   And, also fd.hst as the history file will be created on
+   $HOME.
+
+8. Finish.

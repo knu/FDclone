@@ -29,6 +29,7 @@ extern char *mesconv __P_((char *, char *));
 #define	DELSP_K	mesconv("行末に空白文字がありますが削除しますか ?", "Delete space characters on the end of line ?")
 #define	INTR_K	mesconv("中断キーにより作業を中止します.", "Interrupted by keyboard.")
 #define	INOV_K	mesconv("入力文字数がオーバーフローしました.", "Input length overflow.")
+#define	RECUR_K	mesconv("再帰的に fdsh を起動することはできません.", "Recursive call for fdsh.")
 
 #define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
 #define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")
@@ -297,3 +298,148 @@ extern char *mesconv __P_((char *, char *));
 #define	NCVP_E \
 	meslist("漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
+
+#define	TENV_K	mesconv("内部変数", "Variables")
+#define	TBIND_K	mesconv("キー割当て", "Key bind")
+#define	TKYMP_K	mesconv("キーマップ", "Key map")
+#define	TLNCH_K	mesconv("ランチャ", "Launcher")
+#define	TARCH_K	mesconv("アーカイバ", "Archiver")
+#define	TSDRV_K	mesconv("DOSドライブ", "DOS drive")
+#define	TSAVE_K	mesconv("保存", "Save")
+
+#define	VBOL0_K	mesconv("無効", "invalid")
+#define	VBOL1_K	mesconv("有効", "valid")
+#define	VSORT_K	mesconv("直前のソート形式を保持", "preserve last sort type")
+#define	VSRT0_K	mesconv("保持しない", "not preserve")
+#define	VSRT1_K	mesconv("保持する", "preserve")
+#define	VDS1A_K	mesconv("情報:", "info.:")
+#define	VDS1B_K	mesconv("表示するシンボリックリンクファイル情報", \
+			"status information of symbolic link file")
+#define	VDS10_K	mesconv("リンク", "link")
+#define	VDS11_K	mesconv("本体", "file")
+#define	VDS2A_K	mesconv("ファイル型:", "file type:")
+#define	VDS2B_K	mesconv("ファイルタイプシンボルの付属", \
+			"trailing file type symbol")
+#define	VDS20_K	mesconv("不要", "no display")
+#define	VDS21_K	mesconv("要", "display")
+#define	VDS3A_K	mesconv("\".\"ファイル:", "dot file:")
+#define	VDS3B_K	mesconv("\".\"で始まるファイル名の扱い", \
+			"whether to hide files whose names begin with \".\"")
+#define	VDS30_K	mesconv("表示", "visible")
+#define	VDS31_K	mesconv("隠す", "invisible")
+#define	VDS4A_K	mesconv("ファイル:", "file:")
+#define	VDS4B_K	mesconv("ファイルモード欄の表示情報", \
+			"information on file mode column")
+#define	VDS40_K	mesconv("モード", "mode")
+#define	VDS41_K	mesconv("フラグ", "flag")
+#define	VWFS0_K	mesconv("並び替え後に書込み可", "valid after replacement")
+#define	VWFS1_K	mesconv("コマンドのみ有効", "command only")
+#define	VWFS2_K	mesconv("使用禁止", "completely invalid")
+#define	VCOL2_K	mesconv("背景色を黒に", "black background")
+#define	VCOL3_K	mesconv("表示色を黒に", "black foreground")
+#define	VNCNV_K	mesconv("変換しない", "NoConvert")
+#define	VENG_K	mesconv("英語", "English")
+#define	VNJIS_K	mesconv("新JIS", "NewJIS")
+#define	VOJIS_K	mesconv("旧JIS", "OldJIS")
+
+#define	NEWET_K	mesconv("新規登録", "NewEntry")
+#define	NIMPL_K	mesconv("この機能は実装されていません.", \
+			"Cannot available on this implementaion.")
+#define	OVERF_K	mesconv("これ以上の新規登録はできません.", \
+			"No more new registration.")
+#define	BINDK_K	mesconv("キー割当てを行ないたいキーを押して下さい:", \
+			"Push the key which you want to bind command:")
+#define	ESCNG_K	mesconv("Esc キーの割当て変更は禁止されています.", \
+			"Key bind for Esc is inhibited.")
+#define	BINDF_K	mesconv("[%s]に割当てるコマンドを選んで下さい.", \
+			"Select the command to bind for [%s].")
+#define	BNDFC_K	mesconv("[%s]用コマンド:", "Command for [%s]:")
+#define	USRDF_K	mesconv("ユーザ定義", "User define")
+#define	DELKB_K	mesconv("割当て削除", "Delete bind")
+#define	DLBOK_K	mesconv("[%s]用のキー割当てを削除します. よろしいですか ?", \
+			"Deleting the key bind for [%s], OK ?")
+#define	KBDIR_K	mesconv("ディレクトリ用にも同じキー割当てで構いませんか ?", \
+			"Do you bind the same command for the directory ?")
+#define	BINDD_K	mesconv("ディレクトリ用に[%s]に割当てるコマンドを選んで下さい.", \
+			"Select the command to bind for [%s] on directories.")
+#define	BNDDC_K	mesconv("ディレクトリ向け[%s]用コマンド:", \
+			"Command for [%s] on directories:")
+#define	FCOMM_K	mesconv("ファンクション行用のコメント(6 文字以内):", \
+			"Comment for the function line (within 6 chars):")
+#define	KYMPK_K	mesconv("[%s]のキーを押して下さい:", \
+			"Push the key named as [%s]:")
+#define	DELKM_K	mesconv("[%s]のキーマップ登録を削除します. よろしいですか ?", \
+			"Deleting the keymap for [%s], OK ?")
+#define	SETKM_K	mesconv("[%s]のキーマップを[%s]として登録します. よろしいですか ?", \
+			"Registering the keymap for [%s] as [%s], OK ?")
+#define	EXTLN_K	mesconv("ランチャ登録用拡張子:", "Extention for launcher:")
+#define	LNCHC_K	mesconv("ランチャ用コマンド:", "Command for launcher:")
+#define	ISARC_K	mesconv("アーカイブブラウザとして登録しますか ?", \
+			"Registration as archive browser ?")
+#define	ARCHF_K	mesconv("アーカイブブラウザ用フォーマット:", \
+			"Format for archive browser:")
+#define	TOPSK_K	mesconv("先頭行からの不要行の数:", \
+			"needless line(s) from top:")
+#define	BTMSK_K	mesconv("最終行からの不要行の数:", \
+			"needless line(s) from bottom:")
+#define	VALNG_K	mesconv("不正な値です.", "Invalid value.")
+#define	DLLOK_K	mesconv("[%s]用のランチャ登録を削除します. よろしいですか ?", \
+			"Deleting the launcher registration for [%s], OK ?")
+#define	EXTAR_K	mesconv("アーカイバ登録用拡張子:", "Extention for archiver:")
+#define	PACKC_K	mesconv("圧縮用コマンド:", "Command for pack:")
+#define	UPCKC_K	mesconv("伸長用コマンド:", "Command for unpack:")
+#define	DLAOK_K	mesconv("[%s]用のアーカイバ登録を削除します. よろしいですか ?", \
+			"Deleting the archiver registration for [%s], OK ?")
+#define	DRNAM_K	mesconv("登録するドライブ名を選んで下さい.", \
+			"Select drive to register.")
+#define	DRDEV_K	mesconv("[%c:]用のデバイス名:", \
+			"Device name for [%c:]:")
+#define	DLDOK_K	mesconv("[%c:]用のフロッピードライブ登録を削除します. よろしいですか ?", \
+			"Deleting the floppy drive for [%c:], OK ?")
+#define	DRMED_K	mesconv("登録するメディア種を選んで下さい.", \
+			"Select media type to register.")
+#define	DRHED_K	mesconv("へッド数:", "Head(s):")
+#define	DRSCT_K	mesconv("セクタ数:", "Sector(s):")
+#define	DRCYL_K	mesconv("シリンダ数:", "Cylinder(s):")
+#define	CCNCL_K	mesconv("設定変更を破棄し元の状態に戻します.", \
+			"Cancel this customizing and restore old configurations.")
+#define	CCLEA_K	mesconv("設定を削除しデフォルト値に戻します.", \
+			"Clear configurations to default value.")
+#define	CLOAD_K	mesconv("設定をファイルから読込みます.", \
+			"Load configurations from file.")
+#define	CSAVE_K	mesconv("設定をファイルに保存します.", \
+			"Save configurations to file.")
+#define	COVWR_K	mesconv("既存設定ファイルに設定を上書きします.", \
+			"Overwrite configurations to existent file.")
+#define	SREST_K	mesconv("元に戻す範囲を選んで下さい. (Space で選択解除.)", \
+			"Select the item to restore. (Cancel with Space.)")
+#define	SCLEA_K	mesconv("削除する範囲を選んで下さい. (Space で選択解除.)", \
+			"Select the item to delete. (Cancel with Space.)")
+#define	FLOAD_K	mesconv("読込みファイル名:", "Load filename:")
+#define	FSAVE_K	mesconv("保存ファイル名:", "Save filename:")
+#define	FSVOK_K	mesconv("ファイルが存在します. 保存を中止しますか ?", \
+			"File exists. Stop writing, OK ?")
+#define	SSAVE_K	mesconv("保存する範囲を選んで下さい. (Space で選択解除.)", \
+			"Select the item to save. (Cancel with Space.)")
+#define	FOVWR_K	mesconv("上書きファイル名:", "Overwrite filename:")
+#define	FOVOK_K	mesconv("ファイルが存在しません. 新規に作成しますか ?", \
+			"No such file. Creating new file, OK ?")
+#define	SOVWR_K	mesconv("上書きする範囲を選んで下さい. (Space で選択解除.)", \
+			"Select the item to overwrite. (Cancel with Space.)")
+#define	NOSAV_K	mesconv("変更を保存していませんがこのまま終了してよろしいですか ?", \
+			"Exiting without saving changed configurations, OK ?")
+
+#define	HALAS_K	mesconv("コマンドのエイリアス定義をします.", \
+			"Define the alias of command.")
+#define	HBIND_K	mesconv("各キーに対するコマンドの割当てを行ないます.", \
+			"Set the bound command for each key.")
+#define	HKYMP_K	mesconv("各種機能キーのキーマップを変更します.", \
+			"Change the mapping of function keys.")
+#define	HLNCH_K	mesconv("各拡張子に対するランチャの登録をします.", \
+			"Entry the launcher for each file extension.")
+#define	HARCH_K	mesconv("各拡張子に対するアーカイバの登録をします.", \
+			"Entry the archiver for each file extension.")
+#define	HSDRV_K	mesconv("フロッピードライブの登録をします.", \
+			"Entry the DOS floppy drive.")
+#define	HSAVE_K	mesconv("設定をファイルから読込んだり保存したりします.", \
+			"Load/Save configurations from/to file.")

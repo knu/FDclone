@@ -213,13 +213,15 @@ extern int Xfputc __P_((int, FILE *));
 extern char *Xfgets __P_((char *, int, FILE *));
 extern int Xfputs __P_((char *, FILE *));
 #endif
-#if	MSDOS
+#ifdef	_NOORIGSHELL
+# if	MSDOS
 extern FILE *Xpopen __P_((char *, char *));
 extern int Xpclose __P_((FILE *));
-#else
-#define	Xpopen		popen
-#define	Xpclose		pclose
-#endif
+# else
+# define	Xpopen		popen
+# define	Xpclose		pclose
+# endif
+#endif	/* _NOORIGSHELL */
 
 /* libc.c */
 extern int rename2 __P_((char *, char *));
@@ -393,7 +395,7 @@ extern VOID freedefine __P_((VOID_A));
 
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
-extern char *inputshellstr __P_((char *, int, char *));
+extern char *inputshellstr __P_((char *, int, int, char *));
 extern char *inputshellloop __P_((int, char *));
 extern int execmacro __P_((char *, char *, int, int, int));
 #ifdef	_NOORIGSHELL

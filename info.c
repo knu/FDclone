@@ -107,7 +107,7 @@ typedef struct _mnt_t {
 	char *mnt_opts;
 } mnt_t;
 #define	hasmntopt2(mntp, opt)	strstr2((mntp) -> mnt_opts, opt)
-# if	PC98
+# ifdef	PC98
 # define	PT_FAT12	0x81	/* 0x80 | 0x01 */
 # define	PT_FAT16	0x91	/* 0x80 | 0x11 */
 # define	PT_FAT32	0xa0	/* 0x80 | 0x20 */

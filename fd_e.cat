@@ -1,0 +1,2550 @@
+FD(1)              UNIX-OS Programmer's Manual              FD(1)
+
+
+
+NNAAMMEE
+     fd - file & directory maintenance tool
+
+SSYYNNOOPPSSIISS
+     ffdd [ --aaeeffhhiikkmmnnrrssttuuxxvv ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y ]
+     ffddsshh [ --aacceeffhhiikkmmnnrrssttuuxxvv ] [ _a_r_g_s ]
+
+DDEESSCCRRIIPPTTIIOONN
+     ffdd is a file & directory maintenance tool considered for the
+     text terminals on general UNIX.  It aims for a clone of the
+     same named utility which is made for the PC/AT compatible
+     machine and PC-9800 series.  In fact, it is upper compatible
+     functionally.
+
+     ffdd shows the browser screen listing files when you have
+     invoked it.  You can input some key which is bound each com-
+     mand, to execute various operations.
+
+     (In the following description, ((UU)) means that the operation
+     is implemented only on UNIX version and not effective on
+     MS-DOS version.  As well as it, ((DD)) means that the operation
+     is implemented only on MS-DOS version.)
+
+     OOppttiioonnss
+     The command line option is used for setting internal shell
+     operations and setting the internal variables described
+     below.  You can use any variable name as the internal vari-
+     able, but ffdd can accept only those which are described in
+     the below section of EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS.  If you specify
+     _d_i_r_e_c_t_o_r_y, the current directory is moved to the directory
+     initially.
+
+     The following options are available for the internal shell.
+
+     --cc _s_t_r_i_n_g
+          Commands described by _s_t_r_i_n_g are executed and exit
+          immediately.  It is effective only when it is invoked
+          as ffddsshh.
+
+     --ii   If the --ii flag is present or if the standard
+          input/output is a terminal, the shell is interactive
+          shell.
+
+     --ss   If the --ss flag is present or if no _a_r_g_s is specified,
+          commands for the shell are read from the standard
+          input.  Any remaining argument specifies the positional
+          parameter.
+
+     --rr   The shell is a restricted shell.  Specifically, the
+          following operations are disallowed.
+               changing the current directory
+               setting the value of $$PPAATTHH and $$SSHHEELLLL
+               specifying command names include //
+               redirecting output (>> and >>>>)
+               IINN_DDIIRR         OOUUTT_DDIIRR        LLOOGG_TTOOPP
+               LLOOGG_DDIIRR        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE
+               MMOOVVEE_FFIILLEE      DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR
+               RREENNAAMMEE_FFIILLEE    MMAAKKEE_DDIIRR       WWRRIITTEE_DDIIRR
+               TTRREEEE_DDIIRR       BBAACCKKUUPP_TTAAPPEE    EEDDIITT_FFIILLEE
+               UUNNPPAACCKK_FFIILLEE    PPAACCKK_FFIILLEE      LLOOGG_TTRREEEE
+               CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      UUNNPPAACCKK_TTRREEEE
+               FFIINNDD_DDIIRR
+          When invoked as rrffdd or rrffddsshh, it becomes this res-
+          tricted shell automatically.
+
+     In adition, the options described below in the description
+     of sseett builtin command are available.
+
+     SSccrreeeenn LLaayyoouutt
+     ffdd has the 3 major screen modes.  In the browser screen, you
+     can select from the file list and execute each command.  In
+     the archive browser screen, files in the archive file are
+     listed separately by directory, and you can browse as well
+     as the browser screen.  In the tree screen, you can move on
+     the directory tree and select the directory path.
+
+     In all screen modes, each 33 lines on the top/bottom of the
+     screen are used for the various information of ffdd.. The top
+     information lines sometimes become 44 lines.  The screen lay-
+     out is the following.
+
+     line#     Description
+
+     11         The title line.  The clock at the right end is
+               updated every 1100 seconds.
+
+     22         The information line.  It displays informations in
+               this order: the current page (and the total
+               pages), the number of marks (ant the total marks),
+               the sorted type, the pattern string for file
+               search.
+
+     33         The path line.  It displays the fullpath of the
+               current directory.  In the archive browser screen,
+               it displays the fullpath of the archive file and
+               the current path in the archive.
+
+     22 (optional)
+               The file size information line.  It displays the
+               total size of the marked files in the directory
+               (and the total size of all files), the total capa-
+               city and the free size of the file system includ-
+               ing the current directory.  Thie line appears by
+               the environment variable SSIIZZEEIINNFFOO setting.  When
+               this line is displayed, The information line and
+               the path line are displayed 1 line under each.
+
+     bboottttoomm -- 22
+               The stack line.  It displays files temporarily
+               which you push in stack, when arranging files.
+
+     bboottttoomm -- 11
+               The function line.  It displays the operations of
+               function keys.
+
+     bboottttoomm    The status line.  It displays the status of the
+               file on the cursor posision.  It also displays
+               warning messages when command is executed with
+               some troubles.
+
+     IInntteerrnnaall CCoommmmaannddss
+     You can use the following internal commands on ffdd.  While
+     any user can change the key binding for these internal com-
+     mands, here shows the default key binding.  The identifier
+     is used when it is executed from the command line of
+     EEXXEECCUUTTEE_SSHH command, and when the user defines the key bind-
+     ing.
+
+     Identifier          Command                       Key
+
+     CCUURR_UUPP              Move a cursor up              UUpp
+     CCUURR_DDOOWWNN            Move a cursor down            DDoowwnn
+     CCUURR_RRIIGGHHTT           Move a cursor right           RRiigghhtt
+     CCUURR_LLEEFFTT            Move a cursor left            LLeefftt
+     RROOLLLL_UUPP             Turn ahead to the next page   PPaaggeeDDoowwnn
+     RROOLLLL_DDOOWWNN           Turn back to the prev. page   PPaaggeeUUpp
+     CCUURR_TTOOPP             Move a cursor top             BBeegg(<)
+     CCUURR_BBOOTTTTOOMM          Move a cursor bottom          EEooll(>)
+     FFNNAAMMEE_RRIIGGHHTT         Shift right a filename        ((
+     FFNNAAMMEE_LLEEFFTT          Shift left a filename         ))
+     OONNEE_CCOOLLUUMMNN          Change layout into 1 column   11
+     TTWWOO_CCOOLLUUMMNNSS         Change layout into 2 columns  22
+     TTHHRREEEE_CCOOLLUUMMNNSS       Change layout into 3 columns  33
+     FFIIVVEE_CCOOLLUUMMNNSS        Change layout into 5 columns  55
+     MMAARRKK_FFIILLEE           Mark a file                   TTaabb
+     MMAARRKK_FFIILLEE22          Mark and move down            SSppaaccee
+     MMAARRKK_FFIILLEE33          Mark and move in a page       ^^SSppaaccee(^@)
+     MMAARRKK_AALLLL            Mark all files                HHoommee(+)
+     MMAARRKK_RREEVVEERRSSEE        Mark all files reversely      EEnndd(-)
+     MMAARRKK_FFIINNDD           Mark the matched files        **
+     IINN_DDIIRR              Change to a sub directory     RReettuurrnn
+     OOUUTT_DDIIRR             Change to a parent directory  BBss
+     LLOOGG_TTOOPP             Change to a root direcroty    \\
+     RREERREEAADD_DDIIRR          Reread the curent directory   ^^LL
+     PPUUSSHH_FFIILLEE           Push a file to the stack      DDeell(])
+     PPOOPP_FFIILLEE            Pop a file from the stack     IInnss([)
+     LLOOGG_DDIIRR             Change to a logical directory FF11(l)
+     EEXXEECCUUTTEE_FFIILLEE        Execute a file                FF22(x)
+     CCOOPPYY_FFIILLEE           Copy a file                   FF33(c)
+     DDEELLEETTEE_FFIILLEE         Delete a file                 FF44(d)
+     RREENNAAMMEE_FFIILLEE         Rename a file                 FF55(r)
+     SSOORRTT_DDIIRR            Sort the current directory    FF66(s)
+     FFIINNDD_FFIILLEE           Find files                    FF77(f)
+     TTRREEEE_DDIIRR            Display the tree screen       FF88(t)
+     EEDDIITT_FFIILLEE           Edit a file                   FF99(e)
+     UUNNPPAACCKK_FFIILLEE         Unpack a file                 FF1100(u)
+     AATTTTRR_FFIILLEE           Change a file attribute       FF1111(a)
+     IINNFFOO_FFIILLEESSYYSS        Display a file system info.   FF1122(i)
+     MMOOVVEE_FFIILLEE           Move a file                   FF1133(m)
+     DDEELLEETTEE_DDIIRR          Delete a directory            FF1144(D)
+     MMAAKKEE_DDIIRR            Make a directory              FF1155(k)
+     EEXXEECCUUTTEE_SSHH          Execute a child process       FF1166(h)
+     WWRRIITTEE_DDIIRR           Write a displayed directory   FF1177(w)
+     BBAACCKKUUPP_TTAAPPEE         Backup into a tape            FF1188(b)
+     VVIIEEWW_FFIILLEE           View a file                   FF1199(v)
+     PPAACCKK_FFIILLEE           Pack a file                   FF2200(p)
+     LLOOGG_TTRREEEE            Change directory with tree    LL
+     CCOOPPYY_TTRREEEE           Copy a file with tree         CC
+     MMOOVVEE_TTRREEEE           Move a file with tree         MM
+     UUNNPPAACCKK_TTRREEEE         Unpack a file with tree       UU
+     FFIINNDD_DDIIRR            Find a file recursively       FF
+     SSYYMMLLIINNKK_MMOODDEE        Switch the symbolic link mode SS
+     FFIILLEETTYYPPEE_MMOODDEE       Switch the file type symbol   TT
+     DDOOTTFFIILLEE_MMOODDEE        Switch the dot file display   HH
+     FFIILLEEFFLLGG_MMOODDEE        Switch the file flag display  OO
+     LLAAUUNNCCHH_FFIILLEE         Invoke the launcher           RReettuurrnn
+     SSEEAARRCCHH_FFOORRWW         Search forward a file         ^^SS
+     SSEEAARRCCHH_BBAACCKK         Search backward a file        ^^RR
+     SSPPLLIITT_WWIINNDDOOWW        Split into the windows        //
+     NNEEXXTT_WWIINNDDOOWW         Change to the next window     ^^
+     EEDDIITT_CCOONNFFIIGG         Invoke the customizer         EE
+     HHEELLPP_MMEESSSSAAGGEE        Display a help screen         ??
+     QQUUIITT_SSYYSSTTEEMM         Quit from fd                  EEsscc(q)
+
+     WWAARRNNIINNGG_BBEELLLL        Bell for warning
+     NNOO_OOPPEERRAATTIIOONN        Do nothing
+
+     The last 2 internal commands are used when you want change
+     the default key binding to cancel.
+
+     IInntteerrnnaall CCoommmmaannddss DDeessccrriippttiioonn
+     The detail of each internal command is the following.
+     Internal commands with similar function are described
+     together.
+
+        MMoovvee ccuurrssoorr
+             Move a cursor.
+
+        TTuurrnn ppaaggee
+             Turn to the previous/next page, when files are not
+             completely held in a screen.  Also if you try to
+             move out of the page with Cursor move, the page will
+             be turned.
+
+        MMoovvee ttoo tthhee ttoopp//bboottttoomm
+             Move a cursor to the top/bottom of the file list.
+             When the list is not held in a screen, the page is
+             turned.
+
+        SShhiifftt ffiilleennaammee
+             Shift the displayed string of filename on the cursor
+             position, when the filename is longer than the
+             prepared column width.  It is displayed as shifted
+             to right/left by 1 character.  The display of the
+             status line is also shifted simultaneously.
+
+        CChhaannggee llaayyoouutt
+             Change the number of columns into each value.  There
+             are usually 22 columns per screen.  As the column
+             width per file is changed according to the number of
+             columns, the displayed information is also changed.
+
+        MMaarrkk ffiillee
+             Mark the file on the cursor position.  You cannot
+             mark any directory.  [SSppaaccee] marks and moves down a
+             cursor.  [^^SSppaaccee] also marks and moves down a cur-
+             sor, but doesn't turn the page.  [HHoommee] marks all
+             the files, [EEnndd] marks all the files reversely.  [**]
+             additionally marks the file which matches the wild-
+             card.  You must input the wildcard string whenever
+             you push [**].
+
+             Merked files are used as the target of AATTTTRR_FFIILLEE,
+             CCOOPPYY_FFIILLEE, DDEELLEETTEE_FFIILLEE, MMOOVVEE_FFIILLEE, UUNNPPAACCKK_FFIILLEE and
+             the user defined command macros.
+
+        CChhaannggee ddiirreeccttoorryy
+             [RReettuurrnn] changes the current directory to the direc-
+             tory on the cursor position.  If you want to change
+             it to the parent directory, you should move a cursor
+             to the file of ".." and push [RReettuurrnn], or simply
+             push [BBss].  [\\] changes the current directory to the
+             root directory.
+
+        PPuusshh//ppoopp ffiillee ssttaacckk
+             [DDeell] pushes the file on the cursor position to the
+             file stack, and temporarily deletes the file from
+             the file list screen.  You can push files to the
+             file stack up to 55 files.
+
+             [IInnss] pops the file from the file stack and insert
+             it on the cursor position.  Tha last pushed file is
+             poped first.  But this order is expediently
+             displayed in ffdd, and it is reset by Directory move.
+
+        RReeddrraaww ssccrreeeenn
+             Redraw the file list screen by rereading the infor-
+             mation of the current directory.  It is useful when
+             some other process add/delete files, or when some-
+             thing break the screen display.
+
+             Moreover, when you use the terminal which doesn't
+             raise SSIIGGWWIINNCCHH signal at changing the screen size
+             (like kktteerrmm(1) on HP-UX, etc.), you must intention-
+             ally redraw after you change the screen size.
+
+        CChhaannggee llooggiiccaall ddiirreeccttoorryy (Logdir)
+             Change the current directory to the inputted path-
+             name.  When you input the pathname which starts with
+             '/', it means not the relative move but the absolute
+             move.
+
+             When you input the pathname "..", the pathname of the
+             current directory is adjusted into absolute expres-
+             sion.  Except this case, the current directory
+             always is showen as the virtual pathname, by reason
+             of a link and so on.  When you input the pathname
+             "??", you can move to the current directory when ffdd
+             was invoked.  When you input the pathname "--", you
+             can move to the last visited directory.
+
+             Moreover, When you input the pathname "@@" in floppy
+             drive, you can move to the directory on UNIX file
+             system, where you existed before moving to floppy
+             drive.  ((UU))
+
+             (Note: This command is called as "Loddsk" in the
+             original FD on MS-DOS, which is short for "LOGical
+             DiSK drive".  This "logical" means the drive name
+             prefixed to pathnames, and it is virtually named
+             against "physical disk drive".  On UNIX, since "log-
+             ical disk drive" never means pathname nor directory,
+             this command name "Change logical directory" is not
+             suitable.  But this name is expediently inherited
+             from the original version.)
+
+        EExxeeccuuttee ffiillee (eXec)
+             Execute the file on the cursor position with some
+             parameters, as the child process.  The cursor posi-
+             tion in command line exists after the filename in
+             case of the executable file, and bofore the filename
+             except it.  You should fill suitable parameters or
+             command name in each case.  The up/down cursor keys
+             can provide the command history which you executed
+             before.
+
+             On MS-DOS version, the LFN form filename in the com-
+             mand line which is quoted with the quotation mark ""
+             is automatically replaced into 8+3 form filename
+             before execution.  In this case, when there is the
+             filename described by the string quoted with "", this
+             string is always replaced into 8+3 form filename
+             after deleting "", otherwise it is never replaced
+             including "".
+
+        CCooppyy ffiillee (Copy)
+             Copy the file on the cursor position to the speci-
+             fied directory.  When the cursor position indicates
+             a directory, its contents are copyed recursively.
+             When some files are marked, the target is not the
+             file on the cursor position but the marked files.
+
+             When the same named file exists in the destination,
+             you can select the operation from the following:
+             "Update (by timestamp)", "Rename (each copyed
+             file)", "Overwrite", "Not_copy_the_same_name", "For-
+             ward".  If you select "Forward", you should specify
+             the directory as the distination to forward.  All
+             files which have the same names are moved to the
+             specified directory.
+
+        DDeelleettee ffiillee (Delete)
+             Delete the file on the cursor position.  No direc-
+             tory can be deleted.  When some files are marked,
+             the target is not the file on the cursor position
+             but the marked files.
+
+             When you don't have write permission on the file,
+             you are confirmed for security.
+
+        RReennaammee ffiillee (Rename)
+             Rename the file on the cursor position.  You cannot
+             rename to the same name as any existent file.  When
+             you specify the pathname with some directory name,
+             it is also moved to the directory.
+
+        SSoorrtt ffiillee (Sort)
+             Sort files in the current directory.  You can select
+             the sorted type from the following: "fileName",
+             "Extension", "Size", "Timestamp", "Length (of
+             filename)", and specify "Up (incremental order)" or
+             "Down (decremental order)".  When the sorted type
+             before sorting is the one except "No chg (not
+             sort)", the choice will include "No chg".  When you
+             sort after sorting another sorted type, the previous
+             sorted result is based in sorting.  This sorting has
+             a priority except specified type, the directory is
+             always precedes any file, except for the case of "No
+             chg".  In case of "Length", files which have the
+             same filename length are sorted in order of their
+             names.
+
+             But this sorting is expediently displayed in ffdd, and
+             it is reset by Directory move.
+
+        FFiinndd ffiillee (Find)
+             Find the files matching the wildcard, and display
+             only them.  The filename which starts with '.'
+             doesn't match the wildcard which starts with '*' nor
+             '?'.  If you want to cancel the File find, you
+             should move the current directory, or do FFIINNDD_FFIILLEE
+             again and input a null line.
+
+             When the current directory has the files which have
+             the extention registered to associate with an
+             archive browser, the string which starts with '/' is
+             used to find not the filename but the filename in
+             archive files, and only the archive files which con-
+             tain matched files are displayed.  This function is
+             available in the archive browser.
+
+             After Find file, you can not do WWRRIITTEE_DDIIRR.
+
+        DDiissppllaayy ttrreeee ssccrreeeenn (Tree)
+             Display the directory tree based on the current
+             directory.  You can select the directory in the tree
+             screen, to move the current directory.
+
+        EEddiitt ffiillee (Editor)
+             Edit the file on the cursor position.  The editor is
+             used referring the internal variable EEDDIITTOORR, or
+             referring the environment variable EEDDIITTOORR when the
+             internal variable is undefined.
+
+        UUnnppaacckk ffiillee (Unpack)
+             Unpack the archive file on the cursor position into
+             the specified directory.  In builtin configuration,
+             you can unpack only the tar file and its compressed
+             file and the lha compressed file.  You can describe
+             configurations in the initial configuration file to
+             support archivers except these.
+
+        CChhaannggee aattttrriibbuuttee (Attr)
+             Change the file access mode and the timestamp of the
+             file on the cursor position.  When some files are
+             marked, the target is not the file on the cursor
+             position but the marked files.  In case of the
+             marked files, you must select the mode or the times-
+             tamp, before changing it all together.
+
+             When you input the mode, cursor keys move a cursor
+             to the position you want to change, [SSppaaccee] reverses
+             the attribute on the position.  You should notice
+             that the attribute of the execution bit is not a
+             binary toggle but a triple toggle, which includes
+             setuid bit, setgid bit, and sticky bit respectively.
+             When you input the timestamp, you move a cursor to
+             the posision you want to change, and input a numeric
+             value.  Finally, [RReettuurrnn] executes the change.  You
+             can cancel with [EEsscc].  Be careful that the limit
+             check of date is not perfect.
+
+             Moreover, [aa](Attr), [dd](Date), [tt](Time) move a
+             cursor to the each beginning of input line.
+
+             On the OS which has the attribute of file flags, you
+             can change the file flags as well as the mode.  But
+             the value of flags which you can change is based on
+             your permission.
+
+        FFiillee ssyysstteemm iinnffoorrmmaattiioonn (Info)
+             Displey the information of the specified file sys-
+             tem.  When the inputted pathname is not the special
+             file which indicates a file system, the information
+             of the file system including the pathname is
+             displayed.
+
+        MMoovvee ffiillee (Move)
+             Move the file on the curor position to the specified
+             directory.  When the cursor position indicates a
+             directory, the directory itself is moved.  When some
+             files are marked, the target is not the file on the
+             cursor position but the marked files.
+
+             When the same named file exists in the destination,
+             you can select the operation as well as CCOOPPYY_FFIILLEE.
+             When the distination belongs to the different file
+             system, copy and delete are just executed continu-
+             ously.
+
+        DDeelleettee ddiirreeccttoorryy (rmDir)
+             Delete the directory on the cursor position recur-
+             sively.  When the directory in a symbolic link, only
+             the link is deleted and the linked directory has no
+             effect.
+
+        MMaakkee ddiirreeccttoorryy (mKdir)
+             Make the sub directory on the current directory.
+             When the inputted sub directory string includes '/',
+             which is the pathname delimiter, it goes on making
+             directory recursively until the directory described
+             by the string is finally created.
+
+             When you input the pathname which starts with '/',
+             the directory is made not on the current directory
+             but on the absolute path described.
+
+        EExxeeccuuttee cchhiilldd pprroocceessss (sHell)
+             Execute the inputted command string as the child
+             process, by handling the internal shell.  You can
+             refer the command history and use automatic LFN
+             replacement, as well as EEXXEECCUUTTEE_FFIILLEE.  When you push
+             only [RReettuurrnn] without any input, the user shell
+             which is described by the internal variable or the
+             environment variable SSHHEELLLL is invoked.  In this
+             case, you should input "eexxiitt" to return to ffdd.  When
+             the value of SSHHEELLLL is ffddsshh, the internal shell is
+             executed as the interactive shell.
+
+             However, when there is the same command name as a
+             builtin command or a internal command, the builtin
+             command or the internal command are executed instead
+             of the external command.  You can refer the clause
+             of `BBuuiillttiinn CCoommmmaannddss' for the details of the builtin
+             command.
+
+        WWrriittee ddiirreeccttoorryy (Write)
+             Write the displayed directory.  The gap between
+             files on the directory entry is filled.  When it is
+             executed after arranged by PPUUSSHH_FFIILLEE, PPOOPP_FFIILLEE and
+             SSOORRTT_DDIIRR, the result is written.
+
+             When the displayed directory doesn't belong to the
+             hierarchy under your home directory, you are con-
+             firmed for security whether if any other user
+             doesn't use the directory.  Since it is insecure,
+             you cannot write the NFS mounted directory and some
+             special directories.
+
+             If you execute the internal command which arranges
+             the file order, and then try to execute the internal
+             command which will break that order, you will be
+             confirmed whether if you write the directory or not,
+             just before the internal command is executed.  For
+             this function, you can write the directory without
+             intentionally executing this Derectory write com-
+             mand.  But when the displayed directory is not under
+             your home directory, this confirmation is not done.
+
+        BBaacckkuupp ttaappee (Backup)
+             Backup the file on the cursor position into the
+             specified storage device.  When the cursor position
+             indicates a directory, all of its contents are
+             backuped.  When some files are marked, the target is
+             not the file on the cursor position but the marked
+             files.
+
+             ttaarr(1) is used for backup.  When you specify the
+             filename except special files indicates devices as
+             input of the device name, the archive file is
+             created with that filename.
+
+        VViieeww ffiillee (View)
+             View the file on the cursor position.  The pager is
+             used referring the internal variable PPAAGGEERR, or
+             referring the environment variable PPAAGGEERR when the
+             internal variable is undefined.
+
+        PPaacckk ffiillee (Pack)
+             Pack the file on the cursor position into the speci-
+             fied archive file.  When the cursor position indi-
+             cates a directory, all of its contents are packed
+             into the archive file.  When some files are marked,
+             the target is not the file on the cursor position
+             but the marked files.
+
+             According to the extention of the inputted archive
+             file, the associated archiver is automatically
+             selected.  In builtin configuration, you can pack
+             only the tar file and its compressed file and the
+             lha compressed file.  You can describe configura-
+             tions in the initial configuration file to support
+             archivers except these.
+
+             When you use ttaarr(1), you may sometimes be unable to
+             pack a lot of files at once, because of the maximum
+             parameter length which can be given at once.  In
+             those case, you can create the archive file with
+             BBAACCKKUUPP_TTAAPPEE.
+
+        OOppeerraattiioonnss wwiitthh ttrreeee
+             [LL], [CC], [MM] and [UU] can make you select the path-
+             name from the directory tree instead of the string
+             input.  They execute the internal command equivalent
+             to LLOOGG_DDIIRR, CCOOPPYY_FFIILLEE, MMOOVVEE_FFIILLEE and UUNNPPAACCKK_FFIILLEE,
+             respectively.
+
+        FFiinndd ffiillee rreeccuurrssiivveellyy
+             Find the file matching the wildcard recursively
+             under the current directory, and move the directory
+             where the found file exists.  When the cursor posi-
+             tion indicates a directory, it find the file under
+             the directory on the cursor position instead of the
+             current directory.
+
+             You will be confirmed for each matching file whether
+             if you move or not, and you can select [nn](No)
+             unless the target file is displayed.
+
+        IInnvvookkee llaauunncchheerr
+             [RReettuurrnn] executes the operation according to the
+             extention of the file on the cursor position, unless
+             the cursor position indicates a directory.  In buil-
+             tin configuration, the archive browser is registered
+             with the tar file and its compressed file and the
+             lha compressed file.  You can describe configura-
+             tions in the initial configuration file to register
+             launchers except these.
+
+             When the file on the cursor position has the unre-
+             gistered extention, it will behave as same as
+             VVIIEEWW_FFIILLEE.  In the archive browser, the registered
+             launcher is available, so that you can invoke the
+             archive browser recursively.
+
+        SSwwiittcchh ssyymmbboolliicc lliinnkk mmooddee
+             In case of the symbolic link file, the file informa-
+             tion displayed in the file column and the status
+             line shows not the status of its referential file
+             but the status of the link itself.  It switches to
+             show the status of the referential file.  ((UU))
+
+             In the mode of showing the status of the referential
+             file, 'SS'(Symbolic Link) is displayed on the left
+             end of the function line.
+
+        SSwwiittcchh ffiillee ttyyppee ssyymmbbooll mmooddee
+             Switch to display the symbol which means the file
+             type after the filename in the file list, like as
+             the display in -F option of llss(1).  It is toggle to
+             switch if display the symbol or not.  The each sym-
+             bol means the following.
+                  //    derectory
+                  @@    symbolic link
+                  **    executable file
+                  ==    socket
+                  ||    FIFO
+
+                  (MS-DOS version and the floppy drive)
+                  //    directory
+                  **    executable file
+                  ==    system file
+                  ||    label
+
+             In the mode of displaying the file type symbol,
+             'TT'(Type) is displayed on the left end of the func-
+             tion line.
+
+        SSwwiittcchh ddoott ffiillee ddiissppllaayy mmooddee
+             Switch not to display the file whose filename starts
+             with '.' in the file list.  It is toggle to switch
+             if display the dot file or not.
+
+             In the mode of not displaying the dot file,
+             'HH'(Hidden) is displayed on the left end of the
+             function line.
+
+        SSwwiittcchh ffiillee ffllaagg ddiissppllaayy mmooddee
+             Switch to display the file flag, which exists in
+             some OS, instead of the file mode on each file.  It
+             is toggle to switch if display the file flag or the
+             file mode.  This is not available on any OS without
+             the file flag.  The each symbol means the following
+             respectively.  ((UU))
+                  AA    Archived
+                  NN    Nodump
+                  aa    system Append-only
+                  cc    system unChangable (immutable)
+                  uu    system Undeletable
+                  aa    user Append-only
+                  cc    user unChangable (immutable)
+                  uu    user Undeletable
+
+             In the mode of displaying the file flag, 'FF'(Flags)
+             is displayed on the left end of the function line.
+
+        SSeeaarrcchh ffiillee
+             Search the current directory incrementally for the
+             filename, with moving a cursor.  When you execute
+             this command, to switch to the search mode, a prompt
+             appears in the function line.  You can input the
+             filename in this prompt, and a cursor will move to
+             the filename matching the string which is already
+             inputted at that present.  [EEsscc] switches to the
+             normal mode.
+
+        SSpplliitt wwiinnddooww
+             Switch from the normal non-split window mode to the
+             split window mode.  In the split window mode, the
+             screen is split into 2 windows vertically, so that
+             you can operate works individually on each window.
+
+        CChhaannggee wwiinnddooww
+             Change effective window between each windows in the
+             split window mode.  In non-split window mode, it is
+             ineffective.
+
+        IInnvvookkee ccuussttoommiizzeerr
+             Invoke the customizer which interactively changes
+             the configurations to be set up by the internal
+             variable and the builtin command.  While the confi-
+             gurations which is set up here is reflected immedi-
+             ately, you must intentionally save configurations in
+             the customizer if you want to reflect in the initial
+             configuration file.
+
+        DDiissppllaayy hheellpp
+             Display the list of the current key bindings and
+             their command descriptions.  When the list is not
+             completely held in a screen, it prompts for every
+             screen.
+
+             In case of the circulated executable binary file,
+             this screen shows the E-mail address of the circula-
+             tion manager in the function line.  Please contact
+             here when something will happen.
+
+        QQuuiitt (Quit)
+             Quit from ffdd.
+
+     CCoommmmaannddss
+     In EEXXEECCUUTTEE_SSHH and the initial configuration file, you can
+     use the internal commands described above and the builtin
+     commands described below, as well as the external commands.
+     With these commands, a pipeline can consist of one or more
+     commands separated by || or &&||.  || connects the standard out-
+     put of the previous command to the standard input of the
+     next command.  &&|| connects both the standard output and
+     standard error output of the previous command to the stan-
+     dard input of the next command.  The exit status of a pipe-
+     line is the exit status of the last command.  You can start
+     a pipeline with !!, then the exit status of a pipeline will
+     be the logical NOT of the exit status of the last command.
+     Moreover, a command list can consist of one or more pipe-
+     lines separated by ;;, &&, &&&&, ||||.  This command list can end
+     with ;; or &&.  These separators mean the following.
+        ;;    Execute commands sequentially.
+        &&    Execute commands synchronously, not waiting for the
+             preceding pipeline to finish.
+        &&&&   Execute the following pipeline only if the preceding
+             pipeline returns a 0 exit status.
+        ||||   Execute the following pipeline only if the preceding
+             pipeline returns a non-0 exit status.
+     In these command lists, a newline means as same as ;;.
+
+     The input/output of each command in the command list can be
+     redirected with the following redirectees.  These redirec-
+     tees can be placed on any position in the command string.
+        _n<<_f_i_l_e    Redirect the input indicated by the file
+                  descriptor _n into the input from _f_i_l_e.  If _n is
+                  omitted, it is regarded as the standard input
+                  is specified.
+        _n>>_f_i_l_e    Redirect the output indicated by the file
+                  descriptor _n into the output to _f_i_l_e.  If _n is
+                  omitted, it is regarded as the standard output
+                  is specified.  If _f_i_l_e doesn't exist it is
+                  created, otherwise it is truncated to 0 length
+                  before output.
+        _n>>>>_f_i_l_e   Redirect the output indicated by the file
+                  descriptor _n into the output to _f_i_l_e.  If _n is
+                  omitted, it is regarded as the standard output
+                  is specified.  If _f_i_l_e doesn't exist it is
+                  created, otherwise output is appended to it.
+        _n_1<<&&_n_2    Redirect the input indicated by the file
+                  descriptor _n_1 into the input indicated by the
+                  file descriptor _n_2.  If _n_1 is omitted, it is
+                  regarded as the standard input is specified.
+        _n_1>>&&_n_2    Redirect the output indicated by the file
+                  descriptor _n_1 into the output indicated by the
+                  file descriptor _n_2.  If _n_1 is omitted, it is
+                  regarded as the standard output is specified.
+        &&>>_f_i_l_e    Redirect both the standard output and the stan-
+                  dard error output into the output to _f_i_l_e.
+        _n<<>>_f_i_l_e
+        _n>><<_f_i_l_e   Redirect both the input/output indicated by the
+                  file descriptor _n into the input/output from/to
+                  _f_i_l_e.  If _n is omitted, it is regarded as the
+                  standard input is specified.
+        _n<<--
+        _n<<&&--      Close the input indicated by the file descrip-
+                  tor _n.  If _n is omitted, it is regarded as the
+                  standard input is specified.
+        _n>>--
+        _n>>&&--      Close the output indicated by the file descrip-
+                  tor _n.  If _n is omitted, it is regarded as the
+                  standard output is specified.
+        _n<<<<[--]_w_o_r_d
+                  Redirect the input indicated by the file
+                  descriptor _n into the input which is read up to
+                  a input line as same as _w_o_r_d, or to an end of
+                  file.  If any part of _w_o_r_d is quoted, no input
+                  line is evaluated.  Otherwise, each input line
+                  is evaluated to expand variables or replace
+                  strings.  When you specify --, all tabs on the
+                  beginning of input lines is stripped to be send
+                  to a command.  If _n is omitted, it is regarded
+                  as the standard input is specified.
+
+     On each command line, the string from '##' to the end of line
+     and a null line are ignored.  When the line ends with '\\',
+     it is referred as continuing into the next line, so that you
+     can split a long line with this.
+
+     BBuuiillttiinn CCoommmmaannddss
+     ffdd has the following builtin commands.  These builtin com-
+     mands can be used in EEXXEECCUUTTEE_SSHH and the initial configura-
+     tion file.
+
+     iiff _l_i_s_t tthheenn [eelliiff _l_i_s_t tthheenn _l_i_s_t] ... [eellssee _l_i_s_t] ffii
+                   The _l_i_s_t of iiff clause and eelliiff clauses are
+                   executed in order, and if each exit status is
+                   a 0, then the _l_i_s_t of tthheenn clause associated
+                   with it is executed and the eelliiff clauses after
+                   it are ignored.  If no _l_i_s_t of iiff clause nor
+                   eelliiff clauses return a 0, the _l_i_s_t of eellssee
+                   clause is executed.  If no _l_i_s_t of tthheenn
+                   clauses nor eellssee clause is executed, then iiff
+                   returns a 0 exit status.
+
+     wwhhiillee _l_i_s_t ddoo _l_i_s_t ddoonnee
+                   The _l_i_s_t of wwhhiillee clause is executed repeat-
+                   edly, and while its exit status is 0, the _l_i_s_t
+                   of ddoo clause is executed repeatedly.  If the
+                   _l_i_s_t of ddoo clause is never executed, then
+                   wwhhiillee returns a 0 exit status.
+
+     uunnttiill _l_i_s_t ddoo _l_i_s_t ddoonnee
+                   The _l_i_s_t of uunnttiill clause is executed repeat-
+                   edly, and while its exit status is NOT 0, the
+                   _l_i_s_t of ddoo clause is executed repeatedly.  If
+                   the _l_i_s_t of ddoo clause is never executed, then
+                   uunnttiill returns a 0 exit status.
+
+     ffoorr _N_A_M_E [iinn _v_a_l_u_e ...] ddoo _l_i_s_t ddoonnee
+                   The internal valiable _N_A_M_E is substituted for
+                   values of _v_a_l_u_e one by one, and _l_i_s_t is exe-
+                   cuted according to the each value.  If iinn
+                   _v_a_l_u_e is omitted, then each positional parame-
+                   ter is substituted one by one.
+
+     ccaassee _w_o_r_d iinn [_p_a_t_t_e_r_n [|| _p_a_t_t_e_r_n] ... )) _l_i_s_t ;;;;] ... eessaacc
+                   The string _w_o_r_d is compared with the each _p_a_t_-
+                   _t_e_r_n, _l_i_s_t associated with the _p_a_t_t_e_r_n which
+                   first matches it is executed.
+
+     ((_l_i_s_t))        Execute _l_i_s_t in a sub shell.
+
+     {{ _l_i_s_t;; }}     Execute _l_i_s_t in the current shell.
+
+     _N_A_M_E==[_v_a_l_u_e] [_c_o_m ...]
+                   Define a internal variable which is available
+                   only in ffdd.  It substitutes the value (string)
+                   _v_a_l_u_e for the internal variable _N_A_M_E.  When
+                   you describe the command _c_o_m after the defini-
+                   tion of a variable, _c_o_m is executed on the
+                   state where this variable is regarded as the
+                   environment variable.  In this case, the
+                   definition of _N_A_M_E is not remain as the
+                   environment variable nor the internal vari-
+                   able.
+
+                   If _v_a_l_u_e is omitted, the value of the internal
+                   variable _N_A_M_E is defined as a null.  If you
+                   want to delete the definition of a internal
+                   variable, use uunnsseett.
+
+     _n_a_m_e(()) {{ _l_i_s_t; }}
+                   Define a function whose body is _l_i_s_t, as the
+                   name of _n_a_m_e.  The defined function can be
+                   used in the command line of EEXXEECCUUTTEE_SSHH and
+                   each command macro described below.  You can
+                   use the positional parameter $$_n in each
+                   description of _l_i_s_t, which indicates the argu-
+                   ment when the function is invoked.  $$00 is _n_a_m_e
+                   itself, and $$11-$$99 indicates each argument.
+
+                   Although you cannot omit {{ }} and _l_i_s_t, you can
+                   omit {{ }} before/after _l_i_s_t which consists of a
+                   single command.  If you want to delete the
+                   definition of a function, use uunnsseett.
+
+     !!_n_u_m          Execute the command which has the history
+                   number specified with the numeric value _n_u_m.
+                   When _n_u_m is negative value, it executes the
+                   command which has the history number as the
+                   current history number minus _n_u_m.
+
+     !!!!            Execute the previous command.  This is synonym
+                   for !!--11.
+
+     !!_s_t_r          Execute the command history which starts with
+                   the string _s_t_r.
+
+     :: [_a_r_g ...]   No effect.  But it evaluates _a_r_g and performs
+                   redirection.
+
+     .. _f_i_l_e
+     ssoouurrccee _f_i_l_e   Read and evaluate commands from _f_i_l_e.  _f_i_l_e
+                   must exists on the directory which PPAATTHH
+                   includes, or be described with pathname.  The
+                   each line format is based on the format of
+                   EEXXEECCUUTTEE_SSHH.  You can describe this in the file
+                   as nesting.
+
+     aalliiaass [_n_a_m_e[==_c_o_m]]
+                   Define a alias whose body is _c_o_m, as the name
+                   of _n_a_m_e.  The defined alias can be used in the
+                   command line of EEXXEECCUUTTEE_SSHH and each command
+                   macro described below.  The alias substitution
+                   is performed recursively.
+
+                   If _c_o_m is omitted, the alias of _n_a_m_e is
+                   displayed.  If both _c_o_m and _n_a_m_e are omitted,
+                   all the current alias definition list is
+                   desplayed.
+
+     aarrcchh _e_x_t [_p_a_c_k _u_n_p_a_c_k]
+                   Register the archiver command associated with
+                   the archive file which has extention _e_x_t.  The
+                   pack command is specified as _p_a_c_k, and the
+                   unpack command is specified as _u_n_p_a_c_k, using
+                   the macro representation quoted with "".  When
+                   _e_x_t starts with //, uppercase/lowercase is
+                   ignored in the comparison of any extention.
+
+                   If both _p_a_c_k and _u_n_p_a_c_k are omitted, the
+                   archiver command registration for the exten-
+                   tion _e_x_t is deleted.
+
+     bbgg [_j_o_b]      Continue the execution of the job specified
+                   with _j_o_b in the background.  The following
+                   format is available to specify a job.  ((UU))
+                         %%
+                         %%++   the current job
+                         %%--   the previous job
+                         %%_n   the job with job number _n
+                         %%_s_t_r the job whose command line starts with _s_t_r
+                   But, you must describe these %% in the command
+                   line of EEXXEECCUUTTEE_SSHH as the duplicated expres-
+                   sion, such as %%%%, for the reason of the param-
+                   eter macro function described below.
+
+                   If _j_o_b is omitted, the current job is contin-
+                   ued in the background.
+
+     bbiinndd _c [_c_o_m_1 [_c_o_m_2] [::_c_o_m_m_e_n_t]]
+                   Bind the command _c_o_m_1 to the key _c.  When you
+                   want to specify a control character for _c, you
+                   can prefix ^^ into 2 characters, such as ^A.
+                   When you want to specify a character with the
+                   META key (or the ALT key on MS-DOS version),
+                   you can prefix @@ into 2 characters, such as
+                   @a.  When you want to specify a function key
+                   and a special key, you can use each indentif-
+                   ier described in kkeeyymmaapp command after, such as
+                   F10.  Or you can describe the escape sequence,
+                   such as \\nn and \\ee, and the octal expression,
+                   such as \\oooooo.
+
+                   In case of binding the internal command of ffdd,
+                   you can the command identifier as it is.  When
+                   you want to define the internal command with
+                   some arguments or define the command in the
+                   macro representation, you should describe the
+                   string quoted with "".  If _c_o_m_2 is not omitted,
+                   _c_o_m_2 is executed when the cursor position
+                   indicates a directory.  When the key _c is the
+                   function key of F1-F10, if you describe _c_o_m_-
+                   _m_e_n_t prefixed with :: trailing the command
+                   description, you can change the display of
+                   associated part in the function line into _c_o_m_-
+                   _m_e_n_t.
+
+                   However, note that, with the key binding for
+                   the control key, the configuration in the edit
+                   mode described below is prior to the key bind-
+                   ing.
+
+                   If both _c_o_m_1 and _c_o_m_2 are omitted, the resig-
+                   tration of key binding for the key _c is
+                   deleted.
+
+     bbrreeaakk [_n]     Exit from the loop, it is used in the ffoorr
+                   statement and so on.  If _n is specified, it
+                   breaks _n levels from the loop.
+
+     ccdd [_d_i_r]      Change the current directory in ffdd to _d_i_r.  If
+                   _d_i_r is omitted, it moves to the directory
+                   indicated by the internal variable HHOOMMEE.  It
+                   is useful to define the key macro as "cd
+                   $HOME".  If you specify the pathname as "..",
+                   "??", "--", "@@", it behaves like as LLOOGG_DDIIRR.
+
+     cchhddiirr [_d_i_r]   Same as ccdd.  ((DD))
+
+     cchheecckkiidd [_f_i_l_e ...]
+                   Calculate the unique ID of the specified file
+                   and display it, according to the MD5 algorism
+                   in RFC1321.  When you specify multiple _f_i_l_es,
+                   the IDs of all specified files are calculated
+                   and displayed.  When you specify nothing, the
+                   ID of running ffdd itself is displayed.
+
+                   Since this algorism is guaranteed to be
+                   secure, it is available to confirm the iden-
+                   tity of files.
+
+     ccllss           Clear the screen.  ((DD))
+
+     ccoonnttiinnuuee _n    Resume the next iteration in the loop, it is
+                   used in the ffoorr statement and so on.  If _n is
+                   specified, it resumes the next iteration in
+                   the loop _n - 1 levels out of the loop.
+
+     ccooppyy [//AABBVVYY--YY] _s_r_c [//AABB] [++ _s_r_c_2 [//AABB] [++ ...]] [_d_e_s_t [//AABB]]
+                   Copy the file indicated by _s_r_c into the file
+                   or the directory indicated by _d_e_s_t.  When _d_e_s_t
+                   indicates a directory, the filename in the
+                   destination is _s_r_c.  If _d_e_s_t is omitted, it is
+                   copied into the current directory.  You can
+                   specify multiple source files by describing to
+                   separete them with ++, or by using the wild-
+                   card.  When you separate them with ++, those
+                   files are concatinated and copied.  When you
+                   use the wildcard, they are copied one by one
+                   in case that the destination is a directory,
+                   and they are concatinated in case that the
+                   destination is a file.  ((DD))
+
+                   When you specify //AA, it is treated as the
+                   ASCII text file.  When you specify //BB, it is
+                   treated as the binary file.  When you specify
+                   //VV, it is verified to copy.  When you specify
+                   //YY, it doesn't prompts for confirming to
+                   overwrite into the destination.  When you
+                   specify //--YY,, it prompts for confirmation
+                   before overwriting into the destination.
+
+     ddeell [//PP] _f_i_l_e
+     eerraassee [//PP] _f_i_l_e
+                   Delete the files indicated by _f_i_l_e.  You can
+                   specify multiple files by using wildcard.  ((DD))
+
+                   When you specify //PP, it prompts for confirma-
+                   tion before deleting files.
+
+     ddiirr [//PPWWSSBBLLVV] [//AA[DDRRHHSSAA--]] [//OO[NNSSEEDDGGAA--]] [_d_i_r]
+                   List files and sub directories in the direc-
+                   tory indicated by _d_i_r.  If _d_i_r is omitted, the
+                   information in the the current directory is
+                   listed.  ((DD))
+
+                   When you specify //PP, it prompts for every
+                   screen.  When you specify //WW, it is listed in
+                   the wide view.  When you specify //AA, it lists
+                   only the files which have the attribute indi-
+                   cated by the trailing character.
+                         DD  directory        RR  read only file
+                         HH  hidden file      SS  system file
+                         AA  ready to archive --  except it
+                   When you specify //OO, it sorts with the sorted
+                   type indicated by the trailing character.
+                         NN  by name          SS  by size
+                         EE  by extention     DD  by date & time
+                         GG  directory first  AA  by last access time
+                         --  reverse order
+                   When you specify //LL, it uses lowercase.  When
+                   you specify //VV, it lists the verbose informa-
+                   tion.
+
+     eecchhoo [--nn] [_a_r_g ...]
+                   Echo _a_r_g to the standard output.  When you
+                   don't specify --nn, newline is added to output
+                   trailing after _a_r_g.  See eecchhoo(1) for details.
+
+     eevvaall [_a_r_g ...]
+                   Evaluate _a_r_g and execute the results.
+
+     eevvaallmmaaccrroo [_a_r_g ...]
+                   Evaluate parameter macros included in _a_r_g and
+                   execute the results.  Since eevvaall doesn't
+                   evaluate any parameter macro, you should
+                   choose them according to uses.  When in the
+                   function, you cannot use any parameter macro,
+                   then you need this command to extract parame-
+                   ter macros.
+
+     eexxeecc [_c_o_m [_a_r_g ...]]
+                   Execute _c_o_m in place of the execution of ffdd.
+                   You can specify _a_r_g as arguments of _c_o_m.
+
+     eexxiitt [_n]      Exit from ffdd.  When you specify _n, it exits
+                   with the exit status _n.
+
+     eexxppoorrtt [_N_A_M_E[==[_v_a_l_u_e]] ...]
+                   Mark the internal variable _N_A_M_E to be inher-
+                   ited to child processes as the environment
+                   variable.  Since then, the definition of _N_A_M_E
+                   can be referred in any child process.  When
+                   you eexxppoorrtt the undefined internal variable, it
+                   doesn't become the environment variable until
+                   the internal variable is defined.  When you
+                   want to define the value at the same time, you
+                   should specify _v_a_l_u_e.
+
+                   If only == is specified and _v_a_l_u_e is omitted,
+                   the value of the environment variable _N_A_M_E is
+                   defined as a null.  If no argument is speci-
+                   fied, all of the eexxppoorrtted environment vari-
+                   ables are listed.  When you want to delete the
+                   definition of the environment variable, you
+                   can use uunnsseett.
+
+     ffdd [_d_i_r_e_c_t_o_r_y]
+                   Invoke ffdd from the internal shell.  If you
+                   specify _d_i_r_e_c_t_o_r_y, the current directory is
+                   moved to the directory initially.  You can
+                   return to the internal shell by QQUUIITT_SSYYSSTTEEMM.
+                   It is effective only when it is invoked as
+                   ffddsshh.
+
+     ffgg [_j_o_b]      Continue the execution of the job specified
+                   with _j_o_b in the foreground.  The following
+                   format is available to specify a job.  ((UU))
+                         %%
+                         %%++   the current job
+                         %%--   the previous job
+                         %%_n   the job with job number _n
+                         %%_s_t_r the job whose command line starts with _s_t_r
+                   But, you must describe these %% in the command
+                   line of EEXXEECCUUTTEE_SSHH as the duplicated expres-
+                   sion, such as %%%%, for the reason of the param-
+                   eter macro function described below.
+
+                   If _j_o_b is omitted, the current job is contin-
+                   ued in the foreground.
+
+     ggeettkkeeyy [_n_u_m]  Get the key code sequence for the pushed key.
+                   It prompts after executed, and displays the
+                   key code seqence for the key which you push to
+                   specify.  It continues until you push any key
+                   _n_u_m times.  When _n_u_m is more than 11 time, you
+                   can stop it with pushing [SSppaaccee].  When _n_u_m is
+                   00 time, it continues forever until [SSppaaccee] is
+                   pushed.  The displayed sequence can be used as
+                   the key code sequence for kkeeyymmaapp command.  ((UU))
+
+                   If _n_u_m is omitted, it is regarded as 11 time is
+                   specified.
+
+     hhaasshh [--rr | _c_o_m ...]
+                   Seahch the absolute path for _c_o_m referring to
+                   PPAATTHH, which indicates the search path when the
+                   external command is executed, and register the
+                   result in the hash table.
+
+                   When you specify --rr instead of _c_o_m, all the
+                   memoried hash table are discarded.  If _c_o_m is
+                   omitted, the hash table information is listed.
+                   hhiittss, ccoosstt, ccoommmmaanndd indicate the number of
+                   times the command has been executed, the meas-
+                   ure of the work required to search it in the
+                   search path, and the absolute path for the
+                   command, respectively.  When the command is
+                   searched in a relative directory, it is
+                   necessary to re-search whenever the current
+                   directory is moved, because it is not
+                   registered as the absolute path.  In such com-
+                   mand, ** trailing hhiittss is displayed.
+
+     hhiissttoorryy [_n]   List the last _n command histories with the
+                   history number.
+
+                   If _n is omitted, all of the memoried command
+                   histories are listed.
+
+     jjoobbss          List the running jobs.  ((UU))
+
+     kkccoonnvv [--ii _i_n] [--oo _o_u_t] [_i_n_f_i_l_e [_o_u_t_f_i_l_e]]
+                   Read from _i_n_f_i_l_e and convert its Kanji code
+                   from _i_n to _o_u_t, and output to _o_u_t_f_i_l_e.  In _i_n
+                   and _o_u_t, you can specify the string which used
+                   in the environment variable FFNNAAMMEEKKCCOODDEE
+                   described below.  If each of them is omitted,
+                   it is regarded as that the Kanji code speci-
+                   fied in compile is specified.  If _o_u_t_f_i_l_e is
+                   omitted, it outputs to the standard output.
+                   If also _i_n_f_i_l_e is omitted, it reads from the
+                   standard input.  ((UU))
+
+     kkeeyymmaapp [_c [_s_t_r]]
+                   Map the sequence _s_t_r as key code of the spe-
+                   cial key _c.  You can use only the following
+                   identifiers as _c.  ((UU))
+                         UUPP       Up         DDOOWWNN     Down
+                         RRIIGGHHTT    Right      LLEEFFTT     Left
+                         BBEEGG      Begin      EEOOLL      Eol
+                         HHOOMMEE     Home       EENNDD      End
+                         IINNSS      Insert     DDEELL      Delete
+                         IINNSSLLIINN   InsLine    DDEELLLLIINN   DelLine
+                         PPPPAAGGEE    PageUp     NNPPAAGGEE    PageDown
+                         EENNTTEERR    Enter      BBSS       Bs
+                         CCLLRR      Clear      HHEELLPP     Help
+                         PPLLUUSS     + (tenkey) MMIINNUUSS    - (tenkey)
+                         AASSTTEERR    * (tenkey) SSLLAASSHH    / (tenkey)
+                         CCOOMMMMAA    , (tenkey) DDOOTT      . (tenkey)
+                         EEQQUUAALL    = (tenkey) RREETT      Return (tenkey)
+                         TTKK00..TTKK99 0-9 (tenkey)
+                         FF11...FF2200 function key
+
+                   You can use the escape sequence in the key
+                   code sequence, such as \\nn =0x0a and \\ee =0x1b.
+                   You can also use the octal expression, such as
+                   \\oooooo.  You can describe the control character
+                   prefixing ^^, such as ^A.  ^^ itself can be
+                   described as \\^^.
+
+                   If _s_t_r is omitted, the key code sequence for _c
+                   is displayed.  If both _s_t_r and _c are omitted,
+                   all of the mappings for special keys are
+                   listed.  When you specify _s_t_r as """", the key
+                   code mapping for _c is canceled.
+
+     kkiillll [--ll | --_s_i_g_n_a_l] [_p_i_d | _j_o_b ...]
+                   Send the signal indicated by _s_i_g_n_a_l to the
+                   process indicated by the process number _p_i_d or
+                   to the job indicated by _j_o_b.  _s_i_g_n_a_l is
+                   described as a numeric value or a signal name.
+
+                   If _s_i_g_n_a_l is omitted, SSIIGGTTEERRMM is send.  When
+                   you specify --ll, it lists the signal names
+                   which can be used as _s_i_g_n_a_l instead of sending
+                   a signal.
+
+     llaauunncchh _e_x_t [_c_o_m [_f_o_r_m_a_t [_t_o_p _b_o_t_t_o_m]]]
+                   Register the behavior for the extention _e_x_t as
+                   the launcher.  You should the macro represen-
+                   tation quoted with "" as _c_o_m.  When you regis-
+                   ter the archive browser, you should describe
+                   the command to list the archived files as _c_o_m,
+                   and describe the format of the list as _f_o_r_m_a_t.
+                   When you describe _t_o_p and _b_o_t_t_o_m, you can
+                   specify unnecessary lines in the list as the
+                   number of lines from the top/bottom line.
+                   When _e_x_t starts with //, uppercase/lowercase is
+                   ignored in the comparison of any extention.
+
+                   If _c_o_m is omitted, the launcher registration
+                   for _e_x_t is canceled.
+
+     mmdd _d_i_r
+     mmkkddiirr _d_i_r     Create the directory _d_i_r.  ((DD))
+
+     pprriinnttaarrcchh [_e_x_t]
+                   Print the archiver commands registered for the
+                   archive file which has the extention _e_x_t.
+
+                   If _e_x_t is omitted, all of the registered
+                   archiver commands are listed.
+
+     pprriinnttbbiinndd [_c] Print the command binded to the key _c.  You
+                   can specify the key as well as bbiinndd.
+
+                   If _c is omitted, all of the registered key
+                   bindings are listed, which is defined not as
+                   the internal command but as the command macro.
+                   The key bindings of internal commands can be
+                   referred in HHEELLPP_MMEESSSSAAGGEE.
+
+     pprriinnttddrrvv [_c]  Print the device file and the number of
+                   heads/sectors/cylinders of the floppy drive
+                   registered for the drive name _c.  ((UU))
+
+                   If _c is omitted, all of the registered floppy
+                   drives are listed.
+
+     pprriinnttllaauunncchh [_e_x_t]
+                   Print the command macro registered as the
+                   launcher for the extention _e_x_t.  When it is
+                   registered as the archive browser, the format
+                   for listing is also printed.
+
+                   If _e_x_t is omitted, all of the registered
+                   launchers are listed.
+
+     ppwwdd           Dispray the current directory with the abso-
+                   lute representation.
+
+     rreeaadd [_N_A_M_E ...]
+                   Read one line from the standard input and sub-
+                   stitute that string for the internal variable
+                   _N_A_M_E.  The inputted string is separated with
+                   IIFFSS into some words.  When multiple _N_A_M_Es are
+                   specified, words are substituted one by one
+                   from the first of line, and all the rest are
+                   substituted for the last _N_A_M_E.  When the
+                   number of words in inputted string is less
+                   than the number of _N_A_M_E, a null is substituted
+                   for the rest of _N_A_M_E.
+
+     rreeaaddoonnllyy [_N_A_M_E[==[_v_a_l_u_e]] ...]
+                   Mark the internal variable _N_A_M_E to be
+                   readonly.  Since then, you cannot change the
+                   value of _N_A_M_E.  When you want to define the
+                   value at the same time, you should specify
+                   _v_a_l_u_e.
+
+                   If only == is specified and _v_a_l_u_e is omitted,
+                   the value of the internal variable _N_A_M_E is
+                   defined as a null.  If no argument is speci-
+                   fied, all of the readonly internal variables
+                   are listed.
+
+     rrdd _d_i_r
+     rrmmddiirr _d_i_r     Delete the directory _d_i_r.  You cannot delete
+                   the non-empty directory.  ((DD))
+
+     rreenn _o_l_d _n_e_w
+     rreennaammee _o_l_d _n_e_w
+                   Rename the filename or the directory name _o_l_d
+                   into _n_e_w.  You can specify the wildcard in _o_l_d
+                   and _n_e_w to rename the multiple filenames all
+                   together.  ((DD))
+
+     rreemm [_a_r_g ...] No effect, same as ::.  ((DD))
+
+     rreettuurrnn [_n]    Return from a function with the return value
+                   specified by _n.  If _n is omitted, the return
+                   value is the exit status of the last executed
+                   command.  It cannot be used out of a function.
+
+     sseett [----aaeeffhhkkmmnnttuuvvxx] [_a_r_g ...]
+                   List internal variables and functions, without
+                   any argument.  When you specify _a_r_g, _a_r_g is
+                   substituted for the posisional parameter $$11,
+                   $$22, ..., $$_n in order.  When you specify any
+                   option, each option means the following.  When
+                   you use ++ instead of --, the option parameter
+                   turns off each option.
+                   --aa   EExxppoorrtt any internal variable automati-
+                        cally when it is defined.
+                   --ee   Exit immediately when any command returns
+                        the exit status except 00.
+                   --ff   Disable the wildcard expansion.
+                   --hh   Register any command to the hash table
+                        just before it is executed.  The commands
+                        used in a function are read when it is
+                        defined, and are registered to the hash
+                        table.  The command hash itself is always
+                        valid, if --hh option is set or not.
+                   --kk   Treat all _N_A_M_E==[_v_a_l_u_e] formed arguments
+                        as the variable definition, while they
+                        are not placed on the beginning of com-
+                        mand line string.
+                   --mm   Enable the job control.  This option is
+                        valid by default.  ((UU))
+                   --nn   Read command inputs but don't execute
+                        them.
+                   --tt   Exit immediately after executing the
+                        current command input.
+                   --uu   Treat the reference of undefined vari-
+                        ables as an error.
+                   --vv   Display the command inputs whenever they
+                        are read.
+                   --xx   Display the command strings whenever they
+                        are executed.
+                   ----   Indicate the end of options.  No flag is
+                        changed.
+
+     sseettddrrvv _c _d_e_v_i_c_e _h_d _s_c _c_l
+                   Specify the device file indicated by _d_e_v_i_c_e
+                   for the MS-DOS floppy drive named as _c.  At
+                   the same time, _h_d, _s_c, _c_l are specified as the
+                   number of
+                   heads(sides)/sectors/cylinders(tracks) in the
+                   format which is treated in the driver of _d_e_v_-
+                   _i_c_e.  In special case, when you want to treat
+                   the 640KB2DD(hd=2/sc=8/cl=80) floppy disk with
+                   the driver which can treat only the
+                   820KB2DD(hd=2/sc=9/cl=80) floppy disk, you
+                   should specify the value adding 110000 (108) as
+                   the value of _s_c.  ((UU))
+
+                   On the PC-UNIX environment which is worked on
+                   PC, specifying the string HHDDDD or HHDDDD9988 instead
+                   of _h_d, _s_c, _c_l, can register the MS-DOS parti-
+                   tion on the hard disk for the PC/AT compatible
+                   machine or PC-9800 series.  In this case, You
+                   should describe the device file as the device
+                   name prepared per the physical drive unit
+                   rather than the device name prepared per the
+                   partition (slice).  The MS-DOS partitions
+                   included in the drive unit are automatically
+                   expanded to the drive name after the drive
+                   name _c.  When no MS-DOS partition is included
+                   in the specified drive unit, this command is
+                   ignored.  You can confirm what drive name is
+                   valid by pprriinnttddrrvv command.  But any hard disk
+                   is registered as readonly, for security.
+
+     sshhiifftt [_n]     Rename the positional parameters from $$_n+_1
+                   into ones from $$11 in order.  The original
+                   positinal parameters from $$11 to $$_n are dis-
+                   carded.  If _n is omitted, it is regard as 11 is
+                   specified.
+
+     tteesstt [_e_x_p_r]
+     [[ _e_x_p_r ]]      Evaluate the conditional expression _e_x_p_r.  See
+                   tteesstt(1) for details.
+
+     ttiimmeess         Display the accumlated user and system time
+                   for the processes which has so far been exe-
+                   cuted.
+
+     ttrraapp [_c_o_m] [_n ...]
+                   Read and execute the command _c_o_m when ffdd
+                   receives the signal _n.  If _c_o_m is omitted, the
+                   trap for the signal is reset.  When you
+                   specify _c_o_m as a null, the signal ignored.
+                   When you specify _n as 00, the command _c_o_m is
+                   executed on exit.  If both _c_o_m and _n are omit-
+                   ted, all of the registered traps are listed.
+
+     ttyyppee [_c_o_m ...]
+                   Display how each _c_o_m would be treated when it
+                   is used as a command name.
+
+     uulliimmiitt [--SSHH] [--aa | --ccddffllmmnnssttvv] _n
+                   Set the resource limits for ffdd and its child
+                   processes to the value indiceted by _n.  You
+                   can use the string uunnlliimmiitteedd or the numelic
+                   value in _n, uunnlliimmiitteedd means the maximum
+                   specifiable value.  ((UU))
+
+                   When you specify --HH, a hard limit is set.
+                   When you specify --SS, a soft limit is set.
+                   When you don't specify neither of them, both
+                   limits are set.  If _n is omitted, the current
+                   limit is displayed.  When you specify --aa, all
+                   of the resource limits are displayed.
+
+                   When you specify the following options, the
+                   each resource limit is individually set or
+                   displayed.  If no option is specified, it is
+                   regarded as --ff is specified.
+                   --cc   maximum core file size (in blocks)
+                   --dd   maximum size of data segment (in KB)
+                   --ff   maximum file size (in blocks)
+                   --ll   maximum size of locked in memory (in KB)
+                   --mm   muximum size of resident set (in KB)
+                   --nn   maximum number of open file files
+                   --ss   maximum size of stack segment (in KB)
+                   --tt   maximum CPU time (in seconds)
+                   --vv   maximum size of virtual memory (in KB)
+
+     uummaasskk [_n_n_n]   Set the file creation mask to _n_n_n.  If _n_n_n is
+                   omitted, the current value of the file crea-
+                   tion mask is displayed.  See uummaasskk(2) for
+                   details.
+
+     uunnaalliiaass _n_a_m_e  Cancel the definition of the alias _n_a_m_e.  You
+                   can use the wildcard in _n_a_m_e, in this case,
+                   all of the matched alias definitions are can-
+                   celed.  When you specify "*", all of the alias
+                   definitions are invalid.
+
+     uunnsseett [_N_A_M_E ...]
+                   Delete the defined internal variable or func-
+                   tion for each _N_A_M_E.  But the following vari-
+                   able definition cannot be deleted.
+                         PPAATTHH      PPSS11       PPSS22       IIFFSS
+
+     uunnsseettddrrvv _c _d_e_v_i_c_e _h_d _s_c _c_l
+                   Delete the registered floppy drive.  Only the
+                   registration with which all of _d_e_v_i_c_e, _h_d, _s_c,
+                   _c_l are corresponded is deleted, then you
+                   should confirm to delete very well.  ((UU))
+
+                   When it is registered as HHDDDD or HHDDDD9988 in
+                   sseettddrrvv, you should describe HHDDDD or HHDDDD9988
+                   instead of _h_d, _s_c, _c_l.
+
+     wwaaiitt [_p_i_d | _j_o_b]
+                   Wait for the process indicated by _p_i_d or for
+                   the job indicated by _j_o_b, and return its exit
+                   status.  If both _p_i_d and _j_o_b are omitted, the
+                   current job is waited.  ((UU))
+
+     _C_O_M_M_A_N_D [_a_r_g] Execute the internal command _C_O_M_M_A_N_D of ffdd.
+                   You can describe each command identifier in
+                   _C_O_M_M_A_N_D.  Some internal commands can take a
+                   parameter argument _a_r_g as the number of times
+                   or the destination directory.
+
+     ~~ and $$ in the previous registration string are expanded.
+     But these expansions are restrained in the string quoted
+     with '' instead of "".
+
+     TTrreeee SSccrreeeenn
+     Since representing the whole file system in tree structure
+     takes too many time, only the directories which are direct
+     ancestors and the direct sub directories are displayed,
+     first in the tree screen.  In the directories which are
+     direct ancestors, the other sub directories (if exists) are
+     grouped as "......".  These grouped sub directories will be
+     expanded automatically when a cursor is placed on its posi-
+     tion.
+
+     The sub directories which are not expanded yet are
+     represented with '>>' trailing the filename, which shows as
+     they are.  Such directory is never expanded until it is
+     required to expand explicitly, then you should expand it by
+     the following key inputs before moving to any hidden sub
+     directory.
+
+     In the tree screen, the following key inputs are available.
+          UUpp, DDoowwnn  Move a cursor.
+          RRiigghhtt     Expand the sub directory on the cursor posi-
+                    tion.
+          TTaabb       Expand the sub directory on the cursor posi-
+                    tion recursively.
+          PPaaggeeUUpp, PPaaggeeDDoowwnn
+                    Move a cursor by half screen.
+          HHoommee(<), EEnndd(>)
+                    Move a cursor to the top/bottom of tree.
+          ??         Move a cursor to the current directory.
+          BBss        Move a cursor to the parent directory.
+          LLeefftt      Group sub directories of the directory on the
+                    cursor position, or move a cursor to the
+                    parent directory.
+          ((, ))      Move a cursor to the previous/next directory
+                    among the same level sub directories.
+          AA - ZZ     Move a cursor to the directory whose name
+                    starts with the character or its lowercase.
+          ll         Change the directory tree into the specified
+                    directory.  Moving to the floppy drive is
+                    also available.
+          ^^LL        Redraw the tree structiure.
+          RReettuurrnn    Select the directory.
+          EEsscc       Cancel.
+
+     When directories are recursively expanded, the machine
+     operation is so late that it maybe seems to freeze.  In this
+     case, you can input any key while oparating.  If key input
+     is recognized while expanding directories, expanding has
+     been stopped at that moment in spite of not finishing.  Even
+     if key repeat keeps effective, any operation will be delayed
+     for this function.
+
+     AArrcchhiivvee BBrroowwsseerr
+     When the launcher is invoked on the position of the file
+     whose extention is registered to associate with an archive
+     browser, the archive browser screen has come.  In this
+     screen, you can browse files in the archive file as well as
+     in the normal directory.  But you cannot use the following
+     internal commands in this screen.
+          LLOOGG_TTOOPP        LLOOGG_DDIIRR        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE
+          MMOOVVEE_FFIILLEE      DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE
+          MMAAKKEE_DDIIRR       WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE
+          LLOOGG_TTRREEEE       CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR
+          SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+
+     When you want to register a new archive browser, you must
+     describe the format listed by the archiver as the following
+     representation.  One format string represents the format for
+     1 file in the list.
+          %%aa        Field which indicates a file mode
+          %%uu        Field which indicates UID of a file
+          %%gg        Field which indicates GID of a file
+          %%ss        Field which indicates a file size
+          %%yy        Field which indicates a file creation year
+          %%mm        Field which indicates a file creation month
+                    (No concerning if numeric or alphabetical)
+          %%dd        Field which indicates a file creation day
+          %%tt        Field which indicates a file creation time
+                    ("HH:MM:SS" form, MM and SS can be lacking)
+          %%ff        Field which indicates a filename
+          %%xx        Field which is needless (ignored)
+          %%%%        % itself
+          \\nn        Newline
+          SSppaaccee TTaabb 0 or more charachers of spaces or tabs
+
+     In this description, the field means the area separated by
+     spaces, tabs or newlines.  When the string which indicates
+     each information is separated by these characters, you can
+     simply describe the above string which indicates that field.
+     When the string is separated by another character, you
+     should describe the above string with that separator.  You
+     can describe to indicate the field length as numeric, such
+     as %_1_0_a.  This example means that the field which indicates
+     a file mode consists of 10 characters.
+
+     When a field may have the different meanings according to
+     situation, you should describe it quoted with {{ }}, such as
+     %{_y_t}.  This example means that this field indicates a crea-
+     tion year or a creation time.  When the information for 1
+     file consists of multiple lines, you should place a \\nn on
+     the position of newline in the format string.
+
+     For example, the following are the format strings for the
+     list of some archivers.  While some spaces are used here for
+     easiness to see, these spaces are not always necessary
+     because any space between fields is ignored.
+     `llhhaa ll'           "%9a %u/%g %s %x %m %d %{yt} %f"
+     `llhhaa vv' (MS-DOS)  "%f\n%s %x %x %y-%m-%d %t"
+     `ttaarr ttvvff' (BSD)   "%9a %u/%g %s %m %d %t %y %f"
+     `ttaarr ttvvff' (SVR4)  "%a %u/%g %s %m %d %t %y %f"
+
+     If you register archive browsers with above format, in the
+     builtin command of EEXXEECCUUTTEE_SSHH or in the initial configura-
+     tion file, you can use the archive browser which is not
+     prepared by default.  But, if you want to execute or view
+     files in the archive file, you must register the archiver
+     command for the archive file, too, don't forget this.
+
+     On some OS, ttaarr(1) may output the Japanese timestamp when
+     _j_a_p_a_n_e_s_e is substituted for the environment variable LLAANNGG.
+     Since ffdd cannot analyze the representation like this, you
+     should describe `_e_x_p_o_r_t _L_A_N_G=_C' in the initial configuration
+     file, or specify LLAANNGG in the description of listing command,
+     such as `_L_A_N_G=_C _t_a_r _t_v_f'.
+
+     FFllooppppyy DDrriivvee ((UU))
+     You can access the MS-DOS formatted floppy disk, by
+     representing to prefix "_c::" to the directory name.  But, it
+     is necessary to register the floppy drive and set the
+     environ variable DDOOSSDDRRIIVVEE which makes this function effec-
+     tive, in advance.
+
+     Each registered drive is distiguished with the drive name.
+     You should tag the physically different drive as the dif-
+     ferent drive name.  When the same physical drive supports
+     multiple formats, you can register each format with the same
+     drive name, or the different drive name each other.  If you
+     tag the same drive name, the justice of the format is tried
+     in registered order, so that you should register the format
+     which you often use in the first place.
+
+     Each drive of the floppy drive has the its own current dira-
+     tory.  The default value of this is a root directory, and
+     the current directory is moved back to a root directory
+     again whenever you change a floppy disk.  When you describe
+     the directory name as starting with '/' after '::', it means
+     the absolute path representation of that drive.  If this '/'
+     is not exist, it means the relative path representation from
+     the current directory of that drive, don't forget this.
+
+     Regrettably, some internal commands like as WWRRIITTEE_DDIIRR,
+     IINNFFOO_FFIILLEESSYYSS cannot support the floppy drive.  Some
+     filenames are renamed when they are copied from UNIX for
+     reason of the filename length limit.
+
+     When you use a lowercase letter as the drive name, you can
+     access it as the floppy drive which can treat the Long File
+     Name (LFN) for MS-Windows formatted floppy disk.  In this
+     case, you can copy a file with a long filename on UNIX as it
+     is.  But, when the UNICODE translation table ffdd--uunniiccdd..ttbbll is
+     not exist in the same directory as the invoked ffdd exists,
+     any Kanji filename cannot be treated as LFN representation.
+     Reversely, when you use a uppercase letter as the drive
+     name, LFN is ignored and 8+3 formed filename is treated.
+     MS-DOS version inherits this specification by the case of a
+     drive name.
+
+     SSttrriinngg IInnppuutt
+     When you input the string, such as the pathname, the follow-
+     ing key inputs are available.  The kind of referred history
+     differs with the input string required.  In the split window
+     mode, the current directory of another window is always
+     placed on the top of the pathname history.
+     LLeefftt, RRiigghhtt
+               Move a cursor.
+     UUpp, DDoowwnn  Refer the previous histories (only commands and
+               pathnames), or move a cursor.
+     BBeegg       Move a cursor to the beginning of string.
+     EEooll       Move a cursor to the end of string.
+     IInnss       Switch a input method to the insert/overwrite
+               mode.  (Default value is the insert mode.)
+     DDeell       Delete a character on the cursor position.
+     BBss        Delete a character before the cursor position.
+     DDeellLLiinn    Delete a string after the cursor position.
+     IInnssLLiinn    Treat the next input character as it is, effective
+               to input control characters.
+     EEnntteerr     Insert a filename of the file on the cursor posi-
+               tion.
+     PPaaggeeUUpp    Convert a character on the cursor position to
+               uppercase.
+     PPaaggeeDDoowwnn  Convert a character on the cursor position to
+               lowercase.
+     TTaabb       Complete a pathname on the cursor position, or
+               move to the next choice in the completion choice
+               list.  When there are two or more completion
+               choices, inputting this some times can display the
+               completion choice list.
+     ^^LL        Redraw the input string.
+     RReettuurrnn    Decide the input, or decide the choice in the com-
+               pletion choice list.
+     EEsscc       Cancel.
+
+     The inputted string is expanded before evaluation as follow-
+     ing.  These expansions are also valid in the string of com-
+     mand macros.  But these expansions are restrained in the
+     string quoted with the quotation mark ''.
+
+     ~~       Indicate your home directory, when it is the begin-
+             ning of filename.
+
+     ~~_u_s_e_r   Indicate _u_s_e_r's home directory, when it is the
+             beginning of filename.  ((UU))
+
+     ~~FFDD     Indicate the directory where the invoked ffdd is
+             exists, when it is the beginning of filename.
+
+     $$_N_A_M_E
+     $${{_N_A_M_E}} Indicate the value of the internal variable or the
+             exvironment variable _N_A_M_E.  When both are defined,
+             the internal variable is prior.  When both are unde-
+             fined, it is replaced a null.  The brace {{ }}
+             separates _N_A_M_E from its trailing characters.
+
+             When _N_A_M_E is the following character, it is replaced
+             by the value substituted automatically by the shell.
+             00      The executable filename when invoked.
+             [11-99]  The positional parameter.
+             **      The all positional parameters which starts
+                    from $$11.  ""$$**"" is replaced by ""$$11 $$22 ..."".
+             @@      The all positional parameters which starts
+                    from $$11.  ""$$@@"" is replaced by ""$$11"" ""$$22"" ... .
+             ##      The number of positional parameters.
+             --      The option flags which is set by options when
+                    invoked or sseett command.
+             ??      The exit status of the last executed command.
+             $$      The process number of the current shell.
+             !!      The process number of the last executed back-
+                    ground process.
+
+     $${{_N_A_M_E::--_w_o_r_d}}
+             If the value except a null is substituted for the
+             internal variable or the environment variable _N_A_M_E,
+             it is replaced by the value, otherwise it is
+             replaced by _w_o_r_d.
+
+     $${{_N_A_M_E::==_w_o_r_d}}
+             If the value except a null is substituted for the
+             internal variable or the environment variable _N_A_M_E,
+             it is replaced by the value, otherwise _w_o_r_d is sub-
+             stituted for the internal variable _N_A_M_E, and this
+             expression itself is replaced by _w_o_r_d.  But you can-
+             not substitute the value for any positional parame-
+             ter.
+
+     $${{_N_A_M_E::??_w_o_r_d}}
+             If the value except a null is substituted for the
+             internal variable or the environment variable _N_A_M_E,
+             it is replaced by the value, otherwise display _w_o_r_d
+             and exit from the shell.  If _w_o_r_d is omitted, the
+             string ``ppaarraammeetteerr nnuullll oorr nnoott sseett'' is displayed in
+             its place.
+
+     $${{_N_A_M_E::++_w_o_r_d}}
+             If the value except a null is substituted for the
+             internal variable or the environment variable _N_A_M_E,
+             it is replaced by _w_o_r_d, otherwise it is replaced by
+             a null.
+
+     $${{_N_A_M_E--_w_o_r_d}}
+             If any value is substituted for the internal vari-
+             able or the environment variable _N_A_M_E, it is
+             replaced by the value, otherwise it is replaced by
+             _w_o_r_d.
+
+     $${{_N_A_M_E==_w_o_r_d}}
+             If any value is substituted for the internal vari-
+             able or the environment variable _N_A_M_E, it is
+             replaced by the value, otherwise _w_o_r_d is substituted
+             for the internal variable _N_A_M_E, and this expression
+             itself is replaces by _w_o_r_d.  But you cannot substi-
+             tute the value for any positional parameter.
+
+     $${{_N_A_M_E??_w_o_r_d}}
+             If any value is substituted for the internal vari-
+             able or the environment variable _N_A_M_E, it is
+             replaced by the value, otherwise display _w_o_r_d and
+             exit from the shell.  If _w_o_r_d is omitted, the string
+             ``ppaarraammeetteerr nnuullll oorr nnoott sseett'' is displayed in its
+             place.
+
+     $${{_N_A_M_E++_w_o_r_d}}
+             If any value is substituted for the internal vari-
+             able or the environment variable _N_A_M_E, it is
+             replaced by _w_o_r_d, otherwise it is replaced by a
+             null.
+
+     \\_c      It indicates a character _c itself.  You can use it
+             when you want to use the preceding meta-character as
+             a character with no evaluation, such as ~~ or $$.  You
+             can describe \\ itself as "\\\\".  But, on MS-DOS ver-
+             sion, because \\ which is used as the pathname delim-
+             iter must be treat as well as the normal character,
+             %%_c is expediently used in place of \\.
+
+     The following is replaced only in the shell which is exe-
+     cuted by EEXXEECCUUTTEE_SSHH and EEXXEECCUUTTEE_FFIILLEE.
+
+     ``_l_i_s_t``  _l_i_s_t is executed and this string is replaced by its
+             standard output.
+
+     ??
+     **
+     [[
+     ]]       The string including these letters is pattern-
+             matched with existent files.  When it is matched, it
+             is replaced by all of the matched filenames which
+             are sorted in alphabetical order.
+             ??    Match any single character except //.
+             **    Match any 0 or more length string not including
+                  //.
+             ****   Match any 0 or more length string including //.
+             [[...]]
+                  Match any one of the characters enclosed by [[
+                  ]].  When encluded characters include --, it
+                  matches any character whose character code is
+                  between characters before/after --.
+             [[!!...]]
+                  Match any one of the characters not enclosed by
+                  [[ ]].
+
+             But, when the first character of the filename is ..,
+             ??, ** and **** don't match it.
+
+     EEddiitt MMooddee
+     When you want to use some functions bound to special keys,
+     such as a cursor key or a scroll key, such a key doesn't
+     exist in some terminals.  In such a case, substituting the
+     string for the internal variable EEDDIITTMMOODDEE can make you use
+     some control keys as alternative to these special keys.
+     Since this alternative key function is prior to the key
+     binding by the builtin command, the key binding is invalid
+     for the control characters used as the alternative keys.
+     The prepared edit modes are the following 3 modes.
+
+     eemmaaccss
+                 ^^PP   = UUpp      ^^AA   = BBeegg
+                 ^^NN   = DDoowwnn    ^^EE   = EEooll     ^^DD   = DDeell
+                 ^^FF   = RRiigghhtt                  ^^QQ   = IInnssLLiinn
+                 ^^BB   = LLeefftt                   ^^KK   = DDeellLLiinn
+                 ^^VV   = PPaaggeeDDnn  ^^YY   = PPaaggeeUUpp  ^^OO   = EEnntteerr
+                 ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
+                 ^^[[   = EEsscc     ^^GG   = EEsscc
+
+     wwoorrddssttaarr
+                 ^^EE   = UUpp      ^^AA   = BBeegg     ^^VV   = IInnss
+                 ^^NN   = DDoowwnn    ^^FF   = EEooll     ^^GG   = DDeell
+                 ^^FF   = RRiigghhtt   ^^WW   = HHoommee    ^^]]   = IInnssLLiinn
+                 ^^SS   = LLeefftt    ^^ZZ   = EEnndd     ^^YY   = DDeellLLiinn
+                 ^^CC   = PPaaggeeDDnn  ^^RR   = PPaaggeeUUpp  ^^NN   = EEnntteerr
+                 ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
+                 ^^[[   = EEsscc
+
+     vvii      vvii mode has the 2 local modes: "insert mode" and
+             "command mode", and the function of keys are quite
+             different with each mode.  You are in the command
+             mode when you start to input, then you must input
+             any key among 4 keys which switch to the insert
+             mode, in order to input normal keys.
+                 (command mode)
+                 kk    = UUpp      00    = BBeegg     II    = IInnss
+                 jj    = DDoowwnn    $$    = EEooll     xx    = DDeell
+                 ll    = RRiigghhtt   gg    = HHoommee
+                 hh    = LLeefftt    GG    = EEnndd     DD    = DDeellLLiinn
+                 ^^FF   = PPaaggeeDDnn  ^^BB   = PPaaggeeUUpp  oo    = EEnntteerr
+                 ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
+                 ^^[[   = EEsscc
+                 (from command mode to insert mode)
+                 ii, :: = only switch its mode
+                 aa    = + RRiigghhtt AA    = + EEooll
+                 RR    = overwrite
+                 rr    = overwrite once
+                 (insert mode)
+                 ^^VV   = IInnssLLiinn  EEsscc  = to command mode
+
+             This key binding is so particular that it is not
+             suitable for those who don't use vvii editor everyday.
+
+     PPaarraammeetteerr MMaaccrrooss
+     You can use the following parameter macros in the string
+     which is used for the registration of command macros and for
+     executing command.  But, you cannot use them in the func-
+     tions, the input file for ssoouurrccee command, and the initial
+     configuration file, then you should use eevvaallmmaaccrroo command
+     when you want to use any parameter macro in them.
+
+     %%CC      The filename on the cursor position.  Or, it indi-
+             cates the archive filename, in the macro to register
+             the archiver command.
+
+     %%XX      The filename except its extention on the cursor
+             position.  Or, it indicates the archive filename
+             except its extention, in the macro to register the
+             archiver command.  Only the last one extention is
+             removed.  TT, TTAA, MM trailing %%XX are replaced by %%TT,
+             %%TTAA, %%MM except its extention respectively.  On MS-
+             DOS version, you can describe a trailing SS as well
+             as them.
+
+     %%PP      The pathname of the current directory.
+
+     %%KK      Prompt and return to ffdd after a command is finished.
+             But, the meaning of %%KK is reverse in EEXXEECCUUTTEE_FFIILLEE
+             and EEXXEECCUUTTEE_SSHH; it prompts by default and doesn't
+             prompt if %%KK is specified.  You can never specify to
+             prompt in macros to register the archive browser of
+             the launcher and macros to register the archiver
+             command.
+
+     %%TT      List marked files separated by spaces as possible.
+             When files are so many that the command line exceeds
+             11002233 characters, the rest of marked files are
+             ignored.
+
+     %%TTAA     List marked files as well as %%TT, and repeat the same
+             command for spilt files to complete all marked
+             files.
+
+     %%MM      Execute the same command as many times as marked
+             files, sending the marked file one by one.  It is
+             useful to mark files by MMAARRKK_FFIINNDD and execute "mv %M
+             %XM.bak" by EEXXEECCUUTTEE_SSHH.
+
+     %%NN      Restrain the filename addition even if the parameter
+             is omitted.
+
+     %%RR      Make you input the additional parameter in executing
+             a macro, if the length of command string has enough
+             margin.  The cursor position in input is placed on
+             the position of %%RR in a macro.  But, %%RR is ignored
+             in macros to register the archive browser of the
+             launcher, macros to register the archiver command,
+             and EEXXEECCUUTTEE_FFIILLEE, EEXXEECCUUTTEE_SSHH.
+
+     %%SS      The 8+3 formed filename with which the LFN formed
+             filename on the cursor position is replaced.  You
+             can use it when you use external commands which can
+             treat only 8+3 formed arguments.  TT, TTAA, MM trailing
+             %%SS can be described as well as %%XX.  ((DD))
+
+     %%JJSS     The Kanji code of the string enclosed by this macro
+             is converted into Shift JIS.  ((UU))
+
+     %%JJEE     The Kanji code of the string enclosed by this macro
+             is converted into EUC-JP.  ((UU))
+
+     %%JJ77     The Kanji code of the string enclosed by this macro
+             is converted into 7bit JIS.  ((UU))
+
+     %%JJ88     The Kanji code of the string enclosed by this macro
+             is converted into 8bit JIS.  ((UU))
+
+     %%JJJJ     The Kanji code of the string enclosed by this macro
+             is converted into ISO-2022-JP.  ((UU))
+
+     %%JJHH     The Kanji code of the string enclosed by this macro
+             is converted into HEX.  ((UU))
+
+     %%JJCC     The Kanji code of the string enclosed by this macro
+             is converted into CAP.  ((UU))
+
+     %%JJUU     The Kanji code of the string enclosed by this macro
+             is converted into UTF-8.  ((UU))
+
+     When no filename parameter, such as %%CC and %%TT, is taken with
+     the result to expand parameter macros in a command macro,
+     the filename on the cursor position is automatically added
+     to the last of expanded string, as ./_f_i_l_e_n_a_m_e form.  This
+     addition is not done, in case of the input string for exe-
+     cuting command, or when %%NN macro is specified.
+
+     CCuussttoommiizzee
+     You can customize as the following ways.  If you specify
+     some configuration in multiple ways overlapped, it is prior
+     in this order.
+
+        EExxeeccuuttiinngg bbuuiillttiinn ccoommmmaannddss wwiitthh EEXXEECCUUTTEE_SSHH
+                  You can execute builtin commands for each
+                  registration for the internal variable defini-
+                  tion, the environment variable definition, the
+                  aliase definition, the function definition, the
+                  key binding, the keymap changing, the launcher
+                  registration, the archiver command registra-
+                  tion, and the floppy drive registration.
+
+        CCuussttoommiizzeerr
+                  EEDDIITT_CCOONNFFIIGG command is available for the inter-
+                  nal variable definition, the key binding, the
+                  keymap changing, the launcher registration, the
+                  archiver command registration, and the floppy
+                  drive registration.
+
+        CCoommmmaanndd lliinnee ooppttiioonnss
+                  You can specify the command line options as
+                  `--_N_A_M_E==_v_a_l_u_e' form, to define the internal
+                  variables.
+
+        ..ffdd22rrcc    You can prepare the initial configuration file
+                  ..ffdd22rrcc on your home directory, to execute the
+                  command which is written in this file, before
+                  the startup of ffdd.  You can describe builtin
+                  commands and external commands in it to set up
+                  each configuration.  Yet, when ffddsshh is invoked
+                  as a login shell, ..ffddsshhrrcc is read instead of
+                  ..ffdd22rrcc.
+
+                  The initial configuration file //eettcc//ffdd22rrcc which
+                  is prepared by a system administrator is read
+                  preceding ..ffdd22rrcc and ..ffddsshhrrcc.  If this file
+                  exists, the initial configurations prepared by
+                  a system administrator are valid unless you
+                  intentionally delete them in ..ffdd22rrcc and
+                  ..ffddsshhrrcc.
+
+                  (On MS-DOS version, these filenames are
+                  $$HHOOMMEE\\ffdd22..rrcc, $$HHOOMMEE\\ffddsshh..rrcc and ~~FFDD\\ffdd22rrcc.)
+
+        EEnnvviirroonnmmeenntt vvaarriiaabblleess
+                  Any valid variable name as the internal vari-
+                  able can be valid to be defined as the environ-
+                  ment variable in advance.  But the internal
+                  variable is always prior to the environment
+                  variable in ffdd.  When the same named environ-
+                  ment variable is used in another application,
+                  you can also use the name which FFDD_ is prefixed
+                  to each environment variable for ffdd only.  This
+                  environment variable with FFDD_ is always prior
+                  to the environment variable without it, then
+                  the definition of the environment variable with
+                  FFDD_ is prior to the definition of the internal
+                  variable without FFDD_.
+
+     CCuussttoommiizzeerr
+     EEDDIITT_CCOONNFFIIGG command invokes the customizer to set up confi-
+     gurations interactively.  You can select the category with
+     the right/left cursor key, and select the item with the
+     up/down cursor key, and change its content with [RReettuurrnn].
+     When you finish to change, exit from the customizer with
+     [EEsscc].
+
+     The following categories are prepared.
+        VVaarriiaabblleess Change the value of internal variables.  The
+                  input method is different with the variable,
+                  then you should input following the guidance on
+                  screen.
+        KKeeyy bbiinndd  Change the command bound to each key.  When you
+                  newly bind a command to the key with no bind-
+                  ing, you should select "NewEntry".  If you
+                  select "Delete bind", the existent key binding
+                  is deleted.
+        KKeeyy mmaapp   Change the key code mapping for each special
+                  key.  If you push [EEsscc] when you are prompted
+                  to push the key, the existent key mapping is
+                  deleted.  ((UU))
+        LLaauunncchheerr  Change the launcher registration for each
+                  extention.  When you newly register a launcher
+                  for the extention with no registration, you
+                  should select "NewEntry".  If you input a null
+                  line when you input a command for the launcher,
+                  the existent launcher registration is deleted.
+        AArrcchhiivveerr  Change the archiver command registration for
+                  each extention.  When you newly register a
+                  archiver command for the extention with no
+                  registration, you should select "NewEntry".  If
+                  you input a null line both when you input a
+                  command for pack/unpack, the existent archiver
+                  command registration is deleted.
+        DDOOSS ddrriivvee Change the floppy drive registration.  When you
+                  newly register a floppy drive for the drive
+                  name with no registration, you should select
+                  "NewEntry".  If you input a null line when you
+                  input a device name, the existent floppy drive
+                  registration is deleted.  ((UU))
+        SSaavvee      Save the configurations changed with the cus-
+                  tomizer into a file, or cancel configurations
+                  to restore to the previous state.
+                  Cancel    Cancel the changed configurations
+                            within the specified categories, and
+                            restore to the state before the cus-
+                            tomizer is invoked.
+                  Clear     Cancel all the configurations within
+                            the specified categories, and restore
+                            to the default state.
+                  Load      Load configurations from the speci-
+                            fied file.
+                  Save      Save all the configurations within
+                            the specified categories to the
+                            specified file.
+                  Overwrite Overwrite all the configurations
+                            within the specified categories to
+                            the specified existent file.  The
+                            original configurations which has
+                            existed in the file are parsed, and
+                            the configuration for the same target
+                            is overwritten at the same place as
+                            possible.  The configurations which
+                            are not set up at present and the
+                            configurations which are not sup-
+                            ported by the customizer are remains
+                            as it is.
+
+                  When you specify the range of categories, all
+                  categories are selected by default, then you
+                  should turn on/off each selection with [SSppaaccee]
+                  and decide with [RReettuurrnn].
+
+     If you try to exit from the customizer without saving after
+     changing any configuration, you will be confirmed whether if
+     it is right to exit without saving.  While the changed con-
+     figurations themselves are valid even if you exit without
+     saveing, when you want them to be valid in the next invoked
+     ffdd, you must save them into the initial configuration file.
+
+EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
+     The following environment variables are valid in ffdd.  These
+     environment variables can be valid if they are defined as
+     the internal variables.  You can spacify them as the command
+     line options in `--_N_A_M_E==_v_a_l_u_e' form.  But the variables fol-
+     lowed by * cannot be use with the prifex FFDD_ as the environ-
+     ment variables.
+
+     CCDDPPAATTHH*       Specify the search path when an argument of
+                   the builtin command ccdd does not start with //.
+                   You can specify multiple paths separating with
+                   '::'.  No search path is specified by default.
+
+     CCOOMMSSPPEECC*      Specify the shell used to invoke a batch file.
+                   If undefined, the shell defined by the
+                   environment variable SSHHEELLLL or \COMMAND.COM is
+                   used.  ((DD))
+
+     CCOOPPYYCCMMDD*      Specify the default options used by the buil-
+                   tin command ccooppyy.  ((DD))
+
+     DDIIRRCCMMDD*       Specify the default options used by the buil-
+                   tin command ddiirr.  ((DD))
+
+     HHOOMMEE*         Specify the default value when no argument of
+                   the builtin command ccdd is specified.  When
+                   invoked as a login shell, if this variable is
+                   specified that directory becomes the current
+                   directory, otherwise your home directory is
+                   automatically defined as this value.
+
+     IIFFSS*          Specify the internal field separators.  They
+                   are used in EEXXEECCUUTTEE_SSHH to separate command and
+                   arguments.  Space, tab and newline are speci-
+                   fied by default.
+
+     PPAATTHH*         Specify the search path for executing external
+                   commands.  You can specify multiple paths
+                   separating with '::'.
+
+     SSHHEELLLL*        When the filename part of this specified value
+                   is rrffdd or rrffddsshh, the shell becomes a res-
+                   tricted shell as well as --rr option when
+                   invoked.  This variable also specify the shell
+                   which can be invoked from EEXXEECCUUTTEE_SSHH.
+
+     SSOORRTTTTYYPPEE      The file list in the browser screen is not
+                   sorted by default, but placed in order
+                   registered in the directory.  This variable
+                   specify it to be sorted by default.  The fol-
+                   lowing are specifiable values.
+                       00    not sort
+                       11    by filename    99    by filename(reverse)
+                       22    by extention   1100   by extention(reverse)
+                       33    by size        1111   by size(reverse)
+                       44    by timestamp   1122   by timestamp(reverse)
+                       55    by length      1133   by length(reverse)
+                       110000--111133   keep the last sorted type
+
+                   If you specify the value of 100-113, it is
+                   sorted according to the value indicated by
+                   lower 2 digits just after invoked, the last
+                   specified sorted type is kept when moving
+                   directory.
+
+     DDIISSPPLLAAYYMMOODDEE   Specify the filaname display mode of the file
+                   list when ffdd is invoked.  Each of the symbolic
+                   link mode, the file type symbol mode and the
+                   dot file display mode can be selected indivi-
+                   dually.  The defalut value is 00.  The follow-
+                   ing are specifiable values.
+                       00    standard
+                       11    SYMLINK
+                       22                FILETYPE
+                       33    SYMLINK &   FILETYPE
+                       44                             DOTFILE
+                       55    SYMLINK &                DOTFILE
+                       66                FILETYPE &   DOTFILE
+                       77    SYMLINK &   FILETYPE &   DOTFILE
+
+                   Moreover, on the OS which supports the file
+                   flag, if you specify the value adding 88 to
+                   each value, you can select the file flag
+                   display mode.
+
+     SSOORRTTTTRREEEE      Sort directories in the tree screen.  The
+                   sorted type specified by SSOORRTT_TTYYPPEE is used,
+                   but they can not be sorted when it is "by
+                   size" or "by timestamp".  The directory
+                   included in the current directory path is
+                   always placed on the top of directory tree,
+                   with no regard to the sorted type.  Any value
+                   except 00 and null effects valid.
+
+     WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
+                   is 11, the directory is written only when the
+                   command is executed intentionally, and you are
+                   not confirmed after arranging the file order.
+                   If the value is 22, even writing by the command
+                   is invalid, the directory writing is quite
+                   forbidden.
+
+     IIGGNNOORREECCAASSEE    Ignore uppercase/lowercase when filenames are
+                   compared.  Any value except 00 and null effects
+                   valid.  ((UU))
+
+     IINNHHEERRIITTCCOOPPYY   Inherit the destination timestamp from the
+                   source timestamp when CCOOPPYY_FFIILLEE command is
+                   executed.  Any value except 00 and null effects
+                   valid.  ((UU))
+
+                   (On MS-DOS version, the distination timestamp
+                   is always inherited, if this variable is
+                   effective or not.)
+
+     AADDJJTTTTYY        Reset the terminal mode forcedly to the normal
+                   state, when ffdd is finished.  Invoking ffdd can
+                   adjust the terminal rightly from the state
+                   displaying broken characters.  Any value
+                   except 00 and null effects valid.  ((UU))
+
+     UUSSEEGGEETTCCUURRSSOORR  Use the VT100 compatible escape sequence get-
+                   ting the cursor position in order to get the
+                   terminal size.  When the screen size of ffdd
+                   doesn't correspond with the terminal size,
+                   this variable can be sometimes valid.  On some
+                   terminals which don't support the escape
+                   sequence getting the cursor position, the
+                   operation may be stopped.  In this case, it is
+                   continued by inputting 'R' from the keyboard.
+                   Any value except 00 and null effects valid.
+                   ((UU))
+
+                   And, if this variable is ineffective, a com-
+                   mand line of ffddsshh always begins at the end of
+                   a screen.  (On MS-DOS version, the cursor
+                   position is always gotten rightly, if this
+                   variable is effective or not.)
+
+     CCOOLLUUMMNNSS       Specify the columns displayed in the screen
+                   when ffdd is invoked.  The default value is 22.
+                   If you specify the value except 11, 22, 33 and 55,
+                   it is ignored.
+
+     MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
+                   filename display area in the file list.  When
+                   the area enough to be specified here cannot be
+                   obtained, the informations are reduced in the
+                   order of UID, GID, timestamp, size.  The
+                   default value is 1122 characters.
+
+     HHIISSTTSSIIZZEE      Specify the maximum number of the command his-
+                   tories which can be referred by EEXXEECCUUTTEE_FFIILLEE
+                   and EEXXEECCUUTTEE_SSHH.  The default value is 5500.  If
+                   this value is 00, you can refer to no command
+                   history.
+
+     DDIIRRHHIISSTT       Specify the maximum number of the directory
+                   histories which can be referred by the direc-
+                   tory input line.  The default value is 5500.  If
+                   this value is 00, you can refer to no directory
+                   history.
+
+     SSAAVVEEHHIISSTT      Specify the maximum number saved to the com-
+                   mand history file.  The default value is 5500.
+                   If this value is 00, no command history file is
+                   saved.
+
+     DDIIRRCCOOUUNNTTLLIIMMIITT Specify the maximum number of files read from
+                   the directory in the tree screen.  When the
+                   directory trailed by '>>' has no sub directory,
+                   the expanded result is not changed.  If the
+                   number of files (including directories) in the
+                   directory is within this value, the directory
+                   with no sub directory is not trailed '>>' from
+                   the first.  Moreover, the file list in the
+                   directory displayed on the right of screen is
+                   not displayed over this value.  If the value
+                   is 00, you can realize a comfortable operation
+                   speed even in the slow machine.  The default
+                   value is 5500 files.
+
+     DDOOSSDDRRIIVVEE      Validate the access function to the MS-DOS
+                   floppy.  If no floppy drive is registered,
+                   this validation cannot make you access the
+                   floppy.  Any value except 00 and null effects
+                   valid.
+
+                   On MS-DOS version, This definition can make
+                   you treat the LFN formed filename in the old
+                   DOS before Ver. 6.xx.  In this case, you don't
+                   have to register any floppy drive.  the access
+                   speed may be slow or some functions may be
+                   restricted for the reason to operate the disk
+                   I/O not by way of OS.
+
+     SSEECCOONNDD        Display the second in the clock of the title
+                   line.  But the clock is adjusted correctly
+                   every 1100 seconds, and some gap from the real
+                   time will be occured in this span.  Any value
+                   except 00 and null effects valid.
+
+     SSIIZZEEIINNFFOO      Display the file size information line at the
+                   top of screen.  The total size displayed here
+                   is not the sum of bytes but the sum of disk
+                   block size occupied actually.  Any value
+                   except 00 and null effects valid.
+
+     AANNSSIICCOOLLOORR     Colorize the file display.  When the terminal
+                   which you use supports the color control
+                   escape sequence of ANSI standard, each file is
+                   displayed with color according to its file
+                   type.  If the value is 11, it is colorized.  If
+                   the value is 22, the background color is forced
+                   to be black, for the case that the foreground
+                   color is the same as the background color and
+                   indistinguishable.  If the value is 33, the
+                   foreground color is forced to be black.
+
+     EEDDIITTMMOODDEE      Specify the edit mode of key input as the
+                   string.  The default value is eemmaaccss.  The
+                   value except eemmaaccss, wwoorrddssttaarr and vvii or null
+                   are specified, any control character is not
+                   converted and will be sent as it is.
+
+     TTMMPPDDIIRR        Specify the working directory where the
+                   archiver command temporarily unpack files in
+                   the archive file.  The default value is //ttmmpp.
+
+     RRRRPPAATTHH        Display files under the directory mounted by
+                   CD-ROM, with the pseudo ISO 9660 RockRidge
+                   Extention, for the OS which cannot support
+                   RockRidge Extention.  You can specify multiple
+                   mount points separating with '::'.  You are
+                   enough to specify only the top directory
+                   mounted by CD-ROM, then the pseudo RockRidge
+                   Extention function is valid in all of the
+                   directories under that directory.  This is no
+                   more than a pseudo extention, which only
+                   replaces filenames according to TRANS.TBL, and
+                   cannot handle some CD-ROM which has an incon-
+                   sistent TRANS.TBL.  No mount point is speci-
+                   fied by default.
+
+     PPRREECCEEDDEEPPAATTHH   Specify the file preceding function, which
+                   displays only filenames before obtaining their
+                   file informations, for the directory which has
+                   a lot of files like as /dev.  You can specify
+                   multiple pathnames separating with '::'.  You
+                   are enough to specify only the top directory
+                   where you want to realize the file preceding
+                   function, then the file preceding funtion is
+                   valid in all of the directories under that
+                   directory.  When the file preceding function
+                   is effective, any files are not sorted in that
+                   directory, and file informations are obtained
+                   file by file while waiting the key input.  No
+                   pathname is specified by default.
+
+     PPSS11           Specify the prompt string of input line in
+                   EEXXEECCUUTTEE_SSHH.  The default value is "$$ ".  The
+                   following escape sequences are available.
+                       \\uu   username ((UU))
+                       \\hh   hostname ((UU))
+                       \\HH   hostname (including domain name) ((UU))
+                       \\ww   fullpath of current directory
+                       \\~~   fullpath of current directory
+                            (to simplify home directory with ~~)
+                       \\WW   current directory name
+                       \\!!   command history number
+                       \\$$   if UID is 0, a ##, otherwise a $$ ((UU))
+                       \\[[   beginning of non-printing sequence
+                            (terminal control character, etc.)
+                       \\]]   ending of non-printing sequence
+                       \\ee   ESC (\033)
+                       \\_o_o_o character indicated by the octal _o_o_o
+                       \\\\   \ itself
+
+     PPSS22           Specify the prompt string when more continuous
+                   input is needed in EEXXEECCUUTTEE_SSHH.  The default
+                   value is ">> ".
+
+     LLAANNGGUUAAGGEE      Specify the languege for display characher.
+                   It means not only each messages displayed by
+                   ffdd, but also a Kanji code of filename to be
+                   converted.  The following is the kind of
+                   languages, it doesn't have to be the string
+                   itself and is enough to contain the string,
+                   the value of the environment variable LLAANNGG
+                   also can be used.  JJIISS88, JJUUNNEETT,, etc. among
+                   them are the Kanji codes used in Samba.
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       JJIISS, jjiiss       7bit JIS
+                       JJIISS88, jjiiss88     8bit JIS
+                       JJUUNNEETT, jjuunneett   ISO-2022-JP
+                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
+                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
+                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
+                       UUTTFF88, uuttff88     UTF-8
+                       EENNGG, eenngg, CC    English (message only)
+                       default        no convert
+
+                   (On MS-DOS version, only the English is
+                   valid.)
+
+     IINNPPUUTTKKCCOODDEE    Specify the Kanji code for input from key-
+                   board.  When the value except the following is
+                   specified, the Kanji code specified in compile
+                   is valid.  ((UU))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+
+     FFNNAAMMEEKKCCOODDEE    Specify the Kanji code for filename.  Any
+                   filename is converted into the specified Kanji
+                   code at the point of accessing the file, then
+                   you can refer to the file which has a Kanji
+                   filename from another machine on network which
+                   use a different Kanji code.  JJIISS88, JJUUNNEETT, HHEEXX,
+                   CCAAPP, etc. among them are the Kanji codes used
+                   in Samba.  ((UU))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       JJIISS, jjiiss       7bit JIS
+                       JJIISS88, jjiiss88     8bit JIS
+                       JJUUNNEETT, jjuunneett   ISO-2022-JP
+                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
+                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
+                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
+                       HHEEXX, hheexx       HEX
+                       CCAAPP, ccaapp       CAP
+                       UUTTFF88, uuttff88     UTF-8
+                       default        no convert
+
+     SSJJIISSPPAATTHH
+     EEUUCCPPAATTHH
+     JJIISSPPAATTHH
+     JJIISS88PPAATTHH
+     JJUUNNEETTPPAATTHH
+     OOJJIISSPPAATTHH
+     OOJJIISS88PPAATTHH
+     OOJJUUNNEETTPPAATTHH
+     HHEEXXPPAATTHH
+     CCAAPPPPAATTHH
+     NNOOCCOONNVVPPAATTHH    Specify the Kanji code for filename per direc-
+                   tory, which is prior to FFNNAAMMEEKKCCOODDEE.  You can
+                   specify multiple pathnames separating with
+                   '::'.  You are enough to specify only the top
+                   directory where you want to use the Kanji
+                   code, then you can use the Kanji code in all
+                   of the directories under that directory.  In
+                   the directory which is described in
+                   NNOOCCOONNVVPPAATTHH, no Kanji code is converted ignore-
+                   ing the value of FFNNAAMMEEKKCCOODDEE.  No pathname is
+                   specified by default.  ((UU))
+
+MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
+     ffdd processes the Kanji character-set to input/output as
+     "EUC-JP" or "Shift JIS" according to setting in compile.
+     The the pathname including Kanji is displayed in considera-
+     tion for the 2nd byte character in Kanji.  You can dinami-
+     cally select Kanji code to input/output with the internal
+     variable LLAANNGGUUAAGGEE, IINNPPUUTTKKCCOODDEE and FFNNAAMMEEKKCCOODDEE.  You can input
+     Kanji string with some Japanese input methods.
+
+     You can use Kanji in the command macro and the command
+     string, but cannot use Kanji as the value of the internal
+     variables.  You cannot use the multibyte symbol character as
+     the meta character, such as '%%' and '""' and so on, Kanji
+     character is not counted as 1 character in the wildcard
+     search.
+
+     And when you give the non-standard Kanji code for the OS to
+     the shell with the parameter macro such as %%JJJJ, some Kanji
+     is converted into the code including the meta character such
+     as '$$' and '\\' and so on, to cause unexpected behavior.  In
+     that case, you can probably avoid it by quoting the string
+     to be converted with %%''.
+
+AAUUTTHHOORR
+     Takashi SHIRAI <shirai@nintendo.co.jp>
+     The original "FD" for MS-DOS was created and released by
+     A.Idei <SDI00544@niftyserve.or.jp> for the first time, in
+     1989.  ffdd was created for UNIX from scratch following that
+     implementation, in 1995.
+
+FFIILLEESS
+     //eettcc//ffdd22rrcc
+               The systemwide initial configuration file for ffdd
+     ~~//..ffdd22rrcc  The individual initial configuration file for ffdd
+     ~~//..ffddsshhrrcc The individual initial configuration file for ffddsshh
+     ~~//..ffdd_hhiissttoorryy
+               The command history file
+     //bbiinn//sshh   The user shell when the environment variable SSHHEELLLL
+               is undefined
+     //bbiinn//rrmm   The command to remove temporary files when abort
+     //ttmmpp//ffdd*  The temporary directory to unpack the archive file
+     ffdd--uunniiccdd..ttbbll
+               The UNICODE translation table for the floppy
+               drive, which is installed in the same directory as
+               the executable binary of ffdd
+
+     ffdd22rrcc     The systemwide initial configuration file for ffdd
+               on MS-DOS version, which must be prepared in the
+               same directory as the executable binary of ffdd
+     $$HHOOMMEE\\ffdd22..rrcc
+               The individual initial configuration file for ffdd
+               on MS-DOS version
+     $$HHOOMMEE\\ffddsshh..rrcc
+               The individual initial configuration file for ffddsshh
+               on MS-DOS version
+     $$HHOOMMEE\\ffdd..hhsstt
+               The command history file on MS-DOS version
+
+LLIIMMIITTAATTIIOONNSS
+     Words expanded from a command macro can be no longer than
+     11002233 characters.  You cannot input a string over 225555 charac-
+     ters, and it depends on also the screen size.
+
+     The maximum key bindings which you can register is 225566, and
+     the maximum that with the user defined macro is 6644.  The
+     maximum launchers which you can register is 3322, including
+     archive browsers.  The maximum archive commands which you
+     can register is 1166 pairs, with pack and unpack in pairs.
+     These maximum values include default builtin definitions.
+
+     Some terminals cannot send the input of certain function
+     keys and special keys.  The sequence compatible with VVTT220000
+     is assigned as the default sequence which is not registered
+     in tteerrmmccaapp(5), and when the terminal cannot support this,
+     the key receipt or the screen control due to be brought by
+     this is not available.
+
+SSEEEE AALLSSOO
+     sshh(1), eecchhoo(1), tteesstt(1), llss(1), rrmm(1), ttaarr(1), ccoommpprreessss(1),
+     zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), uummaasskk(2), tteerrmmccaapp(5)
+
+BBUUGGSS
+     When files in an archive file are packed with a pathname
+     includeing "..", the archive browser cannot work normally.
+     The symbolic links in an archive file cannot be unpacked
+     individually.
+
+     The user interface is cheap.
+
+CCOOPPYYRRIIGGHHTT
+     Copyright (C) 1995-2002 by Takashi SHIRAI

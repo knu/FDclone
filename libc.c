@@ -165,7 +165,8 @@ int rdlink;
 				buf[i] = '\0';
 				if (*buf == _SC_) strcpy(resolved, buf);
 				else {
-					*(cp - 1) = '\0';
+					if (cp - 1 > resolved) cp--;
+					*cp = '\0';
 					_realpath2(buf, resolved, rdlink);
 				}
 			}

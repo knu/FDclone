@@ -44,14 +44,16 @@ functable funclist[] = {
 	_TBL_(five_columns,	"FIVE_COLUMNS",	COL5_H,	000110111),
 	_TBL_(mark_file,	"MARK_FILE",	MRK_H,	000010001),
 	_TBL_(mark_file2,	"MARK_FILE2",	MRK2_H,	000010001),
+	_TBL_(mark_file3,	"MARK_FILE3",	MRK2_H,	000010001),
 	_TBL_(mark_all,		"MARK_ALL",	MRKA_H,	000010010),
 	_TBL_(mark_reverse,	"MARK_REVERSE",	MRKR_H,	000010010),
+	_TBL_(mark_find,	"MARK_FIND",	MRKF_H,	000010010),
 	_TBL_(in_dir,		"IN_DIR",	IND_H,	001011000),
 	_TBL_(out_dir,		"OUT_DIR",	OUTD_H,	001111000),
 	_TBL_(log_top,		"LOG_TOP",	LOGT_H,	001101000),
 	_TBL_(reread_dir,	"REREAD_DIR",	READ_H,	000110000),
-	_TBL_(push_file,	"PUSH_FILE",	PUSH_H,	000000110),
-	_TBL_(pop_file,		"POP_FILE",	POP_H,	000000110),
+	_TBL_(push_file,	"PUSH_FILE",	PUSH_H,	000010110),
+	_TBL_(pop_file,		"POP_FILE",	POP_H,	000010110),
 	_TBL_(log_dir,		"LOG_DIR",	LOGD_H,	001101000),
 	_TBL_(attr_file,	"ATTR_FILE",	ATTR_H,	001001110),
 	_TBL_(execute_file,	"EXECUTE_FILE",	EXEF_H,	000011111),
@@ -93,8 +95,6 @@ functable funclist[] = {
 	_TBL_(filetype_mode,	"FILETYPE_MODE",FLTY_H,	000110110),
 	_TBL_(dotfile_mode,	"DOTFILE_MODE",	DTFL_H,	000101000),
 	_TBL_(fileflg_mode,	"FILEFLG_MODE",	FLFL_H,	000100110),
-	_TBL_(mark_find,	"MARK_FIND",	MRKF_H,	000010010),
-	_TBL_(mark_file3,	"MARK_FILE3",	MRK2_H,	000010001),
 #ifndef	_NOARCHIVE
 	_TBL_(launch_file,	"LAUNCH_FILE",	LAUN_H,	000011111),
 #endif
@@ -104,10 +104,10 @@ functable funclist[] = {
 	_TBL_(split_window,	"SPLIT_WINDOW",	SPWN_H,	000101000),
 	_TBL_(next_window,	"NEXT_WINDOW",	NXWN_H,	000111000),
 #endif
-	_TBL_(help_message,	"HELP_MESSAGE",	HELP_H,	000110110),
 #ifndef	_NOCUSTOMIZE
 	_TBL_(edit_config,	"EDIT_CONFIG",	EDCF_H,	000111110),
 #endif
+	_TBL_(help_message,	"HELP_MESSAGE",	HELP_H,	000110110),
 	_TBL_(quit_system,	"QUIT_SYSTEM",	QUIT_H,	000111000),
 	_TBL_(warning_bell,	"WARNING_BELL",	WARN_H,	000110000),
 	_TBL_(no_operation,	"NO_OPERATION",	NOOP_H,	000110000)

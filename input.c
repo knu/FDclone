@@ -752,6 +752,7 @@ int cx, len, plen, max, linemax;
 	dupl = trquote(s, len, &len);
 	cx = vlen(s, cx);
 	width = linemax - plen;
+	if (t_nocursor && t_normalcursor) putterms(t_nocursor);
 	for (i = 0, y = 1; i + width < len; y++) {
 		putterm(l_clear);
 		if (stable_standout) putterm(end_standout);
@@ -776,6 +777,7 @@ int cx, len, plen, max, linemax;
 		locate(xpos, ypos + y);
 		putterm(l_clear);
 	}
+	if (t_nocursor && t_normalcursor) putterms(t_normalcursor);
 	setcursor(cx, plen, max, linemax);
 	tflush();
 	free(dupl);
@@ -1823,7 +1825,7 @@ int plen;
 	int i, ov;
 
 	if (!lcmdline) ov = LCMDLINE + WCMDLINE - n_line;
-	else if (lcmdline > 0) ov = lcmdline + WCMDLINE - n_line;
+	else if (lcmdline > 0) ov = lcmdline - 1 + WCMDLINE - n_line;
 	else ov = lcmdline + WCMDLINE;
 	if (plen < 0) {
 		plen = evalprompt(NULL, promptstr, MAXLINESTR);
@@ -1880,7 +1882,7 @@ int h;
 
 	xpos = 0;
 	if (!lcmdline) ypos = LCMDLINE;
-	else if (lcmdline > 0) ypos = lcmdline;
+	else if (lcmdline > 0) ypos = lcmdline - 1;
 	else ypos = lcmdline + n_line;
 	dupn_line = n_line;
 	for (i = 0; i < WCMDLINE; i++) {

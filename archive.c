@@ -51,6 +51,30 @@ extern int ansicolor;
 extern int n_args;
 extern int hideclock;
 
+#if	FD >= 2
+#if	MSDOS
+#define	PM_LHA	"%f\n%s %x %x %y-%m-%d %t", 5, 2
+#define	PM_TAR	"%a %u/%g %s %m %d %t %y %f", 0, 0
+#else	/* !MSDOS */
+#define	PM_LHA	"%9a %u/%g %s %x %m %d %{yt} %f", 2, 2
+# ifdef	UXPDS
+#define	PM_TAR	"%10a %u/%g %s %m %d %t %y %f", 0, 0
+# else	/* !UXPDS */
+#  ifdef	TARFROMPAX
+#define	PM_TAR	"%a %x %u %g %s %m %d %{yt} %f", 0, 0
+#  else	/* !TARFROMPAX */
+#   ifdef	TARUSESPACE
+#define	PM_TAR	"%a %u/%g %s %m %d %t %y %f", 0, 0
+#   else	/* !TARUSESPACE */
+#define	PM_TAR	"%9a %u/%g %s %m %d %t %y %f", 0, 0
+#   endif	/* !TARUSESPACE */
+#  endif	/* !TARFROMPAX */
+# endif	/* !UXPDS */
+#endif	/* !MSDOS */
+#define	PM_NULL	NULL, 0, 0
+#define	LINESEP	'\n'
+#define	isarchbr(l)	((l) -> format)
+#else	/* FD < 2 */
 #if	MSDOS
 #define	PM_LHA	5, 2, \
 		{255, 255, 255, 1, 4, 4, 4, 5, 0}, \
@@ -105,11 +129,16 @@ extern int hideclock;
 		{255, 255, 255}, 1
 #define	LINESEP	'\t'
 #define	isarchbr(l)	(((l) -> topskip) < 255)
+#endif	/* FD < 2 */
 
 static VOID NEAR pusharchdupl __P_((VOID_A));
+#if	FD >= 2
+static int NEAR readfileent __P_((namelist *, char *, char *, int));
+#else
 static int NEAR countfield __P_((char *, u_char [], int, int *));
 static char *NEAR getfield __P_((char *, char *, int, launchtable *, int));
 static int NEAR readfileent __P_((namelist *, char *, launchtable *, int));
+#endif
 static int NEAR dircmp __P_((char *, char *));
 static int NEAR dirmatchlen __P_((char *, char *));
 static char *NEAR pseudodir __P_((namelist *));
@@ -138,12 +167,21 @@ archivetable archivelist[MAXARCHIVETABLE] = {
 #if	MSDOS
 	{"*.lzh",	"lha a %S %TA",		"lha x %S %TA", 0},
 	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA", 0},
+# if	FD >= 2
+	{"*.tar.Z",	"tar cf %XS %T; compress %XS",
+					"gzip -cd %S | tar xf - %TA", 0},
+	{"*.tar.gz",	"tar cf %XS %T; gzip %XS",
+					"gzip -cd %S | tar xf - %TA", 0},
+	{"*.tar.bz2",	"tar cf %XS %T; bzip2 %XS",
+					"bzip2 -cd %S | tar xf - %TA", 0},
+# else
 	{"*.tar.Z",	"tar cfZ %C %TA",
 					"gzip -cd %S | tar xf - %TA", 0},
 	{"*.tar.gz",	"tar cfz %C %TA",
 					"gzip -cd %S | tar xf - %TA", 0},
 	{"*.tar.bz2",	"tar cfI %C %TA",
 					"bzip2 -cd %S | tar xf - %TA", 0},
+# endif
 #else
 	{"*.lzh",	"lha aq %C %TA",	"lha xq %C %TA", 0},
 	{"*.tar",	"tar cf %C %T",		"tar xf %C %TA", 0},
@@ -251,6 +289,270 @@ VOID poparchdupl(VOID_A)
 	free(cp);
 	free(old);
 }
+
+#if	FD >= 2
+static int NEAR readfileent(tmp, line, form, skip)
+namelist *tmp;
+char *line, *form;
+int skip;
+{
+	struct tm tm;
+#if	!MSDOS
+	uidtable *up;
+	gidtable *gp;
+#endif
+	long n;
+	u_short mode;
+	int i, ch, l, len;
+	char *cp, *next, *buf;
+
+	tmp -> name = NULL;
+	tmp -> st_mode = 0644;
+#if	!MSDOS
+	tmp -> st_uid = (uid_t)-1;
+	tmp -> st_gid = (gid_t)-1;
+#endif
+	tmp -> st_size = 0L;
+	tmp -> flags = 0;
+	tmp -> tmpflags = F_STAT;
+	tm.tm_year = tm.tm_mon = tm.tm_mday = -1;
+	tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+
+	while (*form) if (strchr(IFS_SET, *form)) {
+		while (strchr(IFS_SET, *line)) line++;
+		form++;
+	}
+	else if (*form != '%') {
+		if (skip) {
+			skip--;
+			form++;
+			continue;
+		}
+		if (*line != *(form++)) {
+			if (tmp -> name) free(tmp -> name);
+			return(0);
+		}
+		line++;
+	}
+	else {
+		if (!(next = evalnumeric(++form, &n, 1))) len = -1;
+		else {
+			form = next;
+			for (i = 0; i < n; i++) if (!line[i]) break;
+			len = i;
+		}
+
+		if (*form != '{') {
+			l = 1;
+			next = form + 1;
+		}
+		else {
+			next = strchr2(++form, '}');
+			if (!next || next <= form) {
+				if (tmp -> name) free(tmp -> name);
+				return(-1);
+			}
+			l = next++ - form;
+		}
+
+		if (skip) {
+			skip--;
+			form = next;
+			continue;
+		}
+
+		ch = -1;
+		if (len >= 0);
+		else if (l == 1 && *form == '%') {
+			if (*line != *form) {
+				if (tmp -> name) free(tmp -> name);
+				return(0);
+			}
+			l = 0;
+			len = 1;
+		}
+		else {
+			ch = *next;
+			if (strchr(IFS_SET, ch)
+			|| (ch == '%' && *(next + 1) != '%')) ch = '\0';
+			for (len = 0; line[len]; len++) {
+				if (ch) {
+					if (ch == line[len]) break;
+				}
+				else if (strchr(IFS_SET, line[len])) break;
+			}
+		}
+
+		buf = malloc2(len + 1);
+		strncpy2(buf, line, len);
+		while (l--) switch (form[l]) {
+			case 'a':
+				if (len <= 0) break;
+				tmp -> st_mode &=
+					~(0777 | S_ISUID | S_ISGID | S_ISVTX);
+				if ((i = len - 9) < 0) i = 0;
+				if (i + 2 < len && line[i + 2] == 's')
+					tmp -> st_mode |= S_ISUID;
+				if (i + 5 < len && line[i + 5] == 's')
+					tmp -> st_mode |= S_ISGID;
+				if (i + 8 < len && line[i + 8] == 's')
+					tmp -> st_mode |= S_ISVTX;
+				mode = 0;
+				for (; i < len; i++) {
+					mode *= 2;
+					if (line[i] != '-') mode |= 1;
+				}
+				tmp -> st_mode |= mode;
+
+				if (len <= 9) i = -1;
+				else for (i = 0; typesymlist[i]; i++)
+					if (line[len - 10] == typesymlist[i])
+						break;
+				if (i >= 0 && typesymlist[i]) {
+					tmp -> st_mode &= ~S_IFMT;
+					tmp -> st_mode |= typelist[i];
+				}
+				else if (!(tmp -> st_mode & S_IFMT))
+					tmp -> st_mode |= S_IFREG;
+				break;
+			case 'u':
+#if	!MSDOS
+				if (evalnumeric(buf, &n, -1))
+					tmp -> st_uid = n;
+				else if (up = finduid(0, buf))
+					tmp -> st_uid = up -> uid;
+				else tmp -> st_uid = (uid_t)-1;
+#endif
+				break;
+			case 'g':
+#if	!MSDOS
+				if (evalnumeric(buf, &n, -1))
+					tmp -> st_gid = n;
+				else if (gp = findgid(0, buf))
+					tmp -> st_gid = gp -> gid;
+				else tmp -> st_gid = (gid_t)-1;
+#endif
+				break;
+			case 's':
+				if (evalnumeric(buf, &n, 0))
+					tmp -> st_size = n;
+				else tmp -> st_size = 0L;
+				break;
+			case 'y':
+				if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
+				break;
+			case 'm':
+				if (!strncmp(line, "Jan", 3)) tm.tm_mon = 0;
+				else if (!strncmp(line, "Feb", 3))
+					tm.tm_mon = 1;
+				else if (!strncmp(line, "Mar", 3))
+					tm.tm_mon = 2;
+				else if (!strncmp(line, "Apr", 3))
+					tm.tm_mon = 3;
+				else if (!strncmp(line, "May", 3))
+					tm.tm_mon = 4;
+				else if (!strncmp(line, "Jun", 3))
+					tm.tm_mon = 5;
+				else if (!strncmp(line, "Jul", 3))
+					tm.tm_mon = 6;
+				else if (!strncmp(line, "Aug", 3))
+					tm.tm_mon = 7;
+				else if (!strncmp(line, "Sep", 3))
+					tm.tm_mon = 8;
+				else if (!strncmp(line, "Oct", 3))
+					tm.tm_mon = 9;
+				else if (!strncmp(line, "Nov", 3))
+					tm.tm_mon = 10;
+				else if (!strncmp(line, "Dec", 3))
+					tm.tm_mon = 11;
+				else if ((i = atoi2(buf)) >= 1 && i <= 12)
+					tm.tm_mon = i - 1;
+				break;
+			case 'd':
+				if ((i = atoi2(buf)) >= 1 && i <= 31)
+					tm.tm_mday = i;
+				break;
+			case 't':
+				if (!(cp = evalnumeric(buf, &n, 0))
+				|| n > 23) {
+					tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+					break;
+				}
+				tm.tm_hour = n;
+				if (*cp != ':'
+				|| !(cp = evalnumeric(++cp, &n, 0))
+				|| n > 59) {
+					tm.tm_min = tm.tm_sec = 0;
+					break;
+				}
+				tm.tm_min = n;
+				if (*cp != ':'
+				|| !(cp = evalnumeric(++cp, &n, 0))
+				|| n > 59) {
+					tm.tm_sec = 0;
+					break;
+				}
+				tm.tm_sec = n;
+				break;
+			case 'f':
+#if	MSDOS
+				for (i = 0; i < len; i++)
+					if (buf[i] == '/') buf[i] = _SC_;
+#endif
+				if (isdelim(buf, len - 1)) {
+					tmp -> st_mode &= ~S_IFMT;
+					tmp -> st_mode |= S_IFDIR;
+					if (len > 1) buf[len - 1] = '\0';
+				}
+				if (tmp -> name) free(tmp -> name);
+				tmp -> name = strdup2(buf);
+				break;
+			case 'x':
+				break;
+			default:
+				free(buf);
+				if (tmp -> name) free(tmp -> name);
+				return(-1);
+/*NOTREACHED*/
+				break;
+		}
+		free(buf);
+		line += len;
+		if (!ch) while (strchr(IFS_SET, *line)) line++;
+		form = next;
+	}
+
+	if (!(tmp -> name)) return((skip) ? -1 : 0);
+
+	if ((tmp -> st_mode & S_IFMT) == S_IFDIR) tmp -> flags |= F_ISDIR;
+	else if ((tmp -> st_mode & S_IFMT) == S_IFLNK) tmp -> flags |= F_ISLNK;
+	if (tm.tm_year < 0) {
+		tm.tm_year = today[0];
+		if (tm.tm_mon < 0 || tm.tm_mday < 0);
+		else if (tm.tm_mon > today[1]
+		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
+			tm.tm_year--;
+	}
+	else {
+		if (tm.tm_year < 1900 && (tm.tm_year += 1900) < 1970)
+			tm.tm_year += 100;
+		tm.tm_year -= 1900;
+	}
+	if (tm.tm_mon < 0) tm.tm_mon = 0;
+	if (tm.tm_mday < 0) tm.tm_mday = 1;
+
+	tmp -> st_mtim = timelocal2(&tm);
+	tmp -> flags |=
+#if	MSDOS
+		logical_access(tmp -> st_mode);
+#else
+		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
+#endif
+
+	return(1);
+}
+
+#else	/* FD < 2 */
 
 static int NEAR countfield(line, sep, field, eolp)
 char *line;
@@ -463,6 +765,7 @@ int max;
 	free(buf);
 	return(0);
 }
+#endif	/* FD < 2 */
 
 VOID archbar(file, dir)
 char *file, *dir;
@@ -585,7 +888,12 @@ launchtable *list;
 	FILE *fp;
 	char *cp, *buf, *dir, *line;
 	int i, c, no, len;
+#if	FD >= 2
+	char *form;
+	int skip;
+#else
 	int max;
+#endif
 
 	if (!(cp = evalcommand(list -> comm, file, NULL, 1))) return(-1);
 	waitmes();
@@ -612,10 +920,12 @@ launchtable *list;
 		return(-1);
 	}
 
+#if	FD < 2
 	max = 0;
 	for (i = 0; i < MAXLAUNCHFIELD; i++)
 		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
 			max = (int)(list -> field[i]);
+#endif
 
 	for (i = 0; i < (int)(list -> topskip); i++) {
 		if (!(line = fgets2(fp, 0))) break;
@@ -633,12 +943,22 @@ launchtable *list;
 	tmp.st_flags = 0;
 #endif
 
+#if	FD >= 2
+	skip = 0;
+#else
 	i = 0;
+#endif
 	no = len = 0;
 	buf = NULL;
+#if	FD >= 2
+	cp = form = decodestr(list -> format, NULL, 0);
+#endif
 	while ((line = fgets2(fp, 0))) {
 		if (intrkey()) {
 			dopclose(fp);
+#if	FD >= 2
+			free(form);
+#endif
 			free(line);
 			if (buf) free(buf);
 			for (i = 0; i < maxfile; i++) free(filelist[i].name);
@@ -656,12 +976,31 @@ launchtable *list;
 		}
 		len += c;
 
+#if	FD >= 2
+		if ((cp = strchr(cp, '\n'))) {
+			cp++;
+			continue;
+		}
+
+		cp = form;
+		buf[len] = '\0';
+		len = 0;
+
+		c = readfileent(&tmp, buf, form, skip);
+		if (!c && !skip) {
+			do {
+				skip++;
+				c = readfileent(&tmp, buf, form, skip);
+			} while (!c);
+		}
+#else	/* FD < 2 */
 		if (++i < list -> lines) continue;
 
 		buf[len] = '\0';
 		i = len = 0;
 
 		c = readfileent(&tmp, buf, list, max);
+#endif	/* FD < 2 */
 		free(buf);
 		buf = NULL;
 		if (c < 0) continue;
@@ -688,6 +1027,9 @@ launchtable *list;
 		filelist[maxfile].ent = no;
 		maxfile++;
 	}
+#if	FD >= 2
+	free(form);
+#endif
 
 	no -= (int)(list -> bottomskip);
 	for (i = maxfile - 1; i > 0; i--) {
@@ -797,12 +1139,15 @@ int launcher(VOID_A)
 	char *dir;
 	int i, n;
 #ifndef	_NODOSDRIVE
-	int drive = 0;
+	int drive;
 #endif
 #if	!MSDOS
 	int dupignorecase;
 #endif
 
+#ifndef	_NODOSDRIVE
+	drive = 0;
+#endif
 	for (i = 0; i < maxlaunch; i++) {
 #if	!MSDOS
 		dupignorecase = pathignorecase;
@@ -1184,7 +1529,12 @@ int maxf, n;
 	FILE *fp;
 	char *cp, *buf, *dir, *file, *line;
 	int i, c, no, len, match, dupmaxfile, dupfilepos;
+#if	FD >= 2
+	char *form;
+	int skip;
+#else
 	int max;
+#endif
 #if	!MSDOS
 	int dupignorecase;
 #endif
@@ -1264,19 +1614,28 @@ int maxf, n;
 	kanjiputs(file);
 	tflush();
 
+#if	FD < 2
 	max = 0;
 	for (i = 0; i < MAXLAUNCHFIELD; i++)
 		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
 			max = (int)(list -> field[i]);
+#endif
 
 	for (i = 0; i < (int)(list -> topskip); i++) {
 		if (!(line = fgets2(fp, 0))) break;
 		free(line);
 	}
 
+#if	FD >= 2
+	skip = 0;
+#else
 	i = 0;
+#endif
 	no = len = match = 0;
 	buf = NULL;
+#if	FD >= 2
+	cp = form = decodestr(list -> format, NULL, 0);
+#endif
 	re = regexp_init(regstr, -1);
 	while ((line = fgets2(fp, 0))) {
 		if (match && match <= no - (int)(list -> bottomskip)) {
@@ -1286,6 +1645,9 @@ int maxf, n;
 		}
 		if (intrkey()) {
 			dopclose(fp);
+#if	FD >= 2
+			free(form);
+#endif
 			free(line);
 			if (buf) free(buf);
 			regexp_free(re);
@@ -1304,18 +1666,40 @@ int maxf, n;
 		}
 		len += c;
 
+#if	FD >= 2
+		if ((cp = strchr(cp, '\n'))) {
+			cp++;
+			continue;
+		}
+
+		cp = form;
+		buf[len] = '\0';
+		len = 0;
+
+		c = readfileent(&tmp, buf, form, skip);
+		if (!c && !skip) {
+			do {
+				skip++;
+				c = readfileent(&tmp, buf, form, skip);
+			} while (!c);
+		}
+#else	/* FD < 2 */
 		if (++i < list -> lines) continue;
 
 		buf[len] = '\0';
 		i = len = 0;
 
 		c = readfileent(&tmp, buf, list, max);
+#endif	/* FD < 2 */
 		free(buf);
 		buf = NULL;
 		if (c < 0) continue;
 		if (regexp_exec(re, tmp.name, 1)) match = no;
 		free(tmp.name);
 	}
+#if	FD >= 2
+	free(form);
+#endif
 	regexp_free(re);
 	if (n >= 0) removetmp(dir, NULL, file);
 

@@ -1,0 +1,102 @@
+[CAUTION TO THE ADMINISTRATORS FOR FDCLONE2 EMPLOYMENT]
+
+
+1.Employment Policy for FDclone
+
+  Although FDclone is built aiming at the general purpose
+tool for beginners, its intention is "compromise from UNIX
+to beginners".
+  In view of the present condition where someone complains
+that it has only interface difficult for beginners, the target
+is that any beginner can handle UNIX easily and any administrator
+can be out of supporting beginners.
+
+  I can hear some reactions in various places after the first
+release of FDclone, and often feel that the above policy can
+not be always kept in the actual employment.
+  One of the worst case as employment seems "the system
+administration with FDclone by a novice root".
+
+  FDclone is only a tool for end users.
+
+  The author has the policy that any root, even if he is a
+novice, should be used to the UNIX world well.
+  If he is used to FDclone in daily administrations, he will
+not be able to raise the skill of the special operation in
+some accidents and the shell programming.
+  And the most important problem is a secutity. There is not
+only the risk that a miss operation can cause damages widely,
+but also the problem that any FDclone operation can remain
+in no log.
+
+  You should keep a awareness of the problem for just root,
+and walk on the road of UNIX administrator not invoking
+FDclone with root permission easely.
+
+
+2.Administration of End Users
+
+  Although FDclone is a tool for beginners, the responsibility
+for the beginner education in each environment cannot be
+taken.
+  The administrator who install FDclone take the minimum
+responsibility in its employed environment, and need to
+educate and enlighten end users including UNIX itself in
+order to use FDclone correctly.
+  FDclone is just only a tool.
+
+  When you install FDclone, you must build the environment
+where any end user can make use of FDclone with no special
+knowledge.
+  This means not only to consider the configuration of /etc/fd2rc
+specialized in your environment, but also to build the
+environment "kind to beginner" about the reference method
+for a man page and FAQ.
+
+  Therefore, the administrator who install FDclone will need
+to have the minimum knowledge as the UNIX administrator.
+  It seems the work of each administrator to support end users
+in order to use FDclone comfortably. I wish you endeavor not
+to neglect the beginer education and support with expecting
+FDclone to be more than a tool.
+
+  You should avoid that any complaint and question from end
+users reach the author directly.
+  Some mails are send to the author about not only the affair
+specialized in FDclone but also the general question for UNIX.
+A FDclone package includes FAQ about FDclone, and can hardly
+include FAQ over whole UNIX.
+  Moreover, even if it is a question about FDclone, the
+direct mail from an end user requires a lot of explanation
+filling his UNIX knowledge, and make difficult to support.
+  It is recommended that the administrator in the employed
+environment will administer the employment of FDclone, and
+he send only the problem which will be resolved only by the
+author.
+
+
+3.Guarantees of FDclone
+
+  FDclone has no warranty. The fact is that it is not checked
+perfectly differing from some commercial products.
+  Especially in the development after Ver. 1.03, the developing
+environment becomes very poor for my personal reasons. I am
+currently not a UNIX administrator but just end user who can
+not have any root permission. 
+  Although it is very difficult to continue the development
+of FDclone in such environment, I have continued the development
+with a long time and earnest approval from some users.
+
+  It still has poor imprementation in the view of some UNIX
+wizards, and may keep some security holes possibly. If you
+have some anxiety for them, FDclone don't hold the reliability
+enough to sweep off the anxiety.
+  In opposite view, I propose that whose who expect such that
+reliability should build the safer and more reliable tool
+yourself.
+
+  FDclone is not made by the engineer familiar with UNIX, and
+just a tool made for hobby by a mere game designer in spare
+time.
+  Please don't expect FDclone too much on account of this
+point.

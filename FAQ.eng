@@ -1,0 +1,656 @@
+[FAQ FOR FDCLONE2]
+
+
+<1.UNIX Depended Problem>
+
+Q1-01.	A long UNIX filename is not displayed to the end.
+A1-01.	You can scroll a display position of a filename by
+	`(' and `)' key, on the default key binding. Put a
+	cursor on the objective file and push `)' key several
+	times, to disdlay the whole filename.
+
+Q1-02.	When FDclone is finished, it is returned the startup
+	directory. How I can do?
+A1-02.	On UNIX OS, each process has their own current
+	directories, and no child process can manage to change
+	the current directory of its parent process.
+	Since FDclone is started as a child process of your
+	user shell, FDclone can never manage to change the
+	current directory of the user shell, as its parent
+	process.
+
+Q1-03.	I want to page up/down by Shift + up/down key.
+Q1-04.	I want to execute editors and executable files by
+	Shift + Ret key.
+Q1-05.	When I push Shift key, notation of a function line
+	doesn't change.
+A1-03.
+A1-04.
+A1-05.	On UNIX, a keyboard input is brought by the communication
+	between a host and a terminal. Each terminal emulator
+	or terminal itself defines what code is sent and
+	received.
+	A general terminal doesn't send any key code with the
+	only Shift key. Only when it pushed with any other
+	key, it sends the key code for Shift.
+	Therefore, only when the key code for Shift is
+	different from the original key code, it can be find
+	whether Shift is pushed or not. It is defined by each
+	terminal what key has this feature.
+	And now, Ret and the cursor keys send the same code
+	whether Shift is pushed or not.
+
+Q1-06.	The owner/group name in the archive browser seems
+	strange.
+Q1-07.	The owner/group name seems strange, when the floppy
+	drive is referred to.
+A1-06.
+A1-07.	The owner/group name of a file has a meaning only on
+	the machine including it. On another machine, there is
+	no guarantee to mean the same owner/group name.
+	The owner/group name in archive files is named on the
+	machine archiving them.
+	Sence MS-DOS has no such file attribute, there is
+	not the onwer/group name in files of the floppy drive.
+	In that case, the owner/group name doesn't indicate
+	any real owner/group. UNIX is implemented so that the
+	owner/group name is treated as numeric, then it cannot
+	be helped.
+
+
+<2.Customization Problem>
+
+Q2-01.	I want to execute an external command accoding to the
+	extension of a filename. Can I customize?
+Q2-02.	How I can change the key binding?
+A2-01.
+A2-02.	Treat .fd2rc in your home directory as a configuration
+	file. See man page for details of the usage.
+
+Q2-03.	I can not set some key bindings.
+A2-03.	The only key for which the special key identifier
+	(See man page) is prepared can change its key binding.
+	But, the builtin command "keymap" can make any key
+	substitution of another function key, to set key binding
+	in pseudo method.
+	Key substitution by the edit mode is prior with key
+	binding of a control character, so that there can be
+	a control character to be unable to set key binding
+	in some edit mode. If you need set in any way, you have
+	to change the edit mode.
+	And, It is forbidden to change ESC key binding, in order
+	to avoid the problem that unusual change makes FDclone
+	unterminatable.
+
+Q2-04.	The display of a function key is different from an
+	actual keyboard.
+A2-04.	You can change a display of the function key when
+	you change a key binding of the function key into
+	your customization. See man page for details.
+	But, if your keyboard layout is different from the
+	function lines, you can not suit a display to a
+	keyboard. Sorry.
+
+Q2-05.	I want to confirm how it is customized.
+A2-05.	You can confirm with some builtin commands in EXECUTE_SH
+	command. For example, "printbind" for the key binding,
+	"printenv" for the internal variable definition. See
+	man page for details.
+
+Q2-06.	As a system administrator, I want to prepare a
+	configuration file common to users.
+A2-06.	Make a file named /etc/fd2rc. It is referred to before
+	the users .fd2rc is referred to, whether if .fd2rc exists
+	or not.
+
+Q2-07.	I want to register a new archive form in the archive
+	browser. How can I do?
+A2-07.	I've explained in #5 of TECHKNOW.eng, see it with the
+	clause of "ARCHIVE BROWER" in man page.
+
+Q2-08.	It is always sorted.
+Q2-09.	I want to see the information of a linked file in the
+	case of a symbolic link.
+Q2-10.	Some filenames are followed by a `*' or `/' character.
+Q2-11.	A filename which starts with `.' is not displayed.
+Q2-12.	I want to sort in the tree screen.
+Q2-13.	The directory writing function takes no effect.
+Q2-14.	When finished, my terminal configuration is different
+	from the one before startup.
+Q2-15.	I want to change the number of rows in startup.
+Q2-16.	Can I get a longer filename field?
+Q2-17.	I cannot use the command history.
+Q2-18.	Can I refer to the history to input a pathname?
+Q2-19.	I want to carry over the history to the next execution.
+Q2-20.	A part the file list is not displayed in the tree screen.
+Q2-21.	Can I see a second with the time display?
+Q2-22.	I want to know the whole file size and the amount of
+	disk.
+Q2-23.	Can I use with color screen?
+Q2-24.	I want to change the prompt in EXECUTE_SH command.
+A2-08.
+A2-09.
+A2-10.
+A2-11.
+A2-12.
+A2-13.
+A2-14.
+A2-15.
+A2-16.
+A2-17.
+A2-18.
+A2-19.
+A2-20.
+A2-21.
+A2-22.
+A2-23.
+A2-24.	These configurations are set by the internal variables
+	or the environment variables. There was not only the
+	case each user configure them intentionally, but also
+	the case the system administrator prepares the
+	configuration file common to users, or hardcoated them
+	when compiled. See the clause of "ENVIRONMENT VARIABLES"
+	in man page well, to set a suitable configuration by
+	.fd2rc and so on.
+	Moreover, an administrator should prepare a suitable
+	common configuration file, not to confuse users like
+	this. The configuration file in the distribution package
+	is no more than sample, then make your own common
+	configuration file with enough consideration.
+
+Q2-25.	I cannot understand the edit mode.
+A2-25.	It seems hard for who has used neither emacs nor vi
+	to know why there are multiple methods for binding the
+	substitutive key by the control character.
+	If you want to suit to the original FD, you should
+	define "wordstar" as the internal variable (or the
+	environment variable) EDITMODE, without considering
+	anything.
+	Especially about vi mode, it is the just confused
+	environment for except who is familiar to vi, then
+	you should not set this configuration unless the
+	special case.
+
+Q2-26.	When I try to refer to a file in the archive browser,
+	it is rejected as "No such file or directory".
+Q2-27.	When I try to refer to a file in the floppy drive, it
+	is rejected as "No such file or directory".
+A2-26.
+A2-27.	Is it right the value which is defined as the internal
+	variable (or the environment variable) TMPDIR? It
+	is necessary not only to exist the directory named
+	as defined here, but also to be writable for you.
+	Try to change the defined directory name, or change
+	the permission of the directory.
+
+Q2-28.	I can not use the floppy drive function.
+A2-28.	Is it set up validly the configuration about the floppy
+	drive? Even if you didn't set up when compiled, you can
+	customize later.
+	You must set the internal variable (or the environment
+	variable) DOSDRIVE, and must register the floppy drive.
+	See #6 of TECHKNOW.eng as details.
+	And, sometimes a general user cannot use the floppy
+	drive because of the parmission of the device file
+	assigned for the floppy disk drive. In this case, try
+	to tell the administrator of a machine.
+
+Q2-29.	Why the common configuration file is not located
+	under /usr/local.
+A2-29.	In some case, /usr/local is shared by some machines
+	with NFS. If the common configuration file is located
+	under /usr/local in such environment, multiple machines
+	will use the same configuration file.
+	There are not a few factors depended on machines in
+	each configuration on FDclone, then I think it is
+	sometimes unsuitable to be used the same configuration
+	file by multiple machines.
+	Therefore, it is designed to locate it under /etc
+	which is rare to be used with NFS.
+	If you understand the above and still want to locate
+	it under /usr/local, as "Install" says, you may install
+	with rewriting DEFRC in Makefile.in.
+
+Q2-30.	What I should prepare as the common configuration
+	file.
+Q2-31.	I don't know what I shuold write in the configuration
+	file.
+A2-30.
+A2-31.	It is no need to prepare /etc/fd2rc as the common
+	configuration file, nor .fd2rc as the configuration
+	file for each user.
+	If you don't prepare them, it is varid the default
+	configurations hardcoated in executable file. So
+	these defaults is set with considering the difference
+	from each OS, usually, it should run normally even
+	if as is.
+	If you make some strange configuration file with no
+	understanding, or use the attached sample as it was,
+	you may get into trouble. It will be wise to avoid
+	preparing the configuration file meaninglessly.
+
+
+<3.Environment Problem>
+
+Q3-01.	When I try to refer to the contents of a file, page
+	control is not mageged, or a screen is broken.
+A3-01.	It depends on the specification of a pager. If you
+	change the pager software defined in the internal
+	variable (or the environment variable) PAGER, the
+	problem in reference will be cleared.
+	I recommend, for example, GNU less distributed by
+	FSF.
+
+Q3-02.	Some special keys or function keys don't respond.
+Q3-03.	DEL key and BS key has a strange behavior.
+A3-02.
+A3-03.	Parhaps the key code of special keys and function
+	keys may be different from the expected one. See the
+	man page of termcap(5) or terminfo(5), to re-register
+	the entry for your terminal suitably.
+	If you cannot access termcap/terminfo, the builtin
+	command "keymap" can change the key code dynamically.
+	Examine a key code of the object key to register,
+	with the builtin command "getkey".
+	On some terminals, pushing function keys don't cause
+	to send any key code, but cause action of the screen
+	copy and so on. On these terminals, you cannot use
+	any function keys.
+
+Q3-04.	It has been finished with a message as "Column size
+	too small".
+A3-04.	It means that the terminal column size is too small
+	to display for FDclone, to force it to terminate.
+	Similarly, if the terminal line size is too small,
+	its message is "Line size too small".
+	Execute on wider terminal, or widen size more than
+	80x8 in case of the variable-sized terminal such
+	as a window terminal.
+	In case of variable-sized terminal, if you shorten
+	a terminal size while running, you should take care
+	that it can be terminated in spite of working.
+
+Q3-05.	I cannot read a kanji because it is broken.
+A3-05.	Parhaps it may be compiled at a wrong kanji code, or
+	you execute it in the terminal which use the different
+	kanji code.
+	In the latter case, set any of sjis, jis, or euc to
+	the internal variable LANGUAGE, according to your
+	terimnal. FDclone will change the code internally.
+	In the formar case, you must re-compile with modifying
+	the original kanji code, but you can manage like as
+	the latter case in half measures. In this case, I
+	think that it occurs some troubles to refer to the file
+	with kanji filename or the Japanese man page.
+
+Q3-06.	When I bring it to a machine with the different
+	environment, it works strangely.
+A3-06.	It is generally the principle to re-compile for the
+	different environment. Even if it may seem the same
+	apparently, some troubles will be occured in spite of
+	just running because of the difference of OS version
+	or the difference of configuration.
+	Besides, don't forget to compile after executing
+	"make clean", not to remain the previous unfinished
+	file.
+
+Q3-07.	I do "make config", but cannot compile normally.
+A3-07.	Auto configuration is not perfect. Then see #1 of
+	TECHKNOW.eng to modify config.h manually. It needs you
+	have some knowledge of the C language, but each man page
+	guides you without the advanced knowledge.
+	If you use the OS which is writen as the supported OS
+	in Install, "make config" may sometimes makes a
+	rather unsuitable configuration, so that you should not
+	do "make config". When you've done accidentally, do
+	"make realclean".
+	If you can make configuration of config.h for any
+	unsupported OS, you can report this to make me register
+	it as the supported OS.
+	But, I cannot support basically the environment which
+	I don't have, then you must abandon it if it was
+	imperfect in spite of modifying config.h. If you
+	prepare me the developing environment with hardware,
+	I will support it.
+
+Q3-08.	I execute "man fd", but man page is not displayed
+	correctly.
+A3-08.	It is a possibility that the man page is not installed
+	correctly. Did you prepare MANDIR which you've reserved
+	in Makefile.in?
+	Or it may be imperfect configurations about a kanji
+	code. Try to confirm if you set correctly the environment
+	variable such as MANPATH or LANG in user environment.
+	In the worst case, It supposed that your OS is not
+	supported in Japanese. Though the terminal itself
+	can display Japanese, a text formatter (usually nroff)
+	may be unable to use Japanese rightly.
+	In this case, install a man page of the plain text
+	version, referring to Install #8.
+
+Q3-09.	The archive browser cannot display correctly only the
+	timestamp of a file.
+A3-09.	Try to exit from FDclone and do manually "tar tvf
+	<FILENAME>". I suppose that date and time will be
+	display in Japanese.
+	Such a form of the timestamp is not recognized correctly,
+	so that execute "export LANG=C" in .fd2rc and so on,
+	to let tar done in English mode.
+	Or, you may register the archive browser with any
+	miskate, see enough #5 of TECHKNOW.eng or the clause
+	of "ARCHIVE BROWSER" in man page.
+
+Q3-10.	I cannot read a file to the end.
+A3-10.	Some pager, e.g. "more" which is a standard command
+	included in OS, will immediately return to FDclone
+	at the as soon as it has read through the end of a
+	file, not to read to the end.
+	In that case, you shuold use the "%K" macro in order
+	to prompt once before returning.
+	Specifically, you should add 2 characters "%K" after
+	a pager name at the point to set up the internal
+	variable (or the environment variable) PAGER.
+
+Q3-11.	I want to read the file from which a kanji code is
+	different.
+A3-11.	Conversion of a kanji code is the work by a pager,
+	so that you must manage with the pager side. GNU less
+	has iso-2022-jp patch which to recognize each kanji
+	code automatically, you can find it in anonymous ftp
+	sites.
+	Or there are some kanji code filters to recognize
+	automatically, such as nkf. It is a way to set up
+	the internal variable (or the environment variable)
+	PAGER as "nkf %C | less".
+
+Q3-12.	One day suddenly, a browser display of an archive file
+	becomes	strange.
+A3-12.	LHa on UNIX has been changed for a format to display
+	in list from V 1.14. You should register a launcher
+	as follows.
+	launch ".lzh" "lha -lq" "%a %u/%g %s %x %m %d %{yt} %f"
+
+	GNU tar has been changed for a format to display in
+	list from version 1.12. You should register a launcher
+	as follows.
+	launch ".tar" "tar tvf" "%a %u/%g %s %y-%m-%d %t %f"
+	launch ".tar.Z" "tar tvfZ" "%a %u/%g %s %y-%m-%d %t %f"
+	launch ".tar.gz" "tar tvfz" "%a %u/%g %s %y-%m-%d %t %f"
+
+	Both samples are prepared in _fdrc.
+
+Q3-13.	When executed on winterm terminal of IRIX, neither
+	Ret key nor a cursor key takes no effect.
+A3-13.	It is the cause that description for winterm is
+	wrongly prepared by the standard.
+	You should add the following description in
+	/etc/fd2rc
+		if [ " $TERM" = " iris-ansi" ]; then
+			keymap	ENTER	""
+			keymap	UP	"\033OA"
+			keymap	DOWN	"\033OB"
+			keymap	RIGHT	"\033OC"
+			keymap	LEFT	"\033OD"
+		fi
+	To explain additionally, this ENTER means Enter key
+	of a special key, and never means Ret key (so-called
+	new-line key).
+	Although some keyboards have Ret key (mostly located
+	above a right SHIFT) on which stamped "Enter" with
+	its key-top, Enter key sayed here is a special key
+	prepared in some other keyboards, unlike this. It
+	may be called as a send key.
+	It seems the main cause of this trouble that this
+	confusion occured in the implementation of IRIX.
+
+Q3-14.	Although compiled on BSD on Windows 1.5, it is regarded
+	as FreeBSD, so that a kanji code is set to EUC instead
+	of ShiftJIS.
+A3-14.	Because there is a trouble in the installer of BSD
+	on Windows 1.5, which an identifier due to be
+	pre-defined is not defined.
+	You should copy the following file.
+	source:("X" is the drive letter where BOW CD-ROM exists)
+	/dfs/X/usr/local/lib/gcc-lib/i386--freebsd/2.6/specs
+	destination:
+	/usr/local/lib/gcc-lib/i386--freebsd/2.6.2/specs
+
+Q3-15.	I've got a FDclone circulated as binary, but it is
+	not work well.
+A3-15.	For binary circulation, it is a rule to prepare the
+	circulation manager, by FDclone from 1.03 downward.
+	When you execute such a binary, the version number
+	in a title line must suffix the character of `#'.
+	The author guarantees no warranty for the binary
+	without this display.
+	The binary with this display will show an address of
+	the circulation manager on the function line of a
+	help screen, so that try to push `?'.
+	When some trouble has occured about a circulated
+	binary, you should contact with simultaneously not
+	only the author but also this circulation manager.
+
+Q3-16.	I'm a MS-DOS user without compile environment.
+A3-16.	You can get a executable binary package compiled
+	by LSI C-86 3.5 from the following URL.
+
+	http://hp.vector.co.jp/authors/VA012337/soft/fd/
+
+Q3-17.	A screen is too broken to operate anything on MS-DOS
+	version.
+A3-17.	Is ANSI.SYS set up? A general MS-DOS screen except
+	the MS-DOS prompt on Windows can never work terminal
+	I/O exactly, unless ANSI.SYS is set up.
+	Since the startup disk of Windows95 has also no
+	ANSI.SYS, you should set it up manually by rewriting
+	CONFIG.SYS.
+	Don't forget to prepare ANSI.SYS itself. For example,
+	in the case of Windows95, it exists in the directory
+	pointed out by the environment variable WINDIR.
+
+	In the case of WindowsNT/2000, you should add
+	"devicehigh=%SystemRoot%\system32\ansi.sys" in
+	\WINNT\SYSTEM32\CONFIG.NT.
+
+Q3-18.	On Fujitsu UXP/DS, I cannot refer to a tar file by
+	the archive browser.
+A3-18.	Since tar on UXP/DS is special in the output form
+	about the file mode, you cannot use an archive browser
+	format for the other SVR4 type OS.
+	The format hardcoated by the default can treat this
+	special output form, but you should describe with
+	care in the format when writing to .fd2rc etc.
+	manually.
+
+	Moreover, on UXP/DS V10, the output of tar is token
+	out to stderr instead of stdout. For this reason,
+	you have to order redirection as "2>&1" in .fd2rc
+	etc.
+
+	Both samples are prepared in _fdrc.
+
+Q3-19.	On MS-DOS, the special key inputted for the first
+	time after startup is ignored.
+A3-19.	Some of SMARTDRV.EXE which is included MS-DOS made
+	by NEC, seems specified to hook the keyboard BIOS
+	and intercept an input character. I don't know this
+	reason.
+	This intercepted key input is returned to the key
+	buffer for MS-DOS after a certain processing. Since
+	this key buffer is invisible when the keyboard BIOS
+	is used, the key input will be thrown away.
+	Although this key input can caturally also be read
+	if using only MS-DOS function call, MS-DOS made by
+	NEC is specified that a cursor key cannot be got unless
+	the keyboard BIOS is used.
+	Then, I prepared in 1.03h the technique to get key
+	input with MS-DOS function call, referring to the
+	work memory for the keyboard BIOS.
+	Although this technique is effective only on PC-9800
+	series, if this condition occurs in another environment,
+	you can add the following line to the head of term.c,
+	to recompile.
+		#define	NOTUSEBIOS
+
+Q3-20.	On MS-DOS, I don't want to use Long File Name. How
+	can I do?
+A3-20.	If a capital letter is used like "C:\" as a drive
+	letter of the object directory name, it comes to
+	use Short File Name forcibly.
+	Or it is one way to disguise the version of OS and
+	pretend that OS is before MS-DOS 7.0 (MS-DOS included
+	in Windows95) which supports LFN.
+	You can drive it to answer an old version to FDclone,
+	using SETVER.EXE included OS like the following.
+		setver fd.exe 6.2
+	But, you must note that the effect of SETVER.EXE
+	will not be taken unless you describe the following
+	line in CONFIG.SYS and reboot OS.
+		DEVICE=[drive:][path]SETVER.EXE
+
+Q3-21.	On PC-UNIX, I've used a MS-DOS filesystem with mounting,
+	which doesn't accord with the contents seen by the
+	floppy drive.
+A3-21.	It is generally forbidden to access a single medium
+	with multiple ways, so that you must not use the
+	floppy drive function to the mounted disk.
+	It is a general solution to use after umount, or to
+	give up using the floppy drive function.
+	When you want to use simultaneously in the knowledge
+	of danger, I write about the details of these situation
+	on #9 of TECHKNOW.eng, so you can refer to it.
+
+Q3-22.	On Solaris, when I am going to use the floppy drive,
+	to be unable to access with a message as "Device busy.".
+A3-22.	Doesn't vold (Volume Management daemon) work? Since
+	this daemon automatically use a floppy disk device,
+	FDclone try to use it, and cannot access because
+	already under use.
+	You can edit /etc/vold.conf to delete all the lines
+	including the string "floppy", and reboot. Or the
+	same effect is taken by sending SIGHUP to running
+	vold instead of rebooting.
+	However, this configuration will make some of
+	standard floppy disk control commands unavailable.
+
+	Moreover, if you are going to substitute /dev/rfd0a
+	because /dev/rfd0c is unavailable owing to vold, the
+	last cylinder of a froppy disk will be unable to
+	access. Don't use rfd0a
+
+
+<4.Specification Problem>
+
+Q4-01.	Can't I save the history of a pathname?
+A4-01.	Although I added the pathname history from Ver. 1.03,
+	this is not the history of input lines but the
+	history of directories operated by commands.
+	Because of its feature, it should not be carried
+	over to the next FDclone execution, and occurs
+	troublesome problems such as management of a save
+	file, the pathname history has been made into the
+	specification not to save.
+
+Q4-02.	Value by INFO_SYSTEM command may sometimes become "?".
+A4-02.	There is the case that it cannot get any file system
+	information by the specification of OS. In this case
+	it displays as "?", but, since it has been so on the
+	convenience of OS, there is no way to manage for
+	FDclone.
+
+Q4-03.	Can I mark also a directory?
+A4-03.	If allowed to mark a directory, a damage when the user
+	has been mistaken in operation will be large. As a
+	safe policy, it is forbidden to mark a directory.
+	In addition, it must be such specification also by
+	the original "FD".
+
+Q4-04.	When I chose "*" as a lookup string, the file which
+	starts with `.' will be excepted.
+A4-04.	UNIX shell is implemented not to match the file
+	starts with `.' to the wildcard pattern "*". FDclone
+	also follows this specification.
+	Incidentally, it can generally make the file starts
+	with `.' match to lookup with the string ".??*".
+	Moreover, you should confirm whether if you make the
+	file starts with `.' invisible, using DOTFILE_MODE
+	command.
+
+Q4-05.	When I upgrade to Ver. 2.00, configuration completely
+	has changed from the previous.
+A4-05.	In Ver. 2.00, a great specification change was given
+	to the form of the internal command which is used in
+	EXECUTE_SH and .fd2rc. You cannot use .fdrc of Ver.
+	1.03 or before as it is, and should rewrite referring
+	to man page or _fdrc.dif etc.
+
+Q4-06.	I found a bug.
+A4-06.	Please report the following address via E-mail.
+		<shirai@nintendo.co.jp>
+	If I find the solusion, will fix the bug on the next
+	version.
+
+Q4-07.	When sorted, only directories always come previous.
+Q4-08.	When in the tree screen, even if I set up to sort a
+	current directory always comes to a head.
+A4-07.
+A4-08.	It is made such specification.
+
+Q4-09.	Although I set up to display Japanese both in compile
+	and in execution, some English error messages are
+	displayed.
+A4-09.	Among the error messages outputted, the one in
+	connection with the fundamental part of OS, e.g.
+	filesystem etc., uses the error string in the library
+	prepared by OS.
+	Therefore, when OS supports Japanese, conversely,
+	any Japanese error masseges may be displayed even if
+	you set up to display English.
+	This error message is quite closely related to the
+	function specification of OS, and message specification
+	differs with OS in details. For this reason, it is
+	very difficult to predict possible errors in advance
+	and to prepare the error messages correspondent to
+	them.
+	Then, an original error message is prepared only
+	about the error which can be enough predicted, and
+	the other error messages use established one, in its
+	specification.
+	In addition, it seems that the details of each error
+	message can be referred to by "man 2 intro", in many
+	cases.
+
+Q4-10.	The contents of a ejected floppy disk are not updated
+	even if it is written in the floppy drive.
+A4-10.	Since the floppy drive function uses caches, a floppy
+	disk may not actually be written immediately after
+	accessing to write.
+	You can execute REREAD_DIR command on the screen
+	you are looking at the floppy drive, to forced flushing
+	caches, thereby, it is actually written.
+	Or also moving to directories other than the floppy
+	drive can make it written actually. You should not
+	eject a floppy disk until it is actually written.
+
+
+<5.Others>
+
+Q5-01.	I've lost the source.
+A5-01.	It is confirmed that it exists in the following URL
+	at present. You can get it from there.
+
+	http://hp.vector.co.jp/authors/VA012337/soft/fd/
+	ftp://ftp.vector.co.jp/pack/unix/util/file/filer/fd/
+
+Q5-02.	I have a question which has not appeared in FAQ.
+A5-02.	Really? Over 90% of quiestion mails brought after
+	FDclone release is indicated by the included documents,
+	and the most of them was the question as it is in
+	this FAQ.
+	It is not bad to ask others what you don't know, but
+	doing it yourself as possible is the mutual-aid spirit
+	supporting the Internet.
+	You should better read documents over once again
+	before writing a question mail. And if you have
+	something that you cannot understand anyway, please
+	send me a question mail unreservedly.

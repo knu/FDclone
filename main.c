@@ -24,7 +24,7 @@ extern char *adjustfname __P_((char *));
 # else
 # include <dos.h>
 #  ifdef	__TURBOC__
-extern unsigned _stklen = 0x6800;
+extern unsigned _stklen = 0x6000;
 #  define	harderr_t	void
 #  else
 #  define	harderr_t	int
@@ -104,7 +104,7 @@ extern char *unitblpath;
 #define	SIGIOT	SIGABRT
 #endif
 
-#if	MSDOS && !defined (DJGPP)
+#if	MSDOS && !defined (PROTECTED_MODE)
 static harderr_t far criticalerror __P_((u_short, u_short, u_short far *));
 #endif
 static VOID NEAR signalexit __P_((int));
@@ -172,6 +172,7 @@ static int NEAR initoption __P_((int, char *[], char *[]));
 static int NEAR evaloption __P_((char *[]));
 static VOID NEAR setexecname __P_((char *));
 static VOID NEAR setexecpath __P_((char *, char *[]));
+static VOID NEAR prepareexitfd __P_((VOID_A));
 
 char *origpath = NULL;
 char *progpath = NULL;
@@ -192,11 +193,12 @@ keymaptable *origkeymaplist = NULL;
 # endif
 #endif
 int inruncom = 0;
+int fdmode = 0;
 
 static int timersec = 0;
 
 
-#if	MSDOS && !defined (DJGPP)
+#if	MSDOS && !defined (PROTECTED_MODE)
 /*ARGSUSED*/
 static harderr_t far criticalerror(deverr, errval, devhdr)
 u_short deverr, errval;
@@ -510,7 +512,7 @@ VOID title(VOID_A)
 		eol++;
 	}
 	cprintf2("%-*.*s", n_column - 32 - (int)(eol - cp),
-		n_column - 32 - (int)(eol - cp), " (c)1995-2001 T.Shirai  ");
+		n_column - 32 - (int)(eol - cp), " (c)1995-2002 T.Shirai  ");
 	putterm(end_standout);
 	timersec = 0;
 #ifdef	SIGALRM
@@ -743,6 +745,40 @@ char *argv, *envp[];
 	}
 }
 
+static VOID NEAR prepareexitfd(VOID_A)
+{
+	if (_chdir2(origpath) < 0) error(origpath);
+	free(origpath);
+#ifndef	_NODOSDRIVE
+	dosallclose();
+#endif
+	free(progpath);
+
+#ifdef	DEBUG
+	free(tmpfilename);
+# ifdef	_NOORIGSHELL
+	freeenv();
+# endif
+# ifndef	_NOCUSTOMIZE
+	freevar(orighelpindex);
+	free(origbindlist);
+#  if	!MSDOS && !defined (_NOKEYMAP)
+	freekeymap(origkeymaplist);
+#  endif
+# endif
+	freeenvpath();
+	freehistory(0);
+	freehistory(1);
+	freedefine();
+# if	!MSDOS
+	freeidlist();
+# endif
+# if	!defined (_NOUSEHASH) && defined (_NOORIGSHELL)
+	freehash(NULL);
+# endif
+#endif	/* DEBUG */
+}
+
 int main(argc, argv, envp)
 int argc;
 char *argv[], *envp[];
@@ -761,7 +797,7 @@ char *argv[], *envp[];
 #endif
 	setexecname(argv[0]);
 
-#if	MSDOS && !defined (DJGPP)
+#if	MSDOS && !defined (PROTECTED_MODE)
 	_harderr(criticalerror);
 #endif
 
@@ -819,6 +855,10 @@ char *argv[], *envp[];
 			strdup2(launchlist[maxlaunch].ext);
 		launchlist[maxlaunch].comm =
 			strdup2(launchlist[maxlaunch].comm);
+# if	FD >= 2
+		launchlist[maxlaunch].format =
+			strdup2(launchlist[maxlaunch].format);
+# endif
 	}
 	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++) {
 		if (!archivelist[maxarchive].ext) break;
@@ -870,11 +910,14 @@ char *argv[], *envp[];
 	if (*cp == 'r') cp++;
 # endif
 	if (!strpathcmp(cp, FDSHELL)) {
-		if (!Xgetwd(fullpath)) exit(1);
-		exit2(main_shell(argc, argv, envp));
+		if (!Xgetwd(fullpath)) exit2(1);
+		i = main_shell(argc, argv, envp);
+		prepareexitfd();
+		exit2(i);
 	}
 #endif
 
+	fdmode = 1;
 	argc = initoption(argc, argv, envp);
 	ttyiomode();
 	initterm();
@@ -909,37 +952,8 @@ char *argv[], *envp[];
 
 	main_fd(argv[i]);
 	sigvecreset();
+	prepareexitfd();
 
-	if (_chdir2(origpath) < 0) error(origpath);
-	free(origpath);
-#ifndef	_NODOSDRIVE
-	dosallclose();
-#endif
-	free(progpath);
-
-#ifdef	DEBUG
-	free(tmpfilename);
-# ifdef	_NOORIGSHELL
-	freeenv();
-# endif
-# ifndef	_NOCUSTOMIZE
-	freevar(orighelpindex);
-	free(origbindlist);
-#  if	!MSDOS && !defined (_NOKEYMAP)
-	freekeymap(origkeymaplist);
-#  endif
-# endif
-	freeenvpath();
-	freehistory(0);
-	freehistory(1);
-	freedefine();
-# if	!MSDOS
-	freeidlist();
-# endif
-# if	!defined (_NOUSEHASH) && defined (_NOORIGSHELL)
-	freehash(NULL);
-# endif
-#endif
 	stdiomode();
 #ifndef	_NOORIGSHELL
 # if	!MSDOS && !defined (NOJOB)

@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 1.03 に関して
+#	FDclone Ver. 2.00 に関して
 #
 #	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	Dec 18, 2001
+#	Jan 11, 2002
 #
 ############################################################
 
@@ -35,19 +35,28 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-1.03 のパッケージには、以下のファイルが含まれます。
+　FDclone-2.00 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
+README.eng	このファイル (英文)
 HISTORY		これまでの改定履歴
 FAQ		Q&A 集 (Frequently Asked Question)
+FAQ.eng		Q&A 集 (Frequently Asked Question, 英文)
 TECHKNOW	テクニカルノウハウ
+TECHKNOW.eng	テクニカルノウハウ (英文)
+LICENSES	権利規定に関するドキュメント
+LICENSES.eng	権利規定に関するドキュメント (英文)
 Install		FDclone のインストール方法のドキュメント
+Install.eng	FDclone のインストール方法のドキュメント (英文)
 ToAdmin		FDclone を運用する管理者用ドキュメント
+ToAdmin.eng	FDclone を運用する管理者用ドキュメント (英文)
 Configur	環境設定用ヘッダの自動生成プログラム (Makefile 内で実行)
 Makefile	メイクファイル
 Makefile.in	メイクファイル本体 (雛型)
 fd.man		man ページ用 roff ファイル (JIS 版)
+fd_e.man	man ページ用 roff ファイル (英文)
 fd.cat		man ページ用 プレーンテキスト (JIS 版)
+fd_e.cat	man ページ用 プレーンテキスト (英文)
 
 mkmfsed.c	メイクファイル加工用の sed スクリプト生成プログラム
 kanjicnv.c	簡易漢字コードコンバータ
@@ -73,6 +82,9 @@ term.c		termcap ライブラリソース
 term.h		term.c 用のヘッダ
 pathname.c	パス名操作に関するモジュール
 pathname.h	pathname.c 用のヘッダ
+system.c	/bin/sh 互換の system(3) 相当モジュール
+system.h	system.c 用のヘッダ
+doscom.c	system.c で使う COMMAND.COM 内部コマンド
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
 dosemu.c	システム関数群のフロッピードライブ対応版
@@ -106,8 +118,8 @@ functabl.h	内部コマンドの属性定義用
 kanji.hin	日本語文字列のソース (JIS版)
 version.h	バージョン
 
-_fdrc		.fdrc のお手本
-_fdrc.dif	.fdrc に関する 1.01h からの変更点
+_fdrc		.fd2rc のお手本
+_fdrc.dif	.fd2rc に関する 1.03 からの変更点
 
 
 --

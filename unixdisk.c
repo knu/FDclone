@@ -2459,7 +2459,7 @@ char *path, *type;
 		errno = 0;
 		return(NULL);
 	}
-	switch(*type) {
+	switch (*type) {
 		case 'r':
 			if (*(type + 1) != '+') flags = O_RDONLY;
 			else flags = O_RDWR;

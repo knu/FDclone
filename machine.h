@@ -18,6 +18,9 @@
 #define	USEUTIME
 #define	USEMKTIME
 #define	SENSEPERSEC	20
+# if	defined (__TURBOC__) && defined (__WIN32__)
+# define	BCC32
+# endif
 # ifdef	__GNUC__
 # define	SIGFNCINT
 #  ifndef	DJGPP
@@ -26,7 +29,9 @@
 #  define	USEREGCOMP
 #  endif
 # else	/* !__GNUC__ */
-# define	NOUID_T
+#  ifndef	BCC32
+#  define	NOUID_T
+#  endif
 # define	NOFILEMODE
 # define	NOUNISTDH
 # endif	/* !__GNUC__ */
@@ -37,7 +42,9 @@ typedef unsigned short	u_short;
 typedef unsigned long	u_long;
 # endif
 # ifdef	__TURBOC__
-# define	NEAR		near
+#  ifndef	BCC32
+#  define	NEAR		near
+#  endif
 # define	FORCEDSTDC
 # define	SIGFNCINT
 typedef long	off_t;
@@ -45,6 +52,9 @@ typedef long	off_t;
 # ifdef	LSI_C
 # define	NEAR		near
 # define	FORCEDSTDC
+# endif
+# if	defined (DJGPP) || defined (BCC32)
+# define	PROTECTED_MODE
 # endif
 #define	_SC_	'\\'
 #define	_SS_	"\\"

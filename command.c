@@ -44,6 +44,9 @@ extern int sizeinfo;
 #ifndef	_NOSPLITWIN
 extern char fullpath[];
 #endif
+#ifndef	_NOORIGSHELL
+extern int fdmode;
+#endif
 
 static VOID NEAR replacefname __P_((char *));
 static int cur_up __P_((char *));
@@ -770,8 +773,15 @@ static int NEAR execshell(VOID_A)
 #if	MSDOS
 	if (!sh) sh = getenv2("FD_COMSPEC");
 #endif
+	if (!sh) {
+# if	MSDOS
+		sh = "COMMAND.COM";
+# else
+		sh = "/bin/sh";
+# endif
+	}
 #ifndef	_NOORIGSHELL
-	if (sh) {
+	else {
 		char *cp;
 
 		if ((cp = strrdelim(sh, 1))) cp++;
@@ -781,7 +791,13 @@ static int NEAR execshell(VOID_A)
 # else
 		if (*cp == 'r') cp++;
 # endif
-		if (!strpathcmp(cp, FDSHELL)) sh = NULL;
+		if (!strpathcmp(cp, FDSHELL)) {
+			if (!fdmode) {
+				warning(0, RECUR_K);
+				return(-1);
+			}
+			sh = NULL;
+		}
 	}
 #endif
 
@@ -790,18 +806,12 @@ static int NEAR execshell(VOID_A)
 	stdiomode();
 	kanjifputs(SHEXT_K, stderr);
 	fputc('\n', stderr);
-	if (sh) ret = system(sh);
-	else {
 #ifdef	_NOORIGSHELL
-# if	MSDOS
-		ret = system("COMMAND.COM");
-# else
-		ret = system("/bin/sh");
-# endif
-#else	/* !_NOORIGSHELL */
-		ret = shell_loop(1);
-#endif	/* !_NOORIGSHELL */
-	}
+	ret = system(sh);
+#else
+	if (sh) ret = dosystem(sh);
+	else ret = shell_loop(1);
+#endif
 	putterms(t_init);
 	ttyiomode();
 	sigvecset();
@@ -814,12 +824,18 @@ static int view_file(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
-	char *dir = NULL;
+	char *dir;
 #endif
 #ifndef	_NODOSDRIVE
-	int drive = 0;
+	int drive;
 #endif
 
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+	dir = NULL;
+#endif
+#ifndef	_NODOSDRIVE
+	drive = 0;
+#endif
 	if (isdir(&(filelist[filepos]))
 #ifndef	_NOARCHIVE
 	|| (archivefile && !(dir = tmpunpack(1)))
@@ -854,8 +870,10 @@ static int edit_file(arg)
 char *arg;
 {
 #ifndef	_NODOSDRIVE
-	char *dir = NULL;
-	int drive = 0;
+	char *dir;
+	int drive;
+
+	dir = NULL;
 #endif
 
 	if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
@@ -1217,7 +1235,7 @@ static int execute_file(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
-	char *dir = NULL;
+	char *dir;
 #endif
 	char *com;
 #if	!MSDOS || defined (DISMISS_CURPATH)
@@ -1225,9 +1243,15 @@ char *arg;
 #endif
 	int ret, len;
 #ifndef	_NODOSDRIVE
-	int drive = 0;
+	int drive;
 #endif
 
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+	dir = NULL;
+#endif
+#ifndef	_NODOSDRIVE
+	drive = 0;
+#endif
 #if	MSDOS && !defined (DISMISS_CURPATH)
 	len = (!isdir(&(filelist[filepos])) && isexec(&(filelist[filepos])))
 		? strlen(filelist[filepos].name) + 1 : 0;
@@ -1293,14 +1317,20 @@ static int pack_file(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
-	char *dir = NULL;
+	char *dir;
 #endif
 #ifndef	_NODOSDRIVE
-	int drive = 0;
+	int drive;
 #endif
 	char *file;
 	int ret;
 
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+	dir = NULL;
+#endif
+#ifndef	_NODOSDRIVE
+	drive = 0;
+#endif
 	if (arg && *arg) file = strdup2(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
 	|| !*(file = evalpath(file, 1))
@@ -1449,14 +1479,20 @@ static int backup_tape(arg)
 char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
-	char *dir = NULL;
+	char *dir;
 #endif
 #ifndef	_NODOSDRIVE
-	int drive = 0;
+	int drive;
 #endif
 	char *dev;
 	int ret;
 
+#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+	dir = NULL;
+#endif
+#ifndef	_NODOSDRIVE
+	drive = 0;
+#endif
 	if (arg && *arg) dev = strdup2(arg);
 #if	MSDOS
 	else if (!(dev = inputstr(BKUP_K, 1, -1, NULL, 1))

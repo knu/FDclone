@@ -2,7 +2,7 @@
 #	Makefile for fd
 #
 
-VERSION	= 1
+VERSION	= 2
 SHELL	= /bin/sh
 MAKE	= make
 CC	= cc
@@ -14,6 +14,10 @@ all: Makefile.tmp
 debug: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' \
 	-f Makefile.tmp
+
+shdebug: Makefile.tmp
+	$(MAKE) SHELL=$(SHELL) CC=gcc DEBUG=-DDEBUG ALLOC='-L. -lmalloc' \
+	-f Makefile.tmp sh
 
 Makefile.tmp: Makefile.in mkmf.sed
 	$(SED) -f mkmf.sed Makefile.in > $@ ||\
@@ -69,11 +73,12 @@ config.h: config.hin
 	cp config.hin config.h
 
 install catman catman-b compman compman-b \
-fd.doc README.doc HISTORY.doc FAQ.doc \
-depend config clean: Makefile.tmp
+ecatman ecatman-b ecompman ecompman-b \
+fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
+depend config sh clean: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
 
-tar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
+tar shtar lzh shar: Makefile.tmp makefile.gpc makefile.g98 \
 makefile.dpc makefile.d98 \
 makefile.lpc makefile.l98 \
 makefile.bpc makefile.b98

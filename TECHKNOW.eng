@@ -1,0 +1,907 @@
+[TECHNICAL KNOWHOW ABOUT FDCLONE2]
+
+
+1.Identifiers for Machine Dependancy
+
+  In machine.h, or config.h built by "make config", the
+various identifiers are defined. These identifiers are
+established to merge the differences from each OS.
+  If you cannot compile successfully or find some strange
+behaviors, you can define/undefine these identifiers to
+modify it.
+  The following is the meaning of each identifier.
+
+SYSV
+SVR4
+BSD4
+BSD43	This indicates the oriented type of OS. SYSV, SVR4
+	is referred in the latter part of machine.h for the
+	definition unique with OS. BSD4, BSD43 is defined
+	only as an information, not to be referred in actual
+	sources.
+
+OSTYPE	This indicates the OS name. It is used to setup the
+	floppy drive in the default value, according to each
+	OS.
+
+CODEEUC	This means to use EUC-JP (Extended Unix Code) as the
+	Kanji code. If undefined, it means Shift JIS is used.
+	This concerns the man page after installation, and
+	the default value when you don't define the Kanji
+	code, and so on.
+	You can dynamically change the Kanji code used in
+	input/output and filename, after compiled.
+USEMANLANG
+	The search pathname referred to man(1) includes the
+	string shown by the environment variable LANG, such
+	as '/usr/man/ja_JP.SJIS/', to support M17N.
+BSDINSTALL
+	The BSD-like install(1) is installed on the standard
+	command search path, and can use the option -c (copy)
+	and -s (strip).
+BSDINSTCMD
+	If the command name of the BSD-like install(1) is
+	not "install", you can define that command name.
+	It will be meaningless in case that BSDINSTALL is
+	not defined.
+TARUSESPACE
+	tar(1) with t option will output the list in which
+	each file mode string (Ex:rw-rw-rw-) is always followed
+	by spaces. In the BSDish OS, it seems usually followed
+	by not spaces but UID/GID. In the GNU tar, it is
+	followed by spaces.
+	Even if you are wrong to define, the description of
+	.fd2rc and /etc/fd2rc can change it dynamically.
+TARFROMPAX
+	The implementation of tar(1) comes from pax(1), and
+	the output of -t option follows the format used by
+	pax(1).
+	Even if you are wrong to define, the description of
+	.fd2rc and /etc/fd2rc can change it dynamically.
+CPP7BIT	cpp(1) cannot pass through any 8bit character, such
+	as the Kanji.
+CCCOMMAND
+	This indicates the fullpath of the C compiler which
+	you want to use as standard. In some OS, both of BSD
+	version cc and SYSV version cc exists at once, you
+	should choose only one. If undefined, 'cc' is used.
+EXTENDCCOPT
+	This indicates the option gave to cc(1). If undefined,
+	"-O" is assigned. In case it cannot support "-O"
+	(Optimize), you should define null.
+CCOUTOPT
+	This indicates the option to give cc(1) the output
+	filename, when it only compile and don't link (with
+	-c option). This must include the make(1) macro for
+	output filename. You must define this, when you don't
+	need the default value "-o $@".
+CCLNKOPT
+	This indicates the option to give cc(1) the output
+	filename, when it links the executable file (without
+	-c option). This must include the make(1) macro for
+	output filename. You must define this, when you don't
+	need the default value "-o $@".
+TERMCAPLIB
+	This indicates the library which is need to be link
+	as the termcap(5) library. If undefined, -ltermcap
+	is assigned.
+REGEXPLIB
+	This indicates the library which is need to be link
+	as the regular expression library, if need.
+EXTENDLIB
+	This indicates the other library which is need to be
+	link, if need.
+
+UNKNOWNFS
+	The OS adopts the filesystem except to be assumed by
+	FDclone. Or, you should define this for security,
+	when the directory writing function don't work
+	successfully.
+	Refer to the #2 for details.
+
+FORCEDSTDC
+	Although __STDC__ is not pre-defined, the compiler
+	requires the ANSI standard C format in the prototype
+	declaration and so on. If you trust it is based on
+	ANSI, it is no problem to define this unconditionally.
+STRICTSTDC
+	The compiler has the strict ANSI standars C specifications
+	not to allow the coexistence of the modern type
+	prototype declaretion and the classical type function
+	declaration of K&R. You should define this, when
+	there are a number of errors concerned the type of
+	function argument.
+NOVOID	The void type cannot be used.
+NOUID_T	uid_t, gid_t is not defined in <sys/type.h>
+DECLSIGLIST
+	The global variable sys_siglist[] is declared in
+	<signal.h>, not to need to declare again in the source
+	list.
+NOSIGLIST
+	The global variable sys_siglist[] don't exist in
+	the standard library.
+DECLERRLIST
+	The global variable sys_siglist[] is declared in
+	<stdio.h> or <errno.h>, not to need to declare again
+	in the source list.
+PWNEEDERROR
+	Linking /lib/libPW.a requires to prepare the global
+	variable Error[] in the source,
+NOERRNO	The global variable errno is not declared in <errno.h>.
+NOFILEMODE
+	The constant S_IRUSR, S_IWUSR, etc. are not declared
+	in <sys/stat.h>.
+NOUNISTDH
+	<unistd.h> don't exist.
+NOSTDLIBH
+	<stdlib.h> don't exist.
+NOTZFILEH
+	<tzfile.h> don't exist.
+USELEAPCNT
+	The structure tzhead has the member tzh_leapcnt.
+USESELECTH
+	The structure fd_set which is needed when use the
+	function select(2) is defined in <sys/select.h>.
+USESYSDIRH
+	The constant DEV_BSIZE which indicates the block
+	of the directory file is defined in <sys/dir.h>.
+USETIMEH
+	The structure tm is not defined in <sys/types.h>
+	nor <sys/time.h>, to require <time.h>.
+USESTDARGH
+	The type va_list for variable argument is defined
+	in <stdarg.h>.
+USEMKDEVH
+	The macro major()/minor() for the device number is
+	defined <sys/mkdev.h>.
+USETERMIO
+	The structure termio is used as the teminal interface.
+USETERMIOS
+	The structure termios is used as the teminal interface.
+	If both USETERMIO and USETERMIOS is undefined, the
+	structure sgttyb is used.
+USEDIRECT
+	The structure direct is used instead of dirent.
+SYSVDIRENT
+	The structure dirent doesn't have the menber d_fileno
+	and has the menber d_ino.
+NODNAMLEN
+	The structure dirent doesn't have the member d_namlen.
+HAVETIMEZONE
+	The global variable timezone indicates the offset
+	value from GMT.
+NOTMGMTOFF
+	The structure tm doesn't have the member tm_gmtoff.
+
+(The following 5 identifiers is exclusive. These can not be
+defined simultaneously.)
+USESTATVFSH
+	The functions declared in <sys/statvfs.h> is used to
+	get the filesystem information.
+USESTATFSH
+	The functions declared in <sys/statfs.h> is used to
+	get the filesystem information.
+USEVFSH
+	The functions declared in <sys/vfs.h> is used to get
+	the filesystem information.
+USEMOUNTH
+	The functions declared in <sys/mount.h> is used to
+	get the filesystem information.
+USEFSDATA
+	The functions using the structure fs_data is used to
+	get the filesystem information.
+
+USEFFSIZE
+	The structure statfs has the member f_fsize, which
+	indicates the block size of the filesystem. If undefined,
+	membet f_bsize is referred.
+	In case of that USESTATVFSH, USEFSDATA is defined,
+	this is meaningless.
+STATFSARGS
+	This indicates the number of arguments used by
+	function staffs(2).
+	In case of that USESTATVFSH, USEFSDATA is defined,
+	this is meaningless.
+
+(The following 8 identifiers is exclusive. These can not be
+defined simultaneously.)
+USEMNTENTH
+	The functions delcared in <mntent.h> is used to get
+	the mount information.
+USEMNTTABH
+	The functions delcared in <sys/mnttab.h> is used to
+	get the mount information.
+USEGETFSSTAT
+	The function getfsstat(3) is used to get the mount
+	information.
+USEMNTCTL
+	The function mntctl(3) is used to get the mount
+	information.
+USEMNTINFOR
+	The function getmntinfo_r(3) is used to get the mount
+	information.
+USEMNTINFO
+	The function getmntinfo(3) is used to get the mount
+	information.
+USEGETMNT
+	The function getmnt(3) is used to get the mount
+	information.
+USEGETFSENT
+	The function getfsent(3) is used to get the mount
+	information.
+	(This method can get only the information before mount,
+	not to be recommended. Suppose that it is a last
+	resort.)
+
+(The following 2 identifiers is exclusive. These can not be
+defined simultaneously. In case of that the identifier except
+USEMNTINFO is defined among the above 8 choices, this is
+meaningless.)
+USEVFCNAME
+	The structure vfsconf has the member vfc_name, which
+	indicates the string to mean the mount type. And,
+	getvfsbytype() is used to get the type vfsconf.
+USEFFSTYPE
+	The structure statfs has the member f_fdtypename,
+	which indicates the string to mean the mount type.
+
+(The following 3 identifiers is exclusive. These can not be
+defined simultaneously.)
+USERE_COMP
+	The function re_comp(3) is used to search the regular
+	expression.
+USEREGCOMP
+	The function regcomp(3) is used to search the regular
+	expression.
+USEREGCMP
+	The function regcmp(3) is used to search the regular
+	expression.
+
+USERAND48
+	The function for random number generator is not random(3)
+	but rand48(3).
+USESETENV
+	The function setenv(3) is available to set the environ
+	variables.
+NOSELECT
+	The function select(2) is unavailable for the low
+	level input/output.
+NOVSPRINTF
+	The function vsprintf(3) is unavailable for the
+	formatted output.
+USEUTIME
+	The function utimes(2) is unavailable to set the
+	timestamp, and utime(3) is used instead.
+USEGETWD
+	The function getcwd(3) is unavailable to get the
+	current directory, and getwd(3) is used instead.
+USETIMELOCAL
+	The function timelocal(3) is available as the inverse
+	function of localtime(3) for the time conversion.
+USEMKTIME
+	The function mktime(3) is used instead of timelocal(3)
+	for the time conversion.
+USESYSCONF
+	The function sysconf(3) is used to get the system
+	configurations.
+USELLSEEK
+	The function _llseek(2) is used instead of lseek(2)
+	for the file control. In the 32bit Linux environment,
+	lseek(2) cannot specify the offset value over 2^32
+	bytes, so that _llseek(2) is necessary.
+USEUNAME
+	The function uname(2) is used instead of gethostname(2)
+	to get the hostname.
+USEWAITPID
+	The function waitpid(2) is used instead of wait3(2)
+	to wait the software signals.
+USESIGPMASK
+	The function sigprocmask(2) is used instead of
+	sigsetmask(2) to control the signals.
+USERESOURCEH
+	The functions delcared in <sys/resource.h> is used to
+	get/set the resource information.
+USEULIMITH
+	The functions delcared in <ulimit.h> is used to get/set
+	the resource information.
+USETIMESH
+	The functions delcared in <sys/times.h> is used to
+	get the process time information.
+GETPGRPVOID
+	The function getpgrp(2) has no argument, to get the
+	process group.
+USESETPGID
+	The function setpgid(2) is used instead of getpgrp(2)
+	to set the process group.
+SIGARGINT
+	The second argument of the software signal function
+	signal(3) must be the pointer to the function which
+	returns the type int.
+SIGFNCINT
+	The second argument of the software signal function
+	signal(3) must be the pointer to the function which
+	has the argument of the type int.
+
+SENSEPERSEC
+	This indicates the number to sense the key input per
+	second. It is suitable in case that the terminal
+	communication speed is slow. The default value is 50
+	per second.
+WAITKEYPAD
+	This indicates the time to wait after getting the
+	inputted keycode of ESC. It is suitable in case of
+	that the terminal communication speed is slow. The
+	default value is 360ms.
+WAITMETA
+	This indicates the time to wait after getting the
+	inputted keycode of META. It is suitable in case of
+	that the terminal communication speed is slow. The
+	default value is 60ms. If you define the too long
+	value, the autorepeat of the META key becomes ineffective.
+HDDMOUNT
+	This causes the floppy drive function to support the
+	hard disk drive. It will be defined in case of that
+	you want this function on the environment except
+	PC-UNIX.
+
+
+2.Directory Writing Function
+
+  The command WRITE_DIR (w) can write the directory entry to
+the file system according to the displayed order.
+  But, this function is only established by analyzing the
+structure and behaviour of the file system on the each OS,
+so that the directory writing function is unavailable in
+the unanalyzed file systems.
+  The string which means the file system type is referred
+from the mount information of the each file system, to judge
+whether if the analyzed file system or not.
+  The following file systems are supported in FDclone about
+the directory writing function.
+
+	4.3	NEWS-OS 3,4.x
+	4.2	SunOS 4.x
+	ufs	SVR4, OSF/1, FreeBSD, NetBSD
+	hfs	HP-UX, HI-UX
+	ext2	Linux
+	jfs	AIX
+	efs	IRIX		(SGI original spec.)
+	sysv	SVR3		(SystemV Rel.3 spec.)
+	dg/ux	DG/UX		(SystemV Rel.3 spec.)
+
+  In the file system type except these, unfortunately, the
+directory writing function is unavailable.
+  More correctly, although it is possible that the directory
+writing function is available in the file system except
+the above, this function is invalidated for security because
+it is not confirmed.
+
+  If you are an explorer and regret that the directory writing
+function is unavailable in your own file system, I suggest
+trying to rewrite writablefs() in info.c.
+  Writing is possibly successful, or fail to make a mess of
+the directory contents.
+  If you are a heavier explorer, you should maybe analize
+the structure of the file system at your hand, and change
+the directory writing algorithm itself.
+  If these changes can add to the supported object of the
+directory writing function, let the author know please. It
+will be reflected in the next release.
+
+  On the other hand, although the directory wrinting function
+should be available in your file system type, this function
+sometimes doesn't work well because of the trouble from OS.
+  Or, some OS may be unable to write directory in any file
+system.
+  In that case, you should defile UNKNOWNFS in compiling, to
+give top priority to safety.
+
+(Appendix) The directory writing algorithm
+	1.A temporary directory (assumed TMP) is made in the
+	  current directory. At this time, the file name of
+	  TMP must be as long as the file name of the file
+	  which will be placed ahead.
+	2.It is confirmed if TMP is physically ahead in the
+	  directory entry.
+	3.The all file but TMP (incluiding directories) is
+	  moved under TMP.
+	4.If it is not ahead at 2., the name of TMP is renamed,
+	  to guarantee that TMP is ahead in this entry.
+	5.The files in TMP is move back in sorted order.
+	  But, the only file which should be ahead is remained.
+	6.Considering the block size of the directory, if a
+	  gap has made on the block boundary, the dummy file
+	  which has a short name is created to fill the gap.
+	7.After moving files, the name of TMP is renamed. As
+	  a result, TMP is placed at the tail of entries, and
+	  the space is placed at the head of entries.
+	8.The file which should be ahead is moved back from
+	  TMP.
+	9.TMP and the dummy files created at 6. is removed.
+	10.Finished.
+Notes) This is not accessing the directory file directly, it
+       needs quite long time with some directory size.
+
+
+3.File System Information
+
+  At the beta test, it was the most difficulty how to get the
+file system information which is different in every OS.
+  Generally classifying, the kinds of prepared methods are 5
+kinds about the file system information, and 8 kinds of method
+about the mount information. Some OS can support multiple
+methods among these.
+
+  When OS prepares multiple methods, there is a difficult
+problem which is used among them. Because some choice of method
+will cause any trouble in the OS.
+  The priority generally should maybe be taken to the order
+enumerated in 1., but some OS may seems this priority is not
+quite right.
+  Finally, you should try the all possible method, to choose
+the most suitable one among them after implementation.
+
+  If you cannot even compile it, it is a quite mistaken choice.
+If you succeeds to compile it, try to the command INFO_FILESYS (i)
+to the various directory path.
+  The output of the command INFO_FILESYS is almost the same
+as the output of df(1). If the obviously strange value is
+outputed considering a rounding error, it may be a mistaken
+choise.
+
+  The abnormal output value caused by mistalen choise seems
+to result from 2 reasons.
+	1.mistake the mount point.
+	2.mistake to get the file system information.
+  If the items of "File system" and "Mount point" in output
+informations are not right, try to change the choice about
+the method to get the mount information.
+  Or, while these items are right, when the capacity is not
+right, try to change the choice about the file system
+information.
+
+  In the worst case, any choice may not be able to cause the
+right output. In this case, you cannot but abandon.
+  But, though this output is wrong, these mistaken informations
+is not connected with any fatal faults in FDclone. Since
+these are used only in the command INFO_SILESYS, there is
+no problem as long as this command is not used.
+
+  However, any OS must prepare the right method to get these
+informations. If you know it, it is possible to implement
+the method on FDclone. Then if you find the method, please
+let the author know. It is reflected in the next release.
+
+
+4.Key Code
+
+  The input from the keyboard is generally received as an
+ASCII code which indicates the key top character, in case of
+the normal key. But, the keyboard sends some sequence beginning
+with ESC, in case of the special key.
+  In order to correctly distinguish these sequences and the
+ESC input itself, FDclone waits for 360ms after the ESC code
+is received, and regards it as the input of ESC itselt when
+no input code follows it.
+  However, this value is experimantal value at the environment
+around the author, and don't have any absolute reason. If
+this value is not suitable in some environment, you should
+try to define the value of WAITKEYPAD in machine.h as some
+larger value.
+
+  Moreover, it refers to descriptions in termcap/terminfo as
+the correspondence table of the key sequence and the actual
+key. If the key has no description, the keymap in the VT100
+compatible terminal is used as default value.
+  If this correspondence doesn't match with the actual sending
+code of the keyboard, getting the key will be impossible.
+In that case, I recommend you to change rightly the registration
+of termcap/terminfo.
+
+
+5.Registration of Archive Browser
+
+  When you newly register an archive browser, you must describe
+a format string in .fd2rc etc. I refer to the example which
+is not mentioned in the manual, in this sentence.
+  The format string is as follows.
+
+	"%n %n %n ... " top bottom
+
+  Most of the archivers seems to be able to avoid top and
+bottom, both of these values will be 0. If the both are 0,
+you can skip these descriptions.
+  Only if the excessive lines, such as a copyright, are displayed
+in adittion to the archive file information, you must specify
+the number of lines from the top/bottom line, which is to be
+deleted.
+
+  The string showing the format is so similar to the format
+of printf(3) and scanf(3) that who is familiar with the C
+language will not be very puzzled.
+  It is perplexing that each field is not separeted by spaces
+nor tabs. Some archivers display the independent informations
+continuously.
+  The next example is from the BSDish tar.
+
+rw-r--r--9999/999  17531 Aug  7 11:50 1995 main.c
+
+  There is no separator between the first string showing the
+file mode and the next string showing the user ID. In this
+case, you must specify the length of sequence showing the
+file mode.
+  In this example, it is the length of 9 letters, so that you
+can specify as "%9a". Therefore, the whole format string is
+as follows.
+
+	"%9a %u/%g %s %m %d %t %y %f"
+
+  While the space after "%9a" is described in this example,
+it does not surely have to exist. It is described only for
+visibility.
+  Since it is on the nod that each field is separated by spaces
+or tabs, the spaces or tabs appears in the format string are
+the verbose information.
+  Then, in analyzing, the spaces ot tabs in the format string
+are ignored to read.
+
+
+  By the way, some archivers cannot display a year nor a time,
+or use a field as these double purpose. The following is the
+example of output by lha.
+
+drwxr-xr-x  9999/999         0 ****** Jun  8 12:04 demo/
+-rw-r--r--  9999/999        49 100.0% Dec  8  1994 demo/Makefile
+
+  Thus, the time field and the year field are used as the
+same field, there is no time information in the file which
+has an old timestamp.
+  In that case, you should specify with { } as the year
+information and the time information share the same field,
+being ready for the strange display of the archive browser.
+  Then, the year is displayed as 2012 in the former example,
+and the time is displayed as 0:00 (Because the hour called
+1994 cannot exist.) in the latter example.
+  The following is the format string in this case.
+
+	"%a %u/%g %s %x %m %d %{yt} %f"
+
+
+6.Registration of Floppy Drive
+
+  If you want to treat the MS-DOS floppy disk like as general
+file systems, in the floppy disk drive as the attachment of
+your system, you must register the drive in .fd2rc etc.
+  For this registration, it is necessary that the driver for
+the floppy disk drive is installed in your OS, and that the
+interface as a special file to access the driver.
+  Depending on OS, this detail is often referred in the manual
+of fd(4).
+
+  Generally, some formats are supported in one physical drive.
+These formats may be automatically identified, or may be
+classified by the name of spacial file.
+  In the former case, you can describe the same special file
+name as the item of device file in the drive registration
+line, and each format is distinguished with parameters for
+the format.
+  In the latter case, you must describe the special file name
+according to each format for the same drive.
+  In addition, you had better describe the raw device as the
+device file, if possible.
+
+  The following is examples for the inside drive of the SPARC
+systems and NWS-4300 series.
+
+SPARC:
+	A:	"/dev/rfd0c"	2  18 80	(1440KB	2HD)
+	A:	"/dev/rfd0c"	2   9 80	(720KB	2DD)
+	A:	"/dev/rfd0c"	2 108 80	(640KB	2DD)
+
+NWS-3400:
+	A:	"/dev/rfd00a"	2  18 80	(1440KB	2HD)
+	A:	"/dev/rfd01a"	2   9 80	(720KB	2DD)
+	A:	"/dev/rfd03a"	2   8 80	(640KB	2DD)
+
+  These configurations depend on machines and sutructures even
+if they have the same OS, so that had better be set in the
+common configration file rather than in the builtin setting
+when compiled.
+  Conversely, if it is the only machine which may use the compiled
+binary of FDclone, it is available to compile as builtin
+setting.
+  If you want to compile as builtin setting, you should change
+the value of the structure array fdtype in dosdisk.c. The
+set up factor is the same as the registration in .fd2rc etc.
+  But, the drive name is described as not the string like "A:"
+but an alphabetical letter. And it must be capital.
+
+  It is quite depend on OS and models which special file
+indicates what format of which drive, so that you should
+refer the OS manual or ask each maker directly.
+  Though the configurations for the inside drive on standard
+models will be builtin with the distributed package, you can
+change it in judgment of a person who install.
+
+  Moreover, the convert from the restriction on MS-DOS filenames
+keep the following rules. This is the same as the specification
+in BSD on Windows.
+	1.The part over 8+3 characters in filenames is deleted.
+	2.The . at the beginning of line or in after the
+	  second appearance is changed to $.
+	3.Any + is changed to `.
+	4.Any , is changed to '.
+	5.Any [ is changed to &.
+  When you look the filename in the floppy drive via FDclone,
+reverse convert of above 2.-5. is done.
+  But, when you specify a small letter as the drive name for
+the LFN access, this rule is not applied. The SFN generated
+in creating the new file follows the filename generation rule
+of Windows 95/98.
+
+
+  On PC-UNIX, the hard disk drive can be registered as well
+as the floppy disk drive. How to register is written in the
+manual. It is to discribe the string "HDD" or "HDD98" instead
+of the item value of the number of heads, and so on.
+  The special file specified at this time must not be the one
+separated for each partition (slice), but the one prepared
+for every physical drive unit.
+  The following is the special file name prepared for every
+physical drive unit, on the typical PC-UNIX. With after the
+second unit, the place of '0' or 'a' in the following filename
+is replaced with the letter after '1' or 'b'. (On Solaris,
+it means '0' next to 'd')
+	Solaris	/dev/rdsk/c0d0p0 (IDE)	/dev/rdsk/c0t1d0p0 (SCSI)
+	Linux	/dev/hda (IDE)		/dev/sda (SCSI)
+	FreeBSD	/dev/rwd0 (IDE)		/dev/rsd0 (SCSI)
+	 or	/dev/rad0 (IDE)		/dev/rda0 (SCSI)
+	NetBSD	/dev/rwd0d (IDE)	/dev/rsd0d (SCSI)
+	OpenBSD	/dev/rwd0c (IDE)	/dev/rsd0c (SCSI)
+
+
+7.Function
+
+  It is the same as the function definition of sh(1). For your
+confirmation, the differences from the fuction implementation
+in version 1.x is following.
+	1.It can be described in separate lines without '\'.
+	2.It is regarded as the function evan if it appears
+	  at the beggining of the command line.
+	3.It can be used with the pipe and the redirectee.
+	4.It is impossible to use the parameter macro in the
+	  argument in the function definition.
+  1.-3. result from the FDclone shell-izing, as the bad effect,
+the extension as 4., it is just for FDclone, has been lost.
+  Then, in vesion 2.0, the builtin command evalmacro is
+prepared, which can make it possible to use the parameter
+macro, in the way to execute after avaluating the macro
+explicitly in the function.
+
+  I think that the merit from using the parameter macro is
+mainly to be able to use selected filenames as arguments.
+  For the example which can exercise this ability best, suppose
+the function which applies some commands to the filenames
+searched with the wildcard.
+
+	delete() {
+		MARK_FIND $1
+		DELETE_FILE
+	}
+
+  As an example to use, "delete '*.bak'" can delete all files
+that has the extension ".bak" in the current directory.
+  Note that "*.bak" is evaluated before this argument is gavin
+to the function delete, without ''.
+
+  In this case, the command line argument "*.bak" is substituted
+for the positional parameter $1, then the 1st line is evaluated
+into "MARK_FIND *.bak".
+  DELETE_FILE in the 2nd line doesn't need any arguments,
+and deletes all selected files if exist, then all files
+selected with "*.bak" at the 1st line are deleted.
+  It is important that, when no filename matches "*.bak" at
+the 1st line, the object file of DELETE_FILE is not selected
+and the object is forced to be the file on the cursor
+position.
+  But, DELETE_FILE requires the confirmation before deleting
+to let you notice, and it is safe that you place the cursor
+position, in advance, on the file which is unable to be
+deleted by DELETE_FILE, for example "..".
+  Incidentally, this function delete behaves the default
+action of MARK_FIND, i.e. requires to input the wildcard
+string, so that you can delete files interactively.
+
+  Now, see a little more complex case.
+
+	rename() {
+		MARK_ALL 0
+		MARK_FIND $1
+		evalmacro mv %%M $2
+	}
+
+  This is the function which renames appointed filenames all
+together. This time it is a little careful to insert clearing
+marks in the 1st line. In specifications, MARK_FIND will
+select without clearing existent marks.
+  Although it seems suitable that RENAME_FILE is used for
+renaming files in the 3rd line, the truth is that it is
+impossible. Because RENAME_FILE has only the specification
+to change the filename on the cursor position, doesn't have
+the ability to rename selected files continuously.
+  Therefore, the UNIX standard command mv(1) is used. For the
+continuous execution, we don't use the ability of mv(1) but
+the ability of the parameter macro. This is %M in the 3rd
+line.
+
+  Suppose thet you input as "rename '*.c' '%XM.c.bak'" from
+the command line, all files which has the extention ".c" will
+be replaced the extention ".c.bak".
+  Note that "*.c" and "%XM" is evaluated before this argument
+is gavin to the function rename, without ''.
+
+  In this example, since $1="*.c", $2="%XM.c.bak", the 3rd
+line is evaluated into "mv %M %XM.c.bak". %M is the parameter
+macro for which the selected files is substituted one by one,
+%XM is what is removed the extension from that.
+  "*.c" is selected in the 2nd line, and these selected files
+is renamed into the form "*.c.bak" in the 3rd line.
+
+  It is important that the parameter macro "%M" is described
+as "%%M" in the function definition.
+  In specifications, the parameter macro is not evaluated in
+the initial configuration file and the input file of the
+source command as well as inside of the function, so that
+this description may be "%M".
+  But, when this function definition is executed in the command
+line of EXECUTE_SH, the parameter macro "%M" is evaluated
+before the function definition.
+  Therefore, you must specify "%%M" as the string which becomes
+"%M" after evaluating the parameter macro.
+  The description "'%M'" like the function argument also can
+leave "%M" unevaluated surely. But it doesn't cause the
+expected behavior. Since in the function definition "'" is
+not evaluated, this is defined "'%M'" as it is.
+  When you define the function with EXECUTE_SH, such a
+troublesome problem is included. You had better define the
+function in the initial configuration file or the input file
+of the source command, or in the fdsh (it runs by inputting
+the null line in EXECUTE_SH.).
+
+  This method to combine MARK_FIND something reminds us the
+RISC programming, and seems incomplehensible.
+  But, simply listing commands can be achieved also by the
+alias. If you intend to use perfectly the ability of just
+the function, you had better know such a usage.
+
+
+8.Functional Restriction in Compile
+
+  In compile, if you define the following identifiers, you
+can create the executable file in which each function is
+not implemented.
+
+	_NOARCHIVE	cannot use archive browser
+	_NODOSDRIVE	cannot access MS-DOS floppy drive
+	_NOUSELFN	cannot use LongFileName (MS-DOS version)
+	_NOTREE		cannot use tree screen
+	_NOROCKRIDGE	cannot use pseudo RockRidge extension
+	_NOCOMPLETE	cannot use filename completion
+	_NOWRITEFS	cannot use directory writing
+	_NOEDITMODE	cannot use alternative key in edit mode
+	_NOKANJICONV	cannot change kanji code dinamically
+	_NOKANJIFCONV	cannot change filename kanji code dinamically
+	_NOENGMES	cannot display English messages
+	_NOJPNMES	cannot display Japanese messages
+	_NOCOLOR	cannot use color display
+	_NOKEYMAP	cannot use builtin command keymap, getkey
+	_NOORIGSHELL	cannot use internal shell
+	_NOUSEHASH	cannot use hash function for search path
+	_NOORIGGLOB	use regular expression library for globbing
+	_NOSPLITWIN	cannot use split window
+	_NOPRECEDE	cannot use preceding filename display
+	_NOCUSTOMIZE	cannot use customizer
+	_NOEXTRACOPY	cannot use extra copy
+
+  If you edit config.hin to add the definition of these
+identifiers, you can reduce functions to make size small,
+or you can restrict the function you don't want to used by
+end users.
+
+
+9.Synchronizing Floppy Drive on PC-UNIX
+
+  In the floppy drive function, the cached memory is used for
+the purpose of fast disk access.
+  When accesing the same place of the disk in succession, it
+refers to the saved data in the cached memory instead of the
+actual disk access, in after the 2nd access.
+  Therefore, if any process except FDclone accesses this disk
+simultaneously, the contents is sometimes different from each
+other temporarily.
+  Many PC-UNIX prepares the operation which mounts the MS-DOS
+file system and accesses it directly. The contents which is
+got with this operation is not synchronized with the contents
+of the floppy drive.
+
+  When you write some data into the MS-DOS file system, first
+it is written in the cached memory of the system, and at the
+later point in time it is written in the actual disk.
+  Even after written in the actual disk, FDclone cannot know
+this writing and then will keep referring to the old data
+while it reads its cache.
+  The contents of cached memory in the file system is affected
+to the actual disk, by calling the system call sync(2).
+  The contents of the disk is affected to the cached memory
+of the floppy drive, by re-opening the floppy drive or
+REREAD_DIR command.
+  And REREAD_DIR command calls sync(2) only when the floppy
+drive function is used, so that it can synchronize both of
+them at the same time.
+
+  When you write some data into the floppy drive, first it
+is written in the cached memory of FDclone, and at the later
+point in time it is written in the actual disk.
+  Even after written in the actual disk by the floppy drive,
+a file system generally accesses the disk with bufferring
+and then will keep referring to the old data in its cached
+buffer while they exists in it.
+  The contents of cached memory in FDclone is synchronized
+with the actual disk, by closing the floppy drive or
+REREAD_DIR command. But the MS-DOS file system doesn't always
+reload them.
+  In this case, you must umount the MS-DOS file system and
+re-mount it again after closing the floppy drive or REREAD_DIR
+command, to surely reload the contents.
+
+
+  However, Linux has more problems. It is because Linux has
+no raw device as specific issue.
+
+  Except for Linux, if you select the raw device as the device
+name used in setting the floppy drive function, FDclone can
+access the device and the actual disk simultaneously.
+  But since Linux has no raw device and the device itself
+accesses the disk with bufferring, this synchronization can
+never be realized.
+
+  First, about writing into the floppy drive, both of the
+buffer written by the floppy drive and the buffer read by
+the file system are written into the actual disk by calling
+sync(2).
+  Therefore, while the floppy drive rewtires data again and
+again, they are always overwrited by the buffer of the file
+system, not to be affected.
+  In order to avoid it, if the floppy drive has been already
+mounted as the file system when it is opened, FDclone treats
+the floppy drive as readonly, on Linux.
+
+  Next, about reading from the floppy drive, since only root
+has the permission to realize synchronization, general users
+can never know the contents of the actual disk.
+  Therefore, if you want to refer to the contents written by
+the MS-DOS file system from the MS-DOS file system, it is
+necessary to umount the MS-DOS file system, as well as writing
+into the floppy drive.
+  But, while the device buffer is canceled by umount in the
+case that the disk is removable media like a floppy disk, it
+is not canceled by umount is the case of the fixed media like
+a hard disk, in specifications.
+  In order to force it canceled, you cannot help ordering it
+with the root permission.
+  Opening the flopy drive and REREAD_DIR command call this
+order to calcel the Linux buffer, only when FDclone is running
+with the root permission.
+  If you want synchronize in any way on Linux, you should
+invoke FDclone with the root permission, and use the floppy
+drive function.
+
+
+  But, since the root cause of this synchronization issue is
+accessing one disk medium in two ways, I think that it is
+best to avoid by employment of not accessing simultaneously
+in different ways.
+  While you use the floppy drive function, you should magage
+to cover it, for example, you umount the corresponding MS-DOS
+file system in advanse, or you take care that the other users
+or processes may not access it, etc.

@@ -1,6 +1,6 @@
 s:/:\\:g
-s:__VERSION__:1:g
-s:__RCVERSION__::g
+s:__VERSION__:2:g
+s:__RCVERSION__:2:g
 s:__EXE__:.exe:g
 s:__OBJ__:.o:g
 s:__OBJS__:unixemu.o unixdisk.o:

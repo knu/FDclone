@@ -10,7 +10,7 @@
 #	5: length	13: length (reversal)
 #	100-112: preserve previous sort type
 #		(the least 2 digits are effective just after initialize)
-SORTTYPE	=	0
+SORTTYPE=0
 
 # to set default display mode
 #	0: normal (Default)
@@ -21,214 +21,306 @@ SORTTYPE	=	0
 #	5: sym-link status &				invisible dot file
 #	6: 			file type symbol &	invisible dot file
 #	7: sym-link status &	file type symbol &	invisible dot file
-DISPLAYMODE	=	0
+DISPLAYMODE=0
 
 # whether if sort or not in tree mode
 #	0: not sort (Default)
 #	>= 1: sort according to SORTTYPE
-SORTTREE	=	0
+SORTTREE=0
 
 # behavior about writing over directory on file system
 #	0: confirm to write or not, after directory arranged (Default)
 #	1: write directory only if commanded
 #	2: never write over directory even if commanded
-WRITEFS		=	0
+WRITEFS=0
+
+# whether if ignore uppercase or lowercase in filename comparison
+#	0: not ignore (Default)
+#	>= 1: ignore
+IGNORECASE=0
+
+# whether if inherit timestamp or not when copying
+#	0: not inherit (Default)
+#	>= 1: inherit
+INHERITCOPY=0
 
 # whether if adjust tty or not when exiting
 #	0: not adjust (Default)
 #	>= 1: adjust
-ADJTTY		=	0
+ADJTTY=0
+
+# whether if prioritize VT100 escape sequence or not for getting terminal size
+#	0: not prioritize (Default)
+#	>= 1: prioritize
+USEGETCURSOR=0
 
 # to set default columns of file in 1 line
 #	1: 1 column
 #	2: 2 columns (Default)
 #	3: 3 columns
 #	5: 5 columns
-COLUMNS		=	2
+COLUMNS=2
 
 # minimum columns of filename field
 #	Default: 12
-MINFILENAME	=	12
+MINFILENAME=12
 
 # history size of sh mode
 #	Default: 50
-HISTSIZE	=	50
+HISTSIZE=50
 
 # history size of path input
 #	Default: 50
-DIRHIST		=	50
+DIRHIST=50
 
 # size of saved history
 #	Default: 50
-SAVEHIST	=	50
+SAVEHIST=50
 
 # limit of counting files in directory, on tree mode
 #	Default: 50
-DIRCOUNTLIMIT	=	50
+DIRCOUNTLIMIT=50
 
 # whether if make MS-DOS drive effective
 #	0: not use (Default)
 #	>= 1: effective
-DOSDRIVE	=	0
+DOSDRIVE=0
 
 # whether if display the second hand of clock
 #	0: not display (Default)
 #	>= 1: display
-SECOND		=	0
+SECOND=0
 
 # whether if show the info. of filesize
 #	0: not show (Default)
 #	>= 1: show
-SIZEINFO	=	0
+SIZEINFO=0
 
 # whether if support ANSI color escape sequence
 #	0: monochrome (Default)
 #	1: color
 #	2: color & force background to blacken
 #	3: color & force foreground to blacken
-ANSICOLOR	=	0
+ANSICOLOR=0
 
 # select edit mode with your favorite editor type
 #	emacs: ^P, ^N, ^F, ^B, ... (Default)
 #	wordstar ^E, ^X, ^D, ^S, ...
 #	vi: k, j, l, h, ...
-EDITMODE	=	emacs
+EDITMODE=emacs
 
 # temporary directory where archive file is unpacked
 #	Default: /tmp
-TMPDIR		=	/tmp
+TMPDIR=/tmp
 
 # mount point of CD-ROM with iso-9660 rock ridge format
 #	Default: none
-RRPATH		=	""
+RRPATH=""
+
+# directories on which browsing precedes getting file status
+#	Default: none
+PRECEDEPATH=""
 
 # shell prompt strings
-#	Default: "sh#"
-PROMPT		=	"sh#"
+#	Default: "$ "
+PS1="$ "
+
+# continuous shell prompt strings
+#	Default: "> "
+PS2="> "
 
 # language code type to display
 #	Default: No convert
 #	euc, EUC: EUC
 #	sjis, SJIS: Shift JIS
 #	jis, JIS: 7bits JIS
+#	jis8, JIS8: 8bits JIS
+#	junet, JUNET: ISO-2022-JP
+#	ojis, OJIS: old 7bits JIS
+#	ojis8, OJIS8: old 8bits JIS
+#	ojunet, OJUNET: old ISO-2022-JP
+#	utf8, UTF8: UTF-8
 #	eng, ENG, C: English
-#LANGUAGE	=	$LANG
+#LANGUAGE=$LANG
 
 # language code type to input
 #	Default: No convert
 #	euc, EUC: EUC
 #	sjis, SJIS: Shift JIS
-#INPUTKCODE	=	$LANG
+#INPUTKCODE=$LANG
 
-PAGER	=	more%K
-EDITOR	=	vi
-SHELL	=	/bin/sh
+# language code type in filename
+#	Default: No convert
+#	euc, EUC: EUC
+#	sjis, SJIS: Shift JIS
+#	jis, JIS: 7bits JIS
+#	jis8, JIS8: 8bits JIS
+#	junet, JUNET: ISO-2022-JP
+#	ojis, OJIS: old 7bits JIS
+#	ojis8, OJIS8: old 8bits JIS
+#	ojunet, OJUNET: old ISO-2022-JP
+#	hex, HEX: HEX
+#	cap, CAP: CAP
+#	utf8, UTF8: UTF-8
+#FNAMEKCODE=$LANG
+
+# directories on which language code type in filename is SJIS
+#	Default: none
+SJISPATH=""
+
+# directories on which language code type in filename is EUC
+#	Default: none
+EUCPATH=""
+
+# directories on which language code type in filename is 7bits JIS
+#	Default: none
+JISPATH=""
+
+# directories on which language code type in filename is 8bits JIS
+#	Default: none
+JIS8PATH=""
+
+# directories on which language code type in filename is ISO-2022-JP
+#	Default: none
+JUNETPATH=""
+
+# directories on which language code type in filename is old 7bits JIS
+#	Default: none
+OJISPATH=""
+
+# directories on which language code type in filename is old 8bits JIS
+#	Default: none
+OJIS8PATH=""
+
+# directories on which language code type in filename is old ISO-2022-JP
+#	Default: none
+OJUNETPATH=""
+
+# directories on which language code type in filename is HEX
+#	Default: none
+HEXPATH=""
+
+# directories on which language code type in filename is CAP
+#	Default: none
+CAPPATH=""
+
+# directories on which language code type in filename is UTF-8
+#	Default: none
+UFT8PATH=""
+
+# directories on which language code type in filename is not converted
+#	Default: none
+NOCONVPATH=""
+
+PAGER=more%K
+EDITOR=vi
+SHELL=/bin/sh
 
 # for Mischievous Japanese OS (see `man fd')
 #export	LANG=C
 
 # launcher definition
 #(Default)
-#launch ".lzh"	"lha lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8:10
-#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#launch ".lzh"	"lha l"			"%9a %u/%g %s %x %m %d %{yt} %f" 2 2
+#launch ".tar"	"tar tvf"		"%9a %u/%g %s %m %d %t %y %f"
 #launch ".tar.Z"\
-#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#		"zcat %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
 #launch ".tar.gz"\
-#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#		"gzip -cd %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
 #launch ".tar.bz2"\
 #		"bzip2 -cd %C|tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8:10
+#					"%9a %u/%g %s %m %d %t %y %f"
 #(Examples)
-#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:10
-#launch ".zip"	"unzip -lqq"		0,0:0,0,0,1,2[7],2-'-',2'-'-'-',3,4
-#launch ".zoo"	"zoo lq"		0,0:0,0,0,1,0,5,4,7-'+',8
+#launch ".taZ"	"zcat %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
+#launch ".taz"	"gzip -cd %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
+#launch ".tgz"	"gzip -cd %C|tar tvf -"	"%9a %u/%g %s %m %d %t %y %f"
+#launch ".zip"	"unzip -lqq"		"%s %m-%d-%y %t %f"
+#launch ".zoo"	"zoo lq"		"%s %x %x %d %m %x %t+ %f"
 #launch ".Z"	"zcat %C|$PAGER"
 #launch ".gz"	"gzip -cd %C|$PAGER"
 #launch ".bz2"	"bzip2 -cd %C|$PAGER"
 
 # examples for SVR4 (or GNU tar)
-#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8
+#launch ".tar"	"tar tvf"		"%a %u/%g %s %m %d %t %y %f"
 #launch ".tar.Z"\
-#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#		"zcat %C|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
 #launch ".tar.gz"\
-#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#		"gzip -cd %C|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
 #launch ".tar.bz2"\
 #		"bzip2 -cd %C|tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#					"%a %u/%g %s %m %d %t %y %f"
+#launch ".taZ"	"zcat %C|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
+#launch ".taz"	"gzip -cd %C|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
+#launch ".tgz"	"gzip -cd %C|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
 
 # examples for GNU tar >=1.12
-#launch ".tar"	"tar tvf"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#launch ".tar"	"tar tvf"	"%a %u/%g %s %y-%m-%d %t %f"
 #launch ".tar.Z"\
-#		"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#		"tar tvfZ"	"%a %u/%g %s %y-%m-%d %t %f"
 #launch ".tar.gz"\
-#		"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#		"tar tvfz"	"%a %u/%g %s %y-%m-%d %t %f"
 #launch ".tar.bz2"\
 #		"bzip2 -cd %C|tar tvf -"\
-#				0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
-#launch ".taZ"	"tar tvfZ"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
-#launch ".taz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
-#launch ".tgz"	"tar tvfz"	0,0:1,2-'/',2'/',3,4-'-',4'-'-'-',4[9],5,6
+#				"%a %u/%g %s %y-%m-%d %t %f"
+#launch ".taZ"	"tar tvfZ"	"%a %u/%g %s %y-%m-%d %t %f"
+#launch ".taz"	"tar tvfz"	"%a %u/%g %s %y-%m-%d %t %f"
+#launch ".tgz"	"tar tvfz"	"%a %u/%g %s %y-%m-%d %t %f"
 
 # examples for UXP/DS V10 tar
-#launch ".tar"	"tar tvf 2>&1"			0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar"	"tar tvf 2>&1"			"%10a %u/%g %s %m %d %t %y %f"
 #launch ".tar.Z"\
-#		"zcat %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#		"zcat %C|tar tvf - 2>&1"	"%10a %u/%g %s %m %d %t %y %f"
 #launch ".tar.gz"\
-#		"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#		"gzip -cd %C|tar tvf - 2>&1"	"%10a %u/%g %s %m %d %t %y %f"
 #launch ".tar.bz2"\
-#		"bzip2 -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
-#launch ".taZ"	"zcat %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
-#launch ".taz"	"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
-#launch ".tgz"	"gzip -cd %C|tar tvf - 2>&1"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#		"bzip2 -cd %C|tar tvf - 2>&1"	"%10a %u/%g %s %m %d %t %y %f"
+#launch ".taZ"	"zcat %C|tar tvf - 2>&1"	"%10a %u/%g %s %m %d %t %y %f"
+#launch ".taz"	"gzip -cd %C|tar tvf - 2>&1"	"%10a %u/%g %s %m %d %t %y %f"
+#launch ".tgz"	"gzip -cd %C|tar tvf - 2>&1"	"%10a %u/%g %s %m %d %t %y %f"
 
 # examples for UXP/DS V20 tar
-#launch ".tar"	"tar tvf"		0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#launch ".tar"	"tar tvf"		"%10a %u/%g %s %m %d %t %y %f"
 #launch ".tar.Z"\
-#		"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#		"zcat %C|tar tvf -"	"%10a %u/%g %s %m %d %t %y %f"
 #launch ".tar.gz"\
-#		"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#		"gzip -cd %C|tar tvf -"	"%10a %u/%g %s %m %d %t %y %f"
 #launch ".tar.bz2"\
 #		"bzip2 -cd %C|tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8:11
-#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
-#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
-#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8:11
+#					"%10a %u/%g %s %m %d %t %y %f"
+#launch ".taZ"	"zcat %C|tar tvf -"	"%10a %u/%g %s %m %d %t %y %f"
+#launch ".taz"	"gzip -cd %C|tar tvf -"	"%10a %u/%g %s %m %d %t %y %f"
+#launch ".tgz"	"gzip -cd %C|tar tvf -"	"%10a %u/%g %s %m %d %t %y %f"
 
 # examples for pax-based tar
-#launch ".tar"	"tar tvf"		0,0:1,3,4,5,8,6,7,8,9
+#launch ".tar"	"tar tvf"		"%a %x %u %g %s %m %d %{yt} %f"
 #launch ".tar.Z"\
-#		"zcat %C|tar tvf -"	0,0:1,3,4,5,8,6,7,8,9
+#		"zcat %C|tar tvf -"	"%a %x %u %g %s %m %d %{yt} %f"
 #launch ".tar.gz"\
-#		"gzip -cd %C|tar tvf -"	0,0:1,3,4,5,8,6,7,8,9
+#		"gzip -cd %C|tar tvf -"	"%a %x %u %g %s %m %d %{yt} %f"
 #launch ".tar.bz2"\
 #		"bzip2 -cd %C|tar tvf -"\
-#					0,0:1,3,4,5,8,6,7,8,9
-#launch ".taZ"	"zcat %C|tar tvf -"	0,0:1,3,4,5,8,6,7,8,9
-#launch ".taz"	"gzip -cd %C|tar tvf -"	0,0:1,3,4,5,8,6,7,8,9
-#launch ".tgz"	"gzip -cd %C|tar tvf -"	0,0:1,3,4,5,8,6,7,8,9
+#					"%a %x %u %g %s %m %d %{yt} %f"
+#launch ".taZ"	"zcat %C|tar tvf -"	"%a %x %u %g %s %m %d %{yt} %f"
+#launch ".taz"	"gzip -cd %C|tar tvf -"	"%a %x %u %g %s %m %d %{yt} %f"
+#launch ".tgz"	"gzip -cd %C|tar tvf -"	"%a %x %u %g %s %m %d %{yt} %f"
 
 # example for LHa >=1.14
-#launch ".lzh"	"lha -lq"		0,0:1,2-'/',2'/',3,7,5,6,7,8
+#launch ".lzh"	"lha -lq"		"%a %u/%g %s %x %m %d %{yt} %f"
 
 # examples for MS-DOS
-#launch ".lzh"	"lha l %S"		5,2:0,0,0,3,6-'-',6'-'-'-',6[7],7,2:2
-#launch ".lzh"	"lha v %S"		5,2:0,0,0,2,5-'-',5'-'-'-',5[7],6,1::2
+#launch ".lzh"	"lha l %S"		" %f %s %x %x %y-%m-%d %t" 5 2
+#launch ".lzh"	"lha v %S"		"%f\n%s %x %x %y-%m-%d %t" 5 2
 #launch ".tar.Z"\
-#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#		"gzip -cd %S|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
 #launch ".tar.gz"\
-#		"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
+#		"gzip -cd %S|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
 #launch ".tar.bz2"\
 #		"bzip2 -cd %S|tar tvf -"\
-#					0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".taz"	"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".tgz"	"gzip -cd %S|tar tvf -"	0,0:1,2-'/',2'/',3,7,4,5,6,8
-#launch ".zip"	"unzip -lqq %S"		0,0:0,0,0,1,2-'-',2'-'-'-',2[7],3,4
-#launch ".zip"	"pkunzip -vb %S"	14,2:0,0,0,1,5-'-',5'-'-'-',5[7],6,7
+#					"%a %u/%g %s %m %d %t %y %f"
+#launch ".taz"	"gzip -cd %S|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
+#launch ".tgz"	"gzip -cd %S|tar tvf -"	"%a %u/%g %s %m %d %t %y %f"
+#launch ".zip"	"unzip -lqq %S"		"%s %y-%m-%d %t %f"
+#launch ".zip"	"pkunzip -vb %S"	"%s %x %x %x %y-%m-%d %t %f" 14 2
 
 # archiver definition
 #(Default)
@@ -247,39 +339,39 @@ SHELL	=	/bin/sh
 
 # examples for MS-DOS
 #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
-#arch ".tar.Z"	"tar cfZ %C %TA"		"gzip -cd %S|tar xf - %TA"
-#arch ".tar.gz"	"tar cfz %C %TA"		"gzip -cd %S|tar xf - %TA"
+#arch ".tar.Z"	"tar cf %XS %T; compress %XS"	"gzip -cd %S|tar xf - %TA"
+#arch ".tar.gz"	"tar cf %XS %T; gzip %XS"	"gzip -cd %S|tar xf - %TA"
 #arch ".tar.bz2"\
-#		"tar cfI %C %TA"		"bzip2 -cd %S|tar xf - %TA"
+#		"tar cf %XS %T; bzip2 %XS"	"bzip2 -cd %S|tar xf - %TA"
 #arch ".taz"	"maketaz gzip gz taz"		"gzip -cd %S|tar xf - %TA"
 #arch ".tgz"	"maketaz gzip gz tgz"		"gzip -cd %S|tar xf - %TA"
 #arch ".zip"	"pkzip %S %TA"			"pkunzip %S %TA"
 
 # key bind definition
 #(Examples)
-#bind 'I'	"dir -d %C"
-#bind 'g'	"gzip %C%K"	WARNING_BELL
-#bind 'G'	"gzip -d %C%K"	WARNING_BELL
-#bind 'R'	"grep %R %C"
-#bind '{'	ROLL_UP
-#bind '}'	ROLL_DOWN
-#bind '~'	"cd ~%N%K"
-#bind 'F1'	"man fd%N%K"	;Manual
+#bind I		"dir -d %C"
+#bind g		"gzip %C%K"	WARNING_BELL
+#bind G		"gzip -d %C%K"	WARNING_BELL
+#bind R		"grep %R %C"
+#bind {		ROLL_UP
+#bind }		ROLL_DOWN
+#bind ~		"cd ~%N%K"
+#bind F1	"man fd%N%K"	:Manual
 
 # function definition
 #(Example1)
-#function rename() {\
-#	MARK_ALL 0;\
-#	MARK_FIND $1;\
-##	RENAME_FILE $2;\
-#	mv %M $2%K;\
+#rename() {
+#	MARK_ALL 0
+#	MARK_FIND $1
+##	RENAME_FILE $2
+#	evalmacro mv %M $2
 #}
 #
 #(Example2: used in archiver definition)
-#function maketaz() {\
-#	tar cf %X.tar %T;\
-#	$1 %X.tar;\
-#	mv %X.tar.$2 %X.$3;\
+#maketaz() {
+#	evalmacro tar cf %X.tar %T
+#	evalmacro $1 %X.tar
+#	evalmacro mv %X.tar.$2 %X.$3
 #}
 
 # MS-DOS drive definition
@@ -288,7 +380,7 @@ SHELL	=	/bin/sh
 
 # alias definition
 #(Example)
-#alias dir "ls -laF"
+#alias dir="ls -laF"
 
 # keymap definition
 #(Example)

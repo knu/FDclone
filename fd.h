@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #endif
 
+#if	FD < 2
 #define	_NOORIGSHELL
 #define	_NOSPLITWIN
 #define	_NOPRECEDE
@@ -27,6 +28,7 @@
 #define	_NOUSEHASH
 #define	_NOORIGGLOB
 #define	_NOKANJIFCONV
+#endif	/* FD < 2 */
 
 #include "types.h"
 #include "pathname.h"
@@ -37,10 +39,18 @@ extern char *_mtrace_file;
 
 
 #if	MSDOS
+# if	FD >= 2
+#define	RUNCOMFILE	"~\\fd2.rc"
+# else
 #define	RUNCOMFILE	"~\\fd.rc"
+# endif
 #define	HISTORYFILE	"~\\fd.hst"
 #else
+# if	FD >= 2
+#define	RUNCOMFILE	"~/.fd2rc"
+# else
 #define	RUNCOMFILE	"~/.fdrc"
+# endif
 #define	HISTORYFILE	"~/.fd_history"
 #endif
 
@@ -106,7 +116,11 @@ extern char *_mtrace_file;
 #define	CAPPATH		""
 #define	UTF8PATH	""
 #define	NOCONVPATH	""
+#if	FD >= 2
+#define	PROMPT		"$ "
+#else
 #define	PROMPT		"sh#"
+#endif
 #define	PROMPT2		"> "
 
 

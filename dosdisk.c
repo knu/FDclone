@@ -4734,8 +4734,9 @@ FILE *stream;
 static int NEAR type2flags(type)
 char *type;
 {
-	int flags = 0;
-	switch(*type) {
+	int flags;
+
+	switch (*type) {
 		case 'r':
 			if (*(type + 1) != '+') flags = O_RDONLY;
 			else flags = O_RDWR;

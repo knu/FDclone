@@ -987,12 +987,13 @@ int len;
 
 			if (quote || meta) {
 #ifdef	BASHSTYLE
+	/* bash treats a meta character in "[]" as a character itself */
 				paren[plen++] = PMETA;
-				paren[plen++] =
-#if	!MSDOS
-					(!pathignorecase) ? s[i] :
-#endif
-					toupper2(s[i]);
+# if	!MSDOS
+				if (!pathignorecase) paren[plen++] = s[i];
+				else
+# endif
+				paren[plen++] = toupper2(s[i]);
 #endif
 			}
 			else if (s[i] == ']') {
@@ -1001,22 +1002,49 @@ int len;
 					regexp_free(re);
 					return(NULL);
 				}
+#ifndef	BASHSTYLE
+	/* bash treats "[a-]]" as "[a-]" + "]" */
+				if (paren[plen - 1] == '-') {
+					paren[plen++] = s[i];
+					continue;
+				}
+#endif
 				paren[plen] = '\0';
 				cp = paren;
 				paren = NULL;
 			}
 			else if (!plen && s[i] == '!') paren[plen++] = '\0';
-#ifndef	BASHSTYLE
 			else if (s[i] == '-') {
-				if (!plen
-				|| !s[i + 1] || s[i + 1] == ']') {
+				if (i + 1 >= len) j = '\0';
+#if	!MSDOS
+				else if (!pathignorecase) j = s[i + 1];
+#endif
+				else j = toupper2(s[i + 1]);
+
+#ifdef	BASHSTYLE
+	/* bash does not allows "[b-a]" */
+				if (plen && j && j != ']'
+				&& j < paren[plen - 1]) {
 					free(paren);
 					regexp_free(re);
 					return(NULL);
 				}
-				paren[plen++] = s[i];
-			}
+#else
+				if (plen && j && j < paren[plen - 1]) {
+					do {
+						if (i + 1 >= len) break;
+						i++;
+					} while (s[i + 1] != ']');
+				}
+	/* bash allows "[-a]" */
+				else if ((!plen && j != '-')) {
+					free(paren);
+					regexp_free(re);
+					return(NULL);
+				}
 #endif
+				else paren[plen++] = s[i];
+			}
 			else {
 #ifdef	CODEEUC
 				if (isekana(s, i)) {
@@ -1029,14 +1057,13 @@ int len;
 					paren[plen++] = s[i++];
 					paren[plen++] = s[i];
 				}
-				else paren[plen++] =
 #if	!MSDOS
-					(!pathignorecase) ? s[i] :
+				else if (!pathignorecase) paren[plen++] = s[i];
 #endif
-					toupper2(s[i]);
+				else paren[plen++] = toupper2(s[i]);
 			}
 		}
-		else if (!quote) switch(s[i]) {
+		else if (!quote) switch (s[i]) {
 			case '?':
 				cp = wildsymbol1;
 				break;
@@ -1064,11 +1091,10 @@ int len;
 				cp[j++] = s[i++];
 				cp[j++] = s[i];
 			}
-			else cp[j++] =
 #if	!MSDOS
-				(!pathignorecase) ? s[i] :
+			else if (!pathignorecase) cp[j++] = s[i];
 #endif
-				toupper2(s[i]);
+			else cp[j++] = toupper2(s[i]);
 			cp[j] = '\0';
 		}
 		re = (reg_t *)realloc2(re, (n + 2) * sizeof(reg_t));
@@ -1116,6 +1142,7 @@ char *s;
 		c2 = '\0';
 		for (; re[n1][i]; i++) {
 #ifdef	BASHSTYLE
+	/* bash treats a meta character in "[]" as a character itself */
 			if (re[n1][i] == PMETA && re[n1][i + 1]) i++;
 			if (re[n1][i] == '-' && re[n1][i + 1] && c2)
 #else
@@ -1723,8 +1750,10 @@ char *searchpath(path, search)
 char *path, *search;
 {
 	hashlist *hp;
+	int type;
 
-	if (searchhash(&hp, path, search) & CM_NOTFOUND) return(NULL);
+	if ((type = searchhash(&hp, path, search)) & CM_NOTFOUND) return(NULL);
+	if (type & CM_FULLPATH) return(strdup2(path));
 #ifdef	_NOUSEHASH
 	return((char *)hp);
 #else
@@ -2017,6 +2046,7 @@ int c, quoted;
 				break;
 			}
 #ifdef	BASHSTYLE
+	/* bash uses IFS instead of a space as a separator */
 			if ((cp = getvar("IFS", -1)) && *cp) sp = *cp;
 #endif
 
@@ -2043,6 +2073,7 @@ int c, quoted;
 			|| !(arglist = (*getarglistfunc)())) break;
 			sp = ' ';
 #ifdef	BASHSTYLE
+	/* bash uses IFS instead of a space as a separator */
 			if (quoted && (cp = getvar("IFS", -1)))
 				sp = (*cp) ? *cp : '\0';
 #endif
@@ -2110,6 +2141,7 @@ int s, len, vlen, mode;
 			return(-1);
 		}
 #ifdef	BASHSTYLE
+	/* bash does not evaluates a quoted string in substitution itself */
 		free(*cpp);
 		val = malloc2(vlen + 1);
 		strncpy2(val, arg + s, vlen);
@@ -2176,7 +2208,7 @@ int quoted;
 	}
 	else {
 		nest = 1;
-		len = s = e = -1;
+		len = s = -1;
 		top++;
 		quote = '\0';
 		for (i = 0; nest > 0; i++) {
@@ -2193,9 +2225,6 @@ int quoted;
 			else if (quote == '\'');
 			else if (ismeta(top, i, quote)) {
 				if (len < 0) return(-1);
-#ifndef	BASHSTYLE
-				if (!quote) e = i;
-#endif
 			}
 			else if (quote);
 			else if (top[i] == '\'' || top[i] == '"') {
@@ -2231,20 +2260,14 @@ int quoted;
 					mode = top[i];
 					break;
 				default:
-					if (len >= 0) {
-#ifndef	BASHSTYLE
-						if (!quoted
-						&& strchr(IFS_SET, top[i]))
-							return(-1);
-#endif
-					}
+					if (len >= 0);
 					else if (i > 0 && top[i] != '_'
 					&& !isalnum(top[i]))
 						return(-1);
 					break;
 			}
 		}
-		if (e < 0) e = i - 1;
+		e = i - 1;
 		if (len < 0) len = e;
 		if (s < 0) s = e;
 		*argp += i + 1;
