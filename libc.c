@@ -193,9 +193,9 @@ int rdlink;
 		cp = strcatdelim(resolved);
 		strncpy2(cp, path, MAXPATHLEN - 1 - (cp - resolved));
 #if	!MSDOS
-		if (!rdlink);
+		if (!rdlink) /*EMPTY*/;
 # ifndef	_NODOSDRIVE
-		else if (_dospath(resolved));
+		else if (_dospath(resolved)) /*EMPTY*/;
 # endif
 		else evallink(resolved, cp - 1);
 #endif	/* !MSDOS */
@@ -578,7 +578,7 @@ int *lenp, ptr;
 			s1[i++] = s2[j++];
 		}
 #else
-		if (iskna(s2[j]));
+		if (iskna(s2[j])) /*EMPTY*/;
 #endif
 		else if (iskanji1(s2, j)) {
 			if (*lenp >= 0 && i >= *lenp - 1) {
@@ -652,13 +652,13 @@ char *s;
 }
 
 #ifdef	USESTDARGH
-/*VARARGS1*/
+/*VARARGS2*/
 int fprintf2(FILE *fp, CONST char *fmt, ...)
 #else
-/*VARARGS1*/
+/*VARARGS2*/
 int fprintf2(fp, fmt, va_alist)
-FILE *s;
-char *fmt;
+FILE *fp;
+CONST char *fmt;
 va_dcl
 #endif
 {
@@ -681,14 +681,14 @@ va_dcl
 }
 
 #ifdef	USESTDARGH
-/*VARARGS1*/
+/*VARARGS3*/
 int snprintf2(char *s, int size, CONST char *fmt, ...)
 #else
-/*VARARGS1*/
+/*VARARGS3*/
 int snprintf2(s, size, fmt, va_alist)
 char *s;
 int size;
-char *fmt;
+CONST char *fmt;
 va_dcl
 #endif
 {

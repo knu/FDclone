@@ -160,7 +160,7 @@ u_char kctypetable[256] = {
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NODOSDRIVE)
 static u_char *unitblbuf = NULL;
-static u_short unitblent = 0;
+static u_int unitblent = 0;
 static kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* Cyrillic small letters */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
@@ -509,10 +509,10 @@ u_char *s;
 	s1 = s[0] & 0xff;
 	s2 = s[1] & 0xff;
 	if (s1 >= 0xf0) {
-		u_short w;
+		u_int w;
 		int i;
 
-		w = ((u_short)s1 << 8) | (u_char)s2;
+		w = ((u_int)s1 << 8) | (u_char)s2;
 		for (i = 0; i < CNVTBLSIZ; i++)
 			if (w >= convtable[i].start
 			&& w < convtable[i].start + convtable[i].range)
@@ -536,7 +536,7 @@ static VOID NEAR j2sj(buf, s)
 char *buf;
 u_char *s;
 {
-	u_short w;
+	u_int w;
 	int i, s1, s2, j1, j2;
 
 	j1 = s[0] & 0x7f;
@@ -569,7 +569,7 @@ int max;
 
 	for (i = j = 0; s[i] && j < max - 1; i++, j++) {
 		if (isskana(s, i)) {
-			buf[j++] = 0x8e;
+			buf[j++] = (char)0x8e;
 			buf[j] = s[i];
 		}
 		else if (issjis1(s[i]) && issjis2(s[i + 1])) {
@@ -616,7 +616,7 @@ VOID readunitable(VOID_A)
 		close(fd);
 		return;
 	}
-	unitblent = (((u_short)(buf[1]) << 8) | buf[0]);
+	unitblent = (((u_int)(buf[1]) << 8) | buf[0]);
 	size = (long)unitblent * 4;
 
 	unitblbuf = (u_char *)realloc2(unitblbuf, size);
@@ -657,8 +657,7 @@ int encode;
 	static int fd = -1;
 	u_char buf[4];
 	char path[MAXPATHLEN];
-	u_short min, max, ofs;
-	u_int r, w;
+	u_int r, w, min, max, ofs;
 
 	wc &= 0xffff;
 	if (encode < 0) {
@@ -705,9 +704,9 @@ int encode;
 			wc = unifysjis(wc, 0);
 			cp = unitblbuf;
 			for (ofs = 0; ofs < unitblent; ofs++) {
-				w = (((u_short)(cp[3]) << 8) | cp[2]);
+				w = (((u_int)(cp[3]) << 8) | cp[2]);
 				if (wc == w) {
-					r = (((u_short)(cp[1]) << 8) | cp[0]);
+					r = (((u_int)(cp[1]) << 8) | cp[0]);
 					break;
 				}
 				cp += 4;
@@ -720,9 +719,9 @@ int encode;
 			for (;;) {
 				if (ofs == min || ofs == max) break;
 				cp = &(unitblbuf[(ofs - 1) * 4]);
-				w = (((u_short)(cp[1]) << 8) | cp[0]);
+				w = (((u_int)(cp[1]) << 8) | cp[0]);
 				if (wc == w) {
-					r = (((u_short)(cp[3]) << 8) | cp[2]);
+					r = (((u_int)(cp[3]) << 8) | cp[2]);
 					break;
 				}
 				else if (wc < w) {
@@ -751,7 +750,7 @@ int encode;
 				fd = -1;
 				return(r);
 			}
-			unitblent = (((u_short)(buf[1]) << 8) | buf[0]);
+			unitblent = (((u_int)(buf[1]) << 8) | buf[0]);
 		}
 	}
 
@@ -760,9 +759,9 @@ int encode;
 		wc = unifysjis(wc, 0);
 		for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, buf, 4) != 4) break;
-			w = (((u_short)(buf[3]) << 8) | buf[2]);
+			w = (((u_int)(buf[3]) << 8) | buf[2]);
 			if (wc == w) {
-				r = (((u_short)(buf[1]) << 8) | buf[0]);
+				r = (((u_int)(buf[1]) << 8) | buf[0]);
 				break;
 			}
 		}
@@ -776,9 +775,9 @@ int encode;
 			if (Xlseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET)
 			< (off_t)0
 			|| read(fd, buf, 4) != 4) break;
-			w = (((u_short)(buf[1]) << 8) | buf[0]);
+			w = (((u_int)(buf[1]) << 8) | buf[0]);
 			if (wc == w) {
-				r = (((u_short)(buf[3]) << 8) | buf[2]);
+				r = (((u_int)(buf[3]) << 8) | buf[2]);
 				break;
 			}
 			else if (wc < w) {
@@ -942,7 +941,7 @@ int max, io;
 				if (!isjkana(s, i)) buf[j++] = s[i];
 				else {
 # ifdef	CODEEUC
-					buf[j++] = 0x8e;
+					buf[j++] = (char)0x8e;
 # endif
 					buf[j++] = jdecnv(s[i], io) | 0x80;
 				}
@@ -968,7 +967,7 @@ int max, io;
 			}
 #  ifdef	CODEEUC
 			else if (iskna(s[i])) {
-				buf[j++] = 0x8e;
+				buf[j++] = (char)0x8e;
 				buf[j++] = s[i];
 			}
 #  endif
@@ -1095,7 +1094,7 @@ char *buf;
 u_char *s;
 int max;
 {
-	u_short w;
+	u_int w;
 	int i, j;
 
 	for (i = j = 0; s[i] && j < max - 3; i++, j++) {
@@ -1135,7 +1134,7 @@ char *buf;
 u_char *s;
 int max;
 {
-	u_short w;
+	u_int w;
 	int i, j, c1, c2;
 
 	for (i = j = 0; s[i] && j < max - 2; i++, j++) {
@@ -1546,7 +1545,7 @@ int kanjiprintf(CONST char *fmt, ...)
 #else
 /*VARARGS1*/
 int kanjiprintf(fmt, va_alist)
-char *fmt;
+CONST char *fmt;
 va_dcl
 #endif
 {

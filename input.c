@@ -1253,13 +1253,13 @@ int linemax, rins, vins;
 	}
 	else rw = vw = 1;
 
-	if (!vw);
+	if (!vw) /*EMPTY*/;
 	else if (vins > vw)
 		insertchar(*sp, cx, *lenp, plen, linemax, vins - vw);
 	else if (vins < vw)
 		deletechar(*sp, cx, *lenp, plen, linemax, vw - vins);
 
-	if (!rw);
+	if (!rw) /*EMPTY*/;
 	else if (rins > rw) {
 		*sp = c_realloc(*sp, *lenp + rins - rw, sizep);
 		insshift(*sp, cx, *lenp, rins - rw);
@@ -1464,7 +1464,7 @@ char **argv;
 				n += 2;
 			}
 
-			if (i == 'N');
+			if (i == 'N') /*EMPTY*/;
 			else if (n_column < maxlen + 2) {
 				n += argc;
 				for (i = 0; i < argc; i++) {
@@ -1582,7 +1582,7 @@ int linemax, comline, cont;
 			if ((*sp)[i] == '`') top = i + 1;
 		}
 # endif
-		else if (pc != PC_NORMAL);
+		else if (pc != PC_NORMAL) /*EMPTY*/;
 		else if ((*sp)[i] == '=' || strchr(CMDLINE_DELIM, (*sp)[i]))
 			top = i + 1;
 	}
@@ -1718,7 +1718,7 @@ int linemax, comline, cont;
 			i = ++tmp - &((*sp)[top]);
 		}
 
-		if (quote);
+		if (quote) /*EMPTY*/;
 		else if (quoted > top) {
 			quote = (*sp)[quoted];
 			setcursor(*sp, quoted, -1, len, plen, linemax);
@@ -2312,16 +2312,18 @@ int linemax, def, comline, h;
 			}
 #if	!MSDOS && !defined (_NOKANJICONV)
 			else if (inputkcode == EUC
-			&& i == 0x8e && kbhit2(WAITMETA * 1000L));
-			else if (inputkcode != EUC && iskna(i));
+			&& i == 0x8e && kbhit2(WAITMETA * 1000L)) /*EMPTY*/;
+			else if (inputkcode != EUC && iskna(i)) /*EMPTY*/;
 #else
 # ifdef	CODEEUC
-			else if (i == 0x8e && kbhit2(WAITMETA * 1000L));
+			else if (i == 0x8e && kbhit2(WAITMETA * 1000L))
+				/*EMPTY*/;
 # else
-			else if (iskna(i));
+			else if (iskna(i)) /*EMPTY*/;
 # endif
 #endif
-			else if (isinkanji1(i) && kbhit2(WAITMETA * 1000L));
+			else if (isinkanji1(i) && kbhit2(WAITMETA * 1000L))
+				/*EMPTY*/;
 			else if (ismsb(i)) {
 				keyflush();
 				ch = '\0';
@@ -2819,7 +2821,7 @@ int yesno(CONST char *fmt, ...)
 #else
 /*VARARGS1*/
 int yesno(fmt, va_alist)
-char *fmt;
+CONST char *fmt;
 va_dcl
 #endif
 {
@@ -3029,8 +3031,8 @@ int xx[], multi;
 	}
 	len = selectcnt(max, tmpstr, multi);
 
-	if (x + len < n_lastcolumn);
-	else if ((x = n_lastcolumn - 1 - len) >= 0);
+	if (x + len < n_lastcolumn) /*EMPTY*/;
+	else if ((x = n_lastcolumn - 1 - len) >= 0) /*EMPTY*/;
 	else {
 		x = maxlen = 0;
 		str = (char **)malloc2(max * sizeof(char *));

@@ -457,9 +457,9 @@ char *path;
 {
 	char *cp, conv[MAXPATHLEN];
 
-	if (path == cachecwd || !*cachecwd);
+	if (path == cachecwd || !*cachecwd) /*EMPTY*/;
 #ifndef	_NODOSDRIVE
-	else if (dosdrive && _dospath(cachecwd));
+	else if (dosdrive && _dospath(cachecwd)) /*EMPTY*/;
 #endif
 	else {
 		strcpy(path, cachecwd);
@@ -567,7 +567,8 @@ int bufsiz;
 
 	path = convput(conv, path, 1, 0, lbuf, &c);
 #ifndef	_NOROCKRIDGE
-	if (*lbuf && (len = rrreadlink(lbuf, lbuf, MAXPATHLEN)) >= 0);
+	if (*lbuf && (len = rrreadlink(lbuf, lbuf, MAXPATHLEN)) >= 0)
+		/*EMPTY*/;
 	else
 #endif
 #ifndef	_NODOSDRIVE

@@ -459,7 +459,7 @@ namelist *tmp;
 char *buf;
 {
 	int i, c, len;
-	u_short mode;
+	u_int mode;
 
 	if (!*buf) return(0);
 	len = strlen(buf);
@@ -1495,6 +1495,7 @@ int *linenop;
 		score = readfileent(flist, cp, list, max);
 		free(cp);
 		break;
+/*NOTREACHED*/
 #endif	/* FD < 2 */
 	}
 
@@ -1922,7 +1923,7 @@ int argset;
 	drive = 0;
 #endif
 
-	if (argset);
+	if (argset) /*EMPTY*/;
 	else if (archivefile) {
 		if (!(tmpdir = tmpunpack(1))) {
 			putterm(t_bell);
@@ -1939,7 +1940,7 @@ int argset;
 	if (!isarchbr(list)) {
 		execusercomm(list -> comm, filelist[filepos].name,
 			1, argset, 1);
-		if (argset);
+		if (argset) /*EMPTY*/;
 #ifndef	_NODOSDRIVE
 		else if (drive) removetmp(tmpdir, filelist[filepos].name);
 #endif
@@ -1948,7 +1949,7 @@ int argset;
 	}
 
 	pusharchdupl();
-	if (argset);
+	if (argset) /*EMPTY*/;
 #ifndef	_NODOSDRIVE
 	else if (drive) {
 		archduplp -> v_fullpath = strdup2(fullpath);
@@ -2396,7 +2397,7 @@ int single;
 	while (*subdir == _SC_) subdir++;
 
 	if (ret < 0) putterm(t_bell);
-	else if (!ret);
+	else if (!ret) /*EMPTY*/;
 	else if (_chdir2(path) < 0) {
 		hideclock = 1;
 		warning(-1, path);

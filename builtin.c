@@ -541,7 +541,7 @@ char *argv[];
 			list.sep[i] = (l > 0) ? l - 1 : 255;
 			ch = ',';
 		}
-		for (; i < MAXLAUNCHSEP; i++) list.sep[i] = -1;
+		for (; i < MAXLAUNCHSEP; i++) list.sep[i] = 255;
 
 		if (!cp || *cp != ':') list.lines = 1;
 		else {
@@ -705,7 +705,7 @@ FILE *fp;
 			fprintf2(fp, "[%d]", launchlist[n].delim[i] - 128);
 		else if (launchlist[n].delim[i])
 			fprintf2(fp, "'%c'", launchlist[n].delim[i]);
-		if (!(launchlist[n].width[i]));
+		if (!(launchlist[n].width[i])) /*EMPTY*/;
 		else if (launchlist[n].width[i] >= 128)
 			fprintf2(fp, "-%d", launchlist[n].width[i] - 128);
 		else fprintf2(fp, "-'%c'", launchlist[n].width[i]);
@@ -1029,7 +1029,7 @@ char *cp;
 
 	for (n = 0; n < FUNCLISTSIZ; n++)
 		if (!strpathcmp(cp, funclist[n].ident)) break;
-	if (n < FUNCLISTSIZ);
+	if (n < FUNCLISTSIZ) /*EMPTY*/;
 	else if (maxmacro >= MAXMACROTABLE) n = -1;
 	else {
 		macrolist[maxmacro] = strdup2(cp);
@@ -2490,7 +2490,7 @@ char *argv[];
 # if	FD >= 2
 	if (*cp) *cp = '\0';
 # else
-	if (argc > 2);
+	if (argc > 2) /*EMPTY*/;
 # endif
 	else {
 		if (i >= maxalias) {
@@ -2890,7 +2890,7 @@ int comline, ignorelist;
 		nl = stdiomode();
 		n = execinternal(i, argc, argv);
 		ttyiomode(nl);
-		if (n == RET_SUCCESS);
+		if (n == RET_SUCCESS) /*EMPTY*/;
 		else if (comline) {
 			hideclock = 1;
 			warning(0, ILFNC_K);

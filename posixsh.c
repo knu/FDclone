@@ -337,7 +337,7 @@ syntaxtree *trp;
 				break;
 			}
 		}
-		if (i < maxjobs);
+		if (i < maxjobs) /*EMPTY*/;
 		else if (n >= 0) i = n;
 		else {
 			joblist = (jobtable *)realloc2(joblist,

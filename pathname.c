@@ -1291,7 +1291,7 @@ char *s;
 #endif
 		if (iskanji1(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
 #if	!MSDOS
-		else if (!pathignorecase);
+		else if (!pathignorecase) /*EMPTY*/;
 #endif
 		else c1 = toupper2(c1);
 
@@ -1843,7 +1843,8 @@ char *com, *search;
 	if ((*hpp = findhash(com, n))) {
 		path = (*hpp) -> path;
 		if (((*hpp) -> type & CM_RECALC)
-		&& (!searchcwd || !Xgetwd(buf) || strcmp(searchcwd, buf)));
+		&& (!searchcwd || !Xgetwd(buf) || strcmp(searchcwd, buf)))
+			/*EMPTY*/;
 		else if (isexecute(path, 0, 1) >= 0) return((*hpp) -> type);
 		rmhash(com, n);
 	}
@@ -2404,7 +2405,7 @@ int qed, nonl, nest;
 			*ptrp += (cp - s);
 			continue;
 		}
-		else if (pc != PC_NORMAL);
+		else if (pc != PC_NORMAL) /*EMPTY*/;
 		else if (nonl && s[*ptrp] == '\n') return(-1);
 #ifndef	MINIMUMSHELL
 		else if (nest && s[*ptrp] == '(') {
@@ -2743,7 +2744,7 @@ int quoted;
 #endif	/* !MINIMUMSHELL */
 
 	c = '\0';
-	if ((cp = new));
+	if ((cp = new)) /*EMPTY*/;
 	else if (isidentchar(*top)) cp = getvar(top, len);
 	else if (isdigit(*top)) {
 		if (len > 1) return(-1);
@@ -3097,9 +3098,10 @@ int stripq, backq, qed;
 		}
 		else if (pc == PC_META) {
 			cp++;
-			if (*cp == '$');
-			else if (backq && *cp == '`');
-			else if (stripq && (*cp == '\'' || *cp == '"'));
+			if (*cp == '$') /*EMPTY*/;
+			else if (backq && *cp == '`') /*EMPTY*/;
+			else if (stripq && (*cp == '\'' || *cp == '"'))
+				/*EMPTY*/;
 			else buf[i++] = PMETA;
 			buf[i++] = *cp;
 		}
@@ -3107,7 +3109,7 @@ int stripq, backq, qed;
 			if (*cp == '`') j = 0;
 			else if (!stripq) buf[i++] = *cp;
 		}
-		else if (pc != PC_NORMAL);
+		else if (pc != PC_NORMAL) /*EMPTY*/;
 		else if (*cp == '~' && (!prev || prev == ':' || prev == '='))
 			i = evalhome(&buf, i, &cp);
 		else buf[i++] = *cp;
@@ -3136,7 +3138,7 @@ char ***argvp, *ifs;
 			pc = parsechar(&((*argvp)[n][i]), -1,
 				'\0', 0, &quote, NULL);
 			if (pc == PC_WORD || pc == PC_META) i++;
-			else if (pc != PC_NORMAL);
+			else if (pc != PC_NORMAL) /*EMPTY*/;
 			else if (strchr(ifs, (*argvp)[n][i])) {
 				for (j = i + 1; (*argvp)[n][j]; j++)
 					if (!strchr(ifs, (*argvp)[n][j]))
@@ -3196,8 +3198,8 @@ int stripq;
 				&& !strchr(DQ_METACHAR, (*argvp)[n][i]))
 					cp[j++] = PMETA;
 			}
-			else if (pc != PC_NORMAL);
-			else if (!strchr("?*[", (*argvp)[n][i]));
+			else if (pc != PC_NORMAL) /*EMPTY*/;
+			else if (!strchr("?*[", (*argvp)[n][i])) /*EMPTY*/;
 			else if ((wild = evalwild((*argvp)[n]))) {
 				w = countvar(wild);
 				if (w > 1) {
@@ -3320,7 +3322,7 @@ int uniqdelim, evalq;
 #endif
 			if (evalq) continue;
 		}
-		else if (pc != PC_NORMAL);
+		else if (pc != PC_NORMAL) /*EMPTY*/;
 		else if (uniqdelim && cp[i] == _SC_ && c == _SC_) continue;
 		tmp[j++] = cp[i];
 	}

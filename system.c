@@ -1972,8 +1972,8 @@ static VOID NEAR setsignal(VOID_A)
 #endif
 	for (i = 0; signallist[i].sig >= 0; i++) {
 		sig = signallist[i].sig;
-		if (signallist[i].flags & TR_BLOCK);
-		else if (signallist[i].flags & TR_READBL);
+		if (signallist[i].flags & TR_BLOCK) /*EMPTY*/;
+		else if (signallist[i].flags & TR_READBL) /*EMPTY*/;
 		else if ((trapmode[sig] & TR_STAT) != TR_TRAP) continue;
 		else if ((signallist[i].flags & TR_STAT) == TR_STOP) continue;
 
@@ -2542,7 +2542,7 @@ char *s;
 	if (syntaxerrno <= 0 || syntaxerrno >= SYNTAXERRSIZ) return;
 #ifndef	BASHSTYLE
 	/* bash shows its name, even in interective shell */
-	if (interactive);
+	if (interactive) /*EMPTY*/;
 	else
 #endif
 	if (argvar && argvar[0]) {
@@ -2579,7 +2579,7 @@ int n, noexit;
 	if (!n || n >= EXECERRSIZ) return;
 #ifndef	BASHSTYLE
 	/* bash shows its name, even in interective shell */
-	if (interactive);
+	if (interactive) /*EMPTY*/;
 	else
 #endif
 	if (argvar && argvar[0]) {
@@ -2604,7 +2604,7 @@ int n, noexit;
 #endif
 
 	if (noexit < 0) safeexit();
-	else if (noexit);
+	else if (noexit) /*EMPTY*/;
 #if	!defined (BASHSTYLE) || defined (STRICTPOSIX)
 	/* bash does not exit on error, in non interactive shell */
 	else if (isshellbuiltin) safeexit();
@@ -2708,7 +2708,7 @@ int fd;
 {
 	int n;
 
-	if ((n = fcntl(fd, F_GETFD, NULL)) < 0) return(-1);
+	if (fd < 0 || (n = fcntl(fd, F_GETFD, NULL)) < 0) return(-1);
 	n |= FD_CLOEXEC;
 	return(fcntl(fd, F_SETFD, n));
 }
@@ -2849,7 +2849,7 @@ int valid;
 	int i;
 
 	for (i = 0; signallist[i].sig >= 0; i++) {
-		if (signallist[i].flags & TR_BLOCK);
+		if (signallist[i].flags & TR_BLOCK) /*EMPTY*/;
 		else if ((signallist[i].flags & TR_STAT) != TR_STOP) continue;
 
 		if (valid) signal2(signallist[i].sig, SIG_DFL);
@@ -3025,7 +3025,7 @@ syntaxtree *trp;
 		else
 # endif
 # if	defined (SIGPIPE) && !defined (PSIGNALSTYLE)
-		if (ret == SIGPIPE);
+		if (ret == SIGPIPE) /*EMPTY*/;
 		else
 # endif
 		if (!nottyout) {
@@ -3528,13 +3528,13 @@ int type;
 		l2 = (i < OPELISTSIZ) ? opelist[i].level : 0;
 	}
 
-	if (!l1);
+	if (!l1) /*EMPTY*/;
 #ifndef	BASHSTYLE
 	/* bash does not allow the format like as "foo | ; bar" */
-	else if (parent && isoppipe(parent) && l1 > l2);
+	else if (parent && isoppipe(parent) && l1 > l2) /*EMPTY*/;
 #endif
 #ifndef	MINIMUMSHELL
-	else if (type == OP_NOT && (!l2 || l1 < l2));
+	else if (type == OP_NOT && (!l2 || l1 < l2)) /*EMPTY*/;
 #endif
 	else if (!hascomm(trp)) {
 		if (type != OP_FG) {
@@ -3553,7 +3553,7 @@ int type;
 	/* && or || */
 	if (l1 == 3 && l2 == 3) l2--;
 
-	if (!l1 || !l2);
+	if (!l1 || !l2) /*EMPTY*/;
 	else if (l1 < l2) {
 		new = newstree(trp);
 		new -> comm = trp -> comm;
@@ -3641,7 +3641,7 @@ syntaxtree *trp;
 {
 	if (!trp) return;
 
-	if (!(trp -> comm));
+	if (!(trp -> comm)) /*EMPTY*/;
 	else if (trp -> flags & ST_NODE)
 		nownstree((syntaxtree *)(trp -> comm));
 	else if (isstatement(trp -> comm)) nownstree(statementbody(trp));
@@ -3675,7 +3675,7 @@ char *tok;
 
 	n = 0;
 #if	!MSDOS
-	if ((max = Xgetdtablesize()) > 0);
+	if ((max = Xgetdtablesize()) > 0) /*EMPTY*/;
 	else
 #endif
 	max = MAXOPENFILE;
@@ -3720,7 +3720,7 @@ int fd;
 	if (fd >= DOSFDOFFSET) return(fd);
 #endif
 #if	!MSDOS
-	if ((n = Xgetdtablesize()) > 0);
+	if ((n = Xgetdtablesize()) > 0) /*EMPTY*/;
 	else
 #endif
 	n = MAXOPENFILE;
@@ -3799,7 +3799,7 @@ int rm;
 	if (!trp) return(NULL);
 	if (rm && (trp -> flags & ST_NOWN)) return(NULL);
 
-	if (!(trp -> comm));
+	if (!(trp -> comm)) /*EMPTY*/;
 	else if (trp -> flags & ST_NODE) {
 		if ((hdp = searchheredoc((syntaxtree *)(trp -> comm), rm)))
 			return(hdp);
@@ -3811,7 +3811,7 @@ int rm;
 		}
 
 		hit = NULL;
-		if (!rm && !(trp -> cont & CN_HDOC));
+		if (!rm && !(trp -> cont & CN_HDOC)) /*EMPTY*/;
 		else for (rp = (trp -> comm) -> redp; rp; rp = rp -> next) {
 			if (!(rp -> type & MD_HEREDOC)) continue;
 			if (!(hdp = (heredoc_t *)(rp -> filename))) continue;
@@ -3957,7 +3957,7 @@ int old;
 				cp[i] = '\0';
 				i = 0;
 
-				if (ret != RET_SUCCESS);
+				if (ret != RET_SUCCESS) /*EMPTY*/;
 				else if (hdp -> flags & HD_QUOTED)
 					fputs(cp, stdout);
 				else if (!(tmp = evalvararg(cp,
@@ -4139,7 +4139,7 @@ redirectlist *rp;
 	}
 #endif	/* FD */
 
-	if (!tmp);
+	if (!tmp) /*EMPTY*/;
 	else if (type & MD_HEREDOC) {
 		rp -> new = openheredoc((heredoc_t *)tmp, rp -> fd);
 		if (rp -> new < 0) return(rp);
@@ -4186,16 +4186,17 @@ redirectlist *rp;
 #endif
 	}
 
-#if	MSDOS
-	rp -> old = newdup(Xdup(rp -> fd));
-#else
+#if	!MSDOS
 	if ((oldexec = fcntl(rp -> fd, F_GETFD, NULL)) < 0) rp -> old = -1;
-	else if ((rp -> old = newdup(Xdup(rp -> fd))) < 0) {
+	else
+#endif
+	if ((rp -> old = newdup(Xdup(rp -> fd))) < 0) {
 		if (rp -> new >= 0 && !(type & MD_FILEDESC))
 			safeclose(rp -> new);
 		rp -> new = -1;
 		return(rp);
 	}
+#if	!MSDOS
 	else if (oldexec > 0 || rp -> fd == STDIN_FILENO
 	|| rp -> fd == STDOUT_FILENO || rp -> fd == STDERR_FILENO)
 		closeonexec(rp -> old);
@@ -4895,7 +4896,7 @@ char *arg;
 	if (trp -> flags & ST_NODE) return(trp);
 
 	comm = trp -> comm;
-	if (ischild(comm));
+	if (ischild(comm)) /*EMPTY*/;
 	else if (comm) {
 		if (isstatement(comm)) return(trp);
 		comm -> argc++;
@@ -4992,7 +4993,8 @@ int *lenp, notok;
 		id = getstatid(tmptr = parentstree(*trpp));
 		type = (id >= 0) ? statementlist[id].type : 0;
 
-		if ((type & STT_NEEDIDENT) && tmptr == getparent(*trpp));
+		if ((type & STT_NEEDIDENT) && tmptr == getparent(*trpp))
+			/*EMPTY*/;
 		else if (!((*trpp) -> comm) || ischild((*trpp) -> comm)) {
 			for (i = 0; i < STATEMENTSIZ; i++)
 			if (!strpathcmp(tok, statementlist[i].ident)) {
@@ -5546,7 +5548,7 @@ int *ptrp, *tptrp;
 
 	switch (s[*ptrp]) {
 		case ')':
-			if (!*tptrp);
+			if (!*tptrp) /*EMPTY*/;
 			else if (addarg(&trp, rp, NULL, tptrp, 0) < 0) break;
 			trp = _addarg(trp, NULL);
 			trp = linkstree(trp, OP_NONE);
@@ -5555,7 +5557,7 @@ int *ptrp, *tptrp;
 			addarg(&trp, rp, tmptok, &i, 0);
 			break;
 		case '|':
-			if (!*tptrp);
+			if (!*tptrp) /*EMPTY*/;
 			else addarg(&trp, rp, NULL, tptrp, 0);
 			break;
 		case ';':
@@ -6023,8 +6025,8 @@ int quiet;
 #endif
 	else if (getparenttype(trp) == STT_INCASE && (trp -> comm || i))
 		syntaxerrno = ER_UNEXPNL;
-	else if (addarg(&trp, &red, NULL, &i, 1) < 0);
-	else if (!(trp = _addarg(trp, NULL)) || syntaxerrno);
+	else if (addarg(&trp, &red, NULL, &i, 1) < 0) /*EMPTY*/;
+	else if (!(trp = _addarg(trp, NULL)) || syntaxerrno) /*EMPTY*/;
 	else if (trp -> comm) trp = linkstree(trp, OP_FG);
 	else if (hasparent(trp)) {
 #ifndef	MINIMUMSHELL
@@ -6197,7 +6199,7 @@ char *command;
 #endif
 	stree = newstree(NULL);
 	trp = analyze(command, stree, 0);
-	if (!(trp = analyzeeof(trp)));
+	if (!(trp = analyzeeof(trp))) /*EMPTY*/;
 #ifndef	_NOUSEHASH
 	else if (hashahead && check_stree(stree) < 0) trp = NULL;
 #endif
@@ -6341,7 +6343,7 @@ p_id_t ppid;
 		else {
 			if ((fd = newdup(Xdup(fdin))) < 0) {
 # ifndef	NOJOB
-				if (stoppedjob(pid));
+				if (stoppedjob(pid)) /*EMPTY*/;
 				else
 # endif
 				{
@@ -7270,7 +7272,7 @@ FILE *fp;
 		}
 	}
 #ifndef	MINIMUMSHELL
-	else if (nl);
+	else if (nl) /*EMPTY*/;
 #endif
 	else if (isopfg(trp)) {
 #ifdef	BASHSTYLE
@@ -9855,7 +9857,7 @@ int cond;
 # ifndef	NOJOB
 		ttypgrp = -1L;
 		if (!isopnown(trp)) stackjob(mypid, 0, trp);
-		if (jobok);
+		if (jobok) /*EMPTY*/;
 		else
 # endif
 		if ((fd = Xopen(NULLDEVICE, O_BINARY | O_RDONLY, 0666)) >= 0) {
@@ -9942,8 +9944,8 @@ int cond;
 			ret = exec_process(trp, pipein);
 #endif
 		else {
-			if (checkshellbuiltin(trp) < 0);
-			else if (errno < 0);
+			if (checkshellbuiltin(trp) < 0) /*EMPTY*/;
+			else if (errno < 0) /*EMPTY*/;
 			else if (errp -> type & MD_HEREDOC)
 				doperror(NULL, NULL);
 			else {
@@ -9974,7 +9976,7 @@ int cond;
 	}
 	trp = tmptr;
 
-	if (returnlevel || ret < 0);
+	if (returnlevel || ret < 0) /*EMPTY*/;
 	else if (pipein >= 0L && (fd = reopenpipe(fd, RET_SUCCESS)) < 0) {
 		pipein = -1L;
 		ret = -1;
@@ -9992,7 +9994,7 @@ int cond;
 			breaklevel = loopdepth;
 			ret = RET_INTR;
 		}
-		else if (!(trp -> next));
+		else if (!(trp -> next)) /*EMPTY*/;
 		else if (errorexit && !cond && isopfg(trp) && ret_status)
 			breaklevel = loopdepth;
 		else if (isopand(trp) && ret_status) {
@@ -10001,7 +10003,7 @@ int cond;
 				ret = RET_SUCCESS;
 			}
 		}
-		else if (isopor(trp) && !ret_status);
+		else if (isopor(trp) && !ret_status) /*EMPTY*/;
 		else ret = exec_stree(trp -> next, cond);
 	}
 	if (pipein >= 0L) closepipe(fd);
@@ -10155,9 +10157,9 @@ char *command;
 
 	nottyout++;
 #if	MSDOS || defined (USEFAKEPIPE)
-	if ((fd = openpipe(&pipein, STDIN_FILENO, 1)) < 0);
+	if ((fd = openpipe(&pipein, STDIN_FILENO, 1)) < 0) /*EMPTY*/;
 #else
-	if ((fd = openpipe(&pipein, STDIN_FILENO, 1, 1, mypid)) < 0);
+	if ((fd = openpipe(&pipein, STDIN_FILENO, 1, 1, mypid)) < 0) /*EMPTY*/;
 #endif
 	else if (pipein) nownstree(trp);
 	else {
@@ -10235,6 +10237,9 @@ int verbose;
 	trp = stree = newstree(NULL);
 	n = 0L;
 	ret = errno = 0;
+#if	!MSDOS
+	closeonexec(fd);
+#endif
 	while ((buf = readline(fd))) {
 		if (!trp) trp = stree;
 		trp = execline(buf, stree, trp, 1);
@@ -10360,6 +10365,7 @@ int verbose;
 	char *cp;
 #endif
 
+/*NOTDEFINED*/
 	execruncom(DEFRUNCOM, verbose);
 #ifndef	MINIMUMSHELL
 # if	!MSDOS
@@ -10502,7 +10508,7 @@ char *argv[];
 #endif
 
 	if (interactive) {
-		if (getconstvar("PS1"));
+		if (getconstvar("PS1")) /*EMPTY*/;
 #if	!MSDOS
 		else if (!getuid()) setenv2("PS1", PS1ROOT);
 #endif
@@ -10590,9 +10596,11 @@ char *argv[];
 			doperror(NULL, NULL);
 			return(-1);
 		}
-		closeonexec(ttyio);
 	}
 #endif	/* !MSDOS && !NOJOB */
+#if	!MSDOS
+	closeonexec(ttyio);
+#endif
 
 	if (n > 2) {
 		initrc(0);

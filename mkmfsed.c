@@ -23,11 +23,13 @@ char *argv[];
 #endif
 
 	printf("s:__VERSION__:%d:\n", FD);
+/*NOTDEFINED*/
 #if	FD >= 2
 	printf("s:__RCVERSION__:%d:\n", FD);
 #else
 	printf("s:__RCVERSION__::\n");
 #endif
+/*NOTDEFINED*/
 	printf("s:__PREFIX__:%s:\n", PREFIX);
 	printf("s:__EXE__::g\n");
 	printf("s:__OBJ__:.o:g\n");

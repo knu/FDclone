@@ -412,7 +412,7 @@ static VOID NEAR stackbar(VOID_A)
 static VOID NEAR sizebar(VOID_A)
 {
 	char buf[14 + 1];
-	off_t total, fre, bsize;
+	off_t total, fre, bsize, kb;
 	int x;
 
 	if (!sizeinfo || !*fullpath) return;
@@ -442,9 +442,13 @@ static VOID NEAR sizebar(VOID_A)
 			cputs2(ascnumeric(buf, total * bsize, 3, 9));
 			cputs2(" bytes");
 		}
-		else {
-			cputs2(ascnumeric(buf, calcKB(total, bsize), 3, 12));
+		else if ((kb = calcKB(total, bsize)) < (off_t)1000000000) {
+			cputs2(ascnumeric(buf, kb, 3, 12));
 			cputs2(" KB");
+		}
+		else {
+			cputs2(ascnumeric(buf, kb / 1024L, 3, 12));
+			cputs2(" MB");
 		}
 		putch2(' ');
 	}
@@ -459,9 +463,13 @@ static VOID NEAR sizebar(VOID_A)
 			cputs2(ascnumeric(buf, fre * bsize, 3, 9));
 			cputs2(" bytes");
 		}
-		else {
-			cputs2(ascnumeric(buf, calcKB(fre, bsize), 3, 12));
+		else if ((kb = calcKB(fre, bsize)) < (off_t)1000000000) {
+			cputs2(ascnumeric(buf, kb, 3, 12));
 			cputs2(" KB");
+		}
+		else {
+			cputs2(ascnumeric(buf, kb / 1024L, 3, 12));
+			cputs2(" MB");
 		}
 		if (isrightomit()) putch2(' ');
 	}
@@ -678,7 +686,7 @@ static VOID NEAR infobar(VOID_A)
 			len++;
 			l = 0;
 		}
-		if ((width -= len) <= 0);
+		if ((width -= len) <= 0) /*EMPTY*/;
 # ifndef	_NOARCHIVE
 		else if (archivefile) {
 			if (filelist[filepos].linkname)
@@ -1438,7 +1446,7 @@ char *file, *def;
 				stackbar();
 			}
 #ifndef	_NOARCHIVE
-			else if (archivefile);
+			else if (archivefile) /*EMPTY*/;
 #endif
 #ifndef	_NOWRITEFS
 			else if (chgorder && writefs < 1 && no != WRITE_DIR

@@ -1169,8 +1169,8 @@ int keyflush(VOID_A)
 }
 #endif	/* !MSDOS */
 
-int ttyiomode(nl)
-int nl;
+int ttyiomode(isnl)
+int isnl;
 {
 #if	MSDOS
 	raw2();
@@ -1181,7 +1181,7 @@ int nl;
 	nonl2();
 	notabs();
 # else	/* !USESGTTY */
-	if (nl) ttymode(ttyio,
+	if (isnl) ttymode(ttyio,
 		0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
 		IGNBRK, (BRKINT|IXON) | ICRNL,
 		OPOST | ONLCR | TAB3, 0, 1, 0);
@@ -1195,15 +1195,15 @@ int nl;
 		putterms(t_keypad);
 		tflush();
 	}
-	isttyiomode = nl + 1;
+	isttyiomode = isnl + 1;
 	return(0);
 }
 
 int stdiomode(VOID_A)
 {
-	int nl;
+	int isnl;
 
-	nl = (isttyiomode) ? isttyiomode - 1 : 0;
+	isnl = (isttyiomode) ? isttyiomode - 1 : 0;
 #if	MSDOS
 	cooked2();
 #else	/* !MSDOS */
@@ -1214,7 +1214,7 @@ int stdiomode(VOID_A)
 	tabs();
 	if (dumbterm > 2) ttymode(ttyio, 0, ECHO | CRMOD, 0, 0);
 # else	/* !USESGTTY */
-	if (nl) ttymode(ttyio,
+	if (isnl) ttymode(ttyio,
 		(ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
 		PENDIN | ECHONL,
 		(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
@@ -1235,7 +1235,7 @@ int stdiomode(VOID_A)
 		tflush();
 	}
 	isttyiomode = 0;
-	return(nl);
+	return(isnl);
 }
 
 int termmode(init)
@@ -1269,6 +1269,7 @@ int no;
 	muntrace();
 #endif
 	exit(no);
+/*NOTREACHED*/
 	return(0);
 }
 
@@ -1297,6 +1298,7 @@ char *mes;
 	fputc('\n', stderr);
 	inittty(1);
 	exit(2);
+/*NOTREACHED*/
 	return(0);
 }
 
@@ -1724,12 +1726,12 @@ va_list args;
 }
 
 #ifdef	USESTDARGH
-/*VARARGS1*/
+/*VARARGS2*/
 int asprintf2(char **sp, CONST char *fmt, ...)
 #else
-/*VARARGS1*/
+/*VARARGS2*/
 int asprintf2(sp, fmt, va_alist)
-char *sp;
+char **sp;
 CONST char *fmt;
 va_dcl
 #endif
@@ -1779,7 +1781,7 @@ char *tparamstr(s, arg1, arg2)
 char *s;
 int arg1, arg2;
 {
-	char *buf, *tmp;
+	char *buf;
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 	if (!s) return(NULL);
@@ -1797,6 +1799,7 @@ int arg1, arg2;
 #  endif
 	buf = tstrdup(s);
 # else	/* !USETERMINFO */
+	char *tmp;
 	int i, j, n, len, size, args[2];
 
 	if (!s) return(NULL);
@@ -2036,7 +2039,10 @@ char *s;
 	/* for STUPID winterm entry */
 	int winterm;
 # endif
-	char *cp, *term, buf[TERMCAPSIZE];
+# ifndef	USETERMINFO
+	char buf[TERMCAPSIZE];
+# endif
+	char *cp, *term;
 	int i, j, dupdumbterm;
 
 	if (termflags & F_TERMENT) return(-1);
@@ -2067,7 +2073,7 @@ char *s;
 #  else
 	setupterm(term, fileno(ttyout), &i);
 #  endif
-	if (i == 1);
+	if (i == 1) /*EMPTY*/;
 	else if (s) dumbterm = 2;
 	else {
 		errno = 0;
@@ -3268,7 +3274,7 @@ int xmax, ymax;
 #  endif	/* !WIOCGETD */
 # endif	/* !TIOCGWINSZ */
 
-	if (dumbterm);
+	if (dumbterm) /*EMPTY*/;
 	else if (usegetcursor || x < 0 || y < 0) {
 		setscroll(-1, -1);
 		if (maxlocate(&ty, &tx) >= 0) {

@@ -606,7 +606,7 @@ static int in_dir(arg)
 char *arg;
 {
 #ifndef	_NOARCHIVE
-	if (archivefile);
+	if (archivefile) /*EMPTY*/;
 	else
 #endif
 	if (!isdir(&(filelist[filepos]))
@@ -917,7 +917,7 @@ char *arg;
 	if (archivefile) removetmp(dir, NULL);
 	else
 #endif
-	;
+	/*EMPTY*/;
 	return(2);
 }
 

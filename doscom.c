@@ -1128,7 +1128,7 @@ int verbose;
 	fputs("  ", stdout);
 	fputnum((off_t)(tm -> tm_hour), 2, 2);
 	fputc(':', stdout);
-	fputnum((off_t)(tm -> tm_sec), 3, 2);
+	fputnum((off_t)(tm -> tm_min), 3, 2);
 	fputc(' ', stdout);
 
 #ifndef	MINIMUMSHELL
@@ -1528,6 +1528,7 @@ off_t *sump, *bsump;
 			}
 		}
 		break;
+/*NOTREACHED*/
 	}
 	dirwd[len] = '\0';
 
@@ -1974,9 +1975,10 @@ int size, bin;
 
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
 	if (!(bin & CF_TEXT))
-		while ((n = Xread(fd, buf, size)) < 0 && errno == EINTR);
+		while ((n = Xread(fd, (char *)buf, size)) < 0
+		&& errno == EINTR);
 	else for (n = 0; n < size; n++) {
-		while ((i = Xread(fd, &ch, sizeof(u_char))) < 0
+		while ((i = Xread(fd, (char *)&ch, sizeof(u_char))) < 0
 		&& errno == EINTR);
 		if (i < 0) return(-1);
 #if	MSDOS
@@ -1986,7 +1988,7 @@ int size, bin;
 		else if (ch != C_EOF) buf[n] = ch;
 #endif
 		else for (;;) {
-			while ((i = Xread(fd, &ch, sizeof(u_char))) < 0
+			while ((i = Xread(fd, (char *)&ch, sizeof(u_char))) < 0
 			&& errno == EINTR);
 			if (i < 0) return(-1);
 			if (i < sizeof(u_char) || ch == '\n') return(n);
@@ -2005,7 +2007,7 @@ int fd, bin;
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
 	if (bin & CF_TEXT) {
 		ch = C_EOF;
-		if (safewrite(fd, &ch, sizeof(u_char)) < 0) ret = -1;
+		if (safewrite(fd, (char *)&ch, sizeof(u_char)) < 0) ret = -1;
 	}
 	Xclose(fd);
 	return(ret);
@@ -2017,14 +2019,15 @@ struct stat *stp;
 int sbin, dbin, dfd;
 {
 	off_t ofs;
-	char buf[BUFSIZ], buf2[BUFSIZ];
+	u_char buf[BUFSIZ], buf2[BUFSIZ];
 	int i, n, fd1, fd2, tty, retry, duperrno;
 
 #if	!MSDOS
 	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK) {
-		if ((i = Xreadlink(src, buf, BUFSIZ - 1)) < 0) return(-1);
+		if ((i = Xreadlink(src, (char *)buf, BUFSIZ - 1)) < 0)
+			return(-1);
 		buf[i] = '\0';
-		return(Xsymlink(buf, dest) >= 0);
+		return(Xsymlink((char *)buf, dest) >= 0);
 	}
 #endif
 
@@ -2062,7 +2065,7 @@ int sbin, dbin, dfd;
 				duperrno = errno;
 				break;
 			}
-			if ((i = safewrite(fd2, buf, i)) < 0) {
+			if ((i = safewrite(fd2, (char *)buf, i)) < 0) {
 				duperrno = errno;
 				break;
 			}
@@ -2084,7 +2087,7 @@ int sbin, dbin, dfd;
 				i = -1;
 				break;
 			}
-			if (n != i || memcmp(buf, buf2, i)) {
+			if (n != i || memcmp((char *)buf, (char *)buf2, i)) {
 				duperrno = EINVAL;
 				i = -1;
 				break;
@@ -2135,7 +2138,8 @@ char *argv[];
 	src = (char *)malloc2(size);
 	strcpy(src, argv[n]);
 	for (n++; n < argc; n++) {
-		if ((cp = strchr(&(argv[n - 1][1]), '+')) && !*(++cp));
+		if ((cp = strchr(&(argv[n - 1][1]), '+')) && !*(++cp))
+			/*EMPTY*/;
 		else if (argv[n][0] != '+' && argv[n][0] != DOSCOMOPT) break;
 		j = strlen(argv[n]);
 		src = realloc2(src, size + j);
@@ -2167,7 +2171,7 @@ char *argv[];
 	sbin[i - 1] = getbinmode(arg[i - 1], sbin[i - 1]);
 
 	if (n >= argc) {
-		*dest = '\0';
+		dest[0] = '\0';
 		dbin = sbin[i - 1];
 	}
 #if	0
@@ -2205,7 +2209,7 @@ char *argv[];
 	}
 
 	if (nf <= 1) {
-		if (Xlstat(arg[0], &sst) < 0);
+		if (Xlstat(arg[0], &sst) < 0) /*EMPTY*/;
 		else if ((sst.st_mode & S_IFMT) == S_IFDIR) {
 			arg[0] = realloc2(arg[0], size + 2);
 			strcpy(strcatdelim(arg[0]), "*");

@@ -13,7 +13,7 @@
 #define	MAXTIMESTR	8
 
 typedef struct _attrib_t {
-	u_short mode;
+	u_int mode;
 #ifdef	HAVEFLAGS
 	u_long flags;
 #endif
@@ -76,7 +76,7 @@ int copypolicy = 0;
 int removepolicy = 0;
 char *destpath = NULL;
 
-static u_short attrmode = 0;
+static u_int attrmode = 0;
 #ifdef	HAVEFLAGS
 static u_long attrflags = 0;
 #endif
@@ -387,6 +387,9 @@ struct stat *stp1, *stp2;
 				break;
 		}
 	}
+
+/*NOTREACHED*/
+	return(0);
 }
 
 static int NEAR checkrmv(path, mode)
@@ -717,7 +720,7 @@ int flag;
 	struct tm *tm;
 	attrib_t attr;
 	char buf[WMODE + 1];
-	u_short tmp;
+	u_int tmp;
 	int i, ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y;
 
 	dupwin_x = win_x;
@@ -1005,7 +1008,7 @@ int *maxp, depth;
 			continue;
 		dirlist = b_realloc(dirlist, *maxp, char *);
 		dirlist[(*maxp)++] = strdup2(dir);
-		if (!(d = depth));
+		if (!(d = depth)) /*EMPTY*/;
 		else if (d > 1) d--;
 		else continue;
 		dirlist = getdirtree(dir, dirlist, maxp, d);

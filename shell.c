@@ -95,10 +95,10 @@ char *buf;
 int ptr;
 char *arg;
 {
-	if (!arg || !*arg);
-	else if (*arg == _SC_ || isdotdir(arg));
+	if (!arg || !*arg) /*EMPTY*/;
+	else if (*arg == _SC_ || isdotdir(arg)) /*EMPTY*/;
 #if	MSDOS
-	else if (_dospath(arg));
+	else if (_dospath(arg)) /*EMPTY*/;
 #endif
 	else return(ptr);
 
@@ -440,7 +440,7 @@ int needmark;
 
 # if	MSDOS && !defined (_NOUSELFN)
 	org = arg;
-	*alias = '\0';
+	alias[0] = '\0';
 # endif
 	arg = convput(conv, arg, 1, 0, NULL, NULL);
 # ifdef	FAKEUNINIT
@@ -469,7 +469,7 @@ int needmark;
 			ins = arg;
 # if	MSDOS && !defined (_NOUSELFN)
 			if (flags & F_TOSFN) {
-				if (!*alias) {
+				if (!alias[0]) {
 					if (shortname(org, alias) == alias)
 						org = alias;
 					else strcpy(alias, org);
@@ -547,7 +547,7 @@ int ignorelist;
 		line = c_realloc(line, j + 1, &size);
 
 		c = '\0';
-		if ((pc = skipquote(command, &i)) == 1);
+		if ((pc = skipquote(command, &i)) == 1) /*EMPTY*/;
 		else if (pc) line[j++] = command[i - 1];
 		else if (command[i] == '%') c = command[++i];
 		else if (flags & (F_NOEXT | F_TOSFN)) c = command[i];
@@ -756,7 +756,7 @@ int ignorelist;
 
 		len = strlen(arg);
 #if	defined (_NOEXTRAMACRO) && defined (MAXCOMMSTR)
-		if (j + len + 1 > MAXCOMMSTR);
+		if (j + len + 1 > MAXCOMMSTR) /*EMPTY*/;
 		else
 #endif
 		{

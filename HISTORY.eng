@@ -1,3 +1,8 @@
+Ver. 2.04a	Failure to compile on some environments using varargs is fixed.
+ (07/24/03)	Failure to compile on FreeBSD 5.x is fixed.
+		Failure to count amount of file system on Linux/Alpha is fixed.
+		Bug that 'dir' builtin shows wrong timestamp is fixed. (MS-DOS)
+
 Ver. 2.04	Add 'DUMBSHELL' and 'HISTFILE' internal variable.
  (06/25/03)	Add 'ENV'/'LINENO'/'PPID'/'PS4' internal variables for POSIX.
 		Support dynamic variation of 'TERM' internal variable.

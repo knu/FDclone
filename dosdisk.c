@@ -23,6 +23,11 @@
 #include <time.h>
 #endif
 
+#ifdef	NOUID_T
+typedef u_short	uid_t;
+typedef u_short	gid_t;
+#endif
+
 #ifdef	NOVOID
 #define	VOID
 #define	VOID_T	int
@@ -80,7 +85,7 @@
 #  define	disklabel	hd_geometry
 #  define	d_ntracks	heads
 #  define	d_nsectors	sectors
-#  undef	D_SECSIZE(dl)
+#  undef	D_SECSIZE
 #  define	D_SECSIZE(dl)	512
 #  endif
 # endif
@@ -305,8 +310,8 @@ static l_off_t *NEAR _readpt __P_((l_off_t, l_off_t, int, int, int, int));
 static int NEAR opendev __P_((int));
 static int NEAR closedev __P_((int));
 static int NEAR calcsum __P_((u_char *));
-static u_short NEAR lfnencode __P_((u_int, u_int));
-static u_short NEAR lfndecode __P_((u_int, u_int));
+static u_int NEAR lfnencode __P_((u_int, u_int));
+static u_int NEAR lfndecode __P_((u_int, u_int));
 #if	!MSDOS
 static int NEAR transchar __P_((int));
 static int NEAR detranschar __P_((int));
@@ -504,7 +509,7 @@ typedef struct _kconv_t {
 	u_short range;
 } kconv_t;
 char *unitblpath = NULL;
-static u_short unitblent = 0;
+static u_int unitblent = 0;
 static kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* Cyrillic small letters */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
@@ -1047,8 +1052,7 @@ int encode;
 	static int fd = -1;
 	u_char buf[4];
 	char path[MAXPATHLEN];
-	u_short min, max, ofs;
-	u_int r, w;
+	u_int r, w, min, max, ofs;
 
 	wc &= 0xffff;
 	if (encode < 0) {
@@ -1100,7 +1104,7 @@ int encode;
 				fd = -1;
 				return(r);
 			}
-			unitblent = (((u_short)(buf[1]) << 8) | buf[0]);
+			unitblent = (((u_int)(buf[1]) << 8) | buf[0]);
 		}
 	}
 
@@ -1109,9 +1113,9 @@ int encode;
 		wc = unifysjis(wc, 0);
 		for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, buf, 4) != 4) break;
-			w = (((u_short)(buf[3]) << 8) | buf[2]);
+			w = (((u_int)(buf[3]) << 8) | buf[2]);
 			if (wc == w) {
-				r = (((u_short)(buf[1]) << 8) | buf[0]);
+				r = (((u_int)(buf[1]) << 8) | buf[0]);
 				break;
 			}
 		}
@@ -1125,9 +1129,9 @@ int encode;
 			if (Xlseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET)
 			< (off_t)0
 			|| read(fd, buf, 4) != 4) break;
-			w = (((u_short)(buf[1]) << 8) | buf[0]);
+			w = (((u_int)(buf[1]) << 8) | buf[0]);
 			if (wc == w) {
-				r = (((u_short)(buf[3]) << 8) | buf[2]);
+				r = (((u_int)(buf[3]) << 8) | buf[2]);
 				break;
 			}
 			else if (wc < w) {
@@ -2765,7 +2769,7 @@ u_char *name;
 	return(sum & 0xff);
 }
 
-static u_short NEAR lfnencode(c1, c2)
+static u_int NEAR lfnencode(c1, c2)
 u_int c1, c2;
 {
 	c1 &= 0xff;
@@ -2778,7 +2782,7 @@ u_int c1, c2;
 	return(cnvunicode((c1 << 8) | c2, 1));
 }
 
-static u_short NEAR lfndecode(c1, c2)
+static u_int NEAR lfndecode(c1, c2)
 u_int c1, c2;
 {
 	c1 &= 0xff;
@@ -2822,7 +2826,7 @@ char *path1, *path2;
 int len, part;
 {
 	char *cp;
-	u_short w1, w2;
+	u_int w1, w2;
 	int i, c1, c2;
 
 	if (len < 0) len = strlen(path1);
@@ -2878,7 +2882,7 @@ char *file;
 int vol;
 {
 	char *cp, *eol, num[7];
-	u_short w;
+	u_int w;
 	int i, j, c, cnv;
 
 	if (isdotdir(file)) {
@@ -2897,7 +2901,7 @@ int vol;
 	for (i = 0; i < 8; i++) {
 		if (file == cp || file == eol || !*file) buf[i] = ' ';
 		else if (issjis1(*file) && issjis2(file[1])) {
-			w = ((u_short)(*file) << 8) | (u_char)(file[1]);
+			w = ((u_int)(*file) << 8) | (u_char)(file[1]);
 			w = unifysjis(w, vol);
 			buf[i++] = (w >> 8) & 0xff;
 			buf[i] = w & 0xff;
@@ -3032,9 +3036,9 @@ u_int d, t;
 	return(timelocal2(&tm));
 }
 
-static int NEAR putdostime(buf, clock)
+static int NEAR putdostime(buf, tim)
 u_char *buf;
-time_t clock;
+time_t tim;
 {
 #if	MSDOS
 	struct timeb buffer;
@@ -3044,11 +3048,11 @@ time_t clock;
 #endif
 	struct tm *tm;
 	time_t tmp;
-	u_short d, t;
+	u_int d, t;
 	int mt;
 
-	if (clock != (time_t)-1) {
-		tmp = clock;
+	if (tim != (time_t)-1) {
+		tmp = tim;
 		mt = 0;
 	}
 	else {
@@ -3070,7 +3074,7 @@ time_t clock;
 		+ ((tm -> tm_min & 0x3f) << 5)
 		+ ((tm -> tm_sec & 0x3e) >> 1);
 
-	if (!t && clock < 0) t = 0x0001;
+	if (!t && tim == (time_t)-1) t = 0x0001;
 	buf[0] = t & 0xff;
 	buf[1] = (t >> 8) & 0xff;
 	buf[2] = d & 0xff;
@@ -3145,7 +3149,7 @@ int class;
 				cp += n;
 			}
 		}
-		else if (!i || (i == 1 && path[0] == '.'));
+		else if (!i || (i == 1 && path[0] == '.')) /*EMPTY*/;
 		else if (i == 2 && path[0] == '.' && path[1] == '.') {
 			cp = strrdelim2(buf, cp);
 			if (!cp) cp = buf;
@@ -3400,7 +3404,7 @@ int all;
 	struct dirent *dp;
 	char *cp, buf[LFNENTSIZ * 2 + 1];
 	long loc, clust, offset;
-	u_short ch;
+	u_int ch;
 	int i, j, cnt, sum;
 
 	dp = (struct dirent *)&d;
@@ -3756,7 +3760,7 @@ int mode;
 	u_char *cp, fname[8 + 3 + 1], longfname[DOSMAXNAMLEN + 1];
 	char *file, tmp[8 + 1 + 3 + 1], buf[DOSMAXPATHLEN];
 	long clust, offset;
-	u_short c;
+	u_int c;
 	int i, j, n, len, cnt, sum, ret, lfn;
 
 	if ((i = parsepath(&(buf[2]), path, 1)) < 0) return(-1);
@@ -4095,8 +4099,8 @@ struct stat *stp;
 	stp -> st_ino = clust32(&(devlist[dd]), dd2dentp(dd));
 	stp -> st_mode = getdosmode(dd2dentp(dd) -> attr);
 	stp -> st_nlink = 1;
-	stp -> st_uid = -1;
-	stp -> st_gid = -1;
+	stp -> st_uid = (uid_t)-1;
+	stp -> st_gid = (gid_t)-1;
 	stp -> st_size = byte2dword(dd2dentp(dd) -> size);
 	stp -> st_atime =
 	stp -> st_mtime =
@@ -4194,18 +4198,18 @@ int dosutime(path, times)
 char *path;
 struct utimbuf *times;
 {
-	time_t clock = times -> modtime;
+	time_t t = times -> modtime;
 #else
 int dosutimes(path, tvp)
 char *path;
 struct timeval tvp[2];
 {
-	time_t clock = tvp[1].tv_sec;
+	time_t t = tvp[1].tv_sec;
 #endif
 	int dd, ret;
 
 	if ((dd = getdent(path, NULL)) < 0) reterr(-1);
-	putdostime(dd2dentp(dd) -> time, clock);
+	putdostime(dd2dentp(dd) -> time, t);
 	if ((ret = writedent(dd)) < 0) errno = doserrno;
 	closedev(dd);
 	return(ret);

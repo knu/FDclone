@@ -85,7 +85,7 @@ int c, mode;
 		return;
 	}
 
-	if (!bufp);
+	if (!bufp) /*EMPTY*/;
 	else if (bufp > 1) {
 		convert(buf[0], buf[1], fp);
 		bufp = 0;

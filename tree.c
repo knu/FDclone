@@ -738,7 +738,7 @@ static char *NEAR _tree(VOID_A)
 	if (_dospath(cwd)) cwd += 2;
 # endif
 #endif	/* !MSDOS */
-	if (!strcmp(cwd, _SS_));
+	if (!strcmp(cwd, _SS_)) /*EMPTY*/;
 	else for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
 		if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD
 		|| !(tr_cur = &(tr_cur -> sub[0]))) break;

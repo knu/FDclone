@@ -2299,13 +2299,13 @@ u_int d, t;
 }
 
 #ifndef	_NOUSELFN
-static int NEAR putdostime(dp, tp, clock)
+static int NEAR putdostime(dp, tp, tim)
 u_short *dp, *tp;
-time_t clock;
+time_t tim;
 {
 	struct tm *tm;
 
-	tm = localtime(&clock);
+	tm = localtime(&tim);
 	*dp = (((tm -> tm_year - 80) & 0x7f) << 9)
 		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
 		+ (tm -> tm_mday & 0x1f);
@@ -2521,7 +2521,7 @@ int unixutime(path, times)
 char *path;
 struct utimbuf *times;
 {
-	time_t clock = times -> modtime;
+	time_t t = times -> modtime;
 	__dpmi_regs reg;
 	struct SREGS sreg;
 	char buf[MAXPATHLEN];
@@ -2543,7 +2543,7 @@ int unixutimes(path, tvp)
 char *path;
 struct timeval tvp[2];
 {
-	time_t clock = tvp[1].tv_sec;
+	time_t t = tvp[1].tv_sec;
 	__dpmi_regs reg;
 	struct SREGS sreg;
 	char buf[MAXPATHLEN];
@@ -2564,7 +2564,7 @@ struct timeval tvp[2];
 
 	reg.x.ax = 0x7143;
 	reg.h.bl = 0x03;
-	putdostime(&(reg.x.di), &(reg.x.cx), clock);
+	putdostime(&(reg.x.di), &(reg.x.cx), t);
 #ifdef	DJGPP
 	dos_putpath(path, 0);
 #endif

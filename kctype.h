@@ -6,6 +6,12 @@
 
 #include <ctype.h>
 
+#ifndef	__SYS_TYPES_STAT_H_
+#define	__SYS_TYPES_STAT_H_
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 #define	QUOTE		('^' - '@')
 #define	C_BS		'\010'
 #define	C_DEL		'\177'

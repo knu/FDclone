@@ -1,3 +1,8 @@
+Ver. 2.04a	varargs を用いる環境で compile に失敗していた点を修正。
+ (07/24/03)	FreeBSD 5.x で compile できなかった点を修正。
+		Linux/Alpha で file system 容量表示がおかしかった点を修正。
+		内部コマンド dir のタイムスタンプ表記ミスを修正。(MS-DOS 版)
+
 Ver. 2.04	内部変数 DUMBSHELL, HISTFILE の追加。
  (06/25/03)	POSIX に合せて内部変数 ENV, LINENO, PPID, PS4 の追加。
 		端末名用内部変数 TERM の動的変更に対応。
@@ -6,7 +11,7 @@ Ver. 2.04	内部変数 DUMBSHELL, HISTFILE の追加。
 		一部の OS 向けに Large File Summit (2GB 超ファイル) 対応。
 		ファイルサイズの表示桁数制限を拡張。
 		System V 用に置換え関数を用意。
-		一部 System V で子プロセス実行が出来なかった点を修正。
+		一部 System V で子プロセス実行ができなかった点を修正。
 		GNU Emacs からの起動時に操作不能に陥っていた点を修正。
 		カスタマイザの動作に一部支障があった点を修正。
 		シンボリックリンクを正しく辿れない場合があった点を修正。

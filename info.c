@@ -406,7 +406,7 @@ int mode;
 		if (mode && !(funclist[i].status & ARCH)) continue;
 
 		c = 0;
-		*buf = '\0';
+		buf[0] = '\0';
 		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
 			if (i == (int)(bindlist[j].f_func)) {
 				if ((c += code2str(buf,
@@ -514,15 +514,18 @@ mnt_t *mntp;
 static FILE *NEAR setmntent(file, mode)
 char *file, *mode;
 {
-	struct statfs *buf;
+#ifndef	USEMNTINFO
 	int size;
+#endif
+	struct statfs *buf;
 
 	buf = NULL;
-	mnt_ptr = mnt_size = size = 0;
+	mnt_ptr = mnt_size = 0;
 #ifdef	USEMNTINFO
 	mnt_size = getmntinfo(&buf, MNT_NOWAIT);
 #else
 # ifdef	USEMNTINFOR
+	size = 0;
 	getmntinfo_r(&buf, MNT_WAIT, &mnt_size, &size);
 # else
 	size = (getfsstat(NULL, 0, MNT_WAIT) + 1) * sizeof(struct statfs);

@@ -292,8 +292,9 @@ typedef long	off_t;
 #define	SIGARGINT
 #endif
 
-#if	(defined (__alpha) || defined (alpha)) \
-&& !defined (linux) && !defined (__FreeBSD__) && !defined (__NetBSD__)
+#if	(defined (alpha) || defined (__alpha) || defined (__alpha__)) \
+&& !defined (linux) \
+&& !defined (__FreeBSD__) && !defined (__NetBSD__) && !defined (__OpenBSD__)
 #define	CODEEUC
 #define	TARUSESPACE
 #define	EXTENDLIB	"-lc_r"
@@ -419,27 +420,6 @@ typedef long	off_t;
 #define	USEMKTIME
 #endif
 
-#if	defined (mips) && !defined (OSTYPE)
-#define	BSD43
-#define	OSTYPE			"MIPS"
-#define	CODEEUC
-# if	defined (SYSTYPE_SYSV)
-# undef	CCCOMMAND
-# define	CCCOMMAND	"/bsd43/bin/cc"
-# endif
-#define	TERMCAPLIB	"-lcurses -ltermcap"
-#define	NOERRNO
-#define	NOFILEMODE
-#define	NOUNISTDH
-#define	NOSTDLIBH
-#define	USEDIRECT
-#define	USERE_COMP
-#define	USESETENV
-#define	USEGETWD
-#define	USERESOURCEH
-#define	SIGARGINT
-#endif
-
 #if	defined (NeXT)
 #define	BSD43
 #define	OSTYPE			"NEXTSTEP"
@@ -456,7 +436,12 @@ typedef long	off_t;
 #define	POSIX
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
-#define	EXTENDCCOPT		"-O -D_FILE_OFFSET_BITS=64"
+# if	defined (alpha) || defined (__alpha) || defined (__alpha__)
+/* Linux/Alpha need not support LFS and cannot use statfs(2) with LFS */
+# define	EXTENDCCOPT		"-O"
+# else
+# define	EXTENDCCOPT		"-O -D_FILE_OFFSET_BITS=64"
+# endif
 #define	USEMANLANG
 #define	BSDINSTALL
 #define	TARUSESPACE
@@ -488,7 +473,10 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	USEMKTIME
-#if	!defined (__alpha__) && !defined (__ia64__) && !defined (__x86_64__) \
+# if	!defined (alpha) && !defined (__alpha) && !defined (__alpha__) \
+&& !defined (ia64) && !defined (__ia64) && !defined (__ia64__) \
+&& !defined (x86_64) && !defined (__x86_64) && !defined (__x86_64__) \
+&& !defined (s390x) && !defined (__s390x) && !defined (__s390x__) \
 && !defined (CONFIG_ARCH_S390X)
 # define	USELLSEEK
 # endif
@@ -655,6 +643,27 @@ typedef long	off_t;
 #define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
+#endif
+
+#if	defined (mips) && !defined (OSTYPE)
+#define	BSD43
+#define	OSTYPE			"MIPS"
+#define	CODEEUC
+# if	defined (SYSTYPE_SYSV)
+# undef	CCCOMMAND
+# define	CCCOMMAND	"/bsd43/bin/cc"
+# endif
+#define	TERMCAPLIB	"-lcurses -ltermcap"
+#define	NOERRNO
+#define	NOFILEMODE
+#define	NOUNISTDH
+#define	NOSTDLIBH
+#define	USEDIRECT
+#define	USERE_COMP
+#define	USESETENV
+#define	USEGETWD
+#define	USERESOURCEH
+#define	SIGARGINT
 #endif
 
 /****************************************************************

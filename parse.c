@@ -118,7 +118,7 @@ int plus;
 	n = 0;
 	if (plus < 0 && *cp == '-') {
 		for (cp++; isdigit(*cp); cp++) {
-			if (n == MINTYPE(long));
+			if (n == MINTYPE(long)) /*EMPTY*/;
 			else if (n <= MINTYPE(long) / 10
 			&& *cp >= MINTYPE(long) % 10 + '0')
 				n = MINTYPE(long);
@@ -131,7 +131,7 @@ int plus;
 			n = *(cp++) - '0';
 		}
 		for (; isdigit(*cp); cp++) {
-			if (n == MAXTYPE(long));
+			if (n == MAXTYPE(long)) /*EMPTY*/;
 			else if (n >= MAXTYPE(long) / 10
 			&& *cp >= MAXTYPE(long) % 10 + '0')
 				n = MAXTYPE(long);
@@ -522,9 +522,9 @@ char **bufp, *prompt;
 {
 #if	!MSDOS
 	uidtable *up;
-#endif
-#ifdef	USEUNAME
+# ifdef	USEUNAME
 	struct utsname uts;
+# endif
 #endif
 	char *cp, *tmp, line[MAXPATHLEN];
 	ALLOC_T size;
@@ -542,7 +542,7 @@ char **bufp, *prompt;
 	*bufp = c_realloc(NULL, 0, &size);
 	for (i = j = len = 0; prompt[i]; i++) {
 		cp = NULL;
-		*line = '\0';
+		line[0] = '\0';
 		if (prompt[i] != META) {
 			k = 0;
 			line[k++] = prompt[i];
@@ -569,12 +569,12 @@ char **bufp, *prompt;
 				break;
 			case 'h':
 			case 'H':
-#ifdef	USEUNAME
+# ifdef	USEUNAME
 				uname(&uts);
 				strcpy(line, uts.nodename);
-#else
+# else
 				gethostname(line, MAXPATHLEN);
-#endif
+# endif
 				if (prompt[i] == 'h'
 				&& (tmp = strchr(line, '.'))) *tmp = '\0';
 				break;
@@ -894,7 +894,7 @@ int len;
 		if (isekana(s, i)) cp[j++] = s[i++];
 		else
 #else
-		if (iskna(s[i]));
+		if (iskna(s[i])) /*EMPTY*/;
 		else
 #endif
 		if (iskanji1(s, i)) cp[j++] = s[i++];

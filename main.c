@@ -562,7 +562,7 @@ int set;
 	int old;
 
 	old = status;
-	if (set == old);
+	if (set == old) /*EMPTY*/;
 	else if (set) {
 #ifdef	SIGALRM
 		signal2(SIGALRM, (sigcst_t)printtime);
@@ -892,7 +892,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 {
 	char cwd[MAXPATHLEN];
 
-	*cwd = '\0';
+	cwd[0] = '\0';
 	if (origpath && _chdir2(origpath) < 0) {
 		perror2(origpath);
 		if (!Xgetwd(cwd)) *cwd = '\0';
@@ -1117,6 +1117,7 @@ char *argv[], *envp[];
 
 	locate(0, n_line - 1);
 	inruncom = 1;
+/*NOTDEFINED*/
 	i = loadruncom(DEFRUNCOM, 0);
 	i += loadruncom(RUNCOMFILE, 0);
 	inruncom = 0;
