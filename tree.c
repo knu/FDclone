@@ -189,16 +189,14 @@ int level, *maxp, *maxentp;
 		if (!subdir) {
 			list[*maxp].name = strdup2(dp -> d_name);
 			list[*maxp].next = NULL;
-			list[*maxp].max = list[*maxp].maxent =
-				(evaldir(dp -> d_name, 0)) ? -1 : 0;
+			list[*maxp].max = list[*maxp].maxent = 0;
 			(*maxp)++;
 		}
 		else if (!strnpathcmp(dp -> d_name, subdir, len)
 		&& strlen(dp -> d_name) == len) {
 			list[0].name = strdup2(dp -> d_name);
-			list[0].next = maketree(subdir, NULL, level + 1,
-				&(list[0].max), &(list[0].maxent));
-			if (list[0].max < 0) list[0].maxent = -1;
+			list[0].next = &(list[0]);
+			list[0].max = list[0].maxent = -1;
 			if (++(*maxp) >= 2) break;
 		}
 		else if (!cp) {
@@ -210,6 +208,15 @@ int level, *maxp, *maxentp;
 		}
 	}
 	Xclosedir(dirp);
+	if (list) for (i = 0; i < *maxp; i++) {
+		if (list[i].next) {
+			list[i].next = maketree(subdir, NULL, level + 1,
+				&(list[i].max), &(list[i].maxent));
+			if (list[i].max < 0) list[i].maxent = -1;
+		}
+		else if (list[i].max >= 0 && evaldir(list[i].name, 0))
+			list[i].max = list[i].maxent = -1;
+	}
 	if (sorttree && sorton) qsort(list, *maxp, sizeof(treelist), cmptree);
 
 #if	MSDOS

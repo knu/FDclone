@@ -742,14 +742,15 @@ char *dir;
 #else	/* !MSDOS */
 	statfs_t fsbuf;
 	mnt_t mntbuf;
+#ifndef	DEV_BSIZE
+	struct stat buf;
+#endif
 
 	if (!strcmp(dir, ".") && getfsinfo(dir, &fsbuf, &mntbuf) >= 0)
 		return(blocksize(fsbuf));
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
-	struct stat buf;
-
 	if (stat(dir, &buf) < 0) error(dir);
 	return((int)buf.st_size);
 #endif

@@ -31,14 +31,24 @@ int onkanji1(s, ptr)
 char *s;
 int ptr;
 {
-	int i;
+	int i, j;
 
 	if (ptr < 0) return(0);
 	if (!ptr) return(iskanji1(s[0]));
 
-	for (i = 0; i < ptr; i++) if (iskanji1(s[i])) i++;
+	for (i = j = 0; i < ptr; i++, j++) {
+		if (!s[j]) return(0);
+#ifdef	CODEEUC
+		if (isekana(s, j)) j++;
+		else
+#endif
+		if (iskanji1(s[j])) {
+			i++;
+			j++;
+		}
+	}
 	if (i > ptr) return(0);
-	return(iskanji1(s[ptr]));
+	return(iskanji1(s[j]));
 }
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
@@ -93,6 +103,7 @@ int incode;
 	mode = ASCII;
 	for (i = j = 0; str[i] && j < MAXLINESTR - 8; i++, j++) {
 		if ((incode == EUC) ? isekana(str, i) : isskana(str, i)) {
+			if (incode == EUC) i++;
 			if (!(mode & KANA)) buf[j++] = '\016';
 			mode |= KANA;
 			buf[j] = str[i] & ~0x80;
@@ -173,7 +184,7 @@ u_char *str;
 	int i, j;
 
 	for (i = j = 0; str[i] && j < MAXLINESTR - 1; i++, j++) {
-		if (isekana(str, i)) buf[j] = str[i];
+		if (isekana(str, i)) buf[j] = str[++i];
 		else if (iseuc(str[i])) {
 			buf[j++] = ((str[i] - 0x81) >> 1)
 				+ ((str[i] < 0xdf) ? 0x71 : 0xb1);
@@ -272,7 +283,7 @@ int len, ptr;
 {
 	char dupl[MAXLINESTR + 1];
 
-	len = strncpy3(dupl, s, len, ptr);
+	strncpy3(dupl, s, &len, ptr);
 	kanjiputs(dupl);
 	return(len);
 }

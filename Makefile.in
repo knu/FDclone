@@ -153,7 +153,7 @@ install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 	fi
 	-if [ -f $(UNITBL) ]; then \
 		$(INSTALL) $(UNITBL) $(BINDIR); \
-		$(CHMOD) a+r $(BINDIR)/$(UNTABL); \
+		$(CHMOD) a+r $(BINDIR)/$(UNITBL); \
 	fi
 
 catman: $(PROGRAM).$(MANSEC)c

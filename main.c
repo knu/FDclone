@@ -165,15 +165,15 @@ static int timersec = 0;
 VOID error(str)
 char *str;
 {
+	forcecleandir(deftmpdir, tmpfilename);
+#if	!MSDOS && !defined (_NODOSDRIVE)
+	dosallclose();
+#endif
 	if (!str) str = progname;
 	endterm();
 	inittty(1);
 	fputc('\007', stderr);
 	perror(str);
-	forcecleandir(deftmpdir, tmpfilename);
-#if	!MSDOS && !defined (_NODOSDRIVE)
-	dosallclose();
-#endif
 	exit(1);
 }
 
@@ -181,11 +181,11 @@ static VOID signalexit(sig)
 int sig;
 {
 	signal(sig, SIG_IGN);
-	inittty(1);
 	forcecleandir(deftmpdir, tmpfilename);
 #if	!MSDOS && !defined (_NODOSDRIVE)
 	dosallclose();
 #endif
+	inittty(1);
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);
 }

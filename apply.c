@@ -602,7 +602,7 @@ char *endmes;
 			dirlist[ndir++] = strdup2(dp -> d_name);
 		}
 	}
-	Xrewinddir(dirp);
+	Xclosedir(dirp);
 
 	if (funcd1 && (i = (*funcd1)(dir)) < 0) {
 		if (i == -1) warning(-1, dir);
@@ -625,6 +625,10 @@ char *endmes;
 	}
 	free(dirlist);
 
+	if (!(dirp = Xopendir(dir))) {
+		warning(-1, dir);
+		return(-1);
+	}
 	while ((dp = Xreaddir(dirp))) {
 		if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
 			warning(0, INTR_K);

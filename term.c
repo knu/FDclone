@@ -229,6 +229,8 @@ char *c_home = NULL;
 char *c_locate = NULL;
 char *c_return = NULL;
 char *c_newline = NULL;
+char *c_scrollforw = NULL;
+char *c_scrollrev = NULL;
 char *c_up = NULL;
 char *c_down = NULL;
 char *c_right = NULL;
@@ -369,19 +371,21 @@ int reset;
 	struct tchars cc;
 #endif
 	static termioctl_t dupttyio;
-	u_long request;
+	termioctl_t tty;
 
 	if (reset && !(termflags & F_INITTTY)) return(0);
-#ifdef	USESGTTY
-	request = (reset) ? TIOCLSET : TIOCLGET;
-	if (tioctl(ttyio, request, &dupttyflag) < 0) err2(NULL);
-#endif
-	request = (reset) ? REQSETP : REQGETP;
-	if (tioctl(ttyio, request, &dupttyio) < 0) err2(NULL);
-
+	if (tioctl(ttyio, REQGETP, &tty) < 0) {
+		termflags &= ~F_INITTTY;
+		err2(NULL);
+	}
 	if (!reset) {
+		memcpy(&dupttyio, &tty, sizeof(termioctl_t));
 #ifdef	USESGTTY
-		tioctl(ttyio, TIOCGETC, &cc);
+		if (tioctl(ttyio, TIOCLGET, &dupttyflag) < 0
+		|| tioctl(ttyio, TIOCGETC, &cc) < 0) {
+			termflags &= ~F_INITTTY;
+			err2(NULL);
+		}
 		cc_intr = cc.t_intrc;
 		cc_quit = cc.t_quitc;
 		cc_eof = cc.t_eofc;
@@ -395,6 +399,15 @@ int reset;
 		ospeed = getspeed(dupttyio);
 		termflags |= F_INITTTY;
 	}
+	else if (tioctl(ttyio, REQSETP, &dupttyio) < 0
+#ifdef	USESGTTY
+	|| tioctl(ttyio, TIOCLSET, &dupttyflag) < 0
+#endif
+	) {
+		termflags &= ~F_INITTTY;
+		err2(NULL);
+	}
+
 	return(0);
 }
 
@@ -640,6 +653,8 @@ static int defaultterm(VOID_A)
 #endif
 	c_return = "\r";
 	c_newline = "\n";
+	c_scrollforw = "\n";
+	c_scrollrev = "";
 	c_up = "\033[A";
 	c_down = "\012";
 	c_right = "\033[C";
@@ -858,6 +873,8 @@ int getterment(VOID_A)
 	tgetstr2(&c_locate, "cm");
 	tgetstr2(&c_return, "cr");
 	tgetstr2(&c_newline, "nl");
+	tgetstr2(&c_scrollforw, "sf");
+	tgetstr2(&c_scrollrev, "sr");
 	tgetstr2(&c_up, "up");
 	tgetstr2(&c_down, "do");
 	tgetstr2(&c_right, "nd");

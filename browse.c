@@ -312,8 +312,10 @@ char *buf;
 uid_t uid;
 {
 	char *str;
+	int i;
 
-	if ((str = getpwuid2(uid))) strncpy3(buf, str, WOWNER, 0);
+	i = WOWNER;
+	if ((str = getpwuid2(uid))) strncpy3(buf, str, &i, 0);
 	else sprintf(buf, "%-*u", WOWNER, uid);
 
 	return(buf);
@@ -324,8 +326,10 @@ char *buf;
 gid_t gid;
 {
 	char *str;
+	int i;
 
-	if ((str = getgrgid2(gid))) strncpy3(buf, str, WGROUP, 0);
+	i = WGROUP;
+	if ((str = getgrgid2(gid))) strncpy3(buf, str, &i, 0);
 	else sprintf(buf, "%-*u", WGROUP, gid);
 
 	return(buf);
@@ -378,14 +382,14 @@ int no;
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
 	width = n_lastcolumn - len;
-	strncpy3(buf + len, list[no].name, width, fnameofs);
+	strncpy3(buf + len, list[no].name, &width, fnameofs);
 
 #if	!MSDOS
 	if (islink(&list[no])) {
 		len = strlen(buf);
 		while (buf[--len] == ' ');
 		len += 2;
-		if (list[no].name[fnameofs]) {
+		if (strlen3(list[no].name) > fnameofs) {
 			if (len < n_lastcolumn) buf[len++] = '-';
 			if (len < n_lastcolumn) buf[len++] = '>';
 			len++;
@@ -455,6 +459,9 @@ int no, standout;
 	char buf[MAXLINESTR + 1];
 	struct tm *tm;
 	int i, j, len, width;
+#ifdef	CODEEUC
+	int wid;
+#endif
 #ifndef	_NOCOLOR
 	int color;
 #endif
@@ -470,7 +477,11 @@ int no, standout;
 
 	width = calcwidth();
 	i = (standout && fnameofs > 0) ? fnameofs : 0;
-	i = strncpy3(buf, list[no].name, width, i);
+#ifdef	CODEEUC
+	wid = width;
+#endif
+	i = strncpy3(buf, list[no].name, &width, i);
+
 #ifdef	_NOCOLOR
 	if (isdisptyp(dispmode) && i < width)
 #endif
@@ -495,7 +506,11 @@ int no, standout;
 	else color = ANSI_WHITE;
 #endif
 	len = width;
+#ifdef	CODEEUC
+	width += (n_column / columns) - 2 - 1 - wid;
+#else
 	width = (n_column / columns) - 2 - 1;
+#endif
 
 	tm = NULL;
 	if (columns < 5 && len + WIDTH3 <= width) {

@@ -160,10 +160,11 @@ extern int toupper2 __P_((int));
 extern char *strchr2 __P_((char *, int));
 extern char *strrchr2 __P_((char *, int));
 extern char *strncpy2 __P_((char *, char *, int));
-extern int strncpy3 __P_((char *, char *, int, int));
+extern int strncpy3 __P_((char *, char *, int *, int));
 extern int strcasecmp2 __P_((char *, char *));
 extern char *strstr2 __P_((char *, char *));
 extern int strlen2 __P_((char *));
+extern int strlen3 __P_((char *));
 extern int atoi2 __P_((char *));
 #ifndef	USESETENV
 extern int putenv2 __P_((char *));

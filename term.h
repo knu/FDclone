@@ -96,6 +96,8 @@ extern char *c_home;
 extern char *c_locate;
 extern char *c_return;
 extern char *c_newline;
+extern char *c_scrollforw;
+extern char *c_scrollrev;
 extern char *c_up;
 extern char *c_down;
 extern char *c_right;

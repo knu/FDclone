@@ -1028,7 +1028,7 @@ bpb_t *bpbcache;
 			}
 #endif
 			if (errno == EIO) errno = ENXIO;
-			if (errno != EROFS
+			if ((errno != EROFS && errno != EACCES)
 			|| (fd = open(devp -> ch_name,
 			O_RDONLY | O_BINARY, 0600)) < 0) {
 				doserrno = errno;
@@ -1073,7 +1073,8 @@ bpb_t *bpbcache;
 #if	!MSDOS
 	if (byte2word(bpb -> secttrack) != nsect
 	|| byte2word(bpb -> nhead) != devp -> ch_head
-	|| total / ((devp -> ch_head) * nsect) != devp -> ch_cyl) {
+	|| (devp -> ch_cyl
+	&& total / ((devp -> ch_head) * nsect) != devp -> ch_cyl)) {
 		if (bpb != bpbcache) memcpy(bpbcache, bpb, sizeof(bpb_t));
 		if (buf) free(buf);
 		errno = tmperrno;

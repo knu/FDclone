@@ -497,22 +497,37 @@ int n;
 	return(s1);
 }
 
-int strncpy3(s1, s2, len, ptr)
+int strncpy3(s1, s2, lenp, ptr)
 char *s1, *s2;
-int len, ptr;
+int *lenp, ptr;
 {
 	int i, j, l;
 
-	i = 0;
-	j = ptr;
-	if ((j = ptr) < 0) j = 0;
-	if (j && onkanji1(s2, j - 1)) {
-		s1[i++] = ' ';
-		j++;
-	}
-	while ((len < 0 || i < len) && s2[j]) {
+	for (i = j = 0; i < ptr; i++, j++) {
+#ifdef	CODEEUC
+		if (isekana(s2, j)) j++;
+		else
+#endif
 		if (iskanji1(s2[j])) {
-			if (len >= 0 && i >= len - 1) {
+			i++;
+			j++;
+		}
+	}
+	if (!i || i <= ptr) i = 0;
+	else {
+		s1[0] = ' ';
+		i = 1;
+	}
+	while ((*lenp < 0 || i < *lenp) && s2[j]) {
+#ifdef	CODEEUC
+		if (isekana(s2, j)) {
+			(*lenp)++;
+			s1[i++] = s2[j++];
+		}
+		else
+#endif
+		if (iskanji1(s2[j])) {
+			if (*lenp >= 0 && i >= *lenp - 1) {
 				s1[i++] = ' ';
 				break;
 			}
@@ -520,14 +535,14 @@ int len, ptr;
 		}
 		else if ((u_char)(s2[j]) < ' ' || s2[j] == C_DEL) {
 			s1[i++] = '^';
-			if (len >= 0 && i >= len) break;
+			if (*lenp >= 0 && i >= *lenp) break;
 			s1[i++] = ((s2[j++] + '@') & 0x7f);
 			continue;
 		}
 		s1[i++] = s2[j++];
 	}
 	l = i;
-	if (len >= 0 && ptr >= 0) while (i < len) s1[i++] = ' ';
+	if (*lenp >= 0 && ptr >= 0) while (i < *lenp) s1[i++] = ' ';
 	s1[i] = '\0';
 	return(l);
 }
@@ -561,6 +576,21 @@ char *str;
 
 	for (i = len = 0; str[i]; i++, len++)
 		if ((u_char)(str[i]) < ' ' || str[i] == C_DEL) len++;
+	return(len);
+}
+
+int strlen3(str)
+char *str;
+{
+	int i, len;
+
+	for (i = len = 0; str[i]; i++, len++) {
+#ifdef	CODEEUC
+		if (isekana(str, i)) i++;
+		else
+#endif
+		if ((u_char)(str[i]) < ' ' || str[i] == C_DEL) len++;
+	}
 	return(len);
 }
 

@@ -450,6 +450,13 @@ int max;
 		if (!cp) cp = line;
 		while (*cp && j < max) {
 			if (unprint) prompt[j] = *cp;
+#ifdef	CODEEUC
+			else if (isekana(cp, 0)) {
+				prompt[j++] = *(cp++);
+				prompt[j] = *cp;
+				len++;
+			}
+#endif
 			else if ((u_char)(*cp) >= ' ' && *cp != C_DEL) {
 				prompt[j] = *cp;
 				len++;

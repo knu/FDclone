@@ -792,7 +792,7 @@ int set;
 		return(-1);
 	}
 	cyl = atoi(++cp);
-	if (cyl <= 0 || *(cp = skipnumeric(cp, 1))) {
+	if (cyl < 0 || *(cp = skipnumeric(cp, 0))) {
 		free(tmp);
 		return(-1);
 	}

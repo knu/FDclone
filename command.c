@@ -480,7 +480,7 @@ char *arg;
 		|| (list[filepos].st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))))
 			i--;
 	}
-	if (i >= strlen2(list[filepos].name + fnameofs)) return(0);
+	if (i >= strlen3(list[filepos].name) - fnameofs) return(0);
 	fnameofs++;
 	return(2);
 }
@@ -748,8 +748,12 @@ char *file;
 	buf = NEXT_K;
 	i = strlen2(file);
 	if (i + strlen(buf) > n_lastcolumn) i = n_lastcolumn - strlen(buf);
+#ifdef	CODEEUC
+	prompt = (char *)malloc2(i * 2 + strlen(buf) + 1);
+#else
 	prompt = (char *)malloc2(i + strlen(buf) + 1);
-	strncpy3(prompt, file, i, 0);
+#endif
+	strncpy3(prompt, file, &i, 0);
 	strcat(prompt, buf);
 	buf = (char *)malloc2(n_column + 2);
 
