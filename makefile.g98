@@ -242,8 +242,8 @@ main.o: fd.h
 main.o: machine.h config.h
 main.o: types.h pathname.h term.h
 main.o: func.h
-main.o: kctype.h
-main.o: funcno.h kanji.h version.h dosdisk.h
+main.o: kanji.h version.h
+main.o: dosdisk.h
 term.o: machine.h config.h
 term.o: term.h
 pathname.o: machine.h config.h
@@ -262,7 +262,7 @@ shell.o: fd.h
 shell.o: machine.h config.h
 shell.o: types.h pathname.h term.h func.h
 shell.o: kctype.h
-shell.o: funcno.h kanji.h
+shell.o: kanji.h
 info.o: fd.h
 info.o: machine.h config.h
 info.o: types.h pathname.h term.h funcno.h kanji.h
@@ -274,7 +274,8 @@ dosemu.o: types.h pathname.h func.h
 dosemu.o: kctype.h
 dosemu.o: dosdisk.h
 unixdisk.o: machine.h config.h unixdisk.h
-unixdisk.o: unixemu.h dosdisk.h
+unixdisk.o: unixemu.h
+unixdisk.o: dosdisk.h
 unixemu.o: fd.h
 unixemu.o: machine.h config.h
 unixemu.o: types.h pathname.h func.h
@@ -315,9 +316,8 @@ tree.o: machine.h config.h
 tree.o: types.h pathname.h term.h func.h
 tree.o: kanji.h
 command.o: fd.h
-command.o: machine.h
-command.o: config.h types.h
-command.o: pathname.h term.h func.h
+command.o: machine.h config.h
+command.o: types.h pathname.h term.h func.h
 command.o: funcno.h kanji.h
 command.o: functabl.h
 browse.o: fd.h

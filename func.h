@@ -46,8 +46,8 @@ extern int errno;
 #define	BUFUNIT		32
 #define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
 #define	b_realloc(ptr, n, type)\
-			(((n) % BUFUNIT) ? (ptr) \
-			: realloc2(ptr, b_size(n, type)))
+			(((n) % BUFUNIT) ? ((type *)(ptr)) \
+			: (type *)realloc2(ptr, b_size(n, type)))
 
 #define	getblock(c)	((((c) + blocksize - 1) / blocksize) * blocksize)
 
@@ -207,7 +207,7 @@ extern char *strtkchr __P_((char *, int, int));
 extern char *geteostr __P_((char **));
 extern char *gettoken __P_((char **, char *));
 extern char *getenvval __P_((int *, char *[]));
-extern char *evalcomstr __P_((char *, char *));
+extern char *evalcomstr __P_((char *, char *, int));
 #if	!MSDOS
 extern char *killmeta __P_((char *));
 extern VOID adjustpath __P_((VOID_A));
@@ -223,9 +223,6 @@ extern int evalbool __P_((char *));
 extern VOID evalenv __P_((VOID_A));
 
 /* libc.c */
-extern int access2 __P_((char *, int));
-extern int unlink2 __P_((char *));
-extern int rmdir2 __P_((char *));
 extern int rename2 __P_((char *, char *));
 extern int stat2 __P_((char *, struct stat *));
 extern char *realpath2 __P_((char *, char *));
@@ -341,7 +338,7 @@ extern int rmtmpdir __P_((char *));
 extern VOID removetmp __P_((char *, char *, char *));
 extern int forcecleandir __P_((char *, char *));
 #ifndef _NODOSDRIVE
-extern int tmpdosdupl __P_((char *, char **, char *, int));
+extern int tmpdosdupl __P_((char *, char **, namelist *, int, int));
 extern int tmpdosrestore __P_((int, char *, int));
 #endif
 #ifndef	_NOWRITEFS
@@ -353,6 +350,8 @@ extern int _cpfile __P_((char *, char *, u_short));
 extern int cpfile __P_((char *));
 extern int mvfile __P_((char *));
 extern int cpdir __P_((char *));
+extern int rmvfile __P_((char *));
+extern int rmvdir __P_((char *));
 extern int findfile __P_((char *));
 extern int finddir __P_((char *));
 extern int inputattr __P_((namelist *, u_short));
@@ -367,7 +366,7 @@ extern VOID rewritearc __P_((int));
 extern int launcher __P_((namelist *, int));
 extern int pack __P_((char *, namelist *, int));
 extern int unpack __P_((char *, char *, namelist *, int, char *, int));
-extern char *tmpunpack __P_((namelist *, int));
+extern char *tmpunpack __P_((namelist *, int, int));
 extern int backup __P_((char *, namelist *, int));
 extern int searcharc __P_((char *, namelist *, int, int));
 #endif

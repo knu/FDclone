@@ -172,8 +172,11 @@ char *s;
 
 	cp = NULL;
 	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_ && !cp) cp = &s[i];
-		else cp = NULL;
+		if (s[i] == _SC_) {
+			if (!cp) cp = &s[i];
+			continue;
+		}
+		cp = NULL;
 #if	MSDOS
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
 #endif
@@ -216,28 +219,28 @@ int keepdelim, evalq;
 	int top = -1;
 # endif
 #endif
-	char *cp, *tmp, buf[MAXPATHLEN + 1];
+	char *cp, *tmp, buf[MAXPATHLEN + 1], qstack[MAXPATHLEN + 1];
 	int i, j, env, quote, paren;
 
 	if (!eol) eol = path + strlen(path);
-	j = 0;
+	i = j = 0;
 
-	quote = '\0';
-	if ((*path == '"' || *path == '\'' || *path == '`')) {
-		quote = *(path++);
+	quote = -1;
+	if ((path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
+		qstack[++quote] = path[i++];
 		if (!evalq) {
 #if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 			top = j;
 #endif
-			buf[j++] = quote;
+			buf[j++] = qstack[quote];
 		}
 	}
 
-	if (quote != '\'' && *path == '~') {
-		if (!(cp = strdelim(path + 1, 0)) || cp > eol) cp = eol;
-		if (cp > path + 1) {
-			strncpy(buf + j, path + 1, cp - path - 1);
-			buf[j + cp - path - 1] = '\0';
+	if ((quote < 0 || qstack[quote] != '\'') && path[i] == '~') {
+		if (!(cp = strdelim(path + i + 1, 0)) || cp > eol) cp = eol;
+		if (cp > path + i + 1) {
+			strncpy(buf + j, path + i + 1, cp - (path + i + 1));
+			buf[j + cp - (path + i + 1)] = '\0';
 #ifdef	FD
 			if (!strpathcmp(buf + j, "FD")) tmp = progpath;
 			else
@@ -261,27 +264,27 @@ int keepdelim, evalq;
 			j = strlen(buf);
 		}
 		else {
-			strncpy(buf + j, path, cp - path);
-			j += cp - path;
+			strncpy(buf + j, path + i, cp - (path + i));
+			j += cp - (path + i);
 		}
-		path = cp;
-		if (path < eol) {
+		i = cp - path;
+		if (path + i < eol) {
 			buf[j++] = _SC_;
-			path++;
+			i++;
 		}
 	}
-	else if (*path == _SC_) {
+	else if (path[i] == _SC_) {
 		buf[j++] = _SC_;
-		path++;
+		i++;
 	}
 #if	MSDOS
-	else if (isalpha(*path) && path[1] == ':') {
-		strncpy(buf + j, path, 2);
+	else if (isalpha(path[i]) && path[i + 1] == ':') {
+		strncpy(buf + j, path + i, 2);
 		j += 2;
-		path += 2;
-		if (*path == _SC_) {
+		i += 2;
+		if (path[i] == _SC_) {
 			buf[j++] = _SC_;
-			path++;
+			i++;
 		}
 	}
 #endif
@@ -289,9 +292,9 @@ int keepdelim, evalq;
 
 	paren = '\0';
 	env = -1;
-	for (i = 0; i < eol - path && path[i] && j < MAXPATHLEN; i++) {
+	for (; i < eol - path && path[i] && j < MAXPATHLEN; i++) {
 #if	!MSDOS
-		if (path[i] == '\\' && quote != '\'') {
+		if (path[i] == '\\' && (quote < 0 || qstack[quote] != '\'')) {
 			if (env >= 0) {
 				j = evalenv(buf, env, j);
 				env = -1;
@@ -301,8 +304,8 @@ int keepdelim, evalq;
 			continue;
 		}
 #endif
-		if (quote) {
-			if (path[i] == quote) {
+		if (quote >= 0) {
+			if (path[i] == qstack[quote]) {
 				if (env >= 0) {
 					j = evalenv(buf, env, j);
 					env = -1;
@@ -310,13 +313,13 @@ int keepdelim, evalq;
 				if (!evalq) {
 #if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 					cp = NULL;
-					if (quote == '"' &&
+					if (qstack[quote] == '"' &&
 					top >= 0 && top + 1 < j) {
 						buf[j] = '\0';
 						cp = shortname(buf + top + 1,
 							alias);
 					}
-					if (!cp) buf[j++] = quote;
+					if (!cp) buf[j++] = qstack[quote];
 					else {
 						j = top + strlen(alias);
 						if (j > MAXPATHLEN)
@@ -326,14 +329,25 @@ int keepdelim, evalq;
 					}
 					top = -1;
 #else
-					buf[j++] = quote;
+					buf[j++] = qstack[quote];
 #endif
 				}
-				quote = '\0';
+				quote--;
 				continue;
 			}
-			if (quote == '\'') {
+			if (qstack[quote] == '\'') {
 				buf[j++] = path[i];
+				continue;
+			}
+			if (path[i] == '"'
+			|| path[i] == '\'' || path[i] == '`') {
+				qstack[++quote] = path[i];
+				if (!evalq) {
+#if	defined (FD) && MSDOS && !defined (_NOUSELFN)
+					top = j;
+#endif
+					buf[j++] = qstack[quote];
+				}
 				continue;
 			}
 		}
@@ -371,18 +385,18 @@ int keepdelim, evalq;
 			}
 		}
 
-		if (!quote
+		if (quote < 0
 		&& (path[i] == '"' || path[i] == '\'' || path[i] == '`')) {
-			quote = path[i];
+			qstack[++quote] = path[i];
 			if (!evalq) {
 #if	defined (FD) && MSDOS && !defined (_NOUSELFN)
 				top = j;
 #endif
-				buf[j++] = quote;
+				buf[j++] = qstack[quote];
 			}
 		}
 		else if (path[i] == _SC_
-		&& isdelim(path, i - 1) && keepdelim);
+		&& isdelim(path, i - 1) && !keepdelim);
 		else if (path[i] == '$') env = j;
 		else buf[j++] = path[i];
 	}
@@ -544,8 +558,8 @@ reg_t *re;
 }
 
 #  ifdef	USEREGCMP
-extern char *regcmp(char *, int);
-extern char *regex(char *, char *);
+extern char *regcmp __P_((char *, int));
+extern char *regex __P_((char *, char *));
 
 reg_t *regexp_init(s)
 char *s;

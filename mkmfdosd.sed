@@ -19,6 +19,6 @@ s:__TERMLIBS__::
 s:__REGLIBS__::
 s:__OTHERLIBS__::
 s:__KCODEOPTION__:-s:
-s:__MSBOPTION__:-c:
+s:__MSBOPTION__::
 s:__UNITBL__:$(UNITBL):
-s:__PREFIXOPTION__::
+s:__PREFIXOPTION__:-c:

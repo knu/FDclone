@@ -8,8 +8,6 @@
 #include "fd.h"
 #include "term.h"
 #include "func.h"
-#include "kctype.h"
-#include "funcno.h"
 #include "kanji.h"
 #include "version.h"
 
@@ -392,7 +390,7 @@ static sigarg_t xsizerror(VOID_A)
 static sigarg_t wintr(VOID_A)
 {
 	signal(SIGWINCH, SIG_IGN);
-	getwsize(80, WHEADERMAX + WFOOTER + 2);
+	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
 	title();
 #ifndef	_NOARCHIVE
 	if (archivefile) rewritearc(1);
@@ -456,7 +454,7 @@ static sigarg_t printtime(VOID_A)
 
 VOID sigvecset(VOID_A)
 {
-	getwsize(80, WHEADERMAX + WFOOTER + 2);
+	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
 #ifdef	SIGALRM
 	signal(SIGALRM, (sigarg_t (*)__P_((sigfnc_t)))printtime);
 #endif
@@ -712,7 +710,7 @@ char *argv[], *envp[];
 	notabs();
 	getterment();
 	initterm();
-	getwsize(80, WHEADERMAX + WFOOTER + 2);
+	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
 	sigvecreset();
 
 #if	MSDOS && !defined (DJGPP)

@@ -25,7 +25,7 @@ extern int dispmode;
 extern int sorton;
 extern int chgorder;
 extern int stackdepth;
-extern int copypolicy;
+extern int removepolicy;
 extern namelist filestack[];
 #ifndef	_NOARCHIVE
 extern char *archivefile;
@@ -708,7 +708,7 @@ int *maxp;
 char *arg;
 {
 	dispmode ^= F_FILEFLAG;
-	return(4);
+	return(2);
 }
 
 /*ARGSUSED*/
@@ -812,11 +812,10 @@ char *arg;
 
 	if (isdir(&list[filepos])
 #ifndef	_NOARCHIVE
-	|| (archivefile && !(dir = tmpunpack(list, *maxp)))
+	|| (archivefile && !(dir = tmpunpack(list, *maxp, 1)))
 #endif
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir,
-	list[filepos].name, list[filepos].st_mode)) < 0
+	|| (drive = tmpdosdupl("", &dir, list, *maxp, 1)) < 0
 #endif
 	) return(1);
 
@@ -857,8 +856,7 @@ char *arg;
 	if (archivefile) return(1);
 #endif
 #ifndef	_NODOSDRIVE
-	if ((drive = tmpdosdupl("", &dir,
-	list[filepos].name, list[filepos].st_mode)) < 0) return(1);
+	if ((drive = tmpdosdupl("", &dir, list, *maxp, 1)) < 0) return(1);
 #endif
 	if (!execenv("FD_EDITOR", list[filepos].name)) {
 #ifdef	EDITOR
@@ -968,7 +966,7 @@ namelist *list;
 int *maxp;
 char *arg;
 {
-	getwsize(80, WHEADERMAX + WFOOTER + 2);
+	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
 	return(4);
 }
 
@@ -1064,7 +1062,8 @@ char *arg;
 {
 	char *file;
 
-	if (isdotdir(list[filepos].name)) return(warning_bell(list, maxp, arg));
+	if (isdotdir(list[filepos].name))
+		return(warning_bell(list, maxp, arg));
 	if (arg && *arg) {
 		file = strdup2(arg);
 		errno = EEXIST;
@@ -1107,15 +1106,15 @@ char *arg;
 {
 	int i;
 
-	copypolicy = 0;
+	removepolicy = 0;
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(1);
-		filepos = applyfile(list, *maxp, unlink2, NULL);
+		filepos = applyfile(list, *maxp, rmvfile, NULL);
 	}
 	else if (isdir(&list[filepos])) return(warning_bell(list, maxp, arg));
 	else {
 		if (!yesno(DELFL_K, list[filepos].name)) return(1);
-		if ((i = unlink2(list[filepos].name)) < 0)
+		if ((i = rmvfile(list[filepos].name)) < 0)
 			warning(-1, list[filepos].name);
 		if (!i) filepos++;
 	}
@@ -1132,18 +1131,18 @@ char *arg;
 	if (!isdir(&list[filepos]) || isdotdir(list[filepos].name))
 		return(warning_bell(list, maxp, arg));
 	if (!yesno(DELDR_K, list[filepos].name)) return(1);
-	copypolicy = 0;
+	removepolicy = 0;
 #if	!MSDOS
 	if (islink(&list[filepos])) {
 		int i;
 
-		if ((i = unlink2(list[filepos].name)) < 0)
+		if ((i = rmvfile(list[filepos].name)) < 0)
 			warning(-1, list[filepos].name);
 		if (!i) filepos++;
 	}
 	else
 #endif
-	if (!applydir(list[filepos].name, unlink2, rmdir2, 3, NULL))
+	if (!applydir(list[filepos].name, rmvfile, rmvdir, 3, NULL))
 		filepos++;
 	if (filepos >= *maxp && (filepos -= 2) < 0) filepos = 0;
 	return(4);
@@ -1250,7 +1249,7 @@ char *arg;
 
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		if (!(dir = tmpunpack(list, *maxp))) i = 1;
+		if (!(dir = tmpunpack(list, *maxp, 1))) i = 1;
 		else {
 			i = execusercomm(com, list[filepos].name,
 				NULL, NULL, 0, 1);
@@ -1260,8 +1259,7 @@ char *arg;
 	else
 #endif
 #ifndef	_NODOSDRIVE
-	if ((drive = tmpdosdupl("", &dir,
-	list[filepos].name, list[filepos].st_mode)) < 0) i = 1;
+	if ((drive = tmpdosdupl("", &dir, list, *maxp, 1)) < 0) i = 1;
 	else if (drive) {
 		i = execusercomm(com, list[filepos].name, NULL, NULL, 0, 1);
 		removetmp(dir, NULL, list[filepos].name);
@@ -1292,13 +1290,37 @@ namelist *list;
 int *maxp;
 char *arg;
 {
+#if	!defined(_NOARCHIVE) || !defined(_NODOSDRIVE)
+	char *dir = NULL;
+#endif
+#ifndef	_NODOSDRIVE
+	int drive = 0;
+#endif
 	char *file;
 	int i;
 
 	if (arg && *arg) file = strdup2(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, 1))
-	|| !*(file = evalpath(file, 1))) return(1);
+	|| !*(file = evalpath(file, 1))
+#ifndef	_NOARCHIVE
+	|| (archivefile && !(dir = tmpunpack(list, *maxp, 0)))
+#endif
+#ifndef	_NODOSDRIVE
+	|| (drive = tmpdosdupl("", &dir, list, *maxp, 0)) < 0
+#endif
+	) return(1);
+
 	i = pack(file, list, *maxp);
+#ifndef	_NODOSDRIVE
+	if (drive) removetmp(dir, NULL, "");
+	else
+#endif
+#ifndef	_NOARCHIVE
+	if (archivefile) removetmp(dir, archivedir, "");
+	else
+#endif
+	;
+
 	free(file);
 	if (i < 0) {
 		putterm(t_bell);
@@ -1438,6 +1460,12 @@ namelist *list;
 int *maxp;
 char *arg;
 {
+#if	!defined(_NOARCHIVE) || !defined(_NODOSDRIVE)
+	char *dir = NULL;
+#endif
+#ifndef	_NODOSDRIVE
+	int drive = 0;
+#endif
 	char *dev;
 	int i;
 
@@ -1447,8 +1475,26 @@ char *arg;
 #else
 	else if (!(dev = inputstr(BKUP_K, 1, 5, "/dev/", 1))
 #endif
-	|| !*(dev = evalpath(dev, 1))) return(1);
+	|| !*(dev = evalpath(dev, 1))
+#ifndef	_NOARCHIVE
+	|| (archivefile && !(dir = tmpunpack(list, *maxp, 0)))
+#endif
+#ifndef	_NODOSDRIVE
+	|| (drive = tmpdosdupl("", &dir, list, *maxp, 0)) < 0
+#endif
+	) return(1);
+
 	i = backup(dev, list, *maxp);
+#ifndef	_NODOSDRIVE
+	if (drive) removetmp(dir, NULL, "");
+	else
+#endif
+#ifndef	_NOARCHIVE
+	if (archivefile) removetmp(dir, archivedir, "");
+	else
+#endif
+	;
+
 	free(dev);
 	if (i <= 0) return(1);
 	return(4);

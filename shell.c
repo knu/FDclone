@@ -8,7 +8,6 @@
 #include "term.h"
 #include "func.h"
 #include "kctype.h"
-#include "funcno.h"
 #include "kanji.h"
 
 #if	MSDOS
@@ -21,11 +20,11 @@ extern int filepos;
 extern int mark;
 extern off_t marksize;
 extern char fullpath[];
+extern functable funclist[];
 #ifndef	_NOARCHIVE
 extern char *archivefile;
 extern char *archivedir;
 #endif
-extern functable funclist[];
 
 static int setarg __P_((char *, int, char *, char *, int));
 static int setargs __P_((char *, int, namelist *, int, int));
@@ -43,8 +42,8 @@ char **history[2] = {NULL, NULL};
 short histsize[2] = {0, 0};
 short histno[2] = {0, 0};
 int savehist = 0;
+int n_args = 0;
 
-static int n_args = 0;
 static short histbufsize[2] = {0, 0};
 
 
@@ -436,7 +435,7 @@ int *maxp, noconf;
 	if ((cp = evalalias(command))) command = cp;
 
 	if ((n = execbuiltin(command, list, maxp, 1)) < -1) {
-		tmp = evalcomstr(command, CMDLINE_DELIM);
+		tmp = evalcomstr(command, CMDLINE_DELIM, 0);
 		system2(tmp, noconf);
 		free(tmp);
 	}

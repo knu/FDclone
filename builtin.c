@@ -406,7 +406,8 @@ int comline;
 				putch2(ch);
 				if (launchlist[i].field[j] >= 255)
 					cprintf2("%d", 0);
-				else cprintf2("%d", launchlist[i].field[j] + 1);
+				else cprintf2("%d",
+					launchlist[i].field[j] + 1);
 				if (launchlist[i].delim[j] >= 128)
 					cprintf2("[%d]",
 						launchlist[i].delim[j] - 128);
@@ -516,6 +517,7 @@ char *cp;
 					if (*cp == escapechar[j]) break;
 				if (escapechar[j]) ch = escapevalue[j];
 				else ch = *cp;
+				cp++;
 			}
 			break;
 		case '^':
@@ -865,7 +867,7 @@ int set;
 	}
 	else {
 #ifdef	HDDMOUNT
-		off_t *sp = NULL;
+		off64_t *sp = NULL;
 		int c;
 
 		if (!cyl) {
@@ -900,7 +902,7 @@ int set;
 			fdtype[i + j].sect = sect;
 			fdtype[i + j].cyl = cyl;
 #ifdef	HDDMOUNT
-			fdtype[i + j].offset = (cyl) ? (off_t)0 : sp[j + 1];
+			fdtype[i + j].offset = (cyl) ? (off64_t)0 : sp[j + 1];
 			if (j + 1 < n) do {
 				if (++drive > 'Z') {
 					while (j >= 0)

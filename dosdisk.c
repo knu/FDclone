@@ -58,7 +58,20 @@
 
 #ifdef	HDDMOUNT
 #include <sys/ioctl.h>
-#include <sys/disklabel.h>
+#define	D_SECSIZE(dl)	(dl).d_secsize
+# if	defined (BSD4) || defined (BSD43)
+# include <sys/disklabel.h>
+# else
+#  ifdef	LINUX
+#  include <linux/hdreg.h>
+#  define	DIOCGDINFO	HDIO_GETGEO
+#  define	disklabel	hd_geometry
+#  define	d_ntracks	heads
+#  define	d_nsectors	sectors
+#  undef	D_SECSIZE(dl)
+#  define	D_SECSIZE(dl)	512
+#  endif
+# endif
 #endif
 
 #ifdef	NOERRNO
@@ -113,9 +126,9 @@ extern int errno;
 #define	MAXUNICODE	0xffe5
 #define	MINKANJI	0x8140
 #define	MAXKANJI	0xeaa4
-#define	ENDCLUST	0x0fffffffUL
-#define	ERRCLUST	0x0ffffff7UL
-#define	ROOTCLUST	0x10000000UL
+#define	ENDCLUST	((u_long)(0x0fffffff))
+#define	ERRCLUST	((u_long)(0x0ffffff7))
+#define	ROOTCLUST	((u_long)(0x10000000))
 
 #if	(GETTODARGS == 1)
 #define	gettimeofday2(tv, tz)	gettimeofday(tv)
@@ -168,6 +181,11 @@ static long gettimezone __P_((struct tm *, time_t));
 static time_t timelocal2 __P_((struct tm *));
 #endif
 
+#ifdef	LINUX
+static off64_t lseek64 __P_((int, off64_t, int));
+#else
+#define	lseek64	lseek
+#endif
 #if	!MSDOS
 static int sectseek __P_((devstat *, u_long));
 #endif	/* !MSDOS */
@@ -206,7 +224,7 @@ static int readbpb __P_((devstat *));
 static int readbpb __P_((devstat *, bpb_t *));
 #endif
 #ifdef	HDDMOUNT
-static off_t *_readpt __P_((off_t, int, int, int, int));
+static off64_t *_readpt __P_((off64_t, int, int, int, int));
 #endif
 static int opendev __P_((int));
 static int closedev __P_((int));
@@ -702,21 +720,37 @@ struct tm *tm;
 }
 #endif	/* !FD */
 
+#ifdef	LINUX
+static off64_t lseek64(fd, offset, whence)
+int fd;
+off64_t offset;
+int whence;
+{
+	off64_t result;
+	u_long ofs_h, ofs_l;
+
+	ofs_h = (u_long)(offset >> 32);
+	ofs_l = (u_long)(offset & (u_long)0xffffffff);
+	if (llseek(fd, ofs_h, ofs_l, &result, whence) < 0) return((off64_t)-1);
+	return(result);
+}
+#endif
+
 #if	!MSDOS
 static int sectseek(devp, sect)
 devstat *devp;
 u_long sect;
 {
-	off_t offset;
+	off64_t offset;
 	int tmperrno;
 
 	tmperrno = errno;
 	if (devp -> flags & F_8SECT) sect += sect / 8;
-	offset = (off_t)sect * (off_t)(devp -> sectsize);
+	offset = (off64_t)sect * (off64_t)(devp -> sectsize);
 # ifdef	HDDMOUNT
 	offset += devp -> offset;
 # endif
-	if (lseek(devp -> fd, offset, L_SET) < 0) {
+	if (lseek64(devp -> fd, offset, L_SET) < 0) {
 		doserrno = errno;
 		errno = tmperrno;
 		return(-1);
@@ -1226,7 +1260,8 @@ devstat *devp;
 	u_long i, n, clust;
 	int j, gap, tmperrno;
 
-	if (!needbavail || devp -> availsize != 0xffffffffUL) return(0);
+	if (!needbavail || devp -> availsize != (u_long)0xffffffff)
+		return(0);
 
 	tmperrno = errno;
 	if (!(buf = (u_char *)malloc(devp -> sectsize))) {
@@ -1416,7 +1451,7 @@ long clust;
 		ofs = (*fatp & 0xff) + ((u_long)(*(fatp + 1) & 0xff) << 8)
 			+ ((u_long)(*(fatp + 2) & 0xff) << 16)
 			+ ((u_long)(*(fatp + 3) & 0xff) << 24);
-		if (ofs >= 0x0ffffff8UL) ofs = ENDCLUST;
+		if (ofs >= (u_long)0x0ffffff8) ofs = ENDCLUST;
 	}
 	else if (devp -> flags & F_16BIT) {
 		ofs = (*fatp & 0xff) + ((long)(*(fatp + 1) & 0xff) << 8);
@@ -1493,7 +1528,7 @@ long clust, n;
 		free(buf);
 	}
 
-	if (devp -> availsize != 0xffffffffUL) {
+	if (devp -> availsize != (u_long)0xffffffff) {
 		if (!n && old) devp -> availsize++;
 		else if (n && !old && devp -> availsize) devp -> availsize--;
 	}
@@ -1514,18 +1549,18 @@ long clust;
 		sect = (clust) ? clust - ROOTCLUST : devp -> dirofs;
 		if (sect >= (devp -> dirofs) + (devp -> dirsize)) {
 			doserrno = 0;
-			return(0UL);
+			return((u_long)0);
 		}
 		return(sect);
 	}
 
 	if (clust == ENDCLUST) {
 		doserrno = 0;
-		return(0UL);
+		return((u_long)0);
 	}
 	if (clust == ERRCLUST) {
 		doserrno = EIO;
-		return(0UL);
+		return((u_long)0);
 	}
 	sect = ((clust - MINCLUST) * (u_long)(devp -> clustsize))
 		+ ((u_long)(devp -> dirofs) + (u_long)(devp -> dirsize));
@@ -1723,9 +1758,9 @@ bpb_t *bpbcache;
 		}
 		for (i = 0; i < SLISTSIZ; i++) {
 #ifdef	HDDMOUNT
-			if (lseek(fd, devp -> offset, L_SET) < 0) {
+			if (lseek64(fd, devp -> offset, L_SET) < 0) {
 #else
-			if (lseek(fd, (off_t)0, L_SET) < 0) {
+			if (lseek64(fd, (off64_t)0, L_SET) < 0) {
 #endif
 				i = SLISTSIZ;
 				break;
@@ -1788,7 +1823,7 @@ bpb_t *bpbcache;
 	devp -> dirofs = (devp -> fatofs) + (devp -> fatsize) * (bpb -> nfat);
 	total -= (long)(devp -> dirofs) + (long)(devp -> dirsize);
 	devp -> totalsize = total / (devp -> clustsize);
-	devp -> availsize = 0xffffffffUL;
+	devp -> availsize = (u_long)0xffffffff;
 
 	if (!(devp -> flags & F_FAT32)) {
 		if (!strncmp(bpb -> fsname, FS_FAT, sizeof(bpb -> fsname))
@@ -1806,12 +1841,12 @@ bpb_t *bpbcache;
 }
 
 #ifdef	HDDMOUNT
-static off_t *_readpt(offset, fd, head, sect, secsiz)
-off_t offset;
+static off64_t *_readpt(offset, fd, head, sect, secsiz)
+off64_t offset;
 int fd, head, sect, secsiz;
 {
 	u_char *cp, *buf;
-	off_t ofs, *tmp, *slice;
+	off64_t ofs, *tmp, *slice;
 	int i, nslice, pofs, ps, pn, beg, siz;
 
 	if (head) {
@@ -1828,20 +1863,20 @@ int fd, head, sect, secsiz;
 	beg = (pofs / DEV_BSIZE) * DEV_BSIZE;
 	siz = ((pofs + ps * pn - 1) / DEV_BSIZE + 1) * DEV_BSIZE - beg;
 
-	if (lseek(fd, offset + beg, L_SET) < 0
+	if (lseek64(fd, offset + beg, L_SET) < 0
 	|| !(buf = (u_char *)malloc(siz))) return(NULL);
 
 	while ((i = read(fd, buf, siz)) < 0 && errno == EINTR);
 	if (i < 0
 	|| (!head && (buf[siz - 2] != 0x55 || buf[siz - 1] != 0xaa))
-	|| !(slice = (off_t *)malloc(2 * sizeof(off_t)))) {
+	|| !(slice = (off64_t *)malloc(2 * sizeof(off64_t)))) {
 		free(buf);
 		return(NULL);
 	}
 	cp = &buf[pofs - beg];
 
-	slice[nslice = 0] = (off_t)secsiz;
-	slice[++nslice] = (off_t)0;
+	slice[nslice = 0] = (off64_t)secsiz;
+	slice[++nslice] = (off64_t)0;
 	for (i = 0; i < pn; i++, cp += ps) {
 		if (head) {
 			partition98_t *pt;
@@ -1858,7 +1893,7 @@ int fd, head, sect, secsiz;
 		}
 		else {
 			partition_t *pt;
-			off_t *sp;
+			off64_t *sp;
 			int n;
 
 			pt = (partition_t *)cp;
@@ -1878,8 +1913,8 @@ int fd, head, sect, secsiz;
 					continue;
 				}
 
-				siz = (nslice + n + 1) * sizeof(off_t);
-				if (!(tmp = (off_t *)realloc(slice, siz))) {
+				siz = (nslice + n + 1) * sizeof(off64_t);
+				if (!(tmp = (off64_t *)realloc(slice, siz))) {
 					free(buf);
 					free(slice);
 					free(sp);
@@ -1888,8 +1923,8 @@ int fd, head, sect, secsiz;
 				slice = tmp;
 
 				memcpy((char *)&slice[nslice], (char *)&sp[1],
-					n * sizeof(off_t));
-				slice[nslice += n] = (off_t)0;
+					n * sizeof(off64_t));
+				slice[nslice += n] = (off64_t)0;
 				free(sp);
 				continue;
 			}
@@ -1901,28 +1936,28 @@ int fd, head, sect, secsiz;
 			&& pt -> filesys != PT_FAT16XLBA) continue;
 		}
 
-		siz = (nslice + 1 + 1) * sizeof(off_t);
-		if (!(tmp = (off_t *)realloc(slice, siz))) {
+		siz = (nslice + 1 + 1) * sizeof(off64_t);
+		if (!(tmp = (off64_t *)realloc(slice, siz))) {
 			free(buf);
 			free(slice);
 			return(NULL);
 		}
 		slice = tmp;
 		slice[nslice++] = ofs;
-		slice[nslice] = (off_t)0;
+		slice[nslice] = (off64_t)0;
 	}
 	free(buf);
 
 	return(slice);
 }
 
-off_t *readpt(devfile, pc98)
+off64_t *readpt(devfile, pc98)
 char *devfile;
 int pc98;
 {
 # ifdef	DIOCGDINFO
 	struct disklabel dl;
-	off_t *slice;
+	off64_t *slice;
 	int fd, head, sect;
 
 	if ((fd = open(devfile, O_RDONLY | O_BINARY, 0600)) < 0) {
@@ -1943,7 +1978,7 @@ int pc98;
 		sect = dl.d_nsectors;
 	}
 
-	slice = _readpt((off_t)0, fd, head, sect, dl.d_secsize);
+	slice = _readpt((off64_t)0, fd, head, sect, D_SECSIZE(dl));
 
 	close(fd);
 	return(slice);
@@ -1991,6 +2026,7 @@ int drive;
 		if (readbpb(&dev) < 0) return(-1);
 #else
 		cp = NULL;
+		dev.fd = -1;
 		for (i = 0; fdtype[i].name; i++) {
 			if (drv != (int)fdtype[i].drive) continue;
 			if (!cp || strcmp(cp, fdtype[i].name)) {
@@ -2273,10 +2309,10 @@ int c;
 static int sfntranschar(c)
 int c;
 {
-	if (c < ' ' || strchr(NOTINLFN, c)) return(-2);
+	if ((u_char)c < ' ' || strchr(NOTINLFN, c)) return(-2);
 	if (strchr(NOTINALIAS, c)) return(-1);
 	if (strchr(PACKINALIAS, c)) return(0);
-	return(toupper2(c));
+	return(toupper2((u_char)c));
 }
 
 static int cmpdospath(path1, path2, len, part)
@@ -2475,7 +2511,7 @@ time_t clock;
 	u_short d, t;
 	int mt;
 
-	if (clock >= 0) {
+	if (clock != (time_t)-1) {
 		tmp = clock;
 		mt = 0;
 	}
@@ -3739,7 +3775,7 @@ int flags, mode;
 	dosflist[fd]._offset = dd2offset(dd);
 
 	if ((flags & (O_WRONLY | O_RDWR)) && (flags & O_APPEND))
-		doslseek(fd, (off_t)0, L_XTND);
+		doslseek(fd, (off64_t)0, L_XTND);
 
 	if (fd >= maxdosf) maxdosf = fd + 1;
 	return(fd + DOSFDOFFSET);
@@ -3908,9 +3944,9 @@ int nbytes;
 	return(total);
 }
 
-off_t doslseek(fd, offset, whence)
+off64_t doslseek(fd, offset, whence)
 int fd;
-off_t offset;
+off64_t offset;
 int whence;
 {
 	fd -= DOSFDOFFSET;
@@ -4127,7 +4163,8 @@ FILE *stream;
 		return(0);
 	}
 
-	rest = dosflist[fd]._bufsize - (dosflist[fd]._ptr - dosflist[fd]._base);
+	rest = dosflist[fd]._bufsize
+		- (dosflist[fd]._ptr - dosflist[fd]._base);
 	if (rest < dosflist[fd]._cnt) {
 		if (dosflsbuf(fd) < 0) {
 			dosflist[fd]._flag |= O_IOERR;
@@ -4165,7 +4202,8 @@ FILE *stream;
 	total = 0;
 	nbytes = (long)size * (long)nitems;
 
-	rest = dosflist[fd]._bufsize - (dosflist[fd]._ptr - dosflist[fd]._base);
+	rest = dosflist[fd]._bufsize
+		- (dosflist[fd]._ptr - dosflist[fd]._base);
 	while (nbytes >= rest) {
 		memcpy(dosflist[fd]._ptr, buf, rest);
 		buf += rest;
@@ -4205,7 +4243,8 @@ FILE *stream;
 		errno = EINVAL;
 		return(EOF);
 	}
-	rest = dosflist[fd]._bufsize - (dosflist[fd]._ptr - dosflist[fd]._base);
+	rest = dosflist[fd]._bufsize
+		- (dosflist[fd]._ptr - dosflist[fd]._base);
 	if (rest == dosflist[fd]._cnt) return(0);
 	if (dosflsbuf(fd) < 0) {
 		dosflist[fd]._flag |= O_IOERR;

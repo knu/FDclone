@@ -152,7 +152,8 @@ char *args[];
 			else if (**linep == c) c = '\0';
 			else if ((**linep == '\'' || **linep == '"') && !c)
 				c = **linep;
-			else if (!c && strchr(" \t\n!&);<>`|}", **linep)) break;
+			else if (!c && strchr(" \t\n!&);<>`|}", **linep))
+				break;
 			(*linep)++;
 		}
 		c = *linep - cp;
@@ -189,7 +190,8 @@ char *args[];
 	for (cp = 0; buf[cp]; cp++) {
 		if (buf[cp] == '\\' && buf[cp + 1]) cp++;
 		else if (buf[cp] == c) c = '\0';
-		else if ((buf[cp] == '\'' || buf[cp] == '"') && !c) c = buf[cp];
+		else if ((buf[cp] == '\'' || buf[cp] == '"') && !c)
+			c = buf[cp];
 		else if (buf[cp] == '$' && c != '\'') {
 			tmp = cp;
 			if (buf[++cp] == '{') cp++;

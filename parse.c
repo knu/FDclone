@@ -176,10 +176,11 @@ char *argv[];
 	return(_evalpath(cp, NULL, 1, 1));
 }
 
-char *evalcomstr(path, delim)
+char *evalcomstr(path, delim, ispath)
 char *path, *delim;
+int ispath;
 {
-	char *cp, *next, *tmp, *epath;
+	char *cp, *next, *tmp, *epath, buf[MAXPATHLEN + 1];
 	int len;
 
 	epath = next = NULL;
@@ -193,17 +194,18 @@ char *path, *delim;
 		else {
 			next = cp + strlen(cp);
 			tmp = _evalpath(cp, next, 1, 0);
-			if (!epath) {
-				epath = tmp;
-				break;
-			}
 			cp = next;
+		}
+		if (ispath) {
+			realpath2(tmp, buf);
+			free(tmp);
+			tmp = buf;
 		}
 		epath = (char *)realloc2(epath,
 			len + strlen(tmp) + (next - cp) + 1);
 		strcpy(epath + len, tmp);
 		len += strlen(tmp);
-		free(tmp);
+		if (tmp != buf) free(tmp);
 		strncpy(epath + len, cp, next - cp);
 		len += next - cp;
 		epath[len] = '\0';
@@ -258,7 +260,7 @@ VOID adjustpath(VOID_A)
 
 	if (!(cp = (char *)getenv("PATH"))) return;
 
-	path = evalcomstr(cp, ":");
+	path = evalcomstr(cp, ":", 1);
 	if (strpathcmp(path, cp)) {
 		cp = (char *)malloc2(strlen(path) + 5 + 1);
 		strcpy(cp, "PATH=");
@@ -546,7 +548,8 @@ VOID evalenv(VOID_A)
 		histsize[0] = HISTSIZE;
 	if ((histsize[1] = atoi2(getenv2("FD_DIRHIST"))) < 0)
 		histsize[1] = DIRHIST;
-	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0) savehist = SAVEHIST;
+	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0)
+		savehist = SAVEHIST;
 	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
 		minfilename = MINFILENAME;
 #ifndef	_NOTREE
@@ -572,7 +575,7 @@ VOID evalenv(VOID_A)
 #ifndef	_NOROCKRIDGE
 	if (rockridgepath) free(rockridgepath);
 	if (!(rockridgepath = getenv2("FD_RRPATH"))) rockridgepath = RRPATH;
-	rockridgepath = evalcomstr(rockridgepath, ";");
+	rockridgepath = evalcomstr(rockridgepath, ";", 1);
 #endif
 #if	!MSDOS && !defined (_NOKANJICONV)
 	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
@@ -590,7 +593,7 @@ VOID evalenv(VOID_A)
 	if (precedepath) free(precedepath);
 	if (!(precedepath = getenv2("FD_PRECEDEPATH")))
 		precedepath = PRECEDEPATH;
-	precedepath = evalcomstr(precedepath, ";");
+	precedepath = evalcomstr(precedepath, ";", 1);
 #endif
 	if (!(promptstr = getenv2("FD_PROMPT"))) promptstr = PROMPT;
 }

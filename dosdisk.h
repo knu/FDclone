@@ -66,6 +66,9 @@
 || defined (NETBSD) ||	defined (BSDOS) || defined (BOW)\
 || defined (ORG_386BSD)
 #define	HDDMOUNT
+typedef	long long	off64_t;
+#else
+#define	off64_t		off_t
 #endif
 
 typedef struct _bpb_t {
@@ -136,7 +139,7 @@ typedef struct _devinfo {
 	u_short sect;
 	u_short cyl;
 # ifdef	HDDMOUNT
-	off_t offset;
+	off64_t offset;
 # endif
 } devinfo;
 #endif
@@ -148,7 +151,7 @@ typedef struct _devstat {
 	u_short sectsize;	/* ch_sect */
 	u_short fatofs;		/* ch_cyl */
 #ifdef	HDDMOUNT
-	off_t offset;
+	off64_t offset;
 #endif
 	u_long fatsize;
 	u_short dirofs;
@@ -294,7 +297,7 @@ typedef	struct dirent st_dirent;
 #endif
 
 #ifdef	HDDMOUNT
-extern off_t *readpt __P_((char *, int));
+extern off64_t *readpt __P_((char *, int));
 #endif
 extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
@@ -328,7 +331,7 @@ extern int dosopen __P_((char *, int, int));
 extern int dosclose __P_((int));
 extern int dosread __P_((int, char *, int));
 extern int doswrite __P_((int, char *, int));
-extern off_t doslseek __P_((int, off_t, int));
+extern off64_t doslseek __P_((int, off64_t, int));
 extern int dosmkdir __P_((char *, int));
 extern int dosrmdir __P_((char *));
 extern int dosfileno __P_((FILE *));

@@ -104,8 +104,8 @@ static char wordstarkey[] = {
 #endif
 #ifndef	_NOCOMPLETE
 static namelist *selectlist = NULL;
-#endif
 static int tmpfilepos = 0;
+#endif
 static int xpos = 0;
 static int ypos = 0;
 
@@ -719,6 +719,7 @@ int max;
 			memset(&selectlist[i], 0, sizeof(namelist));
 			selectlist[i].name = strdup2(strs);
 			selectlist[i].flags = (F_ISRED | F_ISWRI);
+			selectlist[i].tmpflags = F_STAT;
 			len = strlen3(strs);
 			if (maxlen < len) maxlen = len;
 			while (*strs++);
@@ -1172,7 +1173,9 @@ int plen, max, linemax, def, comline, h;
 #ifndef	_NOEDITMODE
 	Xgetkey(-1);
 #endif
+#ifndef	_NOCOMPLETE
 	tmpfilepos = -1;
+#endif
 	cx = len = strlen(str);
 	if (def >= 0 && def < linemax) {
 		while (def > len) str[len++] = ' ';
@@ -1549,9 +1552,10 @@ char *mes;
 int yesno(CONST char *fmt, ...)
 {
 	va_list args;
-	int len, ch, ret = 1;
+	int len, ch, duperrno, ret = 1;
 	char buf[MAXLINESTR + 1];
 
+	duperrno = errno;
 	subwindow = 1;
 	va_start(args, fmt);
 	vsprintf(buf, fmt, args);
@@ -1564,9 +1568,10 @@ char *fmt;
 va_dcl
 {
 	va_list args;
-	int len, ch, ret = 1;
+	int len, ch, duperrno, ret = 1;
 	char buf[MAXLINESTR + 1];
 
+	duperrno = errno;
 	subwindow = 1;
 	va_start(args);
 	vsprintf(buf, fmt, args);
@@ -1575,9 +1580,10 @@ va_dcl
 int yesno(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 char *fmt;
 {
-	int len, ch, ret = 1;
+	int len, ch, duperrno, ret = 1;
 	char buf[MAXLINESTR + 1];
 
+	duperrno = errno;
 	subwindow = 1;
 	sprintf(buf, fmt, arg1, arg2, arg3, arg4, arg5, arg6);
 # endif	/* NOVSPRINTF */
@@ -1629,6 +1635,7 @@ char *fmt;
 	putterm(l_clear);
 
 	tflush();
+	errno = duperrno;
 	return(ret);
 }
 

@@ -31,7 +31,6 @@ char Error[1024];
 #endif
 
 extern char **environ;
-extern int copypolicy;
 extern char fullpath[];
 extern char *origpath;
 extern char *findpattern;
@@ -65,93 +64,6 @@ static char *lastpath = NULL;
 static char *unixpath = NULL;
 #endif
 
-
-int access2(path, mode)
-char *path;
-int mode;
-{
-	char *cp, *str[4];
-	int val[4];
-#if	MSDOS
-
-	if (Xaccess(path, mode) >= 0) return(0);
-#else	/* !MSDOS */
-	struct stat *statp, status;
-
-# ifndef	_NODOSDRIVE
-	if (dospath2(path)) {
-		if (Xaccess(path, mode) >= 0) return(0);
-		statp = NULL;
-	}
-	else
-# endif
-	{
-		char *name, dir[MAXPATHLEN + 1];
-
-		if (lstat(path, &status) < 0) {
-			warning(-1, path);
-			return(-1);
-		}
-		if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
-
-		if ((name = strrdelim(path, 0))) {
-			if (name == path) strcpy(dir, _SS_);
-			else strncpy2(dir, path, name - path);
-			name++;
-		}
-		else {
-			strcpy(dir, ".");
-			name = path;
-		}
-
-		if (lstat(dir, &status) < 0) {
-			warning(-1, dir);
-			return(-1);
-		}
-		statp = &status;
-		if (access(path, mode) >= 0) return(0);
-	}
-#endif	/* !MSDOS */
-	if (errno == ENOENT) return(0);
-	if (errno != EACCES) {
-		warning(-1, path);
-		return(-1);
-	}
-#if	!MSDOS
-	if (statp && statp -> st_uid != geteuid()) return(-1);
-#endif
-	if (copypolicy > 0) return(copypolicy - 2);
-	locate(0, LCMDLINE);
-	putterm(l_clear);
-	putch2('[');
-	cp = DELPM_K;
-	kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
-	kanjiputs(cp);
-	str[0] = ANYES_K;
-	str[1] = ANNO_K;
-	str[2] = ANALL_K;
-	str[3] = ANKEP_K;
-	val[0] = 0;
-	val[1] = -1;
-	val[2] = 2;
-	val[3] = 1;
-	if (selectstr(&copypolicy, 4, 0, str, val) == ESC) copypolicy = 2;
-	return((copypolicy > 0) ? copypolicy - 2 : copypolicy);
-}
-
-int unlink2(path)
-char *path;
-{
-	if (access2(path, W_OK) < 0) return(1);
-	return(Xunlink(path));
-}
-
-int rmdir2(path)
-char *path;
-{
-	if (access2(path, R_OK | W_OK | X_OK) < 0) return(1);
-	return(Xrmdir(path));
-}
 
 int rename2(from, to)
 char *from, *to;
@@ -218,7 +130,28 @@ char *path, *resolved;
 		}
 #endif	/* !MSDOS */
 	}
-	else strcpy(strcatdelim(resolved), path);
+	else {
+		cp = strcatdelim(resolved);
+		strcpy(cp, path);
+#if	!MSDOS
+		if (!_dospath(resolved)) {
+			struct stat status;
+			char buf[MAXPATHLEN + 1];
+			int i;
+
+			if (lstat(resolved, &status) >= 0
+			&& (status.st_mode & S_IFMT) == S_IFLNK
+			&& (i = readlink(resolved, buf, MAXPATHLEN)) >= 0) {
+				buf[i] = '\0';
+				if (*buf == _SC_) strcpy(resolved, buf);
+				else {
+					*cp = '\0';
+					_realpath2(buf, resolved);
+				}
+			}
+		}
+#endif
+	}
 	return(resolved);
 }
 
@@ -793,7 +726,7 @@ uid_t uid;
 #ifdef	DEBUG
 		_mtrace_file = "getpwuid2(1)";
 #endif
-		uidlist = (strtable *)b_realloc(uidlist, maxuid, strtable);
+		uidlist = b_realloc(uidlist, maxuid, strtable);
 		uidlist[maxuid].no = pwd -> pw_uid;
 #ifdef	DEBUG
 		_mtrace_file = "getpwuid2(2)";
@@ -822,7 +755,7 @@ gid_t gid;
 #ifdef	DEBUG
 		_mtrace_file = "getgrgid2(1)";
 #endif
-		gidlist = (strtable *)b_realloc(gidlist, maxgid, strtable);
+		gidlist = b_realloc(gidlist, maxgid, strtable);
 		gidlist[maxgid].no = grp -> gr_gid;
 #ifdef	DEBUG
 		_mtrace_file = "getgrgid2(2)";

@@ -223,7 +223,8 @@ typedef	long	off_t;
 #define	SIGARGINT
 #endif
 
-#if	(defined (__alpha) || defined (alpha)) && !defined (linux)
+#if	(defined (__alpha) || defined (alpha)) \
+&& !defined (linux) && !defined (__FreeBSD__) && !defined (__NetBSD__)
 #define	CODEEUC
 #define	TARUSESPACE
 #define	EXTENDLIB	"-lc_r"
@@ -367,6 +368,7 @@ typedef	long	off_t;
 #define	OSTYPE			"LINUX"
 #define	CODEEUC
 #define	USEMANLANG
+#define	BSDINSTALL
 #define	TERMCAPLIB		"-ltermcap"
 #define	DECLERRLIST
 #define	NOTZFILEH
@@ -406,7 +408,11 @@ typedef	long	off_t;
 #define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
+# if	__FreeBSD__ < 3
 #define	USEVFCNAME
+# else
+#define USEFFSTYPE
+# endif
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
@@ -417,10 +423,12 @@ typedef	long	off_t;
 #define	BSD43
 #define	OSTYPE			"NETBSD"
 #define	CODEEUC
+#define	BSDINSTALL
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	USELEAPCNT
+#define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEFFSTYPE

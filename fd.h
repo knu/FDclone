@@ -110,6 +110,9 @@ extern char *_mtrace_file;
 #define	LSIZE		1
 #define	LSTATUS		(sizeinfo + 1)
 #define	LPATH		(sizeinfo + 2)
+#define	LFILETOP	(WHEADER)
+#define	LFILEBOTTOM	(LFILETOP + FILEPERLOW)
+#define	WFILEMIN	2
 #define	LSTACK		(n_line - 3)
 #define	LHELP		(n_line - 2)
 #define	LINFO		(n_line - 1)
@@ -134,6 +137,12 @@ extern char *_mtrace_file;
 #define	WMODE		10
 #define	WOWNER		8
 #define	WGROUP		8
+#endif
+
+#ifdef	HAVEFLAGS
+#define	WMODELINE	2
+#else
+#define	WMODELINE	1
 #endif
 
 #ifdef	UNKNOWNFS

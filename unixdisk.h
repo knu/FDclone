@@ -303,7 +303,7 @@ extern char *shortname __P_((char *, char *));
 #endif
 extern char *unixrealpath __P_((char *, char *));
 #ifndef	_NOUSELFN
-extern char *preparefile __P_((char *, char *, int));
+extern char *preparefile __P_((char *, char *));
 # ifdef	DJGPP
 extern char *adjustfname __P_((char *));
 # endif
@@ -342,4 +342,6 @@ extern int unixutime __P_((char *, struct utimbuf *));
 # else
 extern int unixutimes __P_((char *, struct timeval []));
 # endif
+extern int unixopen __P_((char *, int, int));
+extern FILE *unixfopen __P_((char *, char *));
 #endif	/* !_NOUSELFN */

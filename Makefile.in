@@ -242,8 +242,8 @@ main__OBJ__: fd.h
 main__OBJ__: machine.h config.h
 main__OBJ__: types.h pathname.h term.h
 main__OBJ__: func.h
-main__OBJ__: kctype.h
-main__OBJ__: funcno.h kanji.h version.h dosdisk.h
+main__OBJ__: kanji.h version.h
+main__OBJ__: dosdisk.h
 term__OBJ__: machine.h config.h
 term__OBJ__: term.h
 pathname__OBJ__: machine.h config.h
@@ -262,7 +262,7 @@ shell__OBJ__: fd.h
 shell__OBJ__: machine.h config.h
 shell__OBJ__: types.h pathname.h term.h func.h
 shell__OBJ__: kctype.h
-shell__OBJ__: funcno.h kanji.h
+shell__OBJ__: kanji.h
 info__OBJ__: fd.h
 info__OBJ__: machine.h config.h
 info__OBJ__: types.h pathname.h term.h funcno.h kanji.h
@@ -274,7 +274,8 @@ dosemu__OBJ__: types.h pathname.h func.h
 dosemu__OBJ__: kctype.h
 dosemu__OBJ__: dosdisk.h
 unixdisk__OBJ__: machine.h config.h unixdisk.h
-unixdisk__OBJ__: unixemu.h dosdisk.h
+unixdisk__OBJ__: unixemu.h
+unixdisk__OBJ__: dosdisk.h
 unixemu__OBJ__: fd.h
 unixemu__OBJ__: machine.h config.h
 unixemu__OBJ__: types.h pathname.h func.h
@@ -315,9 +316,8 @@ tree__OBJ__: machine.h config.h
 tree__OBJ__: types.h pathname.h term.h func.h
 tree__OBJ__: kanji.h
 command__OBJ__: fd.h
-command__OBJ__: machine.h
-command__OBJ__: config.h types.h
-command__OBJ__: pathname.h term.h func.h
+command__OBJ__: machine.h config.h
+command__OBJ__: types.h pathname.h term.h func.h
 command__OBJ__: funcno.h kanji.h
 command__OBJ__: functabl.h
 browse__OBJ__: fd.h

@@ -227,7 +227,8 @@ static VOID stackbar(VOID_A)
 		if (!isread(&filestack[i])) color = ANSI_BLUE;
 		else if (!iswrite(&filestack[i])) color = ANSI_GREEN;
 		else {
-			for (j = 0; j < sizeof(modelist) / sizeof(u_short); j++)
+			for (j = 0;
+			j < sizeof(modelist) / sizeof(u_short); j++)
 				if ((filestack[i].st_mode & S_IFMT)
 				== modelist[j]) break;
 			if (j < sizeof(modelist) / sizeof(u_short))
@@ -351,7 +352,8 @@ uid_t uid;
 	int i;
 
 	i = WOWNER;
-	if ((str = getpwuid2(uid))) strncpy3(buf, str, &i, 0);
+	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
+	else if ((str = getpwuid2(uid))) strncpy3(buf, str, &i, 0);
 	else sprintf(buf, "%-*u", WOWNER, uid);
 
 	return(buf);
@@ -365,7 +367,8 @@ gid_t gid;
 	int i;
 
 	i = WGROUP;
-	if ((str = getgrgid2(gid))) strncpy3(buf, str, &i, 0);
+	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
+	else if ((str = getgrgid2(gid))) strncpy3(buf, str, &i, 0);
 	else sprintf(buf, "%-*u", WGROUP, gid);
 
 	return(buf);
@@ -406,7 +409,7 @@ int no;
 #endif
 
 	buf = (char *)malloc2(n_lastcolumn * 2 + 1);
-	tm = localtime(&list[no].st_mtim);
+	tm = localtime(&(list[no].st_mtim));
 
 #ifdef	HAVEFLAGS
 	if (isfileflg(dispmode)) {
@@ -486,12 +489,12 @@ int i;
 #ifndef	_NOCOLOR
 	if (ansicolor == 2) {
 		chgcolor(ANSI_BLACK, 1);
-		locate(x, y + WHEADER);
+		locate(x, y + LFILETOP);
 		putch2(' ');
 	}
 	else
 #endif
-	locate(x + 1, y + WHEADER);
+	locate(x + 1, y + LFILETOP);
 }
 
 #if	MSDOS
@@ -615,7 +618,7 @@ int no, standout;
 		len += WIDTH2;
 	}
 	if (columns < 2 && len + WIDTH1 <= width) {
-		if (!tm) tm = localtime(&list[no].st_mtim);
+		if (!tm) tm = localtime(&(list[no].st_mtim));
 		sprintf(buf + len, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
@@ -632,7 +635,8 @@ int no, standout;
 			putflags(buf + len, list[no].st_flags);
 		else
 #endif
-		putmode(buf + len, (!isdisplnk(dispmode) && islink(&list[no])) ?
+		putmode(buf + len,
+			(!isdisplnk(dispmode) && islink(&list[no])) ?
 			(S_IFLNK | 0777) : list[no].st_mode);
 	}
 
@@ -664,13 +668,13 @@ char *def;
 	int i, count, start, ret;
 
 	for (i = 0; i < FILEPERLOW; i++) {
-		locate(0, i + WHEADER);
+		locate(0, i + LFILETOP);
 		putterm(l_clear);
 	}
 
 	if (max <= 0) {
 		i = (n_column / columns) - 2 - 1;
-		locate(1, WHEADER);
+		locate(1, LFILETOP);
 		putterm(t_standout);
 		cp = NOFIL_K;
 		if (i > strlen(cp)) kanjiputs2(cp, i, 0);
@@ -833,12 +837,13 @@ static VOID readstatus(VOID_A)
 	off_t size;
 	int i;
 
-	for (i = maxstat; i < maxfile; i++) if (!havestat(&filelist[i])) break;
+	for (i = maxstat; i < maxfile; i++)
+		if (!havestat(&(filelist[i]))) break;
 	if (i >= maxfile) return;
 	maxstat = i + 1;
 	if (getstatus(&(filelist[i])) < 0) return;
 	if (keywaitfunc != readstatus) return;
-	if (isfile(&filelist[i]) && filelist[i].st_size) sizebar();
+	if (isfile(&(filelist[i])) && filelist[i].st_size) sizebar();
 	if (i == filepos) {
 		putname(filelist, i, 1);
 		infobar(filelist, i);
@@ -911,7 +916,7 @@ char *file, *def;
 		if (!haste)
 #endif
 		{
-			if (getstatus(&filelist[maxfile]) < 0) {
+			if (getstatus(&(filelist[maxfile])) < 0) {
 				free(filelist[maxfile].name);
 				continue;
 			}
@@ -978,7 +983,8 @@ char *file, *def;
 		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
-		no = (bindlist[i].d_func < 255 && isdir(&filelist[filepos])) ?
+		no = (bindlist[i].d_func < 255
+		&& isdir(&(filelist[filepos]))) ?
 			(int)(bindlist[i].d_func) : (int)(bindlist[i].f_func);
 		fstat = (no <= NO_OPERATION) ? funclist[no].stat
 			: (KILLSTK | RELIST);
@@ -988,11 +994,12 @@ char *file, *def;
 				chgorder = 0;
 				if (!yesno(KILOK_K)) continue;
 				for (i = maxfile - 1; i > filepos; i--)
-					memcpy(&filelist[i + stackdepth],
-						&filelist[i], sizeof(namelist));
+					memcpy(&(filelist[i + stackdepth]),
+						&(filelist[i]),
+						sizeof(namelist));
 				for (i = 0; i < stackdepth; i++)
-					memcpy(&filelist[i + filepos + 1],
-						&filestack[i],
+					memcpy(&(filelist[i + filepos + 1]),
+						&(filestack[i]),
 						sizeof(namelist));
 				maxfile += stackdepth;
 				stackdepth = 0;
@@ -1033,7 +1040,7 @@ char *file, *def;
 			break;
 		}
 
-		if (!(fstat & REWRITE)) fnameofs = 0;
+		if (!(fstat & REWRITE) || old != filepos) fnameofs = 0;
 		if ((fstat & RELIST) == RELIST) {
 			title();
 			pathbar();

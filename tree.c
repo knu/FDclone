@@ -37,7 +37,7 @@ extern int sizeinfo;
 #define	TREEFIELD	(((dircountlimit > 0) ? (n_column * 3) / 5 : n_column)\
 			- 2)
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
-#define	bufptr(buf, y)	(&buf[(y - WHEADER - 1) * (TREEFIELD + 1)])
+#define	bufptr(buf, y)	(&buf[(y - LFILETOP - 1) * (TREEFIELD + 1)])
 
 static int evaldir __P_((char *, int));
 static treelist *maketree __P_((char *, treelist *, int, int *));
@@ -80,7 +80,7 @@ int disp;
 
 	if ((limit = dircountlimit) <= 0) return(1);
 
-	if (disp) for (i = WHEADER + 1; i < n_line - WFOOTER; i++) {
+	if (disp) for (i = LFILETOP + 1; i < LFILEBOTTOM; i++) {
 		locate(TREEFIELD + 2, i);
 		putch2('|');
 		putterm(l_clear);
@@ -95,7 +95,7 @@ int disp;
 #endif
 	len = strlen(path);
 	i = x = 0;
-	y = WHEADER + 1;
+	y = LFILETOP + 1;
 	w = FILEFIELD / 2;
 	if (!(dirp = Xopendir(dir))) return(0);
 	while ((dp = Xreaddir(dirp))) {
@@ -113,15 +113,15 @@ int disp;
 			locate(x + TREEFIELD + 4, y);
 			kanjiputs2(dp -> d_name, w, 0);
 			i++;
-			if (++y >= n_line - WFOOTER) {
-				y = WHEADER + 1;
+			if (++y >= LFILEBOTTOM) {
+				y = LFILETOP + 1;
 				x += w + 1;
 				if (x >= w * 2 + 2) break;
 			}
 		}
 	}
 	if (disp && !i) {
-		locate(x + TREEFIELD + 4, WHEADER + 1);
+		locate(x + TREEFIELD + 4, LFILETOP + 1);
 		kanjiputs2("[No Files]", w, 0);
 	}
 	Xclosedir(dirp);
@@ -184,7 +184,7 @@ int level, *maxp;
 		if (isdotdir(dp -> d_name)
 		|| Xstat(dp -> d_name, &status) < 0
 		|| (status.st_mode & S_IFMT) != S_IFDIR) continue;
-		list = (treelist *)b_realloc(list, *maxp, treelist);
+		list = b_realloc(list, *maxp, treelist);
 		if (!subdir) {
 			list[*maxp].name = strdup2(dp -> d_name);
 			list[*maxp].sub = NULL;
@@ -245,10 +245,11 @@ int max, nest, y;
 	for (i = 0; i < max; i++) {
 		if (nest > 0) {
 			for (j = tmp; j < y; j++)
-			if (j > WHEADER && j < n_line - WFOOTER)
-				*(bufptr(buf, j) + (nest - 1) * DIRFIELD) = '|';
+			if (j > LFILETOP && j < LFILEBOTTOM)
+				*(bufptr(buf, j) + (nest - 1) * DIRFIELD)
+					= '|';
 		}
-		if (y > WHEADER && y < n_line - WFOOTER) {
+		if (y > LFILETOP && y < LFILEBOTTOM) {
 			cp = bufptr(buf, y);
 			if (nest > 0)
 				memcpy(&cp[(nest - 1) * DIRFIELD], "+--", 3);
@@ -281,14 +282,14 @@ int max, nest;
 {
 	int i;
 
-	for (i = WHEADER; i <= n_line - WFOOTER; i++) {
+	for (i = LFILETOP; i <= LFILEBOTTOM; i++) {
 		locate(0, i);
 		putterm(l_clear);
 	}
-	for (i = WHEADER + 1; i < n_line - WFOOTER; i++)
+	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++)
 		sprintf(bufptr(buf, i), "%-*.*s", TREEFIELD, TREEFIELD, " ");
 	_showtree(buf, list, max, nest, tr_top);
-	for (i = WHEADER + 1; i < n_line - WFOOTER; i++) {
+	for (i = LFILETOP + 1; i < LFILEBOTTOM; i++) {
 		locate(1, i);
 		if (i == tr_line) putterm(t_standout);
 		kanjiputs2(bufptr(buf, i), TREEFIELD, 0);
@@ -451,8 +452,8 @@ treelist *list;
 {
 	treelist *lp;
 
-	if (tr_line > WHEADER + 1) tr_line--;
-	else if (tr_top <= WHEADER) tr_top++;
+	if (tr_line > LFILETOP + 1) tr_line--;
+	else if (tr_top <= LFILETOP) tr_top++;
 	else return(NULL);
 	lp = searchtree(path, list, 1, 0);
 	return(lp);
@@ -467,9 +468,9 @@ treelist *list;
 
 	oy = tr_line;
 	otop = tr_top;
-	if (tr_line < tr_bottom - 1 && tr_line < n_line - WFOOTER - 2)
+	if (tr_line < tr_bottom - 1 && tr_line < LFILEBOTTOM - 2)
 		tr_line++;
-	else if (tr_bottom >= n_line - WFOOTER) tr_top--;
+	else if (tr_bottom >= LFILEBOTTOM) tr_top--;
 	else return(NULL);
 	lp = searchtree(path, list, 1, 0);
 	lptmp = checkmisc(list, lp, path);
@@ -547,32 +548,32 @@ treelist *list, **lpp;
 			if (lptmp) *lpp = lptmp;
 			break;
 		case K_PPAGE:
-			half = (n_line - WHEADER - WFOOTER - 1) / 2;
-			tr_line = WHEADER + half + 1;
-			if (tr_top + half > WHEADER + 1)
-				half = WHEADER - tr_top + 1;
+			half = (FILEPERLOW - 1) / 2;
+			tr_line = LFILETOP + half + 1;
+			if (tr_top + half > LFILETOP + 1)
+				half = LFILETOP - tr_top + 1;
 			if (half > 0) tr_top += half;
 			*lpp = searchtree(path, list, 1, 0);
 			break;
 		case K_NPAGE:
-			half = (n_line - WHEADER - WFOOTER - 1) / 2;
-			tmp = half + (WHEADER + half + 1) - tr_line;
+			half = (FILEPERLOW - 1) / 2;
+			tmp = half + (LFILETOP + half + 1) - tr_line;
 			while (tmp-- > 0) {
 				lptmp = treedown(path, list);
 				if (lptmp) *lpp = lptmp;
 				else break;
 			}
-			tmp = tr_line - (WHEADER + half + 1);
-			tr_line = WHEADER + half + 1;
-			if (tr_bottom - tmp < n_line - WFOOTER - 1)
-				tmp = tr_bottom - n_line + WFOOTER + 1;
+			tmp = tr_line - (LFILETOP + half + 1);
+			tr_line = LFILETOP + half + 1;
+			if (tr_bottom - tmp < LFILEBOTTOM - 1)
+				tmp = tr_bottom - LFILEBOTTOM + 1;
 			tr_top -= tmp;
 			*lpp = searchtree(path, list, 1, 0);
 			break;
 		case K_BEG:
 		case K_HOME:
 		case '<':
-			tr_line = tr_top = WHEADER + 1;
+			tr_line = tr_top = LFILETOP + 1;
 			*lpp = searchtree(path, list, 1, 0);
 			break;
 		case K_EOL:
@@ -654,8 +655,8 @@ treelist *list, **lpp;
 			free(cwd);
 			break;
 		case CTRL('L'):
-			*cpp = (char *)realloc2(*cpp, (n_line - WHEADER
-				- WFOOTER - 1) * (TREEFIELD + 1));
+			*cpp = (char *)realloc2(*cpp,
+				(FILEPERLOW - 1) * (TREEFIELD + 1));
 			*lpp = searchtree(path, list, 1, 0);
 			redraw = 1;
 			break;
@@ -664,7 +665,7 @@ treelist *list, **lpp;
 		default:
 			if (ch < 'A' || ch > 'Z') break;
 			if (tr_line == tr_bottom - 1) {
-				tr_line = tr_top = WHEADER + 1;
+				tr_line = tr_top = LFILETOP + 1;
 				*lpp = searchtree(path, list, 1, 0);
 			}
 			else do {
@@ -719,18 +720,17 @@ static char *_tree(VOID_A)
 	if (strcmp(cwd, _SS_))
 		for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
 			if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD) break;
-	tr_line += (tr_top = WHEADER + 1);
-	if (tr_line >= n_line - WFOOTER - 2) {
-		tr_top += n_line - WFOOTER - 2 - tr_line;
-		tr_line = n_line - WFOOTER - 2;
+	tr_line += (tr_top = LFILETOP + 1);
+	if (tr_line >= LFILEBOTTOM - 2) {
+		tr_top += LFILEBOTTOM - 2 - tr_line;
+		tr_line = LFILEBOTTOM - 2;
 	}
 
-	cp = (char *)malloc2((n_line - WHEADER - WFOOTER - 1)
-		* (TREEFIELD + 1));
+	cp = (char *)malloc2((FILEPERLOW - 1) * (TREEFIELD + 1));
 	lp = searchtree(path, list, 1, 0);
 	showtree(path, cp, list, 1, 0);
 	do {
-		locate(1, WHEADER);
+		locate(1, LFILETOP);
 		cputs2("Tree=");
 		kanjiputs2(path, n_column - 6, 0);
 		locate(0, LMESLINE);

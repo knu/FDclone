@@ -37,8 +37,9 @@ extern int sorton;
 extern off_t marksize;
 extern off_t totalsize;
 extern off_t blocksize;
-extern char *destpath;
 extern int copypolicy;
+extern int removepolicy;
+extern char *destpath;
 extern char fullpath[];
 extern char *tmpfilename;
 
@@ -149,7 +150,8 @@ namelist *list;
 	|| (lstatus.st_mode & S_IFMT) == S_IFBLK) list -> flags |= F_ISDEV;
 #endif
 
-	if (isdisplnk(dispmode)) memcpy(&lstatus, &status, sizeof(struct stat));
+	if (isdisplnk(dispmode))
+		memcpy(&lstatus, &status, sizeof(struct stat));
 
 	list -> st_nlink = lstatus.st_nlink;
 #if	!MSDOS
@@ -578,7 +580,7 @@ int tr;
 	getdestdir(MOVED_K, arg);
 
 	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
-	copypolicy = 0;
+	copypolicy = removepolicy = 0;
 	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
 	else if (islowerdir(destpath, list[filepos].name))
 		warning(EINVAL, list[filepos].name);
@@ -661,14 +663,24 @@ char *dir, *subdir, *file;
 		*dir = '\0';
 		subdir = file = NULL;
 	}
-	if (subdir && *subdir == _SC_) subdir++;
-	if (subdir && *subdir && _chdir2(subdir) < 0) {
-		warning(-1, subdir);
-		subdir = file = NULL;
+	if (subdir) {
+		while (*subdir == _SC_) subdir++;
+		if (*subdir && _chdir2(subdir) < 0) {
+			warning(-1, subdir);
+			subdir = file = NULL;
+		}
 	}
-	if (file && Xunlink(file) < 0) {
-		warning(-1, file);
-		subdir = NULL;
+	if (file) {
+		if (*file) {
+			if (Xunlink(file) < 0) {
+				warning(-1, file);
+				subdir = NULL;
+			}
+		}
+		else if (applydir(".", Xunlink, NULL, 0, NULL) < 0) {
+			warning(-1, dir);
+			subdir = NULL;
+		}
 	}
 	if (subdir && *subdir) {
 		if (_chdir2(dir) < 0) error(dir);
@@ -688,8 +700,10 @@ char *dir, *subdir, *file;
 	if (_chdir2(deftmpdir) < 0) error(deftmpdir);
 #endif
 	if (_chdir2(fullpath) < 0) error(fullpath);
-	if (rmtmpdir(dir) < 0) warning(-1, dir);
-	if (dir) free(dir);
+	if (dir) {
+		if (rmtmpdir(dir) < 0) warning(-1, dir);
+		free(dir);
+	}
 }
 
 int forcecleandir(dir, file)
@@ -725,12 +739,13 @@ char *dir, *file;
 }
 
 #ifndef	_NODOSDRIVE
-int tmpdosdupl(dir, dirp, file, mode)
-char *dir, **dirp, *file;
-int mode;
+int tmpdosdupl(dir, dirp, list, max, single)
+char *dir, **dirp;
+namelist *list;
+int max, single;
 {
 	char *cp, path[MAXPATHLEN + 1];
-	int drive;
+	int i, drive;
 
 	if (!(drive = dospath2(dir))) return(0);
 	sprintf(path, "D%c", drive);
@@ -739,11 +754,24 @@ int mode;
 		return(-1);
 	}
 
-	strcpy((cp = strcatdelim(path)), file);
+	cp = strcatdelim(path);
 	waitmes();
-	if (_cpfile(file, path, mode) < 0) {
-		removetmp(path, NULL, NULL);
-		return(-1);
+
+	if (single || mark <= 0) {
+		strcpy(cp, list[filepos].name);
+		if (_cpfile(list[filepos].name, path,
+		list[filepos].st_mode) < 0) {
+			removetmp(path, NULL, NULL);
+			return(-1);
+		}
+	}
+	else for (i = 0; i < max; i++) {
+		if (!ismark(&list[i])) continue;
+		strcpy(cp, list[i].name);
+		if (_cpfile(list[i].name, path, list[i].st_mode) < 0) {
+			removetmp(path, NULL, "");
+			return(-1);
+		}
 	}
 
 	*(--cp) = '\0';
@@ -1026,7 +1054,7 @@ int max, fs;
 				break;
 		}
 		if (ent < realdirsiz(list[i].name)) {
-			tmpfile = (char **)b_realloc(tmpfile, tmpno, char *);
+			tmpfile = b_realloc(tmpfile, tmpno, char *);
 			tmpfile[tmpno] =
 				maketmpfile(getnamlen(ent), dos, tmpdir);
 			if (tmpfile[tmpno]) touch(tmpfile[tmpno]);

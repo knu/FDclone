@@ -231,7 +231,7 @@ int mode;
 	if (checkpath(path, buf)) return(dosaccess(buf, mode));
 	else
 # endif
-	if (!(path = preparefile(path, buf, 0))) return(-1);
+	if (!(path = preparefile(path, buf))) return(-1);
 #else
 	;
 #endif
@@ -358,8 +358,8 @@ int flags, mode;
 	if (checkpath(path, buf)) return(dosopen(buf, flags, mode));
 	else
 # endif
-	if (!(path = preparefile(path, buf, (flags & O_CREAT) ? 1 : 0)))
-		return(-1);
+	if (flags & O_CREAT) return(unixopen(path, flags, mode));
+	else if (!(path = preparefile(path, buf))) return(-1);
 #else
 	;
 #endif
@@ -448,8 +448,8 @@ char *path, *type;
 # ifndef	_NODOSDRIVE
 	if (checkpath(path, buf)) return(dosfopen(buf, type));
 # endif
-	if (!(path = preparefile(path, buf, (strchr(type, 'w')) ? 1 : 0)))
-		return(NULL);
+	if (strchr(type, 'w')) return(unixfopen(buf, type));
+	else if (!(path = preparefile(path, buf))) return(NULL);
 	return(fopen(path, type));
 }
 #endif	/* !_NOUSELFN */
@@ -550,11 +550,12 @@ char *command, *type;
 
 	strcpy(path, PIPEDIR);
 	if (mktmpdir(path) < 0) return(NULL);
-	strcpy(strcatdelim(path), PIPEFILE);
 #ifndef	_NOUSELFN
-	if (!(tmp = preparefile(path, buf, 0))) return(NULL);
+	if (!(tmp = preparefile(path, buf))) return(NULL);
 	else if (tmp != path) strcpy(path, tmp);
 #endif
+	strcpy(strcatdelim(path), PIPEFILE);
+
 	sprintf(cmdline, "%s > %s", command, path);
 	system(cmdline);
 	return(fopen(path, type));
@@ -563,9 +564,6 @@ char *command, *type;
 int Xpclose(fp)
 FILE *fp;
 {
-#ifndef	_NOUSELFN
-	char *tmp, buf[MAXPATHLEN + 1];
-#endif
 	char *cp, path[MAXPATHLEN + 1];
 	int no;
 
@@ -575,10 +573,6 @@ FILE *fp;
 	strcpy(strcatdelim(path), tmpfilename);
 	strcpy(strcatdelim(path), PIPEDIR);
 	strcpy((cp = strcatdelim(path)), PIPEFILE);
-#ifndef	_NOUSELFN
-	if (!(tmp = preparefile(path, buf, 0))) no = errno;
-	else if (tmp != path) strcpy(path, tmp);
-#endif
 
 	if (unixunlink(path) != 0) no = errno;
 	*(--cp) = '\0';

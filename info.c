@@ -321,11 +321,9 @@ int code;
 static int checkline(y)
 int y;
 {
-	if (y >= LSTACK) {
-		locate(0, y);
-		putterm(l_clear);
+	if (y >= LFILEBOTTOM) {
 		warning(0, HITKY_K);
-		y = WHEADER + 1;
+		y = LFILETOP + 1;
 	}
 	return(y);
 }
@@ -347,7 +345,7 @@ int mode;
 	}
 
 	x = 0;
-	y = WHEADER;
+	y = LFILETOP;
 	locate(0, y++);
 	putterm(l_clear);
 
@@ -381,9 +379,9 @@ int mode;
 
 		y = checkline(y);
 	}
-	if (y > WHEADER + 1) {
+	if (y > LFILETOP + 1) {
 		if (x) y++;
-		for (; y <= LSTACK; y++) {
+		for (; y < LFILEBOTTOM; y++) {
 			locate(0, y);
 			putterm(l_clear);
 		}
@@ -927,7 +925,7 @@ char *path;
 #endif
 		return(0);
 	}
-	y = WHEADER;
+	y = LFILETOP;
 	locate(0, y++);
 	putterm(l_clear);
 
@@ -950,8 +948,8 @@ char *path;
 #endif
 	y = info1line(y, FSBSZ_K, fsbuf.f_bsize, NULL, "bytes");
 	y = info1line(y, FSINO_K, fsbuf.f_files, NULL, UNIT_K);
-	if (y > WHEADER + 1) {
-		for (; y <= LSTACK; y++) {
+	if (y > LFILETOP + 1) {
+		for (; y < LFILEBOTTOM; y++) {
 			locate(0, y);
 			putterm(l_clear);
 		}

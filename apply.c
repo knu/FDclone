@@ -31,11 +31,21 @@ extern int sizeinfo;
 extern u_long flaglist[];
 #endif
 
-static long judgecopy __P_((char *, char *, time_t *, time_t *));
+#ifndef	EISDIR
+#define	EISDIR	EACCES
+#endif
+#ifndef	O_BINARY
+#define	O_BINARY	0
+#endif
+
+static int judgecopy __P_((char *, char *, struct stat *));
+static int judgeremove __P_((char *, int));
 static VOID showattr __P_((namelist *, attr_t *, int y));
 static int touchfile __P_((char *, time_t, time_t));
+static char **getdirtree __P_((char *, char **, int *, int));
 
 int copypolicy = 0;
+int removepolicy = 0;
 char *destpath = NULL;
 
 static u_short attrmode = 0;
@@ -44,14 +54,10 @@ static u_long attrflags = 0;
 #endif
 static time_t attrtime = 0;
 
-#ifndef	O_BINARY
-#define	O_BINARY	0
-#endif
 
-
-static long judgecopy(file, dest, atimep, mtimep)
+static int judgecopy(file, dest, statp)
 char *file, *dest;
-time_t *atimep, *mtimep;
+struct stat *statp;
 {
 	struct stat status1, status2;
 	char *cp, *tmp, *str[4];
@@ -61,14 +67,17 @@ time_t *atimep, *mtimep;
 	strcpy(strcatdelim(dest), file);
 	if (Xlstat(file, &status1) < 0) {
 		warning(-1, file);
-		return(-1L);
+		return(-1);
 	}
-	if (atimep) *atimep = status1.st_atime;
-	if (mtimep) *mtimep = status1.st_mtime;
+	memcpy((char *)statp, (char *)&status1, sizeof(struct stat));
 	if (Xlstat(dest, &status2) < 0) {
-		if (errno == ENOENT) return((u_short)(status1.st_mode));
+		if (errno == ENOENT) return(0);
 		warning(-1, dest);
-		return(-1L);
+		return(-1);
+	}
+	if ((status2.st_mode & S_IFMT) == S_IFDIR) {
+		warning(EISDIR, dest);
+		return(-1);
 	}
 
 	if (!copypolicy || copypolicy == 2) {
@@ -94,31 +103,105 @@ time_t *atimep, *mtimep;
 	}
 	switch (copypolicy) {
 		case 1:
-			if (status1.st_mtime < status2.st_mtime) return(-1L);
+			if (status1.st_mtime < status2.st_mtime) return(-1);
 			break;
 		case 2:
 			if ((cp = strrdelim(dest, 1))) cp++;
 			else cp = dest;
-			do {
+			for (;;) {
 				if (!(tmp = inputstr(NEWNM_K, 1,
-					-1, NULL, -1))) return(-1L);
+					-1, NULL, -1))) return(-1);
 				strcpy(cp, tmp);
 				free(tmp);
-			} while (Xlstat(dest, &status2) >= 0
-			&& (putterm(t_bell), 1));
-			if (errno != ENOENT) {
-				warning(-1, dest);
-				return(-1L);
+				if (Xlstat(dest, &status2) < 0) {
+					if (errno == ENOENT) break;
+					warning(-1, dest);
+					return(-1);
+				}
+				putterm(t_bell);
 			}
 			break;
 		case 3:
 			break;
 		default:
-			return(-1L);
+			return(-1);
 /*NOTREACHED*/
 			break;
 	}
-	return((u_short)(status1.st_mode));
+	return(0);
+}
+
+static int judgeremove(path, mode)
+char *path;
+int mode;
+{
+	char *cp, *str[4];
+	int val[4];
+#if	MSDOS
+
+	if (Xaccess(path, mode) >= 0) return(0);
+#else	/* !MSDOS */
+	struct stat *statp, status;
+
+# ifndef	_NODOSDRIVE
+	if (dospath2(path)) {
+		if (Xaccess(path, mode) >= 0) return(0);
+		statp = NULL;
+	}
+	else
+# endif
+	{
+		char *name, dir[MAXPATHLEN + 1];
+
+		if (lstat(path, &status) < 0) {
+			warning(-1, path);
+			return(-1);
+		}
+		if ((status.st_mode & S_IFMT) == S_IFLNK) return(0);
+
+		if ((name = strrdelim(path, 0))) {
+			if (name == path) strcpy(dir, _SS_);
+			else strncpy2(dir, path, name - path);
+			name++;
+		}
+		else {
+			strcpy(dir, ".");
+			name = path;
+		}
+
+		if (lstat(dir, &status) < 0) {
+			warning(-1, dir);
+			return(-1);
+		}
+		statp = &status;
+		if (access(path, mode) >= 0) return(0);
+	}
+#endif	/* !MSDOS */
+	if (errno == ENOENT) return(0);
+	if (errno != EACCES) {
+		warning(-1, path);
+		return(-1);
+	}
+#if	!MSDOS
+	if (statp && statp -> st_uid != geteuid()) return(-1);
+#endif
+	if (removepolicy > 0) return(removepolicy - 2);
+	locate(0, LCMDLINE);
+	putterm(l_clear);
+	putch2('[');
+	cp = DELPM_K;
+	kanjiputs2(path, n_column - (int)strlen(cp) - 1, -1);
+	kanjiputs(cp);
+	str[0] = ANYES_K;
+	str[1] = ANNO_K;
+	str[2] = ANALL_K;
+	str[3] = ANKEP_K;
+	val[0] = 0;
+	val[1] = -1;
+	val[2] = 2;
+	val[3] = 1;
+	if (selectstr(&removepolicy, 4, 0, str, val) == ESC) removepolicy = 2;
+	return((removepolicy > 0) ? removepolicy - 2 : removepolicy);
 }
 
 int _cpfile(src, dest, mode)
@@ -169,48 +252,47 @@ int cpfile(path)
 char *path;
 {
 	char dest[MAXPATHLEN + 1];
-	long mode;
+	struct stat status;
+
+	if (judgecopy(path, dest, &status) < 0) return(0);
 #if	MSDOS
-	time_t atime, mtime;
-
-	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
-	if (_cpfile(path, dest, (u_short)mode) < 0) return(-1);
-	if (!(mode & S_IWRITE)) Xchmod(dest, (mode | S_IWRITE));
-	touchfile(dest, atime, mtime);
-	if (!(mode & S_IWRITE)) Xchmod(dest, mode);
-	return(0);
+	if (_cpfile(path, dest, (status.st_mode | S_IWRITE)) < 0
+	|| touchfile(dest, status.st_atime, status.st_mtime) < 0) return(-1);
+	if (!(status.st_mode & S_IWRITE)) Xchmod(dest, status.st_mode);
 #else
-
-	if ((mode = judgecopy(path, dest, NULL, NULL)) < 0) return(0);
-	return(_cpfile(path, dest, (u_short)mode));
+	if (_cpfile(path, dest, status.st_mode) < 0) return(-1);
 #endif
+	return(0);
 }
 
 int mvfile(path)
 char *path;
 {
 	char dest[MAXPATHLEN + 1];
-	long mode;
-	time_t atime, mtime;
+	struct stat status;
 
-	if ((mode = judgecopy(path, dest, &atime, &mtime)) < 0) return(0);
-	if (Xrename(path, dest) < 0) {
-		if (errno != EXDEV || (mode & S_IFMT) == S_IFDIR) return(-1);
+	if (judgecopy(path, dest, &status) < 0 || Xrename(path, dest) >= 0)
+		return(0);
+	if (errno != EXDEV || (status.st_mode & S_IFMT) == S_IFDIR) return(-1);
 #if	MSDOS
-		if (!(mode & S_IWRITE)) Xchmod(path, (mode | S_IWRITE));
-		if (access2(path, W_OK) < 0) return(1);
-		if (_cpfile(path, dest, (mode | S_IWRITE)) < 0
+	if (!(status.st_mode & S_IWRITE))
+		Xchmod(path, (status.st_mode | S_IWRITE));
+	if (judgeremove(path, W_OK) < 0) return(1);
+	if (_cpfile(path, dest, (status.st_mode | S_IWRITE)) < 0
 #else
-		if (access2(path, W_OK) < 0) return(1);
-		if (_cpfile(path, dest, mode) < 0
+	if (judgeremove(path, W_OK) < 0) return(1);
+	if (_cpfile(path, dest, status.st_mode) < 0
 #endif
-		|| Xunlink(path) < 0) return(-1);
-		if ((mode & S_IFMT) != S_IFLNK
-		&& touchfile(dest, atime, mtime) < 0) return(-1);
+	|| Xunlink(path) < 0
+	|| ((status.st_mode & S_IFMT) != S_IFLNK
+	&& (touchfile(dest, status.st_atime, status.st_mtime) < 0
+#ifdef	HAVEFLAGS
+	|| chflags(dest, status.st_flags) < 0
+#endif
+	))) return(-1);
 #if	MSDOS
-		if (!(mode & S_IWRITE)) Xchmod(dest, mode);
+	if (!(status.st_mode & S_IWRITE)) Xchmod(dest, status.st_mode);
 #endif
-	}
 	return(0);
 }
 
@@ -223,6 +305,20 @@ char *path;
 	strcpy(strcatdelim(dest), path);
 	if (Xmkdir(dest, 0777) < 0 && errno != EEXIST) return(-1);
 	return(0);
+}
+
+int rmvfile(path)
+char *path;
+{
+	if (judgeremove(path, W_OK) < 0) return(1);
+	return(Xunlink(path));
+}
+
+int rmvdir(path)
+char *path;
+{
+	if (judgeremove(path, R_OK | W_OK | X_OK) < 0) return(1);
+	return(Xrmdir(path));
 }
 
 int findfile(path)
@@ -337,12 +433,6 @@ int y;
 	putterm(l_clear);
 }
 
-#ifdef	HAVEFLAGS
-#define	MODELINES	2
-#else
-#define	MODELINES	1
-#endif
-
 int inputattr(listp, flag)
 namelist *listp;
 u_short flag;
@@ -357,8 +447,8 @@ u_short flag;
 #ifndef	_NOEDITMODE
 	Xgetkey(-1);
 #endif
-	yy = WHEADER;
-	while (n_line - yy < 7) yy--;
+	yy = LFILETOP;
+	while (n_line - yy < WMODELINE + 6) yy--;
 
 	attr.mode = listp -> st_mode;
 #ifdef	HAVEFLAGS
@@ -370,8 +460,8 @@ u_short flag;
 	sprintf(attr.timestr[1], "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(listp, &attr, yy);
-	y = ymin = (flag & 1) ? 0 : MODELINES;
-	ymax = (flag & 2) ? MODELINES + 1 : 0;
+	y = ymin = (flag & 1) ? 0 : WMODELINE;
+	ymax = (flag & 2) ? WMODELINE + 1 : 0;
 	x = 0;
 
 	do {
@@ -396,16 +486,16 @@ u_short flag;
 				break;
 			case 'd':
 			case 'D':
-				if (ymax >= MODELINES) {
+				if (ymax >= WMODELINE) {
 					x = 0;
-					y = MODELINES;
+					y = WMODELINE;
 				}
 				break;
 			case 't':
 			case 'T':
-				if (ymax >= MODELINES + 1) {
+				if (ymax >= WMODELINE + 1) {
 					x = 0;
-					y = MODELINES + 1;
+					y = WMODELINE + 1;
 				}
 				break;
 			case '0':
@@ -418,19 +508,19 @@ u_short flag;
 			case '7':
 			case '8':
 			case '9':
-				if (y < MODELINES) break;
+				if (y < WMODELINE) break;
 				putch2(ch);
-				attr.timestr[y - MODELINES][x] = ch;
+				attr.timestr[y - WMODELINE][x] = ch;
 			case K_RIGHT:
 #ifdef	HAVEFLAGS
-				if (y == MODELINES - 1) {
+				if (y == WMODELINE - 1) {
 					if (x < 7) x++;
 				}
 				else
 #endif
 				if (y) {
 					if (x >= 7) {
-						if (y == MODELINES + 1) break;
+						if (y == WMODELINE + 1) break;
 						y++;
 						x = 0;
 					}
@@ -447,14 +537,14 @@ u_short flag;
 				break;
 			case K_LEFT:
 #ifdef	HAVEFLAGS
-				if (y == MODELINES - 1) {
+				if (y == WMODELINE - 1) {
 					if (x > 0) x--;
 				}
 				else
 #endif
 				if (y) {
 					if (x <= 0) {
-						if (y == MODELINES) break;
+						if (y == WMODELINE) break;
 						y--;
 						x = 7;
 					}
@@ -470,7 +560,7 @@ u_short flag;
 				break;
 			case ' ':
 #ifdef	HAVEFLAGS
-				if (y == MODELINES - 1) {
+				if (y == WMODELINE - 1) {
 					attr.flags ^= flaglist[x];
 					locate(n_column / 2 + 10, yy + y + 2);
 					putflags(buf, attr.flags);
@@ -616,9 +706,10 @@ int max;
 int (*func)__P_((char *));
 char *endmes;
 {
-	int i, ret, tmp, old;
+	int i, ret, old, dupfilepos;
 
-	ret = tmp = old = filepos;
+	dupfilepos = filepos;
+	ret = old = filepos;
 	helpbar();
 	for (filepos = 0; filepos < max; filepos++) {
 		if (kbhit2(0) && ((i = getkey2(0)) == cc_intr || i == ESC)) {
@@ -637,9 +728,43 @@ char *endmes;
 	}
 
 	if (endmes) warning(0, endmes);
-	filepos = tmp;
+	filepos = dupfilepos;
 	movepos(list, max, old, 0);
 	return(ret);
+}
+
+static char **getdirtree(dir, dirlist, maxp, depth)
+char *dir, **dirlist;
+int *maxp, depth;
+{
+	DIR *dirp;
+	struct dirent *dp;
+	struct stat status;
+	char *cp;
+
+	if (!(dirp = Xopendir(dir))) {
+		warning(-1, dir);
+		if (dirlist) free(dirlist);
+		return(NULL);
+	}
+	cp = strcatdelim(dir);
+	while ((dp = Xreaddir(dirp))) {
+		if (isdotdir(dp -> d_name)) continue;
+		strcpy(cp, dp -> d_name);
+
+		if (Xlstat(dir, &status) >= 0
+		&& (status.st_mode & S_IFMT) == S_IFDIR) {
+			dirlist = b_realloc(dirlist, *maxp, char *);
+			dirlist[(*maxp)++] = strdup2(dir);
+			if (!depth || depth > 1) {
+				dirlist = getdirtree(dir,
+					dirlist, maxp, --depth);
+				if (!dirlist) return(NULL);
+			}
+		}
+	}
+	Xclosedir(dirp);
+	return(dirlist);
 }
 
 int applydir(dir, funcf, funcd, order, endmes)
@@ -660,11 +785,6 @@ char *endmes;
 		return(-2);
 	}
 
-	if (!(dirp = Xopendir(dir))) {
-		warning(-1, dir);
-		return(-1);
-	}
-
 	locate(0, LCMDLINE);
 	putterm(l_clear);
 	putch2('[');
@@ -673,35 +793,36 @@ char *endmes;
 	putch2(']');
 	tflush();
 
+	if (!funcd) order = 0;
 	strcpy(path, dir);
 	fname = strcatdelim(path);
 
 	ret = max = 0;
-	dirlist = NULL;
-	while ((dp = Xreaddir(dirp))) {
-		if (isdotdir(dp -> d_name)) continue;
-		strcpy(fname, dp -> d_name);
+	dirlist = getdirtree(path, NULL, &max, (order == 2) ? 0 : 1);
 
-		if (Xlstat(path, &status) >= 0
-		&& (status.st_mode & S_IFMT) == S_IFDIR) {
-			dirlist = (char **)b_realloc(dirlist, max, char *);
-			dirlist[max++] = strdup2(dp -> d_name);
-		}
-	}
-	Xclosedir(dirp);
-
-	if (!funcd) order = 0;
-	if (order == 1 && (ret = (*funcd)(dir)) < 0) {
+	if ((order == 1 || order == 2) && (ret = (*funcd)(dir)) < 0) {
 		if (ret == -1) warning(-1, dir);
+		if (dirlist) {
+			for (ndir = 0; ndir < max; ndir++) free(dirlist[ndir]);
+			free(dirlist);
+		}
 		return(ret);
 	}
 
-	for (ndir = 0; ndir < max; ndir++) {
-		strcpy(fname, dirlist[ndir]);
-		free(dirlist[ndir]);
-
-		if ((ret = applydir(path, funcf, funcd, order, NULL)) < -1)
+	if (order) for (ndir = 0; ndir < max; ndir++) {
+		if (order != 2) ret = applydir(dirlist[ndir], funcf, funcd,
+				order, NULL);
+		else if ((ret = (*funcd)(dirlist[ndir])) < 0) {
+			if (ret == -1) warning(-1, dir);
+			ret = -2;
+		}
+		else ret = applydir(dirlist[ndir], funcf, funcd, 0, NULL);
+		if (ret < -1) {
+			for (; ndir < max; ndir++) free(dirlist[ndir]);
+			free(dirlist);
 			return(ret);
+		}
+		free(dirlist[ndir]);
 		locate(0, LCMDLINE);
 		putterm(l_clear);
 		putch2('[');
@@ -710,11 +831,6 @@ char *endmes;
 		tflush();
 	}
 	if (dirlist) free(dirlist);
-
-	if (order == 2 && (ret = (*funcd)(dir)) < 0) {
-		if (ret == -1) warning(-1, dir);
-		return(ret);
-	}
 
 	if (!(dirp = Xopendir(dir))) {
 		warning(-1, dir);

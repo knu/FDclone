@@ -50,6 +50,8 @@ static int xbiosdiskio __P_((int, u_long, u_long, u_char *, int, int, int));
 static int getdrvparam __P_((int, drvinfo *));
 static int _checkdrive __P_((int, int, int, u_long));
 static int biosdiskio __P_((int, u_long, u_char *, int, int, int));
+static int lockdrive __P_((int));
+static int unlockdrive __P_((int, int));
 static int dosrawdiskio __P_((int, u_long, u_char *, int, int, int));
 #endif
 static int dos_findfirst __P_((char *, struct dosfind_t *, u_short));
@@ -339,6 +341,16 @@ int getdosver(VOID_A)
 	return(dos7access & D7_DOSVER);
 }
 
+/*
+ *	 2: enable LFN access, but FAT32
+ *	 1: enable LFN access
+ *	 0: do SFN access
+ *	-1: raw device access
+ *	-2: BIOS access
+ *	-3: cannot use LFN with any method
+ *	-4: illegal drive error
+ */
+
 int supportLFN(path)
 char *path;
 {
@@ -564,54 +576,25 @@ char *path, *resolved;
 }
 
 #ifndef	_NOUSELFN
-char *preparefile(path, alias, iscreat)
+char *preparefile(path, alias)
 char *path, *alias;
-int iscreat;
 {
-	struct SREGS sreg;
-	__dpmi_regs reg;
 	char *cp;
-
-#ifdef	_NODOSDRIVE
-	path = duplpath(path);
-	if (supportLFN(path) < 0) return(path);
-	if ((cp = shortname(path, alias))) return(cp);
-	if (!iscreat || errno != ENOENT) return(NULL);
-#else	/* !_NODOSDRIVE */
 	int i;
 
 	path = duplpath(path);
-	if ((i = supportLFN(path)) < -2) return(path);
-	if ((cp = shortname(path, alias))) return(cp);
-	else if (i < 0 && errno == EACCES) return(path);
-	if (!iscreat || errno != ENOENT) return(NULL);
-	if (i < 0) {
-		char buf[MAXPATHLEN + 1];
-
-		i = dosopen(regpath(path, buf),
-			O_WRONLY | O_CREAT | O_TRUNC, 0600);
-		if (i < 0) return(NULL);
-		dosclose(i);
-		return(shortname(path, alias));
-	}
+	i = supportLFN(path);
+#ifdef	_NODOSDRIVE
+	if (i < 0) return(path);
+#else	/* !_NODOSDRIVE */
+	if (i < -2) return(path);
 #endif	/* !_NODOSDRIVE */
 
-	reg.x.ax = 0x716c;
-	reg.x.bx = 0x0111;	/* O_WRONLY | SH_DENYRW | NO_BUFFER */
-	reg.x.cx = DS_IARCHIVE;
-	reg.x.dx = 0x0012;	/* O_CREAT | O_TRUNC */
-#ifdef	DJGPP
-	dos_putpath(path, 0);
+	if ((cp = shortname(path, alias))) return(cp);
+#ifndef	_NODOSDRIVE
+	else if (i < 0 && errno == EACCES) return(path);
 #endif
-	sreg.ds = PTR_SEG(path);
-	reg.x.si = PTR_OFF(path, 0);
-	if (int21call(&reg, &sreg) < 0) return(NULL);
-
-	reg.x.bx = reg.x.ax;
-	reg.x.ax = 0x3e00;
-	int21call(&reg, &sreg);
-
-	return(shortname(path, alias));
+	return(NULL);
 }
 
 #ifdef	DJGPP
@@ -729,11 +712,12 @@ int nsect, mode, retry;
 		min = PTR_FAR(cp + ofs);
 		max = min + size - 1;
 		if (reg.h.ah != BIOS_DMAERR || cp != buf
-		|| (min & ~0xffffUL) == (max & ~0xffffUL)) {
+		|| (min & ~((u_long)0xffff)) == (max & ~((u_long)0xffff))) {
 			biosreset(drive);
 			continue;
 		}
-		n = (0x10000UL - (min & 0xffff)) / drvlist[drive].sectsize;
+		n = ((u_long)0x10000 - (min & 0xffff))
+			/ drvlist[drive].sectsize;
 		if (n > 0) {
 			size = (u_long)n * drvlist[drive].sectsize;
 			i = -1;
@@ -750,7 +734,8 @@ int nsect, mode, retry;
 #endif
 		min = PTR_FAR(cp);
 		max = min + size - 1;
-		ofs = ((min & ~0xffffUL) == (max & ~0xffffUL)) ? 0 : size;
+		ofs = ((min & ~((u_long)0xffff)) == (max & ~((u_long)0xffff)))
+			? 0 : size;
 #ifndef	DJGPP
 		if (mode != BIOS_READ)
 			memcpy((char *)cp + ofs, (char *)buf, size);
@@ -842,11 +827,12 @@ int nsect, mode, retry;
 		min = PTR_FAR(cp + ofs);
 		max = min + size - 1;
 		if (reg.h.ah != BIOS_DMAERR || cp != buf
-		|| (min & ~0xffffUL) == (max & ~0xffffUL)) {
+		|| (min & ~((u_long)0xffff)) == (max & ~((u_long)0xffff))) {
 			biosreset(drive);
 			continue;
 		}
-		n = (0x10000UL - (min & 0xffff)) / drvlist[drive].sectsize;
+		n = ((u_long)0x10000 - (min & 0xffff))
+			/ drvlist[drive].sectsize;
 		if (n > 0) {
 			size = (u_long)n * drvlist[drive].sectsize;
 			i = -1;
@@ -863,7 +849,8 @@ int nsect, mode, retry;
 #endif
 		min = PTR_FAR(cp);
 		max = min + size - 1;
-		ofs = ((min & ~0xffffUL) == (max & ~0xffffUL)) ? 0 : size;
+		ofs = ((min & ~((u_long)0xffff)) == (max & ~((u_long)0xffff)))
+			? 0 : size;
 #ifndef	DJGPP
 		if (mode != BIOS_XREAD)
 			memcpy((char *)cp + ofs + sizeof(xpacket_t),
@@ -1156,6 +1143,64 @@ int n, size, iswrite;
 		buf, n, BIOS_VERIFY, 1));
 }
 
+static int lockdrive(drv)
+int drv;
+{
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	int i, start, end;
+
+	if (getdosver() < 7) return(0);
+
+	reg.x.ax = 0x1600;
+	intcall(0x2f, &reg, &sreg);
+	if (reg.h.al == 0xff || reg.h.al == 0x80 || reg.h.al < 3)
+		start = end = 4;
+	else {
+		start = 1;
+		end = 2;
+	}
+
+	for (i = start; i <= end; i++) {
+		reg.x.ax = 0x440d;
+		reg.h.bl = drv + 1;
+		reg.h.bh = i;
+		reg.x.cx = 0x084a;
+		reg.x.dx = 0x0001;
+		if (int21call(&reg, &sreg) < 0) {
+			while (--i >= start) {
+				reg.x.ax = 0x440d;
+				reg.h.bl = drv + 1;
+				reg.x.cx = 0x086a;
+				if (int21call(&reg, &sreg) < 0) break;
+			}
+			return(-1);
+		}
+	}
+	return(end);
+}
+
+int unlockdrive(drv, level)
+int drv, level;
+{
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	int i, start, end;
+
+	if (level < 1) return(0);
+
+	start = level;
+	end = (level <= 3) ? 1 : level;
+
+	for (i = start; i >= end; i--) {
+		reg.x.ax = 0x440d;
+		reg.h.bl = drv + 1;
+		reg.x.cx = 0x086a;
+		if (int21call(&reg, &sreg) < 0) return(-1);
+	}
+	return(0);
+}
+
 /*ARGSUSED*/
 static int dosrawdiskio(drv, sect, buf, n, size, iswrite)
 int drv;
@@ -1234,7 +1279,7 @@ int n, size, iswrite;
 		int25bin[0x12] = ((PTR_OFF(&pac, 0) >> 8) & 0xff);
 		int25bin[0x14] = (0xffff & 0xff);
 		int25bin[0x15] = ((0xffff >> 8) & 0xff);
-		err = doint25();
+		if ((err = doint25()) == 0x0207) err =0x0001;
 #endif
 	}
 	if (err == 0x0001) {
@@ -1284,7 +1329,7 @@ u_long sect;
 u_char *buf;
 int n, size, iswrite;
 {
-	int drv;
+	int drv, ret, level;
 
 	drv = toupper2(drive) - 'A';
 	if (drv < 0 || drv > 'Z' - 'A') {
@@ -1292,27 +1337,38 @@ int n, size, iswrite;
 		return(-1);
 	}
 
+	ret = 0;
 #ifdef	DJGPP
 	if ((long)size * n > tbsize / 2) {
 		if (checkdrive(drv) > 0) while (n-- > 0) {
-			if (biosdiskio(drv, sect, buf, 1, size, iswrite) < 0)
-				return(-1);
+			ret = biosdiskio(drv, sect, buf, 1, size, iswrite);
+			if (ret < 0) break;
 			buf += size;
 			sect++;
 		}
-		else while (n-- > 0) {
-			if (dosrawdiskio(drv, sect, buf, 1, size, iswrite) < 0)
+		else {
+			if (iswrite && (level = lockdrive(drv)) < 0)
 				return(-1);
-			buf += size;
-			sect++;
+			while (n-- > 0) {
+				ret = dosrawdiskio(drv, sect, buf,
+					1, size, iswrite);
+				if (ret < 0) break;
+				buf += size;
+				sect++;
+			}
+			if (iswrite && unlockdrive(drv, level) < 0) return(-1);
 		}
-		return(0);
 	}
 	else
 #endif
 	if (checkdrive(drv) > 0)
-		return(biosdiskio(drv, sect, buf, n, size, iswrite));
-	else return(dosrawdiskio(drv, sect, buf, n, size, iswrite));
+		ret = biosdiskio(drv, sect, buf, n, size, iswrite);
+	else {
+		if (iswrite && (level = lockdrive(drv)) < 0) return(-1);
+		ret = dosrawdiskio(drv, sect, buf, n, size, iswrite);
+		if (iswrite && unlockdrive(drv, level) < 0) return(-1);
+	}
+	return(ret);
 }
 #endif	/* !_NODOSDRIVE */
 #endif	/* !_NOUSELFN */
@@ -1777,7 +1833,7 @@ char *path;
 	if (i == -1) {
 		char buf[MAXPATHLEN + 1];
 
-		if (!(path = preparefile(path, buf, 0))) return(-1);
+		if (!(path = preparefile(path, buf))) return(-1);
 	}
 #endif	/* !_NODOSDRIVE */
 	reg.x.ax = (i > 0) ? 0x713b : 0x3b00;
@@ -2073,7 +2129,7 @@ int mode;
 # ifndef	_NODOSDRIVE
 		if (i == -2) return(doschmod(path, mode));
 # endif
-		path = preparefile(path, buf, 0);
+		path = preparefile(path, buf);
 		reg.x.ax = 0x4301;
 	}
 	else {
@@ -2108,7 +2164,7 @@ struct utimbuf *times;
 	if (i < 0 && i > -3) return(dosutime(regpath(path, buf), times));
 # endif
 	if (i <= 0) {
-		path = preparefile(path, buf, 0);
+		path = preparefile(path, buf);
 		return(utime(path, times));
 	}
 #else	/* !USEUTIME */
@@ -2128,7 +2184,7 @@ struct timeval tvp[2];
 	if (i < 0 && i > -3) return(dosutimes(regpath(path, buf), tvp));
 # endif
 	if (i <= 0) {
-		path = preparefile(path, buf, 0);
+		path = preparefile(path, buf);
 		return(utimes(path, tvp));
 	}
 #endif	/* !USEUTIME */
@@ -2141,5 +2197,97 @@ struct timeval tvp[2];
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
 	return((int21call(&reg, &sreg) < 0) ? -1 : 0);
+}
+
+int unixopen(path, flags, mode)
+char *path;
+int flags, mode;
+{
+	struct SREGS sreg;
+	__dpmi_regs reg;
+	char *cp, buf[MAXPATHLEN + 1];
+	int i;
+
+	path = duplpath(path);
+	i = supportLFN(path);
+#ifndef	_NODOSDRIVE
+	if (i < 0 && i > -3) {
+		dependdosfunc = 0;
+		if ((i = dosopen(regpath(path, buf), flags, mode)) >= 0)
+			return(i);
+		else if (!dependdosfunc) return(-1);
+	}
+#endif	/* !_NODOSDRIVE */
+	if (i <= 0) return(open(path, flags, mode));
+
+	reg.x.ax = 0x716c;
+	reg.x.bx = 0x0110;	/* SH_DENYRW | NO_BUFFER */
+	if (flags & O_WRONLY) reg.x.bx |= 0x0001;
+	else if (flags & O_RDWR) reg.x.bx |= 0x0002;
+	reg.x.cx = (u_short)putdosmode(mode);
+	reg.x.dx = 0x0000;
+	if (flags & O_CREAT) reg.x.dx |= 0x0010;
+	if (flags & O_TRUNC) reg.x.dx |= 0x0002;
+	else reg.x.dx |= 0x0001;
+#ifdef	DJGPP
+	dos_putpath(path, 0);
+#endif
+	sreg.ds = PTR_SEG(path);
+	reg.x.si = PTR_OFF(path, 0);
+	if (int21call(&reg, &sreg) < 0) return(-1);
+
+	reg.x.bx = reg.x.ax;
+	reg.x.ax = 0x3e00;
+	int21call(&reg, &sreg);
+
+	if (!(cp = shortname(path, buf))) return(-1);
+	return(open(cp, flags, mode));
+}
+
+FILE *unixfopen(path, type)
+char *path, *type;
+{
+	FILE *fp;
+	int i, flags;
+
+	path = duplpath(path);
+	i = supportLFN(path);
+#ifndef	_NODOSDRIVE
+	if (i < 0 && i > -3) {
+		char buf[MAXPATHLEN + 1];
+
+		dependdosfunc = 0;
+		if ((fp = dosfopen(regpath(path, buf), type))) return(fp);
+		else if (!dependdosfunc) return(NULL);
+	}
+#endif	/* !_NODOSDRIVE */
+	if (i <= 0) return(fopen(path, type));
+
+	if (!type) {
+		errno = 0;
+		return(NULL);
+	}
+	switch(*type) {
+		case 'r':
+			if (*(type + 1) != '+') flags = O_RDONLY;
+			else flags = O_RDWR;
+			break;
+		case 'w':
+			if (*(type + 1) != '+') flags = O_WRONLY;
+			else flags = O_RDWR | O_TRUNC;
+			flags |= O_CREAT;
+			break;
+		case 'a':
+			if (*(type + 1) != '+') flags = O_WRONLY;
+			else flags = O_RDWR;
+			flags |= O_APPEND | O_CREAT;
+			break;
+		default:
+			flags = 0;
+			break;
+	}
+
+	if ((i = unixopen(path, flags, 0666)) < 0) return(NULL);
+	return(fdopen(i, type));
 }
 #endif	/* !_NOUSELFN */

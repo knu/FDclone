@@ -56,6 +56,7 @@ extern int sizeinfo;
 #ifndef	_NOCOLOR
 extern int ansicolor;
 #endif
+extern int n_args;
 
 #if	MSDOS
 #define	PM_LHA	5, 2,\
@@ -296,10 +297,10 @@ int max;
 #if	!MSDOS
 	getfield(buf, line, skip, list, F_UID);
 	if (isdigit(*buf)) tmp -> st_uid = atoi2(buf);
-	else tmp -> st_uid = (pw = getpwnam(buf)) ? pw -> pw_uid : -1;
+	else tmp -> st_uid = (pw = getpwnam(buf)) ? pw -> pw_uid : (uid_t)-1;
 	getfield(buf, line, skip, list, F_GID);
 	if (isdigit(*buf)) tmp -> st_gid = atoi2(buf);
-	else tmp -> st_gid = (gr = getgrnam(buf)) ? gr -> gr_gid : -1;
+	else tmp -> st_gid = (gr = getgrnam(buf)) ? gr -> gr_gid : (gid_t)-1;
 #endif
 	tmp -> st_size = atol(getfield(buf, line, skip, list, F_SIZE));
 
@@ -328,7 +329,8 @@ int max;
 		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
 			tm.tm_year--;
 	}
-	if (tm.tm_year < 1900 && (tm.tm_year += 1900) < 1970) tm.tm_year += 100;
+	if (tm.tm_year < 1900 && (tm.tm_year += 1900) < 1970)
+		tm.tm_year += 100;
 	tm.tm_year -= 1900;
 
 	getfield(buf, line, skip, list, F_TIME);
@@ -576,7 +578,7 @@ launchtable *list;
 		while ((cp = pseudodir(&tmp, filelist, maxfile))
 		&& cp != tmp.name) {
 			addlist();
-			memcpy(&filelist[maxfile], &tmp, sizeof(namelist));
+			memcpy(&(filelist[maxfile]), &tmp, sizeof(namelist));
 			filelist[maxfile].st_mode &= ~S_IFMT;
 			filelist[maxfile].st_mode |= S_IFDIR;
 			filelist[maxfile].flags |= F_ISDIR;
@@ -590,7 +592,7 @@ launchtable *list;
 		}
 
 		addlist();
-		memcpy(&filelist[maxfile], &tmp, sizeof(namelist));
+		memcpy(&(filelist[maxfile]), &tmp, sizeof(namelist));
 		filelist[maxfile].ent = no;
 		maxfile++;
 	}
@@ -607,6 +609,8 @@ launchtable *list;
 		free(filelist[0].name);
 		filelist[0].name = NOFIL_K;
 		filelist[0].st_nlink = -1;
+		filelist[0].flags = 0;
+		filelist[0].tmpflags = F_STAT;
 	}
 
 	if (Xpclose(fp) < 0) {
@@ -656,7 +660,7 @@ int max;
 		cp = filelist[i].name + len;
 		if (len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
 		if (!filelist[i].name[len]) {
-			memcpy(&arcflist[0], &filelist[i], sizeof(namelist));
+			memcpy(&arcflist[0], &(filelist[i]), sizeof(namelist));
 			arcflist[0].name = filelist[0].name;
 			continue;
 		}
@@ -664,7 +668,7 @@ int max;
 		if ((!tmp || !*tmp)
 		&& (!re || regexp_exec(re, cp))
 		&& (!arcre || searcharc(arcre, filelist, max, i))) {
-			memcpy(&arcflist[maxarcf], &filelist[i],
+			memcpy(&arcflist[maxarcf], &(filelist[i]),
 				sizeof(namelist));
 			arcflist[maxarcf].name = cp;
 			if (isfile(&arcflist[maxarcf]))
@@ -808,10 +812,9 @@ int max;
 	regexp_free(re);
 
 	dir = NULL;
-	if ((archivefile && !(dir = tmpunpack(list, max)))
+	if ((archivefile && !(dir = tmpunpack(list, max, 1)))
 #ifndef	_NODOSDRIVE
-	|| (drive = tmpdosdupl("", &dir,
-	list[filepos].name, list[filepos].st_mode)) < 0
+	|| (drive = tmpdosdupl("", &dir, list, max, 1)) < 0
 #endif
 	) {
 		putterm(t_bell);
@@ -926,6 +929,7 @@ namelist *list;
 int max;
 {
 	reg_t *re;
+	char *duparchivefile;
 	int i;
 
 	for (i = 0; i < maxarchive; i++) {
@@ -937,7 +941,10 @@ int max;
 	regexp_free(re);
 
 	waitmes();
+	duparchivefile = archivefile;
+	archivefile = NULL;
 	execusercomm(archivelist[i].p_comm, arc, list, &max, -1, 1);
+	archivefile = duparchivefile;
 	return(1);
 }
 
@@ -953,7 +960,8 @@ int tr;
 	char *tmpdir, path[MAXPATHLEN + 1];
 	int i;
 #ifndef	_NODOSDRIVE
-	int dd, drive;
+	namelist alist[1];
+	int dd, drive, dupfilepos;
 #endif
 
 	for (i = 0; i < maxarchive; i++) {
@@ -1000,7 +1008,13 @@ int tr;
 		return(0);
 	}
 
-	if ((drive = tmpdosdupl(arc, &tmpdir, arc, 0700)) < 0) {
+	dupfilepos = filepos;
+	alist[0].name = arc;
+	alist[0].st_mode = 0700;
+	filepos = 0;
+	drive = tmpdosdupl(arc, &tmpdir, alist, 1, 0);
+	filepos = dupfilepos;
+	if (drive < 0) {
 		warning(-1, arc);
 		return(0);
 	}
@@ -1041,12 +1055,12 @@ int tr;
 	return(1);
 }
 
-char *tmpunpack(list, max)
+char *tmpunpack(list, max, single)
 namelist *list;
-int max;
+int max, single;
 {
 	char *subdir, path[MAXPATHLEN + 1];
-	int i, dupmark;
+	int i, ret, dupmark;
 
 	sprintf(path, "L%d", launchlevel);
 	if (mktmpdir(path) < 0) {
@@ -1054,26 +1068,45 @@ int max;
 		return(NULL);
 	}
 
+	for (i = 0; i < max; i++)
+		if (ismark(&list[i])) list[i].tmpflags |= F_WSMRK;
 	dupmark = mark;
-	mark = 0;
-	i = unpack(archivefile, path, list, max, NULL, 0);
+	if (single) mark = 0;
+	ret = unpack(archivefile, path, list, max, NULL, 0);
 	mark = dupmark;
+	for (i = 0; i < max; i++) {
+		if (wasmark(&list[i])) list[i].tmpflags |= F_ISMRK;
+		list[i].tmpflags &= ~F_WSMRK;
+	}
 
 	if (_chdir2(path) < 0) error(path);
 	subdir = archivedir;
-	if (*subdir == _SC_) subdir++;
-	if (i < 0) putterm(t_bell);
-	else if (i > 0) {
+	while (*subdir == _SC_) subdir++;
+	if (ret < 0) putterm(t_bell);
+	else if (ret > 0) {
 		if (*subdir && _chdir2(subdir) < 0) {
 			warning(-1, subdir);
-			i = 0;
+			ret = 0;
 		}
-		else if (Xaccess(list[filepos].name, F_OK) < 0)
-			warning(-1, list[filepos].name);
-		else return(strdup2(path));
+		else if (single || mark <= 0) {
+			if (Xaccess(list[filepos].name, F_OK) < 0)
+				warning(-1, list[filepos].name);
+			else return(strdup2(path));
+		}
+		else {
+			for (i = 0; i < max; i++)
+				if (ismark(&list[i])
+				&& Xaccess(list[i].name, F_OK) < 0) {
+					warning(-1, list[i].name);
+					break;
+				}
+			if (i >= max) return(strdup2(path));
+		}
 	}
-	if (i > 0) removetmp(strdup2(path), subdir, list[filepos].name);
-	else removetmp(strdup2(path), NULL, NULL);
+	if (ret <= 0) removetmp(strdup2(path), NULL, NULL);
+	else if (single || mark <= 0)
+		removetmp(strdup2(path), subdir, list[filepos].name);
+	else removetmp(strdup2(path), subdir, "");
 	return(NULL);
 }
 
@@ -1089,6 +1122,8 @@ int max;
 	waitmes();
 	for (i = 0; i < max; i++)
 		if (ismark(&list[i])) list[i].tmpflags |= F_ISARG;
+	n_args = mark;
+
 	st.flags = 0;
 	if (!(tmp = evalcommand("tar cf %C %TA", dev, list, max, &st))) {
 		warning(E2BIG, dev);
@@ -1139,7 +1174,7 @@ int maxf, n;
 	if (n >= 0) {
 		dupfilepos = filepos;
 		filepos = n;
-		dir = tmpunpack(flist, maxf);
+		dir = tmpunpack(flist, maxf, 1);
 		filepos = dupfilepos;
 		if (!dir) return(0);
 	}

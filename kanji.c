@@ -127,7 +127,8 @@ int incode;
 					- ((str[i] <= 0x9f) ? 0xe1 : 0x161);
 				buf[j] = str[++i];
 				if (str[i] < 0x9f)
-					buf[j] -= (str[i] > 0x7f) ? 0x20 : 0x1f;
+					buf[j] -=
+						(str[i] > 0x7f) ? 0x20 : 0x1f;
 				else {
 					buf[j] -= 0x7e;
 					buf[j - 1]++;

@@ -14,8 +14,6 @@
 #include <sys/param.h>
 #endif
 
-extern char fullpath[];
-
 #define TRANSTBLFILE	"TRANS.TBL"
 #define TRANSTBLVAR	1
 #define	RR_TRANS	001
@@ -146,7 +144,8 @@ static assoclist *readtranstbl(VOID_A)
 			cp = eol;
 			while (*eol && *eol != ' ' && *eol != '\t') eol++;
 			*eol = '\0';
-			strcpy(new -> assoc + strlen(new -> assoc) + 1 + 1, cp);
+			strcpy(new -> assoc + strlen(new -> assoc) + 1 + 1,
+				cp);
 		}
 
 		*bottom = new;
