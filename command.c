@@ -570,8 +570,12 @@ char *arg;
 	int i;
 
 	mark = 0;
+	marksize = 0;
 	for (i = 0; i < *maxp; i++) if (!isdir(&list[i]))
-		if (list[i].flags ^= F_ISMRK) mark++;
+		if ((list[i].flags ^= F_ISMRK) & F_ISMRK) {
+			mark++;
+			marksize += getblock(list[i].st_size);
+		}
 	markcount();
 	return(2);
 }
@@ -613,6 +617,7 @@ char *arg;
 		&& regexp_exec(re, list[i].name)) {
 			list[i].flags |= F_ISMRK;
 			mark++;
+			marksize += getblock(list[i].st_size);
 		}
 	regexp_free(re);
 	markcount();

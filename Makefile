@@ -8,7 +8,7 @@ CC	= cc
 CPP	= $(CC) -E
 SED	= sed
 
-goal:	Makefile.tmp
+all:	Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp
 
 Makefile.tmp: Makefile.in mkmf.sed

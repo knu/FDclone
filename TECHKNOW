@@ -28,6 +28,14 @@ CODEEUC	漢字コードとして、EUC(Extended Unix Code) を用います。
 	man ページや、ファイル名として用いる漢字コード等に影
 	響します。
 	出入力に関しては、コンパイル後に動的に変更可能です。
+USEMANLANG
+	man(1) の参照する検索パス名が、/usr/man/ja_JP.SJIS/
+	のように環境変数 LANG で示される文字列を含み、多国語
+	対応されています。
+BSDINSTALL
+	BSD ライクな install(1) が標準のコマンド検索パス上に
+	実装されており、-c (copy) や -s (strip) といったオプ
+	ションが使えます。
 TARUSESPACE
 	tar(1) の t オプションの出力の際に、各行のファイルモ
 	ード文字列 (Ex:rw-rw-rw-) の直後に必ず空白が入ってい
@@ -95,7 +103,10 @@ USETIMEH
 	るだけでは定義されず、<time.h> が必要です。
 USETERMIO
 	端末インタフェースとして、termio 構造体を用います。
-	未定義の場合には sgttyb 構造体を用います。
+USETERMIOS
+	端末インタフェースとして、termios 構造体を用います。
+	USETERMIO, USETERMIOS 共に未定義の場合には sgttyb
+	構造体を用います。
 USEDIRECT
 	構造体 dirent の代わりに direct を用います。
 SYSVDIRENT

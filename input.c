@@ -193,7 +193,7 @@ int cx;
 {
 	if (str[cx] == QUOTE) return('^');
 	else if (cx > 0 && (str[cx - 1] == QUOTE))
-		return((str[cx] == C_DEL) ? '?' : str[cx] + '@');
+		return((str[cx] + '@') & 0x7f);
 	else return(str[cx]);
 }
 
@@ -668,7 +668,7 @@ char **tmp;
 	else
 #endif
 	if (cx < linemax) {
-		if (h < 0 || *histnop >= histsize[h]
+		if (h < 0 || !history[h] || *histnop >= histsize[h]
 		|| !history[h][*histnop]) {
 			putterm(t_bell);
 			return(cx);
@@ -708,7 +708,7 @@ char **tmp;
 	else
 #endif
 	if (cx + linemax > *lenp) {
-		if (h < 0 || *histnop <= 0) {
+		if (h < 0 || !history[h] || *histnop <= 0) {
 			putterm(t_bell);
 			return(cx);
 		}
@@ -787,7 +787,7 @@ static int _inputstr(str, x, max, linemax, def, comline, h)
 char *str;
 int x, max, linemax, def, comline, h;
 {
-	char *tmphist;
+	char *cp, *tmphist;
 	int len, cx, i, hist, ch, ch2, quote;
 
 	subwindow = 1;
@@ -812,9 +812,10 @@ int x, max, linemax, def, comline, h;
 		ch2 = ch;
 		if (!quote) ch = getkey2(0);
 		else {
-			ch = _getkey2(0);
+			i = ch = _getkey2(0);
 			quote = 0;
-			if (ch < ' ' || ch == K_DC) {
+			if ((cp = getkeyseq(i)) && *cp && !*(cp + 1)) i = *cp;
+			if (i < ' ' || i == C_DEL) {
 				keyflush();
 				if (len + 1 >= max) {
 					putterm(t_bell);
@@ -827,18 +828,10 @@ int x, max, linemax, def, comline, h;
 				if (!(cx % linemax) && len - 1 < max)
 					locate(x, LCMDLINE
 						+ cx / linemax);
-				if (ch == K_DC) {
-					str[cx++] = C_DEL;
-					ch = '?';
-				}
-				else {
-					str[cx++] = ch;
-					ch += '@';
-				}
-				putch2(ch);
+				str[cx++] = i;
+				putch2((i + '@') & 0x7f);
 				if (!(cx % linemax) && len < max)
-					locate(x, LCMDLINE
-						+ cx / linemax);
+					locate(x, LCMDLINE + cx / linemax);
 				continue;
 			}
 		}

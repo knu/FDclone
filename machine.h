@@ -7,7 +7,7 @@
 #ifdef	MSDOS
 #undef	MSDOS
 #endif
-#define	MSDOS		(DOSV || PC98)
+#define	MSDOS		(DOSV || PC98 || J3100)
 
 #if	MSDOS
 #define	NOUNISTDH
@@ -57,6 +57,7 @@ typedef unsigned long	u_long;
 # else
 # define	BSD43
 # define	OSTYPE		"SUN_OS"
+# define	BSDINSTALL
 # define	USELEAPCNT
 # define	USERE_COMP
 # define	USETIMELOCAL
@@ -65,6 +66,7 @@ typedef unsigned long	u_long;
 
 #if	defined (sony)
 #define	USELEAPCNT
+#define	USEMANLANG
 # if	defined (USGr4) || defined (SYSTYPE_SYSV)
 # define	SVR4
 # define	OSTYPE		"NEWS_OS6"
@@ -76,6 +78,7 @@ typedef unsigned long	u_long;
 # define	USEUTIME
 # else
 # define	BSD43
+# define	BSDINSTALL
 # define	USERE_COMP
 # define	SIGARGINT
 #  if	defined (__sony) || !defined (bsd43)
@@ -350,10 +353,13 @@ typedef unsigned long	u_long;
 #define	BSD43
 #define	OSTYPE			"FREEBSD"
 #define	CODEEUC
+#define	USEMANLANG
+#define	BSDINSTALL
 #define	TARUSESPACE
 #define	REGEXPLIB		"-lcompat"
 #define	DECLERRLIST
 #define	NOTZFILEH
+#define	USETERMIOS
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USEVFCNAME
@@ -464,6 +470,8 @@ typedef unsigned long	u_long;
 /*	386BSD_ORG	/* 386BSD */
 
 /* #define CODEEUC	/* kanji code type is EUC */
+/* #define USEMANLANG	/* man(1) directory includes LANG environment value */
+/* #define BSDINSTALL	/* install(1) with option -c is valid like BSD */
 /* #define TARUSESPACE	/* tar(1) uses space to devide file mode from UID */
 /* #define CPP7BIT	/* cpp(1) cannot through 8bit */
 /* #define CCCOMMAND	/* fullpath of suitable cc(1) */
@@ -488,6 +496,7 @@ typedef unsigned long	u_long;
 /* #define USESYSDIRH	/* use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	/* use <time.h> for 'struct tm' */
 /* #define USETERMIO	/* use termio interface */
+/* #define USETERMIOS	/* use termios interface */
 /* #define USEDIRECT	/* use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	/* dirent interface behaves as System V */
 /* #define NODNAMLEN	/* struct dirent haven't d_namlen */
@@ -546,7 +555,11 @@ typedef unsigned long	u_long;
 
 #if	defined (SVR4) || defined (SYSV)
 #define	TARUSESPACE
-#define	USETERMIO
+# ifdef	SVR4
+# define	USETERMIOS
+# else
+# define	USETERMIO
+# endif
 #define	SYSVDIRENT
 #define	HAVETIMEZONE
 #define	USERAND48

@@ -7,10 +7,16 @@
 #include <stdio.h>
 #include "machine.h"
 
+
 int main (argc, argv)
 int argc;
 char *argv[];
 {
+#ifdef	USEMANLANG
+	extern char *getenv();
+	char *cp;
+#endif
+
 	printf("s:__EXE__::g\n");
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__OBJS__:dosemu.o dosdisk.o:\n");
@@ -23,6 +29,20 @@ char *argv[];
 	printf("s:__COPY__:cp:\n");
 
 	printf("s:__OSTYPE__:%s:\n", OSTYPE);
+
+#ifdef	USEMANLANG
+	if ((cp = getenv("LANG")) && *cp) printf("s:__LANGDIR__:/%s:\n", cp);
+	else
+#endif
+	printf("s:__LANGDIR__::\n");
+
+#ifdef	BSDINSTALL
+	printf("s:__INSTALL__:install -c:\n");
+	printf("s:__INSTSTRIP__:-s:\n");
+#else
+	printf("s:__INSTALL__:cp -p:\n");
+	printf("s:__INSTSTRIP__::\n");
+#endif
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
 	printf("s:__CPP__:$(CC) -E:\n");

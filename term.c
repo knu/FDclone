@@ -30,10 +30,35 @@ extern int initdir();
 #include <sys/file.h>
 #include <sys/time.h>
 
+#ifdef	USETERMIOS
+# ifdef	USETERMIO
+# undef	USETERMIO
+# endif
+#include <termios.h>
+typedef	struct termios	termioctl_t;
+#define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
+#define	getspeed(t)	cfgetospeed(&t)
+#define	REQGETP		0
+#define	REQSETP		TCSAFLUSH + 1
+#endif
+
 #ifdef	USETERMIO
 #include <termio.h>
-#else
+typedef	struct termio	termioctl_t;
+#define	tioctl		ioctl
+#define	getspeed(t)	((t).c_cflag & CBAUD)
+#define	REQGETP		TCGETA
+#define	REQSETP		TCSETAF
+#endif
+
+#if	!defined (USETERMIO) && !defined(USETERMIOS)
+#define	USESGTTY
 #include <sgtty.h>
+typedef	struct sgttyb	termioctl_t;
+#define	tioctl		ioctl
+#define	getspeed(t)	((t).sg_ospeed)
+#define	REQGETP		TIOCGETP
+#define	REQSETP		TIOCSETP
 #endif
 
 #ifdef	USESELECTH
@@ -71,6 +96,18 @@ extern char *tgoto();
 #endif
 #ifndef	ECHOKE
 #define	ECHOKE		0
+#endif
+#ifndef	OCRNL
+#define	OCRNL		0
+#endif
+#ifndef	ONOCR
+#define	ONOCR		0
+#endif
+#ifndef	ONLRET
+#define	ONLRET		0
+#endif
+#ifndef	TAB3
+#define	TAB3		OXTABS
 #endif
 
 #ifndef	FREAD
@@ -137,6 +174,8 @@ char *l_insert;
 char *l_delete;
 char *c_insert;
 char *c_delete;
+char *c_store;
+char *c_restore;
 char *c_home;
 char *c_locate;
 char *c_return;
@@ -252,43 +291,51 @@ int keyflush()
 int inittty(reset)
 int reset;
 {
-#ifdef	USETERMIO
-	static struct termio dupttyio;
-#else
-	static struct sgttyb dupttyio;
+#ifdef	USESGTTY
 	static int dupttyflag;
 #endif
+	static termioctl_t dupttyio;
 	u_long request;
 
 	if (reset && !(termflags & F_INITTTY)) return(0);
-#ifdef	USETERMIO
-	request = (reset) ? TCSETAW : TCGETA;
-#else
+#ifdef	USESGTTY
 	request = (reset) ? TIOCLSET : TIOCLGET;
-	if (ioctl(ttyio, request, &dupttyflag) < 0) err2(NULL);
-	request = (reset) ? TIOCSETP : TIOCGETP;
+	if (tioctl(ttyio, request, &dupttyflag) < 0) err2(NULL);
 #endif
-	if (ioctl(ttyio, request, &dupttyio) < 0) err2(NULL);
+	request = (reset) ? REQSETP : REQGETP;
+	if (tioctl(ttyio, request, &dupttyio) < 0) err2(NULL);
+
 	if (!reset) {
-#ifdef	USETERMIO
-		ospeed = dupttyio.c_cflag & CBAUD;
-#else
-		ospeed = dupttyio.sg_ospeed;
-#endif
+		ospeed = getspeed(dupttyio);
 		termflags |= F_INITTTY;
 	}
 	return(0);
 }
 
-#ifdef	USETERMIO
+#ifdef	USESGTTY
+static int ttymode(d, set, reset, lset, lreset)
+int d;
+u_short set, reset, lset, lreset;
+{
+	termioctl_t tty;
+	int lflag;
+
+	if (ioctl(d, TIOCLGET, &lflag) < 0) err2(NULL);
+	if (tioctl(d, REQGETP, &tty) < 0) err2(NULL);
+	if (set) tty.sg_flags |= set;
+	if (reset) tty.sg_flags &= reset;
+	if (set) lflag |= lset;
+	if (lreset) lflag &= lreset;
+	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
+#else
 static int ttymode(d, set, reset, iset, ireset, oset, oreset, min, time)
 int d;
 u_short set, reset, iset, ireset, oset, oreset;
 int min, time;
 {
-	struct termio tty;
+	termioctl_t tty;
 
-	if (ioctl(d, TCGETA, &tty) < 0) err2(NULL);
+	if (tioctl(d, REQGETP, &tty) < 0) err2(NULL);
 	if (set) tty.c_lflag |= set;
 	if (reset) tty.c_lflag &= reset;
 	if (iset) tty.c_iflag |= iset;
@@ -299,129 +346,117 @@ int min, time;
 		tty.c_cc[VMIN] = min;
 		tty.c_cc[VTIME] = time;
 	}
-	if (ioctl(d, TCSETAW, &tty) < 0) err2(NULL);
-#else
-static int ttymode(d, set, reset, lset, lreset)
-int d;
-u_short set, reset, lset, lreset;
-{
-	struct sgttyb tty;
-	int lflag;
-
-	if (ioctl(d, TIOCGETP, &tty) < 0) err2(NULL);
-	if (ioctl(d, TIOCLGET, &lflag) < 0) err2(NULL);
-	if (set) tty.sg_flags |= set;
-	if (reset) tty.sg_flags &= reset;
-	if (set) lflag |= lset;
-	if (lreset) lflag &= lreset;
-	if (ioctl(d, TIOCSETP, &tty) < 0) err2(NULL);
-	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
 #endif
+	if (tioctl(d, REQSETP, &tty) < 0) err2(NULL);
 	return(0);
 }
 
 int cooked2()
 {
-#ifdef	USETERMIO
+#ifdef	USESGTTY
+	ttymode(ttyio, 0, ~(CBREAK | RAW), 0, ~(LLITOUT | LPENDIN));
+#else
 	ttymode(ttyio, ISIG | ICANON, ~PENDIN,
 		BRKINT | IGNPAR | IXON | IXANY | IXOFF, ~IGNBRK,
 		OPOST, 0, '\004', 255);
-#else
-	ttymode(ttyio, 0, ~(CBREAK | RAW), 0, ~(LLITOUT | LPENDIN));
 #endif
 	return(0);
 }
 
 int cbreak2()
 {
-#ifdef	USETERMIO
+#ifdef	USESGTTY
+	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
+#else
 	ttymode(ttyio, ISIG | ICANON, 0, BRKINT, ~(IXON | IGNBRK),
 		0, ~OPOST, 1, 0);
-#else
-	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
 #endif
 	return(0);
 }
 
 int raw2()
 {
-#ifdef	USETERMIO
-	ttymode(ttyio, 0, ~(ISIG | ICANON), IGNBRK, ~IXON, 0, ~OPOST, 1, 0);
-#else
+#ifdef	USESGTTY
 	ttymode(ttyio, RAW, 0, LLITOUT, 0);
+#else
+	ttymode(ttyio, 0, ~(ISIG | ICANON), IGNBRK, ~IXON, 0, ~OPOST, 1, 0);
 #endif
 	return(0);
 }
 
 int echo2()
 {
-#ifdef	USETERMIO
+#ifdef	USESGTTY
+	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
+#else
 	ttymode(ttyio, ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE, ~ECHONL,
 		0, 0, 0, 0, 0, 0);
-#else
-	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #endif
 	return(0);
 }
 
 int noecho2()
 {
-#ifdef	USETERMIO
-	ttymode(ttyio, 0, ~(ECHO | ECHOE | ECHOK | ECHONL), 0, 0, 0, 0, 0, 0);
-#else
+#ifdef	USESGTTY
 	ttymode(ttyio, 0, ~ECHO, 0, ~(LCRTBS | LCRTERA));
+#else
+	ttymode(ttyio, 0, ~(ECHO | ECHOE | ECHOK | ECHONL), 0, 0, 0, 0, 0, 0);
 #endif
 	return(0);
 }
 
 int nl2()
 {
-#ifdef	USETERMIO
-	ttymode(ttyio, 0, 0, ICRNL, 0, ONLCR, ~(OCRNL | ONOCR | ONLRET), 0, 0);
-#else
+#ifdef	USESGTTY
 	ttymode(ttyio, CRMOD, 0, 0, 0);
+#else
+	ttymode(ttyio, 0, 0, ICRNL, 0, ONLCR, ~(OCRNL | ONOCR | ONLRET), 0, 0);
 #endif
 	return(0);
 }
 
 int nonl2()
 {
-#ifdef	USETERMIO
-	ttymode(ttyio, 0, 0, 0, ~ICRNL, 0, ~ONLCR, 0, 0);
-#else
+#ifdef	USESGTTY
 	ttymode(ttyio, 0, ~CRMOD, 0, 0);
+#else
+	ttymode(ttyio, 0, 0, 0, ~ICRNL, 0, ~ONLCR, 0, 0);
 #endif
 	return(0);
 }
 
 int tabs()
 {
-#ifdef	USETERMIO
-	ttymode(ttyio, 0, 0, 0, 0, 0, ~TAB3, 0, 0);
-#else
+#ifdef	USESGTTY
 	ttymode(ttyio, 0, ~XTABS, 0, 0);
+#else
+	ttymode(ttyio, 0, 0, 0, 0, 0, ~TAB3, 0, 0);
 #endif
 	return(0);
 }
 
 int notabs()
 {
-#ifdef	USETERMIO
-	ttymode(ttyio, 0, 0, 0, 0, TAB3, 0, 0, 0);
-#else
+#ifdef	USESGTTY
 	ttymode(ttyio, XTABS, 0, 0, 0);
+#else
+	ttymode(ttyio, 0, 0, 0, 0, TAB3, 0, 0, 0);
 #endif
 	return(0);
 }
 
 int keyflush()
 {
-#ifdef	USETERMIO
-	ioctl(ttyio, TCFLSH, 0);
-#else
+#ifdef	USESGTTY
 	int i = FREAD;
-	ioctl(ttyio, TIOCFLUSH, &i);
-#endif
+	tioctl(ttyio, TIOCFLUSH, &i);
+#else	/* !USESGTTY */
+# ifdef	USETERMIOS
+	tcflush(ttyio, TCIFLUSH);
+# else
+	tioctl(ttyio, TCFLSH, 0);
+# endif
+#endif	/* !USESGTTY */
 	return(0);
 }
 #endif	/* !MSDOS */	
@@ -502,6 +537,8 @@ static int defaultterm()
 	l_delete = "\033[M";
 	c_insert = "";
 	c_delete = "";
+	c_store = "\033[s";
+	c_restore = "\033[u";
 	c_home = "\033[H";
 #ifdef	MSDOS
 	c_locate = "\033[%d;%dH";
@@ -722,6 +759,8 @@ int getterment()
 	tgetstr2(&l_delete, "dl");
 	tgetstr3(&c_insert, "ic", "IC");
 	tgetstr3(&c_delete, "dc", "DC");
+	tgetstr2(&c_store, "sc");
+	tgetstr2(&c_restore, "rc");
 	tgetstr2(&c_home, "ho");
 	tgetstr2(&c_locate, "cm");
 	tgetstr2(&c_return, "cr");

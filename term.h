@@ -93,6 +93,8 @@ extern char *l_insert;
 extern char *l_delete;
 extern char *c_insert;
 extern char *c_delete;
+extern char *c_store;
+extern char *c_restore;
 extern char *c_home;
 extern char *c_locate;
 extern char *c_return;

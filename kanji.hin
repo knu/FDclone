@@ -19,6 +19,7 @@ extern char *mesconv();
 #define	YESNO_K	mesconv("よろしいですか ?", "OK ?")
 #define	HITKY_K	mesconv("何かキーを押して下さい.", "Hit any key.")
 #define	GETKY_K	mesconv("キーを押して下さい.", "Hit key.")
+#define	SPCED_K	mesconv("(Space で終了します.)", "(Terminate with Space.)")
 #define	NOFIL_K	mesconv("ファイルがありません", "No Files")
 #define	NOCOM_K	mesconv("不正なコマンドです.", "Invalid command.")
 #define	ILFNC_K	mesconv("コマンドの使い方が違います.", "Illegal function call.")

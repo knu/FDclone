@@ -8,6 +8,9 @@ s:__RENAME__:@ren:
 s:__AOUT2EXE__:@aout2exe:
 s:__REMOVE__:@del:
 s:__COPY__:copy:
+s:__LANGDIR__::
+s:__INSTALL__:copy:
+s:__INSTSTRIP__::
 s:__CC__:gcc:
 s:__CPP__:cpp:
 s:__CCOPTIONS__:-O:

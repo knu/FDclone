@@ -130,6 +130,8 @@ _fdrc.dif	.fdrc に関する 1.02 からの変更点
 　詳細は各種ドキュメントを参照して下さい。`Install' の指示に
 従ってコンパイルし、機能詳細はインストール後の man ページを
 参照して下さい。
+　各種 UNIX 環境の他、MS-DOS でもコンパイル可能にしてありま
+すが、この際には Makefile の差替えが必要となります。
 
 
 --
@@ -160,22 +162,29 @@ _fdrc.dif	.fdrc に関する 1.02 からの変更点
 	ohm@kyoto.wide.ad.jp (森島晃年)
 	saitoh@ics.es.osaka-u.ac.jp (齊藤明紀)
 
+・βテスト用 ML の管理運営を担当して頂きました。
+	matusita@ics.es.osaka-u.ac.jp (Makoto MATSUSHITA)
+
 ・fj.sources.d での募集を受けてβテストに協力して頂きました。
 	7m2vej@ritp.ye.IHI.co.jp (UENO Fumihiro  上野文裕)
 	aki@pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
 	ao@orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
 	daikoku@lang2.bs1.fc.nec.co.jp (大黒洋史)
 	fuku@amorph.rim.or.jp (FUKUSHIMA Osamu)
+	go@cclub.tutcc.tut.ac.jp (Go Watanabe)
 	h-inoue@is.aist-nara.ac.jp (Hiroyuki Inoue)
 	h-yagi@zero0.nsis.cl.nec.co.jp (八木英雄)
 	hashi@star.rcast.u-tokyo.ac.jp (TAKAHASHI Katsuyuki)
+	hide@mamoru.ee.sophia.ac.jp (Takahide Yamaguchi)
 	hiro@akinus1.aki.che.tohoku.ac.jp (Akiyasu Hirotani)
 	i4579@info.nara-k.ac.jp (Kimura Masashi)
 	ishida@econ.shinshu-u.ac.jp (Akira Ishida)
 	ito@getz.isc.chubu.ac.jp (Maki ITO)
 	j0442@cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
 	j9194169@ed.yama.sut.ac.jp (Keitarou Yoshimura)
+	jt@ng.nefs.nec.co.jp (Jiro_Takabatake)
 	katsu@cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
+	ke3057yt@ex.ecip.osaka-u.ac.jp (yosioka tuneo)
 	kimai@av.crl.sony.co.jp (IMAI Kenichi)
 	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
 	kkubota@crl.go.jp (Kazuo Kubota)
@@ -184,12 +193,17 @@ _fdrc.dif	.fdrc に関する 1.02 からの変更点
 	manabu@saskg.semicon.sony.co.jp (Niizato -Gamer- Manabu)
 	mat@azalea.gose.nara.jp (Matsuo Kazunori)
 	mats@cc.tuat.ac.jp (Seiji Matsumoto)
+	mhirano@avkk.yamaha.co.jp (Mitsuyuki HIRANO)
 	mino@kis-gw.msk.kis.co.jp (MINOMO Kazutoshi)
 	mori@isc.mew.co.jp (Shigeki Morimoto)
+	nino@windy.mech.utsunomiya-u.ac.jp (Nao NINOMIYA)
 	nyoshi@kaba.or.jp (YOSHIDA Nobuaki)
+	ohge@enzan.ee.kansai-u.ac.jp (Hiroki Ohge)
 	ohishi@otc.qnes.nec.co.jp (Isao Ohishi)
 	okubo@mem.cl.nec.co.jp (Shuichi OHKUBO)
 	ozawa@prince.pe.u-tokyo.ac.jp
+	roy@lit.cs.uec.ac.jp (SATOU Masaki / 佐藤雅規)
+	ryoji@kgupyr.kwansei.ac.jp (Ryoji Nagai)
 	sakai@csl.cl.nec.co.jp (Junji SAKAI)
 	sakanaga@ds.kyoto.omronsoft.co.jp (Toshiyuki Sakanaga)
 	sawada@h3news1.kais.kyoto-u.ac.jp (Yutaka SAWADA)

@@ -199,7 +199,7 @@ macrostat *stp;
 		stp = &st;
 		argset = 0;
 	}
-	stp -> addoption = -1;
+	stp -> addopt = -1;
 	stp -> needmark = 0;
 	noext = 0;
 	uneval = '\0';
@@ -263,7 +263,7 @@ macrostat *stp;
 				argset = 1;
 				break;
 			case 'R':
-				stp -> addoption = j;
+				stp -> addopt = j;
 				break;
 			case 'K':
 				stp -> flags |= F_NOCONFIRM;
@@ -319,7 +319,7 @@ macrostat *stp;
 	len = strlen(cp);
 	for (i = j = 0; i < stp -> needmark; i++) {
 		j += strlen(&line[j]) + 1;
-		tmp = evalcomstr(&line[j], CMDLINE_DELIM);
+		if (!(tmp = evalcomstr(&line[j], CMDLINE_DELIM))) tmp = "";
 		cp = (char *)realloc2(cp, len + strlen(tmp) + 1 + 1);
 		strcpy(cp + len + 1, tmp);
 		len += strlen(tmp) + 1;
@@ -338,12 +338,12 @@ macrostat *stp;
 
 	if (len > MAXLINESTR) len = MAXLINESTR;
 	len++;
-	while (stp -> addoption >= 0) {
+	while (stp -> addopt >= 0) {
 		n = stp -> needmark;
 		p = -1;
 		for (i = j = 0; i < len; i++, j++) {
 			line[i] = command[j];
-			if (j >= stp -> addoption && p < 0) p = i;
+			if (j >= stp -> addopt && p < 0) p = i;
 			if (command[j] == '%') {
 				if (++i >= len) break;
 				line[i] = '%';

@@ -172,7 +172,7 @@ typedef struct _treelist {
 #endif
 
 typedef struct _macrostat {
-	short addoption;
+	short addopt;
 	short needmark;
 	u_char flags;
 } macrostat;

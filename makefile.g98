@@ -3,13 +3,14 @@
 #
 
 TITLE	= FD-
-TOPDIR	= \\usr\\local
+PREFIX	= \\usr\\local
+TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)\\bin
 MANDIR	= $(TOPDIR)\\man\\man$(MANSEC)
 CATDIR	= $(TOPDIR)\\man\\cat$(MANSEC)
 DEFRC	= \\etc\\fdrc
 DOSRC	= ~FD\\fdrc
-INSTALL	= cp -p
+INSTALL	= copy
 CHMOD	= chmod
 MANSEC	= 1
 
@@ -60,7 +61,7 @@ CFLAGS	= -DFD -DPC98 -DDEFRUNCOM='"'$(DOSRC)'"' -O
 #	Dependency Rules
 ############################################################
 
-goal:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
+all:	$(PROGRAM).exe $(PROGRAM).$(MANSEC)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
 	$(CC) $(CFLAGS) -o $@ @$(ARGS) $(LDFLAGS)
@@ -75,6 +76,7 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $*.c -o $@
+
 
 ############################################################
 # kanji using module
@@ -121,7 +123,7 @@ config.h: config.hin
 # to install all
 
 install: $(PROGRAM).exe $(PROGRAM).$(MANSEC)
-	$(INSTALL) $(PROGRAM).exe $(BINDIR)
+	$(INSTALL)  $(PROGRAM).exe $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\\$(PROGRAM).exe
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(MANDIR)\\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r $(MANDIR)\\$(PROGRAM).$(MANSEC)
@@ -192,12 +194,12 @@ tar: $(SOURCES)
 
 lzh: $(SOURCES)
 	($(GETVER);\
-	-rm -f $(TITLE)"$$VER".lzh;\
+	rm -f $(TITLE)"$$VER".lzh;\
 	lha a $(TITLE)"$$VER".lzh $(SOURCES))
 
 shar: $(SOURCES)
 	($(GETVER);\
-	-rm -f $(TITLE)$$VER.shar.[0-9]0-9];\
+	rm -f $(TITLE)$$VER.shar.[0-9][0-9];\
 	shar -L50 -apc -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar \
 	-C $(JSRCS) -T $(ESRCS))
 

@@ -56,8 +56,8 @@ static int getcommand();
 static int getkeycode();
 static int freemacro();
 static int setkeybind();
-static VOID _printmacro();
-static int printmacro();
+static VOID printmacro();
+static int printbind();
 static int setalias();
 static int unalias();
 #if	!MSDOS && !defined (_NODOSDRIVE)
@@ -86,7 +86,7 @@ static builtintable builtinlist[] = {
 	{printarch, "printarch"},
 #endif
 	{setkeybind, "bind"},
-	{printmacro, "printbind"},
+	{printbind, "printbind"},
 	{setalias, "alias"},
 	{unalias, "unalias"},
 #if	!MSDOS && !defined (_NODOSDRIVE)
@@ -114,24 +114,24 @@ static strtable keyidentlist[] = {
 	{K_HOME,	"HOME"},
 	{K_BS,		"BS"},
 
-	{K_F('*'),	"ASTER"},
-	{K_F('+'),	"PLUS"},
-	{K_F(','),	"COMMA"},
-	{K_F('-'),	"MINUS"},
-	{K_F('.'),	"DOT"},
-	{K_F('/'),	"SLASH"},
-	{K_F('0'),	"TK0"},
-	{K_F('1'),	"TK1"},
-	{K_F('2'),	"TK2"},
-	{K_F('3'),	"TK3"},
-	{K_F('4'),	"TK4"},
-	{K_F('5'),	"TK5"},
-	{K_F('6'),	"TK6"},
-	{K_F('7'),	"TK7"},
-	{K_F('8'),	"TK8"},
-	{K_F('9'),	"TK9"},
-	{K_F('='),	"EQUAL"},
-	{K_F('?'),	"RET"},
+	{'*',		"ASTER"},
+	{'+',		"PLUS"},
+	{',',		"COMMA"},
+	{'-',		"MINUS"},
+	{'.',		"DOT"},
+	{'/',		"SLASH"},
+	{'0',		"TK0"},
+	{'1',		"TK1"},
+	{'2',		"TK2"},
+	{'3',		"TK3"},
+	{'4',		"TK4"},
+	{'5',		"TK5"},
+	{'6',		"TK6"},
+	{'7',		"TK7"},
+	{'8',		"TK8"},
+	{'9',		"TK9"},
+	{'=',		"EQUAL"},
+	{CR,		"RET"},
 
 	{K_DL,		"DELLIN"},
 	{K_IL,		"INSLIN"},
@@ -499,8 +499,9 @@ char *cp;
 	ch = *(cp++);
 	if (*cp) switch (ch) {
 		case '^':
-			if (*cp < '@' || *cp > '_') return(-1);
-			ch = toupper2(*(cp++)) - '@';
+			ch = toupper2(*(cp++));
+			if (ch < '?' || ch > '_') return(-1);
+			ch = ((ch - '@') & 0x7f);
 			break;
 		case 'F':
 			if ((i = atoi2(cp)) < 1 || i > 20) return(-1);
@@ -604,7 +605,7 @@ int comline;
 	return(0);
 }
 
-static VOID _printmacro(n)
+static VOID printmacro(n)
 int n;
 {
 	if (bindlist[n].f_func <= NO_OPERATION)
@@ -621,7 +622,7 @@ int n;
 }
 
 /*ARGSUSED*/
-static int printmacro(argc, argv, comline)
+static int printbind(argc, argv, comline)
 int argc;
 char *argv[];
 int comline;
@@ -638,8 +639,8 @@ int comline;
 		|| bindlist[i].d_func == 255)) continue;
 
 		cputs2("bind ");
-		if (bindlist[i].key < ' ')
-			cprintf2("'^%c'\t", bindlist[i].key + '@');
+		if (bindlist[i].key < ' ' || bindlist[i].key == C_DEL)
+			cprintf2("'^%c'\t", (bindlist[i].key + '@') & 0x7f);
 		else if (bindlist[i].key >= K_F(1)
 		&& bindlist[i].key <= K_F(20))
 			cprintf2("'F%d'\t", bindlist[i].key - K_F0);
@@ -652,7 +653,7 @@ int comline;
 			else cprintf2("'%c'\t", bindlist[i].key);
 		}
 
-		_printmacro(i);
+		printmacro(i);
 		if (++n >= n_line - 1) {
 			n = 0;
 			warning(0, HITKY_K);
@@ -661,7 +662,7 @@ int comline;
 	else if ((c = getkeycode(argv[1])) >= 0)
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
 		if (c == bindlist[i].key) {
-			_printmacro(i);
+			printmacro(i);
 			break;
 		}
 	}
@@ -1032,7 +1033,7 @@ int comline;
 	}
 
 	if (argc == 2) {
-		if (!comline || !ch || !(cp = getkeyseq(ch))) return(0);
+		if (!comline || !ch || !(cp = getkeyseq(ch)) || !*cp) return(0);
 		cputs2("keymap ");
 		if (ch >= K_F(i) && ch <= K_F(20)) cprintf2("F%d \"", i);
 		else cprintf2("%s \"", keyidentlist[i].str);
@@ -1047,7 +1048,12 @@ int comline;
 
 	line = (char *)malloc2(strlen(argv[2]) + 1);
 	for (i = j = 0; argv[2][i]; i++, j++) {
-		if (argv[2][i] != '\\') line[j] = argv[2][i];
+		if (argv[2][i] == '^'
+		&& (k = toupper2(argv[2][i + 1])) >= '?' && k <= '_') {
+			i++;
+			line[j] = ((toupper2(k) - '@') & 0x7f);
+		}
+		else if (argv[2][i] != '\\') line[j] = argv[2][i];
 		else if (argv[2][++i] >= '0' && argv[2][i] <= '7') {
 			line[j] = argv[2][i] - '0';
 			for (k = 1; k < 3; k++) {
@@ -1079,24 +1085,36 @@ int argc;
 char *argv[];
 int comline;
 {
-	int ch, next;
+	int i, n, ch, next;
 
-	if (argc >= 2) return(-1);
+	if (argc >= 3) return(-1);
 	if (!comline) return(0);
-	kanjiputs(GETKY_K);
-	tflush();
 
-	next = 0;
-	while (!kbhit2(1000000L / SENSEPERSEC));
-	cputs2("\r\"");
-	putterm(l_clear);
-	do {
-		ch = getch2();
-		next = kbhit2(WAITKEYPAD * 1000L);
-		if (isprint(ch)) putch2(ch);
-		else cprintf2("\\%03o", ch);
-	} while (next);
-	cputs2("\"\r\n");
+	n = (argc >= 2) ? atoi2(argv[1]) : 1;
+	if (n < 0) return(-1);
+
+	i = 0;
+	for (;;) {
+		kanjiputs(GETKY_K);
+		if (n != 1) kanjiputs(SPCED_K);
+		tflush();
+
+		next = 0;
+		while (!kbhit2(1000000L / SENSEPERSEC));
+		cputs2("\r\"");
+		putterm(l_clear);
+		do {
+			ch = getch2();
+			next = kbhit2(WAITKEYPAD * 1000L);
+			if (isprint(ch)) putch2(ch);
+			else cprintf2("\\%03o", ch);
+		} while (next);
+		cputs2("\"\r\n");
+		if (n) {
+			if (++i >= n) break;
+		}
+		if (n != 1 && ch == ' ') break;
+	}
 	return(1);
 }
 #endif	/* !MSDOS && !_NOKEYMAP */
@@ -1176,7 +1194,9 @@ int comline;
 	if (!comline) return(0);
 	size = histsize[0];
 	no = histno[0];
-	if (argc < 2 || (max = atoi(argv[1])) > size) max = size;
+	if (argc < 2 || (max = atoi2(argv[1])) > size) max = size;
+	if (max <= 0) return(-1);
+
 	n = 0;
 	for (i = 1; i <= max; i++) {
 		if (!history[0][max - i]) continue;
