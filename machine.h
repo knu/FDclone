@@ -53,6 +53,7 @@
 #   define	NOUNISTDH
 #   define	NOSTDLIBH
 #   define	USEDIRECT
+#   define	NOTMGMTOFF
 #   define	NOVSPRINTF
 #   define	USEGETWD
 #   endif
@@ -424,6 +425,7 @@
 /* #define SYSVDIRENT	/* dirent interface behaves as System V */
 /* #define NODNAMLEN	/* struct dirent haven't d_namlen */
 /* #define HAVETIMEZONE	/* have extern valiable 'timezone' */
+/* #define NOTMGMTOFF	/* struct tm haven't tm_gmtoff */
 
 /* following 5 items are exclusive
 /* #define USESTATVFSH	/* use <sys/statvfs.h> as header of the FS status */

@@ -18,6 +18,9 @@ static int through;
 #else
 #define	fputs2	fputs
 #endif
+#ifndef	CODEEUC
+static int prefix;
+#endif
 
 static unsigned char *convert();
 static int output();
@@ -52,7 +55,7 @@ int j1, j2;
 	if (j1) {
 		cnv[0] = ((j1 - 1) >> 1) + ((j1 < 0x5e) ? 0x71 : 0xb1);
 		cnv[1] = j2 + ((j1 & 1) ? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
-		if (cnv[1] == '\\') {
+		if (cnv[1] == '\\' && prefix) {
 			cnv[2] = '\\';
 			cnv[3] = '\0';
 		}
@@ -97,12 +100,14 @@ int argc;
 char *argv[];
 {
 	FILE *in, *out;
+	char *cp;
 	int c, mode, esc, kanji;
 
 #ifdef	CPP7BIT
-	char *cp;
-
 	through = ((cp = strrchr(argv[2], '.')) && !strcmp(++cp, "h")) ? 0 : 1;
+#endif
+#ifndef	CODEEUC
+	prefix = ((cp = strrchr(argv[2], '.')) && !strcmp(++cp, "cat")) ? 0 : 1;
 #endif
 
 	in = fopen(argv[1], "r");

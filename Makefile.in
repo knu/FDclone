@@ -3,12 +3,15 @@
 #
 
 TITLE	= FD-
-BINDIR	= /usr/local/bin
-MANDIR	= /usr/local/man/man$(MANSEC)
+TOPDIR	= /usr/local
+BINDIR	= $(TOPDIR)/bin
+MANDIR	= $(TOPDIR)/man/man$(MANSEC)
+CATDIR	= $(TOPDIR)/man/cat$(MANSEC)
 DEFRC	= /etc/fdrc
 SHELL	= /bin/sh
 INSTALL	= cp
 CHMOD	= chmod
+COL-B	= col -b
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
@@ -21,12 +24,13 @@ HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h\
 
 DOC	= README HISTORY FAQ TECHKNOW Install
 MANSRC	= fd.man
+MANCAT	= fd.cat
 MANSEC	= 1
 RUNCOM	= fdrc
 
-JSRCS	= $(DOC) kanji.h.in $(MANSRC)
+JSRCS	= $(DOC) kanji.h.in $(MANSRC) $(MANCAT)
 ESRCS	= Configure Makefile Makefile.in $(SRC) $(HEADER)\
-	config.h.in mkmf.sed.c version.h .fdrc
+	config.h.in mkmf.sed.c version.h .fdrc .fdrc.diff
 SOURCES	= $(JSRCS) $(ESRCS)
 
 CC	= __CC__
@@ -58,6 +62,9 @@ kanji.h: kanjicnv kanji.h.in
 $(PROGRAM).$(MANSEC): kanjicnv $(MANSRC)
 	./kanjicnv $(MANSRC) $@
 
+$(PROGRAM).$(MANSEC).cat: kanjicnv $(MANCAT)
+	./kanjicnv $(MANCAT) $@
+
 kanjicnv: kanjicnv.c
 	$(CC) $(CFLAGS) -o $@ $@.c
 
@@ -84,6 +91,12 @@ install: $(PROGRAM) $(PROGRAM).$(MANSEC)
 		$(INSTALL) $(RUNCOM) $(DEFRC); \
 		$(CHMOD) a+r $(DEFRC); \
 	fi
+
+catman: $(PROGRAM).$(MANSEC).cat
+	$(INSTALL) $(PROGRAM).$(MANSEC).cat $(CATDIR)/$(PROGRAM).$(MANSEC)
+
+catman-b: $(PROGRAM).$(MANSEC).cat
+	$(COL-B) < $(PROGRAM).$(MANSEC).cat > $(CATDIR)/$(PROGRAM).$(MANSEC)
 
 
 ############################################################
@@ -143,7 +156,7 @@ shar: $(SOURCES)
 
 clean:
 	rm -f core *.o funcno.h kanji.h kanjicnv mkfuncno expfunc \
-	$(PROGRAM) $(PROGRAM).$(MANSEC)
+	$(PROGRAM) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC).cat
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.o: fd.h machine.h config.h 
@@ -161,7 +174,7 @@ libc.o: kanji.h
 input.o: fd.h machine.h config.h 
 input.o: types.h pathname.h
 input.o: term.h func.h 
-input.o: kctype.h 
+input.o: kctype.h kanji.h 
 shell.o: fd.h machine.h config.h 
 shell.o: types.h pathname.h
 shell.o: term.h func.h 

@@ -47,6 +47,7 @@ Configure	環境設定用ヘッダの自動生成プログラム (Makefile内で実行)
 Makefile	メイクファイル
 Makefile.in	メイクファイル本体 (雛型)
 fd.man		man ページ用 roff ファイル (JIS版)
+fd.cat		man ページ用 プレーンテキスト (JIS版)
 
 mkmf.sed.c	メイクファイル加工用の sed スクリプト (雛型)
 kanjicnv.c	簡易漢字コードコンバータ
@@ -84,6 +85,7 @@ kanji.h.in	日本語文字列のソース (JIS版)
 version.h	バージョン
 
 .fdrc		.fdrc のお手本
+.fdrc.diff	.fdrc に関する 1.00 からの変更点
 
 
 --
