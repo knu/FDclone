@@ -30,6 +30,7 @@ extern char *mesconv __P_((char *, char *));
 #define	INTR_K	mesconv("中断キーにより作業を中止します.", "Interrupted by keyboard.")
 #define	INOV_K	mesconv("入力文字数がオーバーフローしました.", "Input length overflow.")
 #define	RECUR_K	mesconv("再帰的に fdsh を起動することはできません.", "Recursive call for fdsh.")
+#define	SCRSZ_K	mesconv("ESC で終了するか画面サイズを広げて下さい.", "Terminate with the ESC key, or enlarge a screen.")
 
 #define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
 #define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")
@@ -47,6 +48,7 @@ extern char *mesconv __P_((char *, char *));
 #define	WRTOK_K	mesconv("表示ディレクトリをディスクに書込みますか ?", "Write this displayed directory on disk ?")
 #define	HOMOK_K	mesconv("現在このディレクトリを他のユーザが利用していないことを確認しましたか ?", "Are you the only user on this directory, now ?")
 #define	NOWRT_K	mesconv("カレントディレクトリは書込みできません.", "Current directory unwritable.")
+#define	NOROW_K	mesconv("画面の行数が足りません.", "Line size is too small for operation.")
 #define	QUIT_K	mesconv("FD を終了しますか ?", "Quit from FD ?")
 #define	MAKED_K	mesconv("新しいディレクトリ名:", "New directory name:")
 #define	COPYD_K	mesconv("コピー先のディレクトリ名:", "Directory to copy:")
@@ -298,6 +300,9 @@ extern char *mesconv __P_((char *, char *));
 #define	NCVP_E \
 	meslist("漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
+#define	TUMSK_E \
+	meslist("一時的作業ディレクトリ用のファイル生成マスク値を指定します.", \
+		"Define the file creation mask for temporary directories.")
 
 #define	TENV_K	mesconv("内部変数", "Variables")
 #define	TBIND_K	mesconv("キー割当て", "Key bind")

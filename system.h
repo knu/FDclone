@@ -47,15 +47,20 @@ typedef int		sigmask_t;
 #define	Xsigblock(o,m)	((o) = sigblock(m))
 #endif	/* !USESIGPMASK */
 
-#ifdef	TIOCGPGRP
-#define	gettcpgrp(f, g)	((ioctl(f, TIOCGPGRP, &g) < 0) ? (g = -1) : g)
-#else
+#ifdef	USETERMIOS
 #define	gettcpgrp(f, g)	(g = tcgetpgrp(f))
-#endif
-#ifdef	TIOCSPGRP
-#define	settcpgrp(f, g)	ioctl(f, TIOCSPGRP, &(g))
-#else
 #define	settcpgrp(f, g)	tcsetpgrp(f, g)
+#else
+# ifdef	TIOCGPGRP
+# define	gettcpgrp(f, g)	((ioctl(f, TIOCGPGRP, &g) < 0) ? (g = -1) : g)
+# else
+# define	gettcpgrp(f, g)	(-1)
+# endif
+# ifdef	TIOCSPGRP
+# define	settcpgrp(f, g)	ioctl(f, TIOCSPGRP, &(g))
+# else
+# define	settcpgrp(f, g)	(-1)
+# endif
 #endif
 
 #if	!MSDOS
@@ -104,9 +109,49 @@ typedef union wait	wait_t;
 #define	NOPOSIXUTIL
 #endif
 
+#if	!MSDOS
+#ifdef	USETERMIOS
+#include <termios.h>
+#include <sys/ioctl.h>	/* for Linux libc6 */
+typedef struct termios	termioctl_t;
+typedef struct termios	ldiscioctl_t;
+#define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
+#define	ldisc(a)	((a).c_line)
+#define	REQGETP		0
+#define	REQSETP		(TCSAFLUSH + 1)
+#define	REQGETD		0
+#define	REQSETD		(TCSADRAIN + 1)
+#endif	/* !USETERMIOS */
+
+#ifdef	USETERMIO
+#include <termio.h>
+typedef struct termio	termioctl_t;
+typedef struct termio	ldiscioctl_t;
+#define	tioctl		ioctl
+#define	ldisc(a)	((a).c_line)
+#define	REQGETP		TCGETA
+#define	REQSETP		TCSETAF
+#define	REQGETD		TCGETA
+#define	REQSETD		TCSETAW
+#endif	/* !USETERMIO */
+
+#ifdef	USESGTTY
+#include <sgtty.h>
+typedef struct sgttyb	termioctl_t;
+typedef int 		ldiscioctl_t;
+#define	tioctl		ioctl
+#define	ldisc(a)	(a)
+#define	REQGETP		TIOCGETP
+#define	REQSETP		TIOCSETP
+#define	REQGETD		TIOCGETD
+#define	REQSETD		TIOCSETD
+#endif	/* !USESGTTY */
+#endif	/* !MSDOS */
+
 typedef struct _heredoc_t {
 	char *eof;
 	char *filename;
+	char *buf;
 	int fd;
 	u_char flags;
 } heredoc_t;
@@ -223,6 +268,7 @@ typedef struct _syntaxtree {
 #define	ST_TOP	0004
 #define	ST_NOWN	0010
 #define	ST_BUSY	0020
+#define	ST_HDOC	0040
 
 #ifdef	MINIMUMSHELL
 #define	hasparent(trp)	((trp) -> parent)
@@ -293,16 +339,22 @@ typedef struct _pipelist {
 	int new;
 	int old;
 	int ret;
-	long pid;
+	p_id_t pid;
 	struct _pipelist *next;
 } pipelist;
 
+#if	!MSDOS && !defined (NOJOB)
 typedef struct _jobtable {
-	long *pids;
+	p_id_t *pids;
 	int *stats;
 	int npipe;
 	syntaxtree *trp;
+	termioctl_t *tty;
+# ifdef	USESGTTY
+	int *ttyflag;
+# endif
 } jobtable;
+#endif	/* !MSDOS && !NOJOB */
 
 typedef struct _shfunctable {
 	char *ident;
@@ -343,7 +395,7 @@ typedef struct _ulimittable {
 } ulimittable;
 
 extern int shellmode;
-extern long mypid;
+extern p_id_t mypid;
 extern int ret_status;
 extern int verboseexec;
 extern int notexec;
@@ -371,10 +423,10 @@ extern int interactive;
 extern int lastjob;
 extern int prevjob;
 extern int stopped;
-extern long orgpgrp;
-extern long childpgrp;
+extern p_id_t orgpgrp;
+extern p_id_t childpgrp;
 #endif
-extern long ttypgrp;
+extern p_id_t ttypgrp;
 extern int interrupted;
 extern int nottyout;
 extern int syntaxerrno;
@@ -389,8 +441,8 @@ extern VOID fputlong __P_((long, FILE *));
 extern VOID fputstr __P_((char *, int, FILE *));
 #if	!MSDOS
 extern VOID dispsignal __P_((int, int, FILE *));
-extern int waitjob __P_((long, wait_t *, int));
-extern int waitchild __P_((long, syntaxtree *));
+extern int waitjob __P_((p_id_t, wait_t *, int));
+extern int waitchild __P_((p_id_t, syntaxtree *));
 #endif
 extern char *evalvararg __P_((char *, int, int, int, int, int));
 extern syntaxtree *newstree __P_((syntaxtree *));
@@ -399,6 +451,7 @@ extern syntaxtree *parentshell __P_((syntaxtree *));
 #if	!MSDOS
 extern VOID cmpmail __P_((char *, char *, time_t *));
 #endif
+extern int identcheck __P_((char *, int));
 extern char *getshellvar __P_((char *, int));
 extern int putexportvar __P_((char *, int));
 extern int putshellvar __P_((char *, int));
@@ -406,10 +459,10 @@ extern int unset __P_((char *, int));
 extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *));
 extern int getstatid __P_((syntaxtree *trp));
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
-extern syntaxtree *startvar __P_((syntaxtree *, char *, int *,
-		int *, int *, char *, int *, int));
+extern syntaxtree *startvar __P_((syntaxtree *, redirectlist *,
+		char *, int *, int *, int));
 #endif
-extern syntaxtree *analyze __P_((char *, syntaxtree *, int, int));
+extern syntaxtree *analyze __P_((char *, syntaxtree *, int));
 extern char *evalbackquote __P_((char *));
 #ifdef	NOALIAS
 extern int checktype __P_((char *, int *, int));

@@ -22,12 +22,13 @@ char *argv[];
 	char *cp;
 #endif
 
-	printf("s:__VERSION__:%d:g\n", FD);
+	printf("s:__VERSION__:%d:\n", FD);
 #if	FD >= 2
-	printf("s:__RCVERSION__:%d:g\n", FD);
+	printf("s:__RCVERSION__:%d:\n", FD);
 #else
-	printf("s:__RCVERSION__::g\n");
+	printf("s:__RCVERSION__::\n");
 #endif
+	printf("s:__PREFIX__:%s:\n", PREFIX);
 	printf("s:__EXE__::g\n");
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__OBJS__:dosemu.o:\n");
@@ -36,10 +37,10 @@ char *argv[];
 
 #ifdef	USEDATADIR
 	printf("s:__UNITBLPATH__:-DDATADIR='\"'$(DATADIR)'\"':\n");
-	printf("s:__DATADIR__:$(DATADIR):\n");
+	printf("s:__DATADIR__:$(DATADIR):g\n");
 #else
 	printf("s:__UNITBLPATH__::\n");
-	printf("s:__DATADIR__:$(BINDIR):\n");
+	printf("s:__DATADIR__:$(BINDIR):g\n");
 #endif
 
 	printf("s:	__RENAME__:#	mv:\n");
@@ -72,6 +73,17 @@ char *argv[];
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
+#ifdef	HOSTCCCOMMAND
+	if (strcmp(CCCOMMAND, HOSTCCCOMMAND)) {
+		printf("s:__HOSTCC__:%s:\n", HOSTCCCOMMAND);
+		printf("s:__HOSTCCOPTIONS__:-O:\n");
+	}
+	else
+#endif
+	{
+		printf("s:__HOSTCC__:$(CC):\n");
+		printf("s:__HOSTCCOPTIONS__:%s:\n", EXTENDCCOPT);
+	}
 	printf("s:__MEM__::\n");
 	printf("s:__SHMEM__::\n");
 	printf("s:__BSHMEM__::\n");

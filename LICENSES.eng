@@ -221,7 +221,7 @@ is authorized.
 2. Rewrite from `NULL' to the E-mail address of the circulation
    manager, variable `distributor' in `version.h'.
    ex.:
-   char *distributor = "shirai@nintendo.co.jp (Takashi SHIRAI)";
+   char *distributor = "shirai@unixusers.net (Takashi SHIRAI)";
 3. Make the differential in modification from the package of
    the primary circulation, including the additional files if
    exist.

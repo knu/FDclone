@@ -2,8 +2,8 @@
 #
 #	About FDclone Ver. 2.02
 #
-#	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	Dec 25, 2002
+#	Takashi SHIRAI, <shirai@unixusers.net>
+#	Feb 26, 2003
 #
 ############################################################
 
@@ -123,7 +123,7 @@ _fdrc.dif	changes from 1.03 about .fd2rc
 
 --
   The copyright of FDclone belongs to:
-	[ Takashi Shirai <shirai@nintendo.co.jp> ]
+	[ Takashi Shirai <shirai@unixusers.net> ]
   However, you are allowed freely to distribute, change,
 include and use secondarily the all sources, without any
 restriction.

@@ -386,6 +386,9 @@ int delim;
 			else cp = realpath2(tmp, buf, 1);
 			len = strlen(cp);
 		}
+#ifdef	FAKEUNINIT
+		else tmp = NULL;	/* fake for -Wuninitialized */
+#endif
 		epath = (char *)realloc2(epath, size + len + 1 + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
@@ -555,7 +558,7 @@ int max;
 				break;
 #if	!MSDOS
 			case 'u':
-				if (up = finduid(getuid(), NULL))
+				if ((up = finduid(getuid(), NULL)))
 					cp = up -> name;
 				break;
 			case 'h':

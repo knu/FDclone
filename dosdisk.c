@@ -13,8 +13,6 @@
 #include <fcntl.h>
 #include "machine.h"
 
-#ifndef	_NODOSDRIVE
-
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
@@ -36,6 +34,12 @@
 #define	VOID_T	void
 #define	VOID_P	void *
 #endif
+
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
+#ifndef	_NODOSDRIVE
 
 #if	MSDOS
 #include <io.h>
@@ -1930,6 +1934,9 @@ long clust, n;
 	if ((ofs = getfatofs(devp, clust)) < 0) return(-1);
 	if ((devp -> fatbuf)) {
 		buf = NULL;
+#ifdef	FAKEUNINIT
+		nsect = 0;	/* fake for -Wuninitialized */
+#endif
 		fatp = (u_char *)&(devp -> fatbuf[ofs]);
 	}
 	else {

@@ -69,6 +69,10 @@ static int NEAR setlaunch __P_((int, char *[]));
 static int NEAR setarch __P_((int, char *[]));
 static int NEAR printlaunch __P_((int, char *[]));
 static int NEAR printarch __P_((int, char *[]));
+# ifndef	_NOBROWSE
+static char **NEAR readargv __P_((char **, char **));
+static int NEAR custbrowse __P_((int, char *[]));
+# endif
 #endif
 static int NEAR getcommand __P_((char *));
 static int NEAR setkeybind __P_((int, char *[]));
@@ -120,22 +124,28 @@ static int NEAR loadsource __P_((int, char *[]));
 #define	FUNCNAME	1
 #endif
 
-#define	ER_FEWMANYARG	1
-#define	ER_OUTOFLIMIT	2
-#define	ER_NOENTRY	3
-#define	ER_SYNTAXERR	4
-#define	ER_EXIST	5
-#define	ER_INVALDEV	6
-#define	ER_EVENTNOFOUND	7
 static char *builtinerrstr[] = {
 	"",
+#define	ER_FEWMANYARG	1
 	"Too few or many arguments",
+#define	ER_OUTOFLIMIT	2
 	"Out of limits",
+#define	ER_NOENTRY	3
 	"No such entry",
+#define	ER_SYNTAXERR	4
 	"Syntax error",
+#define	ER_EXIST	5
 	"Entry already exists",
+#define	ER_INVALDEV	6
 	"Invalid device",
+#define	ER_EVENTNOFOUND	7
 	"Event not found",
+#define	ER_NOARGSPEC	8
+	"No argument is specified",
+#define	ER_NOTINSHELL	9
+	"Cannot execute in shell mode",
+#define	ER_NOTRECURSE	10
+	"Cannot execute recursively",
 };
 #define	BUILTINERRSIZ	((int)(sizeof(builtinerrstr) / sizeof(char *)))
 
@@ -145,6 +155,9 @@ static builtintable builtinlist[] = {
 	{setarch,	BL_ARCH},
 	{printlaunch,	BL_PLAUNCH},
 	{printarch,	BL_PARCH},
+# ifndef	_NOBROWSE
+	{custbrowse,	BL_BROWSE},
+# endif
 #endif
 	{setkeybind,	BL_BIND},
 	{printbind,	BL_PBIND},
@@ -244,12 +257,12 @@ int init;
 	if (n >= n_line) n = 1;
 	if (++n >= n_line) {
 		fflush(stdout);
-		ttyiomode();
+		ttyiomode(1);
 		win_x = 0;
 		win_y = n_line - 1;
 		hideclock = 1;
 		warning(0, HITKY_K);
-		stdiomode();
+		stdiomode(1);
 	}
 }
 #endif	/* _NOORIGSHELL */
@@ -668,6 +681,243 @@ char *argv[];
 	fflush(stdout);
 	return(0);
 }
+
+# ifndef	_NOBROWSE
+static char **NEAR readargv(sargv, dargv)
+char **sargv, **dargv;
+{
+	FILE *fp;
+	char *cp, *line, **argv;
+	int i, j, n, size, argc, dargc, meta, quote;
+
+	dargc = countvar(dargv);
+	for (n = 1; sargv[n]; n++) {
+		if (sargv[n][0] != '-' || sargv[n][1] != '@') {
+			dargv = (char **)realloc2(dargv,
+				(dargc + 2) * sizeof(char *));
+			dargv[dargc++] = strdup2(sargv[n]);
+			dargv[dargc] = NULL;
+			continue;
+		}
+		if (sargv[n][2]) cp = &(sargv[n][2]);
+		else if (sargv[n + 1]) cp = sargv[++n];
+		else {
+			builtinerror(sargv, sargv[n], ER_NOARGSPEC);
+			freevar(dargv);
+			return(NULL);
+		}
+		if (!(fp = Xfopen(cp, "r"))) {
+			builtinerror(sargv, cp, -1);
+			freevar(dargv);
+			return(NULL);
+		}
+
+		argc = 1;
+		argv = (char **)malloc2(2 * sizeof(char *));
+		argv[0] = strdup2(sargv[0]);
+		argv[1] = NULL;
+		j = meta = 0;
+		quote = '\0';
+		cp = c_malloc(size);
+		while ((line = fgets2(fp, 0))) {
+			if (!meta && !quote && *line == '#') {
+				free(line);
+				continue;
+			}
+			meta = 0;
+			for (i = 0; line[i]; i++) {
+				cp = c_realloc(cp, j + 2, size);
+				if (line[i] == quote) quote = '\0';
+#  ifdef	CODEEUC
+				else if (isekana(line, i)) {
+					cp[j++] = line[i++];
+					cp[j++] = line[i];
+				}
+#  endif
+				else if (iskanji1(line, i)) {
+					cp[j++] = line[i++];
+					cp[j++] = line[i];
+				}
+				else if (quote == '\'') cp[j++] = line[i];
+				else if (line[i] == PMETA) {
+					if (!line[++i]) {
+						meta = 1;
+						break;
+					}
+					cp[j++] = line[i];
+				}
+				else if (quote) cp[j++] = line[i];
+				else if (line[i] == '\'' || line[i] == '"')
+					quote = line[i];
+				else if (!strchr(IFS_SET, line[i]))
+					cp[j++] = line[i];
+				else if (j) {
+					cp[j] = '\0';
+					argv = (char **)realloc2(argv,
+						(argc + 2) * sizeof(char *));
+					argv[argc++] = strdup2(cp);
+					argv[argc] = NULL;
+					j = 0;
+				}
+			}
+			if (meta);
+			else if (quote) cp[j++] = '\n';
+			else if (j) {
+				cp[j] = '\0';
+				argv = (char **)realloc2(argv,
+					(argc + 2) * sizeof(char *));
+				argv[argc++] = strdup2(cp);
+				argv[argc] = NULL;
+				j = 0;
+			}
+			free(line);
+		}
+		Xfclose(fp);
+		if (j) {
+			cp[j] = '\0';
+			argv = (char **)realloc2(argv,
+				(argc + 2) * sizeof(char *));
+			argv[argc++] = strdup2(cp);
+			argv[argc] = NULL;
+		}
+		free(cp);
+		dargv = readargv(argv, dargv);
+		freevar(argv);
+		if (!dargv) return(NULL);
+		dargc = countvar(dargv);
+	}
+	return(dargv);
+}
+
+VOID freebrowse(list)
+launchtable *list;
+{
+	int i;
+
+	browselevel = 0;
+	if (argvar) {
+		for (i = 1; argvar[i]; i++) {
+			free(argvar[i]);
+			argvar[i] = NULL;
+		}
+	}
+	setenv2(BROWSECWD, NULL);
+	setenv2(BROWSELAST, NULL);
+	if (!list) return;
+	for (i = 0; list[i].comm; i++) {
+		if (list[i].ext) free(list[i].ext);
+		free(list[i].comm);
+		if (list[i].format) free(list[i].format);
+	}
+	free(list);
+}
+
+static int NEAR custbrowse(argc, argv)
+int argc;
+char *argv[];
+{
+	launchtable *list;
+	char *cp, **argv2;
+	int i, c, n, lvl, err;
+
+#  ifndef	_NOORIGSHELL
+	if (shellmode) {
+		builtinerror(argv, NULL, ER_NOTINSHELL);
+		return(-1);
+	}
+#  endif
+	if (browselist) {
+		builtinerror(argv, NULL, ER_NOTRECURSE);
+		return(-1);
+	}
+	argv2 = (char **)malloc2(1 * sizeof(char *));
+	argv2[0] = NULL;
+	if (!(argv2 = readargv(argv, argv2))) return(-1);
+
+	list = NULL;
+	n = lvl = 0;
+	while (argv2[n]) {
+		list = (launchtable *)realloc2(list,
+			(lvl + 2) * sizeof(launchtable));
+		list[lvl].topskip = list[lvl].bottomskip = 0;
+		list[lvl].comm = strdup2(argv2[n++]);
+		list[lvl].flags = 0;
+		list[lvl].ext = list[lvl].format = list[lvl + 1].comm = NULL;
+		err = 0;
+		while (argv2[n] && argv2[n][0] == '-') {
+			c = argv2[n][1];
+			if (!c || c == '-') {
+				n++;
+				break;
+			}
+			else if (!strchr("cftbdn", c)) break;
+			if (argv2[n][2]) cp = &(argv2[n][2]);
+			else if (argv2[n + 1]) cp = argv2[++n];
+			else {
+				err = ER_NOARGSPEC;
+				cp = argv2[n];
+				break;
+			}
+
+			if (c == 'c') {
+				if (list[lvl].ext) free (list[lvl].ext);
+				list[lvl].ext = strdup2(cp);
+			}
+			else if (c == 'f') {
+				if (list[lvl].format) free (list[lvl].format);
+				list[lvl].format = strdup2(cp);
+			}
+			else if (c == 't' || c == 'b') {
+				if ((i = atoi2(cp)) < 0) {
+					err = ER_SYNTAXERR;
+					break;
+				}
+				if (c == 't') list[lvl].topskip = i;
+				else list[lvl].bottomskip = i;
+			}
+			else {
+				if (!strcmp(cp, "loop"))
+					i = (c == 'd')
+						? LF_DIRLOOP : LF_FILELOOP;
+				else if (!strcmp(cp, "nocwd"))
+					i = (c == 'd')
+						? LF_DIRNOCWD : LF_FILENOCWD;
+				else {
+					err = ER_SYNTAXERR;
+					break;
+				}
+				list[lvl].flags |= i;
+			}
+			n++;
+		}
+		if (err) {
+			builtinerror(argv, cp, err);
+			freevar(argv2);
+			freebrowse(list);
+			return(-1);
+		}
+		lvl++;
+	}
+	for (i = 0; i < lvl; i++)
+		if ((!i || i < lvl - 1) && !list[i].format) break;
+	if (!lvl || i < lvl) {
+		builtinerror(argv, NULL, ER_FEWMANYARG);
+		freevar(argv2);
+		freebrowse(list);
+		return(-1);
+	}
+	freevar(argv2);
+	if (list) {
+		freebrowse(browselist);
+		if (dolaunch(&(list[0]), 1) < 0) {
+			freebrowse(list);
+			return(-1);
+		}
+		browselist = list;
+	}
+	return(0);
+}
+# endif	/* !_NOBROWSE */
 #endif	/* !_NOARCHIVE */
 
 static int NEAR getcommand(cp)
@@ -918,6 +1168,9 @@ int head, sect, cyl;
 	int i, n, min, max;
 
 	min = -1;
+# ifdef	FAKEUNINIT
+	max = -1;	/* fake for -Wuninitialized */
+# endif
 	for (i = 0; fdtype[i].name; i++)
 	if (!strpathcmp(dev, fdtype[i].name)) {
 		if (min < 0) min = i;
@@ -960,12 +1213,15 @@ int head, sect, cyl;
 			if (drive > 'Z') break;
 			drvlist[i + 1] = drive;
 		}
-		if (j < n - 1) {
+		if (i < n - 1) {
 			free(sp);
 			free(drvlist);
 			return(-2);
 		}
 	}
+#  ifdef	FAKEUNINIT
+	else drvlist = NULL;		/* fake for -Wuninitialized */
+#  endif
 # endif	/* HDDMOUNT */
 
 	fdtype[max + n].name = NULL;
@@ -1320,7 +1576,7 @@ char *argv[];
 	}
 
 	hitkey(2);
-	ttyiomode();
+	ttyiomode(1);
 	i = 0;
 	for (;;) {
 		kanjiputs(GETKY_K);
@@ -1346,7 +1602,7 @@ char *argv[];
 		}
 		if (n != 1 && ch == ' ') break;
 	}
-	stdiomode();
+	stdiomode(1);
 	return(0);
 }
 #endif	/* !MSDOS && !_NOKEYMAP */
@@ -1494,12 +1750,10 @@ char *argv[];
 		fputc('\n', stdout);
 		fflush(stdout);
 		entryhist(0, s, 0);
-		ttyiomode();
-		if ((ret = execmacro(s, NULL, 1, 1, 1)) < 0) {
+		if ((ret = execmacro(s, NULL, 1, -1, 1)) < 0) {
 			internal_status = 1;
 			ret = 0;
 		}
-		stdiomode();
 		free(s);
 		return(ret);
 	}
@@ -1591,9 +1845,7 @@ char *argv[];
 	}
 
 	Xfclose(fp);
-	ttyiomode();
 	ret = execmacro(editor, path, 1, 0, 1);
-	stdiomode();
 	if (ret < 0) {
 		internal_status = 1;
 		ret = 0;
@@ -1622,9 +1874,7 @@ char *argv[];
 		fputc('\n', stdout);
 		fflush(stdout);
 		entryhist(0, cp, 0);
-		ttyiomode();
-		ret = execmacro(cp, NULL, 1, 1, 1);
-		stdiomode();
+		ret = execmacro(cp, NULL, 1, -1, 1);
 		free(cp);
 	}
 	Xfclose(fp);
@@ -1886,14 +2136,11 @@ char *argv[];
 	char *cp;
 	int ret;
 
-	if (argc < 2) return(0);
-	cp = catvar(&(argv[1]), ' ');
-	ttyiomode();
-	if ((ret = execmacro(cp, NULL, 1, 1, 0)) < 0) {
+	if (argc <= 1 || !(cp = catvar(&(argv[1]), ' '))) return(0);
+	if ((ret = execmacro(cp, NULL, 1, -1, 0)) < 0) {
 		internal_status = 1;
 		ret = 0;
 	}
-	stdiomode();
 	free(cp);
 	return(ret);
 }
@@ -1997,7 +2244,10 @@ static int NEAR printenv(argc, argv)
 int argc;
 char *argv[];
 {
-	int i, len;
+# if	FD < 2
+	int len;
+# endif
+	int i;
 
 # if	FD >= 2
 	if (argc >= 2) {
@@ -2399,9 +2649,9 @@ char *argv[];
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	ttyiomode();
+	ttyiomode(1);
 	ret = loadruncom(argv[1], 1);
-	stdiomode();
+	stdiomode(1);
 	if (ret < 0) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
@@ -2456,10 +2706,10 @@ char *argv[];
 		fputc('\n', stderr);
 		return(RET_NOTICE);
 	}
-	ttyiomode();
+	ttyiomode(0);
 	internal_status = (*funclist[n].func)(argv[1]);
 	locate(0, n_line - 1);
-	stdiomode();
+	stdiomode(0);
 	return(RET_SUCCESS);
 }
 
@@ -2484,9 +2734,9 @@ int comline, ignorelist;
 			tflush();
 		}
 		hitkey((comline) ? 1 : -1);
-		stdiomode();
+		stdiomode(0);
 		n = execbuiltin(i, argc, argv);
-		ttyiomode();
+		ttyiomode(0);
 		if (n == RET_SUCCESS) hitkey(3);
 		else if (comline) {
 			hideclock = 1;
@@ -2498,9 +2748,9 @@ int comline, ignorelist;
 			locate(0, n_line - 1);
 			tflush();
 		}
-		stdiomode();
+		stdiomode(0);
 		n = execinternal(i, argc, argv);
-		ttyiomode();
+		ttyiomode(0);
 		if (n == RET_SUCCESS);
 		else if (comline) {
 			hideclock = 1;
@@ -2513,10 +2763,10 @@ int comline, ignorelist;
 			locate(0, n_line - 1);
 			tflush();
 		}
-		stdiomode();
+		stdiomode(0);
 		n = setuserfunc(i, argv);
 		n = (n < 0) ? RET_NOTICE : RET_SUCCESS;
-		ttyiomode();
+		ttyiomode(0);
 		if (n == RET_SUCCESS);
 		else if (comline) {
 			hideclock = 1;

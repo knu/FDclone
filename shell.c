@@ -36,12 +36,10 @@ static int NEAR setarg __P_((char *, int, char *, char *, u_char));
 static int NEAR setargs __P_((char *, int, int, int, macrostat *));
 static int NEAR insertarg __P_((char *, char *, char *, int));
 static char *NEAR addoption __P_((char *, char *, macrostat *, int));
-#ifdef	_NOORIGSHELL
 static int NEAR system3 __P_((char *, int, int));
+#ifdef	_NOORIGSHELL
 static char *NEAR evalargs __P_((char *, int, char *[]));
 static char *NEAR evalalias __P_((char *));
-#else
-#define	system3(c, n, i)	system2(c, n)
 #endif
 
 #ifdef	_NOORIGSHELL
@@ -472,7 +470,11 @@ int ignorelist;
 		j += len;
 	}
 	if (command[i]) {
-		warning(E2BIG, command);
+		if (isttyiomode) warning(E2BIG, command);
+		else {
+			errno = E2BIG;
+			perror(command);
+		}
 		return(NULL);
 	}
 
@@ -558,9 +560,9 @@ char *def;
 	promptstr = duppromptstr;
 	if (!cp) return((char *)-1);
 
-	stdiomode();
+	stdiomode(1);
 	tmp = evalhistory(cp);
-	ttyiomode();
+	ttyiomode(1);
 	if (!tmp) {
 		free(cp);
 		return(NULL);
@@ -596,7 +598,7 @@ char *def;
 	trp = stree = newstree(NULL);
 	for (;;) {
 		if (cp) {
-			trp = analyze(cp, trp, 0, 1);
+			trp = analyze(cp, trp, 1);
 			free(cp);
 			if (!trp || !(trp -> cont)) break;
 		}
@@ -666,7 +668,9 @@ int ignorelist;
 		}
 
 		if (p < 0) p = strlen(line);
+		if (!(i = isttyiomode)) ttyiomode(1);
 		cp = inputstr("", 0, p, line, 0);
+		if (!i) stdiomode(1);
 		if (!cp) return(NULL);
 		if (!*cp) {
 			free(cp);
@@ -683,11 +687,11 @@ int ignorelist;
 	return(command);
 }
 
-#ifdef	_NOORIGSHELL
 static int NEAR system3(command, noconf, ignorelist)
 char *command;
 int noconf, ignorelist;
 {
+#ifdef	_NOORIGSHELL
 	char *cp, *tmp;
 	int n, ret;
 
@@ -703,8 +707,46 @@ int noconf, ignorelist;
 	sigvecset(n);
 	if (cp) free(cp);
 	return(ret);
-}
+#else	/* _NOORIGSHELL */
+	if (!isttyiomode) return(dosystem(command));
+	return(system2(command, noconf));
 #endif	/* _NOORIGSHELL */
+}
+
+int isinternalcomm(command)
+char *command;
+{
+#ifndef	_NOORIGSHELL
+	syntaxtree *stree;
+	char **subst;
+	int i, *len;
+#endif
+	char **argv;
+	int ret;
+
+	ret = 1;
+#ifdef	_NOORIGSHELL
+	if (getargs(command, &argv) > 0 && checkinternal(argv[0]) < 0) ret = 0;
+	freevar(argv);
+#else	/* !_NOORIGSHELL */
+	stree = newstree(NULL);
+	if (analyze(command, stree, 1)) {
+		if ((argv = getsimpleargv(stree))) {
+			i = (stree -> comm) -> argc;
+			(stree -> comm) -> argc =
+				getsubst(i, argv, &subst, &len);
+			stripquote(argv[0], 1);
+			if (argv[0] && checkinternal(argv[0]) < 0) ret = 0;
+			freevar(subst);
+			free(len);
+		}
+	}
+	freestree(stree);
+	free(stree);
+#endif	/* !_NOORIGSHELL */
+
+	return(ret);
+}
 
 int execmacro(command, arg, noconf, argset, ignorelist)
 char *command, *arg;
@@ -712,7 +754,7 @@ int noconf, argset, ignorelist;
 {
 	static char *duparg = NULL;
 	macrostat st;
-	char *tmp, **argv, buf[MAXCOMMSTR + 1];
+	char *tmp, buf[MAXCOMMSTR + 1];
 	int i, max, r, ret, status;
 
 	if (arg) duparg = arg;
@@ -725,34 +767,7 @@ int noconf, argset, ignorelist;
 	}
 	n_args = mark;
 
-	st.flags = F_ARGSET;
-	if (!argset) {
-#ifdef	_NOORIGSHELL
-		if (getargs(command, &argv) > 0 && checkinternal(argv[0]) < 0)
-			st.flags = 0;
-		freevar(argv);
-#else	/* !_NOORIGSHELL */
-		syntaxtree *stree;
-		char **subst;
-		int *len;
-
-		stree = newstree(NULL);
-		if (analyze(command, stree, 0, 1)) {
-			if ((argv = getsimpleargv(stree))) {
-				i = (stree -> comm) -> argc;
-				(stree -> comm) -> argc =
-					getsubst(i, argv, &subst, &len);
-				stripquote(argv[0], 1);
-				if (argv[0] && checkinternal(argv[0]) < 0)
-					st.flags = 0;
-				freevar(subst);
-				free(len);
-			}
-		}
-		freestree(stree);
-		free(stree);
-#endif	/* !_NOORIGSHELL */
-	}
+	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
 	if (noconf < 0) st.flags |= F_ISARCH;
 
 	if (!(tmp = evalcommand(command, duparg, &st, ignorelist))) {
@@ -761,7 +776,7 @@ int noconf, argset, ignorelist;
 	}
 	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	st.flags |= F_ARGSET;
-	if (noconf >= 0 && !argset) {
+	if (noconf >= 0 && argset <= 0) {
 		if (!(tmp = addoption(tmp, duparg, &st, ignorelist))) {
 			if (arg) duparg = NULL;
 			return(-1);
@@ -780,7 +795,7 @@ int noconf, argset, ignorelist;
 		if (!(st.flags & F_REMAIN)
 		|| !(tmp = evalcommand(command, duparg, &st, ignorelist)))
 			break;
-		if (noconf >= 0 && !argset) {
+		if (noconf >= 0 && argset <= 0) {
 			if (!(tmp = addoption(tmp, duparg, &st, ignorelist)))
 				break;
 		}
@@ -1019,10 +1034,7 @@ int *ptrp;
 	ptr = (ptrp) ? *ptrp : 0;
 	size = histsize[0];
 	if (str[ptr] == '!') n = 0;
-	else if (str[ptr] == '=' || strchr(IFS_SET, str[ptr])) {
-		ptr = -1;
-		n = -1;
-	}
+	else if (str[ptr] == '=' || strchr(IFS_SET, str[ptr])) n = ptr = -1;
 	else if ((cp = evalnumeric(&(str[ptr]), &no, -1))) {
 		if (!no) n = -1;
 		else if (no < 0) {
@@ -1039,7 +1051,7 @@ int *ptrp;
 			if (strchr(CMDLINE_DELIM, str[ptr + i])) break;
 			if (iskanji1(str, ptr + i)) i++;
 		}
-		if (!i) ptr = -1;
+		if (!i) n = ptr = -1;
 		else {
 			for (n = 0; n < size; n++) {
 				if (!history[0][n]) break;

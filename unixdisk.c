@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <io.h>
 #include "machine.h"
-#include "unixdisk.h"
 
 #ifdef	NOVOID
 #define	VOID
@@ -18,6 +17,11 @@
 #define	VOID_T	void
 #endif
 
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
+#include "unixdisk.h"
 #include "dosdisk.h"
 
 #ifdef	LSI_C

@@ -11,7 +11,7 @@
 #ifdef	_NOKANJIFCONV
 #define	convget(buf, s)	(s)
 #define	convput(buf, s)	(s)
-#else
+#else	/* !_NOKANJIFCONV */
 #define	convget(buf, s)	((nokanjifget) \
 			? s : kanjiconv2(buf, s, MAXPATHLEN - 1, \
 			getkcode(s), DEFCODE))
@@ -40,9 +40,17 @@ char *noconvpath = NULL;
 
 static opendirpath_t *dirpathlist = NULL;
 static int maxdirpath = 0;
-#endif
+#endif	/* !_NOKANJIFCONV */
 
-#ifndef	_NODOSDRIVE
+#ifdef	_NODOSDRIVE
+# ifdef	NODNAMLEN
+typedef struct _st_dirent {
+	char buf[sizeof(struct dirent) + MAXNAMLEN];
+} st_dirent;
+# else
+typedef struct dirent	st_dirent;
+# endif
+#else	/* !_NODOSDRIVE */
 int lastdrv = -1;
 int dosdrive = 0;
 
@@ -120,7 +128,7 @@ char *path;
 	recurse = 0;
 	return(c);
 }
-#endif
+#endif	/* !_NOKANJIFCONV */
 
 DIR *_Xopendir(path, raw)
 char *path;
@@ -380,7 +388,7 @@ int raw, nodos;
 	char buf[MAXPATHLEN];
 #endif
 #ifndef	_NOROCKRIDGE
-	char rbuf[MAXPATHLEN];
+	char *cp, rbuf[MAXPATHLEN], lbuf[MAXPATHLEN];
 #endif
 
 #ifndef	_NODOSDRIVE
@@ -391,9 +399,22 @@ int raw, nodos;
 #endif
 	if (!raw) {
 		path = convput(buf, path);
-		path = detransfile(path, rbuf, 1);
+#ifndef	_NOROCKRIDGE
+		cp = path;
+		path = detransfile(path, rbuf, 0);
+#endif
 	}
-	return(lstat(path, stp) ? -1 : 0);
+	if (lstat(path, stp)) return(-1);
+#ifndef	_NOROCKRIDGE
+	if (path == rbuf) {
+		path = detransfile(cp, lbuf, 1);
+		if (path == lbuf && strcmp(rbuf, lbuf)) {
+			stp -> st_mode &= ~S_IFMT;
+			stp -> st_mode |= S_IFLNK;
+		}
+	}
+#endif
+	return(0);
 }
 
 int Xaccess(path, mode)
@@ -447,7 +468,7 @@ int bufsiz;
 	char kbuf[MAXPATHLEN];
 #endif
 #ifndef	_NOROCKRIDGE
-	char rbuf[MAXPATHLEN];
+	char *cp, rbuf[MAXPATHLEN];
 #endif
 	char lbuf[MAXPATHLEN + 1];
 	int len;
@@ -456,11 +477,12 @@ int bufsiz;
 	if (dospath(path, NULL)) return(dosreadlink(path, buf, bufsiz));
 #endif
 	path = convput(kbuf, path);
-	path = detransfile(path, rbuf, 0);
 #ifndef	_NOROCKRIDGE
+	cp = path;
+	path = detransfile(path, rbuf, 0);
 	if (path == rbuf) {
-		detransfile(path, lbuf, 1);
-		if (strcmp(path, lbuf)) {
+		path = detransfile(cp, lbuf, 1);
+		if (path != lbuf || !strcmp(rbuf, lbuf)) {
 			errno = EINVAL;
 			return(-1);
 		}

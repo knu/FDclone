@@ -24,6 +24,10 @@
 #endif	/* !FD */
 #include <ctype.h>
 
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
 #if	MSDOS
 #include <process.h>
 #include "unixemu.h"
@@ -174,7 +178,7 @@ static char *NEAR removeword __P_((char *, char *, int, int));
 static char **NEAR removevar __P_((char **, char *, int, int));
 static char *NEAR evalshellparam __P_((int, int, char *, int, int *));
 #endif	/* !MINIMUMSHELL */
-static int NEAR replacevar __P_((char *, char **, int, int, int, int));
+static int NEAR replacevar __P_((char *, char **, int, int, int, int, int));
 static char *NEAR insertarg __P_((char *, int, char *, int, int));
 static int NEAR evalvar __P_((char **, int, char **, int));
 static char *NEAR replacebackquote __P_((char *, int *, char *, int));
@@ -229,8 +233,8 @@ hashlist **hashtable = NULL;
 char *(*getvarfunc)__P_((char *, int)) = NULL;
 int (*putvarfunc)__P_((char *, int)) = NULL;
 int (*getretvalfunc)__P_((VOID_A)) = NULL;
-long (*getpidfunc)__P_((VOID_A)) = NULL;
-long (*getlastpidfunc)__P_((VOID_A)) = NULL;
+p_id_t (*getpidfunc)__P_((VOID_A)) = NULL;
+p_id_t (*getlastpidfunc)__P_((VOID_A)) = NULL;
 char *(*getflagfunc)__P_((VOID_A)) = NULL;
 int (*checkundeffunc)__P_((char *, char *, int)) = NULL;
 VOID (*exitfunc)__P_((VOID_A)) = NULL;
@@ -815,14 +819,20 @@ static char *NEAR getvar(ident, len)
 char *ident;
 int len;
 {
+#if	(!defined (FD) && !defined (FDSH)) || defined (_NOORIGSHELL)
 	char *cp, *env;
+#endif
 
-	if (len < 0) len = strlen(ident);
 	if (getvarfunc) return((*getvarfunc)(ident, len));
+#if	(defined (FD) || defined (FDSH)) && !defined (_NOORIGSHELL)
+	return(NULL);
+#else
+	if (len < 0) len = strlen(ident);
 	cp = strdupcpy(ident, len);
 	env = getenv2(cp);
 	free(cp);
 	return(env);
+#endif
 }
 
 static int NEAR setvar(ident, value, len)
@@ -838,7 +848,11 @@ int len;
 	cp[len] = '=';
 	strncpy2(&(cp[len + 1]), value, vlen);
 
+#if	defined (FD) || defined (FDSH)
+	ret = (putvarfunc) ? (*putvarfunc)(cp, len) : -1;
+#else
 	ret = (putvarfunc) ? (*putvarfunc)(cp, len) : putenv(cp);
+#endif
 	if (ret < 0) free(cp);
 	return(ret);
 }
@@ -1173,7 +1187,7 @@ int len;
 				else paren[plen++] = toupper2(s[i]);
 			}
 		}
-		else if (!quote) switch (s[i]) {
+		else if (!quote && !metachar) switch (s[i]) {
 			case '?':
 				cp = wildsymbol1;
 				break;
@@ -1215,8 +1229,14 @@ int len;
 	}
 	if (paren) {
 		free(paren);
-		regexp_free(re);
-		return(NULL);
+		if (plen) {
+			regexp_free(re);
+			return(NULL);
+		}
+		cp = strdup2("[");
+		re[n] = cp;
+		re = b_realloc(re, ++n, reg_t);
+		re[n] = NULL;
 	}
 	return((reg_t *)realloc2(re, (n + 1) * sizeof(reg_t)));
 }
@@ -2182,7 +2202,8 @@ int *eolp, *ptrp, qed;
 
 	if (isidentchar((*bufp)[*ptrp])) {
 		while ((*bufp)[++(*ptrp)])
-			if (!isidentchar((*bufp)[*ptrp])) break;
+			if (!isidentchar((*bufp)[*ptrp])
+			&& !isdigit((*bufp)[*ptrp])) break;
 		if (eolp) *eolp = *ptrp;
 		return(mode);
 	}
@@ -2378,7 +2399,8 @@ int plen, mode;
 	}
 	else {
 		tmp = strdup2(s);
-		if (mode & 0x80) for (cp = tmp + strlen(tmp); cp >= s; cp--) {
+		if (mode & 0x80)
+		for (cp = tmp + strlen(tmp); cp >= tmp; cp--) {
 			*cp = '\0';
 			if (regexp_exec(re, tmp, 0)) {
 				ret = cp;
@@ -2434,7 +2456,7 @@ int plen, *modep;
 	char **new;
 #endif
 	char *cp, **arglist, tmp[MAXLONGWIDTH + 1];
-	long pid;
+	p_id_t pid;
 	int i, j, sp;
 
 	cp = NULL;
@@ -2535,9 +2557,9 @@ int plen, *modep;
 	return(cp);
 }
 
-static int NEAR replacevar(arg, cpp, s, len, vlen, mode)
+static int NEAR replacevar(arg, cpp, s, len, vlen, mode, quoted)
 char *arg, **cpp;
-int s, len, vlen, mode;
+int s, len, vlen, mode, quoted;
 {
 	char *val;
 	int i;
@@ -2550,7 +2572,7 @@ int s, len, vlen, mode;
 	else if (mode == '=' && !isidentchar(*arg)) return(-1);
 
 	val = strdupcpy(&(arg[s]), vlen);
-	*cpp = evalarg(val, (mode == '=' || mode == '?'), 1, '\0');
+	*cpp = evalarg(val, (mode == '=' || mode == '?'), 1, quoted);
 	free(val);
 	if (!(*cpp)) return(-1);
 
@@ -2564,7 +2586,7 @@ int s, len, vlen, mode;
 	/* bash does not evaluates a quoted string in substitution itself */
 		free(*cpp);
 		val = strdupcpy(&(arg[s]), vlen);
-		*cpp = evalarg(val, 0, 1, '\0');
+		*cpp = evalarg(val, 0, 1, quoted);
 		free(val);
 		if (!(*cpp)) return(-1);
 #endif
@@ -2698,7 +2720,7 @@ int quoted;
 	}
 	else
 #endif	/* !MINIMUMSHELL */
-	if ((mode = replacevar(top, &cp, s, len, vlen, mode)) < 0) {
+	if ((mode = replacevar(top, &cp, s, len, vlen, mode, quoted)) < 0) {
 		if (new) free(new);
 		return(mode);
 	}
@@ -2712,7 +2734,14 @@ int quoted;
 		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
 		addmeta(&((*bufp)[ptr]), cp, 0, quoted);
 	}
-	else if (cp) {
+	else if (!cp);
+	else if (c == '@' && !(*cp) && quoted
+	&& ptr > 0 && (*bufp)[ptr - 1] == quoted && *(*argp + 1) == quoted) {
+		vlen = 0;
+		ptr--;
+		(*argp)++;
+	}
+	else {
 		vlen = strlen(cp);
 		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
 		strncpy(&((*bufp)[ptr]), cp, vlen);
@@ -2849,11 +2878,12 @@ int rest;
 	char *tmp;
 	int len, size;
 
+	stripquote(bbuf, 0);
 	if (!(tmp = (*backquotefunc)(bbuf))) return(buf);
-	len = addmeta(NULL, tmp, 1, 0);
+	len = addmeta(NULL, tmp, 1, '\0');
 	size = *ptrp + len + rest + 1;
 	buf = realloc2(buf, size);
-	addmeta(&(buf[*ptrp]), tmp, 1, 0);
+	addmeta(&(buf[*ptrp]), tmp, 1, '\0');
 	*ptrp += len;
 	free(tmp);
 
@@ -3180,6 +3210,7 @@ int stripq;
 	int i, j, quote, stripped;
 
 	stripped = 0;
+	if (!arg) return(stripped);
 	for (i = j = 0, quote = '\0'; arg[i]; i++) {
 		if (arg[i] == quote) {
 			quote = '\0';

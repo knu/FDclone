@@ -46,6 +46,10 @@ extern int physical_path;
 #ifndef	O_BINARY
 #define	O_BINARY		0
 #endif
+#ifdef	_NODOSDRIVE
+#define	DOSDIRENT	32
+#define	LFNENTSIZ	13
+#endif
 
 #define	realdirsiz(name)	((dos) ? ((k_strlen(name) / LFNENTSIZ + 1) \
 					* DOSDIRENT + DOSDIRENT) \
@@ -75,6 +79,7 @@ char *deftmpdir = NULL;
 #if	!MSDOS && !defined (_NOEXTRACOPY)
 int inheritcopy = 0;
 #endif
+int tmpumask = TMPUMASK;
 
 #ifndef	_NODOSDRIVE
 static int dosdrv = -1;
@@ -267,7 +272,7 @@ CONST VOID_P vp2;
 		case 5:
 			tmp = (int)strlen(list1 -> name)
 				- (int)strlen(list2 -> name);
-			if (tmp != 0) break;
+			if (tmp != 0L) break;
 /*FALLTHRU*/
 		case 1:
 			tmp = strpathcmp2(list1 -> name, list2 -> name);
@@ -290,7 +295,7 @@ CONST VOID_P vp2;
 					break;
 				}
 				else if (*cp1 != '.') {
-					tmp = -1;
+					tmp = -1L;
 					break;
 				}
 				if ((tmp = strpathcmp2(cp1 + 1, cp2 + 1)))
@@ -308,15 +313,15 @@ CONST VOID_P vp2;
 			tmp = list1 -> st_mtim - list2 -> st_mtim;
 			break;
 		default:
-			tmp = 0;
+			tmp = 0L;
 			break;
 	}
 
 	if (sorton > 7) tmp = -tmp;
 	if (!tmp) tmp = list1 -> ent - list2 -> ent;
 
-	if (tmp > 0) return(1);
-	if (tmp < 0) return(-1);
+	if (tmp > 0L) return(1);
+	if (tmp < 0L) return(-1);
 	return(0);
 }
 
@@ -485,6 +490,9 @@ struct stat *stp;
 	if ((st.st_mode & S_IFMT) == S_IFLNK) return(1);
 
 	ret = 0;
+#ifdef	FAKEUNINIT
+	duperrno = errno;	/* fake for -Wuninitialized */
+#endif
 #if	MSDOS
 	if (!(st.st_mode & S_IWRITE)) Xchmod(path, (st.st_mode | S_IWRITE));
 #endif
@@ -710,19 +718,19 @@ struct stat *stp1, *stp2;
 static int NEAR genrand(max)
 int max;
 {
-	static long last = -1;
+	static long last = -1L;
 	time_t now;
 
-	if (last < 0) {
+	if (last < 0L) {
 		now = time2();
 		last = ((now & 0xff) << 16) + (now & ~0xff) + getpid();
 	}
 
 	do {
 		last = last * (u_long)1103515245 + 12345;
-	} while (last < 0);
+	} while (last < 0L);
 
-	return((last / 65537) % max);
+	return((last / 65537L) % max);
 }
 
 char *genrandname(buf, len)
@@ -766,7 +774,7 @@ int mktmpdir(dir)
 char *dir;
 {
 	char *cp, path[MAXPATHLEN];
-	int n, len;
+	int n, len, mask;
 
 	if (!deftmpdir || !*deftmpdir || !dir) {
 		errno = ENOENT;
@@ -788,7 +796,12 @@ char *dir;
 	*path = (n >= 'A' && n <= 'Z') ? toupper2(*path) : tolower2(*path);
 #endif
 
+	mask = 0777 & ~tmpumask;
 	cp = strcatdelim(path);
+	if (tmpfilename && Xaccess(tmpfilename, R_OK | W_OK | X_OK) < 0) {
+		free(tmpfilename);
+		tmpfilename = NULL;
+	}
 	if (tmpfilename) strcpy(cp, tmpfilename);
 	else {
 		n = sizeof(TMPPREFIX) - 1;
@@ -800,7 +813,7 @@ char *dir;
 
 		for (;;) {
 			genrandname(cp + n, len);
-			if (_Xmkdir(path, 0755, 0, 1) >= 0) break;
+			if (_Xmkdir(path, mask, 0, 1) >= 0) break;
 			if (errno != EEXIST) return(-1);
 		}
 		tmpfilename = strdup2(cp);
@@ -819,7 +832,7 @@ char *dir;
 
 	for (;;) {
 		genrandname(cp + n, len);
-		if (_Xmkdir(path, 0755, 0, 1) >= 0) {
+		if (_Xmkdir(path, mask, 0, 1) >= 0) {
 			strcpy(dir, path);
 			return(0);
 		}
@@ -861,7 +874,7 @@ int mktmpfile(file)
 char *file;
 {
 	char *cp, path[MAXPATHLEN];
-	int fd, len;
+	int fd, len, duperrno;
 
 	*path = '\0';
 	if (mktmpdir(path) < 0) return(-1);
@@ -872,14 +885,17 @@ char *file;
 
 	for (;;) {
 		genrandname(cp, len);
-		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0644);
+		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
+			0666 & ~tmpumask);
 		if (fd >= 0) {
 			strcpy(file, path);
 			return(fd);
 		}
 		if (errno != EEXIST) break;
 	}
+	duperrno = errno;
 	rmtmpdir(NULL);
+	errno = duperrno;
 	return(-1);
 }
 
@@ -971,7 +987,7 @@ int forcecleandir(dir, file)
 char *dir, *file;
 {
 #if	!MSDOS
-	long pid;
+	p_id_t pid;
 #endif
 	extern char **environ;
 	char buf[MAXPATHLEN];
@@ -984,7 +1000,7 @@ char *dir, *file;
 #if	MSDOS
 	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);
 #else
-	if ((pid = fork()) < 0) return(-1);
+	if ((pid = fork()) < 0L) return(-1);
 	else if (!pid) {
 		execle("/bin/rm", "rm", "-rf", buf, NULL, environ);
 		_exit(1);
@@ -1126,6 +1142,9 @@ char *tmpdir, *old;
 	genrandname(NULL, 0);
 
 	if (tmpdir) l = strcatdelim2(path, tmpdir, NULL) - path;
+#ifdef	FAKEUNINIT
+	else l = 0;	/* fake for -Wuninitialized */
+#endif
 
 	for (;;) {
 		genrandname(fname, len);

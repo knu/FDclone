@@ -188,7 +188,7 @@
 2. version.h の distributor 変数の箇所にある NULL を頒布担当
    者の E-mail アドレスに書換える。
    例:
-   char *distributor = "shirai@nintendo.co.jp (Takashi SHIRAI)";
+   char *distributor = "shirai@unixusers.net (Takashi SHIRAI)";
 3. 一次頒布ソースパッケージからの変更差分を作成する。追加添
    付物のある場合はそれも差分に含める。
 4. 頒布パッケージを作成する。

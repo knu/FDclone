@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERSION	= 2
-PREFIX	= \usr\local
+PREFIX	= 
 MANSEC	= 1
 TOPDIR	= $(PREFIX)
 BINDIR	= $(TOPDIR)\bin
@@ -13,6 +13,8 @@ MANDIR	= $(TOPDIR)\man\man$(MANSEC)
 CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 EMANDIR	= $(TOPDIR)\man\man$(MANSEC)
 ECATDIR	= $(TOPDIR)\man\cat$(MANSEC)
+IPKWDIR	= .\ipk.work
+IPKTDIR	= .\ipk.tmp
 DEFRC	= \etc\fd2rc
 DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
@@ -67,6 +69,7 @@ SHSOURCES = system.c posixsh.c doscom.c pathname.c \
 	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed
 
 CC	= lcc86
+HOSTCC	= $(CC)
 SED	= sed
 PROGRAM	= fd
 FDSHELL	= fdsh
@@ -85,6 +88,7 @@ DEBUG	=
 
 LDFLAGS	=   -lintlib -ltinymain.obj $(ALLOC)
 CFLAGS	= -DDOSV=1 -O $(DEBUG)
+HOSTCFLAGS = -DDOSV=1 -O
 SLDFLAGS =  -lintlib -ltinymain.obj $(ALLOC)
 BCFLAGS	= $(CFLAGS) -DMINIMUMSHELL
 
@@ -148,7 +152,7 @@ LICENSES.doc: kanjicnv.exe LICENSES machine.h config.h
 	.\kanjicnv.exe -s LICENSES $@
 
 kanjicnv.exe: kanjicnv.c
-	$(CC) $(CFLAGS) -o $@ kanjicnv.c
+	$(HOSTCC) $(HOSTCFLAGS) -o $@ kanjicnv.c
 #	ren $@ kanjicnv
 #	aout2exe kanjicnv
 #	del kanjicnv
@@ -161,7 +165,7 @@ funcno.h: mkfuncno.exe
 	.\mkfuncno.exe $@
 
 mkfuncno.exe: mkfuncno.c functabl.h fd.h config.h
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -o $@ mkfuncno.c
+	$(HOSTCC) -DFD=$(VERSION) $(HOSTCFLAGS) -o $@ mkfuncno.c
 #	ren $@ mkfuncno
 #	aout2exe mkfuncno
 #	del mkfuncno
@@ -177,7 +181,7 @@ $(UNITBL): mkunitbl.exe
 	.\mkunitbl.exe $@
 
 mkunitbl.exe: mkunitbl.c
-	$(CC) $(CFLAGS) -o $@ mkunitbl.c
+	$(HOSTCC) $(HOSTCFLAGS) -o $@ mkunitbl.c
 #	ren $@ mkunitbl
 #	aout2exe mkunitbl
 #	del mkunitbl
@@ -270,7 +274,7 @@ config: Configur expfunc.c
 		| $(SHELL) > config.h; \
 	else \
 		if [ ! -f expfunc ]; then \
-			$(CC) $(CFLAGS) -o expfunc expfunc.c; \
+			$(HOSTCC) $(HOSTCFLAGS) -o expfunc expfunc.c; \
 		fi; \
 		$(SED) -e "2,3d" -e "s:__cc__:lcc86:" Configur \
 		| .\expfunc | $(SHELL) > config.h; \
@@ -348,6 +352,109 @@ shar: $(SOURCES)
 	rm -f $(TITLE)$$VER.shar.[0-9][0-9];\
 	shar -L50 -apc -n $(TITLE)"$$VER" -o $(TITLE)"$$VER".shar \
 	-C $(JSRCS) -T $(ESRCS))
+
+ipk: $(PROGRAM).exe $(UNITBL)
+	-[ -d $(IPKWDIR)\$(BINDIR) ] || mkdir -p $(IPKWDIR)\$(BINDIR)
+	-[ -d $(IPKWDIR)\$(BINDIR) ] || mkdir -p $(IPKWDIR)\__DATADIR__
+	-SYSCONFDIR=`dirname $(IPKWDIR)\$(DEFRC)`; \
+	[ -d $$SYSCONFDIR ] || mkdir -p $$SYSCONFDIR
+	-[ -d $(IPKWDIR)\CONTROL ] || mkdir -p $(IPKWDIR)\CONTROL
+	-[ -d $(IPKTDIR) ] || mkdir -p $(IPKTDIR)
+	cp -p $(PROGRAM).exe $(IPKWDIR)\$(BINDIR)
+	-[ -z "$(STRIP)" ] || $(STRIP) $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe
+	$(CHMOD) a+rx $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe
+	-del $(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
+	$(LN) $(IPKWDIR)\$(BINDIR)\$(PROGRAM).exe \
+		$(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
+	$(CHMOD) a+rx $(IPKWDIR)\$(BINDIR)\$(FDSHELL).exe
+	$(SED) -e 's:#TMPDIR=\tmp:TMPDIR=\home\tmp:' \
+		-e 's:#LANGUAGE=\$$LANG:LANGUAGE=euc:' \
+		-e 's:#INPUTKCODE=\$$LANG:INPUTKCODE=euc:' \
+		-e 's:#FNAMEKCODE=\$$LANG:FNAMEKCODE=utf8:' \
+		-e '\# examples for GNU tar >=1.12\,\^$$\ {' \
+		-e  's:^#\([^ ]\):\1:' \
+		-e  's:tar tvf[zZ]:gzip -cd %C|tar tvf -:' \
+		-e  '\^$$\ {' \
+		-e   'i \' \
+		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar tvf -"\\' \
+		-e   'i \' \
+		-e   '				"%a %u\%g %s %y-%m-%d %t %f"' \
+		-e   'i \' \
+		-e   'launch ".deb"	"ar -p %C data.tar.gz|gzip -cd|tar tvf -"\\' \
+		-e   'i \' \
+		-e   '				"%a %u\%g %s %y-%m-%d %t %f"' \
+		-e  '}' \
+		-e '}' \
+		-e '\# archiver definition\,\^$$\ {' \
+		-e  '\^$$\ {' \
+		-e   'i \' \
+		-e   'arch ".ipk"	"echo ERROR; false"\\' \
+		-e   'i \' \
+		-e   '		"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar xf - %TA"' \
+		-e   'i \' \
+		-e   'arch ".deb"	"echo ERROR; false"\\' \
+		-e   'i \' \
+		-e   '		"ar -p %C data.tar.gz|gzip -cd|tar xf - %TA"' \
+		-e  '}' \
+		-e '}' \
+		-e '$$ {' \
+		-e  'a \' \
+		-e  'if [ " $$TERM" = " vt100" ]; then' \
+		-e  'a \' \
+		-e  '	if [ " $$CONSOLE" = " \dev\console" ]; then' \
+		-e  'a \' \
+		-e  '		keymap BS	"^?"' \
+		-e  'a \' \
+		-e  '		keymap INS	"\\033[2~"' \
+		-e  'a \' \
+		-e  '		keymap DEL	"\\033[3~"' \
+		-e  'a \' \
+		-e  '		keymap PPAGE	"\\033[5~"' \
+		-e  'a \' \
+		-e  '		keymap HOME	"\\033[H"' \
+		-e  'a \' \
+		-e  '		keymap END	"\\033[F"' \
+		-e  'a \' \
+		-e  '	else' \
+		-e  'a \' \
+		-e  '		keymap INS	"\\033[1~"' \
+		-e  'a \' \
+		-e  '		keymap HOME	"\\033[2~"' \
+		-e  'a \' \
+		-e  '		keymap PPAGE	"\\033[3~"' \
+		-e  'a \' \
+		-e  '		keymap END	"\\033[5~"' \
+		-e  'a \' \
+		-e  '	fi' \
+		-e  'a \' \
+		-e  'fi' \
+		-e '}' \
+	_fdrc > $(IPKWDIR)\$(DEFRC)
+	$(CHMOD) a+r $(IPKWDIR)\$(DEFRC)
+	-if [ -f $(UNITBL) ]; then \
+		cp -p $(UNITBL) $(IPKWDIR)\$(BINDIR); \
+		$(CHMOD) a+r $(IPKWDIR)\$(BINDIR)\$(UNITBL); \
+	fi
+	echo "Package: fd" > $(IPKWDIR)\CONTROL\control
+	echo "Priority: optional" >> $(IPKWDIR)\CONTROL\control
+	echo "Section: extras" >> $(IPKWDIR)\CONTROL\control
+	HEAD=`tail -2 version.h | head -1`; \
+	DIST=`expr "$$HEAD" : '.*"\(.*\)".*'`; \
+	DIST=$${DIST:-`whoami`@`hostname -d`}; \
+	echo "Maintainer: $$DIST" >> $(IPKWDIR)\CONTROL\control
+	echo "Architecture: arm" >> $(IPKWDIR)\CONTROL\control
+	$(GETVER); \
+	echo "Version: $$VER-1" >> $(IPKWDIR)\CONTROL\control
+	echo "Depends: ncurses" >> $(IPKWDIR)\CONTROL\control
+	echo "Description: a file & directory maintenance tool." \
+		>> $(IPKWDIR)\CONTROL\control
+	tar -C $(IPKWDIR) -czf $(IPKTDIR)\data.tar.gz . --exclude=CONTROL
+	tar -C $(IPKWDIR)\CONTROL -czf $(IPKTDIR)\control.tar.gz .
+	echo "2.0" > $(IPKTDIR)\debian-binary
+	$(GETVER); \
+	tar -C $(IPKTDIR) -czf .\fd_$$VER-1_arm.ipk \
+		.\debian-binary .\data.tar.gz .\control.tar.gz
+	-rm -rf $(IPKWDIR) $(IPKTDIR)
 
 clean:
 	-rm -f *.obj funcno.h kanji.h

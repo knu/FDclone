@@ -2793,7 +2793,7 @@ MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
      to be converted with %%''.
 
 AAUUTTHHOORR
-     Takashi SHIRAI <shirai@nintendo.co.jp>
+     Takashi SHIRAI <shirai@unixusers.net>
      The original "FD" for MS-DOS was created and released by
      A.Idei <SDI00544@niftyserve.or.jp> for the first time, in
      1989.  ffdd was created for UNIX from scratch following that
@@ -2860,4 +2860,4 @@ BBUUGGSS
      The user interface is cheap.
 
 CCOOPPYYRRIIGGHHTT
-     Copyright (C) 1995-2002 by Takashi SHIRAI
+     Copyright (C) 1995-2003 by Takashi SHIRAI

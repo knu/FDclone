@@ -138,8 +138,7 @@ static assoclist *NEAR readtranstbl(VOID_A)
 			cp = eol;
 			while (*eol && *eol != ' ' && *eol != '\t') eol++;
 			*eol = '\0';
-			strcpy(new -> assoc + strlen(new -> assoc) + 1 + 1,
-				cp);
+			strcpy(new -> assoc + strlen(new -> assoc) + 1, cp);
 		}
 
 		*bottom = new;
@@ -191,7 +190,7 @@ int transfilelist(VOID_A)
 			if ((tp = tp -> next) == start) tp = NULL;
 		}
 		if (!tp) continue;
-		if (!(start = tp -> next)) start = tbl;
+		start = tp -> next;
 
 		cp = tp -> assoc;
 		if (*(cp++) == 'L') {
@@ -252,7 +251,7 @@ char *path, *buf;
 int rdlink, plen;
 {
 	assoclist *tp, *start, *tbl;
-	char *cp, *tmp, dir[MAXPATHLEN];
+	char *cp, *tmp, *dupl, dir[MAXPATHLEN];
 	int len;
 
 	if (!(cp = strrdelim(path, 0)) || cp == path) return(NULL);
@@ -261,14 +260,20 @@ int rdlink, plen;
 	if (len < plen) return(NULL);
 	if (!_detransfile(dir, buf, 1, plen)) strcpy(buf, dir);
 
-	if (rr_cwd && !strpathcmp(buf, rr_cwd)) tbl = rr_curtbl;
+	if (rr_cwd && !strpathcmp(buf, rr_cwd)) {
+		tbl = NULL;
+		dupl = NULL;
+	}
 	else {
 		_Xchdir(buf, 1);
-		tbl = readtranstbl();
+		tbl = rr_curtbl;
+		dupl = rr_cwd;
+		rr_curtbl = readtranstbl();
+		rr_cwd = strdup2(buf);
 	}
 
-	start = tp = tbl;
-	if (!tbl) cp = NULL;
+	start = tp = rr_curtbl;
+	if (!start) cp = NULL;
 	else {
 		while (tp) {
 			if (!strpathcmp(cp, &(tp -> assoc[1]))) break;
@@ -276,23 +281,27 @@ int rdlink, plen;
 		}
 		if (!tp) cp = NULL;
 		else {
-			start = tp -> next;
+			rr_curtbl = tp -> next;
 			tmp = strcatdelim(buf);
 			len = MAXPATHLEN - 1 - (tmp - buf);
 			if (!rdlink || *(tp -> assoc) != 'L')
 				strncpy2(tmp, tp -> org, len);
 			else {
-				for (cp = &(tp -> assoc[1]); *cp; cp++);
-				cp++;
+				cp = tp -> assoc + strlen(tp -> assoc) + 1;
 				strncpy2(tmp, cp, len);
-				detransfile(buf, buf, 1);
+				cp = detransfile(buf, dir, 1);
+				if (cp != buf) strcpy(buf, dir);
 			}
 			cp = buf;
 		}
 	}
 
-	if (tbl != rr_curtbl) freetranstbl(tbl);
-	else rr_curtbl = start;
+	if (tbl) {
+		freetranstbl(rr_curtbl);
+		if (rr_cwd) free(rr_cwd);
+		rr_curtbl = tbl;
+		rr_cwd = dupl;
+	}
 	return(cp);
 }
 

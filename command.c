@@ -274,10 +274,10 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{K_BEG,		CUR_TOP,	255},
 	{K_EOL,		CUR_BOTTOM,	255},
 	{K_HELP,	HELP_MESSAGE,	255},
-	{CTRL('@'),	MARK_FILE3,	255},
-	{CTRL('L'),	REREAD_DIR,	255},
-	{CTRL('R'),	SEARCH_BACK,	255},
-	{CTRL('S'),	SEARCH_FORW,	255},
+	{K_CTRL('@'),	MARK_FILE3,	255},
+	{K_CTRL('L'),	REREAD_DIR,	255},
+	{K_CTRL('R'),	SEARCH_BACK,	255},
+	{K_CTRL('S'),	SEARCH_FORW,	255},
 	{-1,		NO_OPERATION,	255}
 };
 
@@ -320,14 +320,14 @@ char *arg;
 	int n;
 
 	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
-	if (filepos + FILEPERLOW * n < maxfile) filepos += FILEPERLOW * n;
+	if (filepos + FILEPERROW * n < maxfile) filepos += FILEPERROW * n;
 	else if (filepos / FILEPERPAGE == (maxfile - 1) / FILEPERPAGE)
 		return(0);
 	else {
-		filepos = ((maxfile - 1) / FILEPERLOW) * FILEPERLOW
-			+ filepos % FILEPERLOW;
+		filepos = ((maxfile - 1) / FILEPERROW) * FILEPERROW
+			+ filepos % FILEPERROW;
 		if (filepos >= maxfile) {
-			filepos -= FILEPERLOW;
+			filepos -= FILEPERROW;
 			if (filepos / FILEPERPAGE
 			< (maxfile - 1) / FILEPERPAGE)
 				filepos = maxfile - 1;
@@ -341,10 +341,10 @@ char *arg;
 {
 	int n;
 
-	if (filepos < FILEPERLOW) return(0);
+	if (filepos < FILEPERROW) return(0);
 	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
-	if (filepos - FILEPERLOW * n >= 0) filepos -= FILEPERLOW * n;
-	else filepos = filepos % FILEPERLOW;
+	if (filepos - FILEPERROW * n >= 0) filepos -= FILEPERROW * n;
+	else filepos = filepos % FILEPERROW;
 	return(2);
 }
 
@@ -407,6 +407,17 @@ char *arg;
 # endif
 		char tmp[MAXPATHLEN];
 
+# ifndef	_NOARCHIVE
+		if (archivefile) {
+			if (!(filelist[filepos].linkname)) i = 0;
+			else {
+				i = strlen(filelist[filepos].linkname);
+				if (i > sizeof(tmp) - 1) i = sizeof(tmp) - 1;
+				strncpy(tmp, filelist[filepos].linkname, i);
+			}
+		}
+		else
+# endif
 		i = Xreadlink(fnodospath(path, filepos), tmp, sizeof(tmp) - 1);
 		tmp[i] = '\0';
 		i = 1 - (strlen3(tmp) + 4);
@@ -462,11 +473,13 @@ char *arg;
 static VOID NEAR markcount(VOID_A)
 {
 	char buf[14 + 1];
+	int x;
 
-	locate(CMARK + 5, LSTATUS);
+	x = (isleftshift()) ? 1 : 0;
+	locate(C_MARK + 5 - x, L_STATUS);
 	cputs2(ascnumeric(buf, mark, 4, 4));
 	if (sizeinfo) {
-		locate(CSIZE + 5, LSIZE);
+		locate(C_SIZE + 5 - x, L_SIZE);
 		cputs2(ascnumeric(buf, marksize, 3, 14));
 	}
 }
@@ -835,7 +848,7 @@ static int NEAR execshell(VOID_A)
 
 	n = sigvecset(0);
 	if (n) putterms(t_end);
-	stdiomode();
+	stdiomode(0);
 	kanjifputs(SHEXT_K, stderr);
 	fputc('\n', stderr);
 #ifdef	_NOORIGSHELL
@@ -845,7 +858,7 @@ static int NEAR execshell(VOID_A)
 	else ret = shell_loop(1);
 #endif
 	if (n) putterms(t_init);
-	ttyiomode();
+	ttyiomode(0);
 	sigvecset(n);
 
 	return(ret);
@@ -1025,7 +1038,7 @@ char *arg;
 	int drive;
 #endif
 
-	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
+	checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
 #ifndef	_NODOSDRIVE
 	if ((drive = dospath3(""))) flushdrv(drive, NULL);
 #endif
@@ -1037,6 +1050,10 @@ char *arg;
 static int edit_config(arg)
 char *arg;
 {
+	if (FILEPERROW < WFILEMINCUSTOM) {
+		warning(0, NOROW_K);
+		return(1);
+	}
 	customize();
 	return(4);
 }
@@ -1254,9 +1271,14 @@ char *arg;
 	int ret;
 
 	if (arg) com = strdup2(arg);
-	else if (!(com = inputshellloop(-1, NULL))) return(1);
+	else {
+		ttyiomode(1);
+		com = inputshellloop(-1, NULL);
+		ttyiomode(0);
+		if (!com) return(1);
+	}
 	if (*com) {
-		ret = execusercomm(com, filelist[filepos].name, 0, 1, 0);
+		ret = execusercomm(com, filelist[filepos].name, 0, -1, 0);
 		ret = (ret < 0) ? 1 :
 			(internal_status >= -1) ? internal_status: 4;
 	}
@@ -1293,7 +1315,9 @@ char *arg;
 #if	MSDOS && !defined (DISMISS_CURPATH)
 	len = (!isdir(&(filelist[filepos])) && isexec(&(filelist[filepos])))
 		? strlen(filelist[filepos].name) + 1 : 0;
+	ttyiomode(1);
 	com = inputshellloop(len, filelist[filepos].name);
+	ttyiomode(0);
 #else
 	if (isdir(&(filelist[filepos])) || !isexec(&(filelist[filepos]))) {
 		len = 0;
@@ -1306,7 +1330,9 @@ char *arg;
 		tmp[1] = _SC_;
 		strcpy(&(tmp[2]), filelist[filepos].name);
 	}
+	ttyiomode(1);
 	com = inputshellloop(len, tmp);
+	ttyiomode(0);
 	if (tmp != filelist[filepos].name) free(tmp);
 #endif
 	if (!com) return(1);
@@ -1321,7 +1347,7 @@ char *arg;
 		if (!(dir = tmpunpack(1))) ret = -1;
 		else {
 			ret = execusercomm(com,
-				filelist[filepos].name, 0, 1, 1);
+				filelist[filepos].name, 0, -1, 1);
 			removetmp(dir, archivedir, filelist[filepos].name);
 		}
 	}
@@ -1330,13 +1356,13 @@ char *arg;
 #ifndef	_NODOSDRIVE
 	if ((drive = tmpdosdupl("", &dir, 1)) < 0) ret = -1;
 	else if (drive) {
-		ret = execusercomm(com, filelist[filepos].name, 0, 1, 1);
+		ret = execusercomm(com, filelist[filepos].name, 0, -1, 1);
 		removetmp(dir, NULL, filelist[filepos].name);
 	}
 	else
 #endif
 	{
-		ret = execusercomm(com, filelist[filepos].name, 0, 1, 0);
+		ret = execusercomm(com, filelist[filepos].name, 0, -1, 0);
 	}
 	ret = (ret < 0) ? 1 : (internal_status >= -1) ? internal_status: 4;
 	free(com);
@@ -1347,7 +1373,7 @@ char *arg;
 static int launch_file(arg)
 char *arg;
 {
-	if (launcher() < 0) return(view_file(arg));
+	if (!launcher()) return(view_file(arg));
 	return(4);
 }
 
@@ -1453,7 +1479,7 @@ char *arg;
 			if (ismark(&(filelist[i]))) break;
 		if (i >= maxfile) i = filepos;
 		flag = 1;
-		locate(0, LINFO);
+		locate(0, L_INFO);
 		putterm(l_clear);
 		kanjiputs(ATTRM_K);
 		if (selectstr(&flag, 2, 35, str, val) == K_ESC) return(1);
@@ -1470,7 +1496,10 @@ char *arg;
 	}
 
 	while ((n = inputattr(&(filelist[i]), flag)) < 0) warning(0, ILTMS_K);
-	if (!n) return(2);
+	if (!n) {
+		if (FILEPERROW < WFILEMINATTR) return(4);
+		return(2);
+	}
 
 	applyfile(setattr, NULL);
 	return(4);
@@ -1552,11 +1581,11 @@ static int search_forw(arg)
 char *arg;
 {
 	isearch = 1;
-	locate(0, LHELP);
+	locate(0, L_HELP);
 	putterm(l_clear);
 	putterm(t_standout);
 	win_x = kanjiputs(SEAF_K);
-	win_y = LHELP;
+	win_y = L_HELP;
 	putterm(end_standout);
 	return(0);
 }
@@ -1566,11 +1595,11 @@ static int search_back(arg)
 char *arg;
 {
 	isearch = -1;
-	locate(0, LHELP);
+	locate(0, L_HELP);
 	putterm(l_clear);
 	putterm(t_standout);
 	win_x = kanjiputs(SEAB_K);
-	win_y = LHELP;
+	win_y = L_HELP;
 	putterm(end_standout);
 	return(0);
 }
@@ -1619,6 +1648,12 @@ char *arg;
 	oldwin = win;
 	if (windows < MAXWINDOWS) {
 		win = windows++;
+		if (FILEPERROW < WFILEMIN) {
+			windows--;
+			win = oldwin;
+			warning(0, NOROW_K);
+			return(1);
+		}
 		duplwin(oldwin);
 		movewin(oldwin);
 	}

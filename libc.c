@@ -225,10 +225,9 @@ int rdlink;
 	}
 # endif
 #endif	/* !MSDOS */
-	else if (!*fullpath) {
-		if (!Xgetwd(resolved)) strcpy(resolved, _SS_);
-	}
-	else if (resolved != fullpath) strcpy(resolved, fullpath);
+	else if (rdlink <= 0 && resolved != fullpath && *fullpath)
+		strcpy(resolved, fullpath);
+	else if (!Xgetwd(resolved)) strcpy(resolved, _SS_);
 	return(_realpath2(path, resolved, rdlink));
 }
 
@@ -381,7 +380,12 @@ ALLOC_T size;
 {
 	char *tmp;
 
-	if (!size || !(tmp = (char *)malloc(size))) error(NULL);
+	if (!size || !(tmp = (char *)malloc(size))) {
+		error(NULL);
+#ifdef	FAKEUNINIT
+		tmp = NULL;	/* fake for -Wuninitialized */
+#endif
+	}
 	return(tmp);
 }
 
@@ -393,7 +397,12 @@ ALLOC_T size;
 
 	if (!size
 	|| !(tmp = (ptr) ? (char *)realloc(ptr, size) : (char *)malloc(size)))
+	{
 		error(NULL);
+#ifdef	FAKEUNINIT
+		tmp = NULL;	/* fake for -Wuninitialized */
+#endif
+	}
 	return(tmp);
 }
 
@@ -525,18 +534,6 @@ int *lenp, ptr;
 	if (*lenp >= 0 && ptr >= 0) while (i < *lenp) s1[i++] = ' ';
 	s1[i] = '\0';
 	return(l);
-}
-
-char *strstr2(s1, s2)
-char *s1, *s2;
-{
-	char *cp;
-	int len;
-
-	len = strlen(s2);
-	for (cp = s1; (cp = strchr(cp, *s2)); cp++)
-		if (!strncmp(cp, s2, len)) return(cp);
-	return(NULL);
 }
 
 int strlen2(s)
@@ -726,22 +723,22 @@ int noconf;
 		putterm(l_clear);
 		if (n && noconf) putterms(t_end);
 	}
-	stdiomode();
+	stdiomode(0);
 	ret = dosystem(command);
 	if (noconf > 0) {
 		if (ret >= 127) {
 			fputs("\007\n", stderr);
 			kanjifputs(HITKY_K, stderr);
 			fflush(stderr);
-			ttyiomode();
+			ttyiomode(1);
 			keyflush();
 			getkey2(0);
-			stdiomode();
+			stdiomode(1);
 			fputc('\n', stderr);
 		}
 		if (n) putterms(t_init);
 	}
-	ttyiomode();
+	ttyiomode(0);
 	sigvecset(n);
 	if (!noconf || (noconf < 0 && ret >= 127)) {
 		hideclock = 1;

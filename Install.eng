@@ -90,6 +90,18 @@
    (PAGER: file viewer, EDITOR: text editor)
 
 3. do "make".
+   'cc' is used as a compiler by default. If you wish to use
+   another compiler, you can specify it as "make CC=gcc". In
+   this example, 'gcc' is used as a compiler.
+   In case of cross-compiling, "make CC=lcc80 HOSTCC=cc" can
+   specify both the cross-compiler and the compiler which
+   is used for local executable files generated in build
+   process. In this example, 'lcc80' is used as a compiler
+   and 'cc' is used as a local compiler.
+   It is supposed that files are installed under '/usr/local'
+   by default. You can specify the installation path as
+   "make PREFIX=/usr". In this example, it is supposed that
+   files are installed under '/usr'.
 
 4. Confirm whether the compiled one will run with no problem.
 

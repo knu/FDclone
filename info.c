@@ -11,8 +11,6 @@
 #include "kctype.h"
 #include "kanji.h"
 
-#undef	CTRL
-
 #ifdef	NOERRNO
 extern int errno;
 #endif
@@ -358,7 +356,7 @@ int mode;
 
 	if (distributor && *distributor) {
 		i = n_column - (int)strlen(distributor) - 24;
-		locate(i, LHELP);
+		locate(i, L_HELP);
 		putch2('[');
 		putterm(t_standout);
 		cprintf2(" Distributed by: %s ", distributor);

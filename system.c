@@ -25,6 +25,14 @@
 #include <time.h>
 #endif
 
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
+#if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
+#define	_NOKANJIFCONV
+#endif
+
 #if	MSDOS
 #include <dos.h>
 #define	FR_CARRY	00001
@@ -63,7 +71,6 @@ typedef union REGS	__dpmi_regs;
 #endif	/* MSDOS */
 
 #ifdef	DEBUG
-#undef	JOBVERBOSE
 #define	PSIGNALSTYLE
 #define	SHOWSTREE
 #endif
@@ -135,33 +142,6 @@ typedef union REGS	__dpmi_regs;
 			? (VOID)exit2(n) : (VOID)exit(n))
 #define	DEFPATH		":/bin:/usr/bin"
 #define	NULLDEVICE	"/dev/null"
-# ifdef	USETERMIOS
-# include <termios.h>
-typedef struct termios	termioctl_t;
-typedef struct termios	ldiscioctl_t;
-# define	tioctl(d, r, a)	((r) \
-				? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
-# define	ldisc(a)	((a).c_line)
-# define	REQGETD		0
-# define	REQSETD		(TCSADRAIN + 1)
-# else	/* !USETERMIOS */
-# define	tioctl		ioctl
-#  ifdef	USETERMIO
-#  include <termio.h>
-typedef struct termio	termioctl_t;
-typedef struct termio	ldiscioctl_t;
-#  define	ldisc(a)	((a).c_line)
-#  define	REQGETD		TCGETA
-#  define	REQSETD		TCSETAW
-#  else	/* !USETERMIO */
-#  include <sgtty.h>
-typedef struct sgttyb	termioctl_t;
-typedef int 		ldiscioctl_t;
-#  define	ldisc(a)	(a)
-#  define	REQGETD		TIOCGETD
-#  define	REQSETD		TIOCSETD
-#  endif	/* !USETERMIO */
-# endif	/* !USETERMIOS */
 #endif	/* !MSDOS */
 
 #ifdef	FD
@@ -198,6 +178,7 @@ extern int nokanjifget;
 # ifndef	_NODOSDRIVE
 # define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
 # endif
+extern char *deftmpdir;
 #else	/* !FD */
 # ifdef	__TURBOC__
 extern unsigned _stklen = 0x8000;
@@ -318,6 +299,8 @@ int ttyio = -1;
 #  define	WEXITSTATUS(x)	((x).w_retcode)
 #  endif
 # endif	/* !USEWAITPID */
+# define	getwaitsig(x)	((WIFSTOPPED(x)) ? WSTOPSIG(x) : \
+				((WIFSIGNALED(x)) ? (128 + WTERMSIG(x)) : -1))
 #endif	/* !MSDOS */
 
 #ifdef	NOERRNO
@@ -441,6 +424,30 @@ int Xmkdir __P_((char *, int));
 #ifndef	FD_CLOEXEC
 #define	FD_CLOEXEC	1
 #endif
+#ifndef	PENDIN
+#define	PENDIN		0
+#endif
+#ifndef	IEXTEN
+#define	IEXTEN		0
+#endif
+#ifndef	ECHOCTL
+#define	ECHOCTL		0
+#endif
+#ifndef	ECHOKE
+#define	ECHOKE		0
+#endif
+#ifndef	OCRNL
+#define	OCRNL		0
+#endif
+#ifndef	ONOCR
+#define	ONOCR		0
+#endif
+#ifndef	ONLRET
+#define	ONLRET		0
+#endif
+#ifndef	TAB3
+#define	TAB3		OXTABS
+#endif
 
 #if	!defined (SIGCHLD) && defined (SIGCLD)
 #define	SIGCHLD		SIGCLD
@@ -496,12 +503,12 @@ extern int doscomtype __P_((int, char *[]));
 
 #ifndef	MINIMUMSHELL
 # if	!MSDOS && !defined (NOJOB)
-extern int gettermio __P_((long));
+extern int gettermio __P_((p_id_t));
 extern VOID dispjob __P_((int, FILE *));
-extern int searchjob __P_((long, int *));
+extern int searchjob __P_((p_id_t, int *));
 extern int getjob __P_((char *));
-extern int stackjob __P_((long, int, syntaxtree *));
-extern int stoppedjob __P_((long));
+extern int stackjob __P_((p_id_t, int, syntaxtree *));
+extern int stoppedjob __P_((p_id_t));
 extern VOID killjob __P_((VOID_A));
 extern VOID checkjob __P_((int));
 # endif	/* !MSDOS && !NOJOB */
@@ -563,7 +570,9 @@ extern int setcurdrv __P_((int, int));
 extern int chdir3 __P_((char *));
 extern int setenv2 __P_((char *, char *));
 #else	/* !FD */
+# if	!MSDOS || !defined (MINIMUMSHELL)
 time_t time2 __P_((VOID_A));
+# endif
 static int NEAR genrand __P_((int));
 static char *NEAR genrandname __P_((char *, int));
 static int NEAR mktmpfile __P_((char *));
@@ -697,7 +706,7 @@ static VOID NEAR fputoctal __P_((int, int, FILE *));
 #if	!MSDOS
 static int NEAR closeonexec __P_((int));
 static VOID NEAR setstopsig __P_((int));
-static long NEAR makechild __P_((int, long));
+static p_id_t NEAR makechild __P_((int, p_id_t));
 #endif	/* !MSDOS */
 static VOID NEAR safeclose __P_((int));
 static VOID NEAR safefclose __P_((FILE *));
@@ -707,17 +716,19 @@ static int NEAR readchar __P_((int));
 static char *NEAR readline __P_((int));
 static char *NEAR readfile __P_((int, ALLOC_T *));
 static heredoc_t *NEAR newheredoc __P_((char *, int));
-static VOID NEAR freeheredoc __P_((heredoc_t *, int));
+static VOID NEAR freeheredoc __P_((heredoc_t *, int, int));
 static redirectlist *NEAR newrlist __P_((int, char *, int, redirectlist *));
-static VOID NEAR freerlist __P_((redirectlist *, int));
+static int NEAR freerlist __P_((redirectlist *, int, int));
 static command_t *NEAR newcomm __P_((VOID_A));
 static VOID NEAR freecomm __P_((command_t *, int));
 static syntaxtree *NEAR parentstree __P_((syntaxtree *));
 static syntaxtree *NEAR childstree __P_((syntaxtree *, int));
 static syntaxtree *NEAR skipfuncbody __P_((syntaxtree *));
+static syntaxtree *NEAR insertstree __P_((syntaxtree *, syntaxtree *, int));
 static syntaxtree *NEAR linkstree __P_((syntaxtree *, int));
 static VOID NEAR nownstree __P_((syntaxtree *));
 static int NEAR evalfiledesc __P_((char *));
+static int NEAR isvalidfd __P_((int));
 static int NEAR newdup __P_((int));
 static int NEAR redmode __P_((int));
 static VOID NEAR closeredirect __P_((redirectlist *));
@@ -734,7 +745,6 @@ static int NEAR redirect __P_((syntaxtree *, int, char *, int));
 #if	!MSDOS && defined (MINIMUMSHELL)
 static VOID NEAR checkmail __P_((int));
 #endif
-static int NEAR identcheck __P_((char *, int));
 static char *NEAR getvar __P_((char **, char *, int));
 static char **NEAR putvar __P_((char **, char *, int));
 static int NEAR checkprimal __P_((char *, int));
@@ -742,60 +752,56 @@ static int NEAR checkronly __P_((char *, int));
 static int NEAR _putshellvar __P_((char *, int));
 static char **NEAR duplvar __P_((char **, int));
 static heredoc_t *NEAR duplheredoc __P_((heredoc_t *));
-static redirectlist *NEAR duplredirect __P_((redirectlist *));
+static redirectlist *NEAR duplrlist __P_((redirectlist *));
 static shfunctable *NEAR duplfunc __P_((shfunctable *));
 static VOID NEAR freefunc __P_((shfunctable *));
 static int cmpfunc __P_((CONST VOID_P, CONST VOID_P));
 static char *NEAR getifs __P_((VOID_A));
 static int getretval __P_((VOID_A));
-static long getorgpid __P_((VOID_A));
-static long getlastpid __P_((VOID_A));
+static p_id_t getorgpid __P_((VOID_A));
+static p_id_t getlastpid __P_((VOID_A));
 static char *getflagstr __P_((VOID_A));
 static int checkundefvar __P_((char *, char *, int));
 static VOID safeexit __P_((VOID_A));
 static int getparenttype __P_((syntaxtree *));
 static int NEAR parsestatement __P_((syntaxtree **, int, int, int));
 static syntaxtree *NEAR _addarg __P_((syntaxtree *, char *));
-static int NEAR addarg __P_((syntaxtree **, char *, int *, int *, int, int));
-static int NEAR evalredprefix __P_((syntaxtree **, char *, int *, int *, int));
-static syntaxtree *NEAR rparen __P_((syntaxtree *));
-static syntaxtree *NEAR semicolon __P_((syntaxtree *, char *,
-		int *, int *, int));
-static syntaxtree *NEAR ampersand __P_((syntaxtree *, char *,
-		int *, int *, int *));
-static syntaxtree *NEAR vertline __P_((syntaxtree *, char *, int *));
-static syntaxtree *NEAR lessthan __P_((syntaxtree *, char *,
-		int *, int *, int));
-static syntaxtree *NEAR morethan __P_((syntaxtree *, char *,
-		int *, int *, int));
-#if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
-static syntaxtree *NEAR endvar __P_((syntaxtree *, char *, int *,
-		int *, int *, char **, int *, int *, int));
-static syntaxtree *NEAR addvar __P_((syntaxtree *, char *, int *,
+static int NEAR addarg __P_((syntaxtree **, redirectlist *,
 		char *, int *, int));
+static int NEAR evalredprefix __P_((syntaxtree **, redirectlist *, int *));
+static syntaxtree *NEAR rparen __P_((syntaxtree *));
+static syntaxtree *NEAR semicolon __P_((syntaxtree *, redirectlist *,
+		char *, int *));
+static syntaxtree *NEAR ampersand __P_((syntaxtree *, redirectlist *,
+		char *, int *));
+static syntaxtree *NEAR vertline __P_((syntaxtree *, char *, int *));
+static syntaxtree *NEAR lessthan __P_((syntaxtree *, redirectlist *,
+		char *, int *));
+static syntaxtree *NEAR morethan __P_((syntaxtree *, redirectlist *,
+		char *, int *));
+#if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
+static syntaxtree *NEAR endvar __P_((syntaxtree *, redirectlist *,
+		char *, int *, int *, int *, int));
+static syntaxtree *NEAR addvar __P_((syntaxtree *,
+		char *, int *, char *, int *, int));
 #endif
-static syntaxtree *NEAR normaltoken __P_((syntaxtree *, char *,
-		int *, int *, int *, char **, int *, int *));
-static syntaxtree *NEAR casetoken __P_((syntaxtree *, char *,
-		int *, int *, int *, char *, int *));
+static syntaxtree *NEAR normaltoken __P_((syntaxtree *, redirectlist *,
+		char *, int *, int *, int *));
+static syntaxtree *NEAR casetoken __P_((syntaxtree *, redirectlist *,
+		char *, int *, int *));
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
 static int NEAR cmpstatement __P_((char *, int));
-static syntaxtree *NEAR comsubtoken __P_((syntaxtree *, char *,
-		int *, int *, int *, char **, int *, int *));
+static syntaxtree *NEAR comsubtoken __P_((syntaxtree *, redirectlist *,
+		char *, int *, int *, int *));
 #endif
-#ifdef	BASHSTYLE
-static syntaxtree *NEAR analyzeloop __P_((syntaxtree *, char *,
-		int *, int *, char **, int *, int *, int, int));
-#else
-static syntaxtree *NEAR analyzeloop __P_((syntaxtree *, char *,
-		int *, int *, char **, int *, int, int));
-#endif
+static syntaxtree *NEAR analyzeloop __P_((syntaxtree *, redirectlist *,
+		char *, int));
 static syntaxtree *NEAR analyzeeof __P_((syntaxtree *));
 static syntaxtree *NEAR statementcheck __P_((syntaxtree *, int));
 static int NEAR check_statement __P_((syntaxtree *));
 static int NEAR check_command __P_((syntaxtree *));
 static int NEAR check_stree __P_((syntaxtree *));
-static syntaxtree *NEAR analyzeline __P_((char *, int));
+static syntaxtree *NEAR analyzeline __P_((char *));
 #ifdef	DEBUG
 static VOID NEAR Xexecve __P_((char *, char *[], char *[], int));
 #else
@@ -806,9 +812,9 @@ static char *NEAR addext __P_((char *, int));
 static char **NEAR replacebat __P_((char **, char **));
 #endif
 #if	MSDOS || defined (USEFAKEPIPE)
-static int NEAR openpipe __P_((long *, int, int));
+static int NEAR openpipe __P_((p_id_t *, int, int));
 #else
-static int NEAR openpipe __P_((long *, int, int, int, long));
+static int NEAR openpipe __P_((p_id_t *, int, int, int, p_id_t));
 #endif
 static pipelist **NEAR searchpipe __P_((int));
 static int NEAR reopenpipe __P_((int, int));
@@ -822,7 +828,12 @@ static int NEAR evalargv __P_((command_t *, int *, int));
 static char *NEAR evalexternal __P_((command_t *));
 static VOID NEAR printindent __P_((int, FILE *));
 static VOID NEAR printnewline __P_((int, FILE *));
-static VOID NEAR printredirect __P_((redirectlist *, FILE *));
+static int NEAR printredirect __P_((redirectlist *, FILE *));
+#ifndef	MINIMUMSHELL
+static VOID NEAR printheredoc __P_((redirectlist *, FILE *));
+static redirectlist **NEAR _printstree __P_((syntaxtree *,
+		redirectlist **, int, FILE *));
+#endif
 static VOID NEAR printfunction __P_((shfunctable *, FILE *));
 static int NEAR dochild __P_((syntaxtree *));
 static int NEAR doif __P_((syntaxtree *));
@@ -915,25 +926,24 @@ static VOID NEAR show_stree __P_((syntaxtree *, int));
 static int NEAR setfunc __P_((char *, syntaxtree *));
 static int NEAR unsetfunc __P_((char *, int));
 static int NEAR exec_statement __P_((syntaxtree *));
-#ifdef	STRICTPOSIX
-static char **NEAR checkposixspecialargv __P_((int, char **));
-static int NEAR checkposixspecial __P_((syntaxtree *));
-#endif
+static char **NEAR checkshellbuiltinargv __P_((int, char **));
+static int NEAR checkshellbuiltin __P_((syntaxtree *));
 #if	MSDOS
 static int NEAR exec_command __P_((syntaxtree *));
 #else
 static int NEAR exec_command __P_((syntaxtree *, int));
 #endif
-#if	MSDOS || !defined (BASHSTYLE) || defined (USEFAKEPIPE)
+#if	MSDOS || defined (USEFAKEPIPE)
 static int NEAR exec_process __P_((syntaxtree *));
 #else
-static int NEAR exec_process __P_((syntaxtree *, long));
+static int NEAR exec_process __P_((syntaxtree *, p_id_t));
 #endif
 static int NEAR exec_stree __P_((syntaxtree *, int));
-static syntaxtree *NEAR execline __P_((char *, syntaxtree *, syntaxtree *));
+static syntaxtree *NEAR execline __P_((char *,
+	syntaxtree *, syntaxtree *, int));
 static int NEAR exec_line __P_((char *));
 static int NEAR _dosystem __P_((char *));
-static FILE *NEAR _dopopen __P_((char *, int));
+static FILE *NEAR _dopopen __P_((char *));
 static int NEAR sourcefile __P_((int, char *, int));
 
 #ifdef	FDSH
@@ -980,7 +990,7 @@ int main __P_((int, char *[], char *[]));
 #endif
 
 int shellmode = 0;
-long mypid = -1;
+p_id_t mypid = -1;
 int ret_status = RET_SUCCESS;
 int verboseexec = 0;
 int notexec = 0;
@@ -1012,10 +1022,10 @@ int interactive = 0;
 int lastjob = -1;
 int prevjob = -1;
 int stopped = 0;
-long orgpgrp = -1;
-long childpgrp = -1;
+p_id_t orgpgrp = -1;
+p_id_t childpgrp = -1;
 #endif
-long ttypgrp = -1;
+p_id_t ttypgrp = -1;
 int interrupted = 0;
 int nottyout = 0;
 int syntaxerrno = 0;
@@ -1029,8 +1039,8 @@ static char *shellname = NULL;
 static int definput = -1;
 static int exit_status = RET_SUCCESS;
 static sigmask_t oldsigmask;
-static long orgpid = -1;
-static long lastpid = -1;
+static p_id_t orgpid = -1;
+static p_id_t lastpid = -1;
 static int setsigflag = 0;
 static int trapok = 0;
 static int readtrap = 0;
@@ -1047,9 +1057,7 @@ static int returnlevel = 0;
 #ifndef	MINIMUMSHELL
 static char **dirstack = NULL;
 #endif
-#ifdef	STRICTPOSIX
-static int isposixspecial = 0;
-#endif
+static int isshellbuiltin = 0;
 static int execerrno = 0;
 static char *syntaxerrstr[] = {
 	"",
@@ -1573,38 +1581,54 @@ static sigarg_t (*oldsigfunc[NSIG])__P_((sigfnc_t));
 
 
 #ifndef	FD
+# if	!MSDOS || !defined (MINIMUMSHELL)
 time_t time2(VOID_A)
 {
-#if	MSDOS
+#  if	MSDOS
 	struct timeb buffer;
 
 	ftime(&buffer);
 	return((time_t)(buffer.time));
-#else
+#  else
 	struct timeval t_val;
 	struct timezone tz;
 
 	gettimeofday2(&t_val, &tz);
 	return((time_t)(t_val.tv_sec));
-#endif
+#  endif
 }
+# endif	/* !MSDOS || !MINIMUMSHELL */
 
 static int NEAR genrand(max)
 int max;
 {
-	static long last = -1;
+# if	MSDOS && defined (MINIMUMSHELL)
+	struct SREGS sreg;
+	__dpmi_regs reg;
+# endif
+	static long last = -1L;
 	time_t now;
 
-	if (last < 0) {
+	if (last < 0L) {
+# if	!MSDOS || !defined (MINIMUMSHELL)
 		now = time2();
+# else
+		reg.x.ax = 0x2a00;
+		now = -1L;
+		if (int21call(&reg, &sreg) >= 0)
+			now ^= ((long)reg.x.cx << 16) | reg.x.dx;
+		reg.x.ax = 0x2c00;
+		if (int21call(&reg, &sreg) >= 0)
+			now ^= ((long)reg.x.cx << 16) | reg.x.dx;
+# endif
 		last = ((now & 0xff) << 16) + (now & ~0xff) + getpid();
 	}
 
 	do {
 		last = last * (u_long)1103515245 + 12345;
-	} while (last < 0);
+	} while (last < 0L);
 
-	return((last / 65537) % max);
+	return((last / 65537L) % max);
 }
 
 static char *NEAR genrandname(buf, len)
@@ -1612,17 +1636,17 @@ char *buf;
 int len;
 {
 	static char seq[] = {
-#if	MSDOS
+# if	MSDOS
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 		'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
 		'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
 		'U', 'V', 'W', 'X', 'Y', 'Z', '_'
-#else
+# else
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
 		'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
 		'u', 'v', 'w', 'x', 'y', 'z', '_'
-#endif
+# endif
 	};
 	int i, j, c;
 
@@ -1870,14 +1894,17 @@ static VOID NEAR setsignal(VOID_A)
 static VOID NEAR resetsignal(forced)
 int forced;
 {
+#if	!MSDOS && defined (NOJOB)
+	p_id_t tmp;
+#endif
 	int i, duperrno;
+
+	duperrno = errno;
 #if	!MSDOS
 # ifdef	NOJOB
-	long tmp;
-
 	do {
 		tmp = Xwait3(NULL, WNOHANG | WUNTRACED, NULL);
-	} while (tmp > 0 || (tmp < 0 && errno == EINTR));
+	} while (tmp > 0L || (tmp < 0L && errno == EINTR));
 # else
 	checkjob(1);
 	stopped = 0;
@@ -1891,15 +1918,17 @@ int forced;
 		fflush(stderr);
 	}
 	interrupted = 0;
-	if (!setsigflag) return;
-	if (forced) setsigflag = 0;
-	else if (--setsigflag) return;
-	duperrno = errno;
-	for (i = 0; i < NSIG; i++)
-		if (oldsigfunc[i] != SIG_ERR) signal(i, oldsigfunc[i]);
+	if (setsigflag) {
+		if (forced) setsigflag = 1;
+		if (!(--setsigflag)) {
+			for (i = 0; i < NSIG; i++)
+				if (oldsigfunc[i] != SIG_ERR)
+					signal(i, oldsigfunc[i]);
 #if	!MSDOS
-	Xsigsetmask(oldsigmask);
+			Xsigsetmask(oldsigmask);
 #endif
+		}
+	}
 	errno = duperrno;
 }
 
@@ -1913,7 +1942,7 @@ static VOID NEAR exectrapcomm(VOID_A)
 	int i;
 
 #if	!MSDOS
-	if (ttypgrp < 0 || ttypgrp != mypid) return;
+	if (ttypgrp < 0L || ttypgrp != mypid) return;
 #endif
 	for (i = 0; i < NSIG; i++) {
 		if (!(trapmode[i] & TR_CATCH)) continue;
@@ -1953,7 +1982,7 @@ int sig;
 	if (readtrap && !interactive && (flags & TR_READBL)) flags ^= TR_BLOCK;
 
 	if (mypid != orgpid) {
-		if ((flags & TR_BLOCK) || (flags & TR_STAT) == TR_TERM)
+		if ((flags & TR_BLOCK) && (flags & TR_STAT) == TR_TERM)
 			trapped = -1;
 	}
 	else if ((trapmode[sig] & TR_STAT) == TR_TRAP) trapped = 1;
@@ -1973,7 +2002,7 @@ int sig;
 	else if	((flags & TR_STAT) == TR_TERM) trapped = -1;
 
 #if	!MSDOS
-	if (ttypgrp < 0 || ttypgrp != mypid);
+	if (ttypgrp < 0L || ttypgrp != mypid);
 	else
 #endif
 	if (trapped > 0) {
@@ -2001,7 +2030,7 @@ static int trap_hup(VOID_A)
 {
 	if (!trap_common(SIGHUP)) {
 # if	!MSDOS && !defined (NOJOB)
-		if (ttypgrp >= 0 && ttypgrp == getpid()) killjob();
+		if (ttypgrp >= 0L && ttypgrp == getpid()) killjob();
 # endif
 		if (oldsigfunc[SIGHUP] && oldsigfunc[SIGHUP] != SIG_ERR
 		&& oldsigfunc[SIGHUP] != SIG_DFL
@@ -2150,6 +2179,9 @@ static int trap_tstp(VOID_A)
 #ifdef	SIGCONT
 static int trap_cont(VOID_A)
 {
+# if	defined (FD) && !MSDOS
+	suspended = 1;
+# endif
 	return(trap_common(SIGCONT));
 }
 #endif
@@ -2275,7 +2307,7 @@ int noexit;
 		return;
 	}
 	duperrno = errno;
-	if (ttypgrp >= 0 && ttypgrp == getpid()) {
+	if (ttypgrp >= 0L && ttypgrp == getpid()) {
 		exectrapcomm();
 		if (!noexit && (trapmode[0] & TR_STAT) == TR_TRAP) {
 			trapmode[0] = 0;
@@ -2286,7 +2318,6 @@ int noexit;
 	resetsignal(1);
 	freefunc(shellfunc);
 	shellfunc = NULL;
-	doexec(NULL);
 #ifdef	DEBUG
 	if (definput >= 0) {
 		if (definput != ttyio) safeclose(definput);
@@ -2406,22 +2437,18 @@ int n, noexit;
 	execerrno = n;
 #ifndef	BASHSTYLE
 	/* bash does not break any statement on error */
-	breaklevel = loopdepth;
+	if (noexit < 2) breaklevel = loopdepth;
 #endif
 #if	MSDOS
 	/* child process fake */
 	if (childdepth) return;
 #endif
 
-#ifdef	STRICTPOSIX
-	if (noexit < 0 || (!noexit && isposixspecial)) safeexit();
-#else
-# ifdef	BASHSTYLE
-	/* bash does not exit on error, in non interactive shell */
 	if (noexit < 0) safeexit();
-# else
-	if (noexit <= 0) safeexit();
-# endif
+	else if (noexit);
+#if	!defined (BASHSTYLE) || defined (STRICTPOSIX)
+	/* bash does not exit on error, in non interactive shell */
+	else if (isshellbuiltin) safeexit();
 #endif
 }
 
@@ -2432,10 +2459,9 @@ char *command, *s;
 
 	duperrno = errno;
 	if (errno < 0) return;
-	if (command) {
-		kanjifputs(command, stderr);
-		fputs(": ", stderr);
-	}
+	if (!command) command = (argvar && argvar[0]) ? argvar[0] : shellname;
+	kanjifputs(command, stderr);
+	fputs(": ", stderr);
 	if (s) {
 		kanjifputs(s, stderr);
 		fputs(": ", stderr);
@@ -2458,13 +2484,9 @@ char *command, *s;
 	if (childdepth) return;
 #endif
 
-#ifdef	STRICTPOSIX
-	if (isposixspecial) safeexit();
-#else
-# ifndef	BASHSTYLE
+#if	!defined (BASHSTYLE) || defined (STRICTPOSIX)
 	/* bash does not exit on error, in non interactive shell */
-	safeexit();
-# endif
+	if (isshellbuiltin) safeexit();
 #endif
 }
 
@@ -2561,7 +2583,7 @@ FILE *fp;
 }
 
 int waitjob(pid, wp, opt)
-long pid;
+p_id_t pid;
 wait_t *wp;
 int opt;
 {
@@ -2569,36 +2591,63 @@ int opt;
 	int i, j, sig;
 # endif
 	wait_t w;
-	long tmp;
+	p_id_t tmp;
 	int ret;
 
-	do {
-		tmp = (pid < 0)
+	for (;;) {
+# ifndef	JOBTEST
+		tmp = (pid < 0L)
 			? Xwait3(&w, opt, NULL) : Xwait4(pid, &w, opt, NULL);
-	} while (tmp < 0 && errno == EINTR);
+# else	/* JOBTEST */
+		tmp = Xwait3(&w, opt, NULL);
+		if (pid >= 0L && tmp >= 0L && pid != tmp) {
+			if ((i = searchjob(tmp, &j)) < 0) continue;
+			sig = joblist[i].stats[j];
+			joblist[i].stats[j] = getwaitsig(w);
+#  if	defined (SIGCONT) && (defined (SIGTTIN) || defined (SIGTTOU))
+			if (sig == joblist[i].stats[j]) sig = 0;
+#   ifdef	SIGTTIN
+			else if (joblist[i].stats[j] == SIGTTIN);
+#   endif
+#   ifdef	SIGTTOU
+			else if (joblist[i].stats[j] == SIGTTOU);
+#   endif
+			else sig = 0;
+
+			if (sig) {
+				usleep(100000L);
+				kill(tmp, SIGCONT);
+			}
+#  endif	/* SIGCONT  && (SIGTTIN || SIGTTOU) */
+			continue;
+		}
+# endif	/* JOBTEST */
+		if (tmp >= 0L || errno != EINTR) break;
+	}
 
 	if (!tmp) return(0);
-	else if (tmp < 0) {
-		if (pid < 0 || errno != ECHILD) return(-1);
+	else if (tmp < 0L) {
+		if (pid < 0L || errno != ECHILD) return(-1);
 		ret = -1;
 # ifndef	NOJOB
 		sig = -1;
 # endif
 	}
 	else {
-		ret = (pid < 0 || tmp == pid) ? 1 : 0;
+		ret = (pid < 0L || tmp == pid) ? 1 : 0;
 # ifndef	NOJOB
-		if (WIFSTOPPED(w)) sig = WSTOPSIG(w);
-		else if (WIFSIGNALED(w)) sig = 128 + WTERMSIG(w);
-		else sig = -1;
+		sig = getwaitsig(w);
 # endif
 	}
 
 # ifndef	NOJOB
-	if (ret >= 0 && (i = searchjob(tmp, &j)) >= 0)
+	if (ret >= 0 && (i = searchjob(tmp, &j)) >= 0
+	&& sig != joblist[i].stats[j]) {
 		joblist[i].stats[j] = sig;
-		if (interactive && !nottyout && pid != tmp && WIFSTOPPED(w))
+		if (jobok && interactive && !nottyout
+		&& pid != tmp && WIFSTOPPED(w))
 			dispjob(i, stderr);
+	}
 # endif
 	if (wp) *wp = w;
 	return(ret);
@@ -2619,14 +2668,14 @@ int valid;
 }
 
 /*ARGSUSED*/
-static long NEAR makechild(tty, parent)
+static p_id_t NEAR makechild(tty, ppid)
 int tty;
-long parent;
+p_id_t ppid;
 {
-	long pid;
+	p_id_t pid;
 	int stop;
 
-	if ((pid = fork()) < 0) return(-1L);
+	if ((pid = fork()) < 0L) return(-1L);
 # ifdef	DEBUG
 	if (!pid) {
 		extern VOID (*__free_hook) __P_((VOID_P));
@@ -2651,32 +2700,28 @@ long parent;
 		mypid = getpid();
 		stop = 1;
 # ifdef	NOJOB
-		ttypgrp = -1;
+		ttypgrp = -1L;
 		if (loginshell) stop = 0;
 # else
-		if (jobok && childpgrp == orgpgrp) stop = 0;
+		if (jobok && (!tty || childpgrp == orgpgrp)) stop = 0;
 # endif
 		setstopsig(stop);
 	}
 
 # ifndef	NOJOB
-	if (!jobok) {
-		if (childpgrp < 0L) childpgrp = orgpgrp;
-	}
-	else if (pid) {
-		if (childpgrp < 0L) childpgrp = (parent >= 0L) ? parent : pid;
-		setpgroup(pid, childpgrp);
+	if (childpgrp < 0L)
+		childpgrp = (ppid >= 0L) ? ppid : (pid) ? pid : mypid;
+	if (pid) {
+		if (jobok) setpgroup(pid, childpgrp);
 		if (tty && ttypgrp >= 0L) ttypgrp = childpgrp;
 	}
 	else {
-		if (childpgrp < 0L)
-			childpgrp = (parent >= 0L) ? parent : mypid;
-		if (setpgroup(mypid, childpgrp) < 0) {
+		if (jobok && setpgroup(mypid, childpgrp) < 0) {
 			doperror(NULL, "fatal error");
 			prepareexit(1);
 			Xexit(RET_FATALERR);
 		}
-		if (tty && ttypgrp >= 0L) gettermio(childpgrp);
+		if (tty) gettermio(childpgrp);
 	}
 # endif	/* !NOJOB */
 
@@ -2684,10 +2729,15 @@ long parent;
 }
 
 int waitchild(pid, trp)
-long pid;
+p_id_t pid;
 syntaxtree *trp;
 {
 # ifndef	NOJOB
+#  ifdef	USESGTTY
+	struct tchars cc;
+	int lflag;
+#  endif
+	termioctl_t tty;
 	int i, j;
 # endif
 	wait_t w;
@@ -2700,25 +2750,71 @@ syntaxtree *trp;
 		if (!ret) continue;
 		if (!WIFSTOPPED(w)) break;
 # ifdef	NOJOB
+#  ifdef	SIGCONT
 		if (loginshell) kill(pid, SIGCONT);
+#  endif
 # else	/* !NOJOB */
-		if (!jobok || mypid != orgpgrp) continue;
+#  ifdef	BASHBUG
+	/* bash cannot be suspended with +m mode */
+		if (!jobok) continue;
+#  endif
+		if (mypid != orgpgrp) continue;
 
 		trapok = 0;
 		ret = WSTOPSIG(w);
 		gettermio(orgpgrp);
 		prevjob = lastjob;
 		lastjob = stackjob(pid, ret, trp);
-		if (interactive && !nottyout) dispjob(lastjob, stderr);
 		breaklevel = loopdepth;
 		stopped = 1;
+		if (!jobok) return(RET_SUCCESS);
+		if (tioctl(ttyio, REQGETP, &tty) >= 0) {
+			if (joblist[lastjob].tty) free(joblist[lastjob].tty);
+			joblist[lastjob].tty =
+				(termioctl_t *)malloc2(sizeof(tty));
+			memcpy(joblist[lastjob].tty, &tty, sizeof(tty));
+#  ifndef	FD
+#   ifdef	USESGTTY
+			tty.sg_flags |= ECHO | CRMOD;
+			tty.sg_flags &= ~(RAW | CBREAK | XTABS);
+#   else
+			tty.c_lflag |= ISIG | ICANON | IEXTEN
+				| ECHO | ECHOE | ECHOCTL | ECHOKE;
+			tty.c_lflag &= ~(PENDIN | ECHONL);
+			tty.c_iflag |= BRKINT | IXON | ICRNL;
+			tty.c_iflag &= ~(IGNBRK | ISTRIP);
+			tty.c_oflag |= OPOST | ONLCR;
+			tty.c_oflag &= ~(OCRNL | ONOCR | ONLRET | TAB3);
+#   endif
+			tioctl(ttyio, REQSETP, &tty);
+#  endif	/* !FD */
+		}
+#  ifdef	USESGTTY
+		if (ioctl(ttyio, TIOCLGET, &lflag) >= 0) {
+			if (joblist[lastjob].ttyflag)
+				free(joblist[lastjob].ttyflag);
+			joblist[lastjob].ttyflag =
+				(int *)malloc2(sizeof(lflag));
+			memcpy(joblist[lastjob].ttyflag,
+				&lflag, sizeof(lflag));
+#   ifndef	!FD
+			lflag |= LPASS8 | LCRTBS | LCRTERA | LCRTKIL | LCTLECH;
+			lflag &= ~(LLITOUT | LPENDIN);
+			ioctl(ttyio, TIOCLSET, &lflag);
+#   endif
+		}
+#  endif	/* USESGTTY */
+#  ifdef	FD
+		stdiomode(0);
+#  endif	/* FD */
+		if (interactive && !nottyout) dispjob(lastjob, stderr);
 		return(RET_SUCCESS);
 # endif	/* !NOJOB */
 	}
 	trapok = 0;
 
 # ifndef	NOJOB
-	if (jobok && mypid == orgpgrp) gettermio(orgpgrp);
+	if (mypid == orgpgrp) gettermio(orgpgrp);
 # endif
 	if (ret < 0) {
 		if (!trp && errno == ECHILD) ret = errno = 0;
@@ -2807,7 +2903,7 @@ char *argv[], *envp[];
 
 	cp = (envp) ? getflags : setflags;
 	com = 0;
-	flags = 0;
+	flags = (u_long)0;
 	for (i = 1; argv[1][i]; i++) {
 		if (envp) {
 			if (argv[1][i] == 'c' && !com && argc > 2) {
@@ -2822,14 +2918,15 @@ char *argv[], *envp[];
 			}
 		}
 		for (j = 0; j < FLAGSSIZ; j++) if (argv[1][i] == cp[j]) break;
-		if (j < FLAGSSIZ) flags |= (1 << j);
+		if (j < FLAGSSIZ) flags |= ((u_long)1 << j);
 		else if (argv[1][0] == '-') {
 			execerror(argv[1], ER_BADOPTIONS, 0);
 			return(-1);
 		}
 	}
 	for (j = 0; j < FLAGSSIZ; j++) {
-		if (flags & 1) *(setvals[j]) = (argv[1][0] == '-') ? 1 : 0;
+		if (flags & (u_long)1)
+			*(setvals[j]) = (argv[1][0] == '-') ? 1 : 0;
 		flags >>= 1;
 	}
 
@@ -2970,23 +3067,25 @@ int ignoretab;
 	new = (heredoc_t *)malloc2(sizeof(heredoc_t));
 	new -> eof = cp;
 	new -> filename = strdup2(path);
+	new -> buf = NULL;
 	new -> fd = fd;
 	new -> flags = flags;
 
 	return(new);
 }
 
-static VOID NEAR freeheredoc(hdp, nown)
+static VOID NEAR freeheredoc(hdp, undo, nown)
 heredoc_t *hdp;
-int nown;
+int undo, nown;
 {
 	if (!hdp) return;
 	if (hdp -> eof) free(hdp -> eof);
 	if (hdp -> filename) {
-		if (!nown) rmtmpfile(hdp -> filename);
+		if (undo && !nown) rmtmpfile(hdp -> filename);
 		free(hdp -> filename);
 	}
-	safeclose(hdp -> fd);
+	if (hdp -> buf) free(hdp -> buf);
+	if (undo) safeclose(hdp -> fd);
 	free(hdp);
 }
 
@@ -2998,10 +3097,6 @@ redirectlist *next;
 {
 	redirectlist *new;
 
-	if ((type & MD_FILEDESC) && filename[0] == '-' && !filename[1]) {
-		filename = NULL;
-		type &= ~MD_FILEDESC;
-	}
 	new = (redirectlist *)malloc2(sizeof(redirectlist));
 	new -> fd = fd;
 	new -> filename = filename;
@@ -3015,24 +3110,37 @@ redirectlist *next;
 	return(new);
 }
 
-static VOID NEAR freerlist(rp, nown)
+static int NEAR freerlist(rp, undo, nown)
 redirectlist *rp;
-int nown;
+int undo, nown;
 {
-	if (!rp) return;
-	if (rp -> next) freerlist(rp -> next, nown);
+	int ret;
 
-	if (rp -> old >= 0 && rp -> old != rp -> fd) {
+	ret = 0;
+	if (!rp) return(0);
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	if (!undo && rp -> fakepipe) {
+		errno = EBADF;
+		doperror(NULL, rp -> filename);
+		ret = -1;
+		undo = 1;
+	}
+#endif
+	if (rp -> next) ret = freerlist(rp -> next, undo, nown);
+	if (ret < 0) undo = 1;
+
+	if (undo && rp -> old >= 0 && rp -> old != rp -> fd) {
 		safeclose(rp -> fd);
 		Xdup2(rp -> old, rp -> fd);
 		safeclose(rp -> old);
 	}
+
 	if (rp -> type & MD_HEREDOC) {
-		closepipe(rp -> new);
-		freeheredoc((heredoc_t *)(rp -> filename), nown);
+		if (undo) closepipe(rp -> new);
+		freeheredoc((heredoc_t *)(rp -> filename), undo, nown);
 	}
 	else {
-		if (rp -> new >= 0 && !(rp -> type & MD_FILEDESC))
+		if (undo && rp -> new >= 0 && !(rp -> type & MD_FILEDESC))
 			safeclose(rp -> new);
 		if (rp -> filename) free(rp -> filename);
 	}
@@ -3040,6 +3148,7 @@ int nown;
 	closepseudofd(rp);
 #endif
 	free(rp);
+	return(ret);
 }
 
 static command_t *NEAR newcomm()
@@ -3070,7 +3179,7 @@ int nown;
 			if (comm -> argv[i]) free(comm -> argv[i]);
 		free(comm -> argv);
 	}
-	if (comm -> redp) freerlist(comm -> redp, nown);
+	if (comm -> redp) freerlist(comm -> redp, 1, nown);
 	free(comm);
 }
 
@@ -3123,6 +3232,8 @@ syntaxtree *trp;
 #endif
 		if (!(trp -> cont & (CN_QUOT | CN_META)))
 			freestree(trp -> next);
+		else if (((redirectlist *)(trp -> next)) -> filename)
+			free(((redirectlist *)(trp -> next)) -> filename);
 		free(trp -> next);
 		trp -> next = NULL;
 	}
@@ -3147,7 +3258,8 @@ syntaxtree *parentshell(trp)
 syntaxtree *trp;
 {
 	while ((trp = parentstree(trp)))
-		if (!(trp -> flags & ST_NODE)) return(trp);
+		if (!(trp -> flags & ST_NODE) && isstatement(trp -> comm))
+			return(trp);
 	return(NULL);
 }
 
@@ -3179,34 +3291,26 @@ syntaxtree *trp;
 	return(trp);
 }
 
-static syntaxtree *NEAR linkstree(trp, type)
-syntaxtree *trp;
+static syntaxtree *NEAR insertstree(trp, parent, type)
+syntaxtree *trp, *parent;
 int type;
 {
 	syntaxtree *new, *tmptr;
-	int i, l1, l2, cont;
-
-	cont = ((trp -> cont) & CN_INHR);
-	if (trp && isstatement(trp -> comm)
-	&& (trp -> comm) -> id == SM_STATEMENT
-	&& (tmptr = statementbody(trp))
-	&& getstatid(tmptr) == SM_LPAREN - 1)
-		trp = getparent(trp);
-	tmptr = (trp -> flags & ST_NEXT) ? getparent(trp) : NULL;
+	int i, l1, l2;
 
 	for (i = 0; i < OPELISTSIZ; i++) if (type == opelist[i].op) break;
 	l1 = (i < OPELISTSIZ) ? opelist[i].level : 0;
-	if (!tmptr) l2 = 0;
+	if (!parent) l2 = 0;
 	else {
 		for (i = 0; i < OPELISTSIZ; i++)
-			if (tmptr -> type == opelist[i].op) break;
+			if (parent -> type == opelist[i].op) break;
 		l2 = (i < OPELISTSIZ) ? opelist[i].level : 0;
 	}
 
 	if (!l1);
 #ifndef	BASHSTYLE
 	/* bash does not allow the format like as "foo | ; bar" */
-	else if (tmptr && isoppipe(tmptr) && l1 > l2);
+	else if (parent && isoppipe(parent) && l1 > l2);
 #endif
 #ifndef	MINIMUMSHELL
 	else if (type == OP_NOT && (!l2 || l1 < l2));
@@ -3225,19 +3329,24 @@ int type;
 #endif
 	}
 
-	tmptr = trp;
+	/* && or || */
+	if (l1 == 3 && l2 == 3) l2--;
+
 	if (!l1 || !l2);
 	else if (l1 < l2) {
 		new = newstree(trp);
 		new -> comm = trp -> comm;
-		new -> flags = 0;
+		new -> next = trp -> next;
+		new -> type = trp -> type;
+		new -> cont = trp -> cont;
+		new -> flags = (trp -> flags & ST_NODE) ? trp -> flags : 0;
 		trp -> comm = (command_t *)new;
 		trp -> type = OP_NONE;
 		trp -> flags = ST_NODE;
 		trp = new;
 	}
 	else if (l1 > l2) {
-		if (!(tmptr = parentstree(trp))) {
+		if (!(tmptr = parentstree(parent))) {
 			while (hasparent(trp)) trp = trp -> parent;
 			new = newstree(trp);
 			new -> comm = trp -> comm;
@@ -3251,10 +3360,17 @@ int type;
 			trp -> cont = 0;
 			trp -> flags = ST_NODE;
 		}
-		else if (tmptr -> flags & ST_NODE) trp = tmptr;
+		else if (tmptr -> flags & ST_NODE)
+			trp = insertstree(tmptr, parentstree(tmptr), type);
+		else if (!isstatement(tmptr -> comm))
+			trp = insertstree(trp, tmptr, type);
 		else {
 			new = newstree(tmptr);
 			new -> comm = (command_t *)((tmptr -> comm) -> argv);
+			new -> next = trp -> next;
+			new -> type = trp -> type;
+			new -> cont = trp -> cont;
+			new -> flags = trp -> flags;
 			(tmptr -> comm) -> argv = (char **)new;
 			trp = new;
 			trp -> type = type;
@@ -3262,6 +3378,25 @@ int type;
 			trp -> flags = ST_NODE;
 		}
 	}
+
+	return(trp);
+}
+
+static syntaxtree *NEAR linkstree(trp, type)
+syntaxtree *trp;
+int type;
+{
+	syntaxtree *new, *tmptr;
+	int cont;
+
+	cont = ((trp -> cont) & CN_INHR);
+	if (trp && isstatement(trp -> comm)
+	&& (trp -> comm) -> id == SM_STATEMENT
+	&& (tmptr = statementbody(trp))
+	&& getstatid(tmptr) == SM_LPAREN - 1)
+		trp = getparent(trp);
+	tmptr = (trp -> flags & ST_NEXT) ? getparent(trp) : NULL;
+	trp = insertstree(trp, tmptr, type);
 
 	trp = skipfuncbody(trp);
 	new = trp -> next = newstree(trp);
@@ -3300,12 +3435,30 @@ char *tok;
 	return((i) ? n : -1);
 }
 
-static int NEAR newdup(fd)
+static int NEAR isvalidfd(fd)
 int fd;
 {
 #if	MSDOS
+# ifdef	FD
 	struct stat st;
+
+	return((fstat(fd, &st)) ? -1 : 0);
+# else
+	struct SREGS sreg;
+	__dpmi_regs reg;
+
+	reg.x.ax = 0x4400;
+	reg.x.bx = fd;
+	return(int21call(&reg, &sreg));
+# endif
+#else
+	return(fcntl(fd, F_GETFD, NULL));
 #endif
+}
+
+static int NEAR newdup(fd)
+int fd;
+{
 	int n;
 
 	if (fd < 0
@@ -3316,12 +3469,7 @@ int fd;
 #endif
 	if ((n = getdtablesize()) <= 0) n = NOFILE;
 
-	for (n--; n > fd; n--)
-#if	MSDOS
-		if (fstat(n, &st) != 0) break;
-#else
-		if (fcntl(n, F_GETFD, NULL) < 0) break;
-#endif
+	for (n--; n > fd; n--) if (isvalidfd(n) < 0) break;
 	if (n <= fd || Xdup2(fd, n) < 0) return(fd);
 	Xclose(fd);
 	return(n);
@@ -3390,7 +3538,7 @@ syntaxtree *trp;
 int rm;
 {
 	redirectlist *rp;
-	heredoc_t *hdp;
+	heredoc_t *hdp, *hit;
 
 	if (!trp) return(NULL);
 	if (rm && (trp -> flags & ST_NOWN)) return(NULL);
@@ -3405,13 +3553,15 @@ int rm;
 			if ((hdp = searchheredoc(statementbody(trp), rm)))
 				return(hdp);
 		}
+
+		hit = NULL;
 		if (!rm && !(trp -> cont & CN_HDOC));
 		else for (rp = (trp -> comm) -> redp; rp; rp = rp -> next) {
 			if (!(rp -> type & MD_HEREDOC)) continue;
 			if (!(hdp = (heredoc_t *)(rp -> filename))) continue;
 
 			if (!rm) {
-				if (hdp -> fd >= 0) return(hdp);
+				if (hdp -> fd >= 0) hit = hdp;
 			}
 			else if (hdp -> filename) {
 				rmtmpfile(hdp -> filename);
@@ -3419,6 +3569,7 @@ int rm;
 				hdp -> filename = NULL;
 			}
 		}
+		if (hit) return(hit);
 	}
 
 	if ((hdp = searchheredoc(trp -> next, rm))) return(hdp);
@@ -3431,31 +3582,63 @@ char *s;
 syntaxtree *trp;
 {
 	heredoc_t *hdp;
-	u_char ch;
-	int len;
+	char *cp;
+	int i, len, ret;
 
 	while (hasparent(trp)) trp = trp -> parent;
 	if (!(hdp = searchheredoc(trp, 0))) return(0);
 
-	if (s) {
-		if (hdp -> flags & HD_IGNORETAB) while (*s == '\t') s++;
-		if (!strcmp(s, hdp -> eof)) s = NULL;
+	cp = hdp -> buf;
+	hdp -> buf = NULL;
+	if (!cp) cp = strdup2(s);
+	else {
+		len = strlen(cp);
+		if (s) {
+			cp = realloc2(cp, len + strlen(s) + 1);
+			strcpy(&(cp[len]), s);
+		}
 	}
 
+	if (cp) {
+		if (!(hdp -> flags & HD_QUOTED)) {
+			for (i = 0; cp[i]; i++) {
+				if (cp[i] == PMETA && !cp[i + 1]) break;
+#ifdef	CODEEUC
+				else if (isekana(cp, i)) i++;
+#endif
+				else if (iskanji1(cp, i)) i++;
+			}
+			if (cp[i]) {
+				cp[i] = '\0';
+				if (s) {
+					hdp -> buf = cp;
+					return(1);
+				}
+			}
+		}
+		i = 0;
+		if (hdp -> flags & HD_IGNORETAB) while (cp[i] == '\t') i++;
+		if (!strcmp(&(cp[i]), hdp -> eof)) {
+			free(cp);
+			cp = s = NULL;
+		}
+	}
+
+	ret = 1;
+	if (cp) {
+		len = strlen(cp);
+		cp[len++] = '\n';
+		len -= i;
+		if (Xwrite(hdp -> fd, &(cp[i]), len) < len) ret = -1;
+		free(cp);
+	}
 	if (!s) {
 		safeclose(hdp -> fd);
 		hdp -> fd = -1;
 		searchheredoc(trp, 0);
-		return(1);
 	}
 
-	len = strlen(s);
-	ch = '\n';
-	if (Xwrite(hdp -> fd, s, len) < len
-	|| Xwrite(hdp -> fd, &ch, sizeof(ch)) < sizeof(ch))
-		return(-1);
-
-	return(1);
+	return(ret);
 }
 
 static int NEAR openheredoc(hdp, old)
@@ -3463,7 +3646,7 @@ heredoc_t *hdp;
 int old;
 {
 	char *cp;
-	long pipein;
+	p_id_t pipein;
 	ALLOC_T i, size;
 	int c, fd, fdin, ret;
 
@@ -3482,7 +3665,7 @@ int old;
 	setmode(STDOUT_FILENO, O_TEXT);
 #endif
 
-	if (pipein > 0) {
+	if (pipein > 0L) {
 #if	!MSDOS && !defined (USEFAKEPIPE)
 		if (waitchild(pipein, NULL) != RET_SUCCESS) {
 			closepipe(fd);
@@ -3562,7 +3745,7 @@ static int NEAR openpseudofd(rp)
 redirectlist *rp;
 {
 # if	!MSDOS && !defined (USEFAKEPIPE)
-	long pid;
+	p_id_t pid;
 	int fildes[2];
 # endif
 	char pfile[MAXPATHLEN];
@@ -3573,7 +3756,7 @@ redirectlist *rp;
 
 # if	!MSDOS && !defined (USEFAKEPIPE)
 	if (pipe(fildes) < 0);
-	else if ((pid = makechild(0, mypid)) < 0) {
+	else if ((pid = makechild(0, mypid)) < 0L) {
 		safeclose(fildes[0]);
 		safeclose(fildes[1]);
 		return(-1);
@@ -3653,26 +3836,44 @@ redirectlist *rp;
 static redirectlist *NEAR doredirect(rp)
 redirectlist *rp;
 {
-#if	MSDOS
-	struct stat st;
-#else
+#if	!MSDOS
 	int oldexec, newexec = -1;
 #endif
 	redirectlist *errp;
+	char *tmp;
+	int type;
 
 	if (rp -> next && (errp = doredirect(rp -> next))) return(errp);
 
-	if (!(rp -> filename));
-	else if (rp -> type & MD_FILEDESC) {
-		if ((rp -> new = evalfiledesc(rp -> filename)) < 0) {
-			rp -> new = -1;
+	type = rp -> type;
+	if (!(rp -> filename)) tmp = NULL;
+	else if (type & MD_HEREDOC) tmp = rp -> filename;
+	else if (!(tmp = evalvararg(rp -> filename, 0, 1, '\0', 1, 0))) {
+		errno = -1;
+		return(rp);
+	}
+	else if ((type & MD_FILEDESC) && tmp[0] == '-' && !tmp[1]) {
+		free(tmp);
+		tmp = NULL;
+		type &= ~MD_FILEDESC;
+	}
+
+	if (!tmp);
+	else if (type & MD_HEREDOC) {
+		rp -> new = openheredoc((heredoc_t *)tmp, rp -> fd);
+		if (rp -> new < 0) return(rp);
+	}
+	else if (type & MD_FILEDESC) {
+		rp -> new = evalfiledesc(tmp);
+		free(tmp);
+		if (rp -> new < 0) {
 			errno = EBADF;
 			return(rp);
 		}
 #if	MSDOS
-		if (fstat(rp -> new, &st) != 0) {
+		if (isvalidfd(rp -> new) < 0) {
 #else
-		if ((newexec = fcntl(rp -> new, F_GETFD, NULL)) < 0) {
+		if ((newexec = isvalidfd(rp -> new)) < 0) {
 #endif
 			rp -> new = -1;
 #ifdef	BASHSTYLE
@@ -3686,23 +3887,13 @@ redirectlist *rp;
 #endif
 		}
 	}
-	else if (rp -> type & MD_HEREDOC) {
-		rp -> new = openheredoc((heredoc_t *)(rp -> filename),
-			rp -> fd);
-		if (rp -> new < 0) return(rp);
-	}
-	else if (restricted && (rp -> type & MD_WRITE)) {
+	else if (restricted && (type & MD_WRITE)) {
+		free(tmp);
 		errno = 0;
 		return(rp);
 	}
 	else {
-		char *tmp;
-
-		if (!(tmp = evalvararg(rp -> filename, 0, 1, '\0', 1, 0))) {
-			errno = -1;
-			return(rp);
-		}
-		rp -> new = newdup(Xopen(tmp, redmode(rp -> type), 0666));
+		rp -> new = newdup(Xopen(tmp, redmode(type), 0666));
 		free(tmp);
 		if (rp -> new < 0) return(rp);
 #if	MSDOS && !defined (LSI_C)
@@ -3719,7 +3910,7 @@ redirectlist *rp;
 #else
 	if ((oldexec = fcntl(rp -> fd, F_GETFD, NULL)) < 0) rp -> old = -1;
 	else if ((rp -> old = newdup(Xdup(rp -> fd))) < 0) {
-		if (rp -> new >= 0 && !(rp -> type & MD_FILEDESC))
+		if (rp -> new >= 0 && !(type & MD_FILEDESC))
 			safeclose(rp -> new);
 		rp -> new = -1;
 		return(rp);
@@ -3739,7 +3930,7 @@ redirectlist *rp;
 		}
 	}
 
-	if ((rp -> type & MD_WITHERR) && rp -> new != STDERR_FILENO
+	if ((type & MD_WITHERR) && rp -> new != STDERR_FILENO
 	&& rp -> fd == STDOUT_FILENO) {
 		if ((rp -> fd = newdup(Xdup(STDERR_FILENO))) < 0)
 			return(rp);
@@ -3777,7 +3968,7 @@ int type;
 	if (!(type & MD_HEREDOC)) to = strdup2(to);
 	else {
 		if (!(to = (char *)newheredoc(to, type & MD_APPEND))) {
-			doperror(NULL, shellname);
+			doperror(NULL, deftmpdir);
 			return(-1);
 		}
 		trp -> cont |= CN_HDOC;
@@ -3823,7 +4014,7 @@ int reset;
 # endif	/* !MINIMUMSHELL */
 #endif	/* !MSDOS */
 
-static int NEAR identcheck(ident, delim)
+int identcheck(ident, delim)
 char *ident;
 int delim;
 {
@@ -3867,7 +4058,7 @@ int len;
 	if (!strnpathcmp(s, var[i], len) && var[i][len] == '=') break;
 
 	if (var[i]) {
-		if (export) exportsize -= (int)strlen(var[i]) + 1;
+		if (export) exportsize -= (long)strlen(var[i]) + 1;
 		free(var[i]);
 		if (!s[len]) {
 			for (; var[i + 1]; i++) var[i] = var[i + 1];
@@ -3886,7 +4077,7 @@ int len;
 	for (i = 0; i < len; i++) s[i] = toupper2(s[i]);
 #endif
 	if (export) {
-		exportsize += strlen(s) + 1;
+		exportsize += (long)strlen(s) + 1;
 #if	MSDOS
 		if (len == sizeof("PATH") - 1
 		&& !strnpathcmp(s, "PATH", len)) {
@@ -4089,19 +4280,20 @@ heredoc_t *hdp;
 	new = (heredoc_t *)malloc2(sizeof(heredoc_t));
 	new -> eof = strdup2(hdp -> eof);
 	new -> filename = strdup2(hdp -> filename);
+	new -> buf = strdup2(hdp -> buf);
 	new -> fd = hdp -> fd;
 	new -> flags = hdp -> flags;
 	return(new);
 }
 
-static redirectlist *NEAR duplredirect(rp)
+static redirectlist *NEAR duplrlist(rp)
 redirectlist *rp;
 {
 	redirectlist *new, *next;
 	char *filename;
 
 	if (!rp) return(NULL);
-	next = duplredirect(rp -> next);
+	next = duplrlist(rp -> next);
 	if (rp -> type & MD_HEREDOC)
 		filename = (char *)duplheredoc((heredoc_t *)(rp -> filename));
 	else filename = strdup2(rp -> filename);
@@ -4119,6 +4311,7 @@ syntaxtree *duplstree(trp, parent)
 syntaxtree *trp, *parent;
 {
 	syntaxtree *new;
+	redirectlist *rp;
 	command_t *comm;
 
 	new = newstree(parent);
@@ -4143,14 +4336,18 @@ syntaxtree *trp, *parent;
 					(char **)duplstree((syntaxtree *)
 						(comm -> argv), new);
 			}
-			(new -> comm) -> redp = duplredirect(comm -> redp);
+			(new -> comm) -> redp = duplrlist(comm -> redp);
 		}
 	}
 	if (trp -> next) {
 		if (!(trp -> cont & (CN_QUOT | CN_META)))
 			new -> next = duplstree(trp -> next, new);
-		else new -> next =
-			(syntaxtree *)strdup2((char *)(trp -> next));
+		else {
+			rp = (redirectlist *)malloc2(sizeof(redirectlist));
+			memcpy(rp, trp -> next, sizeof(redirectlist));
+			rp -> filename = strdup2(rp -> filename);
+			new -> next = (syntaxtree *)rp;
+		}
 	}
 	return(new);
 }
@@ -4210,12 +4407,12 @@ static int getretval(VOID_A)
 	return(ret_status);
 }
 
-static long getorgpid(VOID_A)
+static p_id_t getorgpid(VOID_A)
 {
 	return(orgpid);
 }
 
-static long getlastpid(VOID_A)
+static p_id_t getlastpid(VOID_A)
 {
 	return(lastpid);
 }
@@ -4342,9 +4539,12 @@ char *arg;
 	else if (comm) {
 		if (isstatement(comm)) return(trp);
 		comm -> argc++;
-		comm -> argv = (char **)realloc2(comm -> argv,
-				(comm -> argc + 1) * sizeof(char *));
-		comm -> argv[comm -> argc] = strdup2(arg);
+		if (arg) {
+			comm -> argv = (char **)realloc2(comm -> argv,
+					(comm -> argc + 2) * sizeof(char *));
+			comm -> argv[comm -> argc] = strdup2(arg);
+			comm -> argv[comm -> argc + 1] = NULL;
+		}
 	}
 	else if (arg) {
 		if ((trp -> flags & ST_NEXT)
@@ -4356,8 +4556,9 @@ char *arg;
 
 		comm = trp -> comm = newcomm();
 		comm -> argc = 0;
-		comm -> argv = (char **)malloc2(1 * sizeof(char *));
+		comm -> argv = (char **)malloc2(2 * sizeof(char *));
 		comm -> argv[0] = strdup2(arg);
+		comm -> argv[1] = NULL;
 	}
 
 	if ((id = getstatid(getparent(trp))) >= 0)
@@ -4398,13 +4599,18 @@ char *arg;
 	return(trp);
 }
 
-static int NEAR addarg(trpp, tok, lenp, typep, from, notok)
+static int NEAR addarg(trpp, rp, tok, lenp, notok)
 syntaxtree **trpp;
+redirectlist *rp;
 char *tok;
-int *lenp, *typep, from, notok;
+int *lenp, notok;
 {
 	syntaxtree *tmptr;
 	int i, n, id, type;
+
+	type = rp -> type;
+	rp -> type = 0;
+	if (!tok) tok = rp -> filename;
 
 	if ((*trpp) -> flags & ST_NODE) {
 		syntaxerrno = ER_UNEXPTOK;
@@ -4412,16 +4618,17 @@ int *lenp, *typep, from, notok;
 	}
 
 	if (!*lenp) {
-		if (*typep && notok) {
+		if (type && notok) {
 			syntaxerrno = ER_UNEXPTOK;
 			return(-1);
 		}
+		rp -> type = type;
 		return(0);
 	}
 	tok[*lenp] = '\0';
 	*lenp = 0;
 
-	if (!*typep) {
+	if (!type) {
 		id = getstatid(tmptr = parentshell(*trpp));
 		type = (id >= 0) ? statementlist[id].type : 0;
 
@@ -4444,28 +4651,27 @@ int *lenp, *typep, from, notok;
 
 		*trpp = _addarg(*trpp, tok);
 	}
-	else if (from >= 0 || (*typep & MD_RDWR) != MD_RDWR) {
-		if (redirect(*trpp, from, tok, *typep) < 0) return(-1);
+	else if (rp -> fd >= 0 || (type & MD_RDWR) != MD_RDWR) {
+		if (redirect(*trpp, rp -> fd, tok, type) < 0) return(-1);
 	}
 	else {
-		if (redirect(*trpp, STDIN_FILENO, tok, *typep) < 0
-		|| redirect(*trpp, STDOUT_FILENO, tok, *typep) < 0) return(-1);
+		if (redirect(*trpp, STDIN_FILENO, tok, type) < 0
+		|| redirect(*trpp, STDOUT_FILENO, tok, type) < 0) return(-1);
 	}
-	*typep = 0;
 	return(0);
 }
 
-static int NEAR evalredprefix(trpp, tok, lenp, typep, from)
+static int NEAR evalredprefix(trpp, rp, lenp)
 syntaxtree **trpp;
-char *tok;
-int *lenp, *typep, from;
+redirectlist *rp;
+int *lenp;
 {
 	int n;
 
-	tok[*lenp] = '\0';
-	if ((n = evalfiledesc(tok)) < 0)
-		addarg(trpp, tok, lenp, typep, from, 1);
-	else if (*typep) {
+	rp -> filename[*lenp] = '\0';
+	if ((n = evalfiledesc(rp -> filename)) < 0)
+		addarg(trpp, rp, NULL, lenp, 1);
+	else if (rp -> type) {
 		syntaxerrno = ER_UNEXPTOK;
 		return(-2);
 	}
@@ -4490,10 +4696,11 @@ syntaxtree *trp;
 	return(trp);
 }
 
-static syntaxtree *NEAR semicolon(trp, s, ptrp, typep, num)
+static syntaxtree *NEAR semicolon(trp, rp, s, ptrp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, num;
+int *ptrp;
 {
 	char tmptok[3];
 	int i, id;
@@ -4521,15 +4728,16 @@ int *ptrp, *typep, num;
 		i = 0;
 		tmptok[i++] = ';';
 		tmptok[i++] = ';';
-		addarg(&trp, tmptok, &i, typep, num, 0);
+		addarg(&trp, rp, tmptok, &i, 0);
 	}
 	return(trp);
 }
 
-static syntaxtree *NEAR ampersand(trp, s, ptrp, typep, nump)
+static syntaxtree *NEAR ampersand(trp, rp, s, ptrp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, *nump;
+int *ptrp;
 {
 	switch (s[*ptrp + 1]) {
 		case '&':
@@ -4540,15 +4748,15 @@ int *ptrp, *typep, *nump;
 #ifndef	MINIMUMSHELL
 		case '>':
 			(*ptrp)++;
-			*nump = STDOUT_FILENO;
-			*typep = (MD_WRITE | MD_WITHERR);
+			rp -> fd = STDOUT_FILENO;
+			rp -> type = (MD_WRITE | MD_WITHERR);
 			if (s[*ptrp + 1] == '>') {
 				(*ptrp)++;
-				*typep |= MD_APPEND;
+				rp -> type |= MD_APPEND;
 			}
 			else if (s[*ptrp + 1] == '|') {
 				(*ptrp)++;
-				*typep |= MD_FORCED;
+				rp -> type |= MD_FORCED;
 			}
 			break;
 		case '|':
@@ -4579,8 +4787,8 @@ int *ptrp;
 #ifndef	MINIMUMSHELL
 		case '&':
 			(*ptrp)++;
-			if (redirect(trp, STDERR_FILENO, "1",
-			MD_WRITE | MD_FILEDESC) >= 0)
+			if (redirect(trp,
+			STDERR_FILENO, "1", MD_WRITE | MD_FILEDESC) >= 0)
 				trp = linkstree(trp, OP_PIPE);
 			break;
 #endif
@@ -4591,39 +4799,42 @@ int *ptrp;
 	return(trp);
 }
 
-static syntaxtree *NEAR lessthan(trp, s, ptrp, typep, num)
+static syntaxtree *NEAR lessthan(trp, rp, s, ptrp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, num;
+int *ptrp;
 {
-	*typep = MD_READ;
+	rp -> type = MD_READ;
 	switch (s[*ptrp + 1]) {
 		case '<':
 			(*ptrp)++;
-			*typep |= MD_HEREDOC;
+			rp -> type |= MD_HEREDOC;
 			if (s[*ptrp + 1] == '-') {
 				(*ptrp)++;
-				*typep |= MD_APPEND;
+				rp -> type |= MD_APPEND;
 			}
 			break;
 #ifndef	MINIMUMSHELL
 		case '>':
 			(*ptrp)++;
-			*typep |= MD_WRITE;
+			rp -> type |= MD_WRITE;
 			break;
 #endif
 		case '&':
 			(*ptrp)++;
-			if (s[*ptrp + 1] != '-') *typep |= MD_FILEDESC;
+			if (s[*ptrp + 1] != '-') rp -> type |= MD_FILEDESC;
 			else {
 				(*ptrp)++;
-				if (redirect(trp, num, NULL, *typep) >= 0)
-					*typep = 0;
+				if (redirect(trp,
+				rp -> fd, NULL, rp -> type) >= 0)
+					rp -> type = 0;
 			}
 			break;
 		case '-':
 			(*ptrp)++;
-			if (redirect(trp, num, NULL, *typep) >= 0) *typep = 0;
+			if (redirect(trp, rp -> fd, NULL, rp -> type) >= 0)
+				rp -> type = 0;
 			break;
 		default:
 			break;
@@ -4631,40 +4842,43 @@ int *ptrp, *typep, num;
 	return(trp);
 }
 
-static syntaxtree *NEAR morethan(trp, s, ptrp, typep, num)
+static syntaxtree *NEAR morethan(trp, rp, s, ptrp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, num;
+int *ptrp;
 {
-	*typep = MD_WRITE;
+	rp -> type = MD_WRITE;
 	switch (s[*ptrp + 1]) {
 		case '>':
 			(*ptrp)++;
-			*typep |= MD_APPEND;
+			rp -> type |= MD_APPEND;
 			break;
 #ifndef	MINIMUMSHELL
 		case '<':
 			(*ptrp)++;
-			*typep |= MD_READ;
+			rp -> type |= MD_READ;
 			break;
 #endif
 		case '&':
 			(*ptrp)++;
-			if (s[*ptrp + 1] != '-') *typep |= MD_FILEDESC;
+			if (s[*ptrp + 1] != '-') rp -> type |= MD_FILEDESC;
 			else {
 				(*ptrp)++;
-				if (redirect(trp, num, NULL, *typep) >= 0)
-					*typep = 0;
+				if (redirect(trp,
+				rp -> fd, NULL, rp -> type) >= 0)
+					rp -> type = 0;
 			}
 			break;
 		case '-':
 			(*ptrp)++;
-			if (redirect(trp, num, NULL, *typep) >= 0) *typep = 0;
+			if (redirect(trp, rp -> fd, NULL, rp -> type) >= 0)
+				rp -> type = 0;
 			break;
 #ifndef	MINIMUMSHELL
 		case '|':
 			(*ptrp)++;
-			*typep |= MD_FORCED;
+			rp -> type |= MD_FORCED;
 			break;
 #endif
 		default:
@@ -4674,68 +4888,74 @@ int *ptrp, *typep, num;
 }
 
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
-syntaxtree *startvar(trp, s, ptrp, typep, nump, tok, tptrp, n)
+syntaxtree *startvar(trp, rp, s, ptrp, tptrp, n)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, *nump;
-char *tok;
-int *tptrp, n;
+int *ptrp, *tptrp, n;
 {
 	syntaxtree *new;
+	redirectlist *newrp;
 	char *cp;
 
 	cp = malloc2(*tptrp + n + 1);
-	strncpy(cp, tok, *tptrp);
+	strncpy(cp, rp -> filename, *tptrp);
 	strncpy2(&(cp[*tptrp]), &(s[*ptrp]), n);
 	*tptrp = 0;
 	*ptrp += n - 1;
 
 	new = newstree(NULL);
 	new -> parent = trp;
-	trp -> next =
-		(syntaxtree *)newrlist(*nump, cp, *typep, (redirectlist *)new);
+	newrp = (redirectlist *)malloc2(sizeof(redirectlist));
+	memcpy(newrp, rp, sizeof(redirectlist));
+	newrp -> filename = cp;
+	newrp -> next = (redirectlist *)new;
+	trp -> next = (syntaxtree *)newrp;
 	trp -> flags |= ST_BUSY;
-	*typep = MD_NORMAL;
-	*nump = -1;
+	rp -> type = MD_NORMAL;
+	rp -> fd = -1;
+	rp -> new = rp -> old = '\0';
 
 	return(new);
 }
 
-static syntaxtree *NEAR endvar(trp, s, ptrp, typep, nump, tokp, tptrp, sp, n)
+static syntaxtree *NEAR endvar(trp, rp, s, ptrp, tptrp, sp, n)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, *nump;
-char **tokp;
-int *tptrp, *sp, n;
+int *ptrp, *tptrp, *sp, n;
 {
-	syntaxtree *parent;
-	redirectlist *rp;
+	syntaxtree *tmptr;
+	char *cp;
 	int len, size;
 
-	if (!(parent = trp -> parent) || !(parent -> flags & ST_BUSY)
-	|| !(rp = (redirectlist *)(parent -> next))) {
+	if (!(tmptr = trp -> parent) || !(tmptr -> flags & ST_BUSY)
+	|| !(tmptr -> next)) {
 		syntaxerrno = ER_UNEXPTOK;
 		return(trp);
 	}
-	trp = parent;
+	trp = tmptr;
+	tmptr = trp -> next;
 	trp -> next = NULL;
 	trp -> flags &= ~ST_BUSY;
 
+	cp = rp -> filename;
+	memcpy(rp, tmptr, sizeof(redirectlist));
 	len = strlen(rp -> filename);
 	size = c_allocsize(len + *tptrp + n + 2);
-	if (size > *sp) *tokp = realloc2(*tokp, *sp = size);
-	memmove(&((*tokp)[len]), *tokp, *tptrp);
-	strncpy(*tokp, rp -> filename, len);
+	if (size > *sp) cp = realloc2(cp, *sp = size);
+	memmove(&(cp[len]), cp, *tptrp);
+	strncpy(cp, rp -> filename, len);
 	*tptrp += len;
-	strncpy(&((*tokp)[*tptrp]), &(s[*ptrp]), n);
+	strncpy(&(cp[*tptrp]), &(s[*ptrp]), n);
 	*tptrp += n;
 	*ptrp += n - 1;
-
-	*typep = rp -> type;
-	*nump = rp -> fd;
 	free(rp -> filename);
+	rp -> filename = cp;
+
 	free(rp -> next);
-	free(rp);
+	rp -> next = NULL;
+	free(tmptr);
 
 	return(trp);
 }
@@ -4747,12 +4967,12 @@ int *ptrp;
 char *tok;
 int *tptrp, n;
 {
-	syntaxtree *parent;
+	syntaxtree *tmptr;
 	redirectlist *rp;
 	int len;
 
-	if (!(parent = trp -> parent) || !(parent -> flags & ST_BUSY)
-	|| !(rp = (redirectlist *)(parent -> next))) {
+	if (!(tmptr = trp -> parent) || !(tmptr -> flags & ST_BUSY)
+	|| !(rp = (redirectlist *)(tmptr -> next))) {
 		syntaxerrno = ER_UNEXPTOK;
 		return(trp);
 	}
@@ -4773,12 +4993,11 @@ int *tptrp, n;
 }
 #endif	/* BASHSTYLE || !MINIMUMSHELL */
 
-static syntaxtree *NEAR normaltoken(trp, s, ptrp, typep, nump, tokp, tptrp, sp)
+static syntaxtree *NEAR normaltoken(trp, rp, s, ptrp, tptrp, sp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, *nump;
-char **tokp;
-int *tptrp, *sp;
+int *ptrp, *tptrp, *sp;
 {
 	char tmptok[2];
 	int i, size;
@@ -4786,17 +5005,16 @@ int *tptrp, *sp;
 	switch (s[*ptrp]) {
 		case '{':
 			if (!strchr(IFS_SET, s[*ptrp + 1])) {
-				(*tokp)[(*tptrp)++] = s[*ptrp];
+				rp -> filename[(*tptrp)++] = s[*ptrp];
 				break;
 			}
-			if (addarg(&trp, *tokp, tptrp, typep, *nump, 0) < 0)
-				break;
+			if (addarg(&trp, rp, NULL, tptrp, 0) < 0) break;
 			i = 0;
 			tmptok[i++] = s[*ptrp];
-			addarg(&trp, tmptok, &i, typep, *nump, 0);
+			addarg(&trp, rp, tmptok, &i, 0);
 			break;
 		case '}':
-			(*tokp)[(*tptrp)++] = s[*ptrp];
+			rp -> filename[(*tptrp)++] = s[*ptrp];
 			if ((*tptrp) > 1 || getparenttype(trp) != STT_LIST)
 				break;
 			if (trp -> comm) {
@@ -4808,36 +5026,34 @@ int *tptrp, *sp;
 				break;
 #endif
 			}
-			addarg(&trp, *tokp, tptrp, typep, *nump, 0);
+			addarg(&trp, rp, NULL, tptrp, 0);
 			break;
 		case '(':
 			if (hascomm(trp)) {
-				if (*typep || *tptrp || (trp -> comm) -> argc)
+				if (rp -> type
+				|| *tptrp || (trp -> comm) -> argc)
 					syntaxerrno = ER_UNEXPTOK;
 				else {
 					trp = _addarg(trp, NULL);
 					trp = linkstree(trp, OP_NONE);
 					i = 0;
 					tmptok[i++] = s[*ptrp];
-					addarg(&trp, tmptok, &i,
-						typep, *nump, 0);
+					addarg(&trp, rp, tmptok, &i, 0);
 				}
 			}
 			else if (*tptrp) {
 				if (!*tptrp
-				|| addarg(&trp, *tokp, tptrp,
-					typep, *nump, 0) < 0)
+				|| addarg(&trp, rp, NULL, tptrp, 0) < 0)
 					syntaxerrno = ER_UNEXPTOK;
 				else {
 					trp = _addarg(trp, NULL);
 					trp = linkstree(trp, OP_NONE);
 					i = 0;
 					tmptok[i++] = s[*ptrp];
-					addarg(&trp, tmptok, &i,
-						typep, *nump, 0);
+					addarg(&trp, rp, tmptok, &i, 0);
 				}
 			}
-			else if (*typep) syntaxerrno = ER_UNEXPTOK;
+			else if (rp -> type) syntaxerrno = ER_UNEXPTOK;
 #ifdef	BASHSTYLE
 	/* bash does not allow the function definition without "{ }" */
 			else if (getstatid(parentshell(trp)) == SM_FUNC - 1)
@@ -4852,35 +5068,30 @@ int *tptrp, *sp;
 				else {
 					i = 0;
 					tmptok[i++] = s[*ptrp];
-					addarg(&trp, tmptok, &i,
-						typep, *nump, 0);
+					addarg(&trp, rp, tmptok, &i, 0);
 				}
 				break;
 			}
-			if (addarg(&trp, *tokp, tptrp, typep, *nump, 0) < 0)
-				break;
+			if (addarg(&trp, rp, NULL, tptrp, 0) < 0) break;
 			trp = rparen(trp);
 			break;
 		case ';':
-			if (addarg(&trp, *tokp, tptrp, typep, *nump, 1) < 0)
-				break;
-			trp = semicolon(trp, s, ptrp, typep, *nump);
+			if (addarg(&trp, rp, NULL, tptrp, 1) < 0) break;
+			trp = semicolon(trp, rp, s, ptrp);
 			break;
 		case '&':
-			if (addarg(&trp, *tokp, tptrp, typep, *nump, 1) < 0)
-				break;
-			trp = ampersand(trp, s, ptrp, typep, nump);
+			if (addarg(&trp, rp, NULL, tptrp, 1) < 0) break;
+			trp = ampersand(trp, rp, s, ptrp);
 			break;
 		case '|':
-			if (addarg(&trp, *tokp, tptrp, typep, *nump, 1) < 0)
-				break;
+			if (addarg(&trp, rp, NULL, tptrp, 1) < 0) break;
 			trp = vertline(trp, s, ptrp);
 			break;
 #ifndef	MINIMUMSHELL
 		case '!':
 			if (*tptrp || trp -> comm)
-				(*tokp)[(*tptrp)++] = s[*ptrp];
-			else if (*typep || (trp -> flags & ST_NODE)) {
+				rp -> filename[(*tptrp)++] = s[*ptrp];
+			else if (rp -> type || (trp -> flags & ST_NODE)) {
 				syntaxerrno = ER_UNEXPTOK;
 				return(trp);
 			}
@@ -4888,27 +5099,24 @@ int *tptrp, *sp;
 			break;
 #endif
 		case '<':
-			if ((*nump = evalredprefix(&trp, *tokp, tptrp,
-			typep, *nump)) >= -1)
-				trp = lessthan(trp, s, ptrp, typep, *nump);
+			if ((rp -> fd = evalredprefix(&trp, rp, tptrp)) >= -1)
+				trp = lessthan(trp, rp, s, ptrp);
 			break;
 		case '>':
-			if ((*nump = evalredprefix(&trp, *tokp, tptrp,
-			typep, *nump)) >= -1)
-				trp = morethan(trp, s, ptrp, typep, *nump);
+			if ((rp -> fd = evalredprefix(&trp, rp, tptrp)) >= -1)
+				trp = morethan(trp, rp, s, ptrp);
 			break;
 		case '\r':
 #ifdef	BASHSTYLE
 	/* bash treats '\r' as just a character */
-			if (*typep) syntaxerrno = ER_UNEXPNL;
-			else (*tokp)[(*tptrp)++] = s[*ptrp];
+			if (rp -> type) syntaxerrno = ER_UNEXPNL;
+			else rp -> filename[(*tptrp)++] = s[*ptrp];
 			break;
 #else
 /*FALLTHRU*/
 #endif
 		case '\n':
-			if (addarg(&trp, *tokp, tptrp, typep, *nump, 1) < 0)
-				break;
+			if (addarg(&trp, rp, NULL, tptrp, 1) < 0) break;
 			if (trp -> comm) {
 				trp = _addarg(trp, NULL);
 				trp = linkstree(trp, OP_FG);
@@ -4933,12 +5141,15 @@ int *tptrp, *sp;
 				*tptrp = *ptrp - i + 1;
 				size = c_allocsize(*tptrp + 2);
 				if (size > *sp)
-					*tokp = realloc2(*tokp, *sp = size);
-				strncpy(*tokp, &(s[i]), *tptrp);
+					rp -> filename =
+						realloc2(rp -> filename,
+							*sp = size);
+				strncpy(rp -> filename, &(s[i]), *tptrp);
+				trp -> flags |= ST_HDOC;
 			}
 			break;
 		case '#':
-			if (*tptrp) (*tokp)[(*tptrp)++] = s[*ptrp];
+			if (*tptrp) rp -> filename[(*tptrp)++] = s[*ptrp];
 			else {
 #ifdef	BASHSTYLE
 	/* bash treats '\r' as just a character */
@@ -4952,19 +5163,18 @@ int *tptrp, *sp;
 			break;
 		default:
 			if (!strchr(IFS_SET, s[*ptrp]))
-				(*tokp)[(*tptrp)++] = s[*ptrp];
-			else addarg(&trp, *tokp, tptrp, typep, *nump, 0);
+				rp -> filename[(*tptrp)++] = s[*ptrp];
+			else addarg(&trp, rp, NULL, tptrp, 0);
 			break;
 	}
 	return(trp);
 }
 
-static syntaxtree *NEAR casetoken(trp, s, ptrp, typep, nump, tok, tptrp)
+static syntaxtree *NEAR casetoken(trp, rp, s, ptrp, tptrp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, *nump;
-char *tok;
-int *tptrp;
+int *ptrp, *tptrp;
 {
 	char tmptok[2];
 	int i, stype;
@@ -4972,25 +5182,23 @@ int *tptrp;
 	switch (s[*ptrp]) {
 		case ')':
 			if (!(*tptrp));
-			else if (addarg(&trp, tok, tptrp, typep, *nump, 0) < 0)
-				break;
+			else if (addarg(&trp, rp, NULL, tptrp, 0) < 0) break;
 			trp = _addarg(trp, NULL);
 			trp = linkstree(trp, OP_NONE);
 			i = 0;
 			tmptok[i++] = s[*ptrp];
-			addarg(&trp, tmptok, &i, typep, *nump, 0);
+			addarg(&trp, rp, tmptok, &i, 0);
 			break;
 		case '|':
 			if (!(*tptrp));
-			else addarg(&trp, tok, tptrp, typep, *nump, 0);
+			else addarg(&trp, rp, NULL, tptrp, 0);
 			break;
 		case ';':
-			if (addarg(&trp, tok, tptrp, typep, *nump, 1) < 0)
-				break;
+			if (addarg(&trp, rp, NULL, tptrp, 1) < 0) break;
 			/* for "esac;" */
 			if ((stype = getparenttype(trp)) != STT_INCASE
 			&& stype != STT_CASEEND)
-				trp = semicolon(trp, s, ptrp, typep, *nump);
+				trp = semicolon(trp, rp, s, ptrp);
 			else syntaxerrno = ER_UNEXPTOK;
 			break;
 		case '{':
@@ -5013,8 +5221,11 @@ int *tptrp;
 			break;
 #endif
 		case '\n':
-			if (addarg(&trp, tok, tptrp, typep, *nump, 1) < 0)
+			if (getparenttype(trp) == STT_INCASE && *tptrp) {
+				syntaxerrno = ER_UNEXPNL;
 				break;
+			}
+			if (addarg(&trp, rp, NULL, tptrp, 1) < 0) break;
 			if (trp -> comm) {
 				trp = _addarg(trp, NULL);
 				trp = linkstree(trp, OP_FG);
@@ -5025,7 +5236,7 @@ int *tptrp;
 			}
 			break;
 		case '#':
-			if (*tptrp) tok[(*tptrp)++] = s[*ptrp];
+			if (*tptrp) rp -> filename[(*tptrp)++] = s[*ptrp];
 			else {
 #ifdef	BASHSTYLE
 	/* bash treats '\r' as just a character */
@@ -5039,9 +5250,9 @@ int *tptrp;
 			break;
 		default:
 			if (!strchr(IFS_SET, s[*ptrp]))
-				tok[(*tptrp)++] = s[*ptrp];
+				rp -> filename[(*tptrp)++] = s[*ptrp];
 			else if (*tptrp > 0) {
-				addarg(&trp, tok, tptrp, typep, *nump, 0);
+				addarg(&trp, rp, NULL, tptrp, 0);
 				do {
 					(*ptrp)++;
 				} while (s[*ptrp] == ' ' || s[*ptrp] == '\t');
@@ -5073,20 +5284,18 @@ int id;
 	return(len);
 }
 
-static syntaxtree *NEAR comsubtoken(trp, s, ptrp, typep, nump, tokp, tptrp, sp)
+static syntaxtree *NEAR comsubtoken(trp, rp, s, ptrp, tptrp, sp)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *ptrp, *typep, *nump;
-char **tokp;
-int *tptrp, *sp;
+int *ptrp, *tptrp, *sp;
 {
 	int i, len;
 
 	if (!*tptrp) {
 		if ((len = cmpstatement(&(s[*ptrp]), SM_CASE)) >= 0
 		&& (!s[*ptrp + len] || strchr(IFS_SET, s[*ptrp + len]))) {
-			trp = startvar(trp, s, ptrp,
-				typep, nump, *tokp, tptrp, len);
+			trp = startvar(trp, rp, s, ptrp, tptrp, len);
 			trp -> cont = CN_CASE;
 			return(trp);
 		}
@@ -5094,26 +5303,25 @@ int *tptrp, *sp;
 		&& (len = cmpstatement(&(s[*ptrp]), SM_ESAC)) >= 0
 		&& (!s[*ptrp + len] || strchr(IFS_SET, s[*ptrp + len])
 		|| s[*ptrp + len] == ';' || s[*ptrp + len] == ')')) {
-			trp = endvar(trp, s, ptrp,
-				typep, nump, tokp, tptrp, sp, len);
+			trp = endvar(trp, rp, s, ptrp, tptrp, sp, len);
 			return(trp);
 		}
 		if (strchr(IFS_SET, s[*ptrp])) {
 			for (len = 1; s[*ptrp + len]; len++)
 				if (!strchr(IFS_SET, s[*ptrp + len])) break;
-			return(addvar(trp, s, ptrp, *tokp, tptrp, len));
+			trp = addvar(trp, s, ptrp, rp -> filename, tptrp, len);
+			return(trp);
 		}
 	}
 
 	if (s[*ptrp] == '(') {
-		trp = startvar(trp, s, ptrp, typep, nump, *tokp, tptrp, 1);
+		trp = startvar(trp, rp, s, ptrp, tptrp, 1);
 		trp -> cont = CN_COMM;
 	}
 	else if (s[*ptrp] == ')') {
 		if ((trp -> cont & CN_SBST) == CN_CASE)
-			(*tokp)[(*tptrp)++] = s[*ptrp];
-		else trp = endvar(trp, s, ptrp,
-			typep, nump, tokp, tptrp, sp, 1);
+			rp -> filename[(*tptrp)++] = s[*ptrp];
+		else trp = endvar(trp, rp, s, ptrp, tptrp, sp, 1);
 	}
 # ifdef	BASHSTYLE
 	/* bash treats '\r' as just a character */
@@ -5121,18 +5329,18 @@ int *tptrp, *sp;
 # else
 	else if (s[*ptrp] == '\n' || s[*ptrp] == '\r')
 # endif
-		trp = addvar(trp, s, ptrp, *tokp, tptrp, 1);
+		trp = addvar(trp, s, ptrp, rp -> filename, tptrp, 1);
 	else {
 		for (i = 0; i < DELIMLISTSIZ; i++) {
 			len = strlen(delimlist[i].symbol);
 			if (!strncmp(&(s[*ptrp]), delimlist[i].symbol, len))
 				break;
 		}
-		if (i >= DELIMLISTSIZ) (*tokp)[(*tptrp)++] = s[*ptrp];
+		if (i >= DELIMLISTSIZ) rp -> filename[(*tptrp)++] = s[*ptrp];
 		else if (delimlist[i].level)
-			trp = addvar(trp, s, ptrp, *tokp, tptrp, len);
+			trp = addvar(trp, s, ptrp, rp -> filename, tptrp, len);
 		else {
-			strncpy(&((*tokp)[*tptrp]), &(s[*ptrp]), len);
+			strncpy(&(rp -> filename[*tptrp]), &(s[*ptrp]), len);
 			*tptrp += len;
 			*ptrp += len - 1;
 		}
@@ -5142,56 +5350,41 @@ int *tptrp, *sp;
 }
 #endif	/* !BASHBUG && !MINIMUMSHELL */
 
-#ifdef	BASHSTYLE
-static syntaxtree *NEAR analyzeloop(trp, s, typep, nump, tokp, qp, pp, q, quiet)
+static syntaxtree *NEAR analyzeloop(trp, rp, s, quiet)
 syntaxtree *trp;
+redirectlist *rp;
 char *s;
-int *typep, *nump;
-char **tokp;
-int *qp, *pp, q, quiet;
-#else
-static syntaxtree *NEAR analyzeloop(trp, s, typep, nump, tokp, qp, q, quiet)
-syntaxtree *trp;
-char *s;
-int *typep, *nump;
-char **tokp;
-int *qp, q, quiet;
-#endif
+int quiet;
 {
 	char *cp;
 	int i, j, n, size, stype, hdoc;
 
-	if (!(*tokp)) {
+	if (!rp -> filename) {
 		j = 0;
-		*tokp = c_malloc(size);
+		rp -> filename = c_malloc(size);
 	}
 	else {
-		j = strlen(*tokp);
-		size = c_allocsize(j + 2);
+		j = strlen(rp -> filename);
+		size = c_allocsize(j);
 	}
 
 	hdoc = 0;
 	for (i = 0; s && s[i]; i++) {
 		syntaxerrno = 0;
-		*tokp = c_realloc(*tokp, j + 2, size);
+		rp -> filename = c_realloc(rp -> filename, j + 2, size);
 
-		if ((trp -> cont & CN_HDOC)) {
-#ifdef	BASHSTYLE
-	/* bash treats '\r' as just a character */
-			if (s[i] != '\n')
-#else
-			if (s[i] != '\n' && s[i] != '\r')
-#endif
-			{
+		if ((trp -> cont & CN_HDOC) && (trp -> flags & ST_HDOC)) {
+			if (s[i] != '\n') {
 				if (hdoc) {
-					(*tokp)[j++] = s[i];
+					rp -> filename[j++] = s[i];
 					continue;
 				}
 			}
 			else {
-				(*tokp)[j] = '\0';
-				if ((n = saveheredoc(*tokp, trp)) < 0) {
-					if (!quiet) doperror(NULL, shellname);
+				rp -> filename[j] = '\0';
+				n = saveheredoc(rp -> filename, trp);
+				if (n < 0) {
+					if (!quiet) doperror(NULL, NULL);
 					return(NULL);
 				}
 				hdoc = (trp -> cont & CN_HDOC);
@@ -5204,65 +5397,55 @@ int *qp, q, quiet;
 			}
 		}
 
-		if (s[i] == *qp) {
-			if (!q) (*tokp)[j++] = s[i];
+		if (s[i] == rp -> new) {
+			rp -> filename[j++] = s[i];
 #ifdef	BASHSTYLE
-			*qp = *pp;
-			*pp = '\0';
+			rp -> new = rp -> old;
+			rp -> old = '\0';
 #else
-			*qp = '\0';
+			rp -> new = '\0';
 #endif
 		}
 #ifdef	BASHSTYLE
-		else if (*qp == '`') (*tokp)[j++] = s[i];
+		else if (rp -> new == '`') rp -> filename[j++] = s[i];
 #endif
 #ifdef	CODEEUC
 		else if (isekana(s, i)) {
-			(*tokp)[j++] = s[i++];
-			(*tokp)[j++] = s[i];
+			rp -> filename[j++] = s[i++];
+			rp -> filename[j++] = s[i];
 		}
 #endif
 		else if (iskanji1(s, i)) {
-			(*tokp)[j++] = s[i++];
-			(*tokp)[j++] = s[i];
+			rp -> filename[j++] = s[i++];
+			rp -> filename[j++] = s[i];
 		}
-		else if (*qp == '\'') (*tokp)[j++] = s[i];
+		else if (rp -> new == '\'') rp -> filename[j++] = s[i];
 		else if (s[i] == PMETA) {
-			(*tokp)[j++] = s[i++];
-			if (s[i]) (*tokp)[j++] = s[i];
-			else {
-				trp -> cont |= CN_META;
-				break;
+			if (s[++i] != '\n' || rp -> new) {
+				rp -> filename[j++] = PMETA;
+				if (s[i]) rp -> filename[j++] = s[i];
+				else {
+					trp -> cont |= CN_META;
+					break;
+				}
 			}
 		}
 #ifdef	BASHSTYLE
 	/* bash can include `...` in "..." */
 		else if (s[i] == '`') {
-			if (!q) (*tokp)[j++] = s[i];
-			if (*qp) *pp = *qp;
-			*qp = s[i];
+			rp -> filename[j++] = s[i];
+			if (rp -> new) rp -> old = rp -> new;
+			rp -> new = s[i];
 		}
 #endif
-		else if (*qp) (*tokp)[j++] = s[i];
-#ifdef	BASHSTYLE
-		else if (s[i] == '\'' || s[i] == '"')
-#else
-		else if (s[i] == '\'' || s[i] == '"' || s[i] == '`')
-#endif
-		{
-			if (!q) (*tokp)[j++] = s[i];
-			*qp = s[i];
-		}
 #ifndef	MINIMUMSHELL
 		else if (s[i] == '$' && s[i + 1] == '(') {
 			if (s[i + 2] != '(') {
-				trp = startvar(trp, s, &i,
-					typep, nump, *tokp, &j, 2);
+				trp = startvar(trp, rp, s, &i, &j, 2);
 				trp -> cont = CN_COMM;
 			}
 			else {
-				trp = startvar(trp, s, &i,
-					typep, nump, *tokp, &j, 3);
+				trp = startvar(trp, rp, s, &i, &j, 3);
 				trp -> cont = CN_EXPR;
 			}
 		}
@@ -5270,71 +5453,86 @@ int *qp, q, quiet;
 #ifdef	BASHSTYLE
 	/* bash treats any meta character in ${} as just a character */
 		else if (s[i] == '$' && s[i + 1] == '{') {
-			trp = startvar(trp, s, &i, typep, nump, *tokp, &j, 2);
+			trp = startvar(trp, rp, s, &i, &j, 2);
 			trp -> cont = CN_VAR;
 		}
 		else if ((trp -> cont & CN_SBST) == CN_VAR) {
-			if (s[i] != '}') (*tokp)[j++] = s[i];
-			else trp = endvar(trp, s, &i,
-				typep, nump, tokp, &j, &size, 1);
+			if (s[i] != '}') rp -> filename[j++] = s[i];
+			else trp = endvar(trp, rp, s, &i, &j, &size, 1);
 		}
-#endif	/* BASHSTYLE */
-		else if (s[i] == '$') (*tokp)[j++] = s[i];
+#else	/* !BASHSTYLE */
+		else if (s[i] == '$' && s[i + 1] == '{') {
+			rp -> filename[j++] = s[i++];
+			rp -> filename[j++] = s[i];
+			trp -> cont = CN_VAR;
+		}
+		else if (s[i] == '}' && (trp -> cont & CN_SBST) == CN_VAR) {
+			rp -> filename[j++] = s[i];
+			trp -> cont &= ~CN_VAR;
+		}
+#endif	/* !BASHSTYLE */
+		else if (s[i] == '$') rp -> filename[j++] = s[i];
+		else if (rp -> new) rp -> filename[j++] = s[i];
+#ifdef	BASHSTYLE
+		else if (s[i] == '\'' || s[i] == '"')
+#else
+		else if (s[i] == '\'' || s[i] == '"' || s[i] == '`')
+#endif
+		{
+			rp -> filename[j++] = s[i];
+			rp -> new = s[i];
+		}
 #ifndef	MINIMUMSHELL
 # ifdef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
 		else if ((trp -> cont & CN_SBST) == CN_COMM) {
 			if (s[i] == '(') {
-				trp = startvar(trp,
-					s, &i, typep, nump, *tokp, &j, 1);
+				trp = startvar(trp, rp, s, &i, &j, 1);
 				trp -> cont = CN_COMM;
 			}
-			else if (s[i] != ')') (*tokp)[j++] = s[i];
-			else trp = endvar(trp, s, &i,
-				typep, nump, tokp, &j, &size, 1);
+			else if (s[i] != ')') rp -> filename[j++] = s[i];
+			else trp = endvar(trp, rp, s, &i, &j, &size, 1);
 		}
 # else
 		else if ((trp -> cont & CN_SBST) == CN_COMM
 		|| (trp -> cont & CN_SBST) == CN_CASE)
-			trp = comsubtoken(trp, s, &i,
-				typep, nump, tokp, &j, &size);
+			trp = comsubtoken(trp, rp, s, &i, &j, &size);
 # endif
 		else if ((trp -> cont & CN_SBST) == CN_EXPR) {
-			if (s[i] != ')' || s[i + 1] != ')')
-				(*tokp)[j++] = s[i];
-			else trp = endvar(trp, s, &i,
-				typep, nump, tokp, &j, &size, 2);
+			if (s[i] == '(') {
+				trp = startvar(trp, rp, s, &i, &j, 2);
+				trp -> cont = CN_COMM;
+			}
+			else if (s[i] != ')' || s[i + 1] != ')')
+				rp -> filename[j++] = s[i];
+			else trp = endvar(trp, rp, s, &i, &j, &size, 2);
 		}
 #endif	/* !MINIMUMSHELL */
 		else if ((stype = getparenttype(trp)) == STT_INCASE
 		|| stype == STT_CASEEND)
-			trp = casetoken(trp, s, &i, typep, nump, *tokp, &j);
+			trp = casetoken(trp, rp, s, &i, &j);
 		else {
 #ifndef	NOALIAS
-			if ((n = checkalias(trp, *tokp, j, s[i])) >= 0) {
-# ifdef	BASHSTYLE
-				trp = analyzeloop(trp, shellalias[n].comm,
-					typep, nump, tokp, qp, pp, q, quiet);
-# else
-				trp = analyzeloop(trp, shellalias[n].comm,
-					typep, nump, tokp, qp, q, quiet);
-# endif
+			n = checkalias(trp, rp -> filename, j, s[i]);
+			if (n >= 0) {
+				trp = analyzeloop(trp, rp,
+					shellalias[n].comm, quiet);
 				shellalias[n].flags &= ~AL_USED;
 				if (!trp) return(NULL);
-				j = strlen(*tokp);
+				j = strlen(rp -> filename);
 				i--;
 			}
 			else
 #endif	/* !NOALIAS */
-			trp = normaltoken(trp, s, &i,
-				typep, nump, tokp, &j, &size);
+			trp = normaltoken(trp, rp, s, &i, &j, &size);
 		}
 
 		if (syntaxerrno) {
 			if (quiet) return(NULL);
 			if (strchr(IFS_SET, s[i])) {
-				if (j > 0) (*tokp)[j] = '\0';
-				syntaxerror(*tokp);
+				if (j < 0) j = 0;
+				rp -> filename[j] = '\0';
+				syntaxerror(rp -> filename);
 				return(NULL);
 			}
 			for (j = i + 1; s[j]; j++) {
@@ -5351,91 +5549,77 @@ int *qp, q, quiet;
 		}
 	}
 
-	if (j && (trp -> cont & CN_HDOC)) {
-		(*tokp)[j] = '\0';
-		if ((n = saveheredoc(*tokp, trp)) < 0) {
-			if (!quiet) doperror(NULL, shellname);
+	if (j && (trp -> cont & CN_HDOC) && (trp -> flags & ST_HDOC)) {
+		rp -> filename[j] = '\0';
+		if ((n = saveheredoc(rp -> filename, trp)) < 0) {
+			if (!quiet) doperror(NULL, NULL);
 			return(NULL);
 		}
 		if (n > 0) j = 0;
 		else trp -> cont &= ~CN_HDOC;
 	}
-	(*tokp)[j] = '\0';
+	rp -> filename[j] = '\0';
 
 #ifndef	NOALIAS
-	if ((n = checkalias(trp, *tokp, j, '\0')) >= 0) {
-# ifdef	BASHSTYLE
-		trp = analyzeloop(trp, shellalias[n].comm,
-			typep, nump, tokp, qp, pp, q, quiet);
-# else
-		trp = analyzeloop(trp, shellalias[n].comm,
-			typep, nump, tokp, qp, q, quiet);
-# endif
+	if ((n = checkalias(trp, rp -> filename, j, '\0')) >= 0) {
+		trp = analyzeloop(trp, rp, shellalias[n].comm, quiet);
 		shellalias[n].flags &= ~AL_USED;
 	}
 #endif	/* !NOALIAS */
 	return(trp);
 }
 
-syntaxtree *analyze(s, trp, quoted, quiet)
+syntaxtree *analyze(s, trp, quiet)
 char *s;
 syntaxtree *trp;
-int quoted, quiet;
+int quiet;
 {
-	char *tok;
-	int i, type, num, quote;
-#ifdef	BASHSTYLE
-	int pquote;
-#endif
+	syntaxtree *parent;
+	redirectlist *rp, red;
+	int i;
 
-	type = MD_NORMAL;
-	num = -1;
 	syntaxerrno = 0;
-#ifdef	BASHSTYLE
-	pquote =
+	red.fd = -1;
+	red.filename = NULL;
+	red.type = MD_NORMAL;
+	red.new = red.old = 0;
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	red.fakepipe = NULL;
+	red.dosfd = -1;
 #endif
-	quote = '\0';
+	red.next = NULL;
 
 	if (trp -> cont & (CN_QUOT | CN_META)) {
-		tok = (char *)(trp -> next);
-		i = strlen(tok);
+		memcpy(&red, trp -> next, sizeof(red));
+		free(trp -> next);
+
+		i = strlen(red.filename);
 		if (i > 0) {
-			if (trp -> cont & CN_QUOT) {
-				quote = tok[--i];
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
-				if (quote == '+') {
-					quote = '`';
-					pquote = '"';
-				}
-#endif
-			}
-			if ((trp -> cont & CN_META) && quote != '\'') i--;
-			else if (s) tok[i++] = '\n';
+			if ((trp -> cont & CN_META) && red.new != '\'') i--;
+			else if (s) red.filename[i++] = '\n';
 		}
 #ifndef	BASHSTYLE
 	/* bash does not allow unclosed quote */
 		if (!s) {
-			if (trp -> cont & CN_QUOT) tok[i++] = quote;
-			s = NULL;
-			quote = '\0';
+			if (trp -> cont & CN_QUOT) red.filename[i++] = red.new;
+			red.new = '\0';
 		}
 #endif
-		tok[i] = '\0';
+		red.filename[i] = '\0';
 	}
 	else if ((trp -> cont & CN_HDOC)) {
 		if ((i = saveheredoc(s, trp)) < 0) {
-			if (!quiet) doperror(NULL, shellname);
+			if (!quiet) doperror(NULL, NULL);
 			return(NULL);
 		}
-		if (i > 0) return(trp);
+		else if (!i) {
+			trp -> cont &= ~CN_HDOC;
+			return(NULL);
+		}
 
-		trp -> cont &= ~CN_HDOC;
-		if (s) tok = NULL;
-		return(NULL);
+		return(trp);
 	}
-	else if (s) tok = NULL;
-	else return(NULL);
+	else if (!s) return(NULL);
 
 	trp -> next = NULL;
 	trp -> cont &= CN_INHR;
@@ -5446,43 +5630,30 @@ int quoted, quiet;
 		for (i = 0; shellalias[i].ident; i++)
 			shellalias[i].flags &= ~AL_USED;
 #endif
-#ifdef	BASHSTYLE
-		trp = analyzeloop(trp, s,
-			&type, &num, &tok, &quote, &pquote, quoted, quiet);
-#else
-		trp = analyzeloop(trp, s,
-			&type, &num, &tok, &quote, quoted, quiet);
-#endif
-		if (!trp) {
-			if (tok) free(tok);
+		if (!(trp = analyzeloop(trp, &red, s, quiet))) {
+			if (red.filename) free(red.filename);
 			return(NULL);
 		}
 	}
 
-	i = (tok) ? strlen(tok) : 0;
-	if (quote) {
-#ifdef	BASHSTYLE
-	/* bash can include `...` in "..." */
-		if (pquote) quote = '+';
-#endif
-		tok[i++] = quote;
-		tok[i] = '\0';
-		trp -> next = (syntaxtree *)tok;
-		tok = NULL;
-		trp -> cont |= CN_QUOT;
-	}
-	else if (trp -> cont & CN_META) {
-		trp -> next = (syntaxtree *)tok;
-		tok = NULL;
+	i = (red.filename) ? strlen(red.filename) : 0;
+	if (red.new) trp -> cont |= CN_QUOT;
+
+	if (trp -> cont & (CN_QUOT | CN_META)) {
+		rp = (redirectlist *)malloc2(sizeof(redirectlist));
+		memcpy(rp, &red, sizeof(red));
+		trp -> next = (syntaxtree *)rp;
+		red.filename = NULL;
 	}
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
 	else if (trp -> cont & CN_SBST) {
-		tok[i++] = '\n';
-		trp = addvar(trp, NULL, NULL, tok, &i, 0);
+		red.filename[i++] = '\n';
+		trp = addvar(trp, NULL, NULL, red.filename, &i, 0);
 	}
 #endif
-	else if (getparenttype(trp) == STT_INCASE) syntaxerrno = ER_UNEXPNL;
-	else if (addarg(&trp, tok, &i, &type, num, 1) < 0);
+	else if (getparenttype(trp) == STT_INCASE && (trp -> comm || i))
+		syntaxerrno = ER_UNEXPNL;
+	else if (addarg(&trp, &red, NULL, &i, 1) < 0);
 	else if (!(trp = _addarg(trp, NULL)) || syntaxerrno);
 	else if (trp -> comm) trp = linkstree(trp, OP_FG);
 	else if (hasparent(trp)) {
@@ -5494,12 +5665,13 @@ int quoted, quiet;
 			trp -> cont |= CN_STAT;
 	}
 	if (syntaxerrno) {
-		if (!quiet) syntaxerror(tok);
-		if (tok) free(tok);
+		if (!quiet) syntaxerror(red.filename);
+		if (red.filename) free(red.filename);
 		return(NULL);
 	}
-	if (tok) free(tok);
-	if (parentshell(trp)) trp -> cont |= CN_STAT;
+	if (red.filename) free(red.filename);
+	if ((parent = parentshell(trp)) && isstatement(parent -> comm))
+		trp -> cont |= CN_STAT;
 
 	return(trp);
 }
@@ -5509,11 +5681,11 @@ syntaxtree *trp;
 {
 	while (trp && trp -> cont) {
 #ifdef	BASHSTYLE
-		if (trp -> cont & CN_HDOC) trp = analyze(NULL, trp, 0, 0);
+		if (trp -> cont & CN_HDOC) trp = analyze(NULL, trp, 0);
 #else
 	/* bash does not allow unclosed quote */
 		if (trp -> cont & (CN_META | CN_QUOT | CN_HDOC))
-			trp = analyze(NULL, trp, 0, 0);
+			trp = analyze(NULL, trp, 0);
 	/* bash does not allow the format like as "foo |" */
 		else if ((trp -> flags & ST_NEXT) && hasparent(trp)
 		&& isoppipe(trp -> parent)) break;
@@ -5551,7 +5723,7 @@ syntaxtree *trp;
 	if ((id = getstatid(trp = statementcheck(trp, SM_STATEMENT))) < 0
 	|| !statementlist[id].func || statementlist[id].prev[0]) {
 		errno = EINVAL;
-		doperror(NULL, shellname);
+		doperror(NULL, NULL);
 		return(-1);
 	}
 
@@ -5610,7 +5782,7 @@ syntaxtree *trp;
 
 	if (!trp) {
 		errno = EINVAL;
-		doperror(NULL, shellname);
+		doperror(NULL, NULL);
 		return(-1);
 	}
 	if (!(trp -> comm)) return(0);
@@ -5628,7 +5800,7 @@ syntaxtree *trp;
 		}
 		if (!statementcheck(tmptr -> next, 0)) {
 			errno = EINVAL;
-			doperror(NULL, shellname);
+			doperror(NULL, NULL);
 			return(-1);
 		}
 		trp = trp -> next;
@@ -5638,14 +5810,13 @@ syntaxtree *trp;
 	return((trp -> next) ? check_stree(trp -> next) : 0);
 }
 
-static syntaxtree *NEAR analyzeline(command, quoted)
+static syntaxtree *NEAR analyzeline(command)
 char *command;
-int quoted;
 {
 	syntaxtree *trp, *stree;
 
 	stree = newstree(NULL);
-	trp = analyze(command, stree, quoted, 0);
+	trp = analyze(command, stree, 0);
 	if ((trp = analyzeeof(trp))) {
 #ifdef	_NOUSEHASH
 		return(stree);
@@ -5685,6 +5856,7 @@ char *path, *argv[], *envp[];
 		ret = RET_NOTEXEC;
 	}
 	else {
+		argvar = argv;
 		sourcefile(fd, argv[0], 0);
 		ret = ret_status;
 	}
@@ -5734,17 +5906,17 @@ char **pathp, **argv;
 
 #if	MSDOS || defined (USEFAKEPIPE)
 static int NEAR openpipe(pidp, fdin, new)
-long *pidp;
+p_id_t *pidp;
 int fdin, new;
 #else
-static int NEAR openpipe(pidp, fdin, new, tty, parent)
-long *pidp;
+static int NEAR openpipe(pidp, fdin, new, tty, ppid)
+p_id_t *pidp;
 int fdin, new, tty;
-long parent;
+p_id_t ppid;
 #endif
 {
 #if	!MSDOS && !defined (USEFAKEPIPE)
-	long pid;
+	p_id_t pid;
 	int fildes[2];
 #endif
 	pipelist *pl;
@@ -5757,8 +5929,16 @@ long parent;
 	pl -> fd = fdin;
 	pl -> old = -1;
 #if	!MSDOS && !defined (USEFAKEPIPE)
-	if (pipe(fildes) < 0) pid = -1;
-	else if ((pid = makechild(tty, parent)) < 0) {
+	if (pipe(fildes) < 0) {
+# ifdef	FAKEUNINIT
+		fd = -1;	/* fake for -Wuninitialized */
+# endif
+		pid = -1L;
+	}
+	else if ((pid = makechild(tty, ppid)) < 0L) {
+# ifdef	FAKEUNINIT
+		fd = -1;	/* fake for -Wuninitialized */
+# endif
 		safeclose(fildes[0]);
 		safeclose(fildes[1]);
 	}
@@ -5786,7 +5966,7 @@ long parent;
 					while (!waitjob(pid, NULL, WUNTRACED))
 						if (interrupted) break;
 				}
-				pid = -1;
+				pid = -1L;
 			}
 			else {
 # ifndef	NOJOB
@@ -5799,7 +5979,7 @@ long parent;
 		}
 		safeclose(fildes[1]);
 	}
-	if (pid >= 0) {
+	if (pid >= 0L) {
 		pl -> new = fd;
 		pl -> pid = *pidp = pid;
 		pl -> next = pipetop;
@@ -5825,7 +6005,7 @@ long parent;
 	if (new) pl -> fd = -1;
 	pl -> file = strdup2(pfile);
 	pl -> new = pl -> old = dupl;
-	pl -> pid = *pidp = 0;
+	pl -> pid = *pidp = 0L;
 	pl -> next = pipetop;
 	pipetop = pl;
 	return(dupl);
@@ -5855,7 +6035,7 @@ int fd, ret;
 	if (!(prevp = searchpipe(fd))) return(-1);
 	pl = *prevp;
 
-	if (pl -> pid > 0) return(fd);
+	if (pl -> pid > 0L) return(fd);
 	if (pl -> old != STDOUT_FILENO) {
 		Xclose(STDOUT_FILENO);
 		Xdup2(pl -> old, STDOUT_FILENO);
@@ -5923,7 +6103,7 @@ int fd;
 	duperrno = errno;
 	pl = *prevp;
 #if	!MSDOS && !defined (NOJOB)
-	if (pl -> pid > 0 && stoppedjob(pl -> pid) > 0) {
+	if (pl -> pid > 0L && stoppedjob(pl -> pid) > 0) {
 		errno = duperrno;
 		return(RET_SUCCESS);
 	}
@@ -5949,7 +6129,7 @@ int fd;
 		prepareexit(1);
 		Xexit(RET_SUCCESS);
 	}
-	else if (pl -> pid > 0) {
+	else if (pl -> pid > 0L) {
 # ifdef	NOJOB
 		wait_t w;
 
@@ -6013,20 +6193,20 @@ char *arg;
 
 	duptrapok = trapok;
 	trapok = 0;
-	fp = _dopopen(arg, '`');
+	fp = _dopopen(arg);
 	trapok = duptrapok;
 	if (!fp) {
-		if (errno) doperror(NULL, shellname);
+		if (errno) doperror(NULL, NULL);
 		buf = NULL;
 		ret_status = RET_NOTEXEC;
 	}
 	else if (!(buf = readfile(fileno(fp), &len))) {
-		doperror(NULL, shellname);
+		doperror(NULL, NULL);
 		ret_status = RET_FATALERR;
 	}
 	else {
-#ifdef	BASHSTYLE
-	/* bash ignores any following newlines */
+#if	defined (BASHSTYLE) || defined (STRICTPOSIX)
+	/* bash & POSIX ignore any following newlines */
 		while (len > 0 && buf[--len] == '\n') buf[len] = '\0';
 #else
 		if (len > 0 && buf[--len] == '\n') buf[len] = '\0';
@@ -6186,24 +6366,18 @@ int **lenp;
 static int NEAR substvar(argv)
 char **argv;
 {
-	char *tmp;
+	char *tmp, *arg;
 	int i;
 
 	for (i = 0; argv[i]; i++) {
 		trapok = 1;
-#ifdef	STRICTPOSIX
 		tmp = evalarg(argv[i], 0, 1, '\0');
 		if (!tmp && i && *(argv[i])) {
-			char *arg;
-
 			arg = argv[i];
 			while (argv[i]) i++;
-			freevar(checkposixspecialargv(i, duplvar(argv, 2)));
+			freevar(checkshellbuiltinargv(i, duplvar(argv, 2)));
 			execerror(arg, ER_BADSUBST, 0);
 		}
-#else
-		tmp = evalvararg(argv[i], 0, 1, '\0', 0, 0);
-#endif
 		trapok = 0;
 		if (!tmp) return(-1);
 		free(argv[i]);
@@ -6349,15 +6523,15 @@ FILE *fp;
 	}
 }
 
-static VOID NEAR printredirect(rp, fp)
+static int NEAR printredirect(rp, fp)
 redirectlist *rp;
 FILE *fp;
 {
 	heredoc_t *hdp;
-	int c, fd;
+	int ret;
 
-	if (!rp) return;
-	printredirect(rp -> next, fp);
+	if (!rp) return(0);
+	ret = printredirect(rp -> next, fp);
 
 	fputc(' ', fp);
 	switch (rp -> type & MD_RDWR) {
@@ -6389,47 +6563,97 @@ FILE *fp;
 	else {
 		if (rp -> type & MD_FILEDESC) fputc('&', fp);
 		else fputc(' ', fp);
-		if (!(rp -> type & MD_HEREDOC))
-			kanjifputs(rp -> filename, fp);
+		if (!(rp -> type & MD_HEREDOC)) kanjifputs(rp -> filename, fp);
 		else {
 			hdp = (heredoc_t *)(rp -> filename);
+#ifdef	MINIMUMSHELL
+			kanjifputs(hdp -> filename, fp);
+#else
 			kanjifputs(hdp -> eof, fp);
-			fd = newdup(Xopen(hdp -> filename,
-				O_BINARY | O_RDONLY, 0666));
-			if (fd >= 0) {
-				fputc('\n', stdout);
-				while ((c = readchar(fd)) != READ_EOF) {
-					if (c < 0) break;
-					fputc(c, stdout);
-				}
-				safeclose(fd);
-				kanjifputs(hdp -> eof, fp);
-			}
+#endif
+			ret = 1;
 		}
 	}
+	return(ret);
 }
 
 VOID printstree(trp, indent, fp)
 syntaxtree *trp;
 int indent;
 FILE *fp;
+#ifndef	MINIMUMSHELL
 {
+	redirectlist **rlist;
+	int i;
+
+	rlist = _printstree(trp, NULL, indent, fp);
+	if (rlist) {
+		for (i = 0; rlist[i]; i++) printheredoc(rlist[i], fp);
+		free(rlist);
+	}
+}
+
+static VOID NEAR printheredoc(rp, fp)
+redirectlist *rp;
+FILE *fp;
+{
+	heredoc_t *hdp;
+	int c, fd;
+
+	if (!rp) return;
+	printheredoc(rp -> next, fp);
+	if (!(rp -> type & MD_HEREDOC)) return;
+
+	hdp = (heredoc_t *)(rp -> filename);
+	fd = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
+	if (fd >= 0) {
+		fputc('\n', stdout);
+		while ((c = readchar(fd)) != READ_EOF) {
+			if (c < 0) break;
+			fputc(c, stdout);
+		}
+		safeclose(fd);
+		kanjifputs(hdp -> eof, fp);
+	}
+	return;
+}
+
+static redirectlist **NEAR _printstree(trp, rlist, indent, fp)
+syntaxtree *trp;
+redirectlist **rlist;
+int indent;
+FILE *fp;
+#endif	/* !MINIMUMSHELL */
+{
+#ifndef	MINIMUMSHELL
+	redirectlist **rlist2;
+	int nl;
+#endif
 	syntaxtree *tmptr;
 	int i, j, id, prev, ind2;
 
+#ifdef	MINIMUMSHELL
 	if (!trp) return;
+#else
+	if (!trp) return(rlist);
+#endif
 	prev = getstatid(tmptr = parentshell(trp)) + 1;
 
 #ifndef	MINIMUMSHELL
 	if (isopnot(trp)) {
 		fputc('!', fp);
-		printstree(trp -> next, indent, fp);
-		return;
+		return(_printstree(trp -> next, rlist, indent, fp));
 	}
+	rlist2 = NULL;
 #endif
 
 	if (trp -> flags & ST_NODE)
+#ifdef	MINIMUMSHELL
 		printstree((syntaxtree *)(trp -> comm), indent, fp);
+#else
+		rlist2 = _printstree((syntaxtree *)(trp -> comm),
+			NULL, indent, fp);
+#endif
 	else if (!(trp -> comm)) {
 		if (tmptr && !(tmptr -> next) && prev > 0) {
 			for (i = 0; i < STATEMENTSIZ; i++) {
@@ -6455,11 +6679,21 @@ FILE *fp;
 			i = id - 1;
 			if (id == SM_CHILD) {
 				fputs("( ", fp);
+#ifdef	MINIMUMSHELL
 				printstree(statementbody(trp), indent, fp);
+#else
+				rlist2 = _printstree(statementbody(trp),
+					NULL, indent, fp);
+#endif
 				fputs(" )", fp);
 			}
 			else if (id == SM_STATEMENT)
+#ifdef	MINIMUMSHELL
 				printstree(statementbody(trp), indent, fp);
+#else
+				rlist2 = _printstree(statementbody(trp),
+					NULL, indent, fp);
+#endif
 			else {
 				fputs(statementlist[i].ident, fp);
 				switch (id) {
@@ -6499,7 +6733,12 @@ FILE *fp;
 					else ind2 += indent;
 					printnewline(ind2, fp);
 				}
+#ifdef	MINIMUMSHELL
 				printstree(statementbody(trp), ind2, fp);
+#else
+				rlist2 = _printstree(statementbody(trp),
+					NULL, ind2, fp);
+#endif
 
 				switch (id) {
 					case SM_IF:
@@ -6535,48 +6774,99 @@ FILE *fp;
 			}
 		}
 
+#ifdef	MINIMUMSHELL
 		printredirect((trp -> comm) -> redp, fp);
+#else
+		if (printredirect((trp -> comm) -> redp, fp)) {
+			if (!rlist) i = 0;
+			else for (i = 0; rlist[i]; i++);
+			rlist = (redirectlist **)realloc2(rlist,
+				(i + 2) * sizeof(redirectlist *));
+			rlist[i++] = (trp -> comm) -> redp;
+			rlist[i] = NULL;
+		}
+#endif
 	}
 
-	if (isopfg(trp)) {
-		if (trp -> next && (trp -> next) -> comm) {
+#ifndef	MINIMUMSHELL
+	if (rlist2) {
+		if (!rlist) i = 0;
+		else for (i = 0; rlist[i]; i++);
+		for (j = 0; rlist2[j]; j++);
+		rlist = (redirectlist **)realloc2(rlist,
+			(i + j + 1) * sizeof(redirectlist *));
+		for (j = 0; rlist2[j]; j++) rlist[i + j] = rlist2[j];
+		rlist[i + j] = NULL;
+		free(rlist2);
+	}
+#endif
+
+	for (id = 0; id < OPELISTSIZ; id++)
+		if (trp -> type == opelist[id].op) break;
+	if (id < OPELISTSIZ && !isopfg(trp)) {
+		fputc(' ', fp);
+		fputs(opelist[id].symbol, fp);
+	}
+#ifndef	MINIMUMSHELL
+	if (!rlist || opelist[id].level < 4) nl = 0;
+	else {
+		for (i = 0; rlist[i]; i++) printheredoc(rlist[i], fp);
+		free(rlist);
+		rlist = NULL;
+		nl = 1;
+	}
+#endif
+
+	if (trp -> next && (trp -> next) -> comm) {
+#ifndef	MINIMUMSHELL
+		if (nl) {
+			fputc('\n', fp);
+			printindent(indent, fp);
+		}
+		else
+#endif
+		if (isopfg(trp)) {
 #ifdef	BASHSTYLE
 	/* bash type pretty print */
 			fputc(';', fp);
 			printnewline(indent, fp);
 #else
-			if (indent < 0) fputs("; ", fp);
+			if (indent < 0) fputc(';', fp);
 			else {
 				fputc('\n', fp);
 				printindent(indent, fp);
 			}
 #endif
 		}
+		else if (id < OPELISTSIZ) {
 #ifndef	BASHSTYLE
 	/* bash type pretty print */
-		else if (indent >= 0);
+			if (opelist[id].level >= 4) printnewline(indent, fp);
+			else
 #endif
-		else fputc(';', fp);
-	}
-	else if (trp -> type) {
-		for (i = 0; i < OPELISTSIZ; i++)
-			if (trp -> type == opelist[i].op) break;
-		if (i < OPELISTSIZ) {
 			fputc(' ', fp);
-			fputs(opelist[i].symbol, fp);
-			if (trp -> next && (trp -> next) -> comm) {
-#ifndef	BASHSTYLE
-	/* bash type pretty print */
-				if (opelist[i].level >= 4)
-					printnewline(indent, fp);
-				else
-#endif
-				fputc(' ', fp);
-			}
 		}
 	}
+#ifndef	MINIMUMSHELL
+	else if (nl);
+#endif
+	else if (isopfg(trp)) {
+#ifdef	BASHSTYLE
+	/* bash type pretty print */
+		fputc(';', fp);
+#else
+		if (indent < 0) fputc(';', fp);
+#endif
+	}
+
+#ifdef	MINIMUMSHELL
 	if (trp -> next) printstree(trp -> next, indent, fp);
 	fflush(fp);
+#else
+	if (trp -> next) rlist = _printstree(trp -> next, rlist, indent, fp);
+	fflush(fp);
+	return(rlist);
+#endif
 }
 
 static VOID NEAR printfunction(f, fp)
@@ -6584,10 +6874,11 @@ shfunctable *f;
 FILE *fp;
 {
 	kanjifputs(f -> ident, fp);
-	fputs("()", fp);
 #ifdef	BASHSTYLE
 	/* bash type pretty print */
-	fputc('\n', fp);
+	fputs(" ()\n", fp);
+#else
+	fputs("()", fp);
 #endif
 	if (getstatid(statementcheck(f -> func, SM_STATEMENT)) == SM_LIST - 1)
 		printstree(f -> func, 0, fp);
@@ -6657,7 +6948,6 @@ syntaxtree *trp;
 	childdepth++;
 	ret = exec_stree(statementbody(trp), 0);
 	childdepth--;
-	doexec(NULL);
 	freevar(shellvar);
 	freevar(exportvar);
 	freevar(exportlist);
@@ -6673,11 +6963,11 @@ syntaxtree *trp;
 	return(ret);
 #else
 	syntaxtree *body;
-	long pid;
+	p_id_t pid;
 	int ret;
 
 	body = statementbody(trp);
-	if ((pid = makechild(1, -1)) < 0) return(-1);
+	if ((pid = makechild(1, -1L)) < 0L) return(-1);
 	else if (!pid) {
 		childdepth++;
 # ifndef	NOJOB
@@ -6691,7 +6981,7 @@ syntaxtree *trp;
 # ifndef	NOJOB
 		stackjob(pid, 0, body);
 # endif
-		if (isopbg(trp) || isopnown(trp)) return(ret);
+		if (isopbg(trp) || isopnown(trp)) return(RET_SUCCESS);
 		ret = waitchild(pid, trp);
 		if (ret == RET_NOTEXEC) ret = -1;
 		if (ret < 0) breaklevel = loopdepth;
@@ -6711,7 +7001,7 @@ syntaxtree *trp;
 
 	if ((ret = exec_stree(cond, 1)) < 0 || returnlevel) return(ret);
 	if (interrupted) return(RET_INTR);
-	if (ret == RET_SUCCESS) return(exec_stree(body, 0));
+	if (ret_status == RET_SUCCESS) return(exec_stree(body, 0));
 	if (!(trp = (trp -> next) -> next)) return(RET_SUCCESS);
 
 	body = statementbody(trp);
@@ -6739,7 +7029,7 @@ syntaxtree *trp;
 			ret = tmp;
 			break;
 		}
-		if (tmp != RET_SUCCESS) break;
+		if (ret_status != RET_SUCCESS) break;
 		if (interrupted) {
 			ret = RET_INTR;
 			break;
@@ -6782,7 +7072,7 @@ syntaxtree *trp;
 			break;
 		}
 #endif
-		if (tmp == RET_SUCCESS) break;
+		if (ret_status == RET_SUCCESS) break;
 		if (interrupted) {
 			ret = RET_INTR;
 			break;
@@ -7057,20 +7347,13 @@ int errexit;
 static int NEAR doexec(trp)
 syntaxtree *trp;
 {
-	static redirectlist *rp = NULL;
-	static int nown = 0;
 	command_t *comm;
-
-	if (!trp) {
-		if (rp) {
-			closeredirect(rp);
-			freerlist(rp, nown);
-			rp = NULL;
-		}
-		return(RET_SUCCESS);
-	}
+	redirectlist *rp;
 
 	comm = trp -> comm;
+	rp = comm -> redp;
+	comm -> redp = NULL;
+	if (freerlist(rp, 0, trp -> flags & ST_NOWN) < 0) return(RET_FAIL);
 	if (comm -> argc >= 2) {
 		if (restricted) {
 			execerror(comm -> argv[1], ER_RESTRICTED, 0);
@@ -7090,17 +7373,10 @@ syntaxtree *trp;
 	}
 
 	if (!isopbg(trp) && !isopnown(trp) && comm -> redp) {
-		if (rp) {
-			closeredirect(rp);
-			freerlist(rp, nown);
-		}
 		if (definput == ttyio && !isatty(STDIN_FILENO))
 			definput = STDIN_FILENO;
 		else if (definput == STDIN_FILENO && isatty(STDIN_FILENO))
 			definput = ttyio;
-		rp = comm -> redp;
-		nown = (trp -> flags & ST_NOWN);
-		comm -> redp = NULL;
 	}
 	return(RET_SUCCESS);
 }
@@ -7150,10 +7426,10 @@ syntaxtree *trp;
 	trp = stree = newstree(NULL);
 
 #if	!MSDOS && !defined (NOJOB)
-	childpgrp = -1;
+	childpgrp = -1L;
 #endif
-	trp = execline(cp, stree, trp);
-	execline((char *)-1, stree, trp);
+	trp = execline(cp, stree, trp, 1);
+	execline((char *)-1, stree, trp, 1);
 	ret = (syntaxerrno) ? RET_SYNTAXERR : ret_status;
 	free(stree);
 	free(cp);
@@ -7212,7 +7488,8 @@ syntaxtree *trp;
 		if ((c = readchar(STDIN_FILENO)) < 0) {
 			free(buf);
 			readtrap = 0;
-			return(-1);
+			doperror(NULL, NULL);
+			return(RET_FAIL);
 		}
 		if (c == READ_EOF || c == '\n') break;
 		buf = c_realloc(buf, i, size);
@@ -7354,10 +7631,12 @@ syntaxtree *trp;
 	}
 	if (n >= argc) return(RET_SUCCESS);
 
-	for (i = 1; argvar[i]; i++) free(argvar[i]);
-	argvar = (char **)realloc2(argvar, (argc - n + 2) * sizeof(char *));
+	var = argvar;
+	argvar = (char **)malloc2((argc - n + 2) * sizeof(char *));
+	argvar[0] = strdup2(var[0]);
 	for (i = 1; n < argc; i++, n++) argvar[i] = strdup2(argv[n]);
 	argvar[i] = NULL;
+	freevar(var);
 
 	return(RET_SUCCESS);
 }
@@ -7438,10 +7717,10 @@ syntaxtree *trp;
 
 #ifdef	FD
 	dupphysical_path = physical_path;
-	physical_path = (opt) ? (opt == 'P') : -1;
+	if (opt) physical_path = (opt == 'P') ? 1 : 0;
 #endif
 
-	if (!(next = getconstvar("CDPATH"))) {
+	if (*dir == _SC_ || !(next = getconstvar("CDPATH"))) {
 		if (chdir3(dir) >= 0) {
 #ifdef	FD
 			physical_path = dupphysical_path;
@@ -7547,6 +7826,28 @@ syntaxtree *trp;
 		doperror((trp -> comm) -> argv[0], fname);
 		return(RET_FAIL);
 	}
+#ifdef	BASHSTYLE
+	/* bash sets positional parameters with source arguments */
+	if ((trp -> comm) -> argc > 2) {
+		char **var, **dupargvar;
+
+		dupargvar = argvar;
+		argvar = (char **)malloc2((trp -> comm) -> argc
+			* sizeof(char *));
+		argvar[0] = strdup2(var[0]);
+		for (n = 1; n < (trp -> comm) -> argc - 1; n++)
+			argvar[n] = strdup2((trp -> comm) -> argv[n + 1]);
+		argvar[n] = NULL;
+		var = argvar;
+		sourcefile(fd, fname, 0);
+		if (var != argvar) freevar(dupargvar);
+		else {
+			freevar(argvar);
+			argvar = dupargvar;
+		}
+	}
+	else
+#endif	/* BASHSTYLE */
 	sourcefile(fd, fname, 0);
 	return(ret_status);
 }
@@ -7665,33 +7966,33 @@ syntaxtree *trp;
 static int NEAR dotimes(trp)
 syntaxtree *trp;
 {
-	int utime, stime;
+	int usrtime, systime;
 #ifdef	USERESOURCEH
 	struct rusage ru;
 
 	getrusage(RUSAGE_CHILDREN, &ru);
-	utime = ru.ru_utime.tv_sec;
-	stime = ru.ru_stime.tv_sec;
+	usrtime = ru.ru_utime.tv_sec;
+	systime = ru.ru_stime.tv_sec;
 #else	/* !USERESOURCEH */
 # ifdef	USETIMESH
 	struct tms buf;
 
 	times(&buf);
-	utime = buf.tms_cutime / CLK_TCK;
-	if (buf.tms_cutime % CLK_TCK > CLK_TCK / 2) utime++;
-	stime = buf.tms_cstime / CLK_TCK;
-	if (buf.tms_cstime % CLK_TCK > CLK_TCK / 2) stime++;
+	usrtime = buf.tms_cutime / CLK_TCK;
+	if (buf.tms_cutime % CLK_TCK > CLK_TCK / 2) usrtime++;
+	systime = buf.tms_cstime / CLK_TCK;
+	if (buf.tms_cstime % CLK_TCK > CLK_TCK / 2) systime++;
 # else
-	utime = stime = 0;
+	usrtime = systime = 0;
 # endif
 #endif	/* !USERESOURCEH */
-	fputlong(utime / 60, stdout);
+	fputlong(usrtime / 60, stdout);
 	fputc('m', stdout);
-	fputlong(utime % 60, stdout);
+	fputlong(usrtime % 60, stdout);
 	fputs("s ", stdout);
-	fputlong(stime / 60, stdout);
+	fputlong(systime / 60, stdout);
 	fputc('m', stdout);
-	fputlong(stime % 60, stdout);
+	fputlong(systime % 60, stdout);
 	fputs("s\n", stdout);
 	fflush(stdout);
 	return(RET_SUCCESS);
@@ -7705,7 +8006,7 @@ syntaxtree *trp;
 	return(RET_SUCCESS);
 #else	/* !MSDOS */
 	char *s;
-	long pid;
+	p_id_t pid;
 # ifndef	NOJOB
 	int i, j, sig;
 # endif
@@ -7731,7 +8032,7 @@ syntaxtree *trp;
 # ifndef	NOJOB
 		if (*s == '%') {
 			checkjob(0);
-			if ((i = getjob(s)) < 0) pid = -1;
+			if ((i = getjob(s)) < 0) pid = -1L;
 			else {
 				j = joblist[i].npipe;
 				pid = joblist[i].pids[j];
@@ -7739,17 +8040,22 @@ syntaxtree *trp;
 		}
 		else
 # endif	/* !NOJOB */
-		if ((pid = isnumeric(s)) < 0) {
+		if ((pid = isnumeric(s)) < 0L) {
 			execerror(s, ER_BADNUMBER, 0);
 			return(RET_FAIL);
 		}
 # ifndef	NOJOB
 		else {
 			checkjob(0);
-			if (!joblist || (i = searchjob(pid, &j)) < 0) pid = -1;
+			if (!joblist || (i = searchjob(pid, &j)) < 0L) {
+				pid = -1L;
+#  ifdef	FAKEUNINIT
+				i = -1;		/* fake for -Wuninitialized */
+#  endif
+			}
 		}
 
-		if (pid < 0) {
+		if (pid < 0L) {
 			execerror(s, ER_NOSUCHJOB, 0);
 			return(RET_FAIL);
 		}
@@ -7811,13 +8117,13 @@ syntaxtree *trp;
 	argc = (trp -> comm) -> argc;
 	argv = (trp -> comm) -> argv;
 # ifdef	USERESOURCEH
-	flags = 0;
+	flags = (u_long)0;
 	err = hs = 0;
 	n = 1;
 	if (argc > 1 && argv[1][0] == '-') {
 		for (i = 1; !err && argv[1][i]; i++) switch (argv[1][i]) {
 			case 'a':
-				flags = (1 << ULIMITSIZ) - 1;
+				flags = ((u_long)1 << ULIMITSIZ) - 1;
 				break;
 			case 'H':
 				hs |= 1;
@@ -7830,20 +8136,21 @@ syntaxtree *trp;
 					if (argv[1][i] == ulimitlist[j].opt)
 						break;
 				if (j >= ULIMITSIZ) err = 1;
-				else flags |= (1 << j);
+				else flags |= ((u_long)1 << j);
 				break;
 		}
 		n++;
 	}
 	res = -1;
-	if (!flags) for (i = 0, flags = 1; i < ULIMITSIZ; i++, flags <<= 1) {
+	if (!flags)
+	for (i = 0, flags = (u_long)1; i < ULIMITSIZ; i++, flags <<= 1) {
 		if (ulimitlist[i].res == RLIMIT_FSIZE) {
 			res = i;
 			break;
 		}
 	}
 	else for (i = 0; i < ULIMITSIZ; i++) {
-		if (flags & (1 << i)) {
+		if (flags & ((u_long)1 << i)) {
 			if (res < 0) res = i;
 			else {
 				res = -1;
@@ -7852,7 +8159,13 @@ syntaxtree *trp;
 		}
 	}
 
+#  ifdef	FAKEUNINIT
+	val = 0L;	/* fake for -Wuninitialized */
+#  endif
 	if (n >= argc) {
+#  ifdef	FAKEUNINIT
+		inf = 0;	/* fake for -Wuninitialized */
+#  endif
 		if (!hs) hs = 2;
 	}
 	else {
@@ -7861,7 +8174,7 @@ syntaxtree *trp;
 		if (res < 0) err = 1;
 		else if (!strcmp(argv[n], UNLIMITED)) inf = 1;
 		else {
-			if ((val = isnumeric(argv[n])) < 0) {
+			if ((val = isnumeric(argv[n])) < 0L) {
 				execerror(argv[n], ER_BADULIMIT, 0);
 				return(RET_FAIL);
 			}
@@ -7879,7 +8192,7 @@ syntaxtree *trp;
 	}
 
 	if (n >= argc) {
-		for (i = 0; i < ULIMITSIZ; i++) if (flags & (1 << i)) {
+		for (i = 0; i < ULIMITSIZ; i++) if (flags & ((u_long)1 << i)) {
 			if (res < 0) {
 				fputs(ulimitlist[i].mes, stdout);
 				fputc(' ', stdout);
@@ -7920,7 +8233,7 @@ syntaxtree *trp;
 	}
 # else	/* !USERESOURCEH */
 	if (argc <= 1) {
-		if ((val = ulimit(UL_GETFSIZE, 0L)) < 0) {
+		if ((val = ulimit(UL_GETFSIZE, 0L)) < 0L) {
 			execerror(NULL, ER_BADULIMIT, 0);
 			return(RET_FAIL);
 		}
@@ -7931,13 +8244,13 @@ syntaxtree *trp;
 	else {
 		if (!strcmp(argv[1], UNLIMITED)) val = RLIM_INFINITY;
 		else {
-			if ((val = isnumeric(argv[1])) < 0) {
+			if ((val = isnumeric(argv[1])) < 0L) {
 				execerror(argv[1], ER_BADULIMIT, 0);
 				return(RET_FAIL);
 			}
 			val /= 512L;
 		}
-		if ((ulimit(UL_SETFSIZE, val)) < 0) {
+		if (ulimit(UL_SETFSIZE, val) < 0L) {
 			execerror(NULL, ER_BADULIMIT, 0);
 			return(RET_FAIL);
 		}
@@ -8377,7 +8690,6 @@ int *ptrp;
 			if ((v1 = isnumeric(a1)) < 0) {
 #ifdef	BASHSTYLE
 	/* bash's "test" does not allow arithmetic comparison with strings */
-				*ptrp = argc;
 				return(-3);
 #else
 				v1 = 0;
@@ -8386,7 +8698,7 @@ int *ptrp;
 			if ((v2 = isnumeric(a2)) < 0) {
 #ifdef	BASHSTYLE
 	/* bash's "test" does not allow arithmetic comparison with strings */
-				*ptrp = argc;
+				*ptrp += 2;
 				return(-3);
 #else
 				v2 = 0;
@@ -8405,7 +8717,7 @@ int *ptrp;
 			else if (s[1] == 'l' && s[2] == 'e' && !s[3])
 				ret = (v1 <= v2) ? RET_SUCCESS : RET_FAIL;
 			else {
-				*ptrp = argc;
+				(*ptrp)++;
 				return(-2);
 			}
 		}
@@ -8474,7 +8786,7 @@ syntaxtree *trp;
 	if (argc <= 1) return(RET_FAIL);
 	ptr = 1;
 	ret = dotestsub3(argc, argv, &ptr, 0);
-	if (ptr < argc) ret = -1;
+	if (!ret && ptr < argc) ret = -1;
 	if (ret < 0) {
 		switch (ret) {
 			case -1:
@@ -8648,12 +8960,12 @@ syntaxtree *trp;
 	else {
 		n = sigvecset(1);
 		if (!n) putterms(t_init);
-		ttyiomode();
+		ttyiomode(0);
 		shellmode = 0;
 		main_fd((trp -> comm) -> argv[1]);
 		shellmode = 1;
 		if (!n) putterms(t_end);
-		stdiomode();
+		stdiomode(0);
 		sigvecset(n);
 	}
 	return(RET_SUCCESS);
@@ -8713,10 +9025,10 @@ int lvl;
 		fputs("body: NULL\n", stdout);
 	}
 	else {
+		printindent(lvl, stdout);
 		if (isstatement(trp -> comm)) {
 			id = (trp -> comm) -> id;
 			i = id - 1;
-			printindent(lvl, stdout);
 			if (id == SM_CHILD) fputs("sub shell", stdout);
 			else if ((id == SM_STATEMENT))
 				fputs("statement", stdout);
@@ -8725,10 +9037,6 @@ int lvl;
 			show_stree(statementbody(trp), lvl + 1);
 		}
 		else for (i = 0; i <= (trp -> comm) -> argc; i++) {
-			printindent(lvl, stdout);
-			fputs("argv[", stdout);
-			fputlong(i, stdout);
-			fputs("]: ", stdout);
 			if (!((trp -> comm) -> argv[i])) fputs("NULL", stdout);
 			else if (!i && isbuiltin(trp -> comm))
 				kanjifputs((trp -> comm) -> argv[i], stdout);
@@ -8737,7 +9045,8 @@ int lvl;
 				kanjifputs((trp -> comm) -> argv[i], stdout);
 				fputc('"', stdout);
 			}
-			fputc('\n', stdout);
+			fputc((i < (trp -> comm) -> argc) ? ' ' : '\n',
+				stdout);
 		}
 		for (rp = (trp -> comm) -> redp; rp; rp = rp -> next) {
 			printindent(lvl, stdout);
@@ -8770,9 +9079,10 @@ int lvl;
 	}
 	if (trp -> next) {
 		if (trp -> cont & (CN_QUOT | CN_META)) {
+			rp = (redirectlist *)(trp -> next);
 			printindent(lvl, stdout);
 			fputs("continuing...\"", stdout);
-			fputs((char *)(trp -> next), stdout);
+			fputs(rp -> filename, stdout);
 			fputs("\"\n", stdout);
 		}
 # ifndef	MINIMUMSHELL
@@ -8867,13 +9177,11 @@ int type, id, bg;
 #endif
 {
 #if	!MSDOS
-	long pid;
-#endif
-#if	MSDOS || defined (FD)
-	int ret;
+	p_id_t pid;
 #endif
 	command_t *comm;
 	char *path;
+	int ret;
 
 	comm = trp -> comm;
 
@@ -8915,7 +9223,6 @@ int type, id, bg;
 		execerror(comm -> argv[0], ER_COMNOFOUND, 0);
 		return(RET_NOTFOUND);
 	}
-	return(ret);
 #else	/* !MSDOS */
 # ifndef	BASHSTYLE
 	/* bash does fork() all processes even in a sub shell */
@@ -8930,47 +9237,52 @@ int type, id, bg;
 # endif
 	}
 
-	if ((pid = makechild(1, -1)) < 0) return(-1);
+	if ((pid = makechild(1, -1L)) < 0L) return(-1);
 	if (!pid)
 # ifdef	DEBUG
 		Xexecve(path, comm -> argv, exportvar, 1);
 # else
 		Xexecve(path, comm -> argv, exportvar);
 # endif
-	return(waitchild(pid, trp));
+	ret = waitchild(pid, trp);
 #endif	/* !MSDOS */
+
+	return(ret);
 }
 
-#ifdef	STRICTPOSIX
-static char **NEAR checkposixspecialargv(argc, argv)
+static char **NEAR checkshellbuiltinargv(argc, argv)
 int argc;
 char **argv;
 {
 	char *tmp;
 	int id, type;
 
-	isposixspecial = 0;
-# ifdef	BASHSTYLE
+	isshellbuiltin = 0;
+#ifdef	BASHSTYLE
 	/* bash does not use IFS as a command separator */
 	argc = evalifs(argc, &argv, " \t");
-# else
+#else
 	argc = evalifs(argc, &argv, getifs());
-# endif
+#endif
 	if (!argc) return(argv);
 
 	stripquote(tmp = strdup2(argv[0]), 1);
-# ifdef	NOALIAS
+#ifdef	NOALIAS
 	type = checktype(tmp, &id, 1);
-# else
+#else
 	type = checktype(tmp, &id, 0, 1);
-# endif
+#endif
 	free(tmp);
-	if (type == CT_BUILTIN)
-		isposixspecial = (shbuiltinlist[id].flags & BT_POSIXSPECIAL);
+#ifdef	STRICTPOSIX
+	if (type == CT_BUILTIN && (shbuiltinlist[id].flags & BT_POSIXSPECIAL))
+		isshellbuiltin = 1;
+#else
+	if (type != CT_NONE && type != CT_COMMAND) isshellbuiltin = 1; 
+#endif
 	return(argv);
 }
 
-static int NEAR checkposixspecial(trp)
+static int NEAR checkshellbuiltin(trp)
 syntaxtree *trp;
 {
 	syntaxtree *next;
@@ -8978,7 +9290,7 @@ syntaxtree *trp;
 	int ret, *len, argc, duperrno;
 
 	duperrno = errno;
-	isposixspecial = 0;
+	isshellbuiltin = 0;
 	if (!trp || !(trp -> comm) || isstatement(trp -> comm)) return(0);
 	next = statementcheck(trp -> next, SM_STATEMENT);
 	if (getstatid(next) == SM_LPAREN - 1) {
@@ -8991,17 +9303,16 @@ syntaxtree *trp;
 
 	if (substvar(argv) < 0) ret = -1;
 	else {
+		argv = checkshellbuiltinargv(argc, argv);
 		ret = 0;
-		argv = checkposixspecialargv(argc, argv);
 	}
 
 	freevar(subst);
 	free(len);
 	freevar(argv);
 	errno = duperrno;
-	return(ret = 0);
+	return(ret);
 }
-#endif	/* STRICTPOSIX */
 
 #if	MSDOS
 static int NEAR exec_command(trp)
@@ -9021,10 +9332,7 @@ int bg;
 	long esize;
 	int i, ret, id, type, argc, nsubst, keepvar, *len;
 
-#ifdef	STRICTPOSIX
-	isposixspecial =
-#endif
-	execerrno = 0;
+	isshellbuiltin = execerrno = 0;
 	comm = trp -> comm;
 	argc = comm -> argc;
 	argv = comm -> argv;
@@ -9035,8 +9343,10 @@ int bg;
 	comm -> argv = duplvar(comm -> argv, 2);
 	comm -> argc = getsubst(comm -> argc, comm -> argv, &subst, &len);
 
-	if ((id = evalargv(comm, &type, 1)) < 0
-	|| (nsubst = substvar(subst)) < 0) {
+	id = evalargv(comm, &type, 1);
+	if (subst[0] && type == CT_NONE) ret_status = RET_SUCCESS;
+
+	if (id < 0 || (nsubst = substvar(subst)) < 0) {
 		freevar(subst);
 		free(len);
 		comm -> argc = argc;
@@ -9045,27 +9355,32 @@ int bg;
 		return(RET_FAIL);
 	}
 
-#ifndef	BASHSTYLE
-	/* bash treats the substitution before a function as effective */
-	if (type == CT_FUNCTION) {
-		for (i = 0; subst[i]; i++) free(subst[i]);
-		subst[0] = NULL;
-		nsubst = 0;
-	}
-#endif
-
+	keepvar = 0;
 #ifdef	BASHSTYLE
 	/* bash treats the substitution before builtin as ineffective */
-	keepvar = (type != CT_NONE);
+	if (type == CT_BUILTIN) keepvar = -1;
+	else if (type != CT_NONE) keepvar = 1;
 #else
-	keepvar = (type == CT_COMMAND);
+	if (type == CT_COMMAND) keepvar = 1;
+	/* bash treats the substitution before a function as effective */
+	else if (type == CT_FUNCTION) keepvar = -1;
 #endif
 #ifdef	STRICTPOSIX
 	if (type == CT_BUILTIN) {
-		isposixspecial = (shbuiltinlist[id].flags & BT_POSIXSPECIAL);
-		keepvar = !isposixspecial;
+		if (shbuiltinlist[id].flags & BT_POSIXSPECIAL)
+			isshellbuiltin = 1;
+		else keepvar = -1;
 	}
+#else
+	if (type != CT_NONE && type != CT_COMMAND) isshellbuiltin = 1; 
 #endif
+
+	if (keepvar < 0) {
+		for (i = 0; subst[i]; i++) free(subst[i]);
+		subst[0] = NULL;
+		keepvar = nsubst = 0;
+	}
+
 	if (keepvar) {
 		shellvar = duplvar(svar = shellvar, 0);
 		exportvar = duplvar(evar = exportvar, 0);
@@ -9075,6 +9390,17 @@ int bg;
 		pathvar = getconstvar("PATH");
 #endif
 	}
+#ifdef	FAKEUNINIT
+	else {
+		/* fake for -Wuninitialized */
+		svar = evar = NULL;
+		esize = 0L;
+# ifndef	_NOUSEHASH
+		htable = NULL;
+		pathvar = NULL;
+# endif
+	}
+#endif
 
 	while (nsubst--) {
 		stripquote(subst[nsubst], 1);
@@ -9151,18 +9477,18 @@ int bg;
 	return(ret);
 }
 
-#if	MSDOS || !defined (BASHSTYLE) || defined (USEFAKEPIPE)
+#if	MSDOS || defined (USEFAKEPIPE)
 static int NEAR exec_process(trp)
 syntaxtree *trp;
 #else
 static int NEAR exec_process(trp, pipein)
 syntaxtree *trp;
-long pipein;
+p_id_t pipein;
 #endif
 {
 #if	!MSDOS
 	syntaxtree *tmptr;
-	long pid;
+	p_id_t pid;
 	int sub, pipeend;
 #endif
 	syntaxtree *next;
@@ -9201,7 +9527,7 @@ long pipein;
 	}
 
 	if (sub) {
-		if ((pid = makechild(1, -1)) < 0) return(-1);
+		if ((pid = makechild(1, -1L)) < 0L) return(-1);
 		else if (!pid) {
 # ifndef	NOJOB
 			stackjob(mypid, 0, trp);
@@ -9225,12 +9551,11 @@ long pipein;
 	else ret = exec_command(trp);
 #else	/* !MSDOS */
 	else if (sub) ret = exec_command(trp, 1);
-# if	defined (BASHSTYLE) && !defined (USEFAKEPIPE)
-	/* bash invokes all external commands in pipeline from current shell */
+# ifndef	USEFAKEPIPE
 	else if (!pipein) ret = exec_command(trp, 1);
 # endif
 # ifndef	NOJOB
-	else if (ttypgrp < 0 && !(trp -> next))
+	else if (ttypgrp < 0L && !(trp -> next))
 		ret = exec_command(trp, 1);
 # endif
 	else ret = exec_command(trp, 0);
@@ -9250,31 +9575,36 @@ syntaxtree *trp;
 int cond;
 {
 #if	!MSDOS
-	long pid;
+	p_id_t pid;
 #endif
 	syntaxtree *tmptr;
 	redirectlist *errp;
-	long pipein;
+	p_id_t pipein;
 	int ret, fd;
 
 	exectrapcomm();
-	if (breaklevel || continuelevel) return(RET_SUCCESS);
+	if (breaklevel || continuelevel) {
+		ret_status = RET_SUCCESS;
+		return(ret_status);
+	}
 
 #ifndef	MINIMUMSHELL
 	if (isopnot(trp)) {
 		trp = skipfuncbody(trp);
 		if (!(trp -> next)) return(RET_FAIL);
 		if ((ret = exec_stree(trp -> next, cond)) < 0) return(-1);
-		return((ret != RET_SUCCESS) ? RET_SUCCESS : RET_FAIL);
+		ret_status =
+			(ret_status != RET_SUCCESS) ? RET_SUCCESS : RET_FAIL;
+		return(ret_status);
 	}
 #endif
 
 #if	!MSDOS
-	if (!isopbg(trp) && !isopnown(trp)) pid = -1;
-	else if ((pid = makechild(0, -1)) < 0) return(-1);
+	if (!isopbg(trp) && !isopnown(trp)) pid = -1L;
+	else if ((pid = makechild(0, -1L)) < 0L) return(-1);
 	else if (!pid) {
 # ifndef	NOJOB
-		ttypgrp = -1;
+		ttypgrp = -1L;
 		if (!isopnown(trp)) stackjob(mypid, 0, trp);
 		if (jobok);
 		else
@@ -9287,7 +9617,7 @@ int cond;
 	else {
 		nownstree(trp);
 # ifndef	NOJOB
-		childpgrp = -1;
+		childpgrp = -1L;
 		if (!isopnown(trp)) {
 			prevjob = lastjob;
 			lastjob = stackjob(pid, 0, trp);
@@ -9315,13 +9645,19 @@ int cond;
 		}
 		lastpid = pid;
 		trp = skipfuncbody(trp);
-		if (!(trp -> next)) return(RET_SUCCESS);
+		ret_status = RET_SUCCESS;
+		if (!(trp -> next)) return(ret_status);
 		return(exec_stree(trp -> next, cond));
 	}
 #endif	/* !MSDOS */
 
 	tmptr = skipfuncbody(trp);
-	if (!isoppipe(tmptr)) pipein = -1L;
+	if (!isoppipe(tmptr)) {
+#ifdef	FAKEUNINIT
+		fd = -1;	/* fake for -Wuninitialized */
+#endif
+		pipein = -1L;
+	}
 #if	MSDOS || defined (USEFAKEPIPE)
 	else if ((fd = openpipe(&pipein, STDIN_FILENO, 0)) < 0) return(-1);
 #else
@@ -9335,37 +9671,38 @@ int cond;
 #endif
 		ret = ret_status;
 	}
-	else if (trp -> flags & ST_NODE) {
+	else if (trp -> flags & ST_NODE)
 		ret = exec_stree((syntaxtree *)(trp -> comm), cond);
-		if (ret < 0) return(-1);
-	}
-	else if (!((trp -> comm) -> redp))
-#if	MSDOS || !defined (BASHSTYLE) || defined (USEFAKEPIPE)
+	else if (!((trp -> comm) -> redp)) {
+#if	MSDOS || defined (USEFAKEPIPE)
 		ret = exec_process(trp);
 #else
 		ret = exec_process(trp, pipein);
 #endif
+		ret_status = (ret >= 0) ? ret : RET_FAIL;
+	}
 	else {
 		if (!(errp = doredirect((trp -> comm) -> redp)))
-#if	MSDOS || !defined (BASHSTYLE) || defined (USEFAKEPIPE)
+#if	MSDOS || defined (USEFAKEPIPE)
 			ret = exec_process(trp);
 #else
 			ret = exec_process(trp, pipein);
 #endif
 		else {
-#ifdef	STRICTPOSIX
-			if (checkposixspecial(trp) < 0);
-			else
-#endif
-			if (errno < 0);
+			if (checkshellbuiltin(trp) < 0);
+			else if (errno < 0);
 			else if (errp -> type & MD_HEREDOC)
-				doperror(NULL, shellname);
+				doperror(NULL, NULL);
 			else {
 				char *tmp;
 
 				if (!(errp -> filename)) tmp = strdup2("-");
 				else tmp = evalvararg(errp -> filename,
 					0, 1, '\0', 1, 0);
+				if (tmp && !*tmp && *(errp -> filename)) {
+					free(tmp);
+					tmp = strdup2(errp -> filename);
+				}
 				if (tmp) {
 					if (errno) doperror(NULL, tmp);
 					else execerror(tmp, ER_RESTRICTED, 0);
@@ -9375,49 +9712,52 @@ int cond;
 			ret = RET_FAIL;
 		}
 		closeredirect((trp -> comm) -> redp);
+		ret_status = (ret >= 0) ? ret : RET_FAIL;
 	}
 	trp = tmptr;
 
-	ret_status = (ret >= 0) ? ret : RET_FAIL;
-	if (returnlevel) {
-		if (pipein >= 0L) closepipe(fd);
-		return(ret);
+	if (returnlevel || ret < 0);
+	else if (pipein >= 0L && (fd = reopenpipe(fd, RET_SUCCESS)) < 0) {
+		pipein = -1L;
+		ret = -1;
 	}
-	if (ret < 0) {
-		if (pipein >= 0L) closepipe(fd);
-		return(-1);
-	}
-	if (pipein >= 0L && (fd = reopenpipe(fd, RET_SUCCESS)) < 0) return(-1);
+	else {
 #if	!MSDOS
-	if (!pid) {
-		searchheredoc(trp, 1);
-		prepareexit(1);
-		Xexit(RET_SUCCESS);
-	}
+		if (!pid) {
+			searchheredoc(trp, 1);
+			prepareexit(1);
+			Xexit(RET_SUCCESS);
+		}
 # ifndef	NOJOB
-#  ifndef	USEFAKEPIPE
-	if (isoppipe(trp));
-	else
-#  endif
-	if (jobok && mypid == orgpgrp) childpgrp = -1;
+		if (pipein < 0L && mypid == orgpgrp) childpgrp = -1L;
 # endif
 #endif	/* !MSDOS */
-	if (interrupted) return(RET_INTR);
 
-	if (trp -> next) {
-		if (errorexit && !cond && isopfg(trp) && ret)
+		if (interrupted) {
 			breaklevel = loopdepth;
-		else if ((!isopand(trp) || !ret) && (!isopor(trp) || ret))
-			ret = exec_stree(trp -> next, cond);
+			ret = RET_INTR;
+		}
+		else if (!(trp -> next));
+		else if (errorexit && !cond && isopfg(trp) && ret_status)
+			breaklevel = loopdepth;
+		else if (isopand(trp) && ret_status) {
+			if (errorexit && !cond) {
+				breaklevel = loopdepth;
+				ret = RET_SUCCESS;
+			}
+		}
+		else if (isopor(trp) && !ret_status);
+		else ret = exec_stree(trp -> next, cond);
 	}
 	if (pipein >= 0L) closepipe(fd);
 	exectrapcomm();
 	return(ret);
 }
 
-static syntaxtree *NEAR execline(command, stree, trp)
+static syntaxtree *NEAR execline(command, stree, trp, noexit)
 char *command;
 syntaxtree *stree, *trp;
+int noexit;
 {
 	int ret;
 
@@ -9428,9 +9768,9 @@ syntaxtree *stree, *trp;
 		}
 	}
 	else {
-		if (!(trp = analyze(command, trp, 0, 0))) {
+		if (!(trp = analyze(command, trp, 0))) {
 			freestree(stree);
-			if (errorexit) {
+			if (errorexit && !noexit) {
 				free(stree);
 #if	!MSDOS && !defined (NOJOB)
 				if (loginshell && interactive_io) killjob();
@@ -9457,8 +9797,8 @@ syntaxtree *stree, *trp;
 	errorexit = tmperrorexit;
 	freestree(stree);
 
-	if (ret < 0 && errno) doperror(NULL, shellname);
-	if ((errorexit && ret) || terminated) {
+	if (ret < 0 && errno) doperror(NULL, NULL);
+	if ((errorexit && ret && !noexit) || terminated) {
 		free(stree);
 #if	!MSDOS && !defined (NOJOB)
 		if (loginshell && interactive_io) killjob();
@@ -9494,9 +9834,9 @@ char *command;
 	if (!stree) trp = stree = newstree(NULL);
 
 #if	!MSDOS && !defined (NOJOB)
-	childpgrp = -1;
+	childpgrp = -1L;
 #endif
-	if ((trp = execline(command, stree, trp))) ret = trp -> cont;
+	if ((trp = execline(command, stree, trp, 0))) ret = trp -> cont;
 	else {
 		free(stree);
 		stree = trp = NULL;
@@ -9512,7 +9852,7 @@ char *command;
 	syntaxtree *trp;
 	int ret;
 
-	if (!(trp = analyzeline(command, 0))) ret = RET_SYNTAXERR;
+	if (!(trp = analyzeline(command))) ret = RET_SYNTAXERR;
 	else {
 		if (notexec) {
 			ret = RET_SUCCESS;
@@ -9542,7 +9882,7 @@ char *command;
 
 	setsignal();
 # if	!MSDOS && !defined (NOJOB)
-	childpgrp = -1;
+	childpgrp = -1L;
 # endif
 	ret = _dosystem(command);
 	resetsignal(0);
@@ -9551,18 +9891,14 @@ char *command;
 }
 #endif	/* !FDSH */
 
-static FILE *NEAR _dopopen(command, quoted)
+static FILE *NEAR _dopopen(command)
 char *command;
-int quoted;
 {
 	syntaxtree *trp;
-	long pipein;
+	p_id_t pipein;
 	int fd;
 
-	if (!(trp = analyzeline(command, quoted))) {
-		errno = 0;
-		return(NULL);
-	}
+	trp = (command) ? analyzeline(command) : NULL;
 
 	nottyout++;
 #if	MSDOS || defined (USEFAKEPIPE)
@@ -9570,11 +9906,10 @@ int quoted;
 #else
 	if ((fd = openpipe(&pipein, STDIN_FILENO, 1, 1, mypid)) < 0);
 #endif
-	else if (pipein) {
-		if (command) nownstree(trp);
-	}
+	else if (pipein) nownstree(trp);
 	else {
-		if (!(trp -> comm)) ret_status = RET_SUCCESS;
+		if (!trp) ret_status = RET_SYNTAXERR;
+		else if (!(trp -> comm)) ret_status = RET_SUCCESS;
 		else if (notexec) {
 #ifdef	SHOWSTREE
 			show_stree(trp, 0);
@@ -9586,7 +9921,7 @@ int quoted;
 #endif
 		else if (exec_stree(trp, 0) < 0) pipein = -1L;
 
-		if (command) searchheredoc(trp, 1);
+		searchheredoc(trp, 1);
 		if (pipein >= 0L) fd = reopenpipe(fd, ret_status);
 		else {
 			closepipe(fd);
@@ -9594,7 +9929,7 @@ int quoted;
 		}
 	}
 
-	if (command) {
+	if (trp) {
 		freestree(trp);
 		free(trp);
 	}
@@ -9611,9 +9946,9 @@ char *command;
 
 	setsignal();
 # if	!MSDOS && !defined (NOJOB)
-	childpgrp = -1;
+	childpgrp = -1L;
 # endif
-	fp = _dopopen(command, 0);
+	fp = _dopopen(command);
 	resetsignal(0);
 	return(fp);
 }
@@ -9631,13 +9966,9 @@ char *fname;
 int verbose;
 {
 	syntaxtree *stree, *trp;
-	char *buf, **dupargvar;
+	char *buf;
 	int n, ret, dupinteractive;
 
-	dupargvar = argvar;
-	argvar = (char **)malloc2(2 * sizeof(char *));
-	argvar[0] = strdup2(fname);
-	argvar[1] = NULL;
 	dupinteractive = interactive;
 	interactive = 0;
 	trp = stree = newstree(NULL);
@@ -9645,7 +9976,7 @@ int verbose;
 	n = errno = 0;
 	while ((buf = readline(fd))) {
 		if (!trp) trp = stree;
-		trp = execline(buf, stree, trp);
+		trp = execline(buf, stree, trp, 1);
 		n++;
 		if (syntaxerrno || execerrno) {
 			if (verbose) {
@@ -9675,11 +10006,9 @@ int verbose;
 		doperror(NULL, fname);
 		ret = ret_status = RET_FAIL;
 	}
-	execline((char *)-1, stree, trp);
+	execline((char *)-1, stree, trp, 1);
 	if (syntaxerrno) ret_status = RET_SYNTAXERR;
 	free(stree);
-	freevar(argvar);
-	argvar = dupargvar;
 	interactive = dupinteractive;
 	return(ret);
 }
@@ -9688,6 +10017,7 @@ int execruncom(fname, verbose)
 char *fname;
 int verbose;
 {
+	char **dupargvar;
 	int fd, ret, duprestricted;
 
 #ifdef	FD
@@ -9700,7 +10030,13 @@ int verbose;
 	else {
 		duprestricted = restricted;
 		restricted = 0;
+		dupargvar = argvar;
+		argvar = (char **)malloc2(2 * sizeof(char *));
+		argvar[0] = strdup2(fname);
+		argvar[1] = NULL;
 		ret = sourcefile(fd, fname, verbose);
+		freevar(argvar);
+		argvar = dupargvar;
 		restricted = duprestricted;
 	}
 	resetsignal(0);
@@ -9741,7 +10077,7 @@ char *argv[], *envp[];
 #else
 	if ((ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
 	&& (ttyio = newdup(Xdup(STDERR_FILENO))) < 0) {
-		doperror(NULL, shellname);
+		doperror(NULL, NULL);
 		return(-1);
 	}
 #endif
@@ -9751,8 +10087,8 @@ char *argv[], *envp[];
 		(isatty(STDIN_FILENO) && isatty(STDERR_FILENO)) ? 1 : 0;
 	ttypgrp = orgpid = mypid = getpid();
 #if	!MSDOS && !defined (NOJOB)
-	if ((orgpgrp = getpgroup()) < 0) {
-		doperror(NULL, shellname);
+	if ((orgpgrp = getpgroup()) < 0L) {
+		doperror(NULL, NULL);
 		return(-1);
 	}
 #endif
@@ -9817,7 +10153,8 @@ char *argv[], *envp[];
 	shellvar = duplvar(envp, 0);
 	exportvar = duplvar(envp, 0);
 	exportsize = 0L;
-	for (i = 0; exportvar[i]; i++) exportsize += strlen(exportvar[i]) + 1;
+	for (i = 0; exportvar[i]; i++)
+		exportsize += (long)strlen(exportvar[i]) + 1;
 	exportlist = (char **)malloc2((i + 1) * sizeof(char *));
 	for (i = 0; exportvar[i]; i++) {
 		len = ((cp = strchr(exportvar[i], '=')))
@@ -9866,6 +10203,9 @@ char *argv[], *envp[];
 		shellvar = putvar(shellvar, "PS2", sizeof("PS2") - 1);
 	}
 	setenv2("IFS", IFS_SET);
+#ifdef	FAKEUNINIT
+	home = NULL;	/* fake for -Wuninitialized */
+#endif
 	if (loginshell && !(home = getconstvar("HOME"))) {
 #if	!MSDOS
 		if ((pwd = getpwuid(getuid())) && pwd -> pw_dir)
@@ -9900,19 +10240,19 @@ char *argv[], *envp[];
 #if	!MSDOS && !defined (NOJOB)
 	if (!interactive) {
 		jobok = 0;
-		orgpgrp = -1;
+		orgpgrp = -1L;
 	}
 	else {
 		if (jobok < 0) jobok = 1;
-		if (!orgpgrp && (setpgroup(0, orgpgrp = mypid) < 0
+		if (!orgpgrp && (setpgroup(0, orgpgrp = mypid) < 0L
 		|| settcpgrp(ttyio, orgpgrp) < 0)) {
-			doperror(NULL, shellname);
+			doperror(NULL, NULL);
 			prepareexit(0);
 			return(-1);
 		}
 		gettcpgrp(ttyio, ttypgrp);
 # ifdef	SIGTTIN
-		while (ttypgrp >= 0 && ttypgrp != orgpgrp) {
+		while (ttypgrp >= 0L && ttypgrp != orgpgrp) {
 			signal(SIGTTIN, SIG_DFL);
 			kill(0, SIGTTIN);
 			signal(SIGTTIN, oldsigfunc[SIGTTIN]);
@@ -9923,14 +10263,14 @@ char *argv[], *envp[];
 		if (tioctl(ttyio, REQGETD, &tty) < 0
 		|| (ldisc(tty) != NTTYDISC && (ldisc(tty) = NTTYDISC) > 0
 		&& tioctl(ttyio, REQSETD, &tty) < 0)) {
-			doperror(NULL, shellname);
+			doperror(NULL, NULL);
 			prepareexit(0);
 			return(-1);
 		}
 # endif
 		if ((orgpgrp != mypid && setpgroup(0, orgpgrp = mypid) < 0)
 		|| (mypid != ttypgrp && gettermio(orgpgrp) < 0)) {
-			doperror(NULL, shellname);
+			doperror(NULL, NULL);
 			prepareexit(0);
 			return(-1);
 		}
@@ -9988,9 +10328,9 @@ int pseudoexit;
 #endif
 			ps = (cont) ? getconstvar("PS2") : getconstvar("PS1");
 #ifdef	FD
-			ttyiomode();
+			ttyiomode(1);
 			buf = inputshellstr(ps, -1, NULL);
-			stdiomode();
+			stdiomode(1);
 			if (!buf) continue;
 			if (buf == (char *)-1) {
 				buf = NULL;
@@ -10005,7 +10345,7 @@ int pseudoexit;
 		trapok = 0;
 		if (!buf) {
 			if (errno) {
-				doperror(NULL, shellname);
+				doperror(NULL, NULL);
 				exec_line(NULL);
 				break;
 			}

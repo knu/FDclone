@@ -1,6 +1,7 @@
 s:/:\\:g
-s:__VERSION__:2:g
-s:__RCVERSION__:2:g
+s:__VERSION__:2:
+s:__RCVERSION__:2:
+s:__PREFIX__::
 s:__EXE__:.exe:g
 s:__OBJ__:.o:g
 s:__OBJS__:unixemu.o unixdisk.o:
@@ -18,7 +19,9 @@ s:__INSTALL__:copy /y:
 s:__LN__:copy /y:
 s:__INSTSTRIP__::
 s:__CC__:gcc:
+s:__HOSTCC__:$(CC):
 s:__CCOPTIONS__:-O:
+s:__HOSTCCOPTIONS__:-O:
 s:__MEM__::
 s:__SHMEM__::
 s:__BSHMEM__::

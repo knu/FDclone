@@ -29,6 +29,7 @@
 #define	_NOORIGGLOB
 #define	_NOKANJIFCONV
 #endif	/* FD < 2 */
+#define	_NOBROWSE
 
 #include "pathname.h"
 #include "types.h"
@@ -70,6 +71,8 @@ extern char *_mtrace_file;
 #endif
 
 #define	FDSHELL		"fdsh"
+#define	BROWSECWD	"BROWSECWD"
+#define	BROWSELAST	"BROWSELAST"
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*
@@ -128,6 +131,7 @@ extern char *_mtrace_file;
 #define	PROMPT		"sh#"
 #endif
 #define	PROMPT2		"> "
+#define	TMPUMASK	022
 
 
 /****************************************************************
@@ -165,41 +169,52 @@ extern char *_mtrace_file;
  ****************************************************************/
 #define	FILEPERLINE	(curcolumns)
 #ifndef	_NOSPLITWIN
-#define	FILEPERLOW	((n_line - WHEADER - WFOOTER + 1) / windows - 1)
+#define	FILEPERROW	((n_line - WHEADER - WFOOTER + 1) / windows - 1)
 #else
-#define	FILEPERLOW	(n_line - WHEADER - WFOOTER)
+#define	FILEPERROW	(n_line - WHEADER - WFOOTER)
 #endif
-#define	FILEPERPAGE	(FILEPERLINE * FILEPERLOW)
+#define	FILEPERPAGE	(FILEPERLINE * FILEPERROW)
 
 #define	WHEADERMIN	3
 #define	WHEADERMAX	4
 #define	WHEADER		(sizeinfo + WHEADERMIN)
 #define	WFOOTER		3
-#define	LTITLE		0
-#define	LSIZE		1
-#define	LSTATUS		(sizeinfo + 1)
-#define	LPATH		(sizeinfo + 2)
-#ifndef	_NOSPLITWIN
-#define	WFILEMIN	(MAXWINDOWS * (WMODELINE + 6) - 1)
-#define	LFILETOP	(WHEADER + (win * (FILEPERLOW + 1)))
+#define	L_TITLE		0
+#define	L_SIZE		1
+#define	L_STATUS	(sizeinfo + 1)
+#define	L_PATH		(sizeinfo + 2)
+#ifdef	HAVEFLAGS
+#define	WMODELINE	2
 #else
-#define	WFILEMIN	2
+#define	WMODELINE	1
+#endif
+#define	WFILEMINTREE	3
+#define	WFILEMINCUSTOM	4
+#define	WFILEMINATTR	(WMODELINE + 5)
+#define	WFILEMIN	1
+#ifndef	_NOSPLITWIN
+#define	LFILETOP	(WHEADER + (win * (FILEPERROW + 1)))
+#else
 #define	LFILETOP	(WHEADER)
 #endif
-#define	LFILEBOTTOM	(LFILETOP + FILEPERLOW)
-#define	LSTACK		(n_line - 3)
-#define	LHELP		(n_line - 2)
-#define	LINFO		(n_line - 1)
-#define	LCMDLINE	(n_line - 2)
+#define	LFILEBOTTOM	(LFILETOP + FILEPERROW)
+#define	L_STACK		(n_line - 3)
+#define	L_HELP		(n_line - 2)
+#define	L_INFO		(n_line - 1)
+#define	L_CMDLINE	(n_line - 2)
 #define	WCMDLINE	2
-#define	LMESLINE	(n_line - 1)
-#define	CPAGE		1
-#define	CMARK		12
-#define	CSORT		27
-#define	CFIND		47
-#define	CSIZE		1
-#define	CTOTAL		37
-#define	CFREE		59
+#define	L_MESLINE	(n_line - 1)
+#define	WCOLUMNSTD	80
+#define	WCOLUMNOMIT	58
+#define	WCOLUMNHARD	42
+#define	WCOLUMNMIN	34
+#define	C_PAGE		1
+#define	C_MARK		12
+#define	C_SORT		27
+#define	C_FIND		47
+#define	C_SIZE		1
+#define	C_TOTAL		37
+#define	C_FREE		59
 
 #define	WSIZE		9
 #define	WDATE		8
@@ -211,12 +226,8 @@ extern char *_mtrace_file;
 #define	WMODE		10
 #define	WOWNER		8
 #define	WGROUP		8
-#endif
-
-#ifdef	HAVEFLAGS
-#define	WMODELINE	2
-#else
-#define	WMODELINE	1
+#define	WOWNERMIN	5
+#define	WGROUPMIN	5
 #endif
 
 

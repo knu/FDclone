@@ -1,3 +1,20 @@
+Ver. 2.02b	Support cross-compiling.
+ (02/26/03)	Support 64bit based OS.
+		Reduce the minimum columns of a terminal to 34.
+		The terminal erase character will be treated as a BS key.
+		Bug for symbolic links in the archive file is fixed.
+		Bug for symbolic links in the pseudo RockRidge is fixed.
+		Abortion when failing to change directory is fixed.
+		Bug that logical changing directory works incorrectly is fixed.
+		The terminal control with suspending in shell will be strict.
+		Bug that '\' cannot kill meta characters in wildcards is fixed.
+		Mis-evaluation for && and || is fixed.
+		Bug that a variable name cannot contain numerals is fixed.
+		Bug that ${##} cannot work legally is fixed.
+		Bug that the operator '|' of $(()) is treated as '^' is fixed.
+		Bug that $(()) cannot treat negative values is fixed.
+		Bug that $(()) cannot use octal/hexadecimal numbers is fixed.
+
 Ver. 2.02a	Allow pack/unpack archive files into floppy drives.
  (12/25/02)	Temporary directory names will be generated randomly.
 		Interruption in some internal commands via EXECUTE_SH is fixed.

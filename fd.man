@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-2002 Takashi SHIRAI
-.\"                    <shirai@nintendo.co.jp>
+.\" Copyright (c) 1995-2003 Takashi SHIRAI
+.\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.02a 12/25/02
+.\" @(#)fd.1   2.02b 02/26/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "December 25, 2002"
+.TH FD 1 "February 26, 2003"
 .de sh
 .br
 .PP
@@ -4148,7 +4148,7 @@ TRANS.TBL が不整合な一部の CD-ROM では正しく機能しません。
 .B " %'"
 で変換したい文字列部分を括ってやることで回避できます。
 .SH 著者
-白井 隆 <shirai@nintendo.co.jp>。
+白井 隆 <shirai@unixusers.net>。
 MS-DOS 用に作られたオリジナルの『ＦＤ』は、
 A.Idei <SDI00544@niftyserve.or.jp> 氏によって 1989 年に
 最初に作成、公開されました。
@@ -4266,4 +4266,4 @@ MS-DOS 版でのコマンド履歴のセーブファイル。
 
 ユーザインタフェースが稚拙です。
 .SH 著作権
-Copyright (C) 1995-2002 by Takashi SHIRAI
+Copyright (C) 1995-2003 by Takashi SHIRAI

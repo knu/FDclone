@@ -4,7 +4,6 @@
  *	Customizer of configurations
  */
 
-#include <signal.h>
 #include <fcntl.h>
 #include "fd.h"
 #include "term.h"
@@ -76,6 +75,7 @@ extern char *cappath;
 extern char *utf8path;
 extern char *noconvpath;
 #endif	/* !MSDOS && !_NOKANJIFCONV */
+extern int tmpumask;
 #ifndef	_NOCUSTOMIZE
 extern int curcolumns;
 extern int subwindow;
@@ -154,7 +154,9 @@ typedef struct _envtable {
 #define	T_KIN		14
 #define	T_KOUT		15
 #define	T_KNAM		16
+#define	T_OCTAL		17
 
+static int NEAR atooctal __P_((char *));
 static VOID NEAR _evalenv __P_((int));
 #ifndef	_NOCUSTOMIZE
 static VOID NEAR custtitle __P_((VOID_A));
@@ -162,6 +164,7 @@ static VOID NEAR calcmax __P_((int [], int));
 static VOID NEAR envcaption __P_((char *));
 static char **NEAR copyenv __P_((char **));
 static VOID NEAR cleanupenv __P_((VOID_A));
+static char *NEAR ascoctal __P_((int, char *));
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
 static int NEAR dumpenv __P_((char *, FILE *));
@@ -308,6 +311,9 @@ static envtable envlist[] = {
 	{"FD_UTF8PATH", &utf8path, UTF8PATH, UTF8P_E, T_PATHS},
 	{"FD_NOCONVPATH", &noconvpath, NOCONVPATH, NCVP_E, T_PATHS},
 #endif	/* !MSDOS && !_NOKANJIFCONV */
+#if	0
+	{"FD_TMPUMASK", &tmpumask, (char *)TMPUMASK, TUMSK_E, T_OCTAL},
+#endif
 };
 #define	ENVLISTSIZ	((int)(sizeof(envlist) / sizeof(envtable)))
 
@@ -348,6 +354,23 @@ static devinfo *tmpfdtype = NULL;
 # endif
 #endif	/* !_NOCUSTOMIZE */
 
+
+static int NEAR atooctal(s)
+char *s;
+{
+	int n;
+
+	if (!s) return(-1);
+	n = 0;
+	while (*s) {
+		if (*s < '0' || *s > '7') break;
+		n = (n << 3) + *s - '0';
+		s++;
+	}
+	if (*s) return(-1);
+	n &= 0777;
+	return(n);
+}
 
 static VOID NEAR _evalenv(no)
 int no;
@@ -446,6 +469,10 @@ int no;
 				getlang(cp, envlist[no].type - T_KIN);
 			break;
 #endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
+		case T_OCTAL:
+			if ((n = atooctal(cp)) < 0) n = (int)(envlist[no].def);
+			*((int *)(envlist[no].var)) = n;
+			break;
 		default:
 			if (!cp) cp = envlist[no].def;
 			*((char **)(envlist[no].var)) = cp;
@@ -547,7 +574,7 @@ int max[], new;
 static VOID NEAR envcaption(s)
 char *s;
 {
-	locate(0, LHELP);
+	locate(0, L_HELP);
 	putterm(l_clear);
 	putterm(t_standout);
 	kanjiputs(s);
@@ -612,6 +639,25 @@ static VOID NEAR cleanupenv(VOID_A)
 	}
 }
 
+static char *NEAR ascoctal(n, buf)
+int n;
+char *buf;
+{
+	int i;
+
+# ifdef	BASHSTYLE
+	i = 3;
+# else
+	i = 4;
+# endif
+	buf[i] = '\0';
+	while (--i >= 0) {
+		buf[i] = '0' + (n & 7);
+		n >>= 3;
+	}
+	return(buf);
+}
+
 static int NEAR dispenv(no)
 int no;
 {
@@ -626,16 +672,14 @@ int no;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
 		case T_SHORT:
-			ascnumeric(buf, *((short *)(envlist[no].var)),
+			cp = ascnumeric(buf, *((short *)(envlist[no].var)),
 				0, MAXLINESTR);
-			cp = buf;
 			break;
 		case T_INT:
 		case T_NATURAL:
 		case T_COLUMN:
-			ascnumeric(buf, *((int *)(envlist[no].var)),
+			cp = ascnumeric(buf, *((int *)(envlist[no].var)),
 				0, MAXLINESTR);
-			cp = buf;
 			break;
 		case T_SORT:
 			n = *((int *)(envlist[no].var));
@@ -729,6 +773,9 @@ int no;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
 # endif	/* (!MSDOS && !_NOKANJICONV) || (!_NOENGMES && !NOJPNMES) */
+		case T_OCTAL:
+			cp = ascoctal(*((int *)(envlist[no].var)), buf);
+			break;
 		default:
 			cp = *((char **)(envlist[no].var));
 			if (!cp) cp = "<null>";
@@ -761,8 +808,13 @@ int no;
 				0, MAXLINESTR);
 			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
 			if (!cp) return(0);
-			ascnumeric(buf, atoi2(cp), 0, MAXLINESTR);
+			n = atoi2(cp);
 			free(cp);
+			if (n < 0) {
+				warning(0, VALNG_K);
+				return(0);
+			}
+			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_INT:
 		case T_NATURAL:
@@ -770,8 +822,13 @@ int no;
 				0, MAXLINESTR);
 			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
 			if (!cp) return(0);
-			ascnumeric(buf, atoi2(cp), 0, MAXLINESTR);
+			n = atoi2(cp);
 			free(cp);
+			if (n < 0) {
+				warning(0, VALNG_K);
+				return(0);
+			}
+			ascnumeric(buf, n, 0, MAXLINESTR);
 			break;
 		case T_PATH:
 			cp = inputcuststr(&(envlist[no].env[3]), 1,
@@ -1012,6 +1069,18 @@ int no;
 			strcpy(buf, str[n]);
 			break;
 # endif	/* !MSDOS && !_NOKANJIFCONV */
+		case T_OCTAL:
+			ascoctal(*((int *)(envlist[no].var)), buf);
+			cp = inputcuststr(&(envlist[no].env[3]), 1, buf, -1);
+			if (!cp) return(0);
+			n = atooctal(cp);
+			free(cp);
+			if (n < 0) {
+				warning(0, VALNG_K);
+				return(0);
+			}
+			ascoctal(n, buf);
+			break;
 		default:
 			cp = inputcuststr(&(envlist[no].env[3]), 0,
 				*((char **)(envlist[no].var)), -1);
@@ -1090,6 +1159,9 @@ FILE *fp;
 	if (!argv[n]) return(0);
 
 	for (n = 0; argv[n]; n++) {
+#  ifdef	FAKEUNINIT
+		f = 0;	/* fake for -Wuninitialized */
+#  endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
 			ident = envlist[i].env;
 			if (!strnpathcmp(argv[n], ident, len[n])) {
@@ -1225,7 +1297,7 @@ char *prompt;
 
 	envcaption(prompt);
 	do {
-		locate(0, LINFO);
+		locate(0, L_INFO);
 		putterm(l_clear);
 		if (list[pos].ent >= FUNCLISTSIZ) kanjiputs(list[pos].name);
 		else kanjiputs(mesconv(funclist[list[pos].ent].hmes,
@@ -1236,10 +1308,10 @@ char *prompt;
 		tflush();
 		keyflush();
 # ifdef	_NOEDITMODE
-		ch = Xgetkey(SIGALRM, 0);
+		ch = Xgetkey(1, 0);
 # else
 		Xgetkey(-1, 0);
-		ch = Xgetkey(SIGALRM, 0);
+		ch = Xgetkey(1, 0);
 		Xgetkey(-1, 0);
 # endif
 
@@ -1252,14 +1324,14 @@ char *prompt;
 				if (pos < max - 1) pos++;
 				break;
 			case K_RIGHT:
-				if (pos <= max - 1 - FILEPERLOW)
-					pos += FILEPERLOW;
+				if (pos <= max - 1 - FILEPERROW)
+					pos += FILEPERROW;
 				else if (pos / FILEPERPAGE
 				!= (max - 1) / FILEPERPAGE)
 					pos = max - 1;
 				break;
 			case K_LEFT:
-				if (pos >= FILEPERLOW) pos -= FILEPERLOW;
+				if (pos >= FILEPERROW) pos -= FILEPERROW;
 				break;
 			case K_PPAGE:
 				if (pos < FILEPERPAGE) putterm(t_bell);
@@ -1283,7 +1355,7 @@ char *prompt;
 			case '>':
 				pos = max - 1;
 				break;
-			case CTRL('L'):
+			case K_CTRL('L'):
 				rewritefile(1);
 				old = -FILEPERPAGE;
 				break;
@@ -1328,18 +1400,18 @@ int no;
 
 		dupwin_x = win_x;
 		dupwin_y = win_y;
-		locate(0, LINFO);
+		locate(0, L_INFO);
 		putterm(l_clear);
 		win_x = kanjiputs(BINDK_K);
-		win_y = LINFO;
+		win_y = L_INFO;
 		locate(win_x, win_y);
 		tflush();
 		keyflush();
 # ifdef	_NOEDITMODE
-		key = Xgetkey(SIGALRM, 0);
+		key = Xgetkey(1, 0);
 # else
 		Xgetkey(-1, 0);
-		key = Xgetkey(SIGALRM, 0);
+		key = Xgetkey(1, 0);
 		Xgetkey(-1, 0);
 # endif
 		win_x = dupwin_x;
@@ -1633,10 +1705,10 @@ int no;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
-	locate(0, LINFO);
+	locate(0, L_INFO);
 	putterm(l_clear);
 	win_x = kanjiprintf(KYMPK_K, cp);
-	win_y = LINFO;
+	win_y = L_INFO;
 	locate(win_x, win_y);
 	tflush();
 	keyflush();
@@ -1851,6 +1923,7 @@ int no;
 	}
 
 	comm = form = NULL;
+	top = bottom = 0;
 	for (;;) {
 		if (comm);
 		else if (!(comm =
@@ -1975,7 +2048,7 @@ FILE *fp;
 	if (!n || !fp) return(n);
 
 	fputc('\n', fp);
-	fputs("# launchar definition\n", fp);
+	fputs("# launcher definition\n", fp);
 	for (i = 0; i < maxlaunch; i++) {
 		if (flaglist && flaglist[i]) continue;
 		if (searchlaunch(origlaunchlist, origmaxlaunch,
@@ -2311,18 +2384,15 @@ int no;
 
 		w = (width - len) / 3 - 1;
 		cp = malloc2(w + 1);
-		ascnumeric(cp, fdtype[no].head, -1, w);
-		cputs2(cp);
+		cputs2(ascnumeric(cp, fdtype[no].head, -1, w));
 		putterm(t_standout);
 		putch2(' ');
 		putterm(end_standout);
-		ascnumeric(cp, fdtype[no].sect, -1, w);
-		cputs2(cp);
+		cputs2(ascnumeric(cp, fdtype[no].sect, -1, w));
 		putterm(t_standout);
 		putch2(' ');
 		putterm(end_standout);
-		ascnumeric(cp, fdtype[no].cyl, -1, w);
-		cputs2(cp);
+		cputs2(ascnumeric(cp, fdtype[no].cyl, -1, w));
 		putterm(t_standout);
 		putch2(' ');
 		putterm(end_standout);
@@ -2375,6 +2445,9 @@ int no;
 	}
 
 	dev = NULL;
+#  ifdef	FAKEUNINIT
+	head = sect = cyl = -1;	/* fake for -Wuninitialized */
+#  endif
 	for (;;) {
 		sprintf(buf, DRDEV_K, drive);
 		if (dev);
@@ -2611,8 +2684,8 @@ char *file;
 	for (i = 0; i < MAXCUSTOM; i++) {
 		if (!max[i]) flaglist[i] = NULL;
 		else {
-			flaglist[i] = malloc2(max[i]);
-			memset(flaglist[i], 0, max[i]);
+			flaglist[i] = malloc2(max[i] * sizeof(char));
+			memset(flaglist[i], 0, max[i] * sizeof(char));
 		}
 	}
 
@@ -2631,7 +2704,7 @@ char *file;
 			strcpy(&(buf[len]), cp);
 			len += n;
 		}
-		trp = analyze(cp, trp, 0, 1);
+		trp = analyze(cp, trp, 1);
 		free(cp);
 
 		n = 0;
@@ -2692,6 +2765,7 @@ char *file;
 	if (!fpin) fputs("# configurations by customizer\n", fpout);
 	else {
 		Xfclose(fpin);
+		n = 0;
 		if (val[0] && flaglist[0])
 			n = dumpenv(flaglist[0], NULL);
 		if (!n && val[1] && flaglist[1])
@@ -2827,6 +2901,9 @@ int no;
 				break;
 			done = 1;
 			file = evalpath(file, 1);
+# ifdef	FAKEUNINIT
+			fp = NULL;	/* fake for -Wuninitialized */
+# endif
 			if (Xaccess(file, F_OK) >= 0 && yesno(FSVOK_K))
 				done = 0;
 			else {
@@ -2883,7 +2960,10 @@ int no;
 static VOID NEAR dispname(no, y, isstandout)
 int no, y, isstandout;
 {
-	char *cp, buf[MAXLINESTR + 1], *name[MAXSAVEMENU];
+# if	!defined (_NOARCHIVE) || (!MSDOS && !defined (_NODOSDRIVE))
+	char buf[MAXLINESTR + 1];
+# endif
+	char *cp, *name[MAXSAVEMENU];
 
 	int len;
 
@@ -3050,7 +3130,7 @@ int old, all;
 		hmes[4] = HARCH_K;
 		hmes[5] = HSDRV_K;
 		hmes[6] = HSAVE_K;
-		locate(0, LINFO);
+		locate(0, L_INFO);
 		putterm(l_clear);
 		if (hmes[custno]) kanjiputs(hmes[custno]);
 		else kanjiputs(mesconv(envlist[cs_item].hmes,
@@ -3143,7 +3223,7 @@ int customize(VOID_A)
 	custno = 0;
 	cs_item = item[custno];
 	cs_max = max[custno];
-	cs_row = (LFILEBOTTOM - LFILETOP - 2) / 2;
+	cs_row = (FILEPERROW - 2) / 2;
 	cs_len = (int *)malloc2(cs_row * sizeof(int));
 	custtitle();
 	old = -1;
@@ -3154,10 +3234,10 @@ int customize(VOID_A)
 		tflush();
 		keyflush();
 # ifdef	_NOEDITMODE
-		ch = Xgetkey(SIGALRM, 0);
+		ch = Xgetkey(1, 0);
 # else
 		Xgetkey(-1, 0);
-		ch = Xgetkey(SIGALRM, 0);
+		ch = Xgetkey(1, 0);
 		Xgetkey(-1, 0);
 # endif
 
@@ -3223,7 +3303,7 @@ int customize(VOID_A)
 					old = -1;
 				cs_item = cs_max - 1;
 				break;
-			case CTRL('L'):
+			case K_CTRL('L'):
 				rewritefile(1);
 				break;
 			case K_CR:

@@ -92,6 +92,9 @@ typedef struct _namelist {
 #if	!MSDOS
 	uid_t st_uid;
 	gid_t st_gid;
+# ifndef	_NOARCHIVE
+	char *linkname;
+# endif
 #endif
 #ifdef	HAVEFLAGS
 	u_long st_flags;
@@ -154,7 +157,7 @@ typedef struct _functable {
 #ifndef	_NOJPNMES
 	char *hmes;
 #endif
-#ifndef	_NOENGMES
+#if	!defined (_NOENGMES) || defined (_NOJPNMES)
 	char *hmes_eng;
 #endif
 	u_char stat;
@@ -202,6 +205,10 @@ typedef struct _launchtable {
 #define	F_TIME	7
 #define	F_NAME	8
 #define	LF_IGNORECASE	0001
+#define	LF_DIRLOOP	0002
+#define	LF_DIRNOCWD	0004
+#define	LF_FILELOOP	0010
+#define	LF_FILENOCWD	0020
 
 typedef struct _archivetable {
 	char *ext;
@@ -235,10 +242,14 @@ typedef struct _winvartable {
 	launchtable *v_launchp;
 	namelist *v_arcflist;
 	int v_maxarcf;
-# ifndef	_NODOSDRIVE
+# if	(!MSDOS || !defined (_NOUSELFN)) && !defined (_NODOSDRIVE)
 	int v_archdrive;
 # endif
-#endif
+# ifndef	_NOBROWSE
+	launchtable *v_browselist;
+	int v_browselevel;
+# endif
+#endif	/* !_NOARCHIVE */
 #ifndef	_NOTREE
 	char *v_treepath;
 #endif
@@ -266,10 +277,14 @@ extern int win;
 #define	launchp		(winvar[win].v_launchp)
 #define	arcflist	(winvar[win].v_arcflist)
 #define	maxarcf		(winvar[win].v_maxarcf)
-# ifndef	_NODOSDRIVE
-#define	archdrive	(winvar[win].v_archdrive)
+# if	(!MSDOS || !defined (_NOUSELFN)) && !defined (_NODOSDRIVE)
+# define	archdrive	(winvar[win].v_archdrive)
 # endif
-#endif
+# ifndef	_NOBROWSE
+# define	browselist	(winvar[win].v_browselist)
+# define	browselevel	(winvar[win].v_browselevel)
+# endif
+#endif	/* !_NOARCHIVE */
 #ifndef	_NOTREE
 #define	treepath	(winvar[win].v_treepath)
 #endif

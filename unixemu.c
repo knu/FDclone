@@ -158,8 +158,10 @@ int notrans;
 #ifndef	_NOROCKRIDGE
 	char rbuf[MAXPATHLEN];
 #endif
+#ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN];
 	int drive, dd;
+#endif
 
 	if (!notrans) path = detransfile(path, rbuf, 1);
 #ifdef	_NODOSDRIVE
@@ -481,7 +483,7 @@ int _Xmkdir(path, mode, raw, nodos)
 char *path;
 int mode, raw, nodos;
 {
-#if	defined (_NOUSELFN) && defined (DJGPP)
+#if	defined (_NOUSELFN) && !defined (DJGPP)
 	struct stat st;
 #endif
 #ifndef	_NOROCKRIDGE

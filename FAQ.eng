@@ -264,7 +264,7 @@ A3-04.	It means that the terminal column size is too small
 	Similarly, if the terminal line size is too small,
 	its message is "Line size too small".
 	Execute on wider terminal, or widen size more than
-	80x8 in case of the variable-sized terminal such
+	34x8 in case of the variable-sized terminal such
 	as a window terminal.
 	In case of variable-sized terminal, if you shorten
 	a terminal size while running, you should take care
@@ -600,7 +600,7 @@ A4-05.	In Ver. 2.00, a great specification change was given
 
 Q4-06.	I found a bug.
 A4-06.	Please report the following address via E-mail.
-		<shirai@nintendo.co.jp>
+		<shirai@unixusers.net>
 	If I find the solution, will fix the bug on the next
 	version.
 

@@ -57,8 +57,17 @@ extern int errno;
 
 #define	getblock(c)	((((c) + blocksize - 1) / blocksize) * blocksize)
 
+#define	isleftshift()	(n_column < WCOLUMNSTD)
+#define	isrightomit()	(n_column < WCOLUMNSTD - 1)
+#define	ispureshift()	(n_column == WCOLUMNSTD - 1)
+#define	isshortwid()	(n_column < WCOLUMNSTD - 1)
+#define	iswellomit()	(n_column < WCOLUMNSTD - 2)
+#define	ishardomit()	(n_column < WCOLUMNOMIT)
+#define	isbestomit()	(n_column < WCOLUMNHARD)
+
 /* main.c */
 extern VOID error __P_((char *));
+extern VOID checkscreen __P_((int, int));
 extern int sigvecset __P_((int));
 extern VOID title __P_((VOID_A));
 #ifndef	_NOCUSTOMIZE
@@ -188,7 +197,6 @@ extern char *strrchr2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int strncpy3 __P_((char *, char *, int *, int));
-extern char *strstr2 __P_((char *, char *));
 extern int strlen2 __P_((char *));
 extern int strlen3 __P_((char *));
 extern int atoi2 __P_((char *));
@@ -293,8 +301,13 @@ extern char *encodestr __P_((char *, int));
 #endif
 
 /* builtin.c */
+#ifndef	_NOARCHIVE
 extern VOID printlaunchcomm __P_((int, int, FILE *));
 extern VOID printarchcomm __P_((int, FILE *));
+# ifndef	_NOBROWSE
+extern VOID freebrowse __P_((launchtable *));
+# endif
+#endif
 extern int freemacro __P_((int));
 extern VOID printmacro __P_((int, FILE *));
 #if	!MSDOS && !defined (_NODOSDRIVE)
@@ -329,6 +342,7 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_PENV		"printenv"
 #define	BL_LAUNCH	"launch"
 #define	BL_ARCH		"arch"
+#define	BL_BROWSE	"browse"
 #define	BL_PLAUNCH	"printlaunch"
 #define	BL_PARCH	"printarch"
 #define	BL_BIND		"bind"
@@ -356,6 +370,7 @@ extern VOID freedefine __P_((VOID_A));
 extern char *evalcommand __P_((char *, char *, macrostat *, int));
 extern char *inputshellstr __P_((char *, int, char *));
 extern char *inputshellloop __P_((int, char *));
+extern int isinternalcomm __P_((char *));
 extern int execmacro __P_((char *, char *, int, int, int));
 #ifdef	_NOORIGSHELL
 extern int execusercomm __P_((char *, char *, int, int, int));
@@ -442,6 +457,7 @@ extern char *archchdir __P_((char *));
 extern int completearch __P_((char *, int, int, char ***));
 # endif
 extern int launcher __P_((VOID_A));
+extern int dolaunch __P_((launchtable *, int));
 extern int pack __P_((char *));
 extern int unpack __P_((char *, char *, char *, int, int));
 extern char *tmpunpack __P_((int));
@@ -488,9 +504,9 @@ extern int customize __P_((VOID_A));
 
 /* browse.c */
 extern VOID helpbar __P_((VOID_A));
-extern char *putmode __P_((char *, u_short));
+extern int putmode __P_((char *, u_short));
 #ifdef	HAVEFLAGS
-extern char *putflags __P_((char *, u_long));
+extern int putflags __P_((char *, u_long));
 #endif
 extern VOID waitmes __P_((VOID_A));
 extern int calcwidth __P_((VOID_A));

@@ -125,6 +125,9 @@ STRICTSTDC
 	function argument.
 NOVOID	The void type cannot be used.
 NOUID_T	uid_t, gid_t is not defined in <sys/type.h>
+USEPID_T
+	fork(2) and wait(2) treat a prosess ID as a type of
+	pid_t.
 DECLSIGLIST
 	The global variable sys_siglist[] is declared in
 	<signal.h>, not to need to declare again in the source

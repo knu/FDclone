@@ -80,10 +80,7 @@
 #define	K_HELP	0553
 #define	K_MAX	K_HELP
 
-#ifdef	CTRL
-#undef	CTRL
-#endif
-#define	CTRL(c)	((c) & 037)
+#define	K_CTRL(c)	((c) & 037)
 
 extern int n_column;
 extern int n_lastcolumn;
@@ -136,21 +133,15 @@ extern u_char cc_intr;
 extern u_char cc_quit;
 extern u_char cc_eof;
 extern u_char cc_eol;
+extern u_char cc_erase;
 extern VOID_T (*keywaitfunc)__P_((VOID_A));
 #if	!MSDOS
 extern int usegetcursor;
+extern int suspended;
 #endif
 extern int ttyio;
+extern int isttyiomode;
 extern FILE *ttyout;
-
-#if	MSDOS
-#define	putterm(s)	cputs2(s)
-#define	putterms(s)	cputs2(s)
-#else
-extern int tputs __P_((char *, int, int (*)__P_((int))));
-#define	putterm(s)	tputs(s, 1, putch3)
-#define	putterms(s)	tputs(s, n_line, putch3)
-#endif
 
 extern int opentty __P_((VOID_A));
 extern int inittty __P_((int));
@@ -164,8 +155,8 @@ extern int nonl2 __P_((VOID_A));
 extern int tabs __P_((VOID_A));
 extern int notabs __P_((VOID_A));
 extern int keyflush __P_((VOID_A));
-extern int ttyiomode __P_((VOID_A));
-extern int stdiomode __P_((VOID_A));
+extern int ttyiomode __P_((int));
+extern int stdiomode __P_((int));
 extern int exit2 __P_((int));
 extern int getxy __P_((int *, int *));
 extern char *tparamstr __P_((char *, int, int));
@@ -177,10 +168,14 @@ extern char *getkeyseq __P_((int, int *));
 extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
 extern int putch2 __P_((int));
-#if	!MSDOS
-extern int putch3 __P_((int));
-#endif
 extern int cputs2 __P_((char *));
+#if	MSDOS
+#define	putterm(s)	cputs2(s)
+#define	putterms(s)	cputs2(s)
+#else
+extern int putterm __P_((char *));
+extern int putterms __P_((char *));
+#endif
 extern int cprintf2 __P_((CONST char *, ...));
 extern int kbhit2 __P_((u_long));
 extern int getch2 __P_((VOID_A));
@@ -189,7 +184,7 @@ extern int ungetch2 __P_((u_char));
 extern int setscroll __P_((int, int));
 extern int locate __P_((int, int));
 extern int tflush __P_((VOID_A));
-extern int getwsize __P_((int, int));
+extern char *getwsize __P_((int, int));
 extern int chgcolor __P_((int, int));
 
 #ifndef	SENSEPERSEC

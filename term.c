@@ -91,9 +91,6 @@ typedef struct _kstree_t {
 } kstree_t;
 
 #ifdef	USETERMIOS
-# ifdef	USETERMIO
-# undef	USETERMIO
-# endif
 #include <termios.h>
 #include <sys/ioctl.h>	/* for Linux libc6 */
 typedef struct termios	termioctl_t;
@@ -112,8 +109,7 @@ typedef struct termio	termioctl_t;
 #define	REQSETP		TCSETAF
 #endif
 
-#if	!defined (USETERMIO) && !defined (USETERMIOS)
-#define	USESGTTY
+#ifdef	USESGTTY
 #include <sgtty.h>
 typedef struct sgttyb	termioctl_t;
 #define	tioctl		ioctl
@@ -126,6 +122,10 @@ typedef struct sgttyb	termioctl_t;
 #include <sys/select.h>
 #endif
 #endif	/* !MSDOS */
+
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
 
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
@@ -255,6 +255,7 @@ extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
 extern char *tgetstr __P_((char *, char **));
 extern char *tgoto __P_((char *, int, int));
+extern int tputs __P_((char *, int, int (*)__P_((int))));
 # define	tgetnum2		tgetnum
 # define	tgetflag2		tgetflag
 # define	tgoto2			tgoto
@@ -398,7 +399,6 @@ extern char *tgoto __P_((char *, int, int));
 #ifndef	VEOL
 #define	VEOL		5
 #endif
-#define	not(x)		(~(x) & 0xffff)
 
 #ifndef	FREAD
 # ifdef	_FREAD
@@ -444,10 +444,9 @@ static int NEAR dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-static int NEAR ttymode __P_((int, u_short, u_short, u_short, u_short));
+static int NEAR ttymode __P_((int, int, int, int, int));
 # else
-static int NEAR ttymode __P_((int, u_short, u_short, u_short, u_short,
-		u_short, u_short, int, int));
+static int NEAR ttymode __P_((int, int, int, int, int, int, int, int, int));
 # endif
 static char *NEAR tgetstr2 __P_((char **, char *));
 static char *NEAR tgetstr3 __P_((char **, char *, char *));
@@ -459,6 +458,7 @@ static int NEAR sortkeyseq __P_((VOID_A));
 # ifdef	DEBUG
 static int NEAR freeterment __P_((VOID_A));
 # endif
+static int putch3 __P_((int));
 #endif	/* !MSDOS */
 
 #ifdef	LSI_C
@@ -522,19 +522,22 @@ char *c_nup = NULL;
 char *c_ndown = NULL;
 char *c_nright = NULL;
 char *c_nleft = NULL;
-u_char cc_intr = CTRL('c');
-u_char cc_quit = CTRL('\\');
+u_char cc_intr = K_CTRL('C');
+u_char cc_quit = K_CTRL('\\');
 #if	MSDOS
-u_char cc_eof = CTRL('z');
+u_char cc_eof = K_CTRL('Z');
 #else
-u_char cc_eof = CTRL('d');
+u_char cc_eof = K_CTRL('D');
 #endif
 u_char cc_eol = 255;
+u_char cc_erase = K_CTRL('H');
 VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
 #if	!MSDOS
 int usegetcursor = 0;
+int suspended = 0;
 #endif
 int ttyio = -1;
+int isttyiomode = 0;
 FILE *ttyout = NULL;
 
 #if	MSDOS
@@ -793,8 +796,8 @@ int reset;
 	if (!reset) {
 		memcpy((char *)&dupttyio, (char *)&tty, sizeof(termioctl_t));
 #ifdef	USESGTTY
-		if (tioctl(ttyio, TIOCLGET, &dupttyflag) < 0
-		|| tioctl(ttyio, TIOCGETC, &cc) < 0) {
+		if (ioctl(ttyio, TIOCLGET, &dupttyflag) < 0
+		|| ioctl(ttyio, TIOCGETC, &cc) < 0) {
 			termflags &= ~F_INITTTY;
 			err2(NULL);
 		}
@@ -802,11 +805,13 @@ int reset;
 		cc_quit = cc.t_quitc;
 		cc_eof = cc.t_eofc;
 		cc_eol = cc.t_brkc;
+		if (cc_erase != 255) cc_erase = dupttyio.sg_erase;
 #else
 		cc_intr = dupttyio.c_cc[VINTR];
 		cc_quit = dupttyio.c_cc[VQUIT];
 		cc_eof = dupttyio.c_cc[VEOF];
 		cc_eol = dupttyio.c_cc[VEOL];
+		if (cc_erase != 255) cc_erase = dupttyio.c_cc[VERASE];
 #endif
 #ifndef	USETERMINFO
 		ospeed = getspeed(dupttyio);
@@ -815,7 +820,7 @@ int reset;
 	}
 	else if (tioctl(ttyio, REQSETP, &dupttyio) < 0
 #ifdef	USESGTTY
-	|| tioctl(ttyio, TIOCLSET, &dupttyflag) < 0
+	|| ioctl(ttyio, TIOCLSET, &dupttyflag) < 0
 #endif
 	) {
 		termflags &= ~F_INITTTY;
@@ -829,8 +834,7 @@ int reset;
 
 #ifdef	USESGTTY
 static int NEAR ttymode(d, set, reset, lset, lreset)
-int d;
-u_short set, reset, lset, lreset;
+int d, set, reset, lset, lreset;
 {
 	termioctl_t tty;
 	int lflag;
@@ -838,25 +842,23 @@ u_short set, reset, lset, lreset;
 	if (ioctl(d, TIOCLGET, &lflag) < 0) err2(NULL);
 	if (tioctl(d, REQGETP, &tty) < 0) err2(NULL);
 	if (set) tty.sg_flags |= set;
-	if (reset) tty.sg_flags &= reset;
-	if (set) lflag |= lset;
-	if (lreset) lflag &= lreset;
+	if (reset) tty.sg_flags &= ~reset;
+	if (lset) lflag |= lset;
+	if (lreset) lflag &= ~lreset;
 	if (ioctl(d, TIOCLSET, &lflag) < 0) err2(NULL);
 #else
 static int NEAR ttymode(d, set, reset, iset, ireset, oset, oreset, vmin, vtime)
-int d;
-u_short set, reset, iset, ireset, oset, oreset;
-int vmin, vtime;
+int d, set, reset, iset, ireset, oset, oreset, vmin, vtime;
 {
 	termioctl_t tty;
 
 	if (tioctl(d, REQGETP, &tty) < 0) err2(NULL);
 	if (set) tty.c_lflag |= set;
-	if (reset) tty.c_lflag &= reset;
+	if (reset) tty.c_lflag &= ~reset;
 	if (iset) tty.c_iflag |= iset;
-	if (ireset) tty.c_iflag &= ireset;
+	if (ireset) tty.c_iflag &= ~ireset;
 	if (oset) tty.c_oflag |= oset;
-	if (oreset) tty.c_oflag &= oreset;
+	if (oreset) tty.c_oflag &= ~oreset;
 	if (vmin) {
 		tty.c_cc[VMIN] = vmin;
 		tty.c_cc[VTIME] = vtime;
@@ -870,10 +872,10 @@ int vmin, vtime;
 int cooked2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, not(CBREAK | RAW), LPASS8, not(LLITOUT | LPENDIN));
+	ttymode(ttyio, 0, CBREAK | RAW, LPASS8, LLITOUT | LPENDIN);
 #else
-	ttymode(ttyio, ISIG | ICANON | IEXTEN, not(PENDIN),
-		BRKINT | IXON, not(IGNBRK | ISTRIP),
+	ttymode(ttyio, ISIG | ICANON | IEXTEN, PENDIN,
+		BRKINT | IXON, IGNBRK | ISTRIP,
 # if	(VEOF == VMIN) || (VEOL == VTIME)
 		OPOST, 0, '\004', 255);
 # else
@@ -888,8 +890,8 @@ int cbreak2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, CBREAK, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, ISIG | IEXTEN, not(ICANON),
-		BRKINT | IXON, not(IGNBRK), OPOST, 0, 1, 0);
+	ttymode(ttyio, ISIG | IEXTEN, ICANON,
+		BRKINT | IXON, IGNBRK, OPOST, 0, 1, 0);
 #endif
 	return(0);
 }
@@ -899,8 +901,8 @@ int raw2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, RAW, 0, LLITOUT, 0);
 #else
-	ttymode(ttyio, 0, not(ISIG | ICANON | IEXTEN),
-		IGNBRK, not(BRKINT | IXON), 0, not(OPOST), 1, 0);
+	ttymode(ttyio, 0, ISIG | ICANON | IEXTEN,
+		IGNBRK, BRKINT | IXON, 0, OPOST, 1, 0);
 #endif
 	return(0);
 }
@@ -910,7 +912,7 @@ int echo2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ttyio, ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #else
-	ttymode(ttyio, ECHO | ECHOE | ECHOCTL | ECHOKE, not(ECHONL),
+	ttymode(ttyio, ECHO | ECHOE | ECHOCTL | ECHOKE, ECHONL,
 		0, 0, 0, 0, 0, 0);
 #endif
 	return(0);
@@ -919,9 +921,9 @@ int echo2(VOID_A)
 int noecho2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, not(ECHO), 0, not(LCRTBS | LCRTERA));
+	ttymode(ttyio, 0, ECHO, 0, LCRTBS | LCRTERA);
 #else
-	ttymode(ttyio, 0, not(ECHO | ECHOE | ECHOK | ECHONL), 0, 0,
+	ttymode(ttyio, 0, ECHO | ECHOE | ECHOK | ECHONL, 0, 0,
 		0, 0, 0, 0);
 #endif
 	return(0);
@@ -933,7 +935,7 @@ int nl2(VOID_A)
 	ttymode(ttyio, CRMOD, 0, 0, 0);
 #else
 	ttymode(ttyio, 0, 0, ICRNL, 0,
-		ONLCR, not(OCRNL | ONOCR | ONLRET), 0, 0);
+		ONLCR, OCRNL | ONOCR | ONLRET, 0, 0);
 #endif
 	return(0);
 }
@@ -941,9 +943,9 @@ int nl2(VOID_A)
 int nonl2(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, not(CRMOD), 0, 0);
+	ttymode(ttyio, 0, CRMOD, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, not(ICRNL), 0, not(ONLCR), 0, 0);
+	ttymode(ttyio, 0, 0, 0, ICRNL, 0, ONLCR, 0, 0);
 #endif
 	return(0);
 }
@@ -951,9 +953,9 @@ int nonl2(VOID_A)
 int tabs(VOID_A)
 {
 #ifdef	USESGTTY
-	ttymode(ttyio, 0, not(XTABS), 0, 0);
+	ttymode(ttyio, 0, XTABS, 0, 0);
 #else
-	ttymode(ttyio, 0, 0, 0, 0, 0, not(TAB3), 0, 0);
+	ttymode(ttyio, 0, 0, 0, 0, 0, TAB3, 0, 0);
 #endif
 	return(0);
 }
@@ -972,37 +974,86 @@ int keyflush(VOID_A)
 {
 #ifdef	USESGTTY
 	int i = FREAD;
-	tioctl(ttyio, TIOCFLUSH, &i);
+
+	ioctl(ttyio, TIOCFLUSH, &i);
 #else	/* !USESGTTY */
 # ifdef	USETERMIOS
 	tcflush(ttyio, TCIFLUSH);
 # else
-	tioctl(ttyio, TCFLSH, 0);
+	ioctl(ttyio, TCFLSH, 0);
 # endif
 #endif	/* !USESGTTY */
 	return(0);
 }
 #endif	/* !MSDOS */
 
-int ttyiomode(VOID_A)
+/*ARGSUSED*/
+int ttyiomode(nl)
+int nl;
 {
+#if	MSDOS || defined (USESGTTY)
 	raw2();
 	noecho2();
 	nonl2();
 	notabs();
+#else	/* !MSDOS && !USESGTTY */
+	if (nl) {
+		ttymode(ttyio,
+			0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
+			IGNBRK, (BRKINT|IXON) | ICRNL,
+			OPOST | ONLCR | TAB3, 0, 1, 0);
+	}
+	else {
+		ttymode(ttyio,
+			0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
+			IGNBRK, (BRKINT|IXON) | ICRNL,
+			TAB3, OPOST | ONLCR, 1, 0);
+	}
+#endif	/* !MSDOS && !USESGTTY */
 	putterms(t_keypad);
 	tflush();
+	isttyiomode = nl + 1;
 	return(0);
 }
 
-int stdiomode(VOID_A)
+/*ARGSUSED*/
+int stdiomode(nonl)
+int nonl;
 {
+#if	MSDOS || defined (USESGTTY)
 	cooked2();
 	echo2();
 	nl2();
 	tabs();
+#else	/* !MSDOS && !USESGTTY */
+	if (nonl) {
+		ttymode(ttyio,
+			(ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
+			PENDIN | ECHONL,
+			(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
+			0, (OCRNL|ONOCR|ONLRET) | TAB3,
+# if	(VEOF == VMIN) || (VEOL == VTIME)
+			'\004', 255);
+# else
+			0, 0);
+# endif
+	}
+	else {
+		ttymode(ttyio,
+			(ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
+			PENDIN | ECHONL,
+			(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
+			OPOST | ONLCR, (OCRNL|ONOCR|ONLRET) | TAB3,
+# if	(VEOF == VMIN) || (VEOL == VTIME)
+			'\004', 255);
+# else
+			0, 0);
+# endif
+	}
+#endif	/* !MSDOS && !USESGTTY */
 	putterms(t_nokeypad);
 	tflush();
+	isttyiomode = 0;
 	return(0);
 }
 
@@ -1365,7 +1416,7 @@ int arg1, arg2;
 #  endif
 	if (!(buf = (char *)malloc(strlen(s) + 1))) err2(NULL);
 	strcpy(buf, s);
-# else	/* USETERMINFO */
+# else	/* !USETERMINFO */
 	int i, j, n, sw, size, args[2];
 
 	if (!s) return(NULL);
@@ -1443,7 +1494,7 @@ int arg1, arg2;
 	}
 
 	buf[j] = '\0';
-# endif	/* USETERMINFO */
+# endif	/* !USETERMINFO */
 	return(buf);
 }
 
@@ -1632,7 +1683,7 @@ int getterment(VOID_A)
 	free(cp);
 	tgetstr2(&BC, TERM_bc);
 	tgetstr2(&UP, TERM_up);
-# endif
+# endif	/* !USETERMINFO */
 
 	cp = NULL;
 	if (tgetstr2(&cp, TERM_ku) || tgetstr2(&cp, TERM_kd)
@@ -1749,7 +1800,12 @@ int getterment(VOID_A)
 	tgetkeyseq(K_BEG, TERM_at1);
 	tgetkeyseq(K_END, TERM_at7);
 
-	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		keyseq[i].code = K_MIN + i;
+		if (cc_erase != 255 && keyseq[i].str
+		&& keyseq[i].str[0] == cc_erase && !(keyseq[i].str[1]))
+			cc_erase = 255;
+	}
 	for (i = 21; i <= 30; i++)
 		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) & 01000;
 	for (i = 31; K_F(i) < K_DL; i++)
@@ -1850,15 +1906,19 @@ int len;
 	}
 	if (i > K_MAX - K_MIN) return(-1);
 
-	if (str) for (i = 0; i <= K_MAX - K_MIN; i++) {
-		if ((keyseq[i].code & 0777) == n
-		|| !(keyseq[i].str) || keyseq[i].len != len)
-			continue;
-		if (!memcmp(str, keyseq[i].str, len)) {
-			free(keyseq[i].str);
-			keyseq[i].str = NULL;
-			keyseq[i].len = 0;
+	if (str) {
+		for (i = 0; i <= K_MAX - K_MIN; i++) {
+			if ((keyseq[i].code & 0777) == n
+			|| !(keyseq[i].str) || keyseq[i].len != len)
+				continue;
+			if (!memcmp(str, keyseq[i].str, len)) {
+				free(keyseq[i].str);
+				keyseq[i].str = NULL;
+				keyseq[i].len = 0;
+			}
 		}
+		if (cc_erase != 255 && str[0] == cc_erase && !(str[1]))
+			cc_erase = 255;
 	}
 	sortkeyseq();
 	return(0);
@@ -2506,7 +2566,7 @@ int tflush(VOID_A)
 	return(0);
 }
 
-int getwsize(xmax, ymax)
+char *getwsize(xmax, ymax)
 int xmax, ymax;
 {
 	int x, y;
@@ -2520,10 +2580,10 @@ int xmax, ymax;
 	}
 	if (y > 0) n_line = y;
 
-	if (n_column <= 0 || n_column < xmax) err2("Column size too small");
-	if (n_line <= 0 || n_line < ymax) err2("Line size too small");
+	if (n_column <= 0 || n_column < xmax) return("Column size too small");
+	if (n_line <= 0 || n_line < ymax) return("Line size too small");
 
-	return(0);
+	return(NULL);
 }
 
 #else	/* !MSDOS */
@@ -2534,16 +2594,28 @@ int c;
 	return(fputc(c, ttyout));
 }
 
-int putch3(c)
+int cputs2(str)
+char *str;
+{
+	return(fputs(str, ttyout));
+}
+
+static int putch3(c)
 int c;
 {
 	return(fputc(c & 0x7f, ttyout));
 }
 
-int cputs2(str)
-char *str;
+int putterm(s)
+char *s;
 {
-	return(fputs(str, ttyout));
+	return(tputs(s, 1, putch3));
+}
+
+int putterms(s)
+char *s;
+{
+	return(tputs(s, n_line, putch3));
 }
 
 int kbhit2(usec)
@@ -2573,7 +2645,13 @@ int getch2(VOID_A)
 	u_char ch;
 	int i;
 
-	while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
+	do {
+		if (suspended) {
+			if (!isttyiomode) isttyiomode = 1;
+			ttyiomode(isttyiomode - 1);
+			suspended = 0;
+		}
+	} while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
 	if (i < sizeof(u_char)) return(EOF);
 	return((int)ch);
 }
@@ -2591,6 +2669,11 @@ int sig;
 			count = SENSEPERSEC;
 			kill(getpid(), sig);
 		}
+		if (suspended) {
+			if (!isttyiomode) isttyiomode = 1;
+			ttyiomode(isttyiomode - 1);
+			suspended = 0;
+		}
 		if (keywaitfunc) (*keywaitfunc)();
 # ifndef	TIOCSTI
 		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
@@ -2598,6 +2681,7 @@ int sig;
 	} while (!key);
 
 	key = ch = getch2();
+	if (cc_erase != 255 && key == cc_erase) return(K_BS);
 	if (!(p = keyseqtree)) return(key);
 
 	if (key == K_ESC) {
@@ -2686,7 +2770,7 @@ int tflush(VOID_A)
 	return(0);
 }
 
-int getwsize(xmax, ymax)
+char *getwsize(xmax, ymax)
 int xmax, ymax;
 {
 	int x, y, tx, ty;
@@ -2768,11 +2852,11 @@ int xmax, ymax;
 	}
 	if (y > 0) n_line = y;
 
-	if (n_column <= 0 || n_column < xmax) err2("Column size too small");
-	if (n_line <= 0 || n_line < ymax) err2("Line size too small");
+	if (n_column <= 0 || n_column < xmax) return("Column size too small");
+	if (n_line <= 0 || n_line < ymax) return("Line size too small");
 
 	if (xmax > 0 && ymax > 0) setscroll(-1, n_line - 1);
-	return(0);
+	return(NULL);
 }
 #endif	/* !MSDOS */
 

@@ -4,20 +4,19 @@
  *	Apply Function to Files
  */
 
-#include <signal.h>
 #include <fcntl.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
 #include "kanji.h"
 
-typedef struct _attr_t {
+typedef struct _attrib_t {
 	u_short mode;
 #ifdef	HAVEFLAGS
 	u_long flags;
 #endif
 	char timestr[2][9];
-} attr_t;
+} attrib_t;
 
 #ifndef	_NODOSDRIVE
 extern int preparedrv __P_((int));
@@ -63,7 +62,7 @@ static int touchdir __P_((char *));
 #ifndef	_NOEXTRACOPY
 static int mvdir __P_((char *));
 #endif
-static VOID NEAR showattr __P_((namelist *, attr_t *, int y));
+static VOID NEAR showattr __P_((namelist *, attrib_t *, int y));
 static char **NEAR getdirtree __P_((char *, char **, int *, int));
 static int NEAR _applydir __P_((char *, int (*)(char *),
 		int (*)(char *), int (*)(char *), int, char *, int));
@@ -275,7 +274,7 @@ struct stat *stp1, *stp2;
 
 	for (;;) {
 		if (!n || n == 2) {
-			locate(0, LCMDLINE);
+			locate(0, L_CMDLINE);
 			putterm(l_clear);
 			putch2('[');
 			cp = SAMEF_K;
@@ -337,7 +336,7 @@ struct stat *stp1, *stp2;
 			case 2:
 				if ((cp = strrdelim(dest, 1))) cp++;
 				else cp = dest;
-				lcmdline = LINFO;
+				lcmdline = L_INFO;
 				if (!(tmp = inputstr(NEWNM_K, 1,
 					-1, NULL, -1))) return(-1);
 				strcpy(cp, tmp);
@@ -425,7 +424,7 @@ int mode;
 			return(-1);
 		}
 		stp = &st;
-		if (access(path, mode) >= 0) return(0);
+		if (Xaccess(path, mode) >= 0) return(0);
 	}
 #endif	/* !MSDOS */
 	if (errno == ENOENT) return(0);
@@ -448,7 +447,7 @@ int mode;
 	}
 #endif
 	if (removepolicy > 0) return(removepolicy - 2);
-	locate(0, LCMDLINE);
+	locate(0, L_CMDLINE);
 	putterm(l_clear);
 	putch2('[');
 	cp = DELPM_K;
@@ -597,7 +596,7 @@ char *path;
 
 	if (regexp_exec(findregexp, cp, 1)) {
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
-		locate(0, LCMDLINE);
+		locate(0, L_CMDLINE);
 		putterm(l_clear);
 		putch2('[');
 		kanjiputs2(path, n_column - 2, -1);
@@ -629,70 +628,81 @@ char *path;
 
 static VOID NEAR showattr(listp, attr, y)
 namelist *listp;
-attr_t *attr;
+attrib_t *attr;
 int y;
 {
 	struct tm *tm;
 	char buf[WMODE + 1];
+	int x1, x2, w;
 
 	tm = localtime(&(listp -> st_mtim));
+	if (isbestomit()) {
+		x1 = n_column / 2 - 16;
+		x2 = n_column / 2 - 3;
+		w = 12;
+	}
+	else {
+		x1 = n_column / 2 - 20;
+		x2 = n_column / 2;
+		w = 16;
+	}
 
 	locate(0, y);
 	putterm(l_clear);
 
 	locate(0, ++y);
 	putterm(l_clear);
-	locate(n_column / 2 - 20, y);
+	locate(x1, y);
 	putch2('[');
-	kanjiputs2(listp -> name, 16, 0);
+	kanjiputs2(listp -> name, w, 0);
 	putch2(']');
-	locate(n_column / 2 + 3, y);
+	locate(x2 + 3, y);
 	kanjiputs(TOLD_K);
-	locate(n_column / 2 + 13, y);
+	locate(x2 + 13, y);
 	kanjiputs(TNEW_K);
 
 	locate(0, ++y);
 	putterm(l_clear);
-	locate(n_column / 2 - 20, y);
+	locate(x1, y);
 	kanjiputs(TMODE_K);
-	locate(n_column / 2, y);
+	locate(x2, y);
 	putmode(buf, listp -> st_mode);
 	cputs2(&(buf[1]));
-	locate(n_column / 2 + 10, y);
+	locate(x2 + 10, y);
 	putmode(buf, attr -> mode);
 	cputs2(&(buf[1]));
 
 #ifdef	HAVEFLAGS
 	locate(0, ++y);
 	putterm(l_clear);
-	locate(n_column / 2 - 20, y);
+	locate(x1, y);
 	kanjiputs(TFLAG_K);
-	locate(n_column / 2, y);
+	locate(x2, y);
 	putflags(buf, listp -> st_flags);
 	cputs2(buf);
-	locate(n_column / 2 + 10, y);
+	locate(x2 + 10, y);
 	putflags(buf, attr -> flags);
 	cputs2(buf);
 #endif
 
 	locate(0, ++y);
 	putterm(l_clear);
-	locate(n_column / 2 - 20, y);
+	locate(x1, y);
 	kanjiputs(TDATE_K);
-	locate(n_column / 2, y);
+	locate(x2, y);
 	cprintf2("%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	locate(n_column / 2 + 10, y);
+	locate(x2 + 10, y);
 	cputs2(attr -> timestr[0]);
 
 	locate(0, ++y);
 	putterm(l_clear);
-	locate(n_column / 2 - 20, y);
+	locate(x1, y);
 	kanjiputs(TTIME_K);
-	locate(n_column / 2, y);
+	locate(x2, y);
 	cprintf2("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-	locate(n_column / 2 + 10, y);
+	locate(x2 + 10, y);
 	cputs2(attr -> timestr[1]);
 
 	locate(0, ++y);
@@ -704,10 +714,10 @@ namelist *listp;
 int flag;
 {
 	struct tm *tm;
-	attr_t attr;
+	attrib_t attr;
 	char buf[WMODE + 1];
 	u_short tmp;
-	int i, ch, x, y, yy, ymin, ymax, dupwin_x, dupwin_y;
+	int i, ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -717,9 +727,9 @@ int flag;
 #endif
 
 	yy = LFILETOP;
-#ifndef	_NOSPLITWIN
-	while (n_line - yy < WMODELINE + 6) yy--;
-#endif
+	while (yy + WMODELINE + 5 > n_line - 1) yy--;
+	if (yy <= L_TITLE) yy = L_TITLE + 1;
+	xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
 
 	attr.mode = listp -> st_mode;
 #ifdef	HAVEFLAGS
@@ -736,13 +746,13 @@ int flag;
 	x = 0;
 
 	do {
-		win_x = n_column / 2 + 10 + x;
+		win_x = xx + x;
 		win_y = yy + y + 2;
 		locate(win_x, win_y);
 		tflush();
 
 		keyflush();
-		switch (ch = Xgetkey(SIGALRM, 0)) {
+		switch (ch = Xgetkey(1, 0)) {
 			case K_UP:
 				if (y > ymin) y--;
 				else y = ymax;
@@ -827,14 +837,18 @@ int flag;
 				}
 				else if (x > 0) x--;
 				break;
-			case CTRL('L'):
+			case K_CTRL('L'):
+				yy = LFILETOP;
+				while (yy + WMODELINE + 5 > n_line - 1) yy--;
+				if (yy <= L_TITLE) yy = L_TITLE + 1;
+				xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
 				showattr(listp, &attr, yy);
 				break;
 			case ' ':
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {
 					attr.flags ^= flaglist[x];
-					locate(n_column / 2 + 10, yy + y + 2);
+					locate(xx, yy + y + 2);
 					putflags(buf, attr.flags);
 					cputs2(buf);
 					break;
@@ -860,7 +874,7 @@ int flag;
 				}
 				attr.mode ^= tmp;
 #endif
-				locate(n_column / 2 + 10, yy + y + 2);
+				locate(xx, yy + y + 2);
 				putmode(buf, attr.mode);
 				cputs2(&(buf[1]));
 				break;
@@ -1032,7 +1046,7 @@ int verbose;
 	if (intrkey()) return(-2);
 
 	if (verbose) {
-		locate(0, LCMDLINE);
+		locate(0, L_CMDLINE);
 		putterm(l_clear);
 		putch2('[');
 		cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
@@ -1040,6 +1054,9 @@ int verbose;
 		putch2(']');
 		tflush();
 	}
+#ifdef	FAKEUNINIT
+	else cp = NULL;	/* fake for -Wuninitialized */
+#endif
 
 	if (!funcd1 && !funcd2) order = 0;
 	strcpy(path, dir);
@@ -1078,7 +1095,7 @@ int verbose;
 		free(dirlist[ndir]);
 
 		if (verbose) {
-			locate(0, LCMDLINE);
+			locate(0, L_CMDLINE);
 			putterm(l_clear);
 			putch2('[');
 			kanjiputs2(cp, n_column - 2, -1);

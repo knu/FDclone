@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (c) 1995-2002 Takashi SHIRAI
-.\"                    <shirai@nintendo.co.jp>
+.\" Copyright (c) 1995-2003 Takashi SHIRAI
+.\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.02a 12/25/02
+.\" @(#)fd.1   2.02b 02/26/03
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "December 25, 2002"
+.TH FD 1 "February 26, 2003"
 .de sh
 .br
 .PP
@@ -4309,7 +4309,7 @@ In that case,
 you can probably avoid it by quoting the string to be converted with
 .BR %' .
 .SH AUTHOR
-Takashi SHIRAI <shirai@nintendo.co.jp>
+Takashi SHIRAI <shirai@unixusers.net>
 .br
 The original "FD" for MS-DOS was created and released by
 A.Idei <SDI00544@niftyserve.or.jp>
@@ -4424,4 +4424,4 @@ The symbolic links in an archive file cannot be unpacked individually.
 
 The user interface is cheap.
 .SH COPYRIGHT
-Copyright (C) 1995-2002 by Takashi SHIRAI
+Copyright (C) 1995-2003 by Takashi SHIRAI

@@ -85,6 +85,7 @@ typedef long	off_t;
 #  endif
 # define	USEMANLANG
 # define	REGEXPLIB	"-lgen"
+# define	USEMKDEVH
 # define	NODNAMLEN
 # define	NOTMGMTOFF
 # define	USESTATVFSH
@@ -98,6 +99,7 @@ typedef long	off_t;
 # define	USERE_COMP
 # define	USETIMELOCAL
 # define	USESYSCONF
+# define	USEWAITPID
 # define	USERESOURCEH
 # define	USESETVBUF
 # endif	/* MAXHOSTNAMELEN && !USGr4 && !__svr4__ && !__SVR4 */
@@ -111,6 +113,7 @@ typedef long	off_t;
 # define	SVR4
 # define	OSTYPE		"NEWS_OS6"
 # define	REGEXPLIB	"-lgen"
+# define	USEMKDEVH
 # define	NODNAMLEN
 # define	NOTMGMTOFF
 # define	USESTATVFSH
@@ -155,13 +158,14 @@ typedef long	off_t;
 # define	EXTENDLIB	"-lsun"
 # endif
 #define	STRICTSTDC
+#define	USEPID_T
 #define	NODNAMLEN
 #define	NOTMGMTOFF
 #define	USESTATFSH
 #define	STATFSARGS	4
 #define	USERE_COMP
 #define	USEMKTIME
-#define	WAITPID
+#define	USEWAITPID
 #define	USESIGPMASK
 #define	USERESOURCEH
 #define	GETPGRPVOID
@@ -177,6 +181,7 @@ typedef long	off_t;
 #define	USETERMINFO
 #define	TERMCAPLIB		"-lcurses"
 #define	STRICTSTDC
+#define	USEPID_T
 #define	NOTZFILEH
 #define	USEMKNODH
 #define	NOTMGMTOFF
@@ -208,6 +213,7 @@ typedef long	off_t;
 #  endif
 # define	TERMCAPLIB	"-lcurses"
 # define	REGEXPLIB	"-lgen"
+# define	USEMKDEVH
 # define	NODNAMLEN
 # define	NOTMGMTOFF
 # define	USESTATVFSH
@@ -286,9 +292,11 @@ typedef long	off_t;
 # else	/* !SYSTYPE_BSD */
 # define	SVR4
 # define	OSTYPE		"DECOSF1V3"
+# define	USETERMIO
 # define	NODNAMLEN
 # define	USESTATVFSH
 # define	USEREGCOMP
+# define	SIGFNCINT
 # endif	/* !SYSTYPE_BSD */
 #endif
 
@@ -302,15 +310,19 @@ typedef long	off_t;
 #define	USETIMEH
 #define	USETERMIO
 #define	NOTMGMTOFF
-#define	USESTATFSH
-#define	STATFSARGS	4
 #define	USEMNTCTL
 #define	USERE_COMP
 # if	defined (_AIX41)
+# define	USESTATVFSH
 # define	USEMKTIME
 # define	SIGFNCINT
 # else
+# define	USESTATFSH
+# define	STATFSARGS	4
 # define	SIGARGINT
+# endif
+# if	defined (_AIX43)
+# define	NOTERMVAR
 # endif
 #endif
 
@@ -359,6 +371,7 @@ typedef long	off_t;
 #define	CODEEUC
 #define	CCOUTOPT		"-o $*"
 #define	REGEXPLIB		"-lgen"
+#define	USEMKDEVH
 #define	NODNAMLEN
 #define	NOTMGMTOFF
 #define	USESTATVFSH
@@ -372,6 +385,7 @@ typedef long	off_t;
 #define	OSTYPE			"UXPDS"
 #define	CODEEUC
 #define	REGEXPLIB		"-lgen"
+#define	USEMKDEVH
 #define	NODNAMLEN
 #define	NOTMGMTOFF
 #define	USESTATVFSH
@@ -601,6 +615,7 @@ typedef long	off_t;
 #define	BSD43
 #define	OSTYPE			"ORG_386BSD"
 #define	TARUSESPACE
+#define	USEPID_T
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
@@ -679,6 +694,7 @@ typedef long	off_t;
 /* #define STRICTSTDC	;cannot allow K&R type function declaration */
 /* #define NOVOID	;cannot use type 'void' */
 /* #define NOUID_T	;uid_t, gid_t is not defined in <sys/types.h> */
+/* #define USEPID_T	;pid_t is defined in <sys/types.h> as process ID */
 /* #define DECLSIGLIST	;'sys_siglist[]' declared in <signal.h> */
 /* #define NOSIGLIST	;have not 'sys_siglist[]' in library */
 /* #define DECLERRLIST	;'sys_errlist[]' declared in <stdio.h> or <errno.h> */
@@ -695,6 +711,7 @@ typedef long	off_t;
 /* #define USESTDARGH	;use <stdarg.h> for va_list */
 /* #define USEMKDEVH	;use <sys/mkdev.h> for major()/minor() */
 /* #define USEMKNODH	;use <sys/mknod.h> for major()/minor() */
+/* #define USESGTTY	;use sgtty interface */
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
@@ -776,9 +793,10 @@ typedef long	off_t;
 #endif
 
 #ifdef	POSIX
-# if	!defined (USETERMIOS) && !defined (USETERMIO)
+# if	!defined (USESGTTY) && !defined (USETERMIO) && !defined (USETERMIOS)
 # define	USETERMIOS
 # endif
+#define	USEPID_T
 #define	USESYSCONF
 #define	USEWAITPID
 #define	USESIGPMASK
@@ -790,12 +808,11 @@ typedef long	off_t;
 
 #ifdef	SVR4
 #define	SYSV
-#define	USEMKDEVH
 #endif
 
 #ifdef	SYSV
 #define	TARUSESPACE
-# if	!defined (USETERMIOS) && !defined (USETERMIO)
+# if	!defined (USESGTTY) && !defined (USETERMIO) && !defined (USETERMIOS)
 # define	USETERMIO
 # endif
 #define	SYSVDIRENT
@@ -805,6 +822,20 @@ typedef long	off_t;
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
+#endif
+
+#ifdef	USETERMIOS
+# ifdef	USETERMIO
+# undef	USETERMIO
+# endif
+#endif
+
+#if	defined (USETERMIOS) || defined (USETERMIO)
+# ifdef	USESGTTY
+# undef	USESGTTY
+# endif
+#else
+#define	USESGTTY
 #endif
 
 #if	defined (__STDC__) || defined (FORCEDSTDC)

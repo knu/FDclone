@@ -25,6 +25,10 @@
 #include <time.h>
 #endif
 
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
 #if	!defined (FD) && MSDOS
 #include <dos.h>
 #define	VOL_FAT32	"FAT32"
@@ -65,7 +69,7 @@ typedef union REGS	__dpmi_regs;
 #include <io.h>
 #include "unixemu.h"
 #define	DOSCOMOPT	'/'
-#define	C_EOF		CTRL('z')
+#define	C_EOF		K_CTRL('Z')
 #else	/* !MSDOS */
 #include <sys/time.h>
 #include <sys/file.h>
@@ -80,7 +84,7 @@ typedef union REGS	__dpmi_regs;
 # include <utime.h>
 # endif
 #define	DOSCOMOPT	'-'
-#define	C_EOF		CTRL('d')
+#define	C_EOF		K_CTRL('D')
 #endif	/* !MSDOS */
 
 #ifndef	FD
@@ -175,40 +179,14 @@ extern char *sys_errlist[];
 #else	/* !FD */
 # if	MSDOS
 # include <conio.h>
-# define	cc_intr		CTRL('c')
+# define	cc_intr		K_CTRL('C')
 # define	K_CR		'\r'
 # else	/* !MSDOS */
 extern int ttyio;
 static int cc_intr = -1;
 # define	K_CR		'\n'
-#  ifdef	USETERMIOS
-#  include <termios.h>
-#  include <sys/ioctl.h>	/* for Linux libc6 */
-typedef struct termios	termioctl_t;
-#  define	tioctl(d, r, a)	((r) \
-				? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
-#  define	REQGETP		0
-#  define	REQSETP		(TCSAFLUSH + 1)
-#  else		/* !USETERMIOS */
-#   ifdef	USETERMIO
-#   include <termio.h>
-typedef struct termio	termioctl_t;
-#   define	tioctl		ioctl
-#   define	REQGETP		TCGETA
-#   define	REQSETP		TCSETAF
-#   else	/* !USETERMIO */
-#   include <sgtty.h>
-typedef struct sgttyb	termioctl_t;
-#   define	tioctl		ioctl
-#   define	REQGETP		TIOCGETP
-#   define	REQSETP		TIOCSETP
-#   endif	/* !USETERMIO */
-#  endif	/* !USETERMIOS */
 # endif	/* !MSDOS */
-# ifdef	CTRL
-# undef	CTRL
-# endif
-#define	CTRL(c)		((c) & 037)
+#define	K_CTRL(c)	((c) & 037)
 #define	K_BS		010
 #define	n_line		24
 #define	t_clear		"\033[;H\033[2J"
@@ -378,15 +356,15 @@ extern char *inputstr __P_((char *, int, int, char *, int));
 static int NEAR getinfofs __P_((char *, long *, long *, long *));
 # if	MSDOS
 static char *NEAR realpath2 __P_((char *, char *, int));
-# define	ttyiomode()
-# define	stdiomode()
+# define	ttyiomode(n)
+# define	stdiomode(n)
 # define	getkey2(n)	getch();
 # else	/* !MSDOS */
 # define	realpath2(p, r, f) \
 				realpath(p, r)
 static VOID NEAR ttymode __P_((int));
-# define	ttyiomode()	(ttymode(1))
-# define	stdiomode()	(ttymode(0))
+# define	ttyiomode(n)	(ttymode(1))
+# define	stdiomode(n)	(ttymode(0))
 static int NEAR getkey2 __P_((int));
 # endif	/* !MSDOS */
 static int NEAR touchfile __P_((char *, struct stat *));
@@ -600,7 +578,7 @@ int on;
 	if (cc_intr < 0) {
 		struct tchars cc;
 
-		if (tioctl(ttyio, TIOCGETC, &cc) < 0) cc_intr = CTRL('c');
+		if (tioctl(ttyio, TIOCGETC, &cc) < 0) cc_intr = K_CTRL('C');
 		else cc_intr = cc.t_intrc;
 	}
 	if (on) {
@@ -779,9 +757,9 @@ static int NEAR inputkey(VOID_A)
 {
 	int c;
 
-	ttyiomode();
+	ttyiomode(1);
 	c = getkey2(0);
-	stdiomode();
+	stdiomode(1);
 	if (c == EOF) c = -1;
 	else if (c == cc_intr) {
 		fputs("^C\n", stdout);
@@ -1744,9 +1722,9 @@ char *argv[];
 			fputs("All files in directory will be deleted!\n",
 				stdout);
 			fflush(stdout);
-			ttyiomode();
+			ttyiomode(1);
 			buf = inputstr("Are you sure (Y/N)?", 0, 0, NULL, -1);
-			stdiomode();
+			stdiomode(1);
 			if (!buf) return(RET_SUCCESS);
 			if (!isatty(STDIN_FILENO)) {
 				fputc('\n', stdout);
@@ -1944,7 +1922,7 @@ char *file, *src;
 			errno = 0;
 			return(-1);
 		}
-		if ((fd = Xopen(file, O_RDONLY, 0644)) < 0) return(fd);
+		if ((fd = Xopen(file, O_RDONLY, 0666)) < 0) return(fd);
 		c = (isatty(fd)) ? 0 : 1;
 		close(fd);
 	}
@@ -1980,7 +1958,7 @@ char *file, *src;
 
 	flags = (copyflag & CF_VERIFY) ? O_RDWR : O_WRONLY;
 	flags |= (O_BINARY | O_CREAT | O_TRUNC);
-	return(Xopen(file, flags, 0644));
+	return(Xopen(file, flags, 0666));
 }
 
 static int NEAR textread(fd, buf, size, bin)
@@ -2072,6 +2050,9 @@ int sbin, dbin, dfd;
 	if (isatty(fd1) || isatty(fd2)) sbin = CF_TEXT;
 	tty = isatty(fd2);
 
+#ifdef	FAKEUNINIT
+	tmperrno = errno;	/* fake for -Wuninitialized */
+#endif
 	for (retry = 0; retry < 10; retry++) {
 		for (;;) {
 			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {

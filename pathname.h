@@ -99,6 +99,12 @@ typedef u_short	uid_t;
 typedef u_short	gid_t;
 #endif
 
+#ifdef	USEPID_T
+typedef	pid_t		p_id_t;
+# else
+typedef	long		p_id_t;
+#endif
+
 #ifdef	NOVOID
 #define	VOID
 #define	VOID_T	int
@@ -188,8 +194,8 @@ extern hashlist **hashtable;
 extern char *(*getvarfunc)__P_((char *, int));
 extern int (*putvarfunc)__P_((char *, int));
 extern int (*getretvalfunc)__P_((VOID_A));
-extern long (*getpidfunc)__P_((VOID_A));
-extern long (*getlastpidfunc)__P_((VOID_A));
+extern p_id_t (*getpidfunc)__P_((VOID_A));
+extern p_id_t (*getlastpidfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));
 extern int (*checkundeffunc)__P_((char *, char *, int));
 extern VOID (*exitfunc)__P_((VOID_A));

@@ -1,7 +1,7 @@
 /*
  *	FD (File & Directory maintenance tool)
  *
- *	by T.Shirai <shirai@nintendo.co.jp>
+ *	by T.Shirai <shirai@unixusers.net>
  */
 
 #include <ctype.h>
@@ -67,9 +67,13 @@ extern int maxarchive;
 extern char fullpath[];
 extern char **history[];
 extern char *helpindex[];
+extern int sizeinfo;
 extern int subwindow;
 extern int win_x;
 extern int win_y;
+#ifndef	_NOCUSTOMIZE
+extern int custno;
+#endif
 extern char *deftmpdir;
 #ifndef	_NODOSDRIVE
 extern char *unitblpath;
@@ -116,8 +120,11 @@ static int ignore_int __P_((VOID_A));
 #ifdef	SIGQUIT
 static int ignore_quit __P_((VOID_A));
 #endif
+#ifdef	SIGCONT
+static int ignore_cont __P_((VOID_A));
+#endif
 #ifdef	SIGHUP
-static int hangup __P_((VOID_A));
+static int hanguperror __P_((VOID_A));
 #endif
 #ifdef	SIGILL
 static int illerror __P_((VOID_A));
@@ -179,6 +186,9 @@ int adjtty = 0;
 #endif
 int showsecond = 0;
 int hideclock = 0;
+#ifdef	SIGALRM
+int clockmode = 0;
+#endif
 u_short today[3] = {0, 0, 0};
 int fd_restricted = 0;
 #ifndef	_NOCUSTOMIZE
@@ -226,11 +236,15 @@ char *s;
 	dosallclose();
 #endif
 	if (!s) s = progname;
-	stdiomode();
+	stdiomode(0);
 	endterm();
 	fputc('\007', stderr);
 	errno = duperrno;
-	perror(s);
+	if (errno) perror(s);
+	else {
+		fputs(s, stderr);
+		fputc('\n', stderr);
+	}
 	inittty(1);
 #ifndef	_NOORIGSHELL
 # if	!MSDOS && !defined (NOJOB)
@@ -287,8 +301,19 @@ static int ignore_quit(VOID_A)
 }
 #endif
 
+#ifdef	SIGCONT
+static int ignore_cont(VOID_A)
+{
+	signal(SIGCONT, (sigcst_t)ignore_cont);
+# if	!MSDOS
+	suspended = 1;
+# endif
+	return(0);
+}
+#endif
+
 #ifdef	SIGHUP
-static int hangup(VOID_A)
+static int hanguperror(VOID_A)
 {
 	signalexit(SIGHUP);
 	return(0);
@@ -391,6 +416,49 @@ static int xsizerror(VOID_A)
 }
 #endif
 
+VOID checkscreen(xmax, ymax)
+int xmax, ymax;
+{
+	char *cp;
+	int i, row;
+
+	for (i = 0;; i++) {
+		if (!(cp = getwsize(xmax, ymax))) {
+#ifndef	_NOTREE
+			if (treepath) row = WFILEMINTREE;
+			else
+#endif
+#ifndef	_NOCUSTOMIZE
+			if (custno >= 0) row = WFILEMINCUSTOM;
+			else
+#endif
+			row = WFILEMIN;
+
+			if (FILEPERROW >= row) break;
+			cp = NOROW_K;
+		}
+		if (!i) {
+			putterm(t_clear);
+			locate(0, 0);
+			keyflush();
+		}
+
+		if (i & 1) cputs2(SCRSZ_K);
+		else {
+			putterm(t_standout);
+			cputs2(cp);
+			putterm(end_standout);
+		}
+		cputs2("\r\n");
+		putterm(t_bell);
+		tflush();
+		if (kbhit2(1000000L) && getkey2(0) == K_ESC) {
+			errno = 0;
+			error(INTR_K);
+		}
+	}
+}
+
 #ifdef	SIGWINCH
 static int wintr(VOID_A)
 {
@@ -398,9 +466,9 @@ static int wintr(VOID_A)
 
 	duperrno = errno;
 	signal(SIGWINCH, SIG_IGN);
-	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
+	checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
 	rewritefile(1);
-	if (subwindow) ungetch2(CTRL('L'));
+	if (subwindow) ungetch2(K_CTRL('L'));
 	signal(SIGWINCH, (sigcst_t)wintr);
 	errno = duperrno;
 	return(0);
@@ -412,7 +480,7 @@ static int printtime(VOID_A)
 {
 	static time_t now;
 	struct tm *tm;
-	int duperrno;
+	int x, duperrno;
 
 	duperrno = errno;
 	signal(SIGALRM, SIG_IGN);
@@ -437,7 +505,9 @@ static int printtime(VOID_A)
 		today[1] = tm -> tm_mon;
 		today[2] = tm -> tm_mday;
 		if (!hideclock) {
-			locate(n_column - 16 - ((showsecond) ? 3 : 0), LTITLE);
+			x = n_column - 15 - ((showsecond) ? 3 : 0);
+			if (!isleftshift()) x--;
+			locate(x, L_TITLE);
 			putterm(t_standout);
 			cprintf2("%02d-%02d-%02d %02d:%02d",
 				tm -> tm_year % 100,
@@ -467,6 +537,7 @@ int set;
 	else if (set) {
 #ifdef	SIGALRM
 		signal(SIGALRM, (sigcst_t)printtime);
+		clockmode = 1;
 #endif
 #ifdef	SIGTSTP
 		signal(SIGTSTP, SIG_IGN);
@@ -483,6 +554,7 @@ int set;
 	else {
 #ifdef	SIGALRM
 		signal(SIGALRM, (sigcst_t)ignore_alrm);
+		clockmode = 0;
 #endif
 #ifdef	SIGTSTP
 		signal(SIGTSTP, SIG_DFL);
@@ -503,11 +575,23 @@ int set;
 VOID title(VOID_A)
 {
 	char *cp, *eol;
-	int i;
+	int i, len;
 
-	locate(0, LTITLE);
+	locate(0, L_TITLE);
 	putterm(t_standout);
-	cputs2("  FD(File & Directory tool) Ver.");
+	len = 0;
+	if (!isleftshift()) {
+		putch2(' ');
+		len++;
+	}
+	cputs2(" FD");
+	len += 3;
+	if (!ishardomit()) {
+		cputs2("(File & Directory tool)");
+		len += 23;
+	}
+	cputs2(" Ver.");
+	len += 5;
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
@@ -517,9 +601,9 @@ VOID title(VOID_A)
 		putch2('#');
 		i++;
 	}
-	cp = " (c)1995-2002 T.Shirai  ";
+	cp = (iswellomit()) ? "" : " (c)1995-2003 T.Shirai  ";
 	cputs2(cp);
-	i = n_column - 32 - strlen(cp) - i;
+	i = n_column - len - strlen(cp) - i;
 	while (i-- > 0) putch2(' ');
 	putterm(end_standout);
 	timersec = 0;
@@ -653,9 +737,9 @@ int exist;
 	free(tmp);
 #else	/* !_NOORIGSHELL */
 	file = evalpath(strdup2(file), 1);
-	stdiomode();
+	stdiomode(0);
 	er = execruncom(file, 1);
-	ttyiomode();
+	ttyiomode(0);
 	free(file);
 #endif	/* !_NOORIGSHELL */
 
@@ -776,7 +860,7 @@ static VOID NEAR prepareexitfd(VOID_A)
 	free(progpath);
 
 #ifdef	DEBUG
-	free(tmpfilename);
+	if (tmpfilename) free(tmpfilename);
 # ifdef	_NOORIGSHELL
 	freevar(environ);
 	freevar(environ2);
@@ -824,9 +908,7 @@ int main(argc, argv, envp)
 int argc;
 char *argv[], *envp[];
 {
-#ifndef	_NOORIGSHELL
 	char *cp;
-#endif
 	int i;
 
 #ifdef	DEBUG
@@ -843,13 +925,16 @@ char *argv[], *envp[];
 #endif
 
 #ifdef	SIGHUP
-	signal(SIGHUP, (sigcst_t)hangup);
+	signal(SIGHUP, (sigcst_t)hanguperror);
 #endif
 #ifdef	SIGINT
 	signal(SIGINT, (sigcst_t)ignore_int);
 #endif
 #ifdef	SIGQUIT
 	signal(SIGQUIT, (sigcst_t)ignore_quit);
+#endif
+#ifdef	SIGCONT
+	signal(SIGCONT, (sigcst_t)ignore_cont);
 #endif
 #ifdef	SIGILL
 	signal(SIGILL, (sigcst_t)illerror);
@@ -956,9 +1041,12 @@ char *argv[], *envp[];
 
 	fdmode = 1;
 	argc = initoption(argc, argv, envp);
-	ttyiomode();
+	ttyiomode(0);
 	initterm();
-	getwsize(80, WHEADERMAX + WFOOTER + WFILEMIN);
+	if ((cp = getwsize(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN))) {
+		errno = 0;
+		error(cp);
+	}
 #ifndef	_NOCUSTOMIZE
 	saveorigenviron();
 #endif
@@ -980,9 +1068,9 @@ char *argv[], *envp[];
 	evalenv();
 #if	!MSDOS
 	if (adjtty) {
-		stdiomode();
+		stdiomode(0);
 		inittty(0);
-		ttyiomode();
+		ttyiomode(0);
 	}
 #endif	/* !MSDOS */
 
@@ -994,7 +1082,7 @@ char *argv[], *envp[];
 	sigvecset(0);
 	prepareexitfd();
 
-	stdiomode();
+	stdiomode(0);
 #ifndef	_NOORIGSHELL
 # if	!MSDOS && !defined (NOJOB)
 	killjob();

@@ -30,6 +30,8 @@ extern char *unixgetcurdir __P_((char *, int));
 
 extern int mark;
 extern int stackdepth;
+extern int win_x;
+extern int win_y;
 extern int sizeinfo;
 extern off_t totalsize;
 extern off_t blocksize;
@@ -38,7 +40,6 @@ extern char fullpath[];
 extern char typesymlist[];
 extern u_short typelist[];
 extern char *deftmpdir;
-extern char *tmpfilename;
 extern u_short today[];
 #ifndef	_NOCOLOR
 extern int ansicolor;
@@ -126,6 +127,10 @@ extern int hideclock;
 #define	isarchbr(l)	(((l) -> topskip) < 255)
 #endif	/* FD < 2 */
 
+#if	FD >= 2
+static VOID NEAR pushargvar __P_((char *));
+static VOID NEAR popargvar __P_((VOID_A));
+#endif
 static VOID NEAR pusharchdupl __P_((VOID_A));
 #if	FD >= 2
 static int NEAR readfileent __P_((namelist *, char *, char *, int));
@@ -137,10 +142,17 @@ static int NEAR readfileent __P_((namelist *, char *, launchtable *, int));
 static int NEAR dircmp __P_((char *, char *));
 static int NEAR dirmatchlen __P_((char *, char *));
 static char *NEAR pseudodir __P_((namelist *));
-static int NEAR readarchive __P_((char *, launchtable *));
+static VOID NEAR Xwaitmes __P_((VOID_A));
+static FILE *NEAR archpopen __P_((char *, char *, int));
+static int NEAR readarchive __P_((char *, launchtable *, int));
+#ifndef	_NOBROWSE
+static int readcwd __P_((char *, int));
+#endif
 static char *NEAR searcharcdir __P_((char *, int));
+#ifdef	_NODOSDRIVE
+static char *NEAR genfullpath __P_((char *, char *, char *));
+#else
 static char *NEAR genfullpath __P_((char *, char *, char *, char *));
-#ifndef	_NODOSDRIVE
 static int NEAR archdostmpdir __P_((char *, char **, char *));
 #endif
 
@@ -225,6 +237,33 @@ static char *autoformat[] = {
 #define	AUTOFORMATSIZ	((int)(sizeof(autoformat) / sizeof(char *)))
 #endif
 
+#if	FD >= 2
+static VOID NEAR pushargvar(s)
+char *s;
+{
+	int i;
+
+	setenv2(BROWSELAST, s);
+	if (!argvar) return;
+	i = countvar(argvar);
+	argvar = (char **)realloc2(argvar, (i + 2) * sizeof(char *));
+	argvar[i++] = strdup2(s);
+	argvar[i] = NULL;
+}
+
+static VOID NEAR popargvar(VOID_A)
+{
+	int i;
+
+	setenv2(BROWSELAST, NULL);
+	if (!argvar) return;
+	i = countvar(argvar);
+	if (i < 2) return;
+	free(argvar[--i]);
+	argvar[i] = NULL;
+}
+#endif	/* FD >= 2 */
+
 static VOID NEAR pusharchdupl(VOID_A)
 {
 	winvartable *new;
@@ -240,6 +279,10 @@ static VOID NEAR pusharchdupl(VOID_A)
 	new -> v_maxarcf = maxarcf;
 #ifndef	_NODOSDRIVE
 	new -> v_archdrive = archdrive;
+#endif
+#ifndef	_NOBROWSE
+	new -> v_browselist = browselist;
+	new -> v_browselevel = browselevel;
 #endif
 #ifndef	_NOTREE
 	new -> v_treepath = treepath;
@@ -270,8 +313,15 @@ VOID poparchdupl(VOID_A)
 #ifndef	_NODOSDRIVE
 	drive = archdrive;
 #endif
-	for (i = 0; i < maxarcf; i++) free(arcflist[i].name);
-	free(arcflist);
+	if (arcflist) {
+		for (i = 0; i < maxarcf; i++) {
+			free(arcflist[i].name);
+#if	!MSDOS
+			if (arcflist[i].linkname) free(arcflist[i].linkname);
+#endif
+		}
+		free(arcflist);
+	}
 
 	archduplp = old -> v_archduplp;
 	if (!(old -> v_archivedir)) *archivedir = '\0';
@@ -287,6 +337,9 @@ VOID poparchdupl(VOID_A)
 #ifndef	_NODOSDRIVE
 	archdrive = old -> v_archdrive;
 #endif
+#ifndef	_NOBROWSE
+	browselevel = old -> v_browselevel;
+#endif
 #ifndef	_NOTREE
 	treepath = old -> v_treepath;
 #endif
@@ -300,6 +353,16 @@ VOID poparchdupl(VOID_A)
 	maxfile = old -> v_maxfile;
 	maxent = old -> v_maxent;
 
+#ifndef	_NOBROWSE
+	if (browselist) {
+		popargvar();
+		if (!(old -> v_browselist)) {
+			freebrowse(browselist);
+			browselist = NULL;
+		}
+	}
+	else
+#endif
 #ifndef	_NODOSDRIVE
 	if (drive > 0) {
 		strcpy(fullpath, old -> v_fullpath);
@@ -339,6 +402,7 @@ int skip;
 #if	!MSDOS
 	tmp -> st_uid = (uid_t)-1;
 	tmp -> st_gid = (gid_t)-1;
+	tmp -> linkname = NULL;
 #endif
 	tmp -> st_size = 0L;
 	tmp -> flags = 0;
@@ -358,6 +422,9 @@ int skip;
 		}
 		if (*line != *(form++)) {
 			if (tmp -> name) free(tmp -> name);
+#if	!MSDOS
+			if (tmp -> linkname) free(tmp -> linkname);
+#endif
 			return(0);
 		}
 		line++;
@@ -378,6 +445,9 @@ int skip;
 			next = strchr2(++form, '}');
 			if (!next || next <= form) {
 				if (tmp -> name) free(tmp -> name);
+#if	!MSDOS
+				if (tmp -> linkname) free(tmp -> linkname);
+#endif
 				return(-1);
 			}
 			l = next++ - form;
@@ -394,6 +464,9 @@ int skip;
 		else if (l == 1 && *form == '%') {
 			if (*line != *form) {
 				if (tmp -> name) free(tmp -> name);
+#if	!MSDOS
+				if (tmp -> linkname) free(tmp -> linkname);
+#endif
 				return(0);
 			}
 			l = 0;
@@ -446,7 +519,7 @@ int skip;
 #if	!MSDOS
 				if (evalnumeric(buf, &n, -1))
 					tmp -> st_uid = n;
-				else if (up = finduid(0, buf))
+				else if ((up = finduid(0, buf)))
 					tmp -> st_uid = up -> uid;
 				else tmp -> st_uid = (uid_t)-1;
 #endif
@@ -455,7 +528,7 @@ int skip;
 #if	!MSDOS
 				if (evalnumeric(buf, &n, -1))
 					tmp -> st_gid = n;
-				else if (gp = findgid(0, buf))
+				else if ((gp = findgid(0, buf)))
 					tmp -> st_gid = gp -> gid;
 				else tmp -> st_gid = (gid_t)-1;
 #endif
@@ -533,12 +606,31 @@ int skip;
 				}
 				if (tmp -> name) free(tmp -> name);
 				tmp -> name = strdup2(buf);
+#if	!MSDOS
+				cp = line + len;
+				for (cp = line + len; *cp; cp++)
+					if (!strchr(IFS_SET, *cp)) break;
+				if (*(cp++) != '-' || *(cp++) != '>') break; 
+				for (; *cp; cp++)
+					if (!strchr(IFS_SET, *cp)) break;
+				for (i = 0; cp[i]; i++)
+					if (strchr(IFS_SET, cp[i])) break;
+				if (i) {
+					if (tmp -> linkname)
+						free(tmp -> linkname);
+					tmp -> linkname = malloc2(i + 1);
+					strncpy2(tmp -> linkname, cp, i);
+				}
+#endif
 				break;
 			case 'x':
 				break;
 			default:
 				free(buf);
 				if (tmp -> name) free(tmp -> name);
+#if	!MSDOS
+				if (tmp -> linkname) free(tmp -> linkname);
+#endif
 				return(-1);
 /*NOTREACHED*/
 				break;
@@ -559,7 +651,7 @@ int skip;
 	else if ((tmp -> st_mode & S_IFMT) == S_IFLNK) tmp -> flags |= F_ISLNK;
 	if (tm.tm_year < 0) {
 		tm.tm_year = today[0];
-		if (tm.tm_mon < 0 || tm.tm_mday < 0);
+		if (tm.tm_mon < 0 || tm.tm_mday < 0) tm.tm_year = 1970 - 1900;
 		else if (tm.tm_mon > today[1]
 		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
 			tm.tm_year--;
@@ -730,10 +822,10 @@ int max;
 #if	!MSDOS
 	getfield(buf, line, skip, list, F_UID);
 	if ((cp = evalnumeric(buf, &n, -1)) && !*cp) tmp -> st_uid = n;
-	else tmp -> st_uid = (up = finduid(0, buf)) ? up -> uid : (uid_t)-1;
+	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
 	getfield(buf, line, skip, list, F_GID);
 	if ((cp = evalnumeric(buf, &n, -1)) && !*cp) tmp -> st_gid = n;
-	else tmp -> st_gid = (gp = findgid(0, buf)) ? gp -> gid : (gid_t)-1;
+	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
 #endif
 	getfield(buf, line, skip, list, F_SIZE);
 	tmp -> st_size = ((cp = evalnumeric(buf, &n, 0)) && !*cp) ? n : 0L;
@@ -802,17 +894,61 @@ VOID archbar(file, dir)
 char *file, *dir;
 {
 	char *arch;
+	int len;
 
-	arch = malloc2(strlen(fullpath) + strlen(file) + strlen(dir) + 3);
-	strcpy(strcpy2(strcatdelim2(arch, fullpath, file), ":"), dir);
+#ifndef	_NOBROWSE
+	if (browselist) {
+# ifdef	_NOORIGSHELL
+		if ((arch = getenv2(BROWSECWD))) arch = strdup2(arch);
+# else
+		if ((arch = getshellvar(BROWSECWD, -1))) arch = strdup2(arch);
+# endif
+		else if (!argvar) arch = strdup2(file);
+		else {
+			int i;
 
-	locate(0, LPATH);
+			len = 0;
+			for (i = 1; argvar[i]; i++)
+				len += strlen(argvar[i]) + 1;
+			arch = malloc2(len + 1);
+			len = 0;
+			for (i = 1; argvar[i]; i++) {
+				strcpy(&(arch[len]), argvar[i]);
+				len += strlen(argvar[i]);
+				if (argvar[i + 1]) arch[len++] = '>';
+			}
+			arch[len] = '\0';
+		}
+	}
+	else
+#endif	/* !_NOBROWSE */
+	{
+		arch = malloc2(strlen(fullpath)
+			+ strlen(file) + strlen(dir) + 3);
+		strcpy(strcpy2(strcatdelim2(arch, fullpath, file), ":"), dir);
+	}
+
+	locate(0, L_PATH);
 	putterm(l_clear);
-	putch2(' ');
+	len = 0;
+	if (!isleftshift()) {
+		putch2(' ');
+		len++;
+	}
 	putterm(t_standout);
-	cputs2("Arch:");
+#ifndef	_NOBROWSE
+	if (browselist) {
+		cputs2("Browse:");
+		len += 7;
+	}
+	else
+#endif
+	{
+		cputs2("Arch:");
+		len += 5;
+	}
 	putterm(end_standout);
-	kanjiputs2(arch, n_column - 6, 0);
+	kanjiputs2(arch, n_column - len, 0);
 	free(arch);
 
 	tflush();
@@ -892,7 +1028,8 @@ namelist *namep;
 		}
 		cp = tmp + 1;
 	}
-	if (isdir(namep)) for (i = 0; i < maxfile; i++) {
+	if (isdir(namep) && !isdotdir(namep -> name))
+	for (i = 0; i < maxfile; i++) {
 		if (isdir(&(filelist[i]))
 		&& !dircmp(filelist[i].name, namep -> name)) {
 			tmp = filelist[i].name;
@@ -907,25 +1044,28 @@ namelist *namep;
 	return(namep -> name);
 }
 
-static int NEAR readarchive(file, list)
-char *file;
-launchtable *list;
+static VOID NEAR Xwaitmes(VOID_A)
 {
-	namelist tmp;
-	FILE *fp;
-	char *cp, *buf, *dir, *line;
-	int i, c, no, len;
-#if	FD >= 2
-	char *form;
-	int skip;
-#else
-	int max;
-#endif
+	int x, y;
 
-	if (!(cp = evalcommand(list -> comm, file, NULL, 1))) return(-1);
+	x = win_x;
+	y = win_y;
+	win_x = win_y = -1;
 	waitmes();
-	locate(0, n_line - 1);
-	tflush();
+	win_x = x;
+	win_y = y;
+}
+
+static FILE *NEAR archpopen(command, arg, argset)
+char *command, *arg;
+int argset;
+{
+	macrostat st;
+	FILE *fp;
+	char *cp;
+
+	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
+	if (!(cp = evalcommand(command, arg, &st, 1))) return(NULL);
 #ifdef	_NOORIGSHELL
 # ifdef	DEBUG
 	_mtrace_file = "popen(start)";
@@ -943,9 +1083,30 @@ launchtable *list;
 #endif	/* !_NOORIGSHELL */
 	free(cp);
 	if (!fp) {
-		warning(-1, list -> comm);
-		return(-1);
+		if (isttyiomode) warning(-1, command);
+		else perror(command);
 	}
+	return(fp);
+}
+
+static int NEAR readarchive(file, list, argset)
+char *file;
+launchtable *list;
+int argset;
+{
+	namelist tmp;
+	FILE *fp;
+	char *buf, *dir, *line;
+	int i, c, no, len;
+#if	FD >= 2
+	char *cp, *form;
+	int skip;
+#else
+	int max;
+#endif
+
+	if (!(fp = archpopen(list -> comm, file, argset))) return(-1);
+	if (isttyiomode) Xwaitmes();
 
 #if	FD < 2
 	max = 0;
@@ -962,6 +1123,9 @@ launchtable *list;
 	maxfile = 0;
 	addlist();
 	filelist[0].name = strdup2("..");
+#if	!MSDOS
+	filelist[0].linkname = NULL;
+#endif
 	filelist[0].flags = F_ISDIR;
 	filelist[0].tmpflags = F_STAT;
 	maxfile++;
@@ -981,14 +1145,20 @@ launchtable *list;
 	cp = form = decodestr(list -> format, NULL, 0);
 #endif
 	while ((line = fgets2(fp, 0))) {
-		if (intrkey()) {
+		if (isttyiomode && intrkey()) {
 			dopclose(fp);
 #if	FD >= 2
 			free(form);
 #endif
 			free(line);
 			if (buf) free(buf);
-			for (i = 0; i < maxfile; i++) free(filelist[i].name);
+			for (i = 0; i < maxfile; i++) {
+				free(filelist[i].name);
+#if	!MSDOS
+				if (filelist[i].linkname)
+					free(filelist[i].linkname);
+#endif
+			}
 			return(-1);
 		}
 
@@ -1048,11 +1218,17 @@ launchtable *list;
 			filelist[maxfile].st_size = 0;
 			filelist[maxfile].flags |= F_ISDIR;
 			filelist[maxfile].name = dir;
+#if	!MSDOS
+			filelist[maxfile].linkname = NULL;
+#endif
 			filelist[maxfile].ent = no;
 			maxfile++;
 		}
 		if (!dir) {
 			free(tmp.name);
+#if	!MSDOS
+			if (tmp.linkname) free(tmp.linkname);
+#endif
 			continue;
 		}
 
@@ -1070,6 +1246,9 @@ launchtable *list;
 	for (i = maxfile - 1; i > 0; i--) {
 		if (filelist[i].ent <= no) break;
 		free(filelist[i].name);
+#if	!MSDOS
+		if (filelist[i].linkname) free(filelist[i].linkname);
+#endif
 	}
 	maxfile = i + 1;
 	for (i = 0; i < maxfile; i++) filelist[i].ent = i;
@@ -1077,6 +1256,12 @@ launchtable *list;
 		maxfile = 0;
 		free(filelist[0].name);
 		filelist[0].name = NOFIL_K;
+#if	!MSDOS
+		if (filelist[0].linkname) {
+			free(filelist[0].linkname);
+			filelist[0].linkname = NULL;
+		}
+#endif
 		filelist[0].st_nlink = -1;
 		filelist[0].flags = 0;
 		filelist[0].tmpflags = F_STAT;
@@ -1084,13 +1269,24 @@ launchtable *list;
 
 	if ((i = dopclose(fp))) {
 		if (i > 0) {
-			locate(0, n_line - 1);
-			cputs2("\r\n");
-			tflush();
-			hideclock = 1;
-			warning(0, UNPNG_K);
+			if (isttyiomode) {
+				locate(0, n_line - 1);
+				cputs2("\r\n");
+				tflush();
+				hideclock = 1;
+				warning(0, UNPNG_K);
+			}
+			else {
+				fputs(UNPNG_K, stderr);
+				fputc('\n', stderr);
+			}
 		}
-		for (i = 0; i < maxfile; i++) free(filelist[i].name);
+		for (i = 0; i < maxfile; i++) {
+			free(filelist[i].name);
+#if	!MSDOS
+			if (filelist[i].linkname) free(filelist[i].linkname);
+#endif
+		}
 		return(-1);
 	}
 	return(maxfile);
@@ -1101,7 +1297,7 @@ reg_t *re;
 char *arcre;
 {
 	char *cp, *tmp;
-	int i, j, len;
+	int i, j, n, len;
 
 	for (i = 1; i < maxarcf; i++) {
 		if (!*archivedir) len = 0;
@@ -1114,26 +1310,65 @@ char *arcre;
 			memcpy((char *)&(filelist[0]),
 				(char *)&(arcflist[i]), sizeof(namelist));
 			filelist[0].name = arcflist[0].name;
+#if	!MSDOS
+			filelist[0].linkname = NULL;
+#endif
 			continue;
 		}
 		if ((tmp = strdelim(cp, 0))) while (*(++tmp) == _SC_);
-		if ((!tmp || !*tmp)
-		&& (!re || regexp_exec(re, cp, 1))
-		&& (!arcre || searcharc(arcre, arcflist, maxarcf, i))) {
-			for (j = 0; j < stackdepth; j++)
-				if (!strcmp(cp, filestack[j].name)) break;
-			if (j < stackdepth) continue;
-
-			memcpy((char *)&(filelist[maxfile]),
-				(char *)&(arcflist[i]), sizeof(namelist));
-			filelist[maxfile].name = cp;
-			if (isfile(&(filelist[maxfile])))
-				totalsize +=
-					getblock(filelist[maxfile].st_size);
-			maxfile++;
+		if ((tmp && *tmp) || (re && !regexp_exec(re, cp, 1))) continue;
+		if (arcre) {
+			if (!(n = searcharc(arcre, arcflist, maxarcf, i)))
+				continue;
+			if (n < 0) break;
 		}
+
+		for (j = 0; j < stackdepth; j++)
+			if (!strcmp(cp, filestack[j].name)) break;
+		if (j < stackdepth) continue;
+
+		memcpy((char *)&(filelist[maxfile]),
+			(char *)&(arcflist[i]), sizeof(namelist));
+		filelist[maxfile].name = cp;
+#if	!MSDOS
+		filelist[maxfile].linkname = arcflist[i].linkname;
+#endif
+		if (isfile(&(filelist[maxfile])))
+			totalsize += getblock(filelist[maxfile].st_size);
+		maxfile++;
 	}
 }
+
+#ifndef	_NOBROWSE
+static int readcwd(command, argset)
+char *command;
+int argset;
+{
+	FILE *fp;
+	char *cp, *buf;
+	int n, len;
+
+	fp = archpopen(command, filelist[filepos].name, argset);
+	if (!fp) return(-1);
+	buf = NULL;
+	len = 0;
+	while ((cp = fgets2(fp, 0))) {
+		n = strlen(cp);
+		buf = realloc2(buf, len + n + 1 + 1);
+		if (len) buf[len++] = ':';
+		memcpy(&(buf[len]), cp, n);
+		len += n;
+		free(cp);
+	}
+	n = dopclose(fp);
+	if (buf) {
+		buf[len] = '\0';
+		if (!n) setenv2(BROWSECWD, buf);
+		free(buf);
+	}
+	return(n);
+}
+#endif	/* !_NOBROWSE */
 
 static char *NEAR searcharcdir(file, flen)
 char *file;
@@ -1182,6 +1417,49 @@ char *path;
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
 	if (!path || !*path) path = "..";
+#ifndef	_NOBROWSE
+	if (browselist) {
+		int n;
+
+		if (strdelim(path, 0)) return(NULL);
+		if (!isdotdir(path));
+		else if (!path[1]) return(path);
+		else {
+# ifdef	_NOORIGSHELL
+			file = getenv2(BROWSECWD);
+# else
+			file = getshellvar(BROWSECWD, -1);
+# endif
+			if (file) {
+				if ((cp = strchr(file, ':'))) cp++;
+				else cp = file;
+				if (!(cp = strrdelim(cp, 0)))
+					setenv2(BROWSECWD, "");
+				else {
+					file = strdupcpy(file, cp - file);
+					setenv2(BROWSECWD, file);
+					free(file);
+				}
+			}
+			return((char *)-1);
+		}
+
+		n = browselevel;
+		if (browselist[browselevel + 1].comm
+		&& !(browselist[browselevel].flags & LF_DIRLOOP)) n++;
+		pushargvar(filelist[filepos].name);
+		if (browselist[browselevel].ext
+		&& !(browselist[browselevel].flags & LF_DIRNOCWD))
+			readcwd(browselist[browselevel].ext, 1);
+		if (dolaunch(&(browselist[n]), 1) < 0
+		|| !isarchbr(&(browselist[n]))) {
+			popargvar();
+			return(path);
+		}
+		browselevel = n;
+		return("..");
+	}
+#endif	/* !_NOBROWSE */
 	strcpy(duparcdir, archivedir);
 	do {
 		if (*path == _SC_) len = 1;
@@ -1280,68 +1558,57 @@ char ***argvp;
 }
 #endif	/* !_NOCOMPLETE */
 
-int launcher(VOID_A)
+int dolaunch(list, argset)
+launchtable *list;
+int argset;
 {
-	reg_t *re;
 	char *tmpdir;
-	int i, n;
+	int i;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
-
-	for (i = 0; i < maxlaunch; i++) {
-#if	!MSDOS
-		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase++;
-#endif
-		re = regexp_init(launchlist[i].ext, -1);
-		n = regexp_exec(re, filelist[filepos].name, 0);
-		regexp_free(re);
-#if	!MSDOS
-		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase--;
-#endif
-		if (n) break;
-	}
-	if (i >= maxlaunch) return(-1);
 
 	tmpdir = NULL;
 #ifndef	_NODOSDRIVE
 	drive = 0;
 #endif
 
-	if (archivefile) {
+	if (argset);
+	else if (archivefile) {
 		if (!(tmpdir = tmpunpack(1))) {
 			putterm(t_bell);
-			return(1);
+			return(-1);
 		}
 	}
 #ifndef	_NODOSDRIVE
 	else if ((drive = tmpdosdupl("", &tmpdir, 1)) < 0) {
 		putterm(t_bell);
-		return(1);
+		return(-1);
 	}
 #endif
 
-	if (!isarchbr(&(launchlist[i]))) {
-		execusercomm(launchlist[i].comm, filelist[filepos].name,
-			1, 0, 1);
+	if (!isarchbr(list)) {
+		execusercomm(list -> comm, filelist[filepos].name,
+			1, argset, 1);
+		if (argset);
 #ifndef	_NODOSDRIVE
-		if (drive) removetmp(tmpdir, NULL, filelist[filepos].name);
-		else
+		else if (drive)
+			removetmp(tmpdir, NULL, filelist[filepos].name);
 #endif
-		if (archivefile)
+		else if (archivefile)
 			removetmp(tmpdir, archivedir, filelist[filepos].name);
-		return(0);
+		return(1);
 	}
 
 	pusharchdupl();
+	if (argset);
 #ifndef	_NODOSDRIVE
-	if (drive) {
+	else if (drive) {
 		archduplp -> v_fullpath = strdup2(fullpath);
 		strcpy(fullpath, tmpdir);
 	}
-	else
 #endif
-	if (archivefile) {
+	else if (archivefile) {
 		archduplp -> v_fullpath = strdup2(fullpath);
 		strcpy(fullpath, tmpdir);
 		if (*archivedir) {
@@ -1359,14 +1626,15 @@ int launcher(VOID_A)
 	treepath = NULL;
 #endif
 	findpattern = NULL;
-	launchp = &(launchlist[i]);
+	launchp = list;
 	filelist = NULL;
 	maxent = 0;
 	sorton = 0;
 
-	if (readarchive(archivefile, launchp) < 0) {
+	if (readarchive(archivefile, launchp, argset) < 0) {
+		arcflist = NULL;
 		poparchdupl();
-		return(0);
+		return(-1);
 	}
 
 	arcflist = (namelist *)malloc2(((maxfile) ? maxfile : 1)
@@ -1378,12 +1646,57 @@ int launcher(VOID_A)
 	maxfile = 0;
 	filepos = -1;
 
-	return(0);
+	return(1);
 }
 
-/*ARGSUSED*/
+int launcher(VOID_A)
+{
+	reg_t *re;
+	int i, n;
+
+#ifndef	_NOBROWSE
+	if (browselist) {
+		n = browselevel;
+		if (browselist[browselevel + 1].comm
+		&& !(browselist[browselevel].flags & LF_FILELOOP)) n++;
+		pushargvar(filelist[filepos].name);
+		if (browselist[browselevel].ext
+		&& !(browselist[browselevel].flags & LF_FILENOCWD))
+			readcwd(browselist[browselevel].ext, 1);
+		if (dolaunch(&(browselist[n]), 1) < 0
+		|| !isarchbr(&(browselist[n]))) {
+			popargvar();
+			return(-1);
+		}
+		browselevel = n;
+		return(1);
+	}
+#endif	/* !_NOBROWSE */
+
+	for (i = 0; i < maxlaunch; i++) {
+#if	!MSDOS
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase++;
+#endif
+		re = regexp_init(launchlist[i].ext, -1);
+		n = regexp_exec(re, filelist[filepos].name, 0);
+		regexp_free(re);
+#if	!MSDOS
+		if (launchlist[i].flags & LF_IGNORECASE) pathignorecase--;
+#endif
+		if (n) break;
+	}
+	if (i >= maxlaunch) return(0);
+
+	return(dolaunch(&(launchlist[i]), 0));
+}
+
+#ifdef	_NODOSDRIVE
+static char *NEAR genfullpath(path, file, full)
+char *path, *file, *full;
+#else
 static char *NEAR genfullpath(path, file, full, tmpdir)
 char *path, *file, *full, *tmpdir;
+#endif
 {
 	char *cp;
 
@@ -1447,7 +1760,7 @@ char *path, **dirp, *full;
 	if (_dospath(cp)) cp += 2;
 	if (full) strcpy(fullpath, full);
 	else if (*cp != _SC_) return(-1);
-	realpath2(path, path, 1);
+	realpath2(path, path, -1);
 	strcpy(fullpath, dupfullpath);
 
 	if (!(cp = dostmpdir(drive))) return(-1);
@@ -1505,7 +1818,9 @@ char *arc;
 
 	if (archivefile) {
 		if (!(tmpdir = tmpunpack(0))) {
+#ifndef	_NODOSDRIVE
 			free(dest);
+#endif
 			return(0);
 		}
 	}
@@ -1516,13 +1831,15 @@ char *arc;
 	}
 #endif
 
+#ifdef	_NODOSDRIVE
+	if (!genfullpath(path, arc, full)) warning(-1, arc);
+#else
 	if (!genfullpath(path, arc, full, tmpdest)) warning(-1, arc);
+#endif
 	else {
 		duparchivefile = archivefile;
 		archivefile = NULL;
-		waitmes();
-		locate(0, LMESLINE);
-		tflush();
+		Xwaitmes();
 		ret = execusercomm(archivelist[i].p_comm, path, -1, 1, 0);
 		if (ret > 0) {
 			if (ret < 127) {
@@ -1556,11 +1873,11 @@ char *arc, *dir;
 char *arg;
 int tr, ignorelist;
 {
-	winvartable *wvp;
 	reg_t *re;
 	char *cp, *tmpdir, path[MAXPATHLEN];
 	int i, n, ret;
 #ifndef	_NODOSDRIVE
+	winvartable *wvp;
 	namelist alist[1], *dupfilelist;
 	char *full, *dest, *tmpdest;
 	int dd, drive, dupmaxfile, dupfilepos;
@@ -1629,11 +1946,17 @@ int tr, ignorelist;
 		dest = strdup2(path);
 		cp = tmpdest;
 	}
+#ifdef	FAKEUNINIT
+	else dest = NULL;	/* fake for -Wuninitialized */
+#endif
 
 	dupfilelist = filelist;
 	dupmaxfile = maxfile;
 	dupfilepos = filepos;
 	alist[0].name = arc;
+#if	!MSDOS
+	alist[0].linkname = NULL;
+#endif
 	alist[0].st_mode = 0700;
 	filelist = alist;
 	maxfile = 1;
@@ -1648,11 +1971,13 @@ int tr, ignorelist;
 #endif	/* !_NODOSDRIVE */
 	if ((!dir && preparedir(path) < 0) || _chdir2(cp) < 0)
 		warning(-1, path);
+#ifdef	_NODOSDRIVE
+	else if (!genfullpath(path, arc, fullpath)) warning(-1, arc);
+#else
 	else if (!genfullpath(path, arc, fullpath, tmpdir)) warning(-1, arc);
+#endif
 	else {
-		waitmes();
-		locate(0, LMESLINE);
-		tflush();
+		Xwaitmes();
 		ret = execusercomm(archivelist[i].u_comm, path,
 			-1, 1, ignorelist);
 		if (ret > 0) {
@@ -1774,10 +2099,10 @@ int maxf, n;
 	namelist *dupfilelist;
 	reg_t *re;
 	FILE *fp;
-	char *cp, *buf, *tmpdir, *file, *line;
+	char *buf, *tmpdir, *file, *line;
 	int i, c, no, len, match, dupmaxfile, dupfilepos;
 #if	FD >= 2
-	char *form;
+	char *cp, *form;
 	int skip;
 #else
 	int max;
@@ -1821,35 +2146,18 @@ int maxf, n;
 		filepos = dupfilepos;
 		if (!tmpdir) return(0);
 	}
+#ifdef	FAKEUNINIT
+	else tmpdir = NULL;	/* fake for -Wuninitialized */
+#endif
 
-	if (!(cp = evalcommand(list -> comm, file, NULL, 1))) {
+	locate(0, n_line - 1);
+	tflush();
+	if (!(fp = archpopen(list -> comm, file, 0))) {
 		if (n >= 0) removetmp(tmpdir, NULL, file);
 		return(0);
 	}
-	locate(0, n_line - 1);
-	tflush();
-#ifdef	_NOORIGSHELL
-# ifdef	DEBUG
-	_mtrace_file = "popen(start)";
-	fp = Xpopen(cp, "r");
-	if (_mtrace_file) _mtrace_file = NULL;
-	else {
-		_mtrace_file = "popen(end)";
-		malloc(0);	/* dummy malloc */
-	}
-# else
-	fp = Xpopen(cp, "r");
-# endif
-#else	/* !_NOORIGSHELL */
-	fp = dopopen(cp);
-#endif	/* !_NOORIGSHELL */
-	free(cp);
-	if (!fp) {
-		warning(-1, list -> comm);
-		return(-1);
-	}
 
-	locate(0, LMESLINE);
+	locate(0, L_MESLINE);
 	putterm(l_clear);
 	putterm(t_standout);
 	kanjiputs(SEACH_K);

@@ -5,7 +5,6 @@
  */
 
 #include <ctype.h>
-#include <signal.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
@@ -332,13 +331,13 @@ static VOID NEAR treebar(VOID_A)
 	locate(1, LFILETOP);
 	cputs2("Tree=");
 	kanjiputs2(treepath, n_column - 6, 0);
-	locate(0, LMESLINE);
+	locate(0, L_MESLINE);
 	putterm(l_clear);
 }
 
 VOID rewritetree(VOID_A)
 {
-	tr_scr = realloc2(tr_scr, (FILEPERLOW - 1) * (TREEFIELD + 1));
+	tr_scr = realloc2(tr_scr, (FILEPERROW - 1) * (TREEFIELD + 1));
 	searchtree();
 	showtree();
 	treebar();
@@ -552,10 +551,10 @@ static int NEAR _tree_input(VOID_A)
 
 	keyflush();
 #ifdef	_NOEDITMODE
-	ch = Xgetkey(SIGALRM, 0);
+	ch = Xgetkey(1, 0);
 #else
 	Xgetkey(-1, 0);
-	ch = Xgetkey(SIGALRM, 0);
+	ch = Xgetkey(1, 0);
 	Xgetkey(-1, 0);
 #endif
 
@@ -568,7 +567,7 @@ static int NEAR _tree_input(VOID_A)
 			treedown();
 			break;
 		case K_PPAGE:
-			half = (FILEPERLOW - 1) / 2;
+			half = (FILEPERROW - 1) / 2;
 			tmp = LFILETOP + half + 1 - tr_line;
 			if (tr_top + half > LFILETOP + 1)
 				half = LFILETOP - tr_top + 1;
@@ -578,7 +577,7 @@ static int NEAR _tree_input(VOID_A)
 			searchtree();
 			break;
 		case K_NPAGE:
-			half = (FILEPERLOW - 1) / 2;
+			half = (FILEPERROW - 1) / 2;
 			tmp = half + (LFILETOP + half + 1) - tr_line;
 			while (tmp-- > 0) if (treedown() < 0) break;
 			tmp = tr_line - (LFILETOP + half + 1);
@@ -662,7 +661,7 @@ static int NEAR _tree_input(VOID_A)
 			ch = '\0';
 			free(cwd);
 			break;
-		case CTRL('L'):
+		case K_CTRL('L'):
 			rewritefile(1);
 			break;
 		case K_ESC:
@@ -751,7 +750,7 @@ static char *NEAR _tree(VOID_A)
 		tr_line = LFILEBOTTOM - 2;
 	}
 
-	tr_scr = malloc2((FILEPERLOW - 1) * (TREEFIELD + 1));
+	tr_scr = malloc2((FILEPERROW - 1) * (TREEFIELD + 1));
 	searchtree();
 	showtree();
 	win_x = 0;
@@ -796,6 +795,10 @@ int cleanup, *ddp;
 {
 	char *path, *dupfullpath;
 
+	if (FILEPERROW < WFILEMINTREE) {
+		warning(0, NOROW_K);
+		return(NULL);
+	}
 	dupfullpath = strdup2(fullpath);
 	do {
 		path = _tree();

@@ -3,9 +3,11 @@
 #
 
 VERSION	= 2
+PREFIX	= /usr/local
 SHELL	= /bin/sh
 MAKE	= make
 CC	= cc
+HOSTCC	= $(CC)
 SED	= sed
 
 all: Makefile.tmp
@@ -67,7 +69,7 @@ mkmf.sed: mkmfsed
 	./mkmfsed > mkmf.sed
 
 mkmfsed: mkmfsed.c fd.h machine.h config.h
-	$(CC) -DFD=$(VERSION) $(CFLAGS) -DCCCOMMAND='"$(CC)"' -o $@ mkmfsed.c
+	$(HOSTCC) -DFD=$(VERSION) $(CFLAGS) -DCCCOMMAND='"'$(CC)'"' -DHOSTCCCOMMAND='"'$(HOSTCC)'"' -DPREFIX='"'$(PREFIX)'"' -o $@ mkmfsed.c
 
 config.h: config.hin
 	cp config.hin config.h
@@ -77,6 +79,9 @@ ecatman ecatman-b ecompman ecompman-b \
 fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
 depend config sh bsh clean: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp $@
+
+ipk: Makefile.tmp
+	$(MAKE) SHELL=$(SHELL) STRIP=$(STRIP) -f Makefile.tmp $@
 
 everything: Makefile.tmp
 	$(MAKE) SHELL=$(SHELL) -f Makefile.tmp sh bsh all

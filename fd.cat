@@ -2534,7 +2534,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      したい文字列部分を括ってやることで回避できます。
 
 著著者者
-     白井 隆 <shirai@nintendo.co.jp>。MS-DOS 用に作られたオリジナ
+     白井 隆 <shirai@unixusers.net>。MS-DOS 用に作られたオリジナ
      ルの『ＦＤ』は、A.Idei <SDI00544@niftyserve.or.jp> 氏によっ
      て 1989 年に最初に作成、公開されました。ffdd はこのインプリメ
      ントを模して、1995 年に UNIX 用に一から新たに作成されました。
@@ -2592,4 +2592,4 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      ユーザインタフェースが稚拙です。
 
 著著作作権権
-     Copyright (C) 1995-2002 by Takashi SHIRAI
+     Copyright (C) 1995-2003 by Takashi SHIRAI

@@ -40,6 +40,10 @@
 #include <sys/param.h>
 #endif
 
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
 #ifndef	L_SET
 # ifdef	SEEK_SET
 # define	L_SET	SEEK_SET
@@ -74,8 +78,11 @@ typedef struct _kconv_t {
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *strncpy3 __P_((char *, char *, int *, int));
-extern char *strstr2 __P_((char *, char *));
 
+#if	(!MSDOS && !defined (_NOKANJICONV)) \
+|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+static char *NEAR strstr2 __P_((char *, char *));
+#endif
 #if	!MSDOS && (!defined (_NOKANJICONV) \
 || (!defined (_NODOSDRIVE) && defined (CODEEUC)))
 static VOID NEAR sj2j __P_((char *, u_char *));
@@ -412,6 +419,33 @@ int ptr;
 
 #if	(!MSDOS && !defined (_NOKANJICONV)) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
+static char *NEAR strstr2(s1, s2)
+char *s1, *s2;
+{
+	int i, c1, c2;
+
+	while (*s1) {
+		for (i = 0;; i++) {
+			if (!s2[i]) return(s1);
+			c1 = toupper(s1[i]);
+			c2 = toupper(s2[i]);
+			if (c1 != c2) break;
+#ifndef	CODEEUC
+			if (issjis1(c1)) {
+				if (!s2[++i]) return(s1);
+				if (s1[i] != s2[i]) break;
+			}
+#endif
+			if (!s1[i]) break;
+		}
+#ifndef	CODEEUC
+		if (issjis1(*s1)) s1++;
+#endif
+		s1++;
+	}
+	return(NULL);
+}
+
 /*ARGSUSED*/
 int getlang(s, io)
 char *s;
@@ -422,29 +456,24 @@ int io;
 	if (!s) ret = NOCNV;
 # if	!MSDOS && !defined (_NOKANJICONV)
 #  ifndef	_NOKANJIFCONV
-	else if (io == L_FNAME && (strstr2(s, "HEX") || strstr2(s, "hex")))
-		ret = HEX;
-	else if (io == L_FNAME && (strstr2(s, "CAP") || strstr2(s, "cap")))
-		ret = CAP;
+	else if (io == L_FNAME && strstr2(s, "hex")) ret = HEX;
+	else if (io == L_FNAME && strstr2(s, "cap")) ret = CAP;
 #  endif	/* !_NOKANJIFCONV */
-	else if (strstr2(s, "SJIS") || strstr2(s, "sjis")) ret = SJIS;
-	else if (strstr2(s, "EUC") || strstr2(s, "euc")
-	|| strstr2(s, "UJIS") || strstr2(s, "ujis")) ret = EUC;
+	else if (strstr2(s, "sjis")) ret = SJIS;
+	else if (strstr2(s, "euc") || strstr2(s, "ujis")) ret = EUC;
 #  if	defined (FD) && (FD >= 2)
-	else if (strstr2(s, "UTF8") || strstr2(s, "utf8")) ret = UTF8;
-	else if (strstr2(s, "OJUNET") || strstr2(s, "ojunet"))
-		ret = O_JUNET;
-	else if (strstr2(s, "OJIS8") || strstr2(s, "ojis8")) ret = O_JIS8;
-	else if (strstr2(s, "OJIS") || strstr2(s, "ojis")) ret = O_JIS7;
-	else if (strstr2(s, "JUNET") || strstr2(s, "junet")) ret = JUNET;
-	else if (strstr2(s, "JIS8") || strstr2(s, "jis8")) ret = JIS8;
+	else if (strstr2(s, "utf8") || strstr2(s, "utf-8")) ret = UTF8;
+	else if (strstr2(s, "ojunet")) ret = O_JUNET;
+	else if (strstr2(s, "ojis8")) ret = O_JIS8;
+	else if (strstr2(s, "ojis")) ret = O_JIS7;
+	else if (strstr2(s, "junet")) ret = JUNET;
+	else if (strstr2(s, "jis8")) ret = JIS8;
 #  endif	/* FD && (FD >= 2) */
-	else if (strstr2(s, "JIS") || strstr2(s, "jis")) ret = JIS7;
+	else if (strstr2(s, "jis")) ret = JIS7;
 # endif	/* !MSDOS && !_NOKANJICONV */
 # ifndef	_NOENGMES
-	else if (io == L_OUTPUT
-	&& (strstr2(s, "ENG") || strstr2(s, "eng")
-	|| !strcmp(s, "C"))) ret = ENG;
+	else if (io == L_OUTPUT && (strstr2(s, "eng") || !strcmp(s, "C")))
+		ret = ENG;
 # endif
 	else ret = NOCNV;
 
