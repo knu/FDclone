@@ -38,7 +38,7 @@ typedef unsigned long	u_long;
 # endif
 # ifdef	__TURBOC__
 # define	FORCEDSTDC
-typedef	long	off_t;
+typedef long	off_t;
 # endif
 #define	_SC_	'\\'
 #define	_SS_	"\\"
@@ -369,7 +369,23 @@ typedef	long	off_t;
 #define	CODEEUC
 #define	USEMANLANG
 #define	BSDINSTALL
-#define	TERMCAPLIB		"-ltermcap"
+/*
+ *	This is a fake '#if' for some buggy Slackware distribution.
+ *	Will you please define 'Slackware' manually on Slackware.
+ *
+ *	Some old SlackWare has buggy libncurses, to use libtermcap.
+ *	Another distribution has no libtermcap, to use libncurses.
+ *	If you use older Slackware and the terminal trouble occured,
+ *	you should try to define 'Slackware' here and to re-compile.
+ *
+#define	Slackware
+ *
+ */
+# if	defined (Slackware)
+# define	TERMCAPLIB		"-ltermcap"
+# else
+# define	TERMCAPLIB		"-lncurses"
+# endif
 #define	DECLERRLIST
 #define	NOTZFILEH
 #define	NOTMGMTOFF
@@ -638,7 +654,7 @@ typedef	long	off_t;
 # endif
 #endif
 
-#if	(defined (__STDC__) || defined (FORCEDSTDC))\
+#if	(defined (__STDC__) || defined (FORCEDSTDC)) \
 && !defined (__STRICT_ANSI__) && !defined (STRICTSTDC)
 #define	__P_(args)	args
 #define	CONST		const
@@ -696,7 +712,7 @@ typedef	long	off_t;
 # endif
 #endif
 
-#if	defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)\
+#if	defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH) \
 || defined (USEFSDATA)
 # ifdef	USEVFSH
 # undef	USEVFSH
@@ -730,29 +746,29 @@ typedef	long	off_t;
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
 || defined (USEMNTINFOR)
 # ifdef	USEMNTINFO
 # undef	USEMNTINFO
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
 || defined (USEMNTINFOR) || defined (USEMNTINFO)
 # ifdef	USEGETMNT
 # undef	USEGETMNT
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
 # ifdef	USEGETFSENT
 # undef	USEGETFSENT
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)\
-|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)\
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
+|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT) \
 || defined (USEGETFSENT)
 # ifdef	USEMNTENTH
 # undef	USEMNTENTH

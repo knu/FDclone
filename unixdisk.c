@@ -19,7 +19,7 @@
 #include "dosdisk.h"
 
 #ifndef	issjis1
-#define	issjis1(c)	((0x81 <= (c) && (c) <= 0x9f)\
+#define	issjis1(c)	((0x81 <= (c) && (c) <= 0x9f) \
 			|| (0xe0 <= (c) && (c) <= 0xfc))
 #endif
 
@@ -154,11 +154,11 @@ char *s;
 
 	cp = NULL;
 	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_ && !cp) cp = &s[i];
+		if (s[i] == _SC_ && !cp) cp = &(s[i]);
 		else cp = NULL;
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
 	}
-	if (!cp) *(cp = &s[i]) = _SC_;
+	if (!cp) *(cp = &(s[i])) = _SC_;
 	*(++cp) = '\0';
 	return(cp);
 }
@@ -976,7 +976,7 @@ u_long l_sect;
 			if (buf[PART_TABLE + ofs + j]) break;
 		if (j >= PART_SIZE) continue;
 
-		pt = (partition_t *)(&(buf[PART_TABLE + ofs]));
+		pt = (partition_t *)&(buf[PART_TABLE + ofs]);
 		sh = pt -> s_head;
 #ifdef	PC98
 		ss = pt -> s_sect;
@@ -1180,7 +1180,7 @@ int drv;
 	return(end);
 }
 
-int unlockdrive(drv, level)
+static int unlockdrive(drv, level)
 int drv, level;
 {
 	struct SREGS sreg;
@@ -1691,7 +1691,7 @@ DIR *dirp;
 	free(dirp -> dd_buf);
 	free(dupdirp -> dd_path);
 	cp = dirp -> dd_path;
-	memcpy(dirp, dupdirp, sizeof(DIR));
+	memcpy((char *)dirp, (char *)dupdirp, sizeof(DIR));
 	dirp -> dd_path = cp;
 	free(dupdirp);
 
@@ -1974,10 +1974,10 @@ statfs_t *buf;
 		char tmp[sizeof(long) * 3 + 1];
 
 		if (dosstatfs(drive, tmp) < 0) return(-1);
-		buf -> f_bsize = *((long *)(&tmp[sizeof(long) * 0]));
-		buf -> f_blocks = *((long *)(&tmp[sizeof(long) * 1]));
+		buf -> f_bsize = *((long *)&(tmp[sizeof(long) * 0]));
+		buf -> f_blocks = *((long *)&(tmp[sizeof(long) * 1]));
 		buf -> f_bfree =
-		buf -> f_bavail = *((long *)(&tmp[sizeof(long) * 2]));
+		buf -> f_bavail = *((long *)&(tmp[sizeof(long) * 2]));
 		buf -> f_files = -1;
 	}
 	else
@@ -2015,7 +2015,7 @@ statfs_t *buf;
 		}
 
 		if (!reg.x.ax || !reg.x.cx || !reg.x.dx || reg.x.dx < reg.x.bx)
-			buf -> f_bsize = buf -> f_blocks = 
+			buf -> f_bsize = buf -> f_blocks =
 			buf -> f_bfree = buf -> f_bavail = -1L;
 		else {
 			buf -> f_bsize = (long)(reg.x.ax) * (long)(reg.x.cx);

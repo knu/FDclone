@@ -4,8 +4,8 @@
  *	File Access Module
  */
 
+#include <fcntl.h>
 #include "fd.h"
-#include "term.h"
 #include "func.h"
 #include "kctype.h"
 #include "kanji.h"
@@ -37,27 +37,24 @@ extern int sorton;
 extern off_t marksize;
 extern off_t totalsize;
 extern off_t blocksize;
-extern int copypolicy;
-extern int removepolicy;
-extern char *destpath;
 extern char fullpath[];
 extern char *tmpfilename;
 
 #define	DOSDIRENT		32
 #define	LFNENTSIZ		13
+#ifndef	O_BINARY
+#define	O_BINARY		0
+#endif
 
-#define	realdirsiz(name)	((dos) ? ((k_strlen(name) / LFNENTSIZ + 1)\
-					* DOSDIRENT + DOSDIRENT)\
-				:	(((strlen(name) + boundary)\
+#define	realdirsiz(name)	((dos) ? ((k_strlen(name) / LFNENTSIZ + 1) \
+					* DOSDIRENT + DOSDIRENT) \
+				:	(((strlen(name) + boundary) \
 					& ~(boundary - 1)) + dirsize))
-#define	getnamlen(ent)		((dos) ? ((((ent) - DOSDIRENT)\
-					/ DOSDIRENT) * LFNENTSIZ - 1)\
-				: 	((((ent) - dirsize)\
+#define	getnamlen(ent)		((dos) ? ((((ent) - DOSDIRENT) \
+					/ DOSDIRENT) * LFNENTSIZ - 1) \
+				: 	((((ent) - dirsize) \
 					& ~(boundary - 1)) - 1))
 
-static int iscurdir __P_((char *));
-static int islowerdir __P_((char *, char *));
-static char *getdestdir __P_((char *, char *));
 #ifndef	_NOWRITEFS
 static int k_strlen __P_((char *));
 #if	!MSDOS
@@ -72,10 +69,6 @@ static VOID restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir = NULL;
-
-#ifndef	_NODOSDRIVE
-static int destdrive = -1;
-#endif
 
 
 #if	MSDOS
@@ -129,12 +122,12 @@ namelist *list;
 
 #if	MSDOS
 	if (stat2(list -> name, &status) < 0) return(-1);
-	memcpy(&lstatus, &status, sizeof(struct stat));
+	memcpy((char *)&lstatus, (char *)&status, sizeof(struct stat));
 #else
 # ifndef	_NODOSDRIVE
 	if (dospath(list -> name, NULL)) {
 		if (stat2(list -> name, &status) < 0) return(-1);
-		memcpy(&lstatus, &status, sizeof(struct stat));
+		memcpy((char *)&lstatus, (char *)&status, sizeof(struct stat));
 	}
 	else
 # endif
@@ -151,7 +144,7 @@ namelist *list;
 #endif
 
 	if (isdisplnk(dispmode))
-		memcpy(&lstatus, &status, sizeof(struct stat));
+		memcpy((char *)&lstatus, (char *)&status, sizeof(struct stat));
 
 	list -> st_nlink = lstatus.st_nlink;
 #if	!MSDOS
@@ -222,6 +215,10 @@ CONST VOID_P vp2;
 			tmp = strpathcmp(list1 -> name, list2 -> name);
 			break;
 		case 2:
+			if (isdir(list1)) {
+				tmp = strpathcmp(list1 -> name, list2 -> name);
+				break;
+			}
 			if ((cp1 = strrchr(list1 -> name, '.'))) cp1++;
 			else cp1 = "";
 			if ((cp2 = strrchr(list2 -> name, '.'))) cp2++;
@@ -229,7 +226,9 @@ CONST VOID_P vp2;
 			tmp = strpathcmp(cp1, cp2);
 			break;
 		case 3:
-			tmp = (long)(list1 -> st_size)
+			if (isdir(list1))
+				tmp = strpathcmp(list1 -> name, list2 -> name);
+			else tmp = (long)(list1 -> st_size)
 				- (long)(list2 -> st_size);
 			break;
 		case 4:
@@ -317,71 +316,6 @@ char *arcregstr;
 	return(dp);
 }
 
-static int iscurdir(path)
-char *path;
-{
-	char *cwd;
-	int i;
-
-	cwd = getwd2();
-#if	MSDOS || !defined (_NODOSDRIVE)
-	if (dospath(path, NULL) != dospath(cwd, NULL)) {
-		free(cwd);
-		return(0);
-	}
-#endif
-	if (_chdir2(path) < 0) path = NULL;
-	else {
-		path = getwd2();
-		if (_chdir2(cwd) < 0) error(cwd);
-	}
-	i = (path) ? !strpathcmp(cwd, path) : 0;
-	free(cwd);
-	if (path) free(path);
-	return(i);
-}
-
-static int islowerdir(path, org)
-char *path, *org;
-{
-	char *cp, *top, *cwd, tmp[MAXPATHLEN + 1];
-	int i;
-
-	cwd = getwd2();
-	strcpy(tmp, path);
-	top = tmp;
-#if	MSDOS || !defined (_NODOSDRIVE)
-	if (dospath(path, NULL) != dospath(org, NULL)) {
-		free(cwd);
-		return(0);
-	}
-	if (_dospath(tmp)) top += 2;
-#endif
-	while (_chdir2(tmp) < 0) {
-		if ((cp = strrdelim(top, 0)) && cp > top) *cp = '\0';
-		else {
-			path = NULL;
-			break;
-		}
-	}
-	i = 0;
-	if (path) {
-		path = getwd2();
-		if (_chdir2(cwd) < 0) error(cwd);
-		if (_chdir2(org) >= 0) {
-			org = getwd2();
-			i = strlen(org);
-			if (strnpathcmp(org, path, i) || path[i] != _SC_)
-				i = 0;
-			free(org);
-		}
-		if (_chdir2(cwd) < 0) error(cwd);
-		free(path);
-	}
-	free(cwd);
-	return(i);
-}
-
 int underhome(buf)
 char *buf;
 {
@@ -422,7 +356,11 @@ char *buf;
 	}
 
 	len = strlen(homedir);
-	if (!len || strnpathcmp(cwd, homedir, len)) {
+#if	MSDOS
+	if (len <= 3 || strnpathcmp(cwd, homedir, len)) {
+#else
+	if (len <= 1 || strnpathcmp(cwd, homedir, len)) {
+#endif
 		cp = NULL;
 		if (buf) *buf = '\0';
 	}
@@ -473,126 +411,108 @@ char *dir;
 	return(0);
 }
 
-static char *getdestdir(mes, arg)
-char *mes, *arg;
+int touchfile(path, atime, mtime)
+char *path;
+time_t atime, mtime;
 {
-	char *dir;
-#ifndef	_NODOSDRIVE
-	int drive;
-#endif
+#ifdef	USEUTIME
+	struct utimbuf times;
 
-	if (arg && *arg) dir = strdup2(arg);
-	else if (!(dir = inputstr(mes, 1, -1, NULL, 1))) return(NULL);
-	else if (!*(dir = evalpath(dir, 1))) {
-		dir = (char *)realloc2(dir, 2);
-		dir[0] = '.';
-		dir[1] = '\0';
-	}
-#if	MSDOS || !defined (_NODOSDRIVE)
-	else if (_dospath(dir) && !dir[2]) {
-		dir = (char *)realloc2(dir, 4);
-		dir[2] = '.';
-		dir[3] = '\0';
-	}
-#endif
+	times.actime = atime;
+	times.modtime = mtime;
+	return(Xutime(path, &times));
+#else
+	struct timeval tvp[2];
 
-#ifndef	_NODOSDRIVE
-	destdrive = -1;
-	if ((drive = dospath2(dir))
-	&& (destdrive = preparedrv(drive)) < 0) {
-		warning(-1, dir);
-		free(dir);
-		return(NULL);
-	}
+	tvp[0].tv_sec = atime;
+	tvp[0].tv_usec = 0;
+	tvp[1].tv_sec = mtime;
+	tvp[1].tv_usec = 0;
+	return(Xutimes(path, tvp));
 #endif
-	if (preparedir(dir) < 0) {
-		warning(-1, dir);
-		free(dir);
-#ifndef	_NODOSDRIVE
-		if (destdrive >= 0) shutdrv(destdrive);
-#endif
-		return(NULL);
-	}
-	return(dir);
 }
 
-/*ARGSUSED*/
-int copyfile(list, max, arg, tr)
-namelist *list;
-int max;
-char *arg;
-int tr;
+int cpfile(src, dest, statp)
+char *src, *dest;
+struct stat *statp;
 {
-	if (!mark && isdotdir(list[filepos].name)) {
-		putterm(t_bell);
-		return(0);
-	}
-	destpath =
-#ifndef	_NOTREE
-# ifdef	_NODOSDRIVE
-	(tr) ? tree(1, (int *)1) :
-# else
-	(tr) ? tree(1, &destdrive) :
-# endif
-#endif	/* !_NOTREE */
-	getdestdir(COPYD_K, arg);
+	char buf[BUFSIZ];
+	int i, fd1, fd2;
 
-	if (!destpath) return((tr) ? 2 : 1);
-	copypolicy = (iscurdir(destpath)) ? 2 : 0;
-	if (mark > 0) applyfile(list, max, cpfile, ENDCP_K);
-	else if (isdir(&list[filepos]) && !islink(&list[filepos])) {
-		if (copypolicy) {
-			warning(EEXIST, list[filepos].name);
-			return((tr) ? 2 : 1);
+	if ((statp -> st_mode & S_IFMT) == S_IFLNK) {
+		if ((i = Xreadlink(src, buf, BUFSIZ)) < 0) return(-1);
+		buf[i] = '\0';
+		return(Xsymlink(buf, dest));
+	}
+	if ((fd1 = Xopen(src, O_RDONLY | O_BINARY, statp -> st_mode)) < 0)
+		return(-1);
+	if ((fd2 = Xopen(dest, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC,
+#if	MSDOS
+	statp -> st_mode | S_IWRITE)) < 0) {
+#else
+	statp -> st_mode)) < 0) {
+#endif
+		Xclose(fd1);
+		return(-1);
+	}
+
+	for (;;) {
+		while ((i = Xread(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
+		if (i < BUFSIZ) break;
+		if (Xwrite(fd2, buf, BUFSIZ) < 0 && errno != EINTR) {
+			i = -1;
+			break;
 		}
-		applydir(list[filepos].name, cpfile, cpdir,
-			(islowerdir(destpath, list[filepos].name)) ? 2 : 1,
-			ENDCP_K);
 	}
-	else if (cpfile(list[filepos].name) < 0)
-		warning(-1, list[filepos].name);
-	free(destpath);
-#ifndef	_NODOSDRIVE
-	if (destdrive >= 0) shutdrv(destdrive);
+	if (i > 0 && Xwrite(fd2, buf, i) < 0 && errno != EINTR) i = -1;
+
+	Xclose(fd2);
+	Xclose(fd1);
+
+	if (i < 0) {
+		i = errno;
+		Xunlink(dest);
+		errno = i;
+		return(-1);
+	}
+#if	MSDOS
+	if (touchfile(dest, statp -> st_atime, statp -> st_mtime) < 0)
+		return(-1);
+	if (!(statp -> st_mode & S_IWRITE)) Xchmod(dest, statp -> st_mode);
 #endif
-	return(4);
+	return(0);
 }
 
-/*ARGSUSED*/
-int movefile(list, max, arg, tr)
-namelist *list;
-int max;
-char *arg;
-int tr;
+int mvfile(src, dest, statp)
+char *src, *dest;
+struct stat *statp;
 {
-	if (!mark && isdotdir(list[filepos].name)) {
-		putterm(t_bell);
-		return(0);
-	}
-	destpath =
-#ifndef	_NOTREE
-# ifdef	_NODOSDRIVE
-	(tr) ? tree(1, (int *)1) :
-# else
-	(tr) ? tree(1, &destdrive) :
-# endif
-#endif	/* !_NOTREE */
-	getdestdir(MOVED_K, arg);
-
-	if (!destpath || iscurdir(destpath)) return((tr) ? 2 : 1);
-	copypolicy = removepolicy = 0;
-	if (mark > 0) filepos = applyfile(list, max, mvfile, ENDMV_K);
-	else if (islowerdir(destpath, list[filepos].name))
-		warning(EINVAL, list[filepos].name);
-	else if (mvfile(list[filepos].name) < 0)
-		warning(-1, list[filepos].name);
-	else filepos++;
-	if (filepos >= max) filepos = max - 1;
-	free(destpath);
-#ifndef	_NODOSDRIVE
-	if (destdrive >= 0) shutdrv(destdrive);
+#if	MSDOS
+	u_short mode;
 #endif
-	return(4);
+
+	if (Xrename(src, dest) >= 0) return(0);
+	if (errno != EXDEV || (statp -> st_mode & S_IFMT) == S_IFDIR)
+		return(-1);
+#if	MSDOS
+	mode = statp -> st_mode;
+	if (!(statp -> st_mode & S_IWRITE)) {
+		statp -> st_mode |= S_IWRITE;
+		Xchmod(src, statp -> st_mode);
+	}
+#endif
+	if (cpfile(src, dest, statp) < 0
+	|| Xunlink(src) < 0
+	|| ((statp -> st_mode & S_IFMT) != S_IFLNK
+	&& (touchfile(dest, statp -> st_atime, statp -> st_mtime) < 0
+#ifdef	HAVEFLAGS
+	|| chflags(dest, statp -> st_flags) < 0
+#endif
+	))) return(-1);
+#if	MSDOS
+	if (!(mode & S_IWRITE)) Xchmod(dest, mode);
+#endif
+	return(0);
 }
 
 int mktmpdir(dir)
@@ -688,7 +608,7 @@ char *dir, *subdir, *file;
 		cp = dupdir + strlen(dupdir);
 		for (;;) {
 			*cp = '\0';
-			if ((tmp = strrdelim(dupdir, 0))) tmp++;
+			if ((tmp = strrdelim(dupdir, 1))) tmp++;
 			else tmp = dupdir;
 			if ((*tmp && strcmp(tmp, ".") && _Xrmdir(dupdir) < 0)
 			|| tmp == dupdir) break;
@@ -744,6 +664,7 @@ char *dir, **dirp;
 namelist *list;
 int max, single;
 {
+	struct stat status;
 	char *cp, path[MAXPATHLEN + 1];
 	int i, drive;
 
@@ -759,16 +680,21 @@ int max, single;
 
 	if (single || mark <= 0) {
 		strcpy(cp, list[filepos].name);
-		if (_cpfile(list[filepos].name, path,
-		list[filepos].st_mode) < 0) {
+		status.st_mode = list[filepos].st_mode;
+		status.st_atime =
+		status.st_mtime = list[filepos].st_mtim;
+		if (cpfile(list[filepos].name, path, &status) < 0) {
 			removetmp(path, NULL, NULL);
 			return(-1);
 		}
 	}
 	else for (i = 0; i < max; i++) {
-		if (!ismark(&list[i])) continue;
+		if (!ismark(&(list[i]))) continue;
 		strcpy(cp, list[i].name);
-		if (_cpfile(list[i].name, path, list[i].st_mode) < 0) {
+		status.st_mode = list[i].st_mode;
+		status.st_atime =
+		status.st_mtime = list[i].st_mtim;
+		if (cpfile(list[i].name, path, &status) < 0) {
 			removetmp(path, NULL, "");
 			return(-1);
 		}
@@ -780,16 +706,17 @@ int max, single;
 	return(drive);
 }
 
-int tmpdosrestore(drive, file, mode)
+int tmpdosrestore(drive, file)
 int drive;
 char *file;
-int mode;
 {
+	struct stat status;
 	char path[MAXPATHLEN + 1];
 
 	sprintf(path, "%c:%s", drive, file);
 	waitmes();
-	if (_cpfile(file, path, mode) < 0) return(-1);
+	if (Xlstat(file, &status) < 0 || cpfile(file, path, &status) < 0)
+		return(-1);
 
 	return(0);
 }
@@ -853,7 +780,7 @@ char *tmpdir;
 	}
 
 	for (;;) {
-		if (tmpdir) strcpy(&tmp[l], str);
+		if (tmpdir) strcpy(&(tmp[l]), str);
 		if (nofile(str) && (!tmpdir || nofile(tmp))) return(str);
 
 		for (i = len - 1; i >= 0; i--) {
@@ -975,6 +902,7 @@ int max, fs;
 	}
 
 	for (i = 0; i < max; i++) if (!isdotdir(list[i].name)) break;
+	if (i >= max) return;
 	top = i;
 	if (dos == 1) len = 8;
 	else len = getnamlen(realdirsiz(list[top].name));

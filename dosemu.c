@@ -97,11 +97,9 @@ DIR *dirp;
 #else	/* !_NOROCKRIDGE || !_NODOSDRIVE */
 	static st_dirent buf;
 	struct dirent *dp;
+	char *cp;
 #ifndef	_NOROCKRIDGE
 	char tmp[MAXNAMLEN + 1];
-#endif
-#if	defined (CODEEUC) && !defined (_NODOSDRIVE)
-	int i;
 #endif
 
 #ifndef	_NODOSDRIVE
@@ -110,21 +108,18 @@ DIR *dirp;
 #endif
 	dp = readdir(dirp);
 	if (!dp) return(NULL);
-	memcpy(&buf, dp,
-		(char *)(((struct dirent *)&buf) -> d_name) - (char *)&buf);
-	strcpy(((struct dirent *)&buf) -> d_name, dp -> d_name);
-#if	defined (CODEEUC) && !defined (_NODOSDRIVE)
-	if (*((int *)dirp) < 0) {
-		i = sjis2ujis(((struct dirent *)&buf) -> d_name,
-			(u_char *)(dp -> d_name));
-		((struct dirent *)&buf) -> d_name[i] = '\0';
-	}
+	cp = ((struct dirent *)&buf) -> d_name;
+	memcpy(&buf, dp, cp - (char *)&buf);
+#ifdef	CODEEUC
+	if (*((int *)dirp) < 0)
+		cp[sjis2ujis(cp, (u_char *)(dp -> d_name))] = '\0';
+	else
 #endif
+	strcpy(cp, dp -> d_name);
 #ifndef	_NOROCKRIDGE
-	if (transfile(((struct dirent *)&buf) -> d_name, tmp) == tmp)
-		strcpy(((struct dirent *)&buf) -> d_name, tmp);
+	if (transfile(cp, tmp) == tmp) strcpy(cp, tmp);
 #endif
-	return((struct dirent *)(&buf));
+	return((struct dirent *)&buf);
 #endif	/* !_NOROCKRIDGE || !_NODOSDRIVE */
 }
 
@@ -186,34 +181,37 @@ char *Xgetcwd(path, size)
 char *path;
 int size;
 {
-#ifdef	_NODOSDRIVE
-#ifdef	USEGETWD
-	return((char *)getwd(path));
-#else
-	return((char *)getcwd(path, size));
+#if	!defined (_NODOSDRIVE) && defined (CODEEUC)
+	char buf[MAXPATHLEN + 1];
 #endif
-#else	/* !_NODOSDRIVE */
-#ifdef	CODEEUC
-	char tmpbuf[MAXPATHLEN + 1];
-#endif
-	int i;
 
-#ifdef	USEGETWD
+#ifdef	_NODOSDRIVE
+# ifdef	USEGETWD
+	return((char *)getwd(path));
+# else
+	return((char *)getcwd(path, size));
+# endif
+#else	/* !_NODOSDRIVE */
+# ifdef	USEGETWD
 	if (lastdrv < 0) return((char *)getwd(path));
-#else
+# else
 	if (lastdrv < 0) return((char *)getcwd(path, size));
-#endif
+# endif
 	else if (!dosgetcwd(path, size)) return(NULL);
 
-	if (path[0] >= 'A' && path[0] <= 'Z') for (i = 2; path[i]; i++) {
-		if (issjis1((u_char)(path[i]))) i++;
-		else if (path[i] >= 'A' && path[i] <= 'Z')
-			path[i] += 'a' - 'A';
+	if (path[0] >= 'A' && path[0] <= 'Z') {
+		int i;
+
+		for (i = 2; path[i]; i++) {
+			if (issjis1((u_char)(path[i]))) i++;
+			else if (path[i] >= 'A' && path[i] <= 'Z')
+				path[i] += 'a' - 'A';
+		}
 	}
-#ifdef	CODEEUC
-	tmpbuf[sjis2ujis(tmpbuf, (u_char *)path)] = '\0';
-	strcpy(path, tmpbuf);
-#endif
+# ifdef	CODEEUC
+	buf[sjis2ujis(buf, (u_char *)path)] = '\0';
+	strcpy(path, buf);
+# endif
 	return(path);
 #endif	/* !_NODOSDRIVE */
 }

@@ -50,7 +50,7 @@ extern char *findpattern;
 static char *_realpath2 __P_((char *, char *));
 static int _getenv2 __P_((char *, int, char **));
 static char **_putenv2 __P_((char *, char **));
-#if	!MSDOS && !defined (NOTZFILEH)\
+#if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static int tmcmp __P_((struct tm *, struct tm *));
 #endif
@@ -114,12 +114,12 @@ char *path, *resolved;
 	if (!strcmp(path, "..")) {
 		cp = strrdelim(resolved, 0);
 #if	MSDOS
-		if (cp && cp != &resolved[2]) *cp = '\0';
+		if (cp && cp != &(resolved[2])) *cp = '\0';
 		else resolved[3] = '\0';
 #else	/* !MSDOS */
 #ifndef	_NODOSDRIVE
 		if (_dospath(resolved)) {
-			if (cp && cp != &resolved[2]) *cp = '\0';
+			if (cp && cp != &(resolved[2])) *cp = '\0';
 			else resolved[3] = '\0';
 		}
 		else
@@ -145,7 +145,7 @@ char *path, *resolved;
 				buf[i] = '\0';
 				if (*buf == _SC_) strcpy(resolved, buf);
 				else {
-					*cp = '\0';
+					*(cp - 1) = '\0';
 					_realpath2(buf, resolved);
 				}
 			}
@@ -196,6 +196,9 @@ char *path, *resolved;
 	}
 # endif
 #endif	/* !MSDOS */
+	else if (!*fullpath) {
+		if (!Xgetcwd(resolved, MAXPATHLEN)) strcpy(resolved, _SS_);
+	}
 	else if (resolved != fullpath) strcpy(resolved, fullpath);
 	return(_realpath2(path, resolved));
 }
@@ -384,7 +387,7 @@ int c;
 	int i;
 
 	for (i = 0; s[i]; i++) {
-		if (s[i] == c) return(&s[i]);
+		if (s[i] == c) return(&(s[i]));
 		if (iskanji1(s[i]) && !s[++i]) break;
 	}
 	return(NULL);
@@ -399,7 +402,7 @@ int c;
 
 	cp = NULL;
 	for (i = 0; s[i]; i++) {
-		if (s[i] == c) cp = &s[i];
+		if (s[i] == c) cp = &(s[i]);
 		if (iskanji1(s[i]) && !s[++i]) break;
 	}
 	return(cp);
@@ -436,6 +439,7 @@ int *lenp, ptr;
 		s1[0] = ' ';
 		i = 1;
 	}
+
 	while ((*lenp < 0 || i < *lenp) && s2[j]) {
 #ifdef	CODEEUC
 		if (isekana(s2, j)) {
@@ -451,7 +455,7 @@ int *lenp, ptr;
 			}
 			s1[i++] = s2[j++];
 		}
-		else if ((u_char)(s2[j]) < ' ' || s2[j] == C_DEL) {
+		else if (isctl(s2[j])) {
 			s1[i++] = '^';
 			if (*lenp >= 0 && i >= *lenp) break;
 			s1[i++] = ((s2[j++] + '@') & 0x7f);
@@ -459,6 +463,7 @@ int *lenp, ptr;
 		}
 		s1[i++] = s2[j++];
 	}
+
 	l = i;
 	if (*lenp >= 0 && ptr >= 0) while (i < *lenp) s1[i++] = ' ';
 	s1[i] = '\0';
@@ -492,8 +497,7 @@ char *str;
 {
 	int i, len;
 
-	for (i = len = 0; str[i]; i++, len++)
-		if ((u_char)(str[i]) < ' ' || str[i] == C_DEL) len++;
+	for (i = len = 0; str[i]; i++, len++) if (isctl(str[i])) len++;
 	return(len);
 }
 
@@ -507,7 +511,7 @@ char *str;
 		if (isekana(str, i)) i++;
 		else
 #endif
-		if ((u_char)(str[i]) < ' ' || str[i] == C_DEL) len++;
+		if (isctl(str[i])) len++;
 	}
 	return(len);
 }
@@ -674,6 +678,7 @@ int noconf;
 {
 	int status;
 
+	if (!command || !*command) return(0);
 	if (noconf >= 0) {
 		locate(0, n_line - 1);
 		putterm(l_clear);
@@ -767,7 +772,7 @@ gid_t gid;
 }
 #endif
 
-#if	!MSDOS && !defined (NOTZFILEH)\
+#if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static int tmcmp(tm1, tm2)
 struct tm *tm1, *tm2;

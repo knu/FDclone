@@ -7,6 +7,18 @@
 #ifndef	__TERM_H_
 #define	__TERM_H_
 
+#ifndef	VOID_P
+#ifdef	NOVOID
+#define	VOID
+#define	VOID_T	int
+#define	VOID_P	char *
+#else
+#define	VOID	void
+#define	VOID_T	void
+#define	VOID_P	void *
+#endif
+#endif
+
 #define	CR	'\r'
 #define	ESC	'\033'
 
@@ -117,6 +129,9 @@ extern u_char cc_quit;
 extern u_char cc_eof;
 extern u_char cc_eol;
 extern VOID_T (*keywaitfunc)__P_((VOID_A));
+#if	!MSDOS
+extern int usegetcursor;
+#endif
 
 #if	MSDOS
 #define	putterm(str)	cputs2(str)

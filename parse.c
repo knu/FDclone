@@ -29,15 +29,19 @@ extern int sorttree;
 #ifndef	_NOWRITEFS
 extern int writefs;
 #endif
+extern int minfilename;
 extern short histsize[];
 extern int savehist;
-extern int minfilename;
 #ifndef	_NOTREE
 extern int dircountlimit;
 #endif
-extern int showsecond;
 #ifndef	_NODOSDRIVE
 extern int dosdrive;
+#endif
+extern int showsecond;
+extern int sizeinfo;
+#ifndef	_NOCOLOR
+extern int ansicolor;
 #endif
 #ifndef	_NOEDITMODE
 extern char *editmode;
@@ -45,10 +49,6 @@ extern char *editmode;
 extern char *deftmpdir;
 #ifndef	_NOROCKRIDGE
 extern char *rockridgepath;
-#endif
-extern int sizeinfo;
-#ifndef	_NOCOLOR
-extern int ansicolor;
 #endif
 #ifndef	_NOPRECEDE
 extern char *precedepath;
@@ -211,7 +211,7 @@ int ispath;
 		epath[len] = '\0';
 	}
 
-	return(epath);
+	return((epath) ? epath : strdup2(""));
 }
 
 #if	!MSDOS
@@ -234,15 +234,14 @@ char *name;
 #ifndef	_NOROCKRIDGE
 	name = detransfile(name, tmp, 0);
 #endif
-	*buf = '\0';
+	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
 #ifndef	CODEEUC
-		if (sjis && iskanji1(*cp)) buf[i++] = *(cp++);
+		if (sjis && issjis1((u_char)(*cp))) buf[i++] = *(cp++);
 		else
 #endif
 		{
-			if ((u_char)(*cp) < ' ' || *cp == C_DEL
-			|| strchr(METACHAR, *cp)) *buf = '"';
+			if (isctl(*cp) || strchr(METACHAR, *cp)) *buf = '"';
 			if (strchr(DQ_METACHAR, *cp))
 				buf[i++] = '\\';
 		}
@@ -271,15 +270,15 @@ VOID adjustpath(VOID_A)
 }
 #endif	/* !MSDOS */
 
-char *includepath(path, plist)
-char *path, *plist;
+char *includepath(buf, plist)
+char *buf, *plist;
 {
-	char *cp, *eol, buf[MAXPATHLEN + 1];
+	char *cp, *eol, tmp[MAXPATHLEN + 1];
 	int len;
 
 	if (!plist || !*plist) return(NULL);
-	if (!path) path = buf;
-	realpath2(fullpath, path);
+	if (!buf) buf = tmp;
+	realpath2(fullpath, buf);
 	for (cp = plist; cp && *cp; ) {
 		for (len = 0; cp[len]; len++) if (cp[len] == ';') break;
 		eol = (cp[len]) ? &(cp[len + 1]) : NULL;
@@ -287,8 +286,8 @@ char *path, *plist;
 #if	MSDOS
 		if (onkanji1(cp, len - 1)) len++;
 #endif
-		if (len > 0 && !strnpathcmp(path, cp, len)
-		&& (!path[len] || path[len] == _SC_)) return(path);
+		if (len > 0 && !strnpathcmp(buf, cp, len)
+		&& (!buf[len] || buf[len] == _SC_)) return(buf);
 		cp = eol;
 	}
 	return(NULL);
@@ -378,7 +377,7 @@ int max;
 #ifdef	USEUNAME
 	struct utsname uts;
 #endif
-	char *cp, line[MAXPATHLEN + 1];
+	char *cp, *tmp, line[MAXPATHLEN + 1];
 	int i, j, k, len, unprint;
 
 	unprint = 0;
@@ -386,8 +385,14 @@ int max;
 		cp = NULL;
 		*line = '\0';
 		if (promptstr[i] != '\\') {
-			*line = promptstr[i];
-			line[1] = '\0';
+			k = 0;
+			line[k++] = promptstr[i];
+#ifdef	CODEEUC
+			if (isekana(promptstr, i)) line[k++] = promptstr[++i];
+			else
+#endif
+			if (iskanji1(promptstr[i])) line[k++] = promptstr[++i];
+			line[k] = '\0';
 		}
 		else switch (promptstr[++i]) {
 			case '\0':
@@ -411,8 +416,7 @@ int max;
 				gethostname(line, MAXPATHLEN);
 #endif
 				if (promptstr[i] == 'h'
-				&& (cp = strchr(line, '.'))) *cp = '\0';
-				cp = line;
+				&& (tmp = strchr(line, '.'))) *tmp = '\0';
 				break;
 			case '$':
 				*line = (getuid()) ? '$' : '#';
@@ -423,18 +427,16 @@ int max;
 				cp = fullpath;
 				break;
 			case 'W':
-				cp = strrdelim(fullpath + 1, 0);
-				if (cp) cp++;
-				else cp = fullpath;
+				tmp = fullpath;
+#if	MSDOS || !defined (_NODOSDRIVE)
+				if (_dospath(tmp)) tmp += 2;
+#endif
+				cp = strrdelim(tmp, 0);
+				if (cp && (cp != tmp || *(cp + 1))) cp++;
+				else cp = tmp;
 				break;
 			case '~':
-				if (underhome(line)) {
-					if (j < max) {
-						if (prompt) prompt[j] = '~';
-						j++;
-					}
-					if (!unprint) len++;
-				}
+				if (underhome(line + 1)) line[0] = '~';
 				else cp = fullpath;
 				break;
 			case 'e':
@@ -466,6 +468,7 @@ int max;
 				break;
 		}
 		if (!cp) cp = line;
+
 		if (prompt) while (*cp && j < max) {
 			if (unprint) prompt[j] = *cp;
 #ifdef	CODEEUC
@@ -475,7 +478,12 @@ int max;
 				len++;
 			}
 #endif
-			else if ((u_char)(*cp) >= ' ' && *cp != C_DEL) {
+			else if (iskanji1(*cp)) {
+				prompt[j++] = *(cp++);
+				prompt[j] = *cp;
+				len += 2;
+			}
+			else if (!isctl(*cp)) {
 				prompt[j] = *cp;
 				len++;
 			}
@@ -500,8 +508,12 @@ int max;
 				len++;
 			}
 #endif
-			else if (((u_char)(*cp) >= ' ' && *cp != C_DEL)
-			|| j + 1 >= max) len++;
+			else if (iskanji1(*cp)) {
+				j++;
+				cp++;
+				len += 2;
+			}
+			else if (!isctl(*cp) || j + 1 >= max) len++;
 			else {
 				j++;
 				len += 2;
@@ -544,20 +556,18 @@ VOID evalenv(VOID_A)
 #ifndef	_NOWRITEFS
 	if ((writefs = atoi2(getenv2("FD_WRITEFS"))) < 0) writefs = WRITEFS;
 #endif
+	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
+		minfilename = MINFILENAME;
 	if ((histsize[0] = atoi2(getenv2("FD_HISTSIZE"))) < 0)
 		histsize[0] = HISTSIZE;
 	if ((histsize[1] = atoi2(getenv2("FD_DIRHIST"))) < 0)
 		histsize[1] = DIRHIST;
 	if ((savehist = atoi2(getenv2("FD_SAVEHIST"))) < 0)
 		savehist = SAVEHIST;
-	if ((minfilename = atoi2(getenv2("FD_MINFILENAME"))) <= 0)
-		minfilename = MINFILENAME;
 #ifndef	_NOTREE
 	if ((dircountlimit = atoi2(getenv2("FD_DIRCOUNTLIMIT"))) < 0)
 		dircountlimit = DIRCOUNTLIMIT;
 #endif
-	if ((showsecond = evalbool(getenv2("FD_SECOND"))) < 0)
-		showsecond = SECOND;
 #ifndef	_NODOSDRIVE
 	if ((dosdrive = evalbool(cp = getenv2("FD_DOSDRIVE"))) < 0)
 		dosdrive = DOSDRIVE;
@@ -565,6 +575,14 @@ VOID evalenv(VOID_A)
 	if (cp && (cp = strchr(cp, ',')) && !strcmp(++cp, "BIOS"))
 		dosdrive |= 2;
 # endif
+#endif
+	if ((showsecond = evalbool(getenv2("FD_SECOND"))) < 0)
+		showsecond = SECOND;
+	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) < 0)
+		sizeinfo = SIZEINFO;
+#ifndef	_NOCOLOR
+	if ((ansicolor = atoi2(getenv2("FD_ANSICOLOR"))) < 0)
+		ansicolor = ANSICOLOR;
 #endif
 #ifndef	_NOEDITMODE
 	if (!(editmode = getenv2("FD_EDITMODE"))) editmode = EDITMODE;
@@ -577,18 +595,6 @@ VOID evalenv(VOID_A)
 	if (!(rockridgepath = getenv2("FD_RRPATH"))) rockridgepath = RRPATH;
 	rockridgepath = evalcomstr(rockridgepath, ";", 1);
 #endif
-#if	!MSDOS && !defined (_NOKANJICONV)
-	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
-#endif
-#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
-	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
-#endif
-	if ((sizeinfo = evalbool(getenv2("FD_SIZEINFO"))) < 0)
-		sizeinfo = SIZEINFO;
-#ifndef	_NOCOLOR
-	if ((ansicolor = atoi2(getenv2("FD_ANSICOLOR"))) < 0)
-		ansicolor = ANSICOLOR;
-#endif
 #ifndef	_NOPRECEDE
 	if (precedepath) free(precedepath);
 	if (!(precedepath = getenv2("FD_PRECEDEPATH")))
@@ -596,4 +602,10 @@ VOID evalenv(VOID_A)
 	precedepath = evalcomstr(precedepath, ";", 1);
 #endif
 	if (!(promptstr = getenv2("FD_PROMPT"))) promptstr = PROMPT;
+#if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
+	outputkcode = getlang(getenv2("FD_LANGUAGE"), 0);
+#endif
+#if	!MSDOS && !defined (_NOKANJICONV)
+	inputkcode = getlang(getenv2("FD_INPUTKCODE"), 1);
+#endif
 }

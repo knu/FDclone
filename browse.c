@@ -224,8 +224,8 @@ static VOID stackbar(VOID_A)
 #endif
 		locate(width * i + 1, LSTACK);
 #ifndef	_NOCOLOR
-		if (!isread(&filestack[i])) color = ANSI_BLUE;
-		else if (!iswrite(&filestack[i])) color = ANSI_GREEN;
+		if (!isread(&(filestack[i]))) color = ANSI_BLUE;
+		else if (!iswrite(&(filestack[i]))) color = ANSI_GREEN;
 		else {
 			for (j = 0;
 			j < sizeof(modelist) / sizeof(u_short); j++)
@@ -313,15 +313,15 @@ u_short mode;
 	buf[5] = '\0';
 #else
 	buf[3] = (mode & S_ISUID) ? ((mode & S_IXUSR) ? 's' : 'S')
-		: (mode & S_IXUSR) ? 'x' : '-';
+		: ((mode & S_IXUSR) ? 'x' : '-');
 	buf[4] = (mode & S_IRGRP) ? 'r' : '-';
 	buf[5] = (mode & S_IWGRP) ? 'w' : '-';
 	buf[6] = (mode & S_ISGID) ? ((mode & S_IXGRP) ? 's' : 'S')
-		: (mode & S_IXGRP) ? 'x' : '-';
+		: ((mode & S_IXGRP) ? 'x' : '-');
 	buf[7] = (mode & S_IROTH) ? 'r' : '-';
 	buf[8] = (mode & S_IWOTH) ? 'w' : '-';
 	buf[9] = (mode & S_ISVTX) ? ((mode & S_IXOTH) ? 't' : 'T')
-		: (mode & S_IXOTH) ? 'x' : '-';
+		: ((mode & S_IXOTH) ? 'x' : '-');
 	buf[10] = '\0';
 #endif
 
@@ -392,7 +392,7 @@ int no;
 		return;
 	}
 #ifndef	_NOPRECEDE
-	if (!havestat(&list[no])) {
+	if (!havestat(&(list[no]))) {
 		putterm(l_clear);
 # if	MSDOS
 		len = WMODE + 4 + WDATE + 1 + WTIME + 1;
@@ -419,8 +419,8 @@ int no;
 	}
 	else
 #endif
-	putmode(buf, (!isdisplnk(dispmode) && islink(&list[no])) ?
-		(S_IFLNK | 0777) : list[no].st_mode);
+	putmode(buf, (!isdisplnk(dispmode) && islink(&(list[no])))
+		? (S_IFLNK | 0777) : list[no].st_mode);
 	len = WMODE;
 
 	sprintf(buf + len, " %2d ", list[no].st_nlink);
@@ -435,7 +435,7 @@ int no;
 	strcpy(buf + (len++), " ");
 #endif
 
-	if (isdev(&list[no])) sprintf(buf + len, "%3u, %3u ",
+	if (isdev(&(list[no]))) sprintf(buf + len, "%3u, %3u ",
 		((unsigned)(list[no].st_size) >> 8) & 0xff,
 		(unsigned)(list[no].st_size) & 0xff);
 	else sprintf(buf + len, "%8ld ", (long)(list[no].st_size));
@@ -449,7 +449,7 @@ int no;
 	strncpy3(buf + len, list[no].name, &width, fnameofs);
 
 #if	!MSDOS
-	if (islink(&list[no])) {
+	if (islink(&(list[no]))) {
 		width += len;
 		len = strlen(buf);
 		while (buf[--len] == ' ');
@@ -531,7 +531,7 @@ int no, standout;
 #endif
 
 	calclocate(no);
-	putch2(ismark(&list[no]) ? '*' : ' ');
+	putch2(ismark(&(list[no])) ? '*' : ' ');
 
 	if (standout < 0 && stable_standout) {
 		putterm(end_standout);
@@ -548,12 +548,11 @@ int no, standout;
 	i = strncpy3(buf, list[no].name, &width, i);
 
 #ifndef	_NOPRECEDE
-	if (!havestat(&list[no])) {
+	if (!havestat(&(list[no]))) {
 		if (standout > 0) putterm(t_standout);
 		kanjiputs(buf);
 		free(buf);
 		if (standout > 0) putterm(end_standout);
-		tflush();
 		return;
 	}
 #endif
@@ -575,8 +574,8 @@ int no, standout;
 			buf[i] = '*';
 	}
 #ifndef	_NOCOLOR
-	if (!isread(&list[no])) color = ANSI_BLUE;
-	else if (!iswrite(&list[no])) color = ANSI_GREEN;
+	if (!isread(&(list[no]))) color = ANSI_BLUE;
+	else if (!iswrite(&(list[no]))) color = ANSI_GREEN;
 	else if (j < sizeof(modelist) / sizeof(u_short)) color = colorlist[j];
 	else if (ansicolor == 3) color = ANSI_BLACK;
 	else color = ANSI_WHITE;
@@ -590,7 +589,7 @@ int no, standout;
 
 	tm = NULL;
 	if (columns < 5 && len + WIDTH3 <= width) {
-		if (isdir(&list[no]))
+		if (isdir(&(list[no])))
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<DIR>");
 #if	MSDOS || !defined (_NODOSDRIVE)
 		else if (
@@ -600,7 +599,7 @@ int no, standout;
 		(list[no].st_mode & S_IFMT) == S_IFIFO)
 			sprintf(buf + len, " %*.*s", WSIZE, WSIZE, "<VOL>");
 #endif
-		else if (isdev(&list[no])) sprintf(buf + len, " %*u,%*u",
+		else if (isdev(&(list[no]))) sprintf(buf + len, " %*u,%*u",
 			WSIZE / 2, ((unsigned)(list[no].st_size) >> 8) & 0xff,
 			WSIZE - (WSIZE / 2) - 1,
 			(unsigned)(list[no].st_size) & 0xff);
@@ -611,7 +610,7 @@ int no, standout;
 		len += WIDTH3;
 	}
 	if (columns < 3 && len + WIDTH2 <= width) {
-		tm = localtime(&list[no].st_mtim);
+		tm = localtime(&(list[no].st_mtim));
 		sprintf(buf + len, " %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
@@ -636,8 +635,8 @@ int no, standout;
 		else
 #endif
 		putmode(buf + len,
-			(!isdisplnk(dispmode) && islink(&list[no])) ?
-			(S_IFLNK | 0777) : list[no].st_mode);
+			(!isdisplnk(dispmode) && islink(&(list[no])))
+			? (S_IFLNK | 0777) : list[no].st_mode);
 	}
 
 #ifndef	_NOCOLOR
@@ -656,7 +655,6 @@ int no, standout;
 	else
 #endif
 	if (standout > 0) putterm(end_standout);
-	tflush();
 }
 
 int listupfile(list, max, def)
@@ -680,7 +678,6 @@ char *def;
 		if (i > strlen(cp)) kanjiputs2(cp, i, 0);
 		else cprintf2("%-*.*s", i, i, "No Files");
 		putterm(end_standout);
-		tflush();
 		return(0);
 	}
 
@@ -711,7 +708,6 @@ char *def;
 		putname(list, i, (i == ret) ? 1 : 0);
 	}
 
-	tflush();
 	return(ret);
 }
 
@@ -744,7 +740,6 @@ int all;
 	stackbar();
 	listupfile(filelist, maxfile, filelist[filepos].name);
 	locate(0, 0);
-	tflush();
 }
 
 int searchmove(list, max, ch, buf)
@@ -834,7 +829,6 @@ VOID addlist(VOID_A)
 #ifndef	_NOPRECEDE
 static VOID readstatus(VOID_A)
 {
-	off_t size;
 	int i;
 
 	for (i = maxstat; i < maxfile; i++)
@@ -936,7 +930,7 @@ char *file, *def;
 	}
 
 #ifndef	_NOPRECEDE
-	maxstat = (!haste) ? maxfile : 0;
+	maxstat = (haste) ? 0 : maxfile;
 #endif
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
 
@@ -983,9 +977,9 @@ char *file, *def;
 		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
-		no = (bindlist[i].d_func < 255
-		&& isdir(&(filelist[filepos]))) ?
-			(int)(bindlist[i].d_func) : (int)(bindlist[i].f_func);
+		no = (bindlist[i].d_func < 255 && isdir(&(filelist[filepos])))
+			? (int)(bindlist[i].d_func)
+			: (int)(bindlist[i].f_func);
 		fstat = (no <= NO_OPERATION) ? funclist[no].stat
 			: (KILLSTK | RELIST);
 
@@ -994,12 +988,14 @@ char *file, *def;
 				chgorder = 0;
 				if (!yesno(KILOK_K)) continue;
 				for (i = maxfile - 1; i > filepos; i--)
-					memcpy(&(filelist[i + stackdepth]),
-						&(filelist[i]),
+					memcpy((char *)&(filelist[i
+						+ stackdepth]),
+						(char *)&(filelist[i]),
 						sizeof(namelist));
 				for (i = 0; i < stackdepth; i++)
-					memcpy(&(filelist[i + filepos + 1]),
-						&(filestack[i]),
+					memcpy((char *)&(filelist[i
+						+ filepos + 1]),
+						(char *)&(filestack[i]),
 						sizeof(namelist));
 				maxfile += stackdepth;
 				stackdepth = 0;
@@ -1094,9 +1090,10 @@ char *cur;
 		else {
 			def = strrdelim(cp, 0);
 #if	MSDOS || !defined (_NODOSDRIVE)
-			if (!def && _dospath(cp)) def = &cp[2];
+			if (!def && _dospath(cp)) def = &(cp[2]);
 #endif
-			if (def) {
+			if (!def) def = cp;
+			else {
 				i = *def;
 				*def = '\0';
 				if (def == cp) {
@@ -1116,7 +1113,6 @@ char *cur;
 				}
 				if (def && (*def = i) == _SC_) def++;
 			}
-			else def = cp;
 
 			if (def) {
 				strcpy(prev, def);
@@ -1135,14 +1131,14 @@ char *cur;
 
 	for (;;) {
 		if (!def && !strcmp(file, "..")) {
-			if ((cp = strrdelim(fullpath, 0))) cp++;
+			if ((cp = strrdelim(fullpath, 1))) cp++;
 			else cp = fullpath;
 			strcpy(prev, cp);
-			if (!*prev) {
+			if (*prev) def = prev;
+			else {
 				strcpy(file, ".");
 				def = NULL;
 			}
-			else def = prev;
 		}
 
 		if (strcmp(file, ".")) {

@@ -219,14 +219,15 @@ int comline;
 		free(launchlist[i].comm);
 		maxlaunch--;
 		for (; i < maxlaunch; i++)
-			memcpy(&launchlist[i], &launchlist[i + 1],
+			memcpy((char *)&(launchlist[i]),
+				(char *)&(launchlist[i + 1]),
 				sizeof(launchtable));
 		return(0);
 	}
 
 	if (argc <= 3) launchlist[i].topskip = 255;
 	else {
-		cp = tmp = catargs(argc - 3, &argv[3], '\0');
+		cp = tmp = catargs(argc - 3, &(argv[3]), '\0');
 		launchlist[i].topskip = atoi(cp);
 		if (*(cp = skipnumeric(cp, 0)) != ',') {
 			free(ext);
@@ -312,7 +313,8 @@ int comline;
 		if (archivelist[i].u_comm) free(archivelist[i].u_comm);
 		maxarchive--;
 		for (; i < maxarchive; i++)
-			memcpy(&archivelist[i], &archivelist[i + 1],
+			memcpy((char *)&(archivelist[i]),
+				(char *)&(archivelist[i + 1]),
 				sizeof(archivetable));
 		return(0);
 	}
@@ -596,13 +598,14 @@ int comline;
 		freemacro(bindlist[i].f_func);
 		freemacro(bindlist[i].d_func);
 		for (; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
-			memcpy(&bindlist[i], &bindlist[i + 1],
+			memcpy((char *)&(bindlist[i]),
+				(char *)&(bindlist[i + 1]),
 				sizeof(bindtable));
 		return(0);
 	}
 
 	if ((n1 = getcommand(argv[2])) < 0) return(-1);
-	
+
 	n2 = 255;
 	j = 4;
 	if (argc > 3) {
@@ -623,7 +626,8 @@ int comline;
 	}
 
 	if (bindlist[i].key < 0) {
-		memcpy(&bindlist[i + 1], &bindlist[i], sizeof(bindtable));
+		memcpy((char *)&(bindlist[i + 1]), (char *)&(bindlist[i]),
+			sizeof(bindtable));
 		bindlist[i].f_func = (u_char)n1;
 		bindlist[i].d_func = (u_char)n2;
 	}
@@ -782,7 +786,8 @@ int comline;
 			free(aliaslist[i].comm);
 			maxalias--;
 			for (j = i; j < maxalias; j++)
-				memcpy(&aliaslist[j], &aliaslist[j + 1],
+				memcpy((char *)&(aliaslist[j]),
+					(char *)&(aliaslist[j + 1]),
 					sizeof(aliastable));
 			i--;
 			n++;
@@ -821,7 +826,7 @@ int set;
 	else
 #endif
 	{
-		cp = tmp = catargs(argc - 3, &argv[3], '\0');
+		cp = tmp = catargs(argc - 3, &(argv[3]), '\0');
 
 		head = atoi(cp);
 		if (head <= 0 || *(cp = skipnumeric(cp, 1)) != ',') {
@@ -856,13 +861,15 @@ int set;
 	if (!set) {
 		if (!fdtype[i].name) return(-1);
 #ifdef	HDDMOUNT
-		if (fdtype[i].cyl || strpathcmp(argv[2], fdtype[i].name))
+		if (!cyl
+		&& (fdtype[i].cyl || strpathcmp(argv[2], fdtype[i].name)))
 			return(-1);
 #endif
 
 		free(fdtype[i].name);
 		for (; fdtype[i + 1].name; i++)
-			memcpy(&fdtype[i], &fdtype[i + 1], sizeof(devinfo));
+			memcpy((char *)&(fdtype[i]),
+				(char *)&(fdtype[i + 1]), sizeof(devinfo));
 		fdtype[i].name = NULL;
 	}
 	else {
@@ -891,8 +898,8 @@ int set;
 		fdtype[i + n].name = NULL;
 		for (; i > 0; i--) {
 			if (!strcmp(argv[2], fdtype[i - 1].name)) break;
-			memcpy((char *)&fdtype[i + n - 1],
-				(char *)&fdtype[i - 1], sizeof(devinfo));
+			memcpy((char *)&(fdtype[i + n - 1]),
+				(char *)&(fdtype[i - 1]), sizeof(devinfo));
 		}
 
 		for (j = 0; j < n; j++) {
@@ -908,8 +915,8 @@ int set;
 					while (j >= 0)
 						free(fdtype[i + (j--)].name);
 					for (; fdtype[i + n].name; i++)
-						memcpy((char *)&fdtype[i],
-							(char *)&fdtype[i + n],
+						memcpy((char *)&(fdtype[i]),
+						(char *)&(fdtype[i + n]),
 							sizeof(devinfo));
 					fdtype[i].name = NULL;
 					if (sp) free(sp);
@@ -1024,7 +1031,7 @@ int comline;
 		return(i ? n : 1);
 	}
 
-	cp = line = catargs(argc - 1, &argv[1], ' ');
+	cp = line = catargs(argc - 1, &(argv[1]), ' ');
 	if (!(tmp = gettoken(&cp, " ({"))) {
 		free(line);
 		return(-1);
@@ -1082,7 +1089,8 @@ int comline;
 		free(userfunclist[i].comm);
 		maxuserfunc--;
 		for (; i < maxuserfunc; i++)
-			memcpy(&userfunclist[i], &userfunclist[i + 1],
+			memcpy((char *)&(userfunclist[i]),
+				(char *)&(userfunclist[i + 1]),
 				sizeof(userfunctable));
 		return(0);
 	}
@@ -1360,7 +1368,7 @@ int *maxp, comline;
 
 	n = -2;
 	command = skipspace(command);
-	argc = getargs(command, argv, MAXARGS + 1);
+	if (!(argc = getargs(command, argv, MAXARGS + 1))) return(-2);
 	comname = _evalpath(argv[0], NULL, 0, 1);
 	for (i = 0; builtinlist[i].ident; i++)
 		if (!strpathcmp(comname, builtinlist[i].ident)) break;
@@ -1387,9 +1395,10 @@ int *maxp, comline;
 		}
 	}
 	else if (list && maxp && (i = isinternal(comname, comline)) >= 0) {
-		if (argc <= 2)
-			n = (int)(*funclist[i].func)(list, maxp,
-				argv[1] = evalpath(argv[1], 1));
+		if (argc <= 2) {
+			argv[1] = evalpath(argv[1], 1);
+			n = (int)(*funclist[i].func)(list, maxp, argv[1]);
+		}
 		else {
 			if (comline) warning(0, ILFNC_K);
 			n = 2;

@@ -118,7 +118,7 @@ int d;
 
 	if (d && _dospath(s)) return(s + 1);
 	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_) return(&s[i]);
+		if (s[i] == _SC_) return(&(s[i]));
 #if	MSDOS
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
 #endif
@@ -136,7 +136,7 @@ int d;
 	if (d && _dospath(s)) cp = s + 1;
 	else cp = NULL;
 	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_) cp = &s[i];
+		if (s[i] == _SC_) cp = &(s[i]);
 #if	MSDOS
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
 #endif
@@ -154,7 +154,7 @@ char *s, *eol;
 
 	cp = NULL;
 	for (i = 0; s[i] && &(s[i]) < eol; i++) {
-		if (s[i] == _SC_) cp = &s[i];
+		if (s[i] == _SC_) cp = &(s[i]);
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
 	}
 	return(cp);
@@ -173,7 +173,7 @@ char *s;
 	cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) {
-			if (!cp) cp = &s[i];
+			if (!cp) cp = &(s[i]);
 			continue;
 		}
 		cp = NULL;
@@ -181,7 +181,7 @@ char *s;
 		if (issjis1((u_char)(s[i])) && !s[++i]) break;
 #endif
 	}
-	if (!cp) *(cp = &s[i]) = _SC_;
+	if (!cp) *(cp = &(s[i])) = _SC_;
 	*(++cp) = '\0';
 	return(cp);
 }
@@ -269,7 +269,7 @@ int keepdelim, evalq;
 		}
 		i = cp - path;
 		if (path + i < eol) {
-			buf[j++] = _SC_;
+			j = strcatdelim(buf) - buf;
 			i++;
 		}
 	}
@@ -663,7 +663,8 @@ char **matchp;
 		if (strncmp(name, pwd -> pw_name, len)) continue;
 		ptr = size;
 		size += 1 + strlen(pwd -> pw_name) + 1 + 1;
-		*matchp = (*matchp) ? (char *)realloc(*matchp, size)
+		*matchp = (*matchp)
+			? (char *)realloc(*matchp, size)
 			: (char *)malloc(size);
 		if (!*matchp) error(NULL);
 
@@ -808,7 +809,8 @@ int exe, full;
 			continue;
 		ptr = size;
 		size += strlen(name) + dirflag + 1;
-		*matchp = (*matchp) ? (char *)realloc(*matchp, size)
+		*matchp = (*matchp)
+			? (char *)realloc(*matchp, size)
 			: (char *)malloc(size);
 		if (!*matchp) error(NULL);
 

@@ -57,7 +57,7 @@ typedef struct mnttab	mnt_t;
 #include <sys/vmount.h>
 #endif	/* USEMNTCTL */
 
-#if !defined (USEMOUNTH) && !defined (USEFSDATA)\
+#if !defined (USEMOUNTH) && !defined (USEFSDATA) \
 && (defined (USEGETFSSTAT) || defined (USEMNTINFOR) || defined (USEMNTINFO))
 #include <sys/mount.h>
 #endif
@@ -66,7 +66,7 @@ typedef struct mnttab	mnt_t;
 #include <sys/fs_types.h>
 #endif
 
-#if	defined (USEGETFSSTAT) || defined (USEMNTCTL)\
+#if	defined (USEGETFSSTAT) || defined (USEMNTCTL) \
 || defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
 typedef struct _mnt_t {
 	char *mnt_fsname;
@@ -396,7 +396,7 @@ char *file, *mode;
 {
 	char *buf;
 
-	mntctl(MCTL_QUERY, sizeof(int), (struct vmount *)(&mnt_size));
+	mntctl(MCTL_QUERY, sizeof(int), (struct vmount *)&mnt_size);
 	buf = (char *)malloc2(mnt_size);
 	mntctl(MCTL_QUERY, mnt_size, (struct vmount *)buf);
 	mnt_ptr = 0;
@@ -418,14 +418,15 @@ mnt_t *mntp;
 
 	if (mnt_ptr >= mnt_size) return(NULL);
 	buf = (char *)fp;
-	vmntp = (struct vmount *)(&buf[mnt_ptr]);
+	vmntp = (struct vmount *)&(buf[mnt_ptr]);
 
-	cp = &buf[mnt_ptr + vmntp -> vmt_data[VMT_OBJECT].vmt_off];
+	cp = &(buf[mnt_ptr + vmntp -> vmt_data[VMT_OBJECT].vmt_off]);
 	len = strlen(cp) + 1;
 	if (!(vmntp -> vmt_flags & MNT_REMOTE))
 		*(fsname = (char *)realloc2(fsname, len)) = '\0';
 	else {
-		host = &buf[mnt_ptr + vmntp -> vmt_data[VMT_HOSTNAME].vmt_off];
+		host = &(buf[mnt_ptr
+			+ vmntp -> vmt_data[VMT_HOSTNAME].vmt_off]);
 		len += strlen(host) + 1;
 		fsname = (char *)realloc2(fsname, len);
 		strcpy(fsname, host);
@@ -433,7 +434,7 @@ mnt_t *mntp;
 	}
 	strcat(fsname, cp);
 
-	cp = &buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off];
+	cp = &(buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off]);
 	len = strlen(cp) + 1;
 	dir = (char *)realloc2(dir, len);
 	strcpy(dir, cp);
@@ -501,16 +502,16 @@ mnt_t *mntp;
 #ifdef	USEMNTINFO
 # ifdef	USEVFCNAME
 	struct vfsconf *conf;
-# define	getvfsbynumber(n)	((conf = getvfsbytype(n)) ? \
-					conf -> vfc_name : NULL)
+# define	getvfsbynumber(n)	((conf = getvfsbytype(n)) \
+					? conf -> vfc_name : NULL)
 # else	/* !USEVFCNAME */
 #  ifdef	USEFFSTYPE
 #  define	getvfsbynumber(n)	(buf[mnt_ptr].f_fstypename)
 #  else
 #   ifdef	INITMOUNTNAMES
 	static char *mnt_names[] = INITMOUNTNAMES;
-#   define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
-					mnt_names[n] : NULL)
+#   define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) \
+					? mnt_names[n] : NULL)
 #   else
 #   define	getvfsbynumber(n)	(NULL)
 #   endif
@@ -518,8 +519,8 @@ mnt_t *mntp;
 # endif	/* !USEVFCNAME */
 #else	/* !USEMNTINFO */
 # ifdef	USEGETFSSTAT
-# define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) ? \
-					mnt_names[n] : NULL)
+# define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) \
+					? mnt_names[n] : NULL)
 # endif
 #endif	/* !USEMNTINFO */
 	char *cp;
@@ -686,20 +687,20 @@ mnt_t *mntbuf;
 		if (dosstatfs(drv, buf) < 0) return(-1);
 		if (buf[sizeof(long) * 3] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
-		fsbuf -> f_bsize = *((long *)(&buf[sizeof(long) * 0]));
+		fsbuf -> f_bsize = *((long *)&(buf[sizeof(long) * 0]));
 #ifdef	USEFSDATA
 		fsbuf -> fd_req.btot = calcKB(fsbuf -> f_bsize,
-			*((long *)(&buf[sizeof(long) * 1])));
+			*((long *)&(buf[sizeof(long) * 1])));
 		fsbuf -> fd_req.bfree =
 		fsbuf -> fd_req.bfreen = calcKB(fsbuf -> f_bsize,
-			*((long *)(&buf[sizeof(long) * 2])));
+			*((long *)&(buf[sizeof(long) * 2])));
 #else	/* !USEFSDATA */
 #ifdef	USESTATVFS
 		fsbuf -> f_frsize = 0;
 #endif
-		fsbuf -> f_blocks = *((long *)(&buf[sizeof(long) * 1]));
+		fsbuf -> f_blocks = *((long *)&(buf[sizeof(long) * 1]));
 		fsbuf -> f_bfree =
-		fsbuf -> f_bavail = *((long *)(&buf[sizeof(long) * 2]));
+		fsbuf -> f_bavail = *((long *)&(buf[sizeof(long) * 2]));
 #endif	/* !USEFSDATA */
 		fsbuf -> f_files = -1;
 		return(0);
@@ -741,7 +742,7 @@ mnt_t *mntbuf;
 		errno = ENOENT;
 		return(-1);
 	}
-	memcpy(mntbuf, mntp, sizeof(mnt_t));
+	memcpy((char *)mntbuf, (char *)mntp, sizeof(mnt_t));
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
 	&& (path == dir || statfs2(path, fsbuf) < 0))
@@ -806,7 +807,7 @@ char *dir;
 #ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
 #else
-	if (stat(dir, &buf) < 0) error(dir);
+	if (Xstat(dir, &buf) < 0) error(dir);
 	return((int)buf.st_size);
 #endif
 #endif	/* !MSDOS */

@@ -10,7 +10,7 @@
 
 #define	DOSDIRENT	32
 #define	SECTCACHESIZE	32
-#define	SECTSIZE	{512, 1024, 256, 128}
+#define	SECTSIZE	{512, 1024, 256, 128, 2048, 4096}
 #define	STDSECTSIZE	512
 #define	SECTCACHEMEM	(SECTCACHESIZE * STDSECTSIZE)
 #define	MINCLUST	2
@@ -23,6 +23,12 @@
 #define	PACKINALIAS	" ."
 #define	LFNENTSIZ	13
 #define	DOSMAXNAMLEN	255
+#define	INHIBITNAME	{ "CON     ", "AUX     ", "PRN     ", \
+			  "CLOCK$  ", "CONFIG$ ", "NUL     " }
+#define	INHIBITCOM	"COM"
+#define	INHIBITCOMMAX	4
+#define	INHIBITLPT	"LPT"
+#define	INHIBITLPTMAX	9
 
 #define	MAXDRIVEENTRY	32
 #define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
@@ -62,11 +68,12 @@
 #define	__attribute__(x)
 #endif
 
-#if	defined (LINUX) || defined (JCCBSD) || defined (FREEBSD)\
-|| defined (NETBSD) ||	defined (BSDOS) || defined (BOW)\
-|| defined (ORG_386BSD)
+#if	(defined (i386) || defined (__i386) || defined (__i386__)) \
+&& (defined (LINUX) || defined (JCCBSD) || defined (FREEBSD) \
+|| defined (NETBSD) ||	defined (BSDOS) || defined (BOW) \
+|| defined (ORG_386BSD))
 #define	HDDMOUNT
-typedef	long long	off64_t;
+typedef long long	off64_t;
 #else
 #define	off64_t		off_t
 #endif
@@ -208,7 +215,7 @@ typedef struct _dosiobuf {
 #define	dd2path(dd)	(devlist[dd].dircache -> path)
 #define	dd2clust(dd)	(devlist[dd].dircache -> clust)
 #define	dd2offset(dd)	(devlist[dd].dircache -> offset)
-#define	fd2devp(fd)	(&devlist[dosflist[fd]._file])
+#define	fd2devp(fd)	(&(devlist[dosflist[fd]._file]))
 #define	fd2dentp(fd)	(dd2dentp(dosflist[fd]._file))
 #define	fd2path(fd)	(dd2path(dosflist[fd]._file))
 #define	fd2clust(fd)	(dd2clust(dosflist[fd]._file))
@@ -288,12 +295,18 @@ typedef struct _partition98_t {
 #define	PT98_LINUX	0xe2	/* 0x80 | 0x62 */
 #endif	/* HDDMOUNT */
 
+typedef struct _sfntable_t {
+	u_short start;
+	u_short end;
+	u_short sfn;
+} sfntable_t;
+
 #ifdef	NODNAMLEN
 typedef struct _st_dirent {
 	char buf[sizeof(struct dirent) + MAXNAMLEN];
 } st_dirent;
 #else
-typedef	struct dirent st_dirent;
+typedef struct dirent st_dirent;
 #endif
 
 #ifdef	HDDMOUNT

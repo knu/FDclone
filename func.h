@@ -21,7 +21,7 @@ extern int errno;
 # ifdef	USEDIRECT
 # include <sys/dir.h>
 #  ifdef	DIRSIZ
-#  undef	DIRSIZ  
+#  undef	DIRSIZ
 #  endif
 # else
 # include <dirent.h>
@@ -45,7 +45,7 @@ extern int errno;
 
 #define	BUFUNIT		32
 #define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
-#define	b_realloc(ptr, n, type)\
+#define	b_realloc(ptr, n, type) \
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
 
@@ -183,45 +183,6 @@ extern int Xpclose __P_((FILE *));
 #define	Xpclose		pclose
 #endif
 
-/* rockridge.c */
-#ifndef	_NOROCKRIDGE
-extern int transfilelist __P_((namelist *, int));
-extern char *transfile __P_((char *, char *));
-extern char *detransfile __P_((char *, char *, int));
-#endif
-
-/* builtin.c */
-extern int execbuiltin __P_((char *, namelist *, int *, int));
-#ifndef	_NOCOMPLETE
-extern int completebuiltin __P_((char *, int, char **));
-#endif
-#ifdef	DEBUG
-extern VOID freedefine __P_((VOID_A));
-#endif
-
-/* parse.c */
-extern char *skipspace __P_((char *));
-extern char *skipnumeric __P_((char *, int));
-extern char *strtkbrk __P_((char *, char *, int));
-extern char *strtkchr __P_((char *, int, int));
-extern char *geteostr __P_((char **));
-extern char *gettoken __P_((char **, char *));
-extern char *getenvval __P_((int *, char *[]));
-extern char *evalcomstr __P_((char *, char *, int));
-#if	!MSDOS
-extern char *killmeta __P_((char *));
-extern VOID adjustpath __P_((VOID_A));
-#endif
-extern char *includepath __P_((char *, char *));
-extern int getargs __P_((char *, char *[], int));
-extern char *catargs __P_((int, char *[], int));
-#ifndef	_NOARCHIVE
-extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
-#endif
-extern int evalprompt __P_((char *, int));
-extern int evalbool __P_((char *));
-extern VOID evalenv __P_((VOID_A));
-
 /* libc.c */
 extern int rename2 __P_((char *, char *));
 extern int stat2 __P_((char *, struct stat *));
@@ -259,17 +220,80 @@ extern char *getgrgid2 __P_((gid_t));
 extern time_t timelocal2 __P_((struct tm *));
 extern char *fgets2 __P_((FILE *));
 
-/* input.c */
-extern int Xgetkey __P_((int));
-extern int cmdlinelen __P_((int));
-extern char *inputstr __P_((char *, int, int, char *, int));
-#if	MSDOS || defined (__STDC__)
-extern int yesno(CONST char *, ...);
+/* file.c */
+#if	MSDOS
+extern int logical_access __P_((u_short));
 #else
-extern int yesno __P_((CONST char *, ...));
+extern int logical_access __P_((u_short, uid_t, gid_t));
 #endif
-extern VOID warning __P_((int, char *));
-extern int selectstr __P_((int *, int, int, char *[], int []));
+extern int getstatus __P_((namelist *));
+extern int isdotdir __P_((char *));
+extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
+#ifndef	_NOTREE
+extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
+#endif
+extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
+extern int underhome __P_((char *));
+extern int preparedir __P_((char *));
+extern int touchfile __P_((char *, time_t, time_t));
+extern int cpfile __P_((char *, char *, struct stat *));
+extern int mvfile __P_((char *, char *, struct stat *));
+extern int mktmpdir __P_((char *));
+extern int rmtmpdir __P_((char *));
+extern VOID removetmp __P_((char *, char *, char *));
+extern int forcecleandir __P_((char *, char *));
+#ifndef _NODOSDRIVE
+extern int tmpdosdupl __P_((char *, char **, namelist *, int, int));
+extern int tmpdosrestore __P_((int, char *));
+#endif
+#ifndef	_NOWRITEFS
+extern VOID arrangedir __P_((namelist *, int, int));
+#endif
+
+/* apply.c */
+extern int rmvfile __P_((char *));
+extern int rmvdir __P_((char *));
+extern int findfile __P_((char *));
+extern int finddir __P_((char *));
+extern int inputattr __P_((namelist *, u_short));
+extern int setattr __P_((char *));
+extern int applyfile __P_((namelist *, int, int (*)__P_((char *)), char *));
+extern int applydir __P_((char *, int (*)__P_((char *)),
+		int (*)__P_((char *)), int, char *));
+extern int copyfile __P_((namelist *, int, char *, int));
+extern int movefile __P_((namelist *, int, char *, int));
+
+/* parse.c */
+extern char *skipspace __P_((char *));
+extern char *skipnumeric __P_((char *, int));
+extern char *strtkbrk __P_((char *, char *, int));
+extern char *strtkchr __P_((char *, int, int));
+extern char *geteostr __P_((char **));
+extern char *gettoken __P_((char **, char *));
+extern char *getenvval __P_((int *, char *[]));
+extern char *evalcomstr __P_((char *, char *, int));
+#if	!MSDOS
+extern char *killmeta __P_((char *));
+extern VOID adjustpath __P_((VOID_A));
+#endif
+extern char *includepath __P_((char *, char *));
+extern int getargs __P_((char *, char *[], int));
+extern char *catargs __P_((int, char *[], int));
+#ifndef	_NOARCHIVE
+extern char *getrange __P_((char *, u_char *, u_char *, u_char *));
+#endif
+extern int evalprompt __P_((char *, int));
+extern int evalbool __P_((char *));
+extern VOID evalenv __P_((VOID_A));
+
+/* builtin.c */
+extern int execbuiltin __P_((char *, namelist *, int *, int));
+#ifndef	_NOCOMPLETE
+extern int completebuiltin __P_((char *, int, char **));
+#endif
+#ifdef	DEBUG
+extern VOID freedefine __P_((VOID_A));
+#endif
 
 /* shell.c */
 extern char *evalcommand __P_((char *, char *, namelist *, int, macrostat *));
@@ -289,23 +313,18 @@ extern int completealias __P_((char *, int, char **));
 extern int completeuserfunc __P_((char *, int, char **));
 #endif
 
-/* info.c */
-extern VOID help __P_((int));
-extern int writablefs __P_((char *));
-extern long getblocksize __P_((char *));
-extern char *inscomma __P_((char *, off_t, int, int));
-extern VOID getinfofs __P_((char *, long *, long *));
-extern int infofs __P_((char *));
-
 /* kanji.c */
 extern int onkanji1 __P_((char *, int));
 #if	(!MSDOS && !defined (_NOKANJICONV)) || !defined (_NOENGMES)
 extern int getlang __P_((char *, int));
 #endif
-#if	!MSDOS && !defined (_NOKANJICONV)
-extern int jis7 __P_((char *, u_char *, int));
+#if	!MSDOS && (!defined (_NOKANJICONV) \
+|| (!defined (_NODOSDRIVE) && defined (CODEEUC)))
 extern int sjis2ujis __P_((char *, u_char *));
 extern int ujis2sjis __P_((char *, u_char *));
+#endif
+#if	!MSDOS && !defined (_NOKANJICONV)
+extern int jis7 __P_((char *, u_char *, int));
 extern int kanjiconv __P_((char *, char *, int, int));
 #endif
 extern int kanjiputs __P_((char *));
@@ -316,49 +335,32 @@ extern int kanjiprintf __P_((CONST char *, ...));
 #endif
 extern int kanjiputs2 __P_((char *, int, int));
 
-/* file.c */
-#if	MSDOS
-extern int logical_access __P_((u_short));
+/* input.c */
+extern int Xgetkey __P_((int));
+extern int cmdlinelen __P_((int));
+extern char *inputstr __P_((char *, int, int, char *, int));
+#if	MSDOS || defined (__STDC__)
+extern int yesno(CONST char *, ...);
 #else
-extern int logical_access __P_((u_short, uid_t, gid_t));
+extern int yesno __P_((CONST char *, ...));
 #endif
-extern int getstatus __P_((namelist *));
-extern int isdotdir __P_((char *));
-extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
-#ifndef	_NOTREE
-extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
-#endif
-extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
-extern int underhome __P_((char *));
-extern int preparedir __P_((char *));
-extern int copyfile __P_((namelist *, int, char *, int));
-extern int movefile __P_((namelist *, int, char *, int));
-extern int mktmpdir __P_((char *));
-extern int rmtmpdir __P_((char *));
-extern VOID removetmp __P_((char *, char *, char *));
-extern int forcecleandir __P_((char *, char *));
-#ifndef _NODOSDRIVE
-extern int tmpdosdupl __P_((char *, char **, namelist *, int, int));
-extern int tmpdosrestore __P_((int, char *, int));
-#endif
-#ifndef	_NOWRITEFS
-extern VOID arrangedir __P_((namelist *, int, int));
-#endif
+extern VOID warning __P_((int, char *));
+extern int selectstr __P_((int *, int, int, char *[], int []));
 
-/* apply.c */
-extern int _cpfile __P_((char *, char *, u_short));
-extern int cpfile __P_((char *));
-extern int mvfile __P_((char *));
-extern int cpdir __P_((char *));
-extern int rmvfile __P_((char *));
-extern int rmvdir __P_((char *));
-extern int findfile __P_((char *));
-extern int finddir __P_((char *));
-extern int inputattr __P_((namelist *, u_short));
-extern int setattr __P_((char *));
-extern int applyfile __P_((namelist *, int, int (*)__P_((char *)), char *));
-extern int applydir __P_((char *, int (*)__P_((char *)),
-		int (*)__P_((char *)), int, char *));
+/* info.c */
+extern VOID help __P_((int));
+extern int writablefs __P_((char *));
+extern long getblocksize __P_((char *));
+extern char *inscomma __P_((char *, off_t, int, int));
+extern VOID getinfofs __P_((char *, long *, long *));
+extern int infofs __P_((char *));
+
+/* rockridge.c */
+#ifndef	_NOROCKRIDGE
+extern int transfilelist __P_((namelist *, int));
+extern char *transfile __P_((char *, char *));
+extern char *detransfile __P_((char *, char *, int));
+#endif
 
 /* archive.c */
 #ifndef	_NOARCHIVE

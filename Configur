@@ -41,7 +41,9 @@ useheader() {
 	return $ret
 }
 
-noheader() { if (useheader "$1"); then return 1; else return 0; fi }
+noheader() {
+	if (useheader "$1"); then return 1; else return 0; fi
+}
 
 inheader() {
 	re=$1
@@ -61,7 +63,9 @@ inheader() {
 	return $ret
 }
 
-noinheader() { if (inheader "$1" "$2" "$3"); then return 1; else return 0; fi }
+noinheader() {
+	if (inheader "$1" "$2" "$3"); then return 1; else return 0; fi
+}
 
 isexist() {
 	echo "Checking for $1..." 1>&2
@@ -70,7 +74,9 @@ isexist() {
 	return $ret
 }
 
-noexist() { if (isexist "$1" "$2" "$3"); then return 1; else return 0; fi }
+noexist() {
+	if (isexist "$1" "$2" "$3"); then return 1; else return 0; fi
+}
 
 havelib() {
 	echo "Checking for -l$1..." 1>&2

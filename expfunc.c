@@ -214,7 +214,7 @@ char *args[];
 						buf[j] = buf[j - k];
 					else for (j = cp; j <= len; j++)
 						buf[j] = buf[j - k];
-					memcpy(&buf[tmp], args[i],
+					memcpy(&(buf[tmp]), args[i],
 						strlen(args[i]));
 				}
 				cp--;

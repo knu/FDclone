@@ -15,11 +15,14 @@ INSTALL	= copy
 CHMOD	= chmod
 MANSEC	= 1
 
-SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
+SRC	= main.c term.c pathname.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
-	rockridg.c builtin.c parse.c \
-	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
+	libc.c file.c apply.c \
+	parse.c builtin.c shell.c \
+	kanji.c input.c \
+	info.c rockridg.c archive.c tree.c \
+	command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
@@ -46,12 +49,13 @@ SOURCES	= $(JSRCS) $(ESRCS)
 CC	= gcc
 SED	= sed
 PROGRAM	= fd
-OBJ1	= main.o term.o pathname.o libc.o \
-	input.o shell.o info.o
-OBJ2	= dosdisk.o unixemu.o unixdisk.o \
-	rockridg.o builtin.o parse.o
-OBJ3	= kanji.o file.o apply.o archive.o \
-	tree.o command.o browse.o
+OBJ1	= main.o term.o pathname.o \
+	dosdisk.o unixemu.o unixdisk.o
+OBJ2	= libc.o file.o apply.o \
+	parse.o builtin.o shell.o \
+	kanji.o input.o
+OBJ3	= info.o rockridg.o archive.o tree.o \
+	command.o browse.o
 ALLOC	=
 DEBUG	=
 
@@ -248,24 +252,6 @@ term.o: machine.h config.h
 term.o: term.h
 pathname.o: machine.h config.h
 pathname.o: pathname.h
-libc.o: fd.h
-libc.o: machine.h config.h
-libc.o: types.h pathname.h term.h func.h
-libc.o: kctype.h kanji.h
-input.o: fd.h
-input.o: machine.h config.h
-input.o: types.h pathname.h
-input.o: term.h func.h
-input.o: kctype.h
-input.o: kanji.h
-shell.o: fd.h
-shell.o: machine.h config.h
-shell.o: types.h pathname.h term.h func.h
-shell.o: kctype.h
-shell.o: kanji.h
-info.o: fd.h
-info.o: machine.h config.h
-info.o: types.h pathname.h term.h funcno.h kanji.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
 dosemu.o: fd.h
@@ -281,31 +267,49 @@ unixemu.o: machine.h config.h
 unixemu.o: types.h pathname.h func.h
 unixemu.o: unixdisk.h
 unixemu.o: unixemu.h dosdisk.h
-rockridg.o: fd.h
-rockridg.o: machine.h config.h
-rockridg.o: types.h pathname.h func.h
-builtin.o: fd.h
-builtin.o: machine.h config.h
-builtin.o: types.h pathname.h term.h func.h
-builtin.o: kctype.h
-builtin.o: funcno.h kanji.h dosdisk.h
-parse.o: fd.h
-parse.o: machine.h config.h
-parse.o: types.h pathname.h func.h
-parse.o: kctype.h
-parse.o: dosdisk.h
-kanji.o: fd.h
-kanji.o: machine.h config.h
-kanji.o: types.h pathname.h term.h func.h
-kanji.o: kctype.h
+libc.o: fd.h
+libc.o: machine.h config.h
+libc.o: types.h pathname.h term.h func.h
+libc.o: kctype.h kanji.h
 file.o: fd.h
 file.o: machine.h config.h
-file.o: types.h pathname.h term.h func.h
+file.o: types.h pathname.h func.h
 file.o: kctype.h kanji.h
 apply.o: fd.h
 apply.o: machine.h config.h
 apply.o: types.h pathname.h term.h func.h
 apply.o: kanji.h
+parse.o: fd.h
+parse.o: machine.h config.h
+parse.o: types.h pathname.h func.h
+parse.o: kctype.h
+parse.o: dosdisk.h
+builtin.o: fd.h
+builtin.o: machine.h config.h
+builtin.o: types.h pathname.h term.h func.h
+builtin.o: kctype.h
+builtin.o: funcno.h kanji.h dosdisk.h
+shell.o: fd.h
+shell.o: machine.h config.h
+shell.o: types.h pathname.h term.h func.h
+shell.o: kctype.h
+shell.o: kanji.h
+kanji.o: fd.h
+kanji.o: machine.h config.h
+kanji.o: types.h pathname.h term.h func.h
+kanji.o: kctype.h
+input.o: fd.h
+input.o: machine.h config.h
+input.o: types.h pathname.h
+input.o: term.h func.h
+input.o: kctype.h
+input.o: kanji.h
+info.o: fd.h
+info.o: machine.h config.h
+info.o: types.h pathname.h term.h funcno.h kanji.h
+rockridg.o: fd.h
+rockridg.o: machine.h config.h
+rockridg.o: types.h pathname.h func.h
 archive.o: fd.h
 archive.o: machine.h
 archive.o: config.h types.h
@@ -313,12 +317,14 @@ archive.o: pathname.h term.h func.h
 archive.o: funcno.h kctype.h kanji.h
 tree.o: fd.h
 tree.o: machine.h config.h
-tree.o: types.h pathname.h term.h func.h
+tree.o: types.h pathname.h term.h
+tree.o: func.h
 tree.o: kanji.h
 command.o: fd.h
 command.o: machine.h config.h
 command.o: types.h pathname.h term.h func.h
-command.o: funcno.h kanji.h
+command.o: funcno.h kctype.h
+command.o: kanji.h
 command.o: functabl.h
 browse.o: fd.h
 browse.o: machine.h config.h

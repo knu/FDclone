@@ -59,40 +59,40 @@ extern int ansicolor;
 extern int n_args;
 
 #if	MSDOS
-#define	PM_LHA	5, 2,\
-		{255, 255, 255, 1, 4, 4, 4, 5, 0},\
-		{0, 0, 0, 0, 0, '-', 128 + 6, 0, 0},\
-		{0, 0, 0, 0, '-', '-', 0, 0, 0},\
+#define	PM_LHA	5, 2, \
+		{255, 255, 255, 1, 4, 4, 4, 5, 0}, \
+		{0, 0, 0, 0, 0, '-', 128 + 6, 0, 0}, \
+		{0, 0, 0, 0, '-', '-', 0, 0, 0}, \
 		{255, 255, 255}, 2
-#define	PM_TAR	0, 0,\
-		{0, 1, 1, 2, 5, 3, 4, 6, 7},\
-		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
-		{0, '/', 0, 0, 0, 0, 0, 0, 0},\
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 5, 3, 4, 6, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{255, 255, 255}, 1
 #else	/* !MSDOS */
-#define	PM_LHA	2, 2,\
-		{0, 1, 1, 2, 6, 4, 5, 6, 7},\
-		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
-		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0},\
+#define	PM_LHA	2, 2, \
+		{0, 1, 1, 2, 6, 4, 5, 6, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{9, 255, 255}, 1
 #ifdef	UXPDS
-#define	PM_TAR	0, 0,\
-		{0, 1, 1, 2, 6, 3, 4, 5, 7},\
-		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
-		{128 + 10, '/', 0, 0, 0, 0, 0, 0, 0},\
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{128 + 10, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{10, 255, 255}, 1
 #else	/* !UXPDS */
 #ifdef	TARUSESPACE
-#define	PM_TAR	0, 0,\
-		{0, 1, 1, 2, 6, 3, 4, 5, 7},\
-		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
-		{0, '/', 0, 0, 0, 0, 0, 0, 0},\
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{255, 255, 255}, 1
 #else
-#define	PM_TAR	0, 0,\
-		{0, 1, 1, 2, 6, 3, 4, 5, 7},\
-		{0, 0, '/', 0, 0, 0, 0, 0, 0},\
-		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0},\
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
 		{9, 255, 255}, 1
 #endif
 #endif	/* !UXPDS */
@@ -208,24 +208,24 @@ int no;
 
 	if (f < 0 || (i = countfield(line, list -> sep, f, &eol)) < 0)
 		return(buf);
-	cp = &line[i];
+	cp = &(line[i]);
 
 	i = (int)(list -> delim[no]);
 	if (i >= 128) {
 		i -= 128;
-		if (&cp[i] < &line[eol]) cp += i;
+		if (&(cp[i]) < &(line[eol])) cp += i;
 		else return(buf);
 	}
-	else if (i && (!(cp = strchr2(cp, i)) || ++cp >= &line[eol]))
+	else if (i && (!(cp = strchr2(cp, i)) || ++cp >= &(line[eol])))
 		return(buf);
 
 	i = (int)(list -> width[no]);
 	if (i >= 128) i -= 128;
 	else if (i) {
 		if ((tmp = strchr2(cp, i))) i = tmp - cp;
-		else i = &line[eol] - cp;
+		else i = &(line[eol]) - cp;
 	}
-	if (!i || &cp[i] > &line[eol]) i = &line[eol] - cp;
+	if (!i || &(cp[i]) > &(line[eol])) i = &(line[eol]) - cp;
 
 	return(strncpy2(buf, cp, i));
 }
@@ -443,7 +443,7 @@ int max;
 		len = tmp - (namep -> name);
 		if (!len) len++;
 		for (i = 0; i < max; i++) {
-			if (isdir(&list[i])
+			if (isdir(&(list[i]))
 			&& len == dirmatchlen(list[i].name, namep -> name))
 				break;
 		}
@@ -459,10 +459,12 @@ int max;
 		cp = tmp + 1;
 	}
 	if (isdir(namep)) for (i = 0; i < max; i++) {
-		if (isdir(&list[i]) && !dircmp(list[i].name, namep -> name)) {
+		if (isdir(&(list[i]))
+		&& !dircmp(list[i].name, namep -> name)) {
 			tmp = list[i].name;
 			ent = list[i].ent;
-			memcpy(&list[i], namep, sizeof(namelist));
+			memcpy((char *)&(list[i]), (char *)namep,
+				sizeof(namelist));
 			list[i].name = tmp;
 			list[i].ent = ent;
 			return(NULL);
@@ -578,7 +580,8 @@ launchtable *list;
 		while ((cp = pseudodir(&tmp, filelist, maxfile))
 		&& cp != tmp.name) {
 			addlist();
-			memcpy(&(filelist[maxfile]), &tmp, sizeof(namelist));
+			memcpy((char *)&(filelist[maxfile]), (char *)&tmp,
+				sizeof(namelist));
 			filelist[maxfile].st_mode &= ~S_IFMT;
 			filelist[maxfile].st_mode |= S_IFDIR;
 			filelist[maxfile].flags |= F_ISDIR;
@@ -592,7 +595,8 @@ launchtable *list;
 		}
 
 		addlist();
-		memcpy(&(filelist[maxfile]), &tmp, sizeof(namelist));
+		memcpy((char *)&(filelist[maxfile]), (char *)&tmp,
+			sizeof(namelist));
 		filelist[maxfile].ent = no;
 		maxfile++;
 	}
@@ -660,7 +664,8 @@ int max;
 		cp = filelist[i].name + len;
 		if (len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
 		if (!filelist[i].name[len]) {
-			memcpy(&arcflist[0], &(filelist[i]), sizeof(namelist));
+			memcpy((char *)&(arcflist[0]),
+				(char *)&(filelist[i]), sizeof(namelist));
 			arcflist[0].name = filelist[0].name;
 			continue;
 		}
@@ -668,10 +673,10 @@ int max;
 		if ((!tmp || !*tmp)
 		&& (!re || regexp_exec(re, cp))
 		&& (!arcre || searcharc(arcre, filelist, max, i))) {
-			memcpy(&arcflist[maxarcf], &(filelist[i]),
-				sizeof(namelist));
+			memcpy((char *)&(arcflist[maxarcf]),
+				(char *)&(filelist[i]), sizeof(namelist));
 			arcflist[maxarcf].name = cp;
-			if (isfile(&arcflist[maxarcf]))
+			if (isfile(&(arcflist[maxarcf])))
 				totalsize +=
 					getblock(arcflist[maxarcf].st_size);
 			maxarcf++;
@@ -729,7 +734,8 @@ int max;
 		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
-		no = (bindlist[i].d_func < 255 && isdir(&arcflist[filepos])) ?
+		no = (bindlist[i].d_func < 255
+			&& isdir(&(arcflist[filepos]))) ?
 			(int)(bindlist[i].d_func) : (int)(bindlist[i].f_func);
 		if (no > NO_OPERATION) continue;
 		fstat = funclist[no].stat;
@@ -860,7 +866,7 @@ int max;
 	findpattern = NULL;
 	dispmode &= ~(F_SYMLINK | F_FILEFLAG);
 	sorton = 0;
-	launchp = &launchlist[i];
+	launchp = &(launchlist[i]);
 	for (i = 0; i < maxfile; i++) free(filelist[i].name);
 
 	*path = *file = '\0';
@@ -909,7 +915,7 @@ int max;
 		}
 		else {
 			i = arcflist[filepos].ent;
-			if ((cp = strrdelim(filelist[i].name, 0))) cp++;
+			if ((cp = strrdelim(filelist[i].name, 1))) cp++;
 			else cp = filelist[i].name;
 			arcflist[filepos].name = cp;
 		}
@@ -1069,13 +1075,13 @@ int max, single;
 	}
 
 	for (i = 0; i < max; i++)
-		if (ismark(&list[i])) list[i].tmpflags |= F_WSMRK;
+		if (ismark(&(list[i]))) list[i].tmpflags |= F_WSMRK;
 	dupmark = mark;
 	if (single) mark = 0;
 	ret = unpack(archivefile, path, list, max, NULL, 0);
 	mark = dupmark;
 	for (i = 0; i < max; i++) {
-		if (wasmark(&list[i])) list[i].tmpflags |= F_ISMRK;
+		if (wasmark(&(list[i]))) list[i].tmpflags |= F_ISMRK;
 		list[i].tmpflags &= ~F_WSMRK;
 	}
 
@@ -1095,7 +1101,7 @@ int max, single;
 		}
 		else {
 			for (i = 0; i < max; i++)
-				if (ismark(&list[i])
+				if (ismark(&(list[i]))
 				&& Xaccess(list[i].name, F_OK) < 0) {
 					warning(-1, list[i].name);
 					break;
@@ -1121,7 +1127,7 @@ int max;
 
 	waitmes();
 	for (i = 0; i < max; i++)
-		if (ismark(&list[i])) list[i].tmpflags |= F_ISARG;
+		if (ismark(&(list[i]))) list[i].tmpflags |= F_ISARG;
 	n_args = mark;
 
 	st.flags = 0;
@@ -1158,7 +1164,7 @@ int maxf, n;
 	}
 	else {
 		file = flist[n].name;
-		if (isdir(&flist[n])) return(0);
+		if (isdir(&(flist[n]))) return(0);
 	}
 
 	for (i = 0; i < maxlaunch; i++) {

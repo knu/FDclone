@@ -3,7 +3,7 @@
 #	FDclone Ver. 1.03 に関して
 #
 #	Takashi SHIRAI, <shirai@nintendo.co.jp>
-#	Sep 1, 1999
+#	Nov 5, 1999
 #
 ############################################################
 
@@ -73,10 +73,6 @@ term.c		termcap ライブラリソース
 term.h		term.c 用のヘッダ
 pathname.c	パス名操作に関するモジュール
 pathname.h	pathname.c 用のヘッダ
-libc.c		cc の標準関数のアレンジ
-input.c		ユーザ入力関連
-shell.c		シェルコマンド関連
-info.c		各種情報表示用
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
 dosemu.c	システム関数群のフロッピードライブ対応版
@@ -84,12 +80,16 @@ unixdisk.c	MS-DOS 用 ファイル制御関数群
 unixdisk.h	unixdisk.c 用のヘッダ
 unixemu.c	システム関数群の MS-DOS 版
 unixemu.h	unixemu.c 用のヘッダ
-rockridg.c	iso-9660 RockRidge 拡張関連
-builtin.c	組込みコマンド関連
-parse.c		文字列解析関連
-kanji.c		漢字コードコンバート関連
+libc.c		cc の標準関数のアレンジ
 file.c		ファイル操作関連
 apply.c		ファイルへの連続適用関連
+parse.c		文字列解析関連
+builtin.c	組込みコマンド関連
+shell.c		シェルコマンド関連
+kanji.c		漢字コードコンバート関連
+input.c		ユーザ入力関連
+info.c		各種情報表示用
+rockridg.c	iso-9660 RockRidge 拡張関連
 archive.c	アーカイバ関連
 tree.c		ツリー表示関連
 command.c	内部コマンド関連

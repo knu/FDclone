@@ -112,7 +112,7 @@ u_char flags;
 
 	if (!n_args) len = setarg(buf, ptr, dir, list[filepos].name, flags);
 	else {
-		for (i = n = len = 0; i < max; i++) if (isarg(&list[i])) {
+		for (i = n = len = 0; i < max; i++) if (isarg(&(list[i]))) {
 			n = setarg(buf, ptr + len, dir, list[i].name, flags);
 			if (!n) break;
 			list[i].tmpflags &= ~F_ISARG;
@@ -456,7 +456,7 @@ int *maxp, noconf, argset;
 	max = (maxp) ? *maxp : 0;
 	status = -2;
 	for (i = 0; i < max; i++) {
-		if (ismark(&list[i])) list[i].tmpflags |= F_ISARG;
+		if (ismark(&(list[i]))) list[i].tmpflags |= F_ISARG;
 		else list[i].tmpflags &= ~F_ISARG;
 	}
 	n_args = mark;
@@ -493,7 +493,7 @@ int *maxp, noconf, argset;
 			status = dosystem(buf, list, maxp, noconf);
 		else status = -2;
 	}
-	else for (i = 0; i < max; i++) if (isarg(&list[i])) {
+	else for (i = 0; i < max; i++) if (isarg(&(list[i]))) {
 		if (insertarg(buf, tmp, list[i].name, st.needmark))
 			status = dosystem(buf, list, maxp, noconf);
 		else status = -2;
@@ -563,8 +563,8 @@ char *argv[];
 	int i, j, k, n;
 
 	i = j = 0;
-	while ((cp = strtkchr(&command[i], '$', 1))) {
-		while (&command[i] < cp && j < MAXCOMMSTR)
+	while ((cp = strtkchr(&(command[i]), '$', 1))) {
+		while (&(command[i]) < cp && j < MAXCOMMSTR)
 			line[j++] = command[i++];
 		if (command[++i] < '0' || command[i] > '9') {
 			line[j++] = '$';
@@ -587,8 +587,8 @@ int *maxp, noconf, argset;
 	char *cp, *argv[MAXARGS + 2];
 	int i, j, s, status, argc;
 
-	argc = getargs(command, argv, MAXARGS + 1);
-	for (i = 0; i < maxuserfunc; i++)
+	if (!(argc = getargs(command, argv, MAXARGS + 1))) i = maxuserfunc;
+	else for (i = 0; i < maxuserfunc; i++)
 		if (!strpathcmp(argv[0], userfunclist[i].func)) break;
 	if (i >= maxuserfunc)
 		status = execmacro(command, arg, list, maxp, noconf, argset);
@@ -722,36 +722,36 @@ int *maxp;
 
 	size = histsize[0];
 	if (argv[0][1] == '!') {
-		cp = &argv[0][2];
+		cp = &(argv[0][2]);
 		n = 3;
 	}
 	else if (argv[0][1] == '-') {
-		cp = skipnumeric(&argv[0][2], 0);
-		n = atoi(&argv[0][2]);
+		cp = skipnumeric(&(argv[0][2]), 0);
+		n = atoi(&(argv[0][2]));
 	}
 	else if (argv[0][1] >= '0' && argv[0][1] <= '9') {
-		cp = skipnumeric(&argv[0][1], 0);
-		n = histno[0] - atoi(&argv[0][1]);
+		cp = skipnumeric(&(argv[0][1]), 0);
+		n = histno[0] - atoi(&(argv[0][1]));
 	}
 	else {
-		i = strlen(&argv[0][1]);
+		i = strlen(&(argv[0][1]));
 		for (n = 1; n <= size; n++) {
 			if (!history[0][n]) break;
 			cp = skipspace(history[0][n]);
-			if (!strnpathcmp(&argv[0][1], cp, i)) break;
+			if (!strnpathcmp(&(argv[0][1]), cp, i)) break;
 		}
-		cp = &argv[0][i + 1];
+		cp = &(argv[0][i + 1]);
 	}
 	free(history[0][0]);
 	if (*cp || n <= 0 || n > size || !history[0][n]) {
 		for (i = 0; i < size && history[0][i]; i++)
 			history[0][i] = history[0][i + 1];
 		if (i >= size) history[0][size] = NULL;
-		cprintf2("%s: Event not found.\r\n", &argv[0][1]);
+		cprintf2("%s: Event not found.\r\n", &(argv[0][1]));
 		warning(0, HITKY_K);
 		return(0);
 	}
-	tmp = catargs(argc - 1, &argv[1], ' ');
+	tmp = catargs(argc - 1, &(argv[1]), ' ');
 	if (!tmp) cp = strdup2(history[0][n]);
 	else {
 		cp = (char *)malloc2(strlen(history[0][n]) + strlen(tmp) + 2);

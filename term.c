@@ -65,13 +65,13 @@ static int _asm_cli(VOID_A);
 #include <sys/time.h>
 #define	TTYNAME		"/dev/tty"
 
-typedef	struct _keyseq_t {
+typedef struct _keyseq_t {
 	u_short code;
 	u_char len;
 	char *str;
 } keyseq_t;
 
-typedef	struct _kstree_t {
+typedef struct _kstree_t {
 	int key;
 	int num;
 	struct _kstree_t *next;
@@ -87,7 +87,7 @@ extern int errno;
 # endif
 #include <termios.h>
 #include <sys/ioctl.h>	/* for Linux libc6 */
-typedef	struct termios	termioctl_t;
+typedef struct termios	termioctl_t;
 #define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
 #define	getspeed(t)	cfgetospeed(&t)
 #define	REQGETP		0
@@ -96,7 +96,7 @@ typedef	struct termios	termioctl_t;
 
 #ifdef	USETERMIO
 #include <termio.h>
-typedef	struct termio	termioctl_t;
+typedef struct termio	termioctl_t;
 #define	tioctl		ioctl
 #define	getspeed(t)	((t).c_cflag & CBAUD)
 #define	REQGETP		TCGETA
@@ -106,7 +106,7 @@ typedef	struct termio	termioctl_t;
 #if	!defined (USETERMIO) && !defined(USETERMIOS)
 #define	USESGTTY
 #include <sgtty.h>
-typedef	struct sgttyb	termioctl_t;
+typedef struct sgttyb	termioctl_t;
 #define	tioctl		ioctl
 #define	getspeed(t)	((t).sg_ospeed)
 #define	REQGETP		TIOCGETP
@@ -120,16 +120,6 @@ typedef	struct sgttyb	termioctl_t;
 
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
-#endif
-
-#ifdef	NOVOID
-#define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
-#else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
 #endif
 
 #include "term.h"
@@ -292,6 +282,9 @@ u_char cc_quit = CTRL('\\');
 u_char cc_eof = CTRL('d');
 u_char cc_eol = 255;
 VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
+#if	!MSDOS
+int usegetcursor = 0;
+#endif
 
 #if	MSDOS
 #ifdef	PC98
@@ -493,7 +486,7 @@ int reset;
 		err2(NULL);
 	}
 	if (!reset) {
-		memcpy(&dupttyio, &tty, sizeof(termioctl_t));
+		memcpy((char *)&dupttyio, (char *)&tty, sizeof(termioctl_t));
 #ifdef	USESGTTY
 		if (tioctl(ttyio, TIOCLGET, &dupttyflag) < 0
 		|| tioctl(ttyio, TIOCGETC, &cc) < 0) {
@@ -679,7 +672,7 @@ int keyflush(VOID_A)
 #endif	/* !USESGTTY */
 	return(0);
 }
-#endif	/* !MSDOS */	
+#endif	/* !MSDOS */
 
 int exit2(no)
 int no;
@@ -1596,11 +1589,11 @@ int sig;
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
 	while (!kbhit2(1000000L / SENSEPERSEC)) {
 		dosgettime(tbuf2);
-		if (memcmp(tbuf1, tbuf2, sizeof(tbuf1))) {
+		if (memcmp((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1))) {
 # if	!defined (DJGPP) || (DJGPP >= 2)
 			if (sig) raise(sig);
 # endif
-			memcpy(tbuf1, tbuf2, sizeof(tbuf1));
+			memcpy((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1));
 		}
 	}
 #endif	/* !DJGPP || NOTUSEBIOS || PC98 */
@@ -1617,7 +1610,7 @@ int sig;
 			break;
 	}
 	else
-#if	defined (PC98) || defined (NOTUSEBIOS)\
+#if	defined (PC98) || defined (NOTUSEBIOS) \
 || (defined (DJGPP) && (DJGPP >= 2))
 	if (kbhit2(WAITKEYPAD * 1000L))
 #endif
@@ -1664,6 +1657,7 @@ int xmax, ymax;
 {
 	int x, y;
 
+	if (xmax <= 0 || ymax <= 0) return(-1);
 	keyflush();
 	maxlocate();
 	if (getxy(&y, &x) != 2) x = y = -1;
@@ -1818,14 +1812,20 @@ int tflush(VOID_A)
 int getwsize(xmax, ymax)
 int xmax, ymax;
 {
-	int x, y;
+	int x, y, tx, ty;
 #ifdef	TIOCGWINSZ
 	struct winsize ws;
 #else
 #ifdef	WIOCGETD
 	struct uwdate ws;
+#else
+#ifdef	TIOCGSIZE
+	struct ttysize ts;
 #endif
 #endif
+#endif
+
+	if (xmax <= 0 || ymax <= 0) return(-1);
 
 	x = y = -1;
 #ifdef	TIOCGWINSZ
@@ -1835,17 +1835,57 @@ int xmax, ymax;
 	}
 #else
 #ifdef	WIOCGETD
+	ws.uw_hs = ws.uw_vs = 0;
 	if (ioctl(ttyio, WIOCGETD, &ws) >= 0) {
-		if (ws.uw_width > 0) x = ws.uw_width / ws.uw_hs;
-		if (ws.uw_height > 0) y = ws.uw_height / ws.uw_vs;
+		if (ws.uw_width > 0 && ws.uw_hs > 0)
+			x = ws.uw_width / ws.uw_hs;
+		if (ws.uw_height > 0 && ws.uw_vs > 0)
+			y = ws.uw_height / ws.uw_vs;
+	}
+#else
+#ifdef	TIOCGSIZE
+	if (ioctl(ttyio, TIOCGSIZE, &ts) >= 0) {
+		if (ts.ts_cols > 0) x = ts.ts_cols;
+		if (ts.ts_lines > 0) y = ts.ts_lines;
 	}
 #endif
 #endif
+#endif
 
-	if (x < 0 || y < 0) {
+	if (usegetcursor || x < 0 || y < 0) {
 		setscroll(-1, -1);
 		maxlocate();
-		if (getxy(&y, &x) != 2) x = y = -1;
+		if (getxy(&ty, &tx) == 2) {
+			x = tx;
+			y = ty;
+#ifdef	TIOCGWINSZ
+			if (ws.ws_col <= 0 || ws.ws_xpixel <= 0)
+				ws.ws_xpixel = 0;
+			else ws.ws_xpixel += (x - ws.ws_col)
+					* (ws.ws_xpixel / ws.ws_col);
+			if (ws.ws_row <= 0 || ws.ws_ypixel <= 0)
+				ws.ws_ypixel = 0;
+			else ws.ws_ypixel += (y - ws.ws_row)
+					* (ws.ws_ypixel / ws.ws_row);
+			ws.ws_col = x;
+			ws.ws_row = y;
+			ioctl(ttyio, TIOCSWINSZ, &ws);
+#else
+#ifdef	WIOCGETD
+			if (ws.uw_hs > 0 && ws.uw_vs > 0) {
+				ws.uw_width = x * ws.uw_hs;
+				ws.uw_height = y * ws.uw_vs;
+				ioctl(ttyio, WIOCSETD, &ws);
+			}
+#else
+#ifdef	TIOCGSIZE
+			ts.ts_cols = x;
+			ts.ts_lines = y;
+			ioctl(ttyio, TIOCSSIZE, &ts);
+#endif
+#endif
+#endif
+		}
 	}
 
 	if (x > 0) {

@@ -37,7 +37,7 @@ extern char *_mtrace_file;
 #define	RUNCOMFILE	"~/.fdrc"
 #define	HISTORYFILE	"~/.fd_history"
 #define	CMDLINE_DELIM	"\t !&:;<>|"
-#define	METACHAR	" \"#$&'()*:;<=>?[\\]^`|~"
+#define	METACHAR	" \"#$&'()*:;<=>?[\\]^`|"
 #define	DQ_METACHAR	"\"$\\`"
 #endif
 
@@ -91,6 +91,7 @@ extern char *_mtrace_file;
 #define	MAXFUNCLINES	16
 #define	MAXLINESTR	255
 #define	MAXCOMMSTR	1023
+#define	MAXSELECTSTRS	16
 #define	MAXSTACK	5
 #define	MAXARGS		128
 

@@ -7,6 +7,7 @@
 #	2: extention	10: extension (reversal)
 #	3: size		11: size (reversal)
 #	4: date		12: date (reversal)
+#	5: length	13: length (reversal)
 #	100-112: preserve previous sort type
 #		(the least 2 digits are effective just after initialize)
 SORTTYPE	=	0
@@ -27,7 +28,7 @@ DISPLAYMODE	=	0
 #	>= 1: sort according to SORTTYPE
 SORTTREE	=	0
 
-# behavior about writing over direcotory on file system
+# behavior about writing over directory on file system
 #	0: confirm to write or not, after directory arranged (Default)
 #	1: write directory only if commanded
 #	2: never write over directory even if commanded
@@ -61,7 +62,7 @@ DIRHIST		=	50
 #	Default: 50
 SAVEHIST	=	50
 
-# limit of counting file in directory, on tree mode
+# limit of counting files in directory, on tree mode
 #	Default: 50
 DIRCOUNTLIMIT	=	50
 

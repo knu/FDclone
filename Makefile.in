@@ -15,11 +15,14 @@ INSTALL	= __INSTALL__
 CHMOD	= chmod
 MANSEC	= 1
 
-SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c \
+SRC	= main.c term.c pathname.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
-	rockridg.c builtin.c parse.c \
-	kanji.c file.c apply.c archive.c tree.c command.c browse.c \
+	libc.c file.c apply.c \
+	parse.c builtin.c shell.c \
+	kanji.c input.c \
+	info.c rockridg.c archive.c tree.c \
+	command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
 HEADER	= fd.h machine.h types.h kctype.h term.h pathname.h \
 	dosdisk.h \
@@ -46,12 +49,13 @@ SOURCES	= $(JSRCS) $(ESRCS)
 CC	= __CC__
 SED	= sed
 PROGRAM	= fd
-OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ libc__OBJ__ \
-	input__OBJ__ shell__OBJ__ info__OBJ__
-OBJ2	= dosdisk__OBJ__ __OBJS__ \
-	rockridg__OBJ__ builtin__OBJ__ parse__OBJ__
-OBJ3	= kanji__OBJ__ file__OBJ__ apply__OBJ__ archive__OBJ__ \
-	tree__OBJ__ command__OBJ__ browse__OBJ__
+OBJ1	= main__OBJ__ term__OBJ__ pathname__OBJ__ \
+	dosdisk__OBJ__ __OBJS__
+OBJ2	= libc__OBJ__ file__OBJ__ apply__OBJ__ \
+	parse__OBJ__ builtin__OBJ__ shell__OBJ__ \
+	kanji__OBJ__ input__OBJ__
+OBJ3	= info__OBJ__ rockridg__OBJ__ archive__OBJ__ tree__OBJ__ \
+	command__OBJ__ browse__OBJ__
 ALLOC	=
 DEBUG	=
 
@@ -248,24 +252,6 @@ term__OBJ__: machine.h config.h
 term__OBJ__: term.h
 pathname__OBJ__: machine.h config.h
 pathname__OBJ__: pathname.h
-libc__OBJ__: fd.h
-libc__OBJ__: machine.h config.h
-libc__OBJ__: types.h pathname.h term.h func.h
-libc__OBJ__: kctype.h kanji.h
-input__OBJ__: fd.h
-input__OBJ__: machine.h config.h
-input__OBJ__: types.h pathname.h
-input__OBJ__: term.h func.h
-input__OBJ__: kctype.h
-input__OBJ__: kanji.h
-shell__OBJ__: fd.h
-shell__OBJ__: machine.h config.h
-shell__OBJ__: types.h pathname.h term.h func.h
-shell__OBJ__: kctype.h
-shell__OBJ__: kanji.h
-info__OBJ__: fd.h
-info__OBJ__: machine.h config.h
-info__OBJ__: types.h pathname.h term.h funcno.h kanji.h
 dosdisk__OBJ__: machine.h config.h
 dosdisk__OBJ__: dosdisk.h
 dosemu__OBJ__: fd.h
@@ -281,31 +267,49 @@ unixemu__OBJ__: machine.h config.h
 unixemu__OBJ__: types.h pathname.h func.h
 unixemu__OBJ__: unixdisk.h
 unixemu__OBJ__: unixemu.h dosdisk.h
-rockridg__OBJ__: fd.h
-rockridg__OBJ__: machine.h config.h
-rockridg__OBJ__: types.h pathname.h func.h
-builtin__OBJ__: fd.h
-builtin__OBJ__: machine.h config.h
-builtin__OBJ__: types.h pathname.h term.h func.h
-builtin__OBJ__: kctype.h
-builtin__OBJ__: funcno.h kanji.h dosdisk.h
-parse__OBJ__: fd.h
-parse__OBJ__: machine.h config.h
-parse__OBJ__: types.h pathname.h func.h
-parse__OBJ__: kctype.h
-parse__OBJ__: dosdisk.h
-kanji__OBJ__: fd.h
-kanji__OBJ__: machine.h config.h
-kanji__OBJ__: types.h pathname.h term.h func.h
-kanji__OBJ__: kctype.h
+libc__OBJ__: fd.h
+libc__OBJ__: machine.h config.h
+libc__OBJ__: types.h pathname.h term.h func.h
+libc__OBJ__: kctype.h kanji.h
 file__OBJ__: fd.h
 file__OBJ__: machine.h config.h
-file__OBJ__: types.h pathname.h term.h func.h
+file__OBJ__: types.h pathname.h func.h
 file__OBJ__: kctype.h kanji.h
 apply__OBJ__: fd.h
 apply__OBJ__: machine.h config.h
 apply__OBJ__: types.h pathname.h term.h func.h
 apply__OBJ__: kanji.h
+parse__OBJ__: fd.h
+parse__OBJ__: machine.h config.h
+parse__OBJ__: types.h pathname.h func.h
+parse__OBJ__: kctype.h
+parse__OBJ__: dosdisk.h
+builtin__OBJ__: fd.h
+builtin__OBJ__: machine.h config.h
+builtin__OBJ__: types.h pathname.h term.h func.h
+builtin__OBJ__: kctype.h
+builtin__OBJ__: funcno.h kanji.h dosdisk.h
+shell__OBJ__: fd.h
+shell__OBJ__: machine.h config.h
+shell__OBJ__: types.h pathname.h term.h func.h
+shell__OBJ__: kctype.h
+shell__OBJ__: kanji.h
+kanji__OBJ__: fd.h
+kanji__OBJ__: machine.h config.h
+kanji__OBJ__: types.h pathname.h term.h func.h
+kanji__OBJ__: kctype.h
+input__OBJ__: fd.h
+input__OBJ__: machine.h config.h
+input__OBJ__: types.h pathname.h
+input__OBJ__: term.h func.h
+input__OBJ__: kctype.h
+input__OBJ__: kanji.h
+info__OBJ__: fd.h
+info__OBJ__: machine.h config.h
+info__OBJ__: types.h pathname.h term.h funcno.h kanji.h
+rockridg__OBJ__: fd.h
+rockridg__OBJ__: machine.h config.h
+rockridg__OBJ__: types.h pathname.h func.h
 archive__OBJ__: fd.h
 archive__OBJ__: machine.h
 archive__OBJ__: config.h types.h
@@ -313,12 +317,14 @@ archive__OBJ__: pathname.h term.h func.h
 archive__OBJ__: funcno.h kctype.h kanji.h
 tree__OBJ__: fd.h
 tree__OBJ__: machine.h config.h
-tree__OBJ__: types.h pathname.h term.h func.h
+tree__OBJ__: types.h pathname.h term.h
+tree__OBJ__: func.h
 tree__OBJ__: kanji.h
 command__OBJ__: fd.h
 command__OBJ__: machine.h config.h
 command__OBJ__: types.h pathname.h term.h func.h
-command__OBJ__: funcno.h kanji.h
+command__OBJ__: funcno.h kctype.h
+command__OBJ__: kanji.h
 command__OBJ__: functabl.h
 browse__OBJ__: fd.h
 browse__OBJ__: machine.h config.h

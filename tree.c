@@ -4,14 +4,13 @@
  *	Tree Mode Module
  */
 
+#include <signal.h>
 #include "fd.h"
 #include "term.h"
 #include "func.h"
 #include "kanji.h"
 
 #ifndef	_NOTREE
-
-#include <signal.h>
 
 #if	MSDOS
 # ifndef	_NODOSDRIVE
@@ -34,10 +33,10 @@ extern int lastdrv;
 extern int sizeinfo;
 
 #define	DIRFIELD	3
-#define	TREEFIELD	(((dircountlimit > 0) ? (n_column * 3) / 5 : n_column)\
-			- 2)
+#define	TREEFIELD	(((dircountlimit > 0) \
+			? (n_column * 3) / 5 : n_column) - 2)
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
-#define	bufptr(buf, y)	(&buf[(y - LFILETOP - 1) * (TREEFIELD + 1)])
+#define	bufptr(buf, y)	(&(buf[(y - LFILETOP - 1) * (TREEFIELD + 1)]))
 
 static int evaldir __P_((char *, int));
 static treelist *maketree __P_((char *, treelist *, int, int *));
@@ -252,15 +251,15 @@ int max, nest, y;
 		if (y > LFILETOP && y < LFILEBOTTOM) {
 			cp = bufptr(buf, y);
 			if (nest > 0)
-				memcpy(&cp[(nest - 1) * DIRFIELD], "+--", 3);
+				memcpy(&(cp[(nest - 1) * DIRFIELD]), "+--", 3);
 			if (!(list[i].name)) {
 				tmp = (w > 3) ? 3 : w;
-				memcpy(&cp[nest * DIRFIELD], "...", tmp);
+				memcpy(&(cp[nest * DIRFIELD]), "...", tmp);
 			}
 			else {
 				tmp = strlen(list[i].name);
 				if (tmp > w) tmp = w;
-				memcpy(&cp[nest * DIRFIELD],
+				memcpy(&(cp[nest * DIRFIELD]),
 					list[i].name, tmp);
 				if (list[i].max < 0)
 					cp[nest * DIRFIELD + tmp] = '>';
@@ -322,7 +321,7 @@ int max, nest;
 				nest + 1);
 			if (tmplp) {
 				lp = (tmplp == (treelist *)-1)
-					? &list[i] : tmplp;
+					? &(list[i]) : tmplp;
 				len = strlen(list[i].name);
 #if	MSDOS
 				if (!_dospath(list[i].name)
@@ -371,7 +370,8 @@ char *path;
 	lp = NULL;
 	if (list -> sub) {
 		lp = (treelist *)malloc2(sizeof(treelist));
-		memcpy(lp, &(list -> sub[0]), sizeof(treelist));
+		memcpy((char *)lp, (char *)&(list -> sub[0]),
+			sizeof(treelist));
 		for (i = 1; i < list -> max; i++)
 			if ((list -> sub[i]).name) free((list -> sub[i]).name);
 	}
@@ -397,9 +397,11 @@ char *path;
 			if (!strpathcmp(lp -> name, lptmp[i].name)) break;
 		if (i < list -> max) {
 			free(lptmp[i].name);
-			for (; i > 0; i--) memcpy(&lptmp[i], &lptmp[i - 1],
+			for (; i > 0; i--) memcpy((char *)&(lptmp[i]),
+					(char *)&(lptmp[i - 1]),
 					sizeof(treelist));
-			memcpy(&lptmp[0], lp, sizeof(treelist));
+			memcpy((char *)&(lptmp[0]), (char *)lp,
+				sizeof(treelist));
 		}
 		free(lp);
 	}
@@ -614,9 +616,9 @@ treelist *list, **lpp;
 			redraw = 1;
 			break;
 		case K_RIGHT:
-			if (!(*lpp) || !((*lpp) -> sub)
-			|| ((*lpp) -> sub[tr_no]).max >= 0) {
-				if (!((*lpp) -> sub[tr_no].sub)) break;
+			if (!(*lpp) || !((*lpp) -> sub)) break;
+			if (((*lpp) -> sub[tr_no]).max >= 0) {
+				if (!(((*lpp) -> sub[tr_no]).sub)) break;
 				lptmp = treedown(path, list);
 				if (lptmp) *lpp = lptmp;
 				break;

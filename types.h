@@ -88,7 +88,7 @@ typedef u_short	gid_t;
 # ifndef	SF_NOUNLINK
 # define	SF_NOUNLINK	0x00080000
 # endif
-#endif  
+#endif
 
 #ifndef	BITSPERBYTE
 #define	BITSPERBYTE	8
