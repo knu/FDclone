@@ -1,3 +1,6 @@
+Ver. 1.01-07	'col -b' の機能を kanjicnv に内蔵。
+ (12/11/95)	フロッピードライブの timestamp に関する Bugfix。
+
 Ver. 1.01-06	timezone 情報取得の機種依存性に対する措置。
  (11/13/95)	正式リリースに合わせて fd.cat, .fdrc.diff を同梱。
 

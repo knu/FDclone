@@ -92,6 +92,13 @@ static int dosfilbuf();
 static int dosflsbuf();
 
 devinfo fdtype[MAXDRIVEENTRY] = {
+#if defined (SOLARIS)
+# if defined (i386)
+	{'A', "/dev/rfd0a", 2, 18, 80},
+	{'A', "/dev/rfd0c", 2, 9, 80},
+	{'A', "/dev/rfd0c", 2, 8 + 100, 80},
+# endif
+#endif
 #if defined (SUN_OS)
 # if defined (sparc)
 	{'A', "/dev/rfd0c", 2, 18, 80},
@@ -246,16 +253,15 @@ long sect;
 char *buf;
 {
 	char *cp;
-	int i, size;
+	int i;
 
-	size = devp -> sectsize;
 	for (i = 0; i < maxsectcache; i++)
 	if (devp -> drive == cachedrive[i] && sect == sectno[i]) {
-		memcpy(sectcache[i], buf, size);
+		memcpy(sectcache[i], buf, devp -> sectsize);
 		shiftcache(i);
-		return(size);
+		return(1);
 	}
-	if (!(cp = (char *)malloc(size))) return(-1);
+	if (!(cp = (char *)malloc(devp -> sectsize))) return(-1);
 	if (i < SECTCACHESIZE) maxsectcache = i + 1;
 	else {
 		i--;
@@ -264,7 +270,7 @@ char *buf;
 	cachedrive[i] = devp -> drive;
 	sectno[i] = sect;
 	sectcache[i] = cp;
-	memcpy(sectcache[i], buf, size);
+	memcpy(sectcache[i], buf, devp -> sectsize);
 	return(0);
 }
 
@@ -275,7 +281,7 @@ char *buf;
 {
 	int i;
 
-	for (i = 0; i < maxsectcache; i++)
+	for (i = maxsectcache - 1; i >= 0; i--)
 	if (devp -> drive == cachedrive[i] && sect == sectno[i]) {
 		memcpy(buf, sectcache[i], devp -> sectsize);
 		shiftcache(i);
@@ -823,7 +829,7 @@ int date, time;
 	struct tm tm;
 
 	tm.tm_year = 1980 + ((date >> 9) & 0x7f);
-	tm.tm_mon = (date >> 5) & 0x0f - 1;
+	tm.tm_mon = ((date >> 5) & 0x0f) - 1;
 	tm.tm_mday = date & 0x1f;
 	tm.tm_hour = (time >> 11) & 0x1f;
 	tm.tm_min = (time >> 5) & 0x3f;

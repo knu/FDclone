@@ -9,9 +9,8 @@ MANDIR	= $(TOPDIR)/man/man$(MANSEC)
 CATDIR	= $(TOPDIR)/man/cat$(MANSEC)
 DEFRC	= /etc/fdrc
 SHELL	= /bin/sh
-INSTALL	= cp
+INSTALL	= cp -p
 CHMOD	= chmod
-COL-B	= col -b
 MANSEC	= 1
 
 SRC	= main.c term.c pathname.c libc.c input.c shell.c info.c\
@@ -57,13 +56,16 @@ $(PROGRAM): $(OBJ)
 # kanji using module
 
 kanji.h: kanjicnv kanji.h.in
-	./kanjicnv kanji.h.in $@
+	./kanjicnv __KCODEOPTION__ -c __MSBOPTION__ kanji.h.in $@
 
 $(PROGRAM).$(MANSEC): kanjicnv $(MANSRC)
-	./kanjicnv $(MANSRC) $@
+	./kanjicnv __KCODEOPTION__ -c $(MANSRC) $@
 
 $(PROGRAM).$(MANSEC).cat: kanjicnv $(MANCAT)
-	./kanjicnv $(MANCAT) $@
+	./kanjicnv __KCODEOPTION__ $(MANCAT) $@
+
+$(PROGRAM).$(MANSEC).cat-b: kanjicnv $(MANCAT)
+	./kanjicnv __KCODEOPTION__ -b $(MANCAT) $@
 
 kanjicnv: kanjicnv.c
 	$(CC) $(CFLAGS) -o $@ $@.c
@@ -94,9 +96,11 @@ install: $(PROGRAM) $(PROGRAM).$(MANSEC)
 
 catman: $(PROGRAM).$(MANSEC).cat
 	$(INSTALL) $(PROGRAM).$(MANSEC).cat $(CATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(CATDIR)/$(PROGRAM).$(MANSEC)
 
-catman-b: $(PROGRAM).$(MANSEC).cat
-	$(COL-B) < $(PROGRAM).$(MANSEC).cat > $(CATDIR)/$(PROGRAM).$(MANSEC)
+catman-b: $(PROGRAM).$(MANSEC).cat-b
+	$(INSTALL) $(PROGRAM).$(MANSEC).cat-b $(CATDIR)/$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r $(CATDIR)/$(PROGRAM).$(MANSEC)
 
 
 ############################################################
