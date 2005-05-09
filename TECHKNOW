@@ -118,6 +118,9 @@ TERMCAPLIB
 REGEXPLIB
 	正規表現ライブラリとしてリンクしなければならないライ
 	ブラリがある場合定義します。
+SOCKETLIB
+	ソケットライブラリとしてリンクしなければならないライ
+	ブラリがある場合定義します。
 EXTENDLIB
 	その他追加でリンクしなくてはならないライブラリがある
 	場合定義します。
@@ -128,6 +131,12 @@ UNKNOWNFS
 	く実現できない場合にも、安全のため定義しておきます。
 	詳細は 2. の項目を参照して下さい。
 
+NOFILEMACRO
+	cc(1) がマクロ __FILE__ を評価出来ません。
+NOFUNCMACRO
+	cc(1) がマクロ __FUNCTION__ を評価出来ません。
+NOLINEMACRO
+	cc(1) がマクロ __LINE__ を評価出来ません。
 FORCEDSTDC
 	__STDC__ がプリデファインされていないけれども、プロ
 	トタイプ宣言等に ANSI 標準 C の書式を要求する仕様に
@@ -377,6 +386,23 @@ USESTRERROR
 GETTODARGS
 	時刻取得関数 gettimeofday(2) の用いる引数の数を指定
 	します。デフォルトは 2 です。
+USESETSID
+	セッション制御関数 setsid(2) を用いることができます。
+USESOCKLEN
+	ソケット関数 bind(2)/connect(2)/accept(2) の第 3 引
+	数として socklen_t 型を用います。
+USESETREUID
+	ユーザ ID 設定関数 setreuid(2) を seteuid(2) の代わ
+	りに用います。
+USESETRESUID
+	ユーザ ID 設定関数 setresuid(2) を seteuid(2) の代わ
+	りに用います。
+USESETREGID
+	グループ ID 設定関数 setregid(2) を setegid(2) の代
+	わりに用います。
+USESETRESGID
+	グループ ID 設定関数 setresgid(2) を setegid(2) の代
+	わりに用います。
 
 SENSEPERSEC
 	1 秒間にキー入力を関知する回数を指定します。端末通信

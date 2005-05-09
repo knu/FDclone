@@ -1,7 +1,7 @@
 /*
  *	parse.c
  *
- *	Commandline Parser
+ *	command line parser
  */
 
 #include "fd.h"
@@ -104,6 +104,7 @@ char *skipspace(cp)
 char *cp;
 {
 	while (*cp == ' ' || *cp == '\t') cp++;
+
 	return(cp);
 }
 
@@ -114,7 +115,8 @@ int c;
 	else if (isdigit2(c)) return(c - '0');
 	else if (islower2(c)) return(c - 'a' + 10);
 	else if (isupper2(c)) return(c - 'A' + 10);
-	else return(-1);
+
+	return(-1);
 }
 
 #ifdef	USESTDARGH
@@ -134,13 +136,9 @@ va_dcl
 	u_long_t u, mask;
 	int i, c, len, base, width, flags;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
-
 	if (!s || !fmt) return(NULL);
+	VA_START(args, fmt);
+
 	for (i = 0; fmt[i]; i++) {
 		if (fmt[i] != '%') {
 			if (*(s++) != fmt[i]) return(NULL);
@@ -155,7 +153,7 @@ va_dcl
 		}
 		width = getnum(fmt, &i);
 
-		len = sizeof(int);
+		len = (int)sizeof(int);
 		for (; fmt[i]; i++) {
 			if (!(cp = strchr(printfsizechar, fmt[i]))) break;
 			len = printfsize[cp - printfsizechar];
@@ -250,7 +248,7 @@ va_dcl
 		if ((flags & VF_ZERO) && width > 0) return(NULL);
 
 		mask = (MAXUTYPE(u_long_t)
-			>> ((sizeof(long_t) - len) * BITSPERBYTE));
+			>> (((int)sizeof(long_t) - len) * BITSPERBYTE));
 		if (flags & VF_UNSIGNED) {
 			if (u & ~mask) return(NULL);
 		}
@@ -263,14 +261,16 @@ va_dcl
 			memcpy(&u, &n, sizeof(u));
 		}
 
-		if (len == sizeof(u_long_t))
+		if (len == (int)sizeof(u_long_t))
 			*(va_arg(args, u_long_t *)) = u;
 #ifdef	HAVELONGLONG
-		else if (len == sizeof(u_long)) *(va_arg(args, u_long *)) = u;
+		else if (len == (int)sizeof(u_long))
+			*(va_arg(args, u_long *)) = u;
 #endif
-		else if (len == sizeof(u_short))
+		else if (len == (int)sizeof(u_short))
 			*(va_arg(args, u_short *)) = u;
-		else if (len == sizeof(u_char)) *(va_arg(args, u_char *)) = u;
+		else if (len == (int)sizeof(u_char))
+			*(va_arg(args, u_char *)) = u;
 		else *(va_arg(args, u_int *)) = u;
 	}
 	va_end(args);
@@ -309,6 +309,7 @@ int evaldq;
 
 		if (strchr(c, *cp)) return(cp);
 	}
+
 	return(NULL);
 }
 
@@ -320,6 +321,7 @@ int c, evaldq;
 
 	tmp[0] = c;
 	tmp[1] = '\0';
+
 	return(strtkbrk(s, tmp, evaldq));
 }
 
@@ -333,6 +335,7 @@ char **strp;
 	if ((tmp = strtkbrk(*strp, " \t", 0))) len = tmp - *strp;
 	else len = strlen(*strp);
 	*strp += len;
+
 	return(strndup2(cp, len));
 }
 
@@ -350,6 +353,7 @@ char *s, ***argvp;
 		cp = skipspace(cp);
 	}
 	(*argvp)[i] = NULL;
+
 	return(i);
 }
 
@@ -358,6 +362,7 @@ char *s;
 {
 	if (!isidentchar(*s)) return(NULL);
 	for (s++; isidentchar2(*s); s++);
+
 	return(s);
 }
 
@@ -386,6 +391,7 @@ char *argv[];
 		cp = argv[i];
 	}
 	*argcp = i + 1;
+
 	return(evalpath(strdup2(cp), EA_NOUNIQDELIM));
 }
 
@@ -435,6 +441,7 @@ char *path, *delim;
 
 	if (!epath) return(strdup2(""));
 	epath[size] = '\0';
+
 	return(epath);
 }
 #endif	/* _NOORIGSHELL */
@@ -475,6 +482,7 @@ int delim;
 
 	if (!epath) return(strdup2(""));
 	epath[size] = '\0';
+
 	return(epath);
 }
 
@@ -507,6 +515,7 @@ char *name;
 	buf[i] = '\0';
 	cp = strdup2(cp);
 	free(buf);
+
 	return(cp);
 }
 #endif	/* !MSDOS || !_NOORIGSHELL */
@@ -541,6 +550,7 @@ char *path, *plist;
 		len = (next) ? (next++) - cp : strlen(cp);
 		if ((tmp = underpath(path, cp, len))) return(tmp);
 	}
+
 	return(NULL);
 }
 
@@ -577,6 +587,7 @@ u_char *fp, *dp, *wp;
 		else if (*cp && *cp != ',' && *cp != ':') *wp = *(cp++) % 128;
 		else return(NULL);
 	}
+
 	return(cp);
 }
 #endif	/* (FD < 2) && !_NOARCHIVE */
@@ -719,6 +730,7 @@ char **bufp, *prompt;
 	}
 	(*bufp)[j] = '\0';
 	free(prompt);
+
 	return(len);
 }
 
@@ -743,6 +755,7 @@ u_char *flagsp;
 		*tmp = '*';
 		strcpy(&(tmp[1]), ext);
 	}
+
 	return(tmp);
 }
 
@@ -760,6 +773,7 @@ int flags2, strict;
 	if ((flags1 & LF_IGNORECASE) || (flags2 & LF_IGNORECASE))
 		return(strcasecmp2(ext1, ext2));
 # endif
+
 	return(strpathcmp(ext1, ext2));
 }
 #endif	/* !_NOARCHIVE */
@@ -771,6 +785,7 @@ int identonly;
 	char *tmp;
 	int i, ch;
 
+	if (!cp || !*cp) return(-1);
 	ch = (*(cp++) & 0xff);
 	if (!*cp) {
 		if (identonly) return(-1);
@@ -815,6 +830,7 @@ int identonly;
 			break;
 	}
 	if (*cp) ch = -1;
+
 	return(ch);
 }
 
@@ -822,7 +838,15 @@ char *getkeysym(c, tenkey)
 int c, tenkey;
 {
 	static char buf[5];
-	int i, j;
+	int i;
+
+	for (i = 0; i < KEYIDENTSIZ; i++)
+		if ((u_short)(c) == keyidentlist[i].no) break;
+	if (i < KEYIDENTSIZ) {
+		if (c > (int)MAXUTYPE(u_char)
+		|| tenkey || c == ' ' || iscntrl2(c))
+			return(keyidentlist[i].str);
+	}
 
 	i = 0;
 	if (c >= K_F(1) && c <= K_F(20))
@@ -838,26 +862,23 @@ int c, tenkey;
 	}
 #endif
 	else if (c > (int)MAXUTYPE(u_char)) {
-		for (j = 0; j < KEYIDENTSIZ; j++)
-			if ((u_short)(c) == keyidentlist[j].no) break;
-		if (j < KEYIDENTSIZ) {
-			if (tenkey || c == ' ' || iscntrl2(c)
-			|| keyidentlist[j].no >= K_MIN)
-				return(keyidentlist[j].str);
-		}
-
 		buf[i++] = '?';
 		buf[i++] = '?';
 	}
 #ifndef	CODEEUC
 	else if (iskana2(c)) buf[i++] = c;
 #endif
-	else if (iscntrl2(c))
-		i = snprintf2(buf, sizeof(buf), "^%c", (c + '@') & 0x7f);
+	else if (iscntrl2(c)) {
+		for (i = 0; escapechar[i]; i++)
+			if (c == escapevalue[i]) break;
+		if (escapechar[i])
+			i = snprintf2(buf, sizeof(buf), "\\%c", escapechar[i]);
+		else i = snprintf2(buf, sizeof(buf), "^%c", (c + '@') & 0x7f);
+	}
 	else if (ismsb(c)) i = snprintf2(buf, sizeof(buf), "\\%03o", c);
 	else buf[i++] = c;
-
 	buf[i] = '\0';
+
 	return(buf);
 }
 
@@ -894,6 +915,7 @@ int evalhat;
 	s[j] = '\0';
 	free(cp);
 	if (lenp) *lenp = j;
+
 	return(s);
 }
 
@@ -931,6 +953,7 @@ int len;
 		cp[j++] = s[i];
 	}
 	cp[j] = '\0';
+
 	return(cp);
 }
 #endif	/* !_NOKEYMAP */

@@ -1,14 +1,22 @@
 /*
  *	expfunc.c
  *
- *	Function Expander for the obsolete /bin/sh
+ *	function expander for the obsolete /bin/sh
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/types.h>
 #include "machine.h"
-#include "types.h"
+
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
+
+#ifndef	NOSTDLIBH
+#include <stdlib.h>
+#endif
 
 #define	MAXLINEBUF	255
 #define	MAXFUNCNO	32
@@ -37,6 +45,7 @@ static char *skipspace(s)
 char *s;
 {
 	while (*s == ' ' || *s == '\t') s++;
+
 	return(s);
 }
 
@@ -50,6 +59,7 @@ int n;
 	if (!(tmp = (char *)malloc(n + 1))) exit(1);
 	memcpy(tmp, s, n);
 	tmp[n] = '\0';
+
 	return(tmp);
 }
 
@@ -78,6 +88,7 @@ char *line;
 	func[funcno] = strndup2(line, len);
 	funclen[funcno] = len;
 	funcbody[funcno] = NULL;
+
 	return(++cp);
 }
 
@@ -121,6 +132,7 @@ char *line;
 
 	strcat(funcbody[funcno], line);
 	if (!i) strcat(funcbody[funcno++], "; }");
+
 	return(i);
 }
 
@@ -144,6 +156,7 @@ char *line;
 	cp = skipspace(&(cp[2]));
 	for (len = 0; cp[len]; len++)
 		if (cp[len] == ' ' || cp[len] == '\t') break;
+
 	return(strndup2(cp, len));
 }
 
@@ -236,8 +249,8 @@ char *args[];
 			break;
 		}
 	}
-
 	*linep = cp;
+
 	return(i);
 }
 

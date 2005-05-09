@@ -1,7 +1,7 @@
 /*
  *	dosdisk.h
  *
- *	Type Definition for "dosdisk.c"
+ *	type definitions for "dosdisk.c"
  */
 
 #if	!MSDOS
@@ -32,12 +32,12 @@
 #define	INHIBITNAME	{"CON     ", "AUX     ", "PRN     ", \
 			 "CLOCK$  ", "CONFIG$ ", "NUL     "}
 #define	INHIBITCOM	"COM"
-#define	INHIBITCOMMAX	4
+#define	INHIBITCOMMAX	9	/* NT architecture will avoid COM5-COM9 */
 #define	INHIBITLPT	"LPT"
-#define	INHIBITLPTMAX	9
+#define	INHIBITLPTMAX	9	/* Windows will avoid LPT4-LPT9 */
 
 #define	MAXDRIVEENTRY	32
-#define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
+#define	DOSFDOFFSET	(1 << (8 * (int)sizeof(int) - 2))
 #ifdef	NOFILE
 #define	DOSNOFILE	NOFILE
 #else

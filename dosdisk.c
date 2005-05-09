@@ -1,7 +1,7 @@
 /*
  *	dosdisk.c
  *
- *	MSDOS Disk Access Module
+ *	MSDOS disk accessing module
  */
 
 #include <stdio.h>
@@ -198,6 +198,7 @@ static long NEAR char2long __P_((u_char *));
 static int NEAR tmcmp __P_((struct tm *, struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
+static time_t NEAR timegm2 __P_((struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
@@ -206,6 +207,8 @@ static u_int NEAR unifysjis __P_((u_int, int));
 static u_int NEAR cnvunicode __P_((u_int, int));
 #define	getword(s, n)	(((u_int)((s)[(n) + 1]) << 8) | (s)[n])
 #define	Xlseek		lseek
+#define	SJ_UDEF		0x81ac	/* GETA */
+#define	U2_UDEF		0x3013	/* GETA */
 #define	UNICODETBL	"fd-unicd.tbl"
 #define	MINUNICODE	0x00a7
 #define	MAXUNICODE	0xffe5
@@ -524,6 +527,7 @@ int d;
 		if (iskanji1(s, i)) i++;
 # endif
 	}
+
 	return(NULL);
 }
 
@@ -542,6 +546,7 @@ int d;
 		if (iskanji1(s, i)) i++;
 # endif
 	}
+
 	return(cp);
 }
 
@@ -557,9 +562,11 @@ char *s, *eol;
 		if (s[i] == _SC_) cp = &(s[i]);
 		if (iskanji1(s, i)) i++;
 	}
+
 	return(cp);
 #else
 	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
+
 	return(NULL);
 #endif
 }
@@ -579,6 +586,7 @@ int ptr;
 
 	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
 	if (!s[i] || i > ptr) return(1);
+
 	return(!iskanji1(s, i));
 #else
 	return(1);
@@ -614,6 +622,7 @@ char *s;
 		*cp = _SC_;
 	}
 	*(++cp) = '\0';
+
 	return(cp);
 }
 #endif	/* MSDOS */
@@ -665,6 +674,7 @@ char *buf, *s1, *s2;
 		for (i = 0; s2[i] && i < len; i++) *(cp++) = s2[i];
 	}
 	*cp = '\0';
+
 	return(cp);
 }
 
@@ -684,6 +694,7 @@ char *s1, *s2;
 		s1++;
 		s2++;
 	}
+
 	return(0);
 }
 
@@ -691,6 +702,7 @@ static int NEAR isdotdir(s)
 char *s;
 {
 	if (s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]))) return(1);
+
 	return(0);
 }
 
@@ -718,11 +730,46 @@ struct tm *tm1, *tm2;
 		return (tm1 -> tm_hour - tm2 -> tm_hour);
 	if (tm1 -> tm_min != tm2 -> tm_min)
 		return (tm1 -> tm_min - tm2 -> tm_min);
+
 	return (tm1 -> tm_sec - tm2 -> tm_sec);
 }
 #endif	/* !MSDOS && !NOTZFILEH && !USEMKTIME && !USETIMELOCAL */
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
+static time_t NEAR timegm2(tm)
+struct tm *tm;
+{
+	time_t t;
+	int i, y;
+
+	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
+
+	t = ((long)y - 1970) * 365;
+	t += ((y - 1 - 1968) / 4)
+		- ((y - 1 - 1900) / 100)
+		+ ((y - 1 - 1600) / 400);
+	for (i = 1; i < tm -> tm_mon + 1; i++) switch (i) {
+		case 2:
+			if (!(y % 4) && ((y % 100) || !(y % 400))) t++;
+			t += 28;
+			break;
+		case 4:
+		case 6:
+		case 9:
+		case 11:
+			t += 30;
+			break;
+		default:
+			t += 31;
+			break;
+	}
+	t += tm -> tm_mday - 1;
+	t *= 60L * 60L * 24L;
+	t += ((long)(tm -> tm_hour) * 60L + tm -> tm_min) * 60L + tm -> tm_sec;
+
+	return(t);
+}
+
 static long NEAR gettimezone(tm, t)
 struct tm *tm;
 time_t t;
@@ -733,10 +780,6 @@ time_t t;
 	ftime(&buffer);
 	return((long)(buffer.timezone) * 60L);
 # else	/* !MSDOS */
-#  ifdef	NOTMGMTOFF
-	struct timeval t_val;
-	struct timezone t_zone;
-#  endif
 #  ifndef	NOTZFILEH
 	struct tzhead head;
 	FILE *fp;
@@ -751,8 +794,7 @@ time_t t;
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
 
 #  ifdef	NOTMGMTOFF
-	gettimeofday2(&t_val, &t_zone);
-	tz = t_zone.tz_minuteswest * 60L;
+	tz = (long)t - (long)timegm2(localtime(&t));
 #  else
 	tz = -(localtime(&t) -> tm_gmtoff);
 #  endif
@@ -786,8 +828,9 @@ time_t t;
 	}
 	if (i > 0) {
 		i--;
-		i *= sizeof(char);
-		i += sizeof(struct tzhead) + ntime * sizeof(char) * 4;
+		i *= (int)sizeof(char);
+		i += (int)sizeof(struct tzhead)
+			+ ntime * (int)sizeof(char) * 4;
 		if (fseek(fp, i, 0) < 0
 		|| fread(&c, sizeof(char), 1, fp) != 1) {
 			fclose(fp);
@@ -795,8 +838,8 @@ time_t t;
 		}
 		i = c;
 	}
-	i *= sizeof(char) * (4 + 1 + 1);
-	i += sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1);
+	i *= (int)sizeof(char) * (4 + 1 + 1);
+	i += (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1);
 	if (fseek(fp, i, 0) < 0
 	|| fread(buf, sizeof(char), 4, fp) != 4) {
 		fclose(fp);
@@ -805,9 +848,9 @@ time_t t;
 	tmp = char2long(buf);
 	tz = -tmp;
 
-	i = sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1)
-		+ ntype * sizeof(char) * (4 + 1 + 1)
-		+ nchar * sizeof(char);
+	i = (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1)
+		+ ntype * (int)sizeof(char) * (4 + 1 + 1)
+		+ nchar * (int)sizeof(char);
 	if (fseek(fp, i, 0) < 0) {
 		fclose(fp);
 		return(tz);
@@ -846,35 +889,9 @@ struct tm *tm;
 # ifdef	USETIMELOCAL
 	return(timelocal(tm));
 # else	/* !USETIMELOCAL */
-	time_t d, t;
-	int i, y;
+	time_t t;
 
-	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
-
-	d = ((long)y - 1970) * 365;
-	d += ((y - 1 - 1968) / 4)
-		- ((y - 1 - 1900) / 100)
-		+ ((y - 1 - 1600) / 400);
-	for (i = 1; i < tm -> tm_mon + 1; i++) {
-		switch (i) {
-			case 2:
-				if (!(y % 4) && ((y % 100) || !(y % 400))) d++;
-				d += 28;
-				break;
-			case 4:
-			case 6:
-			case 9:
-			case 11:
-				d += 30;
-				break;
-			default:
-				d += 31;
-				break;
-		}
-	}
-	d += tm -> tm_mday - 1;
-	t = ((long)(tm -> tm_hour) * 60L + tm -> tm_min) * 60L + tm -> tm_sec;
-	t += d * 60L * 60L * 24L;
+	t = timegm2(tm);
 	t += gettimezone(tm, t);
 
 	return(t);
@@ -909,6 +926,7 @@ char *file;
 		}
 		unitblent = getword(buf, 0);
 	}
+
 	return(fd);
 }
 
@@ -927,6 +945,7 @@ int russ;
 		wc -= rsjistable[i].start;
 		wc += rsjistable[i].cnv;
 	}
+
 	return(wc);
 }
 
@@ -945,7 +964,7 @@ int encode;
 	}
 
 	if (encode) {
-		r = 0xff00;
+		r = U2_UDEF;
 		if (wc < 0x0080) return(wc);
 		if (wc >= 0x00a1 && wc <= 0x00df)
 			return(0xff00 | (wc - 0x00a1 + 0x61));
@@ -953,11 +972,13 @@ int encode;
 			return(0xff00 | (wc - 0x8260 + 0x21));
 		if (wc >= 0x8281 && wc <= 0x829a)
 			return(0xff00 | (wc - 0x8281 + 0x41));
-		if (wc < MINKANJI || wc > MAXKANJI) return(r);
+		if (wc < MINKANJI || wc > MAXKANJI) {
+			return(r);
+		}
 		wc = unifysjis(wc, 0);
 	}
 	else {
-		r = '?';
+		r = SJ_UDEF;
 		switch (wc & 0xff00) {
 			case 0:
 				if ((wc & 0xff) < 0x80) return(wc);
@@ -974,7 +995,9 @@ int encode;
 			default:
 				break;
 		}
-		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
+		if (wc < MINUNICODE || wc > MAXUNICODE) {
+			return(r);
+		}
 	}
 
 	cp = buf;
@@ -1047,6 +1070,7 @@ int whence;
 	ofs_l = (u_long)(offset & (u_long)0xffffffff);
 	if (_llseek(fd, ofs_h, ofs_l, &result, whence) < 0)
 		return((l_off_t)-1);
+
 	return(result);
 }
 #endif	/* USELLSEEK */
@@ -1071,6 +1095,7 @@ u_long sect;
 		return(-1);
 	}
 	errno = duperrno;
+
 	return(0);
 }
 #endif	/* !MSDOS */
@@ -1100,6 +1125,7 @@ int n;
 	}
 #endif
 	errno = duperrno;
+
 	return(0);
 }
 
@@ -1128,6 +1154,7 @@ int n;
 	}
 #endif
 	errno = duperrno;
+
 	return(0);
 }
 
@@ -1151,6 +1178,7 @@ int n, size;
 		free(sectcache[n - i]);
 		cachewrite[n - i] = 0;
 	}
+
 	return(ret);
 }
 
@@ -1167,6 +1195,7 @@ devstat *devp;
 			ret = -1;
 		cachewrite[i] = 0;
 	}
+
 	return(ret);
 }
 
@@ -1229,6 +1258,7 @@ int n, nsect;
 		cachesize[maxsectcache - i - 1] = nsect - i;
 		cachewrite[maxsectcache - i - 1] = wrtbuf[i];
 	}
+
 	return(n);
 }
 
@@ -1245,6 +1275,7 @@ int n, ofs1, ofs2, size;
 		sectcache[n - ofs1 - i] = sectcache[n - ofs2 - i];
 		cachewrite[n - ofs1 - i] = cachewrite[n - ofs2 - i];
 	}
+
 	return(size);
 }
 
@@ -1273,6 +1304,7 @@ u_long min, max;
 			return(shiftcache(devp, i, -1));
 		}
 	}
+
 	return(0);
 }
 
@@ -1331,6 +1363,7 @@ int n, wrt;
 			devp -> sectsize);
 		buf += devp -> sectsize;
 	}
+
 	return(0);
 }
 
@@ -1387,6 +1420,7 @@ int n, wrt;
 			devp -> sectsize);
 		buf += devp -> sectsize;
 	}
+
 	return(0);
 }
 
@@ -1433,6 +1467,7 @@ int n, wrt;
 			devp -> sectsize);
 		buf += devp -> sectsize;
 	}
+
 	return(0);
 }
 
@@ -1483,6 +1518,7 @@ int n, wrt;
 			devp -> sectsize);
 		buf += devp -> sectsize;
 	}
+
 	return(0);
 }
 
@@ -1555,6 +1591,7 @@ int n;
 	}
 	if (realread(devp, sect, buf, n) < 0) return(-1);
 	savecache(devp, sect, buf, n, 0);
+
 	return(0);
 }
 
@@ -1565,6 +1602,7 @@ u_char *buf;
 int n;
 {
 	if (loadcache(devp, sect, buf, n) < 0) return(-1);
+
 	return((long)n * devp -> sectsize);
 }
 
@@ -1581,6 +1619,7 @@ int n;
 	if (savecache(devp, sect, buf, n, 1) < 0
 	&& realwrite(devp, sect, buf, n) < 0)
 		return(-1);
+
 	return((long)n * devp -> sectsize);
 }
 
@@ -1678,6 +1717,7 @@ devstat *devp;
 		if (devlist[i].drive == devp -> drive)
 			devlist[i].availsize = n;
 	free(buf);
+
 	return(0);
 }
 
@@ -1698,8 +1738,8 @@ devstat *devp;
 		errno = duperrno;
 		return(-1);
 	}
-
 	errno = duperrno;
+
 	return(0);
 }
 
@@ -1723,6 +1763,7 @@ devstat *devp;
 	for (i = devp -> fatofs; i < devp -> dirofs; i += devp -> fatsize)
 		if (sectwrite(devp, i, (u_char *)buf, devp -> fatsize) < 0L)
 			return(-1);
+
 	return(0);
 }
 
@@ -1741,6 +1782,7 @@ long clust;
 		doserrno = EIO;
 		return(-1L);
 	}
+
 	return(ofs);
 }
 
@@ -1763,6 +1805,7 @@ int nsect;
 		free(buf);
 		return(NULL);
 	}
+
 	return(buf);
 }
 
@@ -1808,6 +1851,7 @@ long clust;
 		else if (ofs == 0x0ff7) ofs = ERRCLUST;
 	}
 	if (buf) free(buf);
+
 	return(ofs);
 }
 
@@ -1918,6 +1962,7 @@ long clust;
 	}
 	sect = ((clust - MINCLUST) * (u_long)(devp -> clustsize))
 		+ ((u_long)(devp -> dirofs) + (u_long)(devp -> dirsize));
+
 	return(sect);
 }
 
@@ -1930,6 +1975,7 @@ dent_t *dentp;
 	clust = (long)byte2word(dentp -> clust);
 	if (devp -> flags & F_FAT32)
 		clust += (long)byte2word(dentp -> clust_h) << 16;
+
 	return(clust);
 }
 
@@ -1944,6 +1990,7 @@ devstat *devp;
 		doserrno = ENOSPC;
 		return(-1L);
 	}
+
 	return(clust);
 }
 
@@ -1963,6 +2010,7 @@ long clust;
 
 	if (buf && sectread(devp, sect, buf, devp -> clustsize) < 0L)
 		return(-1L);
+
 	return(next);
 }
 
@@ -1984,6 +2032,7 @@ long prev;
 
 	if ((prev && putfatent(devp, prev, clust) < 0)
 	|| putfatent(devp, clust, ENDCLUST) < 0) return(-1L);
+
 	return(clust);
 }
 
@@ -2009,6 +2058,7 @@ int fill;
 	}
 	new = clustwrite(devp, buf, clust);
 	if (buf) free(buf);
+
 	return(new);
 }
 
@@ -2024,6 +2074,7 @@ long clust;
 		if (next == ENDCLUST || next == ERRCLUST) break;
 		clust = next;
 	}
+
 	return(0);
 }
 
@@ -2232,6 +2283,7 @@ bpb_t *bpbcache;
 
 	if (buf) free(buf);
 	errno = duperrno;
+
 	return(1);
 }
 
@@ -2264,6 +2316,7 @@ int drv;
 		doserrno = ENODEV;
 		return(-1);
 	}
+
 	return(0);
 }
 #endif	/* !MSDOS */
@@ -2433,9 +2486,11 @@ int pc98;
 	slice = _readpt((l_off_t)0, (l_off_t)0, fd, head, sect, size);
 
 	close(fd);
+
 	return(slice);
 # else	/* !DIOCGDINFO */
 	errno = ENODEV;
+
 	return(NULL);
 # endif	/* !DIOCGDINFO */
 }
@@ -2482,6 +2537,7 @@ int drive;
 	memcpy((char *)&(devlist[new]), (char *)&dev, sizeof(devstat));
 	if (new >= maxdev) maxdev++;
 	devorder[maxorder++] = new;
+
 	return(new);
 }
 
@@ -2542,6 +2598,7 @@ int dd;
 	devlist[dd].drive = '\0';
 	while (maxdev > 0 && !devlist[maxdev - 1].drive) maxdev--;
 	errno = duperrno;
+
 	return(ret);
 }
 
@@ -2555,6 +2612,7 @@ int drive;
 		if (drv == (int)devlist[i].drive) return(DOSNOFILE + i);
 	if (doswaitfunc) (*doswaitfunc)();
 	if ((i = opendev(drive)) < 0) reterr(-1);
+
 	return(i);
 }
 
@@ -2565,6 +2623,7 @@ int dd;
 
 	if (dd >= DOSNOFILE) return(0);
 	if ((i = closedev(dd)) < 0) reterr(-1);
+
 	return(i);
 }
 
@@ -2636,6 +2695,7 @@ VOID_T (*func)__P_((VOID_A));
 
 	memcpy((char *)&(devlist[dd]), (char *)&dev, sizeof(devstat));
 	errno = duperrno;
+
 	return(ret);
 }
 
@@ -2648,6 +2708,7 @@ u_char *name;
 		sum = (((sum & 0x01) << 7) | ((sum & 0xfe) >> 1));
 		sum += name[i];
 	}
+
 	return(sum & 0xff);
 }
 
@@ -2661,6 +2722,7 @@ u_int c1, c2;
 #else
 	if (!c1 && (c2 < ' ' || strchr(NOTINLFN, c2))) return('_');
 #endif
+
 	return(cnvunicode((c1 << 8) | c2, 1));
 }
 
@@ -2669,6 +2731,7 @@ u_int c1, c2;
 {
 	c1 &= 0xff;
 	c2 &= 0xff;
+
 	return(cnvunicode((c1 << 8) | c2, 0));
 }
 
@@ -2680,6 +2743,7 @@ int c;
 	if (c == ',') return('\'');
 	if (c == '[') return('&');
 	if (c == '.') return('$');
+
 	return('\0');
 }
 
@@ -2690,6 +2754,7 @@ int c;
 	if (c == '\'') return(',');
 	if (c == '&') return('[');
 	if (c == '$') return('.');
+
 	return('\0');
 }
 #endif	/* !MSDOS */
@@ -2700,6 +2765,7 @@ int c;
 	if ((u_char)c < ' ' || strchr(NOTINLFN, c)) return(-2);
 	if (strchr(NOTINALIAS, c)) return(-1);
 	if (strchr(PACKINALIAS, c)) return(0);
+
 	return(toupper2(c));
 }
 
@@ -2736,6 +2802,7 @@ int len, part;
 	}
 	if (!path2[i]) return(0);
 	else if (part && path2[i] == _SC_) return(0);
+
 	return(-path2[i]);
 }
 
@@ -2844,12 +2911,12 @@ int vol;
 	buf[i] = '\0';
 
 	if (vol > 1 || (vol > 0 && cnv)) {
-		for (j = 0; j < sizeof(num) / sizeof(char); j++) {
+		for (j = 0; j < (int)sizeof(num) / sizeof(char); j++) {
 			if (!vol) break;
 			num[j] = (vol % 10) + '0';
 			vol /= 10;
 		}
-		for (i = sizeof(num) / sizeof(char) - j; i > 0; i--)
+		for (i = (int)sizeof(num) / sizeof(char) - j; i > 0; i--)
 			if (buf[i - 1] != ' ') break;
 		buf[i++] = '~';
 		while (j-- > 0) buf[i++] = num[j];
@@ -3196,6 +3263,7 @@ int needlfn;
 		return(NULL);
 	}
 	errno = duperrno;
+
 	return(xdirp);
 }
 
@@ -3210,6 +3278,7 @@ dosDIR *xdirp;
 	ret = closedev(xdirp -> dd_fd);
 	free(xdirp);
 	errno = duperrno;
+
 	return(ret);
 }
 
@@ -3219,6 +3288,7 @@ char *path;
 	dosDIR *xdirp;
 
 	if (!(xdirp = _dosopendir(path, NULL, 0))) reterr(NULL);
+
 	return((DIR *)xdirp);
 }
 
@@ -3226,6 +3296,7 @@ int dosclosedir(dirp)
 DIR *dirp;
 {
 	if (_dosclosedir((dosDIR *)dirp) < 0) reterr(-1);
+
 	return(0);
 }
 
@@ -3253,6 +3324,7 @@ long clust, offset;
 			sizeof(dent_t));
 	xdirp -> dd_loc += DOSDIRENT;
 	if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0L;
+
 	return(0);
 }
 
@@ -3282,6 +3354,7 @@ int force;
 		xdirp -> dd_loc += DOSDIRENT;
 		if (xdirp -> dd_loc >= xdirp -> dd_size) xdirp -> dd_loc = 0L;
 	}
+
 	return(0);
 }
 
@@ -3381,8 +3454,8 @@ int all;
 	if ((cp = strrdelim(dd2path(xdirp -> dd_fd), 0))) cp++;
 	else cp = dd2path(xdirp -> dd_fd);
 	strcpy(cp, dp -> d_name);
-
 	cnvunicode(0, -1);
+
 	return(dp);
 }
 
@@ -3410,6 +3483,7 @@ DIR *dirp;
 #endif
 		}
 	}
+
 	return(dp);
 }
 
@@ -3444,6 +3518,7 @@ int len, needlfn;
 		while ((dp = _dosreaddir(xdirp, 1)))
 			if (!cmpdospath(tmp, dp -> d_name, len, 0)) return(dp);
 	}
+
 	return(NULL);
 }
 
@@ -3459,6 +3534,7 @@ DIR *dirp;
 	}
 	xdirp -> dd_loc = 0L;
 	xdirp -> dd_off = xdirp -> dd_top;
+
 	return(0);
 }
 
@@ -3490,6 +3566,7 @@ char *path;
 	curdir[drv - 'A'] = tmp;
 	strcpy(curdir[drv - 'A'], &(buf[3]));
 	lastdrive = drive;
+
 	return(0);
 }
 
@@ -3520,6 +3597,7 @@ int size;
 	pathname[1] = ':';
 	pathname[2] = _SC_;
 	strcpy(&(pathname[3]), cp);
+
 	return(pathname);
 }
 
@@ -3608,6 +3686,7 @@ int *ddp;
 		sizeof(cache_t));
 	_dosclosedir(xdirp);
 	errno = duperrno;
+
 	return(dd);
 }
 
@@ -3634,6 +3713,7 @@ int dd;
 		ret = sectwrite(&(devlist[dd]), sect, buf, 1);
 	}
 	free(buf);
+
 	return(ret < 0L ? -1 : 0);
 }
 
@@ -3651,6 +3731,7 @@ int dd;
 		return(-1);
 	memset((char *)dd2dentp(dd), 0, sizeof(dent_t));
 	dd2offset(dd) = 0L;
+
 	return(0);
 }
 
@@ -3853,6 +3934,7 @@ int mode;
 	}
 	free(xdirp -> dd_buf);
 	free(xdirp);
+
 	return(ret);
 }
 
@@ -3889,6 +3971,7 @@ int sum;
 		writedent(dd);
 	}
 	free(xdir.dd_buf);
+
 	return(0);
 }
 
@@ -3930,6 +4013,7 @@ char *path, *alias;
 	}
 	_dosclosedir(xdirp);
 	closedev(dd);
+
 	return(alias);
 }
 
@@ -3964,6 +4048,7 @@ char *path, *resolved;
 	}
 	_dosclosedir(xdirp);
 	closedev(dd);
+
 	return(resolved);
 }
 #endif	/* MSDOS */
@@ -3990,6 +4075,7 @@ char *buf;
 	buf[sizeof(long) * 3] = 0;
 	if (devlist[dd].flags & F_FAT32) buf[sizeof(long) * 3] |= 001;
 	closedev(dd);
+
 	return(0);
 }
 
@@ -4023,6 +4109,7 @@ struct stat *stp;
 		|| !strcasecmp2(cp, "EXE"))
 			stp -> st_mode |= S_IEXEC_ALL;
 	}
+
 	return(0);
 }
 
@@ -4065,6 +4152,7 @@ int mode;
 		errno = EACCES;
 		return(-1);
 	}
+
 	return(0);
 }
 
@@ -4074,6 +4162,7 @@ int dossymlink(name1, name2)
 char *name1, *name2;
 {
 	errno = EINVAL;
+
 	return(-1);
 }
 
@@ -4083,6 +4172,7 @@ char *path, *buf;
 int bufsiz;
 {
 	errno = EINVAL;
+
 	return(-1);
 }
 #endif	/* !NOSYMLINK */
@@ -4097,6 +4187,7 @@ int mode;
 	dd2dentp(dd) -> attr = putdosmode((u_short)mode);
 	if ((ret = writedent(dd)) < 0) errno = doserrno;
 	closedev(dd);
+
 	return(ret);
 }
 
@@ -4119,6 +4210,7 @@ struct timeval tvp[2];
 	putdostime(dd2dentp(dd) -> time, t);
 	if ((ret = writedent(dd)) < 0) errno = doserrno;
 	closedev(dd);
+
 	return(ret);
 }
 
@@ -4145,6 +4237,7 @@ char *path;
 		ret = -1;
 	}
 	closedev(dd);
+
 	return(ret);
 }
 
@@ -4205,6 +4298,7 @@ char *from, *to;
 	}
 	closedev(dosflist[fd]._file);
 	closedev(dd);
+
 	return(ret);
 }
 
@@ -4294,6 +4388,7 @@ int flags, mode;
 	if (fd >= maxdosf) maxdosf = fd + 1;
 	if ((flags & O_ACCMODE) != O_RDONLY && (flags & O_APPEND))
 		doslseek(fd + DOSFDOFFSET, (off_t)0, L_XTND);
+
 	return(fd + DOSFDOFFSET);
 }
 
@@ -4330,8 +4425,8 @@ int fd;
 			ret = -1;
 		}
 	}
-
 	closedev(dosflist[fd]._file);
+
 	return(ret);
 }
 
@@ -4382,14 +4477,15 @@ static long NEAR dosflsbuf(fd)
 int fd;
 {
 	u_long sect;
+	long ret;
 
 	if (!(sect = clust2sect(fd2devp(fd), dosflist[fd]._off))) {
 		doserrno = EIO;
 		return(-1L);
 	}
-	sect = sectwrite(fd2devp(fd), sect,
+	ret = sectwrite(fd2devp(fd), sect,
 		(u_char *)(dosflist[fd]._base), fd2devp(fd) -> clustsize);
-	if (sect < 0L) return(-1L);
+	if (ret < 0L) return(-1L);
 
 	return(dosflist[fd]._bufsize);
 }
@@ -4583,6 +4679,7 @@ int mode;
 
 	dosflist[fd]._size = (off_t)0;
 	dosclose(fd + DOSFDOFFSET);
+
 	return(0);
 }
 
@@ -4631,6 +4728,7 @@ char *path;
 		}
 	}
 	_dosclosedir(xdirp);
+
 	return(ret);
 }
 
@@ -4643,6 +4741,7 @@ FILE *stream;
 		if (!dosflist[fd]._base) continue;
 		if (stream == (FILE *)&(dosflist[fd])) return(fd);
 	}
+
 	return(-1);
 }
 
@@ -4670,6 +4769,7 @@ char *type;
 			flags = 0;
 			break;
 	}
+
 	return(flags);
 }
 
@@ -4684,6 +4784,7 @@ char *path, *type;
 	}
 
 	if ((fd = dosopen(path, type2flags(type), 0666)) < 0) return(NULL);
+
 	return((FILE *)&(dosflist[fd - DOSFDOFFSET]));
 }
 
@@ -4706,6 +4807,7 @@ char *type;
 	}
 	if ((flags & O_ACCMODE) != O_RDONLY && (flags & O_APPEND))
 		doslseek(fd + DOSFDOFFSET, (off_t)0, L_XTND);
+
 	return((FILE *)&(dosflist[fd]));
 }
 
@@ -4718,6 +4820,7 @@ FILE *stream;
 		errno = 0;
 		return(EOF);
 	}
+
 	return((dosclose(fd + DOSFDOFFSET) < 0) ? EOF : 0);
 }
 
@@ -4810,8 +4913,8 @@ FILE *stream;
 		dosflist[fd]._ptr += nbytes;
 		total += nbytes;
 	}
-
 	if (!total) errno = 0;
+
 	return(nitems);
 }
 
@@ -4835,6 +4938,7 @@ FILE *stream;
 		dosflist[fd]._cnt = rest;
 	}
 	if (flushcache(&(devlist[dosflist[fd]._file])) < 0) reterr(EOF);
+
 	return(0);
 }
 
@@ -4844,6 +4948,7 @@ FILE *stream;
 	u_char ch;
 
 	if (dosfread((char *)&ch, sizeof(u_char), 1, stream)) return((int)ch);
+
 	return(EOF);
 }
 
@@ -4855,6 +4960,7 @@ FILE *stream;
 
 	ch = (u_char)c;
 	if (dosfwrite((char *)&ch, sizeof(u_char), 1, stream)) return((int)ch);
+
 	return(EOF);
 }
 
@@ -4875,6 +4981,7 @@ FILE *stream;
 		}
 	}
 	s[i] = '\0';
+
 	return(s);
 }
 
@@ -4888,6 +4995,7 @@ FILE *stream;
 		if (s[i] == '\n' && dosfputc('\r', stream) == EOF) return(EOF);
 		if (dosfputc(s[i], stream) == EOF) return(EOF);
 	}
+
 	return(0);
 }
 
@@ -4904,6 +5012,7 @@ int dosallclose(VOID_A)
 			errno = doserrno;
 			ret = -1;
 		}
+
 	return(ret);
 }
 #endif	/* !_NODOSDRIVE */

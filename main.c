@@ -4,7 +4,6 @@
  *	by T.Shirai <shirai@unixusers.net>
  */
 
-#include <signal.h>
 #include "fd.h"
 #include "func.h"
 #include "kanji.h"
@@ -24,9 +23,13 @@ extern unsigned _stklen = 0x5800;
 #endif	/* !MSDOS */
 
 #ifdef	_NOORIGSHELL
+#include "termio.h"
+#include "wait.h"
 #define	Xexit2		exit2
+#define	isorgpid()	(1)
 #else
 #include "system.h"
+#define	isorgpid()	(mypid == orgpid)
 #endif
 
 #if	MSDOS
@@ -45,11 +48,7 @@ extern VOID killjob __P_((VOID_A));
 #ifdef	_NOORIGSHELL
 extern char **environ;
 extern char **environ2;
-#else	/* !_NOORIGSHELL */
-# if	!MSDOS
-extern int sigconted;
-# endif
-#endif	/* !_NOORIGSHELL */
+#endif
 extern bindtable bindlist[];
 #ifndef	_NOARCHIVE
 extern launchtable launchlist[];
@@ -57,11 +56,10 @@ extern int maxlaunch;
 extern archivetable archivelist[];
 extern int maxarchive;
 #endif
+extern int wheader;
 extern char fullpath[];
 extern char *histfile;
 extern char *helpindex[];
-extern int tradlayout;
-extern int sizeinfo;
 extern int subwindow;
 extern int win_x;
 extern int win_y;
@@ -69,34 +67,11 @@ extern int win_y;
 extern int custno;
 #endif
 extern char *deftmpdir;
-#ifndef	_NODOSDRIVE
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
 extern char *unitblpath;
 #endif
 
 #define	CLOCKUPDATE	10	/* sec */
-
-#ifndef	SIG_DFL
-#define	SIG_DFL		((sigcst_t)0)
-#endif
-#ifndef	SIG_IGN
-#define	SIG_IGN		((sigcst_t)1)
-#endif
-
-#if	!MSDOS && !defined (SIGWINCH)
-# if	defined (SIGWINDOW)
-# define	SIGWINCH	SIGWINDOW
-# else
-#  if	defined (NSIG)
-#  define	SIGWINCH	NSIG
-#  else
-#  define	SIGWINCH	28
-#  endif
-# endif
-#endif	/* !MSDOS && !SIGWINCH */
-
-#if	!defined (SIGIOT) && defined (SIGABRT)
-#define	SIGIOT	SIGABRT
-#endif
 
 #if	MSDOS && !defined (PROTECTED_MODE)
 static harderr_t far criticalerror __P_((u_int, u_int, u_short far *));
@@ -156,11 +131,13 @@ static int xcpuerror __P_((VOID_A));
 #ifdef	SIGXFSZ
 static int xsizerror __P_((VOID_A));
 #endif
+static int NEAR minrow __P_((int));
 #ifdef	SIGWINCH
 static int wintr __P_((VOID_A));
 #endif
+static VOID printtime __P_((int));
 #ifdef	SIGALRM
-static int printtime __P_((VOID_A));
+static int trapalrm __P_((VOID_A));
 #endif
 #ifdef	_NOORIGSHELL
 static int NEAR execruncomline __P_((char *, char *, int, char *));
@@ -184,7 +161,6 @@ int hideclock = 0;
 #ifdef	SIGALRM
 int noalrm = 1;
 #endif
-u_short today[3] = {0, 0, 0};
 int fd_restricted = 0;
 #ifndef	_NOCUSTOMIZE
 char **orighelpindex = NULL;
@@ -209,8 +185,7 @@ int fdmode = 0;
 
 static int timersec = 0;
 #ifdef	SIGWINCH
-static int winchok = 0;
-static int winched = 0;
+static int nowinch = 0;
 #endif
 
 
@@ -232,13 +207,16 @@ char *s;
 
 	duperrno = errno;
 	sigvecset(0);
-	forcecleandir(deftmpdir, tmpfilename);
+	if (isorgpid()) {
+		forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
-	dosallclose();
+		dosallclose();
 #endif
+		Xstdiomode();
+		endterm();
+	}
+
 	if (!s) s = progname;
-	stdiomode();
-	endterm();
 	if (dumbterm <= 2) fputc('\007', stderr);
 	errno = duperrno;
 	if (errno) perror2(s);
@@ -246,26 +224,25 @@ char *s;
 		fputs(s, stderr);
 		fputnl(stderr);
 	}
-	inittty(1);
-	keyflush();
-	prepareexitfd();
+
+	if (isorgpid()) {
+		inittty(1);
+		keyflush();
+		prepareexitfd();
 #ifndef	_NOORIGSHELL
 # ifndef	NOJOB
-	killjob();
+		killjob();
 # endif
-	prepareexit(0);
-#endif
+		prepareexit(0);
+#endif	/* !_NOORIGSHELL */
 #ifdef	DEBUG
 # if	!MSDOS
-	freeterment();
+		freeterment();
 # endif
-	if (ttyout && ttyout != stderr) {
-		if (fileno(ttyout) == ttyio) ttyio = -1;
-		fclose(ttyout);
+		VOID_C closetty();
+		muntrace();
+#endif	/* DEBUG */
 	}
-	if (ttyio >= 0) close(ttyio);
-	muntrace();
-#endif
 
 	exit(2);
 }
@@ -274,12 +251,30 @@ static VOID NEAR signalexit(sig)
 int sig;
 {
 	signal2(sig, SIG_IGN);
-	forcecleandir(deftmpdir, tmpfilename);
+
+	if (isorgpid()) {
+		forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
-	dosallclose();
+		dosallclose();
 #endif
-	endterm();
-	inittty(1);
+		endterm();
+		inittty(1);
+		keyflush();
+#ifndef	_NOORIGSHELL
+# if	defined (SIGHUP) && !defined (NOJOB)
+		if (sig == SIGHUP) killjob();
+# endif
+		prepareexit(0);
+#endif	/* !_NOORIGSHELL */
+#ifdef	DEBUG
+# if	!MSDOS
+		freeterment();
+# endif
+		VOID_C closetty();
+		muntrace();
+#endif	/* DEBUG */
+	}
+
 	signal2(sig, SIG_DFL);
 	VOID_C kill(getpid(), sig);
 }
@@ -287,38 +282,61 @@ int sig;
 #ifdef	SIGALRM
 static int ignore_alrm(VOID_A)
 {
+	int duperrno;
+
+	duperrno = errno;
 	signal2(SIGALRM, (sigcst_t)ignore_alrm);
+	errno = duperrno;
+
 	return(0);
 }
-#endif
+#endif	/* SIGALRM */
 
 #ifdef	SIGWINCH
 static int ignore_winch(VOID_A)
 {
+	int duperrno;
+
+	duperrno = errno;
 	signal2(SIGWINCH, (sigcst_t)ignore_winch);
+	errno = duperrno;
+
 	return(0);
 }
-#endif
+#endif	/* SIGWINCH */
 
 #ifdef	SIGINT
 static int ignore_int(VOID_A)
 {
+	int duperrno;
+
+	duperrno = errno;
 	signal2(SIGINT, (sigcst_t)ignore_int);
+	errno = duperrno;
+
 	return(0);
 }
-#endif
+#endif	/* SIGINT */
 
 #ifdef	SIGQUIT
 static int ignore_quit(VOID_A)
 {
+	int duperrno;
+
+	duperrno = errno;
 	signal2(SIGQUIT, (sigcst_t)ignore_quit);
+	errno = duperrno;
+
 	return(0);
 }
-#endif
+#endif	/* SIGQUIT */
 
 #ifdef	SIGCONT
 static int ignore_cont(VOID_A)
 {
+	int duperrno;
+
+	duperrno = errno;
 	signal2(SIGCONT, (sigcst_t)ignore_cont);
 # if	!MSDOS
 	suspended = 1;
@@ -326,14 +344,17 @@ static int ignore_cont(VOID_A)
 	sigconted = 1;
 #  endif
 # endif	/* !MSDOS */
+	errno = duperrno;
+
 	return(0);
 }
-#endif
+#endif	/* SIGCONT */
 
 #ifdef	SIGHUP
 static int hanguperror(VOID_A)
 {
 	signalexit(SIGHUP);
+
 	return(0);
 }
 #endif
@@ -342,6 +363,7 @@ static int hanguperror(VOID_A)
 static int illerror(VOID_A)
 {
 	signalexit(SIGILL);
+
 	return(0);
 }
 #endif
@@ -350,6 +372,7 @@ static int illerror(VOID_A)
 static int traperror(VOID_A)
 {
 	signalexit(SIGTRAP);
+
 	return(0);
 }
 #endif
@@ -358,6 +381,7 @@ static int traperror(VOID_A)
 static int ioerror(VOID_A)
 {
 	signalexit(SIGIOT);
+
 	return(0);
 }
 #endif
@@ -366,6 +390,7 @@ static int ioerror(VOID_A)
 static int emuerror(VOID_A)
 {
 	signalexit(SIGEMT);
+
 	return(0);
 }
 #endif
@@ -374,6 +399,7 @@ static int emuerror(VOID_A)
 static int floaterror(VOID_A)
 {
 	signalexit(SIGFPE);
+
 	return(0);
 }
 #endif
@@ -382,6 +408,7 @@ static int floaterror(VOID_A)
 static int buserror(VOID_A)
 {
 	signalexit(SIGBUS);
+
 	return(0);
 }
 #endif
@@ -390,6 +417,7 @@ static int buserror(VOID_A)
 static int segerror(VOID_A)
 {
 	signalexit(SIGSEGV);
+
 	return(0);
 }
 #endif
@@ -398,6 +426,7 @@ static int segerror(VOID_A)
 static int syserror(VOID_A)
 {
 	signalexit(SIGSYS);
+
 	return(0);
 }
 #endif
@@ -406,6 +435,7 @@ static int syserror(VOID_A)
 static int pipeerror(VOID_A)
 {
 	signalexit(SIGPIPE);
+
 	return(0);
 }
 #endif
@@ -414,6 +444,7 @@ static int pipeerror(VOID_A)
 static int terminate(VOID_A)
 {
 	signalexit(SIGTERM);
+
 	return(0);
 }
 #endif
@@ -422,6 +453,7 @@ static int terminate(VOID_A)
 static int xcpuerror(VOID_A)
 {
 	signalexit(SIGXCPU);
+
 	return(0);
 }
 #endif
@@ -430,143 +462,177 @@ static int xcpuerror(VOID_A)
 static int xsizerror(VOID_A)
 {
 	signalexit(SIGXFSZ);
+
 	return(0);
 }
 #endif
 
+static int NEAR minrow(n)
+int n;
+{
+	if (n == win) {
+#ifndef	_NOTREE
+		if (treepath) return(WFILEMINTREE);
+#endif
+#ifndef	_NOCUSTOMIZE
+		if (custno >= 0) return(WFILEMINCUSTOM);
+#endif
+	}
+
+	return(WFILEMIN);
+}
+
 VOID checkscreen(xmax, ymax)
 int xmax, ymax;
 {
-#ifdef	SIGWINCH
-	int dupwinchok;
-#endif
-	char *cp;
-	int i, row;
+	char *cp, *tty;
+	int i, row, wastty, dupn_line, dupdumbterm;
 
 #ifdef	SIGWINCH
-	dupwinchok = winchok;
-	winchok = 0;
+	nowinch++;
 #endif
+	dupn_line = n_line;
+	{
+		row = wheader + WFOOTER;
+		row += (minrow(win) + 1) * windows;
+		row--;
+	}
+
+	saveterm(ttyio, &tty, NULL);
+	wastty = isttyiomode;
+	Xttyiomode(1);
+	dupdumbterm = dumbterm;
+	if (xmax < 0 || ymax < 0) {
+		xmax = WCOLUMNMIN;
+		ymax = 0;
+		dumbterm = 1;
+	}
 	for (i = 0;; i++) {
 		if (!(cp = getwsize(xmax, ymax))) {
-#ifndef	_NOTREE
-			if (treepath) row = WFILEMINTREE;
-			else
-#endif
-#ifndef	_NOCUSTOMIZE
-			if (custno >= 0) row = WFILEMINCUSTOM;
-			else
-#endif
-			row = WFILEMIN;
-
-			if (FILEPERROW >= row) break;
+			if (n_line >= row) break;
 			cp = NOROW_K;
 		}
 		if (!i) {
-			putterm(t_clear);
-			locate(0, 0);
+			Xputterm(T_CLEAR);
+			Xlocate(0, 0);
 			keyflush();
 		}
 
-		if (i & 1) cputs2(SCRSZ_K);
+		if (i & 1) Xcputs2(SCRSZ_K);
 		else {
-			putterm(t_standout);
-			cputs2(cp);
-			putterm(end_standout);
+			Xputterm(T_STANDOUT);
+			Xcputs2(cp);
+			Xputterm(END_STANDOUT);
 		}
-		putterm(t_bell);
-		cputnl();
-		keyflush();
+		Xputterm(T_BELL);
+		Xcputnl();
+		Xtflush();
 		if (kbhit2(1000000L) && getkey2(0) == K_ESC) {
 			errno = 0;
 			error(INTR_K);
 		}
 	}
+	dumbterm = dupdumbterm;
+	loadterm(ttyio, tty, NULL);
+	isttyiomode = wastty;
+	if (tty) free(tty);
+
+	if (n_line != dupn_line) {
+		calcwin();
+	}
 #ifdef	SIGWINCH
-	winchok = dupwinchok;
+	nowinch--;
 #endif
 }
 
 #ifdef	SIGWINCH
+VOID pollscreen(forced)
+int forced;
+{
+	static int winched = 0;
+
+	if (forced < 0) nowinch = winched = 0;
+	else if (nowinch) {
+		if (forced) winched++;
+	}
+	else if (winched || forced) {
+		winched = 0;
+		checkscreen(-1, -1);
+		if (isorgpid()) {
+			rewritefile(1);
+			if (subwindow) ungetch2(K_CTRL('L'));
+		}
+	}
+}
+
 static int wintr(VOID_A)
 {
-	int duperrno, dupusegetcursor;
+	int duperrno;
 
 	duperrno = errno;
 	signal2(SIGWINCH, SIG_IGN);
-	if (!winchok) winched++;
-	else {
-		dupusegetcursor = usegetcursor;
-		usegetcursor = 0;
-		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
-		usegetcursor = dupusegetcursor;
-		rewritefile(1);
-		if (subwindow) ungetch2(K_CTRL('L'));
-	}
+	pollscreen(1);
 	signal2(SIGWINCH, (sigcst_t)wintr);
 	errno = duperrno;
+
 	return(0);
 }
-#endif
+#endif	/* SIGWINCH */
 
-#ifdef	SIGALRM
-static int printtime(VOID_A)
+static VOID printtime(hide)
+int hide;
 {
 	static time_t now;
 	struct tm *tm;
-	int x, duperrno;
+	int x;
 
-	duperrno = errno;
-	signal2(SIGALRM, SIG_IGN);
 	if (timersec) now++;
 	else {
 		now = time2();
 		timersec = CLOCKUPDATE;
 	}
-	if (showsecond || timersec == CLOCKUPDATE) {
-# ifdef	DEBUG
-		_mtrace_file = "localtime(start)";
-		tm = localtime(&now);
-		if (_mtrace_file) _mtrace_file = NULL;
-		else {
-			_mtrace_file = "localtime(end)";
-			malloc(0);	/* dummy malloc */
-		}
-# else
-		tm = localtime(&now);
-# endif
-		today[0] = tm -> tm_year;
-		today[1] = tm -> tm_mon;
-		today[2] = tm -> tm_mday;
-		if (!hideclock) {
-			x = n_column - 15 - ((showsecond) ? 3 : 0);
-			if (!isleftshift()) x--;
-			locate(x, L_TITLE);
-			putterm(t_standout);
-			cprintf2("%02d-%02d-%02d %02d:%02d",
-				tm -> tm_year % 100,
-				tm -> tm_mon + 1, tm -> tm_mday,
-				tm -> tm_hour, tm -> tm_min);
-			if (showsecond) cprintf2(":%02d", tm -> tm_sec);
-			putterm(end_standout);
-			locate(win_x, win_y);
-			tflush();
-		}
+	if (timersec-- < CLOCKUPDATE && !showsecond) return;
+	if (hide) return;
+
+#ifdef	DEBUG
+	_mtrace_file = "localtime(start)";
+	tm = localtime(&now);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "localtime(end)";
+		malloc(0);	/* dummy malloc */
 	}
-	timersec--;
+#else
+	tm = localtime(&now);
+#endif
+	x = n_column - 15 - ((showsecond) ? 3 : 0);
+	if (!isleftshift()) x--;
+	Xlocate(x, L_TITLE);
+	Xputterm(T_STANDOUT);
+	Xcprintf2("%02d-%02d-%02d %02d:%02d",
+		tm -> tm_year % 100,
+		tm -> tm_mon + 1, tm -> tm_mday,
+		tm -> tm_hour, tm -> tm_min);
+	if (showsecond) Xcprintf2(":%02d", tm -> tm_sec);
+	Xputterm(END_STANDOUT);
+	Xlocate(win_x, win_y);
+	Xtflush();
+}
+
+#ifdef	SIGALRM
+static int trapalrm(VOID_A)
+{
+	int duperrno;
+
+	duperrno = errno;
+	signal2(SIGALRM, SIG_IGN);
+	if (isorgpid()) printtime(hideclock);
 # ifdef	SIGWINCH
-	if (!winchok) winchok++;
-	else if (winched) {
-		signal2(SIGWINCH, SIG_IGN);
-		winched = 0;
-		checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
-		rewritefile(1);
-		if (subwindow) ungetch2(K_CTRL('L'));
-		signal2(SIGWINCH, (sigcst_t)wintr);
-	}
+	pollscreen(0);
 # endif
-	signal2(SIGALRM, (sigcst_t)printtime);
+	signal2(SIGALRM, (sigcst_t)trapalrm);
 	errno = duperrno;
+
 	return(0);
 }
 #endif	/* SIGALRM */
@@ -581,14 +647,13 @@ int set;
 	if (set == old) /*EMPTY*/;
 	else if (set) {
 #ifdef	SIGALRM
-		signal2(SIGALRM, (sigcst_t)printtime);
+		signal2(SIGALRM, (sigcst_t)trapalrm);
 		noalrm = 0;
 #endif
 #ifdef	SIGTSTP
 		signal2(SIGTSTP, SIG_IGN);
 #endif
 #ifdef	SIGWINCH
-		winchok = winched = 0;
 		signal2(SIGWINCH, (sigcst_t)wintr);
 #endif
 #ifndef	_NODOSDRIVE
@@ -623,39 +688,37 @@ VOID title(VOID_A)
 	char *cp, *eol;
 	int i, len;
 
-	locate(0, L_TITLE);
-	putterm(t_standout);
+	Xlocate(0, L_TITLE);
+	Xputterm(T_STANDOUT);
 	len = 0;
 	if (!isleftshift()) {
-		putch2(' ');
+		Xputch2(' ');
 		len++;
 	}
-	cputs2(" FD");
+	Xcputs2(" FD");
 	len += 3;
 	if (!ishardomit()) {
-		cputs2("(File & Directory tool)");
+		Xcputs2("(File & Directory tool)");
 		len += 23;
 	}
-	cputs2(" Ver.");
+	Xcputs2(" Ver.");
 	len += 5;
 	cp = strchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
 	i = eol - cp;
-	cprintf2("%-*.*s", i, i, cp);
+	Xcprintf2("%-*.*s", i, i, cp);
 	if (distributor) {
-		putch2('#');
+		Xputch2('#');
 		i++;
 	}
 	cp = (iswellomit()) ? "" : " (c)1995-2005 T.Shirai  ";
-	cputs2(cp);
+	Xcputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
-	while (i-- > 0) putch2(' ');
-	putterm(end_standout);
+	while (i-- > 0) Xputch2(' ');
+	Xputterm(END_STANDOUT);
 	timersec = 0;
-#ifdef	SIGALRM
-	printtime();
-#endif
+	printtime(0);
 }
 
 #ifndef	_NOCUSTOMIZE
@@ -688,16 +751,17 @@ char *line;
 	int i;
 
 	if (!*(cp = skipspace(command))) i = 0;
-	else i = execpseudoshell(cp, 0, 1);
+	else i = execpseudoshell(cp, F_IGNORELIST | F_NOCOMLINE);
 	if (i) {
-		putterm(l_clear);
-		cprintf2("%s, line %d: %s", file, n, ILFNC_K);
-		cputnl();
-		putterm(l_clear);
-		cprintf2("\t%s", line);
-		cputnl();
+		Xputterm(L_CLEAR);
+		Xcprintf2("%s, line %d: %s", file, n, ILFNC_K);
+		Xcputnl();
+		Xputterm(L_CLEAR);
+		Xcprintf2("\t%s", line);
+		Xcputnl();
 	}
 	free(command);
+
 	return((i) ? -1 : 0);
 }
 #endif	/* _NOORIGSHELL */
@@ -737,8 +801,8 @@ int exist;
 			free(tmp);
 			return(0);
 		}
-		cprintf2("%s: Not found", tmp);
-		cputnl();
+		Xcprintf2("%s: Not found", tmp);
+		Xcputnl();
 		free(tmp);
 		return(-1);
 	}
@@ -784,9 +848,9 @@ int exist;
 	fclose(fp);
 	free(tmp);
 #else	/* !_NOORIGSHELL */
-	n = stdiomode();
+	if ((n = isttyiomode)) Xstdiomode();
 	er = execruncom(file, 1);
-	ttyiomode(n);
+	if (n) Xttyiomode(n - 1);
 #endif	/* !_NOORIGSHELL */
 
 	return(er ? -1 : 0);
@@ -827,6 +891,7 @@ char *argv[], *envp[];
 	if (initshell(optc, optv) < 0) Xexit2(RET_FAIL);
 #endif	/* !_NOORIGSHELL */
 	free(optv);
+
 	return(argc);
 }
 
@@ -847,8 +912,8 @@ char *argv[];
 		setenv2(tmp, cp, 0);
 		free(tmp);
 	}
-
 	evalenv();
+
 	return(i);
 }
 
@@ -861,6 +926,7 @@ char *s, *envp[];
 	for (i = 0; envp[i]; i++)
 		if (!strnenvcmp(envp[i], s, len) && envp[i][len] == '=')
 			return(&(envp[i][++len]));
+
 	return(NULL);
 }
 
@@ -926,6 +992,9 @@ static VOID NEAR prepareexitfd(VOID_A)
 	}
 	free(origpath);
 	free(progname);
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+	free(unitblpath);
+#endif
 #ifndef	_NODOSDRIVE
 	dosallclose();
 #endif
@@ -1099,11 +1168,11 @@ char *argv[], *envp[];
 #endif
 
 	setexecpath(argv[0], envp);
-#ifndef	_NODOSDRIVE
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
 # ifdef	DATADIR
-	unitblpath = DATADIR;
+	unitblpath = strdup2(DATADIR);
 # else
-	unitblpath = progpath;
+	unitblpath = strdup2(progpath);
 # endif
 #endif
 
@@ -1129,7 +1198,7 @@ char *argv[], *envp[];
 	}
 #endif	/* !_NOORIGSHELL */
 
-	ttyiomode(0);
+	Xttyiomode(0);
 	initterm();
 	if ((cp = getwsize(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN))) {
 		errno = 0;
@@ -1139,45 +1208,48 @@ char *argv[], *envp[];
 	saveorigenviron();
 #endif
 
-	locate(0, n_line - 1);
+	Xlocate(0, n_line - 1);
 	inruncom = 1;
-	/* DEFRUNCOM is gave from command line, not to convert previously */
-/*NOTDEFINED*/
-	i = loadruncom(DEFRUNCOM, 0);
-	i += loadruncom(RUNCOMFILE, 0);
+	i = loadruncom(DEFRC, 0);
+	i += loadruncom(FD_RCFILE, 0);
 	inruncom = 0;
+#ifdef	SIGWINCH
+	nowinch = 1;
+#endif
 	sigvecset(1);
 	if (i < 0) {
-		hideclock = 1;
+		hideclock = 2;
 		warning(0, HITKY_K);
 	}
 
 	i = evaloption(argv);
+	checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
 #if	!MSDOS
 	if (adjtty) {
-		stdiomode();
+		Xstdiomode();
 		inittty(0);
-		ttyiomode(0);
+		Xttyiomode(0);
 	}
 #endif	/* !MSDOS */
 
 	loadhistory(0, histfile);
 	entryhist(1, origpath, 1);
-	putterms(t_clear);
+	Xputterms(T_CLEAR);
 
 #ifdef	SIGWINCH
-	winchok = 1;
+	nowinch = 0;
 #endif
 	main_fd(&(argv[i]));
 	sigvecset(0);
 	prepareexitfd();
 
-	stdiomode();
+	Xstdiomode();
 #ifndef	_NOORIGSHELL
 # ifndef	NOJOB
 	killjob();
 # endif
-#endif
+#endif	/* !_NOORIGSHELL */
 	Xexit2(0);
+
 	return(0);
 }

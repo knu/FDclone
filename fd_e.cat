@@ -1148,8 +1148,7 @@ DDEESSCCRRIIPPTTIIOONN
      ddiirr [--[--]PPWWSSBBLLVV44] [--AA[DDRRHHSSAA--]] [--OO[NNSSEEDDGGAA--]] [_d_i_r]
                    List files and sub directories in the direc-
                    tory indicated by _d_i_r.  If _d_i_r is omitted, the
-                   information in the the current directory is
-                   listed.
+                   information in the current directory is listed.
 
                    When you specify --PP, it prompts for every
                    screen.  When you specify --WW, it is listed in
@@ -2907,19 +2906,18 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      PPSS44*          Specify the prompt string with which command
                    strings are displayed when you do sseett --xx.
 
-     PPWWDD*          The variable for the the current directory
-                   with the absolute representation.  If some
-                   value is set, this value will be replaced
-                   automatically according to changing the cur-
-                   rent directory.  If no value is set, this
-                   value will remain unset.  If this is passed
-                   as an environment variable when invoked, and
-                   this value and the current directory indi-
-                   cate the same directory logically, then it
-                   is used as the default value for the current
-                   directory.  It is useful when you want to
-                   specify the logical pathname following sym-
-                   bolic links.
+     PPWWDD*          The variable for the current directory with
+                   the absolute representation.  If some value is
+                   set, this value will be replaced automatically
+                   according to changing the current directory.
+                   If no value is set, this value will remain un-
+                   set.  If this is passed as an environment var-
+                   iable when invoked, and this value and the cur-
+                   rent directory indicate the same directory log-
+                   ically, then it is used as the default value
+                   for the current directory.  It is useful when
+                   you want to specify the logical pathname fol-
+                   lowing symbolic links.
 
      RRRRPPAATTHH        Display files under the directory mounted by
                    CD-ROM, with the pseudo ISO 9660 RockRidge

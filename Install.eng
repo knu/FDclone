@@ -102,6 +102,8 @@
    by default. You can specify the installation path as
    "make PREFIX=/usr". In this example, it is supposed that
    files are installed under '/usr'.
+   You can also specify the system configuration path as
+   "make CONFDIR=/usr/local/etc".
 
 4. Confirm whether the compiled one will run with no problem.
 
@@ -137,9 +139,9 @@
 
    You can try the following targets for make in this rotation,
    and confirm to be able to do "man fd".
-	catman -> catman-b -> compman -> compman-b
-   If you do "make catman" and can not install correctly,
-   then you do "make catman-b" ... you will continue.
+	jcatman -> jcatman-b -> jcompman -> jcompman-b
+   If you do "make jcatman" and can not install correctly,
+   then you do "make jcatman-b" ... you will continue.
 
    The target with -b will install for the terminal which
    cannot interpret the backspace (^H). The target with comp
@@ -148,7 +150,7 @@
    If your OS doesn't support locale, the Japanese manual
    sometimes overwrite the English manual. In this case, you
    can install the only English one with the following targets.
-	ecatman -> ecatman-b -> ecompman -> ecompman-b
+	catman -> catman-b -> compman -> compman-b
    Each target can install the manual as well as the above
    targets, except that the Japanese manual is not installed.
 

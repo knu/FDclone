@@ -1,7 +1,7 @@
 /*
  *	archive.c
  *
- *	Archive File Access Module
+ *	archive file accessing module
  */
 
 #include "fd.h"
@@ -36,7 +36,6 @@ extern int win_x;
 extern int win_y;
 extern char *deftmpdir;
 extern int hideclock;
-extern u_short today[];
 extern int n_args;
 
 #if	FD >= 2
@@ -549,8 +548,8 @@ char *buf;
 			mode |= typelist[i];
 		}
 	}
-
 	tmp -> st_mode = mode;
+
 	return(len);
 }
 
@@ -573,6 +572,7 @@ int *scorep;
 			*scorep += 4;
 		}
 	}
+
 	return(strndup2(s, len));
 }
 
@@ -586,6 +586,7 @@ int len;
 	cp = strndup2(s, len);
 	tmp = newkanjiconv(cp, fnamekcode, DEFCODE, L_FNAME);
 	if (tmp != cp) free(cp);
+
 	return(tmp);
 }
 # endif	/* !_NOKANJIFCONV */
@@ -601,7 +602,8 @@ int skip;
 	uid_t uid;
 	gid_t gid;
 # endif
-	struct tm tm;
+	time_t now;
+	struct tm tm, *tp;
 	off_t n;
 	int i, ch, l, len, hit, err, err2, score;
 	char *cp, *s, *buf, *rawbuf;
@@ -875,10 +877,22 @@ int skip;
 	if (s_isdir(tmp)) tmp -> flags |= F_ISDIR;
 	else if (s_islnk(tmp)) tmp -> flags |= F_ISLNK;
 	if (tm.tm_year < 0) {
-		tm.tm_year = today[0];
+		now = time2();
+# ifdef	DEBUG
+		_mtrace_file = "localtime(start)";
+		tp = localtime(&now);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "localtime(end)";
+			malloc(0);	/* dummy malloc */
+		}
+# else
+		tp = localtime(&now);
+# endif
+		tm.tm_year = tp -> tm_year;
 		if (tm.tm_mon < 0 || tm.tm_mday < 0) tm.tm_year = 1970 - 1900;
-		else if (tm.tm_mon > today[1]
-		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
+		else if (tm.tm_mon > tp -> tm_mon
+		|| (tm.tm_mon == tp -> tm_mon && tm.tm_mday > tp -> tm_mday))
 			tm.tm_year--;
 	}
 	else {
@@ -943,6 +957,7 @@ int field, *eolp;
 			return(i);
 		}
 	}
+
 	return((field < 0) ? f : -1);
 }
 
@@ -978,8 +993,8 @@ int no;
 		else i = &(line[eol]) - cp;
 	}
 	if (!i || &(cp[i]) > &(line[eol])) i = &(line[eol]) - cp;
-
 	strncpy2(buf, cp, i);
+
 	return(buf);
 }
 
@@ -995,7 +1010,8 @@ int max;
 	uid_t uid;
 	gid_t gid;
 # endif
-	struct tm tm;
+	time_t now;
+	struct tm tm, *tp;
 	off_t n;
 	int i, skip;
 	char *cp, *buf;
@@ -1071,9 +1087,21 @@ int max;
 	else if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
 	else if (list -> field[F_YEAR] == list -> field[F_TIME]
 	&& strchr(buf, ':')) {
-		tm.tm_year = today[0];
-		if (tm.tm_mon > today[1]
-		|| (tm.tm_mon == today[1] && tm.tm_mday > today[2]))
+		now = time2();
+# ifdef	DEBUG
+		_mtrace_file = "localtime(start)";
+		tp = localtime(&now);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "localtime(end)";
+			malloc(0);	/* dummy malloc */
+		}
+# else
+		tp = localtime(&now);
+# endif
+		tm.tm_year = tp -> tm_year;
+		if (tm.tm_mon > tp -> tm_mon
+		|| (tm.tm_mon == tp -> tm_mon && tm.tm_mday > tp -> tm_mday))
 			tm.tm_year--;
 	}
 	else tm.tm_year = 1970;
@@ -1102,8 +1130,8 @@ int max;
 # else
 		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
 # endif
-
 	free(buf);
+
 	return(0);
 }
 #endif	/* FD < 2 */
@@ -1143,59 +1171,59 @@ char *file, *dir;
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
-		locate(0, TL_PATH);
-		putterm(l_clear);
+		Xlocate(0, TL_PATH);
+		Xputterm(L_CLEAR);
 
-		locate(TC_PATH, TL_PATH);
-		putterm(t_standout);
+		Xlocate(TC_PATH, TL_PATH);
+		Xputterm(T_STANDOUT);
 # ifndef	_NOBROWSE
 		if (browselist) {
-			cputs2(TS_BROWSE);
+			Xcputs2(TS_BROWSE);
 			len = TD_BROWSE;
 		}
 		else
 # endif
 		{
-			cputs2(TS_ARCH);
+			Xcputs2(TS_ARCH);
 			len = TD_ARCH;
 		}
-		putterm(end_standout);
-		cprintf2("%-*.*k", len, len, arch);
+		Xputterm(END_STANDOUT);
+		Xcprintf2("%-*.*k", len, len, arch);
 		free(arch);
 
-		locate(TC_MARK, TL_PATH);
-		cprintf2("%<*d", TD_MARK, mark);
-		putterm(t_standout);
-		cputs2(TS_MARK);
-		putterm(end_standout);
-		cprintf2("%<'*qd", TD_SIZE, marksize);
+		Xlocate(TC_MARK, TL_PATH);
+		Xcprintf2("%<*d", TD_MARK, mark);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_MARK);
+		Xputterm(END_STANDOUT);
+		Xcprintf2("%<'*qd", TD_SIZE, marksize);
 
-		tflush();
+		Xtflush();
 		return;
 	}
 #endif	/* !_NOTRADLAYOUT */
 
-	locate(0, L_PATH);
-	putterm(l_clear);
+	Xlocate(0, L_PATH);
+	Xputterm(L_CLEAR);
 
-	locate(C_PATH, L_PATH);
-	putterm(t_standout);
+	Xlocate(C_PATH, L_PATH);
+	Xputterm(T_STANDOUT);
 #ifndef	_NOBROWSE
 	if (browselist) {
-		cputs2(S_BROWSE);
+		Xcputs2(S_BROWSE);
 		len = D_BROWSE;
 	}
 	else
 #endif
 	{
-		cputs2(S_ARCH);
+		Xcputs2(S_ARCH);
 		len = D_ARCH;
 	}
-	putterm(end_standout);
-	cprintf2("%-*.*k", len, len, arch);
+	Xputterm(END_STANDOUT);
+	Xcprintf2("%-*.*k", len, len, arch);
 	free(arch);
 
-	tflush();
+	Xtflush();
 }
 
 static int NEAR dircmp(s1, s2)
@@ -1215,6 +1243,7 @@ char *s1, *s2;
 		while (s1[i + 1] == _SC_) i++;
 		while (s2[j + 1] == _SC_) j++;
 	}
+
 	return(s1[i]);
 }
 
@@ -1244,6 +1273,7 @@ char *s1, *s2;
 		return((i == j) ? 1 : 0);
 	}
 	if (i && s2[j]) while (s2[j + 1] == _SC_) j++;
+
 	return(j);
 }
 
@@ -1352,6 +1382,7 @@ char *s, **argv;
 # ifndef	PATHNOCASE
 	pathignorecase = duppathignorecase;
 # endif
+
 	return(ret);
 }
 #endif	/* FD >= 2 */
@@ -1570,6 +1601,7 @@ int *linenop;
 				(nline - needline + 1) * sizeof(char *));
 	}
 	*linenop += needline;
+
 #if	FD >= 2
 	if (form0) free(form0);
 	free(scorelist);
@@ -1586,17 +1618,17 @@ static VOID NEAR unpackerror(VOID_A)
 		fputnl(stderr);
 	}
 	else {
-		locate(0, n_line - 1);
-		cputnl();
+		Xlocate(0, n_line - 1);
+		Xcputnl();
 		hideclock = 1;
 		warning(0, UNPNG_K);
 	}
 }
 
-static int NEAR readarchive(file, list, argset)
+static int NEAR readarchive(file, list, flags)
 char *file;
 launchtable *list;
-int argset;
+int flags;
 {
 	namelist tmp;
 	FILE *fp;
@@ -1604,7 +1636,7 @@ int argset;
 	int i, no, max, wastty;
 
 	wastty = isttyiomode;
-	if (!(fp = popenmacro(list -> comm, file, argset))) return(-1);
+	if (!(fp = popenmacro(list -> comm, file, flags))) return(-1);
 	if (wastty) Xwaitmes();
 
 	for (i = 0; i < (int)(list -> topskip); i++) {
@@ -1714,6 +1746,7 @@ int argset;
 		}
 		return(-1);
 	}
+
 	return(maxfile);
 }
 
@@ -1816,6 +1849,7 @@ int flen;
 		}
 		return(arcflist[i].name);
 	}
+
 	return(NULL);
 }
 
@@ -1852,7 +1886,7 @@ char *path;
 	findpattern = NULL;
 #ifndef	_NOBROWSE
 	if (browselist) {
-		int i, n, dupfilepos;
+		int i, n, flags, dupfilepos;
 
 		if (!path || !*path) path = "..";
 		if ((cp = strdelim(path, 0))) {
@@ -1867,7 +1901,9 @@ char *path;
 
 		n = browselevel;
 		cp = browselist[n].ext;
+		flags = (F_NOCONFIRM | F_ARGSET | F_NOADDOPT | F_IGNORELIST);
 		dupfilepos = filepos;
+
 		if (path == filelist[filepos].name) i = filepos;
 		else for (i = 0; i < maxfile; i++)
 			if (!strcmp(path, filelist[i].name)) break;
@@ -1879,7 +1915,7 @@ char *path;
 
 		pushbrowsevar(path);
 		if (cp && !(browselist[n].flags & LF_DIRNOPREP))
-			execusercomm(cp, path, 1, 1, 1);
+			execusercomm(cp, path, flags);
 		if (isdotdir(path)) {
 			filepos = dupfilepos;
 			popbrowsevar();
@@ -1889,7 +1925,7 @@ char *path;
 		if (browselist[n + 1].comm
 		&& !(browselist[n].flags & LF_DIRLOOP))
 			n++;
-		if (dolaunch(&(browselist[n]), 1) < 0
+		if (dolaunch(&(browselist[n]), flags) < 0
 		|| !isarchbr(&(browselist[n]))) {
 			popbrowsevar();
 			return(path);
@@ -1989,13 +2025,14 @@ char ***argvp;
 		(*argvp)[argc++] = new;
 	}
 	strcpy(archivedir, duparcdir);
+
 	return(argc);
 }
 #endif	/* !_NOCOMPLETE */
 
-int dolaunch(list, argset)
+int dolaunch(list, flags)
 launchtable *list;
-int argset;
+int flags;
 {
 #ifndef	_NODOSDRIVE
 	int drive;
@@ -2008,24 +2045,23 @@ int argset;
 	drive = 0;
 #endif
 
-	if (argset) /*EMPTY*/;
+	if (flags & F_ARGSET) /*EMPTY*/;
 	else if (archivefile) {
 		if (!(tmpdir = tmpunpack(1))) {
-			putterm(t_bell);
+			Xputterm(T_BELL);
 			return(-1);
 		}
 	}
 #ifndef	_NODOSDRIVE
 	else if ((drive = tmpdosdupl("", &tmpdir, 1)) < 0) {
-		putterm(t_bell);
+		Xputterm(T_BELL);
 		return(-1);
 	}
 #endif
 
 	if (!isarchbr(list)) {
-		execusercomm(list -> comm, filelist[filepos].name,
-			1, argset, 1);
-		if (argset) /*EMPTY*/;
+		execusercomm(list -> comm, filelist[filepos].name, flags);
+		if (flags & F_ARGSET) /*EMPTY*/;
 #ifndef	_NODOSDRIVE
 		else if (drive) removetmp(tmpdir, filelist[filepos].name);
 #endif
@@ -2034,7 +2070,7 @@ int argset;
 	}
 
 	pusharchdupl();
-	if (argset) /*EMPTY*/;
+	if (flags & F_ARGSET) /*EMPTY*/;
 #ifndef	_NODOSDRIVE
 	else if (drive) {
 		archduplp -> v_fullpath = strdup2(fullpath);
@@ -2067,7 +2103,7 @@ int argset;
 	maxent = 0;
 	sorton = 0;
 
-	if (readarchive(archivefile, launchp, argset) < 0) {
+	if (readarchive(archivefile, launchp, flags) < 0) {
 		arcflist = NULL;
 		poparchdupl();
 		return(-1);
@@ -2093,18 +2129,20 @@ int launcher(VOID_A)
 #ifndef	_NOBROWSE
 	if (browselist) {
 		char *cp;
+		int flags;
 
 		n = browselevel;
 		cp = browselist[n].ext;
+		flags = (F_NOCONFIRM | F_ARGSET | F_NOADDOPT | F_IGNORELIST);
 
 		pushbrowsevar(filelist[filepos].name);
 		if (cp && !(browselist[n].flags & LF_FILENOPREP))
-			execusercomm(cp, filelist[filepos].name, 1, 1, 1);
+			execusercomm(cp, filelist[filepos].name, flags);
 
 		if (browselist[n + 1].comm
 		&& !(browselist[n].flags & LF_FILELOOP))
 			n++;
-		if (dolaunch(&(browselist[n]), 1) < 0
+		if (dolaunch(&(browselist[n]), flags) < 0
 		|| !isarchbr(&(browselist[n]))) {
 			popbrowsevar();
 			return(-1);
@@ -2128,7 +2166,7 @@ int launcher(VOID_A)
 	}
 	if (i >= maxlaunch) return(0);
 
-	return(dolaunch(&(launchlist[i]), 0));
+	return(dolaunch(&(launchlist[i]), F_NOCONFIRM | F_IGNORELIST));
 }
 
 static int NEAR undertmp(path)
@@ -2190,8 +2228,8 @@ char *path, *file, *full, *tmpdir;
 	}
 #endif
 	else strcpy(path, full);
-
 	strcpy(strcatdelim(path), cp);
+
 	return(path);
 }
 
@@ -2224,6 +2262,7 @@ char *path, **dirp, *full;
 
 	if (!(cp = dostmpdir(drive))) return(-1);
 	*dirp = cp;
+
 	return(1);
 }
 #endif	/* !_NODOSDRIVE */
@@ -2299,7 +2338,8 @@ char *arc;
 		duparchivefile = archivefile;
 		archivefile = NULL;
 		Xwaitmes();
-		ret = execusercomm(archivelist[i].p_comm, path, -1, 1, 0);
+		ret = execusercomm(archivelist[i].p_comm, path,
+			F_ARGSET | F_ISARCH | F_NOADDOPT);
 		if (ret > 0) {
 			if (ret < 127) {
 				hideclock = 1;
@@ -2327,10 +2367,10 @@ char *arc;
 }
 
 /*ARGSUSED*/
-int unpack(arc, dir, arg, tr, ignorelist)
+int unpack(arc, dir, arg, tr, flags)
 char *arc, *dir;
 char *arg;
-int tr, ignorelist;
+int tr, flags;
 {
 #ifndef	_NODOSDRIVE
 	winvartable *wvp;
@@ -2393,9 +2433,9 @@ int tr, ignorelist;
 		dir = NULL;
 
 		if (!undertmp(path)) break;
-		locate(0, L_CMDLINE);
-		putterm(l_clear);
-		cprintf2("[%.*s]", n_column - 2, path);
+		Xlocate(0, L_CMDLINE);
+		Xputterm(L_CLEAR);
+		Xcprintf2("[%.*s]", n_column - 2, path);
 		if (yesno(UNPTM_K)) break;
 	}
 
@@ -2449,8 +2489,7 @@ int tr, ignorelist;
 #endif
 	else {
 		Xwaitmes();
-		ret = execusercomm(archivelist[i].u_comm, path,
-			-1, 1, ignorelist);
+		ret = execusercomm(archivelist[i].u_comm, path, flags);
 		if (ret > 0) {
 			if (ret < 127) {
 				hideclock = 1;
@@ -2470,6 +2509,7 @@ int tr, ignorelist;
 	else
 #endif	/* !_NODOSDRIVE */
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
+
 	return((ret) ? 0 : 1);
 }
 
@@ -2495,7 +2535,8 @@ int single;
 		if (ismark(&(filelist[i]))) filelist[i].tmpflags |= F_WSMRK;
 	dupmark = mark;
 	if (single) mark = 0;
-	ret = unpack(archivefile, path, NULL, 0, 0);
+	ret = unpack(archivefile, path, NULL,
+		0, F_ARGSET | F_ISARCH | F_NOADDOPT);
 	mark = dupmark;
 	for (i = 0; i < maxfile; i++) {
 		if (wasmark(&(filelist[i]))) filelist[i].tmpflags |= F_ISMRK;
@@ -2505,7 +2546,7 @@ int single;
 	subdir = archivedir;
 	while (*subdir == _SC_) subdir++;
 
-	if (ret < 0) putterm(t_bell);
+	if (ret < 0) Xputterm(T_BELL);
 	else if (!ret) /*EMPTY*/;
 	else if (_chdir2(path) < 0) {
 		hideclock = 1;
@@ -2532,8 +2573,8 @@ int single;
 		}
 		if (i >= maxfile) return(tmpdir);
 	}
-
 	removetmp(tmpdir, NULL);
+
 	return(NULL);
 }
 
@@ -2556,7 +2597,7 @@ char *dev;
 	}
 
 	st.flags = 0;
-	if (!(tmp = evalcommand("tar cf %C %TA", dev, &st, 0))) return(0);
+	if (!(tmp = evalcommand("tar cf %C %TA", dev, &st))) return(0);
 
 #ifdef	_NOEXTRAMACRO
 	if (filelist) for (;;) {
@@ -2564,7 +2605,7 @@ char *dev;
 		free(tmp);
 
 		if (!(st.flags & F_REMAIN)
-		|| !(tmp = evalcommand("tar rf %C %TA", dev, NULL, 0)))
+		|| !(tmp = evalcommand("tar rf %C %TA", dev, NULL)))
 			break;
 	}
 	else
@@ -2580,6 +2621,7 @@ char *dev;
 		mark = 0;
 		marksize = (off_t)0;
 	}
+
 	return(1);
 }
 
@@ -2638,20 +2680,20 @@ int maxf, n;
 	else tmpdir = NULL;	/* fake for -Wuninitialized */
 #endif
 
-	locate(0, n_line - 1);
-	tflush();
-	if (!(fp = popenmacro(list -> comm, file, 0))) {
+	Xlocate(0, n_line - 1);
+	Xtflush();
+	if (!(fp = popenmacro(list -> comm, file, F_IGNORELIST))) {
 		if (n >= 0) removetmp(tmpdir, file);
 		return(0);
 	}
 
-	locate(0, L_MESLINE);
-	putterm(l_clear);
-	putterm(t_standout);
-	kanjiputs(SEACH_K);
-	putterm(end_standout);
-	kanjiputs(file);
-	tflush();
+	Xlocate(0, L_MESLINE);
+	Xputterm(L_CLEAR);
+	Xputterm(T_STANDOUT);
+	Xkanjiputs(SEACH_K);
+	Xputterm(END_STANDOUT);
+	Xkanjiputs(file);
+	Xtflush();
 
 	for (i = 0; i < (int)(list -> topskip); i++) {
 		if (!(cp = fgets2(fp, 0))) break;

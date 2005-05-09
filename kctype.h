@@ -1,7 +1,7 @@
 /*
  *	kctype.h
  *
- *	Kanji Code Type Macros
+ *	Kanji code type macros
  */
 
 #ifndef	__KCTYPE_H_
@@ -41,6 +41,9 @@
 #define	issjis1(c)	iskanji((u_char)(c))
 #define	issjis2(c)	iskanji2((u_char)(c))
 #define	iskana2(c)	iskana((u_char)(c))
+#define	isspace2(c)	isspace((u_char)(c))
+#define	isprint2(c)	isprint((u_char)(c))
+#define	isblank2(c)	((c) == ' ' || (c) == '\t')
 #else	/* !LSI_C */
 K_EXTERN CONST u_char uppercase[256]
 #ifdef	K_INTERN
@@ -122,20 +125,21 @@ K_EXTERN CONST u_char ctypetable[256]
 #ifdef	K_INTERN
 = {
 	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,	/* 0x00 */
-	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,
+	0020, 0260, 0060, 0060, 0060, 0060, 0020, 0020,
 	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,	/* 0x10 */
 	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x20 */
-	0001, 0001, 0001, 0001, 0001, 0001, 0001, 0001,	/* 0x30 */
-	0001, 0001,    0,    0,    0,    0,    0,    0,
-	   0, 0012, 0012, 0012, 0012, 0012, 0012, 0002,	/* 0x40 */
-	0002, 0002, 0002, 0002, 0002, 0002, 0002, 0002,
-	0002, 0002, 0002, 0002, 0002, 0002, 0002, 0002,	/* 0x50 */
-	0002, 0002, 0002,    0,    0,    0,    0,    0,
-	   0, 0014, 0014, 0014, 0014, 0014, 0014, 0004,	/* 0x60 */
-	0004, 0004, 0004, 0004, 0004, 0004, 0004, 0004,
-	0004, 0004, 0004, 0004, 0004, 0004, 0004, 0004,	/* 0x70 */
-	0004, 0004, 0004,    0,    0,    0,    0, 0020,
+	0340, 0100, 0100, 0100, 0100, 0100, 0100, 0100,	/* 0x20 */
+	0100, 0100, 0100, 0100, 0100, 0100, 0100, 0100,
+	0101, 0101, 0101, 0101, 0101, 0101, 0101, 0101,	/* 0x30 */
+	0111, 0101, 0100, 0100, 0100, 0100, 0100, 0100,
+	0100, 0112, 0112, 0112, 0112, 0112, 0112, 0102,	/* 0x40 */
+	0102, 0102, 0102, 0102, 0102, 0102, 0102, 0102,
+	0102, 0102, 0102, 0102, 0102, 0102, 0102, 0102,	/* 0x50 */
+	0102, 0102, 0102, 0100, 0100, 0100, 0100, 0100,
+	0100, 0114, 0114, 0114, 0114, 0114, 0114, 0104,	/* 0x60 */
+	0104, 0104, 0104, 0104, 0104, 0104, 0104, 0104,
+	0104, 0104, 0104, 0104, 0104, 0104, 0104, 0104,	/* 0x70 */
+	0104, 0104, 0104, 0100, 0100, 0100, 0100, 0020,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x80 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x90 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xa0 */
@@ -190,6 +194,9 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	C_LOWER		0004
 #define	C_HEX		0010
 #define	C_CNTRL		0020
+#define	C_SPACE		0040
+#define	C_PRINT		0100
+#define	C_BLANK		0200
 #define	isalnum2(c)	(ctypetable[(u_char)(c)] \
 			& (C_DIGIT | C_UPPER | C_LOWER))
 #define	isalpha2(c)	(ctypetable[(u_char)(c)] & (C_UPPER | C_LOWER))
@@ -198,6 +205,9 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	isupper2(c)	(ctypetable[(u_char)(c)] & C_UPPER)
 #define	islower2(c)	(ctypetable[(u_char)(c)] & C_LOWER)
 #define	isxdigit2(c)	(ctypetable[(u_char)(c)] & (C_DIGIT | C_HEX))
+#define	isspace2(c)	(ctypetable[(u_char)(c)] & C_SPACE)
+#define	isprint2(c)	(ctypetable[(u_char)(c)] & C_PRINT)
+#define	isblank2(c)	(ctypetable[(u_char)(c)] & C_BLANK)
 #define	KC_SJIS1	0001
 #define	KC_SJIS2	0002
 #define	KC_KANA		0004
@@ -259,6 +269,12 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	_NOKANJIFCONV
 #endif
 
+#if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
+K_EXTERN int kanjierrno K_INIT(0);
+#endif
+#ifndef	_NOKANJIFCONV
+K_EXTERN int defaultkcode K_INIT(NOCNV);
+#endif
 #ifndef	_NOKANJICONV
 K_EXTERN int inputkcode K_INIT(NOCNV);
 #endif

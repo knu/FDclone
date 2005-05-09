@@ -1,7 +1,7 @@
 # Initialize file for FD
 #
 
-# to set default sort type
+# default sort type
 #	0: not sort (Default)
 #	1: alphabetical	9: alphabetical (reversal)
 #	2: extension	10: extension (reversal)
@@ -12,7 +12,7 @@
 #		(the least 2 digits are effective just after initialize)
 #SORTTYPE=0
 
-# to set default display mode
+# default display mode
 #	0: normal (Default)
 #	1: sym-link status
 #	2: 			file type symbol
@@ -54,7 +54,7 @@
 #	>= 1: prioritize
 #USEGETCURSOR=0
 
-# to set default columns of file in 1 line
+# default columns of file in 1 line
 #	1: 1 column
 #	2: 2 columns (Default)
 #	3: 3 columns
@@ -112,7 +112,7 @@
 #	3: color & force foreground to blacken
 #ANSICOLOR=0
 
-# specify color palette in the ANSI color mode
+# color palette in the ANSI color mode
 #	Default: none
 #	0: black
 #	1: red
@@ -138,7 +138,7 @@
 #	character device ---------+
 #ANSIPALETTE=""
 
-# select edit mode with your favorite editor type
+# edit mode with your favorite editor type
 #	emacs: ^P, ^N, ^F, ^B, ... (Default)
 #	wordstar ^E, ^X, ^D, ^S, ...
 #	vi: k, j, l, h, ...
@@ -183,7 +183,7 @@
 #	>= 1: hold
 #UNICODEBUFFER=0
 
-# language code type to display
+# language code to be displayed
 #	Default: No convert
 #	euc, EUC: EUC-JP
 #	sjis, SJIS: Shift JIS
@@ -198,7 +198,7 @@
 #	eng, ENG, C: English
 #LANGUAGE=""
 
-# language code type to input
+# Kanji code to be inputted
 #	Default: No convert
 #	euc, EUC: EUC-JP
 #	sjis, SJIS: Shift JIS
@@ -206,7 +206,7 @@
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 #INPUTKCODE=""
 
-# language code type in filename
+# Kanji code in filename
 #	Default: No convert
 #	euc, EUC: EUC-JP
 #	sjis, SJIS: Shift JIS

@@ -1,7 +1,7 @@
 /*
  *	kanji.c
  *
- *	Kanji Convert Function
+ *	Kanji convert functions
  */
 
 #define	K_EXTERN
@@ -76,7 +76,9 @@ extern char *includepath __P_((char *, char *));
 #define	KANA		001
 #define	KANJI		002
 #define	JKANA		004
+#define	J_UDEF		0x222e	/* GETA */
 #define	SJ_UDEF		0x81ac	/* GETA */
+#define	U2_UDEF		0x3013	/* GETA */
 #define	UNICODETBL	"fd-unicd.tbl"
 #define	MINUNICODE	0x00a7
 #define	MAXUNICODE	0xffe5
@@ -196,7 +198,7 @@ static CONST langtable langlist[] = {
 	{"C", ENG},
 # endif	/* _NOENGMES */
 };
-#define	MAXLANGLIST	(sizeof(langlist) / sizeof(langtable))
+#define	MAXLANGLIST	((int)sizeof(langlist) / sizeof(langtable))
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
@@ -344,6 +346,22 @@ static u_char j2sjtable2[128] = {
 	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,	/* 0x70 */
 	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e,    0
 };
+static u_char j2sjtable3[128] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
+	   0, 0x9f, 0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5,	/* 0x20 */
+	0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad,
+	0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5,	/* 0x30 */
+	0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd,
+	0xbe, 0xbf, 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5,	/* 0x40 */
+	0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd,
+	0xce, 0xcf, 0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5,	/* 0x50 */
+	0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd,
+	0xde, 0xdf, 0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5,	/* 0x60 */
+	0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed,
+	0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5,	/* 0x70 */
+	0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc,    0
+};
 #endif	/* !_NOKANJICONV || (FD && _USEDOSEMU && CODEEUC) */
 #ifndef	_NOKANJICONV
 static u_int nftblnum = 0;
@@ -428,7 +446,7 @@ static CONST kpathtable kpathlist[] = {
 	{&utf8macpath, M_UTF8},
 	{&noconvpath, NOCNV},
 };
-#define	MAXKPATHLIST	(sizeof(kpathlist) / sizeof(kpathtable))
+#define	MAXKPATHLIST	((int)sizeof(kpathlist) / sizeof(kpathtable))
 #endif	/* !_NOKANJIFCONV */
 
 #ifndef	FD
@@ -481,6 +499,7 @@ int ptr;
 #endif
 	}
 	if (i > ptr) return(0);
+
 	return(iskanji1(s, i));
 }
 
@@ -514,6 +533,7 @@ char *s1, *s2;
 #endif
 		s1++;
 	}
+
 	return(NULL);
 }
 
@@ -547,12 +567,8 @@ int io;
 	}
 
 # ifndef	_NOKANJICONV
-#  ifdef	CODEEUC
-	if (io == L_INPUT && ret == NOCNV) ret = EUC;
-#  else
-	if (io == L_INPUT && ret == NOCNV) ret = SJIS;
-#  endif
-# endif	/* !_NOKANJICONV */
+	if (io == L_INPUT && ret == NOCNV) ret = DEFCODE;
+# endif
 
 	return(ret);
 }
@@ -572,20 +588,21 @@ static VOID NEAR sj2j(buf, s)
 char *buf;
 u_char *s;
 {
-	int s1, s2, j1, j2;
+	u_int w;
+	int i, s1, s2, j1, j2;
 
 	s1 = s[0] & 0xff;
 	s2 = s[1] & 0xff;
 	if (s1 >= 0xf0) {
-		u_int w;
-		int i;
-
 		w = (((u_int)s1 << 8) | s2);
 		for (i = 0; i < CNVTBLSIZ; i++)
 			if (w >= convtable[i].start
 			&& w < convtable[i].start + convtable[i].range)
 				break;
-		if (i >= CNVTBLSIZ) w = SJ_UDEF;
+		if (i >= CNVTBLSIZ) {
+			w = SJ_UDEF;
+			kanjierrno = SJIS;
+		}
 		else {
 			w -= convtable[i].start;
 			w += convtable[i].cnv;
@@ -595,7 +612,13 @@ u_char *s;
 	}
 	j1 = sj2jtable1[s1];
 	j2 = sj2jtable2[s2];
-	if (s2 >= 0x9f) j1++;
+	if (!j1 || !j2) {
+		j1 = ((J_UDEF >> 8) & 0xff);
+		j2 = (J_UDEF & 0xff);
+		kanjierrno = SJIS;
+	}
+	else if (s2 >= 0x9f) j1++;
+
 	buf[0] = j1;
 	buf[1] = j2;
 }
@@ -611,8 +634,12 @@ u_char *s;
 	j2 = s[1] & 0x7f;
 
 	s1 = j2sjtable1[j1];
-	s2 = (j1 & 1) ? j2sjtable2[j2] : (j2 + 0x7e);
-	w = (((u_int)s1 << 8) | s2);
+	s2 = (j1 & 1) ? j2sjtable2[j2] : j2sjtable3[j2];
+	if (!s1 || !s2) {
+		w = SJ_UDEF;
+		kanjierrno = JIS7;
+	}
+	else w = (((u_int)s1 << 8) | s2);
 
 	for (i = 0; i < CNVTBLSIZ; i++)
 	if (w >= convtable[i].cnv
@@ -647,6 +674,7 @@ int max;
 		}
 		else buf[j] = s[i];
 	}
+
 	return(j);
 }
 
@@ -663,6 +691,8 @@ int max;
 		else if (isekana(s, i)) buf[j] = s[++i];
 		else buf[j] = s[i];
 	}
+	if (kanjierrno) kanjierrno = EUC;
+
 	return(j);
 }
 #endif	/* !_NOKANJICONV || (FD && _USEDOSEMU && CODEEUC) */
@@ -695,6 +725,7 @@ char *file;
 		}
 		unitblent = getword(buf, 0);
 	}
+
 	return(fd);
 }
 
@@ -706,6 +737,7 @@ ALLOC_T size;
 	if ((tbl = (u_char *)malloc(size))) return(tbl);
 	openunitbl(NULL);
 	if (unicodebuffer) unicodebuffer = 0;
+
 	return(NULL);
 }
 
@@ -783,6 +815,7 @@ int nf;
 		nftblent = tblent;
 	}
 # endif	/* !_NOKANJICONV */
+
 	openunitbl(NULL);
 }
 
@@ -823,6 +856,7 @@ int russ;
 		wc -= rsjistable[i].start;
 		wc += rsjistable[i].cnv;
 	}
+
 	return(wc);
 }
 
@@ -842,7 +876,7 @@ int encode;
 	}
 
 	if (encode) {
-		r = 0xff00;
+		r = U2_UDEF;
 		if (wc < 0x0080) return(wc);
 		if (wc >= 0x00a1 && wc <= 0x00df)
 			return(0xff00 | (wc - 0x00a1 + 0x61));
@@ -850,11 +884,14 @@ int encode;
 			return(0xff00 | (wc - 0x8260 + 0x21));
 		if (wc >= 0x8281 && wc <= 0x829a)
 			return(0xff00 | (wc - 0x8281 + 0x41));
-		if (wc < MINKANJI || wc > MAXKANJI) return(r);
+		if (wc < MINKANJI || wc > MAXKANJI) {
+			kanjierrno = SJIS;
+			return(r);
+		}
 		wc = unifysjis(wc, 0);
 	}
 	else {
-		r = '?';
+		r = SJ_UDEF;
 		switch (wc & 0xff00) {
 			case 0:
 				if ((wc & 0xff) < 0x80) return(wc);
@@ -871,7 +908,10 @@ int encode;
 			default:
 				break;
 		}
-		if (wc < MINUNICODE || wc > MAXUNICODE) return(r);
+		if (wc < MINUNICODE || wc > MAXUNICODE) {
+			kanjierrno = UTF8;
+			return(r);
+		}
 	}
 
 	if (unicodebuffer && !unitblbuf) readunitable(0);
@@ -945,9 +985,11 @@ int encode;
 
 	if (encode) {
 		if (ofs < unitblent) r = getword(cp, 0);
+		else kanjierrno = SJIS;
 	}
 	else {
 		if (ofs > min && ofs < max) r = getword(cp, 2);
+		else kanjierrno = UTF8;
 	}
 
 	return(r);
@@ -1010,6 +1052,7 @@ int max;
 # endif
 		else buf[j] = s[i];
 	}
+
 	return(j);
 }
 
@@ -1068,6 +1111,7 @@ int max, knj, asc, io;
 		buf[j++] = '(';
 		buf[j++] = asc;
 	}
+
 	return(j);
 }
 
@@ -1166,6 +1210,7 @@ int max, io;
 			else buf[j++] = s[i];
 			break;
 	}
+
 	return(j);
 }
 
@@ -1211,6 +1256,7 @@ int max, knj, asc, io;
 		buf[j++] = '(';
 		buf[j++] = asc;
 	}
+
 	return(j);
 }
 
@@ -1268,6 +1314,7 @@ int max, knj, asc, io;
 		buf[j++] = '(';
 		buf[j++] = asc;
 	}
+
 	return(j);
 }
 
@@ -1399,6 +1446,7 @@ int *ptrp, nf;
 		*ptrp += i;
 	}
 	if (new) free(new);
+
 	return(w);
 }
 
@@ -1413,6 +1461,7 @@ int *ptrp;
 		u_char tmp[2];
 
 		j2sj((char *)tmp, &(s[*ptrp]));
+		if (kanjierrno) kanjierrno = EUC;
 		*ptrp += 2;
 		w = (((u_int)(tmp[0]) << 8) | tmp[1]);
 	}
@@ -1428,6 +1477,7 @@ int *ptrp;
 	else if (isskana(s, *ptrp)) w = s[(*ptrp)++];
 # endif
 	else w = s[(*ptrp)++];
+
 	return(cnvunicode(w, 1));
 }
 
@@ -1489,12 +1539,18 @@ int *ptrp;
 
 	w = s[(*ptrp)++];
 	if (w < 0x80);
-	else if ((w & 0xe0) == 0xc0 && (s[(*ptrp)++] & 0xc0) == 0x80)
+	else if ((w & 0xe0) == 0xc0 && (s[*ptrp] & 0xc0) == 0x80)
 		w = ((w & 0x1f) << 6) | (s[(*ptrp)++] & 0x3f);
-	else {
+	else if ((w & 0xf0) == 0xe0 && (s[*ptrp] & 0xc0) == 0x80
+	&& (s[*ptrp + 1] & 0xc0) == 0x80) {
 		w = ((w & 0x0f) << 6) | (s[(*ptrp)++] & 0x3f);
 		w = (w << 6) | (s[(*ptrp)++] & 0x3f);
 	}
+	else {
+		w = U2_UDEF;
+		kanjierrno = UTF8;
+	}
+
 	return(w);
 }
 
@@ -1508,6 +1564,8 @@ int max;
 	i = j = 0;
 	while (s[i] && j < max - 3) ucs2toutf8(buf, &j, toucs2(s, &i));
 	cnvunicode(0, -1);
+	if (kanjierrno) kanjierrno = DEFCODE;
+
 	return(j);
 }
 
@@ -1521,6 +1579,7 @@ int max;
 	i = j = 0;
 	while (s[i] && j < max - 2) fromucs2(buf, &j, ucs2fromutf8(s, &i));
 	cnvunicode(0, -1);
+
 	return(j);
 }
 
@@ -1545,6 +1604,8 @@ int max, nf;
 	free(u1);
 	free(u2);
 	cnvunicode(0, -1);
+	if (kanjierrno) kanjierrno = DEFCODE;
+
 	return(j);
 }
 
@@ -1569,6 +1630,7 @@ int max, nf;
 	free(u1);
 	free(u2);
 	cnvunicode(0, -1);
+
 	return(j);
 }
 
@@ -1582,6 +1644,7 @@ int c;
 	buf[i++] = ':';
 	buf[i++] = tohexa((c >> 4) & 0xf);
 	buf[i++] = tohexa(c & 0xf);
+
 	return(i);
 }
 
@@ -1611,6 +1674,8 @@ int max;
 # endif
 		else buf[j] = s[i];
 	}
+	if (kanjierrno) kanjierrno = DEFCODE;
+
 	return(j);
 }
 
@@ -1661,6 +1726,7 @@ int max;
 			else buf[j] = c1;
 		}
 	}
+
 	return(j);
 }
 
@@ -1677,6 +1743,7 @@ int c;
 		buf[i++] = tohexa((c >> 4) & 0xf);
 		buf[i++] = tohexa(c & 0xf);
 	}
+
 	return(i);
 }
 
@@ -1706,6 +1773,8 @@ int max;
 # endif
 		else buf[j] = s[i];
 	}
+	if (kanjierrno) kanjierrno = DEFCODE;
+
 	return(j);
 }
 
@@ -1756,6 +1825,7 @@ int max;
 			else buf[j] = c1;
 		}
 	}
+
 	return(j);
 }
 
@@ -1763,6 +1833,8 @@ static char *NEAR _kanjiconv(buf, s, max, in, out, lenp, io)
 char *buf, *s;
 int max, in, out, *lenp, io;
 {
+	kanjierrno = 0;
+
 	if (in == out || in == NOCNV || out == NOCNV) return(s);
 	switch (out) {
 # ifdef	CODEEUC
@@ -1852,6 +1924,8 @@ int max, in, out, *lenp, io;
 /*NOTREACHED*/
 			break;
 	}
+	if (io == L_FNAME && kanjierrno) return(s);
+
 	return(buf);
 }
 
@@ -1864,6 +1938,7 @@ int max, in, out, io;
 	if (_kanjiconv(buf, s, max, in, out, &len, io) != buf)
 		for (len = 0; s[len]; len++) buf[len] = s[len];
 	buf[len] = '\0';
+
 	return(len);
 }
 
@@ -1875,6 +1950,7 @@ int max, in, out, io;
 
 	if (_kanjiconv(buf, s, max, in, out, &len, io) != buf) return(s);
 	buf[len] = '\0';
+
 	return(buf);
 }
 
@@ -1892,6 +1968,7 @@ int in, out, io;
 		free(buf);
 		return(s);
 	}
+
 	return(buf);
 }
 #endif	/* !_NOKANJICONV */
@@ -1909,6 +1986,7 @@ char *path;
 		if (includepath(path, *(kpathlist[i].path)))
 			return(kpathlist[i].code);
 	}
+
 	return(fnamekcode);
 }
 #endif	/* !_NOKANJIFCONV */
@@ -1957,6 +2035,7 @@ int dos;
 		return(buf);
 	}
 #endif
+
 	return(cp);
 }
 
@@ -1974,7 +2053,7 @@ int *codep;
 	char rbuf[MAXPATHLEN];
 #endif
 #ifndef	_NOKANJIFCONV
-	int fputok;
+	int c, fputok;
 #endif
 	char *cp, *file, rpath[MAXPATHLEN];
 	int n;
@@ -2032,8 +2111,6 @@ int *codep;
 #endif
 #ifndef	_NOKANJIFCONV
 	if (fputok) {
-		int c;
-
 		c = getkcode(cp);
 		if (codep) *codep = c;
 		cp = kanjiconv2(kbuf, cp, MAXPATHLEN - 1, DEFCODE, c, L_FNAME);
@@ -2068,5 +2145,6 @@ int *codep;
 	else
 #endif
 	strcpy(buf, file);
+
 	return(buf);
 }

@@ -1,7 +1,7 @@
 /*
  *	info.c
  *
- *	Information Module
+ *	information module
  */
 
 #include <errno.h>
@@ -29,18 +29,20 @@ extern int errno;
 #ifdef	USEMNTENTH
 #include <mntent.h>
 typedef struct mntent	mnt_t;
-#define	getmntent2(fp, mntp)	getmntent(fp)
-#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
+#define	setmntent2	setmntent
+#define	getmntent2(f,m)	getmntent(f)
+#define	hasmntopt2(m,o)	strmntopt((m) -> mnt_opts, o)
+#define	endmntent2	endmntent
 #endif	/* USEMNTENTH */
 
 #ifdef	USEMNTTABH
 #include <sys/mnttab.h>
 #define	MOUNTED		MNTTAB
 typedef struct mnttab	mnt_t;
-#define	setmntent		fopen
-#define	getmntent2(fp, mntp)	(getmntent(fp, mntp) ? NULL : mntp)
-#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_mntopts, opt)
-#define	endmntent		fclose
+#define	setmntent2	fopen
+#define	getmntent2(f,m)	(getmntent(f, m) ? NULL : m)
+#define	hasmntopt2(m,o)	strmntopt((m) -> mnt_mntopts, o)
+#define	endmntent2	fclose
 #define	mnt_dir		mnt_mountp
 #define	mnt_fsname	mnt_special
 #define	mnt_type	mnt_fstype
@@ -73,13 +75,13 @@ typedef struct _mnt_t {
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
-static FILE *NEAR setmntent __P_((char *, char *));
+static FILE *NEAR setmntent2 __P_((char *, char *));
 static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
 #define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
 #if	defined (USEMNTINFO) || defined (USEGETMNT)
-#define	endmntent(fp)
+#define	endmntent2(f)
 #else
-#define	endmntent(fp)		do { if (fp) free(fp); } while(0)
+#define	endmntent2		free
 #endif
 static int mnt_ptr = 0;
 static int mnt_size = 0;
@@ -88,10 +90,10 @@ static int mnt_size = 0;
 #ifdef	USEGETFSENT
 #include <fstab.h>
 typedef struct fstab	mnt_t;
-#define	setmntent(file, mode)	(FILE *)(setfsent(), NULL)
+#define	setmntent2(file, mode)	(FILE *)(setfsent(), NULL)
 #define	getmntent2(fp, mntp)	getfsent()
 #define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> fs_mntops, opt)
-#define	endmntent(fp)		endfsent()
+#define	endmntent2(fp)		endfsent()
 #define	mnt_dir		fs_file
 #define	mnt_fsname	fs_spec
 #define	mnt_type	fs_vfstype
@@ -214,12 +216,16 @@ extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern int Xstat __P_((char *, struct stat *));
 #endif
 extern int Xaccess __P_((char *, int));
+extern int filetop __P_((int));
+#define	Xlocate			locate
+#define	Xputterm		putterm
+#define	Xputch2			putch2
+#define	Xcputs2			cputs2
+#define	Xcprintf2		cprintf2
 
 extern bindtable bindlist[];
 extern functable funclist[];
 extern char fullpath[];
-extern int tradlayout;
-extern int sizeinfo;
 extern char *distributor;
 #ifndef	_NODOSDRIVE
 extern int needbavail;
@@ -305,7 +311,7 @@ static int NEAR getfsinfo __P_((char *, statfs_t *, mnt_t *));
 static char *NEAR strmntopt __P_((char *, char *));
 int writablefs __P_((char *));
 off_t getblocksize __P_((char *));
-static int NEAR info1line __P_((int, char *, off_t, char *, char *));
+static int NEAR info1line __P_((int, int, char *, off_t, char *, char *));
 off_t calcKB __P_((off_t, off_t));
 int getinfofs __P_((char *, off_t *, off_t *, off_t *));
 int infofs __P_((char *));
@@ -402,16 +408,18 @@ int code;
 			snprintf2(buf, KEYWID + 1, "'%c'    ", code);
 		else return(0);
 	}
+
 	return(1);
 }
 
 static int NEAR checkline(y)
 int y;
 {
-	if (y >= LFILEBOTTOM) {
+	if (y >= FILEPERROW) {
 		warning(0, HITKY_K);
-		y = LFILETOP + 1;
+		y = 1;
 	}
+
 	return(y);
 }
 
@@ -419,27 +427,27 @@ VOID help(mode)
 int mode;
 {
 	char buf[(KEYWID + 1 + 1) * 2 + 1];
-	int i, j, c, x, y;
+	int i, j, c, x, y, yy;
 
 	if (distributor && *distributor) {
 		i = n_column - (int)strlen(distributor) - 24;
-		locate(i, L_HELP);
-		putch2('[');
-		putterm(t_standout);
-		cprintf2(" Distributed by: %s ", distributor);
-		putterm(end_standout);
-		putch2(']');
+		Xlocate(i, L_HELP);
+		Xputch2('[');
+		Xputterm(T_STANDOUT);
+		Xcprintf2(" Distributed by: %s ", distributor);
+		Xputterm(END_STANDOUT);
+		Xputch2(']');
 	}
 
-	x = 0;
-	y = LFILETOP;
-	locate(0, y++);
-	putterm(l_clear);
+	yy = filetop(win);
+	x = y = 0;
+	Xlocate(0, yy + y++);
+	Xputterm(L_CLEAR);
 
 	for (i = 0; i < FUNCLISTSIZ ; i++) {
 		if (i == NO_OPERATION || i == WARNING_BELL) continue;
-		locate(x * (n_column / 2), y);
-		if (x ^= 1) putterm(l_clear);
+		Xlocate(x * (n_column / 2), yy + y);
+		if (x ^= 1) Xputterm(L_CLEAR);
 		else y++;
 		if (mode && !(funclist[i].status & ARCH)) continue;
 
@@ -458,18 +466,18 @@ int mode;
 			}
 		if (!c) continue;
 
-		cputs2("  ");
-		if (c < 2) cprintf2("%*s", KEYWID, "");
-		cprintf2("%k: %k",
+		Xcputs2("  ");
+		if (c < 2) Xcprintf2("%*s", KEYWID, "");
+		Xcprintf2("%k: %k",
 			buf, mesconv(funclist[i].hmes, funclist[i].hmes_eng));
 
 		y = checkline(y);
 	}
-	if (y > LFILETOP + 1) {
+	if (y > 1) {
 		if (x) y++;
-		for (; y < LFILEBOTTOM; y++) {
-			locate(0, y);
-			putterm(l_clear);
+		for (; y < FILEPERROW; y++) {
+			Xlocate(0, yy + y);
+			Xputterm(L_CLEAR);
 		}
 		warning(0, HITKY_K);
 	}
@@ -477,7 +485,7 @@ int mode;
 
 #ifdef	USEMNTCTL
 /*ARGSUSED*/
-static FILE *NEAR setmntent(file, mode)
+static FILE *NEAR setmntent2(file, mode)
 char *file, *mode;
 {
 	char *buf;
@@ -486,6 +494,7 @@ char *file, *mode;
 	buf = malloc2(mnt_size);
 	mntctl(MCTL_QUERY, mnt_size, (struct vmount *)buf);
 	mnt_ptr = 0;
+
 	return((FILE *)buf);
 }
 
@@ -499,7 +508,7 @@ mnt_t *mntp;
 	struct vfs_ent *entp;
 	struct vmount *vmntp;
 	char *cp, *buf, *host;
-	int len;
+	ALLOC_T len;
 
 	if (mnt_ptr >= mnt_size) return(NULL);
 	buf = (char *)fp;
@@ -509,7 +518,7 @@ mnt_t *mntp;
 	len = strlen(cp) + 1;
 	if (!(vmntp -> vmt_flags & MNT_REMOTE)) {
 		fsname = realloc2(fsname, len);
-		strcpy(fsname, cp);
+		memcpy(fsname, cp, len);
 	}
 	else {
 		host = &(buf[mnt_ptr
@@ -522,14 +531,14 @@ mnt_t *mntp;
 	cp = &(buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off]);
 	len = strlen(cp) + 1;
 	dir = realloc2(dir, len);
-	strcpy(dir, cp);
+	memcpy(dir, cp, len);
 
 	entp = getvfsbytype(vmntp -> vmt_gfstype);
 	if (entp) {
 		cp = entp -> vfsent_name;
 		len = strlen(cp) + 1;
 		type = realloc2(type, len);
-		strcpy(type, cp);
+		memcpy(type, cp, len);
 	}
 	else if (type) {
 		free(type);
@@ -540,15 +549,15 @@ mnt_t *mntp;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = (type) ? type : "???";
 	mntp -> mnt_opts = (vmntp -> vmt_flags & MNT_READONLY) ? "ro" : "";
-
 	mnt_ptr += vmntp -> vmt_length;
+
 	return(mntp);
 }
 #endif	/* USEMNTCTL */
 
 #if	defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETFSSTAT)
 /*ARGSUSED*/
-static FILE *NEAR setmntent(file, mode)
+static FILE *NEAR setmntent2(file, mode)
 char *file, *mode;
 {
 #ifndef	USEMNTINFO
@@ -572,6 +581,7 @@ char *file, *mode;
 	}
 # endif
 #endif
+
 	return((FILE *)buf);
 }
 
@@ -583,10 +593,6 @@ static mnt_t *NEAR getmntent2(fp, mntp)
 FILE *fp;
 mnt_t *mntp;
 {
-	static char *fsname = NULL;
-	static char *dir = NULL;
-	static char *type = NULL;
-	struct statfs *buf;
 #ifdef	USEMNTINFO
 # ifdef	USEVFCNAME
 	struct vfsconf *conf;
@@ -611,25 +617,29 @@ mnt_t *mntp;
 					? mnt_names[n] : NULL)
 # endif
 #endif	/* !USEMNTINFO */
+	static char *fsname = NULL;
+	static char *dir = NULL;
+	static char *type = NULL;
+	struct statfs *buf;
 	char *cp;
-	int len;
+	ALLOC_T len;
 
 	if (mnt_ptr >= mnt_size) return(NULL);
 	buf = (struct statfs *)fp;
 
 	len = strlen(buf[mnt_ptr].f_mntfromname) + 1;
 	fsname = realloc2(fsname, len);
-	strcpy(fsname, buf[mnt_ptr].f_mntfromname);
+	memcpy(fsname, buf[mnt_ptr].f_mntfromname, len);
 
 	len = strlen(buf[mnt_ptr].f_mntonname) + 1;
 	dir = realloc2(dir, len);
-	strcpy(dir, buf[mnt_ptr].f_mntonname);
+	memcpy(dir, buf[mnt_ptr].f_mntonname, len);
 
 	cp = (char *)getvfsbynumber(buf[mnt_ptr].f_type);
 	if (cp) {
 		len = strlen(cp) + 1;
 		type = realloc2(type, len);
-		strcpy(type, cp);
+		memcpy(type, cp, len);
 	}
 	else if (type) {
 		free(type);
@@ -640,19 +650,20 @@ mnt_t *mntp;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = (type) ? type : "???";
 	mntp -> mnt_opts = (buf[mnt_ptr].f_flags & MNT_RDONLY) ? "ro" : "";
-
 	mnt_ptr++;
+
 	return(mntp);
 }
 #endif	/* USEMNTINFOR || USEMNTINFO || USEGETFSSTAT */
 
 #ifdef	USEGETMNT
 /*ARGSUSED*/
-static FILE *NEAR setmntent(file, mode)
+static FILE *NEAR setmntent2(file, mode)
 char *file, *mode;
 {
 	mnt_ptr = 0;
-	return(NULL);
+
+	return((FILE *)1);
 }
 
 /*ARGSUSED*/
@@ -664,22 +675,22 @@ mnt_t *mntp;
 	static char *dir = NULL;
 	static char *type = NULL;
 	struct fs_data buf;
-	int len;
+	ALLOC_T len;
 
 	if (getmnt(&mnt_ptr, &buf, sizeof(buf), NOSTAT_MANY, NULL) <= 0)
 		return(NULL);
 
 	len = strlen(buf.fd_req.devname) + 1;
 	fsname = realloc2(fsname, len);
-	strcpy(fsname, buf.fd_req.devname);
+	memcpy(fsname, buf.fd_req.devname, len);
 
 	len = strlen(buf.fd_req.path) + 1;
 	dir = realloc2(dir, len);
-	strcpy(dir, buf.fd_req.path);
+	memcpy(dir, buf.fd_req.path, len);
 
 	len = strlen(gt_names[buf.fd_req.fstype]) + 1;
 	type = realloc2(type, len);
-	strcpy(type, gt_names[buf.fd_req.fstype]);
+	memcpy(type, gt_names[buf.fd_req.fstype], len);
 
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
@@ -753,10 +764,10 @@ mnt_t *mntbuf;
 	mnt_t *mntp;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN];
-	int len, match;
-#ifndef	_NODOSDRIVE
+	ALLOC_T len, match;
+# ifndef	_NODOSDRIVE
 	int drv;
-#endif
+# endif
 
 	if (!fsbuf) fsbuf = &fs;
 	if (!mntbuf) mntbuf = &mnt;
@@ -765,7 +776,7 @@ mnt_t *mntbuf;
 	if (!strncmp(path, "/dev/", sizeof("/dev/") - 1)) {
 		if (_chdir2(path) < 0) dir = path;
 	}
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
 		static char dosmntdir[4];
 		char buf[sizeof(long) * 3 + 1];
@@ -781,35 +792,35 @@ mnt_t *mntbuf;
 		if (buf[sizeof(long) * 3] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
 		fsbuf -> f_bsize = *((long *)&(buf[sizeof(long) * 0]));
-# ifdef	USEFSDATA
+#  ifdef	USEFSDATA
 		fsbuf -> fd_req.btot = calcKB((off_t)(fsbuf -> f_bsize),
 			(off_t)(*((long *)&(buf[sizeof(long) * 1]))));
 		fsbuf -> fd_req.bfree =
 		fsbuf -> fd_req.bfreen = calcKB((off_t)(fsbuf -> f_bsize),
 			(off_t)(*((long *)&(buf[sizeof(long) * 2]))));
-# else	/* !USEFSDATA */
-#  ifdef	USESTATVFSH
+#  else	/* !USEFSDATA */
+#   ifdef	USESTATVFSH
 		fsbuf -> f_frsize = 0L;
-#  endif
+#   endif
 		fsbuf -> f_blocks = *((long *)&(buf[sizeof(long) * 1]));
 		fsbuf -> f_bfree =
 		fsbuf -> f_bavail = *((long *)&(buf[sizeof(long) * 2]));
-# endif	/* !USEFSDATA */
+#  endif	/* !USEFSDATA */
 		fsbuf -> f_files = -1L;
 
 		return(0);
 	}
-#endif	/* !_NODOSDRIVE */
+# endif	/* !_NODOSDRIVE */
 	else if (_chdir2(path) < 0) return(-1);
 
 	if (!dir) {
 		dir = getwd2();
 		if (_chdir2(fullpath) < 0) error(fullpath);
-		match = 0;
+		match = (ALLOC_T)0;
 
-		fp = setmntent(MOUNTED, "rb");
+		if (!(fp = setmntent2(MOUNTED, "rb"))) return(-1);
 		for (;;) {
-#ifdef	DEBUG
+# ifdef	DEBUG
 			_mtrace_file = "getmntent(start)";
 			mntp = getmntent2(fp, &mnt);
 			if (_mtrace_file) _mtrace_file = NULL;
@@ -818,18 +829,18 @@ mnt_t *mntbuf;
 				malloc(0);	/* dummy malloc */
 			}
 			if (!mntp) break;
-#else
+# else
 			if (!(mntp = getmntent2(fp, &mnt))) break;
-#endif
-			if ((len = strlen(mntp -> mnt_dir)) < match
-			|| strncmp(mntp -> mnt_dir, dir, len)
+# endif
+			len = strlen(mntp -> mnt_dir);
+			if (len < match || strncmp(mntp -> mnt_dir, dir, len)
 			|| (mntp -> mnt_dir[len - 1] != _SC_
 			&& dir[len] && dir[len] != _SC_))
 				continue;
 			match = len;
 			strcpy(fsname, mntp -> mnt_fsname);
 		}
-		endmntent(fp);
+		endmntent2(fp);
 
 		free(dir);
 		if (!match) {
@@ -838,10 +849,11 @@ mnt_t *mntbuf;
 		}
 		dir = fsname;
 	}
-	fp = setmntent(MOUNTED, "rb");
+
+	if (!(fp = setmntent2(MOUNTED, "rb"))) return(-1);
 	while ((mntp = getmntent2(fp, &mnt)))
 		if (!strcmp(dir, mntp -> mnt_fsname)) break;
-	endmntent(fp);
+	endmntent2(fp);
 	if (!mntp) {
 		errno = ENOENT;
 		return(-1);
@@ -860,7 +872,7 @@ static char *NEAR strmntopt(s1, s2)
 char *s1, *s2;
 {
 	char *cp;
-	int len;
+	ALLOC_T len;
 
 	len = strlen(s2);
 	for (cp = s1; cp && *cp;) {
@@ -868,6 +880,7 @@ char *s1, *s2;
 			return(cp);
 		if ((cp = strchr(cp, ','))) cp++;
 	}
+
 	return(NULL);
 }
 
@@ -904,6 +917,7 @@ char *dir;
 	statfs_t fsbuf;
 
 	if (statfs2(dir, &fsbuf) < 0) return((off_t)1024);
+
 	return((off_t)blocksize(fsbuf));
 #else	/* !MSDOS */
 	statfs_t fsbuf;
@@ -931,24 +945,25 @@ char *dir;
 #endif	/* !MSDOS */
 }
 
-static int NEAR info1line(y, ind, n, s, unit)
-int y;
+static int NEAR info1line(yy, y, ind, n, s, unit)
+int yy, y;
 char *ind;
 off_t n;
 char *s, *unit;
 {
 	int width;
 
-	locate(0, y);
-	putterm(l_clear);
-	locate(n_column / 2 - 20, y);
-	cprintf2("%-20.20k", ind);
-	locate(n_column / 2 + 2, y);
+	Xlocate(0, yy + y);
+	Xputterm(L_CLEAR);
+	Xlocate(n_column / 2 - 20, yy + y);
+	Xcprintf2("%-20.20k", ind);
+	Xlocate(n_column / 2 + 2, yy + y);
 	if (s) {
 		width = n_column - (n_column / 2 + 2);
-		cprintf2("%-*.*k", width, width, s);
+		Xcprintf2("%-*.*k", width, width, s);
 	}
-	else cprintf2("%<'*qd %k", MAXCOLSCOMMA(3), n, unit);
+	else Xcprintf2("%<'*qd %k", MAXCOLSCOMMA(3), n, unit);
+
 	return(checkline(++y));
 }
 
@@ -986,6 +1001,7 @@ off_t *totalp, *freep, *bsizep;
 	*totalp = fsbuf.f_blocks;
 	*freep = fsbuf.f_bavail;
 	*bsizep = blocksize(fsbuf);
+
 	return(0);
 }
 
@@ -994,7 +1010,7 @@ char *path;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;
-	int y;
+	int y, yy;
 
 #ifndef	_NODOSDRIVE
 	needbavail++;
@@ -1006,34 +1022,36 @@ char *path;
 #endif
 		return(0);
 	}
-	y = LFILETOP;
-	locate(0, y++);
-	putterm(l_clear);
+	yy = filetop(win);
+	y = 0;
+	Xlocate(0, yy + y++);
+	Xputterm(L_CLEAR);
 
-	y = info1line(y, FSNAM_K, (off_t)0, mntbuf.mnt_fsname, NULL);
-	y = info1line(y, FSMNT_K, (off_t)0, mntbuf.mnt_dir, NULL);
-	y = info1line(y, FSTYP_K, (off_t)0, mntbuf.mnt_type, NULL);
-	y = info1line(y, FSTTL_K,
+	y = info1line(yy, y, FSNAM_K, (off_t)0, mntbuf.mnt_fsname, NULL);
+	y = info1line(yy, y, FSMNT_K, (off_t)0, mntbuf.mnt_dir, NULL);
+	y = info1line(yy, y, FSTYP_K, (off_t)0, mntbuf.mnt_type, NULL);
+	y = info1line(yy, y, FSTTL_K,
 		calcKB((off_t)(fsbuf.f_blocks), (off_t)blocksize(fsbuf)),
 		NULL, "Kbytes");
-	y = info1line(y, FSUSE_K,
+	y = info1line(yy, y, FSUSE_K,
 		calcKB((off_t)(fsbuf.f_blocks - fsbuf.f_bfree),
 			(off_t)blocksize(fsbuf)),
 		NULL, "Kbytes");
-	y = info1line(y, FSAVL_K,
+	y = info1line(yy, y, FSAVL_K,
 		calcKB((off_t)(fsbuf.f_bavail), (off_t)blocksize(fsbuf)),
 		NULL, "Kbytes");
-	y = info1line(y, FSBSZ_K, (off_t)(fsbuf.f_bsize), NULL, "bytes");
-	y = info1line(y, FSINO_K, (off_t)(fsbuf.f_files), NULL, UNIT_K);
-	if (y > LFILETOP + 1) {
-		for (; y < LFILEBOTTOM; y++) {
-			locate(0, y);
-			putterm(l_clear);
+	y = info1line(yy, y, FSBSZ_K, (off_t)(fsbuf.f_bsize), NULL, "bytes");
+	y = info1line(yy, y, FSINO_K, (off_t)(fsbuf.f_files), NULL, UNIT_K);
+	if (y > 1) {
+		for (; y < FILEPERROW; y++) {
+			Xlocate(0, yy + y);
+			Xputterm(L_CLEAR);
 		}
 		warning(0, HITKY_K);
 	}
 #ifndef	_NODOSDRIVE
 	needbavail--;
 #endif
+
 	return(1);
 }

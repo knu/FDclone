@@ -1,7 +1,7 @@
 /*
  *	func.h
  *
- *	Function Prototype Declaration
+ *	function prototype declarations
  */
 
 #ifdef	NOERRNO
@@ -80,12 +80,26 @@ extern char *sys_errlist[];
 /* main.c */
 extern VOID error __P_((char *));
 extern VOID checkscreen __P_((int, int));
+#ifdef	SIGWINCH
+extern VOID pollscreen __P_((int));
+#endif
 extern int sigvecset __P_((int));
 extern VOID title __P_((VOID_A));
 #ifndef	_NOCUSTOMIZE
 extern VOID saveorigenviron __P_((VOID_A));
 #endif
 extern int loadruncom __P_((char *, int));
+
+/* system.c */
+#ifdef	_NOORIGSHELL
+#define	dosystem		system
+#define	dopopen(c)		Xpopen(c, "r")
+#define	dopclose		Xpclose
+#else
+extern int dosystem __P_((char *));
+extern FILE *dopopen __P_((char *));
+extern int dopclose __P_((FILE *));
+#endif
 
 /* dosemu.c or unixemu.c */
 #ifdef	_USEDOSPATH
@@ -137,9 +151,9 @@ extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
 #endif
-#if	!defined (LSI_C) && defined (_NODOSDRIVE)
-#define	Xdup		dup
-#define	Xdup2		dup2
+#ifdef	_NODOSDRIVE
+#define	Xdup		safe_dup
+#define	Xdup2		safe_dup2
 #else
 extern int Xdup __P_((int));
 extern int Xdup2 __P_((int, int));
@@ -180,6 +194,22 @@ extern int Xpclose __P_((FILE *));
 # endif
 #endif	/* _NOORIGSHELL */
 
+#define	Xttyiomode		ttyiomode
+#define	Xstdiomode		stdiomode
+#define	Xtermmode		termmode
+#define	Xputch2			putch2
+#define	Xcputs2			cputs2
+#define	Xputterm		putterm
+#define	Xputterms		putterms
+#define	Xsetscroll		setscroll
+#define	Xlocate			locate
+#define	Xtflush			tflush
+#define	Xcprintf2		cprintf2
+#define	Xcputnl			cputnl
+#define	Xkanjiputs		kanjiputs
+#define	Xchgcolor		chgcolor
+#define	Xmovecursor		movecursor
+
 /* libc.c */
 extern int stat2 __P_((char *, struct stat *));
 extern char *realpath2 __P_((char *, char *, int));
@@ -210,7 +240,7 @@ extern sigcst_t signal2 __P_((int, sigcst_t));
 #define	signal2	signal
 #endif
 extern int system2 __P_((char *, int));
-extern FILE *popen2 __P_((char *, char *));
+extern FILE *popen2 __P_((char *));
 extern int pclose2 __P_((FILE *));
 extern char *getwd2 __P_((VOID_A));
 extern time_t time2 __P_((VOID_A));
@@ -250,7 +280,6 @@ extern int issamebody __P_((char *, char *));
 #ifndef	NOSYMLINK
 extern int cpsymlink __P_((char *, char *));
 #endif
-extern int safewrite __P_((int, char *, int));
 extern int safecpfile __P_((char *, char *, struct stat *, struct stat *));
 extern int safemvfile __P_((char *, char *, struct stat *, struct stat *));
 extern char *genrandname __P_((char *, int));
@@ -323,10 +352,14 @@ extern char *encodestr __P_((char *, int));
 extern VOID freelaunch __P_((launchtable *));
 extern int searchlaunch __P_((launchtable *, int, launchtable *));
 extern int parselaunch __P_((int, char *[], launchtable *));
-extern VOID printlaunchcomm __P_((launchtable *, int, int, int, FILE *));
+extern VOID addlaunch __P_((int, launchtable *));
+extern VOID deletelaunch __P_((int));
 extern VOID freearch __P_((archivetable *));
 extern int searcharch __P_((archivetable *, int, archivetable *));
 extern int parsearch __P_((int, char *[], archivetable *));
+extern VOID addarch __P_((int, archivetable *));
+extern VOID deletearch __P_((int));
+extern VOID printlaunchcomm __P_((launchtable *, int, int, int, FILE *));
 extern VOID printarchcomm __P_((archivetable *, int, int, FILE *));
 # ifndef	_NOBROWSE
 extern VOID freebrowse __P_((launchtable *));
@@ -336,6 +369,8 @@ extern int ismacro __P_((int));
 extern int freemacro __P_((int));
 extern int searchkeybind __P_((bindtable *, bindtable *));
 extern int parsekeybind __P_((int, char *[], bindtable *));
+extern int addkeybind __P_((int, bindtable *, char *, char *, char *));
+extern VOID deletekeybind __P_((int));
 extern char *gethelp __P_((bindtable *));
 extern VOID printmacro __P_((bindtable *, int, int, FILE *));
 #ifdef	_USEDOSEMU
@@ -350,15 +385,21 @@ extern int parsekeymap __P_((int, char *[], keyseq_t *));
 extern VOID printkeymap __P_((keyseq_t *, int, FILE *));
 #endif
 #ifdef	_NOORIGSHELL
+extern int searchalias __P_((char *, int));
+extern int addalias __P_((char *, char *));
+extern int deletealias __P_((char *));
 extern VOID printalias __P_((int, FILE *));
+extern int searchfunction __P_((char *));
+extern int addfunction __P_((char *, char **));
+extern int deletefunction __P_((char *));
 extern VOID printfunction __P_((int, int, FILE *));
-#endif
+#endif	/* _NOORIGSHELL */
 extern int checkbuiltin __P_((char *));
 extern int checkinternal __P_((char *));
 extern int execbuiltin __P_((int, int, char *[]));
 extern int execinternal __P_((int, int, char *[]));
 #ifdef	_NOORIGSHELL
-extern int execpseudoshell __P_((char *, int, int));
+extern int execpseudoshell __P_((char *, int));
 #endif
 #ifndef	_NOCOMPLETE
 extern int completebuiltin __P_((char *, int, int, char ***));
@@ -401,23 +442,24 @@ extern VOID freedefine __P_((VOID_A));
 
 /* shell.c */
 extern char *restorearg __P_((char *));
-extern char *evalcommand __P_((char *, char *, macrostat *, int));
+extern char *evalcommand __P_((char *, char *, macrostat *));
 extern int replaceargs __P_((int *, char ***, char **, int));
 extern int replacearg __P_((char **));
 extern VOID demacroarg __P_((char **));
 extern char *inputshellstr __P_((char *, int, char *));
 extern char *inputshellloop __P_((int, char *));
 extern int isinternalcomm __P_((char *));
-extern int execmacro __P_((char *, char *, int, int, int));
+extern int execmacro __P_((char *, char *, int));
 extern FILE *popenmacro __P_((char *, char *, int));
 #ifdef	_NOORIGSHELL
-extern int execusercomm __P_((char *, char *, int, int, int));
+extern int execusercomm __P_((char *, char *, int));
 #else
 #define	execusercomm	execmacro
 #endif
 extern int entryhist __P_((int, char *, int));
 extern char *removehist __P_((int));
 extern int loadhistory __P_((int, char *));
+extern VOID convhistory __P_((char *, FILE *));
 extern int savehistory __P_((int, char *));
 extern int parsehist __P_((char *, int *));
 extern char *evalhistory __P_((char *));
@@ -527,11 +569,14 @@ extern archivetable *copyarch __P_((archivetable *, archivetable *,
 extern VOID freedosdrive __P_((devinfo *));
 extern devinfo *copydosdrive __P_((devinfo *, devinfo *));
 # endif
-extern VOID rewritecust __P_((int));
+extern VOID rewritecust __P_((VOID_A));
 extern int customize __P_((VOID_A));
 #endif	/* !_NOCUSTOMIZE */
 
 /* command.c */
+#ifndef	_NOSPLITWIN
+extern int nextwin __P_((VOID_A));
+#endif
 
 /* browse.c */
 extern VOID helpbar __P_((VOID_A));
@@ -540,12 +585,14 @@ extern int putmode __P_((char *, u_int, int));
 extern int putflags __P_((char *, u_long));
 #endif
 extern VOID waitmes __P_((VOID_A));
+extern int filetop __P_((int));
 extern int calcwidth __P_((VOID_A));
 extern int putname __P_((namelist *, int, int));
 extern int listupfile __P_((namelist *, int, char *, int));
 #ifndef	_NOSPLITWIN
 extern int shutwin __P_((int));
 #endif
+extern VOID calcwin __P_((VOID_A));
 extern VOID movepos __P_((int, int));
 extern VOID rewritefile __P_((int));
 extern VOID addlist __P_((VOID_A));

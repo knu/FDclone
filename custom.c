@@ -1,7 +1,7 @@
 /*
  *	custom.c
  *
- *	Customizer of configurations
+ *	customizer of configurations
  */
 
 #include <fcntl.h>
@@ -87,6 +87,13 @@ extern char *noconvpath;
 extern int tmpumask;
 #ifndef	_NOORIGSHELL
 extern int dumbshell;
+#endif
+extern int wheader;
+extern char fullpath[];
+extern char *origpath;
+extern char *progpath;
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+extern char *unitblpath;
 #endif
 #ifndef	_NOCUSTOMIZE
 extern int curcolumns;
@@ -186,10 +193,29 @@ typedef struct _envtable {
 #define	T_KNAM		16
 #define	T_OCTAL		17
 
+#ifndef	_NOKANJIFCONV
+typedef struct _pathtable {
+	VOID_P path;
+	char *last;
+	int lang;
+	int flags;
+} pathtable;
+
+#define	P_ISARRAY	0001
+#define	P_STABLE	0002
+#endif	/* !_NOKANJIFCONV */
+
 #if	FD >= 2
 static int NEAR atooctal __P_((char *));
 #endif
 static VOID NEAR _evalenv __P_((int));
+#ifndef	_NOKANJIFCONV
+static char *NEAR pathlang __P_((pathtable *, int));
+static VOID NEAR pathconv __P_((pathtable *));
+static VOID NEAR savepathlang __P_((VOID_A));
+static VOID NEAR evalpathlang __P_((VOID_A));
+#endif
+static VOID NEAR evalheader __P_((VOID_A));
 #ifndef	_NOCUSTOMIZE
 static int NEAR custputs __P_((char *));
 static char *NEAR strcatalloc __P_((char *, char *));
@@ -389,6 +415,22 @@ static CONST envtable envlist[] = {
 };
 #define	ENVLISTSIZ	((int)(sizeof(envlist) / sizeof(envtable)))
 
+#ifndef	_NOKANJIFCONV
+static pathtable pathlist[] = {
+	{fullpath, NULL, NOCNV, P_ISARRAY},
+	{&origpath, NULL, NOCNV, P_STABLE},
+	{&progpath, NULL, NOCNV, P_STABLE},
+	{&unitblpath, NULL, NOCNV, P_STABLE},
+};
+#define	PATHLISTSIZ	((int)(sizeof(pathlist) / sizeof(pathtable)))
+# ifndef	_NOSPLITWIN
+#  ifndef	_NOARCHIVE
+static pathtable archlist[MAXWINDOWS];
+#  endif
+static pathtable fulllist[MAXWINDOWS];
+# endif	/* !_NOSPLITWIN */
+#endif	/* !_NOKANJIFCONV */
+
 #ifndef	_NOCUSTOMIZE
 # ifdef	_USEDOSEMU
 static CONST devinfo mediadescr[] = {
@@ -436,6 +478,7 @@ char *s;
 
 	if (!sscanf2(s, "%o%$", &n)) return(-1);
 	n &= 0777;
+
 	return(n);
 }
 #endif	/* FD >= 2 */
@@ -561,12 +604,114 @@ int no;
 	}
 }
 
+#ifndef	_NOKANJIFCONV
+static char *NEAR pathlang(pp, stable)
+pathtable *pp;
+int stable;
+{
+	char *path;
+
+	if (pp -> flags & P_ISARRAY) path = (char *)(pp -> path);
+	else path = *((char **)(pp -> path));
+	if (!path) return(NULL);
+
+	if (!stable) /*EMPTY*/;
+	else if (pp -> lang == NOCNV) {
+		pp -> last = NULL;
+		stable = 0;
+	}
+	else if (pp -> flags & P_STABLE) /*EMPTY*/;
+	else if (!(pp -> last) || strcmp(path, pp -> last)) stable = 0;
+
+	if (!stable && (pp -> lang = getkcode(path)) == NOCNV)
+		pp -> lang = DEFCODE;
+
+	return(path);
+}
+
+static VOID NEAR pathconv(pp)
+pathtable *pp;
+{
+	char *path, buf[MAXPATHLEN];
+	int lang;
+
+	lang = pp -> lang;
+	if (!(path = pathlang(pp, 0))) return;
+	if (lang != pp -> lang) {
+		kanjiconv(buf, path, MAXPATHLEN - 1, DEFCODE, lang, L_FNAME);
+		if (pp -> flags & P_ISARRAY)
+			kanjiconv(path, buf,
+				MAXPATHLEN - 1, pp -> lang, DEFCODE, L_FNAME);
+		else {
+			path = newkanjiconv(buf, pp -> lang, DEFCODE, L_FNAME);
+			if (path == buf) path = strdup2(buf);
+			free(*((char **)(pp -> path)));
+			*((char **)(pp -> path)) = path;
+		}
+		if (kanjierrno) pp -> lang = DEFCODE;
+	}
+	pp -> last = strdup2(path);
+}
+
+static VOID NEAR savepathlang(VOID_A)
+{
+	int i;
+
+	for (i = 0; i < PATHLISTSIZ; i++) VOID_C pathlang(&(pathlist[i]), 1);
+# ifndef	_NOSPLITWIN
+	for (i = 0; i < MAXWINDOWS; i++) {
+#  ifndef	_NOARCHIVE
+		archlist[i].path = &(winvar[i].v_archivedir);
+		archlist[i].flags = P_STABLE;
+		VOID_C pathlang(&(archlist[i]), 1);
+#  endif
+		fulllist[i].path = &(winvar[i].v_fullpath);
+		fulllist[i].flags = P_STABLE;
+		VOID_C pathlang(&(fulllist[i]), 1);
+	}
+# endif	/* !_NOSPLITWIN */
+}
+
+static VOID NEAR evalpathlang(VOID_A)
+{
+	int i;
+
+	for (i = 0; i < PATHLISTSIZ; i++) pathconv(&(pathlist[i]));
+# ifndef	_NOSPLITWIN
+	for (i = 0; i < MAXWINDOWS; i++) {
+#  ifndef	_NOARCHIVE
+		pathconv(&(archlist[i]));
+#  endif
+		pathconv(&(fulllist[i]));
+	}
+# endif	/* !_NOSPLITWIN */
+}
+#endif	/* !_NOKANJIFCONV */
+
+static VOID NEAR evalheader(VOID_A)
+{
+	int n;
+
+	n = wheader;
+	wheader = WHEADER;
+	if (n == wheader) return;
+
+	calcwin();
+}
+
 VOID evalenv(VOID_A)
 {
 	int i, duperrno;
 
 	duperrno = errno;
+#ifndef	_NOKANJIFCONV
+	savepathlang();
+#endif
 	for (i = 0; i < ENVLISTSIZ; i++) _evalenv(i);
+#ifndef	_NOKANJIFCONV
+	evalpathlang();
+#endif
+	evalheader();
 	errno = duperrno;
 }
 
@@ -592,7 +737,7 @@ VOID freeenvpath(VOID_A)
 static int NEAR custputs(s)
 char *s;
 {
-	return(cprintf2("%.*k", n_lastcolumn, s));
+	return(Xcprintf2("%.*k", n_lastcolumn, s));
 }
 
 static char *NEAR strcatalloc(s1, s2)
@@ -604,23 +749,24 @@ char *s1, *s2;
 	l2 = strlen(s2);
 	s1 = realloc2(s1, l1 + l2 + 1);
 	strncpy2(&(s1[l1]), s2, l2);
+
 	return(s1);
 }
 
 static VOID NEAR putsep(VOID_A)
 {
-	putterm(t_standout);
-	putch2(' ');
-	putterm(end_standout);
+	Xputterm(T_STANDOUT);
+	Xputch2(' ');
+	Xputterm(END_STANDOUT);
 }
 
 static VOID NEAR fillline(y, w)
 int y, w;
 {
-	locate(0, y);
-	putterm(t_standout);
-	cprintf2("%*s", w, "");
-	putterm(end_standout);
+	Xlocate(0, y);
+	Xputterm(T_STANDOUT);
+	Xcprintf2("%*s", w, "");
+	Xputterm(END_STANDOUT);
 }
 
 static char *NEAR inputcuststr(prompt, delsp, s, h)
@@ -629,10 +775,7 @@ int delsp;
 char *s;
 int h;
 {
-	int len;
-
-	len = (s) ? strlen(s) : 0;
-	return(inputstr(prompt, delsp, len, s, h));
+	return(inputstr(prompt, delsp, (s) ? strlen(s) : 0, s, h));
 }
 
 static char *NEAR inputcustenvstr(prompt, delsp, s, h)
@@ -646,6 +789,7 @@ int h;
 		free(s);
 		return(NULL);
 	}
+
 	return(s);
 }
 
@@ -683,13 +827,13 @@ char *def, *prompt, **mes;
 
 	envcaption(prompt);
 	do {
-		locate(0, L_INFO);
-		putterm(l_clear);
+		Xlocate(0, L_INFO);
+		Xputterm(L_CLEAR);
 		custputs(mes[pos] ? mes[pos] : list[pos].name);
-		putch2('.');
+		Xputch2('.');
 
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 		keyflush();
 		Xgetkey(-1, 0);
 		ch = Xgetkey(1, 0);
@@ -714,14 +858,14 @@ char *def, *prompt, **mes;
 				if (pos >= FILEPERROW) pos -= FILEPERROW;
 				break;
 			case K_PPAGE:
-				if (pos < FILEPERPAGE) putterm(t_bell);
+				if (pos < FILEPERPAGE) Xputterm(T_BELL);
 				else pos = ((pos / FILEPERPAGE) - 1)
 					* FILEPERPAGE;
 				break;
 			case K_NPAGE:
 				if (((pos / FILEPERPAGE) + 1) * FILEPERPAGE
 				>= max - 1)
-					putterm(t_bell);
+					Xputterm(T_BELL);
 				else pos = ((pos / FILEPERPAGE) + 1)
 					* FILEPERPAGE;
 				break;
@@ -790,19 +934,19 @@ static VOID NEAR custtitle(VOID_A)
 		else width = n_column / MAXCUSTOM - 1;
 	}
 
-	locate(0, LFILETOP);
-	putterm(l_clear);
+	Xlocate(0, filetop(win));
+	Xputterm(L_CLEAR);
 	for (i = 0; i < MAXCUSTOM; i++) {
-		if (i != custno) cprintf2("/%.*k", width, str[i]);
+		if (i != custno) Xcprintf2("/%.*k", width, str[i]);
 		else {
-			putterm(t_standout);
-			cprintf2("/%.*k", width, str[i]);
-			putterm(end_standout);
+			Xputterm(T_STANDOUT);
+			Xcprintf2("/%.*k", width, str[i]);
+			Xputterm(END_STANDOUT);
 		}
-		if (len) putch2(' ');
+		if (len) Xputch2(' ');
 	}
 
-	fillline(LFILETOP + 1, n_column);
+	fillline(filetop(win) + 1, n_column);
 }
 
 static VOID NEAR calcmax(max, new)
@@ -838,11 +982,11 @@ int max[], new;
 static VOID NEAR envcaption(s)
 char *s;
 {
-	locate(0, L_HELP);
-	putterm(l_clear);
-	putterm(t_standout);
-	cprintf2("%.*k", n_column, s);
-	putterm(end_standout);
+	Xlocate(0, L_HELP);
+	Xputterm(L_CLEAR);
+	Xputterm(T_STANDOUT);
+	Xcprintf2("%.*k", n_column, s);
+	Xputterm(END_STANDOUT);
 }
 
 VOID freestrarray(list, max)
@@ -864,6 +1008,7 @@ int *ndestp, nsrc;
 	else if (nsrc > 0) dest = (char **)malloc2(nsrc * sizeof(char *));
 	for (i = 0; i < nsrc; i++) dest[i] = strdup2(src[i]);
 	if (ndestp) *ndestp = nsrc;
+
 	return(dest);
 }
 
@@ -873,12 +1018,19 @@ char **list;
 	int i;
 
 	if (list) {
+#ifndef	_NOKANJIFCONV
+		savepathlang();
+#endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
 			setenv2(envlist[i].env, list[i * 2], 0);
 			setenv2(&(envlist[i].env[FDESIZ]),
 				list[i * 2 + 1], 0);
 			_evalenv(i);
 		}
+#ifndef	_NOKANJIFCONV
+		evalpathlang();
+#endif
+		evalheader();
 	}
 	else {
 		list = (char **)malloc2(ENVLISTSIZ * 2 * sizeof(char *));
@@ -889,6 +1041,7 @@ char **list;
 					-1));
 		}
 	}
+
 	return(list);
 }
 
@@ -897,12 +1050,19 @@ static VOID NEAR cleanupenv(VOID_A)
 	char *cp;
 	int i;
 
+#ifndef	_NOKANJIFCONV
+	savepathlang();
+#endif
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		setenv2(envlist[i].env, NULL, 0);
 		cp = (envlist[i].type == T_CHARP) ? def_str(i) : NULL;
 		setenv2(&(envlist[i].env[FDESIZ]), cp, 0);
 		_evalenv(i);
 	}
+#ifndef	_NOKANJIFCONV
+	evalpathlang();
+#endif
+	evalheader();
 }
 
 # if	FD >= 2
@@ -915,6 +1075,7 @@ char *buf;
 # else
 	snprintf2(buf, MAXLONGWIDTH + 1, "%04o", n & 0777);
 # endif
+
 	return(buf);
 }
 # endif	/* FD >= 2 */
@@ -941,6 +1102,7 @@ char *buf;
 int n;
 {
 	snprintf2(buf, MAXLONGWIDTH + 1, "%d", n);
+
 	return(buf);
 }
 
@@ -1084,10 +1246,11 @@ int no;
 	if (!getenv2(envlist[no].env))
 		cp = new = strcatalloc(strdup2(cp),
 			(cp && *cp) ? VDEF_K : VUDEF_K);
-	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
+	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
 	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
 	if (new) free(new);
+
 	return(n);
 }
 
@@ -1435,7 +1598,15 @@ int no;
 	if (getshellvar(envlist[no].env, -1)) setenv2(envlist[no].env, cp, 0);
 	else setenv2(env, cp, 0);
 	if (new) free(new);
+#ifndef	_NOKANJIFCONV
+	savepathlang();
+#endif
 	_evalenv(no);
+#ifndef	_NOKANJIFCONV
+	evalpathlang();
+#endif
+	evalheader();
+
 	return(1);
 }
 
@@ -1474,6 +1645,7 @@ FILE *fp;
 			free(cp);
 		}
 	}
+
 	return(n);
 }
 
@@ -1653,6 +1825,7 @@ bindtable *dest, *src;
 		else dest = (bindtable *)malloc2((i + 1) * sizeof(bindtable));
 		memcpy((char *)dest, (char *)src, (i + 1) * sizeof(bindtable));
 	}
+
 	return(dest);
 }
 
@@ -1671,7 +1844,7 @@ int no;
 	int len, width;
 
 	if (bindlist[no].key < 0) {
-		cprintf2("%*s", MAXCUSTVAL, "");
+		Xcprintf2("%*s", MAXCUSTVAL, "");
 		return(0);
 	}
 	if (bindlist[no].f_func < FUNCLISTSIZ)
@@ -1684,17 +1857,18 @@ int no;
 	else cp2 = NULL;
 	if (!cp2) {
 		width = MAXCUSTVAL;
-		cprintf2("%-*.*k", width, width, cp1);
+		Xcprintf2("%-*.*k", width, width, cp1);
 	}
 	else {
 		width = (MAXCUSTVAL - 1) / 2;
-		cprintf2("%-*.*k", width, width, cp1);
+		Xcprintf2("%-*.*k", width, width, cp1);
 		putsep();
-		cprintf2("%-*.*k",
+		Xcprintf2("%-*.*k",
 			MAXCUSTVAL - 1 - width, MAXCUSTVAL - 1 - width, cp2);
 	}
 	len = strlen2(cp1);
 	if (len > --width) len = width;
+
 	return(len);
 }
 
@@ -1738,7 +1912,8 @@ char *prompt;
 static int NEAR editbind(no)
 int no;
 {
-	char *cp, *str, *buf;
+	bindtable bind;
+	char *cp, *str, *buf, *func1, *func2;
 	int i, n1, n2, key, dupwin_x, dupwin_y;
 
 	if ((key = bindlist[no].key) < 0) {
@@ -1749,12 +1924,12 @@ int no;
 
 		dupwin_x = win_x;
 		dupwin_y = win_y;
-		locate(0, L_INFO);
-		putterm(l_clear);
+		Xlocate(0, L_INFO);
+		Xputterm(L_CLEAR);
 		win_x = custputs(BINDK_K);
 		win_y = L_INFO;
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 		keyflush();
 		Xgetkey(-1, 0);
 		key = Xgetkey(1, 0);
@@ -1775,6 +1950,7 @@ int no;
 	}
 	str = getkeysym(key, 0);
 
+	func1 = func2 = NULL;
 	for (;;) {
 		if (bindlist[no].key < 0) {
 			n1 = FUNCLISTSIZ;
@@ -1791,18 +1967,8 @@ int no;
 		else if (n1 < FUNCLISTSIZ) break;
 		else if (n1 == FUNCLISTSIZ + 1) {
 			if (!yesno(DLBOK_K, str)) return(-1);
-			freemacro(bindlist[no].f_func);
-			freemacro(bindlist[no].d_func);
-			if (key >= K_F(1) && key <= K_F(10)) {
-				free(helpindex[key - K_F(1)]);
-				helpindex[key - K_F(1)] = strdup2("");
-			}
-			for (i = no; i < MAXBINDTABLE; i++) {
-				if (bindlist[i].key < 0) break;
-				memcpy((char *)&(bindlist[i]),
-					(char *)&(bindlist[i + 1]),
-					sizeof(bindtable));
-			}
+			deletekeybind(no);
+
 			return(1);
 		}
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
@@ -1821,8 +1987,8 @@ int no;
 				break;
 			}
 			else {
-				macrolist[maxmacro] = cp;
-				n1 = FUNCLISTSIZ + maxmacro++;
+				func1 = cp;
+				n1 = 254;
 				break;
 			}
 		}
@@ -1840,7 +2006,10 @@ int no;
 			freemacro(n1);
 			return(-1);
 		}
-		else if (n2 < FUNCLISTSIZ) break;
+		else if (n2 < FUNCLISTSIZ) {
+			if (n2 == n1) n2 = 255;
+			break;
+		}
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
 			if (bindlist[no].key < 0 || i < FUNCLISTSIZ) cp = NULL;
@@ -1855,33 +2024,19 @@ int no;
 				break;
 			}
 			else {
-				macrolist[maxmacro] = cp;
-				n2 = FUNCLISTSIZ + maxmacro++;
+				func2 = cp;
+				n2 = 254;
 				break;
 			}
 		}
 	}
 
-	if (key >= K_F(1) && key <= K_F(10)
-	&& (cp = inputcuststr(FCOMM_K, 0, helpindex[key - K_F(1)], -1))) {
-		free(helpindex[key - K_F(1)]);
-		helpindex[key - K_F(1)] = cp;
-	}
-
-	if (n2 == n1) n2 = 255;
-	if (bindlist[no].key < 0) {
-		bindlist[no].f_func = (u_char)n1;
-		bindlist[no].d_func = (u_char)n2;
-	}
-	else {
-		i = bindlist[no].f_func;
-		bindlist[no].f_func = (u_char)n1;
-		freemacro(i);
-		i = bindlist[no].d_func;
-		bindlist[no].d_func = (u_char)n2;
-		freemacro(i);
-	}
-	bindlist[no].key = (short)key;
+	if (key < K_F(1) || key > K_F(10)) cp = NULL;
+	else cp = inputcuststr(FCOMM_K, 0, helpindex[key - K_F(1)], -1);
+	bind.key = (short)key;
+	bind.f_func = (u_char)n1;
+	bind.d_func = (u_char)n2;
+	VOID_C addkeybind(no, &bind, func1, func2, cp);
 
 	return(1);
 }
@@ -1894,6 +2049,7 @@ bindtable *bindp1, *bindp2;
 	if (ismacro(bindp1 -> d_func) || bindp1 -> d_func != bindp2 -> d_func)
 		return(0);
 	if (gethelp(bindp1)) return(0);
+
 	return(1);
 }
 
@@ -1947,6 +2103,7 @@ FILE *fp;
 		printmacro(origbindlist, i, 0, fp);
 	}
 	if (new) free(new);
+
 	return(n);
 }
 
@@ -1987,6 +2144,7 @@ FILE *fp;
 
 	flaglist[i] = 1;
 	printmacro(bindlist, i, 1, fp);
+
 	return(1);
 }
 # endif	/* !_NOORIGSHELL */
@@ -2006,14 +2164,15 @@ int no;
 
 	key.code = keyseqlist[no];
 	if (getkeyseq(&key) < 0 || !(key.len)) {
-		cprintf2("%*s", MAXCUSTVAL, "");
+		Xcprintf2("%*s", MAXCUSTVAL, "");
 		return(0);
 	}
 	cp = encodestr(key.str, key.len);
-	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
+	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
 	len = strlen2(cp);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
 	free(cp);
+
 	return(len);
 }
 
@@ -2029,13 +2188,13 @@ int no;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
-	locate(0, L_INFO);
-	putterm(l_clear);
+	Xlocate(0, L_INFO);
+	Xputterm(L_CLEAR);
 	buf = asprintf3(KYMPK_K, cp);
-	win_x = kanjiputs(buf);
+	win_x = Xkanjiputs(buf);
 	win_y = L_INFO;
-	locate(win_x, win_y);
-	tflush();
+	Xlocate(win_x, win_y);
+	Xtflush();
 	keyflush();
 	free(buf);
 
@@ -2068,8 +2227,8 @@ int no;
 		free(buf);
 		return(0);
 	}
-
 	setkeyseq(key, buf, len);
+
 	return(1);
 }
 
@@ -2080,6 +2239,7 @@ keyseq_t *list, *kp;
 
 	for (i = 0; i < K_MAX - K_MIN + 1; i++)
 		if (kp -> code == list[i].code) break;
+
 	return(i);
 }
 
@@ -2159,6 +2319,7 @@ FILE *fp;
 		printkeymap(&(origkeymaplist[i]), 1, fp);
 	}
 	if (new) free(new);
+
 	return(n);
 }
 
@@ -2207,6 +2368,7 @@ FILE *fp;
 
 	flaglist[i] = 1;
 	printkeymap(&key, 1, fp);
+
 	return(1);
 }
 #  endif	/* !_NOORIGSHELL */
@@ -2242,6 +2404,7 @@ int *ndestp, nsrc;
 		dest[i].flags = src[i].flags;
 	}
 	*ndestp = nsrc;
+
 	return(dest);
 }
 
@@ -2256,79 +2419,81 @@ int no;
 	int len, width;
 
 	if (no >= maxlaunch) {
-		cprintf2("%*s", MAXCUSTVAL, "");
+		Xcprintf2("%*s", MAXCUSTVAL, "");
 		return(0);
 	}
 	if (!launchlist[no].format) {
 		width = MAXCUSTVAL;
-		cprintf2("%-*.*k", width, width, launchlist[no].comm);
+		Xcprintf2("%-*.*k", width, width, launchlist[no].comm);
 	}
 	else {
 		width = (MAXCUSTVAL - 1 - 6) / 2;
-		cprintf2("%-*.*k", width, width, launchlist[no].comm);
+		Xcprintf2("%-*.*k", width, width, launchlist[no].comm);
 		putsep();
 		width = MAXCUSTVAL - 1 - 6 - width;
-		cprintf2("%-*.*k", width, width, launchlist[no].format[0]);
+		Xcprintf2("%-*.*k", width, width, launchlist[no].format[0]);
 		putsep();
-		cprintf2("%-2d", (int)(launchlist[no].topskip));
+		Xcprintf2("%-2d", (int)(launchlist[no].topskip));
 		putsep();
-		cprintf2("%-2d", (int)(launchlist[no].bottomskip));
+		Xcprintf2("%-2d", (int)(launchlist[no].bottomskip));
 	}
 	len = strlen2(launchlist[no].comm);
 	if (len > --width) len = width;
+
 	return(len);
 }
 
 static VOID NEAR verboselaunch(list)
 launchtable *list;
 {
-	int y, len, nf, ni, ne;
+	int y, yy, len, nf, ni, ne;
 
 	custtitle();
-	y = LFILETOP + 1;
-	fillline(y++, n_column);
+	yy = filetop(win);
+	y = 1;
+	fillline(yy + y++, n_column);
 	len = strlen2(list -> ext + 1);
 	if (list -> flags & LF_IGNORECASE) len++;
 	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
-	fillline(y++, MAXCUSTNAM + 1 - len);
-	putterm(l_clear);
+	fillline(yy + y++, MAXCUSTNAM + 1 - len);
+	Xputterm(L_CLEAR);
 	if (list -> flags & LF_IGNORECASE) {
-		putch2('/');
+		Xputch2('/');
 		len--;
 	}
-	cprintf2("%.*k", len, list -> ext + 1);
+	Xcprintf2("%.*k", len, list -> ext + 1);
 	putsep();
-	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, list -> comm);
+	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, list -> comm);
 	putsep();
-	fillline(y++, n_column);
+	fillline(yy + y++, n_column);
 	nf = ni = ne = 0;
-	if (list -> format) for(; y < LFILEBOTTOM - 1; y++) {
+	if (list -> format) for(; y < FILEPERROW - 1; y++) {
 		if (nf >= 0) {
 			if (!(list -> format[nf])) {
 				nf = -1;
-				fillline(y, n_column);
+				fillline(yy + y, n_column);
 				continue;
 			}
-			else if (nf) fillline(y, MAXCUSTNAM + 2);
+			else if (nf) fillline(yy + y, MAXCUSTNAM + 2);
 			else {
-				locate(0, y);
+				Xlocate(0, yy + y);
 				putsep();
-				putterm(t_standout);
-				cputs2("-t");
-				putterm(end_standout);
-				cprintf2("%3d", (int)(list -> topskip));
+				Xputterm(T_STANDOUT);
+				Xcputs2("-t");
+				Xputterm(END_STANDOUT);
+				Xcprintf2("%3d", (int)(list -> topskip));
 				putsep();
-				putterm(t_standout);
-				cputs2("-b");
-				putterm(end_standout);
-				cprintf2("%3d", (int)(list -> bottomskip));
+				Xputterm(T_STANDOUT);
+				Xcputs2("-b");
+				Xputterm(END_STANDOUT);
+				Xcprintf2("%3d", (int)(list -> bottomskip));
 				putsep();
-				putterm(t_standout);
-				cputs2("-f");
-				putterm(end_standout);
+				Xputterm(T_STANDOUT);
+				Xcputs2("-f");
+				Xputterm(END_STANDOUT);
 				putsep();
 			}
-			cprintf2("%-*.*k",
+			Xcprintf2("%-*.*k",
 				MAXCUSTVAL, MAXCUSTVAL, list -> format[nf]);
 			putsep();
 			nf++;
@@ -2336,18 +2501,18 @@ launchtable *list;
 		else if (ni >= 0 && list -> lignore) {
 			if (!(list -> lignore[ni])) {
 				ni = -1;
-				fillline(y, n_column);
+				fillline(yy + y, n_column);
 				continue;
 			}
-			else if (ni) fillline(y, MAXCUSTNAM + 2);
+			else if (ni) fillline(yy + y, MAXCUSTNAM + 2);
 			else {
-				fillline(y, MAXCUSTNAM - 2 + 1);
-				putterm(t_standout);
-				cputs2("-i");
-				putterm(end_standout);
+				fillline(yy + y, MAXCUSTNAM - 2 + 1);
+				Xputterm(T_STANDOUT);
+				Xcputs2("-i");
+				Xputterm(END_STANDOUT);
 				putsep();
 			}
-			cprintf2("%-*.*k",
+			Xcprintf2("%-*.*k",
 				MAXCUSTVAL, MAXCUSTVAL, list -> lignore[ni]);
 			putsep();
 			ni++;
@@ -2355,25 +2520,25 @@ launchtable *list;
 		else if (ne >= 0 && list -> lerror) {
 			if (!(list -> lerror[ne])) {
 				ne = -1;
-				fillline(y, n_column);
+				fillline(yy + y, n_column);
 				continue;
 			}
-			else if (ne) fillline(y, MAXCUSTNAM + 2);
+			else if (ne) fillline(yy + y, MAXCUSTNAM + 2);
 			else {
-				fillline(y, MAXCUSTNAM - 2 + 1);
-				putterm(t_standout);
-				cputs2("-e");
-				putterm(end_standout);
+				fillline(yy + y, MAXCUSTNAM - 2 + 1);
+				Xputterm(T_STANDOUT);
+				Xcputs2("-e");
+				Xputterm(END_STANDOUT);
 				putsep();
 			}
-			cprintf2("%-*.*k",
+			Xcprintf2("%-*.*k",
 				MAXCUSTVAL, MAXCUSTVAL, list -> lerror[ne]);
 			putsep();
 			ne++;
 		}
 		else break;
 	}
-	for (; y < LFILEBOTTOM; y++) fillline(y, n_column);
+	for (; y < FILEPERROW; y++) fillline(yy + y, n_column);
 }
 
 static char **NEAR editvar(prompt, var)
@@ -2384,7 +2549,7 @@ char *prompt, **var;
 	int i, n, max, val[4];
 
 	max = countvar(var);
-	for (i = 0; i < sizeof(val) / sizeof(int); i++) val[i] = i;
+	for (i = 0; i < (int)sizeof(val) / sizeof(int); i++) val[i] = i;
 
 	list = (namelist *)malloc2((max + 1) * sizeof(namelist));
 	mes = (char **)malloc2((max + 1) * sizeof(char *));
@@ -2481,7 +2646,7 @@ launchtable *list;
 	str[3] = "-i";
 	str[4] = "-e";
 	str[5] = ARDON_K;
-	for (i = 0; i < sizeof(val) / sizeof(int); i++) val[i] = i;
+	for (i = 0; i < (int)sizeof(val) / sizeof(int); i++) val[i] = i;
 
 	n = 0;
 	for (;;) {
@@ -2491,7 +2656,7 @@ launchtable *list;
 			if (yesno(ARCAN_K)) return(0);
 			continue;
 		}
-		if (n == sizeof(val) / sizeof(int) - 1) {
+		if (n == (int)sizeof(val) / sizeof(int) - 1) {
 			if (!(list -> format)) {
 				if (!yesno(ARNOT_K)) continue;
 				freevar(list -> lignore);
@@ -2527,6 +2692,7 @@ launchtable *list;
 			*skipp = i;
 		}
 	}
+
 	return(1);
 }
 
@@ -2539,7 +2705,7 @@ int no;
 
 	if (no < maxlaunch) {
 		ext = NULL;
-		list.ext = launchlist[no].ext;
+		list.ext = strdup2(launchlist[no].ext);
 		list.flags = launchlist[no].flags;
 		verboselaunch(&(launchlist[no]));
 	}
@@ -2582,29 +2748,16 @@ int no;
 
 		list.comm = inputcuststr(LNCHC_K, 0, launchlist[no].comm, 0);
 		if (!(list.comm)) {
-			if (ext) free(ext);
-			freevar(list.format);
-			freevar(list.lignore);
-			freevar(list.lerror);
+			freelaunch(&list);
 			return(-1);
 		}
 		else if (!*(list.comm)) {
-			free(list.comm);
-			freevar(list.format);
-			freevar(list.lignore);
-			freevar(list.lerror);
-			if (ext) {
-				free(ext);
-				return(-1);
-			}
+			freelaunch(&list);
+			if (ext) return(-1);
 
 			if (!yesno(DLLOK_K, launchlist[no].ext)) return(-1);
-			freelaunch(&(launchlist[no]));
-			maxlaunch--;
-			for (i = no; i < maxlaunch; i++)
-				memcpy((char *)&(launchlist[i]),
-				(char *)&(launchlist[i + 1]),
-					sizeof(launchtable));
+			deletelaunch(no);
+
 			return(1);
 		}
 		else if (!yesno(ISARC_K)) {
@@ -2623,15 +2776,8 @@ int no;
 		freevar(list.lerror);
 	}
 
-	if (no >= maxlaunch) maxlaunch++;
-	else {
-		if (ext) free(launchlist[no].ext);
-		free(launchlist[no].comm);
-		freevar(launchlist[no].format);
-		freevar(launchlist[no].lignore);
-		freevar(launchlist[no].lerror);
-	}
-	memcpy((char *)&(launchlist[no]), (char *)&list, sizeof(list));
+	addlaunch(no, &list);
+
 	return(1);
 }
 
@@ -2732,6 +2878,7 @@ FILE *fp;
 		printlaunchcomm(origlaunchlist, i, 0, 0, fp);
 	}
 	if (new) free(new);
+
 	return(n);
 }
 
@@ -2776,6 +2923,7 @@ FILE *fp;
 	freelaunch(&launch);
 	flaglist[i] = 1;
 	printlaunchcomm(launchlist, i, 1, 0, fp);
+
 	return(1);
 }
 #  endif	/* !_NOORIGSHELL */
@@ -2805,6 +2953,7 @@ int *ndestp, nsrc;
 		dest[i].flags = src[i].flags;
 	}
 	*ndestp = nsrc;
+
 	return(dest);
 }
 
@@ -2819,20 +2968,21 @@ int no;
 	int len, width;
 
 	if (no >= maxarchive) {
-		cprintf2("%*s", MAXCUSTVAL, "");
+		Xcprintf2("%*s", MAXCUSTVAL, "");
 		return(0);
 	}
 	width = (MAXCUSTVAL - 1) / 2;
-	if (!archivelist[no].p_comm) cprintf2("%*s", width, "");
-	else cprintf2("%-*.*k", width, width, archivelist[no].p_comm);
+	if (!archivelist[no].p_comm) Xcprintf2("%*s", width, "");
+	else Xcprintf2("%-*.*k", width, width, archivelist[no].p_comm);
 	putsep();
 	if (!archivelist[no].u_comm)
-		cprintf2("%*s", MAXCUSTVAL - 1 - width, "");
-	else cprintf2("%-*.*k",
+		Xcprintf2("%*s", MAXCUSTVAL - 1 - width, "");
+	else Xcprintf2("%-*.*k",
 		MAXCUSTVAL - 1 - width, MAXCUSTVAL - 1 - width,
 		archivelist[no].u_comm);
 	len = (archivelist[no].p_comm) ? strlen2(archivelist[no].p_comm) : 0;
 	if (len > --width) len = width;
+
 	return(len);
 }
 
@@ -2845,7 +2995,7 @@ int no;
 
 	if (no < maxarchive) {
 		ext = NULL;
-		list.ext = archivelist[no].ext;
+		list.ext = strdup2(archivelist[no].ext);
 		list.flags = archivelist[no].flags;
 	}
 	else {
@@ -2878,7 +3028,7 @@ int no;
 		list.p_comm = inputcuststr(PACKC_K, 0,
 			archivelist[no].p_comm, 0);
 		if (!(list.p_comm)) {
-			if (ext) free(ext);
+			free(list.ext);
 			return(0);
 		}
 		else if (!*(list.p_comm)) {
@@ -2900,28 +3050,17 @@ int no;
 	}
 
 	if (!(list.p_comm) && !(list.u_comm)) {
-		if (ext) {
-			free(ext);
-			return(0);
-		}
+		free(list.ext);
+		if (ext) return(0);
 
 		if (!yesno(DLAOK_K, archivelist[no].ext)) return(0);
-		freearch(&(archivelist[no]));
-		maxarchive--;
-		for (i = no; i < maxarchive; i++)
-			memcpy((char *)&(archivelist[i]),
-			(char *)&(archivelist[i + 1]),
-				sizeof(archivetable));
+		deletearch(no);
+
 		return(1);
 	}
 
-	if (no >= maxarchive) maxarchive++;
-	else {
-		if (ext) free(archivelist[no].ext);
-		if (archivelist[no].p_comm) free(archivelist[no].p_comm);
-		if (archivelist[no].u_comm) free(archivelist[no].u_comm);
-	}
-	memcpy((char *)&(archivelist[no]), (char *)&list, sizeof(list));
+	addarch(no, &list);
+
 	return(1);
 }
 
@@ -2990,6 +3129,7 @@ FILE *fp;
 		printarchcomm(origarchivelist, i, 0, fp);
 	}
 	if (new) free(new);
+
 	return(n);
 }
 
@@ -3034,6 +3174,7 @@ FILE *fp;
 	freearch(&arch);
 	flaglist[i] = 1;
 	printarchcomm(archivelist, i, 1, fp);
+
 	return(1);
 }
 #  endif	/* _NOORIGSHELL */
@@ -3068,6 +3209,7 @@ devinfo *dest, *src;
 		}
 		dest[i].name = NULL;
 	}
+
 	return(dest);
 }
 
@@ -3082,11 +3224,11 @@ int no;
 	int i, len, w1, w2, width;
 
 	if (!fdtype[no].name) {
-		cprintf2("%*s", MAXCUSTVAL, "");
+		Xcprintf2("%*s", MAXCUSTVAL, "");
 		return(0);
 	}
 	width = (MAXCUSTVAL - 1) / 2;
-	cprintf2("%-*.*k", width, width, fdtype[no].name);
+	Xcprintf2("%-*.*k", width, width, fdtype[no].name);
 	putsep();
 
 	w1 = MAXCUSTVAL - 1 - width;
@@ -3099,7 +3241,7 @@ int no;
 		i = strlen(buf);
 		snprintf2(&(buf[i]), sizeof(buf) - i, " #offset=%'Ld",
 			fdtype[no].offset / fdtype[no].sect);
-		cprintf2("%-*.*k", w1, w1, buf);
+		Xcprintf2("%-*.*k", w1, w1, buf);
 	}
 	else
 #  endif	/* HDDMOUNT */
@@ -3112,11 +3254,11 @@ int no;
 
 		w2 = (w1 - len) / 3 - 1;
 		if (w2 <= 0) w2 = 1;
-		cprintf2("%-*d", w2, (int)(fdtype[no].head));
+		Xcprintf2("%-*d", w2, (int)(fdtype[no].head));
 		putsep();
-		cprintf2("%-*d", w2, (int)(fdtype[no].sect));
+		Xcprintf2("%-*d", w2, (int)(fdtype[no].sect));
 		putsep();
-		cprintf2("%-*d", w2, (int)(fdtype[no].cyl));
+		Xcprintf2("%-*d", w2, (int)(fdtype[no].cyl));
 		putsep();
 
 		for (i = 0; i < MEDIADESCRSIZ; i++) {
@@ -3126,11 +3268,12 @@ int no;
 				break;
 		}
 		w1 -= (w2 + 1) * 3;
-		if (i >= MEDIADESCRSIZ) cprintf2("%*s", w1, "");
-		else cprintf2("%-*.*k", w1, w1, mediadescr[i].name);
+		if (i >= MEDIADESCRSIZ) Xcprintf2("%*s", w1, "");
+		else Xcprintf2("%-*.*k", w1, w1, mediadescr[i].name);
 	}
 	len = strlen2(fdtype[no].name);
 	if (len > --width) len = width;
+
 	return(len);
 }
 
@@ -3270,13 +3413,13 @@ int no;
 
 	if (fdtype[no].name) no = deletedrv(no);
 
-	n = insertdrv(no, &dev);
-	free(dev.name);
-	if (n < 0) {
+	if ((n = insertdrv(no, &dev)) < 0) {
 		if (n < -1) warning(0, OVERF_K);
 		else warning(ENODEV, dev.name);
+		free(dev.name);
 		return(0);
 	}
+
 	return(1);
 }
 
@@ -3344,6 +3487,7 @@ FILE *fp;
 		printsetdrv(origfdtype, i, 0, 0, fp);
 	}
 	if (new) free(new);
+
 	return(n);
 }
 
@@ -3419,9 +3563,10 @@ int no;
 # else
 	mes[4] = COVWR_K;
 # endif
-	cprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, mes[no]);
+	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, mes[no]);
 	len = strlen2(mes[no]);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
+
 	return(len);
 }
 
@@ -3443,7 +3588,7 @@ char *file;
 
 	strcpy(path, file);
 	cp = getbasename(path);
-	len = sizeof(path) - 1 - (cp - path);
+	len = (int)sizeof(path) - 1 - (cp - path);
 	if (len > MAXTNAMLEN) len = MAXTNAMLEN;
 	genrandname(NULL, 0);
 
@@ -3645,6 +3790,7 @@ char *file;
 		Xunlink(path);
 		return(-1);
 	}
+
 	return(1);
 }
 # endif	/* !_NOORIGSHELL */
@@ -3719,7 +3865,7 @@ int no;
 # endif
 			break;
 		case 2:
-			if (!(file = inputcuststr(FLOAD_K, 1, RUNCOMFILE, 1)))
+			if (!(file = inputcuststr(FLOAD_K, 1, FD_RCFILE, 1)))
 				break;
 			if (!*file) {
 				free(file);
@@ -3727,7 +3873,7 @@ int no;
 			}
 			done = 1;
 			n = sigvecset(0);
-			locate(0, n_line - 1);
+			Xlocate(0, n_line - 1);
 			inruncom = 1;
 			i = loadruncom(file, 0);
 			free(file);
@@ -3739,7 +3885,7 @@ int no;
 			}
 			break;
 		case 3:
-			if (!(file = inputcuststr(FSAVE_K, 1, RUNCOMFILE, 1)))
+			if (!(file = inputcuststr(FSAVE_K, 1, FD_RCFILE, 1)))
 				break;
 			done = 1;
 			file = evalpath(file, 0);
@@ -3778,7 +3924,7 @@ int no;
 			break;
 		case 4:
 # ifndef	_NOORIGSHELL
-			if (!(file = inputcuststr(FOVWR_K, 1, RUNCOMFILE, 1)))
+			if (!(file = inputcuststr(FOVWR_K, 1, FD_RCFILE, 1)))
 				break;
 			done = 1;
 			file = evalpath(file, 0);
@@ -3799,6 +3945,7 @@ int no;
 		default:
 			break;
 	}
+
 	return(done);
 }
 
@@ -3878,27 +4025,28 @@ int no, y, isstandout;
 	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
 	fillline(y, MAXCUSTNAM + 1 - len);
 	if (isstandout) {
-		putterm(t_standout);
-		cprintf2("%.*k", MAXCUSTNAM, cp);
-		putterm(end_standout);
+		Xputterm(T_STANDOUT);
+		Xcprintf2("%.*k", MAXCUSTNAM, cp);
+		Xputterm(END_STANDOUT);
 	}
-	else if (stable_standout) locate(MAXCUSTNAM + 1, y);
-	else cprintf2("%.*k", MAXCUSTNAM, cp);
+	else if (stable_standout) Xlocate(MAXCUSTNAM + 1, y);
+	else Xcprintf2("%.*k", MAXCUSTNAM, cp);
 	putsep();
 }
 
 static VOID NEAR dispcust(VOID_A)
 {
-	int i, y, start, end;
+	int i, y, yy, start, end;
 
-	y = LFILETOP + 2;
+	yy = filetop(win);
+	y = 2;
 	start = (cs_item / cs_row) * cs_row;
 	end = start + cs_row;
 	if (end > cs_max) end = cs_max;
 
 	for (i = start; i < end; i++) {
-		dispname(i, y++, 1);
-		putterm(l_clear);
+		dispname(i, yy + y++, 1);
+		Xputterm(L_CLEAR);
 		switch (custno) {
 			case 0:
 				cs_len[i - start] = dispenv(i);
@@ -3929,28 +4077,27 @@ static VOID NEAR dispcust(VOID_A)
 				break;
 			default:
 				cs_len[i - start] =
-					cprintf2("%.*k", MAXCUSTVAL, NIMPL_K);
+					Xcprintf2("%.*k", MAXCUSTVAL, NIMPL_K);
 				if (cs_len[i - start] > MAXCUSTVAL - 1)
 					cs_len[i - start] = MAXCUSTVAL - 1;
-				else cprintf2("%*s",
+				else Xcprintf2("%*s",
 					MAXCUSTVAL - cs_len[i - start], "");
 				break;
 		}
 		putsep();
-		fillline(y++, n_column);
+		fillline(yy + y++, n_column);
 	}
-	for (; y < LFILEBOTTOM; y++) fillline(y, n_column);
+	for (; y < FILEPERROW; y++) fillline(yy + y, n_column);
 }
 
-VOID rewritecust(all)
-int all;
+VOID rewritecust(VOID_A)
 {
-	cs_row = (LFILEBOTTOM - LFILETOP - 2) / 2;
+	cs_row = (FILEPERROW - 2) / 2;
 	cs_len = (int *)realloc2(cs_len, cs_row * sizeof(int));
 	dispcust();
-	movecust(-1, all);
+	movecust(-1, 1);
 	custtitle();
-	tflush();
+	Xtflush();
 }
 
 static VOID NEAR movecust(old, all)
@@ -3966,19 +4113,19 @@ int old, all;
 		hmes[4] = HARCH_K;
 		hmes[5] = HSDRV_K;
 		hmes[6] = HSAVE_K;
-		locate(0, L_INFO);
-		putterm(l_clear);
+		Xlocate(0, L_INFO);
+		Xputterm(L_CLEAR);
 		if (hmes[custno]) custputs(hmes[custno]);
 		else custputs(mesconv(envlist[cs_item].hmes,
 			envlist[cs_item].hmes_eng));
 	}
 
-	win_y = LFILETOP + 2 + (cs_item % cs_row) * 2;
+	win_y = filetop(win) + 2 + (cs_item % cs_row) * 2;
 	dispname(cs_item, win_y, 0);
 	win_x = cs_len[cs_item % cs_row] + MAXCUSTNAM + 2;
 	if (old >= 0 && old < cs_max)
-		dispname(old, LFILETOP + 2 + (old % cs_row) * 2, 1);
-	locate(win_x, win_y);
+		dispname(old, filetop(win) + 2 + (old % cs_row) * 2, 1);
+	Xlocate(win_x, win_y);
 }
 
 static int NEAR editcust(VOID_A)
@@ -4027,6 +4174,7 @@ static int NEAR editcust(VOID_A)
 		rewritefile(1);
 		n = 0;
 	}
+
 	return(n);
 }
 
@@ -4035,11 +4183,12 @@ int customize(VOID_A)
 # ifndef	_NOKEYMAP
 	int n;
 # endif
-	int i, ch, old, changed, item[MAXCUSTOM], max[MAXCUSTOM];
+	int i, yy, ch, old, changed, item[MAXCUSTOM], max[MAXCUSTOM];
 
-	for (i = LFILETOP; i < LFILEBOTTOM; i++) {
-		locate(0, i);
-		putterm(l_clear);
+	yy = filetop(win);
+	for (i = 0; i < FILEPERROW; i++) {
+		Xlocate(0, yy + i);
+		Xputterm(L_CLEAR);
 	}
 	for (i = 0; i < MAXCUSTOM; i++) item[i] = 0;
 
@@ -4089,8 +4238,8 @@ int customize(VOID_A)
 	do {
 		if (old < 0) dispcust();
 		if (cs_item != old) movecust(old, 1);
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 		keyflush();
 		Xgetkey(-1, 0);
 		ch = Xgetkey(1, 0);
@@ -4130,7 +4279,7 @@ int customize(VOID_A)
 				}
 				break;
 			case K_PPAGE:
-				if (cs_item < cs_row) putterm(t_bell);
+				if (cs_item < cs_row) Xputterm(T_BELL);
 				else {
 					cs_item = (cs_item / cs_row - 1)
 						* cs_row;
@@ -4139,7 +4288,7 @@ int customize(VOID_A)
 				break;
 			case K_NPAGE:
 				if ((cs_item / cs_row + 1) * cs_row >= cs_max)
-					putterm(t_bell);
+					Xputterm(T_BELL);
 				else {
 					cs_item = (cs_item / cs_row + 1)
 						* cs_row;
@@ -4220,6 +4369,7 @@ int customize(VOID_A)
 		free(tmpfdtype);
 	}
 # endif
+
 	return(0);
 }
 #endif	/* !_NOCUSTOMIZE */

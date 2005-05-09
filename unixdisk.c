@@ -1,7 +1,7 @@
 /*
  *	unixdisk.c
  *
- *	UNIXlike Disk Access Module
+ *	UNIX-like disk accessing module
  */
 
 #include <stdio.h>
@@ -54,7 +54,6 @@ static char *NEAR strcatdelim2 __P_((char *, char *, char *));
 static int NEAR isdotdir __P_((char *));
 #endif
 
-static int NEAR seterrno __P_((u_int));
 #ifdef	DJGPP
 static int NEAR dos_putpath __P_((char *, int));
 #endif
@@ -105,14 +104,6 @@ static int maxdrive = -1;
 static int dos7access = 0;
 #define	D7_DOSVER	017
 #define	D7_CAPITAL	020
-static CONST u_short doserrlist[] = {
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 18, 65, 80
-};
-#define	DOSERRLISTSIZ	((int)(sizeof(doserrlist) / sizeof(u_short)))
-static CONST int unixerrlist[] = {
-	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
-	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, 0, EACCES, EEXIST
-};
 #if	!defined (DJGPP) && !defined (_NODOSDRIVE)
 static u_char int25bin[] = {
 	0x1e,				/* 0000: push ds */
@@ -148,7 +139,7 @@ static u_char int25bin[] = {
 	0xcb				/* 002a: retf */
 };
 static int (far *doint25)__P_((VOID_A)) = NULL;
-#endif
+#endif	/* !DJGPP && !_NODOSDRIVE */
 
 
 #ifndef	FD
@@ -171,6 +162,7 @@ int d;
 		if (iskanji1(s, i)) i++;
 # endif
 	}
+
 	return(NULL);
 }
 
@@ -189,6 +181,7 @@ int d;
 		if (iskanji1(s, i)) i++;
 # endif
 	}
+
 	return(cp);
 }
 
@@ -207,6 +200,7 @@ int ptr;
 
 	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
 	if (!s[i] || i > ptr) return(1);
+
 	return(!iskanji1(s, i));
 # else
 	return(1);
@@ -241,6 +235,7 @@ char *s;
 		*cp = _SC_;
 	}
 	*(++cp) = '\0';
+
 	return(cp);
 }
 
@@ -291,6 +286,7 @@ char *buf, *s1, *s2;
 		for (i = 0; s2[i] && i < len; i++) *(cp++) = s2[i];
 	}
 	*cp = '\0';
+
 	return(cp);
 }
 
@@ -298,19 +294,10 @@ int isdotdir(s)
 char *s;
 {
 	if (s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]))) return(1);
+
 	return(0);
 }
 #endif	/* !FD */
-
-static int NEAR seterrno(doserr)
-u_int doserr;
-{
-	int i;
-
-	for (i = 0; i < DOSERRLISTSIZ; i++)
-		if (doserr == doserrlist[i]) return(errno = unixerrlist[i]);
-	return(errno = EINVAL);
-}
 
 #ifdef	DJGPP
 static int NEAR dos_putpath(path, offset)
@@ -321,6 +308,7 @@ int offset;
 
 	i = strlen(path) + 1;
 	dosmemput(path, i, __tb + offset);
+
 	return(i);
 }
 #endif
@@ -350,55 +338,8 @@ char *path;
 		}
 	}
 	buf[j] = '\0';
+
 	return(buf);
-}
-
-int intcall(vect, regp, sregp)
-int vect;
-__dpmi_regs *regp;
-struct SREGS *sregp;
-{
-#ifdef	__TURBOC__
-	struct REGPACK preg;
-#endif
-
-	(*regp).x.flags |= FR_CARRY;
-#ifdef	__TURBOC__
-	preg.r_ax = (*regp).x.ax;
-	preg.r_bx = (*regp).x.bx;
-	preg.r_cx = (*regp).x.cx;
-	preg.r_dx = (*regp).x.dx;
-	preg.r_bp = (*regp).x.bp;
-	preg.r_si = (*regp).x.si;
-	preg.r_di = (*regp).x.di;
-	preg.r_ds = (*sregp).ds;
-	preg.r_es = (*sregp).es;
-	preg.r_flags = (*regp).x.flags;
-	intr(vect, &preg);
-	(*regp).x.ax = preg.r_ax;
-	(*regp).x.bx = preg.r_bx;
-	(*regp).x.cx = preg.r_cx;
-	(*regp).x.dx = preg.r_dx;
-	(*regp).x.bp = preg.r_bp;
-	(*regp).x.si = preg.r_si;
-	(*regp).x.di = preg.r_di;
-	(*sregp).ds = preg.r_ds;
-	(*sregp).es = preg.r_es;
-	(*regp).x.flags = preg.r_flags;
-#else	/* !__TURBOC__ */
-# ifdef	DJGPP
-	(*regp).x.ds = (*sregp).ds;
-	(*regp).x.es = (*sregp).es;
-	__dpmi_int(vect, regp);
-	(*sregp).ds = (*regp).x.ds;
-	(*sregp).es = (*regp).x.es;
-# else
-	int86x(vect, regp, regp, sregp);
-# endif
-#endif	/* !__TURBOC__ */
-	if (!((*regp).x.flags & FR_CARRY)) return(0);
-	seterrno((*regp).x.ax);
-	return(-1);
 }
 
 int getcurdrv(VOID_A)
@@ -411,6 +352,7 @@ int getcurdrv(VOID_A)
 	else
 #endif
 	drive += (bdos(0x19, 0, 0) & 0xff);
+
 	return(drive);
 }
 
@@ -467,10 +409,10 @@ int drive, nodir;
 			return(-1);
 		}
 	}
-
 #ifndef	_NODOSDRIVE
 	lastdrive = drive + 'a';
 #endif
+
 	return(0);
 }
 
@@ -495,6 +437,7 @@ int getdosver(VOID_A)
 		}
 		dos7access |= (ver & D7_DOSVER);
 	}
+
 	return(dos7access & D7_DOSVER);
 }
 
@@ -552,6 +495,7 @@ char *path;
 	dosmemget(__tb + sizeof(drv), sizeof(buf), buf);
 #endif
 	if (!strcmp(buf, VOL_FAT32)) return(2);
+
 	return(1);
 }
 #endif	/* !_NOUSELFN */
@@ -578,6 +522,7 @@ int drive;
 #ifndef	BSPATHDELIM
 	adjustpname(pathname);
 #endif
+
 	return(pathname);
 }
 
@@ -600,6 +545,7 @@ char *path, *buf;
 	}
 	else if (cp == &(path[2])) return(path);
 	else strcpy(&(buf[2]), cp);
+
 	return(buf);
 }
 # endif	/* !_NODOSDRIVE */
@@ -748,6 +694,7 @@ char *path;
 		if (path[i] == '\\') path[i] = _SC_;
 		else if (iskanji1(path, i)) i++;
 	}
+
 	return(path);
 }
 #endif	/* !BSPATHDELIM */
@@ -774,6 +721,7 @@ char *path;
 # endif
 		else path[i] = toupper2(path[i]);
 	}
+
 	return(path);
 }
 #endif	/* DJGPP || !BSPATHDELIM */
@@ -796,6 +744,7 @@ char *path, *alias;
 #ifndef	_NODOSDRIVE
 	else if (i < 0 && errno == EACCES) return(path);
 #endif
+
 	return(NULL);
 }
 
@@ -926,6 +875,7 @@ int nsect, mode, retry;
 	}
 	if (cp != buf) free(cp);
 	errno = EACCES;
+
 	return(-1);
 }
 
@@ -1042,6 +992,7 @@ int nsect, mode, retry;
 	}
 	if (cp != buf) free(cp);
 	errno = EACCES;
+
 	return(-1);
 }
 #endif	/* !PC98 */
@@ -1214,6 +1165,7 @@ u_long l_sect, e_sect;
 		drvlist[maxdrive].flags = drvlist[maxdrive - 1].flags;
 	}
 	free(buf);
+
 	return(1);
 }
 
@@ -1281,6 +1233,7 @@ int drive;
 	if (drive >= 0 && drive < maxdrive
 	&& (drvlist[drive].flags & DI_PSEUDO))
 		return(drvlist[drive].filesys);
+
 	return(0);
 }
 
@@ -1370,6 +1323,7 @@ int drv;
 			return(-1);
 		}
 	}
+
 	return(end);
 }
 
@@ -1391,6 +1345,7 @@ int drv, level;
 		reg.x.cx = 0x086a;
 		if (int21call(&reg, &sreg) < 0) return(-1);
 	}
+
 	return(0);
 }
 
@@ -1513,6 +1468,7 @@ int n, size, iswrite;
 #ifdef	DJGPP
 	if (!iswrite) dosmemget(__tb + sizeof(struct iopacket_t), size, buf);
 #endif
+
 	return(0);
 }
 
@@ -1564,6 +1520,7 @@ int n, size, iswrite;
 		ret = dosrawdiskio(drv, sect, buf, n, size, iswrite);
 		if (iswrite && unlockdrive(drv, level) < 0) return(-1);
 	}
+
 	return(ret);
 }
 #endif	/* !_NODOSDRIVE */
@@ -1594,6 +1551,7 @@ struct dosfind_t *result;
 #ifdef	DJGPP
 	dosmemget(__tb, sizeof(struct dosfind_t), result);
 #endif
+
 	return(0);
 }
 
@@ -1616,6 +1574,7 @@ struct dosfind_t *result;
 #ifdef	DJGPP
 	dosmemget(__tb, sizeof(struct dosfind_t), result);
 #endif
+
 	return(0);
 }
 
@@ -1645,6 +1604,7 @@ struct lfnfind_t *result;
 #ifdef	DJGPP
 	dosmemget(__tb, sizeof(struct lfnfind_t), result);
 #endif
+
 	return(0);
 }
 
@@ -1664,6 +1624,7 @@ struct lfnfind_t *result;
 #ifdef	DJGPP
 	dosmemget(__tb, sizeof(struct lfnfind_t), result);
 #endif
+
 	return(0);
 }
 
@@ -1675,6 +1636,7 @@ u_int fd;
 
 	reg.x.ax = 0x71a1;
 	reg.x.bx = fd;
+
 	return(int21call(&reg, &sreg));
 }
 #endif	/* !_NOUSELFN */
@@ -1761,6 +1723,7 @@ char *dir;
 		return(NULL);
 	}
 	strcpy(dirp -> dd_path, dir);
+
 	return(dirp);
 }
 
@@ -1776,6 +1739,7 @@ DIR *dirp;
 	free(dirp -> dd_buf);
 	free(dirp -> dd_path);
 	free(dirp);
+
 	return(0);
 }
 
@@ -1889,6 +1853,7 @@ int mode;
 		errno = EEXIST;
 		return(-1);
 	}
+
 	return(mkdir(path) ? -1 : 0);
 }
 # endif
@@ -1920,6 +1885,7 @@ char *path;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
+
 	return(int21call(&reg, &sreg));
 }
 
@@ -1950,6 +1916,7 @@ char *s;
 	}
 	if (i) *(s++) = '.';
 	s[i] = '\0';
+
 	return(1);
 }
 
@@ -2063,6 +2030,7 @@ char *from, *to;
 		}
 	}
 	errno = EACCES;
+
 	return(-1);
 }
 
@@ -2094,6 +2062,7 @@ int mode;
 	reg.x.dx = PTR_OFF(path, 0);
 	if (int21call(&reg, &sreg) >= 0) return(0);
 	if (reg.x.ax == 5) errno = EEXIST;
+
 	return(-1);
 }
 
@@ -2119,6 +2088,7 @@ char *path;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
+
 	return(int21call(&reg, &sreg));
 }
 
@@ -2145,6 +2115,7 @@ char *path;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
+
 	return(int21call(&reg, &sreg));
 }
 #endif	/* !_NOUSELFN */
@@ -2179,6 +2150,7 @@ int size;
 #ifdef	DJGPP
 	if (unixrealpath(pathname, tmp)) strcpy(pathname, tmp);
 #endif
+
 	return(pathname);
 }
 
@@ -2403,6 +2375,7 @@ struct stat *stp;
 	stp -> st_dev = stp -> st_ino = 0;
 	stp -> st_nlink = 1;
 	stp -> st_uid = stp -> st_gid = -1;
+
 	return(0);
 }
 
@@ -2440,6 +2413,7 @@ int mode;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
+
 	return(int21call(&reg, &sreg));
 }
 
@@ -2557,6 +2531,7 @@ int flags, mode;
 	int21call(&reg, &sreg);
 
 	if (!(path = shortname(path, buf))) return(-1);
+
 	return(open(path, flags, mode));
 }
 
@@ -2604,6 +2579,7 @@ char *path, *type;
 	}
 
 	if ((i = unixopen(path, flags, 0666)) < 0) return(NULL);
+
 	return(fdopen(i, type));
 }
 #endif	/* !_NOUSELFN */

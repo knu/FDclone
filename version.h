@@ -1,8 +1,8 @@
 /*
  *	version.h
  *
- *	Version Number
+ *	version number
  */
 
 char *distributor = NULL;
-static char version[] = "@(#)fd.c  2.06c 02/23/05";
+static char version[] = "@(#)fd.c  2.06d 05/10/05";

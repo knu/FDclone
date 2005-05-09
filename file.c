@@ -1,11 +1,12 @@
 /*
  *	file.c
  *
- *	File Access Module
+ *	file accessing module
  */
 
 #include <fcntl.h>
 #include "fd.h"
+#include "termio.h"
 #include "func.h"
 #include "kanji.h"
 
@@ -107,6 +108,7 @@ char *path, *file;
 	path[0] = '.';
 	path[1] = _SC_;
 	strcpy(&(path[2]), file);
+
 	return(path);
 }
 #endif	/* _USEDOSEMU */
@@ -132,6 +134,7 @@ gid_t gid;
 	else if (isgroupmember(gid)) mode >>= 3;
 #endif	/* !NOUID */
 	if (dir && !(mode & F_ISEXE)) mode &= ~(F_ISRED | F_ISWRI);
+
 	return(mode & 007);
 }
 
@@ -179,8 +182,8 @@ namelist *namep;
 #else
 		logical_access((u_int)(st.st_mode), st.st_uid, st.st_gid);
 #endif
-
 	namep -> tmpflags |= F_STAT;
+
 	return(0);
 }
 
@@ -303,8 +306,8 @@ CONST VOID_P vp2;
 			tmp = 0;
 			break;
 	}
-
 	if (sorton > 7) tmp = -tmp;
+
 	return(tmp);
 }
 #endif
@@ -338,6 +341,7 @@ char *arcregstr;
 	}
 #endif
 	else dp = Xreaddir(dirp);
+
 	return(dp);
 }
 
@@ -379,6 +383,7 @@ char *buf;
 	free(homedir);
 	homedir = NULL;
 #endif
+
 	return((cp) ? 1 : 0);
 }
 
@@ -415,8 +420,8 @@ char *dir;
 			return(-1);
 		}
 	}
-
 	entryhist(1, realpath2(dir, tmp, 0), 1);
+
 	return(0);
 }
 
@@ -498,6 +503,7 @@ struct stat *stp;
 	}
 #endif	/* !NOUID */
 	if (ret < 0) errno = duperrno;
+
 	return(ret);
 }
 
@@ -511,6 +517,7 @@ char *path;
 	dosdrive = 0;
 	n = Xchdir(path);
 	dosdrive = dupdosdrive;
+
 	return(n);
 }
 
@@ -524,6 +531,7 @@ char *path;
 	dosdrive = 0;
 	cp = Xgetwd(path);
 	dosdrive = dupdosdrive;
+
 	return(cp);
 }
 
@@ -537,6 +545,7 @@ struct stat *stp;
 	dosdrive = 0;
 	n = Xlstat(path, stp);
 	dosdrive = dupdosdrive;
+
 	return(n);
 }
 
@@ -550,6 +559,7 @@ int mode;
 	dosdrive = 0;
 	n = Xmkdir(path, mode);
 	dosdrive = dupdosdrive;
+
 	return(n);
 }
 
@@ -562,6 +572,7 @@ char *path;
 	dosdrive = 0;
 	n = Xrmdir(path);
 	dosdrive = dupdosdrive;
+
 	return(n);
 }
 #endif	/* !_NODOSDRIVE */
@@ -597,6 +608,7 @@ char *src, *dest;
 	struct stat st1, st2;
 
 	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
+
 	return(st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
 }
 #endif	/* !NODIRLOOP */
@@ -618,28 +630,10 @@ char *src, *dest;
 	}
 
 	path[len] = '\0';
+
 	return(Xsymlink(path, dest));
 }
 #endif	/* !NOSYMLINK */
-
-int safewrite(fd, buf, size)
-int fd;
-char *buf;
-int size;
-{
-	int n;
-
-	n = Xwrite(fd, buf, size);
-#if	MSDOS
-	if (n >= 0 && n < size) {
-		n = -1;
-		errno = ENOSPC;
-	}
-#else
-	if (n < 0 && errno == EINTR) n = size;
-#endif
-	return(n);
-}
 
 /*ARGSUSED*/
 static int NEAR cpfile(src, dest, stp1, stp2)
@@ -683,16 +677,21 @@ struct stat *stp1, *stp2;
 		return(-1);
 	}
 
+#ifdef	FAKEUNINIT
+	duperrno = errno;	/* fake for -Wuninitialized */
+#endif
 	for (;;) {
-		while ((i = Xread(fd1, buf, BUFSIZ)) < 0 && errno == EINTR);
-		duperrno = errno;
-		if (i < BUFSIZ) break;
-		if ((i = safewrite(fd2, buf, BUFSIZ)) < 0) {
+		if ((i = sureread(fd1, buf, BUFSIZ)) <= 0) {
 			duperrno = errno;
 			break;
 		}
+		if (surewrite(fd2, buf, i) < 0) {
+			i = -1;
+			duperrno = errno;
+			break;
+		}
+		if (i < BUFSIZ) break;
 	}
-	if (i > 0 && (i = safewrite(fd2, buf, i)) < 0) duperrno = errno;
 
 	Xclose(fd2);
 	Xclose(fd1);
@@ -712,6 +711,7 @@ struct stat *stp1, *stp2;
 	if (inheritcopy && touchfile(dest, stp1) < 0) return(-1);
 # endif
 #endif
+
 	return(0);
 }
 
@@ -761,6 +761,7 @@ struct stat *stp1, *stp2;
 #ifdef	HAVEFLAGS
 	stp1 -> st_flags = (u_long)-1;
 #endif
+
 	return (touchfile(dest, stp1));
 }
 
@@ -802,7 +803,7 @@ int len;
 	int i, j, c;
 
 	if (!buf) {
-		for (i = 0; i < sizeof(seq) / sizeof(char); i++) {
+		for (i = 0; i < (int)sizeof(seq) / sizeof(char); i++) {
 			j = genrand(sizeof(seq) / sizeof(char));
 			c = seq[i];
 			seq[i] = seq[j];
@@ -816,6 +817,7 @@ int len;
 		}
 		buf[i] = '\0';
 	}
+
 	return(buf);
 }
 
@@ -854,9 +856,9 @@ char *dir;
 		}
 	}
 	if (!tmpfilename) {
-		n = sizeof(TMPPREFIX) - 1;
+		n = (int)sizeof(TMPPREFIX) - 1;
 		strncpy(cp, TMPPREFIX, n);
-		len = sizeof(path) - 1 - (cp - path);
+		len = (int)sizeof(path) - 1 - (cp - path);
 		if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 		len -= n;
 		genrandname(NULL, 0);
@@ -875,7 +877,7 @@ char *dir;
 	}
 
 	strncpy((cp = strcatdelim(path)), dir, n);
-	len = sizeof(path) - 1 - (cp - path);
+	len = (int)sizeof(path) - 1 - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	len -= n;
 	genrandname(NULL, 0);
@@ -895,6 +897,7 @@ char *dir;
 		nodosrmdir(path);
 		errno = n;
 	}
+
 	return(-1);
 }
 
@@ -915,6 +918,7 @@ char *dir;
 	}
 	else if (errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
 		return(-1);
+
 	return(0);
 }
 
@@ -927,7 +931,7 @@ char *file;
 	path[0] = '\0';
 	if (mktmpdir(path) < 0) return(-1);
 	cp = strcatdelim(path);
-	len = sizeof(path) - 1 - (cp - path);
+	len = (int)sizeof(path) - 1 - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	genrandname(NULL, 0);
 
@@ -944,6 +948,7 @@ char *file;
 	duperrno = errno;
 	rmtmpdir(NULL);
 	errno = duperrno;
+
 	return(-1);
 }
 
@@ -952,6 +957,7 @@ char *file;
 {
 	if ((Xunlink(file) < 0 && errno != ENOENT) || rmtmpdir(NULL) < 0)
 		return(-1);
+
 	return(0);
 }
 
@@ -965,6 +971,7 @@ static int dormdir(path)
 char *path;
 {
 	if (isdotdir(path)) return(0);
+
 	return(Xrmdir(path));
 }
 
@@ -1027,6 +1034,7 @@ char *dir, *file;
 		_exit(1);
 	}
 #endif
+
 	return(0);
 }
 
@@ -1040,6 +1048,7 @@ int drive;
 	path[1] = drive;
 	path[2] = '\0';
 	if (mktmpdir(path) < 0) return(NULL);
+
 	return(strdup2(path));
 }
 
@@ -1094,6 +1103,7 @@ int single;
 		return(-1);
 	}
 	*dirp = tmpdir;
+
 	return(drive);
 }
 
@@ -1128,6 +1138,7 @@ char *file;
 	struct stat st;
 
 	if (Xlstat(file, &st) < 0 && errno == ENOENT) return(0);
+
 	return(1);
 }
 
@@ -1165,6 +1176,7 @@ int dos, boundary, dirsize, ofs;
 		len += ofs;
 		if (lfn) return((len / LFNENTSIZ + 1) * DOSDIRENT + DOSDIRENT);
 	}
+
 	return(DOSDIRENT);
 }
 
@@ -1180,6 +1192,7 @@ int size, dos, boundary, dirsize, ofs;
 		size -= DOSDIRENT;
 		return((size / DOSDIRENT) * LFNENTSIZ - 1);
 	}
+
 	return(DOSBODYLEN);
 }
 
@@ -1195,6 +1208,7 @@ char *from, *to;
 	from = nodospath(fpath, from);
 	to = nodospath(tpath, to);
 #endif
+
 	return(Xrename(from, to));
 }
 
@@ -1257,6 +1271,7 @@ char *tmpdir, *old;
 		}
 	}
 	free(fname);
+
 	return(NULL);
 }
 
@@ -1267,6 +1282,7 @@ char *dir;
 	struct stat st;
 
 	if (Xlstat(dir, &st) < 0) return(getblocksize(dir));
+
 	return((off_t)st.st_size);
 }
 
@@ -1276,7 +1292,7 @@ off_t bsiz;
 {
 	struct stat st;
 	u_char ch, *tmp;
-	int i, c, n, fd;
+	int i, n, fd;
 
 	if (Xlstat(dir, &st) < 0
 	|| (fd = Xopen(dir, O_BINARY | O_RDONLY, 0666)) < 0)
@@ -1289,9 +1305,7 @@ off_t bsiz;
 			free(tmp);
 			return(NULL);
 		}
-		while ((c = Xread(fd, (char *)&ch, sizeof(ch))) < 0
-		&& errno == EINTR);
-		if (c < 0) {
+		if (sureread(fd, &ch, sizeof(ch)) < 0) {
 			free(tmp);
 			return(NULL);
 		}

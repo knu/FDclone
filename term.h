@@ -1,7 +1,7 @@
 /*
  *	term.h
  *
- *	Variables for TERMCAP
+ *	variables for TERMCAP
  */
 
 #ifndef	__TERM_H_
@@ -11,16 +11,6 @@
 #define	__SYS_TYPES_STAT_H_
 #include <sys/types.h>
 #include <sys/stat.h>
-#endif
-
-#ifndef	STDIN_FILENO
-#define	STDIN_FILENO	0
-#endif
-#ifndef	STDOUT_FILENO
-#define	STDOUT_FILENO	1
-#endif
-#ifndef	STDERR_FILENO
-#define	STDERR_FILENO	2
 #endif
 
 typedef struct _keyseq_t {
@@ -91,7 +81,9 @@ typedef struct _keyseq_t {
 #define	mkekana(c)	(K_METAKEY | ((c) & 0xff))
 #define	isekana2(c)	(((c) & K_METAKEY) && iskana2((c) & 0xff))
 
+#ifndef	K_CTRL
 #define	K_CTRL(c)	((c) & 037)
+#endif
 
 extern int n_column;
 extern int n_lastcolumn;
@@ -99,59 +91,60 @@ extern int n_line;
 extern int stable_standout;
 
 extern char *termstr[];
-#define	t_init		termstr[0]
-#define	t_end		termstr[1]
-#define	t_metamode	termstr[2]
-#define	t_nometamode	termstr[3]
-#define	t_scroll	termstr[4]
-#define	t_keypad	termstr[5]
-#define	t_nokeypad	termstr[6]
-#define	t_normalcursor	termstr[7]
-#define	t_highcursor	termstr[8]
-#define	t_nocursor	termstr[9]
-#define	t_setcursor	termstr[10]
-#define	t_resetcursor	termstr[11]
-#define	t_bell		termstr[12]
-#define	t_vbell		termstr[13]
-#define	t_clear		termstr[14]
-#define	t_normal	termstr[15]
-#define	t_bold		termstr[16]
-#define	t_reverse	termstr[17]
-#define	t_dim		termstr[18]
-#define	t_blink		termstr[19]
-#define	t_standout	termstr[20]
-#define	t_underline	termstr[21]
-#define	end_standout	termstr[22]
-#define	end_underline	termstr[23]
-#define	l_clear		termstr[24]
-#define	l_insert	termstr[25]
-#define	l_delete	termstr[26]
-#define	c_insert	termstr[27]
-#define	c_delete	termstr[28]
-#define	c_locate	termstr[29]
-#define	c_home		termstr[30]
-#define	c_return	termstr[31]
-#define	c_newline	termstr[32]
-#define	c_scrollforw	termstr[33]
-#define	c_scrollrev	termstr[34]
-#define	c_up		termstr[35]
-#define	c_down		termstr[36]
-#define	c_right		termstr[37]
-#define	c_left		termstr[38]
-#define	c_nup		termstr[39]
-#define	c_ndown		termstr[40]
-#define	c_nright	termstr[41]
-#define	c_nleft		termstr[42]
-#define	t_fgcolor	termstr[43]
-#define	t_bgcolor	termstr[44]
-#define	MAXTERMSTR	45
+#define	T_INIT		0
+#define	T_END		1
+#define	T_METAMODE	2
+#define	T_NOMETAMODE	3
+#define	T_SCROLL	4
+#define	T_KEYPAD	5
+#define	T_NOKEYPAD	6
+#define	T_NORMALCURSOR	7
+#define	T_HIGHCURSOR	8
+#define	T_NOCURSOR	9
+#define	T_SETCURSOR	10
+#define	T_RESETCURSOR	11
+#define	T_BELL		12
+#define	T_VBELL		13
+#define	T_CLEAR		14
+#define	T_NORMAL	15
+#define	T_BOLD		16
+#define	T_REVERSE	17
+#define	T_DIM		18
+#define	T_BLINK		19
+#define	T_STANDOUT	20
+#define	T_UNDERLINE	21
+#define	END_STANDOUT	22
+#define	END_UNDERLINE	23
+#define	L_CLEAR		24
+#define	L_CLEARBOL	25
+#define	L_INSERT	26
+#define	L_DELETE	27
+#define	C_INSERT	28
+#define	C_DELETE	29
+#define	C_LOCATE	30
+#define	C_HOME		31
+#define	C_RETURN	32
+#define	C_NEWLINE	33
+#define	C_SCROLLFORW	34
+#define	C_SCROLLREV	35
+#define	C_UP		36
+#define	C_DOWN		37
+#define	C_RIGHT		38
+#define	C_LEFT		39
+#define	C_NUP		40
+#define	C_NDOWN		41
+#define	C_NRIGHT	42
+#define	C_NLEFT		43
+#define	T_FGCOLOR	44
+#define	T_BGCOLOR	45
+#define	MAXTERMSTR	46
 
 extern u_char cc_intr;
 extern u_char cc_quit;
 extern u_char cc_eof;
 extern u_char cc_eol;
 extern u_char cc_erase;
-extern VOID_T (*keywaitfunc)__P_((VOID_A));
+extern int (*keywaitfunc)__P_((VOID_A));
 #if	!MSDOS
 extern int usegetcursor;
 extern int suspended;
@@ -161,7 +154,6 @@ extern int isttyiomode;
 extern FILE *ttyout;
 extern int dumbterm;
 
-extern int opentty __P_((VOID_A));
 extern int inittty __P_((int));
 extern int cooked2 __P_((VOID_A));
 extern int cbreak2 __P_((VOID_A));
@@ -182,6 +174,9 @@ extern char *tparamstr __P_((char *, int, int));
 extern int getterment __P_((char *));
 #if	!MSDOS
 extern int freeterment __P_((VOID_A));
+extern int setdefterment __P_((VOID_A));
+extern int setdefkeyseq __P_((VOID_A));
+extern int getdefkeyseq __P_((keyseq_t *));
 extern int setkeyseq __P_((int, char *, int));
 extern int getkeyseq __P_((keyseq_t *));
 extern keyseq_t *copykeyseq __P_((keyseq_t *));
@@ -191,25 +186,31 @@ extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
 extern int putch2 __P_((int));
 extern int cputs2 __P_((char *));
+extern int putterm __P_((int));
 #if	MSDOS
-#define	putterm(s)	cputs2(s)
-#define	putterms(s)	cputs2(s)
+#define	putterms	putterm
 #else
-extern int putterm __P_((char *));
-extern int putterms __P_((char *));
+extern int putterms __P_((int));
 #endif
 extern int kbhit2 __P_((long));
 extern int getch2 __P_((VOID_A));
 extern int getkey2 __P_((int));
+#if	MSDOS
+#define	getkey3		getkey2
+#else
+extern int getkey3 __P_((int));
+#endif
 extern int ungetch2 __P_((int));
 extern int setscroll __P_((int, int));
 extern int locate __P_((int, int));
 extern int tflush __P_((VOID_A));
 extern char *getwsize __P_((int, int));
+extern int setwsize __P_((int, int, int));
 extern int cprintf2 __P_((CONST char *, ...));
 extern int cputnl __P_((VOID_A));
 extern int kanjiputs __P_((char *));
 extern int chgcolor __P_((int, int));
+extern int movecursor __P_((int, int, int));
 
 #ifndef	SENSEPERSEC
 #define	SENSEPERSEC	50

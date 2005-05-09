@@ -157,7 +157,9 @@ havelib() {
 
 cat ./config.hin
 
-for i in TARUSESPACE CPP7BIT USETERMINFO TERMCAPLIB REGEXPLIB EXTENDLIB \
+for i in TARUSESPACE CPP7BIT USETERMINFO \
+TERMCAPLIB REGEXPLIB SOCKETLIB EXTENDLIB \
+NOFILEMACRO NOFUNCMACRO NOLINEMACRO \
 FORCEDSTDC STRICTSTDC NOSTDC NOCONST NOVOID NOLONGLONG HAVELONGLONG \
 NOUID_T USEPID_T DECLSIGLIST NOSIGLIST \
 DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
@@ -176,7 +178,8 @@ USEUTIME USEGETWD USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
 USEWAITPID USESIGACTION USESIGPMASK \
 USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
 GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
-USESTRERROR GETTODARGS
+USESTRERROR GETTODARGS USESETSID \
+USESOCKLEN USESETREUID USESETRESUID USESETREGID USESETRESGID
 do
 	echo "#ifdef	$i"
 	echo "#undef	$i"
@@ -283,6 +286,26 @@ if [ -n "$lib" ]; then
 fi
 
 lib=
+if isexist "socket(0,0,0)" "sys/types sys/socket"; then
+	:
+elif havelib inet "socket(0,0,0)" "sys/types sys/socket"; then
+	lib="$lib${lib:+ }-linet"
+elif havelib socket "socket(0,0,0)" "sys/types sys/socket"; then
+	lib="$lib${lib:+ }-lsocket"
+fi
+if isexist "inet_ntoa(0)" "sys/types sys/socket"; then
+	:
+elif havelib nsl_s "inet_ntoa(0)" "sys/types sys/socket"; then
+	lib="$lib${lib:+ }-lnsl_s"
+elif havelib nsl "inet_ntoa(0)" "sys/types sys/socket"; then
+	lib="$lib${lib:+ }-lnsl"
+fi
+if [ -n "$lib" ]; then
+	echo "#define	SOCKETLIB	\"$lib\""
+	LIBS="$LIBS $lib"
+fi
+
+lib=
 if noexist "getmntent(0)" "stdio mntent" \
 && havelib sun "getmntent(0)" "stdio mntent"; then
 	lib="$lib -lsun"
@@ -296,6 +319,15 @@ if [ -n "$lib" ]; then
 	LIBS="$LIBS $lib"
 fi
 
+if noexist __FILE__; then
+	echo "#define	NOFILEMACRO"
+fi
+if noexist __FUNCTION__; then
+	echo "#define	NOFUNCMACRO"
+fi
+if noexist __LINE__; then
+	echo "#define	NOLINEMACRO"
+fi
 if noinheader __STDC__ "" __STDC__; then
 	STDC=0
 fi
@@ -591,4 +623,24 @@ fi
 if noexist "gettimeofday(0,0)" "sys/time time" \
 && isexist "gettimeofday(0)" "sys/time time"; then
 	echo "#define	GETTODARGS	1"
+fi
+if isexist "setsid()"; then
+	echo "#define	USESETSID"
+fi
+if inheader socklen_t "sys/types sys/socket"; then
+	echo "#define	USESOCKLEN"
+fi
+if isexist "seteuid(0)"; then
+	:
+elif isexist "setreuid(0)"; then
+	echo "#define	USEGETREUID"
+elif isexist "setresuid(0)"; then
+	echo "#define	USEGETRESUID"
+fi
+if isexist "setegid(0)"; then
+	:
+elif isexist "setregid(0)"; then
+	echo "#define	USEGETREGID"
+elif isexist "setresgid(0)"; then
+	echo "#define	USEGETRESGID"
 fi

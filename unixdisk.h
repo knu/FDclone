@@ -1,7 +1,7 @@
 /*
  *	unixdisk.h
  *
- *	Type Definition for "unixdisk.c"
+ *	type definitions for "unixdisk.c"
  */
 
 #include <stdlib.h>
@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
-#include <dos.h>
 
 #ifndef	__SYS_TYPES_STAT_H_
 #define	__SYS_TYPES_STAT_H_
@@ -22,57 +21,14 @@
 #endif
 
 #ifdef	DJGPP
-#include <dpmi.h>
-#include <go32.h>
-#include <sys/farptr.h>
 #define	NOP	0x00
 #define	RETF	0xc3
-# if	(DJGPP >= 2)
-# include <libc/dosio.h>
-# else
-# define	__dpmi_regs	_go32_dpmi_registers
-# define	__dpmi_int(v,r)	((r) -> x.ss = (r) -> x.sp = 0, \
-				_go32_dpmi_simulate_int(v, r))
-# define	_dos_ds		_go32_info_block.selector_for_linear_memory
-# define	__tb	_go32_info_block.linear_address_of_transfer_buffer
-# define	__tb_offset	(__tb & 15)
-# define	__tb_segment	(__tb / 16)
-# endif
-#define	tbsize			_go32_info_block.size_of_transfer_buffer
-#define	PTR_FAR(ptr)		((u_long)(__tb))
-#define	PTR_SEG(ptr)		(__tb_segment)
-#define	PTR_OFF(ptr, ofs)	(__tb_offset + (ofs))
-#else	/* !DJGPP */
-# ifdef	__TURBOC__	/* Oops!! Borland C++ has not x.bp !! */
-typedef union DPMI_REGS {
-	struct XREGS {
-		u_short ax, bx, cx, dx, si, di, bp, flags;
-	} x;
-	struct HREGS {
-		u_char al, ah, bl, bh, cl, ch, dl, dh;
-	} h;
-} __dpmi_regs;
-# else
-typedef union REGS	__dpmi_regs;
-# endif
-#define	__attribute__(x)
+#else
 #define	NOP	0x90
 #define	RETF	0xcb
-#define	PTR_FAR(ptr)		(((u_long)FP_SEG(ptr) << 4) + FP_OFF(ptr))
-#define	PTR_SEG(ptr)		FP_SEG(ptr)
-#define	PTR_OFF(ptr, ofs)	FP_OFF(ptr)
-#endif	/* !DJGPP */
+#endif
 
-#define	FR_CARRY	00001
-#define	FR_PARITY	00004
-#define	FR_ACARRY	00020
-#define	FR_ZERO		00100
-#define	FR_SIGN		00200
-#define	FR_TRAP		00400
-#define	FR_INTERRUPT	01000
-#define	FR_DIRECTION	02000
-#define	FR_OVERFLOW	04000
-
+#include "termio.h"
 #include "unixemu.h"
 
 #define	DATETIMEFORMAT	1

@@ -1,7 +1,7 @@
 /*
  *	machine.h
  *
- *	Definition of Machine Depended Identifier
+ *	definitions of machine depended identifier
  */
 
 #ifndef	__MACHINE_H_
@@ -80,6 +80,7 @@ typedef long	off_t;
 #define	CODEEUC
 #define	CPP7BIT
 #define	USELEAPCNT
+#define	SOCKETLIB	"-lsocket -lnsl"
 #include <sys/param.h>
 # if	!defined (MAXHOSTNAMELEN) \
 || defined (USGr4) || defined (__svr4__) || defined (__SVR4)
@@ -236,6 +237,9 @@ typedef long	off_t;
 #define	USESETVBUF
 #define	SIGFNCINT
 #define	USESTRERROR
+#define	USESETSID
+#define	USESETRESUID
+#define	USESETRESGID
 #endif
 
 #if	defined (nec_ews) || defined (_nec_ews)
@@ -323,6 +327,7 @@ typedef long	off_t;
 && !defined (__FreeBSD__) && !defined (__NetBSD__) && !defined (__OpenBSD__)
 #define	CODEEUC
 #define	TARUSESPACE
+#define	NOFUNCMACRO
 #define	EXTENDLIB	"-lc_r"
 #define	USEMNTINFOR
 # if	defined (SYSTYPE_BSD)
@@ -789,10 +794,14 @@ typedef long	off_t;
 /* #define USETERMINFO	;use terminfo library instead of termcap */
 /* #define TERMCAPLIB	;library needed for termcap */
 /* #define REGEXPLIB	;library needed for regular expression */
+/* #define SOCKETLIB	;library needed for socket */
 /* #define EXTENDLIB	;library needed for the other extended */
 
 /* #define UNKNOWNFS	;use unsupported type FileSystem */
 
+/* #define NOFILEMACRO	;cc(1) cannot evaluate __FILE__ macro */
+/* #define NOFUNCMACRO	;cc(1) cannot evaluate __FUNCTION__ macro */
+/* #define NOLINEMACRO	;cc(1) cannot evaluate __LINE__ macro */
 /* #define FORCEDSTDC	;not defined __STDC__, but expect standard C */
 /* #define STRICTSTDC	;cannot allow K&R type function declaration */
 /* #define NOSTDC	;defined __STDC__, but expect traditional C */
@@ -888,6 +897,12 @@ typedef long	off_t;
 /* #define SIGFNCINT	;the 2nd argument function of signal() needs int */
 /* #define USESTRERROR	;use strerror() instead of sys_errlist[] */
 /* #define GETTODARGS	;the number of arguments in gettimeofday() */
+/* #define USESETSID	;use setsid() to set session ID */
+/* #define USESOCKLEN	;use socklen_t for bind()/connect()/accept() */
+/* #define USESETREUID	;use setreuid() to set effective user ID */
+/* #define USESETRESUID	;use setresuid() to set effective user ID */
+/* #define USESETREGID	;use setregid() to set effective group ID */
+/* #define USESETRESGID	;use setresgid() to set effective group ID */
 
 /* #define SENSEPERSEC	;ratio of key sense per 1 second */
 /* #define WAITKEYPAD	;interval to wait after getting input of ESC [ms] */
@@ -929,6 +944,7 @@ typedef long	off_t;
 #define	USESETPGID
 #define	USESETVBUF
 #define	USESTRERROR
+#define	USESETSID
 #endif
 
 #ifdef	SVR4
@@ -1045,6 +1061,9 @@ typedef long	off_t;
 #endif
 #ifndef	REGEXPLIB
 #define	REGEXPLIB		""
+#endif
+#ifndef	SOCKETLIB
+#define	SOCKETLIB		""
 #endif
 #ifndef	EXTENDLIB
 #define	EXTENDLIB		""

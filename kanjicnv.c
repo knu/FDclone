@@ -1,12 +1,20 @@
 /*
  *	kanjicnv.c
  *
- *	Tiny Kanji Code Converter
+ *	tiny Kanji code converter
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "machine.h"
+
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
+
+#ifndef	NOSTDLIBH
+#include <stdlib.h>
+#endif
 
 #define	ASCII	000
 #define	KANA	001

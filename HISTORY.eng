@@ -1,3 +1,12 @@
+Ver. 2.06d	The directory for /etc/fd2rc becomes specifiable in compile.
+ (05/10/05)	Add the inhibit filenames COM5-COM9 in floppy drive.
+		Bug that here-document is unavailable in functions is fixed.
+		Bug that completion sometimes causes strange display is fixed.
+		Abortion of child process with pipe of builtin is fixed.
+		Abortion when invoked from directory with Japanese is fixed.
+		Abortion when exit fd with split windows via fdsh is fixed.
+		Support changing screen size while child process is executed.
+
 Ver. 2.06c	Add the function to unset variables on customizer.
  (02/23/05)	Mis-handling for archived file with meta characters is fixed.
 

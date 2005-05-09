@@ -1,7 +1,7 @@
 /*
  *	functabl.h
  *
- *	Function Status Table
+ *	function status table
  */
 
 

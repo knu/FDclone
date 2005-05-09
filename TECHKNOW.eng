@@ -122,6 +122,9 @@ TERMCAPLIB
 REGEXPLIB
 	This indicates the library which is need to be link
 	as the regular expression library, if need.
+SOCKETLIB
+	This indicates the libraries which are need to be link
+	as the socket libraries, if need.
 EXTENDLIB
 	This indicates the other library which is need to be
 	link, if need.
@@ -133,6 +136,12 @@ UNKNOWNFS
 	successfully.
 	Refer to the #2 for details.
 
+NOFILEMACRO
+	cc(1) cannot evaluate the macro __FILE__.
+NOFUNCMACRO
+	cc(1) cannot evaluate the macro __FUNCTION__.
+NOLINEMACRO
+	cc(1) cannot evaluate the macro __LINE__.
 FORCEDSTDC
 	Although __STDC__ is not pre-defined, the compiler
 	requires the ANSI standard C format in the prototype
@@ -401,6 +410,23 @@ USESTRERROR
 GETTODARGS
 	This indicates the number of arguments used by
 	function gettimeofday(3). The default value is 2.
+USESETSID
+	The function setsid(2) can be used to control session.
+USESOCKLEN
+	The third argument of the socket function bind(2)/
+	connect(2)/accept(2) must be the type socklen_t.
+USESETREUID
+	The function setreuid(2) is used instead of geteuid(2)
+	to set the user ID.
+USESETRESUID
+	The function setresuid(2) is used instead of geteuid(2)
+	to set the user ID.
+USESETREGID
+	The function setregid(2) is used instead of getegid(2)
+	to set the group ID.
+USESETRESGID
+	The function setresgid(2) is used instead of getegid(2)
+	to set the group ID.
 
 SENSEPERSEC
 	This indicates the number to sense the key input per
@@ -1024,7 +1050,7 @@ MS-DOS file system in advance, or you take care that the other
 users or processes may not access it, etc.
 
 
-10. browse the builtin command
+10. Browse the Builtin Command
 
   The manual describes only specifications then this document
 will refer to an usage for browse the builtin command with

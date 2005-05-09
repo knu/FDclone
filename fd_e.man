@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2005 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.06c 02/23/05
+.\" @(#)fd.1   2.06d 05/10/05
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "February 23, 2005"
+.TH FD 1 "May 10, 2005"
 .de sh
 .br
 .PP
@@ -1710,7 +1710,7 @@ List files and sub directories in the directory indicated by
 If
 .I dir
 is omitted,
-the information in the the current directory is listed.
+the information in the current directory is listed.
 
 When you specify
 .BR \-P ,
@@ -4567,7 +4567,7 @@ when you do
 .B set
 .BR -x .
 .IP "\fBPWD\fP\(**"
-The variable for the the current directory with the absolute representation.
+The variable for the current directory with the absolute representation.
 If some value is set,
 this value will be replaced automatically
 according to changing the current directory.

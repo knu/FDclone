@@ -3,7 +3,7 @@
 #	FDclone Ver. 2.06 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Feb 23, 2005
+#	May 10, 2005
 #
 ############################################################
 
@@ -79,6 +79,8 @@ makefile.bpc	DOS/V 用 Borland C++ 版メイクファイル
 makefile.b98	PC-98x1 用 Borland C++ 版メイクファイル
 
 main.c		FDclone のメインソース
+termio.c	端末入出力ライブラリソース
+termio.h	termio.c 用のヘッダ
 term.c		termcap ライブラリソース
 term.h		term.c 用のヘッダ
 printf.c	フォーマット出力関数モジュール
@@ -117,6 +119,7 @@ machine.h	機種依存性を吸収するヘッダ
 config.hin	ダミーで用意してある環境設定用ヘッダ
 types.h		各種型宣言
 kctype.h	漢字コードに関するヘッダ
+wait.h		子プロセス処理に関するヘッダ
 func.h		プロトタイプ宣言
 functabl.h	内部コマンドの属性定義用
 kanji.hin	日本語文字列のソース (JIS版)

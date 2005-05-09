@@ -1,7 +1,7 @@
 /*
  *	printf.h
  *
- *	Definition for "printf.c"
+ *	definitions for "printf.c"
  */
 
 #ifndef	__PRINTF_H_
@@ -9,8 +9,10 @@
 
 #ifdef	USESTDARGH
 #include <stdarg.h>
+#define	VA_START(a, f)		va_start(a, f)
 #else
 #include <varargs.h>
+#define	VA_START(a, f)		va_start(a)
 #endif
 
 typedef struct _printbuf_t {
@@ -65,6 +67,7 @@ extern int getnum __P_((CONST char *, int *));
 extern int setchar __P_((int, printbuf_t *));
 extern int vasprintf2 __P_((char **, CONST char *, va_list));
 extern int asprintf2 __P_((char **, CONST char *, ...));
+extern int vsnprintf2 __P_((char *, int, CONST char *, va_list));
 extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern int fprintf2 __P_((FILE *, CONST char *, ...));
 extern VOID fputnl __P_((FILE *));

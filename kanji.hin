@@ -1,7 +1,7 @@
 /*
  *	kanji.h
  *
- *	Message Strings on Kanji
+ *	message strings on Kanji
  */
 
 #ifdef	_NOENGMES
@@ -60,7 +60,7 @@ extern char *mesconv __P_((char *, char *));
 #define	UPDAT_K	mesconv("U: 新しい日付を", "Update")
 #define	RENAM_K	mesconv("R: 名前を変えて", "Rename")
 #define	OVERW_K	mesconv("O: 全て上書き", "Overwrite")
-#define	NOCPY_K	mesconv("N: 同名はコピーしない", "Not_copy_the_same_name")
+#define	NOCPY_K	mesconv("N: 同名はコピーしない", "NotCopyTheSameName")
 #define	FORWD_K	mesconv("F: 転送", "Forward")
 #define	NEWNM_K	mesconv("新しい名前:", "New name:")
 #define	FRWDD_K	mesconv("古いファイルの転送先:", "Forwarding directory:")
@@ -80,7 +80,7 @@ extern char *mesconv __P_((char *, char *));
 #define	ANYES_K	mesconv("Y: はい", "Yes")
 #define	ANNO_K	mesconv("N: いいえ", "No")
 #define	ANALL_K	mesconv("A: 全て削除", "All")
-#define	ANKEP_K	mesconv("K: 全て保存", "Keep_all")
+#define	ANKEP_K	mesconv("K: 全て保存", "KeepAll")
 #define	FINDF_K	mesconv("検索するファイル名:", "Filename to find:")
 #define	FINDD_K	mesconv("再帰検索するファイル名:", "Filename to find recursively:")
 #define	FOUND_K	mesconv("ファイルが見つかりました. カレントディレクトリを変更しますか ?", "File found. Change current directory ?")
@@ -260,6 +260,9 @@ extern char *mesconv __P_((char *, char *));
 #define	TMPD_E \
 	meslist("一時的作業ディレクトリを指定します.", \
 		"Define the temporary directory.")
+#define	TUMSK_E \
+	meslist("一時的作業ディレクトリ用のファイル生成マスク値を指定します.", \
+		"Define the file creation mask for temporary directories.")
 #define	RRPT_E \
 	meslist("疑似 RockRidge 拡張機能を使うディレクトリを指定します.", \
 		"Define the directories of RockRidge formated CD-ROM.")
@@ -272,18 +275,21 @@ extern char *mesconv __P_((char *, char *));
 #define	PRM2_E \
 	meslist("コマンド継続行入力時のプロンプト文字列を指定します.", \
 		"Define the prompt strings on continuous command line.")
-#define	LANG_E \
-	meslist("表示する文字の漢字コードまたは言語を設定します.", \
-		"Set the language code to display.")
+#define	DMSHL_E \
+	meslist("内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
+		"Don't use control sequences to edit command line in the internal shell mode.")
 #define	UNBF_E \
 	meslist("UNICODE の変換テーブルをオンメモリで持ち続けます.", \
 		"Hold the UNICODE translation table on memory.")
+#define	LANG_E \
+	meslist("表示する文字の漢字コードまたは言語を設定します.", \
+		"Set the language code to display.")
 #define	IPKC_E \
 	meslist("キーボード入力文字の漢字コードを設定します.", \
-		"Set the language code to input.")
+		"Set the Kanji code to be inputted.")
 #define	FNKC_E \
 	meslist("ファイル名に用いる文字の漢字コードを設定します.", \
-		"Set the language code used in filename.")
+		"Set the Kanji code used in filename.")
 #define	SJSP_E \
 	meslist("Shift JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes Shift JIS filename.")
@@ -323,12 +329,6 @@ extern char *mesconv __P_((char *, char *));
 #define	NCVP_E \
 	meslist("漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
-#define	TUMSK_E \
-	meslist("一時的作業ディレクトリ用のファイル生成マスク値を指定します.", \
-		"Define the file creation mask for temporary directories.")
-#define	DMSHL_E \
-	meslist("内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
-		"Don't use control sequences to edit command line in the internal shell mode.")
 
 #define	TENV_K	mesconv("内部変数", "Variables")
 #define	TBIND_K	mesconv("キー割当て", "Key bind")

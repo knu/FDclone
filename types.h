@@ -1,7 +1,7 @@
 /*
  *	types.h
  *
- *	Type Definition
+ *	type definitions
  */
 
 #ifndef	__SYS_TYPES_STAT_H_
@@ -260,11 +260,13 @@ typedef struct _winvartable {
 	int v_filepos;
 	int v_sorton;
 	int v_dispmode;
+	int v_fileperrow;
 } winvartable;
 
 extern winvartable winvar[];
 #ifdef	_NOSPLITWIN
 #define	win	0
+#define	windows	1
 #else
 extern int windows;
 extern int win;
@@ -294,22 +296,29 @@ extern int win;
 #define	filepos		(winvar[win].v_filepos)
 #define	sorton		(winvar[win].v_sorton)
 #define	dispmode	(winvar[win].v_dispmode)
+#define	FILEPERROW	(winvar[win].v_fileperrow)
 
 typedef struct _macrostat {
 	short addopt;
 	short needburst;
 	short needmark;
-	u_char flags;
+	u_short flags;
 } macrostat;
 
-#define	F_NOCONFIRM	0001
-#define	F_ARGSET	0002
-#define	F_REMAIN	0004
-#define	F_NOEXT		0010
-#define	F_TOSFN		0020
-#define	F_ISARCH	0040
-#define	F_BURST		0100
-#define	F_MARK		0200
+#define	F_NOCONFIRM	0000001
+#define	F_ARGSET	0000002
+#define	F_REMAIN	0000004
+#define	F_NOEXT		0000010
+#define	F_TOSFN		0000020
+#define	F_ISARCH	0000040
+#define	F_BURST		0000100
+#define	F_MARK		0000200
+#define	F_NOADDOPT	0000400
+#define	F_IGNORELIST	0001000
+#define	F_NOCOMLINE	0002000
+#define	F_NOKANJICONV	0004000
+#define	F_TTYIOMODE	0010000
+#define	F_TTYNL		0020000
 
 #ifdef	_NOORIGSHELL
 typedef struct _aliastable {

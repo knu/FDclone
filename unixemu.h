@@ -1,7 +1,7 @@
 /*
  *	unixemu.h
  *
- *	UNIX Emulate Functions
+ *	UNIX function emulation
  */
 
 #ifndef	_UNIXEMU_H

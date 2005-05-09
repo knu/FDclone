@@ -1,13 +1,13 @@
 /*
  *	printf.c
  *
- *	Formatted printing Module
+ *	formatted printing module
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include "machine.h"
 
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
@@ -91,6 +91,7 @@ int *ptrp;
 	}
 	if (i <= *ptrp) n = -1;
 	*ptrp = i;
+
 	return(n);
 }
 
@@ -100,6 +101,7 @@ printbuf_t *pbufp;
 {
 	if (pbufp -> flags & (VF_NEW | VF_FILE)) return(0);
 	if (pbufp -> ptr + n < pbufp -> size) return(0);
+
 	return(-1);
 }
 
@@ -132,6 +134,7 @@ printbuf_t *pbufp;
 		}
 	}
 	pbufp -> buf[(pbufp -> ptr)++] = n;
+
 	return(1);
 }
 
@@ -188,7 +191,7 @@ int width, prec;
 	if (!n) {
 		if (prec) num[len++] = '0';
 	}
-	else while (len < sizeof(num) / sizeof(char)) {
+	else while (len < (int)sizeof(num) / sizeof(char)) {
 #ifdef	MINIMUMSHELL
 		if (!bit) {
 			i = (n % base);
@@ -290,7 +293,7 @@ int width, prec;
 	}
 	else {
 		s = "(null)";
-		len = sizeof("(null)") - 1;
+		len = (int)sizeof("(null)") - 1;
 #ifdef	LINUX
 		/* spec. of glibc */
 		if (prec >= 0 && len > prec) len = 0;
@@ -491,21 +494,21 @@ va_list args;
 		}
 
 		if (base) {
-			if (len == sizeof(u_long_t))
+			if (len == (int)sizeof(u_long_t))
 				u = va_arg(args, u_long_t);
 #ifdef	HAVELONGLONG
-			else if (len == sizeof(u_long))
+			else if (len == (int)sizeof(u_long))
 				u = va_arg(args, u_long);
 #endif
 			else u = va_arg(args, u_int);
 
 #ifndef	HAVELONGLONG
-			if (len > sizeof(u_long_t)) {
+			if (len > (int)sizeof(u_long_t)) {
 				u_long_t hi, tmp;
 
-				while (len > sizeof(u_int)) {
+				while (len > (int)sizeof(u_int)) {
 					hi = va_arg(args, u_int);
-					len -= sizeof(u_int);
+					len -= (int)sizeof(u_int);
 				}
 
 				tmp = 0x5a;
@@ -535,7 +538,7 @@ va_list args;
 #endif	/* !HAVELONGLONG */
 			if (!(pbufp -> flags & VF_UNSIGNED)) {
 				mask = (MAXUTYPE(u_long_t)
-					>> ((sizeof(long_t) - len)
+					>> (((int)sizeof(long_t) - len)
 					* BITSPERBYTE + 1));
 				if (u & ~mask) u |= ~mask;
 			}
@@ -548,6 +551,7 @@ va_list args;
 	va_end(args);
 	if (pbufp -> buf && !(pbufp -> flags & VF_FILE))
 		pbufp -> buf[pbufp -> ptr] = '\0';
+
 	return(total);
 }
 
@@ -563,6 +567,7 @@ va_list args;
 	pbuf.flags = VF_NEW;
 	n = commonprintf(&pbuf, fmt, args);
 	*sp = pbuf.buf;
+
 	return(n);
 }
 
@@ -581,18 +586,31 @@ va_dcl
 	printbuf_t pbuf;
 	int n;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
+	VA_START(args, fmt);
 
 	if (!sp) return(-1);
 	pbuf.flags = VF_NEW;
 	n = commonprintf(&pbuf, fmt, args);
 	*sp = pbuf.buf;
 	va_end(args);
+
 	return(n);
+}
+
+int vsnprintf2(s, size, fmt, args)
+char *s;
+int size;
+CONST char *fmt;
+va_list args;
+{
+	printbuf_t pbuf;
+
+	if (size < 0) return(-1);
+	pbuf.buf = s;
+	pbuf.size = size;
+	pbuf.flags = 0;
+
+	return(commonprintf(&pbuf, fmt, args));
 }
 
 #ifdef	USESTDARGH
@@ -611,11 +629,7 @@ va_dcl
 	printbuf_t pbuf;
 	int n;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
+	VA_START(args, fmt);
 
 	if (size < 0) return(-1);
 	pbuf.buf = s;
@@ -623,6 +637,7 @@ va_dcl
 	pbuf.flags = 0;
 	n = commonprintf(&pbuf, fmt, args);
 	va_end(args);
+
 	return(n);
 }
 
@@ -641,16 +656,13 @@ va_dcl
 	printbuf_t pbuf;
 	int n;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
+	VA_START(args, fmt);
 
 	pbuf.buf = (char *)fp;
 	pbuf.flags = VF_FILE;
 	n = commonprintf(&pbuf, fmt, args);
 	va_end(args);
+
 	return(n);
 }
 

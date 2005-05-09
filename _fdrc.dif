@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Wed Feb 23 00:00:00 2005
++++ _fdrc	Wed May 10 00:00:00 2005
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-113: preserve previous sort type
@@ -7,7 +7,7 @@
 -#SORTTYPE	=	0
 +#SORTTYPE=0
  
- # to set default display mode
+ # default display mode
  #	0: normal (Default)
 @@ -21,98 +21,182 @@
  #	5: sym-link status &				invisible dot file
@@ -50,7 +50,7 @@
 +#	>= 1: prioritize
 +#USEGETCURSOR=0
  
- # to set default columns of file in 1 line
+ # default columns of file in 1 line
  #	1: 1 column
  #	2: 2 columns (Default)
  #	3: 3 columns
@@ -118,7 +118,7 @@
 -#ANSICOLOR	=	0
 +#ANSICOLOR=0
 +
-+# specify color palette in the ANSI color mode
++# color palette in the ANSI color mode
 +#	Default: none
 +#	0: black
 +#	1: red
@@ -144,7 +144,7 @@
 +#	character device ---------+
 +#ANSIPALETTE=""
  
- # select edit mode with your favorite editor type
+ # edit mode with your favorite editor type
  #	emacs: ^P, ^N, ^F, ^B, ... (Default)
  #	wordstar ^E, ^X, ^D, ^S, ...
  #	vi: k, j, l, h, ...
@@ -194,7 +194,7 @@
 +#	>= 1: hold
 +#UNICODEBUFFER=0
  
- # language code type to display
+ # language code to be displayed
  #	Default: No convert
  #	euc, EUC: EUC-JP
  #	sjis, SJIS: Shift JIS
@@ -210,7 +210,7 @@
 -#LANGUAGE	=	""
 +#LANGUAGE=""
  
- # language code type to input
+ # Kanji code to be inputted
  #	Default: No convert
 @@ -120,49 +204,195 @@
  #	sjis, SJIS: Shift JIS
@@ -222,7 +222,7 @@
 -#PAGER	=	more%K
 -#EDITOR	=	vi
 -#SHELL	=	/bin/sh
-+# language code type in filename
++# Kanji code in filename
 +#	Default: No convert
 +#	euc, EUC: EUC-JP
 +#	sjis, SJIS: Shift JIS

@@ -1,13 +1,20 @@
 /*
  *	fd.h
  *
- *	Configuration File for FD
+ *	configuration file for FD
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include "machine.h"
+
+#ifndef	FD
+#define	FD		2
+#endif
+#ifndef	DEFRC
+#define	DEFRC		"/etc/fd2rc"
+#endif
 
 #if	FD < 2
 #define	_NOORIGSHELL
@@ -41,15 +48,15 @@ extern char *_mtrace_file;
 #if	MSDOS
 # ifdef	BSPATHDELIM
 #  if	FD >= 2
-#  define	RUNCOMFILE	"~\\fd2.rc"
+#  define	FD_RCFILE	"~\\fd2.rc"
 #  else
-#  define	RUNCOMFILE	"~\\fd.rc"
+#  define	FD_RCFILE	"~\\fd.rc"
 #  endif
 # else	/* !BSPATHDELIM */
 #  if	FD >= 2
-#  define	RUNCOMFILE	"~/fd2.rc"
+#  define	FD_RCFILE	"~/fd2.rc"
 #  else
-#  define	RUNCOMFILE	"~/fd.rc"
+#  define	FD_RCFILE	"~/fd.rc"
 #  endif
 # endif	/* !BSPATHDELIM */
 #define	TMPPREFIX	"FD"
@@ -57,9 +64,9 @@ extern char *_mtrace_file;
 #define	DOSTMPPREFIX	'D'
 #else	/* !MSDOS */
 # if	FD >= 2
-# define	RUNCOMFILE	"~/.fd2rc"
+# define	FD_RCFILE	"~/.fd2rc"
 # else
-# define	RUNCOMFILE	"~/.fdrc"
+# define	FD_RCFILE	"~/.fdrc"
 # endif
 #define	TMPPREFIX	"fd"
 #define	ARCHTMPPREFIX	"ar"
@@ -99,7 +106,6 @@ extern char *_mtrace_file;
 #define	INHERITCOPY	0
 #define	ADJTTY		0
 #define	USEGETCURSOR	0
-#define	WINDOWS		1
 #define	DEFCOLUMNS	2
 #define	MINFILENAME	12
 #if	MSDOS
@@ -171,7 +177,7 @@ extern char *_mtrace_file;
 #define	MAXSTACK	5
 #define	MAXWINDOWS	2
 #define	MAXHISTNO	MAXTYPE(short)
-#define	MAXINVOKEARGS	2
+#define	MAXINVOKEARGS	MAXWINDOWS
 
 #ifdef	_NOSPLITWIN
 #undef	MAXWINDOWS
@@ -187,15 +193,20 @@ extern char *_mtrace_file;
  *	Screen layout parameter					*
  ****************************************************************/
 #define	FILEPERLINE	(curcolumns)
-#ifndef	_NOSPLITWIN
-#define	FILEPERROW	((n_line - WHEADER - WFOOTER + 1) / windows - 1)
+#ifdef	_NOSPLITWIN
+#define	fileperrow(w)	(n_line - wheader - WFOOTER)
 #else
-#define	FILEPERROW	(n_line - WHEADER - WFOOTER)
+#define	fileperrow(w)	((n_line - wheader - WFOOTER + 1) / (w) - 1)
 #endif
 #define	FILEPERPAGE	(FILEPERLINE * FILEPERROW)
 
+#ifdef	_NOTRADLAYOUT
+#define	istradlayout()	(0)
+#define	hassizeinfo()	(sizeinfo)
+#else
 #define	istradlayout()	(tradlayout && n_column >= WCOLUMNSTD)
 #define	hassizeinfo()	(sizeinfo || istradlayout())
+#endif
 #define	WHEADERMIN	3
 #define	WHEADERMAX	4
 #define	WHEADER		(WHEADERMIN + ((hassizeinfo()) ? 1 : 0))
@@ -216,12 +227,6 @@ extern char *_mtrace_file;
 #define	WFILEMINCUSTOM	4
 #define	WFILEMINATTR	(WMODELINE + 5)
 #define	WFILEMIN	1
-#ifndef	_NOSPLITWIN
-#define	LFILETOP	(WHEADER + (win * (FILEPERROW + 1)))
-#else
-#define	LFILETOP	(WHEADER)
-#endif
-#define	LFILEBOTTOM	(LFILETOP + FILEPERROW)
 #define	L_STACK		(n_line - 3)
 #define	L_HELP		(n_line - 2)
 #define	L_INFO		(n_line - 1)

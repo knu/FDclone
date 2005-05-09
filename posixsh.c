@@ -26,12 +26,10 @@
 #endif	/* !FD */
 
 #if	MSDOS
-#include <io.h>
 #include "unixemu.h"
-#else	/* !MSDOS */
+#else
 #include <sys/param.h>
-#include <sys/ioctl.h>
-#endif	/* !MSDOS */
+#endif
 
 #include "system.h"
 
@@ -74,6 +72,7 @@ extern time_t time2 __P_((VOID_A));
 static char *NEAR headstree __P_((syntaxtree *));
 #endif
 #ifndef	NOALIAS
+static int NEAR searchalias __P_((char *, int));
 static shaliastable *NEAR duplalias __P_((shaliastable *));
 static int cmpalias __P_((CONST VOID_P, CONST VOID_P));
 #endif
@@ -108,7 +107,7 @@ typedef struct _mailpath_t {
 #endif
 
 #ifndef	NOJOB
-int gettermio __P_((p_id_t));
+int gettermio __P_((p_id_t, int));
 VOID dispjob __P_((int, FILE *));
 int searchjob __P_((p_id_t, int *));
 int getjob __P_((char *));
@@ -123,6 +122,8 @@ VOID replacemailpath __P_((char *, int));
 VOID checkmail __P_((int));
 #endif
 #ifndef	NOALIAS
+int addalias __P_((char *, char *));
+int deletealias __P_((char *));
 VOID freealias __P_((shaliastable *));
 int checkalias __P_((syntaxtree *, char *, int, int));
 #endif
@@ -163,15 +164,16 @@ static int maxmailpath = 0;
 
 
 #ifndef	NOJOB
-int gettermio(pgrp)
+int gettermio(pgrp, job)
 p_id_t pgrp;
+int job;
 {
 	int ret;
 	sigmask_t mask, omask;
 
 	if (ttypgrp < (p_id_t)0 || pgrp < (p_id_t)0 || pgrp == ttypgrp)
 		return(0);
-	else if (!jobok) {
+	else if (!job) {
 		ttypgrp = pgrp;
 		return(0);
 	}
@@ -197,6 +199,7 @@ p_id_t pgrp;
 #endif	/* JOBVERBOSE */
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
 	Xsigsetmask(omask);
+
 	return(ret);
 }
 
@@ -216,6 +219,7 @@ syntaxtree *trp;
 	if (!trp || !(trp -> comm)) return(NULL);
 	id = (trp -> comm) -> id;
 	if (id == SM_CHILD || id == SM_STATEMENT) return(NULL);
+
 	return(statementlist[id - 1].ident);
 }
 
@@ -261,6 +265,7 @@ int *np;
 			return(i);
 		}
 	}
+
 	return(-1);
 }
 
@@ -378,6 +383,7 @@ syntaxtree *trp;
 		fprintf2(ttyout, "%id ", joblist[i].pids[j]);
 	fputnl(ttyout);
 #endif	/* JOBVERBOSE */
+
 	return(i);
 }
 
@@ -394,6 +400,7 @@ p_id_t pid;
 			else if (!sig) return(0);
 		}
 	}
+
 	return(-1);
 }
 
@@ -442,6 +449,70 @@ VOID killjob(VOID_A)
 #endif	/* !NOJOB */
 
 #ifndef	NOALIAS
+static int NEAR searchalias(ident, len)
+char *ident;
+int len;
+{
+	int i;
+
+	if (len < 0) len = strlen(ident);
+	for (i = 0; shellalias[i].ident; i++)
+		if (!strncommcmp(ident, shellalias[i].ident, len)
+		&& !(shellalias[i].ident[len]))
+			break;
+
+	return(i);
+}
+
+int addalias(ident, comm)
+char *ident, *comm;
+{
+	int i;
+
+	i = searchalias(ident, -1);
+	if (shellalias[i].ident) {
+		free(shellalias[i].ident);
+		free(shellalias[i].comm);
+	}
+	else {
+		shellalias = (shaliastable *)realloc2(shellalias,
+			(i + 2) * sizeof(shaliastable));
+		shellalias[i + 1].ident = NULL;
+	}
+
+	shellalias[i].ident = ident;
+	shellalias[i].comm = comm;
+
+	return(0);
+}
+
+int deletealias(ident)
+char *ident;
+{
+	reg_t *re;
+	int i, n, max;
+
+	n = 0;
+	re = regexp_init(ident, -1);
+	for (max = 0; shellalias[max].ident; max++);
+	for (i = 0; i < max; i++) {
+		if (re) {
+			if (!regexp_exec(re, shellalias[i].ident, 0)) continue;
+		}
+		else if (strcommcmp(ident, shellalias[i].ident)) continue;
+		free(shellalias[i].ident);
+		free(shellalias[i].comm);
+		memmove((char *)&(shellalias[i]), (char *)&(shellalias[i + 1]),
+			(max-- - i) * sizeof(shaliastable));
+		i--;
+		n++;
+	}
+	if (re) regexp_free(re);
+	if (!n) return(-1);
+
+	return(0);
+}
+
 static shaliastable *NEAR duplalias(alias)
 shaliastable *alias;
 {
@@ -456,6 +527,7 @@ shaliastable *alias;
 		dupl[i].comm = strdup2(alias[i].comm);
 	}
 	dupl[i].ident = NULL;
+
 	return(dupl);
 }
 
@@ -481,6 +553,7 @@ CONST VOID_P vp2;
 
 	ap1 = (shaliastable *)vp1;
 	ap2 = (shaliastable *)vp2;
+
 	return(strpathcmp2(ap1 -> ident, ap2 -> ident));
 }
 
@@ -499,15 +572,13 @@ int len, delim;
 
 	if ((!strchr(IFS_SET, delim) && !strchr(ALIASDELIMIT, delim)))
 		return(-1);
-	for (i = 0; shellalias[i].ident; i++)
-		if (!(shellalias[i].flags & AL_USED)
-		&& !strncommcmp(ident, shellalias[i].ident, len)
-		&& !(shellalias[i].ident[len]))
-			break;
-	if (!(shellalias[i].ident)) return(-1);
+	i = searchalias(ident, len);
+	if (!(shellalias[i].ident) || (shellalias[i].flags & AL_USED))
+		return(-1);
 
 	*ident = '\0';
 	shellalias[i].flags |= AL_USED;
+
 	return(i);
 }
 #endif	/* NOALIAS */
@@ -578,6 +649,7 @@ long *resultp;
 	else return(-1);
 
 	while (s[ptr] && strchr(IFS_SET, s[ptr])) ptr++;
+
 	return(ptr);
 }
 
@@ -909,6 +981,7 @@ syntaxtree *trp;
 			joblist[i].pids = NULL;
 		}
 	}
+
 	return(RET_SUCCESS);
 }
 
@@ -938,7 +1011,7 @@ syntaxtree *trp;
 # ifdef	USESGTTY
 	if (joblist[i].ttyflag) ioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
 # endif
-	gettermio(joblist[i].pids[0]);
+	gettermio(joblist[i].pids[0], jobok);
 	if ((j = joblist[i].stats[n]) > 0 && j < 128) {
 		Xkillpg(joblist[i].pids[0], SIGCONT);
 		for (j = 0; j <= n; j++) joblist[i].stats[j] = 0;
@@ -946,12 +1019,13 @@ syntaxtree *trp;
 	if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
 		joblist[i].trp -> type = OP_NONE;
 	ret = waitchild(joblist[i].pids[n], NULL);
-	gettermio(orgpgrp);
+	gettermio(orgpgrp, jobok);
 	if (tioctl(ttyio, REQSETP, &tty) < 0) {
 		doperror((trp -> comm) -> argv[0], "fatal error");
 		prepareexit(-1);
 		Xexit(RET_FATALERR);
 	}
+
 	return(ret);
 }
 
@@ -978,6 +1052,7 @@ syntaxtree *trp;
 	if (interactive && !nottyout) dispjob(i, stderr);
 	prevjob = lastjob;
 	lastjob = i;
+
 	return(RET_SUCCESS);
 }
 #endif	/* !NOJOB */
@@ -1011,12 +1086,11 @@ syntaxtree *trp;
 			set = 1;
 			break;
 		}
-		for (i = 0; shellalias[i].ident; i++)
-			if (!strncommcmp(shellalias[i].ident, argv[n], len)
-			&& !(shellalias[i].ident[len]))
-				break;
 
-		if (!set) {
+		if (set) VOID_C addalias(strndup2(argv[n], len),
+			strdup2(&(argv[n][len + 1])));
+		else {
+			i = searchalias(argv[n], len);
 			if (!(shellalias[i].ident)) {
 				if (interactive) {
 					fputs("alias: ", stderr);
@@ -1029,51 +1103,21 @@ syntaxtree *trp;
 				shellalias[i].ident, shellalias[i].comm);
 			fputnl(stdout);
 		}
-		else if (shellalias[i].ident) {
-			free(shellalias[i].comm);
-			shellalias[i].comm = strdup2(&(argv[n][++len]));
-		}
-		else {
-			shellalias = (shaliastable *)realloc2(shellalias,
-				(i + 2) * sizeof(shaliastable));
-			shellalias[i].ident = strndup2(argv[n], len);
-			shellalias[i].comm = strdup2(&(argv[n][++len]));
-			shellalias[++i].ident = NULL;
-		}
 	}
+
 	return(ret);
 }
 
 int posixunalias(trp)
 syntaxtree *trp;
 {
-	reg_t *re;
 	char **argv;
-	int i, n, c, ret;
+	int n, ret;
 
 	argv = (trp -> comm) -> argv;
 	ret = RET_SUCCESS;
 	for (n = 1; n < (trp -> comm) -> argc; n++) {
-		c = 0;
-		re = regexp_init(argv[n], -1);
-		for (i = 0; shellalias[i].ident; i++) {
-			if (re) {
-				if (!regexp_exec(re, shellalias[i].ident, 0))
-					continue;
-			}
-			else if (strcommcmp(shellalias[i].ident, argv[n]))
-				continue;
-			c++;
-			free(shellalias[i].ident);
-			free(shellalias[i].comm);
-			for (; shellalias[i + 1].ident; i++) {
-				shellalias[i].ident = shellalias[i + 1].ident;
-				shellalias[i].comm = shellalias[i + 1].comm;
-			}
-			shellalias[i].ident = NULL;
-		}
-		if (re) regexp_free(re);
-		if (!c) {
+		if (deletealias(argv[n]) < 0) {
 			if (interactive) {
 				fputs("alias: ", stderr);
 				execerror(argv[n], ER_NOTALIAS, 0);
@@ -1082,6 +1126,7 @@ syntaxtree *trp;
 			ERRBREAK;
 		}
 	}
+
 	return(ret);
 }
 #endif	/* NOALIAS */
@@ -1171,6 +1216,7 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 	}
+
 	return(RET_SUCCESS);
 }
 
@@ -1286,6 +1332,7 @@ int *ptrp;
 			break;
 	}
 	if (ret >= 0) *ptrp += 2;
+
 	return(ret);
 }
 
@@ -1365,6 +1412,7 @@ int *ptrp;
 	}
 	ret = (argv[*ptrp][0]) ? RET_SUCCESS : RET_FAIL;
 	(*ptrp)++;
+
 	return(ret);
 }
 
@@ -1396,6 +1444,7 @@ int *ptrp, lvl;
 		? (ret1 != RET_FAIL && ret2 != RET_FAIL)
 		: (ret1 != RET_FAIL || ret2 != RET_FAIL))
 			? RET_SUCCESS : RET_FAIL;
+
 	return(ret1);
 }
 
@@ -1435,6 +1484,7 @@ syntaxtree *trp;
 		fputnl(stderr);
 		return(RET_NOTICE);
 	}
+
 	return(ret);
 }
 
@@ -1536,6 +1586,7 @@ syntaxtree *trp;
 	}
 	(trp -> comm) -> argc = argc;
 	(trp -> comm) -> argv = argv;
+
 	return(ret);
 }
 

@@ -1,10 +1,11 @@
 /*
  *	dosemu.c
  *
- *	UNIX Function Emulation for DOS
+ *	UNIX function emulations for DOS
  */
 
 #include "fd.h"
+#include "termio.h"
 #include "func.h"
 
 #if	!defined (_NODOSDRIVE) && defined (CODEEUC)
@@ -52,6 +53,7 @@ int _dospath(path)
 char *path;
 {
 	if (!dosdrive) return(0);
+
 	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 
@@ -121,12 +123,13 @@ char *path;
 	dirpathlist[maxdirpath - 1].path = strdup2(cp);
 #endif
 #ifdef	CYGWIN
-#define	opendir_saw_u_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 2))
-#define	opendir_saw_s_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 3))
+#define	opendir_saw_u_cygdrive	(1 << (8 * (int)sizeof(dirp -> __flags) - 2))
+#define	opendir_saw_s_cygdrive	(1 << (8 * (int)sizeof(dirp -> __flags) - 3))
 	if (buf[0] != _SC_ || buf[1])
 		dirp -> __flags |=
 			opendir_saw_u_cygdrive | opendir_saw_s_cygdrive;
 #endif
+
 	return(dirp);
 }
 
@@ -156,6 +159,7 @@ DIR *dirp;
 		return(dosclosedir(dirp));
 #endif
 	closedir(dirp);
+
 	return(0);
 }
 
@@ -321,6 +325,7 @@ char *path;
 		*cachecwd = '\0';
 		return(-1);
 	}
+
 	return(0);
 }
 
@@ -364,6 +369,7 @@ char *path;
 	}
 	if (cp == path) return(cp);
 	strcpy(path, cp);
+
 	return(path);
 }
 
@@ -377,6 +383,7 @@ struct stat *stp;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosstat(path, stp));
 #endif
+
 	return(stat(path, stp) ? -1 : 0);
 }
 
@@ -400,6 +407,7 @@ struct stat *stp;
 #ifndef	_NOROCKRIDGE
 	if (*rpath) rrlstat(rpath, stp);
 #endif
+
 	return(0);
 }
 
@@ -413,6 +421,7 @@ int mode;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosaccess(path, mode));
 #endif
+
 	return(access(path, mode) ? -1 : 0);
 }
 
@@ -427,6 +436,7 @@ char *name1, *name2;
 	if ((_dospath(name1) || _dospath(name2)))
 		return(dossymlink(name1, name2));
 #endif
+
 	return(symlink(name1, name2) ? -1 : 0);
 }
 
@@ -455,6 +465,7 @@ int bufsiz;
 	path = lbuf;
 #endif
 	for (len = 0; len < bufsiz && path[len]; len++) buf[len] = path[len];
+
 	return(len);
 }
 
@@ -468,6 +479,7 @@ int mode;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(doschmod(path, mode));
 #endif
+
 	return(chmod(path, mode) ? -1 : 0);
 }
 
@@ -482,6 +494,7 @@ struct utimbuf *times;
 # ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosutime(path, times));
 # endif
+
 	return(utime(path, times) ? -1 : 0);
 }
 #else	/* !USEUTIME */
@@ -495,6 +508,7 @@ struct timeval tvp[2];
 # ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosutimes(path, tvp));
 # endif
+
 	return(utimes(path, tvp) ? -1 : 0);
 }
 #endif	/* !USEUTIME */
@@ -508,6 +522,7 @@ char *path;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosunlink(path));
 #endif
+
 	return(unlink(path) ? -1 : 0);
 }
 
@@ -531,6 +546,7 @@ char *from, *to;
 		return(-1);
 	}
 #endif
+
 	return(rename(from, to) ? -1 : 0);
 }
 
@@ -544,6 +560,7 @@ int flags, mode;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosopen(path, flags, mode));
 #endif
+
 	return(open(path, flags, mode));
 }
 
@@ -552,6 +569,7 @@ int Xclose(fd)
 int fd;
 {
 	if (fd >= DOSFDOFFSET) return(dosclose(fd));
+
 	return(close(fd));
 }
 
@@ -561,6 +579,7 @@ char *buf;
 int nbytes;
 {
 	if (fd >= DOSFDOFFSET) return(dosread(fd, buf, nbytes));
+
 	return(read(fd, buf, nbytes));
 }
 
@@ -570,6 +589,7 @@ char *buf;
 int nbytes;
 {
 	if (fd >= DOSFDOFFSET) return(doswrite(fd, buf, nbytes));
+
 	return(write(fd, buf, nbytes));
 }
 
@@ -579,6 +599,7 @@ off_t offset;
 int whence;
 {
 	if (fd >= DOSFDOFFSET) return(doslseek(fd, offset, whence));
+
 	return(lseek(fd, offset, whence));
 }
 
@@ -589,7 +610,8 @@ int oldd;
 		errno = EBADF;
 		return(-1);
 	}
-	return(dup(oldd));
+
+	return(safe_dup(oldd));
 }
 
 int Xdup2(oldd, newd)
@@ -600,7 +622,8 @@ int oldd, newd;
 		errno = EBADF;
 		return(-1);
 	}
-	return(dup2(oldd, newd));
+
+	return(safe_dup2(oldd, newd));
 }
 #endif	/* !_NODOSDRIVE */
 
@@ -614,6 +637,7 @@ int mode;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosmkdir(path, mode));
 #endif
+
 	return(mkdir(path, mode) ? -1 : 0);
 }
 
@@ -626,6 +650,7 @@ char *path;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosrmdir(path));
 #endif
+
 	return(rmdir(path) ? -1 : 0);
 }
 
@@ -638,6 +663,7 @@ char *path, *type;
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) return(dosfopen(path, type));
 #endif
+
 	return(fopen(path, type));
 }
 
@@ -647,6 +673,7 @@ int fd;
 char *type;
 {
 	if (fd >= DOSFDOFFSET) return(dosfdopen(fd, type));
+
 	return(fdopen(fd, type));
 }
 
@@ -654,6 +681,7 @@ int Xfclose(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfclose(stream));
+
 	return(fclose(stream));
 }
 
@@ -661,6 +689,7 @@ int Xfeof(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfeof(stream));
+
 	return(feof(stream));
 }
 
@@ -671,6 +700,7 @@ FILE *stream;
 {
 	if (dosfileno(stream) >= 0)
 		return(dosfread(buf, size, nitems, stream));
+
 	return(fread(buf, size, nitems, stream));
 }
 
@@ -681,6 +711,7 @@ FILE *stream;
 {
 	if (dosfileno(stream) >= 0)
 		return(dosfwrite(buf, size, nitems, stream));
+
 	return(fwrite(buf, size, nitems, stream));
 }
 
@@ -688,6 +719,7 @@ int Xfflush(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfflush(stream));
+
 	return(fflush(stream));
 }
 
@@ -695,6 +727,7 @@ int Xfgetc(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfgetc(stream));
+
 	return(fgetc(stream));
 }
 
@@ -703,6 +736,7 @@ int c;
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfputc(c, stream));
+
 	return(fputc(c, stream));
 }
 
@@ -712,6 +746,7 @@ int n;
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfgets(s, n, stream));
+
 	return(fgets(s, n, stream));
 }
 
@@ -720,6 +755,7 @@ char *s;
 FILE *stream;
 {
 	if (dosfileno(stream) >= 0) return(dosfputs(s, stream));
+
 	return(fputs(s, stream));
 }
 #endif	/* !_NODOSDRIVE */

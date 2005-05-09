@@ -1,7 +1,7 @@
 /*
  *	mkfuncno.c
  *
- *	Preprocesser for "funcno.h"
+ *	preprocesser for "funcno.h"
  */
 
 #define	__FD_PRIMAL__
@@ -34,7 +34,7 @@ char *argv[];
 	fprintf(fp, " */\n");
 	fprintf(fp, "\n");
 
-	for (i = 0; i < sizeof(funclist) / sizeof(functable); i++) {
+	for (i = 0; i < (int)sizeof(funclist) / sizeof(functable); i++) {
 		fprintf(fp, "#define\t%s\t", funclist[i].ident);
 		len = strlen(funclist[i].ident);
 		while ((len += 8) < 16) fputc('\t', fp);

@@ -1,13 +1,11 @@
 /*
  *	system.h
  *
- *	Type Definition & Function Prototype Declaration for "system.c"
+ *	type definitions & function prototype declarations for "system.c"
  */
 
-#include <signal.h>
-#if	!MSDOS
-#include <sys/wait.h>
-#endif
+#include "termio.h"
+#include "wait.h"
 #ifdef	HPUX
 /* for TIOCGPGRP & TIOCSPGRP */
 #include <bsdtty.h>
@@ -47,77 +45,16 @@
 #define	RET_NULSYSTEM	256
 #define	READ_EOF	0x100
 
-#ifdef	USESIGPMASK
-typedef sigset_t	sigmask_t;
-#define	Xsigemptyset(m)	sigemptyset(&m);
-#define	Xsigaddset(m,s)	sigaddset(&m, s);
-#define	Xsigdelset(m,s)	sigdelset(&m, s);
-#define	Xsigsetmask(m)	sigprocmask(SIG_SETMASK, &m, NULL)
-#define	Xsigblock(o,m)	sigprocmask(SIG_BLOCK, &m, &o)
-#else	/* !USESIGPMASK */
-typedef int		sigmask_t;
-#define	Xsigemptyset(m)	((m) = 0);
-#define	Xsigaddset(m,s)	((m) |= sigmask(s));
-#define	Xsigdelset(m,s)	((m) &= ~sigmask(s));
-#define	Xsigsetmask(m)	sigsetmask(m)
-#define	Xsigblock(o,m)	((o) = sigblock(m))
-#endif	/* !USESIGPMASK */
-
-#ifdef	SYSV
-#define	Xkillpg(p, s)	kill(-(p), s)
-#else
-#define	Xkillpg(p, s)	killpg(p, s)
-#endif
-
 #ifdef	TIOCGPGRP
-#define	gettcpgrp(f, g)	((ioctl(f, TIOCGPGRP, &g) < 0) ? (g = -1) : g)
+#define	gettcpgrp(f,g)	((ioctl(f, TIOCGPGRP, g) < 0) \
+			? (*(g) = (p_id_t)-1) : *(g))
 #else
-#define	gettcpgrp(f, g)	(g = tcgetpgrp(f))
+#define	gettcpgrp(f,g)	(*(g) = tcgetpgrp(f))
 #endif
 #ifdef	TIOCSPGRP
-#define	settcpgrp(f, g)	ioctl(f, TIOCSPGRP, &(g))
+#define	settcpgrp(f,g)	ioctl(f, TIOCSPGRP, &(g))
 #else
-#define	settcpgrp(f, g)	tcsetpgrp(f, g)
-#endif
-
-#if	!MSDOS
-# ifdef	USEWAITPID
-typedef int		wait_pid_t;
-# else
-typedef union wait	wait_pid_t;
-# endif
-#endif
-
-#ifndef	WSTOPPED
-#define	WSTOPPED	0177
-#endif
-#ifndef	WNOHANG
-#define	WNOHANG		1
-#endif
-#ifndef	WUNTRACED
-#define	WUNTRACED	2
-#endif
-
-#ifndef	STDIN_FILENO
-#define	STDIN_FILENO	0
-#endif
-#ifndef	STDOUT_FILENO
-#define	STDOUT_FILENO	1
-#endif
-#ifndef	STDERR_FILENO
-#define	STDERR_FILENO	2
-#endif
-
-#ifndef	NSIG
-# ifdef	_NSIG
-# define	NSIG	_NSIG
-# else
-#  ifdef	DJGPP
-#  define	NSIG	301
-#  else
-#  define	NSIG	64
-#  endif
-# endif
+#define	settcpgrp	tcsetpgrp
 #endif
 
 #if	MSDOS
@@ -141,47 +78,6 @@ typedef union wait	wait_pid_t;
 #define	NOALIAS
 #define	NOPOSIXUTIL
 #endif
-
-#if	!MSDOS
-#ifdef	USETERMIOS
-#include <termios.h>
-#include <sys/ioctl.h>	/* for Linux libc6 */
-typedef struct termios	termioctl_t;
-typedef struct termios	ldiscioctl_t;
-#define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
-# ifdef	HAVECLINE
-# define	ldisc(a)	((a).c_line)
-# endif
-#define	REQGETP		0
-#define	REQSETP		(TCSAFLUSH + 1)
-#define	REQGETD		0
-#define	REQSETD		(TCSADRAIN + 1)
-#endif	/* !USETERMIOS */
-
-#ifdef	USETERMIO
-#include <termio.h>
-typedef struct termio	termioctl_t;
-typedef struct termio	ldiscioctl_t;
-#define	tioctl		ioctl
-#define	ldisc(a)	((a).c_line)
-#define	REQGETP		TCGETA
-#define	REQSETP		TCSETAF
-#define	REQGETD		TCGETA
-#define	REQSETD		TCSETAW
-#endif	/* !USETERMIO */
-
-#ifdef	USESGTTY
-#include <sgtty.h>
-typedef struct sgttyb	termioctl_t;
-typedef int		ldiscioctl_t;
-#define	tioctl		ioctl
-#define	ldisc(a)	(a)
-#define	REQGETP		TIOCGETP
-#define	REQSETP		TIOCSETP
-#define	REQGETD		TIOCGETD
-#define	REQSETD		TIOCSETD
-#endif	/* !USESGTTY */
-#endif	/* !MSDOS */
 
 typedef struct _heredoc_t {
 	char *eof;
@@ -343,6 +239,7 @@ typedef struct _shbuiltintable {
 #define	BT_POSIXSPECIAL	0004
 #define	BT_NOKANJIFGET	0010
 #define	BT_DISABLE	0020
+#define	BT_FILENAME	0040
 
 #define	SMPREV	4
 typedef struct _statementtable {
@@ -442,7 +339,26 @@ typedef struct _shflagtable {
 
 extern int shellmode;
 extern p_id_t mypid;
+extern p_id_t orgpid;
+extern p_id_t shellpid;
 extern int ret_status;
+extern int interactive;
+extern int errorexit;
+#ifndef	NOJOB
+extern int lastjob;
+extern int prevjob;
+extern int stopped;
+extern p_id_t orgpgrp;
+extern p_id_t childpgrp;
+extern p_id_t ttypgrp;
+#endif
+extern int interrupted;
+extern int nottyout;
+extern int syntaxerrno;
+#if	!MSDOS
+extern int sigconted;
+#endif
+
 extern int verboseexec;
 extern int notexec;
 extern int verboseinput;
@@ -458,24 +374,19 @@ extern int noglob;
 extern int autoexport;
 #ifndef	MINIMUMSHELL
 extern int noclobber;
-# ifndef	NOJOB
-extern int bgnotify;
-extern int jobok;
-# endif
 extern int ignoreeof;
 #endif
-extern int interactive;
 #ifndef	NOJOB
-extern int lastjob;
-extern int prevjob;
-extern int stopped;
-extern p_id_t orgpgrp;
-extern p_id_t childpgrp;
-extern p_id_t ttypgrp;
+extern int bgnotify;
+extern int jobok;
 #endif
-extern int interrupted;
-extern int nottyout;
-extern int syntaxerrno;
+#if	defined (FD) && !defined (_NOEDITMODE)
+extern int emacsmode;
+extern int vimode;
+#endif
+extern int loginshell;
+extern int noruncom;
+
 extern statementtable statementlist[];
 extern signaltable signallist[];
 
@@ -489,7 +400,11 @@ extern VOID dispsignal __P_((int, int, FILE *));
 extern int waitjob __P_((p_id_t, wait_pid_t *, int));
 extern int waitchild __P_((p_id_t, syntaxtree *));
 #endif
+extern VOID setshflag __P_((int, int));
 extern char *evalvararg __P_((char *, int, int, int));
+extern VOID freeheredoc __P_((heredoc_t *, int));
+extern VOID freerlist __P_((redirectlist *, int));
+extern VOID freecomm __P_((command_t *, int));
 extern syntaxtree *newstree __P_((syntaxtree *));
 extern VOID freestree __P_((syntaxtree *));
 extern syntaxtree *parentstree __P_((syntaxtree *));
@@ -527,19 +442,18 @@ extern VOID printstree __P_((syntaxtree *, int, FILE *));
 #if	defined (FD) || !defined (NOPOSIXUTIL)
 extern int tinygetopt __P_((syntaxtree *, char *, int *));
 #endif
+extern int setexport __P_((char *));
+extern int setronly __P_((char *));
 extern int typeone __P_((char *, FILE *));
 #ifndef	FDSH
 extern char **getsimpleargv __P_((syntaxtree *));
 #endif
+extern VOID setshfunc __P_((char *, syntaxtree *));
+extern int unsetshfunc __P_((char *, int));
 #if	MSDOS
 extern int exec_simplecom __P_((syntaxtree *, int, int));
 #else
 extern int exec_simplecom __P_((syntaxtree *, int, int, int));
-#endif
-#ifndef	FDSH
-extern int dosystem __P_((char *));
-extern FILE *dopopen __P_((char *));
-extern int dopclose __P_((FILE *));
 #endif
 extern int execruncom __P_((char *, int));
 extern VOID setshellvar __P_((char *[]));

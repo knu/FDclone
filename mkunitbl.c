@@ -1,11 +1,15 @@
 /*
  *	mkunitbl.c
  *
- *	Unicode Table Generator
+ *	Unicode table generator
  */
 
 #include <stdio.h>
 #include "machine.h"
+
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
 
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
@@ -10198,6 +10202,7 @@ CONST VOID_P vp2;
 
 	tp1 = (convtable *)vp1;
 	tp2 = (convtable *)vp2;
+
 	return(tp1 -> unicode - tp2 -> unicode);
 }
 
@@ -10214,6 +10219,7 @@ CONST VOID_P vp2;
 		n = tp1 -> normalization[i] - tp2 -> normalization[i];
 		if (n) return(n);
 	}
+
 	return(0);
 }
 
@@ -10225,6 +10231,7 @@ FILE *fp;
 		fprintf(stderr, "Cannot write file.\n");
 		return(-1);
 	}
+
 	return(0);
 }
 
@@ -10235,6 +10242,7 @@ FILE *fp;
 	if (fputbyte((int)(w & 0xff), fp) < 0
 	|| fputbyte((int)((w >> 8) & 0xff), fp) < 0)
 		return(-1);
+
 	return(0);
 }
 
@@ -10270,7 +10278,7 @@ char *argv[];
 				return(1);
 		}
 	}
-
 	fclose(fp);
+
 	return(0);
 }

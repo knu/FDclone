@@ -1,7 +1,7 @@
 /*
  *	term.c
  *
- *	Terminal Module
+ *	terminal module
  */
 
 #include <stdio.h>
@@ -15,9 +15,6 @@
 #endif
 
 #if	MSDOS
-#include <dos.h>
-#include <io.h>
-#define	FR_CARRY	00001
 # ifdef	PC98
 # define	NOTUSEBIOS
 # else
@@ -29,24 +26,12 @@
 # define	SCRWIDTH	0x4a
 # endif
 # ifdef	DJGPP
-# include <dpmi.h>
-# include <go32.h>
-# include <sys/farptr.h>
-#  if	defined (DJGPP) && (DJGPP >= 2)
-#  include <libc/dosio.h>
-#  else
-#  define	__dpmi_regs	_go32_dpmi_registers
-#  define	__dpmi_int(v,r)	((r) -> x.ss = (r) -> x.sp = 0, \
-				_go32_dpmi_simulate_int(v, r))
-#  define	_dos_ds		_go32_info_block.selector_for_linear_memory
-#  endif
 # define	intdos2(rp)	__dpmi_int(0x21, rp)
 # define	getkeybuf(o)	_farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + o)
 # define	putkeybuf(o, n)	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + o, n)
 # define	intbios(v, rp)	__dpmi_int(v, rp)
 # define	getbiosbyte(o)	_farpeekb(_dos_ds, BIOSSEG * 0x10 + o)
 # else	/* !DJGPP */
-typedef union REGS	__dpmi_regs;
 # define	intdos2(rp)	int86(0x21, rp, rp)
 # define	getkeybuf(o)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)))
 # define	putkeybuf(o, n)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)) = n)
@@ -59,58 +44,20 @@ static int _asm_cli __P_((char *));
 #  define	disable()	_asm_cli("\n\tcli\n")
 #  endif
 # endif	/* !DJGPP */
-#define	TTYNAME		"CON"
 #else	/* !MSDOS */
 #include <sys/file.h>
 #include <sys/time.h>
-#define	TTYNAME		"/dev/tty"
 
 typedef struct _kstree_t {
 	int key;
 	int num;
 	struct _kstree_t *next;
 } kstree_t;
-
-#ifdef	USETERMIOS
-#include <termios.h>
-#include <sys/ioctl.h>	/* for Linux libc6 */
-typedef struct termios	termioctl_t;
-#define	tioctl(d, r, a)	((r) ? tcsetattr(d, (r) - 1, a) : tcgetattr(d, a))
-#define	getspeed(t)	cfgetospeed(&t)
-#define	REQGETP		0
-#define	REQSETP		(TCSAFLUSH + 1)
-#endif
-
-#ifdef	USETERMIO
-#include <termio.h>
-typedef struct termio	termioctl_t;
-#define	tioctl		ioctl
-#define	getspeed(t)	((t).c_cflag & CBAUD)
-#define	REQGETP		TCGETA
-#define	REQSETP		TCSETAF
-#endif
-
-#ifdef	USESGTTY
-#include <sgtty.h>
-typedef struct sgttyb	termioctl_t;
-#define	tioctl		ioctl
-#define	getspeed(t)	((t).sg_ospeed)
-#define	REQGETP		TIOCGETP
-#define	REQSETP		TIOCSETP
-#endif
+#endif	/* !MSDOS */
 
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
-
-#if	(VEOF == VMIN) || (VEOL == VTIME)
-#define	VAL_VMIN	'\004'
-#define	VAL_VTIME	255
-#else
-#define	VAL_VMIN	0
-#define	VAL_VTIME	0
-#endif
-#endif	/* !MSDOS */
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -127,6 +74,7 @@ extern int errno;
 
 #include "printf.h"
 #include "kctype.h"
+#include "termio.h"
 #include "term.h"
 
 #define	GETSIZE		"\033[6n"
@@ -215,6 +163,9 @@ typedef int	tputs_t;
 # define	TERM_AB			set_a_background
 # define	TERM_Sf			set_foreground
 # define	TERM_Sb			set_background
+# define	TERM_cb			clr_bol
+# define	TERM_as			enter_alt_charset_mode
+# define	TERM_ae			exit_alt_charset_mode
 # define	TERM_ku			key_up
 # define	TERM_kd			key_down
 # define	TERM_kr			key_right
@@ -329,6 +280,9 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # define	TERM_AB			"AB"
 # define	TERM_Sf			"Sf"
 # define	TERM_Sb			"Sb"
+# define	TERM_cb			"cb"
+# define	TERM_as			"as"
+# define	TERM_ae			"ae"
 # define	TERM_ku			"ku"
 # define	TERM_kd			"kd"
 # define	TERM_kr			"kr"
@@ -381,43 +335,6 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 
 #define	TERMCAPSIZE	2048
 
-#ifndef	PENDIN
-#define	PENDIN		0
-#endif
-#ifndef	IEXTEN
-#define	IEXTEN		0
-#endif
-#ifndef	ECHOCTL
-#define	ECHOCTL		0
-#endif
-#ifndef	ECHOKE
-#define	ECHOKE		0
-#endif
-#ifndef	OCRNL
-#define	OCRNL		0
-#endif
-#ifndef	ONOCR
-#define	ONOCR		0
-#endif
-#ifndef	ONLRET
-#define	ONLRET		0
-#endif
-#ifndef	TAB3
-#define	TAB3		OXTABS
-#endif
-#ifndef	VINTR
-#define	VINTR		0
-#endif
-#ifndef	VQUIT
-#define	VQUIT		1
-#endif
-#ifndef	VEOF
-#define	VEOF		4
-#endif
-#ifndef	VEOL
-#define	VEOL		5
-#endif
-
 #ifndef	FREAD
 # ifdef	_FREAD
 # define	FREAD	_FREAD
@@ -437,16 +354,6 @@ typedef struct fd_set {
 
 #define	MAXFDSET	256
 
-#ifndef	LSI_C
-#define	safe_dup	dup
-#define	safe_dup2	dup2
-#else
-static int NEAR safe_dup __P_((int));
-static int NEAR safe_dup2 __P_((int, int));
-#endif
-#if	MSDOS
-static int NEAR newdup __P_((int));
-#endif
 static int NEAR err2 __P_((char *));
 #if	!MSDOS
 static char *NEAR tstrdup __P_((char *));
@@ -481,10 +388,6 @@ static int NEAR sortkeyseq __P_((VOID_A));
 static int putch3 __P_((tputs_t));
 #endif	/* !MSDOS */
 
-#ifdef	LSI_C
-extern u_char _openfile[];
-#endif
-
 #if	!MSDOS && !defined (USETERMINFO)
 # ifdef	NOTERMVAR
 # define	T_EXTERN
@@ -510,7 +413,7 @@ u_char cc_eof = K_CTRL('D');
 #endif
 u_char cc_eol = 255;
 u_char cc_erase = K_CTRL('H');
-VOID_T (*keywaitfunc)__P_((VOID_A)) = NULL;
+int (*keywaitfunc)__P_((VOID_A)) = NULL;
 #if	!MSDOS
 int usegetcursor = 0;
 int suspended = 0;
@@ -565,7 +468,7 @@ static int specialkeycode[] = {
 #define	SPECIALKEYSIZ	((int)(sizeof(specialkeycode) / sizeof(int)))
 #else	/* !MSDOS */
 static char *dumblist[] = {"dumb", "un", "unknown"};
-#define	DUMBLISTSIZE	(sizeof(dumblist) / sizeof(char *))
+#define	DUMBLISTSIZE	((int)sizeof(dumblist) / sizeof(char *))
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
 static char *defkeyseq[K_MAX - K_MIN + 1] = {
@@ -575,7 +478,7 @@ static char *defkeyseq[K_MAX - K_MIN + 1] = {
 	"\033OD",		/* K_LEFT */
 	"\033OC",		/* K_RIGHT */
 	"\033[4~",		/* K_HOME */
-	"\010",			/* K_BS */
+	"\b",			/* K_BS */
 	NULL,			/* K_F0 */
 	"\033[11~",		/* K_F(1) */
 	"\033[12~",		/* K_F(2) */
@@ -696,163 +599,107 @@ static int termflags = 0;
 #define	F_TERMENT	002
 #define	F_INITTERM	004
 #define	F_TTYCHANGED	010
+#define	F_INPROGRESS	020
 #define	F_RESETTTY	(F_INITTTY | F_TTYCHANGED)
 static char *deftermstr[MAXTERMSTR] = {
 #ifdef	PC98
-	"\033[>1h",		/* t_init */
-	"\033[>1l",		/* t_end */
-	"\033)3",		/* t_metamode */
-	"\033)0",		/* t_nometamode */
+	"\033[>1h",		/* T_INIT */
+	"\033[>1l",		/* T_END */
+	"\033)3",		/* T_METAMODE */
+	"\033)0",		/* T_NOMETAMODE */
 #else
-	"",			/* t_init */
-	"",			/* t_end */
-	"",			/* t_metamode */
-	"",			/* t_nometamode */
+	"",			/* T_INIT */
+	"",			/* T_END */
+	"",			/* T_METAMODE */
+	"",			/* T_NOMETAMODE */
 #endif
 #if	MSDOS
-	"",			/* t_scroll */
-	"",			/* t_keypad */
-	"",			/* t_nokeypad */
-	"\033[>5l",		/* t_normalcursor */
-	"\033[>5l",		/* t_highcursor */
-	"\033[>5h",		/* t_nocursor */
-	"\033[s",		/* t_setcursor */
-	"\033[u",		/* t_resetcursor */
+	"",			/* T_SCROLL */
+	"",			/* T_KEYPAD */
+	"",			/* T_NOKEYPAD */
+	"\033[>5l",		/* T_NORMALCURSOR */
+	"\033[>5l",		/* T_HIGHCURSOR */
+	"\033[>5h",		/* T_NOCURSOR */
+	"\033[s",		/* T_SETCURSOR */
+	"\033[u",		/* T_RESETCURSOR */
 #else	/* !MSDOS */
 # ifdef	USETERMINFO
-	"\033[%i%p1%d;%p2%dr",	/* t_scroll */
+	"\033[%i%p1%d;%p2%dr",	/* T_SCROLL */
 # else
-	"\033[%i%d;%dr",	/* t_scroll */
+	"\033[%i%d;%dr",	/* T_SCROLL */
 # endif
 # ifdef	BOW
 	/* hack for bowpad */
-	"",			/* t_keypad */
-	"",			/* t_nokeypad */
-	"",			/* t_normalcursor */
-	"",			/* t_highcursor */
-	"",			/* t_nocursor */
+	"",			/* T_KEYPAD */
+	"",			/* T_NOKEYPAD */
+	"",			/* T_NORMALCURSOR */
+	"",			/* T_HIGHCURSOR */
+	"",			/* T_NOCURSOR */
 # else
-	"\033[?1h\033=",	/* t_keypad */
-	"\033[?1l\033>",	/* t_nokeypad */
-	"\033[?25h",		/* t_normalcursor */
-	"\033[?25h",		/* t_highcursor */
-	"\033[?25l",		/* t_nocursor */
+	"\033[?1h\033=",	/* T_KEYPAD */
+	"\033[?1l\033>",	/* T_NOKEYPAD */
+	"\033[?25h",		/* T_NORMALCURSOR */
+	"\033[?25h",		/* T_HIGHCURSOR */
+	"\033[?25l",		/* T_NOCURSOR */
 # endif
-	"\0337",		/* t_setcursor */
-	"\0338",		/* t_resetcursor */
+	"\0337",		/* T_SETCURSOR */
+	"\0338",		/* T_RESETCURSOR */
 #endif	/* !MSDOS */
-	"\007",			/* t_bell */
-	"\007",			/* t_vbell */
-	"\033[;H\033[2J",	/* t_clear */
-	"\033[m",		/* t_normal */
-	"\033[1m",		/* t_bold */
-	"\033[7m",		/* t_reverse */
-	"\033[2m",		/* t_dim */
-	"\033[5m",		/* t_blink */
-	"\033[7m",		/* t_standout */
-	"\033[4m",		/* t_underline */
-	"\033[m",		/* end_standout */
-	"\033[m",		/* end_underline */
-	"\033[K",		/* l_clear */
-	"\033[L",		/* l_insert */
-	"\033[M",		/* l_delete */
-	"",			/* c_insert */
-	"",			/* c_delete */
+	"\007",			/* T_BELL */
+	"\007",			/* T_VBELL */
+	"\033[;H\033[2J",	/* T_CLEAR */
+	"\033[m",		/* T_NORMAL */
+	"\033[1m",		/* T_BOLD */
+	"\033[7m",		/* T_REVERSE */
+	"\033[2m",		/* T_DIM */
+	"\033[5m",		/* T_BLINK */
+	"\033[7m",		/* T_STANDOUT */
+	"\033[4m",		/* T_UNDERLINE */
+	"\033[m",		/* END_STANDOUT */
+	"\033[m",		/* END_UNDERLINE */
+	"\033[K",		/* L_CLEAR */
+	"\033[1K",		/* L_CLEARBOL */
+	"\033[L",		/* L_INSERT */
+	"\033[M",		/* L_DELETE */
+	"",			/* C_INSERT */
+	"",			/* C_DELETE */
 #if	MSDOS
-	"\033[%d;%dH",		/* c_locate */
+	"\033[%d;%dH",		/* C_LOCATE */
 #else
-# ifdef	USETERMINFO
-	"\033[%i%p1%d;%p2%dH",	/* c_locate */
+# if	defined (LINUX) || defined (USETERMINFO)
+	"\033[%i%p1%d;%p2%dH",	/* C_LOCATE */
 # else
-	"\033[%i%d;%dH",	/* c_locate */
+	"\033[%i%d;%dH",	/* C_LOCATE */
 # endif
 #endif
-	"\033[H",		/* c_home */
-	"\r",			/* c_return */
-	"\n",			/* c_newline */
-	"\n",			/* c_scrollforw */
-	"",			/* c_scrollrev */
-	"\033[A",		/* c_up */
-	"\012",			/* c_down */
-	"\033[C",		/* c_right */
-	"\010",			/* c_left */
+	"\033[H",		/* C_HOME */
+	"\r",			/* C_RETURN */
+	"\n",			/* C_NEWLINE */
+	"\n",			/* C_SCROLLFORW */
+	"",			/* C_SCROLLREV */
+	"\033[A",		/* C_UP */
+	"\n",			/* C_DOWN */
+	"\033[C",		/* C_RIGHT */
+	"\b",			/* C_LEFT */
 #if	!MSDOS && defined (USETERMINFO)
-	"\033[%p1%dA",		/* c_nup */
-	"\033[%p1%dB",		/* c_ndown */
-	"\033[%p1%dC",		/* c_nright */
-	"\033[%p1%dD",		/* c_nleft */
-	"\033[3%p1%dm",		/* t_fgcolor */
-	"\033[4%p1%dm",		/* t_bgcolor */
+	"\033[%p1%dA",		/* C_NUP */
+	"\033[%p1%dB",		/* C_NDOWN */
+	"\033[%p1%dC",		/* C_NRIGHT */
+	"\033[%p1%dD",		/* C_NLEFT */
+	"\033[3%p1%dm",		/* T_FGCOLOR */
+	"\033[4%p1%dm",		/* T_BGCOLOR */
 #else
-	"\033[%dA",		/* c_nup */
-	"\033[%dB",		/* c_ndown */
-	"\033[%dC",		/* c_nright */
-	"\033[%dD",		/* c_nleft */
-	"\033[3%dm",		/* t_fgcolor */
-	"\033[4%dm",		/* t_bgcolor */
+	"\033[%dA",		/* C_NUP */
+	"\033[%dB",		/* C_NDOWN */
+	"\033[%dC",		/* C_NRIGHT */
+	"\033[%dD",		/* C_NLEFT */
+	"\033[3%dm",		/* T_FGCOLOR */
+	"\033[4%dm",		/* T_BGCOLOR */
 #endif
 };
 
 
-#ifdef	LSI_C
-static int NEAR safe_dup(oldd)
-int oldd;
-{
-	int fd;
-
-	if ((fd = dup(oldd)) < 0) return(-1);
-	if (fd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
-		_openfile[fd] = _openfile[oldd];
-	return(fd);
-}
-
-static int NEAR safe_dup2(oldd, newd)
-int oldd, newd;
-{
-	int fd;
-
-	if (oldd == newd) return(newd);
-	if ((fd = dup2(oldd, newd)) < 0) return(-1);
-	if (newd >= 0 && newd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
-		_openfile[newd] = _openfile[oldd];
-	return(fd);
-}
-#endif	/* LSI_C */
-
-int opentty(VOID_A)
-{
-#ifdef	SELECTRWONLY
-	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDONLY, 0600)) < 0
-#else
-	if (ttyio < 0 && (ttyio = open(TTYNAME, O_RDWR, 0600)) < 0
-#endif
-	&& (ttyio = safe_dup(STDERR_FILENO)) < 0)
-		err2("dup()");
-	return(ttyio);
-}
-
 #if	MSDOS
-static int NEAR newdup(fd)
-int fd;
-{
-	__dpmi_regs reg;
-	int n;
-
-	if (fd < 0
-	|| fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO)
-		return(fd);
-
-	for (n = 20 - 1; n > fd; n--) {
-		reg.x.ax = 0x4400;
-		reg.x.bx = (u_int)n;
-		intdos2(&reg);
-		if (reg.x.flags & FR_CARRY) break;
-	}
-	if (n <= fd || safe_dup2(fd, n) < 0) return(fd);
-	close(fd);
-	return(n);
-}
-
 int inittty(reset)
 int reset;
 {
@@ -864,8 +711,11 @@ int reset;
 	static int dupout = -1;
 	int fd;
 
+	if (termflags & F_INPROGRESS) return(-1);
+	termflags |= F_INPROGRESS;
+
 	if (!reset) {
-		opentty();
+		if (opentty(&ttyio, &ttyout) < 0) err2("opentty()");
 #ifdef	NOTUSEBIOS
 		if (!keybuftop) keybuftop = getkeybuf(KEYBUFWORKTOP);
 #endif
@@ -888,8 +738,7 @@ int reset;
 		}
 		termflags |= F_INITTTY;
 	}
-	else {
-		if (!(termflags & F_INITTTY)) return(0);
+	else if (termflags & F_INITTTY) {
 #ifndef	DJGPP
 		reg.x.ax = 0x3301;
 		reg.h.dl = dupbrk;
@@ -914,6 +763,8 @@ int reset;
 			}
 		}
 	}
+	termflags &= ~F_INPROGRESS;
+
 	return(0);
 }
 
@@ -926,6 +777,7 @@ int cooked2(VOID_A)
 	reg.h.dl = 1;
 	int86(0x21, &reg, &reg);
 #endif
+
 	return(0);
 }
 
@@ -938,6 +790,7 @@ int cbreak2(VOID_A)
 	reg.h.dl = 0;
 	int86(0x21, &reg, &reg);
 #endif
+
 	return(0);
 }
 
@@ -950,6 +803,7 @@ int raw2(VOID_A)
 	reg.h.dl = 0;
 	int86(0x21, &reg, &reg);
 #endif
+
 	return(0);
 }
 
@@ -994,6 +848,7 @@ int keyflush(VOID_A)
 	keybuftop = getkeybuf(KEYBUFWORKTOP);
 #endif
 	enable();
+
 	return(0);
 }
 
@@ -1009,9 +864,17 @@ int reset;
 	static termioctl_t dupttyio;
 	termioctl_t tty;
 
-	if (!reset) opentty();
-	else if (ttyio < 0 || (termflags & F_RESETTTY) != F_RESETTTY)
-		return(0);
+	if (termflags & F_INPROGRESS) return(-1);
+	termflags |= F_INPROGRESS;
+
+	if (!reset) {
+		if (opentty(&ttyio, &ttyout) < 0) err2("opentty()");
+	}
+	else if (ttyio < 0 || (termflags & F_RESETTTY) != F_RESETTTY) {
+		termflags &= ~F_INPROGRESS;
+		return(-1);
+	}
+
 	if (tioctl(ttyio, REQGETP, &tty) < 0) {
 		termflags &= ~F_INITTTY;
 		close(ttyio);
@@ -1021,8 +884,8 @@ int reset;
 	if (!reset) {
 		memcpy((char *)&dupttyio, (char *)&tty, sizeof(termioctl_t));
 #ifdef	USESGTTY
-		if (ioctl(ttyio, TIOCLGET, &dupttyflag) < 0
-		|| ioctl(ttyio, TIOCGETC, &cc) < 0) {
+		if (Xioctl(ttyio, TIOCLGET, &dupttyflag) < 0
+		|| Xioctl(ttyio, TIOCGETC, &cc) < 0) {
 			termflags &= ~F_INITTTY;
 			err2("ioctl()");
 		}
@@ -1032,10 +895,18 @@ int reset;
 		cc_eol = cc.t_brkc;
 		if (cc_erase != 255) cc_erase = dupttyio.sg_erase;
 #else
+# ifdef	VINTR
 		cc_intr = dupttyio.c_cc[VINTR];
+# endif
+# ifdef	VQUIT
 		cc_quit = dupttyio.c_cc[VQUIT];
+# endif
+# ifdef	VEOF
 		cc_eof = dupttyio.c_cc[VEOF];
+# endif
+# ifdef	VEOL
 		cc_eol = dupttyio.c_cc[VEOL];
+# endif
 		if (cc_erase != 255) cc_erase = dupttyio.c_cc[VERASE];
 #endif
 #ifndef	USETERMINFO
@@ -1045,7 +916,7 @@ int reset;
 	}
 	else if (tioctl(ttyio, REQSETP, &dupttyio) < 0
 #ifdef	USESGTTY
-	|| ioctl(ttyio, TIOCLSET, &dupttyflag) < 0
+	|| Xioctl(ttyio, TIOCLSET, &dupttyflag) < 0
 #endif
 	) {
 		termflags &= ~F_INITTTY;
@@ -1053,6 +924,7 @@ int reset;
 		ttyio = -1;
 		err2("ioctl()");
 	}
+	termflags &= ~F_INPROGRESS;
 
 	return(0);
 }
@@ -1060,26 +932,28 @@ int reset;
 #ifdef	USESGTTY
 static int NEAR ttymode(set, reset, lset, lreset)
 int set, reset, lset, lreset;
+#else
+static int NEAR ttymode(set, reset, iset, ireset, oset, oreset, vmin, vtime)
+int set, reset, iset, ireset, oset, oreset, vmin, vtime;
+#endif
 {
-	termioctl_t tty;
+#ifdef	USESGTTY
 	int lflag;
+#endif
+	termioctl_t tty;
 
-	if (!(termflags & F_INITTTY)) return(-1);
-	if (ioctl(ttyio, TIOCLGET, &lflag) < 0) err2("ioctl()");
+	if (!(termflags & F_INITTTY) || (termflags & F_INPROGRESS)) return(-1);
+	termflags |= F_INPROGRESS;
+
 	if (tioctl(ttyio, REQGETP, &tty) < 0) err2("ioctl()");
+#ifdef	USESGTTY
+	if (Xioctl(ttyio, TIOCLGET, &lflag) < 0) err2("ioctl()");
 	if (set) tty.sg_flags |= set;
 	if (reset) tty.sg_flags &= ~reset;
 	if (lset) lflag |= lset;
 	if (lreset) lflag &= ~lreset;
-	if (ioctl(ttyio, TIOCLSET, &lflag) < 0) err2("ioctl()");
-#else
-static int NEAR ttymode(set, reset, iset, ireset, oset, oreset, vmin, vtime)
-int set, reset, iset, ireset, oset, oreset, vmin, vtime;
-{
-	termioctl_t tty;
-
-	if (!(termflags & F_INITTTY)) return(-1);
-	if (tioctl(ttyio, REQGETP, &tty) < 0) err2("ioctl()");
+	if (Xioctl(ttyio, TIOCLSET, &lflag) < 0) err2("ioctl()");
+#else	/* !USESGTTY */
 	if (set) tty.c_lflag |= set;
 	if (reset) tty.c_lflag &= ~reset;
 	if (iset) tty.c_iflag |= iset;
@@ -1090,9 +964,11 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 		tty.c_cc[VMIN] = vmin;
 		tty.c_cc[VTIME] = vtime;
 	}
-#endif
+#endif	/* !USESGTTY */
 	if (tioctl(ttyio, REQSETP, &tty) < 0) err2("ioctl()");
 	termflags |= F_TTYCHANGED;
+	termflags &= ~F_INPROGRESS;
+
 	return(0);
 }
 
@@ -1105,6 +981,7 @@ int cooked2(VOID_A)
 		BRKINT | IXON, IGNBRK | ISTRIP,
 		OPOST, 0, VAL_VMIN, VAL_VTIME);
 #endif
+
 	return(0);
 }
 
@@ -1115,6 +992,7 @@ int cbreak2(VOID_A)
 #else
 	ttymode(ISIG | IEXTEN, ICANON, BRKINT | IXON, IGNBRK, OPOST, 0, 1, 0);
 #endif
+
 	return(0);
 }
 
@@ -1126,6 +1004,7 @@ int raw2(VOID_A)
 	ttymode(0, ISIG | ICANON | IEXTEN,
 		IGNBRK, BRKINT | IXON, 0, OPOST, 1, 0);
 #endif
+
 	return(0);
 }
 
@@ -1136,6 +1015,7 @@ int echo2(VOID_A)
 #else
 	ttymode(ECHO | ECHOE | ECHOCTL | ECHOKE, ECHONL, 0, 0, 0, 0, 0, 0);
 #endif
+
 	return(0);
 }
 
@@ -1146,6 +1026,7 @@ int noecho2(VOID_A)
 #else
 	ttymode(0, ECHO | ECHOE | ECHOK | ECHONL, 0, 0, 0, 0, 0, 0);
 #endif
+
 	return(0);
 }
 
@@ -1156,6 +1037,7 @@ int nl2(VOID_A)
 #else
 	ttymode(0, 0, ICRNL, 0, ONLCR, OCRNL | ONOCR | ONLRET, 0, 0);
 #endif
+
 	return(0);
 }
 
@@ -1166,6 +1048,7 @@ int nonl2(VOID_A)
 #else
 	ttymode(0, 0, 0, ICRNL, 0, ONLCR, 0, 0);
 #endif
+
 	return(0);
 }
 
@@ -1176,6 +1059,7 @@ int tabs(VOID_A)
 #else
 	ttymode(0, 0, 0, 0, 0, TAB3, 0, 0);
 #endif
+
 	return(0);
 }
 
@@ -1186,6 +1070,7 @@ int notabs(VOID_A)
 #else
 	ttymode(0, 0, 0, 0, TAB3, 0, 0, 0);
 #endif
+
 	return(0);
 }
 
@@ -1194,14 +1079,15 @@ int keyflush(VOID_A)
 #ifdef	USESGTTY
 	int i = FREAD;
 
-	ioctl(ttyio, TIOCFLUSH, &i);
+	VOID_C Xioctl(ttyio, TIOCFLUSH, &i);
 #else	/* !USESGTTY */
 # ifdef	USETERMIOS
-	tcflush(ttyio, TCIFLUSH);
+	VOID_C Xtcflush(ttyio, TCIFLUSH);
 # else
-	ioctl(ttyio, TCFLSH, 0);
+	VOID_C Xioctl(ttyio, TCFLSH, 0);
 # endif
 #endif	/* !USESGTTY */
+
 	return(0);
 }
 #endif	/* !MSDOS */
@@ -1227,10 +1113,11 @@ int isnl;
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	if (!dumbterm) {
-		putterms(t_keypad);
+		putterms(T_KEYPAD);
 		tflush();
 	}
 	isttyiomode = isnl + 1;
+
 	return(0);
 }
 
@@ -1264,11 +1151,12 @@ int stdiomode(VOID_A)
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	if (!dumbterm) {
-		putterms(t_nokeypad);
+		putterms(T_NOKEYPAD);
 		tflush();
 	}
 	isttyiomode = 0;
-	return(isnl);
+
+	return(0);
 }
 
 int termmode(init)
@@ -1279,17 +1167,18 @@ int init;
 
 	oldmode = mode;
 	if (init >= 0 && mode != init) {
-		putterms((init) ? t_init : t_end);
+		putterms((init) ? T_INIT : T_END);
 		tflush();
 		mode = init;
 	}
+
 	return(oldmode);
 }
 
 int exit2(no)
 int no;
 {
-	if (!dumbterm && (termflags & F_TERMENT)) putterm(t_normal);
+	if (!dumbterm && (termflags & F_TERMENT)) putterm(T_NORMAL);
 	endterm();
 	inittty(1);
 	keyflush();
@@ -1297,14 +1186,11 @@ int no;
 # if	!MSDOS
 	freeterment();
 # endif
-	if (ttyout && ttyout != stderr) {
-		if (fileno(ttyout) == ttyio) ttyio = -1;
-		fclose(ttyout);
-	}
-	if (ttyio >= 0) close(ttyio);
+	VOID_C closetty(&ttyio, &ttyout);
 	muntrace();
-#endif
+#endif	/* DEBUG */
 	exit(no);
+
 /*NOTREACHED*/
 	return(0);
 }
@@ -1316,7 +1202,7 @@ char *mes;
 
 	duperrno = errno;
 	if (termflags & F_INITTTY) {
-		if (!dumbterm && (termflags & F_TERMENT)) putterm(t_normal);
+		if (!dumbterm && (termflags & F_TERMENT)) putterm(T_NORMAL);
 		endterm();
 		cooked2();
 		echo2();
@@ -1331,6 +1217,7 @@ char *mes;
 	fputnl(stderr);
 	inittty(1);
 	exit(2);
+
 /*NOTREACHED*/
 	return(0);
 }
@@ -1344,6 +1231,7 @@ char *s;
 	if (!s) s = "";
 	if (!(cp = (char *)malloc(strlen(s) + 1))) err2("malloc()");
 	strcpy(cp, s);
+
 	return(cp);
 }
 #endif	/* !MSDOS */
@@ -1390,10 +1278,8 @@ static int NEAR defaultterm(VOID_A)
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
 	for (i = 21; i <= 30; i++)
 		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | 01000;
-	for (i = 31; K_F(i) < K_DL; i++)
-		if (defkeyseq[K_F(i) - K_MIN]) keyseq[K_F(i) - K_MIN].code = i;
-	keyseq[K_F('?') - K_MIN].code = K_CR;
 #endif	/* !MSDOS */
+
 	return(0);
 }
 
@@ -1403,11 +1289,12 @@ int *yp, *xp;
 {
 	*xp = getbiosbyte(SCRWIDTH);
 	*yp = getbiosbyte(SCRHEIGHT) + 1;
+
 	return(0);
 }
 
-int getxy(yp, xp)
-int *yp, *xp;
+int getxy(xp, yp)
+int *xp, *yp;
 {
 	__dpmi_regs reg;
 
@@ -1416,6 +1303,7 @@ int *yp, *xp;
 	intbios(VIDEOBIOS, &reg);
 	*xp = reg.h.dl + 1;
 	*yp = reg.h.dh + 1;
+
 	return(0);
 }
 
@@ -1427,16 +1315,18 @@ int *yp, *xp;
 # if	MSDOS
 	char *cp;
 # endif
-	int i, sc;
+	int i, x, y;
 
-	sc = (t_setcursor && *t_setcursor && t_resetcursor && *t_resetcursor);
-	if (sc) putterms(t_setcursor);
+# if	!MSDOS
+	if (!usegetcursor) return(-1);
+# endif
+	if (getxy(&x, &y) < 0) x = y = -1;
 # if	MSDOS
-	if ((cp = tparamstr(c_locate, 0, 999))) {
+	if ((cp = tparamstr(termstr[C_LOCATE], 0, 999))) {
 		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
 		free(cp);
 	}
-	if ((cp = tparamstr(c_ndown, 999, 999))) {
+	if ((cp = tparamstr(termstr[C_NDOWN], 999, 999))) {
 		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
 		free(cp);
 	}
@@ -1444,49 +1334,61 @@ int *yp, *xp;
 	locate(998, 998);
 	tflush();
 # endif
-	i = getxy(yp, xp);
-	if (sc) putterms(t_resetcursor);
+	i = getxy(xp, yp);
+	if (x >= 0 && y >= 0) locate(x, y);
+
 	return(i);
 }
 
-int getxy(yp, xp)
-int *yp, *xp;
+int getxy(xp, yp)
+int *xp, *yp;
 {
+# if	!MSDOS
+	char *tty;
+# endif
 	char *format, buf[sizeof(SIZEFMT) + 4];
 	int i, j, tmp, count, *val[2];
 
 	format = SIZEFMT;
 	keyflush();
 # if	MSDOS
-	for (i = 0; i < sizeof(GETSIZE) - 1; i++) bdos(0x06, GETSIZE[i], 0);
+	for (i = 0; i < (int)sizeof(GETSIZE) - 1; i++)
+		bdos(0x06, GETSIZE[i], 0);
 # else
 	if (!usegetcursor) return(-1);
+	saveterm(ttyio, &tty, NULL);
+	noecho2();
 	write(ttyio, GETSIZE, sizeof(GETSIZE) - 1);
 # endif
 
+	i = 0;
 	do {
-		if (!kbhit2(WAITKEYPAD * 1000L)) return(-1);
-# if	MSDOS
-		buf[0] = bdos(0x07, 0x00, 0);
-# else
-		if ((tmp = getch2()) == EOF) return(-1);
-		buf[0] = tmp;
-# endif
-	} while (buf[0] != format[0]);
-
-	i = 1;
-	while (i < sizeof(buf) - 1) {
-		if (!kbhit2(WAITKEYPAD * 1000L)) return(-1);
+		if (!kbhit2(WAITKEYPAD * 1000L)) break;
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
-		if ((tmp = getch2()) == EOF) return(-1);
+		if ((tmp = getch2()) == EOF) break;
 		buf[i] = tmp;
 # endif
-		if (buf[i++] == format[sizeof(SIZEFMT) - 2]) break;
+	} while (buf[i] != format[0]);
+
+	if (buf[i] == format[0]) while (i < (int)sizeof(buf) - 2) {
+		if (!kbhit2(WAITKEYPAD * 1000L)) break;
+# if	MSDOS
+		buf[++i] = bdos(0x07, 0x00, 0);
+# else
+		if ((tmp = getch2()) == EOF) break;
+		buf[++i] = tmp;
+# endif
+		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
 	}
 	keyflush();
-	buf[i] = '\0';
+# if	!MSDOS
+	loadterm(ttyio, tty, NULL);
+	if (tty) free(tty);
+# endif
+	if (!i || buf[i] != format[sizeof(SIZEFMT) - 2]) return(-1);
+	buf[++i] = '\0';
 
 	count = 0;
 	val[0] = yp;
@@ -1501,6 +1403,7 @@ int *yp, *xp;
 		else if (format[i] != buf[j++]) break;
 	}
 	if (count != 2) return(-1);
+
 	return(0);
 }
 #endif	/* !MSDOS || !USEVIDEOBIOS */
@@ -1513,6 +1416,7 @@ int arg1, arg2;
 	char *cp;
 
 	if (asprintf2(&cp, s, arg1, arg2) < 0) return(NULL);
+
 	return(cp);
 }
 
@@ -1520,12 +1424,16 @@ int arg1, arg2;
 int getterment(s)
 char *s;
 {
-	if (termflags & F_TERMENT) return(-1);
+	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return(-1);
+	termflags |= F_INPROGRESS;
+
 	defaultterm();
 	if (n_column < 0) n_column = 80;
 	n_lastcolumn = n_column - 1;
 	if (n_line < 0) n_line = 25;
 	termflags |= F_TERMENT;
+	termflags &= ~F_INPROGRESS;
+
 	return(0);
 }
 
@@ -1550,6 +1458,7 @@ int arg1, arg2;
 	if (!s || !(s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0)))
 		return(NULL);
 #  endif
+
 	return(tstrdup(s));
 # else	/* !USETERMINFO */
 	printbuf_t pbuf;
@@ -1645,12 +1554,14 @@ int arg1, arg2;
 	}
 
 	pbuf.buf[pbuf.ptr] = '\0';
+
 	return(pbuf.buf);
 # endif	/* !USETERMINFO */
 }
 
 static char *NEAR tgetstr2(term, s)
-char **term, *s;
+char **term;
+char *s;
 {
 # ifndef	USETERMINFO
 	char strbuf[TERMCAPSIZE];
@@ -1663,6 +1574,7 @@ char **term, *s;
 		if (*term) free(*term);
 		*term = tstrdup(s);
 	}
+
 	return(*term);
 }
 
@@ -1684,6 +1596,7 @@ char **term, *str1, *str2;
 		if (*term) free(*term);
 		*term = str1;
 	}
+
 	return(*term);
 }
 
@@ -1712,6 +1625,7 @@ char *s;
 		}
 	}
 	keyseq[n].str = cp;
+
 	return(cp);
 }
 
@@ -1752,6 +1666,7 @@ int n;
 	if (!list) return(-1);
 	for (i = list[n].num - 1; i >= 0; i--) freekeyseqtree(list[n].next, i);
 	if (!n) free(list);
+
 	return(0);
 }
 
@@ -1768,6 +1683,7 @@ CONST VOID_P vp2;
 	if (!(kp2 -> str)) return(1);
 	n = (kp1 -> len < kp2 -> len) ? kp1 -> len : kp2 -> len;
 	if ((n = memcmp(kp1 -> str, kp2 -> str, n))) return(n);
+
 	return((int)(kp1 -> len) - (int)(kp2 -> len));
 }
 
@@ -1813,12 +1729,9 @@ char *s;
 	char *cp, *term;
 	int i, j, dumb, dupdumbterm;
 
-	if (termflags & F_TERMENT) return(-1);
-	if (!ttyout) {
-		if (!(ttyout = fdopen(ttyio, "w+b"))
-		&& !(ttyout = fopen(TTYNAME, "w+b")))
-			ttyout = stderr;
-	}
+	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return(-1);
+	termflags |= F_INPROGRESS;
+
 	dupdumbterm = dumbterm;
 	dumbterm = dumb = 0;
 	term = (s) ? s : (char *)getenv("TERM");
@@ -1890,6 +1803,7 @@ char *s;
 			keyseq[i].len = (keyseq[i].str)
 				? strlen(keyseq[i].str) : 0;
 		sortkeyseq();
+		termflags &= ~F_INPROGRESS;
 		return(-1);
 	}
 
@@ -1907,7 +1821,7 @@ char *s;
 	if (tgetstr2(&cp, TERM_ku) || tgetstr2(&cp, TERM_kd)
 	|| tgetstr2(&cp, TERM_kr) || tgetstr2(&cp, TERM_kl)) {
 		free(cp);
-		*t_keypad = *t_nokeypad = '\0';
+		*(termstr[T_KEYPAD]) = *(termstr[T_NOKEYPAD]) = '\0';
 		for (i = K_DOWN; i <= K_RIGHT; i++) {
 			if (keyseq[i - K_MIN].str) {
 				 free(keyseq[i - K_MIN].str);
@@ -1922,63 +1836,64 @@ char *s;
 	if (n_line < 0 && (n_line = tgetnum2(TERM_li)) < 0) n_column = 24;
 	stable_standout = tgetflag2(TERM_xs);
 	if (dumbterm < 2 && tgetflag2(TERM_gn)) dumbterm = 2;
-	tgetstr2(&t_init, TERM_ti);
-	tgetstr2(&t_end, TERM_te);
-	tgetstr2(&t_metamode, TERM_mm);
-	tgetstr2(&t_nometamode, TERM_mo);
-	tgetstr2(&t_scroll, TERM_cs);
-	tgetstr2(&t_keypad, TERM_ks);
-	tgetstr2(&t_nokeypad, TERM_ke);
+	tgetstr2(&(termstr[T_INIT]), TERM_ti);
+	tgetstr2(&(termstr[T_END]), TERM_te);
+	tgetstr2(&(termstr[T_METAMODE]), TERM_mm);
+	tgetstr2(&(termstr[T_NOMETAMODE]), TERM_mo);
+	tgetstr2(&(termstr[T_SCROLL]), TERM_cs);
+	tgetstr2(&(termstr[T_KEYPAD]), TERM_ks);
+	tgetstr2(&(termstr[T_NOKEYPAD]), TERM_ke);
 # ifdef	IRIX
 	if (winterm);
 	else
 # endif
 	{
-		tgetstr2(&t_normalcursor, TERM_ve);
-		tgetstr2(&t_highcursor, TERM_vs);
-		tgetstr2(&t_nocursor, TERM_vi);
+		tgetstr2(&(termstr[T_NORMALCURSOR]), TERM_ve);
+		tgetstr2(&(termstr[T_HIGHCURSOR]), TERM_vs);
+		tgetstr2(&(termstr[T_NOCURSOR]), TERM_vi);
 	}
-	tgetstr2(&t_setcursor, TERM_sc);
-	tgetstr2(&t_resetcursor, TERM_rc);
-	tgetstr2(&t_bell, TERM_bl);
-	tgetstr2(&t_vbell, TERM_vb);
-	tgetstr2(&t_clear, TERM_cl);
-	tgetstr2(&t_normal, TERM_me);
-	tgetstr2(&t_bold, TERM_md);
-	tgetstr2(&t_reverse, TERM_mr);
-	tgetstr2(&t_dim, TERM_mh);
-	tgetstr2(&t_blink, TERM_mb);
-	tgetstr2(&t_standout, TERM_so);
-	tgetstr2(&t_underline, TERM_us);
-	tgetstr2(&end_standout, TERM_se);
-	tgetstr2(&end_underline, TERM_ue);
-	tgetstr2(&l_clear, TERM_ce);
-	tgetstr2(&l_insert, TERM_al);
-	tgetstr2(&l_delete, TERM_dl);
-	tgetstr3(&c_insert, TERM_ic, TERM_IC);
-	tgetstr3(&c_delete, TERM_dc, TERM_DC);
-	tgetstr2(&c_locate, TERM_cm);
-	tgetstr2(&c_home, TERM_ho);
-	tgetstr2(&c_return, TERM_cr);
-	tgetstr2(&c_newline, TERM_nl);
-	tgetstr2(&c_scrollforw, TERM_sf);
-	tgetstr2(&c_scrollrev, TERM_sr);
-	tgetstr3(&c_up, TERM_up, TERM_UP);
-	tgetstr3(&c_down, TERM_do, TERM_DO);
-	tgetstr3(&c_right, TERM_nd, TERM_RI);
-	tgetstr3(&c_left, TERM_le, TERM_LE);
-	tgetstr2(&c_nup, TERM_UP);
-	tgetstr2(&c_ndown, TERM_DO);
-	tgetstr2(&c_nright, TERM_RI);
-	tgetstr2(&c_nleft, TERM_LE);
+	tgetstr2(&(termstr[T_SETCURSOR]), TERM_sc);
+	tgetstr2(&(termstr[T_RESETCURSOR]), TERM_rc);
+	tgetstr2(&(termstr[T_BELL]), TERM_bl);
+	tgetstr2(&(termstr[T_VBELL]), TERM_vb);
+	tgetstr2(&(termstr[T_CLEAR]), TERM_cl);
+	tgetstr2(&(termstr[T_NORMAL]), TERM_me);
+	tgetstr2(&(termstr[T_BOLD]), TERM_md);
+	tgetstr2(&(termstr[T_REVERSE]), TERM_mr);
+	tgetstr2(&(termstr[T_DIM]), TERM_mh);
+	tgetstr2(&(termstr[T_BLINK]), TERM_mb);
+	tgetstr2(&(termstr[T_STANDOUT]), TERM_so);
+	tgetstr2(&(termstr[T_UNDERLINE]), TERM_us);
+	tgetstr2(&(termstr[END_STANDOUT]), TERM_se);
+	tgetstr2(&(termstr[END_UNDERLINE]), TERM_ue);
+	tgetstr2(&(termstr[L_CLEAR]), TERM_ce);
+	tgetstr2(&(termstr[L_CLEARBOL]), TERM_cb);
+	tgetstr2(&(termstr[L_INSERT]), TERM_al);
+	tgetstr2(&(termstr[L_DELETE]), TERM_dl);
+	tgetstr3(&(termstr[C_INSERT]), TERM_ic, TERM_IC);
+	tgetstr3(&(termstr[C_DELETE]), TERM_dc, TERM_DC);
+	tgetstr2(&(termstr[C_LOCATE]), TERM_cm);
+	tgetstr2(&(termstr[C_HOME]), TERM_ho);
+	tgetstr2(&(termstr[C_RETURN]), TERM_cr);
+	tgetstr2(&(termstr[C_NEWLINE]), TERM_nl);
+	tgetstr2(&(termstr[C_SCROLLFORW]), TERM_sf);
+	tgetstr2(&(termstr[C_SCROLLREV]), TERM_sr);
+	tgetstr3(&(termstr[C_UP]), TERM_up, TERM_UP);
+	tgetstr3(&(termstr[C_DOWN]), TERM_do, TERM_DO);
+	tgetstr3(&(termstr[C_RIGHT]), TERM_nd, TERM_RI);
+	tgetstr3(&(termstr[C_LEFT]), TERM_le, TERM_LE);
+	tgetstr2(&(termstr[C_NUP]), TERM_UP);
+	tgetstr2(&(termstr[C_NDOWN]), TERM_DO);
+	tgetstr2(&(termstr[C_NRIGHT]), TERM_RI);
+	tgetstr2(&(termstr[C_NLEFT]), TERM_LE);
 
 # if	!defined (HPUX) || !defined (USETERMINFO) \
 || (defined (set_a_foreground) && defined (set_foreground))
 	/* Hack for HP-UX 10.20 */
 	cp = NULL;
 	if (tgetstr2(&cp, TERM_AF) || tgetstr2(&cp, TERM_Sf)) {
-		if (t_fgcolor) free(t_fgcolor);
-		t_fgcolor = cp;
+		if (termstr[T_FGCOLOR]) free(termstr[T_FGCOLOR]);
+		termstr[T_FGCOLOR] = cp;
 	}
 # endif
 
@@ -1987,8 +1902,8 @@ char *s;
 	/* Hack for HP-UX 10.20 */
 	cp = NULL;
 	if (tgetstr2(&cp, TERM_AB) || tgetstr2(&cp, TERM_Sb)) {
-		if (t_fgcolor) free(t_bgcolor);
-		t_bgcolor = cp;
+		if (termstr[T_FGCOLOR]) free(termstr[T_BGCOLOR]);
+		termstr[T_BGCOLOR] = cp;
 	}
 # endif
 
@@ -2062,6 +1977,7 @@ char *s;
 		}
 	}
 	sortkeyseq();
+	termflags &= ~F_INPROGRESS;
 
 	return(0);
 }
@@ -2086,9 +2002,57 @@ int freeterment(VOID_A)
 		freekeyseqtree(keyseqtree, 0);
 		keyseqtree = NULL;
 	}
-
 	termflags &= ~F_TERMENT;
+
 	return(0);
+}
+
+int setdefterment(VOID_A)
+{
+	freeterment();
+	defaultterm();
+
+	return(0);
+}
+
+int setdefkeyseq(VOID_A)
+{
+	int i;
+
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		if (keyseq[i].str) free(keyseq[i].str);
+		if (!(defkeyseq[i])) {
+			keyseq[i].str = NULL;
+			keyseq[i].len = 0;
+		}
+		else {
+			keyseq[i].str = tstrdup(defkeyseq[i]);
+			keyseq[i].len = strlen(keyseq[i].str);
+		}
+	}
+	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
+	for (i = 21; i <= 30; i++)
+		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | 01000;
+	sortkeyseq();
+
+	return(0);
+}
+
+int getdefkeyseq(kp)
+keyseq_t *kp;
+{
+	char *cp;
+
+	if (kp -> code < K_MIN || kp -> code > K_MAX) /*EMPTY*/;
+	else if (!(cp = defkeyseq[kp -> code - K_MIN])) /*EMPTY*/;
+	else {
+		kp -> str = cp;
+		kp -> len = strlen(cp);
+		return(0);
+	}
+	kp -> len = 0;
+
+	return(-1);
 }
 
 int setkeyseq(n, str, len)
@@ -2124,6 +2088,7 @@ int len;
 			cc_erase = 255;
 	}
 	sortkeyseq();
+
 	return(0);
 }
 
@@ -2140,6 +2105,7 @@ keyseq_t *kp;
 		}
 	}
 	kp -> len = 0;
+
 	return(-1);
 }
 
@@ -2193,6 +2159,7 @@ keyseq_t *list;
 	for (i = 0; i <= K_MAX - K_MIN; i++)
 		if (list[i].str) free(list[i].str);
 	free(list);
+
 	return(0);
 }
 #endif	/* !MSDOS */
@@ -2201,11 +2168,12 @@ int initterm(VOID_A)
 {
 	if (!(termflags & F_TERMENT)) getterment(NULL);
 	if (!dumbterm) {
-		putterms(t_keypad);
+		putterms(T_KEYPAD);
 		termmode(1);
 		tflush();
 	}
 	termflags |= F_INITTERM;
+
 	return(0);
 }
 
@@ -2213,11 +2181,12 @@ int endterm(VOID_A)
 {
 	if (!(termflags & F_INITTERM)) return(-1);
 	if (!dumbterm) {
-		putterms(t_nokeypad);
+		putterms(T_NOKEYPAD);
 		termmode(0);
 		tflush();
 	}
 	termflags &= ~F_INITTERM;
+
 	return(0);
 }
 
@@ -2233,6 +2202,7 @@ int x, y;
 	reg.h.dh = y - 1;
 	reg.h.dl = x - 1;
 	intbios(VIDEOBIOS, &reg);
+
 	return(0);
 }
 
@@ -2256,6 +2226,7 @@ int d, sx, sy, ex, ey;
 	reg.h.dh = ey - 1;
 	reg.h.dl = ex - 1;
 	intbios(VIDEOBIOS, &reg);
+
 	return(0);
 }
 
@@ -2270,6 +2241,7 @@ int c, n;
 	reg.h.bl = videoattr;
 	reg.x.cx = n;
 	intbios(VIDEOBIOS, &reg);
+
 	return(c);
 }
 
@@ -2285,6 +2257,7 @@ int n;
 	reg.x.cx &= 0x1f1f;
 	reg.x.cx |= (n & 0x6000);
 	intbios(VIDEOBIOS, &reg);
+
 	return(0);
 }
 
@@ -2299,7 +2272,7 @@ int c;
 		return(c);
 	}
 
-	getxy(&y, &x);
+	getxy(&x, &y);
 	w = getbiosbyte(SCRWIDTH);
 	h = getbiosbyte(SCRHEIGHT) + 1;
 
@@ -2356,8 +2329,8 @@ int c;
 		}
 		biosputch(c, 1);
 	}
-
 	bioslocate(x, y);
+
 	return(c);
 }
 
@@ -2440,7 +2413,7 @@ char *s;
 		else i = -1;
 	}
 	else {
-		getxy(&y, &x);
+		getxy(&x, &y);
 		w = getbiosbyte(SCRWIDTH);
 		h = getbiosbyte(SCRHEIGHT) + 1;
 
@@ -2565,6 +2538,7 @@ char *s;
 		if (s[i] != '\033' || s[i + 1] != '[') putch2(s[i]);
 		else if ((n = evalcsi(&s[i + 2])) >= 0) i += n + 2;
 	}
+
 	return(0);
 }
 # else	/* !USEVIDEOBIOS */
@@ -2573,6 +2547,7 @@ int putch2(c)
 int c;
 {
 	bdos(0x06, c & 0xff, 0);
+
 	return(c);
 }
 
@@ -2588,14 +2563,24 @@ char *s;
 		}
 
 		keyflush();
-		if (getxy(&y, &x) < 0) x = 1;
+		if (getxy(&x, &y) < 0) x = 1;
 		do {
 			bdos(0x06, ' ', 0);
 		} while (x++ % 8);
 	}
+
 	return(0);
 }
 # endif	/* !USEVIDEOBIOS */
+
+int putterm(n)
+int n;
+{
+	if (n < 0 || n >= MAXTERMSTR) return(-1);
+	if (!termstr[n]) return(0);
+
+	return(cputs2(termstr[n]));
+}
 
 /*ARGSUSED*/
 int kbhit2(usec)
@@ -2616,15 +2601,17 @@ long usec;
 	if (nextchar) return(1);
 	reg.x.ax = 0x4406;
 	reg.x.bx = ttyio;
-	putterms(t_metamode);
+	putterms(T_METAMODE);
 	int86(0x21, &reg, &reg);
-	putterms(t_nometamode);
+	putterms(T_NOMETAMODE);
+
 	return((reg.x.flags & 1) ? 0 : reg.h.al);
 #else	/* !NOTUSEBIOS */
 # ifdef	PC98
 	if (nextchar) return(1);
 	reg.h.ah = 0x01;
 	int86(0x18, &reg, &reg);
+
 	return(reg.h.bh != 0);
 # else	/* !PC98 */
 #  if	defined (DJGPP) && (DJGPP >= 2)
@@ -2639,10 +2626,12 @@ long usec;
 	} while (n < 0 && errno == EINTR);
 	if (fd != ttyio) close(fd);
 	if (n < 0) err2("select()");
+
 	return(n);
 #  else	/* !DJGPP || DJGPP < 2 */
 	reg.h.ah = 0x01;
 	int86(0x16, &reg, &reg);
+
 	return((reg.x.flags & 0x40) ? 0 : 1);
 #  endif	/* !DJGPP || DJGPP < 2 */
 # endif	/* !PC98 */
@@ -2674,6 +2663,7 @@ int getch2(VOID_A)
 	int86(0x18, &reg, &reg);
 
 	if (!(ch = reg.h.al)) nextchar = reg.h.ah;
+
 	return(ch);
 # else	/* !PC98 */
 	return(bdos(0x07, 0x00, 0) & 0xff);
@@ -2700,21 +2690,22 @@ int getch2(VOID_A)
 		if (strchr(specialkey, key >> 8)) break;
 		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
 	}
-	putterms(t_metamode);
+	putterms(T_METAMODE);
 	ch = (bdos(0x07, 0x00, 0) & 0xff);
-	putterms(t_nometamode);
+	putterms(T_NOMETAMODE);
 	keybuftop = getkeybuf(KEYBUFWORKTOP);
 	if (!(key & 0xff)) {
 		while (kbhit2(1000000L / SENSEPERSEC)) {
 			if (keybuftop != getkeybuf(KEYBUFWORKTOP)) break;
-			putterms(t_metamode);
+			putterms(T_METAMODE);
 			bdos(0x07, 0x00, 0);
-			putterms(t_nometamode);
+			putterms(T_NOMETAMODE);
 		}
 		ch = '\0';
 		nextchar = (key >> 8);
 	}
 	enable();
+
 	return(ch);
 #endif	/* NOTUSEBIOS */
 }
@@ -2730,6 +2721,7 @@ u_char tbuf[];
 	tbuf[0] = reg.h.ch;
 	tbuf[1] = reg.h.cl;
 	tbuf[2] = reg.h.dh;
+
 	return(0);
 }
 #endif
@@ -2756,8 +2748,9 @@ int sig;
 			raise(sig);
 		}
 # endif
-		if (keywaitfunc) (*keywaitfunc)();
+		if (keywaitfunc && (*keywaitfunc)() < 0) return(-1);
 	} while (!i);
+
 #else	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
 	while (!kbhit2(1000000L / SENSEPERSEC)) {
@@ -2768,7 +2761,7 @@ int sig;
 # endif
 			memcpy((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1));
 		}
-		if (keywaitfunc) (*keywaitfunc)();
+		if (keywaitfunc && (*keywaitfunc)() < 0) return(-1);
 	}
 #endif	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if ((ch = getch2()) == EOF) return(K_NOKEY);
@@ -2783,27 +2776,29 @@ int sig;
 		default:
 			break;
 	}
-	else
 #if	defined (PC98) || defined (NOTUSEBIOS) \
 || (defined (DJGPP) && (DJGPP >= 2))
-	if (kbhit2(WAITKEYPAD * 1000L))
+	else if (!kbhit2(WAITKEYPAD * 1000L)) /*EMPTY*/;
 #endif
-	{
-		if ((ch = getch2()) == EOF) return(K_NOKEY);
+	else if ((ch = getch2()) == EOF) ch = K_NOKEY;
+	else {
 		for (i = 0; i < SPECIALKEYSIZ; i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
 		for (i = 0; i <= 'z' - 'a'; i++)
 			if (ch == metakey[i]) return(mkmetakey('a' + i));
 		ch = K_NOKEY;
 	}
+
 	return(ch);
 }
 
 int ungetch2(c)
 int c;
 {
-	if (ungetnum >= sizeof(ungetbuf) / sizeof(u_char) - 1) return(EOF);
+	if (ungetnum >= (int)sizeof(ungetbuf) / sizeof(u_char) - 1)
+		return(EOF);
 	ungetbuf[ungetnum++] = c;
+
 	return(c);
 }
 
@@ -2817,7 +2812,8 @@ int s, e;
 int locate(x, y)
 int x, y;
 {
-	cprintf2(c_locate, ++y, ++x);
+	cprintf2(termstr[C_LOCATE], ++y, ++x);
+
 	return(0);
 }
 
@@ -2848,6 +2844,13 @@ int xmax, ymax;
 	return(NULL);
 }
 
+/*ARGSUSED*/
+int setwsize(fd, xmax, ymax)
+int fd, xmax, ymax;
+{
+	return(0);
+}
+
 #else	/* !MSDOS */
 
 int putch2(c)
@@ -2860,6 +2863,7 @@ int cputs2(s)
 char *s;
 {
 	if (!s) return(0);
+
 	return(fputs(s, ttyout));
 }
 
@@ -2869,18 +2873,22 @@ tputs_t c;
 	return(fputc(c & 0x7f, ttyout));
 }
 
-int putterm(s)
-char *s;
+int putterm(n)
+int n;
 {
-	if (!s) return(0);
-	return(tputs(s, 1, putch3));
+	if (n < 0 || n >= MAXTERMSTR) return(-1);
+	if (!termstr[n]) return(0);
+
+	return(tputs(termstr[n], 1, putch3));
 }
 
-int putterms(s)
-char *s;
+int putterms(n)
+int n;
 {
-	if (!s) return(0);
-	return(tputs(s, n_line, putch3));
+	if (n < 0 || n >= MAXTERMSTR) return(-1);
+	if (!termstr[n]) return(0);
+
+	return(tputs(termstr[n], n_line, putch3));
 }
 
 int kbhit2(usec)
@@ -2904,6 +2912,7 @@ long usec;
 	} while (n < 0 && errno == EINTR);
 	if (fd != ttyio) close(fd);
 	if (n < 0) err2("select()");
+
 	return(n);
 # endif
 }
@@ -2919,7 +2928,8 @@ int getch2(VOID_A)
 			suspended = 0;
 		}
 	} while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
-	if (i < sizeof(u_char)) return(EOF);
+	if (i < (int)sizeof(u_char)) return(EOF);
+
 	return((int)ch);
 }
 
@@ -2940,7 +2950,7 @@ int sig;
 			ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
 			suspended = 0;
 		}
-		if (keywaitfunc) (*keywaitfunc)();
+		if (keywaitfunc && (*keywaitfunc)() < 0) return(-1);
 # ifndef	TIOCSTI
 		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 # endif
@@ -2948,7 +2958,7 @@ int sig;
 
 	if ((key = ch = getch2()) == EOF) return(K_NOKEY);
 # if	!defined (_NOKANJICONV) || defined (CODEEUC)
-	if (key != C_EKANA) /*EMPTY*/;
+	else if (key != C_EKANA) /*EMPTY*/;
 #  if	!defined (_NOKANJICONV)
 	else if (inputkcode != EUC) /*EMPTY*/;
 #  endif
@@ -2960,6 +2970,7 @@ int sig;
 		return(key);
 	}
 # endif	/* !_NOKANJICONV || CODEEUC */
+
 	if (cc_erase != 255 && key == cc_erase) return(K_BS);
 	if (!(p = keyseqtree)) return(key);
 
@@ -2973,7 +2984,7 @@ int sig;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == 1)
-			return(keyseq[p -> key].code & 0777);
+			return(keyseq[p -> key].code);
 	}
 	else {
 		for (j = 0; j < p -> num; j++)
@@ -2981,7 +2992,7 @@ int sig;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == 1)
-			return(keyseq[p -> key].code & 0777);
+			return(keyseq[p -> key].code);
 		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
 			return(key);
 	}
@@ -2992,11 +3003,26 @@ int sig;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == i + 1)
-			return(keyseq[p -> key].code & 0777);
+			return(keyseq[p -> key].code);
 		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
 			return(key);
 	}
+
 	return(key);
+}
+
+int getkey3(sig)
+int sig;
+{
+	int ch;
+
+	ch = getkey2(sig);
+	if (ch >= K_F('*') && ch < K_DL) {
+		if (ch == K_F('?')) ch = K_CR;
+		else ch -= K_F0;
+	}
+
+	return(ch & 0777);
 }
 
 int ungetch2(c)
@@ -3006,11 +3032,13 @@ int c;
 	u_char ch;
 
 	ch = c;
-	ioctl(ttyio, TIOCSTI, &ch);
+	Xioctl(ttyio, TIOCSTI, &ch);
 # else
-	if (ungetnum >= sizeof(ungetbuf) / sizeof(u_char) - 1) return(EOF);
+	if (ungetnum >= (int)sizeof(ungetbuf) / sizeof(u_char) - 1)
+		return(EOF);
 	ungetbuf[ungetnum++] = c;
 # endif
+
 	return(c);
 }
 
@@ -3018,16 +3046,12 @@ int setscroll(s, e)
 int s, e;
 {
 	char *cp;
-	int sc;
 
-	if ((cp = tparamstr(t_scroll, s, e))) {
-		sc = (t_setcursor && *t_setcursor
-			&& t_resetcursor && *t_resetcursor);
-		if (sc) putterms(t_setcursor);
-		putterms(cp);
-		if (sc) putterms(t_resetcursor);
+	if ((cp = tparamstr(termstr[T_SCROLL], s, e))) {
+		tputs(cp, n_line, putch3);
 		free(cp);
 	}
+
 	return(0);
 }
 
@@ -3038,65 +3062,57 @@ int x, y;
 	char *cp;
 
 	_mtrace_file = "tgoto(start)";
-	cp = tgoto2(c_locate, x, y);
+	cp = tgoto2(termstr[C_LOCATE], x, y);
 	if (_mtrace_file) _mtrace_file = NULL;
 	else {
 		_mtrace_file = "tgoto(end)";
 		malloc(0);	/* dummy malloc */
 	}
-	putterms(cp);
+	tputs(cp, n_line, putch3);
 # else
-	putterms(tgoto2(c_locate, x, y));
+	tputs(tgoto2(termstr[C_LOCATE], x, y), n_line, putch3);
 # endif
+
 	return(0);
 }
 
 int tflush(VOID_A)
 {
 	fflush(ttyout);
+
 	return(0);
 }
 
 char *getwsize(xmax, ymax)
 int xmax, ymax;
 {
-# ifdef	TIOCGWINSZ
-	struct winsize ws;
-# else
-#  ifdef	WIOCGETD
-	struct uwdate ws;
-#  else
-#   ifdef	TIOCGSIZE
-	struct ttysize ts;
-#   endif
-#  endif
+# ifndef	NOTERMWSIZE
+	termwsize_t ws;
 # endif
 	int x, y, tx, ty;
 
 	x = y = -1;
-# ifdef	TIOCGWINSZ
-	if (ioctl(ttyio, TIOCGWINSZ, &ws) >= 0) {
+# ifndef	NOTERMWSIZE
+	memset((char *)&ws, 0, sizeof(ws));
+	if (Xioctl(ttyio, REQGETWS, &ws) >= 0) {
+#  ifdef	TIOCGWINSZ
 		if (ws.ws_col > 0) x = ws.ws_col;
 		if (ws.ws_row > 0) y = ws.ws_row;
-	}
-# else	/* !TIOCGWINSZ */
-#  ifdef	WIOCGETD
-	ws.uw_hs = ws.uw_vs = 0;
-	if (ioctl(ttyio, WIOCGETD, &ws) >= 0) {
+#  else	/* !TIOCGWINSZ */
+#   ifdef	WIOCGETD
 		if (ws.uw_width > 0 && ws.uw_hs > 0)
 			x = ws.uw_width / ws.uw_hs;
 		if (ws.uw_height > 0 && ws.uw_vs > 0)
 			y = ws.uw_height / ws.uw_vs;
+#   else	/* !WIOCGETD */
+#    ifdef	TIOCGSIZE
+		if (ws.ts_cols > 0) x = ws.ts_cols;
+		if (ws.ts_lines > 0) y = ws.ts_lines;
+#    endif	/* !TIOCGSIZE */
+#   endif	/* !WIOCGETD */
+#  endif	/* !TIOCGWINSZ */
 	}
-#  else	/* !WIOCGETD */
-#   ifdef	TIOCGSIZE
-	if (ioctl(ttyio, TIOCGSIZE, &ts) >= 0) {
-		if (ts.ts_cols > 0) x = ts.ts_cols;
-		if (ts.ts_lines > 0) y = ts.ts_lines;
-	}
-#   endif
-#  endif	/* !WIOCGETD */
-# endif	/* !TIOCGWINSZ */
+# endif	/* !NOTERMWSIZE */
 
 	if (dumbterm) /*EMPTY*/;
 	else if (usegetcursor || x < 0 || y < 0) {
@@ -3104,33 +3120,7 @@ int xmax, ymax;
 		if (maxlocate(&ty, &tx) >= 0) {
 			x = tx;
 			y = ty;
-# ifdef	TIOCGWINSZ
-			if (ws.ws_col <= 0 || ws.ws_xpixel <= 0)
-				ws.ws_xpixel = 0;
-			else ws.ws_xpixel += (x - ws.ws_col)
-					* (ws.ws_xpixel / ws.ws_col);
-			if (ws.ws_row <= 0 || ws.ws_ypixel <= 0)
-				ws.ws_ypixel = 0;
-			else ws.ws_ypixel += (y - ws.ws_row)
-					* (ws.ws_ypixel / ws.ws_row);
-			ws.ws_col = x;
-			ws.ws_row = y;
-			ioctl(ttyio, TIOCSWINSZ, &ws);
-# else	/* !TIOCGWINSZ */
-#  ifdef	WIOCGETD
-			if (ws.uw_hs > 0 && ws.uw_vs > 0) {
-				ws.uw_width = x * ws.uw_hs;
-				ws.uw_height = y * ws.uw_vs;
-				ioctl(ttyio, WIOCSETD, &ws);
-			}
-#  else	/* !WIOCGETD */
-#   ifdef	TIOCGSIZE
-			ts.ts_cols = x;
-			ts.ts_lines = y;
-			ioctl(ttyio, TIOCSSIZE, &ts);
-#   endif
-#  endif	/* !WIOCGETD */
-# endif	/* !TIOCGWINSZ */
+			VOID_C setwsize(ttyio, x, y);
 		}
 	}
 
@@ -3146,7 +3136,43 @@ int xmax, ymax;
 		return("Line size too small");
 
 	if (xmax > 0 && ymax > 0) setscroll(-1, n_line - 1);
+
 	return(NULL);
+}
+
+int setwsize(fd, xmax, ymax)
+int fd, xmax, ymax;
+{
+# ifdef	NOTERMWSIZE
+	return(0);
+# else	/* !NOTERMWSIZE */
+	termwsize_t ws;
+
+	memset((char *)&ws, 0, sizeof(ws));
+	VOID_C Xioctl(fd, REQGETWS, &ws);
+
+#  ifdef	TIOCGWINSZ
+	if (ws.ws_col <= 0 || ws.ws_xpixel <= 0) ws.ws_xpixel = 0;
+	else ws.ws_xpixel += (xmax - ws.ws_col) * (ws.ws_xpixel / ws.ws_col);
+	if (ws.ws_row <= 0 || ws.ws_ypixel <= 0) ws.ws_ypixel = 0;
+	else ws.ws_ypixel += (ymax - ws.ws_row) * (ws.ws_ypixel / ws.ws_row);
+	ws.ws_col = xmax;
+	ws.ws_row = ymax;
+#  else	/* !TIOCGWINSZ */
+#   ifdef	WIOCGETD
+	if (ws.uw_hs <= 0 || ws.uw_vs <= 0) return(-1);
+	ws.uw_width = xmax * ws.uw_hs;
+	ws.uw_height = ymax * ws.uw_vs;
+#   else	/* !WIOCGETD */
+#    ifdef	TIOCGSIZE
+	ws.ts_cols = xmax;
+	ws.ts_lines = ymax;
+#    endif	/* !TIOCGSIZE */
+#   endif	/* !WIOCGETD */
+#  endif	/* !TIOCGWINSZ */
+
+	return(Xioctl(fd, REQSETWS, &ws));
+# endif	/* !NOTERMWSIZE */
 }
 #endif	/* !MSDOS */
 
@@ -3164,17 +3190,14 @@ va_dcl
 	char *buf;
 	int n;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
+	VA_START(args, fmt);
 
 	n = vasprintf2(&buf, fmt, args);
 	va_end(args);
 	if (n < 0) err2("malloc()");
 	cputs2(buf);
 	free(buf);
+
 	return(n);
 }
 
@@ -3182,6 +3205,7 @@ int cputnl(VOID_A)
 {
 	cputs2("\r\n");
 	tflush();
+
 	return(0);
 }
 
@@ -3195,23 +3219,48 @@ int chgcolor(color, reverse)
 int color, reverse;
 {
 	char *cp;
-	int bg;
+	int fg, bg;
 
-	bg = color;
-	if (reverse) color = (color == ANSI_BLACK) ? ANSI_WHITE : ANSI_BLACK;
+	if (reverse) {
+		fg = (color == ANSI_BLACK) ? ANSI_WHITE : ANSI_BLACK;
+		bg = color;
+	}
+	else {
+		fg = color;
+		bg = -1;
+	}
 
-	if ((cp = tparamstr(t_fgcolor, color, 0))) {
+	if ((cp = tparamstr(termstr[T_FGCOLOR], fg, 0))) {
 		cputs2(cp);
 		free(cp);
 	}
-	else cprintf2("\033[%dm", color + ANSI_NORMAL);
+	else cprintf2("\033[%dm", fg + ANSI_NORMAL);
 
-	if (!reverse) return(0);
-	if ((cp = tparamstr(t_bgcolor, bg, 0))) {
+	if (bg < 0) /*EMPTY*/;
+	else if ((cp = tparamstr(termstr[T_BGCOLOR], bg, 0))) {
 		cputs2(cp);
 		free(cp);
 	}
 	else cprintf2("\033[%dm", bg + ANSI_REVERSE);
+
+	return(0);
+}
+
+int movecursor(n1, n2, c)
+int n1, n2, c;
+{
+	char *cp;
+
+	if (n1 < 0 || !termstr[n1] || !(cp = tparamstr(termstr[n1], c, c)))
+		while (c--) putterm(n2);
+	else {
+#if	MSDOS
+		cputs2(cp);
+#else
+		tputs(cp, 1, putch3);
+#endif
+		free(cp);
+	}
 
 	return(0);
 }

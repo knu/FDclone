@@ -3,7 +3,7 @@
 #	About FDclone Ver. 2.06
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Feb 23, 2005
+#	May 10, 2005
 #
 ############################################################
 
@@ -77,6 +77,8 @@ makefile.bpc	Makefile Borland C++ on DOS/V
 makefile.b98	Makefile for Borland C++ on PC-98x1
 
 main.c		FDclone main source
+termio.c	terminal I/O library source
+termio.h	header for termio.c
 term.c		termcap library source
 term.h		header for term.c
 printf.c	formatted printing module
@@ -115,6 +117,7 @@ machine.h	header for machine dependency
 config.hin	dummy header for environment setting
 types.h		variable type declarations
 kctype.h	header for kanji code
+wait.h		header for child processes
 func.h		prototype declarations
 functabl.h	header for attribute on internal command
 kanji.hin	Japanese strings

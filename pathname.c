@@ -1,7 +1,7 @@
 /*
  *	pathname.c
  *
- *	Path Name Management Module
+ *	path name management module
  */
 
 #ifdef	FD
@@ -246,6 +246,7 @@ char *s;
 	fputs(s, stderr);
 	fputs(": memory allocation error", stderr);
 	fputnl(stderr);
+
 	exit(2);
 }
 
@@ -260,6 +261,7 @@ ALLOC_T size;
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
 	}
+
 	return(tmp);
 }
 
@@ -277,6 +279,7 @@ ALLOC_T size;
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
 	}
+
 	return(tmp);
 }
 
@@ -289,6 +292,7 @@ ALLOC_T n, *sizep;
 		return(malloc2(*sizep));
 	}
 	while (n + 1 >= *sizep) *sizep *= 2;
+
 	return(realloc2(ptr, *sizep));
 }
 
@@ -302,6 +306,7 @@ char *s;
 	n = strlen(s);
 	if (!(tmp = (char *)malloc((ALLOC_T)n + 1))) error("malloc()");
 	memcpy(tmp, s, n + 1);
+
 	return(tmp);
 }
 
@@ -317,6 +322,7 @@ int n;
 	if (!(tmp = (char *)malloc((ALLOC_T)i + 1))) error("malloc()");
 	memcpy(tmp, s, i);
 	tmp[i] = '\0';
+
 	return(tmp);
 }
 
@@ -333,6 +339,7 @@ int c;
 		else if (isekana(s, i)) i++;
 #endif
 	}
+
 	return(NULL);
 }
 
@@ -343,6 +350,7 @@ char *s1, *s2;
 
 	for (i = 0; s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
+
 	return(&(s1[i]));
 }
 
@@ -354,6 +362,7 @@ int n;
 
 	for (i = 0; i < n && s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
+
 	return(&(s1[i]));
 }
 
@@ -395,6 +404,7 @@ char *dir;
 			return(NULL);
 		}
 	}
+
 	return(dirp);
 }
 
@@ -404,6 +414,7 @@ DIR *dirp;
 	free(dirp -> dd_buf);
 	free(dirp -> dd_path);
 	free(dirp);
+
 	return(0);
 }
 
@@ -477,6 +488,7 @@ struct stat *stp;
 	stp -> st_dev = stp -> st_ino = 0;
 	stp -> st_nlink = 1;
 	stp -> st_uid = stp -> st_gid = -1;
+
 	return(0);
 }
 # endif	/* MSDOS */
@@ -497,6 +509,7 @@ struct stat *stp;
 		}
 		stp -> st_mode &= ~S_IFMT;
 	}
+
 	return(0);
 }
 # endif	/* !NOSYMLINK */
@@ -510,6 +523,7 @@ char *path;
 
 	if (!(cp = (char *)getcwd(path, MAXPATHLEN))) return(NULL);
 	for (i = 0; cp[i]; i++) if (cp[i] == '/') cp[i] = _SC_;
+
 	return(cp);
 }
 # endif	/* !DJGPP */
@@ -529,6 +543,7 @@ int d;
 		if (iskanji1(s, i)) i++;
 # endif
 	}
+
 	return(NULL);
 }
 
@@ -547,6 +562,7 @@ int d;
 		if (iskanji1(s, i)) i++;
 # endif
 	}
+
 	return(cp);
 }
 #endif	/* MSDOS || (FD && !_NODOSDRIVE) */
@@ -563,9 +579,11 @@ char *s, *eol;
 		if (s[i] == _SC_) cp = &(s[i]);
 		if (iskanji1(s, i)) i++;
 	}
+
 	return(cp);
 #else
 	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
+
 	return(NULL);
 #endif
 }
@@ -585,6 +603,7 @@ int ptr;
 
 	for (i = 0; s[i] && i < ptr; i++) if (iskanji1(s, i)) i++;
 	if (!s[i] || i > ptr) return(1);
+
 	return(!iskanji1(s, i));
 #else
 	return(1);
@@ -622,6 +641,7 @@ char *s;
 		*cp = _SC_;
 	}
 	*(++cp) = '\0';
+
 	return(cp);
 }
 
@@ -675,6 +695,7 @@ char *buf, *s1, *s2;
 		for (i = 0; s2[i] && i < len; i++) *(cp++) = s2[i];
 	}
 	*cp = '\0';
+
 	return(cp);
 }
 
@@ -694,6 +715,7 @@ char *s1, *s2;
 		s1++;
 		s2++;
 	}
+
 	return(0);
 }
 
@@ -715,6 +737,7 @@ int n;
 		s1++;
 		s2++;
 	}
+
 	return(0);
 }
 
@@ -723,7 +746,8 @@ int strpathcmp2(s1, s2)
 char *s1, *s2;
 {
 	if (pathignorecase) return(strcasecmp2(s1, s2));
-	else return(strcmp(s1, s2));
+
+	return(strcmp(s1, s2));
 }
 
 int strnpathcmp2(s1, s2, n)
@@ -731,7 +755,8 @@ char *s1, *s2;
 int n;
 {
 	if (pathignorecase) return(strncasecmp2(s1, s2, n));
-	else return(strncmp(s1, s2, n));
+
+	return(strncmp(s1, s2, n));
 }
 #endif	/* !PATHNOCASE */
 
@@ -765,6 +790,7 @@ int len;
 	cp = strndup2(ident, len);
 	env = getenv2(cp);
 	free(cp);
+
 	return(env);
 #endif
 }
@@ -788,6 +814,7 @@ int len;
 	ret = (putvarfunc) ? (*putvarfunc)(cp, len) : putenv(cp);
 #endif
 	if (ret < 0) free(cp);
+
 	return(ret);
 }
 
@@ -807,6 +834,7 @@ int isdotdir(s)
 char *s;
 {
 	if (s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]))) return(1);
+
 	return(0);
 }
 
@@ -817,6 +845,7 @@ char *s;
 	if (_dospath(s)) s += 2;
 #endif
 	if (*s != _SC_) return(NULL);
+
 	return(s);
 }
 
@@ -826,6 +855,7 @@ char *s;
 	char *cp;
 
 	if ((cp = strrdelim(s, 1))) return(cp + 1);
+
 	return(s);
 }
 
@@ -945,6 +975,7 @@ int len;
 	}
 	re[j++] = '$';
 	re[j++] = '\0';
+
 	return(re);
 }
 #endif	/* _NOORIGGLOB */
@@ -967,6 +998,7 @@ int len;
 	s = cnvregexp(s, len);
 	re_comp(s);
 	free(s);
+
 	return((reg_t *)1);
 }
 
@@ -977,6 +1009,7 @@ char *s;
 int fname;
 {
 	if (fname && skipdotfile && *s == '.') return(0);
+
 	return(re_exec(s) > 0);
 }
 
@@ -1008,6 +1041,7 @@ int len;
 		re = NULL;
 	}
 	free(s);
+
 	return(re);
 }
 
@@ -1017,6 +1051,7 @@ char *s;
 int fname;
 {
 	if (!re || (fname && skipdotfile && *s == '.')) return(0);
+
 	return(!regexec(re, s, 0, NULL, 0));
 }
 
@@ -1044,6 +1079,7 @@ int len;
 	s = cnvregexp(s, len);
 	re = regcmp(s, 0);
 	free(s);
+
 	return(re);
 }
 
@@ -1053,6 +1089,7 @@ char *s;
 int fname;
 {
 	if (!re || (fname && skipdotfile && *s == '.')) return(0);
+
 	return(regex(re, s) ? 1 : 0);
 }
 
@@ -1228,6 +1265,7 @@ int len;
 		re = b_realloc(re, n, reg_t);
 		re[n] = NULL;
 	}
+
 	return((reg_t *)realloc2(re, (n + 1) * sizeof(reg_t)));
 }
 
@@ -1297,6 +1335,7 @@ char *s;
 	}
 	while (re[n1] == wildsymbol2) n1++;
 	if (re[n1] || s[n2]) return(0);
+
 	return(1);
 }
 
@@ -1306,6 +1345,7 @@ char *s;
 int fname;
 {
 	if (!re || (fname && skipdotfile && *s == '.')) return(0);
+
 	return(_regexp_exec(re, s));
 }
 
@@ -1585,6 +1625,7 @@ int flags;
 
 	argv[argc] = NULL;
 	if (argc > 1) qsort(argv, argc, sizeof(char *), cmppath);
+
 	return(argv);
 }
 
@@ -1596,6 +1637,7 @@ char *s;
 	int i;
 
 	for (i = n = 0; s[i]; i++) n += (u_char)(s[i]);
+
 	return(n % MAXHASH);
 }
 
@@ -1621,6 +1663,7 @@ hashlist *next;
 	new -> hits = 0;
 	new -> cost = cost;
 	new -> next = next;
+
 	return(new);
 }
 
@@ -1667,6 +1710,7 @@ hashlist **htable;
 			nextp = &((*nextp) -> next);
 		}
 	}
+
 	return(new);
 }
 
@@ -1678,6 +1722,7 @@ int n;
 
 	for (hp = hashtable[n]; hp; hp = hp -> next)
 		if (!strpathcmp(com, hp -> command)) return(hp);
+
 	return(NULL);
 }
 
@@ -1713,6 +1758,7 @@ int dirok, exe;
 	d = ((st.st_mode & S_IFMT) == S_IFDIR);
 	if (!exe) return(d);
 	if (d) return(dirok ? d : -1);
+
 	return(Xaccess(path, X_OK));
 }
 
@@ -1737,6 +1783,7 @@ int len, exe;
 		strcpy(&(path[len]), "BAT");
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_BATCH);
 	}
+
 	return(-1);
 }
 #endif	/* MSDOS */
@@ -1900,6 +1947,7 @@ char **argv;
 
 	for (i = 0; i < argc; i++)
 		if (!strpathcmp(argv[i], target)) return(argv[i]);
+
 	return(NULL);
 }
 
@@ -1971,6 +2019,7 @@ char ***argvp;
 	}
 	endpwent();
 #  endif	/* !DEBUG */
+
 	return(argc);
 }
 # endif	/* !NOUID */
@@ -2015,6 +2064,7 @@ int dlen, exe;
 		(*argvp)[argc++] = new;
 	}
 	Xclosedir(dirp);
+
 	return(argc);
 }
 
@@ -2042,6 +2092,7 @@ char ***argvp;
 		argc = completefile(file, len, argc, argvp, tmp, dlen, 1);
 		free(tmp);
 	}
+
 	return(argc);
 }
 
@@ -2074,6 +2125,7 @@ int exe;
 # endif
 	else if (exe && dir == path)
 		return(completeexe(path, len, argc, argvp));
+
 	return(completefile(path, len, argc, argvp, ".", 1, exe));
 }
 
@@ -2096,6 +2148,7 @@ char **argv;
 		free(common);
 		return(NULL);
 	}
+
 	return(common);
 }
 #endif	/* !FDSH && !_NOCOMPLETE */
@@ -2135,6 +2188,7 @@ int quoted, flags;
 #endif
 		if (s1) s1[j] = s2[i];
 	}
+
 	return(j);
 }
 
@@ -2155,6 +2209,7 @@ int delim;
 		if (delim) cp[len++] = delim;
 		len = strcpy2(&(cp[len]), argv[i]) - cp;
 	}
+
 	return(cp);
 }
 
@@ -2165,6 +2220,7 @@ char **var;
 
 	if (!var) return(0);
 	for (i = 0; var[i]; i++);
+
 	return(i);
 }
 
@@ -2196,6 +2252,7 @@ int margin;
 	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
 	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
 	dupl[i] = NULL;
+
 	return(dupl);
 }
 
@@ -2337,6 +2394,7 @@ int *eolp, *ptrp, qed;
 	if (skipvarvalue(*bufp, ptrp, "}", qed, 1, 0) < 0) return(-1);
 # endif
 #endif	/* BASHSTYLE */
+
 	return(mode);
 }
 
@@ -2400,6 +2458,7 @@ int qed, nonl, nest;
 
 		(*ptrp)++;
 	}
+
 	return(-1);
 }
 
@@ -2459,6 +2518,7 @@ int plen, mode;
 		free(tmp);
 	}
 	regexp_free(re);
+
 	return(ret);
 }
 
@@ -2477,6 +2537,7 @@ int plen, mode;
 		else new[i] = strdup2(var[i]);
 	}
 	new[i] = NULL;
+
 	return(new);
 }
 #endif	/* !MINIMUMSHELL */
@@ -2595,6 +2656,7 @@ int plen, *modep;
 #ifndef	MINIMUMSHELL
 	freevar(new);
 #endif
+
 	return(cp);
 }
 
@@ -2653,6 +2715,7 @@ int s, len, vlen, mode, quoted;
 		if (exitfunc) (*exitfunc)();
 		return(-2);
 	}
+
 	return(mode);
 }
 
@@ -2664,6 +2727,7 @@ int olen, nlen;
 {
 	if (nlen <= olen) return(buf);
 	buf = realloc2(buf, ptr + nlen + (int)strlen(arg) - olen + 1);
+
 	return(buf);
 }
 
@@ -2799,6 +2863,7 @@ int quoted;
 
 	ptr += vlen;
 	if (new) free(new);
+
 	return(ptr);
 }
 
@@ -2847,6 +2912,7 @@ char *name;
 	uidlist[maxuid].uid = pwd -> pw_uid;
 	uidlist[maxuid].name = strdup2(pwd -> pw_name);
 	uidlist[maxuid].home = strdup2(pwd -> pw_dir);
+
 	return(&(uidlist[maxuid++]));
 }
 
@@ -2895,6 +2961,7 @@ char *name;
 	gidlist[maxgid].name = strdup2(grp -> gr_name);
 	gidlist[maxgid].gr_mem = duplvar(grp -> gr_mem, -1);
 	gidlist[maxgid].ismem = 0;
+
 	return(&(gidlist[maxgid++]));
 }
 
@@ -2999,6 +3066,7 @@ char *gethomedir(VOID_A)
 	if (pwd) return(pwd -> pw_dir);
 # endif	/* !FD */
 #endif	/* !NOUID */
+
 	return(NULL);
 }
 
@@ -3016,7 +3084,7 @@ char **argp;
 	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
 	if (!len) cp = gethomedir();
 # ifdef	FD
-	else if (len == sizeof("FD") - 1 && !strnpathcmp(top, "FD", len))
+	else if (len == (int)sizeof("FD") - 1 && !strnpathcmp(top, "FD", len))
 		cp = progpath;
 # endif
 	else {
@@ -3063,6 +3131,7 @@ char **argp;
 	strncpy(&((*bufp)[ptr]), cp, vlen);
 	ptr += vlen;
 	*argp += len;
+
 	return(ptr);
 }
 #endif	/* !MINIMUMSHELL */
@@ -3247,6 +3316,7 @@ char ***argvp, *ifs;
 				(argc-- - n) * sizeof(char *));
 		}
 	}
+
 	return(argc);
 }
 
@@ -3279,6 +3349,7 @@ int flags;
 		free(wild);
 		n += i - 1;
 	}
+
 	return(argc);
 }
 
@@ -3309,6 +3380,7 @@ int flags;
 		arg[j++] = arg[i];
 	}
 	arg[j] = '\0';
+
 	return(stripped);
 }
 
@@ -3379,6 +3451,7 @@ int flags;
 	}
 	tmp[j] = '\0';
 	free(cp);
+
 	return(tmp);
 }
 
@@ -3392,5 +3465,6 @@ int flags;
 	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
 	cp = _evalpath(cp, NULL, flags);
 	free(path);
+
 	return(cp);
 }

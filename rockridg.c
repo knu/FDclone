@@ -1,7 +1,7 @@
 /*
  *	rockridg.c
  *
- *	ISO-9660 RockRidge Format Filter
+ *	ISO-9660 RockRidge format filter
  */
 
 #include "fd.h"
@@ -218,6 +218,7 @@ int len;
 
 	if (top) *bottom = top;
 	Xfclose(fp);
+
 	return(top);
 }
 
@@ -257,6 +258,7 @@ int len;
 	rr_cwd = strndup2(path, len);
 	if (rr_transcwd) free(rr_transcwd);
 	rr_transcwd = NULL;
+
 	return(rr_curtbl);
 }
 
@@ -301,6 +303,7 @@ int ptr;
 		}
 		if ((tp = tp -> next) == rr_curtbl) break;
 	}
+
 	return(NULL);
 }
 
@@ -337,6 +340,7 @@ char *path, *buf;
 		cp = next;
 	}
 	cachetrans(path, buf);
+
 	return(buf);
 }
 
@@ -360,6 +364,7 @@ int ptr;
 		}
 		if ((tp = tp -> next) == rr_curtbl) break;
 	}
+
 	return(NULL);
 }
 
@@ -382,6 +387,7 @@ int ptr;
 		ptr = cp - buf;
 		dir = next;
 	}
+
 	return(&(buf[ptr]));
 }
 
@@ -417,6 +423,7 @@ char *path, *buf;
 
 	detransdir(cp, buf, ptr);
 	cachetrans(buf, path);
+
 	return(buf);
 }
 
@@ -448,6 +455,7 @@ struct stat *stp;
 	stp -> st_mode |= mode;
 	if ((mode == S_IFBLK || mode == S_IFCHR) && tp -> rdev != (r_dev_t)-1)
 		stp -> st_rdev = tp -> rdev;
+
 	return(0);
 }
 
@@ -473,6 +481,7 @@ int bufsiz;
 	len = strlen(tp -> symlink);
 	strncpy(buf, tp -> symlink, bufsiz);
 	if (len > bufsiz) len = bufsiz;
+
 	return(len);
 }
 #endif	/* !_NOROCKRIDGE */

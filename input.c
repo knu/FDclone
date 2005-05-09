@@ -1,15 +1,16 @@
 /*
  *	input.c
  *
- *	Input Module
+ *	input module
  */
 
-#include <signal.h>
 #include "fd.h"
 #include "func.h"
 #include "kanji.h"
 
-#ifndef	_NOORIGSHELL
+#ifdef	_NOORIGSHELL
+#include <signal.h>
+#else
 #include "system.h"
 #endif
 
@@ -17,8 +18,6 @@ extern char **history[];
 extern short histsize[];
 extern int curcolumns;
 extern int minfilename;
-extern int tradlayout;
-extern int sizeinfo;
 extern int hideclock;
 #ifdef	SIGALRM
 extern int noalrm;
@@ -30,13 +29,14 @@ extern char *promptstr2;
 
 #define	LIMITSELECTWARN	100
 #define	YESNOSTR	"[Y/N]"
-#define	YESNOSIZE	(sizeof(YESNOSTR) - 1)
+#define	YESNOSIZE	((int)sizeof(YESNOSTR) - 1)
 #define	WAITAFTERWARN	360	/* msec */
-#define	maxscr()	(linemax * n_line - plen - (n_column - n_lastcolumn))
+#define	maxscr()	(maxcol * (maxline - minline) \
+			- plen - (n_column - n_lastcolumn))
 #define	within(n)	((n) < maxscr())
 #define	overflow(n)	((n) > maxscr())
-#define	ptr2col(n)	(((n) + plen) % linemax)
-#define	ptr2line(n)	(((n) + plen) / linemax)
+#define	ptr2col(n)	(((n) + plen) % maxcol)
+#define	ptr2line(n)	(((n) + plen) / maxcol)
 #define	iseol(n)	(within(n) && !(ptr2col(n)))
 #define	LEFTMARGIN	0
 #define	RIGHTMARGIN	2
@@ -70,9 +70,9 @@ static VOID NEAR forwline __P_((int));
 static VOID NEAR dumbputs __P_((char *, int, int, int, int));
 static VOID NEAR rewritecursor __P_((char *, int, int, int));
 static VOID NEAR checkcursor __P_((char *, int, int, int));
-static VOID NEAR movecursor __P_((char *, char *, int));
 #endif
-static VOID NEAR Xlocate __P_((int, int));
+static VOID NEAR scrollup __P_((VOID_A));
+static VOID NEAR locate2 __P_((int, int));
 static VOID NEAR setcursor __P_((char *, int, int, int));
 static int NEAR putstr __P_((char *, char *, int, int, int));
 static VOID NEAR ringbell __P_((VOID_A));
@@ -127,7 +127,6 @@ char *curfilename = NULL;
 char *editmode = NULL;
 #endif
 int lcmdline = 0;
-int dupn_line = -1;
 #ifndef	_NOORIGSHELL
 int dumbshell = 0;
 #endif
@@ -158,19 +157,24 @@ static CONST char wordstarkey[] = {
 	K_CTRL('W'), K_CTRL('Z'), K_CTRL('A'), K_CTRL('F'),
 	K_CTRL('R'), K_CTRL('C'), K_CTRL('N'), K_ESC
 };
-static int vimode = 0;
+static int vistat = 0;
 #define	VI_NEXT		001
 #define	VI_INSERT	002
 #define	VI_ONCE		004
 #define	VI_VIMODE	010
-#define	isvimode()	((vimode & (VI_VIMODE | VI_INSERT)) == VI_VIMODE)
+#define	isvimode()	((vistat & (VI_VIMODE | VI_INSERT)) == VI_VIMODE)
 #endif	/* !_NOEDITMODE */
 
 static int plen = 0;
-static int linemax = 0;
+static int maxcol = 0;
+static int minline = 0;
+static int maxline = 0;
 #ifndef	_NOCOMPLETE
 static namelist *selectlist = NULL;
+static int maxselect = 0;
+static int tmpfileperrow = -1;
 static int tmpfilepos = -1;
+static int tmpcolumns = -1;
 #endif
 static int xpos = 0;
 static int ypos = 0;
@@ -193,6 +197,7 @@ int intrkey(VOID_A)
 		warning(0, INTR_K);
 		return(1);
 	}
+
 	return(0);
 }
 
@@ -220,14 +225,14 @@ int sig, eof;
 
 	if (sig < 0) {
 #ifndef	_NOEDITMODE
-		vimode = eof;
+		vistat = eof;
 #endif
 		prev = -1;
 		return('\0');
 	}
 
 	sig = sigalrm(sig);
-	ch = getkey2(sig);
+	ch = getkey3(sig);
 	if (eof && (ch != cc_eof || prev == ch)) eof = 0;
 	prev = ch;
 	if (eof) return(-1);
@@ -237,65 +242,65 @@ int sig, eof;
 	else if (!strcmp(editmode, "emacs"))
 		ch = getemulatekey(ch, emacskey);
 	else if (!strcmp(editmode, "vi")) do {
-		vimode |= VI_VIMODE;
-		vimode &= ~VI_NEXT;
-		if (vimode & VI_INSERT) switch (ch) {
+		vistat |= VI_VIMODE;
+		vistat &= ~VI_NEXT;
+		if (vistat & VI_INSERT) switch (ch) {
 			case K_CTRL('V'):
-				if (vimode & VI_ONCE)
-					vimode &= ~(VI_INSERT | VI_ONCE);
+				if (vistat & VI_ONCE)
+					vistat &= ~(VI_INSERT | VI_ONCE);
 				ch = K_IL;
 				break;
 			case K_ESC:
-				if (vimode & VI_ONCE) vimode |= VI_NEXT;
-				vimode &= ~(VI_INSERT | VI_ONCE);
+				if (vistat & VI_ONCE) vistat |= VI_NEXT;
+				vistat &= ~(VI_INSERT | VI_ONCE);
 				ch = K_LEFT;
 				break;
 			case K_CR:
-				vimode &= ~(VI_INSERT | VI_ONCE);
+				vistat &= ~(VI_INSERT | VI_ONCE);
 				break;
 			case K_BS:
-				if (vimode & VI_ONCE)
-					vimode &= ~(VI_INSERT | VI_ONCE);
+				if (vistat & VI_ONCE)
+					vistat &= ~(VI_INSERT | VI_ONCE);
 				break;
 			default:
-				if (vimode & VI_ONCE)
-					vimode &= ~(VI_INSERT | VI_ONCE);
+				if (vistat & VI_ONCE)
+					vistat &= ~(VI_INSERT | VI_ONCE);
 				if (ch < K_MIN) break;
 				ringbell();
-				vimode |= VI_NEXT;
+				vistat |= VI_NEXT;
 				break;
 		}
 		else if ((ch = getemulatekey(ch, vikey)) < K_MIN) switch (ch) {
 			case ':':
-				vimode |= (VI_NEXT | VI_INSERT);
+				vistat |= (VI_NEXT | VI_INSERT);
 				overwritemode = 0;
 				break;
 			case 'I':
-				vimode |= VI_INSERT;
+				vistat |= VI_INSERT;
 				overwritemode = 0;
 				ch = K_BEG;
 				break;
 			case 'A':
-				vimode |= VI_INSERT;
+				vistat |= VI_INSERT;
 				overwritemode = 0;
 				ch = K_EOL;
 				break;
 			case 'i':
-				vimode |= (VI_NEXT | VI_INSERT);
+				vistat |= (VI_NEXT | VI_INSERT);
 				overwritemode = 0;
 				break;
 			case 'a':
-				vimode |= VI_INSERT;
+				vistat |= VI_INSERT;
 				overwritemode = 0;
 				ch = K_RIGHT;
 				break;
 # if	FD >= 2
 			case 'R':
-				vimode |= (VI_NEXT | VI_INSERT);
+				vistat |= (VI_NEXT | VI_INSERT);
 				overwritemode = 1;
 				break;
 			case 'r':
-				vimode |= (VI_NEXT | VI_INSERT | VI_ONCE);
+				vistat |= (VI_NEXT | VI_INSERT | VI_ONCE);
 				overwritemode = 1;
 				break;
 # endif	/* FD >= 2 */
@@ -311,10 +316,10 @@ int sig, eof;
 				break;
 			default:
 				ringbell();
-				vimode |= VI_NEXT;
+				vistat |= VI_NEXT;
 				break;
 		}
-	} while ((vimode & VI_NEXT) && (ch = getkey2(sig)));
+	} while ((vistat & VI_NEXT) && (ch = getkey3(sig)));
 	else if (!strcmp(editmode, "wordstar"))
 		ch = getemulatekey(ch, wordstarkey);
 #endif	/* !_NOEDITMODE */
@@ -400,6 +405,7 @@ int cx;
 		r += rw;
 		v += vw;
 	}
+
 	return(v);
 }
 
@@ -433,6 +439,7 @@ int cx2;
 		r += rw;
 		v += vw;
 	}
+
 	return(r);
 }
 
@@ -467,6 +474,7 @@ int cx2;
 		v += vw;
 	}
 	if (v > cx2) return(0);
+
 	return(iskanji1(s, r) ? r + 1 : 0);
 }
 
@@ -482,12 +490,13 @@ int len, ptr;
 	buf = malloc2(n + 1);
 	strncpy3(buf, s, &len, ptr);
 #ifdef	_NOKANJICONV
-	cputs2(buf);
+	Xcputs2(buf);
 	n = strlen2(buf);
 #else
-	n = kanjiputs(buf);
+	n = Xkanjiputs(buf);
 #endif
 	free(buf);
+
 	return(n);
 }
 
@@ -511,11 +520,11 @@ int cx2, len2, ptr, top;
 		ptr += n;
 		len2 -= n;
 	}
-	putterm(t_standout);
+	Xputterm(T_STANDOUT);
 	kanjiputs2(s, width, ptr);
 	ptr += width;
 	len2 -= width;
-	putterm(end_standout);
+	Xputterm(END_STANDOUT);
 	if (len2 > 0) kanjiputs2(s, len2, ptr);
 }
 #endif	/* FD >= 2 */
@@ -524,12 +533,12 @@ static VOID NEAR putcursor(c, n)
 int c, n;
 {
 	win_x += n;
-	while (n--) putch2(c);
+	while (n--) Xputch2(c);
 #ifndef	_NOORIGSHELL
 	if (dumbmode);
 	else if (shellmode && win_x >= n_column) {
-		putch2(' ');
-		putch2('\r');
+		Xputch2(' ');
+		Xputch2('\r');
 		win_x = 0;
 		win_y++;
 	}
@@ -539,25 +548,25 @@ int c, n;
 static VOID NEAR rightcursor(VOID_A)
 {
 	win_x++;
-	putterm(c_right);
+	Xputterm(C_RIGHT);
 }
 
 static VOID NEAR leftcursor(VOID_A)
 {
 	win_x--;
-	putterm(c_left);
+	Xputterm(C_LEFT);
 }
 
 static VOID NEAR upcursor(VOID_A)
 {
 	win_y--;
-	putterm(c_up);
+	Xputterm(C_UP);
 }
 
 static VOID NEAR downcursor(VOID_A)
 {
 	win_y++;
-	putterm(c_down);
+	Xputterm(C_DOWN);
 }
 
 #ifndef	_NOORIGSHELL
@@ -565,7 +574,7 @@ static VOID NEAR forwcursor(x)
 int x;
 {
 	while (win_x < x) {
-		putch2(' ');
+		Xputch2(' ');
 		win_x++;
 	}
 }
@@ -574,7 +583,7 @@ static VOID NEAR backcursor(x)
 int x;
 {
 	while (win_x > x) {
-		putch2(C_BS);
+		Xputch2(C_BS);
 		win_x--;
 	}
 }
@@ -583,7 +592,7 @@ static VOID NEAR forwline(x)
 int x;
 {
 	if (win_x < n_column) {
-		cputnl();
+		Xcputnl();
 		win_y++;
 	}
 	else {
@@ -591,8 +600,8 @@ int x;
 			win_x -= n_column;
 			win_y++;
 		}
-		putch2(' ');
-		putch2('\r');
+		Xputch2(' ');
+		Xputch2('\r');
 	}
 	win_x = 0;
 	forwcursor(x);
@@ -630,12 +639,12 @@ int cx, cx2, len;
 	i = (lastofs2) ? 1 : plen;
 	dx = cx2 - lastofs2;
 	ocx2 = win_x - xpos - i + lastofs2;
-	if (dx < 0 || i + dx >= linemax) displaystr(s, &cx, &len);
+	if (dx < 0 || i + dx >= maxcol) displaystr(s, &cx, &len);
 	else if (cx2 <= ocx2) backcursor(xpos + i + dx);
 	else {
 		ocx = rlen(s, ocx2);
 		dupl = trquote(&(s[ocx]), cx - ocx, NULL);
-		win_x += kanjiputs(dupl);
+		win_x += Xkanjiputs(dupl);
 		free(dupl);
 	}
 }
@@ -648,56 +657,46 @@ int cx, cx2, len;
 
 	i = (lastofs2) ? 1 : plen;
 	dx = cx2 - lastofs2;
-	if (i + dx >= linemax) displaystr(s, &cx, &len);
-}
-
-static VOID NEAR movecursor(s, s2, n)
-char *s, *s2;
-int n;
-{
-	char *cp;
-
-	if (!*s || !(cp = tparamstr(s, n, n))) while (n--) putterm(s2);
-	else {
-		putterm(cp);
-		free(cp);
-	}
+	if (i + dx >= maxcol) displaystr(s, &cx, &len);
 }
 #endif	/* !_NOORIGSHELL */
 
-static VOID NEAR Xlocate(x, y)
+static VOID NEAR scrollup(VOID_A)
+{
+	Xlocate(0, maxline - 1);
+	Xputterm(C_SCROLLFORW);
+	ypos--;
+	hideclock = 1;
+}
+
+static VOID NEAR locate2(x, y)
 int x, y;
 {
 #ifndef	_NOORIGSHELL
 	if (shellmode) {
 		x += xpos;
 		if (win_x >= n_column) {
-			movecursor(c_nleft, c_left, win_x);
+			Xmovecursor(C_NLEFT, C_LEFT, win_x);
 			win_x = 0;
 		}
-		if (y < win_y) movecursor(c_nup, c_up, win_y - y);
+		if (y < win_y) Xmovecursor(C_NUP, C_UP, win_y - y);
 		else if (y > win_y) {
-			movecursor("", c_scrollforw, y - win_y);
-			putch2('\r');
+			Xmovecursor(-1, C_SCROLLFORW, y - win_y);
+			Xputch2('\r');
 			win_x = 0;
 		}
-		if (x < win_x) movecursor(c_nleft, c_left, win_x - x);
-		else if (x > win_x) movecursor(c_nright, c_right, x - win_x);
+		if (x < win_x) Xmovecursor(C_NLEFT, C_LEFT, win_x - x);
+		else if (x > win_x) Xmovecursor(C_NRIGHT, C_RIGHT, x - win_x);
 
 		win_x = x;
 		win_y = y;
 		return;
 	}
 #endif	/* !_NOORIGSHELL */
-	while (ypos + y >= n_line) {
-		locate(0, n_line - 1);
-		putterm(c_scrollforw);
-		ypos--;
-		hideclock = 1;
-	}
+	while (ypos + y >= maxline) scrollup();
 	win_x = xpos + x;
 	win_y = ypos + y;
-	locate(win_x, win_y);
+	Xlocate(win_x, win_y);
 }
 
 /*ARGSUSED*/
@@ -717,7 +716,7 @@ int cx, cx2, len;
 #endif
 	f = within(cx2) ? 0 : 1;
 	cx2 -= f;
-	Xlocate(ptr2col(cx2), ptr2line(cx2));
+	locate2(ptr2col(cx2), ptr2line(cx2));
 	if (f) rightcursor();
 }
 
@@ -731,17 +730,18 @@ int cx, cx2, len;
 		if (iseol(cx2)) setcursor(s, cx, cx2, len);
 		cp++;
 	}
+
 	return(cx2);
 }
 
 static VOID NEAR ringbell(VOID_A)
 {
 #ifndef	_NOORIGSHELL
-	if (dumbmode && dumbterm <= 2) putch2('\007');
+	if (dumbmode && dumbterm <= 2) Xputch2('\007');
 	else
 #endif
-	putterm(t_bell);
-	tflush();
+	Xputterm(T_BELL);
+	Xtflush();
 }
 
 static VOID NEAR clearline(VOID_A)
@@ -751,12 +751,12 @@ static VOID NEAR clearline(VOID_A)
 		int x;
 
 		/* abandon last 1 char because of auto newline */
-		for (x = win_x; x < n_column - 1; x++) putch2(' ');
-		for (x = win_x; x < n_column - 1; x++) putch2(C_BS);
+		for (x = win_x; x < n_column - 1; x++) Xputch2(' ');
+		for (x = win_x; x < n_column - 1; x++) Xputch2(C_BS);
 	}
 	else
 #endif
-	putterm(l_clear);
+	Xputterm(L_CLEAR);
 }
 
 static VOID NEAR newline(y)
@@ -767,7 +767,7 @@ int y;
 	else if (shellmode) forwline(xpos);
 	else
 #endif
-	Xlocate(0, y);
+	locate2(0, y);
 }
 
 static int NEAR rightchar(s, cxp, cx2, len)
@@ -865,42 +865,37 @@ int cx, len, ins;
 	len2 = cx2 + l;
 	nlen = len2 + ins;
 	dy = ptr2line(cx2);
-	i = (dy + 1) * linemax - plen;	/* prev. chars including cursor line */
-	j = linemax - ptr2col(cx2);
+	i = (dy + 1) * maxcol - plen;	/* prev. chars including cursor line */
+	j = maxcol - ptr2col(cx2);
 	if (j > ins) j = ins;		/* inserted columns in cursor line */
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode) {
 		i = (lastofs2) ? 1 : plen;
 		dx = cx2 + ins - lastofs2;
-		if (i + dx < linemax) {
+		if (i + dx < maxcol) {
 			putcursor(' ', ins);
-			dumbputs(dupl, i + cx2, l, linemax - (i + dx), 0);
+			dumbputs(dupl, i + cx2, l, maxcol - (i + dx), 0);
 		}
 	}
 	else
 #endif	/* !_NOORIGSHELL */
 #if	!MSDOS
-	if (*c_insert) {
+	if (*termstr[C_INSERT]) {
 # ifndef	_NOORIGSHELL
 		if (shellmode);
 		else
 # endif
-		if (ypos + dy >= n_line - 1
+		if (ypos + dy >= maxline - 1
 		&& xpos + ptr2col(cx2) + (len2 - cx2) + j >= n_column) {
 			/*
 			 * In the case that current line is the last line,
 			 * and the end of string will reach over the last line.
 			 */
-			while (ypos + dy >= n_line - 1) {
-				locate(0, n_line - 1);
-				putterm(c_scrollforw);
-				ypos--;
-			}
-			hideclock = 1;
+			while (ypos + dy >= maxline - 1) scrollup();
 			setcursor(s, cx, cx2, len);
 		}
-		while (j--) putterm(c_insert);
+		while (j--) Xputterm(C_INSERT);
 
 		if (i < nlen) {
 			while (i < nlen) {
@@ -914,9 +909,9 @@ int cx, len, ins;
 				if (ptr < ins) f1 = 0;
 				else f1 = vonkanji1(dupl, ptr - ins);
 				f2 = (vonkanji1(dupl, ptr)) ? 1 : 0;
-				if (xpos + linemax < n_column) {
-					Xlocate(linemax, dy);
-					j = n_column - (xpos + linemax);
+				if (xpos + maxcol < n_column) {
+					locate2(maxcol, dy);
+					j = n_column - (xpos + maxcol);
 					if (j > ins) j = ins;
 					if (f2) j++;
 					if (f1 && j-- > 0) rightcursor();
@@ -928,21 +923,16 @@ int cx, len, ins;
 				if (shellmode);
 				else
 # endif
-				if (ypos + dy >= n_line - 1
-				&& xpos + nlen - i >= n_column) {
-					while (ypos + dy >= n_line - 1) {
-						locate(0, n_line - 1);
-						putterm(c_scrollforw);
-						ypos--;
-					}
-					hideclock = 1;
-				}
-				Xlocate(0, dy);
-				for (j = 0; j < ins; j++) putterm(c_insert);
+				if (ypos + dy >= maxline - 1
+				&& xpos + nlen - i >= n_column)
+					while (ypos + dy >= maxline - 1)
+						scrollup();
+				locate2(0, dy);
+				for (j = 0; j < ins; j++) Xputterm(C_INSERT);
 				l = ins;
 				if (ptr < ins) {
 					ptr++;
-					Xlocate(ins - ptr, dy);
+					locate2(ins - ptr, dy);
 					l = ptr + f2;
 					ptr = 0;
 				}
@@ -954,7 +944,7 @@ int cx, len, ins;
 				if (ptr + l > nlen - cx2) l = nlen - cx2 - ptr;
 				kanjiputs2(dupl, l, ptr);
 				win_x += l;
-				i += linemax;
+				i += maxcol;
 			}
 			setcursor(s, cx, cx2, len);
 		}
@@ -981,14 +971,9 @@ int cx, len, ins;
 			if (shellmode);
 			else
 #endif
-			if (ypos + dy >= n_line - 1) {
-				while (ypos + dy >= n_line - 1) {
-					locate(0, n_line - 1);
-					putterm(c_scrollforw);
-					ypos--;
-				}
-				hideclock = 1;
-				Xlocate(dx, dy);
+			if (ypos + dy >= maxline - 1) {
+				while (ypos + dy >= maxline - 1) scrollup();
+				locate2(dx, dy);
 			}
 			if (f1) l++;
 			if (l > 0) {
@@ -1000,14 +985,14 @@ int cx, len, ins;
 			if (f1) newline(dy);
 			else {
 				putcursor(' ', 1);
-				Xlocate(0, dy);
+				locate2(0, dy);
 			}
 
-			l = linemax;
+			l = maxcol;
 			if (ptr < ins - 1) {
 				putcursor(' ', 1);
 				ptr++;
-				Xlocate(ins - ptr, dy);
+				locate2(ins - ptr, dy);
 				l -= ins - ptr;
 				ptr = 0;
 			}
@@ -1017,7 +1002,7 @@ int cx, len, ins;
 			}
 			if (ptr + l > len2 - cx2) l = len2 - cx2 - ptr;
 			j = ptr;
-			i += linemax;
+			i += maxcol;
 			dx = 0;
 		}
 
@@ -1033,19 +1018,14 @@ int cx, len, ins;
 	else if (shellmode) {
 		if (ptr2col(nlen) == 1) {
 			setcursor(s, -1, nlen, len);
-			putterm(l_clear);
+			Xputterm(L_CLEAR);
 			setcursor(s, cx, cx2, len);
 		}
 	}
 	else
 #endif
-	if (i == nlen && within(i) && ypos + dy >= n_line - 1) {
-		while (ypos + dy >= n_line - 1) {
-			locate(0, n_line - 1);
-			putterm(c_scrollforw);
-			ypos--;
-		}
-		hideclock = 1;
+	if (i == nlen && within(i) && ypos + dy >= maxline - 1) {
+		while (ypos + dy >= maxline - 1) scrollup();
 		setcursor(s, cx, cx2, len);
 	}
 	free(dupl);
@@ -1066,21 +1046,21 @@ int cx, len, del;
 	len2 = cx2 + l;
 	nlen = len2 - del;
 	dy = ptr2line(cx2);
-	i = (dy + 1) * linemax - plen;	/* prev. chars including cursor line */
+	i = (dy + 1) * maxcol - plen;	/* prev. chars including cursor line */
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode) {
 		i = (lastofs2) ? 1 : plen;
 		j = cx2 - lastofs2;
-		dumbputs(dupl, i + cx2, l, linemax - (i + j), del);
+		dumbputs(dupl, i + cx2, l, maxcol - (i + j), del);
 	}
 	else
 #endif	/* !_NOORIGSHELL */
 #if	!MSDOS
-	if (*c_delete) {
-		j = linemax - ptr2col(cx2);
+	if (*termstr[C_DELETE]) {
+		j = maxcol - ptr2col(cx2);
 		if (j > del) j = del;	/* deleted columns in cursor line */
-		while (j--) putterm(c_delete);
+		while (j--) Xputterm(C_DELETE);
 
 		if (i < len2) {
 			while (i < len2) {
@@ -1093,9 +1073,9 @@ int cx, len, del;
 				if (ptr >= nlen - cx2) f1 = 0;
 				else f1 = (vonkanji1(dupl, ptr + del)) ? 1 : 0;
 				f2 = (vonkanji1(dupl, ptr)) ? 1 : 0;
-				j = linemax - del + f2;
-				if (j < linemax - (++ptr)) {
-					j = linemax - ptr;
+				j = maxcol - del + f2;
+				if (j < maxcol - (++ptr)) {
+					j = maxcol - ptr;
 					l = ptr + f1;
 					ptr = del;
 				}
@@ -1103,17 +1083,17 @@ int cx, len, del;
 					l = del - f2 + f1;
 					ptr += f2;
 				}
-				Xlocate(j, dy);
+				locate2(j, dy);
 				if (ptr + l > len2) l = len2 - ptr;
 				if (l > 0) {
 					kanjiputs2(dupl, l, ptr);
 					win_x += l;
 				}
 				if (!f1) putcursor(' ', 1);
-				Xlocate(0, ++dy);
-				for (j = 0; j < del; j++) putterm(c_delete);
+				locate2(0, ++dy);
+				for (j = 0; j < del; j++) Xputterm(C_DELETE);
 				if (f1) putcursor(' ', 1);
-				i += linemax;
+				i += maxcol;
 			}
 			setcursor(s, cx, cx2, len);
 		}
@@ -1143,15 +1123,15 @@ int cx, len, del;
 			if (f1) newline(dy);
 			else {
 				putcursor(' ', 1);
-				Xlocate(0, dy);
+				locate2(0, dy);
 			}
 
-			l = linemax;
+			l = maxcol;
 			ptr += del + 1;
 			if (f1) dupl[f1 - 1] = dupl[f1] = ' ';
 			if (ptr + l > len2 - cx2) l = len2 - cx2 - ptr;
 			j = ptr;
-			i += linemax;
+			i += maxcol;
 		}
 
 		l = len2 - cx2 - j;
@@ -1196,24 +1176,24 @@ int cx, cx2, len;
 		return;
 	}
 #endif
-	putterm(l_clear);
+	Xputterm(L_CLEAR);
 
 	dy = ptr2line(cx2);
-	i = (dy + 1) * linemax - plen;
+	i = (dy + 1) * maxcol - plen;
 	if (i < len2) {
 #ifndef	_NOORIGSHELL
 		if (shellmode) while (i < len2) {
-			Xlocate(0, ++dy);
-			putterm(l_clear);
-			i += linemax;
+			locate2(0, ++dy);
+			Xputterm(L_CLEAR);
+			i += maxcol;
 		}
 		else
 #endif
 		while (i < len2) {
-			if (ypos + ++dy >= n_line) break;
-			locate(xpos, ypos + dy);
-			putterm(l_clear);
-			i += linemax;
+			if (ypos + ++dy >= maxline) break;
+			Xlocate(xpos, ypos + dy);
+			Xputterm(L_CLEAR);
+			i += maxcol;
 		}
 		setcursor(s, cx, cx2, len);
 	}
@@ -1241,8 +1221,8 @@ int *cxp, *lenp;
 		forwcursor(xpos);
 		dispprompt(NULL, -1);
 		i = plen;
-		x = cx2 - linemax;
-		y = (linemax + 1) / 2;
+		x = cx2 - maxcol;
+		y = (maxcol + 1) / 2;
 		for (lastofs2 = 0; lastofs2 <= i + x; lastofs2 += y) {
 # if	FD >= 2
 			if (searchmode) i = plen + 1;
@@ -1259,15 +1239,15 @@ int *cxp, *lenp;
 			if ((f = vonkanji1(dupl, lastofs2 - 1)))
 				dupl[f - 1] = dupl[f] = ' ';
 		}
-		dumbputs(dupl, i + cx2, len2, linemax - i, lastofs2);
-		tflush();
+		dumbputs(dupl, i + cx2, len2, maxcol - i, lastofs2);
+		Xtflush();
 		free(dupl);
 		return;
 	}
 #endif
 
 	dispprompt(NULL, 0);
-	Xlocate(plen, 0);
+	locate2(plen, 0);
 	max = maxscr();
 	if (len2 > max) {
 		len2 = max;
@@ -1277,30 +1257,26 @@ int *cxp, *lenp;
 			*cxp = *lenp;
 		}
 	}
-	vi = (t_nocursor && *t_nocursor && t_normalcursor && *t_normalcursor);
-	if (vi) putterms(t_nocursor);
+	vi = (termstr[T_NOCURSOR] && *termstr[T_NOCURSOR]
+		&& termstr[T_NORMALCURSOR] && *termstr[T_NORMALCURSOR]);
+	if (vi) Xputterms(T_NOCURSOR);
 	i = x = y = 0;
-	width = linemax - plen;
+	width = maxcol - plen;
 	while (i + width < len2) {
 		/*
 		 * Whether if the end of line is kanji 1st byte
 		 */
 		f = (vonkanji1(dupl, i + width - 1)) ? 1 : 0;
 		clearline();
-		if (stable_standout) putterm(end_standout);
+		if (stable_standout) Xputterm(END_STANDOUT);
 
 #ifndef	_NOORIGSHELL
 		if (shellmode);
 		else
 #endif
-		if (ypos + y >= n_line - 1) {
-			while (ypos + y >= n_line - 1) {
-				locate(0, n_line - 1);
-				putterm(c_scrollforw);
-				ypos--;
-			}
-			hideclock = 1;
-			Xlocate(x, y);
+		if (ypos + y >= maxline - 1) {
+			while (ypos + y >= maxline - 1) scrollup();
+			locate2(x, y);
 		}
 		if (width + f > 0) {
 			kanjiputs3(dupl, cx2, width + f, i, top);
@@ -1308,7 +1284,7 @@ int *cxp, *lenp;
 		}
 
 		i += width + f;
-		width = linemax - f;
+		width = maxcol - f;
 		x = f;
 		y++;
 
@@ -1318,24 +1294,24 @@ int *cxp, *lenp;
 		}
 		else {
 			putcursor(' ', 1);
-			Xlocate(0, y);
+			locate2(0, y);
 		}
 	}
 	clearline();
-	if (stable_standout) putterm(end_standout);
+	if (stable_standout) Xputterm(END_STANDOUT);
 	kanjiputs3(dupl, cx2, len2 - i, i, top);
 	win_x += len2 - i;
 #ifndef	_NOORIGSHELL
 	if (shellmode);
 	else
 #endif
-	while (win_y < n_line - 1) {
-		locate(xpos, ++win_y);
-		putterm(l_clear);
+	while (win_y < maxline - 1) {
+		Xlocate(xpos, ++win_y);
+		Xputterm(L_CLEAR);
 	}
-	if (vi) putterms(t_normalcursor);
+	if (vi) Xputterms(T_NORMALCURSOR);
 	setcursor(s, *cxp, cx2, *lenp);
-	tflush();
+	Xtflush();
 	free(dupl);
 }
 
@@ -1389,6 +1365,7 @@ int rins, vins;
 	else if (rins < rw) delshift(*sp, cx, *lenp, rw - rins);
 
 	*lenp += rins - rw;
+
 	return(0);
 }
 
@@ -1475,13 +1452,13 @@ int ins, quote;
 	len2 = vlen(dupl, j);
 	dx = ptr2col(cx2);
 	dy = ptr2line(cx2);
-	i = (dy + 1) * linemax - plen - cx2;
+	i = (dy + 1) * maxcol - plen - cx2;
 	ptr = 0;
 #ifndef	_NOORIGSHELL
 	if (dumbmode) {
 		i = (lastofs2) ? 1 : plen;
 		dx = cx2 - lastofs2 + len2;
-		if (i + dx >= linemax) {
+		if (i + dx >= maxcol) {
 			cx += j;
 			displaystr(*sp, &cx, &len);
 			ptr = len2;
@@ -1499,14 +1476,9 @@ int ins, quote;
 		if (shellmode);
 		else
 #endif
-		if (ypos + dy >= n_line - 1) {
-			while (ypos + dy >= n_line - 1) {
-				locate(0, n_line - 1);
-				putterm(c_scrollforw);
-				ypos--;
-			}
-			hideclock = 1;
-			Xlocate(dx, dy);
+		if (ypos + dy >= maxline - 1) {
+			while (ypos + dy >= maxline - 1) scrollup();
+			locate2(dx, dy);
 		}
 		l = i - ptr;
 		if (f) l++;
@@ -1516,13 +1488,14 @@ int ins, quote;
 		if (f) dupl[f - 1] = dupl[f] = ' ';
 		ptr = i;
 		dx = 0;
-		i += linemax;
+		i += maxcol;
 	}
 	if (len2 > ptr) {
 		kanjiputs2(dupl, len2 - ptr, ptr);
 		win_x += len2 - ptr;
 	}
 	free(dupl);
+
 	return(j);
 }
 
@@ -1531,10 +1504,10 @@ static VOID NEAR selectfile(argc, argv)
 int argc;
 char **argv;
 {
-	static int maxselect, tmpcolumns;
 	char *cp;
-	int i, len, maxlen, dupminfilename, dupcolumns, dupdispmode;
+	int i, len, maxlen, duprow, dupminfilename, dupcolumns, dupdispmode;
 
+	duprow = FILEPERROW;
 	dupminfilename = minfilename;
 	dupcolumns = curcolumns;
 	dupdispmode = dispmode;
@@ -1569,21 +1542,24 @@ char **argv;
 			int j, n;
 
 			n = 1;
-			cputnl();
+			Xcputnl();
 			if (argc < LIMITSELECTWARN) i = 'Y';
 			else {
-				cprintf2("There are %d possibilities.", argc);
-				cputs2("  Do you really");
-				cputnl();
-				cputs2("wish to see them all? (y or n)");
-				tflush();
+				Xcprintf2("There are %d possibilities.", argc);
+				Xcputs2("  Do you really");
+				Xcputnl();
+				Xcputs2("wish to see them all? (y or n)");
+				Xtflush();
 				for (;;) {
-					i = toupper2(getkey2(0));
-					if (i == 'Y' || i == 'N') break;
+					if ((i = getkey2(0)) < K_MIN) {
+						i = toupper2(i);
+						if (i == 'Y' || i == 'N')
+							break;
+					}
 					ringbell();
-					tflush();
+					Xtflush();
 				}
-				cputnl();
+				Xcputnl();
 				n += 2;
 			}
 
@@ -1591,8 +1567,8 @@ char **argv;
 			else if (n_column < maxlen + 2) {
 				n += argc;
 				for (i = 0; i < argc; i++) {
-					kanjiputs(selectlist[i].name);
-					cputnl();
+					Xkanjiputs(selectlist[i].name);
+					Xcputnl();
 				}
 			}
 			else {
@@ -1601,10 +1577,10 @@ char **argv;
 				n += len;
 				for (i = 0; i < len; i++) {
 					for (j = i; j < argc; j += len)
-						cprintf2("%-*.*k",
+						Xcprintf2("%-*.*k",
 							maxlen + 2, maxlen + 2,
 							selectlist[j].name);
-					cputnl();
+					Xcputnl();
 				}
 			}
 
@@ -1615,11 +1591,12 @@ char **argv;
 			}
 			else
 # endif
-			if (ypos + n < n_line - 1) ypos += n;
-			else ypos = n_line - 1;
+			if (ypos + n < maxline - 1) ypos += n;
+			else ypos = maxline - 1;
 			for (i = 0; i < argc; i++) free(selectlist[i].name);
 			free(selectlist);
 			selectlist = NULL;
+			FILEPERROW = duprow;
 			minfilename = dupminfilename;
 			curcolumns = dupcolumns;
 			dispmode = dupdispmode;
@@ -1627,10 +1604,17 @@ char **argv;
 			return;
 		}
 
+		i = filetop(win);
+		if (ypos >= i + FILEPERROW) tmpfileperrow = FILEPERROW;
+		else {
+			tmpfileperrow = ypos - i;
+			if (tmpfileperrow < WFILEMIN) tmpfileperrow = WFILEMIN;
+		}
 		if ((n_column / 5) - 2 - 1 >= maxlen) tmpcolumns = 5;
 		else if ((n_column / 3) - 2 - 1 >= maxlen) tmpcolumns = 3;
 		else if ((n_column / 2) - 2 - 1 >= maxlen) tmpcolumns = 2;
 		else tmpcolumns = 1;
+		FILEPERROW = tmpfileperrow;
 		curcolumns = tmpcolumns;
 		tmpfilepos = listupfile(selectlist, argc, NULL, 1);
 		maxselect = argc;
@@ -1641,6 +1625,7 @@ char **argv;
 		selectlist = NULL;
 	}
 	else {
+		FILEPERROW = tmpfileperrow;
 		curcolumns = tmpcolumns;
 		if (tmpfilepos >= maxselect) tmpfilepos %= (tmpfilepos - argc);
 		else if (tmpfilepos < 0)
@@ -1656,6 +1641,7 @@ char **argv;
 		}
 	}
 
+	FILEPERROW = duprow;
 	minfilename = dupminfilename;
 	curcolumns = dupcolumns;
 	dispmode = dupdispmode;
@@ -1925,8 +1911,8 @@ int comline, cont;
 			putcursor(fix, 1);
 		}
 	}
-
 	free(cp);
+
 	return(l);
 }
 #endif	/* !_NOCOMPLETE */
@@ -1941,7 +1927,22 @@ int ch;
 #endif
 	int ch2;
 
-#ifndef	_NOKANJICONV
+#ifdef	_NOKANJICONV
+# ifdef	CODEEUC
+	if (isekana2(ch)) {
+		buf[0] = (char)C_EKANA;
+		buf[1] = (ch * 0xff);
+		buf[2] = '\0';
+		return(1);
+	}
+# else
+	if (iskana2(ch)) {
+		buf[0] = ch;
+		buf[1] = '\0';
+		return(1);
+	}
+# endif
+#else	/* !_NOKANJICONV */
 	if (inputkcode == EUC && isekana2(ch)) {
 		tmpkanji[0] = (char)C_EKANA;
 		tmpkanji[1] = (ch & 0xff);
@@ -1987,22 +1988,7 @@ int ch;
 			return(n);
 		}
 	}
-#else	/* _NOKANJICONV */
-# ifdef	CODEEUC
-	if (isekana2(ch)) {
-		buf[0] = (char)C_EKANA;
-		buf[1] = (ch * 0xff);
-		buf[2] = '\0';
-		return(1);
-	}
-# else
-	if (iskana2(ch)) {
-		buf[0] = ch;
-		buf[1] = '\0';
-		return(1);
-	}
-# endif
-#endif	/* _NOKANJICONV */
+#endif	/* !_NOKANJICONV */
 
 	if (isinkanji1(ch)) {
 		if (!kbhit2(WAITMETA * 1000L)
@@ -2030,6 +2016,7 @@ int ch;
 
 	buf[0] = ch;
 	buf[1] = '\0';
+
 	return((iscntrl2(ch) || ismsb(ch)) ? 0 : 1);
 }
 
@@ -2065,8 +2052,8 @@ char *hist;
 		y2 = ptr2line(vlen(*sp, *lenp));
 		if (y1 > y2) {
 			while (y1 > y2) {
-				Xlocate(0, y1--);
-				putterm(l_clear);
+				locate2(0, y1--);
+				Xputterm(L_CLEAR);
 			}
 			setcursor(*sp, *cxp, -1, *lenp);
 		}
@@ -2092,9 +2079,9 @@ char **tmp;
 	else
 #endif
 #ifdef	_NOORIGSHELL
-	if (cx2 < linemax)
+	if (cx2 < maxcol)
 #else
-	if (dumbmode || cx2 < linemax)
+	if (dumbmode || cx2 < maxcol)
 #endif
 	{
 		if (h < 0 || !history[h] || *histnop >= (int)histsize[h]
@@ -2115,7 +2102,7 @@ char **tmp;
 			leftcursor();
 			cx2--;
 		}
-		cx2 -= linemax;
+		cx2 -= maxcol;
 		*cxp = rlen(*sp, cx2);
 		upcursor();
 		if (onkanji1(*sp, *cxp - 1)) {
@@ -2147,10 +2134,10 @@ char **tmp;
 	else
 #endif
 #ifdef	_NOORIGSHELL
-	if (cx2 + linemax > len2 || (cx2 + linemax == len2
+	if (cx2 + maxcol > len2 || (cx2 + maxcol == len2
 	&& !within(len2) && !ptr2col(len2)))
 #else
-	if (dumbmode || (cx2 + linemax > len2 || (cx2 + linemax == len2
+	if (dumbmode || (cx2 + maxcol > len2 || (cx2 + maxcol == len2
 	&& !within(len2) && !ptr2col(len2))))
 #endif
 	{
@@ -2170,7 +2157,7 @@ char **tmp;
 		}
 	}
 	else {
-		cx2 += linemax;
+		cx2 += maxcol;
 		*cxp = rlen(*sp, cx2);
 		downcursor();
 		if (onkanji1(*sp, *cxp - 1)) {
@@ -2225,6 +2212,7 @@ int cx, len;
 
 	deletechar(s, cx, len, vw);
 	delshift(s, cx, len, rw);
+
 	return(len -= rw);
 }
 
@@ -2271,6 +2259,7 @@ ALLOC_T *sizep;
 	}
 	cx2 = vlen(*sp, *cxp);
 	if (iseol(cx2)) setcursor(*sp, *cxp, cx2, *lenp);
+
 	return(cx2);
 }
 
@@ -2369,6 +2358,7 @@ char **tmp;
 
 	ringbell();
 	searchmode = -2;
+
 	return(NULL);
 }
 
@@ -2421,6 +2411,7 @@ char **tmp;
 
 	ringbell();
 	searchmode = 2;
+
 	return(NULL);
 }
 #endif	/* FD >= 2 */
@@ -2442,7 +2433,7 @@ int vw;
 	}
 	memcpy(&((*sp)[*cxp]), buf, rw);
 	*cxp += rw;
-	cprintf2("%.*k", vw, buf);
+	Xcprintf2("%.*k", vw, buf);
 	win_x += vw;
 	cx2 = vlen(*sp, *cxp);
 
@@ -2451,6 +2442,7 @@ int vw;
 	else
 #endif
 	if (within(cx2) && ptr2col(cx2) < vw) setcursor(*sp, *cxp, cx2, *lenp);
+
 	return(cx2);
 }
 
@@ -2471,7 +2463,7 @@ int def, comline, h;
 	subwindow = 1;
 
 #ifndef	_NOORIGSHELL
-	if (dumbmode) linemax -= RIGHTMARGIN;
+	if (dumbmode) maxcol -= RIGHTMARGIN;
 	if (shellmode) sig = 0;
 	else
 #endif
@@ -2481,7 +2473,7 @@ int def, comline, h;
 	tmpfilepos = -1;
 #endif
 	cx = len = strlen(*sp);
-	if (def >= 0 && def < linemax) {
+	if (def >= 0 && def < maxcol) {
 		while (def > len) {
 			*sp = c_realloc(*sp, len, &size);
 			(*sp)[len++] = ' ';
@@ -2502,7 +2494,7 @@ int def, comline, h;
 #endif
 
 	do {
-		tflush();
+		Xtflush();
 		ch2 = ch;
 		ocx2 = cx2;
 		if (quote) {
@@ -2631,7 +2623,7 @@ int def, comline, h;
 #ifndef	_NOCOMPLETE
 				if (h >= 0 && selectlist) {
 					i = tmpfilepos;
-					tmpfilepos += FILEPERROW;
+					tmpfilepos += tmpfileperrow;
 					selectfile(i, NULL);
 					ocx2 = -1;
 				}
@@ -2639,7 +2631,7 @@ int def, comline, h;
 #endif
 				if (cx >= len) ringbell();
 #ifndef	_NOEDITMODE
-				if (isvimode() && len && cx >= len - 1)
+				else if (isvimode() && len && cx >= len - 1)
 					ringbell();
 #endif
 				else ocx2 = cx2 =
@@ -2650,7 +2642,7 @@ int def, comline, h;
 #ifndef	_NOCOMPLETE
 				if (h >= 0 && selectlist) {
 					i = tmpfilepos;
-					tmpfilepos -= FILEPERROW;
+					tmpfilepos -= tmpfileperrow;
 					selectfile(i, NULL);
 					ocx2 = -1;
 				}
@@ -2704,20 +2696,21 @@ int def, comline, h;
 #ifndef	_NOORIGSHELL
 				if (dumbmode) rewritecursor(*sp, 0, 0, len);
 				else if (shellmode) {
-					Xlocate(0, 0);
-					putterm(l_clear);
+					locate2(0, 0);
+					Xputterm(L_CLEAR);
 				}
 				else
 #endif
 				{
-					if (dupn_line >= 0
-					&& dupn_line != n_line)
-						ypos += n_line - dupn_line;
-					dupn_line = n_line;
+					if (maxline != n_line) {
+						ypos += n_line - maxline;
+						maxline = n_line;
+					}
+
 					for (i = 0; i < WCMDLINE; i++) {
-						if (ypos + i >= n_line) break;
-						locate(xpos, ypos + i);
-						putterm(l_clear);
+						if (ypos + i >= maxline) break;
+						Xlocate(xpos, ypos + i);
+						Xputterm(L_CLEAR);
 					}
 				}
 				displaystr(*sp, &cx, &len);
@@ -2822,6 +2815,12 @@ int def, comline, h;
 		&& ch != K_UP && ch != K_DOWN) {
 			selectfile(-1, NULL);
 			rewritefile(0);
+			n = ypos;
+			if (!lcmdline) ypos = L_CMDLINE + maxline - n_line;
+			else if (lcmdline > 0) ypos = lcmdline;
+			else ypos = maxline - 1;
+			while (ypos > n) scrollup();
+			displaystr(*sp, &cx, &len);
 			ocx2 = -1;
 		}
 		if (ocx2 != cx2) setcursor(*sp, cx, cx2, len);
@@ -2854,9 +2853,10 @@ int def, comline, h;
 	}
 	(*sp)[len] = '\0';
 
-	tflush();
+	Xtflush();
 	hideclock = 0;
 	if (i) rewritefile(1);
+
 	return(ch);
 }
 
@@ -2899,38 +2899,38 @@ int set;
 		forwcursor(xpos);
 		win_y = 0;
 	}
-	else if (shellmode) Xlocate(0, 0);
+	else if (shellmode) locate2(0, 0);
 	else
 #endif
-	locate(xpos, ypos);
+	Xlocate(xpos, ypos);
 	if (s && *s) {
 #ifndef	_NOORIGSHELL
-		if (dumbmode || shellmode) plen = kanjiputs(s);
+		if (dumbmode || shellmode) plen = Xkanjiputs(s);
 		else
 #endif
 		{
-			putch2(' ');
-			putterm(t_standout);
-			plen = 1 + kanjiputs(s);
-			putterm(end_standout);
+			Xputch2(' ');
+			Xputterm(T_STANDOUT);
+			plen = 1 + Xkanjiputs(s);
+			Xputterm(END_STANDOUT);
 		}
 	}
 	else {
 #ifdef	_NOORIGSHELL
-		putch2(' ');
-		putterm(t_standout);
+		Xputch2(' ');
+		Xputterm(T_STANDOUT);
 #endif
 		plen = evalprompt(&buf, promptstr);
-		kanjiputs(buf);
+		Xkanjiputs(buf);
 		free(buf);
 #ifdef	_NOORIGSHELL
 		plen++;
-		putterm(end_standout);
+		Xputterm(END_STANDOUT);
 #else
 		if (dumbmode);
 		else
 #endif
-		putterm(t_normal);
+		Xputterm(T_NORMAL);
 	}
 
 	win_x += plen;
@@ -2944,21 +2944,23 @@ int h;
 {
 	char *input;
 	ALLOC_T size;
-	int i, j, ch, comline, dupwin_x, dupwin_y;
+	int i, j, len, ch, comline, dupwin_x, dupwin_y;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
 	win_x = 0;
 	xpos = LEFTMARGIN;
-	dupn_line = n_line;
 #ifndef	_NOORIGSHELL
-	dumbmode = (dumbterm || dumbshell) ? !termmode(-1) : 0;
+	dumbmode = (dumbterm || dumbshell) ? !Xtermmode(-1) : 0;
 	if (dumbmode || shellmode) lcmdline = -1;
 #endif
+	maxcol = n_column - 1 - xpos;
+	minline = 0;
+	maxline = n_line;
 
-	if (!lcmdline) ypos = L_CMDLINE;
+	if (!lcmdline) ypos = L_CMDLINE + maxline - n_line;
 	else if (lcmdline > 0) ypos = lcmdline;
-	else ypos = n_line - 1;
+	else ypos = maxline - 1;
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode || shellmode) win_y = 0;
@@ -2967,13 +2969,13 @@ int h;
 	{
 		win_y = ypos;
 		for (i = 0; i < WCMDLINE; i++) {
-			if (ypos + i >= n_line) break;
-			locate(0, ypos + i);
-			putterm(l_clear);
+			if (ypos + i >= maxline) break;
+			Xlocate(0, ypos + i);
+			Xputterm(L_CLEAR);
 		}
 	}
 	dispprompt(prompt, 1);
-	tflush();
+	Xtflush();
 
 	input = c_realloc(NULL, 0, &size);
 	if (!def) *input = '\0';
@@ -3029,10 +3031,10 @@ int h;
 	if (promptstr == promptstr2) comline = 0;
 	lastofs2 = 0;
 #endif
-	linemax = n_column - 1 - xpos;
 	ch = _inputstr(&input, size, ptr, comline, h);
 	win_x = dupwin_x;
 	win_y = dupwin_y;
+	len = strlen(input);
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode || shellmode) prompt = NULL;
@@ -3041,22 +3043,22 @@ int h;
 	if (!prompt || !*prompt) {
 		if (ch != K_ESC) {
 			if (ch == cc_intr) {
-				cputs2("^C");
+				Xcputs2("^C");
 				ch = K_ESC;
 			}
-			cputnl();
+			Xcputnl();
 		}
 	}
 	else {
 		for (i = 0; i < WCMDLINE; i++) {
-			if (ypos + i >= n_line) break;
-			locate(0, ypos + i);
-			putterm(l_clear);
+			if (ypos + i >= maxline) break;
+			Xlocate(0, ypos + i);
+			Xputterm(L_CLEAR);
 		}
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 		if ((!lcmdline && ypos < L_CMDLINE)
-		|| (lcmdline > 0 && ypos < lcmdline + n_line))
+		|| (lcmdline > 0 && ypos < lcmdline + maxline))
 			rewritefile(1);
 	}
 	lcmdline = 0;
@@ -3066,11 +3068,11 @@ int h;
 		return(NULL);
 	}
 
-	i = strlen(input);
-	if (delsp && i > 0 && input[i - 1] == ' ' && yesno(DELSP_K)) {
-		for (i--; i > 0 && input[i - 1] == ' '; i--);
-		input[i] = '\0';
+	if (delsp && len > 0 && input[len - 1] == ' ' && yesno(DELSP_K)) {
+		for (len--; len > 0 && input[len - 1] == ' '; len--);
+		input[len] = '\0';
 	}
+
 	return(input);
 }
 
@@ -3092,6 +3094,7 @@ char *s;
 	else if (isekana(cp, len - 1)) len--;
 #endif
 	strcpy(&(cp[len]), tmp);
+
 	return(s);
 }
 
@@ -3102,28 +3105,29 @@ char *mes;
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode) forwline(xpos);
-	else if (shellmode) Xlocate(0, 0);
+	else if (shellmode) locate2(0, 0);
 	else
 #endif
-	locate(xpos, ypos);
+	Xlocate(xpos, ypos);
 #ifndef	_NOORIGSHELL
 	if (dumbmode);
 	else
 #endif
 	{
-		putterm(l_clear);
-		putterm(t_standout);
+		Xputterm(L_CLEAR);
+		Xputterm(T_STANDOUT);
 	}
 	len = kanjiputs2(mes, n_lastcolumn - YESNOSIZE, -1);
 	win_x += len;
-	cputs2(YESNOSTR);
+	Xcputs2(YESNOSTR);
 	win_x += YESNOSIZE;
 #ifndef	_NOORIGSHELL
 	if (dumbmode);
 	else
 #endif
-	putterm(end_standout);
-	tflush();
+	Xputterm(END_STANDOUT);
+	Xtflush();
+
 	return(len);
 }
 
@@ -3141,11 +3145,7 @@ va_dcl
 	int len, ch, x, dupwin_x, dupwin_y, duperrno, ret;
 	char *buf;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
+	VA_START(args, fmt);
 	len = vasprintf2(&buf, fmt, args);
 	va_end(args);
 	if (len < 0) error("malloc()");
@@ -3155,13 +3155,15 @@ va_dcl
 	duperrno = errno;
 	win_x = xpos = 0;
 #ifndef	_NOORIGSHELL
-	dumbmode = (dumbterm || dumbshell) ? !termmode(-1) : 0;
+	dumbmode = (dumbterm || dumbshell) ? !Xtermmode(-1) : 0;
 	if (dumbmode || shellmode) lcmdline = -1;
 #endif
 
+	minline = 0;
+	maxline = n_line;
 	if (!lcmdline) ypos = L_MESLINE;
 	else if (lcmdline > 0) ypos = lcmdline;
-	else ypos = n_line - 1;
+	else ypos = maxline - 1;
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode || shellmode) win_y = 0;
@@ -3186,14 +3188,14 @@ va_dcl
 		if (dumbmode) {
 			if (xpos + x < win_x) backcursor(xpos + x);
 			else while (xpos + x > win_x) {
-				putch2(YESNOSTR[win_x - xpos - len]);
+				Xputch2(YESNOSTR[win_x - xpos - len]);
 				win_x++;
 			}
 		}
 		else
 #endif
-		Xlocate(x, 0);
-		tflush();
+		locate2(x, 0);
+		Xtflush();
 		switch (ch = Xgetkey(1, 0)) {
 			case 'y':
 			case 'Y':
@@ -3214,9 +3216,10 @@ va_dcl
 				ret = 1;
 				break;
 			case K_CTRL('L'):
+				maxline = n_line;
 				if (!lcmdline) ypos = L_MESLINE;
 				else if (lcmdline > 0) ypos = lcmdline;
-				else ypos = n_line - 1;
+				else ypos = maxline - 1;
 				yesnomes(buf);
 				break;
 			default:
@@ -3227,30 +3230,30 @@ va_dcl
 	free(buf);
 
 #ifndef	_NOORIGSHELL
-	if (dumbmode) cputnl();
+	if (dumbmode) Xcputnl();
 	else
 #endif
 	if (lcmdline) {
-		Xlocate(x, 0);
-		putch2((ret) ? 'Y' : 'N');
-		cputnl();
+		locate2(x, 0);
+		Xputch2((ret) ? 'Y' : 'N');
+		Xcputnl();
 	}
 	else {
-		Xlocate(0, 0);
-		putterm(l_clear);
+		locate2(0, 0);
+		Xputterm(L_CLEAR);
 	}
 #ifndef	_NOORIGSHELL
 	dumbmode = 0;
 #endif
-	tflush();
+	Xtflush();
 	lcmdline = 0;
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 	subwindow = 0;
 	Xgetkey(-1, 0);
-
 	errno = duperrno;
+
 	return(ret);
 }
 
@@ -3278,26 +3281,22 @@ char *s;
 	}
 	ringbell();
 
-	locate(0, L_MESLINE);
-	putterm(l_clear);
-	putterm(t_standout);
+	Xlocate(0, L_MESLINE);
+	Xputterm(L_CLEAR);
+	Xputterm(T_STANDOUT);
 	win_x = kanjiputs2(s, n_lastcolumn, -1);
 	win_y = L_MESLINE;
-	putterm(end_standout);
-	tflush();
+	Xputterm(END_STANDOUT);
+	Xtflush();
 
 	if (win_x >= n_lastcolumn) win_x = n_lastcolumn - 1;
 
-	if (!(wastty = isttyiomode)) ttyiomode(1);
+	if (!(wastty = isttyiomode)) Xttyiomode(1);
 	keyflush();
 	do {
-#ifdef	SIGALRM
-		getkey2((noalrm) ? 0 : SIGALRM);
-#else
-		getkey2(0);
-#endif
+		getkey2(sigalrm(1));
 	} while (kbhit2(WAITAFTERWARN * 1000L));
-	if (!wastty) stdiomode();
+	if (!wastty) Xstdiomode();
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
@@ -3305,10 +3304,10 @@ char *s;
 
 	if (no) rewritefile(1);
 	else {
-		locate(0, L_MESLINE);
-		putterm(l_clear);
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(0, L_MESLINE);
+		Xputterm(L_CLEAR);
+		Xlocate(win_x, win_y);
+		Xtflush();
 	}
 
 	if (tmp) free(tmp);
@@ -3326,6 +3325,7 @@ int multi;
 		len += strlen2(str[i]) + 1;
 		if (multi) len++;
 	}
+
 	return(len);
 }
 
@@ -3393,21 +3393,22 @@ int val[], xx[];
 {
 	int i, new;
 
-	locate(x, L_MESLINE);
-	putterm(l_clear);
+	Xlocate(x, L_MESLINE);
+	Xputterm(L_CLEAR);
 	new = (num < 0) ? -1 - num : -1;
 	for (i = 0; i < max; i++) {
 		if (!str[i]) continue;
-		locate(x + xx[i] + 1, L_MESLINE);
-		if (num < 0) putch2((val[i]) ? '*' : ' ');
-		if (i != new && val[i] != num) kanjiputs(str[i]);
+		Xlocate(x + xx[i] + 1, L_MESLINE);
+		if (num < 0) Xputch2((val[i]) ? '*' : ' ');
+		if (i != new && val[i] != num) Xkanjiputs(str[i]);
 		else {
 			new = i;
-			putterm(t_standout);
-			kanjiputs(str[i]);
-			putterm(end_standout);
+			Xputterm(T_STANDOUT);
+			Xkanjiputs(str[i]);
+			Xputterm(END_STANDOUT);
 		}
 	}
+
 	return(new);
 }
 
@@ -3440,8 +3441,8 @@ int val[];
 	win_y = L_MESLINE;
 	do {
 		win_x = tmpx + xx[new + 1];
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 		old = new;
 
 		keyflush();
@@ -3468,8 +3469,8 @@ int val[];
 			case ' ':
 				if (num) break;
 				val[new] = (val[new]) ? 0 : 1;
-				locate(tmpx + xx[new] + 1, L_MESLINE);
-				putch2((val[new]) ? '*' : ' ');
+				Xlocate(tmpx + xx[new] + 1, L_MESLINE);
+				Xputch2((val[new]) ? '*' : ' ');
 				break;
 			default:
 				if (!isalpha2(ch)) break;
@@ -3483,20 +3484,20 @@ int val[];
 					break;
 				}
 				val[new] = (val[new]) ? 0 : 1;
-				locate(tmpx + xx[new] + 1, L_MESLINE);
-				putch2((val[new]) ? '*' : ' ');
+				Xlocate(tmpx + xx[new] + 1, L_MESLINE);
+				Xputch2((val[new]) ? '*' : ' ');
 				break;
 		}
 		if (new != old) {
 			i = tmpx + 1;
 			if (!num) i++;
-			locate(i + xx[new], L_MESLINE);
-			putterm(t_standout);
-			kanjiputs(tmpstr[new]);
-			putterm(end_standout);
-			locate(i + xx[old], L_MESLINE);
-			if (stable_standout) putterm(end_standout);
-			else kanjiputs(tmpstr[old]);
+			Xlocate(i + xx[new], L_MESLINE);
+			Xputterm(T_STANDOUT);
+			Xkanjiputs(tmpstr[new]);
+			Xputterm(END_STANDOUT);
+			Xlocate(i + xx[old], L_MESLINE);
+			if (stable_standout) Xputterm(END_STANDOUT);
+			else Xkanjiputs(tmpstr[old]);
 		}
 	} while (ch != K_ESC && ch != K_CR && ch != cc_intr);
 
@@ -3506,17 +3507,17 @@ int val[];
 	Xgetkey(-1, 0);
 
 	if (stable_standout) {
-		locate(tmpx + 1, L_MESLINE);
-		putterm(l_clear);
+		Xlocate(tmpx + 1, L_MESLINE);
+		Xputterm(L_CLEAR);
 	}
 	if (num) {
 		if (ch != K_CR) new = -1;
 		else *num = val[new];
 		for (i = 0; i < max; i++) {
 			if (!tmpstr[i]) continue;
-			locate(tmpx + xx[i] + 1, L_MESLINE);
-			if (i == new) kanjiputs(tmpstr[i]);
-			else cprintf2("%*s", strlen2(tmpstr[i]), "");
+			Xlocate(tmpx + xx[i] + 1, L_MESLINE);
+			if (i == new) Xkanjiputs(tmpstr[i]);
+			else Xcprintf2("%*s", strlen2(tmpstr[i]), "");
 		}
 	}
 	else {
@@ -3527,17 +3528,18 @@ int val[];
 		}
 		for (i = 0; i < max; i++) {
 			if (!tmpstr[i]) continue;
-			locate(tmpx + xx[i] + 1, L_MESLINE);
-			putch2(' ');
-			if (val[i]) kanjiputs(tmpstr[i]);
-			else cprintf2("%*s", strlen2(tmpstr[i]), "");
+			Xlocate(tmpx + xx[i] + 1, L_MESLINE);
+			Xputch2(' ');
+			if (val[i]) Xkanjiputs(tmpstr[i]);
+			else Xcprintf2("%*s", strlen2(tmpstr[i]), "");
 		}
 	}
-	locate(win_x, win_y);
-	tflush();
+	Xlocate(win_x, win_y);
+	Xtflush();
 	free(xx);
 	free(initial);
 	for (i = 0; i < max; i++) if (tmpstr[i]) free(tmpstr[i]);
 	free(tmpstr);
+
 	return(ch);
 }

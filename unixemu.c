@@ -1,17 +1,13 @@
 /*
  *	unixemu.c
  *
- *	UNIX Function Emulation on DOS
+ *	UNIX function emulation on DOS
  */
 
-#include <io.h>
 #include "fd.h"
+#include "termio.h"
 #include "func.h"
 #include "unixdisk.h"
-
-#ifdef	LSI_C
-extern u_char _openfile[];
-#endif
 
 #ifndef	_NOROCKRIDGE
 typedef struct _opendirpath_t {
@@ -59,6 +55,7 @@ char *path, *buf;
 		strcpy(buf, path);
 	}
 	drv = _dospath(path);
+
 	return((drv) ? drv : getcurdrv());
 }
 
@@ -71,6 +68,7 @@ char *path;
 	if (!(drive = _dospath(path))) drive = getcurdrv();
 	drv = toupper2(drive) - 'A';
 	if (drv < 0 || drv > 'Z' - 'A' || checkdrive(drv) <= 0) return(0);
+
 	return(drive);
 }
 
@@ -80,6 +78,7 @@ char *path;
 	int drive;
 
 	if ((drive = supportLFN(path)) >= 0 || drive <= -3) return(0);
+
 	return((drive = _dospath(path)) ? drive : getcurdrv());
 }
 
@@ -111,6 +110,7 @@ char *path, *buf;
 		buf = strcatdelim(buf);
 	}
 	strcpy(buf, cp);
+
 	return(drive);
 }
 #endif	/* !_NODOSDRIVE */
@@ -136,6 +136,7 @@ char *path;
 		dirpathlist[maxdirpath - 1].path = strdup2(cp);
 	}
 #endif	/* !_NOROCKRIDGE */
+
 	return(dirp);
 }
 
@@ -160,6 +161,7 @@ DIR *dirp;
 		}
 	}
 #endif	/* !_NOROCKRIDGE */
+
 	return(unixclosedir(dirp));
 }
 
@@ -193,6 +195,7 @@ DIR *dirp;
 		}
 	}
 	strcpy(dest, src);
+
 	return(&buf);
 #endif	/* !_NOROCKRIDGE */
 }
@@ -208,6 +211,7 @@ char *path;
 {
 	if (setcurdrv(dospath(path, NULL), 1) < 0 || unixchdir(path) < 0)
 		return(-1);
+
 	return(0);
 }
 
@@ -243,6 +247,7 @@ char *path;
 		else dd = lastdrv;
 	}
 	lastdrv = dd;
+
 	return(0);
 #endif	/* !_NODOSDRIVE */
 }
@@ -256,6 +261,7 @@ char *path;
 	cp = convget(conv, cp, 0);
 	if (cp == path) return(cp);
 	strcpy(path, cp);
+
 	return(path);
 }
 
@@ -290,6 +296,7 @@ struct stat *stp;
 	char conv[MAXPATHLEN];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
+
 	return(statcommon(path, stp));
 }
 
@@ -311,6 +318,7 @@ struct stat *stp;
 #ifndef	_NOROCKRIDGE
 	if (*rpath) rrlstat(rpath, stp);
 #endif
+
 	return(0);
 }
 
@@ -338,6 +346,7 @@ int mode;
 		errno = EACCES;
 		return(-1);
 	}
+
 	return(0);
 }
 
@@ -346,6 +355,7 @@ int Xsymlink(name1, name2)
 char *name1, *name2;
 {
 	errno = EINVAL;
+
 	return(-1);
 }
 
@@ -363,6 +373,7 @@ int bufsiz;
 		return(len);
 #endif
 	errno = EINVAL;
+
 	return(-1);
 }
 
@@ -373,6 +384,7 @@ int mode;
 	char conv[MAXPATHLEN];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
+
 	return(unixchmod(path, mode));
 }
 
@@ -384,6 +396,7 @@ struct utimbuf *times;
 	char conv[MAXPATHLEN];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
+
 	return(unixutime(path, times));
 }
 #else	/* !USEUTIME */
@@ -394,6 +407,7 @@ struct timeval tvp[2];
 	char conv[MAXPATHLEN];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
+
 	return(unixutimes(path, tvp));
 }
 #endif	/* !USEUTIME */
@@ -410,6 +424,7 @@ char *path;
 		|| unixunlink(path) != 0)
 			return(-1);
 	}
+
 	return(0);
 }
 
@@ -424,6 +439,7 @@ char *from, *to;
 		errno = EXDEV;
 		return(-1);
 	}
+
 	return(unixrename(from, to) ? -1 : 0);
 }
 
@@ -444,6 +460,7 @@ int flags, mode;
 	if (flags & O_CREAT) return(unixopen(path, flags, mode));
 	else if (!(path = preparefile(path, buf))) return(-1);
 #endif
+
 	return(open(path, flags, mode));
 }
 
@@ -452,6 +469,7 @@ int Xclose(fd)
 int fd;
 {
 	if ((fd >= DOSFDOFFSET)) return(dosclose(fd));
+
 	return((close(fd) != 0) ? -1 : 0);
 }
 
@@ -461,6 +479,7 @@ char *buf;
 int nbytes;
 {
 	if ((fd >= DOSFDOFFSET)) return(dosread(fd, buf, nbytes));
+
 	return(read(fd, buf, nbytes));
 }
 
@@ -470,6 +489,7 @@ char *buf;
 int nbytes;
 {
 	if ((fd >= DOSFDOFFSET)) return(doswrite(fd, buf, nbytes));
+
 	return(write(fd, buf, nbytes));
 }
 
@@ -479,50 +499,33 @@ off_t offset;
 int whence;
 {
 	if ((fd >= DOSFDOFFSET)) return(doslseek(fd, offset, whence));
+
 	return(lseek(fd, offset, whence));
 }
-#endif	/* !_NODOSDRIVE */
 
-#if	defined (LSI_C) || !defined (_NODOSDRIVE)
 int Xdup(oldd)
 int oldd;
 {
-	int fd;
-
-#ifndef	_NODOSDRIVE
 	if ((oldd >= DOSFDOFFSET)) {
 		errno = EBADF;
 		return(-1);
 	}
-#endif
-	if ((fd = dup(oldd)) < 0) return(-1);
-#ifdef	LSI_C
-	if (fd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
-		_openfile[fd] = _openfile[oldd];
-#endif
-	return(fd);
+
+	return(safe_dup(oldd));
 }
 
 int Xdup2(oldd, newd)
 int oldd, newd;
 {
-	int fd;
-
 	if (oldd == newd) return(newd);
-#ifndef	_NODOSDRIVE
 	if ((oldd >= DOSFDOFFSET || newd >= DOSFDOFFSET)) {
 		errno = EBADF;
 		return(-1);
 	}
-#endif
-	if ((fd = dup2(oldd, newd)) < 0) return(-1);
-#ifdef	LSI_C
-	if (newd >= 0 && newd < SYS_OPEN && oldd >= 0 && oldd < SYS_OPEN)
-		_openfile[newd] = _openfile[oldd];
-#endif
-	return(fd);
+
+	return(safe_dup2(oldd, newd));
 }
-#endif	/* LSI_C || !_NODOSDRIVE */
+#endif	/* !_NODOSDRIVE */
 
 int Xmkdir(path, mode)
 char *path;
@@ -540,6 +543,7 @@ int mode;
 	}
 #endif
 	path = convput(conv, path, 1, 1, NULL, NULL);
+
 	return(unixmkdir(path, mode) ? -1 : 0);
 }
 
@@ -549,6 +553,7 @@ char *path;
 	char conv[MAXPATHLEN];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
+
 	return(unixrmdir(path) ? -1 : 0);
 }
 
@@ -568,6 +573,7 @@ char *path, *type;
 	if (*type != 'r' || *(type + 1) == '+') return(unixfopen(path, type));
 	else if (!(path = preparefile(path, buf))) return(NULL);
 #endif
+
 	return(fopen(path, type));
 }
 
@@ -577,6 +583,7 @@ int fd;
 char *type;
 {
 	if ((fd >= DOSFDOFFSET)) return(dosfdopen(fd, type));
+
 	return(fdopen(fd, type));
 }
 
@@ -584,6 +591,7 @@ int Xfclose(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfclose(stream));
+
 	return(fclose(stream));
 }
 
@@ -591,6 +599,7 @@ int Xfeof(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfeof(stream));
+
 	return(feof(stream));
 }
 
@@ -601,6 +610,7 @@ FILE *stream;
 {
 	if (dosfileno(stream) > 0)
 		return(dosfread(buf, size, nitems, stream));
+
 	return(fread(buf, size, nitems, stream));
 }
 
@@ -611,6 +621,7 @@ FILE *stream;
 {
 	if (dosfileno(stream) > 0)
 		return(dosfwrite(buf, size, nitems, stream));
+
 	return(fwrite(buf, size, nitems, stream));
 }
 
@@ -618,6 +629,7 @@ int Xfflush(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfflush(stream));
+
 	return(fflush(stream));
 }
 
@@ -625,6 +637,7 @@ int Xfgetc(stream)
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfgetc(stream));
+
 	return(fgetc(stream));
 }
 
@@ -633,6 +646,7 @@ int c;
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfputc(c, stream));
+
 	return(fputc(c, stream));
 }
 
@@ -642,6 +656,7 @@ int n;
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfgets(s, n, stream));
+
 	return(fgets(s, n, stream));
 }
 
@@ -650,6 +665,7 @@ char *s;
 FILE *stream;
 {
 	if (dosfileno(stream) > 0) return(dosfputs(s, stream));
+
 	return(fputs(s, stream));
 }
 #endif	/* !_NODOSDRIVE */
@@ -686,6 +702,7 @@ char *command, *type;
 	l1 += 3;
 	strcpy(&(cmdline[l1]), path);
 	popenstat = system(cmdline);
+
 	return(fopen(path, type));
 }
 
@@ -708,6 +725,7 @@ FILE *fp;
 	if (unixunlink(path) != 0) no = errno;
 	*(--cp) = '\0';
 	if (rmtmpdir(path) < 0) no = errno;
+
 	return((errno = no) ? -1 : popenstat);
 }
 #endif	/* _NOORIGSHELL */

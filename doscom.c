@@ -1,7 +1,7 @@
 /*
  *	doscom.c
  *
- *	Builtin Command for DOS
+ *	builtin commands for DOS
  */
 
 #include <fcntl.h>
@@ -30,43 +30,10 @@
 #endif
 
 #if	MSDOS && !defined (FD)
-#include <dos.h>
 #define	VOL_FAT32	"FAT32"
-# ifdef	DJGPP
-# include <dpmi.h>
-# include <go32.h>
-# include <sys/farptr.h>
-#  if	(DJGPP >= 2)
-#  include <libc/dosio.h>
-#  else
-#  define	__dpmi_regs	_go32_dpmi_registers
-#  define	__tb	_go32_info_block.linear_address_of_transfer_buffer
-#  define	__tb_offset	(__tb & 15)
-#  define	__tb_segment	(__tb / 16)
-#  endif
-# define	PTR_SEG(ptr)		(__tb_segment)
-# define	PTR_OFF(ptr, ofs)	(__tb_offset + (ofs))
-# else	/* !DJGPP */
-#  ifdef	__TURBOC__	/* Oops!! Borland C++ has not x.bp !! */
-typedef union DPMI_REGS {
-	struct XREGS {
-		u_short ax, bx, cx, dx, si, di, bp, flags;
-	} x;
-	struct HREGS {
-		u_char al, ah, bl, bh, cl, ch, dl, dh;
-	} h;
-} __dpmi_regs;
-#  else
-typedef union REGS	__dpmi_regs;
-#  endif
-# define	__attribute__(x)
-# define	PTR_SEG(ptr)		FP_SEG(ptr)
-# define	PTR_OFF(ptr, ofs)	FP_OFF(ptr)
-# endif	/* !DJGPP */
 #endif	/* MSDOS && !FD */
 
 #if	MSDOS
-#include <io.h>
 # ifdef	__TURBOC__
 # include <dir.h>
 # endif
@@ -89,6 +56,8 @@ typedef union REGS	__dpmi_regs;
 #define	DOSCOMOPT	'-'
 #define	C_EOF		K_CTRL('D')
 #endif	/* !MSDOS */
+
+#include "system.h"
 
 #ifndef	FD
 # if	MSDOS
@@ -174,17 +143,13 @@ extern int errno;
 #ifdef	DEBUG
 extern char *_mtrace_file;
 #endif
-#ifdef	LSI_C
-extern u_char _openfile[];
-#endif
-
-#include "system.h"
 
 #if	defined (DOSCOMMAND) \
 && (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
 
 #ifdef	FD
 #include "term.h"
+#define	c_left		termstr[C_LEFT]
 #else	/* !FD */
 # if	MSDOS
 # define	gettext		dummy_gettext	/* fake for DJGPP gcc-3.3 */
@@ -217,13 +182,9 @@ extern int Xrename __P_((char *, char *));
 extern int Xopen __P_((char *, int, int));
 # ifdef	_NODOSDRIVE
 # define	Xclose		close
-# define	Xread		read
-# define	Xwrite		write
 # define	Xlseek		lseek
 # else	/* !_NODOSDRIVE */
 extern int Xclose __P_((int));
-extern int Xread __P_((int, char *, int));
-extern int Xwrite __P_((int, char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
 # endif	/* !_NODOSDRIVE */
 extern int Xmkdir __P_((char *, int));
@@ -267,8 +228,6 @@ extern int Xstat __P_((char *, struct stat *));
 #define	Xrename(o, n)	(rename(o, n) ? -1 : 0)
 #define	Xopen		open
 #define	Xclose		close
-#define	Xread		read
-#define	Xwrite		write
 #define	Xlseek		lseek
 # if	MSDOS
 #  ifdef	DJGPP
@@ -358,7 +317,6 @@ extern int issamebody __P_((char *, char *));
 #ifndef	NOSYMLINK
 extern int cpsymlink __P_((char *, char *));
 #endif
-extern int safewrite __P_((int, char *, int));
 extern char *inputstr __P_((char *, int, int, char *, int));
 #else	/* !FD */
 static int NEAR getinfofs __P_((char *, off_t *, off_t *, off_t *));
@@ -390,7 +348,6 @@ static int NEAR issamebody __P_((char *, char *));
 #ifndef	NOSYMLINK
 static int NEAR cpsymlink __P_((char *, char *));
 #endif
-static int NEAR safewrite __P_((int, char *, int));
 static char *NEAR inputstr __P_((char *, int, int, char *, int));
 #endif	/* !FD */
 
@@ -595,6 +552,7 @@ int rdlink;
 #   ifdef	DJGPP
 	dosmemget(__tb + i, MAXPATHLEN, resolved);
 #   endif
+
 	return(resolved);
 }
 
@@ -644,6 +602,7 @@ struct timeval tvp[2];
 	putdostime(&(reg.x.dx), &(reg.x.cx), t);
 	i = intcall(0x21, &reg, &sreg);
 	close(fd);
+
  	return(i);
 }
 # else	/* !MSDOS */
@@ -684,7 +643,8 @@ int sig;
 	int i;
 
 	while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
-	if (i < sizeof(u_char)) return(EOF);
+	if (i < (int)sizeof(u_char)) return(EOF);
+
 	return((int)ch);
 }
 # endif	/* !MSDOS */
@@ -698,6 +658,7 @@ struct stat *stp;
 
 	times.actime = stp -> st_atime;
 	times.modtime = stp -> st_mtime;
+
 	return(Xutime(path, &times));
 # else
 	struct timeval tvp[2];
@@ -706,6 +667,7 @@ struct stat *stp;
 	tvp[0].tv_usec = 0;
 	tvp[1].tv_sec = stp -> st_mtime;
 	tvp[1].tv_usec = 0;
+
 	return(Xutimes(path, tvp));
 # endif
 }
@@ -717,6 +679,7 @@ char *src, *dest;
 	struct stat st1, st2;
 
 	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
+
 	return(st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
 }
 # endif	/* !NODIRLOOP */
@@ -736,30 +699,11 @@ char *src, *dest;
 #  endif
 		if (Xunlink(dest) < 0) return(-1);
 	}
-
 	path[len] = '\0';
+
 	return(Xsymlink(path, dest));
 }
 # endif	/* !NOSYMLINK */
-
-static int NEAR safewrite(fd, buf, size)
-int fd;
-char *buf;
-int size;
-{
-	int n;
-
-	n = Xwrite(fd, buf, size);
-# if	MSDOS
-	if (n >= 0 && n < size) {
-		n = -1;
-		errno = ENOSPC;
-	}
-# else
-	if (n < 0 && errno == EINTR) n = size;
-# endif
-	return(n);
-}
 
 /*ARGSUSED*/
 static char *NEAR inputstr(prompt, delsp, ptr, def, h)
@@ -781,7 +725,8 @@ int h;
 			free(cp);
 			return(NULL);
 		}
-		if (c != K_BS) {
+		if (c > (int)MAXUTYPE(u_char)) i--;
+		else if (c != K_BS) {
 			cp = c_realloc(cp, i, &size);
 			cp[i] = c;
 			if (!iscntrl2(c)) fputc(c, stdout);
@@ -798,6 +743,7 @@ int h;
 	}
 	cp[i++] = '\0';
 	fputnl(stdout);
+
 	return(realloc2(cp, i));
 }
 #endif	/* !FD */
@@ -861,6 +807,7 @@ static int NEAR inputkey(VOID_A)
 		fputnl(stdout);
 		c = -1;
 	}
+
 	return(c);
 }
 
@@ -919,6 +866,7 @@ CONST VOID_P vp2;
 	}
 	if (cp1) *cp1 = '.';
 	if (cp2) *cp2 = '.';
+
 	return(ret);
 }
 
@@ -1075,6 +1023,7 @@ char *argv[];
 			return(-1);
 		}
 	}
+
 	return(i);
 }
 
@@ -1103,6 +1052,7 @@ int len, lower;
 	if (lower) for (i = 0; s[i]; i++) s[i] = tolower2(s[i]);
 	else for (i = 0; s[i]; i++) s[i] = toupper2(s[i]);
 	kanjifputs(s, stdout);
+
 	return(olen);
 }
 
@@ -1287,6 +1237,7 @@ int n_incline;
 		fprintf2(stdout, "\n(continuing %k)\n", dirwd);
 		dirline = n_incline;
 	}
+
 	return(0);
 }
 
@@ -1560,6 +1511,7 @@ off_t *sump, *bsump;
 #endif
 	}
 	if (dirlist) free(dirlist);
+
 	return(max);
 }
 
@@ -1661,6 +1613,7 @@ char *argv[];
 #endif
 
 	fflush(stdout);
+
 	return(RET_SUCCESS);
 }
 
@@ -1676,6 +1629,7 @@ char *argv[];
 		doserror(argv[2], ER_TOOMANYPARAM);
 		return(-1);
 	}
+
 	return(0);
 }
 
@@ -1689,6 +1643,7 @@ char *argv[];
 		dosperror(argv[1]);
 		return(RET_FAIL);
 	}
+
 	return(RET_SUCCESS);
 }
 
@@ -1702,6 +1657,7 @@ char *argv[];
 		dosperror(argv[1]);
 		return(RET_FAIL);
 	}
+
 	return(RET_SUCCESS);
 }
 
@@ -1768,7 +1724,9 @@ char *argv[];
 					freevar(wild);
 					return(ret);
 				}
-				fputc(key, stdout);
+				if (key <= (int)MAXUTYPE(u_char)
+				&& isprint2(key))
+					fputc(key, stdout);
 				fputnl(stdout);
 			} while (!strchr("ynYN", key));
 			if (key == 'n' || key == 'N') continue;
@@ -1780,6 +1738,7 @@ char *argv[];
 		}
 	}
 	freevar(wild);
+
 	return(ret);
 }
 
@@ -1805,6 +1764,7 @@ char *dest, *src, *wild, *swild;
 		if (src[j]) j++;
 	}
 	dest[n] = '\0';
+
 	return(dest);
 }
 
@@ -1853,6 +1813,7 @@ char *argv[];
 		}
 	}
 	freevar(wild);
+
 	return(ret);
 }
 
@@ -1900,6 +1861,7 @@ char *argv[];
 				break;
 		}
 	}
+
 	return(i);
 }
 
@@ -1919,6 +1881,7 @@ int bin;
 		if (toupper2(*cp) == 'B') bin = CF_BINARY;
 		else if (toupper2(*cp) == 'A') bin = CF_TEXT;
 	}
+
 	return(bin);
 }
 
@@ -1987,26 +1950,23 @@ int size, bin;
 	int i, n;
 
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
-	if (!(bin & CF_TEXT))
-		while ((n = Xread(fd, (char *)buf, size)) < 0
-		&& errno == EINTR);
+	if (!(bin & CF_TEXT)) n = sureread(fd, buf, size);
 	else for (n = 0; n < size; n++) {
-		while ((i = Xread(fd, (char *)&ch, sizeof(u_char))) < 0
-		&& errno == EINTR);
+		i = sureread(fd, &ch, sizeof(u_char));
 		if (i < 0) return(-1);
 #if	MSDOS
-		if (i >= sizeof(u_char) && ch != C_EOF) buf[n] = ch;
+		if (i >= (int)sizeof(u_char) && ch != C_EOF) buf[n] = ch;
 #else
-		if (i < sizeof(u_char)) break;
+		if (i < (int)sizeof(u_char)) break;
 		else if (ch != C_EOF) buf[n] = ch;
 #endif
 		else for (;;) {
-			while ((i = Xread(fd, (char *)&ch, sizeof(u_char))) < 0
-			&& errno == EINTR);
+			i = sureread(fd, &ch, sizeof(u_char));
 			if (i < 0) return(-1);
-			if (i < sizeof(u_char) || ch == '\n') return(n);
+			if (i < (int)sizeof(u_char) || ch == '\n') return(n);
 		}
 	}
+
 	return(n);
 }
 
@@ -2020,9 +1980,10 @@ int fd, bin;
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
 	if (bin & CF_TEXT) {
 		ch = C_EOF;
-		if (safewrite(fd, (char *)&ch, sizeof(u_char)) < 0) ret = -1;
+		if (surewrite(fd, &ch, sizeof(u_char)) < 0) ret = -1;
 	}
 	Xclose(fd);
+
 	return(ret);
 }
 
@@ -2074,7 +2035,8 @@ int sbin, dbin, dfd;
 				duperrno = errno;
 				break;
 			}
-			if ((i = safewrite(fd2, (char *)buf, i)) < 0) {
+			if (surewrite(fd2, buf, i) < 0) {
+				i = -1;
 				duperrno = errno;
 				break;
 			}
@@ -2122,6 +2084,7 @@ int sbin, dbin, dfd;
 	stp -> st_flags = (u_long)-1;
 #endif
 	if (!tty && touchfile(dest, stp) < 0) return(-1);
+
 	return(1);
 }
 
@@ -2287,6 +2250,7 @@ char *argv[];
 		fprintf2(stdout, "%9d file(s) copied", nc);
 		fputnl(stdout);
 	}
+
 	return(ret);
 }
 
@@ -2296,13 +2260,14 @@ int argc;
 char *argv[];
 {
 #ifdef	FD
-	putterms(t_clear);
+	putterms(T_CLEAR);
 	tflush();
 #else
 	fputs(t_clear, stdout);
 	fflush(stdout);
 #endif
 	fputnl(stderr);
+
 	return(RET_SUCCESS);
 }
 
@@ -2339,13 +2304,13 @@ char *argv[];
 	i = 0;
 	for (;;) {
 		if ((n = textread(fd, &ch, sizeof(ch), CF_TEXT)) < 0) break;
-		if (n < sizeof(ch)) {
-			n = safewrite(STDOUT_FILENO, cp, i);
+		if (n < (int)sizeof(ch)) {
+			n = surewrite(STDOUT_FILENO, cp, i);
 			break;
 		}
 		else if (ch == '\n') {
 			cp[i++] = '\n';
-			if ((n = safewrite(STDOUT_FILENO, cp, i)) < 0) break;
+			if ((n = surewrite(STDOUT_FILENO, cp, i)) < 0) break;
 			i = 0;
 		}
 		else {
@@ -2363,6 +2328,7 @@ char *argv[];
 		dosperror(argv[1]);
 		return(RET_FAIL);
 	}
+
 	return(RET_SUCCESS);
 }
 #endif	/* DOSCOMMAND && (!FD || (FD >= 2 && !_NOORIGSHELL)) */

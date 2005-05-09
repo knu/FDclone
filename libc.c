@@ -1,7 +1,7 @@
 /*
  *	libc.c
  *
- *	Arrangememt of Library Function
+ *	arrangememt of library functions
  */
 
 #include <fcntl.h>
@@ -20,8 +20,7 @@ extern char *unixrealpath __P_((char *, char *));
 #endif
 
 #ifdef	_NOORIGSHELL
-#include <signal.h>
-#define	dosystem(s)		system(s)
+#include "wait.h"
 #else
 #include "system.h"
 #endif
@@ -44,10 +43,6 @@ extern int hideclock;
 extern int lastdrv;
 #endif
 
-#ifndef	SIG_ERR
-#define	SIG_ERR		((sigcst_t)-1)
-#endif
-
 #ifndef	NOSYMLINK
 static int NEAR evallink __P_((char *, char *));
 #endif
@@ -62,6 +57,7 @@ static long NEAR char2long __P_((u_char *));
 static int NEAR tmcmp __P_((struct tm *, struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
+static time_t NEAR timegm2 __P_((struct tm *));
 static long NEAR gettimezone __P_((struct tm *, time_t));
 #endif
 
@@ -76,8 +72,6 @@ static char *lastpath = NULL;
 static char *unixpath = NULL;
 #endif
 static int wasttyflags = 0;
-#define	TF_TTYIOMODE	001
-#define	TF_TTYNL	002
 
 
 int stat2(path, stp)
@@ -103,6 +97,7 @@ struct stat *stp;
 		}
 		stp -> st_mode &= ~S_IFMT;
 	}
+
 	return(0);
 #endif	/* !NOSYMLINK */
 }
@@ -136,6 +131,7 @@ char *path, *delim;
 	buf[i] = *delim = '\0';
 	_realpath2(buf, path, 1);
 	errno = duperrno;
+
 	return(1);
 }
 #endif	/* !NOSYMLINK */
@@ -186,6 +182,7 @@ int rdlink;
 		else evallink(resolved, cp - 1);
 #endif	/* !NOSYMLINK */
 	}
+
 	return(resolved);
 }
 
@@ -252,6 +249,7 @@ int rdlink;
 	norealpath++;
 	_realpath2(path, resolved, rdlink);
 	norealpath--;
+
 	return(resolved);
 }
 
@@ -295,6 +293,7 @@ char *path;
 		close(fd);
 	}
 #endif	/* !MSDOS */
+
 	return(0);
 }
 
@@ -314,7 +313,7 @@ char *path;
 # endif
 		return(0);
 	}
-#endif
+#endif	/* DEBUG */
 
 	realpath2(path, tmp, physical_path);
 	strcpy(cwd, fullpath);
@@ -348,6 +347,7 @@ char *path;
 	if (unixrealpath(fullpath, tmp)) strcpy(fullpath, tmp);
 #endif
 	entryhist(1, fullpath, 1);
+
 	return(0);
 }
 
@@ -401,6 +401,7 @@ int raw;
 		searchhash(NULL, "", "");
 #endif
 	}
+
 	return(0);
 }
 
@@ -435,6 +436,7 @@ int mode;
 		if (Xmkdir(path, mode) < 0 && errno != EEXIST) return(-1);
 		cp1 = cp2;
 	}
+
 	return(0);
 }
 
@@ -449,6 +451,7 @@ ALLOC_T size;
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
 	}
+
 	return(tmp);
 }
 
@@ -466,6 +469,7 @@ ALLOC_T size;
 		tmp = NULL;	/* fake for -Wuninitialized */
 #endif
 	}
+
 	return(tmp);
 }
 
@@ -478,6 +482,7 @@ ALLOC_T n, *sizep;
 		return(malloc2(*sizep));
 	}
 	while (n + 1 >= *sizep) *sizep *= 2;
+
 	return(realloc2(ptr, *sizep));
 }
 
@@ -491,6 +496,7 @@ char *s;
 	n = strlen(s);
 	if (!(tmp = (char *)malloc((ALLOC_T)n + 1))) error("malloc()");
 	memcpy(tmp, s, n + 1);
+
 	return(tmp);
 }
 
@@ -506,6 +512,7 @@ int n;
 	if (!(tmp = (char *)malloc((ALLOC_T)i + 1))) error("malloc()");
 	memcpy(tmp, s, i);
 	tmp[i] = '\0';
+
 	return(tmp);
 }
 
@@ -522,6 +529,7 @@ int c;
 		else if (isekana(s, i)) i++;
 #endif
 	}
+
 	return(NULL);
 }
 
@@ -540,6 +548,7 @@ int c;
 		else if (isekana(s, i)) i++;
 #endif
 	}
+
 	return(cp);
 }
 
@@ -550,6 +559,7 @@ char *s1, *s2;
 
 	for (i = 0; s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
+
 	return(&(s1[i]));
 }
 
@@ -561,6 +571,7 @@ int n;
 
 	for (i = 0; i < n && s2[i]; i++) s1[i] = s2[i];
 	s1[i] = '\0';
+
 	return(&(s1[i]));
 }
 
@@ -620,6 +631,7 @@ int *lenp, ptr;
 	len = i;
 	if (ptr >= 0) while (i < *lenp) s1[i++] = ' ';
 	s1[i] = '\0';
+
 	return(len);
 }
 
@@ -647,6 +659,7 @@ char *s;
 		else if (iscntrl2(s[i])) len++;
 		else if (ismsb(s[i])) len += 3;
 	}
+
 	return(len);
 }
 
@@ -656,6 +669,7 @@ char *s;
 	int n;
 
 	if (!sscanf2(s, "%d%$", &n)) return(-1);
+
 	return(n);
 }
 
@@ -673,15 +687,11 @@ va_dcl
 	char *cp;
 	int n;
 
-#ifdef	USESTDARGH
-	va_start(args, fmt);
-#else
-	va_start(args);
-#endif
-
+	VA_START(args, fmt);
 	n = vasprintf2(&cp, fmt, args);
 	va_end(args);
 	if (n < 0) error("malloc()");
+
 	return(cp);
 }
 
@@ -710,6 +720,7 @@ char **envp;
 	for (i = 0; envp[i]; i++)
 		if (!strnenvcmp(envp[i], name, len) && envp[i][len] == '=')
 			break;
+
 	return(i);
 }
 
@@ -734,6 +745,7 @@ char *s, **envp;
 	new = (char **)realloc2(envp, (n + 2) * sizeof(char *));
 	new[n] = s;
 	new[n + 1] = (char *)NULL;
+
 	return(new);
 }
 #endif	/* _NOORIGSHELL */
@@ -765,6 +777,7 @@ char *name;
 	&& (cp = getshellvar(&(name[FDESIZ]), -1)))
 		return(cp);
 #endif	/* !_NOORIGSHELL */
+
 	return(NULL);
 }
 
@@ -804,6 +817,7 @@ int export;
 		return(-1);
 	}
 #endif	/* !_NOORIGSHELL */
+
 	return(0);
 }
 
@@ -819,57 +833,62 @@ sigcst_t func;
 	sigemptyset(&(act.sa_mask));
 	sigemptyset(&(oact.sa_mask));
 	if (sigaction(sig, &act, &oact) < 0) return(SIG_ERR);
+
 	return(oact.sa_handler);
 }
 #endif	/* USESIGACTION */
 
-int system2(command, noconf)
+int system2(command, flags)
 char *command;
-int noconf;
+int flags;
 {
-	int n, wastty, mode, nl, ret;
+	int n, wastty, mode, ret;
 
 	if (!command || !*command) return(0);
 #ifdef	FAKEUNINIT
-	mode = nl = 0;		/* fake for -Wuninitialized */
+	mode = 0;		/* fake for -Wuninitialized */
 #endif
 	n = sigvecset(0);
 	if ((wastty = isttyiomode)) {
-		if (noconf >= 0) {
-			locate(0, n_line - 1);
-			putterm(l_clear);
+		if (!(flags & F_ISARCH)) {
+			Xlocate(0, n_line - 1);
+			Xputterm(L_CLEAR);
 		}
-		if (n && noconf > 0) mode = termmode(0);
-		nl = stdiomode();
+		if (n && (flags & F_NOCONFIRM)) mode = Xtermmode(0);
+		Xstdiomode();
 	}
 
 	ret = dosystem(command);
+#ifdef	_NOORIGSHELL
+	checkscreen(-1, -1);
+#endif
 	sigvecset(n);
-	if (ret >= 127 && noconf > 0) {
+	if (ret >= 127 && (flags & F_NOCONFIRM)) {
 		if (dumbterm <= 2) fputc('\007', stderr);
 		fprintf2(stderr, "\n%k", HITKY_K);
 		fflush(stderr);
-		ttyiomode(1);
+		Xttyiomode(1);
 		keyflush();
 		getkey2(0);
-		stdiomode();
+		Xstdiomode();
 		fputnl(stderr);
 	}
 
 	if (wastty) {
-		ttyiomode(nl);
-		if (n && noconf > 0) termmode(mode);
-		if (!noconf || (noconf < 0 && ret >= 127)) {
+		Xttyiomode(wastty - 1);
+		if (n && (flags & F_NOCONFIRM)) Xtermmode(mode);
+		if (!(flags & (F_NOCONFIRM | F_ISARCH))
+		|| ((flags & F_ISARCH) && ret >= 127)) {
 			hideclock = 1;
 			warning(0, HITKY_K);
 		}
 	}
+
 	return(ret);
 }
 
-/*ARGSUSED*/
-FILE *popen2(command, type)
-char *command, *type;
+FILE *popen2(command)
+char *command;
 {
 	FILE *fp;
 	int n;
@@ -878,30 +897,17 @@ char *command, *type;
 	n = sigvecset(0);
 	wasttyflags = 0;
 	if (isttyiomode) {
-		wasttyflags |= TF_TTYIOMODE;
-		if (stdiomode()) wasttyflags |= TF_TTYNL;
+		wasttyflags |= F_TTYIOMODE;
+		if (isttyiomode > 1) wasttyflags |= F_TTYNL;
+		Xstdiomode();
 	}
 
-#ifdef	_NOORIGSHELL
-# ifdef	DEBUG
-	_mtrace_file = "popen(start)";
-	fp = Xpopen(command, type);
-	if (_mtrace_file) _mtrace_file = NULL;
-	else {
-		_mtrace_file = "popen(end)";
-		malloc(0);	/* dummy malloc */
-	}
-# else
-	fp = Xpopen(command, type);
-# endif
-#else	/* !_NOORIGSHELL */
 	fp = dopopen(command);
-#endif	/* !_NOORIGSHELL */
 	sigvecset(n);
 	if (fp) {
-		if (wasttyflags & TF_TTYIOMODE) {
-			putterms(t_keypad);
-			tflush();
+		if (wasttyflags & F_TTYIOMODE) {
+			Xputterms(T_KEYPAD);
+			Xtflush();
 		}
 	}
 	else {
@@ -909,14 +915,15 @@ char *command, *type;
 		fputnl(stderr);
 		perror2(command);
 		fflush(stderr);
-		ttyiomode(1);
+		Xttyiomode(1);
 		keyflush();
 		getkey2(0);
-		stdiomode();
+		Xstdiomode();
 		fputnl(stderr);
-		if (wasttyflags & TF_TTYIOMODE)
-			ttyiomode((wasttyflags & TF_TTYNL) ? 1 : 0);
+		if (wasttyflags & F_TTYIOMODE)
+			Xttyiomode((wasttyflags & F_TTYNL) ? 1 : 0);
 	}
+
 	return(fp);
 }
 
@@ -925,13 +932,10 @@ FILE *fp;
 {
 	int ret;
 
-#ifdef	_NOORIGSHELL
-	ret = Xpclose(fp);
-#else
 	ret = dopclose(fp);
-#endif
-	if (wasttyflags & TF_TTYIOMODE)
-		ttyiomode((wasttyflags & TF_TTYNL) ? 1 : 0);
+	if (wasttyflags & F_TTYIOMODE)
+		Xttyiomode((wasttyflags & F_TTYNL) ? 1 : 0);
+
 	return(ret);
 }
 
@@ -940,6 +944,7 @@ char *getwd2(VOID_A)
 	char cwd[MAXPATHLEN];
 
 	if (!Xgetwd(cwd)) lostcwd(cwd);
+
 	return(strdup2(cwd));
 }
 
@@ -967,11 +972,46 @@ struct tm *tm1, *tm2;
 		return (tm1 -> tm_hour - tm2 -> tm_hour);
 	if (tm1 -> tm_min != tm2 -> tm_min)
 		return (tm1 -> tm_min - tm2 -> tm_min);
+
 	return (tm1 -> tm_sec - tm2 -> tm_sec);
 }
 #endif	/* !MSDOS && !NOTZFILEH && !USEMKTIME && !USETIMELOCAL */
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
+static time_t NEAR timegm2(tm)
+struct tm *tm;
+{
+	time_t t;
+	int i, y;
+
+	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
+
+	t = ((long)y - 1970) * 365;
+	t += ((y - 1 - 1968) / 4)
+		- ((y - 1 - 1900) / 100)
+		+ ((y - 1 - 1600) / 400);
+	for (i = 1; i < tm -> tm_mon + 1; i++) switch (i) {
+		case 2:
+			if (!(y % 4) && ((y % 100) || !(y % 400))) t++;
+			t += 28;
+			break;
+		case 4:
+		case 6:
+		case 9:
+		case 11:
+			t += 30;
+			break;
+		default:
+			t += 31;
+			break;
+	}
+	t += tm -> tm_mday - 1;
+	t *= 60L * 60L * 24L;
+	t += ((long)(tm -> tm_hour) * 60L + tm -> tm_min) * 60L + tm -> tm_sec;
+
+	return(t);
+}
+
 static long NEAR gettimezone(tm, t)
 struct tm *tm;
 time_t t;
@@ -982,10 +1022,6 @@ time_t t;
 	ftime(&buffer);
 	return((long)(buffer.timezone) * 60L);
 # else	/* !MSDOS */
-#  ifdef	NOTMGMTOFF
-	struct timeval t_val;
-	struct timezone t_zone;
-#  endif
 #  ifndef	NOTZFILEH
 	struct tzhead head;
 	FILE *fp;
@@ -1000,8 +1036,7 @@ time_t t;
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
 
 #  ifdef	NOTMGMTOFF
-	gettimeofday2(&t_val, &t_zone);
-	tz = t_zone.tz_minuteswest * 60L;
+	tz = (long)t - (long)timegm2(localtime(&t));
 #  else
 	tz = -(localtime(&t) -> tm_gmtoff);
 #  endif
@@ -1035,8 +1070,9 @@ time_t t;
 	}
 	if (i > 0) {
 		i--;
-		i *= sizeof(char);
-		i += sizeof(struct tzhead) + ntime * sizeof(char) * 4;
+		i *= (int)sizeof(char);
+		i += (int)sizeof(struct tzhead)
+			+ ntime * (int)sizeof(char) * 4;
 		if (fseek(fp, i, 0) < 0
 		|| fread(&c, sizeof(char), 1, fp) != 1) {
 			fclose(fp);
@@ -1044,8 +1080,8 @@ time_t t;
 		}
 		i = c;
 	}
-	i *= sizeof(char) * (4 + 1 + 1);
-	i += sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1);
+	i *= (int)sizeof(char) * (4 + 1 + 1);
+	i += (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1);
 	if (fseek(fp, i, 0) < 0
 	|| fread(buf, sizeof(char), 4, fp) != 4) {
 		fclose(fp);
@@ -1054,9 +1090,9 @@ time_t t;
 	tmp = char2long(buf);
 	tz = -tmp;
 
-	i = sizeof(struct tzhead) + ntime * sizeof(char) * (4 + 1)
-		+ ntype * sizeof(char) * (4 + 1 + 1)
-		+ nchar * sizeof(char);
+	i = (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1)
+		+ ntype * (int)sizeof(char) * (4 + 1 + 1)
+		+ nchar * (int)sizeof(char);
 	if (fseek(fp, i, 0) < 0) {
 		fclose(fp);
 		return(tz);
@@ -1091,12 +1127,14 @@ time_t time2(VOID_A)
 	struct timeb buffer;
 
 	ftime(&buffer);
+
 	return((time_t)(buffer.time));
 #else
 	struct timeval t_val;
 	struct timezone tz;
 
 	gettimeofday2(&t_val, &tz);
+
 	return((time_t)(t_val.tv_sec));
 #endif
 }
@@ -1111,35 +1149,9 @@ struct tm *tm;
 # ifdef	USETIMELOCAL
 	return(timelocal(tm));
 # else	/* !USETIMELOCAL */
-	time_t d, t;
-	int i, y;
+	time_t t;
 
-	y = (tm -> tm_year < 1900) ? tm -> tm_year + 1900 : tm -> tm_year;
-
-	d = ((long)y - 1970) * 365;
-	d += ((y - 1 - 1968) / 4)
-		- ((y - 1 - 1900) / 100)
-		+ ((y - 1 - 1600) / 400);
-	for (i = 1; i < tm -> tm_mon + 1; i++) {
-		switch (i) {
-			case 2:
-				if (!(y % 4) && ((y % 100) || !(y % 400))) d++;
-				d += 28;
-				break;
-			case 4:
-			case 6:
-			case 9:
-			case 11:
-				d += 30;
-				break;
-			default:
-				d += 31;
-				break;
-		}
-	}
-	d += tm -> tm_mday - 1;
-	t = ((long)(tm -> tm_hour) * 60L + tm -> tm_min) * 60L + tm -> tm_sec;
-	t += d * 60L * 60L * 24L;
+	t = timegm2(tm);
 	t += gettimezone(tm, t);
 
 	return(t);
@@ -1172,5 +1184,6 @@ int nulcnv;
 	if (i > 0 && cp[i - 1] == '\r') i--;
 #endif
 	cp[i++] = '\0';
+
 	return(realloc2(cp, i));
 }

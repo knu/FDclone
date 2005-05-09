@@ -1,7 +1,7 @@
 /*
  *	shell.c
  *
- *	Shell Command Module
+ *	shell command module
  */
 
 #include "fd.h"
@@ -60,13 +60,13 @@ static char *NEAR insertarg __P_((char *, char *, int));
 #else
 static int NEAR _replaceargs __P_((int *, char ***, char **, int));
 #endif
-static char *NEAR addoption __P_((char *, char *, macrostat *, int));
+static char *NEAR addoption __P_((char *, char *, macrostat *));
 #ifdef	_NOORIGSHELL
-static int NEAR system3 __P_((char *, int, int));
+static int NEAR system3 __P_((char *, int));
 static char *NEAR evalargs __P_((char *, int, char *[]));
 static char *NEAR evalalias __P_((char *));
 #else
-#define	system3(c, n, i)	system2(c, n)
+#define	system3			system2
 #endif
 
 #ifdef	_NOORIGSHELL
@@ -132,11 +132,13 @@ int code;
 # endif
 	(*bufp)[eol] = '\0';
 	cp = newkanjiconv(&((*bufp)[ptr]), DEFCODE, code, L_FNAME);
+	if (cp == &((*bufp)[ptr])) return(eol);
 	len = strlen(cp);
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	memcpy(&((*bufp)[ptr]), cp, len);
 	free(cp);
+
 	return(ptr + len);
 }
 #endif	/* !_NOKANJICONV */
@@ -179,6 +181,7 @@ int n, *flagsp;
 	}
 	else return(0);
 #endif	/* !MACROMETA */
+
 	return(i - n);
 }
 
@@ -226,6 +229,7 @@ int flags;
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	strncpy(&((*bufp)[ptr]), arg, len);
 	free(arg);
+
 	return(len + ptr - optr);
 }
 
@@ -262,6 +266,7 @@ int *ptrp;
 		(*ptrp)++;
 		return(2);
 	}
+
 	return(1);
 }
 
@@ -301,6 +306,7 @@ char *s;
 		return(s);
 	}
 	buf[j] = '\0';
+
 	return(buf);
 }
 
@@ -310,6 +316,7 @@ char *s;
 	char *cp;
 
 	if ((cp = _restorearg(s)) != s && s) free(s);
+
 	return(cp);
 }
 #endif	/* !MACROMETA || !_NOEXTRAMACRO */
@@ -418,6 +425,7 @@ int flags;
 	memcpy(&((*bufp)[ptr]), s, rlen);
 	ptr += rlen;
 	free(tmp);
+
 	return(ptr - eol);
 }
 
@@ -507,18 +515,17 @@ int needmark;
 		free(buf);
 		return(NULL);
 	}
+
 	return(buf);
 }
 #endif	/* _NOEXTRAMACRO */
 
-char *evalcommand(command, arg, stp, ignorelist)
+char *evalcommand(command, arg, stp)
 char *command, *arg;
 macrostat *stp;
-int ignorelist;
 {
 #ifndef	_NOKANJICONV
-	int cnvcode = NOCNV;
-	int tmpcode, cnvptr;
+	int code, cnvcode, defcode, cnvptr;
 #endif
 	macrostat st;
 	char *cp, *line;
@@ -533,8 +540,13 @@ int ignorelist;
 	stp -> addopt = -1;
 	stp -> needmark = stp -> needburst = 0;
 #ifndef	_NOKANJICONV
+# ifdef	_NOKANJIFCONV
+	cnvcode = defcode = NOCNV;
+# else
+	cnvcode = defcode = (flags & F_NOKANJICONV) ? NOCNV : defaultkcode;
+# endif
 	cnvptr = 0;
-#endif
+#endif	/* !_NOKANJICONV */
 
 	line = c_realloc(NULL, 0, &size);
 	for (i = j = 0; command[i]; i++) {
@@ -551,6 +563,10 @@ int ignorelist;
 			continue;
 		}
 
+#ifndef	_NOKANJICONV
+		if (cnvcode != NOCNV)
+			j = extconv(&line, cnvptr, j, &size, cnvcode);
+#endif
 		len = setflag = 0;
 		switch (c) {
 			case 'P':
@@ -593,7 +609,7 @@ int ignorelist;
 					flags |= F_REMAIN;
 					i++;
 				}
-				if (!ignorelist) {
+				if (!(flags & F_IGNORELIST)) {
 #ifdef	MACROMETA
 					line[j++] = MACROMETA;
 					line[j++] = flags | F_BURST;
@@ -605,7 +621,7 @@ int ignorelist;
 				}
 				break;
 			case 'M':
-				if (!ignorelist) {
+				if (!(flags & F_IGNORELIST)) {
 #ifdef	MACROMETA
 					line[j++] = MACROMETA;
 					line[j++] = flags | F_MARK;
@@ -623,25 +639,25 @@ int ignorelist;
 				stp -> addopt = j;
 				break;
 			case 'K':
-				flags |= F_NOCONFIRM;
+				if (!(flags & F_ISARCH)) flags ^= F_NOCONFIRM;
 				break;
 #ifndef	_NOKANJICONV
 			case 'J':
 				c = command[i + 1];
-				if (c == 'S') tmpcode = SJIS;
-				else if (c == 'E') tmpcode = EUC;
+				if (c == 'S') code = SJIS;
+				else if (c == 'E') code = EUC;
 # if	FD < 2
-				else if (c == 'J') tmpcode = JIS7;
+				else if (c == 'J') code = JIS7;
 # else	/* FD >= 2 */
-				else if (c == '7') tmpcode = JIS7;
-				else if (c == '8') tmpcode = JIS8;
-				else if (c == 'J') tmpcode = JUNET;
-				else if (c == 'H') tmpcode = HEX;
-				else if (c == 'C') tmpcode = CAP;
-				else if (c == 'U') tmpcode = UTF8;
-				else if (c == 'M') tmpcode = M_UTF8;
+				else if (c == '7') code = JIS7;
+				else if (c == '8') code = JIS8;
+				else if (c == 'J') code = JUNET;
+				else if (c == 'H') code = HEX;
+				else if (c == 'C') code = CAP;
+				else if (c == 'U') code = UTF8;
+				else if (c == 'M') code = M_UTF8;
 #  ifndef	_NOKANJIFCONV
-				else if (c == 'A') tmpcode = -1;
+				else if (c == 'A') code = -1;
 #  endif
 # endif	/* FD >= 2 */
 				else {
@@ -650,16 +666,7 @@ int ignorelist;
 				}
 
 				i++;
-				if (cnvcode != NOCNV) {
-					j = extconv(&line, cnvptr, j,
-						&size, cnvcode);
-					if (cnvcode == tmpcode) {
-						cnvcode = NOCNV;
-						break;
-					}
-				}
-				cnvcode = tmpcode;
-				cnvptr = j;
+				cnvcode = (cnvcode == code) ? defcode : code;
 				break;
 #endif	/* !_NOKANJICONV */
 			case '%':
@@ -675,6 +682,9 @@ int ignorelist;
 		}
 		if (!setflag) flags &= ~(F_NOEXT | F_TOSFN);
 		j += len;
+#ifndef	_NOKANJICONV
+		cnvptr = j;
+#endif
 	}
 #if	defined (_NOEXTRAMACRO) && defined (MAXCOMMSTR)
 	if (j > MAXCOMMSTR) {
@@ -762,7 +772,8 @@ int ignorelist;
 		}
 		free(arg);
 	}
-	if (!ignorelist && !(stp -> needburst) && !(stp -> needmark)) {
+	if (!(flags & F_IGNORELIST)
+	&& !(stp -> needburst) && !(stp -> needmark)) {
 		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISARG;
 		n_args = 0;
 	}
@@ -771,6 +782,7 @@ int ignorelist;
 
 	cp = strndup2(line, j);
 	free(line);
+
 	return(cp);
 }
 
@@ -1048,6 +1060,7 @@ int iscomm;
 	}
 	if (hit) lastptr = next;
 	free(buf);
+
 	return(ret);
 }
 
@@ -1064,6 +1077,7 @@ int iscomm;
 	if ((ret = _replaceargs(argcp, argvp, env, iscomm)) < 0) return(-1);
 
 	for (n = 0; n < *argcp; n++) (*argvp)[n] = _demacroarg((*argvp)[n]);
+
 	return(ret);
 # endif	/* !MACROMETA */
 }
@@ -1081,6 +1095,7 @@ char **argp;
 	n = replaceargs(&argc, &argv, NULL, 0);
 	*argp = argv[0];
 	free(argv);
+
 	return(n);
 }
 #endif	/* !_NOEXTRAMACRO */
@@ -1110,7 +1125,7 @@ int ptr;
 char *def;
 {
 	char *cp, *tmp, *duppromptstr;
-	int nl;
+	int wastty;
 
 	duppromptstr = promptstr;
 	if (prompt) promptstr = prompt;
@@ -1118,14 +1133,15 @@ char *def;
 	promptstr = duppromptstr;
 	if (!cp) return((char *)-1);
 
-	nl = stdiomode();
+	if ((wastty = isttyiomode)) Xstdiomode();
 	tmp = evalhistory(cp);
-	ttyiomode(nl);
+	if (wastty) Xttyiomode(wastty - 1);
 	if (!tmp) {
 		free(cp);
 		return(NULL);
 	}
 	entryhist(0, tmp, 0);
+
 	return(tmp);
 }
 
@@ -1183,10 +1199,9 @@ char *def;
 	return(cp);
 }
 
-static char *NEAR addoption(command, arg, stp, ignorelist)
+static char *NEAR addoption(command, arg, stp)
 char *command, *arg;
 macrostat *stp;
-int ignorelist;
 {
 	char *cp;
 	int p, wastty;
@@ -1242,9 +1257,9 @@ int ignorelist;
 	p = stp -> addopt;
 #endif	/* MACROMETA */
 
-	if (!(wastty = isttyiomode)) ttyiomode(1);
+	if (!(wastty = isttyiomode)) Xttyiomode(1);
 	cp = inputstr("", 0, p, command, 0);
-	if (!wastty) stdiomode();
+	if (!wastty) Xstdiomode();
 	free(command);
 	if (!cp) {
 		if (!wastty) fputnl(stdout);
@@ -1254,20 +1269,21 @@ int ignorelist;
 		free(cp);
 		return(NULL);
 	}
-	command = evalcommand(cp, arg, stp, ignorelist);
+	command = evalcommand(cp, arg, stp);
 	free(cp);
 	if (!command) return(NULL);
 	if (!*command) {
 		free(command);
 		return(NULL);
 	}
+
 	return(command);
 }
 
 #ifdef	_NOORIGSHELL
-static int NEAR system3(command, noconf, ignorelist)
+static int NEAR system3(command, flags)
 char *command;
-int noconf, ignorelist;
+int flags;
 {
 	char *cp, *tmp;
 	int n, ret;
@@ -1276,13 +1292,14 @@ int noconf, ignorelist;
 	if ((cp = evalalias(command))) command = cp;
 
 	n = sigvecset(0);
-	if ((ret = execpseudoshell(command, 1, ignorelist)) < 0) {
+	if ((ret = execpseudoshell(command, flags)) < 0) {
 		tmp = evalcomstr(command, CMDLINE_DELIM);
-		ret = system2(tmp, noconf);
+		ret = system2(tmp, flags);
 		free(tmp);
 	}
 	sigvecset(n);
 	if (cp) free(cp);
+
 	return(ret);
 }
 #endif	/* _NOORIGSHELL */
@@ -1322,9 +1339,9 @@ char *command;
 	return(ret);
 }
 
-int execmacro(command, arg, noconf, argset, ignorelist)
+int execmacro(command, arg, flags)
 char *command, *arg;
-int noconf, argset, ignorelist;
+int flags;
 {
 #ifdef	_NOEXTRAMACRO
 	char *buf;
@@ -1336,7 +1353,7 @@ int noconf, argset, ignorelist;
 	int i, haslist, ret;
 
 	if (arg) duparg = arg;
-	haslist = (filelist && !ignorelist);
+	haslist = (filelist && !(flags & F_IGNORELIST));
 	ret = 0;
 	internal_status = -2;
 
@@ -1350,17 +1367,16 @@ int noconf, argset, ignorelist;
 		n_args = mark;
 	}
 
-	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
-	if (noconf < 0) st.flags |= F_ISARCH;
+	st.flags = flags;
+	if (isinternalcomm(command)) st.flags |= F_ARGSET;
 
-	if (!(tmp = evalcommand(command, duparg, &st, ignorelist))) {
+	if (!(tmp = evalcommand(command, duparg, &st))) {
 		if (arg) duparg = NULL;
 		return(-1);
 	}
-	if (noconf >= 0 && (st.flags & F_NOCONFIRM)) noconf = 1 - noconf;
 	st.flags |= F_ARGSET;
-	while (st.addopt >= 0 && noconf >= 0 && argset <= 0)
-		if (!(tmp = addoption(tmp, duparg, &st, ignorelist))) {
+	while (st.addopt >= 0 && !(st.flags & F_NOADDOPT))
+		if (!(tmp = addoption(tmp, duparg, &st))) {
 			if (arg) duparg = NULL;
 			return(-1);
 		}
@@ -1371,21 +1387,20 @@ int noconf, argset, ignorelist;
 # ifndef	MACROMETA
 		tmp = _demacroarg(tmp);
 # endif
-		r = system3(tmp, noconf, ignorelist);
+		r = system3(tmp, st.flags);
 		free(tmp);
 		tmp = NULL;
-		if (!argset) st.flags &= ~F_ARGSET;
+		if (!(flags & F_ARGSET)) st.flags &= ~F_ARGSET;
 
 		if (r > ret && (ret = r) >= 127) break;
 		if (internal_status < -1) status = 4;
 		else if (internal_status > status) status = internal_status;
 
 		if (!(st.flags & F_REMAIN)
-		|| !(tmp = evalcommand(command, duparg, &st, ignorelist)))
+		|| !(tmp = evalcommand(command, duparg, &st)))
 			break;
-		while (st.addopt >= 0 && noconf >= 0 && argset <= 0)
-			if (!(tmp = addoption(tmp, duparg, &st, ignorelist)))
-				break;
+		while (st.addopt >= 0 && !(st.flags & F_NOADDOPT))
+			if (!(tmp = addoption(tmp, duparg, &st))) break;
 	}
 	else if (n_args <= 0) {
 		buf = insertarg(tmp, filelist[filepos].name, st.needmark);
@@ -1393,7 +1408,7 @@ int noconf, argset, ignorelist;
 # ifndef	MACROMETA
 			buf = _demacroarg(buf);
 # endif
-			ret = system3(buf, noconf, ignorelist);
+			ret = system3(buf, st.flags);
 			free(buf);
 			status = internal_status;
 		}
@@ -1404,7 +1419,7 @@ int noconf, argset, ignorelist;
 # ifndef	MACROMETA
 			buf = _demacroarg(buf);
 # endif
-			r = system3(buf, noconf, ignorelist);
+			r = system3(buf, st.flags);
 			free(buf);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status < -1) status = 4;
@@ -1414,7 +1429,7 @@ int noconf, argset, ignorelist;
 	}
 	internal_status = status;
 #else	/* !_NOEXTRAMACRO */
-	ret = system3(tmp, noconf, ignorelist);
+	ret = system3(tmp, st.flags);
 	if (internal_status < -1) internal_status = 4;
 #endif	/* !_NOEXTRAMACRO */
 
@@ -1426,28 +1441,31 @@ int noconf, argset, ignorelist;
 		marksize = (off_t)0;
 	}
 	if (arg) duparg = NULL;
+
 	return(ret);
 }
 
-FILE *popenmacro(command, arg, argset)
+FILE *popenmacro(command, arg, flags)
 char *command, *arg;
-int argset;
+int flags;
 {
 	macrostat st;
 	FILE *fp;
 	char *tmp, *lang;
 
 	internal_status = -2;
-	st.flags = (argset || isinternalcomm(command)) ? F_ARGSET : 0;
+	st.flags = flags;
+	if (isinternalcomm(command)) st.flags |= F_ARGSET;
 
-	if (!(tmp = evalcommand(command, arg, &st, 1))) return(NULL);
+	if (!(tmp = evalcommand(command, arg, &st))) return(NULL);
 	if ((lang = strdup2(getenv2("LANG")))) setenv2("LANG", "C", 1);
-	fp = popen2(tmp, "r");
+	fp = popen2(tmp);
 	if (lang) {
 		setenv2("LANG", lang, 1);
 		free(lang);
 	}
 	free(tmp);
+
 	return(fp);
 }
 
@@ -1489,24 +1507,22 @@ char *argv[];
 	return(line);
 }
 
-int execusercomm(command, arg, noconf, argset, ignorelist)
+int execusercomm(command, arg, flags)
 char *command, *arg;
-int noconf, argset, ignorelist;
+int flags;
 {
 	char *cp, **argv;
 	int i, j, r, ret, status, argc;
 
-	if (!(argc = getargs(command, &argv))) i = maxuserfunc;
-	else for (i = 0; i < maxuserfunc; i++)
-		if (!strcommcmp(argv[0], userfunclist[i].func)) break;
-	if (i >= maxuserfunc)
-		ret = execmacro(command, arg, noconf, argset, ignorelist);
+	argc = getargs(command, &argv);
+	i = (argc) ? searchfunction(argv[0]) : maxuserfunc;
+	if (i >= maxuserfunc) ret = execmacro(command, arg, flags);
 	else {
 		ret = 0;
 		status = internal_status = -2;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
-			r = execmacro(cp, arg, noconf, argset, ignorelist);
+			r = execmacro(cp, arg, flags);
 			free(cp);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status < -1) status = 4;
@@ -1516,6 +1532,7 @@ int noconf, argset, ignorelist;
 		internal_status = status;
 	}
 	freevar(argv);
+
 	return(ret);
 }
 
@@ -1527,15 +1544,11 @@ char *command;
 
 	len = (cp = strpbrk(command, " \t")) ? cp - command : strlen(command);
 
-	for (i = 0; i < maxalias; i++)
-		if (!strncommcmp(command, aliaslist[i].alias, len)
-		&& !aliaslist[i].alias[len])
-			break;
-	if (i >= maxalias) return(NULL);
-
+	if ((i = searchalias(command, len)) >= maxalias) return(NULL);
 	cp = malloc2((int)strlen(command) - len
 		+ strlen(aliaslist[i].comm) + 1);
 	strcpy(strcpy2(cp, aliaslist[i].comm), &(command[len]));
+
 	return(cp);
 }
 #endif	/* _NOORIGSHELL */
@@ -1581,6 +1594,7 @@ int uniq;
 	if (history[n][size]) free(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
 	history[n][0] = s;
+
 	return(1);
 }
 
@@ -1596,6 +1610,7 @@ int n;
 	tmp = history[n][0];
 	for (i = 0; i < size; i++) history[n][i] = history[n][i + 1];
 	history[n][size--] = NULL;
+
 	return(tmp);
 }
 
@@ -1625,7 +1640,25 @@ char *file;
 	Xfclose(fp);
 
 	for (i++; i <= size; i++) history[n][i] = NULL;
+
 	return(0);
+}
+
+VOID convhistory(s, fp)
+char *s;
+FILE *fp;
+{
+	char *eol;
+
+	if (!s || !*s) return;
+
+	while ((eol = strchr(s, '\n'))) {
+		VOID_C Xfwrite(s, sizeof(char), eol++ - s, fp);
+		VOID_C Xfputc('\0', fp);
+		s = eol;
+	}
+	VOID_C Xfputs(s, fp);
+	VOID_C Xfputc('\n', fp);
 }
 
 int savehistory(n, file)
@@ -1633,21 +1666,13 @@ int n;
 char *file;
 {
 	FILE *fp;
-	char *cp, *eol;
 	int i, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
 	if (!(fp = Xfopen(file, "w"))) return(-1);
 
 	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
-	for (i = size - 1; i >= 0; i--) if (history[n][i] && *history[n][i]) {
-		for (cp = history[n][i]; (eol = strchr(cp, '\n')); cp = eol) {
-			Xfwrite(cp, sizeof(char), eol++ - cp, fp);
-			Xfputc('\0', fp);
-		}
-		Xfputs(cp, fp);
-		Xfputc('\n', fp);
-	}
+	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], fp);
 	Xfclose(fp);
 
 	return(0);
@@ -1695,6 +1720,7 @@ int *ptrp;
 	if (!ptrp) {
 		while (!history[0][n]) if (--n < 0) return(-1);
 	}
+
 	return((int)n);
 }
 
@@ -1742,6 +1768,7 @@ char *command;
 		return(cp);
 	}
 	free(cp);
+
 	return(command);
 }
 
@@ -1774,6 +1801,7 @@ char ***argvp;
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(aliaslist[i].alias);
 	}
+
 	return(argc);
 }
 
@@ -1792,6 +1820,7 @@ char ***argvp;
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = strdup2(userfunclist[i].func);
 	}
+
 	return(argc);
 }
 #endif	/* !_NOCOMPLETE && _NOORIGSHELL */

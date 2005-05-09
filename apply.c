@@ -1,7 +1,7 @@
 /*
  *	apply.c
  *
- *	Apply Function to Files
+ *	apply function to files
  */
 
 #include <fcntl.h>
@@ -24,8 +24,6 @@ extern int subwindow;
 extern int win_x;
 extern int win_y;
 extern int lcmdline;
-extern int tradlayout;
-extern int sizeinfo;
 extern int mark;
 #ifdef	HAVEFLAGS
 extern u_long fflaglist[];
@@ -117,6 +115,7 @@ char *path, *org;
 	if (org != cwd) free(org);
 	free(cwd);
 	if (path) free(path);
+
 	return(i);
 }
 
@@ -165,6 +164,7 @@ char *path, *org;
 		free(path);
 	}
 	free(cwd);
+
 	return(i);
 }
 
@@ -208,6 +208,7 @@ char *mes, *arg;
 #endif
 		return(NULL);
 	}
+
 	return(dir);
 }
 
@@ -233,6 +234,7 @@ struct stat *stp;
 		warning(-1, file);
 		return(-1);
 	}
+
 	return(0);
 }
 
@@ -270,12 +272,12 @@ struct stat *stp1, *stp2;
 
 	for (;;) {
 		if (!n || n == 2) {
-			locate(0, L_CMDLINE);
-			putterm(l_clear);
+			Xlocate(0, L_CMDLINE);
+			Xputterm(L_CLEAR);
 			cp = SAMEF_K;
 			i = strlen2(cp) - (sizeof("%.*s") - 1);
 			cp = asprintf3(cp, n_column - i, dest);
-			kanjiputs(cp);
+			Xkanjiputs(cp);
 			free(cp);
 		}
 		if (!n) {
@@ -344,7 +346,7 @@ struct stat *stp1, *stp2;
 					return(-1);
 				}
 				if (s_isdir(stp1) && s_isdir(stp2)) return(1);
-				putterm(t_bell);
+				Xputterm(T_BELL);
 				break;
 			case 3:
 				return(2);
@@ -447,12 +449,12 @@ int mode;
 	}
 #endif	/* !MSDOS */
 	if (removepolicy > 0) return(removepolicy - 2);
-	locate(0, L_CMDLINE);
-	putterm(l_clear);
+	Xlocate(0, L_CMDLINE);
+	Xputterm(L_CLEAR);
 	cp = DELPM_K;
 	len = strlen2(cp) - (sizeof("%.*s") - 1);
 	cp = asprintf3(cp, n_column - len, path);
-	kanjiputs(cp);
+	Xkanjiputs(cp);
 	free(cp);
 	str[0] = ANYES_K;
 	str[1] = ANNO_K;
@@ -465,6 +467,7 @@ int mode;
 	ch = selectstr(&removepolicy, 4, 0, str, val);
 	if (ch == K_ESC) removepolicy = -1;
 	else if (ch != K_CR) removepolicy = -2;
+
 	return((removepolicy > 0) ? removepolicy - 2 : removepolicy);
 }
 
@@ -478,6 +481,7 @@ char *path;
 	if ((n = checkdupl(path, dest, &st1, &st2)) < 0)
 		return((n < -1) ? -2 : 1);
 	if (safecpfile(path, dest, &st1, &st2) < 0) return(-1);
+
 	return(0);
 }
 
@@ -492,6 +496,7 @@ char *path;
 	|| (n = checkrmv(path, W_OK)) < 0)
 		return((n < -1) ? -2 : 1);
 	if (safemvfile(path, dest, &st1, &st2) < 0) return(-1);
+
 	return(0);
 }
 
@@ -559,6 +564,7 @@ char *path;
 # endif
 	if (touchfile(dest, &st) < 0) return(-1);
 #endif	/* _USEDOSCOPY || !_NOEXTRACOPY */
+
 	return(0);
 }
 
@@ -581,6 +587,7 @@ char *path;
 	if (touchfile(dest, &st) < 0) return(-1);
 	if ((n = checkrmv(path, R_OK | W_OK | X_OK)) < 0)
 		return((n < -1) ? -2 : 1);
+
 	return(Xrmdir(path));
 }
 #endif	/* !_NOEXTRACOPY */
@@ -591,6 +598,7 @@ char *path;
 	int n;
 
 	if ((n = checkrmv(path, W_OK)) < 0) return((n < -1) ? -2 : 1);
+
 	return(Xunlink(path));
 }
 
@@ -601,6 +609,7 @@ char *path;
 
 	if ((n = checkrmv(path, R_OK | W_OK | X_OK)) < 0)
 		return((n < -1) ? -2 : 1);
+
 	return(Xrmdir(path));
 }
 
@@ -609,14 +618,15 @@ char *path;
 {
 	if (regexp_exec(findregexp, getbasename(path), 1)) {
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
-		locate(0, L_CMDLINE);
-		putterm(l_clear);
-		cprintf2("[%.*k]", n_column - 2, path);
+		Xlocate(0, L_CMDLINE);
+		Xputterm(L_CLEAR);
+		Xcprintf2("[%.*k]", n_column - 2, path);
 		if (yesno(FOUND_K)) {
 			destpath = strdup2(path);
 			return(-2);
 		}
 	}
+
 	return(0);
 }
 
@@ -629,6 +639,7 @@ char *path;
 			return(-2);
 		}
 	}
+
 	return(0);
 }
 
@@ -653,64 +664,64 @@ int y;
 		w = 16;
 	}
 
-	locate(0, y);
-	putterm(l_clear);
+	Xlocate(0, y);
+	Xputterm(L_CLEAR);
 
-	locate(0, ++y);
-	putterm(l_clear);
-	locate(x1, y);
-	cprintf2("[%-*.*k]", w, w, namep -> name);
-	locate(x2 + 3, y);
-	kanjiputs(TOLD_K);
-	locate(x2 + 13, y);
-	kanjiputs(TNEW_K);
+	Xlocate(0, ++y);
+	Xputterm(L_CLEAR);
+	Xlocate(x1, y);
+	Xcprintf2("[%-*.*k]", w, w, namep -> name);
+	Xlocate(x2 + 3, y);
+	Xkanjiputs(TOLD_K);
+	Xlocate(x2 + 13, y);
+	Xkanjiputs(TNEW_K);
 
-	locate(0, ++y);
-	putterm(l_clear);
-	locate(x1, y);
-	kanjiputs(TMODE_K);
-	locate(x2, y);
+	Xlocate(0, ++y);
+	Xputterm(L_CLEAR);
+	Xlocate(x1, y);
+	Xkanjiputs(TMODE_K);
+	Xlocate(x2, y);
 	putmode(buf, namep -> st_mode, 1);
-	cputs2(buf);
-	locate(x2 + 10, y);
+	Xcputs2(buf);
+	Xlocate(x2 + 10, y);
 	putmode(buf, attr -> mode, 1);
-	cputs2(buf);
+	Xcputs2(buf);
 
 #ifdef	HAVEFLAGS
-	locate(0, ++y);
-	putterm(l_clear);
-	locate(x1, y);
-	kanjiputs(TFLAG_K);
-	locate(x2, y);
+	Xlocate(0, ++y);
+	Xputterm(L_CLEAR);
+	Xlocate(x1, y);
+	Xkanjiputs(TFLAG_K);
+	Xlocate(x2, y);
 	putflags(buf, namep -> st_flags);
-	cputs2(buf);
-	locate(x2 + 10, y);
+	Xcputs2(buf);
+	Xlocate(x2 + 10, y);
 	putflags(buf, attr -> flags);
-	cputs2(buf);
+	Xcputs2(buf);
 #endif
 
-	locate(0, ++y);
-	putterm(l_clear);
-	locate(x1, y);
-	kanjiputs(TDATE_K);
-	locate(x2, y);
-	cprintf2("%02d-%02d-%02d",
+	Xlocate(0, ++y);
+	Xputterm(L_CLEAR);
+	Xlocate(x1, y);
+	Xkanjiputs(TDATE_K);
+	Xlocate(x2, y);
+	Xcprintf2("%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	locate(x2 + 10, y);
-	cputs2(attr -> timestr[0]);
+	Xlocate(x2 + 10, y);
+	Xcputs2(attr -> timestr[0]);
 
-	locate(0, ++y);
-	putterm(l_clear);
-	locate(x1, y);
-	kanjiputs(TTIME_K);
-	locate(x2, y);
-	cprintf2("%02d:%02d:%02d",
+	Xlocate(0, ++y);
+	Xputterm(L_CLEAR);
+	Xlocate(x1, y);
+	Xkanjiputs(TTIME_K);
+	Xlocate(x2, y);
+	Xcprintf2("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-	locate(x2 + 10, y);
-	cputs2(attr -> timestr[1]);
+	Xlocate(x2 + 10, y);
+	Xcputs2(attr -> timestr[1]);
 
-	locate(0, ++y);
-	putterm(l_clear);
+	Xlocate(0, ++y);
+	Xputterm(L_CLEAR);
 }
 
 int inputattr(namep, flag)
@@ -728,7 +739,7 @@ int flag;
 	subwindow = 1;
 	Xgetkey(-1, 0);
 
-	yy = LFILETOP;
+	yy = filetop(win);
 	while (yy + WMODELINE + 5 > n_line - 1) yy--;
 	if (yy <= L_TITLE) yy = L_TITLE + 1;
 	xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
@@ -750,8 +761,8 @@ int flag;
 	do {
 		win_x = xx + x;
 		win_y = yy + y + 2;
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 
 		keyflush();
 		switch (ch = Xgetkey(1, 0)) {
@@ -796,7 +807,7 @@ int flag;
 			case '8':
 			case '9':
 				if (y < WMODELINE) break;
-				putch2(ch);
+				Xputch2(ch);
 				attr.timestr[y - WMODELINE][x] = ch;
 /*FALLTHRU*/
 			case K_RIGHT:
@@ -843,7 +854,7 @@ int flag;
 				else if (x > 0) x--;
 				break;
 			case K_CTRL('L'):
-				yy = LFILETOP;
+				yy = filetop(win);
 				while (yy + WMODELINE + 5 > n_line - 1) yy--;
 				if (yy <= L_TITLE) yy = L_TITLE + 1;
 				xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
@@ -853,9 +864,9 @@ int flag;
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {
 					attr.flags ^= fflaglist[x];
-					locate(xx, yy + y + 2);
+					Xlocate(xx, yy + y + 2);
 					putflags(buf, attr.flags);
-					cputs2(buf);
+					Xcputs2(buf);
 					break;
 				}
 #endif
@@ -879,9 +890,9 @@ int flag;
 				}
 				attr.mode ^= tmp;
 #endif
-				locate(xx, yy + y + 2);
+				Xlocate(xx, yy + y + 2);
 				putmode(buf, attr.mode, 1);
-				cputs2(buf);
+				Xcputs2(buf);
 				break;
 			default:
 				break;
@@ -951,6 +962,7 @@ char *path;
 #ifndef	NOUID
 	st.st_gid = (gid_t)-1;
 #endif
+
 	return(touchfile(path, &st));
 }
 
@@ -982,8 +994,8 @@ char *endmes;
 		if (!ismark(&(filelist[filepos]))) continue;
 
 		movepos(old, 0);
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 		i = (*func)(fnodospath(path, filepos));
 		if (i < -1) {
 			endmes = NULL;
@@ -998,8 +1010,9 @@ char *endmes;
 	if (endmes) warning(0, endmes);
 	filepos = dupfilepos;
 	movepos(old, 0);
-	locate(win_x, win_y);
-	tflush();
+	Xlocate(win_x, win_y);
+	Xtflush();
+
 	return(ret);
 }
 
@@ -1029,6 +1042,7 @@ int *maxp, depth;
 	}
 	if (cp > dir) *(cp - 1) = '\0';
 	Xclosedir(dirp);
+
 	return(dirlist);
 }
 
@@ -1051,11 +1065,11 @@ int verbose;
 	if (intrkey()) return(-2);
 
 	if (verbose) {
-		locate(0, L_CMDLINE);
-		putterm(l_clear);
+		Xlocate(0, L_CMDLINE);
+		Xputterm(L_CLEAR);
 		cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
-		cprintf2("[%.*k]", n_column - 2, cp);
-		tflush();
+		Xcprintf2("[%.*k]", n_column - 2, cp);
+		Xtflush();
 	}
 #ifdef	FAKEUNINIT
 	else cp = NULL;	/* fake for -Wuninitialized */
@@ -1099,10 +1113,10 @@ int verbose;
 		free(dirlist[ndir]);
 
 		if (verbose) {
-			locate(0, L_CMDLINE);
-			putterm(l_clear);
-			cprintf2("[%.*k]", n_column - 2, cp);
-			tflush();
+			Xlocate(0, L_CMDLINE);
+			Xputterm(L_CLEAR);
+			Xcprintf2("[%.*k]", n_column - 2, cp);
+			Xtflush();
 		}
 	}
 	if (dirlist) free(dirlist);
@@ -1135,6 +1149,7 @@ int verbose;
 		warning(-1, dir);
 	}
 	if (endmes) warning(0, endmes);
+
 	return(ret);
 }
 
@@ -1161,6 +1176,7 @@ char *endmes;
 #ifdef	_USEDOSEMU
 	else dir = nodospath(path, dir);
 #endif
+
 	return(_applydir(dir, funcf, funcd1, funcd2, order, endmes, verbose));
 }
 
@@ -1170,7 +1186,7 @@ char *arg;
 int tr;
 {
 	if (!mark && isdotdir(filelist[filepos].name)) {
-		putterm(t_bell);
+		Xputterm(T_BELL);
 		return(0);
 	}
 #ifdef	_NOTREE
@@ -1218,6 +1234,7 @@ int tr;
 	if (forwarddrive >= 0) shutdrv(forwarddrive);
 	forwarddrive = -1;
 #endif
+
 	return(4);
 }
 
@@ -1232,7 +1249,7 @@ int tr;
 	int i;
 
 	if (!mark && isdotdir(filelist[filepos].name)) {
-		putterm(t_bell);
+		Xputterm(T_BELL);
 		return(0);
 	}
 #ifdef	_NOTREE
@@ -1286,6 +1303,7 @@ int tr;
 	if (forwarddrive >= 0) shutdrv(forwarddrive);
 	forwarddrive = -1;
 #endif
+
 	return(4);
 }
 
@@ -1300,6 +1318,7 @@ char *path;
 #ifdef	HAVEFLAGS
 	st.st_flags = (u_long)-1;
 #endif
+
 	return(touchfile(dest, &st));
 }
 
@@ -1324,6 +1343,7 @@ char *path;
 	}
 
 	errno = EEXIST;
+
 	return(-1);
 }
 
@@ -1338,6 +1358,7 @@ char *path;
 #ifdef	HAVEFLAGS
 	st.st_flags = (u_long)-1;
 #endif
+
 	return(touchfile(dest, &st));
 }
 
@@ -1349,5 +1370,6 @@ char *dest;
 	destpath = dest;
 	ret = applydir(NULL, forcecpfile, forcecpdir, forcetouchdir, 1, NULL);
 	destpath = NULL;
+
 	return(ret);
 }

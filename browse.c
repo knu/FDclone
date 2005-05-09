@@ -1,7 +1,7 @@
 /*
  *	browse.c
  *
- *	Directory Browsing Module
+ *	directory browsing module
  */
 
 #include "fd.h"
@@ -70,7 +70,6 @@ extern int custno;
 extern int internal_status;
 extern int hideclock;
 extern int fd_restricted;
-extern int physical_path;
 
 #ifndef	_NOCOLOR
 static int NEAR getcolorid __P_((namelist *));
@@ -97,7 +96,7 @@ static int NEAR listupwin __P_((char *));
 #endif
 static int NEAR searchmove __P_((int, char *));
 #ifndef	_NOPRECEDE
-static VOID readstatus __P_((VOID_A));
+static int readstatus __P_((VOID_A));
 #endif
 static int NEAR readfilelist __P_((reg_t *, char *));
 static VOID NEAR getfilelist __P_((VOID_A));
@@ -113,8 +112,11 @@ int displaymode = 0;
 int sorttype = 0;
 int chgorder = 0;
 int stackdepth = 0;
+#ifndef	_NOTRADLAYOUT
 int tradlayout = 0;
+#endif
 int sizeinfo = 0;
+int wheader = WHEADERMIN;
 off_t marksize = (off_t)0;
 off_t totalsize = (off_t)0;
 off_t blocksize = (off_t)0;
@@ -153,7 +155,7 @@ char *ansipalette = NULL;
 char *precedepath = NULL;
 #endif
 #ifndef	_NOSPLITWIN
-int windows = WINDOWS;
+int windows = 1;
 int win = 0;
 #endif
 int calc_x = -1;
@@ -162,11 +164,11 @@ int calc_y = -1;
 static CONST u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
-#define	MAXMODELIST	(sizeof(modelist) / sizeof(u_short))
+#define	MAXMODELIST	((int)sizeof(modelist) / sizeof(u_short))
 static CONST char suffixlist[] = {
 	'/', '@', '=', '|'
 };
-#define	MAXSUFFIXLIST	(sizeof(suffixlist) / sizeof(char))
+#define	MAXSUFFIXLIST	((int)sizeof(suffixlist) / sizeof(char))
 #ifndef	_NOCOLOR
 static CONST u_char colorlist[] = {
 	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
@@ -203,6 +205,7 @@ namelist *namep;
 	for (i = 0; i < MAXMODELIST; i++)
 		if ((namep -> st_mode & S_IFMT) == modelist[i])
 			return(colorlist[i]);
+
 	return(CL_NORM);
 }
 
@@ -236,37 +239,37 @@ static VOID NEAR pathbar(VOID_A)
 {
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
-		locate(0, TL_PATH);
-		putterm(l_clear);
+		Xlocate(0, TL_PATH);
+		Xputterm(L_CLEAR);
 
-		locate(TC_PATH, TL_PATH);
-		putterm(t_standout);
-		cputs2(TS_PATH);
-		putterm(end_standout);
-		cprintf2("%-*.*k", TD_PATH, TD_PATH, fullpath);
+		Xlocate(TC_PATH, TL_PATH);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_PATH);
+		Xputterm(END_STANDOUT);
+		Xcprintf2("%-*.*k", TD_PATH, TD_PATH, fullpath);
 
-		locate(TC_MARK, TL_PATH);
-		cprintf2("%<*d", TD_MARK, mark);
-		putterm(t_standout);
-		cputs2(TS_MARK);
-		putterm(end_standout);
-		cprintf2("%<'*qd", TD_SIZE, marksize);
+		Xlocate(TC_MARK, TL_PATH);
+		Xcprintf2("%<*d", TD_MARK, mark);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_MARK);
+		Xputterm(END_STANDOUT);
+		Xcprintf2("%<'*qd", TD_SIZE, marksize);
 
-		tflush();
+		Xtflush();
 		return;
 	}
 #endif	/* !_NOTRADLAYOUT */
 
-	locate(0, L_PATH);
-	putterm(l_clear);
+	Xlocate(0, L_PATH);
+	Xputterm(L_CLEAR);
 
-	locate(C_PATH, L_PATH);
-	putterm(t_standout);
-	cputs2(S_PATH);
-	putterm(end_standout);
-	cprintf2("%-*.*k", D_PATH, D_PATH, fullpath);
+	Xlocate(C_PATH, L_PATH);
+	Xputterm(T_STANDOUT);
+	Xcputs2(S_PATH);
+	Xputterm(END_STANDOUT);
+	Xcprintf2("%-*.*k", D_PATH, D_PATH, fullpath);
 
-	tflush();
+	Xtflush();
 }
 
 VOID helpbar(VOID_A)
@@ -297,26 +300,26 @@ VOID helpbar(VOID_A)
 	ofs = (col - (width + 1) * 10 - 2) / 2;
 	if (ofs < 4) ofs = 4;
 
-	locate(0, L_HELP);
-	putterm(l_clear);
-	putch2(isdisplnk(dispmode) ? 'S' : ' ');
-	putch2(isdisptyp(dispmode) ? 'T' : ' ');
-	putch2(ishidedot(dispmode) ? 'H' : ' ');
+	Xlocate(0, L_HELP);
+	Xputterm(L_CLEAR);
+	Xputch2(isdisplnk(dispmode) ? 'S' : ' ');
+	Xputch2(isdisptyp(dispmode) ? 'T' : ' ');
+	Xputch2(ishidedot(dispmode) ? 'H' : ' ');
 #ifdef	HAVEFLAGS
-	putch2(isfileflg(dispmode) ? 'F' : ' ');
+	Xputch2(isfileflg(dispmode) ? 'F' : ' ');
 #endif
 
 	for (i = 0; i < 10; i++) {
-		locate(ofs + (width + 1) * i + (i / 5) * gap, L_HELP);
+		Xlocate(ofs + (width + 1) * i + (i / 5) * gap, L_HELP);
 		len = (width - strlen2(helpindex[i])) / 2;
 		if (len < 0) len = 0;
-		putterm(t_standout);
-		for (j = 0; j < len; j++) putch2(' ');
-		cprintf2("%-*.*k", width - len, width - len, helpindex[i]);
-		putterm(end_standout);
+		Xputterm(T_STANDOUT);
+		for (j = 0; j < len; j++) Xputch2(' ');
+		Xcprintf2("%-*.*k", width - len, width - len, helpindex[i]);
+		Xputterm(END_STANDOUT);
 	}
 
-	tflush();
+	Xtflush();
 }
 
 static VOID NEAR statusbar(VOID_A)
@@ -326,73 +329,73 @@ static VOID NEAR statusbar(VOID_A)
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
 
-		locate(0, TL_STATUS);
-		putterm(l_clear);
+		Xlocate(0, TL_STATUS);
+		Xputterm(L_CLEAR);
 
-		locate(TC_INFO, TL_STATUS);
-		putterm(t_standout);
-		cputs2(TS_INFO);
-		putterm(end_standout);
+		Xlocate(TC_INFO, TL_STATUS);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_INFO);
+		Xputterm(END_STANDOUT);
 
-		locate(TC_SIZE, TL_STATUS);
-		cprintf2("%<*d", TD_MARK, maxfile);
-		putterm(t_standout);
-		cputs2(TS_SIZE);
-		putterm(end_standout);
-		cprintf2("%<'*qd", TD_SIZE, totalsize);
+		Xlocate(TC_SIZE, TL_STATUS);
+		Xcprintf2("%<*d", TD_MARK, maxfile);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_SIZE);
+		Xputterm(END_STANDOUT);
+		Xcprintf2("%<'*qd", TD_SIZE, totalsize);
 
 		return;
 	}
 #endif	/* !_NOTRADLAYOUT */
 
-	locate(0, L_STATUS);
-	putterm(l_clear);
+	Xlocate(0, L_STATUS);
+	Xputterm(L_CLEAR);
 
-	locate(C_PAGE, L_STATUS);
-	putterm(t_standout);
-	cputs2(S_PAGE);
-	putterm(end_standout);
-	cprintf2("%<*d/%<*d", D_PAGE, filepos / FILEPERPAGE + 1,
+	Xlocate(C_PAGE, L_STATUS);
+	Xputterm(T_STANDOUT);
+	Xcputs2(S_PAGE);
+	Xputterm(END_STANDOUT);
+	Xcprintf2("%<*d/%<*d", D_PAGE, filepos / FILEPERPAGE + 1,
 		D_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
-	locate(C_MARK, L_STATUS);
-	putterm(t_standout);
-	cputs2(S_MARK);
-	putterm(end_standout);
-	cprintf2("%<*d/%<*d", D_MARK, mark, D_MARK, maxfile);
+	Xlocate(C_MARK, L_STATUS);
+	Xputterm(T_STANDOUT);
+	Xcputs2(S_MARK);
+	Xputterm(END_STANDOUT);
+	Xcprintf2("%<*d/%<*d", D_MARK, mark, D_MARK, maxfile);
 
 	if (!ishardomit()) {
-		locate(C_SORT, L_STATUS);
-		putterm(t_standout);
-		cputs2(S_SORT);
-		putterm(end_standout);
+		Xlocate(C_SORT, L_STATUS);
+		Xputterm(T_STANDOUT);
+		Xcputs2(S_SORT);
+		Xputterm(END_STANDOUT);
 
 #ifndef	_NOPRECEDE
-		if (haste) kanjiputs(OMIT_K);
+		if (haste) Xkanjiputs(OMIT_K);
 		else
 #endif
-		if (!(sorton & 7)) kanjiputs(ORAW_K + 3);
+		if (!(sorton & 7)) Xkanjiputs(ORAW_K + 3);
 		else {
 			str[0] = ONAME_K;
 			str[1] = OEXT_K;
 			str[2] = OSIZE_K;
 			str[3] = ODATE_K;
 			str[4] = OLEN_K;
-			kanjiputs(&(str[(sorton & 7) - 1][3]));
+			Xkanjiputs(&(str[(sorton & 7) - 1][3]));
 
 			str[0] = OINC_K;
 			str[1] = ODEC_K;
-			cprintf2("(%k)", &(str[sorton / 8][3]));
+			Xcprintf2("(%k)", &(str[sorton / 8][3]));
 		}
 	}
 
-	locate(C_FIND, L_STATUS);
-	putterm(t_standout);
-	cputs2(S_FIND);
-	putterm(end_standout);
-	if (findpattern) cprintf2("%-*.*k", D_FIND, D_FIND, findpattern);
+	Xlocate(C_FIND, L_STATUS);
+	Xputterm(T_STANDOUT);
+	Xcputs2(S_FIND);
+	Xputterm(END_STANDOUT);
+	if (findpattern) Xcprintf2("%-*.*k", D_FIND, D_FIND, findpattern);
 
-	tflush();
+	Xtflush();
 }
 
 static VOID NEAR stackbar(VOID_A)
@@ -404,42 +407,43 @@ static VOID NEAR stackbar(VOID_A)
 
 	width = n_column / MAXSTACK;
 
-	locate(0, L_STACK);
+	Xlocate(0, L_STACK);
 #ifndef	_NOCOLOR
-	if ((bgcolor = getcolor(CL_BACK)) >= 0) chgcolor(bgcolor, 1);
+	if ((bgcolor = getcolor(CL_BACK)) >= 0) Xchgcolor(bgcolor, 1);
 	x = 0;
 #endif
-	putterm(l_clear);
+	Xputterm(L_CLEAR);
 
 	for (i = 0; i < stackdepth; i++) {
 #ifndef	_NOCOLOR
-		if (ansicolor == 2) for (; x < width * i + 1; x++) putch2(' ');
+		if (ansicolor == 2)
+			for (; x < width * i + 1; x++) Xputch2(' ');
 		else
 #endif
-		locate(width * i + 1, L_STACK);
+		Xlocate(width * i + 1, L_STACK);
 #ifndef	_NOCOLOR
 		color = getcolor(getcolorid(&(filestack[i])));
-		if (ansicolor && color >= 0) chgcolor(color, 1);
+		if (ansicolor && color >= 0) Xchgcolor(color, 1);
 		else
 #endif
-		putterm(t_standout);
-		cprintf2("%-*.*k", width - 2, width - 2, filestack[i].name);
+		Xputterm(T_STANDOUT);
+		Xcprintf2("%-*.*k", width - 2, width - 2, filestack[i].name);
 #ifndef	_NOCOLOR
 		x += width - 2;
-		if (bgcolor >= 0) chgcolor(bgcolor, 1);
-		else if (ansicolor) putterms(t_normal);
+		if (bgcolor >= 0) Xchgcolor(bgcolor, 1);
+		else if (ansicolor) Xputterms(T_NORMAL);
 		else
 #endif
-		putterm(end_standout);
+		Xputterm(END_STANDOUT);
 	}
 #ifndef	_NOCOLOR
 	if (bgcolor >= 0) {
-		for (; x < n_column; x++) putch2(' ');
-		putterm(t_normal);
+		for (; x < n_column; x++) Xputch2(' ');
+		Xputterm(T_NORMAL);
 	}
 #endif
 
-	tflush();
+	Xtflush();
 }
 
 static VOID NEAR cputbytes(size, bsize, width)
@@ -448,12 +452,12 @@ int width;
 {
 	off_t kb;
 
-	if (size < (off_t)0) cprintf2("%*s", width, "?");
+	if (size < (off_t)0) Xcprintf2("%*s", width, "?");
 	else if (size < (off_t)10000000 / bsize)
-		cprintf2("%<'*qd%s", width - W_BYTES, size * bsize, S_BYTES);
+		Xcprintf2("%<'*qd%s", width - W_BYTES, size * bsize, S_BYTES);
 	else if ((kb = calcKB(size, bsize)) < (off_t)1000000000)
-		cprintf2("%<'*qd%s", width - W_KBYTES, kb, S_KBYTES);
-	else cprintf2("%<'*qd%s",
+		Xcprintf2("%<'*qd%s", width - W_KBYTES, kb, S_KBYTES);
+	else Xcprintf2("%<'*qd%s",
 		width - W_MBYTES, kb / (off_t)1024, S_MBYTES);
 }
 
@@ -466,64 +470,64 @@ static VOID NEAR sizebar(VOID_A)
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
-		locate(0, TL_SIZE);
-		putterm(l_clear);
+		Xlocate(0, TL_SIZE);
+		Xputterm(L_CLEAR);
 
-		locate(TC_PAGE, TL_SIZE);
-		putterm(t_standout);
-		cputs2(TS_PAGE);
-		putterm(end_standout);
-		cprintf2("%<*d/%<*d", TD_PAGE, filepos / FILEPERPAGE + 1,
+		Xlocate(TC_PAGE, TL_SIZE);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_PAGE);
+		Xputterm(END_STANDOUT);
+		Xcprintf2("%<*d/%<*d", TD_PAGE, filepos / FILEPERPAGE + 1,
 			TD_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
-		locate(TC_TOTAL, TL_SIZE);
-		putterm(t_standout);
-		cputs2(TS_TOTAL);
-		putterm(end_standout);
+		Xlocate(TC_TOTAL, TL_SIZE);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_TOTAL);
+		Xputterm(END_STANDOUT);
 		cputbytes(total, bsize, TD_TOTAL);
 
-		locate(TC_USED, TL_SIZE);
-		putterm(t_standout);
-		cputs2(TS_USED);
-		putterm(end_standout);
+		Xlocate(TC_USED, TL_SIZE);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_USED);
+		Xputterm(END_STANDOUT);
 		cputbytes(total - fre, bsize, TD_USED);
 
-		locate(TC_FREE, TL_SIZE);
-		putterm(t_standout);
-		cputs2(TS_FREE);
-		putterm(end_standout);
+		Xlocate(TC_FREE, TL_SIZE);
+		Xputterm(T_STANDOUT);
+		Xcputs2(TS_FREE);
+		Xputterm(END_STANDOUT);
 		cputbytes(fre, bsize, TD_FREE);
 
 		return;
 	}
 #endif	/* !_NOTRADLAYOUT */
 
-	locate(0, L_SIZE);
-	putterm(l_clear);
+	Xlocate(0, L_SIZE);
+	Xputterm(L_CLEAR);
 
-	locate(C_SIZE, L_SIZE);
-	putterm(t_standout);
-	cputs2(S_SIZE);
-	putterm(end_standout);
-	cprintf2("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
+	Xlocate(C_SIZE, L_SIZE);
+	Xputterm(T_STANDOUT);
+	Xcputs2(S_SIZE);
+	Xputterm(END_STANDOUT);
+	Xcprintf2("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
 
 	if (!ishardomit()) {
-		locate(C_TOTAL, L_SIZE);
-		putterm(t_standout);
-		cputs2(S_TOTAL);
-		putterm(end_standout);
+		Xlocate(C_TOTAL, L_SIZE);
+		Xputterm(T_STANDOUT);
+		Xcputs2(S_TOTAL);
+		Xputterm(END_STANDOUT);
 		cputbytes(total, bsize, D_TOTAL);
 	}
 
 	if (!iswellomit()) {
-		locate(C_FREE, L_SIZE);
-		putterm(t_standout);
-		cputs2(S_FREE);
-		putterm(end_standout);
+		Xlocate(C_FREE, L_SIZE);
+		Xputterm(T_STANDOUT);
+		Xcputs2(S_FREE);
+		Xputterm(END_STANDOUT);
 		cputbytes(fre, bsize, D_FREE);
 	}
 
-	tflush();
+	Xtflush();
 }
 
 int putmode(buf, mode, notype)
@@ -535,9 +539,9 @@ int notype;
 
 	i = 0;
 	if (!notype) {
-		for (j = 0; j < sizeof(typelist) / sizeof(u_short); j++)
+		for (j = 0; j < (int)sizeof(typelist) / sizeof(u_short); j++)
 			if ((mode & S_IFMT) == typelist[j]) break;
-		buf[i++] = (j < sizeof(typelist) / sizeof(u_short))
+		buf[i++] = (j < (int)sizeof(typelist) / sizeof(u_short))
 			? typesymlist[j] : '-';
 	}
 
@@ -570,7 +574,7 @@ u_long flags;
 {
 	int i;
 
-	for (i = 0; i < sizeof(fflaglist) / sizeof(u_long); i++)
+	for (i = 0; i < (int)sizeof(fflaglist) / sizeof(u_long); i++)
 		buf[i] = (flags & fflaglist[i]) ? fflagsymlist[i] : '-';
 	buf[i] = '\0';
 
@@ -623,6 +627,7 @@ int width, max;
 	for (i = max - width; i > 0; i--) if (tmp[i - 1] == ' ') break;
 	len = max - i;
 	strncpy(buf, &(tmp[i]), len);
+
 	return(len);
 }
 
@@ -698,6 +703,7 @@ int width;
 		free(tmp);
 	}
 #endif	/* !NOSYMLINK */
+
 	return(width);
 }
 
@@ -711,14 +717,14 @@ static VOID NEAR infobar(VOID_A)
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
-		locate(TC_INFO + TW_INFO, TL_STATUS);
-		cprintf2("%*s", TD_INFO, "");
+		Xlocate(TC_INFO + TW_INFO, TL_STATUS);
+		Xcprintf2("%*s", TD_INFO, "");
 
-		locate(TC_INFO + TW_INFO, TL_STATUS);
+		Xlocate(TC_INFO + TW_INFO, TL_STATUS);
 		if (filepos >= maxfile) {
 			if (filelist[0].st_nlink < 0 && filelist[0].name)
-				kanjiputs(filelist[0].name);
-			tflush();
+				Xkanjiputs(filelist[0].name);
+			Xtflush();
 			return;
 		}
 		len = TD_INFO
@@ -726,7 +732,7 @@ static VOID NEAR infobar(VOID_A)
 # ifndef	_NOPRECEDE
 		if (!havestat(&(filelist[filepos]))) {
 			kanjiputs2(filelist[filepos].name, len, fnameofs);
-			tflush();
+			Xtflush();
 			return;
 		}
 # endif
@@ -758,25 +764,25 @@ static VOID NEAR infobar(VOID_A)
 			(!isdisplnk(dispmode) && islink(&(filelist[filepos])))
 			? (S_IFLNK | 0777) : filelist[filepos].st_mode, 1);
 
-		kanjiputs(buf);
+		Xkanjiputs(buf);
 		free(buf);
-		tflush();
+		Xtflush();
 		return;
 	}
 #endif	/* !_NOTRADLAYOUT */
 
-	locate(0, L_INFO);
+	Xlocate(0, L_INFO);
 
 	if (filepos >= maxfile) {
-		putterm(l_clear);
+		Xputterm(L_CLEAR);
 		if (filelist[0].st_nlink < 0 && filelist[0].name)
-			kanjiputs(filelist[0].name);
-		tflush();
+			Xkanjiputs(filelist[0].name);
+		Xtflush();
 		return;
 	}
 #ifndef	_NOPRECEDE
 	if (!havestat(&(filelist[filepos]))) {
-		putterm(l_clear);
+		Xputterm(L_CLEAR);
 		len = WMODE + WSIZE2 + 1 + WDATE + 1 + WTIME + 1;
 		if (!ishardomit()) {
 			len += 1 + WNLINK + 1;
@@ -786,10 +792,10 @@ static VOID NEAR infobar(VOID_A)
 				: WOWNER + 1 + WGROUP + 1;
 # endif
 		}
-		locate(len, L_INFO);
+		Xlocate(len, L_INFO);
 		kanjiputs2(filelist[filepos].name,
 			n_lastcolumn - len, fnameofs);
-		tflush();
+		Xtflush();
 		return;
 	}
 #endif
@@ -845,19 +851,30 @@ static VOID NEAR infobar(VOID_A)
 	len += WDATE + 1 + WTIME + 1;
 
 	putfilename(&(buf[len]), &(filelist[filepos]), n_lastcolumn - len);
-	kanjiputs(buf);
+	Xkanjiputs(buf);
 	free(buf);
-	tflush();
+	Xtflush();
 }
 
 VOID waitmes(VOID_A)
 {
 	helpbar();
-	locate(0, L_MESLINE);
-	putterm(l_clear);
-	kanjiputs(WAIT_K);
-	if (win_x >= 0 && win_y >= 0) locate(win_x, win_y);
-	tflush();
+	Xlocate(0, L_MESLINE);
+	Xputterm(L_CLEAR);
+	Xkanjiputs(WAIT_K);
+	if (win_x >= 0 && win_y >= 0) Xlocate(win_x, win_y);
+	Xtflush();
+}
+
+int filetop(w)
+int w;
+{
+	int n;
+
+	n = wheader;
+	while (w) n += winvar[--w].v_fileperrow + 1;
+
+	return(n);
 }
 
 static int NEAR calclocate(i)
@@ -873,13 +890,13 @@ int i;
 	width = col / FILEPERLINE;
 	i %= FILEPERPAGE;
 	calc_x = (i / FILEPERROW) * width;
-	calc_y = i % FILEPERROW + LFILETOP;
+	calc_y = i % FILEPERROW + filetop(win);
 #ifndef	_NOCOLOR
 	if ((bgcolor = getcolor(CL_BACK)) >= 0) {
-		chgcolor(bgcolor, 1);
-		locate(calc_x, calc_y);
+		Xchgcolor(bgcolor, 1);
+		Xlocate(calc_x, calc_y);
 		if (!isleftshift()) {
-			putch2(' ');
+			Xputch2(' ');
 			calc_x++;
 		}
 	}
@@ -887,8 +904,9 @@ int i;
 #endif
 	{
 		if (!isleftshift()) calc_x++;
-		locate(calc_x, calc_y);
+		Xlocate(calc_x, calc_y);
 	}
+
 	return(width);
 }
 
@@ -916,6 +934,7 @@ int calcwidth(VOID_A)
 		width -= WIDTH2 + WIDTH3;
 	else if (curcolumns < 4 && width - WIDTH3 >= minfilename)
 		width -= WIDTH3;
+
 	return(width);
 }
 
@@ -932,7 +951,7 @@ int no, isstandout;
 
 	col = calclocate(no) - 2 - 1 + ((isshortwid()) ? 1 : 0);
 	width = calcwidth();
-	putch2(ismark(&(list[no])) ? '*' : ' ');
+	Xputch2(ismark(&(list[no])) ? '*' : ' ');
 
 	if (list != filelist) {
 		len = strlen3(list[no].name);
@@ -942,7 +961,7 @@ int no, isstandout;
 	}
 
 	if (isstandout < 0 && stable_standout) {
-		putterm(end_standout);
+		Xputterm(END_STANDOUT);
 		calclocate(no);
 #ifndef	_NOPRECEDE
 		if (!havestat(&(list[no]))) return(width);
@@ -957,10 +976,10 @@ int no, isstandout;
 
 #ifndef	_NOPRECEDE
 	if (!havestat(&(list[no]))) {
-		if (isstandout > 0) putterm(t_standout);
-		kanjiputs(buf);
+		if (isstandout > 0) Xputterm(T_STANDOUT);
+		Xkanjiputs(buf);
 		free(buf);
-		if (isstandout > 0) putterm(end_standout);
+		if (isstandout > 0) Xputterm(END_STANDOUT);
 		return(wid);
 	}
 #endif
@@ -1019,21 +1038,22 @@ int no, isstandout;
 	buf[len] = '\0';
 
 #ifndef	_NOCOLOR
-	if (ansicolor && color >= 0) chgcolor(color, isstandout > 0);
+	if (ansicolor && color >= 0) Xchgcolor(color, isstandout > 0);
 	else
 #endif
-	if (isstandout > 0) putterm(t_standout);
-	kanjiputs(buf);
+	if (isstandout > 0) Xputterm(T_STANDOUT);
+	Xkanjiputs(buf);
 	free(buf);
 #ifndef	_NOCOLOR
 	if ((bgcolor = getcolor(CL_BACK)) >= 0) {
-		chgcolor(bgcolor, 1);
-		putch2(' ');
+		Xchgcolor(bgcolor, 1);
+		Xputch2(' ');
 	}
-	if (ansicolor) putterms(t_normal);
+	if (ansicolor) Xputterms(T_NORMAL);
 	else
 #endif
-	if (isstandout > 0) putterm(end_standout);
+	if (isstandout > 0) Xputterm(END_STANDOUT);
+
 	return(col);
 }
 
@@ -1049,6 +1069,7 @@ char *def;
 
 	if (list == filelist && max > 1 && !strcmp(list[1].name, ".."))
 		return(1);
+
 	return(0);
 }
 
@@ -1062,21 +1083,21 @@ int isstandout;
 	int i, n, pos;
 
 	for (i = 0; i < FILEPERROW; i++) {
-		locate(0, i + LFILETOP);
-		putterm(l_clear);
+		Xlocate(0, i + filetop(win));
+		Xputterm(L_CLEAR);
 	}
 
 	if (!list || max <= 0) {
 		i = (n_column / FILEPERLINE) - 2 - 1;
-		locate(1, LFILETOP);
-		putch2(' ');
-		if (isstandout) putterm(t_standout);
+		Xlocate(1, filetop(win));
+		Xputch2(' ');
+		if (isstandout) Xputterm(T_STANDOUT);
 		cp = NOFIL_K;
 		if (i <= strlen2(cp)) cp = "NoFiles";
-		cprintf2("%-*.*k", i, i, cp);
-		if (isstandout) putterm(end_standout);
+		Xcprintf2("%-*.*k", i, i, cp);
+		if (isstandout) Xputterm(END_STANDOUT);
 		win_x = calc_x = i + 2;
-		win_y = calc_y = LFILETOP;
+		win_y = calc_y = filetop(win);
 		return(0);
 	}
 
@@ -1085,14 +1106,14 @@ int isstandout;
 	if (list == filelist) {
 #ifndef	_NOTRADLAYOUT
 		if (istradlayout()) {
-			locate(TC_PAGE + TW_PAGE, TL_SIZE);
-			cprintf2("%<*d", TD_PAGE, pos / FILEPERPAGE + 1);
+			Xlocate(TC_PAGE + TW_PAGE, TL_SIZE);
+			Xcprintf2("%<*d", TD_PAGE, pos / FILEPERPAGE + 1);
 		}
 		else
 #endif
 		{
-			locate(C_PAGE + W_PAGE, L_STATUS);
-			cprintf2("%<*d", D_PAGE, pos / FILEPERPAGE + 1);
+			Xlocate(C_PAGE + W_PAGE, L_STATUS);
+			Xcprintf2("%<*d", D_PAGE, pos / FILEPERPAGE + 1);
 		}
 	}
 
@@ -1109,6 +1130,7 @@ int isstandout;
 
 	calc_x = win_x;
 	calc_y = win_y;
+
 	return(pos);
 }
 
@@ -1116,60 +1138,75 @@ int isstandout;
 static int NEAR listupwin(def)
 char *def;
 {
-	int i, x, y, n, duplwin;
+	int i, x, y, n, dupwin;
 
-	duplwin = win;
+	dupwin = win;
+	y = wheader + winvar[0].v_fileperrow;
 	for (n = 1; n < windows; n++) {
-		locate(0, WHEADER - 1 + (n * (FILEPERROW + 1)));
-		putterm(l_clear);
-		putch2(' ');
-		for (i = 2; i < n_column; i++) putch2('-');
+		Xlocate(0, y);
+		Xputterm(L_CLEAR);
+		Xputch2(' ');
+		for (i = 2; i < n_column; i++) Xputch2('-');
+		y += winvar[n].v_fileperrow + 1;
 	}
-	for (n = WHEADER - 1 + (n * (FILEPERROW + 1)); n < L_STACK; n++) {
-		locate(0, n);
-		putterm(l_clear);
+	for (; y < L_STACK; y++) {
+		Xlocate(0, y);
+		Xputterm(L_CLEAR);
 	}
-#ifdef	FAKEUNINIT
+
+# ifdef	FAKEUNINIT
 	x = y = -1;	/* fake for -Wuninitialized */
-#endif
+# endif
 	n = -1;
 	for (win = 0; win < windows; win++) {
-		if (win == duplwin) {
-			n = listupfile(filelist, maxfile, def, 1);
+		if (win == dupwin) {
+# ifndef	_NOTREE
+			if (treepath) rewritetree();
+			else
+# endif
+# ifndef	_NOCUSTOMIZE
+			if (custno >= 0) rewritecust();
+			else
+# endif
+			if (filelist && filepos < maxfile)
+				n = listupfile(filelist, maxfile, def, 1);
 			x = win_x;
 			y = win_y;
 		}
-		else listupfile(filelist, maxfile, filelist[filepos].name, 0);
+		else if (filelist && filepos < maxfile)
+			listupfile(filelist, maxfile,
+				filelist[filepos].name, 0);
 	}
-	win = duplwin;
+	win = dupwin;
 
 	win_x = x;
 	win_y = y;
+
 	return(n);
 }
 
 int shutwin(n)
 int n;
 {
-	int i, duplwin;
+	int i, dupwin;
 
-	duplwin = win;
+	dupwin = win;
 	win = n;
-#ifndef	_NOARCHIVE
+# ifndef	_NOARCHIVE
 	while (archivefile) {
-# ifdef	_NOBROWSE
+#  ifdef	_NOBROWSE
 		escapearch();
-# else
+#  else
 		do {
 			escapearch();
 		} while (browselist);
-# endif
+#  endif
 	}
 	if (winvar[win].v_archivedir) {
 		free(winvar[win].v_archivedir);
 		winvar[win].v_archivedir = NULL;
 	}
-#endif
+# endif	/* !_NOARCHIVE */
 	if (winvar[win].v_fullpath) {
 		free(winvar[win].v_fullpath);
 		winvar[win].v_fullpath = NULL;
@@ -1185,10 +1222,24 @@ int n;
 		free(findpattern);
 		findpattern = NULL;
 	}
-	win = duplwin;
+	win = dupwin;
+
 	return(n);
 }
 #endif	/* !_NOSPLITWIN */
+
+VOID calcwin(VOID_A)
+{
+	int i, row;
+
+	row = fileperrow(windows);
+	winvar[windows - 1].v_fileperrow = fileperrow(1);
+	for (i = 0; i < windows - 1; i++) {
+		winvar[i].v_fileperrow = row;
+		winvar[windows - 1].v_fileperrow -= row + 1;
+	}
+	for (i = windows; i < MAXWINDOWS; i++) winvar[i].v_fileperrow = 0;
+}
 
 VOID movepos(old, funcstat)
 int old, funcstat;
@@ -1233,25 +1284,24 @@ int all;
 #endif
 	pathbar();
 	if (all >= 0) {
-#ifndef	_NOTREE
+#ifdef	_NOSPLITWIN
+# ifndef	_NOTREE
 		if (treepath) rewritetree();
 		else
-#endif
-#ifndef	_NOCUSTOMIZE
-		if (custno >= 0) rewritecust(all);
+# endif
+# ifndef	_NOCUSTOMIZE
+		if (custno >= 0) rewritecust();
 		else
-#endif
-		if (filelist && filepos < maxfile) {
-#ifdef	_NOSPLITWIN
+# endif
+		if (filelist && filepos < maxfile)
 			listupfile(filelist, maxfile,
 				filelist[filepos].name, 1);
-#else
-			listupwin(filelist[filepos].name);
-#endif
-		}
+#else	/* !_NOSPLITWIN */
+		listupwin(filelist[filepos].name);
+#endif	/* !_NOSPLITWIN */
 	}
-	locate(win_x, win_y);
-	tflush();
+	Xlocate(win_x, win_y);
+	Xtflush();
 }
 
 static int NEAR searchmove(ch, buf)
@@ -1303,11 +1353,11 @@ char *buf;
 		win_x = calc_x;
 		win_y = calc_y;
 		if (ch == K_CR) return(-1);
-		else if (ch != K_ESC) putterm(t_bell);
+		else if (ch != K_ESC) Xputterm(T_BELL);
 		return(0);
 	}
 
-	locate(0, L_HELP);
+	Xlocate(0, L_HELP);
 	str[0] = SEAF_K;
 	str[1] = SEAFF_K;
 	str[2] = SEAB_K;
@@ -1323,16 +1373,17 @@ char *buf;
 		if (pos < 0 || pos >= maxfile) break;
 	}
 
-	putterm(t_standout);
+	Xputterm(T_STANDOUT);
 	search_x = len;
-	len = kanjiputs(str[2 - s - i]);
-	putterm(end_standout);
-	cprintf2("%-*.*k", n_column - len - 1, n_column - len - 1, buf);
+	len = Xkanjiputs(str[2 - s - i]);
+	Xputterm(END_STANDOUT);
+	Xcprintf2("%-*.*k", n_column - len - 1, n_column - len - 1, buf);
 	if ((search_x += len) >= n_column) search_x = n_column - 1;
 	search_y = L_HELP;
 	if (i) filepos = pos;
-	else if (n != 2 && ch != K_BS) putterm(t_bell);
+	else if (n != 2 && ch != K_BS) Xputterm(T_BELL);
 	isearch = s * (i + 2);
+
 	return(i);
 }
 
@@ -1344,16 +1395,16 @@ VOID addlist(VOID_A)
 }
 
 #ifndef	_NOPRECEDE
-static VOID readstatus(VOID_A)
+static int readstatus(VOID_A)
 {
 	int i;
 
 	for (i = maxstat; i < maxfile; i++)
 		if (!havestat(&(filelist[i]))) break;
-	if (i >= maxfile) return;
+	if (i >= maxfile) return(0);
 	maxstat = i + 1;
-	if (getstatus(&(filelist[i])) < 0) return;
-	if (keywaitfunc != readstatus) return;
+	if (getstatus(&(filelist[i])) < 0) return(0);
+	if (keywaitfunc != readstatus) return(0);
 	if (isfile(&(filelist[i])) && filelist[i].st_size) sizebar();
 	if (i == filepos) {
 		calc_x += putname(filelist, i, 1) + 1;
@@ -1363,8 +1414,10 @@ static VOID readstatus(VOID_A)
 	}
 	else if (i / FILEPERPAGE == filepos / FILEPERPAGE)
 		putname(filelist, i, 0);
-	locate(win_x, win_y);
-	tflush();
+	Xlocate(win_x, win_y);
+	Xtflush();
+
+	return(0);
 }
 #endif	/* !_NOPRECEDE */
 
@@ -1422,8 +1475,8 @@ char *arcre;
 
 		maxfile++;
 	}
-
 	Xclosedir(dirp);
+
 	return(n);
 }
 
@@ -1489,7 +1542,7 @@ char *file, *def;
 	dupsorton = sorton;
 #endif
 #ifndef	_NOCOLOR
-	if (ansicolor) putterms(t_normal);
+	if (ansicolor) Xputterms(T_NORMAL);
 #endif
 
 	mark = 0;
@@ -1512,7 +1565,6 @@ char *file, *def;
 			marksize += getblock(filelist[i].st_size);
 	}
 
-	putterms(t_clear);
 	title();
 	helpbar();
 	rewritefile(-1);
@@ -1532,8 +1584,8 @@ char *file, *def;
 			win_x = search_x;
 			win_y = search_y;
 		}
-		locate(win_x, win_y);
-		tflush();
+		Xlocate(win_x, win_y);
+		Xtflush();
 #ifndef	_NOPRECEDE
 		if (haste) keywaitfunc = readstatus;
 #endif
@@ -1619,14 +1671,14 @@ char *file, *def;
 		}
 		else {
 			no = execusercomm(macrolist[no - FUNCLISTSIZ],
-				filelist[filepos].name, 0, 0, 0);
+				filelist[filepos].name, 0);
 			no = (no < 0) ? 1 :
-				((internal_status >= -1) ? internal_status: 4);
+				((internal_status < -1) ? 4 : internal_status);
 		}
+
 #ifndef	_NOPRECEDE
 		if (sorton) haste = 0;
 #endif
-
 		if (no < 0 || no >= 4) break;
 		if (no == 1 || no == 3) helpbar();
 		if (no < 2) {
@@ -1690,10 +1742,10 @@ char *file, *def;
 		filelist[i].name = NULL;
 	}
 	maxfile = filepos = 0;
-
 #ifndef	_NOPRECEDE
 	if (haste && !sorton) sorton = dupsorton;
 #endif
+
 	return(no);
 }
 
@@ -1730,7 +1782,7 @@ char *path, *buf;
 				if (chdir2(_SS_) < 0) error(_SS_);
 			}
 			else if (chdir2(cp) < 0) {
-				hideclock = 1;
+				hideclock = 2;
 				warning(-1, cp);
 #if	MSDOS
 				strcpy(fullpath, origpath);
@@ -1744,16 +1796,15 @@ char *path, *buf;
 		strcpy(buf, file);
 		file = buf;
 	}
-
 	free(cp);
+
 	return(file);
 }
 
 VOID main_fd(pathlist)
 char **pathlist;
 {
-	char file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	char *def, *cwd;
+	char *def, *cwd, file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
 	int i, argc, ischgdir;
 
 	if (!pathlist) argc = 0;
@@ -1796,6 +1847,7 @@ char **pathlist;
 		sorton = sorttype % 100;
 		dispmode = displaymode;
 		curcolumns = defcolumns;
+		FILEPERROW = 0;
 
 		if (i >= argc) continue;
 
@@ -1813,18 +1865,19 @@ char **pathlist;
 	}
 
 #ifndef	_NOSPLITWIN
+	windows = 1;
 	win = 0;
 	while (windows < argc) {
-		windows++;
-		if (FILEPERROW < WFILEMIN) {
-			windows--;
-			hideclock = 1;
+		if (fileperrow(windows + 1) < WFILEMIN) {
+			hideclock = 2;
 			warning(0, NOROW_K);
 			for (i = windows; i < argc; i++) shutwin(i);
 			break;
 		}
+		windows++;
 	}
-#endif
+#endif	/* !_NOSPLITWIN */
+	calcwin();
 
 	strcpy(file, ".");
 	_chdir2(fullpath);
@@ -1842,7 +1895,7 @@ char **pathlist;
 #endif
 
 			if (chdir3(nodospath(buf, file), 1) < 0) {
-				hideclock = 1;
+				hideclock = 2;
 				warning(-1, file);
 				strcpy(prev, file);
 				def = prev;
@@ -1875,6 +1928,6 @@ char **pathlist;
 #else
 	for (i = 0; i < MAXWINDOWS; i++) shutwin(i);
 #endif
-	locate(0, n_line - 1);
-	tflush();
+	Xlocate(0, n_line - 1);
+	Xtflush();
 }

@@ -1,7 +1,7 @@
 /*
  *	command.c
  *
- *	Command Execute Module
+ *	command executing module
  */
 
 #include "fd.h"
@@ -31,9 +31,13 @@ extern int win_y;
 extern char *destpath;
 extern char *histfile;
 extern int savehist;
+#ifndef	_NOTRADLAYOUT
 extern int tradlayout;
+#endif
 extern int sizeinfo;
+extern int wheader;
 extern char fullpath[];
+extern int hideclock;
 #ifndef	_NOORIGSHELL
 extern int fdmode;
 #endif
@@ -71,6 +75,7 @@ static int dotfile_mode __P_((char *));
 static int fileflg_mode __P_((char *));
 static int log_dir __P_((char *));
 static int log_top __P_((char *));
+static VOID NEAR clearscreen __P_((VOID_A));
 #ifndef	PAGER
 static VOID NEAR dump __P_((char *));
 #endif
@@ -309,6 +314,7 @@ char *arg;
 	else
 #endif
 	if (filepos < 0) filepos = 0;
+
 	return((filepos != old) ? 2 : 0);
 }
 
@@ -335,6 +341,7 @@ char *arg;
 	else
 #endif
 	if (filepos >= maxfile) filepos = maxfile - 1;
+
 	return((filepos != old) ? 2 : 0);
 }
 
@@ -371,6 +378,7 @@ char *arg;
 				filepos = maxfile - 1;
 		}
 	}
+
 	return((filepos != old) ? 2 : 0);
 }
 
@@ -400,6 +408,7 @@ char *arg;
 #endif
 	if (filepos >= 0) /*EMPTY*/;
 	else filepos = old % r;
+
 	return((filepos != old) ? 2 : 0);
 }
 
@@ -416,6 +425,7 @@ char *arg;
 		filepos = old;
 		return(warning_bell(arg));
 	}
+
 	return(2);
 }
 
@@ -432,6 +442,7 @@ char *arg;
 		filepos = old;
 		return(warning_bell(arg));
 	}
+
 	return(2);
 }
 
@@ -441,6 +452,7 @@ char *arg;
 {
 	if (filepos == 0) return(0);
 	filepos = 0;
+
 	return(2);
 }
 
@@ -450,6 +462,7 @@ char *arg;
 {
 	if (filepos == maxfile - 1) return(0);
 	filepos = maxfile - 1;
+
 	return(2);
 }
 
@@ -459,6 +472,7 @@ char *arg;
 {
 	if (fnameofs <= 0) return(0);
 	fnameofs--;
+
 	return(2);
 }
 
@@ -480,7 +494,8 @@ char *arg;
 			if (!(filelist[filepos].linkname)) i = 0;
 			else {
 				i = strlen(filelist[filepos].linkname);
-				if (i > sizeof(tmp) - 1) i = sizeof(tmp) - 1;
+				if (i > (int)sizeof(tmp) - 1)
+					i = (int)sizeof(tmp) - 1;
 				strncpy(tmp, filelist[filepos].linkname, i);
 			}
 		}
@@ -504,6 +519,7 @@ char *arg;
 	}
 	if (i >= strlen3(filelist[filepos].name) - fnameofs) return(0);
 	fnameofs++;
+
 	return(2);
 }
 
@@ -512,6 +528,7 @@ static int one_column(arg)
 char *arg;
 {
 	curcolumns = 1;
+
 	return(2);
 }
 
@@ -520,6 +537,7 @@ static int two_columns(arg)
 char *arg;
 {
 	curcolumns = 2;
+
 	return(2);
 }
 
@@ -528,6 +546,7 @@ static int three_columns(arg)
 char *arg;
 {
 	curcolumns = 3;
+
 	return(2);
 }
 
@@ -536,6 +555,7 @@ static int five_columns(arg)
 char *arg;
 {
 	curcolumns = 5;
+
 	return(2);
 }
 
@@ -543,19 +563,19 @@ static VOID NEAR markcount(VOID_A)
 {
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
-		locate(TC_MARK, TL_PATH);
-		cprintf2("%<*d", TD_MARK, mark);
-		locate(TC_MARK + TD_MARK + TW_MARK, TL_PATH);
-		cprintf2("%<'*qd", TD_SIZE, marksize);
+		Xlocate(TC_MARK, TL_PATH);
+		Xcprintf2("%<*d", TD_MARK, mark);
+		Xlocate(TC_MARK + TD_MARK + TW_MARK, TL_PATH);
+		Xcprintf2("%<'*qd", TD_SIZE, marksize);
 
 		return;
 	}
 #endif
-	locate(C_MARK + W_MARK, L_STATUS);
-	cprintf2("%<*d", D_MARK, mark);
+	Xlocate(C_MARK + W_MARK, L_STATUS);
+	Xcprintf2("%<*d", D_MARK, mark);
 	if (sizeinfo) {
-		locate(C_SIZE + W_SIZE, L_SIZE);
-		cprintf2("%<'*qd", D_SIZE, marksize);
+		Xlocate(C_SIZE + W_SIZE, L_SIZE);
+		Xcprintf2("%<'*qd", D_SIZE, marksize);
 	}
 }
 
@@ -576,6 +596,7 @@ char *arg;
 			marksize -= getblock(filelist[filepos].st_size);
 	}
 	markcount();
+
 	return(2);
 }
 
@@ -584,6 +605,7 @@ char *arg;
 {
 	mark_file(arg);
 	if (filepos < maxfile - 1) filepos++;
+
 	return(2);
 }
 
@@ -595,6 +617,7 @@ char *arg;
 	&& filepos / FILEPERPAGE == (filepos + 1) / FILEPERPAGE)
 		filepos++;
 	else filepos = (filepos / FILEPERPAGE) * FILEPERPAGE;
+
 	return(2);
 }
 
@@ -619,6 +642,7 @@ char *arg;
 		}
 	}
 	markcount();
+
 	return(2);
 }
 
@@ -637,6 +661,7 @@ char *arg;
 				marksize += getblock(filelist[i].st_size);
 		}
 	markcount();
+
 	return(2);
 }
 
@@ -656,6 +681,7 @@ char *mes, *arg;
 
 	re = regexp_init(wild, -1);
 	free(wild);
+
 	return(re);
 }
 
@@ -676,6 +702,7 @@ char *arg;
 		}
 	regexp_free(re);
 	markcount();
+
 	return(3);
 }
 
@@ -689,6 +716,7 @@ char *arg;
 	if (!isdir(&(filelist[filepos]))
 	|| !strcmp(filelist[filepos].name, "."))
 		return(warning_bell(arg));
+
 	return(5);
 }
 
@@ -701,6 +729,7 @@ char *arg;
 	else
 #endif
 	replacefname(NULL);
+
 	return(5);
 }
 
@@ -719,6 +748,7 @@ char *arg;
 		memcpy((char *)&(filelist[i]),
 			(char *)&(filelist[i + 1]), sizeof(namelist));
 	if (filepos >= maxfile) filepos = maxfile - 1;
+
 	return(2);
 }
 
@@ -736,6 +766,7 @@ char *arg;
 	memcpy((char *)&(filelist[filepos + 1]),
 		(char *)&(filestack[--stackdepth]), sizeof(namelist));
 	chgorder = 1;
+
 	return(2);
 }
 
@@ -744,6 +775,7 @@ static int symlink_mode(arg)
 char *arg;
 {
 	dispmode ^= F_SYMLINK;
+
 	return(4);
 }
 
@@ -752,6 +784,7 @@ static int filetype_mode(arg)
 char *arg;
 {
 	dispmode ^= F_FILETYPE;
+
 	return(2);
 }
 
@@ -760,6 +793,7 @@ static int dotfile_mode(arg)
 char *arg;
 {
 	dispmode ^= F_DOTFILE;
+
 	return(4);
 }
 
@@ -768,6 +802,7 @@ static int fileflg_mode(arg)
 char *arg;
 {
 	dispmode ^= F_FILEFLAG;
+
 	return(2);
 }
 
@@ -821,6 +856,7 @@ char *arg;
 	}
 #endif
 	replacefname(NULL);
+
 	return(4);
 }
 
@@ -833,7 +869,14 @@ char *arg;
 	path = strdup2(_SS_);
 	if (chdir3(path, 1) < 0) error(path);
 	replacefname(path);
+
 	return(4);
+}
+
+static VOID NEAR clearscreen(VOID_A)
+{
+	Xputterms(T_CLEAR);
+	Xtflush();
 }
 
 #ifndef	PAGER
@@ -842,14 +885,18 @@ char *file;
 {
 	FILE *fp;
 	char *buf, *prompt;
-	int i, len;
+	int i, len, min, max;
 
 	if (!(fp = Xfopen(file, "r"))) {
 		warning(-1, file);
 		return;
 	}
-	putterms(t_clear);
-	tflush();
+	clearscreen();
+
+	min = 0;
+	max = n_line - 1;
+
+	Xtflush();
 	buf = NEXT_K;
 	i = strlen3(file);
 	len = strlen2(buf);
@@ -858,45 +905,46 @@ char *file;
 	strncpy3(prompt, file, &i, 0);
 	strcat(prompt, buf);
 
-	i = 0;
+	i = min;
 	while ((buf = fgets2(fp, 0))) {
-		locate(0, i);
-		putterm(l_clear);
-		cprintf2("%.*k", n_column, buf);
+		Xlocate(0, i);
+		Xputterm(L_CLEAR);
+		Xcprintf2("%.*k", n_column, buf);
 		free(buf);
-		if (++i >= n_line - 1) {
-			i = 0;
+		if (++i >= max) {
+			i = min;
+			hideclock = 1;
 			if (!yesno(prompt)) break;
 		}
 	}
 
 	if (Xfeof(fp)) {
-		while (i < n_line + 1) {
-			locate(0, i++);
-			putterm(l_clear);
+		while (i < max) {
+			Xlocate(0, i++);
+			Xputterm(L_CLEAR);
 		}
 	}
 	Xfclose(fp);
 	free(prompt);
 }
-#endif
+#endif	/* !PAGER */
 
 static int NEAR execenv(env, arg)
 char *env, *arg;
 {
 	char *command;
 
-	if (!(command = getenv2(env))) return(0);
-	putterms(t_clear);
-	tflush();
-	execmacro(command, arg, 1, 0, 1);
+	if (!(command = getenv2(env)) || !*command) return(0);
+	clearscreen();
+	execmacro(command, arg, F_NOCONFIRM | F_IGNORELIST);
+
 	return(1);
 }
 
 static int NEAR execshell(VOID_A)
 {
 	char *sh;
-	int mode, nl, ret;
+	int mode, ret, wastty;
 
 	sh = getenv2("FD_SHELL");
 #if	MSDOS
@@ -920,18 +968,16 @@ static int NEAR execshell(VOID_A)
 #endif
 
 	sigvecset(0);
-	mode = termmode(0);
-	nl = stdiomode();
+	mode = Xtermmode(0);
+	if ((wastty = isttyiomode)) Xstdiomode();
 	kanjifputs(SHEXT_K, stderr);
 	fputnl(stderr);
+	ret = dosystem(sh);
 #ifdef	_NOORIGSHELL
-	ret = system(sh);
-#else
-	if (sh) ret = dosystem(sh);
-	else ret = shell_loop(1);
+	checkscreen(-1, -1);
 #endif
-	ttyiomode(nl);
-	termmode(mode);
+	if (wastty) Xttyiomode(wastty - 1);
+	Xtermmode(mode);
 	sigvecset(1);
 
 	return(ret);
@@ -966,10 +1012,12 @@ char *arg;
 
 	if (!execenv("FD_PAGER", filelist[filepos].name)) {
 #ifdef	PAGER
-		execmacro(PAGER, filelist[filepos].name, 1, 0, 1);
+		execmacro(PAGER, filelist[filepos].name,
+			F_NOCONFIRM | F_IGNORELIST);
 #else
 		do {
 			dump(filelist[filepos].name);
+			hideclock = 1;
 		} while (!yesno(PEND_K));
 #endif
 	}
@@ -983,6 +1031,7 @@ char *arg;
 	else
 #endif
 	/*EMPTY*/;
+
 	return(2);
 }
 
@@ -1005,7 +1054,8 @@ char *arg;
 #endif
 	if (!execenv("FD_EDITOR", filelist[filepos].name)) {
 #ifdef	EDITOR
-		execmacro(EDITOR, filelist[filepos].name, 1, 0, 1);
+		execmacro(EDITOR, filelist[filepos].name,
+			F_NOCONFIRM | F_IGNORELIST);
 #endif
 	}
 #ifndef	_NODOSDRIVE
@@ -1015,6 +1065,7 @@ char *arg;
 		removetmp(dir, filelist[filepos].name);
 	}
 #endif
+
 	return(4);
 }
 
@@ -1081,6 +1132,7 @@ char *arg;
 		free(dupl);
 		chgorder = 1;
 	}
+
 	return(2);
 }
 
@@ -1099,9 +1151,10 @@ char *arg;
 	if (underhome(NULL) <= 0 && !yesno(HOMOK_K)) return(1);
 	arrangedir(fs);
 	chgorder = 0;
+
 	return(4);
 }
-#endif
+#endif	/* !_NOWRITEFS */
 
 /*ARGSUSED*/
 static int reread_dir(arg)
@@ -1115,6 +1168,7 @@ char *arg;
 #ifndef	_NODOSDRIVE
 	if ((drive = dospath3(""))) flushdrv(drive, NULL);
 #endif
+
 	return(4);
 }
 
@@ -1128,6 +1182,7 @@ char *arg;
 		return(1);
 	}
 	customize();
+
 	return(4);
 }
 #endif
@@ -1141,6 +1196,7 @@ char *arg;
 #else
 	help(archivefile != NULL);
 #endif
+
 	return(2);
 }
 
@@ -1160,9 +1216,9 @@ char *arg;
 		char *str[3];
 		int val[3];
 
-		locate(0, L_MESLINE);
-		putterm(l_clear);
-		kanjiputs(QUIT_K);
+		Xlocate(0, L_MESLINE);
+		Xputterm(L_CLEAR);
+		Xkanjiputs(QUIT_K);
 		val[0] = 0;
 		val[1] = 1;
 		val[2] = 2;
@@ -1177,6 +1233,7 @@ char *arg;
 	if (!yesno(QUIT_K)) return(1);
 
 	if (savehist > 0) savehistory(0, histfile);
+
 	return((n) ? -2 : -1);
 }
 
@@ -1194,6 +1251,7 @@ char *arg;
 
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
 	free(path);
+
 	return(4);
 }
 
@@ -1266,6 +1324,7 @@ char *arg;
 		file = strdup2("..");
 	}
 	replacefname(file);
+
 	return(4);
 }
 
@@ -1283,12 +1342,13 @@ char *arg;
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 		cp = DELFL_K;
-		len = strlen2(cp) - (sizeof("%.*s") - 1);
+		len = strlen2(cp) - ((int)sizeof("%.*s") - 1);
 		if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 			return(1);
 		filepos = applyfile(rmvfile, NULL);
 	}
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
+
 	return(4);
 }
 
@@ -1301,7 +1361,7 @@ char *arg;
 	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
 		return(warning_bell(arg));
 	cp = DELDR_K;
-	len = strlen2(cp) - (sizeof("%.*s") - 1);
+	len = strlen2(cp) - ((int)sizeof("%.*s") - 1);
 	if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name)) return(1);
 	removepolicy = 0;
 #ifndef	NOSYMLINK
@@ -1320,6 +1380,7 @@ char *arg;
 	if (!applydir(filelist[filepos].name, rmvfile, NULL, rmvdir, 3, NULL))
 		filepos++;
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
+
 	return(4);
 }
 
@@ -1346,6 +1407,7 @@ char *arg;
 		free(wild);
 		findpattern = NULL;
 	}
+
 	return(4);
 }
 
@@ -1369,6 +1431,7 @@ char *arg;
 
 	replacefname(strdup2(cp));
 	free(destpath);
+
 	return(4);
 }
 
@@ -1380,21 +1443,22 @@ char *arg;
 
 	if (arg) com = strdup2(arg);
 	else {
-		ttyiomode(1);
+		Xttyiomode(1);
 		com = inputshellloop(-1, NULL);
-		ttyiomode(0);
+		Xttyiomode(0);
 		if (!com) return(1);
 	}
 	if (*com) {
-		ret = execusercomm(com, filelist[filepos].name, 0, -1, 0);
+		ret = execusercomm(com, filelist[filepos].name, F_ARGSET);
 		ret = (ret < 0) ? 1 :
-			(internal_status >= -1) ? internal_status: 4;
+			((internal_status < -1) ? 4 : internal_status);
 	}
 	else {
 		execshell();
 		ret = 4;
 	}
 	free(com);
+
 	return(ret);
 }
 
@@ -1427,9 +1491,9 @@ char *arg;
 #ifdef	CWDINPATH
 	len = (!isdir(&(filelist[filepos])) && isexec(&(filelist[filepos])))
 		? strlen(filelist[filepos].name) + 1 : 0;
-	ttyiomode(1);
+	Xttyiomode(1);
 	com = inputshellloop(len, filelist[filepos].name);
-	ttyiomode(0);
+	Xttyiomode(0);
 #else
 	if (isdir(&(filelist[filepos])) || !isexec(&(filelist[filepos]))) {
 		len = 0;
@@ -1442,9 +1506,9 @@ char *arg;
 		tmp[1] = _SC_;
 		strcpy(&(tmp[2]), filelist[filepos].name);
 	}
-	ttyiomode(1);
+	Xttyiomode(1);
 	com = inputshellloop(len, tmp);
-	ttyiomode(0);
+	Xttyiomode(0);
 	if (tmp != filelist[filepos].name) free(tmp);
 #endif
 	if (!com) return(1);
@@ -1458,8 +1522,8 @@ char *arg;
 	if (archivefile) {
 		if (!(dir = tmpunpack(1))) ret = -1;
 		else {
-			ret = execusercomm(com,
-				filelist[filepos].name, 0, -1, 1);
+			ret = execusercomm(com, filelist[filepos].name,
+				F_ARGSET | F_IGNORELIST);
 			removetmp(dir, NULL);
 		}
 	}
@@ -1468,16 +1532,18 @@ char *arg;
 #ifndef	_NODOSDRIVE
 	if ((drive = tmpdosdupl("", &dir, 1)) < 0) ret = -1;
 	else if (drive) {
-		ret = execusercomm(com, filelist[filepos].name, 0, -1, 1);
+		ret = execusercomm(com, filelist[filepos].name,
+			F_ARGSET | F_IGNORELIST);
 		removetmp(dir, filelist[filepos].name);
 	}
 	else
 #endif
 	{
-		ret = execusercomm(com, filelist[filepos].name, 0, -1, 0);
+		ret = execusercomm(com, filelist[filepos].name, F_ARGSET);
 	}
-	ret = (ret < 0) ? 1 : (internal_status >= -1) ? internal_status: 4;
+	ret = (ret < 0) ? 1 : ((internal_status < -1) ? 4 : internal_status);
 	free(com);
+
 	return(ret);
 }
 
@@ -1486,6 +1552,7 @@ static int launch_file(arg)
 char *arg;
 {
 	if (!launcher()) return(view_file(arg));
+
 	return(4);
 }
 
@@ -1505,10 +1572,11 @@ char *arg;
 	ret = pack(file);
 	free(file);
 	if (ret < 0) {
-		putterm(t_bell);
+		Xputterm(T_BELL);
 		return(1);
 	}
 	if (!ret) return(1);
+
 	return(4);
 }
 
@@ -1520,11 +1588,14 @@ char *arg;
 #endif
 	int ret;
 
-	if (archivefile) ret = unpack(archivefile, NULL, arg, 0, 0);
+	if (archivefile) ret = unpack(archivefile, NULL, arg,
+		0, F_ARGSET | F_ISARCH | F_NOADDOPT);
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
-	else ret = unpack(fnodospath(path, filepos), NULL, arg, 0, 1);
+	else ret = unpack(fnodospath(path, filepos), NULL, arg,
+		0, F_ARGSET | F_ISARCH | F_NOADDOPT | F_IGNORELIST);
 	if (ret < 0) return(warning_bell(arg));
 	if (!ret) return(1);
+
 	return(4);
 }
 
@@ -1537,13 +1608,16 @@ char *arg;
 #endif
 	int ret;
 
-	if (archivefile) ret = unpack(archivefile, NULL, NULL, 1, 0);
+	if (archivefile) ret = unpack(archivefile, NULL, NULL,
+		1, F_ARGSET | F_ISARCH | F_NOADDOPT);
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
-	else ret = unpack(fnodospath(path, filepos), NULL, NULL, 1, 1);
+	else ret = unpack(fnodospath(path, filepos), NULL, NULL,
+		1, F_ARGSET | F_ISARCH | F_NOADDOPT | F_IGNORELIST);
 	if (ret <= 0) {
 		if (ret < 0) warning_bell(arg);
 		return(3);
 	}
+
 	return(4);
 }
 #endif	/* !_NOTREE */
@@ -1565,6 +1639,7 @@ char *arg;
 	ret = infofs(path);
 	free(path);
 	if (!ret) return(1);
+
 	return(3);
 }
 
@@ -1585,9 +1660,9 @@ char *arg;
 			if (ismark(&(filelist[i]))) break;
 		if (i >= maxfile) i = filepos;
 		flag = 1;
-		locate(0, L_INFO);
-		putterm(l_clear);
-		kanjiputs(ATTRM_K);
+		Xlocate(0, L_INFO);
+		Xputterm(L_CLEAR);
+		Xkanjiputs(ATTRM_K);
 		if (selectstr(&flag, 2, 35, str, val) != K_CR) return(1);
 	}
 	else {
@@ -1606,8 +1681,8 @@ char *arg;
 		if (FILEPERROW < WFILEMINATTR) return(4);
 		return(2);
 	}
-
 	applyfile(setattr, NULL);
+
 	return(4);
 }
 
@@ -1628,6 +1703,7 @@ char *arg;
 	if (findpattern) free(findpattern);
 	findpattern = NULL;
 	replacefname(NULL);
+
 	return(4);
 }
 #endif	/* !_NOTREE */
@@ -1682,6 +1758,7 @@ char *arg;
 
 	free(dev);
 	if (ret <= 0) return(1);
+
 	return(4);
 }
 #endif	/* !_NOARCHIVE */
@@ -1691,12 +1768,13 @@ static int search_forw(arg)
 char *arg;
 {
 	isearch = 1;
-	locate(0, L_HELP);
-	putterm(l_clear);
-	putterm(t_standout);
-	win_x = kanjiputs(SEAF_K);
+	Xlocate(0, L_HELP);
+	Xputterm(L_CLEAR);
+	Xputterm(T_STANDOUT);
+	win_x = Xkanjiputs(SEAF_K);
 	win_y = L_HELP;
-	putterm(end_standout);
+	Xputterm(END_STANDOUT);
+
 	return(0);
 }
 
@@ -1705,12 +1783,13 @@ static int search_back(arg)
 char *arg;
 {
 	isearch = -1;
-	locate(0, L_HELP);
-	putterm(l_clear);
-	putterm(t_standout);
-	win_x = kanjiputs(SEAB_K);
+	Xlocate(0, L_HELP);
+	Xputterm(L_CLEAR);
+	Xputterm(T_STANDOUT);
+	win_x = Xkanjiputs(SEAB_K);
 	win_y = L_HELP;
-	putterm(end_standout);
+	Xputterm(END_STANDOUT);
+
 	return(0);
 }
 
@@ -1741,33 +1820,37 @@ int oldwin;
 	if (winvar[oldwin].v_fullpath) free(winvar[oldwin].v_fullpath);
 	winvar[oldwin].v_fullpath = strdup2(fullpath);
 	if (winvar[win].v_fullpath) strcpy(fullpath, winvar[win].v_fullpath);
-#ifndef	_NOARCHIVE
+# ifndef	_NOARCHIVE
 	if (winvar[oldwin].v_archivedir) free(winvar[oldwin].v_archivedir);
 	winvar[oldwin].v_archivedir = strdup2(archivedir);
 	if (winvar[win].v_archivedir)
 		strcpy(archivedir, winvar[win].v_archivedir);
-#endif
+# endif
+}
+
+int nextwin(VOID_A)
+{
+	int oldwin;
+
+	if (windows <= 1) return(-1);
+	oldwin = win;
+	if (++win >= windows) win = 0;
+	duplwin(oldwin);
+	movewin(oldwin);
+	if (chdir3(fullpath, 1) < 0) lostcwd(fullpath);
+
+	return(0);
 }
 
 /*ARGSUSED*/
 static int split_window(arg)
 char *arg;
 {
+	winvartable tmp;
 	int i, oldwin;
 
 	oldwin = win;
-	if (windows < MAXWINDOWS) {
-		win = windows++;
-		if (FILEPERROW < WFILEMIN) {
-			windows--;
-			win = oldwin;
-			warning(0, NOROW_K);
-			return(1);
-		}
-		duplwin(oldwin);
-		movewin(oldwin);
-	}
-	else {
+	if (windows >= MAXWINDOWS) {
 		if (win > 0) {
 			shutwin(0);
 			win = 0;
@@ -1775,7 +1858,28 @@ char *arg;
 		}
 		for (i = 1; i < windows; i++) shutwin(i);
 		windows = 1;
+		calcwin();
 	}
+	else if (fileperrow(windows + 1) < WFILEMIN)
+	{
+		warning(0, NOROW_K);
+		return(1);
+	}
+	else {
+		win++;
+		memcpy((char *)&tmp, (char *)&(winvar[windows]),
+			sizeof(winvartable));
+		memmove((char *)&(winvar[win + 1]), (char *)&(winvar[win]),
+			(windows++ - win) * sizeof(winvartable));
+		memcpy((char *)&(winvar[win]), (char *)&tmp,
+			sizeof(winvartable));
+
+		calcwin();
+
+		duplwin(oldwin);
+		movewin(oldwin);
+	}
+
 	return(4);
 }
 
@@ -1783,14 +1887,8 @@ char *arg;
 static int next_window(arg)
 char *arg;
 {
-	int oldwin;
+	if (nextwin() < 0) return(0);
 
-	if (windows <= 1) return(0);
-	oldwin = win;
-	if (++win >= windows) win = 0;
-	duplwin(oldwin);
-	movewin(oldwin);
-	if (chdir3(fullpath, 1) < 0) lostcwd(fullpath);
 	return(4);
 }
 #endif	/* !_NOSPLITWIN */
@@ -1799,7 +1897,8 @@ char *arg;
 static int warning_bell(arg)
 char *arg;
 {
-	putterm(t_bell);
+	Xputterm(T_BELL);
+
 	return(0);
 }
 

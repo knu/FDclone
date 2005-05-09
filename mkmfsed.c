@@ -8,11 +8,11 @@
 #include "fd.h"
 #include <sys/param.h>
 
-#ifndef NOUNISTDH
+#ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
 
-#ifndef NOSTDLIBH
+#ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 
@@ -34,6 +34,22 @@
 # endif
 #endif
 
+#ifndef	VER
+#define	VER		"0.00"
+#endif
+#ifndef	DIST
+#define	DIST		""
+#endif
+#ifndef	PREFIX
+#define	PREFIX		"/usr/local"
+#endif
+#ifndef	CONFDIR
+#define	CONFDIR		"/etc"
+#endif
+#ifndef	CCCOMMAND
+#define	CCCOMMAND	"cc"
+#endif
+
 
 /*ARGSUSED*/
 int main(argc, argv)
@@ -45,14 +61,16 @@ char *argv[];
 #endif
 
 	printf("s:__VERSION__:%d:\n", FD);
-/*NOTDEFINED*/
 #if	FD >= 2
 	printf("s:__RCVERSION__:%d:\n", FD);
 #else
 	printf("s:__RCVERSION__::\n");
 #endif
-/*NOTDEFINED*/
+	printf("s:__VER__:%s:\n", VER);
+	if ((int)sizeof(DIST) > 1) printf("s:__DIST__:%s:\n", DIST);
+	else printf("s:__DIST__:none:\n");
 	printf("s:__PREFIX__:%s:\n", PREFIX);
+	printf("s:__CONFDIR__:%s:\n", CONFDIR);
 #ifdef	__CYGWIN__
 	printf("s:__EXE__:.exe:g\n");
 #else

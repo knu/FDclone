@@ -1,7 +1,7 @@
 /*
  *	pathname.h
  *
- *	Function Prototype Declaration for "pathname.c"
+ *	function prototype declarations for "pathname.c"
  */
 
 #ifndef	__PATHNAME_H_
@@ -145,29 +145,33 @@ typedef struct _wild_t {
 #define	EA_EOLMETA	0100
 
 #ifdef	NOUID_T
-typedef u_short	uid_t;
-typedef u_short	gid_t;
+typedef u_short		uid_t;
+typedef u_short		gid_t;
 #endif
 
 #ifdef	USEPID_T
 typedef pid_t		p_id_t;
-# else
+#else
 typedef long		p_id_t;
 #endif
 
-#if	defined (SIGARGINT) || defined (NOVOID)
-#define	sigarg_t	int
+#ifdef	SIGARGINT
+typedef int		sigarg_t;
 #else
-#define	sigarg_t	void
+# ifdef	NOVOID
+# define		sigarg_t
+# else
+typedef void		sigarg_t;
+# endif
 #endif
 
 #ifdef	SIGFNCINT
-#define	sigfnc_t	int
+typedef int		sigfnc_t;
 #else
 # ifdef	NOVOID
-# define	sigfnc_t
+# define		sigfnc_t
 # else
-# define	sigfnc_t	void
+typedef void		sigfnc_t;
 # endif
 #endif
 
