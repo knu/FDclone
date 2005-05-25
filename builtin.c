@@ -16,6 +16,10 @@
 #include "system.h"
 #endif
 
+#ifndef	_NOPTY
+#include "termemu.h"
+#endif
+
 #define	MD5_BUFSIZ	(128 / 32)
 #define	MD5_BLOCKS	16
 
@@ -616,11 +620,17 @@ char *argv[];
 			return(-1);
 		}
 		deletelaunch(n);
+# ifndef	_NOPTY
+		sendparent(TE_DELETELAUNCH, n);
+# endif
 
 		return(0);
 	}
 
 	addlaunch(n, &launch);
+# ifndef	_NOPTY
+	sendparent(TE_ADDLAUNCH, n, &launch);
+# endif
 
 	return(0);
 }
@@ -724,11 +734,17 @@ char *argv[];
 			return(-1);
 		}
 		deletearch(n);
+# ifndef	_NOPTY
+		sendparent(TE_DELETEARCH, n);
+# endif
 
 		return(0);
 	}
 
 	addarch(n, &arch);
+# ifndef	_NOPTY
+	sendparent(TE_ADDARCH, n, &arch);
+# endif
 
 	return(0);
 }
@@ -1334,6 +1350,9 @@ char *argv[];
 			return(-1);
 		}
 		deletekeybind(no);
+#ifndef	_NOPTY
+		sendparent(TE_DELETEKEYBIND, no);
+#endif
 
 		return(0);
 	}
@@ -1347,6 +1366,9 @@ char *argv[];
 		builtinerror(argv, argv[1 - n], ER_OUTOFLIMIT);
 		return(-1);
 	}
+#ifndef	_NOPTY
+	sendparent(TE_ADDKEYBIND, no, &bind, func1, func2, cp);
+#endif
 
 	return(0);
 }
@@ -1759,6 +1781,9 @@ int isset;
 		}
 # endif
 		deletedrv(i);
+# ifndef	_NOPTY
+		sendparent(TE_DELETEDRV, i);
+# endif
 	}
 	else {
 		if (fdtype[i].name) {
@@ -1782,6 +1807,9 @@ int isset;
 			free(dev.name);
 			return(-1);
 		}
+# ifndef	_NOPTY
+		sendparent(TE_INSERTDRV, i, &dev);
+# endif
 	}
 
 	return(0);
@@ -1956,10 +1984,17 @@ char *argv[];
 	}
 	if (!(key.str)) {
 		setkeyseq(key.code, NULL, 0);
+# ifndef	_NOPTY
+		key.len = (u_char)0;
+		sendparent(TE_SETKEYSEQ, &key);
+# endif
 		return(0);
 	}
 
 	setkeyseq(key.code, key.str, key.len);
+# ifndef	_NOPTY
+	sendparent(TE_SETKEYSEQ, &key);
+# endif
 
 	return(0);
 }
@@ -2773,6 +2808,9 @@ char *ident, *comm;
 # ifdef	COMMNOCASE
 	if (ident) for (i = 0; ident[i]; i++) ident[i] = tolower2(ident[i]);
 # endif
+# ifndef	 _NOPTY
+	sendparent(TE_ADDALIAS, ident, comm);
+# endif
 
 	return(0);
 }
@@ -2799,6 +2837,9 @@ char *ident;
 	}
 	if (re) regexp_free(re);
 	if (!n) return(-1);
+# ifndef	 _NOPTY
+	sendparent(TE_DELETEALIAS, ident);
+# endif
 
 	return(0);
 }
@@ -2928,6 +2969,9 @@ char *ident, **comm;
 # ifdef	COMMNOCASE
 	if (ident) for (i = 0; ident[i]; i++) ident[i] = tolower2(ident[i]);
 # endif
+# ifndef	 _NOPTY
+	sendparent(TE_ADDFUNCTION, ident, comm);
+# endif
 
 	return(0);
 }
@@ -2944,6 +2988,9 @@ char *ident;
 	memmove((char *)&(userfunclist[i]),
 		(char *)&(userfunclist[i + 1]),
 		(--maxuserfunc - i) * sizeof(userfunctable));
+# ifndef	 _NOPTY
+	sendparent(TE_DELETEFUNCTION, ident);
+# endif
 
 	return(0);
 }

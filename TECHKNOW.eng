@@ -219,6 +219,10 @@ USETERMIOS
 	structure sgttyb is used.
 HAVECLINE
 	The structure termios has the member c_line.
+USEDEVPTMX
+	The device file /dev/ptmx and /dev/pts/? are used for
+	the pseudo terminal. If undefined, /dev/ptyXX and
+	/dev/ttyXX are used.
 USEDIRECT
 	The structure direct is used instead of dirent.
 SYSVDIRENT
@@ -945,6 +949,8 @@ not implemented.
 	_NOEXTRAMACRO	cannot use %T, %M the macro in statements
 	_NOTRADLAYOUT	cacnot use the traditional screen layout
 	_NODOSCOMMAND	cannot use COMMAND.COM builtins on UNIX
+	_NOEXTRAPTY	cannot resize each split window
+	_NOPTY		cannot use pseudo terminal
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,

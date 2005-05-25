@@ -1,3 +1,9 @@
+Ver. 2.07	内部変数 PTYMODE, PTYTERM, PTYMENUKEY の追加。
+ (05/26/05)	内部変数 DEFKCODE の追加。
+		分割ウィンドウの最大数を 5 に拡張。
+		WIDEN_WINDOW, NARROW_WINDOW, KILL_WINDOW コマンドの追加。
+		環境変数 COLUMNS, LINES の値を動的に変更する仕様に。
+
 Ver. 2.06d	/etc/fd2rc のインストール先をコンパイル時に指定可能に。
  (05/10/05)	フロッピードライブの禁止ファイル名に COM5-COM9 を追加。
 		関数内にヒアドキュメントを記述できなかった点を修正。

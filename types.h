@@ -319,6 +319,8 @@ typedef struct _macrostat {
 #define	F_NOKANJICONV	0004000
 #define	F_TTYIOMODE	0010000
 #define	F_TTYNL		0020000
+#define	F_EVALMACRO	0040000
+#define	F_DOSYSTEM	0100000
 
 #ifdef	_NOORIGSHELL
 typedef struct _aliastable {

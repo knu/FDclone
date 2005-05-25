@@ -2033,13 +2033,14 @@ int dlen, exe;
 	DIR *dirp;
 	struct dirent *dp;
 	char *cp, *new, path[MAXPATHLEN];
-	int d, size;
+	int d, size, dirok;
 
 	if (dlen >= MAXPATHLEN - 2) return(argc);
 	strncpy2(path, dir, dlen);
 	if (!(dirp = Xopendir(path))) return(argc);
 	cp = strcatdelim(path);
 
+	dirok = (exe <= 1) ? 1 : 0;
 	while ((dp = Xreaddir(dirp))) {
 		if ((!len && isdotdir(dp -> d_name))
 		|| strnpathcmp(file, dp -> d_name, len))
@@ -2048,7 +2049,7 @@ int dlen, exe;
 		if (size + (cp - path) >= MAXPATHLEN) continue;
 		strncpy2(cp, dp -> d_name, size);
 
-		if ((d = isexecute(path, 1, exe)) < 0) continue;
+		if ((d = isexecute(path, dirok, exe)) < 0) continue;
 
 		new = malloc2(size + 1 + 1);
 		strncpy(new, dp -> d_name, size);
@@ -2077,7 +2078,7 @@ char ***argvp;
 	int dlen;
 
 # ifdef	CWDINPATH
-	argc = completefile(file, len, argc, argvp, ".", 1, 1);
+	argc = completefile(file, len, argc, argvp, ".", 1, 2);
 # endif
 	if (!(next = getconstvar("PATH"))) return(argc);
 	for (cp = next; cp; cp = next) {
@@ -2089,7 +2090,7 @@ char ***argvp;
 		dlen = (next) ? (next++) - cp : strlen(cp);
 		tmp = _evalpath(cp, cp + dlen, 0);
 		dlen = strlen(tmp);
-		argc = completefile(file, len, argc, argvp, tmp, dlen, 1);
+		argc = completefile(file, len, argc, argvp, tmp, dlen, 2);
 		free(tmp);
 	}
 

@@ -340,4 +340,4 @@ int i;
 			((inputkcode == SJIS) ? issjis2(c) : 0))
 #endif	/* !_NOKANJICONV */
 
-#endif	/* __KCTYPE_H_ */
+#endif	/* !__KCTYPE_H_ */

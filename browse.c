@@ -9,6 +9,10 @@
 #include "funcno.h"
 #include "kanji.h"
 
+#ifndef	_NOPTY
+#include "termemu.h"
+#endif
+
 #if	MSDOS
 extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));
@@ -431,7 +435,7 @@ static VOID NEAR stackbar(VOID_A)
 #ifndef	_NOCOLOR
 		x += width - 2;
 		if (bgcolor >= 0) Xchgcolor(bgcolor, 1);
-		else if (ansicolor) Xputterms(T_NORMAL);
+		else if (ansicolor) Xputterm(T_NORMAL);
 		else
 #endif
 		Xputterm(END_STANDOUT);
@@ -1049,7 +1053,7 @@ int no, isstandout;
 		Xchgcolor(bgcolor, 1);
 		Xputch2(' ');
 	}
-	if (ansicolor) Xputterms(T_NORMAL);
+	if (ansicolor) Xputterm(T_NORMAL);
 	else
 #endif
 	if (isstandout > 0) Xputterm(END_STANDOUT);
@@ -1159,6 +1163,9 @@ char *def;
 # endif
 	n = -1;
 	for (win = 0; win < windows; win++) {
+# ifndef	_NOPTY
+		if (ptylist[win].pid && ptylist[win].status < 0) continue;
+# endif
 		if (win == dupwin) {
 # ifndef	_NOTREE
 			if (treepath) rewritetree();
@@ -1222,6 +1229,9 @@ int n;
 		free(findpattern);
 		findpattern = NULL;
 	}
+# ifndef	_NOPTY
+	killpty(win, NULL);
+# endif
 	win = dupwin;
 
 	return(n);
@@ -1542,7 +1552,7 @@ char *file, *def;
 	dupsorton = sorton;
 #endif
 #ifndef	_NOCOLOR
-	if (ansicolor) Xputterms(T_NORMAL);
+	if (ansicolor) Xputterm(T_NORMAL);
 #endif
 
 	mark = 0;
@@ -1670,11 +1680,20 @@ char *file, *def;
 			}
 		}
 		else {
-			no = execusercomm(macrolist[no - FUNCLISTSIZ],
+			no = ptyusercomm(macrolist[no - FUNCLISTSIZ],
 				filelist[filepos].name, 0);
 			no = (no < 0) ? 1 :
 				((internal_status < -1) ? 4 : internal_status);
 		}
+
+#ifndef	_NOPTY
+		while (ptylist[win].pid && ptylist[win].status < 0) {
+			VOID_C frontend();
+			no = 2;
+			funcstat &= ~REWRITEMODE;
+			funcstat |= REWIN;
+		}
+#endif	/* !_NOPTY */
 
 #ifndef	_NOPRECEDE
 		if (sorton) haste = 0;
@@ -1821,6 +1840,12 @@ char **pathlist;
 		winvar[i].v_archivedir = NULL;
 # endif
 #endif	/* !_NOSPLITWIN */
+#ifndef	_NOPTY
+		ptylist[i].pid = (p_id_t)0;
+		ptylist[i].path = NULL;
+		ptylist[i].fd = ptylist[i].pipe = -1;
+		ptylist[i].status = 0;
+#endif
 
 #ifndef	_NOARCHIVE
 		archduplp = NULL;
@@ -1927,6 +1952,9 @@ char **pathlist;
 	if (findpattern) free(findpattern);
 #else
 	for (i = 0; i < MAXWINDOWS; i++) shutwin(i);
+#endif
+#ifndef	_NOPTY
+	killallpty();
 #endif
 	Xlocate(0, n_line - 1);
 	Xtflush();

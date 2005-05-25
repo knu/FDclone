@@ -105,6 +105,11 @@ functable funclist[] = {
 	_TBL_(split_window,	"SPLIT_WINDOW",	SPWN_H,	000101000),
 	_TBL_(next_window,	"NEXT_WINDOW",	NXWN_H,	000111000),
 #endif
+#ifndef	_NOEXTRAWIN
+	_TBL_(widen_window,	"WIDEN_WINDOW",	WDWN_H,	000111000),
+	_TBL_(narrow_window,	"NARROW_WINDOW",NRWN_H,	000111000),
+	_TBL_(kill_window,	"KILL_WINDOW",	KLWN_H,	000101000),
+#endif
 #ifndef	_NOCUSTOMIZE
 	_TBL_(edit_config,	"EDIT_CONFIG",	EDCF_H,	000111110),
 #endif

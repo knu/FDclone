@@ -217,11 +217,19 @@ extern int Xstat __P_((char *, struct stat *));
 #endif
 extern int Xaccess __P_((char *, int));
 extern int filetop __P_((int));
+#ifdef	_NOPTY
 #define	Xlocate			locate
 #define	Xputterm		putterm
 #define	Xputch2			putch2
 #define	Xcputs2			cputs2
 #define	Xcprintf2		cprintf2
+#else
+extern VOID Xlocate __P_((int, int));
+extern VOID Xputterm __P_((int));
+extern VOID Xputch2 __P_((int));
+extern VOID Xcputs2 __P_((char *));
+extern VOID Xcprintf2 __P_((CONST char *, ...));
+#endif
 
 extern bindtable bindlist[];
 extern functable funclist[];

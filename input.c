@@ -24,7 +24,12 @@ extern int noalrm;
 #endif
 extern char *promptstr;
 #ifndef	_NOORIGSHELL
+extern int fdmode;
 extern char *promptstr2;
+#endif
+#ifndef	_NOPTY
+extern int ptymode;
+extern int parentfd;
 #endif
 
 #define	LIMITSELECTWARN	100
@@ -663,8 +668,12 @@ int cx, cx2, len;
 
 static VOID NEAR scrollup(VOID_A)
 {
+#ifdef	_NOPTY
 	Xlocate(0, maxline - 1);
-	Xputterm(C_SCROLLFORW);
+	Xputterms(C_SCROLLFORW);
+#else
+	regionscroll(C_SCROLLFORW, 1, 0, maxline - 1, minline, maxline - 1);
+#endif
 	ypos--;
 	hideclock = 1;
 }
@@ -1244,7 +1253,7 @@ int *cxp, *lenp;
 		free(dupl);
 		return;
 	}
-#endif
+#endif	/* !_NOORIGSHELL */
 
 	dispprompt(NULL, 0);
 	locate2(plen, 0);
@@ -1259,7 +1268,7 @@ int *cxp, *lenp;
 	}
 	vi = (termstr[T_NOCURSOR] && *termstr[T_NOCURSOR]
 		&& termstr[T_NORMALCURSOR] && *termstr[T_NORMALCURSOR]);
-	if (vi) Xputterms(T_NOCURSOR);
+	if (vi) Xputterm(T_NOCURSOR);
 	i = x = y = 0;
 	width = maxcol - plen;
 	while (i + width < len2) {
@@ -1309,7 +1318,7 @@ int *cxp, *lenp;
 		Xlocate(xpos, ++win_y);
 		Xputterm(L_CLEAR);
 	}
-	if (vi) Xputterms(T_NORMALCURSOR);
+	if (vi) Xputterm(T_NORMALCURSOR);
 	setcursor(s, *cxp, cx2, *lenp);
 	Xtflush();
 	free(dupl);
@@ -1465,7 +1474,7 @@ int ins, quote;
 		}
 	}
 	else
-#endif
+#endif	/* !_NOORIGSHELL */
 	while (i < len2) {
 		/*
 		 * Whether if the end of line is kanji 1st byte
@@ -2035,7 +2044,7 @@ char *hist;
 		setcursor(*sp, 0, 0, *lenp);
 		clearline();
 	}
-#endif
+#endif	/* !_NOORIGSHELL */
 
 	if (sizep) {
 		*lenp = (hist) ? strlen(hist) : 0;
@@ -2058,7 +2067,7 @@ char *hist;
 			setcursor(*sp, *cxp, -1, *lenp);
 		}
 	}
-#endif
+#endif	/* !_NOORIGSHELL */
 
 	return(vlen(*sp, *cxp));
 }
@@ -2702,6 +2711,16 @@ int def, comline, h;
 				else
 #endif
 				{
+#ifndef	_NOPTY
+					if (minline > 0) {
+						i = filetop(win) + FILEPERROW;
+						if (maxline != i) {
+							ypos += i - maxline;
+							maxline = i;
+						}
+					}
+					else
+#endif
 					if (maxline != n_line) {
 						ypos += n_line - maxline;
 						maxline = n_line;
@@ -2849,6 +2868,10 @@ int def, comline, h;
 #endif
 	if (ch == K_ESC) {
 		len = 0;
+#ifndef	_NOPTY
+		if (minline > 0) i = 1;
+		else
+#endif
 		if (hideclock) i = 1;
 	}
 	(*sp)[len] = '\0';
@@ -2954,13 +2977,25 @@ int h;
 	dumbmode = (dumbterm || dumbshell) ? !Xtermmode(-1) : 0;
 	if (dumbmode || shellmode) lcmdline = -1;
 #endif
+
+	if (!lcmdline) ypos = L_CMDLINE;
+	else if (lcmdline > 0) ypos = lcmdline;
+	else ypos = n_line - 1;
+
 	maxcol = n_column - 1 - xpos;
 	minline = 0;
 	maxline = n_line;
-
-	if (!lcmdline) ypos = L_CMDLINE + maxline - n_line;
-	else if (lcmdline > 0) ypos = lcmdline;
-	else ypos = maxline - 1;
+#ifndef	_NOPTY
+# ifndef	_NOORIGSHELL
+	if (!fdmode && shellmode) /*EMPTY*/;
+	else
+# endif
+	if (ptymode && parentfd < 0) {
+		minline = filetop(win);
+		maxline = minline + FILEPERROW;
+		ypos -= n_line - maxline;
+	}
+#endif
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode || shellmode) win_y = 0;
@@ -3046,6 +3081,12 @@ int h;
 				Xcputs2("^C");
 				ch = K_ESC;
 			}
+#ifndef	_NOPTY
+			if (minline > 0
+			&& ypos + ptr2line(vlen(input, len)) >= maxline - 1)
+				scrollup();
+			else
+#endif
 			Xcputnl();
 		}
 	}
@@ -3110,7 +3151,7 @@ char *mes;
 #endif
 	Xlocate(xpos, ypos);
 #ifndef	_NOORIGSHELL
-	if (dumbmode);
+	if (dumbmode) /*EMPTY*/;
 	else
 #endif
 	{
@@ -3122,7 +3163,7 @@ char *mes;
 	Xcputs2(YESNOSTR);
 	win_x += YESNOSIZE;
 #ifndef	_NOORIGSHELL
-	if (dumbmode);
+	if (dumbmode) /*EMPTY*/;
 	else
 #endif
 	Xputterm(END_STANDOUT);

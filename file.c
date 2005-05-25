@@ -76,6 +76,7 @@ static int NEAR cpfile __P_((char *, char *, struct stat *, struct stat *));
 static VOID changemes __P_((VOID_A));
 static int NEAR genrand __P_((int));
 static int dounlink __P_((char *));
+static int dormdir __P_((char *));
 #ifndef	_NOWRITEFS
 static int NEAR isexist __P_((char *));
 static int NEAR realdirsiz __P_((char *, int, int, int, int));

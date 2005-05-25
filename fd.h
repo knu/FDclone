@@ -28,6 +28,8 @@
 #define	_NOBROWSE
 #define	_NOEXTRAMACRO
 #define	_NOTRADLAYOUT
+#define	_NOEXTRAWIN
+#define	_NOPTY
 #endif	/* FD < 2 */
 
 #ifndef	__FD_PRIMAL__
@@ -158,6 +160,9 @@ extern char *_mtrace_file;
 #define	UTF8PATH	""
 #define	UTF8MACPATH	""
 #define	NOCONVPATH	""
+#define	PTYMODE		0
+#define	PTYTERM		"vt100"
+#define	PTYMENUKEY	-1
 
 
 /****************************************************************
@@ -175,7 +180,11 @@ extern char *_mtrace_file;
 #endif
 #define	MAXSELECTSTRS	16
 #define	MAXSTACK	5
+#ifdef	_NOEXTRAWIN
 #define	MAXWINDOWS	2
+#else
+#define	MAXWINDOWS	5
+#endif
 #define	MAXHISTNO	MAXTYPE(short)
 #define	MAXINVOKEARGS	MAXWINDOWS
 
@@ -186,6 +195,10 @@ extern char *_mtrace_file;
 # if	MAXWINDOWS <= 1
 # define	_NOSPLITWIN
 # endif
+#endif
+
+#ifdef	_NOSPLITWIN
+#define	_NOEXTRAWIN
 #endif
 
 
@@ -391,4 +404,8 @@ extern char *_mtrace_file;
 
 #if	MSDOS
 #define	_USEDOSCOPY
+#endif
+
+#if	MSDOS || defined (NOSELECT)
+#define	_NOPTY
 #endif

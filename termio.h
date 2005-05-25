@@ -184,6 +184,14 @@ typedef union REGS	__dpmi_regs;
 # endif
 #endif	/* !_PATH_TTY */
 
+#if	defined (CYGWIN) && !defined (__PATHNAME_H_)
+# ifdef	USEPID_T
+typedef pid_t		p_id_t;
+# else
+typedef long		p_id_t;
+# endif
+#endif	/* CYGWIN && !__PATHNAME_H_ */
+
 #ifdef	LSI_C
 extern int safe_dup __P_((int));
 extern int safe_dup2 __P_((int, int));
@@ -212,7 +220,12 @@ extern int Xtcsetattr __P_((int, int, termioctl_t *));
 extern int Xtcflush __P_((int, int));
 # endif
 #endif	/* !MSDOS */
-extern VOID loadterm __P_((int, char *, char *));
-extern VOID saveterm __P_((int, char **, char **));
+extern VOID loadtermio __P_((int, char *, char *));
+extern VOID savetermio __P_((int, char **, char **));
+#ifdef	CYGWIN
+extern p_id_t Xfork __P_((VOID_A));
+#else
+#define	Xfork		fork
+#endif
 
 #endif	/* !__TERMIO_H_ */

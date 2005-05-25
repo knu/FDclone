@@ -103,6 +103,10 @@ static CONST int unixerrlist[] = {
 };
 #endif	/* MSDOS */
 
+#ifdef	CYGWIN
+static int save_ttyio = -1;
+#endif
+
 
 #ifdef	LSI_C
 int safe_dup(oldd)
@@ -346,6 +350,9 @@ FILE **fpp;
 
 	*fdp = fd;
 	*fpp = fp;
+#ifdef	CYGWIN
+	save_ttyio = fd;
+#endif
 
 	return(0);
 }
@@ -366,7 +373,7 @@ FILE **fpp;
 
 #if	MSDOS
 /*ARGSUSED*/
-VOID loadterm(fd, tty, ws)
+VOID loadtermio(fd, tty, ws)
 int fd;
 char *tty, *ws;
 {
@@ -381,7 +388,7 @@ char *tty, *ws;
 # endif	/* !DJGPP */
 }
 
-VOID saveterm(fd, ttyp, wsp)
+VOID savetermio(fd, ttyp, wsp)
 int fd;
 char **ttyp, **wsp;
 {
@@ -500,7 +507,7 @@ int fd, selector;
 # endif	/* USETERMIOS */
 
 /*ARGSUSED*/
-VOID loadterm(fd, tty, ws)
+VOID loadtermio(fd, tty, ws)
 int fd;
 char *tty, *ws;
 {
@@ -522,7 +529,7 @@ char *tty, *ws;
 # endif
 }
 
-VOID saveterm(fd, ttyp, wsp)
+VOID savetermio(fd, ttyp, wsp)
 int fd;
 char **ttyp, **wsp;
 {
@@ -574,3 +581,21 @@ char **ttyp, **wsp;
 	} while (0);
 }
 #endif	/* !MSDOS */
+
+#ifdef	CYGWIN
+p_id_t Xfork(VOID_A)
+{
+	p_id_t pid;
+	char *buf;
+
+	/* Cygwin's fork() breaks ISIG */
+	if (save_ttyio >= 0) savetermio(save_ttyio, &buf, NULL);
+	pid = fork();
+	if (save_ttyio >= 0) {
+		loadtermio(save_ttyio, buf, NULL);
+		if (buf) free(buf);
+	}
+
+	return(pid);
+}
+#endif	/* CYGWIN */

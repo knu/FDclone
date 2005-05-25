@@ -7,7 +7,7 @@ NNAAMMEE
 
 SSYYNNOOPPSSIISS
      ffdd [ --aabbCCeeffhhiikkmmnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
-     _d_i_r_e_c_t_o_r_y_2 ]]
+     _d_i_r_e_c_t_o_r_y_2 _._._. ]]
      ffddsshh [ --aabbCCcceeffhhiikkmmnnrrssttuuvvxx ] [ _a_r_g_s ]
 
 DDEESSCCRRIIPPTTIIOONN
@@ -33,9 +33,9 @@ DDEESSCCRRIIPPTTIIOONN
      able, but ffdd can accept only those which are described in
      the below section of EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS.  If you specify
      _d_i_r_e_c_t_o_r_y, the current directory is moved to the directory
-     initially.  If you specify _d_i_r_e_c_t_o_r_y_2, the split window mode
-     is invoked, and the current directory of the supplemental
-     window is moved to the directory.
+     initially.  If you specify _d_i_r_e_c_t_o_r_y_2 _._._., the split window
+     mode is invoked, and the current directoris of the supple-
+     mental windows are moved to the each directory.
 
      The following options are available for the internal shell.
 
@@ -199,6 +199,9 @@ DDEESSCCRRIIPPTTIIOONN
      SSEEAARRCCHH_BBAACCKK         Search backward a file        ^^RR
      SSPPLLIITT_WWIINNDDOOWW        Split into the windows        //
      NNEEXXTT_WWIINNDDOOWW         Change to the next window     ^^
+     WWIIDDEENN_WWIINNDDOOWW        Widen the current window      WW
+     NNAARRRROOWW_WWIINNDDOOWW       Narrow the current window     NN
+     KKIILLLL_WWIINNDDOOWW         Kill the current window       KK
      EEDDIITT_CCOONNFFIIGG         Invoke the customizer         EE
      HHEELLPP_MMEESSSSAAGGEE        Display a help screen         ??
      QQUUIITT_SSYYSSTTEEMM         Quit from fd                  EEsscc(q)
@@ -676,15 +679,42 @@ DDEESSCCRRIIPPTTIIOONN
              normal mode.
 
         SSpplliitt wwiinnddooww
-             Switch from the normal non-split window mode to the
-             split window mode.  In the split window mode, the
-             screen is split into 2 windows vertically, so that
-             you can operate works individually on each window.
+             Split the current window.  When you split a window
+             in the normal non-split window mode, it will be the
+             split window mode in which the screen is split into
+             2 windows vertically.  In the split window mode, you
+             can operate works individually on each window.  When
+             you split a window in the split window mode, the
+             current working window is split into 2 windows ver-
+             tically.  You can make split windows up to 55.
 
         CChhaannggee wwiinnddooww
-             Change effective window between each windows in the
-             split window mode.  In non-split window mode, it is
+             Change effective window to the next in the split
+             window mode.  When the current window is the last,
+             the first window will be effective.  In the non-
+             split window mode, it is ineffective.
+
+        WWiiddeenn wwiinnddooww
+             Widen the current window size in the split window
+             mode, to narrow the next window size.  When the cur-
+             rent window is the last, the first window size will
+             be narrowed.  In the non-split window mode, it is
              ineffective.
+
+        NNaarrrrooww wwiinnddooww
+             Narrow the current window size in the split window
+             mode, to widen the next window size.  When the cur-
+             rent window is the last, the first window size will
+             be widened.  In the non-split window mode, it is
+             ineffective.
+
+        KKiillll wwiinnddooww
+             Kill the current window in the split window mode, to
+             join it to the previous window.  When the current
+             window is the first, it will be joined to the last
+             window.  If the result number of windows is one, it
+             will be the non-split window mode.  In the non-split
+             window mode, it is ineffective.
 
         IInnvvookkee ccuussttoommiizzeerr
              Invoke the customizer which interactively changes
@@ -2613,6 +2643,12 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    You can specify multiple paths separating with
                    '::'.  No search path is specified by default.
 
+     CCOOLLUUMMNNSS*      The variable for the columns of a terminal
+                   screen.  If some value is set, this value will
+                   be replaced automatically according to chang-
+                   ing the screen size.  If no value is set, this
+                   value will remain unset.
+
      CCOOMMSSPPEECC*      Specify the shell used to invoke a batch file.
                    If undefined, the shell defined by SSHHEELLLL the
                    environment variable or \COMMAND.COM is used.
@@ -2625,6 +2661,28 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    when ffdd is invoked.  The default value is 22.
                    If you specify the value except 11, 22, 33 and 55,
                    it is ignored.
+
+     DDEEFFKKCCOODDEE      Specify the system default Kanji code.  The
+                   arguments passed to external commands invoked
+                   from ffdd will be converted into the specified
+                   Kanji code.  When you use macros such as %%CC
+                   and %%JJJJ, it will be converted into the Kanji
+                   code according to each macro. JJIISS88, JJUUNNEETT,
+                   HHEEXX, CCAAPP, etc. among them are the Kanji codes
+                   used in Samba.  ((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       JJIISS, jjiiss       7bit JIS
+                       JJIISS88, jjiiss88     8bit JIS
+                       JJUUNNEETT, jjuunneett   ISO-2022-JP
+                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
+                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
+                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
+                       HHEEXX, hheexx       HEX
+                       CCAAPP, ccaapp       CAP
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       default        no convert
 
      DDIIRRCCOOUUNNTTLLIIMMIITT Specify the maximum number of files read from
                    the directory in the tree screen.  When the
@@ -2821,6 +2879,12 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    special meaning to be treated as a general
                    variable.
 
+     LLIINNEESS*        The variable for the lines of a terminal
+                   screen.  If some value is set, this value will
+                   be replaced automatically according to chang-
+                   ing the screen size.  If no value is set, this
+                   value will remain unset.
+
      LLOOOOPPCCUURRSSOORR    Loop a cursor moving within the same page,
                    when you move a cursor.  Any value except 00
                    and null effects valid.
@@ -2905,6 +2969,38 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      PPSS44*          Specify the prompt string with which command
                    strings are displayed when you do sseett --xx.
+
+     PPTTYYMMOODDEE       Use the pseudo terminal to invoke external com-
+                   mands.  In the split window mode, the independ-
+                   ent pseudo terminals for every windows will be
+                   opened and enable you to handle simultaneously
+                   multiple external commands via terminals.  If
+                   the terminal in use can not provide some func-
+                   tions required for the terminal emulation, the
+                   pseudo terminal may not work correctly.  Any
+                   value except 00 and null effects valid.  ((UUNNIIXX))
+
+     PPTTYYTTEERRMM       Specify the value of TTEERRMM the environment vari-
+                   able to be passed to external commands, when
+                   you use the pseudo terminal.  Some tteerrmmccaapp(5)
+                   or tteerrmmiinnffoo(5) may cause unexpected behavior
+                   of the pseudo terminal, you should specify the
+                   effective terminal name in your environment.
+                   The default value is vvtt110000.  ((UUNNIIXX))
+
+     PPTTYYMMEENNUUKKEEYY    Specify the key to open the pseudo terminal
+                   menu while you are handling the pseudo termi-
+                   nal.  You can describe the same key name as
+                   bbiinndd command.  You can select the following
+                   items in the pseudo terminal menu: "SendAsIs",
+                   "InputCode", "Break" and "NextWindow".  Each
+                   item means respectively: sending the pseudo
+                   terminal menu key as is, inputing the key name
+                   to be sent like as bbiinndd command, terminating
+                   forcedly the process running in the pseudo ter-
+                   minal, changing to the next window.  But you
+                   cannot select "NextWindow" in the non-split
+                   window mode.  ((UUNNIIXX))
 
      PPWWDD*          The variable for the current directory with
                    the absolute representation.  If some value is

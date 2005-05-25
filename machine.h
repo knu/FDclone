@@ -487,6 +487,7 @@ typedef long	off_t;
 #define	USEMKTIME
 #define	DEFFDSETSIZE
 #define	SIGFNCINT
+#define	WAITKEYPAD		36
 #endif
 
 #if	defined (linux)
@@ -831,6 +832,7 @@ typedef long	off_t;
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
 /* #define HAVECLINE	;struct termios has c_line */
+/* #define USEDEVPTMX	;use /dev/ptmx and /dev/pts/? for pseudo terminal */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	;dirent interface behaves as System V */
 /* #define NODNAMLEN	;struct dirent hasn't d_namlen */
@@ -963,6 +965,10 @@ typedef long	off_t;
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
+#endif
+
+#ifndef	BSD4
+#define	USEDEVPTMX
 #endif
 
 /*                                 */
@@ -1164,4 +1170,4 @@ typedef long	off_t;
 #define	GETTODARGS	2
 #endif
 
-#endif	/* __MACHINE_H_ */
+#endif	/* !__MACHINE_H_ */

@@ -1,3 +1,9 @@
+Ver. 2.07	Add 'PTYMODE', 'PTYTERM' and 'PTYMENUKEY' internal variables.
+ (05/26/05)	Add 'DEFKCODE' internal variable.
+		Expand the maximum number of split windows into 5.
+		Add 'WIDEN_WINDOW'/'NARROW_WINDOW'/'KILL_WINDOW' commands.
+		Support dynamic 'COLUMNS' and 'LINES' environment variables.
+
 Ver. 2.06d	The directory for /etc/fd2rc becomes specifiable in compile.
  (05/10/05)	Add the inhibit filenames COM5-COM9 in floppy drive.
 		Bug that here-document is unavailable in functions is fixed.

@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2005 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.06d 05/10/05
+.\" @(#)fd.1   2.07 05/26/05
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "May 10, 2005"
+.TH FD 1 "May 26, 2005"
 .de sh
 .br
 .PP
@@ -22,7 +22,7 @@ fd \- file & directory maintenance tool
 ] [
 .I directory
 [
-.I directory2
+.I directory2 .\|.\|.
 ]]
 .br
 .B fdsh
@@ -64,9 +64,9 @@ If you specify
 .IR directory ,
 the current directory is moved to the directory initially.
 If you specify
-.IR directory2 ,
+.IR "directory2 .\|.\|." ,
 the split window mode is invoked,
-and the current directory of the supplemental window is moved to the directory.
+and the current directories of the supplemental windows are moved to the each directory.
 
 The following options are available for the internal shell.
 .TP
@@ -283,6 +283,9 @@ Identifier	Command	Key
 \fBSEARCH_BACK\fP	Search backward a file	\fB^R\fP
 \fBSPLIT_WINDOW\fP	Split into the windows	\fB/\fP
 \fBNEXT_WINDOW\fP	Change to the next window	\fB^\fP
+\fBWIDEN_WINDOW\fP	Widen the current window	\fBW\fP
+\fBNARROW_WINDOW\fP	Narrow the current window	\fBN\fP
+\fBKILL_WINDOW\fP	Kill the current window	\fBK\fP
 \fBEDIT_CONFIG\fP	Invoke the customizer	\fBE\fP
 \fBHELP_MESSAGE\fP	Display a help screen	\fB?\fP
 \fBQUIT_SYSTEM\fP	Quit from fd	\fBEsc\fP(q)
@@ -814,13 +817,40 @@ which is already inputted at that present.
 .RB [ Esc ]
 switches to the normal mode.
 .IP "\fBSplit window\fP"
-Switch from the normal non-split window mode to the split window mode.
+Split the current window.
+When you split a window in the normal non-split window mode,
+it will be the split window mode in which the screen is split into 2 windows vertically.
 In the split window mode,
-the screen is split into 2 windows vertically,
-so that you can operate works individually on each window.
+you can operate works individually on each window.
+When you split a window in the split window mode,
+the current working window is split into 2 windows vertically.
+You can make split windows up to
+.BR 5 .
 .IP "\fBChange window\fP"
-Change effective window between each windows in the split window mode.
-In non-split window mode, it is ineffective.
+Change effective window to the next in the split window mode.
+When the current window is the last,
+the first window will be effective.
+In the non-split window mode, it is ineffective.
+.IP "\fBWiden window\fP"
+Widen the current window size in the split window mode,
+to narrow the next window size.
+When the current window is the last,
+the first window size will be narrowed.
+In the non-split window mode, it is ineffective.
+.IP "\fBNarrow window\fP"
+Narrow the current window size in the split window mode,
+to widen the next window size.
+When the current window is the last,
+the first window size will be widened.
+In the non-split window mode, it is ineffective.
+.IP "\fBKill window\fP"
+Kill the current window in the split window mode,
+to join it to the previous window.
+When the current window is the first,
+it will be joined to the last window.
+If the result number of windows is one,
+it will be the non-split window mode.
+In the non-split window mode, it is ineffective.
 .IP "\fBInvoke customizer\fP"
 Invoke the customizer which interactively changes the configurations
 to be set up by the internal variable and the builtin command.
@@ -4157,6 +4187,13 @@ the builtin command does not start with
 You can specify multiple paths separating with
 .RB ' : '.
 No search path is specified by default.
+.IP "\fBCOLUMNS\fP\(**"
+The variable for the columns of a terminal screen.
+If some value is set,
+this value will be replaced automatically
+according to changing the screen size.
+If no value is set,
+this value will remain unset.
 .IP "\fBCOMSPEC\fP\(**"
 Specify the shell used to invoke a batch file.
 If undefined,
@@ -4181,6 +4218,40 @@ If you specify the value except
 and
 .BR 5 ,
 it is ignored.
+.IP "\fBDEFKCODE\fP"
+Specify the system default Kanji code.
+The arguments passed to external commands invoked from
+.B fd
+will be converted into the specified Kanji code.
+When you use macros such as
+.B %C
+and
+.BR %JJ ,
+it will be converted into the Kanji code according to each macro.
+.BR JIS8 ,
+.BR JUNET ,
+.BR HEX ,
+.BR CAP ,
+etc. among them are the Kanji codes used in Samba.
+.B (UNIX)
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBJIS\fP, \fBjis\fP	7bit JIS
+\fBJIS8\fP, \fBjis8\fP	8bit JIS
+\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
+\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
+\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
+\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
+\fBHEX\fP, \fBhex\fP	HEX
+\fBCAP\fP, \fBcap\fP	CAP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+default	no convert
+.fi
+.RE
 .IP "\fBDIRCOUNTLIMIT\fP"
 Specify the maximum number of files read from the directory
 in the tree screen.
@@ -4453,6 +4524,13 @@ If you
 .B unset
 or reset this value,
 this variable will lose its special meaning to be treated as a general variable.
+.IP "\fBLINES\fP\(**"
+The variable for the lines of a terminal screen.
+If some value is set,
+this value will be replaced automatically
+according to changing the screen size.
+If no value is set,
+this value will remain unset.
 .IP "\fBLOOPCURSOR\fP"
 Loop a cursor moving within the same page,
 when you move a cursor.
@@ -4566,6 +4644,46 @@ Specify the prompt string with which command strings are displayed
 when you do
 .B set
 .BR -x .
+.IP "\fBPTYMODE\fP"
+Use the pseudo terminal to invoke external commands.
+In the split window mode,
+the independent pseudo terminals for every windows will be opened and enable you to handle simultaneously multiple external commands via terminals.
+If the terminal in use can not provide some functions required for the terminal emulation,
+the pseudo terminal may not work correctly.
+Any value except
+.B 0
+and null effects valid.
+.B (UNIX)
+.IP "\fBPTYTERM\fP"
+Specify the value of
+.B TERM
+the environment variable to be passed to external commands,
+when you use the pseudo terminal.
+Some
+.BR termcap (5)
+or
+.BR terminfo (5)
+may cause unexpected behavior of the pseudo terminal,
+you should specify the effective terminal name in your environment.
+The default value is
+.BR vt100 .
+.B (UNIX)
+.IP "\fBPTYMENUKEY\fP"
+Specify the key to open the pseudo terminal menu while you are handling the pseudo terminal.
+You can describe the same key name as
+.B bind
+command.
+You can select the following items in the pseudo terminal menu:
+"SendAsIs", "InputCode", "Break" and "NextWindow".
+Each item means respectively:
+sending the pseudo terminal menu key as is,
+inputing the key name to be sent like as
+.B bind
+command,
+terminating forcedly the process running in the pseudo terminal,
+changing to the next window.
+But you cannot select "NextWindow" in the non-split window mode.
+.B (UNIX)
 .IP "\fBPWD\fP\(**"
 The variable for the current directory with the absolute representation.
 If some value is set,

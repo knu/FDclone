@@ -13,6 +13,10 @@
 #include "system.h"
 #endif
 
+#ifndef	_NOPTY
+#include "termemu.h"
+#endif
+
 extern int curcolumns;
 extern int mark;
 extern off_t marksize;
@@ -40,6 +44,9 @@ extern char fullpath[];
 extern int hideclock;
 #ifndef	_NOORIGSHELL
 extern int fdmode;
+#endif
+#ifndef	_NOPTY
+extern int ptymode;
 #endif
 
 static VOID NEAR replacefname __P_((char *));
@@ -92,6 +99,9 @@ static int help_message __P_((char *));
 #ifndef	_NOCUSTOMIZE
 static int edit_config __P_((char *));
 #endif
+#ifndef	_NOPTY
+static int confirmpty __P_((VOID_A));
+#endif
 static int quit_system __P_((char *));
 static int make_dir __P_((char *));
 static int copy_file __P_((char *));
@@ -132,6 +142,11 @@ static VOID NEAR duplwin __P_((int));
 static VOID NEAR movewin __P_((int));
 static int split_window __P_((char *));
 static int next_window __P_((char *));
+#endif
+#ifndef	_NOEXTRAWIN
+static int widen_window __P_((char *));
+static int narrow_window __P_((char *));
+static int kill_window __P_((char *));
 #endif
 static int warning_bell __P_((char *));
 static int no_operation __P_((char *));
@@ -270,6 +285,11 @@ bindtable bindlist[MAXBINDTABLE] = {
 #ifndef	_NOSPLITWIN
 	{'/',		SPLIT_WINDOW,	255},
 	{'^',		NEXT_WINDOW,	255},
+#endif
+#ifndef	_NOEXTRAWIN
+	{'W',		WIDEN_WINDOW,	255},
+	{'N',		NARROW_WINDOW,	255},
+	{'K',		KILL_WINDOW,	255},
 #endif
 	{K_HOME,	MARK_ALL,	255},
 	{K_END,		MARK_REVERSE,	255},
@@ -875,6 +895,18 @@ char *arg;
 
 static VOID NEAR clearscreen(VOID_A)
 {
+#ifndef	_NOPTY
+	int i, yy;
+
+	if (ptymode) {
+		yy = filetop(win);
+		for (i = 0; i < FILEPERROW; i++) {
+			Xlocate(0, yy + i);
+			Xputterm(L_CLEAR);
+		}
+	}
+	else
+#endif	/* !_NOPTY */
 	Xputterms(T_CLEAR);
 	Xtflush();
 }
@@ -895,6 +927,12 @@ char *file;
 
 	min = 0;
 	max = n_line - 1;
+# ifndef	_NOPTY
+	if (ptymode) {
+		min = filetop(win);
+		max = min + FILEPERROW;
+	}
+# endif
 
 	Xtflush();
 	buf = NEXT_K;
@@ -936,13 +974,16 @@ char *env, *arg;
 
 	if (!(command = getenv2(env)) || !*command) return(0);
 	clearscreen();
-	execmacro(command, arg, F_NOCONFIRM | F_IGNORELIST);
+	ptymacro(command, arg, F_NOCONFIRM | F_IGNORELIST);
 
 	return(1);
 }
 
 static int NEAR execshell(VOID_A)
 {
+#ifndef	_NOPTY
+	int x, y, min, max;
+#endif
 	char *sh;
 	int mode, ret, wastty;
 
@@ -969,10 +1010,23 @@ static int NEAR execshell(VOID_A)
 
 	sigvecset(0);
 	mode = Xtermmode(0);
-	if ((wastty = isttyiomode)) Xstdiomode();
-	kanjifputs(SHEXT_K, stderr);
-	fputnl(stderr);
-	ret = dosystem(sh);
+	wastty = isttyiomode;
+	kanjiputs(SHEXT_K);
+#ifndef	_NOPTY
+	if (ptymode) {
+		min = filetop(win);
+		max = min + FILEPERROW;
+		y = max;
+		if (!isttyiomode) Xttyiomode(0);
+		if (getxy(&x, &y) < 0 || --y >= max) y = max - 1;
+		regionscroll(C_SCROLLFORW, 1, 0, y, min, max - 1);
+	}
+	else
+#endif	/* !_NOPTY */
+	Xcputnl();
+	Xtflush();
+	if (isttyiomode) Xstdiomode();
+	ret = ptysystem(sh);
 #ifdef	_NOORIGSHELL
 	checkscreen(-1, -1);
 #endif
@@ -1012,7 +1066,7 @@ char *arg;
 
 	if (!execenv("FD_PAGER", filelist[filepos].name)) {
 #ifdef	PAGER
-		execmacro(PAGER, filelist[filepos].name,
+		ptymacro(PAGER, filelist[filepos].name,
 			F_NOCONFIRM | F_IGNORELIST);
 #else
 		do {
@@ -1054,7 +1108,7 @@ char *arg;
 #endif
 	if (!execenv("FD_EDITOR", filelist[filepos].name)) {
 #ifdef	EDITOR
-		execmacro(EDITOR, filelist[filepos].name,
+		ptymacro(EDITOR, filelist[filepos].name,
 			F_NOCONFIRM | F_IGNORELIST);
 #endif
 	}
@@ -1200,6 +1254,18 @@ char *arg;
 	return(2);
 }
 
+#ifndef	_NOPTY
+static int confirmpty(VOID_A)
+{
+	int i;
+
+	for (i = 0; i < MAXWINDOWS; i++) if (ptylist[i].pid) break;
+	if (i < MAXWINDOWS && !yesno(KILL_K)) return(1);
+
+	return(0);
+}
+#endif	/* !_NOPTY */
+
 /*ARGSUSED*/
 static int quit_system(arg)
 char *arg;
@@ -1231,6 +1297,10 @@ char *arg;
 	else
 #endif	/* _NOORIGSHELL */
 	if (!yesno(QUIT_K)) return(1);
+
+#ifndef	_NOPTY
+	if (confirmpty()) return(1);
+#endif
 
 	if (savehist > 0) savehistory(0, histfile);
 
@@ -1449,7 +1519,7 @@ char *arg;
 		if (!com) return(1);
 	}
 	if (*com) {
-		ret = execusercomm(com, filelist[filepos].name, F_ARGSET);
+		ret = ptyusercomm(com, filelist[filepos].name, F_ARGSET);
 		ret = (ret < 0) ? 1 :
 			((internal_status < -1) ? 4 : internal_status);
 	}
@@ -1522,7 +1592,7 @@ char *arg;
 	if (archivefile) {
 		if (!(dir = tmpunpack(1))) ret = -1;
 		else {
-			ret = execusercomm(com, filelist[filepos].name,
+			ret = ptyusercomm(com, filelist[filepos].name,
 				F_ARGSET | F_IGNORELIST);
 			removetmp(dir, NULL);
 		}
@@ -1532,14 +1602,14 @@ char *arg;
 #ifndef	_NODOSDRIVE
 	if ((drive = tmpdosdupl("", &dir, 1)) < 0) ret = -1;
 	else if (drive) {
-		ret = execusercomm(com, filelist[filepos].name,
+		ret = ptyusercomm(com, filelist[filepos].name,
 			F_ARGSET | F_IGNORELIST);
 		removetmp(dir, filelist[filepos].name);
 	}
 	else
 #endif
 	{
-		ret = execusercomm(com, filelist[filepos].name, F_ARGSET);
+		ret = ptyusercomm(com, filelist[filepos].name, F_ARGSET);
 	}
 	ret = (ret < 0) ? 1 : ((internal_status < -1) ? 4 : internal_status);
 	free(com);
@@ -1851,16 +1921,31 @@ char *arg;
 
 	oldwin = win;
 	if (windows >= MAXWINDOWS) {
+# ifdef	_NOEXTRAWIN
+#  ifndef	_NOPTY
+		if (confirmpty()) return(1);
+#  endif
 		if (win > 0) {
 			shutwin(0);
 			win = 0;
 			duplwin(oldwin);
 		}
 		for (i = 1; i < windows; i++) shutwin(i);
+#  ifndef	_NOPTY
+		killallpty();
+#  endif
 		windows = 1;
 		calcwin();
+# else	/* !_NOEXTRAWIN */
+		warning(0, NOWIN_K);
+		return(1);
+# endif	/* !_NOEXTRAWIN */
 	}
+# ifdef	_NOEXTRAWIN
 	else if (fileperrow(windows + 1) < WFILEMIN)
+# else
+	else if (winvar[win].v_fileperrow < WFILEMIN * 2 + 1)
+# endif
 	{
 		warning(0, NOROW_K);
 		return(1);
@@ -1874,8 +1959,19 @@ char *arg;
 		memcpy((char *)&(winvar[win]), (char *)&tmp,
 			sizeof(winvartable));
 
+# ifdef	_NOEXTRAWIN
 		calcwin();
+# else
+		i = (winvar[oldwin].v_fileperrow - 1) / 2;
+		winvar[win].v_fileperrow =
+			(winvar[oldwin].v_fileperrow - 1) - i;
+		winvar[oldwin].v_fileperrow = i;
+# endif
 
+# ifndef	_NOPTY
+		insertwin(win, windows);
+		changewsize(wheader, windows);
+# endif
 		duplwin(oldwin);
 		movewin(oldwin);
 	}
@@ -1888,10 +1984,98 @@ static int next_window(arg)
 char *arg;
 {
 	if (nextwin() < 0) return(0);
+# ifndef	_NOPTY
+	if (ptylist[win].pid && ptylist[win].status < 0) {
+		rewritefile(0);
+		VOID_C frontend();
+		if (internal_status >= -1) return(internal_status);
+	}
+# endif
 
 	return(4);
 }
 #endif	/* !_NOSPLITWIN */
+
+#ifndef	_NOEXTRAWIN
+static int widen_window(arg)
+char *arg;
+{
+	int n, next;
+
+	if (windows <= 1) return(0);
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if ((next = win + 1) >= windows) next = 0;
+	if (winvar[next].v_fileperrow - n < WFILEMIN)
+		n = winvar[next].v_fileperrow - WFILEMIN;
+	if (n <= 0) return(warning_bell(arg));
+
+	winvar[next].v_fileperrow -= n;
+	winvar[win].v_fileperrow += n;
+# ifndef	_NOPTY
+	changewsize(wheader, windows);
+# endif
+
+	return(4);
+}
+
+static int narrow_window(arg)
+char *arg;
+{
+	int n, next;
+
+	if (windows <= 1) return(0);
+	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if ((next = win + 1) >= windows) next = 0;
+	if (FILEPERROW - n < WFILEMIN) n = FILEPERROW - WFILEMIN;
+	if (n <= 0) return(warning_bell(arg));
+
+	winvar[next].v_fileperrow += n;
+	winvar[win].v_fileperrow -= n;
+# ifndef	_NOPTY
+	changewsize(wheader, windows);
+# endif
+
+	return(4);
+}
+
+/*ARGSUSED*/
+static int kill_window(arg)
+char *arg;
+{
+	winvartable tmp;
+	int prev;
+
+	if (windows <= 1) return(0);
+	memcpy((char *)&tmp, (char *)&(winvar[win]), sizeof(winvartable));
+	memmove((char *)&(winvar[win]), (char *)&(winvar[win + 1]),
+		(--windows - win) * sizeof(winvartable));
+	memcpy((char *)&(winvar[windows]), (char *)&tmp, sizeof(winvartable));
+
+	if ((prev = win - 1) < 0) prev = windows - 1;
+	winvar[prev].v_fileperrow += winvar[windows].v_fileperrow + 1;
+
+# ifndef	_NOPTY
+	deletewin(win, windows);
+	changewsize(wheader, windows);
+# endif
+
+	win = prev;
+	duplwin(windows);
+	movewin(windows);
+	shutwin(windows);
+	if (chdir3(fullpath, 1) < 0) lostcwd(fullpath);
+
+# ifndef	_NOPTY
+	if (ptylist[win].pid && ptylist[win].status < 0) {
+		rewritefile(0);
+		VOID_C frontend();
+		if (internal_status >= -1) return(internal_status);
+	}
+# endif
+
+	return(4);
+}
+#endif	/* !_NOEXTRAWIN */
 
 /*ARGSUSED*/
 static int warning_bell(arg)

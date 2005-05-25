@@ -28,6 +28,7 @@ SRC	= main.c printf.c termio.c term.c pathname.c \
 	system.c posixsh.c doscom.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
+	pty.c termemu.c frontend.c backend.c \
 	libc.c file.c apply.c \
 	parse.c builtin.c shell.c \
 	kanji.c input.c \
@@ -39,6 +40,7 @@ HEADER	= fd.h machine.h types.h kctype.h printf.h \
 	wait.h system.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
+	termemu.h \
 	func.h functabl.h
 
 DOC	= README.eng HISTORY.eng FAQ.eng TECHKNOW.eng \
@@ -90,6 +92,7 @@ ALIAS	= fdsh
 OBJ1	= main__OBJ__ printf__OBJ__ termio__OBJ__ term__OBJ__ \
 	pathname__OBJ__ system__OBJ__ posixsh__OBJ__ doscom__OBJ__
 OBJ2	= dosdisk__OBJ__ __OBJS__ \
+	pty__OBJ__ termemu__OBJ__ frontend__OBJ__ backend__OBJ__ \
 	libc__OBJ__ file__OBJ__ apply__OBJ__ \
 	parse__OBJ__ builtin__OBJ__ shell__OBJ__
 OBJ3	= kanji__OBJ__ input__OBJ__ \
@@ -217,8 +220,14 @@ install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 	$(CHMOD) a+rx $(BINDIR)/$(ALIAS)$(EXE)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(JMANDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JMANDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(JMANDIR)/$(ALIAS).$(MANSEC)
+	$(LN) $(JMANDIR)/$(PROGRAM).$(MANSEC) $(JMANDIR)/$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(JMANDIR)/$(ALIAS).$(MANSEC)
 	$(INSTALL) $(MANSRC) $(MANDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(MANDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(MANDIR)/$(ALIAS).$(MANSEC)
+	$(LN) $(MANDIR)/$(PROGRAM).$(MANSEC) $(MANDIR)/$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(MANDIR)/$(ALIAS).$(MANSEC)
 	-if [ -f $(RUNCOM) ]; then \
 		$(INSTALL) $(RUNCOM) $(BLDRC); \
 		$(CHMOD) a+r-x $(BLDRC); \
@@ -231,30 +240,54 @@ install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 catman: $(MANCAT)
 	$(INSTALL) $(MANCAT) $(CATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(CATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC)
+	$(LN) $(CATDIR)/$(PROGRAM).$(MANSEC) $(CATDIR)/$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(CATDIR)/$(ALIAS).$(MANSEC)
 
 catman-b: $(PROGRAM).eng
 	$(INSTALL) $(PROGRAM).eng $(CATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(CATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC)
+	$(LN) $(CATDIR)/$(PROGRAM).$(MANSEC) $(CATDIR)/$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(CATDIR)/$(ALIAS).$(MANSEC)
 
 compman: catman
+	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC)
 	compress -f $(CATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC).Z
+	$(LN) $(CATDIR)/$(PROGRAM).$(MANSEC).Z $(CATDIR)/$(ALIAS).$(MANSEC).Z
 
 compman-b: catman-b
+	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC)
 	compress -f $(CATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC).Z
+	$(LN) $(CATDIR)/$(PROGRAM).$(MANSEC).Z $(CATDIR)/$(ALIAS).$(MANSEC).Z
 
 jcatman: catman $(PROGRAM).$(MANSEC)c
 	$(INSTALL) $(PROGRAM).$(MANSEC)c $(JCATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JCATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC)
+	$(LN) $(JCATDIR)/$(PROGRAM).$(MANSEC) $(JCATDIR)/$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(JCATDIR)/$(ALIAS).$(MANSEC)
 
 jcatman-b: catman-b $(PROGRAM).doc
 	$(INSTALL) $(PROGRAM).doc $(JCATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JCATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC)
+	$(LN) $(JCATDIR)/$(PROGRAM).$(MANSEC) $(JCATDIR)/$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(JCATDIR)/$(ALIAS).$(MANSEC)
 
 jcompman: compman jcatman
+	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC)
 	compress -f $(JCATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC).Z
+	$(LN) $(JCATDIR)/$(PROGRAM).$(MANSEC).Z $(JCATDIR)/$(ALIAS).$(MANSEC).Z
 
 jcompman-b: compman-b jcatman-b
+	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC)
 	compress -f $(JCATDIR)/$(PROGRAM).$(MANSEC)
+	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC).Z
+	$(LN) $(JCATDIR)/$(PROGRAM).$(MANSEC).Z $(JCATDIR)/$(ALIAS).$(MANSEC).Z
 
 
 ############################################################
@@ -426,33 +459,15 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 		-e '}' \
 		-e '$$ {' \
 		-e  'a \' \
-		-e  'if [ " $$TERM" = " vt100" ]; then' \
+		-e  'if [ " $$TERM" = " vt100" -a " $$CONSOLE" = " /dev/console" ]; then' \
 		-e  'a \' \
-		-e  '	if [ " $$CONSOLE" = " /dev/console" ]; then' \
+		-e  '	keymap BS	"^?"' \
 		-e  'a \' \
-		-e  '		keymap BS	"^?"' \
+		-e  '	keymap DEL	"\\033[3~"' \
 		-e  'a \' \
-		-e  '		keymap INS	"\\033[2~"' \
+		-e  '	keymap HOME	"\\033[H"' \
 		-e  'a \' \
-		-e  '		keymap DEL	"\\033[3~"' \
-		-e  'a \' \
-		-e  '		keymap PPAGE	"\\033[5~"' \
-		-e  'a \' \
-		-e  '		keymap HOME	"\\033[H"' \
-		-e  'a \' \
-		-e  '		keymap END	"\\033[F"' \
-		-e  'a \' \
-		-e  '	else' \
-		-e  'a \' \
-		-e  '		keymap INS	"\\033[1~"' \
-		-e  'a \' \
-		-e  '		keymap HOME	"\\033[2~"' \
-		-e  'a \' \
-		-e  '		keymap PPAGE	"\\033[3~"' \
-		-e  'a \' \
-		-e  '		keymap END	"\\033[5~"' \
-		-e  'a \' \
-		-e  '	fi' \
+		-e  '	keymap END	"\\033[F"' \
 		-e  'a \' \
 		-e  'fi' \
 		-e '}' \
@@ -553,6 +568,40 @@ unixemu__OBJ__: pathname.h term.h termio.h
 unixemu__OBJ__: func.h
 unixemu__OBJ__: dosdisk.h
 unixemu__OBJ__: unixdisk.h unixemu.h
+pty__OBJ__: fd.h
+pty__OBJ__: machine.h config.h types.h
+pty__OBJ__: printf.h kctype.h
+pty__OBJ__: pathname.h term.h
+pty__OBJ__: termio.h
+termemu__OBJ__: fd.h
+termemu__OBJ__: machine.h config.h
+termemu__OBJ__: types.h
+termemu__OBJ__: printf.h
+termemu__OBJ__: kctype.h
+termemu__OBJ__: pathname.h term.h
+termemu__OBJ__: func.h
+termemu__OBJ__: dosdisk.h kanji.h termemu.h system.h
+termemu__OBJ__: termio.h
+termemu__OBJ__: wait.h
+frontend__OBJ__: fd.h
+frontend__OBJ__: machine.h config.h
+frontend__OBJ__: types.h
+frontend__OBJ__: printf.h
+frontend__OBJ__: kctype.h
+frontend__OBJ__: pathname.h term.h func.h
+frontend__OBJ__: dosdisk.h kanji.h termemu.h system.h
+frontend__OBJ__: termio.h
+frontend__OBJ__: wait.h
+backend__OBJ__: fd.h
+backend__OBJ__: machine.h config.h
+backend__OBJ__: types.h
+backend__OBJ__: printf.h
+backend__OBJ__: kctype.h
+backend__OBJ__: pathname.h term.h
+backend__OBJ__: termio.h
+backend__OBJ__: func.h
+backend__OBJ__: dosdisk.h
+backend__OBJ__: termemu.h
 libc__OBJ__: fd.h
 libc__OBJ__: machine.h config.h types.h
 libc__OBJ__: printf.h
@@ -560,6 +609,7 @@ libc__OBJ__: kctype.h
 libc__OBJ__: pathname.h term.h func.h
 libc__OBJ__: dosdisk.h kanji.h system.h termio.h
 libc__OBJ__: wait.h
+libc__OBJ__: termemu.h
 file__OBJ__: fd.h
 file__OBJ__: machine.h config.h types.h
 file__OBJ__: printf.h
@@ -590,6 +640,7 @@ builtin__OBJ__: pathname.h term.h func.h
 builtin__OBJ__: dosdisk.h funcno.h kanji.h system.h
 builtin__OBJ__: termio.h
 builtin__OBJ__: wait.h
+builtin__OBJ__: termemu.h
 shell__OBJ__: fd.h
 shell__OBJ__: machine.h config.h
 shell__OBJ__: types.h
@@ -598,6 +649,7 @@ shell__OBJ__: pathname.h term.h
 shell__OBJ__: func.h
 shell__OBJ__: dosdisk.h kanji.h system.h termio.h
 shell__OBJ__: wait.h
+shell__OBJ__: termemu.h
 kanji__OBJ__: machine.h config.h
 kanji__OBJ__: kctype.h pathname.h
 kanji__OBJ__: term.h
@@ -652,14 +704,14 @@ command__OBJ__: pathname.h term.h func.h
 command__OBJ__: dosdisk.h funcno.h kanji.h system.h
 command__OBJ__: termio.h
 command__OBJ__: wait.h
-command__OBJ__: functabl.h
+command__OBJ__: termemu.h functabl.h
 browse__OBJ__: fd.h
 browse__OBJ__: machine.h config.h
 browse__OBJ__: types.h
 browse__OBJ__: printf.h kctype.h
 browse__OBJ__: pathname.h term.h
 browse__OBJ__: func.h
-browse__OBJ__: dosdisk.h funcno.h kanji.h
+browse__OBJ__: dosdisk.h funcno.h kanji.h termemu.h
 kanjicnv__OBJ__: machine.h config.h
 mkfuncno__OBJ__: fd.h
 mkfuncno__OBJ__: machine.h config.h

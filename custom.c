@@ -88,6 +88,11 @@ extern int tmpumask;
 #ifndef	_NOORIGSHELL
 extern int dumbshell;
 #endif
+#ifndef	_NOPTY
+extern int ptymode;
+extern char *ptyterm;
+extern int ptymenukey;
+#endif
 extern int wheader;
 extern char fullpath[];
 extern char *origpath;
@@ -192,6 +197,7 @@ typedef struct _envtable {
 #define	T_KOUT		15
 #define	T_KNAM		16
 #define	T_OCTAL		17
+#define	T_KEYCODE	18
 
 #ifndef	_NOKANJIFCONV
 typedef struct _pathtable {
@@ -380,9 +386,12 @@ static CONST envtable envlist[] = {
 #endif
 #ifndef	_NOORIGSHELL
 	{"FD_PS2", &promptstr2, DEFVAL(PROMPT2), PRM2_E, T_CHARP},
-#endif
-#ifndef	_NOORIGSHELL
 	{"FD_DUMBSHELL", &dumbshell, DEFVAL(DUMBSHELL), DMSHL_E, T_BOOL},
+#endif
+#ifndef	_NOPTY
+	{"FD_PTYMODE", &ptymode, DEFVAL(PTYMODE), PTYMD_E, T_BOOL},
+	{"FD_PTYTERM", &ptyterm, DEFVAL(PTYTERM), PTYTM_E, T_CHARP},
+	{"FD_PTYMENUKEY", &ptymenukey, DEFVAL(PTYMENUKEY), PTYKY_E, T_KEYCODE},
 #endif
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 	{"FD_UNICODEBUFFER", &unicodebuffer,
@@ -391,6 +400,9 @@ static CONST envtable envlist[] = {
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 	{"FD_LANGUAGE", &outputkcode, DEFVAL(NOCNV), LANG_E, T_KOUT},
+#endif
+#ifndef	_NOKANJIFCONV
+	{"FD_DEFKCODE", &defaultkcode, DEFVAL(NOCNV), DFKC_E, T_KNAM},
 #endif
 #ifndef	_NOKANJICONV
 	{"FD_INPUTKCODE", &inputkcode, DEFVAL(NOCNV), IPKC_E, T_KIN},
@@ -597,6 +609,12 @@ int no;
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
+#ifndef	_NOPTY
+		case T_KEYCODE:
+			if ((n = getkeycode(cp, 0)) < 0) n = def_num(no);
+			*((int *)(envlist[no].var)) = n;
+			break;
+#endif
 		default:
 			if (!cp) cp = def_str(no);
 			*((char **)(envlist[no].var)) = cp;
@@ -685,18 +703,35 @@ static VOID NEAR evalpathlang(VOID_A)
 		pathconv(&(fulllist[i]));
 	}
 # endif	/* !_NOSPLITWIN */
+# ifndef	_NOPTY
+	changekcode();
+# endif
 }
 #endif	/* !_NOKANJIFCONV */
 
 static VOID NEAR evalheader(VOID_A)
 {
+#ifndef	_NOEXTRAWIN
+	int i;
+#endif
 	int n;
 
 	n = wheader;
 	wheader = WHEADER;
 	if (n == wheader) return;
 
+#ifdef	_NOEXTRAWIN
 	calcwin();
+#else
+	n -= wheader;
+	for (i = 0; i < windows; i++)
+		if (winvar[i].v_fileperrow + n >= WFILEMIN) break;
+	if (i < windows) winvar[i].v_fileperrow += n;
+#endif
+
+#ifndef	_NOPTY
+	changewsize(wheader, windows);
+#endif
 }
 
 VOID evalenv(VOID_A)
@@ -1238,6 +1273,11 @@ int no;
 			cp = ascoctal(*((int *)(envlist[no].var)), buf);
 			break;
 # endif
+# ifndef	_NOPTY
+		case T_KEYCODE:
+			cp = getenv2(envlist[no].env);
+			break;
+# endif
 		default:
 			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
 			break;
@@ -1587,6 +1627,19 @@ int no;
 			cp = ascoctal(n, buf);
 			break;
 # endif	/* FD >= 2 */
+# ifndef	_NOPTY
+		case T_KEYCODE:
+			if (!(cp = getenv2(envlist[no].env))) cp = "";
+			new = inputcustenvstr(env, 0, cp, -1);
+			if (new == (char *)-1) return(0);
+			if (new && getkeycode(new, 0) < 0) {
+				warning(0, VALNG_K);
+				free(new);
+				return(0);
+			}
+			cp = new;
+			break;
+# endif	/* !_NOPTY */
 		default:
 			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
 			new = inputcustenvstr(env, 0, cp, -1);

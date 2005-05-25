@@ -77,4 +77,4 @@ extern VOID kanjifputs __P_((char *, FILE *));
 #define	kanjifputs	fputs
 #endif
 
-#endif	/* __PRINTF_H_ */
+#endif	/* !__PRINTF_H_ */

@@ -2060,7 +2060,7 @@ int flags;
 #endif
 
 	if (!isarchbr(list)) {
-		execusercomm(list -> comm, filelist[filepos].name, flags);
+		ptyusercomm(list -> comm, filelist[filepos].name, flags);
 		if (flags & F_ARGSET) /*EMPTY*/;
 #ifndef	_NODOSDRIVE
 		else if (drive) removetmp(tmpdir, filelist[filepos].name);

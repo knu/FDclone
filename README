@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 2.06 に関して
+#	FDclone Ver. 2.07 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	May 10, 2005
+#	May 26, 2005
 #
 ############################################################
 
@@ -35,7 +35,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-2.06 のパッケージには、以下のファイルが含まれます。
+　FDclone-2.07 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 README.eng	このファイル (英文)
@@ -98,6 +98,11 @@ unixdisk.c	MS-DOS 用 ファイル制御関数群
 unixdisk.h	unixdisk.c 用のヘッダ
 unixemu.c	システム関数群の MS-DOS 版
 unixemu.h	unixemu.c 用のヘッダ
+pty.c		疑似端末関連
+termemu.c	端末エミュレーション関連
+termemu.h	termemu.c 用ヘッダ
+frontend.c	端末エミュレーションの前処理
+backend.c	端末エミュレーションの後処理
 libc.c		cc の標準関数のアレンジ
 file.c		ファイル操作関連
 apply.c		ファイルへの連続適用関連

@@ -79,6 +79,7 @@ extern char *sys_errlist[];
 
 /* main.c */
 extern VOID error __P_((char *));
+extern VOID setlinecol __P_((VOID_A));
 extern VOID checkscreen __P_((int, int));
 #ifdef	SIGWINCH
 extern VOID pollscreen __P_((int));
@@ -194,6 +195,42 @@ extern int Xpclose __P_((FILE *));
 # endif
 #endif	/* _NOORIGSHELL */
 
+/* pty.c */
+#ifndef	_NOPTY
+extern int Xopenpty __P_((int *, char *, ALLOC_T));
+extern int Xlogin_tty __P_((char *, char *, char *));
+extern p_id_t Xforkpty __P_((int *, char *, char *));
+#endif
+
+/* termemu.c */
+#ifdef	_NOPTY
+#define	ptymacro		execmacro
+#define	ptyusercomm		execusercomm
+#define	ptysystem		dosystem
+#else	/* !_NOPTY */
+extern VOID regionscroll __P_((int, int, int, int, int, int));
+extern int selectpty __P_((int, int [], char [], int));
+extern VOID syncptyout __P_((VOID_A));
+extern int recvbuf __P_((int, VOID_P, int));
+extern VOID sendbuf __P_((int, VOID_P, int));
+extern int recvword __P_((int, int *));
+extern VOID sendword __P_((int, int));
+extern int recvstring __P_((int, char **));
+extern VOID sendstring __P_((int, char *));
+extern VOID sendparent __P_((int, ...));
+extern int ptymacro __P_((char *, char *, int));
+# ifdef	_NOORIGSHELL
+# define	ptyusercomm(c,a,f)	ptymacro(c, a, f | F_EVALMACRO)
+# else
+# define	ptyusercomm		ptymacro
+# endif
+#define	ptysystem(c)		ptymacro(c, NULL, F_DOSYSTEM)
+extern VOID killpty __P_((int, int *));
+extern VOID killallpty __P_((VOID_A));
+#endif	/* !_NOPTY */
+
+/* frontend.c */
+#ifdef	_NOPTY
 #define	Xttyiomode		ttyiomode
 #define	Xstdiomode		stdiomode
 #define	Xtermmode		termmode
@@ -209,6 +246,38 @@ extern int Xpclose __P_((FILE *));
 #define	Xkanjiputs		kanjiputs
 #define	Xchgcolor		chgcolor
 #define	Xmovecursor		movecursor
+#else	/* !_NOPTY */
+extern int waitstatus __P_((p_id_t, int, int *));
+extern VOID Xttyiomode __P_((int));
+extern VOID Xstdiomode __P_((VOID_A));
+extern int Xtermmode __P_((int));
+extern VOID Xputch2 __P_((int));
+extern VOID Xcputs2 __P_((char *));
+extern VOID Xputterm __P_((int));
+extern VOID Xputterms __P_((int));
+extern int Xsetscroll __P_((int, int));
+extern VOID Xlocate __P_((int, int));
+extern VOID Xtflush __P_((VOID_A));
+extern int Xcprintf2 __P_((CONST char *, ...));
+extern VOID Xcputnl __P_((VOID_A));
+extern int Xkanjiputs __P_((char *));
+extern VOID Xchgcolor __P_((int, int));
+extern VOID Xmovecursor __P_((int, int, int));
+extern VOID changewin __P_((int, p_id_t));
+extern VOID changewsize __P_((int, int));
+extern VOID insertwin __P_((int, int));
+extern VOID deletewin __P_((int, int));
+# ifndef	_NOKANJICONV
+extern VOID changekcode __P_((VOID_A));
+# endif
+extern int frontend __P_((VOID_A));
+#endif	/* !_NOPTY */
+
+/* backend.c */
+#ifndef	_NOPTY
+extern VOID resetptyterm __P_((int, int));
+extern int backend __P_((VOID_A));
+#endif
 
 /* libc.c */
 extern int stat2 __P_((char *, struct stat *));

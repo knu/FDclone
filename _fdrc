@@ -178,6 +178,19 @@
 #	>= 1: not use
 #DUMBSHELL=0
 
+# whether if use pseudo terminal
+#	0: not use (Default)
+#	>= 1: use
+#PTYMODE=0
+
+# value of the environ variable "TERM" for pseudo terminal
+#	Default: "vt100"
+#PTYTERM="vt100"
+
+# key to open pseudo terminal menu
+#	Default: none
+#PTYMENUKEY=""
+
 # whether if hold the UNICODE translation table on memory
 #	0: not hold (Default)
 #	>= 1: hold
@@ -197,6 +210,22 @@
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 #	eng, ENG, C: English
 #LANGUAGE=""
+
+# system default Kanji code
+#	Default: No convert
+#	euc, EUC: EUC-JP
+#	sjis, SJIS: Shift JIS
+#	jis, JIS: 7bits JIS
+#	jis8, JIS8: 8bits JIS
+#	junet, JUNET: ISO-2022-JP
+#	ojis, OJIS: old 7bits JIS
+#	ojis8, OJIS8: old 8bits JIS
+#	ojunet, OJUNET: old ISO-2022-JP
+#	hex, HEX: HEX
+#	cap, CAP: CAP
+#	utf8, UTF8: UTF-8
+#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#DEFKCODE=""
 
 # Kanji code to be inputted
 #	Default: No convert

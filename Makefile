@@ -104,7 +104,7 @@ config.h: config.hin
 	cp config.hin config.h
 
 install catman catman-b compman compman-b \
-ecatman ecatman-b ecompman ecompman-b: Makefile.tmp
+jcatman jcatman-b jcompman jcompman-b: Makefile.tmp
 	$(MAKE) BUILD=$(BUILD) -f Makefile.tmp $@
 
 sh bsh \

@@ -70,6 +70,10 @@ extern char *deftmpdir;
 #if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
 extern char *unitblpath;
 #endif
+#ifndef	_NOPTY
+extern int ptymode;
+extern int parentfd;
+#endif	/* !_NOPTY */
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -132,10 +136,13 @@ static int xcpuerror __P_((VOID_A));
 static int xsizerror __P_((VOID_A));
 #endif
 static int NEAR minrow __P_((int));
+#ifndef	_NOEXTRAWIN
+static int NEAR biaswsize __P_((int, int));
+#endif
 #ifdef	SIGWINCH
 static int wintr __P_((VOID_A));
 #endif
-static VOID printtime __P_((int));
+static VOID NEAR printtime __P_((int));
 #ifdef	SIGALRM
 static int trapalrm __P_((VOID_A));
 #endif
@@ -235,11 +242,14 @@ char *s;
 # endif
 		prepareexit(0);
 #endif	/* !_NOORIGSHELL */
+#ifndef	_NOPTY
+		killallpty();
+#endif
 #ifdef	DEBUG
 # if	!MSDOS
 		freeterment();
 # endif
-		VOID_C closetty();
+		closetty(&ttyio, &ttyout);
 		muntrace();
 #endif	/* DEBUG */
 	}
@@ -266,11 +276,14 @@ int sig;
 # endif
 		prepareexit(0);
 #endif	/* !_NOORIGSHELL */
+#ifndef	_NOPTY
+		killallpty();
+#endif
 #ifdef	DEBUG
 # if	!MSDOS
 		freeterment();
 # endif
-		VOID_C closetty();
+		closetty(&ttyio, &ttyout);
 		muntrace();
 #endif	/* DEBUG */
 	}
@@ -467,6 +480,20 @@ static int xsizerror(VOID_A)
 }
 #endif
 
+VOID setlinecol(VOID_A)
+{
+	char buf[MAXLONGWIDTH + 1];
+
+	if (getconstvar("LINES")) {
+		snprintf2(buf, sizeof(buf), "%d", n_line);
+		setenv2("LINES", buf, 1);
+	}
+	if (getconstvar("COLUMNS")) {
+		snprintf2(buf, sizeof(buf), "%d", n_column);
+		setenv2("COLUMNS", buf, 1);
+	}
+}
+
 static int NEAR minrow(n)
 int n;
 {
@@ -482,6 +509,24 @@ int n;
 	return(WFILEMIN);
 }
 
+#ifndef	_NOEXTRAWIN
+static int NEAR biaswsize(n, max)
+int n, max;
+{
+	int i, row, min;
+
+	for (i = row = 0; i < n; i++) row += winvar[i].v_fileperrow + 1;
+	min = minrow(n);
+	if (max - row < min) {
+		winvar[n].v_fileperrow = min;
+		return(max - min);
+	}
+	winvar[n].v_fileperrow = max - row;
+
+	return(0);
+}
+#endif	/* !_NOEXTRAWIN */
+
 VOID checkscreen(xmax, ymax)
 int xmax, ymax;
 {
@@ -491,18 +536,27 @@ int xmax, ymax;
 #ifdef	SIGWINCH
 	nowinch++;
 #endif
-	dupn_line = n_line;
+	dupn_line = -1;
+#ifndef	_NOPTY
+	if (parentfd >= 0) row = WFILEMIN;
+	else
+#endif
 	{
 		row = wheader + WFOOTER;
+#ifdef	_NOEXTRAWIN
 		row += (minrow(win) + 1) * windows;
+#else
+		for (i = 0; i < windows; i++) row += minrow(i) + 1;
+#endif
 		row--;
 	}
 
-	saveterm(ttyio, &tty, NULL);
+	savetermio(ttyio, &tty, NULL);
 	wastty = isttyiomode;
 	Xttyiomode(1);
 	dupdumbterm = dumbterm;
 	if (xmax < 0 || ymax < 0) {
+		dupn_line = n_line;
 		xmax = WCOLUMNMIN;
 		ymax = 0;
 		dumbterm = 1;
@@ -513,7 +567,7 @@ int xmax, ymax;
 			cp = NOROW_K;
 		}
 		if (!i) {
-			Xputterm(T_CLEAR);
+			Xputterms(T_CLEAR);
 			Xlocate(0, 0);
 			keyflush();
 		}
@@ -533,12 +587,21 @@ int xmax, ymax;
 		}
 	}
 	dumbterm = dupdumbterm;
-	loadterm(ttyio, tty, NULL);
+	loadtermio(ttyio, tty, NULL);
 	isttyiomode = wastty;
 	if (tty) free(tty);
 
+	setlinecol();
 	if (n_line != dupn_line) {
+#ifdef	_NOEXTRAWIN
 		calcwin();
+#else
+		row = fileperrow(1);
+		for (i = windows - 1; i >= 0; i--) {
+			if (!(row = biaswsize(i, row))) break;
+			row--;
+		}
+#endif
 	}
 #ifdef	SIGWINCH
 	nowinch--;
@@ -550,6 +613,7 @@ VOID pollscreen(forced)
 int forced;
 {
 	static int winched = 0;
+	int x, y;
 
 	if (forced < 0) nowinch = winched = 0;
 	else if (nowinch) {
@@ -557,9 +621,11 @@ int forced;
 	}
 	else if (winched || forced) {
 		winched = 0;
+		x = n_column;
+		y = n_line;
 		checkscreen(-1, -1);
 		if (isorgpid()) {
-			rewritefile(1);
+			if (x != n_column || y != n_line) rewritefile(1);
 			if (subwindow) ungetch2(K_CTRL('L'));
 		}
 	}
@@ -579,7 +645,7 @@ static int wintr(VOID_A)
 }
 #endif	/* SIGWINCH */
 
-static VOID printtime(hide)
+static VOID NEAR printtime(hide)
 int hide;
 {
 	static time_t now;
@@ -592,6 +658,9 @@ int hide;
 		timersec = CLOCKUPDATE;
 	}
 	if (timersec-- < CLOCKUPDATE && !showsecond) return;
+#ifndef	_NOPTY
+	if (ptymode && hide <= 1) hide = 0;
+#endif
 	if (hide) return;
 
 #ifdef	DEBUG
@@ -1204,6 +1273,7 @@ char *argv[], *envp[];
 		errno = 0;
 		error(cp);
 	}
+	setlinecol();
 #ifndef	_NOCUSTOMIZE
 	saveorigenviron();
 #endif
@@ -1249,6 +1319,9 @@ char *argv[], *envp[];
 	killjob();
 # endif
 #endif	/* !_NOORIGSHELL */
+#ifndef	_NOPTY
+	killallpty();
+#endif
 	Xexit2(0);
 
 	return(0);

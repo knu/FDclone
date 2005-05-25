@@ -41,6 +41,10 @@
 extern int Xstat __P_((char *, struct stat *));
 extern int Xlstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
+# ifndef	_NOPTY
+#include "termemu.h"
+extern VOID sendparent __P_((int, ...));
+# endif
 #else	/* !FD */
 extern int ttyio;
 extern FILE *ttyout;
@@ -482,6 +486,9 @@ char *ident, *comm;
 
 	shellalias[i].ident = ident;
 	shellalias[i].comm = comm;
+# if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_ADDALIAS, ident, comm);
+# endif
 
 	return(0);
 }
@@ -509,6 +516,9 @@ char *ident;
 	}
 	if (re) regexp_free(re);
 	if (!n) return(-1);
+# if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_DELETEALIAS, ident);
+# endif
 
 	return(0);
 }

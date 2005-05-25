@@ -184,12 +184,14 @@ extern int freekeyseq __P_((keyseq_t *));
 #endif
 extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
+extern int putterm __P_((int));
 extern int putch2 __P_((int));
 extern int cputs2 __P_((char *));
-extern int putterm __P_((int));
 #if	MSDOS
+#define	tputs2(s,n)	cputs2(s)
 #define	putterms	putterm
 #else
+extern int tputs2 __P_((char *, int));
 extern int putterms __P_((int));
 #endif
 extern int kbhit2 __P_((long));
@@ -233,4 +235,4 @@ extern int movecursor __P_((int, int, int));
 #define	ANSI_NORMAL	30
 #define	ANSI_REVERSE	40
 
-#endif	/* __TERM_H_ */
+#endif	/* !__TERM_H_ */

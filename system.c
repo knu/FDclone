@@ -101,6 +101,7 @@
 #include "term.h"
 extern VOID calcwin __P_((VOID_A));
 extern VOID main_fd __P_((char **));
+extern VOID setlinecol __P_((VOID_A));
 extern VOID checkscreen __P_((int, int));
 # ifdef	SIGWINCH
 extern VOID pollscreen __P_((int));
@@ -152,9 +153,12 @@ extern int nokanjifconv;
 # define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
 # endif
 extern char *deftmpdir;
-# define	Xttyiomode	ttyiomode
-# define	Xstdiomode	stdiomode
-# define	Xtermmode	termmode
+# ifndef	_NOPTY
+#include "termemu.h"
+extern VOID sendparent __P_((int, ...));
+extern char *ptyterm;
+extern int parentfd;
+# endif
 #else	/* !FD */
 # ifdef	__TURBOC__
 extern unsigned _stklen = 0x8000;
@@ -346,7 +350,7 @@ extern VOID replacemailpath __P_((char *, int));
 extern VOID checkmail __P_((int));
 # endif
 # ifndef	NOALIAS
-extern VOID NEAR freealias __P_((shaliastable *));
+extern VOID freealias __P_((shaliastable *));
 extern int checkalias __P_((syntaxtree *, char *, int, int));
 # endif
 # ifndef	NOJOB
@@ -2389,7 +2393,7 @@ int n;
 # if	!MSDOS && defined (FD)
 		freeterment();
 # endif
-		VOID_C closetty();
+		closetty(&ttyio, &ttyout);
 		muntrace();
 	}
 #endif	/* DEBUG */
@@ -2683,7 +2687,7 @@ p_id_t ppid;
 	p_id_t pid;
 	int i, stop;
 
-	if ((pid = fork()) < (p_id_t)0) return((p_id_t)-1);
+	if ((pid = Xfork()) < (p_id_t)0) return((p_id_t)-1);
 # ifdef	DEBUG
 	if (!pid) {
 		extern VOID (*__free_hook) __P_((VOID_P));
@@ -2832,7 +2836,7 @@ syntaxtree *trp;
 #  endif	/* USESGTTY */
 		if (interactive && !nottyout) {
 #  ifdef	FD
-			Xstdiomode();
+			stdiomode();
 #  endif
 			dispjob(lastjob, stderr);
 		}
@@ -2950,6 +2954,9 @@ int n, val;
 		}
 	}
 #endif	/* FD && !_NOEDITMODE */
+#if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_SETSHFLAG, n, val);
+#endif
 }
 
 static int NEAR getoption(argc, argv, isopt)
@@ -4386,6 +4393,9 @@ int len;
 	if (_putshellvar(s, len) < 0) return(-1);
 	exportlist = expandvar(exportlist, s, len);
 	exportvar = putvar(exportvar, strdup2(s), len);
+#if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_PUTEXPORTVAR, s, len);
+#endif
 
 	return(0);
 }
@@ -4405,6 +4415,9 @@ int len;
 	if (_putshellvar(s, len) < 0) return(-1);
 	if (searchvar(exportlist, s, len, '\0') >= 0)
 		exportvar = putvar(exportvar, strdup2(s), len);
+#if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_PUTSHELLVAR, s, len);
+#endif
 
 	return(0);
 }
@@ -4455,6 +4468,9 @@ int len;
 			exportlist[i] = exportlist[i + 1];
 		exportlist[i] = NULL;
 	}
+#if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_UNSET, ident, len);
+#endif
 
 	return(0);
 }
@@ -6107,7 +6123,22 @@ static VOID NEAR Xexecve(path, argv, envp)
 char *path, *argv[], *envp[];
 #endif
 {
+#if	defined (FD) && !defined (_NOPTY)
+	char *cp;
+	int len;
+#endif
 	int fd, ret;
+
+#if	defined (FD) && !defined (_NOPTY)
+	if (parentfd >= 0 && ptyterm && *ptyterm) {
+		len = sizeof("TERM") - 1;
+		cp = malloc2(len + strlen(ptyterm) + 2);
+		memcpy(cp, "TERM", len);
+		cp[len] = '=';
+		strcpy(&(cp[len + 1]), ptyterm);
+		envp = putvar(envp, cp, len);
+	}
+#endif	/* FD && !_NOPTY */
 
 	execve(path, argv, envp);
 	if (errno != ENOEXEC) {
@@ -8005,6 +8036,9 @@ syntaxtree *trp;
 	for (i = 1; n < argc; i++, n++) argvar[i] = strdup2(argv[n]);
 	argvar[i] = NULL;
 	freevar(var);
+#if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_SETVAR, &argvar, argvar);
+#endif
 
 	return(RET_SUCCESS);
 }
@@ -8308,6 +8342,9 @@ syntaxtree *trp;
 			ret = RET_FAIL;
 			ERRBREAK;
 		}
+#if	defined (FD) && !defined (_NOPTY)
+		sendparent(TE_SETEXPORT, argv[n]);
+#endif
 	}
 
 	return(ret);
@@ -8334,6 +8371,9 @@ syntaxtree *trp;
 			ret = RET_FAIL;
 			ERRBREAK;
 		}
+#if	defined (FD) && !defined (_NOPTY)
+		sendparent(TE_SETRONLY, argv[n]);
+#endif
 	}
 
 	return(ret);
@@ -9008,6 +9048,9 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		free(dirstack[0]);
+# if	defined (FD) && !defined (_NOPTY)
+		sendparent(TE_POPVAR, &dirstack);
+# endif
 	}
 	else {
 		if (chdir3((trp -> comm) -> argv[1], 0) < 0) {
@@ -9023,6 +9066,9 @@ syntaxtree *trp;
 	}
 	dirstack[0] = strdup2(path);
 	dodirs(trp);
+# if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_PUSHVAR, &dirstack, path);
+# endif
 
 	return(RET_SUCCESS);
 }
@@ -9049,6 +9095,9 @@ syntaxtree *trp;
 	memmove((char *)&(dirstack[0]), (char *)&(dirstack[1]),
 		i * sizeof(char *));
 	dodirs(trp);
+# if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_POPVAR, &dirstack);
+# endif
 
 	return(RET_SUCCESS);
 }
@@ -9170,13 +9219,13 @@ syntaxtree *trp;
 	}
 	else {
 		n = sigvecset(1);
-		Xttyiomode(0);
-		mode = Xtermmode(1);
+		ttyiomode(0);
+		mode = termmode(1);
 		shellmode = 0;
 		main_fd(&((trp -> comm) -> argv[1]));
 		shellmode = 1;
-		Xtermmode(mode);
-		Xstdiomode();
+		termmode(mode);
+		stdiomode();
 		sigvecset(n);
 	}
 
@@ -9370,6 +9419,12 @@ syntaxtree *trp;
 #endif
 	functr -> flags |= ST_TOP;
 	setshfunc(ident, functr);
+#if	defined (FD) && !defined (_NOPTY)
+	if (parentfd >= 0 && mypid == shellpid) {
+		sendparent(TE_ADDFUNCTION, ident, functr);
+		nownstree(functr);
+	}
+#endif
 
 	return(RET_SUCCESS);
 }
@@ -9394,6 +9449,9 @@ int len;
 		shellfunc[i].func = shellfunc[i + 1].func;
 	}
 	shellfunc[i].ident = NULL;
+#if	defined (FD) && !defined (_NOPTY)
+	sendparent(TE_DELETEFUNCTION, ident, len);
+#endif
 
 	return(0);
 }
@@ -10824,9 +10882,9 @@ int pseudoexit;
 				buf = readline(definput);
 			}
 			else {
-				Xttyiomode(1);
+				ttyiomode(1);
 				buf = inputshellstr(ps, -1, NULL);
-				Xstdiomode();
+				stdiomode();
 				if (!buf) continue;
 				if (buf == (char *)-1) {
 					buf = NULL;
@@ -10900,8 +10958,7 @@ char *argv[], *envp[];
 # if	MSDOS
 		inittty(1);
 # endif
-		getwsize(0, 0);
-		calcwin();
+		checkscreen(0, 0);
 	}
 # ifndef	_NOCUSTOMIZE
 	saveorigenviron();

@@ -213,6 +213,10 @@ USETERMIOS
 	構造体を用います。
 HAVECLINE
 	構造体 termios がメンバ c_line を持ちます。
+USEDEVPTMX
+	擬似端末用デバイスとして /dev/ptmx と /dev/pts/? を
+	用います。未定義の場合は /dev/ptyXX と /dev/ttyXX を
+	用います。
 USEDIRECT
 	構造体 dirent の代わりに direct を用います。
 SYSVDIRENT
@@ -898,6 +902,8 @@ NWS-3400:
 	_NOEXTRAMACRO	%T, %M マクロがステートメント中で使用不能
 	_NOTRADLAYOUT	オリジナル版『ＦＤ』準拠の画面レイアウトが使用不能
 	_NODOSCOMMAND	UNIX 版で COMMAND.COM 内蔵コマンドが使用不能
+	_NOEXTRAWIN	各分割ウィンドウのサイズが変更不能
+	_NOPTY		疑似端末機能が仕様不能
 
 　config.hin を編集してこれらの識別子の定義を追加しておけば、
 機能を縮小してサイズを小さくしたり、エンドユーザに使用させた

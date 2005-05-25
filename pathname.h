@@ -294,4 +294,4 @@ extern char *(*posixsubstfunc)__P_((char *, int *));
 extern int pathignorecase;
 #endif
 
-#endif	/* __PATHNAME_H_ */
+#endif	/* !__PATHNAME_H_ */

@@ -50,6 +50,9 @@ extern char *mesconv __P_((char *, char *));
 #define	HOMOK_K	mesconv("現在このディレクトリを他のユーザが利用していないことを確認しましたか ?", "Are you the only user on this directory, now ?")
 #define	NOWRT_K	mesconv("カレントディレクトリは書込みできません.", "Current directory unwritable.")
 #define	NOROW_K	mesconv("画面の行数が足りません.", "Line size is too small for operation.")
+#define	NOWIN_K	mesconv("これ以上ウィンドウ分割できません.", "No more window to be split.")
+#define	KILL_K	mesconv("稼働中のプログラムがありますが強制終了させますか ?", "Are you sure that running programs will be terminated forcedly ?")
+#define	NOPTY_K	mesconv("擬似端末起動に失敗しました.", "Failed to open the pseudo terminal.")
 #define	QUIT_K	mesconv("FD を終了しますか ?", "Quit from FD ?")
 #define	QYES_K	mesconv("Y: 終了", "Yes")
 #define	QNO_K	mesconv("N: 中止", "No")
@@ -117,6 +120,11 @@ extern char *mesconv __P_((char *, char *));
 #define	SEAB_K	mesconv("I-後方検索:", "I-search backward:")
 #define	SEAFF_K	mesconv("I-検索(失敗):", "Failing I-search:")
 #define	SEABF_K	mesconv("I-後方検索(失敗):", "Failing I-search backward:")
+#define	PTYAI_K	mesconv("S: この文字(%s)を送出", "SendAsIs(%s)")
+#define	PTYIC_K	mesconv("I: 文字コード入力", "InputCode")
+#define	PTYBR_K	mesconv("B: 強制終了", "Break")
+#define	PTYNW_K	mesconv("N: ウィンドウ移動", "NextWindow")
+#define	PTYKC_K	mesconv("キーコード:", "Key code:")
 
 #define	CUP_H	meslist("カーソルを上に", "Cursor up")
 #define	CDWN_H	meslist("カーソルを下に", "Cursor down")
@@ -177,6 +185,9 @@ extern char *mesconv __P_((char *, char *));
 #define	SEAB_H	meslist("FILE名の後方検索", "Search backward")
 #define	SPWN_H	meslist("WINDOWの分割", "Split windows")
 #define	NXWN_H	meslist("WINDOW間の移動", "Next window")
+#define	WDWN_H	meslist("WINDOWの拡張", "Widen window")
+#define	NRWN_H	meslist("WINDOWの縮小", "Narrow window")
+#define	KLWN_H	meslist("WINDOWの破棄", "Kill window")
 #define	HELP_H	meslist("HELP画面の表示", "Show help")
 #define	EDCF_H	meslist("カスタマイザ", "Customizer")
 #define	QUIT_H	meslist("FDの終了", "Quit FD")
@@ -278,12 +289,24 @@ extern char *mesconv __P_((char *, char *));
 #define	DMSHL_E \
 	meslist("内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
 		"Don't use control sequences to edit command line in the internal shell mode.")
+#define	PTYMD_E \
+	meslist("コマンド実行時に擬似端末を使用します.", \
+		"Use the pseudo terminal to execute commands.")
+#define	PTYTM_E \
+	meslist("擬似端末用に子プロセスに渡す環境変数 TERM の値を指定します.", \
+		"Define the environment variavle TERM exported for pseudo terminal.")
+#define	PTYKY_E \
+	meslist("擬似端末メニューの起動キーを指定します.", \
+		"Define the start key for pseudo terminal menu.")
 #define	UNBF_E \
 	meslist("UNICODE の変換テーブルをオンメモリで持ち続けます.", \
 		"Hold the UNICODE translation table on memory.")
 #define	LANG_E \
 	meslist("表示する文字の漢字コードまたは言語を設定します.", \
 		"Set the language code to display.")
+#define	DFKC_E \
+	meslist("システム標準の漢字コードを設定します.", \
+		"Set the system default Kanji code.")
 #define	IPKC_E \
 	meslist("キーボード入力文字の漢字コードを設定します.", \
 		"Set the Kanji code to be inputted.")

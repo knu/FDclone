@@ -16,6 +16,10 @@ extern char *shortname __P_((char *, char *));
 #include "system.h"
 #endif
 
+#ifndef	_NOPTY
+#include "termemu.h"
+#endif
+
 extern int mark;
 extern off_t marksize;
 extern char fullpath[];
@@ -1594,6 +1598,9 @@ int uniq;
 	if (history[n][size]) free(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
 	history[n][0] = s;
+#ifndef	_NOPTY
+	sendparent(TE_SETHISTORY, n, s, uniq);
+#endif
 
 	return(1);
 }

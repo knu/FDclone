@@ -25,6 +25,10 @@ extern char *unixrealpath __P_((char *, char *));
 #include "system.h"
 #endif
 
+#ifndef	_NOPTY
+#include "termemu.h"
+#endif
+
 #ifdef	CYGWIN
 #include <sys/cygwin.h>
 #endif
@@ -347,6 +351,9 @@ char *path;
 	if (unixrealpath(fullpath, tmp)) strcpy(fullpath, tmp);
 #endif
 	entryhist(1, fullpath, 1);
+#ifndef	_NOPTY
+	sendparent(TE_CHDIR, fullpath);
+#endif
 
 	return(0);
 }
@@ -811,6 +818,9 @@ int export;
 #ifdef	_NOORIGSHELL
 	if (export) environ = _putenv2(cp, environ);
 	else environ2 = _putenv2(cp, environ2);
+# ifndef	_NOPTY
+	sendparent(TE_PUTSHELLVAR, name, value, export);
+# endif
 #else	/* !_NOORIGSHELL */
 	if (((export) ? putexportvar(cp, len) : putshellvar(cp, len)) < 0) {
 		free(cp);
@@ -906,7 +916,7 @@ char *command;
 	sigvecset(n);
 	if (fp) {
 		if (wasttyflags & F_TTYIOMODE) {
-			Xputterms(T_KEYPAD);
+			Xputterm(T_KEYPAD);
 			Xtflush();
 		}
 	}

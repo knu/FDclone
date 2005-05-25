@@ -105,8 +105,6 @@ typedef int	tputs_t;
 # include <term.h>
 # define	tgetnum2(s)		(s)
 # define	tgetflag2(s)		(s)
-# define	tgoto2(s, p1, p2)	tparm(s, p2, p1, \
-					0, 0, 0, 0, 0, 0, 0)
 # define	TERM_pc			pad_char
 # define	TERM_bc			NULL
 # define	TERM_co			columns
@@ -219,11 +217,9 @@ extern int tgetent __P_((char *, char *));
 extern int tgetnum __P_((char *));
 extern int tgetflag __P_((char *));
 extern char *tgetstr __P_((char *, char **));
-extern char *tgoto __P_((char *, int, int));
 extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # define	tgetnum2		tgetnum
 # define	tgetflag2		tgetflag
-# define	tgoto2			tgoto
 # define	TERM_pc			"pc"
 # define	TERM_bc			"bc"
 # define	TERM_co			"co"
@@ -477,7 +473,7 @@ static char *defkeyseq[K_MAX - K_MIN + 1] = {
 	"\033OA",		/* K_UP */
 	"\033OD",		/* K_LEFT */
 	"\033OC",		/* K_RIGHT */
-	"\033[4~",		/* K_HOME */
+	"\033[1~",		/* K_HOME */
 	"\b",			/* K_BS */
 	NULL,			/* K_F0 */
 	"\033[11~",		/* K_F(1) */
@@ -560,8 +556,8 @@ static char *defkeyseq[K_MAX - K_MIN + 1] = {
 	NULL,			/* K_EOL */
 	NULL,			/* K_ESF */
 	NULL,			/* K_ESR */
-	"\033[5~",		/* K_PPAGE */
 	"\033[6~",		/* K_NPAGE */
+	"\033[5~",		/* K_PPAGE */
 	NULL,			/* K_STAB */
 	NULL,			/* K_CTAB */
 	NULL,			/* K_CATAB */
@@ -582,7 +578,7 @@ static char *defkeyseq[K_MAX - K_MIN + 1] = {
 	NULL,			/* K_COMM */
 	NULL,			/* K_COPY */
 	NULL,			/* K_CREAT */
-	"\033[1~",		/* K_END */
+	"\033[4~",		/* K_END */
 	NULL,			/* K_EXIT */
 	NULL,			/* K_FIND */
 	NULL,			/* K_HELP */
@@ -613,8 +609,8 @@ static char *deftermstr[MAXTERMSTR] = {
 	"",			/* T_METAMODE */
 	"",			/* T_NOMETAMODE */
 #endif
-#if	MSDOS
 	"",			/* T_SCROLL */
+#if	MSDOS
 	"",			/* T_KEYPAD */
 	"",			/* T_NOKEYPAD */
 	"\033[>5l",		/* T_NORMALCURSOR */
@@ -623,11 +619,6 @@ static char *deftermstr[MAXTERMSTR] = {
 	"\033[s",		/* T_SETCURSOR */
 	"\033[u",		/* T_RESETCURSOR */
 #else	/* !MSDOS */
-# ifdef	USETERMINFO
-	"\033[%i%p1%d;%p2%dr",	/* T_SCROLL */
-# else
-	"\033[%i%d;%dr",	/* T_SCROLL */
-# endif
 # ifdef	BOW
 	/* hack for bowpad */
 	"",			/* T_KEYPAD */
@@ -666,7 +657,7 @@ static char *deftermstr[MAXTERMSTR] = {
 #if	MSDOS
 	"\033[%d;%dH",		/* C_LOCATE */
 #else
-# if	defined (LINUX) || defined (USETERMINFO)
+# ifdef	USETERMINFO
 	"\033[%i%p1%d;%p2%dH",	/* C_LOCATE */
 # else
 	"\033[%i%d;%dH",	/* C_LOCATE */
@@ -681,7 +672,7 @@ static char *deftermstr[MAXTERMSTR] = {
 	"\n",			/* C_DOWN */
 	"\033[C",		/* C_RIGHT */
 	"\b",			/* C_LEFT */
-#if	!MSDOS && defined (USETERMINFO)
+#ifdef	USETERMINFO
 	"\033[%p1%dA",		/* C_NUP */
 	"\033[%p1%dB",		/* C_NDOWN */
 	"\033[%p1%dC",		/* C_NRIGHT */
@@ -1113,7 +1104,7 @@ int isnl;
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	if (!dumbterm) {
-		putterms(T_KEYPAD);
+		putterm(T_KEYPAD);
 		tflush();
 	}
 	isttyiomode = isnl + 1;
@@ -1151,7 +1142,7 @@ int stdiomode(VOID_A)
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	if (!dumbterm) {
-		putterms(T_NOKEYPAD);
+		putterm(T_NOKEYPAD);
 		tflush();
 	}
 	isttyiomode = 0;
@@ -1167,8 +1158,10 @@ int init;
 
 	oldmode = mode;
 	if (init >= 0 && mode != init) {
-		putterms((init) ? T_INIT : T_END);
-		tflush();
+		if (!dumbterm) {
+			putterms((init) ? T_INIT : T_END);
+			tflush();
+		}
 		mode = init;
 	}
 
@@ -1320,7 +1313,7 @@ int *yp, *xp;
 # if	!MSDOS
 	if (!usegetcursor) return(-1);
 # endif
-	if (getxy(&x, &y) < 0) x = y = -1;
+	if (getxy(&x, &y) < 0) x = y = 0;
 # if	MSDOS
 	if ((cp = tparamstr(termstr[C_LOCATE], 0, 999))) {
 		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
@@ -1335,7 +1328,7 @@ int *yp, *xp;
 	tflush();
 # endif
 	i = getxy(xp, yp);
-	if (x >= 0 && y >= 0) locate(x, y);
+	if (x > 0 && y > 0) locate(--x, --y);
 
 	return(i);
 }
@@ -1343,10 +1336,7 @@ int *yp, *xp;
 int getxy(xp, yp)
 int *xp, *yp;
 {
-# if	!MSDOS
-	char *tty;
-# endif
-	char *format, buf[sizeof(SIZEFMT) + 4];
+	char *format, buf[sizeof(SIZEFMT) + 6];
 	int i, j, tmp, count, *val[2];
 
 	format = SIZEFMT;
@@ -1356,14 +1346,14 @@ int *xp, *yp;
 		bdos(0x06, GETSIZE[i], 0);
 # else
 	if (!usegetcursor) return(-1);
-	saveterm(ttyio, &tty, NULL);
-	noecho2();
-	write(ttyio, GETSIZE, sizeof(GETSIZE) - 1);
+	tputs2(GETSIZE, 1);
+	tflush();
 # endif
 
 	i = 0;
+	buf[i] = '\0';
 	do {
-		if (!kbhit2(WAITKEYPAD * 1000L)) break;
+		if (!kbhit2(WAITKEYPAD * 1000L * 2)) break;
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
@@ -1383,10 +1373,6 @@ int *xp, *yp;
 		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
 	}
 	keyflush();
-# if	!MSDOS
-	loadterm(ttyio, tty, NULL);
-	if (tty) free(tty);
-# endif
 	if (!i || buf[i] != format[sizeof(SIZEFMT) - 2]) return(-1);
 	buf[++i] = '\0';
 
@@ -1902,7 +1888,7 @@ char *s;
 	/* Hack for HP-UX 10.20 */
 	cp = NULL;
 	if (tgetstr2(&cp, TERM_AB) || tgetstr2(&cp, TERM_Sb)) {
-		if (termstr[T_FGCOLOR]) free(termstr[T_BGCOLOR]);
+		if (termstr[T_BGCOLOR]) free(termstr[T_BGCOLOR]);
 		termstr[T_BGCOLOR] = cp;
 	}
 # endif
@@ -2167,9 +2153,9 @@ keyseq_t *list;
 int initterm(VOID_A)
 {
 	if (!(termflags & F_TERMENT)) getterment(NULL);
+	termmode(1);
 	if (!dumbterm) {
-		putterms(T_KEYPAD);
-		termmode(1);
+		putterm(T_KEYPAD);
 		tflush();
 	}
 	termflags |= F_INITTERM;
@@ -2180,14 +2166,23 @@ int initterm(VOID_A)
 int endterm(VOID_A)
 {
 	if (!(termflags & F_INITTERM)) return(-1);
+	termmode(0);
 	if (!dumbterm) {
-		putterms(T_NOKEYPAD);
-		termmode(0);
+		putterm(T_NOKEYPAD);
 		tflush();
 	}
 	termflags &= ~F_INITTERM;
 
 	return(0);
+}
+
+int putterm(n)
+int n;
+{
+	if (n < 0 || n >= MAXTERMSTR) return(-1);
+	if (!termstr[n]) return(0);
+
+	return(tputs2(termstr[n], 1));
 }
 
 #if	MSDOS
@@ -2573,15 +2568,6 @@ char *s;
 }
 # endif	/* !USEVIDEOBIOS */
 
-int putterm(n)
-int n;
-{
-	if (n < 0 || n >= MAXTERMSTR) return(-1);
-	if (!termstr[n]) return(0);
-
-	return(cputs2(termstr[n]));
-}
-
 /*ARGSUSED*/
 int kbhit2(usec)
 long usec;
@@ -2601,9 +2587,9 @@ long usec;
 	if (nextchar) return(1);
 	reg.x.ax = 0x4406;
 	reg.x.bx = ttyio;
-	putterms(T_METAMODE);
+	putterm(T_METAMODE);
 	int86(0x21, &reg, &reg);
-	putterms(T_NOMETAMODE);
+	putterm(T_NOMETAMODE);
 
 	return((reg.x.flags & 1) ? 0 : reg.h.al);
 #else	/* !NOTUSEBIOS */
@@ -2690,16 +2676,16 @@ int getch2(VOID_A)
 		if (strchr(specialkey, key >> 8)) break;
 		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
 	}
-	putterms(T_METAMODE);
+	putterm(T_METAMODE);
 	ch = (bdos(0x07, 0x00, 0) & 0xff);
-	putterms(T_NOMETAMODE);
+	putterm(T_NOMETAMODE);
 	keybuftop = getkeybuf(KEYBUFWORKTOP);
 	if (!(key & 0xff)) {
 		while (kbhit2(1000000L / SENSEPERSEC)) {
 			if (keybuftop != getkeybuf(KEYBUFWORKTOP)) break;
-			putterms(T_METAMODE);
+			putterm(T_METAMODE);
 			bdos(0x07, 0x00, 0);
-			putterms(T_NOMETAMODE);
+			putterm(T_NOMETAMODE);
 		}
 		ch = '\0';
 		nextchar = (key >> 8);
@@ -2873,13 +2859,11 @@ tputs_t c;
 	return(fputc(c & 0x7f, ttyout));
 }
 
-int putterm(n)
+int tputs2(s, n)
+char *s;
 int n;
 {
-	if (n < 0 || n >= MAXTERMSTR) return(-1);
-	if (!termstr[n]) return(0);
-
-	return(tputs(termstr[n], 1, putch3));
+	return(tputs(s, n, putch3));
 }
 
 int putterms(n)
@@ -2888,7 +2872,7 @@ int n;
 	if (n < 0 || n >= MAXTERMSTR) return(-1);
 	if (!termstr[n]) return(0);
 
-	return(tputs(termstr[n], n_line, putch3));
+	return(tputs2(termstr[n], n_line));
 }
 
 int kbhit2(usec)
@@ -3047,10 +3031,12 @@ int s, e;
 {
 	char *cp;
 
-	if ((cp = tparamstr(termstr[T_SCROLL], s, e))) {
-		tputs(cp, n_line, putch3);
-		free(cp);
+	if (!(cp = tparamstr(termstr[T_SCROLL], s, e)) || !*cp) {
+		if (cp) free(cp);
+		return(-1);
 	}
+	tputs2(cp, 1);
+	free(cp);
 
 	return(0);
 }
@@ -3058,20 +3044,14 @@ int s, e;
 int locate(x, y)
 int x, y;
 {
-# ifdef	DEBUG
 	char *cp;
 
-	_mtrace_file = "tgoto(start)";
-	cp = tgoto2(termstr[C_LOCATE], x, y);
-	if (_mtrace_file) _mtrace_file = NULL;
-	else {
-		_mtrace_file = "tgoto(end)";
-		malloc(0);	/* dummy malloc */
+	if (!(cp = tparamstr(termstr[C_LOCATE], y, x)) || !*cp) {
+		if (cp) free(cp);
+		return(-1);
 	}
-	tputs(cp, n_line, putch3);
-# else
-	tputs(tgoto2(termstr[C_LOCATE], x, y), n_line, putch3);
-# endif
+	tputs2(cp, 1);
+	free(cp);
 
 	return(0);
 }
@@ -3116,10 +3096,10 @@ int xmax, ymax;
 
 	if (dumbterm) /*EMPTY*/;
 	else if (usegetcursor || x < 0 || y < 0) {
-		setscroll(-1, -1);
-		if (maxlocate(&ty, &tx) >= 0) {
-			x = tx;
-			y = ty;
+		VOID_C setscroll(-1, -1);
+		if (maxlocate(&ty, &tx) >= 0 && (tx > x || ty > y)) {
+			if (tx > x) x = tx;
+			if (ty > y) y = ty;
 			VOID_C setwsize(ttyio, x, y);
 		}
 	}
@@ -3135,7 +3115,7 @@ int xmax, ymax;
 	if (n_line <= 0 || (ymax > 0 && n_line < ymax))
 		return("Line size too small");
 
-	if (xmax > 0 && ymax > 0) setscroll(-1, n_line - 1);
+	if (xmax > 0 && ymax > 0) VOID_C setscroll(-1, -1);
 
 	return(NULL);
 }
@@ -3231,14 +3211,14 @@ int color, reverse;
 	}
 
 	if ((cp = tparamstr(termstr[T_FGCOLOR], fg, 0))) {
-		cputs2(cp);
+		tputs2(cp, 1);
 		free(cp);
 	}
 	else cprintf2("\033[%dm", fg + ANSI_NORMAL);
 
 	if (bg < 0) /*EMPTY*/;
 	else if ((cp = tparamstr(termstr[T_BGCOLOR], bg, 0))) {
-		cputs2(cp);
+		tputs2(cp, 1);
 		free(cp);
 	}
 	else cprintf2("\033[%dm", bg + ANSI_REVERSE);
@@ -3252,13 +3232,9 @@ int n1, n2, c;
 	char *cp;
 
 	if (n1 < 0 || !termstr[n1] || !(cp = tparamstr(termstr[n1], c, c)))
-		while (c--) putterm(n2);
+		while (c--) putterms(n2);
 	else {
-#if	MSDOS
-		cputs2(cp);
-#else
-		tputs(cp, 1, putch3);
-#endif
+		tputs2(cp, n_line);
 		free(cp);
 	}
 

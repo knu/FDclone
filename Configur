@@ -164,7 +164,7 @@ FORCEDSTDC STRICTSTDC NOSTDC NOCONST NOVOID NOLONGLONG HAVELONGLONG \
 NOUID_T USEPID_T DECLSIGLIST NOSIGLIST \
 DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
 USELEAPCNT USESELECTH USESYSDIRH USETIMEH USESTDARGH USEMKDEVH USEMKNODH \
-USETERMIO USETERMIOS HAVECLINE \
+USESGTTY USETERMIO USETERMIOS HAVECLINE USEDEVPTMX \
 USEDIRECT SYSVDIRENT NODNAMLEN NODRECLEN DNAMESIZE \
 HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
@@ -415,8 +415,10 @@ elif isexist "major(0)" sys/mkdev; then
 elif isexist "major(0)" sys/mknod; then
 	echo "#define	USEMKNODH"
 fi
-if noheader sgtty \
-|| inheader "TIOCFLUSH" sgtty "TIOCFLUSH"; then
+if useheader sgtty \
+&& noinheader "TIOCFLUSH" sgtty "TIOCFLUSH"; then
+	echo "#define	USESGTTY"
+else
 	if useheader termios; then
 		echo "#define	USETERMIOS"
 	else
@@ -425,6 +427,9 @@ if noheader sgtty \
 fi
 if isexist "t.c_line" "termios" "struct termios t;"; then
 	echo "#define	HAVECLINE"
+fi
+if [ -c /dev/ptmx -a -d /dev/pts ]; then
+	echo "#define	USEDEVPTMX"
 fi
 if useheader dirent; then
 	if isexist "d.d_ino" "sys/types dirent" "struct dirent d;" \
