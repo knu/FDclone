@@ -183,7 +183,7 @@ static int NEAR completefile __P_((char *, int, int, char ***,
 	char *, int, int));
 static int NEAR completeexe __P_((char *, int, int, char ***));
 #endif	/* !FDSH && !_NOCOMPLETE */
-static int NEAR addmeta __P_((char *, char *, int, int));
+static int NEAR addmeta __P_((char *, char *, int));
 static int NEAR skipvar __P_((char **, int *, int *, int));
 #ifdef	MINIMUMSHELL
 static int NEAR skipvarvalue __P_((char *, int *, char *, int, int));
@@ -2154,39 +2154,26 @@ char **argv;
 }
 #endif	/* !FDSH && !_NOCOMPLETE */
 
-static int NEAR addmeta(s1, s2, quoted, flags)
+static int NEAR addmeta(s1, s2, quoted)
 char *s1, *s2;
-int quoted, flags;
+int quoted;
 {
-	int i, j;
+	int i, j, pc, quote;
 
 	if (!s2) return(0);
 	for (i = j = 0; s2[i]; i++, j++) {
-		if (s2[i] == '"') {
+		quote = quoted;
+		pc = parsechar(&(s2[i]), -1, '\0', EA_EOLMETA, &quote, NULL);
+		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_META) {
 			if (s1) s1[j] = PMETA;
 			j++;
 		}
-		else if (s2[i] == PMETA) {
-			if (s1) s1[j] = PMETA;
-			j++;
-			if (!(flags & EA_KEEPMETA) && s2[i + 1] == PMETA) i++;
-		}
-		else if (!quoted && s2[i] == '\'') {
-			if (s1) s1[j] = PMETA;
-			j++;
-		}
-		else if (iskanji1(s2, i)) {
+		else if (pc == PC_WORD) {
 			if (s1) s1[j] = s2[i];
 			j++;
 			i++;
 		}
-#ifdef	CODEEUC
-		else if (isekana(s2, i)) {
-			if (s1) s1[j] = s2[i];
-			j++;
-			i++;
-		}
-#endif
+
 		if (s1) s1[j] = s2[i];
 	}
 
@@ -2273,21 +2260,17 @@ int len, spc, flags, *qp, *pqp;
 #ifdef	CODEEUC
 	else if (isekana(s, 0)) return(PC_WORD);
 #endif
-#ifdef	NESTINGQUOTE
-	else if (*qp == '`') return(PC_BQUOTE);
-#endif
 	else if (*qp == '\'') return(PC_SQUOTE);
-	else if (spc && *s == spc) return(*s);
 	else if (ismeta(s, 0, *qp, len, flags)) return(PC_META);
+	else if (*qp == '`') return(PC_BQUOTE);
 #ifdef	NESTINGQUOTE
 	else if ((flags & EA_BACKQ) && *s == '`') {
 		if (pqp && *qp) *pqp = *qp;
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
-#else
-	else if (*qp == '`') return(PC_BQUOTE);
 #endif
+	else if (spc && *s == spc) return(*s);
 	else if (*qp) return(PC_DQUOTE);
 	else if (!(flags & EA_NOEVALQ) && *s == '\'') {
 		*qp = *s;
@@ -2587,20 +2570,18 @@ int plen, *modep;
 #endif
 
 			for (i = j = 0; arglist[i + 1]; i++)
-				j += addmeta(NULL,
-					arglist[i + 1], quoted, EA_KEEPMETA);
+				j += addmeta(NULL, arglist[i + 1], quoted);
 			if (i <= 0) cp = strdup2("");
 			else {
 				j += (i - 1) * 3;
 				cp = malloc2(j + 1);
-				j = addmeta(cp, arglist[1],
-					quoted, EA_KEEPMETA);
+				j = addmeta(cp, arglist[1], quoted);
 				for (i = 2; arglist[i]; i++) {
 					cp[j++] = quoted;
 					cp[j++] = sp;
 					cp[j++] = quoted;
 					j += addmeta(&(cp[j]), arglist[i],
-						quoted, EA_KEEPMETA);
+						quoted);
 				}
 				cp[j] = '\0';
 			}
@@ -2845,9 +2826,9 @@ int quoted;
 	}
 
 	if (!mode && (c != '@' || !quoted)) {
-		vlen = addmeta(NULL, cp, quoted, EA_KEEPMETA);
+		vlen = addmeta(NULL, cp, quoted);
 		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
-		addmeta(&((*bufp)[ptr]), cp, quoted, EA_KEEPMETA);
+		addmeta(&((*bufp)[ptr]), cp, quoted);
 	}
 	else if (!cp) vlen = 0;
 	else if (c == '@' && !*cp && quoted
@@ -3025,12 +3006,12 @@ int rest;
 	char *tmp;
 	int len, size;
 
-	stripquote(bbuf, 0);
+	stripquote(bbuf, EA_BACKQ);
 	if (!(tmp = (*backquotefunc)(bbuf))) return(buf);
-	len = addmeta(NULL, tmp, '\0', 0);
+	len = addmeta(NULL, tmp, '\0');
 	size = *ptrp + len + rest + 1;
 	buf = realloc2(buf, size);
-	addmeta(&(buf[*ptrp]), tmp, '\0', 0);
+	addmeta(&(buf[*ptrp]), tmp, '\0');
 	*ptrp += len;
 	free(tmp);
 
@@ -3222,7 +3203,7 @@ int qed, flags;
 # else
 			else if (cp[1] == '$' || cp[1] == '~') cp++;
 # endif
-#endif
+#endif	/* FAKEMETA */
 			else if ((i = evalvar(&buf, i, &cp, tmpq)) < 0) {
 				if (bbuf) free(bbuf);
 				free(buf);
@@ -3232,14 +3213,22 @@ int qed, flags;
 		}
 		else if (pc == PC_META) {
 			cp++;
-			if (flags & EA_KEEPMETA) buf[i++] = PMETA;
+			if (flags & EA_KEEPMETA) pc = PC_NORMAL;
 			else if (*cp == '$') /*EMPTY*/;
 			else if ((flags & EA_BACKQ) && *cp == '`') /*EMPTY*/;
 			else if ((flags & EA_STRIPQ)
 			&& (*cp == '\'' || *cp == '"'))
 				/*EMPTY*/;
-			else buf[i++] = PMETA;
-			buf[i++] = *cp;
+			else pc = PC_NORMAL;
+
+			if (q == '`') {
+				bbuf[j++] = PMETA;
+				bbuf[j++] = *cp;
+			}
+			else {
+				if (pc != PC_META) buf[i++] = PMETA;
+				buf[i++] = *cp;
+			}
 		}
 		else if (pc == PC_OPQUOTE) {
 			if (*cp == '`') j = 0;
@@ -3365,17 +3354,18 @@ int flags;
 	for (i = j = 0, quote = '\0'; arg[i]; i++) {
 		pc = parsechar(&(arg[i]), -1, '\0', 0, &quote, NULL);
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) {
-			stripped = 1;
+			stripped++;
 			if (flags & EA_STRIPQ) continue;
 		}
 		else if (pc == PC_WORD) arg[j++] = arg[i++];
 		else if (pc == PC_META) {
-			stripped = 1;
-			if ((flags & EA_KEEPMETA)
-			|| quote == '\''
-			|| (quote == '"' && !strchr(DQ_METACHAR, arg[i + 1])))
-				arg[j++] = arg[i];
 			i++;
+			if (flags & EA_KEEPMETA) pc = PC_NORMAL;
+			else if (!quote && !(flags & EA_BACKQ)) /*EMPTY*/;
+			else if (!strchr(DQ_METACHAR, arg[i])) pc = PC_NORMAL;
+
+			if (pc != PC_META) arg[j++] = PMETA;
+			else stripped++;
 		}
 
 		arg[j++] = arg[i];
@@ -3434,8 +3424,7 @@ int flags;
 		else if (pc == PC_META) {
 			i++;
 			if ((flags & EA_KEEPMETA)
-			|| quote == '\''
-			|| (quote == '"' && !strchr(DQ_METACHAR, cp[i])))
+			|| (quote && !strchr(DQ_METACHAR, cp[i])))
 				tmp[j++] = PMETA;
 		}
 		else if (pc == PC_OPQUOTE) {

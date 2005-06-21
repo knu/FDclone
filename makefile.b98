@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERSION	= 2
-VER	= 2.07
+VER	= 2.07a
 PREFIX	= 
 CONFDIR	= 
 BUILD	=

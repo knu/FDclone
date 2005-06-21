@@ -346,7 +346,8 @@ FILE **fpp;
 	if (*fdp >= 0) fd = *fdp;
 	else if ((fd = newdup(open(_PATH_TTY, flags, 0600))) < 0) return(-1);
 	if (*fpp) fp = *fpp;
-	else if (!(fp = fdopen(fd, "w+b"))) return(-1);
+	else if (!(fp = fdopen(fd, "w+b")) && !(fp = fopen(_PATH_TTY, "w+b")))
+		return(-1);
 
 	*fdp = fd;
 	*fpp = fp;

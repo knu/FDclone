@@ -4009,7 +4009,8 @@ redirectlist *rp;
 		closeonexec(rp -> new);
 #endif
 
-	if ((rp -> old = newdup(Xdup(rp -> fd))) < 0) return(rp);
+	if (isvalidfd(rp -> fd) < 0) rp -> old = -1;
+	else if ((rp -> old = newdup(Xdup(rp -> fd))) < 0) return(rp);
 #if	!MSDOS
 	else if (rp -> old != STDIN_FILENO
 	&& rp -> old != STDOUT_FILENO
@@ -4704,7 +4705,7 @@ syntaxtree *trp;
 {
 	int id;
 
-	if (!trp || !isstatement(trp -> comm)
+	if (!trp || (trp -> flags & ST_NODE) || !isstatement(trp -> comm)
 	|| (id = (trp -> comm) -> id) <= 0 || id > STATEMENTSIZ)
 		return(-1);
 
@@ -5688,9 +5689,6 @@ int quiet;
 
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_SQUOTE)
 			rp -> filename[j++] = s[i];
-#ifdef	NESTINGQUOTE
-		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
-#endif
 		else if (pc == PC_WORD) {
 			rp -> filename[j++] = s[i++];
 			rp -> filename[j++] = s[i];
@@ -5743,10 +5741,9 @@ int quiet;
 	/* bash treats any meta character in ${} as just a character */
 		else if ((trp -> cont & CN_SBST) == CN_VAR)
 			rp -> filename[j++] = s[i];
-#else
-		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
 #endif
-		else if (pc == PC_DQUOTE) rp -> filename[j++] = s[i];
+		else if (pc == PC_DQUOTE || pc == PC_BQUOTE)
+			rp -> filename[j++] = s[i];
 #ifndef	MINIMUMSHELL
 # ifdef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
@@ -5914,6 +5911,7 @@ int quiet;
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
 	else if (trp -> cont & CN_SBST) {
 		red.filename[i++] = '\n';
+		red.filename[i] = '\0';
 		trp = addvar(trp, NULL, NULL, red.filename, &i, 0);
 	}
 #endif
@@ -8860,11 +8858,13 @@ syntaxtree *trp;
 	ret = RET_SUCCESS;
 #endif
 	for (i = 1; i < (trp -> comm) -> argc; i++) {
-		if (typeone((trp -> comm) -> argv[i], stdout) >= 0) {
+		if (typeone((trp -> comm) -> argv[i], stdout) >= 0)
 #ifdef	BASHSTYLE
 			ret = RET_SUCCESS;
+#else
+			/*EMPTY*/;
+		else ret = RET_FAIL;
 #endif
-		}
 	}
 
 	return(ret);
@@ -9287,6 +9287,13 @@ int lvl;
 	redirectlist *rp;
 	int i, id;
 
+	if (!trp) {
+		printindent(lvl, stdout);
+		fputs("(null):", stdout);
+		fputnl(stdout);
+		return;
+	}
+
 	if (trp -> flags & ST_NODE) {
 		printindent(lvl, stdout);
 		fputs("node:\n", stdout);
@@ -9310,7 +9317,9 @@ int lvl;
 			show_stree(statementbody(trp), lvl + 1);
 		}
 		else for (i = 0; i <= (trp -> comm) -> argc; i++) {
-			if (!((trp -> comm) -> argv[i])) fputs("NULL", stdout);
+			if (!((trp -> comm) -> argv)
+			|| !((trp -> comm) -> argv[i]))
+				fputs("NULL", stdout);
 			else if (!i && isbuiltin(trp -> comm))
 				argfputs((trp -> comm) -> argv[i], stdout);
 			else fprintf2(stdout, "\"%a\"",

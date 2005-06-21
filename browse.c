@@ -1175,12 +1175,14 @@ char *def;
 			if (custno >= 0) rewritecust();
 			else
 # endif
-			if (filelist && filepos < maxfile)
+			if (filelist
+			&& (filepos < maxfile || (!filepos && !maxfile)))
 				n = listupfile(filelist, maxfile, def, 1);
 			x = win_x;
 			y = win_y;
 		}
-		else if (filelist && filepos < maxfile)
+		else if (filelist
+		&& (filepos < maxfile || (!filepos && !maxfile)))
 			listupfile(filelist, maxfile,
 				filelist[filepos].name, 0);
 	}

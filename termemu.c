@@ -87,7 +87,7 @@ int n, c, x, y, min, max;
 
 	if (Xsetscroll(min, max) >= 0) {
 		doscroll(n, c, x, y);
-		Xsetscroll(-1, -1);
+		Xsetscroll(0, n_line - 1);
 		Xlocate(x, y);
 		return;
 	}
@@ -761,7 +761,14 @@ int flags;
 		emupid = (p_id_t)0;
 		safeclose(emufd);
 		emufd = -1;
-		dup2(STDIN_FILENO, ttyio);
+		if (fileno(ttyout) == ttyio) dup2(STDIN_FILENO, ttyio);
+		else {
+			fd = fileno(ttyout);
+			closetty(&fd, &ttyout);
+			opentty(&fd, &ttyout);
+			dup2(fd, ttyio);
+			safeclose(fd);
+		}
 		maxfile = -1;
 
 		setdefterment();
