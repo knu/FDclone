@@ -2,7 +2,7 @@
 #	Makefile for fd
 #
 
-VERSION	= 2
+VERMAJ	= 2
 PREFIX	= /usr/local
 CONFDIR	= /etc
 BUILD	=
@@ -12,15 +12,9 @@ CC	= cc
 HOSTCC	= $(CC)
 SED	= sed
 
-GETVER	= HEAD="`tail -1 version.h`"; \
-	VER=`expr "$$HEAD" : '.*\([0-9][0-9]*\.[0-9a-z\-]*\).*'`
-GETDIST	= HEAD=`tail -2 version.h | head -1`; \
-	DIST=`expr "$$HEAD" : '.*"\(.*\)".*'`
-DEFCFLAGS = -DVER='"'$$VER'"' \
-	-DDIST='"'$$DIST'"' \
-	-DFD=$(VERSION) \
-	-DPREFIX='"'$(PREFIX)'"' \
+DEFCFLAGS = -DPREFIX='"'$(PREFIX)'"' \
 	-DCONFDIR='"'$(CONFDIR)'"' \
+	-DFD=$(VERMAJ) \
 	-DCCCOMMAND='"'$(CC)'"' \
 	-DHOSTCCCOMMAND='"'$(HOSTCC)'"'
 
@@ -37,68 +31,59 @@ Makefile.tmp: Makefile.in mkmf.sed
 	$(SED) -f mkmf.sed Makefile.in > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.gpc: Makefile.in mkmfdosg.sed
-	($(GETVER); \
+makefile.gpc: Makefile.in mkmfdosg.sed mkmf.sed
 	$(SED) -f mkmfdosg.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/DOSV/g" > $@) || \
+	$(SED) "s/__OSTYPE__/DOSV/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.g98: Makefile.in mkmfdosg.sed
-	($(GETVER); \
+makefile.g98: Makefile.in mkmfdosg.sed mkmf.sed
 	$(SED) -f mkmfdosg.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/PC98/g" > $@) || \
+	$(SED) "s/__OSTYPE__/PC98/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.dpc: Makefile.in mkmfdosd.sed
-	($(GETVER); \
+makefile.dpc: Makefile.in mkmfdosd.sed mkmf.sed
 	$(SED) -f mkmfdosd.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/DOSV/g" > $@) || \
+	$(SED) "s/__OSTYPE__/DOSV/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.d98: Makefile.in mkmfdosd.sed
-	($(GETVER); \
+makefile.d98: Makefile.in mkmfdosd.sed mkmf.sed
 	$(SED) -f mkmfdosd.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/PC98/g" > $@) || \
+	$(SED) "s/__OSTYPE__/PC98/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.lpc: Makefile.in mkmfdosl.sed
-	($(GETVER); \
+makefile.lpc: Makefile.in mkmfdosl.sed mkmf.sed
 	$(SED) -f mkmfdosl.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/DOSV/g" > $@) || \
+	$(SED) "s/__OSTYPE__/DOSV/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.l98: Makefile.in mkmfdosl.sed
-	($(GETVER); \
+makefile.l98: Makefile.in mkmfdosl.sed mkmf.sed
 	$(SED) -f mkmfdosl.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/PC98/g" > $@) || \
+	$(SED) "s/__OSTYPE__/PC98/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.bpc: Makefile.in mkmfdosb.sed
-	($(GETVER); \
+makefile.bpc: Makefile.in mkmfdosb.sed mkmf.sed
 	$(SED) -f mkmfdosb.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/DOSV/g" > $@) || \
+	$(SED) "s/__OSTYPE__/DOSV/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
-makefile.b98: Makefile.in mkmfdosb.sed
-	($(GETVER); \
+makefile.b98: Makefile.in mkmfdosb.sed mkmf.sed
 	$(SED) -f mkmfdosb.sed Makefile.in | \
-	$(SED) "s/__VER__/$$VER/g" | \
-	$(SED) "s/__OSTYPE__/PC98/g" > $@) || \
+	$(SED) "s/__OSTYPE__/PC98/g" | \
+	$(SED) -f mkmf.sed > $@ || \
 	(rm -f $@; exit 1)
 
 mkmf.sed: mkmfsed
 	./mkmfsed > mkmf.sed
 
 mkmfsed: mkmfsed.c fd.h machine.h config.h version.h
-	($(GETVER); \
-	$(HOSTCC) $(CFLAGS) $(CPPFLAGS) $(DEFCFLAGS) -o $@ mkmfsed.c)
+	$(HOSTCC) $(CFLAGS) $(CPPFLAGS) $(DEFCFLAGS) -o $@ mkmfsed.c
 
 config.h: config.hin
 	cp config.hin config.h

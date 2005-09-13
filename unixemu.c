@@ -4,6 +4,7 @@
  *	UNIX function emulation on DOS
  */
 
+#include <fcntl.h>
 #include "fd.h"
 #include "termio.h"
 #include "func.h"

@@ -6,7 +6,9 @@
 
 #define	__FD_PRIMAL__
 #include "fd.h"
+
 #include <sys/param.h>
+#include "version.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -34,12 +36,6 @@
 # endif
 #endif
 
-#ifndef	VER
-#define	VER		"0.00"
-#endif
-#ifndef	DIST
-#define	DIST		""
-#endif
 #ifndef	PREFIX
 #define	PREFIX		"/usr/local"
 #endif
@@ -56,19 +52,21 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {
-#ifdef	USEMANLANG
 	char *cp;
-#endif
+	int n;
 
-	printf("s:__VERSION__:%d:\n", FD);
+	printf("s:__VERMAJ__:%d:\n", FD);
 #if	FD >= 2
 	printf("s:__RCVERSION__:%d:\n", FD);
 #else
 	printf("s:__RCVERSION__::\n");
 #endif
-	printf("s:__VER__:%s:\n", VER);
-	if ((int)sizeof(DIST) > 1) printf("s:__DIST__:%s:\n", DIST);
-	else printf("s:__DIST__:none:\n");
+	if (!(cp = strchr(version, ' '))) cp = version;
+	else while (*cp == ' ') cp++;
+	for (n = 0; cp[n]; n++) if (cp[n] == ' ') break;
+	printf("s:__VERSION__:%-.*s:\n", n, cp);
+	if (!distributor || !*distributor) distributor = "none";
+	printf("s:__DIST__:%s:\n", distributor);
 	printf("s:__PREFIX__:%s:\n", PREFIX);
 	printf("s:__CONFDIR__:%s:\n", CONFDIR);
 #ifdef	__CYGWIN__

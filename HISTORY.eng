@@ -1,3 +1,6 @@
+Ver. 2.07b	Bug that some pipes cause suspention is fixed.
+ (09/14/05)	Failure to do make with tail(1) strict on POSIX is fixed.
+
 Ver. 2.07a	Bug that the screen is not updated with no file is fixed.
  (06/22/05)	Failure to be invoked on Darwin (Mac OS X) is fixed.
 		Allow evaluation of \ included in `` with the internal shell.

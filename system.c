@@ -572,7 +572,7 @@ static int NEAR Kopen __P_((char *, int, int));
 static VOID NEAR syntaxerror __P_((char *));
 #if	!MSDOS
 static VOID NEAR setstopsig __P_((int));
-static p_id_t NEAR makechild __P_((int, p_id_t));
+static p_id_t NEAR makechild __P_((int, p_id_t, int));
 #endif	/* !MSDOS */
 static VOID NEAR safefclose __P_((FILE *));
 static VOID NEAR safermtmpfile __P_((char *));
@@ -2680,16 +2680,19 @@ int valid;
 }
 
 /*ARGSUSED*/
-static p_id_t NEAR makechild(tty, ppid)
+static p_id_t NEAR makechild(tty, ppid, stop)
 int tty;
 p_id_t ppid;
+int stop;
 {
+	sigmask_t mask, omask;
 	p_id_t pid;
-	int i, stop;
+	int i;
 
-	if ((pid = Xfork()) < (p_id_t)0) return((p_id_t)-1);
+	Xsigfillset(mask);
+	Xsigblock(omask, mask);
+	if (!(pid = Xfork())) {
 # ifdef	DEBUG
-	if (!pid) {
 		extern VOID (*__free_hook) __P_((VOID_P));
 		extern VOID_P (*__malloc_hook) __P_((ALLOC_T));
 		extern VOID_P (*__realloc_hook) __P_((VOID_P, ALLOC_T));
@@ -2697,25 +2700,25 @@ p_id_t ppid;
 		__free_hook = NULL;
 		__malloc_hook = NULL;
 		__realloc_hook = NULL;
-	}
 # endif	/* DEBUG */
-	if (!pid) {
-		sigmask_t mask;
 
-		memcpy((char *)&mask, (char *)&oldsigmask, sizeof(sigmask_t));
+		memcpy((char *)&omask, (char *)&oldsigmask, sizeof(sigmask_t));
 # ifdef	SIGCHLD
-		Xsigdelset(mask, SIGCHLD);
+		Xsigdelset(omask, SIGCHLD);
 # endif
-		Xsigsetmask(mask);
 		mypid = getpid();
-		stop = -1;
+		if (!stop) {
 # ifdef	NOJOB
-		if (loginshell) stop = 0;
+			if (!loginshell) stop = -1;
 # else
-		if (jobok) stop = (!tty || childpgrp == orgpgrp) ? 0 : 1;
+			if (!jobok) stop = -1;
+			else if (tty && childpgrp != orgpgrp) stop = 1;
 # endif
+		}
 		setstopsig(stop);
 	}
+	Xsigsetmask(omask);
+	if (pid < (p_id_t)0) return(pid);
 
 # ifndef	NOJOB
 	if (childpgrp < (p_id_t)0)
@@ -3840,7 +3843,7 @@ redirectlist *rp;
 
 # ifndef	USEFAKEPIPE
 	if (pipe(fildes) < 0);
-	else if ((pid = makechild(0, mypid)) < (p_id_t)0) {
+	else if ((pid = makechild(0, mypid, 0)) < (p_id_t)0) {
 		safeclose(fildes[0]);
 		safeclose(fildes[1]);
 		return(-1);
@@ -6240,7 +6243,7 @@ p_id_t ppid;
 # endif
 		pid = (p_id_t)-1;
 	}
-	else if ((pid = makechild(tty, ppid)) < (p_id_t)0) {
+	else if ((pid = makechild(tty, ppid, -1)) < (p_id_t)0) {
 # ifdef	FAKEUNINIT
 		fd = -1;	/* fake for -Wuninitialized */
 # endif
@@ -6257,7 +6260,6 @@ p_id_t ppid;
 		safeclose(fildes[0]);
 		safeclose(fildes[1]);
 		pl -> old = fd;
-		setstopsig(-1);
 	}
 	else {
 		if (new) fd = newdup(fildes[0]);
@@ -6432,6 +6434,7 @@ int fd;
 		else safeclose(pl -> new);
 	}
 
+	ret = RET_SUCCESS;
 	if (pl -> file) {
 		if (rmtmpfile(pl -> file) < 0) {
 #ifdef	DJGPP
@@ -6469,7 +6472,6 @@ int fd;
 # endif	/* !NOJOB */
 	}
 #endif	/* !MSDOS */
-	else ret = RET_SUCCESS;
 
 	*prevp = pl -> next;
 	free(pl);
@@ -7350,7 +7352,7 @@ syntaxtree *trp;
 	int ret;
 
 	body = statementbody(trp);
-	if ((pid = makechild(1, (p_id_t)-1)) < (p_id_t)0) return(-1);
+	if ((pid = makechild(1, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
 	else if (!pid) {
 		childdepth++;
 # ifndef	NOJOB
@@ -8253,7 +8255,7 @@ syntaxtree *trp;
 		dupargvar = argvar;
 		argvar = (char **)malloc2((trp -> comm) -> argc
 			* sizeof(char *));
-		argvar[0] = strdup2(var[0]);
+		argvar[0] = strdup2(dupargvar[0]);
 		for (n = 1; n < (trp -> comm) -> argc - 1; n++)
 			argvar[n] = strdup2((trp -> comm) -> argv[n + 1]);
 		argvar[n] = NULL;
@@ -9566,7 +9568,7 @@ int type, id, bg;
 # endif
 	}
 
-	if ((pid = makechild(1, (p_id_t)-1)) < (p_id_t)0) return(-1);
+	if ((pid = makechild(1, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
 	if (!pid)
 # ifdef	DEBUG
 		Xexecve(path, comm -> argv, exportvar, 1);
@@ -9835,7 +9837,7 @@ p_id_t pipein;
 #if	!MSDOS
 	syntaxtree *tmptr;
 	p_id_t pid;
-	int bg, sub, pipeend;
+	int bg, sub, stop;
 #endif
 	syntaxtree *next;
 	int cont, ret;
@@ -9853,12 +9855,14 @@ p_id_t pipein;
 		next = NULL;
 	}
 #if	!MSDOS
-	pipeend = (!(tmptr -> next) && (tmptr -> flags & ST_NEXT)
-		&& (tmptr = getparent(trp)) && isoppipe(tmptr)) ? 1 : 0;
-	sub = 0;
+	sub = stop = 0;
 # if	!defined (BASHSTYLE) && !defined (USEFAKEPIPE)
 	/* bash does not treat the end of pipeline as sub shell */
-	if (pipeend) sub = 1;
+	if (!(tmptr -> next) && (tmptr -> flags & ST_NEXT)
+	&& (tmptr = getparent(trp)) && isoppipe(tmptr)) {
+		sub = 1;
+		stop = -1;
+	}
 # endif
 
 	if (isstatement(trp -> comm)) {
@@ -9873,7 +9877,8 @@ p_id_t pipein;
 	}
 
 	if (sub) {
-		if ((pid = makechild(1, (p_id_t)-1)) < (p_id_t)0) return(-1);
+		if ((pid = makechild(1, (p_id_t)-1, stop)) < (p_id_t)0)
+			return(-1);
 		else if (!pid) {
 # ifndef	NOJOB
 			stackjob(mypid, 0, trp);
@@ -9956,7 +9961,7 @@ int cond;
 
 #if	!MSDOS
 	if (!isopbg(trp) && !isopnown(trp)) pid = (p_id_t)-1;
-	else if ((pid = makechild(0, (p_id_t)-1)) < (p_id_t)0) return(-1);
+	else if ((pid = makechild(0, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
 	else if (!pid) {
 		nownstree(trp -> next);
 # ifndef	NOJOB

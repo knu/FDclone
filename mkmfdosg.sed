@@ -1,7 +1,4 @@
 s:/:\\:g
-s:__VERSION__:2:
-s:__RCVERSION__:2:
-s:__DIST__::
 s:__PREFIX__::
 s:__CONFDIR__::
 s:__EXE__:.exe:g

@@ -949,7 +949,7 @@ not implemented.
 	_NOEXTRAMACRO	cannot use %T, %M the macro in statements
 	_NOTRADLAYOUT	cacnot use the traditional screen layout
 	_NODOSCOMMAND	cannot use COMMAND.COM builtins on UNIX
-	_NOEXTRAPTY	cannot resize each split window
+	_NOEXTRAWIN	cannot resize each split window
 	_NOPTY		cannot use pseudo terminal
 
   If you edit config.hin to add the definition of these

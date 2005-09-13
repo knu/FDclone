@@ -3,8 +3,8 @@
 #
 
 TITLE	= FD-
-VERSION	= 2
-VER	= 2.07a
+VERMAJ	= 2
+VERSION	= 2.07b
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -18,7 +18,7 @@ JMANDIR	= $(TOPDIR)\man\man$(MANSEC)
 JCATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 IPKWDIR	= .\ipk.work
 IPKTDIR	= .\ipk.tmp
-DIST	= 
+DIST	= none
 DEFRC	= $(CONFDIR)\fd2rc
 BLDRC	= $(BUILD)$(DEFRC)
 DOSRC	= ~FD\\fd2rc
@@ -109,9 +109,9 @@ LDFLAGS	=    $(ALLOC)
 CFLAGS	= -DDOSV=1 -O $(DEBUG)
 HOSTCFLAGS = -DDOSV=1 -O
 SLDFLAGS =   $(ALLOC)
-FDCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFD=$(VERSION)
-SHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERSION)
-BSHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERSION) -DMINIMUMSHELL
+FDCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFD=$(VERMAJ)
+SHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERMAJ)
+BSHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERMAJ) -DMINIMUMSHELL
 DEFCFLAGS = -DDEFRC='"'$(DOSRC)'"'
 
 .SUFFIXES: .h .c .o .exe
@@ -190,7 +190,7 @@ funcno.h: mkfuncno.exe
 	.\mkfuncno$(EXE) $@
 
 mkfuncno.exe: mkfuncno.c functabl.h fd.h machine.h config.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERSION) -o $@ mkfuncno.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERMAJ) -o $@ mkfuncno.c
 #	@ren $@ mkfuncno
 #	@aout2exe mkfuncno
 #	@del mkfuncno
@@ -395,12 +395,12 @@ btermio.o: termio.c machine.h config.h termio.h
 # for programer's maintenance
 
 tar: $(SOURCES)
-	tar cvf $(TITLE)$(VER).tar $(SOURCES)
-	compress -f $(TITLE)$(VER).tar
+	tar cvf $(TITLE)$(VERSION).tar $(SOURCES)
+	compress -f $(TITLE)$(VERSION).tar
 
 gtar: $(SOURCES)
-	tar cvf $(TITLE)$(VER).tar $(SOURCES)
-	gzip -f $(TITLE)$(VER).tar
+	tar cvf $(TITLE)$(VERSION).tar $(SOURCES)
+	gzip -f $(TITLE)$(VERSION).tar
 
 shtar: $(SHSOURCES)
 	(VER=`date '+%y%m%d'`; \
@@ -408,12 +408,12 @@ shtar: $(SHSOURCES)
 	gzip -f $(TITLE)sh-$$VER.tar)
 
 lzh: $(SOURCES)
-	rm -f $(TITLE)$(VER).lzh
-	lha a $(TITLE)$(VER).lzh $(SOURCES)
+	rm -f $(TITLE)$(VERSION).lzh
+	lha a $(TITLE)$(VERSION).lzh $(SOURCES)
 
 shar: $(SOURCES)
-	rm -f $(TITLE)$(VER).shar.[0-9][0-9]
-	shar -L50 -apc -n $(TITLE)$(VER) -o $(TITLE)$(VER).shar \
+	rm -f $(TITLE)$(VERSION).shar.[0-9][0-9]
+	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
 ipk: $(PROGRAM).exe $(UNITBL)
@@ -482,7 +482,7 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	$(ECHO) "Section: extras" >> $(IPKWDIR)\CONTROL\control
 	$(ECHO) "Maintainer: $(DIST)" >> $(IPKWDIR)\CONTROL\control
 	$(ECHO) "Architecture: arm" >> $(IPKWDIR)\CONTROL\control
-	$(ECHO) "Version: $(VER)-1" >> $(IPKWDIR)\CONTROL\control
+	$(ECHO) "Version: $(VERSION)-1" >> $(IPKWDIR)\CONTROL\control
 	$(ECHO) "Depends: ncurses" >> $(IPKWDIR)\CONTROL\control
 	$(ECHO) "Description: a file & directory maintenance tool." \
 		>> $(IPKWDIR)\CONTROL\control
@@ -496,7 +496,7 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	(cd $(IPKTDIR); \
 	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
 	gzip .\ipk.tar
-	mv .\ipk.tar.gz .\fd_$(VER)-1_arm.ipk
+	mv .\ipk.tar.gz .\fd_$(VERSION)-1_arm.ipk
 	-rm -rf $(IPKWDIR) $(IPKTDIR)
 
 clean:
