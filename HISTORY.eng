@@ -1,3 +1,12 @@
+Ver. 2.07c	Support archive list terminated with duplicate path delimiters.
+ (12/13/05)	Bug that arguments of fd from fdsh are re-evaluated is fixed.
+		Bug that customizer cannot set HEX/CAP as FNAMEKCODE is fixed.
+		Bug that select menus are sometimes broken is fixed.
+		Mis-handling dynamic change of LANGUAGE on PTYMODE=1 is fixed.
+		Abortion when fdsh is invoked with -N option is fixed.
+		Support file lock to protect the command history file.
+		Bug that fdsh cannot validate ADJTTY is fixed.
+
 Ver. 2.07b	Bug that some pipes cause suspention is fixed.
  (09/14/05)	Failure to do make with tail(1) strict on POSIX is fixed.
 

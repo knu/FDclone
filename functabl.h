@@ -19,12 +19,12 @@
 			| (((oct) >> 14) & 0200))
 
 functable funclist[] = {
-	/*						 +---------- NEEDSTAT
+	/*						 +---------- NEEDSTATUS
 	 *						 |+--------- RESTRICT
-	 *						 ||+-------- NO_FILE
-	 *						 |||+------- ARCH
-	 *						 ||||+------ KILLSTK
-	 *						 |||||+----- RESCRN
+	 *						 ||+-------- NOFILE
+	 *						 |||+------- ARCHIVE
+	 *						 ||||+------ KILLSTACK
+	 *						 |||||+----- RESCREEN
 	 *						 ||||||++-- 01: REWRITE
 	 *						 ||||||||   10: RELIST
 	 *						 ||||||||   11: REWIN

@@ -100,16 +100,17 @@
 #ifdef	FD
 #include "term.h"
 extern VOID calcwin __P_((VOID_A));
-extern VOID main_fd __P_((char **));
-extern VOID setlinecol __P_((VOID_A));
+extern VOID main_fd __P_((char **, int));
 extern VOID checkscreen __P_((int, int));
 # ifdef	SIGWINCH
 extern VOID pollscreen __P_((int));
 # endif
 extern int sigvecset __P_((int));
-#ifndef	_NOCUSTOMIZE
+# ifndef	_NOCUSTOMIZE
 extern VOID saveorigenviron __P_((VOID_A));
-#endif
+# endif
+extern VOID initfd __P_((char **));
+extern VOID prepareexitfd __P_((int));
 extern int checkbuiltin __P_((char *));
 extern int checkinternal __P_((char *));
 extern int execbuiltin __P_((int, int, char *[]));
@@ -124,19 +125,14 @@ extern int replaceargs __P_((int *, char ***, char **, int));
 extern int replacearg __P_((char **));
 extern VOID demacroarg __P_((char **));
 extern char *inputshellstr __P_((char *, int, char *));
-extern int entryhist __P_((int, char *, int));
-extern int loadhistory __P_((int, char *));
-extern int savehistory __P_((int, char *));
 extern int evalprompt __P_((char **, char *));
 # ifndef	_NOKANJICONV
 extern char *kanjiconv2 __P_((char *, char *, int, int, int, int));
 extern char *newkanjiconv __P_((char *, int, int, int));
 # endif
-extern char *histfile;
-extern int savehist;
-#ifndef	_NOEDITMODE
+# ifndef	_NOEDITMODE
 extern char *editmode;
-#endif
+# endif
 extern int internal_status;
 extern char fullpath[];
 extern char *origpath;
@@ -145,6 +141,7 @@ extern int inruncom;
 extern int noalrm;
 # endif
 extern int fd_restricted;
+extern int fdmode;
 extern int physical_path;
 # ifndef	_NOKANJIFCONV
 extern int nokanjifconv;
@@ -224,16 +221,19 @@ extern int errno;
 extern int _dospath __P_((char *));
 # endif
 extern char *Xgetwd __P_((char *));
+extern int Xstat __P_((char *, struct stat *));
 extern int Xaccess __P_((char *, int));
 extern int Xopen __P_((char *, int, int));
 # ifdef	_NODOSDRIVE
-# define	Xclose		close
+# define	Xclose(f)	((close(f)) ? -1 : 0)
 # define	Xfdopen		fdopen
 # define	Xfclose		fclose
+# define	Xfileno		fileno
 # else	/* !_NODOSDRIVE */
 extern int Xclose __P_((int));
 extern FILE *Xfdopen __P_((int, char*));
 extern int Xfclose __P_((FILE *));
+extern int Xfileno __P_((FILE *));
 # endif	/* !_NODOSDRIVE */
 # ifdef	_NODOSDRIVE
 # define	Xdup		safe_dup
@@ -245,6 +245,9 @@ extern int Xdup2 __P_((int, int));
 #else	/* !FD */
 # if	MSDOS
 extern int _dospath __P_((char *));
+extern int Xstat __P_((char *, struct stat *));
+# else
+# define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
 # endif
 # ifdef	DJGPP
 extern char *Xgetwd __P_((char *));
@@ -254,26 +257,26 @@ extern char *Xgetwd __P_((char *));
 #  else
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
-extern int Xstat __P_((char *, struct stat *));
 # endif	/* !DJGPP */
-#define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
-#define	Xunlink(p)	(unlink(p) ? -1 : 0)
+#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
+#define	Xunlink(p)	((unlink(p)) ? -1 : 0)
 #define	Xopen		open
-#define	Xclose		close
+#define	Xclose(f)	((close(f)) ? -1 : 0)
 #define	Xfdopen		fdopen
 #define	Xfclose		fclose
+#define	Xfileno		fileno
 #define	Xdup		safe_dup
 #define	Xdup2		safe_dup2
 # if	MSDOS
 #  ifdef	DJGPP
-#  define	Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+#  define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 #  else
 int Xmkdir __P_((char *, int));
 #  endif
 # else
-# define	Xmkdir		mkdir
+# define	Xmkdir		((mkdir(p, m)) ? -1 : 0)
 # endif
-#define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
+#define	Xrmdir(p)	((rmdir(p)) ? -1 : 0)
 #endif	/* !FD */
 
 #ifndef	O_BINARY
@@ -380,8 +383,8 @@ extern char *strchr2 __P_((char *, int));
 extern char *strncpy2 __P_((char *, char *, int));
 
 #ifdef	DEBUG
-extern VOID mtrace __P_ ((VOID));
-extern VOID muntrace __P_ ((VOID));
+extern VOID mtrace __P_ ((VOID_A));
+extern VOID muntrace __P_ ((VOID_A));
 extern char *_mtrace_file;
 #endif
 
@@ -908,10 +911,12 @@ int ignoreeof = 0;
 int bgnotify = 0;
 int jobok = -1;
 #endif
-#if	defined (FD) && !defined (_NOEDITMODE)
+#ifdef	FD
+# ifndef	_NOEDITMODE
 int emacsmode = 0;
 int vimode = 0;
-#endif
+# endif
+#endif	/* FD */
 int loginshell = 0;
 int noruncom = 0;
 
@@ -1256,7 +1261,7 @@ static CONST shflagtable shflaglist[] = {
 	{"emacs", &emacsmode, '\0'},
 	{"vi", &vimode, '\0'},
 # endif
-#endif
+#endif	/* FD */
 	{NULL, &loginshell, 'l'},
 	{NULL, &noruncom, 'N'},
 };
@@ -2378,14 +2383,20 @@ int noexit;
 VOID Xexit2(n)
 int n;
 {
+	if (mypid == orgpid) {
+#ifndef	NOJOB
+		if (loginshell && interactive_io) killjob();
+#endif
 #ifdef	FD
-	if (havetty() && mypid == orgpid && interactive && !nottyout) {
-		if (!dumbterm) putterm(T_NORMAL);
-		endterm();
-		inittty(1);
-		keyflush();
-	}
+		prepareexitfd(n);
+		if (havetty() && interactive && !nottyout) {
+			if (!dumbterm) putterm(T_NORMAL);
+			endterm();
+			inittty(1);
+			keyflush();
+		}
 #endif	/* !FD */
+	}
 	prepareexit(0);
 
 #ifdef	DEBUG
@@ -2447,12 +2458,7 @@ char *s;
 	fputs(syntaxerrstr[syntaxerrno], stderr);
 	fputnl(stderr);
 	ret_status = RET_SYNTAXERR;
-	if (errorexit) {
-#ifndef	NOJOB
-		if (loginshell && interactive_io) killjob();
-#endif
-		Xexit2(RET_SYNTAXERR);
-	}
+	if (errorexit) Xexit2(RET_SYNTAXERR);
 	safeexit();
 }
 
@@ -2811,13 +2817,12 @@ syntaxtree *trp;
 			tty.sg_flags |= ECHO | CRMOD;
 			tty.sg_flags &= ~(RAW | CBREAK | XTABS);
 #   else
-			tty.c_lflag |= ISIG | ICANON | IEXTEN
-				| ECHO | ECHOE | ECHOCTL | ECHOKE;
+			tty.c_lflag |= (TIO_ICOOKED | TIO_LECHO);
 			tty.c_lflag &= ~(PENDIN | ECHONL);
-			tty.c_iflag |= BRKINT | IXON | ICRNL;
-			tty.c_iflag &= ~(IGNBRK | ISTRIP);
-			tty.c_oflag |= OPOST | ONLCR;
-			tty.c_oflag &= ~(OCRNL | ONOCR | ONLRET | TAB3);
+			tty.c_iflag |= (TIO_ICOOKED | ICRNL);
+			tty.c_iflag &= TIO_INOCOOKED;
+			tty.c_oflag |= TIO_ONL;
+			tty.c_oflag &= (TIO_ONONL & ~TAB3);
 #   endif
 			tioctl(ttyio, REQSETP, &tty);
 #  endif	/* !FD */
@@ -2910,7 +2915,7 @@ FILE *fp;
 
 	if (!fp) return;
 	duperrno = errno;
-	fd = fileno(fp);
+	fd = Xfileno(fp);
 	if (fd != STDIN_FILENO && fd != STDOUT_FILENO && fd != STDERR_FILENO)
 		Xfclose(fp);
 	errno = duperrno;
@@ -2988,6 +2993,10 @@ int isopt;
 	flags = (u_long)0;
 	for (i = 1; arg[i]; i++) {
 		if (isopt) {
+#ifdef	FD
+			if (fdmode) /*EMPTY*/;
+			else
+#endif
 			if (arg[i] == 'c' && !com && argc > 2) {
 				com = 1;
 				continue;
@@ -4022,7 +4031,7 @@ redirectlist *rp;
 #endif
 
 	if (rp -> new != rp -> fd) {
-		if (rp -> new < 0) Xclose(rp -> fd);
+		if (rp -> new < 0) VOID_C Xclose(rp -> fd);
 		else {
 #if	defined (FD) && !defined (_NODOSDRIVE)
 			if (rp -> new >= DOSFDOFFSET) openpseudofd(rp);
@@ -4119,7 +4128,7 @@ time_t *mtimep;
 {
 	struct stat st;
 
-	if (!path || stat(path, &st) < 0) return;
+	if (!path || Xstat(path, &st) < 0) return;
 	if (st.st_size > 0 && *mtimep && st.st_mtime > *mtimep) {
 # ifdef	MINIMUMSHELL
 		fputs("you have mail", stderr);
@@ -6520,7 +6529,7 @@ char *arg;
 		buf = NULL;
 		ret_status = RET_NOTEXEC;
 	}
-	else if (!(buf = readfile(fileno(fp), &len))) {
+	else if (!(buf = readfile(Xfileno(fp), &len))) {
 		doperror(NULL, NULL);
 		ret_status = RET_FATALERR;
 	}
@@ -6532,9 +6541,9 @@ char *arg;
 		if (len > 0 && buf[--len] == '\n') buf[len] = '\0';
 #endif
 #ifdef	DJGPP
-		ret_status = closepipe(fileno(fp), -1);
+		ret_status = closepipe(Xfileno(fp), -1);
 #else
-		ret_status = closepipe(fileno(fp));
+		ret_status = closepipe(Xfileno(fp));
 #endif
 	}
 
@@ -7722,12 +7731,6 @@ int errexit;
 	path = strdup2(path);
 	evar = exportvar;
 	exportvar = NULL;
-#ifdef	FD
-	if (savehist > 0) savehistory(0, histfile);
-#endif
-#ifndef	NOJOB
-	if (loginshell && interactive_io) killjob();
-#endif
 
 	if (errexit && !path) {
 #ifdef	DEBUG
@@ -7736,6 +7739,12 @@ int errexit;
 		Xexit2(RET_FAIL);
 	}
 
+#ifndef	NOJOB
+	if (loginshell && interactive_io) killjob();
+#endif
+#ifdef	FD
+	prepareexitfd(0);
+#endif
 	prepareexit(1);
 #ifdef	DEBUG
 	Xexecve(path, comm -> argv, evar, 0);
@@ -7863,15 +7872,7 @@ syntaxtree *trp;
 #endif
 	}
 	if (exit_status < 0) exit_status = ret;
-	else {
-#ifdef	FD
-		if (savehist > 0) savehistory(0, histfile);
-#endif
-#ifndef	NOJOB
-		if (loginshell && interactive_io) killjob();
-#endif
-		Xexit2(ret);
-	}
+	else Xexit2(ret);
 
 	return(RET_SUCCESS);
 }
@@ -8945,7 +8946,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	n = 1;
 	if ((trp -> comm) -> argc > 1 && argv[n][0] == '-'
-	&& argv[n][1] == 'n' && argv[n][2] == '\0')
+	&& argv[n][1] == 'n' && !(argv[n][2]))
 		n++;
 
 	for (i = n; i < (trp -> comm) -> argc; i++) {
@@ -9130,7 +9131,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	n = 1;
 	if ((trp -> comm) -> argc > 1 && argv[n][0] == '-'
-	&& argv[n][1] == 'n' && argv[n][2] == '\0')
+	&& argv[n][1] == 'n' && !(argv[n][2]))
 		n++;
 
 	ret = RET_SUCCESS;
@@ -9224,10 +9225,11 @@ syntaxtree *trp;
 		ttyiomode(0);
 		mode = termmode(1);
 		shellmode = 0;
-		main_fd(&((trp -> comm) -> argv[1]));
+		main_fd(&((trp -> comm) -> argv[1]), 1);
 		shellmode = 1;
 		termmode(mode);
 		stdiomode();
+		fputnl(stderr);
 		sigvecset(n);
 	}
 
@@ -9812,7 +9814,7 @@ int *contp, bg;
 	}
 #ifdef	FD
 	if (type != CT_NONE && type != CT_FDINTERNAL && type != CT_FUNCTION)
-		internal_status = -2;
+		internal_status = FNC_FAIL;
 #endif
 
 	comm -> argc = argc;
@@ -10144,9 +10146,6 @@ int noexit;
 			freestree(stree);
 			if (errorexit && !noexit) {
 				free(stree);
-#ifndef	NOJOB
-				if (loginshell && interactive_io) killjob();
-#endif
 				Xexit2(RET_SYNTAXERR);
 			}
 			return(NULL);
@@ -10171,9 +10170,6 @@ int noexit;
 	if (ret < 0 && errno) doperror(NULL, NULL);
 	if ((errorexit && ret && !noexit) || terminated) {
 		free(stree);
-#ifndef	NOJOB
-		if (loginshell && interactive_io) killjob();
-#endif
 		Xexit2(ret);
 	}
 
@@ -10355,9 +10351,9 @@ int dopclose(fp)
 FILE *fp;
 {
 # ifdef	DJGPP
-	return(closepipe(fileno(fp), -1));
+	return(closepipe(Xfileno(fp), -1));
 # else
-	return(closepipe(fileno(fp)));
+	return(closepipe(Xfileno(fp)));
 # endif
 }
 #endif	/* !FDSH */
@@ -10552,7 +10548,7 @@ int prepareterm(VOID_A)
 	if (interactive) inittty(0);
 	term = getconstvar("TERM");
 	getterment((term) ? term : "");
-#endif
+#endif	/* FD */
 
 	return(0);
 }
@@ -10583,7 +10579,8 @@ int verbose;
 #ifdef	FD
 	if (loginshell) execruncom(SH_RCFILE, verbose);
 	else execruncom(FD_RCFILE, verbose);
-#endif
+	evalenv();
+#endif	/* FD */
 }
 
 int initshell(argc, argv)
@@ -10835,7 +10832,9 @@ char *argv[];
 
 	if (n > 2) {
 		initrc(0);
-		setsignal();
+#ifdef	FD
+		initfd(argv);
+#endif	/* FD */
 		if (verboseinput) {
 			kanjifputs(argv[2], stderr);
 #ifdef	BASHSTYLE
@@ -10845,12 +10844,16 @@ char *argv[];
 			fflush(stderr);
 		}
 		shellmode = 1;
+		setsignal();
 		n = _dosystem(argv[2]);
 		resetsignal(0);
 		Xexit2(n);
 	}
 
 	if (loginshell && chdir2(getconstvar("HOME")) < 0) {
+#ifdef	FD
+		initfd(argv);
+#endif
 		fputs("No directory", stderr);
 		fputnl(stderr);
 		Xexit2(RET_FAIL);
@@ -10981,18 +10984,9 @@ char *argv[], *envp[];
 	ret_status = RET_SUCCESS;
 	initrc(!loginshell);
 #ifdef	FD
-	if (interactive) {
-		loadhistory(0, histfile);
-		entryhist(1, origpath, 1);
-	}
-#endif
+	initfd(argv);
+#endif	/* FD */
 	shell_loop(0);
-#ifdef	FD
-	if (savehist > 0) savehistory(0, histfile);
-#endif
-#ifndef	NOJOB
-	if (loginshell && interactive) killjob();
-#endif
 
 	return(ret_status);
 }

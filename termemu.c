@@ -37,8 +37,8 @@ typedef struct fd_set {
 # define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= ((u_int)1 << (n)))
 #endif	/* !FD_SET */
 
-extern int hideclock;
 extern int internal_status;
+extern int hideclock;
 
 int ptymode = 0;
 char *ptyterm = NULL;
@@ -238,17 +238,25 @@ static int NEAR genbackend(VOID_A)
 	return(0);
 }
 
-VOID syncptyout(VOID_A)
+VOID syncptyout(fd, cmd)
+int fd, cmd;
 {
 	char *tty;
+	u_char uc;
 
 	if (parentfd < 0) return;
 
 	savetermio(ttyio, &tty, NULL);
 	keyflush();
 	noecho2();
-	tputs2("\033[99n", 1);
-	tflush();
+	if (fd < 0) {
+		tputs2("\033[99n", 1);
+		tflush();
+	}
+	else {
+		uc = cmd;
+		sendbuf(fd, &uc, sizeof(uc));
+	}
 	VOID_C getch2();
 	keyflush();
 	loadtermio(ttyio, tty, NULL);
@@ -448,6 +456,7 @@ va_dcl
 #endif
 
 	fd = parentfd;
+	syncptyout(fd, TE_LOCKFRONT);
 	uc = cmd;
 	sendbuf(fd, &uc, sizeof(uc));
 
@@ -604,6 +613,7 @@ va_dcl
 			break;
 	}
 	va_end(args);
+	syncptyout(fd, TE_UNLOCKFRONT);
 }
 
 static VOID NEAR awakechild(command, arg, flags)
@@ -705,7 +715,7 @@ char *command, *arg;
 int flags;
 {
 	p_id_t pid;
-	char *tty, *ws, path[MAXPATHLEN];
+	char *tty, *ws, path[MAXPATHLEN], buf[TIO_BUFSIZ + TIO_WINSIZ];
 	u_char uc;
 	int i, n, fd, fds[2];
 
@@ -716,6 +726,18 @@ int flags;
 		return(frontend());
 	}
 
+	savetermio(ttyio, &tty, &ws);
+	if (tty) {
+		memcpy(buf, tty, TIO_BUFSIZ);
+		free(tty);
+		tty = buf;
+	}
+	if (ws) {
+		memcpy(&(buf[TIO_BUFSIZ]), ws, TIO_WINSIZ);
+		free(ws);
+		ws = &(buf[TIO_BUFSIZ]);
+	}
+
 	if (genbackend() < 0 || pipe(fds) < 0)
 		return(callmacro(command, arg, flags));
 	VOID_C fcntl(fds[0], F_SETFL, O_NONBLOCK);
@@ -724,7 +746,7 @@ int flags;
 	if (ptytmpfile) fd = -1;
 	else if ((fd = mktmpfile(path)) >= 0) {
 		ptytmpfile = strdup2(path);
-		Xclose(fd);
+		VOID_C Xclose(fd);
 	}
 
 	n = sigvecset(0);
@@ -744,10 +766,7 @@ int flags;
 #ifndef	_NOORIGSHELL
 		mypid = getpid();
 #endif
-		savetermio(ttyio, &tty, &ws);
 		if (Xlogin_tty(ptylist[win].path, tty, ws) < 0) _exit(1);
-		if (tty) free(tty);
-		if (ws) free(ws);
 		n_line = FILEPERROW;
 		VOID_C setwsize(STDIN_FILENO, n_column, n_line);
 
@@ -781,11 +800,9 @@ int flags;
 		sendbuf(parentfd, &uc, sizeof(uc));
 
 		for (;;) {
-			syncptyout();
+			syncptyout(-1, -1);
 			setlinecol();
-			n = callmacro(command, arg, flags);
-			n = (n < 0) ? 1 :
-				((internal_status < -1) ? 4 : internal_status);
+			n = evalstatus(callmacro(command, arg, flags));
 #if	defined (_NOORIGSHELL) || defined (NOJOB)
 			break;
 #else	/* !_NOORIGSHELL && !NOJOB */

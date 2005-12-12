@@ -219,8 +219,8 @@ int flags;
 
 	if (arg != path) arg = convput(conv, arg, 1, 0, NULL, NULL);
 #ifndef	_NOKANJIFCONV
-	else arg = kanjiconv2(conv, arg, MAXPATHLEN - 1,
-		DEFCODE, fnamekcode, L_FNAME);
+	else arg = kanjiconv2(conv, arg,
+		MAXPATHLEN - 1, DEFCODE, fnamekcode, L_FNAME);
 #endif
 	optr = ptr;
 	ptr = checksc(*bufp, ptr, arg);
@@ -1133,7 +1133,7 @@ char *def;
 
 	duppromptstr = promptstr;
 	if (prompt) promptstr = prompt;
-	cp = inputstr(NULL, 0, ptr, def, 0);
+	cp = inputstr(NULL, 0, ptr, def, HST_COM);
 	promptstr = duppromptstr;
 	if (!cp) return((char *)-1);
 
@@ -1262,7 +1262,7 @@ macrostat *stp;
 #endif	/* MACROMETA */
 
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
-	cp = inputstr("", 0, p, command, 0);
+	cp = inputstr("", 0, p, command, HST_COM);
 	if (!wastty) Xstdiomode();
 	free(command);
 	if (!cp) {
@@ -1359,7 +1359,7 @@ int flags;
 	if (arg) duparg = arg;
 	haslist = (filelist && !(flags & F_IGNORELIST));
 	ret = 0;
-	internal_status = -2;
+	internal_status = FNC_FAIL;
 
 	if (!haslist || !mark) n_args = 0;
 	else {
@@ -1397,7 +1397,7 @@ int flags;
 		if (!(flags & F_ARGSET)) st.flags &= ~F_ARGSET;
 
 		if (r > ret && (ret = r) >= 127) break;
-		if (internal_status < -1) status = 4;
+		if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 		else if (internal_status > status) status = internal_status;
 
 		if (!(st.flags & F_REMAIN)
@@ -1426,7 +1426,7 @@ int flags;
 			r = system3(buf, st.flags);
 			free(buf);
 			if (r > ret && (ret = r) >= 127) break;
-			if (internal_status < -1) status = 4;
+			if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 			else if (internal_status > status)
 				status = internal_status;
 		}
@@ -1434,11 +1434,11 @@ int flags;
 	internal_status = status;
 #else	/* !_NOEXTRAMACRO */
 	ret = system3(tmp, st.flags);
-	if (internal_status < -1) internal_status = 4;
+	if (internal_status <= FNC_FAIL) internal_status = FNC_EFFECT;
 #endif	/* !_NOEXTRAMACRO */
 
 	if (tmp) free(tmp);
-	if (haslist && internal_status < -1) {
+	if (haslist && internal_status <= FNC_FAIL) {
 		for (i = 0; i < maxfile; i++)
 			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
 		mark = 0;
@@ -1457,7 +1457,7 @@ int flags;
 	FILE *fp;
 	char *tmp, *lang;
 
-	internal_status = -2;
+	internal_status = FNC_FAIL;
 	st.flags = flags;
 	if (isinternalcomm(command)) st.flags |= F_ARGSET;
 
@@ -1523,13 +1523,13 @@ int flags;
 	if (i >= maxuserfunc) ret = execmacro(command, arg, flags);
 	else {
 		ret = 0;
-		status = internal_status = -2;
+		status = internal_status = FNC_FAIL;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
 			r = execmacro(cp, arg, flags);
 			free(cp);
 			if (r > ret && (ret = r) >= 127) break;
-			if (internal_status < -1) status = 4;
+			if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 			else if (internal_status > status)
 				status = internal_status;
 		}
@@ -1629,7 +1629,13 @@ char *file;
 	char *line;
 	int i, j, size;
 
-	if (!(fp = Xfopen(file, "r"))) return(-1);
+	if (!file || !(fp = Xfopen(file, "r"))) return(-1);
+#ifndef	NOFLOCK
+	if (lockfile(Xfileno(fp), LCK_READ) < 0) {
+		Xfclose(fp);
+		return(-1);
+	}
+#endif
 
 	size = (int)histsize[n];
 	history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
@@ -1644,6 +1650,7 @@ char *file;
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		history[n][0] = line;
 	}
+	lockfile(Xfileno(fp), LCK_UNLOCK);
 	Xfclose(fp);
 
 	for (i++; i <= size; i++) history[n][i] = NULL;
@@ -1676,10 +1683,17 @@ char *file;
 	int i, size;
 
 	if (!history[n] || !history[n][0]) return(-1);
-	if (!(fp = Xfopen(file, "w"))) return(-1);
+	if (!file || !(fp = Xfopen(file, "w"))) return(-1);
+#ifndef	NOFLOCK
+	if (lockfile(Xfileno(fp), LCK_WRITE) < 0) {
+		Xfclose(fp);
+		return(-1);
+	}
+#endif
 
 	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], fp);
+	lockfile(Xfileno(fp), LCK_UNLOCK);
 	Xfclose(fp);
 
 	return(0);

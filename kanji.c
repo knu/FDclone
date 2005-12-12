@@ -89,6 +89,13 @@ extern char *includepath __P_((char *, char *));
 #ifndef	O_BINARY
 #define	O_BINARY	0
 #endif
+#ifdef	CODEEUC
+#define	kencode		ujis2sjis
+#define	kdecode		sjis2ujis
+#else
+#define	kencode		sjis2ujis
+#define	kdecode		ujis2sjis
+#endif
 
 typedef struct _kconv_t {
 	u_short start;
@@ -546,20 +553,7 @@ int io;
 
 	ret = NOCNV;
 	if (s) for (i = 0; i < MAXLANGLIST; i++) {
-		switch (kanjiiomode[langlist[i].lang]) {
-			case L_INPUT:
-				if (io == L_INPUT) continue;
-				break;
-			case L_OUTPUT:
-				if (io != L_OUTPUT) continue;
-				break;
-			case L_FNAME:
-				if (io != L_FNAME) continue;
-				break;
-			default:
-				break;
-		}
-
+		if (!(kanjiiomode[langlist[i].lang] & io)) continue;
 		if (strstr2(s, langlist[i].ident)) {
 			ret = langlist[i].lang;
 			break;
@@ -1539,10 +1533,9 @@ int *ptrp;
 
 	w = s[(*ptrp)++];
 	if (w < 0x80);
-	else if ((w & 0xe0) == 0xc0 && (s[*ptrp] & 0xc0) == 0x80)
+	else if (isutf2(w, s[*ptrp]))
 		w = ((w & 0x1f) << 6) | (s[(*ptrp)++] & 0x3f);
-	else if ((w & 0xf0) == 0xe0 && (s[*ptrp] & 0xc0) == 0x80
-	&& (s[*ptrp + 1] & 0xc0) == 0x80) {
+	else if (isutf3(w, s[*ptrp], s[*ptrp + 1])) {
 		w = ((w & 0x0f) << 6) | (s[(*ptrp)++] & 0x3f);
 		w = (w << 6) | (s[(*ptrp)++] & 0x3f);
 	}
@@ -1837,55 +1830,6 @@ int max, in, out, *lenp, io;
 
 	if (in == out || in == NOCNV || out == NOCNV) return(s);
 	switch (out) {
-# ifdef	CODEEUC
-		case SJIS:
-			*lenp = ujis2sjis(buf, (u_char *)s, max);
-			break;
-		case EUC:
-			switch (in) {
-				case SJIS:
-					*lenp = sjis2ujis(buf, (u_char *)s,
-						max);
-# else
-		case EUC:
-			*lenp = sjis2ujis(buf, (u_char *)s, max);
-			break;
-		case SJIS:
-			switch (in) {
-				case EUC:
-					*lenp = ujis2sjis(buf, (u_char *)s,
-						max);
-# endif
-					break;
-				case JIS7:
-				case O_JIS7:
-				case JIS8:
-				case O_JIS8:
-				case JUNET:
-				case O_JUNET:
-					*lenp = fromjis(buf, (u_char *)s,
-						max, io);
-					break;
-				case UTF8:
-					*lenp = fromutf8(buf, (u_char *)s,
-						max);
-					break;
-				case M_UTF8:
-					*lenp = fromutf8nf(buf, (u_char *)s,
-						max, NF_MAC);
-					break;
-				case HEX:
-					*lenp = fromhex(buf, (u_char *)s, max);
-					break;
-				case CAP:
-					*lenp = fromcap(buf, (u_char *)s, max);
-					break;
-				default:
-					return(s);
-/*NOTREACHED*/
-					break;
-			}
-			break;
 		case ENG:
 			*lenp = toenglish(buf, (u_char *)s, max);
 			break;
@@ -1918,6 +1862,43 @@ int max, in, out, *lenp, io;
 			break;
 		case CAP:
 			*lenp = tocap(buf, (u_char *)s, max);
+			break;
+		case SECCODE:
+			*lenp = kencode(buf, (u_char *)s, max);
+			break;
+		case DEFCODE:
+			switch (in) {
+				case JIS7:
+				case O_JIS7:
+				case JIS8:
+				case O_JIS8:
+				case JUNET:
+				case O_JUNET:
+					*lenp = fromjis(buf, (u_char *)s,
+						max, io);
+					break;
+				case UTF8:
+					*lenp = fromutf8(buf, (u_char *)s,
+						max);
+					break;
+				case M_UTF8:
+					*lenp = fromutf8nf(buf, (u_char *)s,
+						max, NF_MAC);
+					break;
+				case HEX:
+					*lenp = fromhex(buf, (u_char *)s, max);
+					break;
+				case CAP:
+					*lenp = fromcap(buf, (u_char *)s, max);
+					break;
+				case SECCODE:
+					*lenp = kdecode(buf, (u_char *)s, max);
+					break;
+				default:
+					return(s);
+/*NOTREACHED*/
+					break;
+			}
 			break;
 		default:
 			return(s);

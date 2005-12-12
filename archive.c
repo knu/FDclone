@@ -146,9 +146,6 @@ static char *form_tar[] = {
 #endif	/* FD < 2 */
 
 #define	iswhitespace(c)	((c) == ' ' || (c) == '\t')
-#define	S_IREAD_ALL	(S_IRUSR | S_IRGRP | S_IROTH)
-#define	S_IWRITE_ALL	(S_IWUSR | S_IWGRP | S_IWOTH)
-#define	S_IEXEC_ALL	(S_IXUSR | S_IXGRP | S_IXOTH)
 
 #ifndef	_NOBROWSE
 static VOID NEAR copyargvar __P_((int, char **));
@@ -816,7 +813,9 @@ int skip;
 				if (isdelim(rawbuf, i - 1)) {
 					tmp -> st_mode &= ~S_IFMT;
 					tmp -> st_mode |= S_IFDIR;
-					if (i > 1) i--;
+					while (i > 1)
+						if (!isdelim(rawbuf, --i - 1))
+							break;
 				}
 				if (tmp -> name) free(tmp -> name);
 				tmp -> name = readfname(rawbuf, i);
@@ -2418,7 +2417,7 @@ int tr, flags;
 #endif	/* !_NOTREE */
 		{
 			if (arg && *arg) dir = strdup2(arg);
-			else dir = inputstr(UNPAC_K, 1, -1, NULL, 1);
+			else dir = inputstr(UNPAC_K, 1, -1, NULL, HST_PATH);
 			dir = evalpath(dir, 0);
 		}
 		if (!dir) return(0);

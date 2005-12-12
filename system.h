@@ -380,10 +380,12 @@ extern int ignoreeof;
 extern int bgnotify;
 extern int jobok;
 #endif
-#if	defined (FD) && !defined (_NOEDITMODE)
+#ifdef	FD
+# ifndef	_NOEDITMODE
 extern int emacsmode;
 extern int vimode;
-#endif
+# endif
+#endif	/* FD */
 extern int loginshell;
 extern int noruncom;
 

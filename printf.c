@@ -359,7 +359,7 @@ int width, prec;
 		}
 	}
 	else
-#endif	/* !FD || _NOKANJICONV */
+#endif	/* FD && !_NOKANJICONV */
 	for (i = j = 0; i < len; i++, j++) {
 		c = s[j];
 		if (iskanji1(s, j)) {
@@ -548,7 +548,6 @@ va_list args;
 		if (len < 0) return(-1);
 		total += len;
 	}
-	va_end(args);
 	if (pbufp -> buf && !(pbufp -> flags & VF_FILE))
 		pbufp -> buf[pbufp -> ptr] = '\0';
 
@@ -586,13 +585,12 @@ va_dcl
 	printbuf_t pbuf;
 	int n;
 
-	VA_START(args, fmt);
-
 	if (!sp) return(-1);
 	pbuf.flags = VF_NEW;
+	VA_START(args, fmt);
 	n = commonprintf(&pbuf, fmt, args);
-	*sp = pbuf.buf;
 	va_end(args);
+	*sp = pbuf.buf;
 
 	return(n);
 }
@@ -629,12 +627,11 @@ va_dcl
 	printbuf_t pbuf;
 	int n;
 
-	VA_START(args, fmt);
-
 	if (size < 0) return(-1);
 	pbuf.buf = s;
 	pbuf.size = size;
 	pbuf.flags = 0;
+	VA_START(args, fmt);
 	n = commonprintf(&pbuf, fmt, args);
 	va_end(args);
 
@@ -656,10 +653,9 @@ va_dcl
 	printbuf_t pbuf;
 	int n;
 
-	VA_START(args, fmt);
-
 	pbuf.buf = (char *)fp;
 	pbuf.flags = VF_FILE;
+	VA_START(args, fmt);
 	n = commonprintf(&pbuf, fmt, args);
 	va_end(args);
 

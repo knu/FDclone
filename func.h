@@ -77,6 +77,12 @@ extern char *sys_errlist[];
 #define	strerror2(n)		(char *)sys_errlist[n]
 #endif
 
+#ifdef	_NOPTY
+#define	isptymode()		0
+#else	/* !_NOPTY */
+#define	isptymode()		ptymode
+#endif	/* !_NOPTY */
+
 /* main.c */
 extern VOID error __P_((char *));
 extern VOID setlinecol __P_((VOID_A));
@@ -90,6 +96,8 @@ extern VOID title __P_((VOID_A));
 extern VOID saveorigenviron __P_((VOID_A));
 #endif
 extern int loadruncom __P_((char *, int));
+extern VOID initfd __P_((char **));
+extern VOID prepareexitfd __P_((int));
 
 /* system.c */
 #ifdef	_NOORIGSHELL
@@ -123,7 +131,7 @@ extern VOID Xrewinddir __P_((DIR *));
 #if	MSDOS
 extern int rawchdir __P_((char *));
 #else
-#define	rawchdir	chdir
+#define	rawchdir(p)	((chdir(p)) ? -1 : 0)
 #endif
 extern int Xchdir __P_((char *));
 extern char *Xgetwd __P_((char *));
@@ -138,11 +146,17 @@ extern int Xutime __P_((char *, struct utimbuf *));
 #else
 extern int Xutimes __P_((char *, struct timeval []));
 #endif
+#ifdef	HAVEFLAGS
+extern int Xchflags __P_((char *, u_long));
+#endif
+#ifndef	NOUID
+extern int Xchown __P_((char *, uid_t, gid_t));
+#endif
 extern int Xunlink __P_((char *));
 extern int Xrename __P_((char *, char *));
 extern int Xopen __P_((char *, int, int));
 #ifdef	_NODOSDRIVE
-#define	Xclose		close
+#define	Xclose(f)	((close(f)) ? -1 : 0)
 #define	Xread		read
 #define	Xwrite		write
 #define	Xlseek		lseek
@@ -165,6 +179,7 @@ extern FILE *Xfopen __P_((char *, char *));
 #ifdef	_NODOSDRIVE
 #define	Xfdopen		fdopen
 #define	Xfclose		fclose
+#define	Xfileno		fileno
 #define	Xfeof		feof
 #define	Xfread		fread
 #define	Xfwrite		fwrite
@@ -176,6 +191,7 @@ extern FILE *Xfopen __P_((char *, char *));
 #else
 extern FILE *Xfdopen __P_((int, char *));
 extern int Xfclose __P_((FILE *));
+extern int Xfileno __P_((FILE *));
 extern int Xfeof __P_((FILE *));
 extern int Xfread __P_((char *, int, int, FILE *));
 extern int Xfwrite __P_((char *, int, int, FILE *));
@@ -210,7 +226,7 @@ extern p_id_t Xforkpty __P_((int *, char *, char *));
 #else	/* !_NOPTY */
 extern VOID regionscroll __P_((int, int, int, int, int, int));
 extern int selectpty __P_((int, int [], char [], int));
-extern VOID syncptyout __P_((VOID_A));
+extern VOID syncptyout __P_((int, int));
 extern int recvbuf __P_((int, VOID_P, int));
 extern VOID sendbuf __P_((int, VOID_P, int));
 extern int recvword __P_((int, int *));
@@ -336,6 +352,11 @@ extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
 extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
 extern int underhome __P_((char *));
 extern int preparedir __P_((char *));
+#ifdef	NOFLOCK
+#define	lockfile(f, m)
+#else
+extern int lockfile __P_((int, int));
+#endif
 extern int touchfile __P_((char *, struct stat *));
 #ifdef	_NODOSDRIVE
 #define	nodoslstat	Xlstat
@@ -643,6 +664,7 @@ extern int customize __P_((VOID_A));
 #endif	/* !_NOCUSTOMIZE */
 
 /* command.c */
+extern int evalstatus __P_((int));
 #ifndef	_NOSPLITWIN
 extern int nextwin __P_((VOID_A));
 #endif
@@ -652,6 +674,10 @@ extern VOID helpbar __P_((VOID_A));
 extern int putmode __P_((char *, u_int, int));
 #ifdef	HAVEFLAGS
 extern int putflags __P_((char *, u_long));
+#endif
+#ifndef	NOUID
+extern int putowner __P_((char *, uid_t));
+extern int putgroup __P_((char *, gid_t));
 #endif
 extern VOID waitmes __P_((VOID_A));
 extern int filetop __P_((int));
@@ -665,4 +691,4 @@ extern VOID calcwin __P_((VOID_A));
 extern VOID movepos __P_((int, int));
 extern VOID rewritefile __P_((int));
 extern VOID addlist __P_((VOID_A));
-extern VOID main_fd __P_((char **));
+extern VOID main_fd __P_((char **, int));

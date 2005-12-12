@@ -52,10 +52,10 @@ extern FILE *ttyout;
 extern int Xstat __P_((char *, struct stat *));
 # define	Xlstat		Xstat
 # else
-# define	Xstat		stat
-# define	Xlstat		lstat
+# define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
+# define	Xlstat(p, s)	((lstat(p, s)) ? -1 : 0)
 # endif
-#define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
+#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
 #endif	/* !FD */
 
 #ifndef	EPERM

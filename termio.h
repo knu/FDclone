@@ -114,6 +114,36 @@ typedef struct ttysize	termwsize_t;
 #define	TAB3		OXTABS
 #endif
 
+#define	TIO_LCBREAK	(ISIG | IEXTEN)
+#define	TIO_LCOOKED	(TIO_LCBREAK | ICANON)
+#define	TIO_LECHO	(ECHO | ECHOE | ECHOCTL | ECHOKE)
+#define	TIO_LNOECHO	~(ECHO | ECHOE | ECHOK | ECHONL)
+#define	TIO_ICOOKED	(BRKINT | IXON)
+#define	TIO_INOCOOKED	~(IGNBRK | ISTRIP)
+#define	TIO_ONL		(OPOST | ONLCR)
+#define	TIO_ONONL	~(OCRNL | ONOCR | ONLRET)
+
+#if	MSDOS
+# ifdef	DJGPP
+# define	TIO_BUFSIZ	(ALLOC_T)0
+# else
+# define	TIO_BUFSIZ	sizeof(u_char)
+# endif
+# define	TIO_WINSIZ	(ALLOC_T)0
+#else	/* !MSDOS */
+# ifdef	USESGTTY
+# define	TIO_BUFSIZ	(sizeof(termioctl_t) \
+				+ sizeof(int) + sizeof(struct tchars));
+# else
+# define	TIO_BUFSIZ	sizeof(termioctl_t)
+# endif
+# ifdef	NOTERMWSIZE
+# define	TIO_WINSIZ	(ALLOC_T)0
+# else
+# define	TIO_WINSIZ	sizeof(termwsize_t)
+# endif
+#endif	/* !MSDOS */
+
 #if	defined (USETERMIOS) || defined (USETERMIO)
 #if	(VEOF == VMIN) || (VEOL == VTIME)
 #define	VAL_VMIN	'\004'

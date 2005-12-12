@@ -49,7 +49,7 @@ typedef dev_t	r_dev_t;
 typedef struct _transtable {
 	char *org;
 	char *alias;
-	char *symlink;
+	char *slink;
 	r_dev_t rdev;
 	char type;
 	struct _transtable *next;
@@ -205,7 +205,7 @@ int len;
 		new = (transtable *)malloc2(sizeof(transtable));
 		new -> org = strdup2(org);
 		new -> alias = strndup2(cp, l1);
-		new -> symlink = (l2 > 0) ? strndup2(eol, l2 - 1) : NULL;
+		new -> slink = (l2 > 0) ? strndup2(eol, l2 - 1) : NULL;
 		new -> type = *line;
 		new -> rdev = (maj >= (r_dev_t)0)
 			? makedev(maj, min) : (r_dev_t)-1;
@@ -235,7 +235,7 @@ transtable *tbl;
 			tp = tbl -> next;
 			free(tbl -> org);
 			free(tbl -> alias);
-			if (tbl -> symlink) free(tbl -> symlink);
+			if (tbl -> slink) free(tbl -> slink);
 			free(tbl);
 		}
 	}
@@ -477,9 +477,9 @@ int bufsiz;
 	}
 	rr_curtbl = tp;
 
-	if (tp -> type != 'L' || !(tp -> symlink)) return(-1);
-	len = strlen(tp -> symlink);
-	strncpy(buf, tp -> symlink, bufsiz);
+	if (tp -> type != 'L' || !(tp -> slink)) return(-1);
+	len = strlen(tp -> slink);
+	strncpy(buf, tp -> slink, bufsiz);
 	if (len > bufsiz) len = bufsiz;
 
 	return(len);

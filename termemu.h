@@ -27,7 +27,9 @@ extern ptyinfo_t ptylist[];
 #define	TE_CHANGEWSIZE		(K_MAX + 11)
 #define	TE_INSERTWIN		(K_MAX + 12)
 #define	TE_DELETEWIN		(K_MAX + 13)
-#define	TE_CHANGEKCODE		(K_MAX + 14)
+#define	TE_LOCKBACK		(K_MAX + 14)
+#define	TE_UNLOCKBACK		(K_MAX + 15)
+#define	TE_CHANGEKCODE		(K_MAX + 16)
 #define	TE_AWAKECHILD		(K_MAX + 99)
 
 #define	TE_SETVAR		1
@@ -54,4 +56,6 @@ extern ptyinfo_t ptylist[];
 #define	TE_DELETEARCH		22
 #define	TE_INSERTDRV		23
 #define	TE_DELETEDRV		24
+#define	TE_LOCKFRONT		25
+#define	TE_UNLOCKFRONT		26
 #define	TE_CHANGESTATUS		99

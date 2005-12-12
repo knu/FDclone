@@ -237,6 +237,13 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	isskana(s, i)	iskana2((s)[i])
 #define	isjkana(s, i)	(kctypetable[(u_char)((s)[i])] & KC_JKANA)
 
+#define	isutf2(c1, c2)	((((u_char)(c1) & 0xe0) == 0xc0) \
+			&& ((u_char)(c2) & 0xc0) == 0x80)
+#define	isutf3(c1, c2, c3) \
+			(((u_char)(c1) & 0xf0) == 0xe0 \
+			&& ((u_char)(c2) & 0xc0) == 0x80 \
+			&& ((u_char)(c3) & 0xc0) == 0x80)
+
 #define	NOCNV	0
 #define	ENG	1
 #define	SJIS	2
@@ -254,9 +261,11 @@ K_EXTERN CONST u_char kctypetable[256]
 
 #ifdef	CODEEUC
 #define	DEFCODE	EUC
+#define	SECCODE	SJIS
 #define	KANAWID	2
 #else
 #define	DEFCODE	SJIS
+#define	SECCODE	EUC
 #define	KANAWID	1
 #endif
 
@@ -286,27 +295,27 @@ K_EXTERN int outputkcode K_INIT(NOCNV);
 K_EXTERN int fnamekcode K_INIT(NOCNV);
 #endif
 
-#define	L_INPUT		0
-#define	L_OUTPUT	1
-#define	L_FNAME		2
+#define	L_INPUT		0001
+#define	L_OUTPUT	0002
+#define	L_FNAME		0004
 
 K_EXTERN CONST char kanjiiomode[]
 # ifdef	K_INTERN
 = {
-	L_INPUT,	/* NOCNV */
-	L_OUTPUT,	/* ENG */
-	-1,		/* SJIS */
-	-1,		/* EUC */
-	L_INPUT,	/* JIS7 */
-	L_INPUT,	/* O_JIS7 */
-	L_INPUT,	/* JIS8 */
-	L_INPUT,	/* O_JIS8 */
-	L_INPUT,	/* JUNET */
-	L_INPUT,	/* O_JUNET */
-	L_FNAME,	/* HEX */
-	L_FNAME,	/* CAP */
-	-1,		/* UTF8 */
-	-1,		/* M_UTF8 */
+	          L_OUTPUT | L_FNAME,	/* NOCNV */
+	          L_OUTPUT,		/* ENG */
+	L_INPUT | L_OUTPUT | L_FNAME,	/* SJIS */
+	L_INPUT | L_OUTPUT | L_FNAME,	/* EUC */
+	          L_OUTPUT | L_FNAME,	/* JIS7 */
+	          L_OUTPUT | L_FNAME,	/* O_JIS7 */
+	          L_OUTPUT | L_FNAME,	/* JIS8 */
+	          L_OUTPUT | L_FNAME,	/* O_JIS8 */
+	          L_OUTPUT | L_FNAME,	/* JUNET */
+	          L_OUTPUT | L_FNAME,	/* O_JUNET */
+	                     L_FNAME,	/* HEX */
+	                     L_FNAME,	/* CAP */
+	L_INPUT | L_OUTPUT | L_FNAME,	/* UTF8 */
+	L_INPUT | L_OUTPUT | L_FNAME,	/* M_UTF8 */
 }
 # endif	/* K_INTERN */
 ;

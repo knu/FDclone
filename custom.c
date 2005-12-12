@@ -599,8 +599,8 @@ int no;
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
-			*((int *)(envlist[no].var)) =
-				getlang(cp, envlist[no].type - T_KIN);
+			n = (1 << (envlist[no].type - T_KIN));
+			*((int *)(envlist[no].var)) = getlang(cp, n);
 			break;
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
 #if	FD >= 2
@@ -766,7 +766,7 @@ VOID freeenvpath(VOID_A)
 			break;
 	}
 }
-#endif
+#endif	/* DEBUG */
 
 #ifndef	_NOCUSTOMIZE
 static int NEAR custputs(s)
@@ -1345,7 +1345,7 @@ int no;
 		case T_PATH:
 		case T_PATHS:
 			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
-			new = inputcustenvstr(env, 1, cp, 1);
+			new = inputcustenvstr(env, 1, cp, HST_PATH);
 			if (new == (char *)-1) return(0);
 			cp = new;
 			break;
@@ -1526,29 +1526,17 @@ int no;
 			val[tmp++] = JIS8;
 			str[tmp] = "ISO-2022-JP";
 			val[tmp++] = JUNET;
+			str[tmp] = "Hex";
+			val[tmp++] = HEX;
 			str[tmp] = "UTF-8";
 			val[tmp++] = UTF8;
 #  endif	/* !_NOKANJICONV */
 			str[tmp] = VUSET_K;
 			val[tmp++] = -1;
-			p = envlist[no].type - T_KIN;
+			p = (1 << (envlist[no].type - T_KIN));
 			for (n = 0; n < tmp; n++) {
-				if (val[n] < 0) continue;
-				switch (kanjiiomode[val[n]]) {
-					case L_INPUT:
-						if (p != L_INPUT) continue;
-						break;
-					case L_OUTPUT:
-						if (p == L_OUTPUT) continue;
-						break;
-					case L_FNAME:
-						if (p == L_FNAME) continue;
-						break;
-					default:
-						continue;
-/*NOTREACHED*/
-						break;
-				}
+				if (val[n] < 0 || (kanjiiomode[val[n]] & p))
+					continue;
 				tmp--;
 				memmove(&(str[n]), &(str[n + 1]),
 					(tmp - n) * sizeof(char *));
@@ -1559,12 +1547,18 @@ int no;
 			if (!tmp) return(0);
 			n = *((int *)(envlist[no].var));
 #  ifndef	_NOKANJICONV
-			if (n != O_JIS7 && n != O_JIS8 && n != O_JUNET
-			&& n != M_UTF8)
-				p = 0;
-			else {
-				p = 1;
-				n--;
+			switch (n) {
+				case O_JIS7:
+				case O_JIS8:
+				case O_JUNET:
+				case CAP:
+				case M_UTF8:
+					p = 1;
+					n--;
+					break;
+				default:
+					p = 0;
+					break;
 			}
 #  endif	/* !_NOKANJICONV */
 			envcaption(env);
@@ -1574,17 +1568,26 @@ int no;
 				break;
 			}
 #  ifndef	_NOKANJICONV
-			if (n >= JIS7 && n <= JUNET) {
-				str[0] = VNJIS_K;
-				str[1] = VOJIS_K;
-				val[0] = 0;
-				val[1] = 1;
-				if (noselect(&p, 2, 64, str, val)) return(0);
-				n += p;
+			switch (n) {
+				case JIS7:
+				case JIS8:
+				case JUNET:
+					str[0] = VNJIS_K;
+					str[1] = VOJIS_K;
+					break;
+				case HEX:
+					str[0] = "HEX";
+					str[1] = "CAP";
+					break;
+				case UTF8:
+					str[0] = VUTF8_K;
+					str[1] = VUTFM_K;
+					break;
+				default:
+					tmp = -1;
+					break;
 			}
-			else if (n == UTF8) {
-				str[0] = VUTF8_K;
-				str[1] = VUTFM_K;
+			if (tmp >= 0) {
 				val[0] = 0;
 				val[1] = 1;
 				if (noselect(&p, 2, 64, str, val)) return(0);
@@ -2031,7 +2034,7 @@ int no;
 				cp = NULL;
 			else cp = macrolist[bindlist[no].f_func - FUNCLISTSIZ];
 			buf = asprintf3(BNDFC_K, str);
-			cp = inputcuststr(buf, 0, cp, 0);
+			cp = inputcuststr(buf, 0, cp, HST_COM);
 			free(buf);
 			if (!cp);
 			else if (!*cp) {
@@ -2068,7 +2071,7 @@ int no;
 			if (bindlist[no].key < 0 || i < FUNCLISTSIZ) cp = NULL;
 			else cp = macrolist[i - FUNCLISTSIZ];
 			buf = asprintf3(BNDDC_K, str);
-			cp = inputcuststr(buf, 0, cp, 0);
+			cp = inputcuststr(buf, 0, cp, HST_COM);
 			free(buf);
 			if (!cp);
 			else if (!*cp) {
@@ -2799,7 +2802,8 @@ int no;
 		list.topskip = launchlist[no].topskip;
 		list.bottomskip = launchlist[no].bottomskip;
 
-		list.comm = inputcuststr(LNCHC_K, 0, launchlist[no].comm, 0);
+		list.comm = inputcuststr(LNCHC_K, 0,
+			launchlist[no].comm, HST_COM);
 		if (!(list.comm)) {
 			freelaunch(&list);
 			return(-1);
@@ -3079,7 +3083,7 @@ int no;
 
 	for (;;) {
 		list.p_comm = inputcuststr(PACKC_K, 0,
-			archivelist[no].p_comm, 0);
+			archivelist[no].p_comm, HST_COM);
 		if (!(list.p_comm)) {
 			free(list.ext);
 			return(0);
@@ -3090,7 +3094,7 @@ int no;
 		}
 
 		list.u_comm = inputcuststr(UPCKC_K, 0,
-			archivelist[no].u_comm, 0);
+			archivelist[no].u_comm, HST_COM);
 		if (!(list.u_comm)) {
 			if (list.p_comm) free(list.p_comm);
 			continue;
@@ -3375,7 +3379,8 @@ int no;
 	for (;;) {
 		if (!(dev.name)) {
 			cp = asprintf3(DRDEV_K, dev.drive);
-			dev.name = inputcuststr(cp, 1, fdtype[no].name, 1);
+			dev.name = inputcuststr(cp, 1,
+				fdtype[no].name, HST_PATH);
 			free(cp);
 			if (!(dev.name)) return(0);
 			else if (!*(dev.name)) {
@@ -3662,7 +3667,7 @@ char *file;
 	}
 	if (!(fpout = Xfdopen(fd, "w"))) {
 		warning(-1, path);
-		Xclose(fd);
+		VOID_C Xclose(fd);
 		Xunlink(path);
 		if (fpin) Xfclose(fpin);
 		return(-1);
@@ -3918,8 +3923,8 @@ int no;
 # endif
 			break;
 		case 2:
-			if (!(file = inputcuststr(FLOAD_K, 1, FD_RCFILE, 1)))
-				break;
+			file = inputcuststr(FLOAD_K, 1, FD_RCFILE, HST_PATH);
+			if (!file) break;
 			if (!*file) {
 				free(file);
 				break;
@@ -3938,8 +3943,8 @@ int no;
 			}
 			break;
 		case 3:
-			if (!(file = inputcuststr(FSAVE_K, 1, FD_RCFILE, 1)))
-				break;
+			file = inputcuststr(FSAVE_K, 1, FD_RCFILE, HST_PATH);
+			if (!file) break;
 			done = 1;
 			file = evalpath(file, 0);
 # ifdef	FAKEUNINIT
@@ -3977,8 +3982,8 @@ int no;
 			break;
 		case 4:
 # ifndef	_NOORIGSHELL
-			if (!(file = inputcuststr(FOVWR_K, 1, FD_RCFILE, 1)))
-				break;
+			file = inputcuststr(FOVWR_K, 1, FD_RCFILE, HST_PATH);
+			if (!file) break;
 			done = 1;
 			file = evalpath(file, 0);
 			if (!*file

@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.07b
+VERSION	= 2.07c
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -546,11 +546,10 @@ dosdisk.obj: machine.h config.h
 dosdisk.obj: dosdisk.h
 dosdisk.obj: kctype.h
 dosemu.obj: fd.h
-dosemu.obj: machine.h config.h
-dosemu.obj: types.h
-dosemu.obj: printf.h kctype.h
-dosemu.obj: pathname.h term.h
-dosemu.obj: termio.h
+dosemu.obj: machine.h config.h types.h
+dosemu.obj: printf.h
+dosemu.obj: kctype.h
+dosemu.obj: pathname.h term.h termio.h
 dosemu.obj: func.h
 dosemu.obj: dosdisk.h
 mkunitbl.obj: machine.h config.h
@@ -560,8 +559,7 @@ unixdisk.obj: termio.h
 unixdisk.obj: unixemu.h dosdisk.h
 unixdisk.obj: kctype.h
 unixemu.obj: fd.h
-unixemu.obj: machine.h config.h
-unixemu.obj: types.h
+unixemu.obj: machine.h config.h types.h
 unixemu.obj: printf.h
 unixemu.obj: kctype.h
 unixemu.obj: pathname.h term.h termio.h
@@ -726,3 +724,4 @@ mkmfsed.obj: types.h
 mkmfsed.obj: printf.h
 mkmfsed.obj: kctype.h
 mkmfsed.obj: pathname.h term.h
+mkmfsed.obj: version.h

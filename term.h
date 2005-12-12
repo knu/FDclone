@@ -19,6 +19,9 @@ typedef struct _keyseq_t {
 	char *str;
 } keyseq_t;
 
+#define	GETSIZE	"\033[6n"
+#define	SIZEFMT	"\033[%d;%dR"
+
 #define	K_CR	'\r'
 #define	K_ESC	'\033'
 

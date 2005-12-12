@@ -16,7 +16,6 @@
 #define	MAXESCPARAM	16
 #define	MAXESCCHAR	4
 #define	MAXTABSTOP	255
-#define	SIZEFMT		"\033[%d;%dR"
 
 typedef struct _ptyterm_t {
 	short cur_x, cur_y;
@@ -49,6 +48,7 @@ typedef struct _ptyterm_t {
 #define	T_NOAPPLIKEY	00004
 #define	T_NOAPPLICURSOR	00010
 #define	T_CODEALT	00020
+#define	T_LOCKED	00040
 
 extern int hideclock;
 extern int wheader;
@@ -402,9 +402,8 @@ int w, c;
 		}
 		else if (code == UTF8) {
 			if (!ismsb(c)) pty[w].last1 = pty[w].last2 = (short)-1;
-			else if ((pty[w].last1 & 0xc0) == 0x80) /*EMPTY*/;
 			else if (pty[w].last2 >= (short)0) width++;
-			else {
+			else if (!isutf2(pty[w].last1, c)) {
 				pty[w].last2 = c;
 				return;
 			}
@@ -577,7 +576,7 @@ int w, c;
 static VOID NEAR evalcsi(w, c, fd)
 int w, c, fd;
 {
-	char buf[sizeof(SIZEFMT) + 6];
+	char buf[sizeof(SIZEFMT) + (MAXLONGWIDTH - 2) * 2];
 	short min, max;
 	int i, n, x, y;
 
@@ -942,6 +941,7 @@ int w;
 {
 	u_char uc;
 
+	if (pty[w].termflags & T_LOCKED) return;
 	if (recvbuf(ptylist[w].fd, &uc, sizeof(uc)) < 0) return;
 
 	switch (pty[w].escmode) {
@@ -1232,9 +1232,19 @@ int fd, n;
 			return(1);
 /*NOTREACHED*/
 			break;
+		case TE_LOCKBACK:
+			pty[w1].termflags |= T_LOCKED;
+			sendbuf(ptylist[w1].fd, "\n", 1);
+			break;
+		case TE_UNLOCKBACK:
+			pty[w1].termflags &= ~T_LOCKED;
+			sendbuf(ptylist[w1].fd, "\n", 1);
+			break;
 #ifndef	_NOKANJICONV
 		case TE_CHANGEKCODE:
-			outputkcode = w1;
+			if (recvbuf(fd, &w2, sizeof(w2)) < 0) break;
+			inputkcode = w1;
+			outputkcode = w2;
 			break;
 #endif	/* !_NOKANJICONV */
 		case TE_AWAKECHILD:
@@ -1264,23 +1274,29 @@ static int NEAR evalinput(fd)
 int fd;
 {
 	keyseq_t key;
-	u_char buf[2];
+	char buf[2];
 	int n;
 
 	if (recvbuf(fd, &(key.code), sizeof((key.code))) < 0) return(0);
 
 	if (ismetakey(key.code)) {
 		key.len = (u_char)2;
-		key.str = (char *)buf;
+		key.str = buf;
 		buf[0] = K_ESC;
 		buf[1] = (key.code & 0xff);
 	}
+#if	!defined (_NOKANJICONV) || defined (CODEEUC)
+# ifdef	_NOKANJICONV
 	else if (isekana2(key.code)) {
+# else
+	else if (inputkcode == EUC && isekana2(key.code)) {
+# endif
 		key.len = (u_char)2;
-		key.str = (char *)buf;
+		key.str = buf;
 		buf[0] = C_EKANA;
 		buf[1] = (key.code & 0xff);
 	}
+#endif	/* !_NOKANJICONV || CODEEUC */
 	else if (!(key.code & 01000) && key.code > K_MAX) {
 		n = directoutput(fd, key.code);
 		if (win < MAXWINDOWS) {
@@ -1293,7 +1309,7 @@ int fd;
 	}
 	else if (convkey(win, &key) < 0 || !(key.len)) {
 		key.len = (u_char)1;
-		key.str = (char *)buf;
+		key.str = buf;
 		buf[0] = key.code;
 	}
 

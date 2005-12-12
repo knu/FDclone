@@ -293,7 +293,10 @@ char *buf, *s1, *s2;
 int isdotdir(s)
 char *s;
 {
-	if (s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]))) return(1);
+	if (s[0] != '.') /*EMPTY*/;
+	else if (!s[1]) return(2);
+	else if (s[1] != '.') /*EMPTY*/;
+	else if (!s[2]) return(1);
 
 	return(0);
 }

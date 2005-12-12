@@ -77,8 +77,6 @@ extern int errno;
 #include "termio.h"
 #include "term.h"
 
-#define	GETSIZE		"\033[6n"
-#define	SIZEFMT		"\033[%d;%dR"
 #define	WINTERMNAME	"iris"
 #ifdef	USESTRERROR
 #define	strerror2		strerror
@@ -90,7 +88,7 @@ extern char *sys_errlist[];
 #endif
 
 #ifdef	DEBUG
-extern VOID muntrace __P_ ((VOID));
+extern VOID muntrace __P_ ((VOID_A));
 extern char *_mtrace_file;
 #endif
 
@@ -968,8 +966,7 @@ int cooked2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(0, CBREAK | RAW, LPASS8, LLITOUT | LPENDIN);
 #else
-	ttymode(ISIG | ICANON | IEXTEN, PENDIN,
-		BRKINT | IXON, IGNBRK | ISTRIP,
+	ttymode(TIO_LCOOKED, PENDIN, TIO_ICOOKED, ~TIO_INOCOOKED,
 		OPOST, 0, VAL_VMIN, VAL_VTIME);
 #endif
 
@@ -981,7 +978,7 @@ int cbreak2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(CBREAK, 0, LLITOUT, 0);
 #else
-	ttymode(ISIG | IEXTEN, ICANON, BRKINT | IXON, IGNBRK, OPOST, 0, 1, 0);
+	ttymode(TIO_LCBREAK, ICANON, TIO_ICOOKED, IGNBRK, OPOST, 0, 1, 0);
 #endif
 
 	return(0);
@@ -992,8 +989,7 @@ int raw2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(RAW, 0, LLITOUT, 0);
 #else
-	ttymode(0, ISIG | ICANON | IEXTEN,
-		IGNBRK, BRKINT | IXON, 0, OPOST, 1, 0);
+	ttymode(0, TIO_LCOOKED, IGNBRK, TIO_ICOOKED, 0, OPOST, 1, 0);
 #endif
 
 	return(0);
@@ -1004,7 +1000,7 @@ int echo2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 #else
-	ttymode(ECHO | ECHOE | ECHOCTL | ECHOKE, ECHONL, 0, 0, 0, 0, 0, 0);
+	ttymode(TIO_LECHO, ECHONL, 0, 0, 0, 0, 0, 0);
 #endif
 
 	return(0);
@@ -1015,7 +1011,7 @@ int noecho2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(0, ECHO, 0, LCRTBS | LCRTERA);
 #else
-	ttymode(0, ECHO | ECHOE | ECHOK | ECHONL, 0, 0, 0, 0, 0, 0);
+	ttymode(0, ~TIO_LNOECHO, 0, 0, 0, 0, 0, 0);
 #endif
 
 	return(0);
@@ -1026,7 +1022,7 @@ int nl2(VOID_A)
 #ifdef	USESGTTY
 	ttymode(CRMOD, 0, 0, 0);
 #else
-	ttymode(0, 0, ICRNL, 0, ONLCR, OCRNL | ONOCR | ONLRET, 0, 0);
+	ttymode(0, 0, ICRNL, 0, ONLCR, ~TIO_ONONL, 0, 0);
 #endif
 
 	return(0);
@@ -1086,23 +1082,24 @@ int keyflush(VOID_A)
 int ttyiomode(isnl)
 int isnl;
 {
+	if (ttyio < 0) /*EMPTY*/;
+	else {
 #if	MSDOS
-	raw2();
+		raw2();
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-	raw2();
-	noecho2();
-	nonl2();
-	notabs();
+		raw2();
+		noecho2();
+		nonl2();
+		notabs();
 # else	/* !USESGTTY */
-	if (isnl) ttymode(0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
-		IGNBRK, (BRKINT|IXON) | ICRNL,
-		OPOST | ONLCR | TAB3, 0, 1, 0);
-	else ttymode(0, (ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOK|ECHONL),
-		IGNBRK, (BRKINT|IXON) | ICRNL,
-		TAB3, OPOST | ONLCR, 1, 0);
+		if (isnl) ttymode(0, TIO_LCOOKED | ~TIO_LNOECHO,
+			IGNBRK, TIO_ICOOKED | ICRNL, TIO_ONL | TAB3, 0, 1, 0);
+		else ttymode(0, TIO_LCOOKED | ~TIO_LNOECHO,
+			IGNBRK, TIO_ICOOKED | ICRNL, TAB3, TIO_ONL, 1, 0);
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
+	}
 	if (!dumbterm) {
 		putterm(T_KEYPAD);
 		tflush();
@@ -1117,30 +1114,30 @@ int stdiomode(VOID_A)
 	int isnl;
 
 	isnl = (isttyiomode) ? isttyiomode - 1 : 0;
+	if (ttyio < 0) /*EMPTY*/;
+	else {
 #if	MSDOS
-	cooked2();
+		cooked2();
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-	cooked2();
-	echo2();
-	nl2();
-	tabs();
-	if (dumbterm > 2) ttymode(0, ECHO | CRMOD, 0, 0);
+		cooked2();
+		echo2();
+		nl2();
+		tabs();
+		if (dumbterm > 2) ttymode(0, ECHO | CRMOD, 0, 0);
 # else	/* !USESGTTY */
-	if (isnl) ttymode((ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
-		PENDIN | ECHONL,
-		(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
-		0, (OCRNL|ONOCR|ONLRET) | TAB3,
-		VAL_VMIN, VAL_VTIME);
-	else ttymode((ISIG|ICANON|IEXTEN) | (ECHO|ECHOE|ECHOCTL|ECHOKE),
-		PENDIN | ECHONL,
-		(BRKINT|IXON) | ICRNL, (IGNBRK|ISTRIP),
-		OPOST | ONLCR, (OCRNL|ONOCR|ONLRET) | TAB3,
-		VAL_VMIN, VAL_VTIME);
-	if (dumbterm > 2)
-		ttymode(0, ECHO, 0, ICRNL, 0, ONLCR, VAL_VMIN, VAL_VTIME);
+		if (isnl) ttymode(TIO_LCOOKED | TIO_LECHO, PENDIN | ECHONL,
+			TIO_ICOOKED | ICRNL, ~TIO_INOCOOKED,
+			0, ~TIO_ONONL | TAB3, VAL_VMIN, VAL_VTIME);
+		else ttymode(TIO_LCOOKED | TIO_LECHO, PENDIN | ECHONL,
+			TIO_ICOOKED | ICRNL, ~TIO_INOCOOKED,
+			TIO_ONL, ~TIO_ONONL | TAB3, VAL_VMIN, VAL_VTIME);
+		if (dumbterm > 2)
+			ttymode(0, ECHO,
+				0, ICRNL, 0, ONLCR, VAL_VMIN, VAL_VTIME);
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
+	}
 	if (!dumbterm) {
 		putterm(T_NOKEYPAD);
 		tflush();
@@ -1336,7 +1333,7 @@ int *yp, *xp;
 int getxy(xp, yp)
 int *xp, *yp;
 {
-	char *format, buf[sizeof(SIZEFMT) + 6];
+	char *format, buf[sizeof(SIZEFMT) + (MAXLONGWIDTH - 2) * 2];
 	int i, j, tmp, count, *val[2];
 
 	format = SIZEFMT;
@@ -3171,10 +3168,10 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-
 	n = vasprintf2(&buf, fmt, args);
 	va_end(args);
 	if (n < 0) err2("malloc()");
+
 	cputs2(buf);
 	free(buf);
 

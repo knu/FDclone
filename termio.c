@@ -401,11 +401,11 @@ char **ttyp, **wsp;
 	if (ttyp) do {
 		*ttyp = NULL;
 # ifndef	DJGPP
-		if (!(tty = (char *)malloc(sizeof(reg.h.dl)))) break;
+		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
 
 		reg.x.ax = 0x3300;
 		int86(0x21, &reg, &reg);
-		memcpy((char *)tty, (char *)&(reg.h.dl), sizeof(reg.h.dl));
+		memcpy((char *)tty, (char *)&(reg.h.dl), TIO_BUFSIZ);
 		*ttyp = tty;
 # endif	/* !DJGPP */
 	} while (0);
@@ -542,11 +542,7 @@ char **ttyp, **wsp;
 
 	if (ttyp) do {
 		*ttyp = NULL;
-		size = sizeof(termioctl_t);
-# ifdef	USESGTTY
-		size += sizeof(int) + sizeof(struct tchars);
-# endif
-		if (!(tty = (char *)malloc(size))) break;
+		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
 
 		size = (ALLOC_T)0;
 		if (tioctl(fd, REQGETP, (termioctl_t *)&(tty[size])) < 0) {
@@ -571,7 +567,7 @@ char **ttyp, **wsp;
 	if (wsp) do {
 		*wsp = NULL;
 # ifndef	NOTERMWSIZE
-		if (!(ws = (char *)malloc(sizeof(termwsize_t)))) break;
+		if (!(ws = (char *)malloc(TIO_WINSIZ))) break;
 
 		if (Xioctl(fd, REQGETWS, (termwsize_t *)ws) < 0) {
 			free(ws);

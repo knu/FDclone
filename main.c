@@ -59,6 +59,7 @@ extern int maxarchive;
 extern int wheader;
 extern char fullpath[];
 extern char *histfile;
+extern int savehist;
 extern char *helpindex[];
 extern int subwindow;
 extern int win_x;
@@ -146,6 +147,7 @@ static VOID NEAR printtime __P_((int));
 #ifdef	SIGALRM
 static int trapalrm __P_((VOID_A));
 #endif
+static char *NEAR getversion __P_((int *));
 #ifdef	_NOORIGSHELL
 static int NEAR execruncomline __P_((char *, char *, int, char *));
 #endif
@@ -154,7 +156,6 @@ static int NEAR evaloption __P_((char *[]));
 static char *NEAR searchenv __P_((char *, char *[]));
 static VOID NEAR setexecname __P_((char *));
 static VOID NEAR setexecpath __P_((char *, char *[]));
-static VOID NEAR prepareexitfd __P_((VOID_A));
 
 char *origpath = NULL;
 char *progpath = NULL;
@@ -235,7 +236,7 @@ char *s;
 	if (isorgpid()) {
 		inittty(1);
 		keyflush();
-		prepareexitfd();
+		prepareexitfd(2);
 #ifndef	_NOORIGSHELL
 # ifndef	NOJOB
 		killjob();
@@ -659,7 +660,7 @@ int hide;
 	}
 	if (timersec-- < CLOCKUPDATE && !showsecond) return;
 #ifndef	_NOPTY
-	if (ptymode && hide <= 1) hide = 0;
+	if (isptymode() && hide <= 1) hide = 0;
 #endif
 	if (hide) return;
 
@@ -752,9 +753,24 @@ int set;
 	return(old);
 }
 
-VOID title(VOID_A)
+static char *NEAR getversion(lenp)
+int *lenp;
 {
 	char *cp, *eol;
+
+	cp = strchr(version, ' ');
+	while (*(++cp) == ' ');
+	if (lenp) {
+		if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
+		*lenp = eol - cp;
+	}
+
+	return(cp);
+}
+
+VOID title(VOID_A)
+{
+	char *cp;
 	int i, len;
 
 	Xlocate(0, L_TITLE);
@@ -772,10 +788,7 @@ VOID title(VOID_A)
 	}
 	Xcputs2(" Ver.");
 	len += 5;
-	cp = strchr(version, ' ');
-	while (*(++cp) == ' ');
-	if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
-	i = eol - cp;
+	cp = getversion(&i);
 	Xcprintf2("%-*.*s", i, i, cp);
 	if (distributor) {
 		Xputch2('#');
@@ -1049,9 +1062,30 @@ char *argv, *envp[];
 	}
 }
 
-static VOID NEAR prepareexitfd(VOID_A)
+/*ARGSUSED*/
+VOID initfd(argv)
+char **argv;
+{
+	if (interactive) {
+#if	!MSDOS
+		if (adjtty) {
+			Xstdiomode();
+			inittty(0);
+			Xttyiomode(0);
+		}
+#endif	/* !MSDOS */
+		loadhistory(0, histfile);
+		entryhist(1, origpath, 1);
+	}
+}
+
+/*ARGSUSED*/
+VOID prepareexitfd(status)
+int status;
 {
 	char cwd[MAXPATHLEN];
+
+	if (interactive && savehist > 0) savehistory(0, histfile);
 
 	cwd[0] = '\0';
 	if (origpath && _chdir2(origpath) < 0) {
@@ -1254,7 +1288,9 @@ char *argv[], *envp[];
 	cp = getshellname(progname, NULL, NULL);
 	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, "su")) {
 		i = main_shell(argc, argv, envp);
-		prepareexitfd();
+# ifndef	_NOPTY
+		killallpty();
+# endif
 		Xexit2(i);
 	}
 	fdmode = interactive = 1;
@@ -1294,31 +1330,19 @@ char *argv[], *envp[];
 
 	i = evaloption(argv);
 	checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
-#if	!MSDOS
-	if (adjtty) {
-		Xstdiomode();
-		inittty(0);
-		Xttyiomode(0);
-	}
-#endif	/* !MSDOS */
-
-	loadhistory(0, histfile);
-	entryhist(1, origpath, 1);
+	initfd(argv);
 	Xputterms(T_CLEAR);
 
 #ifdef	SIGWINCH
 	nowinch = 0;
 #endif
-	main_fd(&(argv[i]));
+	main_fd(&(argv[i]), 0);
 	sigvecset(0);
-	prepareexitfd();
 
 	Xstdiomode();
-#ifndef	_NOORIGSHELL
-# ifndef	NOJOB
+#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
 	killjob();
-# endif
-#endif	/* !_NOORIGSHELL */
+#endif
 #ifndef	_NOPTY
 	killallpty();
 #endif

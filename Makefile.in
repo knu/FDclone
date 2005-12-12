@@ -546,11 +546,10 @@ dosdisk__OBJ__: machine.h config.h
 dosdisk__OBJ__: dosdisk.h
 dosdisk__OBJ__: kctype.h
 dosemu__OBJ__: fd.h
-dosemu__OBJ__: machine.h config.h
-dosemu__OBJ__: types.h
-dosemu__OBJ__: printf.h kctype.h
-dosemu__OBJ__: pathname.h term.h
-dosemu__OBJ__: termio.h
+dosemu__OBJ__: machine.h config.h types.h
+dosemu__OBJ__: printf.h
+dosemu__OBJ__: kctype.h
+dosemu__OBJ__: pathname.h term.h termio.h
 dosemu__OBJ__: func.h
 dosemu__OBJ__: dosdisk.h
 mkunitbl__OBJ__: machine.h config.h
@@ -560,8 +559,7 @@ unixdisk__OBJ__: termio.h
 unixdisk__OBJ__: unixemu.h dosdisk.h
 unixdisk__OBJ__: kctype.h
 unixemu__OBJ__: fd.h
-unixemu__OBJ__: machine.h config.h
-unixemu__OBJ__: types.h
+unixemu__OBJ__: machine.h config.h types.h
 unixemu__OBJ__: printf.h
 unixemu__OBJ__: kctype.h
 unixemu__OBJ__: pathname.h term.h termio.h
@@ -726,3 +724,4 @@ mkmfsed__OBJ__: types.h
 mkmfsed__OBJ__: printf.h
 mkmfsed__OBJ__: kctype.h
 mkmfsed__OBJ__: pathname.h term.h
+mkmfsed__OBJ__: version.h

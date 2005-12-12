@@ -129,9 +129,9 @@ int Xstat __P_((char *, struct stat *));
 # define	Xopendir	opendir
 # define	Xclosedir	closedir
 # define	Xreaddir	readdir
-# define	Xstat		stat
+# define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
 #  ifndef	NOSYMLINK
-#  define	Xlstat		lstat
+#  define	Xlstat(p, s)	((lstat(p, s)) ? -1 : 0)
 #  endif
 # endif	/* !MSDOS */
 # ifdef	NOSYMLINK
@@ -148,7 +148,7 @@ char *Xgetwd __P_((char *));
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
 # endif	/* !DJGPP */
-#define	Xaccess		access
+#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
 #endif	/* !FD */
 
 static char *NEAR getenvvar __P_((char *, int));
@@ -176,9 +176,6 @@ static int NEAR isexecute __P_((char *, int, int));
 static int NEAR extaccess __P_((char *, char *, int, int));
 #endif
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
-# ifndef	NOUID
-static int NEAR completeuser __P_((char *, int, int, char ***));
-# endif
 static int NEAR completefile __P_((char *, int, int, char ***,
 	char *, int, int));
 static int NEAR completeexe __P_((char *, int, int, char ***));
@@ -833,7 +830,10 @@ int c;
 int isdotdir(s)
 char *s;
 {
-	if (s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]))) return(1);
+	if (s[0] != '.') /*EMPTY*/;
+	else if (!s[1]) return(2);
+	else if (s[1] != '.') /*EMPTY*/;
+	else if (!s[2]) return(1);
 
 	return(0);
 }
@@ -1952,14 +1952,15 @@ char **argv;
 }
 
 # ifndef	NOUID
-static int NEAR completeuser(name, len, argc, argvp)
+int completeuser(name, len, argc, argvp, home)
 char *name;
 int len, argc;
 char ***argvp;
+int home;
 {
 	struct passwd *pwd;
 	char *new;
-	int size;
+	ALLOC_T size;
 
 	len = strlen(name);
 #  ifdef	DEBUG
@@ -1980,10 +1981,13 @@ char ***argvp;
 		}
 		if (!pwd) break;
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
-		size = strlen(pwd -> pw_name);
-		new = malloc2(size + 2 + 1);
-		new[0] = '~';
-		strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
+		if (!home) new = strdup2(pwd -> pw_name);
+		else {
+			size = strlen(pwd -> pw_name);
+			new = malloc2(size + 2 + 1);
+			new[0] = '~';
+			strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
+		}
 		if (finddupl(new, argc, *argvp)) {
 			free(new);
 			continue;
@@ -2004,10 +2008,13 @@ char ***argvp;
 	setpwent();
 	while ((pwd = getpwent())) {
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
-		size = strlen(pwd -> pw_name);
-		new = malloc2(size + 2 + 1);
-		new[0] = '~';
-		strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
+		if (!home) new = strdup2(pwd -> pw_name);
+		else {
+			size = strlen(pwd -> pw_name);
+			new = malloc2(size + 2 + 1);
+			new[0] = '~';
+			strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
+		}
 		if (finddupl(new, argc, *argvp)) {
 			free(new);
 			continue;
@@ -2122,7 +2129,7 @@ int exe;
 	}
 # ifndef	NOUID
 	else if (*path == '~')
-		return(completeuser(&(path[1]), len - 1, argc, argvp));
+		return(completeuser(&(path[1]), len - 1, argc, argvp, 1));
 # endif
 	else if (exe && dir == path)
 		return(completeexe(path, len, argc, argvp));

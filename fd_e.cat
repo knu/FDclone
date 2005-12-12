@@ -6,9 +6,9 @@ NNAAMMEE
      fd - file & directory maintenance tool
 
 SSYYNNOOPPSSIISS
-     ffdd [ --aabbCCeeffhhiikkmmnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
+     ffdd [ --aabbCCeeffhhiikkllmmNNnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
      _d_i_r_e_c_t_o_r_y_2 _._._. ]]
-     ffddsshh [ --aabbCCcceeffhhiikkmmnnrrssttuuvvxx ] [ _a_r_g_s ]
+     ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnrrssttuuvvxx ] [ _a_r_g_s ]
 
 DDEESSCCRRIIPPTTIIOONN
      ffdd is a file & directory maintenance tool considered for the

@@ -205,6 +205,9 @@ USEMKDEVH
 USEMKNODH
 	デバイス番号用マクロ (または関数) major()/minor() が
 	<sys/mknod.h> の中で定義されています。
+USELOCKFH
+	ファイルロック関数 lockf(2) のコマンドを示す各定数が
+	<sys/lockf.h> の中で定義されています。
 USETERMIO
 	端末インタフェースとして、termio 構造体を用います。
 USETERMIOS
@@ -333,6 +336,15 @@ USEUTIME
 USEGETWD
 	カレントディレクトリ検査関数として、getcwd(3) を用い
 	られず、代わりに getwd(3) を用います。
+USEFCNTLOCK
+	ファイル制御関数 fcntl(2) を flock(2) の代わりに用い
+	ます。
+USELOCKF
+	ファイルロック関数として flock(2) を使うことができず、
+	代わりに lockf(2) を用います。
+NOFLOCK
+	ファイルロック関数として flock(2) も lockf(2) も使う
+	ことができません。
 USETIMELOCAL
 	時間変換関数 timelocal(3) が localtime(3) の逆関数と
 	して使えます。

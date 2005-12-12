@@ -141,7 +141,10 @@ va_dcl
 
 	for (i = 0; fmt[i]; i++) {
 		if (fmt[i] != '%') {
-			if (*(s++) != fmt[i]) return(NULL);
+			if (*(s++) != fmt[i]) {
+				s = NULL;
+				break;
+			}
 			continue;
 		}
 
@@ -182,22 +185,26 @@ va_dcl
 				base = 16;
 				break;
 			case 'c':
-				if (*(s++) != va_arg(args, int)) return(NULL);
+				if (*(s++) != va_arg(args, int)) s = NULL;
 				break;
 			case '$':
-				if (*s) return(NULL);
+				if (*s) s = NULL;
 				break;
 			default:
-				if (*(s++) != fmt[i]) return(NULL);
+				if (*(s++) != fmt[i]) s = NULL;
 				break;
 		}
+		if (!s) break;
 		if (!base) continue;
 
 		cp = s;
 		n = (long_t)0;
 		u = (u_long_t)0;
 		if (*s == '-') {
-			if (!(flags & VF_MINUS)) return(NULL);
+			if (!(flags & VF_MINUS)) {
+				s = NULL;
+				break;
+			}
 			for (s++; *s; s++) {
 #ifdef	LSI_C
 			/* for buggy LSI-C */
@@ -216,7 +223,7 @@ va_dcl
 					n = MINTYPE(long_t);
 				else n = n * base - c;
 			}
-			if ((flags & VF_UNSIGNED) && n) return(NULL);
+			if ((flags & VF_UNSIGNED) && n) s = NULL;
 		}
 		else if (flags & VF_UNSIGNED) {
 			for (; *s; s++) {
@@ -229,7 +236,7 @@ va_dcl
 					u = MAXTYPE(u_long_t);
 				else u = u * base + c;
 			}
-			if ((flags & VF_PLUS) && !u) return(NULL);
+			if ((flags & VF_PLUS) && !u) s = NULL;
 		}
 		else {
 			for (; *s; s++) {
@@ -242,22 +249,28 @@ va_dcl
 					n = MAXTYPE(long_t);
 				else n = n * base + c;
 			}
-			if ((flags & VF_PLUS) && !n) return(NULL);
+			if ((flags & VF_PLUS) && !n) s = NULL;
 		}
-		if (s <= cp) return(NULL);
-		if ((flags & VF_ZERO) && width > 0) return(NULL);
+		if (!s || s <= cp || ((flags & VF_ZERO) && width > 0)) {
+			s = NULL;
+			break;
+		}
 
 		mask = (MAXUTYPE(u_long_t)
 			>> (((int)sizeof(long_t) - len) * BITSPERBYTE));
 		if (flags & VF_UNSIGNED) {
-			if (u & ~mask) return(NULL);
+			if (u & ~mask) {
+				s = NULL;
+				break;
+			}
 		}
 		else {
 			mask >>= 1;
 			if (n >= 0) {
-				if ((u_long_t)n & ~mask) return(NULL);
+				if ((u_long_t)n & ~mask) s = NULL;
 			}
-			else if (((u_long_t)n & ~mask) != ~mask) return(NULL);
+			else if (((u_long_t)n & ~mask) != ~mask) s = NULL;
+			if (!s) break;
 			memcpy(&u, &n, sizeof(u));
 		}
 

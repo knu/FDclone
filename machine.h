@@ -26,6 +26,7 @@
 #define	NOTZFILEH
 #define	USETIMEH
 #define	USEUTIME
+#define	NOFLOCK
 #define	USEMKTIME
 #define	USESTRERROR
 #define	SENSEPERSEC	20
@@ -828,6 +829,7 @@ typedef long	off_t;
 /* #define USESTDARGH	;use <stdarg.h> for va_list */
 /* #define USEMKDEVH	;use <sys/mkdev.h> for major()/minor() */
 /* #define USEMKNODH	;use <sys/mknod.h> for major()/minor() */
+/* #define USELOCKFH	;use <sys/lockf.h> for lockf() */
 /* #define USESGTTY	;use sgtty interface */
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
@@ -880,6 +882,9 @@ typedef long	off_t;
 /* #define NOTERMVAR	;have not termcap variables such as PC, ospeed, etc. */
 /* #define USEUTIME	;use utime() instead of utimes() */
 /* #define USEGETWD	;use getwd() instead of getcwd() */
+/* #define USEFCNTLOCK	;use fcntl() lock instead of flock() */
+/* #define USELOCKF	;use lockf() instead of flock() */
+/* #define NOFLOCK	;have neither flock() nor lockf() */
 /* #define USETIMELOCAL	;have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	;use mktime() instead of timelocal() */
 /* #define USESYSCONF	;use sysconf() for getting system configuration */
@@ -969,6 +974,10 @@ typedef long	off_t;
 
 #ifndef	BSD4
 #define	USEDEVPTMX
+#endif
+
+#if	defined (POSIX) || defined (SYSV)
+#define	USEFCNTLOCK
 #endif
 
 /*                                 */

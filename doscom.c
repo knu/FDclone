@@ -181,7 +181,7 @@ extern int Xunlink __P_((char *));
 extern int Xrename __P_((char *, char *));
 extern int Xopen __P_((char *, int, int));
 # ifdef	_NODOSDRIVE
-# define	Xclose		close
+# define	Xclose(f)	((close(f)) ? -1 : 0)
 # define	Xlseek		lseek
 # else	/* !_NODOSDRIVE */
 extern int Xclose __P_((int));
@@ -215,35 +215,35 @@ extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((char *, struct stat *));
 # define	Xlstat		Xstat
 # else
-# define	Xstat		stat
-# define	Xlstat		lstat
+# define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
+# define	Xlstat(p, s)	((lstat(p, s)) ? -1 : 0)
 # endif
-#define	Xaccess(p, m)	(access(p, m) ? -1 : 0)
+#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
 # ifndef	NOSYMLINK
-# define	Xsymlink(o, n)	(symlink(o, n) ? -1 : 0)
+# define	Xsymlink(o, n)	((symlink(o, n)) ? -1 : 0)
 # define	Xreadlink	readlink
 # endif
-#define	Xchmod		chmod
-#define	Xunlink(p)	(unlink(p) ? -1 : 0)
-#define	Xrename(o, n)	(rename(o, n) ? -1 : 0)
+#define	Xchmod(p, m)	((chmod(p, m)) ? -1 : 0)
+#define	Xunlink(p)	((unlink(p)) ? -1 : 0)
+#define	Xrename(f, t)	((rename(f, t)) ? -1 : 0)
 #define	Xopen		open
-#define	Xclose		close
+#define	Xclose(f)	((close(f)) ? -1 : 0)
 #define	Xlseek		lseek
 # if	MSDOS
 #  ifdef	DJGPP
-#  define	Xmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+#  define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 #  else
 extern int Xmkdir __P_((char *, int));
 #  endif
 # else
-# define	Xmkdir		mkdir
+# define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 # endif
-#define	Xrmdir(p)	(rmdir(p) ? -1 : 0)
+#define	Xrmdir(p)	((rmdir(p)) ? -1 : 0)
 # if	MSDOS
 extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 extern int chdir2 __P_((char *));
 # else
-# define	chdir2(p)	(chdir(p) ? -1 : 0)
+# define	chdir2(p)	((chdir(p)) ? -1 : 0)
 # endif
 # ifdef	NOSYMLINK
 # define	stat2		Xstat
@@ -1982,7 +1982,7 @@ int fd, bin;
 		ch = C_EOF;
 		if (surewrite(fd, &ch, sizeof(u_char)) < 0) ret = -1;
 	}
-	Xclose(fd);
+	VOID_C Xclose(fd);
 
 	return(ret);
 }
@@ -2008,7 +2008,7 @@ int sbin, dbin, dfd;
 		ofs = Xlseek(fd2, (off_t)0, L_INCR);
 	}
 	else if ((fd2 = writeopen(dest, src)) <= 0) {
-		Xclose(fd1);
+		VOID_C Xclose(fd1);
 		return(fd2);
 	}
 	else ofs = (off_t)0;
@@ -2072,7 +2072,7 @@ int sbin, dbin, dfd;
 	}
 
 	if (dfd < 0) textclose(fd2, dbin);
-	Xclose(fd1);
+	VOID_C Xclose(fd1);
 
 	if (i < 0) {
 		VOID_C Xunlink(dest);
@@ -2080,8 +2080,8 @@ int sbin, dbin, dfd;
 		return(dfd < 0 ? -1 : -2);
 	}
 
-#if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
-	stp -> st_flags = (u_long)-1;
+#ifdef	FD
+	stp -> st_nlink = (TCH_ATIME | TCH_MTIME);
 #endif
 	if (!tty && touchfile(dest, stp) < 0) return(-1);
 
@@ -2319,7 +2319,7 @@ char *argv[];
 		}
 	}
 	free(cp);
-	Xclose(fd);
+	VOID_C Xclose(fd);
 #if	MSDOS && !defined (LSI_C)
 	if (omode >= 0) setmode(STDOUT_FILENO, omode);
 #endif

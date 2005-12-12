@@ -6,9 +6,9 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      fd - ファイル・ディレクトリ管理ツール
 
 形形式式
-     ffdd [ --aabbCCeeffhhiikkmmnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
+     ffdd [ --aabbCCeeffhhiikkllmmNNnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
      _d_i_r_e_c_t_o_r_y_2 _._._. ]]
-     ffddsshh [ --aabbCCcceeffhhiikkmmnnrrssttuuvvxx ] [ _a_r_g_s ]
+     ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnrrssttuuvvxx ] [ _a_r_g_s ]
 
 解解説説
      ffdd は、UNIX 汎用のテキスト端末用に考えられた、ファイルやディ
@@ -2407,8 +2407,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    を指定します。
 
      DDEEFFCCOOLLUUMMNNSS    ffdd 起動時の画面表示列を設定します。デフォルト
-                   は 22 列です。11, 22, 33, 55 以外の値を指定すると無
-                   視されます。
+                   値は 22 列です。11, 22, 33, 55 以外の値を指定すると
+                   無視されます。
 
      DDEEFFKKCCOODDEE      システム標準の漢字コードを指定します。ffdd から
                    起動される外部コマンドに渡される引数は、ここで
@@ -2442,15 +2442,15 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ディレクトリ内ファイルの一覧も、この数値を越え
                    ては表示しないようになります。処理の遅いマシン
                    では、この値を 00 にしておけば、快適な処理速度
-                   が実現できます。デフォルトは 5500 ファイルです。
+                   が実現できます。デフォルト値は 5500 ファイルです。
 
      DDIIRRCCMMDD*       組込みコマンド ddiirr で使うデフォルトオプション
                    を指定します。
 
      DDIIRRHHIISSTT       ディレクトリ入力行で参照できるディレクトリ履歴
-                   の数の上限を設定します。デフォルトは 5500 個です。
-                   この値が 00 の時にはディレクトリ履歴参照ができ
-                   ません。
+                   の数の上限を設定します。デフォルト値は 5500 個で
+                   す。この値が 00 の時にはディレクトリ履歴参照が
+                   できません。
 
      DDIISSPPLLAAYYMMOODDEE   ffdd 起動時の、ファイル一覧リストのファイル名表
                    示形式を設定します。symbolic リンク表示形式、
@@ -2496,9 +2496,9 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ル以外の値であれば、何を定義しても有効です。
 
      EEDDIITTMMOODDEE      キー入力の編集モードを文字列で指定します。デフ
-                   ォルトは eemmaaccss です。eemmaaccss, wwoorrddssttaarr, vvii 以外
-                   の文字列またはナルを指定した場合、コントロール
-                   文字は変換されずにそのまま渡されます。
+                   ォルト値は eemmaaccss です。eemmaaccss, wwoorrddssttaarr, vvii 以
+                   外の文字列またはナルを指定した場合、コントロー
+                   ル文字は変換されずにそのまま渡されます。
 
      EEDDIITTOORR        ファイルの編集時に使用するエディタコマンドを指
                    定します。
@@ -2540,15 +2540,15 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
      HHIISSTTFFIILLEE      EEXXEECCUUTTEE_FFIILLEE や EEXXEECCUUTTEE_SSHH で参照できるコマン
                    ド履歴のセーブファイルを指定します。デフォルト
-                   は ~~//..ffdd_hhiissttoorryy です。
+                   値は ~~//..ffdd_hhiissttoorryy です。
 
-                   (MS-DOS 版でのデフォルトは $$HHOOMMEE\\ffdd..hhsstt となり
-                   ます。)
+                   (MS-DOS 版でのデフォルト値は $$HHOOMMEE\\ffdd..hhsstt とな
+                   ります。)
 
      HHIISSTTSSIIZZEE      EEXXEECCUUTTEE_FFIILLEE や EEXXEECCUUTTEE_SSHH で参照できるコマン
-                   ド履歴の数の上限を設定します。デフォルトは 5500
-                   個です。この値が 00 の時にはコマンド履歴参照が
-                   できません。
+                   ド履歴の数の上限を設定します。デフォルト値は
+                   5500 個です。この値が 00 の時にはコマンド履歴参照
+                   ができません。
 
      HHOOMMEE*         組込みコマンド ccdd の引数が無い場合のデフォルト
                    値を示します。また、ログインシェルとして起動さ
@@ -2641,7 +2641,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    列によって、ここで設定した文字数分だけの領域が
                    確保できない場合には、UID, GID、タイムスタンプ、
                    サイズ、の順で情報を減じていきます。デフォルト
-                   は 1122 文字です。
+                   値は 1122 文字です。
 
      OOPPTTAARRGG*       組込みコマンド ggeettooppttss でオプションの引数が代
                    入されます。
@@ -2710,8 +2710,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    数 TTEERRMM の値を指定します。tteerrmmccaapp(5) や
                    tteerrmmiinnffoo(5) の設定によっては疑似端末の挙動が期
                    待通りでない場合もあるので、その環境で有効な端
-                   末名を指定して下さい。デフォルトは vvtt110000 です。
-                   ((UUNNIIXX))
+                   末名を指定して下さい。デフォルト値は vvtt110000 で
+                   す。((UUNNIIXX))
 
      PPTTYYMMEENNUUKKEEYY    疑似端末を操作している最中に疑似端末メニューを
                    開くためのキーを指定します。設定値には bbiinndd コ
@@ -2751,8 +2751,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ントは一つも指定されていません。
 
      SSAAVVEEHHIISSTT      コマンド履歴セーブファイルに保存する数の上限を
-                   設定します。デフォルトは 5500 個です。この値が 00
-                   の時にはセーブファイルを作成しません。
+                   設定します。デフォルト値は 5500 個です。この値が
+                   00 の時にはセーブファイルを作成しません。
 
      SSEECCOONNDD        タイトル行の時計に秒針を表示させるようにします。
                    但し、正確に時計が調整されるのは 1100 秒おきなの
@@ -2812,9 +2812,9 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
      TTMMPPDDIIRR        アーカイバコマンドが、アーカイブファイル内のフ
                    ァイルを一時的に伸長するための作業ディレクトリ
-                   を設定します。デフォルトは //ttmmpp です。
+                   を設定します。デフォルト値は //ttmmpp です。
 
-                   (MS-DOS 版でのデフォルトは `..' となります。)
+                   (MS-DOS 版でのデフォルト値は `..' となります。)
 
      TTMMPPUUMMAASSKK      TTMMPPDDIIRR に一時的に作成されるファイル及びディレ
                    クトリのファイル生成マスク値を 8 進数表記で指

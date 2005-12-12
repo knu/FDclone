@@ -41,8 +41,8 @@
 #endif
 
 #ifdef	DEBUG
-extern VOID mtrace __P_ ((VOID));
-extern VOID muntrace __P_ ((VOID));
+extern VOID mtrace __P_ ((VOID_A));
+extern VOID muntrace __P_ ((VOID_A));
 extern char *_mtrace_file;
 #endif
 
@@ -146,6 +146,9 @@ extern char *_mtrace_file;
 #endif
 #define	PROMPT2		"> "
 #define	DUMBSHELL	0
+#define	PTYMODE		0
+#define	PTYTERM		"vt100"
+#define	PTYMENUKEY	-1
 #define	UNICODEBUFFER	0
 #define	SJISPATH	""
 #define	EUCPATH		""
@@ -160,9 +163,6 @@ extern char *_mtrace_file;
 #define	UTF8PATH	""
 #define	UTF8MACPATH	""
 #define	NOCONVPATH	""
-#define	PTYMODE		0
-#define	PTYTERM		"vt100"
-#define	PTYMENUKEY	-1
 
 
 /****************************************************************

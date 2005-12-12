@@ -122,7 +122,8 @@ static char *NEAR truncstr __P_((char *));
 static int NEAR yesnomes __P_((char *));
 static int NEAR selectcnt __P_((int, char **, int));
 static int NEAR selectadj __P_((int, int, char **, char **, int [], int));
-static int NEAR selectmes __P_((int, int, int, char *[], int [], int []));
+static VOID NEAR selectmes __P_((int, int, int,
+		char *[], int [], int [], int));
 
 int subwindow = 0;
 int win_x = 0;
@@ -132,6 +133,7 @@ char *curfilename = NULL;
 char *editmode = NULL;
 #endif
 int lcmdline = 0;
+int maxcmdline = 0;
 #ifndef	_NOORIGSHELL
 int dumbshell = 0;
 #endif
@@ -1614,7 +1616,8 @@ char **argv;
 		}
 
 		i = filetop(win);
-		if (ypos >= i + FILEPERROW) tmpfileperrow = FILEPERROW;
+		if (maxcmdline) tmpfileperrow = maxcmdline;
+		else if (ypos >= i + FILEPERROW) tmpfileperrow = FILEPERROW;
 		else {
 			tmpfileperrow = ypos - i;
 			if (tmpfileperrow < WFILEMIN) tmpfileperrow = WFILEMIN;
@@ -1794,9 +1797,8 @@ int comline, cont;
 	}
 
 	cp = findcommon(argc, argv);
-	fix = '\0';
-	if (argc == 1 && cp)
-		fix = ((tmp = strrdelim(cp, 0)) && !tmp[1]) ? _SC_ : ' ';
+	if (argc != 1 || !cp) fix = '\0';
+	else fix = ((tmp = strrdelim(cp, 0)) && !tmp[1]) ? _SC_ : ' ';
 
 	if (!cp || ((ins = (int)strlen(cp) - ins) <= 0 && fix != ' ')) {
 		if (cont <= 0) {
@@ -1966,13 +1968,13 @@ int ch;
 		return(1);
 	}
 	if (inputkcode == UTF8 || inputkcode == M_UTF8) {
-		if ((ch & 0xff00) || ch < 0x80) /*EMPTY*/;
+		if ((ch & 0xff00) || !ismsb(ch)) /*EMPTY*/;
 		else if (!kbhit2(WAITMETA * 1000L)
 		|| (ch2 = getch2()) == EOF) {
 			buf[0] = '\0';
 			return(-1);
 		}
-		else if ((ch & 0xe0) == 0xc0 && (ch2 & 0xc0) == 0x80) {
+		else if (isutf2(ch, ch2)) {
 			tmpkanji[0] = ch;
 			tmpkanji[1] = ch2;
 			tmpkanji[2] = '\0';
@@ -2081,7 +2083,7 @@ char **tmp;
 {
 	keyflush();
 #ifndef	_NOCOMPLETE
-	if (h >= 0 && selectlist) {
+	if (completable(h) && selectlist) {
 		selectfile(tmpfilepos--, NULL);
 		setcursor(*sp, *cxp, cx2, *lenp);
 	}
@@ -2093,7 +2095,7 @@ char **tmp;
 	if (dumbmode || cx2 < maxcol)
 #endif
 	{
-		if (h < 0 || !history[h] || *histnop >= (int)histsize[h]
+		if (nohist(h) || !history[h] || *histnop >= (int)histsize[h]
 		|| !history[h][*histnop]) {
 			ringbell();
 			return(cx2);
@@ -2136,7 +2138,7 @@ char **tmp;
 	len2 = vlen(*sp, *lenp);
 	keyflush();
 #ifndef	_NOCOMPLETE
-	if (h >= 0 && selectlist) {
+	if (completable(h) && selectlist) {
 		selectfile(tmpfilepos++, NULL);
 		setcursor(*sp, *cxp, cx2, *lenp);
 	}
@@ -2150,7 +2152,7 @@ char **tmp;
 	&& !within(len2) && !ptr2col(len2))))
 #endif
 	{
-		if (h < 0 || !history[h] || *histnop <= 0) {
+		if (nohist(h) || !history[h] || *histnop <= 0) {
 			ringbell();
 			return(cx2);
 		}
@@ -2342,7 +2344,7 @@ char **tmp;
 		return(NULL);
 	}
 
-	if (h < 0 || !history[h]) {
+	if (nohist(h) || !history[h]) {
 		ringbell();
 		searchmode = -2;
 		return(NULL);
@@ -2389,7 +2391,7 @@ char **tmp;
 		return(NULL);
 	}
 
-	if (h < 0 || !history[h]) {
+	if (nohist(h) || !history[h]) {
 		ringbell();
 		searchmode = 2;
 		return(NULL);
@@ -2630,7 +2632,7 @@ int def, comline, h;
 			case K_RIGHT:
 				keyflush();
 #ifndef	_NOCOMPLETE
-				if (h >= 0 && selectlist) {
+				if (completable(h) && selectlist) {
 					i = tmpfilepos;
 					tmpfilepos += tmpfileperrow;
 					selectfile(i, NULL);
@@ -2649,7 +2651,7 @@ int def, comline, h;
 			case K_LEFT:
 				keyflush();
 #ifndef	_NOCOMPLETE
-				if (h >= 0 && selectlist) {
+				if (completable(h) && selectlist) {
 					i = tmpfilepos;
 					tmpfilepos -= tmpfileperrow;
 					selectfile(i, NULL);
@@ -2765,7 +2767,7 @@ int def, comline, h;
 				break;
 			case K_CTRL('S'):
 				keyflush();
-				if (h < 0 || !history[h]) {
+				if (nohist(h) || !history[h]) {
 					ringbell();
 					break;
 				}
@@ -2777,7 +2779,7 @@ int def, comline, h;
 				break;
 			case K_CTRL('R'):
 				keyflush();
-				if (h < 0 || !history[h]) {
+				if (nohist(h) || !history[h]) {
 					ringbell();
 					break;
 				}
@@ -2791,12 +2793,12 @@ int def, comline, h;
 #ifndef	_NOCOMPLETE
 			case '\t':
 				keyflush();
-				if (h < 0 || selectlist) {
+				if (!completable(h) || selectlist) {
 					ringbell();
 					break;
 				}
-				i = completestr(sp, cx, len,
-					&size, comline, (ch2 == ch) ? 1 : 0);
+				i = completestr(sp, cx, len, &size,
+					comline, (ch2 == ch) ? 1 : 0);
 				if (i <= 0) {
 					if (!i) ringbell();
 					break;
@@ -2810,7 +2812,7 @@ int def, comline, h;
 			case K_CR:
 				keyflush();
 #ifndef	_NOCOMPLETE
-				if (h < 0 || !selectlist) break;
+				if (!completable(h) || !selectlist) break;
 				i = completestr(sp, cx, len, &size, 0, -1);
 				cx += i;
 				len += i;
@@ -2829,11 +2831,18 @@ int def, comline, h;
 				break;
 		}
 #ifndef	_NOCOMPLETE
-		if (h >= 0 && selectlist && ch != '\t'
+		if (completable(h) && selectlist && ch != '\t'
 		&& ch != K_RIGHT && ch != K_LEFT
 		&& ch != K_UP && ch != K_DOWN) {
 			selectfile(-1, NULL);
-			rewritefile(0);
+			if (!maxcmdline) rewritefile(0);
+			else {
+				n = filetop(win);
+				for (i = 0; i < maxcmdline; i++) {
+					Xlocate(0, n + i);
+					Xputterm(L_CLEAR);
+				}
+			}
 			n = ypos;
 			if (!lcmdline) ypos = L_CMDLINE + maxline - n_line;
 			else if (lcmdline > 0) ypos = lcmdline;
@@ -2868,11 +2877,11 @@ int def, comline, h;
 #endif
 	if (ch == K_ESC) {
 		len = 0;
+		if (maxcmdline) i = 0;
 #ifndef	_NOPTY
-		if (minline > 0) i = 1;
-		else
+		else if (minline > 0) i = 1;
 #endif
-		if (hideclock) i = 1;
+		else if (hideclock) i = 1;
 	}
 	(*sp)[len] = '\0';
 
@@ -2983,14 +2992,20 @@ int h;
 	else ypos = n_line - 1;
 
 	maxcol = n_column - 1 - xpos;
-	minline = 0;
-	maxline = n_line;
+	if (maxcmdline) {
+		minline = ypos;
+		maxline = ypos + maxcmdline;
+	}
+	else {
+		minline = 0;
+		maxline = n_line;
+	}
 #ifndef	_NOPTY
 # ifndef	_NOORIGSHELL
 	if (!fdmode && shellmode) /*EMPTY*/;
 	else
 # endif
-	if (ptymode && parentfd < 0) {
+	if (isptymode() && parentfd < 0) {
 		minline = filetop(win);
 		maxline = minline + FILEPERROW;
 		ypos -= n_line - maxline;
@@ -3055,13 +3070,13 @@ int h;
 	}
 
 #ifndef	_NOSPLITWIN
-	if (h == 1 && windows > 1) {
+	if (h == HST_PATH && windows > 1) {
 		if ((i = win - 1) < 0) i = windows - 1;
 		entryhist(1, winvar[i].v_fullpath, 1);
 	}
 #endif
 
-	comline = (h == 0) ? 1 : 0;
+	comline = (h == HST_COM) ? 1 : 0;
 #ifndef	_NOORIGSHELL
 	if (promptstr == promptstr2) comline = 0;
 	lastofs2 = 0;
@@ -3098,11 +3113,12 @@ int h;
 		}
 		Xlocate(win_x, win_y);
 		Xtflush();
-		if ((!lcmdline && ypos < L_CMDLINE)
+		if (maxcmdline) /*EMPTY*/;
+		else if ((!lcmdline && ypos < L_CMDLINE)
 		|| (lcmdline > 0 && ypos < lcmdline + maxline))
 			rewritefile(1);
 	}
-	lcmdline = 0;
+	lcmdline = maxcmdline = 0;
 
 	if (ch == K_ESC) {
 		free(input);
@@ -3303,7 +3319,7 @@ int no;
 char *s;
 {
 	char *tmp, *err;
-	int len, wastty, dupwin_x, dupwin_y;
+	int y, len, wastty, dupwin_x, dupwin_y;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -3322,11 +3338,12 @@ char *s;
 	}
 	ringbell();
 
-	Xlocate(0, L_MESLINE);
+	y = (lcmdline) ? lcmdline : L_MESLINE;
+	Xlocate(0, y);
 	Xputterm(L_CLEAR);
 	Xputterm(T_STANDOUT);
 	win_x = kanjiputs2(s, n_lastcolumn, -1);
-	win_y = L_MESLINE;
+	win_y = y;
 	Xputterm(END_STANDOUT);
 	Xtflush();
 
@@ -3343,16 +3360,16 @@ char *s;
 	win_y = dupwin_y;
 	subwindow = 0;
 
-	if (no) rewritefile(1);
+	if (no && !lcmdline) rewritefile(1);
 	else {
-		Xlocate(0, L_MESLINE);
+		Xlocate(0, y);
 		Xputterm(L_CLEAR);
 		Xlocate(win_x, win_y);
 		Xtflush();
 	}
 
 	if (tmp) free(tmp);
-	hideclock = 0;
+	hideclock = lcmdline = 0;
 }
 
 static int NEAR selectcnt(max, str, multi)
@@ -3427,30 +3444,26 @@ int xx[], multi;
 	return(x);
 }
 
-static int NEAR selectmes(num, max, x, str, val, xx)
+static VOID NEAR selectmes(num, max, x, str, val, xx, multi)
 int num, max, x;
 char *str[];
-int val[], xx[];
+int val[], xx[], multi;
 {
-	int i, new;
+	int i;
 
 	Xlocate(x, L_MESLINE);
 	Xputterm(L_CLEAR);
-	new = (num < 0) ? -1 - num : -1;
 	for (i = 0; i < max; i++) {
 		if (!str[i]) continue;
 		Xlocate(x + xx[i] + 1, L_MESLINE);
-		if (num < 0) Xputch2((val[i]) ? '*' : ' ');
-		if (i != new && val[i] != num) Xkanjiputs(str[i]);
+		if (multi) Xputch2((val[i]) ? '*' : ' ');
+		if (i != num) Xkanjiputs(str[i]);
 		else {
-			new = i;
 			Xputterm(T_STANDOUT);
 			Xkanjiputs(str[i]);
 			Xputterm(END_STANDOUT);
 		}
 	}
-
-	return(new);
 }
 
 int selectstr(num, max, x, str, val)
@@ -3459,7 +3472,7 @@ char *str[];
 int val[];
 {
 	char **tmpstr;
-	int i, ch, old, new, tmpx, dupwin_x, dupwin_y, *xx, *initial;
+	int i, ch, old, new, multi, tmpx, dupwin_x, dupwin_y, *xx, *initial;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -3470,14 +3483,15 @@ int val[];
 	initial = (int *)malloc2(max * sizeof(int));
 	tmpstr = (char **)malloc2(max * sizeof(char *));
 
+	new = 0;
+	multi = (num) ? 0 : 1;
 	for (i = 0; i < max; i++) {
 		tmpstr[i] = NULL;
 		initial[i] = (str[i] && isupper2(*(str[i]))) ? *str[i] : -1;
+		if (num && val[i] == *num) new = i;
 	}
-	tmpx = selectadj(max, x, str, tmpstr, xx, (num) ? 0 : 1);
-
-	new = (num) ? *num : -1;
-	if ((new = selectmes(new, max, tmpx, tmpstr, val, xx)) < 0) new = 0;
+	tmpx = selectadj(max, x, str, tmpstr, xx, multi);
+	selectmes(new, max, tmpx, tmpstr, val, xx, multi);
 
 	win_y = L_MESLINE;
 	do {
@@ -3503,9 +3517,9 @@ int val[];
 			case K_CTRL('L'):
 				win_y = L_MESLINE;
 				tmpx = selectadj(max, x,
-					str, tmpstr, xx, (num) ? 0 : 1);
-				selectmes((num) ? val[new] : -1 - new,
-					max, tmpx, tmpstr, val, xx);
+					str, tmpstr, xx, multi);
+				selectmes(new, max, tmpx,
+					tmpstr, val, xx, multi);
 				break;
 			case ' ':
 				if (num) break;

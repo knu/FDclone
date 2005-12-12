@@ -297,37 +297,37 @@ char *path;
 	int dd, drive;
 #endif
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifdef	_NODOSDRIVE
-	if (chdir(path) < 0) return(-1);
+	n = (chdir(path)) ? -1 : 0;
 #else	/* !_NODOSDRIVE */
 	if ((drive = _dospath(path))) {
-		if ((dd = preparedrv(drive)) < 0) return(-1);
-		if (doschdir(path) < 0) {
-			shutdrv(dd);
-			return(-1);
+		if ((dd = preparedrv(drive)) < 0) n = -1;
+		else if ((n = doschdir(path)) < 0) shutdrv(dd);
+		else if ((n = (chdir(_SS_)) ? -1 : 0) >= 0) {
+			if (lastdrv >= 0) {
+				if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
+					shutdrv(lastdrv);
+				else dd = lastdrv;
+			}
+			lastdrv = dd;
 		}
-		if (chdir(_SS_) < 0) return(-1);
-		if (lastdrv >= 0) {
-			if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
-				shutdrv(lastdrv);
-			else dd = lastdrv;
-		}
-		lastdrv = dd;
 	}
 	else {
-		if (chdir(path) < 0) return(-1);
-		if (lastdrv >= 0) shutdrv(lastdrv);
-		lastdrv = -1;
+		if ((n = (chdir(path)) ? -1 : 0) >= 0) {
+			if (lastdrv >= 0) shutdrv(lastdrv);
+			lastdrv = -1;
+		}
 	}
 #endif	/* !_NODOSDRIVE */
-	if (!Xgetwd(cachecwd)) {
+	if (n >= 0 && !Xgetwd(cachecwd)) {
 		*cachecwd = '\0';
-		return(-1);
+		n = -1;
 	}
 
-	return(0);
+	return(n);
 }
 
 char *Xgetwd(path)
@@ -379,13 +379,16 @@ char *path;
 struct stat *stp;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosstat(path, stp));
+	if (_dospath(path)) n = dosstat(path, stp);
+	else
 #endif
+	n = (stat(path, stp)) ? -1 : 0;
 
-	return(stat(path, stp) ? -1 : 0);
+	return(n);
 }
 
 int Xlstat(path, stp)
@@ -396,20 +399,19 @@ struct stat *stp;
 	char rpath[MAXPATHLEN];
 #endif
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 0, rpath, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) {
-		if (doslstat(path, stp) < 0) return(-1);
-	}
+	if (_dospath(path)) n = doslstat(path, stp);
 	else
 #endif
-	if (lstat(path, stp)) return(-1);
+	n = (lstat(path, stp)) ? -1 : 0;
 #ifndef	_NOROCKRIDGE
-	if (*rpath) rrlstat(rpath, stp);
+	if (n >= 0 && *rpath) rrlstat(rpath, stp);
 #endif
 
-	return(0);
+	return(n);
 }
 
 int Xaccess(path, mode)
@@ -417,28 +419,33 @@ char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosaccess(path, mode));
+	if (_dospath(path)) n = dosaccess(path, mode);
+	else
 #endif
+	n = (access(path, mode)) ? -1 : 0;
 
-	return(access(path, mode) ? -1 : 0);
+	return(n);
 }
 
 int Xsymlink(name1, name2)
 char *name1, *name2;
 {
 	char conv1[MAXPATHLEN], conv2[MAXPATHLEN];
+	int n;
 
 	name1 = convput(conv1, name1, 1, 0, NULL, NULL);
 	name2 = convput(conv2, name2, 1, 0, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if ((_dospath(name1) || _dospath(name2)))
-		return(dossymlink(name1, name2));
+	if (_dospath(name1) || _dospath(name2)) n = dossymlink(name1, name2);
+	else
 #endif
+	n = (symlink(name1, name2)) ? -1 : 0;
 
-	return(symlink(name1, name2) ? -1 : 0);
+	return(n);
 }
 
 int Xreadlink(path, buf, bufsiz)
@@ -446,28 +453,30 @@ char *path, *buf;
 int bufsiz;
 {
 	char conv[MAXPATHLEN], lbuf[MAXPATHLEN + 1];
-	int c, len;
+	int n, c;
 
 	path = convput(conv, path, 1, 0, lbuf, &c);
 #ifndef	_NOROCKRIDGE
-	if (*lbuf && (len = rrreadlink(lbuf, lbuf, MAXPATHLEN)) >= 0)
-		/*EMPTY*/;
+	if (*lbuf && (n = rrreadlink(lbuf, lbuf, MAXPATHLEN)) >= 0) /*EMPTY*/;
 	else
 #endif
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosreadlink(path, buf, bufsiz));
+	if (_dospath(path)) n = dosreadlink(path, buf, bufsiz);
 	else
 #endif
-	if ((len = readlink(path, lbuf, MAXPATHLEN)) < 0) return(-1);
-	lbuf[len] = '\0';
+	n = readlink(path, lbuf, MAXPATHLEN);
+	if (n >= 0) {
+		lbuf[n] = '\0';
 #ifndef	_NOKANJIFCONV
-	path = kanjiconv2(conv, lbuf, MAXPATHLEN - 1, c, DEFCODE, L_FNAME);
+		path = kanjiconv2(conv, lbuf,
+			MAXPATHLEN - 1, c, DEFCODE, L_FNAME);
 #else
-	path = lbuf;
+		path = lbuf;
 #endif
-	for (len = 0; len < bufsiz && path[len]; len++) buf[len] = path[len];
+		for (n = 0; n < bufsiz && path[n]; n++) buf[n] = path[n];
+	}
 
-	return(len);
+	return(n);
 }
 
 int Xchmod(path, mode)
@@ -475,13 +484,16 @@ char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(doschmod(path, mode));
+	if (_dospath(path)) n = doschmod(path, mode);
+	else
 #endif
+	n = (chmod(path, mode)) ? -1 : 0;
 
-	return(chmod(path, mode) ? -1 : 0);
+	return(n);
 }
 
 #ifdef	USEUTIME
@@ -490,13 +502,16 @@ char *path;
 struct utimbuf *times;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 # ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosutime(path, times));
+	if (_dospath(path)) n = dosutime(path, times);
+	else
 # endif
+	n = (utime(path, times)) ? -1 : 0;
 
-	return(utime(path, times) ? -1 : 0);
+	return(n);
 }
 #else	/* !USEUTIME */
 int Xutimes(path, tvp)
@@ -504,51 +519,105 @@ char *path;
 struct timeval tvp[2];
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 # ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosutimes(path, tvp));
+	if (_dospath(path)) n = dosutimes(path, tvp);
+	else
 # endif
+	n = (utimes(path, tvp)) ? -1 : 0;
 
-	return(utimes(path, tvp) ? -1 : 0);
+	return(n);
 }
 #endif	/* !USEUTIME */
+
+#ifdef	HAVEFLAGS
+int Xchflags(path, flags)
+char *path;
+u_long flags;
+{
+	char conv[MAXPATHLEN];
+	int n;
+
+	path = convput(conv, path, 1, 1, NULL, NULL);
+# ifndef	_NODOSDRIVE
+	if (_dospath(path)) {
+		errno = EACCES;
+		n = -1;
+	}
+	else
+# endif
+	n = (chflags(path, flags)) ? -1 : 0;
+
+	return(n);
+}
+#endif	/* !HAVEFLAGS */
+
+#ifndef	NOUID
+int Xchown(path, uid, gid)
+char *path;
+uid_t uid;
+gid_t gid;
+{
+	char conv[MAXPATHLEN];
+	int n;
+
+	path = convput(conv, path, 1, 1, NULL, NULL);
+# ifndef	_NODOSDRIVE
+	if (_dospath(path)) {
+		errno = EACCES;
+		n = -1;
+	}
+	else
+# endif
+	n = (chown(path, uid, gid)) ? -1 : 0;
+
+	return(n);
+}
+#endif	/* !NOUID */
 
 int Xunlink(path)
 char *path;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosunlink(path));
+	if (_dospath(path)) n = dosunlink(path);
+	else
 #endif
+	n = (unlink(path)) ? -1 : 0;
 
-	return(unlink(path) ? -1 : 0);
+	return(n);
 }
 
 int Xrename(from, to)
 char *from, *to;
 {
 	char conv1[MAXPATHLEN], conv2[MAXPATHLEN];
+	int n;
 
 	from = convput(conv1, from, 1, 0, NULL, NULL);
 	to = convput(conv2, to, 1, 0, NULL, NULL);
 #ifndef	_NODOSDRIVE
 	if (_dospath(from)) {
-		if (!_dospath(to)) {
+		if (_dospath(to)) n = dosrename(from, to);
+		else {
 			errno = EXDEV;
-			return(-1);
+			n = -1;
 		}
-		return(dosrename(from, to));
 	}
 	else if (_dospath(to)) {
 		errno = EXDEV;
-		return(-1);
+		n = -1;
 	}
+	else
 #endif
+	n = (rename(from, to)) ? -1 : 0;
 
-	return(rename(from, to) ? -1 : 0);
+	return(n);
 }
 
 int Xopen(path, flags, mode)
@@ -556,22 +625,28 @@ char *path;
 int flags, mode;
 {
 	char conv[MAXPATHLEN];
+	int fd;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosopen(path, flags, mode));
+	if (_dospath(path)) fd = dosopen(path, flags, mode);
+	else
 #endif
+	fd = open(path, flags, mode);
 
-	return(open(path, flags, mode));
+	return(fd);
 }
 
 #ifndef	_NODOSDRIVE
 int Xclose(fd)
 int fd;
 {
-	if (fd >= DOSFDOFFSET) return(dosclose(fd));
+	int n;
 
-	return(close(fd));
+	if (fd >= DOSFDOFFSET) n = dosclose(fd);
+	else n = (close(fd)) ? -1 : 0;
+
+	return(n);
 }
 
 int Xread(fd, buf, nbytes)
@@ -579,9 +654,12 @@ int fd;
 char *buf;
 int nbytes;
 {
-	if (fd >= DOSFDOFFSET) return(dosread(fd, buf, nbytes));
+	int n;
 
-	return(read(fd, buf, nbytes));
+	if (fd >= DOSFDOFFSET) n = dosread(fd, buf, nbytes);
+	else n = read(fd, buf, nbytes);
+
+	return(n);
 }
 
 int Xwrite(fd, buf, nbytes)
@@ -589,9 +667,12 @@ int fd;
 char *buf;
 int nbytes;
 {
-	if (fd >= DOSFDOFFSET) return(doswrite(fd, buf, nbytes));
+	int n;
 
-	return(write(fd, buf, nbytes));
+	if (fd >= DOSFDOFFSET) n = doswrite(fd, buf, nbytes);
+	else n = write(fd, buf, nbytes);
+
+	return(n);
 }
 
 off_t Xlseek(fd, offset, whence)
@@ -599,32 +680,41 @@ int fd;
 off_t offset;
 int whence;
 {
-	if (fd >= DOSFDOFFSET) return(doslseek(fd, offset, whence));
+	off_t ofs;
 
-	return(lseek(fd, offset, whence));
+	if (fd >= DOSFDOFFSET) ofs = doslseek(fd, offset, whence);
+	else ofs = lseek(fd, offset, whence);
+
+	return(ofs);
 }
 
 int Xdup(oldd)
 int oldd;
 {
+	int fd;
+
 	if (oldd >= DOSFDOFFSET) {
 		errno = EBADF;
-		return(-1);
+		fd = -1;
 	}
+	else fd = safe_dup(oldd);
 
-	return(safe_dup(oldd));
+	return(fd);
 }
 
 int Xdup2(oldd, newd)
 int oldd, newd;
 {
-	if (oldd == newd) return(newd);
-	if (oldd >= DOSFDOFFSET || newd >= DOSFDOFFSET) {
-		errno = EBADF;
-		return(-1);
-	}
+	int fd;
 
-	return(safe_dup2(oldd, newd));
+	if (oldd == newd) fd = newd;
+	else if (oldd >= DOSFDOFFSET || newd >= DOSFDOFFSET) {
+		errno = EBADF;
+		fd = -1;
+	}
+	else fd = safe_dup2(oldd, newd);
+
+	return(fd);
 }
 #endif	/* !_NODOSDRIVE */
 
@@ -633,39 +723,48 @@ char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosmkdir(path, mode));
+	if (_dospath(path)) n = dosmkdir(path, mode);
+	else
 #endif
+	n = (mkdir(path, mode)) ? -1 : 0;
 
-	return(mkdir(path, mode) ? -1 : 0);
+	return(n);
 }
 
 int Xrmdir(path)
 char *path;
 {
 	char conv[MAXPATHLEN];
+	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosrmdir(path));
+	if (_dospath(path)) n = dosrmdir(path);
+	else
 #endif
+	n = (rmdir(path)) ? -1 : 0;
 
-	return(rmdir(path) ? -1 : 0);
+	return(n);
 }
 
 FILE *Xfopen(path, type)
 char *path, *type;
 {
+	FILE *fp;
 	char conv[MAXPATHLEN];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
-	if (_dospath(path)) return(dosfopen(path, type));
+	if (_dospath(path)) fp = dosfopen(path, type);
+	else
 #endif
+	fp = fopen(path, type);
 
-	return(fopen(path, type));
+	return(fp);
 }
 
 #ifndef	_NODOSDRIVE
@@ -673,25 +772,45 @@ FILE *Xfdopen(fd, type)
 int fd;
 char *type;
 {
-	if (fd >= DOSFDOFFSET) return(dosfdopen(fd, type));
+	FILE *fp;
 
-	return(fdopen(fd, type));
+	if (fd >= DOSFDOFFSET) fp = dosfdopen(fd, type);
+	else fp = fdopen(fd, type);
+
+	return(fp);
 }
 
 int Xfclose(stream)
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfclose(stream));
+	int n;
 
-	return(fclose(stream));
+	if (dosfileno(stream) >= 0) n = dosfclose(stream);
+	else n = fclose(stream);
+
+	return(n);
+}
+
+int Xfileno(stream)
+FILE *stream;
+{
+	int fd;
+
+	if ((fd = dosfileno(stream)) >= 0) fd += DOSFDOFFSET;
+	else fd = fileno(stream);
+
+	return(fd);
 }
 
 int Xfeof(stream)
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfeof(stream));
+	int n;
 
-	return(feof(stream));
+	if (dosfileno(stream) >= 0) n = dosfeof(stream);
+	else n = feof(stream);
+
+	return(n);
 }
 
 int Xfread(buf, size, nitems, stream)
@@ -699,10 +818,12 @@ char *buf;
 int size, nitems;
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0)
-		return(dosfread(buf, size, nitems, stream));
+	int n;
 
-	return(fread(buf, size, nitems, stream));
+	if (dosfileno(stream) >= 0) n = dosfread(buf, size, nitems, stream);
+	else n = fread(buf, size, nitems, stream);
+
+	return(n);
 }
 
 int Xfwrite(buf, size, nitems, stream)
@@ -710,35 +831,46 @@ char *buf;
 int size, nitems;
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0)
-		return(dosfwrite(buf, size, nitems, stream));
+	int n;
 
-	return(fwrite(buf, size, nitems, stream));
+	if (dosfileno(stream) >= 0) n = dosfwrite(buf, size, nitems, stream);
+	else n = fwrite(buf, size, nitems, stream);
+
+	return(n);
 }
 
 int Xfflush(stream)
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfflush(stream));
+	int n;
 
-	return(fflush(stream));
+	if (dosfileno(stream) >= 0) n = dosfflush(stream);
+	else n = fflush(stream);
+
+	return(n);
 }
 
 int Xfgetc(stream)
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfgetc(stream));
+	int c;
 
-	return(fgetc(stream));
+	if (dosfileno(stream) >= 0) c = dosfgetc(stream);
+	else c = fgetc(stream);
+
+	return(c);
 }
 
 int Xfputc(c, stream)
 int c;
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfputc(c, stream));
+	int n;
 
-	return(fputc(c, stream));
+	if (dosfileno(stream) >= 0) n = dosfputc(c, stream);
+	else n = fputc(c, stream);
+
+	return(n);
 }
 
 char *Xfgets(s, n, stream)
@@ -746,17 +878,23 @@ char *s;
 int n;
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfgets(s, n, stream));
+	char *cp;
 
-	return(fgets(s, n, stream));
+	if (dosfileno(stream) >= 0) cp = dosfgets(s, n, stream);
+	else cp = fgets(s, n, stream);
+
+	return(cp);
 }
 
 int Xfputs(s, stream)
 char *s;
 FILE *stream;
 {
-	if (dosfileno(stream) >= 0) return(dosfputs(s, stream));
+	int n;
 
-	return(fputs(s, stream));
+	if (dosfileno(stream) >= 0) n = dosfputs(s, stream);
+	else n = fputs(s, stream);
+
+	return(n);
 }
 #endif	/* !_NODOSDRIVE */

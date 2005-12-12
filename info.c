@@ -457,7 +457,7 @@ int mode;
 		Xlocate(x * (n_column / 2), yy + y);
 		if (x ^= 1) Xputterm(L_CLEAR);
 		else y++;
-		if (mode && !(funclist[i].status & ARCH)) continue;
+		if (mode && !(funclist[i].status & FN_ARCHIVE)) continue;
 
 		c = 0;
 		buf[0] = '\0';

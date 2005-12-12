@@ -207,15 +207,8 @@ CONST VOID_P vp2;
 
 	if (!isdir(namep1) && isdir(namep2)) return(1);
 	if (isdir(namep1) && !isdir(namep2)) return(-1);
-
-	if (namep1 -> name[0] == '.' && namep1 -> name[1] == '\0') return(-1);
-	if (namep2 -> name[0] == '.' && namep2 -> name[1] == '\0') return(1);
-	if (namep1 -> name[0] == '.' && namep1 -> name[1] == '.'
-	&& namep1 -> name[2] == '\0')
-		return(-1);
-	if (namep2 -> name[0] == '.' && namep2 -> name[1] == '.'
-	&& namep2 -> name[2] == '\0')
-		return(1);
+	if ((tmp = isdotdir(namep2 -> name) - isdotdir(namep1 -> name)))
+		return(tmp);
 
 	switch (sorton & 7) {
 		case 5:
@@ -426,13 +419,53 @@ char *dir;
 	return(0);
 }
 
+#ifndef	NOFLOCK
+int lockfile(fd, mode)
+int fd, mode;
+{
+	static int lockmode[] = {
+# ifdef	USEFCNTLOCK
+		F_RDLCK, F_WRLCK, F_UNLCK,
+# else	/* !USEFCNTLOCK */
+#  ifdef	USELOCKF
+		F_LOCK, F_LOCK, F_ULOCK,
+#  else
+		LOCK_SH, LOCK_EX, LOCK_UN,
+#  endif
+# endif	/* !USEFCNTLOCK */
+	};
+# ifdef	USEFCNTLOCK
+	struct flock lock;
+# endif
+
+# ifndef	_NODOSDRIVE
+	if (fd >= DOSFDOFFSET) return(0);
+# endif
+
+# ifdef	USEFCNTLOCK
+	lock.l_type = lockmode[mode];
+	lock.l_start = lock.l_len = (off_t)0;
+	lock.l_whence = SEEK_SET;
+	return(fcntl(fd, F_SETLKW, (int)&lock));
+# else	/* !USEFCNTLOCK */
+#  ifdef	USELOCKF
+	return(lockf(fd, lockmode[mode], (off_t)0));
+#  else
+	return(flock(fd, lockmode[mode]));
+#  endif
+# endif	/* !USEFCNTLOCK */
+}
+#endif	/* !NOFLOCK */
+
 int touchfile(path, stp)
 char *path;
 struct stat *stp;
 {
-	struct stat st, dummy;
+	struct stat st;
+	u_int mode;
 	int ret, duperrno;
 
+	if (!(stp -> st_nlink)) return(0);
 	if (Xlstat(path, &st) < 0) return(-1);
 	if (s_islnk(&st)) return(1);
 
@@ -443,10 +476,19 @@ struct stat *stp;
 #if	MSDOS
 	if (!(st.st_mode & S_IWRITE)) Xchmod(path, (st.st_mode | S_IWRITE));
 #endif
-	if (stp -> st_atime != (time_t)-1 && stp -> st_mtime != (time_t)-1) {
+
+	if (stp -> st_nlink & (TCH_ATIME | TCH_MTIME)) {
 #ifdef	USEUTIME
 		struct utimbuf times;
+#else
+		struct timeval tvp[2];
+#endif
 
+		if (!(stp -> st_nlink & TCH_ATIME))
+			stp -> st_atime = st.st_atime;
+		if (!(stp -> st_nlink & TCH_MTIME))
+			stp -> st_mtime = st.st_mtime;
+#ifdef	USEUTIME
 		times.actime = stp -> st_atime;
 		times.modtime = stp -> st_mtime;
 		if (Xutime(path, &times) < 0) {
@@ -454,8 +496,6 @@ struct stat *stp;
 			ret = -1;
 		}
 #else
-		struct timeval tvp[2];
-
 		tvp[0].tv_sec = stp -> st_atime;
 		tvp[0].tv_usec = 0;
 		tvp[1].tv_sec = stp -> st_mtime;
@@ -466,26 +506,21 @@ struct stat *stp;
 		}
 #endif
 	}
+
 #ifdef	HAVEFLAGS
-	if (stp -> st_flags != (u_long)-1) {
-# ifndef	_NODOSDRIVE
-		if (dospath(path, NULL)) {
-			duperrno = EACCES;
-			ret = -1;
-		}
-		else
-# endif
-		if (chflags(path, stp -> st_flags) < 0) {
+	if (stp -> st_nlink & TCH_FLAGS) {
+		if (Xchflags(path, stp -> st_flags) < 0) {
 			duperrno = errno;
 			ret = -1;
 		}
 	}
 #endif
-	dummy.st_mode = (u_short)-1;
-	if (stp -> st_mode != dummy.st_mode) {
-		stp -> st_mode &= ~S_IFMT;
-		stp -> st_mode |= (st.st_mode & S_IFMT);
-		if (Xchmod(path, stp -> st_mode) < 0) {
+
+	if (stp -> st_nlink & TCH_MODE) {
+		mode = stp -> st_mode;
+		mode &= ~S_IFMT;
+		mode |= (st.st_mode & S_IFMT);
+		if (Xchmod(path, mode) < 0) {
 			duperrno = errno;
 			ret = -1;
 		}
@@ -493,14 +528,18 @@ struct stat *stp;
 #if	MSDOS
 	else if (!(st.st_mode & S_IWRITE)) Xchmod(path, st.st_mode);
 #endif
+
 #ifndef	NOUID
-	if (stp -> st_gid != (gid_t)-1) {
-# ifndef	_NODOSDRIVE
-		if (dospath(path, NULL)) /*EMPTY*/;
-		else
-# endif
-		if (chown(path, stp -> st_uid, stp -> st_gid) < 0)
-			chown(path, (uid_t)-1, stp -> st_gid);
+	if (stp -> st_nlink & (TCH_UID | TCH_GID)) {
+		if (!(stp -> st_nlink & TCH_UID)) stp -> st_uid = (uid_t)-1;
+		if (!(stp -> st_nlink & TCH_GID)) stp -> st_gid = (gid_t)-1;
+		if (Xchown(path, stp -> st_uid, stp -> st_gid) >= 0) /*EMPTY*/;
+		else if (!(stp -> st_nlink & TCH_CHANGE))
+			Xchown(path, (uid_t)-1, stp -> st_gid);
+		else {
+			duperrno = errno;
+			ret = -1;
+		}
 	}
 #endif	/* !NOUID */
 	if (ret < 0) errno = duperrno;
@@ -668,13 +707,13 @@ struct stat *stp1, *stp2;
 	if (issamebody(src, dest)) {
 		flags |= O_EXCL;
 		if (Xunlink(dest) < 0) {
-			Xclose(fd1);
+			VOID_C Xclose(fd1);
 			return(-1);
 		}
 	}
 #endif
 	if ((fd2 = Xopen(dest, flags, mode)) < 0) {
-		Xclose(fd1);
+		VOID_C Xclose(fd1);
 		return(-1);
 	}
 
@@ -694,17 +733,15 @@ struct stat *stp1, *stp2;
 		if (i < BUFSIZ) break;
 	}
 
-	Xclose(fd2);
-	Xclose(fd1);
+	VOID_C Xclose(fd2);
+	VOID_C Xclose(fd1);
 
 	if (i < 0) {
 		Xunlink(dest);
 		errno = duperrno;
 		return(-1);
 	}
-#ifdef	HAVEFLAGS
-	stp1 -> st_flags = (u_long)-1;
-#endif
+	stp1 -> st_nlink = (TCH_ATIME | TCH_MTIME);
 #ifdef	_USEDOSCOPY
 	if (touchfile(dest, stp1) < 0) return(-1);
 #else
@@ -759,10 +796,9 @@ struct stat *stp1, *stp2;
 	if (errno != EXDEV || s_isdir(stp1)) return(-1);
 	if (safecpfile(src, dest, stp1, stp2) < 0 || Xunlink(src) < 0)
 		return(-1);
-#ifdef	HAVEFLAGS
-	stp1 -> st_flags = (u_long)-1;
-#endif
 
+	stp1 -> st_nlink = (TCH_MODE | TCH_UID | TCH_GID
+		| TCH_ATIME | TCH_MTIME);
 	return (touchfile(dest, stp1));
 }
 
@@ -1259,7 +1295,7 @@ char *tmpdir, *old;
 					fd = Xopen(fname,
 						O_CREAT | O_EXCL, 0600);
 					if (fd >= 0) {
-						Xclose(fd);
+						VOID_C Xclose(fd);
 						return(fname);
 					}
 					if (errno != EEXIST) break;
@@ -1313,7 +1349,7 @@ off_t bsiz;
 		tmp[i] = ch + 1;
 	}
 	tmp[i] = 0;
-	Xclose(fd);
+	VOID_C Xclose(fd);
 
 	return(tmp);
 }

@@ -247,9 +247,12 @@ extern int searchhash __P_((hashlist **, char *, char *));
 extern char *searchexecpath __P_((char *, char *));
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 extern char *finddupl __P_((char *, int, char **));
+# ifndef	NOUID
+extern int completeuser __P_((char *, int, int, char ***, int));
+# endif
 extern int completepath __P_((char *, int, int, char ***, int));
 extern char *findcommon __P_((int, char **));
-#endif
+#endif	/* !FDSH && !_NOCOMPLETE */
 extern char *catvar __P_((char *[], int));
 extern int countvar __P_((char **));
 extern VOID freevar __P_((char **));

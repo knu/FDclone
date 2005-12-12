@@ -684,7 +684,7 @@ static int NEAR _tree_input(VOID_A)
 			} while (&(tr_cur -> sub[tr_no]) != old);
 			break;
 		case 'l':
-			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, 1))
+			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, HST_PATH))
 			|| !*(cwd = evalpath(cwd, 0)))
 				break;
 			if (chdir2(cwd) >= 0) {

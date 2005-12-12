@@ -278,15 +278,15 @@ extern int unixclosedir __P_((DIR *));
 extern struct dirent *unixreaddir __P_((DIR *));
 extern int unixrewinddir __P_((DIR *));
 #ifdef	_NOUSELFN
-#define	unixunlink	unlink
-#define	unixrename	rename
+#define	unixunlink(p)		((unlink(p)) ? -1 : 0)
+#define	unixrename(f, t)	((rename(f, t)) ? -1 : 0)
 # ifdef	DJGPP
-# define	unixmkdir(p, m)	(mkdir(p, m) ? -1 : 0)
+# define	unixmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 # else
 extern int unixmkdir __P_((char *, int));
 # endif
-#define	unixrmdir	rmdir
-#define	unixchdir	chdir
+#define	unixrmdir(p)		((rmdir(p)) ? -1 : 0)
+#define	unixchdir(p)		((chdir(p)) ? -1 : 0)
 #else
 extern int unixunlink __P_((char *));
 extern int unixrename __P_((char *, char *));
@@ -299,8 +299,8 @@ extern int unixstatfs __P_((char *, statfs_t *));
 extern int unixstat __P_((char *, struct stat *));
 extern int unixchmod __P_((char *, int));
 #ifdef	_NOUSELFN
-#define	unixutime	utime
-#define	unixutimes	utimes
+#define	unixutime(p, t)		((utime(p, t)) ? -1 : 0)
+#define	unixutimes(p, t)	((utimes(p, t)) ? -1 : 0)
 #else	/* !_NOUSELFN */
 # ifdef	USEUTIME
 extern int unixutime __P_((char *, struct utimbuf *));

@@ -60,6 +60,9 @@
 #define	S_IWOTH	00002
 #define	S_IXOTH	00001
 #endif	/* NOFILEMODE */
+#define	S_IREAD_ALL	(S_IRUSR | S_IRGRP | S_IROTH)
+#define	S_IWRITE_ALL	(S_IWUSR | S_IWGRP | S_IWOTH)
+#define	S_IEXEC_ALL	(S_IXUSR | S_IXGRP | S_IXOTH)
 
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
 #define	HAVEFLAGS
@@ -110,17 +113,16 @@ typedef struct _namelist {
 	u_char tmpflags;
 } namelist;
 
-#define	F_ISEXE	0001
-#define	F_ISWRI	0002
-#define	F_ISRED	0004
-#define	F_ISDIR	0010
-#define	F_ISLNK	0020
-#define	F_ISDEV	0040
-#define	F_ISMRK	0001
-#define	F_WSMRK	0002
-#define	F_ISARG	0004
-#define	F_STAT	0010
-
+#define	F_ISEXE			0001
+#define	F_ISWRI			0002
+#define	F_ISRED			0004
+#define	F_ISDIR			0010
+#define	F_ISLNK			0020
+#define	F_ISDEV			0040
+#define	F_ISMRK			0001
+#define	F_WSMRK			0002
+#define	F_ISARG			0004
+#define	F_STAT			0010
 #define	isdir(file)		((file) -> flags & F_ISDIR)
 #define	islink(file)		((file) -> flags & F_ISLNK)
 #define	isdev(file)		((file) -> flags & F_ISDEV)
@@ -160,20 +162,21 @@ typedef struct _functable {
 	u_char status;
 } functable;
 
-#define	REWRITE		0001
-#define	RELIST		0002
-#define	REWIN		0003
-#define	REWRITEMODE	0003
-#define	RESCRN		0004
-#define	KILLSTK		0010
-#define	ARCH		0020
-#define	NO_FILE		0040
-#define	RESTRICT	0100
-#define	NEEDSTAT	0200
+#define	FN_REWRITE		0001
+#define	FN_RELIST		0002
+#define	FN_REWIN		0003
+#define	FN_REWRITEMODE		0003
+#define	FN_RESCREEN		0004
+#define	FN_KILLSTACK		0010
+#define	FN_ARCHIVE		0020
+#define	FN_NOFILE		0040
+#define	FN_RESTRICT		0100
+#define	FN_NEEDSTATUS		0200
+#define	rewritemode(n)		((n) & FN_REWRITEMODE)
 
 #ifndef	_NOARCHIVE
-#define	MAXLAUNCHFIELD	9
-#define	MAXLAUNCHSEP	3
+#define	MAXLAUNCHFIELD		9
+#define	MAXLAUNCHSEP		3
 typedef struct _launchtable {
 	char *ext;
 	char *comm;
@@ -194,20 +197,20 @@ typedef struct _launchtable {
 	u_char flags;
 } launchtable;
 
-#define	F_MODE	0
-#define	F_UID	1
-#define	F_GID	2
-#define	F_SIZE	3
-#define	F_YEAR	4
-#define	F_MON	5
-#define	F_DAY	6
-#define	F_TIME	7
-#define	F_NAME	8
-#define	LF_IGNORECASE	0001
-#define	LF_DIRLOOP	0002
-#define	LF_DIRNOPREP	0004
-#define	LF_FILELOOP	0010
-#define	LF_FILENOPREP	0020
+#define	F_MODE			0
+#define	F_UID			1
+#define	F_GID			2
+#define	F_SIZE			3
+#define	F_YEAR			4
+#define	F_MON			5
+#define	F_DAY			6
+#define	F_TIME			7
+#define	F_NAME			8
+#define	LF_IGNORECASE		0001
+#define	LF_DIRLOOP		0002
+#define	LF_DIRNOPREP		0004
+#define	LF_FILELOOP		0010
+#define	LF_FILENOPREP		0020
 
 typedef struct _archivetable {
 	char *ext;
@@ -216,7 +219,7 @@ typedef struct _archivetable {
 	u_char flags;
 } archivetable;
 
-#define	AF_IGNORECASE	0001	/* must be the same as LF_IGNORECASE */
+#define	AF_IGNORECASE		0001	/* must be the same as LF_IGNORECASE */
 #endif	/* !_NOARCHIVE */
 
 #ifndef	_NOTREE
@@ -265,19 +268,19 @@ typedef struct _winvartable {
 
 extern winvartable winvar[];
 #ifdef	_NOSPLITWIN
-#define	win	0
-#define	windows	1
+#define	win			0
+#define	windows			1
 #else
 extern int windows;
 extern int win;
 #endif
 #ifndef	_NOARCHIVE
-#define	archduplp	(winvar[win].v_archduplp)
-#define	archivefile	(winvar[win].v_archivefile)
-#define	archtmpdir	(winvar[win].v_archtmpdir)
-#define	launchp		(winvar[win].v_launchp)
-#define	arcflist	(winvar[win].v_arcflist)
-#define	maxarcf		(winvar[win].v_maxarcf)
+#define	archduplp		(winvar[win].v_archduplp)
+#define	archivefile		(winvar[win].v_archivefile)
+#define	archtmpdir		(winvar[win].v_archtmpdir)
+#define	launchp			(winvar[win].v_launchp)
+#define	arcflist		(winvar[win].v_arcflist)
+#define	maxarcf			(winvar[win].v_maxarcf)
 # if	(!MSDOS || !defined (_NOUSELFN)) && !defined (_NODOSDRIVE)
 # define	archdrive	(winvar[win].v_archdrive)
 # endif
@@ -287,16 +290,16 @@ extern int win;
 # endif
 #endif	/* !_NOARCHIVE */
 #ifndef	_NOTREE
-#define	treepath	(winvar[win].v_treepath)
+#define	treepath		(winvar[win].v_treepath)
 #endif
-#define	findpattern	(winvar[win].v_findpattern)
-#define	filelist	(winvar[win].v_filelist)
-#define	maxfile		(winvar[win].v_maxfile)
-#define	maxent		(winvar[win].v_maxent)
-#define	filepos		(winvar[win].v_filepos)
-#define	sorton		(winvar[win].v_sorton)
-#define	dispmode	(winvar[win].v_dispmode)
-#define	FILEPERROW	(winvar[win].v_fileperrow)
+#define	findpattern		(winvar[win].v_findpattern)
+#define	filelist		(winvar[win].v_filelist)
+#define	maxfile			(winvar[win].v_maxfile)
+#define	maxent			(winvar[win].v_maxent)
+#define	filepos			(winvar[win].v_filepos)
+#define	sorton			(winvar[win].v_sorton)
+#define	dispmode		(winvar[win].v_dispmode)
+#define	FILEPERROW		(winvar[win].v_fileperrow)
 
 typedef struct _macrostat {
 	short addopt;
@@ -305,22 +308,22 @@ typedef struct _macrostat {
 	u_short flags;
 } macrostat;
 
-#define	F_NOCONFIRM	0000001
-#define	F_ARGSET	0000002
-#define	F_REMAIN	0000004
-#define	F_NOEXT		0000010
-#define	F_TOSFN		0000020
-#define	F_ISARCH	0000040
-#define	F_BURST		0000100
-#define	F_MARK		0000200
-#define	F_NOADDOPT	0000400
-#define	F_IGNORELIST	0001000
-#define	F_NOCOMLINE	0002000
-#define	F_NOKANJICONV	0004000
-#define	F_TTYIOMODE	0010000
-#define	F_TTYNL		0020000
-#define	F_EVALMACRO	0040000
-#define	F_DOSYSTEM	0100000
+#define	F_NOCONFIRM		0000001
+#define	F_ARGSET		0000002
+#define	F_REMAIN		0000004
+#define	F_NOEXT			0000010
+#define	F_TOSFN			0000020
+#define	F_ISARCH		0000040
+#define	F_BURST			0000100
+#define	F_MARK			0000200
+#define	F_NOADDOPT		0000400
+#define	F_IGNORELIST		0001000
+#define	F_NOCOMLINE		0002000
+#define	F_NOKANJICONV		0004000
+#define	F_TTYIOMODE		0010000
+#define	F_TTYNL			0020000
+#define	F_EVALMACRO		0040000
+#define	F_DOSYSTEM		0100000
 
 #ifdef	_NOORIGSHELL
 typedef struct _aliastable {
@@ -339,10 +342,10 @@ typedef struct _builtintable {
 	char *ident;
 } builtintable;
 
-#define	F_SYMLINK	001
-#define	F_FILETYPE	002
-#define	F_DOTFILE	004
-#define	F_FILEFLAG	010
+#define	F_SYMLINK		001
+#define	F_FILETYPE		002
+#define	F_DOTFILE		004
+#define	F_FILEFLAG		010
 
 #define	isdisptyp(n)		((n) & F_FILETYPE)
 #define	ishidedot(n)		((n) & F_DOTFILE)
@@ -354,10 +357,48 @@ typedef struct _builtintable {
 #define	isfileflg(n)		(!archivefile && ((n) & F_FILEFLAG))
 #endif
 
-#define	FSID_UFS	1
-#define	FSID_EFS	2
-#define	FSID_SYSV	3
-#define	FSID_FAT	4
-#define	FSID_LFN	5
-#define	FSID_LINUX	6
-#define	FSID_DOSDRIVE	7
+#define	FNC_NONE		0
+#define	FNC_CANCEL		1
+#define	FNC_UPDATE		2
+#define	FNC_HELPSPOT		3
+#define	FNC_EFFECT		4
+#define	FNC_CHDIR		5
+#define	FNC_QUIT		(-1)
+#define	FNC_FAIL		(-2)
+
+#define	FSID_UFS		1
+#define	FSID_EFS		2
+#define	FSID_SYSV		3
+#define	FSID_FAT		4
+#define	FSID_LFN		5
+#define	FSID_LINUX		6
+#define	FSID_DOSDRIVE		7
+
+#define	LCK_READ		0
+#define	LCK_WRITE		1
+#define	LCK_UNLOCK		2
+
+#define	TCH_MODE		00001
+#define	TCH_UID			00002
+#define	TCH_GID			00004
+#define	TCH_ATIME		00010
+#define	TCH_MTIME		00020
+#define	TCH_FLAGS		00040
+#define	TCH_CHANGE		00100
+
+#define	ATR_EXCLUSIVE		3
+#define	ATR_MODEONLY		1
+#define	ATR_TIMEONLY		2
+#define	ATR_MULTIPLE		4
+
+#define	ORD_NODIR		0
+#define	ORD_NORMAL		1
+#define	ORD_LOWER		2
+#define	ORD_NOPREDIR		3
+
+#define	HST_COM			0
+#define	HST_PATH		1
+#define	HST_USER		2
+#define	HST_GROUP		3
+#define	nohist(n)		((n) != HST_COM && (n) != HST_PATH)
+#define	completable(n)		((n) >= 0)

@@ -211,6 +211,10 @@ USEMKDEVH
 USEMKNODH
 	The macro (or function) major()/minor() for the device
 	number is defined <sys/mknod.h>.
+USELOCKFH
+	The constants which indicate the commands for the
+	function lockf(2) to lock files is defined in
+	<sys/lockf.h>.
 USETERMIO
 	The structure termio is used as the terminal interface.
 USETERMIOS
@@ -353,6 +357,15 @@ USEUTIME
 USEGETWD
 	The function getcwd(3) is unavailable to get the
 	current directory, and getwd(3) is used instead.
+USEFCNTLOCK
+	The function fnctl(2) is used instead of flock(2) to
+	lock files.
+USELOCKF
+	The function flock(2) is unavailable to lock files,
+	and lockf(2) is used instead.
+NOFLOCK
+	Both of the function flock(2) and lockf(2) are
+	unavailable to lock files.
 USETIMELOCAL
 	The function timelocal(3) is available as the inverse
 	function of localtime(3) for the time conversion.

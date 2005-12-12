@@ -701,7 +701,10 @@ char *s1, *s2;
 static int NEAR isdotdir(s)
 char *s;
 {
-	if (s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]))) return(1);
+	if (s[0] != '.') /*EMPTY*/;
+	else if (!s[1]) return(2);
+	else if (s[1] != '.') /*EMPTY*/;
+	else if (!s[2]) return(1);
 
 	return(0);
 }
@@ -2142,7 +2145,7 @@ bpb_t *bpbcache;
 			struct mntent *mntp;
 			FILE *fp;
 
-			if (stat(devp -> ch_name, &st1) < 0) {
+			if (stat(devp -> ch_name, &st1)) {
 				doserrno = errno;
 				errno = duperrno;
 				return(-1);
@@ -2153,7 +2156,7 @@ bpb_t *bpbcache;
 					if (strstr(mntp -> mnt_opts, "ro"))
 						continue;
 #  endif
-					if (stat(mntp -> mnt_fsname, &st2) < 0)
+					if (stat(mntp -> mnt_fsname, &st2))
 						continue;
 					if (st1.st_ino == st2.st_ino) {
 						i = (O_BINARY | O_RDONLY);
@@ -4136,7 +4139,7 @@ int mode;
 			return(-1);
 		}
 		closedev(dd);
-		if (*buf != _SC_ || (buf[1] && (buf[1] != '.' || buf[2]))) {
+		if (*buf != _SC_ || isdotdir(&(buf[1])) != 2) {
 			errno = ENOENT;
 			return(-1);
 		}

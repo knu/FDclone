@@ -10,8 +10,10 @@
 #include "kanji.h"
 
 #define	MAXTIMESTR	8
+#define	ATTRWIDTH	10
 
 typedef struct _attrib_t {
+	short nlink;
 	u_int mode;
 #ifdef	HAVEFLAGS
 	u_long flags;
@@ -45,7 +47,7 @@ extern int inheritcopy;
 #endif
 
 static int NEAR issamedir __P_((char *, char *));
-static int NEAR islowerdir __P_((char *, char *));
+static int NEAR islowerdir __P_((VOID_A));
 static char *NEAR getdestdir __P_((char *, char *));
 static int NEAR getdestpath __P_((char *, char *, struct stat *));
 static int NEAR checkdupl __P_((char *, char *, struct stat *, struct stat *));
@@ -57,7 +59,7 @@ static int touchdir __P_((char *));
 #ifndef	_NOEXTRACOPY
 static int mvdir __P_((char *));
 #endif
-static VOID NEAR showattr __P_((namelist *, attrib_t *, int y));
+static VOID NEAR showattr __P_((namelist *, attrib_t *, int));
 static char **NEAR getdirtree __P_((char *, char **, int *, int));
 static int NEAR _applydir __P_((char *, int (*)(char *),
 		int (*)(char *), int (*)(char *), int, char *, int));
@@ -69,12 +71,14 @@ int copypolicy = 0;
 int removepolicy = 0;
 char *destpath = NULL;
 
+static short attrnlink = 0;
 static u_short attrmode = 0;
 #ifdef	HAVEFLAGS
 static u_long attrflags = 0;
 #endif
 static time_t attrtime = 0;
 static char *destdir = NULL;
+static short destnlink = 0;
 static time_t destmtime = (time_t)-1;
 static time_t destatime = (time_t)-1;
 #ifndef	_NOEXTRACOPY
@@ -119,16 +123,17 @@ char *path, *org;
 	return(i);
 }
 
-static int NEAR islowerdir(path, org)
-char *path, *org;
+static int NEAR islowerdir(VOID_A)
 {
 #ifdef	_USEDOSEMU
 	char orgpath[MAXPATHLEN];
 #endif
-	char *cp, *top, *cwd, tmp[MAXPATHLEN];
+	char *cp, *top, *cwd, *path, *org, tmp[MAXPATHLEN];
 	int i;
 
 	cwd = getwd2();
+	path = destpath;
+	org = filelist[filepos].name;
 	if (!org) org = cwd;
 #ifdef	_USEDOSEMU
 	else org = nodospath(orgpath, org);
@@ -177,7 +182,7 @@ char *mes, *arg;
 #endif
 
 	if (arg && *arg) dir = strdup2(arg);
-	else if (!(dir = inputstr(mes, 1, -1, NULL, 1))) return(NULL);
+	else if (!(dir = inputstr(mes, 1, -1, NULL, HST_PATH))) return(NULL);
 	else if (!*(dir = evalpath(dir, 0))) {
 		dir = realloc2(dir, 2);
 		dir[0] = '.';
@@ -506,6 +511,7 @@ char *path;
 	struct stat st1, st2;
 	char dest[MAXPATHLEN];
 
+	destnlink = (TCH_MODE | TCH_UID | TCH_GID);
 	switch (checkdupl(path, dest, &st1, &st2)) {
 		case 2:
 		/* Already exist, but not directory */
@@ -519,6 +525,7 @@ char *path;
 			if (Xmkdir(dest, st1.st_mode & 0777) < 0)
 #endif
 				return(-1);
+			destnlink |= (TCH_ATIME | TCH_MTIME);
 			destmtime = st1.st_mtime;
 			destatime = st1.st_atime;
 			break;
@@ -530,6 +537,7 @@ char *path;
 			break;
 		default:
 		/* Already exist */
+			destnlink |= (TCH_ATIME | TCH_MTIME);
 			destmtime = st2.st_mtime;
 			destatime = st2.st_atime;
 			break;
@@ -555,13 +563,9 @@ char *path;
 	if (!inheritcopy) return(0);
 # endif
 	if (getdestpath(path, dest, &st) < 0) return(-2);
-	if (destmtime != (time_t)-1 || destatime != (time_t)-1) {
-		st.st_mtime = destmtime;
-		st.st_atime = destatime;
-	}
-# ifdef	HAVEFLAGS
-	st.st_flags = (u_long)-1;
-# endif
+	st.st_nlink = destnlink;
+	st.st_mtime = destmtime;
+	st.st_atime = destatime;
 	if (touchfile(dest, &st) < 0) return(-1);
 #endif	/* _USEDOSCOPY || !_NOEXTRACOPY */
 
@@ -577,13 +581,9 @@ char *path;
 	int n;
 
 	if (getdestpath(path, dest, &st) < 0) return(-2);
-	if (destmtime != (time_t)-1 || destatime != (time_t)-1) {
-		st.st_mtime = destmtime;
-		st.st_atime = destatime;
-	}
-# ifdef	HAVEFLAGS
-	st.st_flags = (u_long)-1;
-# endif
+	st.st_nlink = destnlink;
+	st.st_mtime = destmtime;
+	st.st_atime = destatime;
 	if (touchfile(dest, &st) < 0) return(-1);
 	if ((n = checkrmv(path, R_OK | W_OK | X_OK)) < 0)
 		return((n < -1) ? -2 : 1);
@@ -643,14 +643,14 @@ char *path;
 	return(0);
 }
 
-static VOID NEAR showattr(namep, attr, y)
+static VOID NEAR showattr(namep, attr, yy)
 namelist *namep;
 attrib_t *attr;
-int y;
+int yy;
 {
 	struct tm *tm;
 	char buf[WMODE + 1];
-	int x1, x2, w;
+	int x1, x2, y, w;
 
 	tm = localtime(&(namep -> st_mtim));
 	if (isbestomit()) {
@@ -663,6 +663,7 @@ int y;
 		x2 = n_column / 2;
 		w = 16;
 	}
+	y = yy;
 
 	Xlocate(0, y);
 	Xputterm(L_CLEAR);
@@ -683,7 +684,7 @@ int y;
 	Xlocate(x2, y);
 	putmode(buf, namep -> st_mode, 1);
 	Xcputs2(buf);
-	Xlocate(x2 + 10, y);
+	Xlocate(x2 + ATTRWIDTH, y);
 	putmode(buf, attr -> mode, 1);
 	Xcputs2(buf);
 
@@ -695,7 +696,7 @@ int y;
 	Xlocate(x2, y);
 	putflags(buf, namep -> st_flags);
 	Xcputs2(buf);
-	Xlocate(x2 + 10, y);
+	Xlocate(x2 + ATTRWIDTH, y);
 	putflags(buf, attr -> flags);
 	Xcputs2(buf);
 #endif
@@ -707,7 +708,7 @@ int y;
 	Xlocate(x2, y);
 	Xcprintf2("%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	Xlocate(x2 + 10, y);
+	Xlocate(x2 + ATTRWIDTH, y);
 	Xcputs2(attr -> timestr[0]);
 
 	Xlocate(0, ++y);
@@ -717,7 +718,7 @@ int y;
 	Xlocate(x2, y);
 	Xcprintf2("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
-	Xlocate(x2 + 10, y);
+	Xlocate(x2 + ATTRWIDTH, y);
 	Xcputs2(attr -> timestr[1]);
 
 	Xlocate(0, ++y);
@@ -728,11 +729,14 @@ int inputattr(namep, flag)
 namelist *namep;
 int flag;
 {
+#if	!MSDOS
+	u_int tmp;
+#endif
 	struct tm *tm;
 	attrib_t attr;
 	char buf[WMODE + 1];
-	u_int tmp;
-	int i, ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y;
+	u_int mask;
+	int ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y, excl;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -742,8 +746,11 @@ int flag;
 	yy = filetop(win);
 	while (yy + WMODELINE + 5 > n_line - 1) yy--;
 	if (yy <= L_TITLE) yy = L_TITLE + 1;
-	xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
+	xx = n_column / 2 + ((isbestomit()) ? 7 : ATTRWIDTH);
 
+	excl = (flag & ATR_EXCLUSIVE);
+	attr.nlink = TCH_CHANGE;
+	if (flag & ATR_MULTIPLE) attr.nlink |= (TCH_MODE | TCH_MTIME);
 	attr.mode = namep -> st_mode;
 #ifdef	HAVEFLAGS
 	attr.flags = namep -> st_flags;
@@ -754,8 +761,8 @@ int flag;
 	snprintf2(attr.timestr[1], sizeof(attr.timestr[1]), "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(namep, &attr, yy);
-	y = ymin = (flag & 1) ? 0 : WMODELINE;
-	ymax = (flag & 2) ? WMODELINE + 1 : 0;
+	y = ymin = (excl == ATR_TIMEONLY) ? WMODELINE : 0;
+	ymax = (excl == ATR_MODEONLY) ? 0 : WMODELINE + 1;
 	x = 0;
 
 	do {
@@ -765,6 +772,11 @@ int flag;
 		Xtflush();
 
 		keyflush();
+#if	MSDOS
+		if (x == 3) mask = S_ISVTX;
+		else
+#endif
+		mask = (1 << (8 - x));
 		switch (ch = Xgetkey(1, 0)) {
 			case K_UP:
 				if (y > ymin) y--;
@@ -780,21 +792,20 @@ int flag;
 				break;
 			case 'a':
 			case 'A':
-				if (ymin <= 0) x = y = 0;
+				if (excl && excl != ATR_MODEONLY) break;
+				x = y = 0;
 				break;
 			case 'd':
 			case 'D':
-				if (ymax >= WMODELINE) {
-					x = 0;
-					y = WMODELINE;
-				}
+				if (excl && excl != ATR_TIMEONLY) break;
+				x = 0;
+				y = WMODELINE;
 				break;
 			case 't':
 			case 'T':
-				if (ymax >= WMODELINE + 1) {
-					x = 0;
-					y = WMODELINE + 1;
-				}
+				if (excl && excl != ATR_TIMEONLY) break;
+				x = 0;
+				y = WMODELINE + 1;
 				break;
 			case '0':
 			case '1':
@@ -809,6 +820,7 @@ int flag;
 				if (y < WMODELINE) break;
 				Xputch2(ch);
 				attr.timestr[y - WMODELINE][x] = ch;
+				attr.nlink |= TCH_MTIME;
 /*FALLTHRU*/
 			case K_RIGHT:
 #ifdef	HAVEFLAGS
@@ -857,7 +869,8 @@ int flag;
 				yy = filetop(win);
 				while (yy + WMODELINE + 5 > n_line - 1) yy--;
 				if (yy <= L_TITLE) yy = L_TITLE + 1;
-				xx = n_column / 2 + ((isbestomit()) ? 7 : 10);
+				xx = n_column / 2
+					+ ((isbestomit()) ? 7 : ATTRWIDTH);
 				showattr(namep, &attr, yy);
 				break;
 			case ' ':
@@ -867,32 +880,27 @@ int flag;
 					Xlocate(xx, yy + y + 2);
 					putflags(buf, attr.flags);
 					Xcputs2(buf);
+					attr.nlink |= TCH_FLAGS;
 					break;
 				}
 #endif
 				if (y) break;
 #if	MSDOS
 				if (x == 2) break;
-				else if (x == 3) attr.mode ^= S_ISVTX;
-				else {
-					tmp = 1;
-					for (i = 8; i > x; i--) tmp <<= 1;
-					attr.mode ^= tmp;
+#else	/* !MSDOS */
+				if (!((x + 1) % 3) && (attr.mode & mask)) {
+					tmp = (1 << (12 - ((x + 1) / 3)));
+					if (attr.mode & tmp) {
+						attr.mode ^= tmp;
+					}
+					else mask = tmp;
 				}
-#else
-				tmp = 1;
-				for (i = 8; i > x; i--) tmp <<= 1;
-				if (!((x + 1) % 3) && (attr.mode & tmp)) {
-					i = (x * 2) / 3 + 4;
-					if (!(attr.mode & (tmp << i)))
-						tmp <<= i;
-					else attr.mode ^= (tmp << i);
-				}
-				attr.mode ^= tmp;
-#endif
+#endif	/* !MSDOS */
+				attr.mode ^= mask;
 				Xlocate(xx, yy + y + 2);
 				putmode(buf, attr.mode, 1);
 				Xcputs2(buf);
+				attr.nlink |= TCH_MODE;
 				break;
 			default:
 				break;
@@ -926,25 +934,28 @@ int flag;
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 59)
 		return(-1);
 
+	mask = TCH_CHANGE;
+	switch (excl) {
+		case ATR_MODEONLY:
+			mask |= TCH_MODE;
+			break;
+		case ATR_TIMEONLY:
+			mask |= TCH_MTIME;
+			break;
+		default:
+			if (attrmode != namep -> st_mode) mask |= TCH_MODE;
+#ifdef	HAVEFLAGS
+			if (attrflags != namep -> st_flags) mask |= TCH_FLAGS;
+#endif
+			if (attrtime != namep -> st_mtim) mask |= TCH_MTIME;
+			break;
+	}
+	attrnlink = (attr.nlink & mask);
 	attrmode = attr.mode;
 #ifdef	HAVEFLAGS
 	attrflags = attr.flags;
 #endif
 	attrtime = timelocal2(tm);
-	if (flag == 3) {
-		if (attrmode == namep -> st_mode) attrmode = (u_short)-1;
-#ifdef	HAVEFLAGS
-		if (attrflags == namep -> st_flags) attrflags = (u_long)-1;
-#endif
-		if (attrtime == namep -> st_mtim) attrtime = (time_t)-1;
-	}
-	else {
-		if (!(flag & 1)) attrmode = (u_short)-1;
-#ifdef	HAVEFLAGS
-		attrflags = (u_long)-1;
-#endif
-		if (!(flag & 2)) attrtime = (time_t)-1;
-	}
 
 	return(1);
 }
@@ -954,14 +965,12 @@ char *path;
 {
 	struct stat st;
 
-	st.st_mtime = attrtime;
+	st.st_nlink = attrnlink;
+	st.st_mode = attrmode;
 #ifdef	HAVEFLAGS
 	st.st_flags = attrflags;
 #endif
-	st.st_mode = attrmode;
-#ifndef	NOUID
-	st.st_gid = (gid_t)-1;
-#endif
+	st.st_mtime = attrtime;
 
 	return(touchfile(path, &st));
 }
@@ -1060,7 +1069,7 @@ int verbose;
 	struct stat st;
 	time_t dupmtime, dupatime;
 	char *cp, *fname, path[MAXPATHLEN], **dirlist;
-	int ret, ndir, max;
+	int ret, ndir, max, dupnlink;
 
 	if (intrkey()) return(-2);
 
@@ -1075,16 +1084,18 @@ int verbose;
 	else cp = NULL;	/* fake for -Wuninitialized */
 #endif
 
-	if (!funcd1 && !funcd2) order = 0;
+	if (!funcd1) order = (funcd2) ? ORD_NOPREDIR : ORD_NODIR;
 	strcpy(path, dir);
 
 	ret = max = 0;
 	if (!order) dirlist = NULL;
-	else dirlist = getdirtree(path, NULL, &max, (order == 2) ? 0 : 1);
+	else dirlist = getdirtree(path,
+		NULL, &max, (order == ORD_LOWER) ? 0 : 1);
 	fname = strcatdelim(path);
 
-	destmtime = destatime = (time_t)-1;
-	if ((order == 1 || order == 2) && (ret = (*funcd1)(dir)) < 0) {
+	destnlink = 0;
+	if ((order == ORD_NORMAL || order == ORD_LOWER)
+	&& (ret = (*funcd1)(dir)) < 0) {
 		if (ret == -1) warning(-1, dir);
 		if (dirlist) {
 			for (ndir = 0; ndir < max; ndir++) free(dirlist[ndir]);
@@ -1092,11 +1103,12 @@ int verbose;
 		}
 		return(ret);
 	}
+	dupnlink = destnlink;
 	dupmtime = destmtime;
 	dupatime = destatime;
 
-	if (order) for (ndir = 0; ndir < max; ndir++) {
-		if (order != 2)
+	if (order != ORD_NODIR) for (ndir = 0; ndir < max; ndir++) {
+		if (order != ORD_LOWER)
 			ret = _applydir(dirlist[ndir], funcf,
 				funcd1, funcd2, order, NULL, verbose);
 		else if ((ret = (*funcd1)(dirlist[ndir])) < 0) {
@@ -1104,7 +1116,7 @@ int verbose;
 			ret = -2;
 		}
 		else ret = _applydir(dirlist[ndir], funcf,
-			funcd1, funcd2, 0, NULL, verbose);
+			funcd1, funcd2, ORD_NODIR, NULL, verbose);
 		if (ret < -1) {
 			for (; ndir < max; ndir++) free(dirlist[ndir]);
 			free(dirlist);
@@ -1142,6 +1154,7 @@ int verbose;
 		if (ret < -1) return(ret);
 	}
 
+	destnlink = dupnlink;
 	destmtime = dupmtime;
 	destatime = dupatime;
 	if (funcd2 && (ret = (*funcd2)(dir)) < 0) {
@@ -1169,7 +1182,7 @@ char *endmes;
 		dir = ".";
 		verbose = 0;
 	}
-	else if (dir[0] == '.' && dir[1] == '.' && !dir[2]) {
+	else if (isdotdir(dir) == 1) {
 		realpath2(dir, path, 0);
 		dir = path;
 	}
@@ -1185,9 +1198,11 @@ int copyfile(arg, tr)
 char *arg;
 int tr;
 {
+	int order;
+
 	if (!mark && isdotdir(filelist[filepos].name)) {
 		Xputterm(T_BELL);
-		return(0);
+		return(FNC_NONE);
 	}
 #ifdef	_NOTREE
 	destpath = getdestdir(COPYD_K, arg);
@@ -1199,7 +1214,7 @@ int tr;
 # endif
 #endif	/* !_NOTREE */
 
-	if (!destpath) return((tr) ? 2 : 1);
+	if (!destpath) return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	destdir = NULL;
 	copypolicy = (issamedir(destpath, NULL)) ? (FLAG_SAMEDIR | 2) : 0;
 #ifndef	_NODOSDRIVE
@@ -1213,12 +1228,12 @@ int tr;
 		if (copypolicy) {
 			warning(EEXIST, filelist[filepos].name);
 			free(destpath);
-			return((tr) ? 2 : 1);
+			return((tr) ? FNC_UPDATE : FNC_CANCEL);
 		}
 #endif
-		applydir(filelist[filepos].name, safecopy, cpdir, touchdir,
-			(islowerdir(destpath, filelist[filepos].name)) ? 2 : 1,
-			ENDCP_K);
+		order = (islowerdir()) ? ORD_LOWER : ORD_NORMAL;
+		applydir(filelist[filepos].name, safecopy,
+			cpdir, touchdir, order, ENDCP_K);
 	}
 
 	free(destpath);
@@ -1235,7 +1250,7 @@ int tr;
 	forwarddrive = -1;
 #endif
 
-	return(4);
+	return(FNC_EFFECT);
 }
 
 /*ARGSUSED*/
@@ -1246,11 +1261,14 @@ int tr;
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
+#ifndef	_NOEXTRACOPY
+	int order;
+#endif
 	int i;
 
 	if (!mark && isdotdir(filelist[filepos].name)) {
 		Xputterm(T_BELL);
-		return(0);
+		return(FNC_NONE);
 	}
 #ifdef	_NOTREE
 	destpath = getdestdir(MOVED_K, arg);
@@ -1262,30 +1280,31 @@ int tr;
 # endif
 #endif	/* !_NOTREE */
 
-	if (!destpath || issamedir(destpath, NULL)) return((tr) ? 2 : 1);
+	if (!destpath || issamedir(destpath, NULL))
+		return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	destdir = NULL;
 	copypolicy = removepolicy = 0;
 	if (mark > 0) filepos = applyfile(safemove, ENDMV_K);
-	else if (islowerdir(destpath, filelist[filepos].name))
-		warning(EINVAL, filelist[filepos].name);
+	else if (islowerdir()) warning(EINVAL, filelist[filepos].name);
 	else {
 		i = safemove(fnodospath(path, filepos));
 		if (!i) filepos++;
 		else if (i == -1) {
 #ifdef	_NOEXTRACOPY
 			warning(-1, filelist[filepos].name);
-#else
+#else	/* !_NOEXTRACOPY */
 			if (errno != EXDEV
 			|| !isdir(&(filelist[filepos]))
 			|| islink(&(filelist[filepos])))
 				warning(-1, filelist[filepos].name);
-			else if (applydir(filelist[filepos].name,
-				safemove, cpdir, mvdir,
-				(islowerdir(destpath, filelist[filepos].name))
-				? 2 : 1,
-				ENDMV_K) >= 0)
-					filepos++;
-#endif
+			else {
+				order = (islowerdir())
+					? ORD_LOWER : ORD_NORMAL;
+				i = applydir(filelist[filepos].name, safemove,
+					cpdir, mvdir, order, ENDMV_K);
+				if (i >= 0) filepos++;
+			}
+#endif	/* !_NOEXTRACOPY */
 		}
 	}
 
@@ -1304,7 +1323,7 @@ int tr;
 	forwarddrive = -1;
 #endif
 
-	return(4);
+	return(FNC_EFFECT);
 }
 
 static int forcecpfile(path)
@@ -1319,6 +1338,7 @@ char *path;
 	st.st_flags = (u_long)-1;
 #endif
 
+	st.st_nlink = (TCH_MODE | TCH_UID | TCH_GID | TCH_ATIME | TCH_MTIME);
 	return(touchfile(dest, &st));
 }
 
@@ -1359,6 +1379,7 @@ char *path;
 	st.st_flags = (u_long)-1;
 #endif
 
+	st.st_nlink = (TCH_MODE | TCH_UID | TCH_GID | TCH_ATIME | TCH_MTIME);
 	return(touchfile(dest, &st));
 }
 

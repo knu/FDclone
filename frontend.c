@@ -43,6 +43,7 @@ extern int parentfd;
 extern char *ptytmpfile;
 
 static int (*lastfunc)__P_((VOID_A)) = NULL;
+static u_long lockflags = 0;
 
 static int waitpty __P_((VOID_A));
 static int NEAR ptygetkey __P_((VOID_A));
@@ -99,7 +100,7 @@ int isnl;
 	int dupdumbterm;
 
 	if (!emupid) {
-		syncptyout();
+		syncptyout(-1, -1);
 		VOID_C ttyiomode(isnl);
 	}
 	else {
@@ -116,7 +117,7 @@ VOID Xstdiomode(VOID_A)
 	int dupdumbterm;
 
 	if (!emupid) {
-		syncptyout();
+		syncptyout(-1, -1);
 		VOID_C stdiomode();
 	}
 	else {
@@ -134,8 +135,7 @@ int init;
 	int mode, dupdumbterm;
 
 	dupdumbterm = dumbterm;
-	dumbterm = 1;
-	if (ptymode) dumbterm = 1;
+	if (isptymode()) dumbterm = 1;
 	mode = termmode(init);
 	dumbterm = dupdumbterm;
 
@@ -232,10 +232,10 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-
 	n = vasprintf2(&buf, fmt, args);
 	va_end(args);
 	if (n < 0) error("malloc()");
+
 	if (!emupid) VOID_C cputs2(buf);
 	else {
 		sendword(emufd, TE_CPUTS2);
@@ -358,6 +358,7 @@ VOID changekcode(VOID_A)
 	if (!emupid) return;
 
 	sendword(emufd, TE_CHANGEKCODE);
+	sendword(emufd, inputkcode);
 	sendword(emufd, outputkcode);
 }
 #endif	/* !_NOKANJICONV */
@@ -370,6 +371,10 @@ static int NEAR ptygetkey(VOID_A)
 	for (;;) {
 		n = -1;
 		c = getkey2(sigalrm());
+		while (lockflags & (1 << win)) {
+			kbhit2(1000000L / SENSEPERSEC);
+			waitpty();
+		}
 		if (c < 0 || ptymenukey < 0 || c != ptymenukey) break;
 
 		str[0] = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
@@ -804,6 +809,18 @@ int w;
 			deletedrv(n);
 			break;
 #endif	/* _USEDOSEMU */
+		case TE_LOCKFRONT:
+			lockflags |= (1 << w);
+			if (!emupid) break;
+			sendword(emufd, TE_LOCKBACK);
+			sendword(emufd, w);
+			break;
+		case TE_UNLOCKFRONT:
+			lockflags &= ~(1 << w);
+			if (!emupid) break;
+			sendword(emufd, TE_UNLOCKBACK);
+			sendword(emufd, w);
+			break;
 		case TE_CHANGESTATUS:
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
 			ptylist[w].status = n;
@@ -830,7 +847,7 @@ int frontend(VOID_A)
 
 	if (ch < -1) {
 		status = 0;
-		internal_status = 1;
+		internal_status = FNC_CANCEL;
 	}
 	else {
 		status = ptylist[win].status;
@@ -839,7 +856,7 @@ int frontend(VOID_A)
 			recvchild(win);
 			killpty(win, &status);
 		}
-		internal_status = (status < 128) ? status : -2;
+		internal_status = (status < 128) ? status : FNC_FAIL;
 	}
 
 	sigvecset(n);

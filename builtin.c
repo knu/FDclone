@@ -2242,7 +2242,7 @@ char *argv[];
 		}
 		if (!(fp = Xfdopen(fd, "w"))) {
 			builtinerror(argv, path, -1);
-			Xclose(fd);
+			VOID_C Xclose(fd);
 			rmtmpfile(path);
 			free(tmp);
 			return(-1);
@@ -3230,7 +3230,7 @@ char *argv[];
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
 		return(-1);
 	}
-	if (fd_restricted && (funclist[n].status & RESTRICT)) {
+	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
 		fprintf2(stderr, "%s: %k", argv[0], RESTR_K);
 		fputnl(stderr);
 		return(RET_NOTICE);
@@ -3258,7 +3258,7 @@ int flags;
 
 	n = -1;
 	command = skipspace(command);
-	internal_status = -2;
+	internal_status = FNC_FAIL;
 	if (!(argc = getargs(command, &argv))) {
 		freevar(argv);
 		return(-1);

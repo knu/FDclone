@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2005 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.07b 09/14/05
+.\" @(#)fd.1   2.07c 12/13/05
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "September 14, 2005"
+.TH FD 1 "December 13, 2005"
 .de sh
 .br
 .PP
@@ -16,7 +16,7 @@ fd \- file & directory maintenance tool
 .SH SYNOPSIS
 .B fd
 [
-.B \-abCefhikmnrstuvx
+.B \-abCefhiklmNnrstuvx
 ] [
 .BI \- NAME = value
 ] [
@@ -27,7 +27,7 @@ fd \- file & directory maintenance tool
 .br
 .B fdsh
 [
-.B \-abCcefhikmnrstuvx
+.B \-abCcefhiklmNnrstuvx
 ] [
 .I args
 ]
@@ -141,7 +141,7 @@ The shell is a login shell.
 .TP
 .B \-N
 Reading the initial configuration files is omitted.
-
+.PP
 In addition,
 the options described below in the description of
 .B set
@@ -2712,7 +2712,7 @@ Same as
 .RE
 .RS
 If
-.IR option
+.I option
 is omitted,
 the values of the current options are displayed.
 .RE
