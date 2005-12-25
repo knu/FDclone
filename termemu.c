@@ -39,6 +39,7 @@ typedef struct fd_set {
 
 extern int internal_status;
 extern int hideclock;
+extern int fdmode;
 
 int ptymode = 0;
 char *ptyterm = NULL;
@@ -609,6 +610,13 @@ va_dcl
 			sendstring(fd, devp -> name);
 			break;
 #endif	/* _USEDOSEMU */
+		case TE_SAVETTYIO:
+			n = va_arg(args, int);
+			val = (n >= 0 && duptty[n]) ? TIO_BUFSIZ : 0;
+			sendbuf(fd, &n, sizeof(n));
+			sendbuf(fd, &val, sizeof(val));
+			if (n >= 0 && duptty[n]) sendbuf(fd, duptty[n], val);
+			break;
 		default:
 			break;
 	}
@@ -719,6 +727,13 @@ int flags;
 	u_char uc;
 	int i, n, fd, fds[2];
 
+#ifndef	_NOORIGSHELL
+	if (isshptymode()) {
+		if (!(flags & F_DOSYSTEM))
+			return(callmacro(command, arg, flags));
+	}
+	else
+#endif
 	if (!ptymode) return(callmacro(command, arg, flags));
 
 	if (ptylist[win].pid && emufd >= 0) {
@@ -749,6 +764,11 @@ int flags;
 		VOID_C Xclose(fd);
 	}
 
+#ifndef	_NOKANJICONV
+	changeinkcode();
+	changeoutkcode();
+#endif
+
 	n = sigvecset(0);
 	if ((pid = Xfork()) < (p_id_t)0) {
 		if (fd >= 0 && ptytmpfile) {
@@ -767,6 +787,10 @@ int flags;
 		mypid = getpid();
 #endif
 		if (Xlogin_tty(ptylist[win].path, tty, ws) < 0) _exit(1);
+#ifndef	_NOORIGSHELL
+		if (isshptymode()) /*EMPTY*/;
+		else
+#endif
 		n_line = FILEPERROW;
 		VOID_C setwsize(STDIN_FILENO, n_column, n_line);
 

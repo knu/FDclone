@@ -38,6 +38,7 @@ typedef off_t		l_off_t;
 #ifdef	FD
 # ifndef	_NOKANJICONV
 extern char *newkanjiconv __P_((char *, int, int, int));
+extern int getoutputkcode __P_((VOID_A));
 # endif
 extern char *restorearg __P_((char *));
 #endif
@@ -338,7 +339,8 @@ int width, prec;
 			}
 			tmp[j] = '\0';
 
-			cp = newkanjiconv(tmp, DEFCODE, outputkcode, L_OUTPUT);
+			cp = newkanjiconv(tmp, DEFCODE,
+				getoutputkcode(), L_OUTPUT);
 			if ((pbufp -> flags & (VF_NEW | VF_FILE))
 			|| pbufp -> ptr + strlen(cp) < pbufp -> size)
 				break;

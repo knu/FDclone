@@ -96,7 +96,8 @@ static int NEAR insertstr __P_((char **, int, int,
 		ALLOC_T *, char *, int, int));
 #ifndef	_NOCOMPLETE
 static VOID NEAR selectfile __P_((int, char **));
-static int NEAR completestr __P_((char **, int, int, ALLOC_T *, int, int));
+static int NEAR completestr __P_((char **, int, int, ALLOC_T *,
+		int, int, int));
 #endif
 static int NEAR getkanjikey __P_((char *, int));
 static int NEAR copyhist __P_((char **, int *, int *, ALLOC_T *, char *));
@@ -1409,15 +1410,15 @@ int ins, quote;
 	for (i = 0; i < ins; i++) (*sp)[cx + i] = ' ';
 	len += ins;
 	for (i = j = 0; i < ins; i++, j++) {
+		if (quote < '\0') dupl[j] = (*sp)[cx + j] = strins[i];
 #ifdef	CODEEUC
-		if (isekana(strins, i)) {
+		else if (isekana(strins, i)) {
 			dupl[j] = (*sp)[cx + j] = strins[i];
 			j++;
 			dupl[j] = (*sp)[cx + j] = strins[++i];
 		}
-		else
 #endif
-		if (iskanji1(strins, i)) {
+		else if (iskanji1(strins, i)) {
 			dupl[j] = (*sp)[cx + j] = strins[i];
 			j++;
 			dupl[j] = (*sp)[cx + j] = strins[++i];
@@ -1659,11 +1660,12 @@ char **argv;
 	dispmode = dupdispmode;
 }
 
-static int NEAR completestr(sp, cx, len, sizep, comline, cont)
+/*ARGSUSED*/
+static int NEAR completestr(sp, cx, len, sizep, comline, cont, h)
 char **sp;
 int cx, len;
 ALLOC_T *sizep;
-int comline, cont;
+int comline, cont, h;
 {
 # ifndef	FAKEMETA
 	int hadmeta;
@@ -1688,6 +1690,10 @@ int comline, cont;
 	vartop =
 # endif
 	top = quoted = 0;
+# ifndef	NOUID
+	if (h == HST_USER || h == HST_GROUP) quote = -1;
+	else
+# endif
 	for (i = 0; i < cx; i++) {
 # ifdef	FAKEMETA
 		pc = parsechar(&((*sp)[i]), cx, '$', EA_NOEVALQ, &quote, NULL);
@@ -1734,11 +1740,19 @@ int comline, cont;
 
 	cp = strndup2(&((*sp)[top]), cx - top);
 # ifndef	_NOORIGSHELL
-	if (vartop);
+	if (vartop) /*EMPTY*/;
+	else
+# endif
+# ifndef	NOUID
+	if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
 	else
 # endif
 	cp = evalpath(cp, 0);
 	hasmeta = 0;
+# ifndef	NOUID
+	if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
+	else
+# endif
 	for (i = 0; cp[i]; i++) {
 		if (strchr(METACHAR, cp[i])) {
 			hasmeta = 1;
@@ -1757,6 +1771,18 @@ int comline, cont;
 		argv[0][l + i] = '\0';
 		argc = 1;
 	}
+# ifndef	NOUID
+	else if (h == HST_USER) {
+		argv = NULL;
+		l = strlen(cp);
+		argc = completeuser(cp, l, 0, &argv, 0);
+	}
+	else if (h == HST_GROUP) {
+		argv = NULL;
+		l = strlen(cp);
+		argc = completegroup(cp, l, 0, &argv);
+	}
+# endif
 # ifndef	_NOORIGSHELL
 	else if (vartop) {
 		argv = NULL;
@@ -1798,6 +1824,9 @@ int comline, cont;
 
 	cp = findcommon(argc, argv);
 	if (argc != 1 || !cp) fix = '\0';
+# ifndef	NOUID
+	else if (h == HST_USER || h == HST_GROUP) fix = ' ';
+# endif
 	else fix = ((tmp = strrdelim(cp, 0)) && !tmp[1]) ? _SC_ : ' ';
 
 	if (!cp || ((ins = (int)strlen(cp) - ins) <= 0 && fix != ' ')) {
@@ -1820,6 +1849,10 @@ int comline, cont;
 	free(argv);
 
 	l = 0;
+# ifndef	NOUID
+	if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
+	else
+# endif
 	if (!hasmeta) for (i = 0; cp[i]; i++) {
 		if (strchr(METACHAR, cp[i])) {
 			hasmeta = 1;
@@ -1905,7 +1938,7 @@ int comline, cont;
 	l += i;
 	if (fix && !overflow(vlen(*sp, len))) {
 		cx += i;
-		if (quote && (fix != _SC_ || hasmeta)) {
+		if (quote > '\0' && (fix != _SC_ || hasmeta)) {
 			insertchar(*sp, cx, len, 1);
 			*sp = c_realloc(*sp, len + 2, sizep);
 			insshift(*sp, cx, len++, 1);
@@ -1913,6 +1946,10 @@ int comline, cont;
 			(*sp)[cx++] = quote;
 			putcursor(quote, 1);
 		}
+# ifndef	NOUID
+		if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
+		else
+# endif
 		if (!overflow(vlen(*sp, len))) {
 			insertchar(*sp, cx, len, 1);
 			*sp = c_realloc(*sp, len + 1, sizep);
@@ -2239,7 +2276,7 @@ ALLOC_T *sizep;
 		return(cx2);
 	}
 
-	quote = 0;
+	quote = '\0';
 	keyflush();
 	if (curfilename[i = 0] != '~') for (; curfilename[i]; i++) {
 		if (strchr(METACHAR, curfilename[i])) break;
@@ -2261,7 +2298,7 @@ ALLOC_T *sizep;
 	}
 	*cxp += i;
 	*lenp += i;
-	if (quote) {
+	if (quote > '\0') {
 		insertchar(*sp, *cxp, *lenp, 1);
 		*sp = c_realloc(*sp, *lenp + 2, sizep);
 		insshift(*sp, *cxp, (*lenp)++, 1);
@@ -2798,7 +2835,7 @@ int def, comline, h;
 					break;
 				}
 				i = completestr(sp, cx, len, &size,
-					comline, (ch2 == ch) ? 1 : 0);
+					comline, (ch2 == ch) ? 1 : 0, h);
 				if (i <= 0) {
 					if (!i) ringbell();
 					break;
@@ -2813,7 +2850,7 @@ int def, comline, h;
 				keyflush();
 #ifndef	_NOCOMPLETE
 				if (!completable(h) || !selectlist) break;
-				i = completestr(sp, cx, len, &size, 0, -1);
+				i = completestr(sp, cx, len, &size, 0, -1, h);
 				cx += i;
 				len += i;
 				cx2 = vlen(*sp, cx);

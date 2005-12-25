@@ -10,6 +10,9 @@ typedef struct _ptyinfo_t {
 	int fd;
 	int pipe;
 	int status;
+#ifndef	_NOKANJICONV
+	char incode, outcode;
+#endif
 } ptyinfo_t;
 
 extern ptyinfo_t ptylist[];
@@ -30,6 +33,8 @@ extern ptyinfo_t ptylist[];
 #define	TE_LOCKBACK		(K_MAX + 14)
 #define	TE_UNLOCKBACK		(K_MAX + 15)
 #define	TE_CHANGEKCODE		(K_MAX + 16)
+#define	TE_CHANGEINKCODE	(K_MAX + 17)
+#define	TE_CHANGEOUTKCODE	(K_MAX + 18)
 #define	TE_AWAKECHILD		(K_MAX + 99)
 
 #define	TE_SETVAR		1
@@ -58,4 +63,5 @@ extern ptyinfo_t ptylist[];
 #define	TE_DELETEDRV		24
 #define	TE_LOCKFRONT		25
 #define	TE_UNLOCKFRONT		26
+#define	TE_SAVETTYIO		27
 #define	TE_CHANGESTATUS		99

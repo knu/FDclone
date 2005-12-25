@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Sun May 24 00:00:00 2005
++++ _fdrc	Mon Dec 26 00:00:00 2005
 @@ -10,7 +10,7 @@
  #	5: length	13: length (reversal)
  #	100-113: preserve previous sort type
@@ -9,7 +9,7 @@
  
  # default display mode
  #	0: normal (Default)
-@@ -21,98 +21,211 @@
+@@ -21,98 +21,245 @@
  #	5: sym-link status &				invisible dot file
  #	6: 			file type symbol &	invisible dot file
  #	7: sym-link status &	file type symbol &	invisible dot file
@@ -202,6 +202,40 @@
 +#	Default: none
 +#PTYMENUKEY=""
 +
++# filename for logging
++#	Default: none
++#LOGFILE=""
++
++# file size for logging
++#	Default: 1024 (KB)
++#LOGSIZE=1024
++
++# whether if use syslog for logging
++#	0: not use (Default)
++#	>= 1: use
++#USESYSLOG=0
++
++# logging level for normal users
++#	0: not logging (Default)
++#	1: for warning
++#	2: for notice
++#	3: for information
++#	>= 4: for debug
++#LOGLEVEL=0
++
++# logging level for the super user
++#	0: not logging
++#	1: for warning (Default)
++#	2: for notice
++#	3: for information
++#	>= 4: for debug
++#ROOTLOGLEVEL=1
++
++# whether if pass through the startup arguments as is
++#	0: evaluate arguments (Default)
++#	>= 1: pass through
++#THRUARGS=0
++
 +# whether if hold the UNICODE translation table on memory
 +#	0: not hold (Default)
 +#	>= 1: hold
@@ -241,12 +275,31 @@
  
  # Kanji code to be inputted
  #	Default: No convert
-@@ -120,49 +233,195 @@
+@@ -120,49 +267,211 @@
  #	sjis, SJIS: Shift JIS
  #	utf8, UTF8: UTF-8
  #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 -#INPUTKCODE	=	""
 +#INPUTKCODE=""
+ 
+-#PAGER	=	more%K
+-#EDITOR	=	vi
+-#SHELL	=	/bin/sh
++# Kanji code to be inputted to the pseudo terminal
++#	Default: No convert
++#	euc, EUC: EUC-JP
++#	sjis, SJIS: Shift JIS
++#	utf8, UTF8: UTF-8
++#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
++#PTYINKCODE=""
++
++# Kanji code to be outputted from the pseudo terminal
++#	Default: No convert
++#	euc, EUC: EUC-JP
++#	sjis, SJIS: Shift JIS
++#	utf8, UTF8: UTF-8
++#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
++#PTYOUTKCODE=""
 +
 +# Kanji code in filename
 +#	Default: No convert
@@ -275,10 +328,7 @@
 +# directories on which language code type in filename is 7bits JIS
 +#	Default: none
 +#JISPATH=""
- 
--#PAGER	=	more%K
--#EDITOR	=	vi
--#SHELL	=	/bin/sh
++
 +# directories on which language code type in filename is 8bits JIS
 +#	Default: none
 +#JIS8PATH=""
@@ -467,7 +517,7 @@
  
  # archiver definition
  #(Default)
-@@ -178,6 +437,7 @@
+@@ -178,6 +487,7 @@
  #(Examples)
  #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
  #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
@@ -475,7 +525,7 @@
  
  # examples for MS-DOS
  #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
-@@ -198,22 +458,52 @@
+@@ -198,22 +508,52 @@
  #bind '{'	ROLL_UP
  #bind '}'	ROLL_DOWN
  #bind '~'	"cd ~%N%K"
@@ -538,7 +588,7 @@
  #}
  
  # MS-DOS drive definition
-@@ -222,7 +512,7 @@
+@@ -222,7 +562,7 @@
  
  # alias definition
  #(Example)

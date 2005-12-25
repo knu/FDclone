@@ -291,6 +291,10 @@ K_EXTERN int inputkcode K_INIT(NOCNV);
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 K_EXTERN int outputkcode K_INIT(NOCNV);
 #endif
+#if	!defined (_NOKANJICONV) && !defined (_NOPTY)
+K_EXTERN int ptyinkcode K_INIT(NOCNV);
+K_EXTERN int ptyoutkcode K_INIT(NOCNV);
+#endif
 #ifndef	_NOKANJIFCONV
 K_EXTERN int fnamekcode K_INIT(NOCNV);
 #endif
@@ -298,24 +302,25 @@ K_EXTERN int fnamekcode K_INIT(NOCNV);
 #define	L_INPUT		0001
 #define	L_OUTPUT	0002
 #define	L_FNAME		0004
+#define	L_TERMINAL	0010
 
 K_EXTERN CONST char kanjiiomode[]
 # ifdef	K_INTERN
 = {
-	          L_OUTPUT | L_FNAME,	/* NOCNV */
-	          L_OUTPUT,		/* ENG */
-	L_INPUT | L_OUTPUT | L_FNAME,	/* SJIS */
-	L_INPUT | L_OUTPUT | L_FNAME,	/* EUC */
-	          L_OUTPUT | L_FNAME,	/* JIS7 */
-	          L_OUTPUT | L_FNAME,	/* O_JIS7 */
-	          L_OUTPUT | L_FNAME,	/* JIS8 */
-	          L_OUTPUT | L_FNAME,	/* O_JIS8 */
-	          L_OUTPUT | L_FNAME,	/* JUNET */
-	          L_OUTPUT | L_FNAME,	/* O_JUNET */
-	                     L_FNAME,	/* HEX */
-	                     L_FNAME,	/* CAP */
-	L_INPUT | L_OUTPUT | L_FNAME,	/* UTF8 */
-	L_INPUT | L_OUTPUT | L_FNAME,	/* M_UTF8 */
+	          L_OUTPUT | L_FNAME | L_TERMINAL,	/* NOCNV */
+	          L_OUTPUT,				/* ENG */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* SJIS */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* EUC */
+	          L_OUTPUT | L_FNAME,			/* JIS7 */
+	          L_OUTPUT | L_FNAME,			/* O_JIS7 */
+	          L_OUTPUT | L_FNAME,			/* JIS8 */
+	          L_OUTPUT | L_FNAME,			/* O_JIS8 */
+	          L_OUTPUT | L_FNAME,			/* JUNET */
+	          L_OUTPUT | L_FNAME,			/* O_JUNET */
+	                     L_FNAME,			/* HEX */
+	                     L_FNAME,			/* CAP */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* UTF8 */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* M_UTF8 */
 }
 # endif	/* K_INTERN */
 ;

@@ -25,7 +25,7 @@ DOSRC	= ~FD\\fd__RCVERSION__rc
 UNITBL	= fd-unicd.tbl
 
 SRC	= main.c printf.c termio.c term.c pathname.c \
-	system.c posixsh.c doscom.c \
+	system.c posixsh.c doscom.c log.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	pty.c termemu.c frontend.c backend.c \
@@ -90,7 +90,7 @@ EXE	= __EXE__
 PROGRAM	= fd
 ALIAS	= fdsh
 OBJ1	= main__OBJ__ printf__OBJ__ termio__OBJ__ term__OBJ__ \
-	pathname__OBJ__ system__OBJ__ posixsh__OBJ__ doscom__OBJ__
+	pathname__OBJ__ system__OBJ__ posixsh__OBJ__ doscom__OBJ__ log__OBJ__
 OBJ2	= dosdisk__OBJ__ __OBJS__ \
 	pty__OBJ__ termemu__OBJ__ frontend__OBJ__ backend__OBJ__ \
 	libc__OBJ__ file__OBJ__ apply__OBJ__ \
@@ -542,6 +542,11 @@ doscom__OBJ__: machine.h config.h printf.h kctype.h
 doscom__OBJ__: pathname.h
 doscom__OBJ__: system.h termio.h
 doscom__OBJ__: wait.h
+log__OBJ__: fd.h
+log__OBJ__: machine.h config.h types.h
+log__OBJ__: printf.h kctype.h
+log__OBJ__: pathname.h term.h func.h
+log__OBJ__: dosdisk.h
 dosdisk__OBJ__: machine.h config.h
 dosdisk__OBJ__: dosdisk.h
 dosdisk__OBJ__: kctype.h
@@ -599,7 +604,7 @@ backend__OBJ__: pathname.h term.h
 backend__OBJ__: termio.h
 backend__OBJ__: func.h
 backend__OBJ__: dosdisk.h
-backend__OBJ__: termemu.h
+backend__OBJ__: termemu.h system.h wait.h
 libc__OBJ__: fd.h
 libc__OBJ__: machine.h config.h types.h
 libc__OBJ__: printf.h

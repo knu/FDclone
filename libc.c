@@ -869,6 +869,7 @@ int flags;
 	}
 
 	ret = dosystem(command);
+	LOG1(_LOG_NOTICE_, ret, "system(\"%s\");", command);
 #ifdef	_NOORIGSHELL
 	checkscreen(-1, -1);
 #endif

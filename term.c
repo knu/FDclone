@@ -411,6 +411,7 @@ int (*keywaitfunc)__P_((VOID_A)) = NULL;
 #if	!MSDOS
 int usegetcursor = 0;
 int suspended = 0;
+char *duptty[2] = {NULL, NULL};
 #endif
 int ttyio = -1;
 int isttyiomode = 0;
@@ -1077,12 +1078,34 @@ int keyflush(VOID_A)
 
 	return(0);
 }
+
+int savettyio(reset)
+int reset;
+{
+	char *tty;
+	int n;
+
+	if (reset) tty = NULL;
+	else {
+		savetermio(ttyio, &tty, NULL);
+		if (!tty) return(-1);
+	}
+
+	n = (isttyiomode) ? 0 : 1;
+	if (duptty[n]) free(duptty[n]);
+	duptty[n] = tty;
+
+	return(n);
+}
 #endif	/* !MSDOS */
 
 int ttyiomode(isnl)
 int isnl;
 {
 	if (ttyio < 0) /*EMPTY*/;
+#if	!MSDOS
+	else if (duptty[0]) loadtermio(ttyio, duptty[0], NULL);
+#endif
 	else {
 #if	MSDOS
 		raw2();
@@ -1115,6 +1138,9 @@ int stdiomode(VOID_A)
 
 	isnl = (isttyiomode) ? isttyiomode - 1 : 0;
 	if (ttyio < 0) /*EMPTY*/;
+#if	!MSDOS
+	else if (duptty[1]) loadtermio(ttyio, duptty[1], NULL);
+#endif
 	else {
 #if	MSDOS
 		cooked2();

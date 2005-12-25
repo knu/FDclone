@@ -191,6 +191,40 @@
 #	Default: none
 #PTYMENUKEY=""
 
+# filename for logging
+#	Default: none
+#LOGFILE=""
+
+# file size for logging
+#	Default: 1024 (KB)
+#LOGSIZE=1024
+
+# whether if use syslog for logging
+#	0: not use (Default)
+#	>= 1: use
+#USESYSLOG=0
+
+# logging level for normal users
+#	0: not logging (Default)
+#	1: for warning
+#	2: for notice
+#	3: for information
+#	>= 4: for debug
+#LOGLEVEL=0
+
+# logging level for the super user
+#	0: not logging
+#	1: for warning (Default)
+#	2: for notice
+#	3: for information
+#	>= 4: for debug
+#ROOTLOGLEVEL=1
+
+# whether if pass through the startup arguments as is
+#	0: evaluate arguments (Default)
+#	>= 1: pass through
+#THRUARGS=0
+
 # whether if hold the UNICODE translation table on memory
 #	0: not hold (Default)
 #	>= 1: hold
@@ -234,6 +268,22 @@
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 #INPUTKCODE=""
+
+# Kanji code to be inputted to the pseudo terminal
+#	Default: No convert
+#	euc, EUC: EUC-JP
+#	sjis, SJIS: Shift JIS
+#	utf8, UTF8: UTF-8
+#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#PTYINKCODE=""
+
+# Kanji code to be outputted from the pseudo terminal
+#	Default: No convert
+#	euc, EUC: EUC-JP
+#	sjis, SJIS: Shift JIS
+#	utf8, UTF8: UTF-8
+#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#PTYOUTKCODE=""
 
 # Kanji code in filename
 #	Default: No convert

@@ -6,9 +6,9 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      fd - ファイル・ディレクトリ管理ツール
 
 形形式式
-     ffdd [ --aabbCCeeffhhiikkllmmNNnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
+     ffdd [ --aabbCCeeffhhiikkllmmNNnnPPrrSSssTTttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
      _d_i_r_e_c_t_o_r_y_2 _._._. ]]
-     ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnrrssttuuvvxx ] [ _a_r_g_s ]
+     ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnPPrrSSssTTttuuvvxx ] [ _a_r_g_s ]
 
 解解説説
      ffdd は、UNIX 汎用のテキスト端末用に考えられた、ファイルやディ
@@ -60,7 +60,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                TTRREEEE_DDIIRR       BBAACCKKUUPP_TTAAPPEE    EEDDIITT_FFIILLEE
                UUNNPPAACCKK_FFIILLEE    PPAACCKK_FFIILLEE      LLOOGG_TTRREEEE
                CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      UUNNPPAACCKK_TTRREEEE
-               FFIINNDD_DDIIRR
+               FFIINNDD_DDIIRR       AATTTTRR_DDIIRR
           rrffdd または rrffddsshh として起動された場合には、自動的にこの
           一部制限シェルになります。
 
@@ -177,6 +177,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      MMOOVVEE_TTRREEEE           ツリー選択でファイル移動      MM
      UUNNPPAACCKK_TTRREEEE         ツリー選択でファイル伸長      UU
      FFIINNDD_DDIIRR            ディレクトリの検索移動        FF
+     AATTTTRR_DDIIRR            再帰的なファイル属性変更      AA
      SSYYMMLLIINNKK_MMOODDEE        symbolic リンク表示形式の切替 SS
      FFIILLEETTYYPPEE_MMOODDEE       ファイルタイプシンボルの切替  TT
      DDOOTTFFIILLEE_MMOODDEE        ドットファイル非表示の切替    HH
@@ -391,29 +392,38 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
         フファァイイルル属属性性のの変変更更 (Attr)
              カーソル位置のファイルの、ファイルアクセスモードとタ
-             イムスタンプを変更します。マークされたファイルがある
-             場合は、カーソル位置のファイルではなくマークファイル
-             が対象となります。マークファイルの場合は、モードかタ
-             イムスタンプかのどちらかを選んでから、入力したものを
-             一括変更することになります。
+             イムスタンプ及びオーナーとグループを変更します。マー
+             クされたファイルがある場合は、カーソル位置のファイル
+             ではなくマークファイルが対象となります。マークファイ
+             ルの場合は、モード、タイムスタンプ、オーナーとグルー
+             プのいずれかを選んでから、入力したものを一括変更する
+             ことになります。
 
              モードの入力は、カーソルキーで変更したい位置へカーソ
              ルを移動し、[SSppaaccee] でその位置の属性を反転させます。
              実行ビットの属性は、2 値のトグルではなく、それぞれ
              setuid ビット、setgid ビット、sticky ビットを含んだ
-             3 値のトグルになっていますので注意して下さい。タイム
-             スタンプの入力は、変更したい位置にカーソルを持ってい
-             って、数値を入力するだけです。最終的に、[RReettuurrnn] を
-             押した時点で実行されます。中断する場合は [EEsscc] です。
-             日付の範囲チェックは完全ではありませんので気をつけて
-             下さい。
+             3 値のトグルになっていますので注意して下さい。また、
+             対象がマークファイルの場合は、[mm](Mask) を入力すると
+             その位置のビット値は '**' でマスクされ、元のファイル
+             の属性値を保存します。タイムスタンプの入力は、変更し
+             たい位置にカーソルを持っていって、数値を入力するだけ
+             です。オーナーとグループの入力は、それぞれの名前の位
+             置にカーソルを移動し、[SSppaaccee] で名前または ID 値の入
+             力を行ないます。名前の入力にはユーザ名補完やグループ
+             名補完が有効です。最終的に、[RReettuurrnn] を押した時点で
+             実行されます。中断する場合は [EEsscc] です。日付の範囲
+             チェックは完全ではありませんので気をつけて下さい。
 
-             なお、[aa](Attr), [dd](Date), [tt](Time) を入力すると、
-             各々の入力ラインの先頭位置にカーソル移動します。
+             なお、[aa](Attr), [dd](Date), [tt](Time), [oo](Owner),
+             [gg](Group) を入力すると、各々の入力ラインの先頭位置
+             にカーソル移動します。
 
              また、ファイルフラグ属性のある OS では、モードの変更
-             と同様にファイルフラグも変更できます。但し、変更でき
-             るフラグの値は実行ユーザの権限に準じます。
+             と同様にファイルフラグも変更できます。この場合、[ff]
+             (Flag) を入力するとフラグ入力ラインの先頭位置にカー
+             ソル移動します。但し、変更できるフラグの値は実行ユー
+             ザの権限に準じます。
 
         フファァイイルルシシスステテムムのの情情報報表表示示 (Info)
              指定されたファイルシステムの情報を表示します。入力さ
@@ -537,6 +547,23 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
              マッチした個々のファイルに対し、そこに移動するかどう
              かを確認してきますので、目的のファイルが表示されるま
              では [nn](No) を選択して下さい。
+
+        再再帰帰的的ななフファァイイルル属属性性変変更更
+             カーソル位置のディレクトリファイルを、再帰的にファイ
+             ル属性変更します。マークファイルの属性変更と同様に、
+             モード、タイムスタンプ、オーナーとグループのいずれか
+             を選んでから、ディレクトリ以下の全てのファイル属性を
+             変更します。
+
+             但し、モードの入力では、実行ビットの属性は、3 値のト
+             グルではなく、'XX' と '!!' を含んだ 5 値のトグルになっ
+             ていますので注意して下さい。'XX' は対象がディレクトリ
+             であるかもしくはいずれかの実行ビットが立っている時の
+             み、そのビットを有効にします。同様に '!!' は対象がデ
+             ィレクトリであるかもしくはいずれかの実行ビットが立っ
+             ている時のみ、そのビットを無効にします。また、
+             [mm](Mask) を入力するとその位置のビット値は '**' でマ
+             スクされ、元のファイルの属性値を保存します。
 
         ラランンチチャャのの起起動動
              サブディレクトリ以外のカーソル位置で [RReettuurrnn] を押す
@@ -1496,6 +1523,16 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    略した場合は直前に実行したコマンドの終了ステー
                    タスを返り値とします。関数の外では使えません。
 
+     ssaavveettttyy [--nn]  現在の端末設定を保存します。保存された端末設定
+                   は以降の EEXXEECCUUTTEE__SSHH コマンド実行時に復元されま
+                   す。ssttttyy(1) 等で端末設定を変更した場合には、こ
+                   のコマンドでその設定を保存しないと以降の
+                   EEXXEECCUUTTEE__SSHH 実行時には設定がリセットされます。
+                   また、端末設定の変更とこのコマンドが同じコマン
+                   ドラインにないと、リセットされた設定を保存して
+                   しまいますので注意して下さい。--nn が指定された
+                   場合は保存された端末設定を破棄します。((UUNNIIXX))
+
      sseett [----aabbCCeeffhhkkmmnnttuuvvxx] [--oo _o_p_t_i_o_n] [_a_r_g ...]
                    引数なしで実行された場合は、内部変数と関数の一
                    覧を表示します。_a_r_g が指定された場合は _a_r_g を
@@ -1530,6 +1567,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                         _o_p_t_i_o_n には以下の識別子が有効です。
                         aalllleexxppoorrtt
                              --aa と同等です。
+                        aauuttoossaavveettttyy
+                             --SS と同等です。
                         eemmaaccss
                              EEDDIITTMMOODDEE==eemmaaccss と同等です。
                         eerrrreexxiitt
@@ -1556,10 +1595,9 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                         oonneeccmmdd
                              --tt と同等です。
                         pphhyyssiiccaall
-                             ccdd や ppwwdd コマンドで、symbolic リン
-                             クを辿った論理的なディレクトリ構造を
-                             用いる代わりに、物理的なディレクトリ
-                             構造を用いるようにします。
+                             --PP と同等です。
+                        ppttyysshheellll
+                             --TT と同等です。
                         vveerrbboossee
                              --vv と同等です。
                         vvii   EEDDIITTMMOODDEE==vvii と同等です。
@@ -1567,6 +1605,24 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                              --xx と同等です。
                         _o_p_t_i_o_n が省略されると、現在のオプション設
                         定値を一覧表示します。
+                   --PP   ccdd や ppwwdd コマンドで、symbolic リンクを辿
+                        った論理的なディレクトリ構造を用いる代わ
+                        りに、物理的なディレクトリ構造を用いるよ
+                        うにします。
+                   --SS   コマンド入力行を処理する度に自動的に組込
+                        みコマンド ssaavveettttyy を実行します。意図的
+                        に端末設定を操作した時以外も無条件に端末
+                        設定を保存するので、意図しない端末設定が
+                        保存されてしまった場合は手動で正しい端末
+                        設定に戻す必要があります。((UUNNIIXX))
+                   --TT   ffddsshh を疑似端末モードで起動します。この
+                        状態から更に疑似端末を起動することはでき
+                        ません。起動時オプションまたは初期設定フ
+                        ァイル内で設定された場合のみ有効です。非
+                        対話型シェルとして起動された場合は、起動
+                        時オプションで設定された場合のみ有効です。
+                        また、ffdd として起動された場合はこのオプ
+                        ションは無視されます。((UUNNIIXX))
                    --tt   現在のコマンド入力行を実行し終えた時点で
                         即座に終了します。
                    --uu   未定義の変数が参照された場合にエラーとし
@@ -1766,8 +1822,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
           LLOOGG_TTOOPP        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE      MMOOVVEE_FFIILLEE
           DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE    MMAAKKEE_DDIIRR
           WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE      LLOOGG_TTRREEEE
-          CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       SSYYMMLLIINNKK_MMOODDEE
-          DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+          CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       AATTTTRR_DDIIRR
+          SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
 
      また、新しいアーカイブブラウザを登録したい場合、以下のような
      書式でアーカイバの一覧表示形式のフォーマットを記述してやる必
@@ -2615,6 +2671,33 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    応じてその値を自動的に置換えます。何も値が設定
                    されていない場合は設定されないままです。
 
+     LLOOGGFFIILLEE       LLOOGGLLEEVVEELL や RROOOOTTLLOOGGLLEEVVEELL で指定したレベルのロ
+                   グを出力するファイル名を指定します。フルパスで
+                   指定されなかった場合は、実行ユーザのホームディ
+                   レクトリ以下のパスと見なされます。但し、ディレ
+                   クトリの自動作成は行なわれませんので、ログファ
+                   イルを格納するディレクトリは予め用意しておく必
+                   要があります。デフォルト値は未指定です。
+
+     LLOOGGLLEEVVEELL      ログファイルに出力すべき内容の優先度を指定しま
+                   す。デフォルト値は 00 です。
+                       00       出力しない
+                       11       書込みなど警告レベルの出力のみ
+                       22       属性変更など通知レベル以上の出力
+                       33       参照など報告レベル以上の出力
+                       44 以上  デバッグレベル以上の出力
+
+                   但し、同じ操作を行なってもその結果がエラーにな
+                   った場合は、一つレベルの低い優先度でも出力され
+                   ます。
+
+     LLOOGGSSIIZZEE       LLOOGGFFIILLEE で指定したログファイルの最大サイズをキ
+                   ロバイト単位で指定します。この値を超えると直前
+                   のログファイルを拡張子 ..oolldd を追加したファイル
+                   名に変更してから新たなログファイルを作成します。
+                   デフォルト値は 11002244(1MB) です。この値が 00 の時
+                   にはログファイル名の変更をしません。
+
      LLOOOOPPCCUURRSSOORR    カーソル移動の際に、カーソルが同一ページ内でル
                    ープするようにします。00 かナル以外の値であれば、
                    何を定義しても有効です。
@@ -2697,6 +2780,20 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ロンプト文字列を指定します。デフォルト値は
                    "++ " です。
 
+     PPTTYYIINNKKCCOODDEE    疑似端末に入力として渡す文字列の漢字コードを指
+                   定します。疑似端末上で稼働している全てのプロセ
+                   スには、IINNPPUUTTKKCCOODDEE で指定した漢字コードからこ
+                   こで指定した漢字コードにコンバートされた文字列
+                   が入力されます。但し、この変数は疑似端末毎に独
+                   立の値を持つため、既に稼働中の疑似端末の入力漢
+                   字コードを変更する場合には、その端末内で変数値
+                   を変更しないと効果がありません。((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC 漢字
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       デフォルト     変換しない
+
      PPTTYYMMOODDEE       外部コマンドの起動に疑似端末を用います。ウィン
                    ドウ分割モードでは各ウィンドウ毎に独立した疑似
                    端末を用いますので、同時に複数の外部コマンドを
@@ -2705,6 +2802,20 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    えていない場合は疑似端末が正しく機能しないこと
                    があります。00 かナル以外の値であれば、何を定義
                    しても有効です。((UUNNIIXX))
+
+     PPTTYYOOUUTTKKCCOODDEE   疑似端末から出力として渡される文字列の漢字コー
+                   ドを指定します。疑似端末上で稼働している全ての
+                   プロセスからは、ここで指定した漢字コードから
+                   LLAANNGGUUAAGGEE で指定した漢字コードにコンバートされ
+                   た文字列が表示されます。但し、この変数は疑似端
+                   末毎に独立の値を持つため、既に稼働中の疑似端末
+                   の出力漢字コードを変更する場合には、その端末内
+                   で変数値を変更しないと効果がありません。((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC 漢字
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       デフォルト     変換しない
 
      PPTTYYTTEERRMM       疑似端末を用いた場合に外部コマンドに渡す環境変
                    数 TTEERRMM の値を指定します。tteerrmmccaapp(5) や
@@ -2735,6 +2846,19 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    限り、この値をカレントディレクトリの初期値とし
                    て扱います。シンボリックリンクを辿った論理的な
                    パス名を指定したい時に有用でしょう。
+
+     RROOOOTTLLOOGGLLEEVVEELL  実行ユーザがスーパユーザの場合に、ログファイル
+                   に出力すべき内容の優先度を指定します。デフォル
+                   ト値は 11 です。((UUNNIIXX))
+                       00       出力しない
+                       11       書込みなど警告レベルの出力のみ
+                       22       属性変更など通知レベル以上の出力
+                       33       参照など報告レベル以上の出力
+                       44 以上  デバッグレベル以上の出力
+
+                   但し、同じ操作を行なってもその結果がエラーにな
+                   った場合は、一つレベルの低い優先度でも出力され
+                   ます。
 
      RRRRPPAATTHH        ISO 9660 RockRidge 拡張に対応していない OS 用
                    に、CD-ROM のマウントされているディレクトリ以
@@ -2810,6 +2934,18 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    表示やキー入力の挙動がおかしい時は、起動後にこ
                    の値を適切なものに再設定して下さい。
 
+     TTHHRRUUAARRGGSS      ffdd 起動時の引数として指定されたパス名をそのま
+                   まの文字列として素通しします。旧式の低機能シェ
+                   ルでは ~~ や $${{##}} といった POSIX 拡張の展開に対
+                   応していないため、ffdd は与えられたパス名に含ま
+                   れるこれらのメタキャラを自身で展開しています。
+                   しかし、最近の高機能シェルではこれらの展開は一
+                   般的に対応しているため、シェルから与えられたパ
+                   ス名を ffdd が展開してしまうと二重に展開した結果
+                   期待しない文字列に変換することがあります。この
+                   引数展開を抑制するのがこの変数です。00 かナル以
+                   外の値であれば、何を定義しても有効です。
+
      TTMMPPDDIIRR        アーカイバコマンドが、アーカイブファイル内のフ
                    ァイルを一時的に伸長するための作業ディレクトリ
                    を設定します。デフォルト値は //ttmmpp です。
@@ -2845,6 +2981,14 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    このような時は、キーボードから 'R' の文字を入
                    力してやると復帰します。00 かナル以外の値であれ
                    ば、何を定義しても有効です。((UUNNIIXX))
+
+     UUSSEESSYYSSLLOOGG     LLOOGGLLEEVVEELL や RROOOOTTLLOOGGLLEEVVEELL で指定したレベルのロ
+                   グをシステムロガー ssyyssllooggdd(8) に出力します。エ
+                   ラー時のみログ優先度は LOG_ERR となり、それ以
+                   外のログ優先度は全て LOG_INFO です。facility
+                   の指定できる環境では LOG_USER が用いられます。
+                   00 かナル以外の値であれば、何を定義しても有効で
+                   す。 ((UUNNIIXX))
 
      WWRRIITTEEFFSS       WWRRIITTEE_DDIIRR コマンドの使用を禁止します。値を 11
                    にすると、明示的にコマンドが実行された時のみデ
@@ -2941,7 +3085,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 関関連連事事項項
      eecchhoo(1), tteesstt(1), llss(1), rrmm(1), ttaarr(1), ccoommpprreessss(1),
      zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), llooggiinn(1), nneewwggrrpp(1),
-     uummaasskk(2), tteerrmmccaapp(5), tteerrmmiinnffoo(5)
+     ssttttyy(1), uummaasskk(2), tteerrmmccaapp(5), tteerrmmiinnffoo(5), ssyyssllooggdd(8)
 
 ババググ
      アーカイブファイル内に ".." を含んだパス名で圧縮してある場合

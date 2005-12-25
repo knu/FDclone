@@ -18,6 +18,13 @@ typedef struct _attrib_t {
 #ifdef	HAVEFLAGS
 	u_long flags;
 #endif
+#ifndef	_NOEXTRAATTR
+	u_int mask;
+# ifndef	NOUID
+	uid_t uid;
+	gid_t gid;
+# endif
+#endif	/* !_NOEXTRAATTR */
 	char timestr[2][MAXTIMESTR + 1];
 } attrib_t;
 
@@ -26,6 +33,7 @@ extern int subwindow;
 extern int win_x;
 extern int win_y;
 extern int lcmdline;
+extern int maxcmdline;
 extern int mark;
 #ifdef	HAVEFLAGS
 extern u_long fflaglist[];
@@ -59,7 +67,12 @@ static int touchdir __P_((char *));
 #ifndef	_NOEXTRACOPY
 static int mvdir __P_((char *));
 #endif
+static VOID NEAR showmode __P_((attrib_t *, int, int));
 static VOID NEAR showattr __P_((namelist *, attrib_t *, int));
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+static int NEAR inputuid __P_((attrib_t *, int));
+static int NEAR inputgid __P_((attrib_t *, int));
+#endif
 static char **NEAR getdirtree __P_((char *, char **, int *, int));
 static int NEAR _applydir __P_((char *, int (*)(char *),
 		int (*)(char *), int (*)(char *), int, char *, int));
@@ -76,6 +89,13 @@ static u_short attrmode = 0;
 #ifdef	HAVEFLAGS
 static u_long attrflags = 0;
 #endif
+#ifndef	_NOEXTRAATTR
+static u_short attrmask = 0;
+# ifndef	NOUID
+static uid_t attruid = (uid_t)-1;
+static gid_t attrgid = (gid_t)-1;
+# endif
+#endif	/* !_NOEXTRAATTR */
 static time_t attrtime = 0;
 static char *destdir = NULL;
 static short destnlink = 0;
@@ -643,6 +663,39 @@ char *path;
 	return(0);
 }
 
+static VOID NEAR showmode(attr, x, y)
+attrib_t *attr;
+int x, y;
+{
+#ifndef	_NOEXTRAATTR
+# if	!MSDOS
+	u_int tmp;
+# endif
+	char mask[WMODE + 1];
+	int i;
+#endif	/* !_NOEXTRAATTR */
+	char buf[WMODE + 1];
+
+	Xlocate(x, y);
+	putmode(buf, attr -> mode, 1);
+#ifndef	_NOEXTRAATTR
+	putmode(mask, attr -> mask, 1);
+	for (i = 0; buf[i] && mask[i]; i++) {
+		if (mask[i] != '-') buf[i] = '*';
+# if	!MSDOS
+		else if (!((i + 1) % 3)) {
+			tmp = (1 << (12 + 3 - ((i + 1) / 3)));
+			if (attr -> mode & tmp) {
+				if (buf[i] == '-') buf[i] = '!';
+				else buf[i] = 'X';
+			}
+		}
+# endif
+	}
+#endif	/* !_NOEXTRAATTR */
+	Xcputs2(buf);
+}
+
 static VOID NEAR showattr(namep, attr, yy)
 namelist *namep;
 attrib_t *attr;
@@ -662,6 +715,12 @@ int yy;
 		x1 = n_column / 2 - 20;
 		x2 = n_column / 2;
 		w = 16;
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+		if (iswellomit()) {
+			x1 -= WOWNER / 2;
+			x2 -= WOWNER / 2;
+		}
+#endif
 	}
 	y = yy;
 
@@ -684,9 +743,7 @@ int yy;
 	Xlocate(x2, y);
 	putmode(buf, namep -> st_mode, 1);
 	Xcputs2(buf);
-	Xlocate(x2 + ATTRWIDTH, y);
-	putmode(buf, attr -> mode, 1);
-	Xcputs2(buf);
+	showmode(attr, x2 + ATTRWIDTH, y);
 
 #ifdef	HAVEFLAGS
 	Xlocate(0, ++y);
@@ -723,7 +780,109 @@ int yy;
 
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
+
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+	if (ishardomit()) return;
+
+	y = yy + 1;
+	x2 += 20;
+	Xlocate(x2, y++);
+	Xkanjiputs(TOWN_K);
+	Xlocate(x2, y++);
+	putowner(buf, attr -> uid);
+	Xputch2('<');
+	if (attr -> nlink & TCH_UID) Xputterm(T_STANDOUT);
+	Xkanjiputs(buf);
+	if (attr -> nlink & TCH_UID) Xputterm(END_STANDOUT);
+	Xputch2('>');
+# ifdef	HAVEFLAGS
+	y++;
+# endif
+	Xlocate(x2, y++);
+	Xkanjiputs(TGRP_K);
+	Xlocate(x2, y++);
+	putgroup(buf, attr -> gid);
+	Xputch2('<');
+	if (attr -> nlink & TCH_GID) Xputterm(T_STANDOUT);
+	Xkanjiputs(buf);
+	if (attr -> nlink & TCH_GID) Xputterm(END_STANDOUT);
+	Xputch2('>');
+#endif	/* !_NOEXTRAATTR && !NOUID */
 }
+
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+static int NEAR inputuid(attr, yy)
+attrib_t *attr;
+int yy;
+{
+	uidtable *up;
+	char *cp, *s, buf[MAXLONGWIDTH + 1];
+	uid_t uid;
+
+	up = finduid(attr -> uid, NULL);
+	if (up) cp = up -> name;
+	else {
+		snprintf2(buf, sizeof(buf), "%-d", (int)(attr -> uid));
+		cp = buf;
+	}
+
+	yy += 2 + WMODELINE + 2;
+	lcmdline = yy;
+	maxcmdline = 1;
+	if (!(s = inputstr(AOWNR_K, 0, -1, cp, HST_USER))) return(-1);
+	if ((cp = sscanf2(s, "%-*d%$", sizeof(uid_t), &uid))) /*EMPTY*/;
+	else if ((up = finduid(0, s))) uid = up -> uid;
+	else {
+		lcmdline = yy;
+		warning(ENOENT, s);
+		free(s);
+		return(-1);
+	}
+
+	free(s);
+	if (uid != attr -> uid) {
+		attr -> uid = uid;
+		attr -> nlink |= TCH_UID;
+	}
+	return(0);
+}
+
+static int NEAR inputgid(attr, yy)
+attrib_t *attr;
+int yy;
+{
+	gidtable *gp;
+	char *cp, *s, buf[MAXLONGWIDTH + 1];
+	gid_t gid;
+
+	gp = findgid(attr -> gid, NULL);
+	if (gp) cp = gp -> name;
+	else {
+		snprintf2(buf, sizeof(buf), "%-d", (int)(attr -> gid));
+		cp = buf;
+	}
+
+	yy += 2 + WMODELINE + 2;
+	lcmdline = yy;
+	maxcmdline = 1;
+	if (!(s = inputstr(AGRUP_K, 0, -1, cp, HST_GROUP))) return(-1);
+	if ((cp = sscanf2(s, "%-*d%$", sizeof(gid_t), &gid))) /*EMPTY*/;
+	else if ((gp = findgid(0, s))) gid = gp -> gid;
+	else {
+		lcmdline = yy;
+		warning(ENOENT, s);
+		free(s);
+		return(-1);
+	}
+
+	free(s);
+	if (gid != attr -> gid) {
+		attr -> gid = gid;
+		attr -> nlink |= TCH_GID;
+	}
+	return(0);
+}
+#endif	/* !_NOEXTRAATTR && !NOUID */
 
 int inputattr(namep, flag)
 namelist *namep;
@@ -732,9 +891,11 @@ int flag;
 #if	!MSDOS
 	u_int tmp;
 #endif
+#ifdef	HAVEFLAGS
+	char buf[WMODE + 1];
+#endif
 	struct tm *tm;
 	attrib_t attr;
-	char buf[WMODE + 1];
 	u_int mask;
 	int ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y, excl;
 
@@ -752,6 +913,20 @@ int flag;
 	attr.nlink = TCH_CHANGE;
 	if (flag & ATR_MULTIPLE) attr.nlink |= (TCH_MODE | TCH_MTIME);
 	attr.mode = namep -> st_mode;
+#ifndef	_NOEXTRAATTR
+	attr.mode &= ~S_IFMT;
+	attr.mask = 0;
+# if	!MSDOS
+	if ((flag & ATR_RECURSIVE) && excl == ATR_MODEONLY) {
+		for (x = 0; x < 3; x++) attr.mode |= (1 << (x + 12));
+		attr.nlink |= TCH_MODEEXE;
+	}
+# endif
+# ifndef	NOUID
+	attr.uid = namep -> st_uid;
+	attr.gid = namep -> st_gid;
+# endif
+#endif	/* !_NOEXTRAATTR */
 #ifdef	HAVEFLAGS
 	attr.flags = namep -> st_flags;
 #endif
@@ -763,6 +938,10 @@ int flag;
 	showattr(namep, &attr, yy);
 	y = ymin = (excl == ATR_TIMEONLY) ? WMODELINE : 0;
 	ymax = (excl == ATR_MODEONLY) ? 0 : WMODELINE + 1;
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+	if (excl == ATR_OWNERONLY) x = ATTRWIDTH + 1;
+	else
+#endif
 	x = 0;
 
 	do {
@@ -779,12 +958,26 @@ int flag;
 		mask = (1 << (8 - x));
 		switch (ch = Xgetkey(1, 0)) {
 			case K_UP:
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+				if (x > ATTRWIDTH) {
+					if (y) y = 0;
+					else y = WMODELINE + 1;
+					break;
+				}
+#endif
 				if (y > ymin) y--;
 				else y = ymax;
 				if (y && x >= 8) x = 7;
 				if (!y && x >= WMODE - 1) x = WMODE - 2;
 				break;
 			case K_DOWN:
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+				if (x > ATTRWIDTH) {
+					if (y) y = 0;
+					else y = WMODELINE + 1;
+					break;
+				}
+#endif
 				if (y < ymax) y++;
 				else y = ymin;
 				if (y && x >= 8) x = 7;
@@ -807,6 +1000,28 @@ int flag;
 				x = 0;
 				y = WMODELINE + 1;
 				break;
+#ifdef	HAVEFLAGS
+			case 'f':
+			case 'F':
+				if (excl) break;
+				x = 0;
+				y = WMODELINE - 1;
+				break;
+#endif
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+			case 'o':
+			case 'O':
+				if (excl && excl != ATR_OWNERONLY) break;
+				x = ATTRWIDTH + 1;
+				y = 0;
+				break;
+			case 'g':
+			case 'G':
+				if (excl && excl != ATR_OWNERONLY) break;
+				x = ATTRWIDTH + 1;
+				y = WMODELINE + 1;
+				break;
+#endif	/* !_NOEXTRAATTR && !NOUID */
 			case '0':
 			case '1':
 			case '2':
@@ -831,6 +1046,13 @@ int flag;
 #endif
 				if (y) {
 					if (x >= 7) {
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+						if (!excl
+						&& y == WMODELINE + 1) {
+							x = ATTRWIDTH + 1;
+							break;
+						}
+#endif
 						if (y == WMODELINE + 1) break;
 						y++;
 						x = 0;
@@ -841,11 +1063,22 @@ int flag;
 					}
 				}
 				else if (x < WMODE - 2) x++;
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+				else if (!excl) x = ATTRWIDTH + 1;
+#endif
 				break;
 			case K_BS:
 				if (y < WMODELINE) break;
 /*FALLTHRU*/
 			case K_LEFT:
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+				if (x > ATTRWIDTH) {
+					if (excl || ch == K_BS) break;
+					else if (y) x = 7;
+					else x = WMODE - 2;
+				}
+				else
+#endif
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {
 					if (x > 0) x--;
@@ -874,6 +1107,14 @@ int flag;
 				showattr(namep, &attr, yy);
 				break;
 			case ' ':
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+				if (x > ATTRWIDTH) {
+					if (y) inputgid(&attr, yy);
+					else inputuid(&attr, yy);
+					showattr(namep, &attr, yy);
+					break;
+				}
+#endif
 #ifdef	HAVEFLAGS
 				if (y == WMODELINE - 1) {
 					attr.flags ^= fflaglist[x];
@@ -890,18 +1131,55 @@ int flag;
 #else	/* !MSDOS */
 				if (!((x + 1) % 3) && (attr.mode & mask)) {
 					tmp = (1 << (12 - ((x + 1) / 3)));
+# ifndef	_NOEXTRAATTR
+					if (flag & ATR_RECURSIVE) tmp <<= 3;
+# endif
 					if (attr.mode & tmp) {
+# ifndef	_NOEXTRAATTR
+						if (flag & ATR_RECURSIVE)
+							/*EMPTY*/;
+						else
+# endif
 						attr.mode ^= tmp;
 					}
+# ifndef	_NOEXTRAATTR
+					else if (flag & ATR_RECURSIVE) {
+						mask = (tmp >> 3);
+						if (attr.mode & mask)
+							attr.mode ^= tmp;
+					}
+# endif
 					else mask = tmp;
 				}
+# ifndef	_NOEXTRAATTR
+				else {
+					tmp = (1 << (15 - ((x + 1) / 3)));
+					if (attr.mode & tmp) mask = tmp;
+				}
+# endif
 #endif	/* !MSDOS */
 				attr.mode ^= mask;
-				Xlocate(xx, yy + y + 2);
-				putmode(buf, attr.mode, 1);
-				Xcputs2(buf);
+				showmode(&attr, xx, yy + y + 2);
 				attr.nlink |= TCH_MODE;
 				break;
+#ifndef	_NOEXTRAATTR
+			case 'm':
+			case 'M':
+# ifndef	NOUID
+				if (x > ATTRWIDTH) break;
+# endif
+				if (y || !(flag & ATR_MULTIPLE)) break;
+# if	MSDOS
+				if (x == 2) break;
+# else
+				if (!((x + 1) % 3))
+					mask |= (1 << (12 - ((x + 1) / 3)));
+# endif
+				attr.mask ^= mask;
+				showmode(&attr, xx, yy + y + 2);
+				attr.nlink |= TCH_MASK;
+				break;
+#endif	/* !_NOEXTRAATTR */
 			default:
 				break;
 		}
@@ -934,7 +1212,7 @@ int flag;
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 59)
 		return(-1);
 
-	mask = TCH_CHANGE;
+	mask = (TCH_CHANGE | TCH_MASK | TCH_MODEEXE);
 	switch (excl) {
 		case ATR_MODEONLY:
 			mask |= TCH_MODE;
@@ -942,10 +1220,19 @@ int flag;
 		case ATR_TIMEONLY:
 			mask |= TCH_MTIME;
 			break;
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+		case ATR_OWNERONLY:
+			mask |= (TCH_UID | TCH_GID);
+			break;
+#endif
 		default:
 			if (attrmode != namep -> st_mode) mask |= TCH_MODE;
 #ifdef	HAVEFLAGS
 			if (attrflags != namep -> st_flags) mask |= TCH_FLAGS;
+#endif
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+			if (attruid != namep -> st_uid) mask |= TCH_UID;
+			if (attrgid != namep -> st_gid) mask |= TCH_GID;
 #endif
 			if (attrtime != namep -> st_mtim) mask |= TCH_MTIME;
 			break;
@@ -955,6 +1242,13 @@ int flag;
 #ifdef	HAVEFLAGS
 	attrflags = attr.flags;
 #endif
+#ifndef	_NOEXTRAATTR
+	attrmask = attr.mask;
+# ifndef	NOUID
+	attruid = attr.uid;
+	attrgid = attr.gid;
+# endif
+#endif	/* !_NOEXTRAATTR */
 	attrtime = timelocal2(tm);
 
 	return(1);
@@ -970,6 +1264,13 @@ char *path;
 #ifdef	HAVEFLAGS
 	st.st_flags = attrflags;
 #endif
+#ifndef	_NOEXTRAATTR
+	st.st_size = (off_t)attrmask;
+# ifndef	NOUID
+	st.st_uid = attruid;
+	st.st_gid = attrgid;
+# endif
+#endif	/* !_NOEXTRAATTR */
 	st.st_mtime = attrtime;
 
 	return(touchfile(path, &st));

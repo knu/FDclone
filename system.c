@@ -153,6 +153,7 @@ extern char *deftmpdir;
 # ifndef	_NOPTY
 #include "termemu.h"
 extern VOID sendparent __P_((int, ...));
+extern int ptymacro __P_((char *, char *, int));
 extern char *ptyterm;
 extern int parentfd;
 # endif
@@ -871,6 +872,10 @@ p_id_t shellpid = (p_id_t)-1;
 int ret_status = RET_SUCCESS;
 int interactive = 0;
 int errorexit = 0;
+#if	defined (FD) && !defined (_NOPTY)
+int shptymode = 0;
+#define	isshptymode()	(!fdmode && shptymode)
+#endif
 #ifndef	NOJOB
 int lastjob = -1;
 int prevjob = -1;
@@ -915,6 +920,12 @@ int jobok = -1;
 # ifndef	_NOEDITMODE
 int emacsmode = 0;
 int vimode = 0;
+# endif
+# ifndef	_NOPTY
+int tmpshptymode = 0;
+# endif
+# if	!MSDOS
+int autosavetty = 0;
 # endif
 #endif	/* FD */
 int loginshell = 0;
@@ -1256,10 +1267,16 @@ static CONST shflagtable shflaglist[] = {
 	{"monitor", &jobok, 'm'},
 #endif
 #ifdef	FD
-	{"physical", &physical_path, '\0'},
+	{"physical", &physical_path, 'P'},
 # ifndef	_NOEDITMODE
 	{"emacs", &emacsmode, '\0'},
 	{"vi", &vimode, '\0'},
+# endif
+# ifndef	_NOPTY
+	{"ptyshell", &tmpshptymode, 'T'},
+# endif
+# if	!MSDOS
+	{"autosavetty", &autosavetty, 'S'},
 # endif
 #endif	/* FD */
 	{NULL, &loginshell, 'l'},
@@ -10251,7 +10268,11 @@ char *command;
 	orgpgrp = mypid;
 	childpgrp = (p_id_t)-1;
 # endif
+# if	defined (FD) && !defined (_NOPTY)
+	if (!command) return(shell_loop((isshptymode()) ? 0 : 1));
+# else
 	if (!command) return(shell_loop(1));
+# endif
 	setsignal();
 	ret = _dosystem(command);
 	resetsignal(0);
@@ -10580,6 +10601,9 @@ int verbose;
 	if (loginshell) execruncom(SH_RCFILE, verbose);
 	else execruncom(FD_RCFILE, verbose);
 	evalenv();
+# ifndef	_NOPTY
+	if (interactive) shptymode = tmpshptymode;
+# endif
 #endif	/* FD */
 }
 
@@ -10620,6 +10644,9 @@ char *argv[];
 	noclobber = 0;
 #endif
 	errorexit = tmperrorexit;
+#if	defined (FD) && !defined (_NOPTY)
+	shptymode = tmpshptymode;
+#endif
 	isstdin = forcedstdin;
 
 	if (n > 2) interactive = interactive_io;
@@ -10833,6 +10860,12 @@ char *argv[];
 	if (n > 2) {
 		initrc(0);
 #ifdef	FD
+# ifndef	_NOPTY
+		if (isshptymode()) {
+			inittty(0);
+			checkscreen(0, 0);
+		}
+# endif
 		initfd(argv);
 #endif	/* FD */
 		if (verboseinput) {
@@ -10844,9 +10877,18 @@ char *argv[];
 			fflush(stderr);
 		}
 		shellmode = 1;
-		setsignal();
-		n = _dosystem(argv[2]);
-		resetsignal(0);
+#if	defined (FD) && !defined (_NOPTY)
+		if (isshptymode()) {
+			shellpid = (p_id_t)-1;
+			n = ptymacro(argv[2], NULL, F_DOSYSTEM);
+		}
+		else
+#endif
+		{
+			setsignal();
+			n = _dosystem(argv[2]);
+			resetsignal(0);
+		}
 		Xexit2(n);
 	}
 
@@ -10985,6 +11027,13 @@ char *argv[], *envp[];
 	initrc(!loginshell);
 #ifdef	FD
 	initfd(argv);
+# ifndef	_NOPTY
+	if (isshptymode()) {
+		shellpid = (p_id_t)-1;
+		ret_status = ptymacro(NULL, NULL, F_DOSYSTEM);
+	}
+	else
+# endif
 #endif	/* FD */
 	shell_loop(0);
 

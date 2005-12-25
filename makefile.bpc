@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.07c
+VERSION	= 2.08
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -25,7 +25,7 @@ DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
 
 SRC	= main.c printf.c termio.c term.c pathname.c \
-	system.c posixsh.c doscom.c \
+	system.c posixsh.c doscom.c log.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	pty.c termemu.c frontend.c backend.c \
@@ -90,7 +90,7 @@ EXE	= .exe
 PROGRAM	= fd
 ALIAS	= fdsh
 OBJ1	= main.obj printf.obj termio.obj term.obj \
-	pathname.obj system.obj posixsh.obj doscom.obj
+	pathname.obj system.obj posixsh.obj doscom.obj log.obj
 OBJ2	= dosdisk.obj unixemu.obj unixdisk.obj \
 	pty.obj termemu.obj frontend.obj backend.obj \
 	libc.obj file.obj apply.obj \
@@ -542,6 +542,11 @@ doscom.obj: machine.h config.h printf.h kctype.h
 doscom.obj: pathname.h
 doscom.obj: system.h termio.h
 doscom.obj: wait.h
+log.obj: fd.h
+log.obj: machine.h config.h types.h
+log.obj: printf.h kctype.h
+log.obj: pathname.h term.h func.h
+log.obj: dosdisk.h
 dosdisk.obj: machine.h config.h
 dosdisk.obj: dosdisk.h
 dosdisk.obj: kctype.h
@@ -599,7 +604,7 @@ backend.obj: pathname.h term.h
 backend.obj: termio.h
 backend.obj: func.h
 backend.obj: dosdisk.h
-backend.obj: termemu.h
+backend.obj: termemu.h system.h wait.h
 libc.obj: fd.h
 libc.obj: machine.h config.h types.h
 libc.obj: printf.h

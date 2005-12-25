@@ -1,3 +1,15 @@
+Ver. 2.08	内部変数 PTYINKCODE, PTYOUTKCODE の追加。
+ (12/26/05)	内部変数 LOGFILE, LOGSIZE, USESYSLOG の追加。
+		内部変数 LOGLEVEL, ROOTLOGLEVEL の追加。
+		内部変数 THRUARGS の追加。
+		組込みコマンド savetty を追加。
+		組込みコマンド set に -o autosavetty, -S オプションの追加。
+		組込みコマンド set に -o ptyshell, -T オプションの追加。
+		組込みコマンド set に -o physical の別名 -P オプションを追加。
+		ATTR_DIR コマンドの追加
+		ATTR_FILE で owner/group を変更可能に。
+		ディレクトリ書込み時に再配置に失敗することがある点を修正。
+
 Ver. 2.07c	重複するパス名デリミタで終わるアーカイバ出力に対応。
  (12/13/05)	fdsh から fd を起動する際の引数が重複評価されていた点を修正。
 		カスタマイザで FNAMEKCODE に HEX/CAP を定義出来ない点を修正。

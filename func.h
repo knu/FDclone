@@ -79,8 +79,15 @@ extern char *sys_errlist[];
 
 #ifdef	_NOPTY
 #define	isptymode()		0
+#define	isshptymode()		0
 #else	/* !_NOPTY */
-#define	isptymode()		ptymode
+# ifdef	_NOORIGSHELL
+# define	isptymode()	ptymode
+# define	isshptymode()	0
+# else
+# define	isptymode()	(ptymode && (fdmode || !shptymode))
+# define	isshptymode()	(!fdmode && shptymode)
+# endif
 #endif	/* !_NOPTY */
 
 /* main.c */
@@ -109,6 +116,23 @@ extern int dosystem __P_((char *));
 extern FILE *dopopen __P_((char *));
 extern int dopclose __P_((FILE *));
 #endif
+
+/* log.c */
+#ifdef	_NOLOGGING
+#define	LOG0(l, n, f)
+#define	LOG1(l, n, f, a1)
+#define	LOG2(l, n, f, a1, a2)
+#define	LOG3(l, n, f, a1, a2, a3)
+#else	/* !_NOLOGGING */
+#define	LOG0(l, n, f)		logsyscall(l, n, f)
+#define	LOG1(l, n, f, a1)	logsyscall(l, n, f, a1)
+#define	LOG2(l, n, f, a1, a2)	logsyscall(l, n, f, a1, a2)
+#define	LOG3(l, n, f, a1, a2, a3) \
+				logsyscall(l, n, f, a1, a2, a3)
+extern VOID logclose __P_((VOID_A));
+extern VOID logsyscall __P_((int, int, CONST char *, ...));
+extern VOID logmessage __P_((int, CONST char *, ...));
+#endif	/* !_NOLOGGING */
 
 /* dosemu.c or unixemu.c */
 #ifdef	_USEDOSPATH
@@ -285,6 +309,8 @@ extern VOID insertwin __P_((int, int));
 extern VOID deletewin __P_((int, int));
 # ifndef	_NOKANJICONV
 extern VOID changekcode __P_((VOID_A));
+extern VOID changeinkcode __P_((VOID_A));
+extern VOID changeoutkcode __P_((VOID_A));
 # endif
 extern int frontend __P_((VOID_A));
 #endif	/* !_NOPTY */
@@ -474,6 +500,9 @@ extern int parsesetdrv __P_((int, char *[], devinfo *));
 extern int parsekeymap __P_((int, char *[], keyseq_t *));
 extern VOID printkeymap __P_((keyseq_t *, int, FILE *));
 #endif
+#if	!MSDOS
+extern int savestdio __P_((int));
+#endif
 #ifdef	_NOORIGSHELL
 extern int searchalias __P_((char *, int));
 extern int addalias __P_((char *, char *));
@@ -521,6 +550,7 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_KCONV	"kconv"
 #define	BL_READLINE	"readline"
 #define	BL_YESNO	"yesno"
+#define	BL_SAVETTY	"savetty"
 #define	BL_ALIAS	"alias"
 #define	BL_UALIAS	"unalias"
 #define	BL_FUNCTION	"function"
@@ -585,6 +615,9 @@ extern char *newkanjiconv __P_((char *, int, int, int));
 #endif
 #ifndef	_NOKANJIFCONV
 extern int getkcode __P_((char *));
+#endif
+#ifndef	_NOKANJICONV
+extern int getoutputkcode __P_((VOID_A));
 #endif
 extern char *convget __P_((char *, char *, int));
 extern char *convput __P_((char *, char *, int, int, char *, int *));

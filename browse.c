@@ -1651,17 +1651,17 @@ char *file, *def;
 					filelist[filepos].name, 1);
 				stackbar();
 			}
-#ifndef	_NOARCHIVE
-			else if (archivefile) /*EMPTY*/;
-#endif
 #ifndef	_NOWRITEFS
+# ifndef	_NOARCHIVE
+			else if (archivefile) /*EMPTY*/;
+# endif
 			else if (chgorder && writefs < 1 && no != WRITE_DIR
 			&& !fd_restricted
 			&& (i = writablefs(".")) > 0 && underhome(NULL) > 0) {
 				chgorder = 0;
 				if (yesno(WRTOK_K)) arrangedir(i);
 			}
-#endif
+#endif	/* !_NOWRITEFS */
 		}
 
 		curfilename = filelist[filepos].name;

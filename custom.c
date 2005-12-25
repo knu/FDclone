@@ -93,6 +93,20 @@ extern int ptymode;
 extern char *ptyterm;
 extern int ptymenukey;
 #endif
+#ifndef	_NOLOGGING
+extern char *logfile;
+extern int logsize;
+# ifndef	NOSYSLOG
+extern int usesyslog;
+# endif
+extern int loglevel;
+# ifndef	NOUID
+extern int rootloglevel;
+# endif
+#endif	/* !_NOLOGGING */
+#if	FD >= 2
+extern int thruargs;
+#endif
 extern int wheader;
 extern char fullpath[];
 extern char *origpath;
@@ -196,8 +210,9 @@ typedef struct _envtable {
 #define	T_KIN		14
 #define	T_KOUT		15
 #define	T_KNAM		16
-#define	T_OCTAL		17
-#define	T_KEYCODE	18
+#define	T_KTERM		17
+#define	T_OCTAL		18
+#define	T_KEYCODE	19
 
 #ifndef	_NOKANJIFCONV
 typedef struct _pathtable {
@@ -393,6 +408,21 @@ static CONST envtable envlist[] = {
 	{"FD_PTYTERM", &ptyterm, DEFVAL(PTYTERM), PTYTM_E, T_CHARP},
 	{"FD_PTYMENUKEY", &ptymenukey, DEFVAL(PTYMENUKEY), PTYKY_E, T_KEYCODE},
 #endif
+#ifndef	_NOLOGGING
+	{"FD_LOGFILE", &logfile, DEFVAL(LOGFILE), LGFIL_E, T_PATH},
+	{"FD_LOGSIZE", &logsize, DEFVAL(LOGSIZE), LGSIZ_E, T_INT},
+# ifndef	NOSYSLOG
+	{"FD_USESYSLOG", &usesyslog, DEFVAL(USESYSLOG), USYLG_E, T_BOOL},
+# endif
+	{"FD_LOGLEVEL", &loglevel, DEFVAL(LOGLEVEL), LGLVL_E, T_INT},
+# ifndef	NOUID
+	{"FD_ROOTLOGLEVEL", &rootloglevel,
+		DEFVAL(ROOTLOGLEVEL), RLGLV_E, T_INT},
+# endif
+#endif	/* !_NOLOGGING */
+#if	FD >= 2
+	{"FD_THRUARGS", &thruargs, DEFVAL(THRUARGS), THARG_E, T_BOOL},
+#endif
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 	{"FD_UNICODEBUFFER", &unicodebuffer,
 		DEFVAL(UNICODEBUFFER), UNBF_E, T_BOOL},
@@ -406,6 +436,10 @@ static CONST envtable envlist[] = {
 #endif
 #ifndef	_NOKANJICONV
 	{"FD_INPUTKCODE", &inputkcode, DEFVAL(NOCNV), IPKC_E, T_KIN},
+#endif
+#if	!defined (_NOKANJICONV) && !defined (_NOPTY)
+	{"FD_PTYINKCODE", &ptyinkcode, DEFVAL(NOCNV), PIKC_E, T_KTERM},
+	{"FD_PTYOUTKCODE", &ptyoutkcode, DEFVAL(NOCNV), POKC_E, T_KTERM},
 #endif
 #ifndef	_NOKANJIFCONV
 	{"FD_FNAMEKCODE", &fnamekcode, DEFVAL(NOCNV), FNKC_E, T_KNAM},
@@ -599,6 +633,7 @@ int no;
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
+		case T_KTERM:
 			n = (1 << (envlist[no].type - T_KIN));
 			*((int *)(envlist[no].var)) = getlang(cp, n);
 			break;
@@ -705,6 +740,8 @@ static VOID NEAR evalpathlang(VOID_A)
 # endif	/* !_NOSPLITWIN */
 # ifndef	_NOPTY
 	changekcode();
+	changeinkcode();
+	changeoutkcode();
 # endif
 }
 #endif	/* !_NOKANJIFCONV */
@@ -748,6 +785,9 @@ VOID evalenv(VOID_A)
 #endif
 	evalheader();
 	errno = duperrno;
+#if	!MSDOS && !defined (_NOORIGSHELL)
+	if (autosavetty) savestdio(0);
+#endif
 }
 
 #ifdef	DEBUG
@@ -1249,6 +1289,7 @@ int no;
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
+		case T_KTERM:
 			str[NOCNV] = VNCNV_K;
 			str[ENG] = VENG_K;
 #  ifndef	_NOKANJICONV
@@ -1508,6 +1549,7 @@ int no;
 		case T_KIN:
 		case T_KNAM:
 		case T_KOUT:
+		case T_KTERM:
 			tmp = 0;
 			str[tmp] = VNCNV_K;
 			val[tmp++] = NOCNV;
@@ -1651,9 +1693,11 @@ int no;
 			break;
 	}
 
-	if (getshellvar(envlist[no].env, -1)) setenv2(envlist[no].env, cp, 0);
-	else setenv2(env, cp, 0);
+	if (getshellvar(envlist[no].env, -1))
+		n = setenv2(envlist[no].env, cp, 0);
+	else n = setenv2(env, cp, 0);
 	if (new) free(new);
+	if (n < 0) warning(-1, env);
 #ifndef	_NOKANJIFCONV
 	savepathlang();
 #endif

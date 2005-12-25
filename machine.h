@@ -27,6 +27,7 @@
 #define	USETIMEH
 #define	USEUTIME
 #define	NOFLOCK
+#define	NOSYSLOG
 #define	USEMKTIME
 #define	USESTRERROR
 #define	SENSEPERSEC	20
@@ -885,6 +886,7 @@ typedef long	off_t;
 /* #define USEFCNTLOCK	;use fcntl() lock instead of flock() */
 /* #define USELOCKF	;use lockf() instead of flock() */
 /* #define NOFLOCK	;have neither flock() nor lockf() */
+/* #define NOSYSLOG	;have not syslog() */
 /* #define USETIMELOCAL	;have timelocal() as inverse of localtime() */
 /* #define USEMKTIME	;use mktime() instead of timelocal() */
 /* #define USESYSCONF	;use sysconf() for getting system configuration */

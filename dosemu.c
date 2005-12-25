@@ -322,6 +322,7 @@ char *path;
 		}
 	}
 #endif	/* !_NODOSDRIVE */
+	LOG1(_LOG_INFO_, n, "chdir(\"%k\");", path);
 	if (n >= 0 && !Xgetwd(cachecwd)) {
 		*cachecwd = '\0';
 		n = -1;
@@ -444,6 +445,7 @@ char *name1, *name2;
 	else
 #endif
 	n = (symlink(name1, name2)) ? -1 : 0;
+	LOG2(_LOG_WARNING_, n, "symlink(\"%k\", \"%k\");", name1, name2);
 
 	return(n);
 }
@@ -492,6 +494,7 @@ int mode;
 	else
 #endif
 	n = (chmod(path, mode)) ? -1 : 0;
+	LOG2(_LOG_NOTICE_, n, "chmod(\"%k\", %05o);", path, mode);
 
 	return(n);
 }
@@ -510,6 +513,7 @@ struct utimbuf *times;
 	else
 # endif
 	n = (utime(path, times)) ? -1 : 0;
+	LOG1(_LOG_NOTICE_, n, "utime(\"%k\");", path);
 
 	return(n);
 }
@@ -527,6 +531,7 @@ struct timeval tvp[2];
 	else
 # endif
 	n = (utimes(path, tvp)) ? -1 : 0;
+	LOG1(_LOG_NOTICE_, n, "utimes(\"%k\");", path);
 
 	return(n);
 }
@@ -549,6 +554,7 @@ u_long flags;
 	else
 # endif
 	n = (chflags(path, flags)) ? -1 : 0;
+	LOG2(_LOG_WARNING_, n, "chflags(\"%k\", %05o);", path, flags);
 
 	return(n);
 }
@@ -572,6 +578,7 @@ gid_t gid;
 	else
 # endif
 	n = (chown(path, uid, gid)) ? -1 : 0;
+	LOG3(_LOG_WARNING_, n, "chown(\"%k\", %d, %d);", path, uid, gid);
 
 	return(n);
 }
@@ -589,6 +596,7 @@ char *path;
 	else
 #endif
 	n = (unlink(path)) ? -1 : 0;
+	LOG1(_LOG_WARNING_, n, "unlink(\"%k\");", path);
 
 	return(n);
 }
@@ -616,6 +624,7 @@ char *from, *to;
 	else
 #endif
 	n = (rename(from, to)) ? -1 : 0;
+	LOG2(_LOG_WARNING_, n, "rename(\"%k\", \"%k\");", from, to);
 
 	return(n);
 }
@@ -633,6 +642,22 @@ int flags, mode;
 	else
 #endif
 	fd = open(path, flags, mode);
+#ifndef	_NOLOGGING
+	switch (flags & O_ACCMODE) {
+		case O_WRONLY:
+			LOG2(_LOG_WARNING_, fd,
+				"open(\"%k\", O_WRONLY, %05o);", path, mode);
+			break;
+		case O_RDWR:
+			LOG2(_LOG_WARNING_, fd,
+				"open(\"%k\", O_RDWR, %05o);", path, mode);
+			break;
+		default:
+			LOG2(_LOG_INFO_, fd,
+				"open(\"%k\", O_RDONLY, %05o);", path, mode);
+			break;
+	}
+#endif	/* !_NOLOGGING */
 
 	return(fd);
 }
@@ -731,6 +756,7 @@ int mode;
 	else
 #endif
 	n = (mkdir(path, mode)) ? -1 : 0;
+	LOG2(_LOG_WARNING_, n, "mkdir(\"%k\", %05o);", path, mode);
 
 	return(n);
 }
@@ -747,6 +773,7 @@ char *path;
 	else
 #endif
 	n = (rmdir(path)) ? -1 : 0;
+	LOG1(_LOG_WARNING_, n, "rmdir(\"%k\");", path);
 
 	return(n);
 }
@@ -763,6 +790,8 @@ char *path, *type;
 	else
 #endif
 	fp = fopen(path, type);
+	LOG2((*type == 'r') ? _LOG_INFO_ : _LOG_WARNING_, (fp) ? 0 : -1,
+		"fopen(\"%k\", \"%s\");", path, type);
 
 	return(fp);
 }

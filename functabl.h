@@ -92,6 +92,9 @@ functable funclist[] = {
 #endif
 #endif	/* !_NOTREE */
 	_TBL_(find_dir,		"FIND_DIR",	FNDD_H,	011001110),
+#ifndef	_NOEXTRAATTR
+	_TBL_(attr_dir,		"ATTR_DIR",	ATRD_H,	011001110),
+#endif
 	_TBL_(symlink_mode,	"SYMLINK_MODE",	SYLN_H,	000100000),
 	_TBL_(filetype_mode,	"FILETYPE_MODE",FLTY_H,	000110110),
 	_TBL_(dotfile_mode,	"DOTFILE_MODE",	DTFL_H,	000101000),

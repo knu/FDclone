@@ -148,6 +148,10 @@ static VOID NEAR printtime __P_((int));
 static int trapalrm __P_((VOID_A));
 #endif
 static char *NEAR getversion __P_((int *));
+#ifndef	_NOLOGGING
+static VOID NEAR startlog __P_((char **));
+static VOID NEAR endlog __P_((int));
+#endif
 #ifdef	_NOORIGSHELL
 static int NEAR execruncomline __P_((char *, char *, int, char *));
 #endif
@@ -165,6 +169,9 @@ char *tmpfilename = NULL;
 int adjtty = 0;
 #endif
 int showsecond = 0;
+#if	FD >= 2
+int thruargs = 0;
+#endif
 int hideclock = 0;
 #ifdef	SIGALRM
 int noalrm = 1;
@@ -267,6 +274,9 @@ int sig;
 		forcecleandir(deftmpdir, tmpfilename);
 #ifndef	_NODOSDRIVE
 		dosallclose();
+#endif
+#ifndef	_NOLOGGING
+		endlog(sig + 128);
 #endif
 		endterm();
 		inittty(1);
@@ -696,6 +706,12 @@ static int trapalrm(VOID_A)
 
 	duperrno = errno;
 	signal2(SIGALRM, SIG_IGN);
+# if	!defined (_NOORIGSHELL) && !defined (_NOPTY)
+	if (isshptymode()) {
+		if (mypid == shellpid) printtime(hideclock);
+	}
+	else
+# endif
 	if (isorgpid()) printtime(hideclock);
 # ifdef	SIGWINCH
 	pollscreen(0);
@@ -822,6 +838,61 @@ VOID saveorigenviron(VOID_A)
 # endif
 }
 #endif	/* !_NOCUSTOMIZE */
+
+#ifndef	_NOLOGGING
+static VOID NEAR startlog(argv)
+char **argv;
+{
+# ifndef	NOUID
+	uid_t uid;
+	int lvl;
+# endif
+	char *cp, *tmp, buf[MAXLOGLEN + 1];
+	int i, len;
+
+	cp = buf;
+	for (i = 1; argv && argv[i]; i++) {
+		if (cp > buf) *(cp++) = ' ';
+		tmp = killmeta(argv[i]);
+		len = snprintf2(cp, sizeof(buf) - (cp - buf), "%s", tmp);
+		free(tmp);
+		if (len < 0) break;
+		cp += len;
+	}
+	*cp = '\0';
+
+	cp = getversion(&len);
+# ifdef	NOUID
+	logmessage(_LOG_DEBUG_, "%s (%-*.*s) starts; PWD=%k; ARGS=%k",
+		progname, len, len, cp, origpath, buf);
+# else
+	lvl = ((uid = getuid())) ? _LOG_DEBUG_ : _LOG_WARNING_;
+	logmessage(lvl, "%s (%-*.*s) starts; UID=%d; PWD=%k; ARGS=%k",
+		progname, len, len, cp, uid, origpath, buf);
+# endif
+}
+
+static VOID NEAR endlog(status)
+int status;
+{
+# ifndef	NOUID
+	uid_t uid;
+	int lvl;
+# endif
+	char cwd[MAXPATHLEN];
+
+	if (!Xgetwd(cwd)) strcpy(cwd, "?");
+# ifdef	NOUID
+	logmessage(_LOG_DEBUG_, "%s ends; PWD=%k; STATUS=%d",
+		progname, cwd, status);
+# else
+	lvl = ((uid = getuid())) ? _LOG_DEBUG_ : _LOG_WARNING_;
+	logmessage(lvl, "%s ends; UID=%d; PWD=%k; STATUS=%d",
+		progname, uid, cwd, status);
+# endif
+	logclose();
+}
+#endif	/* !_NOLOGGING */
 
 #ifdef	_NOORIGSHELL
 static int NEAR execruncomline(command, file, n, line)
@@ -1077,6 +1148,9 @@ char **argv;
 		loadhistory(0, histfile);
 		entryhist(1, origpath, 1);
 	}
+#ifndef	_NOLOGGING
+	startlog(argv);
+#endif
 }
 
 /*ARGSUSED*/
@@ -1085,6 +1159,9 @@ int status;
 {
 	char cwd[MAXPATHLEN];
 
+#ifndef	_NOLOGGING
+	endlog(status);
+#endif
 	if (interactive && savehist > 0) savehistory(0, histfile);
 
 	cwd[0] = '\0';
@@ -1336,8 +1413,15 @@ char *argv[], *envp[];
 #ifdef	SIGWINCH
 	nowinch = 0;
 #endif
+#if	FD >= 2
+	main_fd(&(argv[i]), (thruargs) ? 1 : 0);
+#else
 	main_fd(&(argv[i]), 0);
+#endif
 	sigvecset(0);
+#ifndef	_NOLOGGING
+	endlog(0);
+#endif
 
 	Xstdiomode();
 #if	!defined (_NOORIGSHELL) && !defined (NOJOB)

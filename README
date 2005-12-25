@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 2.07 に関して
+#	FDclone Ver. 2.08 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Dec 13, 2005
+#	Dec 26, 2005
 #
 ############################################################
 
@@ -35,7 +35,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-2.07 のパッケージには、以下のファイルが含まれます。
+　FDclone-2.08 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 README.eng	このファイル (英文)
@@ -91,6 +91,7 @@ system.c	/bin/sh 互換の system(3) 相当モジュール
 system.h	system.c 用のヘッダ
 posixsh.c	system.c で使う POSIX 互換コマンド
 doscom.c	system.c で使う COMMAND.COM 内部コマンド
+log.c		ログファイル関連
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
 dosemu.c	システム関数群のフロッピードライブ対応版

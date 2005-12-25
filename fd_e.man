@@ -2,9 +2,9 @@
 .\" Copyright (c) 1995-2005 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.07c 12/13/05
+.\" @(#)fd.1   2.08 12/26/05
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "December 13, 2005"
+.TH FD 1 "December 26, 2005"
 .de sh
 .br
 .PP
@@ -16,7 +16,7 @@ fd \- file & directory maintenance tool
 .SH SYNOPSIS
 .B fd
 [
-.B \-abCefhiklmNnrstuvx
+.B \-abCefhiklmNnPrSsTtuvx
 ] [
 .BI \- NAME = value
 ] [
@@ -27,7 +27,7 @@ fd \- file & directory maintenance tool
 .br
 .B fdsh
 [
-.B \-abCcefhiklmNnrstuvx
+.B \-abCcefhiklmNnPrSsTtuvx
 ] [
 .I args
 ]
@@ -123,7 +123,7 @@ RENAME_FILE	MAKE_DIR	WRITE_DIR
 TREE_DIR	BACKUP_TAPE	EDIT_FILE
 UNPACK_FILE	PACK_FILE	LOG_TREE
 COPY_TREE	MOVE_TREE	UNPACK_TREE
-FIND_DIR
+FIND_DIR	ATTR_DIR
 .ft R
 .fi
 .PD
@@ -274,6 +274,7 @@ Identifier	Command	Key
 \fBMOVE_TREE\fP	Move a file with tree	\fBM\fP
 \fBUNPACK_TREE\fP	Unpack a file with tree	\fBU\fP
 \fBFIND_DIR\fP	Find a file recursively	\fBF\fP
+\fBATTR_DIR\fP	Change attributes recursively	\fBA\fP
 \fBSYMLINK_MODE\fP	Switch the symbolic link mode	\fBS\fP
 \fBFILETYPE_MODE\fP	Switch the file type symbol	\fBT\fP
 \fBDOTFILE_MODE\fP	Switch the dot file display	\fBH\fP
@@ -524,12 +525,12 @@ and the LHa compressed file.
 You can describe configurations in the initial configuration file
 to support archivers except these.
 .IP "\fBChange attribute\fP (Attr)"
-Change the file access mode and the timestamp
-of the file on the cursor position.
+Change the file access mode,
+the timestamp and the owner/group of the file on the cursor position.
 When some files are marked,
 the target is not the file on the cursor position but the marked files.
 In case of the marked files,
-you must select the mode or the timestamp,
+you must select the mode, the timestamp or the owner/group,
 before changing it all together.
 
 When you input the mode,
@@ -539,9 +540,19 @@ reverses the attribute on the position.
 You should notice that
 the attribute of the execution bit is not a binary toggle but a triple toggle,
 which includes setuid bit, setgid bit, and sticky bit respectively.
+If the target is the marked files,
+.RB [ m ](Mask)
+will mask a bit on the cursor position with
+.RB ' * ',
+to keep the value of the original file attribute.
 When you input the timestamp,
 you move a cursor to the position you want to change,
 and input a numeric value.
+When you input the owner/group,
+you move a cursor to the position for each name,
+and input a name or a ID value with
+.RB [ Space ].
+You can use the completion for a user name and a group name to input each name.
 Finally,
 .RB [ Return ]
 executes the change.
@@ -552,12 +563,19 @@ Be careful that the limit check of date is not perfect.
 Moreover,
 .RB [ a ](Attr),
 .RB [ d ](Date),
-.RB [ t ](Time)
+.RB [ t ](Time),
+.RB [ o ](Owner)
+and
+.RB [ g ](Group)
 move a cursor
 to the each beginning of input line.
 
 On the OS which has the attribute of file flags,
 you can change the file flags as well as the mode.
+In this case,
+.RB [ f ](Flag)
+move a cursor
+to the beginning of input line of file flags.
 But the value of flags which you can change is based on your permission.
 .IP "\fBFile system information\fP (Info)"
 Display the information of the specified file system.
@@ -711,6 +729,29 @@ You will be confirmed for each matching file whether if you move or not,
 and you can select
 .RB [ n ](No)
 unless the target file is displayed.
+.IP "\fBChange attributes recursively\fP"
+Change attributes the directory on the cursor position revursively.
+As well as changing attributes of the marked files,
+you must select the mode, the timestamp or the owner/group,
+before changing it all together with each file under the directory.
+
+When you input the mode,
+you should notice that
+the attribute of the execution bit is not a triple toggle but a 5-states toggle,
+which includes
+.RB ' X '
+and
+.RB ' ! '.
+.RB ' X '
+means setting the bit
+only if the object is a directory or some execution bits are set.
+.RB ' ! '
+also means unsetting the bit
+only if the object is a directory or some execution bits are set.
+.RB [ m ](Mask)
+will mask a bit on the cursor position with
+.RB ' * ',
+to keep the value of the original file attribute.
 .IP "\fBInvoke launcher\fP"
 .RB [ Return ]
 executes the operation according to
@@ -2596,6 +2637,23 @@ If
 is omitted,
 the return value is the exit status of the last executed command.
 It cannot be used out of a function.
+.IP "\fBsavetty\fP [\fB-n\fP]"
+Save the current terminal settings.
+The saved settings will be restored when
+.B EXECUTE_SH
+is executed later.
+In case that you change terminal settings with
+.BR stty (1)
+and so on,
+you should save the settings with this command not to reset settings with the next execution of
+.BR EXECUTE_SH .
+If you change terminal settings and execute this command not in the same command line,
+you should notice that this command will save the reset settings.
+If
+.B \-n
+is specified,
+the saved settings will be cleared.
+.B (UNIX)
 .IP "\fBset\fP [\fB\-\-abCefhkmntuvx\fP] [\fB\-o\fP \fIoption\fR] [\fIarg\fR .\|.\|.]"
 List internal variables and functions, without any argument.
 When you specify
@@ -2657,6 +2715,9 @@ The following identifiers are valid in
 .IP "\fBallexport\fP" 5
 Same as
 .BR \-a .
+.IP "\fBautosavetty\fP"
+Same as
+.BR \-S .
 .IP "\fBemacs\fP"
 Same as
 .BR EDITMODE=emacs .
@@ -2695,11 +2756,11 @@ Same as
 Same as
 .BR \-t .
 .IP "\fBphysical\fP"
-.B cd
-and
-.B pwd
-the builtin command use the physical directory structure
-instead of the logical directory structure following symbolic links.
+Same as
+.BR \-P .
+.IP "\fBptyshell\fP"
+Same as
+.BR \-T .
 .IP "\fBverbose\fP"
 Same as
 .BR \-v .
@@ -2716,6 +2777,32 @@ If
 is omitted,
 the values of the current options are displayed.
 .RE
+.IP "\fB\-P\fP"
+.B cd
+and
+.B pwd
+the builtin command use the physical directory structure
+instead of the logical directory structure following symbolic links.
+.IP "\fB\-S\fP"
+Execute
+.B savetty
+the builtin command automatically whenever any command line is processed.
+The terminal settings will be saved absolutely
+unless you operate the terminal settings intentionally,
+so that you should manually adjust the terminal settings saved accidentally.
+.B (UNIX)
+.IP "\fB\-T\fP"
+Invoke
+.B fdsh
+as the pseudo terminal.
+You cannot invoke any more pseudo terminals in this mode.
+It is effective only if you specify it as the startup option
+or in the initial configuration file.
+It is effective only if you specify it as the startup option,
+when the shell is executed as the non-interactive shell.
+It is just ignored when invoked as
+.BR fd .
+.B (UNIX)
 .IP "\fB\-t\fP"
 Exit immediately after executing the current command input.
 .IP "\fB\-u\fP"
@@ -3103,8 +3190,8 @@ But you cannot use the following internal commands in this screen.
 LOG_TOP	ATTR_FILE	COPY_FILE	MOVE_FILE
 DELETE_FILE	DELETE_DIR	RENAME_FILE	MAKE_DIR
 WRITE_DIR	TREE_DIR	EDIT_FILE	LOG_TREE
-COPY_TREE	MOVE_TREE	FIND_DIR	SYMLINK_MODE
-DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
+COPY_TREE	MOVE_TREE	FIND_DIR	ATTR_DIR
+SYMLINK_MODE	DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
 .ft R
 .fi
 .RE
@@ -4531,6 +4618,46 @@ this value will be replaced automatically
 according to changing the screen size.
 If no value is set,
 this value will remain unset.
+.IP "\fBLOGFILE\fP"
+Specify the log filename with the level spacified by
+.B LOGLEVEL
+or
+.BR ROOTLOGLEVEL .
+If it is not specified as fullpath,
+it will be regarded as the path under your home directory.
+You must prepare the directory in which the log file is stored,
+because any directories are not created automatically.
+The default value is not specified.
+.IP "\fBLOGLEVEL\fP"
+Specify the priority for the log contents.
+The default value is
+.BR 0 .
+.RS 18
+.ta 0.8i
+.nf
+\fB0\fP	no log
+\fB1\fP	only warning such as writing
+\fB2\fP	notice such as changing, and over
+\fB3\fP	info. such as refering, and over
+>= \fB4\fP	debug level, and over
+.fi
+.RE
+
+.RS
+The same operation can result as an error to output the log in the lower priority by 1 level.
+.RE
+.IP "\fBLOGSIZE\fP"
+Specify the maximum kilobyte size for the log file specified by
+.BR LOGFILE .
+If the size exceeds this value,
+the last log file will be renamed as the file name followed by the extension
+.B .old
+to create another new log file.
+The default value is
+.BR 1024 (1MB).
+If the value is
+.BR 0 ,
+the log file will not be renamed.
 .IP "\fBLOOPCURSOR\fP"
 Loop a cursor moving within the same page,
 when you move a cursor.
@@ -4644,6 +4771,27 @@ Specify the prompt string with which command strings are displayed
 when you do
 .B set
 .BR -x .
+.IP "\fBPTYINKCODE\fP"
+Specify the Kanji code for the string passed to the pseudo terminal.
+The string,
+which is converted from the Kanji code specified by
+.B INPUTKCODE
+to the Kanji code specified by this command,
+is inputted to any processes running on the pseudo terminal.
+This variable has the individual value for each pseudo terminal,
+so that you should change value of the variable on the pseudo terminal
+to change the input Kanji code of the pseudo terminal running already.
+.B (UNIX)
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+default	no convert
+.fi
+.RE
 .IP "\fBPTYMODE\fP"
 Use the pseudo terminal to invoke external commands.
 In the split window mode,
@@ -4654,6 +4802,26 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
+.IP "\fBPTYOUTKCODE\fP"
+Specify the Kanji code for the string passed from the pseudo terminal.
+The string,
+which is converted from the Kanji code specified by this command to the Kanji code specified by
+.BR LANGUAGE ,
+is displayed from any processes running on the pseudo terminal.
+This variable has the individual value for each pseudo terminal,
+so that you should change value of the variable on the pseudo terminal
+to change the output Kanji code of the pseudo terminal running already.
+.B (UNIX)
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+default	no convert
+.fi
+.RE
 .IP "\fBPTYTERM\fP"
 Specify the value of
 .B TERM
@@ -4696,6 +4864,25 @@ and this value and the current directory indicate the same directory logically,
 then it is used as the default value for the current directory.
 It is useful
 when you want to specify the logical pathname following symbolic links.
+.IP "\fBROOTLOGLEVEL\fP"
+Specify the priority for the log contents of the super user.
+The default value is
+.BR 1 .
+.B (UNIX)
+.RS 18
+.ta 0.8i
+.nf
+\fB0\fP	no log
+\fB1\fP	only warning such as writing
+\fB2\fP	notice such as changing, and over
+\fB3\fP	info. such as refering, and over
+>= \fB4\fP	debug level, and over
+.fi
+.RE
+
+.RS
+The same operation can result as an error to output the log in the lower priority by 1 level.
+.RE
 .IP "\fBRRPATH\fP"
 Display files under the directory mounted by CD-ROM,
 with the pseudo ISO 9660 RockRidge Extension,
@@ -4800,6 +4987,23 @@ it is executable only when it is invoked as
 The terminal name will be variable dynamically,
 then you can re-specify the suitable one as this value after invoked
 for some strange terminal display and key input.
+.IP "\fBTHRUARGS\fP"
+Pass through the pathnames as is, which is specified as the startup arguments.
+.B fd
+expands the meta character such as
+.B ~
+and
+.B ${#}
+in the given pathname by itself,
+because the obsolete low-level shell cannot support these expansion extended by POSIX.
+.B fd
+can sometimes expand the pathname given by the shell into the unexpected string
+as a result of duplicate expansion,
+because the latest high-level shell generally support these expansion.
+This variable will be suppress the expansion of arguments.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBTMPDIR\fP"
 Specify the working directory
 where the archiver command temporarily unpack files in the archive file.
@@ -4851,6 +5055,20 @@ which don't support the escape sequence getting the cursor position,
 the operation may be stopped.
 In this case,
 it is continued by inputting 'R' from the keyboard.
+Any value except
+.B 0
+and null effects valid.
+.B (UNIX)
+.IP "\fBUSESYSLOG\fP"
+Send the log to
+.BR syslogd (8)
+the system logger with the level spacified by
+.B LOGLEVEL
+or
+.BR ROOTLOGLEVEL .
+The log priority is LOG_ERR only some errors are caused,
+otherwise the log priority is always LOG_INFO.
+LOG_USER is used as the facirity if it can be specified.
 Any value except
 .B 0
 and null effects valid.
@@ -5032,9 +5250,11 @@ due to be brought by this is not available.
 .BR lha (1),
 .BR login (1),
 .BR newgrp (1),
+.BR stty (1),
 .BR umask (2),
 .BR termcap (5),
-.BR terminfo (5)
+.BR terminfo (5),
+.BR syslogd (8)
 .SH BUGS
 When files in an archive file are packed with a pathname including ".\|.",
 the archive browser cannot work normally.

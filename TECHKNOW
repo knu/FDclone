@@ -345,6 +345,8 @@ USELOCKF
 NOFLOCK
 	ファイルロック関数として flock(2) も lockf(2) も使う
 	ことができません。
+NOSYSLOG
+	システムロガー関数 syslog(3) を使うことができません。
 USETIMELOCAL
 	時間変換関数 timelocal(3) が localtime(3) の逆関数と
 	して使えます。
@@ -916,6 +918,8 @@ NWS-3400:
 	_NODOSCOMMAND	UNIX 版で COMMAND.COM 内蔵コマンドが使用不能
 	_NOEXTRAWIN	各分割ウィンドウのサイズが変更不能
 	_NOPTY		疑似端末機能が使用不能
+	_NOEXTRAATTR	ファイル属性変更コマンドの拡張機能が使用不能
+	_NOLOGGING	ログファイル機能が使用不能
 
 　config.hin を編集してこれらの識別子の定義を追加しておけば、
 機能を縮小してサイズを小さくしたり、エンドユーザに使用させた

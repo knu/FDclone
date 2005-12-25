@@ -33,6 +33,7 @@ extern int internal_status;
 #ifdef	SIGALRM
 extern int noalrm;
 #endif
+extern int fdmode;
 extern int fdflags;
 extern int wheader;
 extern int ptymode;
@@ -135,6 +136,9 @@ int init;
 	int mode, dupdumbterm;
 
 	dupdumbterm = dumbterm;
+#ifndef	_NOORIGSHELL
+	if (isshptymode()) dumbterm = 1;
+#endif
 	if (isptymode()) dumbterm = 1;
 	mode = termmode(init);
 	dumbterm = dupdumbterm;
@@ -361,6 +365,26 @@ VOID changekcode(VOID_A)
 	sendword(emufd, inputkcode);
 	sendword(emufd, outputkcode);
 }
+
+VOID changeinkcode(VOID_A)
+{
+	ptylist[win].incode = ptyinkcode;
+	if (!emupid) return;
+
+	sendword(emufd, TE_CHANGEINKCODE);
+	sendword(emufd, win);
+	sendword(emufd, ptyinkcode);
+}
+
+VOID changeoutkcode(VOID_A)
+{
+	ptylist[win].outcode = ptyoutkcode;
+	if (!emupid) return;
+
+	sendword(emufd, TE_CHANGEOUTKCODE);
+	sendword(emufd, win);
+	sendword(emufd, ptyoutkcode);
+}
 #endif	/* !_NOKANJICONV */
 
 static int NEAR ptygetkey(VOID_A)
@@ -375,6 +399,9 @@ static int NEAR ptygetkey(VOID_A)
 			kbhit2(1000000L / SENSEPERSEC);
 			waitpty();
 		}
+#ifndef	_NOORIGSHELL
+		if (isshptymode()) break;
+#endif
 		if (c < 0 || ptymenukey < 0 || c != ptymenukey) break;
 
 		str[0] = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
@@ -820,6 +847,23 @@ int w;
 			if (!emupid) break;
 			sendword(emufd, TE_UNLOCKBACK);
 			sendword(emufd, w);
+			break;
+		case TE_SAVETTYIO:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvbuf(fd, &val, sizeof(val)) < 0) break;
+			if (!val) cp = NULL;
+			else {
+				cp = malloc2(val);
+				if (recvbuf(fd, cp, val) < 0) {
+					free(cp);
+					break;
+				}
+			}
+			if (n >= 0) {
+				if (duptty[n]) free(duptty[n]);
+				duptty[n] = cp;
+			}
+			else if (cp) free(cp);
 			break;
 		case TE_CHANGESTATUS:
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;

@@ -17,9 +17,15 @@
 #include "termemu.h"
 #endif
 
+#if	defined (_NOEXTRAATTR) || defined (NOUID)
 #define	MAXATTRSEL	2
 #define	ATTR_X		35
 #define	ATTR_Y		L_INFO
+#else
+#define	MAXATTRSEL	3
+#define	ATTR_X		0
+#define	ATTR_Y		L_HELP
+#endif
 
 extern int curcolumns;
 extern int mark;
@@ -132,6 +138,9 @@ static int unpack_tree __P_((char *));
 static int info_filesys __P_((char *));
 static int NEAR selectattr __P_((char *));
 static int attr_file __P_((char *));
+#ifndef	_NOEXTRAATTR
+static int attr_dir __P_((char *));
+#endif
 #ifndef	_NOTREE
 static int tree_dir __P_((char *));
 #endif
@@ -263,6 +272,9 @@ bindtable bindlist[MAXBINDTABLE] = {
 	{'w',		WRITE_DIR,	255},
 #endif
 	{'x',		EXECUTE_FILE,	255},
+#ifndef	_NOEXTRAATTR
+	{'A',		ATTR_DIR,	255},
+#endif
 #ifndef	_NOTREE
 	{'C',		COPY_TREE,	255},
 #endif
@@ -1740,11 +1752,21 @@ char *s;
 	str[1] = CDATE_K;
 	val[0] = ATR_MODEONLY;
 	val[1] = ATR_TIMEONLY;
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+	str[2] = COWNR_K;
+	val[2] = ATR_OWNERONLY;
+#endif
 
 	n = ATR_MODEONLY;
 	Xlocate(0, ATTR_Y);
 	Xputterm(L_CLEAR);
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+	Xputterm(T_STANDOUT);
+#endif
 	Xkanjiputs(s);
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+	Xputterm(END_STANDOUT);
+#endif
 	if (selectstr(&n, MAXATTRSEL, ATTR_X, str, val) != K_CR) return(-1);
 
 	return(n);
@@ -1783,6 +1805,30 @@ char *arg;
 
 	return(FNC_EFFECT);
 }
+
+#ifndef	_NOEXTRAATTR
+/*ARGSUSED*/
+static int attr_dir(arg)
+char *arg;
+{
+	int n, flag;
+
+	if (!isdir(&(filelist[filepos]))) return(warning_bell(arg));
+
+	if ((flag = selectattr(ATTRD_K)) < 0) return(FNC_CANCEL);
+	flag |= (ATR_MULTIPLE | ATR_RECURSIVE);
+	while ((n = inputattr(&(filelist[filepos]), flag)) < 0)
+		warning(0, ILTMS_K);
+	if (!n) {
+		if (FILEPERROW < WFILEMINATTR) return(FNC_EFFECT);
+		return(FNC_UPDATE);
+	}
+	applydir(filelist[filepos].name, setattr,
+		NULL, setattr, ORD_NOPREDIR, NULL);
+
+	return(FNC_EFFECT);
+}
+#endif	/* !_NOEXTRAATTR */
 
 #ifndef	_NOTREE
 /*ARGSUSED*/

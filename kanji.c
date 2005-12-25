@@ -47,6 +47,9 @@ extern int norealpath;
 # ifndef	_NOROCKRIDGE
 extern int norockridge;
 # endif
+# if	!defined (_NOKANJICONV) && !defined (_NOPTY)
+extern int parentfd;
+# endif
 #else	/* !FD */
 #define	realpath2(p, r, l)	realpath(p, r)
 extern char *malloc2 __P_((ALLOC_T));
@@ -483,6 +486,9 @@ char *newkanjiconv __P_((char *, int, int, int));
 #endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
 int getkcode __P_((char *));
+#endif
+#ifndef	_NOKANJICONV
+int getoutputkcode __P_((VOID_A));
 #endif
 char *convget __P_((char *, char *, int));
 char *convput __P_((char *, char *, int, int, char *, int *));
@@ -1971,6 +1977,16 @@ char *path;
 	return(fnamekcode);
 }
 #endif	/* !_NOKANJIFCONV */
+
+#ifndef	_NOKANJICONV
+int getoutputkcode(VOID_A)
+{
+# if	defined (FD) && !defined (_NOPTY)
+	if (parentfd >= 0 && ptyoutkcode != NOCNV) return(ptyoutkcode);
+# endif
+	return(outputkcode);
+}
+#endif	/* !_NOKANJICONV */
 
 /*ARGSUSED*/
 char *convget(buf, path, dos)

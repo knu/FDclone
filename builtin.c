@@ -116,6 +116,9 @@ static int NEAR kconv __P_((int, char *[]));
 static int NEAR getinputstr __P_((int, char *[]));
 static int NEAR getyesno __P_((int, char *[]));
 #endif	/* FD >= 2 */
+#if	!MSDOS && (FD >= 2)
+static int NEAR savetty __P_((int, char *[]));
+#endif
 #ifdef	_NOORIGSHELL
 static int NEAR printenv __P_((int, char *[]));
 static int NEAR setalias __P_((int, char *[]));
@@ -204,6 +207,9 @@ static CONST builtintable builtinlist[] = {
 	{getinputstr,	BL_READLINE},
 	{getyesno,	BL_YESNO},
 #endif	/* FD >= 2 */
+#if	!MSDOS && (FD >= 2)
+	{savetty,	BL_SAVETTY},
+#endif
 #ifdef	_NOORIGSHELL
 # if	FD >= 2
 	{printenv,	BL_SET},
@@ -2716,6 +2722,38 @@ char *argv[];
 	return((ret) ? 0 : -1);
 }
 #endif	/* FD >= 2 */
+
+#if	!MSDOS
+int savestdio(reset)
+int reset;
+{
+	int n;
+
+	if (isttyiomode) return(0);
+
+	n = savettyio(reset);
+# ifndef	_NOPTY
+	sendparent(TE_SAVETTYIO, reset);
+# endif
+	return(n);
+}
+
+# if	FD >= 2
+static int NEAR savetty(argc, argv)
+int argc;
+char *argv[];
+{
+	int n;
+
+	n = 0;
+	if (argc > 1 && argv[1][0] == '-'
+	&& argv[1][1] == 'n' && !(argv[1][2]))
+		n++;
+
+	return(savestdio(n));
+}
+# endif	/* FD >= 2 */
+#endif	/* !MSDOS */
 
 #ifdef	_NOORIGSHELL
 static int NEAR printenv(argc, argv)

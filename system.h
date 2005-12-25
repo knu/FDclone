@@ -385,6 +385,12 @@ extern int jobok;
 extern int emacsmode;
 extern int vimode;
 # endif
+# ifndef	_NOPTY
+extern int shptymode;
+# endif
+# if	!MSDOS
+extern int autosavetty;
+# endif
 #endif	/* FD */
 extern int loginshell;
 extern int noruncom;

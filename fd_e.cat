@@ -6,9 +6,9 @@ NNAAMMEE
      fd - file & directory maintenance tool
 
 SSYYNNOOPPSSIISS
-     ffdd [ --aabbCCeeffhhiikkllmmNNnnrrssttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
+     ffdd [ --aabbCCeeffhhiikkllmmNNnnPPrrSSssTTttuuvvxx ] [ --_N_A_M_E==_v_a_l_u_e ] [ _d_i_r_e_c_t_o_r_y [
      _d_i_r_e_c_t_o_r_y_2 _._._. ]]
-     ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnrrssttuuvvxx ] [ _a_r_g_s ]
+     ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnPPrrSSssTTttuuvvxx ] [ _a_r_g_s ]
 
 DDEESSCCRRIIPPTTIIOONN
      ffdd is a file & directory maintenance tool considered for the
@@ -66,7 +66,7 @@ DDEESSCCRRIIPPTTIIOONN
                TTRREEEE_DDIIRR       BBAACCKKUUPP_TTAAPPEE    EEDDIITT_FFIILLEE
                UUNNPPAACCKK_FFIILLEE    PPAACCKK_FFIILLEE      LLOOGG_TTRREEEE
                CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      UUNNPPAACCKK_TTRREEEE
-               FFIINNDD_DDIIRR
+               FFIINNDD_DDIIRR       AATTTTRR_DDIIRR
           When invoked as rrffdd or rrffddsshh, it becomes this res-
           tricted shell automatically.
 
@@ -190,6 +190,7 @@ DDEESSCCRRIIPPTTIIOONN
      MMOOVVEE_TTRREEEE           Move a file with tree         MM
      UUNNPPAACCKK_TTRREEEE         Unpack a file with tree       UU
      FFIINNDD_DDIIRR            Find a file recursively       FF
+     AATTTTRR_DDIIRR            Change attributes recursively AA
      SSYYMMLLIINNKK_MMOODDEE        Switch the symbolic link mode SS
      FFIILLEETTYYPPEE_MMOODDEE       Switch the file type symbol   TT
      DDOOTTFFIILLEE_MMOODDEE        Switch the dot file display   HH
@@ -425,12 +426,13 @@ DDEESSCCRRIIPPTTIIOONN
              support archivers except these.
 
         CChhaannggee aattttrriibbuuttee (Attr)
-             Change the file access mode and the timestamp of the
-             file on the cursor position.  When some files are
-             marked, the target is not the file on the cursor
-             position but the marked files.  In case of the
-             marked files, you must select the mode or the times-
-             tamp, before changing it all together.
+             Change the file access mode, the timestamp and the
+             owner/group of the file on the cursor position.
+             When some files are marked, the target is not the
+             file on the cursor position but the marked files.
+             In case of the marked files, you must select the
+             mode, the timestamp or the owner/group, before chang-
+             ing it all together.
 
              When you input the mode, cursor keys move a cursor
              to the position you want to change, [SSppaaccee] reverses
@@ -438,19 +440,29 @@ DDEESSCCRRIIPPTTIIOONN
              that the attribute of the execution bit is not a
              binary toggle but a triple toggle, which includes
              setuid bit, setgid bit, and sticky bit respectively.
-             When you input the timestamp, you move a cursor to
-             the position you want to change, and input a numeric
-             value.  Finally, [RReettuurrnn] executes the change.  You
-             can cancel with [EEsscc].  Be careful that the limit
-             check of date is not perfect.
+             If the target is the marked files, [mm](Mask) will
+             mask a bit on the cursor position with '**', to keep
+             the value of the original file attribute.  When you
+             input the timestamp, you move a cursor to the posi-
+             tion you want to change, and input a numeric value.
+             When you input the owner/group, you move a cursor to
+             the position for each name, and input a name or a ID
+             value with [SSppaaccee].  You can use the completion for
+             a user name and a group name to input each name.  Fi-
+             nally, [RReettuurrnn] executes the change.  You can cancel
+             with [EEsscc].  Be careful that the limit check of date
+             is not perfect.
 
-             Moreover, [aa](Attr), [dd](Date), [tt](Time) move a
-             cursor to the each beginning of input line.
+             Moreover, [aa](Attr), [dd](Date), [tt](Time),
+             [oo](Owner) and [gg](Group) move a cursor to the each
+             beginning of input line.
 
              On the OS which has the attribute of file flags, you
-             can change the file flags as well as the mode.  But
-             the value of flags which you can change is based on
-             your permission.
+             can change the file flags as well as the mode.  In
+             this case, [ff](Flag) move a cursor to the beginning
+             of input line of file  flags.  But the value of
+             flags which you can change is based on your permis-
+             sion.
 
         FFiillee ssyysstteemm iinnffoorrmmaattiioonn (Info)
              Display the information of the specified file sys-
@@ -590,6 +602,24 @@ DDEESSCCRRIIPPTTIIOONN
              You will be confirmed for each matching file whether
              if you move or not, and you can select [nn](No)
              unless the target file is displayed.
+
+        CChhaannggee aattttrriibbuutteess rreeccuurrssiivveellyy
+             Change attributes the directory on the cursor posi-
+             tion revursively.  As well as changing attributes of
+             the marked files, you must select the mode, the time-
+             stamp or the owner/group, before changing it all to-
+             gether with each file under the directory.
+
+             When you input the mode, you should notice that the
+             attribute of the execution bit, in this case, is not
+             a triple toggle but a 5-states toggle, which in-
+             cludes 'XX' and '!!'.  'XX' means setting the bit only
+             if the object is a directory or some execution bits
+             are set.  '!!' also means unsetting the bit only if
+             the object is a directory or some execution bits are
+             set.  [mm](Mask) will mask a bit on the cursor posi-
+             tion with '**', to keep the value of the original
+             file attribute.
 
         IInnvvookkee llaauunncchheerr
              [RReettuurrnn] executes the operation according to the
@@ -1647,6 +1677,19 @@ DDEESSCCRRIIPPTTIIOONN
                    value is the exit status of the last executed
                    command.  It cannot be used out of a function.
 
+     ssaavveettttyy [--nn]  Save the current terminal settings.  The saved
+                   settings will be restored when EEXXEECCUUTTEE__SSHH is
+                   executed later.  In case that you change termi-
+                   nal settings with ssttttyy(1) and so on, you
+                   should save the settings with this command not
+                   to reset settings with the next execution of
+                   EEXXEECCUUTTEE__SSHH.  If you change terminal settings
+                   and execute this command not in the same com-
+                   mand line, you should notice that this command
+                   will save the reset settings.  If --nn is speci-
+                   fied, the saved settings will be cleared.
+                   ((UUNNIIXX))
+
      sseett [----aabbCCeeffhhkkmmnnttuuvvxx] [--oo _o_p_t_i_o_n] [_a_r_g ...]
                    List internal variables and functions, without
                    any argument.  When you specify _a_r_g, _a_r_g is
@@ -1686,6 +1729,8 @@ DDEESSCCRRIIPPTTIIOONN
                         _o_p_t_i_o_n.
                         aalllleexxppoorrtt
                              Same as --aa.
+                        aauuttoossaavveettttyy
+                             Same as --SS.
                         eemmaaccss
                              Same as EEDDIITTMMOODDEE==eemmaaccss.
                         eerrrreexxiitt
@@ -1712,10 +1757,9 @@ DDEESSCCRRIIPPTTIIOONN
                         oonneeccmmdd
                              Same as --tt.
                         pphhyyssiiccaall
-                             ccdd and ppwwdd the builtin command use
-                             the physical directory structure
-                             instead of the logical directory
-                             structure following symbolic links.
+                             Same as --PP.
+                        ppttyysshheellll
+                             Same as --TT.
                         vveerrbboossee
                              Same as --vv.
                         vvii   Same as EEDDIITTMMOODDEE==vvii.
@@ -1723,6 +1767,26 @@ DDEESSCCRRIIPPTTIIOONN
                              Same as --xx.
                         If _o_p_t_i_o_n is omitted, the values of the
                         current options are displayed.
+                   --PP   ccdd and ppwwdd the builtin command use the
+                        physical directory structure instead of
+                        the logical directory structure following
+                        symbolic links.
+                   --SS   Execute ssaavveettttyy the builtin command auto-
+                        matically whenever any command line is
+                        processed.  The terminal settings will be
+                        saved absolutely unless you operate the
+                        terminal settings intentionally, so that
+                        you should manually adjust the terminal
+                        settings saved accidentally.  ((UUNNIIXX))
+                   --TT   Invoke ffddsshh as the pseudo terminal.  You
+                        cannot invoke any more pseudo terminals
+                        in this mode.  It is effective only if
+                        you specify it as the startup option or
+                        in the initial configuration file.  It is
+                        effective only if you specify it as the
+                        startup option, when the shell is execut-
+                        ed as the non-interactive shell.  It is
+                        just ignored when invoked as ffdd.  ((UUNNIIXX))
                    --tt   Exit immediately after executing the
                         current command input.
                    --uu   Treat the reference of undefined vari-
@@ -1939,8 +2003,8 @@ DDEESSCCRRIIPPTTIIOONN
           LLOOGG_TTOOPP        AATTTTRR_FFIILLEE      CCOOPPYY_FFIILLEE      MMOOVVEE_FFIILLEE
           DDEELLEETTEE_FFIILLEE    DDEELLEETTEE_DDIIRR     RREENNAAMMEE_FFIILLEE    MMAAKKEE_DDIIRR
           WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE      LLOOGG_TTRREEEE
-          CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       SSYYMMLLIINNKK_MMOODDEE
-          DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+          CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       AATTTTRR_DDIIRR
+          SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
 
      When you want to register a new archive browser, you must
      describe the format listed by the archiver as the following
@@ -2885,6 +2949,35 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    ing the screen size.  If no value is set, this
                    value will remain unset.
 
+     LLOOGGFFIILLEE       Specify the log filename with the level spaci-
+                   fied by LLOOGGLLEEVVEELL or RROOOOTTLLOOGGLLEEVVEELL.  If it is
+                   not specified as fullpath, it will be regarded
+                   as the path under your home directory.  You
+                   must prepare the directory in which the log
+                   file is stored, because any directories are
+                   not created automatically.  The default value
+                   is not specified.
+
+     LLOOGGLLEEVVEELL      Specify the priority for the log contents.
+                   The default value is 00.
+                       00       no log
+                       11       only warning such as writing
+                       22       notice such as changing, and over
+                       33       info. such as refering, and over
+                       >= 44    debug level, and over
+
+                   The same operation can result as an error to
+                   output the log in the lower priority by 1 lev-
+                   el.
+
+     LLOOGGSSIIZZEE       Specify the maximum kilobyte size for the log
+                   file specified by LLOOGGFFIILLEE.  If the size ex-
+                   ceeds this value, the last log file will be re-
+                   named as the file name followed by the exten-
+                   sion ..oolldd to create another new log file.  The
+                   default value is 11002244(1MB).  If the value is 00,
+                   the log file will not be renamed.
+
      LLOOOOPPCCUURRSSOORR    Loop a cursor moving within the same page,
                    when you move a cursor.  Any value except 00
                    and null effects valid.
@@ -2970,6 +3063,23 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      PPSS44*          Specify the prompt string with which command
                    strings are displayed when you do sseett --xx.
 
+     PPTTYYIINNKKCCOODDEE    Specify the Kanji code for the string passed
+                   to the pseudo terminal.  The string, which is
+                   converted from the Kanji code specified by
+                   IINNPPUUTTKKCCOODDEE to the Kanji code specified by this
+                   command, is inputted to any processes running
+                   on the pseudo terminal.  This variable has the
+                   individual value for each pseudo terminal, so
+                   that you should change value of the variable
+                   on the pseudo terminal to change the input
+                   Kanji code of the pseudo terminal running al-
+                   ready.  ((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       default        no convert
+
      PPTTYYMMOODDEE       Use the pseudo terminal to invoke external com-
                    mands.  In the split window mode, the independ-
                    ent pseudo terminals for every windows will be
@@ -2979,6 +3089,23 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    tions required for the terminal emulation, the
                    pseudo terminal may not work correctly.  Any
                    value except 00 and null effects valid.  ((UUNNIIXX))
+
+     PPTTYYOOUUTTKKCCOODDEE   Specify the Kanji code for the string passed
+                   from the pseudo terminal.  The string, which
+                   is converted from the Kanji code specified by
+                   this command to the Kanji code specified by
+                   LLAANNGGUUAAGGEE, is displayed from any processes run-
+                   ning on the pseudo terminal.  This variable
+                   has the individual value for each pseudo termi-
+                   nal,  so that you should change value of the
+                   variable on the pseudo terminal to change the
+                   output Kanji code of the pseudo terminal run-
+                   ning already.  ((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       UUTTFF88, uuttff88     UTF-8
+                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       default        no convert
 
      PPTTYYTTEERRMM       Specify the value of TTEERRMM the environment vari-
                    able to be passed to external commands, when
@@ -3015,6 +3142,18 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    you want to specify the logical pathname fol-
                    lowing symbolic links.
 
+     RROOOOTTLLOOGGLLEEVVEELL  Specify the priority for the log contents of
+                   the super user.  The default value is 11.
+                   ((UUNNIIXX))
+                       00       no log
+                       11       only warning such as writing
+                       22       notice such as changing, and over
+                       33       info. such as refering, and over
+                       >= 44    debug level, and over
+
+                   The same operation can result as an error to
+                   output the log in the lower priority by 1 lev-
+                   el.
      RRRRPPAATTHH        Display files under the directory mounted by
                    CD-ROM, with the pseudo ISO 9660 RockRidge
                    Extension, for the OS which cannot support
@@ -3093,6 +3232,20 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    one as this value after invoked for some
                    strange terminal display and key input.
 
+     TTHHRRUUAARRGGSS      Pass through the pathnames as is, which is
+                   specified as the startup arguments.  ffdd ex-
+                   pands the meta character such as ~~ and $${{##}} in
+                   the given pathname by itself, because the ob-
+                   solete low-level shell cannot support these
+                   expansion extended by POSIX.  ffdd can sometimes
+                   expand the pathname given by the shell into
+                   the unexpected string as a result of duplicate
+                   expansion, because the latest high-level shell
+                   generally support these expansion.  This vari-
+                   able will be suppress the expansion of argu-
+                   ments.  Any value except 00 and null effects
+                   valid.
+
      TTMMPPDDIIRR        Specify the working directory where the
                    archiver command temporarily unpack files in
                    the archive file.  The default value is //ttmmpp.
@@ -3131,6 +3284,14 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    continued by inputting 'R' from the keyboard.
                    Any value except 00 and null effects valid.
                    ((UUNNIIXX))
+
+     UUSSEESSYYSSLLOOGG     Send the log to ssyyssllooggdd(8) the system logger
+                   with the level spacified by LLOOGGLLEEVVEELL or
+                   RROOOOTTLLOOGGLLEEVVEELL.  The log priority is LOG_ERR
+                   only some errors are caused, otherwise the log
+                   priority is always LOG_INFO.  LOG_USER is used
+                   as the facirity if it can be specified.  Any
+                   value except 0 and null effects valid.  ((UUNNIIXX))
 
      WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
                    is 11, the directory is written only when the
@@ -3241,7 +3402,7 @@ LLIIMMIITTAATTIIOONNSS
 SSEEEE AALLSSOO
      sshh(1), eecchhoo(1), tteesstt(1), llss(1), rrmm(1), ttaarr(1), ccoommpprreessss(1),
      zzccaatt(1), ggzziipp(1), gguunnzziipp(1), llhhaa(1), llooggiinn(1), nneewwggrrpp(1),
-     uummaasskk(2), tteerrmmccaapp(5), tteerrmmiinnffoo(5)
+     ssttttyy(1), uummaasskk(2), tteerrmmccaapp(5), tteerrmmiinnffoo(5), ssyyssllooggdd(8)
 
 BBUUGGSS
      When files in an archive file are packed with a pathname

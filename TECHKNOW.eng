@@ -366,6 +366,9 @@ USELOCKF
 NOFLOCK
 	Both of the function flock(2) and lockf(2) are
 	unavailable to lock files.
+NOSYSLOG
+	The function syslog(3) is unavailable for system
+	logger.
 USETIMELOCAL
 	The function timelocal(3) is available as the inverse
 	function of localtime(3) for the time conversion.
@@ -964,6 +967,8 @@ not implemented.
 	_NODOSCOMMAND	cannot use COMMAND.COM builtins on UNIX
 	_NOEXTRAWIN	cannot resize each split window
 	_NOPTY		cannot use pseudo terminal
+	_NOEXTRAATTR	cannot use extra attribute changing command
+	_NOLOGGING	cannot use system logging
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,

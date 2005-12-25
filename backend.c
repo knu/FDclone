@@ -13,9 +13,14 @@
 #include "func.h"
 #include "termemu.h"
 
+#ifndef	_NOORIGSHELL
+#include "system.h"
+#endif
+
 #define	MAXESCPARAM	16
 #define	MAXESCCHAR	4
 #define	MAXTABSTOP	255
+#define	MAXKANJIBUF	(3 + 2 + 3)
 
 typedef struct _ptyterm_t {
 	short cur_x, cur_y;
@@ -51,6 +56,7 @@ typedef struct _ptyterm_t {
 #define	T_LOCKED	00040
 
 extern int hideclock;
+extern int fdmode;
 extern int wheader;
 extern int emufd;
 
@@ -79,6 +85,10 @@ static int wintr __P_((VOID_A));
 static VOID NEAR evalsignal __P_((VOID_A));
 #endif
 static int NEAR convkey __P_((int, keyseq_t *));
+#ifndef	_NOKANJICONV
+static int NEAR ptygetch __P_((int));
+static char *NEAR ptykconv __P_((char *, char *, int, int));
+#endif
 static VOID NEAR evalscroll __P_((int, int, int));
 static VOID NEAR evallf __P_((int));
 static VOID NEAR evalnormal __P_((int, int));
@@ -139,7 +149,12 @@ int w, clean;
 
 	pty[w].min_x = (short)0;
 	pty[w].max_x = n_column;
-	if (w == MAXWINDOWS) {
+#ifdef	_NOORIGSHELL
+	if (w == MAXWINDOWS)
+#else
+	if (w == MAXWINDOWS || isshptymode())
+#endif
+	{
 		pty[w].min_y = (short)0;
 		pty[w].max_y = n_line;
 	}
@@ -351,6 +366,32 @@ keyseq_t *kp;
 	return((getdefkeyseq(kp) < 0) ? getkeyseq(kp) : 0);
 }
 
+#ifndef	_NOKANJICONV
+static int NEAR ptygetch(fd)
+int fd;
+{
+	u_short ch;
+
+	if (recvbuf(fd, &ch, sizeof(ch)) < 0 || (ch & 0xff00)) return(-1);
+	return(ch);
+}
+
+static char *NEAR ptykconv(buf, buf2, incode, outcode)
+char *buf, *buf2;
+int incode, outcode;
+{
+	char *cp, *tmp;
+
+	tmp = kanjiconv2(buf2, buf, MAXKANJIBUF, incode, DEFCODE, L_TERMINAL);
+	if (kanjierrno) return(buf);
+	cp = (tmp == buf) ? buf2 : buf;
+	cp = kanjiconv2(cp, tmp, MAXKANJIBUF, DEFCODE, outcode, L_TERMINAL);
+	if (kanjierrno) return(tmp);
+
+	return(cp);
+}
+#endif	/* !_NOKANJICONV */
+
 static VOID NEAR evalscroll(w, n, c)
 int w, n, c;
 {
@@ -375,14 +416,16 @@ static VOID NEAR evalnormal(w, c)
 int w, c;
 {
 #ifndef	_NOKANJICONV
-	int code;
+	char buf[MAXKANJIBUF + 1], buf2[MAXKANJIBUF + 1];
+	int len, code, incode, outcode;
 #endif
 	int width;
 
 #ifndef	_NOKANJICONV
-	code = outputkcode;
-	if (code == NOCNV) code = DEFCODE;
-	if (code == M_UTF8) code = UTF8;
+	outcode = (outputkcode != NOCNV) ? outputkcode : DEFCODE;
+	incode = (w < MAXWINDOWS && ptylist[w].outcode != NOCNV)
+		? ptylist[w].outcode : outcode;
+	code = (incode != M_UTF8) ? incode : UTF8;
 #endif
 
 	if ((pty[w].termflags & T_NOAUTOMARGIN)
@@ -437,9 +480,25 @@ int w, c;
 	surelocate(w, 0);
 	settermattr(w);
 	settermcode(w);
-	if (pty[w].last1 >= (short)0) putch2(pty[w].last1);
-	if (pty[w].last2 >= (short)0) putch2(pty[w].last2);
-	putch2(c);
+#ifndef	_NOKANJICONV
+	if (!(pty[w].termflags & T_MULTIBYTE) && incode != outcode) {
+		len = 0;
+		if (pty[w].last1 >= (short)0) buf[len++] = pty[w].last1;
+		if (pty[w].last2 >= (short)0) buf[len++] = pty[w].last2;
+		if (!len) putch2(c);
+		else {
+			buf[len++] = c;
+			buf[len] = '\0';
+			cputs2(ptykconv(buf, buf2, incode, outcode));
+		}
+	}
+	else
+#endif	/* !_NOKANJICONV */
+	{
+		if (pty[w].last1 >= (short)0) putch2(pty[w].last1);
+		if (pty[w].last2 >= (short)0) putch2(pty[w].last2);
+		putch2(c);
+	}
 	tflush();
 	pty[w].cur_x += width;
 	last_x += width;
@@ -1246,6 +1305,14 @@ int fd, n;
 			inputkcode = w1;
 			outputkcode = w2;
 			break;
+		case TE_CHANGEINKCODE:
+			if (recvbuf(fd, &w2, sizeof(w2)) < 0) break;
+			ptylist[w1].incode = (char)w2;
+			break;
+		case TE_CHANGEOUTKCODE:
+			if (recvbuf(fd, &w2, sizeof(w2)) < 0) break;
+			ptylist[w1].outcode = (char)w2;
+			break;
 #endif	/* !_NOKANJICONV */
 		case TE_AWAKECHILD:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
@@ -1273,11 +1340,24 @@ int fd, n;
 static int NEAR evalinput(fd)
 int fd;
 {
-	keyseq_t key;
+#ifdef	_NOKANJICONV
 	char buf[2];
+#else
+	char buf[MAXKANJIBUF + 1], buf2[MAXKANJIBUF + 1];
+	int cnv, code, incode, outcode;
+#endif
+	keyseq_t key;
 	int n;
 
 	if (recvbuf(fd, &(key.code), sizeof((key.code))) < 0) return(0);
+
+#ifndef	_NOKANJICONV
+	cnv = 0;
+	incode = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
+	outcode = (win < MAXWINDOWS && ptylist[win].incode != NOCNV)
+		? ptylist[win].incode : incode;
+	code = (incode != M_UTF8) ? incode : UTF8;
+#endif
 
 	if (ismetakey(key.code)) {
 		key.len = (u_char)2;
@@ -1290,6 +1370,7 @@ int fd;
 	else if (isekana2(key.code)) {
 # else
 	else if (inputkcode == EUC && isekana2(key.code)) {
+		if (incode != outcode) cnv++;
 # endif
 		key.len = (u_char)2;
 		key.str = buf;
@@ -1311,7 +1392,37 @@ int fd;
 		key.len = (u_char)1;
 		key.str = buf;
 		buf[0] = key.code;
+#ifndef	_NOKANJICONV
+		if (incode == outcode) /*EMPTY*/;
+		else if (inputkcode == SJIS && iskana2(key.code)) cnv++;
+		else if (code == UTF8) {
+			if (!ismsb(key.code)) /*EMPTY*/;
+			else if ((n = ptygetch(fd)) >= 0) {
+				buf[1] = n;
+				(key.len)++;
+				if (isutf2(buf[0], buf[1])) cnv++;
+				else if ((n = ptygetch(fd)) >= 0) {
+					cnv++;
+					buf[2] = n;
+					(key.len)++;
+				}
+			}
+		}
+		else if (isinkanji1(key.code) && (n = ptygetch(fd)) >= 0) {
+			cnv++;
+			buf[1] = n;
+			(key.len)++;
+		}
+#endif	/* !_NOKANJICONV */
 	}
+
+#ifndef	_NOKANJICONV
+	if (cnv) {
+		buf[key.len] = '\0';
+		key.str = ptykconv(buf, buf2, incode, outcode);
+		key.len = (u_char)strlen(key.str);
+	}
+#endif
 
 	if (win < MAXWINDOWS) sendbuf(ptylist[win].fd, key.str, key.len);
 

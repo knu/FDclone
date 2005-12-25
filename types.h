@@ -385,11 +385,15 @@ typedef struct _builtintable {
 #define	TCH_MTIME		00020
 #define	TCH_FLAGS		00040
 #define	TCH_CHANGE		00100
+#define	TCH_MASK		00200
+#define	TCH_MODEEXE		00400
 
 #define	ATR_EXCLUSIVE		3
 #define	ATR_MODEONLY		1
 #define	ATR_TIMEONLY		2
+#define	ATR_OWNERONLY		3
 #define	ATR_MULTIPLE		4
+#define	ATR_RECURSIVE		8
 
 #define	ORD_NODIR		0
 #define	ORD_NORMAL		1
@@ -402,3 +406,8 @@ typedef struct _builtintable {
 #define	HST_GROUP		3
 #define	nohist(n)		((n) != HST_COM && (n) != HST_PATH)
 #define	completable(n)		((n) >= 0)
+
+#define	_LOG_WARNING_		0
+#define	_LOG_NOTICE_		1
+#define	_LOG_INFO_		2
+#define	_LOG_DEBUG_		3

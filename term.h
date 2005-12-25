@@ -151,6 +151,7 @@ extern int (*keywaitfunc)__P_((VOID_A));
 #if	!MSDOS
 extern int usegetcursor;
 extern int suspended;
+extern char *duptty[2];
 #endif
 extern int ttyio;
 extern int isttyiomode;
@@ -168,6 +169,9 @@ extern int nonl2 __P_((VOID_A));
 extern int tabs __P_((VOID_A));
 extern int notabs __P_((VOID_A));
 extern int keyflush __P_((VOID_A));
+#if	!MSDOS
+extern int savettyio __P_((int));
+#endif
 extern int ttyiomode __P_((int));
 extern int stdiomode __P_((VOID_A));
 extern int termmode __P_((int));

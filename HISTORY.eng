@@ -1,3 +1,15 @@
+Ver. 2.08	Add 'PTYINKCODE' and 'PTYOUTKCODE' internal variables.
+ (12/26/05)	Add 'LOGFILE', 'LOGSIZE' and 'USESYSLOG' internal variables.
+		Add 'LOGLEVEL' and 'ROOTLOGLEVEL' internal variables.
+		Add 'THRUARGS' internal variable.
+		Add 'savetty' builtin.
+		Add -o autosavetty and -S option in 'set' builtin.
+		Add -o ptyshell and -T option in 'set' builtin.
+		Add -P option in 'set' builtin as an alias of -o physical.
+		Add ATTR_DIR command.
+		Support changing file owner/group in ATTR_FILE.
+		Bug that some files may be lost in writing directory is fixed.
+
 Ver. 2.07c	Support archive list terminated with duplicate path delimiters.
  (12/13/05)	Bug that arguments of fd from fdsh are re-evaluated is fixed.
 		Bug that customizer cannot set HEX/CAP as FNAMEKCODE is fixed.

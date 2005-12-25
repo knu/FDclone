@@ -446,7 +446,7 @@ int fd, mode;
 	lock.l_type = lockmode[mode];
 	lock.l_start = lock.l_len = (off_t)0;
 	lock.l_whence = SEEK_SET;
-	return(fcntl(fd, F_SETLKW, (int)&lock));
+	return(fcntl(fd, F_SETLKW, &lock));
 # else	/* !USEFCNTLOCK */
 #  ifdef	USELOCKF
 	return(lockf(fd, lockmode[mode], (off_t)0));
@@ -461,6 +461,9 @@ int touchfile(path, stp)
 char *path;
 struct stat *stp;
 {
+#ifndef	_NOEXTRAATTR
+	int i;
+#endif
 	struct stat st;
 	u_int mode;
 	int ret, duperrno;
@@ -520,6 +523,21 @@ struct stat *stp;
 		mode = stp -> st_mode;
 		mode &= ~S_IFMT;
 		mode |= (st.st_mode & S_IFMT);
+#ifndef	_NOEXTRAATTR
+		if ((stp -> st_nlink & TCH_MODEEXE)
+		&& !s_isdir(&st) && !(st.st_mode & S_IEXEC_ALL)) {
+			for (i = 0; i < 3; i++) {
+				if (!(stp -> st_mode & (1 << (i + 12))))
+					continue;
+				mode &= ~(1 << (i * 3));
+				mode |= (st.st_mode & (1 << (i * 3)));
+			}
+		}
+		if (stp -> st_nlink & TCH_MASK) {
+			mode &= ~(stp -> st_size);
+			mode |= (st.st_mode & (stp -> st_size));
+		}
+#endif	/* !_NOEXTRAATTR */
 		if (Xchmod(path, mode) < 0) {
 			duperrno = errno;
 			ret = -1;
@@ -1615,7 +1633,8 @@ int fs;
 		free(tmpdir);
 		tmpdir = cp;
 	}
-	fnamp = strcatdelim2(path, tmpdir, fnamelist[top]) - path;
+	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
+	snprintf2(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);
 	if (saferename(path, fnamelist[top]) < 0) warning(-1, path);
 	restorefile(tmpdir, path, fnamp);
 

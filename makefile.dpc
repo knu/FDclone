@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.07c
+VERSION	= 2.08
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -25,7 +25,7 @@ DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
 
 SRC	= main.c printf.c termio.c term.c pathname.c \
-	system.c posixsh.c doscom.c \
+	system.c posixsh.c doscom.c log.c \
 	dosdisk.c dosemu.c mkunitbl.c \
 	unixdisk.c unixemu.c \
 	pty.c termemu.c frontend.c backend.c \
@@ -90,7 +90,7 @@ EXE	= .exe
 PROGRAM	= fd
 ALIAS	= fdsh
 OBJ1	= main.o printf.o termio.o term.o \
-	pathname.o system.o posixsh.o doscom.o
+	pathname.o system.o posixsh.o doscom.o log.o
 OBJ2	= dosdisk.o unixemu.o unixdisk.o \
 	pty.o termemu.o frontend.o backend.o \
 	libc.o file.o apply.o \
@@ -542,6 +542,11 @@ doscom.o: machine.h config.h printf.h kctype.h
 doscom.o: pathname.h
 doscom.o: system.h termio.h
 doscom.o: wait.h
+log.o: fd.h
+log.o: machine.h config.h types.h
+log.o: printf.h kctype.h
+log.o: pathname.h term.h func.h
+log.o: dosdisk.h
 dosdisk.o: machine.h config.h
 dosdisk.o: dosdisk.h
 dosdisk.o: kctype.h
@@ -599,7 +604,7 @@ backend.o: pathname.h term.h
 backend.o: termio.h
 backend.o: func.h
 backend.o: dosdisk.h
-backend.o: termemu.h
+backend.o: termemu.h system.h wait.h
 libc.o: fd.h
 libc.o: machine.h config.h types.h
 libc.o: printf.h

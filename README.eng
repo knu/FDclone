@@ -1,9 +1,9 @@
 ############################################################
 #
-#	About FDclone Ver. 2.07
+#	About FDclone Ver. 2.08
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Dec 13, 2005
+#	Dec 26, 2005
 #
 ############################################################
 
@@ -33,7 +33,7 @@ I complete and release it. I dare say I'm happy.
 
 
 --
-  FDclone-2.07 package includes the following files.
+  FDclone-2.08 package includes the following files.
 
 README		this file (in Japanese)
 README.eng	this file
@@ -89,6 +89,7 @@ system.c	/bin/sh compatible system(3) module
 system.h	header for system.c
 posixsh.c	POSIX based builtin commands used in system.c
 doscom.c	COMMAND.COM builtin commands used in system.c
+log.c		system logging module
 dosdisk.c	floppy drive driver
 dosdisk.h	header for dosdisk.c
 dosemu.c	system call wrapper for floppy drive

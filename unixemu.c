@@ -10,6 +10,10 @@
 #include "func.h"
 #include "unixdisk.h"
 
+#ifndef	O_ACCMODE
+#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
+#endif
+
 #ifndef	_NOROCKRIDGE
 typedef struct _opendirpath_t {
 	DIR *dirp;
@@ -251,6 +255,7 @@ char *path;
 		lastdrv = dd;
 	}
 #endif	/* !_NODOSDRIVE */
+	LOG1(_LOG_INFO_, n, "chdir(\"%k\");", path);
 
 	return(n);
 }
@@ -363,6 +368,7 @@ int Xsymlink(name1, name2)
 char *name1, *name2;
 {
 	errno = EINVAL;
+	LOG2(_LOG_WARNING_, -1, "symlink(\"%k\", \"%k\");", name1, name2);
 
 	return(-1);
 }
@@ -397,6 +403,7 @@ int mode;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 	n = unixchmod(path, mode);
+	LOG2(_LOG_NOTICE_, n, "chmod(\"%k\", %d);", path, mode);
 
 	return(n);
 }
@@ -411,6 +418,7 @@ struct utimbuf *times;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 	n = unixutime(path, times);
+	LOG1(_LOG_NOTICE_, n, "utime(\"%k\");", path);
 
 	return(n);
 }
@@ -424,6 +432,7 @@ struct timeval tvp[2];
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 	n = unixutimes(path, tvp);
+	LOG1(_LOG_NOTICE_, n, "utimes(\"%k\");", path);
 
 	return(n);
 }
@@ -436,6 +445,7 @@ char *path;
 u_long flags;
 {
 	errno = EACCESS;
+	LOG2(_LOG_WARNING_, -1, "chflags(\"%k\", %05o);", path, flags);
 
 	return(-1);
 }
@@ -449,6 +459,7 @@ uid_t uid;
 gid_t gid;
 {
 	errno = EACCESS;
+	LOG3(_LOG_WARNING_, -1, "chown(\"%k\", %d, %d);", path, uid, gid);
 
 	return(-1);
 }
@@ -466,6 +477,7 @@ char *path;
 		&& unixchmod(path, (S_IREAD | S_IWRITE | S_ISVTX)) >= 0)
 			n = unixunlink(path);
 	}
+	LOG1(_LOG_WARNING_, n, "unlink(\"%k\");", path);
 
 	return(n);
 }
@@ -483,6 +495,7 @@ char *from, *to;
 		n = -1;
 	}
 	else n = unixrename(from, to);
+	LOG2(_LOG_WARNING_, n, "rename(\"%k\", \"%k\");", from, to);
 
 	return(n);
 }
@@ -508,6 +521,22 @@ int flags, mode;
 	else
 #endif	/* !_NOUSELFN */
 	fd = open(path, flags, mode);
+#ifndef	_NOLOGGING
+	switch (flags & O_ACCMODE) {
+		case O_WRONLY:
+			LOG2(_LOG_WARNING_, fd,
+				"open(\"%k\", O_WRONLY, %05o);", path, mode);
+			break;
+		case O_RDWR:
+			LOG2(_LOG_WARNING_, fd,
+				"open(\"%k\", O_RDWR, %05o);", path, mode);
+			break;
+		default:
+			LOG2(_LOG_INFO_, fd,
+				"open(\"%k\", O_RDONLY, %05o);", path, mode);
+			break;
+	}
+#endif	/* !_NOLOGGING */
 
 	return(fd);
 }
@@ -614,6 +643,7 @@ int mode;
 		path = convput(conv, path, 1, 1, NULL, NULL);
 		n = unixmkdir(path, mode);
 	}
+	LOG2(_LOG_WARNING_, n, "mkdir(\"%k\", %05o);", path, mode);
 
 	return(n);
 }
@@ -626,6 +656,7 @@ char *path;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
 	n = unixrmdir(path);
+	LOG1(_LOG_WARNING_, n, "rmdir(\"%k\");", path);
 
 	return(n);
 }
@@ -650,6 +681,8 @@ char *path, *type;
 	else
 #endif
 	fp = fopen(path, type);
+	LOG2((*type == 'r') ? _LOG_INFO_ : _LOG_WARNING_, (fp) ? 0 : -1,
+		"fopen(\"%k\", \"%s\");", path, type);
 
 	return(fp);
 }

@@ -30,6 +30,8 @@
 #define	_NOTRADLAYOUT
 #define	_NOEXTRAWIN
 #define	_NOPTY
+#define	_NOEXTRAATTR
+#define	_NOLOGGING
 #endif	/* FD < 2 */
 
 #ifndef	__FD_PRIMAL__
@@ -149,6 +151,12 @@ extern char *_mtrace_file;
 #define	PTYMODE		0
 #define	PTYTERM		"vt100"
 #define	PTYMENUKEY	-1
+#define	LOGFILE		""
+#define	LOGSIZE		1024
+#define	USESYSLOG	0
+#define	LOGLEVEL	0
+#define	ROOTLOGLEVEL	1
+#define	THRUARGS	0
 #define	UNICODEBUFFER	0
 #define	SJISPATH	""
 #define	EUCPATH		""
@@ -187,6 +195,7 @@ extern char *_mtrace_file;
 #endif
 #define	MAXHISTNO	MAXTYPE(short)
 #define	MAXINVOKEARGS	MAXWINDOWS
+#define	MAXLOGLEN	255
 
 #ifdef	_NOSPLITWIN
 #undef	MAXWINDOWS

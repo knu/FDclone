@@ -2029,6 +2029,70 @@ int home;
 
 	return(argc);
 }
+
+int completegroup(name, len, argc, argvp)
+char *name;
+int len, argc;
+char ***argvp;
+{
+	struct group *grp;
+	char *new;
+
+	len = strlen(name);
+#  ifdef	DEBUG
+	_mtrace_file = "setgrent(start)";
+	setgrent();
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "setgrent(end)";
+		malloc(0);	/* dummy alloc */
+	}
+	for (;;) {
+		_mtrace_file = "getgrent(start)";
+		grp = getgrent();
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "getgrent(end)";
+			malloc(0);	/* dummy alloc */
+		}
+		if (!grp) break;
+		if (strnpathcmp(name, grp -> gr_name, len)) continue;
+		new = strdup2(grp -> gr_name);
+		if (finddupl(new, argc, *argvp)) {
+			free(new);
+			continue;
+		}
+
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 1) * sizeof(char *));
+		(*argvp)[argc++] = new;
+	}
+	_mtrace_file = "endgrent(start)";
+	endgrent();
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "endgrent(end)";
+		malloc(0);	/* dummy alloc */
+	}
+#  else	/* !DEBUG */
+	setgrent();
+	while ((grp = getgrent())) {
+		if (strnpathcmp(name, grp -> gr_name, len)) continue;
+		new = strdup2(grp -> gr_name);
+		if (finddupl(new, argc, *argvp)) {
+			free(new);
+			continue;
+		}
+
+		*argvp = (char **)realloc2(*argvp,
+			(argc + 1) * sizeof(char *));
+		(*argvp)[argc++] = new;
+	}
+	endgrent();
+#  endif	/* !DEBUG */
+
+	return(argc);
+}
 # endif	/* !NOUID */
 
 static int NEAR completefile(file, len, argc, argvp, dir, dlen, exe)

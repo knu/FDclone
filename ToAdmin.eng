@@ -26,8 +26,18 @@ not be able to raise the skill of the special operation in
 some accidents and the shell programming.
   And the most important problem is a security. There is not
 only the risk that a miss operation can cause damages widely,
-but also the problem that any FDclone operation can remain
-in no log.
+but also the problem that FDclone operations is hard to be
+traced later.
+
+  If you nevertheless dare to operate as a root, I suggest
+that you should record the log at least.
+  FDclone has the function to record the log, which can
+output to not only a file but also syslogd(8). The log level
+of the root especially can be specified individually.
+  If you specify this log setting in /etc/fd2rc and then
+attribute readonly to the variables for the setting, no one
+can avoid logging with changing settings after FDclone has
+been invoked.
 
   You should keep a awareness of the problem for just root,
 and walk on the road of UNIX administrator not invoking

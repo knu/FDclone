@@ -100,9 +100,15 @@ extern char *mesconv __P_((char *, char *));
 #define	TFLAG_K	mesconv("フラグ:", "Flags:")
 #define	TOLD_K	mesconv("旧", "Old")
 #define	TNEW_K	mesconv("新", "New")
+#define	TOWN_K	mesconv("オーナー", "Owner")
+#define	TGRP_K	mesconv("グループ", "Group")
+#define	AOWNR_K	mesconv("ファイルのオーナー名:", "File owner:")
+#define	AGRUP_K	mesconv("ファイルのグループ名:", "File group membership:")
 #define	ATTRM_K	mesconv("マークファイルの変更を行ないます.", "Changing attr. of the marked files.")
+#define	ATTRD_K	mesconv("ディレクトリ以下の変更を行ないます.", "Changing attr. under the directory.")
 #define	CMODE_K	mesconv("A: ファイルモードの変更", "A: Attribute")
 #define	CDATE_K	mesconv("S: 日付,時間の変更", "S: timeStamp")
+#define	COWNR_K	mesconv("O: オーナー,グループの変更", "O: Owner,group")
 #define	ILTMS_K	mesconv("タイムスタンプの設定が違います.", "Invalid timestamp.")
 #define	ILLNK_K	mesconv("シンボリックリンクの属性は変更できません.", "Cannot change attribute of symbolic link.")
 #define	FSDIR_K	mesconv("情報を知りたいディレクトリ名:", "Target directory:")
@@ -153,6 +159,7 @@ extern char *mesconv __P_((char *, char *));
 #define	POP_H	meslist("スタックから取出", "File from stack")
 #define	LOGD_H	meslist("DIRの移動", "Change dir")
 #define	ATTR_H	meslist("属性の変更", "Attribute change")
+#define	ATRD_H	meslist("再帰的属性変更", "Attr. change recursive")
 #define	EXEF_H	meslist("FILEの実行", "Execute file")
 #define	INFO_H	meslist("FILEシステム情報", "Filesystem info.")
 #define	COPY_H	meslist("FILEのコピー", "Copy file")
@@ -298,6 +305,24 @@ extern char *mesconv __P_((char *, char *));
 #define	PTYKY_E \
 	meslist("擬似端末メニューの起動キーを指定します.", \
 		"Define the start key for pseudo terminal menu.")
+#define	LGFIL_E \
+	meslist("ログファイル名を指定します.", \
+		"Define the filename for logging.")
+#define	LGSIZ_E \
+	meslist("ログファイルの最大サイズを KB 単位で指定します.", \
+		"Define the file size by KB for logging.")
+#define	USYLG_E \
+	meslist("システムロガー (syslog) を用いてログを取ります.", \
+		"Use the system logger (syslog) for logging.")
+#define	LGLVL_E \
+	meslist("一般ユーザ用のログレベルを指定します.", \
+		"Define the logging level for normal users.")
+#define	RLGLV_E \
+	meslist("スーパユーザ用のログレベルを指定します.", \
+		"Define the logging level for the super user.")
+#define	THARG_E \
+	meslist("起動時引数のパス名を評価せず素通しします.", \
+		"Pass through pathnames in the startup arguments as is.")
 #define	UNBF_E \
 	meslist("UNICODE の変換テーブルをオンメモリで持ち続けます.", \
 		"Hold the UNICODE translation table on memory.")
@@ -310,6 +335,12 @@ extern char *mesconv __P_((char *, char *));
 #define	IPKC_E \
 	meslist("キーボード入力文字の漢字コードを設定します.", \
 		"Set the Kanji code to be inputted.")
+#define	PIKC_E \
+	meslist("疑似端末入力文字の漢字コードを設定します.", \
+		"Set the Kanji code to be inputted to pty.")
+#define	POKC_E \
+	meslist("疑似端末出力文字の漢字コードを設定します.", \
+		"Set the Kanji code to be outputted from pty.")
 #define	FNKC_E \
 	meslist("ファイル名に用いる文字の漢字コードを設定します.", \
 		"Set the Kanji code used in filename.")

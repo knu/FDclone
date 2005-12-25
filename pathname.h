@@ -249,6 +249,7 @@ extern char *searchexecpath __P_((char *, char *));
 extern char *finddupl __P_((char *, int, char **));
 # ifndef	NOUID
 extern int completeuser __P_((char *, int, int, char ***, int));
+extern int completegroup __P_((char *, int, int, char ***));
 # endif
 extern int completepath __P_((char *, int, int, char ***, int));
 extern char *findcommon __P_((int, char **));
