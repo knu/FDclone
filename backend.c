@@ -1408,7 +1408,8 @@ int fd;
 				}
 			}
 		}
-		else if (isinkanji1(key.code) && (n = ptygetch(fd)) >= 0) {
+		else if (isinkanji1(key.code, inputkcode)
+		&& (n = ptygetch(fd)) >= 0) {
 			cnv++;
 			buf[1] = n;
 			(key.len)++;

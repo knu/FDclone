@@ -1971,7 +1971,7 @@ int ch;
 {
 #ifndef	_NOKANJICONV
 	char tmpkanji[4];
-	int n;
+	int n, code;
 #endif
 	int ch2;
 
@@ -1991,20 +1991,25 @@ int ch;
 	}
 # endif
 #else	/* !_NOKANJICONV */
-	if (inputkcode == EUC && isekana2(ch)) {
+# ifndef	_NOPTY
+	if (parentfd >= 0) code = ptyinkcode;
+	else
+# endif
+	code = inputkcode;
+	if (code == EUC && isekana2(ch)) {
 		tmpkanji[0] = (char)C_EKANA;
 		tmpkanji[1] = (ch & 0xff);
 		tmpkanji[2] = '\0';
-		kanjiconv(buf, tmpkanji, 2, inputkcode, DEFCODE, L_INPUT);
+		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
 		return(1);
 	}
-	if (inputkcode == SJIS && iskana2(ch)) {
+	if (code == SJIS && iskana2(ch)) {
 		tmpkanji[0] = ch;
 		tmpkanji[1] = '\0';
-		kanjiconv(buf, tmpkanji, 2, inputkcode, DEFCODE, L_INPUT);
+		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
 		return(1);
 	}
-	if (inputkcode == UTF8 || inputkcode == M_UTF8) {
+	if (code == UTF8 || code == M_UTF8) {
 		if ((ch & 0xff00) || !ismsb(ch)) /*EMPTY*/;
 		else if (!kbhit2(WAITMETA * 1000L)
 		|| (ch2 = getch2()) == EOF) {
@@ -2016,7 +2021,7 @@ int ch;
 			tmpkanji[1] = ch2;
 			tmpkanji[2] = '\0';
 			n = kanjiconv(buf, tmpkanji, 2,
-				inputkcode, DEFCODE, L_INPUT);
+				code, DEFCODE, L_INPUT);
 			return(n);
 		}
 		else if (!kbhit2(WAITMETA * 1000L) || (n = getch2()) == EOF) {
@@ -2029,7 +2034,7 @@ int ch;
 			tmpkanji[2] = n;
 			tmpkanji[3] = '\0';
 			n = kanjiconv(buf, tmpkanji, 3,
-				inputkcode, DEFCODE, L_INPUT);
+				code, DEFCODE, L_INPUT);
 # ifdef	CODEEUC
 			if (isekana(buf, 0)) n = 1;
 # endif
@@ -2038,9 +2043,9 @@ int ch;
 	}
 #endif	/* !_NOKANJICONV */
 
-	if (isinkanji1(ch)) {
+	if (isinkanji1(ch, code)) {
 		if (!kbhit2(WAITMETA * 1000L)
-		|| (ch2 = getch2()) == EOF || !isinkanji2(ch2)) {
+		|| (ch2 = getch2()) == EOF || !isinkanji2(ch2, code)) {
 			buf[0] = '\0';
 			return(-1);
 		}
@@ -2052,7 +2057,7 @@ int ch;
 		tmpkanji[0] = ch;
 		tmpkanji[1] = ch2;
 		tmpkanji[2] = '\0';
-		kanjiconv(buf, tmpkanji, 2, inputkcode, DEFCODE, L_INPUT);
+		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
 #endif
 		return(2);
 	}

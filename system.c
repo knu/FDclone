@@ -8968,7 +8968,7 @@ syntaxtree *trp;
 
 	for (i = n; i < (trp -> comm) -> argc; i++) {
 		if (i > n) fputc(' ', stdout);
-		if (argv[i]) kanjifputs(argv[i], stdout);
+		if (argv[i]) argfputs(argv[i], stdout);
 	}
 	if (n == 1) fputnl(stdout);
 	fflush(stdout);

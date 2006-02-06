@@ -74,7 +74,7 @@ extern char *unitblpath;
 #ifndef	_NOPTY
 extern int ptymode;
 extern int parentfd;
-#endif	/* !_NOPTY */
+#endif
 
 #define	CLOCKUPDATE	10	/* sec */
 
@@ -810,7 +810,7 @@ VOID title(VOID_A)
 		Xputch2('#');
 		i++;
 	}
-	cp = (iswellomit()) ? "" : " (c)1995-2005 T.Shirai  ";
+	cp = (iswellomit()) ? "" : " (c)1995-2006 T.Shirai  ";
 	Xcputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) Xputch2(' ');

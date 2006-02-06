@@ -266,7 +266,7 @@ STATFSARGS
 	USESTATVFSH, USEFSDATA を定義した場合は意味を持ちま
 	せん。
 
-(以下の 8 つは排他的です。同時に複数定義できません。)
+(以下の 9 つは排他的です。同時に複数定義できません。)
 USEMNTENTH
 	マウント情報を得るために、<mntent.h> で宣言されてい
 	る関数群を用います。
@@ -274,8 +274,11 @@ USEMNTTABH
 	マウント情報を得るために、<sys/mnttab.h> で宣言され
 	ている関数群を用います。
 USEGETFSSTAT
-	マウント情報を得るために、関数 getfsstat(3) を用いま
+	マウント情報を得るために、関数 getfsstat(2) を用いま
 	す。
+USEGETVFSTAT
+	マウント情報を得るために、関数 getvfsstat(2) を用い
+	ます。
 USEMNTCTL
 	マウント情報を得るために、関数 mntctl(3) を用います。
 USEMNTINFOR

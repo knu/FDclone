@@ -1115,11 +1115,14 @@ int isnl;
 		noecho2();
 		nonl2();
 		notabs();
+		if (dumbterm > 1) ttymode(ECHO | CRMOD, 0, 0, 0);
 # else	/* !USESGTTY */
 		if (isnl) ttymode(0, TIO_LCOOKED | ~TIO_LNOECHO,
 			IGNBRK, TIO_ICOOKED | ICRNL, TIO_ONL | TAB3, 0, 1, 0);
 		else ttymode(0, TIO_LCOOKED | ~TIO_LNOECHO,
 			IGNBRK, TIO_ICOOKED | ICRNL, TAB3, TIO_ONL, 1, 0);
+		if (dumbterm > 1)
+			ttymode(ECHO, 0, ICRNL, 0, TIO_ONL, 0, 1, 0);
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	}

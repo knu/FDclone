@@ -170,7 +170,7 @@ USEDIRECT SYSVDIRENT NODNAMLEN NODRECLEN DNAMESIZE \
 HAVETIMEZONE NOTMGMTOFF \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USESTATVFS_T USEFFSIZE STATFSARGS \
-USEMNTENTH USEMNTTABH USEGETFSSTAT USEMNTCTL \
+USEMNTENTH USEMNTTABH USEGETFSSTAT USEGETVFSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
@@ -427,7 +427,7 @@ else
 		echo "#define	USETERMIO"
 	fi
 fi
-if isexist "t.c_line" "termios" "struct termios t;"; then
+if isexist "t.c_line" termios "struct termios t;"; then
 	echo "#define	HAVECLINE"
 fi
 if [ -c /dev/ptmx -a -d /dev/pts ]; then
@@ -498,24 +498,21 @@ if [ "$arg" != "2" ]; then
 	echo "#define	STATFSARGS	$arg"
 fi
 
+statfs=
 if isexist "getmntent(0)" "stdio mntent"; then
 	echo "#define	USEMNTENTH"
 elif isexist "getmntent(0,0)" "stdio sys/mnttab"; then
 	echo "#define	USEMNTTABH"
 elif isexist "mntctl(0,0,0)"; then
 	echo "#define	USEMNTCTL"
+elif isexist "getvfsstat(0,0,0)" sys/statvfs; then
+	echo "#define	USEGETVFSTAT"
+	statfs=statvfs
 elif isexist "getmntinfo_r(0,0,0,0)"; then
 	echo "#define	USEMNTINFOR"
-elif isexist "getmntinfo(0,0)"; then {
+elif isexist "getmntinfo(0,0)"; then
 	echo "#define	USEMNTINFO"
-	if isexist "getvfsbytype(0); return(*(c.vfc_name));" \
-	"sys/param sys/mount" "struct vfsconf c;"; then
-		echo "#define	USEVFCNAME"
-	elif isexist "f.f_fstypename" \
-	"sys/param sys/mount" "struct statfs f;"; then
-		echo "#define	USEFFSTYPE"
-	fi
-}
+	statfs=statfs
 elif isexist "getfsstat(0,0,0)"; then
 	echo "#define	USEGETFSSTAT"
 elif isexist "getmnt(0,0,0,0,0)"; then
@@ -525,6 +522,15 @@ elif isexist "getfsent()" \
 	echo "#define	USEGETFSENT"
 fi
 
+if [ -z "$statfs" ]; then
+	:
+elif isexist "getvfsbytype(0); return(*(c.vfc_name));" \
+"sys/param sys/mount" "struct vfsconf c;"; then
+	echo "#define	USEVFCNAME"
+elif isexist "f.f_fstypename" \
+"sys/param sys/mount" "struct $statfs f;"; then
+	echo "#define	USEFFSTYPE"
+fi
 
 lib=
 if isexist "re_comp(0)" ctype "extern char *re_comp();" \
@@ -569,19 +575,19 @@ fi
 if noexist "getcwd(0,0)"; then
 	echo "#define	USEGETWD"
 fi
-if isexist "fcntl(0,F_SETLKW,0)" "fcntl"; then
+if isexist "fcntl(0,F_SETLKW,0)" fcntl; then
 	echo "#define	USEFCNTLOCK"
-elif isexist "flock(0,0)" "sys/file"; then
+elif isexist "flock(0,0)" sys/file; then
 	:
 elif isexist "lockf(0,0,0)"; then
 	echo "#define	USELOCKF"
-elif isexist "lockf(0,0,0)" "sys/lockf"; then
+elif isexist "lockf(0,0,0)" sys/lockf; then
 	echo "#define	USELOCKFH"
 	echo "#define	USELOCKF"
 else
 	echo "#define	NOFLOCK"
 fi
-if noexist "syslog(0,0,0)" "syslog"; then
+if noexist "syslog(0,0,0)" syslog; then
 	echo "#define	NOSYSLOG"
 fi
 if isexist "mktime(0)" time; then
@@ -592,7 +598,7 @@ fi
 if isexist "sysconf(0)"; then
 	echo "#define	USESYSCONF"
 fi
-if isexist "_llseek(0,0,0,0,0)" "linux/unistd" "static _syscall5(int, _llseek,
+if isexist "_llseek(0,0,0,0,0)" linux/unistd "static _syscall5(int, _llseek,
 	unsigned int, fd,
 	unsigned long, ofs_h,
 	unsigned long, ofs_l,

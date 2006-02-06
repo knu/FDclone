@@ -217,7 +217,7 @@ VOID logmessage(int lvl, CONST char *fmt, ...)
 #else
 /*VARARGS2*/
 VOID logmessage(lvl, fmt, va_alist)
-int lvl, val;
+int lvl;
 CONST char *fmt;
 va_dcl
 #endif

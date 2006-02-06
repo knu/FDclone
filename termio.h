@@ -133,7 +133,7 @@ typedef struct ttysize	termwsize_t;
 #else	/* !MSDOS */
 # ifdef	USESGTTY
 # define	TIO_BUFSIZ	(sizeof(termioctl_t) \
-				+ sizeof(int) + sizeof(struct tchars));
+				+ sizeof(int) + sizeof(struct tchars))
 # else
 # define	TIO_BUFSIZ	sizeof(termioctl_t)
 # endif

@@ -596,8 +596,6 @@ typedef long	off_t;
 #define	DECLSIGLIST
 #define	DECLERRLIST
 #define	USELEAPCNT
-#define	USEMOUNTH
-#define	USEMNTINFO
 #define	USEFFSTYPE
 #define	USERE_COMP
 #define	USESETENV
@@ -606,6 +604,13 @@ typedef long	off_t;
 #include <sys/param.h>
 # if	defined (NetBSD1_0) && (NetBSD1_0 < 1)
 # define	USEFFSIZE
+# endif
+# if	defined (__NetBSD_Version__) && (__NetBSD_Version__ >= 300000000)
+# define	USESTATVFSH
+# define	USEGETVFSTAT
+# else
+# define	USEMOUNTH
+# define	USEMNTINFO
 # endif
 #endif
 
@@ -859,6 +864,7 @@ typedef long	off_t;
 /* #define USEMNTENTH	;use <mntent.h> as header of the mount entry */
 /* #define USEMNTTABH	;use <sys/mnttab.h> as header of the mount entry */
 /* #define USEGETFSSTAT	;use getfsstat() to get the mount entry */
+/* #define USEGETVFSTAT	;use getvfsstat() to get the mount entry */
 /* #define USEMNTCTL	;use mntctl() to get the mount entry */
 /* #define USEMNTINFOR	;use getmntinfo_r() to get the mount entry */
 /* #define USEMNTINFO	;use getmntinfo() to get the mount entry */
@@ -1130,41 +1136,51 @@ typedef long	off_t;
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT)
+# ifdef	USEGETVFSTAT
+# undef	USEGETVFSTAT
+# endif
+#endif
+
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT)
 # ifdef	USEMNTCTL
 # undef	USEMNTCTL
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT) || defined (USEMNTCTL)
 # ifdef	USEMNTINFOR
 # undef	USEMNTINFOR
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
-|| defined (USEMNTINFOR)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR)
 # ifdef	USEMNTINFO
 # undef	USEMNTINFO
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
-|| defined (USEMNTINFOR) || defined (USEMNTINFO)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
+|| defined (USEMNTINFO)
 # ifdef	USEGETMNT
 # undef	USEGETMNT
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
-|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
+|| defined (USEMNTINFO) || defined (USEGETMNT)
 # ifdef	USEGETFSENT
 # undef	USEGETFSENT
 # endif
 #endif
 
-#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) || defined (USEMNTCTL) \
-|| defined (USEMNTINFOR) || defined (USEMNTINFO) || defined (USEGETMNT) \
-|| defined (USEGETFSENT)
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
+|| defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEGETFSENT)
 # ifdef	USEMNTENTH
 # undef	USEMNTENTH
 # endif

@@ -275,7 +275,7 @@ STATFSARGS
 	In case of that USESTATVFSH, USEFSDATA is defined,
 	this is meaningless.
 
-(The following 8 identifiers is exclusive. These can not be
+(The following 9 identifiers is exclusive. These can not be
 defined simultaneously.)
 USEMNTENTH
 	The functions declared in <mntent.h> is used to get
@@ -284,7 +284,10 @@ USEMNTTABH
 	The functions declared in <sys/mnttab.h> is used to
 	get the mount information.
 USEGETFSSTAT
-	The function getfsstat(3) is used to get the mount
+	The function getfsstat(2) is used to get the mount
+	information.
+USEGETVFSTAT
+	The function getvfsstat(2) is used to get the mount
 	information.
 USEMNTCTL
 	The function mntctl(3) is used to get the mount

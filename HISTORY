@@ -1,3 +1,10 @@
+Ver. 2.08a	NetBSD 3.0 対応。
+ (02/07/06)	PTYINKCODE の設定がうまく機能していなかった点を修正。
+		varargs を用いる環境で compile に失敗していた点を修正。
+		sgtty を用いる環境で compile に失敗していた点を修正。
+		端末名未登録時に fdsh でキー入力出来なかった点を修正。
+		組込みコマンド echo が DEFKCODE を見ていなかった点を修正。
+
 Ver. 2.08	内部変数 PTYINKCODE, PTYOUTKCODE の追加。
  (12/26/05)	内部変数 LOGFILE, LOGSIZE, USESYSLOG の追加。
 		内部変数 LOGLEVEL, ROOTLOGLEVEL の追加。

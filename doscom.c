@@ -119,7 +119,7 @@ typedef struct fs_data		statfs_t;
 #    if	(STATFSARGS == 3)
 #    define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
 #    else
-#    define	statfs2		statfs
+#    define	statfs2			statfs
 #    endif
 #   endif
 #  endif	/* USESTATFSH || USEVFSH || USEMOUNTH */

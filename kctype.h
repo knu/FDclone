@@ -341,17 +341,17 @@ int i;
 
 #ifdef	_NOKANJICONV
 # ifdef	CODEEUC
-# define	isinkanji1(c)	iseuc(c)
-# define	isinkanji2(c)	iseuc(c)
+# define	isinkanji1(c,k)	iseuc(c)
+# define	isinkanji2(c,k)	iseuc(c)
 # else
-# define	isinkanji1(c)	issjis1(c)
-# define	isinkanji2(c)	issjis2(c)
+# define	isinkanji1(c,k)	issjis1(c)
+# define	isinkanji2(c,k)	issjis2(c)
 # endif
 #else	/* !_NOKANJICONV */
-#define	isinkanji1(c)	((inputkcode == EUC) ? iseuc(c) : \
-			((inputkcode == SJIS) ? issjis1(c) : 0))
-#define	isinkanji2(c)	((inputkcode == EUC) ? iseuc(c) : \
-			((inputkcode == SJIS) ? issjis2(c) : 0))
+#define	isinkanji1(c,k)	(((k) == EUC) ? iseuc(c) : \
+			(((k) == SJIS) ? issjis1(c) : 0))
+#define	isinkanji2(c,k)	(((k) == EUC) ? iseuc(c) : \
+			(((k) == SJIS) ? issjis2(c) : 0))
 #endif	/* !_NOKANJICONV */
 
 #endif	/* !__KCTYPE_H_ */

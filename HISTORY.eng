@@ -1,3 +1,10 @@
+Ver. 2.08a	Support NetBSD 3.0.
+ (02/07/06)	Failure to work according to 'PTYINKCODE' setting is fixed.
+		Failure to compile on some environments using varargs is fixed.
+		Failure to compile on some environments using sgtty is fixed.
+		Failure to input keys on fdsh with unregistered TERM is fixed.
+		Bug that 'echo' builtin does not refer to 'DEFKCODE' is fixed.
+
 Ver. 2.08	Add 'PTYINKCODE' and 'PTYOUTKCODE' internal variables.
  (12/26/05)	Add 'LOGFILE', 'LOGSIZE' and 'USESYSLOG' internal variables.
 		Add 'LOGLEVEL' and 'ROOTLOGLEVEL' internal variables.
