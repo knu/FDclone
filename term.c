@@ -55,10 +55,6 @@ typedef struct _kstree_t {
 } kstree_t;
 #endif	/* !MSDOS */
 
-#ifdef	USESELECTH
-#include <sys/select.h>
-#endif
-
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
@@ -77,7 +73,7 @@ extern int errno;
 #include "termio.h"
 #include "term.h"
 
-#define	WINTERMNAME	"iris"
+#define	WINTERMNAME		"iris"
 #ifdef	USESTRERROR
 #define	strerror2		strerror
 #else
@@ -337,16 +333,6 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 # endif
 #endif
 #endif	/* !MSDOS */
-
-#ifndef	FD_SET
-typedef struct fd_set {
-	u_int fds_bits[1];
-} fd_set;
-# define	FD_ZERO(p)	(((p) -> fds_bits[0]) = 0)
-# define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= ((u_int)1 << (n)))
-#endif	/* !FD_SET */
-
-#define	MAXFDSET	256
 
 static int NEAR err2 __P_((char *));
 #if	!MSDOS
@@ -1580,8 +1566,18 @@ char *s;
 	char *p;
 
 	p = strbuf;
+#  ifdef	DEBUG
+	_mtrace_file = "tgetstr(start)";
 	s = tgetstr(s, &p);
-# endif
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "tgetstr(end)";
+		malloc(0);	/* dummy alloc */
+	}
+#  else
+	s = tgetstr(s, &p);
+#  endif
+# endif	/* !USETERMINFO */
 	if (s) {
 		if (*term) free(*term);
 		*term = tstrdup(s);
@@ -1596,14 +1592,35 @@ char **term, *str1, *str2;
 # ifdef	USETERMINFO
 	if (str1) str1 = tstrdup(str1);
 	else str1 = tparamstr(str2, 1, 1);
-# else
+# else	/* !USETERMINFO */
 	char *p, strbuf[TERMCAPSIZE];
 
 	p = strbuf;
 
+#  ifdef	DEBUG
+	_mtrace_file = "tgetstr(start)";
+	str1 = tgetstr(str1, &p);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "tgetstr(end)";
+		malloc(0);	/* dummy alloc */
+	}
+	if (str1) str1 = tstrdup(str1);
+	else {
+		_mtrace_file = "tgetstr(start)";
+		str2 = tgetstr(str2, &p);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "tgetstr(end)";
+			malloc(0);	/* dummy alloc */
+		}
+		str1 = tparamstr(str2, 1, 1);
+	}
+#  else
 	if ((str1 = tgetstr(str1, &p))) str1 = tstrdup(str1);
 	else str1 = tparamstr(tgetstr(str2, &p), 1, 1);
-# endif
+#  endif
+# endif	/* !USETERMINFO */
 	if (str1) {
 		if (*term) free(*term);
 		*term = str1;
@@ -2600,13 +2617,12 @@ long usec;
 {
 #if	defined (NOTUSEBIOS) || !defined (DJGPP) || (DJGPP < 2)
 	union REGS reg;
-#else
+#else	/* !NOTUSEBIOS && DJGPP && DJGPP >= 2 */
 # ifndef	PC98
-	fd_set readfds;
 	struct timeval tv;
-	int n, fd;
+	int n;
 # endif
-#endif
+#endif	/* !NOTUSEBIOS && DJGPP && DJGPP >= 2 */
 
 	if (ungetnum > 0) return(1);
 #ifdef	NOTUSEBIOS
@@ -2627,17 +2643,9 @@ long usec;
 	return(reg.h.bh != 0);
 # else	/* !PC98 */
 #  if	defined (DJGPP) && (DJGPP >= 2)
-	fd = (ttyio < MAXFDSET || (n = safe_dup(ttyio)) < 0) ? ttyio : n;
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
-	FD_ZERO(&readfds);
-	FD_SET(fd, &readfds);
-
-	do {
-		n = select(fd + 1, &readfds, NULL, NULL, &tv);
-	} while (n < 0 && errno == EINTR);
-	if (fd != ttyio) close(fd);
-	if (n < 0) err2("select()");
+	if ((n = readselect(1, &ttyio, NULL, &tv)) < 0) err2("select()");
 
 	return(n);
 #  else	/* !DJGPP || DJGPP < 2 */
@@ -2760,7 +2768,7 @@ int sig;
 			raise(sig);
 		}
 # endif
-		if (keywaitfunc && (*keywaitfunc)() < 0) return(-1);
+		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	} while (!i);
 
 #else	/* !DJGPP || NOTUSEBIOS || PC98 */
@@ -2773,7 +2781,7 @@ int sig;
 # endif
 			memcpy((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1));
 		}
-		if (keywaitfunc && (*keywaitfunc)() < 0) return(-1);
+		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	}
 #endif	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if ((ch = getch2()) == EOF) return(K_NOKEY);
@@ -2809,7 +2817,11 @@ int c;
 {
 	if (ungetnum >= (int)sizeof(ungetbuf) / sizeof(u_char) - 1)
 		return(EOF);
-	ungetbuf[ungetnum++] = c;
+	if (ungetnum)
+		memmove(&(ungetbuf[1]), &(ungetbuf[0]),
+			ungetnum * sizeof(u_char));
+	ungetbuf[0] = c;
+	ungetnum++;
 
 	return(c);
 }
@@ -2907,21 +2919,12 @@ long usec;
 # ifdef	NOSELECT
 	return((usec) ? 1 : 0);
 # else
-	fd_set readfds;
 	struct timeval tv;
-	int n, fd;
+	int n;
 
-	fd = (ttyio < MAXFDSET || (n = safe_dup(ttyio)) < 0) ? ttyio : n;
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
-	FD_ZERO(&readfds);
-	FD_SET(fd, &readfds);
-
-	do {
-		n = select(fd + 1, &readfds, NULL, NULL, &tv);
-	} while (n < 0 && errno == EINTR);
-	if (fd != ttyio) close(fd);
-	if (n < 0) err2("select()");
+	if ((n = readselect(1, &ttyio, NULL, &tv)) < 0) err2("select()");
 
 	return(n);
 # endif
@@ -2960,7 +2963,7 @@ int sig;
 			ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
 			suspended = 0;
 		}
-		if (keywaitfunc && (*keywaitfunc)() < 0) return(-1);
+		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 # ifndef	TIOCSTI
 		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 # endif
@@ -2991,10 +2994,12 @@ int sig;
 			return(mkmetakey(ch));
 		for (j = 0; j < p -> num; j++)
 			if (key == keyseq[p -> next[j].key].str[0]) break;
-		if (j >= p -> num) return(key);
+		if (j >= p -> num) {
+			ungetch2(ch);
+			return(key);
+		}
 		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == 1)
-			return(keyseq[p -> key].code);
+		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
 	}
 	else {
 		for (j = 0; j < p -> num; j++)
@@ -3010,14 +3015,19 @@ int sig;
 	for (i = 1; p && p -> next; i++) {
 		for (j = 0; j < p -> num; j++)
 			if (ch == keyseq[p -> next[j].key].str[i]) break;
-		if (j >= p -> num) return(key);
+		if (j >= p -> num) break;
 		p = &(p -> next[j]);
 		if (keyseq[p -> key].len == i + 1)
 			return(keyseq[p -> key].code);
 		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
-			return(key);
+			break;
 	}
 
+	for (j = 1; j < i; j++) {
+		if (j >= keyseq[p -> key].len) break;
+		ungetch2(keyseq[p -> key].str[j]);
+	}
+	ungetch2(ch);
 	return(key);
 }
 
@@ -3046,7 +3056,11 @@ int c;
 # else
 	if (ungetnum >= (int)sizeof(ungetbuf) / sizeof(u_char) - 1)
 		return(EOF);
-	ungetbuf[ungetnum++] = c;
+	if (ungetnum)
+		memmove(&(ungetbuf[1]), &(ungetbuf[0]),
+			ungetnum * sizeof(u_char));
+	ungetbuf[0] = c;
+	ungetnum++;
 # endif
 
 	return(c);
@@ -3122,7 +3136,8 @@ int xmax, ymax;
 
 	if (dumbterm) /*EMPTY*/;
 	else if (usegetcursor || x < 0 || y < 0) {
-		VOID_C setscroll(-1, -1);
+		if (usegetcursor) VOID_C setscroll(-1, -1);
+		else VOID_C setscroll(0, 998);
 		if (maxlocate(&ty, &tx) >= 0 && (tx > x || ty > y)) {
 			if (tx > x) x = tx;
 			if (ty > y) y = ty;
@@ -3141,7 +3156,7 @@ int xmax, ymax;
 	if (n_line <= 0 || (ymax > 0 && n_line < ymax))
 		return("Line size too small");
 
-	if (xmax > 0 && ymax > 0) VOID_C setscroll(-1, -1);
+	if (xmax > 0 && ymax > 0) VOID_C setscroll(0, n_line - 1);
 
 	return(NULL);
 }

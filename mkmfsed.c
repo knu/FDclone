@@ -24,17 +24,17 @@
 
 #if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
 #define	MAXOPENFILE	sysconf(_SC_OPEN_MAX)
-#else
+#else	/* !USESYSCONF || !_SC_OPEN_MAX */
 # ifdef	NOFILE
 # define	MAXOPENFILE	NOFILE
-# else
+# else	/* !NOFILE */
 #  ifdef	OPEN_MAX
 #  define	MAXOPENFILE	OPEN_MAX
 #  else
 #  define	MAXOPENFILE	64
 #  endif
-# endif
-#endif
+# endif	/* !NOFILE */
+#endif	/* !USESYSCONF || !_SC_OPEN_MAX */
 
 #ifndef	PREFIX
 #define	PREFIX		"/usr/local"

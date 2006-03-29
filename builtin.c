@@ -66,6 +66,9 @@ extern int inruncom;
 #ifndef	_NOKANJICONV
 extern int unicodebuffer;
 #endif
+#ifndef	_NOPTY
+extern int parentfd;
+#endif
 
 static VOID NEAR builtinerror __P_((char *[], char *, int));
 #ifdef	_NOORIGSHELL
@@ -143,7 +146,7 @@ static int NEAR loadsource __P_((int, char *[]));
 #endif
 
 static CONST char *builtinerrstr[] = {
-	"",
+	NULL,
 #define	ER_FEWMANYARG	1
 	"Too few or many arguments",
 #define	ER_OUTOFLIMIT	2
@@ -246,7 +249,8 @@ int n;
 	if (argv && argv[0]) fprintf2(stderr, "%k: ", argv[0]);
 	if (s) fprintf2(stderr, "%k: ", s);
 	fprintf2(stderr, "%s.",
-		(n >= 0) ? builtinerrstr[n] : strerror2(duperrno));
+		(n >= 0 && builtinerrstr[n])
+			? builtinerrstr[n] : strerror2(duperrno));
 	fputnl(stderr);
 }
 
@@ -1330,7 +1334,7 @@ int n;
 	freemacro(bindlist[n].d_func);
 	if (bindlist[n].key >= K_F(1) && bindlist[n].key <= K_F(10)) {
 		free(helpindex[bindlist[n].key - K_F(1)]);
-		helpindex[bindlist[n].key - K_F(1)] = strdup2("");
+		helpindex[bindlist[n].key - K_F(1)] = strdup2(nullstr);
 	}
 	memmove((char *)&(bindlist[n]), (char *)&(bindlist[n + 1]),
 		(MAXBINDTABLE - n) * sizeof(bindtable));
@@ -1598,6 +1602,7 @@ devinfo *devp;
 		}
 		free(sp);
 		free(drvlist);
+		free(devp -> name);
 		return(no);
 	}
 	fdtype[no].offset = 0;
@@ -2166,7 +2171,8 @@ char *argv[];
 
 		i = n;
 		for (; n < argc; n++) if (!strchr(argv[n], '=')) break;
-		if ((f = parsehist((n < argc) ? argv[n] : "!", NULL)) < 0) {
+		f = parsehist((n < argc) ? argv[n] : "!", NULL, '\0');
+		if (f < 0) {
 			builtinerror(argv, argv[n], ER_EVENTNOFOUND);
 			entryhist(0, tmp, 0);
 			free(tmp);
@@ -2209,12 +2215,12 @@ char *argv[];
 	if (!editor) editor = EDITOR;
 
 	if (list) {
-		f = parsehist((n < argc) ? argv[n] : "-16", NULL);
-		l = parsehist((n + 1 < argc) ? argv[n + 1] : "!", NULL);
+		f = parsehist((n < argc) ? argv[n] : "-16", NULL, '\0');
+		l = parsehist((n + 1 < argc) ? argv[n + 1] : "!", NULL, '\0');
 	}
 	else {
-		f = parsehist((n < argc) ? argv[n] : "!", NULL);
-		l = (n + 1 < argc) ? parsehist(argv[n + 1], NULL) : f;
+		f = parsehist((n < argc) ? argv[n] : "!", NULL, '\0');
+		l = (n + 1 < argc) ? parsehist(argv[n + 1], NULL, '\0') : f;
 	}
 	if (f < 0 || l < 0) {
 		if (f < 0) builtinerror(argv, argv[n], ER_EVENTNOFOUND);
@@ -2687,7 +2693,7 @@ char *argv[];
 	}
 	if (!(wastty = isttyiomode)) ttyiomode(1);
 	duppromptstr = promptstr;
-	promptstr = (argc >= 2) ? argv[1] : "";
+	promptstr = (argc >= 2) ? argv[1] : nullstr;
 	s = inputstr(NULL, 0, -1, NULL, -1);
 	promptstr = duppromptstr;
 	if (!wastty) stdiomode();
@@ -2711,7 +2717,7 @@ char *argv[];
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
 		return(-1);
 	}
-	if (argc < 2) s = "";
+	if (argc < 2) s = nullstr;
 	else s = argv[1];
 
 	if (!(wastty = isttyiomode)) ttyiomode(1);
@@ -3278,6 +3284,12 @@ char *argv[];
 		fputnl(stderr);
 		return(RET_NOTICE);
 	}
+#ifndef	_NOPTY
+	if (parentfd >= 0) {
+		sendparent(TE_INTERNAL, n, argv[1]);
+		return(RET_SUCCESS);
+	}
+#endif
 	ttyiomode(0);
 	internal_status = (*funclist[n].func)(argv[1]);
 	locate(0, n_line - 1);

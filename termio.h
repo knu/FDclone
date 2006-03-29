@@ -257,5 +257,9 @@ extern p_id_t Xfork __P_((VOID_A));
 #else
 #define	Xfork		fork
 #endif
+#if	!MSDOS \
+|| (!defined(NOTUSEBIOS) && defined (DJGPP) && (DJGPP >= 2) && !defined(PC98))
+extern int readselect __P_((int, int [], char [], VOID_P));
+#endif
 
 #endif	/* !__TERMIO_H_ */

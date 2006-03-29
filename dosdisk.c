@@ -283,8 +283,8 @@ static int NEAR seekdent __P_((dosDIR *, dent_t *, long, long));
 static int NEAR readdent __P_((dosDIR *, dent_t *, int));
 static dosDIR *NEAR _dosopendir __P_((char *, char *, int));
 static int NEAR _dosclosedir __P_((dosDIR *));
-static struct dirent *NEAR _dosreaddir __P_((dosDIR *, int));
-static struct dirent *NEAR finddirent __P_((dosDIR *, char *, int, int));
+static struct dosdirent *NEAR _dosreaddir __P_((dosDIR *, int));
+static struct dosdirent *NEAR finddirent __P_((dosDIR *, char *, int, int));
 static dosDIR *NEAR splitpath __P_((char **, char *, int));
 static int NEAR getdent __P_((char *, int *));
 static int NEAR writedent __P_((int));
@@ -3133,7 +3133,7 @@ char *path, *resolved;
 int needlfn;
 {
 	dosDIR *xdirp;
-	struct dirent *dp;
+	struct dosdirent *dp;
 	dent_t *dentp;
 	cache_t *cache;
 	char *cp, *cachepath, buf[DOSMAXPATHLEN - 2];
@@ -3361,19 +3361,19 @@ int force;
 	return(0);
 }
 
-static struct dirent *NEAR _dosreaddir(xdirp, all)
+static struct dosdirent *NEAR _dosreaddir(xdirp, all)
 dosDIR *xdirp;
 int all;
 {
 	dent_t *dentp;
-	static st_dirent d;
-	struct dirent *dp;
+	static st_dosdirent d;
+	struct dosdirent *dp;
 	char *cp, buf[LFNENTSIZ * 2 + 1];
 	long loc, clust, offset;
 	u_int ch;
 	int i, j, cnt, sum;
 
-	dp = (struct dirent *)&d;
+	dp = (struct dosdirent *)&d;
 	dentp = dd2dentp(xdirp -> dd_fd);
 	dp -> d_name[0] = '\0';
 	dp -> d_reclen = DOSDIRENT;
@@ -3462,11 +3462,11 @@ int all;
 	return(dp);
 }
 
-struct dirent *dosreaddir(dirp)
+struct dosdirent *dosreaddir(dirp)
 DIR *dirp;
 {
 	dosDIR *xdirp;
-	struct dirent *dp;
+	struct dosdirent *dp;
 	int i;
 #if	!MSDOS
 	int c;
@@ -3490,12 +3490,12 @@ DIR *dirp;
 	return(dp);
 }
 
-static struct dirent *NEAR finddirent(xdirp, fname, len, needlfn)
+static struct dosdirent *NEAR finddirent(xdirp, fname, len, needlfn)
 dosDIR *xdirp;
 char *fname;
 int len, needlfn;
 {
-	struct dirent *dp;
+	struct dosdirent *dp;
 	u_char dosname[8 + 3 + 1];
 	char tmp[8 + 1 + 3 + 1];
 
@@ -4024,7 +4024,7 @@ char *doslongname(path, resolved)
 char *path, *resolved;
 {
 	dosDIR *xdirp;
-	struct dirent *dp;
+	struct dosdirent *dp;
 	char *cp, buf[DOSMAXPATHLEN];
 	int dd, drive;
 
@@ -4690,7 +4690,7 @@ int dosrmdir(path)
 char *path;
 {
 	dosDIR *xdirp;
-	struct dirent *dp;
+	struct dosdirent *dp;
 	cache_t cache;
 	long clust, offset;
 	int sum, ret;

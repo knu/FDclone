@@ -61,7 +61,10 @@
 #define	PC_DQUOTE	4
 #define	PC_BQUOTE	5
 #define	PC_WORD		6
-#define	PC_META		7
+#define	PC_ESCAPE	7
+#define	PC_META		8
+#define	PC_EXMETA	9
+#define	PC_DELIM	10
 
 #if	defined (_NOORIGGLOB) \
 && !defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
@@ -143,6 +146,8 @@ typedef struct _wild_t {
 #define	EA_STRIPQLATER	0020
 #define	EA_NOUNIQDELIM	0040
 #define	EA_EOLMETA	0100
+#define	EA_FINDMETA	0200
+#define	EA_FINDDELIM	0400
 
 #ifdef	NOUID_T
 typedef u_short		uid_t;
@@ -233,6 +238,9 @@ extern int isidentchar __P_((int));
 extern int isidentchar2 __P_((int));
 extern int isdotdir __P_((char *));
 extern char *isrootdir __P_((char *));
+extern int isrootpath __P_((char *));
+extern VOID copyrootpath __P_((char *));
+extern VOID copycurpath __P_((char *));
 extern char *getbasename __P_((char *));
 extern char *getshellname __P_((char *, int *, int *));
 extern reg_t *regexp_init __P_((char *, int));
@@ -278,6 +286,10 @@ extern int stripquote __P_((char *, int));
 extern char *_evalpath __P_((char *, char *, int));
 extern char *evalpath __P_((char *, int));
 
+extern char nullstr[];
+extern char rootpath[];
+extern char curpath[];
+extern char parentpath[];
 extern char **argvar;
 #ifndef	_NOUSEHASH
 extern hashlist **hashtable;

@@ -54,6 +54,7 @@ extern int parentfd;
 #ifndef	_NOEDITMODE
 static int NEAR getemulatekey __P_((int, CONST char []));
 #endif
+static int NEAR trquoteone __P_((char **, char *, int *, int));
 static char *NEAR trquote __P_((char *, int, int *));
 static int NEAR vlen __P_((char *, int));
 static int NEAR rlen __P_((char *, int));
@@ -73,51 +74,47 @@ static VOID NEAR forwcursor __P_((int));
 static VOID NEAR backcursor __P_((int));
 static VOID NEAR forwline __P_((int));
 static VOID NEAR dumbputs __P_((char *, int, int, int, int));
-static VOID NEAR rewritecursor __P_((char *, int, int, int));
-static VOID NEAR checkcursor __P_((char *, int, int, int));
+static VOID NEAR rewritecursor __P_((int, int));
+static int NEAR checkcursor __P_((int, int));
 #endif
 static VOID NEAR scrollup __P_((VOID_A));
 static VOID NEAR locate2 __P_((int, int));
-static VOID NEAR setcursor __P_((char *, int, int, int));
-static int NEAR putstr __P_((char *, char *, int, int, int));
+static VOID NEAR setcursor __P_((int, int));
+static VOID NEAR putstr __P_((int *, int *, int));
 static VOID NEAR ringbell __P_((VOID_A));
 static VOID NEAR clearline __P_((VOID_A));
 static VOID NEAR newline __P_((int));
-static int NEAR rightchar __P_((char *, int *, int, int));
-static int NEAR leftchar __P_((char *, int *, int, int));
-static VOID NEAR insertchar __P_((char *, int, int, int));
-static VOID NEAR deletechar __P_((char *, int, int, int));
-static VOID NEAR insshift __P_((char *, int, int, int));
-static VOID NEAR delshift __P_((char *, int, int, int));
-static VOID NEAR truncline __P_((char *, int, int, int));
-static VOID NEAR displaystr __P_((char *, int *, int *));
-static int NEAR preparestr __P_((char **, int, int *, ALLOC_T *, int, int));
-static int NEAR insertstr __P_((char **, int, int,
-		ALLOC_T *, char *, int, int));
+static VOID NEAR rightchar __P_((VOID_A));
+static VOID NEAR leftchar __P_((VOID_A));
+static VOID NEAR insertchar __P_((int, int, int));
+static VOID NEAR deletechar __P_((int, int, int));
+static VOID NEAR insshift __P_((int, int));
+static VOID NEAR delshift __P_((int, int));
+static VOID NEAR truncline __P_((VOID_A));
+static VOID NEAR displaystr __P_((VOID_A));
+static VOID NEAR insertbuf __P_((int));
+static int NEAR preparestr __P_((int, int));
+static int NEAR insertcursor __P_((int *, int *, int, int));
+static int NEAR quotemeta __P_((int *, int *, int, int *, int *, int *));
+static int NEAR insertstr __P_((char *, int, int, int *, int *));
 #ifndef	_NOCOMPLETE
 static VOID NEAR selectfile __P_((int, char **));
-static int NEAR completestr __P_((char **, int, int, ALLOC_T *,
-		int, int, int));
+static int NEAR completestr __P_((int, int, int));
 #endif
 static int NEAR getkanjikey __P_((char *, int));
-static int NEAR copyhist __P_((char **, int *, int *, ALLOC_T *, char *));
-static int NEAR _inputstr_up __P_((char **, int *, int, int *,
-		ALLOC_T *, int *, int, char **));
-static int NEAR _inputstr_down __P_((char **, int *, int, int *,
-		ALLOC_T *, int *, int, char **));
-static int NEAR _inputstr_delete __P_((char *, int, int));
-static int NEAR _inputstr_enter __P_((char **, int *, int, int *, ALLOC_T *));
+static VOID NEAR copyhist __P_((char *, int));
+static VOID NEAR _inputstr_up __P_((int *, int, char **));
+static VOID NEAR _inputstr_down __P_((int *, int, char **));
+static VOID NEAR _inputstr_delete __P_((VOID_A));
+static VOID NEAR _inputstr_enter __P_((VOID_A));
 #if	FD >= 2
-static int NEAR _inputstr_case __P_((char *, int *, int, int, int));
-static int NEAR search_matchlen __P_((char *, int));
-static char *NEAR search_up __P_((char *, int *, int, int,
-		int *, int, char **));
-static char *NEAR search_down __P_((char *, int *, int, int,
-		int *, int, char **));
+static VOID NEAR _inputstr_case __P_((int));
+static int NEAR search_matchlen __P_((VOID_A));
+static char *NEAR search_up __P_((int, int *, int, char **));
+static char *NEAR search_down __P_((int, int *, int, char **));
 #endif
-static int NEAR _inputstr_input __P_((char **, int *, int, int *,
-		ALLOC_T *, char *, int));
-static int NEAR _inputstr __P_((char **, ALLOC_T, int, int, int));
+static VOID NEAR _inputstr_input __P_((char *, int));
+static int NEAR _inputstr __P_((int, int, int));
 static VOID NEAR dispprompt __P_((char *, int));
 static char *NEAR truncstr __P_((char *));
 static int NEAR yesnomes __P_((char *));
@@ -177,6 +174,11 @@ static int plen = 0;
 static int maxcol = 0;
 static int minline = 0;
 static int maxline = 0;
+static char *inputbuf = NULL;
+static ALLOC_T inputsize = (ALLOC_T)0;
+static int rptr = 0;
+static int vptr = 0;
+static int inputlen = 0;
 #ifndef	_NOCOMPLETE
 static namelist *selectlist = NULL;
 static int maxselect = 0;
@@ -335,52 +337,50 @@ int sig, eof;
 	return(ch);
 }
 
+static int NEAR trquoteone(sp, s, cxp, len)
+char **sp, *s;
+int *cxp, len;
+{
+	int vw;
+
+	vw = 1;
+	if (*cxp + 1 < len && iskanji1(s, *cxp)) {
+		*((*sp)++) = s[(*cxp)++];
+		vw++;
+	}
+#ifdef	CODEEUC
+	else if (*cxp + 1 < len && isekana(s, *cxp)) *((*sp)++) = s[(*cxp)++];
+#else
+	else if (isskana(s, *cxp)) /*EMPTY*/;
+#endif
+	else if (iscntrl2(s[*cxp])) {
+		*((*sp)++) = '^';
+		*((*sp)++) = (s[(*cxp)++] + '@') & 0x7f;
+		return(2);
+	}
+	else if (ismsb(s[*cxp])) {
+		*sp += snprintf2(*sp, 4 + 1, "\\%03o", s[(*cxp)++] & 0xff);
+		return(4);
+	}
+
+	*((*sp)++) = s[(*cxp)++];
+	return(vw);
+}
+
 static char *NEAR trquote(s, len, widthp)
 char *s;
 int len, *widthp;
 {
-	char *cp;
-	int i, j, v;
+	char *cp, *buf;
+	int cx, vw;
 
-	cp = malloc2(len * 4 + 1);
-	v = 0;
-	for (i = j = 0; i < len; i++) {
-		if (i + 1 < len && iskanji1(s, i)) {
-			cp[j++] = s[i++];
-			cp[j++] = s[i];
-			v += 2;
-		}
-#ifdef	CODEEUC
-		else if (i + 1 < len && isekana(s, i)) {
-			cp[j++] = s[i++];
-			cp[j++] = s[i];
-			v++;
-		}
-#else
-		else if (isskana(s, i)) {
-			cp[j++] = s[i];
-			v++;
-		}
-#endif
-		else if (iscntrl2(s[i])) {
-			cp[j++] = '^';
-			cp[j++] = (s[i] + '@') & 0x7f;
-			v += 2;
-		}
-		else if (ismsb(s[i])) {
-			j += snprintf2(&(cp[j]), len * 4 + 1 - j,
-				"\\%03o", s[i] & 0xff);
-			v += 4;
-		}
-		else {
-			cp[j++] = s[i];
-			v++;
-		}
-	}
-	cp[j] = '\0';
-	if (widthp) *widthp = v;
+	cp = buf = malloc2(len * 4 + 1);
+	cx = vw = 0;
+	while (cx < len) vw += trquoteone(&cp, s, &cx, len);
+	*cp = '\0';
+	if (widthp) *widthp = vw;
 
-	return(cp);
+	return(buf);
 }
 
 static int NEAR vlen(s, cx)
@@ -494,8 +494,7 @@ int len, ptr;
 	int n;
 
 	if (len < 0) return(0);
-	n = len * KANAWID;
-	buf = malloc2(n + 1);
+	buf = malloc2(len * KANAWID + 1);
 	strncpy3(buf, s, &len, ptr);
 #ifdef	_NOKANJICONV
 	Xcputs2(buf);
@@ -536,6 +535,20 @@ int cx2, len2, ptr, top;
 	if (len2 > 0) kanjiputs2(s, len2, ptr);
 }
 #endif	/* FD >= 2 */
+
+VOID cputspace(n)
+int n;
+{
+	Xcprintf2("%*s", n, nullstr);
+}
+
+VOID cputstr(n, s)
+int n;
+char *s;
+{
+	if (!s) cputspace(n);
+	else Xcprintf2("%-*.*k", n, n, s);
+}
 
 static VOID NEAR putcursor(c, n)
 int c, n;
@@ -637,9 +650,8 @@ int cx2, len2, max, ptr;
 	}
 }
 
-static VOID NEAR rewritecursor(s, cx, cx2, len)
-char *s;
-int cx, cx2, len;
+static VOID NEAR rewritecursor(cx, cx2)
+int cx, cx2;
 {
 	char *dupl;
 	int i, dx, ocx, ocx2;
@@ -647,25 +659,34 @@ int cx, cx2, len;
 	i = (lastofs2) ? 1 : plen;
 	dx = cx2 - lastofs2;
 	ocx2 = win_x - xpos - i + lastofs2;
-	if (dx < 0 || i + dx >= maxcol) displaystr(s, &cx, &len);
+	if (checkcursor(cx, cx2) < 0) /*EMPTY*/;
 	else if (cx2 <= ocx2) backcursor(xpos + i + dx);
 	else {
-		ocx = rlen(s, ocx2);
-		dupl = trquote(&(s[ocx]), cx - ocx, NULL);
+		ocx = rlen(inputbuf, ocx2);
+		dupl = trquote(&(inputbuf[ocx]), cx - ocx, NULL);
 		win_x += Xkanjiputs(dupl);
 		free(dupl);
 	}
 }
 
-static VOID NEAR checkcursor(s, cx, cx2, len)
-char *s;
-int cx, cx2, len;
+static int NEAR checkcursor(cx, cx2)
+int cx, cx2;
 {
-	int i, dx;
+	int i, dx, orptr, ovptr;
 
 	i = (lastofs2) ? 1 : plen;
 	dx = cx2 - lastofs2;
-	if (i + dx >= maxcol) displaystr(s, &cx, &len);
+	if (dx >= 0 && i + dx < maxcol) return(0);
+
+	orptr = rptr;
+	ovptr = vptr;
+	rptr = cx;
+	vptr = cx2;
+	displaystr();
+	rptr = orptr;
+	vptr = ovptr;
+
+	return(-1);
 }
 #endif	/* !_NOORIGSHELL */
 
@@ -711,18 +732,16 @@ int x, y;
 	Xlocate(win_x, win_y);
 }
 
-/*ARGSUSED*/
-static VOID NEAR setcursor(s, cx, cx2, len)
-char *s;
-int cx, cx2, len;
+static VOID NEAR setcursor(cx, cx2)
+int cx, cx2;
 {
 	int f;
 
-	if (cx < 0) cx = rlen(s, cx2);
-	if (cx2 < 0) cx2 = vlen(s, cx);
+	if (cx < 0) cx = rlen(inputbuf, cx2);
+	if (cx2 < 0) cx2 = vlen(inputbuf, cx);
 #ifndef	_NOORIGSHELL
 	if (dumbmode) {
-		rewritecursor(s, cx, cx2, len);
+		rewritecursor(cx, cx2);
 		return;
 	}
 #endif
@@ -732,18 +751,34 @@ int cx, cx2, len;
 	if (f) rightcursor();
 }
 
-static int NEAR putstr(cp, s, cx, cx2, len)
-char *cp, *s;
-int cx, cx2, len;
+static VOID NEAR putstr(cxp, cxp2, ins)
+int *cxp, *cxp2, ins;
 {
-	while (*cp) {
-		cx2++;
-		putcursor(*cp, 1);
-		if (iseol(cx2)) setcursor(s, cx, cx2, len);
-		cp++;
-	}
+	char *cp, tmp[4 + 1];
+	int cx, vw;
 
-	return(cx2);
+	while (ins > 0) {
+		cp = tmp;
+		cx = *cxp;
+		VOID_C trquoteone(&cp, inputbuf, &cx, inputlen);
+		*cp = '\0';
+		cp = tmp;
+		while (*cp) {
+			vw = (iskanji1(cp, 0)) ? 2 : 1;
+			Xcprintf2("%.*k", vw, cp);
+			cp += vw;
+			win_x += vw;
+			*cxp2 += vw;
+#ifndef	_NOORIGSHELL
+			if (dumbmode) VOID_C checkcursor(cx, *cxp2);
+			else
+#endif
+			if (within(*cxp2) && ptr2col(*cxp2) < vw)
+				setcursor(cx, *cxp2);
+		}
+		ins -= cx - *cxp;
+		*cxp = cx;
+	}
 }
 
 static VOID NEAR ringbell(VOID_A)
@@ -782,98 +817,87 @@ int y;
 	locate2(0, y);
 }
 
-static int NEAR rightchar(s, cxp, cx2, len)
-char *s;
-int *cxp, cx2, len;
+static VOID NEAR rightchar(VOID_A)
 {
 	int rw, vw;
 
-	if (*cxp + 1 < len && iskanji1(s, *cxp)) rw = vw = 2;
+	if (rptr + 1 < inputlen && iskanji1(inputbuf, rptr)) rw = vw = 2;
 #ifdef	CODEEUC
-	else if (*cxp + 1 < len && isekana(s, *cxp)) {
+	else if (rptr + 1 < inputlen && isekana(inputbuf, rptr)) {
 		rw = 2;
 		vw = 1;
 	}
 #else
-	else if (isskana(s, *cxp)) rw = vw = 1;
+	else if (isskana(inputbuf, rptr)) rw = vw = 1;
 #endif
-	else if (iscntrl2(s[*cxp])) {
+	else if (iscntrl2(inputbuf[rptr])) {
 		rw = 1;
 		vw = 2;
 	}
-	else if (ismsb(s[*cxp])) {
+	else if (ismsb(inputbuf[rptr])) {
 		rw = 1;
 		vw = 4;
 	}
 	else rw = vw = 1;
 
-	if (*cxp + rw > len) {
+	if (rptr + rw > inputlen) {
 		ringbell();
-		return(cx2);
+		return;
 	}
-	*cxp += rw;
-	cx2 += vw;
+	rptr += rw;
+	vptr += vw;
 #ifndef	_NOORIGSHELL
-	if (dumbmode) rewritecursor(s, *cxp, cx2, len);
+	if (dumbmode) rewritecursor(rptr, vptr);
 	else
 #endif
-	if (within(cx2) && ptr2col(cx2) < vw) setcursor(s, *cxp, cx2, len);
+	if (within(vptr) && ptr2col(vptr) < vw) setcursor(rptr, vptr);
 	else while (vw--) rightcursor();
-
-	return(cx2);
 }
 
-/*ARGSUSED*/
-static int NEAR leftchar(s, cxp, cx2, len)
-char *s;
-int *cxp, cx2, len;
+static VOID NEAR leftchar(VOID_A)
 {
-	int rw, vw, ocx2;
+	int rw, vw, ovptr;
 
-	if (*cxp >= 2 && onkanji1(s, *cxp - 2)) rw = vw = 2;
+	if (rptr >= 2 && onkanji1(inputbuf, rptr - 2)) rw = vw = 2;
 #ifdef	CODEEUC
-	else if (*cxp >= 2 && isekana(s, *cxp - 2)) {
+	else if (rptr >= 2 && isekana(inputbuf, rptr - 2)) {
 		rw = 2;
 		vw = 1;
 	}
 #else
-	else if (isskana(s, *cxp - 1)) rw = vw = 1;
+	else if (isskana(inputbuf, rptr - 1)) rw = vw = 1;
 #endif
-	else if (iscntrl2(s[*cxp - 1])) {
+	else if (iscntrl2(inputbuf[rptr - 1])) {
 		rw = 1;
 		vw = 2;
 	}
-	else if (ismsb(s[*cxp - 1])) {
+	else if (ismsb(inputbuf[rptr - 1])) {
 		rw = 1;
 		vw = 4;
 	}
 	else rw = vw = 1;
 
-	ocx2 = cx2;
-	*cxp -= rw;
-	cx2 -= vw;
+	ovptr = vptr;
+	rptr -= rw;
+	vptr -= vw;
 #ifndef	_NOORIGSHELL
-	if (dumbmode) rewritecursor(s, *cxp, cx2, len);
+	if (dumbmode) rewritecursor(rptr, vptr);
 	else
 #endif
-	if (ptr2col(ocx2) < vw) setcursor(s, *cxp, cx2, len);
+	if (ptr2col(ovptr) < vw) setcursor(rptr, vptr);
 	else while (vw--) leftcursor();
-
-	return(cx2);
 }
 
-static VOID NEAR insertchar(s, cx, len, ins)
-char *s;
-int cx, len, ins;
+static VOID NEAR insertchar(cx, cx2, ins)
+int cx, cx2, ins;
 {
 	char *dupl;
-	int cx2, dx, dy, i, j, l, f1, ptr, len2, nlen;
+	int dx, dy, i, j, l, f1, ptr, len2, nlen;
 #if	!MSDOS
 	int f2;
 #endif
 
-	dupl = trquote(&(s[cx]), len - cx, &l);
-	cx2 = vlen(s, cx);
+	dupl = trquote(&(inputbuf[cx]), inputlen - cx, &l);
 	len2 = cx2 + l;
 	nlen = len2 + ins;
 	dy = ptr2line(cx2);
@@ -905,7 +929,7 @@ int cx, len, ins;
 			 * and the end of string will reach over the last line.
 			 */
 			while (ypos + dy >= maxline - 1) scrollup();
-			setcursor(s, cx, cx2, len);
+			setcursor(cx, cx2);
 		}
 		while (j--) Xputterm(C_INSERT);
 
@@ -958,7 +982,7 @@ int cx, len, ins;
 				win_x += l;
 				i += maxcol;
 			}
-			setcursor(s, cx, cx2, len);
+			setcursor(cx, cx2);
 		}
 	}
 	else
@@ -1023,38 +1047,36 @@ int cx, len, ins;
 			kanjiputs2(dupl, l, j);
 			win_x += l;
 		}
-		setcursor(s, cx, cx2, len);
+		setcursor(cx, cx2);
 	}
 #ifndef	_NOORIGSHELL
 	if (dumbmode);
 	else if (shellmode) {
 		if (ptr2col(nlen) == 1) {
-			setcursor(s, -1, nlen, len);
+			setcursor(-1, nlen);
 			Xputterm(L_CLEAR);
-			setcursor(s, cx, cx2, len);
+			setcursor(cx, cx2);
 		}
 	}
 	else
 #endif
 	if (i == nlen && within(i) && ypos + dy >= maxline - 1) {
 		while (ypos + dy >= maxline - 1) scrollup();
-		setcursor(s, cx, cx2, len);
+		setcursor(cx, cx2);
 	}
 	free(dupl);
 }
 
-static VOID NEAR deletechar(s, cx, len, del)
-char *s;
-int cx, len, del;
+static VOID NEAR deletechar(cx, cx2, del)
+int cx, cx2, del;
 {
 	char *dupl;
-	int cx2, dy, i, j, l, f1, ptr, len2, nlen;
+	int dy, i, j, l, f1, ptr, len2, nlen;
 #if	!MSDOS
 	int f2;
 #endif
 
-	dupl = trquote(&(s[cx]), len - cx, &l);
-	cx2 = vlen(s, cx);
+	dupl = trquote(&(inputbuf[cx]), inputlen - cx, &l);
 	len2 = cx2 + l;
 	nlen = len2 - del;
 	dy = ptr2line(cx2);
@@ -1107,7 +1129,7 @@ int cx, len, del;
 				if (f1) putcursor(' ', 1);
 				i += maxcol;
 			}
-			setcursor(s, cx, cx2, len);
+			setcursor(cx, cx2);
 		}
 	}
 	else
@@ -1152,36 +1174,30 @@ int cx, len, del;
 			win_x += l;
 		}
 		clearline();
-		setcursor(s, cx, cx2, len);
+		setcursor(cx, cx2);
 	}
 	free(dupl);
 }
 
-static VOID NEAR insshift(s, cx, len, ins)
-char *s;
-int cx, len, ins;
+static VOID NEAR insshift(cx, ins)
+int cx, ins;
 {
-	int i;
-
-	for (i = len - 1; i >= cx; i--) s[i + ins] = s[i];
+	if (cx >= inputlen) return;
+	memmove(&(inputbuf[cx + ins]), &(inputbuf[cx]), inputlen - cx);
 }
 
-static VOID NEAR delshift(s, cx, len, del)
-char *s;
-int cx, len, del;
+static VOID NEAR delshift(cx, del)
+int cx, del;
 {
-	int i;
-
-	for (i = cx; i < len - del; i++) s[i] = s[i + del];
+	if (cx >= inputlen - del) return;
+	memmove(&(inputbuf[cx]), &(inputbuf[cx + del]), inputlen - del - cx);
 }
 
-static VOID NEAR truncline(s, cx, cx2, len)
-char *s;
-int cx, cx2, len;
+static VOID NEAR truncline(VOID_A)
 {
 	int dy, i, len2;
 
-	len2 = vlen(s, len);
+	len2 = vlen(inputbuf, inputlen);
 #ifndef	_NOORIGSHELL
 	if (dumbmode) {
 		clearline();
@@ -1190,7 +1206,7 @@ int cx, cx2, len;
 #endif
 	Xputterm(L_CLEAR);
 
-	dy = ptr2line(cx2);
+	dy = ptr2line(vptr);
 	i = (dy + 1) * maxcol - plen;
 	if (i < len2) {
 #ifndef	_NOORIGSHELL
@@ -1207,24 +1223,21 @@ int cx, cx2, len;
 			Xputterm(L_CLEAR);
 			i += maxcol;
 		}
-		setcursor(s, cx, cx2, len);
+		setcursor(rptr, vptr);
 	}
 }
 
-static VOID NEAR displaystr(s, cxp, lenp)
-char *s;
-int *cxp, *lenp;
+static VOID NEAR displaystr(VOID_A)
 {
 #if	FD >= 2
 	int top;
 #endif
 	char *dupl;
-	int i, x, y, cx2, len2, max, vi, width, f;
+	int i, x, y, len2, max, vi, width, f;
 
-	dupl = trquote(s, *lenp, &len2);
-	cx2 = vlen(s, *cxp);
+	dupl = trquote(inputbuf, inputlen, &len2);
 #if	FD >= 2
-	top = vlen(s, search_matchlen(s, *cxp));
+	top = vlen(inputbuf, search_matchlen());
 #endif
 
 #ifndef	_NOORIGSHELL
@@ -1233,7 +1246,7 @@ int *cxp, *lenp;
 		forwcursor(xpos);
 		dispprompt(NULL, -1);
 		i = plen;
-		x = cx2 - maxcol;
+		x = vptr - maxcol;
 		y = (maxcol + 1) / 2;
 		for (lastofs2 = 0; lastofs2 <= i + x; lastofs2 += y) {
 # if	FD >= 2
@@ -1251,7 +1264,7 @@ int *cxp, *lenp;
 			if ((f = vonkanji1(dupl, lastofs2 - 1)))
 				dupl[f - 1] = dupl[f] = ' ';
 		}
-		dumbputs(dupl, i + cx2, len2, maxcol - i, lastofs2);
+		dumbputs(dupl, i + vptr, len2, maxcol - i, lastofs2);
 		Xtflush();
 		free(dupl);
 		return;
@@ -1263,10 +1276,10 @@ int *cxp, *lenp;
 	max = maxscr();
 	if (len2 > max) {
 		len2 = max;
-		*lenp = rlen(s, max);
-		if (cx2 >= len2) {
-			cx2 = len2;
-			*cxp = *lenp;
+		inputlen = rlen(inputbuf, max);
+		if (vptr >= len2) {
+			vptr = len2;
+			rptr = inputlen;
 		}
 	}
 	vi = (termstr[T_NOCURSOR] && *termstr[T_NOCURSOR]
@@ -1291,7 +1304,7 @@ int *cxp, *lenp;
 			locate2(x, y);
 		}
 		if (width + f > 0) {
-			kanjiputs3(dupl, cx2, width + f, i, top);
+			kanjiputs3(dupl, vptr, width + f, i, top);
 			win_x += width + f;
 		}
 
@@ -1311,7 +1324,7 @@ int *cxp, *lenp;
 	}
 	clearline();
 	if (stable_standout) Xputterm(END_STANDOUT);
-	kanjiputs3(dupl, cx2, len2 - i, i, top);
+	kanjiputs3(dupl, vptr, len2 - i, i, top);
 	win_x += len2 - i;
 #ifndef	_NOORIGSHELL
 	if (shellmode);
@@ -1322,78 +1335,136 @@ int *cxp, *lenp;
 		Xputterm(L_CLEAR);
 	}
 	if (vi) Xputterm(T_NORMALCURSOR);
-	setcursor(s, *cxp, cx2, *lenp);
+	setcursor(rptr, vptr);
 	Xtflush();
 	free(dupl);
 }
 
-static int NEAR preparestr(sp, cx, lenp, sizep, rins, vins)
-char **sp;
-int cx, *lenp;
-ALLOC_T *sizep;
+static VOID NEAR insertbuf(ins)
+int ins;
+{
+	inputbuf = c_realloc(inputbuf, inputlen + ins, &inputsize);
+}
+
+static int NEAR preparestr(rins, vins)
 int rins, vins;
 {
 	int rw, vw;
 
-	if (overflow(vlen(*sp, *lenp) + vins)) return(-1);
+	if (overflow(vlen(inputbuf, inputlen) + vins)) return(-1);
 
 	if (!overwritemode) {
-		insertchar(*sp, cx, *lenp, vins);
-		*sp = c_realloc(*sp, *lenp + rins, sizep);
-		insshift(*sp, cx, *lenp, rins);
-		*lenp += rins;
+		insertchar(rptr, vptr, vins);
+		insertbuf(rins);
+		insshift(rptr, rins);
+		inputlen += rins;
 		return(0);
 	}
 
-	if (cx >= *lenp) rw = vw = 0;
-	else if (cx + 1 < *lenp && iskanji1(*sp, cx)) rw = vw = 2;
+	if (rptr >= inputlen) rw = vw = 0;
+	else if (rptr + 1 < inputlen && iskanji1(inputbuf, rptr)) rw = vw = 2;
 #ifdef	CODEEUC
-	else if (cx + 1 < *lenp && isekana(*sp, cx)) {
+	else if (rptr + 1 < inputlen && isekana(inputbuf, rptr)) {
 		rw = 2;
 		vw = 1;
 	}
 #else
-	else if (isskana(*sp, cx)) rw = vw = 1;
+	else if (isskana(inputbuf, rptr)) rw = vw = 1;
 #endif
-	else if (iscntrl2((*sp)[cx])) {
+	else if (iscntrl2(inputbuf[rptr])) {
 		rw = 1;
 		vw = 2;
 	}
-	else if (ismsb((*sp)[cx])) {
+	else if (ismsb(inputbuf[rptr])) {
 		rw = 1;
 		vw = 4;
 	}
 	else rw = vw = 1;
 
 	if (!vw) /*EMPTY*/;
-	else if (vins > vw) insertchar(*sp, cx, *lenp, vins - vw);
-	else if (vins < vw) deletechar(*sp, cx, *lenp, vw - vins);
+	else if (vins > vw) insertchar(rptr, vptr, vins - vw);
+	else if (vins < vw) deletechar(rptr, vptr, vw - vins);
 
 	if (!rw) /*EMPTY*/;
 	else if (rins > rw) {
-		*sp = c_realloc(*sp, *lenp + rins - rw, sizep);
-		insshift(*sp, cx, *lenp, rins - rw);
+		insertbuf(rins - rw);
+		insshift(rptr, rins - rw);
 	}
-	else if (rins < rw) delshift(*sp, cx, *lenp, rw - rins);
+	else if (rins < rw) delshift(rptr, rw - rins);
 
-	*lenp += rins - rw;
+	inputlen += rins - rw;
 
 	return(0);
 }
 
-static int NEAR insertstr(sp, cx, len, sizep, strins, ins, quote)
-char **sp;
-int cx, len;
-ALLOC_T *sizep;
-char *strins;
-int ins, quote;
+static int NEAR insertcursor(cxp, cxp2, ins, ch)
+int *cxp, *cxp2, ins, ch;
 {
-	char *dupl;
-	int i, j, cx2, dx, dy, f, l, ptr, len2, max;
+	if (overflow(vlen(inputbuf, inputlen) + ins)) return(-1);
+	setcursor(*cxp, *cxp2);
+	insertchar(*cxp, *cxp2, ins);
+	insertbuf(ins);
+	insshift(*cxp, ins);
+	inputlen += ins;
+	if (ch) {
+		inputbuf[*cxp] = ch;
+		putstr(cxp, cxp2, 1);
+	}
 
-	len2 = vlen(*sp, len);
+	return(0);
+}
+
+static int NEAR quotemeta(cxp, cxp2, ch, qtopp, qp, qedp)
+int *cxp, *cxp2, ch, *qtopp, *qp, *qedp;
+{
+	int cx2, ocx, ocx2;
+
+	ocx = *cxp;
+	ocx2 = *cxp2;
+	if (*qtopp < 0) return(0);
+	if (*qp) {
+		if (*qp != '\'' || ch != '\'') return(0);
+		if (insertcursor(cxp, cxp2, 1, *qp) < 0) return(-1);
+		*qtopp = *cxp;
+	}
+	else if (qedp && *qedp > 0 && *qedp < *cxp) {
+		if (inputbuf[*qedp] != '\'' || ch != '\'') {
+			*qp = inputbuf[*qedp];
+			cx2 = vlen(inputbuf, *qedp);
+			setcursor(*qedp, cx2);
+			deletechar(*qedp, cx2, 1);
+			delshift(*qedp, 1);
+			(*cxp)--;
+			(*cxp2)--;
+			if (cxp != &rptr && rptr > *qedp) rptr--;
+			if (cxp2 != &vptr && vptr > cx2) vptr--;
+			inputlen--;
+			*qedp = 0;
+			return(0);
+		}
+		*qtopp = *cxp;
+	}
+
+	cx2 = vlen(inputbuf, *qtopp);
+	if (insertcursor(qtopp, &cx2, 1, *qp = '"') < 0) return(-1);
+	(*cxp)++;
+	(*cxp2)++;
+	if (cxp != &rptr && rptr >= *qtopp) rptr += *cxp - ocx;
+	if (cxp2 != &vptr && vptr >= cx2) vptr += *cxp2 - ocx2;
+	*qtopp = -1;
+	if (qedp) *qedp = -1;
+	return(0);
+}
+
+static int NEAR insertstr(strins, ins, qtop, qp, qedp)
+char *strins;
+int ins, qtop, *qp, *qedp;
+{
+	int i, n, ch, pc, max;
+
+	n = vlen(inputbuf, inputlen);
 	max = maxscr();
-	if (len2 + vlen(strins, ins) > max) ins = rlen(strins, max - len2);
+	if (n + vlen(strins, ins) > max) ins = rlen(strins, max - n);
 
 	if (ins > 0) {
 		if (onkanji1(strins, ins - 1)) ins--;
@@ -1401,114 +1472,68 @@ int ins, quote;
 		else if (isekana(strins, ins - 1)) ins--;
 #endif
 	}
-	if (ins <= 0) return(0);
+	if (ins <= 0) return(ins);
 
-	dupl = malloc2(ins * 2 + 1);
-	insertchar(*sp, cx, len, vlen(strins, ins));
-	*sp = c_realloc(*sp, len + ins, sizep);
-	insshift(*sp, cx, len, ins);
-	for (i = 0; i < ins; i++) (*sp)[cx + i] = ' ';
-	len += ins;
-	for (i = j = 0; i < ins; i++, j++) {
-		if (quote < '\0') dupl[j] = (*sp)[cx + j] = strins[i];
-#ifdef	CODEEUC
-		else if (isekana(strins, i)) {
-			dupl[j] = (*sp)[cx + j] = strins[i];
-			j++;
-			dupl[j] = (*sp)[cx + j] = strins[++i];
+	insertchar(rptr, vptr, vlen(strins, ins));
+	insertbuf(ins);
+	insshift(rptr, ins);
+	for (i = 0; i < ins; i++) inputbuf[rptr + i] = ' ';
+	inputlen += ins;
+	for (i = 0; i < ins; i++) {
+		if (*qp < '\0') pc = PC_NORMAL;
+		else pc = parsechar(&(strins[i]), ins - i,
+			'!', EA_FINDMETA, qp, NULL);
+		if (pc == PC_WORD) {
+			inputbuf[rptr] = strins[i++];
+			inputbuf[rptr + 1] = strins[i];
+			putstr(&rptr, &vptr, 2);
 		}
-#endif
-		else if (iskanji1(strins, i)) {
-			dupl[j] = (*sp)[cx + j] = strins[i];
-			j++;
-			dupl[j] = (*sp)[cx + j] = strins[++i];
+#ifndef	FAKEMETA
+		else if (pc == PC_EXMETA || pc == '!') {
+			if (*qp) {
+				n = 2;
+				ch = *qp;
+				*qp = '\0';
+			}
+			else {
+				n = 1;
+				ch = '\0';
+			}
+			if (insertcursor(&rptr, &vptr, n, ch) < 0) return(0);
+			inputbuf[rptr] = PMETA;
+			inputbuf[rptr + 1] = strins[i];
+			putstr(&rptr, &vptr, 2);
+			qtop = rptr;
 		}
-#ifdef	FAKEMETA
-		else if (strchr(DQ_METACHAR, strins[i])
-		|| (!quote && strchr(METACHAR, strins[i]))) {
-#else	/* !FAKEMETA */
-		else if ((quote == '\'' && strins[i] == '\'')
-		|| (quote == '"' && strins[i] == '!')) {
-			f = 3;
-			if (!strins[i + 1]) f--;
-			insertchar(*sp, cx, len, f);
-			*sp = c_realloc(*sp, len + f, sizep);
-			insshift(*sp, cx + j, len, f);
-			dupl[j] = (*sp)[cx + j] = quote;
-			j++;
-			dupl[j] = (*sp)[cx + j] = PMETA;
-			j++;
-			dupl[j] = (*sp)[cx + j] = strins[i];
-			j++;
-			dupl[j] = (*sp)[cx + j] = quote;
-		}
-		else if ((quote == '"' && strchr(DQ_METACHAR, strins[i]))
-		|| (!quote && strchr(METACHAR, strins[i]))) {
 #endif	/* !FAKEMETA */
-			insertchar(*sp, cx, len, 1);
-			*sp = c_realloc(*sp, len + 1, sizep);
-			insshift(*sp, cx + j, len, 1);
+		else if (pc == PC_META) {
+			n = quotemeta(&rptr, &vptr,
+				strins[i], &qtop, qp, qedp);
+			if (n < -1) return(0);
+			setcursor(rptr, vptr);
+			if (*qp == '\'' || !strchr(DQ_METACHAR, strins[i])) {
+				inputbuf[rptr] = strins[i];
+				putstr(&rptr, &vptr, 1);
+			}
+			else {
 #ifdef	FAKEMETA
-			dupl[j] = (*sp)[cx + j] = strins[i];
+				ch = strins[i];
 #else
-			dupl[j] = (*sp)[cx + j] = PMETA;
+				ch = PMETA;
 #endif
-			j++;
-			dupl[j] = (*sp)[cx + j] = strins[i];
+				if (insertcursor(&rptr, &vptr, 1, ch) < 0)
+					return(0);
+				inputbuf[rptr] = strins[i];
+				putstr(&rptr, &vptr, 1);
+			}
 		}
-		else dupl[j] = (*sp)[cx + j] = strins[i];
+		else {
+			inputbuf[rptr] = strins[i];
+			putstr(&rptr, &vptr, 1);
+		}
 	}
-	dupl[j] = '\0';
 
-	cx2 = vlen(*sp, cx);
-	len2 = vlen(dupl, j);
-	dx = ptr2col(cx2);
-	dy = ptr2line(cx2);
-	i = (dy + 1) * maxcol - plen - cx2;
-	ptr = 0;
-#ifndef	_NOORIGSHELL
-	if (dumbmode) {
-		i = (lastofs2) ? 1 : plen;
-		dx = cx2 - lastofs2 + len2;
-		if (i + dx >= maxcol) {
-			cx += j;
-			displaystr(*sp, &cx, &len);
-			ptr = len2;
-		}
-	}
-	else
-#endif	/* !_NOORIGSHELL */
-	while (i < len2) {
-		/*
-		 * Whether if the end of line is kanji 1st byte
-		 * f: after inserted
-		 */
-		f = vonkanji1(dupl, i - 1);
-#ifndef	_NOORIGSHELL
-		if (shellmode);
-		else
-#endif
-		if (ypos + dy >= maxline - 1) {
-			while (ypos + dy >= maxline - 1) scrollup();
-			locate2(dx, dy);
-		}
-		l = i - ptr;
-		if (f) l++;
-		kanjiputs2(dupl, l, ptr);
-		win_x += l;
-		newline(++dy);
-		if (f) dupl[f - 1] = dupl[f] = ' ';
-		ptr = i;
-		dx = 0;
-		i += maxcol;
-	}
-	if (len2 > ptr) {
-		kanjiputs2(dupl, len2 - ptr, ptr);
-		win_x += len2 - ptr;
-	}
-	free(dupl);
-
-	return(j);
+	return(0);
 }
 
 #ifndef	_NOCOMPLETE
@@ -1589,8 +1614,7 @@ char **argv;
 				n += len;
 				for (i = 0; i < len; i++) {
 					for (j = i; j < argc; j += len)
-						Xcprintf2("%-*.*k",
-							maxlen + 2, maxlen + 2,
+						cputstr(maxlen + 2,
 							selectlist[j].name);
 					Xcputnl();
 				}
@@ -1661,84 +1685,76 @@ char **argv;
 }
 
 /*ARGSUSED*/
-static int NEAR completestr(sp, cx, len, sizep, comline, cont, h)
-char **sp;
-int cx, len;
-ALLOC_T *sizep;
+static int NEAR completestr(comline, cont, h)
 int comline, cont, h;
 {
-# ifndef	FAKEMETA
-	int hadmeta;
-# endif
 # ifndef	_NOORIGSHELL
 	int vartop;
 # endif
 	char *cp, *tmp, **argv;
-	int i, l, pc, ins, top, fix, argc, quote, quoted, hasmeta;
+	int i, i2, rw, n, ch, pc, ins, top, fix, argc, qtop, quote, quoted;
 
 	if (selectlist && cont > 0) {
 		selectfile(tmpfilepos++, NULL);
-		setcursor(*sp, cx, -1, len);
-		return(0);
+		setcursor(rptr, vptr);
+		ringbell();
+		return(-1);
 	}
 
 	quote = '\0';
-# ifndef	FAKEMETA
-	hadmeta =
-# endif
 # ifndef	_NOORIGSHELL
 	vartop =
 # endif
-	top = quoted = 0;
+	top = 0;
 # ifndef	NOUID
 	if (h == HST_USER || h == HST_GROUP) quote = -1;
 	else
 # endif
-	for (i = 0; i < cx; i++) {
+	for (i = 0; i < rptr; i++) {
 # ifdef	FAKEMETA
-		pc = parsechar(&((*sp)[i]), cx, '$', EA_NOEVALQ, &quote, NULL);
+		pc = parsechar(&(inputbuf[i]), rptr - i,
+			'$', EA_NOEVALQ, &quote, NULL);
 # else
-		pc = parsechar(&((*sp)[i]), cx, '$', EA_BACKQ, &quote, NULL);
+		pc = parsechar(&(inputbuf[i]), rptr - i,
+			'$', EA_BACKQ, &quote, NULL);
 # endif
-		if (pc == PC_CLQUOTE) quoted = i;
-		else if (pc == PC_WORD) i++;
+		if (pc == PC_WORD) i++;
 # ifndef	_NOORIGSHELL
 		else if (pc == '$') vartop = i + 1;
 # endif
 # ifndef	FAKEMETA
-		else if (pc == PC_META) {
-			i++;
-			hadmeta++;
-		}
+		else if (pc == PC_ESCAPE) i++;
 		else if (pc == PC_OPQUOTE) {
-			if ((*sp)[i] == '`') top = i + 1;
+			if (inputbuf[i] == '`') top = i + 1;
 		}
 # endif
 		else if (pc != PC_NORMAL) /*EMPTY*/;
-		else if ((*sp)[i] == '=' || strchr(CMDLINE_DELIM, (*sp)[i]))
+		else if (inputbuf[i] == ':' || inputbuf[i] == '='
+		|| strchr(CMDLINE_DELIM, inputbuf[i]))
 			top = i + 1;
 	}
 	if (comline && top > 0) {
 		for (i = top - 1; i >= 0; i--)
-			if ((*sp)[i] != ' ' && (*sp)[i] != '\t') break;
-		if (i >= 0 && !strchr(SHELL_OPERAND, (*sp)[i])) comline = 0;
+			if (inputbuf[i] != ' ' && inputbuf[i] != '\t') break;
+		if (i >= 0 && !strchr(SHELL_OPERAND, inputbuf[i])) comline = 0;
 	}
 # ifndef	_NOORIGSHELL
 	if (vartop) {
 		i = top + 1;
 		if (quote) i++;
-		if (vartop != i || vartop >= cx || !isidentchar((*sp)[vartop]))
+		if (vartop != i
+		|| (vartop < rptr && !isidentchar(inputbuf[vartop])))
 			vartop = 0;
 		else {
-			for (i = vartop; i < cx; i++)
-				if (!isidentchar2((*sp)[i])) break;
-			if (i < cx) vartop = 0;
+			for (i = vartop; i < rptr; i++)
+				if (!isidentchar2(inputbuf[i])) break;
+			if (i < rptr) vartop = 0;
 			else top = vartop;
 		}
 	}
 # endif	/* !_NOORIGSHELL */
 
-	cp = strndup2(&((*sp)[top]), cx - top);
+	cp = strndup2(&(inputbuf[top]), rptr - top);
 # ifndef	_NOORIGSHELL
 	if (vartop) /*EMPTY*/;
 	else
@@ -1748,78 +1764,66 @@ int comline, cont, h;
 	else
 # endif
 	cp = evalpath(cp, 0);
-	hasmeta = 0;
-# ifndef	NOUID
-	if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
-	else
-# endif
-	for (i = 0; cp[i]; i++) {
-		if (strchr(METACHAR, cp[i])) {
-			hasmeta = 1;
-			break;
-		}
-		if (iskanji1(cp, i)) i++;
-	}
 
 	if (selectlist && cont < 0) {
 		argv = (char **)malloc2(1 * sizeof(char *));
-		l = strlen(selectlist[tmpfilepos].name);
+		n = strlen(selectlist[tmpfilepos].name);
 		i = (s_isdir(&(selectlist[tmpfilepos]))) ? 1 : 0;
-		argv[0] = (char *)malloc2(l + i + 1);
-		memcpy(argv[0], selectlist[tmpfilepos].name, l);
-		if (i) argv[0][l] = '/';
-		argv[0][l + i] = '\0';
+		argv[0] = (char *)malloc2(n + i + 1);
+		memcpy(argv[0], selectlist[tmpfilepos].name, n);
+		if (i) argv[0][n] = '/';
+		argv[0][n + i] = '\0';
 		argc = 1;
 	}
 # ifndef	NOUID
 	else if (h == HST_USER) {
 		argv = NULL;
-		l = strlen(cp);
-		argc = completeuser(cp, l, 0, &argv, 0);
+		n = strlen(cp);
+		argc = completeuser(cp, n, 0, &argv, 0);
 	}
 	else if (h == HST_GROUP) {
 		argv = NULL;
-		l = strlen(cp);
-		argc = completegroup(cp, l, 0, &argv);
+		n = strlen(cp);
+		argc = completegroup(cp, n, 0, &argv);
 	}
 # endif
 # ifndef	_NOORIGSHELL
 	else if (vartop) {
 		argv = NULL;
-		l = strlen(cp);
-		argc = completeshellvar(cp, l, 0, &argv);
+		n = strlen(cp);
+		argc = completeshellvar(cp, n, 0, &argv);
 	}
 # endif
 	else {
 		argv = NULL;
 		argc = 0;
-		l = strlen(cp);
+		n = strlen(cp);
 		if (comline && !strdelim(cp, 1)) {
 # ifdef	_NOORIGSHELL
-			argc = completeuserfunc(cp, l, argc, &argv);
-			argc = completealias(cp, l, argc, &argv);
-			argc = completebuiltin(cp, l, argc, &argv);
-			argc = completeinternal(cp, l, argc, &argv);
+			argc = completeuserfunc(cp, n, argc, &argv);
+			argc = completealias(cp, n, argc, &argv);
+			argc = completebuiltin(cp, n, argc, &argv);
+			argc = completeinternal(cp, n, argc, &argv);
 # else
-			argc = completeshellcomm(cp, l, argc, &argv);
+			argc = completeshellcomm(cp, n, argc, &argv);
 # endif
 		}
 # ifndef	_NOARCHIVE
 		if (archivefile && !comline && *cp != _SC_)
-			argc = completearch(cp, l, argc, &argv);
+			argc = completearch(cp, n, argc, &argv);
 		else
 # endif
-		argc = completepath(cp, l, argc, &argv, comline);
+		argc = completepath(cp, n, argc, &argv, comline);
 		if (!argc && comline)
-			argc = completepath(cp, l, argc, &argv, 0);
+			argc = completepath(cp, n, argc, &argv, 0);
 	}
 
 	ins = strlen(getbasename(cp));
 	free(cp);
 	if (!argc) {
-		ringbell();
 		if (argv) free(argv);
-		return(0);
+		ringbell();
+		return(-1);
 	}
 
 	cp = findcommon(argc, argv);
@@ -1830,138 +1834,129 @@ int comline, cont, h;
 	else fix = ((tmp = strrdelim(cp, 0)) && !tmp[1]) ? _SC_ : ' ';
 
 	if (!cp || ((ins = (int)strlen(cp) - ins) <= 0 && fix != ' ')) {
-		if (cont <= 0) {
-			ringbell();
-			l = 0;
-		}
+		if (cont <= 0) ringbell();
 		else {
 			selectfile(argc, argv);
-			if (lcmdline < 0) displaystr(*sp, &cx, &len);
-			setcursor(*sp, cx, -1, len);
-			l = -1;
+			if (lcmdline < 0) displaystr();
+			setcursor(rptr, vptr);
 		}
 		for (i = 0; i < argc; i++) free(argv[i]);
 		free(argv);
 		if (cp) free(cp);
-		return(l);
+		return(-1);
 	}
 	for (i = 0; i < argc; i++) free(argv[i]);
 	free(argv);
 
-	l = 0;
-# ifndef	NOUID
-	if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
-	else
-# endif
-	if (!hasmeta) for (i = 0; cp[i]; i++) {
-		if (strchr(METACHAR, cp[i])) {
-			hasmeta = 1;
-			break;
-		}
-		if (iskanji1(cp, i)) i++;
-	}
-
-	if (hasmeta) {
-		char *home;
-		int hlen;
-
-		if (quote || quoted > top || (*sp)[top] != '~') {
-			home = NULL;
-			i = hlen = 0;
-		}
-		else {
-			tmp = &((*sp)[top]);
-			(*sp)[len] = '\0';
-			home = malloc2(len - top + 1);
-			hlen = evalhome(&home, 0, &tmp);
-			i = ++tmp - &((*sp)[top]);
-		}
-
-		if (quote) /*EMPTY*/;
-		else if (quoted > top) {
-			quote = (*sp)[quoted];
-			setcursor(*sp, quoted, -1, len);
-			deletechar(*sp, quoted, len, 1);
-			delshift(*sp, quoted, len--, 1);
-			l--;
-			setcursor(*sp, --cx, -1, len);
-		}
-		else if (!overflow(vlen(*sp, len - i) + vlen(home, hlen))) {
-			if (home) {
-				setcursor(*sp, top, -1, len);
-				deletechar(*sp, top, len, i);
-				delshift(*sp, top, len, i);
-				len -= i;
-				l -= i;
-				cx -= i;
-				i = insertstr(sp, top, len,
-					sizep, home, hlen, '\0');
-				len += i;
-				l += i;
-				cx += i;
-				free(home);
-			}
-# ifndef	FAKEMETA
-			if (hadmeta) for (i = top; i < cx; i++) {
-				pc = parsechar(&((*sp)[i]), cx,
-					'\0', 0, &quote, NULL);
-				if (pc == PC_WORD) {
-					i++;
-					continue;
-				}
-				if (pc != PC_META) continue;
-				if (strchr(DQ_METACHAR, (*sp)[i + 1]))
-					continue;
-				setcursor(*sp, i, -1, len);
-				deletechar(*sp, i, len, 1);
-				delshift(*sp, i, len--, 1);
-				l--;
-				cx--;
-			}
-# endif	/* !FAKEMETA */
-			setcursor(*sp, top, -1, len);
-			insertchar(*sp, top, len, 1);
-			*sp = c_realloc(*sp, len + 2, sizep);
-			insshift(*sp, top, len++, 1);
-			l++;
-			(*sp)[top] = quote = '"';
-			putcursor(quote, 1);
-			setcursor(*sp, ++cx, -1, len);
-		}
-		else hasmeta = 0;
+	qtop = top;
+	if (!quote && inputbuf[top] == '~') {
+		tmp = strchr(&(inputbuf[top + 1]), _SC_);
+		if (tmp) qtop = tmp - inputbuf + 1;
 	}
 
 	tmp = cp + (int)strlen(cp) - ins;
 	if (fix == _SC_) ins--;
-	i = insertstr(sp, cx, len, sizep, tmp, ins, quote);
-	len += i;
-	l += i;
-	if (fix && !overflow(vlen(*sp, len))) {
-		cx += i;
-		if (quote > '\0' && (fix != _SC_ || hasmeta)) {
-			insertchar(*sp, cx, len, 1);
-			*sp = c_realloc(*sp, len + 2, sizep);
-			insshift(*sp, cx, len++, 1);
-			l++;
-			(*sp)[cx++] = quote;
-			putcursor(quote, 1);
-		}
 # ifndef	NOUID
-		if (h == HST_USER || h == HST_GROUP) /*EMPTY*/;
-		else
-# endif
-		if (!overflow(vlen(*sp, len))) {
-			insertchar(*sp, cx, len, 1);
-			*sp = c_realloc(*sp, len + 1, sizep);
-			insshift(*sp, cx, len, 1);
-			l++;
-			(*sp)[cx] = fix;
-			putcursor(fix, 1);
-		}
+	if (h == HST_USER || h == HST_GROUP) {
+		VOID_C insertstr(tmp, ins, qtop, &quote, NULL);
+		free(cp);
+		return(0);
 	}
-	free(cp);
+# endif
 
-	return(l);
+	quote = '\0';
+	quoted = 0;
+	i = top;
+	i2 = vlen(inputbuf, top);
+	while (i < rptr) {
+		rw = 1;
+		pc = parsechar(&(inputbuf[i]), rptr - i, '!', 0, &quote, NULL);
+		if (pc == PC_WORD) rw = 2;
+		else if (pc == PC_CLQUOTE) {
+			quoted = i;
+			qtop = i + 1;
+		}
+# ifndef	FAKEMETA
+		else if (pc == PC_ESCAPE) {
+			rw = 2;
+			if (inputbuf[i + 1] == '!') qtop = i + 2;
+			else if (strchr(DQ_METACHAR, inputbuf[i + 1])) {
+				n = quotemeta(&i, &i2,
+					'\0', &qtop, &quote, &quoted);
+				if (n < 0) {
+					free(cp);
+					return(0);
+				}
+			}
+			else if (inputbuf[i + 1] != '\'') {
+				setcursor(i, i2);
+				deletechar(i, i2, 1);
+				delshift(i, 1);
+				rptr--;
+				vptr--;
+				inputlen--;
+				rw = 0;
+			}
+		}
+# endif	/* !FAKEMETA */
+		else if (pc == '!') {
+			if (quote) {
+				n = 2;
+				ch = quote;
+				quote = '\0';
+			}
+			else {
+				n = 1;
+				ch = '\0';
+			}
+			if (insertcursor(&i, &i2, n, ch) < 0) {
+				free(cp);
+				return(0);
+			}
+			inputbuf[i] = PMETA;
+			inputbuf[i + 1] = '!';
+			putstr(&i, &i2, 2);
+			rptr += n;
+			vptr += n;
+			qtop = i;
+			rw = 0;
+		}
+		else if (pc == PC_OPQUOTE || pc == PC_SQUOTE) /*EMPTY*/;
+		else if (strchr(DQ_METACHAR, inputbuf[i])) {
+			if (insertcursor(&i, &i2, 1, PMETA) < 0) {
+				free(cp);
+				return(0);
+			}
+			rptr++;
+			vptr++;
+			qtop = i + 1;
+		}
+		else if (pc != PC_NORMAL) /*EMPTY*/;
+		else if (strchr(METACHAR, inputbuf[i])) {
+			n = quotemeta(&i, &i2,
+				inputbuf[i], &qtop, &quote, &quoted);
+			if (n < 0) {
+				free(cp);
+				return(0);
+			}
+		}
+		i += rw;
+		i2 += vlen(&(inputbuf[i]), rw);
+	}
+	setcursor(rptr, vptr);
+
+	n = insertstr(tmp, ins, qtop, &quote, &quoted);
+	free(cp);
+	if (n < 0) return(0);
+	if (fix) {
+		if (quote > '\0' && (fix != _SC_ || quoted < 0)) {
+			if (insertcursor(&rptr, &vptr, 1, quote) < 0)
+				return(0);
+		}
+		if (insertcursor(&rptr, &vptr, 1, fix) < 0) return(0);
+	}
+
+	return(0);
 }
 #endif	/* !_NOCOMPLETE */
 
@@ -1970,7 +1965,7 @@ char *buf;
 int ch;
 {
 #ifndef	_NOKANJICONV
-	char tmpkanji[4];
+	char tmpkanji[3 + 1];
 	int n, code;
 #endif
 	int ch2;
@@ -2073,53 +2068,47 @@ int ch;
 	return((iscntrl2(ch) || ismsb(ch)) ? 0 : 1);
 }
 
-static int NEAR copyhist(sp, cxp, lenp, sizep, hist)
-char **sp;
-int *cxp, *lenp;
-ALLOC_T *sizep;
+static VOID NEAR copyhist(hist, keep)
 char *hist;
+int keep;
 {
 #ifndef	_NOORIGSHELL
 	int y1, y2, len2;
 
-	len2 = vlen(*sp, *lenp);
+	len2 = vlen(inputbuf, inputlen);
 	y1 = ptr2line(len2);
 	if (dumbmode) {
-		setcursor(*sp, 0, 0, *lenp);
+		setcursor(0, 0);
 		clearline();
 	}
 #endif	/* !_NOORIGSHELL */
 
-	if (sizep) {
-		*lenp = (hist) ? strlen(hist) : 0;
-		if (*cxp < 0 || *cxp > *lenp) *cxp = *lenp;
-		*sp = c_realloc(*sp, *lenp, sizep);
-		if (hist) memcpy(*sp, hist, *lenp + 1);
-		else **sp = '\0';
+	if (!keep) {
+		inputlen = (hist) ? strlen(hist) : 0;
+		if (rptr < 0 || rptr > inputlen) rptr = inputlen;
+		insertbuf(0);
+		if (hist) memcpy(inputbuf, hist, inputlen + 1);
+		else *inputbuf = '\0';
+		vptr = vlen(inputbuf, inputlen);
 	}
-	displaystr(*sp, cxp, lenp);
+	displaystr();
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode) /*EMPTY*/;
 	else if (shellmode) {
-		y2 = ptr2line(vlen(*sp, *lenp));
+		y2 = ptr2line(vlen(inputbuf, inputlen));
 		if (y1 > y2) {
 			while (y1 > y2) {
 				locate2(0, y1--);
 				Xputterm(L_CLEAR);
 			}
-			setcursor(*sp, *cxp, -1, *lenp);
+			setcursor(rptr, vptr);
 		}
 	}
 #endif	/* !_NOORIGSHELL */
-
-	return(vlen(*sp, *cxp));
 }
 
-static int NEAR _inputstr_up(sp, cxp, cx2, lenp, sizep, histnop, h, tmp)
-char **sp;
-int *cxp, cx2, *lenp;
-ALLOC_T *sizep;
+static VOID NEAR _inputstr_up(histnop, h, tmp)
 int *histnop, h;
 char **tmp;
 {
@@ -2127,249 +2116,210 @@ char **tmp;
 #ifndef	_NOCOMPLETE
 	if (completable(h) && selectlist) {
 		selectfile(tmpfilepos--, NULL);
-		setcursor(*sp, *cxp, cx2, *lenp);
+		setcursor(rptr, vptr);
 	}
 	else
 #endif
 #ifdef	_NOORIGSHELL
-	if (cx2 < maxcol)
+	if (vptr < maxcol)
 #else
-	if (dumbmode || cx2 < maxcol)
+	if (dumbmode || vptr < maxcol)
 #endif
 	{
 		if (nohist(h) || !history[h] || *histnop >= (int)histsize[h]
 		|| !history[h][*histnop]) {
 			ringbell();
-			return(cx2);
+			return;
 		}
 
 		if (!*tmp) {
-			(*sp)[*lenp] = '\0';
-			*tmp = strdup2(*sp);
+			inputbuf[inputlen] = '\0';
+			*tmp = strdup2(inputbuf);
 		}
-		*cxp = -1;
-		cx2 = copyhist(sp, cxp, lenp, sizep, history[h][(*histnop)++]);
+		rptr = -1;
+		copyhist(history[h][(*histnop)++], 0);
 	}
 	else {
-		if (!within(cx2) && !ptr2col(cx2)) {
+		if (!within(vptr) && !ptr2col(vptr)) {
 			leftcursor();
-			cx2--;
+			vptr--;
 		}
-		cx2 -= maxcol;
-		*cxp = rlen(*sp, cx2);
+		vptr -= maxcol;
+		rptr = rlen(inputbuf, vptr);
 		upcursor();
-		if (onkanji1(*sp, *cxp - 1)) {
+		if (onkanji1(inputbuf, rptr - 1)) {
 			leftcursor();
-			cx2--;
-			(*cxp)--;
+			vptr--;
+			rptr--;
 		}
 	}
-
-	return(cx2);
 }
 
-static int NEAR _inputstr_down(sp, cxp, cx2, lenp, sizep, histnop, h, tmp)
-char **sp;
-int *cxp, cx2, *lenp;
-ALLOC_T *sizep;
+static VOID NEAR _inputstr_down(histnop, h, tmp)
 int *histnop, h;
 char **tmp;
 {
 	int len2;
 
-	len2 = vlen(*sp, *lenp);
+	len2 = vlen(inputbuf, inputlen);
 	keyflush();
 #ifndef	_NOCOMPLETE
 	if (completable(h) && selectlist) {
 		selectfile(tmpfilepos++, NULL);
-		setcursor(*sp, *cxp, cx2, *lenp);
+		setcursor(rptr, vptr);
 	}
 	else
 #endif
 #ifdef	_NOORIGSHELL
-	if (cx2 + maxcol > len2 || (cx2 + maxcol == len2
+	if (vptr + maxcol > len2 || (vptr + maxcol == len2
 	&& !within(len2) && !ptr2col(len2)))
 #else
-	if (dumbmode || (cx2 + maxcol > len2 || (cx2 + maxcol == len2
+	if (dumbmode || (vptr + maxcol > len2 || (vptr + maxcol == len2
 	&& !within(len2) && !ptr2col(len2))))
 #endif
 	{
 		if (nohist(h) || !history[h] || *histnop <= 0) {
 			ringbell();
-			return(cx2);
+			return;
 		}
 
-		*cxp = -1;
-		if (--(*histnop) > 0)
-			cx2 = copyhist(sp, cxp, lenp,
-				sizep, history[h][*histnop - 1]);
+		rptr = -1;
+		if (--(*histnop) > 0) copyhist(history[h][*histnop - 1], 0);
 		else {
-			cx2 = copyhist(sp, cxp, lenp, sizep, *tmp);
+			copyhist(*tmp, 0);
 			if (*tmp) free(*tmp);
 			*tmp = NULL;
 		}
 	}
 	else {
-		cx2 += maxcol;
-		*cxp = rlen(*sp, cx2);
+		vptr += maxcol;
+		rptr = rlen(inputbuf, vptr);
 		downcursor();
-		if (onkanji1(*sp, *cxp - 1)) {
+		if (onkanji1(inputbuf, rptr - 1)) {
 			leftcursor();
-			cx2--;
-			(*cxp)--;
+			vptr--;
+			rptr--;
 		}
 	}
-
-	return(cx2);
 }
 
-static int NEAR _inputstr_delete(s, cx, len)
-char *s;
-int cx, len;
+static VOID NEAR _inputstr_delete(VOID_A)
 {
 	int rw, vw;
 
-	if (cx >= len) {
+	if (rptr >= inputlen) {
 		ringbell();
-		return(len);
+		return;
 	}
 
-	if (iskanji1(s, cx)) {
-		if (cx + 1 >= len) {
+	if (iskanji1(inputbuf, rptr)) {
+		if (rptr + 1 >= inputlen) {
 			ringbell();
-			return(len);
+			return;
 		}
 		rw = vw = 2;
 	}
 #ifdef	CODEEUC
-	else if (isekana(s, cx)) {
-		if (cx + 1 >= len) {
+	else if (isekana(inputbuf, rptr)) {
+		if (rptr + 1 >= inputlen) {
 			ringbell();
-			return(len);
+			return;
 		}
 		rw = 2;
 		vw = 1;
 	}
 #else
-	else if (isskana(s, cx)) rw = vw = 1;
+	else if (isskana(inputbuf, rptr)) rw = vw = 1;
 #endif
-	else if (iscntrl2(s[cx])) {
+	else if (iscntrl2(inputbuf[rptr])) {
 		rw = 1;
 		vw = 2;
 	}
-	else if (ismsb(s[cx])) {
+	else if (ismsb(inputbuf[rptr])) {
 		rw = 1;
 		vw = 4;
 	}
 	else rw = vw = 1;
 
-	deletechar(s, cx, len, vw);
-	delshift(s, cx, len, rw);
-
-	return(len -= rw);
+	deletechar(rptr, vptr, vw);
+	delshift(rptr, rw);
+	inputlen -= rw;
 }
 
-static int NEAR _inputstr_enter(sp, cxp, cx2, lenp, sizep)
-char **sp;
-int *cxp, cx2, *lenp;
-ALLOC_T *sizep;
+static VOID NEAR _inputstr_enter(VOID_A)
 {
-	int i, len, quote;
+	int len, quote;
 
 	if (!curfilename) {
 		ringbell();
-		return(cx2);
+		return;
 	}
 
 	quote = '\0';
 	keyflush();
-	if (curfilename[i = 0] != '~') for (; curfilename[i]; i++) {
-		if (strchr(METACHAR, curfilename[i])) break;
-		if (iskanji1(curfilename, i)) i++;
-	}
 	len = strlen(curfilename);
-	if (curfilename[i]
-	&& !overflow(vlen(*sp, *lenp) + vlen(curfilename, len))) {
-		insertchar(*sp, *cxp, *lenp, 1);
-		*sp = c_realloc(*sp, *lenp + 2, sizep);
-		insshift(*sp, *cxp, (*lenp)++, 1);
-		(*sp)[(*cxp)++] = quote = '"';
-		putcursor(quote, 1);
-	}
-	i = insertstr(sp, *cxp, *lenp, sizep, curfilename, len, quote);
-	if (!i) {
+	if (insertstr(curfilename, len, rptr, &quote, NULL) < 0) {
 		ringbell();
-		return(cx2);
+		return;
 	}
-	*cxp += i;
-	*lenp += i;
-	if (quote > '\0') {
-		insertchar(*sp, *cxp, *lenp, 1);
-		*sp = c_realloc(*sp, *lenp + 2, sizep);
-		insshift(*sp, *cxp, (*lenp)++, 1);
-		(*sp)[(*cxp)++] = quote;
-		putcursor(quote, 1);
-	}
-	cx2 = vlen(*sp, *cxp);
-	if (iseol(cx2)) setcursor(*sp, *cxp, cx2, *lenp);
+	if (quote > '\0') VOID_C insertcursor(&rptr, &vptr, 1, quote);
+	if (iseol(vptr)) setcursor(rptr, vptr);
 
-	return(cx2);
+	return;
 }
 
 #if	FD >= 2
-static int NEAR _inputstr_case(s, cxp, cx2, len, upper)
-char *s;
-int *cxp, cx2, len, upper;
+static VOID NEAR _inputstr_case(upper)
+int upper;
 {
 	int ch;
 
 	keyflush();
-	if (*cxp >= len) {
+	if (rptr >= inputlen) {
 		ringbell();
-		return(cx2);
+		return;
 	}
-	if (iskanji1(s, *cxp));
+	if (iskanji1(inputbuf, rptr));
 # ifdef	CODEEUC
-	else if (isekana(s, *cxp));
+	else if (isekana(inputbuf, rptr));
 # endif
 	else {
-		ch = (upper) ? toupper2(s[*cxp]) : tolower2(s[*cxp]);
-		if (ch != s[*cxp]) {
-			s[(*cxp)++] = ch;
-			cx2++;
+		ch = (upper)
+			? toupper2(inputbuf[rptr]) : tolower2(inputbuf[rptr]);
+		if (ch != inputbuf[rptr]) {
+			inputbuf[rptr++] = ch;
+			vptr++;
 			putcursor(ch, 1);
 # ifndef	_NOORIGSHELL
-			if (dumbmode) checkcursor(s, *cxp, cx2, len);
+			if (dumbmode) VOID_C checkcursor(rptr, vptr);
 			else
 # endif
-			if (within(cx2) && ptr2col(cx2) < 1)
-				setcursor(s, *cxp, cx2, len);
-			return(cx2);
+			if (within(vptr) && ptr2col(vptr) < 1)
+				setcursor(rptr, vptr);
+			return;
 		}
 	}
 
-	return(rightchar(s, cxp, cx2, len));
+	rightchar();
 }
 
-static int NEAR search_matchlen(s, cx)
-char *s;
-int cx;
+static int NEAR search_matchlen(VOID_A)
 {
 	int n;
 
 	if (searchstr) {
-		n = cx - strlen(searchstr);
+		n = rptr - strlen(searchstr);
 		if (n < 0) n = 0;
-		for (; n < cx; n++)
-			if (!memcmp(searchstr, &(s[n]), cx - n)) return(n);
+		for (; n < rptr; n++)
+			if (!memcmp(searchstr, &(inputbuf[n]), rptr - n))
+				return(n);
 	}
 
-	return(cx);
+	return(rptr);
 }
 
-static char *NEAR search_up(s, cxp, len, bias, histnop, h, tmp)
-char *s;
-int *cxp, len, bias, *histnop, h;
+static char *NEAR search_up(bias, histnop, h, tmp)
+int bias, *histnop, h;
 char **tmp;
 {
 	int n, cx, hlen, slen;
@@ -2378,11 +2328,11 @@ char **tmp;
 	if (!searchstr) return(NULL);
 
 	slen = strlen(searchstr);
-	cx = search_matchlen(s, *cxp) - bias;
-	if (cx > len - slen) cx = len - slen;
+	cx = search_matchlen() - bias;
+	if (cx > inputlen - slen) cx = inputlen - slen;
 	for (; cx >= 0; cx--) {
-		if (strncmp(&(s[cx]), searchstr, slen)) continue;
-		*cxp = cx + slen;
+		if (strncmp(&(inputbuf[cx]), searchstr, slen)) continue;
+		rptr = cx + slen;
 		return(NULL);
 	}
 
@@ -2400,10 +2350,10 @@ char **tmp;
 				continue;
 
 			if (!*tmp) {
-				s[len] = '\0';
-				*tmp = strdup2(s);
+				inputbuf[inputlen] = '\0';
+				*tmp = strdup2(inputbuf);
 			}
-			*cxp = cx + slen;
+			rptr = cx + slen;
 			*histnop = n + 1;
 			return(history[h][n]);
 		}
@@ -2415,9 +2365,8 @@ char **tmp;
 	return(NULL);
 }
 
-static char *NEAR search_down(s, cxp, len, bias, histnop, h, tmp)
-char *s;
-int *cxp, len, bias, *histnop, h;
+static char *NEAR search_down(bias, histnop, h, tmp)
+int bias, *histnop, h;
 char **tmp;
 {
 	int n, cx, hlen, slen;
@@ -2426,10 +2375,10 @@ char **tmp;
 	if (!searchstr) return(NULL);
 
 	slen = strlen(searchstr);
-	cx = search_matchlen(s, *cxp) + bias;
-	for (; cx <= len - slen; cx++) {
-		if (strncmp(&(s[cx]), searchstr, slen)) continue;
-		*cxp = cx + slen;
+	cx = search_matchlen() + bias;
+	for (; cx <= inputlen - slen; cx++) {
+		if (strncmp(&(inputbuf[cx]), searchstr, slen)) continue;
+		rptr = cx + slen;
 		return(NULL);
 	}
 
@@ -2445,7 +2394,7 @@ char **tmp;
 			if (strncmp(&(history[h][n][cx]), searchstr, slen))
 				continue;
 
-			*cxp = cx + slen;
+			rptr = cx + slen;
 			*histnop = n + 1;
 			return(history[h][n]);
 		}
@@ -2456,7 +2405,7 @@ char **tmp;
 		for (cx = 0; cx <= hlen - slen; cx++) {
 			if (strncmp(&((*tmp)[cx]), searchstr, slen)) continue;
 
-			*cxp = cx + slen;
+			rptr = cx + slen;
 			*histnop = 0;
 			return(*tmp);
 		}
@@ -2469,39 +2418,31 @@ char **tmp;
 }
 #endif	/* FD >= 2 */
 
-static int NEAR _inputstr_input(sp, cxp, cx2, lenp, sizep, buf, vw)
-char **sp;
-int *cxp, cx2, *lenp;
-ALLOC_T *sizep;
+static VOID NEAR _inputstr_input(buf, vw)
 char *buf;
 int vw;
 {
 	int rw;
 
 	rw = strlen(buf);
-	if (vw <= 0 || preparestr(sp, *cxp, lenp, sizep, rw, vw) < 0) {
+	if (vw <= 0 || preparestr(rw, vw) < 0) {
 		ringbell();
 		keyflush();
-		return(cx2);
+		return;
 	}
-	memcpy(&((*sp)[*cxp]), buf, rw);
-	*cxp += rw;
+	memcpy(&(inputbuf[rptr]), buf, rw);
+	rptr += rw;
 	Xcprintf2("%.*k", vw, buf);
 	win_x += vw;
-	cx2 = vlen(*sp, *cxp);
-
+	vptr = vlen(inputbuf, rptr);
 #ifndef	_NOORIGSHELL
-	if (dumbmode) checkcursor(*sp, *cxp, cx2, *lenp);
+	if (dumbmode) VOID_C checkcursor(rptr, vptr);
 	else
 #endif
-	if (within(cx2) && ptr2col(cx2) < vw) setcursor(*sp, *cxp, cx2, *lenp);
-
-	return(cx2);
+	if (within(vptr) && ptr2col(vptr) < vw) setcursor(rptr, vptr);
 }
 
-static int NEAR _inputstr(sp, size, def, comline, h)
-char **sp;
-ALLOC_T size;
+static int NEAR _inputstr(def, comline, h)
 int def, comline, h;
 {
 #if	!MSDOS
@@ -2510,8 +2451,8 @@ int def, comline, h;
 #if	FD >= 2
 	ALLOC_T searchsize;
 #endif
-	char *tmphist, buf[5];
-	int i, n, ch, ch2, cx, cx2, ocx2, len, hist, quote, sig;
+	char *tmphist, buf[2 + 1];
+	int i, n, ch, ch2, ovptr, hist, quote, sig;
 
 	subwindow = 1;
 
@@ -2525,16 +2466,16 @@ int def, comline, h;
 #ifndef	_NOCOMPLETE
 	tmpfilepos = -1;
 #endif
-	cx = len = strlen(*sp);
+	rptr = inputlen;
 	if (def >= 0 && def < maxcol) {
-		while (def > len) {
-			*sp = c_realloc(*sp, len, &size);
-			(*sp)[len++] = ' ';
+		while (def > inputlen) {
+			insertbuf(0);
+			inputbuf[inputlen++] = ' ';
 		}
-		cx = def;
+		rptr = def;
 	}
-	displaystr(*sp, &cx, &len);
-	cx2 = vlen(*sp, cx);
+	vptr = vlen(inputbuf, rptr);
+	displaystr();
 	keyflush();
 	hist = 0;
 	tmphist = NULL;
@@ -2549,7 +2490,7 @@ int def, comline, h;
 	do {
 		Xtflush();
 		ch2 = ch;
-		ocx2 = cx2;
+		ovptr = vptr;
 		if (quote) {
 			i = ch = getkey2(sigalrm(sig));
 			quote = 0;
@@ -2572,8 +2513,8 @@ int def, comline, h;
 
 			n = getkanjikey(buf, i);
 			if (n) {
-				ocx2 = cx2 = _inputstr_input(sp, &cx, cx2,
-					&len, &size, buf, n);
+				_inputstr_input(buf, n);
+				ovptr = vptr;
 				continue;
 			}
 
@@ -2582,23 +2523,18 @@ int def, comline, h;
 			if (!*buf) continue;
 
 			n = (iscntrl2(buf[0])) ? 2 : 4;
-			if (preparestr(sp, cx, &len, &size, 1, n) < 0) {
+			if (preparestr(1, n) < 0) {
 				ringbell();
 				continue;
 			}
 
-			(*sp)[cx++] = buf[0];
-			if (n == 2)
-				snprintf2(buf, sizeof(buf), "^%c",
-					(i + '@') & 0x7f);
-			else snprintf2(buf, sizeof(buf), "\\%03o", i);
-			cx2 = putstr(buf, *sp, cx, cx2, len);
-
+			inputbuf[rptr] = buf[0];
+			putstr(&rptr, &vptr, 1);
 			continue;
 		}
 
 #ifndef	_NOORIGSHELL
-		if (shellmode && !len) {
+		if (shellmode && !inputlen) {
 			if ((ch = Xgetkey(sig, 1)) < 0) {
 				ch = K_ESC;
 				break;
@@ -2613,7 +2549,6 @@ int def, comline, h;
 
 #if	FD >= 2
 		if (searchmode) {
-			ALLOC_T *sizep;
 			char *cp;
 
 			cp = NULL;
@@ -2658,13 +2593,11 @@ int def, comline, h;
 			}
 
 			if (searchmode < 0)
-				cp = search_up(*sp, &cx, len, n,
-					&hist, h, &tmphist);
+				cp = search_up(n, &hist, h, &tmphist);
 			else if (searchmode > 0)
-				cp = search_down(*sp, &cx, len, n,
-					&hist, h, &tmphist);
-			sizep = (cp) ? &size : NULL;
-			ocx2 = cx2 = copyhist(sp, &cx, &len, sizep, cp);
+				cp = search_down(n, &hist, h, &tmphist);
+			copyhist(cp, (cp) ? 0 : 1);
+			ovptr = vptr;
 
 			if (searchmode) continue;
 		}
@@ -2678,17 +2611,20 @@ int def, comline, h;
 					i = tmpfilepos;
 					tmpfilepos += tmpfileperrow;
 					selectfile(i, NULL);
-					ocx2 = -1;
+					ovptr = -1;
 				}
 				else
 #endif
-				if (cx >= len) ringbell();
+				if (rptr >= inputlen) ringbell();
 #ifndef	_NOEDITMODE
-				else if (isvimode() && len && cx >= len - 1)
+				else if (isvimode()
+				&& inputlen && rptr >= inputlen - 1)
 					ringbell();
 #endif
-				else ocx2 = cx2 =
-					rightchar(*sp, &cx, cx2, len);
+				else {
+					rightchar();
+					ovptr = vptr;
+				}
 				break;
 			case K_LEFT:
 				keyflush();
@@ -2697,57 +2633,64 @@ int def, comline, h;
 					i = tmpfilepos;
 					tmpfilepos -= tmpfileperrow;
 					selectfile(i, NULL);
-					ocx2 = -1;
+					ovptr = -1;
 				}
 				else
 #endif
-				if (cx <= 0) ringbell();
-				else ocx2 = cx2 = leftchar(*sp, &cx, cx2, len);
+				if (rptr <= 0) ringbell();
+				else {
+					leftchar();
+					ovptr = vptr;
+				}
 				break;
 			case K_BEG:
 				keyflush();
-				cx = cx2 = 0;
+				rptr = vptr = 0;
 				break;
 			case K_EOL:
 				keyflush();
-				cx = len;
+				rptr = inputlen;
 #ifndef	_NOEDITMODE
-				if (isvimode() && len) cx--;
+				if (isvimode() && inputlen) rptr--;
 #endif
-				cx2 = vlen(*sp, cx);
+				vptr = vlen(inputbuf, rptr);
 				break;
 			case K_BS:
 				keyflush();
-				if (cx <= 0) {
+				if (rptr <= 0) {
 					ringbell();
 					break;
 				}
-				ocx2 = cx2 = leftchar(*sp, &cx, cx2, len);
-				len = _inputstr_delete(*sp, cx, len);
+				leftchar();
+				ovptr = vptr;
+				_inputstr_delete();
 				break;
 			case K_DC:
 				keyflush();
-				len = _inputstr_delete(*sp, cx, len);
+				_inputstr_delete();
 #ifndef	_NOEDITMODE
-				if (isvimode() && len && cx >= len)
-					ocx2 = cx2 =
-						leftchar(*sp, &cx, cx2, len);
+				if (isvimode()
+				&& inputlen && rptr >= inputlen) {
+					leftchar();
+					ovptr = vptr;
+				}
 #endif
 				break;
 			case K_DL:
 				keyflush();
-				if (cx < len) truncline(*sp, cx, cx2, len);
-				len = cx;
+				if (rptr < inputlen) truncline();
+				inputlen = rptr;
 #ifndef	_NOEDITMODE
-				if (isvimode() && len)
-					ocx2 = cx2 =
-						leftchar(*sp, &cx, cx2, len);
+				if (isvimode() && inputlen) {
+					leftchar();
+					ovptr = vptr;
+				}
 #endif
 				break;
 			case K_CTRL('L'):
 				keyflush();
 #ifndef	_NOORIGSHELL
-				if (dumbmode) rewritecursor(*sp, 0, 0, len);
+				if (dumbmode) rewritecursor(0, 0);
 				else if (shellmode) {
 					locate2(0, 0);
 					Xputterm(L_CLEAR);
@@ -2776,23 +2719,23 @@ int def, comline, h;
 						Xputterm(L_CLEAR);
 					}
 				}
-				displaystr(*sp, &cx, &len);
+				displaystr();
 				break;
 			case K_UP:
-				ocx2 = cx2 = _inputstr_up(sp, &cx, cx2, &len,
-					&size, &hist, h, &tmphist);
+				_inputstr_up(&hist, h, &tmphist);
+				ovptr = vptr;
 				break;
 			case K_DOWN:
-				ocx2 = cx2 = _inputstr_down(sp, &cx, cx2, &len,
-					&size, &hist, h, &tmphist);
+				_inputstr_down(&hist, h, &tmphist);
+				ovptr = vptr;
 				break;
 			case K_IL:
 				keyflush();
 				quote = 1;
 				break;
 			case K_ENTER:
-				ocx2 = cx2 = _inputstr_enter(sp, &cx, cx2,
-					&len, &size);
+				_inputstr_enter();
+				ovptr = vptr;
 				break;
 #if	FD >= 2
 			case K_IC:
@@ -2800,12 +2743,12 @@ int def, comline, h;
 				overwritemode = 1 - overwritemode;
 				break;
 			case K_PPAGE:
-				ocx2 = cx2 = _inputstr_case(*sp, &cx, cx2,
-					len, 0);
+				_inputstr_case(0);
+				ovptr = vptr;
 				break;
 			case K_NPAGE:
-				ocx2 = cx2 = _inputstr_case(*sp, &cx, cx2,
-					len, 1);
+				_inputstr_case(1);
+				ovptr = vptr;
 				break;
 			case K_CTRL('S'):
 				keyflush();
@@ -2817,7 +2760,7 @@ int def, comline, h;
 				if (searchstr) free(searchstr);
 				searchstr = NULL;
 				searchsize = (ALLOC_T)0;
-				copyhist(sp, &cx, &len, NULL, NULL);
+				copyhist(NULL, 1);
 				break;
 			case K_CTRL('R'):
 				keyflush();
@@ -2829,7 +2772,7 @@ int def, comline, h;
 				if (searchstr) free(searchstr);
 				searchstr = NULL;
 				searchsize = (ALLOC_T)0;
-				copyhist(sp, &cx, &len, NULL, NULL);
+				copyhist(NULL, 1);
 				break;
 #endif	/* FD >= 2 */
 #ifndef	_NOCOMPLETE
@@ -2839,27 +2782,19 @@ int def, comline, h;
 					ringbell();
 					break;
 				}
-				i = completestr(sp, cx, len, &size,
-					comline, (ch2 == ch) ? 1 : 0, h);
-				if (i <= 0) {
-					if (!i) ringbell();
-					break;
-				}
-				cx += i;
-				len += i;
-				cx2 = vlen(*sp, cx);
-				if (iseol(cx2)) ocx2 = -1;
+				i = completestr(comline,
+					(ch2 == ch) ? 1 : 0, h);
+				if (i < 0) break;
+				if (iseol(vptr)) ovptr = -1;
 				break;
 #endif	/* !_NOCOMPLETE */
 			case K_CR:
 				keyflush();
 #ifndef	_NOCOMPLETE
 				if (!completable(h) || !selectlist) break;
-				i = completestr(sp, cx, len, &size, 0, -1, h);
-				cx += i;
-				len += i;
-				cx2 = vlen(*sp, cx);
-				if (iseol(cx2)) ocx2 = -1;
+				i = completestr(0, -1, h);
+				if (i < 0) break;
+				if (iseol(vptr)) ovptr = -1;
 				ch = '\0';
 #endif	/* !_NOCOMPLETE */
 				break;
@@ -2868,8 +2803,8 @@ int def, comline, h;
 				break;
 			default:
 				i = getkanjikey(buf, ch);
-				ocx2 = cx2 = _inputstr_input(sp, &cx, cx2,
-					&len, &size, buf, i);
+				_inputstr_input(buf, i);
+				ovptr = vptr;
 				break;
 		}
 #ifndef	_NOCOMPLETE
@@ -2890,10 +2825,10 @@ int def, comline, h;
 			else if (lcmdline > 0) ypos = lcmdline;
 			else ypos = maxline - 1;
 			while (ypos > n) scrollup();
-			displaystr(*sp, &cx, &len);
-			ocx2 = -1;
+			displaystr();
+			ovptr = -1;
 		}
-		if (ocx2 != cx2) setcursor(*sp, cx, cx2, len);
+		if (ovptr != vptr) setcursor(rptr, vptr);
 #endif	/* !_NOCOMPLETE */
 		if (ch == K_ESC) {
 #ifndef	_NOORIGSHELL
@@ -2907,25 +2842,25 @@ int def, comline, h;
 #ifndef	_NOCOMPLETE
 	if (selectlist) selectfile(-1, NULL);
 #endif
-	setcursor(*sp, len, -1, len);
+	setcursor(inputlen, -1);
 	subwindow = 0;
 	Xgetkey(-1, 0);
 	if (tmphist) free(tmphist);
 
 	i = 0;
 #ifndef	_NOORIGSHELL
-	if (shellmode && ch == cc_intr) len = 0;
+	if (shellmode && ch == cc_intr) inputlen = 0;
 	else
 #endif
 	if (ch == K_ESC) {
-		len = 0;
+		inputlen = 0;
 		if (maxcmdline) i = 0;
 #ifndef	_NOPTY
 		else if (minline > 0) i = 1;
 #endif
 		else if (hideclock) i = 1;
 	}
-	(*sp)[len] = '\0';
+	inputbuf[inputlen] = '\0';
 
 	Xtflush();
 	hideclock = 0;
@@ -3016,9 +2951,7 @@ int delsp, ptr;
 char *def;
 int h;
 {
-	char *input;
-	ALLOC_T size;
-	int i, j, len, ch, comline, dupwin_x, dupwin_y;
+	int i, len, ch, pc, qtop, quote, comline, dupwin_x, dupwin_y;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -3069,47 +3002,58 @@ int h;
 	dispprompt(prompt, 1);
 	Xtflush();
 
-	input = c_realloc(NULL, 0, &size);
-	if (!def) *input = '\0';
-	else {
-		j = 0;
-		ch = '\0';
-		if (!prompt) {
-			if (def[i = 0] != '~') for (; def[i]; i++) {
-				if (strchr(METACHAR, def[i])) break;
-				if (iskanji1(def, i)) i++;
-			}
-			if (def[i]) {
-				input[j++] = ch = '"';
-				if (ptr) ptr++;
-			}
-		}
-		for (i = 0; def[i]; i++, j++) {
-			input = c_realloc(input, j + 2, &size);
+	inputbuf = c_realloc(NULL, 0, &inputsize);
+	inputlen = 0;
+	if (def) {
+		quote = '\0';
+		qtop = 0;
+		for (i = 0; def[i]; i++, inputlen++) {
+			insertbuf(3);
+			pc = parsechar(&(def[i]), -1,
+				'!', EA_FINDMETA, &quote, NULL);
+			if (pc == PC_WORD) {
 #ifdef	CODEEUC
-			if (isekana(def, i)) {
-				input[j++] = def[i++];
-				if (ptr >= j) ptr++;
-			}
-			else
+				if (ptr > inputlen && isekana(def, i)) ptr++;
 #endif
-			if (iskanji1(def, i)) input[j++] = def[i++];
-			else if (!prompt && strchr(DQ_METACHAR, def[i])) {
+				inputbuf[inputlen++] = def[i++];
+			}
+#ifndef	FAKEMETA
+			else if (prompt) /*EMPTY*/;
+			else if (pc == PC_EXMETA || pc == '!') {
+				if (quote) {
+					if (ptr > inputlen) ptr += 2;
+					inputbuf[inputlen++] = quote;
+					quote = '\0';
+				}
+				else {
+					if (ptr > inputlen) ptr++;
+				}
+				inputbuf[inputlen++] = PMETA;
+				qtop = inputlen + 1;
+			}
+#endif	/* !FAKEMETA */
+			else if (pc == PC_META) {
+				if (ptr > inputlen) ptr++;
+				memmove(&(inputbuf[qtop + 1]),
+					&(inputbuf[qtop]), inputlen++ - qtop);
+				inputbuf[qtop] = quote = '"';
+				if (strchr(DQ_METACHAR, def[i])) {
+					if (ptr > inputlen) ptr++;
 #ifdef	FAKEMETA
-				input[j++] = def[i];
+					inputbuf[inputlen++] = def[i];
 #else
-				input[j++] = PMETA;
+					inputbuf[inputlen++] = PMETA;
 #endif
-				if (ptr >= j) ptr++;
+				}
 			}
-			input[j] = def[i];
+			inputbuf[inputlen] = def[i];
 		}
-		if (ch) {
-			input[j++] = ch;
-			if (ptr >= j) ptr++;
+		if (quote) {
+			if (ptr > inputlen) ptr++;
+			inputbuf[inputlen++] = quote;
 		}
-		input[j] = '\0';
 	}
+	inputbuf[inputlen] = '\0';
 
 #ifndef	_NOSPLITWIN
 	if (h == HST_PATH && windows > 1) {
@@ -3123,10 +3067,10 @@ int h;
 	if (promptstr == promptstr2) comline = 0;
 	lastofs2 = 0;
 #endif
-	ch = _inputstr(&input, size, ptr, comline, h);
+	ch = _inputstr(ptr, comline, h);
 	win_x = dupwin_x;
 	win_y = dupwin_y;
-	len = strlen(input);
+	len = strlen(inputbuf);
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode || shellmode) prompt = NULL;
@@ -3140,7 +3084,7 @@ int h;
 			}
 #ifndef	_NOPTY
 			if (minline > 0
-			&& ypos + ptr2line(vlen(input, len)) >= maxline - 1)
+			&& ypos + ptr2line(vlen(inputbuf, len)) >= maxline - 1)
 				scrollup();
 			else
 #endif
@@ -3163,16 +3107,16 @@ int h;
 	lcmdline = maxcmdline = 0;
 
 	if (ch == K_ESC) {
-		free(input);
+		free(inputbuf);
 		return(NULL);
 	}
 
-	if (delsp && len > 0 && input[len - 1] == ' ' && yesno(DELSP_K)) {
-		for (len--; len > 0 && input[len - 1] == ' '; len--);
-		input[len] = '\0';
+	if (delsp && len > 0 && inputbuf[len - 1] == ' ' && yesno(DELSP_K)) {
+		for (len--; len > 0 && inputbuf[len - 1] == ' '; len--);
+		inputbuf[len] = '\0';
 	}
 
-	return(input);
+	return(inputbuf);
 }
 
 static char *NEAR truncstr(s)
@@ -3614,7 +3558,7 @@ int val[];
 			if (!tmpstr[i]) continue;
 			Xlocate(tmpx + xx[i] + 1, L_MESLINE);
 			if (i == new) Xkanjiputs(tmpstr[i]);
-			else Xcprintf2("%*s", strlen2(tmpstr[i]), "");
+			else cputspace(strlen2(tmpstr[i]));
 		}
 	}
 	else {
@@ -3628,7 +3572,7 @@ int val[];
 			Xlocate(tmpx + xx[i] + 1, L_MESLINE);
 			Xputch2(' ');
 			if (val[i]) Xkanjiputs(tmpstr[i]);
-			else Xcprintf2("%*s", strlen2(tmpstr[i]), "");
+			else cputspace(strlen2(tmpstr[i]));
 		}
 	}
 	Xlocate(win_x, win_y);

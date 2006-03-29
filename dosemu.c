@@ -21,7 +21,7 @@ typedef struct _st_dirent {
 # else
 typedef struct dirent	st_dirent;
 # endif
-#endif
+#endif	/* _NODOSDRIVE */
 
 #if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
 typedef struct _opendirpath_t {
@@ -240,7 +240,7 @@ DIR *dirp;
 
 # ifndef	_NODOSDRIVE
 	if (((dosDIR *)dirp) -> dd_id == DID_IFDOSDRIVE) {
-		dp = dosreaddir(dirp);
+		dp = (struct dirent *)dosreaddir(dirp);
 		dos = 1;
 	}
 	else
@@ -250,9 +250,21 @@ DIR *dirp;
 		dos = 0;
 	}
 	if (!dp) return(NULL);
-	src = dp -> d_name;
+
 	dest = ((struct dirent *)&buf) -> d_name;
-	memcpy((char *)(&buf), (char *)dp, dest - (char *)&buf);
+#ifdef	CYGWIN
+	/* Some versions of Cygwin have neither d_fileno nor d_ino */
+	if (dos) {
+		src = ((struct dosdirent *)dp) -> d_name;
+		buf.d_reclen = ((struct dosdirent *)dp) -> d_reclen;
+	}
+	else
+#endif
+	{
+		src = dp -> d_name;
+		memcpy((char *)(&buf), (char *)dp, dest - (char *)&buf);
+	}
+
 	if (isdotdir(src)) {
 		strcpy(dest, src);
 		return((struct dirent *)&buf);
@@ -306,7 +318,7 @@ char *path;
 	if ((drive = _dospath(path))) {
 		if ((dd = preparedrv(drive)) < 0) n = -1;
 		else if ((n = doschdir(path)) < 0) shutdrv(dd);
-		else if ((n = (chdir(_SS_)) ? -1 : 0) >= 0) {
+		else if ((n = (chdir(rootpath)) ? -1 : 0) >= 0) {
 			if (lastdrv >= 0) {
 				if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
 					shutdrv(lastdrv);

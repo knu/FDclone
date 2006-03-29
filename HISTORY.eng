@@ -1,3 +1,16 @@
+Ver. 2.08b	Support Cygwin 1.5.19.
+ (03/30/06)	Support internal commands with the command line on PTYMODE=1.
+		Bug that inputted key is dropped in some environments is fixed.
+		Abortion when "!string"-type history is not found is fixed.
+		Unsuitable filename completion with meta character is fixed.
+		Bug that macros ignore any mark files on PTYMODE=1 is fixed.
+		Bug that ANSICOLOR=2 is ineffective on PTYMODE=1 is fixed.
+		Bug that current directory is not passed on PTYMODE=1 is fixed.
+		Bug that terminal status of mlterm will be broken is fixed.
+		Bug that OUT_DIR is ineffective with no file is fixed.
+		Bug that 'bgnotify' is ineffective out of EXECUTE_SH is fixed.
+		Bug that some background jobs output strange string is fixed.
+
 Ver. 2.08a	Support NetBSD 3.0.
  (02/07/06)	Failure to work according to 'PTYINKCODE' setting is fixed.
 		Failure to compile on some environments using varargs is fixed.

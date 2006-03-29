@@ -1145,7 +1145,7 @@ char *file, *dir;
 	if (browselist) {
 		int i;
 
-		if (!browsevar) arch = strdup2("");
+		if (!browsevar) arch = strdup2(nullstr);
 		else {
 			len = 0;
 			for (i = 0; browsevar[i]; i++)
@@ -1187,7 +1187,7 @@ char *file, *dir;
 			len = TD_ARCH;
 		}
 		Xputterm(END_STANDOUT);
-		Xcprintf2("%-*.*k", len, len, arch);
+		cputstr(len, arch);
 		free(arch);
 
 		Xlocate(TC_MARK, TL_PATH);
@@ -1219,7 +1219,7 @@ char *file, *dir;
 		len = D_ARCH;
 	}
 	Xputterm(END_STANDOUT);
-	Xcprintf2("%-*.*k", len, len, arch);
+	cputstr(len, arch);
 	free(arch);
 
 	Xtflush();
@@ -1645,7 +1645,7 @@ int flags;
 
 	maxfile = 0;
 	addlist();
-	filelist[0].name = strdup2("..");
+	filelist[0].name = strdup2(parentpath);
 #ifndef	NOSYMLINK
 	filelist[0].linkname = NULL;
 #endif
@@ -1800,7 +1800,7 @@ char *arcre;
 
 	if (parent < 0) return;
 	for (i = 0; i < maxfile; i++)
-		if (!strcmp(filelist[i].name, "..")) return;
+		if (isdotdir(filelist[i].name) == 1) return;
 	memmove((char *)&(filelist[1]), (char *)&(filelist[0]),
 		maxfile++ * sizeof(namelist));
 	memcpy((char *)&(filelist[0]),
@@ -1867,7 +1867,7 @@ static char *NEAR archoutdir(VOID_A)
 	cp = strrdelim2(file, cp);
 	if (!cp) *archivedir = '\0';
 	else {
-		if (cp == file) strcpy(archivedir, _SS_);
+		if (cp == file) copyrootpath(archivedir);
 		else strncpy2(archivedir, file, cp - file);
 		file = ++cp;
 	}
@@ -1887,7 +1887,7 @@ char *path;
 	if (browselist) {
 		int i, n, flags, dupfilepos;
 
-		if (!path || !*path) path = "..";
+		if (!path || !*path) path = parentpath;
 		if ((cp = strdelim(path, 0))) {
 			for (i = 1; cp[i]; i++) if (cp[i] != _SC_) break;
 			if (cp[i]) {
@@ -1930,7 +1930,7 @@ char *path;
 			return(path);
 		}
 		browselevel = n;
-		return("..");
+		return(parentpath);
 	}
 #endif	/* !_NOBROWSE */
 
@@ -1942,11 +1942,11 @@ char *path;
 		else len = strlen(path);
 
 		cp = path;
-		if (len == 2 && path[0] == '.' && path[1] == '.') cp = "";
+		if (len == 2 && path[0] == '.' && path[1] == '.') cp = nullstr;
 		if (searcharcdir(cp, len)) {
 			if (*(cp = archivedir)) cp = strcatdelim(archivedir);
 			strncpy2(cp, path, len);
-			file = "..";
+			file = parentpath;
 		}
 		else if (*cp || !(file = archoutdir())) {
 			strcpy(archivedir, duparcdir);
@@ -2052,7 +2052,7 @@ int flags;
 		}
 	}
 #ifndef	_NODOSDRIVE
-	else if ((drive = tmpdosdupl("", &tmpdir, 1)) < 0) {
+	else if ((drive = tmpdosdupl(nullstr, &tmpdir, 1)) < 0) {
 		Xputterm(T_BELL);
 		return(-1);
 	}
@@ -2086,7 +2086,7 @@ int flags;
 	}
 	archivefile = (filelist && filepos < maxfile)
 		? filelist[filepos].name : NULL;
-	if (!archivefile) archivefile = "";
+	if (!archivefile) archivefile = nullstr;
 	archivefile = strdup2(archivefile);
 	*archivedir = '\0';
 	archtmpdir = tmpdir;
@@ -2305,7 +2305,7 @@ char *arc;
 
 	strcpy(path, arc);
 	if ((dest = strrdelim(path, 1))) *(++dest) = '\0';
-	else strcpy(path, ".");
+	else copycurpath(path);
 	if ((n = archdostmpdir(path, &tmpdest, full)) < 0) {
 		warning(ENOENT, arc);
 		return(0);
@@ -2322,7 +2322,7 @@ char *arc;
 		}
 	}
 #ifndef	_NODOSDRIVE
-	else if ((drive = tmpdosdupl("", &tmpdir, 0)) < 0) {
+	else if ((drive = tmpdosdupl(nullstr, &tmpdir, 0)) < 0) {
 		free(dest);
 		return(0);
 	}
@@ -2421,11 +2421,11 @@ int tr, flags;
 			dir = evalpath(dir, 0);
 		}
 		if (!dir) return(0);
-		if (!*dir) strcpy(path, ".");
+		if (!*dir) copycurpath(path);
 		else {
 			cp = strcpy2(path, dir);
 #ifdef	_USEDOSPATH
-			if (_dospath(dir) && !dir[2]) strcpy(cp, ".");
+			if (_dospath(dir) && !dir[2]) copycurpath(cp);
 #endif
 		}
 		free(dir);

@@ -64,4 +64,5 @@ extern ptyinfo_t ptylist[];
 #define	TE_LOCKFRONT		25
 #define	TE_UNLOCKFRONT		26
 #define	TE_SAVETTYIO		27
+#define	TE_INTERNAL		28
 #define	TE_CHANGESTATUS		99

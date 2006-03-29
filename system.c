@@ -227,22 +227,19 @@ extern int Xaccess __P_((char *, int));
 extern int Xopen __P_((char *, int, int));
 # ifdef	_NODOSDRIVE
 # define	Xclose(f)	((close(f)) ? -1 : 0)
+# define	Xdup		safe_dup
+# define	Xdup2		safe_dup2
 # define	Xfdopen		fdopen
 # define	Xfclose		fclose
 # define	Xfileno		fileno
 # else	/* !_NODOSDRIVE */
 extern int Xclose __P_((int));
+extern int Xdup __P_((int));
+extern int Xdup2 __P_((int, int));
 extern FILE *Xfdopen __P_((int, char*));
 extern int Xfclose __P_((FILE *));
 extern int Xfileno __P_((FILE *));
 # endif	/* !_NODOSDRIVE */
-# ifdef	_NODOSDRIVE
-# define	Xdup		safe_dup
-# define	Xdup2		safe_dup2
-# else
-extern int Xdup __P_((int));
-extern int Xdup2 __P_((int, int));
-# endif
 #else	/* !FD */
 # if	MSDOS
 extern int _dospath __P_((char *));
@@ -263,11 +260,11 @@ extern char *Xgetwd __P_((char *));
 #define	Xunlink(p)	((unlink(p)) ? -1 : 0)
 #define	Xopen		open
 #define	Xclose(f)	((close(f)) ? -1 : 0)
+#define	Xdup		safe_dup
+#define	Xdup2		safe_dup2
 #define	Xfdopen		fdopen
 #define	Xfclose		fclose
 #define	Xfileno		fileno
-#define	Xdup		safe_dup
-#define	Xdup2		safe_dup2
 # if	MSDOS
 #  ifdef	DJGPP
 #  define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
@@ -346,7 +343,7 @@ extern int getjob __P_((char *));
 extern int stackjob __P_((p_id_t, int, syntaxtree *));
 extern int stoppedjob __P_((p_id_t));
 extern VOID killjob __P_((VOID_A));
-extern VOID checkjob __P_((int));
+extern VOID checkjob __P_((FILE *));
 # endif	/* !NOJOB */
 extern char *evalposixsubst __P_((char *, int *));
 # if	!MSDOS
@@ -451,6 +448,9 @@ static char *NEAR adjustpname __P_((char *));
 # endif
 #endif	/* !FD */
 
+#ifndef	NOJOB
+static VOID NEAR notifyjob __P_((VOID_A));
+#endif
 static VOID NEAR setsignal __P_((VOID_A));
 static VOID NEAR resetsignal __P_((int));
 static VOID NEAR exectrapcomm __P_((VOID_A));
@@ -965,7 +965,7 @@ static int isshellbuiltin = 0;
 static int execerrno = 0;
 
 static CONST char *syntaxerrstr[] = {
-	"",
+	NULL,
 #define	ER_UNEXPTOK	1
 	"unexpected token",
 #define	ER_UNEXPNL	2
@@ -976,7 +976,7 @@ static CONST char *syntaxerrstr[] = {
 #define	SYNTAXERRSIZ	((int)(sizeof(syntaxerrstr) / sizeof(char *)))
 
 static CONST char *execerrstr[] = {
-	"",
+	NULL,
 #define	ER_COMNOFOUND	1
 	"command not found",
 #define	ER_NOTFOUND	2
@@ -1005,32 +1005,52 @@ static CONST char *execerrstr[] = {
 	"bad option(s)",
 #define	ER_PARAMNOTSET	14
 	"parameter not set",
-#define	ER_MISSARG	15
-	"Missing argument",
-#define	ER_RESTRICTED	16
+#define	ER_RESTRICTED	15
 	"restricted",
-#define	ER_BADULIMIT	17
-	"Bad ulimit",
-#define	ER_BADTRAP	18
+#define	ER_BADULIMIT	16
+	"bad ulimit",
+#define	ER_BADTRAP	17
 	"bad trap",
-#define	ER_NOTALIAS	19
-	"is not an alias",
-#define	ER_NOSUCHJOB	20
-	"No such job",
-#define	ER_NUMOUTRANGE	21
+#define	ER_NUMOUTRANGE	18
 	"number out of range",
-#define	ER_UNKNOWNSIG	22
-	"unknown signal; kill -l lists signals",
-#define	ER_NOHOMEDIR	23
+#define	ER_NOHOMEDIR	19
 	"no home directory",
-#define	ER_INVALDRIVE	24
-	"Invalid drive specification",
-#define	ER_INCORRECT	25
-	"incorrect",
-#define	ER_NOTLOGINSH	26
+#ifdef	NOALIAS
+	NULL,
+#else
+#define	ER_NOTALIAS	20
+	"is not an alias",
+#endif
+#ifdef	NOPOSIXUTIL
+	NULL,
+#else
+#define	ER_MISSARG	21
+	"missing argument",
+#endif
+#ifdef	NOJOB
+	NULL, NULL,
+#else
+#define	ER_NOSUCHJOB	22
+	"no such job",
+#define	ER_TERMINATED	23
+	"job has terminated",
+#endif
+#ifdef	MINIMUMSHELL
+	NULL, NULL, NULL,
+#else
+#define	ER_NOTLOGINSH	24
 	"not login shell",
-#define	ER_DIREMPTY	27
+#define	ER_DIREMPTY	25
 	"directory stack empty",
+#define	ER_UNKNOWNSIG	26
+	"unknown signal; kill -l lists signals",
+#endif
+#if	!MSDOS
+	NULL,
+#else
+#define	ER_INVALDRIVE	27
+	"invalid drive specification",
+#endif
 #ifdef	FD
 #define	ER_RECURSIVEFD	28
 	"recursive call for FDclone",
@@ -1760,7 +1780,7 @@ int raw;
 {
 	if (chdir2(dir) < 0) return(-1);
 # ifndef	_NOUSEHASH
-	searchhash(NULL, "", "");
+	searchhash(NULL, nullstr, nullstr);
 # endif
 
 	return(0);
@@ -1822,6 +1842,37 @@ char *path;
 # endif	/* MSDOS && !BSPATHDELIM */
 #endif	/* !FD */
 
+#ifndef	NOJOB
+static VOID NEAR notifyjob(VOID_A)
+{
+	FILE *fp;
+	int fd;
+
+	if ((fd = Xdup(STDERR_FILENO)) < 0) fp = stderr;
+	else if (!(fp = Xfdopen(fd, "a"))) {
+		Xclose(fd);
+		fp = stderr;
+	}
+# if	!MSDOS
+	else {
+#  ifdef	DEBUG
+		_mtrace_file = "setvbuf(start)";
+		setlbuf(fp);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "setvbuf(end)";
+			malloc(0);	/* dummy alloc */
+		}
+#  else
+		setlbuf(fp);
+#  endif
+	}
+# endif	/* !MSDOS */
+	checkjob(fp);
+	safefclose(fp);
+}
+#endif	/* !NOJOB */
+
 static VOID NEAR setsignal(VOID_A)
 {
 	int i, sig;
@@ -1847,6 +1898,9 @@ int forced;
 #if	!MSDOS && defined (NOJOB)
 	p_id_t tmp;
 #endif
+#if	defined (SIGCHLD) && !defined (NOJOB)
+	int n;
+#endif
 	int i, duperrno;
 
 	duperrno = errno;
@@ -1856,7 +1910,7 @@ int forced;
 		tmp = Xwait3(NULL, WNOHANG | WUNTRACED, NULL);
 	} while (tmp > (p_id_t)0 || (tmp < (p_id_t)0 && errno == EINTR));
 # else
-	checkjob(1);
+	notifyjob();
 	stopped = 0;
 # endif
 #endif	/* !MSDOS */
@@ -1871,9 +1925,17 @@ int forced;
 #if	defined (FD) && defined (SIGALRM)
 			noalrm--;
 #endif
-			for (i = 0; i < NSIG; i++)
+			for (i = 0; i < NSIG; i++) {
+#if	defined (SIGCHLD) && !defined (NOJOB)
+				if (i == SIGCHLD && bgnotify) {
+					for (n = 0; n < maxjobs; n++)
+						if (joblist[n].pids) break;
+					if (n < maxjobs) continue;
+				}
+#endif
 				if (oldsigfunc[i] != SIG_ERR)
 					signal2(i, oldsigfunc[i]);
+			}
 #if	!MSDOS
 			Xsigsetmask(oldsigmask);
 #endif
@@ -2036,7 +2098,7 @@ int sig;
 		case SIGCHLD:
 # ifndef	NOJOB
 			if (bgnotify) {
-				checkjob(1);
+				notifyjob();
 				break;
 			}
 # endif
@@ -2389,6 +2451,7 @@ int noexit;
 			}
 			joblist[i].pids = NULL;
 		}
+		maxjobs = 0;
 		free(joblist);
 		joblist = NULL;
 	}
@@ -2472,7 +2535,8 @@ char *s;
 	if (argvar && argvar[0]) fprintf2(stderr, "%k: ", argvar[0]);
 	if (s) fprintf2(stderr, "%a: ",
 		(*s && syntaxerrno != ER_UNEXPNL) ? s : "syntax error");
-	fputs(syntaxerrstr[syntaxerrno], stderr);
+	if (syntaxerrstr[syntaxerrno])
+		fputs(syntaxerrstr[syntaxerrno], stderr);
 	fputnl(stderr);
 	ret_status = RET_SYNTAXERR;
 	if (errorexit) Xexit2(RET_SYNTAXERR);
@@ -2496,7 +2560,7 @@ int n, noexit;
 #endif
 	if (argvar && argvar[0]) fprintf2(stderr, "%k: ", argvar[0]);
 	if (s) fprintf2(stderr, "%a: ", s);
-	fputs(execerrstr[n], stderr);
+	if (execerrstr[n]) fputs(execerrstr[n], stderr);
 	fputnl(stderr);
 	execerrno = n;
 #ifndef	BASHSTYLE
@@ -2971,7 +3035,7 @@ int n, val;
 		 * ternary operator with NULL is const char *,
 		 * not to be converted to char *.
 		 */
-		if (!val) cp = (cp) ? (char *)NULL : "";
+		if (!val) cp = (cp) ? NULL : nullstr;
 
 		if (cp) {
 			setenv2("FD_EDITMODE", cp, 0);
@@ -4384,7 +4448,7 @@ int len;
 		if (dumbterm > 1 && (!shellmode || exit_status < 0)) {
 			freeterment();
 			term = getconstvar("TERM");
-			getterment((term) ? term : "");
+			getterment((term) ? term : nullstr);
 			execerror(cp, ER_INVALTERMFD, 0);
 			copykeyseq(keymap);
 			freekeyseq(keymap);
@@ -4478,7 +4542,7 @@ int len;
 # ifdef	FD
 	else if (constequal(ident, "TERM", len)) {
 		freeterment();
-		getterment("");
+		getterment(nullstr);
 	}
 # endif
 #endif	/* !MSDOS */
@@ -5722,7 +5786,7 @@ int quiet;
 			rp -> filename[j++] = s[i++];
 			rp -> filename[j++] = s[i];
 		}
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			if (s[++i] != '\n' || rp -> new) {
 				rp -> filename[j++] = PMETA;
 				if (s[i]) rp -> filename[j++] = s[i];
@@ -5986,7 +6050,7 @@ syntaxtree *trp;
 #endif
 		else {
 			syntaxerrno = ER_UNEXPEOF;
-			syntaxerror("");
+			syntaxerror(nullstr);
 			return(NULL);
 		}
 	}
@@ -7901,10 +7965,6 @@ syntaxtree *trp;
 	ALLOC_T i, size;
 	int c;
 
-	if ((trp -> comm) -> argc <= 1) {
-		execerror(NULL, ER_MISSARG, 0);
-		return(RET_FAIL);
-	}
 	for (i = 1; i < (trp -> comm) -> argc; i++) {
 		if (identcheck((trp -> comm) -> argv[i], '\0') <= 0) {
 			execerror((trp -> comm) -> argv[i], ER_NOTIDENT, 0);
@@ -7956,6 +8016,10 @@ syntaxtree *trp;
 		if (cp && setenv2((trp -> comm) -> argv[i], cp, 0) < 0)
 			c = RET_FAIL;
 	}
+#ifdef	BASHSTYLE
+	/* bash set the variable REPLY without any argument */
+	else if (setenv2("REPLY", buf, 0) < 0) c = RET_FAIL;
+#endif
 	free(buf);
 
 	return(c);
@@ -8463,7 +8527,7 @@ syntaxtree *trp;
 		s = (trp -> comm) -> argv[1];
 # ifndef	NOJOB
 		if (*s == '%') {
-			checkjob(0);
+			checkjob(NULL);
 			if ((i = getjob(s)) < 0) pid = (p_id_t)-1;
 			else {
 				j = joblist[i].npipe;
@@ -8478,7 +8542,7 @@ syntaxtree *trp;
 		}
 # ifndef	NOJOB
 		else {
-			checkjob(0);
+			checkjob(NULL);
 			if (!joblist || (i = searchjob(pid, &j)) < 0) {
 				pid = (p_id_t)-1;
 #  ifdef	FAKEUNINIT
@@ -8795,9 +8859,10 @@ syntaxtree *trp;
 	int i;
 
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
-	checkjob(0);
+	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
-		execerror((trp -> comm) -> argv[1], ER_NOSUCHJOB, 0);
+		execerror((trp -> comm) -> argv[1],
+			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 0);
 		return(RET_FAIL);
 	}
 	free(joblist[i].pids);
@@ -10299,17 +10364,11 @@ char *command;
 	else if (pipein) {
 #ifdef	CYGWIN
 	/* a trick for buggy terminal emulation */
-		fd_set readfds;
 		struct timeval tv;
-		int dupl;
 
-		dupl = Xdup(fd);
 		tv.tv_sec = 0;
 		tv.tv_usec = 500000L;	/* maybe enough waiting limit */
-		FD_ZERO(&readfds);
-		FD_SET(dupl, &readfds);
-		select(dupl + 1, &readfds, NULL, NULL, &tv);
-		close(dupl);
+		VOID_C readselect(1, &fd, NULL, &tv);
 #endif	/* CYGWIN */
 		nownstree(trp);
 	}
@@ -10447,10 +10506,19 @@ int execruncom(fname, verbose)
 char *fname;
 int verbose;
 {
+#ifdef	MINIMUMSHELL
+	char *cp, path[MAXPATHLEN];
+#endif
 	char **dupargvar;
 	int fd, ret, duprestricted;
 
 	setsignal();
+#ifdef	MINIMUMSHELL
+	if (*fname == '~' && fname[1] == _SC_ && (cp = getconstvar("HOME"))) {
+		strcatdelim2(path, cp, &(fname[2]));
+		fname = path;
+	}
+#endif
 	fname = strdup2(fname);
 #if	MSDOS && !defined (BSPATHDELIM)
 	fname = adjustpname(fname);
@@ -10568,7 +10636,7 @@ int prepareterm(VOID_A)
 #ifdef	FD
 	if (interactive) inittty(0);
 	term = getconstvar("TERM");
-	getterment((term) ? term : "");
+	getterment((term) ? term : nullstr);
 #endif	/* FD */
 
 	return(0);
@@ -10584,19 +10652,19 @@ int verbose;
 
 #ifdef	FD
 	execruncom(DEFRC, verbose);
-#else	/* !FD */
+#else
 	if (loginshell) {
 		execruncom(LSH_DEFRC, verbose);
 		execruncom(LSH_RCFILE, verbose);
 	}
-#endif	/* !FD */
+#endif
 #ifndef	MINIMUMSHELL
 # if	!MSDOS
 	if (getuid() != geteuid() || getgid() != getegid()) /*EMPTY*/;
 	else
 # endif
 	if ((cp = getconstvar("ENV"))) execruncom(cp, verbose);
-#endif
+#endif	/* !MINIMUMSHELL */
 #ifdef	FD
 	if (loginshell) execruncom(SH_RCFILE, verbose);
 	else execruncom(FD_RCFILE, verbose);
@@ -10683,11 +10751,28 @@ char *argv[];
 
 	setnbuf(stdin);
 #if	!MSDOS
+# ifdef	DEBUG
+	_mtrace_file = "setvbuf(start)";
+	setlbuf(stderr);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "setvbuf(end)";
+		malloc(0);	/* dummy alloc */
+	}
+	_mtrace_file = "setvbuf(start)";
+	setlbuf(stdout);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "setvbuf(end)";
+		malloc(0);	/* dummy alloc */
+	}
+# else
 	setlbuf(stderr);
 	setlbuf(stdout);
+# endif
 	Xsigemptyset(mask);
 	Xsigblock(oldsigmask, mask);
-#endif
+#endif	/* !MSDOS */
 
 	if (definput == STDIN_FILENO && isatty(STDIN_FILENO)) definput = ttyio;
 
@@ -10767,7 +10852,7 @@ char *argv[];
 				cp = pwd -> pw_dir;
 			else
 #endif
-			cp = _SS_;
+			cp = rootpath;
 			setenv2("HOME", cp, 1);
 		}
 		if (!getconstvar("SHELL")) {
@@ -10892,7 +10977,14 @@ char *argv[];
 		Xexit2(n);
 	}
 
-	if (loginshell && chdir2(getconstvar("HOME")) < 0) {
+	n = 0;
+#ifdef	BASHSTYLE
+	/* bash changes the current directory if the variable PWD is set */
+	if ((cp = getconstvar("PWD"))) n = chdir2(cp);
+	else
+#endif
+	if (loginshell && interactive) n = chdir2(getconstvar("HOME"));
+	if (n < 0) {
 #ifdef	FD
 		initfd(argv);
 #endif
@@ -10968,7 +11060,7 @@ int pseudoexit;
 				if (cont) {
 					exec_line(NULL);
 					syntaxerrno = ER_UNEXPEOF;
-					syntaxerror("");
+					syntaxerror(nullstr);
 				}
 				else {
 					fprintf2(stderr,

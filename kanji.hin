@@ -52,7 +52,7 @@ extern char *mesconv __P_((char *, char *));
 #define	NOROW_K	mesconv("画面の行数が足りません.", "Line size is too small for operation.")
 #define	NOWIN_K	mesconv("これ以上ウィンドウ分割できません.", "No more window to be split.")
 #define	KILL_K	mesconv("稼働中のプログラムがありますが強制終了させますか ?", "Are you sure that running programs will be terminated forcedly ?")
-#define	NOPTY_K	mesconv("擬似端末起動に失敗しました.", "Failed to open the pseudo terminal.")
+#define	NOPTY_K	mesconv("疑似端末起動に失敗しました.", "Failed to open the pseudo terminal.")
 #define	QUIT_K	mesconv("FD を終了しますか ?", "Quit from FD ?")
 #define	QYES_K	mesconv("Y: 終了", "Yes")
 #define	QNO_K	mesconv("N: 中止", "No")
@@ -297,13 +297,13 @@ extern char *mesconv __P_((char *, char *));
 	meslist("内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
 		"Don't use control sequences to edit command line in the internal shell mode.")
 #define	PTYMD_E \
-	meslist("コマンド実行時に擬似端末を使用します.", \
+	meslist("コマンド実行時に疑似端末を使用します.", \
 		"Use the pseudo terminal to execute commands.")
 #define	PTYTM_E \
-	meslist("擬似端末用に子プロセスに渡す環境変数 TERM の値を指定します.", \
+	meslist("疑似端末用に子プロセスに渡す環境変数 TERM の値を指定します.", \
 		"Define the environment variavle TERM exported for pseudo terminal.")
 #define	PTYKY_E \
-	meslist("擬似端末メニューの起動キーを指定します.", \
+	meslist("疑似端末メニューの起動キーを指定します.", \
 		"Define the start key for pseudo terminal menu.")
 #define	LGFIL_E \
 	meslist("ログファイル名を指定します.", \

@@ -179,6 +179,8 @@ typedef struct _envtable {
 	u_char type;
 } envtable;
 
+#define	env_str(n)	(&(envlist[n].env[FDESIZ]))
+#define	fdenv_str(n)	(envlist[n].env)
 #ifdef	FORCEDSTDC
 #define	def_str(n)	(envlist[n].def.str)
 #define	def_num(n)	(envlist[n].def.num)
@@ -535,7 +537,7 @@ int no;
 	char *cp;
 	int n;
 
-	cp = getenv2(envlist[no].env);
+	cp = getenv2(fdenv_str(no));
 	switch (envlist[no].type) {
 		case T_BOOL:
 			if (!cp) n = def_num(no);
@@ -670,7 +672,10 @@ int stable;
 
 	if (!stable) /*EMPTY*/;
 	else if (pp -> lang == NOCNV) {
-		pp -> last = NULL;
+		if (!(pp -> flags & P_STABLE)) {
+			if (pp -> last) free(pp -> last);
+			pp -> last = NULL;
+		}
 		stable = 0;
 	}
 	else if (pp -> flags & P_STABLE) /*EMPTY*/;
@@ -703,7 +708,10 @@ pathtable *pp;
 		}
 		if (kanjierrno) pp -> lang = DEFCODE;
 	}
-	pp -> last = strdup2(path);
+	if (!(pp -> flags & P_STABLE)) {
+		if (pp -> last) free(pp -> last);
+		pp -> last = strdup2(path);
+	}
 }
 
 static VOID NEAR savepathlang(VOID_A)
@@ -795,6 +803,12 @@ VOID freeenvpath(VOID_A)
 {
 	int i;
 
+# ifndef	_NOKANJIFCONV
+	for (i = 0; i < PATHLISTSIZ; i++) {
+		if (pathlist[i].last) free(pathlist[i].last);
+		pathlist[i].last = NULL;
+	}
+# endif
 	for (i = 0; i < ENVLISTSIZ; i++) switch (envlist[i].type) {
 		case T_PATH:
 		case T_PATHS:
@@ -840,7 +854,7 @@ int y, w;
 {
 	Xlocate(0, y);
 	Xputterm(T_STANDOUT);
-	Xcprintf2("%*s", w, "");
+	cputspace(w);
 	Xputterm(END_STANDOUT);
 }
 
@@ -1097,9 +1111,8 @@ char **list;
 		savepathlang();
 #endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			setenv2(envlist[i].env, list[i * 2], 0);
-			setenv2(&(envlist[i].env[FDESIZ]),
-				list[i * 2 + 1], 0);
+			setenv2(fdenv_str(i), list[i * 2], 0);
+			setenv2(env_str(i), list[i * 2 + 1], 0);
 			_evalenv(i);
 		}
 #ifndef	_NOKANJIFCONV
@@ -1110,10 +1123,8 @@ char **list;
 	else {
 		list = (char **)malloc2(ENVLISTSIZ * 2 * sizeof(char *));
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			list[i * 2] = strdup2(getshellvar(envlist[i].env, -1));
-			list[i * 2 + 1] =
-				strdup2(getshellvar(&(envlist[i].env[FDESIZ]),
-					-1));
+			list[i * 2] = strdup2(getshellvar(fdenv_str(i), -1));
+			list[i * 2 + 1] = strdup2(getshellvar(env_str(i), -1));
 		}
 	}
 
@@ -1129,9 +1140,9 @@ static VOID NEAR cleanupenv(VOID_A)
 	savepathlang();
 #endif
 	for (i = 0; i < ENVLISTSIZ; i++) {
-		setenv2(envlist[i].env, NULL, 0);
+		setenv2(fdenv_str(i), NULL, 0);
 		cp = (envlist[i].type == T_CHARP) ? def_str(i) : NULL;
-		setenv2(&(envlist[i].env[FDESIZ]), cp, 0);
+		setenv2(env_str(i), cp, 0);
 		_evalenv(i);
 	}
 #ifndef	_NOKANJIFCONV
@@ -1316,18 +1327,18 @@ int no;
 # endif
 # ifndef	_NOPTY
 		case T_KEYCODE:
-			cp = getenv2(envlist[no].env);
+			cp = getenv2(fdenv_str(no));
 			break;
 # endif
 		default:
-			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
+			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			break;
 	}
 
-	if (!getenv2(envlist[no].env))
+	if (!getenv2(fdenv_str(no)))
 		cp = new = strcatalloc(strdup2(cp),
 			(cp && *cp) ? VDEF_K : VUDEF_K);
-	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
+	cputstr(MAXCUSTVAL, cp);
 	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
 	if (new) free(new);
@@ -1344,7 +1355,7 @@ int no;
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
 
 	new = NULL;
-	env = &(envlist[no].env[FDESIZ]);
+	env = env_str(no);
 	switch (envlist[no].type) {
 		case T_BOOL:
 			n = (*((int *)(envlist[no].var))) ? 1 : 0;
@@ -1385,7 +1396,7 @@ int no;
 			break;
 		case T_PATH:
 		case T_PATHS:
-			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
+			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			new = inputcustenvstr(env, 1, cp, HST_PATH);
 			if (new == (char *)-1) return(0);
 			cp = new;
@@ -1636,7 +1647,7 @@ int no;
 				n += p;
 			}
 #  endif	/* !_NOKANJICONV */
-			str[NOCNV] = "";
+			str[NOCNV] = nullstr;
 #  if	!defined (_NOENGMES) && !defined (_NOJPNMES)
 			str[ENG] = "C";
 #  endif
@@ -1674,7 +1685,7 @@ int no;
 # endif	/* FD >= 2 */
 # ifndef	_NOPTY
 		case T_KEYCODE:
-			if (!(cp = getenv2(envlist[no].env))) cp = "";
+			if (!(cp = getenv2(fdenv_str(no)))) cp = nullstr;
 			new = inputcustenvstr(env, 0, cp, -1);
 			if (new == (char *)-1) return(0);
 			if (new && getkeycode(new, 0) < 0) {
@@ -1686,15 +1697,14 @@ int no;
 			break;
 # endif	/* !_NOPTY */
 		default:
-			if (!(cp = getenv2(envlist[no].env))) cp = def_str(no);
+			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			new = inputcustenvstr(env, 0, cp, -1);
 			if (new == (char *)-1) return(0);
 			cp = new;
 			break;
 	}
 
-	if (getshellvar(envlist[no].env, -1))
-		n = setenv2(envlist[no].env, cp, 0);
+	if (getshellvar(fdenv_str(no), -1)) n = setenv2(fdenv_str(no), cp, 0);
 	else n = setenv2(env, cp, 0);
 	if (new) free(new);
 	if (n < 0) warning(-1, env);
@@ -1719,11 +1729,11 @@ FILE *fp;
 
 	for (i = n = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
-		&& (cp = getshellvar(&(envlist[i].env[FDESIZ]), -1))
+		&& (cp = getshellvar(env_str(i), -1))
 		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i))))
 			n++;
 		if ((!flaglist || !(flaglist[i] & 1))
-		&& getshellvar(envlist[i].env, -1))
+		&& getshellvar(fdenv_str(i), -1))
 			n++;
 	}
 	if (!n || !fp) return(n);
@@ -1732,16 +1742,16 @@ FILE *fp;
 	fputs("# shell variables definition\n", fp);
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
-		&& (cp = getshellvar(&(envlist[i].env[FDESIZ]), -1))
+		&& (cp = getshellvar(env_str(i), -1))
 		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i)))) {
 			cp = killmeta(cp);
-			fprintf2(fp, "%s=%s\n", &(envlist[i].env[FDESIZ]), cp);
+			fprintf2(fp, "%s=%s\n", env_str(i), cp);
 			free(cp);
 		}
 		if ((!flaglist || !(flaglist[i] & 1))
-		&& (cp = getshellvar(envlist[i].env, -1))) {
+		&& (cp = getshellvar(fdenv_str(i), -1))) {
 			cp = killmeta(cp);
-			fprintf2(fp, "%s=%s\n", envlist[i].env, cp);
+			fprintf2(fp, "%s=%s\n", fdenv_str(i), cp);
 			free(cp);
 		}
 	}
@@ -1760,10 +1770,8 @@ FILE *fp;
 
 	for (n = 0; argv[n]; n++) {
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			ident = envlist[i].env;
-			if (!strnenvcmp(argv[n], ident, len[n])) break;
-			ident += FDESIZ;
-			if (!strnenvcmp(argv[n], ident, len[n])) break;
+			if (!strnenvcmp(argv[n], fdenv_str(i), len[n])) break;
+			if (!strnenvcmp(argv[n], env_str(i), len[n])) break;
 		}
 		if (i < ENVLISTSIZ) break;
 	}
@@ -1776,12 +1784,12 @@ FILE *fp;
 		f = 0;	/* fake for -Wuninitialized */
 #  endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			ident = envlist[i].env;
+			ident = fdenv_str(i);
 			if (!strnenvcmp(argv[n], ident, len[n])) {
 				f = 1;
 				break;
 			}
-			ident += FDESIZ;
+			ident = env_str(i);
 			if (!strnenvcmp(argv[n], ident, len[n])) {
 				f = 2;
 				break;
@@ -1841,10 +1849,8 @@ FILE *fp;
 
 	for (n = 1; argv[n]; n++) {
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			ident = envlist[i].env;
-			if (!strenvcmp(argv[n], ident)) break;
-			ident += FDESIZ;
-			if (!strenvcmp(argv[n], ident)) break;
+			if (!strenvcmp(argv[n], fdenv_str(i))) break;
+			if (!strenvcmp(argv[n], env_str(i))) break;
 		}
 		if (i < ENVLISTSIZ) break;
 	}
@@ -1857,12 +1863,12 @@ FILE *fp;
 		f = 0;	/* fake for -Wuninitialized */
 #  endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			ident = envlist[i].env;
+			ident = fdenv_str(i);
 			if (!strenvcmp(argv[n], ident)) {
 				f = 1;
 				break;
 			}
-			ident += FDESIZ;
+			ident = env_str(i);
 			if (!strenvcmp(argv[n], ident)) {
 				f = 2;
 				break;
@@ -1944,7 +1950,7 @@ int no;
 	int len, width;
 
 	if (bindlist[no].key < 0) {
-		Xcprintf2("%*s", MAXCUSTVAL, "");
+		cputspace(MAXCUSTVAL);
 		return(0);
 	}
 	if (bindlist[no].f_func < FUNCLISTSIZ)
@@ -1957,14 +1963,13 @@ int no;
 	else cp2 = NULL;
 	if (!cp2) {
 		width = MAXCUSTVAL;
-		Xcprintf2("%-*.*k", width, width, cp1);
+		cputstr(width, cp1);
 	}
 	else {
 		width = (MAXCUSTVAL - 1) / 2;
-		Xcprintf2("%-*.*k", width, width, cp1);
+		cputstr(width, cp1);
 		putsep();
-		Xcprintf2("%-*.*k",
-			MAXCUSTVAL - 1 - width, MAXCUSTVAL - 1 - width, cp2);
+		cputstr(MAXCUSTVAL - 1 - width, cp2);
 	}
 	len = strlen2(cp1);
 	if (len > --width) len = width;
@@ -2264,11 +2269,11 @@ int no;
 
 	key.code = keyseqlist[no];
 	if (getkeyseq(&key) < 0 || !(key.len)) {
-		Xcprintf2("%*s", MAXCUSTVAL, "");
+		cputspace(MAXCUSTVAL);
 		return(0);
 	}
 	cp = encodestr(key.str, key.len);
-	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, cp);
+	cputstr(MAXCUSTVAL, cp);
 	len = strlen2(cp);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
 	free(cp);
@@ -2519,19 +2524,19 @@ int no;
 	int len, width;
 
 	if (no >= maxlaunch) {
-		Xcprintf2("%*s", MAXCUSTVAL, "");
+		cputspace(MAXCUSTVAL);
 		return(0);
 	}
 	if (!launchlist[no].format) {
 		width = MAXCUSTVAL;
-		Xcprintf2("%-*.*k", width, width, launchlist[no].comm);
+		cputstr(width, launchlist[no].comm);
 	}
 	else {
 		width = (MAXCUSTVAL - 1 - 6) / 2;
-		Xcprintf2("%-*.*k", width, width, launchlist[no].comm);
+		cputstr(width, launchlist[no].comm);
 		putsep();
 		width = MAXCUSTVAL - 1 - 6 - width;
-		Xcprintf2("%-*.*k", width, width, launchlist[no].format[0]);
+		cputstr(width, launchlist[no].format[0]);
 		putsep();
 		Xcprintf2("%-2d", (int)(launchlist[no].topskip));
 		putsep();
@@ -2563,7 +2568,7 @@ launchtable *list;
 	}
 	Xcprintf2("%.*k", len, list -> ext + 1);
 	putsep();
-	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, list -> comm);
+	cputstr(MAXCUSTVAL, list -> comm);
 	putsep();
 	fillline(yy + y++, n_column);
 	nf = ni = ne = 0;
@@ -2593,8 +2598,7 @@ launchtable *list;
 				Xputterm(END_STANDOUT);
 				putsep();
 			}
-			Xcprintf2("%-*.*k",
-				MAXCUSTVAL, MAXCUSTVAL, list -> format[nf]);
+			cputstr(MAXCUSTVAL, list -> format[nf]);
 			putsep();
 			nf++;
 		}
@@ -2612,8 +2616,7 @@ launchtable *list;
 				Xputterm(END_STANDOUT);
 				putsep();
 			}
-			Xcprintf2("%-*.*k",
-				MAXCUSTVAL, MAXCUSTVAL, list -> lignore[ni]);
+			cputstr(MAXCUSTVAL, list -> lignore[ni]);
 			putsep();
 			ni++;
 		}
@@ -2631,8 +2634,7 @@ launchtable *list;
 				Xputterm(END_STANDOUT);
 				putsep();
 			}
-			Xcprintf2("%-*.*k",
-				MAXCUSTVAL, MAXCUSTVAL, list -> lerror[ne]);
+			cputstr(MAXCUSTVAL, list -> lerror[ne]);
 			putsep();
 			ne++;
 		}
@@ -3069,18 +3071,13 @@ int no;
 	int len, width;
 
 	if (no >= maxarchive) {
-		Xcprintf2("%*s", MAXCUSTVAL, "");
+		cputspace(MAXCUSTVAL);
 		return(0);
 	}
 	width = (MAXCUSTVAL - 1) / 2;
-	if (!archivelist[no].p_comm) Xcprintf2("%*s", width, "");
-	else Xcprintf2("%-*.*k", width, width, archivelist[no].p_comm);
+	cputstr(width, archivelist[no].p_comm);
 	putsep();
-	if (!archivelist[no].u_comm)
-		Xcprintf2("%*s", MAXCUSTVAL - 1 - width, "");
-	else Xcprintf2("%-*.*k",
-		MAXCUSTVAL - 1 - width, MAXCUSTVAL - 1 - width,
-		archivelist[no].u_comm);
+	cputstr(MAXCUSTVAL - 1 - width, archivelist[no].u_comm);
 	len = (archivelist[no].p_comm) ? strlen2(archivelist[no].p_comm) : 0;
 	if (len > --width) len = width;
 
@@ -3325,11 +3322,11 @@ int no;
 	int i, len, w1, w2, width;
 
 	if (!fdtype[no].name) {
-		Xcprintf2("%*s", MAXCUSTVAL, "");
+		cputspace(MAXCUSTVAL);
 		return(0);
 	}
 	width = (MAXCUSTVAL - 1) / 2;
-	Xcprintf2("%-*.*k", width, width, fdtype[no].name);
+	cputstr(width, fdtype[no].name);
 	putsep();
 
 	w1 = MAXCUSTVAL - 1 - width;
@@ -3342,7 +3339,7 @@ int no;
 		i = strlen(buf);
 		snprintf2(&(buf[i]), sizeof(buf) - i, " #offset=%'Ld",
 			fdtype[no].offset / fdtype[no].sect);
-		Xcprintf2("%-*.*k", w1, w1, buf);
+		cputstr(w1, buf);
 	}
 	else
 #  endif	/* HDDMOUNT */
@@ -3369,8 +3366,7 @@ int no;
 				break;
 		}
 		w1 -= (w2 + 1) * 3;
-		if (i >= MEDIADESCRSIZ) Xcprintf2("%*s", w1, "");
-		else Xcprintf2("%-*.*k", w1, w1, mediadescr[i].name);
+		cputstr(w1, (i < MEDIADESCRSIZ) ? mediadescr[i].name : NULL);
 	}
 	len = strlen2(fdtype[no].name);
 	if (len > --width) len = width;
@@ -3665,7 +3661,7 @@ int no;
 # else
 	mes[4] = COVWR_K;
 # endif
-	Xcprintf2("%-*.*k", MAXCUSTVAL, MAXCUSTVAL, mes[no]);
+	cputstr(MAXCUSTVAL, mes[no]);
 	len = strlen2(mes[no]);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
 
@@ -4063,7 +4059,7 @@ int no, y, isstandout;
 	cp = NEWET_K;
 	switch (custno) {
 		case 0:
-			cp = &(envlist[no].env[FDESIZ]);
+			cp = env_str(no);
 			break;
 		case 1:
 			if (bindlist[no].key >= 0)
@@ -4119,7 +4115,7 @@ int no, y, isstandout;
 			cp = name[no];
 			break;
 		default:
-			cp = "";
+			cp = nullstr;
 			break;
 	}
 
@@ -4182,8 +4178,7 @@ static VOID NEAR dispcust(VOID_A)
 					Xcprintf2("%.*k", MAXCUSTVAL, NIMPL_K);
 				if (cs_len[i - start] > MAXCUSTVAL - 1)
 					cs_len[i - start] = MAXCUSTVAL - 1;
-				else Xcprintf2("%*s",
-					MAXCUSTVAL - cs_len[i - start], "");
+				else cputspace(MAXCUSTVAL - cs_len[i - start]);
 				break;
 		}
 		putsep();

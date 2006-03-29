@@ -83,9 +83,9 @@ int disp;
 #if	MSDOS
 	cp = path;
 	if (_dospath(cp)) cp += 2;
-	if (strcmp(cp, _SS_)) strcatdelim(path);
+	if (!isrootpath(cp)) strcatdelim(path);
 #else
-	if (strcmp(path, _SS_)) strcatdelim(path);
+	if (!isrootpath(path)) strcatdelim(path);
 #endif
 	len = strlen(path);
 	i = x = 0;
@@ -103,7 +103,7 @@ int disp;
 		}
 		else if (disp) {
 			Xlocate(x + TREEFIELD + 4, min + y);
-			Xcprintf2("%-*.*k", w, w, dp -> d_name);
+			cputstr(w, dp -> d_name);
 			i++;
 			if (++y >= FILEPERROW) {
 				y = 1;
@@ -114,7 +114,7 @@ int disp;
 	}
 	if (disp && !i) {
 		Xlocate(x + TREEFIELD + 4, min + 1);
-		Xcprintf2("%-*.*s", w, w, "[No Files]");
+		cputstr(w, "[No Files]");
 	}
 	Xclosedir(dirp);
 
@@ -153,7 +153,7 @@ int level, *maxp;
 	if (_dospath(path)) path += 2;
 #endif
 	if (*path == _SC_) {
-		dir = strdup2(_SS_);
+		dir = strdup2(rootpath);
 		subdir = path + 1;
 		if (!*subdir) subdir = NULL;
 	}
@@ -176,7 +176,7 @@ int level, *maxp;
 	*maxp = 0;
 	i = _chdir2(dir);
 	free(dir);
-	if (i < 0 || !(dirp = Xopendir("."))) return(NULL);
+	if (i < 0 || !(dirp = Xopendir(curpath))) return(NULL);
 
 	i = 0;
 	while ((dp = Xreaddir(dirp))) {
@@ -271,7 +271,7 @@ int level, *maxp;
 	{
 		if (_chdir2(fullpath) < 0) error(fullpath);
 	}
-	else if (strcmp(path, ".") && _chdir2(cwd) < 0) error("..");
+	else if (isdotdir(path) != 2 && _chdir2(cwd) < 0) error(parentpath);
 
 	return(list);
 }
@@ -336,7 +336,7 @@ static VOID NEAR showtree(VOID_A)
 	for (i = 1; i < FILEPERROW; i++) {
 		Xlocate(1, min + i);
 		if (min + i == tr_line) Xputterm(T_STANDOUT);
-		Xcprintf2("%-*.*k", TREEFIELD, TREEFIELD, bufptr(i));
+		cputstr(TREEFIELD, bufptr(i));
 		if (min + i == tr_line) Xputterm(END_STANDOUT);
 	}
 	evaldir(treepath, 1);
@@ -443,7 +443,7 @@ treelist *list;
 		return(1);
 	}
 	for (cp = treepath, i = 0; (cp = strdelim(cp, 0)); cp++, i++);
-	lptmp = maketree(".", list -> sub, list, i, &(list -> max));
+	lptmp = maketree(curpath, list -> sub, list, i, &(list -> max));
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	if (list -> max < 0) {
 		i = (list -> max < -1) ? 1 : 0;
@@ -745,12 +745,12 @@ static char *NEAR _tree(VOID_A)
 #else	/* !MSDOS */
 # ifdef	_NODOSDRIVE
 	strcpy(path, fullpath);
-	tr_cur[0].name = strdup2(_SS_);
+	tr_cur[0].name = strdup2(rootpath);
 # else
-	if (dospath("", path)) tr_cur[0].name = strndup2(path, 3);
+	if (dospath(nullstr, path)) tr_cur[0].name = strndup2(path, 3);
 	else {
 		strcpy(path, fullpath);
-		tr_cur[0].name = strdup2(_SS_);
+		tr_cur[0].name = strdup2(rootpath);
 	}
 # endif
 #endif	/* !MSDOS */
@@ -776,7 +776,7 @@ static char *NEAR _tree(VOID_A)
 	if (_dospath(cwd)) cwd += 2;
 # endif
 #endif	/* !MSDOS */
-	if (!strcmp(cwd, _SS_)) /*EMPTY*/;
+	if (isrootpath(cwd)) /*EMPTY*/;
 	else for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
 		if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD
 		|| !(tr_cur = &(tr_cur -> sub[0])))
@@ -811,13 +811,11 @@ static char *NEAR _tree(VOID_A)
 		else if (oy != tr_line) {
 			Xlocate(1, tr_line);
 			Xputterm(T_STANDOUT);
-			Xcprintf2("%-*.*k",
-				TREEFIELD, TREEFIELD, bufptr(tr_line - min));
+			cputstr(TREEFIELD, bufptr(tr_line - min));
 			Xputterm(END_STANDOUT);
 			Xlocate(1, oy);
 			if (stable_standout) Xputterm(END_STANDOUT);
-			else Xcprintf2("%-*.*k",
-				TREEFIELD, TREEFIELD, bufptr(oy - min));
+			else cputstr(TREEFIELD, bufptr(oy - min));
 			evaldir(path, 1);
 		}
 	} while (ch != K_ESC && ch != K_CR);

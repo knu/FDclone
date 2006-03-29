@@ -266,7 +266,7 @@ int *ptrp;
 	if (!*ptrp) q = '\0';
 	pc = parsechar(&(s[*ptrp]), -1, '\0', 0, &q, NULL);
 	if (pc == PC_NORMAL) return(0);
-	if (pc == PC_WORD || pc == PC_META) {
+	if (pc == PC_WORD || pc == PC_ESCAPE) {
 		(*ptrp)++;
 		return(2);
 	}
@@ -1262,7 +1262,7 @@ macrostat *stp;
 #endif	/* MACROMETA */
 
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
-	cp = inputstr("", 0, p, command, HST_COM);
+	cp = inputstr(nullstr, 0, p, command, HST_COM);
 	if (!wastty) Xstdiomode();
 	free(command);
 	if (!cp) {
@@ -1699,12 +1699,12 @@ char *file;
 	return(0);
 }
 
-int parsehist(str, ptrp)
+int parsehist(str, ptrp, quote)
 char *str;
-int *ptrp;
+int *ptrp, quote;
 {
 	char *cp;
-	int i, n, ptr, size;
+	int i, n, pc, ptr, size;
 
 	ptr = (ptrp) ? *ptrp : 0;
 	size = (int)histsize[0];
@@ -1722,8 +1722,10 @@ int *ptrp;
 	}
 	else {
 		for (i = 0; str[ptr + i]; i++) {
-			if (strchr(CMDLINE_DELIM, str[ptr + i])) break;
-			if (iskanji1(str, ptr + i)) i++;
+			pc = parsechar(&(str[ptr + i]), -1,
+				'!', EA_FINDDELIM, &quote, NULL);
+			if (pc == PC_WORD || pc == PC_ESCAPE) i++;
+			else if (pc != PC_NORMAL && pc != PC_DQUOTE) break;
 		}
 		if (!i) n = ptr = -1;
 		else {
@@ -1738,7 +1740,10 @@ int *ptrp;
 
 	if (ptrp) *ptrp = ptr;
 	if (n < 0 || n >= size) return(-1);
-	if (!ptrp) {
+	if (ptrp) {
+		if (!history[0][n]) return(-1);
+	}
+	else {
 		while (!history[0][n]) if (--n < 0) return(-1);
 	}
 
@@ -1757,10 +1762,10 @@ char *command;
 	for (i = j = 0, quote = '\0'; command[i]; i++) {
 		cp = c_realloc(cp, j + 1, &size);
 		pc = parsechar(&(command[i]), -1, '!', 0, &quote, NULL);
-		if (pc == PC_WORD || pc == PC_META) cp[j++] = command[i++];
+		if (pc == PC_WORD || pc == PC_ESCAPE) cp[j++] = command[i++];
 		else if (pc == '!'){
 			len = i++;
-			if ((n = parsehist(command, &i)) < 0) {
+			if ((n = parsehist(command, &i, quote)) < 0) {
 				if (i < 0) {
 					cp[j++] = '!';
 					i = len;

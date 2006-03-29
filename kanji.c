@@ -66,14 +66,14 @@ extern char *includepath __P_((char *, char *));
 # else
 # define	L_SET	0
 # endif
-#endif
+#endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
 # define	L_INCR	SEEK_CUR
 # else
 # define	L_INCR	1
 # endif
-#endif
+#endif	/* !L_INCR */
 
 #define	ASCII		000
 #define	KANA		001
@@ -2090,7 +2090,7 @@ int *codep;
 #endif
 		else {
 			file = path;
-			strcpy(rpath, ".");
+			copycurpath(rpath);
 		}
 		realpath2(rpath, rpath, 1);
 		cp = strcatdelim(rpath);

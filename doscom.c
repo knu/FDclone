@@ -293,14 +293,14 @@ struct filestat_t {
 # else
 # define	L_SET	0
 # endif
-#endif
+#endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
 # define	L_INCR	SEEK_CUR
 # else
 # define	L_INCR	1
 # endif
-#endif
+#endif	/* !L_INCR */
 
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
@@ -411,7 +411,7 @@ extern char *sys_errlist[];
 #endif
 
 static CONST char *doserrstr[] = {
-	"",
+	NULL,
 #define	ER_REQPARAM	1
 	"Required parameter missing",
 #define	ER_TOOMANYPARAM	2
@@ -757,7 +757,7 @@ int n;
 		kanjifputs(s, stderr);
 		fputnl(stderr);
 	}
-	fputs(doserrstr[n], stderr);
+	if (doserrstr[n]) fputs(doserrstr[n], stderr);
 	fputnl(stderr);
 }
 
@@ -1536,7 +1536,7 @@ char *argv[];
 	if ((n = getdiropt(argc, argv)) < 0)
 		return(RET_FAIL);
 	if (argc <= n) {
-		dir = ".";
+		dir = curpath;
 		file = "*";
 	}
 	else if (argc > n + 1) {
@@ -1552,7 +1552,7 @@ char *argv[];
 	else {
 		strcpy(buf, argv[n]);
 		if (!(file = strrdelim(buf, 1))) {
-			dir = ".";
+			dir = curpath;
 			file = argv[n];
 		}
 		else {

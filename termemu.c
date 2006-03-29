@@ -13,10 +13,6 @@
 #include "kanji.h"
 #include "termemu.h"
 
-#ifdef	USESELECTH
-#include <sys/select.h>
-#endif
-
 #ifdef	_NOORIGSHELL
 #include <signal.h>
 #include "termio.h"
@@ -29,19 +25,12 @@ extern int maxjobs;
 # endif
 #endif
 
-#ifndef	FD_SET
-typedef struct fd_set {
-	u_int fds_bits[1];
-} fd_set;
-# define	FD_ZERO(p)	(((p) -> fds_bits[0]) = 0)
-# define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= ((u_int)1 << (n)))
-#endif	/* !FD_SET */
-
-extern int internal_status;
+extern char fullpath[];
 extern int hideclock;
 extern int fdmode;
 
 int ptymode = 0;
+int ptyinternal = 0;
 char *ptyterm = NULL;
 int ptymenukey = -1;
 ptyinfo_t ptylist[MAXWINDOWS];
@@ -132,29 +121,12 @@ int n, c, x, y, min, max;
 	}
 }
 
-int selectpty(fd, fds, result, timeout)
-int fd, fds[];
+int selectpty(max, fds, result, timeout)
+int max, fds[];
 char result[];
 int timeout;
 {
-	fd_set readfds;
 	struct timeval tv, *t;
-	int i, n, max;
-
-	max = -1;
-	FD_ZERO(&readfds);
-	if (fd < 0) max = 0;
-	else {
-		max = fd;
-		FD_SET(fd, &readfds);
-	}
-	for (i = 0; i < MAXWINDOWS; i++) {
-		if (!(ptylist[i].pid)) continue;
-		if (fds[i] > max) max = fds[i];
-		FD_SET(fds[i], &readfds);
-	}
-
-	if (!max) return(0);
 
 	if (timeout < 0) t = NULL;
 	else if (!timeout) {
@@ -168,13 +140,7 @@ int timeout;
 		t = &tv;
 	}
 
-	if ((n = select(max + 1, &readfds, NULL, NULL, t)) < 0) return(-1);
-	for (i = 0; i < MAXWINDOWS; i++)
-		result[i] = (ptylist[i].pid && FD_ISSET(fds[i], &readfds))
-			? 1 : 0;
-	if (fd >= 0) result[i] = (FD_ISSET(fd, &readfds)) ? 1 : 0;
-
-	return(n);
+	return(readselect(max, fds, result, t));
 }
 
 static int NEAR genbackend(VOID_A)
@@ -229,7 +195,7 @@ static int NEAR genbackend(VOID_A)
 	}
 
 	safeclose(fds[0]);
-	emufd = fds[1];
+	emufd = newdup(fds[1]);
 	emupid = pid;
 	for (i = 0; i < MAXWINDOWS; i++) {
 		safeclose(ptylist[i].fd);
@@ -617,6 +583,12 @@ va_dcl
 			sendbuf(fd, &val, sizeof(val));
 			if (n >= 0 && duptty[n]) sendbuf(fd, duptty[n], val);
 			break;
+		case TE_INTERNAL:
+			n = va_arg(args, int);
+			cp = va_arg(args, char *);
+			sendbuf(fd, &n, sizeof(n));
+			sendstring(fd, cp);
+			break;
 		default:
 			break;
 	}
@@ -638,6 +610,7 @@ int flags;
 	sendbuf(emufd, &flags, sizeof(flags));
 	sendstring(emufd, command);
 	sendstring(emufd, arg);
+	sendstring(emufd, fullpath);
 }
 
 #if	!defined (_NOORIGSHELL) && !defined (NOJOB)
@@ -664,7 +637,7 @@ static int NEAR recvmacro(commandp, argp, flagsp)
 char **commandp, **argp;
 int *flagsp;
 {
-	char *command, *arg;
+	char *command, *arg, *cwd;
 	int flags;
 
 	Xttyiomode(1);
@@ -674,6 +647,10 @@ int *flagsp;
 	if (recvstring(ttyio, &arg) < 0) {
 		if (command) free(command);
 		return(-1);
+	}
+	if (recvstring(ttyio, &cwd) >= 0 && cwd) {
+		VOID_C chdir2(cwd);
+		free(cwd);
 	}
 
 	keyflush();
@@ -696,14 +673,14 @@ int flags;
 {
 	int i, n;
 
-	if (parentfd < 0) {
+	if (parentfd < 0 && emufd < 0) {
 		if (ptymode) {
-			hideclock = 1;
+			hideclock = 2;
 			warning(0, NOPTY_K);
 		}
 		for (i = 0; i < MAXWINDOWS; i++) if (ptylist[i].pid) break;
 		if (i < MAXWINDOWS) {
-			hideclock = 1;
+			hideclock = 2;
 			if (!yesno(KILL_K)) return(-1);
 			killallpty();
 		}
@@ -734,7 +711,7 @@ int flags;
 	}
 	else
 #endif
-	if (!ptymode) return(callmacro(command, arg, flags));
+	if (!ptymode || ptyinternal) return(callmacro(command, arg, flags));
 
 	if (ptylist[win].pid && emufd >= 0) {
 		awakechild(command, arg, flags);
@@ -812,7 +789,6 @@ int flags;
 			dup2(fd, ttyio);
 			safeclose(fd);
 		}
-		maxfile = -1;
 
 		setdefterment();
 		setdefkeyseq();
@@ -846,7 +822,7 @@ int flags;
 
 	safeclose(fds[1]);
 	ptylist[win].pid = pid;
-	ptylist[win].pipe = fds[0];
+	ptylist[win].pipe = newdup(fds[0]);
 	ptylist[win].status = -1;
 
 	sigvecset(n);
@@ -880,8 +856,10 @@ VOID killallpty(VOID_A)
 
 	for (i = 0; i < MAXWINDOWS; i++) {
 		killpty(i, NULL);
-		free(ptylist[i].path);
-		ptylist[i].path = NULL;
+		if (ptylist[i].path) {
+			free(ptylist[i].path);
+			ptylist[i].path = NULL;
+		}
 	}
 
 	if (emupid) {
@@ -900,5 +878,34 @@ VOID killallpty(VOID_A)
 
 	safeclose(emufd);
 	emufd = -1;
+}
+
+int checkpty(n)
+int n;
+{
+	int status;
+
+	if (!(ptylist[n].pid)) return(0);
+	if (waitstatus(ptylist[n].pid, WNOHANG, &status) < 0) return(0);
+	ptylist[n].pid = (p_id_t)0;
+	ptylist[n].status = status;
+	changewin(n, (p_id_t)0);
+	killpty(n, &status);
+
+	return(-1);
+}
+
+int checkallpty(VOID_A)
+{
+	int i, n;
+
+	n = 0;
+	for (i = 0; i < MAXWINDOWS; i++) if (checkpty(i) < 0) n = -1;
+	if (n < 0) {
+		changewin(MAXWINDOWS, (p_id_t)-1);
+		return(-1);
+	}
+
+	return(0);
 }
 #endif	/* !_NOPTY */

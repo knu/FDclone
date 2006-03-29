@@ -214,6 +214,7 @@ int w;
 
 	if (last_attr != pty[w].attr) {
 		putterm(T_NORMAL);
+		last_fg = last_bg = (short)-1;
 		if (pty[w].attr & A_BOLD) putterm(T_BOLD);
 		if (pty[w].attr & A_REVERSE) putterm(T_REVERSE);
 		if (pty[w].attr & A_DIM) putterm(T_DIM);
@@ -228,6 +229,7 @@ int w;
 			tputs2(cp, 1);
 			free(cp);
 		}
+		else cprintf2("\033[%dm", pty[w].fg + ANSI_NORMAL);
 		last_fg = pty[w].fg;
 	}
 	if (last_bg != pty[w].bg && pty[w].bg >= (short)0) {
@@ -235,6 +237,7 @@ int w;
 			tputs2(cp, 1);
 			free(cp);
 		}
+		else cprintf2("\033[%dm", pty[w].bg + ANSI_REVERSE);
 		last_bg = pty[w].bg;
 	}
 }
@@ -1130,7 +1133,7 @@ static int NEAR directoutput(fd, n)
 int fd, n;
 {
 	ptyinfo_t tmp;
-	char *s, *arg;
+	char *s, *arg, *cwd;
 	p_id_t pid;
 	short w1, w2, row[MAXWINDOWS];
 	int i;
@@ -1209,7 +1212,6 @@ int fd, n;
 			}
 			else {
 				pty[MAXWINDOWS].fg = w1;
-				pty[MAXWINDOWS].bg = (short)-1;
 			}
 			break;
 		case TE_MOVECURSOR:
@@ -1322,13 +1324,16 @@ int fd, n;
 				if (s) free(s);
 				break;
 			}
+			if (recvstring(fd, &cwd) < 0) cwd = NULL;
 			resetptyterm(w1, 1);
 
 			sendbuf(ptylist[w1].fd, &n, sizeof(n));
 			sendstring(ptylist[w1].fd, s);
 			sendstring(ptylist[w1].fd, arg);
+			sendstring(ptylist[w1].fd, cwd);
 			if (s) free(s);
 			if (arg) free(arg);
+			if (cwd) free(cwd);
 			break;
 		default:
 			break;
@@ -1433,7 +1438,7 @@ int fd;
 int backend(VOID_A)
 {
 	char result[MAXWINDOWS + 1];
-	int i, n, fds[MAXWINDOWS];
+	int i, n, fds[MAXWINDOWS + 1];
 
 	hideclock = -1;
 	dumbterm = 1;
@@ -1452,11 +1457,12 @@ int backend(VOID_A)
 		evalsignal();
 #endif
 
-		for (i = 0; i < MAXWINDOWS; i++) fds[i] = ptylist[i].fd;
-		if (selectpty(emufd, fds, result, -1) <= 0) continue;
+		for (i = 0; i < MAXWINDOWS; i++)
+			fds[i] = (ptylist[i].pid) ? ptylist[i].fd : -1;
+		fds[i] = emufd;
+		if (selectpty(MAXWINDOWS + 1, fds, result, -1) <= 0) continue;
 
 		if (result[MAXWINDOWS] && (n = evalinput(emufd)) > 0) continue;
-
 		for (i = 0; i < MAXWINDOWS; i++)
 			if (result[i] && ptylist[i].pid) evaloutput(i);
 	}

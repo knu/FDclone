@@ -438,8 +438,8 @@ int mode;
 		}
 		if (s_islnk(&st)) return(0);
 
-		if (!(tmp = strrdelim(path, 0))) strcpy(dir, ".");
-		else if (tmp == path) strcpy(dir, _SS_);
+		if (!(tmp = strrdelim(path, 0))) copycurpath(dir);
+		else if (tmp == path) copyrootpath(dir);
 		else strncpy2(dir, path, tmp - path);
 
 		if (nodoslstat(dir, &st) < 0) {
@@ -1480,7 +1480,7 @@ char *endmes;
 
 	verbose = 1;
 	if (!dir) {
-		dir = ".";
+		dir = curpath;
 		verbose = 0;
 	}
 	else if (isdotdir(dir) == 1) {
@@ -1519,7 +1519,7 @@ int tr;
 	destdir = NULL;
 	copypolicy = (issamedir(destpath, NULL)) ? (FLAG_SAMEDIR | 2) : 0;
 #ifndef	_NODOSDRIVE
-	if (dospath3("")) waitmes();
+	if (dospath3(nullstr)) waitmes();
 #endif
 	if (mark > 0
 	|| (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos]))))

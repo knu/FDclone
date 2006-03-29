@@ -44,6 +44,7 @@ extern int isdelim __P_((char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
 extern int isdotdir __P_((char *));
+extern char curpath[];
 #else
 static int NEAR _dospath __P_((char *));
 static char *NEAR strdelim __P_((char *, int));
@@ -52,6 +53,7 @@ static int NEAR isdelim __P_((char *, int));
 static char *NEAR strcatdelim __P_((char *));
 static char *NEAR strcatdelim2 __P_((char *, char *, char *));
 static int NEAR isdotdir __P_((char *));
+static char curpath[] = ".";
 #endif
 
 #ifdef	DJGPP
@@ -398,7 +400,7 @@ int drive, nodir;
 	}
 
 	if (!nodir) {
-		path = ".";
+		path = curpath;
 		reg.x.ax = 0x3b00;
 #ifdef	DJGPP
 		dos_putpath(path, 0);
@@ -1934,7 +1936,7 @@ char *from, *to;
 	strcpy(fbuf, to);
 	if (!(tp = strrdelim(fbuf, 1))) {
 		tp = to;
-		strcpy(fbuf, ".");
+		strcpy(fbuf, curpath);
 	}
 	else {
 		if (*tp == _SC_) tp++;
@@ -2321,8 +2323,8 @@ struct stat *stp;
 #ifdef	_NOUSELFN
 	if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
 		if (errno && errno != ENOENT) return(-1);
-		if (!strcmp(path, ".."))
-			i = dos_findfirst(".", SEARCHATTRS, &dbuf);
+		if (isdotdir(path) == 1)
+			i = dos_findfirst(curpath, SEARCHATTRS, &dbuf);
 		else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
 	}
 #else	/* !_NOUSELFN */
@@ -2340,16 +2342,16 @@ struct stat *stp;
 		fd = (u_int)-1;
 		if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
 			if (errno && errno != ENOENT) return(-1);
-			if (!strcmp(path, ".."))
-				i = dos_findfirst(".", SEARCHATTRS, &dbuf);
+			if (isdotdir(path) == 1)
+				i = dos_findfirst(curpath, SEARCHATTRS, &dbuf);
 			else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
 		}
 	}
 	else {
 		if ((i = lfn_findfirst(&fd, path, SEARCHATTRS, &lbuf)) < 0) {
 			if (errno && errno != ENOENT) return(-1);
-			if (!strcmp(path, ".."))
-				i = lfn_findfirst(&fd, ".",
+			if (isdotdir(path) == 1)
+				i = lfn_findfirst(&fd, curpath,
 					SEARCHATTRS, &lbuf);
 			else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
 		}

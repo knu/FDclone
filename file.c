@@ -59,7 +59,7 @@ extern int dosdrive;
 # else
 # define	L_SET	0
 # endif
-#endif
+#endif	/* !L_SET */
 
 #ifdef	_NODOSDRIVE
 #define	nodoschdir	Xchdir
@@ -288,10 +288,10 @@ CONST VOID_P vp2;
 		case 2:
 			if ((cp1 = strrchr(((treelist *)vp1) -> name, '.')))
 				cp1++;
-			else cp1 = "";
+			else cp1 = nullstr;
 			if ((cp2 = strrchr(((treelist *)vp2) -> name, '.')))
 				cp2++;
-			else cp2 = "";
+			else cp2 = nullstr;
 			tmp = strpathcmp2(cp1, cp2);
 			break;
 		case 3:
@@ -372,7 +372,7 @@ char *buf;
 #endif
 	else cp = underpath(cwd, homedir, len);
 
-	if (buf) strcpy(buf, (cp) ? cp : "");
+	if (buf) strcpy(buf, (cp) ? cp : nullstr);
 #ifdef	DEBUG
 	free(homedir);
 	homedir = NULL;
@@ -648,13 +648,13 @@ char *path;
 		cp = NOCWD_K;
 	else if ((cp = gethomedir()) && !nodoschdir(cp) && nodosgetwd(path))
 		cp = GOHOM_K;
-	else if (!nodoschdir(_SS_) && nodosgetwd(path)) cp = GOROT_K;
-	else error(_SS_);
+	else if (!nodoschdir(rootpath) && nodosgetwd(path)) cp = GOROT_K;
+	else error(rootpath);
 
 	if (path != fullpath) strncpy2(fullpath, path, MAXPATHLEN - 1);
 	warning(0, cp);
 #ifndef	_NOUSEHASH
-	searchhash(NULL, "", "");
+	searchhash(NULL, nullstr, nullstr);
 #endif
 	errno = duperrno;
 }
@@ -1079,7 +1079,7 @@ char *dir, *file;
 	strcatdelim2(buf, dir, file);
 
 	if (rawchdir(buf) != 0) return(0);
-	rawchdir(_SS_);
+	rawchdir(rootpath);
 #if	MSDOS
 	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);
 #else
@@ -1508,7 +1508,7 @@ int fs;
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	waitmes();
 
-	if (!(dirp = Xopendir("."))) {
+	if (!(dirp = Xopendir(curpath))) {
 		freevar(fnamelist);
 		noconv--;
 		lostcwd(path);
@@ -1558,8 +1558,8 @@ int fs;
 
 #if	!MSDOS
 	if (fs != FSID_EFS) entnum = NULL;	/* except IRIX File System */
-	else if (!(entnum = getentnum(".", persec))) {
-		warning(-1, ".");
+	else if (!(entnum = getentnum(curpath, persec))) {
+		warning(-1, curpath);
 		restorefile(tmpdir, path, fnamp);
 		freevar(fnamelist);
 		noconv--;
@@ -1567,8 +1567,8 @@ int fs;
 	}
 	totalent = headbyte
 		+ realdirsiz(tmpdir, dos, boundary, dirsize, namofs)
-		+ realdirsiz(".", dos, boundary, dirsize, namofs)
-		+ realdirsiz("..", dos, boundary, dirsize, namofs);
+		+ realdirsiz(curpath, dos, boundary, dirsize, namofs)
+		+ realdirsiz(parentpath, dos, boundary, dirsize, namofs);
 	block = tmpno = 0;
 	ptr = 3;
 	totalptr = 0;

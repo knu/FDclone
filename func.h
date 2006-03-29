@@ -267,6 +267,8 @@ extern int ptymacro __P_((char *, char *, int));
 #define	ptysystem(c)		ptymacro(c, NULL, F_DOSYSTEM)
 extern VOID killpty __P_((int, int *));
 extern VOID killallpty __P_((VOID_A));
+extern int checkpty __P_((int));
+extern int checkallpty __P_((VOID_A));
 #endif	/* !_NOPTY */
 
 /* frontend.c */
@@ -581,7 +583,7 @@ extern char *removehist __P_((int));
 extern int loadhistory __P_((int, char *));
 extern VOID convhistory __P_((char *, FILE *));
 extern int savehistory __P_((int, char *));
-extern int parsehist __P_((char *, int *));
+extern int parsehist __P_((char *, int *, int));
 extern char *evalhistory __P_((char *));
 #ifdef	DEBUG
 extern VOID freehistory __P_((int));
@@ -626,6 +628,8 @@ extern char *convput __P_((char *, char *, int, int, char *, int *));
 extern int intrkey __P_((VOID_A));
 extern int Xgetkey __P_((int, int));
 extern int kanjiputs2 __P_((char *, int, int));
+extern VOID cputspace __P_((int));
+extern VOID cputstr __P_((int, char *));
 extern char *inputstr __P_((char *, int, int, char *, int));
 extern int yesno __P_((CONST char *, ...));
 extern VOID warning __P_((int, char *));

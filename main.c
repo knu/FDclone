@@ -73,6 +73,7 @@ extern char *unitblpath;
 #endif
 #ifndef	_NOPTY
 extern int ptymode;
+extern int ptyinternal;
 extern int parentfd;
 #endif
 
@@ -670,7 +671,8 @@ int hide;
 	}
 	if (timersec-- < CLOCKUPDATE && !showsecond) return;
 #ifndef	_NOPTY
-	if (isptymode() && hide <= 1) hide = 0;
+	if (checkallpty() < 0) rewritefile(0);
+	if (isptymode() && !ptyinternal && hide <= 1) hide = 0;
 #endif
 	if (hide) return;
 
@@ -805,12 +807,12 @@ VOID title(VOID_A)
 	Xcputs2(" Ver.");
 	len += 5;
 	cp = getversion(&i);
-	Xcprintf2("%-*.*s", i, i, cp);
+	cputstr(i, cp);
 	if (distributor) {
 		Xputch2('#');
 		i++;
 	}
-	cp = (iswellomit()) ? "" : " (c)1995-2006 T.Shirai  ";
+	cp = (iswellomit()) ? nullstr : " (c)1995-2006 T.Shirai  ";
 	Xcputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) Xputch2(' ');
@@ -1168,7 +1170,7 @@ int status;
 	if (origpath && _chdir2(origpath) < 0) {
 		perror2(origpath);
 		if (!Xgetwd(cwd)) *cwd = '\0';
-		rawchdir(_SS_);
+		rawchdir(rootpath);
 	}
 	free(origpath);
 	free(progname);

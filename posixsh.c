@@ -96,11 +96,12 @@ static int NEAR testsub3 __P_((int, char *[], int *, int));
 #define	ER_NOTFOUND	2
 #define	ER_NOTIDENT	4
 #define	ER_BADOPTIONS	13
-#define	ER_MISSARG	15
-#define	ER_NOTALIAS	19
-#define	ER_NOSUCHJOB	20
-#define	ER_NUMOUTRANGE	21
-#define	ER_UNKNOWNSIG	22
+#define	ER_NUMOUTRANGE	18
+#define	ER_NOTALIAS	20
+#define	ER_MISSARG	21
+#define	ER_NOSUCHJOB	22
+#define	ER_TERMINATED	23
+#define	ER_UNKNOWNSIG	26
 
 #if	!MSDOS
 typedef struct _mailpath_t {
@@ -118,7 +119,7 @@ int getjob __P_((char *));
 int stackjob __P_((p_id_t, int, syntaxtree *));
 int stoppedjob __P_((p_id_t));
 VOID killjob __P_((VOID_A));
-VOID checkjob __P_((int));
+VOID checkjob __P_((FILE *));
 #endif	/* !NOJOB */
 char *evalposixsubst __P_((char *, int *));
 #if	!MSDOS
@@ -300,7 +301,7 @@ char *s;
 	if (i < 0 || i >= maxjobs || !joblist || !(joblist[i].pids))
 		return(-1);
 	j = joblist[i].npipe;
-	if (joblist[i].stats[j] < 0 || joblist[i].stats[j] >= 128) return(-1);
+	if (joblist[i].stats[j] < 0 || joblist[i].stats[j] >= 128) return(-2);
 
 	return(i);
 }
@@ -408,13 +409,13 @@ p_id_t pid;
 	return(-1);
 }
 
-VOID checkjob(verbose)
-int verbose;
+VOID checkjob(fp)
+FILE *fp;
 {
 	int i, j;
 
 	while (waitjob(-1, NULL, WNOHANG | WUNTRACED) > 0);
-	if (verbose) for (i = 0; i < maxjobs; i++) {
+	if (fp) for (i = 0; i < maxjobs; i++) {
 		if (!(joblist[i].pids)) continue;
 		j = joblist[i].npipe;
 		if (joblist[i].stats[j] >= 0 && joblist[i].stats[j] < 128)
@@ -423,7 +424,7 @@ int verbose;
 		if (joblist[i].trp
 		&& (isopbg(joblist[i].trp) || isopnown(joblist[i].trp)))
 			joblist[i].trp -> type = OP_NONE;
-		if (jobok && interactive && !nottyout) dispjob(i, stderr);
+		if (jobok && interactive && !nottyout) dispjob(i, fp);
 		free(joblist[i].pids);
 		free(joblist[i].stats);
 		if (joblist[i].trp) {
@@ -828,10 +829,10 @@ int *ptrp;
 		redirectlist red;
 
 		red.fd = red.type = red.new = 0;
-		red.filename = "";
+		red.filename = nullstr;
 		i = len = 0;
 		stree = newstree(NULL);
-		trp = startvar(stree, &red, "", &i, &len, 0);
+		trp = startvar(stree, &red, nullstr, &i, &len, 0);
 		trp -> cont = CN_COMM;
 		trp = analyze(s, trp, -1);
 		if (trp && (trp -> cont & CN_SBST) != CN_CASE) trp = NULL;
@@ -945,7 +946,7 @@ int reset;
 			free(mailpathlist[i].path);
 			if (mailpathlist[i].msg) free(mailpathlist[i].msg);
 		}
-		free(mailpathlist);
+		if (mailpathlist) free(mailpathlist);
 		mailpathlist = NULL;
 		maxmailpath = 0;
 		return;
@@ -971,7 +972,7 @@ syntaxtree *trp;
 	int i, j;
 
 	if (mypid != orgpgrp) return(RET_SUCCESS);
-	checkjob(0);
+	checkjob(NULL);
 	for (i = 0; i < maxjobs; i++) {
 		if (!(joblist[i].pids)) continue;
 		j = joblist[i].npipe;
@@ -1004,9 +1005,10 @@ syntaxtree *trp;
 	int i, j, n, ret;
 
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
-	checkjob(0);
+	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
-		execerror((trp -> comm) -> argv[1], ER_NOSUCHJOB, 0);
+		execerror((trp -> comm) -> argv[1],
+			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 0);
 		return(RET_FAIL);
 	}
 	n = joblist[i].npipe;
@@ -1047,9 +1049,10 @@ syntaxtree *trp;
 	int i, j, n;
 
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
-	checkjob(0);
+	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
-		execerror((trp -> comm) -> argv[1], ER_NOSUCHJOB, 0);
+		execerror((trp -> comm) -> argv[1],
+			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 0);
 		return(RET_FAIL);
 	}
 	n = joblist[i].npipe;
@@ -1193,14 +1196,15 @@ syntaxtree *trp;
 	}
 
 #ifndef	NOJOB
-	checkjob(0);
+	checkjob(NULL);
 #endif
 	for (; i < (trp -> comm) -> argc; i++) {
 		s = (trp -> comm) -> argv[i];
 #ifndef	NOJOB
 		if (*s == '%') {
 			if ((n = getjob(s)) < 0) {
-				execerror(s, ER_NOSUCHJOB, 0);
+				execerror(s, (n < -1)
+					? ER_TERMINATED : ER_NOSUCHJOB, 0);
 				return(RET_FAIL);
 			}
 			n = Xkillpg(joblist[n].pids[0], sig);

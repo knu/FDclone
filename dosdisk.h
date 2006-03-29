@@ -62,21 +62,21 @@
 # else
 # define	L_SET	0
 # endif
-#endif
+#endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
 # define	L_INCR	SEEK_CUR
 # else
 # define	L_INCR	1
 # endif
-#endif
+#endif	/* !L_INCR */
 #ifndef	L_XTND
 # ifdef	SEEK_END
 # define	L_XTND	SEEK_END
 # else
 # define	L_XTND	2
 # endif
-#endif
+#endif	/* !L_XTND */
 
 #ifndef	__attribute__
 #define	__attribute__(x)
@@ -167,7 +167,7 @@ typedef struct _devinfo {
 	l_off_t offset;
 # endif
 } devinfo;
-#endif
+#endif	/* !MSDOS */
 
 typedef struct _devstat {
 	u_char drive;
@@ -323,6 +323,19 @@ typedef struct _st_dirent {
 typedef struct dirent	st_dirent;
 #endif
 
+#ifdef	CYGWIN
+	/* Some versions of Cygwin have neither d_fileno nor d_ino */
+struct dosdirent {
+	u_long d_fileno;
+	u_short d_reclen;
+	char d_name[MAXNAMLEN + 1];
+};
+typedef struct dosdirent	st_dosdirent;
+#else
+#define	dosdirent	dirent
+#define	st_dosdirent	st_dirent
+#endif
+
 #ifndef	_NODOSDRIVE
 #if	MSDOS
 extern int dependdosfunc;
@@ -345,7 +358,7 @@ extern int shutdrv __P_((int));
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 extern DIR *dosopendir __P_((char *));
 extern int dosclosedir __P_((DIR *));
-extern struct dirent *dosreaddir __P_((DIR *));
+extern struct dosdirent *dosreaddir __P_((DIR *));
 extern int dosrewinddir __P_((DIR *));
 extern int doschdir __P_((char *));
 extern char *dosgetcwd __P_((char *, int));

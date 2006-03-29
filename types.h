@@ -123,6 +123,7 @@ typedef struct _namelist {
 #define	F_WSMRK			0002
 #define	F_ISARG			0004
 #define	F_STAT			0010
+#define	F_ISCHGDIR		0020
 #define	isdir(file)		((file) -> flags & F_ISDIR)
 #define	islink(file)		((file) -> flags & F_ISLNK)
 #define	isdev(file)		((file) -> flags & F_ISDEV)
@@ -134,6 +135,7 @@ typedef struct _namelist {
 #define	wasmark(file)		((file) -> tmpflags & F_WSMRK)
 #define	isarg(file)		((file) -> tmpflags & F_ISARG)
 #define	havestat(file)		((file) -> tmpflags & F_STAT)
+#define	ischgdir(file)		((file) -> tmpflags & F_ISCHGDIR)
 #define	s_isdir(s)		((((s) -> st_mode) & S_IFMT) == S_IFDIR)
 #define	s_isreg(s)		((((s) -> st_mode) & S_IFMT) == S_IFREG)
 #define	s_islnk(s)		((((s) -> st_mode) & S_IFMT) == S_IFLNK)

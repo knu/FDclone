@@ -10,6 +10,10 @@
 #include "machine.h"
 #include "termio.h"
 
+#ifdef	USESELECTH
+#include <sys/select.h>
+#endif
+
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
@@ -34,21 +38,21 @@ extern int errno;
 
 #if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
 #define	MAXOPENFILE	sysconf(_SC_OPEN_MAX)
-#else
+#else	/* !USESYSCONF || !_SC_OPEN_MAX */
 # ifdef	NOFILE
 # define	MAXOPENFILE	NOFILE
-# else
+# else	/* !NOFILE */
 #  ifdef	OPEN_MAX
 #  define	MAXOPENFILE	OPEN_MAX
-#  else
+#  else		/* !OPEN_MAX */
 #   if	MSDOS
 #   define	MAXOPENFILE	20
 #   else
 #   define	MAXOPENFILE	64
 #   endif
-#  endif
-# endif
-#endif
+#  endif	/* !OPEN_MAX */
+# endif	/* !NOFILE */
+#endif	/* !USESYSCONF || !_SC_OPEN_MAX */
 
 #ifndef	_PATH_TTY
 # if	MSDOS
@@ -74,6 +78,20 @@ extern int errno;
 #endif
 
 #define	K_CTRL(c)	((c) & 037)
+#define	MAXFDSET	256
+#define	MAXSELECT	16
+
+#ifndef	FD_SET
+#include "printf.h"
+typedef struct fd_set {
+	u_int fds_bits[1];
+} fd_set;
+# define	FD_SET(n, p)	(((p) -> fds_bits[0]) |= ((u_int)1 << (n)))
+# define	FD_ISSET(n, p)	(((p) -> fds_bits[0]) & ((u_int)1 << (n)))
+# define	FD_ZERO(p)	(((p) -> fds_bits[0]) = 0)
+# undef		MAXFDSET
+# define	MAXFDSET	(BITSPERBYTE * sizeof(u_int))
+#endif	/* !FD_SET */
 
 #if	!defined (FD) || defined (_NODOSDRIVE)
 #define	Xread		read
@@ -596,3 +614,44 @@ p_id_t Xfork(VOID_A)
 	return(pid);
 }
 #endif	/* CYGWIN */
+
+#if	!MSDOS \
+|| (!defined(NOTUSEBIOS) && defined (DJGPP) && (DJGPP >= 2) && !defined(PC98))
+int readselect(nfd, fds, result, vp)
+int nfd, fds[];
+char result[];
+VOID_P vp;
+{
+	fd_set readfds;
+	int i, n, max, dupfds[MAXSELECT];
+
+	FD_ZERO(&readfds);
+	max = -1;
+	if (nfd > MAXSELECT) nfd = MAXSELECT;
+
+	for (i = 0; i < nfd; i++) {
+		dupfds[i] = fds[i];
+		if (result) result[i] = 0;
+		if (fds[i] < 0) continue;
+		if (fds[i] >= MAXFDSET && (n = safe_dup(fds[i])) >= 0)
+			dupfds[i] = n;
+		if (dupfds[i] > max) max = dupfds[i];
+		FD_SET(dupfds[i], &readfds);
+	}
+	if (max++ < 0) return(0);
+
+	do {
+		n = select(max, &readfds, NULL, NULL, (struct timeval *)vp);
+	} while (n < 0 && errno == EINTR);
+	for (i = 0; i < nfd; i++)
+		if (dupfds[i] != fds[i]) safeclose(dupfds[i]);
+	if (n <= 0) return(n);
+
+	if (result) for (i = 0; i < nfd; i++) {
+		if (dupfds[i] < 0) continue;
+		if (FD_ISSET(dupfds[i], &readfds)) result[i] = 1;
+	}
+
+	return(n);
+}
+#endif	/* !MSDOS || (!NOTUSEBIOS && DJGPP && DJGPP >= 2 && !PC98) */

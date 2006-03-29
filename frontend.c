@@ -5,6 +5,7 @@
  */
 
 #include "fd.h"
+#include "funcno.h"
 
 #ifndef	_NOPTY
 
@@ -29,6 +30,7 @@ extern int deletealias __P_((char *));
 #define	sigalrm()	0
 #endif
 
+extern functable funclist[];
 extern int internal_status;
 #ifdef	SIGALRM
 extern int noalrm;
@@ -37,6 +39,7 @@ extern int fdmode;
 extern int fdflags;
 extern int wheader;
 extern int ptymode;
+extern int ptyinternal;
 extern int ptymenukey;
 extern p_id_t emupid;
 extern int emufd;
@@ -76,23 +79,25 @@ int options, *statusp;
 static int waitpty(VOID_A)
 {
 	char result[MAXWINDOWS];
-	int i, n, fds[MAXWINDOWS];
+	int i, oldwin, fds[MAXWINDOWS];
 
 	if (lastfunc && (*lastfunc)() < 0) return(-1);
 
-	for (i = 0; i < MAXWINDOWS; i++) fds[i] = ptylist[i].pipe;
-	if (selectpty(-1, fds, result, 0) > 0) {
+	oldwin = win;
+	for (i = 0; i < MAXWINDOWS; i++)
+		fds[i] = (ptylist[i].pid) ? ptylist[i].pipe : -1;
+	if (selectpty(MAXWINDOWS, fds, result, 0) > 0) {
 		for (i = 0; i < MAXWINDOWS; i++)
 			if (result[i] && ptylist[i].pid) recvchild(i);
 	}
 
+	if (win != oldwin) {
+		recvchild(oldwin);
+		return(-2);
+	}
 	if (!(ptylist[win].pid)) return(0);
 	if (ptylist[win].status >= 0) return(-1);
-	if (waitstatus(ptylist[win].pid, WNOHANG, &n) < 0) return(0);
-	ptylist[win].pid = (p_id_t)0;
-	ptylist[win].status = n;
-
-	return(-1);
+	return(checkpty(win));
 }
 
 VOID Xttyiomode(isnl)
@@ -615,7 +620,7 @@ int w;
 	keyseq_t key;
 	char *cp, *func1, *func2, ***varp, **var;
 	u_char uc;
-	int n, fd, val;
+	int n, fd, val, wastty;
 
 	fd = ptylist[w].pipe;
 	if (recvbuf(fd, &uc, sizeof(uc)) < 0) return;
@@ -850,7 +855,8 @@ int w;
 			break;
 		case TE_SAVETTYIO:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvbuf(fd, &val, sizeof(val)) < 0) break;
+			|| recvbuf(fd, &val, sizeof(val)) < 0)
+				break;
 			if (!val) cp = NULL;
 			else {
 				cp = malloc2(val);
@@ -864,6 +870,26 @@ int w;
 				duptty[n] = cp;
 			}
 			else if (cp) free(cp);
+			break;
+		case TE_INTERNAL:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvstring(fd, &cp) < 0)
+				break;
+			if (n < 0 || n >= FUNCLISTSIZ) {
+				if (cp) free(cp);
+				break;
+			}
+			keywaitfunc = lastfunc;
+			changewin(MAXWINDOWS, (p_id_t)-1);
+			if (!(wastty = isttyiomode)) Xttyiomode(0);
+			ptyinternal++;
+			internal_status = (*funclist[n].func)(cp);
+			ptyinternal--;
+			if (!wastty) Xstdiomode();
+			changewin(win, (p_id_t)-1);
+			rewritefile(0);
+			keywaitfunc = waitpty;
+			if (cp) free(cp);
 			break;
 		case TE_CHANGESTATUS:
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
@@ -885,6 +911,7 @@ int frontend(VOID_A)
 	changewsize(wheader, windows);
 	changewin(win, ptylist[win].pid);
 
+	internal_status = FNC_FAIL;
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
 	while ((ch = ptygetkey()) >= 0) sendword(emufd, ch);
 	if (!wastty) Xstdiomode();
@@ -900,7 +927,8 @@ int frontend(VOID_A)
 			recvchild(win);
 			killpty(win, &status);
 		}
-		internal_status = (status < 128) ? status : FNC_FAIL;
+		if (internal_status == FNC_FAIL && status < 128)
+			internal_status = status;
 	}
 
 	sigvecset(n);

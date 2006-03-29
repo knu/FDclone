@@ -223,6 +223,8 @@ extern int Xstat __P_((char *, struct stat *));
 #endif
 extern int Xaccess __P_((char *, int));
 extern int filetop __P_((int));
+extern VOID cputspace __P_((int));
+extern VOID cputstr __P_((int, char *));
 #ifdef	_NOPTY
 #define	Xlocate			locate
 #define	Xputterm		putterm
@@ -481,7 +483,7 @@ int mode;
 		if (!c) continue;
 
 		Xcputs2("  ");
-		if (c < 2) Xcprintf2("%*s", KEYWID, "");
+		if (c < 2) cputspace(KEYWID);
 		Xcprintf2("%k: %k",
 			buf, mesconv(funclist[i].hmes, funclist[i].hmes_eng));
 
@@ -562,7 +564,8 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = (type) ? type : "???";
-	mntp -> mnt_opts = (vmntp -> vmt_flags & MNT_READONLY) ? "ro" : "";
+	mntp -> mnt_opts =
+		(vmntp -> vmt_flags & MNT_READONLY) ? "ro" : nullstr;
 	mnt_ptr += vmntp -> vmt_length;
 
 	return(mntp);
@@ -596,6 +599,10 @@ char *file, *mode;
 
 	buf = NULL;
 	mnt_ptr = mnt_size = 0;
+
+# ifdef	DEBUG
+	_mtrace_file = "getmntinfo(start)";
+# endif
 # ifdef	USEMNTINFO
 	mnt_size = getmntinfo(&buf, MNT_NOWAIT);
 # else	/* !USEMNTINFO */
@@ -610,6 +617,13 @@ char *file, *mode;
 	}
 #  endif
 # endif	/* !USEMNTINFO */
+# ifdef	DEBUG
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "getmntinfo(end)";
+		malloc(0);	/* dummy malloc */
+	}
+# endif
 
 	return((FILE *)buf);
 }
@@ -652,6 +666,9 @@ mnt_t *mntp;
 	if (mnt_ptr >= mnt_size) return(NULL);
 	buf = (mntinfo_t *)fp;
 
+# ifdef	DEBUG
+	_mtrace_file = "getmntent(start)";
+# endif
 	len = strlen(buf[mnt_ptr].f_mntfromname) + 1;
 	fsname = realloc2(fsname, len);
 	memcpy(fsname, buf[mnt_ptr].f_mntfromname, len);
@@ -670,11 +687,19 @@ mnt_t *mntp;
 		free(type);
 		type = NULL;
 	}
+# ifdef	DEBUG
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "getmntent(end)";
+		malloc(0);	/* dummy malloc */
+	}
+# endif
 
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = (type) ? type : "???";
-	mntp -> mnt_opts = (buf[mnt_ptr].f_flags & MNT_RDONLY) ? "ro" : "";
+	mntp -> mnt_opts =
+		(buf[mnt_ptr].f_flags & MNT_RDONLY) ? "ro" : nullstr;
 	mnt_ptr++;
 
 	return(mntp);
@@ -720,7 +745,7 @@ mnt_t *mntp;
 	mntp -> mnt_fsname = fsname;
 	mntp -> mnt_dir = dir;
 	mntp -> mnt_type = type;
-	mntp -> mnt_opts = (buf.fd_req.flags & M_RONLY) ? "ro" : "";
+	mntp -> mnt_opts = (buf.fd_req.flags & M_RONLY) ? "ro" : nullstr;
 
 	return(mntp);
 }
@@ -782,7 +807,7 @@ mnt_t *mntbuf;
 			break;
 	}
 # endif	/* !_NOUSELFN */
-	mntbuf -> mnt_opts = "";
+	mntbuf -> mnt_opts = nullstr;
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
 #else	/* !MSDOS */
@@ -806,13 +831,13 @@ mnt_t *mntbuf;
 		static char dosmntdir[4];
 		char buf[sizeof(long) * 3 + 1];
 
-		mntbuf -> mnt_fsname = "";
+		mntbuf -> mnt_fsname = nullstr;
 		mntbuf -> mnt_dir = dosmntdir;
 		dosmntdir[0] = drv;
 		strcpy(&(dosmntdir[1]), ":\\");
 		mntbuf -> mnt_type =
 			(islower2(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
-		mntbuf -> mnt_opts = "";
+		mntbuf -> mnt_opts = nullstr;
 		if (dosstatfs(drv, buf) < 0) return(-1);
 		if (buf[sizeof(long) * 3] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
@@ -948,7 +973,7 @@ char *dir;
 	statfs_t fsbuf;
 	struct stat st;
 
-	if (strcmp(dir, ".")) {
+	if (isdotdir(dir) != 2) {
 		/* In case of the newborn directory */
 		if (Xstat(dir, &st) >= 0) return((off_t)(st.st_size));
 	}
@@ -985,7 +1010,7 @@ char *s, *unit;
 	Xlocate(n_column / 2 + 2, yy + y);
 	if (s) {
 		width = n_column - (n_column / 2 + 2);
-		Xcprintf2("%-*.*k", width, width, s);
+		cputstr(width, s);
 	}
 	else Xcprintf2("%<'*qd %k", MAXCOLSCOMMA(3), n, unit);
 

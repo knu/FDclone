@@ -153,7 +153,7 @@ char *Xgetwd __P_((char *));
 
 static char *NEAR getenvvar __P_((char *, int));
 static int NEAR setvar __P_((char *, char *, int));
-static int NEAR ismeta __P_((char *s, int, int, int, int));
+static int NEAR isescape __P_((char *s, int, int, int, int));
 #ifdef	_NOORIGGLOB
 static char *NEAR cnvregexp __P_((char *, int));
 #else
@@ -203,6 +203,10 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 			: (type *)realloc2(ptr, b_size(n, type)))
 #define	getconstvar(s)	(getenvvar(s, sizeof(s) - 1))
 
+char nullstr[] = "";
+char rootpath[] = _SS_;
+char curpath[] = ".";
+char parentpath[] = "..";
 char **argvar = NULL;
 #ifndef	_NOUSEHASH
 hashlist **hashtable = NULL;
@@ -288,7 +292,8 @@ ALLOC_T n, *sizep;
 		*sizep = BUFUNIT;
 		return(malloc2(*sizep));
 	}
-	while (n + 1 >= *sizep) *sizep *= 2;
+	n++;
+	while (n >= *sizep) *sizep *= 2;
 
 	return(realloc2(ptr, *sizep));
 }
@@ -849,6 +854,26 @@ char *s;
 	return(s);
 }
 
+int isrootpath(s)
+char *s;
+{
+	return((s[0] == _SC_ && !s[1]));
+}
+
+VOID copyrootpath(s)
+char *s;
+{
+	*(s++) = _SC_;
+	*s = '\0';
+}
+
+VOID copycurpath(s)
+char *s;
+{
+	*(s++) = '.';
+	*s = '\0';
+}
+
 char *getbasename(s)
 char *s;
 {
@@ -882,7 +907,7 @@ int *loginp, *restrictedp;
 	return(s);
 }
 
-static int NEAR ismeta(s, ptr, quote, len, flags)
+static int NEAR isescape(s, ptr, quote, len, flags)
 char *s;
 int ptr, quote, len, flags;
 {
@@ -946,7 +971,7 @@ int len;
 			re[j++] = s[i];
 			continue;
 		}
-		else if (ismeta(s, i, '\0', len, 0)) {
+		else if (isescape(s, i, '\0', len, 0)) {
 			re[j++] = s[i++];
 			re[j++] = s[i];
 		}
@@ -1122,7 +1147,7 @@ int len;
 		metachar = 0;
 		pc = parsechar(&(s[i]), len - i, '\0', 0, &quote, NULL);
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE) continue;
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			metachar = 1;
 			i++;
 		}
@@ -1431,7 +1456,7 @@ wild_t *wp;
 	plen = wp -> path.len;
 	quote = wp -> quote;
 
-	if (wp -> fixed.len) addstrbuf(&(wp -> path), _SS_, 1);
+	if (wp -> fixed.len) addstrbuf(&(wp -> path), rootpath, 1);
 
 	for (i = w = 0; wp -> s[i] && wp -> s[i] != _SC_; i++) {
 		pc = parsechar(&(wp -> s[i]), -1,
@@ -1446,7 +1471,7 @@ wild_t *wp;
 			addstrbuf(&(wp -> path), &(wp -> s[i]), 1);
 			i++;
 		}
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			if (wp -> flags & EA_KEEPMETA)
 				addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
 			if (wp -> s[i + 1] == _SC_) continue;
@@ -1473,7 +1498,7 @@ wild_t *wp;
 	if (!(wp -> s[i])) isdir = 0;
 	else {
 		isdir = 1;
-		addstrbuf(&(wp -> fixed), _SS_, 1);
+		addstrbuf(&(wp -> fixed), rootpath, 1);
 	}
 
 	if (!w) {
@@ -1524,15 +1549,15 @@ wild_t *wp;
 	}
 
 	if (wp -> path.len) cp = wp -> path.s;
-	else if (wp -> fixed.len) cp = _SS_;
-	else cp = ".";
+	else if (wp -> fixed.len) cp = rootpath;
+	else cp = curpath;
 
 	if (!(dirp = Xopendir(cp))) {
 		regexp_free(re);
 		return(argc);
 	}
 	if (wp -> path.len || wp -> fixed.len)
-		addstrbuf(&(wp -> path), _SS_, 1);
+		addstrbuf(&(wp -> path), rootpath, 1);
 
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
@@ -1570,7 +1595,7 @@ wild_t *wp;
 			dupl.ino[(dupl.nino)++].ino = st.st_ino;
 #endif
 
-			addstrbuf(&(dupl.fixed), _SS_, 1);
+			addstrbuf(&(dupl.fixed), rootpath, 1);
 			argc = _evalwild(argc, argvp, &dupl);
 		}
 		else if (regexp_exec(re, dp -> d_name, 1)) {
@@ -2120,7 +2145,8 @@ int dlen, exe;
 		if (size + (cp - path) >= MAXPATHLEN) continue;
 		strncpy2(cp, dp -> d_name, size);
 
-		if ((d = isexecute(path, dirok, exe)) < 0) continue;
+		if (isdotdir(dp -> d_name)) d = 1;
+		else if ((d = isexecute(path, dirok, exe)) < 0) continue;
 
 		new = malloc2(size + 1 + 1);
 		strncpy(new, dp -> d_name, size);
@@ -2149,7 +2175,7 @@ char ***argvp;
 	int dlen;
 
 # ifdef	CWDINPATH
-	argc = completefile(file, len, argc, argvp, ".", 1, 2);
+	argc = completefile(file, len, argc, argvp, curpath, 1, 2);
 # endif
 	if (!(next = getconstvar("PATH"))) return(argc);
 	for (cp = next; cp; cp = next) {
@@ -2198,7 +2224,7 @@ int exe;
 	else if (exe && dir == path)
 		return(completeexe(path, len, argc, argvp));
 
-	return(completefile(path, len, argc, argvp, ".", 1, exe));
+	return(completefile(path, len, argc, argvp, curpath, 1, exe));
 }
 
 char *findcommon(argc, argv)
@@ -2235,7 +2261,7 @@ int quoted;
 	for (i = j = 0; s2[i]; i++, j++) {
 		quote = quoted;
 		pc = parsechar(&(s2[i]), -1, '\0', EA_EOLMETA, &quote, NULL);
-		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_META) {
+		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_ESCAPE) {
 			if (s1) s1[j] = PMETA;
 			j++;
 		}
@@ -2260,7 +2286,7 @@ int delim;
 
 	if (!argv) return(NULL);
 	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
-	if (i < 1) return(strdup2(""));
+	if (i < 1) return(strdup2(nullstr));
 	len += (delim) ? i - 1 : 0;
 	cp = malloc2(len + 1);
 	len = strcpy2(cp, argv[0]) - cp;
@@ -2320,6 +2346,10 @@ char *s;
 int len, spc, flags, *qp, *pqp;
 {
 	if (*s == *qp) {
+#ifdef	FD
+		if (flags & EA_FINDMETA)
+			return((*qp == '\'') ? PC_EXMETA : PC_META);
+#endif
 		if (!pqp) *qp = '\0';
 		else {
 			*qp = *pqp;
@@ -2332,7 +2362,13 @@ int len, spc, flags, *qp, *pqp;
 	else if (isekana(s, 0)) return(PC_WORD);
 #endif
 	else if (*qp == '\'') return(PC_SQUOTE);
-	else if (ismeta(s, 0, *qp, len, flags)) return(PC_META);
+#ifdef	FD
+	else if ((flags & EA_FINDMETA) && strchr(DQ_METACHAR, *s))
+		return(PC_META);
+	else if ((flags & EA_FINDDELIM) && strchr(CMDLINE_DELIM, *s))
+		return(PC_DELIM);
+#endif
+	else if (isescape(s, 0, *qp, len, flags)) return(PC_ESCAPE);
 	else if (*qp == '`') return(PC_BQUOTE);
 #ifdef	NESTINGQUOTE
 	else if ((flags & EA_BACKQ) && *s == '`') {
@@ -2344,6 +2380,9 @@ int len, spc, flags, *qp, *pqp;
 	else if (spc && *s == spc) return(*s);
 	else if (*qp) return(PC_DQUOTE);
 	else if (!(flags & EA_NOEVALQ) && *s == '\'') {
+#ifdef	FD
+		if (flags & EA_FINDMETA) return(PC_META);
+#endif
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
@@ -2357,6 +2396,10 @@ int len, spc, flags, *qp, *pqp;
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
+#endif
+#ifdef	FD
+	else if ((flags & EA_FINDMETA) && strchr(METACHAR, *s))
+		return(PC_META);
 #endif
 
 	return(PC_NORMAL);
@@ -2484,7 +2527,7 @@ int qed, nonl, nest;
 #else
 		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, NULL);
 #endif
-		if (pc == PC_WORD || pc == PC_META) (*ptrp)++;
+		if (pc == PC_WORD || pc == PC_ESCAPE) (*ptrp)++;
 		else if (pc == '$') {
 			if (!s[++(*ptrp)]) return(0);
 			cp = s;
@@ -2642,7 +2685,7 @@ int plen, *modep;
 
 			for (i = j = 0; arglist[i + 1]; i++)
 				j += addmeta(NULL, arglist[i + 1], quoted);
-			if (i <= 0) cp = strdup2("");
+			if (i <= 0) cp = strdup2(nullstr);
 			else {
 				j += (i - 1) * 3;
 				cp = malloc2(j + 1);
@@ -3282,7 +3325,7 @@ int qed, flags;
 				return(NULL);
 			}
 		}
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			cp++;
 			if (flags & EA_KEEPMETA) pc = PC_NORMAL;
 			else if (*cp == '$') /*EMPTY*/;
@@ -3297,7 +3340,7 @@ int qed, flags;
 				bbuf[j++] = *cp;
 			}
 			else {
-				if (pc != PC_META) buf[i++] = PMETA;
+				if (pc != PC_ESCAPE) buf[i++] = PMETA;
 				buf[i++] = *cp;
 			}
 		}
@@ -3344,7 +3387,7 @@ char ***argvp, *ifs;
 		for (i = 0, quote = '\0'; (*argvp)[n][i]; i++) {
 			pc = parsechar(&((*argvp)[n][i]), -1,
 				'\0', 0, &quote, NULL);
-			if (pc == PC_WORD || pc == PC_META) i++;
+			if (pc == PC_WORD || pc == PC_ESCAPE) i++;
 			else if (pc != PC_NORMAL) /*EMPTY*/;
 			else if (strchr2(ifs, (*argvp)[n][i])) {
 				for (j = i + 1; (*argvp)[n][j]; j++)
@@ -3429,13 +3472,13 @@ int flags;
 			if (flags & EA_STRIPQ) continue;
 		}
 		else if (pc == PC_WORD) arg[j++] = arg[i++];
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			i++;
 			if (flags & EA_KEEPMETA) pc = PC_NORMAL;
 			else if (!quote && !(flags & EA_BACKQ)) /*EMPTY*/;
 			else if (!strchr(DQ_METACHAR, arg[i])) pc = PC_NORMAL;
 
-			if (pc != PC_META) arg[j++] = PMETA;
+			if (pc != PC_ESCAPE) arg[j++] = PMETA;
 			else stripped++;
 		}
 
@@ -3492,7 +3535,7 @@ int flags;
 			if (!(flags & EA_NOEVALQ)) continue;
 		}
 		else if (pc == PC_WORD) tmp[j++] = cp[i++];
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			i++;
 			if ((flags & EA_KEEPMETA)
 			|| (quote && !strchr(DQ_METACHAR, cp[i])))

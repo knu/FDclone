@@ -63,7 +63,7 @@ static int NEAR openlogfile(VOID_A)
 	else {
 		if (!logfile || !*logfile) return(-1);
 
-		logfname = "";
+		logfname = nullstr;
 		top = logfile;
 #if	MSDOS
 		if (_dospath(top)) top += 2;
@@ -103,7 +103,7 @@ static int NEAR openlogfile(VOID_A)
 VOID logclose(VOID_A)
 {
 	if (logfname && *logfname) free(logfname);
-	logfname = "";
+	logfname = nullstr;
 #ifndef	NOSYSLOG
 	if (syslogged > 0) closelog();
 	syslogged = -1;

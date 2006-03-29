@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.08a
+VERSION	= 2.08b
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -109,7 +109,7 @@ LDFLAGS	=   -lintlib -ltinymain.obj $(ALLOC)
 CFLAGS	= -DDOSV=1 -O $(DEBUG)
 HOSTCFLAGS = -DDOSV=1 -O
 SLDFLAGS =  -lintlib -ltinymain.obj $(ALLOC)
-FDCFLAGS = $(CFLAGS) $(CPPFLAGS) -ml -h -k"-s 3800" -DFD=$(VERMAJ)
+FDCFLAGS = $(CFLAGS) $(CPPFLAGS) -ml -h -k"-s 3c00" -DFD=$(VERMAJ)
 SHCFLAGS = $(CFLAGS) $(CPPFLAGS) -mp -h -k"-s 8000" -DFDSH=$(VERMAJ)
 BSHCFLAGS = $(CFLAGS) $(CPPFLAGS) -ms -k"-s 8000" -DFDSH=$(VERMAJ) -DMINIMUMSHELL
 DEFCFLAGS = -DDEFRC=\\\"$(DOSRC)\\\"
@@ -123,7 +123,7 @@ DEFCFLAGS = -DDEFRC=\\\"$(DOSRC)\\\"
 all: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) -ml -h -k"-s 3800" -o $@ @$(ARGS) $(LDFLAGS)
+	$(CC) -ml -h -k"-s 3c00" -o $@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
@@ -136,7 +136,7 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 main.obj: main.c
 	$(CC) $(FDCFLAGS) $(DEFCFLAGS)  -c -o $@ $*.c
 
-term.obj: term.c
+termio.obj: termio.c
 	$(CC) $(FDCFLAGS)  -c -o $@ $*.c
 
 system.obj: system.c
@@ -436,6 +436,10 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		-e '\# launcher definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \
+		-e   'launch ".tar.Z"	"gzip -cd %C|tar tvf -"	"%a %u\%g %s %y-%m-%d %t %*f"' \
+		-e   'i \' \
+		-e   'launch ".taZ"	"gzip -cd %C|tar tvf -"	"%a %u\%g %s %y-%m-%d %t %*f"' \
+		-e   'i \' \
 		-e   'launch ".ipk"	"gzip -cd %C|tar xOf - .\data.tar.gz|gzip -cd|tar tvf -" \\' \
 		-e   'i \' \
 		-e   '				"%a %u\%g %s %y-%m-%d %t %*f"' \
@@ -447,6 +451,10 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		-e '}' \
 		-e '\# archiver definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
+		-e   'i \' \
+		-e   'arch ".tar.Z"	"echo ERROR; false" 		"gzip -cd %C|tar xf - %TA"' \
+		-e   'i \' \
+		-e   'arch ".taZ"	"echo ERROR; false"		"gzip -cd %C|tar xf - %TA"' \
 		-e   'i \' \
 		-e   'arch ".ipk"	"echo ERROR; false" \\' \
 		-e   'i \' \
@@ -591,7 +599,7 @@ frontend.obj: machine.h config.h
 frontend.obj: types.h
 frontend.obj: printf.h
 frontend.obj: kctype.h
-frontend.obj: pathname.h term.h func.h
+frontend.obj: pathname.h term.h funcno.h func.h
 frontend.obj: dosdisk.h kanji.h termemu.h system.h
 frontend.obj: termio.h
 frontend.obj: wait.h

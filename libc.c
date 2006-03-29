@@ -146,8 +146,9 @@ char *path, *resolved;
 int rdlink;
 {
 	char *cp, *top;
+	int n;
 
-	if (!*path || !strcmp(path, ".")) return(resolved);
+	if (!*path || (n = isdotdir(path)) == 2) return(resolved);
 	else if ((cp = strdelim(path, 0))) {
 		*cp = '\0';
 		_realpath2(path, resolved, rdlink);
@@ -156,7 +157,7 @@ int rdlink;
 		return(resolved);
 	}
 
-	if (!strcmp(path, "..")) {
+	if (n == 1) {
 		cp = strrdelim(resolved, 0);
 		top = resolved;
 #if	MSDOS
@@ -207,7 +208,7 @@ int rdlink;
 	path = tmp;
 
 #if	MSDOS
-	drv = dospath("", NULL);
+	drv = dospath(nullstr, NULL);
 	if ((resolved[0] = _dospath(path))) path += 2;
 	if (*path == _SC_) {
 		if (!resolved[0]) resolved[0] = drv;
@@ -227,7 +228,7 @@ int rdlink;
 		}
 	}
 #else	/* !MSDOS */
-	if (*path == _SC_) strcpy(resolved, _SS_);
+	if (*path == _SC_) copyrootpath(resolved);
 # ifndef	_NODOSDRIVE
 	else if ((drv = _dospath(path))) {
 		path += 2;
@@ -249,7 +250,7 @@ int rdlink;
 #endif	/* !MSDOS */
 	else if (!rdlink && resolved != fullpath && *fullpath)
 		strcpy(resolved, fullpath);
-	else if (!Xgetwd(resolved)) strcpy(resolved, _SS_);
+	else if (!Xgetwd(resolved)) copyrootpath(resolved);
 	norealpath++;
 	_realpath2(path, resolved, rdlink);
 	norealpath--;
@@ -262,17 +263,17 @@ char *path;
 {
 	char cwd[MAXPATHLEN];
 
-	if (!Xgetwd(cwd)) strcpy(cwd, _SS_);
+	if (!Xgetwd(cwd)) copyrootpath(cwd);
 	if (Xchdir(path) < 0) return(-1);
 #if	!MSDOS
 # ifndef	_NODOSDRIVE
-	if (dospath2("")) /*EMPTY*/;
+	if (dospath2(nullstr)) /*EMPTY*/;
 	else
 # endif
 	{
 		int fd, duperrno;
 
-		if ((fd = open(".", O_RDONLY, 0600)) < 0) {
+		if ((fd = open(curpath, O_RDONLY, 0600)) < 0) {
 # ifdef	CYGWIN
 			char upath[MAXPATHLEN], spath[MAXPATHLEN];
 			char tmp[MAXPATHLEN];
@@ -405,7 +406,7 @@ int raw;
 		if (findpattern) free(findpattern);
 		findpattern = NULL;
 #ifndef	_NOUSEHASH
-		searchhash(NULL, "", "");
+		searchhash(NULL, nullstr, nullstr);
 #endif
 	}
 

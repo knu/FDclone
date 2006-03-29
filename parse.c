@@ -314,7 +314,7 @@ int evaldq;
 			cp++;
 			continue;
 		}
-		else if (pc == PC_META) {
+		else if (pc == PC_ESCAPE) {
 			cp++;
 			if (*cp == PMETA && strchr(c, *cp)) return(cp - 1);
 			continue;
@@ -452,7 +452,7 @@ char *path, *delim;
 		}
 	}
 
-	if (!epath) return(strdup2(""));
+	if (!epath) return(strdup2(nullstr));
 	epath[size] = '\0';
 
 	return(epath);
@@ -493,7 +493,7 @@ int delim;
 		if (next) epath[size++] = delim;
 	}
 
-	if (!epath) return(strdup2(""));
+	if (!epath) return(strdup2(nullstr));
 	epath[size] = '\0';
 
 	return(epath);
