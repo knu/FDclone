@@ -17,10 +17,6 @@ extern int errno;
 #include <sys/dir.h>
 #endif
 
-#if	defined (USESTATVFSH) || defined (USEGETVFSTAT)
-#include <sys/statvfs.h>
-#endif
-
 #if	MSDOS
 #undef	USEVFSH
 #undef	USEMNTENTH
@@ -83,7 +79,7 @@ typedef struct _mnt_t {
 } mnt_t;
 static FILE *NEAR setmntent2 __P_((char *, char *));
 static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
-#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(m,o)		strmntopt((m) -> mnt_opts, o)
 # if	defined (USEMNTINFO) || defined (USEGETMNT)
 # define	endmntent2(f)
 # else
@@ -97,9 +93,9 @@ static int mnt_size = 0;
 #ifdef	USEGETFSENT
 #include <fstab.h>
 typedef struct fstab		mnt_t;
-#define	setmntent2(file, mode)	(FILE *)(setfsent(), NULL)
-#define	getmntent2(fp, mntp)	getfsent()
-#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> fs_mntops, opt)
+#define	setmntent2(f,m)		(FILE *)(setfsent(), NULL)
+#define	getmntent2(f,m)		getfsent()
+#define	hasmntopt2(m,o)		strmntopt((m) -> fs_mntops, o)
 #define	endmntent2(fp)		endfsent()
 #define	mnt_dir			fs_file
 #define	mnt_fsname		fs_spec
@@ -113,7 +109,7 @@ typedef struct _mnt_t {
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
-#define	hasmntopt2(mntp, opt)	strmntopt((mntp) -> mnt_opts, opt)
+#define	hasmntopt2(m,o)		strmntopt((m) -> mnt_opts, o)
 # ifdef	PC98
 # define	PT_FAT12	0x81	/* 0x80 | 0x01 */
 # define	PT_FAT16	0x91	/* 0x80 | 0x11 */
@@ -128,6 +124,9 @@ typedef struct _mnt_t {
 # endif
 #endif	/* MSDOS */
 
+#if	defined (USESTATVFSH) || defined (USEGETVFSTAT)
+#include <sys/statvfs.h>
+#endif
 
 #ifdef	USESTATVFSH
 # ifdef	USESTATVFS_T
@@ -337,7 +336,7 @@ static CONST int keycodelist[] = {
 	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER, K_HELP,
 	K_BS, '\t', K_CR, K_ESC
 };
-#define	KEYCODESIZ	((int)(sizeof(keycodelist) / sizeof(int)))
+#define	KEYCODESIZ	arraysize(keycodelist)
 static CONST char *keystrlist[] = {
 	"Home", "End", "DelLin", "InsLin", "Del", "Ins",
 	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter", "Help",
@@ -379,7 +378,7 @@ static CONST strtable mntlist[] = {
 # endif
 #endif	/* !MSDOS */
 };
-#define	MNTLISTSIZ	((int)(sizeof(mntlist) / sizeof(strtable)))
+#define	MNTLISTSIZ	arraysize(mntlist)
 
 
 static int NEAR code2str(buf, code)
@@ -585,7 +584,7 @@ typedef struct statfs		mntinfo_t;
 #endif
 
 #if	!defined (MNT_RDONLY) && defined (M_RDONLY)
-#define	MNT_RDONLY	M_RDONLY
+#define	MNT_RDONLY		M_RDONLY
 #endif
 
 /*ARGSUSED*/
@@ -823,13 +822,13 @@ mnt_t *mntbuf;
 	if (!mntbuf) mntbuf = &mnt;
 
 	dir = NULL;
-	if (!strncmp(path, "/dev/", sizeof("/dev/") - 1)) {
+	if (!strncmp(path, "/dev/", strsize("/dev/"))) {
 		if (_chdir2(path) < 0) dir = path;
 	}
 # ifndef	_NODOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
 		static char dosmntdir[4];
-		char buf[sizeof(long) * 3 + 1];
+		char buf[3 * sizeof(long) + 1];
 
 		mntbuf -> mnt_fsname = nullstr;
 		mntbuf -> mnt_dir = dosmntdir;
@@ -839,22 +838,22 @@ mnt_t *mntbuf;
 			(islower2(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
 		mntbuf -> mnt_opts = nullstr;
 		if (dosstatfs(drv, buf) < 0) return(-1);
-		if (buf[sizeof(long) * 3] & 001)
+		if (buf[3 * sizeof(long)] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
-		fsbuf -> f_bsize = *((long *)&(buf[sizeof(long) * 0]));
+		fsbuf -> f_bsize = *((long *)&(buf[0 * sizeof(long)]));
 #  ifdef	USEFSDATA
 		fsbuf -> fd_req.btot = calcKB((off_t)(fsbuf -> f_bsize),
-			(off_t)(*((long *)&(buf[sizeof(long) * 1]))));
+			(off_t)(*((long *)&(buf[1 * sizeof(long)]))));
 		fsbuf -> fd_req.bfree =
 		fsbuf -> fd_req.bfreen = calcKB((off_t)(fsbuf -> f_bsize),
-			(off_t)(*((long *)&(buf[sizeof(long) * 2]))));
+			(off_t)(*((long *)&(buf[2 * sizeof(long)]))));
 #  else	/* !USEFSDATA */
 #   ifdef	USESTATVFSH
 		fsbuf -> f_frsize = 0L;
 #   endif
-		fsbuf -> f_blocks = *((long *)&(buf[sizeof(long) * 1]));
+		fsbuf -> f_blocks = *((long *)&(buf[1 * sizeof(long)]));
 		fsbuf -> f_bfree =
-		fsbuf -> f_bavail = *((long *)&(buf[sizeof(long) * 2]));
+		fsbuf -> f_bavail = *((long *)&(buf[2 * sizeof(long)]));
 #  endif	/* !USEFSDATA */
 		fsbuf -> f_files = -1L;
 

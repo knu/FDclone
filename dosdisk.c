@@ -60,7 +60,7 @@ typedef u_short	gid_t;
 #define	D_SECSIZE(dl)	(dl).d_secsize
 # ifdef	BSD4
 # include <sys/disklabel.h>
-# else
+# else	/* !BSD4 */
 #  ifdef	SOLARIS
 #  include <sys/dkio.h>
 #  include <sys/vtoc.h>
@@ -78,8 +78,8 @@ typedef u_short	gid_t;
 #  undef	D_SECSIZE
 #  define	D_SECSIZE(dl)	512
 #  endif
-# endif
-#endif
+# endif	/* !BSD4 */
+#endif	/* HDDMOUNT */
 
 #ifdef	LINUX
 #include <mntent.h>
@@ -91,7 +91,7 @@ typedef u_short	gid_t;
 # ifndef	MOUNTED
 # define	MOUNTED		"/etc/mtab"
 # endif
-#endif
+#endif	/* LINUX */
 
 #ifdef	NOERRNO
 extern int errno;
@@ -103,7 +103,7 @@ extern int errno;
 # else
 # define	ENOTEMPTY	EACCES
 # endif
-#endif
+#endif	/* !ENOTEMPTY */
 
 #ifndef	EPERM
 #define	EPERM	EACCES
@@ -139,6 +139,9 @@ extern int errno;
 #define	KC_SJIS1	0001
 #define	KC_SJIS2	0002
 #define	KC_EUCJP	0010
+
+#define	strsize(s)	((int)sizeof(s) - 1)
+#define	arraysize(a)	((int)sizeof(a) / (int)sizeof(*(a)))
 
 #define	reterr(c)	{errno = doserrno; return(c);}
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
@@ -456,10 +459,10 @@ static long lfn_offset = 0L;
 static int doserrno = 0;
 #if	!MSDOS
 static CONST short sectsizelist[] = SECTSIZE;
-#define	SLISTSIZ	((int)(sizeof(sectsizelist) / sizeof(short)))
+#define	SLISTSIZ	arraysize(sectsizelist)
 #endif
 static CONST char *inhibitname[] = INHIBITNAME;
-#define	INHIBITNAMESIZ	((int)(sizeof(inhibitname) / sizeof(char *)))
+#define	INHIBITNAMESIZ	arraysize(inhibitname)
 #ifndef	FD
 typedef struct _kconv_t {
 	u_short start;
@@ -501,7 +504,7 @@ static CONST kconv_t rsjistable[] = {
 	{0xfa54, 0x81ca, 0x01},		/* full width not sign */
 	{0xfa5b, 0x81e6, 0x01},		/* because */
 };
-#define	RSJISTBLSIZ	((int)(sizeof(rsjistable) / sizeof(kconv_t)))
+#define	RSJISTBLSIZ	arraysizeof(rsjistable)
 #endif	/* !FD */
 
 
@@ -832,8 +835,7 @@ time_t t;
 	if (i > 0) {
 		i--;
 		i *= (int)sizeof(char);
-		i += (int)sizeof(struct tzhead)
-			+ ntime * (int)sizeof(char) * 4;
+		i += (int)sizeof(struct tzhead) + ntime * 4 * sizeof(char);
 		if (fseek(fp, i, 0) < 0
 		|| fread(&c, sizeof(char), 1, fp) != 1) {
 			fclose(fp);
@@ -841,8 +843,8 @@ time_t t;
 		}
 		i = c;
 	}
-	i *= (int)sizeof(char) * (4 + 1 + 1);
-	i += (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1);
+	i *= (4 + 1 + 1) * sizeof(char);
+	i += (int)sizeof(struct tzhead) + ntime * (4 + 1) * sizeof(char);
 	if (fseek(fp, i, 0) < 0
 	|| fread(buf, sizeof(char), 4, fp) != 4) {
 		fclose(fp);
@@ -851,9 +853,9 @@ time_t t;
 	tmp = char2long(buf);
 	tz = -tmp;
 
-	i = (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1)
-		+ ntype * (int)sizeof(char) * (4 + 1 + 1)
-		+ nchar * (int)sizeof(char);
+	i = (int)sizeof(struct tzhead) + ntime * (4 + 1) * sizeof(char)
+		+ ntype * (4 + 1 + 1) * sizeof(char)
+		+ nchar * sizeof(char);
 	if (fseek(fp, i, 0) < 0) {
 		fclose(fp);
 		return(tz);
@@ -2914,12 +2916,12 @@ int vol;
 	buf[i] = '\0';
 
 	if (vol > 1 || (vol > 0 && cnv)) {
-		for (j = 0; j < (int)sizeof(num) / sizeof(char); j++) {
+		for (j = 0; j < arraysize(num); j++) {
 			if (!vol) break;
 			num[j] = (vol % 10) + '0';
 			vol /= 10;
 		}
-		for (i = (int)sizeof(num) / sizeof(char) - j; i > 0; i--)
+		for (i = arraysize(num) - j; i > 0; i--)
 			if (buf[i - 1] != ' ') break;
 		buf[i++] = '~';
 		while (j-- > 0) buf[i++] = num[j];
@@ -3815,14 +3817,14 @@ int mode;
 	for (i = 0; i < INHIBITNAMESIZ; i++)
 		if (!strncmp((char *)fname, inhibitname[i], 8)) break;
 	if (i < INHIBITNAMESIZ
-	|| (!strncmp((char *)fname, INHIBITCOM, sizeof(INHIBITCOM) - 2)
-	&& fname[sizeof(INHIBITCOM) - 1] > '0'
-	&& fname[sizeof(INHIBITCOM) - 1] <= '0' + INHIBITCOMMAX
-	&& fname[sizeof(INHIBITCOM)] == ' ')
-	|| (!strncmp((char *)fname, INHIBITLPT, sizeof(INHIBITLPT) - 2)
-	&& fname[sizeof(INHIBITLPT) - 1] > '0'
-	&& fname[sizeof(INHIBITLPT) - 1] <= '0' + INHIBITLPTMAX
-	&& fname[sizeof(INHIBITLPT)] == ' ')) {
+	|| (!strncmp((char *)fname, INHIBITCOM, strsize(INHIBITCOM))
+	&& fname[strsize(INHIBITCOM)] > '0'
+	&& fname[strsize(INHIBITCOM)] <= '0' + INHIBITCOMMAX
+	&& fname[strsize(INHIBITCOM) + 1] == ' ')
+	|| (!strncmp((char *)fname, INHIBITLPT, strsize(INHIBITLPT))
+	&& fname[strsize(INHIBITLPT)] > '0'
+	&& fname[strsize(INHIBITLPT)] <= '0' + INHIBITLPTMAX
+	&& fname[strsize(INHIBITLPT) + 1] == ' ')) {
 		_dosclosedir(xdirp);
 		doserrno = EINVAL;
 		return(-1);
@@ -4072,11 +4074,11 @@ char *buf;
 	}
 	avail = (long)(devlist[dd].availsize);
 
-	*((long *)&(buf[sizeof(long) * 0])) = block;
-	*((long *)&(buf[sizeof(long) * 1])) = total;
-	*((long *)&(buf[sizeof(long) * 2])) = avail;
-	buf[sizeof(long) * 3] = 0;
-	if (devlist[dd].flags & F_FAT32) buf[sizeof(long) * 3] |= 001;
+	*((long *)&(buf[0 * sizeof(long)])) = block;
+	*((long *)&(buf[1 * sizeof(long)])) = total;
+	*((long *)&(buf[2 * sizeof(long)])) = avail;
+	buf[3 * sizeof(long)] = 0;
+	if (devlist[dd].flags & F_FAT32) buf[3 * sizeof(long)] |= 001;
 	closedev(dd);
 
 	return(0);
@@ -4281,7 +4283,7 @@ char *from, *to;
 	sum = calcsum(dd2dentp(dd) -> name);
 	memcpy((char *)&(fd2dentp(fd) -> attr),
 		(char *)&(dd2dentp(dd) -> attr),
-		sizeof(dent_t) - (8 + 3));
+		(int)sizeof(dent_t) - (8 + 3));
 	*(dd2dentp(dd) -> name) = 0xe5;
 	*dd2path(dd) = '\0';
 
@@ -4669,7 +4671,7 @@ int mode;
 		dent[1].clust_h[1] = (clust >> 24) & 0xff;
 	}
 
-	if (doswrite(fd + DOSFDOFFSET, (char *)dent, sizeof(dent_t) * 2) < 0) {
+	if (doswrite(fd + DOSFDOFFSET, (char *)dent, 2 * sizeof(dent_t)) < 0) {
 		tmp = errno;
 		if ((clust = clust32(fd2devp(fd), &(dosflist[fd]._dent))))
 			clustfree(fd2devp(fd), clust);

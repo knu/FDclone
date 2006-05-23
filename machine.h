@@ -368,6 +368,7 @@ typedef long	off_t;
 #define	USEMNTCTL
 #define	USERE_COMP
 # if	defined (_AIX41)
+# define	HAVELONGLONG
 # define	USESTATVFSH
 # define	USEMKTIME
 # define	SIGFNCINT

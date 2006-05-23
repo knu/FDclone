@@ -192,7 +192,7 @@ int width, prec;
 	if (!n) {
 		if (prec) num[len++] = '0';
 	}
-	else while (len < (int)sizeof(num) / sizeof(char)) {
+	else while (len < arraysize(num)) {
 #ifdef	MINIMUMSHELL
 		if (!bit) {
 			i = (n % base);
@@ -249,8 +249,10 @@ int width, prec;
 
 	if (prec >= 0 && len < prec) {
 		for (i = 0; i < prec - len; i++) {
+#ifndef	MINIMUMSHELL
 			if ((pbufp -> flags & VF_STRICTWIDTH) && width == 1)
 				break;
+#endif
 			width--;
 			c = '0';
 			if ((pbufp -> flags & VF_THOUSAND)
@@ -259,6 +261,7 @@ int width, prec;
 			if (setchar(c, pbufp) < 0) return(-1);
 		}
 	}
+#ifndef	MINIMUMSHELL
 	if ((pbufp -> flags & VF_STRICTWIDTH) && width >= 0 && width < len)
 	for (i = 0; i < width; i++) {
 		c = '9';
@@ -267,7 +270,9 @@ int width, prec;
 			c = (i) ? ',' : ' ';
 		if (setchar(c, pbufp) < 0) return(-1);
 	}
-	else for (i = 0; i < len; i++) {
+	else
+#endif	/* !MINIMUMSHELL */
+	for (i = 0; i < len; i++) {
 		if (setchar(num[len - i - 1], pbufp) < 0) return(-1);
 	}
 
@@ -294,7 +299,7 @@ int width, prec;
 	}
 	else {
 		s = "(null)";
-		len = (int)sizeof("(null)") - 1;
+		len = strsize("(null)");
 #ifdef	LINUX
 		/* spec. of glibc */
 		if (prec >= 0 && len > prec) len = 0;
@@ -496,29 +501,37 @@ va_list args;
 		}
 
 		if (base) {
-			if (len == (int)sizeof(u_long_t))
-				u = va_arg(args, u_long_t);
-#ifdef	HAVELONGLONG
-			else if (len == (int)sizeof(u_long))
-				u = va_arg(args, u_long);
-#endif
-			else u = va_arg(args, u_int);
-
 #ifndef	HAVELONGLONG
 			if (len > (int)sizeof(u_long_t)) {
-				u_long_t hi, tmp;
+				u_long_t tmp;
+				int hi;
 
-				while (len > (int)sizeof(u_int)) {
-					hi = va_arg(args, u_int);
-					len -= (int)sizeof(u_int);
-				}
-
+# ifndef	HPUX
+	/*
+	 * HP-UX always pushes arguments from lowest to uppermost,
+	 * in spite of the CPU endien.
+	 */
 				tmp = 0x5a;
 				cp = (char *)(&tmp);
 				if (*cp != 0x5a) {
-					tmp = hi;
-					hi = u;
-					u = tmp;
+					hi = va_arg(args, u_int);
+					len -= (int)sizeof(u_int);
+					while (len > (int)sizeof(u_long_t)) {
+						tmp = va_arg(args, u_int);
+						len -= (int)sizeof(u_int);
+					}
+					u = va_arg(args, u_long_t);
+				}
+				else
+# endif	/* !HPUX */
+				{
+					hi = 0;
+					u = va_arg(args, u_long_t);
+					len -= (int)sizeof(u_long_t);
+					while (len > 0) {
+						hi = va_arg(args, u_int);
+						len -= (int)sizeof(u_int);
+					}
 				}
 
 				if (pbufp -> flags & VF_UNSIGNED) {
@@ -526,7 +539,7 @@ va_list args;
 				}
 				else {
 					mask = (MAXUTYPE(u_long_t) >> 1);
-					if (hi & ~mask) {
+					if (hi < 0) {
 						if (++hi || !(u & ~mask))
 							u = ~mask;
 					}
@@ -538,10 +551,20 @@ va_list args;
 			}
 			else
 #endif	/* !HAVELONGLONG */
+			if (len == (int)sizeof(u_long_t))
+				u = va_arg(args, u_long_t);
+#ifdef	HAVELONGLONG
+			else if (len == (int)sizeof(u_long))
+				u = va_arg(args, u_long);
+#endif
+			else u = va_arg(args, u_int);
+
 			if (!(pbufp -> flags & VF_UNSIGNED)) {
-				mask = (MAXUTYPE(u_long_t)
-					>> (((int)sizeof(long_t) - len)
-					* BITSPERBYTE + 1));
+				mask = MAXUTYPE(u_long_t);
+				if (len < (int)sizeof(u_long_t))
+					mask >>= ((int)sizeof(u_long_t) - len)
+						* BITSPERBYTE;
+				mask >>= 1;
 				if (u & ~mask) u |= ~mask;
 			}
 			len = setint(u, base, pbufp, width, prec);

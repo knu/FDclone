@@ -1,3 +1,6 @@
+Ver. 2.08c	Bug that the command history file on NFS is truncated is fixed.
+ (05/24/06)	Support some OSs displaying every archived file size as 0.
+
 Ver. 2.08b	Support Cygwin 1.5.19.
  (03/30/06)	Support internal commands with the command line on PTYMODE=1.
 		Bug that inputted key is dropped in some environments is fixed.

@@ -2251,13 +2251,13 @@ statfs_t *buf;
 	i = supportLFN(path);
 # ifndef	_NODOSDRIVE
 	if (i == -2) {
-		char tmp[sizeof(long) * 3 + 1];
+		char tmp[3 * sizeof(long) + 1];
 
 		if (dosstatfs(drive, tmp) < 0) return(-1);
-		buf -> f_bsize = *((u_long *)&(tmp[sizeof(long) * 0]));
-		buf -> f_blocks = *((u_long *)&(tmp[sizeof(long) * 1]));
+		buf -> f_bsize = *((u_long *)&(tmp[0 * sizeof(long)]));
+		buf -> f_blocks = *((u_long *)&(tmp[1 * sizeof(long)]));
 		buf -> f_bfree =
-		buf -> f_bavail = *((u_long *)&(tmp[sizeof(long) * 2]));
+		buf -> f_bavail = *((u_long *)&(tmp[2 * sizeof(long)]));
 	}
 	else
 # endif

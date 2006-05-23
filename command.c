@@ -531,14 +531,13 @@ char *arg;
 			if (!(filelist[filepos].linkname)) i = 0;
 			else {
 				i = strlen(filelist[filepos].linkname);
-				if (i > (int)sizeof(tmp) - 1)
-					i = (int)sizeof(tmp) - 1;
+				if (i > strsize(tmp)) i = strsize(tmp);
 				strncpy(tmp, filelist[filepos].linkname, i);
 			}
 		}
 		else
 # endif
-		i = Xreadlink(fnodospath(path, filepos), tmp, sizeof(tmp) - 1);
+		i = Xreadlink(fnodospath(path, filepos), tmp, strsize(tmp));
 		tmp[i] = '\0';
 		i = 1 - (strlen3(tmp) + 4);
 	}
@@ -1432,7 +1431,7 @@ char *arg;
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
 	else {
 		cp = DELFL_K;
-		len = strlen2(cp) - ((int)sizeof("%.*s") - 1);
+		len = strlen2(cp) - strsize("%.*s");
 		if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 			return(FNC_CANCEL);
 		filepos = applyfile(rmvfile, NULL);
@@ -1451,7 +1450,7 @@ char *arg;
 	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
 		return(warning_bell(arg));
 	cp = DELDR_K;
-	len = strlen2(cp) - ((int)sizeof("%.*s") - 1);
+	len = strlen2(cp) - strsize("%.*s");
 	if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 		return(FNC_CANCEL);
 	removepolicy = 0;

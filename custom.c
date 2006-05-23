@@ -461,7 +461,7 @@ static CONST envtable envlist[] = {
 	{"FD_NOCONVPATH", &noconvpath, DEFVAL(NOCONVPATH), NCVP_E, T_PATHS},
 #endif	/* !_NOKANJIFCONV */
 };
-#define	ENVLISTSIZ	((int)(sizeof(envlist) / sizeof(envtable)))
+#define	ENVLISTSIZ	arraysize(envlist)
 
 #ifndef	_NOKANJIFCONV
 static pathtable pathlist[] = {
@@ -470,7 +470,7 @@ static pathtable pathlist[] = {
 	{&progpath, NULL, NOCNV, P_STABLE},
 	{&unitblpath, NULL, NOCNV, P_STABLE},
 };
-#define	PATHLISTSIZ	((int)(sizeof(pathlist) / sizeof(pathtable)))
+#define	PATHLISTSIZ	arraysize(pathlist)
 # ifndef	_NOSPLITWIN
 #  ifndef	_NOARCHIVE
 static pathtable archlist[MAXWINDOWS];
@@ -491,7 +491,7 @@ static CONST devinfo mediadescr[] = {
 	{0xf8, "HDD(PC98)", 'N', 98, 0},
 #  endif
 };
-#define	MEDIADESCRSIZ	((int)(sizeof(mediadescr) / sizeof(devinfo)))
+#define	MEDIADESCRSIZ	arraysize(mediadescr)
 # endif	/* _USEDOSEMU */
 static int cs_item = 0;
 static int cs_max = 0;
@@ -524,7 +524,7 @@ char *s;
 {
 	int n;
 
-	if (!sscanf2(s, "%o%$", &n)) return(-1);
+	if (!sscanf2(s, "%<o%$", &n)) return(-1);
 	n &= 0777;
 
 	return(n);
@@ -2651,7 +2651,7 @@ char *prompt, **var;
 	int i, n, max, val[4];
 
 	max = countvar(var);
-	for (i = 0; i < (int)sizeof(val) / sizeof(int); i++) val[i] = i;
+	for (i = 0; i < arraysize(val); i++) val[i] = i;
 
 	list = (namelist *)malloc2((max + 1) * sizeof(namelist));
 	mes = (char **)malloc2((max + 1) * sizeof(char *));
@@ -2692,8 +2692,7 @@ char *prompt, **var;
 		str[2] = (n < max - 1) ? ARDWN_K : NULL;
 		str[3] = ARDEL_K;
 		i = 0;
-		if (noselect(&i, sizeof(val) / sizeof(int), 0, str, val))
-			continue;
+		if (noselect(&i, arraysize(val), 0, str, val)) continue;
 		if (i == 0) {
 			if (!(tmp = inputcuststr(prompt, 1, cp, -1)))
 				continue;
@@ -2748,17 +2747,17 @@ launchtable *list;
 	str[3] = "-i";
 	str[4] = "-e";
 	str[5] = ARDON_K;
-	for (i = 0; i < (int)sizeof(val) / sizeof(int); i++) val[i] = i;
+	for (i = 0; i < arraysize(val); i++) val[i] = i;
 
 	n = 0;
 	for (;;) {
 		verboselaunch(list);
 		envcaption(ARSEL_K);
-		if (noselect(&n, sizeof(val) / sizeof(int), 0, str, val)) {
+		if (noselect(&n, arraysize(val), 0, str, val)) {
 			if (yesno(ARCAN_K)) return(0);
 			continue;
 		}
-		if (n == (int)sizeof(val) / sizeof(int) - 1) {
+		if (n == arraysize(val) - 1) {
 			if (!(list -> format)) {
 				if (!yesno(ARNOT_K)) continue;
 				freevar(list -> lignore);
@@ -3332,12 +3331,12 @@ int no;
 	w1 = MAXCUSTVAL - 1 - width;
 #  ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
-		char buf[sizeof("HDD98 #offset=") + MAXCOLSCOMMA(3)];
+		char buf[strsize("HDD98 #offset=") + MAXCOLSCOMMA(3) + 1];
 
 		strcpy(buf, "HDD");
 		if (isupper2(fdtype[no].head)) strcat(buf, "98");
 		i = strlen(buf);
-		snprintf2(&(buf[i]), sizeof(buf) - i, " #offset=%'Ld",
+		snprintf2(&(buf[i]), (int)sizeof(buf) - i, " #offset=%'Ld",
 			fdtype[no].offset / fdtype[no].sect);
 		cputstr(w1, buf);
 	}
@@ -3686,7 +3685,7 @@ char *file;
 
 	strcpy(path, file);
 	cp = getbasename(path);
-	len = (int)sizeof(path) - 1 - (cp - path);
+	len = strsize(path) - (cp - path);
 	if (len > MAXTNAMLEN) len = MAXTNAMLEN;
 	genrandname(NULL, 0);
 

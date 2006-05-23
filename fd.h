@@ -88,7 +88,7 @@ extern char *_mtrace_file;
 
 #define	FDSHELL		"fdsh"
 #define	FDENV		"FD_"
-#define	FDESIZ		(sizeof(FDENV) - 1)
+#define	FDESIZ		strsize(FDENV)
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*
@@ -262,9 +262,9 @@ extern char *_mtrace_file;
 #define	S_BYTES		" bytes"
 #define	S_KBYTES	" KB"
 #define	S_MBYTES	" MB"
-#define	W_BYTES		(sizeof(S_BYTES) - 1)
-#define	W_KBYTES	(sizeof(S_KBYTES) - 1)
-#define	W_MBYTES	(sizeof(S_MBYTES) - 1)
+#define	W_BYTES		strsize(S_BYTES)
+#define	W_KBYTES	strsize(S_KBYTES)
+#define	W_MBYTES	strsize(S_MBYTES)
 #define	S_PAGE		"Page:"
 #define	S_MARK		"Mark:"
 #define	S_INFO		""
@@ -289,30 +289,30 @@ extern char *_mtrace_file;
 #define	TS_TOTAL	"Total:"
 #define	TS_USED		"Used:"
 #define	TS_FREE		"Free:"
-#define	W_PAGE		(sizeof(S_PAGE) - 1)
-#define	W_MARK		(sizeof(S_MARK) - 1)
-#define	W_INFO		(sizeof(S_INFO) - 1)
-#define	W_SORT		(sizeof(S_SORT) - 1)
-#define	W_FIND		(sizeof(S_FIND) - 1)
-#define	W_PATH		(sizeof(S_PATH) - 1)
-#define	W_BROWSE	(sizeof(S_BROWSE) - 1)
-#define	W_ARCH		(sizeof(S_ARCH) - 1)
-#define	W_SIZE		(sizeof(S_SIZE) - 1)
-#define	W_TOTAL		(sizeof(S_TOTAL) - 1)
-#define	W_USED		(sizeof(S_USED) - 1)
-#define	W_FREE		(sizeof(S_FREE) - 1)
-#define	TW_PAGE		(sizeof(TS_PAGE) - 1)
-#define	TW_MARK		(sizeof(TS_MARK) - 1)
-#define	TW_INFO		(sizeof(TS_INFO) - 1)
-#define	TW_SORT		(sizeof(TS_SORT) - 1)
-#define	TW_FIND		(sizeof(TS_FIND) - 1)
-#define	TW_PATH		(sizeof(TS_PATH) - 1)
-#define	TW_BROWSE	(sizeof(TS_BROWSE) - 1)
-#define	TW_ARCH		(sizeof(TS_ARCH) - 1)
-#define	TW_SIZE		(sizeof(TS_SIZE) - 1)
-#define	TW_TOTAL	(sizeof(TS_TOTAL) - 1)
-#define	TW_USED		(sizeof(TS_USED) - 1)
-#define	TW_FREE		(sizeof(TS_FREE) - 1)
+#define	W_PAGE		strsize(S_PAGE)
+#define	W_MARK		strsize(S_MARK)
+#define	W_INFO		strsize(S_INFO)
+#define	W_SORT		strsize(S_SORT)
+#define	W_FIND		strsize(S_FIND)
+#define	W_PATH		strsize(S_PATH)
+#define	W_BROWSE	strsize(S_BROWSE)
+#define	W_ARCH		strsize(S_ARCH)
+#define	W_SIZE		strsize(S_SIZE)
+#define	W_TOTAL		strsize(S_TOTAL)
+#define	W_USED		strsize(S_USED)
+#define	W_FREE		strsize(S_FREE)
+#define	TW_PAGE		strsize(TS_PAGE)
+#define	TW_MARK		strsize(TS_MARK)
+#define	TW_INFO		strsize(TS_INFO)
+#define	TW_SORT		strsize(TS_SORT)
+#define	TW_FIND		strsize(TS_FIND)
+#define	TW_PATH		strsize(TS_PATH)
+#define	TW_BROWSE	strsize(TS_BROWSE)
+#define	TW_ARCH		strsize(TS_ARCH)
+#define	TW_SIZE		strsize(TS_SIZE)
+#define	TW_TOTAL	strsize(TS_TOTAL)
+#define	TW_USED		strsize(TS_USED)
+#define	TW_FREE		strsize(TS_FREE)
 #define	D_PAGE		2
 #define	D_MARK		4
 #define	D_INFO		0

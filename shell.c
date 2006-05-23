@@ -1566,14 +1566,14 @@ int uniq;
 
 	size = (int)histsize[n];
 	if (!history[n]) {
-		history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
+		history[n] = (char **)malloc2((size + 1) * sizeof(char *));
 		for (i = 0; i <= size; i++) history[n][i] = NULL;
 		histbufsize[n] = size;
 		histno[n] = (short)0;
 	}
 	else if (size > histbufsize[n]) {
 		history[n] = (char **)realloc2(history[n],
-			sizeof(char *) * (size + 1));
+			(size + 1) * sizeof(char *));
 		for (i = histbufsize[n] + 1; i <= size; i++)
 			history[n][i] = NULL;
 		histbufsize[n] = size;
@@ -1631,14 +1631,11 @@ char *file;
 
 	if (!file || !(fp = Xfopen(file, "r"))) return(-1);
 #ifndef	NOFLOCK
-	if (lockfile(Xfileno(fp), LCK_READ) < 0) {
-		Xfclose(fp);
-		return(-1);
-	}
+	VOID_C lockfile(Xfileno(fp), LCK_READ);
 #endif
 
 	size = (int)histsize[n];
-	history[n] = (char **)malloc2(sizeof(char *) * (size + 1));
+	history[n] = (char **)malloc2((size + 1) * sizeof(char *));
 	histbufsize[n] = size;
 	histno[n] = (short)0;
 
@@ -1650,7 +1647,9 @@ char *file;
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		history[n][0] = line;
 	}
-	lockfile(Xfileno(fp), LCK_UNLOCK);
+#ifndef	NOFLOCK
+	VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
+#endif
 	Xfclose(fp);
 
 	for (i++; i <= size; i++) history[n][i] = NULL;
@@ -1685,15 +1684,14 @@ char *file;
 	if (!history[n] || !history[n][0]) return(-1);
 	if (!file || !(fp = Xfopen(file, "w"))) return(-1);
 #ifndef	NOFLOCK
-	if (lockfile(Xfileno(fp), LCK_WRITE) < 0) {
-		Xfclose(fp);
-		return(-1);
-	}
+	VOID_C lockfile(Xfileno(fp), LCK_WRITE);
 #endif
 
 	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], fp);
-	lockfile(Xfileno(fp), LCK_UNLOCK);
+#ifndef	NOFLOCK
+	VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
+#endif
 	Xfclose(fp);
 
 	return(0);

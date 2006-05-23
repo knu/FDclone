@@ -65,7 +65,7 @@ extern int errno;
 #define	getconstvar(s)		(char *)getenv(s)
 #define	getshellvar(s, l)	(char *)getenv(s)
 #else
-#define	getconstvar(s)		(getshellvar(s, sizeof(s) - 1))
+#define	getconstvar(s)		(getshellvar(s, strsize(s)))
 #endif
 
 #ifdef	USESTRERROR
@@ -380,9 +380,7 @@ extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
 extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
 extern int underhome __P_((char *));
 extern int preparedir __P_((char *));
-#ifdef	NOFLOCK
-#define	lockfile(f, m)
-#else
+#ifndef	NOFLOCK
 extern int lockfile __P_((int, int));
 #endif
 extern int touchfile __P_((char *, struct stat *));

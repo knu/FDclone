@@ -427,10 +427,10 @@ static CONST char *doserrstr[] = {
 #define	ER_INVALIDSW	7
 	"Invalid switch",
 };
-#define	DOSERRSIZ	((int)(sizeof(doserrstr) / sizeof(char *)))
+#define	DOSERRSIZ	arraysize(doserrstr)
 
-static char dirsort[(sizeof(DIRSORTFLAG) - 1) * 2 + 1] = "";
-static char dirattr[(sizeof(DIRATTRFLAG) - 1) * 2 + 1] = "";
+static char dirsort[strsize(DIRSORTFLAG) * 2 + 1] = "";
+static char dirattr[strsize(DIRATTRFLAG) * 2 + 1] = "";
 static int dirline = 0;
 static char *dirwd = NULL;
 static int dirtype = '\0';
@@ -692,7 +692,7 @@ char *src, *dest;
 	char path[MAXPATHLEN];
 	int len;
 
-	if ((len = Xreadlink(src, path, sizeof(path) - 1)) < 0) return(-1);
+	if ((len = Xreadlink(src, path, strsize(path))) < 0) return(-1);
 	if (Xlstat(dest, &st) >= 0) {
 #  ifndef	NODIRLOOP
 		if (issamebody(src, dest)) return(0);

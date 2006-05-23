@@ -856,7 +856,7 @@ char **argv;
 	for (i = 1; argv && argv[i]; i++) {
 		if (cp > buf) *(cp++) = ' ';
 		tmp = killmeta(argv[i]);
-		len = snprintf2(cp, sizeof(buf) - (cp - buf), "%s", tmp);
+		len = snprintf2(cp, (int)sizeof(buf) - (cp - buf), "%s", tmp);
 		free(tmp);
 		if (len < 0) break;
 		cp += len;

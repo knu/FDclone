@@ -529,7 +529,7 @@ printf__OBJ__: machine.h config.h
 printf__OBJ__: printf.h
 printf__OBJ__: kctype.h
 termio__OBJ__: machine.h config.h
-termio__OBJ__: termio.h
+termio__OBJ__: printf.h termio.h
 term__OBJ__: machine.h config.h
 term__OBJ__: printf.h
 term__OBJ__: kctype.h

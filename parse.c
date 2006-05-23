@@ -92,7 +92,7 @@ strtable keyidentlist[] = {
 	{K_HELP,	"HELP"},
 	{0,		NULL}
 };
-#define	KEYIDENTSIZ	((int)(sizeof(keyidentlist) / sizeof(strtable)) - 1)
+#define	KEYIDENTSIZ	(arraysize(keyidentlist) - 1)
 
 static CONST char escapechar[] = "abefnrtv";
 static CONST char escapevalue[] = {
@@ -156,7 +156,7 @@ va_dcl
 		}
 		width = getnum(fmt, &i);
 
-		len = (int)sizeof(int);
+		len = sizeof(int);
 		for (; fmt[i]; i++) {
 			if (!(cp = strchr(printfsizechar, fmt[i]))) break;
 			len = printfsize[cp - printfsizechar];
@@ -256,24 +256,55 @@ va_dcl
 			break;
 		}
 
-		mask = (MAXUTYPE(u_long_t)
-			>> (((int)sizeof(long_t) - len) * BITSPERBYTE));
+		mask = MAXUTYPE(u_long_t);
+		if (len < (int)sizeof(u_long_t))
+			mask >>= ((int)sizeof(u_long_t) - len) * BITSPERBYTE;
 		if (flags & VF_UNSIGNED) {
 			if (u & ~mask) {
-				s = NULL;
-				break;
+				u = mask;
+				if (flags & VF_STRICTWIDTH) {
+					s = NULL;
+					break;
+				}
 			}
 		}
 		else {
 			mask >>= 1;
 			if (n >= 0) {
-				if ((u_long_t)n & ~mask) s = NULL;
+				if ((u_long_t)n & ~mask) {
+					n = mask;
+					if (flags & VF_STRICTWIDTH) s = NULL;
+				}
 			}
-			else if (((u_long_t)n & ~mask) != ~mask) s = NULL;
+			else if (((u_long_t)n & ~mask) != ~mask) {
+				n = ~mask;
+				if (flags & VF_STRICTWIDTH) s = NULL;
+			}
 			if (!s) break;
 			memcpy(&u, &n, sizeof(u));
 		}
 
+#ifndef	HAVELONGLONG
+		if (len > (int)sizeof(u_long_t)) {
+			char *buf;
+			u_long_t tmp;
+			int hi;
+
+			hi = 0;
+			if (!(flags & VF_UNSIGNED)) {
+				mask = (MAXUTYPE(u_long_t) >> 1);
+				if (u & ~mask) hi = 0xff;
+			}
+			buf = va_arg(args, char *);
+			memset(buf, hi, len);
+
+			tmp = 0x5a;
+			cp = (char *)(&tmp);
+			if (*cp != 0x5a) buf += len - sizeof(u_long_t);
+			memcpy(buf, (char *)(&u), sizeof(u));
+		}
+		else
+#endif	/* !HAVELONGLONG */
 		if (len == (int)sizeof(u_long_t))
 			*(va_arg(args, u_long_t *)) = u;
 #ifdef	HAVELONGLONG
@@ -705,7 +736,7 @@ char **bufp, *prompt;
 				unprint = 0;
 				break;
 			default:
-				tmp = sscanf2(&(prompt[i]), "%3Co", line);
+				tmp = sscanf2(&(prompt[i]), "%<3Co", line);
 				if (tmp) i = (tmp - prompt) - 1;
 				else *line = prompt[i];
 				line[1] = '\0';
@@ -907,7 +938,7 @@ int evalhat;
 	for (i = j = 0; s[i]; i++, j++) {
 		if (s[i] == '\\') {
 			i++;
-			if ((tmp = sscanf2(&(s[i]), "%3Co", &(cp[j])))) {
+			if ((tmp = sscanf2(&(s[i]), "%<3Co", &(cp[j])))) {
 				i = (tmp - s) - 1;
 				continue;
 			}

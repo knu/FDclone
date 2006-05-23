@@ -3180,7 +3180,7 @@ char **argp;
 	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
 	if (!len) cp = gethomedir();
 # ifdef	FD
-	else if (len == (int)sizeof("FD") - 1 && !strnpathcmp(top, "FD", len))
+	else if (len == strsize("FD") && !strnpathcmp(top, "FD", len))
 		cp = progpath;
 # endif
 	else {

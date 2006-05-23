@@ -208,7 +208,7 @@ static CONST langtable langlist[] = {
 	{"C", ENG},
 # endif	/* _NOENGMES */
 };
-#define	MAXLANGLIST	((int)sizeof(langlist) / sizeof(langtable))
+#define	MAXLANGLIST	arraysize(langlist)
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
@@ -247,7 +247,7 @@ static CONST kconv_t rsjistable[] = {
 	{0xfa54, 0x81ca, 0x01},		/* full width not sign */
 	{0xfa5b, 0x81e6, 0x01},		/* because */
 };
-#define	RSJISTBLSIZ	((int)(sizeof(rsjistable) / sizeof(kconv_t)))
+#define	RSJISTBLSIZ	arraysize(rsjistable)
 #endif	/* !_NOKANJICONV || (FD && !_NODOSDRIVE) */
 #if	!defined (_NOKANJICONV) \
 || (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
@@ -271,7 +271,7 @@ static CONST kconv_t convtable[] = {
 	{0xfb9c, 0xee80, 0x61},		/* IBM extensions */
 	{0xfc40, 0xeee1, 0x0c}		/* IBM extensions */
 };
-#define	CNVTBLSIZ	((int)(sizeof(convtable) / sizeof(kconv_t)))
+#define	CNVTBLSIZ	arraysize(convtable)
 static CONST u_char sj2jtable1[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
@@ -456,7 +456,7 @@ static CONST kpathtable kpathlist[] = {
 	{&utf8macpath, M_UTF8},
 	{&noconvpath, NOCNV},
 };
-#define	MAXKPATHLIST	((int)sizeof(kpathlist) / sizeof(kpathtable))
+#define	MAXKPATHLIST	arraysize(kpathlist)
 #endif	/* !_NOKANJIFCONV */
 
 #ifndef	FD

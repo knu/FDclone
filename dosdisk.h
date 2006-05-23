@@ -37,7 +37,7 @@
 #define	INHIBITLPTMAX	9	/* Windows will avoid LPT4-LPT9 */
 
 #define	MAXDRIVEENTRY	32
-#define	DOSFDOFFSET	(1 << (8 * (int)sizeof(int) - 2))
+#define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
 #ifdef	NOFILE
 #define	DOSNOFILE	NOFILE
 #else
@@ -317,7 +317,7 @@ typedef struct _partition98_t {
 
 #if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
 typedef struct _st_dirent {
-	char buf[sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
+	char buf[(int)sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
 } st_dirent;
 #else
 typedef struct dirent	st_dirent;

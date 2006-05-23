@@ -9246,7 +9246,7 @@ static convtable unitable[] = {
 	{0xffe4, 0xfa55},
 	{0xffe5, 0x818f},
 };
-#define	UNITBLSIZ	((int)(sizeof(unitable) / sizeof(convtable)))
+#define	UNITBLSIZ	((int)sizeof(unitable) / sizeof(convtable))
 
 static nftable macunitable[] = {
 	{0x00c0, {0x0041, 0x0300, 0}},
@@ -10192,7 +10192,7 @@ static nftable macunitable[] = {
 	{0xfb4d, {0x05db, 0x05bf, 0}},
 	{0xfb4e, {0x05e4, 0x05bf, 0}},
 };
-#define	MACUNITBLSIZ	((int)(sizeof(macunitable) / sizeof(nftable)))
+#define	MACUNITBLSIZ	((int)sizeof(macunitable) / sizeof(nftable))
 
 static int cmpuni(vp1, vp2)
 CONST VOID_P vp1;

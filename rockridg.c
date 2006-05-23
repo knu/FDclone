@@ -109,7 +109,7 @@ int len, *flagsp;
 
 	len = cp - buf;
 	if (len + 1 >= MAXPATHLEN - 1) return(NULL);
-	snprintf2(&(buf[len]), sizeof(buf) - len, ";%d", TRANSTBLVAR);
+	snprintf2(&(buf[len]), (int)sizeof(buf) - len, ";%d", TRANSTBLVAR);
 	*flagsp |= RR_VERNO;
 	if ((fp = Xfopen(buf, "r"))) return(fp);
 

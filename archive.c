@@ -78,6 +78,7 @@ static char *form_tar[] = {
 	"%a %l %u %g %s %m %d %{yt} %*f",	/* pax */
 	"%10a %u/%g %s %m %d %t %y %*f",	/* tar (UXP/DS) */
 	"%9a %u/%g %s %m %d %t %y %*f",		/* traditional */
+	"%a %u %g %s %m %d %t %y %*f",		/* AIX */
 	"%a %u/%g %m %d %t %y %*f",		/* IRIX */
 #endif	/* !MSDOS */
 	NULL
@@ -282,7 +283,7 @@ static char *autoformat[] = {
 	" %f %s %x %x %d-%m-%y %t %a",		/* RAR (l) */
 # endif	/* !MSDOS */
 };
-#define	AUTOFORMATSIZ	((int)(sizeof(autoformat) / sizeof(char *)))
+#define	AUTOFORMATSIZ	arraysize(autoformat)
 #endif	/* FD >= 2 */
 
 
@@ -703,7 +704,7 @@ int skip;
 				break;
 			case 'u':
 # ifndef	NOUID
-				cp = sscanf2(buf, "%-*d%$",
+				cp = sscanf2(buf, "%-<*d%$",
 					sizeof(uid_t), &uid);
 				if (cp) tmp -> st_uid = uid;
 				else if ((up = finduid(0, buf)))
@@ -713,7 +714,7 @@ int skip;
 				break;
 			case 'g':
 # ifndef	NOUID
-				cp = sscanf2(buf, "%-*d%$",
+				cp = sscanf2(buf, "%-<*d%$",
 					sizeof(gid_t), &gid);
 				if (cp) tmp -> st_gid = gid;
 				else if ((gp = findgid(0, buf)))
@@ -1055,10 +1056,10 @@ int max;
 
 # ifndef	NOUID
 	getfield(buf, line, skip, list, F_UID);
-	if (sscanf2(buf, "%-*d%$", sizeof(uid_t), &uid)) tmp -> st_uid = uid;
+	if (sscanf2(buf, "%-<*d%$", sizeof(uid_t), &uid)) tmp -> st_uid = uid;
 	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
 	getfield(buf, line, skip, list, F_GID);
-	if (sscanf2(buf, "%-*d%$", sizeof(gid_t), &gid)) tmp -> st_gid = gid;
+	if (sscanf2(buf, "%-<*d%$", sizeof(gid_t), &gid)) tmp -> st_gid = gid;
 	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
 # endif
 	getfield(buf, line, skip, list, F_SIZE);

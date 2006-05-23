@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.08b
+VERSION	= 2.08c
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -529,7 +529,7 @@ printf.o: machine.h config.h
 printf.o: printf.h
 printf.o: kctype.h
 termio.o: machine.h config.h
-termio.o: termio.h
+termio.o: printf.h termio.h
 term.o: machine.h config.h
 term.o: printf.h
 term.o: kctype.h

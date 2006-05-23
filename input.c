@@ -34,7 +34,7 @@ extern int parentfd;
 
 #define	LIMITSELECTWARN	100
 #define	YESNOSTR	"[Y/N]"
-#define	YESNOSIZE	((int)sizeof(YESNOSTR) - 1)
+#define	YESNOSIZE	strsize(YESNOSTR)
 #define	WAITAFTERWARN	360	/* msec */
 #define	maxscr()	(maxcol * (maxline - minline) \
 			- plen - (n_column - n_lastcolumn))
@@ -143,7 +143,7 @@ static CONST int emulatekey[] = {
 	K_HOME, K_END, K_BEG, K_EOL,
 	K_PPAGE, K_NPAGE, K_ENTER, K_ESC
 };
-#define	EMULATEKEYSIZ	((int)(sizeof(emulatekey) / sizeof(int)))
+#define	EMULATEKEYSIZ	arraysize(emulatekey)
 static CONST char emacskey[] = {
 	K_CTRL('P'), K_CTRL('N'), K_CTRL('F'), K_CTRL('B'),
 	K_ESC, K_CTRL('D'), K_CTRL('Q'), K_CTRL('K'),

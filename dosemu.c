@@ -16,7 +16,7 @@ extern int noconv;
 #ifdef	_NODOSDRIVE
 # if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
 typedef struct _st_dirent {
-	char buf[sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
+	char buf[(int)sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
 } st_dirent;
 # else
 typedef struct dirent	st_dirent;
@@ -124,8 +124,8 @@ char *path;
 	dirpathlist[maxdirpath - 1].path = strdup2(cp);
 #endif
 #ifdef	CYGWIN
-#define	opendir_saw_u_cygdrive	(1 << (8 * (int)sizeof(dirp -> __flags) - 2))
-#define	opendir_saw_s_cygdrive	(1 << (8 * (int)sizeof(dirp -> __flags) - 3))
+#define	opendir_saw_u_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 2))
+#define	opendir_saw_s_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 3))
 	if (buf[0] != _SC_ || buf[1])
 		dirp -> __flags |=
 			opendir_saw_u_cygdrive | opendir_saw_s_cygdrive;

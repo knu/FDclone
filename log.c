@@ -156,12 +156,14 @@ int len;
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			getuid(), progname, getpid());
 #endif
-		write(fd, hbuf, n);
-		write(fd, buf, len);
+		VOID_C write(fd, hbuf, n);
+		VOID_C write(fd, buf, len);
 		uc = '\n';
-		write(fd, &uc, sizeof(uc));
-		lockfile(fd, LCK_UNLOCK);
-		close(fd);
+		VOID_C write(fd, &uc, sizeof(uc));
+#ifndef	NOFLOCK
+		VOID_C lockfile(fd, LCK_UNLOCK);
+#endif
+		VOID_C close(fd);
 	}
 #ifndef	NOSYSLOG
 	if (usesyslog && syslogged >= 0) {
@@ -200,9 +202,9 @@ va_dcl
 	va_end(args);
 
 	if (len >= 0) {
-		if (val >= 0) n = snprintf2(&(buf[len]), sizeof(buf) - len,
-			" succeeded");
-		else n = snprintf2(&(buf[len]), sizeof(buf) - len,
+		if (val >= 0) n = snprintf2(&(buf[len]),
+			(int)sizeof(buf) - len, " succeeded");
+		else n = snprintf2(&(buf[len]), (int)sizeof(buf) - len,
 			" -- FAILED -- (%k)", strerror2(duperrno));
 		if (n < 0) buf[len] = '\0';
 		else len += n;

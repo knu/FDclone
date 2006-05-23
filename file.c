@@ -679,7 +679,7 @@ char *src, *dest;
 	char path[MAXPATHLEN];
 	int len;
 
-	if ((len = Xreadlink(src, path, sizeof(path) - 1)) < 0) return(-1);
+	if ((len = Xreadlink(src, path, strsize(path))) < 0) return(-1);
 	if (Xlstat(dest, &st) >= 0) {
 # ifndef	NODIRLOOP
 		if (issamebody(src, dest)) return(0);
@@ -858,8 +858,8 @@ int len;
 	int i, j, c;
 
 	if (!buf) {
-		for (i = 0; i < (int)sizeof(seq) / sizeof(char); i++) {
-			j = genrand(sizeof(seq) / sizeof(char));
+		for (i = 0; i < arraysize(seq); i++) {
+			j = genrand(arraysize(seq));
 			c = seq[i];
 			seq[i] = seq[j];
 			seq[j] = c;
@@ -867,7 +867,7 @@ int len;
 	}
 	else {
 		for (i = 0; i < len; i++) {
-			j = genrand(sizeof(seq) / sizeof(char));
+			j = genrand(arraysize(seq));
 			buf[i] = seq[j];
 		}
 		buf[i] = '\0';
@@ -911,9 +911,9 @@ char *dir;
 		}
 	}
 	if (!tmpfilename) {
-		n = (int)sizeof(TMPPREFIX) - 1;
+		n = strsize(TMPPREFIX);
 		strncpy(cp, TMPPREFIX, n);
-		len = (int)sizeof(path) - 1 - (cp - path);
+		len = strsize(path) - (cp - path);
 		if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 		len -= n;
 		genrandname(NULL, 0);
@@ -932,7 +932,7 @@ char *dir;
 	}
 
 	strncpy((cp = strcatdelim(path)), dir, n);
-	len = (int)sizeof(path) - 1 - (cp - path);
+	len = strsize(path) - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	len -= n;
 	genrandname(NULL, 0);
@@ -986,7 +986,7 @@ char *file;
 	path[0] = '\0';
 	if (mktmpdir(path) < 0) return(-1);
 	cp = strcatdelim(path);
-	len = (int)sizeof(path) - 1 - (cp - path);
+	len = strsize(path) - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	genrandname(NULL, 0);
 

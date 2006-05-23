@@ -91,7 +91,7 @@ static int NEAR testsub3 __P_((int, char *[], int *, int));
 
 #define	ALIASDELIMIT	"();&|<>"
 #define	BUFUNIT		32
-#define	getconstvar(s)	(getshellvar(s, sizeof(s) - 1))
+#define	getconstvar(s)	(getshellvar(s, strsize(s)))
 #define	ER_COMNOFOUND	1
 #define	ER_NOTFOUND	2
 #define	ER_NOTIDENT	4

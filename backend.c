@@ -599,7 +599,7 @@ int w, c;
 				memmove(&(pty[w].tabstop[i + 1]),
 					&(pty[w].tabstop[i]),
 					((pty[w].ntabstop)++ - i)
-						* sizeof(u_short));
+					* sizeof(u_short));
 				pty[w].tabstop[i] = pty[w].cur_x;
 			}
 			break;

@@ -33,6 +33,9 @@ typedef struct _printbuf_t {
 #define	VF_STRICTWIDTH	000400
 #define	VF_UNSIGNED	001000
 
+#define	strsize(s)	((int)sizeof(s) - 1)
+#define	arraysize(a)	((int)sizeof(a) / (int)sizeof(*(a)))
+
 #define	MAXLONGWIDTH	20		/* log10(2^64) = 19.266 */
 #define	MAXCOLSCOMMA(d)	(MAXLONGWIDTH + (MAXLONGWIDTH / (d)))
 #ifndef	BITSPERBYTE

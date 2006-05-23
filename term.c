@@ -446,10 +446,10 @@ static int specialkeycode[] = {
 	K_F(11), K_F(12), K_F(13), K_F(14), K_F(15),
 	K_F(16), K_F(17), K_F(18), K_F(19), K_F(20), K_HELP
 };
-#define	SPECIALKEYSIZ	((int)(sizeof(specialkeycode) / sizeof(int)))
+#define	SPECIALKEYSIZ	arraysize(specialkeycode)
 #else	/* !MSDOS */
 static char *dumblist[] = {"dumb", "un", "unknown"};
-#define	DUMBLISTSIZE	((int)sizeof(dumblist) / sizeof(char *))
+#define	DUMBLISTSIZE	arraysize(dumblist)
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
 static char *defkeyseq[K_MAX - K_MIN + 1] = {
@@ -1354,7 +1354,7 @@ int *xp, *yp;
 	format = SIZEFMT;
 	keyflush();
 # if	MSDOS
-	for (i = 0; i < (int)sizeof(GETSIZE) - 1; i++)
+	for (i = 0; i < strsize(GETSIZE); i++)
 		bdos(0x06, GETSIZE[i], 0);
 # else
 	if (!usegetcursor) return(-1);
@@ -1374,7 +1374,7 @@ int *xp, *yp;
 # endif
 	} while (buf[i] != format[0]);
 
-	if (buf[i] == format[0]) while (i < (int)sizeof(buf) - 2) {
+	if (buf[i] == format[0]) while (i < strsize(buf) - 1) {
 		if (!kbhit2(WAITKEYPAD * 1000L)) break;
 # if	MSDOS
 		buf[++i] = bdos(0x07, 0x00, 0);
@@ -1382,10 +1382,10 @@ int *xp, *yp;
 		if ((tmp = getch2()) == EOF) break;
 		buf[++i] = tmp;
 # endif
-		if (buf[i] == format[sizeof(SIZEFMT) - 2]) break;
+		if (buf[i] == format[strsize(SIZEFMT) - 1]) break;
 	}
 	keyflush();
-	if (!i || buf[i] != format[sizeof(SIZEFMT) - 2]) return(-1);
+	if (!i || buf[i] != format[strsize(SIZEFMT) - 1]) return(-1);
 	buf[++i] = '\0';
 
 	count = 0;
@@ -1666,8 +1666,8 @@ int num;
 	int i, n;
 
 	if (!parent || !(parent -> next))
-		new = (kstree_t *)malloc(sizeof(kstree_t) * num);
-	else new = (kstree_t *)realloc(parent -> next, sizeof(kstree_t) * num);
+		new = (kstree_t *)malloc(num * sizeof(kstree_t));
+	else new = (kstree_t *)realloc(parent -> next, num * sizeof(kstree_t));
 	if (!new) err2("realloc()");
 
 	if (!parent) n = 0;
@@ -1774,7 +1774,7 @@ char *s;
 		if (i < DUMBLISTSIZE) dumbterm = 1;
 	}
 # ifdef	IRIX
-	winterm = !strncmp(term, WINTERMNAME, sizeof(WINTERMNAME) - 1);
+	winterm = !strncmp(term, WINTERMNAME, strsize(WINTERMNAME));
 # endif
 
 	for (;;) {
@@ -2815,8 +2815,7 @@ int sig;
 int ungetch2(c)
 int c;
 {
-	if (ungetnum >= (int)sizeof(ungetbuf) / sizeof(u_char) - 1)
-		return(EOF);
+	if (ungetnum >= arraysize(ungetbuf) - 1) return(EOF);
 	if (ungetnum)
 		memmove(&(ungetbuf[1]), &(ungetbuf[0]),
 			ungetnum * sizeof(u_char));
@@ -3054,8 +3053,7 @@ int c;
 	ch = c;
 	Xioctl(ttyio, TIOCSTI, &ch);
 # else
-	if (ungetnum >= (int)sizeof(ungetbuf) / sizeof(u_char) - 1)
-		return(EOF);
+	if (ungetnum >= arraysize(ungetbuf) - 1) return(EOF);
 	if (ungetnum)
 		memmove(&(ungetbuf[1]), &(ungetbuf[0]),
 			ungetnum * sizeof(u_char));

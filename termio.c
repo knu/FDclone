@@ -8,6 +8,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "machine.h"
+#include "printf.h"
 #include "termio.h"
 
 #ifdef	USESELECTH
@@ -82,7 +83,6 @@ extern int errno;
 #define	MAXSELECT	16
 
 #ifndef	FD_SET
-#include "printf.h"
 typedef struct fd_set {
 	u_int fds_bits[1];
 } fd_set;
@@ -114,7 +114,7 @@ extern u_char _openfile[];
 static CONST u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 17, 18, 65, 80
 };
-#define	DOSERRLISTSIZ	((int)(sizeof(doserrlist) / sizeof(u_short)))
+#define	DOSERRLISTSIZ	arraysize(doserrlist)
 static CONST int unixerrlist[] = {
 	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
 	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, EXDEV, 0, EACCES, EEXIST

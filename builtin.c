@@ -174,7 +174,7 @@ static CONST char *builtinerrstr[] = {
 #define	ER_NOTDUMBTERM	13
 	"Cannot execute on dumb term",
 };
-#define	BUILTINERRSIZ	((int)(sizeof(builtinerrstr) / sizeof(char *)))
+#define	BUILTINERRSIZ	arraysize(builtinerrstr)
 
 static CONST builtintable builtinlist[] = {
 #ifndef	_NOARCHIVE
@@ -235,7 +235,7 @@ static CONST builtintable builtinlist[] = {
 # endif
 #endif	/* _NOORIGSHELL */
 };
-#define	BUILTINSIZ	((int)(sizeof(builtinlist) / sizeof(builtintable)))
+#define	BUILTINSIZ	arraysize(builtinlist)
 
 
 static VOID NEAR builtinerror(argv, s, n)
@@ -332,21 +332,21 @@ launchtable *lp;
 	if (c == 'f') {
 		i = countvar(lp -> format);
 		lp -> format = (char **)realloc2(lp -> format,
-			sizeof(char *) * (i + 2));
+			(i + 2) * sizeof(char *));
 		lp -> format[i++] = strdup2(cp);
 		lp -> format[i] = NULL;
 	}
 	else if (c == 'i') {
 		i = countvar(lp -> lignore);
 		lp -> lignore = (char **)realloc2(lp -> lignore,
-			sizeof(char *) * (i + 2));
+			(i + 2) * sizeof(char *));
 		lp -> lignore[i++] = strdup2(cp);
 		lp -> lignore[i] = NULL;
 	}
 	else if (c == 'e') {
 		i = countvar(lp -> lerror);
 		lp -> lerror = (char **)realloc2(lp -> lerror,
-			sizeof(char *) * (i + 2));
+			(i + 2) * sizeof(char *));
 		lp -> lerror[i++] = strdup2(cp);
 		lp -> lerror[i] = NULL;
 	}
@@ -487,7 +487,7 @@ launchtable *lp;
 	}
 
 	if (i < argc) {
-		lp -> format = (char **)malloc2(sizeof(char *) * 2);
+		lp -> format = (char **)malloc2(2 * sizeof(char *));
 		lp -> format[0] = strdup2(argv[i]);
 		lp -> format[1] = NULL;
 	}
@@ -1642,7 +1642,7 @@ devinfo *devp;
 	}
 
 # ifdef	HDDMOUNT
-	if (!strncmp(argv[3], "HDD", sizeof("HDD") - 1)) {
+	if (!strncmp(argv[3], "HDD", strsize("HDD"))) {
 		if (argc > 5) {
 			devp -> drive = ER_FEWMANYARG;
 			devp -> head = 0;
@@ -3159,7 +3159,7 @@ char *argv[];
 		return(0);
 	}
 
-	var = (char **)malloc2(sizeof(char *) * (n + 1));
+	var = (char **)malloc2((n + 1) * sizeof(char *));
 	for (i = 0; i < n; i++) var[i] = list[i];
 	var[i] = NULL;
 	if (addfunction(strdup2(argv[FUNCNAME]), var) < 0) {

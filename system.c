@@ -846,12 +846,12 @@ static VOID NEAR initrc __P_((int));
 #define	UNLIMITED	"unlimited"
 #define	MAXTMPNAMLEN	8
 #define	BUFUNIT		32
-#define	getconstvar(s)	(getshellvar(s, sizeof(s) - 1))
+#define	getconstvar(s)	(getshellvar(s, strsize(s)))
 #define	constequal(s, c, l) \
-			((l) == (int)sizeof(c) - 1 && !strnenvcmp(s, c, l))
+			((l) == strsize(c) && !strnenvcmp(s, c, l))
 #define	consttail(s, h, t, l) \
-			((l) == (int)sizeof(h) - 1 + (int)sizeof(t) - 1 \
-			&& !strnenvcmp(&(s[sizeof(h) - 1]), t, sizeof(t) - 1))
+			((l) == strsize(h) + strsize(t) \
+			&& !strnenvcmp(&(s[strsize(h)]), t, strsize(t)))
 #ifdef	USESTRERROR
 #define	strerror2		strerror
 #else
@@ -973,7 +973,7 @@ static CONST char *syntaxerrstr[] = {
 #define	ER_UNEXPEOF	3
 	"unexpected end of file",
 };
-#define	SYNTAXERRSIZ	((int)(sizeof(syntaxerrstr) / sizeof(char *)))
+#define	SYNTAXERRSIZ	arraysize(syntaxerrstr)
 
 static CONST char *execerrstr[] = {
 	NULL,
@@ -1058,7 +1058,7 @@ static CONST char *execerrstr[] = {
 	"invalid terminal for FDclone",
 #endif
 };
-#define	EXECERRSIZ	((int)(sizeof(execerrstr) / sizeof(char *)))
+#define	EXECERRSIZ	arraysize(execerrstr)
 
 static CONST opetable opelist[] = {
 	{OP_FG, 4, ";"},
@@ -1073,7 +1073,7 @@ static CONST opetable opelist[] = {
 	{OP_NOT, 2, "!"},
 #endif
 };
-#define	OPELISTSIZ	((int)(sizeof(opelist) / sizeof(opetable)))
+#define	OPELISTSIZ	arraysize(opelist)
 
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
 static CONST opetable delimlist[] = {
@@ -1105,7 +1105,7 @@ static CONST opetable delimlist[] = {
 	{OP_NONE, 0, ">|"},
 	{OP_NONE, 0, ">"},
 };
-#define	DELIMLISTSIZ	((int)(sizeof(delimlist) / sizeof(opetable)))
+#define	DELIMLISTSIZ	arraysize(delimlist)
 #endif	/* !BASHBUG && !MINIMUMSHELL */
 
 static shbuiltintable shbuiltinlist[] = {
@@ -1196,7 +1196,7 @@ static shbuiltintable shbuiltinlist[] = {
 	{dofd, "fd", BT_FILENAME},
 #endif
 };
-#define	SHBUILTINSIZ	((int)(sizeof(shbuiltinlist) / sizeof(shbuiltintable)))
+#define	SHBUILTINSIZ	arraysize(shbuiltinlist)
 
 statementtable statementlist[] = {
 	{doif, "if", STT_NEEDLIST, {0, 0, 0, 0}},
@@ -1220,7 +1220,7 @@ statementtable statementlist[] = {
 	{dolist, "{", STT_LIST | STT_NEEDLIST, {0, 0, 0, 0}},
 	{NULL, "}", STT_NEEDNONE, {SM_LIST, 0, 0, 0}},
 };
-#define	STATEMENTSIZ	((int)(sizeof(statementlist) / sizeof(statementtable)))
+#define	STATEMENTSIZ	arraysize(statementlist)
 
 static char *primalvar[] = {
 	"PATH", "PS1", "PS2", "IFS",
@@ -1228,7 +1228,7 @@ static char *primalvar[] = {
 	"MAILCHECK", "PPID",
 #endif
 };
-#define	PRIMALVARSIZ	((int)(sizeof(primalvar) / sizeof(char *)))
+#define	PRIMALVARSIZ	arraysize(primalvar)
 
 static char *restrictvar[] = {
 	"PATH", "SHELL",
@@ -1236,7 +1236,7 @@ static char *restrictvar[] = {
 	"ENV",
 #endif
 };
-#define	RESTRICTVARSIZ	((int)(sizeof(restrictvar) / sizeof(char *)))
+#define	RESTRICTVARSIZ	arraysize(restrictvar)
 
 #if	MSDOS && !defined (BSPATHDELIM)
 static CONST char *adjustvar[] = {
@@ -1261,7 +1261,7 @@ static CONST char *adjustvar[] = {
 #  endif
 # endif	/* FD */
 };
-#define	ADJUSTVARSIZ	((int)(sizeof(adjustvar) / sizeof(char *)))
+#define	ADJUSTVARSIZ	arraysize(adjustvar)
 #endif	/* MSDOS && !BSPATHDELIM */
 
 static CONST shflagtable shflaglist[] = {
@@ -1302,7 +1302,7 @@ static CONST shflagtable shflaglist[] = {
 	{NULL, &loginshell, 'l'},
 	{NULL, &noruncom, 'N'},
 };
-#define	FLAGSSIZ	((int)(sizeof(shflaglist) / sizeof(shflagtable)))
+#define	FLAGSSIZ	arraysize(shflaglist)
 
 #ifdef	USERESOURCEH
 static CONST ulimittable ulimitlist[] = {
@@ -1337,7 +1337,7 @@ static CONST ulimittable ulimitlist[] = {
 	{'v', RLIMIT_VMEM, 1024, "virtual memory(kbytes)"},
 #endif
 };
-#define	ULIMITSIZ	((int)(sizeof(ulimitlist) / sizeof(ulimittable)))
+#define	ULIMITSIZ	arraysize(ulimitlist)
 #endif	/* USERESOURCEH */
 
 #ifdef	PSIGNALSTYLE
@@ -1633,8 +1633,8 @@ int len;
 	int i, j, c;
 
 	if (!buf) {
-		for (i = 0; i < (int)sizeof(seq) / sizeof(char); i++) {
-			j = genrand(sizeof(seq) / sizeof(char));
+		for (i = 0; i < arraysize(seq); i++) {
+			j = genrand(arraysize(seq));
 			c = seq[i];
 			seq[i] = seq[j];
 			seq[j] = c;
@@ -1642,7 +1642,7 @@ int len;
 	}
 	else {
 		for (i = 0; i < len; i++) {
-			j = genrand(sizeof(seq) / sizeof(char));
+			j = genrand(arraysize(seq));
 			buf[i] = seq[j];
 		}
 		buf[i] = '\0';
@@ -1659,9 +1659,9 @@ char *file;
 
 	strcpy(path, deftmpdir);
 	cp = strcatdelim(path);
-	n = (int)sizeof(TMPPREFIX) - 1;
+	n = strsize(TMPPREFIX);
 	strncpy(cp, TMPPREFIX, n);
-	len = (int)sizeof(path) - 1 - (cp - path);
+	len = strsize(path) - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	len -= n;
 	genrandname(NULL, 0);
@@ -2634,7 +2634,7 @@ FILE *fp;
 	for (i = 0; signallist[i].sig >= 0; i++)
 		if (sig == signallist[i].sig) break;
 	if (signallist[i].sig < 0) {
-		if ((width -= (int)sizeof("Signal ") - 1) < 0) width = 0;
+		if ((width -= strsize("Signal ")) < 0) width = 0;
 		fprintf2(fp, "Signal %-*d", width, sig);
 	}
 	else if (!width) fputs(signallist[i].mes, fp);
@@ -4426,8 +4426,8 @@ int len;
 # ifdef	MINIMUMSHELL
 	else if (constequal(s, "MAIL", len)) checkmail(1);
 # else	/* !MINIMUMSHELL */
-	else if (!strnenvcmp(s, "MAIL", sizeof("MAIL") - 1)) {
-		if (len == (int)sizeof("MAIL") - 1) {
+	else if (!strnenvcmp(s, "MAIL", strsize("MAIL"))) {
+		if (len == strsize("MAIL")) {
 			if (!getconstvar("MAILPATH")) replacemailpath(cp, 0);
 		}
 		else if (consttail(s, "MAIL", "PATH", len))
@@ -4527,8 +4527,8 @@ int len;
 		return(-1);
 #if	!MSDOS
 # ifndef	MINIMUMSHELL
-	else if (!strnenvcmp(ident, "MAIL", sizeof("MAIL") - 1)) {
-		if (len == (int)sizeof("MAIL") - 1) {
+	else if (!strnenvcmp(ident, "MAIL", strsize("MAIL"))) {
+		if (len == strsize("MAIL")) {
 			if (!getconstvar("MAILPATH")) checkmail(1);
 		}
 		else if (consttail(ident, "MAIL", "PATH", len)) {
@@ -4570,7 +4570,7 @@ int len;
 }
 
 #ifndef	MINIMUMSHELL
-#define	LINENOSIZ	((int)sizeof("LINENO") - 1)
+#define	LINENOSIZ	strsize("LINENO")
 static VOID NEAR setshlineno(n)
 long n;
 {
@@ -6222,7 +6222,7 @@ char *path, *argv[], *envp[];
 
 #if	defined (FD) && !defined (_NOPTY)
 	if (parentfd >= 0 && ptyterm && *ptyterm) {
-		len = sizeof("TERM") - 1;
+		len = strsize("TERM");
 		cp = malloc2(len + strlen(ptyterm) + 2);
 		memcpy(cp, "TERM", len);
 		cp[len] = '=';
@@ -10830,8 +10830,8 @@ char *argv[];
 			if (!strenvcmp(primalvar[i], "PS1")
 			|| !strenvcmp(primalvar[i], "PS2"))
 				primalvar[i] = NULL;
-		unset("PS1", sizeof("PS1") - 1);
-		unset("PS2", sizeof("PS2") - 1);
+		unset("PS1", strsize("PS1"));
+		unset("PS2", strsize("PS2"));
 	}
 #ifndef	MINIMUMSHELL
 	if (!getconstvar("PS4")) setenv2("PS4", PS4STR, 0);

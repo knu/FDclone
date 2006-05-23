@@ -168,11 +168,11 @@ int calc_y = -1;
 static CONST u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
-#define	MAXMODELIST	((int)sizeof(modelist) / sizeof(u_short))
+#define	MAXMODELIST	arraysize(modelist)
 static CONST char suffixlist[] = {
 	'/', '@', '=', '|'
 };
-#define	MAXSUFFIXLIST	((int)sizeof(suffixlist) / sizeof(char))
+#define	MAXSUFFIXLIST	arraysize(suffixlist)
 #ifndef	_NOCOLOR
 static CONST u_char colorlist[] = {
 	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
@@ -189,7 +189,7 @@ static CONST char defpalette[] = {
 	ANSI_FG,	/* CL_BLOCK */
 	ANSI_FG,	/* CL_CHAR */
 };
-#endif
+#endif	/* !_NOCOLOR */
 #ifndef	_NOPRECEDE
 static int maxstat = 0;
 static int haste = 0;
@@ -544,10 +544,9 @@ int notype;
 
 	i = 0;
 	if (!notype) {
-		for (j = 0; j < (int)sizeof(typelist) / sizeof(u_short); j++)
+		for (j = 0; j < arraysize(typelist); j++)
 			if ((mode & S_IFMT) == typelist[j]) break;
-		buf[i++] = (j < (int)sizeof(typelist) / sizeof(u_short))
-			? typesymlist[j] : '-';
+		buf[i++] = (j < arraysize(typelist)) ? typesymlist[j] : '-';
 	}
 
 	buf[i++] = (mode & S_IRUSR) ? 'r' : '-';
@@ -579,7 +578,7 @@ u_long flags;
 {
 	int i;
 
-	for (i = 0; i < (int)sizeof(fflaglist) / sizeof(u_long); i++)
+	for (i = 0; i < arraysize(fflaglist); i++)
 		buf[i] = (flags & fflaglist[i]) ? fflagsymlist[i] : '-';
 	buf[i] = '\0';
 

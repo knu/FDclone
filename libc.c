@@ -676,7 +676,7 @@ char *s;
 {
 	int n;
 
-	if (!sscanf2(s, "%d%$", &n)) return(-1);
+	if (!sscanf2(s, "%<d%$", &n)) return(-1);
 
 	return(n);
 }
@@ -1083,8 +1083,7 @@ time_t t;
 	if (i > 0) {
 		i--;
 		i *= (int)sizeof(char);
-		i += (int)sizeof(struct tzhead)
-			+ ntime * (int)sizeof(char) * 4;
+		i += (int)sizeof(struct tzhead) + ntime * 4 * sizeof(char);
 		if (fseek(fp, i, 0) < 0
 		|| fread(&c, sizeof(char), 1, fp) != 1) {
 			fclose(fp);
@@ -1092,8 +1091,8 @@ time_t t;
 		}
 		i = c;
 	}
-	i *= (int)sizeof(char) * (4 + 1 + 1);
-	i += (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1);
+	i *= (4 + 1 + 1) * sizeof(char);
+	i += (int)sizeof(struct tzhead) + ntime * (4 + 1) * sizeof(char);
 	if (fseek(fp, i, 0) < 0
 	|| fread(buf, sizeof(char), 4, fp) != 4) {
 		fclose(fp);
@@ -1102,9 +1101,9 @@ time_t t;
 	tmp = char2long(buf);
 	tz = -tmp;
 
-	i = (int)sizeof(struct tzhead) + ntime * (int)sizeof(char) * (4 + 1)
-		+ ntype * (int)sizeof(char) * (4 + 1 + 1)
-		+ nchar * (int)sizeof(char);
+	i = (int)sizeof(struct tzhead) + ntime * (4 + 1) * sizeof(char)
+		+ ntype * (4 + 1 + 1) * sizeof(char)
+		+ nchar * sizeof(char);
 	if (fseek(fp, i, 0) < 0) {
 		fclose(fp);
 		return(tz);
