@@ -201,6 +201,9 @@ extern int unixstatfs __P_((char *, statfs_t *));
 extern VOID error __P_((char *));
 extern int _chdir2 __P_((char *));
 extern char *strcpy2 __P_((char *, char *));
+#ifndef	NOFLOCK
+extern char *strncpy2 __P_((char *, char *, int));
+#endif
 extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #ifdef	_USEDOSPATH
@@ -217,7 +220,7 @@ extern int dosstatfs __P_((int, char *));
 #endif
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
-#if	!MSDOS
+#if	!MSDOS || !defined (NOFLOCK)
 extern int Xstat __P_((char *, struct stat *));
 #endif
 extern int Xaccess __P_((char *, int));
@@ -318,6 +321,7 @@ extern int needbavail;
 #ifndef	MNTTYPE_FAT32
 #define	MNTTYPE_FAT32	"fat32"	/* Win98 */
 #endif
+#define	MNTTYPE_XNFS	"nfs"	/* NFS */
 
 static int NEAR code2str __P_((char *, int));
 static int NEAR checkline __P_((int));
@@ -932,6 +936,28 @@ char *s1, *s2;
 
 	return(NULL);
 }
+
+#ifndef	NOFLOCK
+int isnfs(path)
+char *path;
+{
+	mnt_t mntbuf;
+	struct stat st;
+	char *cp, buf[MAXPATHLEN];
+
+	if (Xstat(path, &st) < 0) return(-1);
+	if (!s_isdir(&st)) {
+		if (!(cp = strrdelim(path, 1))) return(-1);
+		strncpy2(buf, path, cp - path);
+		path = buf;
+	}
+	if (getfsinfo(path, NULL, &mntbuf) < 0) return(-1);
+	if (strncasecmp2(mntbuf.mnt_type, MNTTYPE_XNFS, strsize(MNTTYPE_XNFS)))
+		return(0);
+
+	return(1);
+}
+#endif	/* NOFLOCK */
 
 int writablefs(path)
 char *path;

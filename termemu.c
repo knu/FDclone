@@ -83,7 +83,7 @@ int n, c, x, y, min, max;
 	}
 
 	y1 = y2 = -1;
-	switch(n) {
+	switch (n) {
 		case C_DOWN:
 		case C_SCROLLFORW:
 		case C_NEWLINE:

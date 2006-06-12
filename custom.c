@@ -47,8 +47,10 @@ extern int tradlayout;
 extern int sizeinfo;
 #ifndef	_NOCOLOR
 extern int ansicolor;
+# if	FD >= 2
 extern char *ansipalette;
-#endif
+# endif
+#endif	/* !_NOCOLOR */
 #ifndef	_NOEDITMODE
 extern char *editmode;
 #endif
@@ -66,7 +68,7 @@ extern char *promptstr;
 #ifndef	_NOORIGSHELL
 extern char *promptstr2;
 #endif
-#if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
 extern int unicodebuffer;
 #endif
 #ifndef	_NOKANJIFCONV
@@ -84,7 +86,9 @@ extern char *utf8path;
 extern char *utf8macpath;
 extern char *noconvpath;
 #endif	/* !_NOKANJIFCONV */
+#if	FD >= 2
 extern int tmpumask;
+#endif
 #ifndef	_NOORIGSHELL
 extern int dumbshell;
 #endif
@@ -119,6 +123,9 @@ extern int curcolumns;
 extern int subwindow;
 extern int win_x;
 extern int win_y;
+#if	FD >= 2
+extern int lcmdline;
+#endif
 extern int calc_x;
 extern int calc_y;
 extern functable funclist[];
@@ -181,6 +188,7 @@ typedef struct _envtable {
 
 #define	env_str(n)	(&(envlist[n].env[FDESIZ]))
 #define	fdenv_str(n)	(envlist[n].env)
+#define	env_type(n)	(envlist[n].type)
 #ifdef	FORCEDSTDC
 #define	def_str(n)	(envlist[n].def.str)
 #define	def_num(n)	(envlist[n].def.num)
@@ -379,7 +387,7 @@ static CONST envtable envlist[] = {
 # if	FD >= 2
 	{"FD_ANSIPALETTE", &ansipalette, DEFVAL(ANSIPALETTE), APAL_E, T_CHARP},
 # endif
-#endif
+#endif	/* !_NOCOLOR */
 #ifndef	_NOEDITMODE
 	{"FD_EDITMODE", &editmode, DEFVAL(EDITMODE), EDMD_E, T_EDIT},
 #endif
@@ -425,7 +433,7 @@ static CONST envtable envlist[] = {
 #if	FD >= 2
 	{"FD_THRUARGS", &thruargs, DEFVAL(THRUARGS), THARG_E, T_BOOL},
 #endif
-#if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
+#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
 	{"FD_UNICODEBUFFER", &unicodebuffer,
 		DEFVAL(UNICODEBUFFER), UNBF_E, T_BOOL},
 #endif
@@ -538,7 +546,7 @@ int no;
 	int n;
 
 	cp = getenv2(fdenv_str(no));
-	switch (envlist[no].type) {
+	switch (env_type(no)) {
 		case T_BOOL:
 			if (!cp) n = def_num(no);
 			else n = (*cp && atoi2(cp)) ? 1 : 0;
@@ -571,8 +579,8 @@ int no;
 			*((char **)(envlist[no].var)) = cp;
 			break;
 		case T_SORT:
-			if (((n = atoi2(cp)) < 0 || (n & 7) > 5)
-			&& (n < 100 || ((n - 100) & 7) > 5))
+			if ((n = atoi2(cp)) < 0 || (n / 100) > MAXSORTINHERIT
+			|| ((n % 100) & ~15) || ((n % 100) & 7) > MAXSORTTYPE)
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
@@ -636,7 +644,7 @@ int no;
 		case T_KOUT:
 		case T_KNAM:
 		case T_KTERM:
-			n = (1 << (envlist[no].type - T_KIN));
+			n = (1 << (env_type(no) - T_KIN));
 			*((int *)(envlist[no].var)) = getlang(cp, n);
 			break;
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
@@ -809,7 +817,7 @@ VOID freeenvpath(VOID_A)
 		pathlist[i].last = NULL;
 	}
 # endif
-	for (i = 0; i < ENVLISTSIZ; i++) switch (envlist[i].type) {
+	for (i = 0; i < ENVLISTSIZ; i++) switch (env_type(i)) {
 		case T_PATH:
 		case T_PATHS:
 			if (*((char **)(envlist[i].var)))
@@ -1141,7 +1149,7 @@ static VOID NEAR cleanupenv(VOID_A)
 #endif
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		setenv2(fdenv_str(i), NULL, 0);
-		cp = (envlist[i].type == T_CHARP) ? def_str(i) : NULL;
+		cp = (env_type(i) == T_CHARP) ? def_str(i) : NULL;
 		setenv2(env_str(i), cp, 0);
 		_evalenv(i);
 	}
@@ -1199,7 +1207,7 @@ int no;
 	int n, p;
 
 	new = NULL;
-	switch (envlist[no].type) {
+	switch (env_type(no)) {
 		case T_BOOL:
 			str[0] = VBOL0_K;
 			str[1] = VBOL1_K;
@@ -1221,8 +1229,11 @@ int no;
 			str[3] = OSIZE_K;
 			str[4] = ODATE_K;
 			str[5] = OLEN_K;
-			p = (n >= 100) ? 1 : 0;
+			p = n / 100;
+			if (p > MAXSORTINHERIT) p = MAXSORTINHERIT;
 			n %= 100;
+			if ((n & 7) > MAXSORTTYPE)
+				n = ((n & ~7) | MAXSORTTYPE);
 			new = strdup2(&(str[n & 7][3]));
 
 			if (n & 7) {
@@ -1356,7 +1367,7 @@ int no;
 
 	new = NULL;
 	env = env_str(no);
-	switch (envlist[no].type) {
+	switch (env_type(no)) {
 		case T_BOOL:
 			n = (*((int *)(envlist[no].var))) ? 1 : 0;
 			str[0] = VBOL0_K;
@@ -1417,8 +1428,11 @@ int no;
 			val[4] = 5;
 			val[5] = 0;
 			val[6] = -1;
-			p = (n >= 100) ? 100 : 0;
+			p = n / 100;
+			if (p > MAXSORTINHERIT) p = MAXSORTINHERIT;
 			n %= 100;
+			if ((n & 7) > MAXSORTTYPE)
+				n = ((n & ~7) | MAXSORTTYPE);
 			tmp = n & ~7;
 			n &= 7;
 			envcaption(env);
@@ -1439,9 +1453,10 @@ int no;
 			str[0] = VSRT0_K;
 			str[1] = VSRT1_K;
 			val[0] = 0;
-			val[1] = 100;
-			if (noselect(&p, 2, 0, str, val)) return(0);
-			n += p;
+			val[1] = 1;
+			if (noselect(&p, MAXSORTINHERIT + 1, 0, str, val))
+				return(0);
+			n += p * 100;
 			cp = int2str(buf, n);
 			break;
 		case T_DISP:
@@ -1586,7 +1601,7 @@ int no;
 #  endif	/* !_NOKANJICONV */
 			str[tmp] = VUSET_K;
 			val[tmp++] = -1;
-			p = (1 << (envlist[no].type - T_KIN));
+			p = (1 << (env_type(no) - T_KIN));
 			for (n = 0; n < tmp; n++) {
 				if (val[n] < 0 || (kanjiiomode[val[n]] & p))
 					continue;
@@ -1730,7 +1745,7 @@ FILE *fp;
 	for (i = n = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
 		&& (cp = getshellvar(env_str(i), -1))
-		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i))))
+		&& (env_type(i) != T_CHARP || strenvcmp(cp, def_str(i))))
 			n++;
 		if ((!flaglist || !(flaglist[i] & 1))
 		&& getshellvar(fdenv_str(i), -1))
@@ -1743,7 +1758,7 @@ FILE *fp;
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
 		&& (cp = getshellvar(env_str(i), -1))
-		&& (envlist[i].type != T_CHARP || strenvcmp(cp, def_str(i)))) {
+		&& (env_type(i) != T_CHARP || strenvcmp(cp, def_str(i)))) {
 			cp = killmeta(cp);
 			fprintf2(fp, "%s=%s\n", env_str(i), cp);
 			free(cp);
@@ -1807,7 +1822,7 @@ FILE *fp;
 		else {
 			if (flaglist) flaglist[i] |= f;
 			if ((cp = getshellvar(ident, -1))
-			&& (envlist[i].type != T_CHARP
+			&& (env_type(i) != T_CHARP
 			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) fputc(' ', fp);
 				cp = killmeta(cp);
@@ -1887,7 +1902,7 @@ FILE *fp;
 		else {
 			if (flaglist) flaglist[i] |= f;
 			if ((cp = getshellvar(ident, -1))
-			&& (envlist[i].type != T_CHARP
+			&& (env_type(i) != T_CHARP
 			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) fputc(' ', fp);
 				cp = killmeta(cp);
@@ -1940,7 +1955,7 @@ static VOID NEAR cleanupbind(VOID_A)
 	freestrarray(macrolist, maxmacro);
 	maxmacro = 0;
 	copybind(bindlist, origbindlist);
-	copystrarray(helpindex, orighelpindex, NULL, 10);
+	copystrarray(helpindex, orighelpindex, NULL, MAXHELPINDEX);
 }
 
 static int NEAR dispbind(no)
@@ -2136,7 +2151,7 @@ int no;
 		}
 	}
 
-	if (key < K_F(1) || key > K_F(10)) cp = NULL;
+	if (key < K_F(1) || key > K_F(MAXHELPINDEX)) cp = NULL;
 	else cp = inputcuststr(FCOMM_K, 0, helpindex[key - K_F(1)], -1);
 	bind.key = (short)key;
 	bind.f_func = (u_char)n1;
@@ -3928,7 +3943,7 @@ int no;
 				copystrarray(macrolist, tmpmacrolist,
 					&maxmacro, tmpmaxmacro);
 				copystrarray(helpindex, tmphelpindex,
-					NULL, 10);
+					NULL, MAXHELPINDEX);
 				copybind(bindlist, tmpbindlist);
 			}
 # ifndef	_NOKEYMAP
@@ -4290,7 +4305,7 @@ int customize(VOID_A)
 
 	tmpenvlist = copyenv(NULL);
 	tmpmacrolist = copystrarray(NULL, macrolist, &tmpmaxmacro, maxmacro);
-	tmphelpindex = copystrarray(NULL, helpindex, NULL, 10);
+	tmphelpindex = copystrarray(NULL, helpindex, NULL, MAXHELPINDEX);
 	tmpbindlist = copybind(NULL, bindlist);
 	for (i = 0; bindlist[i].key >= 0; i++);
 # ifndef	_NOKEYMAP
@@ -4441,7 +4456,7 @@ int customize(VOID_A)
 		free(tmpmacrolist);
 	}
 	if (tmphelpindex) {
-		freestrarray(tmphelpindex, 10);
+		freestrarray(tmphelpindex, MAXHELPINDEX);
 		free(tmphelpindex);
 	}
 	if (tmpbindlist) free(tmpbindlist);

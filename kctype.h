@@ -269,6 +269,8 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	KANAWID	1
 #endif
 
+#define	MAXKANJIBUF	(3 + 2 + 3)
+
 #ifdef	NOMULTIKANJI
 #define	_NOKANJICONV
 #define	_NOKANJIFCONV

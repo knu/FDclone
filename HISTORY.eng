@@ -1,3 +1,8 @@
+Ver. 2.08d	Bug that command line rejects any Japanese on the pty is fixed.
+ (06/13/06)	Bug that command line rejects any Kana is fixed.
+		Mis-indicating for the incremental history search is fixed.
+		Bug that the history file on NFS is deadlocked is fixed.
+
 Ver. 2.08c	Bug that the command history file on NFS is truncated is fixed.
  (05/24/06)	Support some OSs displaying every archived file size as 0.
 

@@ -137,9 +137,6 @@ extern int internal_status;
 extern char fullpath[];
 extern char *origpath;
 extern int inruncom;
-# ifdef	SIGALRM
-extern int noalrm;
-# endif
 extern int fd_restricted;
 extern int fdmode;
 extern int physical_path;

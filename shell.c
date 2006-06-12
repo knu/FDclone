@@ -1621,17 +1621,21 @@ int n;
 	return(tmp);
 }
 
-int loadhistory(n, file)
+int loadhistory(n)
 int n;
-char *file;
 {
+#ifndef	NOFLOCK
+	int nfs;
+#endif
 	FILE *fp;
 	char *line;
 	int i, j, size;
 
-	if (!file || !(fp = Xfopen(file, "r"))) return(-1);
+	if (!histfile || !histfile[0]) return(0);
+	if (!(fp = Xfopen(histfile, "r"))) return(-1);
 #ifndef	NOFLOCK
-	VOID_C lockfile(Xfileno(fp), LCK_READ);
+	if ((nfs = isnfs(histfile)) <= 0)
+		VOID_C lockfile(Xfileno(fp), LCK_READ);
 #endif
 
 	size = (int)histsize[n];
@@ -1648,7 +1652,7 @@ char *file;
 		history[n][0] = line;
 	}
 #ifndef	NOFLOCK
-	VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
+	if (nfs <= 0) VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
 #endif
 	Xfclose(fp);
 
@@ -1674,23 +1678,27 @@ FILE *fp;
 	VOID_C Xfputc('\n', fp);
 }
 
-int savehistory(n, file)
+int savehistory(n)
 int n;
-char *file;
 {
+#ifndef	NOFLOCK
+	int nfs;
+#endif
 	FILE *fp;
 	int i, size;
 
+	if (!histfile || !histfile[0] || savehist <= 0) return(0);
 	if (!history[n] || !history[n][0]) return(-1);
-	if (!file || !(fp = Xfopen(file, "w"))) return(-1);
+	if (!(fp = Xfopen(histfile, "w"))) return(-1);
 #ifndef	NOFLOCK
-	VOID_C lockfile(Xfileno(fp), LCK_WRITE);
+	if ((nfs = isnfs(histfile)) <= 0)
+		VOID_C lockfile(Xfileno(fp), LCK_WRITE);
 #endif
 
 	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
 	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], fp);
 #ifndef	NOFLOCK
-	VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
+	if (nfs <= 0) VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
 #endif
 	Xfclose(fp);
 
@@ -1761,7 +1769,7 @@ char *command;
 		cp = c_realloc(cp, j + 1, &size);
 		pc = parsechar(&(command[i]), -1, '!', 0, &quote, NULL);
 		if (pc == PC_WORD || pc == PC_ESCAPE) cp[j++] = command[i++];
-		else if (pc == '!'){
+		else if (pc == '!') {
 			len = i++;
 			if ((n = parsehist(command, &i, quote)) < 0) {
 				if (i < 0) {

@@ -20,7 +20,6 @@
 #define	MAXESCPARAM	16
 #define	MAXESCCHAR	4
 #define	MAXTABSTOP	255
-#define	MAXKANJIBUF	(3 + 2 + 3)
 
 typedef struct _ptyterm_t {
 	short cur_x, cur_y;
@@ -665,7 +664,7 @@ int w, c, fd;
 		return;
 	}
 
-	switch(c) {
+	switch (c) {
 		case 'A':
 			if (pty[w].escmode != ']') break;
 			n = pty[w].escparam[0];
@@ -1145,9 +1144,9 @@ int fd, n;
 			surelocate(MAXWINDOWS, 0);
 			settermattr(MAXWINDOWS);
 			settermcode(MAXWINDOWS);
-			putch2(w1);
-			(pty[MAXWINDOWS].cur_x)++;
-			last_x++;
+			i = cprintf2("%c", w1);
+			pty[MAXWINDOWS].cur_x += i;
+			last_x += i;
 			tflush();
 			break;
 		case TE_CPUTS2:
@@ -1157,9 +1156,9 @@ int fd, n;
 				settermattr(MAXWINDOWS);
 				settermcode(MAXWINDOWS);
 				s[w1] = '\0';
-				cputs2(s);
-				pty[MAXWINDOWS].cur_x += w1;
-				last_x += w1;
+				i = cprintf2("%s", s);
+				pty[MAXWINDOWS].cur_x += i;
+				last_x += i;
 				tflush();
 			}
 			free(s);
@@ -1374,7 +1373,7 @@ int fd;
 # ifdef	_NOKANJICONV
 	else if (isekana2(key.code)) {
 # else
-	else if (inputkcode == EUC && isekana2(key.code)) {
+	else if (incode == EUC && isekana2(key.code)) {
 		if (incode != outcode) cnv++;
 # endif
 		key.len = (u_char)2;
@@ -1399,7 +1398,7 @@ int fd;
 		buf[0] = key.code;
 #ifndef	_NOKANJICONV
 		if (incode == outcode) /*EMPTY*/;
-		else if (inputkcode == SJIS && iskana2(key.code)) cnv++;
+		else if (incode == SJIS && iskana2(key.code)) cnv++;
 		else if (code == UTF8) {
 			if (!ismsb(key.code)) /*EMPTY*/;
 			else if ((n = ptygetch(fd)) >= 0) {
@@ -1413,7 +1412,7 @@ int fd;
 				}
 			}
 		}
-		else if (isinkanji1(key.code, inputkcode)
+		else if (isinkanji1(key.code, incode)
 		&& (n = ptygetch(fd)) >= 0) {
 			cnv++;
 			buf[1] = n;
@@ -1438,7 +1437,7 @@ int fd;
 int backend(VOID_A)
 {
 	char result[MAXWINDOWS + 1];
-	int i, n, fds[MAXWINDOWS + 1];
+	int i, n, x, y, fds[MAXWINDOWS + 1];
 
 	hideclock = -1;
 	dumbterm = 1;
@@ -1463,8 +1462,17 @@ int backend(VOID_A)
 		if (selectpty(MAXWINDOWS + 1, fds, result, -1) <= 0) continue;
 
 		if (result[MAXWINDOWS] && (n = evalinput(emufd)) > 0) continue;
+
+		x = last_x;
+		y = last_y;
 		for (i = 0; i < MAXWINDOWS; i++)
 			if (result[i] && ptylist[i].pid) evaloutput(i);
+
+		if (win < MAXWINDOWS) /* EMPTY*/;
+		else if (x != last_x || y != last_y) {
+			surelocate(MAXWINDOWS, 0);
+			tflush();
+		}
 	}
 
 	surelocate(MAXWINDOWS, 0);

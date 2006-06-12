@@ -363,7 +363,7 @@ static char *NEAR tgetstr3 __P_((char **, char *, char *));
 static char *NEAR tgetkeyseq __P_((int, char *));
 static kstree_t *NEAR newkeyseqtree __P_((kstree_t *, int));
 static int NEAR freekeyseqtree __P_((kstree_t *, int));
-static int NEAR cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
+static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR sortkeyseq __P_((VOID_A));
 static int putch3 __P_((tputs_t));
 #endif	/* !MSDOS */
@@ -1699,7 +1699,7 @@ int n;
 	return(0);
 }
 
-static int NEAR cmpkeyseq(vp1, vp2)
+static int cmpkeyseq(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
@@ -2972,8 +2972,12 @@ int sig;
 # if	!defined (_NOKANJICONV) || defined (CODEEUC)
 	else if (key != C_EKANA) /*EMPTY*/;
 #  if	!defined (_NOKANJICONV)
+#   ifdef	CODEEUC
+	else if (inputkcode != EUC && inputkcode != NOCNV) /*EMPTY*/;
+#   else
 	else if (inputkcode != EUC) /*EMPTY*/;
-#  endif
+#   endif
+#  endif	/* !_NOKANJICONV */
 	else {
 		if (!kbhit2(WAITMETA * 1000L) || (ch = getch2()) == EOF)
 			return(key);
@@ -3035,13 +3039,13 @@ int sig;
 {
 	int ch;
 
-	ch = getkey2(sig);
+	if ((ch = getkey2(sig)) < 0) return(ch);
 	if (ch >= K_F('*') && ch < K_DL) {
 		if (ch == K_F('?')) ch = K_CR;
 		else ch -= K_F0;
 	}
 
-	return(ch & 0777);
+	return(ch & 01777);
 }
 
 int ungetch2(c)

@@ -9,7 +9,7 @@
 #include "kanji.h"
 
 #ifdef	_NOORIGSHELL
-#include <signal.h>
+#include "wait.h"
 #else
 #include "system.h"
 #endif
@@ -19,9 +19,6 @@ extern short histsize[];
 extern int curcolumns;
 extern int minfilename;
 extern int hideclock;
-#ifdef	SIGALRM
-extern int noalrm;
-#endif
 extern char *promptstr;
 #ifndef	_NOORIGSHELL
 extern int fdmode;
@@ -45,11 +42,6 @@ extern int parentfd;
 #define	iseol(n)	(within(n) && !(ptr2col(n)))
 #define	LEFTMARGIN	0
 #define	RIGHTMARGIN	2
-#ifdef	SIGALRM
-#define	sigalrm(sig)	((!noalrm && (sig)) ? SIGALRM : 0)
-#else
-#define	sigalrm(sig)	0
-#endif
 
 #ifndef	_NOEDITMODE
 static int NEAR getemulatekey __P_((int, CONST char []));
@@ -101,6 +93,7 @@ static int NEAR insertstr __P_((char *, int, int, int *, int *));
 static VOID NEAR selectfile __P_((int, char **));
 static int NEAR completestr __P_((int, int, int));
 #endif
+static int NEAR getch3 __P_((VOID_A));
 static int NEAR getkanjikey __P_((char *, int));
 static VOID NEAR copyhist __P_((char *, int));
 static VOID NEAR _inputstr_up __P_((int *, int, char **));
@@ -225,7 +218,7 @@ CONST char table[];
 
 	return(ch);
 }
-#endif
+#endif	/* !_NOEDITMODE */
 
 int Xgetkey(sig, eof)
 int sig, eof;
@@ -329,12 +322,12 @@ int sig, eof;
 				vistat |= VI_NEXT;
 				break;
 		}
-	} while ((vistat & VI_NEXT) && (ch = getkey3(sig)));
+	} while ((vistat & VI_NEXT) && (ch = getkey3(sig)) > 0);
 	else if (!strcmp(editmode, "wordstar"))
 		ch = getemulatekey(ch, wordstarkey);
 #endif	/* !_NOEDITMODE */
 
-	return(ch);
+	return((ch >= 0) ? ch : K_ESC);
 }
 
 static int NEAR trquoteone(sp, s, cxp, len)
@@ -1960,6 +1953,12 @@ int comline, cont, h;
 }
 #endif	/* !_NOCOMPLETE */
 
+static int NEAR getch3(VOID_A)
+{
+	if (!kbhit2(WAITMETA * 1000L)) return(EOF);
+	return(getch2());
+}
+
 static int NEAR getkanjikey(buf, ch)
 char *buf;
 int ch;
@@ -1986,11 +1985,11 @@ int ch;
 	}
 # endif
 #else	/* !_NOKANJICONV */
+	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
 # ifndef	_NOPTY
-	if (parentfd >= 0) code = ptyinkcode;
-	else
+	if (parentfd >= 0 && ptyinkcode != NOCNV) code = ptyinkcode;
 # endif
-	code = inputkcode;
+
 	if (code == EUC && isekana2(ch)) {
 		tmpkanji[0] = (char)C_EKANA;
 		tmpkanji[1] = (ch & 0xff);
@@ -2006,8 +2005,7 @@ int ch;
 	}
 	if (code == UTF8 || code == M_UTF8) {
 		if ((ch & 0xff00) || !ismsb(ch)) /*EMPTY*/;
-		else if (!kbhit2(WAITMETA * 1000L)
-		|| (ch2 = getch2()) == EOF) {
+		else if ((ch2 = getch3()) == EOF) {
 			buf[0] = '\0';
 			return(-1);
 		}
@@ -2019,7 +2017,7 @@ int ch;
 				code, DEFCODE, L_INPUT);
 			return(n);
 		}
-		else if (!kbhit2(WAITMETA * 1000L) || (n = getch2()) == EOF) {
+		else if ((n = getch3()) == EOF) {
 			buf[0] = '\0';
 			return(-1);
 		}
@@ -2039,8 +2037,7 @@ int ch;
 #endif	/* !_NOKANJICONV */
 
 	if (isinkanji1(ch, code)) {
-		if (!kbhit2(WAITMETA * 1000L)
-		|| (ch2 = getch2()) == EOF || !isinkanji2(ch2, code)) {
+		if ((ch2 = getch3()) == EOF || !isinkanji2(ch2, code)) {
 			buf[0] = '\0';
 			return(-1);
 		}
@@ -2085,11 +2082,13 @@ int keep;
 
 	if (!keep) {
 		inputlen = (hist) ? strlen(hist) : 0;
-		if (rptr < 0 || rptr > inputlen) rptr = inputlen;
 		insertbuf(0);
 		if (hist) memcpy(inputbuf, hist, inputlen + 1);
 		else *inputbuf = '\0';
-		vptr = vlen(inputbuf, inputlen);
+		if (rptr < 0 || rptr > inputlen) {
+			rptr = inputlen;
+			vptr = vlen(inputbuf, rptr);
+		}
 	}
 	displaystr();
 
@@ -2333,6 +2332,7 @@ char **tmp;
 	for (; cx >= 0; cx--) {
 		if (strncmp(&(inputbuf[cx]), searchstr, slen)) continue;
 		rptr = cx + slen;
+		vptr = vlen(inputbuf, rptr);
 		return(NULL);
 	}
 
@@ -2354,6 +2354,7 @@ char **tmp;
 				*tmp = strdup2(inputbuf);
 			}
 			rptr = cx + slen;
+			vptr = vlen(history[h][n], rptr);
 			*histnop = n + 1;
 			return(history[h][n]);
 		}
@@ -2379,6 +2380,7 @@ char **tmp;
 	for (; cx <= inputlen - slen; cx++) {
 		if (strncmp(&(inputbuf[cx]), searchstr, slen)) continue;
 		rptr = cx + slen;
+		vptr = vlen(inputbuf, rptr);
 		return(NULL);
 	}
 
@@ -2395,17 +2397,19 @@ char **tmp;
 				continue;
 
 			rptr = cx + slen;
+			vptr = vlen(history[h][n], rptr);
 			*histnop = n + 1;
 			return(history[h][n]);
 		}
 	}
 
-	if (*tmp) {
+	if (*tmp && *histnop) {
 		hlen = strlen(*tmp);
 		for (cx = 0; cx <= hlen - slen; cx++) {
 			if (strncmp(&((*tmp)[cx]), searchstr, slen)) continue;
 
 			rptr = cx + slen;
+			vptr = vlen(*tmp, rptr);
 			*histnop = 0;
 			return(*tmp);
 		}
@@ -2975,17 +2979,18 @@ int h;
 		minline = 0;
 		maxline = n_line;
 	}
+
 #ifndef	_NOPTY
 # ifndef	_NOORIGSHELL
 	if (!fdmode && shellmode) /*EMPTY*/;
 	else
 # endif
-	if (isptymode() && parentfd < 0) {
+	if (isptymode() && parentfd < 0 && !maxcmdline) {
 		minline = filetop(win);
 		maxline = minline + FILEPERROW;
 		ypos -= n_line - maxline;
 	}
-#endif
+#endif	/* !_NOPTY */
 
 #ifndef	_NOORIGSHELL
 	if (dumbmode || shellmode) win_y = 0;
@@ -3481,12 +3486,12 @@ int val[];
 
 	win_y = L_MESLINE;
 	do {
+		keyflush();
 		win_x = tmpx + xx[new + 1];
 		Xlocate(win_x, win_y);
 		Xtflush();
 		old = new;
 
-		keyflush();
 		switch (ch = Xgetkey(1, 0)) {
 			case K_RIGHT:
 				for (new++; new != old; new++) {

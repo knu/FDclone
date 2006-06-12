@@ -77,6 +77,9 @@ static VOID NEAR hitkey __P_((int));
 #define	hitkey(n)
 #endif
 static VOID NEAR fputsmeta __P_((char *, FILE *));
+#if	!defined (_NOARCHIVE) && !defined(_NOBROWSE)
+static char **NEAR file2argv __P_((FILE *, char *, int));
+#endif
 #ifndef	_NOARCHIVE
 # if	FD >= 2
 static int NEAR getlaunchopt __P_((int, char *[], char *, launchtable *));
@@ -301,6 +304,87 @@ FILE *fp;
 		free(cp);
 	}
 }
+
+#if	!defined (_NOARCHIVE) && !defined(_NOBROWSE)
+static char **NEAR file2argv(fp, s, whole)
+FILE *fp;
+char *s;
+int whole;
+{
+	char *cp, *line, **argv;
+	ALLOC_T size;
+	int i, j, pc, argc, escape, quote, pqoute, quoted;
+
+	argc = 1;
+	argv = (char **)malloc2(2 * sizeof(char *));
+	argv[0] = strdup2(s);
+	argv[1] = NULL;
+	j = escape = 0;
+	quote = pqoute = quoted = '\0';
+	cp = c_realloc(NULL, 0, &size);
+	while ((line = fgets2(fp, 0))) {
+		if (!escape && !quote && *line == '#') {
+			free(line);
+			continue;
+		}
+		escape = 0;
+		for (i = 0; line[i]; i++) {
+			cp = c_realloc(cp, j + 2, &size);
+			pc = parsechar(&(line[i]), -1,
+				'\0', EA_EOLMETA, &quote, &pqoute);
+			if (pc == PC_CLQUOTE) quoted = line[i];
+			else if (pc == PC_WORD) {
+				cp[j++] = line[i++];
+				cp[j++] = line[i];
+			}
+			else if (pc == PC_SQUOTE || pc == PC_DQUOTE)
+				cp[j++] = line[i];
+			else if (pc == PC_ESCAPE) {
+				if (!line[++i]) {
+					escape = 1;
+					break;
+				}
+				cp[j++] = line[i];
+			}
+			else if (pc == PC_OPQUOTE) quoted = '\0';
+			else if (pc != PC_NORMAL) /*EMPTY*/;
+			else if (!strchr(IFS_SET, line[i])) cp[j++] = line[i];
+			else if (j || quoted) {
+				quoted = cp[j] = '\0';
+				argv = (char **)realloc2(argv,
+					(argc + 2) * sizeof(char *));
+				argv[argc++] = strdup2(cp);
+				argv[argc] = NULL;
+				j = 0;
+			}
+		}
+
+		if (escape);
+		else if (quote) cp[j++] = '\n';
+		else if (j || quoted) {
+			quoted = cp[j] = '\0';
+			argv = (char **)realloc2(argv,
+				(argc + 2) * sizeof(char *));
+			argv[argc++] = strdup2(cp);
+			argv[argc] = NULL;
+			j = 0;
+		}
+		free(line);
+
+		if (!whole && !escape && !quote) break;
+	}
+
+	if (j) {
+		cp[j] = '\0';
+		argv = (char **)realloc2(argv, (argc + 2) * sizeof(char *));
+		argv[argc++] = strdup2(cp);
+		argv[argc] = NULL;
+	}
+	free(cp);
+
+	return(argv);
+}
+#endif	/* !_NOARCHIVE && !_NOBROWSE */
 
 #ifndef	_NOARCHIVE
 # if	FD >= 2
@@ -949,9 +1033,8 @@ static char **NEAR readargv(sargv, dargv)
 char **sargv, **dargv;
 {
 	FILE *fp;
-	char *cp, *line, **argv;
-	ALLOC_T size;
-	int i, j, n, argc, dargc, meta, quote, quoted;
+	char *cp, **argv;
+	int n, dargc;
 
 	dargc = countvar(dargv);
 	for (n = 1; sargv[n]; n++) {
@@ -976,80 +1059,10 @@ char **sargv, **dargv;
 			return(NULL);
 		}
 
-		argc = 1;
-		argv = (char **)malloc2(2 * sizeof(char *));
-		argv[0] = strdup2(sargv[0]);
-		argv[1] = NULL;
-		j = meta = 0;
-		quote = quoted = '\0';
-		cp = c_realloc(NULL, 0, &size);
-		while ((line = fgets2(fp, 0))) {
-			if (!meta && !quote && *line == '#') {
-				free(line);
-				continue;
-			}
-			meta = 0;
-			for (i = 0; line[i]; i++) {
-				cp = c_realloc(cp, j + 2, &size);
-				if (line[i] == quote) {
-					quoted = quote;
-					quote = '\0';
-				}
-				else if (iskanji1(line, i)) {
-					cp[j++] = line[i++];
-					cp[j++] = line[i];
-				}
-#  ifdef	CODEEUC
-				else if (isekana(line, i)) {
-					cp[j++] = line[i++];
-					cp[j++] = line[i];
-				}
-#  endif
-				else if (quote) cp[j++] = line[i];
-				else if (line[i] == PMETA) {
-					if (!line[++i]) {
-						meta = 1;
-						break;
-					}
-					cp[j++] = line[i];
-				}
-				else if (line[i] == '\'' || line[i] == '"') {
-					quoted = '\0';
-					quote = line[i];
-				}
-				else if (!strchr(IFS_SET, line[i]))
-					cp[j++] = line[i];
-				else if (j || quoted) {
-					quoted = cp[j] = '\0';
-					argv = (char **)realloc2(argv,
-						(argc + 2) * sizeof(char *));
-					argv[argc++] = strdup2(cp);
-					argv[argc] = NULL;
-					j = 0;
-				}
-			}
-			if (meta);
-			else if (quote) cp[j++] = '\n';
-			else if (j || quoted) {
-				quoted = cp[j] = '\0';
-				argv = (char **)realloc2(argv,
-					(argc + 2) * sizeof(char *));
-				argv[argc++] = strdup2(cp);
-				argv[argc] = NULL;
-				j = 0;
-			}
-			free(line);
-		}
+		argv = file2argv(fp, sargv[0], 1);
 		if (fp != stdin) Xfclose(fp);
 		else clearerr(fp);
-		if (j) {
-			cp[j] = '\0';
-			argv = (char **)realloc2(argv,
-				(argc + 2) * sizeof(char *));
-			argv[argc++] = strdup2(cp);
-			argv[argc] = NULL;
-		}
-		free(cp);
+
 		dargv = readargv(argv, dargv);
 		freevar(argv);
 		if (!dargv) return(NULL);
@@ -1263,7 +1276,7 @@ bindtable *bindp;
 	}
 	else if (argc > i) {
 		if (argv[i][0] != BINDCOMMENT
-		|| bindp -> key < K_F(1) || bindp -> key > K_F(10)) {
+		|| bindp -> key < K_F(1) || bindp -> key > K_F(MAXHELPINDEX)) {
 			bindp -> key = ER_SYNTAXERR;
 			bindp -> f_func = i;
 			return(-1);
@@ -1302,7 +1315,7 @@ char *func1, *func2, *cp;
 		return(-2);
 	}
 
-	if (bind.key < K_F(1) || bind.key > K_F(10)) {
+	if (bind.key < K_F(1) || bind.key > K_F(MAXHELPINDEX)) {
 		if (cp) free(cp);
 	}
 	else if (cp) {
@@ -1332,7 +1345,8 @@ int n;
 {
 	freemacro(bindlist[n].f_func);
 	freemacro(bindlist[n].d_func);
-	if (bindlist[n].key >= K_F(1) && bindlist[n].key <= K_F(10)) {
+	if (bindlist[n].key >= K_F(1)
+	&& bindlist[n].key <= K_F(MAXHELPINDEX)) {
 		free(helpindex[bindlist[n].key - K_F(1)]);
 		helpindex[bindlist[n].key - K_F(1)] = strdup2(nullstr);
 	}
@@ -1388,7 +1402,8 @@ bindtable *bindp;
 {
 	int n;
 
-	if (bindp -> key < K_F(1) || bindp -> key > K_F(10)) return(NULL);
+	if (bindp -> key < K_F(1) || bindp -> key > K_F(MAXHELPINDEX))
+		return(NULL);
 	n = bindp -> key - K_F(1);
 #ifndef	_NOCUSTOMIZE
 	if (!strcmp(helpindex[n], orighelpindex[n])) return(NULL);
@@ -2117,7 +2132,7 @@ char *argv[];
 		skip = 0;
 		for (i = 1; argv[n][i]; i++) {
 			skip = 0;
-			switch(argv[n][i]) {
+			switch (argv[n][i]) {
 				case 'e':
 					if (argv[n][i + 1]) {
 						editor = &(argv[n][i + 1]);
@@ -3414,7 +3429,7 @@ char ***argvp;
 
 	return(argc);
 }
-#endif
+#endif	/* !_NOCOMPLETE */
 
 #ifdef	DEBUG
 VOID freedefine(VOID_A)
@@ -3443,6 +3458,6 @@ VOID freedefine(VOID_A)
 # ifdef	_USEDOSEMU
 	for (i = 0; fdtype[i].name; i++) free(fdtype[i].name);
 # endif
-	for (i = 0; i < 10; i++) free(helpindex[i]);
+	for (i = 0; i < MAXHELPINDEX; i++) free(helpindex[i]);
 }
 #endif

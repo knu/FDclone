@@ -24,20 +24,15 @@ extern int deletealias __P_((char *));
 # endif
 #endif
 
-#ifdef	SIGALRM
-#define	sigalrm()	((!noalrm) ? SIGALRM : 0)
-#else
-#define	sigalrm()	0
-#endif
+#define	MAXPTYMENU	4
 
 extern functable funclist[];
 extern int internal_status;
-#ifdef	SIGALRM
-extern int noalrm;
-#endif
 extern int fdmode;
 extern int fdflags;
 extern int wheader;
+extern int lcmdline;
+extern int maxcmdline;
 extern int ptymode;
 extern int ptyinternal;
 extern int ptymenukey;
@@ -91,7 +86,7 @@ static int waitpty(VOID_A)
 			if (result[i] && ptylist[i].pid) recvchild(i);
 	}
 
-	if (win != oldwin) {
+	if (win != oldwin || !emupid) {
 		recvchild(oldwin);
 		return(-2);
 	}
@@ -238,7 +233,7 @@ va_dcl
 {
 	va_list args;
 	char *buf;
-	int n;
+	int n, len;
 
 	VA_START(args, fmt);
 	n = vasprintf2(&buf, fmt, args);
@@ -248,8 +243,9 @@ va_dcl
 	if (!emupid) VOID_C cputs2(buf);
 	else {
 		sendword(emufd, TE_CPUTS2);
-		sendword(emufd, n);
-		sendbuf(emufd, buf, n);
+		len = strlen(buf);
+		sendword(emufd, len);
+		sendbuf(emufd, buf, len);
 	}
 	free(buf);
 
@@ -394,12 +390,12 @@ VOID changeoutkcode(VOID_A)
 
 static int NEAR ptygetkey(VOID_A)
 {
-	char *cp, *str[4];
-	int n, c, ch, val[4];
+	char *cp, *str[MAXPTYMENU];
+	int n, c, ch, val[MAXPTYMENU];
 
 	for (;;) {
 		n = -1;
-		c = getkey2(sigalrm());
+		c = getkey2(sigalrm(1));
 		while (lockflags & (1 << win)) {
 			kbhit2(1000000L / SENSEPERSEC);
 			waitpty();
@@ -420,13 +416,17 @@ static int NEAR ptygetkey(VOID_A)
 
 		n = 0;
 		changewin(MAXWINDOWS, (p_id_t)-1);
-		ch = selectstr(&n, (windows > 1) ? 4 : 3, 0, str, val);
+		ch = selectstr(&n, (windows > 1) ? MAXPTYMENU : MAXPTYMENU - 1,
+			0, str, val);
+		movepos(filepos, 0);
 		changewin(win, (p_id_t)-1);
 		free(str[0]);
-		if (ch != K_CR) /*EMPTY*/;
+
+		if (ch != K_CR) continue;
 		else if (!n) break;
 		else if (n == 2) {
 			killpty(win, NULL);
+			rewritefile(1);
 			c = -1;
 			break;
 		}
@@ -437,20 +437,22 @@ static int NEAR ptygetkey(VOID_A)
 		}
 		else {
 			changewin(MAXWINDOWS, (p_id_t)-1);
+			lcmdline = -1;
+			maxcmdline = 1;
 			cp = inputstr(PTYKC_K, 1, -1, NULL, -1);
+			movepos(filepos, 0);
 			changewin(win, (p_id_t)-1);
-			if (cp) {
-				c = getkeycode(cp, 0);
-				free(cp);
-				if (c >= 0) break;
-				warning(0, VALNG_K);
-			}
+			if (!cp) continue;
+			c = getkeycode(cp, 0);
+			free(cp);
+			if (c >= 0) break;
+
+			changewin(MAXWINDOWS, (p_id_t)-1);
+			warning(0, VALNG_K);
+			movepos(filepos, 0);
+			changewin(win, (p_id_t)-1);
 		}
-
-		rewritefile(1);
 	}
-
-	if (n >= 0) rewritefile(1);
 
 	return(c);
 }
@@ -625,7 +627,7 @@ int w;
 	fd = ptylist[w].pipe;
 	if (recvbuf(fd, &uc, sizeof(uc)) < 0) return;
 
-	switch(uc) {
+	switch (uc) {
 		case TE_SETVAR:
 			if (recvbuf(fd, &varp, sizeof(varp)) < 0
 			|| recvvar(fd, &var) < 0)
@@ -761,7 +763,7 @@ int w;
 			|| recvbuf(fd, &val, sizeof(val)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
-			entryhist(n, cp, val);
+			VOID_C entryhist(n, cp, val);
 			free(cp);
 			break;
 		case TE_ADDKEYBIND:
@@ -789,7 +791,7 @@ int w;
 			|| recvbuf(fd, &(key.len), sizeof(key.len)) < 0
 			|| recvstring(fd, &(key.str)) < 0)
 				break;
-			setkeyseq(key.code, key.str, key.len);
+			VOID_C setkeyseq(key.code, key.str, key.len);
 			break;
 #ifndef	_NOARCHIVE
 		case TE_ADDLAUNCH:
@@ -834,11 +836,11 @@ int w;
 			|| recvbuf(fd, &dev, sizeof(dev)) < 0
 			|| recvstring(fd, &(dev.name)) < 0)
 				break;
-			insertdrv(n, &dev);
+			VOID_C insertdrv(n, &dev);
 			break;
 		case TE_DELETEDRV:
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
-			deletedrv(n);
+			VOID_C deletedrv(n);
 			break;
 #endif	/* _USEDOSEMU */
 		case TE_LOCKFRONT:

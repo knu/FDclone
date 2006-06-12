@@ -132,3 +132,12 @@ typedef int		wait_pid_t;
 #if	!defined (SIGWINCH) && defined (SIGWINDOW)
 #define	SIGWINCH	SIGWINDOW
 #endif
+
+#ifdef	FD
+# ifdef	SIGALRM
+extern int noalrm;
+# define	sigalrm(sig)	((!noalrm && (sig)) ? SIGALRM : 0)
+# else
+# define	sigalrm(sig)	0
+# endif
+#endif	/* FD */

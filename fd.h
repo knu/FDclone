@@ -249,6 +249,9 @@ extern char *_mtrace_file;
 #define	WFILEMINCUSTOM	4
 #define	WFILEMINATTR	(WMODELINE + 5)
 #define	WFILEMIN	1
+#define	MAXHELPINDEX	10
+#define	MAXSORTINHERIT	1
+#define	MAXSORTTYPE	5
 #define	L_STACK		(n_line - 3)
 #define	L_HELP		(n_line - 2)
 #define	L_INFO		(n_line - 1)

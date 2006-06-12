@@ -247,7 +247,7 @@ extern char *mesconv __P_((char *, char *));
 		"Define the maximum size of directory history.")
 #define	SVHS_E \
 	meslist("コマンド履歴のセーブファイル保存数を設定します.", \
-		"Define the maximum size of saved history.")
+		"Define the maximum size of saved command history.")
 #define	DCLM_E \
 	meslist("ツリー表示画面の表示ファイル数を設定します.", \
 		"Define the limit of displayed files, on tree mode.")

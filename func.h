@@ -578,9 +578,9 @@ extern int execusercomm __P_((char *, char *, int));
 #endif
 extern int entryhist __P_((int, char *, int));
 extern char *removehist __P_((int));
-extern int loadhistory __P_((int, char *));
+extern int loadhistory __P_((int));
 extern VOID convhistory __P_((char *, FILE *));
-extern int savehistory __P_((int, char *));
+extern int savehistory __P_((int));
 extern int parsehist __P_((char *, int *, int));
 extern char *evalhistory __P_((char *));
 #ifdef	DEBUG
@@ -635,6 +635,9 @@ extern int selectstr __P_((int *, int, int, char *[], int []));
 
 /* info.c */
 extern VOID help __P_((int));
+#ifndef	NOFLOCK
+extern int isnfs __P_((char *));
+#endif
 extern int writablefs __P_((char *));
 extern off_t getblocksize __P_((char *));
 extern off_t calcKB __P_((off_t, off_t));

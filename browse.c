@@ -95,6 +95,7 @@ static int NEAR putfilename __P_((char *, namelist *, int));
 static VOID NEAR infobar __P_((VOID_A));
 static int NEAR calclocate __P_((int));
 static int NEAR calcfilepos __P_((namelist *, int, char *));
+static int NEAR listupmyself __P_((char *));
 #ifndef	_NOSPLITWIN
 static int NEAR listupwin __P_((char *));
 #endif
@@ -129,13 +130,23 @@ char fullpath[MAXPATHLEN] = "";
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
 int isearch = 0;
-char *helpindex[10] = {
+char *helpindex[MAXHELPINDEX] = {
 #ifdef	_NOTREE
-	"help", "eXec", "Copy", "Delete", "Rename",
-	"Sort", "Find", "Logdir", "Editor", "Unpack"
+	"help",
 #else
-	"Logdir", "eXec", "Copy", "Delete", "Rename",
-	"Sort", "Find", "Tree", "Editor", "Unpack"
+	"Logdir",
+#endif
+	"eXec", "Copy", "Delete", "Rename", "Sort", "Find",
+#ifdef	_NOTREE
+	"Logdir",
+#else
+	"Tree",
+#endif
+	"Editor",
+#ifdef	_NOARCHIVE
+	"",
+#else
+	"Unpack",
 #endif
 };
 char typesymlist[] = "dbclsp";
@@ -278,30 +289,35 @@ static VOID NEAR pathbar(VOID_A)
 
 VOID helpbar(VOID_A)
 {
-	int i, j, col, gap, width, len, ofs;
+	int i, j, col, gap, width, len, ofs, max, blk, rest;
+
+	max = MAXHELPINDEX;
+	blk = 5;
 
 	if (ishardomit()) {
-		col = n_column + 1;
+		col = n_column;
 		gap = 0;
 	}
 	else if (iswellomit()) {
-		col = n_column + 1;
+		col = n_column;
 		gap = 1;
 	}
 	else if (isrightomit()) {
-		col = n_column + 1;
+		col = n_column;
 		gap = 2;
 	}
 	else if (isleftshift()) {
-		col = n_column + 1;
-		gap = 3;
-	}
-	else {
 		col = n_column;
 		gap = 3;
 	}
-	width = (col - 4 - gap * 2) / 10 - 1;
-	ofs = (col - (width + 1) * 10 - 2) / 2;
+	else {
+		col = n_column - 1;
+		gap = 3;
+	}
+
+	rest = max - 1 + gap * ((max - 1) / blk);
+	width = (col - 4 - rest) / max;
+	ofs = (n_column - width * max - rest) / 2;
 	if (ofs < 4) ofs = 4;
 
 	Xlocate(0, L_HELP);
@@ -313,9 +329,9 @@ VOID helpbar(VOID_A)
 	Xputch2(isfileflg(dispmode) ? 'F' : ' ');
 #endif
 
-	for (i = 0; i < 10; i++) {
-		Xlocate(ofs + (width + 1) * i + (i / 5) * gap, L_HELP);
-		len = (width - strlen2(helpindex[i])) / 2;
+	for (i = 0; i < max; i++) {
+		Xlocate(ofs + (width + 1) * i + (i / blk) * gap, L_HELP);
+		len = (width - strlen2(helpindex[i]) + 1) / 2;
 		if (len < 0) len = 0;
 		Xputterm(T_STANDOUT);
 		for (j = 0; j < len; j++) Xputch2(' ');
@@ -1141,6 +1157,27 @@ int isstandout;
 	return(pos);
 }
 
+static int NEAR listupmyself(def)
+char *def;
+{
+#ifndef	_NOTREE
+	if (treepath) rewritetree();
+	else
+#endif
+#ifndef	_NOCUSTOMIZE
+	if (custno >= 0) rewritecust();
+	else
+#endif
+#ifndef	_NOPTY
+	if (ptylist[win].pid && ptylist[win].status < 0) /*EMPTY*/;
+	else
+#endif
+	if (filelist && (filepos < maxfile || (!filepos && !maxfile)))
+		return(listupfile(filelist, maxfile, def, 1));
+
+	return(-1);
+}
+
 #ifndef	_NOSPLITWIN
 static int NEAR listupwin(def)
 char *def;
@@ -1167,17 +1204,7 @@ char *def;
 	n = -1;
 	for (win = 0; win < windows; win++) {
 		if (win == dupwin) {
-# ifndef	_NOTREE
-			if (treepath) rewritetree();
-			else
-# endif
-# ifndef	_NOCUSTOMIZE
-			if (custno >= 0) rewritecust();
-			else
-# endif
-			if (filelist
-			&& (filepos < maxfile || (!filepos && !maxfile)))
-				n = listupfile(filelist, maxfile, def, 1);
+			n = listupmyself(def);
 			x = win_x;
 			y = win_y;
 		}
@@ -1308,20 +1335,10 @@ int all;
 	pathbar();
 	if (all >= 0) {
 #ifdef	_NOSPLITWIN
-# ifndef	_NOTREE
-		if (treepath) rewritetree();
-		else
-# endif
-# ifndef	_NOCUSTOMIZE
-		if (custno >= 0) rewritecust();
-		else
-# endif
-		if (filelist && filepos < maxfile)
-			listupfile(filelist, maxfile,
-				filelist[filepos].name, 1);
-#else	/* !_NOSPLITWIN */
+		listupmyself(filelist[filepos].name);
+#else
 		listupwin(filelist[filepos].name);
-#endif	/* !_NOSPLITWIN */
+#endif
 	}
 
 	if (!all) {

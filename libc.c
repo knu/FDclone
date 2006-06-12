@@ -369,7 +369,7 @@ int raw;
 	char *cwd;
 
 	cwd = path;
-	if (!raw && path[0] && !path[1]) switch(path[0]) {
+	if (!raw && path[0] && !path[1]) switch (path[0]) {
 		case '.':
 			cwd = NULL;
 			break;

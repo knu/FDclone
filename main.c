@@ -58,7 +58,6 @@ extern int maxarchive;
 #endif
 extern int wheader;
 extern char fullpath[];
-extern char *histfile;
 extern int savehist;
 extern char *helpindex[];
 extern int subwindow;
@@ -824,7 +823,7 @@ VOID title(VOID_A)
 #ifndef	_NOCUSTOMIZE
 VOID saveorigenviron(VOID_A)
 {
-	orighelpindex = copystrarray(NULL, helpindex, NULL, 10);
+	orighelpindex = copystrarray(NULL, helpindex, NULL, MAXHELPINDEX);
 	origbindlist = copybind(NULL, bindlist);
 # ifndef	_NOKEYMAP
 	origkeymaplist = copykeyseq(NULL);
@@ -1139,7 +1138,11 @@ char *argv, *envp[];
 VOID initfd(argv)
 char **argv;
 {
-	if (interactive) {
+#ifndef	_NOORIGSHELL
+	if (!interactive) /*EMPTY*/;
+	else
+#endif
+	{
 #if	!MSDOS
 		if (adjtty) {
 			Xstdiomode();
@@ -1147,7 +1150,7 @@ char **argv;
 			Xttyiomode(0);
 		}
 #endif	/* !MSDOS */
-		loadhistory(0, histfile);
+		loadhistory(0);
 		entryhist(1, origpath, 1);
 	}
 #ifndef	_NOLOGGING
@@ -1164,7 +1167,11 @@ int status;
 #ifndef	_NOLOGGING
 	endlog(status);
 #endif
-	if (interactive && savehist > 0) savehistory(0, histfile);
+#ifndef	_NOORIGSHELL
+	if (!interactive) /*EMPTY*/;
+	else
+#endif
+	savehistory(0);
 
 	cwd[0] = '\0';
 	if (origpath && _chdir2(origpath) < 0) {
@@ -1190,7 +1197,7 @@ int status;
 # endif
 # ifndef	_NOCUSTOMIZE
 	if (orighelpindex) {
-		freestrarray(orighelpindex, 10);
+		freestrarray(orighelpindex, MAXHELPINDEX);
 		free(orighelpindex);
 	}
 	free(origbindlist);
@@ -1332,7 +1339,8 @@ char *argv[], *envp[];
 	}
 #endif	/* !_NOARCHIVE */
 
-	for (i = 0; i < 10; i++) helpindex[i] = strdup2(helpindex[i]);
+	for (i = 0; i < MAXHELPINDEX; i++)
+		helpindex[i] = strdup2(helpindex[i]);
 #ifdef	_USEDOSEMU
 	for (i = 0; fdtype[i].name; i++) {
 		fdtype[i].name = strdup2(fdtype[i].name);
@@ -1372,7 +1380,10 @@ char *argv[], *envp[];
 # endif
 		Xexit2(i);
 	}
-	fdmode = interactive = 1;
+#ifndef	_NOORIGSHELL
+	interactive =
+#endif
+	fdmode = 1;
 	setshellvar(envp);
 	prepareterm();
 	argc = initoption(argc, argv, envp);

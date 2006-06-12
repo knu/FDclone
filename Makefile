@@ -2,7 +2,8 @@
 #	Makefile for fd
 #
 
-VERMAJ	= 2
+VERSION	= 2
+VERMAJ	= $(VERSION)
 PREFIX	= /usr/local
 CONFDIR	= /etc
 BUILD	=

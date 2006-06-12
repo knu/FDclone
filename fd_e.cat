@@ -2866,7 +2866,9 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      HHIISSTTFFIILLEE      Specify the name of the command history file
                    which can be referred by EEXXEECCUUTTEE_FFIILLEE and EEXXEE--
-                   CCUUTTEE_SSHH.  The default value is ~~//..ffdd_hhiissttoorryy.
+                   CCUUTTEE_SSHH.  Unless you specify it, the directory
+                   history is not loaded nor saved.  The default
+                   value is ~~//..ffdd_hhiissttoorryy.
 
                    (On MS-DOS version, The default value is
                    $$HHOOMMEE\\ffdd..hhsstt.)
@@ -3080,6 +3082,21 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        default        no convert
 
+     PPTTYYMMEENNUUKKEEYY    Specify the key to open the pseudo terminal
+                   menu while you are handling the pseudo termi-
+                   nal.  You can describe the same key name as
+                   bbiinndd command.  You can select the following
+                   items in the pseudo terminal menu: "SendAsIs",
+                   "InputCode", "Break" and "NextWindow".  Each
+                   item means respectively: sending the pseudo
+                   terminal menu key as is, inputing the key name
+                   to be sent like as bbiinndd command, terminating
+                   forcedly the process running in the pseudo ter-
+                   minal, changing to the next window.  But you
+                   cannot select "NextWindow" in the non-split
+                   window mode.  The default value is not speci-
+                   fied.  ((UUNNIIXX))
+
      PPTTYYMMOODDEE       Use the pseudo terminal to invoke external com-
                    mands.  In the split window mode, the independ-
                    ent pseudo terminals for every windows will be
@@ -3114,20 +3131,6 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    of the pseudo terminal, you should specify the
                    effective terminal name in your environment.
                    The default value is vvtt110000.  ((UUNNIIXX))
-
-     PPTTYYMMEENNUUKKEEYY    Specify the key to open the pseudo terminal
-                   menu while you are handling the pseudo termi-
-                   nal.  You can describe the same key name as
-                   bbiinndd command.  You can select the following
-                   items in the pseudo terminal menu: "SendAsIs",
-                   "InputCode", "Break" and "NextWindow".  Each
-                   item means respectively: sending the pseudo
-                   terminal menu key as is, inputing the key name
-                   to be sent like as bbiinndd command, terminating
-                   forcedly the process running in the pseudo ter-
-                   minal, changing to the next window.  But you
-                   cannot select "NextWindow" in the non-split
-                   window mode.  ((UUNNIIXX))
 
      PPWWDD*          The variable for the current directory with
                    the absolute representation.  If some value is

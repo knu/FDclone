@@ -90,7 +90,7 @@ static int NEAR openlogfile(VOID_A)
 	}
 
 #ifndef	NOFLOCK
-	if (lockfile(fd, LCK_WRITE) < 0) {
+	if (isnfs(cp) <= 0 && lockfile(fd, LCK_WRITE) < 0) {
 		close(fd);
 		return(-1);
 	}
@@ -161,7 +161,7 @@ int len;
 		uc = '\n';
 		VOID_C write(fd, &uc, sizeof(uc));
 #ifndef	NOFLOCK
-		VOID_C lockfile(fd, LCK_UNLOCK);
+		if (isnfs(logfname) <= 0) VOID_C lockfile(fd, LCK_UNLOCK);
 #endif
 		VOID_C close(fd);
 	}

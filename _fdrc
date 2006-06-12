@@ -77,7 +77,7 @@
 #	Default: 50
 #DIRHIST=50
 
-# size of saved history
+# size of saved command history
 #	Default: 50
 #SAVEHIST=50
 

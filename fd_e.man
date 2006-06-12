@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2006 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.08c 05/24/06
+.\" @(#)fd.1   2.08d 06/13/06
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "May 24, 2006"
+.TH FD 1 "June 13, 2006"
 .de sh
 .br
 .PP
@@ -4503,6 +4503,8 @@ which can be referred by
 .B EXECUTE_FILE
 and
 .BR EXECUTE_SH .
+Unless you specify it,
+the command history is not loaded nor saved.
 The default value is
 .BR ~/.fd_history .
 
@@ -4792,6 +4794,23 @@ to change the input Kanji code of the pseudo terminal running already.
 default	no convert
 .fi
 .RE
+.IP "\fBPTYMENUKEY\fP"
+Specify the key to open the pseudo terminal menu while you are handling the pseudo terminal.
+You can describe the same key name as
+.B bind
+command.
+You can select the following items in the pseudo terminal menu:
+"SendAsIs", "InputCode", "Break" and "NextWindow".
+Each item means respectively:
+sending the pseudo terminal menu key as is,
+inputing the key name to be sent like as
+.B bind
+command,
+terminating forcedly the process running in the pseudo terminal,
+changing to the next window.
+But you cannot select "NextWindow" in the non-split window mode.
+The default value is not specified.
+.B (UNIX)
 .IP "\fBPTYMODE\fP"
 Use the pseudo terminal to invoke external commands.
 In the split window mode,
@@ -4835,22 +4854,6 @@ may cause unexpected behavior of the pseudo terminal,
 you should specify the effective terminal name in your environment.
 The default value is
 .BR vt100 .
-.B (UNIX)
-.IP "\fBPTYMENUKEY\fP"
-Specify the key to open the pseudo terminal menu while you are handling the pseudo terminal.
-You can describe the same key name as
-.B bind
-command.
-You can select the following items in the pseudo terminal menu:
-"SendAsIs", "InputCode", "Break" and "NextWindow".
-Each item means respectively:
-sending the pseudo terminal menu key as is,
-inputing the key name to be sent like as
-.B bind
-command,
-terminating forcedly the process running in the pseudo terminal,
-changing to the next window.
-But you cannot select "NextWindow" in the non-split window mode.
 .B (UNIX)
 .IP "\fBPWD\fP\(**"
 The variable for the current directory with the absolute representation.
