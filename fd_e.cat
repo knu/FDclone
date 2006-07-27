@@ -11,13 +11,13 @@ SSYYNNOOPPSSIISS
      ffddsshh [ --aabbCCcceeffhhiikkllmmNNnnPPrrSSssTTttuuvvxx ] [ _a_r_g_s ]
 
 DDEESSCCRRIIPPTTIIOONN
-     ffdd is a file & directory maintenance tool considered for the
+     FFdd is a file & directory maintenance tool considered for the
      text terminals on general UNIX.  It aims for a clone of the
      same named utility which is made for the PC/AT compatible
      machine and PC-9800 series.  In fact, it is upper compatible
      functionally.
 
-     ffdd shows the browser screen listing files when you have
+     FFdd shows the browser screen listing files when you have
      invoked it.  You can input some key which is bound each com-
      mand, to execute various operations.
 
@@ -78,7 +78,7 @@ DDEESSCCRRIIPPTTIIOONN
      of sseett the builtin command are available.
 
      SSccrreeeenn LLaayyoouutt
-     ffdd has the 3 major screen modes.  In the browser screen, you
+     FFdd has the 3 major screen modes.  In the browser screen, you
      can select from the file list and execute each command.  In
      the archive browser screen, files in the archive file are
      listed separately by directory, and you can browse as well
@@ -439,7 +439,7 @@ DDEESSCCRRIIPPTTIIOONN
              the attribute on the position.  You should notice
              that the attribute of the execution bit is not a
              binary toggle but a triple toggle, which includes
-             setuid bit, setgid bit, and sticky bit respectively.
+             setuid bit, setgid bit and sticky bit respectively.
              If the target is the marked files, [mm](Mask) will
              mask a bit on the cursor position with '**', to keep
              the value of the original file attribute.  When you
@@ -546,12 +546,11 @@ DDEESSCCRRIIPPTTIIOONN
         BBaacckkuupp ttaappee (Backup)
              Backup the file on the cursor position into the
              specified storage device.  When the cursor position
-             indicates a directory, all of its contents are
-             backuped.  When some files are marked, the target is
-             not the file on the cursor position but the marked
-             files.
+             indicates a directory, all of its contents is back-
+             uped.  When some files are marked, the target is not
+             the file on the cursor position but the marked files.
 
-             ttaarr(1) is used for backup.  When you specify the
+             TTaarr(1) is used for backup.  When you specify the
              filename except special files indicates devices as
              input of the device name, the archive file is
              created with that filename.
@@ -565,7 +564,7 @@ DDEESSCCRRIIPPTTIIOONN
         PPaacckk ffiillee (Pack)
              Pack the file on the cursor position into the speci-
              fied archive file.  When the cursor position indi-
-             cates a directory, all of its contents are packed
+             cates a directory, all of its contents is packed
              into the archive file.  When some files are marked,
              the target is not the file on the cursor position
              but the marked files.
@@ -868,7 +867,7 @@ DDEESSCCRRIIPPTTIIOONN
      can split a long line with this.
 
      BBuuiillttiinn CCoommmmaannddss
-     ffdd has the following builtin commands.  These builtin com-
+     FFdd has the following builtin commands.  These builtin com-
      mands can be used in EEXXEECCUUTTEE_SSHH and the initial configura-
      tion file.
 
@@ -962,7 +961,7 @@ DDEESSCCRRIIPPTTIIOONN
                    redirection.
 
      .. _f_i_l_e
-     ssoouurrccee _f_i_l_e   Read and evaluate commands from _f_i_l_e.  _f_i_l_e
+     ssoouurrccee _f_i_l_e   Read and evaluate commands from _f_i_l_e.  _F_i_l_e
                    must exists on the directory which PPAATTHH
                    includes, or be described with pathname.  The
                    each line format is based on the format of
@@ -1238,7 +1237,7 @@ DDEESSCCRRIIPPTTIIOONN
                    COMMAND.COM.)
 
      ddiirrss          Display the list of the current directory
-                   stack.  ppuusshhdd and ppooppdd the builtin command can
+                   stack.  PPuusshhdd and ppooppdd the builtin command can
                    load/unload directories onto the directory
                    stack.
 
@@ -1264,7 +1263,7 @@ DDEESSCCRRIIPPTTIIOONN
                    Enable _a_r_g as a builtin command.  When you
                    specify --nn, it is disabled.  If _a_r_g is omit-
                    ted, all of the enabled or disabled builtin
-                   commands are listed.
+                   commands is listed.
 
      eevvaall [_a_r_g ...]
                    Evaluate _a_r_g and execute the results.
@@ -1300,14 +1299,14 @@ DDEESSCCRRIIPPTTIIOONN
                    the value of _N_A_M_E the environment variable is
                    defined as a null.  If no argument is speci-
                    fied, all of the eexxppoorrtted environment vari-
-                   ables are listed.  When you want to delete the
+                   ables is listed.  When you want to delete the
                    definition of the environment variable, you
                    can use uunnsseett the builtin command.
 
      ffaallssee         Only return with a 11 exit status.
 
      ffcc [--ll | --ss [_o_l_d==_n_e_w ...]] [--nnrr ] [--ee _e_d_i_t_o_r] [_f_i_r_s_t [_l_a_s_t]]
-                   List or edit command histories.  _f_i_r_s_t and
+                   List or edit command histories.  _F_i_r_s_t and
                    _l_a_s_t select the range of command histories.
                    This specification can be described as a
                    numeric value or a string.  A positive value
@@ -1432,7 +1431,7 @@ DDEESSCCRRIIPPTTIIOONN
                    result in the hash table.
 
                    When you specify --rr instead of _c_o_m, all the
-                   memorized hash table are discarded.  If _c_o_m is
+                   memorized hash table is discarded.  If _c_o_m is
                    omitted, the hash table information is listed.
                    hhiittss, ccoosstt, ccoommmmaanndd indicate the number of
                    times the command has been executed, the meas-
@@ -1449,7 +1448,7 @@ DDEESSCCRRIIPPTTIIOONN
                    history number.
 
                    If _n is omitted, all of the memorized command
-                   histories are listed.
+                   histories is listed.
 
      jjoobbss          List the running jobs.  ((UUNNIIXX))
 
@@ -1494,14 +1493,14 @@ DDEESSCCRRIIPPTTIIOONN
 
                    If _s_t_r is omitted, the key code sequence for _c
                    is displayed.  If both _s_t_r and _c are omitted,
-                   all of the mappings for special keys are
-                   listed.  When you specify _s_t_r as """", the key
-                   code mapping for _c is canceled.
+                   all of the mappings for special keys is listed.
+                   When you specify _s_t_r as """", the key code map-
+                   ping for _c is canceled.
 
      kkiillll [--ll | --_s_i_g_n_a_l] [_p_i_d | _j_o_b ...]
                    Send the signal indicated by _s_i_g_n_a_l to the
                    process indicated by the process number _p_i_d or
-                   to the job indicated by _j_o_b.  _s_i_g_n_a_l is
+                   to the job indicated by _j_o_b.  _S_i_g_n_a_l is
                    described as a numeric value or a signal name.
 
                    If _s_i_g_n_a_l is omitted, SSIIGGTTEERRMM is send.  When
@@ -1574,13 +1573,13 @@ DDEESSCCRRIIPPTTIIOONN
                    archive file which has _e_x_t the extension.
 
                    If _e_x_t is omitted, all of the registered
-                   archiver commands are listed.
+                   archiver commands is listed.
 
      pprriinnttbbiinndd [_c] Print the command binded to the key _c.  You
                    can specify the key as well as bbiinndd.
 
                    If _c is omitted, all of the registered key
-                   bindings are listed, which is defined not as
+                   bindings is listed, which is defined not as
                    the internal command but as the command macro.
                    The key bindings of internal commands can be
                    referred in HHEELLPP_MMEESSSSAAGGEE.
@@ -1590,7 +1589,7 @@ DDEESSCCRRIIPPTTIIOONN
                    registered for the drive name _c.  ((UUNNIIXX))
 
                    If _c is omitted, all of the registered floppy
-                   drives are listed.
+                   drives is listed.
 
      pprriinnttllaauunncchh [_e_x_t]
                    Print the command macro registered as the
@@ -1599,7 +1598,7 @@ DDEESSCCRRIIPPTTIIOONN
                    for listing is also printed.
 
                    If _e_x_t is omitted, all of the registered
-                   launchers are listed.
+                   launchers is listed.
 
      ppuusshhdd [_d_i_r]   Load the current directory onto the directory
                    stack, and change the current directory in ffdd
@@ -1656,7 +1655,7 @@ DDEESSCCRRIIPPTTIIOONN
                    the value of _N_A_M_E the internal variable is
                    defined as a null.  If no argument is
                    specified, all of the readonly internal vari-
-                   ables are listed.
+                   ables is listed.
 
      rrdd _d_i_r        Delete the directory _d_i_r.  You cannot delete
                    the non-empty directory.
@@ -1767,7 +1766,7 @@ DDEESSCCRRIIPPTTIIOONN
                              Same as --xx.
                         If _o_p_t_i_o_n is omitted, the values of the
                         current options are displayed.
-                   --PP   ccdd and ppwwdd the builtin command use the
+                   --PP   CCdd and ppwwdd the builtin command use the
                         physical directory structure instead of
                         the logical directory structure following
                         symbolic links.
@@ -1850,7 +1849,7 @@ DDEESSCCRRIIPPTTIIOONN
                    specify _c_o_m as a null, the signal ignored.
                    When you specify _n as 00, the command _c_o_m is
                    executed on exit.  If both _c_o_m and _n are omit-
-                   ted, all of the registered traps are listed.
+                   ted, all of the registered traps is listed.
 
      ttrruuee          Only return with a 00 exit status.
 
@@ -1870,7 +1869,7 @@ DDEESSCCRRIIPPTTIIOONN
                    When you don't specify neither of them, both
                    limits are set.  If _n is omitted, the current
                    limit is displayed.  When you specify --aa, all
-                   of the resource limits are displayed.
+                   of the resource limits is displayed.
 
                    When you specify the following options, the
                    each resource limit is individually set or
@@ -1893,9 +1892,9 @@ DDEESSCCRRIIPPTTIIOONN
 
      uunnaalliiaass _n_a_m_e  Cancel the definition of the alias _n_a_m_e.  You
                    can use the wildcard in _n_a_m_e, in this case,
-                   all of the matched alias definitions are can-
-                   celed.  When you specify "*", all of the alias
-                   definitions are invalid.
+                   all of the matched alias definitions is cancel-
+                   ed.  When you specify "*", all of the alias
+                   definitions is invalid.
 
      uunnsseett [_N_A_M_E ...]
                    Delete the defined internal variable or func-
@@ -1907,7 +1906,7 @@ DDEESSCCRRIIPPTTIIOONN
      uunnsseettddrrvv _c _d_e_v_i_c_e _h_d _s_c _c_l
                    Delete the registered floppy drive.  Only the
                    registration with which all of _d_e_v_i_c_e, _h_d, _s_c,
-                   _c_l are corresponded is deleted, then you
+                   _c_l is corresponded is deleted, then you
                    should confirm to delete very well.  ((UUNNIIXX))
 
                    When it is registered as HHDDDD or HHDDDD9988 in
@@ -2289,17 +2288,17 @@ DDEESSCCRRIIPPTTIIOONN
      The following is replaced only in the shell which is exe-
      cuted by EEXXEECCUUTTEE_SSHH and EEXXEECCUUTTEE_FFIILLEE.
 
-     ``_l_i_s_t``  _l_i_s_t is executed and this string is replaced by its
+     ``_l_i_s_t``  _L_i_s_t is executed and this string is replaced by its
              standard output.
 
-     $$((_l_i_s_t)) _l_i_s_t is executed and this string is replaced by its
+     $$((_l_i_s_t)) _L_i_s_t is executed and this string is replaced by its
              standard output like as ``_l_i_s_t``.  This differs from
              ``_l_i_s_t`` in the point that nested expressions are
              allowed.  And any meta-characters such as quotes in
              _l_i_s_t are evaluated as it is.
 
      $$((((_e_x_p_r_e_s_s_i_o_n))))
-             _e_x_p_r_e_s_s_i_o_n the arithmetic expression is evaluated
+             _E_x_p_r_e_s_s_i_o_n the arithmetic expression is evaluated
              and this string is replaced by its result value.
              You can specify numeric values, variables and
              integral calculations with the following operators
@@ -2362,7 +2361,7 @@ DDEESSCCRRIIPPTTIIOONN
                  ^^MM   = RReettuurrnn  ^^II   = TTaabb     ^^HH   = BBss
                  ^^[[   = EEsscc
 
-     vvii      vvii mode has the 2 local modes: "insert mode" and
+     vvii      VVii mode has the 2 local modes: "insert mode" and
              "command mode", and the function of keys are quite
              different with each mode.  You are in the command
              mode when you start to input, then you must input
@@ -2713,7 +2712,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    ing the screen size.  If no value is set, this
                    value will remain unset.
 
-     CCOOMMSSPPEECC*      Specify the shell used to invoke a batch file.
+     CCOOMMSSPPEECC       Specify the shell used to invoke a batch file.
                    If undefined, the shell defined by SSHHEELLLL the
                    environment variable or \COMMAND.COM is used.
                    ((DDOOSS))
@@ -2745,7 +2744,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        HHEEXX, hheexx       HEX
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        default        no convert
 
      DDIIRRCCOOUUNNTTLLIIMMIITT Specify the maximum number of files read from
@@ -2861,7 +2860,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        HHEEXX, hheexx       HEX
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        default        no convert
 
      HHIISSTTFFIILLEE      Specify the name of the command history file
@@ -2911,7 +2910,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
 
      LLAANNGGUUAAGGEE      Specify the language for display character.
                    It means not only each messages displayed by
@@ -2931,7 +2930,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
                        OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        EENNGG, eenngg, CC    English (message only)
                        default        no convert
 
@@ -3079,7 +3078,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        default        no convert
 
      PPTTYYMMEENNUUKKEEYY    Specify the key to open the pseudo terminal
@@ -3089,13 +3088,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    items in the pseudo terminal menu: "SendAsIs",
                    "InputCode", "Break" and "NextWindow".  Each
                    item means respectively: sending the pseudo
-                   terminal menu key as is, inputing the key name
-                   to be sent like as bbiinndd command, terminating
-                   forcedly the process running in the pseudo ter-
-                   minal, changing to the next window.  But you
-                   cannot select "NextWindow" in the non-split
-                   window mode.  The default value is not speci-
-                   fied.  ((UUNNIIXX))
+                   terminal menu key as is, inputting the key
+                   name to be sent like as bbiinndd command, terminat-
+                   ing forcedly the process running in the pseudo
+                   terminal, changing to the next window.  But
+                   you cannot select "NextWindow" in the non-
+                   split window mode.  The default value is not
+                   specified.  ((UUNNIIXX))
 
      PPTTYYMMOODDEE       Use the pseudo terminal to invoke external com-
                    mands.  In the split window mode, the independ-
@@ -3121,7 +3120,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC-JP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
                        default        no convert
 
      PPTTYYTTEERRMM       Specify the value of TTEERRMM the environment vari-
@@ -3183,7 +3182,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    time will be occurred in this span.  Any value
                    except 00 and null effects valid.
 
-     SSHHEELLLL*        When the filename part of this specified value
+     SSHHEELLLL         When the filename part of this specified value
                    is rrffdd or rrffddsshh, the shell becomes a res-
                    tricted shell as well as --rr option when
                    invoked.  This variable also specify the shell
@@ -3236,11 +3235,11 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    strange terminal display and key input.
 
      TTHHRRUUAARRGGSS      Pass through the pathnames as is, which is
-                   specified as the startup arguments.  ffdd ex-
+                   specified as the startup arguments.  FFdd ex-
                    pands the meta character such as ~~ and $${{##}} in
                    the given pathname by itself, because the ob-
                    solete low-level shell cannot support these
-                   expansion extended by POSIX.  ffdd can sometimes
+                   expansion extended by POSIX.  FFdd can sometimes
                    expand the pathname given by the shell into
                    the unexpected string as a result of duplicate
                    expansion, because the latest high-level shell
@@ -3329,7 +3328,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    specified by default.  ((UUNNIIXX))
 
 MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
-     ffdd processes the Kanji character-set to input/output as
+     FFdd processes the Kanji character-set to input/output as
      "EUC-JP" or "Shift JIS" according to setting in compile.
      The the pathname including Kanji is displayed in considera-
      tion for the 2nd byte character in Kanji.  You can dynami-
@@ -3355,7 +3354,7 @@ AAUUTTHHOORR
      Takashi SHIRAI <shirai@unixusers.net>
      The original "FD" for MS-DOS was created and released by
      A.Idei <SDI00544@niftyserve.or.jp> for the first time, in
-     1989.  ffdd was created for UNIX from scratch following that
+     1989.  FFdd was created for UNIX from scratch following that
      implementation, in 1995.
 
 FFIILLEESS

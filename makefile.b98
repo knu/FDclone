@@ -4,14 +4,14 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.08d
+VERSION	= 2.08e
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
 MANSEC	= 1
 TOPDIR	= $(BUILD)$(PREFIX)
 BINDIR	= $(TOPDIR)\bin
-DATADIR	= $(TOPDIR)\share
+DATADIR	= $(TOPDIR)\share\fd
 MANDIR	= $(TOPDIR)\man\man$(MANSEC)
 CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 JMANDIR	= $(TOPDIR)\man\man$(MANSEC)
@@ -233,6 +233,7 @@ install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 		$(CHMOD) a+r-x $(BLDRC); \
 	fi
 	-if [ -f $(UNITBL) ]; then \
+		[ -d $(BINDIR) ] || mkdir $(BINDIR); \
 		$(INSTALL) $(UNITBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(UNITBL); \
 	fi
@@ -298,7 +299,7 @@ depend: $(SRC) kanji.h funcno.h
 	makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
-	rm -f Makefile.tmp.bak
+	-$(RM) Makefile.tmp.bak
 	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' Makefile.in.bak \
 		> Makefile.in
 	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it." \
@@ -308,7 +309,8 @@ depend: $(SRC) kanji.h funcno.h
 		-e 's\\.o\\_\_OBJ\_\_\g' \
 		-e 's\ *$$\\' \
 		-e '\: *$$\d' Makefile.tmp >> Makefile.in
-	rm -f Makefile.in.bak Makefile.tmp
+	-$(RM) Makefile.in.bak
+	-$(RM) Makefile.tmp
 
 
 ############################################################
@@ -408,11 +410,11 @@ shtar: $(SHSOURCES)
 	gzip -f $(TITLE)sh-$$VER.tar)
 
 lzh: $(SOURCES)
-	rm -f $(TITLE)$(VERSION).lzh
+	-$(RM) $(TITLE)$(VERSION).lzh
 	lha a $(TITLE)$(VERSION).lzh $(SOURCES)
 
 shar: $(SOURCES)
-	rm -f $(TITLE)$(VERSION).shar.[0-9][0-9]
+	-$(RM) $(TITLE)$(VERSION).shar.[0-9][0-9]
 	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
@@ -505,17 +507,26 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
 	gzip .\ipk.tar
 	mv .\ipk.tar.gz .\fd_$(VERSION)-1_arm.ipk
-	-rm -rf $(IPKWDIR) $(IPKTDIR)
+	-$(RM) -r $(IPKWDIR) $(IPKTDIR)
 
 clean:
-	-rm -f core *.obj
-	-rm -f funcno.h kanji.h
-	-rm -f kanjicnv$(EXE) expfunc$(EXE)
-	-rm -f mkfuncno$(EXE) mkunitbl$(EXE)
-	-rm -f fdsh$(EXE) fdbsh$(EXE)
-	-rm -f $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
-	-rm -f $(PROGRAM).eng $(PROGRAM).doc
-	-rm -f $(ARGS) $(UNITBL)
+	-$(RM) core
+	-$(RM) *.obj
+	-$(RM) funcno.h
+	-$(RM) kanji.h
+	-$(RM) kanjicnv$(EXE)
+	-$(RM) expfunc$(EXE)
+	-$(RM) mkfuncno$(EXE)
+	-$(RM) mkunitbl$(EXE)
+	-$(RM) fdsh$(EXE)
+	-$(RM) fdbsh$(EXE)
+	-$(RM) $(PROGRAM)$(EXE)
+	-$(RM) $(PROGRAM).$(MANSEC)
+	-$(RM) $(PROGRAM).$(MANSEC)c
+	-$(RM) $(PROGRAM).eng
+	-$(RM) $(PROGRAM).doc
+	-$(RM) $(ARGS)
+	-$(RM) $(UNITBL)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.obj: fd.h
@@ -529,24 +540,31 @@ printf.obj: machine.h config.h
 printf.obj: printf.h
 printf.obj: kctype.h
 termio.obj: machine.h config.h
-termio.obj: printf.h termio.h
+termio.obj: printf.h
+termio.obj: termio.h
 term.obj: machine.h config.h
-term.obj: printf.h
-term.obj: kctype.h
+term.obj: printf.h kctype.h
 term.obj: termio.h
 term.obj: term.h
 pathname.obj: machine.h config.h
-pathname.obj: printf.h kctype.h
+pathname.obj: printf.h
+pathname.obj: kctype.h
 pathname.obj: pathname.h
-system.obj: machine.h config.h printf.h kctype.h
+system.obj: machine.h config.h
+system.obj: printf.h
+system.obj: kctype.h
 system.obj: pathname.h
 system.obj: system.h termio.h
 system.obj: wait.h
-posixsh.obj: machine.h config.h printf.h kctype.h
+posixsh.obj: machine.h config.h
+posixsh.obj: printf.h
+posixsh.obj: kctype.h
 posixsh.obj: pathname.h
 posixsh.obj: system.h termio.h
 posixsh.obj: wait.h
-doscom.obj: machine.h config.h printf.h kctype.h
+doscom.obj: machine.h config.h
+doscom.obj: printf.h
+doscom.obj: kctype.h
 doscom.obj: pathname.h
 doscom.obj: system.h termio.h
 doscom.obj: wait.h
@@ -661,9 +679,9 @@ shell.obj: func.h
 shell.obj: dosdisk.h kanji.h system.h termio.h
 shell.obj: wait.h
 shell.obj: termemu.h
-kanji.obj: machine.h config.h
-kanji.obj: kctype.h pathname.h
-kanji.obj: term.h
+kanji.obj: machine.h
+kanji.obj: config.h
+kanji.obj: printf.h kctype.h
 input.obj: fd.h
 input.obj: machine.h config.h
 input.obj: types.h

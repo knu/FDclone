@@ -208,6 +208,7 @@ extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #ifdef	_USEDOSPATH
 extern int dospath __P_((char *, char *));
+extern char *gendospath __P_((char *, int, int));
 #endif
 #if	MSDOS && !defined (_NOUSELFN)
 extern int supportLFN __P_((char *));
@@ -442,8 +443,8 @@ int y;
 	return(y);
 }
 
-VOID help(mode)
-int mode;
+VOID help(arch)
+int arch;
 {
 	char buf[(KEYWID + 1 + 1) * 2 + 1];
 	int i, j, c, x, y, yy;
@@ -468,7 +469,7 @@ int mode;
 		Xlocate(x * (n_column / 2), yy + y);
 		if (x ^= 1) Xputterm(L_CLEAR);
 		else y++;
-		if (mode && !(funclist[i].status & FN_ARCHIVE)) continue;
+		if (arch && !(funclist[i].status & FN_ARCHIVE)) continue;
 
 		c = 0;
 		buf[0] = '\0';
@@ -770,10 +771,7 @@ mnt_t *mntbuf;
 	if (!mntbuf) mntbuf = &mnt;
 
 	mntbuf -> mnt_fsname = "MSDOS";
-	mntbuf -> mnt_dir[0] = dospath(path, NULL);
-	mntbuf -> mnt_dir[1] = ':';
-	mntbuf -> mnt_dir[2] = _SC_;
-	mntbuf -> mnt_dir[3] = '\0';
+	VOID_C gendospath(mntbuf -> mnt_dir, dospath(path, NULL), _SC_);
 # ifdef	_NOUSELFN
 	mntbuf -> mnt_type = MNTTYPE_PC;
 # else	/* !_NOUSELFN */

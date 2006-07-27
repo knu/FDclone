@@ -383,6 +383,21 @@ extern char *mesconv __P_((char *, char *));
 #define	NCVP_E \
 	meslist("漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
+#define	PAGR_E \
+	meslist("ファイルの閲覧に用いるプログラムを指定します.", \
+		"Define the program to view files.")
+#define	EDIT_E \
+	meslist("ファイルの編集に用いるプログラムを指定します.", \
+		"Define the program to edit files.")
+#define	SHEL_E \
+	meslist("コマンドの実行に用いるシェルプログラムを指定します.", \
+		"Define the shell program to execute commands.")
+#define	FCED_E \
+	meslist("組込みコマンド fc でファイルの編集に用いるプログラムを指定します.", \
+		"Define the program to edit files in fc the builtin command.")
+#define	CMSP_E \
+	meslist("バッチファイルの実行に用いるプログラムを指定します.", \
+		"Define the program to execute batch files.")
 
 #define	TENV_K	mesconv("内部変数", "Variables")
 #define	TBIND_K	mesconv("キー割当て", "Key bind")
@@ -423,6 +438,41 @@ extern char *mesconv __P_((char *, char *));
 #define	VBIOS_K	mesconv(" (BIOS 経由)", " (via BIOS)")
 #define	VCOL2_K	mesconv("背景色を黒に", "black background")
 #define	VCOL3_K	mesconv("表示色を黒に", "black foreground")
+#define	VBLK1_K	mesconv("黒", "BLK")
+#define	VRED1_K	mesconv("赤", "RED")
+#define	VGRN1_K	mesconv("緑", "GRN")
+#define	VYEL1_K	mesconv("黄", "YEL")
+#define	VBLU1_K	mesconv("青", "BLU")
+#define	VMAG1_K	mesconv("紫", "MAG")
+#define	VCYN1_K	mesconv("水", "CYN")
+#define	VWHI1_K	mesconv("白", "WHI")
+#define	VFOR1_K	mesconv("文字", "fore")
+#define	VBAK1_K	mesconv("背景", "back")
+#define	VCREG_K	mesconv("通常", "regular")
+#define	VCBAK_K	mesconv("背景", "back")
+#define	VCDIR_K	mesconv("DIR", "dir")
+#define	VCUWR_K	mesconv("書禁", "unwritable")
+#define	VCURD_K	mesconv("隠し", "hidden")
+#define	VCLNK_K	mesconv("リンク", "link")
+#if	MSDOS
+#define	VCSCK_K	mesconv("システム", "system")
+#define	VCFIF_K	mesconv("VOL", "label")
+#else
+#define	VCSCK_K	mesconv("ソケット", "socket")
+#define	VCFIF_K	mesconv("FIFO", "FIFO")
+#endif
+#define	VCBLD_K	mesconv("ブロック", "block")
+#define	VCCHD_K	mesconv("キャラ", "char")
+#define	VBLK2_K	mesconv("黒", "black")
+#define	VRED2_K	mesconv("赤", "red")
+#define	VGRN2_K	mesconv("緑", "green")
+#define	VYEL2_K	mesconv("黄色", "yellow")
+#define	VBLU2_K	mesconv("青", "blue")
+#define	VMAG2_K	mesconv("紫", "magenta")
+#define	VCYN2_K	mesconv("水色", "cyan")
+#define	VWHI2_K	mesconv("白", "white")
+#define	VFOR2_K	mesconv("文字既定色", "default(fore)")
+#define	VBAK2_K	mesconv("背景既定色", "default(back)")
 #define	VNONE_K	mesconv("なし", "none")
 #define	VNCNV_K	mesconv("変換しない", "NoConvert")
 #define	VENG_K	mesconv("英語", "English")
@@ -430,6 +480,10 @@ extern char *mesconv __P_((char *, char *));
 #define	VOJIS_K	mesconv("旧JIS", "OldJIS")
 #define	VUTF8_K	mesconv("汎用", "normal")
 #define	VUTFM_K	mesconv("Mac用", "forMac")
+#define	VKYCD_K	mesconv("内部変数 %s に設定するキーを押して下さい:", \
+			"Push the key which you set to the variable %s:")
+#define	VKYOK_K	mesconv("[%s]を内部変数 %s に設定してよろしいですか ?", \
+			"Do you set [%s] to the variable %s ?")
 #define	VUSET_K	mesconv("(定義削除)", "(unset)")
 #define	VDEF_K	mesconv(" (既定値)", " (default)")
 #define	VUDEF_K	mesconv("(未定義)", "(undefined)")

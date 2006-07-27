@@ -233,20 +233,14 @@ va_dcl
 {
 	va_list args;
 	char *buf;
-	int n, len;
+	int n;
 
 	VA_START(args, fmt);
 	n = vasprintf2(&buf, fmt, args);
 	va_end(args);
 	if (n < 0) error("malloc()");
 
-	if (!emupid) VOID_C cputs2(buf);
-	else {
-		sendword(emufd, TE_CPUTS2);
-		len = strlen(buf);
-		sendword(emufd, len);
-		sendbuf(emufd, buf, len);
-	}
+	Xcputs2(buf);
 	free(buf);
 
 	return(n);
@@ -369,7 +363,7 @@ VOID changekcode(VOID_A)
 
 VOID changeinkcode(VOID_A)
 {
-	ptylist[win].incode = ptyinkcode;
+	ptylist[win].incode = (u_char)ptyinkcode;
 	if (!emupid) return;
 
 	sendword(emufd, TE_CHANGEINKCODE);
@@ -379,7 +373,7 @@ VOID changeinkcode(VOID_A)
 
 VOID changeoutkcode(VOID_A)
 {
-	ptylist[win].outcode = ptyoutkcode;
+	ptylist[win].outcode = (u_char)ptyoutkcode;
 	if (!emupid) return;
 
 	sendword(emufd, TE_CHANGEOUTKCODE);
@@ -672,7 +666,6 @@ int w;
 			setenv2(cp, func1, n);
 			free(cp);
 			if (func1) free(func1);
-			evalenv();
 			break;
 		case TE_ADDFUNCTION:
 			if (recvvar(fd, &var) < 0) break;
@@ -693,21 +686,18 @@ int w;
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
 			if (putexportvar(cp, n) < 0) free(cp);
-			evalenv();
 			break;
 		case TE_PUTSHELLVAR:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
 			if (putshellvar(cp, n) < 0) free(cp);
-			evalenv();
 			break;
 		case TE_UNSET:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
 			VOID_C unset(cp, n);
-			evalenv();
 			free(cp);
 			break;
 		case TE_SETEXPORT:

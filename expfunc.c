@@ -4,11 +4,11 @@
  *	function expander for the obsolete /bin/sh
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <sys/types.h>
-#include "machine.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -24,16 +24,17 @@
 
 extern VOID exit __P_((int));
 
-static char *skipspace __P_((char *));
-static char *strndup2 __P_((char *, int));
-static char *isfunction __P_((char *));
-static int entryfunc __P_((char *));
-static char *checkhere __P_((char *));
-static int getargs __P_((char **, char *[]));
-static char *expargs __P_((char *, char *[]));
-static int searchfunc __P_((char *));
-static int evalline __P_((char *, char *[]));
-static char *getline __P_((FILE *));
+static char *NEAR skipspace __P_((char *));
+static char *NEAR strndup2 __P_((char *, int));
+static char *NEAR isfunction __P_((char *));
+static int NEAR entryfunc __P_((char *));
+static char *NEAR checkhere __P_((char *));
+static int NEAR getargs __P_((char **, char *[]));
+static char *NEAR expargs __P_((char *, char *[]));
+static int NEAR searchfunc __P_((char *));
+static int NEAR evalline __P_((char *, char *[]));
+static char *NEAR getline __P_((FILE *));
+int main __P_((int, char *[]));
 
 static int funcno = 0;
 static char *func[MAXFUNCNO];
@@ -41,7 +42,7 @@ static int funclen[MAXFUNCNO];
 static char *funcbody[MAXFUNCNO];
 
 
-static char *skipspace(s)
+static char *NEAR skipspace(s)
 char *s;
 {
 	while (*s == ' ' || *s == '\t') s++;
@@ -49,7 +50,7 @@ char *s;
 	return(s);
 }
 
-char *strndup2(s, n)
+static char *NEAR strndup2(s, n)
 char *s;
 int n;
 {
@@ -63,7 +64,7 @@ int n;
 	return(tmp);
 }
 
-static char *isfunction(line)
+static char *NEAR isfunction(line)
 char *line;
 {
 	char *cp;
@@ -92,7 +93,7 @@ char *line;
 	return(++cp);
 }
 
-static int entryfunc(line)
+static int NEAR entryfunc(line)
 char *line;
 {
 	char *cp;
@@ -136,7 +137,7 @@ char *line;
 	return(i);
 }
 
-static char *checkhere(line)
+static char *NEAR checkhere(line)
 char *line;
 {
 	char *cp;
@@ -160,9 +161,8 @@ char *line;
 	return(strndup2(cp, len));
 }
 
-static int getargs(linep, args)
-char **linep;
-char *args[];
+static int NEAR getargs(linep, args)
+char **linep, *args[];
 {
 	char *cp, *new, *line, *buf;
 	int i, n, len, quote, size;
@@ -254,9 +254,8 @@ char *args[];
 	return(i);
 }
 
-static char *expargs(line, args)
-char *line;
-char *args[];
+static char *NEAR expargs(line, args)
+char *line, *args[];
 {
 	char *cp, *buf, *tmp, *top;
 	int i, len, alen, vlen, rlen, quote;
@@ -304,7 +303,7 @@ char *args[];
 	return(buf);
 }
 
-static int searchfunc(s)
+static int NEAR searchfunc(s)
 char *s;
 {
 	int i, len;
@@ -318,9 +317,8 @@ char *s;
 	return(-1);
 }
 
-static int evalline(line, args)
-char *line;
-char *args[];
+static int NEAR evalline(line, args)
+char *line, *args[];
 {
 	char *cp, *newargs[MAXARGS];
 	int i, quote;
@@ -352,7 +350,7 @@ char *args[];
 	return(i);
 }
 
-static char *getline(fp)
+static char *NEAR getline(fp)
 FILE *fp;
 {
 	static char buf[MAXLINEBUF + 1];

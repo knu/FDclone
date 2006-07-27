@@ -132,11 +132,11 @@ UNKNOWNFS
 	詳細は 2. の項目を参照して下さい。
 
 NOFILEMACRO
-	cc(1) がマクロ __FILE__ を評価出来ません。
+	cc(1) がマクロ __FILE__ を評価できません。
 NOFUNCMACRO
-	cc(1) がマクロ __FUNCTION__ を評価出来ません。
+	cc(1) がマクロ __FUNCTION__ を評価できません。
 NOLINEMACRO
-	cc(1) がマクロ __LINE__ を評価出来ません。
+	cc(1) がマクロ __LINE__ を評価できません。
 FORCEDSTDC
 	__STDC__ がプリデファインされていないけれども、プロ
 	トタイプ宣言等に ANSI 標準 C の書式を要求する仕様に
@@ -904,6 +904,7 @@ NWS-3400:
 	_NOEDITMODE	編集モードの代替キー機能が使用不能
 	_NOKANJICONV	漢字コードが動的に変更不能
 	_NOKANJIFCONV	filename の漢字コードが動的に変更不能
+	_NOUNICODE	UNICODE の対応不能
 	_NOENGMES	英語メッセージが表示不能
 	_NOJPNMES	日本語メッセージが表示不能
 	_NOCOLOR	カラー表示機能が使用不能

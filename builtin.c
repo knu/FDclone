@@ -63,7 +63,7 @@ extern int win_y;
 extern int hideclock;
 #endif
 extern int inruncom;
-#ifndef	_NOKANJICONV
+#ifdef	_USEUNICODE
 extern int unicodebuffer;
 #endif
 #ifndef	_NOPTY
@@ -2517,7 +2517,7 @@ FILE *fp;
 	sum[3] = (u_long)0x10325476;
 
 	n = b = 0;
-	memset(x, 0, sizeof(x));
+	memset((char *)x, 0, sizeof(x));
 	while ((c = Xfgetc(fpin)) != EOF) {
 		if (cl <= (u_long)0xffffffff - (u_long)BITSPERBYTE)
 			cl += (u_long)BITSPERBYTE;
@@ -2533,7 +2533,7 @@ FILE *fp;
 			if (++n >= MD5_BLOCKS) {
 				n = 0;
 				calcmd5(sum, x);
-				memset(x, 0, sizeof(x));
+				memset((char *)x, 0, sizeof(x));
 			}
 		}
 	}
@@ -2542,7 +2542,7 @@ FILE *fp;
 	x[n] |= 1 << (b + BITSPERBYTE - 1);
 	if (n >= 14) {
 		calcmd5(sum, x);
-		memset(x, 0, sizeof(x));
+		memset((char *)x, 0, sizeof(x));
 	}
 	x[14] = cl;
 	x[15] = ch;
@@ -2671,8 +2671,9 @@ char *argv[];
 		return(-1);
 	}
 
-	if (in == M_UTF8 || out == M_UTF8) readunitable(1);
-	else if (in == UTF8 || out == UTF8) readunitable(0);
+#  ifdef	_USEUNICODE
+	if ((i = (in > out) ? in : out) >= UTF8) readunitable(i - UTF8);
+#  endif
 	while ((cp = fgets2(fpin, 0))) {
 		if (in != DEFCODE) {
 			tmp = newkanjiconv(cp, in, DEFCODE, L_OUTPUT);
@@ -2686,7 +2687,9 @@ char *argv[];
 		free(tmp);
 	}
 
+#  ifdef	_USEUNICODE
 	if (!unicodebuffer) discardunitable();
+#  endif
 	if (fpin != stdin) Xfclose(fpin);
 	else clearerr(fpin);
 	if (fpout != stdout) Xfclose(fpout);
@@ -3208,7 +3211,6 @@ char *argv[];
 	setenv2(argv[1], cp, 1);
 	if (cp) free(cp);
 	adjustpath();
-	evalenv();
 
 	return(0);
 }
@@ -3379,7 +3381,6 @@ int flags;
 		i = argc;
 		if ((cp = getenvval(&i, argv)) != (char *)-1 && i == argc) {
 			if (setenv2(argv[0], cp, 0) < 0) error(argv[0]);
-			evalenv();
 			if (cp) free(cp);
 			n = RET_SUCCESS;
 		}

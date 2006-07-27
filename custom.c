@@ -68,7 +68,7 @@ extern char *promptstr;
 #ifndef	_NOORIGSHELL
 extern char *promptstr2;
 #endif
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+#ifdef	_USEUNICODE
 extern int unicodebuffer;
 #endif
 #ifndef	_NOKANJIFCONV
@@ -115,7 +115,7 @@ extern int wheader;
 extern char fullpath[];
 extern char *origpath;
 extern char *progpath;
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+#ifdef	_USEUNICODE
 extern char *unitblpath;
 #endif
 #ifndef	_NOCUSTOMIZE
@@ -162,6 +162,9 @@ extern int inruncom;
 			(selectstr(n, m, x, s, v) != K_CR)
 #define	MAXSAVEMENU	5
 #define	MAXTNAMLEN	8
+#define	DEFPALETTE	"8962435188"
+#define	MAXPALETTE	10
+#define	MAXCOLOR	10
 #ifndef	O_BINARY
 #define	O_BINARY	0
 #endif
@@ -216,20 +219,23 @@ typedef struct _envtable {
 #define	T_DDRV		T_BOOL
 #endif
 #define	T_COLOR		12
-#define	T_EDIT		13
-#define	T_KIN		14
-#define	T_KOUT		15
-#define	T_KNAM		16
-#define	T_KTERM		17
-#define	T_OCTAL		18
-#define	T_KEYCODE	19
+#define	T_COLORPAL	13
+#define	T_EDIT		14
+#define	T_KIN		15
+#define	T_KOUT		16
+#define	T_KNAM		17
+#define	T_KTERM		18
+#define	T_KPATHS	19
+#define	T_OCTAL		20
+#define	T_KEYCODE	21
+#define	T_NOVAR		22
 
 #ifndef	_NOKANJIFCONV
 typedef struct _pathtable {
 	VOID_P path;
 	char *last;
-	int lang;
-	int flags;
+	u_char lang;
+	u_char flags;
 } pathtable;
 
 #define	P_ISARRAY	0001
@@ -239,7 +245,9 @@ typedef struct _pathtable {
 #if	FD >= 2
 static int NEAR atooctal __P_((char *));
 #endif
+static int NEAR getenvid __P_((char *, int, int *));
 static VOID NEAR _evalenv __P_((int));
+static VOID NEAR evalenvone __P_((int));
 #ifndef	_NOKANJIFCONV
 static char *NEAR pathlang __P_((pathtable *, int));
 static VOID NEAR pathconv __P_((pathtable *));
@@ -269,6 +277,7 @@ static char *NEAR ascoctal __P_((int, char *));
 static VOID NEAR putargs __P_((char *, int, char *[], FILE *));
 # endif
 static char *NEAR int2str __P_((char *, int));
+static int NEAR inputkeycode __P_((char *));
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
 static int NEAR dumpenv __P_((char *, FILE *));
@@ -341,7 +350,7 @@ static int NEAR editcust __P_((VOID_A));
 int custno = -1;
 #endif
 
-static CONST envtable envlist[] = {
+static envtable envlist[] = {
 	{"FD_SORTTYPE", &sorttype, DEFVAL(SORTTYPE), STTP_E, T_SORT},
 	{"FD_DISPLAYMODE", &displaymode, DEFVAL(DISPLAYMODE), DPMD_E, T_DISP},
 #ifndef	_NOTREE
@@ -385,7 +394,8 @@ static CONST envtable envlist[] = {
 #ifndef	_NOCOLOR
 	{"FD_ANSICOLOR", &ansicolor, DEFVAL(ANSICOLOR), ACOL_E, T_COLOR},
 # if	FD >= 2
-	{"FD_ANSIPALETTE", &ansipalette, DEFVAL(ANSIPALETTE), APAL_E, T_CHARP},
+	{"FD_ANSIPALETTE", &ansipalette,
+		DEFVAL(ANSIPALETTE), APAL_E, T_COLORPAL},
 # endif
 #endif	/* !_NOCOLOR */
 #ifndef	_NOEDITMODE
@@ -433,7 +443,7 @@ static CONST envtable envlist[] = {
 #if	FD >= 2
 	{"FD_THRUARGS", &thruargs, DEFVAL(THRUARGS), THARG_E, T_BOOL},
 #endif
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+#ifdef	_USEUNICODE
 	{"FD_UNICODEBUFFER", &unicodebuffer,
 		DEFVAL(UNICODEBUFFER), UNBF_E, T_BOOL},
 #endif
@@ -453,21 +463,32 @@ static CONST envtable envlist[] = {
 #endif
 #ifndef	_NOKANJIFCONV
 	{"FD_FNAMEKCODE", &fnamekcode, DEFVAL(NOCNV), FNKC_E, T_KNAM},
-	{"FD_SJISPATH", &sjispath, DEFVAL(SJISPATH), SJSP_E, T_PATHS},
-	{"FD_EUCPATH", &eucpath, DEFVAL(EUCPATH), EUCP_E, T_PATHS},
-	{"FD_JISPATH", &jis7path, DEFVAL(JISPATH), JISP_E, T_PATHS},
-	{"FD_JIS8PATH", &jis8path, DEFVAL(JIS8PATH), JS8P_E, T_PATHS},
-	{"FD_JUNETPATH", &junetpath, DEFVAL(JUNETPATH), JNTP_E, T_PATHS},
-	{"FD_OJISPATH", &ojis7path, DEFVAL(OJISPATH), OJSP_E, T_PATHS},
-	{"FD_OJIS8PATH", &ojis8path, DEFVAL(OJIS8PATH), OJ8P_E, T_PATHS},
-	{"FD_OJUNETPATH", &ojunetpath, DEFVAL(OJUNETPATH), OJNP_E, T_PATHS},
-	{"FD_HEXPATH", &hexpath, DEFVAL(HEXPATH), HEXP_E, T_PATHS},
-	{"FD_CAPPATH", &cappath, DEFVAL(CAPPATH), CAPP_E, T_PATHS},
-	{"FD_UTF8PATH", &utf8path, DEFVAL(UTF8PATH), UTF8P_E, T_PATHS},
+	{"FD_SJISPATH", &sjispath, DEFVAL(SJISPATH), SJSP_E, T_KPATHS},
+	{"FD_EUCPATH", &eucpath, DEFVAL(EUCPATH), EUCP_E, T_KPATHS},
+	{"FD_JISPATH", &jis7path, DEFVAL(JISPATH), JISP_E, T_KPATHS},
+	{"FD_JIS8PATH", &jis8path, DEFVAL(JIS8PATH), JS8P_E, T_KPATHS},
+	{"FD_JUNETPATH", &junetpath, DEFVAL(JUNETPATH), JNTP_E, T_KPATHS},
+	{"FD_OJISPATH", &ojis7path, DEFVAL(OJISPATH), OJSP_E, T_KPATHS},
+	{"FD_OJIS8PATH", &ojis8path, DEFVAL(OJIS8PATH), OJ8P_E, T_KPATHS},
+	{"FD_OJUNETPATH", &ojunetpath, DEFVAL(OJUNETPATH), OJNP_E, T_KPATHS},
+	{"FD_HEXPATH", &hexpath, DEFVAL(HEXPATH), HEXP_E, T_KPATHS},
+	{"FD_CAPPATH", &cappath, DEFVAL(CAPPATH), CAPP_E, T_KPATHS},
+	{"FD_UTF8PATH", &utf8path, DEFVAL(UTF8PATH), UTF8P_E, T_KPATHS},
 	{"FD_UTF8MACPATH", &utf8macpath,
-		DEFVAL(UTF8MACPATH), UTF8MACP_E, T_PATHS},
-	{"FD_NOCONVPATH", &noconvpath, DEFVAL(NOCONVPATH), NCVP_E, T_PATHS},
+		DEFVAL(UTF8MACPATH), UTF8MACP_E, T_KPATHS},
+	{"FD_NOCONVPATH", &noconvpath, DEFVAL(NOCONVPATH), NCVP_E, T_KPATHS},
 #endif	/* !_NOKANJIFCONV */
+#ifndef	_NOCUSTOMIZE
+	{"FD_PAGER", NULL, DEFVAL(NULL), PAGR_E, T_NOVAR},
+	{"FD_EDITOR", NULL, DEFVAL(NULL), EDIT_E, T_NOVAR},
+	{"FD_SHELL", NULL, DEFVAL(NULL), SHEL_E, T_NOVAR},
+# ifndef	NOPOSIXUTIL
+	{"FD_FCEDIT", NULL, DEFVAL(NULL), FCED_E, T_NOVAR},
+# endif
+# if	MSDOS
+	{"FD_COMSPEC", NULL, DEFVAL(NULL), CMSP_E, T_NOVAR},
+# endif
+#endif	/* !_NOCUSTOMIZE */
 };
 #define	ENVLISTSIZ	arraysize(envlist)
 
@@ -476,7 +497,9 @@ static pathtable pathlist[] = {
 	{fullpath, NULL, NOCNV, P_ISARRAY},
 	{&origpath, NULL, NOCNV, P_STABLE},
 	{&progpath, NULL, NOCNV, P_STABLE},
+# ifdef	_USEUNICODE
 	{&unitblpath, NULL, NOCNV, P_STABLE},
+# endif
 };
 #define	PATHLISTSIZ	arraysize(pathlist)
 # ifndef	_NOSPLITWIN
@@ -526,6 +549,43 @@ static devinfo *tmpfdtype = NULL;
 #endif	/* !_NOCUSTOMIZE */
 
 
+VOID initenv(VOID_A)
+{
+#if	!MSDOS
+	char *cp;
+	int w;
+#endif
+	int i;
+
+#if	!MSDOS
+	if ((w = sizeof(char *) - sizeof(int)) > 0) {
+		i = 0x5a;
+		cp = (char *)(&i);
+		if (*cp == 0x5a) w = 0;
+	}
+#endif
+
+	for (i = 0; i < ENVLISTSIZ; i++) {
+#if	!MSDOS
+		if (w > 0) switch (env_type(i)) {
+			case T_CHARP:
+			case T_PATH:
+			case T_PATHS:
+			case T_COLORPAL:
+			case T_EDIT:
+			case T_KPATHS:
+			case T_NOVAR:
+				break;
+			default:
+				cp = (char *)(&(envlist[i].def.num));
+				memmove(cp, &(cp[w]), sizeof(int));
+				break;
+		}
+#endif	/* !MSDOS */
+		_evalenv(i);
+	}
+}
+
 #if	FD >= 2
 static int NEAR atooctal(s)
 char *s;
@@ -538,6 +598,27 @@ char *s;
 	return(n);
 }
 #endif	/* FD >= 2 */
+
+static int NEAR getenvid(s, len, envp)
+char *s;
+int len, *envp;
+{
+	int i;
+
+	if (len < 0) len = strlen(s);
+	for (i = 0; i < ENVLISTSIZ; i++) {
+		if (!strnenvcmp(s, fdenv_str(i), len) && !fdenv_str(i)[len]) {
+			if (envp) *envp = 0;
+			return(i);
+		}
+		if (!strnenvcmp(s, env_str(i), len) && !env_str(i)[len]) {
+			if (envp) *envp = 1;
+			return(i);
+		}
+	}
+
+	return(-1);
+}
 
 static VOID NEAR _evalenv(no)
 int no;
@@ -572,6 +653,7 @@ int no;
 			*((char **)(envlist[no].var)) = cp;
 			break;
 		case T_PATHS:
+		case T_KPATHS:
 			if (!cp) cp = def_str(no);
 			cp = evalpaths(cp, ':');
 			if (*((char **)(envlist[no].var)))
@@ -583,6 +665,7 @@ int no;
 			|| ((n % 100) & ~15) || ((n % 100) & 7) > MAXSORTTYPE)
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
+			sorton = n % 100;
 			break;
 		case T_DISP:
 #ifdef	HAVEFLAGS
@@ -658,6 +741,10 @@ int no;
 		case T_KEYCODE:
 			if ((n = getkeycode(cp, 0)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
+			break;
+#endif
+#ifndef	_NOCUSTOMIZE
+		case T_NOVAR:
 			break;
 #endif
 		default:
@@ -787,23 +874,48 @@ static VOID NEAR evalheader(VOID_A)
 #endif
 }
 
-VOID evalenv(VOID_A)
+static VOID NEAR evalenvone(n)
+int n;
+{
+#ifndef	_NOKANJIFCONV
+	int type;
+#endif
+
+#ifndef	_NOKANJIFCONV
+	type = env_type(n);
+	if (type < T_KIN || type > T_KPATHS) type = -1;
+	if (type >= 0) savepathlang();
+#endif
+	_evalenv(n);
+#ifndef	_NOKANJIFCONV
+	if (type >= 0) evalpathlang();
+#endif
+}
+
+VOID evalenv(s, len)
+char *s;
+int len;
 {
 	int i, duperrno;
 
 	duperrno = errno;
+
+	if (s) {
+		if ((i = getenvid(s, len, NULL)) < 0) return;
+		evalenvone(i);
+	}
+	else {
 #ifndef	_NOKANJIFCONV
-	savepathlang();
+		savepathlang();
 #endif
-	for (i = 0; i < ENVLISTSIZ; i++) _evalenv(i);
+		for (i = 0; i < ENVLISTSIZ; i++) _evalenv(i);
 #ifndef	_NOKANJIFCONV
-	evalpathlang();
+		evalpathlang();
 #endif
+	}
+
 	evalheader();
 	errno = duperrno;
-#if	!MSDOS && !defined (_NOORIGSHELL)
-	if (autosavetty) savestdio(0);
-#endif
 }
 
 #ifdef	DEBUG
@@ -820,6 +932,7 @@ VOID freeenvpath(VOID_A)
 	for (i = 0; i < ENVLISTSIZ; i++) switch (env_type(i)) {
 		case T_PATH:
 		case T_PATHS:
+		case T_KPATHS:
 			if (*((char **)(envlist[i].var)))
 				free(*((char **)(envlist[i].var)));
 			*((char **)(envlist[i].var)) = NULL;
@@ -1200,6 +1313,29 @@ int n;
 	return(buf);
 }
 
+static int NEAR inputkeycode(s)
+char *s;
+{
+	int c, dupwin_x, dupwin_y;
+
+	dupwin_x = win_x;
+	dupwin_y = win_y;
+	Xlocate(0, L_INFO);
+	Xputterm(L_CLEAR);
+	win_x = custputs(s);
+	win_y = L_INFO;
+	Xlocate(win_x, win_y);
+	Xtflush();
+	keyflush();
+	Xgetkey(-1, 0);
+	c = Xgetkey(1, 0);
+	Xgetkey(-1, 0);
+	win_x = dupwin_x;
+	win_y = dupwin_y;
+
+	return(c);
+}
+
 static int NEAR dispenv(no)
 int no;
 {
@@ -1299,6 +1435,30 @@ int no;
 			str[3] = VCOL3_K;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
+#  if	FD >= 2
+		case T_COLORPAL:
+			str[0] = VBLK1_K;
+			str[1] = VRED1_K;
+			str[2] = VGRN1_K;
+			str[3] = VYEL1_K;
+			str[4] = VBLU1_K;
+			str[5] = VMAG1_K;
+			str[6] = VCYN1_K;
+			str[7] = VWHI1_K;
+			str[8] = VFOR1_K;
+			str[9] = VBAK1_K;
+			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
+			new = NULL;
+			for (n = 0; n < MAXPALETTE; n++) {
+				if (n) new = strcatalloc(new, "/");
+				p = (isdigit2(cp[n])) ? cp[n] : DEFPALETTE[n];
+				p -= '0';
+				new = strcatalloc(new, str[p]);
+				if (!cp[n]) cp--;
+			}
+			cp = new;
+			break;
+#  endif	/* FD >= 2*/
 # endif	/* !_NOCOLOR */
 # ifndef	_NOEDITMODE
 		case T_EDIT:
@@ -1407,6 +1567,7 @@ int no;
 			break;
 		case T_PATH:
 		case T_PATHS:
+		case T_KPATHS:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			new = inputcustenvstr(env, 1, cp, HST_PATH);
 			if (new == (char *)-1) return(0);
@@ -1553,6 +1714,57 @@ int no;
 			if (noselect(&n, 5, 0, str, val)) return(0);
 			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			break;
+#  if	FD >= 2
+		case T_COLORPAL:
+			n = 0;
+			str[0] = VCREG_K;
+			str[1] = VCBAK_K;
+			str[2] = VCDIR_K;
+			str[3] = VCUWR_K;
+			str[4] = VCURD_K;
+			str[5] = VCLNK_K;
+			str[6] = VCSCK_K;
+			str[7] = VCFIF_K;
+			str[8] = VCBLD_K;
+			str[9] = VCCHD_K;
+			str[MAXPALETTE] = VUSET_K;
+			val[MAXPALETTE] = -1;
+			envcaption(env);
+			if (noselect(&n, MAXPALETTE + 1, 0, str, val))
+				return(0);
+			if (n < 0) {
+				cp = NULL;
+				break;
+			}
+			cp = *((char **)(envlist[no].var));
+			p = (cp) ? strlen(cp) : 0;
+			if (p < MAXPALETTE) p = MAXPALETTE;
+			new = malloc2(p + 1);
+			p = 0;
+			if (cp) for (; cp[p]; p++) new[p] = cp[p];
+			for (; p < MAXPALETTE; p++) new[p] = DEFPALETTE[p];
+			new[p] = '\0';
+			p = (isdigit2(new[n])) ? new[n] : DEFPALETTE[n];
+			p -= '0';
+			str[0] = VBLK2_K;
+			str[1] = VRED2_K;
+			str[2] = VGRN2_K;
+			str[3] = VYEL2_K;
+			str[4] = VBLU2_K;
+			str[5] = VMAG2_K;
+			str[6] = VCYN2_K;
+			str[7] = VWHI2_K;
+			str[8] = VFOR2_K;
+			str[9] = VBAK2_K;
+			envcaption(env);
+			if (noselect(&p, MAXCOLOR, 0, str, val)) {
+				free(new);
+				return(0);
+			}
+			new[n] = p + '0';
+			cp = new;
+			break;
+#  endif	/* FD >= 2*/
 # endif	/* !_NOCOLOR */
 # ifndef	_NOEDITMODE
 		case T_EDIT:
@@ -1606,9 +1818,11 @@ int no;
 				if (val[n] < 0 || (kanjiiomode[val[n]] & p))
 					continue;
 				tmp--;
-				memmove(&(str[n]), &(str[n + 1]),
+				memmove((char *)&(str[n]),
+					(char *)&(str[n + 1]),
 					(tmp - n) * sizeof(char *));
-				memmove(&(val[n]), &(val[n + 1]),
+				memmove((char *)&(val[n]),
+					(char *)&(val[n + 1]),
 					(tmp - n) * sizeof(int));
 				n--;
 			}
@@ -1620,9 +1834,12 @@ int no;
 				case O_JIS8:
 				case O_JUNET:
 				case CAP:
-				case M_UTF8:
 					p = 1;
 					n--;
+					break;
+				case M_UTF8:
+					p = n - UTF8;
+					n = UTF8;
 					break;
 				default:
 					p = 0;
@@ -1642,14 +1859,17 @@ int no;
 				case JUNET:
 					str[0] = VNJIS_K;
 					str[1] = VOJIS_K;
+					tmp = 2;
 					break;
 				case HEX:
 					str[0] = "HEX";
 					str[1] = "CAP";
+					tmp = 2;
 					break;
 				case UTF8:
 					str[0] = VUTF8_K;
 					str[1] = VUTFM_K;
+					tmp = 2;
 					break;
 				default:
 					tmp = -1;
@@ -1658,7 +1878,7 @@ int no;
 			if (tmp >= 0) {
 				val[0] = 0;
 				val[1] = 1;
-				if (noselect(&p, 2, 64, str, val)) return(0);
+				if (noselect(&p, tmp, 64, str, val)) return(0);
 				n += p;
 			}
 #  endif	/* !_NOKANJICONV */
@@ -1700,15 +1920,16 @@ int no;
 # endif	/* FD >= 2 */
 # ifndef	_NOPTY
 		case T_KEYCODE:
-			if (!(cp = getenv2(fdenv_str(no)))) cp = nullstr;
-			new = inputcustenvstr(env, 0, cp, -1);
-			if (new == (char *)-1) return(0);
-			if (new && getkeycode(new, 0) < 0) {
-				warning(0, VALNG_K);
-				free(new);
-				return(0);
+			cp = asprintf3(VKYCD_K, env);
+			n = inputkeycode(cp);
+			free(cp);
+			if (n == K_ESC) {
+				if (!yesno(USENV_K, env)) return(0);
+				cp = NULL;
+				break;
 			}
-			cp = new;
+			cp = getkeysym(n, 0);
+			if (!yesno(VKYOK_K, cp, env_str(no))) return(0);
 			break;
 # endif	/* !_NOPTY */
 		default:
@@ -1723,13 +1944,8 @@ int no;
 	else n = setenv2(env, cp, 0);
 	if (new) free(new);
 	if (n < 0) warning(-1, env);
-#ifndef	_NOKANJIFCONV
-	savepathlang();
-#endif
-	_evalenv(no);
-#ifndef	_NOKANJIFCONV
-	evalpathlang();
-#endif
+
+	evalenvone(no);
 	evalheader();
 
 	return(1);
@@ -1783,38 +1999,24 @@ FILE *fp;
 	char *cp, *ident, **unset, **trash;
 	int i, n, ns, nu, nt, f;
 
-	for (n = 0; argv[n]; n++) {
-		for (i = 0; i < ENVLISTSIZ; i++) {
-			if (!strnenvcmp(argv[n], fdenv_str(i), len[n])) break;
-			if (!strnenvcmp(argv[n], env_str(i), len[n])) break;
-		}
-		if (i < ENVLISTSIZ) break;
-	}
+	for (n = 0; argv[n]; n++)
+		if (getenvid(argv[n], len[n], NULL) >= 0) break;
 	if (!argv[n]) return(0);
 
 	unset = trash = NULL;
 	ns = nu = nt = 0;
 	for (n = 0; argv[n]; n++) {
-#  ifdef	FAKEUNINIT
-		f = 0;	/* fake for -Wuninitialized */
-#  endif
-		for (i = 0; i < ENVLISTSIZ; i++) {
-			ident = fdenv_str(i);
-			if (!strnenvcmp(argv[n], ident, len[n])) {
-				f = 1;
-				break;
-			}
-			ident = env_str(i);
-			if (!strnenvcmp(argv[n], ident, len[n])) {
-				f = 2;
-				break;
-			}
-		}
-		if (i >= ENVLISTSIZ) {
+		if ((i = getenvid(argv[n], len[n], &f)) < 0) {
 			if (ns++) fputc(' ', fp);
 			fputs(argv[n], fp);
+			continue;
 		}
-		else if (flaglist && (flaglist[i] & f)) {
+
+		ident = fdenv_str(i);
+		if (f) ident += FDESIZ;
+		f = (1 << f);
+
+		if (flaglist && (flaglist[i] & f)) {
 			trash = (char **)realloc2(trash,
 				(nt + 1) * sizeof(char *));
 			trash[nt++] = argv[n];
@@ -1862,39 +2064,24 @@ FILE *fp;
 	if (strcommcmp(argv[0], BL_UNSET)) return(0);
 	if (argc < 2) return(-1);
 
-	for (n = 1; argv[n]; n++) {
-		for (i = 0; i < ENVLISTSIZ; i++) {
-			if (!strenvcmp(argv[n], fdenv_str(i))) break;
-			if (!strenvcmp(argv[n], env_str(i))) break;
-		}
-		if (i < ENVLISTSIZ) break;
-	}
-	if (!argv[n]) return(0);
+	for (n = 1; n < argc; n++) if (getenvid(argv[n], -1, NULL) >= 0) break;
+	if (n >= argc) return(0);
 
 	unset = trash = NULL;
 	ns = nu = nt = 0;
 	for (n = 1; n < argc; n++) {
-#  ifdef	FAKEUNINIT
-		f = 0;	/* fake for -Wuninitialized */
-#  endif
-		for (i = 0; i < ENVLISTSIZ; i++) {
-			ident = fdenv_str(i);
-			if (!strenvcmp(argv[n], ident)) {
-				f = 1;
-				break;
-			}
-			ident = env_str(i);
-			if (!strenvcmp(argv[n], ident)) {
-				f = 2;
-				break;
-			}
-		}
-		if (i >= ENVLISTSIZ) {
+		if ((i = getenvid(argv[n], -1, &f)) < 0) {
 			unset = (char **)realloc2(unset,
 				(nu + 1) * sizeof(char *));
 			unset[nu++] = argv[n];
+			continue;
 		}
-		else if (flaglist && (flaglist[i] & f)) {
+
+		ident = fdenv_str(i);
+		if (f) ident += FDESIZ;
+		f = (1 << f);
+
+		if (flaglist && (flaglist[i] & f)) {
 			trash = (char **)realloc2(trash,
 				(nt + 1) * sizeof(char *));
 			trash[nt++] = ident;
@@ -2034,7 +2221,7 @@ int no;
 {
 	bindtable bind;
 	char *cp, *str, *buf, *func1, *func2;
-	int i, n1, n2, key, dupwin_x, dupwin_y;
+	int i, n1, n2, key;
 
 	if ((key = bindlist[no].key) < 0) {
 		if (no >= MAXBINDTABLE - 1) {
@@ -2042,21 +2229,7 @@ int no;
 			return(0);
 		}
 
-		dupwin_x = win_x;
-		dupwin_y = win_y;
-		Xlocate(0, L_INFO);
-		Xputterm(L_CLEAR);
-		win_x = custputs(BINDK_K);
-		win_y = L_INFO;
-		Xlocate(win_x, win_y);
-		Xtflush();
-		keyflush();
-		Xgetkey(-1, 0);
-		key = Xgetkey(1, 0);
-		Xgetkey(-1, 0);
-		win_x = dupwin_x;
-		win_y = dupwin_y;
-
+		key = inputkeycode(BINDK_K);
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (key == (int)(bindlist[i].key)) break;
 		if (bindlist[i].key < 0)
@@ -2587,7 +2760,7 @@ launchtable *list;
 	putsep();
 	fillline(yy + y++, n_column);
 	nf = ni = ne = 0;
-	if (list -> format) for(; y < FILEPERROW - 1; y++) {
+	if (list -> format) for (; y < FILEPERROW - 1; y++) {
 		if (nf >= 0) {
 			if (!(list -> format[nf])) {
 				nf = -1;
@@ -3411,9 +3584,7 @@ int no;
 					break;
 			if (fdtype[i].name) continue;
 #  endif
-			sbuf[n][0] = dev.drive + 'A';
-			sbuf[n][1] = ':';
-			sbuf[n][2] = '\0';
+			VOID_C gendospath(sbuf[n], dev.drive + 'A', '\0');
 			str[n] = sbuf[n];
 			val[n++] = dev.drive + 'A';
 		}
@@ -4113,9 +4284,7 @@ int no, y, isstandout;
 # ifdef	_USEDOSEMU
 		case 5:
 			if (fdtype[no].name) {
-				buf[0] = fdtype[no].drive;
-				buf[1] = ':';
-				buf[2] = '\0';
+				VOID_C gendospath(buf, fdtype[no].drive, '\0');
 				cp = buf;
 			}
 			break;

@@ -953,6 +953,7 @@ not implemented.
 	_NOEDITMODE	cannot use alternative key in edit mode
 	_NOKANJICONV	cannot change kanji code dynamically
 	_NOKANJIFCONV	cannot change filename kanji code dynamically
+	_NOUNICODE	cannot support UNICODE
 	_NOENGMES	cannot display English messages
 	_NOJPNMES	cannot display Japanese messages
 	_NOCOLOR	cannot use color display
@@ -1077,7 +1078,7 @@ MS-DOS file system in advance, or you take care that the other
 users or processes may not access it, etc.
 
 
-10. Browse the Builtin Command
+10.Browse the Builtin Command
 
   The manual describes only specifications then this document
 will refer to an usage for browse the builtin command with

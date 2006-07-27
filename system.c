@@ -9,13 +9,10 @@
 #include "fd.h"
 #else	/* !FD */
 #define	K_EXTERN
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "machine.h"
-#include "printf.h"
-#include "kctype.h"
-#include "pathname.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -24,6 +21,10 @@
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
+
+#include "printf.h"
+#include "kctype.h"
+#include "pathname.h"
 
 #ifdef	PATHNOCASE
 #define	TMPPREFIX	"TM"
@@ -111,6 +112,7 @@ extern VOID saveorigenviron __P_((VOID_A));
 # endif
 extern VOID initfd __P_((char **));
 extern VOID prepareexitfd __P_((int));
+extern int savestdio __P_((int));
 extern int checkbuiltin __P_((char *));
 extern int checkinternal __P_((char *));
 extern int execbuiltin __P_((int, int, char *[]));
@@ -119,7 +121,7 @@ extern int execinternal __P_((int, int, char *[]));
 extern int completebuiltin __P_((char *, int, int, char ***));
 extern int completeinternal __P_((char *, int, int, char ***));
 # endif
-extern VOID evalenv __P_((VOID_A));
+extern VOID evalenv __P_((char *, int));
 extern int underhome __P_((char *));
 extern int replaceargs __P_((int *, char ***, char **, int));
 extern int replacearg __P_((char **));
@@ -156,7 +158,7 @@ extern int parentfd;
 # endif
 #else	/* !FD */
 # ifdef	__TURBOC__
-extern unsigned _stklen = 0x8000;
+extern u_int _stklen = 0x8000;
 # endif
 # if	MSDOS
 # define	deftmpdir	_SS_
@@ -295,6 +297,9 @@ int Xmkdir __P_((char *, int));
 #ifndef	UL_SETFSIZE
 #define	UL_SETFSIZE	2
 #endif
+#ifndef	EPERM
+#define	EPERM		EACCES
+#endif
 
 #if	!defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
 #define	ENOTEMPTY	ENFSNOTEMPTY
@@ -408,6 +413,7 @@ extern int setcurdrv __P_((int, int));
 extern int chdir2 __P_((char *));
 extern int chdir3 __P_((char *, int));
 extern int setenv2 __P_((char *, char *, int));
+extern char *getenv2 __P_((char *));
 # ifdef	USESIGACTION
 extern sigcst_t signal2 __P_((int, sigcst_t));
 # else
@@ -610,6 +616,7 @@ static int NEAR redirect __P_((syntaxtree *, int, char *, int));
 static VOID NEAR checkmail __P_((int));
 #endif
 static int NEAR searchvar __P_((char **, char *, int, int));
+static char *NEAR searchvar2 __P_((int, char **, char *, int));
 static char **NEAR expandvar __P_((char **, char *, int));
 static char *NEAR getvar __P_((char **, char *, int));
 static char **NEAR putvar __P_((char **, char *, int));
@@ -1228,7 +1235,12 @@ static char *primalvar[] = {
 #define	PRIMALVARSIZ	arraysize(primalvar)
 
 static char *restrictvar[] = {
-	"PATH", "SHELL",
+	"PATH",
+#ifdef	FD
+	"FD_SHELL",
+#else
+	"SHELL",
+#endif
 #ifndef	MINIMUMSHELL
 	"ENV",
 #endif
@@ -1237,16 +1249,19 @@ static char *restrictvar[] = {
 
 #if	MSDOS && !defined (BSPATHDELIM)
 static CONST char *adjustvar[] = {
-	"PATH", "HOME", "SHELL", "COMSPEC",
+	"PATH", "HOME",
 # ifndef	MINIMUMSHELL
 	"ENV",
 # endif
 # ifdef	FD
 	"PWD",
-	"FD_COMSPEC", "FD_TMPDIR",
-	"FD_PAGER", "FD_EDITOR",
+	"FD_TMPDIR",
+	"FD_PAGER", "FD_EDITOR", "FD_SHELL",
 #  ifndef	NOPOSIXUTIL
 	"FD_FCEDIT",
+#  endif
+#  if	MSDOS
+	"FD_COMSPEC",
 #  endif
 #  ifndef	_NOKANJIFCONV
 	"FD_HISTFILE", "FD_RRPATH", "FD_PRECEDEPATH",
@@ -1256,7 +1271,12 @@ static CONST char *adjustvar[] = {
 	"FD_HEXPATH", "FD_CAPPATH", "FD_UTF8PATH", "FD_UTF8MACPATH",
 	"FD_NOCONVPATH",
 #  endif
-# endif	/* FD */
+# else	/* !FD */
+	"SHELL",
+#  if	MSDOS
+	"COMSPEC",
+#  endif
+# endif	/* !FD */
 };
 #define	ADJUSTVARSIZ	arraysize(adjustvar)
 #endif	/* MSDOS && !BSPATHDELIM */
@@ -4256,6 +4276,29 @@ int len, c;
 	return(-1);
 }
 
+static char *NEAR searchvar2(max, var, ident, len)
+int max;
+char **var, *ident;
+int len;
+{
+	int i;
+
+	if (!var) return(NULL);
+	for (i = 0; i < max; i++) {
+		if (!var[i]) continue;
+		if (!strnenvcmp(ident, var[i], len) && !var[i][len])
+			return(var[i]);
+#ifdef	FD
+		if (!strnenvcmp(var[i], FDENV, FDESIZ)
+		&& !strnenvcmp(ident, &(var[i][FDESIZ]), len)
+		&& !var[i][FDESIZ + len])
+			return(&(var[i][FDESIZ]));
+#endif
+	}
+
+	return(NULL);
+}
+
 static char **NEAR expandvar(var, ident, len)
 char **var, *ident;
 int len;
@@ -4352,12 +4395,11 @@ static int NEAR checkprimal(s, len)
 char *s;
 int len;
 {
-	int i;
+	char *cp;
 
-	for (i = 0; i < PRIMALVARSIZ; i++)
-	if (primalvar[i]
-	&& !strnenvcmp(s, primalvar[i], len) && !primalvar[i][len]) {
-		execerror(primalvar[i], ER_CANNOTUNSET, 0);
+	if ((cp = searchvar2(PRIMALVARSIZ, primalvar, s, len))) {
+		execerror(cp, ER_CANNOTUNSET, 0);
+		errno = EPERM;
 		return(-1);
 	}
 
@@ -4368,13 +4410,13 @@ static int NEAR checkrestrict(s, len)
 char *s;
 int len;
 {
-	int i;
+	char *cp;
 
 	if (!restricted) return(0);
 
-	for (i = 0; i < RESTRICTVARSIZ; i++)
-	if (!strnenvcmp(s, restrictvar[i], len) && !restrictvar[i][len]) {
-		execerror(restrictvar[i], ER_RESTRICTED, 0);
+	if ((cp = searchvar2(RESTRICTVARSIZ, restrictvar, s, len))) {
+		execerror(cp, ER_RESTRICTED, 0);
+		errno = EPERM;
 		return(-1);
 	}
 
@@ -4389,6 +4431,7 @@ int len;
 
 	if ((i = searchvar(ronlylist, s, len, '\0')) >= 0) {
 		execerror(ronlylist[i], ER_ISREADONLY, 0);
+		errno = EACCES;
 		return(-1);
 	}
 
@@ -4449,6 +4492,7 @@ int len;
 			execerror(cp, ER_INVALTERMFD, 0);
 			copykeyseq(keymap);
 			freekeyseq(keymap);
+			errno = EINVAL;
 			return(-1);
 		}
 		freekeyseq(keymap);
@@ -4466,6 +4510,9 @@ int len;
 #endif
 
 	shellvar = putvar(shellvar, s, len);
+#ifdef	FD
+	evalenv(s, len);
+#endif
 
 	return(0);
 }
@@ -4559,6 +4606,9 @@ int len;
 			exportlist[i] = exportlist[i + 1];
 		exportlist[i] = NULL;
 	}
+#ifdef	FD
+	evalenv(ident, len);
+#endif
 #if	defined (FD) && !defined (_NOPTY)
 	sendparent(TE_UNSET, ident, len);
 #endif
@@ -6279,7 +6329,11 @@ char **pathp, **argv;
 	char *com;
 	int i;
 
+# ifdef	FD
+	if (!(com = getenv2("FD_COMSPEC")) && !(com = getenv2("FD_SHELL")))
+# else
 	if (!(com = getconstvar("COMSPEC")) && !(com = getconstvar("SHELL")))
+# endif
 # ifdef	BSPATHDELIM
 		com = "\\COMMAND.COM";
 # else
@@ -8462,7 +8516,7 @@ syntaxtree *trp;
 static int NEAR dotimes(trp)
 syntaxtree *trp;
 {
-	int usrtime, systime;
+	time_t usrtime, systime;
 #ifdef	USEGETRUSAGE
 	struct rusage ru;
 
@@ -8481,11 +8535,12 @@ syntaxtree *trp;
 	systime = buf.tms_cstime / clk;
 	if (buf.tms_cstime % clk > clk / 2) systime++;
 # else
-	usrtime = systime = 0;
+	usrtime = systime = (time_t)0;
 # endif
 #endif	/* !USEGETRUSAGE */
 	fprintf2(stdout, "%dm%ds %dm%ds",
-		usrtime / 60, usrtime % 60, systime / 60, systime % 60);
+		(int)(usrtime / 60), (int)(usrtime % 60),
+		(int)(systime / 60), (int)(systime % 60));
 	fputnl(stdout);
 
 	return(RET_SUCCESS);
@@ -9899,8 +9954,8 @@ int *contp, bg;
 	comm -> argc = argc;
 	freevar(comm -> argv);
 	comm -> argv = argv;
-#ifdef	FD
-	evalenv();
+#if	!MSDOS && defined (FD)
+	if (autosavetty) savestdio(0);
 #endif
 
 	return(ret);
@@ -10540,7 +10595,6 @@ int verbose;
 		restricted = duprestricted;
 #ifdef	FD
 		inruncom = 0;
-		evalenv();
 #endif
 	}
 	resetsignal(0);
@@ -10554,25 +10608,13 @@ static VOID NEAR adjustdelim(var)
 char **var;
 {
 	char *cp;
-	int i, j, len;
+	int i;
 
 	if (!var) return;
 	for (i = 0; var[i]; i++) {
 		if (!(cp = strchr(var[i], '='))) continue;
-		len = cp - var[i];
-		for (j = 0; j < ADJUSTVARSIZ; j++) {
-			if (strnenvcmp(var[i], adjustvar[j], len)
-			&& !adjustvar[j][len])
-				break;
-# ifdef	FD
-			if (strnenvcmp(adjustvar[j], FDENV, FDESIZ)
-			&& strnenvcmp(var[i], adjustvar[j] + FDESIZ, len)
-			&& !adjustvar[j][len + FDESIZ])
-				break;
-# endif
-		}
-		if (j >= ADJUSTVARSIZ) continue;
-		adjustpname(cp);
+		if (searchvar2(ADJUSTVARSIZ, adjustvar, var[i], cp - var[i]))
+			adjustpname(cp);
 	}
 }
 #endif	/* MSDOS && !BSPATHDELIM */
@@ -10665,7 +10707,6 @@ int verbose;
 #ifdef	FD
 	if (loginshell) execruncom(SH_RCFILE, verbose);
 	else execruncom(FD_RCFILE, verbose);
-	evalenv();
 # ifndef	_NOPTY
 	if (interactive) shptymode = tmpshptymode;
 # endif
@@ -10745,6 +10786,9 @@ char *argv[];
 		doperror(NULL, NULL);
 		return(-1);
 	}
+#if	!MSDOS && defined (FD)
+	if (autosavetty) savestdio(0);
+#endif
 
 	setnbuf(stdin);
 #if	!MSDOS
@@ -10991,8 +11035,14 @@ char *argv[];
 	}
 
 	if (!restricted) restricted = tmprestricted;
-	if (!restricted && (cp = getconstvar("SHELL")))
-		getshellname(getbasename(cp), NULL, &restricted);
+	if (!restricted) {
+#ifdef	FD
+		cp = getenv2("FD_SHELL");
+#else
+		cp = getconstvar("SHELL");
+#endif
+		if (cp) getshellname(getbasename(cp), NULL, &restricted);
+	}
 #ifdef	FD
 	fd_restricted = restricted;
 #endif

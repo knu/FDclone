@@ -4,12 +4,10 @@
  *	terminal I/O
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
-#include "machine.h"
-#include "printf.h"
-#include "termio.h"
 
 #ifdef	USESELECTH
 #include <sys/select.h>
@@ -22,6 +20,9 @@
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
+
+#include "printf.h"
+#include "termio.h"
 
 #include <errno.h>
 #ifdef	NOERRNO

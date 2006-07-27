@@ -340,7 +340,11 @@ extern char *strrchr2 __P_((char *, int));
 extern char *strcpy2 __P_((char *, char *));
 extern char *strncpy2 __P_((char *, char *, int));
 extern int strncpy3 __P_((char *, char *, int *, int));
+#ifdef	CODEEUC
 extern int strlen2 __P_((char *));
+#else
+#define	strlen2	strlen
+#endif
 extern int strlen3 __P_((char *));
 extern int atoi2 __P_((char *));
 extern char *asprintf3 __P_((CONST char *, ...));
@@ -415,6 +419,7 @@ extern VOID arrangedir __P_((int));
 #endif
 
 /* apply.c */
+extern VOID prepareremove __P_((VOID_A));
 extern int rmvfile __P_((char *));
 extern int rmvdir __P_((char *));
 extern int findfile __P_((char *));
@@ -602,17 +607,21 @@ extern int getlang __P_((char *, int));
 extern int sjis2ujis __P_((char *, u_char *, int));
 extern int ujis2sjis __P_((char *, u_char *, int));
 #endif
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+#ifdef	_USEUNICODE
 extern VOID readunitable __P_((int));
 extern VOID discardunitable __P_((VOID_A));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
 #endif
 #ifndef	_NOKANJICONV
+# ifdef	_USEUNICODE
+extern int ucs2toutf8 __P_((char *, int, u_int));
+extern u_int ucs2fromutf8 __P_((u_char *, int *));
+# endif
 extern int kanjiconv __P_((char *, char *, int, int, int, int));
 extern char *kanjiconv2 __P_((char *, char *, int, int, int, int));
 extern char *newkanjiconv __P_((char *, int, int, int));
-#endif
+#endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
 extern int getkcode __P_((char *));
 #endif
@@ -677,7 +686,8 @@ extern char *tree __P_((int, int *));
 #endif
 
 /* custom.c */
-extern VOID evalenv __P_((VOID_A));
+extern VOID initenv __P_((VOID_A));
+extern VOID evalenv __P_((char *, int));
 #ifdef	DEBUG
 extern VOID freeenvpath __P_((VOID_A));
 #endif

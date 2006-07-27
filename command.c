@@ -35,7 +35,6 @@ extern int isearch;
 extern int fnameofs;
 extern int chgorder;
 extern int stackdepth;
-extern int removepolicy;
 extern namelist filestack[];
 #ifndef	_NOARCHIVE
 extern char archivedir[];
@@ -1267,7 +1266,7 @@ char *arg;
 #ifdef	_NOARCHIVE
 	help(0);
 #else
-	help(archivefile != NULL);
+	help((archivefile) ? 1 : 0);
 #endif
 
 	return(FNC_UPDATE);
@@ -1423,9 +1422,9 @@ char *arg;
 	char *cp;
 	int len;
 
-	removepolicy = 0;
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(FNC_CANCEL);
+		prepareremove();
 		filepos = applyfile(rmvfile, NULL);
 	}
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
@@ -1434,6 +1433,7 @@ char *arg;
 		len = strlen2(cp) - strsize("%.*s");
 		if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 			return(FNC_CANCEL);
+		prepareremove();
 		filepos = applyfile(rmvfile, NULL);
 	}
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
@@ -1444,8 +1444,11 @@ char *arg;
 static int delete_dir(arg)
 char *arg;
 {
+#if	!defined (NOSYMLINK) && !defined (_NODOSDRIVE)
+	char path[MAXPATHLEN];
+#endif
 	char *cp;
-	int len;
+	int ret, len;
 
 	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
 		return(warning_bell(arg));
@@ -1453,23 +1456,20 @@ char *arg;
 	len = strlen2(cp) - strsize("%.*s");
 	if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 		return(FNC_CANCEL);
-	removepolicy = 0;
 	cp = filelist[filepos].name;
 #ifndef	NOSYMLINK
 	if (islink(&(filelist[filepos]))) {
-# ifndef	_NODOSDRIVE
-		char path[MAXPATHLEN];
-# endif
-		int ret;
-
+		prepareremove();
 		ret = rmvfile(fnodospath(path, filepos));
-		if (ret < 0) warning(-1, cp);
-		else if (!ret) filepos++;
+		if (ret == APL_ERROR) warning(-1, cp);
 	}
 	else
 #endif
-	if (!applydir(cp, rmvfile, NULL, rmvdir, ORD_NOPREDIR, NULL))
-		filepos++;
+	{
+		prepareremove();
+		ret = applydir(cp, rmvfile, NULL, rmvdir, ORD_NOPREDIR, NULL);
+	}
+	if (ret == APL_OK) filepos++;
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
 
 	return(FNC_EFFECT);
@@ -1511,7 +1511,7 @@ char *arg;
 	if (!(findregexp = prepareregexp(FINDD_K, arg))) return(FNC_CANCEL);
 	destpath = NULL;
 	cp = isdir(&(filelist[filepos])) ? filelist[filepos].name : curpath;
-	applydir(cp, findfile, finddir, NULL, ORD_NORMAL, NOFND_K);
+	VOID_C applydir(cp, findfile, finddir, NULL, ORD_NORMAL, NOFND_K);
 	regexp_free(findregexp);
 	if (!destpath) return(FNC_CANCEL);
 
@@ -1827,7 +1827,7 @@ char *arg;
 		if (FILEPERROW < WFILEMINATTR) return(FNC_EFFECT);
 		return(FNC_UPDATE);
 	}
-	applydir(filelist[filepos].name, setattr,
+	VOID_C applydir(filelist[filepos].name, setattr,
 		NULL, setattr, ORD_NOPREDIR, NULL);
 
 	return(FNC_EFFECT);

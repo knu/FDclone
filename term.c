@@ -4,11 +4,11 @@
  *	terminal module
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
-#include "machine.h"
 
 #if	defined (DJGPP) && (DJGPP >= 2)
 #include <time.h>
@@ -49,8 +49,8 @@ static int _asm_cli __P_((char *));
 #include <sys/time.h>
 
 typedef struct _kstree_t {
-	int key;
-	int num;
+	u_char key;
+	u_char num;
 	struct _kstree_t *next;
 } kstree_t;
 #endif	/* !MSDOS */
@@ -1385,6 +1385,7 @@ int *xp, *yp;
 		if (buf[i] == format[strsize(SIZEFMT) - 1]) break;
 	}
 	keyflush();
+	while (kbhit2(WAITKEYPAD * 1000L)) VOID_C getch2();
 	if (!i || buf[i] != format[strsize(SIZEFMT) - 1]) return(-1);
 	buf[++i] = '\0';
 
@@ -1673,13 +1674,13 @@ int num;
 	if (!parent) n = 0;
 	else {
 		n = parent -> num;
-		parent -> num = num;
+		parent -> num = (u_char)num;
 		parent -> next = new;
 	}
 
 	for (i = n; i < num; i++) {
-		new[i].key = -1;
-		new[i].num = 0;
+		new[i].key = (u_char)-1;
+		new[i].num = (u_char)0;
 		new[i].next = (kstree_t *)NULL;
 	}
 
@@ -1693,7 +1694,8 @@ int n;
 	int i;
 
 	if (!list) return(-1);
-	for (i = list[n].num - 1; i >= 0; i--) freekeyseqtree(list[n].next, i);
+	for (i = (int)(list[n].num) - 1; i >= 0; i--)
+		freekeyseqtree(list[n].next, i);
 	if (!n) free(list);
 
 	return(0);
@@ -1736,7 +1738,7 @@ static int NEAR sortkeyseq(VOID_A)
 			}
 			if (k >= p -> num) {
 				newkeyseqtree(p, k + 1);
-				p -> next[k].key = i;
+				p -> next[k].key = (u_char)i;
 			}
 			p = &(p -> next[k]);
 		}
@@ -2153,7 +2155,8 @@ keyseq_t *list;
 				keyseq[i].str =
 					(char *)malloc(list[i].len + 1);
 				if (!keyseq[i].str) err2("malloc()");
-				memcpy(keyseq[i].str, list[i].str, list[i].len);
+				memcpy(keyseq[i].str, list[i].str,
+					list[i].len);
 			}
 		}
 		sortkeyseq();
@@ -2817,7 +2820,7 @@ int c;
 {
 	if (ungetnum >= arraysize(ungetbuf) - 1) return(EOF);
 	if (ungetnum)
-		memmove(&(ungetbuf[1]), &(ungetbuf[0]),
+		memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
 			ungetnum * sizeof(u_char));
 	ungetbuf[0] = c;
 	ungetnum++;
@@ -3059,7 +3062,7 @@ int c;
 # else
 	if (ungetnum >= arraysize(ungetbuf) - 1) return(EOF);
 	if (ungetnum)
-		memmove(&(ungetbuf[1]), &(ungetbuf[0]),
+		memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
 			ungetnum * sizeof(u_char));
 	ungetbuf[0] = c;
 	ungetnum++;

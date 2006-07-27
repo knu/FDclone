@@ -19,7 +19,7 @@ typedef struct _printbuf_t {
 	char *buf;
 	int ptr;
 	int size;
-	int flags;
+	u_short flags;
 } printbuf_t;
 
 #define	VF_NEW		000001

@@ -14,7 +14,7 @@
 # ifndef	DJGPP
 # include <dos.h>
 #  ifdef	__TURBOC__
-extern unsigned _stklen = 0x5800;
+extern u_int _stklen = 0x5800;
 #  define	harderr_t	void
 #  else
 #  define	harderr_t	int
@@ -30,6 +30,10 @@ extern unsigned _stklen = 0x5800;
 #else
 #include "system.h"
 #define	isorgpid()	(mypid == orgpid)
+#endif
+
+#ifndef	DATADIR
+#define	DATADIR		progpath
 #endif
 
 #if	MSDOS
@@ -67,7 +71,7 @@ extern int win_y;
 extern int custno;
 #endif
 extern char *deftmpdir;
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+#ifdef	_USEUNICODE
 extern char *unitblpath;
 #endif
 #ifndef	_NOPTY
@@ -160,6 +164,7 @@ static int NEAR evaloption __P_((char *[]));
 static char *NEAR searchenv __P_((char *, char *[]));
 static VOID NEAR setexecname __P_((char *));
 static VOID NEAR setexecpath __P_((char *, char *[]));
+int main __P_((int, char *[], char *[]));
 
 char *origpath = NULL;
 char *progpath = NULL;
@@ -1066,7 +1071,6 @@ char *argv[];
 		setenv2(tmp, cp, 0);
 		free(tmp);
 	}
-	evalenv();
 
 	return(i);
 }
@@ -1181,7 +1185,7 @@ int status;
 	}
 	free(origpath);
 	free(progname);
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+#ifdef	_USEUNICODE
 	free(unitblpath);
 #endif
 #ifndef	_NODOSDRIVE
@@ -1235,7 +1239,7 @@ int status;
 # ifndef	_NOROCKRIDGE
 	detranspath(NULL, NULL);
 # endif
-# if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
+# ifdef	_USEUNICODE
 	discardunitable();
 # endif
 #endif	/* DEBUG */
@@ -1357,13 +1361,10 @@ char *argv[], *envp[];
 	environ[i] = NULL;
 #endif
 
+	initenv();
 	setexecpath(argv[0], envp);
-#if	!defined (_NOKANJICONV) || !defined (_NODOSDRIVE)
-# ifdef	DATADIR
+#ifdef	_USEUNICODE
 	unitblpath = strdup2(DATADIR);
-# else
-	unitblpath = strdup2(progpath);
-# endif
 #endif
 
 #ifdef	_NOORIGSHELL

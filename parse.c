@@ -293,7 +293,7 @@ va_dcl
 			hi = 0;
 			if (!(flags & VF_UNSIGNED)) {
 				mask = (MAXUTYPE(u_long_t) >> 1);
-				if (u & ~mask) hi = 0xff;
+				if (u & ~mask) hi = MAXUTYPE(char);
 			}
 			buf = va_arg(args, char *);
 			memset(buf, hi, len);

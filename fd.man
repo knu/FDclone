@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2006 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.08d 06/13/06
+.\" @(#)fd.1   2.08e 07/28/06
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "June 13, 2006"
+.TH FD 1 "July 28, 2006"
 .de sh
 .br
 .PP
@@ -957,7 +957,7 @@ symbolic リンクファイルの場合には、
 
 また、
 コマンドリスト中の各々のコマンドは、
-以下のリダイレクト記述子により入出力を切替えることが出来ます。
+以下のリダイレクト記述子により入出力を切替えることができます。
 リダイレクト記述子は、
 コマンド文字列の中のどの位置にあっても構いません。
 .RS 3
@@ -4062,8 +4062,8 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 \fB5\fP	紫
 \fB6\fP	水色
 \fB7\fP	白
-\fB8\fP	文字の基本色
-\fB9\fP	背景の基本色
+\fB8\fP	文字の既定色
+\fB9\fP	背景の既定色
 .fi
 .RE
 
@@ -4108,7 +4108,7 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 何らかの値が設定されていた場合、
 画面サイズの変更に応じてその値を自動的に置換えます。
 何も値が設定されていない場合は設定されないままです。
-.IP "\fBCOMSPEC\fP\(**"
+.IP "\fBCOMSPEC\fP"
 バッチファイルを起動する場合に用いるシェルを指定します。
 未指定時には環境変数
 .B " SHELL"
@@ -4161,7 +4161,7 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 \fBHEX\fP, \fBhex\fP	HEX
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 デフォルト	変換しない
 .fi
 .RE
@@ -4320,7 +4320,7 @@ OS を経由せずにディスク I/O を行なうため、
 \fBHEX\fP, \fBhex\fP	HEX
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 デフォルト	変換しない
 .fi
 .RE
@@ -4387,7 +4387,7 @@ OS を経由せずにディスク I/O を行なうため、
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC 漢字
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 .fi
 .RE
 .IP "\fBLANGUAGE\fP"
@@ -4416,7 +4416,7 @@ OS を経由せずにディスク I/O を行なうため、
 \fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
 \fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 \fBENG\fP, \fBeng\fP, \fBC\fP	英語 (メッセージのみ)
 デフォルト	変換しない
 .fi
@@ -4610,7 +4610,7 @@ UID, GID、タイムスタンプ、サイズ、の順で情報を減じていきます。
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC 漢字
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 デフォルト	変換しない
 .fi
 .RE
@@ -4636,7 +4636,7 @@ UID, GID、タイムスタンプ、サイズ、の順で情報を減じていきます。
 .IP "\fBPTYMODE\fP"
 外部コマンドの起動に疑似端末を用います。
 ウィンドウ分割モードでは各ウィンドウ毎に独立した疑似端末を用いますので、
-同時に複数の外部コマンドを端末から操作することが出来ます。
+同時に複数の外部コマンドを端末から操作することができます。
 但し、
 使用している端末が端末エミュレーションに必要な機能を備えていない場合は疑似端末が正しく機能しないことがあります。
 .B 0
@@ -4659,7 +4659,7 @@ UID, GID、タイムスタンプ、サイズ、の順で情報を減じていきます。
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC 漢字
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
 デフォルト	変換しない
 .fi
 .RE
@@ -4738,7 +4738,7 @@ TRANS.TBL が不整合な一部の CD-ROM では正しく機能しません。
 その間は実時間とのずれが生じています。
 .B 0
 かナル以外の値であれば、何を定義しても有効です。
-.IP "\fBSHELL\fP\(**"
+.IP "\fBSHELL\fP"
 ここで指定された値のファイル名部分が
 .B " rfd"
 または

@@ -8,13 +8,10 @@
 #ifdef	FD
 #include "fd.h"
 #else	/* !FD */
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "machine.h"
-#include "printf.h"
-#include "kctype.h"
-#include "pathname.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -23,6 +20,10 @@
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
+
+#include "printf.h"
+#include "kctype.h"
+#include "pathname.h"
 #endif	/* !FD */
 
 #ifdef	USETIMEH
@@ -461,10 +462,7 @@ off_t *totalp, *freep, *bsizep;
 	statfs_t fsbuf;
 
 # if	MSDOS
-	drv[0] = toupper2(path[0]);
-	drv[1] = ':';
-	drv[2] = '\\';
-	drv[3] = '\0';
+	VOID_C gendospath(drv, toupper2(path[0]), _SC_);
 
 	reg.x.ax = 0x71a0;
 	reg.x.bx = 0;

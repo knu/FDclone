@@ -4,9 +4,9 @@
  *	tiny Kanji code converter
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
-#include "machine.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -24,9 +24,10 @@
 #define	SJIS	010
 #define	EUC	020
 
-static VOID fputc2 __P_((int, FILE *));
-static VOID convert __P_((int, int, FILE *));
-static VOID output __P_((FILE *, int, int));
+static VOID NEAR fputc2 __P_((int, FILE *));
+static VOID NEAR convert __P_((int, int, FILE *));
+static VOID NEAR output __P_((FILE *, int, int));
+int main __P_((int, char *[]));
 
 static int msboff = 0;
 static int prefix = 0;
@@ -34,7 +35,7 @@ static int removebs = 0;
 static int kanjicode = SJIS;
 
 
-static VOID fputc2(c, fp)
+static VOID NEAR fputc2(c, fp)
 int c;
 FILE *fp;
 {
@@ -42,7 +43,7 @@ FILE *fp;
 	else fputc(c, fp);
 }
 
-static VOID convert(j1, j2, fp)
+static VOID NEAR convert(j1, j2, fp)
 int j1, j2;
 FILE *fp;
 {
@@ -73,11 +74,11 @@ FILE *fp;
 	}
 }
 
-static VOID output(fp, c, mode)
+static VOID NEAR output(fp, c, mode)
 FILE *fp;
 int c, mode;
 {
-	static unsigned char buf[2];
+	static u_char buf[2];
 	static int kanji1 = 0;
 	static int bufp = 0;
 

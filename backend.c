@@ -47,6 +47,7 @@ typedef struct _ptyterm_t {
 #define	A_BLINK		00010
 #define	A_STANDOUT	00020
 #define	A_UNDERLINE	00040
+#define	A_INVISIBLE	00100
 #define	T_NOAUTOMARGIN	00001
 #define	T_MULTIBYTE	00002
 #define	T_NOAPPLIKEY	00004
@@ -419,15 +420,15 @@ int w, c;
 {
 #ifndef	_NOKANJICONV
 	char buf[MAXKANJIBUF + 1], buf2[MAXKANJIBUF + 1];
-	int len, code, incode, outcode;
+	u_int u;
+	int incode, outcode;
 #endif
-	int width;
+	int i, width;
 
 #ifndef	_NOKANJICONV
 	outcode = (outputkcode != NOCNV) ? outputkcode : DEFCODE;
 	incode = (w < MAXWINDOWS && ptylist[w].outcode != NOCNV)
 		? ptylist[w].outcode : outcode;
-	code = (incode != M_UTF8) ? incode : UTF8;
 #endif
 
 	if ((pty[w].termflags & T_NOAUTOMARGIN)
@@ -442,15 +443,25 @@ int w, c;
 		else if (pty[w].last1 == C_EKANA) /*EMPTY*/;
 # endif
 #else	/* !_NOKANJICONV */
-		else if (code == EUC) {
+		else if (incode == EUC) {
 			if (pty[w].last1 != C_EKANA) width++;
 		}
-		else if (code == UTF8) {
+		else if (incode >= UTF8) {
 			if (!ismsb(c)) pty[w].last1 = pty[w].last2 = (short)-1;
-			else if (pty[w].last2 >= (short)0) width++;
+			else if (pty[w].last2 >= (short)0) /*EMPTY*/;
 			else if (!isutf2(pty[w].last1, c)) {
 				pty[w].last2 = c;
 				return;
+			}
+
+			i = 0;
+			if (pty[w].last1 >= (short)0) buf[i++] = pty[w].last1;
+			if (pty[w].last2 >= (short)0) buf[i++] = pty[w].last2;
+			if (i) {
+				buf[i++] = c;
+				buf[i] = '\0';
+				u = ucs2fromutf8((u_char *)buf, NULL);
+				if (u < 0xff61 || u > 0xff9f) width++;
 			}
 		}
 #endif	/* !_NOKANJICONV */
@@ -464,9 +475,9 @@ int w, c;
 # endif
 #else	/* !_NOKANJICONV */
 	else if ((pty[w].termflags & T_MULTIBYTE)
-	|| (code == EUC && (c == C_EKANA || iseuc(c)))
-	|| (code == SJIS && issjis1(c))
-	|| (code == UTF8 && ismsb(c)))
+	|| (incode == EUC && (c == C_EKANA || iseuc(c)))
+	|| (incode == SJIS && issjis1(c))
+	|| (incode >= UTF8 && ismsb(c)))
 #endif	/* !_NOKANJICONV */
 	{
 		pty[w].last1 = c;
@@ -482,21 +493,21 @@ int w, c;
 	surelocate(w, 0);
 	settermattr(w);
 	settermcode(w);
+	if (pty[w].attr & A_INVISIBLE) for (i = 0; i < width; i++) putch2(' ');
 #ifndef	_NOKANJICONV
-	if (!(pty[w].termflags & T_MULTIBYTE) && incode != outcode) {
-		len = 0;
-		if (pty[w].last1 >= (short)0) buf[len++] = pty[w].last1;
-		if (pty[w].last2 >= (short)0) buf[len++] = pty[w].last2;
-		if (!len) putch2(c);
+	else if (!(pty[w].termflags & T_MULTIBYTE) && incode != outcode) {
+		i = 0;
+		if (pty[w].last1 >= (short)0) buf[i++] = pty[w].last1;
+		if (pty[w].last2 >= (short)0) buf[i++] = pty[w].last2;
+		if (!i) putch2(c);
 		else {
-			buf[len++] = c;
-			buf[len] = '\0';
+			buf[i++] = c;
+			buf[i] = '\0';
 			cputs2(ptykconv(buf, buf2, incode, outcode));
 		}
 	}
-	else
 #endif	/* !_NOKANJICONV */
-	{
+	else {
 		if (pty[w].last1 >= (short)0) putch2(pty[w].last1);
 		if (pty[w].last2 >= (short)0) putch2(pty[w].last2);
 		putch2(c);
@@ -595,10 +606,10 @@ int w, c;
 					pty[w].cur_x;
 			else if (pty[w].cur_x == pty[w].tabstop[i]) break;
 			else {
-				memmove(&(pty[w].tabstop[i + 1]),
-					&(pty[w].tabstop[i]),
+				memmove((char *)&(pty[w].tabstop[i + 1]),
+					(char *)&(pty[w].tabstop[i]),
 					((pty[w].ntabstop)++ - i)
-					* sizeof(u_short));
+						* sizeof(u_short));
 				pty[w].tabstop[i] = pty[w].cur_x;
 			}
 			break;
@@ -723,6 +734,9 @@ int w, c, fd;
 				case 7:
 					pty[w].attr |= A_REVERSE;
 					break;
+				case 8:
+					pty[w].attr |= A_INVISIBLE;
+					break;
 				case 22:
 					pty[w].attr &= ~A_BOLD;
 					break;
@@ -734,6 +748,18 @@ int w, c, fd;
 					break;
 				case 27:
 					pty[w].attr &= ~A_REVERSE;
+					break;
+				case 28:
+					pty[w].attr &= ~A_INVISIBLE;
+					break;
+				case 37:
+					pty[w].fg = (short)-1;
+					break;
+				case 47:
+					pty[w].bg = (short)-1;
+					break;
+				case 100:
+					pty[w].fg = pty[w].bg = (short)-1;
 					break;
 				default:
 					n = pty[w].escparam[i];
@@ -902,10 +928,11 @@ int w, c, fd;
 							break;
 					if (pty[w].cur_x != pty[w].tabstop[i])
 						break;
-					memmove(&(pty[w].tabstop[i]),
+					memmove((char *)&(pty[w].tabstop[i]),
+						(char *)
 						&(pty[w].tabstop[i + 1]),
 						(--(pty[w].ntabstop) - i)
-						* sizeof(u_short));
+							* sizeof(u_short));
 					break;
 				case 3:
 					pty[w].ntabstop = (u_char)0;
@@ -1308,11 +1335,11 @@ int fd, n;
 			break;
 		case TE_CHANGEINKCODE:
 			if (recvbuf(fd, &w2, sizeof(w2)) < 0) break;
-			ptylist[w1].incode = (char)w2;
+			ptylist[w1].incode = (u_char)w2;
 			break;
 		case TE_CHANGEOUTKCODE:
 			if (recvbuf(fd, &w2, sizeof(w2)) < 0) break;
-			ptylist[w1].outcode = (char)w2;
+			ptylist[w1].outcode = (u_char)w2;
 			break;
 #endif	/* !_NOKANJICONV */
 		case TE_AWAKECHILD:
@@ -1348,7 +1375,7 @@ int fd;
 	char buf[2];
 #else
 	char buf[MAXKANJIBUF + 1], buf2[MAXKANJIBUF + 1];
-	int cnv, code, incode, outcode;
+	int cnv, incode, outcode;
 #endif
 	keyseq_t key;
 	int n;
@@ -1360,7 +1387,6 @@ int fd;
 	incode = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
 	outcode = (win < MAXWINDOWS && ptylist[win].incode != NOCNV)
 		? ptylist[win].incode : incode;
-	code = (incode != M_UTF8) ? incode : UTF8;
 #endif
 
 	if (ismetakey(key.code)) {
@@ -1399,7 +1425,7 @@ int fd;
 #ifndef	_NOKANJICONV
 		if (incode == outcode) /*EMPTY*/;
 		else if (incode == SJIS && iskana2(key.code)) cnv++;
-		else if (code == UTF8) {
+		else if (incode >= UTF8) {
 			if (!ismsb(key.code)) /*EMPTY*/;
 			else if ((n = ptygetch(fd)) >= 0) {
 				buf[1] = n;

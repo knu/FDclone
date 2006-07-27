@@ -4,11 +4,11 @@
  *	MSDOS disk accessing module
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#include "machine.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -59,6 +59,9 @@ typedef u_short	gid_t;
 #include <sys/ioctl.h>
 #define	D_SECSIZE(dl)	(dl).d_secsize
 # ifdef	BSD4
+#  ifdef	NETBSD
+#  define	OMIT_FSTYPENUMS		/* For NetBSD >=3.1 */
+#  endif
 # include <sys/disklabel.h>
 # else	/* !BSD4 */
 #  ifdef	SOLARIS
@@ -167,6 +170,7 @@ static int NEAR __dospath __P_((char *));
 #endif
 
 #ifdef	FD
+extern char *gendospath __P_((char *, int, int));
 extern char *strdelim __P_((char *, int));
 extern char *strrdelim __P_((char *, int));
 extern char *strrdelim2 __P_((char *, char *));
@@ -180,11 +184,12 @@ extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
-extern off_t Xlseek __P_((int, off_t, int));
+extern int intrkey __P_((VOID_A));
 #else	/* !FD */
 #ifndef	NOTZFILEH
 #include <tzfile.h>
 #endif
+static char *NEAR gendospath __P_((char *, int, int));
 static char *NEAR strdelim __P_((char *, int));
 static char *NEAR strrdelim __P_((char *, int));
 static char *NEAR strrdelim2 __P_((char *, char *));
@@ -208,8 +213,9 @@ static time_t NEAR timelocal2 __P_((struct tm *));
 static int NEAR openunitbl __P_((char *));
 static u_int NEAR unifysjis __P_((u_int, int));
 static u_int NEAR cnvunicode __P_((u_int, int));
-#define	getword(s, n)	(((u_int)((s)[(n) + 1]) << 8) | (s)[n])
-#define	Xlseek		lseek
+#define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
+#define	skread(f,o,s,n)	(lseek(f, o, L_SET) >= (off_t)0 \
+			&& read(f, s, n) == n)
 #define	SJ_UDEF		0x81ac	/* GETA */
 #define	U2_UDEF		0x3013	/* GETA */
 #define	UNICODETBL	"fd-unicd.tbl"
@@ -517,6 +523,18 @@ char *path;
 #endif
 
 #ifndef	FD
+static char *NEAR gendospath(path, drive, c)
+char *path;
+int drive, c;
+{
+	*(path++) = drive;
+	*(path++) = ':';
+	if (c) *(path++) = c;
+	*path = '\0';
+
+	return(path);
+}
+
 static char *NEAR strdelim(s, d)
 char *s;
 int d;
@@ -939,16 +957,21 @@ static u_int NEAR unifysjis(wc, russ)
 u_int wc;
 int russ;
 {
-	int i;
+	int n, min, max;
 
 	wc &= 0xffff;
-	for (i = ((russ) ? 0 : EXCEPTRUSS); i < RSJISTBLSIZ; i++)
-		if (wc >= rsjistable[i].start
-		&& wc < rsjistable[i].start + rsjistable[i].range)
+	min = ((russ) ? 0 : EXCEPTRUSS) - 1;
+	max = RSJISTBLSIZ;
+	for (;;) {
+		n = (min + max) / 2;
+		if (n <= min || n >= max) break;
+		if (wc >= rsjistable[n].start + rsjistable[n].range) min = n;
+		else if (wc < rsjistable[n].start) max = n;
+		else {
+			wc -= rsjistable[n].start;
+			wc += rsjistable[n].cnv;
 			break;
-	if (i < RSJISTBLSIZ) {
-		wc -= rsjistable[i].start;
-		wc += rsjistable[i].cnv;
+		}
 	}
 
 	return(wc);
@@ -959,12 +982,12 @@ u_int wc;
 int encode;
 {
 	u_char *cp, buf[4];
-	u_int r, w, min, max, ofs;
+	u_int r, w, ofs, min, max;
 	int fd;
 
 	wc &= 0xffff;
 	if (encode < 0) {
-		openunitbl(NULL);
+		VOID_C openunitbl(NULL);
 		return(0);
 	}
 
@@ -1009,7 +1032,7 @@ int encode;
 	ofs = min = max = 0;
 	if ((fd = openunitbl(UNICODETBL)) < 0) ofs = unitblent;
 	else if (encode) {
-		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
+		if (lseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
 		else for (ofs = 0; ofs < unitblent; ofs++) {
 			if (read(fd, cp, 4) != 4) {
 				ofs = unitblent;
@@ -1022,25 +1045,17 @@ int encode;
 	else {
 		min = 0;
 		max = unitblent + 1;
-		ofs = unitblent / 2 + 1;
 		for (;;) {
-			if (ofs == min || ofs == max) break;
-			if (Xlseek(fd, (off_t)(ofs - 1) * 4 + 2, L_SET)
-			< (off_t)0
-			|| read(fd, cp, 4) != 4) {
+			ofs = (min + max) / 2;
+			if (ofs <= min || ofs >= max) break;
+			if (!skread(fd, (off_t)(ofs - 1) * 4 + 2, cp, 4)) {
 				ofs = min = max = 0;
 				break;
 			}
 			w = getword(cp, 0);
-			if (wc == w) break;
-			else if (wc < w) {
-				max = ofs;
-				ofs = (ofs + min) / 2;
-			}
-			else {
-				min = ofs;
-				ofs = (ofs + max) / 2;
-			}
+			if (wc > w) min = ofs;
+			else if (wc < w) max = ofs;
+			else break;
 		}
 	}
 
@@ -1057,11 +1072,11 @@ int encode;
 
 #ifdef	USELLSEEK
 static _syscall5(int, _llseek,
-	unsigned int, fd,
-	unsigned long, ofs_h,
-	unsigned long, ofs_l,
+	u_int, fd,
+	u_long, ofs_h,
+	u_long, ofs_l,
 	l_off_t *, result,
-	unsigned int, whence);
+	u_int, whence);
 
 static l_off_t NEAR Xllseek(fd, offset, whence)
 int fd;
@@ -2189,7 +2204,7 @@ bpb_t *bpbcache;
 			devp -> flags |= F_RONLY;
 		}
 # if	defined (LINUX) && defined (BLKFLSBUF)
-		ioctl(fd, BLKFLSBUF, 0);
+		VOID_C ioctl(fd, BLKFLSBUF, 0);
 # endif
 
 		cc = 0;
@@ -2211,8 +2226,17 @@ bpb_t *bpbcache;
 				i = SLISTSIZ;
 				break;
 			}
-			while ((cc = read(fd, buf, sectsizelist[i])) < 0
-			&& errno == EINTR);
+			while ((cc = read(fd, buf, sectsizelist[i])) < 0) {
+# ifdef	FD
+				if (intrkey()) {
+					close(fd);
+					doserrno = EINTR;
+					errno = duperrno;
+					return(-1);
+				}
+# endif
+				if (errno != EINTR) break;
+			}
 			if (cc >= 0) break;
 		}
 		if (i >= SLISTSIZ) {
@@ -3184,13 +3208,7 @@ int needlfn;
 		return(NULL);
 	}
 
-	if (resolved) {
-		resolved[0] = drive;
-		resolved[1] = ':';
-		resolved[2] = _SC_;
-		resolved[3] = '\0';
-		rlen = 3;
-	}
+	if (resolved) rlen = gendospath(resolved, drive, _SC_) - resolved;
 
 	if (cp && (len = strlen(cp)) > 0) {
 		if (isdelim(cp, len - 1)) len--;
@@ -3598,10 +3616,7 @@ int size;
 		errno = ERANGE;
 		return(NULL);
 	}
-	pathname[0] = lastdrive;
-	pathname[1] = ':';
-	pathname[2] = _SC_;
-	strcpy(&(pathname[3]), cp);
+	strcpy(gendospath(pathname, lastdrive, _SC_), cp);
 
 	return(pathname);
 }
@@ -3752,10 +3767,11 @@ int mode;
 	u_int c;
 	int i, j, n, len, cnt, sum, ret, lfn;
 
-	if ((i = parsepath(&(buf[2]), path, 1)) < 0) return(-1);
-	buf[0] = i;
+	if ((n = parsepath(&(buf[2]), path, 1)) < 0) return(-1);
+	buf[0] = n;
 	buf[1] = ':';
 	file = buf;
+
 	if (!(xdirp = splitpath(&file, NULL, 0))) {
 		if (doserrno == ENOENT) doserrno = ENOTDIR;
 		return(-1);

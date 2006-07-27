@@ -1019,15 +1019,18 @@ char *file;
 static int dounlink(path)
 char *path;
 {
-	return(Xunlink(path));
+	if (Xunlink(path) < 0) return(APL_ERROR);
+
+	return(APL_OK);
 }
 
 static int dormdir(path)
 char *path;
 {
-	if (isdotdir(path)) return(0);
+	if (isdotdir(path)) return(APL_OK);
+	if (Xrmdir(path) < 0) return(APL_ERROR);
 
-	return(Xrmdir(path));
+	return(APL_OK);
 }
 
 VOID removetmp(dir, file)
@@ -1042,7 +1045,8 @@ char *dir, *file;
 		warning(-1, dir);
 		*dir = '\0';
 	}
-	else if (!file) applydir(NULL, dounlink, NULL, dormdir, 3, NULL);
+	else if (!file) VOID_C applydir(NULL, dounlink,
+		NULL, dormdir, ORD_NOPREDIR, NULL);
 	else if (Xunlink(nodospath(path, file)) < 0) warning(-1, file);
 
 #ifndef	_NODOSDRIVE
@@ -1172,9 +1176,7 @@ char *file;
 	char tmp[MAXPATHLEN];
 # endif
 
-	path[0] = drive;
-	path[1] = ':';
-	strcpy(&(path[2]), file);
+	strcpy(gendospath(path, drive, '\0'), file);
 # if	!MSDOS
 	file = nodospath(tmp, file);
 # endif

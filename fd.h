@@ -414,6 +414,11 @@ extern char *_mtrace_file;
 #define	_USEDOSPATH
 #endif
 
+#if	!defined (_NOKANJICONV) && !defined (_NOUNICODE) \
+|| !defined (_NODOSDRIVE)
+#define	_USEUNICODE
+#endif
+
 #if	MSDOS
 #define	_USEDOSCOPY
 #endif

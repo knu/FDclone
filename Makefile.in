@@ -11,7 +11,7 @@ BUILD	=
 MANSEC	= 1
 TOPDIR	= $(BUILD)$(PREFIX)
 BINDIR	= $(TOPDIR)/bin
-DATADIR	= $(TOPDIR)/share
+DATADIR	= $(TOPDIR)/share/fd
 MANDIR	= $(TOPDIR)/man/man$(MANSEC)
 CATDIR	= $(TOPDIR)/man/cat$(MANSEC)
 JMANDIR	= $(TOPDIR)/man__LANGDIR__/man$(MANSEC)
@@ -91,7 +91,7 @@ PROGRAM	= fd
 ALIAS	= fdsh
 OBJ1	= main__OBJ__ printf__OBJ__ termio__OBJ__ term__OBJ__ \
 	pathname__OBJ__ system__OBJ__ posixsh__OBJ__ doscom__OBJ__ log__OBJ__
-OBJ2	= dosdisk__OBJ__ __OBJS__ \
+OBJ2	= dosdisk__OBJ__ __EMUOBJS__ \
 	pty__OBJ__ termemu__OBJ__ frontend__OBJ__ backend__OBJ__ \
 	libc__OBJ__ file__OBJ__ apply__OBJ__ \
 	parse__OBJ__ builtin__OBJ__ shell__OBJ__
@@ -134,7 +134,7 @@ $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
 	@$(ECHO) $(OBJ3) >> $(ARGS)
 
 main__OBJ__: main.c
-	$(CC) $(FDCFLAGS) $(DEFCFLAGS) __UNITBLPATH__ -c __OUT__ $*.c
+	$(CC) $(FDCFLAGS) $(DEFCFLAGS) __TBLPATH__ -c __OUT__ $*.c
 
 termio__OBJ__: termio.c
 	$(CC) $(FDCFLAGS) __FDSETSIZE__ -c __OUT__ $*.c
@@ -233,6 +233,7 @@ install: $(PROGRAM)__EXE__ $(PROGRAM).$(MANSEC) __UNITBL__
 		$(CHMOD) a+r-x $(BLDRC); \
 	fi
 	-if [ -f $(UNITBL) ]; then \
+		[ -d __DATADIR__ ] || mkdir __DATADIR__; \
 		$(INSTALL) $(UNITBL) __DATADIR__; \
 		$(CHMOD) a+r-x __DATADIR__/$(UNITBL); \
 	fi
@@ -298,7 +299,7 @@ depend: $(SRC) kanji.h funcno.h
 	makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
-	rm -f Makefile.tmp.bak
+	-$(RM) Makefile.tmp.bak
 	$(SED) -e '/^# DO NOT DELETE THIS LINE/,$$d' Makefile.in.bak \
 		> Makefile.in
 	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it." \
@@ -308,7 +309,8 @@ depend: $(SRC) kanji.h funcno.h
 		-e 's/\.o/\_\_OBJ\_\_/g' \
 		-e 's/ *$$//' \
 		-e '/: *$$/d' Makefile.tmp >> Makefile.in
-	rm -f Makefile.in.bak Makefile.tmp
+	-$(RM) Makefile.in.bak
+	-$(RM) Makefile.tmp
 
 
 ############################################################
@@ -408,11 +410,11 @@ shtar: $(SHSOURCES)
 	gzip -f $(TITLE)sh-$$VER.tar)
 
 lzh: $(SOURCES)
-	rm -f $(TITLE)$(VERSION).lzh
+	-$(RM) $(TITLE)$(VERSION).lzh
 	lha a $(TITLE)$(VERSION).lzh $(SOURCES)
 
 shar: $(SOURCES)
-	rm -f $(TITLE)$(VERSION).shar.[0-9][0-9]
+	-$(RM) $(TITLE)$(VERSION).shar.[0-9][0-9]
 	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
@@ -505,17 +507,26 @@ ipk: $(PROGRAM)__EXE__ __UNITBL__
 	tar cf ../ipk.tar ./debian-binary ./data.tar.gz ./control.tar.gz)
 	gzip ./ipk.tar
 	mv ./ipk.tar.gz ./fd_$(VERSION)-1_arm.ipk
-	-rm -rf $(IPKWDIR) $(IPKTDIR)
+	-$(RM) -r $(IPKWDIR) $(IPKTDIR)
 
 clean:
-	-rm -f core *__OBJ__
-	-rm -f funcno.h kanji.h
-	-rm -f kanjicnv$(EXE) expfunc$(EXE)
-	-rm -f mkfuncno$(EXE) mkunitbl$(EXE)
-	-rm -f fdsh$(EXE) fdbsh$(EXE)
-	-rm -f $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
-	-rm -f $(PROGRAM).eng $(PROGRAM).doc
-	-rm -f $(ARGS) __UNITBL__
+	-$(RM) core
+	-$(RM) *__OBJ__
+	-$(RM) funcno.h
+	-$(RM) kanji.h
+	-$(RM) kanjicnv$(EXE)
+	-$(RM) expfunc$(EXE)
+	-$(RM) mkfuncno$(EXE)
+	-$(RM) mkunitbl$(EXE)
+	-$(RM) fdsh$(EXE)
+	-$(RM) fdbsh$(EXE)
+	-$(RM) $(PROGRAM)$(EXE)
+	-$(RM) $(PROGRAM).$(MANSEC)
+	-$(RM) $(PROGRAM).$(MANSEC)c
+	-$(RM) $(PROGRAM).eng
+	-$(RM) $(PROGRAM).doc
+	-$(RM) $(ARGS)
+	-$(RM) __UNITBL__
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main__OBJ__: fd.h
@@ -529,24 +540,31 @@ printf__OBJ__: machine.h config.h
 printf__OBJ__: printf.h
 printf__OBJ__: kctype.h
 termio__OBJ__: machine.h config.h
-termio__OBJ__: printf.h termio.h
+termio__OBJ__: printf.h
+termio__OBJ__: termio.h
 term__OBJ__: machine.h config.h
-term__OBJ__: printf.h
-term__OBJ__: kctype.h
+term__OBJ__: printf.h kctype.h
 term__OBJ__: termio.h
 term__OBJ__: term.h
 pathname__OBJ__: machine.h config.h
-pathname__OBJ__: printf.h kctype.h
+pathname__OBJ__: printf.h
+pathname__OBJ__: kctype.h
 pathname__OBJ__: pathname.h
-system__OBJ__: machine.h config.h printf.h kctype.h
+system__OBJ__: machine.h config.h
+system__OBJ__: printf.h
+system__OBJ__: kctype.h
 system__OBJ__: pathname.h
 system__OBJ__: system.h termio.h
 system__OBJ__: wait.h
-posixsh__OBJ__: machine.h config.h printf.h kctype.h
+posixsh__OBJ__: machine.h config.h
+posixsh__OBJ__: printf.h
+posixsh__OBJ__: kctype.h
 posixsh__OBJ__: pathname.h
 posixsh__OBJ__: system.h termio.h
 posixsh__OBJ__: wait.h
-doscom__OBJ__: machine.h config.h printf.h kctype.h
+doscom__OBJ__: machine.h config.h
+doscom__OBJ__: printf.h
+doscom__OBJ__: kctype.h
 doscom__OBJ__: pathname.h
 doscom__OBJ__: system.h termio.h
 doscom__OBJ__: wait.h
@@ -661,9 +679,9 @@ shell__OBJ__: func.h
 shell__OBJ__: dosdisk.h kanji.h system.h termio.h
 shell__OBJ__: wait.h
 shell__OBJ__: termemu.h
-kanji__OBJ__: machine.h config.h
-kanji__OBJ__: kctype.h pathname.h
-kanji__OBJ__: term.h
+kanji__OBJ__: machine.h
+kanji__OBJ__: config.h
+kanji__OBJ__: printf.h kctype.h
 input__OBJ__: fd.h
 input__OBJ__: machine.h config.h
 input__OBJ__: types.h

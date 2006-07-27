@@ -202,6 +202,9 @@ int rdlink;
 #if	MSDOS || !defined (_NODOSDRIVE)
 	int drv;
 #endif
+#if	MSDOS
+	int drive;
+#endif
 	char tmp[MAXPATHLEN];
 
 	strcpy(tmp, path);
@@ -209,19 +212,14 @@ int rdlink;
 
 #if	MSDOS
 	drv = dospath(nullstr, NULL);
-	if ((resolved[0] = _dospath(path))) path += 2;
+	if ((drive = _dospath(path))) path += 2;
 	if (*path == _SC_) {
-		if (!resolved[0]) resolved[0] = drv;
-		resolved[1] = ':';
-		resolved[2] = _SC_;
-		resolved[3] = '\0';
+		if (!drive) drive = drv;
+		VOID_C gendospath(resolved, drive, _SC_);
 	}
-	else if (resolved[0] && resolved[0] != drv) {
-		if (setcurdrv(resolved[0], 0) < 0) {
-			resolved[1] = ':';
-			resolved[2] = _SC_;
-			resolved[3] = '\0';
-		}
+	else if (drive && drive != drv) {
+		if (setcurdrv(drive, 0) < 0)
+			VOID_C gendospath(resolved, drive, _SC_);
 		else {
 			if (!Xgetwd(resolved)) lostcwd(resolved);
 			if (setcurdrv(drv, 0) < 0) error("setcurdrv()");
@@ -239,12 +237,7 @@ int rdlink;
 			cp = dosgetcwd(resolved, MAXPATHLEN - 1);
 			lastdrive = duplastdrive;
 		}
-		if (!cp) {
-			resolved[0] = drv;
-			resolved[1] = ':';
-			resolved[2] = _SC_;
-			resolved[3] = '\0';
-		}
+		if (!cp) VOID_C gendospath(resolved, drv, _SC_);
 	}
 # endif
 #endif	/* !MSDOS */
@@ -643,11 +636,17 @@ int *lenp, ptr;
 	return(len);
 }
 
+#ifdef	CODEEUC
 int strlen2(s)
 char *s;
 {
-	return(snprintf2(NULL, 0, "%s", s));
+	int i, len;
+
+	for (i = len = 0; s[i]; i++, len++) if (isekana(s, i)) i++;
+
+	return(len);
 }
+#endif	/* CODEEUC */
 
 int strlen3(s)
 char *s;
@@ -819,6 +818,7 @@ int export;
 #ifdef	_NOORIGSHELL
 	if (export) environ = _putenv2(cp, environ);
 	else environ2 = _putenv2(cp, environ2);
+	evalenv(name, len);
 # ifndef	_NOPTY
 	sendparent(TE_PUTSHELLVAR, name, value, export);
 # endif

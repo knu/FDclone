@@ -1,3 +1,13 @@
+Ver. 2.08e	Support the menu method for 'ANSIPALETTE' on customizer.
+ (07/28/06)	Support the key-input method for 'PTYMENUKEY' on customizer.
+		Support the setting of "EDITOR", "PAGER", etc. on customizer.
+		Bug that the setting of 'SORTTYPE' takes no effect is fixed.
+		Abortion with sparc64 architecture is fixed.
+		Unsuitable cursor position with UTF8 on PTYMODE=1 is fixed.
+		Failure to copy/move the unwritable directory is fixed.
+		Failure to complete the filename with a drive name is fixed.
+		Failure to change timespamp of SFN directory is fixed. (MS-DOS)
+
 Ver. 2.08d	Bug that command line rejects any Japanese on the pty is fixed.
  (06/13/06)	Bug that command line rejects any Kana is fixed.
 		Mis-indicating for the incremental history search is fixed.

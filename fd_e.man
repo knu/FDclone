@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2006 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.08d 06/13/06
+.\" @(#)fd.1   2.08e 07/28/06
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "June 13, 2006"
+.TH FD 1 "July 28, 2006"
 .de sh
 .br
 .PP
@@ -32,14 +32,14 @@ fd \- file & directory maintenance tool
 .I args
 ]
 .SH DESCRIPTION
-.B fd
+.B Fd
 is a file & directory maintenance tool
 considered for the text terminals on general UNIX.
 It aims for a clone of the same named utility
 which is made for the PC/AT compatible machine and PC-9800 series.
 In fact, it is upper compatible functionally.
 
-.B fd
+.B Fd
 shows the browser screen listing files when you have invoked it.
 You can input some key which is bound each command,
 to execute various operations.
@@ -147,7 +147,7 @@ the options described below in the description of
 .B set
 the builtin command are available.
 .SS Screen Layout
-.B fd
+.B Fd
 has the 3 major screen modes.
 In the browser screen,
 you can select from the file list and execute each command.
@@ -539,7 +539,7 @@ cursor keys move a cursor to the position you want to change,
 reverses the attribute on the position.
 You should notice that
 the attribute of the execution bit is not a binary toggle but a triple toggle,
-which includes setuid bit, setgid bit, and sticky bit respectively.
+which includes setuid bit, setgid bit and sticky bit respectively.
 If the target is the marked files,
 .RB [ m ](Mask)
 will mask a bit on the cursor position with
@@ -664,11 +664,11 @@ this confirmation is not done.
 .IP "\fBBackup tape\fP (Backup)"
 Backup the file on the cursor position into the specified storage device.
 When the cursor position indicates a directory,
-all of its contents are backuped.
+all of its contents is backuped.
 When some files are marked,
 the target is not the file on the cursor position but the marked files.
 
-.BR tar (1)
+.BR Tar (1)
 is used for backup.
 When you specify the filename except special files indicates devices
 as input of the device name,
@@ -684,7 +684,7 @@ the environment variable when the internal variable is undefined.
 .IP "\fBPack file\fP (Pack)"
 Pack the file on the cursor position into the specified archive file.
 When the cursor position indicates a directory,
-all of its contents are packed into the archive file.
+all of its contents is packed into the archive file.
 When some files are marked,
 the target is not the file on the cursor position but the marked files.
 
@@ -1126,7 +1126,7 @@ When the line ends with
 it is referred as continuing into the next line,
 so that you can split a long line with this.
 .SS Builtin Commands
-.B fd
+.B Fd
 has the following builtin commands.
 These builtin commands can be used in
 .B EXECUTE_SH
@@ -1331,7 +1331,7 @@ and performs redirection.
 .PD
 Read and evaluate commands from
 .IR file .
-.I file
+.I File
 must exists on the directory which
 .B PATH
 includes,
@@ -1843,7 +1843,7 @@ as an option prefix for compatibility with COMMAND.COM.)
 .RE
 .IP "\fBdirs\fP"
 Display the list of the current directory stack.
-.B pushd
+.B Pushd
 and
 .B popd
 the builtin command can load/unload directories onto the directory stack.
@@ -1892,7 +1892,7 @@ it is disabled.
 If
 .I arg
 is omitted,
-all of the enabled or disabled builtin commands are listed.
+all of the enabled or disabled builtin commands is listed.
 .IP "\fBeval\fP [\fIarg\fR .\|.\|.]"
 Evaluate
 .I arg
@@ -1952,7 +1952,7 @@ the environment variable is defined as a null.
 If no argument is specified,
 all of the
 .BR export ed
-environment variables are listed.
+environment variables is listed.
 When you want to delete the definition of the environment variable,
 you can use
 .B unset
@@ -1963,7 +1963,7 @@ Only return with a
 exit status.
 .IP "\fBfc\fP [\fB\-l\fP | \fB\-s\fP [\fIold\fR\fB=\fP\fInew\fR .\|.\|.]] [\fB\-nr \fP] [\fB\-e\fP \fIeditor\fR] [\fIfirst\fR [\fIlast\fR]]"
 List or edit command histories.
-.I first
+.I First
 and
 .I last
 select the range of command histories.
@@ -2216,7 +2216,7 @@ When you specify
 .B \-r
 instead of
 .IR com ,
-all the memorized hash table are discarded.
+all the memorized hash table is discarded.
 If
 .I com
 is omitted,
@@ -2244,7 +2244,7 @@ command histories with the history number.
 If
 .I n
 is omitted,
-all of the memorized command histories are listed.
+all of the memorized command histories is listed.
 .IP "\fBjobs\fP"
 List the running jobs.
 .B (UNIX)
@@ -2332,7 +2332,7 @@ If both
 and
 .I c
 are omitted,
-all of the mappings for special keys are listed.
+all of the mappings for special keys is listed.
 When you specify
 .I str
 as \fB"\|"\fP,
@@ -2348,7 +2348,7 @@ to the process indicated by the process number
 or
 to the job indicated by
 .IR job .
-.I signal
+.I Signal
 is described as a numeric value or a signal name.
 
 If
@@ -2480,7 +2480,7 @@ the extension.
 If
 .I ext
 is omitted,
-all of the registered archiver commands are listed.
+all of the registered archiver commands is listed.
 .IP "\fBprintbind\fP [\fIc\fR]"
 Print the command binded to the key
 .IR c .
@@ -2490,7 +2490,7 @@ You can specify the key as well as
 If
 .I c
 is omitted,
-all of the registered key bindings are listed,
+all of the registered key bindings is listed,
 which is defined not as the internal command but as the command macro.
 The key bindings of internal commands can be referred in
 .BR HELP_MESSAGE .
@@ -2503,7 +2503,7 @@ of the floppy drive registered for the drive name
 If
 .I c
 is omitted,
-all of the registered floppy drives are listed.
+all of the registered floppy drives is listed.
 .IP "\fBprintlaunch\fP [\fIext\fR]"
 Print the command macro registered as the launcher for
 .I ext
@@ -2514,7 +2514,7 @@ the format for listing is also printed.
 If
 .I ext
 is omitted,
-all of the registered launchers are listed.
+all of the registered launchers is listed.
 .IP "\fBpushd\fP [\fIdir\fR]"
 Load the current directory onto the directory stack,
 and change the current directory in
@@ -2603,7 +2603,7 @@ the value of
 .I NAME
 the internal variable is defined as a null.
 If no argument is specified,
-all of the readonly internal variables are listed.
+all of the readonly internal variables is listed.
 .IP "\fBrd\fP \fIdir\fR"
 Delete the directory
 .IR dir .
@@ -2778,7 +2778,7 @@ is omitted,
 the values of the current options are displayed.
 .RE
 .IP "\fB\-P\fP"
-.B cd
+.B Cd
 and
 .B pwd
 the builtin command use the physical directory structure
@@ -2917,7 +2917,7 @@ If both
 and
 .I n
 are omitted,
-all of the registered traps are listed.
+all of the registered traps is listed.
 .IP "\fBtrue\fP"
 Only return with a
 .B 0
@@ -2953,7 +2953,7 @@ is omitted,
 the current limit is displayed.
 When you specify
 .BR \-a ,
-all of the resource limits are displayed.
+all of the resource limits is displayed.
 
 When you specify the following options,
 the each resource limit is individually set or displayed.
@@ -2999,9 +2999,9 @@ Cancel the definition of the alias
 You can use the wildcard in
 .IR name ,
 in this case,
-all of the matched alias definitions are canceled.
+all of the matched alias definitions is canceled.
 When you specify "\(**",
-all of the alias definitions are invalid.
+all of the alias definitions is invalid.
 .IP "\fBunset\fP [\fINAME\fR .\|.\|.]"
 Delete the defined internal variable or function for each
 .IR NAME .
@@ -3023,7 +3023,7 @@ all of
 .IR hd ,
 .IR sc ,
 .I cl
-are corresponded is deleted,
+is corresponded is deleted,
 then you should confirm to delete very well.
 .B (UNIX)
 
@@ -3665,11 +3665,11 @@ which is executed by
 and
 .BR EXECUTE_FILE .
 .IP "\fB`\fP\fIlist\fR\fB`\fP" 8
-.I list
+.I List
 is executed
 and this string is replaced by its standard output.
 .IP "\fB$(\fP\fIlist\fR\fB)\fP"
-.I list
+.I List
 is executed
 and this string is replaced by its standard output like as \fB`\fP\fIlist\fR\fB`\fP.
 This differs from
@@ -3679,7 +3679,7 @@ And any meta-characters such as quotes in
 .I list
 are evaluated as it is.
 .IP "\fB$((\fP\fIexpression\fR\fB))\fP"
-.I expression
+.I Expression
 the arithmetic expression is evaluated
 and this string is replaced by its result value.
 You can specify numeric values,
@@ -3778,7 +3778,7 @@ The prepared edit modes are the following 3 modes.
 .fi
 .RE
 .IP "\fBvi\fP"
-.B vi
+.B Vi
 mode has the 2 local modes: "insert mode" and "command mode",
 and the function of keys are quite different with each mode.
 You are in the command mode when you start to input,
@@ -4281,7 +4281,7 @@ this value will be replaced automatically
 according to changing the screen size.
 If no value is set,
 this value will remain unset.
-.IP "\fBCOMSPEC\fP\(**"
+.IP "\fBCOMSPEC\fP"
 Specify the shell used to invoke a batch file.
 If undefined,
 the shell defined by
@@ -4335,7 +4335,7 @@ etc. among them are the Kanji codes used in Samba.
 \fBHEX\fP, \fBhex\fP	HEX
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 default	no convert
 .fi
 .RE
@@ -4493,7 +4493,7 @@ etc. among them are the Kanji codes used in Samba.
 \fBHEX\fP, \fBhex\fP	HEX
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 default	no convert
 .fi
 .RE
@@ -4567,7 +4567,7 @@ the Kanji code specified in compile is valid.
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC-JP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 .fi
 .RE
 .IP "\fBLANGUAGE\fP"
@@ -4595,7 +4595,7 @@ etc. among them are the Kanji codes used in Samba.
 \fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
 \fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 \fBENG\fP, \fBeng\fP, \fBC\fP	English (message only)
 default	no convert
 .fi
@@ -4790,7 +4790,7 @@ to change the input Kanji code of the pseudo terminal running already.
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC-JP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 default	no convert
 .fi
 .RE
@@ -4803,7 +4803,7 @@ You can select the following items in the pseudo terminal menu:
 "SendAsIs", "InputCode", "Break" and "NextWindow".
 Each item means respectively:
 sending the pseudo terminal menu key as is,
-inputing the key name to be sent like as
+inputting the key name to be sent like as
 .B bind
 command,
 terminating forcedly the process running in the pseudo terminal,
@@ -4837,7 +4837,7 @@ to change the output Kanji code of the pseudo terminal running already.
 \fBSJIS\fP, \fBsjis\fP	Shift JIS
 \fBEUC\fP, \fBeuc\fP	EUC-JP
 \fBUTF8\fP, \fButf8\fP	UTF-8
-\fButf8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
 default	no convert
 .fi
 .RE
@@ -4915,7 +4915,7 @@ and some gap from the real time will be occurred in this span.
 Any value except
 .B 0
 and null effects valid.
-.IP "\fBSHELL\fP\(**"
+.IP "\fBSHELL\fP"
 When the filename part of this specified value is
 .B rfd
 or
@@ -4991,15 +4991,16 @@ The terminal name will be variable dynamically,
 then you can re-specify the suitable one as this value after invoked
 for some strange terminal display and key input.
 .IP "\fBTHRUARGS\fP"
-Pass through the pathnames as is, which is specified as the startup arguments.
-.B fd
+Pass through the pathnames as is,
+which is specified as the startup arguments.
+.B Fd
 expands the meta character such as
 .B ~
 and
 .B ${#}
 in the given pathname by itself,
 because the obsolete low-level shell cannot support these expansion extended by POSIX.
-.B fd
+.B Fd
 can sometimes expand the pathname given by the shell into the unexpected string
 as a result of duplicate expansion,
 because the latest high-level shell generally support these expansion.
@@ -5119,7 +5120,7 @@ no Kanji code is converted ignoring the value of
 No pathname is specified by default.
 .B (UNIX)
 .SH MULTI LANGUAGE SUPPORT
-.B fd
+.B Fd
 processes the Kanji character-set to input/output
 as "EUC-JP" or "Shift JIS" according to setting in compile.
 The the pathname including Kanji is displayed
@@ -5160,7 +5161,7 @@ Takashi SHIRAI <shirai@unixusers.net>
 The original "FD" for MS-DOS was created and released by
 A.Idei <SDI00544@niftyserve.or.jp>
 for the first time, in 1989.
-.B fd
+.B Fd
 was created for UNIX from scratch following that implementation, in 1995.
 .SH FILES
 .PD 0

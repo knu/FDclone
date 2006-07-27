@@ -726,7 +726,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      コマンドリストの中では、改行文字は ;; と同じ意味を持ちます。
 
      また、コマンドリスト中の各々のコマンドは、以下のリダイレクト
-     記述子により入出力を切替えることが出来ます。リダイレクト記述
+     記述子により入出力を切替えることができます。リダイレクト記述
      子は、コマンド文字列の中のどの位置にあっても構いません。
         _n<<_f_i_l_e    ファイルディスクリプタ _n で表される入力をファイ
                   ル _f_i_l_e からの入力に切替えます。_n を省略すると、
@@ -2431,8 +2431,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        55    紫
                        66    水色
                        77    白
-                       88    文字の基本色
-                       99    背景の基本色
+                       88    文字の既定色
+                       99    背景の既定色
 
                    色番号 88 は変数 AANNSSIICCOOLLOORR の値が 33 の時に強制
                    的に黒色になります。色番号 99 は変数 AANNSSIICCOOLLOORR
@@ -2454,7 +2454,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    応じてその値を自動的に置換えます。何も値が設定
                    されていない場合は設定されないままです。
 
-     CCOOMMSSPPEECC*      バッチファイルを起動する場合に用いるシェルを指
+     CCOOMMSSPPEECC       バッチファイルを起動する場合に用いるシェルを指
                    定します。未指定時には環境変数 SSHHEELLLL で定義さ
                    れたシェルもしくは \COMMAND.COM が用いられます。
                    ((DDOOSS))
@@ -2484,7 +2484,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        HHEEXX, hheexx       HEX
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       UUTTFF88--mmaacc, mmaacc  Mac OS X 用 UTF-8
                        デフォルト     変換しない
 
      DDIIRRCCOOUUNNTTLLIIMMIITT ツリー表示モードで、ディレクトリ内のファイルを
@@ -2591,7 +2591,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        HHEEXX, hheexx       HEX
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       UUTTFF88--mmaacc, mmaacc  Mac OS X 用 UTF-8
                        デフォルト     変換しない
 
      HHIISSTTFFIILLEE      EEXXEECCUUTTEE_FFIILLEE や EEXXEECCUUTTEE_SSHH で参照できるコマン
@@ -2636,7 +2636,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       UUTTFF88--mmaacc, mmaacc  Mac OS X 用 UTF-8
 
      LLAANNGGUUAAGGEE      表示する文字の言語を指定します。ffdd の出力する
                    各種メッセージの他、漢字を含むファイル名に対す
@@ -2654,7 +2654,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
                        OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       UUTTFF88--mmaacc, mmaacc  Mac OS X 用 UTF-8
                        EENNGG, eenngg, CC    英語 (メッセージのみ)
                        デフォルト     変換しない
 
@@ -2792,7 +2792,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       UUTTFF88--mmaacc, mmaacc  Mac OS X 用 UTF-8
                        デフォルト     変換しない
 
      PPTTYYMMEENNUUKKEEYY    疑似端末を操作している最中に疑似端末メニューを
@@ -2811,7 +2811,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      PPTTYYMMOODDEE       外部コマンドの起動に疑似端末を用います。ウィン
                    ドウ分割モードでは各ウィンドウ毎に独立した疑似
                    端末を用いますので、同時に複数の外部コマンドを
-                   端末から操作することが出来ます。但し、使用して
+                   端末から操作することができます。但し、使用して
                    いる端末が端末エミュレーションに必要な機能を備
                    えていない場合は疑似端末が正しく機能しないこと
                    があります。00 かナル以外の値であれば、何を定義
@@ -2828,7 +2828,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
                        UUTTFF88, uuttff88     UTF-8
-                       uuttff88--mmaacc, mmaacc  Mac OS X 用 UTF-8
+                       UUTTFF88--mmaacc, mmaacc  Mac OS X 用 UTF-8
                        デフォルト     変換しない
 
      PPTTYYTTEERRMM       疑似端末を用いた場合に外部コマンドに渡す環境変
@@ -2885,7 +2885,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    で、その間は実時間とのずれが生じています。00 か
                    ナル以外の値であれば、何を定義しても有効です。
 
-     SSHHEELLLL*        ここで指定された値のファイル名部分が rrffdd また
+     SSHHEELLLL         ここで指定された値のファイル名部分が rrffdd また
                    は rrffddsshh である場合には、起動時の --rr オプショ
                    ンと同様、シェルの機能が一部制限されます。また、
                    EEXXEECCUUTTEE_SSHH コマンドから起動できるシェルを指定

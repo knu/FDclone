@@ -106,10 +106,7 @@ char *path, *buf;
 		strcpy(tmp, cp);
 		cp = tmp;
 	}
-	if (*cp == _SC_) {
-		*(buf++) = drive;
-		*(buf++) = ':';
-	}
+	if (*cp == _SC_) buf = gendospath(buf, drive, '\0');
 	else {
 		if (!dosgetcwd(buf, MAXPATHLEN)) return(0);
 		buf = strcatdelim(buf);

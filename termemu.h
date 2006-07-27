@@ -11,7 +11,7 @@ typedef struct _ptyinfo_t {
 	int pipe;
 	int status;
 #ifndef	_NOKANJICONV
-	char incode, outcode;
+	u_char incode, outcode;
 #endif
 } ptyinfo_t;
 

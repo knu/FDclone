@@ -7,13 +7,10 @@
 #ifdef	FD
 #include "fd.h"
 #else	/* !FD */
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "machine.h"
-#include "printf.h"
-#include "kctype.h"
-#include "pathname.h"
 
 # ifndef	NOUNISTDH
 # include <unistd.h>
@@ -22,6 +19,10 @@
 # ifndef	NOSTDLIBH
 # include <stdlib.h>
 # endif
+
+#include "printf.h"
+#include "kctype.h"
+#include "pathname.h"
 #endif	/* !FD */
 
 #if	MSDOS
@@ -532,6 +533,18 @@ char *path;
 #endif	/* !FD */
 
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+char *gendospath(path, drive, c)
+char *path;
+int drive, c;
+{
+	*(path++) = drive;
+	*(path++) = ':';
+	if (c) *(path++) = c;
+	*path = '\0';
+
+	return(path);
+}
+
 char *strdelim(s, d)
 char *s;
 int d;
@@ -1404,7 +1417,7 @@ int len;
 static void NEAR duplwild(dst, src)
 wild_t *dst, *src;
 {
-	memcpy(dst, src, sizeof(wild_t));
+	memcpy((char *)dst, (char *)src, sizeof(wild_t));
 	dst -> fixed.s = (char *)malloc2(src -> fixed.size);
 	memcpy(dst -> fixed.s, src -> fixed.s, src -> fixed.len + 1);
 	dst -> path.s = (char *)malloc2(src -> path.size);
@@ -1414,7 +1427,8 @@ wild_t *dst, *src;
 	if (src -> ino) {
 		dst -> ino = (devino_t *)malloc2(src -> nino
 			* sizeof(devino_t));
-		memcpy(dst -> ino, src -> ino, src -> nino * sizeof(devino_t));
+		memcpy((char *)(dst -> ino), (char *)(src -> ino),
+			src -> nino * sizeof(devino_t));
 	}
 #endif	/* !NODIRLOOP */
 }
@@ -2200,6 +2214,9 @@ int len, argc;
 char ***argvp;
 int exe;
 {
+# if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+	char cwd[4];
+# endif
 	char *file, *dir;
 	int dlen;
 
@@ -2221,8 +2238,14 @@ int exe;
 	else if (*path == '~')
 		return(completeuser(&(path[1]), len - 1, argc, argvp, 1));
 # endif
-	else if (exe && dir == path)
-		return(completeexe(path, len, argc, argvp));
+# if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+	else if (dir != path) {
+		len -= dlen;
+		dlen = gendospath(cwd, *path, '.') - cwd;
+		return(completefile(dir, len, argc, argvp, cwd, dlen, exe));
+	}
+# endif
+	else if (exe) return(completeexe(path, len, argc, argvp));
 
 	return(completefile(path, len, argc, argvp, curpath, 1, exe));
 }

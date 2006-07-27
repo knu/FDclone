@@ -196,6 +196,7 @@ typedef struct _gidtable {
 } gidtable;
 
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+extern char *gendospath __P_((char *, int, int));
 extern char *strdelim __P_((char *, int));
 extern char *strrdelim __P_((char *, int));
 #else

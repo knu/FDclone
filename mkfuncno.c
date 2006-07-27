@@ -12,6 +12,8 @@
 #include "types.h"
 #include "functabl.h"
 
+int main __P_((int, char *[]));
+
 
 /*ARGSUSED*/
 int main(argc, argv)
@@ -23,14 +25,14 @@ char *argv[];
 
 	if (!strcmp(argv[1], "-")) fp = stdout;
 	else if (!(fp = fopen(argv[1], "w"))) {
-		fprintf(stderr, "Cannot open file.\n");
+		fprintf(stderr, "%s: Cannot open.\n", argv[1]);
 		return(1);
 	}
 
 	fprintf(fp, "/*\n");
 	fprintf(fp, " *\t%s\n", (fp != stdout) ? argv[1] : "STDOUT");
 	fprintf(fp, " *\n");
-	fprintf(fp, " *\tFunction No. Table\n");
+	fprintf(fp, " *\tfunction No. table\n");
 	fprintf(fp, " */\n");
 	fprintf(fp, "\n");
 

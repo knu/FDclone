@@ -8,13 +8,10 @@
 #ifdef	FD
 #include "fd.h"
 #else	/* !FD */
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "machine.h"
-#include "printf.h"
-#include "kctype.h"
-#include "pathname.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -23,6 +20,10 @@
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
+
+#include "printf.h"
+#include "kctype.h"
+#include "pathname.h"
 #endif	/* !FD */
 
 #if	MSDOS

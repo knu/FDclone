@@ -380,6 +380,28 @@ typedef struct _builtintable {
 #define	LCK_WRITE		1
 #define	LCK_UNLOCK		2
 
+#define	CHK_OK			0
+#define	CHK_EXIST		1
+#define	CHK_OVERWRITE		2
+#define	CHK_ERROR		(-1)
+#define	CHK_CANCEL		(-2)
+
+#define	APL_OK			0
+#define	APL_IGNORE		1
+#define	APL_ERROR		(-1)
+#define	APL_CANCEL		(-2)
+
+#define	CPP_UPDATE		1
+#define	CPP_RENAME		2
+#define	CPP_OVERWRITE		3
+#define	CPP_NOCOPY		4
+#define	CPP_FORWUPDATE		5
+#define	CPP_FORWOVERWRITE	6
+
+#define	RMP_BIAS		2
+#define	RMP_REMOVEALL		(RMP_BIAS + CHK_OK)
+#define	RMP_KEEPALL		(RMP_BIAS + CHK_ERROR)
+
 #define	TCH_MODE		00001
 #define	TCH_UID			00002
 #define	TCH_GID			00004

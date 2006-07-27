@@ -2195,12 +2195,19 @@ static char *NEAR genfullpath(path, file, full, tmpdir)
 char *path, *file, *full, *tmpdir;
 #endif
 {
+#if	MSDOS
+	int drive;
+#endif
 	char *cp;
 
 	cp = file;
 #ifdef	_USEDOSPATH
+# if	MSDOS
+	if ((drive = _dospath(cp))) cp += 2;
+# else
 	if (_dospath(cp)) cp += 2;
-#endif
+# endif
+#endif	/* _USEDOSPATH */
 
 #ifndef	_NODOSDRIVE
 	if (tmpdir) strcpy(path, tmpdir);
@@ -2215,16 +2222,11 @@ char *path, *file, *full, *tmpdir;
 		return(NULL);
 	}
 #if	MSDOS
-	else if (cp > file) {
-		int drive;
-
-		path[0] = *file;
-		path[1] = ':';
-		path[2] = _SC_;
-		if ((drive = toupper2(*file)) == toupper2(*full))
-			strcpy(&(path[3]), &(full[3]));
-		else if (!unixgetcurdir(&(path[3]), drive - 'A' + 1))
-			return(NULL);
+	else if (drive) {
+		file = gendospath(path, drive, _SC_);
+		drive = toupper2(drive);
+		if (drive == toupper2(*full)) strcpy(file, &(full[3]));
+		else if (!unixgetcurdir(file, drive - 'A' + 1)) return(NULL);
 	}
 #endif
 	else strcpy(path, full);
@@ -2353,7 +2355,7 @@ char *arc;
 	if (tmpdest) {
 		if (!ret) {
 			if (_chdir2(tmpdest) < 0) ret = 1;
-			else forcemovefile(dest);
+			else VOID_C forcemovefile(dest);
 		}
 		free(dest);
 		removetmp(tmpdest, NULL);
@@ -2501,7 +2503,7 @@ int tr, flags;
 
 #ifndef	_NODOSDRIVE
 	if (tmpdest) {
-		if (!ret) forcemovefile(dest);
+		if (!ret) VOID_C forcemovefile(dest);
 		free(dest);
 		removetmp(tmpdest, NULL);
 	}

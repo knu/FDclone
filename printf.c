@@ -9,6 +9,10 @@
 #include <string.h>
 #include <sys/types.h>
 
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
+
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -41,7 +45,17 @@ extern char *newkanjiconv __P_((char *, int, int, int));
 extern int getoutputkcode __P_((VOID_A));
 # endif
 extern char *restorearg __P_((char *));
-#endif
+#endif	/* FD */
+
+#ifdef	CODEEUC
+# ifdef	FD
+extern int strlen2 __P_((char *));
+# else
+static int NEAR strlen2 __P_((char *));
+# endif
+#else	/* !CODEEUC */
+#define	strlen2	strlen
+#endif	/* !CODEEUC */
 
 static int NEAR checkchar __P_((int, printbuf_t *));
 static int NEAR setint __P_((u_long_t, int, printbuf_t *, int, int));
@@ -75,6 +89,18 @@ int printfsize[] = {
 #endif
 };
 
+
+#if	!defined (FD) && defined (CODEEUC)
+static int NEAR strlen2(s)
+char *s;
+{
+	int i, len;
+
+	for (i = len = 0; s[i]; i++, len++) if (isekana(s, i)) i++;
+
+	return(len);
+}
+#endif	/* !FD && CODEEUC */
 
 int getnum(s, ptrp)
 CONST char *s;
@@ -152,7 +178,7 @@ int width, prec;
 	long_t n;
 	int i, c, len, ptr, sign, bit;
 
-	memcpy(&n, &u, sizeof(n));
+	memcpy((char *)&n, (char *)&u, sizeof(n));
 	bit = 0;
 
 #ifdef	MINIMUMSHELL
@@ -290,13 +316,7 @@ int width, prec;
 {
 	int i, j, c, len, total;
 
-	if (s) {
-#ifdef	CODEEUC
-		for (i = len = 0; s[i]; i++, len++) if (isekana(s, i)) i++;
-#else
-		len = strlen(s);
-#endif
-	}
+	if (s) len = strlen2(s);
 	else {
 		s = "(null)";
 		len = strsize("(null)");
@@ -509,7 +529,7 @@ va_list args;
 # ifndef	HPUX
 	/*
 	 * HP-UX always pushes arguments from lowest to uppermost,
-	 * in spite of the CPU endien.
+	 * in spite of the CPU endian.
 	 */
 				tmp = 0x5a;
 				cp = (char *)(&tmp);

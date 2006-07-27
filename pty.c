@@ -53,6 +53,9 @@
 #ifndef	O_NOCTTY
 #define	O_NOCTTY	0
 #endif
+#ifndef	EPERM
+#define	EPERM		EACCES
+#endif
 
 #ifndef	USEDEVPTMX
 static char pty_char1[] = "pqrstuvwxyzPQRST";

@@ -28,13 +28,13 @@ extern u_short typelist[];
 #  ifdef	SVR4
 #  include <sys/sysmacros.h>
 #   ifndef	makedev
-#   define	makedev(ma, mi)	(((((unsigned long)(ma)) & 0x3fff) << 18) \
-				| (((unsigned long)(mi)) & 0x3ffff))
+#   define	makedev(ma, mi)	(((((u_long)(ma)) & 0x3fff) << 18) \
+				| (((u_long)(mi)) & 0x3ffff))
 #   endif
 #  else
 #   ifndef	makedev
-#   define	makedev(ma, mi)	(((((unsigned)(ma)) & 0xff) << 8) \
-				| (((unsigned)(mi)) & 0xff))
+#   define	makedev(ma, mi)	(((((u_int)(ma)) & 0xff) << 8) \
+				| (((u_int)(mi)) & 0xff))
 #   endif
 #  endif
 # endif

@@ -4,10 +4,10 @@
  *	UNIX-like disk accessing module
  */
 
+#include "machine.h"
 #include <stdio.h>
 #include <fcntl.h>
 #include <io.h>
-#include "machine.h"
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -38,6 +38,7 @@
 
 #ifdef	FD
 extern int _dospath __P_((char *));
+extern char *gendospath __P_((char *, int, int));
 extern char *strdelim __P_((char *, int));
 extern char *strrdelim __P_((char *, int));
 extern int isdelim __P_((char *, int));
@@ -47,6 +48,7 @@ extern int isdotdir __P_((char *));
 extern char curpath[];
 #else
 static int NEAR _dospath __P_((char *));
+static char *NEAR gendospath __P_((char *, int, int));
 static char *NEAR strdelim __P_((char *, int));
 static char *NEAR strrdelim __P_((char *, int));
 static int NEAR isdelim __P_((char *, int));
@@ -149,6 +151,18 @@ static int NEAR _dospath(path)
 char *path;
 {
 	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
+}
+
+static char *NEAR gendospath(path, drive, c)
+char *path;
+int drive, c;
+{
+	*(path++) = drive;
+	*(path++) = ':';
+	if (c) *(path++) = c;
+	*path = '\0';
+
+	return(path);
 }
 
 static char *NEAR strdelim(s, d)
@@ -364,6 +378,9 @@ int getcurdrv(VOID_A)
 int setcurdrv(drive, nodir)
 int drive, nodir;
 {
+#ifndef	_NODOSDRIVE
+	char tmp[3];
+#endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	char *path;
@@ -382,11 +399,7 @@ int drive, nodir;
 
 #ifndef	_NODOSDRIVE
 	if (checkdrive(drv) > 0) {
-		char tmp[3];
-
-		tmp[0] = drive;
-		tmp[1] = ':';
-		tmp[2] = '\0';
+		VOID_C gendospath(tmp, drive, '\0');
 		return(doschdir(tmp));
 	}
 #endif
@@ -461,24 +474,21 @@ char *path;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
-	char drv[4], buf[128];
+	char drive, drv[4], buf[128];
 
-	if (!path || !(drv[0] = _dospath(path))) drv[0] = getcurdrv();
+	if (!path || !(drive = _dospath(path))) drive = getcurdrv();
 #ifndef	_NODOSDRIVE
-	if (checkdrive(toupper2(drv[0]) - 'A') > 0) return(-2);
+	if (checkdrive(toupper2(drive) - 'A') > 0) return(-2);
 #endif
 	if (getdosver() < 7) {
 #ifndef	_NODOSDRIVE
-		if ((dosdrive & 1) && islower2(drv[0])) return(-1);
+		if ((dosdrive & 1) && islower2(drive)) return(-1);
 #endif
 		return(-3);
 	}
-	if (isupper2(drv[0])) return(0);
+	if (isupper2(drive)) return(0);
 
-	drv[1] = ':';
-	drv[2] = '\\';
-	drv[3] = '\0';
-
+	VOID_C gendospath(drv, drive, _SC_);
 	reg.x.ax = 0x71a0;
 	reg.x.bx = 0;
 	reg.x.cx = sizeof(buf);
@@ -540,16 +550,9 @@ char *path, *buf;
 	int drive;
 
 	cp = path;
-	if ((drive = _dospath(path))) cp += 2;
-	else drive = getcurdrv();
-	buf[0] = drive;
-	buf[1] = ':';
-	if (!*cp) {
-		buf[2] = '.';
-		buf[3] = '\0';
-	}
-	else if (cp == &(path[2])) return(path);
-	else strcpy(&(buf[2]), cp);
+	if (!(drive = _dospath(path))) drive = getcurdrv();
+	else if (*(cp += 2)) return(path);
+	strcpy(gendospath(buf, drive, (*cp) ? '\0' : '.'), cp);
 
 	return(buf);
 }
@@ -675,10 +678,7 @@ char *path, *resolved;
 			resolved[j + 3] = '\0';
 		}
 		else {
-			resolved[0] = i;
-			resolved[1] = ':';
-			resolved[2] = _SC_;
-			resolved[3] = '\0';
+			VOID_C gendospath(resolved, i, _SC_);
 			if (path && *path == _SC_)
 				strcpy(&(resolved[2]), path);
 		}
@@ -2141,14 +2141,9 @@ int size;
 	}
 	else
 #endif
-	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
-	else {
-		pathname[0] = drive;
-		pathname[1] = ':';
-		pathname[2] = _SC_;
-
-		if (!unixgetcurdir(&(pathname[3]), 0)) return(NULL);
-	}
+	if ((!pathname && !(pathname = (char *)malloc(size)))
+	|| !unixgetcurdir(gendospath(pathname, drive, _SC_), 0))
+		return(NULL);
 
 	*pathname = (dos7access & D7_CAPITAL)
 		? toupper2(*pathname) : tolower2(*pathname);
@@ -2467,13 +2462,15 @@ struct timeval tvp[2];
 	}
 #endif	/* !USEUTIME */
 	if (i <= 0) {
-		if ((fd = open(path, O_RDONLY, 0666)) < 0) return(-1);
-		reg.x.ax = 0x5701;
-		reg.x.bx = (u_short)fd;
-		putdostime(&(reg.x.dx), &(reg.x.cx), t);
-		i = int21call(&reg, &sreg);
-		close(fd);
-		return(i);
+		if ((fd = open(path, O_RDONLY, 0666)) >= 0) {
+			reg.x.ax = 0x5701;
+			reg.x.bx = (u_short)fd;
+			putdostime(&(reg.x.dx), &(reg.x.cx), t);
+			i = int21call(&reg, &sreg);
+			close(fd);
+			return(i);
+		}
+		if (i || errno != EACCES) return(-1);
 	}
 
 	reg.x.ax = 0x7143;

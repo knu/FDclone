@@ -27,23 +27,23 @@ extern int setcurdrv __P_((int, int));
 #  ifdef	SVR4
 #  include <sys/sysmacros.h>
 #   ifndef	major
-#   define	major(n)	((((unsigned long)(n)) >> 18) & 0x3fff)
+#   define	major(n)	((((u_long)(n)) >> 18) & 0x3fff)
 #   endif
 #   ifndef	minor
-#   define	minor(n)	(((unsigned long)(n)) & 0x3ffff)
+#   define	minor(n)	(((u_long)(n)) & 0x3ffff)
 #   endif
 #  else
 #   ifndef	major
-#   define	major(n)	((((unsigned)(n)) >> 8) & 0xff)
+#   define	major(n)	((((u_int)(n)) >> 8) & 0xff)
 #   endif
 #   ifndef	minor
-#   define	minor(n)	(((unsigned)(n)) & 0xff)
+#   define	minor(n)	(((u_int)(n)) & 0xff)
 #   endif
 #  endif
 # endif
 #endif
 
-#define	CL_NORM		0
+#define	CL_REG		0
 #define	CL_BACK		1
 #define	CL_DIR		2
 #define	CL_RONLY	3
@@ -189,7 +189,7 @@ static CONST u_char colorlist[] = {
 	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
 };
 static CONST char defpalette[] = {
-	ANSI_FG,	/* CL_NORM */
+	ANSI_FG,	/* CL_REG */
 	ANSI_BG,	/* CL_BACK */
 	ANSI_CYAN,	/* CL_DIR */
 	ANSI_GREEN,	/* CL_RONLY */
@@ -221,7 +221,7 @@ namelist *namep;
 		if ((namep -> st_mode & S_IFMT) == modelist[i])
 			return(colorlist[i]);
 
-	return(CL_NORM);
+	return(CL_REG);
 }
 
 static int NEAR biascolor(color)
@@ -1869,6 +1869,9 @@ VOID main_fd(pathlist, evaled)
 char **pathlist;
 int evaled;
 {
+#ifdef	_USEDOSEMU
+	char buf[MAXPATHLEN];
+#endif
 	char *def, *cwd, file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
 	int i, argc, ischgdir;
 
@@ -1960,17 +1963,12 @@ int evaled;
 			else copycurpath(file);
 		}
 
-		if (isdotdir(file) != 2) {
-#ifdef	_USEDOSEMU
-			char buf[MAXPATHLEN];
-#endif
-
-			if (chdir3(nodospath(buf, file), 1) < 0) {
-				hideclock = 2;
-				warning(-1, file);
-				strcpy(prev, file);
-				def = prev;
-			}
+		if (isdotdir(file) != 2
+		&& chdir3(nodospath(buf, file), 1) < 0) {
+			hideclock = 2;
+			warning(-1, file);
+			strcpy(prev, file);
+			def = prev;
 		}
 
 #ifdef	_NOARCHIVE

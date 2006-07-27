@@ -46,6 +46,8 @@
 #define	CCCOMMAND	"cc"
 #endif
 
+int main __P_((int, char *[]));
+
 
 /*ARGSUSED*/
 int main(argc, argv)
@@ -75,15 +77,15 @@ char *argv[];
 	printf("s:__EXE__::g\n");
 #endif
 	printf("s:__OBJ__:.o:g\n");
-	printf("s:__OBJS__:dosemu.o:\n");
+	printf("s:__EMUOBJS__:dosemu.o:\n");
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
 #ifdef	USEDATADIR
-	printf("s:__UNITBLPATH__:-DDATADIR='\"'$(DATADIR)'\"':\n");
+	printf("s:__TBLPATH__:-DDATADIR='\"'$(DATADIR)'\"':\n");
 	printf("s:__DATADIR__:$(DATADIR):g\n");
 #else
-	printf("s:__UNITBLPATH__::\n");
+	printf("s:__TBLPATH__::\n");
 	printf("s:__DATADIR__:$(BINDIR):g\n");
 #endif
 

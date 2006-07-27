@@ -3,10 +3,10 @@ s:__PREFIX__::
 s:__CONFDIR__::
 s:__EXE__:.exe:g
 s:__OBJ__:.o:g
-s:__OBJS__:unixemu.o unixdisk.o:
+s:__EMUOBJS__:unixemu.o unixdisk.o:
 s:__OBJLIST__:@$(ARGS):
 s:__DEFRC__:'"'$(DOSRC)'"':
-s:__UNITBLPATH__::
+s:__TBLPATH__::
 s:__DATADIR__:$(BINDIR):g
 s:	__RENAME__:#	@ren:
 s:	__AOUT2EXE__:#	@aout2exe:

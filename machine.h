@@ -1043,7 +1043,7 @@ typedef long	off_t;
 #define	ALLOC_T		size_t
 #define	VOID_A		void
 #else
-#define	ALLOC_T		unsigned
+#define	ALLOC_T		u_int
 #define	VOID_A
 #endif
 

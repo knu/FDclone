@@ -341,6 +341,23 @@ int i;
 }
 #endif	/* K_INTERN */
 
+K_EXTERN int iskana1 __P_((char *, int *));
+#ifdef	K_INTERN
+int iskana1(s, ip)
+char *s;
+int *ip;
+{
+# ifdef	CODEEUC
+	int n;
+
+	if ((n = isekana(s, *ip))) (*ip)++;
+	return(n);
+# else
+	return(isskana(s, *ip));
+# endif
+}
+#endif	/* K_INTERN */
+
 #ifdef	_NOKANJICONV
 # ifdef	CODEEUC
 # define	isinkanji1(c,k)	iseuc(c)

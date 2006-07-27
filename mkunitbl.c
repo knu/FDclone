@@ -4,8 +4,9 @@
  *	Unicode table generator
  */
 
-#include <stdio.h>
 #include "machine.h"
+#include <stdio.h>
+#include <sys/types.h>
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -19,21 +20,24 @@
 #define	MAXNFLEN	4
 
 typedef struct _convtable {
-	unsigned short unicode;
-	unsigned short org;
+	u_short unicode;
+	u_short org;
 } convtable;
 
 typedef struct _nftable {
-	unsigned short unicode;
-	unsigned short normalization[MAXNFLEN + 1];
+	u_short unicode;
+	u_short normalization[MAXNFLEN + 1];
 } nftable;
 
 static int cmpuni __P_((CONST VOID_P, CONST VOID_P));
 static int cmpnf __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR fputbyte __P_((int, FILE *));
-static int NEAR fputword __P_((unsigned int, FILE *));
+static int NEAR fputword __P_((u_int, FILE *));
+static int NEAR fputunilist __P_((convtable [], u_int, FILE *));
+static int NEAR fputnflist __P_((nftable [], u_int, FILE *));
+int main __P_((int, char *[]));
 
-static convtable unitable[] = {
+static convtable unilist[] = {
 	{0x00a7, 0x8198},
 	{0x00a8, 0x814e},
 	{0x00b0, 0x818b},
@@ -9246,9 +9250,9 @@ static convtable unitable[] = {
 	{0xffe4, 0xfa55},
 	{0xffe5, 0x818f},
 };
-#define	UNITBLSIZ	((int)sizeof(unitable) / sizeof(convtable))
+#define	UNILISTSIZ	((int)sizeof(unilist) / sizeof(convtable))
 
-static nftable macunitable[] = {
+static nftable macunilist[] = {
 	{0x00c0, {0x0041, 0x0300, 0}},
 	{0x00c1, {0x0041, 0x0301, 0}},
 	{0x00c2, {0x0041, 0x0302, 0}},
@@ -10100,6 +10104,8 @@ static nftable macunitable[] = {
 	{0x1ffb, {0x03a9, 0x0301, 0}},
 	{0x1ffc, {0x03a9, 0x0345, 0}},
 	{0x1ffd, {0x00b4, 0}},
+	{0x2015, {0x2014, 0}},
+	{0x2225, {0x2016, 0}},
 	{0x304c, {0x304b, 0x3099, 0}},
 	{0x304e, {0x304d, 0x3099, 0}},
 	{0x3050, {0x304f, 0x3099, 0}},
@@ -10191,8 +10197,13 @@ static nftable macunitable[] = {
 	{0xfb4c, {0x05d1, 0x05bf, 0}},
 	{0xfb4d, {0x05db, 0x05bf, 0}},
 	{0xfb4e, {0x05e4, 0x05bf, 0}},
+	{0xff0d, {0x2212, 0}},
+	{0xff5e, {0x301c, 0}},
+	{0xffe0, {0x00a2, 0}},
+	{0xffe1, {0x00a3, 0}},
+	{0xffe2, {0x00ac, 0}},
 };
-#define	MACUNITBLSIZ	((int)sizeof(macunitable) / sizeof(nftable))
+#define	MACUNILISTSIZ	((int)sizeof(macunilist) / sizeof(nftable))
 
 static int cmpuni(vp1, vp2)
 CONST VOID_P vp1;
@@ -10236,7 +10247,7 @@ FILE *fp;
 }
 
 static int NEAR fputword(w, fp)
-unsigned int w;
+u_int w;
 FILE *fp;
 {
 	if (fputbyte((int)(w & 0xff), fp) < 0
@@ -10246,38 +10257,63 @@ FILE *fp;
 	return(0);
 }
 
+static int NEAR fputunilist(list, max, fp)
+convtable list[];
+u_int max;
+FILE *fp;
+{
+	u_int n;
+
+	qsort(list, max, sizeof(convtable), cmpuni);
+	if (fputword(max, fp) < 0) return(-1);
+	for (n = 0; n < max; n++) {
+		if (fputword(list[n].unicode, fp) < 0
+		|| fputword(list[n].org, fp) < 0)
+			return(-1);
+	}
+
+	return(0);
+}
+
+static int NEAR fputnflist(list, max, fp)
+nftable list[];
+u_int max;
+FILE *fp;
+{
+	u_int n;
+	int i;
+
+	qsort(list, max, sizeof(nftable), cmpnf);
+	if (fputword(max, fp) < 0) return(-1);
+	for (n = 0; n < max; n++) {
+		if (fputword(list[n].unicode, fp) < 0) return(-1);
+		for (i = 0; i < MAXNFLEN; i++) {
+			if (fputword(list[n].normalization[i], fp) < 0)
+				return(-1);
+		}
+	}
+
+	return(0);
+}
+
 int main(argc, argv)
 int argc;
 char *argv[];
 {
 	FILE *fp;
-	int i, j;
 
-	if (argc < 2 || (fp = fopen(argv[1], "wb")) == NULL) {
+	if (argc < 2 || !(fp = fopen(argv[1], "wb"))) {
 		fprintf(stderr, "Cannot open file.\n");
 		return(1);
 	}
 
-	qsort(unitable, UNITBLSIZ, sizeof(convtable), cmpuni);
-	if (fputword(UNITBLSIZ, fp) < 0) return(1);
-	for (i = 0; i < UNITBLSIZ; i++) {
-		if (fputword(unitable[i].unicode, fp) < 0
-		|| fputword(unitable[i].org, fp) < 0)
-			return(1);
-	}
+	if (fputunilist(unilist, UNILISTSIZ, fp) < 0) return(1);
 
 	if (fputbyte(1, fp) < 0) return(1);
 	if (fputbyte(MAXNFLEN, fp) < 0) return(1);
 
-	qsort(macunitable, MACUNITBLSIZ, sizeof(nftable), cmpnf);
-	if (fputword(MACUNITBLSIZ, fp) < 0) return(1);
-	for (i = 0; i < MACUNITBLSIZ; i++) {
-		if (fputword(macunitable[i].unicode, fp) < 0) return(1);
-		for (j = 0; j < MAXNFLEN; j++) {
-			if (fputword(macunitable[i].normalization[j], fp) < 0)
-				return(1);
-		}
-	}
+	if (fputnflist(macunilist, MACUNILISTSIZ, fp) < 0) return(1);
+
 	fclose(fp);
 
 	return(0);

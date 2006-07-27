@@ -112,9 +112,8 @@ static VOID NEAR dispprompt __P_((char *, int));
 static char *NEAR truncstr __P_((char *));
 static int NEAR yesnomes __P_((char *));
 static int NEAR selectcnt __P_((int, char **, int));
-static int NEAR selectadj __P_((int, int, char **, char **, int [], int));
-static VOID NEAR selectmes __P_((int, int, int,
-		char *[], int [], int [], int));
+static int NEAR selectadj __P_((int, int, char **, char **, int *, int));
+static VOID NEAR selectmes __P_((int, int, int, char *[], int [], int *, int));
 
 int subwindow = 0;
 int win_x = 0;
@@ -1432,7 +1431,7 @@ int *cxp, *cxp2, ch, *qtopp, *qp, *qedp;
 			if (cxp != &rptr && rptr > *qedp) rptr--;
 			if (cxp2 != &vptr && vptr > cx2) vptr--;
 			inputlen--;
-			*qedp = 0;
+			*qedp = -1;
 			return(0);
 		}
 		*qtopp = *cxp;
@@ -1542,7 +1541,7 @@ char **argv;
 	dupcolumns = curcolumns;
 	dupdispmode = dispmode;
 	minfilename = n_column;
-	dispmode = 2;
+	dispmode = F_FILETYPE;
 
 	if (argv) {
 		selectlist = (namelist *)malloc2(argc * sizeof(namelist));
@@ -1722,6 +1721,9 @@ int comline, cont, h;
 		}
 # endif
 		else if (pc != PC_NORMAL) /*EMPTY*/;
+# ifdef	_USEDOSPATH
+		else if (i == top && _dospath(&(inputbuf[i]))) i++;
+# endif
 		else if (inputbuf[i] == ':' || inputbuf[i] == '='
 		|| strchr(CMDLINE_DELIM, inputbuf[i]))
 			top = i + 1;
@@ -1764,7 +1766,7 @@ int comline, cont, h;
 		i = (s_isdir(&(selectlist[tmpfilepos]))) ? 1 : 0;
 		argv[0] = (char *)malloc2(n + i + 1);
 		memcpy(argv[0], selectlist[tmpfilepos].name, n);
-		if (i) argv[0][n] = '/';
+		if (i) argv[0][n] = _SC_;
 		argv[0][n + i] = '\0';
 		argc = 1;
 	}
@@ -2003,7 +2005,7 @@ int ch;
 		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
 		return(1);
 	}
-	if (code == UTF8 || code == M_UTF8) {
+	if (code >= UTF8) {
 		if ((ch & 0xff00) || !ismsb(ch)) /*EMPTY*/;
 		else if ((ch2 = getch3()) == EOF) {
 			buf[0] = '\0';
@@ -2026,7 +2028,7 @@ int ch;
 			tmpkanji[1] = ch2;
 			tmpkanji[2] = n;
 			tmpkanji[3] = '\0';
-			n = kanjiconv(buf, tmpkanji, 3,
+			n = kanjiconv(buf, tmpkanji, 2,
 				code, DEFCODE, L_INPUT);
 # ifdef	CODEEUC
 			if (isekana(buf, 0)) n = 1;
@@ -3381,7 +3383,7 @@ int multi;
 static int NEAR selectadj(max, x, str, tmpstr, xx, multi)
 int max, x;
 char **str, **tmpstr;
-int xx[], multi;
+int *xx, multi;
 {
 	char *cp;
 	int i, len, maxlen;
@@ -3438,7 +3440,7 @@ int xx[], multi;
 static VOID NEAR selectmes(num, max, x, str, val, xx, multi)
 int num, max, x;
 char *str[];
-int val[], xx[], multi;
+int val[], *xx, multi;
 {
 	int i;
 

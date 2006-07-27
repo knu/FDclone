@@ -4,14 +4,14 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.08d
+VERSION	= 2.08e
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
 MANSEC	= 1
 TOPDIR	= $(BUILD)$(PREFIX)
 BINDIR	= $(TOPDIR)\bin
-DATADIR	= $(TOPDIR)\share
+DATADIR	= $(TOPDIR)\share\fd
 MANDIR	= $(TOPDIR)\man\man$(MANSEC)
 CATDIR	= $(TOPDIR)\man\cat$(MANSEC)
 JMANDIR	= $(TOPDIR)\man\man$(MANSEC)
@@ -233,6 +233,7 @@ install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 		$(CHMOD) a+r-x $(BLDRC); \
 	fi
 	-if [ -f $(UNITBL) ]; then \
+		[ -d $(BINDIR) ] || mkdir $(BINDIR); \
 		$(INSTALL) $(UNITBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(UNITBL); \
 	fi
@@ -298,7 +299,7 @@ depend: $(SRC) kanji.h funcno.h
 	makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
-	rm -f Makefile.tmp.bak
+	-$(RM) Makefile.tmp.bak
 	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' Makefile.in.bak \
 		> Makefile.in
 	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it." \
@@ -308,7 +309,8 @@ depend: $(SRC) kanji.h funcno.h
 		-e 's\\.o\\_\_OBJ\_\_\g' \
 		-e 's\ *$$\\' \
 		-e '\: *$$\d' Makefile.tmp >> Makefile.in
-	rm -f Makefile.in.bak Makefile.tmp
+	-$(RM) Makefile.in.bak
+	-$(RM) Makefile.tmp
 
 
 ############################################################
@@ -408,11 +410,11 @@ shtar: $(SHSOURCES)
 	gzip -f $(TITLE)sh-$$VER.tar)
 
 lzh: $(SOURCES)
-	rm -f $(TITLE)$(VERSION).lzh
+	-$(RM) $(TITLE)$(VERSION).lzh
 	lha a $(TITLE)$(VERSION).lzh $(SOURCES)
 
 shar: $(SOURCES)
-	rm -f $(TITLE)$(VERSION).shar.[0-9][0-9]
+	-$(RM) $(TITLE)$(VERSION).shar.[0-9][0-9]
 	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
@@ -505,17 +507,26 @@ ipk: $(PROGRAM).exe $(UNITBL)
 	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
 	gzip .\ipk.tar
 	mv .\ipk.tar.gz .\fd_$(VERSION)-1_arm.ipk
-	-rm -rf $(IPKWDIR) $(IPKTDIR)
+	-$(RM) -r $(IPKWDIR) $(IPKTDIR)
 
 clean:
-	-rm -f core *.o
-	-rm -f funcno.h kanji.h
-	-rm -f kanjicnv$(EXE) expfunc$(EXE)
-	-rm -f mkfuncno$(EXE) mkunitbl$(EXE)
-	-rm -f fdsh$(EXE) fdbsh$(EXE)
-	-rm -f $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(PROGRAM).$(MANSEC)c
-	-rm -f $(PROGRAM).eng $(PROGRAM).doc
-	-rm -f $(ARGS) $(UNITBL)
+	-$(RM) core
+	-$(RM) *.o
+	-$(RM) funcno.h
+	-$(RM) kanji.h
+	-$(RM) kanjicnv$(EXE)
+	-$(RM) expfunc$(EXE)
+	-$(RM) mkfuncno$(EXE)
+	-$(RM) mkunitbl$(EXE)
+	-$(RM) fdsh$(EXE)
+	-$(RM) fdbsh$(EXE)
+	-$(RM) $(PROGRAM)$(EXE)
+	-$(RM) $(PROGRAM).$(MANSEC)
+	-$(RM) $(PROGRAM).$(MANSEC)c
+	-$(RM) $(PROGRAM).eng
+	-$(RM) $(PROGRAM).doc
+	-$(RM) $(ARGS)
+	-$(RM) $(UNITBL)
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.o: fd.h
@@ -529,24 +540,31 @@ printf.o: machine.h config.h
 printf.o: printf.h
 printf.o: kctype.h
 termio.o: machine.h config.h
-termio.o: printf.h termio.h
+termio.o: printf.h
+termio.o: termio.h
 term.o: machine.h config.h
-term.o: printf.h
-term.o: kctype.h
+term.o: printf.h kctype.h
 term.o: termio.h
 term.o: term.h
 pathname.o: machine.h config.h
-pathname.o: printf.h kctype.h
+pathname.o: printf.h
+pathname.o: kctype.h
 pathname.o: pathname.h
-system.o: machine.h config.h printf.h kctype.h
+system.o: machine.h config.h
+system.o: printf.h
+system.o: kctype.h
 system.o: pathname.h
 system.o: system.h termio.h
 system.o: wait.h
-posixsh.o: machine.h config.h printf.h kctype.h
+posixsh.o: machine.h config.h
+posixsh.o: printf.h
+posixsh.o: kctype.h
 posixsh.o: pathname.h
 posixsh.o: system.h termio.h
 posixsh.o: wait.h
-doscom.o: machine.h config.h printf.h kctype.h
+doscom.o: machine.h config.h
+doscom.o: printf.h
+doscom.o: kctype.h
 doscom.o: pathname.h
 doscom.o: system.h termio.h
 doscom.o: wait.h
@@ -661,9 +679,9 @@ shell.o: func.h
 shell.o: dosdisk.h kanji.h system.h termio.h
 shell.o: wait.h
 shell.o: termemu.h
-kanji.o: machine.h config.h
-kanji.o: kctype.h pathname.h
-kanji.o: term.h
+kanji.o: machine.h
+kanji.o: config.h
+kanji.o: printf.h kctype.h
 input.o: fd.h
 input.o: machine.h config.h
 input.o: types.h
