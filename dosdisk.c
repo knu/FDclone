@@ -144,7 +144,7 @@ extern int errno;
 #define	KC_EUCJP	0010
 
 #define	strsize(s)	((int)sizeof(s) - 1)
-#define	arraysize(a)	((int)sizeof(a) / (int)sizeof(*(a)))
+#define	arraysize(a)	((int)((u_int)sizeof(a) / (u_int)sizeof(*(a))))
 
 #define	reterr(c)	{errno = doserrno; return(c);}
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
@@ -213,9 +213,12 @@ static time_t NEAR timelocal2 __P_((struct tm *));
 static int NEAR openunitbl __P_((char *));
 static u_int NEAR unifysjis __P_((u_int, int));
 static u_int NEAR cnvunicode __P_((u_int, int));
+#define	Xopen		open
+#define	Xclose(f)	((close(f)) ? -1 : 0)
+#define	sureread	read
 #define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
-#define	skread(f,o,s,n)	(lseek(f, o, L_SET) >= (off_t)0 \
-			&& read(f, s, n) == n)
+#define	skread(f,o,s,n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
+			&& sureread(f, s, n) == n)
 #define	SJ_UDEF		0x81ac	/* GETA */
 #define	U2_UDEF		0x3013	/* GETA */
 #define	UNICODETBL	"fd-unicd.tbl"
@@ -925,30 +928,27 @@ struct tm *tm;
 static int NEAR openunitbl(file)
 char *file;
 {
-	static int fd = -1;
+	static int fd = -2;
 	u_char buf[2];
 	char path[MAXPATHLEN];
 
 	if (!file) {
-		if (fd >= 0) close(fd);
-		fd = -1;
+		if (fd >= 0) Xclose(fd);
+		fd = -2;
 		return(0);
 	}
 
-	if (fd >= 0) return(fd);
+	if (fd >= -1) return(fd);
 
 	if (!unitblpath || !*unitblpath) strcpy(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
-	if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0) return(-1);
-	if (!unitblent) {
-		if (read(fd, buf, 2) != 2) {
-			close(fd);
-			fd = -1;
-			return(-1);
-		}
-		unitblent = getword(buf, 0);
+	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
+	else if (!unitblent && sureread(fd, buf, 2) != 2) {
+		Xclose(fd);
+		fd = -1;
 	}
+	else unitblent = getword(buf, 0);
 
 	return(fd);
 }
@@ -1032,9 +1032,9 @@ int encode;
 	ofs = min = max = 0;
 	if ((fd = openunitbl(UNICODETBL)) < 0) ofs = unitblent;
 	else if (encode) {
-		if (lseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
+		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
 		else for (ofs = 0; ofs < unitblent; ofs++) {
-			if (read(fd, cp, 4) != 4) {
+			if (sureread(fd, cp, 4) != 4) {
 				ofs = unitblent;
 				break;
 			}
@@ -2185,7 +2185,7 @@ bpb_t *bpbcache;
 			}
 		}
 # endif	/* LINUX */
-		if ((fd = open(devp -> ch_name, i, 0600)) < 0) {
+		if ((fd = open(devp -> ch_name, i, 0666)) < 0) {
 # ifdef	EFORMAT
 			if (errno == EFORMAT) {
 				errno = duperrno;
@@ -2196,7 +2196,7 @@ bpb_t *bpbcache;
 			if ((errno != EROFS && errno != EACCES)
 			|| i == (O_BINARY | O_RDONLY)
 			|| (fd = open(devp -> ch_name,
-			O_BINARY | O_RDONLY, 0600)) < 0) {
+			O_BINARY | O_RDONLY, 0666)) < 0) {
 				doserrno = errno;
 				errno = duperrno;
 				return(-1);
@@ -2481,7 +2481,7 @@ int pc98;
 	l_off_t *slice;
 	int fd, head, sect, size;
 
-	if ((fd = open(devfile, O_BINARY | O_RDONLY, 0600)) < 0) {
+	if ((fd = open(devfile, O_BINARY | O_RDONLY, 0666)) < 0) {
 		if (errno == EIO) errno = ENODEV;
 		return(NULL);
 	}
@@ -4454,7 +4454,7 @@ int fd;
 static long NEAR dosfilbuf(fd, wrt)
 int fd, wrt;
 {
-	long n, size, new, prev;
+	long size, new, prev;
 
 	size = dosflist[fd]._bufsize;
 	if (!wrt && (off_t)size > dosflist[fd]._size - dosflist[fd]._loc)
@@ -4485,8 +4485,7 @@ int fd, wrt;
 		}
 		dosflist[fd]._off = new;
 		dosflist[fd]._next = ENDCLUST;
-		for (n = 0; n < dosflist[fd]._bufsize; n++)
-			dosflist[fd]._base[n] = 0;
+		memset(dosflist[fd]._base, 0, dosflist[fd]._bufsize);
 	}
 	dosflist[fd]._cnt = size;
 	dosflist[fd]._ptr = dosflist[fd]._base;
@@ -4636,10 +4635,42 @@ int whence;
 		dosflist[fd]._ptr += size;
 		dosflist[fd]._cnt -= size;
 		dosflist[fd]._loc += size;
+		if (dosflist[fd]._size < dosflist[fd]._loc)
+			dosflist[fd]._size = dosflist[fd]._loc;
 		offset -= size;
 	}
 
 	return(dosflist[fd]._loc);
+}
+
+int dosftruncate(fd, size)
+int fd;
+off_t size;
+{
+	off_t offset;
+	int n;
+
+	fd -= DOSFDOFFSET;
+	if (fd < 0 || fd >= maxdosf) {
+		errno = EBADF;
+		return(-1);
+	}
+	if ((dosflist[fd]._flag & O_ACCMODE) == O_RDONLY) {
+		errno = EINVAL;
+		return(-1);
+	}
+
+	n = 0;
+	offset = dosflist[fd]._loc;
+	if (doslseek(fd + DOSFDOFFSET, size, L_SET) < (off_t)0) n = -1;
+	else if (dosflist[fd]._next != ENDCLUST) {
+		clustfree(fd2devp(fd), dosflist[fd]._next);
+		dosflist[fd]._next = ENDCLUST;
+	}
+	dosflist[fd]._size = size;
+	doslseek(fd + DOSFDOFFSET, offset, L_SET);
+
+	return(n);
 }
 
 int dosmkdir(path, mode)

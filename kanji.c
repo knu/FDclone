@@ -42,6 +42,7 @@
 #endif
 
 #ifdef	FD
+#include "termio.h"
 #include "func.h"
 extern int norealpath;
 # ifndef	_NOROCKRIDGE
@@ -53,6 +54,9 @@ extern int parentfd;
 #else	/* !FD */
 # ifdef	_USEUNICODE
 extern char *malloc2 __P_((ALLOC_T));
+# define	Xopen		open
+# define	Xclose(f)	((close(f)) ? -1 : 0)
+# define	sureread	read
 # endif
 #endif	/* !FD */
 
@@ -130,8 +134,8 @@ static VOID NEAR j2sj __P_((char *, u_char *));
 static int NEAR openunitbl __P_((char *));
 static u_char *NEAR newunitbl __P_((ALLOC_T));
 #define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
-#define	skread(f,o,s,n)	(lseek(f, o, L_SET) >= (off_t)0 \
-			&& read(f, s, n) == n)
+#define	skread(f,o,s,n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
+			&& sureread(f, s, n) == n)
 #endif
 #ifndef	_NOKANJICONV
 # ifdef	_USEUNICODE
@@ -710,30 +714,27 @@ int max;
 static int NEAR openunitbl(file)
 char *file;
 {
-	static int fd = -1;
+	static int fd = -2;
 	u_char buf[2];
 	char path[MAXPATHLEN];
 
 	if (!file) {
-		if (fd >= 0) close(fd);
-		fd = -1;
+		if (fd >= 0) Xclose(fd);
+		fd = -2;
 		return(0);
 	}
 
-	if (fd >= 0) return(fd);
+	if (fd >= -1) return(fd);
 
 	if (!unitblpath || !*unitblpath) strcpy(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
-	if ((fd = open(path, O_BINARY | O_RDONLY, 0600)) < 0) return(-1);
-	if (!unitblent) {
-		if (read(fd, buf, 2) != 2) {
-			close(fd);
-			fd = -1;
-			return(-1);
-		}
-		unitblent = getword(buf, 0);
+	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
+	else if (!unitblent && sureread(fd, buf, 2) != 2) {
+		Xclose(fd);
+		fd = -1;
 	}
+	else unitblent = getword(buf, 0);
 
 	return(fd);
 }
@@ -794,7 +795,7 @@ int nf;
 		tblent = (u_int *)malloc2(nftblnum * sizeof(u_int));
 
 		for (i = 0; i < nftblnum; i++) {
-			if (read(fd, buf, 2) != 2) {
+			if (sureread(fd, buf, 2) != 2) {
 				while (i > 0) free(tblbuf[--i]);
 				free(tblbuf);
 				free(tblent);
@@ -810,7 +811,7 @@ int nf;
 				free(tblent);
 				return;
 			}
-			if (read(fd, tblbuf[i], size) != size) {
+			if (sureread(fd, tblbuf[i], size) != size) {
 				while (i >= 0) free(tblbuf[i--]);
 				free(tblbuf);
 				free(tblent);
@@ -955,9 +956,9 @@ int encode;
 	}
 	else if ((fd = openunitbl(UNICODETBL)) < 0) ofs = unitblent;
 	else if (encode) {
-		if (lseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
+		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
 		else for (ofs = 0; ofs < unitblent; ofs++) {
-			if (read(fd, cp, 4) != 4) {
+			if (sureread(fd, cp, 4) != 4) {
 				ofs = unitblent;
 				break;
 			}
@@ -1362,7 +1363,7 @@ int nf;
 		n = 2 + nflen * 2;
 		cp = new = (u_char *)malloc2(n);
 		for (ofs = 0; ofs < ent; ofs++) {
-			if (read(fd, cp, n) != n) {
+			if (sureread(fd, cp, n) != n) {
 				ofs = ent;
 				break;
 			}
@@ -1416,7 +1417,7 @@ int *ptrp, nf;
 		}
 	}
 	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0
-	|| (top = lseek(fd, (off_t)0, L_INCR)) < (off_t)0)
+	|| (top = Xlseek(fd, (off_t)0, L_INCR)) < (off_t)0)
 		/*EMPTY*/;
 	else {
 		n = 2 + nflen * 2;

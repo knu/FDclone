@@ -1362,42 +1362,42 @@ int *xp, *yp;
 	tflush();
 # endif
 
-	i = 0;
-	buf[i] = '\0';
+	buf[0] = '\0';
 	do {
-		if (!kbhit2(WAITKEYPAD * 1000L * 2)) break;
+		if (!kbhit2(1000000L * 5)) break;
+# if	MSDOS
+		buf[0] = bdos(0x07, 0x00, 0);
+# else
+		if ((tmp = getch2()) == EOF) break;
+		buf[0] = tmp;
+# endif
+	} while (buf[0] != format[0]);
+
+	i = 0;
+	if (buf[0] == format[0]) for (i++; i < strsize(buf); i++) {
+		if (!kbhit2(WAITKEYPAD * 1000L)) break;
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
 		if ((tmp = getch2()) == EOF) break;
 		buf[i] = tmp;
 # endif
-	} while (buf[i] != format[0]);
-
-	if (buf[i] == format[0]) while (i < strsize(buf) - 1) {
-		if (!kbhit2(WAITKEYPAD * 1000L)) break;
-# if	MSDOS
-		buf[++i] = bdos(0x07, 0x00, 0);
-# else
-		if ((tmp = getch2()) == EOF) break;
-		buf[++i] = tmp;
-# endif
 		if (buf[i] == format[strsize(SIZEFMT) - 1]) break;
 	}
 	keyflush();
 	while (kbhit2(WAITKEYPAD * 1000L)) VOID_C getch2();
-	if (!i || buf[i] != format[strsize(SIZEFMT) - 1]) return(-1);
-	buf[++i] = '\0';
+	if (!i || buf[i++] != format[strsize(SIZEFMT) - 1]) return(-1);
+	buf[i] = '\0';
 
 	count = 0;
 	val[0] = yp;
 	val[1] = xp;
 
 	for (i = j = 0; format[i] && buf[j]; i++) {
-		if (format[i] == '%' && format[++i] == 'd' && count < 2) {
-			tmp = getnum(buf, &j);
-			if (tmp < 0 || buf[j] != format[i + 1]) break;
-			*val[count++] = tmp;
+		if (format[i] == '%' && format[i + 1] == 'd') {
+			if ((tmp = getnum(buf, &j)) < 0) break;
+			i++;
+			if (count++ < 2) *(val[count - 1]) = tmp;
 		}
 		else if (format[i] != buf[j++]) break;
 	}

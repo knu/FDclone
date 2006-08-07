@@ -846,7 +846,9 @@ CONST VOID_P vp2;
 				else ret = (cp2) ? -1 : 0;
 				break;
 			case 'D':
-				ret = sp1 -> mtim - sp2 -> mtim;
+				if (sp1 -> mtim == sp2 -> mtim) ret = 0;
+				else ret = (sp1 -> mtim > sp2 -> mtim)
+					? 1 : -1;
 				break;
 			case 'G':
 				ret = dir_isdir(sp2) - dir_isdir(sp1);

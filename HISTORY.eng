@@ -1,3 +1,9 @@
+Ver. 2.08f	Support locking on NFS to protect the command history file.
+ (08/08/06)	Failure to compile on the non-ANSI environment is fixed.
+		Support Cygwin 1.5.21.
+		Mis-sorting for Japanese filenames on IGNORECASE=1 is fixed.
+		Broken UNICODE table is fixed. (MS-DOS)
+
 Ver. 2.08e	Support the menu method for 'ANSIPALETTE' on customizer.
  (07/28/06)	Support the key-input method for 'PTYMENUKEY' on customizer.
 		Support the setting of "EDITOR", "PAGER", etc. on customizer.

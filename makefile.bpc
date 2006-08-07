@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.08e
+VERSION	= 2.08f
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -671,11 +671,10 @@ builtin.obj: termio.h
 builtin.obj: wait.h
 builtin.obj: termemu.h
 shell.obj: fd.h
-shell.obj: machine.h config.h
-shell.obj: types.h
-shell.obj: printf.h kctype.h
-shell.obj: pathname.h term.h
-shell.obj: func.h
+shell.obj: machine.h config.h types.h
+shell.obj: printf.h
+shell.obj: kctype.h
+shell.obj: pathname.h term.h func.h
 shell.obj: dosdisk.h kanji.h system.h termio.h
 shell.obj: wait.h
 shell.obj: termemu.h

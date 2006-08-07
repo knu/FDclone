@@ -9,6 +9,10 @@
 #include "termio.h"
 #include "func.h"
 
+#ifndef	O_ACCMODE
+#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
+#endif
+
 #if	!defined (_NODOSDRIVE) && defined (CODEEUC)
 extern int noconv;
 #endif
@@ -256,7 +260,7 @@ DIR *dirp;
 	/* Some versions of Cygwin have neither d_fileno nor d_ino */
 	if (dos) {
 		src = ((struct dosdirent *)dp) -> d_name;
-		buf.d_reclen = ((struct dosdirent *)dp) -> d_reclen;
+		wrap_reclen(&buf) = ((struct dosdirent *)dp) -> d_reclen;
 	}
 	else
 #endif
@@ -723,6 +727,18 @@ int whence;
 	else ofs = lseek(fd, offset, whence);
 
 	return(ofs);
+}
+
+int Xftruncate(fd, len)
+int fd;
+off_t len;
+{
+	int n;
+
+	if (fd >= DOSFDOFFSET) n = dosftruncate(fd, len);
+	else n = ftruncate(fd, len);
+
+	return(n);
 }
 
 int Xdup(oldd)

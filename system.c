@@ -26,6 +26,10 @@
 #include "kctype.h"
 #include "pathname.h"
 
+typedef struct _lockbuf_t {
+	int fd;
+} lockbuf_t;
+
 #ifdef	PATHNOCASE
 #define	TMPPREFIX	"TM"
 #else
@@ -405,6 +409,8 @@ extern int posixoptind;
 #endif	/* !MINIMUMSHELL */
 
 #ifdef	FD
+extern lockbuf_t *lockopen __P_((char *, int, int));
+extern VOID lockclose __P_((lockbuf_t *));
 extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((char *));
 # if	MSDOS
@@ -426,6 +432,8 @@ extern char *adjustpname __P_((char *));
 # if	!MSDOS || !defined (MINIMUMSHELL)
 time_t time2 __P_((VOID_A));
 # endif
+static lockbuf_t *NEAR lockopen __P_((char *, int, int));
+static VOID NEAR lockclose __P_((lockbuf_t *));
 static int NEAR genrand __P_((int));
 static char *NEAR genrandname __P_((char *, int));
 static int NEAR mktmpfile __P_((char *));
@@ -1577,6 +1585,30 @@ static sigarg_t (*oldsigfunc[NSIG])__P_((sigfnc_t));
 
 
 #ifndef	FD
+static lockbuf_t *NEAR lockopen(path, flags, mode)
+char *path;
+int flags, mode;
+{
+	lockbuf_t *lck;
+	int fd;
+
+	if ((fd = newdup(Xopen(path, flags, mode))) >= 0) /*EMPTY*/;
+	else if (errno != ENOENT) return(NULL);
+	lck = (lockbuf_t *)malloc2(sizeof(lockbuf_t));
+	lck -> fd = fd;
+
+	return(lck);
+}
+
+static VOID NEAR lockclose(lck)
+lockbuf_t *lck;
+{
+	if (lck) {
+		if (lck -> fd >= 0) VOID_C Xclose(lck -> fd);
+		free(lck);
+	}
+}
+
 # if	MSDOS && defined (MINIMUMSHELL)
 static int NEAR genrand(max)
 int max;
@@ -1867,7 +1899,7 @@ static VOID NEAR notifyjob(VOID_A)
 
 	if ((fd = Xdup(STDERR_FILENO)) < 0) fp = stderr;
 	else if (!(fp = Xfdopen(fd, "a"))) {
-		Xclose(fd);
+		VOID_C Xclose(fd);
 		fp = stderr;
 	}
 # if	!MSDOS
@@ -6289,13 +6321,14 @@ char *path, *argv[], *envp[];
 			ret = RET_FAIL;
 		}
 	}
-	else if ((fd = newdup(Kopen(path, O_BINARY | O_RDONLY, 0666))) < 0) {
+	else if ((fd = newdup(Kopen(path, O_TEXT | O_RDONLY, 0666))) < 0) {
 		doperror(NULL, argv[0]);
 		ret = RET_NOTEXEC;
 	}
 	else {
 		argvar = argv;
 		sourcefile(fd, argv[0], 0);
+		safeclose(fd);
 		ret = ret_status;
 	}
 #ifdef	DEBUG
@@ -8376,7 +8409,7 @@ syntaxtree *trp;
 #endif
 		return(RET_FAIL);
 	}
-	if ((fd = newdup(Kopen(fname, O_BINARY | O_RDONLY, 0666))) < 0) {
+	if ((fd = newdup(Kopen(fname, O_TEXT | O_RDONLY, 0666))) < 0) {
 		doperror((trp -> comm) -> argv[0], fname);
 		return(RET_FAIL);
 	}
@@ -8394,6 +8427,7 @@ syntaxtree *trp;
 		argvar[n] = NULL;
 		var = argvar;
 		sourcefile(fd, fname, 0);
+		safeclose(fd);
 		if (var != argvar) freevar(dupargvar);
 		else {
 			freevar(argvar);
@@ -8402,7 +8436,10 @@ syntaxtree *trp;
 	}
 	else
 #endif	/* BASHSTYLE */
-	sourcefile(fd, fname, 0);
+	{
+		sourcefile(fd, fname, 0);
+		safeclose(fd);
+	}
 
 	return(ret_status);
 }
@@ -10536,7 +10573,6 @@ int verbose;
 		setshlineno(shlineno + 1L);
 #endif
 	}
-	safeclose(fd);
 
 	if (!ret && errno) {
 		doperror(NULL, fname);
@@ -10561,8 +10597,9 @@ int verbose;
 #ifdef	MINIMUMSHELL
 	char *cp, path[MAXPATHLEN];
 #endif
+	lockbuf_t *lck;
 	char **dupargvar;
-	int fd, ret, duprestricted;
+	int ret, duprestricted;
 
 	setsignal();
 #ifdef	MINIMUMSHELL
@@ -10576,10 +10613,13 @@ int verbose;
 	fname = adjustpname(fname);
 #endif
 	fname = evalpath(fname, 0);
-	if (noruncom || !isrootdir(fname)
-	|| (fd = newdup(Xopen(fname, O_BINARY | O_RDONLY, 0666))) < 0)
-		ret = RET_SUCCESS;
-	else {
+	ret = RET_SUCCESS;
+	if (noruncom || !isrootdir(fname)) lck = NULL;
+	else if (!(lck = lockopen(fname, O_TEXT | O_RDONLY, 0666))) {
+		doperror(NULL, fname);
+		ret = RET_FAIL;
+	}
+	else if (lck -> fd >= 0) {
 #ifdef	FD
 		inruncom = 1;
 #endif
@@ -10589,7 +10629,7 @@ int verbose;
 		argvar = (char **)malloc2(2 * sizeof(char *));
 		argvar[0] = strdup2(fname);
 		argvar[1] = NULL;
-		ret = sourcefile(fd, fname, verbose);
+		ret = sourcefile(lck -> fd, fname, verbose);
 		freevar(argvar);
 		argvar = dupargvar;
 		restricted = duprestricted;
@@ -10597,6 +10637,7 @@ int verbose;
 		inruncom = 0;
 #endif
 	}
+	lockclose(lck);
 	resetsignal(0);
 	free(fname);
 

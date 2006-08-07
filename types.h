@@ -146,6 +146,17 @@ typedef struct _strtable {
 	char *str;
 } strtable;
 
+typedef struct _lockbuf_t {
+	int fd;
+	FILE *fp;
+	char *name;
+	u_char flags;
+} lockbuf_t;
+
+#define	LCK_FLOCK		0001
+#define	LCK_INVALID		0002
+#define	LCK_STREAM		0004
+
 typedef struct _bindtable {
 	short key;
 	u_char f_func;

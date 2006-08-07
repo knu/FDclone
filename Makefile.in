@@ -671,11 +671,10 @@ builtin__OBJ__: termio.h
 builtin__OBJ__: wait.h
 builtin__OBJ__: termemu.h
 shell__OBJ__: fd.h
-shell__OBJ__: machine.h config.h
-shell__OBJ__: types.h
-shell__OBJ__: printf.h kctype.h
-shell__OBJ__: pathname.h term.h
-shell__OBJ__: func.h
+shell__OBJ__: machine.h config.h types.h
+shell__OBJ__: printf.h
+shell__OBJ__: kctype.h
+shell__OBJ__: pathname.h term.h func.h
 shell__OBJ__: dosdisk.h kanji.h system.h termio.h
 shell__OBJ__: wait.h
 shell__OBJ__: termemu.h

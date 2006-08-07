@@ -184,11 +184,13 @@ extern int Xopen __P_((char *, int, int));
 #define	Xread		read
 #define	Xwrite		write
 #define	Xlseek		lseek
+#define	Xftruncate	ftruncate
 #else
 extern int Xclose __P_((int));
 extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
+extern int Xftruncate __P_((int, off_t));
 #endif
 #ifdef	_NODOSDRIVE
 #define	Xdup		safe_dup
@@ -384,9 +386,9 @@ extern int cmptree __P_((CONST VOID_P, CONST VOID_P));
 extern struct dirent *searchdir __P_((DIR *, reg_t *, char *));
 extern int underhome __P_((char *));
 extern int preparedir __P_((char *));
-#ifndef	NOFLOCK
-extern int lockfile __P_((int, int));
-#endif
+extern lockbuf_t *lockopen __P_((char *, int, int));
+extern lockbuf_t *lockfopen __P_((char *, char *, int));
+extern VOID lockclose __P_((lockbuf_t *));
 extern int touchfile __P_((char *, struct stat *));
 #ifdef	_NODOSDRIVE
 #define	nodoslstat	Xlstat
@@ -405,6 +407,7 @@ extern int safemvfile __P_((char *, char *, struct stat *, struct stat *));
 extern char *genrandname __P_((char *, int));
 extern int mktmpdir __P_((char *));
 extern int rmtmpdir __P_((char *));
+extern int opentmpfile __P_((char *, int));
 extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((char *));
 extern VOID removetmp __P_((char *, char *));

@@ -10,10 +10,6 @@
 #include "func.h"
 #include "kanji.h"
 
-#ifndef	ENOSPC
-#define	ENOSPC	EACCES
-#endif
-
 #if	MSDOS
 #include <process.h>
 extern int getcurdrv __P_((VOID_A));
@@ -42,9 +38,7 @@ extern int dosdrive;
 #endif
 
 #define	MAXTMPNAMLEN	8
-#ifndef	O_BINARY
-#define	O_BINARY	0
-#endif
+#define	LOCKEXT		"LCK"
 #ifdef	_NODOSDRIVE
 #define	DOSDIRENT	32
 #define	LFNENTSIZ	13
@@ -53,6 +47,15 @@ extern int dosdrive;
 #define	DOSBODYLEN	8
 #define	DOSEXTLEN	3
 
+#ifndef	O_BINARY
+#define	O_BINARY	0
+#endif
+#ifndef	O_ACCMODE
+#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
+#endif
+#ifndef	ENOSPC
+#define	ENOSPC	EACCES
+#endif
 #ifndef	L_SET
 # ifdef	SEEK_SET
 # define	L_SET	SEEK_SET
@@ -61,6 +64,10 @@ extern int dosdrive;
 # endif
 #endif	/* !L_SET */
 
+#ifndef	NOFLOCK
+static int NEAR fcntllock __P_((int, int));
+#endif
+static char *NEAR excllock __P_((char *, int));
 #ifdef	_NODOSDRIVE
 #define	nodoschdir	Xchdir
 #define	nodosgetwd	Xgetwd
@@ -275,22 +282,22 @@ int cmptree(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
+	treelist *tp1, *tp2;
 	char *cp1, *cp2;
 	int tmp;
 
-	if (!(((treelist *)vp1) -> name)) return(1);
-	if (!(((treelist *)vp2) -> name)) return(-1);
+	tp1 = (treelist *)vp1;
+	tp2 = (treelist *)vp2;
+	if (!(tp1 -> name)) return(1);
+	if (!(tp2 -> name)) return(-1);
 	switch (sorton & 7) {
 		case 1:
-			tmp = strpathcmp2(((treelist *)vp1) -> name,
-				((treelist *)vp2) -> name);
+			tmp = strpathcmp2(tp1 -> name, tp2 -> name);
 			break;
 		case 2:
-			if ((cp1 = strrchr(((treelist *)vp1) -> name, '.')))
-				cp1++;
+			if ((cp1 = strrchr(tp1 -> name, '.'))) cp1++;
 			else cp1 = nullstr;
-			if ((cp2 = strrchr(((treelist *)vp2) -> name, '.')))
-				cp2++;
+			if ((cp2 = strrchr(tp2 -> name, '.'))) cp2++;
 			else cp2 = nullstr;
 			tmp = strpathcmp2(cp1, cp2);
 			break;
@@ -304,7 +311,7 @@ CONST VOID_P vp2;
 
 	return(tmp);
 }
-#endif
+#endif	/* !_NOTREE */
 
 /*ARGSUSED*/
 struct dirent *searchdir(dirp, regexp, arcregstr)
@@ -420,7 +427,7 @@ char *dir;
 }
 
 #ifndef	NOFLOCK
-int lockfile(fd, mode)
+static int NEAR fcntllock(fd, mode)
 int fd, mode;
 {
 	static int lockmode[] = {
@@ -456,6 +463,173 @@ int fd, mode;
 # endif	/* !USEFCNTLOCK */
 }
 #endif	/* !NOFLOCK */
+
+static char *NEAR excllock(file, mode)
+char *file;
+int mode;
+{
+#if	MSDOS
+	char *ext;
+#endif
+	static char **locklist = NULL;
+	char *cp, path[MAXPATHLEN];
+	int i, fd;
+
+	if (!file) {
+		if (locklist) {
+			for (i = 0; locklist[i]; i++) {
+				Xunlink(locklist[i]);
+				free(locklist[i]);
+			}
+			free(locklist);
+		}
+		return(NULL);
+	}
+
+	if (mode == LCK_UNLOCK) {
+		VOID_C Xunlink(file);
+		if (locklist) {
+			for (i = 0; locklist[i]; i++)
+				if (file == locklist[i]) break;
+			if (locklist[i]) {
+				for (; locklist[i + 1]; i++)
+					locklist[i] = locklist[i + 1];
+				locklist[i] = NULL;
+			}
+			if (!i) {
+				free(locklist);
+				locklist = NULL;
+			}
+		}
+		free(file);
+		return(NULL);
+	}
+
+#if	MSDOS
+	cp = getbasename(file);
+	for (i = 0; cp[i]; i++) if (cp[i] == '.') break;
+	ext = &(cp[i]);
+	if (i > DOSBODYLEN - strsize(LOCKEXT))
+		i = DOSBODYLEN - strsize(LOCKEXT);
+	i += cp - file;
+	snprintf2(path, sizeof(path), "%-.*s%s%s", i, file, LOCKEXT, ext);
+#else
+	snprintf2(path, sizeof(path), "%s.%s", file, LOCKEXT);
+#endif
+	for (;;) {
+		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
+			0666 & ~tmpumask);
+		if (fd >= 0) break;
+		if (errno != EEXIST) return(NULL);
+#if	!MSDOS || defined (DJGPP)
+		usleep(100000L);
+#endif
+	}
+
+	Xclose(fd);
+	cp = strdup2(path);
+	i = countvar(locklist);
+	locklist = (char **)realloc2(locklist, (i + 2) * sizeof(char *));
+	locklist[i] = cp;
+	locklist[++i] = NULL;
+
+	return(cp);
+}
+
+lockbuf_t *lockopen(path, flags, mode)
+char *path;
+int flags, mode;
+{
+	char *lckname;
+	lockbuf_t *lck;
+	int fd, lckflags, lckmode, duperrno;
+
+	lckname = NULL;
+	lckflags = 0;
+	lckmode = ((flags & O_ACCMODE) == O_RDONLY) ? LCK_READ : LCK_WRITE;
+
+	fd = -1;
+#ifndef	NOFLOCK
+	if (isnfs(path) <= 0) {
+		lckflags |= LCK_FLOCK;
+		fd = newdup(Xopen(path, flags & ~O_TRUNC, mode));
+		if (fd < 0) {
+			if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT)
+				return(NULL);
+		}
+		else if (fcntllock(fd, lckmode) < 0) lckflags &= ~LCK_FLOCK;
+		else if ((flags & O_TRUNC) && Xftruncate(fd, (off_t)0) < 0) {
+			duperrno = errno;
+			VOID_C fcntllock(fd, LCK_UNLOCK);
+			Xclose(fd);
+			errno = duperrno;
+			return(NULL);
+		}
+	}
+#endif	/* !NOFLOCK */
+
+	if (!(lckflags & LCK_FLOCK)) {
+		if (fd >= 0) Xclose(fd);
+		if ((lckname = excllock(path, lckmode))) /*EMPTY*/;
+		else if ((flags & O_ACCMODE) != O_RDONLY) return(NULL);
+
+		if ((fd = newdup(Xopen(path, flags, mode))) >= 0) /*EMPTY*/;
+		else if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT) {
+			duperrno = errno;
+			VOID_C excllock(lckname, LCK_UNLOCK);
+			errno = duperrno;
+			return(NULL);
+		}
+	}
+
+	if (fd < 0) lckflags |= LCK_INVALID;
+	lck = (lockbuf_t *)malloc2(sizeof(lockbuf_t));
+	lck -> fd = fd;
+	lck -> fp = NULL;
+	lck -> name = lckname;
+	lck -> flags = lckflags;
+
+	return(lck);
+}
+
+lockbuf_t *lockfopen(path, type, flags)
+char *path, *type;
+int flags;
+{
+	lockbuf_t *lck;
+	FILE *fp;
+
+	if (!(lck = lockopen(path, flags, 0666))) return(NULL);
+
+	if (!(lck -> flags & LCK_INVALID)) {
+		if (!(fp = Xfdopen(lck -> fd, type))) {
+			lockclose(lck);
+			return(NULL);
+		}
+		lck -> fp = fp;
+	}
+	lck -> flags |= LCK_STREAM;
+
+	return(lck);
+}
+
+VOID lockclose(lck)
+lockbuf_t *lck;
+{
+	if (lck) {
+		if (lck -> name) VOID_C excllock(lck -> name, LCK_UNLOCK);
+		if (!(lck -> flags & LCK_INVALID)) {
+#ifndef	NOFLOCK
+			if (lck -> flags & LCK_FLOCK)
+				VOID_C fcntllock(lck -> fd, LCK_UNLOCK);
+#endif
+			if (lck -> flags & LCK_STREAM) Xfclose(lck -> fp);
+			else Xclose(lck -> fd);
+		}
+
+		free(lck);
+	}
+}
 
 int touchfile(path, stp)
 char *path;
@@ -755,7 +929,7 @@ struct stat *stp1, *stp2;
 	VOID_C Xclose(fd1);
 
 	if (i < 0) {
-		Xunlink(dest);
+		VOID_C Xunlink(dest);
 		errno = duperrno;
 		return(-1);
 	}
@@ -977,28 +1151,40 @@ char *dir;
 	return(0);
 }
 
-int mktmpfile(file)
-char *file;
+int opentmpfile(path, mode)
+char *path;
+int mode;
 {
-	char *cp, path[MAXPATHLEN];
-	int fd, len, duperrno;
+	char *cp;
+	int fd, len;
 
-	path[0] = '\0';
-	if (mktmpdir(path) < 0) return(-1);
-	cp = strcatdelim(path);
-	len = strsize(path) - (cp - path);
+	cp = getbasename(path);
+	len = MAXPATHLEN - (cp - path) - 1;
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	genrandname(NULL, 0);
 
 	for (;;) {
 		genrandname(cp, len);
-		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
-			0666 & ~tmpumask);
-		if (fd >= 0) {
-			strcpy(file, path);
-			return(fd);
-		}
-		if (errno != EEXIST) break;
+		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, mode);
+		if (fd >= 0) break;
+		if (errno != EEXIST) return(-1);
+	}
+
+	return(fd);
+}
+
+int mktmpfile(file)
+char *file;
+{
+	char path[MAXPATHLEN];
+	int fd, duperrno;
+
+	path[0] = '\0';
+	if (mktmpdir(path) < 0) return(-1);
+	VOID_C strcatdelim(path);
+	if ((fd = opentmpfile(path, 0666 & ~tmpumask)) >= 0) {
+		strcpy(file, path);
+		return(fd);
 	}
 	duperrno = errno;
 	rmtmpdir(NULL);
@@ -1078,6 +1264,8 @@ char *dir, *file;
 #endif
 	extern char **environ;
 	char buf[MAXPATHLEN];
+
+	VOID_C excllock(NULL, LCK_UNLOCK);
 
 	if (!dir || !*dir || !file || !*file) return(0);
 	strcatdelim2(buf, dir, file);
@@ -1313,7 +1501,8 @@ char *tmpdir, *old;
 				}
 				else {
 					fd = Xopen(fname,
-						O_CREAT | O_EXCL, 0600);
+						O_WRONLY | O_CREAT | O_EXCL,
+						0600);
 					if (fd >= 0) {
 						VOID_C Xclose(fd);
 						return(fname);
@@ -1522,12 +1711,12 @@ int fs;
 		else if (!strpathcmp(dp -> d_name, tmpdir)) {
 #if	MSDOS
 			if (!(dp -> d_alias[0])) len = DOSBODYLEN;
-#else
+#else	/* !MSDOS */
 # ifndef	_NODOSDRIVE
-			if (dos == 3 && dp -> d_reclen == DOSDIRENT)
+			if (dos == 3 && wrap_reclen(dp) == DOSDIRENT)
 				len = DOSBODYLEN;
 # endif
-#endif
+#endif	/* !MSDOS */
 			ent = i;
 		}
 		else {

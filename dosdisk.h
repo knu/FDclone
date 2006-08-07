@@ -52,10 +52,6 @@
 #define	d_fileno	d_ino
 #endif
 
-#ifdef	NODRECLEN
-#define	d_reclen	d_fd
-#endif
-
 #ifndef	L_SET
 # ifdef	SEEK_SET
 # define	L_SET	SEEK_SET
@@ -323,6 +319,12 @@ typedef struct _st_dirent {
 typedef struct dirent	st_dirent;
 #endif
 
+#ifdef	NODRECLEN
+#define	wrap_reclen(dp)	(*(u_short *)(dp))
+#else
+#define	wrap_reclen(dp)	((dp) -> d_reclen)
+#endif
+
 #ifdef	CYGWIN
 	/* Some versions of Cygwin have neither d_fileno nor d_ino */
 struct dosdirent {
@@ -387,6 +389,7 @@ extern int dosclose __P_((int));
 extern int dosread __P_((int, char *, int));
 extern int doswrite __P_((int, char *, int));
 extern off_t doslseek __P_((int, off_t, int));
+extern int dosftruncate __P_((int, off_t));
 extern int dosmkdir __P_((char *, int));
 extern int dosrmdir __P_((char *));
 extern int dosfileno __P_((FILE *));

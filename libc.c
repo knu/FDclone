@@ -266,7 +266,7 @@ char *path;
 	{
 		int fd, duperrno;
 
-		if ((fd = open(curpath, O_RDONLY, 0600)) < 0) {
+		if ((fd = open(curpath, O_RDONLY, 0666)) < 0) {
 # ifdef	CYGWIN
 			char upath[MAXPATHLEN], spath[MAXPATHLEN];
 			char tmp[MAXPATHLEN];

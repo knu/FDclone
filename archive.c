@@ -211,7 +211,9 @@ launchtable launchlist[MAXLAUNCHTABLE] = {
 	{"*.tar.Z",	"zcat %C|tar tvf -",	PM_TAR, 0},
 	{"*.tar.gz",	"gzip -cd %C|tar tvf -",	PM_TAR, 0},
 	{"*.tar.bz2",	"bzip2 -cd %C|tar tvf -",	PM_TAR, 0},
+# ifndef	CYGWIN
 	{"*.taZ",	"zcat %C|tar tvf -",	PM_TAR, 0},
+# endif
 	{"*.taz",	"gzip -cd %C|tar tvf -",	PM_TAR, 0},
 	{"*.tgz",	"gzip -cd %C|tar tvf -",	PM_TAR, 0},
 #endif	/* !MSDOS */
@@ -240,8 +242,10 @@ archivetable archivelist[MAXARCHIVETABLE] = {
 					"gzip -cd %C|tar xf - %TA", 0},
 	{"*.tar.bz2",	"tar cf - %T|bzip2 -c > %C",
 					"bzip2 -cd %C|tar xf - %TA", 0},
+# ifndef	CYGWIN
 	{"*.taZ",	"tar cf - %T|compress -c > %C",
 					"zcat %C|tar xf - %TA", 0},
+# endif
 	{"*.taz",	"tar cf - %T|gzip -c > %C",
 					"gzip -cd %C|tar xf - %TA", 0},
 	{"*.tgz",	"tar cf - %T|gzip -c > %C",

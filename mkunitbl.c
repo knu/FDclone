@@ -18,6 +18,7 @@
 
 #define	USERDEFINE
 #define	MAXNFLEN	4
+#define	arraysize(a)	((int)((u_int)sizeof(a) / (u_int)sizeof(*(a))))
 
 typedef struct _convtable {
 	u_short unicode;
@@ -9250,7 +9251,7 @@ static convtable unilist[] = {
 	{0xffe4, 0xfa55},
 	{0xffe5, 0x818f},
 };
-#define	UNILISTSIZ	((int)sizeof(unilist) / sizeof(convtable))
+#define	UNILISTSIZ	arraysize(unilist)
 
 static nftable macunilist[] = {
 	{0x00c0, {0x0041, 0x0300, 0}},
@@ -10203,7 +10204,7 @@ static nftable macunilist[] = {
 	{0xffe1, {0x00a3, 0}},
 	{0xffe2, {0x00ac, 0}},
 };
-#define	MACUNILISTSIZ	((int)sizeof(macunilist) / sizeof(nftable))
+#define	MACUNILISTSIZ	arraysize(macunilist)
 
 static int cmpuni(vp1, vp2)
 CONST VOID_P vp1;
@@ -10214,7 +10215,10 @@ CONST VOID_P vp2;
 	tp1 = (convtable *)vp1;
 	tp2 = (convtable *)vp2;
 
-	return(tp1 -> unicode - tp2 -> unicode);
+	if (tp1 -> unicode > tp2 -> unicode) return(1);
+	if (tp1 -> unicode < tp2 -> unicode) return(-1);
+
+	return(0);
 }
 
 static int cmpnf(vp1, vp2)
@@ -10222,13 +10226,15 @@ CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
 	nftable *tp1, *tp2;
-	int i, n;
+	int i;
 
 	tp1 = (nftable *)vp1;
 	tp2 = (nftable *)vp2;
 	for (i = 0; i < MAXNFLEN; i++) {
-		n = tp1 -> normalization[i] - tp2 -> normalization[i];
-		if (n) return(n);
+		if (tp1 -> normalization[i] > tp2 -> normalization[i])
+			return(1);
+		if (tp1 -> normalization[i] < tp2 -> normalization[i])
+			return(-1);
 	}
 
 	return(0);

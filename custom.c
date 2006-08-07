@@ -161,12 +161,11 @@ extern int inruncom;
 #define	noselect(n, m, x, s, v) \
 			(selectstr(n, m, x, s, v) != K_CR)
 #define	MAXSAVEMENU	5
-#define	MAXTNAMLEN	8
 #define	DEFPALETTE	"8962435188"
 #define	MAXPALETTE	10
 #define	MAXCOLOR	10
-#ifndef	O_BINARY
-#define	O_BINARY	0
+#ifndef	O_TEXT
+#define	O_TEXT		0
 #endif
 
 typedef struct _envtable {
@@ -191,7 +190,7 @@ typedef struct _envtable {
 
 #define	env_str(n)	(&(envlist[n].env[FDESIZ]))
 #define	fdenv_str(n)	(envlist[n].env)
-#define	env_type(n)	(envlist[n].type)
+#define	env_type(n)	(envlist[n].type & T_TYPE)
 #ifdef	FORCEDSTDC
 #define	def_str(n)	(envlist[n].def.str)
 #define	def_num(n)	(envlist[n].def.num)
@@ -202,6 +201,8 @@ typedef struct _envtable {
 #define	DEFVAL(d)	(char *)(d)
 #endif
 
+#define	T_TYPE		0037
+#define	T_PRIMAL	0040
 #define	T_BOOL		0
 #define	T_SHORT		1
 #define	T_INT		2
@@ -415,12 +416,12 @@ static envtable envlist[] = {
 	{"FD_PRECEDEPATH", &precedepath, DEFVAL(PRECEDEPATH), PCPT_E, T_PATHS},
 #endif
 #if	FD >= 2
-	{"FD_PS1", &promptstr, DEFVAL(PROMPT), PRMP_E, T_CHARP},
+	{"FD_PS1", &promptstr, DEFVAL(PROMPT), PRMP_E, T_CHARP | T_PRIMAL},
 #else
 	{"FD_PROMPT", &promptstr, DEFVAL(PROMPT), PRMP_E, T_CHARP},
 #endif
 #ifndef	_NOORIGSHELL
-	{"FD_PS2", &promptstr2, DEFVAL(PROMPT2), PRM2_E, T_CHARP},
+	{"FD_PS2", &promptstr2, DEFVAL(PROMPT2), PRM2_E, T_CHARP | T_PRIMAL},
 	{"FD_DUMBSHELL", &dumbshell, DEFVAL(DUMBSHELL), DMSHL_E, T_BOOL},
 #endif
 #ifndef	_NOPTY
@@ -551,13 +552,13 @@ static devinfo *tmpfdtype = NULL;
 
 VOID initenv(VOID_A)
 {
-#if	!MSDOS
+#if	!MSDOS && defined (FORCEDSTDC)
 	char *cp;
 	int w;
 #endif
 	int i;
 
-#if	!MSDOS
+#if	!MSDOS && defined (FORCEDSTDC)
 	if ((w = sizeof(char *) - sizeof(int)) > 0) {
 		i = 0x5a;
 		cp = (char *)(&i);
@@ -566,7 +567,7 @@ VOID initenv(VOID_A)
 #endif
 
 	for (i = 0; i < ENVLISTSIZ; i++) {
-#if	!MSDOS
+#if	!MSDOS && defined (FORCEDSTDC)
 		if (w > 0) switch (env_type(i)) {
 			case T_CHARP:
 			case T_PATH:
@@ -577,11 +578,11 @@ VOID initenv(VOID_A)
 			case T_NOVAR:
 				break;
 			default:
-				cp = (char *)(&(envlist[i].def.num));
+				cp = (char *)&def_num(i);
 				memmove(cp, &(cp[w]), sizeof(int));
 				break;
 		}
-#endif	/* !MSDOS */
+#endif	/* !MSDOS && FORCEDSTDC */
 		_evalenv(i);
 	}
 }
@@ -683,7 +684,7 @@ int no;
 			break;
 #endif
 		case T_COLUMN:
-			if ((n = atoi2(cp)) < 0 || n > 5 || n == 4)
+			if ((n = atoi2(cp)) <= 0 || n > 5 || n == 4)
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
@@ -2016,12 +2017,7 @@ FILE *fp;
 		if (f) ident += FDESIZ;
 		f = (1 << f);
 
-		if (flaglist && (flaglist[i] & f)) {
-			trash = (char **)realloc2(trash,
-				(nt + 1) * sizeof(char *));
-			trash[nt++] = argv[n];
-		}
-		else {
+		if (!flaglist || !(flaglist[i] & f)) {
 			if (flaglist) flaglist[i] |= f;
 			if ((cp = getshellvar(ident, -1))
 			&& (env_type(i) != T_CHARP
@@ -2030,13 +2026,18 @@ FILE *fp;
 				cp = killmeta(cp);
 				fprintf2(fp, "%s=%s", ident, cp);
 				free(cp);
+				continue;
 			}
-			else {
+			else if (!(envlist[i].type & T_PRIMAL)) {
 				unset = (char **)realloc2(unset,
 					(nu + 1) * sizeof(char *));
 				unset[nu++] = ident;
+				continue;
 			}
 		}
+
+		trash = (char **)realloc2(trash, (nt + 1) * sizeof(char *));
+		trash[nt++] = argv[n];
 	}
 	if (ns) fputnl(fp);
 
@@ -2081,12 +2082,7 @@ FILE *fp;
 		if (f) ident += FDESIZ;
 		f = (1 << f);
 
-		if (flaglist && (flaglist[i] & f)) {
-			trash = (char **)realloc2(trash,
-				(nt + 1) * sizeof(char *));
-			trash[nt++] = ident;
-		}
-		else {
+		if (!flaglist || !(flaglist[i] & f)) {
 			if (flaglist) flaglist[i] |= f;
 			if ((cp = getshellvar(ident, -1))
 			&& (env_type(i) != T_CHARP
@@ -2095,13 +2091,18 @@ FILE *fp;
 				cp = killmeta(cp);
 				fprintf2(fp, "%s=%s", ident, cp);
 				free(cp);
+				continue;
 			}
-			else {
+			else if (!(envlist[i].type & T_PRIMAL)) {
 				unset = (char **)realloc2(unset,
 					(nu + 1) * sizeof(char *));
 				unset[nu++] = ident;
+				continue;
 			}
 		}
+
+		trash = (char **)realloc2(trash, (nt + 1) * sizeof(char *));
+		trash[nt++] = ident;
 	}
 	if (ns) fputnl(fp);
 
@@ -3408,7 +3409,7 @@ FILE *fp;
 
 		printarchcomm(archivelist, i, 1, fp);
 	}
-	for (i = 0; i < origmaxlaunch; i++) {
+	for (i = 0; i < origmaxarchive; i++) {
 		if (origflaglist[i]) continue;
 
 		printarchcomm(origarchivelist, i, 0, fp);
@@ -3859,42 +3860,48 @@ int *val;
 char *file;
 {
 	syntaxtree *trp, *stree;
+	lockbuf_t *lck;
 	FILE *fpin, *fpout;
 	char *cp, *buf, **argv, **subst, path[MAXPATHLEN];
 	char *flaglist[MAXCUSTOM - 1], *origflaglist[MAXCUSTOM - 1];
 	int i, n, len, *slen, fd, argc, max[MAXCUSTOM], origmax[MAXCUSTOM - 1];
 
-	if (!(fpin = Xfopen(file, "r")) && errno != ENOENT) {
+	if (!(lck = lockfopen(file, "r", O_TEXT | O_RDWR))) {
 		warning(-1, file);
 		return(-1);
 	}
 
 	strcpy(path, file);
-	cp = getbasename(path);
-	len = strsize(path) - (cp - path);
-	if (len > MAXTNAMLEN) len = MAXTNAMLEN;
-	genrandname(NULL, 0);
+	if ((fpin = lck -> fp)) fd = opentmpfile(path, 0666);
+	else {
+		lockclose(lck);
+		lck = lockopen(path,
+			O_TEXT | O_WRONLY | O_CREAT | O_EXCL, 0666);
+		fd = (lck) ? lck -> fd : -1;
+	}
+	fpout = (fd >= 0) ? Xfdopen(fd, "w") : NULL;
 
-	for (;;) {
-		genrandname(cp, len);
-		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0666);
-		if (fd >= 0) break;
-		if (errno != EEXIST) {
-			warning(-1, path);
-			if (fpin) Xfclose(fpin);
-			return(-1);
+	if (fpout) {
+		if (!fpin) {
+			lck -> fp = fpout;
+			lck -> flags |= LCK_STREAM;
 		}
 	}
-	if (fd < 0) {
-		warning(EEXIST, path);
-		if (fpin) Xfclose(fpin);
-		return(-1);
-	}
-	if (!(fpout = Xfdopen(fd, "w"))) {
+	else {
 		warning(-1, path);
-		VOID_C Xclose(fd);
-		Xunlink(path);
-		if (fpin) Xfclose(fpin);
+#  if	MSDOS || defined (CYGWIN)
+		lockclose(lck);
+		if (fd >= 0) {
+			if (fpin) VOID_C Xclose(fd);
+			Xunlink(path);
+		}
+#  else
+		if (fd >= 0) {
+			Xunlink(path);
+			if (fpin) VOID_C Xclose(fd);
+		}
+		lockclose(lck);
+#  endif
 		return(-1);
 	}
 
@@ -4018,7 +4025,6 @@ char *file;
 
 	if (!fpin) fputs("# configurations by customizer\n", fpout);
 	else {
-		Xfclose(fpin);
 		n = 0;
 		if (val[0] && flaglist[0])
 			n = dumpenv(flaglist[0], NULL);
@@ -4062,26 +4068,48 @@ char *file;
 	if (val[5] && flaglist[5])
 		dumpdosdrive(flaglist[5], origflaglist[5], fpout);
 #  endif
-	Xfclose(fpout);
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
 		if (flaglist[i]) free(flaglist[i]);
 		if (origflaglist[i]) free(origflaglist[i]);
 	}
 
-	if (Xrename(path, file) < 0) {
+	if (!fpin) {
+		lockclose(lck);
+		n = 0;
+	}
+	else {
+#  if	!MSDOS && !defined (CYGWIN)
+		n = Xrename(path, file);
+		lockclose(lck);
+		Xfclose(fpout);
+#  else	/* MSDOS || CYGWIN */
+		lockclose(lck);
+		Xfclose(fpout);
+#   if	MSDOS
+		n = Xrename(path, file);
+#   else
+		while ((n = Xrename(path, file)) < 0) {
+			if (errno != EACCES) break;
+			usleep(100000L);
+		}
+#   endif
+#  endif	/* MSDOS || CYGWIN */
+	}
+
+	if (n < 0) {
 		warning(-1, file);
 		Xunlink(path);
 		return(-1);
 	}
 
-	return(1);
+	return(0);
 }
 # endif	/* !_NOORIGSHELL */
 
 static int NEAR editsave(no)
 int no;
 {
-	FILE *fp;
+	lockbuf_t *lck;
 	char *file, *str[MAXCUSTOM - 1];
 	int i, n, done, val[MAXCUSTOM - 1];
 
@@ -4173,7 +4201,7 @@ int no;
 			done = 1;
 			file = evalpath(file, 0);
 # ifdef	FAKEUNINIT
-			fp = NULL;	/* fake for -Wuninitialized */
+			lck = NULL;	/* fake for -Wuninitialized */
 # endif
 			if (!*file
 			|| (Xaccess(file, F_OK) >= 0 && yesno(FSVOK_K)))
@@ -4182,28 +4210,34 @@ int no;
 				envcaption(SSAVE_K);
 				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
 					done = 0;
-				else if (!(fp = Xfopen(file, "w"))) {
-					warning(-1, file);
-					done = 0;
+				else {
+					lck = lockfopen(file, "w",
+						O_TEXT | O_WRONLY
+						| O_CREAT | O_TRUNC);
+					if (!lck || !(lck -> fp)) {
+						warning(-1, file);
+						lockclose(lck);
+						done = 0;
+					}
 				}
 			}
 			free(file);
 
 			if (!done) break;
-			fputs("# configurations by customizer\n", fp);
-			if (val[0]) dumpenv(NULL, fp);
-			if (val[1]) dumpbind(NULL, NULL, fp);
+			fputs("# configurations by customizer\n", lck -> fp);
+			if (val[0]) dumpenv(NULL, lck -> fp);
+			if (val[1]) dumpbind(NULL, NULL, lck -> fp);
 # ifndef	_NOKEYMAP
-			if (val[2]) dumpkeymap(NULL, NULL, fp);
+			if (val[2]) dumpkeymap(NULL, NULL, lck -> fp);
 # endif
 # ifndef	_NOARCHIVE
-			if (val[3]) dumplaunch(NULL, NULL, fp);
-			if (val[4]) dumparch(NULL, NULL, fp);
+			if (val[3]) dumplaunch(NULL, NULL, lck -> fp);
+			if (val[4]) dumparch(NULL, NULL, lck -> fp);
 # endif
 # ifdef	_USEDOSEMU
-			if (val[5]) dumpdosdrive(NULL, NULL, fp);
+			if (val[5]) dumpdosdrive(NULL, NULL, lck -> fp);
 # endif
-			Xfclose(fp);
+			lockclose(lck);
 			break;
 		case 4:
 # ifndef	_NOORIGSHELL

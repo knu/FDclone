@@ -1917,7 +1917,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      ドライブ名として小文字を用いると、MS-Windows format floppy
      の Long File Name (LFN) が扱えるフロッピードライブとしてアク
      セスできます。この場合、UNIX 上の長いファイル名もそのままコ
-     ピーすることができます。但し、UNICODE の変換テーブル
+     ピーすることができます。但し、UNICODE 変換テーブル
      ffdd--uunniiccdd..ttbbll が、起動された ffdd の存在するディレクトリにない
      場合は、漢字のファイル名は LFN 形式では扱えません。逆に、大
      文字のドライブ名を用いると、LFN を無視して 8+3 形式のファイ
@@ -3050,26 +3050,26 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
 
 関関連連フファァイイルル
      //eettcc//ffdd22rrcc
-               システム共通の ffdd 初期設定ファイル。
-     ~~//..ffdd22rrcc  個人用の ffdd 初期設定ファイル。
-     ~~//..ffddsshhrrcc 個人用の ffddsshh 初期設定ファイル。
+               システム共通の ffdd 初期設定ファイル
+     ~~//..ffdd22rrcc  個人用の ffdd 初期設定ファイル
+     ~~//..ffddsshhrrcc 個人用の ffddsshh 初期設定ファイル
      ~~//..ffdd_hhiissttoorryy
-               コマンド履歴のセーブファイル既定値。
-     //bbiinn//sshh   環境変数 SSHHEELLLL が未定義だった場合のユーザシェル。
-     //bbiinn//rrmm   異常終了時に不要ファイルを消去するためのコマンド。
-     //ttmmpp//ffdd**  アーカイブファイル伸長のための一時的ディレクトリ。
+               コマンド履歴のセーブファイル既定値
+     //bbiinn//sshh   環境変数 SSHHEELLLL が未定義だった場合のユーザシェル
+     //bbiinn//rrmm   異常終了時に不要ファイルを消去するためのコマンド
+     //ttmmpp//ffdd**  アーカイブファイル伸長のための一時的ディレクトリ
      ffdd--uunniiccdd..ttbbll
-               フロッピードライブの UNICODE 変換テーブル。ffdd の起
-               動ディレクトリにインストールされる。
+               ffdd の起動ディレクトリにインストールされる UNICODE
+               変換テーブル
 
-     ffdd22rrcc     MS-DOS 版での共通 ffdd 初期設定ファイル。ffdd の起動デ
-               ィレクトリに用意しておく。
+     ffdd22rrcc     ffdd の起動ディレクトリに用意しておく MS-DOS 版での
+               共通 ffdd 初期設定ファイル
      $$HHOOMMEE\\ffdd22..rrcc
-               MS-DOS 版での個人用の ffdd 初期設定ファイル。
+               MS-DOS 版での個人用の ffdd 初期設定ファイル
      $$HHOOMMEE\\ffddsshh..rrcc
-               MS-DOS 版での個人用の ffddsshh 初期設定ファイル。
+               MS-DOS 版での個人用の ffddsshh 初期設定ファイル
      $$HHOOMMEE\\ffdd..hhsstt
-               MS-DOS 版でのコマンド履歴のセーブファイル既定値。
+               MS-DOS 版でのコマンド履歴のセーブファイル既定値
 
 制制限限事事項項
      登録できるキー割当ては 225566 個までです。このうち、ユーザ定義

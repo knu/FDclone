@@ -2102,13 +2102,13 @@ DDEESSCCRRIIPPTTIIOONN
      access it as the floppy drive which can treat the Long File
      Name (LFN) for MS-Windows formatted floppy disk.  In this
      case, you can copy a file with a long filename on UNIX as it
-     is.  But, when the UNICODE translation table ffdd--uunniiccdd..ttbbll is
-     not exist in the same directory as the invoked ffdd exists,
-     any Kanji filename cannot be treated as LFN representation.
-     Reversely, when you use a uppercase letter as the drive
-     name, LFN is ignored and 8+3 formed filename is treated.
-     MS-DOS version inherits this specification by the case of a
-     drive name.
+     is.  But, when the UNICODE translation table ffdd--uunniiccdd..ttbbll
+     does not exist in the same directory as the invoked ffdd ex-
+     ists, any Kanji filename cannot be treated as LFN representa-
+     tion.  Reversely, when you use a uppercase letter as the
+     drive name, LFN is ignored and 8+3 formed filename is treat-
+     ed.  MS-DOS version inherits this specification by the case
+     of a drive name.
 
      SSttrriinngg IInnppuutt
      When you input the string, such as the pathname, the follow-
@@ -3369,9 +3369,9 @@ FFIILLEESS
      //bbiinn//rrmm   The command to remove temporary files when abort
      //ttmmpp//ffdd**  The temporary directory to unpack the archive file
      ffdd--uunniiccdd..ttbbll
-               The UNICODE translation table for the floppy
-               drive, which is installed in the same directory as
-               the executable binary of ffdd
+               The UNICODE translation table, which is installed
+               in the same directory as the executable binary of
+               ffdd
 
      ffdd22rrcc     The systemwide initial configuration file for ffdd
                on MS-DOS version, which must be prepared in the

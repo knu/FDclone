@@ -30,7 +30,7 @@
 
 extern char *progname;
 
-static int NEAR openlogfile __P_((VOID_A));
+static lockbuf_t *NEAR openlogfile __P_((VOID_A));
 static VOID NEAR writelog __P_((int, int, char *, int));
 
 char *logfile = NULL;
@@ -49,19 +49,19 @@ static int syslogged = 0;
 #endif
 
 
-static int NEAR openlogfile(VOID_A)
+static lockbuf_t *NEAR openlogfile(VOID_A)
 {
+	lockbuf_t *lck;
 	struct stat st;
 	char *cp, *top, path[MAXPATHLEN];
 	ALLOC_T size;
-	int fd;
 
 	cp = logfname;
 	if (logfname) {
-		if (!*logfname) return(-1);
+		if (!*logfname) return(NULL);
 	}
 	else {
-		if (!logfile || !*logfile) return(-1);
+		if (!logfile || !*logfile) return(NULL);
 
 		logfname = nullstr;
 		top = logfile;
@@ -70,9 +70,9 @@ static int NEAR openlogfile(VOID_A)
 #endif
 		if (*top == _SC_) cp = logfile;
 		else {
-			if (!(cp = gethomedir())) return(-1);
+			if (!(cp = gethomedir())) return(NULL);
 			strcatdelim2(path, cp, top);
-			if (!*path) return(-1);
+			if (!*path) return(NULL);
 			cp = strdup2(path);
 		}
 	}
@@ -83,21 +83,14 @@ static int NEAR openlogfile(VOID_A)
 		if (rename(cp, path) < 0) unlink(cp);
 	}
 
-	fd = open(cp, O_TEXT | O_WRONLY | O_CREAT | O_APPEND, 0666);
-	if (fd < 0) {
+	lck = lockopen(cp, O_TEXT | O_WRONLY | O_CREAT | O_APPEND, 0666);
+	if (!lck) {
 		free(cp);
-		return(-1);
+		return(NULL);
 	}
-
-#ifndef	NOFLOCK
-	if (isnfs(cp) <= 0 && lockfile(fd, LCK_WRITE) < 0) {
-		close(fd);
-		return(-1);
-	}
-#endif
 
 	logfname = cp;
-	return(fd);
+	return(lck);
 }
 
 VOID logclose(VOID_A)
@@ -116,11 +109,12 @@ int lvl, p;
 char *buf;
 int len;
 {
+	lockbuf_t *lck;
 	struct tm *tm;
 	char hbuf[MAXLOGLEN + 1];
 	time_t t;
 	u_char uc;
-	int n, fd;
+	int n;
 
 #ifndef	NOUID
 	if (!getuid()) {
@@ -132,15 +126,7 @@ int len;
 	n = loglevel;
 	if (!n || n < lvl) return;
 
-	if ((fd = openlogfile()) < 0) {
-#ifndef	NOSYSLOG
-		if (usesyslog) /*EMPTY*/;
-		else
-#endif
-		return;
-	}
-
-	if (fd >= 0) {
+	if ((lck = openlogfile())) {
 		t = time(NULL);
 		tm = localtime(&t);
 #ifdef	NOUID
@@ -156,14 +142,11 @@ int len;
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			getuid(), progname, getpid());
 #endif
-		VOID_C write(fd, hbuf, n);
-		VOID_C write(fd, buf, len);
+		VOID_C write(lck -> fd, hbuf, n);
+		VOID_C write(lck -> fd, buf, len);
 		uc = '\n';
-		VOID_C write(fd, &uc, sizeof(uc));
-#ifndef	NOFLOCK
-		if (isnfs(logfname) <= 0) VOID_C lockfile(fd, LCK_UNLOCK);
-#endif
-		VOID_C close(fd);
+		VOID_C write(lck -> fd, &uc, sizeof(uc));
+		lockclose(lck);
 	}
 #ifndef	NOSYSLOG
 	if (usesyslog && syslogged >= 0) {

@@ -250,6 +250,7 @@ char *path;
 			else dd = lastdrv;
 		}
 		lastdrv = dd;
+		n = 0;
 	}
 #endif	/* !_NODOSDRIVE */
 	LOG1(_LOG_INFO_, n, "chdir(\"%k\");", path);
@@ -587,6 +588,18 @@ int whence;
 	else ofs = lseek(fd, offset, whence);
 
 	return(ofs);
+}
+
+int Xftruncate(fd, len)
+int fd;
+off_t len;
+{
+	int n;
+
+	if (fd >= DOSFDOFFSET) n = dosftruncate(fd, len);
+	else n = ftruncate(fd, len);
+
+	return(n);
 }
 
 int Xdup(oldd)

@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2006 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.08e 07/28/06
+.\" @(#)fd.1   2.08f 08/08/06
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 28, 2006"
+.TH FD 1 "August 8, 2006"
 .de sh
 .br
 .PP
@@ -3346,7 +3346,7 @@ you can copy a file with a long filename on UNIX as it is.
 But,
 when the UNICODE translation table
 .B fd\-unicd.tbl
-is not exist in the same directory as the invoked
+does not exist in the same directory as the invoked
 .B fd
 exists,
 any Kanji filename cannot be treated as LFN representation.
@@ -5193,7 +5193,7 @@ The command to remove temporary files when abort
 The temporary directory to unpack the archive file
 .TP
 .B fd\-unicd.tbl
-The UNICODE translation table for the floppy drive,
+The UNICODE translation table,
 which is installed in the same directory as the executable binary of
 .B fd
 

@@ -718,12 +718,13 @@ int strcasecmp2(s1, s2)
 char *s1, *s2;
 {
 	for (;;) {
-		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
+		if (toupper2(*s1) != toupper2(*s2))
+			return((u_char)*s1 - (u_char)*s2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
 			s1++;
 			s2++;
-			if (*s1 != *s2) return(*s1 - *s2);
+			if (*s1 != *s2) return((u_char)*s1 - (u_char)*s2);
 		}
 #endif
 		if (!*s1) break;
@@ -739,13 +740,14 @@ char *s1, *s2;
 int n;
 {
 	while (n-- > 0) {
-		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
+		if (toupper2(*s1) != toupper2(*s2))
+			return((u_char)*s1 - (u_char)*s2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
 			if (n-- <= 0) break;
 			s1++;
 			s2++;
-			if (*s1 != *s2) return(*s1 - *s2);
+			if (*s1 != *s2) return((u_char)*s1 - (u_char)*s2);
 		}
 #endif
 		if (!*s1) break;

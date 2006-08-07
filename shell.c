@@ -4,6 +4,7 @@
  *	shell command module
  */
 
+#include <fcntl.h>
 #include "fd.h"
 #include "func.h"
 #include "kanji.h"
@@ -18,6 +19,10 @@ extern char *shortname __P_((char *, char *));
 
 #ifndef	_NOPTY
 #include "termemu.h"
+#endif
+
+#ifndef	O_TEXT
+#define	O_TEXT		0
 #endif
 
 extern int mark;
@@ -1624,19 +1629,16 @@ int n;
 int loadhistory(n)
 int n;
 {
-#ifndef	NOFLOCK
-	int nfs;
-#endif
-	FILE *fp;
+	lockbuf_t *lck;
 	char *line;
 	int i, j, size;
 
 	if (!histfile || !histfile[0]) return(0);
-	if (!(fp = Xfopen(histfile, "r"))) return(-1);
-#ifndef	NOFLOCK
-	if ((nfs = isnfs(histfile)) <= 0)
-		VOID_C lockfile(Xfileno(fp), LCK_READ);
-#endif
+	lck = lockfopen(histfile, "r", O_TEXT | O_RDONLY);
+	if (!lck || !(lck -> fp)) {
+		lockclose(lck);
+		return(-1);
+	}
 
 	size = (int)histsize[n];
 	history[n] = (char **)malloc2((size + 1) * sizeof(char *));
@@ -1644,17 +1646,14 @@ int n;
 	histno[n] = (short)0;
 
 	i = -1;
-	while ((line = fgets2(fp, 1))) {
+	while ((line = fgets2(lck -> fp, 1))) {
 		if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 		if (i < size) i++;
 		else free(history[n][i]);
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		history[n][0] = line;
 	}
-#ifndef	NOFLOCK
-	if (nfs <= 0) VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
-#endif
-	Xfclose(fp);
+	lockclose(lck);
 
 	for (i++; i <= size; i++) history[n][i] = NULL;
 
@@ -1681,26 +1680,20 @@ FILE *fp;
 int savehistory(n)
 int n;
 {
-#ifndef	NOFLOCK
-	int nfs;
-#endif
-	FILE *fp;
+	lockbuf_t *lck;
 	int i, size;
 
 	if (!histfile || !histfile[0] || savehist <= 0) return(0);
 	if (!history[n] || !history[n][0]) return(-1);
-	if (!(fp = Xfopen(histfile, "w"))) return(-1);
-#ifndef	NOFLOCK
-	if ((nfs = isnfs(histfile)) <= 0)
-		VOID_C lockfile(Xfileno(fp), LCK_WRITE);
-#endif
+	lck = lockfopen(histfile, "w", O_TEXT | O_WRONLY | O_CREAT | O_TRUNC);
+	if (!lck || !(lck -> fp)) {
+		lockclose(lck);
+		return(-1);
+	}
 
 	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
-	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], fp);
-#ifndef	NOFLOCK
-	if (nfs <= 0) VOID_C lockfile(Xfileno(fp), LCK_UNLOCK);
-#endif
-	Xfclose(fp);
+	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], lck -> fp);
+	lockclose(lck);
 
 	return(0);
 }

@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2006 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.08e 07/28/06
+.\" @(#)fd.1   2.08f 08/08/06
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 28, 2006"
+.TH FD 1 "August 8, 2006"
 .de sh
 .br
 .PP
@@ -3202,7 +3202,7 @@ UNIX 上のファイルをコピーした場合に名前が変更される場合があります。
 MS-Windows format floppy の Long File Name (LFN) が扱える
 フロッピードライブとしてアクセスできます。
 この場合、UNIX 上の長いファイル名もそのままコピーすることができます。
-但し、UNICODE の変換テーブル
+但し、UNICODE 変換テーブル
 .B " fd\-unicd.tbl"
 が、起動された
 .B " fd"
@@ -4986,57 +4986,55 @@ A.Idei <SDI00544@niftyserve.or.jp> 氏によって 1989 年に
 .B /etc/fd2rc
 システム共通の
 .B " fd"
-初期設定ファイル。
+初期設定ファイル
 .TP
 .B ~/.fd2rc
 個人用の
 .B " fd"
-初期設定ファイル。
+初期設定ファイル
 .TP
 .B ~/.fdshrc
 個人用の
 .B " fdsh"
-初期設定ファイル。
+初期設定ファイル
 .TP
 .B ~/.fd_history
-コマンド履歴のセーブファイル既定値。
+コマンド履歴のセーブファイル既定値
 .TP
 .B /bin/sh
 環境変数
 .B " SHELL"
-が未定義だった場合のユーザシェル。
+が未定義だった場合のユーザシェル
 .TP
 .B /bin/rm
-異常終了時に不要ファイルを消去するためのコマンド。
+異常終了時に不要ファイルを消去するためのコマンド
 .TP
 .B /tmp/fd\(**
-アーカイブファイル伸長のための一時的ディレクトリ。
+アーカイブファイル伸長のための一時的ディレクトリ
 .TP
 .B fd\-unicd.tbl
-フロッピードライブの UNICODE 変換テーブル。
 .B fd
-の起動ディレクトリにインストールされる。
+の起動ディレクトリにインストールされる UNICODE 変換テーブル
 
 .TP
 .B fd2rc
-MS-DOS 版での共通
-.B " fd"
-初期設定ファイル。
 .B fd
-の起動ディレクトリに用意しておく。
+の起動ディレクトリに用意しておく MS-DOS 版での共通
+.B " fd"
+初期設定ファイル
 .TP
 .B $HOME\efd2.rc
 MS-DOS 版での個人用の
 .B " fd"
-初期設定ファイル。
+初期設定ファイル
 .TP
 .B $HOME\efdsh.rc
 MS-DOS 版での個人用の
 .B " fdsh"
-初期設定ファイル。
+初期設定ファイル
 .TP
 .B $HOME\efd.hst
-MS-DOS 版でのコマンド履歴のセーブファイル既定値。
+MS-DOS 版でのコマンド履歴のセーブファイル既定値
 .PD
 .SH 制限事項
 登録できるキー割当ては

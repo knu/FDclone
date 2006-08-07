@@ -95,7 +95,7 @@ jcatman jcatman-b jcompman jcompman-b: Makefile.tmp
 
 sh bsh \
 fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
-depend clean: Makefile.tmp
+depend: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@
 
 config: rmconfig Makefile.tmp
@@ -117,6 +117,11 @@ makefile.lpc makefile.l98 \
 makefile.bpc makefile.b98
 	$(MAKE) -f Makefile.tmp $@
 
+clean: Makefile.tmp
+	$(MAKE) -f Makefile.tmp $@
+	-rm -f Makefile.tmp mkmf.sed
+	-rm -f mkmfsed mkmfsed.exe
+
 realclean: Makefile.tmp
 	$(MAKE) -f Makefile.tmp clean
 	-rm -f Makefile.tmp mkmf.sed config.h
@@ -124,4 +129,4 @@ realclean: Makefile.tmp
 	-rm -f makefile.dpc makefile.d98
 	-rm -f makefile.lpc makefile.l98
 	-rm -f makefile.bpc makefile.b98
-	-rm -f mkmfsed
+	-rm -f mkmfsed mkmfsed.exe
