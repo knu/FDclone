@@ -943,12 +943,14 @@ char *file;
 	if (!unitblpath || !*unitblpath) strcpy(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
+	fd = -1;
 	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
-	else if (!unitblent && sureread(fd, buf, 2) != 2) {
+	else if (unitblent) /*EMPTY*/;
+	else if (sureread(fd, buf, 2) == 2) unitblent = getword(buf, 0);
+	else {
 		Xclose(fd);
 		fd = -1;
 	}
-	else unitblent = getword(buf, 0);
 
 	return(fd);
 }

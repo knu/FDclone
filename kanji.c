@@ -165,7 +165,9 @@ static int NEAR fromcap __P_((char *, u_char *, int));
 static char *NEAR _kanjiconv __P_((char *, char *, int, int, int, int *, int));
 #endif	/* !_NOKANJICONV */
 
+#ifdef	FD
 int noconv = 0;
+#endif
 #ifndef	_NOKANJIFCONV
 int nokanjifconv = 0;
 char *sjispath = NULL;
@@ -180,6 +182,7 @@ char *hexpath = NULL;
 char *cappath = NULL;
 char *utf8path = NULL;
 char *utf8macpath = NULL;
+char *utf8iconvpath = NULL;
 char *noconvpath = NULL;
 #endif	/* !_NOKANJIFCONV */
 #ifdef	_USEUNICODE
@@ -196,6 +199,7 @@ static CONST langtable langlist[] = {
 	{"ujis", EUC},
 	{"utf8-mac", M_UTF8},
 	{"mac", M_UTF8},
+	{"utf8-iconv", I_UTF8},
 	{"utf8", UTF8},
 	{"utf-8", UTF8},
 	{"ojunet", O_JUNET},
@@ -208,7 +212,8 @@ static CONST langtable langlist[] = {
 	{"cap", CAP},
 # endif	/* _NOKANJICONV */
 # ifndef	_NOENGMES
-	{"eng", ENG},
+	{"en", ENG},
+	{"POSIX", ENG},
 	{"C", ENG},
 # endif	/* _NOENGMES */
 };
@@ -459,6 +464,7 @@ static CONST kpathtable kpathlist[] = {
 	{&cappath, CAP},
 	{&utf8path, UTF8},
 	{&utf8macpath, M_UTF8},
+	{&utf8iconvpath, I_UTF8},
 	{&noconvpath, NOCNV},
 };
 #define	MAXKPATHLIST	arraysize(kpathlist)
@@ -580,7 +586,10 @@ int io;
 char *mesconv(jpn, eng)
 char *jpn, *eng;
 {
-	return((outputkcode == ENG) ? eng : jpn);
+	int n;
+
+	n = (messagelang != NOCNV) ? messagelang : outputkcode;
+	return((n == ENG) ? eng : jpn);
 }
 #endif
 
@@ -729,12 +738,20 @@ char *file;
 	if (!unitblpath || !*unitblpath) strcpy(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
+# ifdef	FD
+	noconv++;
+# endif
+	fd = -1;
 	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
-	else if (!unitblent && sureread(fd, buf, 2) != 2) {
+	else if (unitblent) /*EMPTY*/;
+	else if (sureread(fd, buf, 2) == 2) unitblent = getword(buf, 0);
+	else {
 		Xclose(fd);
 		fd = -1;
 	}
-	else unitblent = getword(buf, 0);
+# ifdef	FD
+	noconv--;
+# endif
 
 	return(fd);
 }
@@ -1892,6 +1909,7 @@ int max, in, out, *lenp, io;
 			*lenp = toutf8(buf, (u_char *)s, max);
 			break;
 		case M_UTF8:
+		case I_UTF8:
 			*lenp = toutf8nf(buf, (u_char *)s, max, out - UTF8);
 			break;
 # endif
@@ -1921,6 +1939,7 @@ int max, in, out, *lenp, io;
 						max);
 					break;
 				case M_UTF8:
+				case I_UTF8:
 					*lenp = fromutf8nf(buf, (u_char *)s,
 						max, in - UTF8);
 					break;

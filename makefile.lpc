@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.08f
+VERSION	= 2.09
 PREFIX	= 
 CONFDIR	= 
 BUILD	=
@@ -23,6 +23,9 @@ DEFRC	= $(CONFDIR)\fd2rc
 BLDRC	= $(BUILD)$(DEFRC)
 DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
+DICTTBL	= fd-dict.tbl
+DICTTXT	= fd-dict.txt
+DICTSRC	= 
 
 SRC	= main.c printf.c termio.c term.c pathname.c \
 	system.c posixsh.c doscom.c log.c \
@@ -32,6 +35,7 @@ SRC	= main.c printf.c termio.c term.c pathname.c \
 	libc.c file.c apply.c \
 	parse.c builtin.c shell.c \
 	kanji.c input.c \
+	ime.c roman.c dict.c mkdict.c mktankan.c \
 	info.c rockridg.c archive.c tree.c \
 	custom.c command.c browse.c \
 	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
@@ -40,7 +44,7 @@ HEADER	= fd.h machine.h types.h kctype.h printf.h \
 	wait.h system.h \
 	dosdisk.h \
 	unixdisk.h unixemu.h \
-	termemu.h \
+	termemu.h roman.h hinsi.h \
 	func.h functabl.h
 
 DOC	= README.eng HISTORY.eng FAQ.eng TECHKNOW.eng \
@@ -95,7 +99,7 @@ OBJ2	= dosdisk.obj unixemu.obj unixdisk.obj \
 	pty.obj termemu.obj frontend.obj backend.obj \
 	libc.obj file.obj apply.obj \
 	parse.obj builtin.obj shell.obj
-OBJ3	= kanji.obj input.obj \
+OBJ3	= kanji.obj input.obj  \
 	info.obj rockridg.obj archive.obj tree.obj \
 	custom.obj command.obj browse.obj
 SOBJ	= ssystem.obj sposixsh.obj sdoscom.obj \
@@ -109,7 +113,7 @@ LDFLAGS	=   -lintlib -ltinymain.obj $(ALLOC)
 CFLAGS	= -DDOSV=1 -O $(DEBUG)
 HOSTCFLAGS = -DDOSV=1 -O
 SLDFLAGS =  -lintlib -ltinymain.obj $(ALLOC)
-FDCFLAGS = $(CFLAGS) $(CPPFLAGS) -ml -h -k"-s 3800" -DFD=$(VERMAJ)
+FDCFLAGS = $(CFLAGS) $(CPPFLAGS) -ml -h -k"-s 3000" -DFD=$(VERMAJ)
 SHCFLAGS = $(CFLAGS) $(CPPFLAGS) -mp -h -k"-s 8000" -DFDSH=$(VERMAJ)
 BSHCFLAGS = $(CFLAGS) $(CPPFLAGS) -ms -k"-s 8000" -DFDSH=$(VERMAJ) -DMINIMUMSHELL
 DEFCFLAGS = -DDEFRC=\\\"$(DOSRC)\\\"
@@ -120,10 +124,10 @@ DEFCFLAGS = -DDEFRC=\\\"$(DOSRC)\\\"
 #	Dependency Rules
 ############################################################
 
-all: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
+all: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL) 
 
 $(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
-	$(CC) -ml -h -k"-s 3800" -o $@ @$(ARGS) $(LDFLAGS)
+	$(CC) -ml -h -k"-s 3000" -o $@ @$(ARGS) $(LDFLAGS)
 #	ren $@ $(PROGRAM)
 #	aout2exe $(PROGRAM)
 #	del $(PROGRAM)
@@ -210,19 +214,58 @@ mkunitbl.exe: mkunitbl.c machine.h config.h
 
 
 ############################################################
+# Kanji transfer table generating module
+
+$(DICTTBL): mkdict.exe $(DICTSRC)
+	.\mkdict$(EXE)  $@ $(DICTSRC)
+
+mkdict.exe: mkdict.obj troman.obj tkanji.obj
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkdict.obj troman.obj tkanji.obj
+#	ren $@ mkdict
+#	aout2exe mkdict
+#	del mkdict
+
+mktankan.exe: mktankan.obj troman.obj tkanji.obj
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mktankan.obj troman.obj tkanji.obj
+#	ren $@ mktankan
+#	aout2exe mktankan
+#	del mktankan
+
+mkdict.obj: mkdict.c machine.h config.h printf.h kctype.h roman.h
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ mkdict.c
+
+mktankan.obj: mktankan.c machine.h config.h printf.h kctype.h roman.h
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ mktankan.c
+
+troman.obj: roman.c machine.h config.h printf.h kctype.h roman.h
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ roman.c
+
+tkanji.obj: kanji.c machine.h config.h printf.h kctype.h
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ kanji.c
+
+rmdict:
+	-$(RM) $(DICTTBL)
+
+$(DICTTXT): mktankan.exe
+	.\mktankan$(EXE) $@
+
+
+############################################################
 # to install all
 
-install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
+install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL) 
 	$(INSTALL)  $(PROGRAM)$(EXE) $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM)$(EXE)
 	-$(RM) $(BINDIR)\$(ALIAS)$(EXE)
 	$(LN) $(BINDIR)\$(PROGRAM)$(EXE) $(BINDIR)\$(ALIAS)$(EXE)
 	$(CHMOD) a+rx $(BINDIR)\$(ALIAS)$(EXE)
+	[ -d $(JMANDIR) ] || mkdir $(JMANDIR)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(JMANDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JMANDIR)\$(PROGRAM).$(MANSEC)
 	-$(RM) $(JMANDIR)\$(ALIAS).$(MANSEC)
 	$(LN) $(JMANDIR)\$(PROGRAM).$(MANSEC) $(JMANDIR)\$(ALIAS).$(MANSEC)
 	$(CHMOD) a+r-x $(JMANDIR)\$(ALIAS).$(MANSEC)
+	[ -d $(MANDIR) ] || mkdir $(MANDIR)
 	$(INSTALL) $(MANSRC) $(MANDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(MANDIR)\$(PROGRAM).$(MANSEC)
 	-$(RM) $(MANDIR)\$(ALIAS).$(MANSEC)
@@ -236,6 +279,11 @@ install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 		[ -d $(BINDIR) ] || mkdir $(BINDIR); \
 		$(INSTALL) $(UNITBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(UNITBL); \
+	fi
+	-if [ -f $(DICTTBL) ]; then \
+		[ -d $(BINDIR) ] || mkdir $(BINDIR); \
+		$(INSTALL) $(DICTTBL) $(BINDIR); \
+		$(CHMOD) a+r-x $(BINDIR)\$(DICTTBL); \
 	fi
 
 catman: $(MANCAT)
@@ -418,7 +466,7 @@ shar: $(SOURCES)
 	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
-ipk: $(PROGRAM).exe $(UNITBL)
+ipk: $(PROGRAM).exe $(UNITBL) 
 	-[ -d $(IPKWDIR)\$(BINDIR) ] || mkdir -p $(IPKWDIR)\$(BINDIR)
 	-[ -d $(IPKWDIR)\$(BINDIR) ] || mkdir -p $(IPKWDIR)\$(BINDIR)
 	-[ -d $(IPKWDIR)\$(CONFDIR) ] || mkdir -p $(IPKWDIR)\$(CONFDIR)
@@ -487,6 +535,10 @@ ipk: $(PROGRAM).exe $(UNITBL)
 		cp -p $(UNITBL) $(IPKWDIR)\$(BINDIR); \
 		$(CHMOD) a+r-x $(IPKWDIR)\$(BINDIR)\$(UNITBL); \
 	fi
+	-if [ -f $(DICTTBL) ]; then \
+		cp -p $(DICTTBL) $(IPKWDIR)\$(BINDIR); \
+		$(CHMOD) a+r-x $(IPKWDIR)\$(BINDIR)\$(DICTTBL); \
+	fi
 	$(ECHO) "Package: fd" > $(IPKWDIR)\CONTROL\control
 	$(ECHO) "Priority: optional" >> $(IPKWDIR)\CONTROL\control
 	$(ECHO) "Section: extras" >> $(IPKWDIR)\CONTROL\control
@@ -518,6 +570,8 @@ clean:
 	-$(RM) expfunc$(EXE)
 	-$(RM) mkfuncno$(EXE)
 	-$(RM) mkunitbl$(EXE)
+	-$(RM) mkdict$(EXE)
+	-$(RM) mktankan$(EXE)
 	-$(RM) fdsh$(EXE)
 	-$(RM) fdbsh$(EXE)
 	-$(RM) $(PROGRAM)$(EXE)
@@ -527,6 +581,8 @@ clean:
 	-$(RM) $(PROGRAM).doc
 	-$(RM) $(ARGS)
 	-$(RM) $(UNITBL)
+	-$(RM) $(DICTTXT)
+	-$(RM) 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 main.obj: fd.h
@@ -618,8 +674,8 @@ frontend.obj: types.h
 frontend.obj: printf.h
 frontend.obj: kctype.h
 frontend.obj: pathname.h term.h funcno.h func.h
-frontend.obj: dosdisk.h kanji.h termemu.h system.h
-frontend.obj: termio.h
+frontend.obj: dosdisk.h kanji.h termemu.h roman.h
+frontend.obj: system.h termio.h
 frontend.obj: wait.h
 backend.obj: fd.h
 backend.obj: machine.h config.h
@@ -669,7 +725,7 @@ builtin.obj: pathname.h term.h func.h
 builtin.obj: dosdisk.h funcno.h kanji.h system.h
 builtin.obj: termio.h
 builtin.obj: wait.h
-builtin.obj: termemu.h
+builtin.obj: termemu.h roman.h
 shell.obj: fd.h
 shell.obj: machine.h config.h types.h
 shell.obj: printf.h
@@ -689,6 +745,31 @@ input.obj: pathname.h term.h
 input.obj: func.h
 input.obj: dosdisk.h kanji.h system.h termio.h
 input.obj: wait.h
+ime.obj: fd.h
+ime.obj: machine.h config.h types.h
+ime.obj: printf.h kctype.h
+ime.obj: pathname.h term.h func.h
+ime.obj: dosdisk.h kanji.h wait.h
+ime.obj: roman.h termemu.h
+roman.obj: machine.h config.h
+roman.obj: printf.h
+roman.obj: kctype.h
+roman.obj: roman.h
+dict.obj: fd.h
+dict.obj: machine.h config.h types.h
+dict.obj: printf.h
+dict.obj: kctype.h
+dict.obj: pathname.h term.h termio.h
+dict.obj: func.h
+dict.obj: dosdisk.h roman.h
+dict.obj: hinsi.h
+mkdict.obj: machine.h config.h
+mkdict.obj: printf.h
+mkdict.obj: kctype.h
+mkdict.obj: roman.h hinsi.h
+mktankan.obj: machine.h config.h
+mktankan.obj: printf.h kctype.h
+mktankan.obj: roman.h
 info.obj: fd.h
 info.obj: machine.h
 info.obj: config.h types.h

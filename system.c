@@ -585,6 +585,9 @@ static int NEAR Kopen __P_((char *, int, int));
 #define	Kopen		Xopen
 #endif
 static VOID NEAR syntaxerror __P_((char *));
+#if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+static VOID NEAR addmychild __P_((p_id_t));
+#endif
 #if	!MSDOS
 static VOID NEAR setstopsig __P_((int));
 static p_id_t NEAR makechild __P_((int, p_id_t, int));
@@ -975,6 +978,9 @@ static long shlineno = 0L;
 #endif
 static int isshellbuiltin = 0;
 static int execerrno = 0;
+#if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+static p_id_t *mychildren = (p_id_t *)NULL;
+#endif
 
 static CONST char *syntaxerrstr[] = {
 	NULL,
@@ -1276,7 +1282,8 @@ static CONST char *adjustvar[] = {
 	"FD_SJISPATH", "FD_EUCPATH",
 	"FD_JISPATH", "FD_JIS8PATH", "FD_JUNETPATH",
 	"FD_OJISPATH", "FD_OJIS8PATH", "FD_OJUNETPATH",
-	"FD_HEXPATH", "FD_CAPPATH", "FD_UTF8PATH", "FD_UTF8MACPATH",
+	"FD_HEXPATH", "FD_CAPPATH",
+	"FD_UTF8PATH", "FD_UTF8MACPATH", "FD_UTF8ICONVPATH",
 	"FD_NOCONVPATH",
 #  endif
 # else	/* !FD */
@@ -2041,6 +2048,9 @@ int sig;
 static int NEAR trap_common(sig)
 int sig;
 {
+#if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+	int n;
+#endif
 #if	!MSDOS
 	sigmask_t mask, omask;
 #endif
@@ -2090,7 +2100,7 @@ int sig;
 		}
 #endif	/* SIGINT */
 	}
-	else if	((flags & TR_STAT) == TR_TERM) trapped = -1;
+	else if ((flags & TR_STAT) == TR_TERM) trapped = -1;
 
 	if (trapped > 0) {
 		trapmode[sig] |= TR_CATCH;
@@ -2100,6 +2110,19 @@ int sig;
 		fputs(signallist[i].mes, stderr);
 		fputnl(stderr);
 	}
+
+#if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+	if (mychildren && (flags & TR_STAT) == TR_TERM) {
+		for (n = 0; mychildren[n] >= (p_id_t)0; n++) {
+			VOID_C kill(mychildren[n], sig);
+# ifdef	SIGCONT
+			VOID_C kill(mychildren[n], SIGCONT);
+# endif
+		}
+		free(mychildren);
+		mychildren = NULL;
+	}
+#endif	/* !MSDOS && FD && !_NOPTY && CYGWIN */
 
 	if (trapped < 0) {
 #if	!MSDOS
@@ -2798,6 +2821,20 @@ int opt;
 	return(ret);
 }
 
+#if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+static VOID NEAR addmychild(pid)
+p_id_t pid;
+{
+	int n;
+
+	n = 0;
+	if (mychildren) while (mychildren[n] >= (p_id_t)0) n++;
+	mychildren = (p_id_t *)realloc2(mychildren, (n + 2) * sizeof(p_id_t));
+	mychildren[n++] = pid;
+	mychildren[n] = (p_id_t)-1;
+}
+#endif	/* !MSDOS && FD && !_NOPTY && CYGWIN */
+
 static VOID NEAR setstopsig(valid)
 int valid;
 {
@@ -2862,6 +2899,9 @@ int stop;
 	if (pid) {
 		if (jobok) VOID_C setpgroup(pid, childpgrp);
 		if (tty && ttypgrp >= (p_id_t)0) ttypgrp = childpgrp;
+# if	defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+		if (parentfd >= 0) addmychild(pid);
+# endif
 	}
 	else {
 		if (jobok && setpgroup(mypid, childpgrp) < 0) {
@@ -2870,6 +2910,10 @@ int stop;
 			Xexit(RET_FATALERR);
 		}
 		if (tty) gettermio(childpgrp, jobok);
+# if	defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+		if (mychildren) free(mychildren);
+		mychildren = NULL;
+# endif
 	}
 # endif	/* !NOJOB */
 
@@ -2889,7 +2933,7 @@ syntaxtree *trp;
 #  endif
 	termioctl_t tty;
 	int i, j;
-# endif
+# endif	/* !NOJOB */
 	wait_pid_t w;
 	int ret;
 

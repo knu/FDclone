@@ -478,7 +478,7 @@ int mode;
 	if (!file) {
 		if (locklist) {
 			for (i = 0; locklist[i]; i++) {
-				Xunlink(locklist[i]);
+				VOID_C unlink(locklist[i]);
 				free(locklist[i]);
 			}
 			free(locklist);
@@ -544,11 +544,13 @@ int flags, mode;
 	lockbuf_t *lck;
 	int fd, lckflags, lckmode, duperrno;
 
+#ifdef	FAKEUNINIT
+	fd = -1;	/* fake for -Wuninitialized */
+#endif
 	lckname = NULL;
 	lckflags = 0;
 	lckmode = ((flags & O_ACCMODE) == O_RDONLY) ? LCK_READ : LCK_WRITE;
 
-	fd = -1;
 #ifndef	NOFLOCK
 	if (isnfs(path) <= 0) {
 		lckflags |= LCK_FLOCK;
@@ -557,7 +559,10 @@ int flags, mode;
 			if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT)
 				return(NULL);
 		}
-		else if (fcntllock(fd, lckmode) < 0) lckflags &= ~LCK_FLOCK;
+		else if (fcntllock(fd, lckmode) < 0) {
+			Xclose(fd);
+			lckflags &= ~LCK_FLOCK;
+		}
 		else if ((flags & O_TRUNC) && Xftruncate(fd, (off_t)0) < 0) {
 			duperrno = errno;
 			VOID_C fcntllock(fd, LCK_UNLOCK);
@@ -569,7 +574,6 @@ int flags, mode;
 #endif	/* !NOFLOCK */
 
 	if (!(lckflags & LCK_FLOCK)) {
-		if (fd >= 0) Xclose(fd);
 		if ((lckname = excllock(path, lckmode))) /*EMPTY*/;
 		else if ((flags & O_ACCMODE) != O_RDONLY) return(NULL);
 
@@ -917,6 +921,9 @@ struct stat *stp1, *stp2;
 			duperrno = errno;
 			break;
 		}
+#ifndef	_NOEXTRACOPY
+		showprogress(i);
+#endif
 		if (surewrite(fd2, buf, i) < 0) {
 			i = -1;
 			duperrno = errno;
@@ -927,6 +934,9 @@ struct stat *stp1, *stp2;
 
 	VOID_C Xclose(fd2);
 	VOID_C Xclose(fd1);
+#ifndef	_NOEXTRACOPY
+	fshowprogress(dest);
+#endif
 
 	if (i < 0) {
 		VOID_C Xunlink(dest);
@@ -984,7 +994,12 @@ int safemvfile(src, dest, stp1, stp2)
 char *src, *dest;
 struct stat *stp1, *stp2;
 {
-	if (Xrename(src, dest) >= 0) return(0);
+	if (Xrename(src, dest) >= 0) {
+#ifndef	_NOEXTRACOPY
+		fshowprogress(dest);
+#endif
+		return(0);
+	}
 	if (errno != EXDEV || s_isdir(stp1)) return(-1);
 	if (safecpfile(src, dest, stp1, stp2) < 0 || Xunlink(src) < 0)
 		return(-1);

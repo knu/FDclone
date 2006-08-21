@@ -19,34 +19,32 @@
    these two configurations. If you force to change anything,
    you will fail. So, you should go to the next step.
 	Sun	SunOS		(5.x)
-	SGI	IRIX		(R5.x)
 	HP	HP-UX		(11.x)
-	DEC	OSF/1		(V4.x, V5.x)
 	(free)	Cygwin		(1.5.x)
 	(free)	Linux		(2.x)
 	(free)	FreeBSD		(2.x, 3.x, 4.x, 5.x)
 	(free)	NetBSD		(1.x, 2.x, 3.x)
 	(free)	OpenBSD		(2.x, 3.x)
 	ASCII	BSD on Windows	(1.0, 1.5)
-	Apple	Mac OS X	(10.x)
 
    In the following OS, while it is not confirmed whether Ver.
-   2.05 will be running normally, the codes for these OS are
+   2.09 will be running normally, the codes for these OS are
    described. Then you seem to need no change.
    At least, if you can compile it with no change, it seems
    that any changes are not necessary.
 	Sun	SunOS		(4.1.x)
 	SONY	NEWS-OS		(3.2, 4.x, 6.x)
-	SGI	IRIX		(R4.0.5, R6.x)
+	SGI	IRIX		(R4.0.5, R5.x, R6.x)
 	HP	HP-UX		(9.x, 10.01)
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
 	NEC	EWS-UX/V(Rel4.x)(R5.3, R7.1, R8.1, R9.1, R10.1, R12.3, R13.1)
 	OMRON	UniOS-U		(Ver3.00)
 	OMRON	UniOS-B		(2.00)
 	OMRON	Luna/Mach	(2.5)
-	DEC	OSF/1		(V1.2, V2.0, V3.2)
+	DEC	OSF/1		(V1.2, V2.0, V3.2, V4.x, V5.x)
 	DEC	ULTRIX		(V4.x)
 	IBM	AIX		(3.x, 4.x)
+	Apple	Mac OS X	(10.x)
 	Apple	A/UX		(3.0)
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0, 4.1)
@@ -113,6 +111,10 @@
    clean" and do "make" again. In this case, while each
    description in documentation is different from the fact,
    there is no problem in executing this program.
+   You can rewrite also DICTSRC, to change the Kana-Kanji
+   translation dictionary from the standard Tan-Kanji
+   dictionary to the other one. You should refer the #11 in
+   TECHKNOW.eng for details.
 
 6. You can copy _fdrc as the name of fdrc, and rewrite fdrc
    according to your environment. Or, you can create it from

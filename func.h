@@ -422,7 +422,11 @@ extern VOID arrangedir __P_((int));
 #endif
 
 /* apply.c */
-extern VOID prepareremove __P_((VOID_A));
+#ifndef	_NOEXTRACOPY
+extern VOID showprogress __P_((off_t));
+extern VOID fshowprogress __P_((char *));
+#endif
+extern int prepareremove __P_((int, int));
 extern int rmvfile __P_((char *));
 extern int rmvdir __P_((char *));
 extern int findfile __P_((char *));
@@ -559,6 +563,8 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_READLINE	"readline"
 #define	BL_YESNO	"yesno"
 #define	BL_SAVETTY	"savetty"
+#define	BL_SETROMAN	"setroman"
+#define	BL_PRINTROMAN	"printroman"
 #define	BL_ALIAS	"alias"
 #define	BL_UALIAS	"unalias"
 #define	BL_FUNCTION	"function"
@@ -644,6 +650,26 @@ extern char *inputstr __P_((char *, int, int, char *, int));
 extern int yesno __P_((CONST char *, ...));
 extern VOID warning __P_((int, char *));
 extern int selectstr __P_((int *, int, int, char *[], int []));
+
+/* ime.c */
+#ifndef	_NOIME
+# ifndef	_NOPTY
+extern u_int ime_getkeycode __P_((char *));
+extern int ime_inkanjiconv __P_((char *, u_int));
+# endif
+extern int ime_inputkanji __P_((int, char *));
+# ifdef	DEBUG
+extern VOID ime_freebuf __P_((VOID_A));
+# endif
+#endif	/* !_NOIME */
+
+/* dict.c */
+#ifndef	_NOIME
+extern VOID discarddicttable __P_((VOID_A));
+extern VOID saveuserfreq __P_((u_short *, u_short *));
+extern VOID freekanjilist __P_((u_short **));
+extern u_short **searchdict __P_((u_short *, int));
+#endif
 
 /* info.c */
 extern VOID help __P_((int));

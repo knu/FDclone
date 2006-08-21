@@ -32,6 +32,10 @@ extern u_int _stklen = 0x5800;
 #define	isorgpid()	(mypid == orgpid)
 #endif
 
+#if	!defined (_NOIME) && defined (DEBUG)
+#include "roman.h"
+#endif
+
 #ifndef	DATADIR
 #define	DATADIR		progpath
 #endif
@@ -62,7 +66,7 @@ extern int maxarchive;
 #endif
 extern int wheader;
 extern char fullpath[];
-extern int savehist;
+extern short savehist[];
 extern char *helpindex[];
 extern int subwindow;
 extern int win_x;
@@ -73,6 +77,9 @@ extern int custno;
 extern char *deftmpdir;
 #ifdef	_USEUNICODE
 extern char *unitblpath;
+#endif
+#ifndef	_NOIME
+extern char *dicttblpath;
 #endif
 #ifndef	_NOPTY
 extern int ptymode;
@@ -1142,6 +1149,8 @@ char *argv, *envp[];
 VOID initfd(argv)
 char **argv;
 {
+	int i;
+
 #ifndef	_NOORIGSHELL
 	if (!interactive) /*EMPTY*/;
 	else
@@ -1154,7 +1163,7 @@ char **argv;
 			Xttyiomode(0);
 		}
 #endif	/* !MSDOS */
-		loadhistory(0);
+		for (i = 0; i < 2; i++) loadhistory(i);
 		entryhist(1, origpath, 1);
 	}
 #ifndef	_NOLOGGING
@@ -1167,6 +1176,7 @@ VOID prepareexitfd(status)
 int status;
 {
 	char cwd[MAXPATHLEN];
+	int i;
 
 #ifndef	_NOLOGGING
 	endlog(status);
@@ -1175,7 +1185,7 @@ int status;
 	if (!interactive) /*EMPTY*/;
 	else
 #endif
-	savehistory(0);
+	for (i = 0; i < 2; i++) savehistory(i);
 
 	cwd[0] = '\0';
 	if (origpath && _chdir2(origpath) < 0) {
@@ -1187,6 +1197,9 @@ int status;
 	free(progname);
 #ifdef	_USEUNICODE
 	free(unitblpath);
+#endif
+#ifndef	_NOIME
+	free(dicttblpath);
 #endif
 #ifndef	_NODOSDRIVE
 	dosallclose();
@@ -1241,6 +1254,11 @@ int status;
 # endif
 # ifdef	_USEUNICODE
 	discardunitable();
+# endif
+# ifndef	_NOIME
+	ime_freebuf();
+	freeroman(0);
+	discarddicttable();
 # endif
 #endif	/* DEBUG */
 	if (*cwd) rawchdir(cwd);
@@ -1365,6 +1383,9 @@ char *argv[], *envp[];
 	setexecpath(argv[0], envp);
 #ifdef	_USEUNICODE
 	unitblpath = strdup2(DATADIR);
+#endif
+#ifndef	_NOIME
+	dicttblpath = strdup2(DATADIR);
 #endif
 
 #ifdef	_NOORIGSHELL

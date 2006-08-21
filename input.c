@@ -28,6 +28,12 @@ extern char *promptstr2;
 extern int ptymode;
 extern int parentfd;
 #endif
+#ifndef	_NOIME
+extern int ime_cont;
+extern int ime_line;
+extern int *ime_xposp;
+extern VOID (*ime_locate)__P_((int, int));
+#endif
 
 #define	LIMITSELECTWARN	100
 #define	YESNOSTR	"[Y/N]"
@@ -45,6 +51,13 @@ extern int parentfd;
 
 #ifndef	_NOEDITMODE
 static int NEAR getemulatekey __P_((int, CONST char []));
+#endif
+#ifdef	_NOIME
+#define	getkey4		getkey3
+#else
+static int NEAR getimebuf __P_((char *, int *));
+static int NEAR getime __P_((int, int *, int));
+static int NEAR getkey4 __P_((int));
 #endif
 static int NEAR trquoteone __P_((char **, char *, int *, int));
 static char *NEAR trquote __P_((char *, int, int *));
@@ -71,6 +84,9 @@ static int NEAR checkcursor __P_((int, int));
 #endif
 static VOID NEAR scrollup __P_((VOID_A));
 static VOID NEAR locate2 __P_((int, int));
+#ifndef	_NOIME
+static VOID locate3 __P_((int, int));
+#endif
 static VOID NEAR setcursor __P_((int, int));
 static VOID NEAR putstr __P_((int *, int *, int));
 static VOID NEAR ringbell __P_((VOID_A));
@@ -126,6 +142,9 @@ int lcmdline = 0;
 int maxcmdline = 0;
 #ifndef	_NOORIGSHELL
 int dumbshell = 0;
+#endif
+#ifndef	_NOIME
+int imekey = -1;
 #endif
 
 #ifndef	_NOEDITMODE
@@ -189,6 +208,9 @@ static int lastofs2 = 0;
 static int searchmode = 0;
 static char *searchstr = NULL;
 #endif
+#ifndef	_NOIME
+static int imemode = 0;
+#endif
 
 
 int intrkey(VOID_A)
@@ -219,6 +241,95 @@ CONST char table[];
 }
 #endif	/* !_NOEDITMODE */
 
+#ifndef	_NOIME
+static int NEAR getimebuf(buf, ptrp)
+char *buf;
+int *ptrp;
+{
+	int c, code;
+
+	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
+# ifndef	_NOPTY
+	if (parentfd >= 0 && ptyinkcode != NOCNV) code = ptyinkcode;
+# endif
+
+	if (code != EUC || !isekana(buf, *ptrp)) c = (u_char)(buf[*ptrp]);
+	else c = mkekana((u_char)(buf[++(*ptrp)]));
+	(*ptrp)++;
+
+	return(c);
+}
+
+static int NEAR getime(sig, chp, nowait)
+int sig, *chp, nowait;
+{
+	static char buf[MAXKANJIBUF + 1] = "";
+	static int next = 0;
+	static int lastline = 0;
+	int x, y, line;
+
+	if (!ime_cont) next = lastline = 0;
+	else if (next > 0) {
+		if (next >= sizeof(buf) || !(*chp = getimebuf(buf, &next)))
+			next = 0;
+		else return(0);
+	}
+
+	if (nowait) return(-1);
+
+	line = ptr2line(inputlen) + 1;
+	if (line < lastline) line = lastline;
+	ime_locate = locate3;
+	ime_line = lastline = line;
+	x = win_x - xpos;
+	y = win_y - ypos;
+# ifndef	_NOORIGSHELL
+	if (shellmode) {
+		ime_xposp = &win_x;
+		x += xpos;
+		y += ypos;
+	}
+# endif
+	locate2(0, line);
+	setcursor(inputlen, -1);
+	Xputterm(L_CLEAR);
+# ifndef	_NOORIGSHELL
+	if (shellmode) /*EMPTY*/;
+	else
+# endif	/* !_NOORIGSHELL */
+	ime_line += ypos;
+	locate2(x, y);
+
+	*chp = ime_inputkanji(sig, buf);
+	if (*chp < 0 || !ime_cont) {
+		locate2(0, line);
+		Xputterm(L_CLEAR);
+		locate2(x, y);
+		Xtflush();
+	}
+	if (*chp != K_ESC) {
+		if (*chp < 0) {
+			next = lastline = 0;
+			ime_inputkanji(0, NULL);
+		}
+		else if (!*chp) *chp = getimebuf(buf, &next);
+		return(0);
+	}
+
+	imemode = lastline = 0;
+	return(-1);
+}
+
+static int NEAR getkey4(sig)
+int sig;
+{
+	int c;
+
+	if (imemode && getime(sig, &c, 0) >= 0) return(c);
+	return(getkey3(sig));
+}
+#endif	/* !_NOIME */
+
 int Xgetkey(sig, eof)
 int sig, eof;
 {
@@ -229,12 +340,16 @@ int sig, eof;
 #ifndef	_NOEDITMODE
 		vistat = eof;
 #endif
+#ifndef	_NOIME
+		imemode = 0;
+		ime_inputkanji(0, NULL);
+#endif
 		prev = -1;
 		return('\0');
 	}
 
 	sig = sigalrm(sig);
-	ch = getkey3(sig);
+	ch = getkey4(sig);
 	if (eof && (ch != cc_eof || prev == ch)) eof = 0;
 	prev = ch;
 	if (eof) return(-1);
@@ -321,7 +436,7 @@ int sig, eof;
 				vistat |= VI_NEXT;
 				break;
 		}
-	} while ((vistat & VI_NEXT) && (ch = getkey3(sig)) > 0);
+	} while ((vistat & VI_NEXT) && (ch = getkey4(sig)) > 0);
 	else if (!strcmp(editmode, "wordstar"))
 		ch = getemulatekey(ch, wordstarkey);
 #endif	/* !_NOEDITMODE */
@@ -723,6 +838,18 @@ int x, y;
 	win_y = ypos + y;
 	Xlocate(win_x, win_y);
 }
+
+#ifndef	_NOIME
+static VOID locate3(x, y)
+int x, y;
+{
+# ifndef	_NOORIGSHELL
+	if (shellmode) locate2(x, y);
+	else
+# endif
+	Xlocate(win_x = x, win_y = y);
+}
+#endif	/* !_NOIME */
 
 static VOID NEAR setcursor(cx, cx2)
 int cx, cx2;
@@ -1957,6 +2084,11 @@ int comline, cont, h;
 
 static int NEAR getch3(VOID_A)
 {
+#ifndef	_NOIME
+	int c;
+
+	if (imemode) return((getime(0, &c, 1) >= 0) ? c : EOF);
+#endif
 	if (!kbhit2(WAITMETA * 1000L)) return(EOF);
 	return(getch2());
 }
@@ -2608,6 +2740,19 @@ int def, comline, h;
 			if (searchmode) continue;
 		}
 #endif	/* FD >= 2 */
+
+#ifndef	_NOIME
+		if (!imemode && !selectlist
+		&& imekey >= 0 && ch == imekey && ch != K_ESC) {
+				keyflush();
+# ifndef	_NOORIGSHELL
+				if (dumbmode) ringbell();
+				else
+# endif
+				imemode = 1;
+				continue;
+		}
+#endif	/* !_NOIME */
 
 		switch (ch) {
 			case K_RIGHT:

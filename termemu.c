@@ -40,6 +40,7 @@ int parentfd = -1;
 char *ptytmpfile = NULL;
 
 static VOID NEAR doscroll __P_((int, int, int, int));
+static VOID NEAR closeallpty __P_((int));
 static int NEAR genbackend __P_((VOID_A));
 static VOID NEAR sendvar __P_((int, char **));
 #ifndef	_NOORIGSHELL
@@ -143,6 +144,17 @@ int timeout;
 	return(readselect(max, fds, result, t));
 }
 
+static VOID NEAR closeallpty(n)
+int n;
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		safeclose(ptylist[i].fd);
+		ptylist[i].fd = -1;
+	}
+}
+
 static int NEAR genbackend(VOID_A)
 {
 	char path[MAXPATHLEN];
@@ -166,11 +178,10 @@ static int NEAR genbackend(VOID_A)
 	if (i < MAXWINDOWS || (pid = Xfork()) < (p_id_t)0) {
 		safeclose(fds[0]);
 		safeclose(fds[1]);
+		closeallpty(i);
 		while (--i >= 0) {
 			free(ptylist[i].path);
 			ptylist[i].path = NULL;
-			safeclose(ptylist[i].fd);
-			ptylist[i].fd = -1;
 		}
 		return(-1);
 	}
@@ -190,17 +201,18 @@ static int NEAR genbackend(VOID_A)
 		resetptyterm(i, 1);
 
 		backend();
-		for (i = 0; i < MAXWINDOWS; i++) safeclose(ptylist[i].fd);
+		closeallpty(MAXWINDOWS);
 		_exit(0);
 	}
 
 	safeclose(fds[0]);
 	emufd = newdup(fds[1]);
 	emupid = pid;
-	for (i = 0; i < MAXWINDOWS; i++) {
-		safeclose(ptylist[i].fd);
-		ptylist[i].fd = -1;
-	}
+#ifdef	CYGWIN
+	for (i = 0; i < MAXWINDOWS; i++) ptylist[i].fd = newdup(ptylist[i].fd);
+#else
+	closeallpty(MAXWINDOWS);
+#endif
 
 	return(0);
 }
@@ -536,6 +548,9 @@ va_dcl
 #if	!defined (_NOORIGSHELL) && !defined (NOJOB)
 		case TE_CHANGESTATUS:
 #endif
+#ifndef	_NOIME
+		case TE_FREEROMAN:
+#endif
 			n = va_arg(args, int);
 			sendbuf(fd, &n, sizeof(n));
 			break;
@@ -583,6 +598,14 @@ va_dcl
 			sendbuf(fd, &val, sizeof(val));
 			if (n >= 0 && duptty[n]) sendbuf(fd, duptty[n], val);
 			break;
+#ifndef	_NOIME
+		case TE_ADDROMAN:
+			cp = va_arg(args, char *);
+			func1 = va_arg(args, char *);
+			sendstring(fd, cp);
+			sendstring(fd, func1);
+			break;
+#endif
 		case TE_INTERNAL:
 			n = va_arg(args, int);
 			cp = va_arg(args, char *);
@@ -673,17 +696,19 @@ int flags;
 {
 	int i, n;
 
-	if (parentfd < 0 && emufd < 0) {
+	if (parentfd < 0) {
+		changewin(MAXWINDOWS, (p_id_t)-1);
 		if (ptymode) {
 			hideclock = 2;
 			warning(0, NOPTY_K);
 		}
+		killpty(win, NULL);
 		for (i = 0; i < MAXWINDOWS; i++) if (ptylist[i].pid) break;
 		if (i < MAXWINDOWS) {
 			hideclock = 2;
 			if (!yesno(KILL_K)) return(-1);
-			killallpty();
 		}
+		killallpty();
 	}
 
 	if (flags & F_DOSYSTEM) n = dosystem(command);
@@ -699,6 +724,9 @@ int ptymacro(command, arg, flags)
 char *command, *arg;
 int flags;
 {
+#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+	char *command2, *arg2;
+#endif
 	p_id_t pid;
 	char *tty, *ws, path[MAXPATHLEN], buf[TIO_BUFSIZ + TIO_WINSIZ];
 	u_char uc;
@@ -763,6 +791,9 @@ int flags;
 #ifndef	_NOORIGSHELL
 		mypid = getpid();
 #endif
+#ifdef	CYGWIN
+		closeallpty(MAXWINDOWS);
+#endif
 		if (Xlogin_tty(ptylist[win].path, tty, ws) < 0) _exit(1);
 #ifndef	_NOORIGSHELL
 		if (isshptymode()) /*EMPTY*/;
@@ -799,6 +830,9 @@ int flags;
 		uc = '\n';
 		sendbuf(parentfd, &uc, sizeof(uc));
 
+#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+		command2 = arg2 = NULL;
+#endif
 		for (;;) {
 			syncptyout(-1, -1);
 			setlinecol();
@@ -811,7 +845,9 @@ int flags;
 			if (i >= maxjobs) break;
 			VOID_C signal2(SIGHUP, (sigcst_t)trap_hup);
 			sendparent(TE_CHANGESTATUS, n);
-			if (recvmacro(&command, &arg, &flags) < 0) break;
+			if (recvmacro(&command2, &arg2, &flags) < 0) break;
+			command = command2;
+			arg = arg2;
 #endif	/* !_NOORIGSHELL && !NOJOB */
 		}
 
@@ -843,8 +879,9 @@ int n, *statusp;
 		VOID_C waitstatus(ptylist[n].pid, 0, statusp);
 		ptylist[n].pid = (p_id_t)0;
 		ptylist[n].status = 0;
-		changewin(n, (p_id_t)0);
 	}
+	changewin(n, (p_id_t)0);
+	changewin(MAXWINDOWS, (p_id_t)-1);
 
 	safeclose(ptylist[n].pipe);
 	ptylist[n].pipe = -1;
@@ -862,6 +899,9 @@ VOID killallpty(VOID_A)
 		}
 	}
 
+#ifdef	CYGWIN
+	closeallpty(MAXWINDOWS);
+#endif
 	if (emupid) {
 		VOID_C kill(emupid, SIGHUP);
 #ifdef	SIGCONT
@@ -889,7 +929,6 @@ int n;
 	if (waitstatus(ptylist[n].pid, WNOHANG, &status) < 0) return(0);
 	ptylist[n].pid = (p_id_t)0;
 	ptylist[n].status = status;
-	changewin(n, (p_id_t)0);
 	killpty(n, &status);
 
 	return(-1);
@@ -901,11 +940,7 @@ int checkallpty(VOID_A)
 
 	n = 0;
 	for (i = 0; i < MAXWINDOWS; i++) if (checkpty(i) < 0) n = -1;
-	if (n < 0) {
-		changewin(MAXWINDOWS, (p_id_t)-1);
-		return(-1);
-	}
 
-	return(0);
+	return(n);
 }
 #endif	/* !_NOPTY */

@@ -11,6 +11,11 @@
 
 #define	MAXTIMESTR	8
 #define	ATTRWIDTH	10
+#if	MSDOS
+#define	DIRENTSIZ(s)	DOSDIRENT
+#else
+#define	DIRENTSIZ(s)	(sizeof(struct dirent) - DNAMESIZE + strlen(s) + 1)
+#endif
 
 typedef struct _attrib_t {
 	short nlink;
@@ -59,14 +64,19 @@ static int NEAR islowerdir __P_((VOID_A));
 static char *NEAR getdestdir __P_((char *, char *));
 static int NEAR getdestpath __P_((char *, char *, struct stat *));
 static int NEAR getcopypolicy __P_((char *));
-static int NEAR getremovepolicy __P_((char *));
+static int NEAR getremovepolicy __P_((char *, int));
 static int NEAR checkdupl __P_((char *, char *, struct stat *, struct stat *));
 static int NEAR checkrmv __P_((char *, int));
 #ifndef	_NOEXTRACOPY
 static int NEAR isxdev __P_((char *, struct stat *));
+static VOID NEAR addcopysize __P_((off_t));
+static VOID NEAR _showprogress __P_((int));
+static int countcopysize __P_((char *));
+static int countmovesize __P_((char *));
+static int NEAR prepareprogress __P_((int, int (*)(char *)));
 #endif
-static VOID NEAR preparecopy __P_((VOID_A));
-static VOID NEAR preparemove __P_((VOID_A));
+static int NEAR preparecopy __P_((int, int));
+static int NEAR preparemove __P_((int, int));
 static int safecopy __P_((char *));
 static int safemove __P_((char *));
 static int cpdir __P_((char *));
@@ -74,6 +84,7 @@ static int touchdir __P_((char *));
 #ifndef	_NOEXTRACOPY
 static int mvdir1 __P_((char *));
 static int mvdir2 __P_((char *));
+static int countremovesize __P_((char *));
 #endif
 static VOID NEAR showmode __P_((attrib_t *, int, int));
 static VOID NEAR showattr __P_((namelist *, attrib_t *, int));
@@ -89,6 +100,10 @@ static int forcecpdir __P_((char *));
 static int forcetouchdir __P_((char *));
 
 char *destpath = NULL;
+#ifndef	_NOEXTRACOPY
+int progressbar = 0;
+int precopymenu = 0;
+#endif
 
 static int copypolicy = 0;
 static int removepolicy = 0;
@@ -118,6 +133,14 @@ static int destdrive = -1;
 #endif
 #if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
 static int forwarddrive = -1;
+#endif
+#ifndef	_NOEXTRACOPY
+static int copycolumn = -1;
+static int copyline = 0;
+static long copyunit = 0L;
+static long maxcopyunit = 0L;
+static off_t copysize = (off_t)0;
+static off_t maxcopysize = (off_t)0;
 #endif
 
 
@@ -335,26 +358,34 @@ char *s;
 	return(copypolicy);
 }
 
-static int NEAR getremovepolicy(s)
+static int NEAR getremovepolicy(s, pre)
 char *s;
+int pre;
 {
 	char *str[4];
-	int n, ch, val[4];
+	int i, n, ch, val[4];
 
 	Xlocate(0, L_CMDLINE);
 	Xputterm(L_CLEAR);
 	Xkanjiputs(s);
 
-	str[0] = ANYES_K;
-	val[0] = CHK_OK;
-	str[1] = ANNO_K;
-	val[1] = CHK_ERROR;
-	str[2] = ANALL_K;
-	val[2] = RMP_REMOVEALL;
-	str[3] = ANKEP_K;
-	val[3] = RMP_KEEPALL;
+	i = 0;
+	if (pre) {
+		str[i] = ANCNF_K;
+		val[i++] = CHK_OK;
+	}
+	else {
+		str[i] = ANYES_K;
+		val[i++] = CHK_OK;
+		str[i] = ANNO_K;
+		val[i++] = CHK_ERROR;
+	}
+	str[i] = ANALL_K;
+	val[i++] = RMP_REMOVEALL;
+	str[i] = ANKEP_K;
+	val[i++] = RMP_KEEPALL;
 	n = CHK_OK;
-	ch = selectstr(&n, 4, 0, str, val);
+	ch = selectstr(&n, i, 0, str, val);
 	if (ch == K_ESC) return(CHK_ERROR);
 	else if (ch != K_CR) return(CHK_CANCEL);
 	else if (n <= 0) return(n);
@@ -397,6 +428,10 @@ struct stat *stp1, *stp2;
 			cp = SAMEF_K;
 			i = strlen2(cp) - strsize("%.*s");
 			cp = asprintf3(cp, n_column - i, dest);
+
+#ifndef	_NOEXTRACOPY
+			copycolumn = -1;
+#endif
 			if (!n) n = getcopypolicy(cp);
 			else {
 				Xlocate(0, L_CMDLINE);
@@ -537,7 +572,10 @@ int mode;
 		cp = DELPM_K;
 		len = strlen2(cp) - strsize("%.*s");
 		cp = asprintf3(cp, n_column - len, path);
-		n = getremovepolicy(cp);
+#ifndef	_NOEXTRACOPY
+		copycolumn = -1;
+#endif
+		n = getremovepolicy(cp, 0);
 		free(cp);
 	}
 	if (n > 0) n -= RMP_BIAS;
@@ -570,20 +608,164 @@ struct stat *stp;
 
 	return(0);
 }
+
+static VOID NEAR addcopysize(size)
+off_t size;
+{
+	if (size <= MAXTYPE(off_t) - maxcopysize) maxcopysize += size;
+	else {
+		maxcopysize -= MAXTYPE(off_t) - size;
+		maxcopyunit++;
+	}
+}
+
+static VOID NEAR _showprogress(n)
+int n;
+{
+	int i, max;
+
+	max = n_column - 1;
+	Xlocate(0, copyline);
+	for (i = 0; i < n; i++) Xputch2('o');
+	for (; i < max; i++) Xputch2('.');
+	Xlocate(n, copyline);
+	Xtflush();
+}
+
+VOID showprogress(size)
+off_t size;
+{
+	long unit;
+	int n, max;
+
+	if (!maxcopysize && !maxcopyunit) return;
+
+	max = n_column - 1;
+	for (n = 0; n < max; n++) {
+		if (size <= MAXTYPE(off_t) - copysize) copysize += size;
+		else {
+			copysize -= MAXTYPE(off_t) - size + 1;
+			copyunit++;
+		}
+	}
+
+	size = copysize;
+	unit = copyunit;
+	for (n = 0; n < max; n++) {
+		if (maxcopysize <= size) size -= maxcopysize;
+		else if (!unit) break;
+		else {
+			size += MAXTYPE(off_t) - maxcopysize + 1;
+			unit--;
+		}
+		if (unit < maxcopyunit) break;
+		unit -= maxcopyunit;
+	}
+
+	if (n > copycolumn) _showprogress(copycolumn = n);
+}
+
+VOID fshowprogress(path)
+char *path;
+{
+	char *cp;
+
+	if (!(cp = strrdelim(path, 1))) cp = path;
+	showprogress(DIRENTSIZ(cp));
+}
+
+static int countcopysize(path)
+char *path;
+{
+	struct stat st;
+	char *cp;
+
+	if (!(cp = strrdelim(path, 1))) cp = path;
+	addcopysize(DIRENTSIZ(cp));
+	if (Xlstat(path, &st) < 0) return(APL_ERROR);
+	addcopysize(st.st_size);
+
+	return(APL_OK);
+}
+
+static int countmovesize(path)
+char *path;
+{
+	struct stat st;
+	int n;
+	char *cp;
+
+	if (!(cp = strrdelim(path, 1))) cp = path;
+	addcopysize(DIRENTSIZ(cp));
+	if ((n = isxdev(path, &st)) < 0) return(APL_ERROR);
+	else if (n && !s_isdir(&st)) addcopysize(st.st_size);
+
+	return(APL_OK);
+}
+
+static int NEAR prepareprogress(isdir, func)
+int isdir;
+int (*func)__P_((char *));
+{
+	int ret;
+
+	copycolumn = -1;
+	copyline = 0;
+	copyunit = maxcopyunit = 0L;
+	copysize = maxcopysize = (off_t)0;
+	if (progressbar) {
+		if (!isdir) {
+			copyline = L_CMDLINE;
+			VOID_C applyfile(func, NULL);
+		}
+		else {
+			copyline = L_STACK;
+			ret = applydir(filelist[filepos].name, func,
+				NULL, func, ORD_NOPREDIR, NULL);
+			if (ret == APL_ERROR) return(-1);
+			if (ret == APL_CANCEL) {
+				maxcopyunit = 0L;
+				maxcopysize = (off_t)0;
+			}
+		}
+	}
+
+	return(0);
+}
 #endif	/* !_NOEXTRACOPY */
 
-static VOID NEAR preparecopy(VOID_A)
+/*ARGSUSED*/
+static int NEAR preparecopy(isdir, narg)
+int isdir, narg;
 {
 	copypolicy = (issamedir(destpath, NULL))
 		? (FLAG_SAMEDIR | CPP_RENAME) : 0;
+#ifndef	_NOEXTRACOPY
+	if (precopymenu && !copypolicy && (isdir || narg > 1))
+		if (getcopypolicy(PRECP_K) < 0) return(-1);
+	if (prepareprogress(isdir, countcopysize)) return(-1);
+#endif	/* !_NOEXTRACOPY */
 #ifndef	_NODOSDRIVE
 	if (dospath3(nullstr)) waitmes();
 #endif
+
+	return(0);
 }
 
-static VOID NEAR preparemove(VOID_A)
+/*ARGSUSED*/
+static int NEAR preparemove(isdir, narg)
+int isdir, narg;
 {
 	copypolicy = removepolicy = 0;
+#ifndef	_NOEXTRACOPY
+	if (precopymenu && (isdir || narg > 1)) {
+		if (getcopypolicy(PRECP_K) < 0) return(-1);
+		if (getremovepolicy(PRERM_K, 1) < 0) return(-1);
+	}
+	if (prepareprogress(isdir, countmovesize) < 0) return(-1);
+#endif	/* !_NOEXTRACOPY */
+
+	return(0);
 }
 
 static int safecopy(path)
@@ -724,14 +906,37 @@ char *path;
 	st.st_atime = destatime;
 	if (touchfile(dest, &st) < 0) return(APL_ERROR);
 	if (Xrmdir(path) < 0) return(APL_ERROR);
+#ifndef	_NOEXTRACOPY
+	fshowprogress(path);
+#endif
+
+	return(APL_OK);
+}
+
+static int countremovesize(path)
+char *path;
+{
+	char *cp;
+
+	if (!(cp = strrdelim(path, 1))) cp = path;
+	addcopysize(DIRENTSIZ(cp));
 
 	return(APL_OK);
 }
 #endif	/* !_NOEXTRACOPY */
 
-VOID prepareremove(VOID_A)
+/*ARGSUSED*/
+int prepareremove(isdir, narg)
+int isdir, narg;
 {
 	removepolicy = 0;
+#ifndef	_NOEXTRACOPY
+	if (precopymenu && (isdir || narg > 1))
+		if (getremovepolicy(PRERM_K, 1) < 0) return(-1);
+	if (prepareprogress(isdir, countremovesize)) return(-1);
+#endif	/* !_NOEXTRACOPY */
+
+	return(0);
 }
 
 int rmvfile(path)
@@ -742,6 +947,9 @@ char *path;
 	if ((n = checkrmv(path, W_OK)) < 0)
 		return((n == CHK_CANCEL) ? APL_CANCEL : APL_IGNORE);
 	if (Xunlink(path) < 0) return(APL_ERROR);
+#ifndef	_NOEXTRACOPY
+	fshowprogress(path);
+#endif
 
 	return(APL_OK);
 }
@@ -754,6 +962,9 @@ char *path;
 	if ((n = checkrmv(path, R_OK | W_OK | X_OK)) < 0)
 		return((n == CHK_CANCEL) ? APL_CANCEL : APL_IGNORE);
 	if (Xrmdir(path) < 0) return(APL_ERROR);
+#ifndef	_NOEXTRACOPY
+	fshowprogress(path);
+#endif
 
 	return(APL_OK);
 }
@@ -1418,6 +1629,9 @@ char *endmes;
 		i = (*func)(fnodospath(path, filepos));
 		if (i == APL_ERROR) warning(-1, filelist[filepos].name);
 		else if (i == APL_OK) ret++;
+#ifndef	_NOEXTRACOPY
+		if (endmes && copyline > 0) _showprogress(n_column);
+#endif
 		return(ret);
 	}
 
@@ -1443,7 +1657,12 @@ char *endmes;
 		old = filepos;
 	}
 
-	if (endmes) warning(0, endmes);
+	if (endmes) {
+#ifndef	_NOEXTRACOPY
+		if (copyline > 0) _showprogress(n_column);
+#endif
+		warning(0, endmes);
+	}
 	filepos = dupfilepos;
 	movepos(old, 0);
 	Xlocate(win_x, win_y);
@@ -1592,7 +1811,12 @@ int verbose;
 		if (ret == APL_CANCEL) return(ret);
 		warning(-1, dir);
 	}
-	if (endmes) warning(0, endmes);
+	if (endmes) {
+#ifndef	_NOEXTRACOPY
+		if (copyline > 0) _showprogress(n_column);
+#endif
+		warning(0, endmes);
+	}
 
 	return(ret);
 }
@@ -1649,7 +1873,10 @@ int tr;
 	destdir = NULL;
 	if (mark > 0
 	|| (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos])))) {
-		preparecopy();
+		if (preparecopy(0, mark) < 0) {
+			free(destpath);
+			return(FNC_CANCEL);
+		}
 		VOID_C applyfile(safecopy, ENDCP_K);
 	}
 #ifdef	_NOEXTRACOPY
@@ -1660,7 +1887,10 @@ int tr;
 	}
 #endif
 	else {
-		preparecopy();
+		if (preparecopy(1, 1) < 0) {
+			free(destpath);
+			return(FNC_CANCEL);
+		}
 		order = (islowerdir()) ? ORD_LOWER : ORD_NORMAL;
 		VOID_C applydir(filelist[filepos].name, safecopy,
 			cpdir, touchdir, order, ENDCP_K);
@@ -1717,7 +1947,10 @@ int tr;
 	}
 	destdir = NULL;
 	if (mark > 0) {
-		preparemove();
+		if (preparemove(0, mark) < 0) {
+			free(destpath);
+			return(FNC_CANCEL);
+		}
 		filepos = applyfile(safemove, ENDMV_K);
 	}
 	else if (islowerdir()) warning(EINVAL, filelist[filepos].name);
@@ -1729,7 +1962,10 @@ int tr;
 		else ret = isxdev(fnodospath(path, filepos), NULL);
 		if (ret < 0) warning(-1, filelist[filepos].name);
 		else if (ret) {
-			preparemove();
+			if (preparemove(1, 1) < 0) {
+				free(destpath);
+				return(FNC_CANCEL);
+			}
 # ifndef	_NODOSDRIVE
 			if (dospath3(nullstr)) waitmes();
 # endif
@@ -1740,7 +1976,10 @@ int tr;
 		else
 #endif	/* !_NOEXTRACOPY */
 		{
-			preparemove();
+			if (preparemove(0, 1) < 0) {
+				free(destpath);
+				return(FNC_CANCEL);
+			}
 			ret = safemove(fnodospath(path, filepos));
 			if (ret == APL_ERROR)
 				warning(-1, filelist[filepos].name);

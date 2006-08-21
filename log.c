@@ -65,7 +65,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 		logfname = nullstr;
 		top = logfile;
-#if	MSDOS
+#ifdef	_USEDOSPATH
 		if (_dospath(top)) top += 2;
 #endif
 		if (*top == _SC_) cp = logfile;
@@ -78,9 +78,9 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 	}
 
 	size = (ALLOC_T)logsize * (ALLOC_T)1024;
-	if (size > 0 && stat(cp, &st) >= 0 && st.st_size > size) {
+	if (size > 0 && Xstat(cp, &st) >= 0 && st.st_size > size) {
 		snprintf2(path, sizeof(path), "%s.old", cp);
-		if (rename(cp, path) < 0) unlink(cp);
+		if (Xrename(cp, path) < 0) Xunlink(cp);
 	}
 
 	lck = lockopen(cp, O_TEXT | O_WRONLY | O_CREAT | O_APPEND, 0666);
@@ -109,6 +109,7 @@ int lvl, p;
 char *buf;
 int len;
 {
+	static int logging = 0;
 	lockbuf_t *lck;
 	struct tm *tm;
 	char hbuf[MAXLOGLEN + 1];
@@ -116,6 +117,7 @@ int len;
 	u_char uc;
 	int n;
 
+	if (logging) return;
 #ifndef	NOUID
 	if (!getuid()) {
 		n = rootloglevel;
@@ -126,6 +128,7 @@ int len;
 	n = loglevel;
 	if (!n || n < lvl) return;
 
+	logging = 1;
 	if ((lck = openlogfile())) {
 		t = time(NULL);
 		tm = localtime(&t);
@@ -142,12 +145,13 @@ int len;
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			getuid(), progname, getpid());
 #endif
-		VOID_C write(lck -> fd, hbuf, n);
-		VOID_C write(lck -> fd, buf, len);
+		VOID_C Xwrite(lck -> fd, hbuf, n);
+		VOID_C Xwrite(lck -> fd, buf, len);
 		uc = '\n';
-		VOID_C write(lck -> fd, &uc, sizeof(uc));
+		VOID_C Xwrite(lck -> fd, (char *)&uc, sizeof(uc));
 		lockclose(lck);
 	}
+	logging = 0;
 #ifndef	NOSYSLOG
 	if (usesyslog && syslogged >= 0) {
 		if (!syslogged) {

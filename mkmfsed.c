@@ -45,6 +45,9 @@
 #ifndef	CCCOMMAND
 #define	CCCOMMAND	"cc"
 #endif
+#ifndef	DICTSRC
+#define	DICTSRC		""
+#endif
 
 int main __P_((int, char *[]));
 
@@ -78,6 +81,23 @@ char *argv[];
 #endif
 	printf("s:__OBJ__:.o:g\n");
 	printf("s:__EMUOBJS__:dosemu.o:\n");
+#ifdef	_NOIME
+	printf("s:__IMEOBJS__::\n");
+	printf("s:__DICTTBL__::\n");
+	printf("s:__DICTSRC__::\n");
+	printf("s:__MKDICTOPTION__::\n");
+#else	/* !_NOIME */
+	printf("s:__IMEOBJS__:ime.o roman.o dict.o:\n");
+	printf("s:__DICTTBL__:$(DICTTBL):\n");
+	if (DICTSRC[0]) {
+		printf("s:__DICTSRC__:%s:\n", DICTSRC);
+		printf("s:__MKDICTOPTION__:-h -v:\n");
+	}
+	else {
+		printf("s:__DICTSRC__:$(DICTTXT):\n");
+		printf("s:__MKDICTOPTION__::\n");
+	}
+#endif	/* !_NOIME */
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 

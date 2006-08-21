@@ -88,10 +88,10 @@ char *promptstr2 = NULL;
 #endif
 char *promptstr = NULL;
 char **history[2] = {NULL, NULL};
-char *histfile = NULL;
+char *histfile[2] = {NULL, NULL};
 short histsize[2] = {0, 0};
 short histno[2] = {0, 0};
-int savehist = 0;
+short savehist[2] = {0, 0};
 int n_args = 0;
 
 static short histbufsize[2] = {0, 0};
@@ -665,6 +665,7 @@ macrostat *stp;
 				else if (c == 'C') code = CAP;
 				else if (c == 'U') code = UTF8;
 				else if (c == 'M') code = M_UTF8;
+				else if (c == 'I') code = I_UTF8;
 #  ifndef	_NOKANJIFCONV
 				else if (c == 'A') code = -1;
 #  endif
@@ -1633,8 +1634,8 @@ int n;
 	char *line;
 	int i, j, size;
 
-	if (!histfile || !histfile[0]) return(0);
-	lck = lockfopen(histfile, "r", O_TEXT | O_RDONLY);
+	if (!histfile[n] || !histfile[n][0]) return(0);
+	lck = lockfopen(histfile[n], "r", O_TEXT | O_RDONLY);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);
@@ -1683,15 +1684,17 @@ int n;
 	lockbuf_t *lck;
 	int i, size;
 
-	if (!histfile || !histfile[0] || savehist <= 0) return(0);
+	if (!histfile[n] || !histfile[n][0] || savehist[n] <= 0) return(0);
 	if (!history[n] || !history[n][0]) return(-1);
-	lck = lockfopen(histfile, "w", O_TEXT | O_WRONLY | O_CREAT | O_TRUNC);
+	lck = lockfopen(histfile[n], "w",
+		O_TEXT | O_WRONLY | O_CREAT | O_TRUNC);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);
 	}
 
-	size = (savehist > (int)histsize[n]) ? (int)histsize[n] : savehist;
+	size = (savehist[n] > histsize[n])
+		? (int)histsize[n] : (int)savehist[n];
 	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], lck -> fp);
 	lockclose(lck);
 

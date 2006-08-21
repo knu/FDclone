@@ -1364,7 +1364,7 @@ int *xp, *yp;
 
 	buf[0] = '\0';
 	do {
-		if (!kbhit2(1000000L * 5)) break;
+		if (!kbhit2(WAITKEYPAD * 10000L)) break;
 # if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
 # else

@@ -103,14 +103,18 @@ A2-04.	You can change a display of the function key when
 	you change a key binding of the function key into
 	your customization. See man page for details.
 	But, if your keyboard layout is different from the
-	function lines, you can not suit a display to a
+	function line, you can not suit a display to a
 	keyboard. Sorry.
+
+	(You can set up the function line layout with the
+	internal variable (or the environment variable)
+	FUNCLAYOUT, from Ver. 2.09 downward.)
 
 Q2-05.	I want to confirm how it is customized.
 A2-05.	You can confirm with some builtin commands in EXECUTE_SH
 	command. For example, "printbind" for the key binding,
-	"printenv" for the internal variable definition. See
-	man page for details.
+	"set" for the internal variable definition. See man
+	page for details.
 
 	(You can confirm and set up the configurations with
 	the customizer all at once, from Ver. 2.00 downward.)
@@ -594,6 +598,10 @@ A4-01.	Although I added the pathname history from Ver. 1.03,
 	troublesome problems such as management of a save
 	file, the pathname history has been made into the
 	specification not to save.
+
+	(You can set up to save the history of a pathname with
+	the internal variables (or the environment variables)
+	SAVEDIRHIST and DIRHISTFILE, from Ver. 2.09 downward.)
 
 Q4-02.	Value by INFO_SYSTEM command may sometimes become "?".
 A4-02.	There is the case that it cannot get any file system

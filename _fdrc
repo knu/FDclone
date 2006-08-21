@@ -1,6 +1,11 @@
 # Initialize file for FD
 #
 
+# whether if limit configuration items or not in the customizer
+#	0: not limit (Default)
+#	>= 1: limit
+#BASICCUSTOM=0
+
 # default sort type
 #	0: not sort (Default)
 #	1: alphabetical	9: alphabetical (reversal)
@@ -9,6 +14,7 @@
 #	4: date		12: date (reversal)
 #	5: length	13: length (reversal)
 #	100-113: preserve previous sort type
+#	200-213: preserve previous sort type also in the archive browser
 #		(the least 2 digits are effective just after initialize)
 #SORTTYPE=0
 
@@ -44,6 +50,16 @@
 #	>= 1: inherit
 #INHERITCOPY=0
 
+# whether if display progress bar on copying/moving files
+#	0: not dislpay (Default)
+#	>= 1: dislpay
+#PROGRESSBAR=0
+
+# whether if query overwriting policy in advance before copying/moving files
+#	0: not query (Default)
+#	>= 1: query
+#PRECOPYMENU=0
+
 # whether if adjust tty or not when exiting
 #	0: not adjust (Default)
 #	>= 1: adjust
@@ -69,6 +85,10 @@
 #	Default: ~/.fd_history
 #HISTFILE=~/.fd_history
 
+# history file of path input
+#	Default: none
+#DIRHISTFILE=""
+
 # history size of sh mode
 #	Default: 50
 #HISTSIZE=50
@@ -80,6 +100,10 @@
 # size of saved command history
 #	Default: 50
 #SAVEHIST=50
+
+# size of saved directory history
+#	Default: 50
+#SAVEDIRHIST=50
 
 # limit of counting files in directory, on tree mode
 #	Default: 50
@@ -105,6 +129,22 @@
 #	>= 1: show
 #SIZEINFO=0
 
+# layout form of the function line
+#	value: n * 100 + size
+#	n: the number of function keys
+#	size: the block size of function keys
+#	Default: 10 * 100 + 5
+#FUNCLAYOUT=1005
+
+# key to invoke tiny Kanji Input Method Editor
+#	Default: none
+#IMEKEY=""
+
+# whether if hold the Kana-Kanji translation table on memory
+#	0: not hold (Default)
+#	>= 1: hold
+#IMEBUFFER=0
+
 # whether if support ANSI color escape sequence
 #	0: monochrome (Default)
 #	1: color
@@ -124,18 +164,19 @@
 #	7: white
 #	8: default color for foreground
 #	9: default color for background
-#	default palette: 8962435188
-#	                 ||||||||||
-#	normal file -----+|||||||||
-#	background -------+||||||||
-#	directory ---------+|||||||
-#	unwritable ---------+||||||
-#	unreadable ----------+|||||
-#	symbolic link --------+||||
-#	socket ----------------+|||
-#	fifo (named pipe) ------+||
-#	block device ------------+|
-#	character device ---------+
+#	default palette: 89624351888
+#	                 |||||||||||
+#	normal file -----+||||||||||
+#	background -------+|||||||||
+#	directory ---------+||||||||
+#	unwritable ---------+|||||||
+#	unreadable ----------+||||||
+#	symbolic link --------+|||||
+#	socket ----------------+||||
+#	fifo (named pipe) ------+|||
+#	block device ------------+||
+#	character device ---------+|
+#	exectable -----------------+
 #ANSIPALETTE=""
 
 # edit mode with your favorite editor type
@@ -242,7 +283,8 @@
 #	ojunet, OJUNET: old ISO-2022-JP
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
-#	eng, ENG, C: English
+#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
+#	en, EN, C: English
 #LANGUAGE=""
 
 # system default Kanji code
@@ -259,6 +301,7 @@
 #	cap, CAP: CAP
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 #DEFKCODE=""
 
 # Kanji code to be inputted
@@ -267,6 +310,7 @@
 #	sjis, SJIS: Shift JIS
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 #INPUTKCODE=""
 
 # Kanji code to be inputted to the pseudo terminal
@@ -275,6 +319,7 @@
 #	sjis, SJIS: Shift JIS
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 #PTYINKCODE=""
 
 # Kanji code to be outputted from the pseudo terminal
@@ -283,6 +328,7 @@
 #	sjis, SJIS: Shift JIS
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 #PTYOUTKCODE=""
 
 # Kanji code in filename
@@ -299,57 +345,67 @@
 #	cap, CAP: CAP
 #	utf8, UTF8: UTF-8
 #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
+#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 #FNAMEKCODE=""
 
-# directories on which language code type in filename is SJIS
+# language code to be displayed
+#	Default: No convert
+#	en, EN, C: English
+#MESSAGELANG=""
+
+# directories on which Kanji code in filename is SJIS
 #	Default: none
 #SJISPATH=""
 
-# directories on which language code type in filename is EUC-JP
+# directories on which Kanji code in filename is EUC-JP
 #	Default: none
 #EUCPATH=""
 
-# directories on which language code type in filename is 7bits JIS
+# directories on which Kanji code in filename is 7bits JIS
 #	Default: none
 #JISPATH=""
 
-# directories on which language code type in filename is 8bits JIS
+# directories on which Kanji code in filename is 8bits JIS
 #	Default: none
 #JIS8PATH=""
 
-# directories on which language code type in filename is ISO-2022-JP
+# directories on which Kanji code in filename is ISO-2022-JP
 #	Default: none
 #JUNETPATH=""
 
-# directories on which language code type in filename is old 7bits JIS
+# directories on which Kanji code in filename is old 7bits JIS
 #	Default: none
 #OJISPATH=""
 
-# directories on which language code type in filename is old 8bits JIS
+# directories on which Kanji code in filename is old 8bits JIS
 #	Default: none
 #OJIS8PATH=""
 
-# directories on which language code type in filename is old ISO-2022-JP
+# directories on which Kanji code in filename is old ISO-2022-JP
 #	Default: none
 #OJUNETPATH=""
 
-# directories on which language code type in filename is HEX
+# directories on which Kanji code in filename is HEX
 #	Default: none
 #HEXPATH=""
 
-# directories on which language code type in filename is CAP
+# directories on which Kanji code in filename is CAP
 #	Default: none
 #CAPPATH=""
 
-# directories on which language code type in filename is UTF-8
+# directories on which Kanji code in filename is UTF-8
 #	Default: none
 #UTF8PATH=""
 
-# directories on which language code type in filename is UTF-8 for Mac OS X
+# directories on which Kanji code in filename is UTF-8 for Mac OS X
 #	Default: none
 #UTF8MACPATH=""
 
-# directories on which language code type in filename is not converted
+# directories on which Kanji code in filename is UTF-8 for iconv
+#	Default: none
+#UTF8ICONVPATH=""
+
+# directories on which Kanji code in filename is not converted
 #	Default: none
 #NOCONVPATH=""
 

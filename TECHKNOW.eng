@@ -58,8 +58,10 @@ USEMANLANG
 	string shown by the environment variable LANG, such
 	as '/usr/man/ja_JP.SJIS/', to support M17N.
 USEDATADIR
-	fd-unicd.tbl, which is the transformation table for
-	UNICODE, is not placed on the same directory as the
+	fd-unicd.tbl, which is the translation table for
+	UNICODE, and fd-dict.tbl, which is the Kana-Kanji
+	translation table for the Japanese input method
+	editor, are not placed on the same directory as the
 	executable binary of fd, but on the directory which
 	is specified by DATADIR in Makefile.in.
 SUPPORTSJIS
@@ -973,6 +975,7 @@ not implemented.
 	_NOPTY		cannot use pseudo terminal
 	_NOEXTRAATTR	cannot use extra attribute changing command
 	_NOLOGGING	cannot use system logging
+	_NOIME		cannot use tiny Input Method Editor
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,
@@ -1287,3 +1290,45 @@ the multiple format strings in order to support more various
 remote hosts.
   Like this, you should also register the multiple -i options
 and -e options.
+
+
+11.Kana-Kanji Translation Dictionary
+
+  In the standard state, the included mktankan.c makes the
+text dictionary for the Tan-Kanji translation to make
+fd-dict.tbl, the Kana-Kanji translation dictionary, from it.
+  In this state, fd-dict.tbl does not include any Hinsi
+information. Then you will be able to use only the Tan-Kanji
+translation in the Kana-Kanji IME mode, if you use this as
+is.
+  The internal translation engine supports the Tan-Bunsetsu
+translation based on the Hinsi translation. If you prepare
+the other text dictionary with the Hinsi information, you
+can use Ren-Bubsetsu translation in the Kana-Kanji IME mode.
+
+  The supported dictionary form is the pubdic form. And you
+can also use the text converted from the dictionary of Wnn,
+Canna and SJ3.
+  If you describe these dictionaries as DICTSRC in Makefile.in
+at compile time, fd-dict.tbl, the Kana-Kanji translation
+dictionary, will be based on these dictionaries.
+
+  When you describe it as DICTSRC, you should describe it
+with the absolute path or the relative path from the
+directory where they are compiled. You may describe only the
+filename, of cource, when you place them at the same
+directory.
+  When you describe multiple dictionaries, you should
+separate them with spaces. You can not choose one of them
+at execution, so that the translation candidate will be
+selected from all of them.
+  You can specify it from the command line of 'make' such as
+"make DICTSRC=./puvdic.p", in the case of a single
+dictionary.
+
+  When you change the dictionary specification after once
+compiling, you must delete the compiled fd-dict.tbl and
+compile it.
+  In this case, you can execute "make rmdict".  Then only
+the files related to the dictionary will be deleted, and
+the other compile results will be leaved as they were.

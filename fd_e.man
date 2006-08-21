@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2006 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.08f 08/08/06
+.\" @(#)fd.1   2.09 08/22/06
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "August 8, 2006"
+.TH FD 1 "August 22, 2006"
 .de sh
 .br
 .PP
@@ -1459,7 +1459,7 @@ is not omitted,
 is executed when the cursor position indicates a directory.
 When the key
 .I c
-is the function key of F1-F10,
+is the function key of F1-F20,
 if you describe
 .I comment
 prefixed with
@@ -2515,6 +2515,17 @@ If
 .I ext
 is omitted,
 all of the registered launchers is listed.
+.IP "\fBprintroman\fP [\fIroman\fR]"
+Print the Roman-Kana translation table for the Kana-Kanji IME mode.
+It means printing the Japanese string bound for
+.I roman
+the Roman string.
+.B (UNIX)
+
+If
+.I roman
+is omitted,
+all the registered Roman-Kana translation table is listed.
 .IP "\fBpushd\fP [\fIdir\fR]"
 Load the current directory onto the directory stack,
 and change the current directory in
@@ -2861,6 +2872,56 @@ You can confirm what drive name is valid by
 .B printdrv
 command.
 But any hard disk is registered as readonly, for security.
+.IP "\fBsetroman\fP [\fB-c\fP] [\fB-r\fP] [\fB-f\fP \fIfile\fR] [\fIroman\fR [\fIkanji\fR]]"
+Setup the Roman-Kana translation table for the Kana-Kanji IME mode.
+It means binding
+.I kanji
+the Japanese string to
+.I roman
+the Roman string.
+The part over
+.B 4
+characters of
+.IR roman ,
+the string which consists of 1 byte characters only,
+will be ignored.
+The part over
+.B 2
+characters of
+.IR kanji ,
+the string which consists of multibyte characters or 1 byte characters,
+will be ignored.
+In this case,
+a multibyte character is counted as 1 character as well as a 1 byte character.
+.B (UNIX)
+
+If
+.I kanji
+is omitted,
+the registered binding of the Roman-Kana translation table for
+.I roman
+the Roman string will be deleted.
+When you specify
+.BR \-c ,
+the whole Roman-Kana translation table will be cleared to be empty.
+When you specify
+.BR \-r ,
+all the registered bindings will be reset to restore the Roman-Kana translation table.
+When you specify
+.BR \-f ,
+the file specified by
+.I file
+will be read as bindings of the Roman-Kana translation table.
+In this case,
+a pair of
+.I roman
+and
+.IR kanji ,
+which is separated by spaces,
+must be described in each line of
+.IR file .
+You can also use the file which contains the output of
+.BR printroman .
 .IP "\fBshift\fP [\fIn\fR]"
 Rename the positional parameters from
 .BI $ n\+1
@@ -3812,6 +3873,71 @@ that it is not suitable for those who don't use
 .B vi
 editor everyday.
 .RE
+.SS Kana-Kanji IME (UNIX)
+You can input strings in the Kana-Kanji IME mode,
+if you input the key specified by
+.B IMEKEY
+or select "Kanji"
+from the pseudo terminal menu.
+
+The translation performance will depend on the Kana-Kanji translation dictionary
+.BR fd\-dict.tbl .
+When it does not exist in the same directory as the invoked
+.B fd
+exists,
+translation to Kanji will not be available.
+The standard installed dictionary file is the Tan-Kanji dictionary,
+which can support only the Tan-Kanji translation.
+The dictionaly such as the pubdic,
+which includes the Hinsi information,
+will bring you the Tan-Bunsetsu translation.
+The Ren-Bunsetsu translation is not be supported.
+
+In the Kana-Kanji IME mode,
+the following key inputs are available.
+.PD 0
+.RS
+.IP "\fBSpace\fP" 10
+Trancelate to Kanji,
+or select the next translation candidate.
+.IP "\fBLeft\fP, \fBRight\fP"
+.IP "\fBUp\fP, \fBDown\fP"
+Move a cursor in the list of the translation candidate.
+.IP "\fBBs\fP, \fBDel\fP"
+Delete a character before the cursor position.
+.IP "\fBTab\fP"
+Toggle Hiragana, Katakana, Hankaku-Kana and the direct input.
+.IP "\fB^L\fP"
+Redraw the input string.
+.IP "\fBReturn\fP"
+Decide the translation result.
+.IP "\fBEsc\fP"
+Cancel.
+.RE
+.PD
+.PP
+When you translate the string of the capital 4 digit hexadecimal prefixed by a capital letter,
+it is regarded as the hexadecimal showing the following Kanji code respectively.
+Then the menu will be displayed to select Kanji next to the Kanji code number.
+.PD 0
+.RS
+.IP "\fBS\fP" 4
+Shift JIS
+.IP "\fBE\fP"
+EUC-JP
+.IP "\fBJ\fP"
+JIS code (JIS X0208)
+.IP "\fBK\fP"
+Kuten code
+.IP "\fBU\fP"
+UNICODE (UCS2)
+.RE
+When you input
+.RB [ Space ]
+in the state where you decide an un-translated Kana,
+it is regarded as the initial reading of Kanji.
+Then the menu will be desplayed to select Kanji whose reading starts with the Kana.
+.PD
 .SS Parameter Macros
 You can use the following parameter macros in the string
 which is used for the registration of command macros and for executing command.
@@ -3946,6 +4072,11 @@ is converted into UTF-8.
 .IP "\fB%JM\fP"
 The Kanji code of the string enclosed by this macro
 is converted into UTF-8 for Mac OS X.
+.B (UNIX)
+.IP "\fB%JI\fP"
+The Kanji code of the string enclosed by this macro
+is converted into UTF-8 for iconv,
+which is used on environments using iconv-based UTF-8 such as Linux.
 .B (UNIX)
 .IP "\fB%JA\fP"
 The Kanji code of the string enclosed by this macro
@@ -4199,7 +4330,7 @@ the foreground color is forced to be black.
 Specify color palette according to file type
 when the file display is colorized.
 This variable value consists of a numeric value whose maximum columns are
-.B 10
+.B 11
 columns.
 The number of each column shows a color number,
 which specifies the color of file type corresponding with its column.
@@ -4217,6 +4348,7 @@ The following are correspondence of the column number to the file type.
 \fB8\fP	FIFO (or label on MS-DOS)
 \fB9\fP	block device
 \fB10\fP	character device
+\fB11\fP	executable file
 .fi
 .RE
 
@@ -4258,13 +4390,19 @@ the variable is
 
 .RS
 When the columns are less than
-.B 10
+.B 11
 or this variable is not set,
 the standard color palette will be applied
 for the file type corresponding with the following columns.
 The standard color palette is described with the above color number as
-.BR 8962435188 .
+.BR 89624351888 .
 .RE
+.IP "\fBBASICCUSTOM\fP"
+Limit the internal variables for configuration only to basic variables in the customizer,
+to hide advanced variables.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBCDPATH\fP\(**"
 Specify the search path
 when an argument of
@@ -4336,6 +4474,7 @@ etc. among them are the Kanji codes used in Samba.
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
 \fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-iconv\fP	UTF-8 for iconv
 default	no convert
 .fi
 .RE
@@ -4372,6 +4511,12 @@ The default value is
 If this value is
 .BR 0 ,
 you can refer to no directory history.
+.IP "\fBDIRHISTFILE\fP"
+Specify the name of the directory history file
+which can be referred by the directory input line.
+Unless you specify it,
+the directory history is not loaded nor saved.
+The default value is not specified.
 .IP "\fBDISPLAYMODE\fP"
 Specify the filename display mode of the file list when
 .B fd
@@ -4494,9 +4639,24 @@ etc. among them are the Kanji codes used in Samba.
 \fBCAP\fP, \fBcap\fP	CAP
 \fBUTF8\fP, \fButf8\fP	UTF-8
 \fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-iconv\fP	UTF-8 for iconv
 default	no convert
 .fi
 .RE
+.IP "\fBFUNCLAYOUT\fP"
+Specify the layout of the function line,
+as the form of
+.I n
+* 100 +
+.IR size .
+.I N
+means the number of function keys to be displayed in the function line.
+.I Size
+means the block size of function keys to be displayed.
+The default value is
+.BR 1005 .
+(It means 10 function keys will be displayed,
+5 of which are grouped.)
 .IP "\fBHISTFILE\fP"
 Specify the name of the command history file
 which can be referred by
@@ -4543,6 +4703,23 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
+.IP "\fBIMEKEY\fP"
+Specify the key to toggle the direct input mode and the Kana-Kanji IME mode when you input some strings.
+You can describe the same key name as
+.B bind
+command.
+The default value is not specified.
+.B (UNIX)
+.IP "\fBIMEBUFFER\fP"
+Hold the Kana-Kanji translation table on memory.
+It will be fast to translate strings from Kana to Kanji.
+You should set this if you have enough memory.
+The table held on memory is only the Hinsi information table,
+then you will have no effect when you use the dictionary file with no Hinsi information.
+Any value except
+.B 0
+and null effects valid.
+.B (UNIX)
 .IP "\fBINHERITCOPY\fP"
 Inherit the destination timestamp from the source timestamp
 when
@@ -4568,6 +4745,7 @@ the Kanji code specified in compile is valid.
 \fBEUC\fP, \fBeuc\fP	EUC-JP
 \fBUTF8\fP, \fButf8\fP	UTF-8
 \fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-iconv\fP	UTF-8 for iconv
 .fi
 .RE
 .IP "\fBLANGUAGE\fP"
@@ -4596,7 +4774,8 @@ etc. among them are the Kanji codes used in Samba.
 \fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
 \fBUTF8\fP, \fButf8\fP	UTF-8
 \fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
-\fBENG\fP, \fBeng\fP, \fBC\fP	English (message only)
+\fBUTF8-iconv\fP	UTF-8 for iconv
+\fBen\fP, \fBC\fP, \fBPOSIX\fP	English (message only)
 default	no convert
 .fi
 .RE
@@ -4698,6 +4877,25 @@ and a arrival message of new mails.
 The default message is
 .BR "you have mail\^" .
 .B (UNIX)
+.IP "\fBMESSAGELANG\fP"
+Specify the language for display character.
+The language of messages specified by this will be prior to the one specified by
+.BR LANGUAGE .
+When the message is Japanese,
+the Kanji code will be defined by the value of
+.BR LANGUAGE .
+The following is the kind of languages,
+it doesn't have to be the string itself and is enough to contain the string,
+the value of
+.B LANG
+the environment variable also can be used.
+.RS 18
+.ta 1.5i
+.nf
+\fBen\fP, \fBC\fP, \fBPOSIX\fP	English
+default	no convert
+.fi
+.RE
 .IP "\fBMINFILENAME\fP"
 Specify the minimum character length of filename display area
 in the file list.
@@ -4739,6 +4937,24 @@ When the file preceding function is effective,
 any files are not sorted in that directory,
 and file informations are obtained file by file while waiting the key input.
 No pathname is specified by default.
+.IP "\fBPRECOPYMENU\fP"
+Display the menu in advance,
+which ask you what do you want with the same named files and the restricted files,
+when you copy, move, or delete multiple files.
+In case of too many target files,
+it avoids the occurrence of query after waiting for a moment.
+Any value except
+.B 0
+and null effects valid.
+.IP "\fBPROGRESSBAR\fP"
+Display the progress bar,
+which indicates the progress,
+when you copy, move, or delete files.
+It needs the time to calculate the progress,
+to make the processing time a little longer than no progress bar.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBPS1\fP"
 Specify the prompt string of input line in
 .BR EXECUTE_SH .
@@ -4791,6 +5007,7 @@ to change the input Kanji code of the pseudo terminal running already.
 \fBEUC\fP, \fBeuc\fP	EUC-JP
 \fBUTF8\fP, \fButf8\fP	UTF-8
 \fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-iconv\fP	UTF-8 for iconv
 default	no convert
 .fi
 .RE
@@ -4800,14 +5017,18 @@ You can describe the same key name as
 .B bind
 command.
 You can select the following items in the pseudo terminal menu:
-"SendAsIs", "InputCode", "Break" and "NextWindow".
+"SendAsIs", "InputCode", "Break", "NextWindow" and "Kanji".
 Each item means respectively:
 sending the pseudo terminal menu key as is,
-inputting the key name to be sent like as
+inputting the key name to be sent,
+terminating forcedly the process running in the pseudo terminal,
+changing to the next window,
+invoking the Kana-Kanji IME.
+In "InputCode",
+you can use the key name like as
 .B bind
 command,
-terminating forcedly the process running in the pseudo terminal,
-changing to the next window.
+and also the Kanji code number used in the Kana-Kanji IME mode.
 But you cannot select "NextWindow" in the non-split window mode.
 The default value is not specified.
 .B (UNIX)
@@ -4838,6 +5059,7 @@ to change the output Kanji code of the pseudo terminal running already.
 \fBEUC\fP, \fBeuc\fP	EUC-JP
 \fBUTF8\fP, \fButf8\fP	UTF-8
 \fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-iconv\fP	UTF-8 for iconv
 default	no convert
 .fi
 .RE
@@ -4899,6 +5121,13 @@ This is no more than a pseudo extension,
 which only replaces filenames according to TRANS.TBL,
 and cannot handle some CD-ROM which has an inconsistent TRANS.TBL.
 No mount point is specified by default.
+.IP "\fBSAVEDIRHIST\fP"
+Specify the maximum number saved to the directory history file.
+The default value is
+.BR 50 .
+If this value is
+.BR 0 ,
+no directory history file is saved.
 .IP "\fBSAVEHIST\fP"
 Specify the maximum number saved to the command history file.
 The default value is
@@ -4960,6 +5189,7 @@ The following are specifiable values.
 \fB4\fP	by timestamp	\fB12\fP	by timestamp(reverse)
 \fB5\fP	by length	\fB13\fP	by length(reverse)
 \fB100\-113\fP	keep the last sorted type
+\fB200\-213\fP	keep it also in archive browser
 .fi
 .RE
 
@@ -4968,6 +5198,8 @@ If you specify the value of 100-113,
 it is sorted according to the value indicated by lower 2 digits
 just after invoked,
 the last specified sorted type is kept when moving directory.
+If you specify the value of 200-213,
+the last sort type will be kept also after invoking the archive browser.
 .RE
 .IP "\fBTERM\fP\(**"
 Specity the terminal name.
@@ -5102,6 +5334,7 @@ the directory writing is quite forbidden.
 .IP "\fBCAPPATH\fP"
 .IP "\fBUTF8PATH\fP"
 .IP "\fBUTF8MACPATH\fP"
+.IP "\fBUTF8ICONVPATH\fP"
 .IP "\fBNOCONVPATH\fP"
 .PD
 Specify the Kanji code for filename per directory,
@@ -5132,7 +5365,7 @@ with
 and
 .B FNAMEKCODE
 the internal variable.
-You can input Kanji string with some Japanese input methods.
+You can input Japanese string with the Kana-Kanji IME mode.
 
 You can use Kanji in the command macro and the command string,
 but cannot use Kanji as the value of the internal variables.
@@ -5181,6 +5414,9 @@ The individual initial configuration file for
 .B ~/.fd_history
 The command history file by default
 .TP
+.B ~/.fd_freq
+The translation frequency file for the users Kana-Kanji translation learning
+.TP
 .B /bin/sh
 The user shell when
 .B SHELL
@@ -5194,6 +5430,11 @@ The temporary directory to unpack the archive file
 .TP
 .B fd\-unicd.tbl
 The UNICODE translation table,
+which is installed in the same directory as the executable binary of
+.B fd
+.TP
+.B fd\-dict.tbl
+The Kana-Kanji translation dictionary file,
 which is installed in the same directory as the executable binary of
 .B fd
 

@@ -1,9 +1,9 @@
 ############################################################
 #
-#	About FDclone Ver. 2.08
+#	About FDclone Ver. 2.09
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Aug 8, 2006
+#	Aug 22, 2006
 #
 ############################################################
 
@@ -62,6 +62,8 @@ kanjicnv.c	simple kanji code converter
 mkfunkno.c	command serial number generator
 expfunc.c	shell function expander (for obsolete /bin/sh)
 mkunitbl.c	UNICODE translation table generator
+mkdict.c	Kana-Kanji translation table convertor
+mktankan.c	Tan-Kanji translation table generator
 mkmfsedg.sed	sed script filtering Makefile for djgpp v1.xx
 mkmfsedd.sed	sed script filtering Makefile for djgpp v2.xx
 mkmfdosl.sed	sed script filtering Makefile for LSI C-86 3.5
@@ -110,6 +112,11 @@ builtin.c	builtin command module
 shell.c		shell command module
 kanji.c		kanji code convert module
 input.c		user input module
+ime.c		tiny Kanji Input Method Editor
+roman.c		Roman-Kana translation module
+roman.h		header for roman.c
+dict.c		Kanji dictionary searching module
+hinsi.h		header for Hinsi grammar
 info.c		various information module
 rockridg.c	ISO 9660 RockRidge extension module
 archive.c	archiver module

@@ -12,9 +12,11 @@ MAKE	= make
 CC	= cc
 HOSTCC	= $(CC)
 SED	= sed
+DICTSRC	=
 
 DEFCFLAGS = -DPREFIX='"'$(PREFIX)'"' \
 	-DCONFDIR='"'$(CONFDIR)'"' \
+	-DDICTSRC='"''$(DICTSRC)''"' \
 	-DFD=$(VERMAJ) \
 	-DCCCOMMAND='"'$(CC)'"' \
 	-DHOSTCCCOMMAND='"'$(HOSTCC)'"'
@@ -117,7 +119,7 @@ makefile.lpc makefile.l98 \
 makefile.bpc makefile.b98
 	$(MAKE) -f Makefile.tmp $@
 
-clean: Makefile.tmp
+clean rmdict: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@
 	-rm -f Makefile.tmp mkmf.sed
 	-rm -f mkmfsed mkmfsed.exe

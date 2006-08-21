@@ -281,10 +281,13 @@ typedef struct _winvartable {
 
 extern winvartable winvar[];
 #ifdef	_NOSPLITWIN
-#define	win			0
 #define	windows			1
 #else
 extern int windows;
+#endif
+#if	defined (_NOSPLITWIN) && defined (_NOPTY)
+#define	win			0
+#else
 extern int win;
 #endif
 #ifndef	_NOARCHIVE

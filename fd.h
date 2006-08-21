@@ -32,15 +32,8 @@
 #define	_NOPTY
 #define	_NOEXTRAATTR
 #define	_NOLOGGING
+#define	_NOIME
 #endif	/* FD < 2 */
-
-#ifndef	__FD_PRIMAL__
-#include "types.h"
-#include "printf.h"
-#include "kctype.h"
-#include "pathname.h"
-#include "term.h"
-#endif
 
 #ifdef	DEBUG
 extern VOID mtrace __P_ ((VOID_A));
@@ -51,12 +44,14 @@ extern char *_mtrace_file;
 
 #if	MSDOS
 # ifdef	BSPATHDELIM
+# define	FREQFILE	"~\\fd.frq"
 #  if	FD >= 2
 #  define	FD_RCFILE	"~\\fd2.rc"
 #  else
 #  define	FD_RCFILE	"~\\fd.rc"
 #  endif
 # else	/* !BSPATHDELIM */
+# define	FREQFILE	"~/fd.frq"
 #  if	FD >= 2
 #  define	FD_RCFILE	"~/fd2.rc"
 #  else
@@ -67,6 +62,7 @@ extern char *_mtrace_file;
 #define	ARCHTMPPREFIX	"AR"
 #define	DOSTMPPREFIX	'D'
 #else	/* !MSDOS */
+#define	FREQFILE	"~/.fd_freq"
 # if	FD >= 2
 # define	FD_RCFILE	"~/.fd2rc"
 # else
@@ -102,12 +98,15 @@ extern char *_mtrace_file;
  *	Default value in case if not defined by neither environ	*
  *	variables nor run_com file nor command line option	*
  ****************************************************************/
+#define	BASICCUSTOM	0
 #define	SORTTYPE	0
 #define	DISPLAYMODE	0
 #define	SORTTREE	0
 #define	WRITEFS		0
 #define	IGNORECASE	0
 #define	INHERITCOPY	0
+#define	PROGRESSBAR	0
+#define	PRECOPYMENU	0
 #define	ADJTTY		0
 #define	USEGETCURSOR	0
 #define	DEFCOLUMNS	2
@@ -121,14 +120,19 @@ extern char *_mtrace_file;
 #else	/* !MSDOS */
 #define	HISTFILE	"~/.fd_history"
 #endif	/* !MSDOS */
+#define	DIRHISTFILE	NULL
 #define	HISTSIZE	50
 #define	DIRHIST		50
 #define	SAVEHIST	50
+#define	SAVEDIRHIST	50
 #define	DIRCOUNTLIMIT	50
 #define	DOSDRIVE	0
 #define	SECOND		0
 #define	TRADLAYOUT	0
 #define	SIZEINFO	0
+#define	FUNCLAYOUT	1005
+#define	IMEKEY		-1
+#define	IMEBUFFER	0
 #define	ANSICOLOR	0
 #define	ANSIPALETTE	""
 #define	EDITMODE	"emacs"
@@ -170,6 +174,7 @@ extern char *_mtrace_file;
 #define	CAPPATH		""
 #define	UTF8PATH	""
 #define	UTF8MACPATH	""
+#define	UTF8ICONVPATH	""
 #define	NOCONVPATH	""
 
 
@@ -208,6 +213,26 @@ extern char *_mtrace_file;
 
 #ifdef	_NOSPLITWIN
 #define	_NOEXTRAWIN
+#endif
+
+#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#define	_NODOSDRIVE
+#endif
+
+#if	defined (_NOENGMES) && defined (_NOJPNMES)
+#undef	_NOENGMES
+#endif
+
+#if	MSDOS || defined (NOSELECT)
+#define	_NOPTY
+#endif
+
+#ifndef	__FD_PRIMAL__
+#include "types.h"
+#include "printf.h"
+#include "kctype.h"
+#include "pathname.h"
+#include "term.h"
 #endif
 
 
@@ -249,8 +274,13 @@ extern char *_mtrace_file;
 #define	WFILEMINCUSTOM	4
 #define	WFILEMINATTR	(WMODELINE + 5)
 #define	WFILEMIN	1
+#if	FD >= 2
+#define	MAXHELPINDEX	20
+#define	MAXSORTINHERIT	2
+#else
 #define	MAXHELPINDEX	10
 #define	MAXSORTINHERIT	1
+#endif
 #define	MAXSORTTYPE	5
 #define	L_STACK		(n_line - 3)
 #define	L_HELP		(n_line - 2)
@@ -390,14 +420,6 @@ extern char *_mtrace_file;
 #define	WRITEFS		2
 #endif
 
-#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
-#define	_NODOSDRIVE
-#endif
-
-#if	defined (_NOENGMES) && defined (_NOJPNMES)
-#undef	_NOENGMES
-#endif
-
 #if	MSDOS
 #define	_NOKEYMAP
 #endif
@@ -423,6 +445,6 @@ extern char *_mtrace_file;
 #define	_USEDOSCOPY
 #endif
 
-#if	MSDOS || defined (NOSELECT)
-#define	_NOPTY
+#ifdef	_NOKANJICONV
+#define	_NOIME
 #endif

@@ -13,6 +13,10 @@
 #include "kanji.h"
 #include "termemu.h"
 
+#ifndef	_NOIME
+#include "roman.h"
+#endif
+
 #ifdef	_NOORIGSHELL
 #include "termio.h"
 #include "wait.h"
@@ -24,7 +28,11 @@ extern int deletealias __P_((char *));
 # endif
 #endif
 
+#ifdef	_NOIME
 #define	MAXPTYMENU	4
+#else
+#define	MAXPTYMENU	5
+#endif
 
 extern functable funclist[];
 extern int internal_status;
@@ -40,6 +48,9 @@ extern p_id_t emupid;
 extern int emufd;
 extern int parentfd;
 extern char *ptytmpfile;
+#ifndef	_NOIME
+extern int ime_cont;
+#endif
 
 static int (*lastfunc)__P_((VOID_A)) = NULL;
 static u_long lockflags = 0;
@@ -384,8 +395,33 @@ VOID changeoutkcode(VOID_A)
 
 static int NEAR ptygetkey(VOID_A)
 {
+#ifndef	_NOIME
+	static char buf[MAXKANJIBUF + 1] = "";
+	static int next = 0;
+	u_int w;
+#endif
 	char *cp, *str[MAXPTYMENU];
 	int n, c, ch, val[MAXPTYMENU];
+
+#ifndef	_NOIME
+	if (next > 0) {
+		if (next >= sizeof(buf) || !(c = (u_char)(buf[next++])))
+			next = 0;
+		else return(c);
+	}
+	if (ime_cont) {
+		c = ime_inputkanji(sigalrm(1), buf);
+		if (c < 0 || !ime_cont) movepos(filepos, 0);
+		if (c != K_ESC) {
+			if (c < 0) {
+				next = 0;
+				ime_inputkanji(0, NULL);
+			}
+			else if (!c && (c = (u_char)(buf[0]))) next = 1;
+			return(c);
+		}
+	}
+#endif	/* !_NOIME */
 
 	for (;;) {
 		n = -1;
@@ -402,11 +438,17 @@ static int NEAR ptygetkey(VOID_A)
 		str[0] = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
 		str[1] = PTYIC_K;
 		str[2] = PTYBR_K;
-		str[3] = PTYNW_K;
+#ifndef	_NOIME
+		str[3] = PTYKJ_K;
+#endif
+		str[MAXPTYMENU - 1] = PTYNW_K;
 		val[0] = 0;
 		val[1] = 1;
 		val[2] = 2;
+#ifndef	_NOIME
 		val[3] = 3;
+#endif
+		val[MAXPTYMENU - 1] = 4;
 
 		n = 0;
 		changewin(MAXWINDOWS, (p_id_t)-1);
@@ -424,11 +466,28 @@ static int NEAR ptygetkey(VOID_A)
 			c = -1;
 			break;
 		}
+#ifndef	_NOIME
 		else if (n == 3) {
+			c = ime_inputkanji(sigalrm(1), buf);
+			if (c < 0 || !ime_cont) movepos(filepos, 0);
+			if (c != K_ESC) {
+				if (c < 0) {
+					next = 0;
+					ime_inputkanji(0, NULL);
+				}
+				else if (!c && (c = (u_char)(buf[0])))
+					next = 1;
+				break;
+			}
+		}
+#endif	/* !_NOIME */
+#ifndef	_NOSPLITWIN
+		else if (n == 4) {
 			VOID_C nextwin();
 			c = -2;
 			break;
 		}
+#endif
 		else {
 			changewin(MAXWINDOWS, (p_id_t)-1);
 			lcmdline = -1;
@@ -437,9 +496,25 @@ static int NEAR ptygetkey(VOID_A)
 			movepos(filepos, 0);
 			changewin(win, (p_id_t)-1);
 			if (!cp) continue;
+#ifdef	_NOIME
 			c = getkeycode(cp, 0);
 			free(cp);
 			if (c >= 0) break;
+#else	/* !_NOIME */
+			w = ime_getkeycode(cp);
+			free(cp);
+			if (!w) /*EMPTY*/;
+			else if (!(w & ~01777)) {
+				c = w;
+				break;
+			}
+			else if ((c = ime_inkanjiconv(buf, w)) < 0) /*EMPTY*/;
+			else if (c || !(c = (u_char)(buf[0]))) break;
+			else {
+				next = 1;
+				break;
+			}
+#endif	/* !_NOIME */
 
 			changewin(MAXWINDOWS, (p_id_t)-1);
 			warning(0, VALNG_K);
@@ -447,6 +522,13 @@ static int NEAR ptygetkey(VOID_A)
 			changewin(win, (p_id_t)-1);
 		}
 	}
+
+#ifndef	_NOIME
+	if (c < 0) {
+		next = 0;
+		ime_inputkanji(0, NULL);
+	}
+#endif
 
 	return(c);
 }
@@ -863,6 +945,20 @@ int w;
 			}
 			else if (cp) free(cp);
 			break;
+#ifndef	_NOIME
+		case TE_ADDROMAN:
+			if (recvstring(fd, &cp) < 0 || !cp) break;
+			if (recvstring(fd, &func1) < 0) {
+				free(cp);
+				break;
+			}
+			VOID_C addroman(cp, func1);
+			break;
+		case TE_FREEROMAN:
+			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
+			freeroman(n);
+			break;
+#endif	/* !_NOIME */
 		case TE_INTERNAL:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0)

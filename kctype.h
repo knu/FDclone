@@ -258,6 +258,7 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	CAP	11
 #define	UTF8	12
 #define	M_UTF8	13
+#define	I_UTF8	14
 
 #ifdef	CODEEUC
 #define	DEFCODE	EUC
@@ -300,29 +301,34 @@ K_EXTERN int ptyoutkcode K_INIT(NOCNV);
 #ifndef	_NOKANJIFCONV
 K_EXTERN int fnamekcode K_INIT(NOCNV);
 #endif
+#if	!defined (_NOENGMES) && !defined (_NOJPNMES)
+K_EXTERN int messagelang K_INIT(NOCNV);
+#endif
 
 #define	L_INPUT		0001
 #define	L_OUTPUT	0002
 #define	L_FNAME		0004
 #define	L_TERMINAL	0010
+#define	L_MESSAGE	0020
 
 K_EXTERN CONST char kanjiiomode[]
 # ifdef	K_INTERN
 = {
-	          L_OUTPUT | L_FNAME | L_TERMINAL,	/* NOCNV */
-	          L_OUTPUT,				/* ENG */
-	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* SJIS */
-	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* EUC */
-	          L_OUTPUT | L_FNAME,			/* JIS7 */
-	          L_OUTPUT | L_FNAME,			/* O_JIS7 */
-	          L_OUTPUT | L_FNAME,			/* JIS8 */
-	          L_OUTPUT | L_FNAME,			/* O_JIS8 */
-	          L_OUTPUT | L_FNAME,			/* JUNET */
-	          L_OUTPUT | L_FNAME,			/* O_JUNET */
-	                     L_FNAME,			/* HEX */
-	                     L_FNAME,			/* CAP */
-	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* UTF8 */
-	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,	/* M_UTF8 */
+	          L_OUTPUT | L_FNAME | L_TERMINAL | L_MESSAGE,	/* NOCNV */
+	          L_OUTPUT                        | L_MESSAGE,	/* ENG */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,		/* SJIS */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,		/* EUC */
+	          L_OUTPUT | L_FNAME,				/* JIS7 */
+	          L_OUTPUT | L_FNAME,				/* O_JIS7 */
+	          L_OUTPUT | L_FNAME,				/* JIS8 */
+	          L_OUTPUT | L_FNAME,				/* O_JIS8 */
+	          L_OUTPUT | L_FNAME,				/* JUNET */
+	          L_OUTPUT | L_FNAME,				/* O_JUNET */
+	                     L_FNAME,				/* HEX */
+	                     L_FNAME,				/* CAP */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,		/* UTF8 */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,		/* M_UTF8 */
+	L_INPUT | L_OUTPUT | L_FNAME | L_TERMINAL,		/* I_UTF8 */
 }
 # endif	/* K_INTERN */
 ;

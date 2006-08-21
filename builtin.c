@@ -20,6 +20,10 @@
 #include "termemu.h"
 #endif
 
+#ifndef	_NOIME
+#include "roman.h"
+#endif
+
 #define	MD5_BUFSIZ	(128 / 32)
 #define	MD5_BLOCKS	16
 
@@ -69,6 +73,10 @@ extern int unicodebuffer;
 #ifndef	_NOPTY
 extern int parentfd;
 #endif
+#ifndef	_NOIME
+extern romantable *romanlist;
+extern int maxromanlist;
+#endif
 
 static VOID NEAR builtinerror __P_((char *[], char *, int));
 #ifdef	_NOORIGSHELL
@@ -77,7 +85,7 @@ static VOID NEAR hitkey __P_((int));
 #define	hitkey(n)
 #endif
 static VOID NEAR fputsmeta __P_((char *, FILE *));
-#if	!defined (_NOARCHIVE) && !defined(_NOBROWSE)
+#if	(!defined (_NOARCHIVE) && !defined(_NOBROWSE)) || !defined (_NOIME)
 static char **NEAR file2argv __P_((FILE *, char *, int));
 #endif
 #ifndef	_NOARCHIVE
@@ -124,6 +132,11 @@ static int NEAR getyesno __P_((int, char *[]));
 #endif	/* FD >= 2 */
 #if	!MSDOS && (FD >= 2)
 static int NEAR savetty __P_((int, char *[]));
+#endif
+#ifndef	_NOIME
+static int NEAR setroman __P_((int, char *[]));
+static VOID NEAR disproman __P_((char *, int, FILE *));
+static int NEAR printroman __P_((int, char *[]));
 #endif
 #ifdef	_NOORIGSHELL
 static int NEAR printenv __P_((int, char *[]));
@@ -216,6 +229,10 @@ static CONST builtintable builtinlist[] = {
 #if	!MSDOS && (FD >= 2)
 	{savetty,	BL_SAVETTY},
 #endif
+#ifndef	_NOIME
+	{setroman,	BL_SETROMAN},
+	{printroman,	BL_PRINTROMAN},
+#endif
 #ifdef	_NOORIGSHELL
 # if	FD >= 2
 	{printenv,	BL_SET},
@@ -305,7 +322,7 @@ FILE *fp;
 	}
 }
 
-#if	!defined (_NOARCHIVE) && !defined(_NOBROWSE)
+#if	(!defined (_NOARCHIVE) && !defined(_NOBROWSE)) || !defined (_NOIME)
 static char **NEAR file2argv(fp, s, whole)
 FILE *fp;
 char *s;
@@ -384,7 +401,7 @@ int whole;
 
 	return(argv);
 }
-#endif	/* !_NOARCHIVE && !_NOBROWSE */
+#endif	/* (!_NOARCHIVE && !_NOBROWSE) || !_NOIME */
 
 #ifndef	_NOARCHIVE
 # if	FD >= 2
@@ -2778,6 +2795,149 @@ char *argv[];
 }
 # endif	/* FD >= 2 */
 #endif	/* !MSDOS */
+
+#ifndef	_NOIME
+static int NEAR setroman(argc, argv)
+int argc;
+char *argv[];
+{
+	FILE *fp;
+	char *file, **args;
+	int i, n, skip, clean;
+
+	file = NULL;
+	skip = clean = 0;
+	for (n = 1; n < argc && argv[n][0] == '-'; n++) {
+		skip = 0;
+		for (i = 1; argv[n][i]; i++) {
+			skip = 0;
+			switch (argv[n][i]) {
+				case 'c':
+					clean = 2;
+					break;
+				case 'r':
+					clean = 1;
+					break;
+				case 'f':
+					if (argv[n][i + 1]) {
+						file = &(argv[n][i + 1]);
+						skip = 1;
+					}
+					else if (n + 1 < argc) {
+						file = argv[++n];
+						skip = 1;
+					}
+					else skip = -1;
+					break;
+				default:
+					skip = -1;
+					break;
+			}
+			if (skip) {
+				skip--;
+				break;
+			}
+		}
+		if (skip) {
+			skip--;
+			break;
+		}
+	}
+	if (skip || (!file && !clean && n >= argc)) {
+		fprintf2(stderr,
+			"%k: usage: %k [-c] [-r] [-f file] [roman [kanji]]]",
+			argv[0], argv[0]);
+		fputnl(stderr);
+		return(-1);
+	}
+
+	if (clean) {
+		freeroman(clean - 1);
+# ifndef	 _NOPTY
+		sendparent(TE_FREEROMAN, clean - 1);
+# endif
+	}
+
+	if (!file) fp = NULL;
+	else if (!(fp = Xfopen(file, "r"))) {
+		builtinerror(argv, file, -1);
+		return(-1);
+	}
+	else for (;;) {
+		args = file2argv(fp, argv[0], 0);
+		i = 1;
+		if (args[i] && !strcommcmp(args[i], BL_SETROMAN)) i++;
+
+		if (!args[i]) /*EMPTY*/;
+		else if (addroman(args[i], args[i + 1]) < 0)
+			builtinerror(argv, args[i], ER_SYNTAXERR);
+# ifndef	 _NOPTY
+		else sendparent(TE_ADDROMAN, args[i], args[i + 1]);
+# endif
+		freevar(args);
+
+		if (Xfeof(fp)) break;
+	}
+	if (fp) Xfclose(fp);
+
+	if (n >= argc) /*EMPTY*/;
+	else if (addroman(argv[n], argv[n + 1]) < 0) {
+		builtinerror(argv, argv[n], ER_SYNTAXERR);
+		return(-1);
+	}
+# ifndef	 _NOPTY
+	else sendparent(TE_ADDROMAN, argv[n], argv[n + 1]);
+# endif
+
+	return(0);
+}
+
+static VOID NEAR disproman(s, n, fp)
+char *s;
+int n;
+FILE *fp;
+{
+	char buf[2 + 1];
+	int i;
+
+	if (s && *s) fprintf2(fp, "%s ", s);
+	fprintf2(fp, "%s \"", romanlist[n].str);
+	for (i = 0; i < R_MAXKANA; i++) {
+		if (!romanlist[n].code[i]) break;
+		VOID_C jis2str(buf, romanlist[n].code[i]);
+		fprintf2(fp, "%k", buf);
+	}
+	fputc('"', fp);
+	fputnl(fp);
+}
+
+static int NEAR printroman(argc, argv)
+int argc;
+char *argv[];
+{
+	int i, n, ret;
+
+	initroman();
+	ret = -1;
+
+	if (argc < 2) {
+		for (i = 0; i < maxromanlist; i++)
+			disproman(BL_SETROMAN, i, stdout);
+		ret = 0;
+	}
+	else for (n = 1; n < argc; n++) {
+		if (!*(argv[n])
+		|| (i = searchroman(argv[n], strlen(argv[n]))) < 0) {
+			builtinerror(argv, argv[n], ER_NOENTRY);
+			continue;
+		}
+		disproman(BL_PRINTROMAN, i, stdout);
+		ret = 0;
+	}
+
+	return(ret);
+}
+#endif	/* !_NOIME */
 
 #ifdef	_NOORIGSHELL
 static int NEAR printenv(argc, argv)

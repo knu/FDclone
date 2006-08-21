@@ -59,6 +59,7 @@ extern char *mesconv __P_((char *, char *));
 #define	QCHG_K	mesconv("Q: 変更", "Quit&Chdir")
 #define	MAKED_K	mesconv("新しいディレクトリ名:", "New directory name:")
 #define	COPYD_K	mesconv("コピー先のディレクトリ名:", "Directory to copy:")
+#define	PRECP_K	mesconv("同名ファイルがあった場合の処理はどうしますか ?", "What do you want when the same name file exists ?")
 #define	SAMEF_K	mesconv("[%.*s] 同名のファイルがあります.", "[%.*s] The same named file exists.")
 #define	UPDAT_K	mesconv("U: 新しい日付を", "Update")
 #define	RENAM_K	mesconv("R: 名前を変えて", "Rename")
@@ -79,9 +80,11 @@ extern char *mesconv __P_((char *, char *));
 #define	DELFL_K	mesconv("[%.*s] を削除します. よろしいですか ?", "Deleting the file [%.*s], OK ?")
 #define	DELMK_K	mesconv("マークファイルを削除します. よろしいですか ?", "Deleting the marked files, OK ?")
 #define	DELDR_K	mesconv("[%.*s] ディレクトリを削除します. よろしいですか ?", "Deleting the directory [%.*s], OK ?")
+#define	PRERM_K	mesconv("アクセス制限されたファイルがあった場合の処理はどうしますか ?", "What do you want when the restricted file exists ?")
 #define	DELPM_K	mesconv("[%.*s] ファイルのアクセス権は制限されていますが削除しますか ?", "[%.*s] The file is restricted on permission, delete really ?")
 #define	ANYES_K	mesconv("Y: はい", "Yes")
 #define	ANNO_K	mesconv("N: いいえ", "No")
+#define	ANCNF_K	mesconv("C: 確認する", "Confirm")
 #define	ANALL_K	mesconv("A: 全て削除", "All")
 #define	ANKEP_K	mesconv("K: 全て保存", "KeepAll")
 #define	FINDF_K	mesconv("検索するファイル名:", "Filename to find:")
@@ -130,7 +133,14 @@ extern char *mesconv __P_((char *, char *));
 #define	PTYIC_K	mesconv("I: 文字コード入力", "InputCode")
 #define	PTYBR_K	mesconv("B: 強制終了", "Break")
 #define	PTYNW_K	mesconv("N: ウィンドウ移動", "NextWindow")
+#define	PTYKJ_K	mesconv("K: 漢字", "Kanji")
 #define	PTYKC_K	mesconv("キーコード:", "Key code:")
+#define	IMERM_K	mesconv("ローマ字入力:", "RomanIME:")
+#define	IMEKT_K	mesconv("ローマ字入力(片仮名):", "RomanIME(Katakana):")
+#define	IMEHN_K	mesconv("ローマ字入力(半カナ):", "RomanIME(Halfkana):")
+#define	IMEDI_K	mesconv("直接入力:", "DirectInput:")
+#define	IMEKJ_K	mesconv("候補選択:", "SelectCandidate:")
+#define	IMEJS_K	mesconv("漢字選択", "SelectKanji")
 
 #define	CUP_H	meslist("カーソルを上に", "Cursor up")
 #define	CDWN_H	meslist("カーソルを下に", "Cursor down")
@@ -206,6 +216,9 @@ extern char *mesconv __P_((char *, char *));
 #define	RIGAR_K	mesconv("→", "Right")
 #define	LEFAR_K	mesconv("←", "Left")
 
+#define	BSCS_E \
+	meslist("カスタマイザの設定項目を基本的なものに絞ります.", \
+		"Limit the configurations to basic ones in the customizer.")
 #define	STTP_E \
 	meslist("ブラウザ画面のデフォルトのソートタイプを設定します.", \
 		"Set the default sort type in browsing mode.")
@@ -224,6 +237,12 @@ extern char *mesconv __P_((char *, char *));
 #define	IHTM_E \
 	meslist("ファイルのコピー時にタイムスタンプを継承します.", \
 		"Inherit the timestamp on copying files.")
+#define	PRGB_E \
+	meslist("ファイルのコピーや移動時に進捗状況を表示します.", \
+		"Display progress bar on copying/moving files.")
+#define	PCMN_E \
+	meslist("ファイルのコピーや移動前に予め上書き方針を問い合わせます.", \
+		"Query overwriting policy in advance before copying/moving files.")
 #define	AJTY_E \
 	meslist("終了時に端末モードを強制的にリセットします.", \
 		"Adjust the terminal mode when exiting.")
@@ -239,6 +258,9 @@ extern char *mesconv __P_((char *, char *));
 #define	HSFL_E \
 	meslist("コマンド履歴のセーブファイルを設定します.", \
 		"Define the name of command history file.")
+#define	DHFL_E \
+	meslist("ディレクトリ履歴のセーブファイルを設定します.", \
+		"Define the name of directory history file.")
 #define	HSSZ_E \
 	meslist("コマンド履歴数の上限を設定します.", \
 		"Define the maximum size of command history.")
@@ -248,6 +270,9 @@ extern char *mesconv __P_((char *, char *));
 #define	SVHS_E \
 	meslist("コマンド履歴のセーブファイル保存数を設定します.", \
 		"Define the maximum size of saved command history.")
+#define	SVDH_E \
+	meslist("ディレクトリ履歴のセーブファイル保存数を設定します.", \
+		"Define the maximum size of saved directory history.")
 #define	DCLM_E \
 	meslist("ツリー表示画面の表示ファイル数を設定します.", \
 		"Define the limit of displayed files, on tree mode.")
@@ -263,6 +288,15 @@ extern char *mesconv __P_((char *, char *));
 #define	SZIF_E \
 	meslist("ファイルサイズ情報行を表示します.", \
 		"Display the filesize information line.")
+#define	FNLO_E \
+	meslist("ファンクション行のレイアウトを指定します.", \
+		"Specify the function line layout.")
+#define	IMKY_E \
+	meslist("かな漢字変換入力モードの切替えキーを指定します.", \
+		"Define the toggle key for the Kana-Kanji IME mode.")
+#define	IMBF_E \
+	meslist("かな漢字変換テーブルをオンメモリで持ち続けます.", \
+		"Hold the Kana-Kanji translation table on memory.")
 #define	ACOL_E \
 	meslist("ファイル表示をカラー化します.", \
 		"Display with the ANSI color escape sequence.")
@@ -344,6 +378,9 @@ extern char *mesconv __P_((char *, char *));
 #define	FNKC_E \
 	meslist("ファイル名に用いる文字の漢字コードを設定します.", \
 		"Set the Kanji code used in filename.")
+#define	MESL_E \
+	meslist("表示されるメッセージの言語を設定します.", \
+		"Set the language of displayed messages.")
 #define	SJSP_E \
 	meslist("Shift JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes Shift JIS filename.")
@@ -380,6 +417,9 @@ extern char *mesconv __P_((char *, char *));
 #define	UTF8MACP_E \
 	meslist("Mac OS X 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes Mac OS X UTF-8 code filename.")
+#define	UTF8ICONVP_E \
+	meslist("iconv 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
+		"Define the directories includes iconv UTF-8 code filename.")
 #define	NCVP_E \
 	meslist("漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
@@ -410,8 +450,12 @@ extern char *mesconv __P_((char *, char *));
 #define	VBOL0_K	mesconv("無効", "invalid")
 #define	VBOL1_K	mesconv("有効", "valid")
 #define	VSORT_K	mesconv("直前のソート形式を保持", "preserve last sort type")
+#define	VSARC_K	mesconv("アーカイブブラウザでもソート形式を保持", \
+			"preserve last sort type in archive browser")
 #define	VSRT0_K	mesconv("保持しない", "not preserve")
 #define	VSRT1_K	mesconv("保持する", "preserve")
+#define	VSRT2_K	mesconv("アーカイブブラウザでも保持する", \
+			"also archive browser")
 #define	VDS1A_K	mesconv("情報:", "info.:")
 #define	VDS1B_K	mesconv("表示するシンボリックリンクファイル情報", \
 			"status information of symbolic link file")
@@ -463,6 +507,7 @@ extern char *mesconv __P_((char *, char *));
 #endif
 #define	VCBLD_K	mesconv("ブロック", "block")
 #define	VCCHD_K	mesconv("キャラ", "char")
+#define	VCEXE_K	mesconv("実行", "exec")
 #define	VBLK2_K	mesconv("黒", "black")
 #define	VRED2_K	mesconv("赤", "red")
 #define	VGRN2_K	mesconv("緑", "green")
@@ -480,6 +525,9 @@ extern char *mesconv __P_((char *, char *));
 #define	VOJIS_K	mesconv("旧JIS", "OldJIS")
 #define	VUTF8_K	mesconv("汎用", "normal")
 #define	VUTFM_K	mesconv("Mac用", "forMac")
+#define	VUTFI_K	mesconv("iconv用", "forIconv")
+#define	VFNMX_K	mesconv("最大数:", "Max:")
+#define	VFNBR_K	mesconv("ブロック単位:", "BlockSize:")
 #define	VKYCD_K	mesconv("内部変数 %s に設定するキーを押して下さい:", \
 			"Push the key which you set to the variable %s:")
 #define	VKYOK_K	mesconv("[%s]を内部変数 %s に設定してよろしいですか ?", \

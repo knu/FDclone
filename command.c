@@ -1424,7 +1424,7 @@ char *arg;
 
 	if (mark > 0) {
 		if (!yesno(DELMK_K)) return(FNC_CANCEL);
-		prepareremove();
+		if (prepareremove(0, mark) < 0) return(FNC_CANCEL);
 		filepos = applyfile(rmvfile, NULL);
 	}
 	else if (isdir(&(filelist[filepos]))) return(warning_bell(arg));
@@ -1433,7 +1433,7 @@ char *arg;
 		len = strlen2(cp) - strsize("%.*s");
 		if (!yesno(cp, n_lastcolumn - len, filelist[filepos].name))
 			return(FNC_CANCEL);
-		prepareremove();
+		if (prepareremove(0, 1) < 0) return(FNC_CANCEL);
 		filepos = applyfile(rmvfile, NULL);
 	}
 	if (filepos >= maxfile && (filepos -= 2) < 0) filepos = 0;
@@ -1459,14 +1459,14 @@ char *arg;
 	cp = filelist[filepos].name;
 #ifndef	NOSYMLINK
 	if (islink(&(filelist[filepos]))) {
-		prepareremove();
+		if (prepareremove(0, 1) < 0) return(FNC_CANCEL);
 		ret = rmvfile(fnodospath(path, filepos));
 		if (ret == APL_ERROR) warning(-1, cp);
 	}
 	else
 #endif
 	{
-		prepareremove();
+		if (prepareremove(1, 1) < 0) return(FNC_CANCEL);
 		ret = applydir(cp, rmvfile, NULL, rmvdir, ORD_NOPREDIR, NULL);
 	}
 	if (ret == APL_OK) filepos++;

@@ -10206,6 +10206,16 @@ static nftable macunilist[] = {
 };
 #define	MACUNILISTSIZ	arraysize(macunilist)
 
+static nftable iconvunilist[] = {
+	{0x2225, {0x2016, 0}},
+	{0xff0d, {0x2212, 0}},
+	{0xff5e, {0x301c, 0}},
+	{0xffe0, {0x00a2, 0}},
+	{0xffe1, {0x00a3, 0}},
+	{0xffe2, {0x00ac, 0}},
+};
+#define	ICONVUNILISTSIZ	arraysize(iconvunilist)
+
 static int cmpuni(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
@@ -10315,10 +10325,11 @@ char *argv[];
 
 	if (fputunilist(unilist, UNILISTSIZ, fp) < 0) return(1);
 
-	if (fputbyte(1, fp) < 0) return(1);
+	if (fputbyte(2, fp) < 0) return(1);
 	if (fputbyte(MAXNFLEN, fp) < 0) return(1);
 
 	if (fputnflist(macunilist, MACUNILISTSIZ, fp) < 0) return(1);
+	if (fputnflist(iconvunilist, ICONVUNILISTSIZ, fp) < 0) return(1);
 
 	fclose(fp);
 

@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 2.08 に関して
+#	FDclone Ver. 2.09 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Aug 8, 2006
+#	Aug 22, 2006
 #
 ############################################################
 
@@ -64,6 +64,8 @@ kanjicnv.c	簡易漢字コードコンバータ
 mkfunkno.c	コマンド番号定数の定義ファイル作成プログラム
 expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 mkunitbl.c	UNICODE 変換テーブルファイル生成プログラム
+mkdict.c	かな漢字変換テーブルファイル変換プログラム
+mktankan.c	単漢字変換テーブルファイル生成プログラム
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
 mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
 mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト
@@ -112,6 +114,11 @@ builtin.c	組込みコマンド関連
 shell.c		シェルコマンド関連
 kanji.c		漢字コードコンバート関連
 input.c		ユーザ入力関連
+ime.c		簡易日本語 IME
+roman.c		ローマ字かな変換関連
+roman.h		roman.c 用のヘッダ
+dict.c		漢字辞書検索関連
+hinsi.h		品詞文法用のヘッダ
 info.c		各種情報表示用
 rockridg.c	ISO 9660 RockRidge 拡張関連
 archive.c	アーカイバ関連

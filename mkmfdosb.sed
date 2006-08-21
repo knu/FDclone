@@ -4,6 +4,10 @@ s:__CONFDIR__::
 s:__EXE__:.exe:g
 s:__OBJ__:.obj:g
 s:__EMUOBJS__:unixemu.obj unixdisk.obj:
+s:__IMEOBJS__::
+s:__DICTTBL__::
+s:__DICTSRC__::
+s:__MKDICTOPTION__::
 s:__OBJLIST__:@$(ARGS):
 s:__DEFRC__:\\"$(DOSRC)\\":
 s:__TBLPATH__::

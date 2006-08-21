@@ -25,15 +25,19 @@ extern int writefs;
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 extern int inheritcopy;
 #endif
+#ifndef	_NOEXTRACOPY
+extern int progressbar;
+extern int precopymenu;
+#endif
 #if	!MSDOS
 extern int adjtty;
 #endif
 extern int hideclock;
 extern int defcolumns;
 extern int minfilename;
-extern char *histfile;
+extern char *histfile[];
 extern short histsize[];
-extern int savehist;
+extern short savehist[];
 #ifndef	_NOTREE
 extern int dircountlimit;
 #endif
@@ -45,6 +49,13 @@ extern int showsecond;
 extern int tradlayout;
 #endif
 extern int sizeinfo;
+#if	FD >= 2
+extern int helplayout;
+#endif
+#ifndef	_NOIME
+extern int imekey;
+extern int imebuffer;
+#endif
 #ifndef	_NOCOLOR
 extern int ansicolor;
 # if	FD >= 2
@@ -84,6 +95,7 @@ extern char *hexpath;
 extern char *cappath;
 extern char *utf8path;
 extern char *utf8macpath;
+extern char *utf8iconvpath;
 extern char *noconvpath;
 #endif	/* !_NOKANJIFCONV */
 #if	FD >= 2
@@ -117,6 +129,9 @@ extern char *origpath;
 extern char *progpath;
 #ifdef	_USEUNICODE
 extern char *unitblpath;
+#endif
+#ifndef	_NOIME
+extern char *dicttblpath;
 #endif
 #ifndef	_NOCUSTOMIZE
 extern int curcolumns;
@@ -160,9 +175,16 @@ extern int inruncom;
 #define	MAXCUSTVAL	(n_column - MAXCUSTNAM - 3)
 #define	noselect(n, m, x, s, v) \
 			(selectstr(n, m, x, s, v) != K_CR)
+#define	getmax(m, n)	do { \
+				cs_max = ((!(n) & basiccustom) \
+					? nbasic : (m)[n]); \
+			} while (0)
+#define	setmax(m, n)	do { \
+				if (!(n)) (m)[n] = cs_max; \
+			} while (0)
 #define	MAXSAVEMENU	5
-#define	DEFPALETTE	"8962435188"
-#define	MAXPALETTE	10
+#define	DEFPALETTE	"89624351888"
+#define	MAXPALETTE	11
 #define	MAXCOLOR	10
 #ifndef	O_TEXT
 #define	O_TEXT		0
@@ -191,6 +213,7 @@ typedef struct _envtable {
 #define	env_str(n)	(&(envlist[n].env[FDESIZ]))
 #define	fdenv_str(n)	(envlist[n].env)
 #define	env_type(n)	(envlist[n].type & T_TYPE)
+#define	_B_(t)		(T_BASIC | (t))
 #ifdef	FORCEDSTDC
 #define	def_str(n)	(envlist[n].def.str)
 #define	def_num(n)	(envlist[n].def.num)
@@ -203,6 +226,7 @@ typedef struct _envtable {
 
 #define	T_TYPE		0037
 #define	T_PRIMAL	0040
+#define	T_BASIC		0100
 #define	T_BOOL		0
 #define	T_SHORT		1
 #define	T_INT		2
@@ -226,10 +250,12 @@ typedef struct _envtable {
 #define	T_KOUT		16
 #define	T_KNAM		17
 #define	T_KTERM		18
-#define	T_KPATHS	19
-#define	T_OCTAL		20
-#define	T_KEYCODE	21
-#define	T_NOVAR		22
+#define	T_MESLANG	19
+#define	T_KPATHS	20
+#define	T_OCTAL		21
+#define	T_KEYCODE	22
+#define	T_HELP		23
+#define	T_NOVAR		24
 
 #ifndef	_NOKANJIFCONV
 typedef struct _pathtable {
@@ -349,11 +375,17 @@ static int NEAR editcust __P_((VOID_A));
 
 #ifndef	_NOCUSTOMIZE
 int custno = -1;
+int basiccustom = 0;
 #endif
 
 static envtable envlist[] = {
-	{"FD_SORTTYPE", &sorttype, DEFVAL(SORTTYPE), STTP_E, T_SORT},
-	{"FD_DISPLAYMODE", &displaymode, DEFVAL(DISPLAYMODE), DPMD_E, T_DISP},
+#ifndef	_NOCUSTOMIZE
+	{"FD_BASICCUSTOM", &basiccustom,
+		DEFVAL(BASICCUSTOM), BSCS_E, _B_(T_BOOL)},
+#endif
+	{"FD_SORTTYPE", &sorttype, DEFVAL(SORTTYPE), STTP_E, _B_(T_SORT)},
+	{"FD_DISPLAYMODE", &displaymode,
+		DEFVAL(DISPLAYMODE), DPMD_E, _B_(T_DISP)},
 #ifndef	_NOTREE
 	{"FD_SORTTREE", &sorttree, DEFVAL(SORTTREE), STTR_E, T_BOOL},
 #endif
@@ -366,6 +398,10 @@ static envtable envlist[] = {
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 	{"FD_INHERITCOPY", &inheritcopy, DEFVAL(INHERITCOPY), IHTM_E, T_BOOL},
 #endif
+#ifndef	_NOEXTRACOPY
+	{"FD_PROGRESSBAR", &progressbar, DEFVAL(PROGRESSBAR), PRGB_E, T_BOOL},
+	{"FD_PRECOPYMENU", &precopymenu, DEFVAL(PRECOPYMENU), PCMN_E, T_BOOL},
+#endif
 #if	!MSDOS
 	{"FD_ADJTTY", &adjtty, DEFVAL(ADJTTY), AJTY_E, T_BOOL},
 # if	FD >= 2
@@ -373,13 +409,24 @@ static envtable envlist[] = {
 		DEFVAL(USEGETCURSOR), UGCS_E, T_BOOL},
 # endif
 #endif	/* !MSDOS */
-	{"FD_DEFCOLUMNS", &defcolumns, DEFVAL(DEFCOLUMNS), CLMN_E, T_COLUMN},
+	{"FD_DEFCOLUMNS", &defcolumns,
+		DEFVAL(DEFCOLUMNS), CLMN_E, _B_(T_COLUMN)},
 	{"FD_MINFILENAME", &minfilename,
 		DEFVAL(MINFILENAME), MINF_E, T_NATURAL},
-	{"FD_HISTFILE", &histfile, DEFVAL(HISTFILE), HSFL_E, T_PATH},
-	{"FD_HISTSIZE", &(histsize[0]), DEFVAL(HISTSIZE), HSSZ_E, T_SHORT},
-	{"FD_DIRHIST", &(histsize[1]), DEFVAL(DIRHIST), DRHS_E, T_SHORT},
-	{"FD_SAVEHIST", &savehist, DEFVAL(SAVEHIST), SVHS_E, T_INT},
+	{"FD_HISTFILE", &(histfile[0]), DEFVAL(HISTFILE), HSFL_E, T_PATH},
+#if	FD >= 2
+	{"FD_DIRHISTFILE", &(histfile[1]),
+		DEFVAL(DIRHISTFILE), DHFL_E, T_PATH},
+#endif
+	{"FD_HISTSIZE", &(histsize[0]),
+		DEFVAL(HISTSIZE), HSSZ_E, _B_(T_SHORT)},
+	{"FD_DIRHIST", &(histsize[1]), DEFVAL(DIRHIST), DRHS_E, _B_(T_SHORT)},
+	{"FD_SAVEHIST", &(savehist[0]),
+		DEFVAL(SAVEHIST), SVHS_E, _B_(T_SHORT)},
+#if	FD >= 2
+	{"FD_SAVEDIRHIST", &(savehist[1]),
+		DEFVAL(SAVEDIRHIST), SVDH_E, T_SHORT},
+#endif
 #ifndef	_NOTREE
 	{"FD_DIRCOUNTLIMIT", &dircountlimit,
 		DEFVAL(DIRCOUNTLIMIT), DCLM_E, T_INT},
@@ -387,13 +434,20 @@ static envtable envlist[] = {
 #ifndef	_NODOSDRIVE
 	{"FD_DOSDRIVE", &dosdrive, DEFVAL(DOSDRIVE), DOSD_E, T_DDRV},
 #endif
-	{"FD_SECOND", &showsecond, DEFVAL(SECOND), SCND_E, T_BOOL},
+	{"FD_SECOND", &showsecond, DEFVAL(SECOND), SCND_E, _B_(T_BOOL)},
 #ifndef	_NOTRADLAYOUT
 	{"FD_TRADLAYOUT", &tradlayout, DEFVAL(TRADLAYOUT), TRLO_E, T_BOOL},
 #endif
-	{"FD_SIZEINFO", &sizeinfo, DEFVAL(SIZEINFO), SZIF_E, T_BOOL},
+	{"FD_SIZEINFO", &sizeinfo, DEFVAL(SIZEINFO), SZIF_E, _B_(T_BOOL)},
+#if	FD >= 2
+	{"FD_FUNCLAYOUT", &helplayout, DEFVAL(FUNCLAYOUT), FNLO_E, T_HELP},
+#endif
+#ifndef	_NOIME
+	{"FD_IMEKEY", &imekey, DEFVAL(IMEKEY), IMKY_E, T_KEYCODE},
+	{"FD_IMEBUFFER", &imebuffer, DEFVAL(IMEBUFFER), IMBF_E, T_BOOL},
+#endif
 #ifndef	_NOCOLOR
-	{"FD_ANSICOLOR", &ansicolor, DEFVAL(ANSICOLOR), ACOL_E, T_COLOR},
+	{"FD_ANSICOLOR", &ansicolor, DEFVAL(ANSICOLOR), ACOL_E, _B_(T_COLOR)},
 # if	FD >= 2
 	{"FD_ANSIPALETTE", &ansipalette,
 		DEFVAL(ANSIPALETTE), APAL_E, T_COLORPAL},
@@ -450,13 +504,13 @@ static envtable envlist[] = {
 #endif
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-	{"FD_LANGUAGE", &outputkcode, DEFVAL(NOCNV), LANG_E, T_KOUT},
+	{"FD_LANGUAGE", &outputkcode, DEFVAL(NOCNV), LANG_E, _B_(T_KOUT)},
 #endif
 #ifndef	_NOKANJIFCONV
 	{"FD_DEFKCODE", &defaultkcode, DEFVAL(NOCNV), DFKC_E, T_KNAM},
 #endif
 #ifndef	_NOKANJICONV
-	{"FD_INPUTKCODE", &inputkcode, DEFVAL(NOCNV), IPKC_E, T_KIN},
+	{"FD_INPUTKCODE", &inputkcode, DEFVAL(NOCNV), IPKC_E, _B_(T_KIN)},
 #endif
 #if	!defined (_NOKANJICONV) && !defined (_NOPTY)
 	{"FD_PTYINKCODE", &ptyinkcode, DEFVAL(NOCNV), PIKC_E, T_KTERM},
@@ -464,6 +518,11 @@ static envtable envlist[] = {
 #endif
 #ifndef	_NOKANJIFCONV
 	{"FD_FNAMEKCODE", &fnamekcode, DEFVAL(NOCNV), FNKC_E, T_KNAM},
+#endif
+#if	!defined (_NOENGMES) && !defined (_NOJPNMES)
+	{"FD_MESSAGELANG", &messagelang, DEFVAL(NOCNV), MESL_E, T_MESLANG},
+#endif
+#ifndef	_NOKANJIFCONV
 	{"FD_SJISPATH", &sjispath, DEFVAL(SJISPATH), SJSP_E, T_KPATHS},
 	{"FD_EUCPATH", &eucpath, DEFVAL(EUCPATH), EUCP_E, T_KPATHS},
 	{"FD_JISPATH", &jis7path, DEFVAL(JISPATH), JISP_E, T_KPATHS},
@@ -477,6 +536,8 @@ static envtable envlist[] = {
 	{"FD_UTF8PATH", &utf8path, DEFVAL(UTF8PATH), UTF8P_E, T_KPATHS},
 	{"FD_UTF8MACPATH", &utf8macpath,
 		DEFVAL(UTF8MACPATH), UTF8MACP_E, T_KPATHS},
+	{"FD_UTF8ICONVPATH", &utf8iconvpath,
+		DEFVAL(UTF8ICONVPATH), UTF8ICONVP_E, T_KPATHS},
 	{"FD_NOCONVPATH", &noconvpath, DEFVAL(NOCONVPATH), NCVP_E, T_KPATHS},
 #endif	/* !_NOKANJIFCONV */
 #ifndef	_NOCUSTOMIZE
@@ -500,6 +561,9 @@ static pathtable pathlist[] = {
 	{&progpath, NULL, NOCNV, P_STABLE},
 # ifdef	_USEUNICODE
 	{&unitblpath, NULL, NOCNV, P_STABLE},
+# endif
+# ifndef	_NOIME
+	{&dicttblpath, NULL, NOCNV, P_STABLE},
 # endif
 };
 #define	PATHLISTSIZ	arraysize(pathlist)
@@ -525,6 +589,8 @@ static CONST devinfo mediadescr[] = {
 };
 #define	MEDIADESCRSIZ	arraysize(mediadescr)
 # endif	/* _USEDOSEMU */
+static char basicenv[ENVLISTSIZ];
+static int nbasic = 0;
 static int cs_item = 0;
 static int cs_max = 0;
 static int cs_row = 0;
@@ -728,6 +794,7 @@ int no;
 		case T_KOUT:
 		case T_KNAM:
 		case T_KTERM:
+		case T_MESLANG:
 			n = (1 << (env_type(no) - T_KIN));
 			*((int *)(envlist[no].var)) = getlang(cp, n);
 			break;
@@ -738,9 +805,17 @@ int no;
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
-#ifndef	_NOPTY
+#if	!defined (_NOPTY) || !defined (_NOIME)
 		case T_KEYCODE:
 			if ((n = getkeycode(cp, 0)) < 0) n = def_num(no);
+			*((int *)(envlist[no].var)) = n;
+			break;
+#endif
+#if	FD >= 2
+		case T_HELP:
+			if ((n = atoi2(cp)) < 0 || (n / 100) > MAXHELPINDEX
+			|| (n % 100) > (n / 100))
+				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
@@ -884,7 +959,7 @@ int n;
 
 #ifndef	_NOKANJIFCONV
 	type = env_type(n);
-	if (type < T_KIN || type > T_KPATHS) type = -1;
+	if (type != T_KPATHS && (type < T_KIN || type > T_KTERM)) type = -1;
 	if (type >= 0) savepathlang();
 #endif
 	_evalenv(n);
@@ -1344,6 +1419,7 @@ int no;
 	int n, p;
 
 	new = NULL;
+	if (basiccustom) no = basicenv[no];
 	switch (env_type(no)) {
 		case T_BOOL:
 			str[0] = VBOL0_K;
@@ -1382,7 +1458,12 @@ int no;
 			}
 			if (p) {
 				new = strcatalloc(new, ", ");
-				new = strcatalloc(new, VSORT_K);
+#if	FD >= 2
+				if (p > 1) cp = VSARC_K;
+				else
+#endif
+				cp = VSORT_K;
+				new = strcatalloc(new, cp);
 			}
 			cp = new;
 			break;
@@ -1473,6 +1554,7 @@ int no;
 		case T_KOUT:
 		case T_KNAM:
 		case T_KTERM:
+		case T_MESLANG:
 			str[NOCNV] = VNCNV_K;
 			str[ENG] = VENG_K;
 #  ifndef	_NOKANJICONV
@@ -1488,6 +1570,7 @@ int no;
 			str[CAP] = "CAP";
 			str[UTF8] = "UTF-8";
 			str[M_UTF8] = "UTF-8 for Mac OS X";
+			str[I_UTF8] = "UTF-8 for iconv";
 #  endif	/* !_NOKANJICONV */
 			cp = str[*((int *)(envlist[no].var))];
 			break;
@@ -1497,11 +1580,24 @@ int no;
 			cp = ascoctal(*((int *)(envlist[no].var)), buf);
 			break;
 # endif
-# ifndef	_NOPTY
+# if	!defined (_NOPTY) || !defined (_NOIME)
 		case T_KEYCODE:
 			cp = getenv2(fdenv_str(no));
 			break;
 # endif
+# if	FD >= 2
+		case T_HELP:
+			n = *((int *)(envlist[no].var));
+			p = n / 100;
+			n %= 100;
+			new = strdup2(VFNMX_K);
+			new = strcatalloc(new, int2str(buf, p));
+			new = strcatalloc(new, ", ");
+			new = strcatalloc(new, VFNBR_K);
+			new = strcatalloc(new, int2str(buf, n));
+			cp = new;
+			break;
+# endif	/* FD >= 2 */
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			break;
@@ -1527,6 +1623,7 @@ int no;
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
 
 	new = NULL;
+	if (basiccustom) no = basicenv[no];
 	env = env_str(no);
 	switch (env_type(no)) {
 		case T_BOOL:
@@ -1614,8 +1711,10 @@ int no;
 			envcaption(VSORT_K);
 			str[0] = VSRT0_K;
 			str[1] = VSRT1_K;
+			str[2] = VSRT2_K;
 			val[0] = 0;
 			val[1] = 1;
+			val[2] = 2;
 			if (noselect(&p, MAXSORTINHERIT + 1, 0, str, val))
 				return(0);
 			n += p * 100;
@@ -1728,6 +1827,7 @@ int no;
 			str[7] = VCFIF_K;
 			str[8] = VCBLD_K;
 			str[9] = VCCHD_K;
+			str[10] = VCEXE_K;
 			str[MAXPALETTE] = VUSET_K;
 			val[MAXPALETTE] = -1;
 			envcaption(env);
@@ -1789,6 +1889,7 @@ int no;
 		case T_KNAM:
 		case T_KOUT:
 		case T_KTERM:
+		case T_MESLANG:
 			tmp = 0;
 			str[tmp] = VNCNV_K;
 			val[tmp++] = NOCNV;
@@ -1839,6 +1940,7 @@ int no;
 					n--;
 					break;
 				case M_UTF8:
+				case I_UTF8:
 					p = n - UTF8;
 					n = UTF8;
 					break;
@@ -1870,7 +1972,8 @@ int no;
 				case UTF8:
 					str[0] = VUTF8_K;
 					str[1] = VUTFM_K;
-					tmp = 2;
+					str[2] = VUTFI_K;
+					tmp = 3;
 					break;
 				default:
 					tmp = -1;
@@ -1879,6 +1982,7 @@ int no;
 			if (tmp >= 0) {
 				val[0] = 0;
 				val[1] = 1;
+				val[2] = 2;
 				if (noselect(&p, tmp, 64, str, val)) return(0);
 				n += p;
 			}
@@ -1900,6 +2004,7 @@ int no;
 			str[CAP] = "cap";
 			str[UTF8] = "utf8";
 			str[M_UTF8] = "utf8-mac";
+			str[I_UTF8] = "utf8-iconv";
 #  endif	/* !_NOKANJICONV */
 			cp = str[n];
 			break;
@@ -1919,7 +2024,7 @@ int no;
 			cp = ascoctal(n, buf);
 			break;
 # endif	/* FD >= 2 */
-# ifndef	_NOPTY
+# if	!defined (_NOPTY) || !defined (_NOIME)
 		case T_KEYCODE:
 			cp = asprintf3(VKYCD_K, env);
 			n = inputkeycode(cp);
@@ -1932,7 +2037,40 @@ int no;
 			cp = getkeysym(n, 0);
 			if (!yesno(VKYOK_K, cp, env_str(no))) return(0);
 			break;
-# endif	/* !_NOPTY */
+# endif	/* !_NOPTY || !_NOIME */
+# if	FD >= 2
+		case T_HELP:
+			n = *((int *)(envlist[no].var));
+			p = n / 100;
+			n %= 100;
+			envcaption(env);
+			int2str(buf, p);
+			lcmdline = -1;
+			cp = inputcustenvstr(VFNMX_K, 1, buf, -1);
+			if (cp == (char *)-1) return(0);
+			if (!cp) break;
+			p = atoi2(cp);
+			free(cp);
+			if (p < 0 || p > MAXHELPINDEX) {
+				warning(0, VALNG_K);
+				return(0);
+			}
+
+			envcaption(env);
+			int2str(buf, n);
+			lcmdline = -1;
+			cp = inputcustenvstr(VFNBR_K, 1, buf, -1);
+			if (cp == (char *)-1) return(0);
+			if (!cp) break;
+			n = atoi2(cp);
+			free(cp);
+			if (n < 0 || n > p) {
+				warning(0, VALNG_K);
+				return(0);
+			}
+			cp = int2str(buf, p * 100 + n);
+			break;
+# endif	/* FD >= 2 */
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			new = inputcustenvstr(env, 0, cp, -1);
@@ -3889,18 +4027,18 @@ char *file;
 	}
 	else {
 		warning(-1, path);
-#  if	MSDOS || defined (CYGWIN)
-		lockclose(lck);
+#  if	!MSDOS && !defined (CYGWIN)
 		if (fd >= 0) {
-			if (fpin) VOID_C Xclose(fd);
 			Xunlink(path);
+			if (fpin) VOID_C Xclose(fd);
 		}
+		lockclose(lck);
 #  else
-		if (fd >= 0) {
-			Xunlink(path);
-			if (fpin) VOID_C Xclose(fd);
-		}
 		lockclose(lck);
+		if (fd >= 0) {
+			if (fpin) VOID_C Xclose(fd);
+			Xunlink(path);
+		}
 #  endif
 		return(-1);
 	}
@@ -4073,10 +4211,7 @@ char *file;
 		if (origflaglist[i]) free(origflaglist[i]);
 	}
 
-	if (!fpin) {
-		lockclose(lck);
-		n = 0;
-	}
+	if (!fpin) lockclose(lck);
 	else {
 #  if	!MSDOS && !defined (CYGWIN)
 		n = Xrename(path, file);
@@ -4094,12 +4229,11 @@ char *file;
 		}
 #   endif
 #  endif	/* MSDOS || CYGWIN */
-	}
-
-	if (n < 0) {
-		warning(-1, file);
-		Xunlink(path);
-		return(-1);
+		if (n < 0) {
+			warning(-1, file);
+			Xunlink(path);
+			return(-1);
+		}
 	}
 
 	return(0);
@@ -4278,6 +4412,7 @@ int no, y, isstandout;
 	cp = NEWET_K;
 	switch (custno) {
 		case 0:
+			if (basiccustom) no = basicenv[no];
 			cp = env_str(no);
 			break;
 		case 1:
@@ -4449,6 +4584,7 @@ static int NEAR editcust(VOID_A)
 	switch (custno) {
 		case 0:
 			n = editenv(cs_item);
+			cs_max = (basiccustom) ? nbasic : ENVLISTSIZ;
 			break;
 		case 1:
 			if ((n = editbind(cs_item))) {
@@ -4506,6 +4642,11 @@ int customize(VOID_A)
 	}
 	for (i = 0; i < MAXCUSTOM; i++) item[i] = 0;
 
+	nbasic = 0;
+	for (i = 0; i < ENVLISTSIZ; i++)
+		if (envlist[i].type & T_BASIC) basicenv[nbasic++] = i;
+	while (i < ENVLISTSIZ) basicenv[i++] = -1;
+
 	tmpenvlist = copyenv(NULL);
 	tmpmacrolist = copystrarray(NULL, macrolist, &tmpmaxmacro, maxmacro);
 	tmphelpindex = copystrarray(NULL, helpindex, NULL, MAXHELPINDEX);
@@ -4544,7 +4685,7 @@ int customize(VOID_A)
 	changed = 0;
 	custno = 0;
 	cs_item = item[custno];
-	cs_max = max[custno];
+	getmax(max, custno);
 	cs_row = (FILEPERROW - 2) / 2;
 	cs_len = (int *)malloc2(cs_row * sizeof(int));
 	custtitle();
@@ -4573,22 +4714,22 @@ int customize(VOID_A)
 			case K_RIGHT:
 				if (custno < MAXCUSTOM - 1) {
 					item[custno] = cs_item;
-					max[custno] = cs_max;
+					setmax(max, custno);
 					custno++;
 					custtitle();
 					cs_item = item[custno];
-					cs_max = max[custno];
+					getmax(max, custno);
 					old = -1;
 				}
 				break;
 			case K_LEFT:
 				if (custno > 0) {
 					item[custno] = cs_item;
-					max[custno] = cs_max;
+					setmax(max, custno);
 					custno--;
 					custtitle();
 					cs_item = item[custno];
-					cs_max = max[custno];
+					getmax(max, custno);
 					old = -1;
 				}
 				break;
@@ -4632,7 +4773,7 @@ int customize(VOID_A)
 					break;
 				}
 				if (custno < MAXCUSTOM - 1) {
-					max[custno] = cs_max;
+					setmax(max, custno);
 					changed = 1;
 				}
 				else {

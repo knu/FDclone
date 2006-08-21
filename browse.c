@@ -53,6 +53,7 @@ extern int setcurdrv __P_((int, int));
 #define	CL_FIFO		7
 #define	CL_BLOCK	8
 #define	CL_CHAR		9
+#define	CL_EXE		10
 #define	ANSI_FG		8
 #define	ANSI_BG		9
 
@@ -130,6 +131,9 @@ char fullpath[MAXPATHLEN] = "";
 char *macrolist[MAXMACROTABLE];
 int maxmacro = 0;
 int isearch = 0;
+#if	FD >= 2
+int helplayout = 0;
+#endif
 char *helpindex[MAXHELPINDEX] = {
 #ifdef	_NOTREE
 	"help",
@@ -148,6 +152,26 @@ char *helpindex[MAXHELPINDEX] = {
 #else
 	"Unpack",
 #endif
+#if	FD >= 2
+	"Attr", "Info", "Move", "rmDir", "mKdir",
+	"sHell",
+# ifdef	_NOWRITEFS
+	"",
+# else
+	"Write",
+# endif
+# ifdef	_NOARCHIVE
+	"",
+# else
+	"Backup",
+# endif
+	"View",
+# ifdef	_NOARCHIVE
+	"",
+# else
+	"Pack",
+# endif
+#endif	/* FD >= 2 */
 };
 char typesymlist[] = "dbclsp";
 u_short typelist[] = {
@@ -171,6 +195,8 @@ char *precedepath = NULL;
 #endif
 #ifndef	_NOSPLITWIN
 int windows = 1;
+#endif
+#if	!defined (_NOSPLITWIN) || !defined (_NOPTY)
 int win = 0;
 #endif
 int calc_x = -1;
@@ -199,6 +225,7 @@ static CONST char defpalette[] = {
 	ANSI_RED,	/* CL_FIFO */
 	ANSI_FG,	/* CL_BLOCK */
 	ANSI_FG,	/* CL_CHAR */
+	ANSI_FG,	/* CL_EXE */
 };
 #endif	/* !_NOCOLOR */
 #ifndef	_NOPRECEDE
@@ -220,6 +247,7 @@ namelist *namep;
 	for (i = 0; i < MAXMODELIST; i++)
 		if ((namep -> st_mode & S_IFMT) == modelist[i])
 			return(colorlist[i]);
+	if (isexec(namep)) return(CL_EXE);
 
 	return(CL_REG);
 }
@@ -291,8 +319,20 @@ VOID helpbar(VOID_A)
 {
 	int i, j, col, gap, width, len, ofs, max, blk, rest;
 
-	max = MAXHELPINDEX;
-	blk = 5;
+#if	FD >= 2
+	if (helplayout) {
+		max = helplayout / 100;
+		blk = helplayout % 100;
+		if (max < 0) max = FUNCLAYOUT / 100;
+		else if (max > MAXHELPINDEX) max = MAXHELPINDEX;
+		if (blk <= 0 || blk > max) blk = max;
+	}
+	else
+#endif
+	{
+		max = FUNCLAYOUT / 100;
+		blk = FUNCLAYOUT % 100;
+	}
 
 	if (ishardomit()) {
 		col = n_column;
@@ -314,6 +354,7 @@ VOID helpbar(VOID_A)
 		col = n_column - 1;
 		gap = 3;
 	}
+	if (max > FUNCLAYOUT / 100) gap = 1;
 
 	rest = max - 1 + gap * ((max - 1) / blk);
 	width = (col - 4 - rest) / max;

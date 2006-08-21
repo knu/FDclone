@@ -19,6 +19,9 @@ extern char *unixgetcurdir __P_((char *, int));
 #endif
 
 extern int mark;
+#if	FD >= 2
+extern int sorttype;
+#endif
 extern int stackdepth;
 #ifndef	_NOTRADLAYOUT
 extern int tradlayout;
@@ -2105,7 +2108,11 @@ int flags;
 	launchp = list;
 	filelist = NULL;
 	maxent = 0;
+#if	FD >= 2
+	if (sorttype < 200) sorton = 0;
+#else
 	sorton = 0;
+#endif
 
 	if (readarchive(archivefile, launchp, flags) < 0) {
 		arcflist = NULL;

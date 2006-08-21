@@ -1,3 +1,23 @@
+Ver. 2.09	内部変数 IMEKEY, IMEBUFFER の追加。
+ (08/22/06)	内部変数 BASICCUSTOM の追加。
+		内部変数 PROGRESSBAR, PRECOPYMENU の追加。
+		内部変数 SAVEDIRHIST, DIRHISTFILE の追加。
+		内部変数 FUNCLAYOUT の追加。
+		内部変数 MESSAGELANG の追加。
+		内部変数 LANGUAGE 等の設定値に UTF8-iconv の追加。
+		内部変数 UTF8ICONVPATH の追加。
+		%JI マクロの追加。
+		内部変数 SORTTYPE にアーカイブブラウザのソート保存機能を追加。
+		内部変数 ANSIPALETTE に実行ファイルの配色を追加。
+		組込みコマンド setroman, printroman の追加。
+		組込みコマンド bind が F20 までコメント指定可能に。
+		疑似端末メニューに漢字入力を追加。
+		疑似端末メニューの文字コード入力で漢字コードに対応。
+		PTYMODE=1 時に Cygwin でフリーズしていた点を修正。
+		ログ出力指定時に異常終了することがある点を修正。
+		UTF8 のファイル名が扱えない点を修正。
+		UNICODEBUFFER=1 時に UTF8 環境で異常終了する点を修正。
+
 Ver. 2.08f	NFS 上の履歴セーブファイル保護用にファイルロックに対応。
  (08/08/06)	非 ANSI 環境でコンパイルに失敗する点を修正。
 		Cygwin 1.5.21 対応。

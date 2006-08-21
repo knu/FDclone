@@ -1031,7 +1031,7 @@ DDEESSCCRRIIPPTTIIOONN
                    string quoted with "".  If _c_o_m_2 is not omitted,
                    _c_o_m_2 is executed when the cursor position
                    indicates a directory.  When the key _c is the
-                   function key of F1-F10, if you describe _c_o_m_-
+                   function key of F1-F20, if you describe _c_o_m_-
                    _m_e_n_t prefixed with :: trailing the command
                    description, you can change the display of
                    associated part in the function line into _c_o_m_-
@@ -1600,6 +1600,15 @@ DDEESSCCRRIIPPTTIIOONN
                    If _e_x_t is omitted, all of the registered
                    launchers is listed.
 
+     pprriinnttrroommaann [_r_o_m_a_n]
+                   Print the Roman-Kana translation table for the
+                   Kana-Kanji IME mode.  It means printing the
+                   Japanese string bound for _r_o_m_a_n the Roman
+                   string.  ((UUNNIIXX))
+
+                   If _r_o_m_a_n is omitted, all the registered Roman-
+                   Kana translation table is listed.
+
      ppuusshhdd [_d_i_r]   Load the current directory onto the directory
                    stack, and change the current directory in ffdd
                    to _d_i_r.  If you specify the pathname as "..",
@@ -1827,6 +1836,34 @@ DDEESSCCRRIIPPTTIIOONN
                    ignored.  You can confirm what drive name is
                    valid by pprriinnttddrrvv command.  But any hard disk
                    is registered as readonly, for security.
+
+     sseettrroommaann [--cc] [--rr] [--ff _f_i_l_e] [_r_o_m_a_n [_k_a_n_j_i]]
+                   Setup the Roman-Kana translation table for the
+                   Kana-Kanji IME mode.  It means binding _k_a_n_j_i
+                   the Japanese string to _r_o_m_a_n the Roman string.
+                   The part over 44 characters of _r_o_m_a_n, the
+                   string which consists of 1 byte characters
+                   only, will be ignored.  The part over 22 charac-
+                   ters of _k_a_n_j_i, the string which consists of
+                   multibyte characters or 1 byte characters,
+                   will be ignored.  In this case, a multibyte
+                   character is counted as 1 character as well as
+                   a 1 byte character.  ((UUNNIIXX))
+
+                   If _k_a_n_j_i is omitted, the registered binding of
+                   the Roman-Kana translation table for _r_o_m_a_n the
+                   Roman string will be deleted.  When you speci-
+                   fy --cc, the whole Roman-Kana translation table
+                   will be cleared to be empty.  When you specify
+                   --rr, all the registered bindings will be reset
+                   to restore the Roman-Kana translation table.
+                   When you specify --ff, the file specified by
+                   _f_i_l_e will be read as bindings of the Roman-
+                   Kana translation table.  In this case, a pair
+                   of _r_o_m_a_n and _k_a_n_j_i, which is separated by
+                   spaces, must be described in each line of _f_i_l_e.
+                   You can also use the file which contains the
+                   output of pprriinnttrroommaann.
 
      sshhiifftt [_n]     Rename the positional parameters from $$_n+_1
                    into ones from $$11 in order.  The original
@@ -2387,6 +2424,50 @@ DDEESSCCRRIIPPTTIIOONN
              This key binding is so particular that it is not
              suitable for those who don't use vvii editor everyday.
 
+     KKaannaa--KKaannjjii IIMMEE ((UUNNIIXX))
+     You can input strings in the Kana-Kanji IME mode, if you in-
+     put the key specified by IIMMEEKKEEYY or select "Kanji" from the
+     pseudo terminal menu.
+
+     The translation performance will depend on the Kana-Kanji
+     translation dictionary ffdd-iddiicctt..ttbbll.  When it does not exist
+     in the same directory as the invoked ffdd exists, translation
+     to Kanji will not be available.  The standard installed dic-
+     tionary file is the Tan-Kanji dictionary, which can support
+     only the Tan-Kanji translation.  The dictionaly such as the
+     pubdic, which includes the Hinsi information, will bring you
+     the Tan-Bunsetsu translation.  The Ren-Bunsetsu translation
+     is not be supported.
+
+     In the Kana-Kanji IME mode, the following key inputs are
+     available.
+          SSppaaccee     Trancelate to Kanji, or select the next trans-
+                    lation candidate.
+          LLeefftt, RRiigghhtt
+          UUpp, DDoowwnn  Move a cursor in the list of the translation
+                    candidate.
+          BBss, DDeell   Delete a character before the cursor position.
+          TTaabb       Toggle Hiragana, Katakana, Hankaku-Kana and
+                    the direct input.
+          ^^LL        Redraw the input string.
+          RReettuurrnn    Decide the translation result.
+          EEsscc       Cancel.
+
+     When you translate the string of the capital 4 digit hexa-
+     decimal prefixed by a capital letter, it is regarded as the
+     hexadecimal showing the following Kanji code respectively.
+     Then the menu will be displayed to select Kanji next to the
+     Kanji code number.
+          SS   Shift JIS
+          EE   EUC-JP
+          JJ   JIS code (JIS X0208)
+          KK   Kuten code
+          UU   UNICODE (UCS2)
+     When you input [SSppaaccee] in the state where you decide an un-
+     translated Kana, it is regarded as the initial reading of
+     Kanji.  Then the menu will be desplayed to select Kanji
+     whose reading starts with the Kana.
+
      PPaarraammeetteerr MMaaccrrooss
      You can use the following parameter macros in the string
      which is used for the registration of command macros and for
@@ -2475,6 +2556,11 @@ DDEESSCCRRIIPPTTIIOONN
 
      %%JJMM     The Kanji code of the string enclosed by this macro
              is converted into UTF-8 for Mac OS X.  ((UUNNIIXX))
+
+     %%JJII     The Kanji code of the string enclosed by this macro
+             is converted into UTF-8 for iconv, which is used on
+             environments using iconv-based UTF-8 such as Linux.
+             ((UUNNIIXX))
 
      %%JJAA     The Kanji code of the string enclosed by this macro
              is converted into the Kanji code which is used in
@@ -2659,7 +2745,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      AANNSSIIPPAALLEETTTTEE   Specify color palette according to file type
                    when the file display is colorized.  This
                    variable value consists of a numeric value
-                   whose maximum columns are 1100 columns.  The
+                   whose maximum columns are 1111 columns.  The
                    number of each column shows a color number,
                    which specifies the color of file type
                    corresponding with its column.  The following
@@ -2675,6 +2761,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        88    FIFO (or label on MS-DOS)
                        99    block device
                        1100   character device
+                       1111   executable file
 
                    The following are the meaning of color number
                    specified on each column.
@@ -2694,12 +2781,17 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    color number 99 is forced to be black, if the
                    value of AANNSSIICCOOLLOORR the variable is 22.
 
-                   When the columns are less than 1100 or this
+                   When the columns are less than 1111 or this
                    variable is not set, the standard color
                    palette will be applied for the file type
                    corresponding with the following columns.  The
                    standard color palette is described with the
-                   above color number as 88996622443355118888.
+                   above color number as 8899662244335511888888.
+
+     BBAASSIICCCCUUSSTTOOMM   Limit the internal variables for configuration
+                   only to basic variables in the customizer, to
+                   hide advanced variables.  Any value except 00
+                   and null effects valid.
 
      CCDDPPAATTHH*       Specify the search path when an argument of ccdd
                    the builtin command does not start with //.
@@ -2745,6 +2837,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
                        UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
                        default        no convert
 
      DDIIRRCCOOUUNNTTLLIIMMIITT Specify the maximum number of files read from
@@ -2769,6 +2862,12 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    tory input line.  The default value is 5500.  If
                    this value is 00, you can refer to no directory
                    history.
+
+     DDIIRRHHIISSTTFFIILLEE   Specify the name of the directory history file
+                   which can be referred by the directory input
+                   line.  Unless you specify it, the directory
+                   history is not loaded nor saved.  The default
+                   value is not specified.
 
      DDIISSPPLLAAYYMMOODDEE   Specify the filename display mode of the file
                    list when ffdd is invoked.  Each of the symbolic
@@ -2861,7 +2960,16 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        CCAAPP, ccaapp       CAP
                        UUTTFF88, uuttff88     UTF-8
                        UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
                        default        no convert
+
+     FFUUNNCCLLAAYYOOUUTT    Specify the layout of the function line, as
+                   the form of _n * 100 + _s_i_z_e.  _N means the num-
+                   ber of function keys to be displayed in the
+                   function line.  _S_i_z_e means the block size of
+                   function keys to be displayed.  The default
+                   value is 11000055.  (It means 10 function keys
+                   will be displayed, 5 of which are grouped.)
 
      HHIISSTTFFIILLEE      Specify the name of the command history file
                    which can be referred by EEXXEECCUUTTEE_FFIILLEE and EEXXEE--
@@ -2894,6 +3002,21 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    compared.  Any value except 00 and null effects
                    valid.  ((UUNNIIXX))
 
+     IIMMEEKKEEYY        Specify the key to toggle the direct input
+                   mode and the Kana-Kanji IME mode when you in-
+                   put some strings.  You can describe the same
+                   key name as bbiinndd command.  The default value
+                   is not specified.  ((UUNNIIXX))
+
+     IIMMEEBBUUFFFFEERR     Hold the Kana-Kanji translation table on mem-
+                   ory.  It will be fast to translate strings
+                   from Kana to Kanji.  You should set this if
+                   you have enough memory.  The table held on mem-
+                   ory is only the Hinsi information table, then
+                   you will have no effect when you use the dic-
+                   tionary file with no Hinsi information.  Any
+                   value except 00 and null effects valid.  ((UUNNIIXX))
+
      IINNHHEERRIITTCCOOPPYY   Inherit the destination timestamp from the
                    source timestamp when CCOOPPYY_FFIILLEE command is
                    executed.  Any value except 00 and null effects
@@ -2911,6 +3034,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        EEUUCC, eeuucc       EUC-JP
                        UUTTFF88, uuttff88     UTF-8
                        UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
 
      LLAANNGGUUAAGGEE      Specify the language for display character.
                    It means not only each messages displayed by
@@ -2931,7 +3055,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
                        UUTTFF88, uuttff88     UTF-8
                        UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
-                       EENNGG, eenngg, CC    English (message only)
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
+                       eenn, CC, PPOOSSIIXX   English (message only)
                        default        no convert
 
                    (On MS-DOS version, only the English is
@@ -3000,6 +3125,18 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    lowed by %% and a arrival message of new mails.
                    The default message is yyoouu hhaavvee mmaaiill.  ((UUNNIIXX))
 
+     MMEESSSSAAGGEELLAANNGG   Specify the language for display character.
+                   The language of messages specified by this
+                   will be prior to the one specified by LLAANNGGUUAAGGEE.
+                   When the message is Japanese, the Kanji code
+                   will be defined by the value of LLAANNGGUUAAGGEE.  The
+                   following is the kind of languages, it doesn't
+                   have to be the string itself and is enough to
+                   contain the string, the value of LLAANNGG the envi-
+                   ronment variable also can be used.
+                       eenn, CC, PPOOSSIIXX   English
+                       default        no convert
+
      MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
                    filename display area in the file list.  When
                    the area enough to be specified here cannot be
@@ -3037,6 +3174,21 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    directory, and file informations are obtained
                    file by file while waiting the key input.  No
                    pathname is specified by default.
+
+     PPRREECCOOPPYYMMEENNUU   Display the menu in advance, which ask you
+                   what do you want with the same named files and
+                   the restricted files, when you copy, move, or
+                   delete multiple files.  In case of too many
+                   target files, it avoids the occurrence of que-
+                   ry after waiting for a moment.  Any value ex-
+                   cept 00 and null effects valid.
+
+     PPRROOGGRREESSSSBBAARR   Display the progress bar, which indicates the
+                   progress, when you copy, move, or delete files.
+                   It needs the time to calculate the progress,
+                   to make the processing time a little longer
+                   than no progress bar.  Any value except 00 and
+                   null effects valid.
 
      PPSS11           Specify the prompt string of input line in
                    EEXXEECCUUTTEE_SSHH.  The default value is "$$ ".  The
@@ -3079,6 +3231,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        EEUUCC, eeuucc       EUC-JP
                        UUTTFF88, uuttff88     UTF-8
                        UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
                        default        no convert
 
      PPTTYYMMEENNUUKKEEYY    Specify the key to open the pseudo terminal
@@ -3086,12 +3239,15 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    nal.  You can describe the same key name as
                    bbiinndd command.  You can select the following
                    items in the pseudo terminal menu: "SendAsIs",
-                   "InputCode", "Break" and "NextWindow".  Each
-                   item means respectively: sending the pseudo
-                   terminal menu key as is, inputting the key
-                   name to be sent like as bbiinndd command, terminat-
-                   ing forcedly the process running in the pseudo
-                   terminal, changing to the next window.  But
+                   "InputCode", "Break", "NextWindow" and "Kanji".
+                   Each item means respectively: sending the pseu-
+                   do terminal menu key as is, inputting the key
+                   name to be sent, terminating forcedly the pro-
+                   cess running in the pseudo terminal, changing
+                   to the next window, invoking the Kana-Kanji
+                   IME.  In "InputCode", you can use the key name
+                   like as bbiinndd command, and also the Kanji code
+                   number used in the Kana-Kanji IME mode.  But
                    you cannot select "NextWindow" in the non-
                    split window mode.  The default value is not
                    specified.  ((UUNNIIXX))
@@ -3121,6 +3277,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        EEUUCC, eeuucc       EUC-JP
                        UUTTFF88, uuttff88     UTF-8
                        UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
                        default        no convert
 
      PPTTYYTTEERRMM       Specify the value of TTEERRMM the environment vari-
@@ -3171,6 +3328,11 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    sistent TRANS.TBL.  No mount point is speci-
                    fied by default.
 
+     SSAAVVEEDDIIRRHHIISSTT   Specify the maximum number saved to the direc-
+                   tory history file.  The default value is 5500.
+                   If this value is 00, no directory history file
+                   is saved.
+
      SSAAVVEEHHIISSTT      Specify the maximum number saved to the com-
                    mand history file.  The default value is 5500.
                    If this value is 00, no command history file is
@@ -3215,12 +3377,15 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        44    by timestamp   1122   by timestamp(reverse)
                        55    by length      1133   by length(reverse)
                        110000--111133   keep the last sorted type
+                       220000--221133   keep it also in archive browser
 
                    If you specify the value of 100-113, it is
                    sorted according to the value indicated by
                    lower 2 digits just after invoked, the last
                    specified sorted type is kept when moving
-                   directory.
+                   directory.  If you specify the value of 200-
+                   213, the last sort type will be kept also
+                   after invoking the archive browser.
 
      TTEERRMM*         Specity the terminal name.  When this value
                    is dduummbb, uunnkknnoowwnn or uunn, it is regarded as
@@ -3315,6 +3480,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      CCAAPPPPAATTHH
      UUTTFF88PPAATTHH
      UUTTFF88MMAACCPPAATTHH
+     UUTTFF88IICCOONNVVPPAATTHH
      NNOOCCOONNVVPPAATTHH    Specify the Kanji code for filename per direc-
                    tory, which is prior to FFNNAAMMEEKKCCOODDEE.  You can
                    specify multiple pathnames separating with
@@ -3334,7 +3500,7 @@ MMUULLTTII LLAANNGGUUAAGGEE SSUUPPPPOORRTT
      tion for the 2nd byte character in Kanji.  You can dynami-
      cally select Kanji code to input/output with LLAANNGGUUAAGGEE,
      IINNPPUUTTKKCCOODDEE and FFNNAAMMEEKKCCOODDEE the internal variable.  You can
-     input Kanji string with some Japanese input methods.
+     input Japanese string with the Kana-Kanji IME mode.
 
      You can use Kanji in the command macro and the command
      string, but cannot use Kanji as the value of the internal
@@ -3364,6 +3530,9 @@ FFIILLEESS
      ~~//..ffddsshhrrcc The individual initial configuration file for ffddsshh
      ~~//..ffdd_hhiissttoorryy
                The command history file by default
+     ~~//..ffdd__ffrreeqq
+               The translation frequency file for the users Kana-
+               Kanji translation learning
      //bbiinn//sshh   The user shell when SSHHEELLLL the environment variable
                is undefined
      //bbiinn//rrmm   The command to remove temporary files when abort
@@ -3372,6 +3541,10 @@ FFIILLEESS
                The UNICODE translation table, which is installed
                in the same directory as the executable binary of
                ffdd
+     ffdd--ddiicctt..ttbbll
+               The Kana-Kanji translation dictionary file, which
+               is installed in the same directory as the execut-
+               able binary of ffdd
 
      ffdd22rrcc     The systemwide initial configuration file for ffdd
                on MS-DOS version, which must be prepared in the

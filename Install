@@ -18,34 +18,32 @@
    無理に変更すると却って失敗しますので、そのまま次のステッ
    プに進んで下さい。
 	Sun	SunOS		(5.x)
-	SGI	IRIX		(R5.x)
 	HP	HP-UX		(11.x)
-	DEC	OSF/1		(V4.x, V5.x)
 	(free)	Cygwin		(1.5.x)
 	(free)	Linux		(2.x)
 	(free)	FreeBSD		(2.x, 3.x, 4.x, 5.x)
 	(free)	NetBSD		(1.x, 2.x, 3.x)
 	(free)	OpenBSD		(2.x, 3.x)
 	ASCII	BSD on Windows	(1.0, 1.5)
-	Apple	Mac OS X	(10.x)
 
-   また、以下の OS は、Ver. 2.05 での動作確認は行なわれてい
+   また、以下の OS は、Ver. 2.09 での動作確認は行なわれてい
    ませんが、各 OS 用のコードが記述されていますので、多分変
    更の必要がないものと思われます。
    少なくとも、無変更のままコンパイルが無事通るようであれば、
    余計な変更は行なわない方が無難だと思います。
 	Sun	SunOS		(4.1.x)
 	SONY	NEWS-OS		(3.2, 4.x, 6.x)
-	SGI	IRIX		(R4.0.5, R6.x)
+	SGI	IRIX		(R4.0.5, R5.x, R6.x)
 	HP	HP-UX		(9.x, 10.01)
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
 	NEC	EWS-UX/V(Rel4.x)(R5.3, R7.1, R8.1, R9.1, R10.1, R12.3, R13.1)
 	OMRON	UniOS-U		(Ver3.00)
 	OMRON	UniOS-B		(2.00)
 	OMRON	Luna/Mach	(2.5)
-	DEC	OSF/1		(V1.2, V2.0, V3.2)
+	DEC	OSF/1		(V1.2, V2.0, V3.2, V4.x, V5.x)
 	DEC	ULTRIX		(V4.x)
 	IBM	AIX		(3.x, 4.x)
+	Apple	Mac OS X	(10.x)
 	Apple	A/UX		(3.0)
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0, 4.1)
@@ -110,6 +108,9 @@
    てからもう一度 make します。この場合、各ドキュメントの記
    載と矛盾することにはなりますが、プログラム実行には支障あ
    りません。
+   また、DICTSRC を書き換えることで、かな漢字変換辞書を標準
+   の単漢字辞書から他のものに変更することもできます。詳細は
+   TECHKNOW の項目 11. を参照して下さい。
 
 6. _fdrc を fdrc という名前でコピーし、fdrc を自分の環境に
    応じて書き換えます。一から作成しても構いません。

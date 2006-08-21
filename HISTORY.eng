@@ -1,3 +1,23 @@
+Ver. 2.09	Add 'IMEKEY', 'IMEBUFFER' internal variables.
+ (08/22/06)	Add 'BASICCUSTOM' internal variable.
+		Add 'PROGRESSBAR', 'PRECOPYMENU' internal variables.
+		Add 'SAVEDIRHIST', 'DIRHISTFILE' internal variables.
+		Add 'FUNCLAYOUT' internal variable.
+		Add 'MESSAGELANG' internal variable.
+		'LANGUAGE' etc. support the value of UTF8-iconv.
+		Add 'UTF8ICONVPATH' internal variable.
+		Add %JI macro.
+		'SORTTYPE' supports preserving sort type in archive browser.
+		'ANSIPALETTE' supports the color of executable files.
+		Add 'setroman', 'printroman' builtins.
+		Support specifying key comment up to F20 with 'bind' builtin.
+		Add Kanji input to the pseudo terminal menu.
+		Support Kanji code on 'InputCode' of the pseudo terminal menu.
+		Freezing when PTYMODE=1 on Cygwin is fixed.
+		Abortion when the log file is specified is fixed.
+		Bug that no UTF8 filename can be treated is fixed.
+		Abortion with the UTF8 environment on UNICODEBUFFER=1 is fixed.
+
 Ver. 2.08f	Support locking on NFS to protect the command history file.
  (08/08/06)	Failure to compile on the non-ANSI environment is fixed.
 		Support Cygwin 1.5.21.
