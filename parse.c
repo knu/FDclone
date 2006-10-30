@@ -103,7 +103,7 @@ static CONST char escapevalue[] = {
 char *skipspace(cp)
 char *cp;
 {
-	while (*cp == ' ' || *cp == '\t') cp++;
+	while (isblank2(*cp)) cp++;
 
 	return(cp);
 }
@@ -587,10 +587,9 @@ char *path, *plist;
 	next = plist;
 	for (cp = next; cp && *cp; cp = next) {
 #ifdef	_USEDOSPATH
-		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
-		else
+		if (_dospath(cp)) next += 2;
 #endif
-		next = strchr(cp, PATHDELIM);
+		next = strchr(next, PATHDELIM);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if ((tmp = underpath(path, cp, len))) return(tmp);
 	}

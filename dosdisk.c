@@ -184,7 +184,6 @@ extern int isdotdir __P_((char *));
 extern time_t timelocal2 __P_((struct tm *));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
-extern int intrkey __P_((VOID_A));
 #else	/* !FD */
 #ifndef	NOTZFILEH
 #include <tzfile.h>
@@ -2229,14 +2228,12 @@ bpb_t *bpbcache;
 				break;
 			}
 			while ((cc = read(fd, buf, sectsizelist[i])) < 0) {
-# ifdef	FD
-				if (intrkey()) {
+				if (dosintrfunc && (*dosintrfunc)()) {
 					close(fd);
 					doserrno = EINTR;
 					errno = duperrno;
 					return(-1);
 				}
-# endif
 				if (errno != EINTR) break;
 			}
 			if (cc >= 0) break;

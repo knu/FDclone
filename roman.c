@@ -296,7 +296,7 @@ static u_int NEAR jis2defcode(c)
 u_int c;
 {
 #ifndef	CODEEUC
-	char *cp, buf[2 + 1], tmp[2 + 1];
+	char *cp, buf[MAXKLEN + 1], tmp[MAXKLEN + 1];
 #endif
 
 	if (!(c & ~0xff)) {
@@ -310,7 +310,7 @@ u_int c;
 	return(c | 0x8080);
 #else
 	VOID_C code2kanji(tmp, c | 0x8080);
-	cp = kanjiconv2(buf, tmp, 2, EUC, DEFCODE, L_INPUT);
+	cp = kanjiconv2(buf, tmp, MAXKLEN, EUC, DEFCODE, L_INPUT);
 	if (kanjierrno) return(0);
 
 	return(((u_char)(cp[0]) << 8) | (u_char)(cp[1]));
@@ -321,9 +321,9 @@ static u_int NEAR defcode2jis(buf)
 char *buf;
 {
 #ifndef	CODEEUC
-	char tmp[2 + 1];
+	char tmp[MAXKLEN + 1];
 
-	buf = kanjiconv2(tmp, buf, 2, DEFCODE, EUC, L_INPUT);
+	buf = kanjiconv2(tmp, buf, MAXKLEN, DEFCODE, EUC, L_INPUT);
 	if (kanjierrno) return((u_int)0);
 #endif
 	return((((u_char)(buf[0]) << 8) | (u_char)(buf[1])) & ~0x8080);

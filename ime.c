@@ -206,7 +206,7 @@ static u_int NEAR getdefcode(c, type, kana)
 u_int c;
 int type, kana;
 {
-	char *cp, buf[3 + 1], tmp[2 + 1];
+	char *cp, buf[MAXUTF8LEN + 1], tmp[MAXKLEN + 1];
 	int i, code;
 
 	cp = NULL;
@@ -255,7 +255,7 @@ int type, kana;
 	}
 
 	if (cp) VOID_C code2kanji(cp, c);
-	cp = kanjiconv2(tmp, buf, 2, code, DEFCODE, L_INPUT);
+	cp = kanjiconv2(tmp, buf, MAXKLEN, code, DEFCODE, L_INPUT);
 	if (kanjierrno) return((u_int)0);
 	i = 0;
 	if (!iskanji1(cp, 0) && (!kana || !iskana1(cp, &i))) return((u_int)0);
@@ -280,7 +280,7 @@ int ime_inkanjiconv(buf, c)
 char *buf;
 u_int c;
 {
-	char tmp[2 + 1];
+	char tmp[MAXKLEN + 1];
 
 	VOID_C code2kanji(tmp, c);
 	return(inkanjiconv(buf, tmp));
@@ -335,7 +335,7 @@ va_dcl
 static int NEAR jisputs(c)
 u_int c;
 {
-	char buf[4 + 1];
+	char buf[MAXKLEN * R_MAXKANA + 1];
 
 	VOID_C jis2str(buf, c);
 	return(imeputs(buf));
@@ -355,7 +355,7 @@ jisbuf *jp;
 static int NEAR countjisbuf(jp)
 jisbuf *jp;
 {
-	char buf[4 + 1];
+	char buf[MAXKLEN * R_MAXKANA + 1];
 	int n, len;
 
 	if (!jp) return(0);
@@ -590,7 +590,7 @@ static u_int NEAR getjiscode(typep, jp)
 int *typep;
 jisbuf *jp;
 {
-	char buf[2 + 1];
+	char buf[MAXKLEN + 1];
 	u_int n, c;
 	u_short w;
 	int i;
@@ -619,7 +619,7 @@ static VOID NEAR dispjiscode(c, type)
 u_int c;
 int type;
 {
-	char *cp, buf[3 + 1], tmp[4 + 1];
+	char *cp, buf[MAXUTF8LEN + 1], tmp[MAXKLEN * R_MAXKANA + 1];
 
 	cp = NULL;
 	kanjierrno = 0;
@@ -631,7 +631,8 @@ int type;
 			break;
 		case 'S':
 			VOID_C jis2str(tmp, c);
-			cp = kanjiconv2(buf, tmp, 2, DEFCODE, SJIS, L_INPUT);
+			cp = kanjiconv2(buf, tmp,
+				MAXKLEN, DEFCODE, SJIS, L_INPUT);
 			break;
 		case 'K':
 			VOID_C code2kanji(buf, c - 0x2020);
@@ -642,7 +643,8 @@ int type;
 #ifdef	_USEUNICODE
 		case 'U':
 			VOID_C jis2str(tmp, c);
-			cp = kanjiconv2(buf, tmp, 3, DEFCODE, UTF8, L_INPUT);
+			cp = kanjiconv2(buf, tmp,
+				MAXUTF8LEN, DEFCODE, UTF8, L_INPUT);
 			c = ucs2fromutf8((u_char *)cp, NULL);
 			cp = NULL;
 			break;
@@ -679,7 +681,7 @@ u_short **argv;
 long *minp, *maxp, *prevp;
 int xpos[];
 {
-	char buf[4 + 1];
+	char buf[MAXKLEN * R_MAXKANA + 1];
 	long n, min, max, prev;
 	int i, x, col, len;
 
@@ -743,7 +745,7 @@ int sig;
 	do {
 		imeputcursor(xpos[argc - min], argc - min, 1);
 
-		if ((ch = getkey3(sig)) < 0) break;
+		if ((ch = getkey3(sig, inputkcode)) < 0) break;
 		old = argc;
 		switch (ch) {
 			case ' ':
@@ -889,7 +891,7 @@ int sig, type;
 		dispjiscode(c, type);
 		imeputcursor(jis_xpos(plen, c % col), c % col, 1);
 
-		if ((ch = getkey3(sig)) < 0) break;
+		if ((ch = getkey3(sig, inputkcode)) < 0) break;
 		old = c;
 		switch (ch) {
 			case ' ':
@@ -1143,7 +1145,7 @@ int sig;
 #endif
 			(*ime_locate)(imewin_x, imewin_y);
 			Xtflush();
-			if ((c = getkey3(sig)) < 0) break;
+			if ((c = getkey3(sig, inputkcode)) < 0) break;
 			else if (c == imekey) {
 				ime_cont = kjisbuf.max = 0;
 				c = K_ESC;
@@ -1325,7 +1327,7 @@ static int NEAR getkanjibuf(buf, c)
 char *buf;
 u_int c;
 {
-	char tmp[4 + 1];
+	char tmp[MAXKLEN * R_MAXKANA + 1];
 
 	VOID_C jis2str(tmp, c);
 	return(inkanjiconv(buf, tmp));

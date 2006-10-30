@@ -74,6 +74,7 @@ typedef struct _keyseq_t {
 #define	K_MAX	K_HELP
 
 #define	K_METAKEY	01000
+#define	K_ALTERNATE	02000
 #if	MSDOS
 #define	mkmetakey(c)	(K_METAKEY | (tolower2(c) & 0x7f))
 #define	ismetakey(c)	(((c) & K_METAKEY) && islower2((c) & 0xff))
@@ -203,11 +204,11 @@ extern int putterms __P_((int));
 #endif
 extern int kbhit2 __P_((long));
 extern int getch2 __P_((VOID_A));
-extern int getkey2 __P_((int));
+extern int getkey2 __P_((int, int));
 #if	MSDOS
 #define	getkey3		getkey2
 #else
-extern int getkey3 __P_((int));
+extern int getkey3 __P_((int, int));
 #endif
 extern int ungetch2 __P_((int));
 extern int setscroll __P_((int, int));

@@ -127,20 +127,20 @@ char *path;
 treelist *list, *parent;
 int level, *maxp;
 {
+#ifdef	_USEDOSEMU
+	char tmp[MAXPATHLEN];
+#endif
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
 	char *cp, *dir, *subdir, cwd[MAXPATHLEN];
-#ifdef	_USEDOSEMU
-	char tmp[MAXPATHLEN];
-#endif
 	int i, len;
 
 	if ((level + 1) * DIRFIELD + 2 > TREEFIELD) {
 		*maxp = -2;
 		return(NULL);
 	}
-	if (intrkey()) {
+	if (intrkey(K_ESC)) {
 		*maxp = -1;
 		return(NULL);
 	}
@@ -149,29 +149,26 @@ int level, *maxp;
 		return(NULL);
 	}
 
-#if	MSDOS
-	if (_dospath(path)) path += 2;
+	cp = path;
+#ifdef	_USEDOSPATH
+	if (_dospath(cp)) cp += 2;
 #endif
-	if (*path == _SC_) {
-		dir = strdup2(rootpath);
-		subdir = path + 1;
-		if (!*subdir) subdir = NULL;
-	}
-#ifdef	_USEDOSEMU
-	else if (_dospath(path)) {
-		dir = strndup2(path, 3);
-		subdir = path + 3;
-		if (!*subdir) subdir = NULL;
-	}
+#ifdef	DOUBLESLASH
+	if ((len = isdslash(path))) cp = &(path[len]);
+	else
 #endif
-	else {
-		len = (cp = strdelim(path, 0)) ? cp - path : strlen(path);
-		dir = strndup2(path, len);
-		subdir = (cp) ? cp + 1 : NULL;
-	}
+	if (*cp == _SC_) cp++;
+	else cp = strdelim(path, 0);
+	len = (cp) ? cp - path : strlen(path);
+
+	dir = strndup2(path, len);
+	subdir = &(path[len]);
+	if (*subdir == _SC_) subdir++;
+	else if (!*subdir) subdir = NULL;
 
 	if (!subdir) len = 0;
-	else len = (cp = strdelim(subdir, 0)) ? cp - subdir : strlen(subdir);
+	else if ((cp = strdelim(subdir, 0))) len = cp - subdir;
+	else len = strlen(subdir);
 
 	*maxp = 0;
 	i = _chdir2(dir);
@@ -180,10 +177,11 @@ int level, *maxp;
 
 	i = 0;
 	while ((dp = Xreaddir(dirp))) {
-		if (isdotdir(dp -> d_name)
-		|| Xstat(nodospath(tmp, dp -> d_name), &st) < 0
+		if (isdotdir(dp -> d_name)) continue;
+		else if (Xstat(nodospath(tmp, dp -> d_name), &st) < 0
 		|| !s_isdir(&st))
 			continue;
+
 		list = b_realloc(list, *maxp, treelist);
 		if (!subdir) {
 			list[*maxp].name = strdup2(dp -> d_name);
@@ -197,7 +195,7 @@ int level, *maxp;
 			(*maxp)++;
 		}
 		else if (!strnpathcmp(dp -> d_name, subdir, len)
-		&& strlen(dp -> d_name) == len) {
+		&& !(dp -> d_name[len])) {
 			list[0].name = strdup2(dp -> d_name);
 			list[0].sub = &(list[0]);
 			list[0].max = 0;
@@ -234,6 +232,7 @@ int level, *maxp;
 		}
 	}
 	Xclosedir(dirp);
+
 	if (list) for (i = 0; i < *maxp; i++) {
 #ifndef	NODIRLOOP
 		treelist *lp;
@@ -383,28 +382,12 @@ int max, nest;
 			if (tmplp) {
 				lp = (tmplp == tr_root) ? &(list[i]) : tmplp;
 				len = strlen(list[i].name);
-#if	MSDOS
-				if (!_dospath(list[i].name)
-				|| list[i].name[2] != _SC_)
-					len++;
-				memmove(&(treepath[len]), treepath,
+				if (len > 0 && list[i].name[len - 1] == _SC_)
+					len--;
+				memmove(&(treepath[len + 1]), treepath,
 					strlen(treepath) + 1);
-				memcpy(treepath, list[i].name, len - 1);
-#else	/* !MSDOS */
-# ifdef	_NODOSDRIVE
-				if (*list[i].name != _SC_) len++;
-# else
-				if (*list[i].name != _SC_
-				&& !_dospath(list[i].name))
-					len++;
-# endif
-				memmove(&(treepath[len]), treepath,
-					strlen(treepath) + 1);
-				if (*list[i].name != _SC_)
-					memcpy(treepath, list[i].name,
-						len - 1);
-#endif	/* !MSDOS */
-				treepath[len - 1] = _SC_;
+				memcpy(treepath, list[i].name, len);
+				treepath[len] = _SC_;
 			}
 		}
 	}
@@ -485,8 +468,8 @@ treelist *list;
 	if (!list || list -> max >= 0) return(1);
 	if (!expandtree(list)) return(0);
 	if (!(list -> sub)) return(1);
-	cp = treepath + strlen(treepath);
-	if (cp > treepath + 1) {
+	cp = &(treepath[strlen(treepath)]);
+	if (cp > &(treepath[1])) {
 		strcatdelim(treepath);
 		cp++;
 	}
@@ -531,7 +514,11 @@ static int NEAR treedown(VOID_A)
 		return(0);
 
 	waitmes();
-	if ((cp = strrdelim(treepath, 0)) == strdelim(treepath, 0)) cp++;
+	cp = strrdelim(treepath, 0);
+	if (cp == treepath) cp++;
+#ifdef	DOUBLESLASH
+	else if (cp - treepath < isdslash(treepath)) cp++;
+#endif
 	*cp = '\0';
 	if (!expandtree(tr_cur)) {
 		tr_line = oy;
@@ -725,7 +712,7 @@ static char *NEAR _tree(VOID_A)
 # endif
 #endif
 	char *cp, *cwd, path[MAXPATHLEN];
-	int ch, min, oy, otop;
+	int ch, min, len, oy, otop;
 
 	keyflush();
 	waitmes();
@@ -738,22 +725,24 @@ static char *NEAR _tree(VOID_A)
 	tr_root -> parent = NULL;
 #endif
 	treepath = path;
+
+#ifdef	_USEDOSEMU
+	if (dospath(nullstr, path)) len = 3;
+	else
+#endif
+	{
+#ifdef	DOUBLESLASH
+		if ((len = isdslash(fullpath))) /*EMPTY*/;
+		else
+#endif
 #if	MSDOS
-	tr_cur[0].name = malloc2(3 + 1);
-	strcpy(path, fullpath);
-	strncpy2(tr_cur[0].name, path, 3);
-#else	/* !MSDOS */
-# ifdef	_NODOSDRIVE
-	strcpy(path, fullpath);
-	tr_cur[0].name = strdup2(rootpath);
-# else
-	if (dospath(nullstr, path)) tr_cur[0].name = strndup2(path, 3);
-	else {
+		len = 3;
+#else
+		len = 1;
+#endif
 		strcpy(path, fullpath);
-		tr_cur[0].name = strdup2(rootpath);
 	}
-# endif
-#endif	/* !MSDOS */
+	tr_cur[0].name = strndup2(path, len);
 
 #ifndef	NODIRLOOP
 	if (Xstat(nodospath(tmp, tr_cur[0].name), &st) < 0)
@@ -768,14 +757,9 @@ static char *NEAR _tree(VOID_A)
 		0, &(tr_cur[0].max));
 
 	tr_line = 0;
-#if	MSDOS
-	cwd = path + 2;
-#else	/* !MSDOS */
-	cwd = path;
-# ifndef	_NODOSDRIVE
-	if (_dospath(cwd)) cwd += 2;
-# endif
-#endif	/* !MSDOS */
+	if (path[len - 1] == _SC_) len--;
+	cwd = &(path[len]);
+
 	if (isrootpath(cwd)) /*EMPTY*/;
 	else for (cp = cwd; (cp = strdelim(cp, 0)); cp++, tr_line++)
 		if ((tr_line + 1) * DIRFIELD + 2 > TREEFIELD

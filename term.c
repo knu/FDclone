@@ -1282,7 +1282,7 @@ static int NEAR defaultterm(VOID_A)
 #if	!MSDOS
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
 	for (i = 21; i <= 30; i++)
-		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | 01000;
+		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | K_ALTERNATE;
 #endif	/* !MSDOS */
 
 	return(0);
@@ -2063,7 +2063,7 @@ int setdefkeyseq(VOID_A)
 	}
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
 	for (i = 21; i <= 30; i++)
-		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | 01000;
+		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | K_ALTERNATE;
 	sortkeyseq();
 
 	return(0);
@@ -2106,7 +2106,7 @@ int len;
 
 	if (str) {
 		for (i = 0; i <= K_MAX - K_MIN; i++) {
-			if ((keyseq[i].code & 0777) == n
+			if ((keyseq[i].code & ~K_ALTERNATE) == n
 			|| !(keyseq[i].str) || keyseq[i].len != len)
 				continue;
 			if (!memcmp(str, keyseq[i].str, len)) {
@@ -2750,8 +2750,8 @@ u_char tbuf[];
 #endif
 
 /*ARGSUSED*/
-int getkey2(sig)
-int sig;
+int getkey2(sig, code)
+int sig, code;
 {
 #if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 	static u_char tbuf1[3] = {0xff, 0xff, 0xff};
@@ -2818,10 +2818,9 @@ int sig;
 int ungetch2(c)
 int c;
 {
-	if (ungetnum >= arraysize(ungetbuf) - 1) return(EOF);
-	if (ungetnum)
-		memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
-			ungetnum * sizeof(u_char));
+	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
+	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
+		ungetnum * sizeof(u_char));
 	ungetbuf[0] = c;
 	ungetnum++;
 
@@ -2948,8 +2947,9 @@ int getch2(VOID_A)
 	return((int)ch);
 }
 
-int getkey2(sig)
-int sig;
+/*ARGSUSED*/
+int getkey2(sig, code)
+int sig, code;
 {
 	static int count = SENSEPERSEC;
 	kstree_t *p;
@@ -2976,9 +2976,9 @@ int sig;
 	else if (key != C_EKANA) /*EMPTY*/;
 #  if	!defined (_NOKANJICONV)
 #   ifdef	CODEEUC
-	else if (inputkcode != EUC && inputkcode != NOCNV) /*EMPTY*/;
+	else if (code != EUC && code != NOCNV) /*EMPTY*/;
 #   else
-	else if (inputkcode != EUC) /*EMPTY*/;
+	else if (code != EUC) /*EMPTY*/;
 #   endif
 #  endif	/* !_NOKANJICONV */
 	else {
@@ -3012,8 +3012,7 @@ int sig;
 			if (key == keyseq[p -> next[j].key].str[0]) break;
 		if (j >= p -> num) return(key);
 		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == 1)
-			return(keyseq[p -> key].code);
+		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
 		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
 			return(key);
 	}
@@ -3037,18 +3036,18 @@ int sig;
 	return(key);
 }
 
-int getkey3(sig)
-int sig;
+int getkey3(sig, code)
+int sig, code;
 {
 	int ch;
 
-	if ((ch = getkey2(sig)) < 0) return(ch);
+	if ((ch = getkey2(sig, code)) < 0) return(ch);
 	if (ch >= K_F('*') && ch < K_DL) {
 		if (ch == K_F('?')) ch = K_CR;
 		else ch -= K_F0;
 	}
 
-	return(ch & 01777);
+	return(ch & ~K_ALTERNATE);
 }
 
 int ungetch2(c)
@@ -3060,10 +3059,9 @@ int c;
 	ch = c;
 	Xioctl(ttyio, TIOCSTI, &ch);
 # else
-	if (ungetnum >= arraysize(ungetbuf) - 1) return(EOF);
-	if (ungetnum)
-		memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
-			ungetnum * sizeof(u_char));
+	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
+	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
+		ungetnum * sizeof(u_char));
 	ungetbuf[0] = c;
 	ungetnum++;
 # endif

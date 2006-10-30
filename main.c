@@ -158,6 +158,7 @@ static VOID NEAR printtime __P_((int));
 #ifdef	SIGALRM
 static int trapalrm __P_((VOID_A));
 #endif
+static int wrap_intrkey __P_((VOID_A));
 static char *NEAR getversion __P_((int *));
 #ifndef	_NOLOGGING
 static VOID NEAR startlog __P_((char **));
@@ -251,6 +252,7 @@ char *s;
 		fputs(s, stderr);
 		fputnl(stderr);
 	}
+	fclose(stderr);
 
 	if (isorgpid()) {
 		inittty(1);
@@ -604,7 +606,7 @@ int xmax, ymax;
 		Xputterm(T_BELL);
 		Xcputnl();
 		Xtflush();
-		if (kbhit2(1000000L) && getkey2(0) == K_ESC) {
+		if (kbhit2(1000000L) && getkey3(0, inputkcode) == K_ESC) {
 			errno = 0;
 			error(INTR_K);
 		}
@@ -736,6 +738,11 @@ static int trapalrm(VOID_A)
 }
 #endif	/* SIGALRM */
 
+static int wrap_intrkey(VOID_A)
+{
+	return(intrkey(-1));
+}
+
 int sigvecset(set)
 int set;
 {
@@ -757,7 +764,7 @@ int set;
 #endif
 #ifndef	_NODOSDRIVE
 		doswaitfunc = waitmes;
-		dosintrfunc = intrkey;
+		dosintrfunc = wrap_intrkey;
 #endif
 		status = 1;
 	}
@@ -983,7 +990,7 @@ int exist;
 		}
 
 		cp = line + strlen(line);
-		for (cp--; cp >= line && (*cp == ' ' || *cp == '\t'); cp--);
+		for (cp--; cp >= line && isblank2(*cp); cp--);
 		cp[1] = '\0';
 
 		cont = 0;
@@ -1379,7 +1386,6 @@ char *argv[], *envp[];
 	environ[i] = NULL;
 #endif
 
-	initenv();
 	setexecpath(argv[0], envp);
 #ifdef	_USEUNICODE
 	unitblpath = strdup2(DATADIR);
@@ -1414,6 +1420,7 @@ char *argv[], *envp[];
 		error(NTERM_K);
 	}
 #endif	/* !_NOORIGSHELL */
+	initenv();
 
 	Xttyiomode(0);
 	initterm();

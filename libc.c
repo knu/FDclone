@@ -160,16 +160,23 @@ int rdlink;
 	if (n == 1) {
 		cp = strrdelim(resolved, 0);
 		top = resolved;
-#if	MSDOS
-		top += 2;
-#else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
+#ifndef	_USEDOSEMU
 		if (_dospath(resolved)) top += 2;
 		else
-# endif
+#endif
+#ifdef	DOUBLESLASH
+		if ((n = isdslash(resolved)) && cp < &(resolved[n])) {
+			top = &(resolved[n - 1]);
+			if (*top != _SC_) return(resolved);
+		}
+		else
+#endif
+#if	MSDOS
+		top += 2;
+#else
 		if (rdlink && evallink(resolved, cp) > 0)
 			return(_realpath2(path, resolved, rdlink));
-#endif	/* !MSDOS */
+#endif
 		if (!cp || cp == top) {
 			*top = _SC_;
 			cp = top + 1;
@@ -195,12 +202,15 @@ char *realpath2(path, resolved, rdlink)
 char *path, *resolved;
 int rdlink;
 {
-#if	!MSDOS && !defined (_NODOSDRIVE)
+#ifdef	_USEDOSEMU
 	char *cp;
 	int duplastdrive;
 #endif
-#if	MSDOS || !defined (_NODOSDRIVE)
+#ifdef	_USEDOSPATH
 	int drv;
+#endif
+#ifdef	DOUBLESLASH
+	int n;
 #endif
 #if	MSDOS
 	int drive;
@@ -210,25 +220,8 @@ int rdlink;
 	strcpy(tmp, path);
 	path = tmp;
 
-#if	MSDOS
-	drv = dospath(nullstr, NULL);
-	if ((drive = _dospath(path))) path += 2;
-	if (*path == _SC_) {
-		if (!drive) drive = drv;
-		VOID_C gendospath(resolved, drive, _SC_);
-	}
-	else if (drive && drive != drv) {
-		if (setcurdrv(drive, 0) < 0)
-			VOID_C gendospath(resolved, drive, _SC_);
-		else {
-			if (!Xgetwd(resolved)) lostcwd(resolved);
-			if (setcurdrv(drv, 0) < 0) error("setcurdrv()");
-		}
-	}
-#else	/* !MSDOS */
-	if (*path == _SC_) copyrootpath(resolved);
-# ifndef	_NODOSDRIVE
-	else if ((drv = _dospath(path))) {
+#ifdef	_USEDOSEMU
+	if ((drv = _dospath(path))) {
 		path += 2;
 		if (*path == _SC_) cp = NULL;
 		else {
@@ -239,11 +232,40 @@ int rdlink;
 		}
 		if (!cp) VOID_C gendospath(resolved, drv, _SC_);
 	}
-# endif
+	else
+#endif
+#ifdef	DOUBLESLASH
+	if ((n = isdslash(path))) {
+		strncpy2(resolved, path, n);
+		path += n;
+		if (*path == _SC_) path++;
+	}
+	else
+#endif
+	{
+#if	MSDOS
+		drv = dospath(nullstr, NULL);
+		if ((drive = _dospath(path))) path += 2;
+		if (*path == _SC_) {
+			if (!drive) drive = drv;
+			VOID_C gendospath(resolved, drive, _SC_);
+		}
+		else if (drive && drive != drv) {
+			if (setcurdrv(drive, 0) < 0)
+				VOID_C gendospath(resolved, drive, _SC_);
+			else {
+				if (!Xgetwd(resolved)) lostcwd(resolved);
+				if (setcurdrv(drv, 0) < 0) error("setcurdrv()");
+			}
+		}
+#else	/* !MSDOS */
+		if (*path == _SC_) copyrootpath(resolved);
 #endif	/* !MSDOS */
-	else if (!rdlink && resolved != fullpath && *fullpath)
-		strcpy(resolved, fullpath);
-	else if (!Xgetwd(resolved)) copyrootpath(resolved);
+		else if (!rdlink && resolved != fullpath && *fullpath)
+			strcpy(resolved, fullpath);
+		else if (!Xgetwd(resolved)) copyrootpath(resolved);
+	}
+
 	norealpath++;
 	_realpath2(path, resolved, rdlink);
 	norealpath--;
@@ -881,7 +903,7 @@ int flags;
 		fflush(stderr);
 		Xttyiomode(1);
 		keyflush();
-		getkey2(0);
+		getkey3(0, inputkcode);
 		Xstdiomode();
 		fputnl(stderr);
 	}
@@ -929,7 +951,7 @@ char *command;
 		fflush(stderr);
 		Xttyiomode(1);
 		keyflush();
-		getkey2(0);
+		getkey3(0, inputkcode);
 		Xstdiomode();
 		fputnl(stderr);
 		if (wasttyflags & F_TTYIOMODE)

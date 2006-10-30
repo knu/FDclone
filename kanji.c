@@ -147,8 +147,6 @@ static int NEAR fromjis __P_((char *, u_char *, int, int));
 static int NEAR tojis8 __P_((char *, u_char *, int, int, int, int));
 static int NEAR tojunet __P_((char *, u_char *, int, int, int, int));
 # ifdef	_USEUNICODE
-static VOID NEAR ucs2normalization __P_((u_short *, int *, int, u_int, int));
-static u_int NEAR ucs2denormalization __P_((u_short *, int *, int));
 static u_int NEAR toucs2 __P_((u_char *, int *));
 static VOID NEAR fromucs2 __P_((char *, int *, u_int));
 static int NEAR toutf8 __P_((char *, u_char *, int));
@@ -943,6 +941,8 @@ int encode;
 			kanjierrno = UTF8;
 			return(r);
 		}
+		if (wc == 0x3099) return(0x814a);
+		if (wc == 0x309a) return(0x814b);
 	}
 
 	if (unicodebuffer && !unitblbuf) readunitable(0);
@@ -1138,6 +1138,9 @@ char *buf;
 u_char *s;
 int max, io;
 {
+# ifndef	CODEEUC
+	u_char tmp[MAXKLEN];
+# endif
 	int i, j, mode;
 
 	mode = ASCII;
@@ -1212,8 +1215,6 @@ int max, io;
 					buf[j++] = s[i++] | 0x80;
 					buf[j++] = jdecnv(s[i], io) | 0x80;
 # else
-					u_char tmp[2];
-
 					tmp[0] = s[i++];
 					tmp[1] = jdecnv(s[i], io);
 					j2sj(&(buf[j]), tmp);
@@ -1350,7 +1351,7 @@ int max, knj, asc, io;
 }
 
 # ifdef	_USEUNICODE
-static VOID NEAR ucs2normalization(buf, ptrp, max, wc, nf)
+VOID ucs2normalization(buf, ptrp, max, wc, nf)
 u_short *buf;
 int *ptrp, max;
 u_int wc;
@@ -1399,7 +1400,7 @@ int nf;
 	if (new) free(new);
 }
 
-static u_int NEAR ucs2denormalization(buf, ptrp, nf)
+u_int ucs2denormalization(buf, ptrp, nf)
 u_short *buf;
 int *ptrp, nf;
 {
@@ -1474,12 +1475,13 @@ static u_int NEAR toucs2(s, ptrp)
 u_char *s;
 int *ptrp;
 {
+# ifdef	CODEEUC
+	u_char tmp[MAXKLEN];
+# endif
 	u_int w;
 
 	if (iskanji1((char *)s, *ptrp)) {
 # ifdef	CODEEUC
-		u_char tmp[2];
-
 		j2sj((char *)tmp, &(s[*ptrp]));
 		if (kanjierrno) kanjierrno = EUC;
 		*ptrp += 2;
@@ -1502,6 +1504,9 @@ char *buf;
 int *ptrp;
 u_int wc;
 {
+# ifdef	CODEEUC
+	u_char tmp[MAXKLEN];
+# endif
 	int c1, c2;
 
 	wc = cnvunicode(wc, 0);
@@ -1515,8 +1520,6 @@ u_int wc;
 	}
 	else if (issjis1(c1) && issjis2(c2)) {
 # ifdef	CODEEUC
-		u_char tmp[2];
-
 		tmp[0] = c1;
 		tmp[1] = c2;
 		sj2j(&(buf[*ptrp]), tmp);
@@ -1622,10 +1625,10 @@ int max, nf;
 	u2 = (u_short *)malloc2((max + 1) * sizeof(u_short));
 
 	for (i = j = 0; s[i] && j < max; j++) u1[j] = toucs2(s, &i);
-	u1[j] = 0;
+	u1[j] = (u_short)0;
 	for (i = j = 0; u1[i] && j < max; i++)
 		ucs2normalization(u2, &j, max, u1[i], nf);
-	u2[j] = 0;
+	u2[j] = (u_short)0;
 	for (i = j = 0; u2[i] && j < max; i++) {
 		len = 1;
 		if (u2[i] >= 0x80) len++;
@@ -1654,10 +1657,10 @@ int max, nf;
 	u2 = (u_short *)malloc2((max + 1) * sizeof(u_short));
 
 	for (i = j = 0; s[i] && j < max; j++) u1[j] = ucs2fromutf8(s, &i);
-	u1[j] = 0;
+	u1[j] = (u_short)0;
 	for (i = j = 0; u1[i] && j < max; j++)
 		u2[j] = ucs2denormalization(u1, &i, nf);
-	u2[j] = 0;
+	u2[j] = (u_short)0;
 	for (i = j = 0; u2[i] && j + 1 < max; i++) fromucs2(buf, &j, u2[i]);
 
 	free(u1);
@@ -1688,7 +1691,7 @@ u_char *s;
 int max;
 {
 # ifdef	CODEEUC
-	u_char tmp[2];
+	u_char tmp[MAXKLEN];
 # endif
 	int i, j;
 
@@ -1720,6 +1723,9 @@ char *buf;
 u_char *s;
 int max;
 {
+# ifdef	CODEEUC
+	u_char tmp[MAXKLEN];
+# endif
 	int i, j, c1, c2;
 
 	for (i = j = 0; s[i] && j < max; i++, j++) {
@@ -1748,8 +1754,6 @@ int max;
 				}
 				else {
 # ifdef	CODEEUC
-					u_char tmp[2];
-
 					tmp[0] = c1;
 					tmp[1] = c2;
 					sj2j(&(buf[j]), tmp);
@@ -1791,7 +1795,7 @@ u_char *s;
 int max;
 {
 # ifdef	CODEEUC
-	u_char tmp[2];
+	u_char tmp[MAXKLEN];
 # endif
 	int i, j, len;
 
@@ -1827,6 +1831,9 @@ char *buf;
 u_char *s;
 int max;
 {
+# ifdef	CODEEUC
+	u_char tmp[MAXKLEN];
+# endif
 	int i, j, c1, c2;
 
 	for (i = j = 0; s[i] && j < max; i++, j++) {
@@ -1855,8 +1862,6 @@ int max;
 				}
 				else {
 # ifdef	CODEEUC
-					u_char tmp[2];
-
 					tmp[0] = c1;
 					tmp[1] = c2;
 					sj2j(&(buf[j]), tmp);
@@ -2055,6 +2060,11 @@ int dos;
 # endif
 	char *cp;
 
+#ifdef	DOUBLESLASH
+	if (path[0] == _SC_ && path[1] == _SC_ && !isdslash(path))
+		memmove(path, &(path[1]), strlen(&(path[1])) + 1);
+#endif
+
 	if (noconv) return(path);
 # ifndef	_NOKANJIFCONV
 	fgetok = (nokanjifconv) ? 0 : 1;
@@ -2126,13 +2136,20 @@ int *codep;
 	if (norealpath) cp = path;
 	else {
 		if ((file = strrdelim(path, 0))) {
-			n = file - path;
-			if (file++ == isrootdir(path)) n++;
+# ifdef	DOUBLESLASH
+			if ((n = isdslash(path)) && file < &(path[n]))
+				file = &(path[n]);
+			else
+# endif
+			{
+				n = file - path;
+				if (file++ == isrootdir(path)) n++;
+			}
 			strncpy2(rpath, path, n);
 		}
 # ifdef	_USEDOSEMU
 		else if ((n = _dospath(path))) {
-			file = path + 2;
+			file = &(path[2]);
 			VOID_C gendospath(rpath, n, '.');
 		}
 # endif
@@ -2145,6 +2162,7 @@ int *codep;
 		strncpy2(cp, file, MAXPATHLEN - 1 - (cp - rpath));
 		cp = rpath;
 	}
+
 # ifdef	_USEDOSEMU
 	if ((n = dospath(cp, kbuf))) {
 		cp = kbuf;
@@ -2181,11 +2199,13 @@ int *codep;
 	if (cp == path) return(path);
 	if (needfile && (file = strrdelim(cp, 0))) file++;
 	else file = cp;
+
 # ifdef	_USEDOSEMU
-	if (n && !_dospath(file)) strcpy(gendospath(buf, n, '\0'), file);
+	if (isalpha2(n) && !_dospath(file)) cp = gendospath(buf, n, '\0');
 	else
 # endif
-	strcpy(buf, file);
+	cp = buf;
+	strcpy(cp, file);
 
 	return(buf);
 }

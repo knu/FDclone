@@ -551,7 +551,7 @@ int d;
 {
 	int i;
 
-	if (d && _dospath(s)) return(s + 1);
+	if (d && _dospath(s)) return(&(s[1]));
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) return(&(s[i]));
 # ifdef	BSPATHDELIM
@@ -569,7 +569,7 @@ int d;
 	char *cp;
 	int i;
 
-	if (d && _dospath(s)) cp = s + 1;
+	if (d && _dospath(s)) cp = &(s[1]);
 	else cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) cp = &(s[i]);
@@ -635,6 +635,10 @@ char *s;
 	if (_dospath(s)) i = 2;
 	else
 #endif
+#ifdef	DOUBLESLASH
+	if (isdslash(s)) i = 1;
+	else
+#endif
 	i = 0;
 	if (!s[i]) return(&(s[i]));
 	if (s[i] == _SC_ && !s[i + 1]) return(&(s[i + 1]));
@@ -671,6 +675,13 @@ char *buf, *s1, *s2;
 		buf[0] = s1[0];
 		buf[1] = s1[1];
 		i = 2;
+	}
+	else
+#endif
+#ifdef	DOUBLESLASH
+	if (isdslash(s1)) {
+		buf[0] = s1[0];
+		i = 1;
 	}
 	else
 #endif
@@ -717,9 +728,12 @@ char *buf, *s1, *s2;
 int strcasecmp2(s1, s2)
 char *s1, *s2;
 {
+	int c1, c2;
+
 	for (;;) {
-		if (toupper2(*s1) != toupper2(*s2))
-			return((u_char)*s1 - (u_char)*s2);
+		c1 = toupper2(*s1);
+		c2 = toupper2(*s2);
+		if (c1 != c2) return(c1 - c2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
 			s1++;
@@ -739,9 +753,12 @@ int strncasecmp2(s1, s2, n)
 char *s1, *s2;
 int n;
 {
+	int c1, c2;
+
 	while (n-- > 0) {
-		if (toupper2(*s1) != toupper2(*s2))
-			return((u_char)*s1 - (u_char)*s2);
+		c1 = toupper2(*s1);
+		c2 = toupper2(*s2);
+		if (c1 != c2) return(c1 - c2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
 			if (n-- <= 0) break;
@@ -784,7 +801,7 @@ int len;
 	char *cp;
 
 	if (len < 0) len = strlen(dir);
-	if ((cp = strrdelim2(dir, &(dir[len]))) && !*(cp + 1)) len = cp - dir;
+	if ((cp = strrdelim2(dir, &(dir[len]))) && !cp[1]) len = cp - dir;
 	if (len <= 0 || strnpathcmp(path, dir, len)) return(NULL);
 	if (path[len] && path[len] != _SC_) return(NULL);
 
@@ -872,7 +889,7 @@ char *s;
 int isrootpath(s)
 char *s;
 {
-	return((s[0] == _SC_ && !s[1]));
+	return((s[0] == _SC_ && !s[1]) ? 1 : 0);
 }
 
 VOID copyrootpath(s)
@@ -889,12 +906,29 @@ char *s;
 	*s = '\0';
 }
 
+#ifdef	DOUBLESLASH
+int isdslash(s)
+char *s;
+{
+# if	MSDOS || defined (CYGWIN)
+	char *cp;
+
+	if (s[0] != _SC_ || s[1] != _SC_ || !s[2] || s[2] == _SC_) return(0);
+	if ((cp = strdelim(&(s[2]), 0))) return(cp - s);
+
+	return(strlen(s));
+# else
+	return((s[0] == _SC_ && s[1] == _SC_) ? 2 : 0);
+# endif
+}
+#endif	/* DOUBLESLASH */
+
 char *getbasename(s)
 char *s;
 {
 	char *cp;
 
-	if ((cp = strrdelim(s, 1))) return(cp + 1);
+	if ((cp = strrdelim(s, 1))) return(&(cp[1]));
 
 	return(s);
 }
@@ -1450,6 +1484,9 @@ int argc;
 char ***argvp;
 wild_t *wp;
 {
+#ifdef	DOUBLESLASH
+	int ds;
+#endif
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
@@ -1473,6 +1510,14 @@ wild_t *wp;
 	quote = wp -> quote;
 
 	if (wp -> fixed.len) addstrbuf(&(wp -> path), rootpath, 1);
+#ifdef	DOUBLESLASH
+	if (wp -> path.len) ds = 0;
+	else if ((ds = isdslash(wp -> s))) {
+		addstrbuf(&(wp -> fixed), wp -> s, ds);
+		addstrbuf(&(wp -> path), wp -> s, ds);
+		wp -> s += ds;
+	}
+#endif
 
 	for (i = w = 0; wp -> s[i] && wp -> s[i] != _SC_; i++) {
 		pc = parsechar(&(wp -> s[i]), -1,
@@ -1519,6 +1564,9 @@ wild_t *wp;
 
 	if (!w) {
 		if (wp -> path.len <= plen) w++;
+#ifdef	DOUBLESLASH
+		else if (ds) st.st_mode = S_IFDIR;
+#endif
 		else if (stat2(wp -> path.s, &st) < 0) return(argc);
 
 		wp -> s += i;
@@ -1529,13 +1577,17 @@ wild_t *wp;
 		}
 
 #ifndef	NODIRLOOP
+# ifdef	DOUBLESLASH
+		if (ds) /*EMPTY*/;
+		else
+# endif
 		if (!w) {
 			wp -> ino = (devino_t *)realloc2(wp -> ino,
 				(wp -> nino + 1) * sizeof(devino_t));
 			wp -> ino[wp -> nino].dev = st.st_dev;
 			wp -> ino[(wp -> nino)++].ino = st.st_ino;
 		}
-#endif
+#endif	/* !NODIRLOOP */
 		return(_evalwild(argc, argvp, wp));
 	}
 
@@ -1926,7 +1978,7 @@ char *com, *search;
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;
 			else {
-				tmp = _evalpath(cp, cp + dlen, 0);
+				tmp = _evalpath(cp, &(cp[dlen]), 0);
 				dlen = strlen(tmp);
 			}
 			if (dlen + len + 1 + EXTWIDTH + 1 > size) {
@@ -2201,7 +2253,7 @@ char ***argvp;
 # endif
 		next = strchr(cp, PATHDELIM);
 		dlen = (next) ? (next++) - cp : strlen(cp);
-		tmp = _evalpath(cp, cp + dlen, 0);
+		tmp = _evalpath(cp, &(cp[dlen]), 0);
 		dlen = strlen(tmp);
 		argc = completefile(file, len, argc, argvp, tmp, dlen, 2);
 		free(tmp);
@@ -2219,6 +2271,9 @@ int exe;
 # if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 	char cwd[4];
 # endif
+# ifdef	DOUBLESLASH
+	int n;
+# endif
 	char *file, *dir;
 	int dlen;
 
@@ -2232,8 +2287,20 @@ int exe;
 # endif
 
 	if ((file = strrdelim(dir, 0))) {
-		dlen += (file == dir) ? 1 : file - dir;
-		return(completefile(file + 1, strlen(file + 1), argc, argvp,
+		if (file == dir) {
+			dlen++;
+			file++;
+		}
+# ifdef	DOUBLESLASH
+		else if ((n = isdslash(path)) && file < &(path[n])) {
+			if (path[n - 1] != _SC_) return(argc);
+			dlen = n;
+			file = &(path[n]);
+			if (*file == _SC_) file++;
+		}
+# endif
+		else dlen += file++ - dir;
+		return(completefile(file, strlen(file), argc, argvp,
 			path, dlen, exe));
 	}
 # ifndef	NOUID
@@ -2604,13 +2671,13 @@ int plen, mode;
 	ret = NULL;
 	len = strlen(s);
 	if ((mode & ~0x80) != '#') {
-		if (mode & 0x80) for (cp = s; cp < s + len; cp++) {
+		if (mode & 0x80) for (cp = s; cp < &(s[len]); cp++) {
 			if (regexp_exec(re, cp, 0)) {
 				ret = cp;
 				break;
 			}
 		}
-		else for (cp = s + len - 1; cp >= s; cp--) {
+		else for (cp = &(s[len - 1]); cp >= s; cp--) {
 			if (regexp_exec(re, cp, 0)) {
 				ret = cp;
 				break;
@@ -3314,7 +3381,7 @@ int qed, flags;
 			if (*cp == '`') {
 				bbuf[j] = '\0';
 				buf = replacebackquote(buf, &i,
-					bbuf, strlen(cp + 1));
+					bbuf, strlen(&(cp[1])));
 				j = 0;
 			}
 			else if (!(flags & EA_STRIPQ)) buf[i++] = *cp;
@@ -3520,7 +3587,10 @@ int flags;
 {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char alias[MAXPATHLEN];
-	int top = -1;
+	int top;
+#endif
+#ifdef	DOUBLESLASH
+	int ds;
 #endif
 	char *cp, *tmp;
 	int i, j, c, pc, size, quote;
@@ -3536,9 +3606,16 @@ int flags;
 	free(cp);
 	cp = tmp;
 
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
+	top = -1;
+#endif
+#ifdef	DOUBLESLASH
+	ds = isdslash(cp);
+#endif
 	size = strlen(cp) + 1;
 	tmp = malloc2(size);
 	quote = '\0';
+
 	for (i = j = c = 0; cp[i]; c = cp[i++]) {
 		pc = parsechar(&(cp[i]), -1, '\0', 0, &quote, NULL);
 		if (pc == PC_CLQUOTE) {
@@ -3573,9 +3650,12 @@ int flags;
 			if (!(flags & EA_NOEVALQ)) continue;
 		}
 		else if (pc != PC_NORMAL) /*EMPTY*/;
-		else if (!(flags & EA_NOUNIQDELIM)
-		&& cp[i] == _SC_ && c == _SC_)
-			continue;
+		else if (flags & EA_NOUNIQDELIM) /*EMPTY*/;
+#ifdef	DOUBLESLASH
+		else if (ds && i == 1) /*EMPTY*/;
+#endif
+		else if (cp[i] == _SC_ && c == _SC_) continue;
+
 		tmp[j++] = cp[i];
 	}
 	tmp[j] = '\0';

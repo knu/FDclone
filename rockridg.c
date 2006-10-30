@@ -9,9 +9,6 @@
 
 #ifndef	_NOROCKRIDGE
 
-extern char typesymlist[];
-extern u_short typelist[];
-
 #define	TRANSTBLFILE	"TRANS.TBL"
 #define	TRANSTBLVAR	1
 #define	RR_TRANS	001
@@ -171,7 +168,7 @@ int len;
 			continue;
 		}
 
-		for (eol = cp; *eol && *eol != ' ' && *eol != '\t'; eol++);
+		for (eol = cp; *eol && !isblank2(*eol); eol++);
 		if (*eol) *(eol++) = '\0';
 		if (!*(eol = skipspace(eol))) {
 			free(line);
@@ -180,15 +177,14 @@ int len;
 
 		org = getorgname(cp, flags);
 		cp = eol;
-		while (*eol && *eol != ' ' && *eol != '\t') eol++;
+		while (*eol && !isblank2(*eol)) eol++;
 		l1 = eol - cp;
 		if (*eol) *(eol++) = '\0';
 		l2 = 0;
 		maj = min = (r_dev_t)-1;
 		if (*line == 'L') {
 			eol = skipspace(eol);
-			while (eol[l2] && eol[l2] != ' ' && eol[l2] != '\t')
-				l2++;
+			while (eol[l2] && !isblank2(eol[l2])) l2++;
 			eol[l2++] = '\0';
 		}
 		else if (*line == 'B' || *line == 'C') {
@@ -433,8 +429,7 @@ struct stat *stp;
 {
 	transtable *tp;
 	char *cp;
-	u_short mode;
-	int i, n;
+	u_int mode;
 
 	if (!(cp = strrdelim(path, 0)) || !inittrans(path, cp++ - path))
 		return(-1);
@@ -446,11 +441,7 @@ struct stat *stp;
 	}
 	rr_curtbl = tp;
 
-	n = tolower2(tp -> type);
-	for (i = 0; typesymlist[i]; i++) if (n == typesymlist[i]) break;
-	if (!typesymlist[i]) mode = S_IFREG;
-	else mode = typelist[i];
-
+	if ((mode = getfmode(tp -> type)) == (u_int)-1) mode = S_IFREG;
 	stp -> st_mode &= ~S_IFMT;
 	stp -> st_mode |= mode;
 	if ((mode == S_IFBLK || mode == S_IFCHR) && tp -> rdev != (r_dev_t)-1)

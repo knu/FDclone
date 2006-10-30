@@ -32,6 +32,11 @@
 
 #if	MSDOS && !defined (FD)
 #define	VOL_FAT32	"FAT32"
+# ifdef	DOUBLESLASH
+# define	MNTDIRSIZ	MAXPATHLEN
+# else
+# define	MNTDIRSIZ	(3 + 1)
+# endif
 #endif	/* MSDOS && !FD */
 
 #if	MSDOS
@@ -307,6 +312,7 @@ extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
 extern char *strdup2 __P_((char *));
+extern char *strncpy2 __P_((char *, char *, int));
 
 #ifdef	FD
 extern int getinfofs __P_((char *, off_t *, off_t *, off_t *));
@@ -331,7 +337,7 @@ static int NEAR Xutimes __P_((char *, struct timeval []));
 #  endif
 # define	ttyiomode(n)
 # define	stdiomode()
-# define	getkey2(n)	getch();
+# define	getkey3(n, c)	getch();
 # else	/* !MSDOS */
 # define	realpath2(p, r, f) \
 				realpath(p, r)
@@ -340,7 +346,7 @@ static int NEAR Xutimes __P_((char *, struct timeval []));
 static VOID NEAR ttymode __P_((int));
 # define	ttyiomode(n)	(ttymode(1))
 # define	stdiomode()	(ttymode(0))
-static int NEAR getkey2 __P_((int));
+static int NEAR getkey3 __P_((int, int));
 # endif	/* !MSDOS */
 static int NEAR touchfile __P_((char *, struct stat *));
 #ifndef	NODIRLOOP
@@ -455,13 +461,29 @@ char *path;
 off_t *totalp, *freep, *bsizep;
 {
 # if	MSDOS
+#  ifdef	DOUBLESLASH
+	char *cp;
+	int len;
+#  endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
-	char drv[4], buf[128];
-# endif
+	char drv[MNTDIRSIZ], buf[128];
+# endif	/* !MSDOS */
 	statfs_t fsbuf;
 
 # if	MSDOS
+#  ifdef	DOUBLESLASH
+	if ((len = isdslash(path))) {
+		if ((cp = strdelim(&(path[len]), 0))) {
+			len = cp - path;
+			if (!(cp = strdelim(&(path[len + 1]), 0)))
+				cp += strlen(cp);
+			len = cp - path;
+		}
+		strncpy2(drv, path, len);
+	}
+	else
+#  endif
 	VOID_C gendospath(drv, toupper2(path[0]), _SC_);
 
 	reg.x.ax = 0x71a0;
@@ -634,8 +656,8 @@ int on;
 }
 
 /*ARGSUSED*/
-static int NEAR getkey2(sig)
-int sig;
+static int NEAR getkey3(sig, code)
+int sig, code;
 {
 	u_char ch;
 	int i;
@@ -797,7 +819,7 @@ static int NEAR inputkey(VOID_A)
 	int c;
 
 	ttyiomode(1);
-	c = getkey2(0);
+	c = getkey3(0, inputkcode);
 	stdiomode();
 	if (c == EOF) c = -1;
 	else if (c == cc_intr) {
@@ -1199,15 +1221,17 @@ struct filestat_t *dirp;
 static VOID NEAR showfnameb(dirp)
 struct filestat_t *dirp;
 {
-	char buf[MAXPATHLEN];
+	char *cp, buf[MAXPATHLEN];
 	int i;
 
 	if (dirflag & DF_SUBDIR) {
+		cp = dirwd;
 		if (dirflag & DF_LOWER) {
 			for (i = 0; dirwd[i]; i++) buf[i] = tolower2(dirwd[i]);
-			dirwd = buf;
+			buf[i] = '\0';
+			cp = buf;
 		}
-		fprintf2(stdout, "%k%c", dirwd, _SC_);
+		fprintf2(stdout, "%k%c", cp, _SC_);
 	}
 
 	if (dirflag & DF_LOWER)
@@ -1557,7 +1581,7 @@ char *argv[];
 		}
 		else {
 			i = file - buf;
-			if (isrootdir(buf) || *file != _SC_) file++;
+			if (isrootpath(buf) || *file != _SC_) file++;
 			*file = '\0';
 			dir = buf;
 			file = &(argv[n][++i]);
@@ -1570,11 +1594,7 @@ char *argv[];
 		return(RET_FAIL);
 	}
 	if (dir != buf) strcpy(wd, cwd);
-	else {
-		if (chdir2(buf) < 0) {
-			dosperror(buf);
-			return(RET_FAIL);
-		}
+	else if (chdir2(buf) >= 0) {
 		if (!Xgetwd(wd)) {
 			dosperror(NULL);
 			return(RET_FAIL);
@@ -1583,6 +1603,13 @@ char *argv[];
 			dosperror(cwd);
 			return(RET_FAIL);
 		}
+	}
+#ifdef	DOUBLESLASH
+	else if (isdslash(buf)) realpath2(buf, wd, 1);
+#endif
+	else {
+		dosperror(buf);
+		return(RET_FAIL);
 	}
 	if (getinfofs(wd, &total, &fre, &bsize) < 0) total = fre = (off_t)-1;
 
@@ -1666,7 +1693,7 @@ int argc;
 char *argv[];
 {
 	char *buf, **wild;
-	int i, n, key, flag, ret;
+	int i, n, c, flag, ret;
 
 	flag = 0;
 	for (n = 1; n < argc; n++) {
@@ -1704,10 +1731,10 @@ char *argv[];
 			stdiomode();
 			if (!buf) return(RET_SUCCESS);
 			if (!isatty(STDIN_FILENO)) fputnl(stdout);
-			key = *buf;
+			c = *buf;
 			free(buf);
-		} while (!strchr("ynYN", key));
-		if (key == 'n' || key == 'N') return(RET_SUCCESS);
+		} while (!strchr("ynYN", c));
+		if (c == 'n' || c == 'N') return(RET_SUCCESS);
 	}
 	if (!(wild = evalwild(argv[n], 0))) {
 		doserror(argv[n], ER_FILENOTFOUND);
@@ -1720,16 +1747,15 @@ char *argv[];
 				fprintf2(stdout,
 					"%k,    Delete (Y/N)?", wild[i]);
 				fflush(stdout);
-				if ((key = inputkey()) < 0) {
+				if ((c = inputkey()) < 0) {
 					freevar(wild);
 					return(ret);
 				}
-				if (key <= (int)MAXUTYPE(u_char)
-				&& isprint2(key))
-					fputc(key, stdout);
+				if (c <= (int)MAXUTYPE(u_char) && isprint2(c))
+					fputc(c, stdout);
 				fputnl(stdout);
-			} while (!strchr("ynYN", key));
-			if (key == 'n' || key == 'N') continue;
+			} while (!strchr("ynYN", c));
+			if (c == 'n' || c == 'N') continue;
 		}
 		if (Xunlink(wild[i]) < 0) {
 			dosperror(wild[i]);
@@ -1872,15 +1898,9 @@ int bin;
 	char *cp;
 
 	if (bin < 0) return(-1);
-	if ((cp = strchr(name, DOSCOMOPT))) {
-		if (!cp[1] || (cp[2] && cp[3])) {
-			doserror(cp, ER_INVALIDSW);
-			return(-1);
-		}
-		*(cp++) = '\0';
-		if (toupper2(*cp) == 'B') bin = CF_BINARY;
-		else if (toupper2(*cp) == 'A') bin = CF_TEXT;
-	}
+	if (!(cp = strchr(name, DOSCOMOPT)) || !cp[1] || cp[2]) /*EMPTY*/;
+	else if (toupper2(*cp) == 'B') bin = CF_BINARY;
+	else if (toupper2(*cp) == 'A') bin = CF_TEXT;
 
 	return(bin);
 }
@@ -2081,9 +2101,11 @@ int sbin, dbin, dfd;
 	}
 
 #ifdef	FD
-	stp -> st_nlink = (TCH_ATIME | TCH_MTIME);
-#endif
+	stp -> st_nlink = (TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
 	if (!tty && touchfile(dest, stp) < 0) return(-1);
+#else
+	if (!tty) VOID_C touchfile(dest, stp);
+#endif
 
 	return(1);
 }

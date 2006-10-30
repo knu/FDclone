@@ -53,6 +53,10 @@ USECRNL
 CWDINPATH
 	The current work directory is always included in
 	the command search path implicitly.
+DOUBLESLASH
+	The pathname which starts with // (or \\) is allowed
+	as the some special pathname (e.g. the shared folder
+	on Cygwin).
 USEMANLANG
 	The search pathname referred to man(1) includes the
 	string shown by the environment variable LANG, such

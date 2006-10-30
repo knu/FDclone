@@ -250,8 +250,7 @@ char *mes, *arg;
 
 #ifndef	_NODOSDRIVE
 	destdrive = -1;
-	if ((drive = dospath3(dir))
-	&& (destdrive = preparedrv(drive)) < 0) {
+	if ((drive = dospath3(dir)) && (destdrive = preparedrv(drive)) < 0) {
 		warning(-1, dir);
 		free(dir);
 		return(NULL);
@@ -298,10 +297,13 @@ struct stat *stp;
 static int NEAR getcopypolicy(s)
 char *s;
 {
-#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+#ifndef	_NOEXTRACOPY
+# ifndef	_NODOSDRIVE
 	int dupdestdrive;
-#endif
-	char *cp, *str[MAXCOPYITEM];
+# endif
+	char *cp;
+#endif	/* !_NOEXTRACOPY */
+	char *str[MAXCOPYITEM];
 	int n, ch, val[MAXCOPYITEM];
 
 	for (;;) {
@@ -855,7 +857,7 @@ char *path;
 	char dest[MAXPATHLEN];
 
 	if (getdestpath(path, dest, &st) < 0) return(APL_CANCEL);
-	st.st_nlink = destnlink;
+	st.st_nlink = (destnlink | TCH_IGNOREERR);
 	st.st_mode = destmode;
 	st.st_mtime = destmtime;
 	st.st_atime = destatime;
@@ -900,7 +902,7 @@ char *path;
 	char dest[MAXPATHLEN];
 
 	if (getdestpath(path, dest, &st) < 0) return(APL_CANCEL);
-	st.st_nlink = destnlink;
+	st.st_nlink = (destnlink | TCH_IGNOREERR);
 	st.st_mode = destmode;
 	st.st_mtime = destmtime;
 	st.st_atime = destatime;
@@ -1637,7 +1639,7 @@ char *endmes;
 
 	helpbar();
 	for (filepos = 0; filepos < maxfile; filepos++) {
-		if (intrkey()) {
+		if (intrkey(K_ESC)) {
 			endmes = NULL;
 			break;
 		}
@@ -1718,7 +1720,7 @@ int verbose;
 	char *cp, *fname, path[MAXPATHLEN], **dirlist;
 	int ret, ndir, max, dupnlink;
 
-	if (intrkey()) return(APL_CANCEL);
+	if (intrkey(K_ESC)) return(APL_CANCEL);
 
 	if (verbose) {
 		Xlocate(0, L_CMDLINE);
@@ -1785,7 +1787,7 @@ int verbose;
 	if (!(dirp = Xopendir(dir))) warning(-1, dir);
 	else {
 		while ((dp = Xreaddir(dirp))) {
-			if (intrkey()) {
+			if (intrkey(K_ESC)) {
 				ret = APL_CANCEL;
 				break;
 			}
@@ -2017,7 +2019,8 @@ char *path;
 	st.st_flags = (u_long)-1;
 #endif
 
-	st.st_nlink = (TCH_MODE | TCH_UID | TCH_GID | TCH_ATIME | TCH_MTIME);
+	st.st_nlink = (TCH_MODE | TCH_UID | TCH_GID
+		| TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
 	if (touchfile(dest, &st) < 0) return(APL_ERROR);
 
 	return(APL_OK);
@@ -2058,7 +2061,8 @@ char *path;
 	st.st_flags = (u_long)-1;
 #endif
 
-	st.st_nlink = (TCH_MODE | TCH_UID | TCH_GID | TCH_ATIME | TCH_MTIME);
+	st.st_nlink = (TCH_MODE | TCH_UID | TCH_GID
+		| TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
 	if (touchfile(dest, &st) < 0) return(APL_ERROR);
 
 	return(APL_OK);

@@ -103,9 +103,14 @@ typedef struct fstab		mnt_t;
 #endif	/* USEGETFSENT */
 
 #if	MSDOS
+# ifdef	DOUBLESLASH
+# define	MNTDIRSIZ	MAXPATHLEN
+# else
+# define	MNTDIRSIZ	(3 + 1)
+# endif
 typedef struct _mnt_t {
 	char *mnt_fsname;
-	char mnt_dir[4];
+	char mnt_dir[MNTDIRSIZ];
 	char *mnt_type;
 	char *mnt_opts;
 } mnt_t;
@@ -201,9 +206,7 @@ extern int unixstatfs __P_((char *, statfs_t *));
 extern VOID error __P_((char *));
 extern int _chdir2 __P_((char *));
 extern char *strcpy2 __P_((char *, char *));
-#ifndef	NOFLOCK
 extern char *strncpy2 __P_((char *, char *, int));
-#endif
 extern char *getwd2 __P_((VOID_A));
 extern VOID warning __P_((int, char *));
 #ifdef	_USEDOSPATH
@@ -322,6 +325,9 @@ extern int needbavail;
 #ifndef	MNTTYPE_FAT32
 #define	MNTTYPE_FAT32	"fat32"	/* Win98 */
 #endif
+#ifndef	MNTTYPE_SHARED
+#define	MNTTYPE_SHARED	"shared"	/* Win98 */
+#endif
 #define	MNTTYPE_XNFS	"nfs"	/* NFS */
 
 static int NEAR code2str __P_((char *, int));
@@ -351,6 +357,7 @@ static CONST strtable mntlist[] = {
 	{FSID_FAT, MNTTYPE_PC},
 	{FSID_LFN, MNTTYPE_DOS7},
 	{FSID_LFN, MNTTYPE_FAT32},
+	{FSID_LFN, MNTTYPE_SHARED},
 #if	MSDOS
 # ifndef	_NODOSDRIVE
 	{FSID_FAT, MNTTYPE_FAT12},
@@ -760,22 +767,47 @@ char *path;
 statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
-	statfs_t fs;
-	mnt_t mnt;
 #if	MSDOS
 # ifndef	_NODOSDRIVE
 	int i;
 # endif
+# ifdef	DOUBLESLASH
+	char *cp;
+	int len;
+# endif
+	statfs_t fs;
+	mnt_t mnt;
+	char buf[MAXPATHLEN];
+	int drive;
 
 	if (!fsbuf) fsbuf = &fs;
 	if (!mntbuf) mntbuf = &mnt;
 
 	mntbuf -> mnt_fsname = "MSDOS";
-	VOID_C gendospath(mntbuf -> mnt_dir, dospath(path, NULL), _SC_);
+	drive = dospath(path, buf);
+# ifdef	DOUBLESLASH
+	if (drive == '_') {
+		if (*buf) path = buf;
+		len = isdslash(path);
+		if ((cp = strdelim(&(path[len]), 0))) {
+			len = cp - path;
+			if (!(cp = strdelim(&(path[len + 1]), 0)))
+				cp += strlen(cp);
+			len = cp - path;
+		}
+		strncpy2(mntbuf -> mnt_dir, path, len);
+	}
+	else
+# endif
+	VOID_C gendospath(mntbuf -> mnt_dir, drive, _SC_);
+
 # ifdef	_NOUSELFN
 	mntbuf -> mnt_type = MNTTYPE_PC;
 # else	/* !_NOUSELFN */
 	switch (supportLFN(mntbuf -> mnt_dir)) {
+		case 3:
+			mntbuf -> mnt_type = MNTTYPE_SHARED;
+			break;
 		case 2:
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
 			break;
@@ -812,13 +844,15 @@ mnt_t *mntbuf;
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
 #else	/* !MSDOS */
+# ifndef	_NODOSDRIVE
+	int drv;
+# endif
+	statfs_t fs;
+	mnt_t mnt;
 	mnt_t *mntp;
 	FILE *fp;
 	char *dir, fsname[MAXPATHLEN];
 	ALLOC_T len, match;
-# ifndef	_NODOSDRIVE
-	int drv;
-# endif
 
 	if (!fsbuf) fsbuf = &fs;
 	if (!mntbuf) mntbuf = &mnt;
@@ -1069,7 +1103,10 @@ off_t *totalp, *freep, *bsizep;
 #ifndef	_NODOSDRIVE
 	needbavail--;
 #endif
-	if (n < 0) return(-1);
+	if (n < 0) {
+		*bsizep = getblocksize(path);
+		return(-1);
+	}
 
 	*totalp = fsbuf.f_blocks;
 	*freep = fsbuf.f_bavail;

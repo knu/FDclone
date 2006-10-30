@@ -14,7 +14,6 @@
 #endif
 
 #if	MSDOS
-extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));
 #endif
 
@@ -173,10 +172,6 @@ char *helpindex[MAXHELPINDEX] = {
 # endif
 #endif	/* FD >= 2 */
 };
-char typesymlist[] = "dbclsp";
-u_short typelist[] = {
-	S_IFDIR, S_IFBLK, S_IFCHR, S_IFLNK, S_IFSOCK, S_IFIFO
-};
 #ifdef	HAVEFLAGS
 char fflagsymlist[] = "ANacuacu";
 u_long fflaglist[] = {
@@ -202,6 +197,10 @@ int win = 0;
 int calc_x = -1;
 int calc_y = -1;
 
+static CONST char typesymlist[] = "dbclsp";
+static CONST u_short typelist[] = {
+	S_IFDIR, S_IFBLK, S_IFCHR, S_IFLNK, S_IFSOCK, S_IFIFO
+};
 static CONST u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
@@ -590,6 +589,18 @@ static VOID NEAR sizebar(VOID_A)
 	}
 
 	Xtflush();
+}
+
+u_int getfmode(c)
+int c;
+{
+	int i;
+
+	c = tolower2(c);
+	for (i = 0; typesymlist[i]; i++)
+		if (c == typesymlist[i]) return(typelist[i]);
+
+	return((u_int)-1);
 }
 
 int putmode(buf, mode, notype)

@@ -243,6 +243,7 @@ K_EXTERN CONST u_char kctypetable[256]
 			(((u_char)(c1) & 0xf0) == 0xe0 \
 			&& ((u_char)(c2) & 0xc0) == 0x80 \
 			&& ((u_char)(c3) & 0xc0) == 0x80)
+#define	iswucs2(u)	(((u) & 0xff00) && ((u) < 0xff61 || (u) > 0xff9f))
 
 #define	NOCNV	0
 #define	ENG	1
@@ -271,6 +272,9 @@ K_EXTERN CONST u_char kctypetable[256]
 #endif
 
 #define	MAXKANJIBUF	(3 + 2 + 3)
+#define	MAXKLEN		2
+#define	MAXUTF8LEN	3
+#define	MAXNFLEN	4
 
 #ifdef	NOMULTIKANJI
 #define	_NOKANJICONV
@@ -287,7 +291,9 @@ K_EXTERN int kanjierrno K_INIT(0);
 #ifndef	_NOKANJIFCONV
 K_EXTERN int defaultkcode K_INIT(NOCNV);
 #endif
-#ifndef	_NOKANJICONV
+#ifdef	_NOKANJICONV
+#define	inputkcode	NOCNV
+#else
 K_EXTERN int inputkcode K_INIT(NOCNV);
 #endif
 #if	!defined (_NOKANJICONV) \

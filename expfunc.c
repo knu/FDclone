@@ -80,10 +80,10 @@ char *line;
 	cp = skipspace(&(line[len]));
 	if (*cp != '(') return(NULL);
 
-	cp = skipspace(++cp);
+	cp = skipspace(&(cp[1]));
 	if (*cp != ')') return(NULL);
 
-	cp = skipspace(++cp);
+	cp = skipspace(&(cp[1]));
 	if (*cp != '{') return(NULL);
 
 	func[funcno] = strndup2(line, len);

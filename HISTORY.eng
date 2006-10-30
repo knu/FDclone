@@ -1,3 +1,11 @@
+Ver. 2.09a	Support hard-linked archive files with GNU tar.
+ (10/31/06)	Support timeout of locking files.
+		Bug that shared folder cannot be accessed on Cygwin is fixed.
+		Bug that UTF8-mac cannot work in some code settings is fixed.
+		Bug that some Japanese input is broken on PTYMODE=1 is fixed.
+		Mis-sorting order for filenames on IGNORECASE=1 is fixed.
+		Bug that function keys cannot work in some terminals is fixed.
+
 Ver. 2.09	Add 'IMEKEY', 'IMEBUFFER' internal variables.
  (08/22/06)	Add 'BASICCUSTOM' internal variable.
 		Add 'PROGRESSBAR', 'PRECOPYMENU' internal variables.

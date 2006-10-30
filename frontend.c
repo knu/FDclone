@@ -65,6 +65,7 @@ static int NEAR recvcommand __P_((int, command_t **, syntaxtree *));
 static int NEAR recvstree __P_((int, syntaxtree **, syntaxtree *));
 #endif
 static VOID NEAR recvchild __P_((int));
+static VOID NEAR sendkey __P_((int));
 
 
 int waitstatus(pid, options, statusp)
@@ -425,7 +426,7 @@ static int NEAR ptygetkey(VOID_A)
 
 	for (;;) {
 		n = -1;
-		c = getkey2(sigalrm(1));
+		c = getkey2(sigalrm(1), inputkcode);
 		while (lockflags & (1 << win)) {
 			kbhit2(1000000L / SENSEPERSEC);
 			waitpty();
@@ -433,7 +434,9 @@ static int NEAR ptygetkey(VOID_A)
 #ifndef	_NOORIGSHELL
 		if (isshptymode()) break;
 #endif
-		if (c < 0 || ptymenukey < 0 || c != ptymenukey) break;
+		if (c < 0 || ptymenukey < 0
+		|| (c & ~K_ALTERNATE) != ptymenukey)
+			break;
 
 		str[0] = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
 		str[1] = PTYIC_K;
@@ -988,6 +991,58 @@ int w;
 	}
 }
 
+static VOID NEAR sendkey(c)
+int c;
+{
+	static char buf[MAXUTF8LEN * sizeof(short)];
+	static int index = 0;
+	static int max = 0;
+#ifndef	_NOKANJICONV
+	int code;
+#endif
+	short w;
+
+#ifndef	_NOKANJICONV
+	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
+#endif
+	if (c >= 0) {
+		w = c;
+		memcpy(&(buf[index++ * sizeof(w)]), (char *)&w, sizeof(w));
+	}
+
+	if (c < 0 || c & 0xff00) /*EMPTY*/;
+	else if (max && index >= max) /*EMPTY*/;
+#ifdef	_NOKANJICONV
+# ifdef	CODEEUC
+	else if (c == C_EKANA) {
+		max = 2;
+		return;
+	}
+# endif
+#else	/* !_NOKANJICONV */
+	else if (code == EUC && c == C_EKANA) {
+		max = 2;
+		return;
+	}
+	else if (code >= UTF8) {
+		if (index > 1) {
+			if ((c & 0xc0) == 0x80) return;
+		}
+		else if (ismsb(c)) {
+			max = ((c & 0xf0) == 0xe0) ? 3 : 2;
+			return;
+		}
+	}
+#endif	/* !_NOKANJICONV */
+	else if (isinkanji1(c, code)) {
+		max = 2;
+		return;
+	}
+
+	if (index) sendbuf(emufd, buf, index * sizeof(w));
+	index = max = 0;
+}
+
 int frontend(VOID_A)
 {
 	int n, ch, wastty, status;
@@ -1001,7 +1056,8 @@ int frontend(VOID_A)
 
 	internal_status = FNC_FAIL;
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
-	while ((ch = ptygetkey()) >= 0) sendword(emufd, ch);
+	while ((ch = ptygetkey()) >= 0) sendkey(ch);
+	sendkey(-1);
 	if (!wastty) Xstdiomode();
 
 	if (ch < -1) {

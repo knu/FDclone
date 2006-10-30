@@ -156,6 +156,7 @@ typedef struct _lockbuf_t {
 #define	LCK_FLOCK		0001
 #define	LCK_INVALID		0002
 #define	LCK_STREAM		0004
+#define	LCK_MAXRETRY		32
 
 typedef struct _bindtable {
 	short key;
@@ -425,6 +426,7 @@ typedef struct _builtintable {
 #define	TCH_CHANGE		00100
 #define	TCH_MASK		00200
 #define	TCH_MODEEXE		00400
+#define	TCH_IGNOREERR		01000
 
 #define	ATR_EXCLUSIVE		3
 #define	ATR_MODEONLY		1

@@ -235,9 +235,10 @@ typedef struct _dosiobuf {
 #define	fd2clust(fd)	(dd2clust(dosflist[fd]._file))
 #define	fd2offset(fd)	(dd2offset(dosflist[fd]._file))
 
-#define	dosfeof(p)	(((((dosFILE *)(p)) -> _flag) & O_IOEOF) != 0)
-#define	dosferror(p)	(((((dosFILE *)(p)) -> _flag) & O_IOERR) != 0)
-#define	dosclearerr(p)	(((dosFILE *)(p)) -> _flag &= ~(O_IOERR | O_IOEOF))
+#define	dosfflag(p)	(((dosFILE *)((VOID_P)(p))) -> _flag)
+#define	dosfeof(p)	((dosfflag(p) & O_IOEOF) != 0)
+#define	dosferror(p)	((dosfflag(p) & O_IOERR) != 0)
+#define	dosclearerr(p)	(dosfflag(p) &= ~(O_IOERR | O_IOEOF))
 
 typedef struct _dosdirdesc {
 	int dd_id;

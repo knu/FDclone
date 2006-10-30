@@ -621,7 +621,9 @@ extern VOID readunitable __P_((int));
 extern VOID discardunitable __P_((VOID_A));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
-#endif
+extern VOID ucs2normalization __P_((u_short *, int *, int, u_int, int));
+extern u_int ucs2denormalization __P_((u_short *, int *, int));
+#endif	/* _USEUNICODE */
 #ifndef	_NOKANJICONV
 # ifdef	_USEUNICODE
 extern int ucs2toutf8 __P_((char *, int, u_int));
@@ -641,7 +643,7 @@ extern char *convget __P_((char *, char *, int));
 extern char *convput __P_((char *, char *, int, int, char *, int *));
 
 /* input.c */
-extern int intrkey __P_((VOID_A));
+extern int intrkey __P_((int));
 extern int Xgetkey __P_((int, int));
 extern int kanjiputs2 __P_((char *, int, int));
 extern VOID cputspace __P_((int));
@@ -748,6 +750,7 @@ extern int nextwin __P_((VOID_A));
 
 /* browse.c */
 extern VOID helpbar __P_((VOID_A));
+extern u_int getfmode __P_((int));
 extern int putmode __P_((char *, u_int, int));
 #ifdef	HAVEFLAGS
 extern int putflags __P_((char *, u_long));

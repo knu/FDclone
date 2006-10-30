@@ -49,11 +49,16 @@ extern VOID (*ime_locate)__P_((int, int));
 #define	LEFTMARGIN	0
 #define	RIGHTMARGIN	2
 
+#ifdef	_NOKANJICONV
+#define	getinkcode()	NOCNV
+#else
+static int NEAR getinkcode __P_((VOID_A));
+#endif
 #ifndef	_NOEDITMODE
 static int NEAR getemulatekey __P_((int, CONST char []));
 #endif
 #ifdef	_NOIME
-#define	getkey4		getkey3
+#define	getkey4(s)	getkey3(s, getinkcode())
 #else
 static int NEAR getimebuf __P_((char *, int *));
 static int NEAR getime __P_((int, int *, int));
@@ -108,6 +113,10 @@ static int NEAR insertstr __P_((char *, int, int, int *, int *));
 #ifndef	_NOCOMPLETE
 static VOID NEAR selectfile __P_((int, char **));
 static int NEAR completestr __P_((int, int, int));
+#endif
+#ifndef	_NOKANJICONV
+static u_int NEAR getucs2 __P_((int));
+static VOID NEAR ungetch3 __P_((int));
 #endif
 static int NEAR getch3 __P_((VOID_A));
 static int NEAR getkanjikey __P_((char *, int));
@@ -211,18 +220,55 @@ static char *searchstr = NULL;
 #ifndef	_NOIME
 static int imemode = 0;
 #endif
+#ifndef	_NOKANJICONV
+static u_char ungetbuf3[MAXUTF8LEN * MAXNFLEN];
+static int ungetnum3 = 0;
+#endif
 
 
-int intrkey(VOID_A)
+#ifndef	_NOKANJICONV
+static int NEAR getinkcode(VOID_A)
 {
-	int c;
+	int code;
 
-	if (kbhit2(0L) && ((c = getkey2(0)) == cc_intr || c == K_ESC)) {
-		warning(0, INTR_K);
-		return(1);
+	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
+# ifndef	_NOPTY
+	if (parentfd >= 0 && ptyinkcode != NOCNV) code = ptyinkcode;
+# endif
+
+	return(code);
+}
+#endif	/* !_NOKANJICONV */
+
+int intrkey(key)
+int key;
+{
+	int c, duperrno;
+
+	duperrno = errno;
+	if (ttyio < 0 || !kbhit2(0L)) c = EOF;
+	else if ((c = getch2()) == EOF) /*EMPTY*/;
+	else if (c != K_ESC) /*EMPTY*/;
+	else if (kbhit2(WAITKEYPAD * 1000L)) {
+		ungetch2(c);
+		c = EOF;
 	}
 
-	return(0);
+	if (c == EOF) /*EMPTY*/;
+	else if (c == cc_intr || (key >= 0 && c == key)) {
+		if (isttyiomode) warning(0, INTR_K);
+		else {
+			fprintf2(stderr, INTR_K);
+			fputnl(stderr);
+		}
+	}
+	else {
+		ungetch2(c);
+		c = EOF;
+	}
+	errno = duperrno;
+
+	return((c == EOF) ? 0 : 1);
 }
 
 #ifndef	_NOEDITMODE
@@ -246,14 +292,10 @@ static int NEAR getimebuf(buf, ptrp)
 char *buf;
 int *ptrp;
 {
-	int c, code;
+	int c;
 
-	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
-# ifndef	_NOPTY
-	if (parentfd >= 0 && ptyinkcode != NOCNV) code = ptyinkcode;
-# endif
-
-	if (code != EUC || !isekana(buf, *ptrp)) c = (u_char)(buf[*ptrp]);
+	if (getinkcode() != EUC || !isekana(buf, *ptrp))
+		c = (u_char)(buf[*ptrp]);
 	else c = mkekana((u_char)(buf[++(*ptrp)]));
 	(*ptrp)++;
 
@@ -326,7 +368,7 @@ int sig;
 	int c;
 
 	if (imemode && getime(sig, &c, 0) >= 0) return(c);
-	return(getkey3(sig));
+	return(getkey3(sig, getinkcode()));
 }
 #endif	/* !_NOIME */
 
@@ -348,6 +390,9 @@ int sig, eof;
 		return('\0');
 	}
 
+#ifndef	_NOKANJICONV
+	if (ungetnum3 > 0) return((int)ungetbuf3[--ungetnum3]);
+#endif
 	sig = sigalrm(sig);
 	ch = getkey4(sig);
 	if (eof && (ch != cc_eof || prev == ch)) eof = 0;
@@ -1707,7 +1752,8 @@ char **argv;
 				Xcputs2("wish to see them all? (y or n)");
 				Xtflush();
 				for (;;) {
-					if ((i = getkey2(0)) < K_MIN) {
+					i = getkey3(0, getinkcode());
+					if (i < K_MIN) {
 						i = toupper2(i);
 						if (i == 'Y' || i == 'N')
 							break;
@@ -1857,7 +1903,7 @@ int comline, cont, h;
 	}
 	if (comline && top > 0) {
 		for (i = top - 1; i >= 0; i--)
-			if (inputbuf[i] != ' ' && inputbuf[i] != '\t') break;
+			if (!isblank2(inputbuf[i])) break;
 		if (i >= 0 && !strchr(SHELL_OPERAND, inputbuf[i])) comline = 0;
 	}
 # ifndef	_NOORIGSHELL
@@ -2082,11 +2128,53 @@ int comline, cont, h;
 }
 #endif	/* !_NOCOMPLETE */
 
+#ifndef	_NOKANJICONV
+static u_int NEAR getucs2(ch)
+int ch;
+{
+	char buf[MAXUTF8LEN + 1];
+	int n;
+
+	n = 0;
+	if (ch & 0xff00) return((u_int)-1);
+	buf[n++] = ch;
+	if (!ismsb(ch)) /*EMPTY*/;
+	else if ((ch = getch3()) == EOF) return((u_int)-1);
+	else {
+		buf[n++] = ch;
+		if (isutf2(buf[0], buf[1])) /*EMPTY*/;
+		else if ((ch = getch3()) == EOF) {
+			ungetch3(buf[1]);
+			return((u_int)-1);
+		}
+		else buf[n++] = ch;
+	}
+	buf[n] = '\0';
+
+	return(ucs2fromutf8((u_char *)buf, NULL));
+}
+
+static VOID NEAR ungetch3(c)
+int c;
+{
+	if (ungetnum3 >= arraysize(ungetbuf3)) return;
+	memmove((char *)&(ungetbuf3[1]), (char *)&(ungetbuf3[0]),
+		ungetnum3 * sizeof(u_char));
+	ungetbuf3[0] = c;
+	ungetnum3++;
+}
+#endif	/* !_NOKANJICONV */
+
 static int NEAR getch3(VOID_A)
 {
 #ifndef	_NOIME
 	int c;
+#endif
 
+#ifndef	_NOKANJICONV
+	if (ungetnum3 > 0) return((int)ungetbuf3[--ungetnum3]);
+#endif
+#ifndef	_NOIME
 	if (imemode) return((getime(0, &c, 1) >= 0) ? c : EOF);
 #endif
 	if (!kbhit2(WAITMETA * 1000L)) return(EOF);
@@ -2098,8 +2186,10 @@ char *buf;
 int ch;
 {
 #ifndef	_NOKANJICONV
-	char tmpkanji[3 + 1];
-	int n, code;
+	u_short ubuf[MAXNFLEN];
+	char tmp[MAXUTF8LEN + 1];
+	u_int u;
+	int i, n, len, code;
 #endif
 	int ch2;
 
@@ -2119,54 +2209,48 @@ int ch;
 	}
 # endif
 #else	/* !_NOKANJICONV */
-	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
-# ifndef	_NOPTY
-	if (parentfd >= 0 && ptyinkcode != NOCNV) code = ptyinkcode;
-# endif
-
+	code = getinkcode();
 	if (code == EUC && isekana2(ch)) {
-		tmpkanji[0] = (char)C_EKANA;
-		tmpkanji[1] = (ch & 0xff);
-		tmpkanji[2] = '\0';
-		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
+		tmp[0] = (char)C_EKANA;
+		tmp[1] = (ch & 0xff);
+		tmp[2] = '\0';
+		kanjiconv(buf, tmp, MAXKLEN, code, DEFCODE, L_INPUT);
 		return(1);
 	}
 	if (code == SJIS && iskana2(ch)) {
-		tmpkanji[0] = ch;
-		tmpkanji[1] = '\0';
-		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
+		tmp[0] = ch;
+		tmp[1] = '\0';
+		kanjiconv(buf, tmp, MAXKLEN, code, DEFCODE, L_INPUT);
 		return(1);
 	}
 	if (code >= UTF8) {
-		if ((ch & 0xff00) || !ismsb(ch)) /*EMPTY*/;
-		else if ((ch2 = getch3()) == EOF) {
-			buf[0] = '\0';
-			return(-1);
+		i = 0;
+		for (;;) {
+			if ((u = getucs2(ch)) == (u_int)-1) {
+				if (i) ungetch3(ch);
+				buf[0] = '\0';
+				return(-1);
+			}
+			ubuf[i++] = u;
+			if (i >= MAXNFLEN) break;
+			if (code != M_UTF8 || (ch = getch3()) == EOF) break;
 		}
-		else if (isutf2(ch, ch2)) {
-			tmpkanji[0] = ch;
-			tmpkanji[1] = ch2;
-			tmpkanji[2] = '\0';
-			n = kanjiconv(buf, tmpkanji, 2,
-				code, DEFCODE, L_INPUT);
-			return(n);
+		len = i;
+		i = 0;
+		if (!len) u = ch;
+		else if (code != M_UTF8) u = ubuf[i++];
+		else u = ucs2denormalization(ubuf, &i, code - UTF8);
+
+		while (i < len) {
+			tmp[ucs2toutf8(tmp, 0, ubuf[i++])] = '\0';
+			for (n = 0; tmp[n]; n++) ungetch3(tmp[n]);
 		}
-		else if ((n = getch3()) == EOF) {
-			buf[0] = '\0';
-			return(-1);
-		}
-		else {
-			tmpkanji[0] = ch;
-			tmpkanji[1] = ch2;
-			tmpkanji[2] = n;
-			tmpkanji[3] = '\0';
-			n = kanjiconv(buf, tmpkanji, 2,
-				code, DEFCODE, L_INPUT);
+		tmp[ucs2toutf8(tmp, 0, u)] = '\0';
+		n = kanjiconv(buf, tmp, MAXKLEN, code, DEFCODE, L_INPUT);
 # ifdef	CODEEUC
-			if (isekana(buf, 0)) n = 1;
+		if (isekana(buf, 0)) n = 1;
 # endif
-			return(n);
-		}
+		return(n);
 	}
 #endif	/* !_NOKANJICONV */
 
@@ -2180,10 +2264,10 @@ int ch;
 		buf[1] = ch2;
 		buf[2] = '\0';
 #else
-		tmpkanji[0] = ch;
-		tmpkanji[1] = ch2;
-		tmpkanji[2] = '\0';
-		kanjiconv(buf, tmpkanji, 2, code, DEFCODE, L_INPUT);
+		tmp[0] = ch;
+		tmp[1] = ch2;
+		tmp[2] = '\0';
+		kanjiconv(buf, tmp, MAXKLEN, code, DEFCODE, L_INPUT);
 #endif
 		return(2);
 	}
@@ -2589,7 +2673,7 @@ int def, comline, h;
 #if	FD >= 2
 	ALLOC_T searchsize;
 #endif
-	char *tmphist, buf[2 + 1];
+	char *tmphist, buf[MAXKLEN + 1];
 	int i, n, ch, ch2, ovptr, hist, quote, sig;
 
 	subwindow = 1;
@@ -2630,7 +2714,7 @@ int def, comline, h;
 		ch2 = ch;
 		ovptr = vptr;
 		if (quote) {
-			i = ch = getkey2(sigalrm(sig));
+			i = ch = getkey2(sigalrm(sig), getinkcode());
 			quote = 0;
 #if	MSDOS
 			switch (i) {
@@ -2943,10 +3027,9 @@ int def, comline, h;
 				keyflush();
 #ifndef	_NOCOMPLETE
 				if (!completable(h) || !selectlist) break;
-				i = completestr(0, -1, h);
-				if (i < 0) break;
-				if (iseol(vptr)) ovptr = -1;
 				ch = '\0';
+				i = completestr(0, -1, h);
+				if (i >= 0 && iseol(vptr)) ovptr = -1;
 #endif	/* !_NOCOMPLETE */
 				break;
 			case K_ESC:
@@ -3490,7 +3573,7 @@ char *s;
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
 	keyflush();
 	do {
-		getkey2(sigalrm(1));
+		getkey3(sigalrm(1), getinkcode());
 	} while (kbhit2(WAITAFTERWARN * 1000L));
 	if (!wastty) Xstdiomode();
 

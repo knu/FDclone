@@ -65,7 +65,7 @@ extern int dosdrive;
 #endif	/* !L_SET */
 
 #ifndef	NOFLOCK
-static int NEAR fcntllock __P_((int, int));
+static int NEAR fcntllock __P_((char *, int, int));
 #endif
 static char *NEAR excllock __P_((char *, int));
 #ifdef	_NODOSDRIVE
@@ -427,7 +427,8 @@ char *dir;
 }
 
 #ifndef	NOFLOCK
-static int NEAR fcntllock(fd, mode)
+static int NEAR fcntllock(path, fd, mode)
+char *path;
 int fd, mode;
 {
 	static int lockmode[] = {
@@ -435,32 +436,64 @@ int fd, mode;
 		F_RDLCK, F_WRLCK, F_UNLCK,
 # else	/* !USEFCNTLOCK */
 #  ifdef	USELOCKF
-		F_LOCK, F_LOCK, F_ULOCK,
+		F_TLOCK, F_TLOCK, F_ULOCK,
 #  else
-		LOCK_SH, LOCK_EX, LOCK_UN,
+		LOCK_SH | LOCK_NB, LOCK_EX | LOCK_NB, LOCK_UN,
 #  endif
 # endif	/* !USEFCNTLOCK */
 	};
 # ifdef	USEFCNTLOCK
 	struct flock lock;
 # endif
+	int i, n;
 
 # ifndef	_NODOSDRIVE
 	if (fd >= DOSFDOFFSET) return(0);
 # endif
 
+	n = -1;
+	errno = 0;
+	for (i = 0; i < LCK_MAXRETRY; i++) {
 # ifdef	USEFCNTLOCK
-	lock.l_type = lockmode[mode];
-	lock.l_start = lock.l_len = (off_t)0;
-	lock.l_whence = SEEK_SET;
-	return(fcntl(fd, F_SETLKW, &lock));
+		lock.l_type = lockmode[mode];
+		lock.l_start = lock.l_len = (off_t)0;
+		lock.l_whence = SEEK_SET;
+		n = fcntl(fd, F_SETLK, &lock);
 # else	/* !USEFCNTLOCK */
 #  ifdef	USELOCKF
-	return(lockf(fd, lockmode[mode], (off_t)0));
+		n = lockf(fd, lockmode[mode], (off_t)0);
 #  else
-	return(flock(fd, lockmode[mode]));
+		n = flock(fd, lockmode[mode]);
 #  endif
 # endif	/* !USEFCNTLOCK */
+		if (n >= 0) break;
+# ifdef	EACCES
+		else if (errno == EACCES) /*EMPTY*/;
+# endif
+# ifdef	EAGAIN
+		else if (errno == EAGAIN) /*EMPTY*/;
+# endif
+# ifdef	EWOULDBLOCK
+		else if (errno == EWOULDBLOCK) /*EMPTY*/;
+# endif
+		else break;
+
+		if (intrkey(-1)) break;
+# if	!MSDOS || defined (DJGPP)
+                usleep(100000L);
+# endif
+	}
+	if (i >= LCK_MAXRETRY) {
+#ifdef	ETIMEDOUT
+		errno = ETIMEDOUT;
+#else
+		errno = EEXIST;
+#endif
+		if (isttyiomode) warning(-1, path);
+		else perror2(path);
+	}
+
+	return(n);
 }
 #endif	/* !NOFLOCK */
 
@@ -516,15 +549,28 @@ int mode;
 #else
 	snprintf2(path, sizeof(path), "%s.%s", file, LOCKEXT);
 #endif
-	for (;;) {
+
+	fd = -1;
+	for (i = 0; i < LCK_MAXRETRY; i++) {
 		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
 			0666 & ~tmpumask);
-		if (fd >= 0) break;
-		if (errno != EEXIST) return(NULL);
+		if (fd >= 0 || errno != EEXIST) break;
+
+		if (intrkey(-1)) break;
 #if	!MSDOS || defined (DJGPP)
 		usleep(100000L);
 #endif
 	}
+	if (i >= LCK_MAXRETRY) {
+#ifdef	ETIMEDOUT
+		errno = ETIMEDOUT;
+#else
+		errno = EEXIST;
+#endif
+		if (isttyiomode) warning(-1, path);
+		else perror2(path);
+	}
+	if (fd < 0) return(NULL);
 
 	Xclose(fd);
 	cp = strdup2(path);
@@ -559,13 +605,13 @@ int flags, mode;
 			if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT)
 				return(NULL);
 		}
-		else if (fcntllock(fd, lckmode) < 0) {
+		else if (fcntllock(path, fd, lckmode) < 0) {
 			Xclose(fd);
 			lckflags &= ~LCK_FLOCK;
 		}
 		else if ((flags & O_TRUNC) && Xftruncate(fd, (off_t)0) < 0) {
 			duperrno = errno;
-			VOID_C fcntllock(fd, LCK_UNLOCK);
+			VOID_C fcntllock(path, fd, LCK_UNLOCK);
 			Xclose(fd);
 			errno = duperrno;
 			return(NULL);
@@ -625,7 +671,7 @@ lockbuf_t *lck;
 		if (!(lck -> flags & LCK_INVALID)) {
 #ifndef	NOFLOCK
 			if (lck -> flags & LCK_FLOCK)
-				VOID_C fcntllock(lck -> fd, LCK_UNLOCK);
+				VOID_C fcntllock(NULL, lck -> fd, LCK_UNLOCK);
 #endif
 			if (lck -> flags & LCK_STREAM) Xfclose(lck -> fp);
 			else Xclose(lck -> fd);
@@ -738,6 +784,7 @@ struct stat *stp;
 		}
 	}
 #endif	/* !NOUID */
+	if (stp -> st_nlink & TCH_IGNOREERR) ret = 0;
 	if (ret < 0) errno = duperrno;
 
 	return(ret);
@@ -943,7 +990,7 @@ struct stat *stp1, *stp2;
 		errno = duperrno;
 		return(-1);
 	}
-	stp1 -> st_nlink = (TCH_ATIME | TCH_MTIME);
+	stp1 -> st_nlink = (TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
 #ifdef	_USEDOSCOPY
 	if (touchfile(dest, stp1) < 0) return(-1);
 #else
@@ -1005,7 +1052,7 @@ struct stat *stp1, *stp2;
 		return(-1);
 
 	stp1 -> st_nlink = (TCH_MODE | TCH_UID | TCH_GID
-		| TCH_ATIME | TCH_MTIME);
+		| TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
 	return (touchfile(dest, stp1));
 }
 
@@ -1086,8 +1133,7 @@ char *dir;
 #endif
 	deftmpdir = strdup2(path);
 #if	MSDOS
-	n = getcurdrv();
-	*path = (isupper2(n)) ? toupper2(*path) : tolower2(*path);
+	*path = (isupper2(getcurdrv())) ? toupper2(*path) : tolower2(*path);
 #endif
 
 	mask = 0777 & ~tmpumask;

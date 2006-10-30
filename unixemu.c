@@ -54,11 +54,15 @@ char *path, *buf;
 	}
 	if (buf) {
 #ifndef	_NOUSELFN
-		if (shortname(path, buf) == buf);
+		if (shortname(path, buf) == buf) /*EMPTY*/;
 		else
 #endif
-		strcpy(buf, path);
+		unixrealpath(path, buf);
 	}
+#ifdef	DOUBLESLASH
+	if (isdslash(path)) drv = '_';
+	else
+#endif
 	drv = _dospath(path);
 
 	return((drv) ? drv : getcurdrv());
@@ -80,9 +84,9 @@ char *path;
 int dospath3(path)
 char *path;
 {
-	int drive;
+	int i, drive;
 
-	if ((drive = supportLFN(path)) >= 0 || drive <= -3) return(0);
+	if ((i = supportLFN(path)) >= 0 || i <= -3) return(0);
 
 	return((drive = _dospath(path)) ? drive : getcurdrv());
 }
@@ -93,6 +97,9 @@ char *path, *buf;
 	char *cp, tmp[MAXPATHLEN];
 	int i, drive;
 
+#ifdef	DOUBLESLASH
+	if (isdslash(path)) return(0);
+#endif
 	if ((drive = _dospath(path))) cp = path + 2;
 	else {
 		cp = path;

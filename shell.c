@@ -25,6 +25,12 @@ extern char *shortname __P_((char *, char *));
 #define	O_TEXT		0
 #endif
 
+typedef struct _localetable {
+	char *env;
+	char *val;
+	char *org;
+} localetable;
+
 extern int mark;
 extern off_t marksize;
 extern char fullpath[];
@@ -95,6 +101,17 @@ short savehist[2] = {0, 0};
 int n_args = 0;
 
 static short histbufsize[2] = {0, 0};
+static localetable localelist[] = {
+	{"LC_COLLATE", "C", NULL},
+	{"LC_CTYPE", "", NULL},
+	{"LC_MESSAGES", "C", NULL},
+	{"LC_MONETARY", "C", NULL},
+	{"LC_NUMERIC", "C", NULL},
+	{"LC_TIME", "C", NULL},
+	{"LC_ALL", NULL, NULL},
+	{"LANG", "C", NULL},
+};
+#define	LOCALELISTSIZ	arraysize(localelist)
 
 
 static int NEAR checksc(buf, ptr, arg)
@@ -205,11 +222,13 @@ int flags;
 	int len, optr;
 
 	if (!arg || !*arg) return(checksc(*bufp, ptr, NULL) - ptr);
-	if (!dir || !*dir) {
+	if (!dir) {
 #if	MSDOS && !defined (_NOUSELFN)
 		if ((flags & F_TOSFN) && shortname(arg, path) == path)
 			arg = path;
+		else
 #endif
+		arg = convput(conv, arg, 1, 0, NULL, NULL);
 	}
 	else {
 		strcatdelim2(path, dir, arg);
@@ -220,13 +239,12 @@ int flags;
 			if (arg[len] == _SC_) arg[len] = '/';
 		}
 #endif
+#ifndef	_NOKANJIFCONV
+		arg = kanjiconv2(conv, arg,
+			MAXPATHLEN - 1, DEFCODE, fnamekcode, L_FNAME);
+#endif
 	}
 
-	if (arg != path) arg = convput(conv, arg, 1, 0, NULL, NULL);
-#ifndef	_NOKANJIFCONV
-	else arg = kanjiconv2(conv, arg,
-		MAXPATHLEN - 1, DEFCODE, fnamekcode, L_FNAME);
-#endif
 	optr = ptr;
 	ptr = checksc(*bufp, ptr, arg);
 	arg = killmeta(arg);
@@ -1298,7 +1316,7 @@ int flags;
 	char *cp, *tmp;
 	int n, ret;
 
-	while (*command == ' ' || *command == '\t') command++;
+	command = skipspace(command);
 	if ((cp = evalalias(command))) command = cp;
 
 	n = sigvecset(0);
@@ -1462,17 +1480,28 @@ int flags;
 	macrostat st;
 	FILE *fp;
 	char *tmp, *lang;
+	int i;
 
 	internal_status = FNC_FAIL;
 	st.flags = flags;
 	if (isinternalcomm(command)) st.flags |= F_ARGSET;
 
 	if (!(tmp = evalcommand(command, arg, &st))) return(NULL);
-	if ((lang = strdup2(getenv2("LANG")))) setenv2("LANG", "C", 1);
+	for (i = 0; i < LOCALELISTSIZ; i++) {
+		localelist[i].org = strdup2(getenv2(localelist[i].env));
+		if (!(localelist[i].val) || *(localelist[i].val)) {
+			setenv2(localelist[i].env, localelist[i].val, 1);
+			continue;
+		}
+		lang = getenv2("LC_ALL");
+		if (!lang || !*lang) lang = getenv2(localelist[i].env);
+		if (!lang || !*lang) lang = getenv2("LANG");
+		setenv2(localelist[i].env, lang, 1);
+	}
 	fp = popen2(tmp);
-	if (lang) {
-		setenv2("LANG", lang, 1);
-		free(lang);
+	for (i = 0; i < LOCALELISTSIZ; i++) {
+		setenv2(localelist[i].env, localelist[i].org, 1);
+		if (localelist[i].org) free(localelist[i].org);
 	}
 	free(tmp);
 

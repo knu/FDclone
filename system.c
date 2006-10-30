@@ -125,6 +125,7 @@ extern int execinternal __P_((int, int, char *[]));
 extern int completebuiltin __P_((char *, int, int, char ***));
 extern int completeinternal __P_((char *, int, int, char ***));
 # endif
+extern VOID initenv __P_((VOID_A));
 extern VOID evalenv __P_((char *, int));
 extern int underhome __P_((char *));
 extern int replaceargs __P_((int *, char ***, char **, int));
@@ -5746,7 +5747,7 @@ int *ptrp, *tptrp;
 				addarg(&trp, rp, NULL, tptrp, 0);
 				do {
 					(*ptrp)++;
-				} while (s[*ptrp] == ' ' || s[*ptrp] == '\t');
+				} while (isblank2(s[*ptrp]));
 
 				/* for "esac " */
 				if ((stype = getparenttype(trp)) != STT_INCASE
@@ -11237,6 +11238,7 @@ char *argv[], *envp[];
 	setshellvar(envp);
 	if (initshell(argc, argv) < 0) return(RET_FAIL);
 #ifdef	FD
+	initenv();
 	if (interactive) {
 # if	MSDOS
 		inittty(1);

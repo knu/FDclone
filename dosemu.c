@@ -75,7 +75,7 @@ char *path, *buf;
 
 	drive = *cp;
 	if (!buf) return(drive);
-	len = MAXPATHLEN - 1;
+	len = sizeof(tmp) - 1;
 	if (cp == buf) {
 		strncpy2(tmp, cp, len);
 		cp = tmp;
@@ -256,14 +256,14 @@ DIR *dirp;
 	if (!dp) return(NULL);
 
 	dest = ((struct dirent *)&buf) -> d_name;
-#ifdef	CYGWIN
+# ifdef	CYGWIN
 	/* Some versions of Cygwin have neither d_fileno nor d_ino */
 	if (dos) {
 		src = ((struct dosdirent *)dp) -> d_name;
 		wrap_reclen(&buf) = ((struct dosdirent *)dp) -> d_reclen;
 	}
 	else
-#endif
+# endif
 	{
 		src = dp -> d_name;
 		memcpy((char *)(&buf), (char *)dp, dest - (char *)&buf);
@@ -418,7 +418,11 @@ struct stat *stp;
 	char conv[MAXPATHLEN];
 	int n;
 
+#ifdef	_NOROCKRIDGE
+	path = convput(conv, path, 1, 0, NULL, NULL);
+#else
 	path = convput(conv, path, 1, 0, rpath, NULL);
+#endif
 #ifndef	_NODOSDRIVE
 	if (_dospath(path)) n = doslstat(path, stp);
 	else
@@ -475,7 +479,8 @@ int bufsiz;
 
 	path = convput(conv, path, 1, 0, lbuf, &c);
 #ifndef	_NOROCKRIDGE
-	if (*lbuf && (n = rrreadlink(lbuf, lbuf, MAXPATHLEN)) >= 0) /*EMPTY*/;
+	if (*lbuf && (n = rrreadlink(lbuf, lbuf, sizeof(lbuf) - 1)) >= 0)
+		/*EMPTY*/;
 	else
 #endif
 #ifndef	_NODOSDRIVE
@@ -487,7 +492,7 @@ int bufsiz;
 		lbuf[n] = '\0';
 #ifndef	_NOKANJIFCONV
 		path = kanjiconv2(conv, lbuf,
-			MAXPATHLEN - 1, c, DEFCODE, L_FNAME);
+			strsize(conv), c, DEFCODE, L_FNAME);
 #else
 		path = lbuf;
 #endif

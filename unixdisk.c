@@ -45,6 +45,9 @@ extern int isdelim __P_((char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, char *, char *));
 extern int isdotdir __P_((char *));
+# ifdef	DOUBLESLASH
+extern int isdslash __P_((char *));
+# endif
 extern char curpath[];
 #else
 static int NEAR _dospath __P_((char *));
@@ -55,6 +58,9 @@ static int NEAR isdelim __P_((char *, int));
 static char *NEAR strcatdelim __P_((char *));
 static char *NEAR strcatdelim2 __P_((char *, char *, char *));
 static int NEAR isdotdir __P_((char *));
+# ifdef	DOUBLESLASH
+static int isdslash __P_((char *));
+# endif
 static char curpath[] = ".";
 #endif
 
@@ -96,6 +102,8 @@ static time_t NEAR getdostime __P_((u_int, u_int));
 #ifndef	_NOUSELFN
 static int NEAR putdostime __P_((u_short *, u_short *, time_t));
 #endif
+static int NEAR alter_findfirst __P_((char *, u_int *,
+		struct dosfind_t *, struct lfnfind_t *));
 
 #ifndef	_NODOSDRIVE
 int dosdrive = 0;
@@ -144,6 +152,9 @@ static u_char int25bin[] = {
 };
 static int (far *doint25)__P_((VOID_A)) = NULL;
 #endif	/* !DJGPP && !_NODOSDRIVE */
+#ifdef	DOUBLESLASH
+static int dsdrive = 0;
+#endif
 
 
 #ifndef	FD
@@ -316,6 +327,19 @@ char *s;
 
 	return(0);
 }
+
+# ifdef	DOUBLESLASH
+static int isdslash(s)
+char *s;
+{
+	char *cp;
+
+	if (s[0] != _SC_ || s[1] != _SC_ || !s[2] || s[2] == _SC_) return(0);
+	if ((cp = strdelim(&(s[2]), 0))) return(cp - s);
+
+	return(strlen(s));
+}
+# endif	/* DOUBLESLASH */
 #endif	/* !FD */
 
 #ifdef	DJGPP
@@ -335,6 +359,9 @@ int offset;
 static char *NEAR duplpath(path)
 char *path;
 {
+#ifdef	DOUBLESLASH
+	int len;
+#endif
 	static char buf[MAXPATHLEN];
 	int i, j, ps;
 
@@ -344,6 +371,13 @@ char *path;
 		buf[j++] = path[i++];
 		buf[j++] = path[i++];
 	}
+#ifdef	DOUBLESLASH
+	if ((len = isdslash(path))) {
+		memcpy(buf, path, len);
+		i = j = len;
+	}
+	else
+#endif
 	if (path[i] == _SC_) buf[j++] = path[i++];
 	for (; path[i]; i++) {
 		if (path[i] == _SC_) ps = 1;
@@ -365,6 +399,9 @@ int getcurdrv(VOID_A)
 {
 	int drive;
 
+#ifdef	DOUBLESLASH
+	if (dsdrive) return(dsdrive);
+#endif
 	drive = (dos7access & D7_CAPITAL) ? 'A' : 'a';
 #ifndef	_NODOSDRIVE
 	if (lastdrive >= 0) drive += toupper2(lastdrive) - 'A';
@@ -385,6 +422,14 @@ int drive, nodir;
 	__dpmi_regs reg;
 	char *path;
 	int drv, olddrv;
+
+#ifdef	DOUBLESLASH
+	if (drive == '_') {
+		dsdrive = drive;
+		return(0);
+	}
+	dsdrive = '\0';
+#endif
 
 	errno = EINVAL;
 	if (islower2(drive)) {
@@ -460,6 +505,7 @@ int getdosver(VOID_A)
 }
 
 /*
+ *	 3: enable LFN access, but shared folder
  *	 2: enable LFN access, but FAT32
  *	 1: enable LFN access
  *	 0: do SFN access
@@ -476,7 +522,13 @@ char *path;
 	__dpmi_regs reg;
 	char drive, drv[4], buf[128];
 
+#ifdef	DOUBLESLASH
+	if (isdslash(path)) return(3);
+#endif
 	if (!path || !(drive = _dospath(path))) drive = getcurdrv();
+#ifdef	DOUBLESLASH
+	if (drive == '_') return(3);
+#endif
 #ifndef	_NODOSDRIVE
 	if (checkdrive(toupper2(drive) - 'A') > 0) return(-2);
 #endif
@@ -595,6 +647,9 @@ char *path, *alias;
 # ifndef	BSPATHDELIM
 	adjustpname(alias);
 # endif
+# ifdef	DOUBLESLASH
+	if (isdslash(alias)) return(alias);
+# endif
 
 	if (!path || !(i = _dospath(path))) i = getcurdrv();
 	if (islower2(i)) *alias = tolower2(*alias);
@@ -619,6 +674,7 @@ char *path, *resolved;
 	reg.x.cx = 0;
 #else	/* !_NOUSELFN */
 	switch (supportLFN(path)) {
+		case 3:
 		case 2:
 		case 1:
 			reg.x.ax = 0x7160;
@@ -659,6 +715,9 @@ char *path, *resolved;
 #endif
 #ifndef	BSPATHDELIM
 	adjustpname(resolved);
+#endif
+#ifdef	DOUBLESLASH
+	if (isdslash(resolved)) return(resolved);
 #endif
 
 	if (!path || !(i = _dospath(path))) i = getcurdrv();
@@ -1552,7 +1611,10 @@ struct dosfind_t *result;
 #endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, sizeof(struct dosfind_t));
-	if (int21call(&reg, &sreg) < 0) return(-1);
+	if (int21call(&reg, &sreg) < 0) {
+		if (!errno) errno = ENOENT;
+		return(-1);
+	}
 #ifdef	DJGPP
 	dosmemget(__tb, sizeof(struct dosfind_t), result);
 #endif
@@ -1604,7 +1666,10 @@ struct lfnfind_t *result;
 	reg.x.dx = PTR_OFF(path, sizeof(struct lfnfind_t));
 	sreg.es = PTR_SEG(result);
 	reg.x.di = PTR_OFF(result, 0);
-	if (int21call(&reg, &sreg) < 0) return(-1);
+	if (int21call(&reg, &sreg) < 0) {
+		if (!errno) errno = ENOENT;
+		return(-1);
+	}
 	*fdp = reg.x.ax;
 #ifdef	DJGPP
 	dosmemget(__tb, sizeof(struct lfnfind_t), result);
@@ -2132,6 +2197,7 @@ int size;
 #ifdef	DJGPP
 	char tmp[MAXPATHLEN];
 #endif
+	char *cp;
 	int drive;
 
 	drive = getcurdrv();
@@ -2141,9 +2207,15 @@ int size;
 	}
 	else
 #endif
-	if ((!pathname && !(pathname = (char *)malloc(size)))
-	|| !unixgetcurdir(gendospath(pathname, drive, _SC_), 0))
-		return(NULL);
+	if (!pathname && !(pathname = (char *)malloc(size))) return(NULL);
+	else {
+#ifdef	DOUBLESLASH
+		if (drive == '_') cp = pathname;
+		else
+#endif
+		cp = gendospath(pathname, drive, _SC_);
+		if (!unixgetcurdir(cp, 0)) return(NULL);
+	}
 
 	*pathname = (dos7access & D7_CAPITAL)
 		? toupper2(*pathname) : tolower2(*pathname);
@@ -2256,7 +2328,7 @@ statfs_t *buf;
 	}
 	else
 # endif
-	if (i == 2) {
+	if (i >= 2) {
 		reg.x.ax = 0x7303;
 		reg.x.cx = sizeof(fsbuf);
 # ifdef	DJGPP
@@ -2304,58 +2376,83 @@ statfs_t *buf;
 	return(0);
 }
 
+/*ARGSUSED*/
+static int NEAR alter_findfirst(path, fdp, dbuf, lbuf)
+char *path;
+u_int *fdp;
+struct dosfind_t *dbuf;
+struct lfnfind_t *lbuf;
+{
+	char *cp, tmp[MAXPATHLEN];
+	int n, len;
+
+#ifndef	_NOUSELFN
+	if (fdp) n = lfn_findfirst(fdp, path, SEARCHATTRS, lbuf);
+	else
+#endif
+	n = dos_findfirst(path, SEARCHATTRS, dbuf);
+	if (n >= 0) return(n);
+	if (errno != ENOENT) return(-1);
+
+	if ((cp = strrdelim(path, 1))) cp++;
+	else cp = path;
+
+	if (isdotdir(cp) == 1) {
+		len = cp - path;
+		memcpy(tmp, path, len);
+		strcpy(&(tmp[len]), curpath);
+#ifndef	_NOUSELFN
+		if (fdp) n = lfn_findfirst(fdp, tmp, SEARCHATTRS, lbuf);
+		else
+#endif
+		n = dos_findfirst(tmp, SEARCHATTRS, dbuf);
+	}
+#ifdef	DOUBLESLASH
+	else {
+		if (isdslash(path)) return(-1);
+		else if (_dospath(path)) /*EMPTY*/;
+		else if (getcurdrv() == '_') return(-1);
+#endif
+		n = dos_findfirst(path, DS_IFLABEL, dbuf);
+	}
+
+	return(n);
+}
+
 int unixstat(path, stp)
 char *path;
 struct stat *stp;
 {
 #ifndef	_NOUSELFN
+# ifndef	_NODOSDRIVE
+	char buf[MAXPATHLEN];
+# endif
 	struct lfnfind_t lbuf;
 	u_int fd;
-#endif
+#endif	/* !_NOUSELFN */
 	struct dosfind_t dbuf;
 	int i;
 
-#ifdef	_NOUSELFN
-	if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
-		if (errno && errno != ENOENT) return(-1);
-		if (isdotdir(path) == 1)
-			i = dos_findfirst(curpath, SEARCHATTRS, &dbuf);
-		else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
+	if (strpbrk(path, "*?")) {
+		errno = ENOENT;
+		return(-1);
 	}
+#ifdef	_NOUSELFN
+	i = alter_findfirst(path, NULL, &dbuf, NULL);
 #else	/* !_NOUSELFN */
+	fd = (u_int)-1;
 	i = supportLFN(path);
 # ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN];
-
 		dependdosfunc = 0;
 		if (dosstat(regpath(path, buf), stp) >= 0) return(0);
 		else if (!dependdosfunc) return(-1);
 	}
-# endif	/* !_NODOSDRIVE */
-	if (i <= 0) {
-		fd = (u_int)-1;
-		if ((i = dos_findfirst(path, SEARCHATTRS, &dbuf)) < 0) {
-			if (errno && errno != ENOENT) return(-1);
-			if (isdotdir(path) == 1)
-				i = dos_findfirst(curpath, SEARCHATTRS, &dbuf);
-			else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
-		}
-	}
-	else {
-		if ((i = lfn_findfirst(&fd, path, SEARCHATTRS, &lbuf)) < 0) {
-			if (errno && errno != ENOENT) return(-1);
-			if (isdotdir(path) == 1)
-				i = lfn_findfirst(&fd, curpath,
-					SEARCHATTRS, &lbuf);
-			else i = dos_findfirst(path, DS_IFLABEL, &dbuf);
-		}
-	}
+# endif
+	if (i <= 0) i = alter_findfirst(path, NULL, &dbuf, &lbuf);
+	else i = alter_findfirst(path, &fd, &dbuf, &lbuf);
 #endif	/* !_NOUSELFN */
-	if (i < 0) {
-		if (!errno) errno = ENOENT;
-		return(-1);
-	}
+	if (i < 0) return(-1);
 
 #ifndef	_NOUSELFN
 	if (fd != (u_int)-1) {
@@ -2541,7 +2638,7 @@ FILE *unixfopen(path, type)
 char *path, *type;
 {
 	FILE *fp;
-	int i, flags;
+	int i, fd, flags;
 
 	path = duplpath(path);
 	i = supportLFN(path);
@@ -2580,8 +2677,8 @@ char *path, *type;
 			break;
 	}
 
-	if ((i = unixopen(path, flags, 0666)) < 0) return(NULL);
+	if ((fd = unixopen(path, flags, 0666)) < 0) return(NULL);
 
-	return(fdopen(i, type));
+	return(fdopen(fd, type));
 }
 #endif	/* !_NOUSELFN */

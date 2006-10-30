@@ -30,8 +30,6 @@ extern int sizeinfo;
 extern off_t marksize;
 extern namelist filestack[];
 extern char fullpath[];
-extern char typesymlist[];
-extern u_short typelist[];
 #ifndef	_NOCOLOR
 extern int ansicolor;
 #endif
@@ -149,7 +147,9 @@ static char *form_tar[] = {
 #define	isarchbr(l)	(((l) -> topskip) < (u_char)255)
 #endif	/* FD < 2 */
 
-#define	iswhitespace(c)	((c) == ' ' || (c) == '\t')
+#define	IGNORETYPESYM	"-VMNLhC"
+#define	SYMLINKSTR	"->"
+#define	GNULINKSTR	"link to"
 
 #ifndef	_NOBROWSE
 static VOID NEAR copyargvar __P_((int, char **));
@@ -169,6 +169,9 @@ static char *NEAR checkspace __P_((char *, int *));
 #define	readfname	strndup2
 # else
 static char *NEAR readfname __P_((char *, int));
+# endif
+# ifndef	NOSYMLINK
+static char *NEAR readlinkname __P_((char *, char *));
 # endif
 static int NEAR readfileent __P_((namelist *, char *, char *, int));
 #else	/* FD < 2 */
@@ -195,6 +198,10 @@ static char *NEAR genfullpath __P_((char *, char *, char *));
 #else
 static char *NEAR genfullpath __P_((char *, char *, char *, char *));
 static int NEAR archdostmpdir __P_((char *, char **, char *));
+#endif
+#ifndef	NOSYMLINK
+static int NEAR archrealpath __P_((char *, char *));
+static int NEAR unpacklink __P_((namelist *, char *));
 #endif
 
 int maxlaunch = 0;
@@ -261,6 +268,13 @@ char archivedir[MAXPATHLEN];
 char **browsevar = NULL;
 #endif
 
+#ifndef	NOSYMLINK
+static CONST strtable linklist[] = {
+	{strsize(SYMLINKSTR), SYMLINKSTR},
+	{strsize(GNULINKSTR), GNULINKSTR},
+};
+#define	LINKLISTSIZ	arraysize(linklist)
+#endif	/* !NOSYMLINK */
 #if	FD >= 2
 static char *autoformat[] = {
 # if	MSDOS
@@ -463,21 +477,18 @@ static int NEAR readattr(tmp, buf)
 namelist *tmp;
 char *buf;
 {
-	int i, c, len;
-	u_int mode;
+	int i, len;
+	u_int n, mode;
 
 	len = strlen(buf);
 	if (len < 9) {
 		mode = (tmp -> st_mode & S_IFMT) | S_IREAD_ALL | S_IWRITE_ALL;
 		while (--len >= 0) {
-			c = tolower2(buf[len]);
-			for (i = 0; typesymlist[i]; i++)
-				if (c == typesymlist[i]) break;
-			if (typesymlist[i]) {
+			if ((n = getfmode(buf[len])) != (u_int)-1) {
 				mode &= ~S_IFMT;
-				mode |= typelist[i];
+				mode |= n;
 			}
-			else switch (c) {
+			else switch (tolower2(buf[len])) {
 				case 'a':
 					mode |= S_ISVTX;
 					break;
@@ -544,13 +555,11 @@ char *buf;
 		else if (buf[i] == 'T') mode |= S_ISVTX;
 		else if (buf[i] != '-') return(0);
 
-		if (len >= 10 && buf[len - 10] != '-') {
-			c = tolower2(buf[len - 10]);
-			for (i = 0; typesymlist[i]; i++)
-				if (c == typesymlist[i]) break;
-			if (!typesymlist[i]) return(0);
+		if (len >= 10 && !strchr(IGNORETYPESYM, buf[len - 10])) {
+			n = getfmode(buf[len - 10]);
+			if (n == (u_int)-1) return(0);
 			mode &= ~S_IFMT;
-			mode |= typelist[i];
+			mode |= n;
 		}
 	}
 	tmp -> st_mode = mode;
@@ -565,14 +574,14 @@ int *scorep;
 {
 	int i, len;
 
-	if (iswhitespace(*s)) {
+	if (isblank2(*s)) {
 		(*scorep)++;
-		for (s++; iswhitespace(*s); s++);
+		s = skipspace(&(s[1]));
 	}
 	for (i = 0; s[len = i]; i++) {
-		if (iswhitespace(s[i])) {
+		if (isblank2(s[i])) {
 			(*scorep)++;
-			for (i++; iswhitespace(s[i]); i++);
+			for (i++; isblank2(s[i]); i++);
 			if (!s[i]) break;
 			*scorep += 4;
 		}
@@ -596,6 +605,24 @@ int len;
 }
 # endif	/* !_NOKANJIFCONV */
 
+# ifndef	NOSYMLINK
+static char *NEAR readlinkname(s, eol)
+char *s, *eol;
+{
+	int i;
+
+	for (i = 0; i < LINKLISTSIZ; i++) {
+		if (&(s[linklist[i].no]) > eol) continue;
+		if (!strncmp(s, linklist[i].str, linklist[i].no)) {
+			s += linklist[i].no;
+			return(skipspace(s));
+		}
+	}
+
+	return(NULL);
+}
+# endif	/* !NOSYMLINK */
+
 static int NEAR readfileent(tmp, line, form, skip)
 namelist *tmp;
 char *line, *form;
@@ -607,11 +634,14 @@ int skip;
 	uid_t uid;
 	gid_t gid;
 # endif
+# ifndef	NOSYMLINK
+	char *lname;
+# endif
 	time_t now;
 	struct tm tm, *tp;
 	off_t n;
 	int i, ch, l, len, hit, err, err2, score;
-	char *cp, *s, *buf, *rawbuf;
+	char *cp, *s, *buf, *eol, *rawbuf;
 
 	if (skip && skip > strlen(form)) return(-1);
 
@@ -630,14 +660,14 @@ int skip;
 	tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
 	score = 0;
 
-	while (*form) if (iswhitespace(*form)) {
-		while (iswhitespace(*line)) line++;
+	while (*form) if (isblank2(*form)) {
+		line = skipspace(line);
 		form++;
 	}
 	else if (*form == '\n') {
 		if (*line != *(form++)) score += 20;
 		else line++;
-		while (iswhitespace(*line)) line++;
+		line = skipspace(line);
 	}
 	else if (*form != '%' || *(++form) == '%') {
 		ch = *(form++);
@@ -686,14 +716,14 @@ int skip;
 		}
 
 		if (len < 0) {
-			if (!iswhitespace(*form)
+			if (!isblank2(*form)
 			&& (*form != '%' || *(form + 1) == '%'))
 				ch = *form;
 			for (len = 0; line[len]; len++) {
 				if (ch) {
 					if (ch == line[len]) break;
 				}
-				else if (iswhitespace(line[len])) break;
+				else if (isblank2(line[len])) break;
 			}
 		}
 
@@ -792,28 +822,31 @@ int skip;
 				tm.tm_sec = i;
 				break;
 			case 'f':
+				eol = &(rawbuf[len]);
+# ifndef	NOSYMLINK
+				lname = NULL;
+# endif
 				for (i = 0; i < len; i++) {
+					cp = &(rawbuf[i]);
 # if	MSDOS
 #  ifdef	BSPATHDELIM
-					if (rawbuf[i] == '/') rawbuf[i] = _SC_;
+					if (*cp == '/') *cp = _SC_;
 #  else
-					if (rawbuf[i] == '\\')
-						rawbuf[i] = _SC_;
+					if (*cp == '\\') *cp = _SC_;
 					if (iskanji1(rawbuf, i)) {
 						i++;
 						continue;
 					}
 #  endif
 # endif	/* MSDOS */
-					if (!iswhitespace(rawbuf[i])) continue;
-					cp = &(rawbuf[i]);
-					for (cp++; iswhitespace(*cp); cp++);
-					if (cp >= &(rawbuf[len])) {
+					if (!isblank2(*cp)) continue;
+					cp = skipspace(&(cp[1]));
+					if (cp >= eol) {
 						if (!ch) i = len;
 						break;
 					}
 # ifndef	NOSYMLINK
-					if (cp[0] == '-' && cp[1] == '>')
+					if ((lname = readlinkname(cp, eol)))
 						break;
 # endif
 				}
@@ -830,17 +863,17 @@ int skip;
 				hit++;
 				err = 0;
 # ifndef	NOSYMLINK
-				while (iswhitespace(*cp)) cp++;
+				if (!lname) break;
+				cp = skipspace(cp);
 				if (ch && cp >= &(line[len])) break;
-				if (cp[0] != '-' || cp[1] != '>') break;
-				for (cp += 2; iswhitespace(*cp); cp++);
-				for (i = 0; cp[i]; i++)
-					if (iswhitespace(cp[i])) break;
+				lname = &(line[lname - rawbuf]);
+				for (i = 0; lname[i]; i++)
+					if (isblank2(lname[i])) break;
 				if (i) {
 					if (tmp -> linkname)
 						free(tmp -> linkname);
-					tmp -> linkname = readfname(cp, i);
-					i = &(cp[i]) - line;
+					tmp -> linkname = readfname(lname, i);
+					i = &(lname[i]) - line;
 					if (i > len) len = i;
 				}
 # endif
@@ -869,7 +902,7 @@ int skip;
 		else if (hit <= err2) score += err2;
 		score += err;
 		line += len;
-		if (!ch) while (iswhitespace(*line)) line++;
+		if (!ch) line = skipspace(line);
 	}
 
 	if (score >= MAXSCORE || !(tmp -> name) || !*(tmp -> name)) {
@@ -939,12 +972,12 @@ int field, *eolp;
 			j++;
 			sp = (j < MAXLAUNCHSEP) ? (int)sep[j] : 255;
 			for (; sp == 255 || i < sp; i++)
-				if (!iswhitespace(line[i])) break;
+				if (!isblank2(line[i])) break;
 			if (f < 0) f = 1;
 			else f++;
 			s = 0;
 		}
-		else if (iswhitespace(line[i])) s = 1;
+		else if (isblank2(line[i])) s = 1;
 		else if (s) {
 			f++;
 			s = 0;
@@ -956,7 +989,7 @@ int field, *eolp;
 			if (eolp) {
 				for (j = i; line[j]; j++) {
 					if ((sp < 255 && j >= sp)
-					|| iswhitespace(line[j]))
+					|| isblank2(line[j]))
 						break;
 				}
 				*eolp = j;
@@ -1372,13 +1405,13 @@ char *s, **argv;
 	for (i = 0; !ret && argv[i]; i++) {
 		s1 = argv[i];
 		s2 = s;
-		if (!iswhitespace(s1[0])) while (iswhitespace(*s2)) s2++;
+		if (!isblank2(s1[0])) s2 = skipspace(s2);
 		len = strlen(s1);
-		if (!len || iswhitespace(s1[len - 1])) s2 = strdup2(s2);
+		if (!len || isblank2(s1[len - 1])) s2 = strdup2(s2);
 		else {
 			len = strlen(s2);
 			for (len--; len >= 0; len--)
-				if (!iswhitespace(s2[len])) break;
+				if (!isblank2(s2[len])) break;
 			s2 = strndup2(s2, ++len);
 		}
 		re = regexp_init(s1, -1);
@@ -1441,7 +1474,7 @@ int *linenop;
 		lvar[++nline] = NULL;
 	}
 
-	if (isttyiomode && intrkey()) return(-2);
+	if (isttyiomode && intrkey(K_ESC)) return(-2);
 #if	FD >= 2
 	if (matchlist(lvar[0], lign)) {
 		free(lvar[0]);
@@ -2526,6 +2559,77 @@ int tr, flags;
 	return((ret) ? 0 : 1);
 }
 
+#ifndef	NOSYMLINK
+static int NEAR archrealpath(path, resolved)
+char *path, *resolved;
+{
+	char *cp, tmp[MAXPATHLEN];
+	int n;
+
+	if (!*path || (n = isdotdir(path)) == 2) /*EMPTY*/;
+	else if (n == 1) {
+		cp = strrdelim(resolved, 0);
+		if (!cp) return(-1);
+		*cp = '\0';
+	}
+	else if ((cp = strdelim(path, 0))) {
+		strncpy2(tmp, path, cp - path);
+		if (archrealpath(tmp, resolved) < 0) return(-1);
+		if (archrealpath(++cp, resolved) < 0) return(-1);
+	}
+	else {
+		cp = strcatdelim(resolved);
+		strncpy2(cp, path, MAXPATHLEN - 1 - (cp - resolved));
+	}
+
+	return(0);
+}
+
+static int NEAR unpacklink(list, dir)
+namelist *list;
+char *dir;
+{
+	namelist duplist;
+	char *cp, path[MAXPATHLEN], duparcdir[MAXPATHLEN];
+	int i, ret;
+
+	if (!(list -> linkname)) return(0);
+
+	if (!islink(list)) cp = list -> linkname;
+	else {
+		strcatdelim2(duparcdir, archivedir, list -> linkname);
+		cp = duparcdir;
+	}
+	*path = '\0';
+	if (archrealpath(cp, path) < 0) return(-1);
+
+	for (i = 0; i < maxarcf; i++) {
+		*duparcdir = '\0';
+		if (archrealpath(arcflist[i].name, duparcdir) < 0) continue;
+		if (!strcmp(path, duparcdir)) break;
+	}
+	if (i >= maxarcf) return(-1);
+
+	if (unpacklink(&(arcflist[i]), dir) < 0) return(-1);
+
+	strcpy(duparcdir, archivedir);
+	memcpy(&duplist, &(filelist[filepos]), sizeof(namelist));
+	memcpy(&(filelist[filepos]), &(arcflist[i]), sizeof(namelist));
+	if (!(cp = strrdelim(filelist[filepos].name, 0))) *archivedir = '\0';
+	else {
+		strncpy2(archivedir,
+			filelist[filepos].name, cp - filelist[filepos].name);
+		filelist[filepos].name = ++cp;
+	}
+	ret = unpack(archivefile, dir, NULL,
+		0, F_ARGSET | F_ISARCH | F_NOADDOPT);
+	memcpy(&(filelist[filepos]), &duplist, sizeof(namelist));
+	strcpy(archivedir, duparcdir);
+
+	return(ret);
+}
+#endif	/* !NOSYMLINK */
+
 char *tmpunpack(single)
 int single;
 {
@@ -2547,7 +2651,12 @@ int single;
 	for (i = 0; i < maxfile; i++)
 		if (ismark(&(filelist[i]))) filelist[i].tmpflags |= F_WSMRK;
 	dupmark = mark;
-	if (single) mark = 0;
+	if (single) {
+		mark = 0;
+#ifndef	NOSYMLINK
+		VOID_C unpacklink(&(filelist[filepos]), path);
+#endif
+	}
 	ret = unpack(archivefile, path, NULL,
 		0, F_ARGSET | F_ISARCH | F_NOADDOPT);
 	mark = dupmark;

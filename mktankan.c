@@ -696,7 +696,8 @@ int argc;
 char *argv[];
 {
 	FILE *fp;
-	char buf[MAXKANASTR + 1], kbuf[4 + 1], tbuf[sizeof(tankanstr) + 1];
+	char buf[MAXKANASTR + 1];
+	char kbuf[MAXKLEN * R_MAXKANA + 1], tbuf[sizeof(tankanstr) + 1];
 	u_short code;
 	int n, len;
 

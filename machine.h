@@ -23,6 +23,7 @@
 #define	BSPATHDELIM
 #define	USECRNL
 #define	CWDINPATH
+#define	DOUBLESLASH
 #define	NOTZFILEH
 #define	USETIMEH
 #define	USEUTIME
@@ -473,6 +474,7 @@ typedef long	off_t;
 #define	PATHNOCASE
 #define	COMMNOCASE
 #define	USECRNL
+#define	DOUBLESLASH
 #define	USEMANLANG
 #define	BSDINSTALL
 #define	TARUSESPACE
@@ -789,6 +791,7 @@ typedef long	off_t;
 /* #define BSPATHDELIM	;path delimtor is backspace  */
 /* #define USECRNL	;use CR-NL as end of line */
 /* #define CWDINPATH	;CWD is implicitly included in command path */
+/* #define DOUBLESLASH	;pathname starting with // has some special mean */
 /* #define USEMANLANG	;man(1) directory includes LANG environment value */
 /* #define SUPPORTSJIS	;cc(1) or man(1) supports Shift JIS perfectly */
 /* #define BSDINSTALL	;install(1) with option -c is valid like BSD */

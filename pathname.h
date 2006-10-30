@@ -21,6 +21,10 @@
 #define	NESTINGQUOTE
 #endif
 
+#if	defined (MINIMUMSHELL) && defined (DOUBLESLASH)
+#undef DOUBLESLASH
+#endif
+
 #define	IFS_SET		" \t\n"
 #define	META		'\\'
 #if	MSDOS && defined (_NOORIGSHELL)
@@ -242,6 +246,9 @@ extern char *isrootdir __P_((char *));
 extern int isrootpath __P_((char *));
 extern VOID copyrootpath __P_((char *));
 extern VOID copycurpath __P_((char *));
+#ifdef	DOUBLESLASH
+extern int isdslash __P_((char *));
+#endif
 extern char *getbasename __P_((char *));
 extern char *getshellname __P_((char *, int *, int *));
 extern reg_t *regexp_init __P_((char *, int));
