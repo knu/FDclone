@@ -160,7 +160,7 @@ int rdlink;
 	if (n == 1) {
 		cp = strrdelim(resolved, 0);
 		top = resolved;
-#ifndef	_USEDOSEMU
+#ifdef	_USEDOSEMU
 		if (_dospath(resolved)) top += 2;
 		else
 #endif

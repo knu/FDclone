@@ -10,8 +10,14 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#ifdef	USELLSEEK
+#define	__KERNEL__		/* For _syscall5() on Linux kernel >=2.6.18 */
+#endif
 #ifndef	NOUNISTDH
 #include <unistd.h>
+#endif
+#ifdef	USELLSEEK
+#undef	__KERNEL__
 #endif
 
 #ifndef	NOSTDLIBH

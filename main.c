@@ -158,7 +158,9 @@ static VOID NEAR printtime __P_((int));
 #ifdef	SIGALRM
 static int trapalrm __P_((VOID_A));
 #endif
+#ifndef	_NODOSDRIVE
 static int wrap_intrkey __P_((VOID_A));
+#endif
 static char *NEAR getversion __P_((int *));
 #ifndef	_NOLOGGING
 static VOID NEAR startlog __P_((char **));
@@ -738,10 +740,12 @@ static int trapalrm(VOID_A)
 }
 #endif	/* SIGALRM */
 
+#ifndef	_NODOSDRIVE
 static int wrap_intrkey(VOID_A)
 {
 	return(intrkey(-1));
 }
+#endif	/* !_NODOSDRIVE */
 
 int sigvecset(set)
 int set;

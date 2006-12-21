@@ -1,3 +1,6 @@
+Ver. 2.09b	Support Linux kernel 2.6.18.
+ (12/22/06)	Bug that '..' is not accessible in floppy drive is fixed.
+
 Ver. 2.09a	Support hard-linked archive files with GNU tar.
  (10/31/06)	Support timeout of locking files.
 		Bug that shared folder cannot be accessed on Cygwin is fixed.
