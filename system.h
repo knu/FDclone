@@ -44,6 +44,21 @@
 #define	RET_NOTICE	255
 #define	RET_NULSYSTEM	256
 #define	READ_EOF	0x100
+#define	ENVPS1		"PS1"
+#define	ENVPS2		"PS2"
+#define	ENVPS4		"PS4"
+#define	ENVMAIL		"MAIL"
+#define	ENVMAILPATH	"MAILPATH"
+#define	ENVMAILCHECK	"MAILCHECK"
+#define	ENVLINENO	"LINENO"
+#define	ENVENV		"ENV"
+#define	ENVCDPATH	"CDPATH"
+#define	ENVPPID		"PPID"
+#define	ENVOPTARG	"OPTARG"
+#define	ENVOPTIND	"OPTIND"
+#define	ENVSHELL	"SHELL"
+#define	ENVCOMSPEC	"COMSPEC"
+#define	ENVREPLY	"REPLY"
 
 #ifdef	TIOCGPGRP
 #define	gettcpgrp(f,g)	((ioctl(f, TIOCGPGRP, g) < 0) \
@@ -63,6 +78,9 @@
 #define	USEFAKEPIPE
 #define	Xexit		exit
 #define	DEFPATH		":"
+# ifndef	_PATH_DEVNULL
+# define	_PATH_DEVNULL	"NULL"
+# endif
 #else
 # if	defined (FD) && !defined (_NODOSCOMMAND)
 # define	DOSCOMMAND
@@ -70,7 +88,9 @@
 #define	Xexit		_exit
 #define	DEFPATH		":/bin:/usr/bin"
 #define	DEFTERM		"dumb"
-#define	NULLDEVICE	"/dev/null"
+# ifndef	_PATH_DEVNULL
+# define	_PATH_DEVNULL	"/dev/null"
+# endif
 #endif
 
 #ifdef	MINIMUMSHELL

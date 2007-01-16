@@ -26,6 +26,8 @@
 
 #define	MD5_BUFSIZ	(128 / 32)
 #define	MD5_BLOCKS	16
+#define	STRHDD		"HDD"
+#define	STRHDD98	"98"
 
 #ifndef	_NOARCHIVE
 extern launchtable launchlist[];
@@ -1674,7 +1676,7 @@ devinfo *devp;
 	}
 
 # ifdef	HDDMOUNT
-	if (!strncmp(argv[3], "HDD", strsize("HDD"))) {
+	if (!strncmp(argv[3], STRHDD, strsize(STRHDD))) {
 		if (argc > 5) {
 			devp -> drive = ER_FEWMANYARG;
 			devp -> head = 0;
@@ -1682,7 +1684,7 @@ devinfo *devp;
 		}
 		cyl = 0;
 		if (!argv[3][3]) sect = 0;
-		else if (!strcmp(&(argv[3][3]), "98")) sect = 98;
+		else if (!strcmp(&(argv[3][3]), STRHDD98)) sect = 98;
 		else {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = 3;
@@ -1885,8 +1887,8 @@ FILE *fp;
 	fputc('\t', fp);
 # ifdef	HDDMOUNT
 	if (!fdlist[n].cyl) {
-		fputs("HDD", fp);
-		if (isupper2(fdlist[n].head)) fputs("98", fp);
+		fputs(STRHDD, fp);
+		if (isupper2(fdlist[n].head)) fputs(STRHDD98, fp);
 		if (verbose) fprintf2(fp, " #offset=%'Ld",
 			fdlist[n].offset / fdlist[n].sect);
 	}

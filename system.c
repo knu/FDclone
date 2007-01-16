@@ -865,9 +865,6 @@ static VOID NEAR initrc __P_((int));
 #define	getconstvar(s)	(getshellvar(s, strsize(s)))
 #define	constequal(s, c, l) \
 			((l) == strsize(c) && !strnenvcmp(s, c, l))
-#define	consttail(s, h, t, l) \
-			((l) == strsize(h) + strsize(t) \
-			&& !strnenvcmp(&(s[strsize(h)]), t, strsize(t)))
 #ifdef	USESTRERROR
 #define	strerror2		strerror
 #else
@@ -1242,34 +1239,34 @@ statementtable statementlist[] = {
 #define	STATEMENTSIZ	arraysize(statementlist)
 
 static char *primalvar[] = {
-	"PATH", "PS1", "PS2", "IFS",
+	ENVPATH, ENVPS1, ENVPS2, ENVIFS,
 #if	!MSDOS && !defined (MINIMUMSHELL)
-	"MAILCHECK", "PPID",
+	ENVMAILCHECK, ENVPPID,
 #endif
 };
 #define	PRIMALVARSIZ	arraysize(primalvar)
 
 static char *restrictvar[] = {
-	"PATH",
+	ENVPATH,
 #ifdef	FD
 	"FD_SHELL",
 #else
-	"SHELL",
+	ENVSHELL,
 #endif
 #ifndef	MINIMUMSHELL
-	"ENV",
+	ENVENV,
 #endif
 };
 #define	RESTRICTVARSIZ	arraysize(restrictvar)
 
 #if	MSDOS && !defined (BSPATHDELIM)
 static CONST char *adjustvar[] = {
-	"PATH", "HOME",
+	ENVPATH, ENVHOME,
 # ifndef	MINIMUMSHELL
-	"ENV",
+	ENVENV,
 # endif
 # ifdef	FD
-	"PWD",
+	ENVPWD,
 	"FD_TMPDIR",
 	"FD_PAGER", "FD_EDITOR", "FD_SHELL",
 #  ifndef	NOPOSIXUTIL
@@ -1288,9 +1285,9 @@ static CONST char *adjustvar[] = {
 	"FD_NOCONVPATH",
 #  endif
 # else	/* !FD */
-	"SHELL",
+	ENVSHELL,
 #  if	MSDOS
-	"COMSPEC",
+	ENVCOMSPEC,
 #  endif
 # endif	/* !FD */
 };
@@ -4322,7 +4319,7 @@ int reset;
 	static time_t mtime = 0;
 
 	if (reset) mtime = 0;
-	else cmpmail(getconstvar("MAIL"), NULL, &mtime);
+	else cmpmail(getconstvar(ENVMAIL), NULL, &mtime);
 }
 # endif	/* !MINIMUMSHELL */
 #endif	/* !MSDOS */
@@ -4447,7 +4444,7 @@ int len;
 	if (export) {
 		exportsize += (u_long)strlen(s) + 1;
 #if	MSDOS
-		if (constequal(s, "PATH", len)) {
+		if (constequal(s, ENVPATH, len)) {
 			char *cp;
 
 			cp = &(s[len + 1]);
@@ -4537,25 +4534,25 @@ int len;
 	else if (unsetshfunc(s, len) < 0) return(-1);
 #endif
 #ifndef	_NOUSEHASH
-	else if (constequal(s, "PATH", len)) searchhash(NULL, NULL, NULL);
+	else if (constequal(s, ENVPATH, len)) searchhash(NULL, NULL, NULL);
 #endif
 #if	!MSDOS
 # ifdef	MINIMUMSHELL
-	else if (constequal(s, "MAIL", len)) checkmail(1);
+	else if (constequal(s, ENVMAIL, len)) checkmail(1);
 # else	/* !MINIMUMSHELL */
-	else if (!strnenvcmp(s, "MAIL", strsize("MAIL"))) {
-		if (len == strsize("MAIL")) {
-			if (!getconstvar("MAILPATH")) replacemailpath(cp, 0);
+	else if (!strnenvcmp(s, ENVMAIL, strsize(ENVMAIL))) {
+		if (len == strsize(ENVMAIL)) {
+			if (!getconstvar(ENVMAILPATH)) replacemailpath(cp, 0);
 		}
-		else if (consttail(s, "MAIL", "PATH", len))
+		else if (constequal(s, ENVMAILPATH, len))
 			replacemailpath(cp, 1);
-		else if (consttail(s, "MAIL", "CHECK", len)) {
+		else if (constequal(s, ENVMAILCHECK, len)) {
 			if ((mailcheck = isnumeric(cp)) < 0) mailcheck = 0;
 		}
 	}
 # endif	/* !MINIMUMSHELL */
 # ifdef	FD
-	else if (constequal(s, "TERM", len)) {
+	else if (constequal(s, ENVTERM, len)) {
 		keyseq_t *keymap;
 		char *term;
 
@@ -4564,7 +4561,7 @@ int len;
 		getterment(cp);
 		if (dumbterm > 1 && (!shellmode || exit_status < 0)) {
 			freeterment();
-			term = getconstvar("TERM");
+			term = getconstvar(ENVTERM);
 			getterment((term) ? term : nullstr);
 			execerror(cp, ER_INVALTERMFD, 0);
 			copykeyseq(keymap);
@@ -4577,13 +4574,13 @@ int len;
 # endif	/* FD */
 #endif	/* !MSDOS */
 #ifndef	NOPOSIXUTIL
-	else if (constequal(s, "OPTIND", len)) {
+	else if (constequal(s, ENVOPTIND, len)) {
 		if ((posixoptind = isnumeric(cp)) <= 1)
 			posixoptind = 0;
 	}
 #endif
 #ifndef	MINIMUMSHELL
-	else if (constequal(s, "LINENO", len)) shlineno = -1L;
+	else if (constequal(s, ENVLINENO, len)) shlineno = -1L;
 #endif
 
 	shellvar = putvar(shellvar, s, len);
@@ -4648,30 +4645,31 @@ int len;
 		return(-1);
 #if	!MSDOS
 # ifndef	MINIMUMSHELL
-	else if (!strnenvcmp(ident, "MAIL", strsize("MAIL"))) {
-		if (len == strsize("MAIL")) {
-			if (!getconstvar("MAILPATH")) checkmail(1);
+	else if (!strnenvcmp(ident, ENVMAIL, strsize(ENVMAIL))) {
+		if (len == strsize(ENVMAIL)) {
+			if (!getconstvar(ENVMAILPATH)) checkmail(1);
 		}
-		else if (consttail(ident, "MAIL", "PATH", len)) {
+		else if (constequal(ident, ENVMAILPATH, len)) {
 			char *cp;
 
-			if ((cp = getconstvar("MAIL"))) replacemailpath(cp, 0);
+			cp = getconstvar(ENVMAIL);
+			if (cp) replacemailpath(cp, 0);
 			else checkmail(1);
 		}
 	}
 # endif	/* !MINIMUMSHELL */
 # ifdef	FD
-	else if (constequal(ident, "TERM", len)) {
+	else if (constequal(ident, ENVTERM, len)) {
 		freeterment();
 		getterment(nullstr);
 	}
 # endif
 #endif	/* !MSDOS */
 #ifndef	NOPOSIXUTIL
-	else if (constequal(ident, "OPTIND", len)) posixoptind = 0;
+	else if (constequal(ident, ENVOPTIND, len)) posixoptind = 0;
 #endif
 #ifndef	MINIMUMSHELL
-	else if (constequal(ident, "LINENO", len)) shlineno = -1L;
+	else if (constequal(ident, ENVLINENO, len)) shlineno = -1L;
 #endif
 
 	shellvar = putvar(shellvar, ident, len);
@@ -4694,17 +4692,16 @@ int len;
 }
 
 #ifndef	MINIMUMSHELL
-#define	LINENOSIZ	strsize("LINENO")
 static VOID NEAR setshlineno(n)
 long n;
 {
-	char tmp[LINENOSIZ + 1 + MAXLONGWIDTH + 1];
+	char tmp[strsize(ENVLINENO) + 1 + MAXLONGWIDTH + 1];
 
 	if (shlineno < 0L) return;
 
 	shlineno = n;
-	snprintf2(tmp, sizeof(tmp), "LINENO=%ld", n);
-	shellvar = putvar(shellvar, strdup2(tmp), LINENOSIZ);
+	snprintf2(tmp, sizeof(tmp), "%s=%ld", ENVLINENO, n);
+	shellvar = putvar(shellvar, strdup2(tmp), strsize(ENVLINENO));
 }
 #endif	/* !MINIMUMSHELL */
 
@@ -4866,7 +4863,7 @@ static char *NEAR getifs(VOID_A)
 {
 	char *ifs;
 
-	return((ifs = getconstvar("IFS")) ? ifs : IFS_SET);
+	return((ifs = getconstvar(ENVIFS)) ? ifs : IFS_SET);
 }
 
 static int getretval(VOID_A)
@@ -6346,9 +6343,9 @@ char *path, *argv[], *envp[];
 
 #if	defined (FD) && !defined (_NOPTY)
 	if (parentfd >= 0 && ptyterm && *ptyterm) {
-		len = strsize("TERM");
+		len = strsize(ENVTERM);
 		cp = malloc2(len + strlen(ptyterm) + 2);
-		memcpy(cp, "TERM", len);
+		memcpy(cp, ENVTERM, len);
 		cp[len] = '=';
 		strcpy(&(cp[len + 1]), ptyterm);
 		envp = putvar(envp, cp, len);
@@ -6394,9 +6391,9 @@ int ext;
 	len = strlen(path);
 	path = realloc2(path, len + 1 + 3 + 1);
 	path[len++] = '.';
-	if (ext & CM_BATCH) strcpy(&(path[len]), "BAT");
-	else if (ext & CM_EXE) strcpy(&(path[len]), "EXE");
-	else strcpy(&(path[len]), "COM");
+	if (ext & CM_BATCH) strcpy(&(path[len]), EXTBAT);
+	else if (ext & CM_EXE) strcpy(&(path[len]), EXTEXE);
+	else strcpy(&(path[len]), EXTCOM);
 
 	return(path);
 }
@@ -6410,7 +6407,7 @@ char **pathp, **argv;
 # ifdef	FD
 	if (!(com = getenv2("FD_COMSPEC")) && !(com = getenv2("FD_SHELL")))
 # else
-	if (!(com = getconstvar("COMSPEC")) && !(com = getconstvar("SHELL")))
+	if (!(com = getconstvar(ENVCOMSPEC)) && !(com = getconstvar(ENVSHELL)))
 # endif
 # ifdef	BSPATHDELIM
 		com = "\\COMMAND.COM";
@@ -8147,7 +8144,7 @@ syntaxtree *trp;
 	}
 #ifdef	BASHSTYLE
 	/* bash set the variable REPLY without any argument */
-	else if (setenv2("REPLY", buf, 0) < 0) c = RET_FAIL;
+	else if (setenv2(ENVREPLY, buf, 0) < 0) c = RET_FAIL;
 #endif
 	free(buf);
 
@@ -8324,7 +8321,7 @@ syntaxtree *trp;
 #endif	/* !FD */
 
 	if (n < (trp -> comm) -> argc) dir = (trp -> comm) -> argv[n];
-	else if (!(dir = getconstvar("HOME"))) {
+	else if (!(dir = getconstvar(ENVHOME))) {
 		execerror((trp -> comm) -> argv[0], ER_NOHOMEDIR, 0);
 		return(RET_FAIL);
 	}
@@ -8346,7 +8343,7 @@ syntaxtree *trp;
 	else if (dir[0] && !dir[1] && strchr(".?-@", dir[0])) next = NULL;
 # endif
 #endif
-	else if ((next = getconstvar("CDPATH"))) {
+	else if ((next = getconstvar(ENVCDPATH))) {
 		tmp = ((cp = strdelim(dir, 0)))
 			? strndup2(dir, cp - dir) : dir;
 		if (isdotdir(tmp)) next = NULL;
@@ -9429,7 +9426,7 @@ syntaxtree *trp;
 		return(RET_FAIL);
 	}
 	else if (dumbterm > 1) {
-		execerror(getconstvar("TERM"), ER_INVALTERMFD, 0);
+		execerror(getconstvar(ENVTERM), ER_INVALTERMFD, 0);
 		return(RET_FAIL);
 	}
 	else if (!interactive || nottyout) {
@@ -9943,7 +9940,7 @@ int *contp, bg;
 		esize = exportsize;
 #ifndef	_NOUSEHASH
 		htable = duplhash(hashtable);
-		pathvar = getconstvar("PATH");
+		pathvar = getconstvar(ENVPATH);
 #endif
 	}
 #ifdef	FAKEUNINIT
@@ -9962,9 +9959,9 @@ int *contp, bg;
 	ps = PS4STR;
 #else
 # ifdef	FD
-	if ((ps = getconstvar("PS4"))) evalprompt(&ps, ps);
+	if ((ps = getconstvar(ENVPS4))) evalprompt(&ps, ps);
 # else
-	if ((ps = getconstvar("PS4"))) ps = evalvararg(ps, '\0', EA_BACKQ, 0);
+	if ((ps = getconstvar(ENVPS4))) ps = evalvararg(ps, '\0', EA_BACKQ, 0);
 # endif
 #endif
 	while (nsubst--) {
@@ -10016,7 +10013,7 @@ int *contp, bg;
 
 	if (keepvar) {
 #ifndef	_NOUSEHASH
-		if (pathvar != getconstvar("PATH")) {
+		if (pathvar != getconstvar(ENVPATH)) {
 			searchhash(NULL, NULL, NULL);
 			hashtable = htable;
 		}
@@ -10177,6 +10174,7 @@ int cond;
 	}
 #endif
 
+	fd = -1;
 #if	!MSDOS
 	if (!isopbg(trp) && !isopnown(trp)) pid = (p_id_t)-1;
 	else if ((pid = makechild(0, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
@@ -10188,7 +10186,8 @@ int cond;
 		if (jobok) /*EMPTY*/;
 		else
 # endif
-		if ((fd = Xopen(NULLDEVICE, O_BINARY | O_RDONLY, 0666)) >= 0) {
+		fd = Xopen(_PATH_DEVNULL, O_BINARY | O_RDONLY, 0666);
+		if (fd >= 0) {
 			Xdup2(fd, STDIN_FILENO);
 			safeclose(fd);
 		}
@@ -10230,12 +10229,7 @@ int cond;
 #endif	/* !MSDOS */
 
 	tmptr = skipfuncbody(trp);
-	if (!isoppipe(tmptr)) {
-#ifdef	FAKEUNINIT
-		fd = -1;	/* fake for -Wuninitialized */
-#endif
-		pipein = (p_id_t)-1;
-	}
+	if (!isoppipe(tmptr)) pipein = (p_id_t)-1;
 #ifdef	USEFAKEPIPE
 	else if ((fd = openpipe(&pipein, STDIN_FILENO, 0)) < 0) return(-1);
 #else
@@ -10648,7 +10642,7 @@ int verbose;
 
 	setsignal();
 #ifdef	MINIMUMSHELL
-	if (*fname == '~' && fname[1] == _SC_ && (cp = getconstvar("HOME"))) {
+	if (*fname == '~' && fname[1] == _SC_ && (cp = getconstvar(ENVHOME))) {
 		strcatdelim2(path, cp, &(fname[2]));
 		fname = path;
 	}
@@ -10760,7 +10754,7 @@ int prepareterm(VOID_A)
 
 #ifdef	FD
 	if (interactive) inittty(0);
-	term = getconstvar("TERM");
+	term = getconstvar(ENVTERM);
 	getterment((term) ? term : nullstr);
 #endif	/* FD */
 
@@ -10788,7 +10782,7 @@ int verbose;
 	if (getuid() != geteuid() || getgid() != getegid()) /*EMPTY*/;
 	else
 # endif
-	if ((cp = getconstvar("ENV"))) execruncom(cp, verbose);
+	if ((cp = getconstvar(ENVENV))) execruncom(cp, verbose);
 #endif	/* !MINIMUMSHELL */
 #ifdef	FD
 	if (loginshell) execruncom(SH_RCFILE, verbose);
@@ -10937,72 +10931,72 @@ char *argv[];
 		argvar[1] = NULL;
 	}
 
-	if (!(cp = getconstvar("PATH"))) setenv2("PATH", DEFPATH, 1);
+	if (!(cp = getconstvar(ENVPATH))) setenv2(ENVPATH, DEFPATH, 1);
 #if	MSDOS
 	else for (i = 0; cp[i]; i++) if (cp[i] == ';') cp[i] = PATHDELIM;
 #else
-	if (!(cp = getconstvar("TERM"))) setenv2("TERM", DEFTERM, 1);
+	if (!(cp = getconstvar(ENVTERM))) setenv2(ENVTERM, DEFTERM, 1);
 #endif
 
 	if (interactive) {
-		if (getconstvar("PS1")) /*EMPTY*/;
+		if (getconstvar(ENVPS1)) /*EMPTY*/;
 #if	!MSDOS
-		else if (!getuid()) setenv2("PS1", PS1ROOT, 0);
+		else if (!getuid()) setenv2(ENVPS1, PS1ROOT, 0);
 #endif
-		else setenv2("PS1", PS1STR, 0);
-		if (!getconstvar("PS2")) setenv2("PS2", PS2STR, 0);
+		else setenv2(ENVPS1, PS1STR, 0);
+		if (!getconstvar(ENVPS2)) setenv2(ENVPS2, PS2STR, 0);
 	}
 	else {
 		for (i = 0; i < PRIMALVARSIZ; i++)
-			if (!strenvcmp(primalvar[i], "PS1")
-			|| !strenvcmp(primalvar[i], "PS2"))
+			if (!strenvcmp(primalvar[i], ENVPS1)
+			|| !strenvcmp(primalvar[i], ENVPS2))
 				primalvar[i] = NULL;
-		unset("PS1", strsize("PS1"));
-		unset("PS2", strsize("PS2"));
+		unset(ENVPS1, strsize(ENVPS1));
+		unset(ENVPS2, strsize(ENVPS2));
 	}
 #ifndef	MINIMUMSHELL
-	if (!getconstvar("PS4")) setenv2("PS4", PS4STR, 0);
+	if (!getconstvar(ENVPS4)) setenv2(ENVPS4, PS4STR, 0);
 	setshlineno(1L);
 # if	!MSDOS
 	snprintf2(buf, sizeof(buf), "%id", getppid());
-	setenv2("PPID", buf, 0);
+	setenv2(ENVPPID, buf, 0);
 # endif
 #endif
-	setenv2("IFS", IFS_SET, 0);
+	setenv2(ENVIFS, IFS_SET, 0);
 	if (loginshell) {
 #ifndef	NOUID
 		pwd = getpwuid(getuid());
 #endif
-		if (!getconstvar("HOME")) {
+		if (!getconstvar(ENVHOME)) {
 #ifndef	NOUID
 			if (pwd && pwd -> pw_dir && *(pwd -> pw_dir))
 				cp = pwd -> pw_dir;
 			else
 #endif
 			cp = rootpath;
-			setenv2("HOME", cp, 1);
+			setenv2(ENVHOME, cp, 1);
 		}
-		if (!getconstvar("SHELL")) {
+		if (!getconstvar(ENVSHELL)) {
 #ifndef	NOUID
 			if (pwd && pwd -> pw_shell && *(pwd -> pw_shell))
 				cp = pwd -> pw_shell;
 			else
 #endif
 			cp = shellname;
-			setenv2("SHELL", cp, 1);
+			setenv2(ENVSHELL, cp, 1);
 		}
 	}
 #if	!MSDOS && !defined (MINIMUMSHELL)
 # ifdef	BASHSTYLE
-	if (!getconstvar("MAILCHECK")) setenv2("MAILCHECK", "60", 0);
+	if (!getconstvar(ENVMAILCHECK)) setenv2(ENVMAILCHECK, "60", 0);
 # else
-	if (!getconstvar("MAILCHECK")) setenv2("MAILCHECK", "600", 0);
+	if (!getconstvar(ENVMAILCHECK)) setenv2(ENVMAILCHECK, "600", 0);
 # endif
-	if ((cp = getconstvar("MAILPATH"))) replacemailpath(cp, 1);
-	else if ((cp = getconstvar("MAIL"))) replacemailpath(cp, 0);
+	if ((cp = getconstvar(ENVMAILPATH))) replacemailpath(cp, 1);
+	else if ((cp = getconstvar(ENVMAIL))) replacemailpath(cp, 0);
 #endif	/* !MSDOS && !MINIMUMSHELL */
 #ifndef	NOPOSIXUTIL
-	setenv2("OPTIND", "1", 0);
+	setenv2(ENVOPTIND, "1", 0);
 #endif
 
 	for (i = 0; i < NSIG; i++) {
@@ -11107,10 +11101,10 @@ char *argv[];
 	n = 0;
 #ifdef	BASHSTYLE
 	/* bash changes the current directory if the variable PWD is set */
-	if ((cp = getconstvar("PWD"))) n = chdir2(cp);
+	if ((cp = getconstvar(ENVPWD))) n = chdir2(cp);
 	else
 #endif
-	if (loginshell && interactive) n = chdir2(getconstvar("HOME"));
+	if (loginshell && interactive) n = chdir2(getconstvar(ENVHOME));
 	if (n < 0) {
 #ifdef	FD
 		initfd(argv);
@@ -11125,7 +11119,7 @@ char *argv[];
 #ifdef	FD
 		cp = getenv2("FD_SHELL");
 #else
-		cp = getconstvar("SHELL");
+		cp = getconstvar(ENVSHELL);
 #endif
 		if (cp) getshellname(getbasename(cp), NULL, &restricted);
 	}
@@ -11156,7 +11150,8 @@ int pseudoexit;
 #if	!MSDOS
 			checkmail(0);
 #endif
-			ps = (cont) ? getconstvar("PS2") : getconstvar("PS1");
+			ps = (cont)
+				? getconstvar(ENVPS2) : getconstvar(ENVPS1);
 #ifdef	FD
 			if (dumbterm > 1) {
 				evalprompt(&buf, ps);

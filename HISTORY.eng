@@ -1,3 +1,6 @@
+Ver. 2.09c	Failure to support Linux kernel 2.6.18 is fixed.
+ (01/17/07)
+
 Ver. 2.09b	Support Linux kernel 2.6.18.
  (12/22/06)	Bug that '..' is not accessible in floppy drive is fixed.
 

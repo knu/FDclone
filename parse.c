@@ -569,10 +569,10 @@ VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
 
-	if (!(cp = getconstvar("PATH"))) return;
+	if (!(cp = getconstvar(ENVPATH))) return;
 
 	path = evalpaths(cp, PATHDELIM);
-	if (strpathcmp(path, cp)) setenv2("PATH", path, 1);
+	if (strpathcmp(path, cp)) setenv2(ENVPATH, path, 1);
 	free(path);
 }
 #endif	/* _NOORIGSHELL */

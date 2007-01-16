@@ -511,13 +511,13 @@ VOID setlinecol(VOID_A)
 {
 	char buf[MAXLONGWIDTH + 1];
 
-	if (getconstvar("LINES")) {
+	if (getconstvar(ENVLINES)) {
 		snprintf2(buf, sizeof(buf), "%d", n_line);
-		setenv2("LINES", buf, 1);
+		setenv2(ENVLINES, buf, 1);
 	}
-	if (getconstvar("COLUMNS")) {
+	if (getconstvar(ENVCOLUMNS)) {
 		snprintf2(buf, sizeof(buf), "%d", n_column);
-		setenv2("COLUMNS", buf, 1);
+		setenv2(ENVCOLUMNS, buf, 1);
 	}
 }
 
@@ -834,7 +834,7 @@ VOID title(VOID_A)
 		Xputch2('#');
 		i++;
 	}
-	cp = (iswellomit()) ? nullstr : " (c)1995-2006 T.Shirai  ";
+	cp = (iswellomit()) ? nullstr : " (c)1995-2007 T.Shirai  ";
 	Xcputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) Xputch2(' ');
@@ -958,7 +958,7 @@ int exist;
 #ifdef	_NOORIGSHELL
 # if	!MSDOS
 	tmp = NULL;
-	if (!exist && (tmp = getconstvar("TERM"))) {
+	if (!exist && (tmp = getconstvar(ENVTERM))) {
 		struct stat st;
 
 		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
@@ -1129,7 +1129,7 @@ char *argv, *envp[];
 
 	if (!Xgetwd(buf)) error(NOCWD_K);
 	origpath = strdup2(buf);
-	if ((cp = searchenv("PWD", envp))) {
+	if ((cp = searchenv(ENVPWD, envp))) {
 		*fullpath = '\0';
 		realpath2(cp, fullpath, 0);
 		realpath2(fullpath, buf, 1);
@@ -1144,7 +1144,8 @@ char *argv, *envp[];
 	cp = argv;
 #else
 	if (strdelim(argv, 0)) cp = argv;
-	else if ((cp = searchenv("PATH", envp))) cp = searchexecpath(argv, cp);
+	else if ((cp = searchenv(ENVPATH, envp)))
+		cp = searchexecpath(argv, cp);
 	if (!cp) progpath = strdup2(origpath);
 	else
 #endif

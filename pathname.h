@@ -22,7 +22,7 @@
 #endif
 
 #if	defined (MINIMUMSHELL) && defined (DOUBLESLASH)
-#undef DOUBLESLASH
+#undef	DOUBLESLASH
 #endif
 
 #define	IFS_SET		" \t\n"
@@ -32,6 +32,15 @@
 #else
 #define	PATHDELIM	':'
 #endif
+
+#define	ENVPATH		"PATH"
+#define	ENVHOME		"HOME"
+#define	ENVPWD		"PWD"
+#define	ENVIFS		"IFS"
+
+#define	EXTCOM		"COM"
+#define	EXTEXE		"EXE"
+#define	EXTBAT		"BAT"
 
 #ifndef	BSPATHDELIM
 #define	PMETA		META

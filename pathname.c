@@ -203,6 +203,9 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 			(((n) % BUFUNIT) ? ((type *)(ptr)) \
 			: (type *)realloc2(ptr, b_size(n, type)))
 #define	getconstvar(s)	(getenvvar(s, sizeof(s) - 1))
+#ifdef	FD
+#define	STRFD		"FD"
+#endif
 
 char nullstr[] = "";
 char rootpath[] = _SS_;
@@ -1862,18 +1865,18 @@ int len, exe;
 {
 	if (ext) {
 		if (isexecute(path, 0, exe) >= 0) {
-			if (!(strpathcmp(ext, "COM"))) return(0);
-			else if (!(strpathcmp(ext, "EXE"))) return(CM_EXE);
-			else if (!(strpathcmp(ext, "BAT"))) return(CM_BATCH);
+			if (!(strpathcmp(ext, EXTCOM))) return(0);
+			else if (!(strpathcmp(ext, EXTEXE))) return(CM_EXE);
+			else if (!(strpathcmp(ext, EXTBAT))) return(CM_BATCH);
 		}
 	}
 	else {
 		path[len++] = '.';
-		strcpy(&(path[len]), "COM");
+		strcpy(&(path[len]), EXTCOM);
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT);
-		strcpy(&(path[len]), "EXE");
+		strcpy(&(path[len]), EXTEXE);
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_EXE);
-		strcpy(&(path[len]), "BAT");
+		strcpy(&(path[len]), EXTBAT);
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_BATCH);
 	}
 
@@ -1961,7 +1964,7 @@ char *com, *search;
 #ifndef	_NOUSEHASH
 	recalc = 0;
 #endif
-	if ((next = (search) ? search : getconstvar("PATH"))) {
+	if ((next = (search) ? search : getconstvar(ENVPATH))) {
 		len = strlen(com);
 		size = ret = 0;
 		path = NULL;
@@ -2245,7 +2248,7 @@ char ***argvp;
 # ifdef	CWDINPATH
 	argc = completefile(file, len, argc, argvp, curpath, 1, 2);
 # endif
-	if (!(next = getconstvar("PATH"))) return(argc);
+	if (!(next = getconstvar(ENVPATH))) return(argc);
 	for (cp = next; cp; cp = next) {
 # if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 		if (_dospath(cp)) next = strchr(&(cp[2]), PATHDELIM);
@@ -2771,7 +2774,7 @@ int plen, *modep;
 			}
 #ifdef	BASHSTYLE
 	/* bash uses IFS instead of a space as a separator */
-			if ((cp = getconstvar("IFS")) && *cp)
+			if ((cp = getconstvar(ENVIFS)) && *cp)
 				sp = *cp;
 #endif
 
@@ -2805,7 +2808,7 @@ int plen, *modep;
 			sp = ' ';
 #ifdef	BASHSTYLE
 	/* bash uses IFS instead of a space as a separator */
-			if (quoted && (cp = getconstvar("IFS")))
+			if (quoted && (cp = getconstvar(ENVIFS)))
 				sp = (*cp) ? *cp : '\0';
 #endif
 			cp = catvar(&(arglist[1]), sp);
@@ -3235,7 +3238,7 @@ char *gethomedir(VOID_A)
 #endif	/* !NOUID */
 	char *cp;
 
-	if ((cp = getconstvar("HOME"))) return(cp);
+	if ((cp = getconstvar(ENVHOME))) return(cp);
 #ifndef	NOUID
 # ifdef	FD
 	if ((up = finduid(getuid(), NULL))) return(up -> home);
@@ -3272,7 +3275,7 @@ char **argp;
 	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
 	if (!len) cp = gethomedir();
 # ifdef	FD
-	else if (len == strsize("FD") && !strnpathcmp(top, "FD", len))
+	else if (len == strsize(STRFD) && !strnpathcmp(top, STRFD, len))
 		cp = progpath;
 # endif
 	else {

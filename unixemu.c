@@ -290,9 +290,9 @@ struct stat *stp;
 	mode = (u_short)(stp -> st_mode);
 	if ((mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
-		if (!stricmp(cp, "BAT")
-		|| !stricmp(cp, "COM")
-		|| !stricmp(cp, "EXE"))
+		if (!stricmp(cp, EXTCOM)
+		|| !stricmp(cp, EXTEXE)
+		|| !stricmp(cp, EXTBAT))
 			mode |= S_IEXEC;
 	}
 	mode &= (S_IREAD | S_IWRITE | S_IEXEC);

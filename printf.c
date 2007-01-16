@@ -22,6 +22,7 @@
 
 #define	BUFUNIT		16
 #define	THDIGIT		3
+#define	STRNULL		"(null)"
 
 #ifdef	USEPID_T
 typedef pid_t	p_id_t;
@@ -318,8 +319,8 @@ int width, prec;
 
 	if (s) len = strlen2(s);
 	else {
-		s = "(null)";
-		len = strsize("(null)");
+		s = STRNULL;
+		len = strsize(STRNULL);
 #ifdef	LINUX
 		/* spec. of glibc */
 		if (prec >= 0 && len > prec) len = 0;

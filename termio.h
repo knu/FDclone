@@ -206,6 +206,11 @@ typedef union REGS	__dpmi_regs;
 # endif	/* !DJGPP */
 #endif	/* MSDOS */
 
+#define	ENVTERM		"TERM"
+#define	ENVLINES	"LINES"
+#define	ENVCOLUMNS	"COLUMNS"
+#define	ENVEMACS	"EMACS"
+
 #ifndef	_PATH_TTY
 # if	MSDOS
 # define	_PATH_TTY	"CON"

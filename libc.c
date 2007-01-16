@@ -362,7 +362,7 @@ char *path;
 		unixpath = NULL;
 	}
 #endif
-	if (getconstvar("PWD")) setenv2("PWD", fullpath, 1);
+	if (getconstvar(ENVPWD)) setenv2(ENVPWD, fullpath, 1);
 #if	MSDOS
 	if (unixrealpath(fullpath, tmp)) strcpy(fullpath, tmp);
 #endif

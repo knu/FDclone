@@ -1765,7 +1765,7 @@ char *s;
 
 	dupdumbterm = dumbterm;
 	dumbterm = dumb = 0;
-	term = (s) ? s : (char *)getenv("TERM");
+	term = (s) ? s : (char *)getenv(ENVTERM);
 	if (!term || !*term) {
 		dumbterm = 1;
 		dumb = DUMBLISTSIZE;
@@ -1824,7 +1824,7 @@ char *s;
 	}
 
 	if (dupdumbterm >= 2 || !strcmp(term, "emacs")
-	|| ((cp = getenv("EMACS")) && !strcmp(cp, "t")))
+	|| ((cp = getenv(ENVEMACS)) && !strcmp(cp, "t")))
 		dumbterm = 3;
 
 	defaultterm();

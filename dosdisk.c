@@ -10,14 +10,8 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#ifdef	USELLSEEK
-#define	__KERNEL__		/* For _syscall5() on Linux kernel >=2.6.18 */
-#endif
 #ifndef	NOUNISTDH
 #include <unistd.h>
-#endif
-#ifdef	USELLSEEK
-#undef	__KERNEL__
 #endif
 
 #ifndef	NOSTDLIBH
@@ -93,7 +87,13 @@ typedef u_short	gid_t;
 #ifdef	LINUX
 #include <mntent.h>
 #include <sys/mount.h>
+# ifdef	USELLSEEK
+# define	__KERNEL__	/* For _syscall5() on Linux kernel >=2.6.18 */
+# endif
 #include <linux/unistd.h>
+# ifdef	USELLSEEK
+# undef	__KERNEL__
+# endif
 # ifndef	BLKFLSBUF
 # include <linux/fs.h>
 # endif
@@ -151,6 +151,10 @@ extern int errno;
 
 #define	strsize(s)	((int)sizeof(s) - 1)
 #define	arraysize(a)	((int)((u_int)sizeof(a) / (u_int)sizeof(*(a))))
+
+#define	EXTCOM		"COM"
+#define	EXTEXE		"EXE"
+#define	EXTBAT		"BAT"
 
 #define	reterr(c)	{errno = doserrno; return(c);}
 #define	S_IEXEC_ALL	(S_IEXEC | (S_IEXEC >> 3) | (S_IEXEC >> 6))
@@ -4131,8 +4135,8 @@ struct stat *stp;
 
 	if ((stp -> st_mode & S_IFMT) != S_IFDIR
 	&& (cp = strrchr(path, '.')) && strlen(++cp) == 3) {
-		if (!strcasecmp2(cp, "BAT") || !strcasecmp2(cp, "COM")
-		|| !strcasecmp2(cp, "EXE"))
+		if (!strcasecmp2(cp, EXTCOM)
+		|| !strcasecmp2(cp, EXTEXE) || !strcasecmp2(cp, EXTBAT))
 			stp -> st_mode |= S_IEXEC_ALL;
 	}
 

@@ -1589,14 +1589,14 @@ syntaxtree *trp;
 		ret = exec_simplecom(trp, type, id, 0);
 #endif
 	else {
-		path = strdup2(getconstvar("PATH"));
-		setenv2("PATH", DEFPATH, 1);
+		path = strdup2(getconstvar(ENVPATH));
+		setenv2(ENVPATH, DEFPATH, 1);
 #if	MSDOS
 		ret = exec_simplecom(trp, type, id);
 #else
 		ret = exec_simplecom(trp, type, id, 0);
 #endif
-		setenv2("PATH", path, 1);
+		setenv2(ENVPATH, path, 1);
 		if (path) free(path);
 	}
 	(trp -> comm) -> argc = argc;
@@ -1696,8 +1696,8 @@ syntaxtree *trp;
 		}
 	}
 
-	if (posixoptarg) setenv2("OPTARG", posixoptarg, 0);
-	else if (ret == RET_SUCCESS) unset("OPTARG", sizeof("OPTARG") - 1);
+	if (posixoptarg) setenv2(ENVOPTARG, posixoptarg, 0);
+	else if (ret == RET_SUCCESS) unset(ENVOPTARG, strsize(ENVOPTARG));
 
 	buf[0] = n;
 	buf[1] = '\0';
@@ -1705,7 +1705,7 @@ syntaxtree *trp;
 
 	n = posixoptind;
 	snprintf2(buf, sizeof(buf), "%d", n);
-	setenv2("OPTIND", buf, 0);
+	setenv2(ENVOPTIND, buf, 0);
 	posixoptind = n;
 
 	return(ret);
