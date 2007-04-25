@@ -339,10 +339,10 @@ K_EXTERN CONST char kanjiiomode[]
 # endif	/* K_INTERN */
 ;
 
-K_EXTERN int iskanji1 __P_((char *, int));
+K_EXTERN int iskanji1 __P_((CONST char *, int));
 #ifdef	K_INTERN
 int iskanji1(s, i)
-char *s;
+CONST char *s;
 int i;
 {
 # ifdef	CODEEUC
@@ -353,10 +353,10 @@ int i;
 }
 #endif	/* K_INTERN */
 
-K_EXTERN int iskana1 __P_((char *, int *));
+K_EXTERN int iskana1 __P_((CONST char *, int *));
 #ifdef	K_INTERN
 int iskana1(s, ip)
-char *s;
+CONST char *s;
 int *ip;
 {
 # ifdef	CODEEUC

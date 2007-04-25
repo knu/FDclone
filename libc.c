@@ -16,7 +16,7 @@
 #if	MSDOS
 #include <sys/timeb.h>
 extern int setcurdrv __P_((int, int));
-extern char *unixrealpath __P_((char *, char *));
+extern char *unixrealpath __P_((CONST char *, char *));
 #endif
 
 #ifdef	_NOORIGSHELL
@@ -50,19 +50,19 @@ extern int lastdrv;
 #ifndef	NOSYMLINK
 static int NEAR evallink __P_((char *, char *));
 #endif
-static char *NEAR _realpath2 __P_((char *, char *, int));
+static char *NEAR _realpath2 __P_((CONST char *, char *, int));
 #ifdef	_NOORIGSHELL
-static int NEAR _getenv2 __P_((char *, int, char **));
+static int NEAR _getenv2 __P_((CONST char *, int, char **));
 static char **NEAR _putenv2 __P_((char *, char **));
 #endif
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long NEAR char2long __P_((u_char *));
-static int NEAR tmcmp __P_((struct tm *, struct tm *));
+static long NEAR char2long __P_((CONST u_char *));
+static int NEAR tmcmp __P_((CONST struct tm *, CONST struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static time_t NEAR timegm2 __P_((struct tm *));
-static long NEAR gettimezone __P_((struct tm *, time_t));
+static time_t NEAR timegm2 __P_((CONST struct tm *));
+static long NEAR gettimezone __P_((CONST struct tm *, time_t));
 #endif
 
 #ifdef	_NOORIGSHELL
@@ -79,7 +79,7 @@ static int wasttyflags = 0;
 
 
 int stat2(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 #ifdef	NOSYMLINK
@@ -142,7 +142,8 @@ char *path, *delim;
 
 /*ARGSUSED*/
 static char *NEAR _realpath2(path, resolved, rdlink)
-char *path, *resolved;
+CONST char *path;
+char *resolved;
 int rdlink;
 {
 	char *cp, *top;
@@ -199,7 +200,8 @@ int rdlink;
 }
 
 char *realpath2(path, resolved, rdlink)
-char *path, *resolved;
+CONST char *path;
+char *resolved;
 int rdlink;
 {
 #ifdef	_USEDOSEMU
@@ -274,7 +276,7 @@ int rdlink;
 }
 
 int _chdir2(path)
-char *path;
+CONST char *path;
 {
 	char cwd[MAXPATHLEN];
 
@@ -318,7 +320,7 @@ char *path;
 }
 
 int chdir2(path)
-char *path;
+CONST char *path;
 {
 	char cwd[MAXPATHLEN], tmp[MAXPATHLEN];
 	int duperrno;
@@ -375,13 +377,13 @@ char *path;
 }
 
 int chdir3(path, raw)
-char *path;
+CONST char *path;
 int raw;
 {
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
-	char *cwd;
+	CONST char *cwd;
 
 	cwd = path;
 	if (!raw && path[0] && !path[1]) switch (path[0]) {
@@ -434,7 +436,7 @@ int mode;
 {
 	char *cp1, *cp2, *eol;
 
-	eol = path + (int)strlen(path) - 1;
+	eol = &(path[(int)strlen(path) - 1]);
 	while (eol > path && *eol == _SC_) eol--;
 #ifdef	BSPATHDELIM
 	if (onkanji1(path, eol - path)) eol++;
@@ -510,7 +512,7 @@ ALLOC_T n, *sizep;
 }
 
 char *strdup2(s)
-char *s;
+CONST char *s;
 {
 	char *tmp;
 	int n;
@@ -524,7 +526,7 @@ char *s;
 }
 
 char *strndup2(s, n)
-char *s;
+CONST char *s;
 int n;
 {
 	char *tmp;
@@ -540,13 +542,13 @@ int n;
 }
 
 char *strchr2(s, c)
-char *s;
+CONST char *s;
 int c;
 {
 	int i;
 
 	for (i = 0; s[i]; i++) {
-		if (s[i] == c) return(&(s[i]));
+		if (s[i] == c) return((char *)&(s[i]));
 		if (iskanji1(s, i)) i++;
 #ifdef	CODEEUC
 		else if (isekana(s, i)) i++;
@@ -557,7 +559,7 @@ int c;
 }
 
 char *strrchr2(s, c)
-char *s;
+CONST char *s;
 int c;
 {
 	int i;
@@ -565,7 +567,7 @@ int c;
 
 	cp = NULL;
 	for (i = 0; s[i]; i++) {
-		if (s[i] == c) cp = &(s[i]);
+		if (s[i] == c) cp = (char *)&(s[i]);
 		if (iskanji1(s, i)) i++;
 #ifdef	CODEEUC
 		else if (isekana(s, i)) i++;
@@ -576,7 +578,8 @@ int c;
 }
 
 char *strcpy2(s1, s2)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 {
 	int i;
 
@@ -587,7 +590,8 @@ char *s1, *s2;
 }
 
 char *strncpy2(s1, s2, n)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 int n;
 {
 	int i;
@@ -603,7 +607,8 @@ int n;
  *	strncpy3(buf, s, &(-x), 0): same as sprintf(buf, "%s", s);
  */
 int strncpy3(s1, s2, lenp, ptr)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 int *lenp, ptr;
 {
 	int i, j, len;
@@ -660,7 +665,7 @@ int *lenp, ptr;
 
 #ifdef	CODEEUC
 int strlen2(s)
-char *s;
+CONST char *s;
 {
 	int i, len;
 
@@ -671,7 +676,7 @@ char *s;
 #endif	/* CODEEUC */
 
 int strlen3(s)
-char *s;
+CONST char *s;
 {
 	int i, len;
 
@@ -693,7 +698,7 @@ char *s;
 }
 
 int atoi2(s)
-char *s;
+CONST char *s;
 {
 	int n;
 
@@ -725,7 +730,7 @@ va_dcl
 }
 
 VOID perror2(s)
-char *s;
+CONST char *s;
 {
 	int duperrno;
 
@@ -738,7 +743,7 @@ char *s;
 
 #ifdef	_NOORIGSHELL
 static int NEAR _getenv2(name, len, envp)
-char *name;
+CONST char *name;
 int len;
 char **envp;
 {
@@ -780,7 +785,7 @@ char *s, **envp;
 #endif	/* _NOORIGSHELL */
 
 char *getenv2(name)
-char *name;
+CONST char *name;
 {
 #ifdef	_NOORIGSHELL
 	char **envpp[2];
@@ -811,7 +816,7 @@ char *name;
 }
 
 int setenv2(name, value, export)
-char *name, *value;
+CONST char *name, *value;
 int export;
 {
 	char *cp;
@@ -823,7 +828,7 @@ int export;
 	len = strlen(name);
 	if (!value) {
 #ifdef	_NOORIGSHELL
-		cp = name;
+		cp = (char *)name;
 #else
 		return(unset(name, len));
 #endif
@@ -872,7 +877,7 @@ sigcst_t func;
 #endif	/* USESIGACTION */
 
 int system2(command, flags)
-char *command;
+CONST char *command;
 int flags;
 {
 	int n, wastty, mode, ret;
@@ -922,7 +927,7 @@ int flags;
 }
 
 FILE *popen2(command)
-char *command;
+CONST char *command;
 {
 	FILE *fp;
 	int n;
@@ -982,10 +987,28 @@ char *getwd2(VOID_A)
 	return(strdup2(cwd));
 }
 
+time_t time2(VOID_A)
+{
+#if	MSDOS
+	struct timeb buffer;
+
+	ftime(&buffer);
+
+	return((time_t)(buffer.time));
+#else
+	struct timeval t_val;
+	struct timezone tz;
+
+	gettimeofday2(&t_val, &tz);
+
+	return((time_t)(t_val.tv_sec));
+#endif
+}
+
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long NEAR char2long(s)
-u_char *s;
+CONST u_char *s;
 {
 	return((long)((u_long)(s[3])
 		| ((u_long)(s[2]) << (BITSPERBYTE * 1))
@@ -994,7 +1017,7 @@ u_char *s;
 }
 
 static int NEAR tmcmp(tm1, tm2)
-struct tm *tm1, *tm2;
+CONST struct tm *tm1, *tm2;
 {
 	if (tm1 -> tm_year != tm2 -> tm_year)
 		return (tm1 -> tm_year - tm2 -> tm_year);
@@ -1013,7 +1036,7 @@ struct tm *tm1, *tm2;
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
 static time_t NEAR timegm2(tm)
-struct tm *tm;
+CONST struct tm *tm;
 {
 	time_t t;
 	int i, y;
@@ -1047,7 +1070,7 @@ struct tm *tm;
 }
 
 static long NEAR gettimezone(tm, t)
-struct tm *tm;
+CONST struct tm *tm;
 time_t t;
 {
 # if	MSDOS
@@ -1153,24 +1176,6 @@ time_t t;
 # endif	/* !MSDOS */
 }
 #endif	/* !USEMKTIME && !USETIMELOCAL */
-
-time_t time2(VOID_A)
-{
-#if	MSDOS
-	struct timeb buffer;
-
-	ftime(&buffer);
-
-	return((time_t)(buffer.time));
-#else
-	struct timeval t_val;
-	struct timezone tz;
-
-	gettimeofday2(&t_val, &tz);
-
-	return((time_t)(t_val.tv_sec));
-#endif
-}
 
 time_t timelocal2(tm)
 struct tm *tm;

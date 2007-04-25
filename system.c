@@ -105,7 +105,7 @@ typedef struct _lockbuf_t {
 #ifdef	FD
 #include "term.h"
 extern VOID calcwin __P_((VOID_A));
-extern VOID main_fd __P_((char **, int));
+extern VOID main_fd __P_((char *CONST *, int));
 extern VOID checkscreen __P_((int, int));
 # ifdef	SIGWINCH
 extern VOID pollscreen __P_((int));
@@ -114,28 +114,28 @@ extern int sigvecset __P_((int));
 # ifndef	_NOCUSTOMIZE
 extern VOID saveorigenviron __P_((VOID_A));
 # endif
-extern VOID initfd __P_((char **));
+extern VOID initfd __P_((char *CONST *));
 extern VOID prepareexitfd __P_((int));
 extern int savestdio __P_((int));
-extern int checkbuiltin __P_((char *));
-extern int checkinternal __P_((char *));
-extern int execbuiltin __P_((int, int, char *[]));
-extern int execinternal __P_((int, int, char *[]));
+extern int checkbuiltin __P_((CONST char *));
+extern int checkinternal __P_((CONST char *));
+extern int execbuiltin __P_((int, int, char *CONST []));
+extern int execinternal __P_((int, int, char *CONST []));
 # ifndef	_NOCOMPLETE
-extern int completebuiltin __P_((char *, int, int, char ***));
-extern int completeinternal __P_((char *, int, int, char ***));
+extern int completebuiltin __P_((CONST char *, int, int, char ***));
+extern int completeinternal __P_((CONST char *, int, int, char ***));
 # endif
 extern VOID initenv __P_((VOID_A));
-extern VOID evalenv __P_((char *, int));
+extern VOID evalenv __P_((CONST char *, int));
 extern int underhome __P_((char *));
-extern int replaceargs __P_((int *, char ***, char **, int));
+extern int replaceargs __P_((int *, char ***, char *CONST *, int));
 extern int replacearg __P_((char **));
 extern VOID demacroarg __P_((char **));
-extern char *inputshellstr __P_((char *, int, char *));
-extern int evalprompt __P_((char **, char *));
+extern char *inputshellstr __P_((CONST char *, int, CONST char *));
+extern int evalprompt __P_((char **, CONST char *));
 # ifndef	_NOKANJICONV
-extern char *kanjiconv2 __P_((char *, char *, int, int, int, int));
-extern char *newkanjiconv __P_((char *, int, int, int));
+extern CONST char *kanjiconv2 __P_((char *, CONST char *, int, int, int, int));
+extern char *newkanjiconv __P_((CONST char *, int, int, int));
 # endif
 # ifndef	_NOEDITMODE
 extern char *editmode;
@@ -157,7 +157,7 @@ extern char *deftmpdir;
 # ifndef	_NOPTY
 #include "termemu.h"
 extern VOID sendparent __P_((int, ...));
-extern int ptymacro __P_((char *, char *, int));
+extern int ptymacro __P_((CONST char *, CONST char *, int));
 extern char *ptyterm;
 extern int parentfd;
 # endif
@@ -223,12 +223,12 @@ extern int errno;
 
 #ifdef	FD
 # ifdef	_USEDOSPATH
-extern int _dospath __P_((char *));
+extern int _dospath __P_((CONST char *));
 # endif
 extern char *Xgetwd __P_((char *));
-extern int Xstat __P_((char *, struct stat *));
-extern int Xaccess __P_((char *, int));
-extern int Xopen __P_((char *, int, int));
+extern int Xstat __P_((CONST char *, struct stat *));
+extern int Xaccess __P_((CONST char *, int));
+extern int Xopen __P_((CONST char *, int, int));
 # ifdef	_NODOSDRIVE
 # define	Xclose(f)	((close(f)) ? -1 : 0)
 # define	Xdup		safe_dup
@@ -240,14 +240,14 @@ extern int Xopen __P_((char *, int, int));
 extern int Xclose __P_((int));
 extern int Xdup __P_((int));
 extern int Xdup2 __P_((int, int));
-extern FILE *Xfdopen __P_((int, char*));
+extern FILE *Xfdopen __P_((int, CONST char *));
 extern int Xfclose __P_((FILE *));
 extern int Xfileno __P_((FILE *));
 # endif	/* !_NODOSDRIVE */
 #else	/* !FD */
 # if	MSDOS
-extern int _dospath __P_((char *));
-extern int Xstat __P_((char *, struct stat *));
+extern int _dospath __P_((CONST char *));
+extern int Xstat __P_((CONST char *, struct stat *));
 # else
 # define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
 # endif
@@ -273,7 +273,7 @@ extern char *Xgetwd __P_((char *));
 #  ifdef	DJGPP
 #  define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 #  else
-int Xmkdir __P_((char *, int));
+int Xmkdir __P_((CONST char *, int));
 #  endif
 # else
 # define	Xmkdir		((mkdir(p, m)) ? -1 : 0)
@@ -331,14 +331,14 @@ int Xmkdir __P_((char *, int));
 #endif
 
 #ifdef	DOSCOMMAND
-extern int doscomdir __P_((int, char *[]));
-extern int doscommkdir __P_((int, char *[]));
-extern int doscomrmdir __P_((int, char *[]));
-extern int doscomerase __P_((int, char *[]));
-extern int doscomrename __P_((int, char *[]));
-extern int doscomcopy __P_((int, char *[]));
-extern int doscomcls __P_((int, char *[]));
-extern int doscomtype __P_((int, char *[]));
+extern int doscomdir __P_((int, char *CONST []));
+extern int doscommkdir __P_((int, char *CONST []));
+extern int doscomrmdir __P_((int, char *CONST []));
+extern int doscomerase __P_((int, char *CONST []));
+extern int doscomrename __P_((int, char *CONST []));
+extern int doscomcopy __P_((int, char *CONST []));
+extern int doscomcls __P_((int, char *CONST []));
+extern int doscomtype __P_((int, char *CONST []));
 #endif	/* DOSCOMMAND */
 
 #ifndef	MINIMUMSHELL
@@ -346,15 +346,15 @@ extern int doscomtype __P_((int, char *[]));
 extern int gettermio __P_((p_id_t, int));
 extern VOID dispjob __P_((int, FILE *));
 extern int searchjob __P_((p_id_t, int *));
-extern int getjob __P_((char *));
+extern int getjob __P_((CONST char *));
 extern int stackjob __P_((p_id_t, int, syntaxtree *));
 extern int stoppedjob __P_((p_id_t));
 extern VOID killjob __P_((VOID_A));
 extern VOID checkjob __P_((FILE *));
 # endif	/* !NOJOB */
-extern char *evalposixsubst __P_((char *, int *));
+extern char *evalposixsubst __P_((CONST char *, int *));
 # if	!MSDOS
-extern VOID replacemailpath __P_((char *, int));
+extern VOID replacemailpath __P_((CONST char *, int));
 extern VOID checkmail __P_((int));
 # endif
 # ifndef	NOALIAS
@@ -382,10 +382,10 @@ extern int posixgetopts __P_((syntaxtree *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
-extern char *strdup2 __P_((char *));
-extern char *strndup2 __P_((char *, int));
-extern char *strchr2 __P_((char *, int));
-extern char *strncpy2 __P_((char *, char *, int));
+extern char *strdup2 __P_((CONST char *));
+extern char *strndup2 __P_((CONST char *, int));
+extern char *strchr2 __P_((CONST char *, int));
+extern char *strncpy2 __P_((char *, CONST char *, int));
 
 #ifdef	DEBUG
 extern VOID mtrace __P_ ((VOID_A));
@@ -410,17 +410,17 @@ extern int posixoptind;
 #endif	/* !MINIMUMSHELL */
 
 #ifdef	FD
-extern lockbuf_t *lockopen __P_((char *, int, int));
+extern lockbuf_t *lockopen __P_((CONST char *, int, int));
 extern VOID lockclose __P_((lockbuf_t *));
 extern int mktmpfile __P_((char *));
-extern int rmtmpfile __P_((char *));
+extern int rmtmpfile __P_((CONST char *));
 # if	MSDOS
 extern int setcurdrv __P_((int, int));
 # endif
-extern int chdir2 __P_((char *));
-extern int chdir3 __P_((char *, int));
-extern int setenv2 __P_((char *, char *, int));
-extern char *getenv2 __P_((char *));
+extern int chdir2 __P_((CONST char *));
+extern int chdir3 __P_((CONST char *, int));
+extern int setenv2 __P_((CONST char *, CONST char *, int));
+extern char *getenv2 __P_((CONST char *));
 # ifdef	USESIGACTION
 extern sigcst_t signal2 __P_((int, sigcst_t));
 # else
@@ -433,23 +433,23 @@ extern char *adjustpname __P_((char *));
 # if	!MSDOS || !defined (MINIMUMSHELL)
 time_t time2 __P_((VOID_A));
 # endif
-static lockbuf_t *NEAR lockopen __P_((char *, int, int));
+static lockbuf_t *NEAR lockopen __P_((CONST char *, int, int));
 static VOID NEAR lockclose __P_((lockbuf_t *));
 static int NEAR genrand __P_((int));
 static char *NEAR genrandname __P_((char *, int));
 static int NEAR mktmpfile __P_((char *));
-static int NEAR rmtmpfile __P_((char *));
+static int NEAR rmtmpfile __P_((CONST char *));
 # ifdef	DJGPP
-int dos_putpath __P_((char *, int));
+int dos_putpath __P_((CONST char *, int));
 # endif
 # if	MSDOS
 static int NEAR setcurdrv __P_((int, int));
-int chdir2 __P_((char *));
+int chdir2 __P_((CONST char *));
 # else	/* !MSDOS */
 # define	chdir2(p)	(chdir(p) ? -1 : 0)
 # endif	/* !MSDOS */
-int chdir3 __P_((char *, int));
-int setenv2 __P_((char *, char *, int));
+int chdir3 __P_((CONST char *, int));
+int setenv2 __P_((CONST char *, CONST char *, int));
 # ifdef	USESIGACTION
 static sigcst_t NEAR signal2 __P_((int, sigcst_t));
 # else
@@ -576,16 +576,16 @@ static int trap_usr1 __P_((VOID_A));
 static int trap_usr2 __P_((VOID_A));
 #endif
 #ifdef	FD
-static VOID NEAR argfputs __P_((char *, FILE *));
+static VOID NEAR argfputs __P_((CONST char *, FILE *));
 #else
 #define	argfputs	fputs
 #endif
 #if	defined (FD) && !defined (_NOKANJIFCONV)
-static int NEAR Kopen __P_((char *, int, int));
+static int NEAR Kopen __P_((CONST char *, int, int));
 #else
 #define	Kopen		Xopen
 #endif
-static VOID NEAR syntaxerror __P_((char *));
+static VOID NEAR syntaxerror __P_((CONST char *));
 #if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
 static VOID NEAR addmychild __P_((p_id_t));
 #endif
@@ -594,8 +594,8 @@ static VOID NEAR setstopsig __P_((int));
 static p_id_t NEAR makechild __P_((int, p_id_t, int));
 #endif	/* !MSDOS */
 static VOID NEAR safefclose __P_((FILE *));
-static VOID NEAR safermtmpfile __P_((char *));
-static int NEAR getoption __P_((int, char *[], int));
+static VOID NEAR safermtmpfile __P_((CONST char *));
+static int NEAR getoption __P_((int, char *CONST *, int));
 static ALLOC_T NEAR c_allocsize __P_((int));
 static int NEAR readchar __P_((int));
 static char *NEAR readline __P_((int));
@@ -609,12 +609,12 @@ static syntaxtree *NEAR skipfuncbody __P_((syntaxtree *));
 static syntaxtree *NEAR insertstree __P_((syntaxtree *, syntaxtree *, int));
 static syntaxtree *NEAR linkstree __P_((syntaxtree *, int));
 static VOID NEAR nownstree __P_((syntaxtree *));
-static int NEAR evalfiledesc __P_((char *));
+static int NEAR evalfiledesc __P_((CONST char *));
 static int NEAR redmode __P_((int));
 static int NEAR cancelredirect __P_((redirectlist *));
 static VOID NEAR closeredirect __P_((redirectlist *));
 static heredoc_t *NEAR searchheredoc __P_((syntaxtree *, int));
-static int NEAR saveheredoc __P_((char *, syntaxtree *));
+static int NEAR saveheredoc __P_((CONST char *, syntaxtree *));
 static int NEAR openheredoc __P_((heredoc_t *, int));
 #if	defined (FD) && !defined (_NODOSDRIVE)
 static int NEAR fdcopy __P_((int, int));
@@ -627,14 +627,15 @@ static int NEAR redirect __P_((syntaxtree *, int, char *, int));
 #if	!MSDOS && defined (MINIMUMSHELL)
 static VOID NEAR checkmail __P_((int));
 #endif
-static int NEAR searchvar __P_((char **, char *, int, int));
-static char *NEAR searchvar2 __P_((int, char **, char *, int));
-static char **NEAR expandvar __P_((char **, char *, int));
-static char *NEAR getvar __P_((char **, char *, int));
+static int NEAR searchvar __P_((char *CONST *, CONST char *, int, int));
+static char *NEAR searchvar2 __P_((int, CONST char **,
+		CONST char *, int));
+static char **NEAR expandvar __P_((char **, CONST char *, int));
+static char *NEAR getvar __P_((char *CONST *, CONST char *, int));
 static char **NEAR putvar __P_((char **, char *, int));
-static int NEAR checkprimal __P_((char *, int));
-static int NEAR checkrestrict __P_((char *, int));
-static int NEAR checkronly __P_((char *, int));
+static int NEAR checkprimal __P_((CONST char *, int));
+static int NEAR checkrestrict __P_((CONST char *, int));
+static int NEAR checkronly __P_((CONST char *, int));
 static int NEAR _putshellvar __P_((char *, int));
 #ifndef	MINIMUMSHELL
 static VOID NEAR setshlineno __P_((long));
@@ -649,51 +650,51 @@ static int getretval __P_((VOID_A));
 static p_id_t getorgpid __P_((VOID_A));
 static p_id_t getlastpid __P_((VOID_A));
 static char *getflagstr __P_((VOID_A));
-static int checkundefvar __P_((char *, char *, int));
+static int checkundefvar __P_((CONST char *, CONST char *, int));
 static VOID safeexit __P_((VOID_A));
 static int NEAR getparenttype __P_((syntaxtree *));
 static int NEAR parsestatement __P_((syntaxtree **, int, int, int));
-static syntaxtree *NEAR _addarg __P_((syntaxtree *, char *));
+static syntaxtree *NEAR _addarg __P_((syntaxtree *, CONST char *));
 static int NEAR addarg __P_((syntaxtree **, redirectlist *,
 		char *, int *, int));
 static int NEAR evalredprefix __P_((syntaxtree **, redirectlist *, int *));
 static syntaxtree *NEAR rparen __P_((syntaxtree *));
 static syntaxtree *NEAR semicolon __P_((syntaxtree *, redirectlist *,
-		char *, int *));
+		CONST char *, int *));
 static syntaxtree *NEAR ampersand __P_((syntaxtree *, redirectlist *,
-		char *, int *));
-static syntaxtree *NEAR vertline __P_((syntaxtree *, char *, int *));
+		CONST char *, int *));
+static syntaxtree *NEAR vertline __P_((syntaxtree *, CONST char *, int *));
 static syntaxtree *NEAR lessthan __P_((syntaxtree *, redirectlist *,
-		char *, int *));
+		CONST char *, int *));
 static syntaxtree *NEAR morethan __P_((syntaxtree *, redirectlist *,
-		char *, int *));
+		CONST char *, int *));
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
 static syntaxtree *NEAR endvar __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, ALLOC_T *, int));
+		CONST char *, int *, int *, ALLOC_T *, int));
 static syntaxtree *NEAR addvar __P_((syntaxtree *,
-		char *, int *, char *, int *, int));
+		CONST char *, int *, CONST char *, int *, int));
 #endif
 static syntaxtree *NEAR normaltoken __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, ALLOC_T *));
+		CONST char *, int *, int *, ALLOC_T *));
 static syntaxtree *NEAR casetoken __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *));
+		CONST char *, int *, int *));
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
-static int NEAR cmpstatement __P_((char *, int));
+static int NEAR cmpstatement __P_((CONST char *, int));
 static syntaxtree *NEAR comsubtoken __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, ALLOC_T *));
+		CONST char *, int *, int *, ALLOC_T *));
 #endif
 static syntaxtree *NEAR analyzeloop __P_((syntaxtree *, redirectlist *,
-		char *, int));
+		CONST char *, int));
 static syntaxtree *NEAR analyzeeof __P_((syntaxtree *));
 static syntaxtree *NEAR statementcheck __P_((syntaxtree *, int));
 static int NEAR check_statement __P_((syntaxtree *));
 static int NEAR check_command __P_((syntaxtree *));
 static int NEAR check_stree __P_((syntaxtree *));
-static syntaxtree *NEAR analyzeline __P_((char *));
+static syntaxtree *NEAR analyzeline __P_((CONST char *));
 #ifdef	DEBUG
-static VOID NEAR Xexecve __P_((char *, char *[], char *[], int));
+static VOID NEAR Xexecve __P_((CONST char *, char *[], char *[], int));
 #else
-static VOID NEAR Xexecve __P_((char *, char *[], char *[]));
+static VOID NEAR Xexecve __P_((CONST char *, char *[], char *[]));
 #endif
 #if	MSDOS
 static char *NEAR addext __P_((char *, int));
@@ -756,7 +757,7 @@ static int NEAR dohash __P_((syntaxtree *));
 static int NEAR dochdir __P_((syntaxtree *));
 static int NEAR dopwd __P_((syntaxtree *));
 static int NEAR dosource __P_((syntaxtree *));
-static int NEAR expandlist __P_((char ***, char *));
+static int NEAR expandlist __P_((char ***, CONST char *));
 static int NEAR doexport __P_((syntaxtree *));
 static int NEAR doreadonly __P_((syntaxtree *));
 static int NEAR dotimes __P_((syntaxtree *));
@@ -814,7 +815,7 @@ static int NEAR doshfunc __P_((syntaxtree *, int));
 #ifdef	SHOWSTREE
 static VOID NEAR show_stree __P_((syntaxtree *, int));
 #endif
-static int NEAR dosetshfunc __P_((char *, syntaxtree *));
+static int NEAR dosetshfunc __P_((CONST char *, syntaxtree *));
 static int NEAR exec_statement __P_((syntaxtree *));
 static char **NEAR checkshellbuiltinargv __P_((int, char **));
 static int NEAR checkshellbuiltin __P_((syntaxtree *));
@@ -829,19 +830,19 @@ static int NEAR exec_process __P_((syntaxtree *));
 static int NEAR exec_process __P_((syntaxtree *, p_id_t));
 #endif
 static int NEAR exec_stree __P_((syntaxtree *, int));
-static syntaxtree *NEAR execline __P_((char *,
-	syntaxtree *, syntaxtree *, int));
-static int NEAR exec_line __P_((char *));
-static int NEAR _dosystem __P_((char *));
-static FILE *NEAR _dopopen __P_((char *));
+static syntaxtree *NEAR execline __P_((CONST char *,
+		syntaxtree *, syntaxtree *, int));
+static int NEAR exec_line __P_((CONST char *));
+static int NEAR _dosystem __P_((CONST char *));
+static FILE *NEAR _dopopen __P_((CONST char *));
 #ifndef	FDSH
-int dosystem __P_((char *));
-FILE *dopopen __P_((char *));
+int dosystem __P_((CONST char *));
+FILE *dopopen __P_((CONST char *));
 int dopclose __P_((FILE *));
 #endif
-static int NEAR sourcefile __P_((int, char *, int));
+static int NEAR sourcefile __P_((int, CONST char *, int));
 #if	MSDOS && !defined (BSPATHDELIM)
-static VOID NEAR adjustdelim __P_((char **));
+static VOID NEAR adjustdelim __P_((char *CONST *));
 #endif
 static VOID NEAR initrc __P_((int));
 
@@ -869,13 +870,13 @@ static VOID NEAR initrc __P_((int));
 #define	strerror2		strerror
 #else
 # ifndef	DECLERRLIST
-extern char *sys_errlist[];
+extern CONST char *CONST sys_errlist[];
 # endif
 #define	strerror2(n)		(char *)sys_errlist[n]
 #endif
 
 #ifdef	FDSH
-int main __P_((int, char *[], char *[]));
+int main __P_((int, char *CONST [], char *CONST []));
 #endif
 
 int shellmode = 0;
@@ -980,7 +981,7 @@ static int execerrno = 0;
 static p_id_t *mychildren = (p_id_t *)NULL;
 #endif
 
-static CONST char *syntaxerrstr[] = {
+static CONST char *CONST syntaxerrstr[] = {
 	NULL,
 #define	ER_UNEXPTOK	1
 	"unexpected token",
@@ -991,7 +992,7 @@ static CONST char *syntaxerrstr[] = {
 };
 #define	SYNTAXERRSIZ	arraysize(syntaxerrstr)
 
-static CONST char *execerrstr[] = {
+static CONST char *CONST execerrstr[] = {
 	NULL,
 #define	ER_COMNOFOUND	1
 	"command not found",
@@ -1214,7 +1215,7 @@ static shbuiltintable shbuiltinlist[] = {
 };
 #define	SHBUILTINSIZ	arraysize(shbuiltinlist)
 
-statementtable statementlist[] = {
+CONST statementtable statementlist[] = {
 	{doif, "if", STT_NEEDLIST, {0, 0, 0, 0}},
 	{NULL, "then", STT_NEEDLIST, {SM_IF, SM_ELIF, 0, 0}},
 	{NULL, "elif", STT_NEEDLIST, {SM_THEN, 0, 0, 0}},
@@ -1238,7 +1239,7 @@ statementtable statementlist[] = {
 };
 #define	STATEMENTSIZ	arraysize(statementlist)
 
-static char *primalvar[] = {
+static CONST char *primalvar[] = {
 	ENVPATH, ENVPS1, ENVPS2, ENVIFS,
 #if	!MSDOS && !defined (MINIMUMSHELL)
 	ENVMAILCHECK, ENVPPID,
@@ -1246,7 +1247,7 @@ static char *primalvar[] = {
 };
 #define	PRIMALVARSIZ	arraysize(primalvar)
 
-static char *restrictvar[] = {
+static CONST char *restrictvar[] = {
 	ENVPATH,
 #ifdef	FD
 	"FD_SHELL",
@@ -1446,7 +1447,7 @@ static CONST ulimittable ulimitlist[] = {
 #define	MESUSR2		"User defined signal 2"
 #endif	/* !PSIGNALSTYLE */
 
-signaltable signallist[] = {
+CONST signaltable signallist[] = {
 #ifdef	SIGHUP
 	{SIGHUP, trap_hup, "HUP", MESHUP, TR_TERM | TR_BLOCK},
 #endif
@@ -1591,7 +1592,7 @@ static sigarg_t (*oldsigfunc[NSIG])__P_((sigfnc_t));
 
 #ifndef	FD
 static lockbuf_t *NEAR lockopen(path, flags, mode)
-char *path;
+CONST char *path;
 int flags, mode;
 {
 	lockbuf_t *lck;
@@ -1734,7 +1735,7 @@ char *file;
 }
 
 static int NEAR rmtmpfile(file)
-char *file;
+CONST char *file;
 {
 	if (Xunlink(file) < 0 && errno != ENOENT) return(-1);
 
@@ -1743,7 +1744,7 @@ char *file;
 
 # ifdef	DJGPP
 int dos_putpath(path, offset)
-char *path;
+CONST char *path;
 int offset;
 {
 	int i;
@@ -1759,7 +1760,7 @@ int offset;
 #  ifndef	DJGPP
 /*ARGSUSED*/
 int Xmkdir(path, mode)
-char * path;
+CONST char * path;
 int mode;
 {
 	struct stat st;
@@ -1792,7 +1793,7 @@ int drive, nodir;
 }
 
 int chdir2(dir)
-char *dir;
+CONST char *dir;
 {
 	struct SREGS sreg;
 	__dpmi_regs reg;
@@ -1829,7 +1830,7 @@ char *dir;
 
 /*ARGSUSED*/
 int chdir3(dir, raw)
-char *dir;
+CONST char *dir;
 int raw;
 {
 	if (chdir2(dir) < 0) return(-1);
@@ -1841,7 +1842,7 @@ int raw;
 }
 
 int setenv2(name, value, export)
-char *name, *value;
+CONST char *name, *value;
 int export;
 {
 	char *cp;
@@ -2564,7 +2565,7 @@ int n;
 
 #ifdef	FD
 static VOID NEAR argfputs(s, fp)
-char *s;
+CONST char *s;
 FILE *fp;
 {
 # ifdef	_NOKANJIFCONV
@@ -2580,7 +2581,7 @@ FILE *fp;
 
 # ifndef	_NOKANJIFCONV
 static int NEAR Kopen(path, flags, mode)
-char *path;
+CONST char *path;
 int flags, mode;
 {
 	char buf[MAXPATHLEN];
@@ -2594,7 +2595,7 @@ int flags, mode;
 #endif	/* FD */
 
 static VOID NEAR syntaxerror(s)
-char *s;
+CONST char *s;
 {
 	if (syntaxerrno <= 0 || syntaxerrno >= SYNTAXERRSIZ) return;
 #ifndef	BASHSTYLE
@@ -2615,7 +2616,7 @@ char *s;
 
 /*ARGSUSED*/
 VOID execerror(s, n, noexit)
-char *s;
+CONST char *s;
 int n, noexit;
 {
 	if (n == ER_BADSUBST
@@ -2651,7 +2652,7 @@ int n, noexit;
 }
 
 VOID doperror(command, s)
-char *command, *s;
+CONST char *command, *s;
 {
 	int duperrno;
 
@@ -2680,7 +2681,7 @@ char *command, *s;
 }
 
 int isnumeric(s)
-char *s;
+CONST char *s;
 {
 	int i, n;
 
@@ -3094,7 +3095,7 @@ FILE *fp;
 }
 
 static VOID NEAR safermtmpfile(file)
-char *file;
+CONST char *file;
 {
 	int duperrno;
 
@@ -3107,7 +3108,7 @@ VOID setshflag(n, val)
 int n, val;
 {
 #if	defined (FD) && !defined (_NOEDITMODE)
-	char *cp;
+	CONST char *cp;
 #endif
 
 	*(shflaglist[n].var) = val;
@@ -3141,11 +3142,11 @@ int n, val;
 
 static int NEAR getoption(argc, argv, isopt)
 int argc;
-char *argv[];
+char *CONST *argv;
 int isopt;
 {
 	u_long flags;
-	char *arg;
+	CONST char *arg;
 	int i, j, com;
 
 #if	defined (FD) && !defined (_NOEDITMODE)
@@ -3672,7 +3673,7 @@ syntaxtree *trp;
 }
 
 static int NEAR evalfiledesc(s)
-char *s;
+CONST char *s;
 {
 	int i, n;
 
@@ -3828,7 +3829,7 @@ int rm;
 }
 
 static int NEAR saveheredoc(s, trp)
-char *s;
+CONST char *s;
 syntaxtree *trp;
 {
 	heredoc_t *hdp;
@@ -3870,7 +3871,7 @@ syntaxtree *trp;
 		if (hdp -> flags & HD_IGNORETAB) while (cp[i] == '\t') i++;
 		if (!strcmp(&(cp[i]), hdp -> eof)) {
 			free(cp);
-			cp = s = NULL;
+			s = cp = NULL;
 		}
 	}
 #ifdef	FAKEUNINIT
@@ -4269,15 +4270,16 @@ char *to;
 int type;
 {
 	redirectlist *rp;
+	char *cp;
 
 	if (to && !*to) {
 		syntaxerrno = ER_UNEXPTOK;
 		return(-1);
 	}
 
-	if (!(type & MD_HEREDOC)) to = strdup2(to);
+	if (!(type & MD_HEREDOC)) cp = strdup2(to);
 	else {
-		if (!(to = (char *)heredoc(to, type & MD_APPEND))) {
+		if (!(cp = (char *)heredoc(to, type & MD_APPEND))) {
 			doperror(NULL, deftmpdir);
 			return(-1);
 		}
@@ -4286,7 +4288,7 @@ int type;
 	if (from < 0) from = (type & MD_READ) ? STDIN_FILENO : STDOUT_FILENO;
 
 	if (!(trp -> comm)) trp -> comm = newcomm();
-	rp = newrlist(from, to, type, (trp -> comm) -> redp);
+	rp = newrlist(from, cp, type, (trp -> comm) -> redp);
 	(trp -> comm) -> redp = rp;
 
 	return(0);
@@ -4295,7 +4297,7 @@ int type;
 #if	!MSDOS
 /*ARGSUSED*/
 VOID cmpmail(path, msg, mtimep)
-char *path, *msg;
+CONST char *path, *msg;
 time_t *mtimep;
 {
 	struct stat st;
@@ -4325,7 +4327,7 @@ int reset;
 #endif	/* !MSDOS */
 
 int identcheck(ident, delim)
-char *ident;
+CONST char *ident;
 int delim;
 {
 	int i;
@@ -4337,7 +4339,8 @@ int delim;
 }
 
 static int NEAR searchvar(var, ident, len, c)
-char **var, *ident;
+char *CONST *var;
+CONST char *ident;
 int len, c;
 {
 	int i;
@@ -4352,7 +4355,7 @@ int len, c;
 
 static char *NEAR searchvar2(max, var, ident, len)
 int max;
-char **var, *ident;
+CONST char **var, *ident;
 int len;
 {
 	int i;
@@ -4361,12 +4364,12 @@ int len;
 	for (i = 0; i < max; i++) {
 		if (!var[i]) continue;
 		if (!strnenvcmp(ident, var[i], len) && !var[i][len])
-			return(var[i]);
+			return((char *)var[i]);
 #ifdef	FD
 		if (!strnenvcmp(var[i], FDENV, FDESIZ)
 		&& !strnenvcmp(ident, &(var[i][FDESIZ]), len)
 		&& !var[i][FDESIZ + len])
-			return(&(var[i][FDESIZ]));
+			return((char *)&(var[i][FDESIZ]));
 #endif
 	}
 
@@ -4374,7 +4377,8 @@ int len;
 }
 
 static char **NEAR expandvar(var, ident, len)
-char **var, *ident;
+char **var;
+CONST char *ident;
 int len;
 {
 	int i;
@@ -4389,7 +4393,8 @@ int len;
 }
 
 static char *NEAR getvar(var, ident, len)
-char **var, *ident;
+char *CONST *var;
+CONST char *ident;
 int len;
 {
 	int i;
@@ -4401,7 +4406,7 @@ int len;
 }
 
 char *getshellvar(ident, len)
-char *ident;
+CONST char *ident;
 int len;
 {
 	return(getvar(shellvar, ident, len));
@@ -4466,7 +4471,7 @@ int len;
 }
 
 static int NEAR checkprimal(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	char *cp;
@@ -4481,7 +4486,7 @@ int len;
 }
 
 static int NEAR checkrestrict(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	char *cp;
@@ -4498,7 +4503,7 @@ int len;
 }
 
 static int NEAR checkronly(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	int i;
@@ -4518,7 +4523,7 @@ int len;
 {
 #if	(!MSDOS && (!defined (MINIMUMSHELL)) || defined (FD)) \
 || !defined (NOPOSIXUTIL)
-	char *cp;
+	CONST char *cp;
 #endif
 
 #if	(!MSDOS && (!defined (MINIMUMSHELL)) || defined (FD)) \
@@ -4635,7 +4640,7 @@ int len;
 }
 
 int unset(ident, len)
-char *ident;
+CONST char *ident;
 int len;
 {
 	int i;
@@ -4672,8 +4677,8 @@ int len;
 	else if (constequal(ident, ENVLINENO, len)) shlineno = -1L;
 #endif
 
-	shellvar = putvar(shellvar, ident, len);
-	exportvar = putvar(exportvar, ident, len);
+	shellvar = putvar(shellvar, (char *)ident, len);
+	exportvar = putvar(exportvar, (char *)ident, len);
 
 	if ((i = searchvar(exportlist, ident, len, '\0')) >= 0) {
 		free(exportlist[i]);
@@ -4896,13 +4901,15 @@ static char *getflagstr(VOID_A)
 }
 
 static int checkundefvar(cp, arg, len)
-char *cp, *arg;
+CONST char *cp, *arg;
 int len;
 {
+	char *new;
+
 	if (cp || !undeferror) return(0);
-	cp = strndup2(arg, len);
-	execerror(cp, ER_PARAMNOTSET, 0);
-	free(cp);
+	new = strndup2(arg, len);
+	execerror(new, ER_PARAMNOTSET, 0);
+	free(new);
 
 	return(-1);
 }
@@ -4998,7 +5005,7 @@ int no, prev, type;
 
 static syntaxtree *NEAR _addarg(trp, arg)
 syntaxtree *trp;
-char *arg;
+CONST char *arg;
 {
 	syntaxtree *tmptr;
 	command_t *comm;
@@ -5177,7 +5184,7 @@ syntaxtree *trp;
 static syntaxtree *NEAR semicolon(trp, rp, s, ptrp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	char tmptok[3];
@@ -5215,7 +5222,7 @@ int *ptrp;
 static syntaxtree *NEAR ampersand(trp, rp, s, ptrp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	switch (s[*ptrp + 1]) {
@@ -5255,7 +5262,7 @@ int *ptrp;
 
 static syntaxtree *NEAR vertline(trp, s, ptrp)
 syntaxtree *trp;
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	trp = _addarg(trp, NULL);
@@ -5283,7 +5290,7 @@ int *ptrp;
 static syntaxtree *NEAR lessthan(trp, rp, s, ptrp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	rp -> type = MD_READ;
@@ -5327,7 +5334,7 @@ int *ptrp;
 static syntaxtree *NEAR morethan(trp, rp, s, ptrp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	rp -> type = MD_WRITE;
@@ -5374,7 +5381,7 @@ int *ptrp;
 syntaxtree *startvar(trp, rp, s, ptrp, tptrp, n)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp, *tptrp, n;
 {
 	syntaxtree *new;
@@ -5405,7 +5412,7 @@ int *ptrp, *tptrp, n;
 static syntaxtree *NEAR endvar(trp, rp, s, ptrp, tptrp, sp, n)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp, *tptrp;
 ALLOC_T *sp;
 int n;
@@ -5448,9 +5455,9 @@ int n;
 
 static syntaxtree *NEAR addvar(trp, s, ptrp, tok, tptrp, n)
 syntaxtree *trp;
-char *s;
+CONST char *s;
 int *ptrp;
-char *tok;
+CONST char *tok;
 int *tptrp, n;
 {
 	syntaxtree *tmptr;
@@ -5482,7 +5489,7 @@ int *tptrp, n;
 static syntaxtree *NEAR normaltoken(trp, rp, s, ptrp, tptrp, sp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp, *tptrp;
 ALLOC_T *sp;
 {
@@ -5662,7 +5669,7 @@ ALLOC_T *sp;
 static syntaxtree *NEAR casetoken(trp, rp, s, ptrp, tptrp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp, *tptrp;
 {
 	char tmptok[2];
@@ -5764,7 +5771,7 @@ int *ptrp, *tptrp;
 
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
 static int NEAR cmpstatement(s, id)
-char *s;
+CONST char *s;
 int id;
 {
 	int len;
@@ -5779,7 +5786,7 @@ int id;
 static syntaxtree *NEAR comsubtoken(trp, rp, s, ptrp, tptrp, sp)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int *ptrp, *tptrp;
 ALLOC_T *sp;
 {
@@ -5846,7 +5853,7 @@ ALLOC_T *sp;
 static syntaxtree *NEAR analyzeloop(trp, rp, s, quiet)
 syntaxtree *trp;
 redirectlist *rp;
-char *s;
+CONST char *s;
 int quiet;
 {
 	char *cp;
@@ -6047,7 +6054,7 @@ int quiet;
 }
 
 syntaxtree *analyze(s, trp, quiet)
-char *s;
+CONST char *s;
 syntaxtree *trp;
 int quiet;
 {
@@ -6297,7 +6304,7 @@ syntaxtree *trp;
 }
 
 static syntaxtree *NEAR analyzeline(command)
-char *command;
+CONST char *command;
 {
 #ifndef	MINIMUMSHELL
 	long dupshlineno;
@@ -6328,11 +6335,13 @@ char *command;
 
 #ifdef	DEBUG
 static VOID NEAR Xexecve(path, argv, envp, bg)
-char *path, *argv[], *envp[];
+CONST char *path;
+char *argv[], *envp[];
 int bg;
 #else
 static VOID NEAR Xexecve(path, argv, envp)
-char *path, *argv[], *envp[];
+CONST char *path;
+char *argv[], *envp[];
 #endif
 {
 #if	defined (FD) && !defined (_NOPTY)
@@ -6720,7 +6729,7 @@ static VOID NEAR disphash(VOID_A)
 #endif	/* !_NOUSEHASH */
 
 char *evalbackquote(arg)
-char *arg;
+CONST char *arg;
 {
 	FILE *fp;
 	char *buf;
@@ -6759,11 +6768,11 @@ char *arg;
 
 #ifdef	NOALIAS
 int checktype(s, idp, func)
-char *s;
+CONST char *s;
 int *idp, func;
 #else
 int checktype(s, idp, alias, func)
-char *s;
+CONST char *s;
 int *idp, alias, func;
 #endif
 {
@@ -6840,7 +6849,7 @@ int *idp, alias, func;
 
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 int completeshellvar(s, len, argc, argvp)
-char *s;
+CONST char *s;
 int len, argc;
 char ***argvp;
 {
@@ -6864,7 +6873,7 @@ char ***argvp;
 }
 
 int completeshellcomm(s, len, argc, argvp)
-char *s;
+CONST char *s;
 int len, argc;
 char ***argvp;
 {
@@ -7494,7 +7503,7 @@ FILE *fp;
 #if	defined (FD) || !defined (NOPOSIXUTIL)
 int tinygetopt(trp, opt, nump)
 syntaxtree *trp;
-char *opt;
+CONST char *opt;
 int *nump;
 {
 	char **argv;
@@ -8487,7 +8496,8 @@ syntaxtree *trp;
 }
 
 static int NEAR expandlist(varp, ident)
-char ***varp, *ident;
+char ***varp;
+CONST char *ident;
 {
 #ifndef	MINIMUMSHELL
 	char *cp;
@@ -8516,7 +8526,7 @@ char ***varp, *ident;
 }
 
 int setexport(ident)
-char *ident;
+CONST char *ident;
 {
 	int i, len;
 
@@ -8528,7 +8538,7 @@ char *ident;
 }
 
 int setronly(ident)
-char *ident;
+CONST char *ident;
 {
 	return(expandlist(&ronlylist, ident));
 }
@@ -9009,7 +9019,7 @@ syntaxtree *trp;
 #endif	/* !NOJOB */
 
 int typeone(s, fp)
-char *s;
+CONST char *s;
 FILE *fp;
 {
 	hashlist *hp;
@@ -9608,10 +9618,11 @@ syntaxtree *trp;
 }
 
 static int NEAR dosetshfunc(ident, trp)
-char *ident;
+CONST char *ident;
 syntaxtree *trp;
 {
 	syntaxtree *functr;
+	char *new;
 	int len;
 
 #ifndef	BASHSTYLE
@@ -9621,20 +9632,20 @@ syntaxtree *trp;
 		return(-1);
 	}
 #endif
-	ident = strdup2(ident);
-	stripquote(ident, EA_STRIPQ);
-	len = strlen(ident);
+	new = strdup2(ident);
+	stripquote(new, EA_STRIPQ);
+	len = strlen(new);
 #ifndef	BASHSTYLE
 	/* bash distinguishes the same named function and variable */
-	if (unset(ident, len) < 0) {
-		free(ident);
+	if (unset(new, len) < 0) {
+		free(new);
 		return(RET_FAIL);
 	}
 #endif
 
 	trp = trp -> next;
 	if (!(functr = statementbody(trp))) {
-		free(ident);
+		free(new);
 		return(RET_FAIL);
 	}
 #ifdef	MINIMUMSHELL
@@ -9644,7 +9655,7 @@ syntaxtree *trp;
 		(char **)duplstree(functr, NULL, functr -> lineno);
 #endif
 	functr -> flags |= ST_TOP;
-	setshfunc(ident, functr);
+	setshfunc(new, functr);
 #if	defined (FD) && !defined (_NOPTY)
 	if (parentfd >= 0 && mypid == shellpid) {
 		sendparent(TE_ADDFUNCTION, ident, functr);
@@ -9656,7 +9667,7 @@ syntaxtree *trp;
 }
 
 int unsetshfunc(ident, len)
-char *ident;
+CONST char *ident;
 int len;
 {
 	int i;
@@ -10339,7 +10350,7 @@ int cond;
 }
 
 static syntaxtree *NEAR execline(command, stree, trp, noexit)
-char *command;
+CONST char *command;
 syntaxtree *stree, *trp;
 int noexit;
 {
@@ -10387,7 +10398,7 @@ int noexit;
 }
 
 static int NEAR exec_line(command)
-char *command;
+CONST char *command;
 {
 	static syntaxtree *stree = NULL;
 	static syntaxtree *trp = NULL;
@@ -10424,7 +10435,7 @@ char *command;
 }
 
 static int NEAR _dosystem(command)
-char *command;
+CONST char *command;
 {
 	syntaxtree *trp;
 	int ret;
@@ -10452,7 +10463,7 @@ char *command;
 
 #ifndef	FDSH
 int dosystem(command)
-char *command;
+CONST char *command;
 {
 	int ret;
 
@@ -10475,7 +10486,7 @@ char *command;
 #endif	/* !FDSH */
 
 static FILE *NEAR _dopopen(command)
-char *command;
+CONST char *command;
 {
 	syntaxtree *trp;
 	p_id_t pipein;
@@ -10539,7 +10550,7 @@ char *command;
 
 #ifndef	FDSH
 FILE *dopopen(command)
-char *command;
+CONST char *command;
 {
 	FILE *fp;
 
@@ -10568,7 +10579,7 @@ FILE *fp;
 
 static int NEAR sourcefile(fd, fname, verbose)
 int fd;
-char *fname;
+CONST char *fname;
 int verbose;
 {
 #ifndef	MINIMUMSHELL
@@ -10630,14 +10641,14 @@ int verbose;
 }
 
 int execruncom(fname, verbose)
-char *fname;
+CONST char *fname;
 int verbose;
 {
 #ifdef	MINIMUMSHELL
 	char *cp, path[MAXPATHLEN];
 #endif
 	lockbuf_t *lck;
-	char **dupargvar;
+	char *new, **dupargvar;
 	int ret, duprestricted;
 
 	setsignal();
@@ -10647,11 +10658,11 @@ int verbose;
 		fname = path;
 	}
 #endif
-	fname = strdup2(fname);
+	new = strdup2(fname);
 #if	MSDOS && !defined (BSPATHDELIM)
-	fname = adjustpname(fname);
+	new = adjustpname(new);
 #endif
-	fname = evalpath(fname, 0);
+	fname = new = evalpath(new, 0);
 	ret = RET_SUCCESS;
 	if (noruncom || !isrootdir(fname)) lck = NULL;
 	else if (!(lck = lockopen(fname, O_TEXT | O_RDONLY, 0666))) {
@@ -10678,14 +10689,14 @@ int verbose;
 	}
 	lockclose(lck);
 	resetsignal(0);
-	free(fname);
+	free(new);
 
 	return(ret);
 }
 
 #if	MSDOS && !defined (BSPATHDELIM)
 static VOID NEAR adjustdelim(var)
-char **var;
+char *CONST *var;
 {
 	char *cp;
 	int i;
@@ -10700,7 +10711,7 @@ char **var;
 #endif	/* MSDOS && !BSPATHDELIM */
 
 VOID setshellvar(envp)
-char *envp[];
+char *CONST *envp;
 {
 	char *cp;
 	int i, len;
@@ -10727,7 +10738,7 @@ char *envp[];
 int prepareterm(VOID_A)
 {
 #ifdef	FD
-	char *term;
+	CONST char *term;
 #endif
 
 	if (ttyio >= 0 && ttyout) return(0);
@@ -10766,7 +10777,7 @@ int verbose;
 {
 #if	!defined (MINIMUMSHELL) \
 || (MSDOS && defined (FD) && !defined (BSPATHDELIM))
-	char *cp;
+	CONST char *cp;
 #endif
 
 #ifdef	FD
@@ -10795,7 +10806,7 @@ int verbose;
 
 int initshell(argc, argv)
 int argc;
-char *argv[];
+char *CONST *argv;
 {
 #if	!MSDOS
 # if	!defined (NOJOB) && defined (NTTYDISC) && defined (ldisc)
@@ -10807,7 +10818,8 @@ char *argv[];
 	struct passwd *pwd;
 	sigmask_t mask;
 #endif	/* !MSDOS */
-	char *cp;
+	CONST char *cp;
+	char *tmp;
 	int i, n, isstdin, tmprestricted;
 
 	shellname = argv[0];
@@ -10931,11 +10943,11 @@ char *argv[];
 		argvar[1] = NULL;
 	}
 
-	if (!(cp = getconstvar(ENVPATH))) setenv2(ENVPATH, DEFPATH, 1);
+	if (!(tmp = getconstvar(ENVPATH))) setenv2(ENVPATH, DEFPATH, 1);
 #if	MSDOS
-	else for (i = 0; cp[i]; i++) if (cp[i] == ';') cp[i] = PATHDELIM;
+	else for (i = 0; tmp[i]; i++) if (tmp[i] == ';') tmp[i] = PATHDELIM;
 #else
-	if (!(cp = getconstvar(ENVTERM))) setenv2(ENVTERM, DEFTERM, 1);
+	if (!(tmp = getconstvar(ENVTERM))) setenv2(ENVTERM, DEFTERM, 1);
 #endif
 
 	if (interactive) {
@@ -11228,7 +11240,7 @@ int pseudoexit;
 
 int main_shell(argc, argv, envp)
 int argc;
-char *argv[], *envp[];
+char *CONST *argv, *CONST *envp;
 {
 	setshellvar(envp);
 	if (initshell(argc, argv) < 0) return(RET_FAIL);
@@ -11264,7 +11276,7 @@ char *argv[], *envp[];
 #ifdef	FDSH
 int main(argc, argv, envp)
 int argc;
-char *argv[], *envp[];
+char *CONST argv[], *CONST envp[];
 {
 	int ret;
 

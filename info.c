@@ -72,12 +72,12 @@ typedef struct mnttab		mnt_t;
 || defined (USEMNTCTL) || defined (USEMNTINFOR) || defined (USEMNTINFO) \
 || defined (USEGETMNT)
 typedef struct _mnt_t {
-	char *mnt_fsname;
-	char *mnt_dir;
-	char *mnt_type;
-	char *mnt_opts;
+	CONST char *mnt_fsname;
+	CONST char *mnt_dir;
+	CONST char *mnt_type;
+	CONST char *mnt_opts;
 } mnt_t;
-static FILE *NEAR setmntent2 __P_((char *, char *));
+static FILE *NEAR setmntent2 __P_((CONST char *, CONST char *));
 static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
 #define	hasmntopt2(m,o)		strmntopt((m) -> mnt_opts, o)
 # if	defined (USEMNTINFO) || defined (USEGETMNT)
@@ -109,10 +109,10 @@ typedef struct fstab		mnt_t;
 # define	MNTDIRSIZ	(3 + 1)
 # endif
 typedef struct _mnt_t {
-	char *mnt_fsname;
+	CONST char *mnt_fsname;
 	char mnt_dir[MNTDIRSIZ];
-	char *mnt_type;
-	char *mnt_opts;
+	CONST char *mnt_type;
+	CONST char *mnt_opts;
 } mnt_t;
 #define	hasmntopt2(m,o)		strmntopt((m) -> mnt_opts, o)
 # ifdef	PC98
@@ -198,23 +198,23 @@ typedef struct _statfs_t {
 	long f_bavail;
 	long f_files;
 } statfs_t;
-extern int unixstatfs __P_((char *, statfs_t *));
+extern int unixstatfs __P_((CONST char *, statfs_t *));
 #define	statfs2			unixstatfs
 #define	blocksize(fs)		(fs).f_bsize
 #endif
 
-extern VOID error __P_((char *));
-extern int _chdir2 __P_((char *));
-extern char *strcpy2 __P_((char *, char *));
-extern char *strncpy2 __P_((char *, char *, int));
+extern VOID error __P_((CONST char *));
+extern int _chdir2 __P_((CONST char *));
+extern char *strcpy2 __P_((char *, CONST char *));
+extern char *strncpy2 __P_((char *, CONST char *, int));
 extern char *getwd2 __P_((VOID_A));
-extern VOID warning __P_((int, char *));
+extern VOID warning __P_((int, CONST char *));
 #ifdef	_USEDOSPATH
-extern int dospath __P_((char *, char *));
+extern int dospath __P_((CONST char *, char *));
 extern char *gendospath __P_((char *, int, int));
 #endif
 #if	MSDOS && !defined (_NOUSELFN)
-extern int supportLFN __P_((char *));
+extern int supportLFN __P_((CONST char *));
 # ifndef	_NODOSDRIVE
 extern int checkdrive __P_((int));
 # endif
@@ -225,12 +225,12 @@ extern int dosstatfs __P_((int, char *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 #if	!MSDOS || !defined (NOFLOCK)
-extern int Xstat __P_((char *, struct stat *));
+extern int Xstat __P_((CONST char *, struct stat *));
 #endif
-extern int Xaccess __P_((char *, int));
+extern int Xaccess __P_((CONST char *, int));
 extern int filetop __P_((int));
 extern VOID cputspace __P_((int));
-extern VOID cputstr __P_((int, char *));
+extern VOID cputstr __P_((int, CONST char *));
 #ifdef	_NOPTY
 #define	Xlocate			locate
 #define	Xputterm		putterm
@@ -241,12 +241,12 @@ extern VOID cputstr __P_((int, char *));
 extern VOID Xlocate __P_((int, int));
 extern VOID Xputterm __P_((int));
 extern VOID Xputch2 __P_((int));
-extern VOID Xcputs2 __P_((char *));
+extern VOID Xcputs2 __P_((CONST char *));
 extern VOID Xcprintf2 __P_((CONST char *, ...));
 #endif
 
 extern bindtable bindlist[];
-extern functable funclist[];
+extern CONST functable funclist[];
 extern char fullpath[];
 extern char *distributor;
 #ifndef	_NODOSDRIVE
@@ -333,14 +333,18 @@ extern int needbavail;
 static int NEAR code2str __P_((char *, int));
 static int NEAR checkline __P_((int));
 VOID help __P_((int));
-static int NEAR getfsinfo __P_((char *, statfs_t *, mnt_t *));
-static char *NEAR strmntopt __P_((char *, char *));
-int writablefs __P_((char *));
-off_t getblocksize __P_((char *));
-static int NEAR info1line __P_((int, int, char *, off_t, char *, char *));
+static int NEAR getfsinfo __P_((CONST char *, statfs_t *, mnt_t *));
+static CONST char *NEAR strmntopt __P_((CONST char *, CONST char *));
+#ifndef	NOFLOCK
+int isnfs __P_((CONST char *));
+#endif
+int writablefs __P_((CONST char *));
+off_t getblocksize __P_((CONST char *));
+static int NEAR info1line __P_((int, int, CONST char *,
+		off_t, CONST char *, CONST char *));
 off_t calcKB __P_((off_t, off_t));
-int getinfofs __P_((char *, off_t *, off_t *, off_t *));
-int infofs __P_((char *));
+int getinfofs __P_((CONST char *, off_t *, off_t *, off_t *));
+int infofs __P_((CONST char *));
 
 static CONST int keycodelist[] = {
 	K_HOME, K_END, K_DL, K_IL, K_DC, K_IC,
@@ -513,7 +517,7 @@ int arch;
 #ifdef	USEMNTCTL
 /*ARGSUSED*/
 static FILE *NEAR setmntent2(file, mode)
-char *file, *mode;
+CONST char *file, *mode;
 {
 	char *buf;
 
@@ -601,7 +605,7 @@ typedef struct statfs		mntinfo_t;
 
 /*ARGSUSED*/
 static FILE *NEAR setmntent2(file, mode)
-char *file, *mode;
+CONST char *file, *mode;
 {
 # ifndef	USEMNTINFO
 	int size;
@@ -720,7 +724,7 @@ mnt_t *mntp;
 #ifdef	USEGETMNT
 /*ARGSUSED*/
 static FILE *NEAR setmntent2(file, mode)
-char *file, *mode;
+CONST char *file, *mode;
 {
 	mnt_ptr = 0;
 
@@ -763,7 +767,7 @@ mnt_t *mntp;
 #endif	/* USEGETMNT */
 
 static int NEAR getfsinfo(path, fsbuf, mntbuf)
-char *path;
+CONST char *path;
 statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
@@ -851,28 +855,29 @@ mnt_t *mntbuf;
 	mnt_t mnt;
 	mnt_t *mntp;
 	FILE *fp;
+	CONST char *cp;
 	char *dir, fsname[MAXPATHLEN];
 	ALLOC_T len, match;
 
 	if (!fsbuf) fsbuf = &fs;
 	if (!mntbuf) mntbuf = &mnt;
 
-	dir = NULL;
+	cp = NULL;
 	if (!strncmp(path, "/dev/", strsize("/dev/"))) {
-		if (_chdir2(path) < 0) dir = path;
+		if (_chdir2(path) < 0) cp = path;
 	}
 # ifndef	_NODOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
 		static char dosmntdir[4];
 		char buf[3 * sizeof(long) + 1];
 
-		mntbuf -> mnt_fsname = nullstr;
+		mntbuf -> mnt_fsname = (char *)nullstr;
 		mntbuf -> mnt_dir = dosmntdir;
 		dosmntdir[0] = drv;
 		strcpy(&(dosmntdir[1]), ":\\");
 		mntbuf -> mnt_type =
 			(islower2(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
-		mntbuf -> mnt_opts = nullstr;
+		mntbuf -> mnt_opts = (char *)nullstr;
 		if (dosstatfs(drv, buf) < 0) return(-1);
 		if (buf[3 * sizeof(long)] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;
@@ -898,7 +903,7 @@ mnt_t *mntbuf;
 # endif	/* !_NODOSDRIVE */
 	else if (_chdir2(path) < 0) return(-1);
 
-	if (!dir) {
+	if (!cp) {
 		dir = getwd2();
 		if (_chdir2(fullpath) < 0) error(fullpath);
 		match = (ALLOC_T)0;
@@ -932,12 +937,12 @@ mnt_t *mntbuf;
 			errno = ENOENT;
 			return(-1);
 		}
-		dir = fsname;
+		cp = fsname;
 	}
 
 	if (!(fp = setmntent2(MOUNTED, "rb"))) return(-1);
 	while ((mntp = getmntent2(fp, &mnt)))
-		if (!strcmp(dir, mntp -> mnt_fsname)) break;
+		if (!strcmp(cp, mntp -> mnt_fsname)) break;
 	endmntent2(fp);
 	if (!mntp) {
 		errno = ENOENT;
@@ -946,17 +951,17 @@ mnt_t *mntbuf;
 	memcpy((char *)mntbuf, (char *)mntp, sizeof(mnt_t));
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
-	&& (path == dir || statfs2(path, fsbuf) < 0))
+	&& (path == cp || statfs2(path, fsbuf) < 0))
 		return(-1);
 #endif	/* !MSDOS */
 
 	return(0);
 }
 
-static char *NEAR strmntopt(s1, s2)
-char *s1, *s2;
+static CONST char *NEAR strmntopt(s1, s2)
+CONST char *s1, *s2;
 {
-	char *cp;
+	CONST char *cp;
 	ALLOC_T len;
 
 	len = strlen(s2);
@@ -971,7 +976,7 @@ char *s1, *s2;
 
 #ifndef	NOFLOCK
 int isnfs(path)
-char *path;
+CONST char *path;
 {
 	mnt_t mntbuf;
 	struct stat st;
@@ -992,7 +997,7 @@ char *path;
 #endif	/* NOFLOCK */
 
 int writablefs(path)
-char *path;
+CONST char *path;
 {
 #ifdef	_USEDOSEMU
 	int drv;
@@ -1018,7 +1023,7 @@ char *path;
 
 /*ARGSUSED*/
 off_t getblocksize(dir)
-char *dir;
+CONST char *dir;
 {
 #if	MSDOS
 	statfs_t fsbuf;
@@ -1054,9 +1059,9 @@ char *dir;
 
 static int NEAR info1line(yy, y, ind, n, s, unit)
 int yy, y;
-char *ind;
+CONST char *ind;
 off_t n;
-char *s, *unit;
+CONST char *s, *unit;
 {
 	int width;
 
@@ -1090,7 +1095,7 @@ off_t block, byte;
 }
 
 int getinfofs(path, totalp, freep, bsizep)
-char *path;
+CONST char *path;
 off_t *totalp, *freep, *bsizep;
 {
 	statfs_t fsbuf;
@@ -1116,7 +1121,7 @@ off_t *totalp, *freep, *bsizep;
 }
 
 int infofs(path)
-char *path;
+CONST char *path;
 {
 	statfs_t fsbuf;
 	mnt_t mntbuf;

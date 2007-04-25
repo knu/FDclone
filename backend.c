@@ -105,7 +105,7 @@ static VOID NEAR ptyungetch __P_((int));
 static int NEAR ptygetch __P_((VOID_A));
 static u_int NEAR ptygetucs2 __P_((int));
 static VOID NEAR getiocode __P_((int, int *, int *));
-static char *NEAR ptykconv __P_((char *, char *, int, int));
+static CONST char *NEAR ptykconv __P_((char *, char *, int, int));
 static u_int NEAR evalnf __P_((int, char *));
 #endif	/* !_NOKANJICONV */
 static VOID NEAR evalscroll __P_((int, int, int));
@@ -514,16 +514,16 @@ int w, *incodep, *outcodep;
 	if (outcodep) *outcodep = outcode;
 }
 
-static char *NEAR ptykconv(buf, buf2, incode, outcode)
+static CONST char *NEAR ptykconv(buf, buf2, incode, outcode)
 char *buf, *buf2;
 int incode, outcode;
 {
-	char *cp, *tmp;
+	CONST char *cp, *tmp;
 
 	tmp = kanjiconv2(buf2, buf, MAXKANJIBUF, incode, DEFCODE, L_TERMINAL);
 	if (kanjierrno) return(buf);
-	cp = (tmp == buf) ? buf2 : buf;
-	cp = kanjiconv2(cp, tmp, MAXKANJIBUF, DEFCODE, outcode, L_TERMINAL);
+	if (tmp == buf) buf = buf2;
+	cp = kanjiconv2(buf, tmp, MAXKANJIBUF, DEFCODE, outcode, L_TERMINAL);
 	if (kanjierrno) return(tmp);
 
 	return(cp);
@@ -604,7 +604,7 @@ int width;
 	char buf2[MAXKANJIBUF + 1];
 	int incode, outcode;
 #endif
-	char *cp;
+	CONST char *cp;
 
 	if (pty[w].cur_x + width > pty[w].max_x) {
 		pty[w].cur_x = pty[w].min_x;
@@ -1677,7 +1677,7 @@ static int NEAR evalinput(VOID_A)
 #ifndef	_NOKANJICONV
 	if (cnv) {
 		buf[key.len] = '\0';
-		key.str = ptykconv(buf, buf2, incode, outcode);
+		key.str = (char *)ptykconv(buf, buf2, incode, outcode);
 		key.len = (u_char)strlen(key.str);
 	}
 #endif

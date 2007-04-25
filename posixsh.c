@@ -39,9 +39,9 @@
 
 #ifdef	FD
 #include "term.h"
-extern int Xstat __P_((char *, struct stat *));
-extern int Xlstat __P_((char *, struct stat *));
-extern int Xaccess __P_((char *, int));
+extern int Xstat __P_((CONST char *, struct stat *));
+extern int Xlstat __P_((CONST char *, struct stat *));
+extern int Xaccess __P_((CONST char *, int));
 # ifndef	_NOPTY
 #include "termemu.h"
 extern VOID sendparent __P_((int, ...));
@@ -50,7 +50,7 @@ extern VOID sendparent __P_((int, ...));
 extern int ttyio;
 extern FILE *ttyout;
 # if	MSDOS
-extern int Xstat __P_((char *, struct stat *));
+extern int Xstat __P_((CONST char *, struct stat *));
 # define	Xlstat		Xstat
 # else
 # define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
@@ -63,32 +63,32 @@ extern int Xstat __P_((char *, struct stat *));
 #define	EPERM		EACCES
 #endif
 
-extern VOID error __P_((char *));
+extern VOID error __P_((CONST char *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
-extern char *strdup2 __P_((char *));
-extern char *strndup2 __P_((char *, int));
-extern char *strchr2 __P_((char *, int));
-extern char *strncpy2 __P_((char *, char *, int));
-extern int setenv2 __P_((char *, char *, int));
+extern char *strdup2 __P_((CONST char *));
+extern char *strndup2 __P_((CONST char *, int));
+extern char *strchr2 __P_((CONST char *, int));
+extern char *strncpy2 __P_((char *, CONST char *, int));
+extern int setenv2 __P_((CONST char *, CONST char *, int));
 extern time_t time2 __P_((VOID_A));
 
 #ifndef	NOJOB
-static char *NEAR headstree __P_((syntaxtree *));
+static CONST char *NEAR headstree __P_((syntaxtree *));
 #endif
 #ifndef	NOALIAS
-static int NEAR searchalias __P_((char *, int));
+static int NEAR searchalias __P_((CONST char *, int));
 static shaliastable *NEAR duplalias __P_((shaliastable *));
 static int cmpalias __P_((CONST VOID_P, CONST VOID_P));
 #endif
-static int NEAR _evalexpression __P_((char *, int, long *));
-static int NEAR evalexpression __P_((char *, int, long *, int));
+static int NEAR _evalexpression __P_((CONST char *, int, long *));
+static int NEAR evalexpression __P_((CONST char *, int, long *, int));
 #if	!MSDOS
-static VOID NEAR addmailpath __P_((char *, char *, time_t));
+static VOID NEAR addmailpath __P_((CONST char *, char *, time_t));
 #endif
-static int NEAR testsub1 __P_((int, char *, int *));
-static int NEAR testsub2 __P_((int, char *[], int *));
-static int NEAR testsub3 __P_((int, char *[], int *, int));
+static int NEAR testsub1 __P_((int, CONST char *, int *));
+static int NEAR testsub2 __P_((int, char *CONST *, int *));
+static int NEAR testsub3 __P_((int, char *CONST *, int *, int));
 
 #define	ALIASDELIMIT	"();&|<>"
 #define	BUFUNIT		32
@@ -116,20 +116,20 @@ typedef struct _mailpath_t {
 int gettermio __P_((p_id_t, int));
 VOID dispjob __P_((int, FILE *));
 int searchjob __P_((p_id_t, int *));
-int getjob __P_((char *));
+int getjob __P_((CONST char *));
 int stackjob __P_((p_id_t, int, syntaxtree *));
 int stoppedjob __P_((p_id_t));
 VOID killjob __P_((VOID_A));
 VOID checkjob __P_((FILE *));
 #endif	/* !NOJOB */
-char *evalposixsubst __P_((char *, int *));
+char *evalposixsubst __P_((CONST char *, int *));
 #if	!MSDOS
-VOID replacemailpath __P_((char *, int));
+VOID replacemailpath __P_((CONST char *, int));
 VOID checkmail __P_((int));
 #endif
 #ifndef	NOALIAS
 int addalias __P_((char *, char *));
-int deletealias __P_((char *));
+int deletealias __P_((CONST char *));
 VOID freealias __P_((shaliastable *));
 int checkalias __P_((syntaxtree *, char *, int, int));
 #endif
@@ -209,7 +209,7 @@ int job;
 	return(ret);
 }
 
-static char *NEAR headstree(trp)
+static CONST char *NEAR headstree(trp)
 syntaxtree *trp;
 {
 	int id;
@@ -276,9 +276,9 @@ int *np;
 }
 
 int getjob(s)
-char *s;
+CONST char *s;
 {
-	char *cp;
+	CONST char *cp;
 	int i, j;
 
 	if (!jobok) return(-1);
@@ -456,7 +456,7 @@ VOID killjob(VOID_A)
 
 #ifndef	NOALIAS
 static int NEAR searchalias(ident, len)
-char *ident;
+CONST char *ident;
 int len;
 {
 	int i;
@@ -496,7 +496,7 @@ char *ident, *comm;
 }
 
 int deletealias(ident)
-char *ident;
+CONST char *ident;
 {
 	reg_t *re;
 	int i, n, max;
@@ -596,7 +596,7 @@ int len, delim;
 #endif	/* NOALIAS */
 
 static int NEAR _evalexpression(s, ptr, resultp)
-char *s;
+CONST char *s;
 int ptr;
 long *resultp;
 {
@@ -666,7 +666,7 @@ long *resultp;
 }
 
 static int NEAR evalexpression(s, ptr, resultp, lvl)
-char *s;
+CONST char *s;
 int ptr;
 long *resultp;
 int lvl;
@@ -810,10 +810,10 @@ int lvl;
 }
 
 char *evalposixsubst(s, ptrp)
-char *s;
+CONST char *s;
 int *ptrp;
 {
-	char *cp;
+	char *cp, *new;
 	long n;
 	int i, len;
 
@@ -822,7 +822,7 @@ int *ptrp;
 
 	s += i;
 	len = *ptrp - i * 2;
-	s = strndup2(s, len);
+	s = new = strndup2(s, len);
 	if (i <= 1) {
 #ifndef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
@@ -830,7 +830,7 @@ int *ptrp;
 		redirectlist red;
 
 		red.fd = red.type = red.new = 0;
-		red.filename = nullstr;
+		red.filename = (char *)nullstr;
 		i = len = 0;
 		stree = newstree(NULL);
 		trp = startvar(stree, &red, nullstr, &i, &len, 0);
@@ -846,7 +846,7 @@ int *ptrp;
 	}
 	else {
 		n = 0L;
-		if (!(cp = evalvararg(s, '\'', EA_BACKQ, 0))) *ptrp = -1;
+		if (!(cp = evalvararg(new, '\'', EA_BACKQ, 0))) *ptrp = -1;
 		else {
 			for (i = 0; cp[i] && strchr(IFS_SET, cp[i]); i++);
 			if (cp[i]) {
@@ -859,14 +859,15 @@ int *ptrp;
 		if (*ptrp < 0) cp = NULL;
 		else if (asprintf2(&cp, "%ld", n) < 0) error("malloc()");
 	}
-	free(s);
+	free(new);
 
 	return(cp);
 }
 
 #if	!MSDOS
 static VOID NEAR addmailpath(path, msg, mtime)
-char *path, *msg;
+CONST char *path;
+char *msg;
 time_t mtime;
 {
 	int i;
@@ -887,12 +888,13 @@ time_t mtime;
 }
 
 VOID replacemailpath(s, multi)
-char *s;
+CONST char *s;
 int multi;
 {
 	mailpath_t *mailpath;
 	time_t mtime;
-	char *cp, *msg, path[MAXPATHLEN];
+	CONST char *cp;
+	char *msg, path[MAXPATHLEN];
 	int i, max, len;
 
 	mailpath = mailpathlist;
@@ -910,7 +912,7 @@ int multi;
 		if ((cp = strchr(s, ':'))) len = (cp++) - s;
 		else {
 			len = strlen(s);
-			cp = s + len;
+			cp = &(s[len]);
 		}
 		if ((msg = strchr(s, '%'))) {
 			if (msg > s + len) msg = NULL;
@@ -1237,7 +1239,7 @@ syntaxtree *trp;
 
 static int NEAR testsub1(c, s, ptrp)
 int c;
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	struct stat st;
@@ -1353,10 +1355,10 @@ int *ptrp;
 
 static int NEAR testsub2(argc, argv, ptrp)
 int argc;
-char *argv[];
+char *CONST *argv;
 int *ptrp;
 {
-	char *s, *a1, *a2;
+	CONST char *s, *a1, *a2;
 	int ret, v1, v2;
 
 	if (*ptrp >= argc) return(-1);
@@ -1433,7 +1435,7 @@ int *ptrp;
 
 static int NEAR testsub3(argc, argv, ptrp, lvl)
 int argc;
-char *argv[];
+char *CONST *argv;
 int *ptrp, lvl;
 {
 	int ret1, ret2;
@@ -1466,7 +1468,7 @@ int *ptrp, lvl;
 int posixtest(trp)
 syntaxtree *trp;
 {
-	char **argv;
+	char *CONST *argv;
 	int ret, ptr, argc;
 
 	argc = (trp -> comm) -> argc;

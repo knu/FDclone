@@ -10,7 +10,7 @@
 #include "kanji.h"
 
 #if	MSDOS && !defined (_NOUSELFN)
-extern char *shortname __P_((char *, char *));
+extern char *shortname __P_((CONST char *, char *));
 #endif
 
 #ifndef	_NOORIGSHELL
@@ -26,8 +26,8 @@ extern char *shortname __P_((char *, char *));
 #endif
 
 typedef struct _localetable {
-	char *env;
-	char *val;
+	CONST char *env;
+	CONST char *val;
 	char *org;
 } localetable;
 
@@ -56,30 +56,31 @@ extern int internal_status;
 # endif
 #endif
 
-static int NEAR checksc __P_((char *, int, char *));
+static int NEAR checksc __P_((CONST char *, int, CONST char *));
 #ifndef	_NOKANJICONV
 static int NEAR extconv __P_((char **, int, int, ALLOC_T *, int));
 #endif
-static int NEAR isneedargs __P_((char *, int, int *));
-static int NEAR setarg __P_((char **, int, ALLOC_T *, char *, char *, int));
+static int NEAR isneedargs __P_((CONST char *, int, int *));
+static int NEAR setarg __P_((char **, int, ALLOC_T *,
+		CONST char *, CONST char *, int));
 static int NEAR flag2str __P_((char *, int, int));
-static int NEAR skipquote __P_((char *, int *));
+static int NEAR skipquote __P_((CONST char *, int *));
 #if	!defined (MACROMETA) || !defined (_NOEXTRAMACRO)
-static char *NEAR _restorearg __P_((char *));
+static char *NEAR _restorearg __P_((CONST char *));
 static char *NEAR _demacroarg __P_((char *));
 #endif
 #ifdef	_NOEXTRAMACRO
 static int NEAR setargs __P_((char **, int, ALLOC_T *,
-	int, int, int, macrostat *, int));
-static char *NEAR insertarg __P_((char *, char *, int));
+		int, int, int, macrostat *, int));
+static char *NEAR insertarg __P_((CONST char *, CONST char *, int));
 #else
-static int NEAR _replaceargs __P_((int *, char ***, char **, int));
+static int NEAR _replaceargs __P_((int *, char ***, char *CONST *, int));
 #endif
-static char *NEAR addoption __P_((char *, char *, macrostat *));
+static char *NEAR addoption __P_((char *, CONST char *, macrostat *));
 #ifdef	_NOORIGSHELL
-static int NEAR system3 __P_((char *, int));
-static char *NEAR evalargs __P_((char *, int, char *[]));
-static char *NEAR evalalias __P_((char *));
+static int NEAR system3 __P_((CONST char *, int));
+static char *NEAR evalargs __P_((CONST char *, int, char *CONST *));
+static char *NEAR evalalias __P_((CONST char *));
 #else
 #define	system3			system2
 #endif
@@ -90,9 +91,9 @@ int maxalias = 0;
 userfunctable userfunclist[MAXFUNCTABLE];
 int maxuserfunc = 0;
 #else
-char *promptstr2 = NULL;
+CONST char *promptstr2 = NULL;
 #endif
-char *promptstr = NULL;
+CONST char *promptstr = NULL;
 char **history[2] = {NULL, NULL};
 char *histfile[2] = {NULL, NULL};
 short histsize[2] = {0, 0};
@@ -115,9 +116,9 @@ static localetable localelist[] = {
 
 
 static int NEAR checksc(buf, ptr, arg)
-char *buf;
+CONST char *buf;
 int ptr;
-char *arg;
+CONST char *arg;
 {
 	if (!arg || !*arg) /*EMPTY*/;
 	else if (*arg == _SC_ || isdotdir(arg)) /*EMPTY*/;
@@ -170,7 +171,7 @@ int code;
 #endif	/* !_NOKANJICONV */
 
 static int NEAR isneedargs(s, n, flagsp)
-char *s;
+CONST char *s;
 int n, *flagsp;
 {
 	int i;
@@ -215,10 +216,10 @@ static int NEAR setarg(bufp, ptr, sizep, dir, arg, flags)
 char **bufp;
 int ptr;
 ALLOC_T *sizep;
-char *dir, *arg;
+CONST char *dir, *arg;
 int flags;
 {
-	char *cp, path[MAXPATHLEN], conv[MAXPATHLEN];
+	char *cp, *new, path[MAXPATHLEN], conv[MAXPATHLEN];
 	int len, optr;
 
 	if (!arg || !*arg) return(checksc(*bufp, ptr, NULL) - ptr);
@@ -234,9 +235,9 @@ int flags;
 		strcatdelim2(path, dir, arg);
 		arg = path;
 #if	defined (BSPATHDELIM) && !defined (_NOARCHIVE)
-		if (flags & F_ISARCH) for (len = 0; arg[len]; len++) {
-			if (iskanji1(arg, len)) len++;
-			if (arg[len] == _SC_) arg[len] = '/';
+		if (flags & F_ISARCH) for (len = 0; path[len]; len++) {
+			if (iskanji1(path, len)) len++;
+			if (path[len] == _SC_) path[len] = '/';
 		}
 #endif
 #ifndef	_NOKANJIFCONV
@@ -247,7 +248,7 @@ int flags;
 
 	optr = ptr;
 	ptr = checksc(*bufp, ptr, arg);
-	arg = killmeta(arg);
+	arg = new = killmeta(arg);
 
 	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
 		len = cp - arg;
@@ -255,7 +256,7 @@ int flags;
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	strncpy(&((*bufp)[ptr]), arg, len);
-	free(arg);
+	free(new);
 
 	return(len + ptr - optr);
 }
@@ -280,7 +281,7 @@ int ptr, flags;
 }
 
 static int NEAR skipquote(s, ptrp)
-char *s;
+CONST char *s;
 int *ptrp;
 {
 	static int q = '\0';
@@ -299,7 +300,7 @@ int *ptrp;
 
 #if	!defined (MACROMETA) || !defined (_NOEXTRAMACRO)
 static char *NEAR _restorearg(s)
-char *s;
+CONST char *s;
 {
 	char *buf;
 	int i, j, m, flags;
@@ -330,7 +331,7 @@ char *s;
 	}
 	if (!flags) {
 		free(buf);
-		return(s);
+		return((char *)s);
 	}
 	buf[j] = '\0';
 
@@ -457,13 +458,15 @@ int flags;
 }
 
 static char *NEAR insertarg(format, arg, needmark)
-char *format, *arg;
+CONST char *format, *arg;
 int needmark;
 {
 # if	MSDOS && !defined (_NOUSELFN)
-	char *org, alias[MAXPATHLEN];
+	CONST char *org;
+	char alias[MAXPATHLEN];
 # endif
-	char *cp, *src, *ins, *buf, conv[MAXPATHLEN];
+	CONST char *src, *ins;
+	char *cp, *new, *buf, conv[MAXPATHLEN];
 	ALLOC_T size;
 	int i, j, m, len, flags;
 
@@ -493,7 +496,7 @@ int needmark;
 	{
 		buf = c_realloc(buf, j + 1, &size);
 		memcpy(buf, format, j);
-		src = format + j + m;
+		src = &(format[j + m]);
 		for (i = 0; i < needmark; i++) {
 			ins = arg;
 # if	MSDOS && !defined (_NOUSELFN)
@@ -507,7 +510,7 @@ int needmark;
 			}
 # endif
 			j = checksc(buf, j, ins);
-			ins = killmeta(ins);
+			ins = new = killmeta(ins);
 
 			if ((flags & F_NOEXT) && (cp = strrchr(ins, '.')))
 				len = cp - ins;
@@ -517,7 +520,7 @@ int needmark;
 # endif
 			buf = c_realloc(buf, j + len + 1, &size);
 			strncpy(&(buf[j]), ins, len);
-			free(ins);
+			free(new);
 			j += len;
 			for (len = 0; src[len]; len++) {
 # ifndef	MACROMETA
@@ -548,14 +551,14 @@ int needmark;
 #endif	/* _NOEXTRAMACRO */
 
 char *evalcommand(command, arg, stp)
-char *command, *arg;
+CONST char *command, *arg;
 macrostat *stp;
 {
 #ifndef	_NOKANJICONV
 	int code, cnvcode, defcode, cnvptr;
 #endif
 	macrostat st;
-	char *cp, *line;
+	char *cp, *line, *new, conv[MAXPATHLEN];
 	ALLOC_T size;
 	int i, j, c, pc, len, setflag, flags;
 
@@ -773,8 +776,6 @@ macrostat *stp;
 #endif	/* _NOEXTRAMACRO */
 
 	if (!(flags & F_ARGSET) && arg && *arg) {
-		char conv[MAXPATHLEN];
-
 		arg = convput(conv, arg, 1, 1, NULL, NULL);
 		if (checksc(NULL, 0, arg) < 0) cp = NULL;
 		else {
@@ -784,7 +785,7 @@ macrostat *stp;
 			strcpy(&(cp[2]), arg);
 			arg = cp;
 		}
-		arg = killmeta(arg);
+		arg = new = killmeta(arg);
 		if (cp) free(cp);
 
 		len = strlen(arg);
@@ -798,7 +799,7 @@ macrostat *stp;
 			strncpy(&(line[j]), arg, len);
 			j += len;
 		}
-		free(arg);
+		free(new);
 	}
 	if (!(flags & F_IGNORELIST)
 	&& !(stp -> needburst) && !(stp -> needmark)) {
@@ -818,7 +819,7 @@ macrostat *stp;
 /*ARGSUSED*/
 int replaceargs(argcp, argvp, env, iscomm)
 int *argcp;
-char ***argvp, **env;
+char ***argvp, *CONST *env;
 int iscomm;
 {
 	return(0);
@@ -835,7 +836,7 @@ char **argp;
 
 static int NEAR _replaceargs(argcp, argvp, env, iscomm)
 int *argcp;
-char ***argvp, **env;
+char ***argvp, *CONST *env;
 int iscomm;
 {
 	static int lastptr = 0;
@@ -1094,7 +1095,7 @@ int iscomm;
 
 int replaceargs(argcp, argvp, env, iscomm)
 int *argcp;
-char ***argvp, **env;
+char ***argvp, *CONST *env;
 int iscomm;
 {
 # ifdef	MACROMETA
@@ -1129,12 +1130,12 @@ char **argp;
 #endif	/* !_NOEXTRAMACRO */
 
 char *restorearg(s)
-char *s;
+CONST char *s;
 {
 #if	defined (MACROMETA) && !defined (_NOEXTRAMACRO)
 	return(_restorearg(s));
 #else
-	return(s);
+	return((char *)s);
 #endif
 }
 
@@ -1148,11 +1149,12 @@ char **argp;
 }
 
 char *inputshellstr(prompt, ptr, def)
-char *prompt;
+CONST char *prompt;
 int ptr;
-char *def;
+CONST char *def;
 {
-	char *cp, *tmp, *duppromptstr;
+	CONST char *duppromptstr;
+	char *cp, *tmp;
 	int wastty;
 
 	duppromptstr = promptstr;
@@ -1175,7 +1177,7 @@ char *def;
 
 char *inputshellloop(ptr, def)
 int ptr;
-char *def;
+CONST char *def;
 {
 #ifndef	_NOORIGSHELL
 	syntaxtree *trp, *stree;
@@ -1228,7 +1230,8 @@ char *def;
 }
 
 static char *NEAR addoption(command, arg, stp)
-char *command, *arg;
+char *command;
+CONST char *arg;
 macrostat *stp;
 {
 	char *cp;
@@ -1310,7 +1313,7 @@ macrostat *stp;
 
 #ifdef	_NOORIGSHELL
 static int NEAR system3(command, flags)
-char *command;
+CONST char *command;
 int flags;
 {
 	char *cp, *tmp;
@@ -1333,7 +1336,7 @@ int flags;
 #endif	/* _NOORIGSHELL */
 
 int isinternalcomm(command)
-char *command;
+CONST char *command;
 {
 #ifndef	_NOORIGSHELL
 	syntaxtree *stree;
@@ -1368,14 +1371,14 @@ char *command;
 }
 
 int execmacro(command, arg, flags)
-char *command, *arg;
+CONST char *command, *arg;
 int flags;
 {
 #ifdef	_NOEXTRAMACRO
 	char *buf;
 	int r, status;
 #endif
-	static char *duparg = NULL;
+	static CONST char *duparg = NULL;
 	macrostat st;
 	char *tmp;
 	int i, haslist, ret;
@@ -1474,7 +1477,7 @@ int flags;
 }
 
 FILE *popenmacro(command, arg, flags)
-char *command, *arg;
+CONST char *command, *arg;
 int flags;
 {
 	macrostat st;
@@ -1510,9 +1513,9 @@ int flags;
 
 #ifdef	_NOORIGSHELL
 static char *NEAR evalargs(command, argc, argv)
-char *command;
+CONST char *command;
 int argc;
-char *argv[];
+char *CONST *argv;
 {
 	char *cp, *line;
 	ALLOC_T size;
@@ -1547,7 +1550,7 @@ char *argv[];
 }
 
 int execusercomm(command, arg, flags)
-char *command, *arg;
+CONST char *command, *arg;
 int flags;
 {
 	char *cp, **argv;
@@ -1576,7 +1579,7 @@ int flags;
 }
 
 static char *NEAR evalalias(command)
-char *command;
+CONST char *command;
 {
 	char *cp;
 	int i, len;
@@ -1594,9 +1597,10 @@ char *command;
 
 int entryhist(n, s, uniq)
 int n;
-char *s;
+CONST char *s;
 int uniq;
 {
+	char *new;
 	int i, size;
 
 	size = (int)histsize[n];
@@ -1615,7 +1619,7 @@ int uniq;
 	}
 
 	if (!s || !*s) return(0);
-	s = (n == 1) ? killmeta(s) : strdup2(s);
+	new = (n == 1) ? killmeta(s) : strdup2(s);
 
 	if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 
@@ -1623,16 +1627,16 @@ int uniq;
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
 #if	defined (PATHNOCASE) && defined (_USEDOSPATH)
-			if (n == 1 && *s != *(history[n][i])) continue;
+			if (n == 1 && *new != *(history[n][i])) continue;
 #endif
-			if (!strpathcmp(s, history[n][i])) break;
+			if (!strpathcmp(new, history[n][i])) break;
 		}
 		if (i < size) size = i;
 	}
 
 	if (history[n][size]) free(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
-	history[n][0] = s;
+	history[n][0] = new;
 #ifndef	_NOPTY
 	sendparent(TE_SETHISTORY, n, s, uniq);
 #endif
@@ -1691,7 +1695,7 @@ int n;
 }
 
 VOID convhistory(s, fp)
-char *s;
+CONST char *s;
 FILE *fp;
 {
 	char *eol;
@@ -1731,7 +1735,7 @@ int n;
 }
 
 int parsehist(str, ptrp, quote)
-char *str;
+CONST char *str;
 int *ptrp, quote;
 {
 	char *cp;
@@ -1844,7 +1848,7 @@ int n;
 
 #if	!defined (_NOCOMPLETE) && defined (_NOORIGSHELL)
 int completealias(com, len, argc, argvp)
-char *com;
+CONST char *com;
 int len, argc;
 char ***argvp;
 {
@@ -1863,7 +1867,7 @@ char ***argvp;
 }
 
 int completeuserfunc(com, len, argc, argvp)
-char *com;
+CONST char *com;
 int len, argc;
 char ***argvp;
 {

@@ -87,13 +87,7 @@ typedef u_short	gid_t;
 #ifdef	LINUX
 #include <mntent.h>
 #include <sys/mount.h>
-# ifdef	USELLSEEK
-# define	__KERNEL__	/* For _syscall5() on Linux kernel >=2.6.18 */
-# endif
 #include <linux/unistd.h>
-# ifdef	USELLSEEK
-# undef	__KERNEL__
-# endif
 # ifndef	BLKFLSBUF
 # include <linux/fs.h>
 # endif
@@ -101,6 +95,12 @@ typedef u_short	gid_t;
 # define	MOUNTED		"/etc/mtab"
 # endif
 #endif	/* LINUX */
+
+#if	defined (USELLSEEK) && !defined (_syscall5)
+#include <sys/syscall.h>
+#define	_llseek(f,h,l,r,w)	syscall(SYS__llseek, f, h, l, r, w)
+#undef	_syscall5
+#endif
 
 #ifdef	NOERRNO
 extern int errno;
@@ -169,10 +169,10 @@ extern int errno;
 #endif
 
 #if	MSDOS && defined (FD)
-extern int _dospath __P_((char *));
+extern int _dospath __P_((CONST char *));
 #define	__dospath	_dospath
 #else
-static int NEAR __dospath __P_((char *));
+static int NEAR __dospath __P_((CONST char *));
 #endif
 
 #ifndef	FD
@@ -181,16 +181,16 @@ static int NEAR __dospath __P_((char *));
 
 #ifdef	FD
 extern char *gendospath __P_((char *, int, int));
-extern char *strdelim __P_((char *, int));
-extern char *strrdelim __P_((char *, int));
-extern char *strrdelim2 __P_((char *, char *));
-extern int isdelim __P_((char *, int));
+extern char *strdelim __P_((CONST char *, int));
+extern char *strrdelim __P_((CONST char *, int));
+extern char *strrdelim2 __P_((CONST char *, CONST char *));
+extern int isdelim __P_((CONST char *, int));
 #if	MSDOS
 extern char *strcatdelim __P_((char *));
 #endif
-extern char *strcatdelim2 __P_((char *, char *, char *));
-extern int strcasecmp2 __P_((char *, char *));
-extern int isdotdir __P_((char *));
+extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
+extern int strcasecmp2 __P_((CONST char *, CONST char *));
+extern int isdotdir __P_((CONST char *));
 extern time_t timelocal2 __P_((struct tm *));
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
@@ -199,31 +199,32 @@ extern u_int cnvunicode __P_((u_int, int));
 #include <tzfile.h>
 #endif
 static char *NEAR gendospath __P_((char *, int, int));
-static char *NEAR strdelim __P_((char *, int));
-static char *NEAR strrdelim __P_((char *, int));
-static char *NEAR strrdelim2 __P_((char *, char *));
-static int NEAR isdelim __P_((char *, int));
+static char *NEAR strdelim __P_((CONST char *, int));
+static char *NEAR strrdelim __P_((CONST char *, int));
+static char *NEAR strrdelim2 __P_((CONST char *, CONST char *));
+static int NEAR isdelim __P_((CONST char *, int));
 #if	MSDOS
 static char *NEAR strcatdelim __P_((char *));
 #endif
-static char *NEAR strcatdelim2 __P_((char *, char *, char *));
-static int NEAR strcasecmp2 __P_((char *, char *));
-static int NEAR isdotdir __P_((char *));
+static char *NEAR strcatdelim2 __P_((char *, CONST char *, CONST char *));
+static int NEAR strcasecmp2 __P_((CONST char *, CONST char *));
+static int NEAR isdotdir __P_((CONST char *));
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
-static long NEAR char2long __P_((u_char *));
-static int NEAR tmcmp __P_((struct tm *, struct tm *));
+static long NEAR char2long __P_((CONST u_char *));
+static int NEAR tmcmp __P_((CONST struct tm *, CONST struct tm *));
 #endif
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
-static time_t NEAR timegm2 __P_((struct tm *));
-static long NEAR gettimezone __P_((struct tm *, time_t));
+static time_t NEAR timegm2 __P_((CONST struct tm *));
+static long NEAR gettimezone __P_((CONST struct tm *, time_t));
 #endif
 static time_t NEAR timelocal2 __P_((struct tm *));
-static int NEAR openunitbl __P_((char *));
+static int NEAR openunitbl __P_((CONST char *));
 static u_int NEAR unifysjis __P_((u_int, int));
 static u_int NEAR cnvunicode __P_((u_int, int));
 #define	Xopen		open
 #define	Xclose(f)	((close(f)) ? -1 : 0)
+#define	Xlseek		lseek
 #define	sureread	read
 #define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
 #define	skread(f,o,s,n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
@@ -243,39 +244,43 @@ static l_off_t NEAR Xllseek __P_((int, l_off_t, int));
 #define	Xllseek	lseek
 #endif
 #if	!MSDOS
-static int NEAR sectseek __P_((devstat *, u_long));
+static int NEAR sectseek __P_((CONST devstat *, u_long));
 #endif
-static int NEAR realread __P_((devstat *, u_long, u_char *, int));
-static int NEAR realwrite __P_((devstat *, u_long, u_char *, int));
-static int NEAR killcache __P_((devstat *, int, int));
-static int NEAR flushcache __P_((devstat *));
-static int NEAR shiftcache __P_((devstat *, int, int));
+static int NEAR realread __P_((CONST devstat *, u_long, u_char *, int));
+static int NEAR realwrite __P_((CONST devstat *, u_long, CONST u_char *, int));
+static int NEAR killcache __P_((CONST devstat *, int, int));
+static int NEAR flushcache __P_((CONST devstat *));
+static int NEAR shiftcache __P_((CONST devstat *, int, int));
 static int NEAR cachecpy __P_((int, int, int, int));
-static int NEAR uniqcache __P_((devstat *, int, u_long, u_long));
-static int NEAR appendcache __P_((int, devstat *, u_long, u_char *, int, int));
-static int NEAR insertcache __P_((int, devstat *, u_long, u_char *, int, int));
-static int NEAR overwritecache __P_((int, devstat *,
-		u_long, u_char *, int, int));
-static int NEAR savecache __P_((devstat *, u_long, u_char *, int, int));
-static int NEAR loadcache __P_((devstat *, u_long, u_char *, int));
-static long NEAR sectread __P_((devstat *, u_long, u_char *, int));
-static long NEAR sectwrite __P_((devstat *, u_long, u_char *, int));
-static int NEAR availfat __P_((devstat *));
+static int NEAR uniqcache __P_((CONST devstat *, int, u_long, u_long));
+static int NEAR appendcache __P_((int, CONST devstat *,
+		u_long, CONST u_char *, int, int));
+static int NEAR insertcache __P_((int, CONST devstat *,
+		u_long, CONST u_char *, int, int));
+static int NEAR overwritecache __P_((int, CONST devstat *,
+		u_long, CONST u_char *, int, int));
+static int NEAR savecache __P_((CONST devstat *,
+		u_long, CONST u_char *, int, int));
+static int NEAR loadcache __P_((CONST devstat *, u_long, u_char *, int));
+static long NEAR sectread __P_((CONST devstat *, u_long, u_char *, int));
+static long NEAR sectwrite __P_((CONST devstat *,
+		u_long, CONST u_char *, int));
+static int NEAR availfat __P_((CONST devstat *));
 static int NEAR readfat __P_((devstat *));
-static int NEAR writefat __P_((devstat *));
-static long NEAR getfatofs __P_((devstat *, long));
-static u_char *NEAR readtmpfat __P_((devstat *, long, int));
-static long NEAR getfatent __P_((devstat *, long));
+static int NEAR writefat __P_((CONST devstat *));
+static long NEAR getfatofs __P_((CONST devstat *, long));
+static u_char *NEAR readtmpfat __P_((CONST devstat *, long, int));
+static long NEAR getfatent __P_((CONST devstat *, long));
 static int NEAR putfatent __P_((devstat *, long, long));
-static u_long NEAR clust2sect __P_((devstat *, long));
-static long NEAR clust32 __P_((devstat *, dent_t *));
-static long NEAR newclust __P_((devstat *));
-static long NEAR clustread __P_((devstat *, u_char *, long));
-static long NEAR clustwrite __P_((devstat *, u_char *, long));
+static u_long NEAR clust2sect __P_((CONST devstat *, long));
+static long NEAR clust32 __P_((CONST devstat *, CONST dent_t *));
+static long NEAR newclust __P_((CONST devstat *));
+static long NEAR clustread __P_((CONST devstat *, u_char *, long));
+static long NEAR clustwrite __P_((devstat *, CONST u_char *, long));
 static long NEAR clustexpand __P_((devstat *, long, int));
 static int NEAR clustfree __P_((devstat *, long));
 #if	!MSDOS
-static int NEAR _readbpb __P_((devstat *, bpb_t *));
+static int NEAR _readbpb __P_((devstat *, CONST bpb_t *));
 #endif
 static int NEAR readbpb __P_((devstat *, int));
 #ifdef	HDDMOUNT
@@ -283,7 +288,7 @@ static l_off_t *NEAR _readpt __P_((l_off_t, l_off_t, int, int, int, int));
 #endif
 static int NEAR opendev __P_((int));
 static int NEAR closedev __P_((int));
-static int NEAR calcsum __P_((u_char *));
+static int NEAR calcsum __P_((CONST u_char *));
 static u_int NEAR lfnencode __P_((u_int, u_int));
 static u_int NEAR lfndecode __P_((u_int, u_int));
 #if	!MSDOS
@@ -291,30 +296,31 @@ static int NEAR transchar __P_((int));
 static int NEAR detranschar __P_((int));
 #endif
 static int NEAR sfntranschar __P_((int));
-static int NEAR cmpdospath __P_((char *, char *, int, int));
-static char *NEAR getdosname __P_((char *, u_char *, u_char *));
-static u_char *NEAR putdosname __P_((u_char *, char *, int));
+static int NEAR cmpdospath __P_((CONST char *, CONST char *, int, int));
+static char *NEAR getdosname __P_((char *, CONST u_char *, CONST u_char *));
+static u_char *NEAR putdosname __P_((u_char *, CONST char *, int));
 static u_int NEAR getdosmode __P_((u_int));
 static u_int NEAR putdosmode __P_((u_int));
 static time_t NEAR getdostime __P_((u_int, u_int));
 static int NEAR putdostime __P_((u_char *, time_t));
-static int NEAR getdrive __P_((char *));
-static int NEAR parsepath __P_((char *, char *, int));
+static int NEAR getdrive __P_((CONST char *));
+static int NEAR parsepath __P_((char *, CONST char *, int));
 static int NEAR seekdent __P_((dosDIR *, dent_t *, long, long));
 static int NEAR readdent __P_((dosDIR *, dent_t *, int));
-static dosDIR *NEAR _dosopendir __P_((char *, char *, int));
+static dosDIR *NEAR _dosopendir __P_((CONST char *, char *, int));
 static int NEAR _dosclosedir __P_((dosDIR *));
 static struct dosdirent *NEAR _dosreaddir __P_((dosDIR *, int));
-static struct dosdirent *NEAR finddirent __P_((dosDIR *, char *, int, int));
-static dosDIR *NEAR splitpath __P_((char **, char *, int));
-static int NEAR getdent __P_((char *, int *));
+static struct dosdirent *NEAR finddirent __P_((dosDIR *,
+		CONST char *, int, int));
+static dosDIR *NEAR splitpath __P_((CONST char **, char *, int));
+static int NEAR getdent __P_((CONST char *, int *));
 static int NEAR writedent __P_((int));
 static int NEAR expanddent __P_((int));
-static int NEAR creatdent __P_((char *, int));
+static int NEAR creatdent __P_((CONST char *, int));
 static int NEAR unlinklfn __P_((int, long, long, int));
 static long NEAR dosfilbuf __P_((int, int));
 static long NEAR dosflsbuf __P_((int));
-static int NEAR type2flags __P_((char *));
+static int NEAR type2flags __P_((CONST char *));
 
 #if	MSDOS
 int dependdosfunc = 0;
@@ -522,13 +528,13 @@ static CONST kconv_t rsjistable[] = {
 	{0xfa54, 0x81ca, 0x01},		/* full width not sign */
 	{0xfa5b, 0x81e6, 0x01},		/* because */
 };
-#define	RSJISTBLSIZ	arraysizeof(rsjistable)
+#define	RSJISTBLSIZ	arraysize(rsjistable)
 #endif	/* !FD */
 
 
 #if	!MSDOS || !defined (FD)
 static int NEAR __dospath(path)
-char *path;
+CONST char *path;
 {
 	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
@@ -548,14 +554,14 @@ int drive, c;
 }
 
 static char *NEAR strdelim(s, d)
-char *s;
+CONST char *s;
 int d;
 {
 	int i;
 
-	if (d && __dospath(s)) return(s + 1);
+	if (d && __dospath(s)) return((char *)&(s[1]));
 	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_) return(&(s[i]));
+		if (s[i] == _SC_) return((char *)&(s[i]));
 # ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
 # endif
@@ -565,13 +571,13 @@ int d;
 }
 
 static char *NEAR strrdelim(s, d)
-char *s;
+CONST char *s;
 int d;
 {
-	char *cp;
+	CONST char *cp;
 	int i;
 
-	if (d && __dospath(s)) cp = s + 1;
+	if (d && __dospath(s)) cp = &(s[1]);
 	else cp = NULL;
 	for (i = 0; s[i]; i++) {
 		if (s[i] == _SC_) cp = &(s[i]);
@@ -580,14 +586,14 @@ int d;
 # endif
 	}
 
-	return(cp);
+	return((char *)cp);
 }
 
 static char *NEAR strrdelim2(s, eol)
-char *s, *eol;
+CONST char *s, *eol;
 {
 #ifdef	BSPATHDELIM
-	char *cp;
+	CONST char *cp;
 	int i;
 
 	cp = NULL;
@@ -596,16 +602,16 @@ char *s, *eol;
 		if (iskanji1(s, i)) i++;
 	}
 
-	return(cp);
+	return((char *)cp);
 #else
-	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
+	for (eol--; eol >= s; eol--) if (*eol == _SC_) return((char *)eol);
 
 	return(NULL);
 #endif
 }
 
 static int NEAR isdelim(s, ptr)
-char *s;
+CONST char *s;
 int ptr;
 {
 #ifdef	BSPATHDELIM
@@ -661,7 +667,8 @@ char *s;
 #endif	/* MSDOS */
 
 static char *NEAR strcatdelim2(buf, s1, s2)
-char *buf, *s1, *s2;
+char *buf;
+CONST char *s1, *s2;
 {
 	char *cp;
 	int i, len;
@@ -712,15 +719,19 @@ char *buf, *s1, *s2;
 }
 
 static int NEAR strcasecmp2(s1, s2)
-char *s1, *s2;
+CONST char *s1, *s2;
 {
+	int c1, c2;
+
 	for (;;) {
-		if (toupper2(*s1) != toupper2(*s2)) return(*s1 - *s2);
+		c1 = toupper2(*s1);
+		c2 = toupper2(*s2);
+		if (c1 != c2) return(c1 - c2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
 			s1++;
 			s2++;
-			if (*s1 != *s2) return(*s1 - *s2);
+			if (*s1 != *s2) return((u_char)*s1 - (u_char)*s2);
 		}
 #endif
 		if (!*s1) break;
@@ -732,7 +743,7 @@ char *s1, *s2;
 }
 
 static int NEAR isdotdir(s)
-char *s;
+CONST char *s;
 {
 	if (s[0] != '.') /*EMPTY*/;
 	else if (!s[1]) return(2);
@@ -745,7 +756,7 @@ char *s;
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long NEAR char2long(s)
-u_char *s;
+CONST u_char *s;
 {
 	return((long)((u_long)(s[3])
 		| ((u_long)(s[2]) << (BITSPERBYTE * 1))
@@ -754,7 +765,7 @@ u_char *s;
 }
 
 static int NEAR tmcmp(tm1, tm2)
-struct tm *tm1, *tm2;
+CONST struct tm *tm1, *tm2;
 {
 	if (tm1 -> tm_year != tm2 -> tm_year)
 		return (tm1 -> tm_year - tm2 -> tm_year);
@@ -773,7 +784,7 @@ struct tm *tm1, *tm2;
 
 #if	!defined (USEMKTIME) && !defined (USETIMELOCAL)
 static time_t NEAR timegm2(tm)
-struct tm *tm;
+CONST struct tm *tm;
 {
 	time_t t;
 	int i, y;
@@ -807,7 +818,7 @@ struct tm *tm;
 }
 
 static long NEAR gettimezone(tm, t)
-struct tm *tm;
+CONST struct tm *tm;
 time_t t;
 {
 # if	MSDOS
@@ -935,7 +946,7 @@ struct tm *tm;
 }
 
 static int NEAR openunitbl(file)
-char *file;
+CONST char *file;
 {
 	static int fd = -2;
 	u_char buf[2];
@@ -1082,12 +1093,15 @@ int encode;
 #endif	/* !FD */
 
 #ifdef	USELLSEEK
+# ifdef	_syscall5
+# undef	_llseek
 static _syscall5(int, _llseek,
 	u_int, fd,
 	u_long, ofs_h,
 	u_long, ofs_l,
 	l_off_t *, result,
 	u_int, whence);
+# endif
 
 static l_off_t NEAR Xllseek(fd, offset, whence)
 int fd;
@@ -1108,7 +1122,7 @@ int whence;
 
 #if	!MSDOS
 static int NEAR sectseek(devp, sect)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
 {
 	l_off_t offset;
@@ -1132,7 +1146,7 @@ u_long sect;
 #endif	/* !MSDOS */
 
 static int NEAR realread(devp, sect, buf, n)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
 u_char *buf;
 int n;
@@ -1141,7 +1155,8 @@ int n;
 
 	duperrno = errno;
 #if	MSDOS
-	if (rawdiskio(devp -> drive, sect, buf, n, devp -> sectsize, 0) < 0) {
+	n = rawdiskio(devp -> drive, sect, buf, n, devp -> sectsize, 0);
+	if (n < 0) {
 		doserrno = errno;
 		return(-1);
 	}
@@ -1161,16 +1176,18 @@ int n;
 }
 
 static int NEAR realwrite(devp, sect, buf, n)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
-u_char *buf;
+CONST u_char *buf;
 int n;
 {
 	int duperrno;
 
 	duperrno = errno;
 #if	MSDOS
-	if (rawdiskio(devp -> drive, sect, buf, n, devp -> sectsize, 1) < 0) {
+	n = rawdiskio(devp -> drive, sect,
+		(char *)buf, n, devp -> sectsize, 1);
+	if (n < 0) {
 		doserrno = errno;
 		return(-1);
 	}
@@ -1190,7 +1207,7 @@ int n;
 }
 
 static int NEAR killcache(devp, n, size)
-devstat *devp;
+CONST devstat *devp;
 int n, size;
 {
 	int i, ret;
@@ -1214,7 +1231,7 @@ int n, size;
 }
 
 static int NEAR flushcache(devp)
-devstat *devp;
+CONST devstat *devp;
 {
 	int i, ret;
 
@@ -1231,7 +1248,7 @@ devstat *devp;
 }
 
 static int NEAR shiftcache(devp, n, nsect)
-devstat *devp;
+CONST devstat *devp;
 int n, nsect;
 {
 	u_char *cachebuf[SECTCACHESIZE], wrtbuf[SECTCACHESIZE];
@@ -1311,7 +1328,7 @@ int n, ofs1, ofs2, size;
 }
 
 static int NEAR uniqcache(devp, n, min, max)
-devstat *devp;
+CONST devstat *devp;
 int n;
 u_long min, max;
 {
@@ -1341,9 +1358,9 @@ u_long min, max;
 
 static int NEAR appendcache(dst, devp, sect, buf, n, wrt)
 int dst;
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
-u_char *buf;
+CONST u_char *buf;
 int n, wrt;
 {
 	u_long min, max;
@@ -1400,9 +1417,9 @@ int n, wrt;
 
 static int NEAR insertcache(dst, devp, sect, buf, n, wrt)
 int dst;
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
-u_char *buf;
+CONST u_char *buf;
 int n, wrt;
 {
 	u_long min, max;
@@ -1457,9 +1474,9 @@ int n, wrt;
 
 static int NEAR overwritecache(dst, devp, sect, buf, n, wrt)
 int dst;
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
-u_char *buf;
+CONST u_char *buf;
 int n, wrt;
 {
 	u_long min, max;
@@ -1503,9 +1520,9 @@ int n, wrt;
 }
 
 static int NEAR savecache(devp, sect, buf, n, wrt)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
-u_char *buf;
+CONST u_char *buf;
 int n, wrt;
 {
 	int i, duperrno;
@@ -1554,7 +1571,7 @@ int n, wrt;
 }
 
 static int NEAR loadcache(devp, sect, buf, n)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
 u_char *buf;
 int n;
@@ -1627,7 +1644,7 @@ int n;
 }
 
 static long NEAR sectread(devp, sect, buf, n)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
 u_char *buf;
 int n;
@@ -1638,9 +1655,9 @@ int n;
 }
 
 static long NEAR sectwrite(devp, sect, buf, n)
-devstat *devp;
+CONST devstat *devp;
 u_long sect;
-u_char *buf;
+CONST u_char *buf;
 int n;
 {
 	if (devp -> flags & F_RONLY) {
@@ -1655,7 +1672,7 @@ int n;
 }
 
 static int NEAR availfat(devp)
-devstat *devp;
+CONST devstat *devp;
 {
 	u_char *buf;
 	u_long i, n, clust;
@@ -1775,7 +1792,7 @@ devstat *devp;
 }
 
 static int NEAR writefat(devp)
-devstat *devp;
+CONST devstat *devp;
 {
 	char *buf;
 	long i;
@@ -1799,7 +1816,7 @@ devstat *devp;
 }
 
 static long NEAR getfatofs(devp, clust)
-devstat *devp;
+CONST devstat *devp;
 long clust;
 {
 	long ofs, bit;
@@ -1818,7 +1835,7 @@ long clust;
 }
 
 static u_char *NEAR readtmpfat(devp, ofs, nsect)
-devstat *devp;
+CONST devstat *devp;
 long ofs;
 int nsect;
 {
@@ -1841,7 +1858,7 @@ int nsect;
 }
 
 static long NEAR getfatent(devp, clust)
-devstat *devp;
+CONST devstat *devp;
 long clust;
 {
 	u_char *fatp, *buf;
@@ -1891,7 +1908,7 @@ devstat *devp;
 long clust, n;
 {
 	u_char *fatp, *buf;
-	long ofs;
+	long i, ofs;
 	int old, nsect;
 
 	if ((ofs = getfatofs(devp, clust)) < 0L) return(-1);
@@ -1936,8 +1953,6 @@ long clust, n;
 	}
 	if (!buf) devp -> flags |= F_WRFAT;
 	else {
-		long i;
-
 		for (i = devp -> fatofs; i < devp -> dirofs;
 		i += devp -> fatsize) {
 			if (sectwrite(devp, i + (ofs / (devp -> sectsize)),
@@ -1966,7 +1981,7 @@ long clust, n;
 }
 
 static u_long NEAR clust2sect(devp, clust)
-devstat *devp;
+CONST devstat *devp;
 long clust;
 {
 	u_long sect;
@@ -1976,7 +1991,7 @@ long clust;
 	}
 	else if (!clust || clust >= ROOTCLUST) {
 		sect = (clust) ? clust - ROOTCLUST : devp -> dirofs;
-		if (sect >= (devp -> dirofs) + (devp -> dirsize)) {
+		if (sect >= devp -> dirofs + (u_long)(devp -> dirsize)) {
 			doserrno = 0;
 			return((u_long)0);
 		}
@@ -1992,14 +2007,14 @@ long clust;
 		return((u_long)0);
 	}
 	sect = ((clust - MINCLUST) * (u_long)(devp -> clustsize))
-		+ ((u_long)(devp -> dirofs) + (u_long)(devp -> dirsize));
+		+ (devp -> dirofs + (u_long)(devp -> dirsize));
 
 	return(sect);
 }
 
 static long NEAR clust32(devp, dentp)
-devstat *devp;
-dent_t *dentp;
+CONST devstat *devp;
+CONST dent_t *dentp;
 {
 	long clust;
 
@@ -2011,7 +2026,7 @@ dent_t *dentp;
 }
 
 static long NEAR newclust(devp)
-devstat *devp;
+CONST devstat *devp;
 {
 	long clust, used;
 
@@ -2026,7 +2041,7 @@ devstat *devp;
 }
 
 static long NEAR clustread(devp, buf, clust)
-devstat *devp;
+CONST devstat *devp;
 u_char *buf;
 long clust;
 {
@@ -2035,7 +2050,7 @@ long clust;
 
 	if (!(sect = clust2sect(devp, clust))) return(-1L);
 	if (!(devp -> flags & F_FAT32)
-	&& sect < (long)(devp -> dirofs) + (long)(devp -> dirsize))
+	&& sect < devp -> dirofs + (u_long)(devp -> dirsize))
 		next = ROOTCLUST + sect + (long)(devp -> clustsize);
 	else next = getfatent(devp, clust);
 
@@ -2047,7 +2062,7 @@ long clust;
 
 static long NEAR clustwrite(devp, buf, prev)
 devstat *devp;
-u_char *buf;
+CONST u_char *buf;
 long prev;
 {
 	u_long sect;
@@ -2116,13 +2131,13 @@ int drv;
 #else
 static int NEAR _readbpb(devp, bpbcache)
 devstat *devp;
-bpb_t *bpbcache;
+CONST bpb_t *bpbcache;
 #endif
 {
 #if	!MSDOS
 	int i, cc, fd, nsect;
 #endif
-	bpb_t *bpb;
+	CONST bpb_t *bpb;
 	char *buf;
 	long total;
 	int duperrno;
@@ -2292,10 +2307,10 @@ bpb_t *bpbcache;
 
 	devp -> fatofs = byte2word(bpb -> bootsect);
 	devp -> fatsize = byte2word(bpb -> fatsize);
-	devp -> dirsize = (long)byte2word(bpb -> maxdir) * DOSDIRENT
-		/ (long)(devp -> sectsize);
+	devp -> dirsize = (u_long)byte2word(bpb -> maxdir) * DOSDIRENT
+		/ (u_long)(devp -> sectsize);
 
-	if (devp -> fatsize && devp -> dirsize) devp -> rootdir = 0;
+	if (devp -> fatsize && devp -> dirsize) devp -> rootdir = 0L;
 	else {
 		if (!(devp -> fatsize))
 			devp -> fatsize = byte2dword(bpb -> bigfatsize);
@@ -2304,8 +2319,8 @@ bpb_t *bpbcache;
 		devp -> flags |= F_FAT32;
 	}
 
-	devp -> dirofs = (devp -> fatofs) + (devp -> fatsize) * (bpb -> nfat);
-	total -= (long)(devp -> dirofs) + (long)(devp -> dirsize);
+	devp -> dirofs = devp -> fatofs + (devp -> fatsize * bpb -> nfat);
+	total -= devp -> dirofs + (u_long)(devp -> dirsize);
 	devp -> totalsize = total / (devp -> clustsize);
 	devp -> availsize = (u_long)0xffffffff;
 
@@ -2327,11 +2342,11 @@ bpb_t *bpbcache;
 
 #if	!MSDOS
 static int NEAR readbpb(devp, drv)
-devstat * devp;
+devstat *devp;
 int drv;
 {
 	bpb_t bpb;
-	char *cp;
+	CONST char *cp;
 	int i, ret;
 
 	cp = NULL;
@@ -2482,7 +2497,7 @@ int fd, head, sect, secsiz;
 }
 
 l_off_t *readpt(devfile, pc98)
-char *devfile;
+CONST char *devfile;
 int pc98;
 {
 # ifdef	DIOCGDINFO
@@ -2738,7 +2753,7 @@ VOID_T (*func)__P_((VOID_A));
 }
 
 static int NEAR calcsum(name)
-u_char *name;
+CONST u_char *name;
 {
 	int i, sum;
 
@@ -2808,10 +2823,10 @@ int c;
 }
 
 static int NEAR cmpdospath(path1, path2, len, part)
-char *path1, *path2;
+CONST char *path1, *path2;
 int len, part;
 {
-	char *cp;
+	CONST char *cp;
 	u_int w1, w2;
 	int i, c1, c2;
 
@@ -2846,7 +2861,7 @@ int len, part;
 
 static char *NEAR getdosname(buf, name, ext)
 char *buf;
-u_char *name, *ext;
+CONST u_char *name, *ext;
 {
 	int i, len;
 
@@ -2865,10 +2880,11 @@ u_char *name, *ext;
 
 static u_char *NEAR putdosname(buf, file, vol)
 u_char *buf;
-char *file;
+CONST char *file;
 int vol;
 {
-	char *cp, *eol, num[7];
+	CONST char *cp, *eol;
+	char num[7];
 	u_int w;
 	int i, j, c, cnv;
 
@@ -3071,7 +3087,7 @@ time_t tim;
 }
 
 static int NEAR getdrive(path)
-char *path;
+CONST char *path;
 {
 	int i, drive;
 
@@ -3089,7 +3105,8 @@ char *path;
 }
 
 static int NEAR parsepath(buf, path, class)
-char *buf, *path;
+char *buf;
+CONST char *path;
 int class;
 {
 	char *cp;
@@ -3164,14 +3181,16 @@ int class;
 }
 
 static dosDIR *NEAR _dosopendir(path, resolved, needlfn)
-char *path, *resolved;
+CONST char *path;
+char *resolved;
 int needlfn;
 {
 	dosDIR *xdirp;
 	struct dosdirent *dp;
 	dent_t *dentp;
 	cache_t *cache;
-	char *cp, *cachepath, buf[DOSMAXPATHLEN - 2];
+	CONST char *cp;
+	char *cachepath, buf[DOSMAXPATHLEN - 2];
 	int len, dd, drive, rlen, duperrno;
 
 	rlen = 0;
@@ -3315,7 +3334,7 @@ dosDIR *xdirp;
 }
 
 DIR *dosopendir(path)
-char *path;
+CONST char *path;
 {
 	dosDIR *xdirp;
 
@@ -3521,7 +3540,7 @@ DIR *dirp;
 
 static struct dosdirent *NEAR finddirent(xdirp, fname, len, needlfn)
 dosDIR *xdirp;
-char *fname;
+CONST char *fname;
 int len, needlfn;
 {
 	struct dosdirent *dp;
@@ -3571,7 +3590,7 @@ DIR *dirp;
 }
 
 int doschdir(path)
-char *path;
+CONST char *path;
 {
 	dosDIR *xdirp;
 	char *tmp, buf[DOSMAXPATHLEN];
@@ -3631,7 +3650,8 @@ int size;
 }
 
 static dosDIR *NEAR splitpath(pathp, resolved, needlfn)
-char **pathp, *resolved;
+CONST char **pathp;
+char *resolved;
 int needlfn;
 {
 	char dir[DOSMAXPATHLEN];
@@ -3656,7 +3676,7 @@ int needlfn;
 }
 
 static int NEAR getdent(path, ddp)
-char *path;
+CONST char *path;
 int *ddp;
 {
 	dosDIR *xdirp;
@@ -3765,13 +3785,14 @@ int dd;
 }
 
 static int NEAR creatdent(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	dosDIR *xdirp;
 	dent_t *dentp;
 	u_char *cp, fname[8 + 3 + 1], longfname[DOSMAXNAMLEN + 1];
-	char *file, tmp[8 + 1 + 3 + 1], buf[DOSMAXPATHLEN];
+	CONST char *file;
+	char tmp[8 + 1 + 3 + 1], buf[DOSMAXPATHLEN];
 	long clust, offset;
 	u_int c;
 	int i, j, n, len, cnt, sum, ret, lfn;
@@ -4007,7 +4028,8 @@ int sum;
 
 #if	MSDOS
 char *dosshortname(path, alias)
-char *path, *alias;
+CONST char *path;
+char *alias;
 {
 	dosDIR *xdirp;
 	char *cp, buf[DOSMAXPATHLEN], name[8 + 1 + 3 + 1];
@@ -4048,7 +4070,8 @@ char *path, *alias;
 }
 
 char *doslongname(path, resolved)
-char *path, *resolved;
+CONST char *path;
+char *resolved;
 {
 	dosDIR *xdirp;
 	struct dosdirent *dp;
@@ -4110,7 +4133,7 @@ char *buf;
 }
 
 int dosstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	char *cp;
@@ -4144,14 +4167,14 @@ struct stat *stp;
 }
 
 int doslstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	return(dosstat(path, stp));
 }
 
 int dosaccess(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	struct stat st;
@@ -4189,7 +4212,7 @@ int mode;
 #ifndef	NOSYMLINK
 /*ARGSUSED*/
 int dossymlink(name1, name2)
-char *name1, *name2;
+CONST char *name1, *name2;
 {
 	errno = EINVAL;
 
@@ -4198,7 +4221,8 @@ char *name1, *name2;
 
 /*ARGSUSED*/
 int dosreadlink(path, buf, bufsiz)
-char *path, *buf;
+CONST char *path;
+char *buf;
 int bufsiz;
 {
 	errno = EINVAL;
@@ -4208,7 +4232,7 @@ int bufsiz;
 #endif	/* !NOSYMLINK */
 
 int doschmod(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	int dd, ret;
@@ -4223,14 +4247,14 @@ int mode;
 
 #ifdef	USEUTIME
 int dosutime(path, times)
-char *path;
-struct utimbuf *times;
+CONST char *path;
+CONST struct utimbuf *times;
 {
 	time_t t = times -> modtime;
 #else
 int dosutimes(path, tvp)
-char *path;
-struct timeval tvp[2];
+CONST char *path;
+CONST struct timeval *tvp;
 {
 	time_t t = tvp[1].tv_sec;
 #endif
@@ -4245,7 +4269,7 @@ struct timeval tvp[2];
 }
 
 int dosunlink(path)
-char *path;
+CONST char *path;
 {
 	int dd, sum, ret;
 
@@ -4272,7 +4296,7 @@ char *path;
 }
 
 int dosrename(from, to)
-char *from, *to;
+CONST char *from, *to;
 {
 	char buf[DOSMAXPATHLEN];
 	long clust, rmclust, offset;
@@ -4333,7 +4357,7 @@ char *from, *to;
 }
 
 int dosopen(path, flags, mode)
-char *path;
+CONST char *path;
 int flags, mode;
 {
 	int fd, dd, tmp;
@@ -4556,7 +4580,7 @@ int nbytes;
 
 int doswrite(fd, buf, nbytes)
 int fd;
-char *buf;
+CONST char *buf;
 int nbytes;
 {
 	long size, total;
@@ -4683,7 +4707,7 @@ off_t size;
 }
 
 int dosmkdir(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	dent_t dent[2];
@@ -4745,7 +4769,7 @@ int mode;
 }
 
 int dosrmdir(path)
-char *path;
+CONST char *path;
 {
 	dosDIR *xdirp;
 	struct dosdirent *dp;
@@ -4807,7 +4831,7 @@ FILE *stream;
 }
 
 static int NEAR type2flags(type)
-char *type;
+CONST char *type;
 {
 	int flags;
 
@@ -4835,7 +4859,7 @@ char *type;
 }
 
 FILE *dosfopen(path, type)
-char *path, *type;
+CONST char *path, *type;
 {
 	int fd;
 
@@ -4851,7 +4875,7 @@ char *path, *type;
 
 FILE *dosfdopen(fd, type)
 int fd;
-char *type;
+CONST char *type;
 {
 	int flags;
 
@@ -4928,7 +4952,7 @@ FILE *stream;
 }
 
 int dosfwrite(buf, size, nitems, stream)
-char *buf;
+CONST char *buf;
 int size, nitems;
 FILE *stream;
 {
@@ -5047,7 +5071,7 @@ FILE *stream;
 }
 
 int dosfputs(s, stream)
-char *s;
+CONST char *s;
 FILE *stream;
 {
 	int i;

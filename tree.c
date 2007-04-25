@@ -28,8 +28,8 @@ extern int lastdrv;
 #define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
 #define	bufptr(y)	(&(tr_scr[(y - 1) * (TREEFIELD + 1)]))
 
-static int NEAR evaldir __P_((char *, int));
-static treelist *NEAR maketree __P_((char *, treelist *, treelist *,
+static int NEAR evaldir __P_((CONST char *, int));
+static treelist *NEAR maketree __P_((CONST char *, treelist *, treelist *,
 		int, int *));
 static int NEAR _showtree __P_((treelist *, int, int, int, int));
 static VOID NEAR showtree __P_((VOID_A));
@@ -59,7 +59,7 @@ static treelist *tr_cur = NULL;
 
 
 static int NEAR evaldir(dir, disp)
-char *dir;
+CONST char *dir;
 int disp;
 {
 	DIR *dirp;
@@ -123,7 +123,7 @@ int disp;
 
 /*ARGSUSED*/
 static treelist *NEAR maketree(path, list, parent, level, maxp)
-char *path;
+CONST char *path;
 treelist *list, *parent;
 int level, *maxp;
 {
@@ -133,7 +133,8 @@ int level, *maxp;
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
-	char *cp, *dir, *subdir, cwd[MAXPATHLEN];
+	CONST char *cp, *subdir;
+	char *dir, cwd[MAXPATHLEN];
 	int i, len;
 
 	if ((level + 1) * DIRFIELD + 2 > TREEFIELD) {

@@ -22,9 +22,9 @@ typedef struct _opendirpath_t {
 #endif
 
 #ifndef	_NODOSDRIVE
-static int NEAR checkpath __P_((char *, char *));
+static int NEAR checkpath __P_((CONST char *, char *));
 #endif
-static int NEAR statcommon __P_((char *, struct stat *));
+static int NEAR statcommon __P_((CONST char *, struct stat *));
 
 #ifndef	_NODOSDRIVE
 int lastdrv = -1;
@@ -37,13 +37,14 @@ static int maxdirpath = 0;
 
 
 int _dospath(path)
-char *path;
+CONST char *path;
 {
 	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 
 int dospath(path, buf)
-char *path, *buf;
+CONST char *path;
+char *buf;
 {
 	char tmp[MAXPATHLEN];
 	int drv;
@@ -70,7 +71,7 @@ char *path, *buf;
 
 #ifndef	_NODOSDRIVE
 int dospath2(path)
-char *path;
+CONST char *path;
 {
 	int drv, drive;
 
@@ -82,7 +83,7 @@ char *path;
 }
 
 int dospath3(path)
-char *path;
+CONST char *path;
 {
 	int i, drive;
 
@@ -92,9 +93,11 @@ char *path;
 }
 
 static int NEAR checkpath(path, buf)
-char *path, *buf;
+CONST char *path;
+char *buf;
 {
-	char *cp, tmp[MAXPATHLEN];
+	CONST char *cp;
+	char tmp[MAXPATHLEN];
 	int i, drive;
 
 #ifdef	DOUBLESLASH
@@ -125,7 +128,7 @@ char *path, *buf;
 #endif	/* !_NODOSDRIVE */
 
 DIR *Xopendir(path)
-char *path;
+CONST char *path;
 {
 #ifndef	_NOROCKRIDGE
 	char buf[MAXPATHLEN];
@@ -216,7 +219,7 @@ DIR *dirp;
 }
 
 int rawchdir(path)
-char *path;
+CONST char *path;
 {
 	if (setcurdrv(dospath(path, NULL), 1) < 0 || unixchdir(path) < 0)
 		return(-1);
@@ -225,7 +228,7 @@ char *path;
 }
 
 int Xchdir(path)
-char *path;
+CONST char *path;
 {
 #ifndef	_NODOSDRIVE
 	char buf[MAXPATHLEN];
@@ -279,7 +282,7 @@ char *path;
 }
 
 static int NEAR statcommon(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	char *cp;
@@ -303,7 +306,7 @@ struct stat *stp;
 }
 
 int Xstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	char conv[MAXPATHLEN];
@@ -316,7 +319,7 @@ struct stat *stp;
 }
 
 int Xlstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 #ifndef	_NOROCKRIDGE
@@ -339,7 +342,7 @@ struct stat *stp;
 }
 
 int Xaccess(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 #ifndef	_NOUSELFN
@@ -370,7 +373,7 @@ int mode;
 
 /*ARGSUSED*/
 int Xsymlink(name1, name2)
-char *name1, *name2;
+CONST char *name1, *name2;
 {
 	errno = EINVAL;
 	LOG2(_LOG_WARNING_, -1, "symlink(\"%k\", \"%k\");", name1, name2);
@@ -380,7 +383,8 @@ char *name1, *name2;
 
 /*ARGSUSED*/
 int Xreadlink(path, buf, bufsiz)
-char *path, *buf;
+CONST char *path;
+char *buf;
 int bufsiz;
 {
 #ifndef	_NOROCKRIDGE
@@ -400,7 +404,7 @@ int bufsiz;
 }
 
 int Xchmod(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
@@ -415,8 +419,8 @@ int mode;
 
 #ifdef	USEUTIME
 int Xutime(path, times)
-char *path;
-struct utimbuf *times;
+CONST char *path;
+CONST struct utimbuf *times;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -429,8 +433,8 @@ struct utimbuf *times;
 }
 #else	/* !USEUTIME */
 int Xutimes(path, tvp)
-char *path;
-struct timeval tvp[2];
+CONST char *path;
+CONST struct timeval *tvp;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -446,7 +450,7 @@ struct timeval tvp[2];
 #ifdef	HAVEFLAGS
 /*ARGSUSED*/
 int Xchflags(path, flags)
-char *path;
+CONST char *path;
 u_long flags;
 {
 	errno = EACCESS;
@@ -459,7 +463,7 @@ u_long flags;
 #ifndef	NOUID
 /*ARGSUSED*/
 int Xchown(path, uid, gid)
-char *path;
+CONST char *path;
 uid_t uid;
 gid_t gid;
 {
@@ -471,7 +475,7 @@ gid_t gid;
 #endif	/* !NOUID */
 
 int Xunlink(path)
-char *path;
+CONST char *path;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -488,7 +492,7 @@ char *path;
 }
 
 int Xrename(from, to)
-char *from, *to;
+CONST char *from, *to;
 {
 	char conv1[MAXPATHLEN], conv2[MAXPATHLEN];
 	int n;
@@ -506,7 +510,7 @@ char *from, *to;
 }
 
 int Xopen(path, flags, mode)
-char *path;
+CONST char *path;
 int flags, mode;
 {
 #ifndef	_NOUSELFN
@@ -573,7 +577,7 @@ int nbytes;
 
 int Xwrite(fd, buf, nbytes)
 int fd;
-char *buf;
+CONST char *buf;
 int nbytes;
 {
 	int n;
@@ -640,7 +644,7 @@ int oldd, newd;
 #endif	/* !_NODOSDRIVE */
 
 int Xmkdir(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 #if	defined (_NOUSELFN) && !defined (DJGPP)
@@ -666,7 +670,7 @@ int mode;
 }
 
 int Xrmdir(path)
-char *path;
+CONST char *path;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -679,7 +683,7 @@ char *path;
 }
 
 FILE *Xfopen(path, type)
-char *path, *type;
+CONST char *path, *type;
 {
 #ifndef	_NOUSELFN
 	char buf[MAXPATHLEN];
@@ -707,7 +711,7 @@ char *path, *type;
 #ifndef	_NODOSDRIVE
 FILE *Xfdopen(fd, type)
 int fd;
-char *type;
+CONST char *type;
 {
 	FILE *fp;
 
@@ -764,7 +768,7 @@ FILE *stream;
 }
 
 int Xfwrite(buf, size, nitems, stream)
-char *buf;
+CONST char *buf;
 int size, nitems;
 FILE *stream;
 {
@@ -824,7 +828,7 @@ FILE *stream;
 }
 
 int Xfputs(s, stream)
-char *s;
+CONST char *s;
 FILE *stream;
 {
 	int n;
@@ -844,7 +848,7 @@ static int popenstat = 0;
 #define	PIPEFILE	"FAKEPIPE"
 
 FILE *Xpopen(command, type)
-char *command, *type;
+CONST char *command, *type;
 {
 #ifndef	_NOUSELFN
 	char *cp, buf[MAXPATHLEN];

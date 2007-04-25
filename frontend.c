@@ -24,7 +24,7 @@
 #include "system.h"
 # ifndef	NOALIAS
 extern int addalias __P_((char *, char *));
-extern int deletealias __P_((char *));
+extern int deletealias __P_((CONST char *));
 # endif
 #endif
 
@@ -34,7 +34,7 @@ extern int deletealias __P_((char *));
 #define	MAXPTYMENU	5
 #endif
 
-extern functable funclist[];
+extern CONST functable funclist[];
 extern int internal_status;
 extern int fdmode;
 extern int fdflags;
@@ -170,7 +170,7 @@ int c;
 }
 
 VOID Xcputs2(s)
-char *s;
+CONST char *s;
 {
 	int len;
 
@@ -268,7 +268,7 @@ VOID Xcputnl(VOID_A)
 }
 
 int Xkanjiputs(s)
-char *s;
+CONST char *s;
 {
 	return(Xcprintf2("%k", s));
 }
@@ -401,7 +401,8 @@ static int NEAR ptygetkey(VOID_A)
 	static int next = 0;
 	u_int w;
 #endif
-	char *cp, *str[MAXPTYMENU];
+	CONST char *str[MAXPTYMENU];
+	char *cp, *new;
 	int n, c, ch, val[MAXPTYMENU];
 
 #ifndef	_NOIME
@@ -438,7 +439,7 @@ static int NEAR ptygetkey(VOID_A)
 		|| (c & ~K_ALTERNATE) != ptymenukey)
 			break;
 
-		str[0] = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
+		str[0] = new = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
 		str[1] = PTYIC_K;
 		str[2] = PTYBR_K;
 #ifndef	_NOIME
@@ -459,7 +460,7 @@ static int NEAR ptygetkey(VOID_A)
 			0, str, val);
 		movepos(filepos, 0);
 		changewin(win, (p_id_t)-1);
-		free(str[0]);
+		free(new);
 
 		if (ch != K_CR) continue;
 		else if (!n) break;

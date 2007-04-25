@@ -30,14 +30,14 @@ typedef struct _voweltable {
 } voweltable;
 
 #ifndef	CODEEUC
-extern char *kanjiconv2 __P_((char *, char *, int, int, int, int));
+extern CONST char *kanjiconv2 __P_((char *, CONST char *, int, int, int, int));
 #endif
 
 static int cmproman __P_((CONST VOID_P, CONST VOID_P));
-static int NEAR chgroman __P_((char *, int, u_short *));
+static int NEAR chgroman __P_((CONST char *, int, CONST u_short *));
 static int NEAR catroman __P_((int, int, CONST char *));
 static u_int NEAR jis2defcode __P_((u_int));
-static u_int NEAR defcode2jis __P_((char *));
+static u_int NEAR defcode2jis __P_((CONST char *));
 
 romantable *romanlist = NULL;
 int maxromanlist = 0;
@@ -185,7 +185,7 @@ CONST VOID_P vp2;
 }
 
 int searchroman(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	int i, n, min, max;
@@ -204,9 +204,9 @@ int len;
 }
 
 static int NEAR chgroman(str, len, kbuf)
-char *str;
+CONST char *str;
 int len;
-u_short *kbuf;
+CONST u_short *kbuf;
 {
 	romantable *tmp;
 	int n;
@@ -296,7 +296,8 @@ static u_int NEAR jis2defcode(c)
 u_int c;
 {
 #ifndef	CODEEUC
-	char *cp, buf[MAXKLEN + 1], tmp[MAXKLEN + 1];
+	CONST char *cp;
+	char buf[MAXKLEN + 1], tmp[MAXKLEN + 1];
 #endif
 
 	if (!(c & ~0xff)) {
@@ -318,7 +319,7 @@ u_int c;
 }
 
 static u_int NEAR defcode2jis(buf)
-char *buf;
+CONST char *buf;
 {
 #ifndef	CODEEUC
 	char tmp[MAXKLEN + 1];
@@ -348,7 +349,7 @@ u_int c;
 int str2jis(kbuf, max, buf)
 u_short *kbuf;
 int max;
-char *buf;
+CONST char *buf;
 {
 	u_short w;
 	int i, j;
@@ -366,7 +367,7 @@ char *buf;
 }
 
 int addroman(s, buf)
-char *s, *buf;
+CONST char *s, *buf;
 {
 	char str[R_MAXROMAN + 1];
 	u_short kbuf[R_MAXKANA];

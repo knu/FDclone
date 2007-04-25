@@ -175,17 +175,17 @@ static int cc_intr = -1;
 #endif	/* !FD */
 
 #ifdef	FD
-extern DIR *Xopendir __P_((char *));
+extern DIR *Xopendir __P_((CONST char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern char *Xgetwd __P_((char *));
-extern int Xstat __P_((char *, struct stat *));
-extern int Xlstat __P_((char *, struct stat *));
-extern int Xaccess __P_((char *, int));
-extern int Xchmod __P_((char *, int));
-extern int Xunlink __P_((char *));
-extern int Xrename __P_((char *, char *));
-extern int Xopen __P_((char *, int, int));
+extern int Xstat __P_((CONST char *, struct stat *));
+extern int Xlstat __P_((CONST char *, struct stat *));
+extern int Xaccess __P_((CONST char *, int));
+extern int Xchmod __P_((CONST char *, int));
+extern int Xunlink __P_((CONST char *));
+extern int Xrename __P_((CONST char *, CONST char *));
+extern int Xopen __P_((CONST char *, int, int));
 # ifdef	_NODOSDRIVE
 # define	Xclose(f)	((close(f)) ? -1 : 0)
 # define	Xlseek		lseek
@@ -193,13 +193,13 @@ extern int Xopen __P_((char *, int, int));
 extern int Xclose __P_((int));
 extern off_t Xlseek __P_((int, off_t, int));
 # endif	/* !_NODOSDRIVE */
-extern int Xmkdir __P_((char *, int));
-extern int Xrmdir __P_((char *));
-extern int stat2 __P_((char *, struct stat *));
-extern int chdir2 __P_((char *));
+extern int Xmkdir __P_((CONST char *, int));
+extern int Xrmdir __P_((CONST char *));
+extern int stat2 __P_((CONST char *, struct stat *));
+extern int chdir2 __P_((CONST char *));
 #else	/* !FD */
 # if	MSDOS
-extern DIR *Xopendir __P_((char *));
+extern DIR *Xopendir __P_((CONST char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 # else
@@ -208,7 +208,7 @@ extern struct dirent *Xreaddir __P_((DIR *));
 # define	Xreaddir	readdir
 # endif
 # ifdef	DJGPP
-extern dos_putpath __P_((char *, int));
+extern int dos_putpath __P_((CONST char *, int));
 extern char *Xgetwd __P_((char *));
 # else	/* !DJGPP */
 #  ifdef	USEGETWD
@@ -218,7 +218,7 @@ extern char *Xgetwd __P_((char *));
 #  endif
 # endif	/* !DJGPP */
 # if	MSDOS
-extern int Xstat __P_((char *, struct stat *));
+extern int Xstat __P_((CONST char *, struct stat *));
 # define	Xlstat		Xstat
 # else
 # define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
@@ -239,7 +239,7 @@ extern int Xstat __P_((char *, struct stat *));
 #  ifdef	DJGPP
 #  define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 #  else
-extern int Xmkdir __P_((char *, int));
+extern int Xmkdir __P_((CONST char *, int));
 #  endif
 # else
 # define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
@@ -247,14 +247,14 @@ extern int Xmkdir __P_((char *, int));
 #define	Xrmdir(p)	((rmdir(p)) ? -1 : 0)
 # if	MSDOS
 extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
-extern int chdir2 __P_((char *));
+extern int chdir2 __P_((CONST char *));
 # else
 # define	chdir2(p)	((chdir(p)) ? -1 : 0)
 # endif
 # ifdef	NOSYMLINK
 # define	stat2		Xstat
 # else
-extern int stat2 __P_((char *, struct stat *));
+extern int stat2 __P_((CONST char *, struct stat *));
 # endif
 #endif	/* !FD */
 
@@ -311,29 +311,29 @@ struct filestat_t {
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
-extern char *strdup2 __P_((char *));
-extern char *strncpy2 __P_((char *, char *, int));
+extern char *strdup2 __P_((CONST char *));
+extern char *strncpy2 __P_((char *, CONST char *, int));
 
 #ifdef	FD
-extern int getinfofs __P_((char *, off_t *, off_t *, off_t *));
-extern char *realpath2 __P_((char *, char *, int));
-extern int touchfile __P_((char *, struct stat *));
+extern int getinfofs __P_((CONST char *, off_t *, off_t *, off_t *));
+extern char *realpath2 __P_((CONST char *, char *, int));
+extern int touchfile __P_((CONST char *, struct stat *));
 #ifndef	NODIRLOOP
-extern int issamebody __P_((char *, char *));
+extern int issamebody __P_((CONST char *, CONST char *));
 #endif
 #ifndef	NOSYMLINK
-extern int cpsymlink __P_((char *, char *));
+extern int cpsymlink __P_((CONST char *, CONST char *));
 #endif
-extern char *inputstr __P_((char *, int, int, char *, int));
+extern char *inputstr __P_((CONST char *, int, int, CONST char *, int));
 #else	/* !FD */
-static int NEAR getinfofs __P_((char *, off_t *, off_t *, off_t *));
+static int NEAR getinfofs __P_((CONST char *, off_t *, off_t *, off_t *));
 # if	MSDOS
-static char *NEAR realpath2 __P_((char *, char *, int));
+static char *NEAR realpath2 __P_((CONST char *, char *, int));
 static int NEAR putdostime __P_((u_short *, u_short *, time_t));
 #  ifdef	USEUTIME
-static int NEAR Xutime __P_((char *, struct utimbuf *));
+static int NEAR Xutime __P_((CONST char *, CONST struct utimbuf *));
 #  else
-static int NEAR Xutimes __P_((char *, struct timeval []));
+static int NEAR Xutimes __P_((CONST char *, CONST struct timeval *));
 #  endif
 # define	ttyiomode(n)
 # define	stdiomode()
@@ -348,24 +348,24 @@ static VOID NEAR ttymode __P_((int));
 # define	stdiomode()	(ttymode(0))
 static int NEAR getkey3 __P_((int, int));
 # endif	/* !MSDOS */
-static int NEAR touchfile __P_((char *, struct stat *));
+static int NEAR touchfile __P_((CONST char *, struct stat *));
 #ifndef	NODIRLOOP
-static int NEAR issamebody __P_((char *, char *));
+static int NEAR issamebody __P_((CONST char *, CONST char *));
 #endif
 #ifndef	NOSYMLINK
-static int NEAR cpsymlink __P_((char *, char *));
+static int NEAR cpsymlink __P_((CONST char *, CONST char *));
 #endif
-static char *NEAR inputstr __P_((char *, int, int, char *, int));
+static char *NEAR inputstr __P_((CONST char *, int, int, CONST char *, int));
 #endif	/* !FD */
 
-static VOID NEAR doserror __P_((char *, int));
-static VOID NEAR dosperror __P_((char *));
+static VOID NEAR doserror __P_((CONST char *, int));
+static VOID NEAR dosperror __P_((CONST char *));
 static VOID NEAR fputsize __P_((off_t *, off_t *));
 static int NEAR inputkey __P_((VOID_A));
 static int cmpdirent __P_((CONST VOID_P, CONST VOID_P));
-static VOID NEAR evalenvopt __P_((char *, char *,
-		int (NEAR *)__P_((int, char *[]))));
-static int NEAR getdiropt __P_((int, char *[]));
+static VOID NEAR evalenvopt __P_((CONST char *, CONST char *,
+		int (NEAR *)__P_((int, char *CONST []))));
+static int NEAR getdiropt __P_((int, char *CONST []));
 static int NEAR showstr __P_((char *, int, int));
 #ifdef	MINIMUMSHELL
 static VOID NEAR showfname __P_((struct filestat_t *, off_t *));
@@ -391,14 +391,24 @@ static VOID NEAR dosdirfooter __P_((off_t *, int, int,
 static int NEAR dosdir __P_((reg_t *, off_t *, int *, int *,
 		off_t *, off_t *));
 #endif
-static int NEAR checkarg __P_((int, char *[]));
-static char *NEAR convwild __P_((char *, char *, char *, char *));
-static int NEAR getcopyopt __P_((int, char *[]));
-static int NEAR getbinmode __P_((char *, int));
-static int NEAR writeopen __P_((char *, char *));
+int doscomdir __P_((int, char *CONST []));
+static int NEAR checkarg __P_((int, char *CONST []));
+int doscommkdir __P_((int, char *CONST []));
+int doscomrmdir __P_((int, char *CONST []));
+int doscomerase __P_((int, char *CONST []));
+static char *NEAR convwild __P_((char *, CONST char *,
+		CONST char *, CONST char *));
+int doscomrename __P_((int, char *CONST []));
+static int NEAR getcopyopt __P_((int, char *CONST []));
+static int NEAR getbinmode __P_((CONST char *, int));
+static int NEAR writeopen __P_((CONST char *, CONST char *));
 static int NEAR textread __P_((int, u_char *, int, int));
 static int NEAR textclose __P_((int, int));
-static int NEAR doscopy __P_((char *, char *, struct stat *, int, int, int));
+static int NEAR doscopy __P_((CONST char *, CONST char *,
+		struct stat *, int, int, int));
+int doscomcopy __P_((int, char *CONST []));
+int doscomcls __P_((int, char *CONST []));
+int doscomtype __P_((int, char *CONST []));
 
 #define	BUFUNIT		32
 #define	DIRSORTFLAG	"NSEDGA"
@@ -412,7 +422,7 @@ static int NEAR doscopy __P_((char *, char *, struct stat *, int, int, int));
 #define	strerror2		strerror
 #else
 # ifndef	DECLERRLIST
-extern char *sys_errlist[];
+extern CONST char *CONST sys_errlist[];
 # endif
 #define	strerror2(n)		(char *)sys_errlist[n]
 #endif
@@ -457,7 +467,7 @@ static int copyflag = 0;
 
 #ifndef	FD
 static int NEAR getinfofs(path, totalp, freep, bsizep)
-char *path;
+CONST char *path;
 off_t *totalp, *freep, *bsizep;
 {
 # if	MSDOS
@@ -550,7 +560,8 @@ off_t *totalp, *freep, *bsizep;
 # if	MSDOS
 /*ARGSUSED*/
 static char *NEAR realpath2(path, resolved, rdlink)
-char *path, *resolved;
+CONST char *path;
+char *resolved;
 int rdlink;
 {
 	struct SREGS sreg;
@@ -595,8 +606,8 @@ time_t tim;
 
 #   ifdef	USEUTIME
 static int NEAR Xutime(path, times)
-char *path;
-struct utimbuf *times;
+CONST char *path;
+CONST struct utimbuf *times;
 {
 	time_t t;
 	__dpmi_regs reg;
@@ -606,8 +617,8 @@ struct utimbuf *times;
 	t = times -> modtime;
 #   else	/* !USEUTIME */
 static int NEAR Xutimes(path, tvp)
-char *path;
-struct timeval tvp[2];
+CONST char *path;
+CONST struct timeval *tvp;
 {
 	time_t t;
 	__dpmi_regs reg;
@@ -670,7 +681,7 @@ int sig, code;
 # endif	/* !MSDOS */
 
 static int NEAR touchfile(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 # ifdef	USEUTIME
@@ -694,7 +705,7 @@ struct stat *stp;
 
 # ifndef	NODIRLOOP
 static int NEAR issamebody(src, dest)
-char *src, *dest;
+CONST char *src, *dest;
 {
 	struct stat st1, st2;
 
@@ -706,7 +717,7 @@ char *src, *dest;
 
 # ifndef	NOSYMLINK
 static int NEAR cpsymlink(src, dest)
-char *src, *dest;
+CONST char *src, *dest;
 {
 	struct stat st;
 	char path[MAXPATHLEN];
@@ -727,9 +738,9 @@ char *src, *dest;
 
 /*ARGSUSED*/
 static char *NEAR inputstr(prompt, delsp, ptr, def, h)
-char *prompt;
+CONST char *prompt;
 int delsp, ptr;
-char *def;
+CONST char *def;
 int h;
 {
 	char *cp;
@@ -769,7 +780,7 @@ int h;
 #endif	/* !FD */
 
 static VOID NEAR doserror(s, n)
-char *s;
+CONST char *s;
 int n;
 {
 	if (!n || n >= DOSERRSIZ) return;
@@ -782,7 +793,7 @@ int n;
 }
 
 static VOID NEAR dosperror(s)
-char *s;
+CONST char *s;
 {
 	int duperrno;
 
@@ -893,8 +904,8 @@ CONST VOID_P vp2;
 }
 
 static VOID NEAR evalenvopt(cmd, env, getoptcmd)
-char *cmd, *env;
-int (NEAR *getoptcmd)__P_((int, char *[]));
+CONST char *cmd, *env;
+int (NEAR *getoptcmd)__P_((int, char *CONST []));
 {
 	char *cp, **argv;
 	int n, er, argc;
@@ -919,7 +930,7 @@ int (NEAR *getoptcmd)__P_((int, char *[]));
 
 static int NEAR getdiropt(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *arg;
 	int i, j, n, r, rr;
@@ -1541,15 +1552,15 @@ off_t *sump, *bsump;
 
 int doscomdir(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 #ifndef	MINIMUMSHELL
 	off_t bsum;
 #endif
 	reg_t *re;
 	struct stat st;
-	char *dir, *file;
-	char wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
+	CONST char *dir;
+	char *file, wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
 	off_t sum, total, fre, bsize;
 	int i, n, nf, nd;
 
@@ -1646,7 +1657,7 @@ char *argv[];
 
 static int NEAR checkarg(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	if (argc <= 1) {
 		doserror(NULL, ER_REQPARAM);
@@ -1662,7 +1673,7 @@ char *argv[];
 
 int doscommkdir(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	if (checkarg(argc, argv) < 0) return(RET_FAIL);
 
@@ -1676,7 +1687,7 @@ char *argv[];
 
 int doscomrmdir(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	if (checkarg(argc, argv) < 0) return(RET_FAIL);
 
@@ -1690,7 +1701,7 @@ char *argv[];
 
 int doscomerase(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *buf, **wild;
 	int i, n, c, flag, ret;
@@ -1769,7 +1780,8 @@ char *argv[];
 }
 
 static char *NEAR convwild(dest, src, wild, swild)
-char *dest, *src, *wild, *swild;
+char *dest;
+CONST char *src, *wild, *swild;
 {
 	int i, j, n, rest, w;
 
@@ -1796,7 +1808,7 @@ char *dest, *src, *wild, *swild;
 
 int doscomrename(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp, **wild, new[MAXPATHLEN];
 	int i, j, ret;
@@ -1845,7 +1857,7 @@ char *argv[];
 
 static int NEAR getcopyopt(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *arg;
 	int i, j;
@@ -1892,7 +1904,7 @@ char *argv[];
 }
 
 static int NEAR getbinmode(name, bin)
-char *name;
+CONST char *name;
 int bin;
 {
 	char *cp;
@@ -1906,7 +1918,7 @@ int bin;
 }
 
 static int NEAR writeopen(file, src)
-char *file, *src;
+CONST char *file, *src;
 {
 	struct stat st;
 	char buf[MAXPATHLEN], buf2[MAXPATHLEN];
@@ -2008,7 +2020,7 @@ int fd, bin;
 }
 
 static int NEAR doscopy(src, dest, stp, sbin, dbin, dfd)
-char *src, *dest;
+CONST char *src, *dest;
 struct stat *stp;
 int sbin, dbin, dfd;
 {
@@ -2112,7 +2124,7 @@ int sbin, dbin, dfd;
 
 int doscomcopy(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	struct stat sst, dst;
 	char *cp, *file, *form, **arg, *src, **wild;
@@ -2279,7 +2291,7 @@ char *argv[];
 /*ARGSUSED*/
 int doscomcls(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 #ifdef	FD
 	putterms(T_CLEAR);
@@ -2295,7 +2307,7 @@ char *argv[];
 
 int doscomtype(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	u_char ch;

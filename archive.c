@@ -152,8 +152,8 @@ static char *form_tar[] = {
 #define	GNULINKSTR	"link to"
 
 #ifndef	_NOBROWSE
-static VOID NEAR copyargvar __P_((int, char **));
-static VOID NEAR pushbrowsevar __P_((char *));
+static VOID NEAR copyargvar __P_((int, char *CONST *));
+static VOID NEAR pushbrowsevar __P_((CONST char *));
 static VOID NEAR popbrowsevar __P_((VOID_A));
 #endif
 static VOID NEAR pusharchdupl __P_((VOID_A));
@@ -162,46 +162,50 @@ static VOID NEAR pusharchdupl __P_((VOID_A));
 #else
 static VOID NEAR poparchdupl __P_((VOID_A));
 #endif
-static int NEAR readattr __P_((namelist *, char *));
+static int NEAR readattr __P_((namelist *, CONST char *));
 #if	FD >= 2
-static char *NEAR checkspace __P_((char *, int *));
+static char *NEAR checkspace __P_((CONST char *, int *));
 # ifdef	_NOKANJIFCONV
 #define	readfname	strndup2
 # else
-static char *NEAR readfname __P_((char *, int));
+static char *NEAR readfname __P_((CONST char *, int));
 # endif
 # ifndef	NOSYMLINK
-static char *NEAR readlinkname __P_((char *, char *));
+static char *NEAR readlinkname __P_((CONST char *, CONST char *));
 # endif
-static int NEAR readfileent __P_((namelist *, char *, char *, int));
+static int NEAR readfileent __P_((namelist *,
+		CONST char *, CONST char *, int));
 #else	/* FD < 2 */
-static int NEAR countfield __P_((char *, u_char [], int, int *));
-static char *NEAR getfield __P_((char *, char *, int, launchtable *, int));
-static int NEAR readfileent __P_((namelist *, char *, launchtable *, int));
+static int NEAR countfield __P_((CONST char *, CONST u_char [], int, int *));
+static char *NEAR getfield __P_((char *, CONST char *,
+		int, launchtable *, int));
+static int NEAR readfileent __P_((namelist *,
+		CONST char *, launchtable *, int));
 #endif	/* FD < 2 */
-static int NEAR dircmp __P_((char *, char *));
-static int NEAR dirmatchlen __P_((char *, char *));
+static int NEAR dircmp __P_((CONST char *, CONST char *));
+static int NEAR dirmatchlen __P_((CONST char *, CONST char *));
 static char *NEAR pseudodir __P_((namelist *));
 static VOID NEAR Xwaitmes __P_((VOID_A));
 #if	FD >= 2
-static char **NEAR decodevar __P_((char **));
-static int NEAR matchlist __P_((char *, char **));
+static char **NEAR decodevar __P_((char *CONST *));
+static int NEAR matchlist __P_((CONST char *, char *CONST *));
 #endif
 static int NEAR parsearchive __P_((FILE *, launchtable *, namelist *, int *));
 static VOID NEAR unpackerror __P_((VOID_A));
-static int NEAR readarchive __P_((char *, launchtable *, int));
-static char *NEAR searcharcdir __P_((char *, int));
+static int NEAR readarchive __P_((CONST char *, launchtable *, int));
+static char *NEAR searcharcdir __P_((CONST char *, int));
 static char *NEAR archoutdir __P_((VOID_A));
-static int NEAR undertmp __P_((char *));
+static int NEAR undertmp __P_((CONST char *));
 #ifdef	_NODOSDRIVE
-static char *NEAR genfullpath __P_((char *, char *, char *));
+static char *NEAR genfullpath __P_((char *, CONST char *, CONST char *));
 #else
-static char *NEAR genfullpath __P_((char *, char *, char *, char *));
-static int NEAR archdostmpdir __P_((char *, char **, char *));
+static char *NEAR genfullpath __P_((char *,
+		CONST char *, CONST char *, CONST char *));
+static int NEAR archdostmpdir __P_((char *, char **, CONST char *));
 #endif
 #ifndef	NOSYMLINK
 static int NEAR archrealpath __P_((char *, char *));
-static int NEAR unpacklink __P_((namelist *, char *));
+static int NEAR unpacklink __P_((namelist *, CONST char *));
 #endif
 
 int maxlaunch = 0;
@@ -276,7 +280,7 @@ static CONST strtable linklist[] = {
 #define	LINKLISTSIZ	arraysize(linklist)
 #endif	/* !NOSYMLINK */
 #if	FD >= 2
-static char *autoformat[] = {
+static CONST char *autoformat[] = {
 # if	MSDOS
 	"%*f\n%s %x %x %y-%m-%d %t %a",		/* LHa (v) */
 	" %*f\n%s %x %x %d-%m-%y %t %a",	/* RAR (v) */
@@ -311,7 +315,7 @@ static char *autoformat[] = {
 #ifndef	_NOBROWSE
 static VOID NEAR copyargvar(argc, argv)
 int argc;
-char **argv;
+char *CONST *argv;
 {
 	int i;
 
@@ -322,7 +326,7 @@ char **argv;
 }
 
 static VOID NEAR pushbrowsevar(s)
-char *s;
+CONST char *s;
 {
 	int i;
 
@@ -475,7 +479,7 @@ static VOID NEAR poparchdupl(VOID_A)
 
 static int NEAR readattr(tmp, buf)
 namelist *tmp;
-char *buf;
+CONST char *buf;
 {
 	int i, len;
 	u_int n, mode;
@@ -569,7 +573,7 @@ char *buf;
 
 #if	FD >= 2
 static char *NEAR checkspace(s, scorep)
-char *s;
+CONST char *s;
 int *scorep;
 {
 	int i, len;
@@ -592,7 +596,7 @@ int *scorep;
 
 # ifndef	_NOKANJIFCONV
 static char *NEAR readfname(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	char *cp, *tmp;
@@ -607,7 +611,7 @@ int len;
 
 # ifndef	NOSYMLINK
 static char *NEAR readlinkname(s, eol)
-char *s, *eol;
+CONST char *s, *eol;
 {
 	int i;
 
@@ -625,7 +629,7 @@ char *s, *eol;
 
 static int NEAR readfileent(tmp, line, form, skip)
 namelist *tmp;
-char *line, *form;
+CONST char *line, *form;
 int skip;
 {
 # ifndef	NOUID
@@ -635,13 +639,14 @@ int skip;
 	gid_t gid;
 # endif
 # ifndef	NOSYMLINK
-	char *lname;
+	CONST char *line2, *lname;
 # endif
 	time_t now;
 	struct tm tm, *tp;
 	off_t n;
 	int i, ch, l, len, hit, err, err2, score;
-	char *cp, *s, *buf, *eol, *rawbuf;
+	CONST char *s;
+	char *cp, *buf, *eol, *rawbuf;
 
 	if (skip && skip > strlen(form)) return(-1);
 
@@ -850,7 +855,9 @@ int skip;
 						break;
 # endif
 				}
-				cp = &(line[i]);
+# ifndef	NOSYMLINK
+				line2 = &(line[i]);
+# endif
 				if (isdelim(rawbuf, i - 1)) {
 					tmp -> st_mode &= ~S_IFMT;
 					tmp -> st_mode |= S_IFDIR;
@@ -864,8 +871,8 @@ int skip;
 				err = 0;
 # ifndef	NOSYMLINK
 				if (!lname) break;
-				cp = skipspace(cp);
-				if (ch && cp >= &(line[len])) break;
+				line2 = skipspace(line2);
+				if (ch && line2 >= &(line[len])) break;
 				lname = &(line[lname - rawbuf]);
 				for (i = 0; lname[i]; i++)
 					if (isblank2(lname[i])) break;
@@ -957,8 +964,8 @@ int skip;
 #else	/* FD < 2 */
 
 static int NEAR countfield(line, sep, field, eolp)
-char *line;
-u_char sep[];
+CONST char *line;
+CONST u_char sep[];
 int field, *eolp;
 {
 	int i, j, f, s, sp;
@@ -1002,12 +1009,14 @@ int field, *eolp;
 }
 
 static char *NEAR getfield(buf, line, skip, list, no)
-char *buf, *line;
+char *buf;
+CONST char *line;
 int skip;
 launchtable *list;
 int no;
 {
-	char *cp, *tmp;
+	CONST char *cp;
+	char *tmp;
 	int i, f, eol;
 
 	*buf = '\0';
@@ -1040,7 +1049,7 @@ int no;
 
 static int NEAR readfileent(tmp, line, list, max)
 namelist *tmp;
-char *line;
+CONST char *line;
 launchtable *list;
 int max;
 {
@@ -1177,7 +1186,7 @@ int max;
 #endif	/* FD < 2 */
 
 VOID archbar(file, dir)
-char *file, *dir;
+CONST char *file, *dir;
 {
 	char *arch;
 	int len;
@@ -1267,7 +1276,7 @@ char *file, *dir;
 }
 
 static int NEAR dircmp(s1, s2)
-char *s1, *s2;
+CONST char *s1, *s2;
 {
 	int i, j;
 
@@ -1288,7 +1297,7 @@ char *s1, *s2;
 }
 
 static int NEAR dirmatchlen(s1, s2)
-char *s1, *s2;
+CONST char *s1, *s2;
 {
 	int i, j;
 
@@ -1372,7 +1381,7 @@ static VOID NEAR Xwaitmes(VOID_A)
 
 #if	FD >= 2
 static char **NEAR decodevar(argv)
-char **argv;
+char *CONST *argv;
 {
 	char **new;
 	int n, max;
@@ -1386,13 +1395,15 @@ char **argv;
 }
 
 static int NEAR matchlist(s, argv)
-char *s, **argv;
+CONST char *s;
+char *CONST *argv;
 {
 # ifndef	PATHNOCASE
 	int duppathignorecase;
 # endif
 	reg_t *re;
-	char *s1, *s2;
+	CONST char *s1, *s2;
+	char *new;
 	int i, len, ret;
 
 	if (!argv) return(0);
@@ -1407,16 +1418,16 @@ char *s, **argv;
 		s2 = s;
 		if (!isblank2(s1[0])) s2 = skipspace(s2);
 		len = strlen(s1);
-		if (!len || isblank2(s1[len - 1])) s2 = strdup2(s2);
+		if (!len || isblank2(s1[len - 1])) new = strdup2(s2);
 		else {
 			len = strlen(s2);
 			for (len--; len >= 0; len--)
 				if (!isblank2(s2[len])) break;
-			s2 = strndup2(s2, ++len);
+			new = strndup2(s2, ++len);
 		}
 		re = regexp_init(s1, -1);
-		ret = regexp_exec(re, s2, 0);
-		free(s2);
+		ret = regexp_exec(re, new, 0);
+		free(new);
 		regexp_free(re);
 	}
 # ifndef	PATHNOCASE
@@ -1438,7 +1449,8 @@ int *linenop;
 	static char **lign = NULL;
 	static char **lerr = NULL;
 	namelist tmp;
-	char *form, *form0;
+	CONST char *form;
+	char *form0, *form2;
 	short *scorelist;
 	int nf, na, ret, skip;
 #else
@@ -1507,7 +1519,10 @@ int *linenop;
 	needline = 0;
 	for (;;) {
 #if	FD >= 2
-		if (formlist[nf]) form = formlist[nf];
+# ifdef	FAKEUNINIT
+		form2 = NULL;		/* fake for -Wuninitialized */
+# endif
+		if (formlist[nf]) form = form2 = formlist[nf];
 		else if (scorelist[0] < MAXSCORE) {
 			ret = scorelist[0] + 1;
 			score = 0;
@@ -1595,7 +1610,7 @@ int *linenop;
 				break;
 			}
 			scorelist[i] = score;
-			formlist[i] = form;
+			formlist[i] = form2;
 			nf++;
 		}
 
@@ -1666,7 +1681,7 @@ static VOID NEAR unpackerror(VOID_A)
 }
 
 static int NEAR readarchive(file, list, flags)
-char *file;
+CONST char *file;
 launchtable *list;
 int flags;
 {
@@ -1764,7 +1779,7 @@ int flags;
 	if (maxfile <= 1) {
 		maxfile = 0;
 		free(filelist[0].name);
-		filelist[0].name = NOFIL_K;
+		filelist[0].name = (char *)NOFIL_K;
 #ifndef	NOSYMLINK
 		if (filelist[0].linkname) {
 			free(filelist[0].linkname);
@@ -1791,8 +1806,8 @@ int flags;
 }
 
 VOID copyarcf(re, arcre)
-reg_t *re;
-char *arcre;
+CONST reg_t *re;
+CONST char *arcre;
 {
 	char *cp, *tmp;
 	int i, j, n, len, parent;
@@ -1853,7 +1868,7 @@ char *arcre;
 }
 
 static char *NEAR searcharcdir(file, flen)
-char *file;
+CONST char *file;
 int flen;
 {
 	char *cp, *tmp;
@@ -1916,10 +1931,11 @@ static char *NEAR archoutdir(VOID_A)
 	return(file);
 }
 
-char *archchdir(path)
-char *path;
+CONST char *archchdir(path)
+CONST char *path;
 {
-	char *cp, *file, duparcdir[MAXPATHLEN];
+	CONST char *cp, *file;
+	char *tmp, duparcdir[MAXPATHLEN];
 	int len;
 
 	if (findpattern) free(findpattern);
@@ -1985,8 +2001,8 @@ char *path;
 		cp = path;
 		if (len == 2 && path[0] == '.' && path[1] == '.') cp = nullstr;
 		if (searcharcdir(cp, len)) {
-			if (*(cp = archivedir)) cp = strcatdelim(archivedir);
-			strncpy2(cp, path, len);
+			if (*(tmp = archivedir)) tmp = strcatdelim(archivedir);
+			strncpy2(tmp, path, len);
 			file = parentpath;
 		}
 		else if (*cp || !(file = archoutdir())) {
@@ -2005,11 +2021,12 @@ char *path;
 
 #ifndef	_NOCOMPLETE
 int completearch(path, flen, argc, argvp)
-char *path;
+CONST char *path;
 int flen, argc;
 char ***argvp;
 {
-	char *cp, *tmp, *new, *file, dir[MAXPATHLEN], duparcdir[MAXPATHLEN];
+	CONST char *cp, *file;
+	char *tmp, *new, dir[MAXPATHLEN], duparcdir[MAXPATHLEN];
 	int i, len, parent;
 
 # ifdef	_USEDOSPATH
@@ -2077,6 +2094,7 @@ int flags;
 #ifndef	_NODOSDRIVE
 	int drive;
 #endif
+	CONST char *cp;
 	char *tmpdir;
 	int i;
 
@@ -2125,10 +2143,9 @@ int flags;
 			archduplp -> v_archivedir = strdup2(archivedir);
 		}
 	}
-	archivefile = (filelist && filepos < maxfile)
-		? filelist[filepos].name : NULL;
-	if (!archivefile) archivefile = nullstr;
-	archivefile = strdup2(archivefile);
+	cp = (filelist && filepos < maxfile) ? filelist[filepos].name : NULL;
+	if (!cp) cp = nullstr;
+	archivefile = strdup2(cp);
 	*archivedir = '\0';
 	archtmpdir = tmpdir;
 #ifndef	_NODOSDRIVE
@@ -2214,7 +2231,7 @@ int launcher(VOID_A)
 }
 
 static int NEAR undertmp(path)
-char *path;
+CONST char *path;
 {
 	winvartable *wvp;
 	char *full, rpath[MAXPATHLEN], dir[MAXPATHLEN];
@@ -2233,16 +2250,19 @@ char *path;
 
 #ifdef	_NODOSDRIVE
 static char *NEAR genfullpath(path, file, full)
-char *path, *file, *full;
+char *path;
+CONST char *file, *full;
 #else
 static char *NEAR genfullpath(path, file, full, tmpdir)
-char *path, *file, *full, *tmpdir;
+char *path;
+CONST char *file, *full, *tmpdir;
 #endif
 {
 #if	MSDOS
+	char *tmp;
 	int drive;
 #endif
-	char *cp;
+	CONST char *cp;
 
 	cp = file;
 #ifdef	_USEDOSPATH
@@ -2267,10 +2287,10 @@ char *path, *file, *full, *tmpdir;
 	}
 #if	MSDOS
 	else if (drive) {
-		file = gendospath(path, drive, _SC_);
+		tmp = gendospath(path, drive, _SC_);
 		drive = toupper2(drive);
-		if (drive == toupper2(*full)) strcpy(file, &(full[3]));
-		else if (!unixgetcurdir(file, drive - 'A' + 1)) return(NULL);
+		if (drive == toupper2(*full)) strcpy(tmp, &(full[3]));
+		else if (!unixgetcurdir(tmp, drive - 'A' + 1)) return(NULL);
 	}
 #endif
 	else strcpy(path, full);
@@ -2281,7 +2301,8 @@ char *path, *file, *full, *tmpdir;
 
 #ifndef	_NODOSDRIVE
 static int NEAR archdostmpdir(path, dirp, full)
-char *path, **dirp, *full;
+char *path, **dirp;
+CONST char *full;
 {
 	char *cp, dupfullpath[MAXPATHLEN];
 	int drive;
@@ -2314,7 +2335,7 @@ char *path, **dirp, *full;
 #endif	/* !_NODOSDRIVE */
 
 int pack(arc)
-char *arc;
+CONST char *arc;
 {
 #ifndef	_NODOSDRIVE
 	char *dest, *tmpdest;
@@ -2414,18 +2435,20 @@ char *arc;
 
 /*ARGSUSED*/
 int unpack(arc, dir, arg, tr, flags)
-char *arc, *dir;
-char *arg;
+CONST char *arc, *dir, *arg;
 int tr, flags;
 {
 #ifndef	_NODOSDRIVE
+# ifndef	_NOTREE
+	int dd;
+# endif
 	winvartable *wvp;
 	namelist alist[1], *dupfilelist;
 	char *full, *dest, *tmpdest;
-	int dd, drive, dupmaxfile, dupfilepos;
+	int drive, dupmaxfile, dupfilepos;
 #endif
 	reg_t *re;
-	char *cp, *tmpdir, path[MAXPATHLEN];
+	char *cp, *new, *tmpdir, path[MAXPATHLEN];
 	int i, n, ret;
 
 #ifndef	_NOBROWSE
@@ -2454,18 +2477,18 @@ int tr, flags;
 #ifndef	_NOTREE
 		if (tr) {
 # ifdef	_NODOSDRIVE
-			dir = tree(0, (int *)1);
+			dir = new = tree(0, (int *)1);
 # else
-			dir = tree(0, &dd);
+			dir = new = tree(0, &dd);
 			if (dd >= 0) shutdrv(dd);
 # endif
 		}
 		else
 #endif	/* !_NOTREE */
 		{
-			if (arg && *arg) dir = strdup2(arg);
-			else dir = inputstr(UNPAC_K, 1, -1, NULL, HST_PATH);
-			dir = evalpath(dir, 0);
+			if (arg && *arg) new = strdup2(arg);
+			else new = inputstr(UNPAC_K, 1, -1, NULL, HST_PATH);
+			dir = new = evalpath(new, 0);
 		}
 		if (!dir) return(0);
 		if (!*dir) copycurpath(path);
@@ -2475,7 +2498,7 @@ int tr, flags;
 			if (_dospath(dir) && !dir[2]) copycurpath(cp);
 #endif
 		}
-		free(dir);
+		free(new);
 		dir = NULL;
 
 		if (!undertmp(path)) break;
@@ -2510,7 +2533,7 @@ int tr, flags;
 	dupfilelist = filelist;
 	dupmaxfile = maxfile;
 	dupfilepos = filepos;
-	alist[0].name = arc;
+	alist[0].name = (char *)arc;
 # ifndef	NOSYMLINK
 	alist[0].linkname = NULL;
 # endif
@@ -2587,7 +2610,7 @@ char *path, *resolved;
 
 static int NEAR unpacklink(list, dir)
 namelist *list;
-char *dir;
+CONST char *dir;
 {
 	namelist duplist;
 	char *cp, path[MAXPATHLEN], duparcdir[MAXPATHLEN];
@@ -2701,7 +2724,7 @@ int single;
 }
 
 int backup(dev)
-char *dev;
+CONST char *dev;
 {
 	macrostat st;
 	char *tmp;
@@ -2748,7 +2771,7 @@ char *dev;
 }
 
 int searcharc(regstr, flist, maxf, n)
-char *regstr;
+CONST char *regstr;
 namelist *flist;
 int maxf, n;
 {

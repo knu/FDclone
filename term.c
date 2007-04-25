@@ -78,9 +78,15 @@ extern int errno;
 #define	strerror2		strerror
 #else
 # ifndef	DECLERRLIST
-extern char *sys_errlist[];
+extern CONST char *CONST sys_errlist[];
 # endif
 #define	strerror2(n)		(char *)sys_errlist[n]
+#endif
+
+#ifdef	_POSIX_VDISABLE
+#define	K_UNDEF		_POSIX_VDISABLE
+#else
+#define	K_UNDEF		0xff
 #endif
 
 #ifdef	DEBUG
@@ -207,11 +213,11 @@ typedef int	tputs_t;
 # define	TERM_at1		key_beg
 # define	TERM_at7		key_end
 # else	/* !USETERMINFO */
-extern int tgetent __P_((char *, char *));
-extern int tgetnum __P_((char *));
-extern int tgetflag __P_((char *));
-extern char *tgetstr __P_((char *, char **));
-extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
+extern int tgetent __P_((char *, CONST char *));
+extern int tgetnum __P_((CONST char *));
+extern int tgetflag __P_((CONST char *));
+extern char *tgetstr __P_((CONST char *, char **));
+extern int tputs __P_((CONST char *, int, int (*)__P_((tputs_t))));
 # define	tgetnum2		tgetnum
 # define	tgetflag2		tgetflag
 # define	TERM_pc			"pc"
@@ -334,9 +340,9 @@ extern int tputs __P_((char *, int, int (*)__P_((tputs_t))));
 #endif
 #endif	/* !MSDOS */
 
-static int NEAR err2 __P_((char *));
+static int NEAR err2 __P_((CONST char *));
 #if	!MSDOS
-static char *NEAR tstrdup __P_((char *));
+static char *NEAR tstrdup __P_((CONST char *));
 #endif
 static int NEAR defaultterm __P_((VOID_A));
 static int NEAR maxlocate __P_((int *, int *));
@@ -347,7 +353,7 @@ static int NEAR biosscroll __P_((int, int, int, int, int));
 static int NEAR biosputch __P_((int, int));
 static int NEAR bioscurstype __P_((int));
 static int NEAR chgattr __P_((int));
-static int NEAR evalcsi __P_((char *));
+static int NEAR evalcsi __P_((CONST char *));
 # endif
 # if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 static int NEAR dosgettime __P_((u_char []));
@@ -358,9 +364,9 @@ static int NEAR ttymode __P_((int, int, int, int));
 # else
 static int NEAR ttymode __P_((int, int, int, int, int, int, int, int));
 # endif
-static char *NEAR tgetstr2 __P_((char **, char *));
-static char *NEAR tgetstr3 __P_((char **, char *, char *));
-static char *NEAR tgetkeyseq __P_((int, char *));
+static char *NEAR tgetstr2 __P_((char **, CONST char *));
+static char *NEAR tgetstr3 __P_((char **, CONST char *, CONST char *));
+static char *NEAR tgetkeyseq __P_((int, CONST char *));
 static kstree_t *NEAR newkeyseqtree __P_((kstree_t *, int));
 static int NEAR freekeyseqtree __P_((kstree_t *, int));
 static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
@@ -383,7 +389,11 @@ int n_column = -1;
 int n_lastcolumn = -1;
 int n_line = -1;
 int stable_standout = 0;
+#if	MSDOS
+CONST char *termstr[MAXTERMSTR];
+#else
 char *termstr[MAXTERMSTR];
+#endif
 u_char cc_intr = K_CTRL('C');
 u_char cc_quit = K_CTRL('\\');
 #if	MSDOS
@@ -391,7 +401,7 @@ u_char cc_eof = K_CTRL('Z');
 #else
 u_char cc_eof = K_CTRL('D');
 #endif
-u_char cc_eol = 255;
+u_char cc_eol = K_UNDEF;
 u_char cc_erase = K_CTRL('H');
 int (*keywaitfunc)__P_((VOID_A)) = NULL;
 #if	!MSDOS
@@ -437,7 +447,7 @@ static u_short keybuftop = 0;
 # ifdef	USEVIDEOBIOS
 static u_short videoattr = 0x07;
 # endif
-static int specialkeycode[] = {
+static CONST int specialkeycode[] = {
 	0,
 	K_UP, K_DOWN, K_RIGHT, K_LEFT,
 	K_IC, K_DC, K_HOME, K_END, K_PPAGE, K_NPAGE,
@@ -448,11 +458,11 @@ static int specialkeycode[] = {
 };
 #define	SPECIALKEYSIZ	arraysize(specialkeycode)
 #else	/* !MSDOS */
-static char *dumblist[] = {"dumb", "un", "unknown"};
+static CONST char *dumblist[] = {"dumb", "un", "unknown"};
 #define	DUMBLISTSIZE	arraysize(dumblist)
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
-static char *defkeyseq[K_MAX - K_MIN + 1] = {
+static CONST char *defkeyseq[K_MAX - K_MIN + 1] = {
 	NULL,			/* K_NOKEY */
 	"\033OB",		/* K_DOWN */
 	"\033OA",		/* K_UP */
@@ -571,7 +581,7 @@ static char *defkeyseq[K_MAX - K_MIN + 1] = {
 #endif	/* !MSDOS */
 
 #if	MSDOS || !defined (TIOCSTI)
-static u_char ungetbuf[10];
+static u_char ungetbuf[16];
 static int ungetnum = 0;
 #endif
 
@@ -582,7 +592,7 @@ static int termflags = 0;
 #define	F_TTYCHANGED	010
 #define	F_INPROGRESS	020
 #define	F_RESETTTY	(F_INITTTY | F_TTYCHANGED)
-static char *deftermstr[MAXTERMSTR] = {
+static CONST char *deftermstr[MAXTERMSTR] = {
 #ifdef	PC98
 	"\033[>1h",		/* T_INIT */
 	"\033[>1l",		/* T_END */
@@ -869,7 +879,7 @@ int reset;
 		cc_quit = cc.t_quitc;
 		cc_eof = cc.t_eofc;
 		cc_eol = cc.t_brkc;
-		if (cc_erase != 255) cc_erase = dupttyio.sg_erase;
+		if (cc_erase != K_UNDEF) cc_erase = dupttyio.sg_erase;
 #else
 # ifdef	VINTR
 		cc_intr = dupttyio.c_cc[VINTR];
@@ -883,7 +893,7 @@ int reset;
 # ifdef	VEOL
 		cc_eol = dupttyio.c_cc[VEOL];
 # endif
-		if (cc_erase != 255) cc_erase = dupttyio.c_cc[VERASE];
+		if (cc_erase != K_UNDEF) cc_erase = dupttyio.c_cc[VERASE];
 #endif
 #ifndef	USETERMINFO
 		ospeed = getspeed(dupttyio);
@@ -1201,7 +1211,7 @@ int no;
 }
 
 static int NEAR err2(mes)
-char *mes;
+CONST char *mes;
 {
 	int duperrno;
 
@@ -1229,7 +1239,7 @@ char *mes;
 
 #if	!MSDOS
 static char *NEAR tstrdup(s)
-char *s;
+CONST char *s;
 {
 	char *cp;
 
@@ -1364,7 +1374,7 @@ int *xp, *yp;
 
 	buf[0] = '\0';
 	do {
-		if (!kbhit2(WAITKEYPAD * 10000L)) break;
+		if (!kbhit2(WAITKEYPAD * 1000L * 10)) break;
 # if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
 # else
@@ -1409,7 +1419,7 @@ int *xp, *yp;
 
 #if	MSDOS
 char *tparamstr(s, arg1, arg2)
-char *s;
+CONST char *s;
 int arg1, arg2;
 {
 	char *cp;
@@ -1421,7 +1431,7 @@ int arg1, arg2;
 
 /*ARGSUSED*/
 int getterment(s)
-char *s;
+CONST char *s;
 {
 	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return(-1);
 	termflags |= F_INPROGRESS;
@@ -1439,14 +1449,14 @@ char *s;
 #else	/* !MSDOS */
 
 char *tparamstr(s, arg1, arg2)
-char *s;
+CONST char *s;
 int arg1, arg2;
 {
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 	if (!s) return(NULL);
 	_mtrace_file = "tparm(start)";
-	s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0);
+	s = tparm((char *)s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0);
 	if (_mtrace_file) _mtrace_file = NULL;
 	else {
 		_mtrace_file = "tparm(end)";
@@ -1454,7 +1464,7 @@ int arg1, arg2;
 	}
 	if (!s) return(NULL);
 #  else
-	if (!s || !(s = tparm(s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0)))
+	if (!s || !(s = tparm((char *)s, arg1, arg2, 0, 0, 0, 0, 0, 0, 0)))
 		return(NULL);
 #  endif
 
@@ -1560,7 +1570,7 @@ int arg1, arg2;
 
 static char *NEAR tgetstr2(term, s)
 char **term;
-char *s;
+CONST char *s;
 {
 # ifndef	USETERMINFO
 	char strbuf[TERMCAPSIZE];
@@ -1588,43 +1598,49 @@ char *s;
 }
 
 static char *NEAR tgetstr3(term, str1, str2)
-char **term, *str1, *str2;
+char **term;
+CONST char *str1, *str2;
 {
-# ifdef	USETERMINFO
-	if (str1) str1 = tstrdup(str1);
-	else str1 = tparamstr(str2, 1, 1);
-# else	/* !USETERMINFO */
+# ifndef	USETERMINFO
 	char *p, strbuf[TERMCAPSIZE];
+# endif
+	char *str;
 
+# ifdef	USETERMINFO
+	str = (str1) ? tstrdup(str1) : tparamstr(str2, 1, 1);
+# else	/* !USETERMINFO */
 	p = strbuf;
-
 #  ifdef	DEBUG
 	_mtrace_file = "tgetstr(start)";
-	str1 = tgetstr(str1, &p);
+	str = tgetstr(str1, &p);
 	if (_mtrace_file) _mtrace_file = NULL;
 	else {
 		_mtrace_file = "tgetstr(end)";
 		malloc(0);	/* dummy alloc */
 	}
-	if (str1) str1 = tstrdup(str1);
+	if (str) str = tstrdup(str);
 	else {
 		_mtrace_file = "tgetstr(start)";
-		str2 = tgetstr(str2, &p);
+		str = tgetstr(str2, &p);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "tgetstr(end)";
 			malloc(0);	/* dummy alloc */
 		}
-		str1 = tparamstr(str2, 1, 1);
+		str = tparamstr(str, 1, 1);
 	}
 #  else
-	if ((str1 = tgetstr(str1, &p))) str1 = tstrdup(str1);
-	else str1 = tparamstr(tgetstr(str2, &p), 1, 1);
+	str = tgetstr(str1, &p);
+	if (str) str = tstrdup(str);
+	else {
+		str = tgetstr(str2, &p);
+		str = tparamstr(str, 1, 1);
+	}
 #  endif
 # endif	/* !USETERMINFO */
-	if (str1) {
+	if (str) {
 		if (*term) free(*term);
-		*term = str1;
+		*term = str;
 	}
 
 	return(*term);
@@ -1632,7 +1648,7 @@ char **term, *str1, *str2;
 
 static char *NEAR tgetkeyseq(n, s)
 int n;
-char *s;
+CONST char *s;
 {
 	char *cp;
 	int i, j;
@@ -1748,7 +1764,7 @@ static int NEAR sortkeyseq(VOID_A)
 }
 
 int getterment(s)
-char *s;
+CONST char *s;
 {
 # ifdef	IRIX
 	/* for STUPID winterm entry */
@@ -1757,7 +1773,8 @@ char *s;
 # ifndef	USETERMINFO
 	char buf[TERMCAPSIZE];
 # endif
-	char *cp, *term;
+	CONST char *term;
+	char *cp;
 	int i, j, dumb, dupdumbterm;
 
 	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return(-1);
@@ -1784,14 +1801,14 @@ char *s;
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 		_mtrace_file = "setupterm(start)";
-		setupterm(term, fileno(ttyout), &i);
+		setupterm((char *)term, fileno(ttyout), &i);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "setupterm(end)";
 			malloc(0);	/* dummy alloc */
 		}
 #  else
-		setupterm(term, fileno(ttyout), &i);
+		setupterm((char *)term, fileno(ttyout), &i);
 #  endif
 		if (i == 1) break;
 # else	/* !USETERMINFO */
@@ -2002,9 +2019,8 @@ char *s;
 			for (j = 0; keyseq[i].str[j]; j++)
 				keyseq[i].str[j] &= 0x7f;
 			keyseq[i].len = j;
-			if (cc_erase != 255 && j == 1
-			&& keyseq[i].str[0] == cc_erase)
-				cc_erase = 255;
+			if (j == 1 && keyseq[i].str[0] == cc_erase)
+				cc_erase = K_UNDEF;
 		}
 	}
 	sortkeyseq();
@@ -2072,12 +2088,12 @@ int setdefkeyseq(VOID_A)
 int getdefkeyseq(kp)
 keyseq_t *kp;
 {
-	char *cp;
+	CONST char *cp;
 
 	if (kp -> code < K_MIN || kp -> code > K_MAX) /*EMPTY*/;
 	else if (!(cp = defkeyseq[kp -> code - K_MIN])) /*EMPTY*/;
 	else {
-		kp -> str = cp;
+		kp -> str = (char *)cp;
 		kp -> len = strlen(cp);
 		return(0);
 	}
@@ -2115,8 +2131,7 @@ int len;
 				keyseq[i].len = 0;
 			}
 		}
-		if (cc_erase != 255 && str[0] == cc_erase && !(str[1]))
-			cc_erase = 255;
+		if (str[0] == cc_erase && !(str[1])) cc_erase = K_UNDEF;
 	}
 	sortkeyseq();
 
@@ -2434,7 +2449,7 @@ int n;
 }
 
 static int NEAR evalcsi(s)
-char *s;
+CONST char *s;
 {
 	static int savex, savey;
 	int i, x, y, w, h, n1, n2;
@@ -2571,7 +2586,7 @@ char *s;
 }
 
 int cputs2(s)
-char *s;
+CONST char *s;
 {
 	int i, n;
 
@@ -2593,7 +2608,7 @@ int c;
 }
 
 int cputs2(s)
-char *s;
+CONST char *s;
 {
 	int i, x, y;
 
@@ -2885,7 +2900,7 @@ int c;
 }
 
 int cputs2(s)
-char *s;
+CONST char *s;
 {
 	if (!s) return(0);
 
@@ -2899,7 +2914,7 @@ tputs_t c;
 }
 
 int tputs2(s, n)
-char *s;
+CONST char *s;
 int n;
 {
 	return(tputs(s, n, putch3));
@@ -2990,7 +3005,7 @@ int sig, code;
 	}
 # endif	/* !_NOKANJICONV || CODEEUC */
 
-	if (cc_erase != 255 && key == cc_erase) return(K_BS);
+	if (cc_erase != K_UNDEF && key == cc_erase) return(K_BS);
 	if (!(p = keyseqtree)) return(key);
 
 	if (key == K_ESC) {
@@ -3234,7 +3249,7 @@ int cputnl(VOID_A)
 }
 
 int kanjiputs(s)
-char *s;
+CONST char *s;
 {
 	return(cprintf2("%k", s));
 }

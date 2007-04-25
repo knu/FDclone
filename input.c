@@ -19,10 +19,10 @@ extern short histsize[];
 extern int curcolumns;
 extern int minfilename;
 extern int hideclock;
-extern char *promptstr;
+extern CONST char *promptstr;
 #ifndef	_NOORIGSHELL
 extern int fdmode;
-extern char *promptstr2;
+extern CONST char *promptstr2;
 #endif
 #ifndef	_NOPTY
 extern int ptymode;
@@ -57,20 +57,22 @@ static int NEAR getinkcode __P_((VOID_A));
 #ifndef	_NOEDITMODE
 static int NEAR getemulatekey __P_((int, CONST char []));
 #endif
-#ifdef	_NOIME
+#ifndef	_NOIME
+static int NEAR getimebuf __P_((CONST char *, int *));
+static int NEAR getime __P_((int, int *, int));
+#endif
+#ifdef	_NOKANJICONV
 #define	getkey4(s)	getkey3(s, getinkcode())
 #else
-static int NEAR getimebuf __P_((char *, int *));
-static int NEAR getime __P_((int, int *, int));
 static int NEAR getkey4 __P_((int));
 #endif
-static int NEAR trquoteone __P_((char **, char *, int *, int));
-static char *NEAR trquote __P_((char *, int, int *));
-static int NEAR vlen __P_((char *, int));
-static int NEAR rlen __P_((char *, int));
-static int NEAR vonkanji1 __P_((char *, int));
+static int NEAR trquoteone __P_((char **, CONST char *, int *, int));
+static char *NEAR trquote __P_((CONST char *, int, int *));
+static int NEAR vlen __P_((CONST char *, int));
+static int NEAR rlen __P_((CONST char *, int));
+static int NEAR vonkanji1 __P_((CONST char *, int));
 #if	FD >= 2
-static VOID NEAR kanjiputs3 __P_((char *, int, int, int, int));
+static VOID NEAR kanjiputs3 __P_((CONST char *, int, int, int, int));
 #else
 #define	kanjiputs3(s,n,l,p,m)	VOID_C kanjiputs2(s, l, p)
 #endif
@@ -83,7 +85,7 @@ static VOID NEAR downcursor __P_((VOID_A));
 static VOID NEAR forwcursor __P_((int));
 static VOID NEAR backcursor __P_((int));
 static VOID NEAR forwline __P_((int));
-static VOID NEAR dumbputs __P_((char *, int, int, int, int));
+static VOID NEAR dumbputs __P_((CONST char *, int, int, int, int));
 static VOID NEAR rewritecursor __P_((int, int));
 static int NEAR checkcursor __P_((int, int));
 #endif
@@ -109,9 +111,9 @@ static VOID NEAR insertbuf __P_((int));
 static int NEAR preparestr __P_((int, int));
 static int NEAR insertcursor __P_((int *, int *, int, int));
 static int NEAR quotemeta __P_((int *, int *, int, int *, int *, int *));
-static int NEAR insertstr __P_((char *, int, int, int *, int *));
+static int NEAR insertstr __P_((CONST char *, int, int, int *, int *));
 #ifndef	_NOCOMPLETE
-static VOID NEAR selectfile __P_((int, char **));
+static VOID NEAR selectfile __P_((int, char *CONST *));
 static int NEAR completestr __P_((int, int, int));
 #endif
 #ifndef	_NOKANJICONV
@@ -120,7 +122,7 @@ static VOID NEAR ungetch3 __P_((int));
 #endif
 static int NEAR getch3 __P_((VOID_A));
 static int NEAR getkanjikey __P_((char *, int));
-static VOID NEAR copyhist __P_((char *, int));
+static VOID NEAR copyhist __P_((CONST char *, int));
 static VOID NEAR _inputstr_up __P_((int *, int, char **));
 static VOID NEAR _inputstr_down __P_((int *, int, char **));
 static VOID NEAR _inputstr_delete __P_((VOID_A));
@@ -131,14 +133,16 @@ static int NEAR search_matchlen __P_((VOID_A));
 static char *NEAR search_up __P_((int, int *, int, char **));
 static char *NEAR search_down __P_((int, int *, int, char **));
 #endif
-static VOID NEAR _inputstr_input __P_((char *, int));
+static VOID NEAR _inputstr_input __P_((CONST char *, int));
 static int NEAR _inputstr __P_((int, int, int));
-static VOID NEAR dispprompt __P_((char *, int));
-static char *NEAR truncstr __P_((char *));
-static int NEAR yesnomes __P_((char *));
-static int NEAR selectcnt __P_((int, char **, int));
-static int NEAR selectadj __P_((int, int, char **, char **, int *, int));
-static VOID NEAR selectmes __P_((int, int, int, char *[], int [], int *, int));
+static VOID NEAR dispprompt __P_((CONST char *, int));
+static VOID NEAR truncstr __P_((CONST char *));
+static int NEAR yesnomes __P_((CONST char *));
+static int NEAR selectcnt __P_((int, char *CONST *, int));
+static int NEAR selectadj __P_((int, int, CONST char *CONST *,
+		char **, int *, int));
+static VOID NEAR selectmes __P_((int, int, int,
+		char *CONST [], int [], int *, int));
 
 int subwindow = 0;
 int win_x = 0;
@@ -289,7 +293,7 @@ CONST char table[];
 
 #ifndef	_NOIME
 static int NEAR getimebuf(buf, ptrp)
-char *buf;
+CONST char *buf;
 int *ptrp;
 {
 	int c;
@@ -361,16 +365,25 @@ int sig, *chp, nowait;
 	imemode = lastline = 0;
 	return(-1);
 }
+#endif	/* !_NOIME */
 
+#ifndef	_NOKANJICONV
 static int NEAR getkey4(sig)
 int sig;
 {
-	int c;
+	int n;
 
-	if (imemode && getime(sig, &c, 0) >= 0) return(c);
-	return(getkey3(sig, getinkcode()));
+	for (n = ungetnum3 - 1; n >= 0; n--) ungetch2((int)ungetbuf3[n]);
+# ifndef	_NOIME
+	if (imemode && !ungetnum3 && getime(sig, &n, 0) >= 0) /*EMPTY*/;
+	else
+# endif
+	n = getkey3(sig, getinkcode());
+
+	ungetnum3 = 0;
+	return(n);
 }
-#endif	/* !_NOIME */
+#endif	/* !_NOKANJICONV */
 
 int Xgetkey(sig, eof)
 int sig, eof;
@@ -390,9 +403,6 @@ int sig, eof;
 		return('\0');
 	}
 
-#ifndef	_NOKANJICONV
-	if (ungetnum3 > 0) return((int)ungetbuf3[--ungetnum3]);
-#endif
 	sig = sigalrm(sig);
 	ch = getkey4(sig);
 	if (eof && (ch != cc_eof || prev == ch)) eof = 0;
@@ -490,7 +500,8 @@ int sig, eof;
 }
 
 static int NEAR trquoteone(sp, s, cxp, len)
-char **sp, *s;
+char **sp;
+CONST char *s;
 int *cxp, len;
 {
 	int vw;
@@ -520,7 +531,7 @@ int *cxp, len;
 }
 
 static char *NEAR trquote(s, len, widthp)
-char *s;
+CONST char *s;
 int len, *widthp;
 {
 	char *cp, *buf;
@@ -536,7 +547,7 @@ int len, *widthp;
 }
 
 static int NEAR vlen(s, cx)
-char *s;
+CONST char *s;
 int cx;
 {
 	int v, r, rw, vw;
@@ -570,7 +581,7 @@ int cx;
 }
 
 static int NEAR rlen(s, cx2)
-char *s;
+CONST char *s;
 int cx2;
 {
 	int v, r, rw, vw;
@@ -604,7 +615,7 @@ int cx2;
 }
 
 static int NEAR vonkanji1(s, cx2)
-char *s;
+CONST char *s;
 int cx2;
 {
 	int v, r, rw, vw;
@@ -639,7 +650,7 @@ int cx2;
 }
 
 int kanjiputs2(s, len, ptr)
-char *s;
+CONST char *s;
 int len, ptr;
 {
 	char *buf;
@@ -661,7 +672,7 @@ int len, ptr;
 
 #if	FD >= 2
 static VOID NEAR kanjiputs3(s, cx2, len2, ptr, top)
-char *s;
+CONST char *s;
 int cx2, len2, ptr, top;
 {
 	int n, width;
@@ -696,7 +707,7 @@ int n;
 
 VOID cputstr(n, s)
 int n;
-char *s;
+CONST char *s;
 {
 	if (!s) cputspace(n);
 	else Xcprintf2("%-*.*k", n, n, s);
@@ -781,7 +792,7 @@ int x;
 }
 
 static VOID NEAR dumbputs(s, cx2, len2, max, ptr)
-char *s;
+CONST char *s;
 int cx2, len2, max, ptr;
 {
 	len2 -= ptr;
@@ -1621,7 +1632,7 @@ int *cxp, *cxp2, ch, *qtopp, *qp, *qedp;
 }
 
 static int NEAR insertstr(strins, ins, qtop, qp, qedp)
-char *strins;
+CONST char *strins;
 int ins, qtop, *qp, *qedp;
 {
 	int i, n, ch, pc, max;
@@ -1703,7 +1714,7 @@ int ins, qtop, *qp, *qedp;
 #ifndef	_NOCOMPLETE
 static VOID NEAR selectfile(argc, argv)
 int argc;
-char **argv;
+char *CONST *argv;
 {
 	char *cp;
 	int i, len, maxlen, duprow, dupminfilename, dupcolumns, dupdispmode;
@@ -2284,7 +2295,7 @@ int ch;
 }
 
 static VOID NEAR copyhist(hist, keep)
-char *hist;
+CONST char *hist;
 int keep;
 {
 #ifndef	_NOORIGSHELL
@@ -2641,7 +2652,7 @@ char **tmp;
 #endif	/* FD >= 2 */
 
 static VOID NEAR _inputstr_input(buf, vw)
-char *buf;
+CONST char *buf;
 int vw;
 {
 	int rw;
@@ -3104,10 +3115,10 @@ int def, comline, h;
 }
 
 static VOID NEAR dispprompt(s, set)
-char *s;
+CONST char *s;
 int set;
 {
-	static char *prompt = NULL;
+	static CONST char *prompt = NULL;
 	char *buf;
 
 	if (set > 0) prompt = s;
@@ -3180,9 +3191,9 @@ int set;
 }
 
 char *inputstr(prompt, delsp, ptr, def, h)
-char *prompt;
+CONST char *prompt;
 int delsp, ptr;
-char *def;
+CONST char *def;
 int h;
 {
 	int i, len, ch, pc, qtop, quote, comline, dupwin_x, dupwin_y;
@@ -3354,15 +3365,15 @@ int h;
 	return(inputbuf);
 }
 
-static char *NEAR truncstr(s)
-char *s;
+static VOID NEAR truncstr(s)
+CONST char *s;
 {
 	int len;
 	char *cp, *tmp;
 
 	if ((len = strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
 	|| !(cp = strchr2(s, '[')) || !(tmp = strchr2(cp, ']')))
-		return(s);
+		return;
 
 	cp++;
 	len = tmp - cp - len;
@@ -3372,12 +3383,10 @@ char *s;
 	else if (isekana(cp, len - 1)) len--;
 #endif
 	strcpy(&(cp[len]), tmp);
-
-	return(s);
 }
 
 static int NEAR yesnomes(mes)
-char *mes;
+CONST char *mes;
 {
 	int len;
 
@@ -3537,7 +3546,7 @@ va_dcl
 
 VOID warning(no, s)
 int no;
-char *s;
+CONST char *s;
 {
 	char *tmp, *err;
 	int y, len, wastty, dupwin_x, dupwin_y;
@@ -3595,7 +3604,7 @@ char *s;
 
 static int NEAR selectcnt(max, str, multi)
 int max;
-char **str;
+char *CONST *str;
 int multi;
 {
 	int i, len;
@@ -3610,10 +3619,11 @@ int multi;
 
 static int NEAR selectadj(max, x, str, tmpstr, xx, multi)
 int max, x;
-char **str, **tmpstr;
+CONST char *CONST *str;
+char **tmpstr;
 int *xx, multi;
 {
-	char *cp;
+	char *cp, **new;
 	int i, len, maxlen;
 
 	for (i = 0; i < max; i++) {
@@ -3626,29 +3636,29 @@ int *xx, multi;
 	else if ((x = n_lastcolumn - 1 - len) >= 0) /*EMPTY*/;
 	else {
 		x = maxlen = 0;
-		str = (char **)malloc2(max * sizeof(char *));
+		new = (char **)malloc2(max * sizeof(char *));
 		for (i = 0; i < max; i++) {
 			if (!(cp = tmpstr[i])) {
-				str[i] = NULL;
+				new[i] = NULL;
 				continue;
 			}
 			if (isupper2(*cp) && cp[1] == ':')
 				for (cp += 2; *cp == ' '; cp++);
 			len = strlen3(cp);
 			if (len > maxlen) maxlen = len;
-			str[i] = strdup2(cp);
+			new[i] = strdup2(cp);
 		}
 
 		for (; maxlen > 0; maxlen--) {
-			for (i = 0; i < max; i++) if (str[i]) {
+			for (i = 0; i < max; i++) if (new[i]) {
 				len = maxlen;
-				strncpy3(tmpstr[i], str[i], &len, -1);
+				strncpy3(tmpstr[i], new[i], &len, -1);
 			}
 			if (x + selectcnt(max, tmpstr, multi) < n_lastcolumn)
 				break;
 		}
-		for (i = 0; i < max; i++) if (str[i]) free(str[i]);
-		free(str);
+		for (i = 0; i < max; i++) if (new[i]) free(new[i]);
+		free(new);
 		if (maxlen <= 0) return(-1);
 	}
 
@@ -3667,7 +3677,7 @@ int *xx, multi;
 
 static VOID NEAR selectmes(num, max, x, str, val, xx, multi)
 int num, max, x;
-char *str[];
+char *CONST str[];
 int val[], *xx, multi;
 {
 	int i;
@@ -3689,7 +3699,7 @@ int val[], *xx, multi;
 
 int selectstr(num, max, x, str, val)
 int *num, max, x;
-char *str[];
+CONST char *CONST str[];
 int val[];
 {
 	char **tmpstr;

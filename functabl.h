@@ -18,7 +18,7 @@
 			| (((oct) >> 12) & 0100) \
 			| (((oct) >> 14) & 0200))
 
-functable funclist[] = {
+CONST functable funclist[] = {
 	/*						 +---------- NEEDSTATUS
 	 *						 |+--------- RESTRICT
 	 *						 ||+-------- NOFILE

@@ -24,17 +24,17 @@
 #define	DEFTK(s,c)	{s, strsize(s), c}
 
 typedef struct _tankantable {
-	char *str;
+	CONST char *str;
 	ALLOC_T len;
 	u_short code;
 } tankantable;
 
 extern romantable *romanlist;
 
-static VOID NEAR roman2str __P_((char *, char *, ALLOC_T));
-int main __P_((int, char *[]));
+static VOID NEAR roman2str __P_((char *, CONST char *, ALLOC_T));
+int main __P_((int, char *CONST []));
 
-static u_short tankanstr[] = { 0x4331, 0x3441, 0x3b7a };
+static CONST u_short tankanstr[] = { 0x4331, 0x3441, 0x3b7a };
 static CONST tankantable tankanlist[] = {
 	DEFTK("a",	0x3021),
 	DEFTK("ai",	0x3025),
@@ -657,7 +657,8 @@ static CONST tankantable tankanlist[] = {
 
 
 static VOID NEAR roman2str(buf, s, size)
-char *buf, *s;
+char *buf;
+CONST char *s;
 ALLOC_T size;
 {
 	ALLOC_T ptr, len;
@@ -693,7 +694,7 @@ ALLOC_T size;
 
 int main(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *fp;
 	char buf[MAXKANASTR + 1];

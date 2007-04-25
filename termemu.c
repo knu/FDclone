@@ -49,12 +49,12 @@ static VOID NEAR sendrlist __P_((int, redirectlist *));
 static VOID NEAR sendcommand __P_((int, command_t *, syntaxtree *));
 static VOID NEAR sendstree __P_((int, syntaxtree *));
 #endif
-static VOID NEAR awakechild __P_((char *, char *, int));
+static VOID NEAR awakechild __P_((CONST char *, CONST char *, int));
 #if	!defined (_NOORIGSHELL) && !defined (NOJOB)
 static int trap_hup __P_((VOID_A));
 static int NEAR recvmacro __P_((char **, char **, int *));
 #endif
-static int NEAR callmacro __P_((char *, char *, int));
+static int NEAR callmacro __P_((CONST char *, CONST char *, int));
 
 
 static VOID NEAR doscroll(n, c, x, y)
@@ -266,7 +266,7 @@ int nbytes;
 
 VOID sendbuf(fd, buf, nbytes)
 int fd;
-VOID_P buf;
+CONST VOID_P buf;
 int nbytes;
 {
 	VOID_C surewrite(fd, buf, nbytes);
@@ -316,7 +316,7 @@ char **cpp;
 
 VOID sendstring(fd, s)
 int fd;
-char *s;
+CONST char *s;
 {
 	ALLOC_T len;
 
@@ -620,7 +620,7 @@ va_dcl
 }
 
 static VOID NEAR awakechild(command, arg, flags)
-char *command, *arg;
+CONST char *command, *arg;
 int flags;
 {
 	if (isttyiomode) {
@@ -691,7 +691,7 @@ int *flagsp;
 #endif	/* !_NOORIGSHELL && !NOJOB */
 
 static int NEAR callmacro(command, arg, flags)
-char *command, *arg;
+CONST char *command, *arg;
 int flags;
 {
 	int i, n;
@@ -721,7 +721,7 @@ int flags;
 }
 
 int ptymacro(command, arg, flags)
-char *command, *arg;
+CONST char *command, *arg;
 int flags;
 {
 #if	!defined (_NOORIGSHELL) && !defined (NOJOB)

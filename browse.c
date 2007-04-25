@@ -57,7 +57,7 @@ extern int setcurdrv __P_((int, int));
 #define	ANSI_BG		9
 
 extern bindtable bindlist[];
-extern functable funclist[];
+extern CONST functable funclist[];
 #ifndef	_NOWRITEFS
 extern int writefs;
 #endif
@@ -94,19 +94,19 @@ static int NEAR putsize2 __P_((char *, namelist *, int));
 static int NEAR putfilename __P_((char *, namelist *, int));
 static VOID NEAR infobar __P_((VOID_A));
 static int NEAR calclocate __P_((int));
-static int NEAR calcfilepos __P_((namelist *, int, char *));
-static int NEAR listupmyself __P_((char *));
+static int NEAR calcfilepos __P_((namelist *, int, CONST char *));
+static int NEAR listupmyself __P_((CONST char *));
 #ifndef	_NOSPLITWIN
-static int NEAR listupwin __P_((char *));
+static int NEAR listupwin __P_((CONST char *));
 #endif
 static int NEAR searchmove __P_((int, char *));
 #ifndef	_NOPRECEDE
 static int readstatus __P_((VOID_A));
 #endif
-static int NEAR readfilelist __P_((reg_t *, char *));
+static int NEAR readfilelist __P_((CONST reg_t *, CONST char *));
 static VOID NEAR getfilelist __P_((VOID_A));
-static int NEAR browsedir __P_((char *, char *));
-static char *NEAR initcwd __P_((char *, char *, int));
+static int NEAR browsedir __P_((char *, CONST char *));
+static char *NEAR initcwd __P_((CONST char *, char *, int));
 
 int curcolumns = 0;
 int defcolumns = 0;
@@ -173,8 +173,8 @@ char *helpindex[MAXHELPINDEX] = {
 #endif	/* FD >= 2 */
 };
 #ifdef	HAVEFLAGS
-char fflagsymlist[] = "ANacuacu";
-u_long fflaglist[] = {
+CONST char fflagsymlist[] = "ANacuacu";
+CONST u_long fflaglist[] = {
 	SF_ARCHIVED, UF_NODUMP,
 	SF_APPEND, SF_IMMUTABLE, SF_NOUNLINK,
 	UF_APPEND, UF_IMMUTABLE, UF_NOUNLINK
@@ -384,7 +384,7 @@ VOID helpbar(VOID_A)
 
 static VOID NEAR statusbar(VOID_A)
 {
-	char *str[6];
+	CONST char *str[6];
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
@@ -1135,7 +1135,7 @@ int no, isstandout;
 static int NEAR calcfilepos(list, max, def)
 namelist *list;
 int max;
-char *def;
+CONST char *def;
 {
 	int i;
 
@@ -1151,10 +1151,10 @@ char *def;
 int listupfile(list, max, def, isstandout)
 namelist *list;
 int max;
-char *def;
+CONST char *def;
 int isstandout;
 {
-	char *cp;
+	CONST char *cp;
 	int i, n, pos;
 
 	for (i = 0; i < FILEPERROW; i++) {
@@ -1210,7 +1210,7 @@ int isstandout;
 }
 
 static int NEAR listupmyself(def)
-char *def;
+CONST char *def;
 {
 #ifndef	_NOTREE
 	if (treepath) rewritetree();
@@ -1232,7 +1232,7 @@ char *def;
 
 #ifndef	_NOSPLITWIN
 static int NEAR listupwin(def)
-char *def;
+CONST char *def;
 {
 	int i, x, y, n, dupwin;
 
@@ -1405,7 +1405,7 @@ static int NEAR searchmove(ch, buf)
 int ch;
 char *buf;
 {
-	char *str[4];
+	CONST char *str[4];
 	int i, n, s, pos, len;
 
 	if (isearch > 0) {
@@ -1519,8 +1519,8 @@ static int readstatus(VOID_A)
 #endif	/* !_NOPRECEDE */
 
 static int NEAR readfilelist(re, arcre)
-reg_t *re;
-char *arcre;
+CONST reg_t *re;
+CONST char *arcre;
 {
 #ifndef	_NOPRECEDE
 	char cwd[MAXPATHLEN];
@@ -1586,7 +1586,7 @@ static VOID NEAR getfilelist(VOID_A)
 	arcre = NULL;
 	if (findpattern) {
 #ifndef	_NOARCHIVE
-		if (*findpattern == '/') arcre = findpattern + 1;
+		if (*findpattern == '/') arcre = &(findpattern[1]);
 		else
 #endif
 		re = regexp_init(findpattern, -1);
@@ -1615,7 +1615,8 @@ static VOID NEAR getfilelist(VOID_A)
 
 	if (!maxfile) {
 		addlist();
-		filelist[0].name = NOFIL_K;
+		filelist[0].name = (char *)NOFIL_K;
+		filelist[0].tmpflags = 0;
 		filelist[0].st_nlink = -1;
 	}
 
@@ -1626,12 +1627,17 @@ static VOID NEAR getfilelist(VOID_A)
 }
 
 static int NEAR browsedir(file, def)
-char *file, *def;
+char *file;
+CONST char *def;
 {
+#ifndef	_NOARCHIVE
+	CONST char *tmp;
+#endif
 #ifndef	_NOPRECEDE
 	int dupsorton;
 #endif
-	char *cp, buf[MAXNAMLEN + 1];
+	CONST char *cp;
+	char buf[MAXNAMLEN + 1];
 	int ch, i, no, old, funcstat;
 
 #ifndef	_NOPRECEDE
@@ -1651,7 +1657,9 @@ char *file, *def;
 	waitmes();
 
 #ifndef	_NOARCHIVE
-	if (archivefile) def = (*file) ? file : nullstr;
+	if (!archivefile) /*EMPTY*/;
+	else if (*file) def = file;
+	else def = nullstr;
 #endif
 	getfilelist();
 
@@ -1818,8 +1826,6 @@ char *file, *def;
 			strcpy(file, filelist[filepos].name);
 		}
 		else if (no == FNC_CHDIR) {
-			char *tmp;
-
 			tmp = (filepos >= 0) ? filelist[filepos].name : NULL;
 			if (!(cp = archchdir(tmp))) {
 				if (!tmp) tmp = parentpath;
@@ -1864,7 +1870,8 @@ char *file, *def;
 }
 
 static char *NEAR initcwd(path, buf, evaled)
-char *path, *buf;
+CONST char *path;
+char *buf;
 int evaled;
 {
 	char *cp, *file;
@@ -1918,7 +1925,7 @@ int evaled;
 }
 
 VOID main_fd(pathlist, evaled)
-char **pathlist;
+char *CONST *pathlist;
 int evaled;
 {
 #ifdef	_USEDOSEMU

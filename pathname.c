@@ -80,49 +80,49 @@ extern char *_mtrace_file;
 #endif
 
 #ifdef	FD
-extern char *getenv2 __P_((char *));
+extern char *getenv2 __P_((CONST char *));
 extern char *malloc2 __P_((ALLOC_T));
 extern char *realloc2 __P_((VOID_P, ALLOC_T));
 extern char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
-extern char *strdup2 __P_((char *));
-extern char *strndup2 __P_((char *, int));
-extern char *strchr2 __P_((char *, int));
-extern char *strcpy2 __P_((char *, char *));
-extern char *strncpy2 __P_((char *, char *, int));
+extern char *strdup2 __P_((CONST char *));
+extern char *strndup2 __P_((CONST char *, int));
+extern char *strchr2 __P_((CONST char *, int));
+extern char *strcpy2 __P_((char *, CONST char *));
+extern char *strncpy2 __P_((char *, CONST char *, int));
 # ifdef	_USEDOSPATH
-extern int _dospath __P_((char *));
+extern int _dospath __P_((CONST char *));
 # endif
-extern DIR *Xopendir __P_((char *));
+extern DIR *Xopendir __P_((CONST char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern char *Xgetwd __P_((char *));
-extern int Xstat __P_((char *, struct stat *));
-extern int stat2 __P_((char *, struct stat *));
-extern int Xaccess __P_((char *, int));
+extern int Xstat __P_((CONST char *, struct stat *));
+extern int stat2 __P_((CONST char *, struct stat *));
+extern int Xaccess __P_((CONST char *, int));
 # if	MSDOS && !defined (_NOUSELFN)
-extern char *shortname __P_((char *, char *));
+extern char *shortname __P_((CONST char *, char *));
 # endif
 extern VOID demacroarg __P_((char **));
 extern char *progpath;
 #else	/* !FD */
 #define	getenv2		(char *)getenv
-VOID error __P_((char *));
+VOID error __P_((CONST char *));
 char *malloc2 __P_((ALLOC_T));
 char *realloc2 __P_((VOID_P, ALLOC_T));
 char *c_realloc __P_((char *, ALLOC_T, ALLOC_T *));
-char *strdup2 __P_((char *));
-char *strndup2 __P_((char *, int));
-char *strchr2 __P_((char *, int));
-char *strcpy2 __P_((char *, char *));
-char *strncpy2 __P_((char *, char *, int));
+char *strdup2 __P_((CONST char *));
+char *strndup2 __P_((CONST char *, int));
+char *strchr2 __P_((CONST char *, int));
+char *strcpy2 __P_((char *, CONST char *));
+char *strncpy2 __P_((char *, CONST char *, int));
 # if	MSDOS
-int _dospath __P_((char *));
-DIR *Xopendir __P_((char *));
+int _dospath __P_((CONST char *));
+DIR *Xopendir __P_((CONST char *));
 int Xclosedir __P_((DIR *));
 struct dirent *Xreaddir __P_((DIR *));
 static u_int NEAR getdosmode __P_((u_int));
 static time_t NEAR getdostime __P_((u_int, u_int));
-int Xstat __P_((char *, struct stat *));
+int Xstat __P_((CONST char *, struct stat *));
 #  ifndef	NOSYMLINK
 #  define	Xlstat		Xstat
 #  endif
@@ -138,7 +138,7 @@ int Xstat __P_((char *, struct stat *));
 # ifdef	NOSYMLINK
 # define	stat2		Xstat
 # else
-int stat2 __P_((char *, struct stat *));
+int stat2 __P_((CONST char *, struct stat *));
 # endif
 # ifdef	DJGPP
 char *Xgetwd __P_((char *));
@@ -152,49 +152,52 @@ char *Xgetwd __P_((char *));
 #define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
 #endif	/* !FD */
 
-static char *NEAR getenvvar __P_((char *, int));
-static int NEAR setvar __P_((char *, char *, int));
-static int NEAR isescape __P_((char *s, int, int, int, int));
+static char *NEAR getenvvar __P_((CONST char *, int));
+static int NEAR setvar __P_((CONST char *, CONST char *, int));
+static int NEAR isescape __P_((CONST char *, int, int, int, int));
 #ifdef	_NOORIGGLOB
-static char *NEAR cnvregexp __P_((char *, int));
+static char *NEAR cnvregexp __P_((CONST char *, int));
 #else
-static int NEAR _regexp_exec __P_((char **, char *));
+static int NEAR _regexp_exec __P_((CONST reg_t *, CONST char *));
 #endif
-static void NEAR addstrbuf __P_((strbuf_t *, char *, int));
-static void NEAR duplwild __P_((wild_t *, wild_t *));
+static void NEAR addstrbuf __P_((strbuf_t *, CONST char *, int));
+static void NEAR duplwild __P_((wild_t *, CONST wild_t *));
 static void NEAR freewild __P_((wild_t *));
 static int NEAR _evalwild __P_((int, char ***, wild_t *));
 #ifndef	_NOUSEHASH
-static int NEAR calchash __P_((char *));
+static int NEAR calchash __P_((CONST char *));
 static VOID NEAR inithash __P_((VOID_A));
-static hashlist *NEAR newhash __P_((char *, char *, int, hashlist *));
+static hashlist *NEAR newhash __P_((CONST char *, char *, int, hashlist *));
 static VOID NEAR freehash __P_((hashlist **));
-static hashlist *NEAR findhash __P_((char *, int));
-static VOID NEAR rmhash __P_((char *, int));
+static hashlist *NEAR findhash __P_((CONST char *, int));
+static VOID NEAR rmhash __P_((CONST char *, int));
 #endif
-static int NEAR isexecute __P_((char *, int, int));
+static int NEAR isexecute __P_((CONST char *, int, int));
 #if	MSDOS
-static int NEAR extaccess __P_((char *, char *, int, int));
+static int NEAR extaccess __P_((char *, CONST char *, int, int));
 #endif
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
-static int NEAR completefile __P_((char *, int, int, char ***,
-	char *, int, int));
-static int NEAR completeexe __P_((char *, int, int, char ***));
+static int NEAR completefile __P_((CONST char *, int, int, char ***,
+		CONST char *, int, int));
+static int NEAR completeexe __P_((CONST char *, int, int, char ***));
 #endif	/* !FDSH && !_NOCOMPLETE */
-static int NEAR addmeta __P_((char *, char *, int));
-static int NEAR skipvar __P_((char **, int *, int *, int));
+static int NEAR addmeta __P_((char *, CONST char *, int));
+static int NEAR skipvar __P_((CONST char **, int *, int *, int));
 #ifdef	MINIMUMSHELL
-static int NEAR skipvarvalue __P_((char *, int *, char *, int, int));
+static int NEAR skipvarvalue __P_((CONST char *, int *,
+		CONST char *, int, int));
 static char *NEAR evalshellparam __P_((int, int));
 #else	/* !MINIMUMSHELL */
-static int NEAR skipvarvalue __P_((char *, int *, char *, int, int, int));
-static char *NEAR removeword __P_((char *, char *, int, int));
-static char **NEAR removevar __P_((char **, char *, int, int));
-static char *NEAR evalshellparam __P_((int, int, char *, int, int *));
+static int NEAR skipvarvalue __P_((CONST char *, int *,
+		CONST char *, int, int, int));
+static char *NEAR removeword __P_((CONST char *, CONST char *, int, int));
+static char **NEAR removevar __P_((char **, CONST char *, int, int));
+static char *NEAR evalshellparam __P_((int, int, CONST char *, int, int *));
 #endif	/* !MINIMUMSHELL */
-static int NEAR replacevar __P_((char *, char **, int, int, int, int, int));
-static char *NEAR insertarg __P_((char *, int, char *, int, int));
-static int NEAR evalvar __P_((char **, int, char **, int));
+static int NEAR replacevar __P_((CONST char *, char **,
+		int, int, int, int, int));
+static char *NEAR insertarg __P_((char *, int, CONST char *, int, int));
+static int NEAR evalvar __P_((char **, int, CONST char **, int));
 static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 
 #define	BUFUNIT		32
@@ -207,25 +210,25 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 #define	STRFD		"FD"
 #endif
 
-char nullstr[] = "";
-char rootpath[] = _SS_;
-char curpath[] = ".";
-char parentpath[] = "..";
+CONST char nullstr[] = "";
+CONST char rootpath[] = _SS_;
+CONST char curpath[] = ".";
+CONST char parentpath[] = "..";
 char **argvar = NULL;
 #ifndef	_NOUSEHASH
 hashlist **hashtable = NULL;
 #endif
-char *(*getvarfunc)__P_((char *, int)) = NULL;
+char *(*getvarfunc)__P_((CONST char *, int)) = NULL;
 int (*putvarfunc)__P_((char *, int)) = NULL;
 int (*getretvalfunc)__P_((VOID_A)) = NULL;
 p_id_t (*getpidfunc)__P_((VOID_A)) = NULL;
 p_id_t (*getlastpidfunc)__P_((VOID_A)) = NULL;
 char *(*getflagfunc)__P_((VOID_A)) = NULL;
-int (*checkundeffunc)__P_((char *, char *, int)) = NULL;
+int (*checkundeffunc)__P_((CONST char *, CONST char *, int)) = NULL;
 VOID (*exitfunc)__P_((VOID_A)) = NULL;
-char *(*backquotefunc)__P_((char *)) = NULL;
+char *(*backquotefunc)__P_((CONST char *)) = NULL;
 #ifndef	MINIMUMSHELL
-char *(*posixsubstfunc)__P_((char *, int *)) = NULL;
+char *(*posixsubstfunc)__P_((CONST char *, int *)) = NULL;
 #endif
 #ifndef	PATHNOCASE
 int pathignorecase = 0;
@@ -246,7 +249,7 @@ static int maxgid = 0;
 
 #ifndef	FD
 VOID error(s)
-char *s;
+CONST char *s;
 {
 	fputs(s, stderr);
 	fputs(": memory allocation error", stderr);
@@ -296,14 +299,13 @@ ALLOC_T n, *sizep;
 		*sizep = BUFUNIT;
 		return(malloc2(*sizep));
 	}
-	n++;
-	while (n >= *sizep) *sizep *= 2;
+	while (n + 1 >= *sizep) *sizep *= 2;
 
 	return(realloc2(ptr, *sizep));
 }
 
 char *strdup2(s)
-char *s;
+CONST char *s;
 {
 	char *tmp;
 	int n;
@@ -317,7 +319,7 @@ char *s;
 }
 
 char *strndup2(s, n)
-char *s;
+CONST char *s;
 int n;
 {
 	char *tmp;
@@ -333,13 +335,13 @@ int n;
 }
 
 char *strchr2(s, c)
-char *s;
+CONST char *s;
 int c;
 {
 	int i;
 
 	for (i = 0; s[i]; i++) {
-		if (s[i] == c) return(&(s[i]));
+		if (s[i] == c) return((char *)&(s[i]));
 		if (iskanji1(s, i)) i++;
 #ifdef	CODEEUC
 		else if (isekana(s, i)) i++;
@@ -350,7 +352,8 @@ int c;
 }
 
 char *strcpy2(s1, s2)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 {
 	int i;
 
@@ -361,7 +364,8 @@ char *s1, *s2;
 }
 
 char *strncpy2(s1, s2, n)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 int n;
 {
 	int i;
@@ -374,13 +378,13 @@ int n;
 
 # if	MSDOS
 int _dospath(path)
-char *path;
+CONST char *path;
 {
 	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
 }
 
 DIR *Xopendir(dir)
-char *dir;
+CONST char *dir;
 {
 	DIR *dirp;
 	char *cp;
@@ -481,7 +485,7 @@ u_int d, t;
 }
 
 int Xstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	struct find_t find;
@@ -501,7 +505,7 @@ struct stat *stp;
 
 # ifndef	NOSYMLINK
 int stat2(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	int duperrno;
@@ -549,14 +553,14 @@ int drive, c;
 }
 
 char *strdelim(s, d)
-char *s;
+CONST char *s;
 int d;
 {
 	int i;
 
-	if (d && _dospath(s)) return(&(s[1]));
+	if (d && _dospath(s)) return((char *)&(s[1]));
 	for (i = 0; s[i]; i++) {
-		if (s[i] == _SC_) return(&(s[i]));
+		if (s[i] == _SC_) return((char *)&(s[i]));
 # ifdef	BSPATHDELIM
 		if (iskanji1(s, i)) i++;
 # endif
@@ -566,10 +570,10 @@ int d;
 }
 
 char *strrdelim(s, d)
-char *s;
+CONST char *s;
 int d;
 {
-	char *cp;
+	CONST char *cp;
 	int i;
 
 	if (d && _dospath(s)) cp = &(s[1]);
@@ -581,15 +585,15 @@ int d;
 # endif
 	}
 
-	return(cp);
+	return((char *)cp);
 }
 #endif	/* MSDOS || (FD && !_NODOSDRIVE) */
 
 char *strrdelim2(s, eol)
-char *s, *eol;
+CONST char *s, *eol;
 {
 #ifdef	BSPATHDELIM
-	char *cp;
+	CONST char *cp;
 	int i;
 
 	cp = NULL;
@@ -598,16 +602,16 @@ char *s, *eol;
 		if (iskanji1(s, i)) i++;
 	}
 
-	return(cp);
+	return((char *)cp);
 #else
-	for (eol--; eol >= s; eol--) if (*eol == _SC_) return(eol);
+	for (eol--; eol >= s; eol--) if (*eol == _SC_) return((char *)eol);
 
 	return(NULL);
 #endif
 }
 
 int isdelim(s, ptr)
-char *s;
+CONST char *s;
 int ptr;
 {
 #ifdef	BSPATHDELIM
@@ -668,7 +672,8 @@ char *s;
 }
 
 char *strcatdelim2(buf, s1, s2)
-char *buf, *s1, *s2;
+char *buf;
+CONST char *s1, *s2;
 {
 	char *cp;
 	int i, len;
@@ -729,7 +734,7 @@ char *buf, *s1, *s2;
 }
 
 int strcasecmp2(s1, s2)
-char *s1, *s2;
+CONST char *s1, *s2;
 {
 	int c1, c2;
 
@@ -753,7 +758,7 @@ char *s1, *s2;
 }
 
 int strncasecmp2(s1, s2, n)
-char *s1, *s2;
+CONST char *s1, *s2;
 int n;
 {
 	int c1, c2;
@@ -780,7 +785,7 @@ int n;
 
 #ifndef	PATHNOCASE
 int strpathcmp2(s1, s2)
-char *s1, *s2;
+CONST char *s1, *s2;
 {
 	if (pathignorecase) return(strcasecmp2(s1, s2));
 
@@ -788,7 +793,7 @@ char *s1, *s2;
 }
 
 int strnpathcmp2(s1, s2, n)
-char *s1, *s2;
+CONST char *s1, *s2;
 int n;
 {
 	if (pathignorecase) return(strncasecmp2(s1, s2, n));
@@ -798,7 +803,7 @@ int n;
 #endif	/* !PATHNOCASE */
 
 char *underpath(path, dir, len)
-char *path, *dir;
+CONST char *path, *dir;
 int len;
 {
 	char *cp;
@@ -808,11 +813,11 @@ int len;
 	if (len <= 0 || strnpathcmp(path, dir, len)) return(NULL);
 	if (path[len] && path[len] != _SC_) return(NULL);
 
-	return(&(path[len]));
+	return((char *)&(path[len]));
 }
 
 static char *NEAR getenvvar(ident, len)
-char *ident;
+CONST char *ident;
 int len;
 {
 #if	(!defined (FD) && !defined (FDSH)) || defined (_NOORIGSHELL)
@@ -833,7 +838,7 @@ int len;
 }
 
 static int NEAR setvar(ident, value, len)
-char *ident, *value;
+CONST char *ident, *value;
 int len;
 {
 	char *cp;
@@ -868,7 +873,7 @@ int c;
 }
 
 int isdotdir(s)
-char *s;
+CONST char *s;
 {
 	if (s[0] != '.') /*EMPTY*/;
 	else if (!s[1]) return(2);
@@ -879,18 +884,18 @@ char *s;
 }
 
 char *isrootdir(s)
-char *s;
+CONST char *s;
 {
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 	if (_dospath(s)) s += 2;
 #endif
 	if (*s != _SC_) return(NULL);
 
-	return(s);
+	return((char *)s);
 }
 
 int isrootpath(s)
-char *s;
+CONST char *s;
 {
 	return((s[0] == _SC_ && !s[1]) ? 1 : 0);
 }
@@ -911,7 +916,7 @@ char *s;
 
 #ifdef	DOUBLESLASH
 int isdslash(s)
-char *s;
+CONST char *s;
 {
 # if	MSDOS || defined (CYGWIN)
 	char *cp;
@@ -927,17 +932,17 @@ char *s;
 #endif	/* DOUBLESLASH */
 
 char *getbasename(s)
-char *s;
+CONST char *s;
 {
 	char *cp;
 
 	if ((cp = strrdelim(s, 1))) return(&(cp[1]));
 
-	return(s);
+	return((char *)s);
 }
 
 char *getshellname(s, loginp, restrictedp)
-char *s;
+CONST char *s;
 int *loginp, *restrictedp;
 {
 	if (loginp) *loginp = 0;
@@ -956,11 +961,11 @@ int *loginp, *restrictedp;
 		if (restrictedp) *restrictedp = 1;
 	}
 
-	return(s);
+	return((char *)s);
 }
 
 static int NEAR isescape(s, ptr, quote, len, flags)
-char *s;
+CONST char *s;
 int ptr, quote, len, flags;
 {
 #ifdef	FAKEMETA
@@ -1000,7 +1005,7 @@ int ptr, quote, len, flags;
 
 #ifdef	_NOORIGGLOB
 static char *NEAR cnvregexp(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	char *re;
@@ -1065,24 +1070,26 @@ extern int re_ignore_case;
 # endif
 
 reg_t *regexp_init(s, len)
-char *s;
+CONST char *s;
 int len;
 {
+	char *new;
+
 # ifdef	PATHNOCASE
 	re_ignore_case = 1;
 # endif
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
-	s = cnvregexp(s, len);
-	re_comp(s);
-	free(s);
+	new = cnvregexp(s, len);
+	re_comp(new);
+	free(new);
 
 	return((reg_t *)1);
 }
 
 /*ARGSUSED*/
 int regexp_exec(re, s, fname)
-reg_t *re;
-char *s;
+CONST reg_t *re;
+CONST char *s;
 int fname;
 {
 	if (fname && skipdotfile && *s == '.') return(0);
@@ -1101,13 +1108,14 @@ reg_t *re;
 # ifdef	USEREGCOMP
 
 reg_t *regexp_init(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	reg_t *re;
+	char *new;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
-	s = cnvregexp(s, len);
+	s = new = cnvregexp(s, len);
 	re = (reg_t *)malloc2(sizeof(reg_t));
 # ifdef	PATHNOCASE
 	if (regcomp(re, s, REG_EXTENDED | REG_ICASE)) {
@@ -1117,14 +1125,14 @@ int len;
 		free(re);
 		re = NULL;
 	}
-	free(s);
+	free(new);
 
 	return(re);
 }
 
 int regexp_exec(re, s, fname)
-reg_t *re;
-char *s;
+CONST reg_t *re;
+CONST char *s;
 int fname;
 {
 	if (!re || (fname && skipdotfile && *s == '.')) return(0);
@@ -1143,26 +1151,27 @@ reg_t *re;
 
 # else	/* !USEREGCOMP */
 #  ifdef	USEREGCMP
-extern char *regcmp __P_((char *, int));
-extern char *regex __P_((char *, char *));
+extern char *regcmp __P_((CONST char *, int));
+extern char *regex __P_((CONST char *, CONST char *, ...));
 
 reg_t *regexp_init(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	reg_t *re;
+	char *new;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
-	s = cnvregexp(s, len);
-	re = regcmp(s, 0);
-	free(s);
+	new = cnvregexp(s, len);
+	re = regcmp(new, 0);
+	free(new);
 
 	return(re);
 }
 
 int regexp_exec(re, s, fname)
-reg_t *re;
-char *s;
+CONST reg_t *re;
+CONST char *s;
 int fname;
 {
 	if (!re || (fname && skipdotfile && *s == '.')) return(0);
@@ -1178,7 +1187,7 @@ reg_t *re;
 #  else	/* !USEREGCMP */
 
 reg_t *regexp_init(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	reg_t *re;
@@ -1347,8 +1356,8 @@ int len;
 }
 
 static int NEAR _regexp_exec(re, s)
-reg_t *re;
-char *s;
+CONST reg_t *re;
+CONST char *s;
 {
 	int i, n1, n2, c1, c2, beg, rev;
 
@@ -1417,8 +1426,8 @@ char *s;
 }
 
 int regexp_exec(re, s, fname)
-reg_t *re;
-char *s;
+CONST reg_t *re;
+CONST char *s;
 int fname;
 {
 	if (!re || (fname && skipdotfile && *s == '.')) return(0);
@@ -1444,7 +1453,7 @@ reg_t *re;
 
 static void NEAR addstrbuf(sp, s, len)
 strbuf_t *sp;
-char *s;
+CONST char *s;
 int len;
 {
 	sp -> s = c_realloc(sp -> s, sp -> len + len, &(sp -> size));
@@ -1454,7 +1463,8 @@ int len;
 }
 
 static void NEAR duplwild(dst, src)
-wild_t *dst, *src;
+wild_t *dst;
+CONST wild_t *src;
 {
 	memcpy((char *)dst, (char *)src, sizeof(wild_t));
 	dst -> fixed.s = (char *)malloc2(src -> fixed.size);
@@ -1496,7 +1506,8 @@ wild_t *wp;
 	reg_t *re;
 	wild_t dupl;
 	ALLOC_T flen, plen;
-	char *cp;
+	CONST char *cp;
+	char *new;
 	int i, n, w, pc, quote, isdir;
 
 	if (!*(wp -> s)) {
@@ -1607,14 +1618,14 @@ wild_t *wp;
 		re = NULL;
 	}
 	else {
-		cp = malloc2(i + 2);
+		new = malloc2(i + 2);
 		n = 0;
-		if (quote) cp[n++] = quote;
-		memcpy(&(cp[n]), wp -> s, i);
+		if (quote) new[n++] = quote;
+		memcpy(&(new[n]), wp -> s, i);
 		n += i;
-		if (wp -> quote) cp[n++] = wp -> quote;
-		re = regexp_init(cp, n);
-		free(cp);
+		if (wp -> quote) new[n++] = wp -> quote;
+		re = regexp_init(new, n);
+		free(new);
 		if (!re) return(argc);
 		wp -> s += i + 1;
 	}
@@ -1692,7 +1703,7 @@ CONST VOID_P vp2;
 }
 
 char **evalwild(s, flags)
-char *s;
+CONST char *s;
 int flags;
 {
 	wild_t w;
@@ -1727,7 +1738,7 @@ int flags;
 
 #ifndef	_NOUSEHASH
 static int NEAR calchash(s)
-char *s;
+CONST char *s;
 {
 	u_int n;
 	int i;
@@ -1747,7 +1758,8 @@ static VOID NEAR inithash(VOID_A)
 }
 
 static hashlist *NEAR newhash(com, path, cost, next)
-char *com, *path;
+CONST char *com;
+char *path;
 int cost;
 hashlist *next;
 {
@@ -1790,7 +1802,8 @@ hashlist **htable;
 hashlist **duplhash(htable)
 hashlist **htable;
 {
-	hashlist *hp, **nextp, **new;
+	CONST hashlist *hp;
+	hashlist **nextp, **new;
 	int i;
 
 	if (!htable) return(NULL);
@@ -1811,7 +1824,7 @@ hashlist **htable;
 }
 
 static hashlist *NEAR findhash(com, n)
-char *com;
+CONST char *com;
 int n;
 {
 	hashlist *hp;
@@ -1823,7 +1836,7 @@ int n;
 }
 
 static VOID NEAR rmhash(com, n)
-char *com;
+CONST char *com;
 int n;
 {
 	hashlist *hp, *prev;
@@ -1844,7 +1857,7 @@ int n;
 #endif	/* !_NOUSEHASH */
 
 static int NEAR isexecute(path, dirok, exe)
-char *path;
+CONST char *path;
 int dirok, exe;
 {
 	struct stat st;
@@ -1860,7 +1873,8 @@ int dirok, exe;
 
 #if	MSDOS
 static int NEAR extaccess(path, ext, len, exe)
-char *path, *ext;
+char *path;
+CONST char *ext;
 int len, exe;
 {
 	if (ext) {
@@ -1886,12 +1900,13 @@ int len, exe;
 
 int searchhash(hpp, com, search)
 hashlist **hpp;
-char *com, *search;
+CONST char *com, *search;
 {
 #if	MSDOS
 	char *ext;
 #endif
-	char *cp, *tmp, *next, *path;
+	CONST char *cp, *next;
+	char *tmp, *path;
 	int len, dlen, cost, size, ret;
 #ifndef	_NOUSEHASH
 	hashlist *hp;
@@ -2019,7 +2034,7 @@ char *com, *search;
 }
 
 char *searchexecpath(path, search)
-char *path, *search;
+CONST char *path, *search;
 {
 	hashlist *hp;
 	int type;
@@ -2035,9 +2050,9 @@ char *path, *search;
 
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 char *finddupl(target, argc, argv)
-char *target;
+CONST char *target;
 int argc;
-char **argv;
+char *CONST *argv;
 {
 	int i;
 
@@ -2049,7 +2064,7 @@ char **argv;
 
 # ifndef	NOUID
 int completeuser(name, len, argc, argvp, home)
-char *name;
+CONST char *name;
 int len, argc;
 char ***argvp;
 int home;
@@ -2127,7 +2142,7 @@ int home;
 }
 
 int completegroup(name, len, argc, argvp)
-char *name;
+CONST char *name;
 int len, argc;
 char ***argvp;
 {
@@ -2192,9 +2207,10 @@ char ***argvp;
 # endif	/* !NOUID */
 
 static int NEAR completefile(file, len, argc, argvp, dir, dlen, exe)
-char *file;
+CONST char *file;
 int len, argc;
-char ***argvp, *dir;
+char ***argvp;
+CONST char *dir;
 int dlen, exe;
 {
 	DIR *dirp;
@@ -2238,7 +2254,7 @@ int dlen, exe;
 }
 
 static int NEAR completeexe(file, len, argc, argvp)
-char *file;
+CONST char *file;
 int len, argc;
 char ***argvp;
 {
@@ -2266,7 +2282,7 @@ char ***argvp;
 }
 
 int completepath(path, len, argc, argvp, exe)
-char *path;
+CONST char *path;
 int len, argc;
 char ***argvp;
 int exe;
@@ -2277,7 +2293,7 @@ int exe;
 # ifdef	DOUBLESLASH
 	int n;
 # endif
-	char *file, *dir;
+	CONST char *dir, *file;
 	int dlen;
 
 	dir = path;
@@ -2324,7 +2340,7 @@ int exe;
 
 char *findcommon(argc, argv)
 int argc;
-char **argv;
+char *CONST *argv;
 {
 	char *common;
 	int i, n;
@@ -2347,7 +2363,8 @@ char **argv;
 #endif	/* !FDSH && !_NOCOMPLETE */
 
 static int NEAR addmeta(s1, s2, quoted)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 int quoted;
 {
 	int i, j, pc, quote;
@@ -2373,7 +2390,7 @@ int quoted;
 }
 
 char *catvar(argv, delim)
-char *argv[];
+char *CONST *argv;
 int delim;
 {
 	char *cp;
@@ -2394,7 +2411,7 @@ int delim;
 }
 
 int countvar(var)
-char **var;
+char *CONST *var;
 {
 	int i;
 
@@ -2418,7 +2435,7 @@ char **var;
 }
 
 char **duplvar(var, margin)
-char **var;
+char *CONST *var;
 int margin;
 {
 	char **dupl;
@@ -2437,7 +2454,7 @@ int margin;
 }
 
 int parsechar(s, len, spc, flags, qp, pqp)
-char *s;
+CONST char *s;
 int len, spc, flags, *qp, *pqp;
 {
 	if (*s == *qp) {
@@ -2501,7 +2518,7 @@ int len, spc, flags, *qp, *pqp;
 }
 
 static int NEAR skipvar(bufp, eolp, ptrp, qed)
-char **bufp;
+CONST char **bufp;
 int *eolp, *ptrp, qed;
 {
 	int i, mode;
@@ -2593,22 +2610,22 @@ int *eolp, *ptrp, qed;
 
 #ifdef	MINIMUMSHELL
 static int NEAR skipvarvalue(s, ptrp, next, qed, nonl)
-char *s;
+CONST char *s;
 int *ptrp;
-char *next;
+CONST char *next;
 int qed, nonl;
 #else
 static int NEAR skipvarvalue(s, ptrp, next, qed, nonl, nest)
-char *s;
+CONST char *s;
 int *ptrp;
-char *next;
+CONST char *next;
 int qed, nonl, nest;
 #endif
 {
 #ifdef	NESTINGQUOTE
 	int pq;
 #endif
-	char *cp;
+	CONST char *cp;
 	int pc, q, len;
 
 #ifdef	NESTINGQUOTE
@@ -2657,58 +2674,60 @@ int qed, nonl, nest;
 
 #ifndef	MINIMUMSHELL
 static char *NEAR removeword(s, pattern, plen, mode)
-char *s, *pattern;
+CONST char *s, *pattern;
 int plen, mode;
 {
 	reg_t *re;
-	char *cp, *ret, *tmp;
-	int c, len;
+	CONST char *cp;
+	char *ret, *tmp, *new;
+	int c, n, len;
 
 	if (!s || !*s) return(NULL);
 	tmp = strndup2(pattern, plen);
-	pattern = evalarg(tmp, '\0', EA_BACKQ);
+	new = evalarg(tmp, '\0', EA_BACKQ);
 	free(tmp);
-	re = regexp_init(pattern, -1);
-	free(pattern);
+	re = regexp_init(new, -1);
+	free(new);
 	if (!re) return(NULL);
 	ret = NULL;
 	len = strlen(s);
+	n = -1;
 	if ((mode & ~0x80) != '#') {
 		if (mode & 0x80) for (cp = s; cp < &(s[len]); cp++) {
 			if (regexp_exec(re, cp, 0)) {
-				ret = cp;
+				n = cp - s;
 				break;
 			}
 		}
 		else for (cp = &(s[len - 1]); cp >= s; cp--) {
 			if (regexp_exec(re, cp, 0)) {
-				ret = cp;
+				n = cp - s;
 				break;
 			}
 		}
-		if (ret) ret = strndup2(s, ret - s);
+		if (n >= 0) ret = strndup2(s, n);
 	}
 	else {
-		tmp = strdup2(s);
+		new = strdup2(s);
 		if (mode & 0x80)
-		for (cp = tmp + len; cp >= tmp; cp--) {
-			*cp = '\0';
-			if (regexp_exec(re, tmp, 0)) {
-				ret = cp;
+		for (tmp = &(new[len]); tmp >= new; tmp--) {
+			*tmp = '\0';
+			if (regexp_exec(re, new, 0)) {
+				n = tmp - new;
 				break;
 			}
 		}
-		else for (cp = tmp + 1; cp <= tmp + len; cp++) {
-			c = *cp;
-			*cp = '\0';
-			if (regexp_exec(re, tmp, 0)) {
-				ret = cp;
+		else for (tmp = &(new[1]); tmp <= &(new[len]); tmp++) {
+			c = *tmp;
+			*tmp = '\0';
+			if (regexp_exec(re, new, 0)) {
+				n = tmp - new;
 				break;
 			}
-			*cp = c;
+			*tmp = c;
 		}
-		if (ret) ret = strdup2(&(s[ret - tmp]));
-		free(tmp);
+		if (n >= 0) ret = strdup2(&(s[n]));
+		free(new);
 	}
 	regexp_free(re);
 
@@ -2716,7 +2735,8 @@ int plen, mode;
 }
 
 static char **NEAR removevar(var, pattern, plen, mode)
-char **var, *pattern;
+char **var;
+CONST char *pattern;
 int plen, mode;
 {
 	char *cp, **new;
@@ -2741,7 +2761,7 @@ int c, quoted;
 #else
 static char *NEAR evalshellparam(c, quoted, pattern, plen, modep)
 int c, quoted;
-char *pattern;
+CONST char *pattern;
 int plen, *modep;
 #endif
 {
@@ -2852,7 +2872,8 @@ int plen, *modep;
 }
 
 static int NEAR replacevar(arg, cpp, s, len, vlen, mode, quoted)
-char *arg, **cpp;
+CONST char *arg;
+char **cpp;
 int s, len, vlen, mode, quoted;
 {
 	char *val;
@@ -2913,7 +2934,7 @@ int s, len, vlen, mode, quoted;
 static char *NEAR insertarg(buf, ptr, arg, olen, nlen)
 char *buf;
 int ptr;
-char *arg;
+CONST char *arg;
 int olen, nlen;
 {
 	if (nlen <= olen) return(buf);
@@ -2925,22 +2946,23 @@ int olen, nlen;
 static int NEAR evalvar(bufp, ptr, argp, quoted)
 char **bufp;
 int ptr;
-char **argp;
+CONST char **argp;
 int quoted;
 {
 #ifndef	MINIMUMSHELL
 	char tmp[MAXLONGWIDTH + 1];
 #endif
-	char *cp, *new, *arg, *top;
+	CONST char *arg, *top;
+	char *cp, *new;
 	int i, c, n, len, vlen, s, nul, mode;
 
 	new = NULL;
 	arg = *argp;
-	top = *argp + 1;
+	top = &(arg[1]);
 	n = 0;
 	if ((mode = skipvar(&top, &s, &n, quoted)) < 0) return(-1);
 
-	*argp = top + n - 1;
+	*argp = &(top[n - 1]);
 	if (!(len = s)) {
 		(*bufp)[ptr++] = '$';
 		return(ptr);
@@ -3061,7 +3083,7 @@ int quoted;
 #if	defined (FD) && !defined (NOUID)
 uidtable *finduid(uid, name)
 uid_t uid;
-char *name;
+CONST char *name;
 {
 	struct passwd *pwd;
 	int i;
@@ -3109,7 +3131,7 @@ char *name;
 
 gidtable *findgid(gid, name)
 gid_t gid;
-char *name;
+CONST char *name;
 {
 	struct group *grp;
 	int i;
@@ -3265,12 +3287,13 @@ char *gethomedir(VOID_A)
 int evalhome(bufp, ptr, argp)
 char **bufp;
 int ptr;
-char **argp;
+CONST char **argp;
 {
-	char *cp, *top;
+	CONST char *top;
+	char *cp;
 	int len, vlen;
 
-	top = *argp + 1;
+	top = &((*argp)[1]);
 
 	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
 	if (!len) cp = gethomedir();
@@ -3313,13 +3336,13 @@ char **argp;
 	if (!cp) {
 		vlen = len;
 		(*bufp)[ptr++] = '~';
-		cp = top;
 	}
 	else {
-		vlen = strlen(cp);
+		top = cp;
+		vlen = strlen(top);
 		*bufp = insertarg(*bufp, ptr, *argp, len + 1, vlen);
 	}
-	strncpy(&((*bufp)[ptr]), cp, vlen);
+	strncpy(&((*bufp)[ptr]), top, vlen);
 	ptr += vlen;
 	*argp += len;
 
@@ -3340,7 +3363,8 @@ int qed, flags;
 #ifdef	NESTINGQUOTE
 	int pq;
 #endif
-	char *cp, *buf, *bbuf;
+	CONST char *cp;
+	char *buf, *bbuf;
 	int i, j, pc, q;
 
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
@@ -3473,7 +3497,8 @@ int qed, flags;
 
 int evalifs(argc, argvp, ifs)
 int argc;
-char ***argvp, *ifs;
+char ***argvp;
+CONST char *ifs;
 {
 	char *cp;
 	int i, j, n, pc, quote;
@@ -3585,7 +3610,7 @@ int flags;
 }
 
 char *_evalpath(path, eol, flags)
-char *path, *eol;
+CONST char *path, *eol;
 int flags;
 {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)

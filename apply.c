@@ -41,7 +41,7 @@ extern int lcmdline;
 extern int maxcmdline;
 extern int mark;
 #ifdef	HAVEFLAGS
-extern u_long fflaglist[];
+extern CONST u_long fflaglist[];
 #endif
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 extern int inheritcopy;
@@ -59,32 +59,33 @@ extern int inheritcopy;
 #define	FLAG_SAMEDIR	8
 #endif
 
-static int NEAR issamedir __P_((char *, char *));
+static int NEAR issamedir __P_((CONST char *, CONST char *));
 static int NEAR islowerdir __P_((VOID_A));
-static char *NEAR getdestdir __P_((char *, char *));
-static int NEAR getdestpath __P_((char *, char *, struct stat *));
-static int NEAR getcopypolicy __P_((char *));
-static int NEAR getremovepolicy __P_((char *, int));
-static int NEAR checkdupl __P_((char *, char *, struct stat *, struct stat *));
-static int NEAR checkrmv __P_((char *, int));
+static char *NEAR getdestdir __P_((CONST char *, CONST char *));
+static int NEAR getdestpath __P_((CONST char *, char *, struct stat *));
+static int NEAR getcopypolicy __P_((CONST char *));
+static int NEAR getremovepolicy __P_((CONST char *, int));
+static int NEAR checkdupl __P_((CONST char *, char *,
+		struct stat *, struct stat *));
+static int NEAR checkrmv __P_((CONST char *, int));
 #ifndef	_NOEXTRACOPY
-static int NEAR isxdev __P_((char *, struct stat *));
+static int NEAR isxdev __P_((CONST char *, struct stat *));
 static VOID NEAR addcopysize __P_((off_t));
 static VOID NEAR _showprogress __P_((int));
-static int countcopysize __P_((char *));
-static int countmovesize __P_((char *));
-static int NEAR prepareprogress __P_((int, int (*)(char *)));
+static int countcopysize __P_((CONST char *));
+static int countmovesize __P_((CONST char *));
+static int NEAR prepareprogress __P_((int, int (*)(CONST char *)));
 #endif
 static int NEAR preparecopy __P_((int, int));
 static int NEAR preparemove __P_((int, int));
-static int safecopy __P_((char *));
-static int safemove __P_((char *));
-static int cpdir __P_((char *));
-static int touchdir __P_((char *));
+static int safecopy __P_((CONST char *));
+static int safemove __P_((CONST char *));
+static int cpdir __P_((CONST char *));
+static int touchdir __P_((CONST char *));
 #ifndef	_NOEXTRACOPY
-static int mvdir1 __P_((char *));
-static int mvdir2 __P_((char *));
-static int countremovesize __P_((char *));
+static int mvdir1 __P_((CONST char *));
+static int mvdir2 __P_((CONST char *));
+static int countremovesize __P_((CONST char *));
 #endif
 static VOID NEAR showmode __P_((attrib_t *, int, int));
 static VOID NEAR showattr __P_((namelist *, attrib_t *, int));
@@ -93,11 +94,12 @@ static int NEAR inputuid __P_((attrib_t *, int));
 static int NEAR inputgid __P_((attrib_t *, int));
 #endif
 static char **NEAR getdirtree __P_((char *, char **, int *, int));
-static int NEAR _applydir __P_((char *, int (*)(char *),
-		int (*)(char *), int (*)(char *), int, char *, int));
-static int forcecpfile __P_((char *));
-static int forcecpdir __P_((char *));
-static int forcetouchdir __P_((char *));
+static int NEAR _applydir __P_((CONST char *, int (*)(CONST char *),
+		int (*)(CONST char *), int (*)(CONST char *),
+		int, CONST char *, int));
+static int forcecpfile __P_((CONST char *));
+static int forcecpdir __P_((CONST char *));
+static int forcetouchdir __P_((CONST char *));
 
 char *destpath = NULL;
 #ifndef	_NOEXTRACOPY
@@ -145,15 +147,15 @@ static off_t maxcopysize = (off_t)0;
 
 
 static int NEAR issamedir(path, org)
-char *path, *org;
+CONST char *path, *org;
 {
-	char *cwd;
+	char *cwd, *path2, *org2;
 	int i;
 
 	cwd = getwd2();
-	if (!org) org = cwd;
+	if (!org) org2 = cwd;
 	else if (_chdir2(org) >= 0) {
-		org = getwd2();
+		org2 = getwd2();
 		if (_chdir2(cwd) < 0) error(cwd);
 	}
 	else {
@@ -162,15 +164,15 @@ char *path, *org;
 	}
 
 #ifdef	_USEDOSPATH
-	if (dospath(path, NULL) != dospath(org, NULL)) path = NULL;
+	if (dospath(path, NULL) != dospath(org2, NULL)) path2 = NULL;
 	else
 #endif
-	path = (_chdir2(path) >= 0) ? getwd2() : NULL;
+	path2 = (_chdir2(path) >= 0) ? getwd2() : NULL;
 	if (_chdir2(cwd) < 0) error(cwd);
-	i = (path) ? !strpathcmp(org, path) : 0;
-	if (org != cwd) free(org);
+	i = (path2) ? !strpathcmp(org2, path2) : 0;
+	if (org2 != cwd) free(org2);
 	free(cwd);
-	if (path) free(path);
+	if (path2) free(path2);
 
 	return(i);
 }
@@ -180,7 +182,8 @@ static int NEAR islowerdir(VOID_A)
 #ifdef	_USEDOSEMU
 	char orgpath[MAXPATHLEN];
 #endif
-	char *cp, *top, *cwd, *path, *org, tmp[MAXPATHLEN];
+	CONST char *org;
+	char *cp, *top, *cwd, *path, tmp[MAXPATHLEN];
 	int i;
 
 	cwd = getwd2();
@@ -211,11 +214,10 @@ static int NEAR islowerdir(VOID_A)
 		path = getwd2();
 		if (_chdir2(cwd) < 0) error(cwd);
 		if (_chdir2(org) >= 0) {
-			org = getwd2();
-			i = strlen(org);
-			if (strnpathcmp(org, path, i) || path[i] != _SC_)
-				i = 0;
-			free(org);
+			cp = getwd2();
+			i = strlen(cp);
+			if (strnpathcmp(cp, path, i) || path[i] != _SC_) i = 0;
+			free(cp);
 		}
 		if (_chdir2(cwd) < 0) error(cwd);
 		free(path);
@@ -226,7 +228,7 @@ static int NEAR islowerdir(VOID_A)
 }
 
 static char *NEAR getdestdir(mes, arg)
-char *mes, *arg;
+CONST char *mes, *arg;
 {
 	char *dir;
 #ifndef	_NODOSDRIVE
@@ -269,10 +271,12 @@ char *mes, *arg;
 }
 
 static int NEAR getdestpath(file, dest, stp)
-char *file, *dest;
+CONST char *file;
+char *dest;
 struct stat *stp;
 {
-	char *cp, *tmp;
+	CONST char *cp;
+	char *tmp;
 	int n;
 
 	strcpy(dest, destpath);
@@ -295,7 +299,7 @@ struct stat *stp;
 }
 
 static int NEAR getcopypolicy(s)
-char *s;
+CONST char *s;
 {
 #ifndef	_NOEXTRACOPY
 # ifndef	_NODOSDRIVE
@@ -303,7 +307,7 @@ char *s;
 # endif
 	char *cp;
 #endif	/* !_NOEXTRACOPY */
-	char *str[MAXCOPYITEM];
+	CONST char *str[MAXCOPYITEM];
 	int n, ch, val[MAXCOPYITEM];
 
 	for (;;) {
@@ -361,10 +365,10 @@ char *s;
 }
 
 static int NEAR getremovepolicy(s, pre)
-char *s;
+CONST char *s;
 int pre;
 {
-	char *str[4];
+	CONST char *str[4];
 	int i, n, ch, val[4];
 
 	Xlocate(0, L_CMDLINE);
@@ -397,12 +401,14 @@ int pre;
 }
 
 static int NEAR checkdupl(file, dest, stp1, stp2)
-char *file, *dest;
+CONST char *file;
+char *dest;
 struct stat *stp1, *stp2;
 {
 #ifndef	_NOEXTRACOPY
 	char path[MAXPATHLEN];
 #endif
+	CONST char *s;
 	char *cp, *tmp;
 	int i, n;
 
@@ -427,9 +433,9 @@ struct stat *stp1, *stp2;
 
 	for (;;) {
 		if (!n || n == CPP_RENAME) {
-			cp = SAMEF_K;
-			i = strlen2(cp) - strsize("%.*s");
-			cp = asprintf3(cp, n_column - i, dest);
+			s = SAMEF_K;
+			i = strlen2(s) - strsize("%.*s");
+			cp = asprintf3(s, n_column - i, dest);
 
 #ifndef	_NOEXTRACOPY
 			copycolumn = -1;
@@ -505,9 +511,10 @@ struct stat *stp1, *stp2;
 }
 
 static int NEAR checkrmv(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
+	CONST char *s;
 	char *cp;
 	int n, len;
 #if	MSDOS
@@ -571,9 +578,9 @@ int mode;
 
 	if (removepolicy > 0) n = removepolicy;
 	else {
-		cp = DELPM_K;
-		len = strlen2(cp) - strsize("%.*s");
-		cp = asprintf3(cp, n_column - len, path);
+		s = DELPM_K;
+		len = strlen2(s) - strsize("%.*s");
+		cp = asprintf3(s, n_column - len, path);
 #ifndef	_NOEXTRACOPY
 		copycolumn = -1;
 #endif
@@ -588,7 +595,7 @@ int mode;
 #ifndef	_NOEXTRACOPY
 /*ARGSUSED*/
 static int NEAR isxdev(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 # if	!MSDOS
@@ -668,19 +675,19 @@ off_t size;
 }
 
 VOID fshowprogress(path)
-char *path;
+CONST char *path;
 {
-	char *cp;
+	CONST char *cp;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
 	showprogress(DIRENTSIZ(cp));
 }
 
 static int countcopysize(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
-	char *cp;
+	CONST char *cp;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
 	addcopysize(DIRENTSIZ(cp));
@@ -691,11 +698,11 @@ char *path;
 }
 
 static int countmovesize(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	int n;
-	char *cp;
+	CONST char *cp;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
 	addcopysize(DIRENTSIZ(cp));
@@ -707,7 +714,7 @@ char *path;
 
 static int NEAR prepareprogress(isdir, func)
 int isdir;
-int (*func)__P_((char *));
+int (*func)__P_((CONST char *));
 {
 	int ret;
 
@@ -771,7 +778,7 @@ int isdir, narg;
 }
 
 static int safecopy(path)
-char *path;
+CONST char *path;
 {
 	struct stat st1, st2;
 	char dest[MAXPATHLEN];
@@ -785,7 +792,7 @@ char *path;
 }
 
 static int safemove(path)
-char *path;
+CONST char *path;
 {
 	struct stat st1, st2;
 	char dest[MAXPATHLEN];
@@ -800,7 +807,7 @@ char *path;
 }
 
 static int cpdir(path)
-char *path;
+CONST char *path;
 {
 	struct stat st1, st2;
 	char dest[MAXPATHLEN];
@@ -851,7 +858,7 @@ char *path;
 
 /*ARGSUSED*/
 static int touchdir(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];
@@ -875,7 +882,7 @@ char *path;
 
 #ifndef	_NOEXTRACOPY
 static int mvdir1(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	int n;
@@ -896,7 +903,7 @@ char *path;
 }
 
 static int mvdir2(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];
@@ -916,9 +923,9 @@ char *path;
 }
 
 static int countremovesize(path)
-char *path;
+CONST char *path;
 {
-	char *cp;
+	CONST char *cp;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
 	addcopysize(DIRENTSIZ(cp));
@@ -942,7 +949,7 @@ int isdir, narg;
 }
 
 int rmvfile(path)
-char *path;
+CONST char *path;
 {
 	int n;
 
@@ -957,7 +964,7 @@ char *path;
 }
 
 int rmvdir(path)
-char *path;
+CONST char *path;
 {
 	int n;
 
@@ -972,7 +979,7 @@ char *path;
 }
 
 int findfile(path)
-char *path;
+CONST char *path;
 {
 	if (regexp_exec(findregexp, getbasename(path), 1)) {
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
@@ -989,7 +996,7 @@ char *path;
 }
 
 int finddir(path)
-char *path;
+CONST char *path;
 {
 	if (regexp_exec(findregexp, getbasename(path), 1)) {
 		if (yesno(FOUND_K)) {
@@ -1593,7 +1600,7 @@ int flag;
 }
 
 int setattr(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 
@@ -1616,8 +1623,8 @@ char *path;
 }
 
 int applyfile(func, endmes)
-int (*func)__P_((char *));
-char *endmes;
+int (*func)__P_((CONST char *));
+CONST char *endmes;
 {
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
@@ -1704,12 +1711,12 @@ int *maxp, depth;
 }
 
 static int NEAR _applydir(dir, funcf, funcd1, funcd2, order, endmes, verbose)
-char *dir;
-int (*funcf)__P_((char *));
-int (*funcd1)__P_((char *));
-int (*funcd2)__P_((char *));
+CONST char *dir;
+int (*funcf)__P_((CONST char *));
+int (*funcd1)__P_((CONST char *));
+int (*funcd2)__P_((CONST char *));
 int order;
-char *endmes;
+CONST char *endmes;
 int verbose;
 {
 	DIR *dirp;
@@ -1717,7 +1724,8 @@ int verbose;
 	struct stat st;
 	time_t dupmtime, dupatime;
 	u_short dupmode;
-	char *cp, *fname, path[MAXPATHLEN], **dirlist;
+	CONST char *cp;
+	char *fname, path[MAXPATHLEN], **dirlist;
 	int ret, ndir, max, dupnlink;
 
 	if (intrkey(K_ESC)) return(APL_CANCEL);
@@ -1725,7 +1733,7 @@ int verbose;
 	if (verbose) {
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
-		cp = (dir[0] == '.' && dir[1] == _SC_) ? dir + 2 : dir;
+		cp = (dir[0] == '.' && dir[1] == _SC_) ? &(dir[2]) : dir;
 		Xcprintf2("[%.*k]", n_column - 2, cp);
 		Xtflush();
 	}
@@ -1824,12 +1832,12 @@ int verbose;
 }
 
 int applydir(dir, funcf, funcd1, funcd2, order, endmes)
-char *dir;
-int (*funcf)__P_((char *));
-int (*funcd1)__P_((char *));
-int (*funcd2)__P_((char *));
+CONST char *dir;
+int (*funcf)__P_((CONST char *));
+int (*funcd1)__P_((CONST char *));
+int (*funcd2)__P_((CONST char *));
 int order;
-char *endmes;
+CONST char *endmes;
 {
 	char path[MAXPATHLEN];
 	int verbose;
@@ -1852,7 +1860,7 @@ char *endmes;
 
 /*ARGSUSED*/
 int copyfile(arg, tr)
-char *arg;
+CONST char *arg;
 int tr;
 {
 	int order;
@@ -1917,7 +1925,7 @@ int tr;
 
 /*ARGSUSED*/
 int movefile(arg, tr)
-char *arg;
+CONST char *arg;
 int tr;
 {
 #ifdef	_USEDOSEMU
@@ -2008,7 +2016,7 @@ int tr;
 }
 
 static int forcecpfile(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];
@@ -2027,7 +2035,7 @@ char *path;
 }
 
 static int forcecpdir(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];
@@ -2050,7 +2058,7 @@ char *path;
 }
 
 static int forcetouchdir(path)
-char *path;
+CONST char *path;
 {
 	struct stat st;
 	char dest[MAXPATHLEN];

@@ -94,7 +94,11 @@ extern int n_lastcolumn;
 extern int n_line;
 extern int stable_standout;
 
+#if	MSDOS
+extern CONST char *termstr[];
+#else
 extern char *termstr[];
+#endif
 #define	T_INIT		0
 #define	T_END		1
 #define	T_METAMODE	2
@@ -178,8 +182,8 @@ extern int stdiomode __P_((VOID_A));
 extern int termmode __P_((int));
 extern int exit2 __P_((int));
 extern int getxy __P_((int *, int *));
-extern char *tparamstr __P_((char *, int, int));
-extern int getterment __P_((char *));
+extern char *tparamstr __P_((CONST char *, int, int));
+extern int getterment __P_((CONST char *));
 #if	!MSDOS
 extern int freeterment __P_((VOID_A));
 extern int setdefterment __P_((VOID_A));
@@ -194,12 +198,12 @@ extern int initterm __P_((VOID_A));
 extern int endterm __P_((VOID_A));
 extern int putterm __P_((int));
 extern int putch2 __P_((int));
-extern int cputs2 __P_((char *));
+extern int cputs2 __P_((CONST char *));
 #if	MSDOS
 #define	tputs2(s,n)	cputs2(s)
 #define	putterms	putterm
 #else
-extern int tputs2 __P_((char *, int));
+extern int tputs2 __P_((CONST char *, int));
 extern int putterms __P_((int));
 #endif
 extern int kbhit2 __P_((long));
@@ -218,7 +222,7 @@ extern char *getwsize __P_((int, int));
 extern int setwsize __P_((int, int, int));
 extern int cprintf2 __P_((CONST char *, ...));
 extern int cputnl __P_((VOID_A));
-extern int kanjiputs __P_((char *));
+extern int kanjiputs __P_((CONST char *));
 extern int chgcolor __P_((int, int));
 extern int movecursor __P_((int, int, int));
 

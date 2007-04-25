@@ -99,7 +99,7 @@ typedef struct fd_set {
 #define	Xwrite		write
 #else
 extern int Xread __P_((int, char *, int));
-extern int Xwrite __P_((int, char *, int));
+extern int Xwrite __P_((int, CONST char *, int));
 #endif
 
 #ifdef	LSI_C
@@ -303,7 +303,7 @@ int nbytes;
 
 int surewrite(fd, buf, nbytes)
 int fd;
-VOID_P buf;
+CONST VOID_P buf;
 int nbytes;
 {
 	char *cp;
@@ -395,7 +395,7 @@ FILE **fpp;
 /*ARGSUSED*/
 VOID loadtermio(fd, tty, ws)
 int fd;
-char *tty, *ws;
+CONST char *tty, *ws;
 {
 # ifndef	DJGPP
 	union REGS reg;
@@ -486,7 +486,7 @@ termioctl_t *t;
 
 int Xtcsetattr(fd, action, t)
 int fd, action;
-termioctl_t *t;
+CONST termioctl_t *t;
 {
 	for (;;) {
 		if (tcsetattr(fd, action, t) >= 0) {
@@ -529,7 +529,7 @@ int fd, selector;
 /*ARGSUSED*/
 VOID loadtermio(fd, tty, ws)
 int fd;
-char *tty, *ws;
+CONST char *tty, *ws;
 {
 	ALLOC_T size;
 
@@ -617,7 +617,8 @@ p_id_t Xfork(VOID_A)
 #endif	/* CYGWIN */
 
 #if	!MSDOS \
-|| (!defined(NOTUSEBIOS) && defined (DJGPP) && (DJGPP >= 2) && !defined(PC98))
+|| (!defined (NOTUSEBIOS) && !defined (PC98) \
+&& defined (DJGPP) && (DJGPP >= 2))
 int readselect(nfd, fds, result, vp)
 int nfd, fds[];
 char result[];

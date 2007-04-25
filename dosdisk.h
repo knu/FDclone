@@ -175,7 +175,7 @@ typedef struct _devstat {
 	l_off_t offset;
 #endif
 	u_long fatsize;
-	u_short dirofs;
+	u_long dirofs;
 	u_short dirsize;
 	u_long totalsize;
 	u_long availsize;
@@ -354,55 +354,55 @@ extern VOID_T (*doswaitfunc)__P_((VOID_A));
 extern int (*dosintrfunc)__P_((VOID_A));
 
 #ifdef	HDDMOUNT
-extern l_off_t *readpt __P_((char *, int));
+extern l_off_t *readpt __P_((CONST char *, int));
 #endif
 extern int preparedrv __P_((int));
 extern int shutdrv __P_((int));
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
-extern DIR *dosopendir __P_((char *));
+extern DIR *dosopendir __P_((CONST char *));
 extern int dosclosedir __P_((DIR *));
 extern struct dosdirent *dosreaddir __P_((DIR *));
 extern int dosrewinddir __P_((DIR *));
-extern int doschdir __P_((char *));
+extern int doschdir __P_((CONST char *));
 extern char *dosgetcwd __P_((char *, int));
 #if	MSDOS
-extern char *dosshortname __P_((char *, char *));
-extern char *doslongname __P_((char *, char *));
+extern char *dosshortname __P_((CONST char *, char *));
+extern char *doslongname __P_((CONST char *, char *));
 #endif
 extern int dosstatfs __P_((int, char *));
-extern int dosstat __P_((char *, struct stat *));
-extern int doslstat __P_((char *, struct stat *));
-extern int dosaccess __P_((char *, int));
+extern int dosstat __P_((CONST char *, struct stat *));
+extern int doslstat __P_((CONST char *, struct stat *));
+extern int dosaccess __P_((CONST char *, int));
 #ifndef	NOSYMLINK
-extern int dossymlink __P_((char *, char *));
-extern int dosreadlink __P_((char *, char *, int));
+extern int dossymlink __P_((CONST char *, CONST char *));
+extern int dosreadlink __P_((CONST char *, char *, int));
 #endif
-extern int doschmod __P_((char *, int));
+extern int doschmod __P_((CONST char *, int));
 #ifdef	USEUTIME
-extern int dosutime __P_((char *, struct utimbuf *));
+extern int dosutime __P_((CONST char *, CONST struct utimbuf *));
 #else
-extern int dosutimes __P_((char *, struct timeval []));
+extern int dosutimes __P_((CONST char *, CONST struct timeval *));
 #endif
-extern int dosunlink __P_((char *));
-extern int dosrename __P_((char *, char *));
-extern int dosopen __P_((char *, int, int));
+extern int dosunlink __P_((CONST char *));
+extern int dosrename __P_((CONST char *, CONST char *));
+extern int dosopen __P_((CONST char *, int, int));
 extern int dosclose __P_((int));
 extern int dosread __P_((int, char *, int));
-extern int doswrite __P_((int, char *, int));
+extern int doswrite __P_((int, CONST char *, int));
 extern off_t doslseek __P_((int, off_t, int));
 extern int dosftruncate __P_((int, off_t));
-extern int dosmkdir __P_((char *, int));
-extern int dosrmdir __P_((char *));
+extern int dosmkdir __P_((CONST char *, int));
+extern int dosrmdir __P_((CONST char *));
 extern int dosfileno __P_((FILE *));
-extern FILE *dosfopen __P_((char *, char *));
-extern FILE *dosfdopen __P_((int, char *));
+extern FILE *dosfopen __P_((CONST char *, CONST char *));
+extern FILE *dosfdopen __P_((int, CONST char *));
 extern int dosfclose __P_((FILE *));
 extern int dosfread __P_((char *, int, int, FILE *));
-extern int dosfwrite __P_((char *, int, int, FILE *));
+extern int dosfwrite __P_((CONST char *, int, int, FILE *));
 extern int dosfflush __P_((FILE *));
 extern int dosfgetc __P_((FILE *));
 extern int dosfputc __P_((int, FILE *));
 extern char *dosfgets __P_((char *, int, FILE *));
-extern int dosfputs __P_((char *, FILE *));
+extern int dosfputs __P_((CONST char *, FILE *));
 extern int dosallclose __P_((VOID_A));
 #endif	/* !_NODOSDRIVE */

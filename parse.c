@@ -17,13 +17,13 @@ extern int physical_path;
 
 static int NEAR asc2int __P_((int));
 #ifdef	_NOORIGSHELL
-static char *NEAR strtkbrk __P_((char *, char *, int));
-static char *NEAR geteostr __P_((char **));
+static char *NEAR strtkbrk __P_((CONST char *, CONST char *, int));
+static char *NEAR geteostr __P_((CONST char **));
 #else
 #include "system.h"
 #endif
 
-strtable keyidentlist[] = {
+CONST strtable keyidentlist[] = {
 	{K_DOWN,	"DOWN"},
 	{K_UP,		"UP"},
 	{K_LEFT,	"LEFT"},
@@ -101,11 +101,11 @@ static CONST char escapevalue[] = {
 
 
 char *skipspace(cp)
-char *cp;
+CONST char *cp;
 {
 	while (isblank2(*cp)) cp++;
 
-	return(cp);
+	return((char *)cp);
 }
 
 static int NEAR asc2int(c)
@@ -121,17 +121,16 @@ int c;
 
 #ifdef	USESTDARGH
 /*VARARGS2*/
-char *sscanf2(char *s, CONST char *fmt, ...)
+char *sscanf2(CONST char *s, CONST char *fmt, ...)
 #else
 /*VARARGS2*/
 char *sscanf2(s, fmt, va_alist)
-char *s;
-CONST char *fmt;
+CONST char *s, *fmt;
 va_dcl
 #endif
 {
 	va_list args;
-	char *cp;
+	CONST char *cp;
 	long_t n;
 	u_long_t u, mask;
 	int i, c, len, base, width, flags;
@@ -319,15 +318,15 @@ va_dcl
 	}
 	va_end(args);
 
-	return(s);
+	return((char *)s);
 }
 
 #ifdef	_NOORIGSHELL
 static char *NEAR strtkbrk(s, c, evaldq)
-char *s, *c;
+CONST char *s, *c;
 int evaldq;
 {
-	char *cp;
+	CONST char *cp;
 	int pc, quote;
 
 	for (cp = s, quote = '\0'; *cp; cp++) {
@@ -347,18 +346,19 @@ int evaldq;
 		}
 		else if (pc == PC_ESCAPE) {
 			cp++;
-			if (*cp == PMETA && strchr(c, *cp)) return(cp - 1);
+			if (*cp == PMETA && strchr(c, *cp))
+				return((char *)&(cp[-1]));
 			continue;
 		}
 
-		if (strchr(c, *cp)) return(cp);
+		if (strchr(c, *cp)) return((char *)cp);
 	}
 
 	return(NULL);
 }
 
 char *strtkchr(s, c, evaldq)
-char *s;
+CONST char *s;
 int c, evaldq;
 {
 	char tmp[2];
@@ -370,9 +370,10 @@ int c, evaldq;
 }
 
 static char *NEAR geteostr(strp)
-char **strp;
+CONST char **strp;
 {
-	char *cp, *tmp;
+	CONST char *cp;
+	char *tmp;
 	int len;
 
 	cp = *strp;
@@ -384,9 +385,10 @@ char **strp;
 }
 
 int getargs(s, argvp)
-char *s, ***argvp;
+CONST char *s;
+char ***argvp;
 {
-	char *cp;
+	CONST char *cp;
 	int i;
 
 	*argvp = (char **)malloc2(1 * sizeof(char *));
@@ -402,17 +404,17 @@ char *s, ***argvp;
 }
 
 char *gettoken(s)
-char *s;
+CONST char *s;
 {
 	if (!isidentchar(*s)) return(NULL);
 	for (s++; isidentchar2(*s); s++);
 
-	return(s);
+	return((char *)s);
 }
 
 char *getenvval(argcp, argv)
 int *argcp;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	int i;
@@ -440,15 +442,16 @@ char *argv[];
 }
 
 char *evalcomstr(path, delim)
-char *path, *delim;
+CONST char *path, *delim;
 {
 # ifndef	_NOKANJIFCONV
 	char *tmp;
 # endif
-	char *cp, *next, *epath;
+	CONST char *cp, *next;
+	char *new, *epath;
 	int i, len, size;
 
-	epath = next = NULL;
+	next = epath = NULL;
 	size = 0;
 	for (cp = path; cp && *cp; cp = next) {
 		if ((next = strtkbrk(cp, delim, 0))) {
@@ -461,19 +464,26 @@ char *path, *delim;
 		}
 		next = cp + len;
 		if (len) {
-			cp = _evalpath(cp, next, EA_NOEVALQ | EA_NOUNIQDELIM);
+			new = _evalpath(cp, next, EA_NOEVALQ | EA_NOUNIQDELIM);
 # ifndef	_NOKANJIFCONV
-			tmp = newkanjiconv(cp, DEFCODE, getkcode(cp), L_FNAME);
-			if (cp != tmp) free(cp);
-			cp = tmp;
+			tmp = newkanjiconv(new,
+				DEFCODE, getkcode(new), L_FNAME);
+			if (new != tmp) {
+				free(new);
+				new = tmp;
+			}
 # endif
+			cp = new;
 			len = strlen(cp);
 		}
+#ifdef	FAKEUNINIT
+		else new = NULL;	/* fake for -Wuninitialized */
+#endif
 
 		epath = realloc2(epath, size + len + i + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
-			free(cp);
+			free(new);
 			size += len;
 		}
 		if (i) {
@@ -491,13 +501,14 @@ char *path, *delim;
 #endif	/* _NOORIGSHELL */
 
 char *evalpaths(paths, delim)
-char *paths;
+CONST char *paths;
 int delim;
 {
-	char *cp, *tmp, *next, *epath, buf[MAXPATHLEN];
+	CONST char *cp, *next;
+	char *new, *epath, buf[MAXPATHLEN];
 	int len, size;
 
-	epath = next = NULL;
+	next = epath = NULL;
 	size = 0;
 	for (cp = paths; cp; cp = next) {
 #ifdef	_USEDOSPATH
@@ -507,18 +518,17 @@ int delim;
 		next = strchr(cp, delim);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if (len) {
-			tmp = _evalpath(cp, cp + len, 0);
-			if (!isrootdir(cp)) cp = tmp;
-			else cp = realpath2(tmp, buf, 1);
+			new = _evalpath(cp, &(cp[len]), 0);
+			cp = (isrootdir(cp)) ? realpath2(new, buf, 1) : new;
 			len = strlen(cp);
 		}
 #ifdef	FAKEUNINIT
-		else tmp = NULL;	/* fake for -Wuninitialized */
+		else new = NULL;	/* fake for -Wuninitialized */
 #endif
 		epath = realloc2(epath, size + len + 1 + 1);
 		if (len) {
 			strcpy(&(epath[size]), cp);
-			free(tmp);
+			free(new);
 		}
 		size += len;
 		if (next) epath[size++] = delim;
@@ -532,9 +542,10 @@ int delim;
 
 #if	!MSDOS || !defined (_NOORIGSHELL)
 char *killmeta(name)
-char *name;
+CONST char *name;
 {
-	char *cp, *buf;
+	CONST char *cp;
+	char *buf, *new;
 	int i;
 
 	buf = malloc2(strlen(name) * 2 + 2 + 1);
@@ -557,10 +568,10 @@ char *name;
 	if (*(cp = buf)) buf[i++] = *cp;
 	else cp++;
 	buf[i] = '\0';
-	cp = strdup2(cp);
+	new = strdup2(cp);
 	free(buf);
 
-	return(cp);
+	return(new);
 }
 #endif	/* !MSDOS || !_NOORIGSHELL */
 
@@ -578,9 +589,10 @@ VOID adjustpath(VOID_A)
 #endif	/* _NOORIGSHELL */
 
 char *includepath(path, plist)
-char *path, *plist;
+CONST char *path, *plist;
 {
-	char *cp, *tmp, *next;
+	CONST char *cp, *next;
+	char *tmp;
 	int len;
 
 	if (!plist || !*plist) return(NULL);
@@ -599,7 +611,7 @@ char *path, *plist;
 
 #if	(FD < 2) && !defined (_NOARCHIVE)
 char *getrange(cp, delim, fp, dp, wp)
-char *cp;
+CONST char *cp;
 int delim;
 u_char *fp, *dp, *wp;
 {
@@ -631,12 +643,13 @@ u_char *fp, *dp, *wp;
 		else return(NULL);
 	}
 
-	return(cp);
+	return((char *)cp);
 }
 #endif	/* (FD < 2) && !_NOARCHIVE */
 
 int evalprompt(bufp, prompt)
-char **bufp, *prompt;
+char **bufp;
+CONST char *prompt;
 {
 #ifndef	NOUID
 	uidtable *up;
@@ -644,14 +657,16 @@ char **bufp, *prompt;
 #if	!MSDOS && defined (USEUNAME)
 	struct utsname uts;
 #endif
-	char *cp, *tmp, line[MAXPATHLEN];
+	char *cp, *tmp, *new, line[MAXPATHLEN];
 	ALLOC_T size;
 	int i, j, k, len, unprint;
 
+	cp = strdup2(prompt);
 #ifdef	_NOORIGSHELL
-	prompt = evalpath(strdup2(prompt), EA_NOUNIQDELIM);
+	prompt = new = evalpath(cp, EA_NOUNIQDELIM);
 #else
-	prompt = evalvararg(prompt, '\0', EA_BACKQ | EA_KEEPMETA, 0);
+	prompt = new = evalvararg(cp, '\0', EA_BACKQ | EA_KEEPMETA, 0);
+	free(cp);
 #endif
 	unprint = 0;
 #ifdef	FAKEUNINIT
@@ -772,14 +787,14 @@ char **bufp, *prompt;
 		}
 	}
 	(*bufp)[j] = '\0';
-	free(prompt);
+	free(new);
 
 	return(len);
 }
 
 #ifndef	_NOARCHIVE
 char *getext(ext, flagsp)
-char *ext;
+CONST char *ext;
 u_char *flagsp;
 {
 	char *tmp;
@@ -804,9 +819,9 @@ u_char *flagsp;
 
 /*ARGSUSED*/
 int extcmp(ext1, flags1, ext2, flags2, strict)
-char *ext1;
+CONST char *ext1;
 int flags1;
-char *ext2;
+CONST char *ext2;
 int flags2, strict;
 {
 	if (*ext1 == '*') ext1++;
@@ -822,7 +837,7 @@ int flags2, strict;
 #endif	/* !_NOARCHIVE */
 
 int getkeycode(cp, identonly)
-char *cp;
+CONST char *cp;
 int identonly;
 {
 	char *tmp;
@@ -877,7 +892,7 @@ int identonly;
 	return(ch);
 }
 
-char *getkeysym(c, tenkey)
+CONST char *getkeysym(c, tenkey)
 int c, tenkey;
 {
 	static char buf[5];
@@ -926,7 +941,7 @@ int c, tenkey;
 }
 
 char *decodestr(s, lenp, evalhat)
-char *s;
+CONST char *s;
 u_char *lenp;
 int evalhat;
 {
@@ -953,18 +968,18 @@ int evalhat;
 		else cp[j] = s[i];
 	}
 
-	s = malloc2(j + 1);
-	memcpy(s, cp, j);
-	s[j] = '\0';
+	tmp = malloc2(j + 1);
+	memcpy(tmp, cp, j);
+	tmp[j] = '\0';
 	free(cp);
 	if (lenp) *lenp = j;
 
-	return(s);
+	return(tmp);
 }
 
 #ifndef	_NOKEYMAP
 char *encodestr(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	char *cp;

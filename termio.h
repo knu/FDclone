@@ -242,7 +242,7 @@ extern int Xgetdtablesize __P_((VOID_A));
 extern int isvalidfd __P_((int));
 extern int newdup __P_((int));
 extern int sureread __P_((int, VOID_P, int));
-extern int surewrite __P_((int, VOID_P, int));
+extern int surewrite __P_((int, CONST VOID_P, int));
 extern VOID safeclose __P_((int));
 extern int opentty __P_((int *, FILE **));
 extern VOID closetty __P_((int *, FILE **));
@@ -251,11 +251,11 @@ extern VOID closeonexec __P_((int));
 extern int Xioctl __P_((int, int, VOID_P));
 # ifdef	USETERMIOS
 extern int Xtcgetattr __P_((int, termioctl_t *));
-extern int Xtcsetattr __P_((int, int, termioctl_t *));
+extern int Xtcsetattr __P_((int, int, CONST termioctl_t *));
 extern int Xtcflush __P_((int, int));
 # endif
 #endif	/* !MSDOS */
-extern VOID loadtermio __P_((int, char *, char *));
+extern VOID loadtermio __P_((int, CONST char *, CONST char *));
 extern VOID savetermio __P_((int, char **, char **));
 #ifdef	CYGWIN
 extern p_id_t Xfork __P_((VOID_A));
@@ -263,7 +263,8 @@ extern p_id_t Xfork __P_((VOID_A));
 #define	Xfork		fork
 #endif
 #if	!MSDOS \
-|| (!defined(NOTUSEBIOS) && defined (DJGPP) && (DJGPP >= 2) && !defined(PC98))
+|| (!defined (NOTUSEBIOS) && !defined (PC98) \
+&& defined (DJGPP) && (DJGPP >= 2))
 extern int readselect __P_((int, int [], char [], VOID_P));
 #endif
 

@@ -58,110 +58,110 @@ extern int ptyinternal;
 #endif
 
 static VOID NEAR replacefname __P_((char *));
-static int cur_up __P_((char *));
-static int cur_down __P_((char *));
-static int cur_right __P_((char *));
-static int cur_left __P_((char *));
-static int roll_up __P_((char *));
-static int roll_down __P_((char *));
-static int cur_top __P_((char *));
-static int cur_bottom __P_((char *));
-static int fname_right __P_((char *));
-static int fname_left __P_((char *));
-static int one_column __P_((char *));
-static int two_columns __P_((char *));
-static int three_columns __P_((char *));
-static int five_columns __P_((char *));
+static int cur_up __P_((CONST char *));
+static int cur_down __P_((CONST char *));
+static int cur_right __P_((CONST char *));
+static int cur_left __P_((CONST char *));
+static int roll_up __P_((CONST char *));
+static int roll_down __P_((CONST char *));
+static int cur_top __P_((CONST char *));
+static int cur_bottom __P_((CONST char *));
+static int fname_right __P_((CONST char *));
+static int fname_left __P_((CONST char *));
+static int one_column __P_((CONST char *));
+static int two_columns __P_((CONST char *));
+static int three_columns __P_((CONST char *));
+static int five_columns __P_((CONST char *));
 static VOID NEAR markcount __P_((VOID_A));
-static int mark_file __P_((char *));
-static int mark_file2 __P_((char *));
-static int mark_file3 __P_((char *));
-static int mark_all __P_((char *));
-static int mark_reverse __P_((char *));
-static reg_t *NEAR prepareregexp __P_((char *, char *));
-static int mark_find __P_((char *));
-static int in_dir __P_((char *));
-static int out_dir __P_((char *));
-static int push_file __P_((char *));
-static int pop_file __P_((char *));
-static int symlink_mode __P_((char *));
-static int filetype_mode __P_((char *));
-static int dotfile_mode __P_((char *));
-static int fileflg_mode __P_((char *));
-static int log_dir __P_((char *));
-static int log_top __P_((char *));
+static int mark_file __P_((CONST char *));
+static int mark_file2 __P_((CONST char *));
+static int mark_file3 __P_((CONST char *));
+static int mark_all __P_((CONST char *));
+static int mark_reverse __P_((CONST char *));
+static reg_t *NEAR prepareregexp __P_((CONST char *, CONST char *));
+static int mark_find __P_((CONST char *));
+static int in_dir __P_((CONST char *));
+static int out_dir __P_((CONST char *));
+static int push_file __P_((CONST char *));
+static int pop_file __P_((CONST char *));
+static int symlink_mode __P_((CONST char *));
+static int filetype_mode __P_((CONST char *));
+static int dotfile_mode __P_((CONST char *));
+static int fileflg_mode __P_((CONST char *));
+static int log_dir __P_((CONST char *));
+static int log_top __P_((CONST char *));
 static VOID NEAR clearscreen __P_((VOID_A));
 #ifndef	PAGER
-static VOID NEAR dump __P_((char *));
+static VOID NEAR dump __P_((CONST char *));
 #endif
-static int NEAR execenv __P_((char *, char *));
+static int NEAR execenv __P_((CONST char *, CONST char *));
 static int NEAR execshell __P_((VOID_A));
-static int view_file __P_((char *));
-static int edit_file __P_((char *));
-static int sort_dir __P_((char *));
+static int view_file __P_((CONST char *));
+static int edit_file __P_((CONST char *));
+static int sort_dir __P_((CONST char *));
 #ifndef	_NOWRITEFS
-static int write_dir __P_((char *));
+static int write_dir __P_((CONST char *));
 #endif
-static int reread_dir __P_((char *));
-static int help_message __P_((char *));
+static int reread_dir __P_((CONST char *));
+static int help_message __P_((CONST char *));
 #ifndef	_NOCUSTOMIZE
-static int edit_config __P_((char *));
+static int edit_config __P_((CONST char *));
 #endif
 #ifndef	_NOPTY
-static int confirmpty __P_((VOID_A));
+static int NEAR confirmpty __P_((VOID_A));
 #endif
-static int quit_system __P_((char *));
-static int make_dir __P_((char *));
-static int copy_file __P_((char *));
+static int quit_system __P_((CONST char *));
+static int make_dir __P_((CONST char *));
+static int copy_file __P_((CONST char *));
 #ifndef	_NOTREE
-static int copy_tree __P_((char *));
+static int copy_tree __P_((CONST char *));
 #endif
-static int move_file __P_((char *));
+static int move_file __P_((CONST char *));
 #ifndef	_NOTREE
-static int move_tree __P_((char *));
+static int move_tree __P_((CONST char *));
 #endif
-static int rename_file __P_((char *));
-static int delete_file __P_((char *));
-static int delete_dir __P_((char *));
-static int find_file __P_((char *));
-static int find_dir __P_((char *));
-static int execute_sh __P_((char *));
-static int execute_file __P_((char *));
+static int rename_file __P_((CONST char *));
+static int delete_file __P_((CONST char *));
+static int delete_dir __P_((CONST char *));
+static int find_file __P_((CONST char *));
+static int find_dir __P_((CONST char *));
+static int execute_sh __P_((CONST char *));
+static int execute_file __P_((CONST char *));
 #ifndef	_NOARCHIVE
-static int launch_file __P_((char *));
-static int pack_file __P_((char *));
-static int unpack_file __P_((char *));
+static int launch_file __P_((CONST char *));
+static int pack_file __P_((CONST char *));
+static int unpack_file __P_((CONST char *));
 # ifndef	_NOTREE
-static int unpack_tree __P_((char *));
+static int unpack_tree __P_((CONST char *));
 # endif
 #endif	/* !_NOARCHIVE */
-static int info_filesys __P_((char *));
-static int NEAR selectattr __P_((char *));
-static int attr_file __P_((char *));
+static int info_filesys __P_((CONST char *));
+static int NEAR selectattr __P_((CONST char *));
+static int attr_file __P_((CONST char *));
 #ifndef	_NOEXTRAATTR
-static int attr_dir __P_((char *));
+static int attr_dir __P_((CONST char *));
 #endif
 #ifndef	_NOTREE
-static int tree_dir __P_((char *));
+static int tree_dir __P_((CONST char *));
 #endif
 #ifndef	_NOARCHIVE
-static int backup_tape __P_((char *));
+static int backup_tape __P_((CONST char *));
 #endif
-static int search_forw __P_((char *));
-static int search_back __P_((char *));
+static int search_forw __P_((CONST char *));
+static int search_back __P_((CONST char *));
 #ifndef	_NOSPLITWIN
 static VOID NEAR duplwin __P_((int));
 static VOID NEAR movewin __P_((int));
-static int split_window __P_((char *));
-static int next_window __P_((char *));
+static int split_window __P_((CONST char *));
+static int next_window __P_((CONST char *));
 #endif
 #ifndef	_NOEXTRAWIN
-static int widen_window __P_((char *));
-static int narrow_window __P_((char *));
-static int kill_window __P_((char *));
+static int widen_window __P_((CONST char *));
+static int narrow_window __P_((CONST char *));
+static int kill_window __P_((CONST char *));
 #endif
-static int warning_bell __P_((char *));
-static int no_operation __P_((char *));
+static int warning_bell __P_((CONST char *));
+static int no_operation __P_((CONST char *));
 
 #include "functabl.h"
 
@@ -331,7 +331,7 @@ char *name;
 }
 
 static int cur_up(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, old;
 
@@ -355,7 +355,7 @@ char *arg;
 }
 
 static int cur_down(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, old;
 
@@ -382,7 +382,7 @@ char *arg;
 }
 
 static int cur_right(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, r, p, old;
 
@@ -419,7 +419,7 @@ char *arg;
 }
 
 static int cur_left(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, r, old;
 
@@ -449,7 +449,7 @@ char *arg;
 }
 
 static int roll_up(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, p, old;
 
@@ -466,7 +466,7 @@ char *arg;
 }
 
 static int roll_down(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, p, old;
 
@@ -484,7 +484,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int cur_top(arg)
-char *arg;
+CONST char *arg;
 {
 	if (filepos == 0) return(FNC_NONE);
 	filepos = 0;
@@ -494,7 +494,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int cur_bottom(arg)
-char *arg;
+CONST char *arg;
 {
 	if (filepos == maxfile - 1) return(FNC_NONE);
 	filepos = maxfile - 1;
@@ -504,7 +504,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int fname_right(arg)
-char *arg;
+CONST char *arg;
 {
 	if (fnameofs <= 0) return(FNC_NONE);
 	fnameofs--;
@@ -514,7 +514,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int fname_left(arg)
-char *arg;
+CONST char *arg;
 {
 	int i, m;
 
@@ -560,7 +560,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int one_column(arg)
-char *arg;
+CONST char *arg;
 {
 	curcolumns = 1;
 
@@ -569,7 +569,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int two_columns(arg)
-char *arg;
+CONST char *arg;
 {
 	curcolumns = 2;
 
@@ -578,7 +578,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int three_columns(arg)
-char *arg;
+CONST char *arg;
 {
 	curcolumns = 3;
 
@@ -587,7 +587,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int five_columns(arg)
-char *arg;
+CONST char *arg;
 {
 	curcolumns = 5;
 
@@ -616,7 +616,7 @@ static VOID NEAR markcount(VOID_A)
 
 /*ARGSUSED*/
 static int mark_file(arg)
-char *arg;
+CONST char *arg;
 {
 	if (isdir(&(filelist[filepos]))) return(FNC_NONE);
 	filelist[filepos].tmpflags ^= F_ISMRK;
@@ -636,7 +636,7 @@ char *arg;
 }
 
 static int mark_file2(arg)
-char *arg;
+CONST char *arg;
 {
 	mark_file(arg);
 	if (filepos < maxfile - 1) filepos++;
@@ -645,7 +645,7 @@ char *arg;
 }
 
 static int mark_file3(arg)
-char *arg;
+CONST char *arg;
 {
 	mark_file(arg);
 	if (filepos < maxfile - 1
@@ -657,7 +657,7 @@ char *arg;
 }
 
 static int mark_all(arg)
-char *arg;
+CONST char *arg;
 {
 	int i;
 
@@ -683,7 +683,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int mark_reverse(arg)
-char *arg;
+CONST char *arg;
 {
 	int i;
 
@@ -701,7 +701,7 @@ char *arg;
 }
 
 static reg_t *NEAR prepareregexp(mes, arg)
-char *mes, *arg;
+CONST char *mes, *arg;
 {
 	reg_t *re;
 	char *wild;
@@ -721,7 +721,7 @@ char *mes, *arg;
 }
 
 static int mark_find(arg)
-char *arg;
+CONST char *arg;
 {
 	reg_t *re;
 	int i;
@@ -742,7 +742,7 @@ char *arg;
 }
 
 static int in_dir(arg)
-char *arg;
+CONST char *arg;
 {
 #ifndef	_NOARCHIVE
 	if (archivefile) /*EMPTY*/;
@@ -757,7 +757,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int out_dir(arg)
-char *arg;
+CONST char *arg;
 {
 #ifndef	_NOARCHIVE
 	if (archivefile) filepos = -1;
@@ -770,7 +770,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int push_file(arg)
-char *arg;
+CONST char *arg;
 {
 	int i;
 
@@ -789,7 +789,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int pop_file(arg)
-char *arg;
+CONST char *arg;
 {
 	int i;
 
@@ -807,7 +807,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int symlink_mode(arg)
-char *arg;
+CONST char *arg;
 {
 	dispmode ^= F_SYMLINK;
 
@@ -816,7 +816,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int filetype_mode(arg)
-char *arg;
+CONST char *arg;
 {
 	dispmode ^= F_FILETYPE;
 
@@ -825,7 +825,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int dotfile_mode(arg)
-char *arg;
+CONST char *arg;
 {
 	dispmode ^= F_DOTFILE;
 
@@ -834,7 +834,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int fileflg_mode(arg)
-char *arg;
+CONST char *arg;
 {
 	dispmode ^= F_FILEFLAG;
 
@@ -842,10 +842,11 @@ char *arg;
 }
 
 static int log_dir(arg)
-char *arg;
+CONST char *arg;
 {
 #ifndef	_NOARCHIVE
-	char *cp, dupfullpath[MAXPATHLEN];
+	CONST char *cp;
+	char dupfullpath[MAXPATHLEN];
 #endif
 	char *path;
 
@@ -864,7 +865,7 @@ char *arg;
 			return(FNC_CANCEL);
 		}
 		free(path);
-		if (cp != (char *)-1) filelist[filepos].name = cp;
+		if (cp != (char *)-1) filelist[filepos].name = (char *)cp;
 		else escapearch();
 		return(FNC_EFFECT);
 	}
@@ -898,7 +899,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int log_top(arg)
-char *arg;
+CONST char *arg;
 {
 	char *path;
 
@@ -929,7 +930,7 @@ static VOID NEAR clearscreen(VOID_A)
 
 #ifndef	PAGER
 static VOID NEAR dump(file)
-char *file;
+CONST char *file;
 {
 	FILE *fp;
 	char *buf, *prompt;
@@ -984,7 +985,7 @@ char *file;
 #endif	/* !PAGER */
 
 static int NEAR execenv(env, arg)
-char *env, *arg;
+CONST char *env, *arg;
 {
 	char *command;
 
@@ -1055,7 +1056,7 @@ static int NEAR execshell(VOID_A)
 
 /*ARGSUSED*/
 static int view_file(arg)
-char *arg;
+CONST char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir;
@@ -1107,7 +1108,7 @@ char *arg;
 }
 
 static int edit_file(arg)
-char *arg;
+CONST char *arg;
 {
 #ifndef	_NODOSDRIVE
 	char *dir;
@@ -1141,9 +1142,9 @@ char *arg;
 }
 
 static int sort_dir(arg)
-char *arg;
+CONST char *arg;
 {
-	char *str[6];
+	CONST char *str[6];
 	int i, tmp1, tmp2, val[6], *dupl;
 
 	str[0] = ONAME_K;
@@ -1210,7 +1211,7 @@ char *arg;
 
 #ifndef	_NOWRITEFS
 static int write_dir(arg)
-char *arg;
+CONST char *arg;
 {
 	int fs;
 
@@ -1230,7 +1231,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int reread_dir(arg)
-char *arg;
+CONST char *arg;
 {
 #ifndef	_NODOSDRIVE
 	int drive;
@@ -1247,7 +1248,7 @@ char *arg;
 #ifndef	_NOCUSTOMIZE
 /*ARGSUSED*/
 static int edit_config(arg)
-char *arg;
+CONST char *arg;
 {
 	if (FILEPERROW < WFILEMINCUSTOM) {
 		warning(0, NOROW_K);
@@ -1261,7 +1262,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int help_message(arg)
-char *arg;
+CONST char *arg;
 {
 #ifdef	_NOARCHIVE
 	help(0);
@@ -1273,7 +1274,7 @@ char *arg;
 }
 
 #ifndef	_NOPTY
-static int confirmpty(VOID_A)
+static int NEAR confirmpty(VOID_A)
 {
 	int i;
 
@@ -1287,8 +1288,12 @@ static int confirmpty(VOID_A)
 
 /*ARGSUSED*/
 static int quit_system(arg)
-char *arg;
+CONST char *arg;
 {
+#ifndef	_NOORIGSHELL
+	CONST char *str[3];
+	int val[3];
+#endif
 	int n;
 
 #ifndef	_NOARCHIVE
@@ -1298,9 +1303,6 @@ char *arg;
 
 #ifndef	_NOORIGSHELL
 	if (!fdmode) {
-		char *str[3];
-		int val[3];
-
 		Xlocate(0, L_MESLINE);
 		Xputterm(L_CLEAR);
 		Xkanjiputs(QUIT_K);
@@ -1325,7 +1327,7 @@ char *arg;
 }
 
 static int make_dir(arg)
-char *arg;
+CONST char *arg;
 {
 	char *path;
 
@@ -1344,7 +1346,7 @@ char *arg;
 }
 
 static int copy_file(arg)
-char *arg;
+CONST char *arg;
 {
 	return(copyfile(arg, 0));
 }
@@ -1352,14 +1354,14 @@ char *arg;
 #ifndef	_NOTREE
 /*ARGSUSED*/
 static int copy_tree(arg)
-char *arg;
+CONST char *arg;
 {
 	return(copyfile(NULL, 1));
 }
 #endif	/* !_NOTREE */
 
 static int move_file(arg)
-char *arg;
+CONST char *arg;
 {
 	return(movefile(arg, 0));
 }
@@ -1367,14 +1369,14 @@ char *arg;
 #ifndef	_NOTREE
 /*ARGSUSED*/
 static int move_tree(arg)
-char *arg;
+CONST char *arg;
 {
 	return(movefile(NULL, 1));
 }
 #endif	/* !_NOTREE */
 
 static int rename_file(arg)
-char *arg;
+CONST char *arg;
 {
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
@@ -1417,9 +1419,9 @@ char *arg;
 }
 
 static int delete_file(arg)
-char *arg;
+CONST char *arg;
 {
-	char *cp;
+	CONST char *cp;
 	int len;
 
 	if (mark > 0) {
@@ -1442,12 +1444,12 @@ char *arg;
 }
 
 static int delete_dir(arg)
-char *arg;
+CONST char *arg;
 {
 #if	!defined (NOSYMLINK) && !defined (_NODOSDRIVE)
 	char path[MAXPATHLEN];
 #endif
-	char *cp;
+	CONST char *cp;
 	int ret, len;
 
 	if (!isdir(&(filelist[filepos])) || isdotdir(filelist[filepos].name))
@@ -1476,7 +1478,7 @@ char *arg;
 }
 
 static int find_file(arg)
-char *arg;
+CONST char *arg;
 {
 	char *wild;
 
@@ -1504,24 +1506,26 @@ char *arg;
 }
 
 static int find_dir(arg)
-char *arg;
+CONST char *arg;
 {
-	char *cp;
+	CONST char *cp;
+	char *tmp;
 
 	if (!(findregexp = prepareregexp(FINDD_K, arg))) return(FNC_CANCEL);
 	destpath = NULL;
-	cp = isdir(&(filelist[filepos])) ? filelist[filepos].name : curpath;
+	if (isdir(&(filelist[filepos]))) cp = filelist[filepos].name;
+	else cp = curpath;
 	VOID_C applydir(cp, findfile, finddir, NULL, ORD_NORMAL, NOFND_K);
 	regexp_free(findregexp);
 	if (!destpath) return(FNC_CANCEL);
 
-	if (!(cp = strrdelim(destpath, 0))) cp = destpath;
+	if (!(tmp = strrdelim(destpath, 0))) tmp = destpath;
 	else {
-		*(cp++) = '\0';
+		*(tmp++) = '\0';
 		chdir3(destpath, 1);
 	}
 
-	replacefname(strdup2(cp));
+	replacefname(strdup2(tmp));
 	free(destpath);
 
 	return(FNC_EFFECT);
@@ -1538,7 +1542,7 @@ int n;
 }
 
 static int execute_sh(arg)
-char *arg;
+CONST char *arg;
 {
 	char *com;
 	int ret;
@@ -1565,7 +1569,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int execute_file(arg)
-char *arg;
+CONST char *arg;
 {
 #if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
 	char *dir;
@@ -1650,7 +1654,7 @@ char *arg;
 
 #ifndef	_NOARCHIVE
 static int launch_file(arg)
-char *arg;
+CONST char *arg;
 {
 	if (!launcher()) return(view_file(arg));
 
@@ -1658,7 +1662,7 @@ char *arg;
 }
 
 static int pack_file(arg)
-char *arg;
+CONST char *arg;
 {
 	char *file;
 	int ret;
@@ -1683,7 +1687,7 @@ char *arg;
 }
 
 static int unpack_file(arg)
-char *arg;
+CONST char *arg;
 {
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
@@ -1703,7 +1707,7 @@ char *arg;
 
 #ifndef	_NOTREE
 static int unpack_tree(arg)
-char *arg;
+CONST char *arg;
 {
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
@@ -1726,7 +1730,7 @@ char *arg;
 #endif	/* !_NOARCHIVE */
 
 static int info_filesys(arg)
-char *arg;
+CONST char *arg;
 {
 	char *path;
 	int ret;
@@ -1747,9 +1751,9 @@ char *arg;
 }
 
 static int NEAR selectattr(s)
-char *s;
+CONST char *s;
 {
-	char *str[MAXATTRSEL];
+	CONST char *str[MAXATTRSEL];
 	int n, val[MAXATTRSEL];
 
 	str[0] = CMODE_K;
@@ -1778,7 +1782,7 @@ char *s;
 
 /*ARGSUSED*/
 static int attr_file(arg)
-char *arg;
+CONST char *arg;
 {
 	int i, n, flag;
 
@@ -1813,7 +1817,7 @@ char *arg;
 #ifndef	_NOEXTRAATTR
 /*ARGSUSED*/
 static int attr_dir(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, flag;
 
@@ -1837,7 +1841,7 @@ char *arg;
 #ifndef	_NOTREE
 /*ARGSUSED*/
 static int tree_dir(arg)
-char *arg;
+CONST char *arg;
 {
 	char *path;
 
@@ -1860,7 +1864,7 @@ char *arg;
 
 #ifndef	_NOARCHIVE
 static int backup_tape(arg)
-char *arg;
+CONST char *arg;
 {
 	char *dir, *dev;
 #ifndef	_NODOSDRIVE
@@ -1917,7 +1921,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int search_forw(arg)
-char *arg;
+CONST char *arg;
 {
 	isearch = 1;
 	Xlocate(0, L_HELP);
@@ -1932,7 +1936,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int search_back(arg)
-char *arg;
+CONST char *arg;
 {
 	isearch = -1;
 	Xlocate(0, L_HELP);
@@ -1996,7 +2000,7 @@ int nextwin(VOID_A)
 
 /*ARGSUSED*/
 static int split_window(arg)
-char *arg;
+CONST char *arg;
 {
 	winvartable tmp;
 	int i, oldwin;
@@ -2063,7 +2067,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int next_window(arg)
-char *arg;
+CONST char *arg;
 {
 	if (nextwin() < 0) return(FNC_NONE);
 # ifndef	_NOPTY
@@ -2080,7 +2084,7 @@ char *arg;
 
 #ifndef	_NOEXTRAWIN
 static int widen_window(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, next;
 
@@ -2101,7 +2105,7 @@ char *arg;
 }
 
 static int narrow_window(arg)
-char *arg;
+CONST char *arg;
 {
 	int n, next;
 
@@ -2122,7 +2126,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int kill_window(arg)
-char *arg;
+CONST char *arg;
 {
 	winvartable tmp;
 	int prev;
@@ -2161,7 +2165,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int warning_bell(arg)
-char *arg;
+CONST char *arg;
 {
 	Xputterm(T_BELL);
 
@@ -2170,7 +2174,7 @@ char *arg;
 
 /*ARGSUSED*/
 static int no_operation(arg)
-char *arg;
+CONST char *arg;
 {
 	return(FNC_NONE);
 }

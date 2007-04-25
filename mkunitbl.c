@@ -36,7 +36,7 @@ static int NEAR fputbyte __P_((int, FILE *));
 static int NEAR fputword __P_((u_int, FILE *));
 static int NEAR fputunilist __P_((convtable [], u_int, FILE *));
 static int NEAR fputnflist __P_((nftable [], u_int, FILE *));
-int main __P_((int, char *[]));
+int main __P_((int, char *CONST []));
 
 static convtable unilist[] = {
 	{0x00a7, 0x8198},
@@ -10314,7 +10314,7 @@ FILE *fp;
 
 int main(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *fp;
 

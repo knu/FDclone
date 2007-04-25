@@ -1,3 +1,8 @@
+Ver. 2.09d	Support Linux kernel 2.6.20.
+ (04/26/07)	Progress key responses when INPUTKCODE=utf8.
+		Abortion with accessing the empty directory is fixed.
+		Inaccessiblity of the floppy drive with large size is fixed.
+
 Ver. 2.09c	Failure to support Linux kernel 2.6.18 is fixed.
  (01/17/07)
 

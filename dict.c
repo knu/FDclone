@@ -61,22 +61,23 @@ static off_t NEAR fgetoffset __P_((long, int));
 static int NEAR fgetjisbuf __P_((kanjitable *, long, int));
 static int NEAR fgethinsi __P_((u_short [], int));
 static int NEAR fgetfreqbuf __P_((kanjitable *, long, int));
-static int NEAR _fchkhinsi __P_((int, u_short [], int));
-static int NEAR fchkhinsi __P_((u_short [], u_short [],
-		u_short [], u_short [], int));
-static int NEAR opendicttbl __P_((char *));
+static int NEAR _fchkhinsi __P_((int, CONST u_short [], int));
+static int NEAR fchkhinsi __P_((u_short [], CONST u_short [],
+		u_short [], CONST u_short [], int));
+static int NEAR opendicttbl __P_((CONST char *));
 static u_char *NEAR newhinsitbl __P_((ALLOC_T));
 static VOID NEAR readdicttable __P_((int));
 static int NEAR fputbyte __P_((int, int));
 static int NEAR fputword __P_((u_int, int));
 static int NEAR fputdword __P_((long, int));
-static int NEAR fputstring __P_((kanjitable *, int));
-static lockbuf_t *NEAR openfreqtbl __P_((char *, int));
-static int NEAR getfreq __P_((kanjitable *, kanjitable *));
-static int NEAR copyuserfreq __P_((kanjitable *, kanjitable *, int, int));
+static int NEAR fputstring __P_((CONST kanjitable *, int));
+static lockbuf_t *NEAR openfreqtbl __P_((CONST char *, int));
+static int NEAR getfreq __P_((kanjitable *, CONST kanjitable *));
+static int NEAR copyuserfreq __P_((kanjitable *, CONST kanjitable *,
+		int, int));
 static int cmpdict __P_((CONST VOID_P, CONST VOID_P));
 static int cmpfreq __P_((CONST VOID_P, CONST VOID_P));
-static long NEAR addkanji __P_((long, kanjitable **, kanjitable *));
+static long NEAR addkanji __P_((long, kanjitable **, CONST kanjitable *));
 static VOID freekanji __P_((kanjitable *));
 static long NEAR addkanjilist __P_((long, kanjitable **,
 		long, kanjitable *, kanjitable *, int));
@@ -215,7 +216,7 @@ int fd;
 
 static int NEAR _fchkhinsi(id, hinsi, fd)
 int id;
-u_short hinsi[MAXHINSI];
+CONST u_short hinsi[MAXHINSI];
 int fd;
 {
 	u_char *cp, *hbuf, buf[2];
@@ -267,7 +268,10 @@ int fd;
 }
 
 static int NEAR fchkhinsi(fdest, fsrc, bdest, bsrc, fd)
-u_short fdest[MAXHINSI], fsrc[MAXHINSI], bdest[MAXHINSI], bsrc[MAXHINSI];
+u_short fdest[MAXHINSI];
+CONST u_short fsrc[MAXHINSI];
+u_short bdest[MAXHINSI];
+CONST u_short bsrc[MAXHINSI];
 int fd;
 {
 	u_short fhit[MAXHINSI], bhit[MAXHINSI];
@@ -307,7 +311,7 @@ int fd;
 }
 
 static int NEAR opendicttbl(file)
-char *file;
+CONST char *file;
 {
 	static int fd = -2;
 	u_char buf[2];
@@ -436,7 +440,7 @@ int fd;
 }
 
 static int NEAR fputstring(kp, fd)
-kanjitable *kp;
+CONST kanjitable *kp;
 int fd;
 {
 	int i;
@@ -449,7 +453,7 @@ int fd;
 }
 
 static lockbuf_t *NEAR openfreqtbl(file, flags)
-char *file;
+CONST char *file;
 int flags;
 {
 	static lockbuf_t *lck = NULL;
@@ -486,7 +490,8 @@ int flags;
 }
 
 static int NEAR getfreq(kp1, kp2)
-kanjitable *kp1, *kp2;
+kanjitable *kp1;
+CONST kanjitable *kp2;
 {
 	kanjitable tmp;
 	lockbuf_t *lck;
@@ -532,7 +537,8 @@ kanjitable *kp1, *kp2;
 }
 
 static int NEAR copyuserfreq(kp1, kp2, fdin, fdout)
-kanjitable *kp1, *kp2;
+kanjitable *kp1;
+CONST kanjitable *kp2;
 int fdin, fdout;
 {
 	kanjitable tmp;
@@ -616,7 +622,7 @@ int fdin, fdout;
 }
 
 VOID saveuserfreq(kana, kbuf)
-u_short *kana, *kbuf;
+CONST u_short *kana, *kbuf;
 {
 	kanjitable tmp1, tmp2;
 	lockbuf_t *lck;
@@ -649,9 +655,9 @@ u_short *kana, *kbuf;
 		return;
 	}
 
-	tmp1.kbuf = kana;
+	tmp1.kbuf = (u_short *)kana;
 	tmp1.klen = kanjilist[argc].match;
-	tmp2.kbuf = kbuf;
+	tmp2.kbuf = (u_short *)kbuf;
 	tmp2.klen = kanjilist[argc].kmatch;
 
 	n = copyuserfreq(&tmp1, &tmp2, fdin, fdout);
@@ -734,7 +740,8 @@ CONST VOID_P vp2;
 
 static long NEAR addkanji(argc, argvp, tmp)
 long argc;
-kanjitable **argvp, *tmp;
+kanjitable **argvp;
+CONST kanjitable *tmp;
 {
 	*argvp = (kanjitable *)realloc2(*argvp,
 		(argc + 2) * sizeof(kanjitable));

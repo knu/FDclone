@@ -163,18 +163,18 @@ static int wrap_intrkey __P_((VOID_A));
 #endif
 static char *NEAR getversion __P_((int *));
 #ifndef	_NOLOGGING
-static VOID NEAR startlog __P_((char **));
+static VOID NEAR startlog __P_((char *CONST *));
 static VOID NEAR endlog __P_((int));
 #endif
 #ifdef	_NOORIGSHELL
-static int NEAR execruncomline __P_((char *, char *, int, char *));
+static int NEAR execruncomline __P_((char *, CONST char *, int, CONST char *));
 #endif
-static int NEAR initoption __P_((int, char *[], char *[]));
-static int NEAR evaloption __P_((char *[]));
-static char *NEAR searchenv __P_((char *, char *[]));
-static VOID NEAR setexecname __P_((char *));
-static VOID NEAR setexecpath __P_((char *, char *[]));
-int main __P_((int, char *[], char *[]));
+static int NEAR initoption __P_((int, char *CONST [], char *CONST []));
+static int NEAR evaloption __P_((char *CONST []));
+static char *NEAR searchenv __P_((CONST char *, char *CONST []));
+static VOID NEAR setexecname __P_((CONST char *));
+static VOID NEAR setexecpath __P_((CONST char *, char *CONST []));
+int main __P_((int, char *CONST [], char *CONST []));
 
 char *origpath = NULL;
 char *progpath = NULL;
@@ -231,7 +231,7 @@ u_short far *devhdr;
 #endif
 
 VOID error(s)
-char *s;
+CONST char *s;
 {
 	int duperrno;
 
@@ -557,7 +557,8 @@ int n, max;
 VOID checkscreen(xmax, ymax)
 int xmax, ymax;
 {
-	char *cp, *tty;
+	CONST char *cp;
+	char *tty;
 	int i, row, wastty, dupn_line, dupdumbterm;
 
 #ifdef	SIGWINCH
@@ -810,7 +811,7 @@ int *lenp;
 
 VOID title(VOID_A)
 {
-	char *cp;
+	CONST char *cp;
 	int i, len;
 
 	Xlocate(0, L_TITLE);
@@ -865,7 +866,7 @@ VOID saveorigenviron(VOID_A)
 
 #ifndef	_NOLOGGING
 static VOID NEAR startlog(argv)
-char **argv;
+char *CONST *argv;
 {
 # ifndef	NOUID
 	uid_t uid;
@@ -920,9 +921,10 @@ int status;
 
 #ifdef	_NOORIGSHELL
 static int NEAR execruncomline(command, file, n, line)
-char *command, *file;
+char *command;
+CONST char *file;
 int n;
-char *line;
+CONST char *line;
 {
 	char *cp;
 	int i;
@@ -945,7 +947,7 @@ char *line;
 
 /*ARGSUSED*/
 int loadruncom(file, exist)
-char *file;
+CONST char *file;
 int exist;
 {
 #ifdef	_NOORIGSHELL
@@ -1036,7 +1038,7 @@ int exist;
 /*ARGSUSED*/
 static int NEAR initoption(argc, argv, envp)
 int argc;
-char *argv[], *envp[];
+char *CONST argv[], *CONST envp[];
 {
 	char *cp, **optv;
 	int i, optc;
@@ -1073,7 +1075,7 @@ char *argv[], *envp[];
 }
 
 static int NEAR evaloption(argv)
-char *argv[];
+char *CONST argv[];
 {
 	char *cp, *tmp;
 	int i;
@@ -1094,7 +1096,8 @@ char *argv[];
 }
 
 static char *NEAR searchenv(s, envp)
-char *s, *envp[];
+CONST char *s;
+char *CONST envp[];
 {
 	int i, len;
 
@@ -1107,7 +1110,7 @@ char *s, *envp[];
 }
 
 static VOID NEAR setexecname(argv)
-char *argv;
+CONST char *argv;
 {
 #if	MSDOS || defined (CYGWIN)
 	char *cp;
@@ -1123,9 +1126,11 @@ char *argv;
 }
 
 static VOID NEAR setexecpath(argv, envp)
-char *argv, *envp[];
+CONST char *argv;
+char *CONST envp[];
 {
-	char *cp, buf[MAXPATHLEN];
+	CONST char *cp;
+	char *tmp, buf[MAXPATHLEN];
 
 	if (!Xgetwd(buf)) error(NOCWD_K);
 	origpath = strdup2(buf);
@@ -1140,26 +1145,27 @@ char *argv, *envp[];
 	}
 	strcpy(fullpath, origpath);
 
+	tmp = NULL;
 #if	MSDOS
 	cp = argv;
 #else
 	if (strdelim(argv, 0)) cp = argv;
 	else if ((cp = searchenv(ENVPATH, envp)))
-		cp = searchexecpath(argv, cp);
+		cp = tmp = searchexecpath(argv, cp);
 	if (!cp) progpath = strdup2(origpath);
 	else
 #endif
 	{
 		realpath2(cp, buf, 1);
-		if (cp != argv) free(cp);
-		if ((cp = strrdelim(buf, 0))) *cp = '\0';
+		if (tmp) free(tmp);
+		if ((tmp = strrdelim(buf, 0))) *tmp = '\0';
 		progpath = strdup2(buf);
 	}
 }
 
 /*ARGSUSED*/
 VOID initfd(argv)
-char **argv;
+char *CONST *argv;
 {
 	int i;
 
@@ -1278,7 +1284,7 @@ int status;
 
 int main(argc, argv, envp)
 int argc;
-char *argv[], *envp[];
+char *CONST argv[], *CONST envp[];
 {
 	char *cp;
 	int i;

@@ -55,7 +55,7 @@ static int maxdirpath = 0;
 
 #ifndef	_NODOSDRIVE
 int _dospath(path)
-char *path;
+CONST char *path;
 {
 	if (!dosdrive) return(0);
 
@@ -63,9 +63,11 @@ char *path;
 }
 
 int dospath(path, buf)
-char *path, *buf;
+CONST char *path;
+char *buf;
 {
-	char *cp, tmp[MAXPATHLEN];
+	CONST char *cp;
+	char *s, tmp[MAXPATHLEN];
 	int drive, len;
 
 	if (!dosdrive) return(0);
@@ -88,13 +90,13 @@ char *path, *buf;
 # endif
 	strncpy2(buf, cp, len);
 	if (cp != path && *path) {
-		cp = strcatdelim(buf);
-		len -= cp - buf;
+		s = strcatdelim(buf);
+		len -= s - buf;
 # ifdef	CODEEUC
-		if (!noconv) cp[ujis2sjis(cp, (u_char *)path, len)] = '\0';
+		if (!noconv) s[ujis2sjis(s, (u_char *)path, len)] = '\0';
 		else
 # endif
-		strncpy2(cp, path, len);
+		strncpy2(s, path, len);
 	}
 
 	return(drive);
@@ -102,13 +104,14 @@ char *path, *buf;
 #endif	/* !_NODOSDRIVE */
 
 DIR *Xopendir(path)
-char *path;
+CONST char *path;
 {
 #if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE) || defined (CYGWIN)
 	char buf[MAXPATHLEN];
 #endif
 	DIR *dirp;
-	char *cp, conv[MAXPATHLEN];
+	CONST char *cp;
+	char conv[MAXPATHLEN];
 
 	cp = convput(conv, path, 1, 1, NULL, NULL);
 #ifndef	_NODOSDRIVE
@@ -307,7 +310,7 @@ DIR *dirp;
 }
 
 int Xchdir(path)
-char *path;
+CONST char *path;
 {
 #ifndef	_NODOSDRIVE
 	int dd, drive;
@@ -392,7 +395,7 @@ char *path;
 }
 
 int Xstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	char conv[MAXPATHLEN];
@@ -409,7 +412,7 @@ struct stat *stp;
 }
 
 int Xlstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 #ifndef	_NOROCKRIDGE
@@ -436,7 +439,7 @@ struct stat *stp;
 }
 
 int Xaccess(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
@@ -453,7 +456,7 @@ int mode;
 }
 
 int Xsymlink(name1, name2)
-char *name1, *name2;
+CONST char *name1, *name2;
 {
 	char conv1[MAXPATHLEN], conv2[MAXPATHLEN];
 	int n;
@@ -471,7 +474,8 @@ char *name1, *name2;
 }
 
 int Xreadlink(path, buf, bufsiz)
-char *path, *buf;
+CONST char *path;
+char *buf;
 int bufsiz;
 {
 	char conv[MAXPATHLEN], lbuf[MAXPATHLEN + 1];
@@ -503,7 +507,7 @@ int bufsiz;
 }
 
 int Xchmod(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
@@ -522,8 +526,8 @@ int mode;
 
 #ifdef	USEUTIME
 int Xutime(path, times)
-char *path;
-struct utimbuf *times;
+CONST char *path;
+CONST struct utimbuf *times;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -540,8 +544,8 @@ struct utimbuf *times;
 }
 #else	/* !USEUTIME */
 int Xutimes(path, tvp)
-char *path;
-struct timeval tvp[2];
+CONST char *path;
+CONST struct timeval *tvp;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -560,7 +564,7 @@ struct timeval tvp[2];
 
 #ifdef	HAVEFLAGS
 int Xchflags(path, flags)
-char *path;
+CONST char *path;
 u_long flags;
 {
 	char conv[MAXPATHLEN];
@@ -583,7 +587,7 @@ u_long flags;
 
 #ifndef	NOUID
 int Xchown(path, uid, gid)
-char *path;
+CONST char *path;
 uid_t uid;
 gid_t gid;
 {
@@ -606,7 +610,7 @@ gid_t gid;
 #endif	/* !NOUID */
 
 int Xunlink(path)
-char *path;
+CONST char *path;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -623,7 +627,7 @@ char *path;
 }
 
 int Xrename(from, to)
-char *from, *to;
+CONST char *from, *to;
 {
 	char conv1[MAXPATHLEN], conv2[MAXPATHLEN];
 	int n;
@@ -651,7 +655,7 @@ char *from, *to;
 }
 
 int Xopen(path, flags, mode)
-char *path;
+CONST char *path;
 int flags, mode;
 {
 	char conv[MAXPATHLEN];
@@ -710,7 +714,7 @@ int nbytes;
 
 int Xwrite(fd, buf, nbytes)
 int fd;
-char *buf;
+CONST char *buf;
 int nbytes;
 {
 	int n;
@@ -777,7 +781,7 @@ int oldd, newd;
 #endif	/* !_NODOSDRIVE */
 
 int Xmkdir(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	char conv[MAXPATHLEN];
@@ -795,7 +799,7 @@ int mode;
 }
 
 int Xrmdir(path)
-char *path;
+CONST char *path;
 {
 	char conv[MAXPATHLEN];
 	int n;
@@ -812,7 +816,7 @@ char *path;
 }
 
 FILE *Xfopen(path, type)
-char *path, *type;
+CONST char *path, *type;
 {
 	FILE *fp;
 	char conv[MAXPATHLEN];
@@ -832,7 +836,7 @@ char *path, *type;
 #ifndef	_NODOSDRIVE
 FILE *Xfdopen(fd, type)
 int fd;
-char *type;
+CONST char *type;
 {
 	FILE *fp;
 
@@ -889,7 +893,7 @@ FILE *stream;
 }
 
 int Xfwrite(buf, size, nitems, stream)
-char *buf;
+CONST char *buf;
 int size, nitems;
 FILE *stream;
 {
@@ -949,7 +953,7 @@ FILE *stream;
 }
 
 int Xfputs(s, stream)
-char *s;
+CONST char *s;
 FILE *stream;
 {
 	int n;

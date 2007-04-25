@@ -109,7 +109,7 @@ typedef struct _kconv_t {
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 typedef struct _langtable {
-	char *ident;
+	CONST char *ident;
 	u_char lang;
 } langtable;
 #endif
@@ -123,15 +123,15 @@ typedef struct _kpathtable {
 
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-static char *NEAR strstr2 __P_((char *, char *));
+static CONST char *NEAR strstr2 __P_((CONST char *, CONST char *));
 #endif
 #if	!defined (_NOKANJICONV) \
 || (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
-static VOID NEAR sj2j __P_((char *, u_char *));
-static VOID NEAR j2sj __P_((char *, u_char *));
+static VOID NEAR sj2j __P_((char *, CONST u_char *));
+static VOID NEAR j2sj __P_((char *, CONST u_char *));
 #endif
 #ifdef	_USEUNICODE
-static int NEAR openunitbl __P_((char *));
+static int NEAR openunitbl __P_((CONST char *));
 static u_char *NEAR newunitbl __P_((ALLOC_T));
 #define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
 #define	skread(f,o,s,n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
@@ -139,28 +139,29 @@ static u_char *NEAR newunitbl __P_((ALLOC_T));
 #endif
 #ifndef	_NOKANJICONV
 # ifdef	_USEUNICODE
-static int NEAR opennftbl __P_((char *, int, u_int *));
+static int NEAR opennftbl __P_((CONST char *, int, u_int *));
 # endif
-static int NEAR toenglish __P_((char *, u_char *, int));
-static int NEAR tojis7 __P_((char *, u_char *, int, int, int, int));
-static int NEAR fromjis __P_((char *, u_char *, int, int));
-static int NEAR tojis8 __P_((char *, u_char *, int, int, int, int));
-static int NEAR tojunet __P_((char *, u_char *, int, int, int, int));
+static int NEAR toenglish __P_((char *, CONST u_char *, int));
+static int NEAR tojis7 __P_((char *, CONST u_char *, int, int, int, int));
+static int NEAR fromjis __P_((char *, CONST u_char *, int, int));
+static int NEAR tojis8 __P_((char *, CONST u_char *, int, int, int, int));
+static int NEAR tojunet __P_((char *, CONST u_char *, int, int, int, int));
 # ifdef	_USEUNICODE
-static u_int NEAR toucs2 __P_((u_char *, int *));
+static u_int NEAR toucs2 __P_((CONST u_char *, int *));
 static VOID NEAR fromucs2 __P_((char *, int *, u_int));
-static int NEAR toutf8 __P_((char *, u_char *, int));
-static int NEAR fromutf8 __P_((char *, u_char *, int));
-static int NEAR toutf8nf __P_((char *, u_char *, int, int));
-static int NEAR fromutf8nf __P_((char *, u_char *, int, int));
+static int NEAR toutf8 __P_((char *, CONST u_char *, int));
+static int NEAR fromutf8 __P_((char *, CONST u_char *, int));
+static int NEAR toutf8nf __P_((char *, CONST u_char *, int, int));
+static int NEAR fromutf8nf __P_((char *, CONST u_char *, int, int));
 # endif	/* _USEUNICODE */
 static int NEAR bin2hex __P_((char *, int));
-static int NEAR tohex __P_((char *, u_char *, int));
-static int NEAR fromhex __P_((char *, u_char *, int));
+static int NEAR tohex __P_((char *, CONST u_char *, int));
+static int NEAR fromhex __P_((char *, CONST u_char *, int));
 static int NEAR bin2cap __P_((char *, int));
-static int NEAR tocap __P_((char *, u_char *, int));
-static int NEAR fromcap __P_((char *, u_char *, int));
-static char *NEAR _kanjiconv __P_((char *, char *, int, int, int, int *, int));
+static int NEAR tocap __P_((char *, CONST u_char *, int));
+static int NEAR fromcap __P_((char *, CONST u_char *, int));
+static CONST char *NEAR _kanjiconv __P_((char *, CONST char *, int,
+		int, int, int *, int));
 #endif	/* !_NOKANJICONV */
 
 #ifdef	FD
@@ -331,7 +332,7 @@ static CONST u_char sj2jtable2[256] = {
 	0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79,	/* 0xf0 */
 	0x7a, 0x7b, 0x7c, 0x7d, 0x7e,    0,    0,    0
 };
-static u_char j2sjtable1[128] = {
+static CONST u_char j2sjtable1[128] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	   0, 0x81, 0x81, 0x82, 0x82, 0x83, 0x83, 0x84,	/* 0x20 */
@@ -347,7 +348,7 @@ static u_char j2sjtable1[128] = {
 	0xe8, 0xe9, 0xe9, 0xea, 0xea, 0xeb, 0xeb, 0xec,	/* 0x70 */
 	0xec, 0xed, 0xed, 0xee, 0xee, 0xef, 0xef,    0
 };
-static u_char j2sjtable2[128] = {
+static CONST u_char j2sjtable2[128] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	   0, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46,	/* 0x20 */
@@ -363,7 +364,7 @@ static u_char j2sjtable2[128] = {
 	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,	/* 0x70 */
 	0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e,    0
 };
-static u_char j2sjtable3[128] = {
+static CONST u_char j2sjtable3[128] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
 	   0, 0x9f, 0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5,	/* 0x20 */
@@ -469,40 +470,42 @@ static CONST kpathtable kpathlist[] = {
 #endif	/* !_NOKANJIFCONV */
 
 #ifndef	FD
-int onkanji1 __P_((char *, int));
+int onkanji1 __P_((CONST char *, int));
 # if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-int getlang __P_((char *, int));
+int getlang __P_((CONST char *, int));
 # endif
 # if	!defined (_NOENGMES) && !defined (_NOJPNMES)
-char *mesconv __P_((char *, char *));
+CONST char *mesconv __P_((CONST char *, CONST char *));
 # endif
 # if	!defined (_NOKANJICONV) \
 || (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
-int sjis2ujis __P_((char *, u_char *, int));
-int ujis2sjis __P_((char *, u_char *, int));
+int sjis2ujis __P_((char *, CONST u_char *, int));
+int ujis2sjis __P_((char *, CONST u_char *, int));
 # endif
 # ifdef	_USEUNICODE
 VOID readunitable __P_((int));
 VOID discardunitable __P_((VOID_A));
 u_int unifysjis __P_((u_int, int));
 u_int cnvunicode __P_((u_int, int));
+VOID ucs2normalization __P_((u_short *, int *, int, u_int, int));
+u_int ucs2denormalization __P_((CONST u_short *, int *, int));
 # endif
 # ifndef	_NOKANJICONV
 #  ifdef	_USEUNICODE
 int ucs2toutf8 __P_((char *, int, u_int));
-u_int ucs2fromutf8 __P_((u_char *, int));
+u_int ucs2fromutf8 __P_((CONST u_char *, int));
 #  endif
-int kanjiconv __P_((char *, char *, int, int, int, int));
-char *kanjiconv2 __P_((char *, char *, int, int, int, int));
-char *newkanjiconv __P_((char *, int, int, int));
+int kanjiconv __P_((char *, CONST char *, int, int, int, int));
+CONST char *kanjiconv2 __P_((char *, CONST char *, int, int, int, int));
+char *newkanjiconv __P_((CONST char *, int, int, int));
 int getoutputkcode __P_((VOID_A));
 # endif	/* !_NOKANJICONV */
 #endif	/* !FD */
 
 
 int onkanji1(s, ptr)
-char *s;
+CONST char *s;
 int ptr;
 {
 	int i;
@@ -524,8 +527,8 @@ int ptr;
 
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-static char *NEAR strstr2(s1, s2)
-char *s1, *s2;
+static CONST char *NEAR strstr2(s1, s2)
+CONST char *s1, *s2;
 {
 	int i, c1, c2;
 
@@ -558,7 +561,7 @@ char *s1, *s2;
 
 /*ARGSUSED*/
 int getlang(s, io)
-char *s;
+CONST char *s;
 int io;
 {
 	int i, ret;
@@ -581,8 +584,8 @@ int io;
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 
 #if	!defined (_NOENGMES) && !defined (_NOJPNMES)
-char *mesconv(jpn, eng)
-char *jpn, *eng;
+CONST char *mesconv(jpn, eng)
+CONST char *jpn, *eng;
 {
 	int n;
 
@@ -595,7 +598,7 @@ char *jpn, *eng;
 || (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
 static VOID NEAR sj2j(buf, s)
 char *buf;
-u_char *s;
+CONST u_char *s;
 {
 	u_int w;
 	int n, s1, s2, j1, j2, min, max;
@@ -640,7 +643,7 @@ u_char *s;
 
 static VOID NEAR j2sj(buf, s)
 char *buf;
-u_char *s;
+CONST u_char *s;
 {
 	u_int w;
 	int i, s1, s2, j1, j2;
@@ -673,7 +676,7 @@ u_char *s;
 
 int sjis2ujis(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 	int i, j;
@@ -698,7 +701,7 @@ int max;
 
 int ujis2sjis(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 	int i, j;
@@ -719,7 +722,7 @@ int max;
 
 #ifdef	_USEUNICODE
 static int NEAR openunitbl(file)
-char *file;
+CONST char *file;
 {
 	static int fd = -2;
 	u_char buf[2];
@@ -1016,7 +1019,7 @@ int encode;
 #ifndef	_NOKANJICONV
 # ifdef	_USEUNICODE
 static int NEAR opennftbl(file, nf, entp)
-char *file;
+CONST char *file;
 int nf;
 u_int *entp;
 {
@@ -1048,7 +1051,7 @@ u_int *entp;
 
 static int NEAR toenglish(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 	int i, j;
@@ -1069,7 +1072,7 @@ int max;
 
 static int NEAR tojis7(buf, s, max, knj, asc, io)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max, knj, asc, io;
 {
 	int i, j, len, mode;
@@ -1135,7 +1138,7 @@ int max, knj, asc, io;
 
 static int NEAR fromjis(buf, s, max, io)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max, io;
 {
 # ifndef	CODEEUC
@@ -1238,7 +1241,7 @@ int max, io;
 
 static int NEAR tojis8(buf, s, max, knj, asc, io)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max, knj, asc, io;
 {
 	int i, j, len, mode;
@@ -1290,7 +1293,7 @@ int max, knj, asc, io;
 
 static int NEAR tojunet(buf, s, max, knj, asc, io)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max, knj, asc, io;
 {
 	int i, j, len, mode;
@@ -1401,7 +1404,7 @@ int nf;
 }
 
 u_int ucs2denormalization(buf, ptrp, nf)
-u_short *buf;
+CONST u_short *buf;
 int *ptrp, nf;
 {
 	u_char *cp, *new;
@@ -1472,7 +1475,7 @@ int *ptrp, nf;
 }
 
 static u_int NEAR toucs2(s, ptrp)
-u_char *s;
+CONST u_char *s;
 int *ptrp;
 {
 # ifdef	CODEEUC
@@ -1553,7 +1556,7 @@ u_int wc;
 }
 
 u_int ucs2fromutf8(s, ptrp)
-u_char *s;
+CONST u_char *s;
 int *ptrp;
 {
 	u_int w;
@@ -1578,7 +1581,7 @@ int *ptrp;
 
 static int NEAR toutf8(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 	u_int c;
@@ -1601,7 +1604,7 @@ int max;
 
 static int NEAR fromutf8(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 	int i, j;
@@ -1615,7 +1618,7 @@ int max;
 
 static int NEAR toutf8nf(buf, s, max, nf)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max, nf;
 {
 	u_short *u1, *u2;
@@ -1647,7 +1650,7 @@ int max, nf;
 
 static int NEAR fromutf8nf(buf, s, max, nf)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max, nf;
 {
 	u_short *u1, *u2;
@@ -1687,7 +1690,7 @@ int c;
 
 static int NEAR tohex(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 # ifdef	CODEEUC
@@ -1720,7 +1723,7 @@ int max;
 
 static int NEAR fromhex(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 # ifdef	CODEEUC
@@ -1791,7 +1794,7 @@ int c;
 
 static int NEAR tocap(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 # ifdef	CODEEUC
@@ -1828,7 +1831,7 @@ int max;
 
 static int NEAR fromcap(buf, s, max)
 char *buf;
-u_char *s;
+CONST u_char *s;
 int max;
 {
 # ifdef	CODEEUC
@@ -1880,8 +1883,9 @@ int max;
 	return(j);
 }
 
-static char *NEAR _kanjiconv(buf, s, max, in, out, lenp, io)
-char *buf, *s;
+static CONST char *NEAR _kanjiconv(buf, s, max, in, out, lenp, io)
+char *buf;
+CONST char *s;
 int max, in, out, *lenp, io;
 {
 	kanjierrno = 0;
@@ -1975,7 +1979,8 @@ int max, in, out, *lenp, io;
 }
 
 int kanjiconv(buf, s, max, in, out, io)
-char *buf, *s;
+char *buf;
+CONST char *s;
 int max, in, out, io;
 {
 	int len;
@@ -1987,8 +1992,9 @@ int max, in, out, io;
 	return(len);
 }
 
-char *kanjiconv2(buf, s, max, in, out, io)
-char *buf, *s;
+CONST char *kanjiconv2(buf, s, max, in, out, io)
+char *buf;
+CONST char *s;
 int max, in, out, io;
 {
 	int len;
@@ -2000,18 +2006,18 @@ int max, in, out, io;
 }
 
 char *newkanjiconv(s, in, out, io)
-char *s;
+CONST char *s;
 int in, out, io;
 {
 	char *buf;
 	int len;
 
-	if (!s) return(s);
+	if (!s) return(NULL);
 	len = strlen(s) * 3 + 3;
-	if (!(buf = malloc(len + 1))) return(s);
+	if (!(buf = malloc(len + 1))) return((char *)s);
 	if (kanjiconv2(buf, s, len, in, out, io) != buf) {
 		free(buf);
-		return(s);
+		return((char *)s);
 	}
 
 	return(buf);
@@ -2020,7 +2026,7 @@ int in, out, io;
 
 #if	defined (FD) && !defined (_NOKANJIFCONV)
 int getkcode(path)
-char *path;
+CONST char *path;
 {
 	int i;
 
@@ -2058,7 +2064,7 @@ int dos;
 # ifndef	_NOKANJIFCONV
 	int fgetok;
 # endif
-	char *cp;
+	CONST char *cp;
 
 #ifdef	DOUBLESLASH
 	if (path[0] == _SC_ && path[1] == _SC_ && !isdslash(path))
@@ -2097,12 +2103,13 @@ int dos;
 	}
 # endif
 
-	return(cp);
+	return((char *)cp);
 }
 
 /*ARGSUSED*/
 char *convput(buf, path, needfile, rdlink, rrreal, codep)
-char *buf, *path;
+char *buf;
+CONST char *path;
 int needfile, rdlink;
 char *rrreal;
 int *codep;
@@ -2116,7 +2123,8 @@ int *codep;
 # ifndef	_NOKANJIFCONV
 	int c, fputok;
 # endif
-	char *cp, *file, rpath[MAXPATHLEN];
+	CONST char *cp, *file;
+	char *tmp, rpath[MAXPATHLEN];
 	int n;
 
 	if (rrreal) *rrreal = '\0';
@@ -2126,7 +2134,7 @@ int *codep;
 # ifdef	_USEDOSEMU
 		if (dospath(path, buf)) return(buf);
 # endif
-		return(path);
+		return((char *)path);
 	}
 # ifndef	_NOKANJIFCONV
 	fputok = (nokanjifconv) ? 0 : 1;
@@ -2158,8 +2166,8 @@ int *codep;
 			copycurpath(rpath);
 		}
 		realpath2(rpath, rpath, 1);
-		cp = strcatdelim(rpath);
-		strncpy2(cp, file, MAXPATHLEN - 1 - (cp - rpath));
+		tmp = strcatdelim(rpath);
+		strncpy2(tmp, file, MAXPATHLEN - 1 - (tmp - rpath));
 		cp = rpath;
 	}
 
@@ -2184,11 +2192,11 @@ int *codep;
 		if (rrreal) strcpy(rrreal, rbuf);
 		if (rdlink && rrreadlink(cp, buf, MAXPATHLEN - 1) >= 0) {
 			if (needfile && strdelim(buf, 0)) needfile = 0;
-			if (*buf == _SC_ || !(cp = strrdelim(rbuf, 0)))
+			if (*buf == _SC_ || !(tmp = strrdelim(rbuf, 0)))
 				cp = buf;
 			else {
-				cp++;
-				strncpy2(cp, buf, MAXPATHLEN - (cp - rbuf));
+				tmp++;
+				strncpy2(tmp, buf, MAXPATHLEN - (tmp - rbuf));
 				cp = rbuf;
 			}
 			realpath2(cp, rpath, 1);
@@ -2196,16 +2204,16 @@ int *codep;
 		}
 	}
 # endif
-	if (cp == path) return(path);
+	if (cp == path) return((char *)path);
 	if (needfile && (file = strrdelim(cp, 0))) file++;
 	else file = cp;
 
 # ifdef	_USEDOSEMU
-	if (isalpha2(n) && !_dospath(file)) cp = gendospath(buf, n, '\0');
+	if (isalpha2(n) && !_dospath(file)) tmp = gendospath(buf, n, '\0');
 	else
 # endif
-	cp = buf;
-	strcpy(cp, file);
+	tmp = buf;
+	strcpy(tmp, file);
 
 	return(buf);
 }

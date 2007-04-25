@@ -31,7 +31,7 @@
 extern char *progname;
 
 static lockbuf_t *NEAR openlogfile __P_((VOID_A));
-static VOID NEAR writelog __P_((int, int, char *, int));
+static VOID NEAR writelog __P_((int, int, CONST char *, int));
 
 char *logfile = NULL;
 int logsize = 0;
@@ -63,7 +63,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 	else {
 		if (!logfile || !*logfile) return(NULL);
 
-		logfname = nullstr;
+		logfname = (char *)nullstr;
 		top = logfile;
 #ifdef	_USEDOSPATH
 		if (_dospath(top)) top += 2;
@@ -96,7 +96,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 VOID logclose(VOID_A)
 {
 	if (logfname && *logfname) free(logfname);
-	logfname = nullstr;
+	logfname = (char *)nullstr;
 #ifndef	NOSYSLOG
 	if (syslogged > 0) closelog();
 	syslogged = -1;
@@ -106,7 +106,7 @@ VOID logclose(VOID_A)
 /*ARGSUSED*/
 static VOID NEAR writelog(lvl, p, buf, len)
 int lvl, p;
-char *buf;
+CONST char *buf;
 int len;
 {
 	static int logging = 0;

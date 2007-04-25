@@ -250,7 +250,7 @@ typedef struct _syntaxtree {
 
 typedef struct _shbuiltintable {
 	int (NEAR *func)__P_((syntaxtree *));
-	char *ident;
+	CONST char *ident;
 	u_char flags;
 } shbuiltintable;
 
@@ -264,7 +264,7 @@ typedef struct _shbuiltintable {
 #define	SMPREV	4
 typedef struct _statementtable {
 	int (NEAR *func)__P_((syntaxtree *));
-	char *ident;
+	CONST char *ident;
 	u_char type;
 	u_char prev[SMPREV];
 } statementtable;
@@ -286,7 +286,7 @@ typedef struct _statementtable {
 typedef struct _opetable {
 	u_char op;
 	u_char level;
-	char *symbol;
+	CONST char *symbol;
 } opetable;
 
 typedef struct _pipelist {
@@ -329,8 +329,8 @@ typedef struct _shaliastable {
 typedef struct _signaltable {
 	int sig;
 	int (*func)__P_((VOID_A));
-	char *ident;
-	char *mes;
+	CONST char *ident;
+	CONST char *mes;
 	u_char flags;
 } signaltable;
 
@@ -348,11 +348,11 @@ typedef struct _ulimittable {
 	u_char opt;
 	int res;
 	int unit;
-	char *mes;
+	CONST char *mes;
 } ulimittable;
 
 typedef struct _shflagtable {
-	char *ident;
+	CONST char *ident;
 	int *var;
 	u_char letter;
 } shflagtable;
@@ -415,14 +415,14 @@ extern int autosavetty;
 extern int loginshell;
 extern int noruncom;
 
-extern statementtable statementlist[];
-extern signaltable signallist[];
+extern CONST statementtable statementlist[];
+extern CONST signaltable signallist[];
 
 extern VOID prepareexit __P_((int));
 extern VOID Xexit2 __P_((int));
-extern VOID execerror __P_((char *, int, int));
-extern VOID doperror __P_((char *, char *));
-extern int isnumeric __P_((char *));
+extern VOID execerror __P_((CONST char *, int, int));
+extern VOID doperror __P_((CONST char *, CONST char *));
+extern int isnumeric __P_((CONST char *));
 #if	!MSDOS
 extern VOID dispsignal __P_((int, int, FILE *));
 extern int waitjob __P_((p_id_t, wait_pid_t *, int));
@@ -437,13 +437,13 @@ extern syntaxtree *newstree __P_((syntaxtree *));
 extern VOID freestree __P_((syntaxtree *));
 extern syntaxtree *parentstree __P_((syntaxtree *));
 #if	!MSDOS
-extern VOID cmpmail __P_((char *, char *, time_t *));
+extern VOID cmpmail __P_((CONST char *, CONST char *, time_t *));
 #endif
-extern int identcheck __P_((char *, int));
-extern char *getshellvar __P_((char *, int));
+extern int identcheck __P_((CONST char *, int));
+extern char *getshellvar __P_((CONST char *, int));
 extern int putexportvar __P_((char *, int));
 extern int putshellvar __P_((char *, int));
-extern int unset __P_((char *, int));
+extern int unset __P_((CONST char *, int));
 #ifdef	MINIMUMSHELL
 extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *));
 #else
@@ -452,40 +452,40 @@ extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *, long));
 extern int getstatid __P_((syntaxtree *trp));
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
 extern syntaxtree *startvar __P_((syntaxtree *, redirectlist *,
-		char *, int *, int *, int));
+		CONST char *, int *, int *, int));
 #endif
-extern syntaxtree *analyze __P_((char *, syntaxtree *, int));
-extern char *evalbackquote __P_((char *));
+extern syntaxtree *analyze __P_((CONST char *, syntaxtree *, int));
+extern char *evalbackquote __P_((CONST char *));
 #ifdef	NOALIAS
-extern int checktype __P_((char *, int *, int));
+extern int checktype __P_((CONST char *, int *, int));
 #else
-extern int checktype __P_((char *, int *, int, int));
+extern int checktype __P_((CONST char *, int *, int, int));
 #endif
 #if	defined (FD) && !defined (_NOCOMPLETE)
-extern int completeshellvar __P_((char *, int, int, char ***));
-extern int completeshellcomm __P_((char *, int, int, char ***));
+extern int completeshellvar __P_((CONST char *, int, int, char ***));
+extern int completeshellcomm __P_((CONST char *, int, int, char ***));
 #endif
 extern int getsubst __P_((int, char **, char ***, int **));
 extern VOID printstree __P_((syntaxtree *, int, FILE *));
 #if	defined (FD) || !defined (NOPOSIXUTIL)
-extern int tinygetopt __P_((syntaxtree *, char *, int *));
+extern int tinygetopt __P_((syntaxtree *, CONST char *, int *));
 #endif
-extern int setexport __P_((char *));
-extern int setronly __P_((char *));
-extern int typeone __P_((char *, FILE *));
+extern int setexport __P_((CONST char *));
+extern int setronly __P_((CONST char *));
+extern int typeone __P_((CONST char *, FILE *));
 #ifndef	FDSH
 extern char **getsimpleargv __P_((syntaxtree *));
 #endif
 extern VOID setshfunc __P_((char *, syntaxtree *));
-extern int unsetshfunc __P_((char *, int));
+extern int unsetshfunc __P_((CONST char *, int));
 #if	MSDOS
 extern int exec_simplecom __P_((syntaxtree *, int, int));
 #else
 extern int exec_simplecom __P_((syntaxtree *, int, int, int));
 #endif
-extern int execruncom __P_((char *, int));
-extern VOID setshellvar __P_((char *[]));
+extern int execruncom __P_((CONST char *, int));
+extern VOID setshellvar __P_((char *CONST *));
 extern int prepareterm __P_((VOID_A));
-extern int initshell __P_((int, char *[]));
+extern int initshell __P_((int, char *CONST *));
 extern int shell_loop __P_((int));
-extern int main_shell __P_((int, char *[], char *[]));
+extern int main_shell __P_((int, char *CONST *, char *CONST *));

@@ -77,22 +77,23 @@ typedef struct _contable {
 static u_char *NEAR realloc2 __P_((VOID_P, ALLOC_T));
 static int NEAR addstrbuf __P_((ALLOC_T));
 static int NEAR adddictlist __P_((ALLOC_T, ALLOC_T, ALLOC_T));
-static int NEAR setkbuf __P_((int, u_short *));
-static int NEAR setjisbuf __P_((char *, int, int));
+static int NEAR setkbuf __P_((int, CONST u_short *));
+static int NEAR setjisbuf __P_((CONST char *, int, int));
 static int NEAR setword __P_((u_int));
-static int NEAR sethinsi __P_((int, u_short *));
+static int NEAR sethinsi __P_((int, CONST u_short *));
 static int cmphinsi __P_((CONST VOID_P, CONST VOID_P));
-static int NEAR addhinsi __P_((int, u_short *, int, char *));
-static int NEAR _gethinsi __P_((int, u_short *, char *, int *));
+static int NEAR addhinsi __P_((int, u_short *, int, CONST char *));
+static int NEAR _gethinsi __P_((int, u_short *, CONST char *, int *));
 static int NEAR gethinsi __P_((int, u_short *, char *, int *));
-static int NEAR adddict __P_((char *, char *, char *, u_int));
+static int cmpidlist __P_((CONST VOID_P, CONST VOID_P));
+static int NEAR adddict __P_((CONST char *, CONST char *, char *, u_int));
 static u_int NEAR getfreq __P_((char *));
-static int NEAR addcannadict __P_((char *, char *));
+static int NEAR addcannadict __P_((CONST char *, char *));
 static int NEAR convdict __P_((off_t, FILE *));
 static int NEAR addhinsidict __P_((VOID_A));
-static int NEAR addconlist __P_((int, int, contable *));
+static int NEAR addconlist __P_((int, int, CONST contable *));
 static int NEAR genconlist __P_((VOID_A));
-static int NEAR cmpjisbuf __P_((u_char *, int, u_char *, int));
+static int NEAR cmpjisbuf __P_((CONST u_char *, int, CONST u_char *, int));
 static int cmpdict __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR fputbyte __P_((int, FILE *));
 static int NEAR fputword __P_((u_int, FILE *));
@@ -100,7 +101,7 @@ static int NEAR fputdword __P_((long, FILE *));
 static int NEAR writeindex __P_((FILE *));
 static int NEAR writehinsiindex __P_((FILE *));
 static int NEAR writedict __P_((FILE *));
-int main __P_((int, char *[]));
+int main __P_((int, char *CONST []));
 
 static dicttable *dictlist = NULL;
 static long maxdict = 0L;
@@ -110,14 +111,14 @@ static ALLOC_T maxstr = (ALLOC_T)0;
 static ALLOC_T strbufsize = (ALLOC_T)0;
 static int verbose = 0;
 static int needhinsi = 0;
-static biastable biaslist[] = {
+static CONST biastable biaslist[] = {
 	{HN_KA_IKU, 1, {0x2443}},		/* tsu */
 	{HN_KO_KO, 1, {0x2424}},		/* i */
 	{HN_KU_KU, 2, {0x246b, 0x246c}},	/* ru, re */
 	{HN_SU_SU, 1, {0x246b}},		/* ru */
 };
 #define	BIASLISTSIZ	arraysize(biaslist)
-static hinsisettable hinsisetlist[] = {
+static CONST hinsisettable hinsisetlist[] = {
 	{HN_JINCHI, 2, {HN_JINMEI, HN_CHIMEI}},
 	{HN_KA5DAN, 2, {HN_KA5DOU, HN_KA5YOU}},
 	{HN_GA5DAN, 2, {HN_GA5DOU, HN_GA5YOU}},
@@ -925,7 +926,7 @@ static hinsitable hinsilist[] = {
 	 4, {0x2535, 0x4a51, 0x4c3f, 0x2331}},
 };
 #define	HINSILISTSIZ	arraysize(hinsilist)
-static contable jirconlist[] = {
+static CONST contable jirconlist[] = {
 	/* Sentou */
 	{HN_SENTOU, 0, {0}, 1, {HN_SENTOU}},
 
@@ -1142,7 +1143,7 @@ static contable jirconlist[] = {
 	  FZ_MI3, FZ_RARE, FZ_RI2, FZ_RE5}},
 };
 #define	JIRCONLISTSIZ	arraysize(jirconlist)
-static contable conlist[] = {
+static CONST contable conlist[] = {
 	/* KeiDouTai-Na */
 	{FZ_NA, 1, {0x244a}, 7,
 	 {HN_KANA, HN_EISUU, HN_KEIDOU, HN_KD_STB, FZ_SOU2, FZ_MITAI,
@@ -2887,7 +2888,7 @@ static contable conlist[] = {
 	  FZ_RE2, FZ_RE5, FZ_RO4, FZ_WA3, FZ_WO, FZ_N}},
 };
 #define	CONLISTSIZ	arraysize(conlist)
-static contable shuutanlist[] = {
+static CONST contable shuutanlist[] = {
 	/* svkanren */
 	{SH_svkanren, 0, {0}, 238,
 	 {HN_SUUJI, HN_KANA, HN_EISUU, HN_KIGOU, HN_HEIKAKKO, HN_KAIKAKKO,
@@ -3044,7 +3045,7 @@ ALLOC_T ptr, klen, size;
 
 static int NEAR setkbuf(klen, kbuf)
 int klen;
-u_short *kbuf;
+CONST u_short *kbuf;
 {
 	int i;
 
@@ -3059,7 +3060,7 @@ u_short *kbuf;
 }
 
 static int NEAR setjisbuf(s, roman, bias)
-char *s;
+CONST char *s;
 int roman, bias;
 {
 	u_short kbuf[MAXUTYPE(u_char) - 1];
@@ -3096,7 +3097,7 @@ u_int w;
 
 static int NEAR sethinsi(len, idlist)
 int len;
-u_short *idlist;
+CONST u_short *idlist;
 {
 	int i;
 
@@ -3139,7 +3140,7 @@ static int NEAR addhinsi(hmax, idlist, id, hstr)
 int hmax;
 u_short *idlist;
 int id;
-char *hstr;
+CONST char *hstr;
 {
 	int n;
 
@@ -3157,7 +3158,7 @@ char *hstr;
 static int NEAR _gethinsi(hmax, idlist, hstr, dictp)
 int hmax;
 u_short *idlist;
-char *hstr;
+CONST char *hstr;
 int *dictp;
 {
 	hinsitable tmp;
@@ -3196,7 +3197,8 @@ u_short *idlist;
 char *hstr;
 int *dictp;
 {
-	char *cp, *next;
+	CONST char *cp;
+	char *next;
 	int dict, mask;
 
 	next = hstr;
@@ -3226,7 +3228,8 @@ CONST VOID_P vp2;
 }
 
 static int NEAR adddict(str, kstr, hstr, freq)
-char *str, *kstr, *hstr;
+CONST char *str, *kstr;
+char *hstr;
 u_int freq;
 {
 	ALLOC_T ptr, klen;
@@ -3274,9 +3277,11 @@ char *cp;
 }
 
 static int NEAR addcannadict(str, buf)
-char *str, *buf;
+CONST char *str;
+char *buf;
 {
-	char *cp, *kstr;
+	CONST char *kstr;
+	char *cp;
 	u_int freq;
 	int n, ptr;
 
@@ -3392,10 +3397,10 @@ static int NEAR addhinsidict(VOID_A)
 
 static int NEAR addconlist(n, max, list)
 int n, max;
-contable *list;
+CONST contable *list;
 {
 	ALLOC_T ptr;
-	u_short *idlist;
+	CONST u_short *idlist;
 	int i, len;
 
 	idlist = NULL;
@@ -3435,9 +3440,9 @@ static int NEAR genconlist(VOID_A)
 }
 
 static int NEAR cmpjisbuf(buf1, len1, buf2, len2)
-u_char *buf1;
+CONST u_char *buf1;
 int len1;
-u_char *buf2;
+CONST u_char *buf2;
 int len2;
 {
 	int i, c1, c2;
@@ -3644,7 +3649,7 @@ FILE *fp;
 
 int main(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *fpin, *fpout;
 	struct stat st;

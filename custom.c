@@ -75,9 +75,9 @@ extern char *rockridgepath;
 #ifndef	_NOPRECEDE
 extern char *precedepath;
 #endif
-extern char *promptstr;
+extern CONST char *promptstr;
 #ifndef	_NOORIGSHELL
-extern char *promptstr2;
+extern CONST char *promptstr2;
 #endif
 #ifdef	_USEUNICODE
 extern int unicodebuffer;
@@ -143,14 +143,14 @@ extern int lcmdline;
 #endif
 extern int calc_x;
 extern int calc_y;
-extern functable funclist[];
+extern CONST functable funclist[];
 extern char *macrolist[];
 extern int maxmacro;
 extern char *helpindex[];
 extern char **orighelpindex;
 extern bindtable bindlist[];
 extern bindtable *origbindlist;
-extern strtable keyidentlist[];
+extern CONST strtable keyidentlist[];
 # ifndef	_NOKEYMAP
 extern keyseq_t *origkeymaplist;
 # endif
@@ -191,21 +191,21 @@ extern int inruncom;
 #endif
 
 typedef struct _envtable {
-	char *env;
+	CONST char *env;
 	VOID_P var;
 #ifdef	FORCEDSTDC
 	union {
-		char *str;
+		CONST char *str;
 		int num;
 	} def;
 #else
-	char *def;
+	CONST char *def;
 #endif
 #ifndef	_NOJPNMES
-	char *hmes;
+	CONST char *hmes;
 #endif
 #ifndef	_NOENGMES
-	char *hmes_eng;
+	CONST char *hmes_eng;
 #endif
 	u_char type;
 } envtable;
@@ -270,9 +270,9 @@ typedef struct _pathtable {
 #endif	/* !_NOKANJIFCONV */
 
 #if	FD >= 2
-static int NEAR atooctal __P_((char *));
+static int NEAR atooctal __P_((CONST char *));
 #endif
-static int NEAR getenvid __P_((char *, int, int *));
+static int NEAR getenvid __P_((CONST char *, int, int *));
 static VOID NEAR _evalenv __P_((int));
 static VOID NEAR evalenvone __P_((int));
 #ifndef	_NOKANJIFCONV
@@ -283,43 +283,43 @@ static VOID NEAR evalpathlang __P_((VOID_A));
 #endif
 static VOID NEAR evalheader __P_((VOID_A));
 #ifndef	_NOCUSTOMIZE
-static int NEAR custputs __P_((char *));
-static char *NEAR strcatalloc __P_((char *, char *));
+static int NEAR custputs __P_((CONST char *));
+static char *NEAR strcatalloc __P_((char *, CONST char *));
 static VOID NEAR putsep __P_((VOID_A));
 static VOID NEAR fillline __P_((int, int));
-static char *NEAR inputcuststr __P_((char *, int, char *, int));
-static char *NEAR inputcustenvstr __P_((char *, int, char *, int));
-static VOID NEAR setnamelist __P_((int, namelist *, char *));
+static char *NEAR inputcuststr __P_((CONST char *, int, CONST char *, int));
+static char *NEAR inputcustenvstr __P_((CONST char *, int, CONST char *, int));
+static VOID NEAR setnamelist __P_((int, namelist *, CONST char *));
 static int NEAR browsenamelist __P_((namelist *, int,
-		int, char *, char *, char **));
+		int, CONST char *, CONST char *, CONST char **));
 static VOID NEAR custtitle __P_((VOID_A));
 static VOID NEAR calcmax __P_((int [], int));
-static VOID NEAR envcaption __P_((char *));
+static VOID NEAR envcaption __P_((CONST char *));
 static char **NEAR copyenv __P_((char **));
 static VOID NEAR cleanupenv __P_((VOID_A));
 # if	FD >= 2
 static char *NEAR ascoctal __P_((int, char *));
 # endif
 # ifndef	_NOORIGSHELL
-static VOID NEAR putargs __P_((char *, int, char *[], FILE *));
+static VOID NEAR putargs __P_((CONST char *, int, CONST char *[], FILE *));
 # endif
 static char *NEAR int2str __P_((char *, int));
-static int NEAR inputkeycode __P_((char *));
+static int NEAR inputkeycode __P_((CONST char *));
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
-static int NEAR dumpenv __P_((char *, FILE *));
+static int NEAR dumpenv __P_((CONST char *, FILE *));
 # ifndef	_NOORIGSHELL
-static int NEAR checkenv __P_((char *, char **, int *, FILE *));
-static int NEAR checkunset __P_((char *, int, char **, FILE *));
+static int NEAR checkenv __P_((char *, char *CONST *, int *, FILE *));
+static int NEAR checkunset __P_((char *, int, char *CONST *, FILE *));
 # endif
 static VOID NEAR cleanupbind __P_((VOID_A));
 static int NEAR dispbind __P_((int));
-static int NEAR selectbind __P_((int, int, char *));
+static int NEAR selectbind __P_((int, int, CONST char *));
 static int NEAR editbind __P_((int));
 static int NEAR issamebind __P_((bindtable *, bindtable *));
-static int NEAR dumpbind __P_((char *, char *, FILE *));
+static int NEAR dumpbind __P_((CONST char *, char *, FILE *));
 # ifndef	_NOORIGSHELL
-static int NEAR checkbind __P_((char *, char *, int, char **, FILE *));
+static int NEAR checkbind __P_((char *, char *, int, char *CONST *, FILE *));
 # endif
 # ifndef	_NOKEYMAP
 static VOID NEAR cleanupkeymap __P_((VOID_A));
@@ -327,44 +327,45 @@ static int NEAR dispkeymap __P_((int));
 static int NEAR editkeymap __P_((int));
 static int NEAR searchkeymap __P_((keyseq_t *, keyseq_t *));
 static int NEAR issamekeymap __P_((keyseq_t *, keyseq_t *));
-static int NEAR dumpkeymap __P_((char *, char *, FILE *));
+static int NEAR dumpkeymap __P_((CONST char *, char *, FILE *));
 #  ifndef	_NOORIGSHELL
-static int NEAR checkkeymap __P_((char *, char *, int, char **, FILE *));
+static int NEAR checkkeymap __P_((char *, char *, int, char *CONST *, FILE *));
 #  endif
 # endif
 # ifndef	_NOARCHIVE
 static VOID NEAR cleanuplaunch __P_((VOID_A));
 static int NEAR displaunch __P_((int));
 static VOID NEAR verboselaunch __P_((launchtable *));
-static char **NEAR editvar __P_((char *, char **));
+static char **NEAR editvar __P_((CONST char *, char **));
 static int NEAR editarchbrowser __P_((launchtable *));
 static int NEAR editlaunch __P_((int));
 static int NEAR issamelaunch __P_((launchtable *, launchtable *));
-static int NEAR dumplaunch __P_((char *, char *, FILE *));
+static int NEAR dumplaunch __P_((CONST char *, char *, FILE *));
 #  ifndef	_NOORIGSHELL
-static int NEAR checklaunch __P_((char *, char *, int, char **, FILE *));
+static int NEAR checklaunch __P_((char *, char *, int, char *CONST *, FILE *));
 #  endif
 static VOID NEAR cleanuparch __P_((VOID_A));
 static int NEAR disparch __P_((int));
 static int NEAR editarch __P_((int));
 static int NEAR issamearch __P_((archivetable *, archivetable *));
-static int NEAR dumparch __P_((char *, char *, FILE *));
+static int NEAR dumparch __P_((CONST char *, char *, FILE *));
 #  ifndef	_NOORIGSHELL
-static int NEAR checkarch __P_((char *, char *, int, char **, FILE *));
+static int NEAR checkarch __P_((char *, char *, int, char *CONST *, FILE *));
 #  endif
 # endif
 # ifdef	_USEDOSEMU
 static VOID NEAR cleanupdosdrive __P_((VOID_A));
 static int NEAR dispdosdrive __P_((int));
 static int NEAR editdosdrive __P_((int));
-static int NEAR dumpdosdrive __P_((char *, char *, FILE *));
+static int NEAR dumpdosdrive __P_((CONST char *, char *, FILE *));
 #  ifndef	_NOORIGSHELL
-static int NEAR checkdosdrive __P_((char *, char *, int, char **, FILE *));
+static int NEAR checkdosdrive __P_((char *, char *,
+		int, char *CONST *, FILE *));
 #  endif
 # endif
 static int NEAR dispsave __P_((int));
 # ifndef	_NOORIGSHELL
-static int NEAR overwriteconfig __P_((int *, char *));
+static int NEAR overwriteconfig __P_((int *, CONST char *));
 # endif	/* !_NOORIGSHELL */
 static int NEAR editsave __P_((int));
 static VOID NEAR dispname __P_((int, int, int));
@@ -378,7 +379,7 @@ int custno = -1;
 int basiccustom = 0;
 #endif
 
-static envtable envlist[] = {
+static CONST envtable envlist[] = {
 #ifndef	_NOCUSTOMIZE
 	{"FD_BASICCUSTOM", &basiccustom,
 		DEFVAL(BASICCUSTOM), BSCS_E, _B_(T_BOOL)},
@@ -655,7 +656,7 @@ VOID initenv(VOID_A)
 
 #if	FD >= 2
 static int NEAR atooctal(s)
-char *s;
+CONST char *s;
 {
 	int n;
 
@@ -667,7 +668,7 @@ char *s;
 #endif	/* FD >= 2 */
 
 static int NEAR getenvid(s, len, envp)
-char *s;
+CONST char *s;
 int len, *envp;
 {
 	int i;
@@ -690,7 +691,11 @@ int len, *envp;
 static VOID NEAR _evalenv(no)
 int no;
 {
-	char *cp;
+#if	MSDOS && !defined (_NODOSDRIVE)
+	int i;
+#endif
+	CONST char *cp;
+	char *new;
 	int n;
 
 	cp = getenv2(fdenv_str(no));
@@ -714,18 +719,18 @@ int no;
 			break;
 		case T_PATH:
 			if (!cp) cp = def_str(no);
-			cp = evalpath(strdup2(cp), 0);
+			new = evalpath(strdup2(cp), 0);
 			if (*((char **)(envlist[no].var)))
 				free(*((char **)(envlist[no].var)));
-			*((char **)(envlist[no].var)) = cp;
+			*((char **)(envlist[no].var)) = new;
 			break;
 		case T_PATHS:
 		case T_KPATHS:
 			if (!cp) cp = def_str(no);
-			cp = evalpaths(cp, ':');
+			new = evalpaths(cp, ':');
 			if (*((char **)(envlist[no].var)))
 				free(*((char **)(envlist[no].var)));
-			*((char **)(envlist[no].var)) = cp;
+			*((char **)(envlist[no].var)) = new;
 			break;
 		case T_SORT:
 			if ((n = atoi2(cp)) < 0 || (n / 100) > MAXSORTINHERIT
@@ -758,16 +763,17 @@ int no;
 		case T_DDRV:
 			if (!cp) n = def_num(no);
 			else {
-				char *dupl;
-
 				n = 0;
-				dupl = strdup2(cp);
-				if ((cp = strchr(dupl, ','))) {
-					*(cp++) = '\0';
-					if (!strcmp(cp, "BIOS")) n |= 2;
+				if (!(new = strchr(cp, ','))) {
+					if (*cp && atoi2(cp)) n |= 1;
 				}
-				if (*dupl && atoi2(dupl)) n |= 1;
-				free(dupl);
+				else {
+					if (!strcmp(&(new[1]), "BIOS")) n |= 2;
+					if (new <= cp) /*EMPTY*/;
+					else if (sscanf2(cp, "%<d", &i) != new)
+						n |= 1;
+					else if (i) n |= 1;
+				}
 			}
 			*((int *)(envlist[no].var)) = n;
 			break;
@@ -785,7 +791,7 @@ int no;
 			&& strcmp(cp, "vi")
 			&& strcmp(cp, "wordstar"))
 				cp = NULL;
-			*((char **)(envlist[no].var)) = cp;
+			*((char **)(envlist[no].var)) = (char *)cp;
 			break;
 #endif	/* !_NOEDITMODE */
 #if	!defined (_NOKANJICONV) \
@@ -825,7 +831,7 @@ int no;
 #endif
 		default:
 			if (!cp) cp = def_str(no);
-			*((char **)(envlist[no].var)) = cp;
+			*((char **)(envlist[no].var)) = (char *)cp;
 			break;
 	}
 }
@@ -969,7 +975,7 @@ int n;
 }
 
 VOID evalenv(s, len)
-char *s;
+CONST char *s;
 int len;
 {
 	int i, duperrno;
@@ -1021,13 +1027,14 @@ VOID freeenvpath(VOID_A)
 
 #ifndef	_NOCUSTOMIZE
 static int NEAR custputs(s)
-char *s;
+CONST char *s;
 {
 	return(Xcprintf2("%.*k", n_lastcolumn, s));
 }
 
 static char *NEAR strcatalloc(s1, s2)
-char *s1, *s2;
+char *s1;
+CONST char *s2;
 {
 	int l1, l2;
 
@@ -1056,36 +1063,38 @@ int y, w;
 }
 
 static char *NEAR inputcuststr(prompt, delsp, s, h)
-char *prompt;
+CONST char *prompt;
 int delsp;
-char *s;
+CONST char *s;
 int h;
 {
 	return(inputstr(prompt, delsp, (s) ? strlen(s) : 0, s, h));
 }
 
 static char *NEAR inputcustenvstr(prompt, delsp, s, h)
-char *prompt;
+CONST char *prompt;
 int delsp;
-char *s;
+CONST char *s;
 int h;
 {
-	if (!(s = inputcuststr(prompt, delsp, s, h))) return((char *)-1);
-	if (!*s && yesno(USENV_K, prompt)) {
-		free(s);
+	char *cp;
+
+	if (!(cp = inputcuststr(prompt, delsp, s, h))) return((char *)-1);
+	if (!*cp && yesno(USENV_K, prompt)) {
+		free(cp);
 		return(NULL);
 	}
 
-	return(s);
+	return(cp);
 }
 
 static VOID NEAR setnamelist(n, list, s)
 int n;
 namelist *list;
-char *s;
+CONST char *s;
 {
 	memset((char *)&(list[n]), 0, sizeof(namelist));
-	list[n].name = s;
+	list[n].name = (char *)s;
 	list[n].flags = (F_ISRED | F_ISWRI);
 	list[n].ent = n;
 	list[n].tmpflags = F_STAT;
@@ -1094,7 +1103,7 @@ char *s;
 static int NEAR browsenamelist(list, max, col, def, prompt, mes)
 namelist *list;
 int max, col;
-char *def, *prompt, **mes;
+CONST char *def, *prompt, **mes;
 {
 	int ch, pos, old;
 	int dupwin_x, dupwin_y, dupminfilename, dupcolumns, dupdispmode;
@@ -1195,7 +1204,7 @@ char *def, *prompt, **mes;
 
 static VOID NEAR custtitle(VOID_A)
 {
-	char *str[MAXCUSTOM];
+	CONST char *str[MAXCUSTOM];
 	int i, len, max, width;
 
 	str[0] = TENV_K;
@@ -1266,7 +1275,7 @@ int max[], new;
 }
 
 static VOID NEAR envcaption(s)
-char *s;
+CONST char *s;
 {
 	Xlocate(0, L_HELP);
 	Xputterm(L_CLEAR);
@@ -1285,7 +1294,7 @@ int max;
 }
 
 char **copystrarray(dest, src, ndestp, nsrc)
-char **dest, **src;
+char **dest, *CONST *src;
 int *ndestp, nsrc;
 {
 	int i;
@@ -1330,7 +1339,7 @@ char **list;
 
 static VOID NEAR cleanupenv(VOID_A)
 {
-	char *cp;
+	CONST char *cp;
 	int i;
 
 #ifndef	_NOKANJIFCONV
@@ -1365,9 +1374,9 @@ char *buf;
 
 # ifndef	_NOORIGSHELL
 static VOID NEAR putargs(s, argc, argv, fp)
-char *s;
+CONST char *s;
 int argc;
-char *argv[];
+CONST char *argv[];
 FILE *fp;
 {
 	int i;
@@ -1390,7 +1399,7 @@ int n;
 }
 
 static int NEAR inputkeycode(s)
-char *s;
+CONST char *s;
 {
 	int c, dupwin_x, dupwin_y;
 
@@ -1415,7 +1424,8 @@ char *s;
 static int NEAR dispenv(no)
 int no;
 {
-	char *cp, *new, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
+	CONST char *cp, *str[MAXSELECTSTRS];
+	char *new, buf[MAXLONGWIDTH + 1];
 	int n, p;
 
 	new = NULL;
@@ -1504,8 +1514,8 @@ int no;
 			str[1] = VBOL1_K;
 			cp = str[n & 1];
 			if (n & 2) {
-				cp = strdup2(cp);
-				cp = new = strcatalloc(cp, VBIOS_K);
+				new = strdup2(cp);
+				cp = new = strcatalloc(new, VBIOS_K);
 			}
 			break;
 # endif	/* MSDOS && !_NODOSDRIVE */
@@ -1617,7 +1627,8 @@ int no;
 static int NEAR editenv(no)
 int no;
 {
-	char *cp, *new, *env, buf[MAXLONGWIDTH + 1], *str[MAXSELECTSTRS];
+	CONST char *cp, *env, *str[MAXSELECTSTRS];
+	char *s, *new, buf[MAXLONGWIDTH + 1];
 	int n, p, tmp, val[MAXSELECTSTRS];
 
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
@@ -1638,11 +1649,11 @@ int no;
 			break;
 		case T_SHORT:
 			int2str(buf, *((short *)(envlist[no].var)));
-			cp = inputcustenvstr(env, 1, buf, -1);
+			cp = s = inputcustenvstr(env, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atoi2(cp);
-			free(cp);
+			free(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -1652,11 +1663,11 @@ int no;
 		case T_INT:
 		case T_NATURAL:
 			int2str(buf, *((int *)(envlist[no].var)));
-			cp = inputcustenvstr(env, 1, buf, -1);
+			cp = s = inputcustenvstr(env, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atoi2(cp);
-			free(cp);
+			free(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -1667,9 +1678,8 @@ int no;
 		case T_PATHS:
 		case T_KPATHS:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
-			new = inputcustenvstr(env, 1, cp, HST_PATH);
-			if (new == (char *)-1) return(0);
-			cp = new;
+			cp = new = inputcustenvstr(env, 1, cp, HST_PATH);
+			if (cp == (char *)-1) return(0);
 			break;
 		case T_SORT:
 			n = *((int *)(envlist[no].var));
@@ -1780,8 +1790,8 @@ int no;
 			if (noselect(&n, 3, 0, str, val)) return(0);
 			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			if (cp && *((int *)(envlist[no].var)) & 2) {
-				cp = strdup2(cp);
-				cp = new = strcatalloc(cp, ",BIOS");
+				new = strdup2(cp);
+				cp = new = strcatalloc(new, ",BIOS");
 			}
 			break;
 # endif	/* MSDOS && !_NODOSDRIVE */
@@ -2012,11 +2022,11 @@ int no;
 # if	FD >= 2
 		case T_OCTAL:
 			ascoctal(*((int *)(envlist[no].var)), buf);
-			cp = inputcustenvstr(env, 1, buf, -1);
+			cp = s = inputcustenvstr(env, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atooctal(cp);
-			free(cp);
+			free(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2026,9 +2036,9 @@ int no;
 # endif	/* FD >= 2 */
 # if	!defined (_NOPTY) || !defined (_NOIME)
 		case T_KEYCODE:
-			cp = asprintf3(VKYCD_K, env);
+			cp = s = asprintf3(VKYCD_K, env);
 			n = inputkeycode(cp);
-			free(cp);
+			free(s);
 			if (n == K_ESC) {
 				if (!yesno(USENV_K, env)) return(0);
 				cp = NULL;
@@ -2046,11 +2056,11 @@ int no;
 			envcaption(env);
 			int2str(buf, p);
 			lcmdline = -1;
-			cp = inputcustenvstr(VFNMX_K, 1, buf, -1);
+			cp = s = inputcustenvstr(VFNMX_K, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			p = atoi2(cp);
-			free(cp);
+			free(s);
 			if (p < 0 || p > MAXHELPINDEX) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2059,11 +2069,11 @@ int no;
 			envcaption(env);
 			int2str(buf, n);
 			lcmdline = -1;
-			cp = inputcustenvstr(VFNBR_K, 1, buf, -1);
+			cp = s = inputcustenvstr(VFNBR_K, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atoi2(cp);
-			free(cp);
+			free(s);
 			if (n < 0 || n > p) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2073,9 +2083,8 @@ int no;
 # endif	/* FD >= 2 */
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
-			new = inputcustenvstr(env, 0, cp, -1);
-			if (new == (char *)-1) return(0);
-			cp = new;
+			cp = new = inputcustenvstr(env, 0, cp, -1);
+			if (cp == (char *)-1) return(0);
 			break;
 	}
 
@@ -2091,7 +2100,7 @@ int no;
 }
 
 static int NEAR dumpenv(flaglist, fp)
-char *flaglist;
+CONST char *flaglist;
 FILE *fp;
 {
 	char *cp;
@@ -2131,11 +2140,12 @@ FILE *fp;
 
 # ifndef	_NOORIGSHELL
 static int NEAR checkenv(flaglist, argv, len, fp)
-char *flaglist, *argv[];
+char *flaglist, *CONST *argv;
 int *len;
 FILE *fp;
 {
-	char *cp, *ident, **unset, **trash;
+	CONST char *ident, **unset, **trash;
+	char *cp;
 	int i, n, ns, nu, nt, f;
 
 	for (n = 0; argv[n]; n++)
@@ -2167,14 +2177,15 @@ FILE *fp;
 				continue;
 			}
 			else if (!(envlist[i].type & T_PRIMAL)) {
-				unset = (char **)realloc2(unset,
+				unset = (CONST char **)realloc2(unset,
 					(nu + 1) * sizeof(char *));
 				unset[nu++] = ident;
 				continue;
 			}
 		}
 
-		trash = (char **)realloc2(trash, (nt + 1) * sizeof(char *));
+		trash = (CONST char **)realloc2(trash,
+			(nt + 1) * sizeof(char *));
 		trash[nt++] = argv[n];
 	}
 	if (ns) fputnl(fp);
@@ -2194,10 +2205,11 @@ FILE *fp;
 static int NEAR checkunset(flaglist, argc, argv, fp)
 char *flaglist;
 int argc;
-char *argv[];
+char *CONST *argv;
 FILE *fp;
 {
-	char *cp, *ident, **unset, **trash;
+	CONST char *ident, **unset, **trash;
+	char *cp;
 	int i, n, ns, nu, nt, f;
 
 	if (strcommcmp(argv[0], BL_UNSET)) return(0);
@@ -2210,7 +2222,7 @@ FILE *fp;
 	ns = nu = nt = 0;
 	for (n = 1; n < argc; n++) {
 		if ((i = getenvid(argv[n], -1, &f)) < 0) {
-			unset = (char **)realloc2(unset,
+			unset = (CONST char **)realloc2(unset,
 				(nu + 1) * sizeof(char *));
 			unset[nu++] = argv[n];
 			continue;
@@ -2232,14 +2244,15 @@ FILE *fp;
 				continue;
 			}
 			else if (!(envlist[i].type & T_PRIMAL)) {
-				unset = (char **)realloc2(unset,
+				unset = (CONST char **)realloc2(unset,
 					(nu + 1) * sizeof(char *));
 				unset[nu++] = ident;
 				continue;
 			}
 		}
 
-		trash = (char **)realloc2(trash, (nt + 1) * sizeof(char *));
+		trash = (CONST char **)realloc2(trash,
+			(nt + 1) * sizeof(char *));
 		trash[nt++] = ident;
 	}
 	if (ns) fputnl(fp);
@@ -2287,7 +2300,7 @@ static VOID NEAR cleanupbind(VOID_A)
 static int NEAR dispbind(no)
 int no;
 {
-	char *cp1, *cp2;
+	CONST char *cp1, *cp2;
 	int len, width;
 
 	if (bindlist[no].key < 0) {
@@ -2320,16 +2333,16 @@ int no;
 
 static int NEAR selectbind(n, max, prompt)
 int n, max;
-char *prompt;
+CONST char *prompt;
 {
 	namelist *list;
-	char *cp, **mes;
+	CONST char *cp, **mes;
 	int i, dupsorton;
 
 	max += FUNCLISTSIZ;
 
 	list = (namelist *)malloc2((FUNCLISTSIZ + 2) * sizeof(namelist));
-	mes = (char **)malloc2((FUNCLISTSIZ + 2) * sizeof(char *));
+	mes = (CONST char **)malloc2((FUNCLISTSIZ + 2) * sizeof(char *));
 	for (i = 0; i < FUNCLISTSIZ; i++)
 		setnamelist(i, list, funclist[i].ident);
 	setnamelist(i, list, USRDF_K);
@@ -2359,7 +2372,8 @@ static int NEAR editbind(no)
 int no;
 {
 	bindtable bind;
-	char *cp, *str, *buf, *func1, *func2;
+	CONST char *str;
+	char *cp, *buf, *func1, *func2;
 	int i, n1, n2, key;
 
 	if ((key = bindlist[no].key) < 0) {
@@ -2486,7 +2500,8 @@ bindtable *bindp1, *bindp2;
 }
 
 static int NEAR dumpbind(flaglist, origflaglist, fp)
-char *flaglist, *origflaglist;
+CONST char *flaglist;
+char *origflaglist;
 FILE *fp;
 {
 	char *new;
@@ -2543,7 +2558,7 @@ FILE *fp;
 static int NEAR checkbind(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
-char *argv[];
+char *CONST *argv;
 FILE *fp;
 {
 	bindtable bind;
@@ -2611,7 +2626,8 @@ int no;
 static int NEAR editkeymap(no)
 int no;
 {
-	char *cp, *str, *buf;
+	CONST char *cp;
+	char *str, *buf;
 	ALLOC_T size;
 	int i, len, key, dupwin_x, dupwin_y;
 
@@ -2688,7 +2704,8 @@ keyseq_t *kp1, *kp2;
 }
 
 static int NEAR dumpkeymap(flaglist, origflaglist, fp)
-char *flaglist, *origflaglist;
+CONST char *flaglist;
+char *origflaglist;
 FILE *fp;
 {
 	keyseq_t key;
@@ -2698,7 +2715,7 @@ FILE *fp;
 	if (origflaglist) new = NULL;
 	else {
 		origflaglist =
-		new = malloc2((K_MAX - K_MIN + 1) * sizeof(char));
+			new = malloc2((K_MAX - K_MIN + 1) * sizeof(char));
 		memset(origflaglist, 0, (K_MAX - K_MIN + 1) * sizeof(char));
 	}
 
@@ -2759,7 +2776,7 @@ FILE *fp;
 static int NEAR checkkeymap(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
-char *argv[];
+char *CONST *argv;
 FILE *fp;
 {
 	keyseq_t key;
@@ -2971,17 +2988,19 @@ launchtable *list;
 }
 
 static char **NEAR editvar(prompt, var)
-char *prompt, **var;
+CONST char *prompt;
+char **var;
 {
 	namelist *list;
-	char *cp, *tmp, *usg, *str[4], **mes;
+	CONST char *usg, **mes, *str[4];
+	char *cp, *tmp;
 	int i, n, max, val[4];
 
 	max = countvar(var);
 	for (i = 0; i < arraysize(val); i++) val[i] = i;
 
 	list = (namelist *)malloc2((max + 1) * sizeof(namelist));
-	mes = (char **)malloc2((max + 1) * sizeof(char *));
+	mes = (CONST char **)malloc2((max + 1) * sizeof(char *));
 	usg = ARUSG_K;
 	for (i = 0; i < max; i++) {
 		setnamelist(i, list, var[i]);
@@ -3004,7 +3023,7 @@ char *prompt, **var;
 			}
 			list = (namelist *)realloc2(list,
 				(max + 2) * sizeof(namelist));
-			mes = (char **)realloc2(mes,
+			mes = (CONST char **)realloc2(mes,
 				(max + 2) * sizeof(char *));
 			setnamelist(max, list, tmp);
 			mes[max++] = usg;
@@ -3064,7 +3083,8 @@ char *prompt, **var;
 static int NEAR editarchbrowser(list)
 launchtable *list;
 {
-	char *cp, *str[6], buf[MAXLONGWIDTH + 1];
+	CONST char *cp, *str[6];
+	char *tmp, buf[MAXLONGWIDTH + 1];
 	int i, n, val[6];
 	u_char *skipp;
 
@@ -3110,9 +3130,9 @@ launchtable *list;
 				cp = BTMSK_K;
 			}
 			int2str(buf, *skipp);
-			if (!(cp = inputcuststr(cp, 1, buf, -1))) continue;
-			i = atoi2(cp);
-			free(cp);
+			if (!(tmp = inputcuststr(cp, 1, buf, -1))) continue;
+			i = atoi2(tmp);
+			free(tmp);
 			if (i < 0) {
 				warning(0, VALNG_K);
 				continue;
@@ -3256,7 +3276,8 @@ launchtable *lp1, *lp2;
 }
 
 static int NEAR dumplaunch(flaglist, origflaglist, fp)
-char *flaglist, *origflaglist;
+CONST char *flaglist;
+char *origflaglist;
 FILE *fp;
 {
 	char *new;
@@ -3315,7 +3336,7 @@ FILE *fp;
 static int NEAR checklaunch(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
-char *argv[];
+char *CONST *argv;
 FILE *fp;
 {
 	launchtable launch;
@@ -3502,7 +3523,8 @@ archivetable *ap1, *ap2;
 }
 
 static int NEAR dumparch(flaglist, origflaglist, fp)
-char *flaglist, *origflaglist;
+CONST char *flaglist;
+char *origflaglist;
 FILE *fp;
 {
 	char *new;
@@ -3561,7 +3583,7 @@ FILE *fp;
 static int NEAR checkarch(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
-char *argv[];
+char *CONST *argv;
 FILE *fp;
 {
 	archivetable arch;
@@ -3614,7 +3636,8 @@ devinfo *list;
 }
 
 devinfo *copydosdrive(dest, src)
-devinfo *dest, *src;
+devinfo *dest;
+CONST devinfo *src;
 {
 	int i;
 
@@ -3704,8 +3727,8 @@ static int NEAR editdosdrive(no)
 int no;
 {
 	devinfo dev;
-	char *cp, buf[MAXLONGWIDTH + 1];
-	char *str['Z' - 'A' + 1], sbuf['Z' - 'A' + 1][3];
+	CONST char *str['Z' - 'A' + 1];
+	char *cp, buf[MAXLONGWIDTH + 1], sbuf['Z' - 'A' + 1][3];
 	int i, n, val['Z' - 'A' + 1];
 
 	if (fdtype[no].name) dev.drive = fdtype[no].drive;
@@ -3846,7 +3869,8 @@ int no;
 }
 
 static int NEAR dumpdosdrive(flaglist, origflaglist, fp)
-char *flaglist, *origflaglist;
+CONST char *flaglist;
+char *origflaglist;
 FILE *fp;
 {
 	char *new;
@@ -3917,7 +3941,7 @@ FILE *fp;
 static int NEAR checkdosdrive(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
-char *argv[];
+char *CONST *argv;
 FILE *fp;
 {
 	devinfo dev;
@@ -3973,7 +3997,7 @@ FILE *fp;
 static int NEAR dispsave(no)
 int no;
 {
-	char *mes[MAXSAVEMENU];
+	CONST char *mes[MAXSAVEMENU];
 	int len;
 
 	mes[0] = CCNCL_K;
@@ -3995,7 +4019,7 @@ int no;
 # ifndef	_NOORIGSHELL
 static int NEAR overwriteconfig(val, file)
 int *val;
-char *file;
+CONST char *file;
 {
 	syntaxtree *trp, *stree;
 	lockbuf_t *lck;
@@ -4244,7 +4268,8 @@ static int NEAR editsave(no)
 int no;
 {
 	lockbuf_t *lck;
-	char *file, *str[MAXCUSTOM - 1];
+	CONST char *str[MAXCUSTOM - 1];
+	char *file;
 	int i, n, done, val[MAXCUSTOM - 1];
 
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
@@ -4406,7 +4431,8 @@ int no, y, isstandout;
 # if	!defined (_NOARCHIVE) || defined (_USEDOSEMU)
 	char buf[MAXCUSTNAM * 2 + 1];
 # endif
-	char *cp, *name[MAXSAVEMENU];
+	CONST char *cp;
+	char *name[MAXSAVEMENU];
 	int len;
 
 	cp = NEWET_K;
@@ -4552,7 +4578,7 @@ VOID rewritecust(VOID_A)
 static VOID NEAR movecust(old, all)
 int old, all;
 {
-	char *hmes[MAXCUSTOM];
+	CONST char *hmes[MAXCUSTOM];
 
 	if (all > 0) {
 		hmes[0] = NULL;

@@ -25,16 +25,16 @@
 extern VOID exit __P_((int));
 
 static char *NEAR skipspace __P_((char *));
-static char *NEAR strndup2 __P_((char *, int));
+static char *NEAR strndup2 __P_((CONST char *, int));
 static char *NEAR isfunction __P_((char *));
 static int NEAR entryfunc __P_((char *));
 static char *NEAR checkhere __P_((char *));
 static int NEAR getargs __P_((char **, char *[]));
-static char *NEAR expargs __P_((char *, char *[]));
-static int NEAR searchfunc __P_((char *));
+static char *NEAR expargs __P_((CONST char *, char *[]));
+static int NEAR searchfunc __P_((CONST char *));
 static int NEAR evalline __P_((char *, char *[]));
 static char *NEAR getline __P_((FILE *));
-int main __P_((int, char *[]));
+int main __P_((int, char *CONST []));
 
 static int funcno = 0;
 static char *func[MAXFUNCNO];
@@ -51,7 +51,7 @@ char *s;
 }
 
 static char *NEAR strndup2(s, n)
-char *s;
+CONST char *s;
 int n;
 {
 	char *tmp;
@@ -90,7 +90,7 @@ char *line;
 	funclen[funcno] = len;
 	funcbody[funcno] = NULL;
 
-	return(++cp);
+	return(&(cp[1]));
 }
 
 static int NEAR entryfunc(line)
@@ -255,7 +255,8 @@ char **linep, *args[];
 }
 
 static char *NEAR expargs(line, args)
-char *line, *args[];
+CONST char *line;
+char *args[];
 {
 	char *cp, *buf, *tmp, *top;
 	int i, len, alen, vlen, rlen, quote;
@@ -304,7 +305,7 @@ char *line, *args[];
 }
 
 static int NEAR searchfunc(s)
-char *s;
+CONST char *s;
 {
 	int i, len;
 
@@ -371,7 +372,7 @@ FILE *fp;
 /*ARGSUSED*/
 int main(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp, *heredoc, *line;
 	int infunc;

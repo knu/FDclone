@@ -61,10 +61,10 @@ typedef long			long_t;
 typedef unsigned long		u_long_t;
 #endif
 
-extern char printfflagchar[];
-extern int printfflag[];
-extern char printfsizechar[];
-extern int printfsize[];
+extern CONST char printfflagchar[];
+extern CONST int printfflag[];
+extern CONST char printfsizechar[];
+extern CONST int printfsize[];
 
 extern int getnum __P_((CONST char *, int *));
 extern int setchar __P_((int, printbuf_t *));
@@ -75,7 +75,7 @@ extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern int fprintf2 __P_((FILE *, CONST char *, ...));
 extern VOID fputnl __P_((FILE *));
 #ifdef	FD
-extern VOID kanjifputs __P_((char *, FILE *));
+extern VOID kanjifputs __P_((CONST char *, FILE *));
 #else
 #define	kanjifputs	fputs
 #endif

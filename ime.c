@@ -44,16 +44,16 @@ extern int maxromanlist;
 extern int parentfd;
 #endif
 
-static int NEAR inkanjiconv __P_((char *, char *));
+static int NEAR inkanjiconv __P_((char *, CONST char *));
 static u_int NEAR getdefcode __P_((u_int, int, int));
 static VOID NEAR imeputch __P_((int, int));
-static int NEAR imeputs __P_((char *));
+static int NEAR imeputs __P_((CONST char *));
 static int NEAR imeprintf __P_((CONST char *, ...));
 static int NEAR jisputs __P_((u_int));
 static int NEAR putjisbuf __P_((jisbuf *));
 static int NEAR countjisbuf __P_((jisbuf *));
 static VOID NEAR addjisbuf __P_((jisbuf *, u_int));
-static VOID NEAR copyjisbuf __P_((jisbuf *, u_short *, int));
+static VOID NEAR copyjisbuf __P_((jisbuf *, CONST u_short *, int));
 static u_int NEAR zen2han __P_((u_int));
 static u_int NEAR kanabias __P_((u_int));
 static int NEAR romanprompt __P_((int, int *));
@@ -188,7 +188,8 @@ static CONST u_short jisindex[256] = {
 
 
 static int NEAR inkanjiconv(buf, s)
-char *buf, *s;
+char *buf;
+CONST char *s;
 {
 	int code;
 
@@ -206,24 +207,21 @@ static u_int NEAR getdefcode(c, type, kana)
 u_int c;
 int type, kana;
 {
-	char *cp, buf[MAXUTF8LEN + 1], tmp[MAXKLEN + 1];
+	CONST char *cp;
+	char buf[MAXUTF8LEN + 1], tmp[MAXKLEN + 1];
 	int i, code;
 
-	cp = NULL;
 	switch (type) {
 		case 'J':
 			code = EUC;
 			kana = 0;
 			c ^= 0x8080;
-			cp = buf;
 			break;
 		case 'E':
 			code = EUC;
-			cp = buf;
 			break;
 		case 'S':
 			code = SJIS;
-			cp = buf;
 			break;
 		case 'K':
 			code = EUC;
@@ -239,13 +237,13 @@ int type, kana;
 			buf[1] = tmp[1] * 10 + tmp[0];
 			buf[0] += 0xa0;
 			buf[1] += 0xa0;
-			buf[2] = '\0';
+			buf[2] = type = '\0';
 			break;
 #ifdef	_USEUNICODE
 		case 'U':
 			code = UTF8;
 			i = ucs2toutf8(buf, 0, c);
-			buf[i] = '\0';
+			buf[i] = type = '\0';
 			break;
 #endif
 		default:
@@ -254,7 +252,7 @@ int type, kana;
 			break;
 	}
 
-	if (cp) VOID_C code2kanji(cp, c);
+	if (type) VOID_C code2kanji(buf, c);
 	cp = kanjiconv2(tmp, buf, MAXKLEN, code, DEFCODE, L_INPUT);
 	if (kanjierrno) return((u_int)0);
 	i = 0;
@@ -265,7 +263,7 @@ int type, kana;
 
 #ifndef	_NOPTY
 u_int ime_getkeycode(s)
-char *s;
+CONST char *s;
 {
 	int n, c;
 
@@ -297,7 +295,7 @@ int c, so;
 }
 
 static int NEAR imeputs(s)
-char *s;
+CONST char *s;
 {
 	int len;
 
@@ -383,7 +381,7 @@ u_int c;
 
 static VOID NEAR copyjisbuf(jp, kbuf, max)
 jisbuf *jp;
-u_short *kbuf;
+CONST u_short *kbuf;
 int max;
 {
 	int i;
@@ -440,7 +438,7 @@ u_int c;
 static int NEAR romanprompt(plen, llenp)
 int plen, *llenp;
 {
-	char *cp;
+	CONST char *cp;
 	int llen;
 
 	if (plen) (*ime_locate)(plen, ime_line);
@@ -619,7 +617,8 @@ static VOID NEAR dispjiscode(c, type)
 u_int c;
 int type;
 {
-	char *cp, buf[MAXUTF8LEN + 1], tmp[MAXKLEN * R_MAXKANA + 1];
+	CONST char *cp;
+	char buf[MAXUTF8LEN + 1], tmp[MAXKLEN * R_MAXKANA + 1];
 
 	cp = NULL;
 	kanjierrno = 0;

@@ -49,13 +49,13 @@
 #define	DICTSRC		""
 #endif
 
-int main __P_((int, char *[]));
+int main __P_((int, char *CONST []));
 
 
 /*ARGSUSED*/
 int main(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	int n;

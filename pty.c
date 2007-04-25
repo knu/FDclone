@@ -58,14 +58,14 @@
 #endif
 
 #ifndef	USEDEVPTMX
-static char pty_char1[] = "pqrstuvwxyzPQRST";
-static char pty_char2[] = "0123456789abcdefghijklmnopqrstuv";
+static CONST char pty_char1[] = "pqrstuvwxyzPQRST";
+static CONST char pty_char2[] = "0123456789abcdefghijklmnopqrstuv";
 #endif
 
 static p_id_t NEAR Xsetsid __P_((VOID_A));
-static VOID NEAR Xgrantpt __P_((int, char *));
-static VOID NEAR Xunlockpt __P_((int, char *));
-static int NEAR Xptsname __P_((int, char *, char *, ALLOC_T));
+static VOID NEAR Xgrantpt __P_((int, CONST char *));
+static VOID NEAR Xunlockpt __P_((int, CONST char *));
+static int NEAR Xptsname __P_((int, CONST char *, char *, ALLOC_T));
 
 
 static p_id_t NEAR Xsetsid(VOID_A)
@@ -106,7 +106,7 @@ static p_id_t NEAR Xsetsid(VOID_A)
 /*ARGSUSED*/
 static VOID NEAR Xgrantpt(fd, path)
 int fd;
-char *path;
+CONST char *path;
 {
 #ifdef	USEDEVPTMX
 	extern int grantpt __P_((int));		/* for Linux */
@@ -126,12 +126,14 @@ char *path;
 /*ARGSUSED*/
 static VOID NEAR Xunlockpt(fd, path)
 int fd;
-char *path;
+CONST char *path;
 {
+#if	defined (USEDEVPTMX) && defined (TIOCSPTLCK)
+	int n;
+#endif
+
 #ifdef	USEDEVPTMX
 # ifdef	TIOCSPTLCK
-	int n;
-
 	n = 0;
 	VOID_C Xioctl(fd, TIOCSPTLCK, &n);
 # else
@@ -147,22 +149,28 @@ char *path;
 /*ARGSUSED*/
 static int NEAR Xptsname(fd, path, spath, size)
 int fd;
-char *path, *spath;
+CONST char *path;
+char *spath;
 ALLOC_T size;
 {
+#if	!defined (USEDEVPTMX) || !defined (TIOCGPTN)
+	char *cp;
+#endif
+#if	defined (USEDEVPTMX) && defined (TIOCGPTN)
+	int n;
+#endif
+
 #ifdef	USEDEVPTMX
 # ifdef	TIOCGPTN
-	int n;
-
 	if (Xioctl(fd, TIOCGPTN, &n) < 0) return(-1);
 	snprintf2(spath, size, "%s/%d", _PATH_DEVPTS, n);
 # else
-	if (!(path = ptsname(fd))) return(-1);
-	snprintf2(spath, size, "%s", path);
+	if (!(cp = ptsname(fd))) return(-1);
+	snprintf2(spath, size, "%s", cp);
 # endif
 #else	/* !USEDEVPTMX */
 	snprintf2(spath, size, "%s", path);
-	if ((path = strrchr(spath, '/'))) *(++path) = 't';
+	if ((cp = strrchr(spath, '/'))) *(++cp) = 't';
 #endif	/* !USEDEVPTMX */
 
 	return(0);
@@ -188,7 +196,7 @@ ALLOC_T size;
 		return(-1);
 	}
 #else	/* !USEDEVPTMX */
-	char *cp1, *cp2;
+	CONST char *cp1, *cp2;
 	int n;
 
 	n = snprintf2(path, sizeof(path), "%sXX", _PATH_PTY);
@@ -233,7 +241,7 @@ ALLOC_T size;
 #endif
 
 int Xlogin_tty(path, tty, ws)
-char *path, *tty, *ws;
+CONST char *path, *tty, *ws;
 {
 	int fd;
 
@@ -272,7 +280,7 @@ char *path, *tty, *ws;
 
 p_id_t Xforkpty(fdp, tty, ws)
 int *fdp;
-char *tty, *ws;
+CONST char *tty, *ws;
 {
 	char path[MAXPATHLEN];
 	p_id_t pid;

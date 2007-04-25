@@ -42,48 +42,48 @@ typedef off_t		l_off_t;
 
 #ifdef	FD
 # ifndef	_NOKANJICONV
-extern char *newkanjiconv __P_((char *, int, int, int));
+extern char *newkanjiconv __P_((CONST char *, int, int, int));
 extern int getoutputkcode __P_((VOID_A));
 # endif
-extern char *restorearg __P_((char *));
+extern char *restorearg __P_((CONST char *));
 #endif	/* FD */
 
 #ifdef	CODEEUC
 # ifdef	FD
-extern int strlen2 __P_((char *));
+extern int strlen2 __P_((CONST char *));
 # else
-static int NEAR strlen2 __P_((char *));
+static int NEAR strlen2 __P_((CONST char *));
 # endif
 #else	/* !CODEEUC */
-#define	strlen2	strlen
+#define	strlen2		strlen
 #endif	/* !CODEEUC */
 
 static int NEAR checkchar __P_((int, printbuf_t *));
 static int NEAR setint __P_((u_long_t, int, printbuf_t *, int, int));
-static int NEAR setstr __P_((char *, printbuf_t *, int, int));
+static int NEAR setstr __P_((CONST char *, printbuf_t *, int, int));
 static int NEAR commonprintf __P_((printbuf_t *, CONST char *, va_list));
 
-char printfflagchar[] = {
+CONST char printfflagchar[] = {
 	'-', '0', '\'',
 #ifndef	MINIMUMSHELL
 	'+', ' ', '<',
 #endif
 	'\0',
 };
-int printfflag[] = {
+CONST int printfflag[] = {
 	VF_MINUS, VF_ZERO, VF_THOUSAND,
 #ifndef	MINIMUMSHELL
 	VF_PLUS, VF_SPACE, VF_STRICTWIDTH,
 #endif
 };
-char printfsizechar[] = {
+CONST char printfsizechar[] = {
 	'l', 'q', 'i',
 #ifndef	MINIMUMSHELL
 	'L', 'C', 'h',
 #endif
 	'\0',
 };
-int printfsize[] = {
+CONST int printfsize[] = {
 	sizeof(long), sizeof(off_t), sizeof(p_id_t),
 #ifndef	MINIMUMSHELL
 	sizeof(l_off_t), sizeof(char), sizeof(short),
@@ -93,7 +93,7 @@ int printfsize[] = {
 
 #if	!defined (FD) && defined (CODEEUC)
 static int NEAR strlen2(s)
-char *s;
+CONST char *s;
 {
 	int i, len;
 
@@ -311,10 +311,14 @@ int width, prec;
 }
 
 static int NEAR setstr(s, pbufp, width, prec)
-char *s;
+CONST char *s;
 printbuf_t *pbufp;
 int width, prec;
 {
+#if	defined (FD) && !defined (_NOKANJICONV)
+	char *cp, *tmp;
+	int n;
+#endif
 	int i, j, c, len, total;
 
 	if (s) len = strlen2(s);
@@ -339,9 +343,6 @@ int width, prec;
 
 #if	defined (FD) && !defined (_NOKANJICONV)
 	if (pbufp -> flags & VF_KANJI) {
-		char *cp, *tmp;
-		int n;
-
 		if (!(tmp = (char *)malloc(len * KANAWID + 1))) return(-1);
 
 		n = len;
@@ -424,8 +425,13 @@ printbuf_t *pbufp;
 CONST char *fmt;
 va_list args;
 {
+#ifndef	HAVELONGLONG
+	u_long_t tmp;
+	int hi;
+#endif
 	u_long_t u, mask;
-	char *s, *cp;
+	CONST char *cp;
+	char *s;
 	int i, len, total, base, width, prec;
 
 	if (pbufp -> flags & VF_NEW) {
@@ -484,10 +490,10 @@ va_list args;
 			case 's':
 				cp = s = va_arg(args, char *);
 #ifdef	FD
-				if (fmt[i] == 'a') cp = restorearg(s);
+				if (fmt[i] == 'a') s = restorearg(cp);
 #endif
-				len = setstr(cp, pbufp, width, prec);
-				if (cp != s) free(cp);
+				len = setstr(s, pbufp, width, prec);
+				if (cp != s) free(s);
 				break;
 			case 'c':
 				len = setchar(va_arg(args, int) & 0xff, pbufp);
@@ -524,16 +530,13 @@ va_list args;
 		if (base) {
 #ifndef	HAVELONGLONG
 			if (len > (int)sizeof(u_long_t)) {
-				u_long_t tmp;
-				int hi;
-
 # ifndef	HPUX
 	/*
 	 * HP-UX always pushes arguments from lowest to uppermost,
 	 * in spite of the CPU endian.
 	 */
 				tmp = 0x5a;
-				cp = (char *)(&tmp);
+				cp = (CONST char *)(&tmp);
 				if (*cp != 0x5a) {
 					hi = va_arg(args, u_int);
 					len -= (int)sizeof(u_int);
@@ -717,7 +720,7 @@ FILE *fp;
 
 #ifdef	FD
 VOID kanjifputs(s, fp)
-char *s;
+CONST char *s;
 FILE *fp;
 {
 	fprintf2(fp, "%k", s);

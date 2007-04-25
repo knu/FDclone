@@ -143,7 +143,7 @@ typedef struct _namelist {
 
 typedef struct _strtable {
 	u_short no;
-	char *str;
+	CONST char *str;
 } strtable;
 
 typedef struct _lockbuf_t {
@@ -165,13 +165,13 @@ typedef struct _bindtable {
 } bindtable;
 
 typedef struct _functable {
-	int (*func)__P_((char *));
-	char *ident;
+	int (*func)__P_((CONST char *));
+	CONST char *ident;
 #ifndef	_NOJPNMES
-	char *hmes;
+	CONST char *hmes;
 #endif
 #if	!defined (_NOENGMES) || defined (_NOJPNMES)
-	char *hmes_eng;
+	CONST char *hmes_eng;
 #endif
 	u_char status;
 } functable;
@@ -355,7 +355,7 @@ typedef struct _userfunctable {
 #endif	/* _NOORIGSHELL */
 
 typedef struct _builtintable {
-	int (NEAR *func)__P_((int, char *[]));
+	int (NEAR *func)__P_((int, char *CONST []));
 	char *ident;
 } builtintable;
 

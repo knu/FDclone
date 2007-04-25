@@ -53,14 +53,14 @@ typedef struct _transtable {
 } transtable;
 
 static char *NEAR getorgname __P_((char *, int));
-static FILE *NEAR opentranstbl __P_((char *, int, int *));
-static transtable *NEAR readtranstbl __P_((char *, int));
+static FILE *NEAR opentranstbl __P_((CONST char *, int, int *));
+static transtable *NEAR readtranstbl __P_((CONST char *, int));
 static VOID NEAR freetranstbl __P_((transtable *));
-static transtable *NEAR inittrans __P_((char *, int));
-static VOID NEAR cachetrans __P_((char *, char *));
-static char *NEAR transfile __P_((char *, int, char *, int));
-static char *NEAR detransfile __P_((char *, int, char *, int));
-static char *NEAR detransdir __P_((char *, char *, int));
+static transtable *NEAR inittrans __P_((CONST char *, int));
+static VOID NEAR cachetrans __P_((CONST char *, CONST char *));
+static char *NEAR transfile __P_((CONST char *, int, char *, int));
+static char *NEAR detransfile __P_((CONST char *, int, char *, int));
+static char *NEAR detransdir __P_((CONST char *, char *, int));
 
 char *rockridgepath = NULL;
 int norockridge = 0;
@@ -89,7 +89,7 @@ int flags;
 }
 
 static FILE *NEAR opentranstbl(path, len, flagsp)
-char *path;
+CONST char *path;
 int len, *flagsp;
 {
 	FILE *fp;
@@ -131,7 +131,7 @@ int len, *flagsp;
 }
 
 static transtable *NEAR readtranstbl(path, len)
-char *path;
+CONST char *path;
 int len;
 {
 	transtable *top, **bottom, *new;
@@ -238,7 +238,7 @@ transtable *tbl;
 }
 
 static transtable *NEAR inittrans(path, len)
-char *path;
+CONST char *path;
 int len;
 {
 	transtable *tp;
@@ -259,9 +259,9 @@ int len;
 }
 
 static VOID NEAR cachetrans(path, trans)
-char *path, *trans;
+CONST char *path, *trans;
 {
-	char *cp1, *cp2;
+	CONST char *cp1, *cp2;
 	int len;
 
 	if (!rr_cwd) return;
@@ -281,7 +281,7 @@ char *path, *trans;
 }
 
 static char *NEAR transfile(file, len, buf, ptr)
-char *file;
+CONST char *file;
 int len;
 char *buf;
 int ptr;
@@ -304,12 +304,15 @@ int ptr;
 }
 
 char *transpath(path, buf)
-char *path, *buf;
+CONST char *path;
+char *buf;
 {
-	char *cp, *tmp, *next;
+	CONST char *cp;
+	char *tmp, *next;
 	int ptr, len, dlen;
 
-	if (!(cp = includepath(path, rockridgepath)) || !*cp) return(path);
+	if (!(cp = includepath(path, rockridgepath)) || !*cp)
+		return((char *)path);
 
 	if (!rr_cwd || !rr_transcwd
 	|| strnpathcmp(path, rr_cwd, len = strlen(rr_cwd))) {
@@ -320,7 +323,7 @@ char *path, *buf;
 		strcpy(buf, rr_transcwd);
 		if (!path[len]) return(buf);
 		ptr = strlen(buf);
-		cp = path + len;
+		cp = &(path[len]);
 	}
 
 	while (cp) {
@@ -341,7 +344,7 @@ char *path, *buf;
 }
 
 static char *NEAR detransfile(file, len, buf, ptr)
-char *file;
+CONST char *file;
 int len;
 char *buf;
 int ptr;
@@ -365,7 +368,8 @@ int ptr;
 }
 
 static char *NEAR detransdir(dir, buf, ptr)
-char *dir, *buf;
+CONST char *dir;
+char *buf;
 int ptr;
 {
 	char *cp, *next;
@@ -388,9 +392,10 @@ int ptr;
 }
 
 char *detranspath(path, buf)
-char *path, *buf;
+CONST char *path;
+char *buf;
 {
-	char *cp;
+	CONST char *cp;
 	int ptr, len;
 
 	if (!path) {
@@ -403,7 +408,8 @@ char *path, *buf;
 		return(NULL);
 	}
 
-	if (!(cp = includepath(path, rockridgepath)) || !*cp) return(path);
+	if (!(cp = includepath(path, rockridgepath)) || !*cp)
+		return((char *)path);
 
 	if (!rr_transcwd || !rr_cwd
 	|| strnpathcmp(path, rr_transcwd, len = strlen(rr_transcwd))) {
@@ -414,7 +420,7 @@ char *path, *buf;
 		strcpy(buf, rr_cwd);
 		if (!path[len]) return(buf);
 		ptr = strlen(buf);
-		cp = path + len + 1;
+		cp = &(path[len + 1]);
 	}
 
 	detransdir(cp, buf, ptr);
@@ -424,7 +430,7 @@ char *path, *buf;
 }
 
 int rrlstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	transtable *tp;
@@ -451,7 +457,8 @@ struct stat *stp;
 }
 
 int rrreadlink(path, buf, bufsiz)
-char *path, *buf;
+CONST char *path;
+char *buf;
 int bufsiz;
 {
 	transtable *tp;

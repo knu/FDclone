@@ -41,8 +41,8 @@ extern char **browsevar;
 extern char *macrolist[];
 extern int maxmacro;
 extern bindtable bindlist[];
-extern strtable keyidentlist[];
-extern functable funclist[];
+extern CONST strtable keyidentlist[];
+extern CONST functable funclist[];
 extern char **history[];
 extern short histsize[];
 extern short histno[];
@@ -54,7 +54,7 @@ extern int fd_restricted;
 #if	FD >= 2
 extern char *progpath;
 extern char *progname;
-extern char *promptstr;
+extern CONST char *promptstr;
 extern int lcmdline;
 #endif
 extern int internal_status;
@@ -80,75 +80,76 @@ extern romantable *romanlist;
 extern int maxromanlist;
 #endif
 
-static VOID NEAR builtinerror __P_((char *[], char *, int));
+static VOID NEAR builtinerror __P_((char *CONST [], CONST char *, int));
 #ifdef	_NOORIGSHELL
 static VOID NEAR hitkey __P_((int));
 #else
 #define	hitkey(n)
 #endif
-static VOID NEAR fputsmeta __P_((char *, FILE *));
-#if	(!defined (_NOARCHIVE) && !defined(_NOBROWSE)) || !defined (_NOIME)
-static char **NEAR file2argv __P_((FILE *, char *, int));
+static VOID NEAR fputsmeta __P_((CONST char *, FILE *));
+#if	(!defined (_NOARCHIVE) && !defined (_NOBROWSE)) || !defined (_NOIME)
+static char **NEAR file2argv __P_((FILE *, CONST char *, int));
 #endif
 #ifndef	_NOARCHIVE
 # if	FD >= 2
-static int NEAR getlaunchopt __P_((int, char *[], char *, launchtable *));
+static int NEAR getlaunchopt __P_((int, char *CONST [],
+		CONST char *, launchtable *));
 # endif
-static int NEAR setlaunch __P_((int, char *[]));
-static int NEAR setarch __P_((int, char *[]));
-static int NEAR printlaunch __P_((int, char *[]));
-static int NEAR printarch __P_((int, char *[]));
+static int NEAR setlaunch __P_((int, char *CONST []));
+static int NEAR setarch __P_((int, char *CONST []));
+static int NEAR printlaunch __P_((int, char *CONST []));
+static int NEAR printarch __P_((int, char *CONST []));
 # ifndef	_NOBROWSE
-static char **NEAR readargv __P_((char **, char **));
-static int NEAR custbrowse __P_((int, char *[]));
+static char **NEAR readargv __P_((char *CONST *, char **));
+static int NEAR custbrowse __P_((int, char *CONST []));
 # endif
 #endif
 static int NEAR getmacro __P_((char *));
-static int NEAR setkeybind __P_((int, char *[]));
-static int NEAR printbind __P_((int, char *[]));
+static int NEAR setkeybind __P_((int, char *CONST []));
+static int NEAR printbind __P_((int, char *CONST []));
 #ifdef	_USEDOSEMU
-static int NEAR _setdrive __P_((int, char *[], int));
-static int NEAR setdrive __P_((int, char *[]));
-static int NEAR unsetdrive __P_((int, char *[]));
-static int NEAR printdrive __P_((int, char *[]));
+static int NEAR _setdrive __P_((int, char *CONST [], int));
+static int NEAR setdrive __P_((int, char *CONST []));
+static int NEAR unsetdrive __P_((int, char *CONST []));
+static int NEAR printdrive __P_((int, char *CONST []));
 #endif
 #ifndef	_NOKEYMAP
-static int NEAR setkeymap __P_((int, char *[]));
-static int NEAR keytest __P_((int, char *[]));
+static int NEAR setkeymap __P_((int, char *CONST []));
+static int NEAR keytest __P_((int, char *CONST []));
 #endif
-static int NEAR printhist __P_((int, char *[]));
+static int NEAR printhist __P_((int, char *CONST []));
 #if	FD >= 2
 # ifndef	NOPOSIXUTIL
-static int NEAR fixcommand __P_((int, char *[]));
+static int NEAR fixcommand __P_((int, char *CONST []));
 # endif
 static VOID NEAR voidmd5 __P_((u_long, u_long, u_long, u_long));
 static VOID NEAR calcmd5 __P_((u_long [MD5_BUFSIZ], u_long [MD5_BLOCKS]));
-static int NEAR printmd5 __P_((char *, FILE *));
-static int NEAR md5sum __P_((int, char *[]));
-static int NEAR evalmacro __P_((int, char *[]));
+static int NEAR printmd5 __P_((CONST char *, FILE *));
+static int NEAR md5sum __P_((int, char *CONST []));
+static int NEAR evalmacro __P_((int, char *CONST []));
 # ifndef	_NOKANJICONV
-static int NEAR kconv __P_((int, char *[]));
+static int NEAR kconv __P_((int, char *CONST []));
 # endif
-static int NEAR getinputstr __P_((int, char *[]));
-static int NEAR getyesno __P_((int, char *[]));
+static int NEAR getinputstr __P_((int, char *CONST []));
+static int NEAR getyesno __P_((int, char *CONST []));
 #endif	/* FD >= 2 */
 #if	!MSDOS && (FD >= 2)
-static int NEAR savetty __P_((int, char *[]));
+static int NEAR savetty __P_((int, char *CONST []));
 #endif
 #ifndef	_NOIME
-static int NEAR setroman __P_((int, char *[]));
+static int NEAR setroman __P_((int, char *CONST []));
 static VOID NEAR disproman __P_((char *, int, FILE *));
-static int NEAR printroman __P_((int, char *[]));
+static int NEAR printroman __P_((int, char *CONST []));
 #endif
 #ifdef	_NOORIGSHELL
-static int NEAR printenv __P_((int, char *[]));
-static int NEAR setalias __P_((int, char *[]));
-static int NEAR unalias __P_((int, char *[]));
-static int NEAR checkuserfunc __P_((int, char *[]));
-static int NEAR setuserfunc __P_((int, char *[]));
-static int NEAR exportenv __P_((int, char *[]));
-static int NEAR dochdir __P_((int, char *[]));
-static int NEAR loadsource __P_((int, char *[]));
+static int NEAR printenv __P_((int, char *CONST []));
+static int NEAR setalias __P_((int, char *CONST []));
+static int NEAR unalias __P_((int, char *CONST []));
+static int NEAR checkuserfunc __P_((int, char *CONST []));
+static int NEAR setuserfunc __P_((int, char *CONST []));
+static int NEAR exportenv __P_((int, char *CONST []));
+static int NEAR dochdir __P_((int, char *CONST []));
+static int NEAR loadsource __P_((int, char *CONST []));
 #endif	/* _NOORIGSHELL */
 
 #if	FD >= 2
@@ -163,7 +164,7 @@ static int NEAR loadsource __P_((int, char *[]));
 #define	FUNCNAME	1
 #endif
 
-static CONST char *builtinerrstr[] = {
+static CONST char *CONST builtinerrstr[] = {
 	NULL,
 #define	ER_FEWMANYARG	1
 	"Too few or many arguments",
@@ -261,7 +262,8 @@ static CONST builtintable builtinlist[] = {
 
 
 static VOID NEAR builtinerror(argv, s, n)
-char *argv[], *s;
+char *CONST argv[];
+CONST char *s;
 int n;
 {
 	int duperrno;
@@ -311,7 +313,7 @@ int init;
 #endif	/* _NOORIGSHELL */
 
 static VOID NEAR fputsmeta(arg, fp)
-char *arg;
+CONST char *arg;
 FILE *fp;
 {
 	char *cp;
@@ -324,10 +326,10 @@ FILE *fp;
 	}
 }
 
-#if	(!defined (_NOARCHIVE) && !defined(_NOBROWSE)) || !defined (_NOIME)
+#if	(!defined (_NOARCHIVE) && !defined (_NOBROWSE)) || !defined (_NOIME)
 static char **NEAR file2argv(fp, s, whole)
 FILE *fp;
-char *s;
+CONST char *s;
 int whole;
 {
 	char *cp, *line, **argv;
@@ -409,10 +411,11 @@ int whole;
 # if	FD >= 2
 static int NEAR getlaunchopt(n, argv, opts, lp)
 int n;
-char *argv[], *opts;
+char *CONST argv[];
+CONST char *opts;
 launchtable *lp;
 {
-	char *cp;
+	CONST char *cp;
 	int i, c;
 
 	if (argv[n][0] != '-') return(0);
@@ -514,7 +517,7 @@ launchtable *lp;
 
 int parselaunch(argc, argv, lp)
 int argc;
-char *argv[];
+char *CONST argv[];
 launchtable *lp;
 {
 # if	FD >= 2
@@ -707,7 +710,7 @@ int n;
 
 static int NEAR setlaunch(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	launchtable launch;
 	int n;
@@ -774,7 +777,7 @@ archivetable *ap;
 
 int parsearch(argc, argv, ap)
 int argc;
-char *argv[];
+char *CONST argv[];
 archivetable *ap;
 {
 	int n;
@@ -830,7 +833,7 @@ int n;
 
 static int NEAR setarch(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	archivetable arch;
 	int n;
@@ -958,7 +961,7 @@ FILE *fp;
 
 static int NEAR printlaunch(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *ext;
 	int i, n;
@@ -1014,7 +1017,7 @@ FILE *fp;
 
 static int NEAR printarch(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *ext;
 	int i, n;
@@ -1049,10 +1052,11 @@ char *argv[];
 
 # ifndef	_NOBROWSE
 static char **NEAR readargv(sargv, dargv)
-char **sargv, **dargv;
+char *CONST *sargv, **dargv;
 {
 	FILE *fp;
-	char *cp, **argv;
+	CONST char *cp;
+	char **argv;
 	int n, dargc;
 
 	dargc = countvar(dargv);
@@ -1112,7 +1116,7 @@ launchtable *list;
 
 static int NEAR custbrowse(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	launchtable *list;
 	char **argv2;
@@ -1244,7 +1248,7 @@ bindtable *list, *bindp;
 
 int parsekeybind(argc, argv, bindp)
 int argc;
-char *argv[];
+char *CONST argv[];
 bindtable *bindp;
 {
 	int i, n;
@@ -1375,7 +1379,7 @@ int n;
 
 static int NEAR setkeybind(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	bindtable bind;
 	char *cp, *func1, *func2;
@@ -1462,7 +1466,7 @@ FILE *fp;
 
 static int NEAR printbind(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	int i, c;
 
@@ -1649,7 +1653,7 @@ devinfo *devp;
 
 int parsesetdrv(argc, argv, devp)
 int argc;
-char *argv[];
+char *CONST argv[];
 devinfo *devp;
 {
 	int head, sect, cyl;
@@ -1786,7 +1790,7 @@ devinfo *devp;
 
 static int NEAR _setdrive(argc, argv, isset)
 int argc;
-char *argv[];
+char *CONST argv[];
 int isset;
 {
 	devinfo dev;
@@ -1862,14 +1866,14 @@ int isset;
 
 static int NEAR setdrive(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	return(_setdrive(argc, argv, 1));
 }
 
 static int NEAR unsetdrive(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	return(_setdrive(argc, argv, 0));
 }
@@ -1901,7 +1905,7 @@ FILE *fp;
 
 static int NEAR printdrive(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	int i, n;
 
@@ -1953,7 +1957,7 @@ FILE *fp;
 
 int parsekeymap(argc, argv, kp)
 int argc;
-char *argv[];
+char *CONST argv[];
 keyseq_t *kp;
 {
 	kp -> code = (short)-1;
@@ -1992,7 +1996,7 @@ keyseq_t *kp;
 
 static int NEAR setkeymap(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	keyseq_t key;
 	int i;
@@ -2046,7 +2050,7 @@ char *argv[];
 
 static int NEAR keytest(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp, buf[2];
 	int i, n, ch, next;
@@ -2102,7 +2106,7 @@ char *argv[];
 
 static int NEAR printhist(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	int i, n, max, size;
 
@@ -2139,7 +2143,7 @@ char *argv[];
 # ifndef	NOPOSIXUTIL
 static int NEAR fixcommand(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *fp;
 	char *cp, *tmp, *editor, path[MAXPATHLEN];
@@ -2520,7 +2524,7 @@ u_long sum[MD5_BUFSIZ], x[MD5_BLOCKS];
 }
 
 static int NEAR printmd5(path, fp)
-char *path;
+CONST char *path;
 FILE *fp;
 {
 	FILE *fpin;
@@ -2579,7 +2583,7 @@ FILE *fp;
 
 static int NEAR md5sum(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char path[MAXPATHLEN];
 	int i, ret;
@@ -2613,7 +2617,7 @@ char *argv[];
 
 static int NEAR evalmacro(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	int ret;
@@ -2629,7 +2633,7 @@ char *argv[];
 # ifndef	_NOKANJICONV
 static int NEAR kconv(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *fpin, *fpout;
 	char *cp, *tmp;
@@ -2719,9 +2723,10 @@ char *argv[];
 
 static int NEAR getinputstr(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
-	char *s, *duppromptstr;
+	CONST char *duppromptstr;
+	char *s;
 	int wastty;
 
 	if (dumbterm > 1) {
@@ -2730,7 +2735,8 @@ char *argv[];
 	}
 	if (!(wastty = isttyiomode)) ttyiomode(1);
 	duppromptstr = promptstr;
-	promptstr = (argc >= 2) ? argv[1] : nullstr;
+	if (argc >= 2) promptstr = argv[1];
+	else promptstr = nullstr;
 	s = inputstr(NULL, 0, -1, NULL, -1);
 	promptstr = duppromptstr;
 	if (!wastty) stdiomode();
@@ -2745,9 +2751,9 @@ char *argv[];
 
 static int NEAR getyesno(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
-	char *s;
+	CONST char *s;
 	int ret, wastty;
 
 	if (dumbterm > 1) {
@@ -2784,7 +2790,7 @@ int reset;
 # if	FD >= 2
 static int NEAR savetty(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	int n;
 
@@ -2801,7 +2807,7 @@ char *argv[];
 #ifndef	_NOIME
 static int NEAR setroman(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *fp;
 	char *file, **args;
@@ -2915,7 +2921,7 @@ FILE *fp;
 
 static int NEAR printroman(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	int i, n, ret;
 
@@ -2944,7 +2950,7 @@ char *argv[];
 #ifdef	_NOORIGSHELL
 static int NEAR printenv(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 # if	FD < 2
 	int len;
@@ -2997,7 +3003,7 @@ char *argv[];
 }
 
 int searchalias(ident, len)
-char *ident;
+CONST char *ident;
 int len;
 {
 	int i;
@@ -3040,7 +3046,7 @@ char *ident, *comm;
 }
 
 int deletealias(ident)
-char *ident;
+CONST char *ident;
 {
 	reg_t *re;
 	int i, n;
@@ -3078,7 +3084,7 @@ FILE *fp;
 
 static int NEAR setalias(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	int i, len;
@@ -3147,7 +3153,7 @@ char *argv[];
 /*ARGSUSED*/
 static int NEAR unalias(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	if (argc != 2) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -3162,7 +3168,7 @@ char *argv[];
 }
 
 int searchfunction(ident)
-char *ident;
+CONST char *ident;
 {
 	int i;
 
@@ -3201,7 +3207,7 @@ char *ident, **comm;
 }
 
 int deletefunction(ident)
-char *ident;
+CONST char *ident;
 {
 	int i;
 
@@ -3239,7 +3245,7 @@ FILE *fp;
 
 static int NEAR checkuserfunc(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	int i, n;
@@ -3270,7 +3276,7 @@ char *argv[];
 
 static int NEAR setuserfunc(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp, *tmp, *line, **var, *list[MAXFUNCLINES + 1];
 	int i, j, n;
@@ -3352,7 +3358,7 @@ char *argv[];
 
 static int NEAR exportenv(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	char *cp;
 	int i;
@@ -3379,7 +3385,7 @@ char *argv[];
 
 static int NEAR dochdir(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	if (argc != 2) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
@@ -3395,7 +3401,7 @@ char *argv[];
 
 static int NEAR loadsource(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	int ret;
 
@@ -3416,7 +3422,7 @@ char *argv[];
 #endif	/* _NOORIGSHELL */
 
 int checkbuiltin(comname)
-char *comname;
+CONST char *comname;
 {
 	int i;
 
@@ -3427,7 +3433,7 @@ char *comname;
 }
 
 int checkinternal(comname)
-char *comname;
+CONST char *comname;
 {
 	int i;
 
@@ -3439,7 +3445,7 @@ char *comname;
 
 int execbuiltin(n, argc, argv)
 int n, argc;
-char *argv[];
+char *CONST argv[];
 {
 	return(((*builtinlist[n].func)(argc, argv) < 0)
 		? RET_NOTICE : RET_SUCCESS);
@@ -3447,7 +3453,7 @@ char *argv[];
 
 int execinternal(n, argc, argv)
 int n, argc;
-char *argv[];
+char *CONST argv[];
 {
 	if (dumbterm > 1) {
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
@@ -3479,7 +3485,7 @@ char *argv[];
 
 #ifdef	_NOORIGSHELL
 int execpseudoshell(command, flags)
-char *command;
+CONST char *command;
 int flags;
 {
 	char *cp, **argv;
@@ -3556,7 +3562,7 @@ int flags;
 
 #ifndef	_NOCOMPLETE
 int completebuiltin(com, len, argc, argvp)
-char *com;
+CONST char *com;
 int len, argc;
 char ***argvp;
 {
@@ -3575,7 +3581,7 @@ char ***argvp;
 }
 
 int completeinternal(com, len, argc, argvp)
-char *com;
+CONST char *com;
 int len, argc;
 char ***argvp;
 {

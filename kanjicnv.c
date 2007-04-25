@@ -27,7 +27,7 @@
 static VOID NEAR fputc2 __P_((int, FILE *));
 static VOID NEAR convert __P_((int, int, FILE *));
 static VOID NEAR output __P_((FILE *, int, int));
-int main __P_((int, char *[]));
+int main __P_((int, char *CONST []));
 
 static int msboff = 0;
 static int prefix = 0;
@@ -107,7 +107,7 @@ int c, mode;
 
 int main(argc, argv)
 int argc;
-char *argv[];
+char *CONST argv[];
 {
 	FILE *in, *out;
 	int i, j, c, mode, esc, kanji;

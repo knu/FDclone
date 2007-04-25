@@ -253,13 +253,13 @@ extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));
 #ifndef	_NOUSELFN
 extern int getdosver __P_((VOID_A));
-extern int supportLFN __P_((char *));
+extern int supportLFN __P_((CONST char *));
 #endif
 extern char *unixgetcurdir __P_((char *, int));
 #ifndef	_NOUSELFN
-extern char *shortname __P_((char *, char *));
+extern char *shortname __P_((CONST char *, char *));
 #endif
-extern char *unixrealpath __P_((char *, char *));
+extern char *unixrealpath __P_((CONST char *, char *));
 #ifndef	BSPATHDELIM
 extern char *adjustpname __P_((char *));
 #endif
@@ -267,13 +267,13 @@ extern char *adjustpname __P_((char *));
 extern char *adjustfname __P_((char *));
 #endif
 #ifndef	_NOUSELFN
-extern char *preparefile __P_((char *, char *));
+extern char *preparefile __P_((CONST char *, char *));
 # ifndef	_NODOSDRIVE
 extern int checkdrive __P_((int));
 extern int rawdiskio __P_((int, u_long, u_char *, int, int, int));
 # endif
 #endif	/* !_NOUSELFN */
-extern DIR *unixopendir __P_((char *));
+extern DIR *unixopendir __P_((CONST char *));
 extern int unixclosedir __P_((DIR *));
 extern struct dirent *unixreaddir __P_((DIR *));
 extern int unixrewinddir __P_((DIR *));
@@ -283,30 +283,30 @@ extern int unixrewinddir __P_((DIR *));
 # ifdef	DJGPP
 # define	unixmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
 # else
-extern int unixmkdir __P_((char *, int));
+extern int unixmkdir __P_((CONST char *, int));
 # endif
 #define	unixrmdir(p)		((rmdir(p)) ? -1 : 0)
 #define	unixchdir(p)		((chdir(p)) ? -1 : 0)
 #else
-extern int unixunlink __P_((char *));
-extern int unixrename __P_((char *, char *));
-extern int unixmkdir __P_((char *, int));
-extern int unixrmdir __P_((char *));
-extern int unixchdir __P_((char *));
+extern int unixunlink __P_((CONST char *));
+extern int unixrename __P_((CONST char *, CONST char *));
+extern int unixmkdir __P_((CONST char *, int));
+extern int unixrmdir __P_((CONST char *));
+extern int unixchdir __P_((CONST char *));
 #endif
 extern char *unixgetcwd __P_((char *, int));
-extern int unixstatfs __P_((char *, statfs_t *));
-extern int unixstat __P_((char *, struct stat *));
-extern int unixchmod __P_((char *, int));
+extern int unixstatfs __P_((CONST char *, statfs_t *));
+extern int unixstat __P_((CONST char *, struct stat *));
+extern int unixchmod __P_((CONST char *, int));
 #ifdef	_NOUSELFN
 #define	unixutime(p, t)		((utime(p, t)) ? -1 : 0)
 #define	unixutimes(p, t)	((utimes(p, t)) ? -1 : 0)
 #else	/* !_NOUSELFN */
 # ifdef	USEUTIME
-extern int unixutime __P_((char *, struct utimbuf *));
+extern int unixutime __P_((CONST char *, CONST struct utimbuf *));
 # else
-extern int unixutimes __P_((char *, struct timeval []));
+extern int unixutimes __P_((CONST char *, CONST struct timeval *));
 # endif
-extern int unixopen __P_((char *, int, int));
-extern FILE *unixfopen __P_((char *, char *));
+extern int unixopen __P_((CONST char *, int, int));
+extern FILE *unixfopen __P_((CONST char *, CONST char *));
 #endif	/* !_NOUSELFN */

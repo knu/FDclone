@@ -14,7 +14,7 @@
 #include <process.h>
 extern int getcurdrv __P_((VOID_A));
 # ifndef	_NOUSELFN
-extern char *preparefile __P_((char *, char *));
+extern char *preparefile __P_((CONST char *, char *));
 # endif
 #else
 #include <pwd.h>
@@ -65,34 +65,35 @@ extern int dosdrive;
 #endif	/* !L_SET */
 
 #ifndef	NOFLOCK
-static int NEAR fcntllock __P_((char *, int, int));
+static int NEAR fcntllock __P_((CONST char *, int, int));
 #endif
-static char *NEAR excllock __P_((char *, int));
+static char *NEAR excllock __P_((CONST char *, int));
 #ifdef	_NODOSDRIVE
 #define	nodoschdir	Xchdir
 #define	nodosgetwd	Xgetwd
 #define	nodosmkdir	Xmkdir
 #define	nodosrmdir	Xrmdir
 #else
-static int NEAR nodoschdir __P_((char *));
+static int NEAR nodoschdir __P_((CONST char *));
 static char *NEAR nodosgetwd __P_((char *));
-static int NEAR nodosmkdir __P_((char *, int));
-static int NEAR nodosrmdir __P_((char *));
+static int NEAR nodosmkdir __P_((CONST char *, int));
+static int NEAR nodosrmdir __P_((CONST char *));
 #endif
-static int NEAR cpfile __P_((char *, char *, struct stat *, struct stat *));
+static int NEAR cpfile __P_((CONST char *, CONST char *,
+		struct stat *, struct stat *));
 static VOID changemes __P_((VOID_A));
 static int NEAR genrand __P_((int));
-static int dounlink __P_((char *));
-static int dormdir __P_((char *));
+static int dounlink __P_((CONST char *));
+static int dormdir __P_((CONST char *));
 #ifndef	_NOWRITEFS
-static int NEAR isexist __P_((char *));
-static int NEAR realdirsiz __P_((char *, int, int, int, int));
+static int NEAR isexist __P_((CONST char *));
+static int NEAR realdirsiz __P_((CONST char *, int, int, int, int));
 static int NEAR getnamlen __P_((int, int, int, int, int));
-static int NEAR saferename __P_((char *, char *));
-static char *NEAR maketmpfile __P_((int, int, char *, char *));
+static int NEAR saferename __P_((CONST char *, CONST char *));
+static char *NEAR maketmpfile __P_((int, int, CONST char *, CONST char *));
 #if	!MSDOS
-static off_t NEAR getdirblocksize __P_((char *));
-static u_char *NEAR getentnum __P_((char *, off_t));
+static off_t NEAR getdirblocksize __P_((CONST char *));
+static u_char *NEAR getentnum __P_((CONST char *, off_t));
 #endif
 static VOID NEAR restorefile __P_((char *, char *, int));
 #endif	/* !_NOWRITEFS */
@@ -109,8 +110,9 @@ static int dosdrv = -1;
 
 
 #ifdef	_USEDOSEMU
-char *nodospath(path, file)
-char *path, *file;
+CONST char *nodospath(path, file)
+char *path;
+CONST char *file;
 {
 	if (!_dospath(file)) return(file);
 	path[0] = '.';
@@ -153,7 +155,7 @@ namelist *namep;
 	char path[MAXPATHLEN];
 #endif
 	struct stat st, lst;
-	char *cp;
+	CONST char *cp;
 
 	cp = nodospath(path, namep -> name);
 	if (Xlstat(cp, &lst) < 0 || stat2(cp, &st) < 0) return(-1);
@@ -283,7 +285,7 @@ CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
 	treelist *tp1, *tp2;
-	char *cp1, *cp2;
+	CONST char *cp1, *cp2;
 	int tmp;
 
 	tp1 = (treelist *)vp1;
@@ -316,8 +318,8 @@ CONST VOID_P vp2;
 /*ARGSUSED*/
 struct dirent *searchdir(dirp, regexp, arcregstr)
 DIR *dirp;
-reg_t *regexp;
-char *arcregstr;
+CONST reg_t *regexp;
+CONST char *arcregstr;
 {
 	struct dirent *dp;
 #ifndef	_NOARCHIVE
@@ -350,7 +352,8 @@ int underhome(buf)
 char *buf;
 {
 	static char *homedir = NULL;
-	char *cp, cwd[MAXPATHLEN];
+	CONST char *cp;
+	char cwd[MAXPATHLEN];
 	int len;
 
 #if	MSDOS
@@ -389,11 +392,11 @@ char *buf;
 }
 
 int preparedir(dir)
-char *dir;
+CONST char *dir;
 {
 	struct stat st;
 	char tmp[MAXPATHLEN];
-	char *cp;
+	CONST char *cp;
 
 	cp = dir;
 #ifdef	_USEDOSPATH
@@ -428,7 +431,7 @@ char *dir;
 
 #ifndef	NOFLOCK
 static int NEAR fcntllock(path, fd, mode)
-char *path;
+CONST char *path;
 int fd, mode;
 {
 	static int lockmode[] = {
@@ -498,7 +501,7 @@ int fd, mode;
 #endif	/* !NOFLOCK */
 
 static char *NEAR excllock(file, mode)
-char *file;
+CONST char *file;
 int mode;
 {
 #if	MSDOS
@@ -534,7 +537,6 @@ int mode;
 				locklist = NULL;
 			}
 		}
-		free(file);
 		return(NULL);
 	}
 
@@ -583,7 +585,7 @@ int mode;
 }
 
 lockbuf_t *lockopen(path, flags, mode)
-char *path;
+CONST char *path;
 int flags, mode;
 {
 	char *lckname;
@@ -627,6 +629,7 @@ int flags, mode;
 		else if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT) {
 			duperrno = errno;
 			VOID_C excllock(lckname, LCK_UNLOCK);
+			free(lckname);
 			errno = duperrno;
 			return(NULL);
 		}
@@ -643,7 +646,7 @@ int flags, mode;
 }
 
 lockbuf_t *lockfopen(path, type, flags)
-char *path, *type;
+CONST char *path, *type;
 int flags;
 {
 	lockbuf_t *lck;
@@ -667,7 +670,10 @@ VOID lockclose(lck)
 lockbuf_t *lck;
 {
 	if (lck) {
-		if (lck -> name) VOID_C excllock(lck -> name, LCK_UNLOCK);
+		if (lck -> name) {
+			VOID_C excllock(lck -> name, LCK_UNLOCK);
+			free(lck -> name);
+		}
 		if (!(lck -> flags & LCK_INVALID)) {
 #ifndef	NOFLOCK
 			if (lck -> flags & LCK_FLOCK)
@@ -682,7 +688,7 @@ lockbuf_t *lck;
 }
 
 int touchfile(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 #ifndef	_NOEXTRAATTR
@@ -792,7 +798,7 @@ struct stat *stp;
 
 #ifndef	_NODOSDRIVE
 static int NEAR nodoschdir(path)
-char *path;
+CONST char *path;
 {
 	int n, dupdosdrive;
 
@@ -819,7 +825,7 @@ char *path;
 }
 
 int nodoslstat(path, stp)
-char *path;
+CONST char *path;
 struct stat *stp;
 {
 	int n, dupdosdrive;
@@ -833,7 +839,7 @@ struct stat *stp;
 }
 
 static int NEAR nodosmkdir(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	int n, dupdosdrive;
@@ -847,7 +853,7 @@ int mode;
 }
 
 static int NEAR nodosrmdir(path)
-char *path;
+CONST char *path;
 {
 	int n, dupdosdrive;
 
@@ -863,7 +869,8 @@ char *path;
 VOID lostcwd(path)
 char *path;
 {
-	char *cp, buf[MAXPATHLEN];
+	CONST char *cp;
+	char buf[MAXPATHLEN];
 	int duperrno;
 
 	duperrno = errno;
@@ -886,7 +893,7 @@ char *path;
 
 #ifndef	NODIRLOOP
 int issamebody(src, dest)
-char *src, *dest;
+CONST char *src, *dest;
 {
 	struct stat st1, st2;
 
@@ -898,7 +905,7 @@ char *src, *dest;
 
 #ifndef	NOSYMLINK
 int cpsymlink(src, dest)
-char *src, *dest;
+CONST char *src, *dest;
 {
 	struct stat st;
 	char path[MAXPATHLEN];
@@ -920,7 +927,7 @@ char *src, *dest;
 
 /*ARGSUSED*/
 static int NEAR cpfile(src, dest, stp1, stp2)
-char *src, *dest;
+CONST char *src, *dest;
 struct stat *stp1, *stp2;
 {
 #if	MSDOS
@@ -1008,7 +1015,7 @@ static VOID changemes(VOID_A)
 }
 
 int safecpfile(src, dest, stp1, stp2)
-char *src, *dest;
+CONST char *src, *dest;
 struct stat *stp1, *stp2;
 {
 #ifndef	_NODOSDRIVE
@@ -1038,7 +1045,7 @@ struct stat *stp1, *stp2;
 }
 
 int safemvfile(src, dest, stp1, stp2)
-char *src, *dest;
+CONST char *src, *dest;
 struct stat *stp1, *stp2;
 {
 	if (Xrename(src, dest) >= 0) {
@@ -1192,7 +1199,7 @@ char *dir;
 }
 
 int rmtmpdir(dir)
-char *dir;
+CONST char *dir;
 {
 	char path[MAXPATHLEN];
 
@@ -1213,7 +1220,7 @@ char *dir;
 }
 
 int opentmpfile(path, mode)
-char *path;
+CONST char *path;
 int mode;
 {
 	char *cp;
@@ -1255,7 +1262,7 @@ char *file;
 }
 
 int rmtmpfile(file)
-char *file;
+CONST char *file;
 {
 	if ((Xunlink(file) < 0 && errno != ENOENT) || rmtmpdir(NULL) < 0)
 		return(-1);
@@ -1264,7 +1271,7 @@ char *file;
 }
 
 static int dounlink(path)
-char *path;
+CONST char *path;
 {
 	if (Xunlink(path) < 0) return(APL_ERROR);
 
@@ -1272,7 +1279,7 @@ char *path;
 }
 
 static int dormdir(path)
-char *path;
+CONST char *path;
 {
 	if (isdotdir(path)) return(APL_OK);
 	if (Xrmdir(path) < 0) return(APL_ERROR);
@@ -1281,7 +1288,8 @@ char *path;
 }
 
 VOID removetmp(dir, file)
-char *dir, *file;
+char *dir;
+CONST char *file;
 {
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
@@ -1318,7 +1326,7 @@ char *dir, *file;
 }
 
 int forcecleandir(dir, file)
-char *dir, *file;
+CONST char *dir, *file;
 {
 #if	!MSDOS
 	p_id_t pid;
@@ -1361,7 +1369,8 @@ int drive;
 }
 
 int tmpdosdupl(dir, dirp, single)
-char *dir, **dirp;
+CONST char *dir;
+char **dirp;
 int single;
 {
 	struct stat st;
@@ -1417,7 +1426,7 @@ int single;
 
 int tmpdosrestore(drive, file)
 int drive;
-char *file;
+CONST char *file;
 {
 	struct stat st;
 	char path[MAXPATHLEN];
@@ -1439,7 +1448,7 @@ char *file;
 
 #ifndef	_NOWRITEFS
 static int NEAR isexist(file)
-char *file;
+CONST char *file;
 {
 	struct stat st;
 
@@ -1449,7 +1458,7 @@ char *file;
 }
 
 static int NEAR realdirsiz(s, dos, boundary, dirsize, ofs)
-char *s;
+CONST char *s;
 int dos, boundary, dirsize, ofs;
 {
 	int i, len, lfn, dot;
@@ -1503,7 +1512,7 @@ int size, dos, boundary, dirsize, ofs;
 }
 
 static int NEAR saferename(from, to)
-char *from, *to;
+CONST char *from, *to;
 {
 #ifdef	_USEDOSEMU
 	char fpath[MAXPATHLEN], tpath[MAXPATHLEN];
@@ -1521,7 +1530,7 @@ char *from, *to;
 /*ARGSUSED*/
 static char *NEAR maketmpfile(len, dos, tmpdir, old)
 int len, dos;
-char *tmpdir, *old;
+CONST char *tmpdir, *old;
 {
 	char *fname, path[MAXPATHLEN];
 	int l, fd;
@@ -1584,7 +1593,7 @@ char *tmpdir, *old;
 
 #if	!MSDOS
 static off_t NEAR getdirblocksize(dir)
-char *dir;
+CONST char *dir;
 {
 	struct stat st;
 
@@ -1594,7 +1603,7 @@ char *dir;
 }
 
 static u_char *NEAR getentnum(dir, bsiz)
-char *dir;
+CONST char *dir;
 off_t bsiz;
 {
 	struct stat st;
@@ -1661,7 +1670,8 @@ int fs;
 	struct dirent *dp;
 	int dos, boundary, dirsize, namofs;
 	int i, top, size, len, fnamp, ent;
-	char *cp, *tmpdir, **fnamelist, path[MAXPATHLEN];
+	CONST char *cp;
+	char *tmp, *tmpdir, **fnamelist, path[MAXPATHLEN];
 
 	switch (fs) {
 #if	!MSDOS
@@ -1796,7 +1806,7 @@ int fs;
 	Xclosedir(dirp);
 
 	if (ent > 0) {
-		if (!(cp = maketmpfile(len, dos, tmpdir, tmpdir))) {
+		if (!(tmp = maketmpfile(len, dos, tmpdir, tmpdir))) {
 			warning(-1, tmpdir);
 			restorefile(tmpdir, path, fnamp);
 			freevar(fnamelist);
@@ -1804,7 +1814,7 @@ int fs;
 			return;
 		}
 		free(tmpdir);
-		tmpdir = cp;
+		tmpdir = tmp;
 		fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	}
 
@@ -1880,10 +1890,11 @@ int fs;
 	}
 #endif
 
-	if (!(cp = maketmpfile(len, dos, tmpdir, tmpdir))) warning(-1, tmpdir);
+	if (!(tmp = maketmpfile(len, dos, tmpdir, tmpdir)))
+		warning(-1, tmpdir);
 	else {
 		free(tmpdir);
-		tmpdir = cp;
+		tmpdir = tmp;
 	}
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	snprintf2(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);

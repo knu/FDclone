@@ -21,9 +21,9 @@ typedef struct _romantable {
 } romantable;
 
 extern int code2kanji __P_((char *, u_int));
-extern int searchroman __P_((char *, int));
+extern int searchroman __P_((CONST char *, int));
 extern VOID initroman __P_((VOID_A));
 extern int jis2str __P_((char *, u_int));
-extern int str2jis __P_((u_short *, int, char *));
-extern int addroman __P_((char *, char *));
+extern int str2jis __P_((u_short *, int, CONST char *));
+extern int addroman __P_((CONST char *, CONST char *));
 extern VOID freeroman __P_((int));

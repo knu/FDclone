@@ -12,7 +12,7 @@
 # define	mesconv(jpn, eng)	(eng)
 # define	meslist(jpn, eng)	eng
 # else
-extern char *mesconv __P_((char *, char *));
+extern CONST char *mesconv __P_((CONST char *, CONST char *));
 # define	meslist(jpn, eng)	jpn, eng
 # endif
 #endif

@@ -141,7 +141,7 @@ typedef struct _devino_t {
 #endif
 
 typedef struct _wild_t {
-	char *s;
+	CONST char *s;
 	strbuf_t fixed;
 	strbuf_t path;
 	int quote;
@@ -210,18 +210,18 @@ typedef struct _gidtable {
 
 #if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
 extern char *gendospath __P_((char *, int, int));
-extern char *strdelim __P_((char *, int));
-extern char *strrdelim __P_((char *, int));
+extern char *strdelim __P_((CONST char *, int));
+extern char *strrdelim __P_((CONST char *, int));
 #else
 #define	strdelim(s, d)	strchr(s, _SC_)
 #define	strrdelim(s, d)	strrchr(s, _SC_)
 #endif
-extern char *strrdelim2 __P_((char *, char *));
-extern int isdelim __P_((char *, int));
+extern char *strrdelim2 __P_((CONST char *, CONST char *));
+extern int isdelim __P_((CONST char *, int));
 extern char *strcatdelim __P_((char *));
-extern char *strcatdelim2 __P_((char *, char *, char *));
-extern int strcasecmp2 __P_((char *, char *));
-extern int strncasecmp2 __P_((char *, char *, int));
+extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
+extern int strcasecmp2 __P_((CONST char *, CONST char *));
+extern int strncasecmp2 __P_((CONST char *, CONST char *, int));
 #ifdef	PATHNOCASE
 #define	strpathcmp	strcasecmp2
 #define	strnpathcmp	strncasecmp2
@@ -230,8 +230,8 @@ extern int strncasecmp2 __P_((char *, char *, int));
 #else
 #define	strpathcmp	strcmp
 #define	strnpathcmp	strncmp
-extern int strpathcmp2 __P_((char *, char *));
-extern int strnpathcmp2 __P_((char *, char *, int));
+extern int strpathcmp2 __P_((CONST char *, CONST char *));
+extern int strnpathcmp2 __P_((CONST char *, CONST char *, int));
 #endif
 #ifdef	COMMNOCASE
 #define	strcommcmp	strcasecmp2
@@ -247,46 +247,46 @@ extern int strnpathcmp2 __P_((char *, char *, int));
 #define	strenvcmp	strcmp
 #define	strnenvcmp	strncmp
 #endif
-extern char *underpath __P_((char *, char *, int));
+extern char *underpath __P_((CONST char *, CONST char *, int));
 extern int isidentchar __P_((int));
 extern int isidentchar2 __P_((int));
-extern int isdotdir __P_((char *));
-extern char *isrootdir __P_((char *));
-extern int isrootpath __P_((char *));
+extern int isdotdir __P_((CONST char *));
+extern char *isrootdir __P_((CONST char *));
+extern int isrootpath __P_((CONST char *));
 extern VOID copyrootpath __P_((char *));
 extern VOID copycurpath __P_((char *));
 #ifdef	DOUBLESLASH
-extern int isdslash __P_((char *));
+extern int isdslash __P_((CONST char *));
 #endif
-extern char *getbasename __P_((char *));
-extern char *getshellname __P_((char *, int *, int *));
-extern reg_t *regexp_init __P_((char *, int));
-extern int regexp_exec __P_((reg_t *, char *, int));
+extern char *getbasename __P_((CONST char *));
+extern char *getshellname __P_((CONST char *, int *, int *));
+extern reg_t *regexp_init __P_((CONST char *, int));
+extern int regexp_exec __P_((CONST reg_t *, CONST char *, int));
 extern VOID regexp_free __P_((reg_t *));
 extern int cmppath __P_((CONST VOID_P, CONST VOID_P));
-extern char **evalwild __P_((char *, int));
+extern char **evalwild __P_((CONST char *, int));
 #ifndef	_NOUSEHASH
-hashlist **duplhash __P_((hashlist **));
+extern hashlist **duplhash __P_((hashlist **));
 #endif
-extern int searchhash __P_((hashlist **, char *, char *));
-extern char *searchexecpath __P_((char *, char *));
+extern int searchhash __P_((hashlist **, CONST char *, CONST char *));
+extern char *searchexecpath __P_((CONST char *, CONST char *));
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
-extern char *finddupl __P_((char *, int, char **));
+extern char *finddupl __P_((CONST char *, int, char *CONST *));
 # ifndef	NOUID
-extern int completeuser __P_((char *, int, int, char ***, int));
-extern int completegroup __P_((char *, int, int, char ***));
+extern int completeuser __P_((CONST char *, int, int, char ***, int));
+extern int completegroup __P_((CONST char *, int, int, char ***));
 # endif
-extern int completepath __P_((char *, int, int, char ***, int));
-extern char *findcommon __P_((int, char **));
+extern int completepath __P_((CONST char *, int, int, char ***, int));
+extern char *findcommon __P_((int, char *CONST *));
 #endif	/* !FDSH && !_NOCOMPLETE */
-extern char *catvar __P_((char *[], int));
-extern int countvar __P_((char **));
+extern char *catvar __P_((char *CONST *, int));
+extern int countvar __P_((char *CONST *));
 extern VOID freevar __P_((char **));
-extern char **duplvar __P_((char **, int));
-extern int parsechar __P_((char *, int, int, int, int *, int *));
+extern char **duplvar __P_((char *CONST *, int));
+extern int parsechar __P_((CONST char *, int, int, int, int *, int *));
 #if	defined (FD) && !defined (NOUID)
-extern uidtable *finduid __P_((uid_t, char *));
-extern gidtable *findgid __P_((gid_t, char *));
+extern uidtable *finduid __P_((uid_t, CONST char *));
+extern gidtable *findgid __P_((gid_t, CONST char *));
 extern int isgroupmember __P_((gid_t));
 # ifdef	DEBUG
 extern VOID freeidlist __P_((VOID_A));
@@ -294,34 +294,34 @@ extern VOID freeidlist __P_((VOID_A));
 #endif	/* FD && !NOUID */
 extern char *gethomedir __P_((VOID_A));
 #ifndef	MINIMUMSHELL
-extern int evalhome __P_((char **, int, char **));
+extern int evalhome __P_((char **, int, CONST char **));
 #endif
 extern char *evalarg __P_((char *, int, int));
-extern int evalifs __P_((int, char ***, char *));
+extern int evalifs __P_((int, char ***, CONST char *));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *, int));
-extern char *_evalpath __P_((char *, char *, int));
+extern char *_evalpath __P_((CONST char *, CONST char *, int));
 extern char *evalpath __P_((char *, int));
 
-extern char nullstr[];
-extern char rootpath[];
-extern char curpath[];
-extern char parentpath[];
+extern CONST char nullstr[];
+extern CONST char rootpath[];
+extern CONST char curpath[];
+extern CONST char parentpath[];
 extern char **argvar;
 #ifndef	_NOUSEHASH
 extern hashlist **hashtable;
 #endif
-extern char *(*getvarfunc)__P_((char *, int));
+extern char *(*getvarfunc)__P_((CONST char *, int));
 extern int (*putvarfunc)__P_((char *, int));
 extern int (*getretvalfunc)__P_((VOID_A));
 extern p_id_t (*getpidfunc)__P_((VOID_A));
 extern p_id_t (*getlastpidfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));
-extern int (*checkundeffunc)__P_((char *, char *, int));
+extern int (*checkundeffunc)__P_((CONST char *, CONST char *, int));
 extern VOID (*exitfunc)__P_((VOID_A));
-extern char *(*backquotefunc)__P_((char *));
+extern char *(*backquotefunc)__P_((CONST char *));
 #ifndef	MINIMUMSHELL
-extern char *(*posixsubstfunc)__P_((char *, int *));
+extern char *(*posixsubstfunc)__P_((CONST char *, int *));
 #endif
 #ifndef	PATHNOCASE
 extern int pathignorecase;
