@@ -84,9 +84,9 @@ static char *form_tar[] = {
 #endif	/* !MSDOS */
 	NULL
 };
-#define	PM_LHA	form_lha, ign_lha, 0, 0
-#define	PM_TAR	form_tar, NULL, 0, 0
-#define	PM_NULL	NULL, NULL, 0, 0
+#define	PM_LHA	form_lha, ign_lha, NULL, 0, 0
+#define	PM_TAR	form_tar, NULL, NULL, 0, 0
+#define	PM_NULL	NULL, NULL, NULL, 0, 0
 #define	LINESEP	'\n'
 #define	MAXSCORE	256
 #define	isarchbr(l)	((l) -> format)
@@ -157,11 +157,7 @@ static VOID NEAR pushbrowsevar __P_((CONST char *));
 static VOID NEAR popbrowsevar __P_((VOID_A));
 #endif
 static VOID NEAR pusharchdupl __P_((VOID_A));
-#ifdef	_NOBROWSE
-#define	poparchdupl	escapearch
-#else
 static VOID NEAR poparchdupl __P_((VOID_A));
-#endif
 static int NEAR readattr __P_((namelist *, CONST char *));
 #if	FD >= 2
 static char *NEAR checkspace __P_((CONST char *, int *));
@@ -386,15 +382,15 @@ static VOID NEAR pusharchdupl(VOID_A)
 }
 
 VOID escapearch(VOID_A)
-#ifndef	_NOBROWSE
 {
+#ifndef	_NOBROWSE
 	if (!archduplp) return;
 	if (browselist) popbrowsevar();
+#endif
 	poparchdupl();
 }
 
 static VOID NEAR poparchdupl(VOID_A)
-#endif	/* !_NOBROWSE */
 {
 #ifndef	_NODOSDRIVE
 	int drive;
@@ -2265,13 +2261,12 @@ CONST char *file, *full, *tmpdir;
 	CONST char *cp;
 
 	cp = file;
-#ifdef	_USEDOSPATH
-# if	MSDOS
+#if	MSDOS
 	if ((drive = _dospath(cp))) cp += 2;
-# else
+#endif
+#ifdef	_USEDOSEMU
 	if (_dospath(cp)) cp += 2;
-# endif
-#endif	/* _USEDOSPATH */
+#endif
 
 #ifndef	_NODOSDRIVE
 	if (tmpdir) strcpy(path, tmpdir);
@@ -2439,9 +2434,6 @@ CONST char *arc, *dir, *arg;
 int tr, flags;
 {
 #ifndef	_NODOSDRIVE
-# ifndef	_NOTREE
-	int dd;
-# endif
 	winvartable *wvp;
 	namelist alist[1], *dupfilelist;
 	char *full, *dest, *tmpdest;
@@ -2475,14 +2467,7 @@ int tr, flags;
 	if (dir) strcpy(path, dir);
 	else for (;;) {
 #ifndef	_NOTREE
-		if (tr) {
-# ifdef	_NODOSDRIVE
-			dir = new = tree(0, (int *)1);
-# else
-			dir = new = tree(0, &dd);
-			if (dd >= 0) shutdrv(dd);
-# endif
-		}
+		if (tr) dir = new = tree(0, NULL);
 		else
 #endif	/* !_NOTREE */
 		{

@@ -1161,7 +1161,7 @@ CONST char *def;
 	if (prompt) promptstr = prompt;
 	cp = inputstr(NULL, 0, ptr, def, HST_COM);
 	promptstr = duppromptstr;
-	if (!cp) return((char *)-1);
+	if (!cp) return((char *)nullstr);
 
 	if ((wastty = isttyiomode)) Xstdiomode();
 	tmp = evalhistory(cp);
@@ -1187,7 +1187,7 @@ CONST char *def;
 	char *cp;
 
 	cp = inputshellstr(NULL, ptr, def);
-	if (cp == (char *)-1) return(NULL);
+	if (cp == (char *)nullstr) return(NULL);
 	else if (!cp) {
 		hideclock = 1;
 		warning(0, HITKY_K);
@@ -1211,7 +1211,7 @@ CONST char *def;
 		lcmdline = -1;
 		hideclock = 1;
 		cp = inputshellstr(promptstr2, -1, NULL);
-		if (cp == (char *)-1) break;
+		if (cp == (char *)nullstr) break;
 		else if (!cp) continue;
 
 		l = strlen(cp);
@@ -1406,11 +1406,12 @@ int flags;
 		return(-1);
 	}
 	st.flags |= F_ARGSET;
-	while (st.addopt >= 0 && !(st.flags & F_NOADDOPT))
+	while (st.addopt >= 0 && !(st.flags & F_NOADDOPT)) {
 		if (!(tmp = addoption(tmp, duparg, &st))) {
 			if (arg) duparg = NULL;
 			return(-1);
 		}
+	}
 
 #ifdef	_NOEXTRAMACRO
 	status = internal_status;
@@ -1636,7 +1637,7 @@ int uniq;
 
 	if (history[n][size]) free(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
-	history[n][0] = new;
+	*(history[n]) = new;
 #ifndef	_NOPTY
 	sendparent(TE_SETHISTORY, n, s, uniq);
 #endif
@@ -1653,7 +1654,7 @@ int n;
 	size = (int)histsize[n];
 	if (!history[n] || size > histbufsize[n] || size <= 0) return(NULL);
 	if (--histno[n] < (short)0) histno[n] = MAXHISTNO;
-	tmp = history[n][0];
+	tmp = *(history[n]);
 	for (i = 0; i < size; i++) history[n][i] = history[n][i + 1];
 	history[n][size--] = NULL;
 
@@ -1667,7 +1668,7 @@ int n;
 	char *line;
 	int i, j, size;
 
-	if (!histfile[n] || !histfile[n][0]) return(0);
+	if (!histfile[n] || !*(histfile[n])) return(0);
 	lck = lockfopen(histfile[n], "r", O_TEXT | O_RDONLY);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
@@ -1685,7 +1686,7 @@ int n;
 		if (i < size) i++;
 		else free(history[n][i]);
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
-		history[n][0] = line;
+		*(history[n]) = line;
 	}
 	lockclose(lck);
 
@@ -1717,8 +1718,8 @@ int n;
 	lockbuf_t *lck;
 	int i, size;
 
-	if (!histfile[n] || !histfile[n][0] || savehist[n] <= 0) return(0);
-	if (!history[n] || !history[n][0]) return(-1);
+	if (!histfile[n] || !*(histfile[n]) || savehist[n] <= 0) return(0);
+	if (!history[n] || !*(history[n])) return(-1);
 	lck = lockfopen(histfile[n], "w",
 		O_TEXT | O_WRONLY | O_CREAT | O_TRUNC);
 	if (!lck || !(lck -> fp)) {
@@ -1839,7 +1840,7 @@ int n;
 {
 	int i;
 
-	if (!history[n] || !history[n][0]) return;
+	if (!history[n] || !*(history[n])) return;
 	for (i = 0; i <= histbufsize[n]; i++)
 		if (history[n][i]) free(history[n][i]);
 	free(history[n]);

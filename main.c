@@ -13,12 +13,6 @@
 #include <process.h>
 # ifndef	DJGPP
 # include <dos.h>
-#  ifdef	__TURBOC__
-extern u_int _stklen = 0x5800;
-#  define	harderr_t	void
-#  else
-#  define	harderr_t	int
-#  endif
 # endif
 #endif	/* !MSDOS */
 
@@ -34,6 +28,13 @@ extern u_int _stklen = 0x5800;
 
 #if	!defined (_NOIME) && defined (DEBUG)
 #include "roman.h"
+#endif
+
+#ifdef	__TURBOC__
+extern u_int _stklen = 0x5800;
+#define	harderr_t	void
+#else
+#define	harderr_t	int
 #endif
 
 #ifndef	DATADIR
@@ -169,7 +170,7 @@ static VOID NEAR endlog __P_((int));
 #ifdef	_NOORIGSHELL
 static int NEAR execruncomline __P_((char *, CONST char *, int, CONST char *));
 #endif
-static int NEAR initoption __P_((int, char *CONST [], char *CONST []));
+static int NEAR initoption __P_((int, char *CONST []));
 static int NEAR evaloption __P_((char *CONST []));
 static char *NEAR searchenv __P_((CONST char *, char *CONST []));
 static VOID NEAR setexecname __P_((CONST char *));
@@ -233,9 +234,14 @@ u_short far *devhdr;
 VOID error(s)
 CONST char *s;
 {
+	static int doing = 0;
 	int duperrno;
 
+	if (doing == 1) exit2(2);
+	if (doing == 2) exit(2);
 	duperrno = errno;
+	doing = 1;
+
 	sigvecset(0);
 	if (isorgpid()) {
 		forcecleandir(deftmpdir, tmpfilename);
@@ -255,6 +261,7 @@ CONST char *s;
 		fputnl(stderr);
 	}
 	fclose(stderr);
+	doing = 2;
 
 	if (isorgpid()) {
 		inittty(1);
@@ -951,18 +958,19 @@ CONST char *file;
 int exist;
 {
 #ifdef	_NOORIGSHELL
+# if	!MSDOS
+	struct stat st;
+# endif
 	FILE *fp;
 	char *cp, *tmp, *fold, *line;
 	int cont;
-#endif
+#endif	/* _NOORIGSHELL */
 	int n, er;
 
 #ifdef	_NOORIGSHELL
 # if	!MSDOS
 	tmp = NULL;
 	if (!exist && (tmp = getconstvar(ENVTERM))) {
-		struct stat st;
-
 		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
 		strcpy(strcpy2(strcpy2(cp, file), "."), tmp);
 		tmp = evalpath(cp, 0);
@@ -1035,10 +1043,9 @@ int exist;
 	return(er ? -1 : 0);
 }
 
-/*ARGSUSED*/
-static int NEAR initoption(argc, argv, envp)
+static int NEAR initoption(argc, argv)
 int argc;
-char *CONST argv[], *CONST envp[];
+char *CONST argv[];
 {
 	char *cp, **optv;
 	int i, optc;
@@ -1068,7 +1075,7 @@ char *CONST argv[], *CONST envp[];
 
 #ifndef	_NOORIGSHELL
 	if (initshell(optc, optv) < 0) Xexit2(RET_FAIL);
-#endif	/* !_NOORIGSHELL */
+#endif
 	free(optv);
 
 	return(argc);
@@ -1388,7 +1395,7 @@ char *CONST argv[], *CONST envp[];
 		fdtype[i].offset = 0;
 # endif
 	}
-#endif
+#endif	/* _USEDOSEMU */
 
 #ifdef	_NOORIGSHELL
 	for (i = 0; envp[i]; i++);
@@ -1408,7 +1415,7 @@ char *CONST argv[], *CONST envp[];
 #ifdef	_NOORIGSHELL
 	inittty(0);
 	getterment(NULL);
-	argc = initoption(argc, argv, envp);
+	argc = initoption(argc, argv);
 	adjustpath();
 #else	/* !_NOORIGSHELL */
 	cp = getshellname(progname, NULL, NULL);
@@ -1419,13 +1426,10 @@ char *CONST argv[], *CONST envp[];
 # endif
 		Xexit2(i);
 	}
-#ifndef	_NOORIGSHELL
-	interactive =
-#endif
-	fdmode = 1;
+	interactive = fdmode = 1;
 	setshellvar(envp);
 	prepareterm();
-	argc = initoption(argc, argv, envp);
+	argc = initoption(argc, argv);
 	if (dumbterm > 1) {
 		errno = 0;
 		error(NTERM_K);

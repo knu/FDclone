@@ -13,10 +13,6 @@
 #include "termemu.h"
 #endif
 
-#if	MSDOS
-extern int setcurdrv __P_((int, int));
-#endif
-
 #ifdef	USEMKDEVH
 #include <sys/mkdev.h>
 #else
@@ -55,6 +51,10 @@ extern int setcurdrv __P_((int, int));
 #define	CL_EXE		10
 #define	ANSI_FG		8
 #define	ANSI_BG		9
+
+#if	MSDOS
+extern int setcurdrv __P_((int, int));
+#endif
 
 extern bindtable bindlist[];
 extern CONST functable funclist[];
@@ -1293,15 +1293,11 @@ int n;
 		} while (browselist);
 #  endif
 	}
-	if (winvar[win].v_archivedir) {
-		free(winvar[win].v_archivedir);
-		winvar[win].v_archivedir = NULL;
-	}
+	if (winvar[win].v_archivedir) free(winvar[win].v_archivedir);
+	winvar[win].v_archivedir = NULL;
 # endif	/* !_NOARCHIVE */
-	if (winvar[win].v_fullpath) {
-		free(winvar[win].v_fullpath);
-		winvar[win].v_fullpath = NULL;
-	}
+	if (winvar[win].v_fullpath) free(winvar[win].v_fullpath);
+	winvar[win].v_fullpath = NULL;
 	if (filelist) {
 		for (i = 0; i < maxfile; i++)
 			if (filelist[i].name) free(filelist[i].name);
@@ -1309,10 +1305,8 @@ int n;
 		filelist = NULL;
 	}
 	maxfile = maxent = filepos = sorton = dispmode = 0;
-	if (findpattern) {
-		free(findpattern);
-		findpattern = NULL;
-	}
+	if (findpattern) free(findpattern);
+	findpattern = NULL;
 # ifndef	_NOPTY
 	killpty(win, NULL);
 # endif
@@ -1853,10 +1847,11 @@ CONST char *def;
 		strcpy(file, cp);
 	}
 
-	i = (maxfile || !ischgdir(&(filelist[0]))) ? maxfile : 1;
 #ifndef	_NOARCHIVE
-	if (!archivefile)
+	if (archivefile) i = 0;
+	else
 #endif
+	i = (maxfile || !ischgdir(&(filelist[0]))) ? maxfile : 1;
 	while (i-- > 0) {
 		free(filelist[i].name);
 		filelist[i].name = NULL;

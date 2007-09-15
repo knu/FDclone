@@ -1,7 +1,7 @@
 /*
  *	hinsi.h
  *
- *	definition file for Hinsi grammar
+ *	definitions for Hinsi grammar
  */
 
 #define	HN_MIN		0

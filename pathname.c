@@ -92,17 +92,29 @@ extern char *strncpy2 __P_((char *, CONST char *, int));
 # ifdef	_USEDOSPATH
 extern int _dospath __P_((CONST char *));
 # endif
+# if	MSDOS
+extern int dospath3 __P_((CONST char *));
+# else
+extern int dospath __P_((CONST char *, char *));
+#define	dospath3(path)	dospath(path, NULL)
+# endif
 extern DIR *Xopendir __P_((CONST char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));
 extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((CONST char *, struct stat *));
 extern int stat2 __P_((CONST char *, struct stat *));
+extern int _chdir2 __P_((CONST char *));
 extern int Xaccess __P_((CONST char *, int));
+# ifndef	_NODOSDRIVE
+extern int preparedrv __P_((int, int *));
+extern VOID shutdrv __P_((int));
+# endif
 # if	MSDOS && !defined (_NOUSELFN)
 extern char *shortname __P_((CONST char *, char *));
 # endif
 extern VOID demacroarg __P_((char **));
+extern VOID lostcwd __P_((char *));
 extern char *progpath;
 #else	/* !FD */
 #define	getenv2		(char *)getenv
@@ -117,6 +129,7 @@ char *strcpy2 __P_((char *, CONST char *));
 char *strncpy2 __P_((char *, CONST char *, int));
 # if	MSDOS
 int _dospath __P_((CONST char *));
+extern int chdir2 __P_((CONST char *));
 DIR *Xopendir __P_((CONST char *));
 int Xclosedir __P_((DIR *));
 struct dirent *Xreaddir __P_((DIR *));
@@ -127,6 +140,7 @@ int Xstat __P_((CONST char *, struct stat *));
 #  define	Xlstat		Xstat
 #  endif
 # else	/* !MSDOS */
+# define	chdir2(p)	((chdir(p)) ? -1 : 0)
 # define	Xopendir	opendir
 # define	Xclosedir	closedir
 # define	Xreaddir	readdir
@@ -135,6 +149,7 @@ int Xstat __P_((CONST char *, struct stat *));
 #  define	Xlstat(p, s)	((lstat(p, s)) ? -1 : 0)
 #  endif
 # endif	/* !MSDOS */
+# define	_chdir2		chdir2
 # ifdef	NOSYMLINK
 # define	stat2		Xstat
 # else
@@ -589,10 +604,11 @@ int d;
 }
 #endif	/* MSDOS || (FD && !_NODOSDRIVE) */
 
+#ifdef	FD
 char *strrdelim2(s, eol)
 CONST char *s, *eol;
 {
-#ifdef	BSPATHDELIM
+# ifdef	BSPATHDELIM
 	CONST char *cp;
 	int i;
 
@@ -603,12 +619,13 @@ CONST char *s, *eol;
 	}
 
 	return((char *)cp);
-#else
+# else
 	for (eol--; eol >= s; eol--) if (*eol == _SC_) return((char *)eol);
 
 	return(NULL);
-#endif
+# endif
 }
+#endif	/* FD */
 
 int isdelim(s, ptr)
 CONST char *s;
@@ -702,6 +719,10 @@ CONST char *s1, *s2;
 	else {
 		cp = NULL;
 		for (; s1[i]; i++) {
+			if (i >= MAXPATHLEN - 1) {
+				buf[i] = '\0';
+				return(&(buf[i]));
+			}
 			buf[i] = s1[i];
 			if (s1[i] == _SC_) {
 				if (!cp) cp = &(buf[i]) + 1;
@@ -802,6 +823,7 @@ int n;
 }
 #endif	/* !PATHNOCASE */
 
+#ifdef	FD
 char *underpath(path, dir, len)
 CONST char *path, *dir;
 int len;
@@ -815,6 +837,7 @@ int len;
 
 	return((char *)&(path[len]));
 }
+#endif	/* FD */
 
 static char *NEAR getenvvar(ident, len)
 CONST char *ident;
@@ -2033,6 +2056,7 @@ CONST char *com, *search;
 	return(CM_NOTFOUND);
 }
 
+#ifdef	FD
 char *searchexecpath(path, search)
 CONST char *path, *search;
 {
@@ -2041,12 +2065,13 @@ CONST char *path, *search;
 
 	if ((type = searchhash(&hp, path, search)) & CM_NOTFOUND) return(NULL);
 	if (type & CM_FULLPATH) return(strdup2(path));
-#ifdef	_NOUSEHASH
+# ifdef	_NOUSEHASH
 	return((char *)hp);
-#else
+# else
 	return(strdup2(hp -> path));
-#endif
+# endif
 }
+#endif	/* FD */
 
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 char *finddupl(target, argc, argv)
@@ -2296,14 +2321,12 @@ int exe;
 	CONST char *dir, *file;
 	int dlen;
 
-	dir = path;
-	dlen = 0;
 # if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
-	if (_dospath(path)) {
-		dir += 2;
-		dlen = 2;
-	}
+	if (_dospath(path)) dlen = 2;
+	else
 # endif
+	dlen = 0;
+	dir = &(path[dlen]);
 
 	if ((file = strrdelim(dir, 0))) {
 		if (file == dir) {
@@ -3172,7 +3195,9 @@ CONST char *name;
 	gidlist = b_realloc(gidlist, maxgid, gidtable);
 	gidlist[maxgid].gid = grp -> gr_gid;
 	gidlist[maxgid].name = strdup2(grp -> gr_name);
+# ifndef	USEGETGROUPS
 	gidlist[maxgid].gr_mem = duplvar(grp -> gr_mem, -1);
+# endif
 	gidlist[maxgid].ismem = 0;
 
 	return(&(gidlist[maxgid++]));
@@ -3181,13 +3206,29 @@ CONST char *name;
 int isgroupmember(gid)
 gid_t gid;
 {
+# ifdef	USEGETGROUPS
+	gid_t *gidset;
+	int n;
+# else
 	uidtable *up;
+# endif
 	gidtable *gp;
 	int i;
 
 	if (!(gp = findgid(gid, NULL))) return(0);
 	if (!(gp -> ismem)) {
 		gp -> ismem++;
+# ifdef	USEGETGROUPS
+		if ((n = getgroups(0, NULL)) > 0) {
+			gidset = (gid_t *)malloc2(n * sizeof(*gidset));
+			n = getgroups(n, gidset);
+			for (i = 0; i < n; i++) if (gidset[i] == gp -> gid) {
+				gp -> ismem++;
+				break;
+			}
+			free(gidset);
+		}
+# else	/* !USEGETGROUPS */
 		if (gp -> gr_mem && (up = finduid(geteuid(), NULL)))
 		for (i = 0; gp -> gr_mem[i]; i++) {
 			if (!strpathcmp(up -> name, gp -> gr_mem[i])) {
@@ -3197,6 +3238,7 @@ gid_t gid;
 		}
 		freevar(gp -> gr_mem);
 		gp -> gr_mem = NULL;
+# endif	/* !USEGETGROUPS */
 	}
 
 	return(gp -> ismem - 1);
@@ -3217,7 +3259,9 @@ VOID freeidlist(VOID_A)
 	if (gidlist) {
 		for (i = 0; i < maxgid; i++) {
 			free(gidlist[i].name);
+#  ifndef	USEGETGROUPS
 			freevar(gidlist[i].gr_mem);
+#  endif
 		}
 		free(gidlist);
 	}
@@ -3281,6 +3325,41 @@ char *gethomedir(VOID_A)
 #endif	/* !NOUID */
 
 	return(NULL);
+}
+
+CONST char *getrealpath(path, resolved, cwd)
+CONST char *path;
+char *resolved, *cwd;
+{
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	int drv;
+#endif
+	CONST char *err;
+	char buf[MAXPATHLEN];
+
+	if (cwd) /*EMPTY*/;
+	else if (!Xgetwd(buf)) return(NULL);
+	else cwd = buf;
+
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	if (preparedrv(dospath3(cwd), &drv) < 0) return(cwd);
+#endif
+	if (_chdir2(path) < 0) err = path;
+	else if (!Xgetwd(resolved)) err = NULL;
+	else if (_chdir2(cwd) < 0) {
+#ifdef	FD
+		lostcwd(NULL);
+		err = resolved;
+#else
+		err = cwd;
+#endif
+	}
+	else err = resolved;
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	shutdrv(drv);
+#endif
+
+	return(err);
 }
 
 #ifndef	MINIMUMSHELL

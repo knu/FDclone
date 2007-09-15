@@ -138,20 +138,20 @@ char *CONST argv[];
 				break;
 		}
 	}
-	if (i >= argc) {
+	if (i >= argc || i + 2 < argc) {
 		fprintf(stderr,
-			"\007Usage: kanjicnv [-7bces] <infile> [<outfile>]\n");
+			"Usage: kanjicnv [-7bces] <infile> [<outfile>]\n");
 		return(1);
 	}
 
 	if (!strcmp(argv[i], "-")) in = stdin;
 	else if (!(in = fopen(argv[i], "r"))) {
-		fprintf(stderr, "\007%s: cannot open.\n", argv[i]);
+		fprintf(stderr, "%s: cannot open.\n", argv[i]);
 		return(1);
 	}
 	if (i + 1 >= argc) out = stdout;
 	else if (!(out = fopen(argv[i + 1], "w"))) {
-		fprintf(stderr, "\007%s: cannot open.\n", argv[i + 1]);
+		fprintf(stderr, "%s: cannot open.\n", argv[i + 1]);
 		fclose(in);
 		return(1);
 	}

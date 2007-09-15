@@ -1,7 +1,7 @@
 /*
  *	unixdisk.h
  *
- *	type definitions for "unixdisk.c"
+ *	definitions & function prototype declarations for "unixdisk.c"
  */
 
 #include <stdlib.h>
@@ -16,6 +16,9 @@
 #include <sys/stat.h>
 #endif
 
+#include "termio.h"
+#include "unixemu.h"
+
 #ifndef	USEUTIME
 #include <sys/time.h>
 #endif
@@ -27,9 +30,6 @@
 #define	NOP	0x90
 #define	RETF	0xcb
 #endif
-
-#include "termio.h"
-#include "unixemu.h"
 
 #define	DATETIMEFORMAT	1
 #define	DS_IRDONLY	001

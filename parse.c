@@ -476,9 +476,9 @@ CONST char *path, *delim;
 			cp = new;
 			len = strlen(cp);
 		}
-#ifdef	FAKEUNINIT
+# ifdef	FAKEUNINIT
 		else new = NULL;	/* fake for -Wuninitialized */
-#endif
+# endif
 
 		epath = realloc2(epath, size + len + i + 1);
 		if (len) {
@@ -718,7 +718,7 @@ CONST char *prompt;
 				*line = (getuid()) ? '$' : '#';
 				line[1] = '\0';
 				break;
-#endif
+#endif	/* !MSDOS */
 			case 'w':
 				if (!physical_path || !Xgetwd(line))
 					cp = fullpath;

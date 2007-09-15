@@ -1,7 +1,7 @@
 /*
  *	termemu.h
  *
- *	type definitions for "termemu.c"
+ *	definitions for "termemu.c"
  */
 
 typedef struct _ptyinfo_t {

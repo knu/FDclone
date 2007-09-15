@@ -26,12 +26,14 @@
 # define	SCRWIDTH	0x4a
 # endif
 # ifdef	DJGPP
+# define	__term_regs	__dpmi_regs
 # define	intdos2(rp)	__dpmi_int(0x21, rp)
 # define	getkeybuf(o)	_farpeekw(_dos_ds, KEYBUFWORKSEG * 0x10 + o)
 # define	putkeybuf(o, n)	_farpokew(_dos_ds, KEYBUFWORKSEG * 0x10 + o, n)
 # define	intbios(v, rp)	__dpmi_int(v, rp)
 # define	getbiosbyte(o)	_farpeekb(_dos_ds, BIOSSEG * 0x10 + o)
 # else	/* !DJGPP */
+typedef union REGS	__term_regs;
 # define	intdos2(rp)	int86(0x21, rp, rp)
 # define	getkeybuf(o)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)))
 # define	putkeybuf(o, n)	(*((u_short far *)MK_FP(KEYBUFWORKSEG, o)) = n)
@@ -825,7 +827,7 @@ int notabs(VOID_A)
 
 int keyflush(VOID_A)
 {
-	__dpmi_regs reg;
+	__term_regs reg;
 
 	disable();
 	reg.x.ax = 0x0c00;
@@ -1311,7 +1313,7 @@ int *yp, *xp;
 int getxy(xp, yp)
 int *xp, *yp;
 {
-	__dpmi_regs reg;
+	__term_regs reg;
 
 	reg.x.ax = 0x0300;
 	reg.h.bh = getbiosbyte(CURRPAGE);
@@ -2251,7 +2253,7 @@ int n;
 static int NEAR bioslocate(x, y)
 int x, y;
 {
-	__dpmi_regs reg;
+	__term_regs reg;
 
 	reg.x.ax = 0x0200;
 	reg.h.bh = getbiosbyte(CURRPAGE);
@@ -2265,7 +2267,7 @@ int x, y;
 static int NEAR biosscroll(d, sx, sy, ex, ey)
 int d, sx, sy, ex, ey;
 {
-	__dpmi_regs reg;
+	__term_regs reg;
 
 	if (sx > ex || sy > ey) return(0);
 	if (d >= 0) {
@@ -2289,7 +2291,7 @@ int d, sx, sy, ex, ey;
 static int NEAR biosputch(c, n)
 int c, n;
 {
-	__dpmi_regs reg;
+	__term_regs reg;
 
 	reg.h.ah = 0x09;
 	reg.h.al = (c & 0xff);
@@ -2304,7 +2306,7 @@ int c, n;
 static int NEAR bioscurstype(n)
 int n;
 {
-	__dpmi_regs reg;
+	__term_regs reg;
 
 	reg.x.ax = 0x0300;
 	reg.h.bh = getbiosbyte(CURRPAGE);
@@ -2633,14 +2635,14 @@ CONST char *s;
 int kbhit2(usec)
 long usec;
 {
-#if	defined (NOTUSEBIOS) || !defined (DJGPP) || (DJGPP < 2)
+#if	defined (NOTUSEBIOS) || defined (NOSELECT)
 	union REGS reg;
-#else	/* !NOTUSEBIOS && DJGPP && DJGPP >= 2 */
+#else	/* !NOTUSEBIOS && !NOSELECT */
 # ifndef	PC98
 	struct timeval tv;
 	int n;
 # endif
-#endif	/* !NOTUSEBIOS && DJGPP && DJGPP >= 2 */
+#endif	/* !NOTUSEBIOS && !NOSELECT */
 
 	if (ungetnum > 0) return(1);
 #ifdef	NOTUSEBIOS
@@ -2660,18 +2662,18 @@ long usec;
 
 	return(reg.h.bh != 0);
 # else	/* !PC98 */
-#  if	defined (DJGPP) && (DJGPP >= 2)
+#  ifdef	NOSELECT
+	reg.h.ah = 0x01;
+	int86(0x16, &reg, &reg);
+
+	return((reg.x.flags & 0x40) ? 0 : 1);
+#  else	/* !NOSELECT */
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
 	if ((n = readselect(1, &ttyio, NULL, &tv)) < 0) err2("select()");
 
 	return(n);
-#  else	/* !DJGPP || DJGPP < 2 */
-	reg.h.ah = 0x01;
-	int86(0x16, &reg, &reg);
-
-	return((reg.x.flags & 0x40) ? 0 : 1);
-#  endif	/* !DJGPP || DJGPP < 2 */
+#  endif	/* !NOSELECT */
 # endif	/* !PC98 */
 #endif	/* !NOTUSEBIOS */
 }
@@ -2780,7 +2782,7 @@ int sig, code;
 #if	defined (DJGPP) && !defined (NOTUSEBIOS) && !defined (PC98)
 	do {
 		i = kbhit2(1000000L / SENSEPERSEC);
-# if	defined (DJGPP) && (DJGPP >= 2)
+# ifndef	NOSELECT
 		if (sig && !(--count)) {
 			count = SENSEPERSEC;
 			raise(sig);
@@ -2814,8 +2816,7 @@ int sig, code;
 		default:
 			break;
 	}
-#if	defined (PC98) || defined (NOTUSEBIOS) \
-|| (defined (DJGPP) && (DJGPP >= 2))
+#if	defined (PC98) || defined (NOTUSEBIOS) || !defined (NOSELECT)
 	else if (!kbhit2(WAITKEYPAD * 1000L)) /*EMPTY*/;
 #endif
 	else if ((ch = getch2()) == EOF) ch = K_NOKEY;

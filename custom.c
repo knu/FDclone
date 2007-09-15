@@ -366,7 +366,7 @@ static int NEAR checkdosdrive __P_((char *, char *,
 static int NEAR dispsave __P_((int));
 # ifndef	_NOORIGSHELL
 static int NEAR overwriteconfig __P_((int *, CONST char *));
-# endif	/* !_NOORIGSHELL */
+# endif
 static int NEAR editsave __P_((int));
 static VOID NEAR dispname __P_((int, int, int));
 static VOID NEAR dispcust __P_((VOID_A));
@@ -1387,7 +1387,7 @@ FILE *fp;
 	for (i = 0; i < argc; i++) fprintf2(fp, " %s", argv[i]);
 	fputnl(fp);
 }
-# endif	/* _NOORIGSHELL */
+# endif	/* !_NOORIGSHELL */
 
 static char *NEAR int2str(buf, n)
 char *buf;
@@ -3623,7 +3623,7 @@ FILE *fp;
 
 	return(1);
 }
-#  endif	/* _NOORIGSHELL */
+#  endif	/* !_NOORIGSHELL */
 # endif	/* !_NOARCHIVE */
 
 # ifdef	_USEDOSEMU
@@ -3991,7 +3991,7 @@ FILE *fp;
 
 	return(1);
 }
-#  endif	/* _NOORIGSHELL */
+#  endif	/* !_NOORIGSHELL */
 # endif	/* _USEDOSEMU */
 
 static int NEAR dispsave(no)

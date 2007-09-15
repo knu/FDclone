@@ -23,33 +23,15 @@
 #endif
 
 #ifdef	NOFILEMODE
-# ifdef	S_IRUSR
-# undef	S_IRUSR
-# endif
-# ifdef	S_IWUSR
-# undef	S_IWUSR
-# endif
-# ifdef	S_IXUSR
-# undef	S_IXUSR
-# endif
-# ifdef	S_IRGRP
-# undef	S_IRGRP
-# endif
-# ifdef	S_IWGRP
-# undef	S_IWGRP
-# endif
-# ifdef	S_IXGRP
-# undef	S_IXGRP
-# endif
-# ifdef	S_IROTH
-# undef	S_IROTH
-# endif
-# ifdef	S_IWOTH
-# undef	S_IWOTH
-# endif
-# ifdef	S_IXOTH
-# undef	S_IXOTH
-# endif
+#undef	S_IRUSR
+#undef	S_IWUSR
+#undef	S_IXUSR
+#undef	S_IRGRP
+#undef	S_IWGRP
+#undef	S_IXGRP
+#undef	S_IROTH
+#undef	S_IWOTH
+#undef	S_IXOTH
 #define	S_IRUSR	00400
 #define	S_IWUSR	00200
 #define	S_IXUSR	00100

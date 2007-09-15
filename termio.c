@@ -221,18 +221,26 @@ int Xgetdtablesize(VOID_A)
 #if	!MSDOS
 # ifndef	SYSV
 	int n;
-
-	if ((n = getdtablesize()) >= 0) return(n);
 # else	/* SYSV */
 #  ifdef	USERESOURCEH
 	struct rlimit lim;
-
-	if (getrlimit(RLIMIT_NOFILE, &lim) >= 0) return(lim.rlim_cur);
 #  else	/* !USERESOURCEH */
 #   ifdef	USEULIMITH
 	long n;
+#   endif
+#  endif	/* !USERESOURCEH */
+# endif	/* SYSV */
+#endif	/* !MSDOS */
 
-	if ((n = ulimit(UL_GDESLIM, 0L)) >= 0L) return(n);
+#if	!MSDOS
+# ifndef	SYSV
+	if ((n = getdtablesize()) >= 0) return(n);
+# else	/* SYSV */
+#  ifdef	USERESOURCEH
+	if (getrlimit(RLIMIT_NOFILE, &lim) >= 0) return(lim.rlim_cur);
+#  else	/* !USERESOURCEH */
+#   ifdef	USEULIMITH
+	if ((n = ulimit(UL_GDESLIM, 0L)) >= 0L) return((int)n);
 #   endif
 #  endif	/* !USERESOURCEH */
 # endif	/* SYSV */
@@ -247,14 +255,16 @@ int fd;
 #if	MSDOS
 	struct SREGS sreg;
 	__dpmi_regs reg;
+#endif
 
+#if	MSDOS
 	reg.x.ax = 0x4400;
 	reg.x.bx = fd;
 
 	return(intcall(0x21, &reg, &sreg));
-#else	/* !MSDOS */
+#else
 	return(fcntl(fd, F_GETFD, NULL));
-#endif	/* !MSDOS */
+#endif
 }
 
 int newdup(fd)
@@ -345,7 +355,7 @@ int fd;
 	if (fd < 0) return;
 	duperrno = errno;
 	if (fd != STDIN_FILENO && fd != STDOUT_FILENO && fd != STDERR_FILENO)
-		close(fd);
+		VOID_C close(fd);
 	errno = duperrno;
 }
 
@@ -391,47 +401,7 @@ FILE **fpp;
 	*fpp = NULL;
 }
 
-#if	MSDOS
-/*ARGSUSED*/
-VOID loadtermio(fd, tty, ws)
-int fd;
-CONST char *tty, *ws;
-{
-# ifndef	DJGPP
-	union REGS reg;
-
-	if (tty) {
-		reg.x.ax = 0x3301;
-		memcpy((char *)&(reg.h.dl), (char *)tty, sizeof(reg.h.dl));
-		int86(0x21, &reg, &reg);
-	}
-# endif	/* !DJGPP */
-}
-
-VOID savetermio(fd, ttyp, wsp)
-int fd;
-char **ttyp, **wsp;
-{
-# ifndef	DJGPP
-	union REGS reg;
-	char *tty;
-# endif
-
-	if (ttyp) do {
-		*ttyp = NULL;
-# ifndef	DJGPP
-		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
-
-		reg.x.ax = 0x3300;
-		int86(0x21, &reg, &reg);
-		memcpy((char *)tty, (char *)&(reg.h.dl), TIO_BUFSIZ);
-		*ttyp = tty;
-# endif	/* !DJGPP */
-	} while (0);
-
-	if (wsp) *wsp = NULL;
-}
-#else	/* !MSDOS */
+#if	!MSDOS
 VOID closeonexec(fd)
 int fd;
 {
@@ -525,14 +495,30 @@ int fd, selector;
 	return(-1);
 }
 # endif	/* USETERMIOS */
+#endif	/* !MSDOS */
 
 /*ARGSUSED*/
 VOID loadtermio(fd, tty, ws)
 int fd;
 CONST char *tty, *ws;
 {
+#if	MSDOS
+# ifndef	DJGPP
+	union REGS reg;
+# endif
+#else	/* MSDOS */
 	ALLOC_T size;
+#endif	/* MSDOS */
 
+#if	MSDOS
+# ifndef	DJGPP
+	if (tty) {
+		reg.x.ax = 0x3301;
+		memcpy((char *)&(reg.h.dl), (char *)tty, sizeof(reg.h.dl));
+		int86(0x21, &reg, &reg);
+	}
+# endif
+#else	/* !MSDOS */
 	if (tty) {
 		size = (ALLOC_T)0;
 		VOID_C tioctl(fd, REQSETN, (termioctl_t *)&(tty[size]));
@@ -547,18 +533,41 @@ CONST char *tty, *ws;
 # ifndef	NOTERMWSIZE
 	if (ws) VOID_C Xioctl(fd, REQSETWS, (termwsize_t *)ws);
 # endif
+#endif	/* !MSDOS */
 }
 
 VOID savetermio(fd, ttyp, wsp)
 int fd;
 char **ttyp, **wsp;
 {
+#if	MSDOS
+# ifndef	DJGPP
+	union REGS reg;
+	char *tty;
+# endif
+#else	/* !MSDOS */
 # ifndef	NOTERMWSIZE
 	char *ws;
 # endif
 	ALLOC_T size;
 	char *tty;
+#endif	/* !MSDOS */
 
+#if	MSDOS
+	if (ttyp) do {
+		*ttyp = NULL;
+# ifndef	DJGPP
+		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
+
+		reg.x.ax = 0x3300;
+		int86(0x21, &reg, &reg);
+		memcpy((char *)tty, (char *)&(reg.h.dl), TIO_BUFSIZ);
+		*ttyp = tty;
+# endif	/* !DJGPP */
+	} while (0);
+
+	if (wsp) *wsp = NULL;
+#else	/* !MSDOS */
 	if (ttyp) do {
 		*ttyp = NULL;
 		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
@@ -595,8 +604,8 @@ char **ttyp, **wsp;
 		*wsp = ws;
 # endif	/* !NOTERMWSIZE */
 	} while (0);
-}
 #endif	/* !MSDOS */
+}
 
 #ifdef	CYGWIN
 p_id_t Xfork(VOID_A)
@@ -616,9 +625,7 @@ p_id_t Xfork(VOID_A)
 }
 #endif	/* CYGWIN */
 
-#if	!MSDOS \
-|| (!defined (NOTUSEBIOS) && !defined (PC98) \
-&& defined (DJGPP) && (DJGPP >= 2))
+#ifndef	NOSELECT
 int readselect(nfd, fds, result, vp)
 int nfd, fds[];
 char result[];
@@ -656,4 +663,4 @@ VOID_P vp;
 
 	return(n);
 }
-#endif	/* !MSDOS || (!NOTUSEBIOS && DJGPP && DJGPP >= 2 && !PC98) */
+#endif	/* !NOSELECT */

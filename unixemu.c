@@ -27,9 +27,8 @@ static int NEAR checkpath __P_((CONST char *, char *));
 static int NEAR statcommon __P_((CONST char *, struct stat *));
 
 #ifndef	_NODOSDRIVE
-int lastdrv = -1;
+static int lastdrv = -1;
 #endif
-
 #ifndef	_NOROCKRIDGE
 static opendirpath_t *dirpathlist = NULL;
 static int maxdirpath = 0;
@@ -241,26 +240,17 @@ CONST char *path;
 #ifdef	_NODOSDRIVE
 	n = rawchdir(path);
 #else	/* !_NODOSDRIVE */
-	if (!(drive = dospath3(path))) {
-		if ((n = rawchdir(path)) >= 0) {
-			if (lastdrv >= 0) shutdrv(lastdrv);
-			lastdrv = -1;
-		}
-	}
-	else if ((dd = preparedrv(drive)) < 0) n = -1;
+	drive = dospath3(path);
+	if (preparedrv(drive, &dd) < 0) n = -1;
+	else if (dd < 0) n = rawchdir(path);
 	else if (setcurdrv(drive, 1) < 0
-	|| (checkpath(path, buf) ? doschdir(buf) : unixchdir(path)) < 0) {
+	|| ((checkpath(path, buf)) ? doschdir(buf) : unixchdir(path)) < 0) {
 		shutdrv(dd);
 		n = -1;
 	}
-	else {
-		if (lastdrv >= 0) {
-			if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
-				shutdrv(lastdrv);
-			else dd = lastdrv;
-		}
+	if (n >= 0) {
+		shutdrv(lastdrv);
 		lastdrv = dd;
-		n = 0;
 	}
 #endif	/* !_NODOSDRIVE */
 	LOG1(_LOG_INFO_, n, "chdir(\"%k\");", path);

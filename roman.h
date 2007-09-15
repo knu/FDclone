@@ -1,7 +1,7 @@
 /*
  *	roman.h
  *
- *	Roman translation tables
+ *	definitions & function prototype declarations for "roman.c"
  */
 
 #define	R_MAXROMAN	4

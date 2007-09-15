@@ -12,20 +12,19 @@
 
 #if	MSDOS
 #include <process.h>
-extern int getcurdrv __P_((VOID_A));
-# ifndef	_NOUSELFN
-extern char *preparefile __P_((CONST char *, char *));
-# endif
 #else
 #include <pwd.h>
 #include <grp.h>
 #endif
 
-#ifndef	_NODOSDRIVE
-extern int lastdrv;
-# if	MSDOS && !defined (_NOUSELFN)
+#if	MSDOS
+extern int getcurdrv __P_((VOID_A));
+#endif
+#if	MSDOS && !defined (_NOUSELFN)
+extern char *preparefile __P_((CONST char *, char *));
+#endif
+#if	MSDOS && !defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 extern int checkdrive __P_((int));
-# endif
 #endif
 
 extern int mark;
@@ -65,7 +64,7 @@ extern int dosdrive;
 #endif	/* !L_SET */
 
 #ifndef	NOFLOCK
-static int NEAR fcntllock __P_((CONST char *, int, int));
+static int NEAR fcntllock __P_((int, int));
 #endif
 static char *NEAR excllock __P_((CONST char *, int));
 #ifdef	_NODOSDRIVE
@@ -353,7 +352,7 @@ char *buf;
 {
 	static char *homedir = NULL;
 	CONST char *cp;
-	char cwd[MAXPATHLEN];
+	char tmp[MAXPATHLEN], cwd[MAXPATHLEN];
 	int len;
 
 #if	MSDOS
@@ -368,9 +367,8 @@ char *buf;
 #ifndef	_NODOSDRIVE
 		if (dospath2(cp)) return(-1);
 #endif
-		if (_chdir2(cp) < 0) return(-1);
-		homedir = getwd2();
-		if (_chdir2(cwd) < 0) lostcwd(cwd);
+		if (getrealpath(cp, tmp, cwd) != tmp) return(-1);
+		homedir = strdup2(tmp);
 	}
 
 	if (buf && !physical_path) strcpy(cwd, fullpath);
@@ -430,8 +428,7 @@ CONST char *dir;
 }
 
 #ifndef	NOFLOCK
-static int NEAR fcntllock(path, fd, mode)
-CONST char *path;
+static int NEAR fcntllock(fd, mode)
 int fd, mode;
 {
 	static int lockmode[] = {
@@ -469,7 +466,10 @@ int fd, mode;
 		n = flock(fd, lockmode[mode]);
 #  endif
 # endif	/* !USEFCNTLOCK */
-		if (n >= 0) break;
+		if (n >= 0) {
+			n = 1;
+			break;
+		}
 # ifdef	EACCES
 		else if (errno == EACCES) /*EMPTY*/;
 # endif
@@ -481,20 +481,15 @@ int fd, mode;
 # endif
 		else break;
 
-		if (intrkey(-1)) break;
+		if (intrkey(-1)) {
+			errno = EINTR;
+			break;
+		}
 # if	!MSDOS || defined (DJGPP)
-                usleep(100000L);
+		usleep(100000L);
 # endif
 	}
-	if (i >= LCK_MAXRETRY) {
-#ifdef	ETIMEDOUT
-		errno = ETIMEDOUT;
-#else
-		errno = EEXIST;
-#endif
-		if (isttyiomode) warning(-1, path);
-		else perror2(path);
-	}
+	if (i >= LCK_MAXRETRY) return(0);
 
 	return(n);
 }
@@ -558,20 +553,15 @@ int mode;
 			0666 & ~tmpumask);
 		if (fd >= 0 || errno != EEXIST) break;
 
-		if (intrkey(-1)) break;
+		if (intrkey(-1)) {
+			errno = EINTR;
+			break;
+		}
 #if	!MSDOS || defined (DJGPP)
 		usleep(100000L);
 #endif
 	}
-	if (i >= LCK_MAXRETRY) {
-#ifdef	ETIMEDOUT
-		errno = ETIMEDOUT;
-#else
-		errno = EEXIST;
-#endif
-		if (isttyiomode) warning(-1, path);
-		else perror2(path);
-	}
+	if (i >= LCK_MAXRETRY) return((char *)nullstr);
 	if (fd < 0) return(NULL);
 
 	Xclose(fd);
@@ -588,9 +578,12 @@ lockbuf_t *lockopen(path, flags, mode)
 CONST char *path;
 int flags, mode;
 {
+#ifndef	NOFLOCK
+	int n;
+#endif
 	char *lckname;
 	lockbuf_t *lck;
-	int fd, lckflags, lckmode, duperrno;
+	int fd, err, lckflags, lckmode, duperrno;
 
 #ifdef	FAKEUNINIT
 	fd = -1;	/* fake for -Wuninitialized */
@@ -598,6 +591,7 @@ int flags, mode;
 	lckname = NULL;
 	lckflags = 0;
 	lckmode = ((flags & O_ACCMODE) == O_RDONLY) ? LCK_READ : LCK_WRITE;
+	err = 0;
 
 #ifndef	NOFLOCK
 	if (isnfs(path) <= 0) {
@@ -607,13 +601,15 @@ int flags, mode;
 			if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT)
 				return(NULL);
 		}
-		else if (fcntllock(path, fd, lckmode) < 0) {
+		else if ((n = fcntllock(fd, lckmode)) <= 0) {
 			Xclose(fd);
+			if (n < 0) return(NULL);
+			err++;
 			lckflags &= ~LCK_FLOCK;
 		}
 		else if ((flags & O_TRUNC) && Xftruncate(fd, (off_t)0) < 0) {
 			duperrno = errno;
-			VOID_C fcntllock(path, fd, LCK_UNLOCK);
+			VOID_C fcntllock(fd, LCK_UNLOCK);
 			Xclose(fd);
 			errno = duperrno;
 			return(NULL);
@@ -622,8 +618,12 @@ int flags, mode;
 #endif	/* !NOFLOCK */
 
 	if (!(lckflags & LCK_FLOCK)) {
-		if ((lckname = excllock(path, lckmode))) /*EMPTY*/;
-		else if ((flags & O_ACCMODE) != O_RDONLY) return(NULL);
+		if (!(lckname = excllock(path, lckmode))) return(NULL);
+		else if (lckname == (char *)nullstr) {
+			if ((flags & O_ACCMODE) != O_RDONLY) return(NULL);
+			err++;
+			lckname = NULL;
+		}
 
 		if ((fd = newdup(Xopen(path, flags, mode))) >= 0) /*EMPTY*/;
 		else if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT) {
@@ -633,6 +633,11 @@ int flags, mode;
 			errno = duperrno;
 			return(NULL);
 		}
+	}
+
+	if (err) {
+		fprintf2(stderr, "%k: %k\r\n", path, NOLCK_K);
+		if (isttyiomode) warning(0, HITKY_K);
 	}
 
 	if (fd < 0) lckflags |= LCK_INVALID;
@@ -677,7 +682,7 @@ lockbuf_t *lck;
 		if (!(lck -> flags & LCK_INVALID)) {
 #ifndef	NOFLOCK
 			if (lck -> flags & LCK_FLOCK)
-				VOID_C fcntllock(NULL, lck -> fd, LCK_UNLOCK);
+				VOID_C fcntllock(lck -> fd, LCK_UNLOCK);
 #endif
 			if (lck -> flags & LCK_STREAM) Xfclose(lck -> fp);
 			else Xclose(lck -> fd);
@@ -1304,21 +1309,11 @@ CONST char *file;
 		NULL, dormdir, ORD_NOPREDIR, NULL);
 	else if (Xunlink(nodospath(path, file)) < 0) warning(-1, file);
 
-#ifndef	_NODOSDRIVE
-	if (dosdrv >= 0) {
-		if (lastdrv >= 0) {
-# if	MSDOS
-			if (_chdir2(deftmpdir) < 0);
-			else
-# endif
-			shutdrv(lastdrv);
-		}
-		lastdrv = dosdrv;
-		dosdrv = -1;
-	}
-#endif	/* !_NODOSDRIVE */
-
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
+#ifndef	_NODOSDRIVE
+	shutdrv(dosdrv);
+	dosdrv = -1;
+#endif
 	if (dir) {
 		if (*dir && rmtmpdir(dir) < 0) warning(-1, dir);
 		free(dir);
@@ -1373,11 +1368,11 @@ CONST char *dir;
 char **dirp;
 int single;
 {
-	struct stat st;
-	char *cp, *tmpdir, path[MAXPATHLEN];
 # if	!MSDOS
 	char tmp[MAXPATHLEN];
 # endif
+	struct stat st;
+	char *cp, *tmpdir, path[MAXPATHLEN];
 	int i, drive;
 
 	if (!(drive = dospath2(dir))) return(0);
@@ -1412,8 +1407,11 @@ int single;
 		}
 	}
 
-	dosdrv = lastdrv;
-	lastdrv = -1;
+	if (preparedrv(dospath(fullpath, NULL), &dosdrv) < 0) {
+		warning(-1, fullpath);
+		removetmp(tmpdir, NULL);
+		return(-1);
+	}
 	if (_chdir2(tmpdir) < 0) {
 		warning(-1, tmpdir);
 		removetmp(tmpdir, NULL);

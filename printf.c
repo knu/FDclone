@@ -220,23 +220,24 @@ int width, prec;
 		if (prec) num[len++] = '0';
 	}
 	else while (len < arraysize(num)) {
+		if (bit) {
+			i = (u & base);
 #ifdef	MINIMUMSHELL
-		if (!bit) {
-			i = (n % base);
-			if (i < 0) i = -i;
 			i += '0';
-		}
-		else if ((i = (u & base)) < 10) i += '0';
 #else
-		if (!bit) {
-			if (pbufp -> flags & VF_UNSIGNED) i = u % base;
-			else if ((i = n % base) < 0) i = -i;
+			if (i < 10) i += '0';
+			else if (cap) i += 'A' - 10;
+			else i += 'a' - 10;
+#endif
+		}
+		else {
+#ifndef	MINIMUMSHELL
+			if (pbufp -> flags & VF_UNSIGNED) i = (u % base);
+			else
+#endif
+			if ((i = (n % base)) < 0) i = -i;
 			i += '0';
 		}
-		else if ((i = (u & base)) < 10) i += '0';
-		else if (cap) i += 'A' - 10;
-		else i += 'a' - 10;
-#endif
 
 		if ((pbufp -> flags & VF_THOUSAND)
 		&& (len % (THDIGIT + 1)) == THDIGIT)

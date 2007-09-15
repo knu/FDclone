@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2007 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.09d 04/26/07
+.\" @(#)fd.1   2.09e 09/16/07
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "April 26, 2007"
+.TH FD 1 "September 16, 2007"
 .de sh
 .br
 .PP
@@ -194,7 +194,7 @@ the total capacity and the free size of the file system
 including the current directory.
 This line appears by
 .B SIZEINFO
-the environment variable setting.
+the internal variable setting.
 When this line is displayed,
 The information line and the path line are displayed 1 line under each.
 .IP "\fBbottom \- 2\fP"
@@ -2263,7 +2263,7 @@ and
 .IR out ,
 you can specify the string which used in
 .B FNAMEKCODE
-the environment variable described below.
+the internal variable described below.
 If each of them is omitted,
 it is regarded as that the Kanji code specified in compile is specified.
 If
@@ -3368,7 +3368,7 @@ But,
 it is necessary to register the floppy drive
 and set
 .B DOSDRIVE
-the environ variable which makes this function effective, in advance.
+the internal variable which makes this function effective, in advance.
 
 Each registered drive is distinguished with the drive name.
 You should tag the physically different drive as the different drive name.
@@ -4424,7 +4424,7 @@ Specify the shell used to invoke a batch file.
 If undefined,
 the shell defined by
 .B SHELL
-the environment variable or \eCOMMAND.COM is used.
+the internal variable or \eCOMMAND.COM is used.
 .B (DOS)
 .IP "\fBCOPYCMD\fP\(**"
 Specify the default options used by
@@ -4493,7 +4493,7 @@ from the first.
 Moreover,
 the file list in the directory displayed on the right of screen
 is not displayed over this value.
-If the value is
+If this value is
 .BR 0 ,
 you can realize a comfortable operation speed even in the slow machine.
 The default value is
@@ -4836,7 +4836,7 @@ the last log file will be renamed as the file name followed by the extension
 to create another new log file.
 The default value is
 .BR 1024 (1MB).
-If the value is
+If this value is
 .BR 0 ,
 the log file will not be renamed.
 .IP "\fBLOOPCURSOR\fP"
@@ -4861,7 +4861,7 @@ or
 The default value is
 .B 600
 seconds.
-If the value is
+If this value is
 .BR 0 ,
 it will be checked before each prompt.
 .B (UNIX)

@@ -42,11 +42,13 @@ static struct dirent *NEAR pseudoreaddir __P_((DIR *));
 #endif
 
 #ifndef	_NODOSDRIVE
-int lastdrv = -1;
 int dosdrive = 0;
 #endif
 
 static char cachecwd[MAXPATHLEN] = "";
+#ifndef	_NODOSDRIVE
+static int lastdrv = -1;
+#endif
 #if	!defined (_NOKANJIFCONV) || !defined (_NOROCKRIDGE)
 static opendirpath_t *dirpathlist = NULL;
 static int maxdirpath = 0;
@@ -313,7 +315,7 @@ int Xchdir(path)
 CONST char *path;
 {
 #ifndef	_NODOSDRIVE
-	int dd, drive;
+	int dd;
 #endif
 	char conv[MAXPATHLEN];
 	int n;
@@ -322,23 +324,13 @@ CONST char *path;
 #ifdef	_NODOSDRIVE
 	n = (chdir(path)) ? -1 : 0;
 #else	/* !_NODOSDRIVE */
-	if ((drive = _dospath(path))) {
-		if ((dd = preparedrv(drive)) < 0) n = -1;
-		else if ((n = doschdir(path)) < 0) shutdrv(dd);
-		else if ((n = (chdir(rootpath)) ? -1 : 0) >= 0) {
-			if (lastdrv >= 0) {
-				if ((lastdrv % DOSNOFILE) != (dd % DOSNOFILE))
-					shutdrv(lastdrv);
-				else dd = lastdrv;
-			}
-			lastdrv = dd;
-		}
-	}
-	else {
-		if ((n = (chdir(path)) ? -1 : 0) >= 0) {
-			if (lastdrv >= 0) shutdrv(lastdrv);
-			lastdrv = -1;
-		}
+	if (preparedrv(_dospath(path), &dd) < 0) n = -1;
+	else if (dd < 0) n = (chdir(path)) ? -1 : 0;
+	else if ((n = doschdir(path)) < 0) shutdrv(dd);
+	else n = (chdir(rootpath)) ? -1 : 0;
+	if (n >= 0) {
+		shutdrv(lastdrv);
+		lastdrv = dd;
 	}
 #endif	/* !_NODOSDRIVE */
 	LOG1(_LOG_INFO_, n, "chdir(\"%k\");", path);

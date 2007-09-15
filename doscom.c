@@ -196,7 +196,6 @@ extern off_t Xlseek __P_((int, off_t, int));
 extern int Xmkdir __P_((CONST char *, int));
 extern int Xrmdir __P_((CONST char *));
 extern int stat2 __P_((CONST char *, struct stat *));
-extern int chdir2 __P_((CONST char *));
 #else	/* !FD */
 # if	MSDOS
 extern DIR *Xopendir __P_((CONST char *));
@@ -247,9 +246,6 @@ extern int Xmkdir __P_((CONST char *, int));
 #define	Xrmdir(p)	((rmdir(p)) ? -1 : 0)
 # if	MSDOS
 extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
-extern int chdir2 __P_((CONST char *));
-# else
-# define	chdir2(p)	((chdir(p)) ? -1 : 0)
 # endif
 # ifdef	NOSYMLINK
 # define	stat2		Xstat
@@ -315,6 +311,19 @@ extern char *strdup2 __P_((CONST char *));
 extern char *strncpy2 __P_((char *, CONST char *, int));
 
 #ifdef	FD
+# ifdef	_USEDOSPATH
+extern int _dospath __P_((CONST char *));
+# endif
+# if	MSDOS
+extern int dospath3 __P_((CONST char *));
+# else
+extern int dospath __P_((CONST char *, char *));
+#define	dospath3(path)	dospath(path, NULL)
+# endif
+# ifndef	_NODOSDRIVE
+extern int preparedrv __P_((int, int *));
+extern VOID shutdrv __P_((int));
+# endif
 extern int getinfofs __P_((CONST char *, off_t *, off_t *, off_t *));
 extern char *realpath2 __P_((CONST char *, char *, int));
 extern int touchfile __P_((CONST char *, struct stat *));
@@ -478,9 +487,13 @@ off_t *totalp, *freep, *bsizep;
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	char drv[MNTDIRSIZ], buf[128];
+# else	/* !MSDOS */
+	struct stat st;
 # endif	/* !MSDOS */
 	statfs_t fsbuf;
+	int n;
 
+	n = 0;
 # if	MSDOS
 #  ifdef	DOUBLESLASH
 	if ((len = isdslash(path))) {
@@ -520,15 +533,16 @@ off_t *totalp, *freep, *bsizep;
 		reg.x.di = PTR_OFF(&fsbuf, 0);
 		sreg.ds = PTR_SEG(path);
 		reg.x.dx = PTR_OFF(path, sizeof(fsbuf));
-		if (intcall(0x21, &reg, &sreg) < 0) return(-1);
-
+		if (intcall(0x21, &reg, &sreg) < 0) n = -1;
+		else {
 #  ifdef	DJGPP
-		dosmemget(__tb, sizeof(fsbuf), &fsbuf);
+			dosmemget(__tb, sizeof(fsbuf), &fsbuf);
 #  endif
-		*totalp = (off_t)(fsbuf.f_blocks);
-		*freep = (off_t)(fsbuf.f_bavail);
-		*bsizep = (off_t)(fsbuf.f_clustsize)
-			* (off_t)(fsbuf.f_sectsize);
+			*totalp = (off_t)(fsbuf.f_blocks);
+			*freep = (off_t)(fsbuf.f_bavail);
+			*bsizep = (off_t)(fsbuf.f_clustsize)
+				* (off_t)(fsbuf.f_sectsize);
+		}
 	}
 	else {
 		reg.x.ax = 0x3600;
@@ -536,25 +550,37 @@ off_t *totalp, *freep, *bsizep;
 		intcall(0x21, &reg, &sreg);
 		if (reg.x.ax == 0xffff) {
 			errno = ENOENT;
-			return(-1);
+			n = -1;
 		}
-
-		*totalp = (off_t)(reg.x.dx);
-		*freep = (off_t)(reg.x.bx);
-		*bsizep = (off_t)(reg.x.ax) * (off_t)(reg.x.cx);
+		else {
+			*totalp = (off_t)(reg.x.dx);
+			*freep = (off_t)(reg.x.bx);
+			*bsizep = (off_t)(reg.x.ax) * (off_t)(reg.x.cx);
+		}
 	}
 	if (!*totalp || !*bsizep || *totalp < *freep) {
 		errno = EIO;
-		return(-1);
+		n = -1;
 	}
 # else	/* !MSDOS */
-	if (statfs2(path, &fsbuf) < 0) return(-1);
-	*totalp = fsbuf.f_blocks;
-	*freep = fsbuf.f_bavail;
-	*bsizep = blocksize(fsbuf);
+	if (statfs2(path, &fsbuf) < 0) n = -1;
+	else {
+		*totalp = fsbuf.f_blocks;
+		*freep = fsbuf.f_bavail;
+		*bsizep = blocksize(fsbuf);
+	}
 # endif	/* !MSDOS */
 
-	return(0);
+	if (n < 0) {
+#if	MSDOS
+		*bsizep = (off_t)1024;
+#else
+		if (Xstat(path, &st) < 0) *bsizep = (off_t)DEV_BSIZE;
+		else *bsizep = (off_t)(st.st_blksize);
+#endif
+	}
+
+	return(n);
 }
 
 # if	MSDOS
@@ -1557,9 +1583,12 @@ char *CONST argv[];
 #ifndef	MINIMUMSHELL
 	off_t bsum;
 #endif
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	int drv;
+#endif
 	reg_t *re;
 	struct stat st;
-	CONST char *dir;
+	CONST char *cp, *dir;
 	char *file, wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
 	off_t sum, total, fre, bsize;
 	int i, n, nf, nd;
@@ -1568,8 +1597,12 @@ char *CONST argv[];
 	dirsort[0] = dirtype = '\0';
 	dirflag = 0;
 	evalenvopt(argv[0], "DIRCMD", getdiropt);
-	if ((n = getdiropt(argc, argv)) < 0)
-		return(RET_FAIL);
+	if ((n = getdiropt(argc, argv)) < 0) return(RET_FAIL);
+
+#if	defined (FD) && !defined (_NODOSDRIVE)
+	drv = -1;
+#endif
+
 	if (argc <= n) {
 		dir = curpath;
 		file = "*";
@@ -1578,19 +1611,20 @@ char *CONST argv[];
 		doserror(argv[n + 1], ER_TOOMANYPARAM);
 		return(RET_FAIL);
 	}
-	else if (Xstat(argv[n], &st) >= 0
-	&& (st.st_mode & S_IFMT) == S_IFDIR) {
-		strcpy(buf, argv[n]);
-		dir = buf;
-		file = "*";
-	}
 	else {
 		strcpy(buf, argv[n]);
-		if (!(file = strrdelim(buf, 1))) {
-			dir = curpath;
-			file = argv[n];
+#if	defined (FD) && !defined (_NODOSDRIVE)
+		if (preparedrv(dospath3(buf), &drv) < 0) {
+			dosperror(buf);
+			return(RET_FAIL);
 		}
-		else {
+#endif
+		if (Xstat(buf, &st) >= 0
+		&& (st.st_mode & S_IFMT) == S_IFDIR) {
+			dir = buf;
+			file = "*";
+		}
+		else if ((file = strrdelim(buf, 1))) {
 			i = file - buf;
 			if (isrootpath(buf) || *file != _SC_) file++;
 			*file = '\0';
@@ -1598,28 +1632,30 @@ char *CONST argv[];
 			file = &(argv[n][++i]);
 			if (!*file) file = "*";
 		}
+		else {
+			dir = curpath;
+			file = argv[n];
+		}
 	}
 
 	if (!Xgetwd(cwd)) {
+#if	defined (FD) && !defined (_NODOSDRIVE)
+		shutdrv(drv);
+#endif
 		dosperror(NULL);
 		return(RET_FAIL);
 	}
+
 	if (dir != buf) strcpy(wd, cwd);
-	else if (chdir2(buf) >= 0) {
-		if (!Xgetwd(wd)) {
-			dosperror(NULL);
-			return(RET_FAIL);
-		}
-		if (chdir2(cwd) < 0) {
-			dosperror(cwd);
-			return(RET_FAIL);
-		}
-	}
+	else if ((cp = getrealpath(buf, wd, cwd)) == wd) /*EMPTY*/;
 #ifdef	DOUBLESLASH
-	else if (isdslash(buf)) realpath2(buf, wd, 1);
+	else if (cp == buf && isdslash(buf)) realpath2(buf, wd, 1);
 #endif
 	else {
-		dosperror(buf);
+#if	defined (FD) && !defined (_NODOSDRIVE)
+		shutdrv(drv);
+#endif
+		dosperror(cp);
 		return(RET_FAIL);
 	}
 	if (getinfofs(wd, &total, &fre, &bsize) < 0) total = fre = (off_t)-1;
@@ -1637,6 +1673,9 @@ char *CONST argv[];
 	n = dosdir(re, &bsize, &nf, &nd, &sum);
 #else
 	n = dosdir(re, &bsize, &nf, &nd, &sum, &bsum);
+#endif
+#if	defined (FD) && !defined (_NODOSDRIVE)
+		shutdrv(drv);
 #endif
 	if (re) regexp_free(re);
 	if (n < 0) {
@@ -1955,7 +1994,7 @@ CONST char *file, *src;
 		if (key == 'N') return(0);
 		else if (key == 'A') copyflag |= CF_NOCONFIRM;
 	}
-	else if (copyflag & CF_VERBOSE) {
+	else if (src && (copyflag & CF_VERBOSE)) {
 		kanjifputs(src, stdout);
 		fputnl(stdout);
 	}
@@ -1964,7 +2003,7 @@ CONST char *file, *src;
 	flags |= (O_BINARY | O_CREAT | O_TRUNC);
 
 #ifndef	NODIRLOOP
-	if (issamebody(src, file)) {
+	if (src && issamebody(src, file)) {
 		flags |= O_EXCL;
 		if (Xunlink(file) < 0) return(-1);
 	}

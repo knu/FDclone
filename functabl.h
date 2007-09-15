@@ -4,7 +4,6 @@
  *	function status table
  */
 
-
 #ifndef	_TBL_
 #define	_TBL_(func, id, hlp, flg)	{func, id, hlp, BIN(flg)}
 #endif

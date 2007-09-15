@@ -231,8 +231,8 @@ K_EXTERN CONST u_char kctypetable[256]
 # define	isjis(c)	(kctypetable[(u_char)(c)] & KC_JIS)
 # endif
 #endif	/* !LSI_C */
-#define	ismsb(c)	(((u_char)(c)) & 0x80)
 
+#define	ismsb(c)	(((u_char)(c)) & 0x80)
 #define	isekana(s, i)	((u_char)((s)[i]) == C_EKANA && iskana2((s)[(i) + 1]))
 #define	isskana(s, i)	iskana2((s)[i])
 #define	isjkana(s, i)	(kctypetable[(u_char)((s)[i])] & KC_JKANA)

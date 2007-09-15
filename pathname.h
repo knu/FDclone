@@ -1,7 +1,7 @@
 /*
  *	pathname.h
  *
- *	function prototype declarations for "pathname.c"
+ *	definitions & function prototype declarations for "pathname.c"
  */
 
 #ifndef	__PATHNAME_H_
@@ -93,15 +93,9 @@ typedef char	reg_t;
 # endif
 #else	/* !_NOORIGGLOB */
 typedef char *	reg_t;
-# ifdef	USEREGCMP
 # undef	USEREGCMP
-# endif
-# ifdef	USEREGCOMP
 # undef	USEREGCOMP
-# endif
-# ifdef	USERE_COMP
 # undef	USERE_COMP
-# endif
 #endif	/* !_NOORIGGLOB */
 
 #ifdef	_NOUSEHASH
@@ -204,7 +198,9 @@ typedef struct _uidtable {
 typedef struct _gidtable {
 	gid_t gid;
 	char *name;
+#ifndef	USEGETGROUPS
 	char **gr_mem;
+#endif
 	char ismem;
 } gidtable;
 
@@ -216,7 +212,9 @@ extern char *strrdelim __P_((CONST char *, int));
 #define	strdelim(s, d)	strchr(s, _SC_)
 #define	strrdelim(s, d)	strrchr(s, _SC_)
 #endif
+#ifdef	FD
 extern char *strrdelim2 __P_((CONST char *, CONST char *));
+#endif
 extern int isdelim __P_((CONST char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
@@ -247,7 +245,9 @@ extern int strnpathcmp2 __P_((CONST char *, CONST char *, int));
 #define	strenvcmp	strcmp
 #define	strnenvcmp	strncmp
 #endif
+#ifdef	FD
 extern char *underpath __P_((CONST char *, CONST char *, int));
+#endif
 extern int isidentchar __P_((int));
 extern int isidentchar2 __P_((int));
 extern int isdotdir __P_((CONST char *));
@@ -269,7 +269,9 @@ extern char **evalwild __P_((CONST char *, int));
 extern hashlist **duplhash __P_((hashlist **));
 #endif
 extern int searchhash __P_((hashlist **, CONST char *, CONST char *));
+#ifdef	FD
 extern char *searchexecpath __P_((CONST char *, CONST char *));
+#endif
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 extern char *finddupl __P_((CONST char *, int, char *CONST *));
 # ifndef	NOUID
@@ -293,6 +295,7 @@ extern VOID freeidlist __P_((VOID_A));
 # endif
 #endif	/* FD && !NOUID */
 extern char *gethomedir __P_((VOID_A));
+extern CONST char *getrealpath __P_((CONST char *, char *, char *));
 #ifndef	MINIMUMSHELL
 extern int evalhome __P_((char **, int, CONST char **));
 #endif

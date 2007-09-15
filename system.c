@@ -2504,10 +2504,8 @@ int noexit;
 # endif
 	for (i = 0; i < NSIG; i++) {
 		signal2(i, SIG_IGN);
-		if (trapcomm[i]) {
-			free(trapcomm[i]);
-			trapcomm[i] = NULL;
-		}
+		if (trapcomm[i]) free(trapcomm[i]);
+		trapcomm[i] = NULL;
 		signal2(i, oldsigfunc[i]);
 	}
 # ifndef	NOJOB
@@ -2568,11 +2566,13 @@ static VOID NEAR argfputs(s, fp)
 CONST char *s;
 FILE *fp;
 {
+# ifndef	_NOKANJIFCONV
+	char *cp;
+# endif
+
 # ifdef	_NOKANJIFCONV
 	fprintf2(fp, "%a", s);
 # else
-	char *cp;
-
 	cp = newkanjiconv(s, defaultkcode, DEFCODE, L_FNAME);
 	fprintf2(fp, "%a", cp);
 	if (cp != s) free(cp);
@@ -2775,14 +2775,10 @@ int opt;
 				break;
 			}
 		}
-		if (waitlist) {
-			free(waitlist);
-			waitlist = NULL;
-		}
-		if (pidlist) {
-			free(pidlist);
-			pidlist = NULL;
-		}
+		if (waitlist) free(waitlist);
+		waitlist = NULL;
+		if (pidlist) free(pidlist);
+		pidlist = NULL;
 		maxtrap = 0;
 	}
 	else if (tmp >= (p_id_t)0) {
@@ -2898,9 +2894,9 @@ int stop;
 	if (pid) {
 		if (jobok) VOID_C setpgroup(pid, childpgrp);
 		if (tty && ttypgrp >= (p_id_t)0) ttypgrp = childpgrp;
-# if	defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+#  if	defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
 		if (parentfd >= 0) addmychild(pid);
-# endif
+#  endif
 	}
 	else {
 		if (jobok && setpgroup(mypid, childpgrp) < 0) {
@@ -2909,10 +2905,10 @@ int stop;
 			Xexit(RET_FATALERR);
 		}
 		if (tty) gettermio(childpgrp, jobok);
-# if	defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
+#  if	defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
 		if (mychildren) free(mychildren);
 		mychildren = NULL;
-# endif
+#  endif
 	}
 # endif	/* !NOJOB */
 
@@ -3090,7 +3086,7 @@ FILE *fp;
 	duperrno = errno;
 	fd = Xfileno(fp);
 	if (fd != STDIN_FILENO && fd != STDOUT_FILENO && fd != STDERR_FILENO)
-		Xfclose(fp);
+		VOID_C Xfclose(fp);
 	errno = duperrno;
 }
 
@@ -3214,28 +3210,20 @@ int n;
 static int NEAR readchar(fd)
 int fd;
 {
-	static int savech = -1;
-	static int prevfd = -1;
 	u_char ch;
 	int n;
 
-	n = savech;
-	savech = -1;
-	if (prevfd == fd && n >= 0) return(n);
-	prevfd = fd;
-
-	if ((n = sureread(fd, &ch, sizeof(ch))) < 0) return(-1);
-	if (!n) return(READ_EOF);
-	if (ch == '\r') {
-		if ((n = sureread(fd, &ch, sizeof(ch))) < 0) return(-1);
-		if (!n) {
-			savech = READ_EOF;
-			return('\r');
-		}
-		if (ch == '\n') return(ch);
-		savech = ch;
-		return('\r');
+	if (trapok >= 0) trapok = 1;
+	readtrap = 1;
+	n = sureread(fd, &ch, sizeof(ch));
+	if (!readtrap) {
+		errno = EINTR;
+		n = -1;
 	}
+	if (trapok >= 0) trapok = 0;
+	readtrap = 0;
+	if (n < 0) return(-1);
+	if (!n) return(READ_EOF);
 
 	return((int)ch);
 }
@@ -3254,19 +3242,14 @@ int fd;
 			return(NULL);
 		}
 		if (c == READ_EOF) {
-			if (!i) {
-				free(cp);
-				errno = 0;
-				return(NULL);
-			}
-			break;
+			if (i) break;
+			free(cp);
+			return((char *)nullstr);
 		}
 		cp = c_realloc(cp, i, &size);
 		cp[i] = c;
 	}
-#ifdef	USECRNL
-	if (i > 0 && cp[i - 1] == '\r') i--;
-#endif
+	if (c == '\n' && i > 0 && cp[i - 1] == '\r') i--;
 	cp[i++] = '\0';
 
 	return(realloc2(cp, i));
@@ -3286,13 +3269,14 @@ ALLOC_T *lenp;
 			free(cp);
 			return(NULL);
 		}
+		if (c == '\n' && i > 0 && cp[i - 1] == '\r') i--;
 		cp = c_realloc(cp, i, &size);
 		cp[i] = c;
 	}
-	cp[i] = '\0';
 	if (lenp) *lenp = i;
+	cp[i++] = '\0';
 
-	return(realloc2(cp, i + 1));
+	return(realloc2(cp, i));
 }
 
 char *evalvararg(arg, quoted, flags, noexit)
@@ -3440,6 +3424,9 @@ syntaxtree *parent;
 VOID freestree(trp)
 syntaxtree *trp;
 {
+#ifndef	MINIMUMSHELL
+	redirectlist *rp;
+#endif
 	int duperrno;
 
 	if (!trp) return;
@@ -3458,8 +3445,6 @@ syntaxtree *trp;
 	if (trp -> next) {
 #ifndef	MINIMUMSHELL
 		if (trp -> flags & ST_BUSY) {
-			redirectlist *rp;
-
 			rp = (redirectlist *)(trp -> next);
 			free(rp -> filename);
 			freestree((syntaxtree *)(rp -> next));
@@ -3703,7 +3688,7 @@ int type;
 		if (type & MD_APPEND) mode |= O_APPEND;
 	}
 	else {
-		mode |= O_WRONLY | O_CREAT;
+		mode |= (O_WRONLY | O_CREAT);
 		if (type & MD_APPEND) mode |= O_APPEND;
 		else {
 			mode |= O_TRUNC;
@@ -3902,10 +3887,9 @@ static int NEAR openheredoc(hdp, old)
 heredoc_t *hdp;
 int old;
 {
-	char *cp;
+	char *cp, *buf;
 	p_id_t pipein;
-	ALLOC_T i, size;
-	int c, fd, fdin, ret;
+	int fd, fdin, ret;
 
 	fdin = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
 	if (fdin < 0) return(-1);
@@ -3938,13 +3922,9 @@ int old;
 		return(fd);
 	}
 
-	cp = c_realloc(NULL, 0, &size);
 	ret = RET_SUCCESS;
-
-	i = 0;
-	for (;;) {
-		if ((c = readchar(fdin)) < 0) {
-			free(cp);
+	while ((buf = readline(fdin)) != (char *)nullstr) {
+		if (!buf) {
 #ifdef	DJGPP
 			closepipe(fd, -1);
 #else
@@ -3953,34 +3933,21 @@ int old;
 			safeclose(fdin);
 			return(-1);
 		}
-		if (c == READ_EOF || c == '\n') {
-			if (i) {
-				char *tmp;
 
-				cp[i] = '\0';
-				i = 0;
-
-				if (ret != RET_SUCCESS) /*EMPTY*/;
-				else if (hdp -> flags & HD_QUOTED)
-					fputs(cp, stdout);
-				else if (!(tmp = evalvararg(cp, '\'',
-				EA_BACKQ, 1)))
-					ret = RET_FAIL;
-				else {
-					fputs(tmp, stdout);
-					free(tmp);
-				}
-			}
-			if (c == READ_EOF) break;
-			if (ret == RET_SUCCESS) fputnl(stdout);
-			continue;
+		if (!(hdp -> flags & HD_QUOTED) && ret == RET_SUCCESS) {
+			cp = evalvararg(buf, '\'', EA_BACKQ, 1);
+			if (!cp) ret = RET_FAIL;
+			free(buf);
+			buf = cp;
 		}
-		cp = c_realloc(cp, i, &size);
-		cp[i++] = c;
+		if (ret == RET_SUCCESS) {
+			fputs(buf, stdout);
+			fputnl(stdout);
+		}
+		free(buf);
 	}
 	safeclose(fdin);
 	fflush(stdout);
-	free(cp);
 	if ((fd = reopenpipe(fd, ret)) < 0) return(-1);
 	if (ret != RET_SUCCESS) {
 #ifdef	DJGPP
@@ -4124,25 +4091,26 @@ redirectlist *rp;
 	type = rp -> type;
 	if (!(rp -> filename)) tmp = NULL;
 	else if (type & MD_HEREDOC) tmp = rp -> filename;
-	else if (!(tmp = evalvararg(rp -> filename, '\0',
-	EA_BACKQ | EA_STRIPQLATER, 0))) {
-		errno = -1;
-		return(rp);
-	}
-	else if ((type & MD_FILEDESC) && tmp[0] == '-' && !tmp[1]) {
-		free(tmp);
-		tmp = NULL;
-		type &= ~MD_FILEDESC;
-	}
-#ifdef	FD
 	else {
-		if ((n = replacearg(&tmp)) < 0) {
+		tmp = evalvararg(rp -> filename, '\0',
+			EA_BACKQ | EA_STRIPQLATER, 0);
+		if (!tmp) {
+			errno = -1;
+			return(rp);
+		}
+		else if ((type & MD_FILEDESC) && tmp[0] == '-' && !tmp[1]) {
+			free(tmp);
+			tmp = NULL;
+			type &= ~MD_FILEDESC;
+		}
+#ifdef	FD
+		else if ((n = replacearg(&tmp)) < 0) {
 			free(tmp);
 			return(rp);
 		}
-		if (n) rp -> type |= MD_REST;
-	}
+		else if (n) rp -> type |= MD_REST;
 #endif	/* FD */
+	}
 
 	if (!tmp) /*EMPTY*/;
 	else if (type & MD_HEREDOC) {
@@ -4180,7 +4148,7 @@ redirectlist *rp;
 		if (rp -> new < 0) return(rp);
 #if	MSDOS && !defined (LSI_C)
 # ifdef	DJGPP
-		if (isatty(rp -> new));
+		if (isatty(rp -> new)) /*EMPTY*/;
 		else
 # endif
 		setmode(rp -> new, O_BINARY);
@@ -4521,6 +4489,10 @@ static int NEAR _putshellvar(s, len)
 char *s;
 int len;
 {
+#if	!MSDOS && defined (FD)
+	keyseq_t *keymap;
+	char *term;
+#endif
 #if	(!MSDOS && (!defined (MINIMUMSHELL)) || defined (FD)) \
 || !defined (NOPOSIXUTIL)
 	CONST char *cp;
@@ -4558,9 +4530,6 @@ int len;
 # endif	/* !MINIMUMSHELL */
 # ifdef	FD
 	else if (constequal(s, ENVTERM, len)) {
-		keyseq_t *keymap;
-		char *term;
-
 		keymap = copykeyseq(NULL);
 		freeterment();
 		getterment(cp);
@@ -4580,8 +4549,7 @@ int len;
 #endif	/* !MSDOS */
 #ifndef	NOPOSIXUTIL
 	else if (constequal(s, ENVOPTIND, len)) {
-		if ((posixoptind = isnumeric(cp)) <= 1)
-			posixoptind = 0;
+		if ((posixoptind = isnumeric(cp)) <= 1) posixoptind = 0;
 	}
 #endif
 #ifndef	MINIMUMSHELL
@@ -5132,14 +5100,7 @@ int *lenp, notok;
 
 		*trpp = _addarg(*trpp, tok);
 	}
-	else if (rp -> fd >= 0 || (type & MD_RDWR) != MD_RDWR) {
-		if (redirect(*trpp, rp -> fd, tok, type) < 0) return(-1);
-	}
-	else {
-		if (redirect(*trpp, STDIN_FILENO, tok, type) < 0
-		|| redirect(*trpp, STDOUT_FILENO, tok, type) < 0)
-			return(-1);
-	}
+	else if (redirect(*trpp, rp -> fd, tok, type) < 0) return(-1);
 
 	return(0);
 }
@@ -5265,6 +5226,10 @@ syntaxtree *trp;
 CONST char *s;
 int *ptrp;
 {
+#ifndef	MINIMUMSHELL
+	int n;
+#endif
+
 	trp = _addarg(trp, NULL);
 	switch (s[*ptrp + 1]) {
 		case '|':
@@ -5274,9 +5239,9 @@ int *ptrp;
 #ifndef	MINIMUMSHELL
 		case '&':
 			(*ptrp)++;
-			if (redirect(trp,
-			STDERR_FILENO, "1", MD_WRITE | MD_FILEDESC) >= 0)
-				trp = linkstree(trp, OP_PIPE);
+			n = redirect(trp,
+				STDERR_FILENO, "1", MD_WRITE | MD_FILEDESC);
+			if (n >= 0) trp = linkstree(trp, OP_PIPE);
 			break;
 #endif
 		default:
@@ -5293,7 +5258,10 @@ redirectlist *rp;
 CONST char *s;
 int *ptrp;
 {
+	int n;
+
 	rp -> type = MD_READ;
+	n = 0;
 	switch (s[*ptrp + 1]) {
 		case '<':
 			(*ptrp)++;
@@ -5311,21 +5279,19 @@ int *ptrp;
 #endif
 		case '&':
 			(*ptrp)++;
-			if (s[*ptrp + 1] != '-') rp -> type |= MD_FILEDESC;
-			else {
-				(*ptrp)++;
-				if (redirect(trp,
-				rp -> fd, NULL, rp -> type) >= 0)
-					rp -> type = 0;
-			}
+			if (s[*ptrp + 1] == '-') n++;
+			else rp -> type |= MD_FILEDESC;
 			break;
 		case '-':
-			(*ptrp)++;
-			if (redirect(trp, rp -> fd, NULL, rp -> type) >= 0)
-				rp -> type = 0;
+			n++;
 			break;
 		default:
 			break;
+	}
+	if (n) {
+		(*ptrp)++;
+		if (redirect(trp, rp -> fd, NULL, rp -> type) >= 0)
+			rp -> type = 0;
 	}
 
 	return(trp);
@@ -5337,7 +5303,10 @@ redirectlist *rp;
 CONST char *s;
 int *ptrp;
 {
+	int n;
+
 	rp -> type = MD_WRITE;
+	n = 0;
 	switch (s[*ptrp + 1]) {
 		case '>':
 			(*ptrp)++;
@@ -5351,18 +5320,11 @@ int *ptrp;
 #endif
 		case '&':
 			(*ptrp)++;
-			if (s[*ptrp + 1] != '-') rp -> type |= MD_FILEDESC;
-			else {
-				(*ptrp)++;
-				if (redirect(trp,
-				rp -> fd, NULL, rp -> type) >= 0)
-					rp -> type = 0;
-			}
+			if (s[*ptrp + 1] == '-') n++;
+			else rp -> type |= MD_FILEDESC;
 			break;
 		case '-':
-			(*ptrp)++;
-			if (redirect(trp, rp -> fd, NULL, rp -> type) >= 0)
-				rp -> type = 0;
+			n++;
 			break;
 #ifndef	MINIMUMSHELL
 		case '|':
@@ -5372,6 +5334,11 @@ int *ptrp;
 #endif
 		default:
 			break;
+	}
+	if (n) {
+		(*ptrp)++;
+		if (redirect(trp, rp -> fd, NULL, rp -> type) >= 0)
+			rp -> type = 0;
 	}
 
 	return(trp);
@@ -6292,7 +6259,6 @@ syntaxtree *trp;
 		}
 #endif
 		if (!statementcheck(tmptr -> next, 0)) {
-			errno = EINVAL;
 			doperror(NULL, NULL);
 			return(-1);
 		}
@@ -6805,7 +6771,7 @@ int *idp, alias, func;
 			}
 		}
 #endif
-		if (func) {
+		if (func && shellfunc) {
 			for (i = 0; shellfunc[i].ident; i++)
 			if (!strcommcmp(s, shellfunc[i].ident)) {
 				if (idp) *idp = i;
@@ -6912,7 +6878,7 @@ char ***argvp;
 	argc = completebuiltin(s, len, argc, argvp);
 	if (!shellmode) argc = completeinternal(s, len, argc, argvp);
 # endif
-	for (i = 0; shellfunc[i].ident; i++) {
+	if (shellfunc) for (i = 0; shellfunc[i].ident; i++) {
 		if (strncommcmp(s, shellfunc[i].ident, len)
 		|| finddupl(shellfunc[i].ident, argc, *argvp))
 			continue;
@@ -7207,7 +7173,8 @@ redirectlist *rp;
 FILE *fp;
 {
 	heredoc_t *hdp;
-	int c, fd;
+	char *buf;
+	int fd;
 
 	if (!rp) return;
 	printheredoc(rp -> next, fp);
@@ -7217,9 +7184,11 @@ FILE *fp;
 	fd = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
 	if (fd >= 0) {
 		fputnl(stdout);
-		while ((c = readchar(fd)) != READ_EOF) {
-			if (c < 0) break;
-			fputc(c, stdout);
+		while ((buf = readline(fd)) != (char *)nullstr) {
+			if (!buf) break;
+			fputs(buf, stdout);
+			fputnl(stdout);
+			free(buf);
 		}
 		safeclose(fd);
 		argfputs(hdp -> eof, fp);
@@ -7806,9 +7775,8 @@ syntaxtree *trp;
 
 	var = statementbody(trp);
 	comm = var -> comm;
-	if (!(key = evalvararg(comm -> argv[0], '\0',
-	EA_BACKQ | EA_STRIPQLATER, 0)))
-		return(RET_FAIL);
+	key = evalvararg(comm -> argv[0], '\0', EA_BACKQ | EA_STRIPQLATER, 0);
+	if (!key) return(RET_FAIL);
 #ifdef	FD
 	demacroarg(&key);
 #endif
@@ -8007,6 +7975,7 @@ syntaxtree *trp;
 }
 
 #ifndef	MINIMUMSHELL
+/*ARGSUSED*/
 static int NEAR dologin(trp)
 syntaxtree *trp;
 {
@@ -8097,67 +8066,48 @@ static int NEAR doread(trp)
 syntaxtree *trp;
 {
 	char *cp, *next, *buf, *ifs;
-	ALLOC_T i, size;
-	int c;
+	int n, ret;
 
-	for (i = 1; i < (trp -> comm) -> argc; i++) {
-		if (identcheck((trp -> comm) -> argv[i], '\0') <= 0) {
-			execerror((trp -> comm) -> argv[i], ER_NOTIDENT, 0);
+	for (n = 1; n < (trp -> comm) -> argc; n++) {
+		if (identcheck((trp -> comm) -> argv[n], '\0') <= 0) {
+			execerror((trp -> comm) -> argv[n], ER_NOTIDENT, 0);
 			return(RET_FAIL);
 		}
 	}
-
-	buf = c_realloc(NULL, 0, &size);
-	if (trapok >= 0) trapok = 1;
-	readtrap = 1;
-	for (i = 0;;) {
-		if ((c = readchar(STDIN_FILENO)) < 0) {
-			if (trapok >= 0) trapok = 0;
-			readtrap = 0;
-			free(buf);
-			doperror(NULL, NULL);
-			return(RET_FAIL);
-		}
-		if (c == READ_EOF || c == '\n') break;
-		buf = c_realloc(buf, i, &size);
-		buf[i++] = c;
-	}
-	if (trapok >= 0) trapok = 0;
-	if (!readtrap) {
-		free(buf);
-		return(RET_FAIL);
-	}
-	readtrap = 0;
-	buf[i] = '\0';
-	c = (c != READ_EOF) ? RET_SUCCESS : RET_FAIL;
 
 	ifs = getifs();
-	if ((trp -> comm) -> argc > 1) {
+	ret = RET_SUCCESS;
+	if ((buf = readline(STDIN_FILENO)) == (char *)nullstr) ret = RET_FAIL;
+	else if (!buf) {
+		if (errno != EINTR) doperror((trp -> comm) -> argv[0], NULL);
+		ret = RET_FAIL;
+	}
+	else if ((trp -> comm) -> argc > 1) {
 		cp = buf;
-		for (i = 1; i < (trp -> comm) -> argc - 1; i++) {
+		for (n = 1; n < (trp -> comm) -> argc - 1; n++) {
 			if (!*cp) next = cp;
 			else if (!(next = strpbrk(cp, ifs)))
 				next = cp + strlen(cp);
 			else do {
 				*(next++) = '\0';
 			} while (strchr2(ifs, *next));
-			if (setenv2((trp -> comm) -> argv[i], cp, 0) < 0) {
-				c = RET_FAIL;
+			if (setenv2((trp -> comm) -> argv[n], cp, 0) < 0) {
+				ret = RET_FAIL;
 				cp = NULL;
 				break;
 			}
 			cp = next;
 		}
-		if (cp && setenv2((trp -> comm) -> argv[i], cp, 0) < 0)
-			c = RET_FAIL;
+		if (cp && setenv2((trp -> comm) -> argv[n], cp, 0) < 0)
+			ret = RET_FAIL;
 	}
 #ifdef	BASHSTYLE
 	/* bash set the variable REPLY without any argument */
-	else if (setenv2(ENVREPLY, buf, 0) < 0) c = RET_FAIL;
+	else if (setenv2(ENVREPLY, buf, 0) < 0) ret = RET_FAIL;
 #endif
-	free(buf);
+	if (buf != (char *)nullstr && buf) free(buf);
 
-	return(c);
+	return(ret);
 }
 
 static int NEAR doshift(trp)
@@ -8351,7 +8301,7 @@ syntaxtree *trp;
 # else
 	else if (dir[0] && !dir[1] && strchr(".?-@", dir[0])) next = NULL;
 # endif
-#endif
+#endif	/* FD */
 	else if ((next = getconstvar(ENVCDPATH))) {
 		tmp = ((cp = strdelim(dir, 0)))
 			? strndup2(dir, cp - dir) : dir;
@@ -8413,14 +8363,13 @@ syntaxtree *trp;
 	return(RET_FAIL);
 }
 
-/*ARGSUSED*/
 static int NEAR dopwd(trp)
 syntaxtree *trp;
 {
-	char buf[MAXPATHLEN];
 #ifdef	FD
 	int opt;
 #endif
+	char buf[MAXPATHLEN];
 
 #ifdef	FD
 	if ((opt = tinygetopt(trp, "LP", NULL)) < 0) return(RET_FAIL);
@@ -8442,7 +8391,7 @@ static int NEAR dosource(trp)
 syntaxtree *trp;
 {
 	hashlist *hp;
-	char *fname;
+	CONST char *fname;
 	int n, fd;
 
 	if ((trp -> comm) -> argc <= 1) return(RET_SUCCESS);
@@ -9216,6 +9165,7 @@ syntaxtree *trp;
 	return(posixgetopts(trp));
 }
 
+/*ARGSUSED*/
 static int NEAR donewgrp(trp)
 syntaxtree *trp;
 {
@@ -9598,9 +9548,9 @@ syntaxtree *trp;
 {
 	int i;
 
-	for (i = 0; shellfunc[i].ident; i++)
+	for (i = 0; shellfunc && shellfunc[i].ident; i++)
 		if (!strcommcmp(ident, shellfunc[i].ident)) break;
-	if (shellfunc[i].ident) {
+	if (shellfunc && shellfunc[i].ident) {
 		free(shellfunc[i].ident);
 		freestree(shellfunc[i].func);
 		free(shellfunc[i].func);
@@ -9673,6 +9623,7 @@ int len;
 	int i;
 
 	if (checkronly(ident, len) < 0) return(-1);
+	if (!shellfunc) return(0);
 	for (i = 0; shellfunc[i].ident; i++)
 		if (!strncommcmp(ident, shellfunc[i].ident, len)
 		&& !shellfunc[i].ident[len])
@@ -9968,13 +9919,13 @@ int *contp, bg;
 
 #ifdef	MINIMUMSHELL
 	ps = PS4STR;
-#else
+#else	/* !MINIMUMSHELL */
 # ifdef	FD
 	if ((ps = getconstvar(ENVPS4))) evalprompt(&ps, ps);
 # else
 	if ((ps = getconstvar(ENVPS4))) ps = evalvararg(ps, '\0', EA_BACKQ, 0);
 # endif
-#endif
+#endif	/* !MINIMUMSHELL */
 	while (nsubst--) {
 #ifdef	FD
 		demacroarg(&(subst[nsubst]));
@@ -10602,7 +10553,14 @@ int verbose;
 #if	!MSDOS
 	closeonexec(fd);
 #endif
-	while ((buf = readline(fd))) {
+	while ((buf = readline(fd)) != (char *)nullstr) {
+		if (!buf) {
+			if (errno != EINTR) doperror(NULL, fname);
+			ret++;
+			ret_status = RET_FAIL;
+			break;
+		}
+
 		if (!trp) trp = stree;
 		trp = execline(buf, stree, trp, 1);
 		n++;
@@ -10624,11 +10582,6 @@ int verbose;
 #endif
 	}
 
-	if (!ret && errno) {
-		doperror(NULL, fname);
-		ret++;
-		ret_status = RET_FAIL;
-	}
 	execline((char *)-1, stree, trp, 1);
 	if (syntaxerrno) ret_status = RET_SYNTAXERR;
 	free(stree);
@@ -11076,16 +11029,19 @@ char *CONST *argv;
 #endif
 
 	if (n > 2) {
-		initrc(0);
 #ifdef	FD
-# ifndef	_NOPTY
+		initenv();
+#endif
+#if	defined (FD) && !defined (_NOPTY)
 		if (isshptymode()) {
 			inittty(0);
 			checkscreen(0, 0);
 		}
-# endif
+#endif
+		initrc(0);
+#ifdef	FD
 		initfd(argv);
-#endif	/* FD */
+#endif
 		if (verboseinput) {
 			kanjifputs(argv[2], stderr);
 #ifdef	BASHSTYLE
@@ -11177,10 +11133,6 @@ int pseudoexit;
 				buf = inputshellstr(ps, -1, NULL);
 				stdiomode();
 				if (!buf) continue;
-				if (buf == (char *)-1) {
-					buf = NULL;
-					errno = 0;
-				}
 			}
 #else
 			kanjifputs(ps, stderr);
@@ -11190,11 +11142,11 @@ int pseudoexit;
 		}
 		if (trapok >= 0) trapok = 0;
 		if (!buf) {
-			if (errno) {
-				doperror(NULL, "stdin");
-				exec_line(NULL);
-				break;
-			}
+			if (errno != EINTR) doperror(NULL, "stdin");
+			exec_line(NULL);
+			break;
+		}
+		if (buf == (char *)nullstr) {
 #ifndef	MINIMUMSHELL
 			if (interactive && ignoreeof) {
 				if (cont) {
@@ -11260,14 +11212,14 @@ char *CONST *argv, *CONST *envp;
 	initrc(!loginshell);
 #ifdef	FD
 	initfd(argv);
-# ifndef	_NOPTY
+#endif
+#if	defined (FD) && !defined (_NOPTY)
 	if (isshptymode()) {
 		shellpid = (p_id_t)-1;
 		ret_status = ptymacro(NULL, NULL, F_DOSYSTEM);
 	}
 	else
-# endif
-#endif	/* FD */
+#endif
 	shell_loop(0);
 
 	return(ret_status);

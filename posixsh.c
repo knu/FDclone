@@ -372,11 +372,7 @@ syntaxtree *trp;
 	joblist[i].pids[j] = pid;
 	joblist[i].stats[j] = sig;
 	if (!j && !(joblist[i].trp) && trp) {
-#ifdef	MINIMUMSHELL
-		joblist[i].trp = duplstree(trp, NULL);
-#else
 		joblist[i].trp = duplstree(trp, NULL, 0L);
-#endif
 		if (!isoppipe(joblist[i].trp) && joblist[i].trp -> next) {
 			freestree(joblist[i].trp -> next);
 			joblist[i].trp -> next = NULL;

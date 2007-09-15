@@ -1,7 +1,7 @@
 /*
  *	printf.h
  *
- *	definitions for "printf.c"
+ *	definitions & function prototype declarations for "printf.c"
  */
 
 #ifndef	__PRINTF_H_

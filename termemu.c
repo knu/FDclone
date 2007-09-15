@@ -893,10 +893,8 @@ VOID killallpty(VOID_A)
 
 	for (i = 0; i < MAXWINDOWS; i++) {
 		killpty(i, NULL);
-		if (ptylist[i].path) {
-			free(ptylist[i].path);
-			ptylist[i].path = NULL;
-		}
+		if (ptylist[i].path) free(ptylist[i].path);
+		ptylist[i].path = NULL;
 	}
 
 #ifdef	CYGWIN

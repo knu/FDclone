@@ -1,3 +1,8 @@
+Ver. 2.09e	Freezing sometimes caused in 'copy' builtin is fixed.
+ (09/16/07)	Abortion when missing the current directory is fixed.
+		Wrong default file descriptor of '<>'/'><' redirectee is fixed.
+		Incomplete check for the supplementary group is fixed.
+
 Ver. 2.09d	Support Linux kernel 2.6.20.
  (04/26/07)	Progress key responses when INPUTKCODE=utf8.
 		Abortion with accessing the empty directory is fixed.
@@ -86,8 +91,8 @@ Ver. 2.08	Add 'PTYINKCODE' and 'PTYOUTKCODE' internal variables.
 		Add 'LOGLEVEL' and 'ROOTLOGLEVEL' internal variables.
 		Add 'THRUARGS' internal variable.
 		Add 'savetty' builtin.
-		Add -o autosavetty and -S option in 'set' builtin.
-		Add -o ptyshell and -T option in 'set' builtin.
+		Add -o autosavetty and -S options in 'set' builtin.
+		Add -o ptyshell and -T options in 'set' builtin.
 		Add -P option in 'set' builtin as an alias of -o physical.
 		Add ATTR_DIR command.
 		Support changing file owner/group in ATTR_FILE.
@@ -321,8 +326,8 @@ Ver. 2.01a	Abortion when accessing filenames like as "a:" is fixed.
 
 Ver. 2.01	Add true/false/command/getopts/newgrp/fc builtins for POSIX.
  (05/08/02)	Add -o, -b, -C options in 'set' builtin for POSIX.
-		Add the redirectee '>|', '&>|' for -C option.
-		Add the redirectee '&>>'.
+		Add the redirectees of '>|', '&>|' for -C option.
+		Add the redirectee of '&>>'.
 		Add 'login', 'logout' and 'disown' builtins.
 		Add the command separator '&|'.
 		Change the old pipe identifier '&|' to '|&'.

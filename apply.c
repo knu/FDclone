@@ -149,32 +149,17 @@ static off_t maxcopysize = (off_t)0;
 static int NEAR issamedir(path, org)
 CONST char *path, *org;
 {
-	char *cwd, *path2, *org2;
-	int i;
+	char path2[MAXPATHLEN], org2[MAXPATHLEN];
 
-	cwd = getwd2();
-	if (!org) org2 = cwd;
-	else if (_chdir2(org) >= 0) {
-		org2 = getwd2();
-		if (_chdir2(cwd) < 0) error(cwd);
-	}
-	else {
-		free(cwd);
-		return(0);
-	}
-
+	org = (org) ? getrealpath(org, org2, NULL) : Xgetwd(org2);
+	if (org != org2) return(0);
 #ifdef	_USEDOSPATH
-	if (dospath(path, NULL) != dospath(org2, NULL)) path2 = NULL;
-	else
+	if (dospath(path, NULL) != dospath(org2, NULL)) return(0);
 #endif
-	path2 = (_chdir2(path) >= 0) ? getwd2() : NULL;
-	if (_chdir2(cwd) < 0) error(cwd);
-	i = (path2) ? !strpathcmp(org2, path2) : 0;
-	if (org2 != cwd) free(org2);
-	free(cwd);
-	if (path2) free(path2);
+	if (getrealpath(path, path2, NULL) != path2) return(0);
+	if (strpathcmp(path2, org2)) return(0);
 
-	return(i);
+	return(1);
 }
 
 static int NEAR islowerdir(VOID_A)
@@ -183,57 +168,40 @@ static int NEAR islowerdir(VOID_A)
 	char orgpath[MAXPATHLEN];
 #endif
 	CONST char *org;
-	char *cp, *top, *cwd, *path, tmp[MAXPATHLEN];
-	int i;
+	char *cp, *top, path[MAXPATHLEN], buf[MAXPATHLEN];
+	int len;
 
-	cwd = getwd2();
-	path = destpath;
-	org = filelist[filepos].name;
-	if (!org) org = cwd;
-#ifdef	_USEDOSEMU
-	else org = nodospath(orgpath, org);
-#endif
-	strcpy(tmp, path);
-	top = tmp;
-#ifdef	_USEDOSPATH
-	if (dospath(path, NULL) != dospath(org, NULL)) {
-		free(cwd);
+	if (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos])))
 		return(0);
-	}
-	if (_dospath(tmp)) top += 2;
+	org = filelist[filepos].name;
+#ifdef	_USEDOSEMU
+	org = nodospath(orgpath, org);
 #endif
-	while (_chdir2(tmp) < 0) {
-		if ((cp = strrdelim(top, 0)) && cp > top) *cp = '\0';
-		else {
-			path = NULL;
-			break;
-		}
-	}
-	i = 0;
-	if (path) {
-		path = getwd2();
-		if (_chdir2(cwd) < 0) error(cwd);
-		if (_chdir2(org) >= 0) {
-			cp = getwd2();
-			i = strlen(cp);
-			if (strnpathcmp(cp, path, i) || path[i] != _SC_) i = 0;
-			free(cp);
-		}
-		if (_chdir2(cwd) < 0) error(cwd);
-		free(path);
-	}
-	free(cwd);
+	strcpy(path, destpath);
+	top = path;
+#ifdef	_USEDOSPATH
+	if (dospath(path, NULL) != dospath(org, NULL)) return(0);
+	if (_dospath(path)) top += 2;
+#endif
 
-	return(i);
+	while ((cp = (char *)getrealpath(path, buf, NULL)) != buf) {
+		if (cp != path) return(0);
+		cp = strrdelim(top, 0);
+		if (!cp || cp <= top) return(0);
+		*cp = '\0';
+	}
+
+	if (getrealpath(org, path, NULL) != path) return(0);
+	len = strlen(path);
+	if (strnpathcmp(path, buf, len) || buf[len] != _SC_) len = 0;
+
+	return(len);
 }
 
 static char *NEAR getdestdir(mes, arg)
 CONST char *mes, *arg;
 {
 	char *dir;
-#ifndef	_NODOSDRIVE
-	int drive;
-#endif
 
 	if (arg && *arg) dir = strdup2(arg);
 	else if (!(dir = inputstr(mes, 1, -1, NULL, HST_PATH))) return(NULL);
@@ -251,8 +219,7 @@ CONST char *mes, *arg;
 #endif
 
 #ifndef	_NODOSDRIVE
-	destdrive = -1;
-	if ((drive = dospath3(dir)) && (destdrive = preparedrv(drive)) < 0) {
+	if (preparedrv(dospath3(dir), &destdrive) < 0) {
 		warning(-1, dir);
 		free(dir);
 		return(NULL);
@@ -262,7 +229,8 @@ CONST char *mes, *arg;
 		warning(-1, dir);
 		free(dir);
 #ifndef	_NODOSDRIVE
-		if (destdrive >= 0) shutdrv(destdrive);
+		shutdrv(destdrive);
+		destdrive = -1;
 #endif
 		return(NULL);
 	}
@@ -341,6 +309,7 @@ CONST char *s;
 			if (selectstr(&n, 2, 0, str, val) != K_CR) continue;
 # ifndef	_NODOSDRIVE
 			dupdestdrive = destdrive;
+			destdrive = -1;
 # endif
 
 			if (!(cp = getdestdir(FRWDD_K, NULL))) continue;
@@ -514,16 +483,18 @@ static int NEAR checkrmv(path, mode)
 CONST char *path;
 int mode;
 {
+#if	!MSDOS
+	struct stat *stp, st;
+	char *tmp, dir[MAXPATHLEN];
+	int duperrno;
+#endif
 	CONST char *s;
 	char *cp;
 	int n, len;
-#if	MSDOS
 
+#if	MSDOS
 	if (Xaccess(path, mode) >= 0) return(CHK_OK);
 #else	/* !MSDOS */
-	struct stat *stp, st;
-	char *tmp, dir[MAXPATHLEN];
-
 # ifndef	_NODOSDRIVE
 	if (dospath2(path)) {
 		if (Xaccess(path, mode) >= 0) return(CHK_OK);
@@ -559,11 +530,9 @@ int mode;
 
 #if	!MSDOS
 	if (stp) {
-		int duperrno;
-
 		duperrno = errno;
 # ifdef	NOUID
-		mode = logical_access(stp -> st_mode)
+		mode = logical_access(stp -> st_mode);
 # else
 		mode = logical_access(stp -> st_mode,
 			stp -> st_uid, stp -> st_gid);
@@ -1873,7 +1842,7 @@ int tr;
 	destpath = getdestdir(COPYD_K, arg);
 #else
 # ifdef	_NODOSDRIVE
-	destpath = (tr) ? tree(1, (int *)1) : getdestdir(COPYD_K, arg);
+	destpath = (tr) ? tree(1, NULL) : getdestdir(COPYD_K, arg);
 # else
 	destpath = (tr) ? tree(1, &destdrive) : getdestdir(COPYD_K, arg);
 # endif
@@ -1913,10 +1882,11 @@ int tr;
 	forwardpath = NULL;
 #endif
 #ifndef	_NODOSDRIVE
-	if (destdrive >= 0) shutdrv(destdrive);
+	shutdrv(destdrive);
+	destdrive = -1;
 #endif
 #if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
-	if (forwarddrive >= 0) shutdrv(forwarddrive);
+	shutdrv(forwarddrive);
 	forwarddrive = -1;
 #endif
 
@@ -1931,9 +1901,6 @@ int tr;
 #ifdef	_USEDOSEMU
 	char path[MAXPATHLEN];
 #endif
-#ifndef	_NOEXTRACOPY
-	int order;
-#endif
 	int ret;
 
 	if (!mark && isdotdir(filelist[filepos].name)) {
@@ -1944,7 +1911,7 @@ int tr;
 	destpath = getdestdir(MOVED_K, arg);
 #else
 # ifdef	_NODOSDRIVE
-	destpath = (tr) ? tree(1, (int *)1) : getdestdir(MOVED_K, arg);
+	destpath = (tr) ? tree(1, NULL) : getdestdir(MOVED_K, arg);
 # else
 	destpath = (tr) ? tree(1, &destdrive) : getdestdir(MOVED_K, arg);
 # endif
@@ -1979,9 +1946,8 @@ int tr;
 # ifndef	_NODOSDRIVE
 			if (dospath3(nullstr)) waitmes();
 # endif
-			order = (islowerdir()) ? ORD_LOWER : ORD_NORMAL;
 			ret = applydir(filelist[filepos].name, safemove,
-				mvdir1, mvdir2, order, ENDMV_K);
+				mvdir1, mvdir2, ORD_NORMAL, ENDMV_K);
 		}
 		else
 #endif	/* !_NOEXTRACOPY */
@@ -2005,10 +1971,11 @@ int tr;
 	forwardpath = NULL;
 #endif
 #ifndef	_NODOSDRIVE
-	if (destdrive >= 0) shutdrv(destdrive);
+	shutdrv(destdrive);
+	destdrive = -1;
 #endif
 #if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
-	if (forwarddrive >= 0) shutdrv(forwarddrive);
+	shutdrv(forwarddrive);
 	forwarddrive = -1;
 #endif
 

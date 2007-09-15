@@ -1,7 +1,7 @@
 /*
  *	system.h
  *
- *	type definitions & function prototype declarations for "system.c"
+ *	definitions & function prototype declarations for "system.c"
  */
 
 #include "termio.h"

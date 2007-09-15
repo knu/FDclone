@@ -43,9 +43,6 @@ extern char **environ;
 extern char fullpath[];
 extern char *origpath;
 extern int hideclock;
-#ifndef	_NODOSDRIVE
-extern int lastdrv;
-#endif
 
 #ifndef	NOSYMLINK
 static int NEAR evallink __P_((char *, char *));
@@ -790,7 +787,11 @@ CONST char *name;
 #ifdef	_NOORIGSHELL
 	char **envpp[2];
 	int i, n, len;
+#else
+	char *cp;
+#endif
 
+#ifdef	_NOORIGSHELL
 	len = strlen(name);
 	envpp[0] = environ2;
 	envpp[1] = environ;
@@ -804,8 +805,6 @@ CONST char *name;
 			return(&(envpp[i][n][len - FDESIZ + 1]));
 	}
 #else	/* !_NOORIGSHELL */
-	char *cp;
-
 	if ((cp = getshellvar(name, -1))) return(cp);
 	if (!strnenvcmp(name, FDENV, FDESIZ)
 	&& (cp = getshellvar(&(name[FDESIZ]), -1)))

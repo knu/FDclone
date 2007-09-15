@@ -181,11 +181,10 @@ USEWAITPID USESIGACTION USESIGPMASK \
 USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
 GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
 USESTRERROR GETTODARGS USESETSID \
-USESOCKLEN USESETREUID USESETRESUID USESETREGID USESETRESGID
+USESOCKLEN \
+USESETREUID USESETRESUID USESETREGID USESETRESGID USEGETGROUPS
 do
-	echo "#ifdef	$i"
 	echo "#undef	$i"
-	echo "#endif"
 done
 echo
 echo "/*"
@@ -661,14 +660,17 @@ fi
 if isexist "seteuid(0)"; then
 	:
 elif isexist "setreuid(0)"; then
-	echo "#define	USEGETREUID"
+	echo "#define	USESETREUID"
 elif isexist "setresuid(0)"; then
-	echo "#define	USEGETRESUID"
+	echo "#define	USESETRESUID"
 fi
 if isexist "setegid(0)"; then
 	:
 elif isexist "setregid(0)"; then
-	echo "#define	USEGETREGID"
+	echo "#define	USESETREGID"
 elif isexist "setresgid(0)"; then
-	echo "#define	USEGETRESGID"
+	echo "#define	USESETRESGID"
+fi
+if isexist "getgroups(0,0)"; then
+	echo "#define	USEGETGROUPS"
 fi

@@ -261,10 +261,7 @@ int key;
 	if (c == EOF) /*EMPTY*/;
 	else if (c == cc_intr || (key >= 0 && c == key)) {
 		if (isttyiomode) warning(0, INTR_K);
-		else {
-			fprintf2(stderr, INTR_K);
-			fputnl(stderr);
-		}
+		else fprintf2(stderr, "%k\n", INTR_K);
 	}
 	else {
 		ungetch2(c);
@@ -342,7 +339,7 @@ int sig, *chp, nowait;
 # ifndef	_NOORIGSHELL
 	if (shellmode) /*EMPTY*/;
 	else
-# endif	/* !_NOORIGSHELL */
+# endif
 	ime_line += ypos;
 	locate2(x, y);
 
@@ -1770,7 +1767,6 @@ char *CONST *argv;
 							break;
 					}
 					ringbell();
-					Xtflush();
 				}
 				Xcputnl();
 				n += 2;

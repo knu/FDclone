@@ -516,15 +516,16 @@ CONST char *arg;
 static int fname_left(arg)
 CONST char *arg;
 {
+#ifndef	NOSYMLINK
+# ifdef	_USEDOSEMU
+	char path[MAXPATHLEN];
+# endif
+	char tmp[MAXPATHLEN];
+#endif	/* !NOSYMLINK */
 	int i, m;
 
 #ifndef	NOSYMLINK
 	if (islink(&(filelist[filepos]))) {
-# ifndef	_NODOSDRIVE
-		char path[MAXPATHLEN];
-# endif
-		char tmp[MAXPATHLEN];
-
 # ifndef	_NOARCHIVE
 		if (archivefile) {
 			if (!(filelist[filepos].linkname)) i = 0;
@@ -998,30 +999,36 @@ CONST char *env, *arg;
 
 static int NEAR execshell(VOID_A)
 {
+#if	MSDOS
+	char *sh2;
+#endif
 #ifndef	_NOPTY
 	int x, y, min, max;
 #endif
 	char *sh;
 	int mode, ret, wastty;
 
-	sh = getenv2("FD_SHELL");
 #if	MSDOS
-	if (!sh) sh = getenv2("FD_COMSPEC");
+	if (!(sh = getenv2("FD_SHELL"))) sh = "COMMAND.COM";
+#else
+	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
 #endif
-	if (!sh) {
-# if	MSDOS
-		sh = "COMMAND.COM";
-# else
-		sh = "/bin/sh";
-# endif
-	}
 #ifndef	_NOORIGSHELL
-	else if (!strpathcmp(getshellname(sh, NULL, NULL), FDSHELL)) {
-		if (!fdmode) {
-			warning(0, RECUR_K);
-			return(-1);
-		}
-		sh = NULL;
+	else if (!strpathcmp(getshellname(sh, NULL, NULL), FDSHELL)) sh = NULL;
+#endif
+
+#if	MSDOS
+# ifndef	_NOORIGSHELL
+	if (!sh) /*EMPTY*/;
+	else
+# endif
+	if ((sh2 = getenv2("FD_COMSPEC"))) sh = sh2;
+#endif	/* MSDOS */
+
+#ifndef	_NOORIGSHELL
+	if (!sh && !fdmode) {
+		warning(0, RECUR_K);
+		return(-1);
 	}
 #endif
 
@@ -1316,7 +1323,7 @@ CONST char *arg;
 			return(FNC_CANCEL);
 	}
 	else
-#endif	/* _NOORIGSHELL */
+#endif	/* !_NOORIGSHELL */
 	if (!yesno(QUIT_K)) return(FNC_CANCEL);
 
 #ifndef	_NOPTY
@@ -1852,10 +1859,8 @@ CONST char *arg;
 		return(FNC_UPDATE);
 	}
 	free(path);
-	if (findpattern) {
-		free(findpattern);
-		findpattern = NULL;
-	}
+	if (findpattern) free(findpattern);
+	findpattern = NULL;
 	replacefname(NULL);
 
 	return(FNC_EFFECT);

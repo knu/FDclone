@@ -31,8 +31,6 @@ typedef u_short	gid_t;
 #define	_NODOSDRIVE
 #endif
 
-#ifndef	_NODOSDRIVE
-
 #if	MSDOS
 #include <io.h>
 #include "unixemu.h"
@@ -52,8 +50,19 @@ typedef u_short	gid_t;
 # endif
 #endif	/* !MSDOS */
 
+#ifdef	LINUX
+#include <mntent.h>
+#include <sys/mount.h>
+#include <linux/unistd.h>
+# ifndef	BLKFLSBUF
+# include <linux/fs.h>
+# endif
+#endif	/* LINUX */
+
 #include "dosdisk.h"
 #include "kctype.h"
+
+#ifndef	_NODOSDRIVE
 
 #ifdef	HDDMOUNT
 #include <sys/ioctl.h>
@@ -84,17 +93,9 @@ typedef u_short	gid_t;
 # endif	/* !BSD4 */
 #endif	/* HDDMOUNT */
 
-#ifdef	LINUX
-#include <mntent.h>
-#include <sys/mount.h>
-#include <linux/unistd.h>
-# ifndef	BLKFLSBUF
-# include <linux/fs.h>
-# endif
-# ifndef	MOUNTED
-# define	MOUNTED		"/etc/mtab"
-# endif
-#endif	/* LINUX */
+#ifndef	MOUNTED
+#define	MOUNTED		"/etc/mtab"
+#endif
 
 #if	defined (USELLSEEK) && !defined (_syscall5)
 #include <sys/syscall.h>
@@ -172,7 +173,7 @@ extern int errno;
 extern int _dospath __P_((CONST char *));
 #define	__dospath	_dospath
 #else
-static int NEAR __dospath __P_((CONST char *));
+#define	__dospath(p)	((isalpha2(*(p)) && (p)[1] == ':') ? *(p) : 0)
 #endif
 
 #ifndef	FD
@@ -180,6 +181,7 @@ static int NEAR __dospath __P_((CONST char *));
 #endif
 
 #ifdef	FD
+extern int newdup __P_((int));
 extern char *gendospath __P_((char *, int, int));
 extern char *strdelim __P_((CONST char *, int));
 extern char *strrdelim __P_((CONST char *, int));
@@ -198,6 +200,7 @@ extern u_int cnvunicode __P_((u_int, int));
 #ifndef	NOTZFILEH
 #include <tzfile.h>
 #endif
+#define	newdup(n)	(n)
 static char *NEAR gendospath __P_((char *, int, int));
 static char *NEAR strdelim __P_((CONST char *, int));
 static char *NEAR strrdelim __P_((CONST char *, int));
@@ -531,14 +534,6 @@ static CONST kconv_t rsjistable[] = {
 #define	RSJISTBLSIZ	arraysize(rsjistable)
 #endif	/* !FD */
 
-
-#if	!MSDOS || !defined (FD)
-static int NEAR __dospath(path)
-CONST char *path;
-{
-	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
-}
-#endif
 
 #ifndef	FD
 static char *NEAR gendospath(path, drive, c)
@@ -1210,24 +1205,23 @@ static int NEAR killcache(devp, n, size)
 CONST devstat *devp;
 int n, size;
 {
-	int i, ret;
+	int i, top;
 
-	ret = 0;
-	for (i = 0; i < size; i++) {
-		if (cachewrite[n - i]) {
+	top = n - size;
+	for (i = n; i > top; i--) {
+		if (cachewrite[i]) {
 			if (devp -> flags & F_RONLY) {
 				doserrno = EROFS;
-				ret = -1;
+				n = -1;
 			}
-			if (realwrite(devp, sectno[n - i], sectcache[n - i], 1)
-			< 0)
-				ret = -1;
+			if (realwrite(devp, sectno[i], sectcache[i], 1) < 0)
+				n = -1;
 		}
-		free(sectcache[n - i]);
-		cachewrite[n - i] = 0;
+		free(sectcache[i]);
+		cachewrite[i] = 0;
 	}
 
-	return(ret);
+	return(n);
 }
 
 static int NEAR flushcache(devp)
@@ -2270,7 +2264,7 @@ CONST bpb_t *bpbcache;
 			return(0);
 		}
 		bpb = (bpb_t *)buf;
-		devp -> fd = fd;
+		devp -> fd = newdup(fd);
 	}
 #endif	/* !MSDOS */
 
@@ -2379,9 +2373,11 @@ static l_off_t *NEAR _readpt(offset, extoffset, fd, head, sect, secsiz)
 l_off_t offset, extoffset;
 int fd, head, sect, secsiz;
 {
+	partition_t *pt;
+	partition98_t *pt98;
 	u_char *cp, *buf;
-	l_off_t ofs, *tmp, *slice;
-	int i, nslice, pofs, ps, pn, beg, siz;
+	l_off_t ofs, *sp, *tmp, *slice;
+	int i, n, nslice, pofs, ps, pn, beg, siz;
 
 	if (head) {
 		ps = PART98_SIZE;
@@ -2417,24 +2413,18 @@ int fd, head, sect, secsiz;
 
 	for (i = 0; i < pn; i++, cp += ps) {
 		if (head) {
-			partition98_t *pt;
-
-			pt = (partition98_t *)cp;
-			if (pt -> filesys != PT98_FAT12
-			&& pt -> filesys != PT98_FAT16
-			&& pt -> filesys != PT98_FAT16X
-			&& pt -> filesys != PT98_FAT32)
+			pt98 = (partition98_t *)cp;
+			if (pt98 -> filesys != PT98_FAT12
+			&& pt98 -> filesys != PT98_FAT16
+			&& pt98 -> filesys != PT98_FAT16X
+			&& pt98 -> filesys != PT98_FAT32)
 				continue;
-			ofs = byte2word(pt -> s_cyl);
-			ofs = ofs * head + pt -> s_head;
-			ofs = ofs * sect + pt -> s_sect;
+			ofs = byte2word(pt98 -> s_cyl);
+			ofs = ofs * head + pt98 -> s_head;
+			ofs = ofs * sect + pt98 -> s_sect;
 			ofs *= secsiz;
 		}
 		else {
-			partition_t *pt;
-			l_off_t *sp;
-			int n;
-
 			pt = (partition_t *)cp;
 			ofs = byte2dword(pt -> f_sect);
 			ofs *= secsiz;
@@ -2588,6 +2578,7 @@ int drive;
 	else dev.flags &= ~F_VFAT;
 
 	memcpy((char *)&(devlist[new]), (char *)&dev, sizeof(devstat));
+	devlist[new].nlink = 1;
 	if (new >= maxdev) maxdev++;
 	devorder[maxorder++] = new;
 
@@ -2603,6 +2594,9 @@ int dd;
 		doserrno = EBADF;
 		return(-1);
 	}
+
+	if (devlist[dd].nlink > 0) devlist[dd].nlink--;
+	if (devlist[dd].nlink > 0) return(0);
 
 	duperrno = errno;
 	ret = 0;
@@ -2643,10 +2637,9 @@ int dd;
 	}
 
 	for (i = maxorder - 1; i >= 0; i--) if (devorder[i] == dd) break;
-	if (i >= 0) {
-		maxorder--;
-		for (; i < maxorder; i++) devorder[i] = devorder[i + 1];
-	}
+	if (i >= 0) memmove((char *)&(devorder[i]),
+		(char *)&(devorder[i + 1]),
+		(--maxorder - i) * sizeof(*devorder));
 
 	devlist[dd].drive = '\0';
 	while (maxdev > 0 && !devlist[maxdev - 1].drive) maxdev--;
@@ -2655,29 +2648,37 @@ int dd;
 	return(ret);
 }
 
-int preparedrv(drive)
-int drive;
+int preparedrv(drive, ddp)
+int drive, *ddp;
 {
 	int i, drv;
 
-	drv = toupper2(drive);
-	for (i = maxdev - 1; i >= 0; i--)
-		if (drv == (int)devlist[i].drive) return(DOSNOFILE + i);
-	if (doswaitfunc) (*doswaitfunc)();
-	if ((i = opendev(drive)) < 0) reterr(-1);
+	if (!drive) i = -1;
+	else {
+		drv = toupper2(drive);
+		for (i = maxdev - 1; i >= 0; i--)
+			if (drv == (int)devlist[i].drive) break;
+		if (i >= 0) devlist[i].nlink++;
+		else {
+			if (doswaitfunc) (*doswaitfunc)();
+			if ((i = opendev(drive)) < 0) reterr(-1);
+		}
+	}
 
-	return(i);
+	*ddp = i;
+	return(0);
 }
 
-int shutdrv(dd)
+VOID shutdrv(dd)
 int dd;
 {
-	int i;
+	int duperrno;
 
-	if (dd >= DOSNOFILE) return(0);
-	if ((i = closedev(dd)) < 0) reterr(-1);
+	if (dd < 0) return;
 
-	return(i);
+	duperrno = errno;
+	VOID_C closedev(dd);
+	errno = duperrno;
 }
 
 int flushdrv(drive, func)
@@ -5093,7 +5094,9 @@ int dosallclose(VOID_A)
 		if (dosflist[i]._base && dosclose(i + DOSFDOFFSET) < 0)
 			ret = -1;
 	for (i = maxdev - 1; i >= 0; i--)
-		if (devlist[i].drive && closedev(i) < 0) {
+		if (!(devlist[i].drive)) continue;
+		devlist[i].nlink = 0;
+		if (closedev(i) < 0) {
 			errno = doserrno;
 			ret = -1;
 		}

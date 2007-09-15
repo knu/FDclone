@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include "fd.h"
+#include "pathname.h"
 #include "funcno.h"
 #include "kanji.h"
 
@@ -856,7 +857,7 @@ mnt_t *mntbuf;
 	mnt_t *mntp;
 	FILE *fp;
 	CONST char *cp;
-	char *dir, fsname[MAXPATHLEN];
+	char fsname[MAXPATHLEN], dir[MAXPATHLEN];
 	ALLOC_T len, match;
 
 	if (!fsbuf) fsbuf = &fs;
@@ -864,7 +865,8 @@ mnt_t *mntbuf;
 
 	cp = NULL;
 	if (!strncmp(path, "/dev/", strsize("/dev/"))) {
-		if (_chdir2(path) < 0) cp = path;
+		cp = getrealpath(path, dir, NULL);
+		if (cp != dir && cp != path) return(-1);
 	}
 # ifndef	_NODOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
@@ -901,11 +903,9 @@ mnt_t *mntbuf;
 		return(0);
 	}
 # endif	/* !_NODOSDRIVE */
-	else if (_chdir2(path) < 0) return(-1);
+	else if ((cp = getrealpath(path, dir, NULL)) != dir) return(-1);
 
-	if (!cp) {
-		dir = getwd2();
-		if (_chdir2(fullpath) < 0) error(fullpath);
+	if (cp == dir) {
 		match = (ALLOC_T)0;
 
 		if (!(fp = setmntent2(MOUNTED, "rb"))) return(-1);
@@ -932,7 +932,6 @@ mnt_t *mntbuf;
 		}
 		endmntent2(fp);
 
-		free(dir);
 		if (!match) {
 			errno = ENOENT;
 			return(-1);

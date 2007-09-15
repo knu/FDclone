@@ -10,17 +10,9 @@
 
 #ifndef	_NOTREE
 
-#if	MSDOS && !defined (_NODOSDRIVE)
-extern int preparedrv __P_((int));
-#endif
-
-
 extern char fullpath[];
 extern int win_x;
 extern int win_y;
-#ifndef	_NODOSDRIVE
-extern int lastdrv;
-#endif
 
 #define	DIRFIELD	3
 #define	TREEFIELD	(((dircountlimit > 0) \
@@ -130,6 +122,9 @@ int level, *maxp;
 #ifdef	_USEDOSEMU
 	char tmp[MAXPATHLEN];
 #endif
+#ifndef	NODIRLOOP
+	treelist *lp;
+#endif
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
@@ -236,8 +231,6 @@ int level, *maxp;
 
 	if (list) for (i = 0; i < *maxp; i++) {
 #ifndef	NODIRLOOP
-		treelist *lp;
-
 		if (!(list[i].name)) lp = NULL;
 		else for (lp = parent; lp; lp = lp -> parent)
 			if (lp -> dev == list[i].dev
@@ -414,11 +407,10 @@ treelist *list;
 		lp = (treelist *)malloc2(sizeof(treelist));
 		memcpy((char *)lp, (char *)&(list -> sub[0]),
 			sizeof(treelist));
-		for (i = 1; i < list -> max; i++)
-			if ((list -> sub[i]).name) {
-				free((list -> sub[i]).name);
-				(list -> sub[i]).name = NULL;
-			}
+		for (i = 1; i < list -> max; i++) {
+			if (list -> sub[i].name) free(list -> sub[i].name);
+			list -> sub[i].name = NULL;
+		}
 	}
 
 	if (_chdir2(treepath) < 0) {
@@ -434,7 +426,7 @@ treelist *list;
 		if (!(list -> sub)) list -> max = -1;
 		else {
 			list -> max = 2;
-			(list -> sub[1]).name = NULL;
+			list -> sub[1].name = NULL;
 			free(lp);
 		}
 		return(i);
@@ -475,7 +467,7 @@ treelist *list;
 		cp++;
 	}
 	for (i = 0; i < list -> max; i++) {
-		strcpy(cp, (list -> sub[i]).name);
+		strcpy(cp, list -> sub[i].name);
 		if (!expandall(&(list -> sub[i]))) return(0);
 	}
 
@@ -510,8 +502,7 @@ static int NEAR treedown(VOID_A)
 	searchtree();
 
 	if (!tr_cur || !(tr_cur -> sub)
-	|| (tr_cur -> sub[tr_no]).max >= 0
-	|| ((tr_cur -> sub[tr_no]).name))
+	|| tr_cur -> sub[tr_no].max >= 0 || tr_cur -> sub[tr_no].name)
 		return(0);
 
 	waitmes();
@@ -636,7 +627,7 @@ static int NEAR _tree_input(VOID_A)
 			break;
 		case '\t':
 			if (!tr_cur || !(tr_cur -> sub)
-			|| (tr_cur -> sub[tr_no]).max >= 0)
+			|| tr_cur -> sub[tr_no].max >= 0)
 				break;
 			waitmes();
 			expandall(&(tr_cur -> sub[tr_no]));
@@ -645,8 +636,8 @@ static int NEAR _tree_input(VOID_A)
 			break;
 		case K_RIGHT:
 			if (!tr_cur || !(tr_cur -> sub)) break;
-			if ((tr_cur -> sub[tr_no]).max >= 0) {
-				if (!((tr_cur -> sub[tr_no]).sub)) break;
+			if (tr_cur -> sub[tr_no].max >= 0) {
+				if (!(tr_cur -> sub[tr_no].sub)) break;
 				if (treedown() < 0) break;
 			}
 			waitmes();
@@ -655,13 +646,13 @@ static int NEAR _tree_input(VOID_A)
 			redraw = 1;
 			break;
 		case K_LEFT:
-			if (tr_cur && (tr_cur -> sub)
-			&& (tr_cur -> sub[tr_no]).sub) {
-				tmp = freetree((tr_cur -> sub[tr_no]).sub,
-					(tr_cur -> sub[tr_no]).max);
+			if (tr_cur && tr_cur -> sub
+			&& tr_cur -> sub[tr_no].sub) {
+				tmp = freetree(tr_cur -> sub[tr_no].sub,
+					tr_cur -> sub[tr_no].max);
 				tr_bottom -= tmp;
-				(tr_cur -> sub[tr_no]).max = -1;
-				(tr_cur -> sub[tr_no]).sub = NULL;
+				tr_cur -> sub[tr_no].max = -1;
+				tr_cur -> sub[tr_no].sub = NULL;
 				redraw = 1;
 				break;
 			}
@@ -696,7 +687,7 @@ static int NEAR _tree_input(VOID_A)
 			}
 			else do {
 				if (treedown() < 0) break;
-				tmp = toupper2(*((tr_cur -> sub[tr_no]).name));
+				tmp = toupper2(*(tr_cur -> sub[tr_no].name));
 			} while (ch != tmp);
 			break;
 	}
@@ -707,11 +698,11 @@ static int NEAR _tree_input(VOID_A)
 static char *NEAR _tree(VOID_A)
 {
 #ifndef	NODIRLOOP
-	struct stat st;
 # ifndef	_NODOSDRIVE
 	char tmp[MAXPATHLEN];
 # endif
-#endif
+	struct stat st;
+#endif	/* !NODIRLOOP */
 	char *cp, *cwd, path[MAXPATHLEN];
 	int ch, min, len, oy, otop;
 
@@ -814,32 +805,40 @@ static char *NEAR _tree(VOID_A)
 }
 
 /*ARGSUSED*/
-char *tree(cleanup, ddp)
-int cleanup, *ddp;
+char *tree(cleanup, drvp)
+int cleanup, *drvp;
 {
+#ifndef	_NODOSDRIVE
+	int drv;
+#endif
 	char *path, *dupfullpath;
 
 	if (FILEPERROW < WFILEMINTREE) {
 		warning(0, NOROW_K);
 		return(NULL);
 	}
+#ifndef	_NODOSDRIVE
+	if (preparedrv(dospath(fullpath, NULL), &drv) < 0) {
+		warning(-1, fullpath);
+		return(NULL);
+	}
+#endif
 	dupfullpath = strdup2(fullpath);
 	do {
 		path = _tree();
 	} while (path == fullpath);
-	if (ddp) {
 #ifndef	_NODOSDRIVE
-# if	MSDOS
-		if (lastdrv < 0) *ddp = preparedrv(dospath(path, NULL));
-		else
-# endif
-		*ddp = lastdrv;
-		lastdrv = -1;
-#endif
+	if (drvp && preparedrv(dospath(path, NULL), drvp) < 0) {
+		warning(-1, path);
+		free(path);
+		path = NULL;
 	}
+#endif
 	if (chdir2(dupfullpath) < 0) lostcwd(NULL);
 	free(dupfullpath);
-
+#ifndef	_NODOSDRIVE
+	shutdrv(drv);
+#endif
 	if (cleanup) rewritefile(1);
 
 	return(path);

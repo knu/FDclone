@@ -7,8 +7,10 @@
 #include "machine.h"
 #include <stdio.h>
 #include <fcntl.h>
-#include <io.h>
 
+#if	MSDOS
+#include <io.h>
+#endif
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif

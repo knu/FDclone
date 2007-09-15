@@ -19,7 +19,6 @@
 #ifndef	_NOPTY
 #include "termemu.h"
 #endif
-
 #ifndef	_NOIME
 #include "roman.h"
 #endif
@@ -1656,6 +1655,10 @@ int argc;
 char *CONST argv[];
 devinfo *devp;
 {
+# if	FD < 2
+	char *cp, *tmp;
+	u_char c;
+# endif
 	int head, sect, cyl;
 
 	if (argc <= 3) {
@@ -1744,9 +1747,6 @@ devinfo *devp;
 	}
 # else	/* FD < 2 */
 	{
-		char *cp, *tmp;
-		u_char c;
-
 		cp = tmp = catvar(&(argv[3]), '\0');
 
 		if (!(cp = sscanf2(cp, "%+Cu%c", &c, DRIVESEP))) {
@@ -2861,7 +2861,7 @@ char *CONST argv[];
 
 	if (clean) {
 		freeroman(clean - 1);
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 		sendparent(TE_FREEROMAN, clean - 1);
 # endif
 	}
@@ -2879,7 +2879,7 @@ char *CONST argv[];
 		if (!args[i]) /*EMPTY*/;
 		else if (addroman(args[i], args[i + 1]) < 0)
 			builtinerror(argv, args[i], ER_SYNTAXERR);
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 		else sendparent(TE_ADDROMAN, args[i], args[i + 1]);
 # endif
 		freevar(args);
@@ -2893,7 +2893,7 @@ char *CONST argv[];
 		builtinerror(argv, argv[n], ER_SYNTAXERR);
 		return(-1);
 	}
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 	else sendparent(TE_ADDROMAN, argv[n], argv[n + 1]);
 # endif
 
@@ -3038,7 +3038,7 @@ char *ident, *comm;
 # ifdef	COMMNOCASE
 	if (ident) for (i = 0; ident[i]; i++) ident[i] = tolower2(ident[i]);
 # endif
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 	sendparent(TE_ADDALIAS, ident, comm);
 # endif
 
@@ -3067,7 +3067,7 @@ CONST char *ident;
 	}
 	if (re) regexp_free(re);
 	if (!n) return(-1);
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 	sendparent(TE_DELETEALIAS, ident);
 # endif
 
@@ -3199,7 +3199,7 @@ char *ident, **comm;
 # ifdef	COMMNOCASE
 	if (ident) for (i = 0; ident[i]; i++) ident[i] = tolower2(ident[i]);
 # endif
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 	sendparent(TE_ADDFUNCTION, ident, comm);
 # endif
 
@@ -3218,7 +3218,7 @@ CONST char *ident;
 	memmove((char *)&(userfunclist[i]),
 		(char *)&(userfunclist[i + 1]),
 		(--maxuserfunc - i) * sizeof(userfunctable));
-# ifndef	 _NOPTY
+# ifndef	_NOPTY
 	sendparent(TE_DELETEFUNCTION, ident);
 # endif
 
@@ -3603,12 +3603,15 @@ char ***argvp;
 #ifdef	DEBUG
 VOID freedefine(VOID_A)
 {
+# ifdef	_NOORIGSHELL
+	int j;
+# endif
 	int i;
 
 # ifndef	_NOARCHIVE
 	for (i = 0; i < maxlaunch; i++) freelaunch(&(launchlist[i]));
 	for (i = 0; i < maxarchive; i++) freearch(&(archivelist[i]));
-# endif	/* !_NOARCHIVE */
+# endif
 	for (i = 0; i < maxmacro; i++) free(macrolist[i]);
 # ifdef	_NOORIGSHELL
 	for (i = 0; i < maxalias; i++) {
@@ -3616,8 +3619,6 @@ VOID freedefine(VOID_A)
 		free(aliaslist[i].comm);
 	}
 	for (i = 0; i < maxuserfunc; i++) {
-		int j;
-
 		free(userfunclist[i].func);
 		for (j = 0; userfunclist[i].comm[j]; j++)
 			free(userfunclist[i].comm[j]);

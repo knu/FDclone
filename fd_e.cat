@@ -112,7 +112,7 @@ DDEESSCCRRIIPPTTIIOONN
                (and the total size of all files), the total capa-
                city and the free size of the file system includ-
                ing the current directory.  This line appears by
-               SSIIZZEEIINNFFOO the environment variable setting.  When
+               SSIIZZEEIINNFFOO the internal variable setting.  When
                this line is displayed, The information line and
                the path line are displayed 1 line under each.
 
@@ -1456,13 +1456,13 @@ DDEESSCCRRIIPPTTIIOONN
                    Read from _i_n_f_i_l_e and convert its Kanji code
                    from _i_n to _o_u_t, and output to _o_u_t_f_i_l_e.  In _i_n
                    and _o_u_t, you can specify the string which used
-                   in FFNNAAMMEEKKCCOODDEE the environment variable
-                   described below.  If each of them is omitted,
-                   it is regarded as that the Kanji code speci-
-                   fied in compile is specified.  If _o_u_t_f_i_l_e is
-                   omitted, it outputs to the standard output.
-                   If also _i_n_f_i_l_e is omitted, it reads from the
-                   standard input.  ((UUNNIIXX))
+                   in FFNNAAMMEEKKCCOODDEE the internal variable described
+                   below.  If each of them is omitted, it is re-
+                   garded as that the Kanji code specified in com-
+                   pile is specified.  If _o_u_t_f_i_l_e is omitted, it
+                   outputs to the standard output.  If also
+                   _i_n_f_i_l_e is omitted, it reads from the standard
+                   input.  ((UUNNIIXX))
 
      kkeeyymmaapp [_c [_s_t_r]]
                    Map the sequence _s_t_r as key code of the spe-
@@ -2109,8 +2109,8 @@ DDEESSCCRRIIPPTTIIOONN
      You can access the MS-DOS formatted floppy disk, by
      representing to prefix "_c::" to the directory name.  But, it
      is necessary to register the floppy drive and set DDOOSSDDRRIIVVEE
-     the environ variable which makes this function effective, in
-     advance.
+     the internal variable which makes this function effective,
+     in advance.
 
      Each registered drive is distinguished with the drive name.
      You should tag the physically different drive as the dif-
@@ -2806,7 +2806,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      CCOOMMSSPPEECC       Specify the shell used to invoke a batch file.
                    If undefined, the shell defined by SSHHEELLLL the
-                   environment variable or \COMMAND.COM is used.
+                   internal variable or \COMMAND.COM is used.
                    ((DDOOSS))
 
      CCOOPPYYCCMMDD*      Specify the default options used by ccooppyy the
@@ -2849,7 +2849,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    with no sub directory is not trailed '>>' from
                    the first.  Moreover, the file list in the
                    directory displayed on the right of screen is
-                   not displayed over this value.  If the value
+                   not displayed over this value.  If this value
                    is 00, you can realize a comfortable operation
                    speed even in the slow machine.  The default
                    value is 5500 files.
@@ -3101,8 +3101,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    ceeds this value, the last log file will be re-
                    named as the file name followed by the exten-
                    sion ..oolldd to create another new log file.  The
-                   default value is 11002244(1MB).  If the value is 00,
-                   the log file will not be renamed.
+                   default value is 11002244(1MB).  If this value is
+                   00, the log file will not be renamed.
 
      LLOOOOPPCCUURRSSOORR    Loop a cursor moving within the same page,
                    when you move a cursor.  Any value except 00
@@ -3115,7 +3115,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      MMAAIILLCCHHEECCKK*    Specify the interval of checking new mails in
                    seconds, for the spool files specified by
                    MMAAIILLPPAATTHH or MMAAIILL.  The default value is 660000
-                   seconds.  If the value is 00, it will be
+                   seconds.  If this value is 00, it will be
                    checked before each prompt.  ((UUNNIIXX))
 
      MMAAIILLPPAATTHH*     Specify the multiple spool filenames, as the

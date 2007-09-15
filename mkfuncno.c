@@ -6,10 +6,8 @@
 
 #define	__FD_PRIMAL__
 #include "fd.h"
-
-#define	_TBL_(func, id, hlp, flg)	{NULL, id, NULL, 0}
-
 #include "types.h"
+#define	_TBL_(func, id, hlp, flg)	{NULL, id, NULL, 0}
 #include "functabl.h"
 
 int main __P_((int, char *CONST []));

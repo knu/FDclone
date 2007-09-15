@@ -6,8 +6,6 @@
 
 #include "fd.h"
 
-#ifndef	_NOPTY
-
 #include <signal.h>
 #include "termio.h"
 #include "func.h"
@@ -16,6 +14,8 @@
 #ifndef	_NOORIGSHELL
 #include "system.h"
 #endif
+
+#ifndef	_NOPTY
 
 #define	MAXESCPARAM	16
 #define	MAXESCCHAR	4

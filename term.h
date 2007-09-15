@@ -1,7 +1,7 @@
 /*
  *	term.h
  *
- *	variables for TERMCAP
+ *	definitions & function prototype declarations for "term.c"
  */
 
 #ifndef	__TERM_H_

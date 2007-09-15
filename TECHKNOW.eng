@@ -456,6 +456,9 @@ USESETREGID
 USESETRESGID
 	The function setresgid(2) is used instead of getegid(2)
 	to set the group ID.
+USEGETGROUPS
+	The function getgroups(2) is used to get the group
+	access list.
 
 SENSEPERSEC
 	This indicates the number to sense the key input per

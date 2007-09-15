@@ -80,14 +80,14 @@ char *CONST argv[];
 	printf("s:__EXE__::g\n");
 #endif
 	printf("s:__OBJ__:.o:g\n");
-	printf("s:__EMUOBJS__:dosemu.o:\n");
+	printf("s:__EMUOBJS__:dosemu$(OBJ):\n");
 #ifdef	_NOIME
 	printf("s:__IMEOBJS__::\n");
 	printf("s:__DICTTBL__::\n");
 	printf("s:__DICTSRC__::\n");
 	printf("s:__MKDICTOPTION__::\n");
 #else	/* !_NOIME */
-	printf("s:__IMEOBJS__:ime.o roman.o dict.o:\n");
+	printf("s:__IMEOBJS__:ime$(OBJ) dict$(OBJ) roman$(OBJ):\n");
 	printf("s:__DICTTBL__:$(DICTTBL):\n");
 	if (DICTSRC[0]) {
 		printf("s:__DICTSRC__:%s:\n", DICTSRC);
@@ -98,7 +98,8 @@ char *CONST argv[];
 		printf("s:__MKDICTOPTION__::\n");
 	}
 #endif	/* !_NOIME */
-	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3):\n");
+	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6):\n");
+	printf("s:__SOBJLIST__:$(SOBJ1) $(SOBJ2):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
 #ifdef	USEDATADIR
@@ -202,6 +203,8 @@ char *CONST argv[];
 #else
 	printf("s:__PREFIXOPTION__:-c:\n");
 #endif
+	printf("s:[\t ]*$::\n");
+	printf("/^[\t ][\t ]*-*\\$(RM)$/d\n");
 
 	return(0);
 }

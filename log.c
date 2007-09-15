@@ -11,6 +11,9 @@
 #include <fcntl.h>
 #include "func.h"
 
+#if	MSDOS
+#include <process.h>
+#endif
 #ifndef	NOSYSLOG
 #include <syslog.h>
 #endif
@@ -95,7 +98,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 VOID logclose(VOID_A)
 {
-	if (logfname && *logfname) free(logfname);
+	if (logfname && logfname != (char *)nullstr) free(logfname);
 	logfname = (char *)nullstr;
 #ifndef	NOSYSLOG
 	if (syslogged > 0) closelog();
@@ -168,10 +171,10 @@ int len;
 }
 
 #ifdef	USESTDARGH
-/*VARARGS2*/
+/*VARARGS3*/
 VOID logsyscall(int lvl, int val, CONST char *fmt, ...)
 #else
-/*VARARGS2*/
+/*VARARGS3*/
 VOID logsyscall(lvl, val, fmt, va_alist)
 int lvl, val;
 CONST char *fmt;

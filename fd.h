@@ -1,7 +1,7 @@
 /*
  *	fd.h
  *
- *	configuration file for FD
+ *	definitions for FD
  */
 
 #include <stdio.h>
@@ -40,7 +40,6 @@ extern VOID mtrace __P_ ((VOID_A));
 extern VOID muntrace __P_ ((VOID_A));
 extern char *_mtrace_file;
 #endif
-
 
 #if	MSDOS
 # ifdef	BSPATHDELIM
@@ -120,7 +119,7 @@ extern char *_mtrace_file;
 #else	/* !MSDOS */
 #define	HISTFILE	"~/.fd_history"
 #endif	/* !MSDOS */
-#define	DIRHISTFILE	NULL
+#define	DIRHISTFILE	""
 #define	HISTSIZE	50
 #define	DIRHIST		50
 #define	SAVEHIST	50

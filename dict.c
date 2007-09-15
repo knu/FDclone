@@ -78,7 +78,7 @@ static int NEAR copyuserfreq __P_((kanjitable *, CONST kanjitable *,
 static int cmpdict __P_((CONST VOID_P, CONST VOID_P));
 static int cmpfreq __P_((CONST VOID_P, CONST VOID_P));
 static long NEAR addkanji __P_((long, kanjitable **, CONST kanjitable *));
-static VOID freekanji __P_((kanjitable *));
+static VOID NEAR freekanji __P_((kanjitable *));
 static long NEAR addkanjilist __P_((long, kanjitable **,
 		long, kanjitable *, kanjitable *, int));
 static off_t NEAR nextofs __P_((off_t, int));
@@ -390,14 +390,10 @@ int fd;
 
 VOID discarddicttable(VOID_A)
 {
-	if (hinsiindexbuf) {
-		free(hinsiindexbuf);
-		hinsiindexbuf = NULL;
-	}
-	if (hinsitblbuf) {
-		free(hinsitblbuf);
-		hinsitblbuf = NULL;
-	}
+	if (hinsiindexbuf) free(hinsiindexbuf);
+	hinsiindexbuf = NULL;
+	if (hinsitblbuf) free(hinsitblbuf);
+	hinsitblbuf = NULL;
 }
 
 static int NEAR fputbyte(c, fd)
@@ -751,7 +747,7 @@ CONST kanjitable *tmp;
 	return(argc);
 }
 
-static VOID freekanji(argv)
+static VOID NEAR freekanji(argv)
 kanjitable *argv;
 {
 	long n;

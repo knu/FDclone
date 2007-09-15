@@ -429,6 +429,9 @@ USESETREGID
 USESETRESGID
 	グループ ID 設定関数 setresgid(2) を setegid(2) の代
 	わりに用います。
+USEGETGROUPS
+	グループアクセスリスト取得関数 getgroups(2) が利用可
+	能です。
 
 SENSEPERSEC
 	1 秒間にキー入力を関知する回数を指定します。端末通信

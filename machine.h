@@ -7,9 +7,7 @@
 #ifndef	__MACHINE_H_
 #define	__MACHINE_H_
 
-#ifdef	MSDOS
 #undef	MSDOS
-#endif
 #define	MSDOS		(DOSV || PC98 || J3100)
 
 #if	MSDOS
@@ -72,6 +70,9 @@ typedef long	off_t;
 # endif
 # if	defined (DJGPP) || defined (BCC32)
 # define	PROTECTED_MODE
+# endif
+# if	!defined (DJGPP) || (DJGPP < 2)
+# define	NOSELECT
 # endif
 #endif	/* !MSDOS */
 
@@ -226,6 +227,7 @@ typedef long	off_t;
 #define	USEPID_T
 #define	NOSIGLIST
 #define	NOTZFILEH
+#define	USETIMEH
 #define	NOTMGMTOFF
 #define	USEREGCOMP
 #define	NOTERMVAR
@@ -832,7 +834,7 @@ typedef long	off_t;
 /* #define NOUNISTDH	;have not <unistd.h> */
 /* #define NOSTDLIBH	;have not <stdlib.h> */
 /* #define NOTZFILEH	;have not <tzfile.h> */
-/* #define USELEAPCNT	;struct tzhead has tzh_leapcnt as leap second */
+/* #define USELEAPCNT	;'struct tzhead' has 'tzh_leapcnt' as leap second */
 /* #define USESELECTH	;use <sys/select.h> for select() */
 /* #define USESYSDIRH	;use <sys/dir.h> for DEV_BSIZE */
 /* #define USETIMEH	;use <time.h> for 'struct tm' */
@@ -843,15 +845,15 @@ typedef long	off_t;
 /* #define USESGTTY	;use sgtty interface */
 /* #define USETERMIO	;use termio interface */
 /* #define USETERMIOS	;use termios interface */
-/* #define HAVECLINE	;struct termios has c_line */
+/* #define HAVECLINE	;'struct termios' has 'c_line' */
 /* #define USEDEVPTMX	;use /dev/ptmx and /dev/pts/? for pseudo terminal */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	;dirent interface behaves as System V */
-/* #define NODNAMLEN	;struct dirent hasn't d_namlen */
-/* #define NODRECLEN	;struct dirent hasn't d_reclen and has d_fd instead */
-/* #define DNAMESIZE	;size of d_name in struct dirent */
+/* #define NODNAMLEN	;'struct dirent' hasn't 'd_namlen' */
+/* #define NODRECLEN	;'struct dirent' hasn't 'd_reclen' but 'd_fd' */
+/* #define DNAMESIZE	;size of 'd_name' in 'struct dirent' */
 /* #define HAVETIMEZONE	;have extern variable 'timezone' */
-/* #define NOTMGMTOFF	;struct tm hasn't tm_gmtoff */
+/* #define NOTMGMTOFF	;'struct tm' hasn't 'tm_gmtoff' */
 
 /* following 5 items are exclusive */
 /* #define USESTATVFSH	;use <sys/statvfs.h> as header of the FS status */
@@ -864,7 +866,7 @@ typedef long	off_t;
 /* #define USEFFSIZE	;'struct statfs' has 'f_fsize' as block size */
 /* #define STATFSARGS	;the number of arguments in statfs() */
 
-/* following 8 items are exclusive */
+/* following 9 items are exclusive */
 /* #define USEMNTENTH	;use <mntent.h> as header of the mount entry */
 /* #define USEMNTTABH	;use <sys/mnttab.h> as header of the mount entry */
 /* #define USEGETFSSTAT	;use getfsstat() to get the mount entry */
@@ -922,6 +924,7 @@ typedef long	off_t;
 /* #define USESETRESUID	;use setresuid() to set effective user ID */
 /* #define USESETREGID	;use setregid() to set effective group ID */
 /* #define USESETRESGID	;use setresgid() to set effective group ID */
+/* #define USEGETGROUPS	;use getgroups() to get group access list */
 
 /* #define SENSEPERSEC	;ratio of key sense per 1 second */
 /* #define WAITKEYPAD	;interval to wait after getting input of ESC [ms] */
@@ -992,24 +995,27 @@ typedef long	off_t;
 #define	USEFCNTLOCK
 #endif
 
+#if	defined (POSIX) || defined (BSD4)
+#define	USEGETGROUPS
+#endif
+
+#if	!defined (__GNUC__) && !defined (__attribute__)
+#define	__attribute__(x)
+#endif
+
 /*                                 */
 /* Eval configurations by Configur */
 /*                                 */
 
 #include "config.h"
 
-
 #ifdef	USETERMIOS
-# ifdef	USETERMIO
-# undef	USETERMIO
-# endif
+#undef	USETERMIO
 #endif
-
 #if	defined (USETERMIOS) || defined (USETERMIO)
-# ifdef	USESGTTY
-# undef	USESGTTY
-# endif
-#else
+#undef	USESGTTY
+#endif
+#if	!defined (USETERMIOS) && !defined (USETERMIO) && !defined (USESGTTY)
 #define	USESGTTY
 #endif
 
@@ -1100,29 +1106,24 @@ typedef long	off_t;
 #endif
 
 #if	defined (USESTATVFSH)
-# ifdef	USESTATFSH
-# undef	USESTATFSH
-# endif
+#undef	USESTATFSH
 #endif
 
 #if	defined (USESTATVFSH) || defined (USESTATFSH)
-# ifdef	USEMOUNTH
-# undef	USEMOUNTH
-# endif
+#undef	USEMOUNTH
 #endif
 
 #if	defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH)
-# ifdef	USEFSDATA
-# undef	USEFSDATA
-# endif
+#undef	USEFSDATA
 #endif
 
-#if	defined (USESTATVFSH) || defined (USESTATFSH) || defined (USEMOUNTH) \
-|| defined (USEFSDATA)
-# ifdef	USEVFSH
-# undef	USEVFSH
-# endif
-#else
+#if	defined (USESTATVFSH) || defined (USESTATFSH) \
+|| defined (USEMOUNTH) || defined (USEFSDATA)
+#undef	USEVFSH
+#endif
+
+#if	!defined (USESTATVFSH) && !defined (USESTATFSH) \
+&& !defined (USEMOUNTH) && !defined (USEFSDATA) && !defined (USEVFSH)
 #define	USEVFSH
 #endif
 
@@ -1134,63 +1135,53 @@ typedef long	off_t;
 
 
 #if	defined (USEMNTTABH)
-# ifdef	USEGETFSSTAT
-# undef	USEGETFSSTAT
-# endif
+#undef	USEGETFSSTAT
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT)
-# ifdef	USEGETVFSTAT
-# undef	USEGETVFSTAT
-# endif
+#undef	USEGETVFSTAT
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT)
-# ifdef	USEMNTCTL
-# undef	USEMNTCTL
-# endif
+#undef	USEMNTCTL
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT) || defined (USEMNTCTL)
-# ifdef	USEMNTINFOR
-# undef	USEMNTINFOR
-# endif
+#undef	USEMNTINFOR
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR)
-# ifdef	USEMNTINFO
-# undef	USEMNTINFO
-# endif
+#undef	USEMNTINFO
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
 || defined (USEMNTINFO)
-# ifdef	USEGETMNT
-# undef	USEGETMNT
-# endif
+#undef	USEGETMNT
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
 || defined (USEMNTINFO) || defined (USEGETMNT)
-# ifdef	USEGETFSENT
-# undef	USEGETFSENT
-# endif
+#undef	USEGETFSENT
 #endif
 
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
 || defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEGETFSENT)
-# ifdef	USEMNTENTH
-# undef	USEMNTENTH
-# endif
-#else
+#undef	USEMNTENTH
+#endif
+
+#if	!defined (USEMNTTABH) && !defined (USEGETFSSTAT) \
+&& !defined (USEGETVFSTAT) && !defined (USEMNTCTL) && !defined (USEMNTINFOR) \
+&& !defined (USEMNTINFO) && !defined (USEGETMNT) && !defined (USEGETFSENT) \
+&& !defined (USEMNTENTH)
 #define	USEMNTENTH
 #endif
+
 
 #if	!defined (USEGETRUSAGE) && !defined (USETIMES) \
 && defined (USERESOURCEH)

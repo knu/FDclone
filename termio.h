@@ -1,7 +1,7 @@
 /*
  *	termio.h
  *
- *	type definitions for "termio.c"
+ *	definitions & function prototype declarations for "termio.c"
  */
 
 #ifndef	__TERMIO_H_
@@ -198,7 +198,6 @@ typedef union DPMI_REGS {
 #  else
 typedef union REGS	__dpmi_regs;
 #  endif
-# define	__attribute__(x)
 # define	PTR_FAR(ptr)		(((u_long)FP_SEG(ptr) << 4) \
 					+ FP_OFF(ptr))
 # define	PTR_SEG(ptr)		FP_SEG(ptr)
@@ -262,9 +261,7 @@ extern p_id_t Xfork __P_((VOID_A));
 #else
 #define	Xfork		fork
 #endif
-#if	!MSDOS \
-|| (!defined (NOTUSEBIOS) && !defined (PC98) \
-&& defined (DJGPP) && (DJGPP >= 2))
+#ifndef	NOSELECT
 extern int readselect __P_((int, int [], char [], VOID_P));
 #endif
 

@@ -4,8 +4,8 @@
  *	UNIX function emulation
  */
 
-#ifndef	_UNIXEMU_H
-#define	_UNIXEMU_H
+#ifndef	__UNIXEMU_H_
+#define	__UNIXEMU_H_
 
 #ifndef	__SYS_TYPES_STAT_H_
 #define	__SYS_TYPES_STAT_H_
@@ -17,14 +17,10 @@
 #include <time.h>
 #endif
 
-#ifdef	MAXPATHLEN
 #undef	MAXPATHLEN
-#endif
 #define	MAXPATHLEN	260
 
-#ifdef	MAXNAMLEN
 #undef	MAXNAMLEN
-#endif
 #define	MAXNAMLEN	255
 
 #ifndef	R_OK
@@ -132,4 +128,4 @@ extern int utime __P_((CONST char *, CONST time_t[]));
 extern int utime __P_((CONST char *, CONST struct utimbuf *));
 #endif
 
-#endif	/* !_UNIXEMU_H */
+#endif	/* !__UNIXEMU_H_ */

@@ -1400,15 +1400,11 @@ char *buf;
 VOID ime_freebuf(VOID_A)
 {
 	kjisbuf.max = 0;
-	if (kjisbuf.buf) {
-		free(kjisbuf.buf);
-		kjisbuf.buf = NULL;
-	}
+	if (kjisbuf.buf) free(kjisbuf.buf);
+	kjisbuf.buf = NULL;
 	rjisbuf.max = 0;
-	if (rjisbuf.buf) {
-		free(rjisbuf.buf);
-		rjisbuf.buf = NULL;
-	}
+	if (rjisbuf.buf) free(rjisbuf.buf);
+	rjisbuf.buf = NULL;
 }
 # endif	/* DEBUG */
 #endif	/* !_NOIME */

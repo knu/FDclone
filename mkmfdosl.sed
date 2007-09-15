@@ -9,6 +9,7 @@ s:__DICTTBL__::
 s:__DICTSRC__::
 s:__MKDICTOPTION__::
 s:__OBJLIST__:@$(ARGS):
+s:__SOBJLIST__:@$(SARGS):
 s:__DEFRC__:\\\\\\"$(DOSRC)\\\\\\":
 s:__TBLPATH__::
 s:__DATADIR__:$(BINDIR):g
@@ -39,3 +40,5 @@ s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
 s:__UNITBL__:$(UNITBL):
 s:__PREFIXOPTION__::
+s:[	 ]*$::
+/^[	 ][	 ]*-*\$(RM)$/d

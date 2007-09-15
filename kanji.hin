@@ -73,6 +73,7 @@ extern CONST char *mesconv __P_((CONST char *, CONST char *));
 #define	GOHOM_K	mesconv("カレントディレクトリを失ったので作業中断してホームディレクトリに移動します.", "Current directory is lost, to abandon works and move the home directory.")
 #define	GOROT_K	mesconv("カレントディレクトリを失ったので作業中断してルートディレクトリに移動します.", "Current directory is lost, to abandon works and move the root directory.")
 #define	CHGFD_K	mesconv("ディスク交換が済んだら何かキーを押して下さい.", "If new disk is ready, hit any key.")
+#define	NOLCK_K	mesconv("ファイルのロックに失敗しました.", "Failed to lock the file.")
 #define	ENDCP_K	mesconv("ファイルのコピーが終了しました. 何かキーを押して下さい.", "Copy finished. Hit any key.")
 #define	MOVED_K	mesconv("移動先のディレクトリ名:", "Directory to move:")
 #define	ENDMV_K	mesconv("ファイルの移動が終了しました. 何かキーを押して下さい.", "Move finished. Hit any key.")
@@ -536,7 +537,7 @@ extern CONST char *mesconv __P_((CONST char *, CONST char *));
 #define	VDEF_K	mesconv(" (既定値)", " (default)")
 #define	VUDEF_K	mesconv("(未定義)", "(undefined)")
 
-#define	USENV_K mesconv("内部変数 %s の定義を削除しますか ?", \
+#define	USENV_K	mesconv("内部変数 %s の定義を削除しますか ?", \
 			"Do you unset the variable %s ?")
 #define	NEWET_K	mesconv("新規登録", "NewEntry")
 #define	NIMPL_K	mesconv("この機能は実装されていません.", \

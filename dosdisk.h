@@ -1,7 +1,7 @@
 /*
  *	dosdisk.h
  *
- *	type definitions for "dosdisk.c"
+ *	definitions & function prototype declarations for "dosdisk.c"
  */
 
 #if	!MSDOS
@@ -73,10 +73,6 @@
 # define	L_XTND	2
 # endif
 #endif	/* !L_XTND */
-
-#ifndef	__attribute__
-#define	__attribute__(x)
-#endif
 
 #if	(defined (i386) || defined (__i386) || defined (__i386__)) \
 && (defined (SOLARIS) || defined (LINUX) \
@@ -183,8 +179,9 @@ typedef struct _devstat {
 #if	!MSDOS
 	int fd;
 #endif
-	cache_t *dircache;
+	int nlink;
 	u_char flags;
+	cache_t *dircache;
 } devstat;
 
 #define	F_RONLY	0001
@@ -356,8 +353,8 @@ extern int (*dosintrfunc)__P_((VOID_A));
 #ifdef	HDDMOUNT
 extern l_off_t *readpt __P_((CONST char *, int));
 #endif
-extern int preparedrv __P_((int));
-extern int shutdrv __P_((int));
+extern int preparedrv __P_((int, int *));
+extern VOID shutdrv __P_((int));
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 extern DIR *dosopendir __P_((CONST char *));
 extern int dosclosedir __P_((DIR *));

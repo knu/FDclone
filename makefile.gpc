@@ -4,9 +4,9 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.09d
-PREFIX	= 
-CONFDIR	= 
+VERSION	= 2.09e
+PREFIX	=
+CONFDIR	=
 BUILD	=
 MANSEC	= 1
 BINTOP	= $(PREFIX)\bin
@@ -20,6 +20,7 @@ JMANDIR	= $(BUILD)$(MANTOP)\man$(MANSEC)
 JCATDIR	= $(BUILD)$(MANTOP)\cat$(MANSEC)
 IPKWDIR	= .\ipk.work
 IPKTDIR	= .\ipk.tmp
+DEPDIR	= .\depend.tmp
 DIST	= none
 DEFRC	= $(CONFDIR)\fd2rc
 BLDRC	= $(BUILD)$(DEFRC)
@@ -27,27 +28,37 @@ DOSRC	= ~FD\\fd2rc
 UNITBL	= fd-unicd.tbl
 DICTTBL	= fd-dict.tbl
 DICTTXT	= fd-dict.txt
-DICTSRC	= 
+DICTSRC	=
+TABLES	= $(UNITBL)
 
-SRC	= main.c printf.c termio.c term.c pathname.c \
-	system.c posixsh.c doscom.c log.c \
-	dosdisk.c dosemu.c mkunitbl.c \
-	unixdisk.c unixemu.c \
-	pty.c termemu.c frontend.c backend.c \
+SRC	= main.c printf.c termio.c term.c \
+	pathname.c system.c posixsh.c doscom.c \
+	log.c dosemu.c dosdisk.c unixemu.c unixdisk.c \
 	libc.c file.c apply.c \
+	pty.c termemu.c frontend.c backend.c \
 	parse.c builtin.c shell.c \
-	kanji.c input.c \
-	ime.c roman.c dict.c mkdict.c mktankan.c \
-	info.c rockridg.c archive.c tree.c \
+	kanji.c input.c ime.c dict.c roman.c \
+	info.c rockridg.c tree.c \
+	archive.c \
 	custom.c command.c browse.c \
-	kanjicnv.c mkfuncno.c expfunc.c mkmfsed.c
-HEADER	= fd.h machine.h types.h kctype.h printf.h \
-	termio.h term.h pathname.h \
-	wait.h system.h \
-	dosdisk.h \
-	unixdisk.h unixemu.h \
-	termemu.h roman.h hinsi.h \
+	mkunitbl.c mkdict.c mktankan.c \
+	kanjicnv.c expfunc.c mkmfsed.c \
+	mkfuncno.c
+HEADER	= fd.h \
+	machine.h \
+	printf.h kctype.h \
+	termio.h term.h \
+	pathname.h system.h wait.h \
+	types.h \
+	dosdisk.h unixdisk.h unixemu.h \
+	termemu.h \
+	roman.h hinsi.h \
 	func.h functabl.h
+SSRC	= printf.c termio.c \
+	pathname.c system.c posixsh.c doscom.c
+BSRC	= printf.c termio.c \
+	pathname.c system.c doscom.c
+TSRC	= roman.c kanji.c
 
 DOC	= README.eng HISTORY.eng FAQ.eng TECHKNOW.eng \
 	Install.eng ToAdmin.eng LICENSES.eng
@@ -59,6 +70,7 @@ JMANSRC	= fd.man
 JMANCAT	= fd.cat
 RUNCOM	= fdrc
 ARGS	= object.arg
+SARGS	= sobject.arg
 
 SRCS	= $(DOC) $(MANSRC) $(MANCAT) \
 	Configur Makefile Makefile.in $(SRC) $(HEADER) \
@@ -66,20 +78,27 @@ SRCS	= $(DOC) $(MANSRC) $(MANCAT) \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
 	makefile.bpc makefile.b98 \
-	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
-	version.h _fdrc _fdrc.dif
+	mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
+	config.hin version.h \
+	_fdrc _fdrc.dif
 JSRCS	= $(JDOC) $(JMANSRC) $(JMANCAT) \
 	kanji.hin
 SOURCES	= $(SRCS) $(JSRCS)
-SHSOURCES = system.c posixsh.c doscom.c pathname.c \
-	machine.h kctype.h system.h pathname.h unixemu.h \
+SHSOURCES = $(SSRC) \
+	machine.h \
+	printf.h kctype.h \
+	termio.h \
+	pathname.h system.h wait.h \
+	unixemu.h \
 	kanjicnv.c expfunc.c mkmfsed.c \
-	TECHKNOW Configur Makefile Makefile.in \
+	TECHKNOW \
+	Configur Makefile Makefile.in \
 	makefile.gpc makefile.g98 \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
 	makefile.bpc makefile.b98 \
-	config.hin mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed
+	mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
+	config.hin version.h
 
 CC	= gcc
 HOSTCC	= $(CC)
@@ -93,21 +112,24 @@ RM	= del
 LN	= copy /y
 CHMOD	= chmod
 EXE	= .exe
+OBJ	= .o
 PROGRAM	= fd
 ALIAS	= fdsh
-OBJ1	= main.o printf.o termio.o term.o \
-	pathname.o system.o posixsh.o doscom.o log.o
-OBJ2	= dosdisk.o unixemu.o unixdisk.o \
-	pty.o termemu.o frontend.o backend.o \
-	libc.o file.o apply.o \
-	parse.o builtin.o shell.o
-OBJ3	= kanji.o input.o  \
-	info.o rockridg.o archive.o tree.o \
-	custom.o command.o browse.o
-SOBJ	= ssystem.o sposixsh.o sdoscom.o \
-	spathnam.o sprintf.o stermio.o
-BOBJ	= bsystem.o bdoscom.o \
-	bpathnam.o bprintf.o btermio.o
+OBJ1	= main$(OBJ) printf$(OBJ) termio$(OBJ) term$(OBJ)
+OBJ2	= pathname$(OBJ) system$(OBJ) posixsh$(OBJ) doscom$(OBJ) \
+	log$(OBJ) dosdisk$(OBJ) unixemu.o unixdisk.o
+OBJ3	= libc$(OBJ) file$(OBJ) apply$(OBJ) \
+	pty$(OBJ) termemu$(OBJ) frontend$(OBJ) backend$(OBJ)
+OBJ4	= parse$(OBJ) builtin$(OBJ) shell$(OBJ)
+OBJ5	= kanji$(OBJ) input$(OBJ)
+OBJ6	= info$(OBJ) rockridg$(OBJ) tree$(OBJ) \
+	archive$(OBJ) \
+	custom$(OBJ) command$(OBJ) browse$(OBJ)
+SOBJ1	= sprintf$(OBJ) stermio$(OBJ)
+SOBJ2	= spathnam$(OBJ) ssystem$(OBJ) sposixsh$(OBJ) sdoscom$(OBJ)
+BOBJ	= bprintf$(OBJ) btermio$(OBJ) \
+	bpathnam$(OBJ) bsystem$(OBJ) bdoscom$(OBJ)
+TOBJ	= troman$(OBJ) tkanji$(OBJ)
 ALLOC	=
 DEBUG	=
 
@@ -126,26 +148,29 @@ DEFCFLAGS = -DDEFRC='"'$(DOSRC)'"'
 #	Dependency Rules
 ############################################################
 
-all: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL) 
+all: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
 
-$(PROGRAM).exe: $(OBJ1) $(OBJ2) $(OBJ3) $(ARGS)
+$(PROGRAM)$(EXE): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6) $(ARGS)
 	$(CC)  -o $@ @$(ARGS) $(LDFLAGS)
 	@ren $@ $(PROGRAM)
 	@aout2exe $(PROGRAM)
 	@del $(PROGRAM)
 
-$(ARGS): $(OBJ1) $(OBJ2) $(OBJ3)
+$(ARGS): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6)
 	@$(ECHO) $(OBJ1) > $(ARGS)
 	@$(ECHO) $(OBJ2) >> $(ARGS)
 	@$(ECHO) $(OBJ3) >> $(ARGS)
+	@$(ECHO) $(OBJ4) >> $(ARGS)
+	@$(ECHO) $(OBJ5) >> $(ARGS)
+	@$(ECHO) $(OBJ6) >> $(ARGS)
 
-main.o: main.c
+main$(OBJ): main.c
 	$(CC) $(FDCFLAGS) $(DEFCFLAGS)  -c -o $@ $*.c
 
-termio.o: termio.c
+termio$(OBJ): termio.c
 	$(CC) $(FDCFLAGS)  -c -o $@ $*.c
 
-system.o: system.c
+system$(OBJ): system.c
 	$(CC) $(FDCFLAGS) $(DEFCFLAGS) -c -o $@ $*.c
 
 .c.o:
@@ -155,107 +180,116 @@ system.o: system.c
 ############################################################
 # kanji using module
 
-kanji.h: kanjicnv.exe kanji.hin
+kanji.h: kanjicnv$(EXE) kanji.hin
 	.\kanjicnv$(EXE) -s   kanji.hin $@
 
-$(PROGRAM).$(MANSEC): kanjicnv.exe $(JMANSRC)
+$(PROGRAM).$(MANSEC): kanjicnv$(EXE) $(JMANSRC)
 	.\kanjicnv$(EXE) -s  $(JMANSRC) $@
 
-$(PROGRAM).$(MANSEC)c: kanjicnv.exe $(JMANCAT)
+$(PROGRAM).$(MANSEC)c: kanjicnv$(EXE) $(JMANCAT)
 	.\kanjicnv$(EXE) -s $(JMANCAT) $@
 
-$(PROGRAM).eng: kanjicnv.exe $(MANCAT)
+$(PROGRAM).eng: kanjicnv$(EXE) $(MANCAT)
 	.\kanjicnv$(EXE) -b $(MANCAT) $@
 
-$(PROGRAM).doc: kanjicnv.exe $(JMANCAT)
+$(PROGRAM).doc: kanjicnv$(EXE) $(JMANCAT)
 	.\kanjicnv$(EXE) -s -b $(JMANCAT) $@
 
-README.doc: kanjicnv.exe README
+README.doc: kanjicnv$(EXE) README
 	.\kanjicnv$(EXE) -s README $@
 
-HISTORY.doc: kanjicnv.exe HISTORY
+HISTORY.doc: kanjicnv$(EXE) HISTORY
 	.\kanjicnv$(EXE) -s HISTORY $@
 
-FAQ.doc: kanjicnv.exe FAQ
+FAQ.doc: kanjicnv$(EXE) FAQ
 	.\kanjicnv$(EXE) -s FAQ $@
 
-LICENSES.doc: kanjicnv.exe LICENSES
+LICENSES.doc: kanjicnv$(EXE) LICENSES
 	.\kanjicnv$(EXE) -s LICENSES $@
 
-kanjicnv.exe: kanjicnv.c machine.h config.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ kanjicnv.c
+kanjicnv$(EXE): kanjicnv$(OBJ)
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ kanjicnv$(OBJ)
 	@ren $@ kanjicnv
 	@aout2exe kanjicnv
 	@del kanjicnv
+
+kanjicnv$(OBJ): kanjicnv.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
 # function list using module
 
-funcno.h: mkfuncno.exe
+funcno.h: mkfuncno$(EXE)
 	.\mkfuncno$(EXE) $@
 
-mkfuncno.exe: mkfuncno.c functabl.h fd.h machine.h config.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERMAJ) -o $@ mkfuncno.c
+mkfuncno$(EXE): mkfuncno$(OBJ)
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkfuncno$(OBJ)
 	@ren $@ mkfuncno
 	@aout2exe mkfuncno
 	@del mkfuncno
+
+mkfuncno$(OBJ): mkfuncno.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERMAJ) -c -o $@ $*.c
 
 
 ############################################################
 # UNICODE table generating module
 
-$(UNITBL): mkunitbl.exe
+$(UNITBL): mkunitbl$(EXE)
 	.\mkunitbl$(EXE) $@
 
-mkunitbl.exe: mkunitbl.c machine.h config.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkunitbl.c
+mkunitbl$(EXE): mkunitbl$(OBJ)
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkunitbl$(OBJ)
 	@ren $@ mkunitbl
 	@aout2exe mkunitbl
 	@del mkunitbl
+
+mkunitbl$(OBJ): mkunitbl.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
 # Kanji transfer table generating module
 
-$(DICTTBL): mkdict.exe $(DICTSRC)
+$(DICTTBL): mkdict$(EXE) $(DICTSRC)
 	.\mkdict$(EXE)  $@ $(DICTSRC)
 
-mkdict.exe: mkdict.o troman.o tkanji.o
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkdict.o troman.o tkanji.o
+mkdict$(EXE): mkdict$(OBJ) $(TOBJ)
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkdict$(OBJ) $(TOBJ)
 	@ren $@ mkdict
 	@aout2exe mkdict
 	@del mkdict
 
-mktankan.exe: mktankan.o troman.o tkanji.o
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mktankan.o troman.o tkanji.o
+mktankan$(EXE): mktankan$(OBJ) $(TOBJ)
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mktankan$(OBJ) $(TOBJ)
 	@ren $@ mktankan
 	@aout2exe mktankan
 	@del mktankan
 
-mkdict.o: mkdict.c machine.h config.h printf.h kctype.h roman.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ mkdict.c
+mkdict$(OBJ): mkdict.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
-mktankan.o: mktankan.c machine.h config.h printf.h kctype.h roman.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ mktankan.c
+mktankan$(OBJ): mktankan.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
-troman.o: roman.c machine.h config.h printf.h kctype.h roman.h
+troman$(OBJ): roman.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ roman.c
 
-tkanji.o: kanji.c machine.h config.h printf.h kctype.h
+tkanji$(OBJ): kanji.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ kanji.c
 
 rmdict:
 	-$(RM) $(DICTTBL)
 
-$(DICTTXT): mktankan.exe
+$(DICTTXT): mktankan$(EXE)
 	.\mktankan$(EXE) $@
 
 
 ############################################################
 # to install all
 
-install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL) 
+install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
 	$(INSTALL)  $(PROGRAM)$(EXE) $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM)$(EXE)
 	-$(RM) $(BINDIR)\$(ALIAS)$(EXE)
@@ -277,13 +311,12 @@ install: $(PROGRAM).exe $(PROGRAM).$(MANSEC) $(UNITBL)
 		$(INSTALL) $(RUNCOM) $(BLDRC); \
 		$(CHMOD) a+r-x $(BLDRC); \
 	fi
+	[ -d $(BINDIR) ] || mkdir $(BINDIR)
 	-if [ -f $(UNITBL) ]; then \
-		[ -d $(BINDIR) ] || mkdir $(BINDIR); \
 		$(INSTALL) $(UNITBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(UNITBL); \
 	fi
 	-if [ -f $(DICTTBL) ]; then \
-		[ -d $(BINDIR) ] || mkdir $(BINDIR); \
 		$(INSTALL) $(DICTTBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(DICTTBL); \
 	fi
@@ -344,23 +377,81 @@ jcompman-b: compman-b jcatman-b
 ############################################################
 # to make dependency
 
-depend: $(SRC) kanji.h funcno.h
-	mv Makefile.in Makefile.in.bak
-	makedepend \
+depend: $(SRC) config.h kanji.h funcno.h
+	[ -d $(DEPDIR) ] || mkdir $(DEPDIR)
+	for f in $(SRC); do \
+		sed -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
+		$${f} > $(DEPDIR)\$${f}; \
+	done
+	for f in $(SSRC); do \
+		$(RM) $(DEPDIR)\s$${f}; \
+		$(LN) $(DEPDIR)\$${f} $(DEPDIR)\s$${f}; \
+	done
+	for f in $(BSRC); do \
+		$(RM) $(DEPDIR)\b$${f} && \
+		$(LN) $(DEPDIR)\$${f} $(DEPDIR)\b$${f}; \
+	done
+	for f in $(TSRC); do \
+		$(RM) $(DEPDIR)\t$${f} && \
+		$(LN) $(DEPDIR)\$${f} $(DEPDIR)\t$${f}; \
+	done
+	for f in $(HEADER) config.h kanji.h funcno.h version.h; do \
+		sed -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
+		$${f} > $(DEPDIR)\_$${f}; \
+	done
+	$(CP) Makefile.in Makefile.tmp $(DEPDIR)
+	$(CP) Makefile.tmp $(DEPDIR)\Makefile.sh
+	$(CP) Makefile.tmp $(DEPDIR)\Makefile.bsh
+	$(CP) Makefile.tmp $(DEPDIR)\Makefile.nsh
+	$(CP) Makefile.tmp $(DEPDIR)\Makefile.tr
+	cd $(DEPDIR); makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
-		-f Makefile.tmp -- $(CFLAGS) -- $(SRC)
-	-$(RM) Makefile.tmp.bak
-	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' Makefile.in.bak \
+		-f Makefile.tmp -- $(FDCFLAGS) -- $(SRC)
+	cd $(DEPDIR); makedepend \
+		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
+		-f Makefile.sh -- $(SHCFLAGS) -- \
+		`for f in $(SSRC); do echo s$${f}; done`
+	cd $(DEPDIR); makedepend \
+		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
+		-f Makefile.bsh -- $(BSHCFLAGS) -- \
+		`for f in $(BSRC); do echo b$${f}; done`
+	cd $(DEPDIR); makedepend \
+		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
+		-f Makefile.tr -- $(HOSTCFLAGS) -- \
+		`for f in $(TSRC); do echo t$${f}; done`
+	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' $(DEPDIR)\Makefile.in \
 		> Makefile.in
 	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		>> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
+		-e 's\^\(........\).*\.o\\1.o\' \
 		-e 's\\\[^ ]* *\\g' \
-		-e 's\\.o\\_\_OBJ\_\_\g' \
+		-e 's\\.o\\$$(OBJ)\g' \
+		-e 's\_\([^ ]*.h\)\\1\g' \
 		-e 's\ *$$\\' \
-		-e '\: *$$\d' Makefile.tmp >> Makefile.in
-	-$(RM) Makefile.in.bak
-	-$(RM) Makefile.tmp
+		-e '\: *$$\d' $(DEPDIR)\Makefile.tmp >> Makefile.in
+	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
+		-e 's\^\(........\).*\.o\\1.o\' \
+		-e 's\\\[^ ]* *\\g' \
+		-e 's\\.o\\$$(OBJ)\g' \
+		-e 's\_\([^ ]*.h\)\\1\g' \
+		-e 's\ *$$\\' \
+		-e '\: *$$\d' $(DEPDIR)\Makefile.sh >> Makefile.in
+	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
+		-e 's\^\(........\).*\.o\\1.o\' \
+		-e 's\\\[^ ]* *\\g' \
+		-e 's\\.o\\$$(OBJ)\g' \
+		-e 's\_\([^ ]*.h\)\\1\g' \
+		-e 's\ *$$\\' \
+		-e '\: *$$\d' $(DEPDIR)\Makefile.bsh >> Makefile.in
+	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
+		-e 's\^\(........\).*\.o\\1.o\' \
+		-e 's\\\[^ ]* *\\g' \
+		-e 's\\.o\\$$(OBJ)\g' \
+		-e 's\_\([^ ]*.h\)\\1\g' \
+		-e 's\ *$$\\' \
+		-e '\: *$$\d' $(DEPDIR)\Makefile.tr >> Makefile.in
+	-rm -rf $(DEPDIR)
 
 
 ############################################################
@@ -370,8 +461,7 @@ config: Configur expfunc.c
 	-if ($(ECHO) 't() { echo $1; }; t test' | $(SHELL) >\dev\null 2>&1); then \
 		$(SED) -e "2,3d" -e "s:__cc__:gcc:" Configur \
 		| $(SHELL) > config.h; \
-	else \
-		$(MAKE) -f Makefile.tmp expfunc.exe && \
+	elif $(MAKE) -f Makefile.tmp expfunc$(EXE); then \
 		$(SED) -e "2,3d" -e "s:__cc__:gcc:" Configur \
 		| .\expfunc$(EXE) | $(SHELL) > config.h; \
 	fi
@@ -379,67 +469,74 @@ config: Configur expfunc.c
 config.h: config.hin
 	$(CP) config.hin config.h
 
-expfunc.exe: expfunc.c machine.h config.h
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ expfunc.c
+expfunc$(EXE): expfunc$(OBJ)
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ expfunc$(OBJ)
 	@ren $@ expfunc
 	@aout2exe expfunc
 	@del expfunc
+
+expfunc$(OBJ): expfunc.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
 # sample program for pseudo system(3)
 
-sh: fdsh.exe
+sh: fdsh$(EXE)
 
-fdsh.exe: $(SOBJ)
-	$(CC)  -o $@ $(SOBJ) $(SLDFLAGS)
+fdsh$(EXE): $(SOBJ1) $(SOBJ2) $(SARGS)
+	$(CC)  -o $@ @$(SARGS) $(SLDFLAGS)
 	@ren $@ fdsh
 	@aout2exe fdsh
 	@del fdsh
 
-ssystem.o: system.c machine.h config.h printf.h kctype.h pathname.h system.h
+$(SARGS): $(SOBJ1) $(SOBJ2)
+	@$(ECHO) $(SOBJ1) > $(SARGS)
+	@$(ECHO) $(SOBJ2) >> $(SARGS)
+
+ssystem$(OBJ): system.c
 	$(CC) $(SHCFLAGS) -c -o $@ system.c
 
-sposixsh.o: posixsh.c machine.h config.h printf.h kctype.h pathname.h system.h
+sposixsh$(OBJ): posixsh.c
 	$(CC) $(SHCFLAGS) -c -o $@ posixsh.c
 
-sdoscom.o: doscom.c machine.h config.h printf.h kctype.h pathname.h system.h
+sdoscom$(OBJ): doscom.c
 	$(CC) $(SHCFLAGS) -c -o $@ doscom.c
 
-spathnam.o: pathname.c machine.h config.h printf.h pathname.h
+spathnam$(OBJ): pathname.c
 	$(CC) $(SHCFLAGS) -c -o $@ pathname.c
 
-sprintf.o: printf.c machine.h config.h printf.h kctype.h
+sprintf$(OBJ): printf.c
 	$(CC) $(SHCFLAGS) -c -o $@ printf.c
 
-stermio.o: termio.c machine.h config.h termio.h
+stermio$(OBJ): termio.c
 	$(CC) $(SHCFLAGS) -c -o $@ termio.c
 
 
 ############################################################
 # Bourne shell
 
-bsh: fdbsh.exe
+bsh: fdbsh$(EXE)
 
-fdbsh.exe: $(BOBJ)
+fdbsh$(EXE): $(BOBJ)
 	$(CC)  -o $@ $(BOBJ) $(SLDFLAGS)
 	@ren $@ fdbsh
 	@aout2exe fdbsh
 	@del fdbsh
 
-bsystem.o: system.c machine.h config.h printf.h kctype.h pathname.h system.h
+bsystem$(OBJ): system.c
 	$(CC) $(BSHCFLAGS) -c -o $@ system.c
 
-bdoscom.o: doscom.c machine.h config.h printf.h kctype.h pathname.h system.h
+bdoscom$(OBJ): doscom.c
 	$(CC) $(BSHCFLAGS) -c -o $@ doscom.c
 
-bpathnam.o: pathname.c machine.h config.h printf.h pathname.h
+bpathnam$(OBJ): pathname.c
 	$(CC) $(BSHCFLAGS) -c -o $@ pathname.c
 
-bprintf.o: printf.c machine.h config.h printf.h kctype.h
+bprintf$(OBJ): printf.c
 	$(CC) $(BSHCFLAGS) -c -o $@ printf.c
 
-btermio.o: termio.c machine.h config.h termio.h
+btermio$(OBJ): termio.c
 	$(CC) $(BSHCFLAGS) -c -o $@ termio.c
 
 
@@ -468,7 +565,7 @@ shar: $(SOURCES)
 	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
-ipk: $(PROGRAM).exe $(UNITBL) 
+ipk: $(PROGRAM)$(EXE) $(TABLES)
 	-[ -d $(IPKWDIR)\$(BINDIR) ] || mkdir -p $(IPKWDIR)\$(BINDIR)
 	-[ -d $(IPKWDIR)\$(BINDIR) ] || mkdir -p $(IPKWDIR)\$(BINDIR)
 	-[ -d $(IPKWDIR)\$(CONFDIR) ] || mkdir -p $(IPKWDIR)\$(CONFDIR)
@@ -565,7 +662,7 @@ ipk: $(PROGRAM).exe $(UNITBL)
 
 clean:
 	-$(RM) core
-	-$(RM) *.o
+	-$(RM) *$(OBJ)
 	-$(RM) funcno.h
 	-$(RM) kanji.h
 	-$(RM) kanjicnv$(EXE)
@@ -584,257 +681,340 @@ clean:
 	-$(RM) $(ARGS)
 	-$(RM) $(UNITBL)
 	-$(RM) $(DICTTXT)
-	-$(RM) 
+	-$(RM) $(DICTTBL)
+
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-main.o: fd.h
-main.o: machine.h config.h types.h
-main.o: printf.h kctype.h
-main.o: pathname.h term.h func.h
-main.o: dosdisk.h kanji.h version.h system.h
-main.o: termio.h
-main.o: wait.h
-printf.o: machine.h config.h
-printf.o: printf.h
-printf.o: kctype.h
-termio.o: machine.h config.h
-termio.o: printf.h
-termio.o: termio.h
-term.o: machine.h config.h
-term.o: printf.h kctype.h
-term.o: termio.h
-term.o: term.h
-pathname.o: machine.h config.h
-pathname.o: printf.h
-pathname.o: kctype.h
-pathname.o: pathname.h
-system.o: machine.h config.h
-system.o: printf.h
-system.o: kctype.h
-system.o: pathname.h
-system.o: system.h termio.h
-system.o: wait.h
-posixsh.o: machine.h config.h
-posixsh.o: printf.h
-posixsh.o: kctype.h
-posixsh.o: pathname.h
-posixsh.o: system.h termio.h
-posixsh.o: wait.h
-doscom.o: machine.h config.h
-doscom.o: printf.h
-doscom.o: kctype.h
-doscom.o: pathname.h
-doscom.o: system.h termio.h
-doscom.o: wait.h
-log.o: fd.h
-log.o: machine.h config.h types.h
-log.o: printf.h kctype.h
-log.o: pathname.h term.h func.h
-log.o: dosdisk.h
-dosdisk.o: machine.h config.h
-dosdisk.o: dosdisk.h
-dosdisk.o: kctype.h
-dosemu.o: fd.h
-dosemu.o: machine.h config.h types.h
-dosemu.o: printf.h
-dosemu.o: kctype.h
-dosemu.o: pathname.h term.h termio.h
-dosemu.o: func.h
-dosemu.o: dosdisk.h
-mkunitbl.o: machine.h config.h
-unixdisk.o: machine.h config.h
-unixdisk.o: unixdisk.h
-unixdisk.o: termio.h
-unixdisk.o: unixemu.h dosdisk.h
-unixdisk.o: kctype.h
-unixemu.o: fd.h
-unixemu.o: machine.h config.h types.h
-unixemu.o: printf.h
-unixemu.o: kctype.h
-unixemu.o: pathname.h term.h termio.h
-unixemu.o: func.h
-unixemu.o: dosdisk.h
-unixemu.o: unixdisk.h unixemu.h
-pty.o: fd.h
-pty.o: machine.h config.h types.h
-pty.o: printf.h kctype.h
-pty.o: pathname.h term.h
-pty.o: termio.h
-termemu.o: fd.h
-termemu.o: machine.h config.h
-termemu.o: types.h
-termemu.o: printf.h
-termemu.o: kctype.h
-termemu.o: pathname.h term.h
-termemu.o: func.h
-termemu.o: dosdisk.h kanji.h termemu.h system.h
-termemu.o: termio.h
-termemu.o: wait.h
-frontend.o: fd.h
-frontend.o: machine.h config.h
-frontend.o: types.h
-frontend.o: printf.h
-frontend.o: kctype.h
-frontend.o: pathname.h term.h funcno.h func.h
-frontend.o: dosdisk.h kanji.h termemu.h roman.h
-frontend.o: system.h termio.h
-frontend.o: wait.h
-backend.o: fd.h
-backend.o: machine.h config.h
-backend.o: types.h
-backend.o: printf.h
-backend.o: kctype.h
-backend.o: pathname.h term.h
-backend.o: termio.h
-backend.o: func.h
-backend.o: dosdisk.h
-backend.o: termemu.h system.h wait.h
-libc.o: fd.h
-libc.o: machine.h config.h types.h
-libc.o: printf.h
-libc.o: kctype.h
-libc.o: pathname.h term.h func.h
-libc.o: dosdisk.h kanji.h system.h termio.h
-libc.o: wait.h
-libc.o: termemu.h
-file.o: fd.h
-file.o: machine.h config.h types.h
-file.o: printf.h
-file.o: kctype.h
-file.o: pathname.h term.h termio.h
-file.o: func.h
-file.o: dosdisk.h kanji.h
-apply.o: fd.h
-apply.o: machine.h config.h types.h
-apply.o: printf.h
-apply.o: kctype.h
-apply.o: pathname.h term.h func.h
-apply.o: dosdisk.h kanji.h
-parse.o: fd.h
-parse.o: machine.h config.h
-parse.o: types.h
-parse.o: printf.h kctype.h
-parse.o: pathname.h term.h
-parse.o: func.h
-parse.o: dosdisk.h system.h termio.h
-parse.o: wait.h
-builtin.o: fd.h
-builtin.o: machine.h config.h
-builtin.o: types.h
-builtin.o: printf.h
-builtin.o: kctype.h
-builtin.o: pathname.h term.h func.h
-builtin.o: dosdisk.h funcno.h kanji.h system.h
-builtin.o: termio.h
-builtin.o: wait.h
-builtin.o: termemu.h roman.h
-shell.o: fd.h
-shell.o: machine.h config.h types.h
-shell.o: printf.h
-shell.o: kctype.h
-shell.o: pathname.h term.h func.h
-shell.o: dosdisk.h kanji.h system.h termio.h
-shell.o: wait.h
-shell.o: termemu.h
-kanji.o: machine.h
-kanji.o: config.h
-kanji.o: printf.h kctype.h
-input.o: fd.h
-input.o: machine.h config.h
-input.o: types.h
-input.o: printf.h kctype.h
-input.o: pathname.h term.h
-input.o: func.h
-input.o: dosdisk.h kanji.h system.h termio.h
-input.o: wait.h
-ime.o: fd.h
-ime.o: machine.h config.h types.h
-ime.o: printf.h kctype.h
-ime.o: pathname.h term.h func.h
-ime.o: dosdisk.h kanji.h wait.h
-ime.o: roman.h termemu.h
-roman.o: machine.h config.h
-roman.o: printf.h
-roman.o: kctype.h
-roman.o: roman.h
-dict.o: fd.h
-dict.o: machine.h config.h types.h
-dict.o: printf.h
-dict.o: kctype.h
-dict.o: pathname.h term.h termio.h
-dict.o: func.h
-dict.o: dosdisk.h roman.h
-dict.o: hinsi.h
-mkdict.o: machine.h config.h
-mkdict.o: printf.h
-mkdict.o: kctype.h
-mkdict.o: roman.h hinsi.h
-mktankan.o: machine.h config.h
-mktankan.o: printf.h kctype.h
-mktankan.o: roman.h
-info.o: fd.h
-info.o: machine.h
-info.o: config.h types.h
-info.o: printf.h kctype.h
-info.o: pathname.h term.h
-info.o: funcno.h kanji.h
-rockridg.o: fd.h
-rockridg.o: machine.h config.h
-rockridg.o: types.h
-rockridg.o: printf.h
-rockridg.o: kctype.h
-rockridg.o: pathname.h term.h func.h
-rockridg.o: dosdisk.h
-archive.o: fd.h
-archive.o: machine.h config.h
-archive.o: types.h
-archive.o: printf.h
-archive.o: kctype.h
-archive.o: pathname.h term.h func.h
-archive.o: dosdisk.h kanji.h system.h termio.h
-archive.o: wait.h
-tree.o: fd.h
-tree.o: machine.h config.h types.h
-tree.o: printf.h kctype.h
-tree.o: pathname.h term.h func.h
-tree.o: dosdisk.h kanji.h
-custom.o: fd.h
-custom.o: machine.h config.h types.h
-custom.o: printf.h
-custom.o: kctype.h
-custom.o: pathname.h term.h func.h
-custom.o: dosdisk.h funcno.h kanji.h system.h
-custom.o: termio.h
-custom.o: wait.h
-command.o: fd.h
-command.o: machine.h config.h
-command.o: types.h
-command.o: printf.h
-command.o: kctype.h
-command.o: pathname.h term.h func.h
-command.o: dosdisk.h funcno.h kanji.h system.h
-command.o: termio.h
-command.o: wait.h
-command.o: termemu.h functabl.h
-browse.o: fd.h
-browse.o: machine.h config.h
-browse.o: types.h
-browse.o: printf.h kctype.h
-browse.o: pathname.h term.h
-browse.o: func.h
-browse.o: dosdisk.h funcno.h kanji.h termemu.h
-kanjicnv.o: machine.h config.h
-mkfuncno.o: fd.h
-mkfuncno.o: machine.h config.h
-mkfuncno.o: types.h
-mkfuncno.o: printf.h
-mkfuncno.o: kctype.h
-mkfuncno.o: pathname.h term.h functabl.h
-expfunc.o: machine.h config.h
-mkmfsed.o: fd.h
-mkmfsed.o: machine.h config.h
-mkmfsed.o: types.h
-mkmfsed.o: printf.h
-mkmfsed.o: kctype.h
-mkmfsed.o: pathname.h term.h
-mkmfsed.o: version.h
+main$(OBJ): fd.h
+main$(OBJ): machine.h config.h
+main$(OBJ): types.h
+main$(OBJ): printf.h kctype.h
+main$(OBJ): pathname.h term.h
+main$(OBJ): func.h
+main$(OBJ): dosdisk.h kanji.h version.h system.h
+main$(OBJ): termio.h
+main$(OBJ): wait.h
+printf$(OBJ): machine.h config.h
+printf$(OBJ): printf.h
+printf$(OBJ): kctype.h
+termio$(OBJ): machine.h config.h
+termio$(OBJ): printf.h
+termio$(OBJ): termio.h
+term$(OBJ): machine.h config.h
+term$(OBJ): printf.h kctype.h
+term$(OBJ): termio.h
+term$(OBJ): term.h
+pathname$(OBJ): fd.h
+pathname$(OBJ): machine.h config.h
+pathname$(OBJ): types.h
+pathname$(OBJ): printf.h
+pathname$(OBJ): kctype.h
+pathname$(OBJ): pathname.h term.h
+system$(OBJ): fd.h
+system$(OBJ): machine.h config.h types.h
+system$(OBJ): printf.h
+system$(OBJ): kctype.h
+system$(OBJ): pathname.h term.h
+system$(OBJ): system.h
+system$(OBJ): termio.h
+system$(OBJ): wait.h
+system$(OBJ): termemu.h
+posixsh$(OBJ): fd.h
+posixsh$(OBJ): machine.h config.h types.h
+posixsh$(OBJ): printf.h
+posixsh$(OBJ): kctype.h
+posixsh$(OBJ): pathname.h term.h
+posixsh$(OBJ): system.h termio.h
+posixsh$(OBJ): wait.h
+posixsh$(OBJ): termemu.h
+doscom$(OBJ): fd.h
+doscom$(OBJ): machine.h config.h types.h
+doscom$(OBJ): printf.h
+doscom$(OBJ): kctype.h
+doscom$(OBJ): pathname.h term.h
+doscom$(OBJ): system.h termio.h
+doscom$(OBJ): wait.h
+log$(OBJ): fd.h
+log$(OBJ): machine.h config.h
+log$(OBJ): types.h
+log$(OBJ): printf.h kctype.h
+log$(OBJ): pathname.h term.h
+log$(OBJ): func.h
+log$(OBJ): dosdisk.h
+dosemu$(OBJ): fd.h
+dosemu$(OBJ): machine.h config.h types.h
+dosemu$(OBJ): printf.h
+dosemu$(OBJ): kctype.h
+dosemu$(OBJ): pathname.h term.h termio.h
+dosemu$(OBJ): func.h
+dosemu$(OBJ): dosdisk.h
+dosdisk$(OBJ): machine.h config.h
+dosdisk$(OBJ): dosdisk.h
+dosdisk$(OBJ): kctype.h
+unixemu$(OBJ): fd.h
+unixemu$(OBJ): machine.h config.h types.h
+unixemu$(OBJ): printf.h
+unixemu$(OBJ): kctype.h
+unixemu$(OBJ): pathname.h term.h termio.h
+unixemu$(OBJ): func.h
+unixemu$(OBJ): dosdisk.h
+unixemu$(OBJ): unixdisk.h unixemu.h
+unixdisk$(OBJ): machine.h config.h
+unixdisk$(OBJ): unixdisk.h
+unixdisk$(OBJ): termio.h
+unixdisk$(OBJ): unixemu.h
+unixdisk$(OBJ): dosdisk.h
+unixdisk$(OBJ): kctype.h
+libc$(OBJ): fd.h
+libc$(OBJ): machine.h config.h types.h
+libc$(OBJ): printf.h
+libc$(OBJ): kctype.h
+libc$(OBJ): pathname.h term.h func.h
+libc$(OBJ): dosdisk.h kanji.h system.h termio.h
+libc$(OBJ): wait.h
+libc$(OBJ): termemu.h
+file$(OBJ): fd.h
+file$(OBJ): machine.h config.h types.h
+file$(OBJ): printf.h
+file$(OBJ): kctype.h
+file$(OBJ): pathname.h term.h termio.h
+file$(OBJ): func.h
+file$(OBJ): dosdisk.h kanji.h
+apply$(OBJ): fd.h
+apply$(OBJ): machine.h config.h types.h
+apply$(OBJ): printf.h
+apply$(OBJ): kctype.h
+apply$(OBJ): pathname.h term.h func.h
+apply$(OBJ): dosdisk.h kanji.h
+pty$(OBJ): fd.h
+pty$(OBJ): machine.h config.h
+pty$(OBJ): types.h
+pty$(OBJ): printf.h kctype.h
+pty$(OBJ): pathname.h term.h
+pty$(OBJ): termio.h
+termemu$(OBJ): fd.h
+termemu$(OBJ): machine.h config.h
+termemu$(OBJ): types.h
+termemu$(OBJ): printf.h
+termemu$(OBJ): kctype.h
+termemu$(OBJ): pathname.h term.h
+termemu$(OBJ): func.h
+termemu$(OBJ): dosdisk.h kanji.h termemu.h system.h
+termemu$(OBJ): termio.h
+termemu$(OBJ): wait.h
+frontend$(OBJ): fd.h
+frontend$(OBJ): machine.h config.h
+frontend$(OBJ): types.h
+frontend$(OBJ): printf.h
+frontend$(OBJ): kctype.h
+frontend$(OBJ): pathname.h term.h funcno.h func.h
+frontend$(OBJ): dosdisk.h kanji.h termemu.h roman.h
+frontend$(OBJ): system.h termio.h
+frontend$(OBJ): wait.h
+backend$(OBJ): fd.h
+backend$(OBJ): machine.h config.h
+backend$(OBJ): types.h
+backend$(OBJ): printf.h
+backend$(OBJ): kctype.h
+backend$(OBJ): pathname.h term.h
+backend$(OBJ): termio.h
+backend$(OBJ): func.h
+backend$(OBJ): dosdisk.h
+backend$(OBJ): termemu.h system.h wait.h
+parse$(OBJ): fd.h
+parse$(OBJ): machine.h config.h
+parse$(OBJ): types.h
+parse$(OBJ): printf.h kctype.h
+parse$(OBJ): pathname.h term.h
+parse$(OBJ): func.h
+parse$(OBJ): dosdisk.h system.h termio.h
+parse$(OBJ): wait.h
+builtin$(OBJ): fd.h
+builtin$(OBJ): machine.h config.h
+builtin$(OBJ): types.h
+builtin$(OBJ): printf.h
+builtin$(OBJ): kctype.h
+builtin$(OBJ): pathname.h term.h func.h
+builtin$(OBJ): dosdisk.h funcno.h kanji.h system.h
+builtin$(OBJ): termio.h
+builtin$(OBJ): wait.h
+builtin$(OBJ): termemu.h roman.h
+shell$(OBJ): fd.h
+shell$(OBJ): machine.h config.h types.h
+shell$(OBJ): printf.h
+shell$(OBJ): kctype.h
+shell$(OBJ): pathname.h term.h func.h
+shell$(OBJ): dosdisk.h kanji.h system.h termio.h
+shell$(OBJ): wait.h
+shell$(OBJ): termemu.h
+kanji$(OBJ): fd.h
+kanji$(OBJ): machine.h config.h types.h
+kanji$(OBJ): printf.h
+kanji$(OBJ): kctype.h
+kanji$(OBJ): pathname.h term.h termio.h
+kanji$(OBJ): func.h
+kanji$(OBJ): dosdisk.h
+input$(OBJ): fd.h
+input$(OBJ): machine.h config.h
+input$(OBJ): types.h
+input$(OBJ): printf.h kctype.h
+input$(OBJ): pathname.h term.h
+input$(OBJ): func.h
+input$(OBJ): dosdisk.h kanji.h system.h termio.h
+input$(OBJ): wait.h
+ime$(OBJ): fd.h
+ime$(OBJ): machine.h config.h
+ime$(OBJ): types.h
+ime$(OBJ): printf.h kctype.h
+ime$(OBJ): pathname.h term.h
+ime$(OBJ): func.h
+ime$(OBJ): dosdisk.h kanji.h wait.h
+ime$(OBJ): roman.h termemu.h
+dict$(OBJ): fd.h
+dict$(OBJ): machine.h config.h types.h
+dict$(OBJ): printf.h
+dict$(OBJ): kctype.h
+dict$(OBJ): pathname.h term.h termio.h
+dict$(OBJ): func.h
+dict$(OBJ): dosdisk.h roman.h
+dict$(OBJ): hinsi.h
+roman$(OBJ): machine.h config.h
+roman$(OBJ): printf.h
+roman$(OBJ): kctype.h
+roman$(OBJ): roman.h
+info$(OBJ): fd.h
+info$(OBJ): machine.h
+info$(OBJ): config.h types.h
+info$(OBJ): printf.h kctype.h
+info$(OBJ): pathname.h term.h
+info$(OBJ): funcno.h kanji.h
+rockridg$(OBJ): fd.h
+rockridg$(OBJ): machine.h config.h
+rockridg$(OBJ): types.h
+rockridg$(OBJ): printf.h
+rockridg$(OBJ): kctype.h
+rockridg$(OBJ): pathname.h term.h func.h
+rockridg$(OBJ): dosdisk.h
+tree$(OBJ): fd.h
+tree$(OBJ): machine.h config.h
+tree$(OBJ): types.h
+tree$(OBJ): printf.h kctype.h
+tree$(OBJ): pathname.h term.h
+tree$(OBJ): func.h
+tree$(OBJ): dosdisk.h kanji.h
+archive$(OBJ): fd.h
+archive$(OBJ): machine.h config.h
+archive$(OBJ): types.h
+archive$(OBJ): printf.h
+archive$(OBJ): kctype.h
+archive$(OBJ): pathname.h term.h func.h
+archive$(OBJ): dosdisk.h kanji.h system.h termio.h
+archive$(OBJ): wait.h
+custom$(OBJ): fd.h
+custom$(OBJ): machine.h config.h types.h
+custom$(OBJ): printf.h
+custom$(OBJ): kctype.h
+custom$(OBJ): pathname.h term.h func.h
+custom$(OBJ): dosdisk.h funcno.h kanji.h system.h
+custom$(OBJ): termio.h
+custom$(OBJ): wait.h
+command$(OBJ): fd.h
+command$(OBJ): machine.h config.h
+command$(OBJ): types.h
+command$(OBJ): printf.h
+command$(OBJ): kctype.h
+command$(OBJ): pathname.h term.h func.h
+command$(OBJ): dosdisk.h funcno.h kanji.h system.h
+command$(OBJ): termio.h
+command$(OBJ): wait.h
+command$(OBJ): termemu.h functabl.h
+browse$(OBJ): fd.h
+browse$(OBJ): machine.h config.h
+browse$(OBJ): types.h
+browse$(OBJ): printf.h kctype.h
+browse$(OBJ): pathname.h term.h
+browse$(OBJ): func.h
+browse$(OBJ): dosdisk.h funcno.h kanji.h termemu.h
+mkunitbl$(OBJ): machine.h config.h
+mkdict$(OBJ): machine.h config.h
+mkdict$(OBJ): printf.h
+mkdict$(OBJ): kctype.h
+mkdict$(OBJ): roman.h hinsi.h
+mktankan$(OBJ): machine.h config.h
+mktankan$(OBJ): printf.h
+mktankan$(OBJ): kctype.h
+mktankan$(OBJ): roman.h
+kanjicnv$(OBJ): machine.h config.h
+expfunc$(OBJ): machine.h config.h
+mkmfsed$(OBJ): fd.h
+mkmfsed$(OBJ): machine.h config.h
+mkmfsed$(OBJ): types.h
+mkmfsed$(OBJ): printf.h
+mkmfsed$(OBJ): kctype.h
+mkmfsed$(OBJ): pathname.h term.h
+mkmfsed$(OBJ): version.h
+mkfuncno$(OBJ): fd.h
+mkfuncno$(OBJ): machine.h config.h
+mkfuncno$(OBJ): types.h
+mkfuncno$(OBJ): printf.h
+mkfuncno$(OBJ): kctype.h
+mkfuncno$(OBJ): pathname.h term.h functabl.h
+
+sprintf$(OBJ): machine.h config.h
+sprintf$(OBJ): printf.h
+sprintf$(OBJ): kctype.h
+stermio$(OBJ): machine.h config.h
+stermio$(OBJ): printf.h
+stermio$(OBJ): termio.h
+spathnam$(OBJ): machine.h config.h
+spathnam$(OBJ): printf.h
+spathnam$(OBJ): kctype.h
+spathnam$(OBJ): pathname.h
+ssystem$(OBJ): machine.h config.h
+ssystem$(OBJ): printf.h
+ssystem$(OBJ): kctype.h
+ssystem$(OBJ): pathname.h
+ssystem$(OBJ): system.h termio.h
+ssystem$(OBJ): wait.h
+sposixsh$(OBJ): machine.h config.h
+sposixsh$(OBJ): printf.h
+sposixsh$(OBJ): kctype.h
+sposixsh$(OBJ): pathname.h
+sposixsh$(OBJ): system.h termio.h
+sposixsh$(OBJ): wait.h
+sdoscom$(OBJ): machine.h config.h
+sdoscom$(OBJ): printf.h
+sdoscom$(OBJ): kctype.h
+sdoscom$(OBJ): pathname.h
+sdoscom$(OBJ): system.h termio.h
+sdoscom$(OBJ): wait.h
+
+bprintf$(OBJ): machine.h config.h
+bprintf$(OBJ): printf.h
+bprintf$(OBJ): kctype.h
+btermio$(OBJ): machine.h config.h
+btermio$(OBJ): printf.h
+btermio$(OBJ): termio.h
+bpathnam$(OBJ): machine.h config.h
+bpathnam$(OBJ): printf.h
+bpathnam$(OBJ): kctype.h
+bpathnam$(OBJ): pathname.h
+bsystem$(OBJ): machine.h config.h
+bsystem$(OBJ): printf.h
+bsystem$(OBJ): kctype.h
+bsystem$(OBJ): pathname.h
+bsystem$(OBJ): system.h termio.h
+bsystem$(OBJ): wait.h
+bdoscom$(OBJ): machine.h config.h
+bdoscom$(OBJ): printf.h
+bdoscom$(OBJ): kctype.h
+bdoscom$(OBJ): pathname.h
+bdoscom$(OBJ): system.h termio.h
+bdoscom$(OBJ): wait.h
+
+troman$(OBJ): machine.h config.h
+troman$(OBJ): printf.h
+troman$(OBJ): kctype.h
+troman$(OBJ): roman.h
+tkanji$(OBJ): machine.h config.h
+tkanji$(OBJ): printf.h kctype.h

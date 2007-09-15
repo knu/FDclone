@@ -3684,7 +3684,7 @@ char *CONST argv[];
 			fprintf(stdout, "%s:\n", argv[i]);
 			if (stat(argv[i], &st) >= 0) size = st.st_size;
 		}
-		if (!(fpin = fopen(argv[i], "rb"))) {
+		if (!(fpin = fopen(argv[i], "r"))) {
 			fprintf(stderr, "%s: Cannot open file.\n", argv[i]);
 			continue;
 		}

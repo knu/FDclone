@@ -1,7 +1,7 @@
 /*
  *	wait.h
  *
- *	type definitions for waiting child
+ *	definitions for waiting child
  */
 
 #include <signal.h>
