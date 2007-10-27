@@ -731,8 +731,7 @@ doscom$(OBJ): fd.h
 doscom$(OBJ): machine.h config.h types.h
 doscom$(OBJ): printf.h
 doscom$(OBJ): kctype.h
-doscom$(OBJ): pathname.h term.h
-doscom$(OBJ): system.h termio.h
+doscom$(OBJ): pathname.h term.h system.h termio.h
 doscom$(OBJ): wait.h
 log$(OBJ): fd.h
 log$(OBJ): machine.h config.h
@@ -973,20 +972,18 @@ spathnam$(OBJ): pathname.h
 ssystem$(OBJ): machine.h config.h
 ssystem$(OBJ): printf.h
 ssystem$(OBJ): kctype.h
-ssystem$(OBJ): pathname.h
-ssystem$(OBJ): system.h termio.h
+ssystem$(OBJ): system.h pathname.h termio.h
 ssystem$(OBJ): wait.h
 sposixsh$(OBJ): machine.h config.h
 sposixsh$(OBJ): printf.h
 sposixsh$(OBJ): kctype.h
-sposixsh$(OBJ): pathname.h
-sposixsh$(OBJ): system.h termio.h
+sposixsh$(OBJ): system.h pathname.h termio.h
 sposixsh$(OBJ): wait.h
 sdoscom$(OBJ): machine.h config.h
 sdoscom$(OBJ): printf.h
 sdoscom$(OBJ): kctype.h
-sdoscom$(OBJ): pathname.h
-sdoscom$(OBJ): system.h termio.h
+sdoscom$(OBJ): system.h pathname.h
+sdoscom$(OBJ): termio.h
 sdoscom$(OBJ): wait.h
 
 bprintf$(OBJ): machine.h config.h
@@ -1002,14 +999,13 @@ bpathnam$(OBJ): pathname.h
 bsystem$(OBJ): machine.h config.h
 bsystem$(OBJ): printf.h
 bsystem$(OBJ): kctype.h
-bsystem$(OBJ): pathname.h
-bsystem$(OBJ): system.h termio.h
+bsystem$(OBJ): system.h pathname.h termio.h
 bsystem$(OBJ): wait.h
 bdoscom$(OBJ): machine.h config.h
 bdoscom$(OBJ): printf.h
 bdoscom$(OBJ): kctype.h
-bdoscom$(OBJ): pathname.h
-bdoscom$(OBJ): system.h termio.h
+bdoscom$(OBJ): system.h pathname.h
+bdoscom$(OBJ): termio.h
 bdoscom$(OBJ): wait.h
 
 troman$(OBJ): machine.h config.h

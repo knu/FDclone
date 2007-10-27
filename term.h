@@ -84,6 +84,7 @@ typedef struct _keyseq_t {
 #endif
 #define	mkekana(c)	(K_METAKEY | ((c) & 0xff))
 #define	isekana2(c)	(((c) & K_METAKEY) && iskana2((c) & 0xff))
+#define	alternate(c)	((c) & ~K_ALTERNATE)
 
 #ifndef	K_CTRL
 #define	K_CTRL(c)	((c) & 037)
@@ -186,6 +187,7 @@ extern char *tparamstr __P_((CONST char *, int, int));
 extern int getterment __P_((CONST char *));
 #if	!MSDOS
 extern int freeterment __P_((VOID_A));
+extern int regetterment __P_((CONST char *, int));
 extern int setdefterment __P_((VOID_A));
 extern int setdefkeyseq __P_((VOID_A));
 extern int getdefkeyseq __P_((keyseq_t *));
@@ -205,6 +207,7 @@ extern int cputs2 __P_((CONST char *));
 #else
 extern int tputs2 __P_((CONST char *, int));
 extern int putterms __P_((int));
+extern VOID checksuspend __P_((VOID_A));
 #endif
 extern int kbhit2 __P_((long));
 extern int getch2 __P_((VOID_A));
@@ -214,7 +217,7 @@ extern int getkey2 __P_((int, int));
 #else
 extern int getkey3 __P_((int, int));
 #endif
-extern int ungetch2 __P_((int));
+extern int ungetkey2 __P_((int));
 extern int setscroll __P_((int, int));
 extern int locate __P_((int, int));
 extern int tflush __P_((VOID_A));

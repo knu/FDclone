@@ -374,6 +374,7 @@ static int NEAR freekeyseqtree __P_((kstree_t *, int));
 static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR sortkeyseq __P_((VOID_A));
 static int putch3 __P_((tputs_t));
+static int NEAR ungetch2 __P_((int));
 #endif	/* !MSDOS */
 
 #if	!MSDOS && !defined (USETERMINFO)
@@ -581,12 +582,8 @@ static CONST char *defkeyseq[K_MAX - K_MIN + 1] = {
 	NULL,			/* K_HELP */
 };
 #endif	/* !MSDOS */
-
-#if	MSDOS || !defined (TIOCSTI)
 static u_char ungetbuf[16];
 static int ungetnum = 0;
-#endif
-
 static int termflags = 0;
 #define	F_INITTTY	001
 #define	F_TERMENT	002
@@ -1063,8 +1060,11 @@ int notabs(VOID_A)
 int keyflush(VOID_A)
 {
 #ifdef	USESGTTY
-	int i = FREAD;
+	int i;
+#endif
 
+#ifdef	USESGTTY
+	i = FREAD;
 	VOID_C Xioctl(ttyio, TIOCFLUSH, &i);
 #else	/* !USESGTTY */
 # ifdef	USETERMIOS
@@ -1295,7 +1295,7 @@ static int NEAR defaultterm(VOID_A)
 	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
 	for (i = 21; i <= 30; i++)
 		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | K_ALTERNATE;
-#endif	/* !MSDOS */
+#endif
 
 	return(0);
 }
@@ -1366,8 +1366,7 @@ int *xp, *yp;
 	format = SIZEFMT;
 	keyflush();
 # if	MSDOS
-	for (i = 0; i < strsize(GETSIZE); i++)
-		bdos(0x06, GETSIZE[i], 0);
+	for (i = 0; i < strsize(GETSIZE); i++) bdos(0x06, GETSIZE[i], 0);
 # else
 	if (!usegetcursor) return(-1);
 	tputs2(GETSIZE, 1);
@@ -1454,6 +1453,12 @@ char *tparamstr(s, arg1, arg2)
 CONST char *s;
 int arg1, arg2;
 {
+# ifndef	USETERMINFO
+	printbuf_t pbuf;
+	char *tmp;
+	int i, j, n, pop, err, args[2];
+# endif
+
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 	if (!s) return(NULL);
@@ -1472,10 +1477,6 @@ int arg1, arg2;
 
 	return(tstrdup(s));
 # else	/* !USETERMINFO */
-	printbuf_t pbuf;
-	char *tmp;
-	int i, j, n, pop, err, args[2];
-
 	if (!s || !(pbuf.buf = (char *)malloc(1))) return(NULL);
 	pbuf.ptr = pbuf.size = 0;
 	pbuf.flags = VF_NEW;
@@ -1577,7 +1578,9 @@ CONST char *s;
 # ifndef	USETERMINFO
 	char strbuf[TERMCAPSIZE];
 	char *p;
+# endif
 
+# ifndef	USETERMINFO
 	p = strbuf;
 #  ifdef	DEBUG
 	_mtrace_file = "tgetstr(start)";
@@ -1658,20 +1661,22 @@ CONST char *s;
 	n -= K_MIN;
 	cp = NULL;
 	if (!tgetstr2(&cp, s)) return(NULL);
-	if (keyseq[n].str) {
-		free(keyseq[n].str);
-		keyseq[n].str = NULL;
-	}
+	if ((keyseq[n].code & K_ALTERNATE) && *cp != '\033') return(NULL);
 	for (i = 0; i <= K_MAX - K_MIN; i++) {
-		if (!(keyseq[i].str)) continue;
+		if (i == n || !(keyseq[i].str)) continue;
 		for (j = 0; cp[j]; j++)
 			if ((cp[j] & 0x7f) != (keyseq[i].str[j] & 0x7f))
 				break;
-		if (!cp[j]) {
-			free(keyseq[i].str);
+		if (cp[j]) continue;
+		free(keyseq[i].str);
+		if (alternate(keyseq[n].code) != alternate(keyseq[i].code))
 			keyseq[i].str = NULL;
+		else {
+			keyseq[i].str = keyseq[n].str;
+			keyseq[n].str = NULL;
 		}
 	}
+	if (keyseq[n].str) free(keyseq[n].str);
 	keyseq[n].str = cp;
 
 	return(cp);
@@ -1769,8 +1774,7 @@ int getterment(s)
 CONST char *s;
 {
 # ifdef	IRIX
-	/* for STUPID winterm entry */
-	int winterm;
+	int winterm;		/* for STUPID winterm entry */
 # endif
 # ifndef	USETERMINFO
 	char buf[TERMCAPSIZE];
@@ -1874,8 +1878,8 @@ CONST char *s;
 		*(termstr[T_KEYPAD]) = *(termstr[T_NOKEYPAD]) = '\0';
 		for (i = K_DOWN; i <= K_RIGHT; i++) {
 			if (keyseq[i - K_MIN].str) {
-				 free(keyseq[i - K_MIN].str);
-				 keyseq[i - K_MIN].str = NULL;
+				free(keyseq[i - K_MIN].str);
+				keyseq[i - K_MIN].str = NULL;
 			}
 		}
 	}
@@ -1963,16 +1967,16 @@ CONST char *s;
 	tgetkeyseq(K_LEFT, TERM_kl);
 	tgetkeyseq(K_HOME, TERM_kh);
 	tgetkeyseq(K_BS, TERM_kb);
-	tgetkeyseq(K_F(1), TERM_l1);
-	tgetkeyseq(K_F(2), TERM_l2);
-	tgetkeyseq(K_F(3), TERM_l3);
-	tgetkeyseq(K_F(4), TERM_l4);
-	tgetkeyseq(K_F(5), TERM_l5);
-	tgetkeyseq(K_F(6), TERM_l6);
-	tgetkeyseq(K_F(7), TERM_l7);
-	tgetkeyseq(K_F(8), TERM_l8);
-	tgetkeyseq(K_F(9), TERM_l9);
-	tgetkeyseq(K_F(10), TERM_la);
+	tgetkeyseq(K_F(1), TERM_k1);
+	tgetkeyseq(K_F(2), TERM_k2);
+	tgetkeyseq(K_F(3), TERM_k3);
+	tgetkeyseq(K_F(4), TERM_k4);
+	tgetkeyseq(K_F(5), TERM_k5);
+	tgetkeyseq(K_F(6), TERM_k6);
+	tgetkeyseq(K_F(7), TERM_k7);
+	tgetkeyseq(K_F(8), TERM_k8);
+	tgetkeyseq(K_F(9), TERM_k9);
+	tgetkeyseq(K_F(10), TERM_k10);
 	tgetkeyseq(K_F(11), TERM_F1);
 	tgetkeyseq(K_F(12), TERM_F2);
 	tgetkeyseq(K_F(13), TERM_F3);
@@ -1983,17 +1987,16 @@ CONST char *s;
 	tgetkeyseq(K_F(18), TERM_F8);
 	tgetkeyseq(K_F(19), TERM_F9);
 	tgetkeyseq(K_F(20), TERM_FA);
-	tgetkeyseq(K_F(21), TERM_k1);
-	tgetkeyseq(K_F(22), TERM_k2);
-	tgetkeyseq(K_F(23), TERM_k3);
-	tgetkeyseq(K_F(24), TERM_k4);
-	tgetkeyseq(K_F(25), TERM_k5);
-	tgetkeyseq(K_F(26), TERM_k6);
-	tgetkeyseq(K_F(27), TERM_k7);
-	tgetkeyseq(K_F(28), TERM_k8);
-	tgetkeyseq(K_F(29), TERM_k9);
-	tgetkeyseq(K_F(30), TERM_k10);
-	tgetkeyseq(K_F(30), TERM_k0);
+	tgetkeyseq(K_F(21), TERM_l1);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(22), TERM_l2);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(23), TERM_l3);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(24), TERM_l4);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(25), TERM_l5);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(26), TERM_l6);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(27), TERM_l7);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(28), TERM_l8);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(29), TERM_l9);	/* Hack for NEWS-OS bug */
+	tgetkeyseq(K_F(30), TERM_la);	/* Hack for NEWS-OS bug */
 	tgetkeyseq(K_DL, TERM_kL);
 	tgetkeyseq(K_IL, TERM_kA);
 	tgetkeyseq(K_DC, TERM_kD);
@@ -2056,12 +2059,28 @@ int freeterment(VOID_A)
 	return(0);
 }
 
+int regetterment(s, tty)
+CONST char *s;
+int tty;
+{
+	int n, wastty;
+
+	if ((wastty = isttyiomode) && tty) stdiomode();
+	n = freeterment();
+	if (getterment(s) < 0) n = -1;
+	if (wastty && tty) ttyiomode(wastty - 1);
+
+	return(n);
+}
+
 int setdefterment(VOID_A)
 {
-	freeterment();
+	int n;
+
+	n = freeterment();
 	defaultterm();
 
-	return(0);
+	return(n);
 }
 
 int setdefkeyseq(VOID_A)
@@ -2124,7 +2143,7 @@ int len;
 
 	if (str) {
 		for (i = 0; i <= K_MAX - K_MIN; i++) {
-			if ((keyseq[i].code & ~K_ALTERNATE) == n
+			if (alternate(keyseq[i].code) == n
 			|| !(keyseq[i].str) || keyseq[i].len != len)
 				continue;
 			if (!memcmp(str, keyseq[i].str, len)) {
@@ -2215,7 +2234,10 @@ keyseq_t *list;
 
 int initterm(VOID_A)
 {
-	if (!(termflags & F_TERMENT)) getterment(NULL);
+	int n;
+
+	n = 0;
+	if (!(termflags & F_TERMENT)) n = getterment(NULL);
 	termmode(1);
 	if (!dumbterm) {
 		putterm(T_KEYPAD);
@@ -2223,7 +2245,7 @@ int initterm(VOID_A)
 	}
 	termflags |= F_INITTERM;
 
-	return(0);
+	return(n);
 }
 
 int endterm(VOID_A)
@@ -2644,9 +2666,11 @@ long usec;
 # endif
 #endif	/* !NOTUSEBIOS && !NOSELECT */
 
+#if	defined (PC98) || defined (NOTUSEBIOS)
+	if (nextchar) return(1);
+#endif
 	if (ungetnum > 0) return(1);
 #ifdef	NOTUSEBIOS
-	if (nextchar) return(1);
 	reg.x.ax = 0x4406;
 	reg.x.bx = ttyio;
 	putterm(T_METAMODE);
@@ -2656,7 +2680,6 @@ long usec;
 	return((reg.x.flags & 1) ? 0 : reg.h.al);
 #else	/* !NOTUSEBIOS */
 # ifdef	PC98
-	if (nextchar) return(1);
 	reg.h.ah = 0x01;
 	int86(0x18, &reg, &reg);
 
@@ -2670,7 +2693,8 @@ long usec;
 #  else	/* !NOSELECT */
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
-	if ((n = readselect(1, &ttyio, NULL, &tv)) < 0) err2("select()");
+	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
+		err2("select()");
 
 	return(n);
 #  endif	/* !NOSELECT */
@@ -2688,7 +2712,9 @@ int getch2(VOID_A)
 #endif
 #if	defined (PC98) || defined (NOTUSEBIOS)
 	int ch;
+#endif
 
+#if	defined (PC98) || defined (NOTUSEBIOS)
 	if (nextchar) {
 		ch = nextchar;
 		nextchar = '\0';
@@ -2831,7 +2857,7 @@ int sig, code;
 	return(ch);
 }
 
-int ungetch2(c)
+int ungetkey2(c)
 int c;
 {
 	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
@@ -2930,18 +2956,28 @@ int n;
 	return(tputs2(termstr[n], n_line));
 }
 
+VOID checksuspend(VOID_A)
+{
+	if (suspended) ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
+	suspended = 0;
+}
+
 int kbhit2(usec)
 long usec;
 {
+# ifndef	NOSELECT
+	struct timeval tv;
+	int n;
+# endif
+
+	if (ungetnum > 0) return(1);
 # ifdef	NOSELECT
 	return((usec) ? 1 : 0);
 # else
-	struct timeval tv;
-	int n;
-
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
-	if ((n = readselect(1, &ttyio, NULL, &tv)) < 0) err2("select()");
+	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
+		err2("select()");
 
 	return(n);
 # endif
@@ -2950,15 +2986,15 @@ long usec;
 int getch2(VOID_A)
 {
 	u_char ch;
-	int i;
+	int n;
 
-	do {
-		if (suspended) {
-			ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
-			suspended = 0;
-		}
-	} while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
-	if (i < (int)sizeof(u_char)) return(EOF);
+	if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
+	for (;;) {
+		checksuspend();
+		n = read(ttyio, &ch, sizeof(u_char));
+		if (n >= 0 || errno != EINTR) break;
+	}
+	if (n < (int)sizeof(u_char)) return(EOF);
 
 	return((int)ch);
 }
@@ -2977,14 +3013,7 @@ int sig, code;
 			count = SENSEPERSEC;
 			kill(getpid(), sig);
 		}
-		if (suspended) {
-			ttyiomode((isttyiomode) ? isttyiomode - 1 : 0);
-			suspended = 0;
-		}
 		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
-# ifndef	TIOCSTI
-		if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
-# endif
 	} while (!key);
 
 	if ((key = ch = getch2()) == EOF) return(K_NOKEY);
@@ -3049,6 +3078,7 @@ int sig, code;
 		ungetch2(keyseq[p -> key].str[j]);
 	}
 	ungetch2(ch);
+
 	return(key);
 }
 
@@ -3063,23 +3093,33 @@ int sig, code;
 		else ch -= K_F0;
 	}
 
-	return(ch & ~K_ALTERNATE);
+	return(alternate(ch));
 }
 
-int ungetch2(c)
+static int NEAR ungetch2(c)
 int c;
 {
-# ifdef	TIOCSTI
-	u_char ch;
-
-	ch = c;
-	Xioctl(ttyio, TIOCSTI, &ch);
-# else
 	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
 	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
 		ungetnum * sizeof(u_char));
 	ungetbuf[0] = c;
 	ungetnum++;
+
+	return(c);
+}
+
+int ungetkey2(c)
+int c;
+{
+# ifdef	TIOCSTI
+	u_char ch;
+# endif
+
+# ifdef	TIOCSTI
+	ch = c;
+	Xioctl(ttyio, TIOCSTI, &ch);
+# else
+	if (ungetch2(c) == EOF) return(EOF);
 # endif
 
 	return(c);
@@ -3183,11 +3223,13 @@ int xmax, ymax;
 int setwsize(fd, xmax, ymax)
 int fd, xmax, ymax;
 {
+# ifndef	NOTERMWSIZE
+	termwsize_t ws;
+# endif
+
 # ifdef	NOTERMWSIZE
 	return(0);
 # else	/* !NOTERMWSIZE */
-	termwsize_t ws;
-
 	memset((char *)&ws, 0, sizeof(ws));
 	VOID_C Xioctl(fd, REQGETWS, &ws);
 

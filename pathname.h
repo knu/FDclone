@@ -296,9 +296,6 @@ extern VOID freeidlist __P_((VOID_A));
 #endif	/* FD && !NOUID */
 extern char *gethomedir __P_((VOID_A));
 extern CONST char *getrealpath __P_((CONST char *, char *, char *));
-#ifndef	MINIMUMSHELL
-extern int evalhome __P_((char **, int, CONST char **));
-#endif
 extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, CONST char *));
 extern int evalglob __P_((int, char ***, int));

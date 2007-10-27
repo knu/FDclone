@@ -4,8 +4,6 @@
  *	definitions & function prototype declarations for "system.c"
  */
 
-#include "termio.h"
-#include "wait.h"
 #ifdef	HPUX
 /* for TIOCGPGRP & TIOCSPGRP */
 #include <bsdtty.h>
@@ -23,8 +21,31 @@
 /* #define STRICTPOSIX		; keep POSIX strictly */
 /* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
 
-#ifdef	BASHSTYLE
+#if	defined (BASHSTYLE) && !defined (BASHBUG)
 #define	BASHBUG
+#endif
+#if	(MSDOS || defined (MINIMUMSHELL)) && !defined (NOJOB)
+#define	NOJOB
+#endif
+#if	defined (MINIMUMSHELL) && !defined (NOALIAS)
+#define	NOALIAS
+#endif
+#if	(MSDOS || (defined (FD) && !defined (_NODOSCOMMAND))) \
+&& !defined (DOSCOMMAND)
+#define	DOSCOMMAND
+#endif
+#if	MSDOS && !defined (USEFAKEPIPE)
+#define	USEFAKEPIPE
+#endif
+#if	defined (MINIMUMSHELL) && !defined (NOPOSIXUTIL)
+#define	NOPOSIXUTIL
+#endif
+
+#include "pathname.h"
+#include "termio.h"
+#include "wait.h"
+
+#ifdef	BASHSTYLE
 #define	ERRBREAK	continue
 #else
 #define	ERRBREAK	break
@@ -73,30 +94,18 @@
 #endif
 
 #if	MSDOS
-#define	NOJOB
-#define	DOSCOMMAND
-#define	USEFAKEPIPE
 #define	Xexit		exit
 #define	DEFPATH		":"
 # ifndef	_PATH_DEVNULL
 # define	_PATH_DEVNULL	"NULL"
 # endif
 #else
-# if	defined (FD) && !defined (_NODOSCOMMAND)
-# define	DOSCOMMAND
-# endif
 #define	Xexit		_exit
 #define	DEFPATH		":/bin:/usr/bin"
 #define	DEFTERM		"dumb"
 # ifndef	_PATH_DEVNULL
 # define	_PATH_DEVNULL	"/dev/null"
 # endif
-#endif
-
-#ifdef	MINIMUMSHELL
-#define	NOJOB
-#define	NOALIAS
-#define	NOPOSIXUTIL
 #endif
 
 typedef struct _heredoc_t {

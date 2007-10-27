@@ -17,6 +17,39 @@
 #include <grp.h>
 #endif
 
+#define	MAXTMPNAMLEN	8
+#define	LOCKEXT		"LCK"
+#ifdef	_NODOSDRIVE
+#define	DOSDIRENT	32
+#define	LFNENTSIZ	13
+#endif
+#define	LFNONLY		" +,;=[]"
+#define	DOSBODYLEN	8
+#define	DOSEXTLEN	3
+
+#ifndef	O_BINARY
+#define	O_BINARY	0
+#endif
+#ifndef	O_ACCMODE
+#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
+#endif
+#ifndef	ENOSPC
+#define	ENOSPC		EACCES
+#endif
+#ifndef	EIO
+#define	EIO		ENODEV
+#endif
+#ifndef	ETIMEDOUT
+#define	ETIMEDOUT	EIO
+#endif
+#ifndef	L_SET
+# ifdef	SEEK_SET
+# define	L_SET	SEEK_SET
+# else
+# define	L_SET	0
+# endif
+#endif	/* !L_SET */
+
 #if	MSDOS
 extern int getcurdrv __P_((VOID_A));
 #endif
@@ -35,33 +68,6 @@ extern int noconv;
 #ifndef	_NODOSDRIVE
 extern int dosdrive;
 #endif
-
-#define	MAXTMPNAMLEN	8
-#define	LOCKEXT		"LCK"
-#ifdef	_NODOSDRIVE
-#define	DOSDIRENT	32
-#define	LFNENTSIZ	13
-#endif
-#define	LFNONLY		" +,;=[]"
-#define	DOSBODYLEN	8
-#define	DOSEXTLEN	3
-
-#ifndef	O_BINARY
-#define	O_BINARY	0
-#endif
-#ifndef	O_ACCMODE
-#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
-#endif
-#ifndef	ENOSPC
-#define	ENOSPC	EACCES
-#endif
-#ifndef	L_SET
-# ifdef	SEEK_SET
-# define	L_SET	SEEK_SET
-# else
-# define	L_SET	0
-# endif
-#endif	/* !L_SET */
 
 #ifndef	NOFLOCK
 static int NEAR fcntllock __P_((int, int));
@@ -503,6 +509,7 @@ int mode;
 	char *ext;
 #endif
 	static char **locklist = NULL;
+	struct stat st;
 	char *cp, path[MAXPATHLEN];
 	int i, fd;
 
@@ -549,8 +556,16 @@ int mode;
 
 	fd = -1;
 	for (i = 0; i < LCK_MAXRETRY; i++) {
-		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
-			0666 & ~tmpumask);
+		if (mode != LCK_READ)
+			fd = Xopen(path,
+				O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
+				0666 & ~tmpumask);
+		else if (Xlstat(path, &st) < 0)
+			fd = (errno == ENOENT) ? 0 : -1;
+		else {
+			errno = EEXIST;
+			fd = -1;
+		}
 		if (fd >= 0 || errno != EEXIST) break;
 
 		if (intrkey(-1)) {
@@ -563,6 +578,7 @@ int mode;
 	}
 	if (i >= LCK_MAXRETRY) return((char *)nullstr);
 	if (fd < 0) return(NULL);
+	if (mode == LCK_READ) return((char *)file);
 
 	Xclose(fd);
 	cp = strdup2(path);
@@ -619,28 +635,30 @@ int flags, mode;
 
 	if (!(lckflags & LCK_FLOCK)) {
 		if (!(lckname = excllock(path, lckmode))) return(NULL);
-		else if (lckname == (char *)nullstr) {
-			if ((flags & O_ACCMODE) != O_RDONLY) return(NULL);
-			err++;
+		else if (lckmode == LCK_READ) {
+			if (lckname == (char *)nullstr) err++;
 			lckname = NULL;
 		}
+		else if (lckname == (char *)nullstr) return(NULL);
 
 		if ((fd = newdup(Xopen(path, flags, mode))) >= 0) /*EMPTY*/;
 		else if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT) {
 			duperrno = errno;
-			VOID_C excllock(lckname, LCK_UNLOCK);
-			free(lckname);
+			if (lckname) {
+				VOID_C excllock(lckname, LCK_UNLOCK);
+				free(lckname);
+			}
 			errno = duperrno;
 			return(NULL);
 		}
 	}
 
-	if (err) {
+	if (fd < 0) lckflags |= LCK_INVALID;
+	else if (err) {
 		fprintf2(stderr, "%k: %k\r\n", path, NOLCK_K);
 		if (isttyiomode) warning(0, HITKY_K);
 	}
 
-	if (fd < 0) lckflags |= LCK_INVALID;
 	lck = (lockbuf_t *)malloc2(sizeof(lockbuf_t));
 	lck -> fd = fd;
 	lck -> fp = NULL;
@@ -696,6 +714,11 @@ int touchfile(path, stp)
 CONST char *path;
 struct stat *stp;
 {
+#ifdef	USEUTIME
+	struct utimbuf times;
+#else
+	struct timeval tvp[2];
+#endif
 #ifndef	_NOEXTRAATTR
 	int i;
 #endif
@@ -708,20 +731,11 @@ struct stat *stp;
 	if (s_islnk(&st)) return(1);
 
 	ret = 0;
-#ifdef	FAKEUNINIT
-	duperrno = errno;	/* fake for -Wuninitialized */
-#endif
 #if	MSDOS
 	if (!(st.st_mode & S_IWRITE)) Xchmod(path, (st.st_mode | S_IWRITE));
 #endif
 
 	if (stp -> st_nlink & (TCH_ATIME | TCH_MTIME)) {
-#ifdef	USEUTIME
-		struct utimbuf times;
-#else
-		struct timeval tvp[2];
-#endif
-
 		if (!(stp -> st_nlink & TCH_ATIME))
 			stp -> st_atime = st.st_atime;
 		if (!(stp -> st_nlink & TCH_MTIME))
@@ -729,28 +743,25 @@ struct stat *stp;
 #ifdef	USEUTIME
 		times.actime = stp -> st_atime;
 		times.modtime = stp -> st_mtime;
-		if (Xutime(path, &times) < 0) {
-			duperrno = errno;
-			ret = -1;
-		}
+		duperrno = errno;
+		if (Xutime(path, &times) >= 0) errno = duperrno;
+		else ret = -1;
 #else
 		tvp[0].tv_sec = stp -> st_atime;
 		tvp[0].tv_usec = 0;
 		tvp[1].tv_sec = stp -> st_mtime;
 		tvp[1].tv_usec = 0;
-		if (Xutimes(path, tvp) < 0) {
-			duperrno = errno;
-			ret = -1;
-		}
+		duperrno = errno;
+		if (Xutimes(path, tvp) >= 0) errno = duperrno;
+		else ret = -1;
 #endif
 	}
 
 #ifdef	HAVEFLAGS
 	if (stp -> st_nlink & TCH_FLAGS) {
-		if (Xchflags(path, stp -> st_flags) < 0) {
-			duperrno = errno;
-			ret = -1;
-		}
+		duperrno = errno;
+		if (Xchflags(path, stp -> st_flags) >= 0) errno = duperrno;
+		else ret = -1;
 	}
 #endif
 
@@ -773,30 +784,33 @@ struct stat *stp;
 			mode |= (st.st_mode & (stp -> st_size));
 		}
 #endif	/* !_NOEXTRAATTR */
-		if (Xchmod(path, mode) < 0) {
-			duperrno = errno;
-			ret = -1;
-		}
+		duperrno = errno;
+		if (Xchmod(path, mode) >= 0) errno = duperrno;
+		else ret = -1;
 	}
 #if	MSDOS
-	else if (!(st.st_mode & S_IWRITE)) Xchmod(path, st.st_mode);
+	else if (!(st.st_mode & S_IWRITE)) {
+		duperrno = errno;
+		Xchmod(path, st.st_mode);
+		errno = duperrno;
+	}
 #endif
 
 #ifndef	NOUID
 	if (stp -> st_nlink & (TCH_UID | TCH_GID)) {
 		if (!(stp -> st_nlink & TCH_UID)) stp -> st_uid = (uid_t)-1;
 		if (!(stp -> st_nlink & TCH_GID)) stp -> st_gid = (gid_t)-1;
-		if (Xchown(path, stp -> st_uid, stp -> st_gid) >= 0) /*EMPTY*/;
-		else if (!(stp -> st_nlink & TCH_CHANGE))
+		duperrno = errno;
+		if (Xchown(path, stp -> st_uid, stp -> st_gid) >= 0)
+			errno = duperrno;
+		else if (!(stp -> st_nlink & TCH_CHANGE)) {
 			Xchown(path, (uid_t)-1, stp -> st_gid);
-		else {
-			duperrno = errno;
-			ret = -1;
+			errno = duperrno;
 		}
+		else ret = -1;
 	}
 #endif	/* !NOUID */
 	if (stp -> st_nlink & TCH_IGNOREERR) ret = 0;
-	if (ret < 0) errno = duperrno;
 
 	return(ret);
 }
@@ -903,8 +917,9 @@ CONST char *src, *dest;
 	struct stat st1, st2;
 
 	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
+	if (st1.st_dev != st2.st_dev || st1.st_ino != st2.st_ino) return(0);
 
-	return(st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
+	return(1);
 }
 #endif	/* !NODIRLOOP */
 
@@ -938,8 +953,12 @@ struct stat *stp1, *stp2;
 #if	MSDOS
 	struct stat st;
 #endif
+#ifndef	NODIRLOOP
+	int issame;
+#endif
 	char buf[BUFSIZ];
-	int i, fd1, fd2, flags, mode, duperrno;
+	off_t total;
+	int n, fd1, fd2, tty, flags, mode, duperrno;
 
 #if	MSDOS
 	if (!stp2 && Xlstat(dest, &st) >= 0) stp2 = &st;
@@ -952,6 +971,9 @@ struct stat *stp1, *stp2;
 
 	flags = (O_BINARY | O_RDONLY);
 	mode = stp1 -> st_mode;
+#ifndef	NODIRLOOP
+	issame = issamebody(src, dest);
+#endif
 	if ((fd1 = Xopen(src, flags, mode)) < 0) return(-1);
 
 	flags = (O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
@@ -959,7 +981,7 @@ struct stat *stp1, *stp2;
 	mode |= S_IWRITE;
 #endif
 #ifndef	NODIRLOOP
-	if (issamebody(src, dest)) {
+	if (issame) {
 		flags |= O_EXCL;
 		if (Xunlink(dest) < 0) {
 			VOID_C Xclose(fd1);
@@ -972,44 +994,46 @@ struct stat *stp1, *stp2;
 		return(-1);
 	}
 
-#ifdef	FAKEUNINIT
-	duperrno = errno;	/* fake for -Wuninitialized */
-#endif
+	tty = isatty(fd1);
+	total = (off_t)0;
 	for (;;) {
-		if ((i = sureread(fd1, buf, BUFSIZ)) <= 0) {
-			duperrno = errno;
+		if (!tty && total >= stp1 -> st_size) n = 0;
+		else n = sureread(fd1, buf, sizeof(buf));
+		if (n < 0) break;
+		total += (off_t)n;
+		if (!n) {
+			if (!tty && total < stp1 -> st_size) {
+				duperrno = ETIMEDOUT;
+				n = -1;
+			}
 			break;
 		}
 #ifndef	_NOEXTRACOPY
-		showprogress(i);
+		showprogress(n);
 #endif
-		if (surewrite(fd2, buf, i) < 0) {
-			i = -1;
-			duperrno = errno;
-			break;
-		}
-		if (i < BUFSIZ) break;
+		if ((n = surewrite(fd2, buf, n)) < 0) break;
 	}
 
-	VOID_C Xclose(fd2);
-	VOID_C Xclose(fd1);
+	safeclose(fd2);
+	safeclose(fd1);
 #ifndef	_NOEXTRACOPY
 	fshowprogress(dest);
 #endif
 
-	if (i < 0) {
+	if (n < 0) {
+		duperrno = errno;
 		VOID_C Xunlink(dest);
 		errno = duperrno;
 		return(-1);
 	}
 	stp1 -> st_nlink = (TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
-#ifdef	_USEDOSCOPY
-	if (touchfile(dest, stp1) < 0) return(-1);
-#else
-# ifndef	_NOEXTRACOPY
-	if (inheritcopy && touchfile(dest, stp1) < 0) return(-1);
+#if	defined (_USEDOSCOPY) || !defined (_NOEXTRACOPY)
+# ifndef	_USEDOSCOPY
+	if (!inheritcopy) /*EMPTY*/;
+	else
 # endif
-#endif
+	if (touchfile(dest, stp1) < 0) return(-1);
+#endif	/* _USEDOSCOPY || !_NOEXTRACOPY */
 
 	return(0);
 }
@@ -1368,7 +1392,7 @@ CONST char *dir;
 char **dirp;
 int single;
 {
-# if	!MSDOS
+# ifdef	_USEDOSEMU
 	char tmp[MAXPATHLEN];
 # endif
 	struct stat st;
@@ -1389,6 +1413,7 @@ int single;
 		strcpy(cp, filelist[filepos].name);
 		st.st_mode = filelist[filepos].st_mode;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
+		st.st_size = filelist[filepos].st_size;
 		if (cpfile(fnodospath(tmp, filepos), path, &st, NULL) < 0) {
 			warning(-1, path);
 			removetmp(tmpdir, NULL);
@@ -1400,6 +1425,7 @@ int single;
 		strcpy(cp, filelist[i].name);
 		st.st_mode = filelist[i].st_mode;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
+		st.st_size = filelist[i].st_size;
 		if (cpfile(fnodospath(tmp, i), path, &st, NULL) < 0) {
 			warning(-1, path);
 			removetmp(tmpdir, NULL);
@@ -1428,12 +1454,12 @@ CONST char *file;
 {
 	struct stat st;
 	char path[MAXPATHLEN];
-# if	!MSDOS
+# ifdef	_USEDOSEMU
 	char tmp[MAXPATHLEN];
 # endif
 
 	strcpy(gendospath(path, drive, '\0'), file);
-# if	!MSDOS
+# ifdef	_USEDOSEMU
 	file = nodospath(tmp, file);
 # endif
 	waitmes();
@@ -1530,6 +1556,9 @@ static char *NEAR maketmpfile(len, dos, tmpdir, old)
 int len, dos;
 CONST char *tmpdir, *old;
 {
+#ifndef	PATHNOCASE
+	int i;
+#endif
 	char *fname, path[MAXPATHLEN];
 	int l, fd;
 
@@ -1545,12 +1574,8 @@ CONST char *tmpdir, *old;
 	for (;;) {
 		genrandname(fname, len);
 #ifndef	PATHNOCASE
-		if (dos) {
-			int i;
-
-			for (i = 0; fname[i]; i++)
-				fname[i] = toupper2(fname[i]);
-		}
+		if (dos) for (i = 0; fname[i]; i++)
+			fname[i] = toupper2(fname[i]);
 #endif
 		if (tmpdir) {
 			strcpy(&(path[l]), fname);

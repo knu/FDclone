@@ -210,6 +210,8 @@ typedef union REGS	__dpmi_regs;
 #define	ENVCOLUMNS	"COLUMNS"
 #define	ENVEMACS	"EMACS"
 
+#define	SEL_TTYIO	0001
+
 #ifndef	_PATH_TTY
 # if	MSDOS
 # define	_PATH_TTY	"CON"
@@ -234,7 +236,7 @@ extern int safe_dup2 __P_((int, int));
 #define	safe_dup2	dup2
 #endif
 #if	MSDOS
-extern int seterrno __P_((u_int));
+extern VOID dosseterrno __P_((u_int));
 extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 #endif
 extern int Xgetdtablesize __P_((VOID_A));
@@ -254,15 +256,18 @@ extern int Xtcsetattr __P_((int, int, CONST termioctl_t *));
 extern int Xtcflush __P_((int, int));
 # endif
 #endif	/* !MSDOS */
+#if	defined (FD) || defined (CYGWIN)
 extern VOID loadtermio __P_((int, CONST char *, CONST char *));
 extern VOID savetermio __P_((int, char **, char **));
+#endif
 #ifdef	CYGWIN
 extern p_id_t Xfork __P_((VOID_A));
 #else
 #define	Xfork		fork
 #endif
 #ifndef	NOSELECT
-extern int readselect __P_((int, int [], char [], VOID_P));
+extern int sureselect __P_((int, int [], char [], VOID_P, int));
+#define	readselect(n, f, r, v)	sureselect(n, f, r, v, 0)
 #endif
 
 #endif	/* !__TERMIO_H_ */

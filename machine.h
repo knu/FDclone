@@ -790,7 +790,7 @@ typedef long	off_t;
 /* #define NOUID	;have not uid, gid */
 /* #define NODIRLOOP	;any directory structure cannot loop */
 /* #define NOSYMLINK	;have not symbolic link */
-/* #define BSPATHDELIM	;path delimtor is backspace  */
+/* #define BSPATHDELIM	;path delimtor is backspace */
 /* #define USECRNL	;use CR-NL as end of line */
 /* #define CWDINPATH	;CWD is implicitly included in command path */
 /* #define DOUBLESLASH	;pathname starting with // has some special mean */

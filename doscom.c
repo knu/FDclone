@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #ifdef	FD
 #include "fd.h"
+#include "term.h"
 #else	/* !FD */
 #include "machine.h"
 #include <stdio.h>
@@ -23,11 +24,17 @@
 
 #include "printf.h"
 #include "kctype.h"
-#include "pathname.h"
 #endif	/* !FD */
 
 #ifdef	USETIMEH
 #include <time.h>
+#endif
+#ifndef	_NOORIGSHELL
+#include "system.h"
+#endif
+#if	MSDOS && !defined (FD)
+#define	gettext		dummy_gettext	/* fake for DJGPP gcc-3.3 */
+#include <conio.h>
 #endif
 
 #if	MSDOS && !defined (FD)
@@ -63,7 +70,52 @@
 #define	C_EOF		K_CTRL('D')
 #endif	/* !MSDOS */
 
-#include "system.h"
+#define	BUFUNIT		32
+#define	COPYRETRY	10
+#define	DIRSORTFLAG	"NSEDGA"
+#define	DIRATTRFLAG	"DRHSA"
+#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type) \
+			(((n) % BUFUNIT) ? ((type *)(ptr)) \
+			: (type *)realloc2(ptr, b_size(n, type)))
+#define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
+
+struct filestat_t {
+	char *nam;
+#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
+	char *d_alias;
+#else
+#define	d_alias		nam
+#endif
+	u_short mod;
+	off_t siz;
+	time_t mtim;
+	time_t atim;
+	u_char flags;
+};
+
+#define	FS_NOTMATCH	0001
+
+#if	defined (DOSCOMMAND) \
+&& (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
+
+#ifdef	FD
+#define	c_left		termstr[C_LEFT]
+#else	/* !FD */
+# if	MSDOS
+# define	cc_intr		K_CTRL('C')
+# define	K_CR		'\r'
+# else	/* !MSDOS */
+extern int ttyio;
+static int cc_intr = -1;
+# define	K_CR		'\n'
+# endif	/* !MSDOS */
+#define	K_CTRL(c)	((c) & 037)
+#define	K_BS		010
+#define	n_line		24
+#define	t_clear		"\033[;H\033[2J"
+#define	c_left		"\010"
+#endif	/* !FD */
 
 #ifndef	FD
 # if	MSDOS
@@ -150,30 +202,6 @@ extern int errno;
 extern char *_mtrace_file;
 #endif
 
-#if	defined (DOSCOMMAND) \
-&& (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
-
-#ifdef	FD
-#include "term.h"
-#define	c_left		termstr[C_LEFT]
-#else	/* !FD */
-# if	MSDOS
-# define	gettext		dummy_gettext	/* fake for DJGPP gcc-3.3 */
-# include <conio.h>
-# define	cc_intr		K_CTRL('C')
-# define	K_CR		'\r'
-# else	/* !MSDOS */
-extern int ttyio;
-static int cc_intr = -1;
-# define	K_CR		'\n'
-# endif	/* !MSDOS */
-#define	K_CTRL(c)	((c) & 037)
-#define	K_BS		010
-#define	n_line		24
-#define	t_clear		"\033[;H\033[2J"
-#define	c_left		"\010"
-#endif	/* !FD */
-
 #ifdef	FD
 extern DIR *Xopendir __P_((CONST char *));
 extern int Xclosedir __P_((DIR *));
@@ -254,22 +282,6 @@ extern int stat2 __P_((CONST char *, struct stat *));
 # endif
 #endif	/* !FD */
 
-struct filestat_t {
-	char *nam;
-#if	MSDOS && defined (FD) && !defined (_NOUSELFN)
-	char *d_alias;
-#else
-#define	d_alias		nam
-#endif
-	u_short mod;
-	off_t siz;
-	time_t mtim;
-	time_t atim;
-	u_char flags;
-};
-
-#define	FS_NOTMATCH	0001
-
 #ifndef	O_BINARY
 #define	O_BINARY	0
 #endif
@@ -284,6 +296,9 @@ struct filestat_t {
 #endif
 #ifndef	EIO
 #define	EIO		ENODEV
+#endif
+#ifndef	ETIMEDOUT
+#define	ETIMEDOUT	EIO
 #endif
 #ifndef	DEV_BSIZE
 #define	DEV_BSIZE	512
@@ -358,12 +373,12 @@ static VOID NEAR ttymode __P_((int));
 static int NEAR getkey3 __P_((int, int));
 # endif	/* !MSDOS */
 static int NEAR touchfile __P_((CONST char *, struct stat *));
-#ifndef	NODIRLOOP
+# ifndef	NODIRLOOP
 static int NEAR issamebody __P_((CONST char *, CONST char *));
-#endif
-#ifndef	NOSYMLINK
+# endif
+# ifndef	NOSYMLINK
 static int NEAR cpsymlink __P_((CONST char *, CONST char *));
-#endif
+# endif
 static char *NEAR inputstr __P_((CONST char *, int, int, CONST char *, int));
 #endif	/* !FD */
 
@@ -411,22 +426,14 @@ int doscomrename __P_((int, char *CONST []));
 static int NEAR getcopyopt __P_((int, char *CONST []));
 static int NEAR getbinmode __P_((CONST char *, int));
 static int NEAR writeopen __P_((CONST char *, CONST char *));
-static int NEAR textread __P_((int, u_char *, int, int));
-static int NEAR textclose __P_((int, int));
+static int NEAR textread __P_((int, char *, int, int, off_t *, off_t));
+static VOID NEAR textclose __P_((int, int));
 static int NEAR doscopy __P_((CONST char *, CONST char *,
 		struct stat *, int, int, int));
 int doscomcopy __P_((int, char *CONST []));
 int doscomcls __P_((int, char *CONST []));
 int doscomtype __P_((int, char *CONST []));
 
-#define	BUFUNIT		32
-#define	DIRSORTFLAG	"NSEDGA"
-#define	DIRATTRFLAG	"DRHSA"
-#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
-#define	b_realloc(ptr, n, type) \
-			(((n) % BUFUNIT) ? ((type *)(ptr)) \
-			: (type *)realloc2(ptr, b_size(n, type)))
-#define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
 #ifdef	USESTRERROR
 #define	strerror2		strerror
 #else
@@ -454,7 +461,6 @@ static CONST char *doserrstr[] = {
 	"Invalid switch",
 };
 #define	DOSERRSIZ	arraysize(doserrstr)
-
 static char dirsort[strsize(DIRSORTFLAG) * 2 + 1] = "";
 static char dirattr[strsize(DIRATTRFLAG) * 2 + 1] = "";
 static int dirline = 0;
@@ -660,12 +666,15 @@ CONST struct timeval *tvp;
 	i = intcall(0x21, &reg, &sreg);
 	close(fd);
 
- 	return(i);
+	return(i);
 }
 # else	/* !MSDOS */
 static VOID NEAR ttymode(on)
 int on;
 {
+#  if	!defined (USETERMIOS) && !defined (USETERMIO)
+	struct tchars cc;
+#  endif
 	termioctl_t tty;
 
 	if (tioctl(ttyio, REQGETP, &tty) < 0) return;
@@ -675,8 +684,6 @@ int on;
 	else tty.c_lflag |= (ECHO | ICANON | ISIG);
 #  else	/* !USETERMIO && !USETERMIO */
 	if (cc_intr < 0) {
-		struct tchars cc;
-
 		if (tioctl(ttyio, TIOCGETC, &cc) < 0) cc_intr = K_CTRL('C');
 		else cc_intr = cc.t_intrc;
 	}
@@ -696,13 +703,13 @@ int on;
 static int NEAR getkey3(sig, code)
 int sig, code;
 {
-	u_char ch;
+	u_char uc;
 	int i;
 
-	while ((i = read(ttyio, &ch, sizeof(u_char))) < 0 && errno == EINTR);
-	if (i < (int)sizeof(u_char)) return(EOF);
+	while ((i = read(ttyio, &uc, sizeof(uc))) < 0 && errno == EINTR);
+	if (i < (int)sizeof(uc)) return(EOF);
 
-	return((int)ch);
+	return((int)uc);
 }
 # endif	/* !MSDOS */
 
@@ -736,8 +743,9 @@ CONST char *src, *dest;
 	struct stat st1, st2;
 
 	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
+	if (st1.st_dev != st2.st_dev || st1.st_ino != st2.st_ino) return(0);
 
-	return(st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
+	return(1);
 }
 # endif	/* !NODIRLOOP */
 
@@ -1457,7 +1465,7 @@ off_t *sump, *bsump;
 	dirwd[len] = '\0';
 	max = n;
 	if (*dirsort)
-		qsort(dirlist, max, sizeof(struct filestat_t), cmpdirent);
+		qsort(dirlist, max, sizeof(*dirlist), cmpdirent);
 
 	if (nf || nd) {
 		*nfp += nf;
@@ -1588,8 +1596,8 @@ char *CONST argv[];
 #endif
 	reg_t *re;
 	struct stat st;
-	CONST char *cp, *dir;
-	char *file, wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
+	CONST char *cp, *dir, *file;
+	char *tmp, wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];
 	off_t sum, total, fre, bsize;
 	int i, n, nf, nd;
 
@@ -1603,10 +1611,9 @@ char *CONST argv[];
 	drv = -1;
 #endif
 
-	if (argc <= n) {
-		dir = curpath;
-		file = "*";
-	}
+	dir = buf;
+	file = "*";
+	if (argc <= n) dir = curpath;
 	else if (argc > n + 1) {
 		doserror(argv[n + 1], ER_TOOMANYPARAM);
 		return(RET_FAIL);
@@ -1619,18 +1626,13 @@ char *CONST argv[];
 			return(RET_FAIL);
 		}
 #endif
-		if (Xstat(buf, &st) >= 0
-		&& (st.st_mode & S_IFMT) == S_IFDIR) {
-			dir = buf;
-			file = "*";
-		}
-		else if ((file = strrdelim(buf, 1))) {
-			i = file - buf;
-			if (isrootpath(buf) || *file != _SC_) file++;
-			*file = '\0';
-			dir = buf;
-			file = &(argv[n][++i]);
-			if (!*file) file = "*";
+		if (Xstat(buf, &st) >= 0 && (st.st_mode & S_IFMT) == S_IFDIR)
+			/*EMPTY*/;
+		else if ((tmp = strrdelim(buf, 1))) {
+			i = tmp - buf;
+			if (isrootdir(buf) || *tmp != _SC_) tmp++;
+			*tmp = '\0';
+			if (argv[n][++i]) file = &(argv[n][i]);
 		}
 		else {
 			dir = curpath;
@@ -1675,7 +1677,7 @@ char *CONST argv[];
 	n = dosdir(re, &bsize, &nf, &nd, &sum, &bsum);
 #endif
 #if	defined (FD) && !defined (_NODOSDRIVE)
-		shutdrv(drv);
+	shutdrv(drv);
 #endif
 	if (re) regexp_free(re);
 	if (n < 0) {
@@ -1831,7 +1833,7 @@ CONST char *src, *wild, *swild;
 		else if (wild[i] != '*') dest[n++] = wild[i];
 		else if (!src[j]) continue;
 		else {
-			for (rest = j; src[rest]; rest++);
+			for (rest = j; src[rest]; rest++) /*EMPTY*/;
 			for (w = strlen(swild); w > 0 && rest > 0; w--, rest--)
 				if (src[rest - 1] != swild[w - 1]) break;
 			for (; j < rest; j++) dest[n++] = src[j];
@@ -2012,50 +2014,80 @@ CONST char *file, *src;
 	return(Xopen(file, flags, 0666));
 }
 
-static int NEAR textread(fd, buf, size, bin)
+static int NEAR textread(fd, buf, size, bin, totalp, max)
 int fd;
-u_char *buf;
+char *buf;
 int size, bin;
+off_t *totalp, max;
 {
-	u_char ch;
+	off_t total;
+	u_char uc;
 	int i, n;
 
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
-	if (!(bin & CF_TEXT)) n = sureread(fd, buf, size);
-	else for (n = 0; n < size; n++) {
-		i = sureread(fd, &ch, sizeof(u_char));
+	if (!totalp) total = (off_t)0;
+	else {
+		total = *totalp;
+		if (total == max || (max >= (off_t)0 && total > max))
+			return(0);
+	}
+
+	if (!(bin & CF_TEXT)) {
+		i = sureread(fd, buf, size);
 		if (i < 0) return(-1);
+		total += (off_t)i;
+		n = i;
+	}
+	else for (n = i = 0; n < size; n++) {
+		i = sureread(fd, &uc, sizeof(uc));
+		if (i < 0) return(-1);
+		total += (off_t)i;
 #if	MSDOS
-		if (i >= (int)sizeof(u_char) && ch != C_EOF) buf[n] = ch;
+		if (!i) /*EMPTY*/;
 #else
-		if (i < (int)sizeof(u_char)) break;
-		else if (ch != C_EOF) buf[n] = ch;
+		if (!i) break;
 #endif
-		else for (;;) {
-			i = sureread(fd, &ch, sizeof(u_char));
-			if (i < 0) return(-1);
-			if (i < (int)sizeof(u_char) || ch == '\n') return(n);
+		else if (uc != C_EOF) {
+			buf[n] = uc;
+			continue;
 		}
+
+		for (;;) {
+			i = sureread(fd, &uc, sizeof(uc));
+			if (i < 0) return(-1);
+			total = max;
+			if (!i || uc == '\n') break;
+		}
+		break;
+	}
+
+	if (totalp) {
+		if (i) /*EMPTY*/;
+		else if (total < max) {
+			errno = ETIMEDOUT;
+			return(-1);
+		}
+		else total = max;
+		*totalp = total;
 	}
 
 	return(n);
 }
 
-static int NEAR textclose(fd, bin)
+static VOID NEAR textclose(fd, bin)
 int fd, bin;
 {
-	u_char ch;
-	int ret;
+	u_char uc;
+	int duperrno;
 
-	ret = 0;
+	duperrno = errno;
 	if (!(bin & (CF_BINARY | CF_TEXT))) bin = copyflag;
 	if (bin & CF_TEXT) {
-		ch = C_EOF;
-		if (surewrite(fd, &ch, sizeof(u_char)) < 0) ret = -1;
+		uc = C_EOF;
+		VOID_C surewrite(fd, &uc, sizeof(uc));
 	}
 	VOID_C Xclose(fd);
-
-	return(ret);
+	errno = duperrno;
 }
 
 static int NEAR doscopy(src, dest, stp, sbin, dbin, dfd)
@@ -2063,9 +2095,9 @@ CONST char *src, *dest;
 struct stat *stp;
 int sbin, dbin, dfd;
 {
-	off_t ofs;
-	u_char buf[BUFSIZ], buf2[BUFSIZ];
-	int i, n, fd1, fd2, tty, retry, duperrno;
+	char *cp, buf[BUFSIZ], buf2[BUFSIZ];
+	off_t ofs, total;
+	int n, nread, fd1, fd2, tty1, tty2, retry, size, duperrno;
 
 #ifndef	NOSYMLINK
 	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK)
@@ -2074,78 +2106,84 @@ int sbin, dbin, dfd;
 
 	if ((fd1 = Xopen(src, O_TEXT | O_RDONLY, stp -> st_mode)) < 0)
 		return(-1);
-	if (dfd >= 0) {
-		fd2 = dfd;
-		ofs = Xlseek(fd2, (off_t)0, L_INCR);
-	}
+	if (dfd >= 0) fd2 = dfd;
 	else if ((fd2 = writeopen(dest, src)) <= 0) {
 		VOID_C Xclose(fd1);
 		return(fd2);
 	}
-	else ofs = (off_t)0;
 
+	tty1 = isatty(fd1);
+	tty2 = isatty(fd2);
 #if	MSDOS && !defined (LSI_C)
 # ifdef	DJGPP
-	if (isatty(fd1)) setmode(fd2, O_TEXT);
+	if (tty1) setmode(fd2, O_TEXT);
 	else
 # endif
 	{
 		setmode(fd1, O_BINARY);
 		setmode(fd2, O_BINARY);
 	}
-#endif
-	if (isatty(fd1) || isatty(fd2)) sbin = CF_TEXT;
-	tty = isatty(fd2);
+#endif	/* MSDOS && !LSI_C */
+	if (tty1 || tty2) sbin = CF_TEXT;
 
-#ifdef	FAKEUNINIT
-	duperrno = errno;	/* fake for -Wuninitialized */
-#endif
-	for (retry = 0; retry < 10; retry++) {
-		for (;;) {
-			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {
-				duperrno = errno;
+	total = (off_t)0;
+	if (tty1) stp -> st_size = (off_t)-1;
+	for (;;) {
+		for (retry = n = 0; retry < COPYRETRY; retry++) {
+			ofs = Xlseek(fd1, (off_t)0, L_INCR);
+			n = textread(fd1, buf, sizeof(buf),
+				sbin, &total, stp -> st_size);
+			if (n >= 0) break;
+			duperrno = errno;
+			if (Xlseek(fd1, ofs, L_SET) < (off_t)0) {
+				errno = duperrno;
 				break;
 			}
-			if (surewrite(fd2, buf, i) < 0) {
-				i = -1;
-				duperrno = errno;
-				break;
-			}
-			if (i < BUFSIZ) break;
 		}
-		if (i >= 0 && !(copyflag & CF_VERIFY)) break;
-		if (Xlseek(fd1, (off_t)0, L_SET) < (off_t)0
-		|| Xlseek(fd2, ofs, L_SET) < (off_t)0)
-			break;
-		if (i < 0) continue;
+		if (n <= 0) break;
+		nread = n;
 
-		for (;;) {
-			if ((i = textread(fd1, buf, BUFSIZ, sbin)) <= 0) {
-				duperrno = errno;
+		for (retry = n = 0; retry < COPYRETRY; retry++) {
+			ofs = Xlseek(fd2, (off_t)0, L_INCR);
+			n = surewrite(fd2, buf, nread);
+			if (n < 0) /*EMPTY*/;
+			else if (tty2 || !(copyflag & CF_VERIFY)) break;
+			else if (Xlseek(fd2, ofs, L_SET) < (off_t)0) break;
+			else {
+				cp = buf2;
+				size = nread;
+				while (size > 0) {
+					n = sureread(fd2, cp, size);
+					if (n <= 0) break;
+					cp += n;
+					size -= n;
+				}
+				if (size || memcmp(buf, buf2, nread)) {
+					errno = EINVAL;
+					n = -1;
+				}
+				else {
+					n = 0;
+					break;
+				}
+			}
+
+			duperrno = errno;
+			if (Xlseek(fd2, ofs, L_SET) < (off_t)0) {
+				errno = duperrno;
 				break;
 			}
-			if ((n = textread(fd2, buf2, BUFSIZ, CF_BINARY)) < 0) {
-				duperrno = errno;
-				i = -1;
-				break;
-			}
-			if (n != i || memcmp((char *)buf, (char *)buf2, i)) {
-				duperrno = EINVAL;
-				i = -1;
-				break;
-			}
-			if (i < BUFSIZ) break;
 		}
-		if (i >= 0) break;
-		if (Xlseek(fd1, (off_t)0, L_SET) < (off_t)0
-		|| Xlseek(fd2, ofs, L_SET) < (off_t)0)
-			break;
+		if (n < 0) break;
 	}
 
 	if (dfd < 0) textclose(fd2, dbin);
+	duperrno = errno;
 	VOID_C Xclose(fd1);
+	errno = duperrno;
 
-	if (i < 0) {
+	if (n < 0) {
+		duperrno = errno;
 		VOID_C Xunlink(dest);
 		errno = duperrno;
 		return(dfd < 0 ? -1 : -2);
@@ -2153,9 +2191,9 @@ int sbin, dbin, dfd;
 
 #ifdef	FD
 	stp -> st_nlink = (TCH_ATIME | TCH_MTIME | TCH_IGNOREERR);
-	if (!tty && touchfile(dest, stp) < 0) return(-1);
+	if (!tty2 && touchfile(dest, stp) < 0) return(-1);
 #else
-	if (!tty) VOID_C touchfile(dest, stp);
+	if (!tty2) VOID_C touchfile(dest, stp);
 #endif
 
 	return(1);
@@ -2348,23 +2386,28 @@ int doscomtype(argc, argv)
 int argc;
 char *CONST argv[];
 {
-	char *cp;
-	u_char ch;
-	ALLOC_T size;
-	int i, n, fd;
 #if	MSDOS && !defined (LSI_C)
 	int omode;
 #endif
+	struct stat st;
+	char *cp;
+	u_char uc;
+	off_t total;
+	ALLOC_T size;
+	int i, n, fd, tty;
 
 	if (checkarg(argc, argv) < 0) return(RET_FAIL);
 
-	if ((fd = Xopen(argv[1], O_TEXT | O_RDONLY, 0666)) < 0) {
+	if (Xlstat(argv[1], &st) < 0
+	|| (fd = Xopen(argv[1], O_TEXT | O_RDONLY, 0666)) < 0) {
 		dosperror(argv[1]);
 		return(RET_FAIL);
 	}
+
+	tty = isatty(fd);
 #if	MSDOS && !defined (LSI_C)
 # ifdef	DJGPP
-	if (isatty(fd)) omode = setmode(STDOUT_FILENO, O_TEXT);
+	if (tty) omode = setmode(STDOUT_FILENO, O_TEXT);
 	else
 # endif
 	{
@@ -2375,20 +2418,25 @@ char *CONST argv[];
 
 	cp = c_realloc(NULL, 0, &size);
 	i = 0;
+	total = (off_t)0;
+	if (tty) st.st_size = (off_t)-1;
 	for (;;) {
-		if ((n = textread(fd, &ch, sizeof(ch), CF_TEXT)) < 0) break;
-		if (n < (int)sizeof(ch)) {
+		n = textread(fd, (char *)&uc, sizeof(uc),
+			CF_TEXT, &total, st.st_size);
+		if (n < 0) break;
+		if (!n) {
 			n = surewrite(STDOUT_FILENO, cp, i);
 			break;
 		}
-		else if (ch == '\n') {
+		else if (uc == '\n') {
 			cp[i++] = '\n';
-			if ((n = surewrite(STDOUT_FILENO, cp, i)) < 0) break;
+			n = surewrite(STDOUT_FILENO, cp, i);
+			if (n < 0) break;
 			i = 0;
 		}
 		else {
 			cp = c_realloc(cp, i, &size);
-			cp[i++] = ch;
+			cp[i++] = uc;
 		}
 	}
 	free(cp);

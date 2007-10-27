@@ -24,7 +24,6 @@
 
 #include "printf.h"
 #include "kctype.h"
-#include "pathname.h"
 
 typedef struct _lockbuf_t {
 	int fd;
@@ -4109,7 +4108,7 @@ redirectlist *rp;
 			return(rp);
 		}
 		else if (n) rp -> type |= MD_REST;
-#endif	/* FD */
+#endif
 	}
 
 	if (!tmp) /*EMPTY*/;
@@ -4491,7 +4490,7 @@ int len;
 {
 #if	!MSDOS && defined (FD)
 	keyseq_t *keymap;
-	char *term;
+	CONST char *term;
 #endif
 #if	(!MSDOS && (!defined (MINIMUMSHELL)) || defined (FD)) \
 || !defined (NOPOSIXUTIL)
@@ -4531,13 +4530,11 @@ int len;
 # ifdef	FD
 	else if (constequal(s, ENVTERM, len)) {
 		keymap = copykeyseq(NULL);
-		freeterment();
-		getterment(cp);
+		regetterment(cp, interactive);
 		if (dumbterm > 1 && (!shellmode || exit_status < 0)) {
-			freeterment();
-			term = getconstvar(ENVTERM);
-			getterment((term) ? term : nullstr);
-			execerror(cp, ER_INVALTERMFD, 0);
+			if (!(term = getconstvar(ENVTERM))) term = nullstr;
+			regetterment(term, interactive);
+			execerror(cp, ER_INVALTERMFD, 1);
 			copykeyseq(keymap);
 			freekeyseq(keymap);
 			errno = EINVAL;
@@ -4632,10 +4629,8 @@ int len;
 	}
 # endif	/* !MINIMUMSHELL */
 # ifdef	FD
-	else if (constequal(ident, ENVTERM, len)) {
-		freeterment();
-		getterment(nullstr);
-	}
+	else if (constequal(ident, ENVTERM, len))
+		regetterment(nullstr, interactive);
 # endif
 #endif	/* !MSDOS */
 #ifndef	NOPOSIXUTIL
@@ -6330,7 +6325,7 @@ char *argv[], *envp[];
 	execve(path, argv, envp);
 	if (errno != ENOEXEC) {
 		if (errno == EACCES) {
-			execerror(argv[0], ER_CANNOTEXE, 0);
+			execerror(argv[0], ER_CANNOTEXE, 1);
 			ret = RET_NOTEXEC;
 		}
 		else {
@@ -7038,17 +7033,12 @@ command_t *comm;
 
 	type = searchhash(&(comm -> hash), comm -> argv[0], NULL);
 	if (type & CM_NOTFOUND) {
-#ifdef	BASHSTYLE
-	/* bash does not exit on error, in non interactive shell */
-		execerror(comm -> argv[0], ER_COMNOFOUND, 0);
-#else
-		execerror(comm -> argv[0], ER_COMNOFOUND, -1);
-#endif
+		execerror(comm -> argv[0], ER_COMNOFOUND, 1);
 		ret_status = RET_NOTFOUND;
 		return(NULL);
 	}
 	if (restricted && (type & CM_FULLPATH)) {
-		execerror(comm -> argv[0], ER_RESTRICTED, 0);
+		execerror(comm -> argv[0], ER_RESTRICTED, 2);
 		ret_status = RET_FAIL;
 		return(NULL);
 	}
@@ -7490,7 +7480,7 @@ int *nump;
 
 		for (i = 1; argv[n][i]; i++) {
 			if (!strchr(opt, argv[n][i])) {
-				execerror(argv[n], ER_BADOPTIONS, 0);
+				execerror(argv[n], ER_BADOPTIONS, 2);
 				return(-1);
 			}
 			f = argv[n][i];
@@ -7948,7 +7938,7 @@ syntaxtree *trp;
 	if (cancelredirect(comm -> redp) < 0) return(RET_FAIL);
 	if (comm -> argc >= 2) {
 		if (restricted) {
-			execerror(comm -> argv[1], ER_RESTRICTED, 0);
+			execerror(comm -> argv[1], ER_RESTRICTED, 2);
 			return(RET_FAIL);
 		}
 		free(comm -> argv[0]);
@@ -8252,7 +8242,7 @@ syntaxtree *trp;
 	for (i = 1; i < (trp -> comm) -> argc; i++) {
 		n = searchhash(&hp, (trp -> comm) -> argv[i], NULL);
 		if (n & CM_NOTFOUND) {
-			execerror((trp -> comm) -> argv[i], ER_NOTFOUND, 0);
+			execerror((trp -> comm) -> argv[i], ER_NOTFOUND, 1);
 			ret = RET_FAIL;
 			ERRBREAK;
 		}
@@ -8376,7 +8366,7 @@ syntaxtree *trp;
 
 	if (!((opt) ? (opt == 'P') : physical_path)) strcpy(buf, fullpath);
 	else
-#endif	/* FD */
+#endif
 	if (!Xgetwd(buf)) {
 		execerror((trp -> comm) -> argv[0], ER_CANNOTSTAT, 0);
 		return(RET_FAIL);
@@ -8398,15 +8388,11 @@ syntaxtree *trp;
 	fname = (trp -> comm) -> argv[1];
 	n = searchhash(&hp, fname, NULL);
 	if (restricted && (n & CM_FULLPATH)) {
-		execerror(fname, ER_RESTRICTED, 0);
+		execerror(fname, ER_RESTRICTED, 2);
 		return(RET_FAIL);
 	}
 	if (n & CM_NOTFOUND) {
-#if	defined (BASHSTYLE) && defined (STRICTPOSIX)
-		execerror(fname, ER_NOTFOUND, -1);
-#else
-		execerror(fname, ER_NOTFOUND, 0);
-#endif
+		execerror(fname, ER_NOTFOUND, 1);
 		return(RET_FAIL);
 	}
 	if ((fd = newdup(Kopen(fname, O_TEXT | O_RDONLY, 0666))) < 0) {
@@ -8642,7 +8628,7 @@ syntaxtree *trp;
 		}
 
 		if (pid < (p_id_t)0) {
-			execerror(s, ER_NOSUCHJOB, 0);
+			execerror(s, ER_NOSUCHJOB, 2);
 			return(RET_FAIL);
 		}
 		if (joblist[i].stats[j]) return(RET_SUCCESS);
@@ -8693,7 +8679,7 @@ static int NEAR doulimit(trp)
 syntaxtree *trp;
 {
 #if	!defined (USERESOURCEH) && !defined (USEULIMITH)
-	execerror(NULL, ER_BADULIMIT, 0);
+	execerror(NULL, ER_BADULIMIT, 1);
 
 	return(RET_FAIL);
 #else	/* USERESOURCEH || USEULIMITH */
@@ -8768,7 +8754,7 @@ syntaxtree *trp;
 		else if (!strcmp(argv[n], UNLIMITED)) inf = 1;
 		else {
 			if ((val = isnumeric(argv[n])) < 0L) {
-				execerror(argv[n], ER_BADULIMIT, 0);
+				execerror(argv[n], ER_BADULIMIT, 1);
 				return(RET_FAIL);
 			}
 			val *= ulimitlist[res].unit;
@@ -8797,7 +8783,7 @@ syntaxtree *trp;
 			if (res < 0)
 				fprintf2(stdout, "%s ", ulimitlist[i].mes);
 			if (getrlimit(ulimitlist[i].res, &lim) < 0) {
-				execerror(NULL, ER_BADULIMIT, 0);
+				execerror(NULL, ER_BADULIMIT, 1);
 				return(RET_FAIL);
 			}
 			if (hs & 2) {
@@ -8818,20 +8804,20 @@ syntaxtree *trp;
 	}
 	else {
 		if (getrlimit(ulimitlist[res].res, &lim) < 0) {
-			execerror(NULL, ER_BADULIMIT, 0);
+			execerror(NULL, ER_BADULIMIT, 1);
 			return(RET_FAIL);
 		}
 		if (hs & 1) lim.rlim_max = (inf) ? RLIM_INFINITY : val;
 		if (hs & 2) lim.rlim_cur = (inf) ? RLIM_INFINITY : val;
 		if (setrlimit(ulimitlist[res].res, &lim) < 0) {
-			execerror(NULL, ER_BADULIMIT, 0);
+			execerror(NULL, ER_BADULIMIT, 1);
 			return(RET_FAIL);
 		}
 	}
 # else	/* !USERESOURCEH */
 	if (argc <= 1) {
 		if ((val = ulimit(UL_GETFSIZE, 0L)) < 0L) {
-			execerror(NULL, ER_BADULIMIT, 0);
+			execerror(NULL, ER_BADULIMIT, 1);
 			return(RET_FAIL);
 		}
 		if (val == RLIM_INFINITY) fputs(UNLIMITED, stdout);
@@ -8842,13 +8828,13 @@ syntaxtree *trp;
 		if (!strcmp(argv[1], UNLIMITED)) val = RLIM_INFINITY;
 		else {
 			if ((val = isnumeric(argv[1])) < 0L) {
-				execerror(argv[1], ER_BADULIMIT, 0);
+				execerror(argv[1], ER_BADULIMIT, 1);
 				return(RET_FAIL);
 			}
 			val /= 512L;
 		}
 		if (ulimit(UL_SETFSIZE, val) < 0L) {
-			execerror(NULL, ER_BADULIMIT, 0);
+			execerror(NULL, ER_BADULIMIT, 1);
 			return(RET_FAIL);
 		}
 	}
@@ -8952,7 +8938,7 @@ syntaxtree *trp;
 	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
 		execerror((trp -> comm) -> argv[1],
-			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 0);
+			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
 	free(joblist[i].pids);
@@ -9213,7 +9199,7 @@ syntaxtree *trp;
 	if (getworkdir(path) < 0) return(RET_FAIL);
 	if ((trp -> comm) -> argc < 2) {
 		if (!dirstack || !dirstack[0]) {
-			execerror(NULL, ER_DIREMPTY, 0);
+			execerror(NULL, ER_DIREMPTY, 2);
 			return(RET_FAIL);
 		}
 		cp = evalpath(strdup2(dirstack[0]), 0);
@@ -9256,7 +9242,7 @@ syntaxtree *trp;
 	int i;
 
 	if (!dirstack || !dirstack[0]) {
-		execerror(NULL, ER_DIREMPTY, 0);
+		execerror(NULL, ER_DIREMPTY, 2);
 		return(RET_FAIL);
 	}
 	cp = evalpath(strdup2(dirstack[0]), 0);
@@ -9325,7 +9311,7 @@ syntaxtree *trp;
 			if (!strcommcmp(argv[i], shbuiltinlist[j].ident))
 				break;
 		if (j >= SHBUILTINSIZ) {
-			execerror(argv[i], ER_COMNOFOUND, 0);
+			execerror(argv[i], ER_COMNOFOUND, 1);
 			ret = RET_FAIL;
 			continue;
 		}
@@ -9355,7 +9341,7 @@ syntaxtree *trp;
 	}
 
 	if (i >= SHBUILTINSIZ) {
-		execerror(argv[1], ER_COMNOFOUND, 0);
+		execerror(argv[1], ER_COMNOFOUND, 1);
 		return(RET_FAIL);
 	}
 
@@ -9386,11 +9372,11 @@ syntaxtree *trp;
 		return(RET_FAIL);
 	}
 	else if (dumbterm > 1) {
-		execerror(getconstvar(ENVTERM), ER_INVALTERMFD, 0);
+		execerror(getconstvar(ENVTERM), ER_INVALTERMFD, 1);
 		return(RET_FAIL);
 	}
 	else if (!interactive || nottyout) {
-		execerror((trp -> comm) -> argv[0], ER_INVALTERMFD, 0);
+		execerror((trp -> comm) -> argv[0], ER_INVALTERMFD, 1);
 		return(RET_FAIL);
 	}
 	else {
@@ -9715,7 +9701,7 @@ int type, id, bg;
 #if	MSDOS
 	if (type == CT_LOGDRIVE) {
 		if (setcurdrv(id, 1) >= 0) return(RET_SUCCESS);
-		execerror(comm -> argv[0], ER_INVALDRIVE, 0);
+		execerror(comm -> argv[0], ER_INVALDRIVE, 2);
 		return(RET_FAIL);
 	}
 #endif
@@ -9728,7 +9714,7 @@ int type, id, bg;
 #if	MSDOS
 	if ((ret = spawnve(P_WAIT, path, comm -> argv, exportvar)) < 0
 	&& errno == ENOENT) {
-		execerror(comm -> argv[0], ER_COMNOFOUND, 0);
+		execerror(comm -> argv[0], ER_COMNOFOUND, 1);
 		return(RET_NOTFOUND);
 	}
 #else	/* !MSDOS */
@@ -10243,7 +10229,7 @@ int cond;
 				}
 				if (tmp) {
 					if (errno) doperror(NULL, tmp);
-					else execerror(tmp, ER_RESTRICTED, 0);
+					else execerror(tmp, ER_RESTRICTED, 2);
 					free(tmp);
 				}
 			}
@@ -10717,7 +10703,7 @@ int prepareterm(VOID_A)
 #endif	/* !NOJOB */
 
 #ifdef	FD
-	if (interactive) inittty(0);
+	inittty(0);
 	term = getconstvar(ENVTERM);
 	getterment((term) ? term : nullstr);
 #endif	/* FD */
@@ -11033,10 +11019,7 @@ char *CONST *argv;
 		initenv();
 #endif
 #if	defined (FD) && !defined (_NOPTY)
-		if (isshptymode()) {
-			inittty(0);
-			checkscreen(0, 0);
-		}
+		if (isshptymode()) checkscreen(0, 0);
 #endif
 		initrc(0);
 #ifdef	FD
@@ -11198,12 +11181,10 @@ char *CONST *argv, *CONST *envp;
 	if (initshell(argc, argv) < 0) return(RET_FAIL);
 #ifdef	FD
 	initenv();
-	if (interactive) {
 # if	MSDOS
-		inittty(1);
+	inittty(1);
 # endif
-		checkscreen(0, 0);
-	}
+	if (interactive) checkscreen(0, 0);
 # ifndef	_NOCUSTOMIZE
 	saveorigenviron();
 # endif

@@ -816,7 +816,7 @@ int skip;
 					break;
 				}
 				tm.tm_min = i;
-				if (!sscanf2(cp, ":%d%$", &i) || i > 59) {
+				if (!sscanf2(cp, ":%d%$", &i) || i > 60) {
 					tm.tm_sec = 0;
 					break;
 				}
@@ -1163,7 +1163,7 @@ int max;
 			tm.tm_min = tm.tm_sec = 0;
 		else {
 			tm.tm_min = i;
-			if (!sscanf2(cp, ":%d%$", &i) || i > 59) tm.tm_sec = 0;
+			if (!sscanf2(cp, ":%d%$", &i) || i > 60) tm.tm_sec = 0;
 			else tm.tm_sec = i;
 		}
 	}

@@ -661,7 +661,7 @@ int forced;
 		checkscreen(-1, -1);
 		if (isorgpid()) {
 			if (x != n_column || y != n_line) rewritefile(1);
-			if (subwindow) ungetch2(K_CTRL('L'));
+			if (subwindow) ungetkey2(K_CTRL('L'));
 		}
 	}
 }

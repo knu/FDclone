@@ -435,8 +435,7 @@ static int NEAR ptygetkey(VOID_A)
 #ifndef	_NOORIGSHELL
 		if (isshptymode()) break;
 #endif
-		if (c < 0 || ptymenukey < 0
-		|| (c & ~K_ALTERNATE) != ptymenukey)
+		if (c < 0 || ptymenukey < 0 || alternate(c) != ptymenukey)
 			break;
 
 		str[0] = new = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));

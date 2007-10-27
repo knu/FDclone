@@ -600,14 +600,16 @@ off_t size;
 static VOID NEAR _showprogress(n)
 int n;
 {
-	int i, max;
+	int i, max, duperrno;
 
+	duperrno = errno;
 	max = n_column - 1;
 	Xlocate(0, copyline);
 	for (i = 0; i < n; i++) Xputch2('o');
 	for (; i < max; i++) Xputch2('.');
 	Xlocate(n, copyline);
 	Xtflush();
+	errno = duperrno;
 }
 
 VOID showprogress(size)
@@ -1523,7 +1525,7 @@ int flag;
 
 	if (tm -> tm_mon < 0 || tm -> tm_mon > 11
 	|| tm -> tm_mday < 1 || tm -> tm_mday > 31
-	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 59)
+	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 60)
 		return(-1);
 
 	mask = (TCH_CHANGE | TCH_MASK | TCH_MODEEXE);

@@ -1,3 +1,9 @@
+Ver. 2.09f	Bug to garble the pasted string in some environments is fixed.
+ (10/28/07)	Mis-inputted keys after dynamic variation of 'TERM' is fixed.
+		Bug to ignore some configuration files on NFS is fixed.
+		Failure with some builtins in non-interactive shell is fixed.
+		Bug not to expand variables after '~' is fixed.
+
 Ver. 2.09e	Freezing sometimes caused in 'copy' builtin is fixed.
  (09/16/07)	Abortion when missing the current directory is fixed.
 		Wrong default file descriptor of '<>'/'><' redirectee is fixed.

@@ -214,6 +214,9 @@ static int NEAR replacevar __P_((CONST char *, char **,
 static char *NEAR insertarg __P_((char *, int, CONST char *, int, int));
 static int NEAR evalvar __P_((char **, int, CONST char **, int));
 static char *NEAR replacebackquote __P_((char *, int *, char *, int));
+#ifndef	MINIMUMSHELL
+static int NEAR evalhome __P_((char **, int, CONST char **));
+#endif
 
 #define	BUFUNIT		32
 #define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
@@ -2122,7 +2125,7 @@ int home;
 			size = strlen(pwd -> pw_name);
 			new = malloc2(size + 2 + 1);
 			new[0] = '~';
-			strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
+			VOID_C strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
 		}
 		if (finddupl(new, argc, *argvp)) {
 			free(new);
@@ -2149,7 +2152,7 @@ int home;
 			size = strlen(pwd -> pw_name);
 			new = malloc2(size + 2 + 1);
 			new[0] = '~';
-			strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
+			VOID_C strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
 		}
 		if (finddupl(new, argc, *argvp)) {
 			free(new);
@@ -2439,7 +2442,7 @@ char *CONST *var;
 	int i;
 
 	if (!var) return(0);
-	for (i = 0; var[i]; i++);
+	for (i = 0; var[i]; i++) /*EMPTY*/;
 
 	return(i);
 }
@@ -2645,6 +2648,9 @@ CONST char *next;
 int qed, nonl, nest;
 #endif
 {
+#ifndef	MINIMUMSHELL
+	int tmpq;
+#endif
 #ifdef	NESTINGQUOTE
 	int pq;
 #endif
@@ -2675,8 +2681,6 @@ int qed, nonl, nest;
 		else if (nonl && s[*ptrp] == '\n') return(-1);
 #ifndef	MINIMUMSHELL
 		else if (nest && s[*ptrp] == '(') {
-			int tmpq;
-
 			tmpq = (q) ? q : qed;
 			(*ptrp)++;
 			if (skipvarvalue(s, ptrp, ")", tmpq, nonl, nest) < 0)
@@ -3363,11 +3367,18 @@ char *resolved, *cwd;
 }
 
 #ifndef	MINIMUMSHELL
-int evalhome(bufp, ptr, argp)
+static int NEAR evalhome(bufp, ptr, argp)
 char **bufp;
 int ptr;
 CONST char **argp;
 {
+# ifndef	NOUID
+#  ifdef	FD
+	uidtable *up;
+#  else
+	struct passwd *pwd;
+#  endif
+# endif	/* !NOUID */
 	CONST char *top;
 	char *cp;
 	int len, vlen;
@@ -3385,15 +3396,11 @@ CONST char **argp;
 		cp = NULL;
 # else	/* !NOUID */
 #  ifdef	FD
-		uidtable *up;
-
 		cp = strndup2(top, len);
 		up = finduid(0, cp);
 		free(cp);
 		cp = (up) ? up -> home : NULL;
 #  else	/* !FD */
-		struct passwd *pwd;
-
 		cp = strndup2(top, len);
 #   ifdef	DEBUG
 		_mtrace_file = "getpwnam(start)";
@@ -3413,7 +3420,7 @@ CONST char **argp;
 	}
 
 	if (!cp) {
-		vlen = len;
+		vlen = len = 0;
 		(*bufp)[ptr++] = '~';
 	}
 	else {
@@ -3444,7 +3451,7 @@ int qed, flags;
 #endif
 	CONST char *cp;
 	char *buf, *bbuf;
-	int i, j, pc, q;
+	int i, j, pc, q, tmpq;
 
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	if (*arg == '"' && (i = strlen(arg)) > 2 && arg[i - 1] == '"') {
@@ -3505,8 +3512,6 @@ int qed, flags;
 		else if (pc == PC_BQUOTE) bbuf[j++] = *cp;
 		else if (pc == PC_SQUOTE || pc == PC_DQUOTE) buf[i++] = *cp;
 		else if (pc == '$') {
-			int tmpq;
-
 			tmpq = (q) ? q : qed;
 			if (!cp[1]) buf[i++] = *cp;
 #ifdef	FAKEMETA
@@ -3694,7 +3699,7 @@ int flags;
 {
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char alias[MAXPATHLEN];
-	int top;
+	int top, len;
 #endif
 #ifdef	DOUBLESLASH
 	int ds;
@@ -3730,8 +3735,6 @@ int flags;
 			if ((flags & EA_NOEVALQ) && top >= 0 && ++top < j) {
 				tmp[j] = '\0';
 				if (shortname(&(tmp[top]), alias) == alias) {
-					int len;
-
 					len = strlen(alias);
 					size += top + len - j;
 					j = top + len;
@@ -3778,7 +3781,7 @@ int flags;
 	char *cp;
 
 	if (!path || !*path) return(path);
-	for (cp = path; *cp == ' ' || *cp == '\t'; cp++);
+	for (cp = path; isblank2(*cp); cp++) /*EMPTY*/;
 	cp = _evalpath(cp, NULL, flags);
 	free(path);
 

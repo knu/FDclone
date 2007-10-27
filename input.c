@@ -254,7 +254,7 @@ int key;
 	else if ((c = getch2()) == EOF) /*EMPTY*/;
 	else if (c != K_ESC) /*EMPTY*/;
 	else if (kbhit2(WAITKEYPAD * 1000L)) {
-		ungetch2(c);
+		ungetkey2(c);
 		c = EOF;
 	}
 
@@ -264,7 +264,7 @@ int key;
 		else fprintf2(stderr, "%k\n", INTR_K);
 	}
 	else {
-		ungetch2(c);
+		ungetkey2(c);
 		c = EOF;
 	}
 	errno = duperrno;
@@ -370,7 +370,7 @@ int sig;
 {
 	int n;
 
-	for (n = ungetnum3 - 1; n >= 0; n--) ungetch2((int)ungetbuf3[n]);
+	for (n = ungetnum3 - 1; n >= 0; n--) ungetkey2((int)ungetbuf3[n]);
 # ifndef	_NOIME
 	if (imemode && !ungetnum3 && getime(sig, &n, 0) >= 0) /*EMPTY*/;
 	else

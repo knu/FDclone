@@ -603,8 +603,8 @@ CONST u_char *s;
 	u_int w;
 	int n, s1, s2, j1, j2, min, max;
 
-	s1 = s[0] & 0xff;
-	s2 = s[1] & 0xff;
+	s1 = (s[0] & 0xff);
+	s2 = (s[1] & 0xff);
 	if (s1 >= 0xf0) {
 		w = (((u_int)s1 << 8) | s2);
 		min = -1;
@@ -625,8 +625,8 @@ CONST u_char *s;
 				break;
 			}
 		}
-		s1 = (w >> 8) & 0xff;
-		s2 = w & 0xff;
+		s1 = ((w >> 8) & 0xff);
+		s2 = (w & 0xff);
 	}
 	j1 = sj2jtable1[s1];
 	j2 = sj2jtable2[s2];
@@ -648,8 +648,8 @@ CONST u_char *s;
 	u_int w;
 	int i, s1, s2, j1, j2;
 
-	j1 = s[0] & 0x7f;
-	j2 = s[1] & 0x7f;
+	j1 = (s[0] & 0x7f);
+	j2 = (s[1] & 0x7f);
 
 	s1 = j2sjtable1[j1];
 	s2 = (j1 & 1) ? j2sjtable2[j2] : j2sjtable3[j2];
@@ -665,8 +665,8 @@ CONST u_char *s;
 			continue;
 		w -= convtable[i].cnv;
 		w += convtable[i].start;
-		s1 = (w >> 8) & 0xff;
-		s2 = w & 0xff;
+		s1 = ((w >> 8) & 0xff);
+		s2 = (w & 0xff);
 		break;
 	}
 
@@ -929,7 +929,7 @@ int encode;
 				if ((wc & 0xff) < 0x80) return(wc);
 				break;
 			case 0xff00:
-				w = wc & 0xff;
+				w = (wc & 0xff);
 				if (w >= 0x21 && w <= 0x3a)
 					return(w + 0x8260 - 0x21);
 				if (w >= 0x41 && w <= 0x5a)
@@ -1093,8 +1093,8 @@ int max, knj, asc, io;
 			}
 			mode |= KANJI;
 # ifdef	CODEEUC
-			buf[j++] = s[i++] & ~0x80;
-			buf[j] = s[i] & ~0x80;
+			buf[j++] = (s[i++] & ~0x80);
+			buf[j] = (s[i] & ~0x80);
 # else
 			sj2j(&(buf[j++]), &(s[i++]));
 # endif
@@ -1107,7 +1107,7 @@ int max, knj, asc, io;
 			if (j + len > max) break;
 			if (!(mode & KANA)) buf[j++] = '\016';
 			mode |= KANA;
-			buf[j] = s[i] & ~0x80;
+			buf[j] = (s[i] & ~0x80);
 			buf[j] = jcnv(buf[j], io);
 		}
 		else {
@@ -1204,7 +1204,7 @@ int max, io;
 					if (j + 2 > max) break;
 					buf[j++] = (char)C_EKANA;
 # endif
-					buf[j++] = jdecnv(s[i], io) | 0x80;
+					buf[j++] = (jdecnv(s[i], io) | 0x80);
 				}
 			}
 			else if (mode & KANJI) {
@@ -1215,8 +1215,8 @@ int max, io;
 				}
 				else {
 # ifdef	CODEEUC
-					buf[j++] = s[i++] | 0x80;
-					buf[j++] = jdecnv(s[i], io) | 0x80;
+					buf[j++] = (s[i++] | 0x80);
+					buf[j++] = (jdecnv(s[i], io) | 0x80);
 # else
 					tmp[0] = s[i++];
 					tmp[1] = jdecnv(s[i], io);
@@ -1259,8 +1259,8 @@ int max, knj, asc, io;
 			}
 			mode = KANJI;
 # ifdef	CODEEUC
-			buf[j++] = s[i++] & ~0x80;
-			buf[j] = s[i] & ~0x80;
+			buf[j++] = (s[i++] & ~0x80);
+			buf[j] = (s[i] & ~0x80);
 # else
 			sj2j(&(buf[j++]), &(s[i++]));
 # endif
@@ -1311,8 +1311,8 @@ int max, knj, asc, io;
 			}
 			mode = KANJI;
 # ifdef	CODEEUC
-			buf[j++] = s[i++] & ~0x80;
-			buf[j] = s[i] & ~0x80;
+			buf[j++] = (s[i++] & ~0x80);
+			buf[j] = (s[i] & ~0x80);
 # else
 			sj2j(&(buf[j++]), &(s[i++]));
 # endif
@@ -1328,7 +1328,7 @@ int max, knj, asc, io;
 				buf[j++] = 'I';
 			}
 			mode = JKANA;
-			buf[j] = s[i] & ~0x80;
+			buf[j] = (s[i] & ~0x80);
 			buf[j] = jcnv(buf[j], io);
 		}
 		else {
@@ -1513,8 +1513,8 @@ u_int wc;
 	int c1, c2;
 
 	wc = cnvunicode(wc, 0);
-	c1 = (wc >> 8) & 0xff;
-	c2 = wc & 0xff;
+	c1 = ((wc >> 8) & 0xff);
+	c2 = (wc & 0xff);
 	if (wc > 0xa0 && wc <= 0xdf) {
 # ifdef	CODEEUC
 		buf[(*ptrp)++] = (char)C_EKANA;
@@ -1543,13 +1543,13 @@ u_int wc;
 {
 	if (wc < 0x80) buf[ptr++] = wc;
 	else if (wc < 0x800) {
-		buf[ptr++] = 0xc0 | (wc >> 6);
-		buf[ptr++] = 0x80 | (wc & 0x3f);
+		buf[ptr++] = (0xc0 | (wc >> 6));
+		buf[ptr++] = (0x80 | (wc & 0x3f));
 	}
 	else {
-		buf[ptr++] = 0xe0 | (wc >> 12);
-		buf[ptr++] = 0x80 | ((wc >> 6) & 0x3f);
-		buf[ptr++] = 0x80 | (wc & 0x3f);
+		buf[ptr++] = (0xe0 | (wc >> 12));
+		buf[ptr++] = (0x80 | ((wc >> 6) & 0x3f));
+		buf[ptr++] = (0x80 | (wc & 0x3f));
 	}
 
 	return(ptr);
@@ -1565,10 +1565,11 @@ int *ptrp;
 	ptr = (ptrp) ? *ptrp : 0;
 	w = s[ptr++];
 	if (w < 0x80) /*EMPTY*/;
-	else if (isutf2(w, s[ptr])) w = ((w & 0x1f) << 6) | (s[ptr++] & 0x3f);
+	else if (isutf2(w, s[ptr]))
+		w = (((w & 0x1f) << 6) | (s[ptr++] & 0x3f));
 	else if (isutf3(w, s[ptr], s[ptr + 1])) {
-		w = ((w & 0x0f) << 6) | (s[ptr++] & 0x3f);
-		w = (w << 6) | (s[ptr++] & 0x3f);
+		w = (((w & 0x0f) << 6) | (s[ptr++] & 0x3f));
+		w = ((w << 6) | (s[ptr++] & 0x3f));
 	}
 	else {
 		w = U2_UDEF;

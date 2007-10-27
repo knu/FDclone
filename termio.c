@@ -102,6 +102,10 @@ extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, CONST char *, int));
 #endif
 
+#if	!MSDOS && defined (FD) && !defined (NOSELECT)
+extern VOID checksuspend __P_((VOID));
+#endif
+
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
@@ -155,15 +159,17 @@ int oldd, newd;
 #endif	/* LSI_C */
 
 #if	MSDOS
-int seterrno(doserr)
+VOID dosseterrno(doserr)
 u_int doserr;
 {
 	int i;
 
-	for (i = 0; i < DOSERRLISTSIZ; i++)
-		if (doserr == doserrlist[i]) return(errno = unixerrlist[i]);
+	for (i = 0; i < DOSERRLISTSIZ; i++) if (doserr == doserrlist[i]) {
+		errno = unixerrlist[i];
+		return;
+	}
 
-	return(errno = EINVAL);
+	errno = EINVAL;
 }
 
 int intcall(vect, regp, sregp)
@@ -210,7 +216,7 @@ struct SREGS *sregp;
 #  endif
 # endif	/* !__TURBOC__ */
 	if (!((*regp).x.flags & FR_CARRY)) return(0);
-	seterrno((*regp).x.ax);
+	dosseterrno((*regp).x.ax);
 
 	return(-1);
 }
@@ -497,77 +503,78 @@ int fd, selector;
 # endif	/* USETERMIOS */
 #endif	/* !MSDOS */
 
+#if	defined (FD) || defined (CYGWIN)
 /*ARGSUSED*/
 VOID loadtermio(fd, tty, ws)
 int fd;
 CONST char *tty, *ws;
 {
-#if	MSDOS
-# ifndef	DJGPP
+# if	MSDOS
+#  ifndef	DJGPP
 	union REGS reg;
-# endif
-#else	/* MSDOS */
+#  endif
+# else	/* !MSDOS */
 	ALLOC_T size;
-#endif	/* MSDOS */
+# endif	/* !MSDOS */
 
-#if	MSDOS
-# ifndef	DJGPP
+# if	MSDOS
+#  ifndef	DJGPP
 	if (tty) {
 		reg.x.ax = 0x3301;
 		memcpy((char *)&(reg.h.dl), (char *)tty, sizeof(reg.h.dl));
 		int86(0x21, &reg, &reg);
 	}
-# endif
-#else	/* !MSDOS */
+#  endif
+# else	/* !MSDOS */
 	if (tty) {
 		size = (ALLOC_T)0;
 		VOID_C tioctl(fd, REQSETN, (termioctl_t *)&(tty[size]));
-# ifdef	USESGTTY
+#  ifdef	USESGTTY
 		size += sizeof(termioctl_t);
 		VOID_C Xioctl(fd, TIOCLSET, (int *)&(tty[size]));
 		size += sizeof(int);
 		VOID_C Xioctl(fd, TIOCSETC, (struct tchars *)&(tty[size]));
-# endif
+#  endif
 	}
 
-# ifndef	NOTERMWSIZE
+#  ifndef	NOTERMWSIZE
 	if (ws) VOID_C Xioctl(fd, REQSETWS, (termwsize_t *)ws);
-# endif
-#endif	/* !MSDOS */
+#  endif
+# endif	/* !MSDOS */
 }
 
 VOID savetermio(fd, ttyp, wsp)
 int fd;
 char **ttyp, **wsp;
 {
-#if	MSDOS
-# ifndef	DJGPP
+# if	MSDOS
+#  ifndef	DJGPP
 	union REGS reg;
 	char *tty;
-# endif
-#else	/* !MSDOS */
-# ifndef	NOTERMWSIZE
+#  endif
+# else	/* !MSDOS */
+#  ifndef	NOTERMWSIZE
 	char *ws;
-# endif
+#  endif
 	ALLOC_T size;
 	char *tty;
-#endif	/* !MSDOS */
+# endif	/* !MSDOS */
 
-#if	MSDOS
+# if	MSDOS
 	if (ttyp) do {
 		*ttyp = NULL;
-# ifndef	DJGPP
+#  ifndef	DJGPP
 		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
 
 		reg.x.ax = 0x3300;
 		int86(0x21, &reg, &reg);
 		memcpy((char *)tty, (char *)&(reg.h.dl), TIO_BUFSIZ);
 		*ttyp = tty;
-# endif	/* !DJGPP */
+#  endif	/* !DJGPP */
 	} while (0);
 
 	if (wsp) *wsp = NULL;
-#else	/* !MSDOS */
+# else	/* !MSDOS */
 	if (ttyp) do {
 		*ttyp = NULL;
 		if (!(tty = (char *)malloc(TIO_BUFSIZ))) break;
@@ -577,7 +584,7 @@ char **ttyp, **wsp;
 			free(tty);
 			break;
 		}
-# ifdef	USESGTTY
+#  ifdef	USESGTTY
 		size += sizeof(termioctl_t);
 		if (Xioctl(fd, TIOCLGET, (int *)&(tty[size])) < 0) {
 			free(tty);
@@ -588,13 +595,13 @@ char **ttyp, **wsp;
 			free(tty);
 			break;
 		}
-# endif	/* USESGTTY */
+#  endif	/* USESGTTY */
 		*ttyp = tty;
 	} while (0);
 
 	if (wsp) do {
 		*wsp = NULL;
-# ifndef	NOTERMWSIZE
+#  ifndef	NOTERMWSIZE
 		if (!(ws = (char *)malloc(TIO_WINSIZ))) break;
 
 		if (Xioctl(fd, REQGETWS, (termwsize_t *)ws) < 0) {
@@ -602,10 +609,11 @@ char **ttyp, **wsp;
 			break;
 		}
 		*wsp = ws;
-# endif	/* !NOTERMWSIZE */
+#  endif	/* !NOTERMWSIZE */
 	} while (0);
-#endif	/* !MSDOS */
+# endif	/* !MSDOS */
 }
+#endif	/* FD || CYGWIN */
 
 #ifdef	CYGWIN
 p_id_t Xfork(VOID_A)
@@ -626,10 +634,12 @@ p_id_t Xfork(VOID_A)
 #endif	/* CYGWIN */
 
 #ifndef	NOSELECT
-int readselect(nfd, fds, result, vp)
+/*ARGSUSED*/
+int sureselect(nfd, fds, result, vp, flags)
 int nfd, fds[];
 char result[];
 VOID_P vp;
+int flags;
 {
 	fd_set readfds;
 	int i, n, max, dupfds[MAXSELECT];
@@ -649,9 +659,13 @@ VOID_P vp;
 	}
 	if (max++ < 0) return(0);
 
-	do {
+	for (;;) {
+# if	!MSDOS && defined (FD)
+		if (flags & SEL_TTYIO) checksuspend();
+# endif
 		n = select(max, &readfds, NULL, NULL, (struct timeval *)vp);
-	} while (n < 0 && errno == EINTR);
+		if (n >= 0 || errno != EINTR) break;
+	}
 	for (i = 0; i < nfd; i++)
 		if (dupfds[i] != fds[i]) safeclose(dupfds[i]);
 	if (n <= 0) return(n);

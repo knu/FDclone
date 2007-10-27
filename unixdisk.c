@@ -456,7 +456,7 @@ int drive, nodir;
 	if ((bdos(0x0e, drv, 0) & 0xff) < drv
 	|| (drive = (bdos(0x19, 0, 0) & 0xff)) != drv) {
 		bdos(0x0e, olddrv, 0);
-		seterrno(0x0f);		/* Invarid drive */
+		dosseterrno(0x0f);	/* Invarid drive */
 		return(-1);
 	}
 

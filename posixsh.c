@@ -23,7 +23,6 @@
 
 #include "printf.h"
 #include "kctype.h"
-#include "pathname.h"
 #endif	/* !FD */
 
 #if	MSDOS
@@ -809,6 +808,10 @@ char *evalposixsubst(s, ptrp)
 CONST char *s;
 int *ptrp;
 {
+#ifndef	BASHBUG
+	syntaxtree *trp, *stree;
+	redirectlist red;
+#endif
 	char *cp, *new;
 	long n;
 	int i, len;
@@ -822,9 +825,6 @@ int *ptrp;
 	if (i <= 1) {
 #ifndef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
-		syntaxtree *trp, *stree;
-		redirectlist red;
-
 		red.fd = red.type = red.new = 0;
 		red.filename = (char *)nullstr;
 		i = len = 0;
@@ -1007,7 +1007,7 @@ syntaxtree *trp;
 	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
 		execerror((trp -> comm) -> argv[1],
-			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 0);
+			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
 	n = joblist[i].npipe;
@@ -1051,7 +1051,7 @@ syntaxtree *trp;
 	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
 		execerror((trp -> comm) -> argv[1],
-			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 0);
+			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
 	n = joblist[i].npipe;
@@ -1106,7 +1106,7 @@ syntaxtree *trp;
 			if (!(shellalias[i].ident)) {
 				if (interactive) {
 					fputs("alias: ", stderr);
-					execerror(argv[n], ER_NOTFOUND, 0);
+					execerror(argv[n], ER_NOTFOUND, 2);
 				}
 				ret = RET_FAIL;
 				ERRBREAK;
@@ -1132,7 +1132,7 @@ syntaxtree *trp;
 		if (deletealias(argv[n]) < 0) {
 			if (interactive) {
 				fputs("alias: ", stderr);
-				execerror(argv[n], ER_NOTALIAS, 0);
+				execerror(argv[n], ER_NOTALIAS, 2);
 			}
 			ret = RET_FAIL;
 			ERRBREAK;
@@ -1182,13 +1182,13 @@ syntaxtree *trp;
 				if (!strcmp(&(s[1]), signallist[i].ident))
 					break;
 			if (signallist[i].sig < 0) {
-				execerror(&(s[1]), ER_UNKNOWNSIG, 0);
+				execerror(&(s[1]), ER_UNKNOWNSIG, 1);
 				return(RET_FAIL);
 			}
 			sig = signallist[i].sig;
 		}
 		if (sig < 0 || sig >= NSIG) {
-			execerror(s, ER_NUMOUTRANGE, 0);
+			execerror(s, ER_NUMOUTRANGE, 1);
 			return(RET_FAIL);
 		}
 		i = 2;
@@ -1203,7 +1203,7 @@ syntaxtree *trp;
 		if (*s == '%') {
 			if ((n = getjob(s)) < 0) {
 				execerror(s, (n < -1)
-					? ER_TERMINATED : ER_NOSUCHJOB, 0);
+					? ER_TERMINATED : ER_NOSUCHJOB, 2);
 				return(RET_FAIL);
 			}
 			n = Xkillpg(joblist[n].pids[0], sig);
@@ -1550,7 +1550,7 @@ syntaxtree *trp;
 # endif
 				if ((type & CM_NOTFOUND)
 				|| Xaccess(cp, X_OK) < 0) {
-					execerror(cp, ER_COMNOFOUND, 0);
+					execerror(cp, ER_COMNOFOUND, 1);
 					cp = NULL;
 				}
 			}
@@ -1614,7 +1614,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 
 	if (argc <= 2) {
-		execerror(NULL, ER_MISSARG, 0);
+		execerror(NULL, ER_MISSARG, 1);
 		return(RET_FAIL);
 	}
 	if (identcheck(argv[2], '\0') <= 0) {
