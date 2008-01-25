@@ -1,3 +1,7 @@
+Ver. 2.09g	Abortion with no controlling terminal is fixed.
+ (01/26/08)	Failure to find the startup directory is resolved partly.
+		Failure to input some special keys is reduced.
+
 Ver. 2.09f	Bug to garble the pasted string in some environments is fixed.
  (10/28/07)	Mis-inputted keys after dynamic variation of 'TERM' is fixed.
 		Bug to ignore some configuration files on NFS is fixed.

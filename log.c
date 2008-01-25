@@ -56,6 +56,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 {
 	lockbuf_t *lck;
 	struct stat st;
+	CONST char *home;
 	char *cp, *top, path[MAXPATHLEN];
 	ALLOC_T size;
 
@@ -66,15 +67,15 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 	else {
 		if (!logfile || !*logfile) return(NULL);
 
-		logfname = (char *)nullstr;
+		logfname = vnullstr;
 		top = logfile;
 #ifdef	_USEDOSPATH
 		if (_dospath(top)) top += 2;
 #endif
 		if (*top == _SC_) cp = logfile;
 		else {
-			if (!(cp = gethomedir())) return(NULL);
-			strcatdelim2(path, cp, top);
+			if (!(home = gethomedir())) return(NULL);
+			strcatdelim2(path, home, top);
 			if (!*path) return(NULL);
 			cp = strdup2(path);
 		}
@@ -98,8 +99,8 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 VOID logclose(VOID_A)
 {
-	if (logfname && logfname != (char *)nullstr) free(logfname);
-	logfname = (char *)nullstr;
+	if (logfname && logfname != vnullstr) free(logfname);
+	logfname = vnullstr;
 #ifndef	NOSYSLOG
 	if (syslogged > 0) closelog();
 	syslogged = -1;

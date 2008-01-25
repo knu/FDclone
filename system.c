@@ -82,7 +82,6 @@ typedef struct _lockbuf_t {
 # endif
 #include "unixemu.h"
 #else	/* !MSDOS */
-#include <pwd.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/time.h>
@@ -2464,7 +2463,7 @@ int noexit;
 		}
 	}
 #ifndef	NOJOB
-	if (ttypgrp >= (p_id_t)0 && oldttypgrp >= (p_id_t)0)
+	if (ttyio >= 0 && ttypgrp >= (p_id_t)0 && oldttypgrp >= (p_id_t)0)
 		settcpgrp(ttyio, oldttypgrp);
 #endif
 
@@ -3243,7 +3242,7 @@ int fd;
 		if (c == READ_EOF) {
 			if (i) break;
 			free(cp);
-			return((char *)nullstr);
+			return(vnullstr);
 		}
 		cp = c_realloc(cp, i, &size);
 		cp[i] = c;
@@ -3922,7 +3921,7 @@ int old;
 	}
 
 	ret = RET_SUCCESS;
-	while ((buf = readline(fdin)) != (char *)nullstr) {
+	while ((buf = readline(fdin)) != vnullstr) {
 		if (!buf) {
 #ifdef	DJGPP
 			closepipe(fd, -1);
@@ -3981,7 +3980,7 @@ redirectlist *rp;
 {
 # ifndef	USEFAKEPIPE
 	p_id_t pid;
-	int fildes[2];
+	int fds[2];
 # endif
 	char pfile[MAXPATHLEN];
 	int fd;
@@ -3990,38 +3989,38 @@ redirectlist *rp;
 		return(-1);
 
 # ifndef	USEFAKEPIPE
-	if (pipe(fildes) < 0);
+	if (pipe(fds) < 0);
 	else if ((pid = makechild(0, mypid, 0)) < (p_id_t)0) {
-		safeclose(fildes[0]);
-		safeclose(fildes[1]);
+		safeclose(fds[0]);
+		safeclose(fds[1]);
 		return(-1);
 	}
 	else if (pid) {
 		safeclose(rp -> new);
 		if (rp -> type & MD_READ) {
-			safeclose(fildes[1]);
-			rp -> new = newdup(fildes[0]);
+			safeclose(fds[1]);
+			rp -> new = newdup(fds[0]);
 		}
 		else {
-			safeclose(fildes[0]);
-			rp -> new = newdup(fildes[1]);
+			safeclose(fds[0]);
+			rp -> new = newdup(fds[1]);
 		}
 		return(0);
 	}
 	else {
 		if (rp -> type & MD_READ) {
-			safeclose(fildes[0]);
-			fildes[1] = newdup(fildes[1]);
-			fdcopy(rp -> new, fildes[1]);
+			safeclose(fds[0]);
+			fds[1] = newdup(fds[1]);
+			fdcopy(rp -> new, fds[1]);
 			safeclose(rp -> new);
-			safeclose(fildes[1]);
+			safeclose(fds[1]);
 		}
 		else {
-			safeclose(fildes[1]);
-			fildes[0] = newdup(fildes[0]);
-			fdcopy(fildes[0], rp -> new);
+			safeclose(fds[1]);
+			fds[0] = newdup(fds[0]);
+			fdcopy(fds[0], rp -> new);
 			safeclose(rp -> new);
-			safeclose(fildes[0]);
+			safeclose(fds[0]);
 		}
 		prepareexit(1);
 		Xexit(RET_SUCCESS);
@@ -4151,7 +4150,7 @@ redirectlist *rp;
 		else
 # endif
 		setmode(rp -> new, O_BINARY);
-#endif
+#endif	/* MSDOS && !LSI_C */
 	}
 
 #if	!MSDOS
@@ -6410,7 +6409,7 @@ p_id_t ppid;
 {
 #ifndef	USEFAKEPIPE
 	p_id_t pid;
-	int fildes[2];
+	int fds[2];
 #endif
 	pipelist *pl;
 	char pfile[MAXPATHLEN];
@@ -6423,7 +6422,7 @@ p_id_t ppid;
 	pl -> old = -1;
 
 #ifndef	USEFAKEPIPE
-	if (pipe(fildes) < 0) {
+	if (pipe(fds) < 0) {
 # ifdef	FAKEUNINIT
 		fd = -1;	/* fake for -Wuninitialized */
 # endif
@@ -6433,25 +6432,25 @@ p_id_t ppid;
 # ifdef	FAKEUNINIT
 		fd = -1;	/* fake for -Wuninitialized */
 # endif
-		safeclose(fildes[0]);
-		safeclose(fildes[1]);
+		safeclose(fds[0]);
+		safeclose(fds[1]);
 	}
 	else if (!pid) {
 		if ((fd = newdup(Xdup(STDOUT_FILENO))) < 0
-		|| fildes[1] == STDOUT_FILENO
-		|| Xdup2(fildes[1], STDOUT_FILENO) < 0) {
+		|| fds[1] == STDOUT_FILENO
+		|| Xdup2(fds[1], STDOUT_FILENO) < 0) {
 			prepareexit(1);
 			Xexit(RET_NOTEXEC);
 		}
-		safeclose(fildes[0]);
-		safeclose(fildes[1]);
+		safeclose(fds[0]);
+		safeclose(fds[1]);
 		pl -> old = fd;
 	}
 	else {
-		if (new) fd = newdup(fildes[0]);
+		if (new) fd = newdup(fds[0]);
 		else {
 			if ((fd = newdup(Xdup(fdin))) < 0
-			|| fildes[0] == fdin || Xdup2(fildes[0], fdin) < 0) {
+			|| fds[0] == fdin || Xdup2(fds[0], fdin) < 0) {
 				safeclose(fd);
 # ifndef	NOJOB
 				if (stoppedjob(pid)) /*EMPTY*/;
@@ -6470,9 +6469,9 @@ p_id_t ppid;
 # endif
 				pl -> old = fd;
 			}
-			safeclose(fildes[0]);
+			safeclose(fds[0]);
 		}
-		safeclose(fildes[1]);
+		safeclose(fds[1]);
 	}
 	if (pid >= (p_id_t)0) {
 		pl -> new = fd;
@@ -7174,7 +7173,7 @@ FILE *fp;
 	fd = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
 	if (fd >= 0) {
 		fputnl(stdout);
-		while ((buf = readline(fd)) != (char *)nullstr) {
+		while ((buf = readline(fd)) != vnullstr) {
 			if (!buf) break;
 			fputs(buf, stdout);
 			fputnl(stdout);
@@ -7955,7 +7954,8 @@ syntaxtree *trp;
 	}
 
 	if (!isopbg(trp) && !isopnown(trp) && comm -> redp) {
-		if (definput == ttyio && !isatty(STDIN_FILENO))
+		if (ttyio < 0) /*EMPTY*/;
+		else if (definput == ttyio && !isatty(STDIN_FILENO))
 			definput = STDIN_FILENO;
 		else if (definput == STDIN_FILENO && isatty(STDIN_FILENO))
 			definput = ttyio;
@@ -8067,7 +8067,7 @@ syntaxtree *trp;
 
 	ifs = getifs();
 	ret = RET_SUCCESS;
-	if ((buf = readline(STDIN_FILENO)) == (char *)nullstr) ret = RET_FAIL;
+	if ((buf = readline(STDIN_FILENO)) == vnullstr) ret = RET_FAIL;
 	else if (!buf) {
 		if (errno != EINTR) doperror((trp -> comm) -> argv[0], NULL);
 		ret = RET_FAIL;
@@ -8095,7 +8095,7 @@ syntaxtree *trp;
 	/* bash set the variable REPLY without any argument */
 	else if (setenv2(ENVREPLY, buf, 0) < 0) ret = RET_FAIL;
 #endif
-	if (buf != (char *)nullstr && buf) free(buf);
+	if (buf != vnullstr && buf) free(buf);
 
 	return(ret);
 }
@@ -8580,7 +8580,7 @@ syntaxtree *trp;
 	char *s;
 	p_id_t pid;
 # ifndef	NOJOB
-	int i, j, sig;
+	int i, j;
 # endif
 
 	if ((trp -> comm) -> argc <= 1) {
@@ -8591,8 +8591,7 @@ syntaxtree *trp;
 			for (i = 0; i < maxjobs; i++) {
 				if (!(joblist[i].pids)) continue;
 				j = joblist[i].npipe;
-				sig = joblist[i].stats[j];
-				if (!sig) break;
+				if (!(joblist[i].stats[j])) break;
 			}
 			if (i >= maxjobs) return(RET_SUCCESS);
 			waitchild(joblist[i].pids[j], NULL);
@@ -10539,7 +10538,7 @@ int verbose;
 #if	!MSDOS
 	closeonexec(fd);
 #endif
-	while ((buf = readline(fd)) != (char *)nullstr) {
+	while ((buf = readline(fd)) != vnullstr) {
 		if (!buf) {
 			if (errno != EINTR) doperror(NULL, fname);
 			ret++;
@@ -10684,7 +10683,8 @@ int prepareterm(VOID_A)
 
 	if (opentty(&ttyio, &ttyout) < 0) {
 		closetty(&ttyio, &ttyout);
-		return(-1);
+		nottyout++;
+		if (interactive) return(-1);
 	}
 
 #ifndef	NOJOB
@@ -10703,10 +10703,10 @@ int prepareterm(VOID_A)
 #endif	/* !NOJOB */
 
 #ifdef	FD
-	inittty(0);
+	if (ttyio >= 0) inittty(0);
 	term = getconstvar(ENVTERM);
 	getterment((term) ? term : nullstr);
-#endif	/* FD */
+#endif
 
 	return(0);
 }
@@ -10754,10 +10754,9 @@ char *CONST *argv;
 # ifndef	MINIMUMSHELL
 	char buf[MAXLONGWIDTH + 1];
 # endif
-	struct passwd *pwd;
 	sigmask_t mask;
 #endif	/* !MSDOS */
-	CONST char *cp;
+	CONST char *cp, *cp2;
 	char *tmp;
 	int i, n, isstdin, tmprestricted;
 
@@ -10846,7 +10845,8 @@ char *CONST *argv;
 	Xsigblock(oldsigmask, mask);
 #endif	/* !MSDOS */
 
-	if (definput == STDIN_FILENO && isatty(STDIN_FILENO)) definput = ttyio;
+	if (ttyio >= 0 && definput == STDIN_FILENO && isatty(STDIN_FILENO))
+		definput = ttyio;
 
 	getvarfunc = getshellvar;
 	putvarfunc = putshellvar;
@@ -10916,12 +10916,11 @@ char *CONST *argv;
 	setenv2(ENVIFS, IFS_SET, 0);
 	if (loginshell) {
 #ifndef	NOUID
-		pwd = getpwuid(getuid());
+		getlogininfo(&cp, &cp2);
 #endif
 		if (!getconstvar(ENVHOME)) {
 #ifndef	NOUID
-			if (pwd && pwd -> pw_dir && *(pwd -> pw_dir))
-				cp = pwd -> pw_dir;
+			if (cp) /*EMPTY*/;
 			else
 #endif
 			cp = rootpath;
@@ -10929,12 +10928,11 @@ char *CONST *argv;
 		}
 		if (!getconstvar(ENVSHELL)) {
 #ifndef	NOUID
-			if (pwd && pwd -> pw_shell && *(pwd -> pw_shell))
-				cp = pwd -> pw_shell;
+			if (cp2) /*EMPTY*/;
 			else
 #endif
-			cp = shellname;
-			setenv2(ENVSHELL, cp, 1);
+			cp2 = shellname;
+			setenv2(ENVSHELL, cp2, 1);
 		}
 	}
 #if	!MSDOS && !defined (MINIMUMSHELL)
@@ -10960,7 +10958,7 @@ char *CONST *argv;
 	for (i = 0; signallist[i].sig >= 0; i++)
 		trapmode[signallist[i].sig] = signallist[i].flags;
 #ifndef	NOJOB
-	if (!interactive) jobok = 0;
+	if (!interactive || ttyio < 0) jobok = 0;
 	else {
 		if (!orgpgrp) {
 			orgpgrp = mypid;
@@ -10989,13 +10987,13 @@ char *CONST *argv;
 #  ifdef	USESGTTY
 			doperror(NULL, NULL);
 			return(-1);
-#  else
+#  else	/* !USESGTTY */
 #   ifdef	ENODEV
 			if (errno == ENODEV) /*EMPTY*/;
 			else
 #   endif
 			jobok = 0;
-#  endif
+#  endif	/* !USESGTTY */
 		}
 # endif	/* NTTYDISC && ldisc */
 		if (orgpgrp != mypid) {
@@ -11129,7 +11127,7 @@ int pseudoexit;
 			exec_line(NULL);
 			break;
 		}
-		if (buf == (char *)nullstr) {
+		if (buf == vnullstr) {
 #ifndef	MINIMUMSHELL
 			if (interactive && ignoreeof) {
 				if (cont) {

@@ -12,9 +12,6 @@
 
 #if	MSDOS
 #include <process.h>
-#else
-#include <pwd.h>
-#include <grp.h>
 #endif
 
 #define	MAXTMPNAMLEN	8
@@ -52,9 +49,6 @@
 
 #if	MSDOS
 extern int getcurdrv __P_((VOID_A));
-#endif
-#if	MSDOS && !defined (_NOUSELFN)
-extern char *preparefile __P_((CONST char *, char *));
 #endif
 #if	MSDOS && !defined (_NOUSELFN) && !defined (_NODOSDRIVE)
 extern int checkdrive __P_((int));
@@ -576,7 +570,7 @@ int mode;
 		usleep(100000L);
 #endif
 	}
-	if (i >= LCK_MAXRETRY) return((char *)nullstr);
+	if (i >= LCK_MAXRETRY) return(vnullstr);
 	if (fd < 0) return(NULL);
 	if (mode == LCK_READ) return((char *)file);
 
@@ -636,10 +630,10 @@ int flags, mode;
 	if (!(lckflags & LCK_FLOCK)) {
 		if (!(lckname = excllock(path, lckmode))) return(NULL);
 		else if (lckmode == LCK_READ) {
-			if (lckname == (char *)nullstr) err++;
+			if (lckname == vnullstr) err++;
 			lckname = NULL;
 		}
-		else if (lckname == (char *)nullstr) return(NULL);
+		else if (lckname == vnullstr) return(NULL);
 
 		if ((fd = newdup(Xopen(path, flags, mode))) >= 0) /*EMPTY*/;
 		else if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT) {

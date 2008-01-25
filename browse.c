@@ -1400,7 +1400,7 @@ int ch;
 char *buf;
 {
 	CONST char *str[4];
-	int i, n, s, pos, len;
+	int i, n, s, pos, len, func;
 
 	if (isearch > 0) {
 		n = isearch;
@@ -1415,16 +1415,17 @@ char *buf;
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 		if (ch == (int)(bindlist[i].key)) break;
+	func = (i < MAXBINDTABLE && bindlist[i].key >= 0) ? ffunc(i) : -1;
 	if (ch == K_BS) {
 		if (!len) isearch = 0;
 		else buf[--len] = '\0';
 	}
-	else if (len && bindlist[i].f_func == SEARCH_FORW) {
+	else if (len && func == SEARCH_FORW) {
 		if (n > 2) pos++;
 		else if (n > 1) pos = 0;
 		s = 1;
 	}
-	else if (len && bindlist[i].f_func == SEARCH_BACK) {
+	else if (len && func == SEARCH_BACK) {
 		if (n > 2) pos--;
 		else if (n > 1) pos = maxfile - 1;
 		s = -1;
@@ -1705,17 +1706,16 @@ CONST char *def;
 		}
 		for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++)
 			if (ch == (int)(bindlist[i].key)) break;
+		if (i >= MAXBINDTABLE || bindlist[i].key < 0)
+			no = NO_OPERATION;
 #ifndef	_NOPRECEDE
-		if (haste && !havestat(&(filelist[filepos]))
-		&& (bindlist[i].d_func < 255
-		|| (funclist[bindlist[i].f_func].status & FN_NEEDSTATUS))
+		else if (haste && !havestat(&(filelist[filepos]))
+		&& (hasdfunc(i) || (funclist[ffunc(i)].status & FN_NEEDSTATUS))
 		&& getstatus(&(filelist[filepos])) < 0)
 			no = WARNING_BELL;
-		else
 #endif
-		no = (bindlist[i].d_func < 255 && isdir(&(filelist[filepos])))
-			? (int)(bindlist[i].d_func)
-			: (int)(bindlist[i].f_func);
+		else no = (hasdfunc(i) && isdir(&(filelist[filepos])))
+			? dfunc(i) : ffunc(i);
 		if (no < FUNCLISTSIZ) funcstat = funclist[no].status;
 #ifndef	_NOARCHIVE
 		else if (archivefile) continue;
@@ -1771,7 +1771,7 @@ CONST char *def;
 			}
 		}
 		else {
-			no = ptyusercomm(macrolist[no - FUNCLISTSIZ],
+			no = ptyusercomm(getmacro(no),
 				filelist[filepos].name, 0);
 			no = evalstatus(no);
 #ifndef	_NOPTY

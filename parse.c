@@ -419,21 +419,21 @@ char *CONST argv[];
 	char *cp;
 	int i;
 
-	if (*argcp <= 0) return((char *)-1);
+	if (*argcp <= 0) return(vnullstr);
 	i = 0;
-	if (!isidentchar(argv[i][0])) return((char *)-1);
+	if (!isidentchar(argv[i][0])) return(vnullstr);
 
 	for (cp = &(argv[i][1]); *cp; cp++) if (!isidentchar2(*cp)) break;
 	cp = skipspace(cp);
 	if (!*cp) {
-		if (++i >= *argcp) return((char *)-1);
+		if (++i >= *argcp) return(vnullstr);
 		cp = skipspace(argv[i]);
 	}
-	if (*cp != '=') return((char *)-1);
+	if (*cp != '=') return(vnullstr);
 	*(cp++) = '\0';
 
 	if (!*cp) {
-		if (++i >= *argcp) return((char *)NULL);
+		if (++i >= *argcp) return(NULL);
 		cp = argv[i];
 	}
 	*argcp = i + 1;
@@ -621,7 +621,7 @@ u_char *fp, *dp, *wp;
 	*fp = *dp = *wp = 0;
 
 	if (!(cp = sscanf2(cp, "%c%Cu", delim, &c))) return(NULL);
-	*fp = (c) ? c - 1 : 255;
+	*fp = (c) ? c - 1 : FLD_NONE;
 
 	if (*cp == '[') {
 		if (!(cp = sscanf2(++cp, "%Cu]", &c))) return(NULL);

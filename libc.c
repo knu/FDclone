@@ -1098,7 +1098,7 @@ time_t t;
 #  endif
 
 #  ifndef	NOTZFILEH
-	cp = getconstvar("TZ");
+	cp = getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
 	if (cp[0] == _SC_) strcpy(buf, cp);
 	else strcatdelim2(buf, TZDIR, cp);

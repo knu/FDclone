@@ -470,12 +470,11 @@ WAITKEYPAD
 	inputted keycode of ESC. It is suitable in case of
 	that the terminal communication speed is slow. The
 	default value is 360ms.
-WAITMETA
-	This indicates the time to wait after getting the
-	inputted keycode of META. It is suitable in case of
-	that the terminal communication speed is slow. The
-	default value is 60ms. If you define the too long
-	value, the autorepeat of the META key becomes ineffective.
+WAITKANJI
+	This indicates the time to wait the next keycode
+	while some multi-byte character is inputted. It is
+	suitable in case that the terminal communication
+	speed is slow. The default value is 120ms.
 HDDMOUNT
 	This causes the floppy drive function to support the
 	hard disk drive. It will be defined in case of that
@@ -500,8 +499,10 @@ the directory writing function.
 	4.3	NEWS-OS 3,4.x
 	4.2	SunOS 4.x
 	ufs	SVR4, OSF/1, FreeBSD, NetBSD
+	ffs	NetBSD, OpenBSD
 	hfs	HP-UX, HI-UX
 	ext2	Linux
+	ext3	Linux
 	jfs	AIX
 	efs	IRIX		(SGI original spec.)
 	sysv	SVR3		(SystemV Rel.3 spec.)

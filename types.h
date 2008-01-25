@@ -146,6 +146,12 @@ typedef struct _bindtable {
 	u_char d_func;
 } bindtable;
 
+#define	FNO_NONE		((u_char)255)
+#define	FNO_SETMACRO		((u_char)254)
+#define	ffunc(n)		(bindlist[n].f_func)
+#define	dfunc(n)		(bindlist[n].d_func)
+#define	hasdfunc(n)		(dfunc(n) != FNO_NONE)
+
 typedef struct _functable {
 	int (*func)__P_((CONST char *));
 	CONST char *ident;
@@ -170,20 +176,24 @@ typedef struct _functable {
 #define	FN_NEEDSTATUS		0200
 #define	rewritemode(n)		((n) & FN_REWRITEMODE)
 
+#if	defined (FD) && (FD < 2) && !defined (OLDPARSE)
+#define	OLDPARSE
+#endif
+
 #ifndef	_NOARCHIVE
 #define	MAXLAUNCHFIELD		9
 #define	MAXLAUNCHSEP		3
 typedef struct _launchtable {
 	char *ext;
 	char *comm;
-# if	FD >= 2
+# ifndef	OLDPARSE
 	char **format;
 	char **lignore;
 	char **lerror;
 # endif
 	u_char topskip;
 	u_char bottomskip;
-# if	FD < 2
+# ifdef	OLDPARSE
 	u_char field[MAXLAUNCHFIELD];
 	u_char delim[MAXLAUNCHFIELD];
 	u_char width[MAXLAUNCHFIELD];
@@ -207,6 +217,9 @@ typedef struct _launchtable {
 #define	LF_DIRNOPREP		0004
 #define	LF_FILELOOP		0010
 #define	LF_FILENOPREP		0020
+#define	SKP_NONE		((u_char)255)
+#define	FLD_NONE		((u_char)255)
+#define	SEP_NONE		((u_char)255)
 
 typedef struct _archivetable {
 	char *ext;

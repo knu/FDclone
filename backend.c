@@ -274,11 +274,11 @@ int w;
 {
 	if ((last_termflags & T_CODEALT) != (pty[w].termflags & T_CODEALT)) {
 		if (pty[w].termflags & T_CODEALT) {
-			putch2('\016');
+			VOID_C putch2('\016');
 			last_termflags |= T_CODEALT;
 		}
 		else {
-			putch2('\017');
+			VOID_C putch2('\017');
 			last_termflags &= ~T_CODEALT;
 		}
 	}
@@ -550,7 +550,7 @@ char *buf;
 		u = ucs2fromutf8((u_char *)buf, NULL);
 		if (incode != M_UTF8) return(u);
 		ubuf[i++] = u;
-		next = selectpty(1, &(ptylist[w].fd), NULL, WAITMETA * 1000L);
+		next = selectpty(1, &(ptylist[w].fd), NULL, WAITKANJI * 1000L);
 	}
 	ubuf[i] = (u_short)0;
 

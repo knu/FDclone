@@ -286,6 +286,9 @@ extern int countvar __P_((char *CONST *));
 extern VOID freevar __P_((char **));
 extern char **duplvar __P_((char *CONST *, int));
 extern int parsechar __P_((CONST char *, int, int, int, int *, int *));
+#ifndef	NOUID
+extern VOID getlogininfo __P_((CONST char **, CONST char **));
+#endif
 #if	defined (FD) && !defined (NOUID)
 extern uidtable *finduid __P_((uid_t, CONST char *));
 extern gidtable *findgid __P_((gid_t, CONST char *));
@@ -294,7 +297,7 @@ extern int isgroupmember __P_((gid_t));
 extern VOID freeidlist __P_((VOID_A));
 # endif
 #endif	/* FD && !NOUID */
-extern char *gethomedir __P_((VOID_A));
+extern CONST char *gethomedir __P_((VOID_A));
 extern CONST char *getrealpath __P_((CONST char *, char *, char *));
 extern char *evalarg __P_((char *, int, int));
 extern int evalifs __P_((int, char ***, CONST char *));
@@ -304,6 +307,7 @@ extern char *_evalpath __P_((CONST char *, CONST char *, int));
 extern char *evalpath __P_((char *, int));
 
 extern CONST char nullstr[];
+#define	vnullstr	((char *)nullstr)
 extern CONST char rootpath[];
 extern CONST char curpath[];
 extern CONST char parentpath[];

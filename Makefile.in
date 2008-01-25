@@ -290,6 +290,7 @@ $(DICTTXT): mktankan$(EXE)
 # to install all
 
 install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
+	[ -d $(BINDIR) ] || mkdir $(BINDIR)
 	$(INSTALL) __INSTSTRIP__ $(PROGRAM)$(EXE) $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)/$(PROGRAM)$(EXE)
 	-$(RM) $(BINDIR)/$(ALIAS)$(EXE)
@@ -715,8 +716,7 @@ system$(OBJ): machine.h config.h types.h
 system$(OBJ): printf.h
 system$(OBJ): kctype.h
 system$(OBJ): pathname.h term.h
-system$(OBJ): system.h
-system$(OBJ): termio.h
+system$(OBJ): system.h termio.h
 system$(OBJ): wait.h
 system$(OBJ): termemu.h
 posixsh$(OBJ): fd.h

@@ -1161,7 +1161,7 @@ CONST char *def;
 	if (prompt) promptstr = prompt;
 	cp = inputstr(NULL, 0, ptr, def, HST_COM);
 	promptstr = duppromptstr;
-	if (!cp) return((char *)nullstr);
+	if (!cp) return(vnullstr);
 
 	if ((wastty = isttyiomode)) Xstdiomode();
 	tmp = evalhistory(cp);
@@ -1187,7 +1187,7 @@ CONST char *def;
 	char *cp;
 
 	cp = inputshellstr(NULL, ptr, def);
-	if (cp == (char *)nullstr) return(NULL);
+	if (cp == vnullstr) return(NULL);
 	else if (!cp) {
 		hideclock = 1;
 		warning(0, HITKY_K);
@@ -1211,7 +1211,7 @@ CONST char *def;
 		lcmdline = -1;
 		hideclock = 1;
 		cp = inputshellstr(promptstr2, -1, NULL);
-		if (cp == (char *)nullstr) break;
+		if (cp == vnullstr) break;
 		else if (!cp) continue;
 
 		l = strlen(cp);

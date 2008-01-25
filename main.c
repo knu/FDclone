@@ -19,7 +19,6 @@
 #ifdef	_NOORIGSHELL
 #include "termio.h"
 #include "wait.h"
-#define	Xexit2		exit2
 #define	isorgpid()	(1)
 #else
 #include "system.h"
@@ -37,8 +36,14 @@ extern u_int _stklen = 0x5800;
 #define	harderr_t	int
 #endif
 
+#ifndef	BINDIR
+#define	BINDIR		"/usr/local/bin"
+#endif
 #ifndef	DATADIR
 #define	DATADIR		progpath
+#endif
+#ifndef	DEFPATH
+#define	DEFPATH		":/bin:/usr/bin"
 #endif
 
 #if	MSDOS
@@ -92,6 +97,9 @@ extern int parentfd;
 
 #if	MSDOS && !defined (PROTECTED_MODE)
 static harderr_t far criticalerror __P_((u_int, u_int, u_short far *));
+#endif
+#ifdef	_NOORIGSHELL
+static VOID NEAR Xexit2 __P_((int));
 #endif
 static VOID NEAR signalexit __P_((int));
 #ifdef	SIGALRM
@@ -173,6 +181,9 @@ static int NEAR execruncomline __P_((char *, CONST char *, int, CONST char *));
 static int NEAR initoption __P_((int, char *CONST []));
 static int NEAR evaloption __P_((char *CONST []));
 static char *NEAR searchenv __P_((CONST char *, char *CONST []));
+#if	!MSDOS
+static char *NEAR searchexecname __P_((CONST char *, char *CONST []));
+#endif
 static VOID NEAR setexecname __P_((CONST char *));
 static VOID NEAR setexecpath __P_((CONST char *, char *CONST []));
 int main __P_((int, char *CONST [], char *CONST []));
@@ -287,6 +298,15 @@ CONST char *s;
 
 	exit(2);
 }
+
+#ifdef	_NOORIGSHELL
+static VOID NEAR Xexit2(n)
+int n;
+{
+	prepareexitfd(n);
+	exit2(n);
+}
+#endif	/* _NOORIGSHELL */
 
 static VOID NEAR signalexit(sig)
 int sig;
@@ -568,6 +588,7 @@ int xmax, ymax;
 	char *tty;
 	int i, row, wastty, dupn_line, dupdumbterm;
 
+	if (ttyio < 0) return;
 #ifdef	SIGWINCH
 	nowinch++;
 #endif
@@ -842,7 +863,7 @@ VOID title(VOID_A)
 		Xputch2('#');
 		i++;
 	}
-	cp = (iswellomit()) ? nullstr : " (c)1995-2007 T.Shirai  ";
+	cp = (iswellomit()) ? nullstr : " (c)1995-2008 T.Shirai  ";
 	Xcputs2(cp);
 	i = n_column - len - strlen2(cp) - i;
 	while (i-- > 0) Xputch2(' ');
@@ -1116,6 +1137,34 @@ char *CONST envp[];
 	return(NULL);
 }
 
+#if	!MSDOS
+static char *NEAR searchexecname(argv, envp)
+CONST char *argv;
+char *CONST envp[];
+{
+	CONST char *env;
+	char *cp;
+	int n;
+
+	n = 0;
+	if (!(env = searchenv(ENVPATH, envp))) env = DEFPATH;
+	if ((cp = searchexecpath(argv, env))) return(cp);
+	if (*argv == '-') {
+		if ((cp = searchexecpath(++argv, env))) return(cp);
+		n++;
+	}
+	if (*argv == 'r' && (cp = searchexecpath(++argv, env))) return(cp);
+	if ((cp = searchexecpath(FDSHELL, env))) return(cp);
+	if ((cp = searchexecpath(FDPROG, env))) return(cp);
+	if (n) {
+		getlogininfo(NULL, &env);
+		cp = strdup2(env);
+	}
+
+	return(cp);
+}
+#endif	/* !MSDOS */
+
 static VOID NEAR setexecname(argv)
 CONST char *argv;
 {
@@ -1157,9 +1206,8 @@ char *CONST envp[];
 	cp = argv;
 #else
 	if (strdelim(argv, 0)) cp = argv;
-	else if ((cp = searchenv(ENVPATH, envp)))
-		cp = tmp = searchexecpath(argv, cp);
-	if (!cp) progpath = strdup2(origpath);
+	else cp = tmp = searchexecname(argv, envp);
+	if (!cp) progpath = strdup2(BINDIR);
 	else
 #endif
 	{
@@ -1238,23 +1286,17 @@ int status;
 	freevar(environ2);
 # endif
 # ifndef	_NOCUSTOMIZE
-	if (orighelpindex) {
-		freestrarray(orighelpindex, MAXHELPINDEX);
-		free(orighelpindex);
-	}
+	freestrarray(orighelpindex, MAXHELPINDEX);
+	if (orighelpindex) free(orighelpindex);
 	free(origbindlist);
 #  ifndef	_NOKEYMAP
 	freekeyseq(origkeymaplist);
 #  endif
 #  ifndef	_NOARCHIVE
-	if (origlaunchlist) {
-		freelaunchlist(origlaunchlist, origmaxlaunch);
-		free(origlaunchlist);
-	}
-	if (origarchivelist) {
-		freearchlist(origarchivelist, origmaxarchive);
-		free(origarchivelist);
-	}
+	freelaunchlist(origlaunchlist, origmaxlaunch);
+	if (origlaunchlist) free(origlaunchlist);
+	freearchlist(origarchivelist, origmaxarchive);
+	if (origarchivelist) free(origarchivelist);
 #  endif
 #  ifdef	_USEDOSEMU
 	if (origfdtype) {
@@ -1476,9 +1518,6 @@ char *CONST argv[], *CONST envp[];
 	main_fd(&(argv[i]), 0);
 #endif
 	sigvecset(0);
-#ifndef	_NOLOGGING
-	endlog(0);
-#endif
 
 	Xstdiomode();
 #if	!defined (_NOORIGSHELL) && !defined (NOJOB)

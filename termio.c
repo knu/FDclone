@@ -381,8 +381,11 @@ FILE **fpp;
 	if (*fdp >= 0) fd = *fdp;
 	else if ((fd = newdup(open(_PATH_TTY, flags, 0666))) < 0) return(-1);
 	if (*fpp) fp = *fpp;
-	else if (!(fp = fdopen(fd, "w+b")) && !(fp = fopen(_PATH_TTY, "w+b")))
+	else if (!(fp = fdopen(fd, "w+b"))
+	&& !(fp = fopen(_PATH_TTY, "w+b"))) {
+		close(fd);
 		return(-1);
+	}
 
 	*fdp = fd;
 	*fpp = fp;
@@ -517,6 +520,7 @@ CONST char *tty, *ws;
 	ALLOC_T size;
 # endif	/* !MSDOS */
 
+	if (fd < 0) return;
 # if	MSDOS
 #  ifndef	DJGPP
 	if (tty) {
@@ -560,6 +564,7 @@ char **ttyp, **wsp;
 	char *tty;
 # endif	/* !MSDOS */
 
+	if (fd < 0) return;
 # if	MSDOS
 	if (ttyp) do {
 		*ttyp = NULL;
@@ -622,12 +627,10 @@ p_id_t Xfork(VOID_A)
 	char *buf;
 
 	/* Cygwin's fork() breaks ISIG */
-	if (save_ttyio >= 0) savetermio(save_ttyio, &buf, NULL);
+	savetermio(save_ttyio, &buf, NULL);
 	pid = fork();
-	if (save_ttyio >= 0) {
-		loadtermio(save_ttyio, buf, NULL);
-		if (buf) free(buf);
-	}
+	loadtermio(save_ttyio, buf, NULL);
+	if (buf) free(buf);
 
 	return(pid);
 }

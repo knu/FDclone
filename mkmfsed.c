@@ -103,10 +103,10 @@ char *CONST argv[];
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
 #ifdef	USEDATADIR
-	printf("s:__TBLPATH__:-DDATADIR='\"'$(DATADIR)'\"':\n");
+	printf("s:__TBLPATH__:-DBINDIR='\"'$(BINDIR)'\"' -DDATADIR='\"'$(DATADIR)'\"':\n");
 	printf("s:__DATADIR__:$(DATADIR):g\n");
 #else
-	printf("s:__TBLPATH__::\n");
+	printf("s:__TBLPATH__:-DBINDIR='\"'$(BINDIR)'\"':\n");
 	printf("s:__DATADIR__:$(BINDIR):g\n");
 #endif
 

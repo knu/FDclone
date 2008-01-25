@@ -481,34 +481,35 @@ extern char *encodestr __P_((CONST char *, int));
 /* builtin.c */
 #ifndef	_NOARCHIVE
 extern VOID freelaunch __P_((launchtable *));
-extern int searchlaunch __P_((launchtable *, int, launchtable *));
+extern int searchlaunch __P_((CONST launchtable *, CONST launchtable *, int));
 extern int parselaunch __P_((int, char *CONST [], launchtable *));
 extern VOID addlaunch __P_((int, launchtable *));
 extern VOID deletelaunch __P_((int));
 extern VOID freearch __P_((archivetable *));
-extern int searcharch __P_((archivetable *, int, archivetable *));
+extern int searcharch __P_((CONST archivetable *, CONST archivetable *, int));
 extern int parsearch __P_((int, char *CONST [], archivetable *));
 extern VOID addarch __P_((int, archivetable *));
 extern VOID deletearch __P_((int));
-extern VOID printlaunchcomm __P_((launchtable *, int, int, int, FILE *));
-extern VOID printarchcomm __P_((archivetable *, int, int, FILE *));
+extern VOID printlaunchcomm __P_((CONST launchtable *, int, int, int, FILE *));
+extern VOID printarchcomm __P_((CONST archivetable *, int, int, FILE *));
 # ifndef	_NOBROWSE
 extern VOID freebrowse __P_((launchtable *));
 # endif
 #endif
 extern int ismacro __P_((int));
+extern CONST char *getmacro __P_((int));
 extern int freemacro __P_((int));
-extern int searchkeybind __P_((bindtable *, bindtable *));
+extern int searchkeybind __P_((CONST bindtable *, CONST bindtable *));
 extern int parsekeybind __P_((int, char *CONST [], bindtable *));
-extern int addkeybind __P_((int, bindtable *, char *, char *, char *));
+extern int addkeybind __P_((int, CONST bindtable *, char *, char *, char *));
 extern VOID deletekeybind __P_((int));
-extern char *gethelp __P_((bindtable *));
-extern VOID printmacro __P_((bindtable *, int, int, FILE *));
+extern char *gethelp __P_((CONST bindtable *));
+extern VOID printmacro __P_((CONST bindtable *, int, int, FILE *));
 #ifdef	_USEDOSEMU
-extern int searchdrv __P_((devinfo *, devinfo *, int));
+extern int searchdrv __P_((CONST devinfo *, CONST devinfo *, int));
 extern int deletedrv __P_((int));
 extern int insertdrv __P_((int, devinfo *));
-extern VOID printsetdrv __P_((devinfo [], int, int, int, FILE *));
+extern VOID printsetdrv __P_((CONST devinfo *, int, int, int, FILE *));
 extern int parsesetdrv __P_((int, char *CONST [], devinfo *));
 #endif
 #ifndef	_NOKEYMAP

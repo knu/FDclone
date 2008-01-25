@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (C) 1995-2007 Takashi SHIRAI
+.\" Copyright (C) 1995-2008 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.09f 10/28/07
+.\" @(#)fd.1   2.09g 01/26/08
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "October 28, 2007"
+.TH FD 1 "January 26, 2008"
 .de sh
 .br
 .PP
@@ -5312,4 +5312,4 @@ MS-DOS 版でのコマンド履歴のセーブファイル既定値
 
 ユーザインタフェースが稚拙です。
 .SH 著作権
-Copyright (C) 1995-2007 by Takashi SHIRAI
+Copyright (C) 1995-2008 by Takashi SHIRAI

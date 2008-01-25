@@ -250,7 +250,7 @@ int key;
 	int c, duperrno;
 
 	duperrno = errno;
-	if (ttyio < 0 || !kbhit2(0L)) c = EOF;
+	if (!kbhit2(0L)) c = EOF;
 	else if ((c = getch2()) == EOF) /*EMPTY*/;
 	else if (c != K_ESC) /*EMPTY*/;
 	else if (kbhit2(WAITKEYPAD * 1000L)) {
@@ -2184,7 +2184,7 @@ static int NEAR getch3(VOID_A)
 #ifndef	_NOIME
 	if (imemode) return((getime(0, &c, 1) >= 0) ? c : EOF);
 #endif
-	if (!kbhit2(WAITMETA * 1000L)) return(EOF);
+	if (!kbhit2(WAITKANJI * 1000L)) return(EOF);
 	return(getch2());
 }
 

@@ -81,6 +81,7 @@ extern char *_mtrace_file;
 #define	CMDLINE_DELIM	"\t\n &;()<>|"
 #endif
 
+#define	FDPROG		"fd"
 #define	FDSHELL		"fdsh"
 #define	FDENV		"FD_"
 #define	FDESIZ		strsize(FDENV)

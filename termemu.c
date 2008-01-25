@@ -733,13 +733,11 @@ int flags;
 	int i, n, fd, fds[2];
 
 #ifndef	_NOORIGSHELL
-	if (isshptymode()) {
-		if (!(flags & F_DOSYSTEM))
-			return(callmacro(command, arg, flags));
-	}
+	if (isshptymode()) n = (flags & F_DOSYSTEM) ? 0 : -1;
 	else
 #endif
-	if (!ptymode || ptyinternal) return(callmacro(command, arg, flags));
+	n = (ptymode && !ptyinternal && ttyio >= 0) ? 0 : -1;
+	if (n < 0) return(callmacro(command, arg, flags));
 
 	if (ptylist[win].pid && emufd >= 0) {
 		awakechild(command, arg, flags);

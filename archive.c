@@ -39,41 +39,96 @@ extern char *deftmpdir;
 extern int hideclock;
 extern int n_args;
 
-#if	FD >= 2
+#ifdef	OLDPARSE
+# if	MSDOS
+#define	PM_LHA	5, 2, \
+		{FLD_NONE, FLD_NONE, FLD_NONE, 1, 4, 4, 4, 5, 0}, \
+		{0, 0, 0, 0, 0, '-', 128 + 6, 0, 0}, \
+		{0, 0, 0, 0, '-', '-', 0, 0, 0}, \
+		{SEP_NONE, SEP_NONE, SEP_NONE}, 2
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 5, 3, 4, 6, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
+		{SEP_NONE, SEP_NONE, SEP_NONE}, 1
+# else	/* !MSDOS */
+#define	PM_LHA	2, 2, \
+		{0, 1, 1, 2, 6, 4, 5, 6, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
+		{9, SEP_NONE, SEP_NONE}, 1
+#  ifdef	UXPDS
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{128 + 10, '/', 0, 0, 0, 0, 0, 0, 0}, \
+		{10, SEP_NONE, SEP_NONE}, 1
+#  else	/* !UXPDS */
+#   ifdef	TARFROMPAX
+#define	PM_TAR	0, 0, \
+		{0, 2, 3, 4, 7, 5, 6, 7, 8}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{SEP_NONE, SEP_NONE, SEP_NONE}, 1
+#   else	/* !TARFROMPAX */
+#    ifdef	TARUSESPACE
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
+		{SEP_NONE, SEP_NONE, SEP_NONE}, 1
+#    else	/* !TARUSESPACE */
+#define	PM_TAR	0, 0, \
+		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
+		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
+		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
+		{9, SEP_NONE, SEP_NONE}, 1
+#    endif	/* !TARUSESPACE */
+#   endif	/* !TARFROMPAX */
+#  endif	/* !UXPDS */
+# endif	/* !MSDOS */
+#define	PM_NULL	SKP_NONE, 0, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
+		{SEP_NONE, SEP_NONE, SEP_NONE}, 1
+#define	LINESEP	'\t'
+#define	isarchbr(l)	(((l) -> topskip) < SKP_NONE)
+#else	/* !OLDPARSE */
 static char *form_lha[] = {
-#if	MSDOS
+# if	MSDOS
 	"%*f\\n%s %x %x %y-%m-%d %t %a",	/* MS-DOS (-v) */
 	"%1x %12f %s %x %x %y-%m-%d %t %a",	/* MS-DOS (-l) */
-#else
+# else
 	"%a %u/%g %s %x %m %d %{yt} %*f",	/* >=1.14 */
 	"%9a %u/%g %s %x %m %d %{yt} %*f",	/* traditional */
-#endif
+# endif
 	NULL
 };
 static char *ign_lha[] = {
-#if	MSDOS
+# if	MSDOS
 	"Listing of archive : *",
 	"  Name          Original *",
 	"--------------*",
-# if	defined (FAKEMETA) || !defined (BSPATHDELIM)
+#  if	defined (FAKEMETA) || !defined (BSPATHDELIM)
 	"* files * ???.?% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
-# else
+#  else
 	"* files * ???.?%% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
-# endif
+#  endif
 	"",
-#else	/* !MSDOS */
+# else	/* !MSDOS */
 	" PERMSSN * UID*GID *",
 	"----------*",
 	" Total * file* ???.*%*",
-#endif	/* !MSDOS */
+# endif	/* !MSDOS */
 	NULL
 };
 static char *form_tar[] = {
-#if	MSDOS
+# if	MSDOS
 	"%a %u/%g %s %m %d %t %y %*f",		/* traditional */
 	"%a %u/%g %s %y-%m-%d %t %*f",		/* GNU >=1.12 */
 	"%a %u/%g %s %m %d %y %t %*f",		/* kmtar */
-#else	/* !MSDOS */
+# else	/* !MSDOS */
 	"%a %u/%g %s %m %d %t %y %*f",		/* SVR4 */
 	"%a %u/%g %s %y-%m-%d %t %*f",		/* GNU >=1.12 */
 	"%a %l %u %g %s %m %d %{yt} %*f",	/* pax */
@@ -81,7 +136,7 @@ static char *form_tar[] = {
 	"%9a %u/%g %s %m %d %t %y %*f",		/* traditional */
 	"%a %u %g %s %m %d %t %y %*f",		/* AIX */
 	"%a %u/%g %m %d %t %y %*f",		/* IRIX */
-#endif	/* !MSDOS */
+# endif	/* !MSDOS */
 	NULL
 };
 #define	PM_LHA	form_lha, ign_lha, NULL, 0, 0
@@ -90,62 +145,7 @@ static char *form_tar[] = {
 #define	LINESEP	'\n'
 #define	MAXSCORE	256
 #define	isarchbr(l)	((l) -> format)
-#else	/* FD < 2 */
-#if	MSDOS
-#define	PM_LHA	5, 2, \
-		{255, 255, 255, 1, 4, 4, 4, 5, 0}, \
-		{0, 0, 0, 0, 0, '-', 128 + 6, 0, 0}, \
-		{0, 0, 0, 0, '-', '-', 0, 0, 0}, \
-		{255, 255, 255}, 2
-#define	PM_TAR	0, 0, \
-		{0, 1, 1, 2, 5, 3, 4, 6, 7}, \
-		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
-		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
-		{255, 255, 255}, 1
-#else	/* !MSDOS */
-#define	PM_LHA	2, 2, \
-		{0, 1, 1, 2, 6, 4, 5, 6, 7}, \
-		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
-		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
-		{9, 255, 255}, 1
-# ifdef	UXPDS
-#define	PM_TAR	0, 0, \
-		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
-		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
-		{128 + 10, '/', 0, 0, 0, 0, 0, 0, 0}, \
-		{10, 255, 255}, 1
-# else	/* !UXPDS */
-#  ifdef	TARFROMPAX
-#define	PM_TAR	0, 0, \
-		{0, 2, 3, 4, 7, 5, 6, 7, 8}, \
-		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
-		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
-		{255, 255, 255}, 1
-#  else	/* !TARFROMPAX */
-#   ifdef	TARUSESPACE
-#define	PM_TAR	0, 0, \
-		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
-		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
-		{0, '/', 0, 0, 0, 0, 0, 0, 0}, \
-		{255, 255, 255}, 1
-#   else	/* !TARUSESPACE */
-#define	PM_TAR	0, 0, \
-		{0, 1, 1, 2, 6, 3, 4, 5, 7}, \
-		{0, 0, '/', 0, 0, 0, 0, 0, 0}, \
-		{128 + 9, '/', 0, 0, 0, 0, 0, 0, 0}, \
-		{9, 255, 255}, 1
-#   endif	/* !TARUSESPACE */
-#  endif	/* !TARFROMPAX */
-# endif	/* !UXPDS */
-#endif	/* !MSDOS */
-#define	PM_NULL	255, 0, \
-		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
-		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
-		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
-		{255, 255, 255}, 1
-#define	LINESEP	'\t'
-#define	isarchbr(l)	(((l) -> topskip) < (u_char)255)
-#endif	/* FD < 2 */
+#endif	/* !OLDPARSE */
 
 #define	IGNORETYPESYM	"-VMNLhC"
 #define	SYMLINKSTR	"->"
@@ -159,7 +159,13 @@ static VOID NEAR popbrowsevar __P_((VOID_A));
 static VOID NEAR pusharchdupl __P_((VOID_A));
 static VOID NEAR poparchdupl __P_((VOID_A));
 static int NEAR readattr __P_((namelist *, CONST char *));
-#if	FD >= 2
+#ifdef	OLDPARSE
+static int NEAR countfield __P_((CONST char *, CONST u_char [], int, int *));
+static char *NEAR getfield __P_((char *, CONST char *,
+		int, CONST launchtable *, int));
+static int NEAR readfileent __P_((namelist *,
+		CONST char *, CONST launchtable *, int));
+#else	/* !OLDPARSE */
 static char *NEAR checkspace __P_((CONST char *, int *));
 # ifdef	_NOKANJIFCONV
 #define	readfname	strndup2
@@ -171,18 +177,12 @@ static char *NEAR readlinkname __P_((CONST char *, CONST char *));
 # endif
 static int NEAR readfileent __P_((namelist *,
 		CONST char *, CONST char *, int));
-#else	/* FD < 2 */
-static int NEAR countfield __P_((CONST char *, CONST u_char [], int, int *));
-static char *NEAR getfield __P_((char *, CONST char *,
-		int, launchtable *, int));
-static int NEAR readfileent __P_((namelist *,
-		CONST char *, launchtable *, int));
-#endif	/* FD < 2 */
+#endif	/* !OLDPARSE */
 static int NEAR dircmp __P_((CONST char *, CONST char *));
 static int NEAR dirmatchlen __P_((CONST char *, CONST char *));
 static char *NEAR pseudodir __P_((namelist *));
 static VOID NEAR Xwaitmes __P_((VOID_A));
-#if	FD >= 2
+#ifndef	OLDPARSE
 static char **NEAR decodevar __P_((char *CONST *));
 static int NEAR matchlist __P_((CONST char *, char *CONST *));
 #endif
@@ -275,7 +275,7 @@ static CONST strtable linklist[] = {
 };
 #define	LINKLISTSIZ	arraysize(linklist)
 #endif	/* !NOSYMLINK */
-#if	FD >= 2
+#ifndef	OLDPARSE
 static CONST char *autoformat[] = {
 # if	MSDOS
 	"%*f\n%s %x %x %y-%m-%d %t %a",		/* LHa (v) */
@@ -305,7 +305,7 @@ static CONST char *autoformat[] = {
 # endif	/* !MSDOS */
 };
 #define	AUTOFORMATSIZ	arraysize(autoformat)
-#endif	/* FD >= 2 */
+#endif	/* !OLDPARSE */
 
 
 #ifndef	_NOBROWSE
@@ -567,7 +567,231 @@ CONST char *buf;
 	return(len);
 }
 
-#if	FD >= 2
+#ifdef	OLDPARSE
+static int NEAR countfield(line, sep, field, eolp)
+CONST char *line;
+CONST u_char sep[];
+int field, *eolp;
+{
+	int i, j, f, s, sp;
+
+	f = -1;
+	s = 1;
+	sp = (int)sep[0];
+
+	for (i = j = 0; line[i]; i++) {
+		if (sp != SEP_NONE && i >= sp) {
+			j++;
+			sp = (j < MAXLAUNCHSEP) ? (int)sep[j] : SEP_NONE;
+			for (; sp == SEP_NONE || i < sp; i++)
+				if (!isblank2(line[i])) break;
+			if (f < 0) f = 1;
+			else f++;
+			s = 0;
+		}
+		else if (isblank2(line[i])) s = 1;
+		else if (s) {
+			f++;
+			s = 0;
+		}
+
+		if (field < 0) continue;
+		else if (f > field) return(-1);
+		else if (f == field) {
+			if (eolp) {
+				for (j = i; line[j]; j++) {
+					if ((sp != SEP_NONE && j >= sp)
+					|| isblank2(line[j]))
+						break;
+				}
+				*eolp = j;
+			}
+			return(i);
+		}
+	}
+
+	return((field < 0) ? f : -1);
+}
+
+static char *NEAR getfield(buf, line, skip, list, no)
+char *buf;
+CONST char *line;
+int skip;
+CONST launchtable *list;
+int no;
+{
+	CONST char *cp;
+	char *tmp;
+	int i, f, eol;
+
+	*buf = '\0';
+	f = (list -> field[no] != FLD_NONE)
+		? (int)(list -> field[no]) - skip : -1;
+
+	if (f < 0 || (i = countfield(line, list -> sep, f, &eol)) < 0)
+		return(buf);
+	cp = &(line[i]);
+
+	i = (int)(list -> delim[no]);
+	if (i >= 128) {
+		i -= 128;
+		if (&(cp[i]) < &(line[eol])) cp += i;
+		else return(buf);
+	}
+	else if (i && (!(cp = strchr2(cp, i)) || ++cp >= &(line[eol])))
+		return(buf);
+
+	i = (int)(list -> width[no]);
+	if (i >= 128) i -= 128;
+	else if (i) {
+		if ((tmp = strchr2(cp, i))) i = tmp - cp;
+		else i = &(line[eol]) - cp;
+	}
+	if (!i || &(cp[i]) > &(line[eol])) i = &(line[eol]) - cp;
+	strncpy2(buf, cp, i);
+
+	return(buf);
+}
+
+static int NEAR readfileent(tmp, line, list, max)
+namelist *tmp;
+CONST char *line;
+CONST launchtable *list;
+int max;
+{
+# ifndef	NOUID
+	uidtable *up;
+	gidtable *gp;
+	uid_t uid;
+	gid_t gid;
+# endif
+	time_t now;
+	struct tm tm, *tp;
+	off_t n;
+	int i, skip;
+	char *cp, *buf;
+
+	i = countfield(line, list -> sep, -1, NULL);
+	skip = (max > i) ? max - i : 0;
+	buf = malloc2(strlen(line) + 1);
+
+	tmp -> flags = 0;
+	tmp -> tmpflags = F_STAT;
+	tmp -> st_mode = 0;
+	tmp -> st_nlink = 1;
+# ifndef	NOSYMLINK
+	tmp -> linkname = NULL;
+# endif
+	getfield(buf, line, skip, list, F_NAME);
+	if (!*buf) {
+		free(buf);
+		return(-1);
+	}
+# if	MSDOS
+#  ifdef	BSPATHDELIM
+	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[i] = _SC_;
+#  else
+	for (i = 0; buf[i]; i++) {
+		if (buf[i] == '\\') buf[i] = _SC_;
+		if (iskanji1(buf, i)) i++;
+	}
+#  endif
+# endif	/* MSDOS */
+	if (isdelim(buf, i = (int)strlen(buf) - 1)) {
+		if (i > 0) buf[i] = '\0';
+		tmp -> st_mode |= S_IFDIR;
+	}
+	tmp -> name = strdup2(buf);
+
+	getfield(buf, line, skip, list, F_MODE);
+	readattr(tmp, buf);
+	if (!(tmp -> st_mode & S_IFMT)) tmp -> st_mode |= S_IFREG;
+	if (s_isdir(tmp)) tmp -> flags |= F_ISDIR;
+	else if (s_islnk(tmp)) tmp -> flags |= F_ISLNK;
+
+# ifndef	NOUID
+	getfield(buf, line, skip, list, F_UID);
+	if (sscanf2(buf, "%-<*d%$", sizeof(uid_t), &uid)) tmp -> st_uid = uid;
+	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
+	getfield(buf, line, skip, list, F_GID);
+	if (sscanf2(buf, "%-<*d%$", sizeof(gid_t), &gid)) tmp -> st_gid = gid;
+	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
+# endif
+	getfield(buf, line, skip, list, F_SIZE);
+	tmp -> st_size = (sscanf2(buf, "%qd%$", &n)) ? n : (off_t)0;
+
+	getfield(buf, line, skip, list, F_MON);
+	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
+	else if (!strncmp(buf, "Feb", 3)) tm.tm_mon = 1;
+	else if (!strncmp(buf, "Mar", 3)) tm.tm_mon = 2;
+	else if (!strncmp(buf, "Apr", 3)) tm.tm_mon = 3;
+	else if (!strncmp(buf, "May", 3)) tm.tm_mon = 4;
+	else if (!strncmp(buf, "Jun", 3)) tm.tm_mon = 5;
+	else if (!strncmp(buf, "Jul", 3)) tm.tm_mon = 6;
+	else if (!strncmp(buf, "Aug", 3)) tm.tm_mon = 7;
+	else if (!strncmp(buf, "Sep", 3)) tm.tm_mon = 8;
+	else if (!strncmp(buf, "Oct", 3)) tm.tm_mon = 9;
+	else if (!strncmp(buf, "Nov", 3)) tm.tm_mon = 10;
+	else if (!strncmp(buf, "Dec", 3)) tm.tm_mon = 11;
+	else if ((i = atoi2(buf)) >= 1 && i < 12) tm.tm_mon = i - 1;
+	else tm.tm_mon = 0;
+	getfield(buf, line, skip, list, F_DAY);
+	tm.tm_mday = ((i = atoi2(buf)) >= 1 && i < 31) ? i : 1;
+	getfield(buf, line, skip, list, F_YEAR);
+	if (!*buf) tm.tm_year = 1970;
+	else if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
+	else if (list -> field[F_YEAR] == list -> field[F_TIME]
+	&& strchr(buf, ':')) {
+		now = time2();
+# ifdef	DEBUG
+		_mtrace_file = "localtime(start)";
+		tp = localtime(&now);
+		if (_mtrace_file) _mtrace_file = NULL;
+		else {
+			_mtrace_file = "localtime(end)";
+			malloc(0);	/* dummy malloc */
+		}
+# else
+		tp = localtime(&now);
+# endif
+		tm.tm_year = tp -> tm_year;
+		if (tm.tm_mon > tp -> tm_mon
+		|| (tm.tm_mon == tp -> tm_mon && tm.tm_mday > tp -> tm_mday))
+			tm.tm_year--;
+	}
+	else tm.tm_year = 1970;
+	if (tm.tm_year < 1900 && (tm.tm_year += 1900) < 1970)
+		tm.tm_year += 100;
+	tm.tm_year -= 1900;
+
+	getfield(buf, line, skip, list, F_TIME);
+	if (!(cp = sscanf2(buf, "%d", &i)) || i > 23)
+		tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+	else {
+		tm.tm_hour = i;
+		if (!(cp = sscanf2(cp, ":%d", &i)) || i > 59)
+			tm.tm_min = tm.tm_sec = 0;
+		else {
+			tm.tm_min = i;
+			if (!sscanf2(cp, ":%d%$", &i) || i > 60) tm.tm_sec = 0;
+			else tm.tm_sec = i;
+		}
+	}
+
+	tmp -> st_mtim = timelocal2(&tm);
+	tmp -> flags |=
+# ifdef	NOUID
+		logical_access(tmp -> st_mode);
+# else
+		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
+# endif
+	free(buf);
+
+	return(0);
+}
+
+#else	/* !OLDPARSE */
+
 static char *NEAR checkspace(s, scorep)
 CONST char *s;
 int *scorep;
@@ -956,230 +1180,7 @@ int skip;
 
 	return(score);
 }
-
-#else	/* FD < 2 */
-
-static int NEAR countfield(line, sep, field, eolp)
-CONST char *line;
-CONST u_char sep[];
-int field, *eolp;
-{
-	int i, j, f, s, sp;
-
-	f = -1;
-	s = 1;
-	sp = (int)sep[0];
-
-	for (i = j = 0; line[i]; i++) {
-		if (sp < 255 && i >= sp) {
-			j++;
-			sp = (j < MAXLAUNCHSEP) ? (int)sep[j] : 255;
-			for (; sp == 255 || i < sp; i++)
-				if (!isblank2(line[i])) break;
-			if (f < 0) f = 1;
-			else f++;
-			s = 0;
-		}
-		else if (isblank2(line[i])) s = 1;
-		else if (s) {
-			f++;
-			s = 0;
-		}
-
-		if (field < 0) continue;
-		else if (f > field) return(-1);
-		else if (f == field) {
-			if (eolp) {
-				for (j = i; line[j]; j++) {
-					if ((sp < 255 && j >= sp)
-					|| isblank2(line[j]))
-						break;
-				}
-				*eolp = j;
-			}
-			return(i);
-		}
-	}
-
-	return((field < 0) ? f : -1);
-}
-
-static char *NEAR getfield(buf, line, skip, list, no)
-char *buf;
-CONST char *line;
-int skip;
-launchtable *list;
-int no;
-{
-	CONST char *cp;
-	char *tmp;
-	int i, f, eol;
-
-	*buf = '\0';
-	f = (list -> field[no] < 255) ? (int)(list -> field[no]) - skip : -1;
-
-	if (f < 0 || (i = countfield(line, list -> sep, f, &eol)) < 0)
-		return(buf);
-	cp = &(line[i]);
-
-	i = (int)(list -> delim[no]);
-	if (i >= 128) {
-		i -= 128;
-		if (&(cp[i]) < &(line[eol])) cp += i;
-		else return(buf);
-	}
-	else if (i && (!(cp = strchr2(cp, i)) || ++cp >= &(line[eol])))
-		return(buf);
-
-	i = (int)(list -> width[no]);
-	if (i >= 128) i -= 128;
-	else if (i) {
-		if ((tmp = strchr2(cp, i))) i = tmp - cp;
-		else i = &(line[eol]) - cp;
-	}
-	if (!i || &(cp[i]) > &(line[eol])) i = &(line[eol]) - cp;
-	strncpy2(buf, cp, i);
-
-	return(buf);
-}
-
-static int NEAR readfileent(tmp, line, list, max)
-namelist *tmp;
-CONST char *line;
-launchtable *list;
-int max;
-{
-# ifndef	NOUID
-	uidtable *up;
-	gidtable *gp;
-	uid_t uid;
-	gid_t gid;
-# endif
-	time_t now;
-	struct tm tm, *tp;
-	off_t n;
-	int i, skip;
-	char *cp, *buf;
-
-	i = countfield(line, list -> sep, -1, NULL);
-	skip = (max > i) ? max - i : 0;
-	buf = malloc2(strlen(line) + 1);
-
-	tmp -> flags = 0;
-	tmp -> tmpflags = F_STAT;
-	tmp -> st_mode = 0;
-	tmp -> st_nlink = 1;
-# ifndef	NOSYMLINK
-	tmp -> linkname = NULL;
-# endif
-	getfield(buf, line, skip, list, F_NAME);
-	if (!*buf) {
-		free(buf);
-		return(-1);
-	}
-# if	MSDOS
-#  ifdef	BSPATHDELIM
-	for (i = 0; buf[i]; i++) if (buf[i] == '/') buf[i] = _SC_;
-#  else
-	for (i = 0; buf[i]; i++) {
-		if (buf[i] == '\\') buf[i] = _SC_;
-		if (iskanji1(buf, i)) i++;
-	}
-#  endif
-# endif	/* MSDOS */
-	if (isdelim(buf, i = (int)strlen(buf) - 1)) {
-		if (i > 0) buf[i] = '\0';
-		tmp -> st_mode |= S_IFDIR;
-	}
-	tmp -> name = strdup2(buf);
-
-	getfield(buf, line, skip, list, F_MODE);
-	readattr(tmp, buf);
-	if (!(tmp -> st_mode & S_IFMT)) tmp -> st_mode |= S_IFREG;
-	if (s_isdir(tmp)) tmp -> flags |= F_ISDIR;
-	else if (s_islnk(tmp)) tmp -> flags |= F_ISLNK;
-
-# ifndef	NOUID
-	getfield(buf, line, skip, list, F_UID);
-	if (sscanf2(buf, "%-<*d%$", sizeof(uid_t), &uid)) tmp -> st_uid = uid;
-	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
-	getfield(buf, line, skip, list, F_GID);
-	if (sscanf2(buf, "%-<*d%$", sizeof(gid_t), &gid)) tmp -> st_gid = gid;
-	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
-# endif
-	getfield(buf, line, skip, list, F_SIZE);
-	tmp -> st_size = (sscanf2(buf, "%qd%$", &n)) ? n : (off_t)0;
-
-	getfield(buf, line, skip, list, F_MON);
-	if (!strncmp(buf, "Jan", 3)) tm.tm_mon = 0;
-	else if (!strncmp(buf, "Feb", 3)) tm.tm_mon = 1;
-	else if (!strncmp(buf, "Mar", 3)) tm.tm_mon = 2;
-	else if (!strncmp(buf, "Apr", 3)) tm.tm_mon = 3;
-	else if (!strncmp(buf, "May", 3)) tm.tm_mon = 4;
-	else if (!strncmp(buf, "Jun", 3)) tm.tm_mon = 5;
-	else if (!strncmp(buf, "Jul", 3)) tm.tm_mon = 6;
-	else if (!strncmp(buf, "Aug", 3)) tm.tm_mon = 7;
-	else if (!strncmp(buf, "Sep", 3)) tm.tm_mon = 8;
-	else if (!strncmp(buf, "Oct", 3)) tm.tm_mon = 9;
-	else if (!strncmp(buf, "Nov", 3)) tm.tm_mon = 10;
-	else if (!strncmp(buf, "Dec", 3)) tm.tm_mon = 11;
-	else if ((i = atoi2(buf)) >= 1 && i < 12) tm.tm_mon = i - 1;
-	else tm.tm_mon = 0;
-	getfield(buf, line, skip, list, F_DAY);
-	tm.tm_mday = ((i = atoi2(buf)) >= 1 && i < 31) ? i : 1;
-	getfield(buf, line, skip, list, F_YEAR);
-	if (!*buf) tm.tm_year = 1970;
-	else if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
-	else if (list -> field[F_YEAR] == list -> field[F_TIME]
-	&& strchr(buf, ':')) {
-		now = time2();
-# ifdef	DEBUG
-		_mtrace_file = "localtime(start)";
-		tp = localtime(&now);
-		if (_mtrace_file) _mtrace_file = NULL;
-		else {
-			_mtrace_file = "localtime(end)";
-			malloc(0);	/* dummy malloc */
-		}
-# else
-		tp = localtime(&now);
-# endif
-		tm.tm_year = tp -> tm_year;
-		if (tm.tm_mon > tp -> tm_mon
-		|| (tm.tm_mon == tp -> tm_mon && tm.tm_mday > tp -> tm_mday))
-			tm.tm_year--;
-	}
-	else tm.tm_year = 1970;
-	if (tm.tm_year < 1900 && (tm.tm_year += 1900) < 1970)
-		tm.tm_year += 100;
-	tm.tm_year -= 1900;
-
-	getfield(buf, line, skip, list, F_TIME);
-	if (!(cp = sscanf2(buf, "%d", &i)) || i > 23)
-		tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
-	else {
-		tm.tm_hour = i;
-		if (!(cp = sscanf2(cp, ":%d", &i)) || i > 59)
-			tm.tm_min = tm.tm_sec = 0;
-		else {
-			tm.tm_min = i;
-			if (!sscanf2(cp, ":%d%$", &i) || i > 60) tm.tm_sec = 0;
-			else tm.tm_sec = i;
-		}
-	}
-
-	tmp -> st_mtim = timelocal2(&tm);
-	tmp -> flags |=
-# ifdef	NOUID
-		logical_access(tmp -> st_mode);
-# else
-		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
-# endif
-	free(buf);
-
-	return(0);
-}
-#endif	/* FD < 2 */
+#endif	/* !OLDPARSE */
 
 VOID archbar(file, dir)
 CONST char *file, *dir;
@@ -1375,7 +1376,7 @@ static VOID NEAR Xwaitmes(VOID_A)
 	win_y = y;
 }
 
-#if	FD >= 2
+#ifndef	OLDPARSE
 static char **NEAR decodevar(argv)
 char *CONST *argv;
 {
@@ -1432,7 +1433,7 @@ char *CONST *argv;
 
 	return(ret);
 }
-#endif	/* FD >= 2 */
+#endif	/* !OLDPARSE */
 
 static int NEAR parsearchive(fp, list, namep, linenop)
 FILE *fp;
@@ -1440,7 +1441,9 @@ launchtable *list;
 namelist *namep;
 int *linenop;
 {
-#if	FD >= 2
+#ifdef	OLDPARSE
+	int max;
+#else
 	static char **formlist = NULL;
 	static char **lign = NULL;
 	static char **lerr = NULL;
@@ -1449,8 +1452,6 @@ int *linenop;
 	char *form0, *form2;
 	short *scorelist;
 	int nf, na, ret, skip;
-#else
-	int max;
 #endif
 	static char **lvar = NULL;
 	char *cp;
@@ -1459,7 +1460,7 @@ int *linenop;
 	if (!fp) {
 		freevar(lvar);
 		lvar = NULL;
-#if	FD >= 2
+#ifndef	OLDPARSE
 		freevar(formlist);
 		freevar(lign);
 		freevar(lerr);
@@ -1473,7 +1474,7 @@ int *linenop;
 		return(0);
 	}
 
-#if	FD >= 2
+#ifndef	OLDPARSE
 	if (!formlist || !*formlist) return(-3);
 #endif
 	if (!(nline = countvar(lvar))) {
@@ -1483,7 +1484,7 @@ int *linenop;
 	}
 
 	if (isttyiomode && intrkey(K_ESC)) return(-2);
-#if	FD >= 2
+#ifndef	OLDPARSE
 	if (matchlist(lvar[0], lign)) {
 		free(lvar[0]);
 		memmove((char *)(&(lvar[0])), (char *)(&(lvar[1])),
@@ -1492,21 +1493,23 @@ int *linenop;
 		return(0);
 	}
 	if (matchlist(lvar[0], lerr)) return(-3);
-#endif	/* FD >= 2 */
+#endif
 
-#if	FD >= 2
+#ifdef	OLDPARSE
+	max = 0;
+	for (i = 0; i < MAXLAUNCHFIELD; i++) {
+		if (list -> field[i] == FLD_NONE) continue;
+		if ((int)(list -> field[i]) > max)
+			max = (int)(list -> field[i]);
+	}
+#else
 	nf = countvar(formlist);
 	scorelist = (short *)malloc2(nf * sizeof(short));
 	for (i = 0; i < nf; i++) scorelist[i] = MAXSCORE;
 	nf = na = skip = 0;
 	form0 = NULL;
 	ret = 1;
-#else	/* FD < 2 */
-	max = 0;
-	for (i = 0; i < MAXLAUNCHFIELD; i++)
-		if (list -> field[i] < 255 && (int)(list -> field[i]) > max)
-			max = (int)(list -> field[i]);
-#endif	/* FD < 2 */
+#endif
 	namep -> name = NULL;
 #ifndef	NOSYMLINK
 	namep -> linkname = NULL;
@@ -1514,7 +1517,9 @@ int *linenop;
 
 	needline = 0;
 	for (;;) {
-#if	FD >= 2
+#ifdef	OLDPARSE
+		needline = list -> lines;
+#else	/* !OLDPARSE */
 # ifdef	FAKEUNINIT
 		form2 = NULL;		/* fake for -Wuninitialized */
 # endif
@@ -1534,9 +1539,7 @@ int *linenop;
 
 		needline = 1;
 		for (i = 0; form[i]; i++) if (form[i] == '\n') needline++;
-#else
-		needline = list -> lines;
-#endif
+#endif	/* !OLDPARSE */
 
 		if (nline < needline) {
 			lvar = (char **)realloc2(lvar,
@@ -1545,7 +1548,7 @@ int *linenop;
 				if (!(lvar[nline] = fgets2(fp, 0))) break;
 			lvar[nline] = NULL;
 			if (nline < needline) {
-#if	FD >= 2
+#ifndef	OLDPARSE
 				if (needline > 1 && na < AUTOFORMATSIZ) {
 					if (!formlist[nf]) continue;
 					free(formlist[nf]);
@@ -1561,7 +1564,7 @@ int *linenop;
 # endif
 				if (form0) free(form0);
 				free(scorelist);
-#endif
+#endif	/* !OLDPARSE */
 				*linenop += nline;
 				return(-1);
 			}
@@ -1578,7 +1581,12 @@ int *linenop;
 		if (len > 0) len--;
 		cp[len] = '\0';
 
-#if	FD >= 2
+#ifdef	OLDPARSE
+		score = readfileent(namep, cp, list, max);
+		free(cp);
+		break;
+/*NOTREACHED*/
+#else	/* !OLDPARSE */
 		score = readfileent(&tmp, cp, form, skip);
 		free(cp);
 
@@ -1626,15 +1634,10 @@ int *linenop;
 		}
 
 		if (!score) break;
-#else	/* FD < 2 */
-		score = readfileent(namep, cp, list, max);
-		free(cp);
-		break;
-/*NOTREACHED*/
-#endif	/* FD < 2 */
+#endif	/* !OLDPARSE */
 	}
 
-#if	FD >= 2
+#ifndef	OLDPARSE
 	if (score < 0) {
 		if (namep -> name) free(namep -> name);
 		namep -> name = NULL;
@@ -1643,7 +1646,7 @@ int *linenop;
 		namep -> linkname = NULL;
 # endif
 	}
-#endif	/* FD >= 2 */
+#endif	/* !OLDPARSE */
 	if (lvar) {
 		for (i = 0; i < needline; i++) free(lvar[i]);
 		if (nline + 1 > needline)
@@ -1653,12 +1656,12 @@ int *linenop;
 	}
 	*linenop += needline;
 
-#if	FD >= 2
+#ifdef	OLDPARSE
+	return((score) ? 0 : 1);
+#else
 	if (form0) free(form0);
 	free(scorelist);
 	return((score) ? 0 : ret);
-#else
-	return((score) ? 0 : 1);
 #endif
 }
 

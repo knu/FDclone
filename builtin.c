@@ -103,7 +103,7 @@ static char **NEAR readargv __P_((char *CONST *, char **));
 static int NEAR custbrowse __P_((int, char *CONST []));
 # endif
 #endif
-static int NEAR getmacro __P_((char *));
+static int NEAR setmacro __P_((char *));
 static int NEAR setkeybind __P_((int, char *CONST []));
 static int NEAR printbind __P_((int, char *CONST []));
 #ifdef	_USEDOSEMU
@@ -372,7 +372,7 @@ int whole;
 			else if (j || quoted) {
 				quoted = cp[j] = '\0';
 				argv = (char **)realloc2(argv,
-					(argc + 2) * sizeof(char *));
+					(argc + 2) * sizeof(*argv));
 				argv[argc++] = strdup2(cp);
 				argv[argc] = NULL;
 				j = 0;
@@ -384,7 +384,7 @@ int whole;
 		else if (j || quoted) {
 			quoted = cp[j] = '\0';
 			argv = (char **)realloc2(argv,
-				(argc + 2) * sizeof(char *));
+				(argc + 2) * sizeof(*argv));
 			argv[argc++] = strdup2(cp);
 			argv[argc] = NULL;
 			j = 0;
@@ -396,7 +396,7 @@ int whole;
 
 	if (j) {
 		cp[j] = '\0';
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(char *));
+		argv = (char **)realloc2(argv, (argc + 2) * sizeof(*argv));
 		argv[argc++] = strdup2(cp);
 		argv[argc] = NULL;
 	}
@@ -437,21 +437,21 @@ launchtable *lp;
 	if (c == 'f') {
 		i = countvar(lp -> format);
 		lp -> format = (char **)realloc2(lp -> format,
-			(i + 2) * sizeof(char *));
+			(i + 2) * sizeof(*(lp -> format)));
 		lp -> format[i++] = strdup2(cp);
 		lp -> format[i] = NULL;
 	}
 	else if (c == 'i') {
 		i = countvar(lp -> lignore);
 		lp -> lignore = (char **)realloc2(lp -> lignore,
-			(i + 2) * sizeof(char *));
+			(i + 2) * sizeof(*(lp -> lignore)));
 		lp -> lignore[i++] = strdup2(cp);
 		lp -> lignore[i] = NULL;
 	}
 	else if (c == 'e') {
 		i = countvar(lp -> lerror);
 		lp -> lerror = (char **)realloc2(lp -> lerror,
-			(i + 2) * sizeof(char *));
+			(i + 2) * sizeof(*(lp -> lerror)));
 		lp -> lerror[i++] = strdup2(cp);
 		lp -> lerror[i] = NULL;
 	}
@@ -491,17 +491,16 @@ launchtable *lp;
 {
 	if (lp -> ext) free(lp -> ext);
 	if (lp -> comm) free(lp -> comm);
-# if	FD >= 2
+# ifndef	OLDPARSE
 	freevar(lp -> format);
 	freevar(lp -> lignore);
 	freevar(lp -> lerror);
 # endif
 }
 
-int searchlaunch(list, max, lp)
-launchtable *list;
+int searchlaunch(lp, list, max)
+CONST launchtable *lp, *list;
 int max;
-launchtable *lp;
 {
 	int i, n;
 
@@ -519,17 +518,17 @@ int argc;
 char *CONST argv[];
 launchtable *lp;
 {
-# if	FD >= 2
-	int j, opt, err;
-# else
+# ifdef	OLDPARSE
 	char *cp, *tmp;
 	u_char c;
 	int ch;
+# else
+	int j, opt, err;
 # endif
 	int i, n;
 
 	lp -> comm = NULL;
-# if	FD >= 2
+# ifndef	OLDPARSE
 	lp -> format = lp -> lignore = lp -> lerror = NULL;
 # endif
 
@@ -541,7 +540,7 @@ launchtable *lp;
 
 	lp -> ext = getext(argv[1], &(lp -> flags));
 
-	n = searchlaunch(launchlist, maxlaunch, lp);
+	n = searchlaunch(lp, launchlist, maxlaunch);
 	if (n >= MAXLAUNCHTABLE) {
 		free(lp -> ext);
 		lp -> topskip = ER_OUTOFLIMIT;
@@ -551,7 +550,77 @@ launchtable *lp;
 
 	if (argc < 3) return(n);
 
-# if	FD >= 2
+# ifdef	OLDPARSE
+	lp -> comm = strdup2(argv[2]);
+	if (argc <= 3) lp -> topskip = lp -> bottomskip = SKP_NONE;
+	else {
+		cp = tmp = catvar(&(argv[3]), '\0');
+		if (!(cp = sscanf2(cp, "%Cu,", &c))) {
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = SKP_NONE;
+			free(lp -> ext);
+			free(lp -> comm);
+			lp -> ext = tmp;
+			return(-1);
+		}
+		lp -> topskip = c;
+		if (!(cp = sscanf2(cp, "%Cu", &c))) {
+			lp -> topskip = ER_SYNTAXERR;
+			lp -> bottomskip = SKP_NONE;
+			free(lp -> ext);
+			free(lp -> comm);
+			lp -> ext = tmp;
+			return(-1);
+		}
+		lp -> bottomskip = c;
+
+		ch = ':';
+		for (i = 0; i < MAXLAUNCHFIELD; i++) {
+			cp = getrange(cp, ch, &(lp -> field[i]),
+				&(lp -> delim[i]), &(lp -> width[i]));
+			if (!cp) {
+				lp -> topskip = ER_SYNTAXERR;
+				lp -> bottomskip = SKP_NONE;
+				free(lp -> ext);
+				free(lp -> comm);
+				lp -> ext = tmp;
+				return(-1);
+			}
+			ch = ',';
+		}
+
+		ch = ':';
+		for (i = 0; i < MAXLAUNCHSEP; i++) {
+			if (*cp != ch) break;
+			if (!(cp = sscanf2(++cp, "%Cu", &c))) {
+				lp -> topskip = ER_SYNTAXERR;
+				lp -> bottomskip = SKP_NONE;
+				free(lp -> ext);
+				free(lp -> comm);
+				lp -> ext = tmp;
+				return(-1);
+			}
+			lp -> sep[i] = (c) ? c - 1 : SEP_NONE;
+			ch = ',';
+		}
+		for (; i < MAXLAUNCHSEP; i++) lp -> sep[i] = SEP_NONE;
+
+		if (!*cp) lp -> lines = 1;
+		else {
+			if (!sscanf2(cp, ":%Cu%$", &c)) {
+				lp -> topskip = ER_SYNTAXERR;
+				lp -> bottomskip = SKP_NONE;
+				free(lp -> ext);
+				free(lp -> comm);
+				lp -> ext = tmp;
+				return(-1);
+			}
+			lp -> lines = (c) ? c : 1;
+		}
+
+		free(tmp);
+	}
+# else	/* !OLDPARSE */
 	lp -> topskip = lp -> bottomskip = 0;
 	opt = err = 0;
 	for (i = 2; i < argc; i++) {
@@ -592,7 +661,7 @@ launchtable *lp;
 	}
 
 	if (i < argc) {
-		lp -> format = (char **)malloc2(2 * sizeof(char *));
+		lp -> format = (char **)malloc2(2 * sizeof(*(lp -> format)));
 		lp -> format[0] = strdup2(argv[i]);
 		lp -> format[1] = NULL;
 	}
@@ -614,78 +683,7 @@ launchtable *lp;
 		freelaunch(lp);
 		return(-1);
 	}
-
-# else	/* FD < 2 */
-	lp -> comm = strdup2(argv[2]);
-	if (argc <= 3) lp -> topskip = lp -> bottomskip = 255;
-	else {
-		cp = tmp = catvar(&(argv[3]), '\0');
-		if (!(cp = sscanf2(cp, "%Cu,", &c))) {
-			lp -> topskip = ER_SYNTAXERR;
-			lp -> bottomskip = (u_char)-1;
-			free(lp -> ext);
-			free(lp -> comm);
-			lp -> ext = tmp;
-			return(-1);
-		}
-		lp -> topskip = c;
-		if (!(cp = sscanf2(cp, "%Cu", &c))) {
-			lp -> topskip = ER_SYNTAXERR;
-			lp -> bottomskip = (u_char)-1;
-			free(lp -> ext);
-			free(lp -> comm);
-			lp -> ext = tmp;
-			return(-1);
-		}
-		lp -> bottomskip = c;
-
-		ch = ':';
-		for (i = 0; i < MAXLAUNCHFIELD; i++) {
-			cp = getrange(cp, ch, &(lp -> field[i]),
-				&(lp -> delim[i]), &(lp -> width[i]));
-			if (!cp) {
-				lp -> topskip = ER_SYNTAXERR;
-				lp -> bottomskip = (u_char)-1;
-				free(lp -> ext);
-				free(lp -> comm);
-				lp -> ext = tmp;
-				return(-1);
-			}
-			ch = ',';
-		}
-
-		ch = ':';
-		for (i = 0; i < MAXLAUNCHSEP; i++) {
-			if (*cp != ch) break;
-			if (!(cp = sscanf2(++cp, "%Cu", &c))) {
-				lp -> topskip = ER_SYNTAXERR;
-				lp -> bottomskip = (u_char)-1;
-				free(lp -> ext);
-				free(lp -> comm);
-				lp -> ext = tmp;
-				return(-1);
-			}
-			lp -> sep[i] = (c) ? c - 1 : 255;
-			ch = ',';
-		}
-		for (; i < MAXLAUNCHSEP; i++) lp -> sep[i] = 255;
-
-		if (!*cp) lp -> lines = 1;
-		else {
-			if (!sscanf2(cp, ":%Cu%$", &c)) {
-				lp -> topskip = ER_SYNTAXERR;
-				lp -> bottomskip = (u_char)-1;
-				free(lp -> ext);
-				free(lp -> comm);
-				lp -> ext = tmp;
-				return(-1);
-			}
-			lp -> lines = (c) ? c : 1;
-		}
-
-		free(tmp);
-	}
-# endif	/* FD < 2 */
+# endif	/* !OLDPARSE */
 
 	return(n);
 }
@@ -694,17 +692,18 @@ VOID addlaunch(n, lp)
 int n;
 launchtable *lp;
 {
-	if (n >= maxlaunch) maxlaunch++;
-	else freelaunch(&(launchlist[n]));
-	memcpy((char *)&(launchlist[n]), (char *)lp, sizeof(*lp));
+	if (n < maxlaunch) freelaunch(&(launchlist[n]));
+	else maxlaunch = n + 1;
+	memcpy((char *)&(launchlist[n]), (char *)lp, sizeof(*launchlist));
 }
 
 VOID deletelaunch(n)
 int n;
 {
+	if (n >= maxlaunch) return;
 	freelaunch(&(launchlist[n]));
 	memmove((char *)&(launchlist[n]), (char *)&(launchlist[n + 1]),
-		(--maxlaunch - n) * sizeof(launchtable));
+		(--maxlaunch - n) * sizeof(*launchlist));
 }
 
 static int NEAR setlaunch(argc, argv)
@@ -715,8 +714,8 @@ char *CONST argv[];
 	int n;
 
 	if ((n = parselaunch(argc, argv, &launch)) < 0) {
-# if	FD < 2
-		if (launch.bottomskip == (u_char)-1) {
+# ifdef	OLDPARSE
+		if (launch.bottomskip == SKP_NONE) {
 			builtinerror(argv, launch.ext, launch.topskip);
 			free(launch.ext);
 		}
@@ -758,10 +757,9 @@ archivetable *ap;
 	if (ap -> u_comm) free(ap -> u_comm);
 }
 
-int searcharch(list, max, ap)
-archivetable *list;
+int searcharch(ap, list, max)
+CONST archivetable *ap, *list;
 int max;
-archivetable *ap;
 {
 	int i, n;
 
@@ -791,7 +789,7 @@ archivetable *ap;
 
 	ap -> ext = getext(argv[1], &(ap -> flags));
 
-	n = searcharch(archivelist, maxarchive, ap);
+	n = searcharch(ap, archivelist, maxarchive);
 	if (n >= MAXARCHIVETABLE) {
 		free(ap -> ext);
 		ap -> flags = ER_OUTOFLIMIT;
@@ -817,17 +815,18 @@ VOID addarch(n, ap)
 int n;
 archivetable *ap;
 {
-	if (n >= maxarchive) maxarchive++;
-	else freearch(&(archivelist[n]));
-	memcpy((char *)&(archivelist[n]), (char *)ap, sizeof(*ap));
+	if (n < maxarchive) freearch(&(archivelist[n]));
+	else maxarchive = n + 1;
+	memcpy((char *)&(archivelist[n]), (char *)ap, sizeof(*archivelist));
 }
 
 VOID deletearch(n)
 int n;
 {
+	if (n >= maxarchive) return;
 	freearch(&(archivelist[n]));
 	memmove((char *)&(archivelist[n]), (char *)&(archivelist[n + 1]),
-		(--maxarchive - n) * sizeof(archivetable));
+		(--maxarchive - n) * sizeof(*archivelist));
 }
 
 static int NEAR setarch(argc, argv)
@@ -866,14 +865,14 @@ char *CONST argv[];
 
 /*ARGSUSED*/
 VOID printlaunchcomm(list, n, isset, omit, fp)
-launchtable *list;
+CONST launchtable *list;
 int n, isset, omit;
 FILE *fp;
 {
 	int i, ch;
 
 	fprintf2(fp, "%s ", BL_LAUNCH);
-# if	FD >= 2
+# ifndef	OLDPARSE
 	if (list[n].flags & LF_IGNORECASE) fputc('/', fp);
 # endif
 	fputsmeta(&(list[n].ext[1]), fp);
@@ -881,7 +880,42 @@ FILE *fp;
 		fputc('\t', fp);
 
 		fputsmeta(list[n].comm, fp);
-# if	FD >= 2
+# ifdef	OLDPARSE
+		if (list[n].topskip == SKP_NONE) break;
+		if (omit) {
+			fputs("\t(Arch)", fp);
+			break;
+		}
+		fprintf2(fp, "\t%d,%d",
+			(int)(list[n].topskip), (int)(list[n].bottomskip));
+		ch = ':';
+		for (i = 0; i < MAXLAUNCHFIELD; i++) {
+			fputc(ch, fp);
+			if (list[n].field[i] == FLD_NONE) fputc('0', fp);
+			else fprintf2(fp, "%d", (int)(list[n].field[i]) + 1);
+			if (list[n].delim[i] >= 128)
+				fprintf2(fp, "[%d]",
+					(int)(list[n].delim[i]) - 128 + 1);
+			else if (list[n].delim[i])
+				fprintf2(fp, "'%c'", (int)(list[n].delim[i]));
+			if (!(list[n].width[i])) /*EMPTY*/;
+			else if (list[n].width[i] >= 128)
+				fprintf2(fp, "-%d",
+					(int)(list[n].width[i]) - 128);
+			else fprintf2(fp, "-'%c'", (int)(list[n].width[i]));
+			ch = ',';
+		}
+		ch = ':';
+		for (i = 0; i < MAXLAUNCHSEP; i++) {
+			if (list[n].sep[i] == SEP_NONE) break;
+			fprintf2(fp, "%c%d", ch, (int)(list[n].sep[i]) + 1);
+			ch = ',';
+		}
+		if (list[n].lines > 1) {
+			if (!i) fputc(':', fp);
+			fprintf2(fp, "%d", (int)(list[n].lines));
+		}
+# else	/* !OLDPARSE */
 		if (!list[n].format) break;
 
 		ch = 0;
@@ -915,42 +949,7 @@ FILE *fp;
 			else fputc('\t', fp);
 			fprintf2(fp, "-b %d", (int)(list[n].bottomskip));
 		}
-# else	/* FD < 2 */
-		if (list[n].topskip >= 255) break;
-		if (omit) {
-			fputs("\t(Arch)", fp);
-			break;
-		}
-		fprintf2(fp, "\t%d,%d",
-			(int)(list[n].topskip), (int)(list[n].bottomskip));
-		ch = ':';
-		for (i = 0; i < MAXLAUNCHFIELD; i++) {
-			fputc(ch, fp);
-			if (list[n].field[i] >= 255) fputc('0', fp);
-			else fprintf2(fp, "%d", (int)(list[n].field[i]) + 1);
-			if (list[n].delim[i] >= 128)
-				fprintf2(fp, "[%d]",
-					(int)(list[n].delim[i]) - 128 + 1);
-			else if (list[n].delim[i])
-				fprintf2(fp, "'%c'", (int)(list[n].delim[i]));
-			if (!(list[n].width[i])) /*EMPTY*/;
-			else if (list[n].width[i] >= 128)
-				fprintf2(fp, "-%d",
-					(int)(list[n].width[i]) - 128);
-			else fprintf2(fp, "-'%c'", (int)(list[n].width[i]));
-			ch = ',';
-		}
-		ch = ':';
-		for (i = 0; i < MAXLAUNCHSEP; i++) {
-			if (list[n].sep[i] >= 255) break;
-			fprintf2(fp, "%c%d", ch, (int)(list[n].sep[i]) + 1);
-			ch = ',';
-		}
-		if (list[n].lines > 1) {
-			if (!i) fputc(':', fp);
-			fprintf2(fp, "%d", (int)(list[n].lines));
-		}
-# endif	/* FD < 2 */
+# endif	/* !OLDPARSE */
 		break;
 /*NOTREACHED*/
 	}
@@ -994,12 +993,12 @@ char *CONST argv[];
 }
 
 VOID printarchcomm(list, n, isset, fp)
-archivetable *list;
+CONST archivetable *list;
 int n, isset;
 FILE *fp;
 {
 	fprintf2(fp, "%s ", BL_ARCH);
-# if	FD >= 2
+# ifndef	OLDPARSE
 	if (list[n].flags & LF_IGNORECASE) fputc('/', fp);
 # endif
 	fputsmeta(&(list[n].ext[1]), fp);
@@ -1062,7 +1061,7 @@ char *CONST *sargv, **dargv;
 	for (n = 1; sargv[n]; n++) {
 		if (sargv[n][0] != '-' || sargv[n][1] != '@') {
 			dargv = (char **)realloc2(dargv,
-				(dargc + 2) * sizeof(char *));
+				(dargc + 2) * sizeof(*dargv));
 			dargv[dargc++] = strdup2(sargv[n]);
 			dargv[dargc] = NULL;
 			continue;
@@ -1145,7 +1144,7 @@ char *CONST argv[];
 	n = 1;
 	while (argv2[n]) {
 		list = (launchtable *)realloc2(list,
-			(lvl + 2) * sizeof(launchtable));
+			(lvl + 2) * sizeof(*list));
 		list[lvl].topskip = list[lvl].bottomskip = 0;
 		list[lvl].comm = strdup2(argv2[n++]);
 		list[lvl].flags = 0;
@@ -1194,22 +1193,29 @@ char *CONST argv[];
 # endif	/* !_NOBROWSE */
 #endif	/* !_NOARCHIVE */
 
-static int NEAR getmacro(cp)
-char *cp;
-{
-	if (maxmacro >= MAXMACROTABLE) return(0);
-	else {
-		macrolist[maxmacro] = cp;
-		return(FUNCLISTSIZ + maxmacro++);
-	}
-}
-
 int ismacro(n)
 int n;
 {
-	if (n < FUNCLISTSIZ || n >= FUNCLISTSIZ + MAXMACROTABLE) return(0);
+	if (n < FUNCLISTSIZ || n >= FUNCLISTSIZ + maxmacro) return(0);
 
 	return(1);
+}
+
+CONST char *getmacro(n)
+int n;
+{
+	if (ismacro(n)) return(macrolist[n - FUNCLISTSIZ]);
+
+	return(nullstr);
+}
+
+static int NEAR setmacro(cp)
+char *cp;
+{
+	if (maxmacro >= MAXMACROTABLE) return(-1);
+	macrolist[maxmacro] = cp;
+
+	return(FUNCLISTSIZ + maxmacro++);
 }
 
 int freemacro(n)
@@ -1222,20 +1228,18 @@ int n;
 	free(macrolist[n - FUNCLISTSIZ]);
 	memmove((char *)&(macrolist[n - FUNCLISTSIZ]),
 		(char *)&(macrolist[n - FUNCLISTSIZ + 1]),
-		(--maxmacro - (n - FUNCLISTSIZ)) * sizeof(char *));
+		(--maxmacro - (n - FUNCLISTSIZ)) * sizeof(*macrolist));
 
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
-		if (ismacro(bindlist[i].f_func) && bindlist[i].f_func > n)
-			bindlist[i].f_func--;
-		if (ismacro(bindlist[i].d_func) && bindlist[i].d_func > n)
-			bindlist[i].d_func--;
+		if (ismacro(ffunc(i)) && ffunc(i) > n) ffunc(i)--;
+		if (ismacro(dfunc(i)) && dfunc(i) > n) dfunc(i)--;
 	}
 
 	return(0);
 }
 
-int searchkeybind(list, bindp)
-bindtable *list, *bindp;
+int searchkeybind(bindp, list)
+CONST bindtable *bindp, *list;
 {
 	int i;
 
@@ -1264,7 +1268,7 @@ bindtable *bindp;
 	}
 	bindp -> key = i;
 
-	n = searchkeybind(bindlist, bindp);
+	n = searchkeybind(bindp, bindlist);
 	if (n >= MAXBINDTABLE - 1) {
 		bindp -> key = ER_OUTOFLIMIT;
 		bindp -> f_func = 0;
@@ -1272,22 +1276,22 @@ bindtable *bindp;
 	}
 
 	if (argc == 2) {
-		bindp -> f_func = bindp -> d_func = 255;
+		bindp -> f_func = bindp -> d_func = FNO_NONE;
 		return(n);
 	}
 
 	for (i = 0; i < FUNCLISTSIZ; i++)
 		if (!strcommcmp(argv[2], funclist[i].ident)) break;
-	bindp -> f_func = (i < FUNCLISTSIZ) ? i : 254;
+	bindp -> f_func = (i < FUNCLISTSIZ) ? (u_char)i : FNO_SETMACRO;
 
 	if (argc <= 3 || argv[3][0] == BINDCOMMENT) {
-		bindp -> d_func = 255;
+		bindp -> d_func = FNO_NONE;
 		i = 3;
 	}
 	else {
 		for (i = 0; i < FUNCLISTSIZ; i++)
 			if (!strcommcmp(argv[3], funclist[i].ident)) break;
-		bindp -> d_func = (i < FUNCLISTSIZ) ? i : 254;
+		bindp -> d_func = (i < FUNCLISTSIZ) ? (u_char)i : FNO_SETMACRO;
 		i = 4;
 	}
 
@@ -1300,7 +1304,7 @@ bindtable *bindp;
 		if (argv[i][0] != BINDCOMMENT
 		|| bindp -> key < K_F(1) || bindp -> key > K_F(MAXHELPINDEX)) {
 			bindp -> key = ER_SYNTAXERR;
-			bindp -> f_func = i;
+			bindp -> f_func = (u_char)i;
 			return(-1);
 		}
 	}
@@ -1310,31 +1314,39 @@ bindtable *bindp;
 
 int addkeybind(n, bindp, func1, func2, cp)
 int n;
-bindtable *bindp;
+CONST bindtable *bindp;
 char *func1, *func2, *cp;
 {
 	bindtable bind;
 	int n1, n2;
 
 	memcpy((char *)&bind, (char *)bindp, sizeof(bind));
-	if (bind.f_func != 254) {
+	if (bind.f_func != FNO_SETMACRO) {
 		if (func1) free(func1);
 	}
-	else if (!(bind.f_func = getmacro(func1))) {
-		if (func1) free(func1);
-		if (func2) free(func2);
-		if (cp) free(cp);
-		return(-1);
+	else {
+		n1 = setmacro(func1);
+		if (n1 < 0) {
+			if (func1) free(func1);
+			if (func2) free(func2);
+			if (cp) free(cp);
+			return(-1);
+		}
+		bind.f_func = (u_char)n1;
 	}
 
-	if (bind.d_func != 254) {
+	if (bind.d_func != FNO_SETMACRO) {
 		if (func2) free(func2);
 	}
-	else if (!(bind.d_func = getmacro(func2))) {
-		freemacro(bind.f_func);
-		if (func2) free(func2);
-		if (cp) free(cp);
-		return(-2);
+	else {
+		n2 = setmacro(func2);
+		if (n2 < 0) {
+			freemacro(bind.f_func);
+			if (func2) free(func2);
+			if (cp) free(cp);
+			return(-2);
+		}
+		bind.d_func = (u_char)n2;
 	}
 
 	if (bind.key < K_F(1) || bind.key > K_F(MAXHELPINDEX)) {
@@ -1345,17 +1357,17 @@ char *func1, *func2, *cp;
 		helpindex[bind.key - K_F(1)] = cp;
 	}
 
-	if (bindlist[n].key < 0) {
-		n1 = n2 = -1;
-		memcpy((char *)&(bindlist[n + 1]), (char *)&(bindlist[n]),
-			sizeof(bindtable));
+	if (bindlist[n].key >= 0) {
+		n1 = ffunc(n);
+		n2 = dfunc(n);
 	}
 	else {
-		n1 = bindlist[n].f_func;
-		n2 = bindlist[n].d_func;
+		n1 = n2 = -1;
+		memcpy((char *)&(bindlist[n + 1]), (char *)&(bindlist[n]),
+			sizeof(*bindlist));
 	}
 
-	memcpy((char *)&(bindlist[n]), (char *)&bind, sizeof(bind));
+	memcpy((char *)&(bindlist[n]), (char *)&bind, sizeof(*bindlist));
 	freemacro(n1);
 	freemacro(n2);
 
@@ -1365,15 +1377,15 @@ char *func1, *func2, *cp;
 VOID deletekeybind(n)
 int n;
 {
-	freemacro(bindlist[n].f_func);
-	freemacro(bindlist[n].d_func);
+	freemacro(ffunc(n));
+	freemacro(dfunc(n));
 	if (bindlist[n].key >= K_F(1)
 	&& bindlist[n].key <= K_F(MAXHELPINDEX)) {
 		free(helpindex[bindlist[n].key - K_F(1)]);
 		helpindex[bindlist[n].key - K_F(1)] = strdup2(nullstr);
 	}
 	memmove((char *)&(bindlist[n]), (char *)&(bindlist[n + 1]),
-		(MAXBINDTABLE - n) * sizeof(bindtable));
+		(MAXBINDTABLE - n) * sizeof(*bindlist));
 }
 
 static int NEAR setkeybind(argc, argv)
@@ -1390,7 +1402,7 @@ char *CONST argv[];
 		return(-1);
 	}
 
-	if (bind.f_func == 255) {
+	if (bind.f_func == FNO_NONE) {
 		if (bindlist[no].key < 0) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -1403,9 +1415,9 @@ char *CONST argv[];
 		return(0);
 	}
 
-	func1 = (bind.f_func == 254) ? strdup2(argv[2]) : NULL;
-	func2 = (bind.d_func == 254) ? strdup2(argv[3]) : NULL;
-	n = (bind.d_func == 255) ? 3 : 4;
+	func1 = (bind.f_func == FNO_SETMACRO) ? strdup2(argv[2]) : NULL;
+	func2 = (bind.d_func == FNO_SETMACRO) ? strdup2(argv[3]) : NULL;
+	n = (bind.d_func == FNO_NONE) ? 3 : 4;
 	cp = (argc > n) ? strdup2(&(argv[n][1])) : NULL;
 
 	if ((n = addkeybind(no, &bind, func1, func2, cp)) < 0) {
@@ -1420,7 +1432,7 @@ char *CONST argv[];
 }
 
 char *gethelp(bindp)
-bindtable *bindp;
+CONST bindtable *bindp;
 {
 	int n;
 
@@ -1435,7 +1447,7 @@ bindtable *bindp;
 }
 
 VOID printmacro(list, n, isset, fp)
-bindtable *list;
+CONST bindtable *list;
 int n, isset;
 FILE *fp;
 {
@@ -1449,13 +1461,13 @@ FILE *fp;
 		if (list[n].f_func < FUNCLISTSIZ)
 			fputs(funclist[list[n].f_func].ident, fp);
 		else if (ismacro(list[n].f_func))
-			fputsmeta(macrolist[list[n].f_func - FUNCLISTSIZ], fp);
+			fputsmeta(getmacro(list[n].f_func), fp);
 		else fputs("\"\"", fp);
 		if (list[n].d_func < FUNCLISTSIZ)
 			fprintf2(fp, "\t%s", funclist[list[n].d_func].ident);
 		else if (ismacro(list[n].d_func)) {
 			fputc('\t', fp);
-			fputsmeta(macrolist[list[n].d_func - FUNCLISTSIZ], fp);
+			fputsmeta(getmacro(list[n].d_func), fp);
 		}
 		if ((cp = gethelp(&(list[n]))))
 			fprintf2(fp, "\t%c%k", BINDCOMMENT, cp);
@@ -1476,9 +1488,7 @@ char *CONST argv[];
 	hitkey(2);
 	if (argc <= 1)
 	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) {
-		if (!ismacro(bindlist[i].f_func)
-		&& !ismacro(bindlist[i].d_func))
-			continue;
+		if (!ismacro(ffunc(i)) && !ismacro(dfunc(i))) continue;
 		printmacro(bindlist, i, 1, stdout);
 		hitkey(0);
 	}
@@ -1501,13 +1511,14 @@ char *CONST argv[];
 
 #ifdef	_USEDOSEMU
 /*ARGSUSED*/
-int searchdrv(list, devp, isset)
-devinfo *list, *devp;
+int searchdrv(devp, list, isset)
+CONST devinfo *devp, *list;
 int isset;
 {
 	int i;
 
-	for (i = 0; list[i].name; i++) if (devp -> drive == list[i].drive) {
+	for (i = 0; list[i].name; i++) {
+		if (devp -> drive != list[i].drive) continue;
 # ifdef	HDDMOUNT
 		if (!list[i].cyl && isset) break;
 # endif
@@ -1524,14 +1535,16 @@ int isset;
 int deletedrv(no)
 int no;
 {
+# ifdef	HDDMOUNT
+	char *dev;
+	int s;
+# endif
 	int i, n;
 
+	if (!(fdtype[no].name)) return(no);
 	n = 1;
 # ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
-		char *dev;
-		int s;
-
 		dev = fdtype[no].name;
 		for (s = 0; s < no; s++) {
 			if (fdtype[no - s - 1].cyl
@@ -1551,7 +1564,7 @@ int no;
 # endif	/* HDDMOUNT */
 	for (i = 0; i < n; i++) free(fdtype[no + i].name);
 	memmove((char *)&(fdtype[no]), (char *)&(fdtype[no + n]),
-		(MAXDRIVEENTRY - no - n) * sizeof(devinfo));
+		(MAXDRIVEENTRY - no - n) * sizeof(*fdtype));
 
 	return(no);
 }
@@ -1563,6 +1576,7 @@ devinfo *devp;
 # ifdef	HDDMOUNT
 	l_off_t *sp;
 	char *drvlist;
+	int j, drive;
 # endif
 	int i, n, min, max;
 
@@ -1588,8 +1602,6 @@ devinfo *devp;
 # ifdef	HDDMOUNT
 	sp = NULL;
 	if (!(devp -> cyl)) {
-		int j, drive;
-
 		if (!(sp = readpt(devp -> name, devp -> sect))) return(-1);
 		for (n = 0; sp[n + 1]; n++);
 		if (!n) {
@@ -1626,13 +1638,13 @@ devinfo *devp;
 
 	fdtype[max + n].name = NULL;
 	memmove((char *)&(fdtype[max + n - 1]), (char *)&(fdtype[max - 1]),
-		(max - no) * sizeof(devinfo));
+		(max - no) * sizeof(*fdtype));
 
 # ifdef	HDDMOUNT
 	if (!(devp -> cyl)) {
 		for (i = 0; i < n; i++) {
 			memcpy((char *)&(fdtype[no + i]), (char *)devp,
-				sizeof(devinfo));
+				sizeof(*fdtype));
 			fdtype[no + i].drive = drvlist[i];
 			fdtype[no + i].name = strdup2(devp -> name);
 			fdtype[no + i].offset = sp[i + 1];
@@ -1644,7 +1656,7 @@ devinfo *devp;
 	}
 	fdtype[no].offset = 0;
 # endif	/* HDDMOUNT */
-	memcpy((char *)&(fdtype[no]), (char *)devp, sizeof(devinfo));
+	memcpy((char *)&(fdtype[no]), (char *)devp, sizeof(*fdtype));
 	fdtype[no].name = devp -> name;
 
 	return(no);
@@ -1810,12 +1822,13 @@ int isset;
 	}
 
 # ifdef	HDDMOUNT
-	if (!(dev.cyl)) for (i = 0; fdtype[i].name; i++) {
-		if (dev.drive == fdtype[i].drive) break;
+	if (!(dev.cyl)) {
+		for (i = 0; fdtype[i].name; i++)
+			if (dev.drive == fdtype[i].drive) break;
 	}
 	else
 # endif
-	i = searchdrv(fdtype, &dev, isset);
+	i = searchdrv(&dev, fdtype, isset);
 
 	if (!isset) {
 		if (!fdtype[i].name) {
@@ -1829,7 +1842,7 @@ int isset;
 			return(-1);
 		}
 # endif
-		deletedrv(i);
+		VOID_C deletedrv(i);
 # ifndef	_NOPTY
 		sendparent(TE_DELETEDRV, i);
 # endif
@@ -1880,7 +1893,7 @@ char *CONST argv[];
 
 /*ARGSUSED*/
 VOID printsetdrv(fdlist, n, isset, verbose, fp)
-devinfo fdlist[];
+CONST devinfo *fdlist;
 int n, isset, verbose;
 FILE *fp;
 {
@@ -2091,7 +2104,7 @@ char *CONST argv[];
 			cputs2(cp);
 			free(cp);
 		} while (next);
-		putch2('"');
+		VOID_C putch2('"');
 		cputnl();
 		if (n) {
 			if (++i >= n) break;
@@ -3061,7 +3074,7 @@ CONST char *ident;
 		free(aliaslist[i].alias);
 		free(aliaslist[i].comm);
 		memmove((char *)&(aliaslist[i]), (char *)&(aliaslist[i + 1]),
-			(--maxalias - i) * sizeof(aliastable));
+			(--maxalias - i) * sizeof(*aliaslist));
 		i--;
 		n++;
 	}
@@ -3217,7 +3230,7 @@ CONST char *ident;
 	freevar(userfunclist[i].comm);
 	memmove((char *)&(userfunclist[i]),
 		(char *)&(userfunclist[i + 1]),
-		(--maxuserfunc - i) * sizeof(userfunctable));
+		(--maxuserfunc - i) * sizeof(*userfunclist));
 # ifndef	_NOPTY
 	sendparent(TE_DELETEFUNCTION, ident);
 # endif
@@ -3268,7 +3281,7 @@ char *CONST argv[];
 	if (n > 0) {
 		for (i = 1; i <= n; i++) free(argv[i]);
 		memmove((char *)&(argv[1]), (char *)&(argv[n + 1]),
-			(argc -= n) * sizeof(char *));
+			(argc -= n) * sizeof(*argv));
 	}
 
 	return(argc);
@@ -3333,7 +3346,6 @@ char *CONST argv[];
 	if (tmp > cp) {
 		*tmp = '\0';
 		list[n++] = strdup2(cp);
-		free(line);
 	}
 	else if (!n) {
 		free(line);
@@ -3344,8 +3356,9 @@ char *CONST argv[];
 
 		return(0);
 	}
+	free(line);
 
-	var = (char **)malloc2((n + 1) * sizeof(char *));
+	var = (char **)malloc2((n + 1) * sizeof(*var));
 	for (i = 0; i < n; i++) var[i] = list[i];
 	var[i] = NULL;
 	if (addfunction(strdup2(argv[FUNCNAME]), var) < 0) {
@@ -3368,7 +3381,7 @@ char *CONST argv[];
 		return(-1);
 	}
 	i = argc - 1;
-	if ((cp = getenvval(&i, &(argv[1]))) == (char *)-1) {
+	if ((cp = getenvval(&i, &(argv[1]))) == vnullstr) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
@@ -3547,7 +3560,7 @@ int flags;
 # endif
 	else if (isidentchar(*command)) {
 		i = argc;
-		if ((cp = getenvval(&i, argv)) != (char *)-1 && i == argc) {
+		if ((cp = getenvval(&i, argv)) != vnullstr && i == argc) {
 			if (setenv2(argv[0], cp, 0) < 0) error(argv[0]);
 			if (cp) free(cp);
 			n = RET_SUCCESS;
@@ -3573,7 +3586,7 @@ char ***argvp;
 		|| finddupl(builtinlist[i].ident, argc, *argvp))
 			continue;
 		*argvp = (char **)realloc2(*argvp,
-			(argc + 1) * sizeof(char *));
+			(argc + 1) * sizeof(**argvp));
 		(*argvp)[argc++] = strdup2(builtinlist[i].ident);
 	}
 
@@ -3592,7 +3605,7 @@ char ***argvp;
 		|| finddupl(funclist[i].ident, argc, *argvp))
 			continue;
 		*argvp = (char **)realloc2(*argvp,
-			(argc + 1) * sizeof(char *));
+			(argc + 1) * sizeof(**argvp));
 		(*argvp)[argc++] = strdup2(funclist[i].ident);
 	}
 

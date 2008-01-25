@@ -59,8 +59,6 @@
 # define	_ENOENT_		ENOENT
 # endif
 #else	/* !MSDOS */
-#include <pwd.h>
-#include <grp.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #define	EXTWIDTH	0
@@ -71,6 +69,10 @@
 # include <dirent.h>
 # endif
 #endif	/* !MSDOS */
+#ifndef	NOUID
+#include <pwd.h>
+#include <grp.h>
+#endif
 
 #ifdef	NOERRNO
 extern int errno;
@@ -1106,7 +1108,17 @@ int len;
 # endif
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	new = cnvregexp(s, len);
+# ifdef	DEBUG
+	_mtrace_file = "re_comp(start)";
 	re_comp(new);
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "re_comp(end)";
+		malloc(0);	/* dummy alloc */
+	}
+# else
+	re_comp(new);
+# endif
 	free(new);
 
 	return((reg_t *)1);
@@ -1139,15 +1151,17 @@ int len;
 {
 	reg_t *re;
 	char *new;
+	int n;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = new = cnvregexp(s, len);
 	re = (reg_t *)malloc2(sizeof(reg_t));
 # ifdef	PATHNOCASE
-	if (regcomp(re, s, REG_EXTENDED | REG_ICASE)) {
+	n = regcomp(re, s, REG_EXTENDED | REG_ICASE);
 # else
-	if (regcomp(re, s, REG_EXTENDED | (pathignorecase ? REG_ICASE : 0))) {
+	n = regcomp(re, s, REG_EXTENDED | (pathignorecase) ? REG_ICASE : 0);
 # endif
+	if (n) {
 		free(re);
 		re = NULL;
 	}
@@ -3107,6 +3121,32 @@ int quoted;
 	return(ptr);
 }
 
+#ifndef	NOUID
+VOID getlogininfo(homep, shellp)
+CONST char **homep, **shellp;
+{
+	struct passwd *pwd;
+
+	if (homep) *homep = NULL;
+	if (shellp) *shellp = NULL;
+# ifdef	DEBUG
+	_mtrace_file = "getpwuid(start)";
+	pwd = getpwuid(getuid());
+	if (_mtrace_file) _mtrace_file = NULL;
+	else {
+		_mtrace_file = "getpwuid(end)";
+		malloc(0);	/* dummy alloc */
+	}
+# else
+	pwd = getpwuid(getuid());
+# endif
+	if (!pwd) return;
+	if (homep && pwd -> pw_dir && *(pwd -> pw_dir)) *homep = pwd -> pw_dir;
+	if (shellp && pwd -> pw_shell && *(pwd -> pw_shell))
+		*shellp = pwd -> pw_shell;
+}
+#endif /* !NOUID */
+
 #if	defined (FD) && !defined (NOUID)
 uidtable *finduid(uid, name)
 uid_t uid;
@@ -3297,38 +3337,26 @@ int rest;
 	return(buf);
 }
 
-char *gethomedir(VOID_A)
+CONST char *gethomedir(VOID_A)
 {
 #ifndef	NOUID
 # ifdef	FD
 	uidtable *up;
-# else
-	struct passwd *pwd;
 # endif
 #endif	/* !NOUID */
-	char *cp;
+	CONST char *cp;
 
-	if ((cp = getconstvar(ENVHOME))) return(cp);
+	if (!(cp = getconstvar(ENVHOME))) {
 #ifndef	NOUID
 # ifdef	FD
-	if ((up = finduid(getuid(), NULL))) return(up -> home);
-# else	/* !FD */
-#  ifdef	DEBUG
-	_mtrace_file = "getpwuid(start)";
-	pwd = getpwuid(getuid());
-	if (_mtrace_file) _mtrace_file = NULL;
-	else {
-		_mtrace_file = "getpwuid(end)";
-		malloc(0);	/* dummy alloc */
-	}
-#  else
-	pwd = getpwuid(getuid());
-#  endif
-	if (pwd) return(pwd -> pw_dir);
-# endif	/* !FD */
+		if ((up = finduid(getuid(), NULL))) cp = up -> home;
+# else
+		getlogininfo(&cp, NULL);
+# endif
 #endif	/* !NOUID */
+	}
 
-	return(NULL);
+	return(cp);
 }
 
 CONST char *getrealpath(path, resolved, cwd)
@@ -3378,9 +3406,9 @@ CONST char **argp;
 #  else
 	struct passwd *pwd;
 #  endif
+	char *tmp;
 # endif	/* !NOUID */
-	CONST char *top;
-	char *cp;
+	CONST char *cp, *top;
 	int len, vlen;
 
 	top = &((*argp)[1]);
@@ -3395,27 +3423,25 @@ CONST char **argp;
 # ifdef	NOUID
 		cp = NULL;
 # else	/* !NOUID */
+		tmp = strndup2(top, len);
 #  ifdef	FD
-		cp = strndup2(top, len);
-		up = finduid(0, cp);
-		free(cp);
+		up = finduid(0, tmp);
 		cp = (up) ? up -> home : NULL;
 #  else	/* !FD */
-		cp = strndup2(top, len);
 #   ifdef	DEBUG
 		_mtrace_file = "getpwnam(start)";
-		pwd = getpwnam(cp);
+		pwd = getpwnam(tmp);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "getpwnam(end)";
 			malloc(0);	/* dummy alloc */
 		}
 #   else
-		pwd = getpwnam(cp);
+		pwd = getpwnam(tmp);
 #   endif
-		free(cp);
 		cp = (pwd) ? pwd -> pw_dir : NULL;
 #  endif	/* !FD */
+		free(tmp);
 # endif	/* !NOUID */
 	}
 

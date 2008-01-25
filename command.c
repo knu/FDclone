@@ -174,148 +174,148 @@ int loopcursor = 0;
 #endif
 int internal_status = FNC_FAIL;
 bindtable bindlist[MAXBINDTABLE] = {
-	{K_UP,		CUR_UP,		255},
-	{K_DOWN,	CUR_DOWN,	255},
-	{K_RIGHT,	CUR_RIGHT,	255},
-	{K_LEFT,	CUR_LEFT,	255},
-	{K_NPAGE,	ROLL_UP,	255},
-	{K_PPAGE,	ROLL_DOWN,	255},
+	{K_UP,		CUR_UP,		FNO_NONE},
+	{K_DOWN,	CUR_DOWN,	FNO_NONE},
+	{K_RIGHT,	CUR_RIGHT,	FNO_NONE},
+	{K_LEFT,	CUR_LEFT,	FNO_NONE},
+	{K_NPAGE,	ROLL_UP,	FNO_NONE},
+	{K_PPAGE,	ROLL_DOWN,	FNO_NONE},
 #ifdef	_NOTREE
-	{K_F(1),	HELP_MESSAGE,	255},
+	{K_F(1),	HELP_MESSAGE,	FNO_NONE},
 #else
-	{K_F(1),	LOG_DIR,	255},
+	{K_F(1),	LOG_DIR,	FNO_NONE},
 #endif
-	{K_F(2),	EXECUTE_FILE,	255},
-	{K_F(3),	COPY_FILE,	255},
-	{K_F(4),	DELETE_FILE,	255},
-	{K_F(5),	RENAME_FILE,	255},
-	{K_F(6),	SORT_DIR,	255},
-	{K_F(7),	FIND_FILE,	255},
+	{K_F(2),	EXECUTE_FILE,	FNO_NONE},
+	{K_F(3),	COPY_FILE,	FNO_NONE},
+	{K_F(4),	DELETE_FILE,	FNO_NONE},
+	{K_F(5),	RENAME_FILE,	FNO_NONE},
+	{K_F(6),	SORT_DIR,	FNO_NONE},
+	{K_F(7),	FIND_FILE,	FNO_NONE},
 #ifdef	_NOTREE
-	{K_F(8),	LOG_DIR,	255},
+	{K_F(8),	LOG_DIR,	FNO_NONE},
 #else
-	{K_F(8),	TREE_DIR,	255},
+	{K_F(8),	TREE_DIR,	FNO_NONE},
 #endif
-	{K_F(9),	EDIT_FILE,	255},
+	{K_F(9),	EDIT_FILE,	FNO_NONE},
 #ifndef	_NOARCHIVE
-	{K_F(10),	UNPACK_FILE,	255},
+	{K_F(10),	UNPACK_FILE,	FNO_NONE},
 #endif
-	{K_F(11),	ATTR_FILE,	255},
-	{K_F(12),	INFO_FILESYS,	255},
-	{K_F(13),	MOVE_FILE,	255},
-	{K_F(14),	DELETE_DIR,	255},
-	{K_F(15),	MAKE_DIR,	255},
-	{K_F(16),	EXECUTE_SH,	255},
+	{K_F(11),	ATTR_FILE,	FNO_NONE},
+	{K_F(12),	INFO_FILESYS,	FNO_NONE},
+	{K_F(13),	MOVE_FILE,	FNO_NONE},
+	{K_F(14),	DELETE_DIR,	FNO_NONE},
+	{K_F(15),	MAKE_DIR,	FNO_NONE},
+	{K_F(16),	EXECUTE_SH,	FNO_NONE},
 #ifndef	_NOWRITEFS
-	{K_F(17),	WRITE_DIR,	255},
+	{K_F(17),	WRITE_DIR,	FNO_NONE},
 #endif
 #ifndef	_NOARCHIVE
-	{K_F(18),	BACKUP_TAPE,	255},
+	{K_F(18),	BACKUP_TAPE,	FNO_NONE},
 #endif
-	{K_F(19),	VIEW_FILE,	255},
+	{K_F(19),	VIEW_FILE,	FNO_NONE},
 #ifndef	_NOARCHIVE
-	{K_F(20),	PACK_FILE,	255},
+	{K_F(20),	PACK_FILE,	FNO_NONE},
 	{K_CR,		LAUNCH_FILE,	IN_DIR},
 #else
 	{K_CR,		VIEW_FILE,	IN_DIR},
 #endif
-	{K_BS,		OUT_DIR,	255},
-	{K_DC,		PUSH_FILE,	255},
-	{K_IC,		POP_FILE,	255},
-	{'\t',		MARK_FILE,	255},
-	{K_ESC,		QUIT_SYSTEM,	255},
+	{K_BS,		OUT_DIR,	FNO_NONE},
+	{K_DC,		PUSH_FILE,	FNO_NONE},
+	{K_IC,		POP_FILE,	FNO_NONE},
+	{'\t',		MARK_FILE,	FNO_NONE},
+	{K_ESC,		QUIT_SYSTEM,	FNO_NONE},
 
-	{'<',		CUR_TOP,	255},
-	{'>',		CUR_BOTTOM,	255},
-	{'1',		ONE_COLUMN,	255},
-	{'2',		TWO_COLUMNS,	255},
-	{'3',		THREE_COLUMNS,	255},
-	{'5',		FIVE_COLUMNS,	255},
-	{'(',		FNAME_RIGHT,	255},
-	{')',		FNAME_LEFT,	255},
-	{' ',		MARK_FILE2,	255},
-	{'+',		MARK_ALL,	255},
-	{'-',		MARK_REVERSE,	255},
-	{'*',		MARK_FIND,	255},
-	{']',		PUSH_FILE,	255},
-	{'[',		POP_FILE,	255},
-	{'?',		HELP_MESSAGE,	255},
+	{'<',		CUR_TOP,	FNO_NONE},
+	{'>',		CUR_BOTTOM,	FNO_NONE},
+	{'1',		ONE_COLUMN,	FNO_NONE},
+	{'2',		TWO_COLUMNS,	FNO_NONE},
+	{'3',		THREE_COLUMNS,	FNO_NONE},
+	{'5',		FIVE_COLUMNS,	FNO_NONE},
+	{'(',		FNAME_RIGHT,	FNO_NONE},
+	{')',		FNAME_LEFT,	FNO_NONE},
+	{' ',		MARK_FILE2,	FNO_NONE},
+	{'+',		MARK_ALL,	FNO_NONE},
+	{'-',		MARK_REVERSE,	FNO_NONE},
+	{'*',		MARK_FIND,	FNO_NONE},
+	{']',		PUSH_FILE,	FNO_NONE},
+	{'[',		POP_FILE,	FNO_NONE},
+	{'?',		HELP_MESSAGE,	FNO_NONE},
 
-	{'a',		ATTR_FILE,	255},
+	{'a',		ATTR_FILE,	FNO_NONE},
 #ifndef	_NOARCHIVE
-	{'b',		BACKUP_TAPE,	255},
+	{'b',		BACKUP_TAPE,	FNO_NONE},
 #endif
-	{'c',		COPY_FILE,	255},
-	{'d',		DELETE_FILE,	255},
-	{'e',		EDIT_FILE,	255},
-	{'f',		FIND_FILE,	255},
-	{'h',		EXECUTE_SH,	255},
-	{'i',		INFO_FILESYS,	255},
-	{'k',		MAKE_DIR,	255},
-	{'l',		LOG_DIR,	255},
-	{'\\',		LOG_TOP,	255},
-	{'m',		MOVE_FILE,	255},
+	{'c',		COPY_FILE,	FNO_NONE},
+	{'d',		DELETE_FILE,	FNO_NONE},
+	{'e',		EDIT_FILE,	FNO_NONE},
+	{'f',		FIND_FILE,	FNO_NONE},
+	{'h',		EXECUTE_SH,	FNO_NONE},
+	{'i',		INFO_FILESYS,	FNO_NONE},
+	{'k',		MAKE_DIR,	FNO_NONE},
+	{'l',		LOG_DIR,	FNO_NONE},
+	{'\\',		LOG_TOP,	FNO_NONE},
+	{'m',		MOVE_FILE,	FNO_NONE},
 #ifndef	_NOARCHIVE
-	{'p',		PACK_FILE,	255},
+	{'p',		PACK_FILE,	FNO_NONE},
 #endif
-	{'q',		QUIT_SYSTEM,	255},
-	{'r',		RENAME_FILE,	255},
-	{'s',		SORT_DIR,	255},
+	{'q',		QUIT_SYSTEM,	FNO_NONE},
+	{'r',		RENAME_FILE,	FNO_NONE},
+	{'s',		SORT_DIR,	FNO_NONE},
 #ifndef	_NOTREE
-	{'t',		TREE_DIR,	255},
+	{'t',		TREE_DIR,	FNO_NONE},
 #endif
 #ifndef	_NOARCHIVE
-	{'u',		UNPACK_FILE,	255},
+	{'u',		UNPACK_FILE,	FNO_NONE},
 #endif
-	{'v',		VIEW_FILE,	255},
+	{'v',		VIEW_FILE,	FNO_NONE},
 #ifndef	_NOWRITEFS
-	{'w',		WRITE_DIR,	255},
+	{'w',		WRITE_DIR,	FNO_NONE},
 #endif
-	{'x',		EXECUTE_FILE,	255},
+	{'x',		EXECUTE_FILE,	FNO_NONE},
 #ifndef	_NOEXTRAATTR
-	{'A',		ATTR_DIR,	255},
+	{'A',		ATTR_DIR,	FNO_NONE},
 #endif
 #ifndef	_NOTREE
-	{'C',		COPY_TREE,	255},
+	{'C',		COPY_TREE,	FNO_NONE},
 #endif
-	{'D',		DELETE_DIR,	255},
+	{'D',		DELETE_DIR,	FNO_NONE},
 #ifndef	_NOCUSTOMIZE
-	{'E',		EDIT_CONFIG,	255},
+	{'E',		EDIT_CONFIG,	FNO_NONE},
 #endif
-	{'F',		FIND_DIR,	255},
-	{'H',		DOTFILE_MODE,	255},
+	{'F',		FIND_DIR,	FNO_NONE},
+	{'H',		DOTFILE_MODE,	FNO_NONE},
 #ifndef	_NOTREE
-	{'L',		LOG_TREE,	255},
-	{'M',		MOVE_TREE,	255},
+	{'L',		LOG_TREE,	FNO_NONE},
+	{'M',		MOVE_TREE,	FNO_NONE},
 #endif
 #ifdef	HAVEFLAGS
-	{'O',		FILEFLG_MODE,	255},
+	{'O',		FILEFLG_MODE,	FNO_NONE},
 #endif
-	{'Q',		QUIT_SYSTEM,	255},
-	{'S',		SYMLINK_MODE,	255},
-	{'T',		FILETYPE_MODE,	255},
+	{'Q',		QUIT_SYSTEM,	FNO_NONE},
+	{'S',		SYMLINK_MODE,	FNO_NONE},
+	{'T',		FILETYPE_MODE,	FNO_NONE},
 #if	!defined (_NOTREE) && !defined (_NOARCHIVE)
-	{'U',		UNPACK_TREE,	255},
+	{'U',		UNPACK_TREE,	FNO_NONE},
 #endif
 #ifndef	_NOSPLITWIN
-	{'/',		SPLIT_WINDOW,	255},
-	{'^',		NEXT_WINDOW,	255},
+	{'/',		SPLIT_WINDOW,	FNO_NONE},
+	{'^',		NEXT_WINDOW,	FNO_NONE},
 #endif
 #ifndef	_NOEXTRAWIN
-	{'W',		WIDEN_WINDOW,	255},
-	{'N',		NARROW_WINDOW,	255},
-	{'K',		KILL_WINDOW,	255},
+	{'W',		WIDEN_WINDOW,	FNO_NONE},
+	{'N',		NARROW_WINDOW,	FNO_NONE},
+	{'K',		KILL_WINDOW,	FNO_NONE},
 #endif
-	{K_HOME,	MARK_ALL,	255},
-	{K_END,		MARK_REVERSE,	255},
-	{K_BEG,		CUR_TOP,	255},
-	{K_EOL,		CUR_BOTTOM,	255},
-	{K_HELP,	HELP_MESSAGE,	255},
-	{K_CTRL('@'),	MARK_FILE3,	255},
-	{K_CTRL('L'),	REREAD_DIR,	255},
-	{K_CTRL('R'),	SEARCH_BACK,	255},
-	{K_CTRL('S'),	SEARCH_FORW,	255},
-	{-1,		NO_OPERATION,	255}
+	{K_HOME,	MARK_ALL,	FNO_NONE},
+	{K_END,		MARK_REVERSE,	FNO_NONE},
+	{K_BEG,		CUR_TOP,	FNO_NONE},
+	{K_EOL,		CUR_BOTTOM,	FNO_NONE},
+	{K_HELP,	HELP_MESSAGE,	FNO_NONE},
+	{K_CTRL('@'),	MARK_FILE3,	FNO_NONE},
+	{K_CTRL('L'),	REREAD_DIR,	FNO_NONE},
+	{K_CTRL('R'),	SEARCH_BACK,	FNO_NONE},
+	{K_CTRL('S'),	SEARCH_FORW,	FNO_NONE},
+	{-1,		NO_OPERATION,	FNO_NONE}
 };
 
 

@@ -677,7 +677,7 @@ int on;
 #  endif
 	termioctl_t tty;
 
-	if (tioctl(ttyio, REQGETP, &tty) < 0) return;
+	if (ttyio < 0 || tioctl(ttyio, REQGETP, &tty) < 0) return;
 #  if	defined (USETERMIOS) || defined (USETERMIO)
 	if (cc_intr < 0) cc_intr = tty.c_cc[VINTR];
 	if (on) tty.c_lflag &= ~(ECHO | ICANON | ISIG);
@@ -706,6 +706,7 @@ int sig, code;
 	u_char uc;
 	int i;
 
+	if (ttyio < 0) return(EOF);
 	while ((i = read(ttyio, &uc, sizeof(uc))) < 0 && errno == EINTR);
 	if (i < (int)sizeof(uc)) return(EOF);
 

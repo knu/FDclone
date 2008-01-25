@@ -294,7 +294,7 @@ typedef long	off_t;
 #define	USEREGCMP
 #define	USERESOURCEH
 #define	WAITKEYPAD		720
-#define	WAITMETA		720
+#define	WAITKANJI		720
 #endif
 
 #if	defined (uniosb)
@@ -928,7 +928,7 @@ typedef long	off_t;
 
 /* #define SENSEPERSEC	;ratio of key sense per 1 second */
 /* #define WAITKEYPAD	;interval to wait after getting input of ESC [ms] */
-/* #define WAITMETA	;interval to wait after getting input of META [ms] */
+/* #define WAITKANJI	;interval to wait after getting input of Kanji [ms] */
 
 
 /*                             */

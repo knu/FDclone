@@ -485,17 +485,17 @@ int arch;
 
 		c = 0;
 		buf[0] = '\0';
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
-			if (i == (int)(bindlist[j].f_func)) {
-				c += code2str(buf, (int)(bindlist[j].key));
-				if (c >= 2) break;
-			}
+		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++) {
+			if (i != ffunc(j)) continue;
+			c += code2str(buf, (int)(bindlist[j].key));
+			if (c >= 2) break;
+		}
 		if (c < 2)
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++)
-			if (i == (int)(bindlist[j].d_func)) {
-				c += code2str(buf, (int)(bindlist[j].key));
-				if (c >= 2) break;
-			}
+		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++) {
+			if (i != dfunc(j)) continue;
+			c += code2str(buf, (int)(bindlist[j].key));
+			if (c >= 2) break;
+		}
 		if (!c) continue;
 
 		Xcputs2("  ");
@@ -850,6 +850,8 @@ mnt_t *mntbuf;
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
 #else	/* !MSDOS */
 # ifndef	_NODOSDRIVE
+	static char dosmntdir[4];
+	char buf[3 * sizeof(long) + 1];
 	int drv;
 # endif
 	statfs_t fs;
@@ -870,16 +872,13 @@ mnt_t *mntbuf;
 	}
 # ifndef	_NODOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
-		static char dosmntdir[4];
-		char buf[3 * sizeof(long) + 1];
-
-		mntbuf -> mnt_fsname = (char *)nullstr;
+		mntbuf -> mnt_fsname = vnullstr;
 		mntbuf -> mnt_dir = dosmntdir;
 		dosmntdir[0] = drv;
 		strcpy(&(dosmntdir[1]), ":\\");
 		mntbuf -> mnt_type =
 			(islower2(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
-		mntbuf -> mnt_opts = (char *)nullstr;
+		mntbuf -> mnt_opts = vnullstr;
 		if (dosstatfs(drv, buf) < 0) return(-1);
 		if (buf[3 * sizeof(long)] & 001)
 			mntbuf -> mnt_type = MNTTYPE_FAT32;

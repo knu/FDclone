@@ -235,8 +235,8 @@ extern int movecursor __P_((int, int, int));
 #ifndef	WAITKEYPAD
 #define	WAITKEYPAD	360		/* msec */
 #endif
-#ifndef	WAITMETA
-#define	WAITMETA	120		/* msec */
+#ifndef	WAITKANJI
+#define	WAITKANJI	120		/* msec */
 #endif
 
 #define	ANSI_BLACK	0

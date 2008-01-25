@@ -441,11 +441,10 @@ WAITKEYPAD
 	ESC キーコードの入力を受けてから待つ時間です。端末通
 	信速度の遅い場合に定義すると良いでしょう。デフォルト
 	は 360ms です。
-WAITMETA
-	META キーコードの入力を受けてから待つ時間です。端末
-	通信速度の遅い場合に定義すると良いでしょう。デフォル
-	トは 60ms です。余り長くすると、META キーのオートリ
-	ピートが効かなくなります。
+WAITKANJI
+	マルチバイト文字の入力中に次のキーコード入力を待つ時
+	間です。端末通信速度の遅い場合に定義すると良いでしょ
+	う。デフォルトは 120ms です。
 HDDMOUNT
 	フロッピードライブ機能をハードディスクドライブに対応
 	させます。PC-UNIX 以外でこの機能を用いたい場合は設定
@@ -469,8 +468,10 @@ HDDMOUNT
 	4.3	NEWS-OS 3,4.x
 	4.2	SunOS 4.x
 	ufs	SVR4, OSF/1, FreeBSD, NetBSD
+	ffs	NetBSD, OpenBSD
 	hfs	HP-UX, HI-UX
 	ext2	Linux
+	ext3	Linux
 	jfs	AIX
 	efs	IRIX		(SGI 独自仕様)
 	sysv	SVR3		(SystemV Rel.3 仕様)

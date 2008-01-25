@@ -826,7 +826,7 @@ int *ptrp;
 #ifndef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
 		red.fd = red.type = red.new = 0;
-		red.filename = (char *)nullstr;
+		red.filename = vnullstr;
 		i = len = 0;
 		stree = newstree(NULL);
 		trp = startvar(stree, &red, nullstr, &i, &len, 0);

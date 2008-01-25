@@ -19,7 +19,6 @@
 /* #define SHOWSTREE		; show syntax tree with -n option */
 /* #define NOPOSIXUTIL		; not use POSIX utilities */
 /* #define STRICTPOSIX		; keep POSIX strictly */
-/* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
 
 #if	defined (BASHSTYLE) && !defined (BASHBUG)
 #define	BASHBUG

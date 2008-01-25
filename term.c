@@ -342,11 +342,23 @@ extern int tputs __P_((CONST char *, int, int (*)__P_((tputs_t))));
 #endif
 #endif	/* !MSDOS */
 
+#if	!MSDOS
+static int NEAR chkctrl __P_((int));
+static int NEAR getctrl __P_((CONST char *, CONST char *));
+# ifdef	USESGTTY
+static int NEAR ttymode __P_((int, int, int, int));
+# else
+static int NEAR ttymode __P_((int, int, int, int, int, int, int, int));
+# endif
+#endif	/* !MSDOS */
 static int NEAR err2 __P_((CONST char *));
 #if	!MSDOS
 static char *NEAR tstrdup __P_((CONST char *));
 #endif
 static int NEAR defaultterm __P_((VOID_A));
+#if	!MSDOS || defined (PC98) || defined (NOTUSEBIOS)
+static int NEAR ungetch2 __P_((int));
+#endif
 static int NEAR maxlocate __P_((int *, int *));
 #if	MSDOS
 # ifdef	USEVIDEOBIOS
@@ -361,11 +373,6 @@ static int NEAR evalcsi __P_((CONST char *));
 static int NEAR dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
-# ifdef	USESGTTY
-static int NEAR ttymode __P_((int, int, int, int));
-# else
-static int NEAR ttymode __P_((int, int, int, int, int, int, int, int));
-# endif
 static char *NEAR tgetstr2 __P_((char **, CONST char *));
 static char *NEAR tgetstr3 __P_((char **, CONST char *, CONST char *));
 static char *NEAR tgetkeyseq __P_((int, CONST char *));
@@ -374,7 +381,7 @@ static int NEAR freekeyseqtree __P_((kstree_t *, int));
 static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR sortkeyseq __P_((VOID_A));
 static int putch3 __P_((tputs_t));
-static int NEAR ungetch2 __P_((int));
+static kstree_t *NEAR searchkeyseq __P_((int, kstree_t *, int));
 #endif	/* !MSDOS */
 
 #if	!MSDOS && !defined (USETERMINFO)
@@ -441,9 +448,6 @@ static CONST u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
 static CONST u_char metakey[] =
 	"\0360. \022!\"#\027$%&21\030\031\020\023\037\024\026/\021-\025,";
 # endif	/* !PC98 */
-# if	defined (PC98) || defined (NOTUSEBIOS)
-static int nextchar = '\0';
-# endif
 # ifdef	NOTUSEBIOS
 static u_short keybuftop = 0;
 # endif
@@ -650,13 +654,13 @@ static CONST char *deftermstr[MAXTERMSTR] = {
 	"",			/* C_DELETE */
 #if	MSDOS
 	"\033[%d;%dH",		/* C_LOCATE */
-#else
+#else	/* !MSDOS */
 # ifdef	USETERMINFO
 	"\033[%i%p1%d;%p2%dH",	/* C_LOCATE */
 # else
 	"\033[%i%d;%dH",	/* C_LOCATE */
 # endif
-#endif
+#endif	/* !MSDOS */
 	"\033[H",		/* C_HOME */
 	"\r",			/* C_RETURN */
 	"\n",			/* C_NEWLINE */
@@ -731,7 +735,7 @@ int reset;
 #endif
 		if (dupin >= 0) {
 			fd = safe_dup2(dupin, STDIN_FILENO);
-			close(dupin);
+			safeclose(dupin);
 			dupin = -1;
 			if (fd < 0) {
 				termflags &= ~F_INITTTY;
@@ -740,7 +744,7 @@ int reset;
 		}
 		if (dupout >= 0) {
 			fd = safe_dup2(dupout, STDOUT_FILENO);
-			close(dupout);
+			safeclose(dupout);
 			dupout = -1;
 			if (fd < 0) {
 				termflags &= ~F_INITTTY;
@@ -826,6 +830,7 @@ int keyflush(VOID_A)
 {
 	__term_regs reg;
 
+	ungetnum = 0;
 	disable();
 	reg.x.ax = 0x0c00;
 	intdos2(&reg);
@@ -839,15 +844,71 @@ int keyflush(VOID_A)
 
 #else	/* !MSDOS */
 
+static int NEAR chkctrl(key)
+int key;
+{
+	int i;
+
+	if (!keyseqtree) return(key);
+	for (i = 0; i < keyseqtree -> num; i++)
+		if (key == keyseq[keyseqtree -> next[i].key].str[0])
+			return(K_UNDEF);
+
+	return(key);
+}
+
+/*ARGSUSED*/
+static int NEAR getctrl(buf, ccbuf)
+CONST char *buf, *ccbuf;
+{
+# ifdef	USESGTTY
+	struct tchars *ccp, cc;
+# endif
+	static termioctl_t *ttyp, tty;
+
+	if (ttyio < 0) return(-1);
+
+	if (buf) ttyp = (termioctl_t *)buf;
+	else if (tioctl(ttyio, REQGETP, &tty) < 0) return(-1);
+	else ttyp = &tty;
+
+# ifdef	USESGTTY
+	if (ccbuf) ccp = (struct tchars *)ccbuf;
+	else if (Xioctl(ttyio, TIOCGETC, &cc) < 0) return(-1);
+	else ccp = &cc;
+	cc_intr = chkctrl(ccp -> t_intrc);
+	cc_quit = chkctrl(ccp -> t_quitc);
+	cc_eof = chkctrl(ccp -> t_eofc);
+	cc_eol = chkctrl(ccp -> t_brkc);
+	cc_erase = chkctrl(ttyp -> sg_erase);
+# else	/* !USESGTTY */
+#  ifdef	VINTR
+	cc_intr = chkctrl(ttyp -> c_cc[VINTR]);
+#  endif
+#  ifdef	VQUIT
+	cc_quit = chkctrl(ttyp -> c_cc[VQUIT]);
+#  endif
+#  ifdef	VEOF
+	cc_eof = chkctrl(ttyp -> c_cc[VEOF]);
+#  endif
+#  ifdef	VEOL
+	cc_eol = chkctrl(ttyp -> c_cc[VEOL]);
+#  endif
+	cc_erase = chkctrl(ttyp -> c_cc[VERASE]);
+# endif	/* !USESGTTY */
+
+	return(0);
+}
+
 int inittty(reset)
 int reset;
 {
 #ifdef	USESGTTY
 	static int dupttyflag;
-	struct tchars cc;
 #endif
 	static termioctl_t dupttyio;
 	termioctl_t tty;
+	int n;
 
 	if (termflags & F_INPROGRESS) return(-1);
 	termflags |= F_INPROGRESS;
@@ -860,53 +921,32 @@ int reset;
 		return(-1);
 	}
 
-	if (tioctl(ttyio, REQGETP, &tty) < 0) {
-		termflags &= ~F_INITTTY;
-		close(ttyio);
-		ttyio = -1;
-		err2("ioctl()");
-	}
-	if (!reset) {
+	n = 0;
+	if (tioctl(ttyio, REQGETP, &tty) < 0) n = -2;
+	else if (!reset) {
 		memcpy((char *)&dupttyio, (char *)&tty, sizeof(termioctl_t));
 #ifdef	USESGTTY
-		if (Xioctl(ttyio, TIOCLGET, &dupttyflag) < 0
-		|| Xioctl(ttyio, TIOCGETC, &cc) < 0) {
-			termflags &= ~F_INITTTY;
-			err2("ioctl()");
-		}
-		cc_intr = cc.t_intrc;
-		cc_quit = cc.t_quitc;
-		cc_eof = cc.t_eofc;
-		cc_eol = cc.t_brkc;
-		if (cc_erase != K_UNDEF) cc_erase = dupttyio.sg_erase;
-#else
-# ifdef	VINTR
-		cc_intr = dupttyio.c_cc[VINTR];
-# endif
-# ifdef	VQUIT
-		cc_quit = dupttyio.c_cc[VQUIT];
-# endif
-# ifdef	VEOF
-		cc_eof = dupttyio.c_cc[VEOF];
-# endif
-# ifdef	VEOL
-		cc_eol = dupttyio.c_cc[VEOL];
-# endif
-		if (cc_erase != K_UNDEF) cc_erase = dupttyio.c_cc[VERASE];
+		if (Xioctl(ttyio, TIOCLGET, &dupttyflag) < 0) n = -1;
+		else
 #endif
+		n = getctrl((CONST char *)&dupttyio, NULL);
 #ifndef	USETERMINFO
 		ospeed = getspeed(dupttyio);
 #endif
 		termflags |= F_INITTTY;
 	}
-	else if (tioctl(ttyio, REQSETP, &dupttyio) < 0
+	else {
+		if (tioctl(ttyio, REQSETP, &dupttyio) < 0) n = -2;
 #ifdef	USESGTTY
-	|| Xioctl(ttyio, TIOCLSET, &dupttyflag) < 0
+		else if (Xioctl(ttyio, TIOCLSET, &dupttyflag) < 0) n = -2;
 #endif
-	) {
+	}
+	if (n < 0) {
+		if (n < -1) {
+			safeclose(ttyio);
+			ttyio = -1;
+		}
 		termflags &= ~F_INITTTY;
-		close(ttyio);
-		ttyio = -1;
 		err2("ioctl()");
 	}
 	termflags &= ~F_INPROGRESS;
@@ -1063,6 +1103,8 @@ int keyflush(VOID_A)
 	int i;
 #endif
 
+	ungetnum = 0;
+	if (ttyio < 0) return(-1);
 #ifdef	USESGTTY
 	i = FREAD;
 	VOID_C Xioctl(ttyio, TIOCFLUSH, &i);
@@ -1087,6 +1129,11 @@ int reset;
 	else {
 		savetermio(ttyio, &tty, NULL);
 		if (!tty) return(-1);
+# ifdef	USESGTTY
+		VOID_C getctrl(tty, &(tty[sizeof(termioctl_t) + sizeof(int)]));
+# else
+		VOID_C getctrl(tty, NULL);
+# endif
 	}
 
 	n = (isttyiomode) ? 0 : 1;
@@ -1299,6 +1346,17 @@ static int NEAR defaultterm(VOID_A)
 
 	return(0);
 }
+
+#if	!MSDOS || defined (PC98) || defined (NOTUSEBIOS)
+static int NEAR ungetch2(c)
+int c;
+{
+	if (c == EOF || ungetnum >= arraysize(ungetbuf)) return(EOF);
+	ungetbuf[ungetnum++] = (u_char)c;
+
+	return(c);
+}
+#endif	/* !MSDOS || PC98 || NOTUSEBIOS */
 
 #if	MSDOS && defined (USEVIDEOBIOS)
 static int NEAR maxlocate(yp, xp)
@@ -1687,7 +1745,7 @@ kstree_t *parent;
 int num;
 {
 	kstree_t *new;
-	int i, n;
+	int n;
 
 	if (!parent || !(parent -> next))
 		new = (kstree_t *)malloc(num * sizeof(kstree_t));
@@ -1701,10 +1759,10 @@ int num;
 		parent -> next = new;
 	}
 
-	for (i = n; i < num; i++) {
-		new[i].key = (u_char)-1;
-		new[i].num = (u_char)0;
-		new[i].next = (kstree_t *)NULL;
+	while (n < num) {
+		new[n].key = (u_char)-1;
+		new[n].num = (u_char)0;
+		new[n++].next = (kstree_t *)NULL;
 	}
 
 	return(new);
@@ -2615,7 +2673,7 @@ CONST char *s;
 	int i, n;
 
 	if (s) for (i = 0; s[i]; i++) {
-		if (s[i] != '\033' || s[i + 1] != '[') putch2(s[i]);
+		if (s[i] != '\033' || s[i + 1] != '[') VOID_C putch2(s[i]);
 		else if ((n = evalcsi(&s[i + 2])) >= 0) i += n + 2;
 	}
 
@@ -2666,9 +2724,6 @@ long usec;
 # endif
 #endif	/* !NOTUSEBIOS && !NOSELECT */
 
-#if	defined (PC98) || defined (NOTUSEBIOS)
-	if (nextchar) return(1);
-#endif
 	if (ungetnum > 0) return(1);
 #ifdef	NOTUSEBIOS
 	reg.x.ax = 0x4406;
@@ -2714,13 +2769,7 @@ int getch2(VOID_A)
 	int ch;
 #endif
 
-#if	defined (PC98) || defined (NOTUSEBIOS)
-	if (nextchar) {
-		ch = nextchar;
-		nextchar = '\0';
-		return(ch);
-	}
-#endif
+	if (ttyio < 0) return(EOF);
 	if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 
 #ifndef	NOTUSEBIOS
@@ -2728,7 +2777,7 @@ int getch2(VOID_A)
 	reg.h.ah = 0x00;
 	int86(0x18, &reg, &reg);
 
-	if (!(ch = reg.h.al)) nextchar = reg.h.ah;
+	if (!(ch = reg.h.al)) VOID_C ungetch2(reg.h.ah);
 
 	return(ch);
 # else	/* !PC98 */
@@ -2768,7 +2817,7 @@ int getch2(VOID_A)
 			putterm(T_NOMETAMODE);
 		}
 		ch = '\0';
-		nextchar = (key >> 8);
+		VOID_C ungetch2(key >> 8);
 	}
 	enable();
 
@@ -2860,10 +2909,11 @@ int sig, code;
 int ungetkey2(c)
 int c;
 {
+	if (c == EOF || ttyio < 0) return(EOF);
 	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
 	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
 		ungetnum * sizeof(u_char));
-	ungetbuf[0] = c;
+	ungetbuf[0] = (u_char)c;
 	ungetnum++;
 
 	return(c);
@@ -2970,6 +3020,7 @@ long usec;
 	int n;
 # endif
 
+	if (ttyio < 0) return(0);
 	if (ungetnum > 0) return(1);
 # ifdef	NOSELECT
 	return((usec) ? 1 : 0);
@@ -2988,6 +3039,7 @@ int getch2(VOID_A)
 	u_char ch;
 	int n;
 
+	if (ttyio < 0) return(EOF);
 	if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 	for (;;) {
 		checksuspend();
@@ -2999,13 +3051,28 @@ int getch2(VOID_A)
 	return((int)ch);
 }
 
+static kstree_t *NEAR searchkeyseq(key, p, ptr)
+int key;
+kstree_t *p;
+int ptr;
+{
+	int i;
+
+	if (p && p -> next) for (i = 0; i < p -> num; i++)
+		if (key == keyseq[p -> next[i].key].str[ptr])
+			return(&(p -> next[i]));
+
+	return(NULL);
+}
+
 /*ARGSUSED*/
 int getkey2(sig, code)
 int sig, code;
 {
 	static int count = SENSEPERSEC;
 	kstree_t *p;
-	int i, j, ch, key;
+	keyseq_t *seq;
+	int n, ch, key, wasmeta;
 
 	do {
 		key = kbhit2(1000000L / SENSEPERSEC);
@@ -3027,57 +3094,50 @@ int sig, code;
 #   endif
 #  endif	/* !_NOKANJICONV */
 	else {
-		if (!kbhit2(WAITMETA * 1000L) || (ch = getch2()) == EOF)
-			return(key);
+		ch = (kbhit2(WAITKANJI * 1000L)) ? getch2() : EOF;
+		if (ch == EOF) return(key);
 		if (iskana2(ch)) return(mkekana(ch));
-		ungetch2(ch);
+		VOID_C ungetch2(ch);
 		return(key);
 	}
 # endif	/* !_NOKANJICONV || CODEEUC */
 
 	if (cc_erase != K_UNDEF && key == cc_erase) return(K_BS);
-	if (!(p = keyseqtree)) return(key);
+	n = wasmeta = 0;
 
 	if (key == K_ESC) {
-		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
-			return(key);
-		if (isalpha2(ch) && !kbhit2(WAITMETA * 1000L))
-			return(mkmetakey(ch));
-		for (j = 0; j < p -> num; j++)
-			if (key == keyseq[p -> next[j].key].str[0]) break;
-		if (j >= p -> num) {
-			ungetch2(ch);
+		ch = (kbhit2(WAITKEYPAD * 1000L)) ? getch2() : EOF;
+		if (ch == EOF) return(key);
+		if (isalpha2(ch)) wasmeta = mkmetakey(ch);
+		if (!(p = searchkeyseq(key, keyseqtree, n))) {
+			if (wasmeta) return(wasmeta);
+			VOID_C ungetch2(ch);
 			return(key);
 		}
-		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
+		seq = &(keyseq[p -> key]);
+		if (++n >= seq -> len) return(seq -> code);
 	}
 	else {
-		for (j = 0; j < p -> num; j++)
-			if (key == keyseq[p -> next[j].key].str[0]) break;
-		if (j >= p -> num) return(key);
-		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == 1) return(keyseq[p -> key].code);
-		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
-			return(key);
+		if (!(p = searchkeyseq(key, keyseqtree, n))) return(key);
+		seq = &(keyseq[p -> key]);
+		if (++n >= seq -> len) return(seq -> code);
+		ch = (kbhit2(WAITKEYPAD * 1000L)) ? getch2() : EOF;
+		if (ch == EOF) return(key);
 	}
 
-	for (i = 1; p && p -> next; i++) {
-		for (j = 0; j < p -> num; j++)
-			if (ch == keyseq[p -> next[j].key].str[i]) break;
-		if (j >= p -> num) break;
-		p = &(p -> next[j]);
-		if (keyseq[p -> key].len == i + 1)
-			return(keyseq[p -> key].code);
-		if (!kbhit2(WAITKEYPAD * 1000L) || (ch = getch2()) == EOF)
-			break;
+	while ((p = searchkeyseq(ch, p, n))) {
+		seq = &(keyseq[p -> key]);
+		if (++n >= seq -> len) return(seq -> code);
+		ch = (kbhit2(WAITKEYPAD * 1000L)) ? getch2() : EOF;
+		if (ch == EOF) break;
 	}
 
-	for (j = 1; j < i; j++) {
-		if (j >= keyseq[p -> key].len) break;
-		ungetch2(keyseq[p -> key].str[j]);
+	VOID_C ungetch2(ch);
+	while (--n > 0) VOID_C ungetch2(seq -> str[n]);
+	if (wasmeta) {
+		if (ungetnum) ungetnum--;
+		return(wasmeta);
 	}
-	ungetch2(ch);
 
 	return(key);
 }
@@ -3096,18 +3156,6 @@ int sig, code;
 	return(alternate(ch));
 }
 
-static int NEAR ungetch2(c)
-int c;
-{
-	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
-	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
-		ungetnum * sizeof(u_char));
-	ungetbuf[0] = c;
-	ungetnum++;
-
-	return(c);
-}
-
 int ungetkey2(c)
 int c;
 {
@@ -3115,11 +3163,16 @@ int c;
 	u_char ch;
 # endif
 
+	if (c == EOF || ttyio < 0) return(EOF);
 # ifdef	TIOCSTI
 	ch = c;
 	Xioctl(ttyio, TIOCSTI, &ch);
 # else
-	if (ungetch2(c) == EOF) return(EOF);
+	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
+	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
+		ungetnum * sizeof(u_char));
+	ungetbuf[0] = (u_char)c;
+	ungetnum++;
 # endif
 
 	return(c);
