@@ -13,11 +13,9 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
-
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif

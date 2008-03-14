@@ -17,7 +17,6 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -708,8 +707,10 @@ static int NEAR reopenpipe __P_((int, int));
 static FILE *NEAR fdopenpipe __P_((int));
 #ifdef	DJGPP
 static int NEAR closepipe __P_((int, int));
+#define	closepipe2(f, d)	closepipe(f, d)
 #else
 static int NEAR closepipe __P_((int));
+#define	closepipe2(f, d)	closepipe(f)
 #endif
 #ifndef	_NOUSEHASH
 static VOID NEAR disphash __P_((VOID_A));
@@ -960,7 +961,6 @@ static p_id_t oldttypgrp = (p_id_t)-1;
 #endif
 static int setsigflag = 0;
 static int trapok = 0;
-static int readtrap = 0;
 static shfunctable *shellfunc = NULL;
 static pipelist *pipetop = NULL;
 static int childdepth = 0;
@@ -1870,7 +1870,11 @@ sigcst_t func;
 	struct sigaction act, oact;
 
 	act.sa_handler = func;
+#ifdef	SA_INTERRUPT
+	act.sa_flags = SA_INTERRUPT;
+#else
 	act.sa_flags = 0;
+#endif
 	sigemptyset(&(act.sa_mask));
 	sigemptyset(&(oact.sa_mask));
 	if (sigaction(sig, &act, &oact) < 0) return(SIG_ERR);
@@ -2077,26 +2081,13 @@ int sig;
 
 	trapped = 0;
 	flags = signallist[i].flags;
-	if (readtrap && !interactive && (flags & TR_READBL)) flags ^= TR_BLOCK;
 
 	if (mypid != shellpid) {
 		if ((flags & TR_BLOCK) && (flags & TR_STAT) == TR_TERM)
 			trapped = -1;
 	}
 	else if ((trapmode[sig] & TR_STAT) == TR_TRAP) trapped = 1;
-	else if (flags & TR_BLOCK) {
-#ifdef	SIGINT
-		if (readtrap && sig == SIGINT) {
-# if	!MSDOS && defined (TIOCSTI)
-			u_char c;
-
-			c = '\n';
-			ioctl(STDIN_FILENO, TIOCSTI, &c);
-# endif
-			readtrap = 0;
-		}
-#endif	/* SIGINT */
-	}
+	else if (flags & TR_BLOCK) /*EMPTY*/;
 	else if ((flags & TR_STAT) == TR_TERM) trapped = -1;
 
 	if (trapped > 0) {
@@ -2160,7 +2151,7 @@ int sig;
 #endif	/* !MSDOS && SIGCONT */
 #ifdef	SIGINT
 		case SIGINT:
-			if (duptrapok > 0) interrupted = 1;
+			interrupted = 1;
 			break;
 #endif
 #if	defined (SIGCHLD) && (!defined (NOJOB) || defined (SYSV))
@@ -2851,6 +2842,11 @@ int tty;
 p_id_t ppid;
 int stop;
 {
+# ifdef	DEBUG
+	extern VOID (*__free_hook) __P_((VOID_P));
+	extern VOID_P (*__malloc_hook) __P_((ALLOC_T));
+	extern VOID_P (*__realloc_hook) __P_((VOID_P, ALLOC_T));
+# endif
 	sigmask_t mask, omask;
 	p_id_t pid;
 	int i;
@@ -2859,14 +2855,10 @@ int stop;
 	Xsigblock(omask, mask);
 	if (!(pid = Xfork())) {
 # ifdef	DEBUG
-		extern VOID (*__free_hook) __P_((VOID_P));
-		extern VOID_P (*__malloc_hook) __P_((ALLOC_T));
-		extern VOID_P (*__realloc_hook) __P_((VOID_P, ALLOC_T));
-
 		__free_hook = NULL;
 		__malloc_hook = NULL;
 		__realloc_hook = NULL;
-# endif	/* DEBUG */
+# endif
 
 		memcpy((char *)&omask, (char *)&oldsigmask, sizeof(sigmask_t));
 # ifdef	SIGCHLD
@@ -3200,7 +3192,7 @@ int n;
 	ALLOC_T size;
 
 	n++;
-	for (size = BUFUNIT; size < n; size *= 2);
+	for (size = BUFUNIT; size < n; size *= 2) /*EMPTY*/;
 
 	return(size);
 }
@@ -3212,18 +3204,16 @@ int fd;
 	int n;
 
 	if (trapok >= 0) trapok = 1;
-	readtrap = 1;
+#if	!defined (USESIGACTION) && !defined (NOSELECT)
+	if ((n = readselect(1, &fd, NULL, NULL)) < 0) ch = (u_char)-1;
+	else
+#endif
 	n = sureread(fd, &ch, sizeof(ch));
-	if (!readtrap) {
-		errno = EINTR;
-		n = -1;
-	}
+	if (n > 0) n = (int)ch;
+	else if (!n) n = READ_EOF;
 	if (trapok >= 0) trapok = 0;
-	readtrap = 0;
-	if (n < 0) return(-1);
-	if (!n) return(READ_EOF);
 
-	return((int)ch);
+	return(n);
 }
 
 static char *NEAR readline(fd)
@@ -3267,7 +3257,9 @@ ALLOC_T *lenp;
 			free(cp);
 			return(NULL);
 		}
+#ifdef	USECRNL
 		if (c == '\n' && i > 0 && cp[i - 1] == '\r') i--;
+#endif
 		cp = c_realloc(cp, i, &size);
 		cp[i] = c;
 	}
@@ -3719,11 +3711,7 @@ redirectlist *rp;
 
 	if (rp -> old >= 0) safeclose(rp -> old);
 	if (rp -> new >= 0) {
-#ifdef	DJGPP
-		if (rp -> type & MD_HEREDOC) closepipe(rp -> new, rp -> fd);
-#else
-		if (rp -> type & MD_HEREDOC) closepipe(rp -> new);
-#endif
+		if (rp -> type & MD_HEREDOC) closepipe2(rp -> new, rp -> fd);
 		else if (!(rp -> type & MD_FILEDESC)) safeclose(rp -> new);
 	}
 #if	defined (FD) && !defined (_NODOSDRIVE)
@@ -3753,11 +3741,7 @@ redirectlist *rp;
 		safeclose(rp -> old);
 	}
 	if (rp -> new >= 0) {
-#ifdef	DJGPP
-		if (rp -> type & MD_HEREDOC) closepipe(rp -> new, -1);
-#else
-		if (rp -> type & MD_HEREDOC) closepipe(rp -> new);
-#endif
+		if (rp -> type & MD_HEREDOC) closepipe2(rp -> new, -1);
 		else if (!(rp -> type & MD_FILEDESC)) safeclose(rp -> new);
 	}
 #if	defined (FD) && !defined (_NODOSDRIVE)
@@ -3907,11 +3891,7 @@ int old;
 	if (pipein > (p_id_t)0) {
 #ifndef	USEFAKEPIPE
 		if (waitchild(pipein, NULL) != RET_SUCCESS) {
-# ifdef	DJGPP
-			closepipe(fd, -1);
-# else
-			closepipe(fd);
-# endif
+			closepipe2(fd, -1);
 			errno = -1;
 			return(-1);
 		}
@@ -3923,11 +3903,7 @@ int old;
 	ret = RET_SUCCESS;
 	while ((buf = readline(fdin)) != vnullstr) {
 		if (!buf) {
-#ifdef	DJGPP
-			closepipe(fd, -1);
-#else
-			closepipe(fd);
-#endif
+			closepipe2(fd, -1);
 			safeclose(fdin);
 			return(-1);
 		}
@@ -3948,11 +3924,7 @@ int old;
 	fflush(stdout);
 	if ((fd = reopenpipe(fd, ret)) < 0) return(-1);
 	if (ret != RET_SUCCESS) {
-#ifdef	DJGPP
-		closepipe(fd, -1);
-#else
-		closepipe(fd);
-#endif
+		closepipe2(fd, -1);
 		errno = -1;
 		return(-1);
 	}
@@ -3989,7 +3961,7 @@ redirectlist *rp;
 		return(-1);
 
 # ifndef	USEFAKEPIPE
-	if (pipe(fds) < 0);
+	if (pipe(fds) < 0) /*EMPTY*/;
 	else if ((pid = makechild(0, mypid, 0)) < (p_id_t)0) {
 		safeclose(fds[0]);
 		safeclose(fds[1]);
@@ -4382,6 +4354,9 @@ static char **NEAR putvar(var, s, len)
 char **var, *s;
 int len;
 {
+#if	MSDOS
+	char *cp;
+#endif
 	u_long size;
 	int i, export;
 
@@ -4416,8 +4391,6 @@ int len;
 		exportsize += (u_long)strlen(s) + 1;
 #if	MSDOS
 		if (constequal(s, ENVPATH, len)) {
-			char *cp;
-
 			cp = &(s[len + 1]);
 			if (_dospath(cp)) cp += 2;
 			for (; *cp; cp++) {
@@ -4607,6 +4580,9 @@ int unset(ident, len)
 CONST char *ident;
 int len;
 {
+#if	!MSDOS && !defined (MINIMUMSHELL)
+	CONST char *cp;
+#endif
 	int i;
 
 	if (checkprimal(ident, len) < 0 || checkrestrict(ident, len) < 0
@@ -4619,8 +4595,6 @@ int len;
 			if (!getconstvar(ENVMAILPATH)) checkmail(1);
 		}
 		else if (constequal(ident, ENVMAILPATH, len)) {
-			char *cp;
-
 			cp = getconstvar(ENVMAIL);
 			if (cp) replacemailpath(cp, 0);
 			else checkmail(1);
@@ -4784,7 +4758,7 @@ shfunctable *func;
 	int i, n;
 
 	if (!func) n = 0;
-	else for (n = 0; func[n].ident; n++);
+	else for (n = 0; func[n].ident; n++) /*EMPTY*/;
 	dupl = (shfunctable *)malloc2((n + 1) * sizeof(shfunctable));
 	for (i = 0; i < n; i++) {
 		dupl[i].ident = strdup2(func[i].ident);
@@ -6716,11 +6690,7 @@ CONST char *arg;
 #else
 		if (len > 0 && buf[--len] == '\n') buf[len] = '\0';
 #endif
-#ifdef	DJGPP
-		ret_status = closepipe(Xfileno(fp), -1);
-#else
-		ret_status = closepipe(Xfileno(fp));
-#endif
+		ret_status = closepipe2(Xfileno(fp), -1);
 	}
 
 	return(buf);
@@ -7347,7 +7317,7 @@ FILE *fp;
 #else
 		if (printredirect((trp -> comm) -> redp, fp)) {
 			if (!rlist) i = 0;
-			else for (i = 0; rlist[i]; i++);
+			else for (i = 0; rlist[i]; i++) /*EMPTY*/;
 			rlist = (redirectlist **)realloc2(rlist,
 				(i + 2) * sizeof(redirectlist *));
 			rlist[i++] = (trp -> comm) -> redp;
@@ -7359,8 +7329,8 @@ FILE *fp;
 #ifndef	MINIMUMSHELL
 	if (rlist2) {
 		if (!rlist) i = 0;
-		else for (i = 0; rlist[i]; i++);
-		for (j = 0; rlist2[j]; j++);
+		else for (i = 0; rlist[i]; i++) /*EMPTY*/;
+		for (j = 0; rlist2[j]; j++) /*EMPTY*/;
 		rlist = (redirectlist **)realloc2(rlist,
 			(i + j + 1) * sizeof(redirectlist *));
 		for (j = 0; rlist2[j]; j++) rlist[i + j] = rlist2[j];
@@ -8145,7 +8115,7 @@ syntaxtree *trp;
 		freevar(var);
 
 		func = duplfunc(shellfunc);
-		for (i = 0; func[i].ident; i++);
+		for (i = 0; func[i].ident; i++) /*EMPTY*/;
 		if (i > 1) qsort(func, i, sizeof(shfunctable), cmpfunc);
 		for (i = 0; func[i].ident; i++) {
 			printshfunc(&(func[i]), stdout);
@@ -8380,6 +8350,9 @@ syntaxtree *trp;
 static int NEAR dosource(trp)
 syntaxtree *trp;
 {
+#ifdef	BASHSTYLE
+	char **var, **dupargvar;
+#endif
 	hashlist *hp;
 	CONST char *fname;
 	int n, fd;
@@ -8402,8 +8375,6 @@ syntaxtree *trp;
 #ifdef	BASHSTYLE
 	/* bash sets positional parameters with source arguments */
 	if ((trp -> comm) -> argc > 2) {
-		char **var, **dupargvar;
-
 		dupargvar = argvar;
 		argvar = (char **)malloc2((trp -> comm) -> argc
 			* sizeof(char *));
@@ -10102,6 +10073,7 @@ int cond;
 	syntaxtree *tmptr;
 	redirectlist *errp;
 	p_id_t pipein;
+	char *tmp;
 	int ret, fd;
 
 	exectrapcomm();
@@ -10217,8 +10189,6 @@ int cond;
 			else if (errp -> type & MD_HEREDOC)
 				doperror(NULL, NULL);
 			else {
-				char *tmp;
-
 				if (!(errp -> filename)) tmp = strdup2("-");
 				else tmp = evalvararg(errp -> filename, '\0',
 					EA_BACKQ | EA_STRIPQLATER, 0);
@@ -10275,11 +10245,7 @@ int cond;
 		else if (isopor(trp) && !ret_status) /*EMPTY*/;
 		else ret = exec_stree(trp -> next, cond);
 	}
-#ifdef	DJGPP
-	if (pipein >= (p_id_t)0) closepipe(fd, -1);
-#else
-	if (pipein >= (p_id_t)0) closepipe(fd);
-#endif
+	if (pipein >= (p_id_t)0) closepipe2(fd, -1);
 	exectrapcomm();
 
 	return(ret);
@@ -10424,6 +10390,9 @@ CONST char *command;
 static FILE *NEAR _dopopen(command)
 CONST char *command;
 {
+#ifdef	CYGWIN
+	struct timeval tv;
+#endif
 	syntaxtree *trp;
 	p_id_t pipein;
 	int fd;
@@ -10439,12 +10408,10 @@ CONST char *command;
 	else if (pipein) {
 #ifdef	CYGWIN
 	/* a trick for buggy terminal emulation */
-		struct timeval tv;
-
 		tv.tv_sec = 0;
 		tv.tv_usec = 500000L;	/* maybe enough waiting limit */
 		VOID_C readselect(1, &fd, NULL, &tv);
-#endif	/* CYGWIN */
+#endif
 		nownstree(trp);
 	}
 	else {
@@ -10465,11 +10432,7 @@ CONST char *command;
 		searchheredoc(trp, 1);
 		if (pipein >= (p_id_t)0) fd = reopenpipe(fd, ret_status);
 		else {
-#ifdef	DJGPP
-			closepipe(fd, -1);
-#else
-			closepipe(fd);
-#endif
+			closepipe2(fd, -1);
 			fd = -1;
 		}
 	}
@@ -10505,11 +10468,7 @@ CONST char *command;
 int dopclose(fp)
 FILE *fp;
 {
-# ifdef	DJGPP
-	return(closepipe(Xfileno(fp), -1));
-# else
-	return(closepipe(Xfileno(fp)));
-# endif
+	return(closepipe2(Xfileno(fp), -1));
 }
 #endif	/* !FDSH */
 
@@ -10704,8 +10663,8 @@ int prepareterm(VOID_A)
 
 #ifdef	FD
 	if (ttyio >= 0) inittty(0);
-	term = getconstvar(ENVTERM);
-	getterment((term) ? term : nullstr);
+	if (!(term = getconstvar(ENVTERM))) term = nullstr;
+	getterment(term);
 #endif
 
 	return(0);
@@ -10785,7 +10744,10 @@ char *CONST *argv;
 #endif
 	isstdin = forcedstdin;
 
-	if (n > 2) interactive = interactive_io;
+	if (n > 2) {
+		shellmode = 1;
+		interactive = interactive_io;
+	}
 	else if (n >= argc || isstdin) isstdin = 1;
 	else {
 		definput = newdup(Xopen(argv[n], O_BINARY | O_RDONLY, 0666));
@@ -11031,7 +10993,6 @@ char *CONST *argv;
 #endif
 			fflush(stderr);
 		}
-		shellmode = 1;
 #if	defined (FD) && !defined (_NOPTY)
 		if (isshptymode()) {
 			shellpid = (p_id_t)-1;
@@ -11115,11 +11076,11 @@ int pseudoexit;
 				stdiomode();
 				if (!buf) continue;
 			}
-#else
+#else	/* !FD */
 			kanjifputs(ps, stderr);
 			fflush(stderr);
 			buf = readline(definput);
-#endif
+#endif	/* !FD */
 		}
 		if (trapok >= 0) trapok = 0;
 		if (!buf) {
@@ -11175,6 +11136,7 @@ int main_shell(argc, argv, envp)
 int argc;
 char *CONST *argv, *CONST *envp;
 {
+	shellmode = 1;
 	setshellvar(envp);
 	if (initshell(argc, argv) < 0) return(RET_FAIL);
 #ifdef	FD

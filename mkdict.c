@@ -13,7 +13,6 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -24,7 +23,7 @@
 #include "hinsi.h"
 
 #define	MAXLINESTR	1023
-#define	BUFUNIT		32
+#define	DICTBUFUNIT	32
 #define	MAXHINSI	16
 #define	MAXBIAS		4
 #define	MAXHINSILEN	16
@@ -3011,7 +3010,7 @@ ALLOC_T len;
 	ALLOC_T size;
 
 	len += maxstr;
-	size = (strbufsize) ? strbufsize : BUFUNIT;
+	size = (strbufsize) ? strbufsize : DICTBUFUNIT;
 	while (size < len) size *= 2;
 	if (size <= strbufsize) return(0);
 	if (!(cp = realloc2(strbuf, size))) return(-1);
@@ -3028,10 +3027,10 @@ ALLOC_T ptr, klen, size;
 
 	if (maxdict >= dictlistsize) {
 		new = (dicttable *)realloc2(dictlist,
-			(dictlistsize + BUFUNIT) * sizeof(dicttable));
+			(dictlistsize + DICTBUFUNIT) * sizeof(dicttable));
 		if (!new) return(-1);
 		dictlist = new;
-		dictlistsize += BUFUNIT;
+		dictlistsize += DICTBUFUNIT;
 	}
 
 	dictlist[maxdict].ptr = ptr;

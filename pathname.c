@@ -11,15 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
 # ifndef	NOUNISTDH
 # include <unistd.h>
 # endif
-
 # ifndef	NOSTDLIBH
 # include <stdlib.h>
 # endif
-
 #include "printf.h"
 #include "kctype.h"
 #include "pathname.h"
@@ -155,7 +152,7 @@ int Xstat __P_((CONST char *, struct stat *));
 # ifdef	NOSYMLINK
 # define	stat2		Xstat
 # else
-int stat2 __P_((CONST char *, struct stat *));
+static int NEAR stat2 __P_((CONST char *, struct stat *));
 # endif
 # ifdef	DJGPP
 char *Xgetwd __P_((char *));
@@ -477,9 +474,9 @@ u_int attr;
 
 	mode = 0;
 	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
-	if (!(attr & DS_IHIDDEN)) mode |= S_IREAD;
-	if (!(attr & DS_IRDONLY)) mode |= S_IWRITE;
-	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IEXEC);
+	if (!(attr & DS_IHIDDEN)) mode |= S_IRUSR;
+	if (!(attr & DS_IRDONLY)) mode |= S_IWUSR;
+	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IXUSR);
 	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
 	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
 	else mode |= S_IFREG;
@@ -524,7 +521,7 @@ struct stat *stp;
 # endif	/* MSDOS */
 
 # ifndef	NOSYMLINK
-int stat2(path, stp)
+static int NEAR stat2(path, stp)
 CONST char *path;
 struct stat *stp;
 {

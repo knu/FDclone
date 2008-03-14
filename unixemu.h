@@ -4,7 +4,7 @@
  *	UNIX function emulation
  */
 
-#ifndef	__UNIXEMU_H_
+#if	MSDOS && !defined (__UNIXEMU_H_)
 #define	__UNIXEMU_H_
 
 #ifndef	__SYS_TYPES_STAT_H_
@@ -128,4 +128,4 @@ extern int utime __P_((CONST char *, CONST time_t[]));
 extern int utime __P_((CONST char *, CONST struct utimbuf *));
 #endif
 
-#endif	/* !__UNIXEMU_H_ */
+#endif	/* MSDOS && !__UNIXEMU_H_ */

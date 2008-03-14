@@ -4,6 +4,9 @@
  *	definitions & function prototype declarations for "unixdisk.c"
  */
 
+#if	MSDOS && !defined __UNIXDISK_H_
+#define	__UNIXDISK_H_
+
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -310,3 +313,5 @@ extern int unixutimes __P_((CONST char *, CONST struct timeval *));
 extern int unixopen __P_((CONST char *, int, int));
 extern FILE *unixfopen __P_((CONST char *, CONST char *));
 #endif	/* !_NOUSELFN */
+
+#endif	/* MSDOS && !__UNIXDISK_H_ */

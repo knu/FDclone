@@ -757,11 +757,9 @@ unixemu$(OBJ): kctype.h
 unixemu$(OBJ): pathname.h term.h termio.h
 unixemu$(OBJ): func.h
 unixemu$(OBJ): dosdisk.h
-unixemu$(OBJ): unixdisk.h unixemu.h
+unixemu$(OBJ): unixdisk.h
 unixdisk$(OBJ): machine.h config.h
 unixdisk$(OBJ): unixdisk.h
-unixdisk$(OBJ): termio.h
-unixdisk$(OBJ): unixemu.h
 unixdisk$(OBJ): dosdisk.h
 unixdisk$(OBJ): kctype.h
 libc$(OBJ): fd.h
@@ -815,11 +813,10 @@ backend$(OBJ): machine.h config.h
 backend$(OBJ): types.h
 backend$(OBJ): printf.h
 backend$(OBJ): kctype.h
-backend$(OBJ): pathname.h term.h
-backend$(OBJ): termio.h
+backend$(OBJ): pathname.h term.h termio.h
 backend$(OBJ): func.h
-backend$(OBJ): dosdisk.h
-backend$(OBJ): termemu.h system.h wait.h
+backend$(OBJ): dosdisk.h system.h wait.h
+backend$(OBJ): termemu.h
 parse$(OBJ): fd.h
 parse$(OBJ): machine.h config.h
 parse$(OBJ): types.h
@@ -874,9 +871,8 @@ dict$(OBJ): machine.h config.h types.h
 dict$(OBJ): printf.h
 dict$(OBJ): kctype.h
 dict$(OBJ): pathname.h term.h termio.h
-dict$(OBJ): func.h
-dict$(OBJ): dosdisk.h roman.h
-dict$(OBJ): hinsi.h
+dict$(OBJ): roman.h hinsi.h func.h
+dict$(OBJ): dosdisk.h
 roman$(OBJ): machine.h config.h
 roman$(OBJ): printf.h
 roman$(OBJ): kctype.h

@@ -18,6 +18,7 @@ extern char **history[];
 extern short histsize[];
 extern int curcolumns;
 extern int minfilename;
+extern int fnameofs;
 extern int hideclock;
 extern CONST char *promptstr;
 #ifndef	_NOORIGSHELL
@@ -966,9 +967,11 @@ static VOID NEAR ringbell(VOID_A)
 static VOID NEAR clearline(VOID_A)
 {
 #ifndef	_NOORIGSHELL
-	if (dumbmode) {
-		int x;
+	int x;
+#endif
 
+#ifndef	_NOORIGSHELL
+	if (dumbmode) {
 		/* abandon last 1 char because of auto newline */
 		for (x = win_x; x < n_column - 1; x++) Xputch2(' ');
 		for (x = win_x; x < n_column - 1; x++) Xputch2(C_BS);
@@ -1714,14 +1717,17 @@ int argc;
 char *CONST *argv;
 {
 	char *cp;
-	int i, len, maxlen, duprow, dupminfilename, dupcolumns, dupdispmode;
+	int duprow, dupminfilename, dupcolumns, dupdispmode, dupfnameofs;
+	int i, j, n, len, maxlen;
 
 	duprow = FILEPERROW;
 	dupminfilename = minfilename;
 	dupcolumns = curcolumns;
 	dupdispmode = dispmode;
+	dupfnameofs = fnameofs;
 	minfilename = n_column;
 	dispmode = F_FILETYPE;
+	fnameofs = 0;
 
 	if (argv) {
 		selectlist = (namelist *)malloc2(argc * sizeof(namelist));
@@ -1748,8 +1754,6 @@ char *CONST *argv;
 		sorton = i;
 
 		if (lcmdline < 0) {
-			int j, n;
-
 			n = 1;
 			Xcputnl();
 			if (argc < LIMITSELECTWARN) i = 'Y';
@@ -1808,6 +1812,7 @@ char *CONST *argv;
 			minfilename = dupminfilename;
 			curcolumns = dupcolumns;
 			dispmode = dupdispmode;
+			fnameofs = dupfnameofs;
 
 			return;
 		}
@@ -1854,6 +1859,7 @@ char *CONST *argv;
 	minfilename = dupminfilename;
 	curcolumns = dupcolumns;
 	dispmode = dupdispmode;
+	fnameofs = dupfnameofs;
 }
 
 /*ARGSUSED*/
@@ -2679,6 +2685,7 @@ int def, comline, h;
 #endif
 #if	FD >= 2
 	ALLOC_T searchsize;
+	CONST char *cp;
 #endif
 	char *tmphist, buf[MAXKLEN + 1];
 	int i, n, ch, ch2, ovptr, hist, quote, sig;
@@ -2778,8 +2785,6 @@ int def, comline, h;
 
 #if	FD >= 2
 		if (searchmode) {
-			char *cp;
-
 			cp = NULL;
 			n = 0;
 			switch (ch) {
@@ -3354,7 +3359,8 @@ int h;
 	}
 
 	if (delsp && len > 0 && inputbuf[len - 1] == ' ' && yesno(DELSP_K)) {
-		for (len--; len > 0 && inputbuf[len - 1] == ' '; len--);
+		for (len--; len > 0; len--)
+			if (inputbuf[len - 1] != ' ') break;
 		inputbuf[len] = '\0';
 	}
 
@@ -3639,7 +3645,7 @@ int *xx, multi;
 				continue;
 			}
 			if (isupper2(*cp) && cp[1] == ':')
-				for (cp += 2; *cp == ' '; cp++);
+				for (cp += 2; *cp == ' '; cp++) /*EMPTY*/;
 			len = strlen3(cp);
 			if (len > maxlen) maxlen = len;
 			new[i] = strdup2(cp);
@@ -3804,10 +3810,6 @@ int val[];
 	}
 	else {
 		if (ch != K_CR) for (i = 0; i < max; i++) val[i] = 0;
-		else {
-			for (i = 0; i < max; i++) if (val[i]) break;
-			if (i >= max) ch = K_ESC;
-		}
 		for (i = 0; i < max; i++) {
 			if (!tmpstr[i]) continue;
 			Xlocate(tmpx + xx[i] + 1, L_MESLINE);

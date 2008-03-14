@@ -840,7 +840,7 @@ int *lenp;
 VOID title(VOID_A)
 {
 	CONST char *cp;
-	int i, len;
+	int n, len;
 
 	Xlocate(0, L_TITLE);
 	Xputterm(T_STANDOUT);
@@ -857,16 +857,16 @@ VOID title(VOID_A)
 	}
 	Xcputs2(" Ver.");
 	len += 5;
-	cp = getversion(&i);
-	cputstr(i, cp);
+	cp = getversion(&n);
+	cputstr(n, cp);
 	if (distributor) {
 		Xputch2('#');
-		i++;
+		n++;
 	}
 	cp = (iswellomit()) ? nullstr : " (c)1995-2008 T.Shirai  ";
 	Xcputs2(cp);
-	i = n_column - len - strlen2(cp) - i;
-	while (i-- > 0) Xputch2(' ');
+	n = n_column - len - strlen2(cp) - n;
+	while (n-- > 0) Xputch2(' ');
 	Xputterm(END_STANDOUT);
 	timersec = 0;
 	printtime(0);
@@ -1025,7 +1025,7 @@ int exist;
 		}
 
 		cp = line + strlen(line);
-		for (cp--; cp >= line && isblank2(*cp); cp--);
+		for (cp--; cp >= line; cp--) if (!isblank2(*cp)) break;
 		cp[1] = '\0';
 
 		cont = 0;

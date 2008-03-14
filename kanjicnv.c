@@ -11,7 +11,6 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -109,16 +108,16 @@ int main(argc, argv)
 int argc;
 char *CONST argv[];
 {
-	FILE *in, *out;
-	int i, j, c, mode, esc, kanji;
+	FILE *fpin, *fpout;
+	int i, n, c, mode, esc, kanji;
 
-	for (i = 1; i < argc; i++) {
-		if (argv[i][0] != '-' || !argv[i][1]) break;
-		if (argv[i][1] == '-' && !argv[i][2]) {
-			i++;
+	for (n = 1; n < argc; n++) {
+		if (argv[n][0] != '-' || !argv[n][1]) break;
+		if (argv[n][1] == '-' && !argv[n][2]) {
+			n++;
 			break;
 		}
-		for (j = 1; argv[i][j]; j++) switch (argv[i][j]) {
+		for (i = 1; argv[n][i]; i++) switch (argv[n][i]) {
 			case '7':
 				msboff = 1;
 				break;
@@ -138,45 +137,45 @@ char *CONST argv[];
 				break;
 		}
 	}
-	if (i >= argc || i + 2 < argc) {
+	if (n >= argc || n + 2 < argc) {
 		fprintf(stderr,
 			"Usage: kanjicnv [-7bces] <infile> [<outfile>]\n");
 		return(1);
 	}
 
-	if (!strcmp(argv[i], "-")) in = stdin;
-	else if (!(in = fopen(argv[i], "r"))) {
-		fprintf(stderr, "%s: cannot open.\n", argv[i]);
+	if (!strcmp(argv[n], "-")) fpin = stdin;
+	else if (!(fpin = fopen(argv[n], "r"))) {
+		fprintf(stderr, "%s: cannot open.\n", argv[n]);
 		return(1);
 	}
-	if (i + 1 >= argc) out = stdout;
-	else if (!(out = fopen(argv[i + 1], "w"))) {
-		fprintf(stderr, "%s: cannot open.\n", argv[i + 1]);
-		fclose(in);
+	if (n + 1 >= argc) fpout = stdout;
+	else if (!(fpout = fopen(argv[n + 1], "w"))) {
+		fprintf(stderr, "%s: cannot open.\n", argv[n + 1]);
+		fclose(fpin);
 		return(1);
 	}
 
 	mode = ASCII;
 	esc = kanji = 0;
 
-	while ((c = fgetc(in)) != EOF) {
+	while ((c = fgetc(fpin)) != EOF) {
 		switch (c) {
 			case '\033':	/* ESC */
-				if (esc) output(out, '\033', mode);
+				if (esc) output(fpout, '\033', mode);
 				else if (kanji > 0) {
-					output(out, '\033', mode);
-					output(out, '$', mode);
+					output(fpout, '\033', mode);
+					output(fpout, '$', mode);
 				}
 				else if (kanji < 0) {
-					output(out, '\033', mode);
-					output(out, '(', mode);
+					output(fpout, '\033', mode);
+					output(fpout, '(', mode);
 				}
 				esc = 1;
 				kanji = 0;
 				break;
 			case '$':
 				if (!esc) {
-					if (!kanji) output(out, c, mode);
+					if (!kanji) output(fpout, c, mode);
 				}
 				else {
 					mode &= ~JKANA;
@@ -186,7 +185,7 @@ char *CONST argv[];
 				break;
 			case '(':
 				if (!esc) {
-					if (!kanji) output(out, c, mode);
+					if (!kanji) output(fpout, c, mode);
 				}
 				else {
 					mode &= ~JKANA;
@@ -195,41 +194,41 @@ char *CONST argv[];
 				}
 				break;
 			case '\016':	/* SO */
-				if (esc) output(out, '\033', mode);
+				if (esc) output(fpout, '\033', mode);
 				else if (kanji > 0) {
-					output(out, '\033', mode);
-					output(out, '$', mode);
+					output(fpout, '\033', mode);
+					output(fpout, '$', mode);
 				}
 				else if (kanji < 0) {
-					output(out, '\033', mode);
-					output(out, '(', mode);
+					output(fpout, '\033', mode);
+					output(fpout, '(', mode);
 				}
 				mode |= KANA;
 				esc = kanji = 0;
 				break;
 			case '\017':	/* SI */
-				if (esc) output(out, '\033', mode);
+				if (esc) output(fpout, '\033', mode);
 				else if (kanji > 0) {
-					output(out, '\033', mode);
-					output(out, '$', mode);
+					output(fpout, '\033', mode);
+					output(fpout, '$', mode);
 				}
 				else if (kanji < 0) {
-					output(out, '\033', mode);
-					output(out, '(', mode);
+					output(fpout, '\033', mode);
+					output(fpout, '(', mode);
 				}
 				mode &= ~KANA;
 				esc = kanji = 0;
 				break;
 			case '\b':
 				if (removebs) {
-					if (esc) output(out, '\033', mode);
+					if (esc) output(fpout, '\033', mode);
 					else if (kanji > 0) {
-						output(out, '\033', mode);
-						output(out, '$', mode);
+						output(fpout, '\033', mode);
+						output(fpout, '$', mode);
 					}
 					else if (kanji < 0) {
-						output(out, '\033', mode);
-						output(out, '(', mode);
+						output(fpout, '\033', mode);
+						output(fpout, '(', mode);
 					}
 					output(NULL, EOF, mode);
 					esc = kanji = 0;
@@ -237,21 +236,21 @@ char *CONST argv[];
 				}
 /*FALLTHRU*/
 			default:
-				if (esc) output(out, '\033', mode);
+				if (esc) output(fpout, '\033', mode);
 				else if (kanji > 0) mode |= KANJI;
 				else if (kanji < 0) {
 					if (c == 'I') mode |= JKANA;
 					else mode &= ~KANJI;
 				}
-				else output(out, c, mode);
+				else output(fpout, c, mode);
 				esc = kanji = 0;
 				break;
 		}
 	}
-	output(out, EOF, mode);
+	output(fpout, EOF, mode);
 
-	fclose(out);
-	fclose(in);
+	fclose(fpout);
+	fclose(fpin);
 
 	return(0);
 }

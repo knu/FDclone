@@ -9,13 +9,9 @@
 #include "funcno.h"
 #include "kanji.h"
 
-#ifdef	_NOORIGSHELL
-#define	RET_SUCCESS	0
-#define	RET_NOTICE	255
-#else
+#ifndef	_NOORIGSHELL
 #include "system.h"
 #endif
-
 #ifndef	_NOPTY
 #include "termemu.h"
 #endif
@@ -23,10 +19,25 @@
 #include "roman.h"
 #endif
 
-#define	MD5_BUFSIZ	(128 / 32)
-#define	MD5_BLOCKS	16
-#define	STRHDD		"HDD"
-#define	STRHDD98	"98"
+#define	MD5_BUFSIZ		(128 / 32)
+#define	MD5_BLOCKS		16
+#define	STRHDD			"HDD"
+#define	STRHDD98		"98"
+#ifdef	_NOORIGSHELL
+#define	RET_SUCCESS		0
+#define	RET_NOTICE		255
+#endif
+#if	FD >= 2
+#define	BINDCOMMENT		':'
+#define	DRIVESEP		' '
+#define	ALIASSEP		'='
+#define	FUNCNAME		0
+#else
+#define	BINDCOMMENT		';'
+#define	DRIVESEP		','
+#define	ALIASSEP		'\t'
+#define	FUNCNAME		1
+#endif
 
 #ifndef	_NOARCHIVE
 extern launchtable launchlist[];
@@ -36,7 +47,7 @@ extern int maxarchive;
 # ifndef	_NOBROWSE
 extern char **browsevar;
 # endif
-#endif
+#endif	/* !_NOARCHIVE */
 extern char *macrolist[];
 extern int maxmacro;
 extern bindtable bindlist[];
@@ -151,49 +162,36 @@ static int NEAR dochdir __P_((int, char *CONST []));
 static int NEAR loadsource __P_((int, char *CONST []));
 #endif	/* _NOORIGSHELL */
 
-#if	FD >= 2
-#define	BINDCOMMENT	':'
-#define	DRIVESEP	' '
-#define	ALIASSEP	'='
-#define	FUNCNAME	0
-#else
-#define	BINDCOMMENT	';'
-#define	DRIVESEP	','
-#define	ALIASSEP	'\t'
-#define	FUNCNAME	1
-#endif
-
 static CONST char *CONST builtinerrstr[] = {
 	NULL,
-#define	ER_FEWMANYARG	1
+#define	ER_FEWMANYARG		1
 	"Too few or many arguments",
-#define	ER_OUTOFLIMIT	2
+#define	ER_OUTOFLIMIT		2
 	"Out of limits",
-#define	ER_NOENTRY	3
+#define	ER_NOENTRY		3
 	"No such entry",
-#define	ER_SYNTAXERR	4
+#define	ER_SYNTAXERR		4
 	"Syntax error",
-#define	ER_EXIST	5
+#define	ER_EXIST		5
 	"Entry already exists",
-#define	ER_INVALDEV	6
+#define	ER_INVALDEV		6
 	"Invalid device",
-#define	ER_EVENTNOFOUND	7
+#define	ER_EVENTNOFOUND		7
 	"Event not found",
-#define	ER_UNKNOWNOPT	8
+#define	ER_UNKNOWNOPT		8
 	"Unknown option",
-#define	ER_NOARGSPEC	9
+#define	ER_NOARGSPEC		9
 	"No argument is specified",
-#define	ER_NOTINSHELL	10
+#define	ER_NOTINSHELL		10
 	"Cannot execute in shell mode",
-#define	ER_NOTINRUNCOM	11
+#define	ER_NOTINRUNCOM		11
 	"Cannot execute in startup file",
-#define	ER_NOTRECURSE	12
+#define	ER_NOTRECURSE		12
 	"Cannot execute recursively",
-#define	ER_NOTDUMBTERM	13
+#define	ER_NOTDUMBTERM		13
 	"Cannot execute on dumb term",
 };
 #define	BUILTINERRSIZ	arraysize(builtinerrstr)
-
 static CONST builtintable builtinlist[] = {
 #ifndef	_NOARCHIVE
 	{setlaunch,	BL_LAUNCH},
@@ -1536,7 +1534,7 @@ int deletedrv(no)
 int no;
 {
 # ifdef	HDDMOUNT
-	char *dev;
+	CONST char *dev;
 	int s;
 # endif
 	int i, n;
@@ -1603,7 +1601,7 @@ devinfo *devp;
 	sp = NULL;
 	if (!(devp -> cyl)) {
 		if (!(sp = readpt(devp -> name, devp -> sect))) return(-1);
-		for (n = 0; sp[n + 1]; n++);
+		for (n = 0; sp[n + 1]; n++) /*EMPTY*/;
 		if (!n) {
 			free(sp);
 			return(-1);
@@ -2159,8 +2157,9 @@ int argc;
 char *CONST argv[];
 {
 	FILE *fp;
-	char *cp, *tmp, *editor, path[MAXPATHLEN];
-	int i, n, f, l, skip, list, nonum, rev, exe, ret;
+	CONST char *r, *editor;
+	char *cp, *s, *tmp, path[MAXPATHLEN];
+	int i, j, n, f, fd, l, l1, l2, len, max, skip, list, nonum, rev, exe;
 
 	editor = NULL;
 	skip = list = nonum = rev = exe = 0;
@@ -2217,9 +2216,6 @@ char *CONST argv[];
 	if (!history[0]) return(0);
 	tmp = removehist(0);
 	if (exe) {
-		char *s, *r;
-		int j, l1, l2, len, max;
-
 		i = n;
 		for (; n < argc; n++) if (!strchr(argv[n], '=')) break;
 		f = parsehist((n < argc) ? argv[n] : "!", NULL, '\0');
@@ -2254,11 +2250,11 @@ char *CONST argv[];
 		kanjifputs(s, stdout);
 		fputnl(stdout);
 		entryhist(0, s, 0);
-		ret = execmacro(s, NULL,
+		n = execmacro(s, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
-		if (ret < 0) ret = 0;
+		if (n < 0) n = 0;
 		free(s);
-		return(ret);
+		return(n);
 	}
 
 	if (!editor) editor = getenv2("FD_FCEDIT");
@@ -2296,8 +2292,6 @@ char *CONST argv[];
 		hitkey(2);
 	}
 	else {
-		int fd;
-
 		if ((fd = mktmpfile(path)) < 0) {
 			builtinerror(argv, argv[0], -1);
 			free(tmp);
@@ -2348,9 +2342,9 @@ char *CONST argv[];
 	}
 
 	Xfclose(fp);
-	ret = execmacro(editor, path, F_NOCONFIRM | F_IGNORELIST);
-	if (ret < 0) ret = 0;
-	if (ret) {
+	n = execmacro(editor, path, F_NOCONFIRM | F_IGNORELIST);
+	if (n < 0) n = 0;
+	if (n) {
 		builtinerror(argv, editor, -1);
 		rmtmpfile(path);
 		free(tmp);
@@ -2365,22 +2359,18 @@ char *CONST argv[];
 	}
 	free(tmp);
 
-	for (n = 0; (cp = fgets2(fp, 0)); n++) {
-		if (!*cp) {
-			free(cp);
-			continue;
-		}
+	for (; (cp = fgets2(fp, 0)); free(cp)) {
+		if (!*cp) continue;
 		kanjifputs(cp, stdout);
 		fputnl(stdout);
 		entryhist(0, cp, 0);
-		ret = execmacro(cp, NULL,
+		n = execmacro(cp, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
-		free(cp);
 	}
 	Xfclose(fp);
 	rmtmpfile(path);
 
-	return(ret);
+	return(n);
 }
 # endif	/* !NOPOSIXUTIL */
 
@@ -2599,7 +2589,7 @@ int argc;
 char *CONST argv[];
 {
 	char path[MAXPATHLEN];
-	int i, ret;
+	int i, n;
 
 	hitkey(2);
 	if (argc < 2) {
@@ -2615,17 +2605,17 @@ char *CONST argv[];
 		return(0);
 	}
 
-	ret = 0;
+	n = 0;
 	for (i = 1; i < argc; i++) {
 		if (printmd5(argv[i], stdout) < 0) {
 			builtinerror(argv, argv[i], -1);
-			ret = -1;
+			n = -1;
 			continue;
 		}
 		hitkey(0);
 	}
 
-	return(ret);
+	return(n);
 }
 
 static int NEAR evalmacro(argc, argv)
@@ -2633,14 +2623,14 @@ int argc;
 char *CONST argv[];
 {
 	char *cp;
-	int ret;
+	int n;
 
 	if (argc <= 1 || !(cp = catvar(&(argv[1]), ' '))) return(0);
-	ret = execmacro(cp, NULL, F_NOCONFIRM | F_ARGSET | F_NOKANJICONV);
-	if (ret < 0) ret = 0;
+	n = execmacro(cp, NULL, F_NOCONFIRM | F_ARGSET | F_NOKANJICONV);
+	if (n < 0) n = 0;
 	free(cp);
 
-	return(ret);
+	return(n);
 }
 
 # ifndef	_NOKANJICONV
@@ -2767,7 +2757,7 @@ int argc;
 char *CONST argv[];
 {
 	CONST char *s;
-	int ret, wastty;
+	int n, wastty;
 
 	if (dumbterm > 1) {
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
@@ -2778,10 +2768,10 @@ char *CONST argv[];
 
 	if (!(wastty = isttyiomode)) ttyiomode(1);
 	lcmdline = -1;
-	ret = yesno(s);
+	n = yesno(s);
 	if (!wastty) stdiomode();
 
-	return((ret) ? 0 : -1);
+	return((n) ? 0 : -1);
 }
 #endif	/* FD >= 2 */
 
@@ -3416,16 +3406,16 @@ static int NEAR loadsource(argc, argv)
 int argc;
 char *CONST argv[];
 {
-	int ret;
+	int n;
 
 	if (argc != 2) {
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
 	ttyiomode(1);
-	ret = loadruncom(argv[1], 1);
+	n = loadruncom(argv[1], 1);
 	stdiomode();
-	if (ret < 0) {
+	if (n < 0) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
@@ -3643,4 +3633,4 @@ VOID freedefine(VOID_A)
 # endif
 	for (i = 0; i < MAXHELPINDEX; i++) free(helpindex[i]);
 }
-#endif
+#endif	/* DEBUG */

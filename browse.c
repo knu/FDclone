@@ -38,19 +38,19 @@
 # endif
 #endif
 
-#define	CL_REG		0
-#define	CL_BACK		1
-#define	CL_DIR		2
-#define	CL_RONLY	3
-#define	CL_HIDDEN	4
-#define	CL_LINK		5
-#define	CL_SOCK		6
-#define	CL_FIFO		7
-#define	CL_BLOCK	8
-#define	CL_CHAR		9
-#define	CL_EXE		10
-#define	ANSI_FG		8
-#define	ANSI_BG		9
+#define	CL_REG			0
+#define	CL_BACK			1
+#define	CL_DIR			2
+#define	CL_RONLY		3
+#define	CL_HIDDEN		4
+#define	CL_LINK			5
+#define	CL_SOCK			6
+#define	CL_FIFO			7
+#define	CL_BLOCK		8
+#define	CL_CHAR			9
+#define	CL_EXE			10
+#define	ANSI_FG			8
+#define	ANSI_BG			9
 
 #if	MSDOS
 extern int setcurdrv __P_((int, int));
@@ -85,6 +85,7 @@ static int NEAR biascolor __P_((int));
 static int NEAR getcolor __P_((int));
 #endif
 static VOID NEAR pathbar __P_((VOID_A));
+static CONST char *NEAR skipstr __P_((CONST char *, int));
 static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
 static VOID NEAR cputbytes __P_((off_t, off_t, int));
@@ -204,11 +205,11 @@ static CONST u_short typelist[] = {
 static CONST u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
-#define	MAXMODELIST	arraysize(modelist)
+#define	MODELISTSIZ	arraysize(modelist)
 static CONST char suffixlist[] = {
 	'/', '@', '=', '|'
 };
-#define	MAXSUFFIXLIST	arraysize(suffixlist)
+#define	SUFFIXLISTSIZ	arraysize(suffixlist)
 #ifndef	_NOCOLOR
 static CONST u_char colorlist[] = {
 	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
@@ -243,7 +244,7 @@ namelist *namep;
 
 	if (!isread(namep)) return(CL_HIDDEN);
 	if (!iswrite(namep)) return(CL_RONLY);
-	for (i = 0; i < MAXMODELIST; i++)
+	for (i = 0; i < MODELISTSIZ; i++)
 		if ((namep -> st_mode & S_IFMT) == modelist[i])
 			return(colorlist[i]);
 	if (isexec(namep)) return(CL_EXE);
@@ -382,6 +383,15 @@ VOID helpbar(VOID_A)
 	Xtflush();
 }
 
+static CONST char *NEAR skipstr(s, n)
+CONST char *s;
+int n;
+{
+	while (n-- > 0 && *s) s++;
+
+	return(s);
+}
+
 static VOID NEAR statusbar(VOID_A)
 {
 	CONST char *str[6];
@@ -434,18 +444,18 @@ static VOID NEAR statusbar(VOID_A)
 		if (haste) Xkanjiputs(OMIT_K);
 		else
 #endif
-		if (!(sorton & 7)) Xkanjiputs(ORAW_K + 3);
+		if (!(sorton & 7)) Xkanjiputs(skipstr(ORAW_K, 3));
 		else {
 			str[0] = ONAME_K;
 			str[1] = OEXT_K;
 			str[2] = OSIZE_K;
 			str[3] = ODATE_K;
 			str[4] = OLEN_K;
-			Xkanjiputs(&(str[(sorton & 7) - 1][3]));
+			Xkanjiputs(skipstr(str[(sorton & 7) - 1], 3));
 
 			str[0] = OINC_K;
 			str[1] = ODEC_K;
-			Xcprintf2("(%k)", &(str[sorton / 8][3]));
+			Xcprintf2("(%k)", skipstr(str[sorton / 8], 3));
 		}
 	}
 
@@ -1060,9 +1070,9 @@ int no, isstandout;
 #endif
 
 	if (isdisptyp(dispmode) && i < width) {
-		for (j = 0; j < MAXMODELIST; j++)
+		for (j = 0; j < MODELISTSIZ; j++)
 			if ((list[no].st_mode & S_IFMT) == modelist[j]) break;
-		if (j < MAXSUFFIXLIST) buf[i] = suffixlist[j];
+		if (j < SUFFIXLISTSIZ) buf[i] = suffixlist[j];
 		else if (s_isreg(&(list[no]))
 		&& (list[no].st_mode & S_IEXEC_ALL))
 			buf[i] = '*';
@@ -1927,7 +1937,7 @@ int evaled;
 	char buf[MAXPATHLEN];
 #endif
 	char *def, *cwd, file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
-	int i, argc, ischgdir;
+	int n, argc, ischgdir;
 
 	if (!pathlist) argc = 0;
 	else for (argc = 0; argc < MAXINVOKEARGS; argc++)
@@ -1935,19 +1945,19 @@ int evaled;
 
 	cwd = getwd2();
 	def = NULL;
-	for (i = MAXWINDOWS - 1; i >= 0; i--) {
+	for (n = MAXWINDOWS - 1; n >= 0; n--) {
 #ifndef	_NOSPLITWIN
-		win = i;
-		winvar[i].v_fullpath = NULL;
+		win = n;
+		winvar[n].v_fullpath = NULL;
 # ifndef	_NOARCHIVE
-		winvar[i].v_archivedir = NULL;
+		winvar[n].v_archivedir = NULL;
 # endif
 #endif	/* !_NOSPLITWIN */
 #ifndef	_NOPTY
-		ptylist[i].pid = (p_id_t)0;
-		ptylist[i].path = NULL;
-		ptylist[i].fd = ptylist[i].pipe = -1;
-		ptylist[i].status = 0;
+		ptylist[n].pid = (p_id_t)0;
+		ptylist[n].path = NULL;
+		ptylist[n].fd = ptylist[n].pipe = -1;
+		ptylist[n].status = 0;
 #endif
 
 #ifndef	_NOARCHIVE
@@ -1977,14 +1987,14 @@ int evaled;
 		curcolumns = defcolumns;
 		FILEPERROW = 0;
 
-		if (i >= argc) continue;
+		if (n >= argc) continue;
 
 		chdir2(cwd);
-		def = initcwd(pathlist[i], prev, evaled);
+		def = initcwd(pathlist[n], prev, evaled);
 
 #ifndef	_NOSPLITWIN
-		winvar[i].v_fullpath = strdup2(fullpath);
-		if (i) {
+		winvar[n].v_fullpath = strdup2(fullpath);
+		if (n) {
 			getfilelist();
 			sorton = sorttype % 100;
 			filepos = calcfilepos(filelist, maxfile, def);
@@ -1999,7 +2009,7 @@ int evaled;
 		if (fileperrow(windows + 1) < WFILEMIN) {
 			hideclock = 2;
 			warning(0, NOROW_K);
-			for (i = windows; i < argc; i++) shutwin(i);
+			for (n = windows; n < argc; n++) shutwin(n);
 			break;
 		}
 		windows++;
@@ -2032,6 +2042,7 @@ int evaled;
 			ischgdir = browsedir(file, def);
 		} while (archivefile);
 #endif
+
 		if (ischgdir < 0) {
 			if (ischgdir > -2) chdir2(cwd);
 			break;
@@ -2049,7 +2060,7 @@ int evaled;
 	if (filelist) free(filelist);
 	if (findpattern) free(findpattern);
 #else
-	for (i = 0; i < MAXWINDOWS; i++) shutwin(i);
+	for (n = 0; n < MAXWINDOWS; n++) shutwin(n);
 	windows = 1;
 	win = 0;
 	calcwin();

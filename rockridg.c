@@ -168,7 +168,7 @@ int len;
 			continue;
 		}
 
-		for (eol = cp; *eol && !isblank2(*eol); eol++);
+		for (eol = cp; *eol; eol++) if (isblank2(*eol)) break;
 		if (*eol) *(eol++) = '\0';
 		if (!*(eol = skipspace(eol))) {
 			free(line);

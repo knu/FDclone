@@ -12,7 +12,6 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -20,9 +19,9 @@
 #include "printf.h"
 #include "kctype.h"
 
-#define	BUFUNIT		16
+#define	PRINTBUFUNIT	16
 #define	THDIGIT		3
-#define	STRNULL		"(null)"
+#define	NULLSTR		"(null)"
 
 #ifdef	USEPID_T
 typedef pid_t	p_id_t;
@@ -152,7 +151,7 @@ printbuf_t *pbufp;
 				pbufp -> buf[pbufp -> ptr] = '\0';
 			return(1);
 		}
-		pbufp -> size += BUFUNIT;
+		pbufp -> size += PRINTBUFUNIT;
 		if ((tmp = (char *)realloc(pbufp -> buf, pbufp -> size)))
 			pbufp -> buf = tmp;
 		else {
@@ -221,28 +220,28 @@ int width, prec;
 	}
 	else while (len < arraysize(num)) {
 		if (bit) {
-			i = (u & base);
+			c = (u & base);
 #ifdef	MINIMUMSHELL
-			i += '0';
+			c += '0';
 #else
-			if (i < 10) i += '0';
-			else if (cap) i += 'A' - 10;
-			else i += 'a' - 10;
+			if (c < 10) c += '0';
+			else if (cap) c += 'A' - 10;
+			else c += 'a' - 10;
 #endif
 		}
 		else {
 #ifndef	MINIMUMSHELL
-			if (pbufp -> flags & VF_UNSIGNED) i = (u % base);
+			if (pbufp -> flags & VF_UNSIGNED) c = (u % base);
 			else
 #endif
-			if ((i = (n % base)) < 0) i = -i;
-			i += '0';
+			if ((c = (n % base)) < 0) c = -c;
+			c += '0';
 		}
 
 		if ((pbufp -> flags & VF_THOUSAND)
 		&& (len % (THDIGIT + 1)) == THDIGIT)
 			num[len++] = ',';
-		num[len++] = i;
+		num[len++] = c;
 		if (bit) {
 			u >>= bit;
 			if (!u) break;
@@ -324,8 +323,8 @@ int width, prec;
 
 	if (s) len = strlen2(s);
 	else {
-		s = STRNULL;
-		len = strsize(STRNULL);
+		s = NULLSTR;
+		len = strsize(NULLSTR);
 #ifdef	LINUX
 		/* spec. of glibc */
 		if (prec >= 0 && len > prec) len = 0;

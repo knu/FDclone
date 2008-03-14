@@ -4,23 +4,22 @@
  *	backend of terminal emulation
  */
 
-#include "fd.h"
-
 #include <signal.h>
+#include "fd.h"
 #include "termio.h"
 #include "func.h"
-#include "termemu.h"
 
 #ifndef	_NOORIGSHELL
 #include "system.h"
 #endif
-
 #ifndef	_NOPTY
+#include "termemu.h"
+#endif
 
-#define	MAXESCPARAM	16
-#define	MAXESCCHAR	4
-#define	MAXTABSTOP	255
-#define	MAXLASTUCS2	(MAXNFLEN - 1)
+#define	MAXESCPARAM		16
+#define	MAXESCCHAR		4
+#define	MAXTABSTOP		255
+#define	MAXLASTUCS2		(MAXNFLEN - 1)
 
 typedef struct _ptyterm_t {
 	short cur_x, cur_y;
@@ -45,40 +44,26 @@ typedef struct _ptyterm_t {
 	char codeselect[MAXESCCHAR + 2];
 } ptyterm_t;
 
-#define	A_BOLD		00001
-#define	A_REVERSE	00002
-#define	A_DIM		00004
-#define	A_BLINK		00010
-#define	A_STANDOUT	00020
-#define	A_UNDERLINE	00040
-#define	A_INVISIBLE	00100
-#define	T_NOAUTOMARGIN	00001
-#define	T_MULTIBYTE	00002
-#define	T_NOAPPLIKEY	00004
-#define	T_NOAPPLICURSOR	00010
-#define	T_CODEALT	00020
-#define	T_LOCKED	00040
+#define	A_BOLD			00001
+#define	A_REVERSE		00002
+#define	A_DIM			00004
+#define	A_BLINK			00010
+#define	A_STANDOUT		00020
+#define	A_UNDERLINE		00040
+#define	A_INVISIBLE		00100
+#define	T_NOAUTOMARGIN		00001
+#define	T_MULTIBYTE		00002
+#define	T_NOAPPLIKEY		00004
+#define	T_NOAPPLICURSOR		00010
+#define	T_CODEALT		00020
+#define	T_LOCKED		00040
+
+#ifndef	_NOPTY
 
 extern int hideclock;
 extern int fdmode;
 extern int wheader;
 extern int emufd;
-
-static ptyterm_t pty[MAXWINDOWS + 1];
-static short last_x = (short)-1;
-static short last_y = (short)-1;
-static short last_fg = (short)-1;
-static short last_bg = (short)-1;
-static u_short last_attr = (u_short)0;
-static u_short last_termflags = (u_short)0;
-static char last_codeselect[MAXESCCHAR + 3] = "\033(B";
-#ifdef	SIGWINCH
-static int ptywinched = 0;
-#endif
-#ifndef	_NOKANJICONV
-static u_char ptyungetbuf[MAXUTF8LEN * MAXNFLEN * sizeof(short)];
-static int ptyungetnum = 0;
-#endif
 
 static VOID NEAR resettermattr __P_((int));
 static VOID NEAR resettermcode __P_((int));
@@ -120,6 +105,22 @@ static VOID NEAR evaloutput __P_((int));
 static int NEAR chgattr __P_((int, int));
 static int NEAR directoutput __P_((int));
 static int NEAR evalinput __P_((VOID_A));
+
+static ptyterm_t pty[MAXWINDOWS + 1];
+static short last_x = (short)-1;
+static short last_y = (short)-1;
+static short last_fg = (short)-1;
+static short last_bg = (short)-1;
+static u_short last_attr = (u_short)0;
+static u_short last_termflags = (u_short)0;
+static char last_codeselect[MAXESCCHAR + 3] = "\033(B";
+#ifdef	SIGWINCH
+static int ptywinched = 0;
+#endif
+#ifndef	_NOKANJICONV
+static u_char ptyungetbuf[MAXUTF8LEN * MAXNFLEN * sizeof(short)];
+static int ptyungetnum = 0;
+#endif
 
 
 static VOID NEAR resettermattr(w)
@@ -386,7 +387,7 @@ keyseq_t *kp;
 	}
 
 	if ((pty[w].termflags & T_NOAPPLIKEY)
-	&& (kp -> code >= K_F('*') && kp -> code <= K_DL)) {
+	&& (kp -> code >= K_F('*') && kp -> code < K_DL)) {
 		if (kp -> code == K_F('?')) kp -> code = K_CR;
 		else kp -> code -= K_F0;
 		kp -> len = (u_char)0;

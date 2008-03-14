@@ -13,14 +13,13 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
 
-#define	MAXLINEBUF	255
-#define	MAXFUNCNO	32
-#define	MAXARGS		10
+#define	MAXLINEBUF		255
+#define	MAXFUNCNO		32
+#define	MAXARGS			10
 
 extern VOID exit __P_((int));
 
@@ -74,7 +73,8 @@ char *line;
 
 	line = skipspace(line);
 
-	for (len = 0; line[len] == '_' || isalpha((int)(line[len])); len++);
+	for (len = 0; line[len]; len++)
+		if (line[len] != '_' && !isalpha((int)(line[len]))) break;
 	if (!len) return(NULL);
 
 	cp = skipspace(&(line[len]));

@@ -375,9 +375,13 @@ extern CONST char *nodospath __P_((char *, CONST char *));
 #define	fnodospath(p, i)	nodospath(p, filelist[i].name)
 #ifdef	NOUID
 extern int logical_access __P_((u_int));
+#define	logical_access2(s)	logical_access((u_int)((s) -> st_mode))
 #else
 extern int logical_access __P_((u_int, uid_t, gid_t));
+#define	logical_access2(s)	logical_access((u_int)((s) -> st_mode), \
+					(s) -> st_uid, (s) -> st_gid)
 #endif
+
 extern int getstatus __P_((namelist *));
 extern int cmplist __P_((CONST VOID_P, CONST VOID_P));
 #ifndef	_NOTREE
@@ -729,13 +733,13 @@ extern VOID freeenvpath __P_((VOID_A));
 #ifndef	_NOCUSTOMIZE
 extern VOID freestrarray __P_((char **, int));
 extern char **copystrarray __P_((char **, char *CONST *, int *, int));
-extern bindtable *copybind __P_((bindtable *, bindtable *));
+extern bindtable *copybind __P_((bindtable *, CONST bindtable *));
 # ifndef	_NOARCHIVE
 extern VOID freelaunchlist __P_((launchtable *, int));
-extern launchtable *copylaunch __P_((launchtable *, launchtable *,
+extern launchtable *copylaunch __P_((launchtable *, CONST launchtable *,
 		int *, int));
 extern VOID freearchlist __P_((archivetable *, int));
-extern archivetable *copyarch __P_((archivetable *, archivetable *,
+extern archivetable *copyarch __P_((archivetable *, CONST archivetable *,
 		int *, int));
 # endif
 # ifdef	_USEDOSEMU

@@ -9,12 +9,24 @@
 #include "func.h"
 #include "kanji.h"
 
-#define	MAXTIMESTR	8
-#define	ATTRWIDTH	10
+#ifndef	EISDIR
+#define	EISDIR			EACCES
+#endif
+
+#define	MAXTIMESTR		8
+#define	ATTRWIDTH		10
 #if	MSDOS
-#define	DIRENTSIZ(s)	DOSDIRENT
+#define	DIRENTSIZ(s)		DOSDIRENT
 #else
-#define	DIRENTSIZ(s)	(sizeof(struct dirent) - DNAMESIZE + strlen(s) + 1)
+#define	DIRENTSIZ(s)		(sizeof(struct dirent) \
+				- DNAMESIZE + strlen(s) + 1)
+#endif
+#ifdef	_NOEXTRACOPY
+#define	MAXCOPYITEM		4
+#define	FLAG_SAMEDIR		0
+#else
+#define	MAXCOPYITEM		5
+#define	FLAG_SAMEDIR		8
 #endif
 
 typedef struct _attrib_t {
@@ -45,18 +57,6 @@ extern CONST u_long fflaglist[];
 #endif
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 extern int inheritcopy;
-#endif
-
-#ifndef	EISDIR
-#define	EISDIR	EACCES
-#endif
-
-#ifdef	_NOEXTRACOPY
-#define	MAXCOPYITEM	4
-#define	FLAG_SAMEDIR	0
-#else
-#define	MAXCOPYITEM	5
-#define	FLAG_SAMEDIR	8
 #endif
 
 static int NEAR issamedir __P_((CONST char *, CONST char *));
@@ -383,7 +383,7 @@ struct stat *stp1, *stp2;
 
 	if (getdestpath(file, dest, stp1) < 0) return(CHK_ERROR);
 	if (Xlstat(dest, stp2) < 0) {
-		stp2 -> st_mode = S_IWRITE;
+		stp2 -> st_mode = S_IWUSR;
 		if (errno == ENOENT) return(CHK_OK);
 		warning(-1, dest);
 		return(CHK_ERROR);
@@ -432,7 +432,7 @@ struct stat *stp1, *stp2;
 				strcpy(getbasename(dest), tmp);
 				free(tmp);
 				if (Xlstat(dest, stp2) < 0) {
-					stp2 -> st_mode = S_IWRITE;
+					stp2 -> st_mode = S_IWUSR;
 					if (errno == ENOENT) return(CHK_OK);
 					warning(-1, dest);
 					return(CHK_ERROR);
@@ -531,12 +531,7 @@ int mode;
 #if	!MSDOS
 	if (stp) {
 		duperrno = errno;
-# ifdef	NOUID
-		mode = logical_access(stp -> st_mode);
-# else
-		mode = logical_access(stp -> st_mode,
-			stp -> st_uid, stp -> st_gid);
-# endif
+		mode = logical_access2(stp);
 		if (!(mode & F_ISWRI)) {
 			errno = duperrno;
 			warning(-1, path);
@@ -813,9 +808,9 @@ CONST char *path;
 			break;
 	}
 
-	if (!(destmode & S_IWRITE)) {
+	if (!(destmode & S_IWUSR)) {
 		st1.st_nlink = TCH_MODE;
-		st1.st_mode = (destmode | S_IWRITE);
+		st1.st_mode = (destmode | S_IWUSR);
 		if (touchfile(dest, &st1) >= 0) destnlink |= TCH_MODE;
 	}
 
@@ -864,9 +859,9 @@ CONST char *path;
 	}
 	if ((n = cpdir(path)) < 0) return(n);
 	if (Xlstat(path, &st) < 0) return(APL_ERROR);
-	if (!(st.st_mode & S_IWRITE)) {
+	if (!(st.st_mode & S_IWUSR)) {
 		st.st_nlink = TCH_MODE;
-		st.st_mode |= S_IWRITE;
+		st.st_mode |= S_IWUSR;
 		if (touchfile(path, &st) < 0) return(APL_ERROR);
 	}
 
@@ -1210,8 +1205,9 @@ int flag;
 #ifdef	HAVEFLAGS
 	char buf[WMODE + 1];
 #endif
-	struct tm *tm;
 	attrib_t attr;
+	struct tm *tm;
+	time_t t;
 	u_int mask;
 	int ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y, excl;
 
@@ -1527,6 +1523,7 @@ int flag;
 	|| tm -> tm_mday < 1 || tm -> tm_mday > 31
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 60)
 		return(-1);
+	if ((t = timelocal2(tm)) == (time_t)-1) return(-1);
 
 	mask = (TCH_CHANGE | TCH_MASK | TCH_MODEEXE);
 	switch (excl) {
@@ -1542,15 +1539,16 @@ int flag;
 			break;
 #endif
 		default:
-			if (attrmode != namep -> st_mode) mask |= TCH_MODE;
+			if (attr.mode != (namep -> st_mode & ~S_IFMT))
+				mask |= TCH_MODE;
 #ifdef	HAVEFLAGS
-			if (attrflags != namep -> st_flags) mask |= TCH_FLAGS;
+			if (attr.flags != namep -> st_flags) mask |= TCH_FLAGS;
 #endif
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
-			if (attruid != namep -> st_uid) mask |= TCH_UID;
-			if (attrgid != namep -> st_gid) mask |= TCH_GID;
+			if (attr.uid != namep -> st_uid) mask |= TCH_UID;
+			if (attr.gid != namep -> st_gid) mask |= TCH_GID;
 #endif
-			if (attrtime != namep -> st_mtim) mask |= TCH_MTIME;
+			if (t != namep -> st_mtim) mask |= TCH_MTIME;
 			break;
 	}
 	attrnlink = (attr.nlink & mask);
@@ -1565,7 +1563,7 @@ int flag;
 	attrgid = attr.gid;
 # endif
 #endif	/* !_NOEXTRAATTR */
-	attrtime = timelocal2(tm);
+	attrtime = t;
 
 	return(1);
 }
@@ -2012,7 +2010,7 @@ CONST char *path;
 
 	if (isdotdir(path)) return(APL_OK);
 	if (getdestpath(path, dest, &st) < 0) return(APL_OK);
-	mode = ((st.st_mode & 0777) | S_IWRITE);
+	mode = ((st.st_mode & 0777) | S_IWUSR);
 	if (Xmkdir(dest, mode) >= 0) return(APL_OK);
 	if (errno != EEXIST) return(APL_ERROR);
 	if (stat2(dest, &st) >= 0) {

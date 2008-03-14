@@ -23,19 +23,26 @@
 #include "dosdisk.h"
 #include "kctype.h"
 
+#undef	S_IRUSR
+#undef	S_IWUSR
+#undef	S_IXUSR
+#define	S_IRUSR			00400
+#define	S_IWUSR			00200
+#define	S_IXUSR			00100
+
 #ifndef	ENODEV
-#define	ENODEV	EACCES
+#define	ENODEV			EACCES
 #endif
 #ifndef	EIO
-#define	EIO	ENODEV
+#define	EIO			ENODEV
 #endif
 #ifndef	O_ACCMODE
-#define	O_ACCMODE	(O_RDONLY | O_WRONLY | O_RDWR)
+#define	O_ACCMODE		(O_RDONLY | O_WRONLY | O_RDWR)
 #endif
 
-#define	KC_SJIS1	0001
-#define	KC_SJIS2	0002
-#define	KC_EUCJP	0010
+#define	KC_SJIS1		0001
+#define	KC_SJIS2		0002
+#define	KC_EUCJP		0010
 #define	int21call(reg, sreg)	intcall(0x21, reg, sreg)
 
 #ifdef	FD
@@ -618,6 +625,9 @@ char *shortname(path, alias)
 CONST char *path;
 char *alias;
 {
+# ifndef	_NODOSDRIVE
+	char buf[MAXPATHLEN];
+# endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	int i;
@@ -626,8 +636,6 @@ char *alias;
 	if ((i = supportLFN(path)) <= 0) {
 # ifndef	_NODOSDRIVE
 		if (i == -1) {
-			char buf[MAXPATHLEN];
-
 			dependdosfunc = 0;
 			if (dosshortname(regpath(path, buf), alias))
 				return(alias);
@@ -1823,6 +1831,10 @@ DIR *dirp;
 struct dirent *unixreaddir(dirp)
 DIR *dirp;
 {
+#ifndef	_NOUSELFN
+	struct lfnfind_t *lbufp;
+#endif
+	struct dosfind_t *dbufp;
 	static struct dirent d;
 	char *cp, path[MAXPATHLEN];
 	int i;
@@ -1835,19 +1847,15 @@ DIR *dirp;
 
 #ifndef	_NOUSELFN
 	if ((dirp -> dd_id & DID_IFLFN) && !(dirp -> dd_id & DID_IFLABEL)) {
-		struct lfnfind_t *bufp;
-
-		bufp = (struct lfnfind_t *)(dirp -> dd_buf);
-		strcpy(d.d_name, bufp -> name);
-		strcpy(d.d_alias, bufp -> alias);
+		lbufp = (struct lfnfind_t *)(dirp -> dd_buf);
+		strcpy(d.d_name, lbufp -> name);
+		strcpy(d.d_alias, lbufp -> alias);
 	}
 	else
 #endif	/* !_NOUSELFN */
 	{
-		struct dosfind_t *bufp;
-
-		bufp = (struct dosfind_t *)(dirp -> dd_buf);
-		strcpy(d.d_name, bufp -> name);
+		dbufp = (struct dosfind_t *)(dirp -> dd_buf);
+		strcpy(d.d_name, dbufp -> name);
 		d.d_alias[0] = '\0';
 	}
 
@@ -1938,6 +1946,9 @@ int mode;
 int unixunlink(path)
 CONST char *path;
 {
+#ifndef	_NODOSDRIVE
+	char buf[MAXPATHLEN];
+#endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	int i;
@@ -1946,8 +1957,6 @@ CONST char *path;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN];
-
 		if (dosunlink(regpath(path, buf)) >= 0) return(0);
 	}
 #endif	/* !_NODOSDRIVE */
@@ -2051,6 +2060,9 @@ CONST char *from, *to;
 int unixrename(from, to)
 CONST char *from, *to;
 {
+#ifndef	_NODOSDRIVE
+	char buf1[MAXPATHLEN], buf2[MAXPATHLEN];
+#endif
 	struct dosfind_t dbuf;
 	struct SREGS sreg;
 	__dpmi_regs reg;
@@ -2065,8 +2077,6 @@ CONST char *from, *to;
 	t = supportLFN(to);
 #ifndef	_NODOSDRIVE
 	if (((f < 0 && f > -3) || (t < 0 && t > -3)) && (f != -3 && t != -3)) {
-		char buf1[MAXPATHLEN], buf2[MAXPATHLEN];
-
 		dependdosfunc = 0;
 		if (dosrename(regpath(from, buf1), regpath(to, buf2)) >= 0)
 			return(0);
@@ -2117,6 +2127,9 @@ int unixmkdir(path, mode)
 CONST char *path;
 int mode;
 {
+#ifndef	_NODOSDRIVE
+	char buf[MAXPATHLEN];
+#endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	int i;
@@ -2125,8 +2138,6 @@ int mode;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN];
-
 		dependdosfunc = 0;
 		if (dosmkdir(regpath(path, buf), mode) >= 0) return(0);
 		else if (!dependdosfunc) return(-1);
@@ -2147,6 +2158,9 @@ int mode;
 int unixrmdir(path)
 CONST char *path;
 {
+#ifndef	_NODOSDRIVE
+	char buf[MAXPATHLEN];
+#endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	int i;
@@ -2155,8 +2169,6 @@ CONST char *path;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
-		char buf[MAXPATHLEN];
-
 		if (dosrmdir(regpath(path, buf)) >= 0) return(0);
 	}
 #endif	/* !_NODOSDRIVE */
@@ -2173,6 +2185,9 @@ CONST char *path;
 int unixchdir(path)
 CONST char *path;
 {
+#ifndef	_NODOSDRIVE
+	char buf[MAXPATHLEN];
+#endif
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	int i;
@@ -2182,8 +2197,6 @@ CONST char *path;
 	i = supportLFN(path);
 #ifndef	_NODOSDRIVE
 	if (i == -1) {
-		char buf[MAXPATHLEN];
-
 		if (!(path = preparefile(path, buf))) return(-1);
 	}
 #endif	/* !_NODOSDRIVE */
@@ -2241,9 +2254,9 @@ u_int attr;
 
 	mode = 0;
 	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
-	if (!(attr & DS_IHIDDEN)) mode |= S_IREAD;
-	if (!(attr & DS_IRDONLY)) mode |= S_IWRITE;
-	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IEXEC);
+	if (!(attr & DS_IHIDDEN)) mode |= S_IRUSR;
+	if (!(attr & DS_IRDONLY)) mode |= S_IWUSR;
+	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IXUSR);
 	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
 	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
 	else mode |= S_IFREG;
@@ -2258,8 +2271,8 @@ u_int mode;
 
 	attr = 0;
 	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
-	if (!(mode & S_IREAD)) attr |= DS_IHIDDEN;
-	if (!(mode & S_IWRITE)) attr |= DS_IRDONLY;
+	if (!(mode & S_IRUSR)) attr |= DS_IHIDDEN;
+	if (!(mode & S_IWUSR)) attr |= DS_IRDONLY;
 	if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
 	else if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
 
@@ -2307,9 +2320,12 @@ CONST char *path;
 statfs_t *buf;
 {
 #ifndef	_NOUSELFN
+# ifndef	_NODOSDRIVE
+	char tmp[3 * sizeof(long) + 1];
+# endif
 	struct fat32statfs_t fsbuf;
 	int i;
-#endif
+#endif	/* !_NOUSELFN */
 	struct SREGS sreg;
 	__dpmi_regs reg;
 	int drv, drive;
@@ -2326,8 +2342,6 @@ statfs_t *buf;
 	i = supportLFN(path);
 # ifndef	_NODOSDRIVE
 	if (i == -2) {
-		char tmp[3 * sizeof(long) + 1];
-
 		if (dosstatfs(drive, tmp) < 0) return(-1);
 		buf -> f_bsize = *((u_long *)&(tmp[0 * sizeof(long)]));
 		buf -> f_blocks = *((u_long *)&(tmp[1 * sizeof(long)]));

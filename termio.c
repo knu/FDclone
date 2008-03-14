@@ -12,11 +12,9 @@
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
-
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -106,6 +104,9 @@ extern int Xwrite __P_((int, CONST char *, int));
 extern VOID checksuspend __P_((VOID));
 #endif
 
+#if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+extern int interrupted;
+#endif
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
@@ -301,6 +302,13 @@ int nbytes;
 	int n;
 
 	for (;;) {
+#if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+		if (interrupted) {
+			errno = EINTR;
+			n = -1;
+			break;
+		}
+#endif
 		if ((n = Xread(fd, buf, nbytes)) >= 0) {
 			errno = 0;
 			return(n);
@@ -327,6 +335,13 @@ int nbytes;
 
 	cp = (char *)buf;
 	for (;;) {
+#if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+		if (interrupted) {
+			errno = EINTR;
+			n = -1;
+			break;
+		}
+#endif
 		if ((n = Xwrite(fd, cp, nbytes)) >= 0) {
 			if (n >= nbytes) {
 				errno = 0;
@@ -663,6 +678,13 @@ int flags;
 	if (max++ < 0) return(0);
 
 	for (;;) {
+# if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+		if (interrupted) {
+			errno = EINTR;
+			n = -1;
+			break;
+		}
+# endif
 # if	!MSDOS && defined (FD)
 		if (flags & SEL_TTYIO) checksuspend();
 # endif

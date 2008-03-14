@@ -13,15 +13,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
+# ifndef	NOUNISTDH
+# include <unistd.h>
+# endif
+# ifndef	NOSTDLIBH
+# include <stdlib.h>
+# endif
 #include "printf.h"
 #include "kctype.h"
 #endif	/* !FD */
@@ -33,12 +30,12 @@
 #include "system.h"
 #endif
 #if	MSDOS && !defined (FD)
-#define	gettext		dummy_gettext	/* fake for DJGPP gcc-3.3 */
+#define	gettext			dummy_gettext	/* fake for DJGPP gcc-3.3 */
 #include <conio.h>
 #endif
 
 #if	MSDOS && !defined (FD)
-#define	VOL_FAT32	"FAT32"
+#define	VOL_FAT32		"FAT32"
 # ifdef	DOUBLESLASH
 # define	MNTDIRSIZ	MAXPATHLEN
 # else
@@ -51,41 +48,44 @@
 # include <dir.h>
 # endif
 #include "unixemu.h"
-#define	DOSCOMOPT	'/'
-#define	C_EOF		K_CTRL('Z')
+#define	DOSCOMOPT		'/'
+#define	C_EOF			K_CTRL('Z')
 #else	/* !MSDOS */
 #include <sys/time.h>
 #include <sys/file.h>
 #include <sys/param.h>
 # ifdef	USEDIRECT
 # include <sys/dir.h>
-# define	dirent	direct
+# define	dirent		direct
 # else
 # include <dirent.h>
 # endif
 # ifdef	USEUTIME
 # include <utime.h>
 # endif
-#define	DOSCOMOPT	'-'
-#define	C_EOF		K_CTRL('D')
+#define	DOSCOMOPT		'-'
+#define	C_EOF			K_CTRL('D')
 #endif	/* !MSDOS */
 
-#define	BUFUNIT		32
-#define	COPYRETRY	10
-#define	DIRSORTFLAG	"NSEDGA"
-#define	DIRATTRFLAG	"DRHSA"
-#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
-#define	b_realloc(ptr, n, type) \
-			(((n) % BUFUNIT) ? ((type *)(ptr)) \
-			: (type *)realloc2(ptr, b_size(n, type)))
-#define	dir_isdir(sp)	(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
+#define	BUFUNIT			32
+#define	COPYRETRY		10
+#define	DIRSORTFLAG		"NSEDGA"
+#define	DIRATTRFLAG		"DRHSA"
+#define	b_size(n, type)		((((n) / BUFUNIT) + 1) \
+				* BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type)	(((n) % BUFUNIT) ? ((type *)(ptr)) \
+				: (type *)realloc2(ptr, b_size(n, type)))
+#define	dir_isdir(sp)		(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
 
 struct filestat_t {
 	char *nam;
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 	char *d_alias;
 #else
-#define	d_alias		nam
+#define	d_alias			nam
+#endif
+#ifndef	NOSYMLINK
+	char *lnam;
 #endif
 	u_short mod;
 	off_t siz;
@@ -94,13 +94,13 @@ struct filestat_t {
 	u_char flags;
 };
 
-#define	FS_NOTMATCH	0001
+#define	FS_NOTMATCH		0001
 
 #if	defined (DOSCOMMAND) \
 && (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
 
 #ifdef	FD
-#define	c_left		termstr[C_LEFT]
+#define	c_left			termstr[C_LEFT]
 #else	/* !FD */
 # if	MSDOS
 # define	cc_intr		K_CTRL('C')
@@ -110,11 +110,11 @@ extern int ttyio;
 static int cc_intr = -1;
 # define	K_CR		'\n'
 # endif	/* !MSDOS */
-#define	K_CTRL(c)	((c) & 037)
-#define	K_BS		010
-#define	n_line		24
-#define	t_clear		"\033[;H\033[2J"
-#define	c_left		"\010"
+#define	K_CTRL(c)		((c) & 037)
+#define	K_BS			010
+#define	n_line			24
+#define	t_clear			"\033[;H\033[2J"
+#define	c_left			"\010"
 #endif	/* !FD */
 
 #ifndef	FD
@@ -162,7 +162,7 @@ typedef struct statfs		statfs_t;
 #  ifdef	USEFSDATA
 #include <sys/mount.h>
 typedef struct fs_data		statfs_t;
-#  define	statfs2(path, buf)	(statfs(path, buf) - 1)
+#  define	statfs2(p, b)	(statfs(p, b) - 1)
 #  define	blocksize(fs)	1024
 #  define	f_blocks	fd_req.btot
 #  define	f_bavail	fd_req.bfreen
@@ -172,12 +172,12 @@ typedef struct fs_data		statfs_t;
 #  endif
 #  if	defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
 #   if	(STATFSARGS >= 4)
-#   define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
+#   define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t), 0)
 #   else
 #    if	(STATFSARGS == 3)
-#    define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
+#    define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t))
 #    else
-#    define	statfs2			statfs
+#    define	statfs2		statfs
 #    endif
 #   endif
 #  endif	/* USESTATFSH || USEVFSH || USEMOUNTH */
@@ -185,14 +185,10 @@ typedef struct fs_data		statfs_t;
 #endif	/* !FD */
 
 #ifdef	NOFILEMODE
-# ifdef	S_IRUSR
-# undef	S_IRUSR
-# endif
-# ifdef	S_IWUSR
-# undef	S_IWUSR
-# endif
-#define	S_IRUSR	00400
-#define	S_IWUSR	00200
+#undef	S_IRUSR
+#undef	S_IWUSR
+#define	S_IRUSR			00400
+#define	S_IWUSR			00200
 #endif
 
 #ifdef	NOERRNO
@@ -210,6 +206,7 @@ extern char *Xgetwd __P_((char *));
 extern int Xstat __P_((CONST char *, struct stat *));
 extern int Xlstat __P_((CONST char *, struct stat *));
 extern int Xaccess __P_((CONST char *, int));
+extern int Xreadlink __P_((CONST char *, char *, int));
 extern int Xchmod __P_((CONST char *, int));
 extern int Xunlink __P_((CONST char *));
 extern int Xrename __P_((CONST char *, CONST char *));
@@ -223,7 +220,6 @@ extern off_t Xlseek __P_((int, off_t, int));
 # endif	/* !_NODOSDRIVE */
 extern int Xmkdir __P_((CONST char *, int));
 extern int Xrmdir __P_((CONST char *));
-extern int stat2 __P_((CONST char *, struct stat *));
 #else	/* !FD */
 # if	MSDOS
 extern DIR *Xopendir __P_((CONST char *));
@@ -275,47 +271,42 @@ extern int Xmkdir __P_((CONST char *, int));
 # if	MSDOS
 extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 # endif
-# ifdef	NOSYMLINK
-# define	stat2		Xstat
-# else
-extern int stat2 __P_((CONST char *, struct stat *));
-# endif
 #endif	/* !FD */
 
 #ifndef	O_BINARY
-#define	O_BINARY	0
+#define	O_BINARY		0
 #endif
 #ifndef	O_TEXT
-#define	O_TEXT		0
+#define	O_TEXT			0
 #endif
 #ifndef	ENOSPC
-#define	ENOSPC		EACCES
+#define	ENOSPC			EACCES
 #endif
 #ifndef	ENODEV
-#define	ENODEV		EACCES
+#define	ENODEV			EACCES
 #endif
 #ifndef	EIO
-#define	EIO		ENODEV
+#define	EIO			ENODEV
 #endif
 #ifndef	ETIMEDOUT
-#define	ETIMEDOUT	EIO
+#define	ETIMEDOUT		EIO
 #endif
 #ifndef	DEV_BSIZE
-#define	DEV_BSIZE	512
+#define	DEV_BSIZE		512
 #endif
 
 #ifndef	L_SET
 # ifdef	SEEK_SET
-# define	L_SET	SEEK_SET
+# define	L_SET		SEEK_SET
 # else
-# define	L_SET	0
+# define	L_SET		0
 # endif
 #endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
-# define	L_INCR	SEEK_CUR
+# define	L_INCR		SEEK_CUR
 # else
-# define	L_INCR	1
+# define	L_INCR		1
 # endif
 #endif	/* !L_INCR */
 
@@ -333,7 +324,7 @@ extern int _dospath __P_((CONST char *));
 extern int dospath3 __P_((CONST char *));
 # else
 extern int dospath __P_((CONST char *, char *));
-#define	dospath3(path)	dospath(path, NULL)
+#define	dospath3(path)		dospath(path, NULL)
 # endif
 # ifndef	_NODOSDRIVE
 extern int preparedrv __P_((int, int *));
@@ -445,19 +436,19 @@ extern CONST char *CONST sys_errlist[];
 
 static CONST char *doserrstr[] = {
 	NULL,
-#define	ER_REQPARAM	1
+#define	ER_REQPARAM		1
 	"Required parameter missing",
-#define	ER_TOOMANYPARAM	2
+#define	ER_TOOMANYPARAM		2
 	"Too many parameters",
-#define	ER_FILENOTFOUND	3
+#define	ER_FILENOTFOUND		3
 	"File not found",
-#define	ER_INVALIDPARAM	4
+#define	ER_INVALIDPARAM		4
 	"Invalid parameter",
-#define	ER_DUPLFILENAME	5
+#define	ER_DUPLFILENAME		5
 	"Duplicate file name or file in use",
-#define	ER_COPIEDITSELF	6
+#define	ER_COPIEDITSELF		6
 	"File cannot be copied onto itself",
-#define	ER_INVALIDSW	7
+#define	ER_INVALIDSW		7
 	"Invalid switch",
 };
 #define	DOSERRSIZ	arraysize(doserrstr)
@@ -467,17 +458,17 @@ static int dirline = 0;
 static char *dirwd = NULL;
 static int dirtype = '\0';
 static int dirflag = 0;
-#define	DF_LOWER	001
-#define	DF_PAUSE	002
-#define	DF_SUBDIR	004
-#define	DF_CANCEL	010
+#define	DF_LOWER		001
+#define	DF_PAUSE		002
+#define	DF_SUBDIR		004
+#define	DF_CANCEL		010
 static int copyflag = 0;
-#define	CF_BINARY	001
-#define	CF_TEXT		002
-#define	CF_VERIFY	004
-#define	CF_NOCONFIRM	010
-#define	CF_VERBOSE	020
-#define	CF_CANCEL	040
+#define	CF_BINARY		001
+#define	CF_TEXT			002
+#define	CF_VERIFY		004
+#define	CF_NOCONFIRM		010
+#define	CF_VERBOSE		020
+#define	CF_CANCEL		040
 
 
 #ifndef	FD
@@ -766,8 +757,9 @@ CONST char *src, *dest;
 		if (Xunlink(dest) < 0) return(-1);
 	}
 	path[len] = '\0';
+	if (Xsymlink(path, dest) < 0) return(-1);
 
-	return(Xsymlink(path, dest));
+	return(1);
 }
 # endif	/* !NOSYMLINK */
 
@@ -1162,10 +1154,20 @@ int verbose;
 	}
 	fputc(' ', stdout);
 
-	if (dir_isdir(dirp)) fputs("  <DIR>      ", stdout);
-	else if ((dirp -> mod & S_IFMT) == S_IFREG)
-		fprintf2(stdout, "%'13qd", dirp -> siz);
-	else fputs("             ", stdout);
+	switch (dirp -> mod & S_IFMT) {
+		case S_IFREG:
+#ifndef	NOSYMLINK
+		case S_IFLNK:
+#endif
+			fprintf2(stdout, "%'13qd", dirp -> siz);
+			break;
+		case S_IFDIR:
+			fputs("  <DIR>      ", stdout);
+			break;
+		default:
+			fputs("             ", stdout);
+			break;
+	}
 
 #ifndef	MINIMUMSHELL
 	if (verbose > 0) {
@@ -1288,7 +1290,7 @@ struct filestat_t *dirp;
 }
 
 #ifdef	MINIMUMSHELL
-#define	n_incline	1
+#define	n_incline		1
 static int NEAR _checkline(VOID_A)
 #else
 static int NEAR _checkline(n_incline)
@@ -1414,6 +1416,9 @@ off_t *sump, *bsump;
 #ifndef	MINIMUMSHELL
 	off_t bsum;
 #endif
+#ifndef	NOSYMLINK
+	char tmp[MAXPATHLEN];
+#endif
 	struct filestat_t *dirlist;
 	DIR *dirp;
 	struct dirent *dp;
@@ -1434,13 +1439,25 @@ off_t *sump, *bsump;
 	dirlist = NULL;
 	while ((dp = Xreaddir(dirp))) {
 		strcpy(file, dp -> d_name);
-		if (stat2(dirwd, &st) < 0) continue;
+#ifndef	NOSYMLINK
+		if (Xlstat(dirwd, &st) < 0 || (st.st_mode & S_IFMT) != S_IFLNK)
+			i = -1;
+		else i = Xreadlink(dirwd, tmp, sizeof(tmp) - 1);
+#endif
+		if (Xstat(dirwd, &st) < 0) continue;
 
 		dirlist = b_realloc(dirlist, n, struct filestat_t);
 		dirlist[n].nam = strdup2(dp -> d_name);
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 		dirlist[n].d_alias = (dp -> d_alias[0])
 			? strdup2(dp -> d_alias) : dirlist[n].nam;
+#endif
+#ifndef	NOSYMLINK
+		if (i < 0) dirlist[n].lnam = NULL;
+		else {
+			tmp[i] = '\0';
+			dirlist[n].lnam = strdup2(tmp);
+		}
 #endif
 		dirlist[n].mod = st.st_mode;
 		dirlist[n].siz = st.st_size;
@@ -1578,6 +1595,9 @@ off_t *sump, *bsump;
 #if	MSDOS && defined (FD) && !defined (_NOUSELFN)
 		if (dirlist[n].d_alias != dirlist[n].nam)
 			free(dirlist[n].d_alias);
+#endif
+#ifndef	NOSYMLINK
+		if (dirlist[n].lnam) free(dirlist[n].lnam);
 #endif
 	}
 	if (dirlist) free(dirlist);
@@ -2101,8 +2121,10 @@ int sbin, dbin, dfd;
 	int n, nread, fd1, fd2, tty1, tty2, retry, size, duperrno;
 
 #ifndef	NOSYMLINK
-	if (dfd < 0 && (stp -> st_mode & S_IFMT) == S_IFLNK)
-		return(cpsymlink(src, dest));
+	if ((stp -> st_mode & S_IFMT) == S_IFLNK) {
+		if (dfd < 0) return(cpsymlink(src, dest));
+		if (Xstat(src, stp) < 0) return(-1);
+	}
 #endif
 
 	if ((fd1 = Xopen(src, O_TEXT | O_RDONLY, stp -> st_mode)) < 0)

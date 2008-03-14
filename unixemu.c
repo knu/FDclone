@@ -286,9 +286,9 @@ struct stat *stp;
 		if (!stricmp(cp, EXTCOM)
 		|| !stricmp(cp, EXTEXE)
 		|| !stricmp(cp, EXTBAT))
-			mode |= S_IEXEC;
+			mode |= S_IXUSR;
 	}
-	mode &= (S_IREAD | S_IWRITE | S_IEXEC);
+	mode &= (S_IRUSR | S_IWUSR | S_IXUSR);
 	mode |= (mode >> 3) | (mode >> 6);
 	stp -> st_mode |= mode;
 
@@ -353,7 +353,7 @@ int mode;
 #endif
 	if ((n = (access(cp, mode)) ? -1 : 0) < 0) /*EMPTY*/;
 	else if (!(mode & X_OK)) /*EMPTY*/;
-	else if (Xstat(path, &st) < 0 || !(st.st_mode & S_IEXEC)) {
+	else if (Xstat(path, &st) < 0 || !(st.st_mode & S_IXUSR)) {
 		errno = EACCES;
 		n = -1;
 	}
@@ -473,7 +473,7 @@ CONST char *path;
 	path = convput(conv, path, 1, 1, NULL, NULL);
 	if ((n = unixunlink(path)) < 0) {
 		if (errno == EACCES
-		&& unixchmod(path, (S_IREAD | S_IWRITE | S_ISVTX)) >= 0)
+		&& unixchmod(path, (S_IRUSR | S_IWUSR | S_ISVTX)) >= 0)
 			n = unixunlink(path);
 	}
 	LOG1(_LOG_WARNING_, n, "unlink(\"%k\");", path);

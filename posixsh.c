@@ -12,15 +12,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
+# ifndef	NOUNISTDH
+# include <unistd.h>
+# endif
+# ifndef	NOSTDLIBH
+# include <stdlib.h>
+# endif
 #include "printf.h"
 #include "kctype.h"
 #endif	/* !FD */
@@ -498,7 +495,7 @@ CONST char *ident;
 
 	n = 0;
 	re = regexp_init(ident, -1);
-	for (max = 0; shellalias[max].ident; max++);
+	for (max = 0; shellalias[max].ident; max++) /*EMPTY*/;
 	for (i = 0; i < max; i++) {
 		if (re) {
 			if (!regexp_exec(re, shellalias[i].ident, 0)) continue;
@@ -527,7 +524,7 @@ shaliastable *alias;
 	int i, n;
 
 	if (!alias) n = 0;
-	else for (n = 0; alias[n].ident; n++);
+	else for (n = 0; alias[n].ident; n++) /*EMPTY*/;
 	dupl = (shaliastable *)malloc2((n + 1) * sizeof(shaliastable));
 	for (i = 0; i < n; i++) {
 		dupl[i].ident = strdup2(alias[i].ident);
@@ -844,7 +841,8 @@ int *ptrp;
 		n = 0L;
 		if (!(cp = evalvararg(new, '\'', EA_BACKQ, 0))) *ptrp = -1;
 		else {
-			for (i = 0; cp[i] && strchr(IFS_SET, cp[i]); i++);
+			for (i = 0; cp[i]; i++)
+				if (!strchr(IFS_SET, cp[i])) break;
 			if (cp[i]) {
 				i = evalexpression(cp, i, &n, 9);
 				if (i < 0 || cp[i]) *ptrp = -1;
@@ -1080,7 +1078,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
 		alias = duplalias(shellalias);
-		for (i = 0; alias[i].ident; i++);
+		for (i = 0; alias[i].ident; i++) /*EMPTY*/;
 		if (i > 1) qsort(alias, i, sizeof(shaliastable), cmpalias);
 		for (i = 0; alias[i].ident; i++) {
 			fprintf2(stdout, "alias %k='%k'",

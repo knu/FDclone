@@ -8,11 +8,11 @@
 #include "func.h"
 #include "kanji.h"
 
-#ifndef	_NOARCHIVE
-
 #ifndef	_NOORIGSHELL
 #include "system.h"
 #endif
+
+#ifndef	_NOARCHIVE
 
 #if	MSDOS
 extern char *unixgetcurdir __P_((char *, int));
@@ -39,6 +39,10 @@ extern char *deftmpdir;
 extern int hideclock;
 extern int n_args;
 
+#define	MAXSCORE		256
+#define	IGNORETYPESYM		"-VMNLhC"
+#define	SYMLINKSTR		"->"
+#define	GNULINKSTR		"link to"
 #ifdef	OLDPARSE
 # if	MSDOS
 #define	PM_LHA	5, 2, \
@@ -92,64 +96,15 @@ extern int n_args;
 		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
 		{0, 0, 0, 0, 0, 0, 0, 0, 0}, \
 		{SEP_NONE, SEP_NONE, SEP_NONE}, 1
-#define	LINESEP	'\t'
-#define	isarchbr(l)	(((l) -> topskip) < SKP_NONE)
+#define	LINESEP			'\t'
+#define	isarchbr(l)		(((l) -> topskip) != SKP_NONE)
 #else	/* !OLDPARSE */
-static char *form_lha[] = {
-# if	MSDOS
-	"%*f\\n%s %x %x %y-%m-%d %t %a",	/* MS-DOS (-v) */
-	"%1x %12f %s %x %x %y-%m-%d %t %a",	/* MS-DOS (-l) */
-# else
-	"%a %u/%g %s %x %m %d %{yt} %*f",	/* >=1.14 */
-	"%9a %u/%g %s %x %m %d %{yt} %*f",	/* traditional */
-# endif
-	NULL
-};
-static char *ign_lha[] = {
-# if	MSDOS
-	"Listing of archive : *",
-	"  Name          Original *",
-	"--------------*",
-#  if	defined (FAKEMETA) || !defined (BSPATHDELIM)
-	"* files * ???.?% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
-#  else
-	"* files * ???.?%% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
-#  endif
-	"",
-# else	/* !MSDOS */
-	" PERMSSN * UID*GID *",
-	"----------*",
-	" Total * file* ???.*%*",
-# endif	/* !MSDOS */
-	NULL
-};
-static char *form_tar[] = {
-# if	MSDOS
-	"%a %u/%g %s %m %d %t %y %*f",		/* traditional */
-	"%a %u/%g %s %y-%m-%d %t %*f",		/* GNU >=1.12 */
-	"%a %u/%g %s %m %d %y %t %*f",		/* kmtar */
-# else	/* !MSDOS */
-	"%a %u/%g %s %m %d %t %y %*f",		/* SVR4 */
-	"%a %u/%g %s %y-%m-%d %t %*f",		/* GNU >=1.12 */
-	"%a %l %u %g %s %m %d %{yt} %*f",	/* pax */
-	"%10a %u/%g %s %m %d %t %y %*f",	/* tar (UXP/DS) */
-	"%9a %u/%g %s %m %d %t %y %*f",		/* traditional */
-	"%a %u %g %s %m %d %t %y %*f",		/* AIX */
-	"%a %u/%g %m %d %t %y %*f",		/* IRIX */
-# endif	/* !MSDOS */
-	NULL
-};
-#define	PM_LHA	form_lha, ign_lha, NULL, 0, 0
-#define	PM_TAR	form_tar, NULL, NULL, 0, 0
-#define	PM_NULL	NULL, NULL, NULL, 0, 0
-#define	LINESEP	'\n'
-#define	MAXSCORE	256
-#define	isarchbr(l)	((l) -> format)
+#define	PM_LHA			form_lha, ign_lha, NULL, 0, 0
+#define	PM_TAR			form_tar, NULL, NULL, 0, 0
+#define	PM_NULL			NULL, NULL, NULL, 0, 0
+#define	LINESEP			'\n'
+#define	isarchbr(l)		((l) -> format)
 #endif	/* !OLDPARSE */
-
-#define	IGNORETYPESYM	"-VMNLhC"
-#define	SYMLINKSTR	"->"
-#define	GNULINKSTR	"link to"
 
 #ifndef	_NOBROWSE
 static VOID NEAR copyargvar __P_((int, char *CONST *));
@@ -203,6 +158,53 @@ static int NEAR archdostmpdir __P_((char *, char **, CONST char *));
 static int NEAR archrealpath __P_((char *, char *));
 static int NEAR unpacklink __P_((namelist *, CONST char *));
 #endif
+
+#ifndef	OLDPARSE
+static char *form_lha[] = {
+# if	MSDOS
+	"%*f\\n%s %x %x %y-%m-%d %t %a",	/* MS-DOS (-v) */
+	"%1x %12f %s %x %x %y-%m-%d %t %a",	/* MS-DOS (-l) */
+# else
+	"%a %u/%g %s %x %m %d %{yt} %*f",	/* >=1.14 */
+	"%9a %u/%g %s %x %m %d %{yt} %*f",	/* traditional */
+# endif
+	NULL
+};
+static char *ign_lha[] = {
+# if	MSDOS
+	"Listing of archive : *",
+	"  Name          Original *",
+	"--------------*",
+#  if	defined (FAKEMETA) || !defined (BSPATHDELIM)
+	"* files * ???.?% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
+#  else
+	"* files * ???.?%% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
+#  endif
+	"",
+# else	/* !MSDOS */
+	" PERMSSN * UID*GID *",
+	"----------*",
+	" Total * file* ???.*%*",
+# endif	/* !MSDOS */
+	NULL
+};
+static char *form_tar[] = {
+# if	MSDOS
+	"%a %u/%g %s %m %d %t %y %*f",		/* traditional */
+	"%a %u/%g %s %y-%m-%d %t %*f",		/* GNU >=1.12 */
+	"%a %u/%g %s %m %d %y %t %*f",		/* kmtar */
+# else	/* !MSDOS */
+	"%a %u/%g %s %m %d %t %y %*f",		/* SVR4 */
+	"%a %u/%g %s %y-%m-%d %t %*f",		/* GNU >=1.12 */
+	"%a %l %u %g %s %m %d %{yt} %*f",	/* pax */
+	"%10a %u/%g %s %m %d %t %y %*f",	/* tar (UXP/DS) */
+	"%9a %u/%g %s %m %d %t %y %*f",		/* traditional */
+	"%a %u %g %s %m %d %t %y %*f",		/* AIX */
+	"%a %u/%g %m %d %t %y %*f",		/* IRIX */
+# endif	/* !MSDOS */
+	NULL
+};
+#endif	/* !OLDPARSE */
 
 int maxlaunch = 0;
 int maxarchive = 0;
@@ -665,8 +667,8 @@ int max;
 	uid_t uid;
 	gid_t gid;
 # endif
-	time_t now;
 	struct tm tm, *tp;
+	time_t t;
 	off_t n;
 	int i, skip;
 	char *cp, *buf;
@@ -742,17 +744,17 @@ int max;
 	else if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
 	else if (list -> field[F_YEAR] == list -> field[F_TIME]
 	&& strchr(buf, ':')) {
-		now = time2();
+		t = time2();
 # ifdef	DEBUG
 		_mtrace_file = "localtime(start)";
-		tp = localtime(&now);
+		tp = localtime(&t);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "localtime(end)";
 			malloc(0);	/* dummy malloc */
 		}
 # else
-		tp = localtime(&now);
+		tp = localtime(&t);
 # endif
 		tm.tm_year = tp -> tm_year;
 		if (tm.tm_mon > tp -> tm_mon
@@ -779,12 +781,7 @@ int max;
 	}
 
 	tmp -> st_mtim = timelocal2(&tm);
-	tmp -> flags |=
-# ifdef	NOUID
-		logical_access(tmp -> st_mode);
-# else
-		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
-# endif
+	tmp -> flags |= logical_access2(tmp);
 	free(buf);
 
 	return(0);
@@ -861,7 +858,7 @@ int skip;
 # ifndef	NOSYMLINK
 	CONST char *line2, *lname;
 # endif
-	time_t now;
+	time_t t;
 	struct tm tm, *tp;
 	off_t n;
 	int i, ch, l, len, hit, err, err2, score;
@@ -1144,17 +1141,17 @@ int skip;
 	if (s_isdir(tmp)) tmp -> flags |= F_ISDIR;
 	else if (s_islnk(tmp)) tmp -> flags |= F_ISLNK;
 	if (tm.tm_year < 0) {
-		now = time2();
+		t = time2();
 # ifdef	DEBUG
 		_mtrace_file = "localtime(start)";
-		tp = localtime(&now);
+		tp = localtime(&t);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "localtime(end)";
 			malloc(0);	/* dummy malloc */
 		}
 # else
-		tp = localtime(&now);
+		tp = localtime(&t);
 # endif
 		tm.tm_year = tp -> tm_year;
 		if (tm.tm_mon < 0 || tm.tm_mday < 0) tm.tm_year = 1970 - 1900;
@@ -1171,12 +1168,7 @@ int skip;
 	if (tm.tm_mday < 0) tm.tm_mday = 1;
 
 	tmp -> st_mtim = timelocal2(&tm);
-	tmp -> flags |=
-# ifdef	NOUID
-		logical_access(tmp -> st_mode);
-# else
-		logical_access(tmp -> st_mode, tmp -> st_uid, tmp -> st_gid);
-# endif
+	tmp -> flags |= logical_access2(tmp);
 
 	return(score);
 }
@@ -1185,13 +1177,14 @@ int skip;
 VOID archbar(file, dir)
 CONST char *file, *dir;
 {
+#ifndef	_NOBROWSE
+	int i;
+#endif
 	char *arch;
 	int len;
 
 #ifndef	_NOBROWSE
 	if (browselist) {
-		int i;
-
 		if (!browsevar) arch = strdup2(nullstr);
 		else {
 			len = 0;
@@ -1933,6 +1926,9 @@ static char *NEAR archoutdir(VOID_A)
 CONST char *archchdir(path)
 CONST char *path;
 {
+#ifndef	_NOBROWSE
+	int i, n, flags, dupfilepos;
+#endif
 	CONST char *cp, *file;
 	char *tmp, duparcdir[MAXPATHLEN];
 	int len;
@@ -1941,8 +1937,6 @@ CONST char *path;
 	findpattern = NULL;
 #ifndef	_NOBROWSE
 	if (browselist) {
-		int i, n, flags, dupfilepos;
-
 		if (!path || !*path) path = parentpath;
 		if ((cp = strdelim(path, 0))) {
 			for (i = 1; cp[i]; i++) if (cp[i] != _SC_) break;
@@ -2183,14 +2177,15 @@ int flags;
 
 int launcher(VOID_A)
 {
+#ifndef	_NOBROWSE
+	CONST char *cp;
+	int flags;
+#endif
 	reg_t *re;
 	int i, n;
 
 #ifndef	_NOBROWSE
 	if (browselist) {
-		char *cp;
-		int flags;
-
 		n = browselevel;
 		cp = browselist[n].ext;
 		flags = (F_NOCONFIRM | F_ARGSET | F_NOADDOPT | F_IGNORELIST);
@@ -2651,7 +2646,8 @@ int single;
 	char *subdir, *tmpdir, path[MAXPATHLEN];
 	int i, ret, dupmark;
 
-	for (i = 0, wvp = archduplp; wvp; i++, wvp = wvp -> v_archduplp);
+	for (i = 0, wvp = archduplp; wvp; i++, wvp = wvp -> v_archduplp)
+		/*EMPTY*/;
 	strcpy(path, ARCHTMPPREFIX);
 	if (mktmpdir(path) < 0) {
 		warning(-1, path);

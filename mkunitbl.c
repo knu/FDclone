@@ -11,7 +11,6 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -10215,6 +10214,7 @@ static nftable iconvunilist[] = {
 	{0xffe2, {0x00ac, 0}},
 };
 #define	ICONVUNILISTSIZ	arraysize(iconvunilist)
+
 
 static int cmpuni(vp1, vp2)
 CONST VOID_P vp1;

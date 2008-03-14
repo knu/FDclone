@@ -16,7 +16,6 @@ extern char *shortname __P_((CONST char *, char *));
 #ifndef	_NOORIGSHELL
 #include "system.h"
 #endif
-
 #ifndef	_NOPTY
 #include "termemu.h"
 #endif
@@ -143,13 +142,14 @@ int ptr, eol;
 ALLOC_T *sizep;
 int code;
 {
+# ifndef	_NOKANJIFCONV
+	char rpath[MAXPATHLEN];
+# endif
 	char *cp;
 	int len;
 
 # ifndef	_NOKANJIFCONV
 	if (code < 0) {
-		char rpath[MAXPATHLEN];
-
 		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]),
 			EA_NOEVALQ | EA_NOUNIQDELIM);
 		realpath2(cp, rpath, 1);
@@ -360,7 +360,7 @@ macrostat *stp;
 int flags;
 {
 # ifdef	MAXCOMMSTR
-	int optr;
+	int m, f, optr;
 # endif
 	char *cp, *s, *dir, *tmp;
 	int i, n, len, flen, rlen;
@@ -433,8 +433,6 @@ int flags;
 
 # ifdef	MAXCOMMSTR
 	if (ptr + rlen > MAXCOMMSTR) {
-		int m, f;
-
 		cp = &(s[MAXCOMMSTR - ptr]);
 		len = rlen - (MAXCOMMSTR - ptr);
 		for (i = 0; i < len; i++) {
@@ -556,6 +554,9 @@ macrostat *stp;
 {
 #ifndef	_NOKANJICONV
 	int code, cnvcode, defcode, cnvptr;
+#endif
+#ifdef	_NOEXTRAMACRO
+	int m, f;
 #endif
 	macrostat st;
 	char *cp, *line, *new, conv[MAXPATHLEN];
@@ -735,8 +736,6 @@ macrostat *stp;
 
 #ifdef	_NOEXTRAMACRO
 	if (stp -> needburst) for (i = c = 0; i < j; i++) {
-		int m, f;
-
 # ifndef	MACROMETA
 		if (skipquote(line, &i)) continue;
 # endif

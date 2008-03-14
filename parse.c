@@ -129,6 +129,11 @@ CONST char *s, *fmt;
 va_dcl
 #endif
 {
+#ifndef	HAVELONGLONG
+	char *buf;
+	u_long_t tmp;
+	int hi;
+#endif
 	va_list args;
 	CONST char *cp;
 	long_t n;
@@ -285,10 +290,6 @@ va_dcl
 
 #ifndef	HAVELONGLONG
 		if (len > (int)sizeof(u_long_t)) {
-			char *buf;
-			u_long_t tmp;
-			int hi;
-
 			hi = 0;
 			if (!(flags & VF_UNSIGNED)) {
 				mask = (MAXUTYPE(u_long_t) >> 1);
@@ -407,7 +408,7 @@ char *gettoken(s)
 CONST char *s;
 {
 	if (!isidentchar(*s)) return(NULL);
-	for (s++; isidentchar2(*s); s++);
+	for (s++; isidentchar2(*s); s++) /*EMPTY*/;
 
 	return((char *)s);
 }
@@ -456,7 +457,8 @@ CONST char *path, *delim;
 	for (cp = path; cp && *cp; cp = next) {
 		if ((next = strtkbrk(cp, delim, 0))) {
 			len = next - cp;
-			for (i = 1; next[i] && strchr(delim, next[i]); i++);
+			for (i = 1; next[i]; i++)
+				if (!strchr(delim, next[i])) break;
 		}
 		else {
 			len = strlen(cp);
@@ -609,7 +611,7 @@ CONST char *path, *plist;
 	return(NULL);
 }
 
-#if	(FD < 2) && !defined (_NOARCHIVE)
+#if	defined (OLDPARSE) && !defined (_NOARCHIVE)
 char *getrange(cp, delim, fp, dp, wp)
 CONST char *cp;
 int delim;
@@ -645,7 +647,7 @@ u_char *fp, *dp, *wp;
 
 	return((char *)cp);
 }
-#endif	/* (FD < 2) && !_NOARCHIVE */
+#endif	/* OLDPARSE && !_NOARCHIVE */
 
 int evalprompt(bufp, prompt)
 char **bufp;
@@ -800,7 +802,7 @@ u_char *flagsp;
 	char *tmp;
 
 	*flagsp = 0;
-# if	FD >= 2
+# ifndef	OLDPARSE
 	if (*ext == '/') {
 		ext++;
 		*flagsp |= LF_IGNORECASE;
@@ -918,14 +920,13 @@ int c, tenkey;
 		buf[i++] = (char)C_EKANA;
 		buf[i++] = c & 0xff;
 	}
+#else
+	else if (iskana2(c)) buf[i++] = c;
 #endif
 	else if (c > (int)MAXUTYPE(u_char)) {
 		buf[i++] = '?';
 		buf[i++] = '?';
 	}
-#ifndef	CODEEUC
-	else if (iskana2(c)) buf[i++] = c;
-#endif
 	else if (iscntrl2(c)) {
 		for (i = 0; escapechar[i]; i++)
 			if (c == escapevalue[i]) break;

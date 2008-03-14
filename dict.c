@@ -7,38 +7,37 @@
 #include <fcntl.h>
 #include "fd.h"
 #include "termio.h"
-#include "func.h"
 #include "roman.h"
 #include "hinsi.h"
+#include "func.h"
 
-#ifndef	_NOIME
-
-#define	DICTTBL		"fd-dict.tbl"
-#define	MAXHINSI	16
-#define	FREQMAGIC	0x4446
-#define	FREQVERSION	0x0100
-#define	USERFREQBIAS	16
-#define	freqbias(n)	(((long)(n) + USERFREQBIAS) * USERFREQBIAS)
-#define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
-#define	getdword(s, n)	(((u_long)getword(s, (n) + 2) << 16) | getword(s, n))
-#define	skread(f,o,s,n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
-			&& sureread(f, s, n) == n)
+#define	DICTTBL			"fd-dict.tbl"
+#define	MAXHINSI		16
+#define	FREQMAGIC		0x4446
+#define	FREQVERSION		0x0100
+#define	USERFREQBIAS		16
+#define	freqbias(n)		(((long)(n) + USERFREQBIAS) * USERFREQBIAS)
+#define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
+#define	getdword(s, n)		(((u_long)getword(s, (n) + 2) << 16) \
+				| getword(s, n))
+#define	skread(f,o,s,n)		(Xlseek(f, o, L_SET) >= (off_t)0 \
+				&& sureread(f, s, n) == n)
 
 #ifndef	O_BINARY
-#define	O_BINARY	0
+#define	O_BINARY		0
 #endif
 #ifndef	L_SET
 # ifdef	SEEK_SET
-# define	L_SET	SEEK_SET
+# define	L_SET		SEEK_SET
 # else
-# define	L_SET	0
+# define	L_SET		0
 # endif
 #endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
-# define	L_INCR	SEEK_CUR
+# define	L_INCR		SEEK_CUR
 # else
-# define	L_INCR	1
+# define	L_INCR		1
 # endif
 #endif	/* !L_INCR */
 
@@ -52,6 +51,8 @@ typedef struct _kanjitable {
 	u_short hinsi[MAXHINSI];
 	long ofs;
 } kanjitable;
+
+#ifndef	_NOIME
 
 static int NEAR fgetbyte __P_((u_char *, int));
 static int NEAR fgetword __P_((u_short *, int));

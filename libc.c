@@ -275,6 +275,13 @@ int rdlink;
 int _chdir2(path)
 CONST char *path;
 {
+#if	!MSDOS
+	int fd, duperrno;
+#endif
+#ifdef	CYGWIN
+	char tmp[MAXPATHLEN], upath[MAXPATHLEN], spath[MAXPATHLEN];
+	int len;
+#endif
 	char cwd[MAXPATHLEN];
 
 	if (!Xgetwd(cwd)) copyrootpath(cwd);
@@ -285,14 +292,8 @@ CONST char *path;
 	else
 # endif
 	{
-		int fd, duperrno;
-
 		if ((fd = open(curpath, O_RDONLY, 0666)) < 0) {
 # ifdef	CYGWIN
-			char upath[MAXPATHLEN], spath[MAXPATHLEN];
-			char tmp[MAXPATHLEN];
-			int len;
-
 			if (Xgetwd(tmp)) {
 				len = strlen(tmp);
 				cygwin_internal(CW_GET_CYGDRIVE_PREFIXES,
@@ -866,7 +867,11 @@ sigcst_t func;
 	struct sigaction act, oact;
 
 	act.sa_handler = func;
+# ifdef	SA_INTERRUPT
+	act.sa_flags = SA_INTERRUPT;
+# else
 	act.sa_flags = 0;
+# endif
 	sigemptyset(&(act.sa_mask));
 	sigemptyset(&(oact.sa_mask));
 	if (sigaction(sig, &act, &oact) < 0) return(SIG_ERR);

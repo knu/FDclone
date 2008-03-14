@@ -185,12 +185,7 @@ namelist *namep;
 	namep -> st_flags = lst.st_flags;
 #endif
 	namep -> st_mtim = lst.st_mtime;
-	namep -> flags |=
-#ifdef	NOUID
-		logical_access((u_int)(st.st_mode));
-#else
-		logical_access((u_int)(st.st_mode), st.st_uid, st.st_gid);
-#endif
+	namep -> flags |= logical_access2(&st);
 	namep -> tmpflags |= F_STAT;
 
 	return(0);
@@ -726,7 +721,7 @@ struct stat *stp;
 
 	ret = 0;
 #if	MSDOS
-	if (!(st.st_mode & S_IWRITE)) Xchmod(path, (st.st_mode | S_IWRITE));
+	if (!(st.st_mode & S_IWUSR)) Xchmod(path, (st.st_mode | S_IWUSR));
 #endif
 
 	if (stp -> st_nlink & (TCH_ATIME | TCH_MTIME)) {
@@ -783,7 +778,7 @@ struct stat *stp;
 		else ret = -1;
 	}
 #if	MSDOS
-	else if (!(st.st_mode & S_IWRITE)) {
+	else if (!(st.st_mode & S_IWUSR)) {
 		duperrno = errno;
 		Xchmod(path, st.st_mode);
 		errno = duperrno;
@@ -889,11 +884,12 @@ char *path;
 	duperrno = errno;
 	if (!path) path = buf;
 
-	if (path != fullpath && !nodoschdir(fullpath) && nodosgetwd(path))
+	if (path != fullpath && nodoschdir(fullpath) >= 0 && nodosgetwd(path))
 		cp = NOCWD_K;
-	else if ((cp = gethomedir()) && !nodoschdir(cp) && nodosgetwd(path))
+	else if ((cp = gethomedir())
+	&& nodoschdir(cp) >= 0 && nodosgetwd(path))
 		cp = GOHOM_K;
-	else if (!nodoschdir(rootpath) && nodosgetwd(path)) cp = GOROT_K;
+	else if (nodoschdir(rootpath) >= 0 && nodosgetwd(path)) cp = GOROT_K;
 	else error(rootpath);
 
 	if (path != fullpath) strncpy2(fullpath, path, MAXPATHLEN - 1);
@@ -932,10 +928,10 @@ CONST char *src, *dest;
 # endif
 		if (Xunlink(dest) < 0) return(-1);
 	}
-
 	path[len] = '\0';
+	if (Xsymlink(path, dest) < 0) return(-1);
 
-	return(Xsymlink(path, dest));
+	return(1);
 }
 #endif	/* !NOSYMLINK */
 
@@ -956,11 +952,14 @@ struct stat *stp1, *stp2;
 
 #if	MSDOS
 	if (!stp2 && Xlstat(dest, &st) >= 0) stp2 = &st;
-	if (stp2 && !(stp2 -> st_mode & S_IWRITE))
-		Xchmod(src, stp2 -> st_mode | S_IWRITE);
+	if (stp2 && !(stp2 -> st_mode & S_IWUSR))
+		Xchmod(src, stp2 -> st_mode | S_IWUSR);
 #endif
 #ifndef	NOSYMLINK
-	if (s_islnk(stp1)) return(cpsymlink(src, dest));
+	if (s_islnk(stp1)) {
+		if (cpsymlink(src, dest) < 0) return(-1);
+		else return(0);
+	}
 #endif
 
 	flags = (O_BINARY | O_RDONLY);
@@ -972,7 +971,7 @@ struct stat *stp1, *stp2;
 
 	flags = (O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
 #if	MSDOS
-	mode |= S_IWRITE;
+	mode |= S_IWUSR;
 #endif
 #ifndef	NODIRLOOP
 	if (issame) {

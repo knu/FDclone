@@ -1,3 +1,7 @@
+Ver. 2.09h	Bug that ATTR_FILE/ATTR_DIR have sometimes no effect is fixed.
+ (03/15/08)	Unsuitable error message with no controlling terminal is fixed.
+		Odd completion choice list while shifting filename is fixed.
+
 Ver. 2.09g	Abortion with no controlling terminal is fixed.
  (01/26/08)	Failure to find the startup directory is resolved partly.
 		Failure to input some special keys is reduced.
@@ -128,7 +132,7 @@ Ver. 2.07a	Bug that the screen is not updated with no file is fixed.
 Ver. 2.07	Add 'PTYMODE', 'PTYTERM' and 'PTYMENUKEY' internal variables.
  (05/26/05)	Add 'DEFKCODE' internal variable.
 		Expand the maximum number of split windows into 5.
-		Add 'WIDEN_WINDOW'/'NARROW_WINDOW'/'KILL_WINDOW' commands.
+		Add WIDEN_WINDOW/NARROW_WINDOW/KILL_WINDOW commands.
 		Support dynamic 'COLUMNS' and 'LINES' environment variables.
 
 Ver. 2.06d	The directory for /etc/fd2rc becomes specifiable in compile.

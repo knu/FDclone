@@ -12,19 +12,18 @@
 #ifndef	_NOORIGSHELL
 #include "system.h"
 #endif
-
 #ifndef	_NOPTY
 #include "termemu.h"
 #endif
 
 #if	defined (_NOEXTRAATTR) || defined (NOUID)
-#define	MAXATTRSEL	2
-#define	ATTR_X		35
-#define	ATTR_Y		L_INFO
+#define	MAXATTRSEL		2
+#define	ATTR_X			35
+#define	ATTR_Y			L_INFO
 #else
-#define	MAXATTRSEL	3
-#define	ATTR_X		0
-#define	ATTR_Y		L_HELP
+#define	MAXATTRSEL		3
+#define	ATTR_X			0
+#define	ATTR_Y			L_HELP
 #endif
 
 extern int curcolumns;
@@ -333,6 +332,9 @@ char *name;
 static int cur_up(arg)
 CONST char *arg;
 {
+#if	FD >= 2
+	int p;
+#endif
 	int n, old;
 
 	old = filepos;
@@ -340,8 +342,6 @@ CONST char *arg;
 	filepos -= n;
 #if	FD >= 2
 	if (loopcursor) {
-		int p;
-
 		p = FILEPERPAGE;
 		while (filepos < 0 || filepos / p < old / p)
 			filepos += p;
@@ -357,6 +357,9 @@ CONST char *arg;
 static int cur_down(arg)
 CONST char *arg;
 {
+#if	FD >= 2
+	int p;
+#endif
 	int n, old;
 
 	old = filepos;
@@ -364,8 +367,6 @@ CONST char *arg;
 	filepos += n;
 #if	FD >= 2
 	if (loopcursor) {
-		int p;
-
 		p = FILEPERPAGE;
 		if (filepos >= maxfile) filepos = (filepos / p) * p;
 		while (filepos / p > old / p) {
@@ -421,6 +422,9 @@ CONST char *arg;
 static int cur_left(arg)
 CONST char *arg;
 {
+#if	FD >= 2
+	int p;
+#endif
 	int n, r, old;
 
 	old = filepos;
@@ -430,8 +434,6 @@ CONST char *arg;
 
 #if	FD >= 2
 	if (loopcursor) {
-		int p;
-
 		p = FILEPERPAGE;
 		while (filepos < 0 || filepos / p < old / p)
 			filepos += p;

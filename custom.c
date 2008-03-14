@@ -14,6 +14,104 @@
 #include "system.h"
 #endif
 
+#define	MAXCUSTOM		7
+#define	MAXCUSTNAM		14
+#define	MAXCUSTVAL		(n_column - MAXCUSTNAM - 3)
+#define	noselect(n, m, x, s, v)	(selectstr(n, m, x, s, v) != K_CR)
+#define	getmax(m, n)		do { \
+					cs_max = ((!(n) & basiccustom) \
+						? nbasic : (m)[n]); \
+				} while (0)
+#define	setmax(m, n)		do { \
+					if (!(n)) (m)[n] = cs_max; \
+				} while (0)
+#define	MAXSAVEMENU		5
+#define	DEFPALETTE		"89624351888"
+#define	MAXPALETTE		11
+#define	MAXCOLOR		10
+#ifndef	O_TEXT
+#define	O_TEXT			0
+#endif
+
+typedef struct _envtable {
+	CONST char *env;
+	VOID_P var;
+#ifdef	FORCEDSTDC
+	union {
+		CONST char *str;
+		int num;
+	} def;
+#else
+	CONST char *def;
+#endif
+#ifndef	_NOJPNMES
+	CONST char *hmes;
+#endif
+#ifndef	_NOENGMES
+	CONST char *hmes_eng;
+#endif
+	u_char type;
+} envtable;
+
+#define	env_str(n)		(&(envlist[n].env[FDESIZ]))
+#define	fdenv_str(n)		(envlist[n].env)
+#define	env_type(n)		(envlist[n].type & T_TYPE)
+#define	_B_(t)			(T_BASIC | (t))
+#ifdef	FORCEDSTDC
+#define	def_str(n)		(envlist[n].def.str)
+#define	def_num(n)		(envlist[n].def.num)
+#define	DEFVAL(d)		{(char *)(d)}
+#else
+#define	def_str(n)		(envlist[n].def)
+#define	def_num(n)		((int)(envlist[n].def))
+#define	DEFVAL(d)		(char *)(d)
+#endif
+
+#define	T_TYPE			0037
+#define	T_PRIMAL		0040
+#define	T_BASIC			0100
+#define	T_BOOL			0
+#define	T_SHORT			1
+#define	T_INT			2
+#define	T_NATURAL		3
+#define	T_CHARP			4
+#define	T_PATH			5
+#define	T_PATHS			6
+#define	T_SORT			7
+#define	T_DISP			8
+#define	T_WRFS			9
+#define	T_COLUMN		10
+#if	MSDOS
+#define	T_DDRV			11
+#else
+#define	T_DDRV			T_BOOL
+#endif
+#define	T_COLOR			12
+#define	T_COLORPAL		13
+#define	T_EDIT			14
+#define	T_KIN			15
+#define	T_KOUT			16
+#define	T_KNAM			17
+#define	T_KTERM			18
+#define	T_MESLANG		19
+#define	T_KPATHS		20
+#define	T_OCTAL			21
+#define	T_KEYCODE		22
+#define	T_HELP			23
+#define	T_NOVAR			24
+
+#ifndef	_NOKANJIFCONV
+typedef struct _pathtable {
+	VOID_P path;
+	char *last;
+	u_char lang;
+	u_char flags;
+} pathtable;
+
+#define	P_ISARRAY		0001
+#define	P_STABLE		0002
+#endif	/* !_NOKANJIFCONV */
+
 extern int sorttype;
 extern int displaymode;
 #ifndef	_NOTREE
@@ -170,105 +268,6 @@ extern devinfo *origfdtype;
 extern int inruncom;
 #endif	/* !_NOCUSTOMIZE */
 
-#define	MAXCUSTOM	7
-#define	MAXCUSTNAM	14
-#define	MAXCUSTVAL	(n_column - MAXCUSTNAM - 3)
-#define	noselect(n, m, x, s, v) \
-			(selectstr(n, m, x, s, v) != K_CR)
-#define	getmax(m, n)	do { \
-				cs_max = ((!(n) & basiccustom) \
-					? nbasic : (m)[n]); \
-			} while (0)
-#define	setmax(m, n)	do { \
-				if (!(n)) (m)[n] = cs_max; \
-			} while (0)
-#define	MAXSAVEMENU	5
-#define	DEFPALETTE	"89624351888"
-#define	MAXPALETTE	11
-#define	MAXCOLOR	10
-#ifndef	O_TEXT
-#define	O_TEXT		0
-#endif
-
-typedef struct _envtable {
-	CONST char *env;
-	VOID_P var;
-#ifdef	FORCEDSTDC
-	union {
-		CONST char *str;
-		int num;
-	} def;
-#else
-	CONST char *def;
-#endif
-#ifndef	_NOJPNMES
-	CONST char *hmes;
-#endif
-#ifndef	_NOENGMES
-	CONST char *hmes_eng;
-#endif
-	u_char type;
-} envtable;
-
-#define	env_str(n)	(&(envlist[n].env[FDESIZ]))
-#define	fdenv_str(n)	(envlist[n].env)
-#define	env_type(n)	(envlist[n].type & T_TYPE)
-#define	_B_(t)		(T_BASIC | (t))
-#ifdef	FORCEDSTDC
-#define	def_str(n)	(envlist[n].def.str)
-#define	def_num(n)	(envlist[n].def.num)
-#define	DEFVAL(d)	{(char *)(d)}
-#else
-#define	def_str(n)	(envlist[n].def)
-#define	def_num(n)	((int)(envlist[n].def))
-#define	DEFVAL(d)	(char *)(d)
-#endif
-
-#define	T_TYPE		0037
-#define	T_PRIMAL	0040
-#define	T_BASIC		0100
-#define	T_BOOL		0
-#define	T_SHORT		1
-#define	T_INT		2
-#define	T_NATURAL	3
-#define	T_CHARP		4
-#define	T_PATH		5
-#define	T_PATHS		6
-#define	T_SORT		7
-#define	T_DISP		8
-#define	T_WRFS		9
-#define	T_COLUMN	10
-#if	MSDOS
-#define	T_DDRV		11
-#else
-#define	T_DDRV		T_BOOL
-#endif
-#define	T_COLOR		12
-#define	T_COLORPAL	13
-#define	T_EDIT		14
-#define	T_KIN		15
-#define	T_KOUT		16
-#define	T_KNAM		17
-#define	T_KTERM		18
-#define	T_MESLANG	19
-#define	T_KPATHS	20
-#define	T_OCTAL		21
-#define	T_KEYCODE	22
-#define	T_HELP		23
-#define	T_NOVAR		24
-
-#ifndef	_NOKANJIFCONV
-typedef struct _pathtable {
-	VOID_P path;
-	char *last;
-	u_char lang;
-	u_char flags;
-} pathtable;
-
-#define	P_ISARRAY	0001
-#define	P_STABLE	0002
-#endif	/* !_NOKANJIFCONV */
-
 #if	FD >= 2
 static int NEAR atooctal __P_((CONST char *));
 #endif
@@ -325,7 +324,7 @@ static int NEAR checkbind __P_((char *, char *, int, char *CONST *, FILE *));
 static VOID NEAR cleanupkeymap __P_((VOID_A));
 static int NEAR dispkeymap __P_((int));
 static int NEAR editkeymap __P_((int));
-static int NEAR searchkeymap __P_((keyseq_t *, keyseq_t *));
+static int NEAR searchkeymap __P_((CONST keyseq_t *, CONST keyseq_t *));
 static int NEAR issamekeymap __P_((CONST keyseq_t *, CONST keyseq_t *));
 static int NEAR dumpkeymap __P_((CONST char *, char *, FILE *));
 #  ifndef	_NOORIGSHELL
@@ -367,6 +366,7 @@ static int NEAR dispsave __P_((int));
 # ifndef	_NOORIGSHELL
 static int NEAR overwriteconfig __P_((int *, CONST char *));
 # endif
+static int NEAR selectmulti __P_((int, CONST char *CONST [], int[]));
 static int NEAR editsave __P_((int));
 static VOID NEAR dispname __P_((int, int, int));
 static VOID NEAR dispcust __P_((VOID_A));
@@ -554,7 +554,6 @@ static CONST envtable envlist[] = {
 #endif	/* !_NOCUSTOMIZE */
 };
 #define	ENVLISTSIZ	arraysize(envlist)
-
 #ifndef	_NOKANJIFCONV
 static pathtable pathlist[] = {
 	{fullpath, NULL, NOCNV, P_ISARRAY},
@@ -575,7 +574,6 @@ static pathtable archlist[MAXWINDOWS];
 static pathtable fulllist[MAXWINDOWS];
 # endif	/* !_NOSPLITWIN */
 #endif	/* !_NOKANJIFCONV */
-
 #ifndef	_NOCUSTOMIZE
 # ifdef	_USEDOSEMU
 static CONST devinfo mediadescr[] = {
@@ -634,8 +632,7 @@ VOID initenv(VOID_A)
 #endif
 
 	for (i = 0; i < ENVLISTSIZ; i++) {
-#if	!MSDOS && defined (FORCEDSTDC)
-		if (w > 0) switch (env_type(i)) {
+		switch (env_type(i)) {
 			case T_CHARP:
 			case T_PATH:
 			case T_PATHS:
@@ -643,13 +640,19 @@ VOID initenv(VOID_A)
 			case T_EDIT:
 			case T_KPATHS:
 			case T_NOVAR:
+				if (envlist[i].var
+				&& (*(char **)(envlist[i].var)))
+					*((char **)(envlist[i].var)) = NULL;
 				break;
 			default:
-				cp = (char *)&def_num(i);
-				memmove(cp, &(cp[w]), sizeof(int));
+#if	!MSDOS && defined (FORCEDSTDC)
+				if (w > 0) {
+					cp = (char *)&def_num(i);
+					memmove(cp, &(cp[w]), sizeof(int));
+				}
+#endif
 				break;
 		}
-#endif	/* !MSDOS && FORCEDSTDC */
 		_evalenv(i);
 	}
 }
@@ -1095,8 +1098,8 @@ CONST char *s;
 {
 	memset((char *)&(list[n]), 0, sizeof(*list));
 	list[n].name = (char *)s;
-	list[n].flags = (F_ISRED | F_ISWRI);
 	list[n].ent = n;
+	list[n].flags = (F_ISRED | F_ISWRI);
 	list[n].tmpflags = F_STAT;
 }
 
@@ -1250,12 +1253,12 @@ int max[], new;
 	int i;
 
 	max[0] = ENVLISTSIZ;
-	for (i = 0; bindlist[i].key >= 0; i++);
+	for (i = 0; bindlist[i].key >= 0; i++) /*EMPTY*/;
 	max[1] = i + new;
 # ifdef	_NOKEYMAP
 	max[2] = new;
 # else
-	for (i = 0; keyseqlist[i] >= 0; i++);
+	for (i = 0; keyseqlist[i] >= 0; i++) /*EMPTY*/;
 	max[2] = i;
 # endif
 # ifdef	_NOARCHIVE
@@ -1266,7 +1269,7 @@ int max[], new;
 	max[4] = maxarchive + new;
 # endif
 # ifdef	_USEDOSEMU
-	for (i = 0; fdtype[i].name; i++);
+	for (i = 0; fdtype[i].name; i++) /*EMPTY*/;
 	max[5] = i + new;
 # else
 	max[5] = new;
@@ -1429,7 +1432,6 @@ int no;
 	int n, p;
 
 	new = NULL;
-	if (basiccustom) no = basicenv[no];
 	switch (env_type(no)) {
 		case T_BOOL:
 			str[0] = VBOL0_K;
@@ -1634,7 +1636,6 @@ int no;
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
 
 	new = NULL;
-	if (basiccustom) no = basicenv[no];
 	env = env_str(no);
 	switch (env_type(no)) {
 		case T_BOOL:
@@ -1857,6 +1858,7 @@ int no;
 			new[p] = '\0';
 			p = (isdigit2(new[n])) ? new[n] : DEFPALETTE[n];
 			p -= '0';
+			envcaption(str[n]);
 			str[0] = VBLK2_K;
 			str[1] = VRED2_K;
 			str[2] = VGRN2_K;
@@ -1867,7 +1869,6 @@ int no;
 			str[7] = VWHI2_K;
 			str[8] = VFOR2_K;
 			str[9] = VBAK2_K;
-			envcaption(env);
 			if (noselect(&p, MAXCOLOR, 0, str, val)) {
 				free(new);
 				return(0);
@@ -2272,7 +2273,8 @@ FILE *fp;
 # endif	/* !_NOORIGSHELL */
 
 bindtable *copybind(dest, src)
-bindtable *dest, *src;
+bindtable *dest;
+CONST bindtable *src;
 {
 	int i;
 
@@ -2671,7 +2673,7 @@ int no;
 }
 
 static int NEAR searchkeymap(list, kp)
-keyseq_t *list, *kp;
+CONST keyseq_t *list, *kp;
 {
 	int i;
 
@@ -2825,7 +2827,8 @@ int max;
 }
 
 launchtable *copylaunch(dest, src, ndestp, nsrc)
-launchtable *dest, *src;
+launchtable *dest;
+CONST launchtable *src;
 int *ndestp, nsrc;
 {
 	int i;
@@ -3377,7 +3380,8 @@ int max;
 }
 
 archivetable *copyarch(dest, src, ndestp, nsrc)
-archivetable *dest, *src;
+archivetable *dest;
+CONST archivetable *src;
 int *ndestp, nsrc;
 {
 	int i;
@@ -3655,6 +3659,9 @@ static VOID NEAR cleanupdosdrive(VOID_A)
 static int NEAR dispdosdrive(no)
 int no;
 {
+#  ifdef	HDDMOUNT
+	char buf[strsize("HDD98 #offset=") + MAXCOLSCOMMA(3) + 1];
+#  endif
 	int i, len, w1, w2, width;
 
 	if (!fdtype[no].name) {
@@ -3668,8 +3675,6 @@ int no;
 	w1 = MAXCUSTVAL - 1 - width;
 #  ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
-		char buf[strsize("HDD98 #offset=") + MAXCOLSCOMMA(3) + 1];
-
 		strcpy(buf, "HDD");
 		if (isupper2(fdtype[no].head)) strcat(buf, "98");
 		i = strlen(buf);
@@ -3713,6 +3718,9 @@ int no;
 static int NEAR editdosdrive(no)
 int no;
 {
+#  ifdef	HDDMOUNT
+	int j;
+#  endif
 	devinfo dev;
 	CONST char *str['Z' - 'A' + 1];
 	char *cp, buf[MAXLONGWIDTH + 1], sbuf['Z' - 'A' + 1][3];
@@ -3770,8 +3778,6 @@ int no;
 		envcaption(DRMED_K);
 		for (i = n = 0; i < MEDIADESCRSIZ; i++) {
 #  ifdef	HDDMOUNT
-			int j;
-
 			if (!mediadescr[i].cyl) {
 				if (fdtype[no].name) continue;
 				for (j = 0; fdtype[j].name; j++)
@@ -4056,7 +4062,7 @@ CONST char *file;
 
 	calcmax(max, 0);
 	origmax[0] = 0;
-	for (i = 0; origbindlist[i].key >= 0; i++);
+	for (i = 0; origbindlist[i].key >= 0; i++) /*EMPTY*/;
 	origmax[1] = i;
 #  ifdef	_NOKEYMAP
 	origmax[2] = 0;
@@ -4071,7 +4077,7 @@ CONST char *file;
 	origmax[4] = origmaxarchive;
 #  endif
 #  ifdef	_USEDOSEMU
-	for (i = 0; origfdtype[i].name; i++);
+	for (i = 0; origfdtype[i].name; i++) /*EMPTY*/;
 	origmax[5] = i;
 #  else
 	origmax[5] = 0;
@@ -4251,6 +4257,22 @@ CONST char *file;
 }
 # endif	/* !_NOORIGSHELL */
 
+static int NEAR selectmulti(max, str, val)
+int max;
+CONST char *CONST str[];
+int val[];
+{
+	int i, ch;
+
+	ch = selectstr(NULL, max, 0, str, val);
+	if (ch == K_CR) {
+		for (i = 0; i < max; i++) if (val[i]) break;
+		if (i >= max) ch = K_ESC;
+	}
+
+	return(ch != K_CR);
+}
+
 static int NEAR editsave(no)
 int no;
 {
@@ -4281,7 +4303,7 @@ int no;
 	switch (no) {
 		case 0:
 			envcaption(SREST_K);
-			if (noselect(NULL, MAXCUSTOM - 1, 0, str, val)) break;
+			if (selectmulti(MAXCUSTOM - 1, str, val)) break;
 			done = 1;
 			if (val[0]) copyenv(tmpenvlist);
 			if (val[1]) {
@@ -4306,7 +4328,7 @@ int no;
 			break;
 		case 1:
 			envcaption(SCLEA_K);
-			if (noselect(NULL, MAXCUSTOM - 1, 0, str, val)) break;
+			if (selectmulti(MAXCUSTOM - 1, str, val)) break;
 			done = 1;
 			if (val[0]) cleanupenv();
 			if (val[1]) cleanupbind();
@@ -4354,7 +4376,7 @@ int no;
 				done = 0;
 			else {
 				envcaption(SSAVE_K);
-				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
+				if (selectmulti(MAXCUSTOM - 1, str, val))
 					done = 0;
 				else {
 					lck = lockfopen(file, "w",
@@ -4397,7 +4419,7 @@ int no;
 				done = 0;
 			else {
 				envcaption(SOVWR_K);
-				if (noselect(NULL, MAXCUSTOM - 1, 0, str, val))
+				if (selectmulti(MAXCUSTOM - 1, str, val))
 					done = 0;
 				else if (overwriteconfig(val, file) < 0)
 					done = 0;
@@ -4499,7 +4521,7 @@ int no, y, isstandout;
 
 static VOID NEAR dispcust(VOID_A)
 {
-	int i, y, yy, start, end;
+	int i, n, y, yy, start, end;
 
 	yy = filetop(win);
 	y = 2;
@@ -4512,7 +4534,8 @@ static VOID NEAR dispcust(VOID_A)
 		Xputterm(L_CLEAR);
 		switch (custno) {
 			case 0:
-				cs_len[i - start] = dispenv(i);
+				n = (basiccustom) ? basicenv[i] : i;
+				cs_len[i - start] = dispenv(n);
 				break;
 			case 1:
 				cs_len[i - start] = dispbind(i);
@@ -4596,7 +4619,8 @@ static int NEAR editcust(VOID_A)
 
 	switch (custno) {
 		case 0:
-			n = editenv(cs_item);
+			n = (basiccustom) ? basicenv[cs_item] : cs_item;
+			n = editenv(n);
 			cs_max = (basiccustom) ? nbasic : ENVLISTSIZ;
 			break;
 		case 1:
@@ -4622,7 +4646,7 @@ static int NEAR editcust(VOID_A)
 # ifdef	_USEDOSEMU
 		case 5:
 			if ((n = editdosdrive(cs_item))) {
-				for (i = 0; fdtype[i].name; i++);
+				for (i = 0; fdtype[i].name; i++) /*EMPTY*/;
 				cs_max = i + 1;
 			}
 			break;
@@ -4668,21 +4692,20 @@ int customize(VOID_A)
 	for (i = 0; bindlist[i].key >= 0; i++) /*EMPTY*/;
 # ifndef	_NOKEYMAP
 	tmpkeymaplist = copykeyseq(NULL);
-	for (n = 0; keyidentlist[n].no > 0; n++);
+	for (n = 0; keyidentlist[n].no > 0; n++) /*EMPTY*/;
 	keyseqlist = (short *)malloc2((n + 20 + 1) * sizeof(*keyseqlist));
 	n = 0;
-	for (i = 1; i <= 20; i++)
+	for (i = 1; i <= 20; i++) {
 		for (ch = 0; ch <= K_MAX - K_MIN; ch++)
-			if (tmpkeymaplist[ch].code == K_F(i)) {
-				keyseqlist[n++] = K_F(i);
-				break;
-			}
-	for (i = 0; keyidentlist[i].no > 0; i++)
+			if (tmpkeymaplist[ch].code == K_F(i)) break;
+		if (ch <= K_MAX - K_MIN) keyseqlist[n++] = K_F(i);
+	}
+	for (i = 0; keyidentlist[i].no > 0; i++) {
 		for (ch = 0; ch <= K_MAX - K_MIN; ch++)
-			if (tmpkeymaplist[ch].code == keyidentlist[i].no) {
-				keyseqlist[n++] = keyidentlist[i].no;
+			if (tmpkeymaplist[ch].code == keyidentlist[i].no)
 				break;
-			}
+		if (ch <= K_MAX - K_MIN) keyseqlist[n++] = keyidentlist[i].no;
+	}
 	keyseqlist[n] = -1;
 # endif
 # ifndef	_NOARCHIVE
@@ -4829,6 +4852,6 @@ int customize(VOID_A)
 	if (tmpfdtype) free(tmpfdtype);
 # endif
 
-	return(0);
+	return(1);
 }
 #endif	/* !_NOCUSTOMIZE */

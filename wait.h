@@ -4,6 +4,9 @@
  *	definitions for waiting child
  */
 
+#ifndef	__WAIT_H_
+#define	__WAIT_H_
+
 #include <signal.h>
 #if	!MSDOS
 #include <sys/wait.h>
@@ -141,3 +144,5 @@ extern int noalrm;
 # define	sigalrm(sig)	0
 # endif
 #endif	/* FD */
+
+#endif	/* !__WAIT_H_ */

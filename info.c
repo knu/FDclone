@@ -402,6 +402,8 @@ static int NEAR code2str(buf, code)
 char *buf;
 int code;
 {
+	int i;
+
 	buf = buf + strlen(buf);
 	if (code >= K_F(1) && code <= K_F(20))
 		snprintf2(buf, KEYWID + 1, "F%-6d", code - K_F0);
@@ -416,8 +418,6 @@ int code;
 	else if (code == K_LEFT)
 		snprintf2(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, LEFAR_K);
 	else {
-		int i;
-
 		for (i = 0; i < KEYCODESIZ; i++)
 			if (code == keycodelist[i]) break;
 		if (i < KEYCODESIZ)
