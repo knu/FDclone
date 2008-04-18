@@ -14,63 +14,63 @@
 #include <sys/stat.h>
 #endif
 
-#define	DOSDIRENT	32
-#define	SECTCACHESIZE	32
-#define	SECTSIZE	{512, 1024, 256, 128, 2048, 4096}
-#define	STDSECTSIZE	512
-#define	SECTCACHEMEM	(SECTCACHESIZE * STDSECTSIZE)
-#define	MINCLUST	2
-#define	MAX12BIT	(0xff0 - MINCLUST)
-#define	DOSMAXPATHLEN	260
-#define	MAXFATMEM	(512 * 9)	/* FAT size of 3.5inch 2HD */
+#define	DOSDIRENT		32
+#define	SECTCACHESIZE		32
+#define	SECTSIZE		{512, 1024, 256, 128, 2048, 4096}
+#define	STDSECTSIZE		512
+#define	SECTCACHEMEM		(SECTCACHESIZE * STDSECTSIZE)
+#define	MINCLUST		2
+#define	MAX12BIT		(0xff0 - MINCLUST)
+#define	DOSMAXPATHLEN		260
+#define	MAXFATMEM		(512 * 9)	/* FAT size of 3.5inch 2HD */
 
-#define	NOTINLFN	"\\/:*?\"<>|"
-#define	NOTINALIAS	"+,;=[]"
-#define	PACKINALIAS	" ."
-#define	LFNENTSIZ	13
-#define	DOSMAXNAMLEN	255
-#define	INHIBITNAME	{"CON     ", "AUX     ", "PRN     ", \
-			 "CLOCK$  ", "CONFIG$ ", "NUL     "}
-#define	INHIBITCOM	"COM"
-#define	INHIBITCOMMAX	9	/* NT architecture will avoid COM5-COM9 */
-#define	INHIBITLPT	"LPT"
-#define	INHIBITLPTMAX	9	/* Windows will avoid LPT4-LPT9 */
+#define	NOTINLFN		"\\/:*?\"<>|"
+#define	NOTINALIAS		"+,;=[]"
+#define	PACKINALIAS		" ."
+#define	LFNENTSIZ		13
+#define	DOSMAXNAMLEN		255
+#define	INHIBITNAME		{"CON     ", "AUX     ", "PRN     ", \
+				 "CLOCK$  ", "CONFIG$ ", "NUL     "}
+#define	INHIBITCOM		"COM"
+#define	INHIBITCOMMAX		9	/* Windows NT will avoid COM5-COM9 */
+#define	INHIBITLPT		"LPT"
+#define	INHIBITLPTMAX		9	/* Windows will avoid LPT4-LPT9 */
 
-#define	MAXDRIVEENTRY	32
-#define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
+#define	MAXDRIVEENTRY		32
+#define	DOSFDOFFSET		(1 << (8 * sizeof(int) - 2))
 #ifdef	NOFILE
-#define	DOSNOFILE	NOFILE
+#define	DOSNOFILE		NOFILE
 #else
-#define	DOSNOFILE	64
+#define	DOSNOFILE		64
 #endif
 
 #ifndef	DEV_BSIZE
-#define	DEV_BSIZE	512
+#define	DEV_BSIZE		512
 #endif
 
 #ifdef	SYSVDIRENT
-#define	d_fileno	d_ino
+#define	d_fileno		d_ino
 #endif
 
 #ifndef	L_SET
 # ifdef	SEEK_SET
-# define	L_SET	SEEK_SET
+# define	L_SET		SEEK_SET
 # else
-# define	L_SET	0
+# define	L_SET		0
 # endif
 #endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
-# define	L_INCR	SEEK_CUR
+# define	L_INCR		SEEK_CUR
 # else
-# define	L_INCR	1
+# define	L_INCR		1
 # endif
 #endif	/* !L_INCR */
 #ifndef	L_XTND
 # ifdef	SEEK_END
-# define	L_XTND	SEEK_END
+# define	L_XTND		SEEK_END
 # else
-# define	L_XTND	2
+# define	L_XTND		2
 # endif
 #endif	/* !L_XTND */
 
@@ -83,9 +83,9 @@
 #endif
 
 #ifdef	USELLSEEK
-typedef long long	l_off_t;
+typedef long long		l_off_t;
 #else
-typedef off_t		l_off_t;
+typedef off_t			l_off_t;
 #endif
 
 typedef struct _bpb_t {
@@ -112,10 +112,10 @@ typedef struct _bpb_t {
 	char fsname[8] __attribute__ ((packed));
 } bpb_t;
 
-#define	FS_FAT		"FAT     "
-#define	FS_FAT12	"FAT12   "
-#define	FS_FAT16	"FAT16   "
-#define	FS_FAT32	"FAT32   "
+#define	FS_FAT			"FAT     "
+#define	FS_FAT12		"FAT12   "
+#define	FS_FAT16		"FAT16   "
+#define	FS_FAT32		"FAT32   "
 
 typedef struct _dent_t {
 	u_char name[8] __attribute__ ((packed));
@@ -133,13 +133,13 @@ typedef struct _dent_t {
 	u_char size[4] __attribute__ ((packed));
 } dent_t;
 
-#define	DS_IRDONLY	001
-#define	DS_IHIDDEN	002
-#define	DS_IFSYSTEM	004
-#define	DS_IFLABEL	010
-#define	DS_IFLFN	017
-#define	DS_IFDIR	020
-#define	DS_IARCHIVE	040
+#define	DS_IRDONLY		001
+#define	DS_IHIDDEN		002
+#define	DS_IFSYSTEM		004
+#define	DS_IFLABEL		010
+#define	DS_IFLFN		017
+#define	DS_IFDIR		020
+#define	DS_IARCHIVE		040
 
 typedef struct _cache_t {
 	char path[MAXPATHLEN];
@@ -184,19 +184,19 @@ typedef struct _devstat {
 	cache_t *dircache;
 } devstat;
 
-#define	F_RONLY	0001
-#define	F_16BIT	0002
-#define	F_8SECT	0004
-#define	F_DUPL	0010
-#define	F_CACHE	0020
-#define	F_WRFAT	0040
-#define	F_VFAT	0100
-#define	F_FAT32	0200
+#define	F_RONLY			0001
+#define	F_16BIT			0002
+#define	F_8SECT			0004
+#define	F_DUPL			0010
+#define	F_CACHE			0020
+#define	F_WRFAT			0040
+#define	F_VFAT			0100
+#define	F_FAT32			0200
 
-#define	ch_name	fatbuf
-#define	ch_head	clustsize
-#define	ch_sect	sectsize
-#define	ch_cyl	fatofs
+#define	ch_name			fatbuf
+#define	ch_head			clustsize
+#define	ch_sect			sectsize
+#define	ch_cyl			fatofs
 
 typedef struct _dosiobuf {
 	long _cnt;
@@ -215,27 +215,27 @@ typedef struct _dosiobuf {
 	long _offset;
 } dosFILE;
 
-#define	O_IOEOF	020000
-#define	O_IOERR	040000
+#define	O_IOEOF			020000
+#define	O_IOERR			040000
 
-#define	byte2word(p)	((p)[0] + ((u_short)(p)[1] << 8))
-#define	byte2dword(p)	((p)[0] + ((u_long)(p)[1] << 8) \
-				+ ((u_long)(p)[2] << 16) \
-				+ ((u_long)(p)[3] << 24))
-#define	dd2dentp(dd)	(&(devlist[dd].dircache -> dent))
-#define	dd2path(dd)	(devlist[dd].dircache -> path)
-#define	dd2clust(dd)	(devlist[dd].dircache -> clust)
-#define	dd2offset(dd)	(devlist[dd].dircache -> offset)
-#define	fd2devp(fd)	(&(devlist[dosflist[fd]._file]))
-#define	fd2dentp(fd)	(dd2dentp(dosflist[fd]._file))
-#define	fd2path(fd)	(dd2path(dosflist[fd]._file))
-#define	fd2clust(fd)	(dd2clust(dosflist[fd]._file))
-#define	fd2offset(fd)	(dd2offset(dosflist[fd]._file))
+#define	byte2word(p)		((p)[0] + ((u_short)(p)[1] << 8))
+#define	byte2dword(p)		((p)[0] + ((u_long)(p)[1] << 8) \
+					+ ((u_long)(p)[2] << 16) \
+					+ ((u_long)(p)[3] << 24))
+#define	dd2dentp(dd)		(&(devlist[dd].dircache -> dent))
+#define	dd2path(dd)		(devlist[dd].dircache -> path)
+#define	dd2clust(dd)		(devlist[dd].dircache -> clust)
+#define	dd2offset(dd)		(devlist[dd].dircache -> offset)
+#define	fd2devp(fd)		(&(devlist[dosflist[fd]._file]))
+#define	fd2dentp(fd)		(dd2dentp(dosflist[fd]._file))
+#define	fd2path(fd)		(dd2path(dosflist[fd]._file))
+#define	fd2clust(fd)		(dd2clust(dosflist[fd]._file))
+#define	fd2offset(fd)		(dd2offset(dosflist[fd]._file))
 
-#define	dosfflag(p)	(((dosFILE *)((VOID_P)(p))) -> _flag)
-#define	dosfeof(p)	((dosfflag(p) & O_IOEOF) != 0)
-#define	dosferror(p)	((dosfflag(p) & O_IOERR) != 0)
-#define	dosclearerr(p)	(dosfflag(p) &= ~(O_IOERR | O_IOEOF))
+#define	dosfflag(p)		(((dosFILE *)((VOID_P)(p))) -> _flag)
+#define	dosfeof(p)		((dosfflag(p) & O_IOEOF) != 0)
+#define	dosferror(p)		((dosfflag(p) & O_IOERR) != 0)
+#define	dosclearerr(p)		(dosfflag(p) &= ~(O_IOERR | O_IOEOF))
 
 typedef struct _dosdirdesc {
 	int dd_id;
@@ -247,7 +247,7 @@ typedef struct _dosdirdesc {
 	char *dd_buf;
 } dosDIR;
 
-#define	DID_IFDOSDRIVE	(-1)
+#define	DID_IFDOSDRIVE		(-1)
 
 #ifdef	HDDMOUNT
 typedef struct _partition_t {
@@ -262,23 +262,23 @@ typedef struct _partition_t {
 	u_char f_sect[4] __attribute__ ((packed));
 	u_char t_sect[4] __attribute__ ((packed));
 } partition_t;
-#define	PART_SIZE	((int)sizeof(partition_t))
-#define	PART_TABLE	0x01be
-#define	PART_NUM	4
+#define	PART_SIZE		((int)sizeof(partition_t))
+#define	PART_TABLE		0x01be
+#define	PART_NUM		4
 
-#define	PT_FAT12	0x01
-#define	PT_FAT16	0x04
-#define	PT_EXTEND	0x05
-#define	PT_FAT16X	0x06
-#define	PT_NTFS		0x07
-#define	PT_FAT32	0x0b
-#define	PT_FAT32LBA	0x0c
-#define	PT_FAT16XLBA	0x0e
-#define	PT_EXTENDLBA	0x0f
-#define	PT_LINUX	0x83
-#define	PT_386BSD	0xa5
-#define	PT_OPENBSD	0xa6
-#define	PT_NETBSD	0xa9
+#define	PT_FAT12		0x01
+#define	PT_FAT16		0x04
+#define	PT_EXTEND		0x05
+#define	PT_FAT16X		0x06
+#define	PT_NTFS			0x07
+#define	PT_FAT32		0x0b
+#define	PT_FAT32LBA		0x0c
+#define	PT_FAT16XLBA		0x0e
+#define	PT_EXTENDLBA		0x0f
+#define	PT_LINUX		0x83
+#define	PT_386BSD		0xa5
+#define	PT_OPENBSD		0xa6
+#define	PT_NETBSD		0xa9
 
 typedef struct _partition98_t {
 	u_char boot __attribute__ ((packed));
@@ -295,18 +295,18 @@ typedef struct _partition98_t {
 	u_char e_cyl[2] __attribute__ ((packed));
 	u_char name[16] __attribute__ ((packed));
 } partition98_t;
-#define	PART98_SIZE	((int)sizeof(partition98_t))
-#define	PART98_TABLE	0x0200
-#define	PART98_NUM	16
+#define	PART98_SIZE		((int)sizeof(partition98_t))
+#define	PART98_TABLE		0x0200
+#define	PART98_NUM		16
 
-#define	PT98_FAT12	0x81	/* 0x80 | 0x01 */
-#define	PT98_FAT16	0x91	/* 0x80 | 0x11 */
-#define	PT98_FREEBSD	0x94	/* 0x80 | 0x14 */
-#define	PT98_FAT16X	0xa1	/* 0x80 | 0x21 */
-#define	PT98_NTFS	0xb1	/* 0x80 | 0x31 */
-#define	PT98_386BSD	0xc4	/* 0x80 | 0x44 */
-#define	PT98_FAT32	0xe1	/* 0x80 | 0x61 */
-#define	PT98_LINUX	0xe2	/* 0x80 | 0x62 */
+#define	PT98_FAT12		0x81	/* 0x80 | 0x01 */
+#define	PT98_FAT16		0x91	/* 0x80 | 0x11 */
+#define	PT98_FREEBSD		0x94	/* 0x80 | 0x14 */
+#define	PT98_FAT16X		0xa1	/* 0x80 | 0x21 */
+#define	PT98_NTFS		0xb1	/* 0x80 | 0x31 */
+#define	PT98_386BSD		0xc4	/* 0x80 | 0x44 */
+#define	PT98_FAT32		0xe1	/* 0x80 | 0x61 */
+#define	PT98_LINUX		0xe2	/* 0x80 | 0x62 */
 #endif	/* HDDMOUNT */
 
 #if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
@@ -314,13 +314,13 @@ typedef struct _st_dirent {
 	char buf[(int)sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
 } st_dirent;
 #else
-typedef struct dirent	st_dirent;
+typedef struct dirent		st_dirent;
 #endif
 
 #ifdef	NODRECLEN
-#define	wrap_reclen(dp)	(*(u_short *)(dp))
+#define	wrap_reclen(dp)		(*(u_short *)(dp))
 #else
-#define	wrap_reclen(dp)	((dp) -> d_reclen)
+#define	wrap_reclen(dp)		((dp) -> d_reclen)
 #endif
 
 #ifdef	CYGWIN
@@ -332,8 +332,8 @@ struct dosdirent {
 };
 typedef struct dosdirent	st_dosdirent;
 #else
-#define	dosdirent	dirent
-#define	st_dosdirent	st_dirent
+#define	dosdirent		dirent
+#define	st_dosdirent		st_dirent
 #endif
 
 #ifndef	_NODOSDRIVE

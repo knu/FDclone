@@ -27,6 +27,8 @@ extern int errno;
 #include <sys/file.h>
 #endif
 
+#define	KEYWID			7
+
 #ifdef	USEMNTENTH
 #include <mntent.h>
 typedef struct mntent		mnt_t;
@@ -34,7 +36,7 @@ typedef struct mntent		mnt_t;
 #define	getmntent2(f,m)		getmntent(f)
 #define	hasmntopt2(m,o)		strmntopt((m) -> mnt_opts, o)
 #define	endmntent2		endmntent
-#endif	/* USEMNTENTH */
+#endif
 
 #ifdef	USEMNTTABH
 #include <sys/mnttab.h>
@@ -57,7 +59,7 @@ typedef struct mnttab		mnt_t;
 #include <sys/vfs.h>
 #include <sys/mntctl.h>
 #include <sys/vmount.h>
-#endif	/* USEMNTCTL */
+#endif
 
 #if	!defined (USEMOUNTH) && !defined (USEFSDATA) \
 && (defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
@@ -101,7 +103,7 @@ typedef struct fstab		mnt_t;
 #define	mnt_dir			fs_file
 #define	mnt_fsname		fs_spec
 #define	mnt_type		fs_vfstype
-#endif	/* USEGETFSENT */
+#endif
 
 #if	MSDOS
 # ifdef	DOUBLESLASH
@@ -149,31 +151,31 @@ typedef struct statvfs		statfs_t;
 #define	f_bavail		f_bfree
 typedef struct statfs		statfs_t;
 #define	blocksize(fs)		(fs).f_bsize
-#endif	/* USESTATFSH */
+#endif
 
 #ifdef	USEVFSH
 #include <sys/vfs.h>
 typedef struct statfs		statfs_t;
 #define	blocksize(fs)		(fs).f_bsize
-#endif	/* USEVFSH */
+#endif
 
 #ifdef	USEMOUNTH
 #include <sys/mount.h>
 typedef struct statfs		statfs_t;
 #define	blocksize(fs)		(fs).f_bsize
-#endif	/* USEMOUNTH */
+#endif
 
 #ifdef	USEFSDATA
 #include <sys/mount.h>
 typedef struct fs_data		statfs_t;
-#define	statfs2(path, buf)	(statfs(path, buf) - 1)
+#define	statfs2(p, b)		(statfs(p, b) - 1)
 #define	blocksize(fs)		1024
 #define	f_bsize			fd_req.bsize
 #define	f_files			fd_req.gtot
 #define	f_blocks		fd_req.btot
 #define	f_bfree			fd_req.bfree
 #define	f_bavail		fd_req.bfreen
-#endif	/* USEFSDATA */
+#endif
 
 #ifdef	USEFFSIZE
 #define	f_bsize			f_fsize
@@ -181,15 +183,15 @@ typedef struct fs_data		statfs_t;
 
 #if	defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
 # if	(STATFSARGS >= 4)
-# define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t), 0)
-# else
+# define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t), 0)
+# else	/* STATFSARGS < 4 */
 #  if	(STATFSARGS == 3)
-#  define	statfs2(path, buf)	statfs(path, buf, sizeof(statfs_t))
+#  define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t))
 #  else
-#  define	statfs2			statfs
+#  define	statfs2		statfs
 #  endif
-# endif
-#endif
+# endif	/* STATFSARGS < 4 */
+#endif	/* USESTATFSH || USEVFSH || USEMOUNTH */
 
 #if	MSDOS
 typedef struct _statfs_t {
@@ -203,6 +205,21 @@ extern int unixstatfs __P_((CONST char *, statfs_t *));
 #define	statfs2			unixstatfs
 #define	blocksize(fs)		(fs).f_bsize
 #endif
+
+#ifdef	LINUX
+#define	SFN_MSDOSFS
+#endif
+#if	defined (FREEBSD) && (__FreeBSD__ < 3)
+# include <osreldate.h>
+# if	defined (__FreeBSD_version) && (__FreeBSD_version < 227000)
+# define	SFN_MSDOSFS
+# endif
+#endif	/* FREEBSD && (__FreeBSD__ < 3) */
+#ifdef	NETBSD
+# if	defined (NetBSD1_0) || defined (NetBSD1_1)
+# define	SFN_MSDOSFS
+# endif
+#endif	/* NETBSD */
 
 extern VOID error __P_((CONST char *));
 extern int _chdir2 __P_((CONST char *));
@@ -254,82 +271,83 @@ extern char *distributor;
 extern int needbavail;
 #endif
 
-#define	KEYWID		7
-
 #ifndef	MOUNTED
-#define	MOUNTED		"/etc/mtab"
+#define	MOUNTED			"/etc/mtab"
 #endif
 
 #ifndef	MNTTYPE_43
-#define	MNTTYPE_43	"4.3"	/* NEWS-OS 3-4, HP-UX, HI-UX */
+#define	MNTTYPE_43		"4.3"		/* NEWS-OS 3-4, HP-UX, HI-UX */
 #endif
 #ifndef	MNTTYPE_42
-#define	MNTTYPE_42	"4.2"	/* SunOS 4 */
+#define	MNTTYPE_42		"4.2"		/* SunOS 4 */
 #endif
 #ifndef	MNTTYPE_UFS
-#define	MNTTYPE_UFS	"ufs"	/* SVR4, OSF/1, FreeBSD, NetBSD */
+#define	MNTTYPE_UFS		"ufs"		/* SVR4, OSF/1, Free/NetBSD */
 #endif
 #ifndef	MNTTYPE_FFS
-#define	MNTTYPE_FFS	"ffs"	/* NetBSD, OpenBSD */
+#define	MNTTYPE_FFS		"ffs"		/* NetBSD, OpenBSD */
 #endif
 #ifndef	MNTTYPE_ADVFS
-#define	MNTTYPE_ADVFS	"advfs"	/* OSF/1 */
+#define	MNTTYPE_ADVFS		"advfs"		/* OSF/1 */
 #endif
 #ifndef	MNTTYPE_VXFS
-#define	MNTTYPE_VXFS	"vxfs"	/* HP-UX */
+#define	MNTTYPE_VXFS		"vxfs"		/* HP-UX */
 #endif
 #ifndef	MNTTYPE_HFS
-#define	MNTTYPE_HFS	"hfs"	/* Darwin, HP-UX */
+#define	MNTTYPE_HFS		"hfs"		/* Darwin, HP-UX */
 #endif
 #ifndef	MNTTYPE_EXT2
-#define	MNTTYPE_EXT2	"ext2"	/* Linux */
+#define	MNTTYPE_EXT2		"ext2"		/* Linux */
 #endif
 #ifndef	MNTTYPE_EXT3
-#define	MNTTYPE_EXT3	"ext3"	/* Linux */
+#define	MNTTYPE_EXT3		"ext3"		/* Linux */
 #endif
 #ifndef	MNTTYPE_JFS
-#define	MNTTYPE_JFS	"jfs"	/* AIX */
+#define	MNTTYPE_JFS		"jfs"		/* AIX */
 #endif
 #ifndef	MNTTYPE_EFS
-#define	MNTTYPE_EFS	"efs"	/* IRIX */
+#define	MNTTYPE_EFS		"efs"		/* IRIX */
 #endif
 #ifndef	MNTTYPE_SYSV
-#define	MNTTYPE_SYSV	"sysv"	/* SystemV Rel.3 */
+#define	MNTTYPE_SYSV		"sysv"		/* SystemV Rel.3 */
 #endif
 #ifndef	MNTTYPE_DGUX
-#define	MNTTYPE_DGUX	"dg/ux"	/* DG/UX */
-#endif
-#ifndef	MNTTYPE_MSDOS
-#define	MNTTYPE_MSDOS	"msdos"	/* msdosfs */
+#define	MNTTYPE_DGUX		"dg/ux"		/* DG/UX */
 #endif
 #ifndef	MNTTYPE_UMSDOS
-#define	MNTTYPE_UMSDOS	"umsdos"	/* umsdosfs */
+#define	MNTTYPE_UMSDOS		"umsdos"	/* umsdosfs on Linux */
+#endif
+#ifndef	MNTTYPE_MSDOS
+#define	MNTTYPE_MSDOS		"msdos"		/* msdosfs */
+#endif
+#ifndef	MNTTYPE_MSDOSFS
+#define	MNTTYPE_MSDOSFS		"msdosfs"	/* msdosfs on FreeBSD */
 #endif
 #ifndef	MNTTYPE_VFAT
-#define	MNTTYPE_VFAT	"vfat"	/* vfatfs */
+#define	MNTTYPE_VFAT		"vfat"		/* vfatfs on Linux */
 #endif
 #ifndef	MNTTYPE_PC
-#define	MNTTYPE_PC	"pc"	/* MS-DOS */
+#define	MNTTYPE_PC		"pc"		/* MS-DOS */
 #endif
 #ifndef	MNTTYPE_DOS7
-#define	MNTTYPE_DOS7	"dos7"	/* MS-DOS on Win95 */
+#define	MNTTYPE_DOS7		"dos7"		/* MS-DOS on Win95 */
 #endif
 #ifndef	MNTTYPE_FAT12
-#define	MNTTYPE_FAT12	"fat12"	/* MS-DOS */
+#define	MNTTYPE_FAT12		"fat12"		/* MS-DOS */
 #endif
 #ifndef	MNTTYPE_FAT16
-#define	MNTTYPE_FAT16	"fat16(16bit sector)"	/* MS-DOS */
+#define	MNTTYPE_FAT16		"fat16(16bit sector)"	/* MS-DOS */
 #endif
 #ifndef	MNTTYPE_FAT16X
-#define	MNTTYPE_FAT16X	"fat16(32bit sector)"	/* MS-DOS */
+#define	MNTTYPE_FAT16X		"fat16(32bit sector)"	/* MS-DOS */
 #endif
 #ifndef	MNTTYPE_FAT32
-#define	MNTTYPE_FAT32	"fat32"	/* Win98 */
+#define	MNTTYPE_FAT32		"fat32"		/* Win98 */
 #endif
 #ifndef	MNTTYPE_SHARED
-#define	MNTTYPE_SHARED	"shared"	/* Win98 */
+#define	MNTTYPE_SHARED		"shared"	/* Win98 */
 #endif
-#define	MNTTYPE_XNFS	"nfs"	/* NFS */
+#define	MNTTYPE_XNFS		"nfs"		/* NFS */
 
 static int NEAR code2str __P_((char *, int));
 static int NEAR checkline __P_((int));
@@ -352,7 +370,7 @@ static CONST int keycodelist[] = {
 	K_BEG, K_EOL, K_NPAGE, K_PPAGE, K_CLR, K_ENTER, K_HELP,
 	K_BS, '\t', K_CR, K_ESC
 };
-#define	KEYCODESIZ	arraysize(keycodelist)
+#define	KEYCODESIZ		arraysize(keycodelist)
 static CONST char *keystrlist[] = {
 	"Home", "End", "DelLin", "InsLin", "Del", "Ins",
 	"Beg", "Eol", "PageDn", "PageUp", "Clr", "Enter", "Help",
@@ -380,12 +398,13 @@ static CONST strtable mntlist[] = {
 	{FSID_SYSV, MNTTYPE_DGUX},
 	{FSID_LINUX, MNTTYPE_EXT2},
 	{FSID_LINUX, MNTTYPE_EXT3},
-# ifdef	LINUX
+	{FSID_FAT, MNTTYPE_UMSDOS},
+# ifdef	SFN_MSDOSFS
 	{FSID_FAT, MNTTYPE_MSDOS},
 # else
 	{FSID_LFN, MNTTYPE_MSDOS},
 # endif
-	{FSID_LFN, MNTTYPE_UMSDOS},
+	{FSID_LFN, MNTTYPE_MSDOSFS},
 	{FSID_LFN, MNTTYPE_VFAT},
 	{0, MNTTYPE_ADVFS},
 	{0, MNTTYPE_VXFS},
@@ -395,7 +414,7 @@ static CONST strtable mntlist[] = {
 # endif
 #endif	/* !MSDOS */
 };
-#define	MNTLISTSIZ	arraysize(mntlist)
+#define	MNTLISTSIZ		arraysize(mntlist)
 
 
 static int NEAR code2str(buf, code)
@@ -651,25 +670,30 @@ mnt_t *mntp;
 # if	defined (USEMNTINFO) || defined (USEGETVFSTAT)
 #  ifdef	USEVFCNAME
 	struct vfsconf *conf;
-#  define	getvfsbynumber(n)	((conf = getvfsbytype(n)) \
-					? conf -> vfc_name : NULL)
+#  define	getvfsbynumber(n) \
+				((conf = getvfsbytype(n)) \
+				? conf -> vfc_name : NULL)
 #  else	/* !USEVFCNAME */
 #   ifdef	USEFFSTYPE
-#   define	getvfsbynumber(n)	(buf[mnt_ptr].f_fstypename)
+#   define	getvfsbynumber(n) \
+				(buf[mnt_ptr].f_fstypename)
 #   else	/* !USEFFSTYPE */
 #    ifdef	INITMOUNTNAMES
 	static char *mnt_names[] = INITMOUNTNAMES;
-#    define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) \
-					? mnt_names[n] : NULL)
+#    define	getvfsbynumber(n) \
+				(((n) <= MOUNT_MAXTYPE) \
+				? mnt_names[n] : NULL)
 #    else
-#    define	getvfsbynumber(n)	(NULL)
+#    define	getvfsbynumber(n) \
+				(NULL)
 #    endif
 #   endif	/* !USEFFSTYPE */
 #  endif	/* !USEVFCNAME */
 # else	/* !USEMNTINFO && !USEGETVFSTAT */
 #  ifdef	USEGETFSSTAT
-#  define	getvfsbynumber(n)	(((n) <= MOUNT_MAXTYPE) \
-					? mnt_names[n] : NULL)
+#  define	getvfsbynumber(n) \
+				(((n) <= MOUNT_MAXTYPE) \
+				? mnt_names[n] : NULL)
 #  endif
 # endif	/* !USEMNTINFO && !USEGETVFSTAT */
 	static char *fsname = NULL;
@@ -776,15 +800,27 @@ mnt_t *mntbuf;
 # ifndef	_NODOSDRIVE
 	int i;
 # endif
-# ifdef	DOUBLESLASH
-	char *cp;
-	int len;
-# endif
-	statfs_t fs;
-	mnt_t mnt;
 	char buf[MAXPATHLEN];
 	int drive;
+#else	/* !MSDOS */
+# ifndef	_NODOSDRIVE
+	static char dosmntdir[4];
+	char buf[3 * sizeof(long) + 1];
+	int drv;
+# endif
+	mnt_t *mntp;
+	FILE *fp;
+	char fsname[MAXPATHLEN], dir[MAXPATHLEN];
+	ALLOC_T match;
+#endif	/* !MSDOS */
+#if	!MSDOS || defined (DOUBLESLASH)
+	CONST char *cp;
+	ALLOC_T len;
+#endif
+	statfs_t fs;
+	mnt_t mnt;
 
+#if	MSDOS
 	if (!fsbuf) fsbuf = &fs;
 	if (!mntbuf) mntbuf = &mnt;
 
@@ -849,19 +885,6 @@ mnt_t *mntbuf;
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
 #else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
-	static char dosmntdir[4];
-	char buf[3 * sizeof(long) + 1];
-	int drv;
-# endif
-	statfs_t fs;
-	mnt_t mnt;
-	mnt_t *mntp;
-	FILE *fp;
-	CONST char *cp;
-	char fsname[MAXPATHLEN], dir[MAXPATHLEN];
-	ALLOC_T len, match;
-
 	if (!fsbuf) fsbuf = &fs;
 	if (!mntbuf) mntbuf = &mnt;
 
@@ -948,9 +971,8 @@ mnt_t *mntbuf;
 	}
 	memcpy((char *)mntbuf, (char *)mntp, sizeof(mnt_t));
 
-	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0
-	&& (path == cp || statfs2(path, fsbuf) < 0))
-		return(-1);
+	if (statfs2(mntbuf -> mnt_dir, fsbuf) >= 0) /*EMPTY*/;
+	else if (path == cp || statfs2(path, fsbuf) < 0) return(-1);
 #endif	/* !MSDOS */
 
 	return(0);
@@ -1008,9 +1030,8 @@ CONST char *path;
 	if ((drv = dospath(path, NULL)))
 		return((isupper2(drv)) ? FSID_FAT : FSID_DOSDRIVE);
 #endif
-	if (getfsinfo(path, NULL, &mntbuf) < 0
-	|| hasmntopt2(&mntbuf, "ro"))
-		return(0);
+	if (getfsinfo(path, NULL, &mntbuf) < 0) return(0);
+	if (hasmntopt2(&mntbuf, "ro")) return(0);
 
 	for (i = 0; i < MNTLISTSIZ; i++)
 		if (!strcmp(mntbuf.mnt_type, mntlist[i].str))

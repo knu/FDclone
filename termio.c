@@ -120,7 +120,7 @@ extern u_char _openfile[];
 static CONST u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 17, 18, 65, 80
 };
-#define	DOSERRLISTSIZ	arraysize(doserrlist)
+#define	DOSERRLISTSIZ		arraysize(doserrlist)
 static CONST int unixerrlist[] = {
 	0, EINVAL, ENOENT, ENOENT, EMFILE, EACCES,
 	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, EXDEV, 0, EACCES, EEXIST
@@ -396,8 +396,10 @@ FILE **fpp;
 	if (*fdp >= 0) fd = *fdp;
 	else if ((fd = newdup(open(_PATH_TTY, flags, 0666))) < 0) return(-1);
 	if (*fpp) fp = *fpp;
-	else if (!(fp = fdopen(fd, "w+b"))
-	&& !(fp = fopen(_PATH_TTY, "w+b"))) {
+#ifndef	SELECTRWONLY
+	else if ((fp = fdopen(fd, "w+b"))) /*EMPTY*/;
+#endif
+	else if (!(fp = fopen(_PATH_TTY, "w+b"))) {
 		close(fd);
 		return(-1);
 	}

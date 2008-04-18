@@ -248,6 +248,7 @@ CONST char *path;
 		shutdrv(dd);
 		n = -1;
 	}
+	else n = 0;
 	if (n >= 0) {
 		shutdrv(lastdrv);
 		lastdrv = dd;

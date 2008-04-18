@@ -8,7 +8,7 @@
 #define	__MACHINE_H_
 
 #undef	MSDOS
-#define	MSDOS		(DOSV || PC98 || J3100)
+#define	MSDOS			(DOSV || PC98 || J3100)
 
 #if	MSDOS
 #define	NOMULTIKANJI
@@ -29,7 +29,7 @@
 #define	NOSYSLOG
 #define	USEMKTIME
 #define	USESTRERROR
-#define	SENSEPERSEC	20
+#define	SENSEPERSEC		20
 # if	defined (__TURBOC__) && defined (__WIN32__)
 # define	BCC32
 # endif
@@ -49,10 +49,10 @@
 # define	NOUNISTDH
 # endif	/* !__GNUC__ */
 # if	!defined (__GNUC__) || (DJGPP >= 2)
-typedef unsigned int	u_int;
-typedef unsigned char	u_char;
-typedef unsigned short	u_short;
-typedef unsigned long	u_long;
+typedef unsigned int		u_int;
+typedef unsigned char		u_char;
+typedef unsigned short		u_short;
+typedef unsigned long		u_long;
 # endif
 # ifdef	__TURBOC__
 #  ifndef	BCC32
@@ -84,7 +84,7 @@ typedef long	off_t;
 #define	CODEEUC
 #define	CPP7BIT
 #define	USELEAPCNT
-#define	SOCKETLIB	"-lsocket -lnsl"
+#define	SOCKETLIB		"-lsocket -lnsl"
 #include <sys/param.h>
 # if	!defined (MAXHOSTNAMELEN) \
 || defined (USGr4) || defined (__svr4__) || defined (__SVR4)
@@ -178,10 +178,10 @@ typedef long	off_t;
 #define	DECLERRLIST
 #define	USEMKDEVH
 #define	NODNAMLEN
-#define	DNAMESIZE	1
+#define	DNAMESIZE		1
 #define	NOTMGMTOFF
 #define	USESTATFSH
-#define	STATFSARGS	4
+#define	STATFSARGS		4
 #define	USERE_COMP
 #define	USEMKTIME
 #define	USESYSCONF
@@ -202,7 +202,7 @@ typedef long	off_t;
 # define	NOSTDC
 # endif
 # ifdef	__STDC_EXT__
-# define	EXTENDCCOPT		"-D_FILE_OFFSET_BITS=64"
+# define	EXTENDCCOPT	"-D_FILE_OFFSET_BITS=64"
 # endif
 /*
  *	This is a fake '#if' for some buggy HP-UX terminfo library.
@@ -218,11 +218,11 @@ typedef long	off_t;
  *
  */
 # ifndef	__HP_cc
-# define	BUGGY_HPUX		/* Maybe HP-UX 10.20 */
+# define	BUGGY_HPUX	/* Maybe HP-UX 10.20 */
 # endif
 # if	!defined (BUGGY_HPUX)
 # define	USETERMINFO
-# define	TERMCAPLIB		"-lcurses"
+# define	TERMCAPLIB	"-lcurses"
 # endif
 #define	USEPID_T
 #define	NOSIGLIST
@@ -333,7 +333,7 @@ typedef long	off_t;
 #define	CODEEUC
 #define	TARUSESPACE
 #define	NOFUNCMACRO
-#define	EXTENDLIB	"-lc_r"
+#define	EXTENDLIB		"-lc_r"
 #define	USEMNTINFOR
 # if	defined (SYSTYPE_BSD)
 # define	BSD43
@@ -419,10 +419,10 @@ typedef long	off_t;
 #define	CODEEUC
 #define	TERMCAPLIB		"-ltermcap"
 #define	USESTATFSH
-#define	STATFSARGS	4
+#define	STATFSARGS		4
 #define	USESYSDIRH
 #define	NODNAMLEN
-#define	DNAMESIZE	1
+#define	DNAMESIZE		1
 #define	USERE_COMP
 #endif
 
@@ -434,7 +434,7 @@ typedef long	off_t;
 #define	REGEXPLIB		"-lgen"
 #define	USEMKDEVH
 #define	NODNAMLEN
-#define	DNAMESIZE	1
+#define	DNAMESIZE		1
 #define	NOTMGMTOFF
 #define	USESTATVFSH
 #define	USEMNTTABH
@@ -449,7 +449,7 @@ typedef long	off_t;
 #define	REGEXPLIB		"-lgen"
 #define	USEMKDEVH
 #define	NODNAMLEN
-#define	DNAMESIZE	1
+#define	DNAMESIZE		1
 #define	NOTMGMTOFF
 #define	USESTATVFSH
 #define	USEMNTTABH
@@ -503,9 +503,9 @@ typedef long	off_t;
 #define	CODEEUC
 # if	defined (alpha) || defined (__alpha) || defined (__alpha__)
 /* Linux/Alpha need not support LFS and cannot use statfs(2) with LFS */
-# define	EXTENDCCOPT		"-O"
+# define	EXTENDCCOPT	"-O"
 # else
-# define	EXTENDCCOPT		"-O -D_FILE_OFFSET_BITS=64"
+# define	EXTENDCCOPT	"-O -D_FILE_OFFSET_BITS=64"
 # endif
 #define	USEMANLANG
 #define	BSDINSTALL
@@ -523,9 +523,9 @@ typedef long	off_t;
  *
  */
 # if	defined (Slackware)
-# define	TERMCAPLIB		"-ltermcap"
+# define	TERMCAPLIB	"-ltermcap"
 # else
-# define	TERMCAPLIB		"-lncurses"
+# define	TERMCAPLIB	"-lncurses"
 # endif
 #define	DECLSIGLIST
 #define	DECLERRLIST
@@ -726,7 +726,7 @@ typedef long	off_t;
 # undef	CCCOMMAND
 # define	CCCOMMAND	"/bsd43/bin/cc"
 # endif
-#define	TERMCAPLIB	"-lcurses -ltermcap"
+#define	TERMCAPLIB		"-lcurses -ltermcap"
 #define	NOERRNO
 #define	NOFILEMODE
 #define	NOUNISTDH
@@ -936,11 +936,11 @@ typedef long	off_t;
 /*                             */
 
 #ifdef	BSPATHDELIM
-#define	_SC_	'\\'
-#define	_SS_	"\\"
+#define	_SC_			'\\'
+#define	_SS_			"\\"
 #else
-#define	_SC_	'/'
-#define	_SS_	"/"
+#define	_SC_			'/'
+#define	_SS_			"/"
 #endif
 
 #if	defined (BSD43) || defined (BSD44)
@@ -1037,35 +1037,35 @@ typedef long	off_t;
 #endif
 
 #if	defined (FORCEDSTDC) && !defined (STRICTSTDC)
-#define	__P_(args)	args
+#define	__P_(args)		args
 #else
-#define	__P_(args)	()
+#define	__P_(args)		()
 #endif
 
 #if	defined (FORCEDSTDC) && !defined (NOCONST)
-#define	CONST		const
+#define	CONST			const
 #else
 #define	CONST
 #endif
 
 #ifdef	FORCEDSTDC
-#define	ALLOC_T		size_t
-#define	VOID_A		void
+#define	ALLOC_T			size_t
+#define	VOID_A			void
 #else
-#define	ALLOC_T		u_int
+#define	ALLOC_T			u_int
 #define	VOID_A
 #endif
 
 #ifdef	NOVOID
 #define	VOID
-#define	VOID_T	int
-#define	VOID_P	char *
+#define	VOID_T			int
+#define	VOID_P			char *
 #define	VOID_C
 #else
-#define	VOID	void
-#define	VOID_T	void
-#define	VOID_P	void *
-#define	VOID_C	(void)
+#define	VOID			void
+#define	VOID_T			void
+#define	VOID_P			void *
+#define	VOID_C			(void)
 #endif
 
 #if	defined (USEREGCMP) && !defined (REGEXPLIB)
@@ -1087,9 +1087,9 @@ typedef long	off_t;
 #endif
 #ifndef	TERMCAPLIB
 # ifdef	USETERMINFO
-# define	TERMCAPLIB		"-lcurses"
+# define	TERMCAPLIB	"-lcurses"
 # else
-# define	TERMCAPLIB		"-ltermlib"
+# define	TERMCAPLIB	"-ltermlib"
 # endif
 #endif
 #ifndef	REGEXPLIB
@@ -1189,7 +1189,7 @@ typedef long	off_t;
 #endif
 
 #ifndef	GETTODARGS
-#define	GETTODARGS	2
+#define	GETTODARGS		2
 #endif
 
 #endif	/* !__MACHINE_H_ */

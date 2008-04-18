@@ -17,33 +17,33 @@
 
 #ifdef	K_EXTERN
 #define	K_INTERN
-#define	K_INIT(x)	=x
+#define	K_INIT(x)		=x
 #else
-#define	K_EXTERN	extern
+#define	K_EXTERN		extern
 #define	K_INIT(x)
 #endif
 
-#define	C_BS		'\010'
-#define	C_DEL		'\177'
-#define	C_EKANA		0x8e
+#define	C_BS			'\010'
+#define	C_DEL			'\177'
+#define	C_EKANA			0x8e
 
 #ifdef	LSI_C
 #include <jctype.h>
-#define	toupper2(c)	toupper((u_char)(c))
-#define	tolower2(c)	tolower((u_char)(c))
-#define	isalnum2(c)	isalnum((u_char)(c))
-#define	isalpha2(c)	isalpha((u_char)(c))
-#define	iscntrl2(c)	iscntrl((u_char)(c))
-#define	isdigit2(c)	isdigit((u_char)(c))
-#define	isupper2(c)	isupper((u_char)(c))
-#define	islower2(c)	islower((u_char)(c))
-#define	isxdigit2(c)	isxdigit((u_char)(c))
-#define	issjis1(c)	iskanji((u_char)(c))
-#define	issjis2(c)	iskanji2((u_char)(c))
-#define	iskana2(c)	iskana((u_char)(c))
-#define	isspace2(c)	isspace((u_char)(c))
-#define	isprint2(c)	isprint((u_char)(c))
-#define	isblank2(c)	((c) == ' ' || (c) == '\t')
+#define	toupper2(c)		toupper((u_char)(c))
+#define	tolower2(c)		tolower((u_char)(c))
+#define	isalnum2(c)		isalnum((u_char)(c))
+#define	isalpha2(c)		isalpha((u_char)(c))
+#define	iscntrl2(c)		iscntrl((u_char)(c))
+#define	isdigit2(c)		isdigit((u_char)(c))
+#define	isupper2(c)		isupper((u_char)(c))
+#define	islower2(c)		islower((u_char)(c))
+#define	isxdigit2(c)		isxdigit((u_char)(c))
+#define	issjis1(c)		iskanji((u_char)(c))
+#define	issjis2(c)		iskanji2((u_char)(c))
+#define	iskana2(c)		iskana((u_char)(c))
+#define	isspace2(c)		isspace((u_char)(c))
+#define	isprint2(c)		isprint((u_char)(c))
+#define	isblank2(c)		((c) == ' ' || (c) == '\t')
 #else	/* !LSI_C */
 K_EXTERN CONST u_char uppercase[256]
 #ifdef	K_INTERN
@@ -187,94 +187,93 @@ K_EXTERN CONST u_char kctypetable[256]
 }
 #endif	/* K_INTERN */
 ;
-#define	toupper2(c)	(uppercase[(u_char)(c)])
-#define	tolower2(c)	(lowercase[(u_char)(c)])
-#define	C_DIGIT		0001
-#define	C_UPPER		0002
-#define	C_LOWER		0004
-#define	C_HEX		0010
-#define	C_CNTRL		0020
-#define	C_SPACE		0040
-#define	C_PRINT		0100
-#define	C_BLANK		0200
-#define	isalnum2(c)	(ctypetable[(u_char)(c)] \
-			& (C_DIGIT | C_UPPER | C_LOWER))
-#define	isalpha2(c)	(ctypetable[(u_char)(c)] & (C_UPPER | C_LOWER))
-#define	iscntrl2(c)	(ctypetable[(u_char)(c)] & C_CNTRL)
-#define	isdigit2(c)	(ctypetable[(u_char)(c)] & C_DIGIT)
-#define	isupper2(c)	(ctypetable[(u_char)(c)] & C_UPPER)
-#define	islower2(c)	(ctypetable[(u_char)(c)] & C_LOWER)
-#define	isxdigit2(c)	(ctypetable[(u_char)(c)] & (C_DIGIT | C_HEX))
-#define	isspace2(c)	(ctypetable[(u_char)(c)] & C_SPACE)
-#define	isprint2(c)	(ctypetable[(u_char)(c)] & C_PRINT)
-#define	isblank2(c)	(ctypetable[(u_char)(c)] & C_BLANK)
-#define	KC_SJIS1	0001
-#define	KC_SJIS2	0002
-#define	KC_KANA		0004
-#define	KC_EUCJP	0010
-#define	KC_JIS		0020
-#define	KC_JKANA	0040
-#define	iskana2(c)	(kctypetable[(u_char)(c)] & KC_KANA)
-
-# ifndef	issjis1
-# define	issjis1(c)	(kctypetable[(u_char)(c)] & KC_SJIS1)
-# endif
-# ifndef	issjis2
-# define	issjis2(c)	(kctypetable[(u_char)(c)] & KC_SJIS2)
-# endif
-
-# ifndef	iseuc
-# define	iseuc(c)	(kctypetable[(u_char)(c)] & KC_EUCJP)
-# endif
-
-# ifndef	isjis
-# define	isjis(c)	(kctypetable[(u_char)(c)] & KC_JIS)
-# endif
+#define	toupper2(c)		(uppercase[(u_char)(c)])
+#define	tolower2(c)		(lowercase[(u_char)(c)])
+#define	C_DIGIT			0001
+#define	C_UPPER			0002
+#define	C_LOWER			0004
+#define	C_HEX			0010
+#define	C_CNTRL			0020
+#define	C_SPACE			0040
+#define	C_PRINT			0100
+#define	C_BLANK			0200
+#define	isalnum2(c)		(ctypetable[(u_char)(c)] \
+				& (C_DIGIT | C_UPPER | C_LOWER))
+#define	isalpha2(c)		(ctypetable[(u_char)(c)] & (C_UPPER | C_LOWER))
+#define	iscntrl2(c)		(ctypetable[(u_char)(c)] & C_CNTRL)
+#define	isdigit2(c)		(ctypetable[(u_char)(c)] & C_DIGIT)
+#define	isupper2(c)		(ctypetable[(u_char)(c)] & C_UPPER)
+#define	islower2(c)		(ctypetable[(u_char)(c)] & C_LOWER)
+#define	isxdigit2(c)		(ctypetable[(u_char)(c)] & (C_DIGIT | C_HEX))
+#define	isspace2(c)		(ctypetable[(u_char)(c)] & C_SPACE)
+#define	isprint2(c)		(ctypetable[(u_char)(c)] & C_PRINT)
+#define	isblank2(c)		(ctypetable[(u_char)(c)] & C_BLANK)
+#define	KC_SJIS1		0001
+#define	KC_SJIS2		0002
+#define	KC_KANA			0004
+#define	KC_EUCJP		0010
+#define	KC_JIS			0020
+#define	KC_JKANA		0040
+#define	iskana2(c)		(kctypetable[(u_char)(c)] & KC_KANA)
+#ifndef	issjis1
+#define	issjis1(c)		(kctypetable[(u_char)(c)] & KC_SJIS1)
+#endif
+#ifndef	issjis2
+#define	issjis2(c)		(kctypetable[(u_char)(c)] & KC_SJIS2)
+#endif
+#ifndef	iseuc
+#define	iseuc(c)		(kctypetable[(u_char)(c)] & KC_EUCJP)
+#endif
+#ifndef	isjis
+#define	isjis(c)		(kctypetable[(u_char)(c)] & KC_JIS)
+#endif
 #endif	/* !LSI_C */
 
-#define	ismsb(c)	(((u_char)(c)) & 0x80)
-#define	isekana(s, i)	((u_char)((s)[i]) == C_EKANA && iskana2((s)[(i) + 1]))
-#define	isskana(s, i)	iskana2((s)[i])
-#define	isjkana(s, i)	(kctypetable[(u_char)((s)[i])] & KC_JKANA)
+#define	ismsb(c)		(((u_char)(c)) & 0x80)
+#define	isekana(s, i)		((u_char)((s)[i]) == C_EKANA \
+				&& iskana2((s)[(i) + 1]))
+#define	isskana(s, i)		iskana2((s)[i])
+#define	isjkana(s, i)		(kctypetable[(u_char)((s)[i])] & KC_JKANA)
 
-#define	isutf2(c1, c2)	((((u_char)(c1) & 0xe0) == 0xc0) \
-			&& ((u_char)(c2) & 0xc0) == 0x80)
+#define	isutf2(c1, c2)		((((u_char)(c1) & 0xe0) == 0xc0) \
+				&& ((u_char)(c2) & 0xc0) == 0x80)
 #define	isutf3(c1, c2, c3) \
-			(((u_char)(c1) & 0xf0) == 0xe0 \
-			&& ((u_char)(c2) & 0xc0) == 0x80 \
-			&& ((u_char)(c3) & 0xc0) == 0x80)
-#define	iswucs2(u)	(((u) & 0xff00) && ((u) < 0xff61 || (u) > 0xff9f))
+				(((u_char)(c1) & 0xf0) == 0xe0 \
+				&& ((u_char)(c2) & 0xc0) == 0x80 \
+				&& ((u_char)(c3) & 0xc0) == 0x80)
+#define	iswucs2(u)		(((u) & 0xff00) \
+				&& ((u) < 0xff61 || (u) > 0xff9f))
 
-#define	NOCNV	0
-#define	ENG	1
-#define	SJIS	2
-#define	EUC	3
-#define	JIS7	4
-#define	O_JIS7	5
-#define	JIS8	6
-#define	O_JIS8	7
-#define	JUNET	8
-#define	O_JUNET	9
-#define	HEX	10
-#define	CAP	11
-#define	UTF8	12
-#define	M_UTF8	13
-#define	I_UTF8	14
+#define	NOCNV			0
+#define	ENG			1
+#define	SJIS			2
+#define	EUC			3
+#define	JIS7			4
+#define	O_JIS7			5
+#define	JIS8			6
+#define	O_JIS8			7
+#define	JUNET			8
+#define	O_JUNET			9
+#define	HEX			10
+#define	CAP			11
+#define	UTF8			12
+#define	M_UTF8			13
+#define	I_UTF8			14
 
 #ifdef	CODEEUC
-#define	DEFCODE	EUC
-#define	SECCODE	SJIS
-#define	KANAWID	2
+#define	DEFCODE			EUC
+#define	SECCODE			SJIS
+#define	KANAWID			2
 #else
-#define	DEFCODE	SJIS
-#define	SECCODE	EUC
-#define	KANAWID	1
+#define	DEFCODE			SJIS
+#define	SECCODE			EUC
+#define	KANAWID			1
 #endif
 
-#define	MAXKANJIBUF	(3 + 2 + 3)
-#define	MAXKLEN		2
-#define	MAXUTF8LEN	3
-#define	MAXNFLEN	4
+#define	MAXKANJIBUF		(3 + 2 + 3)
+#define	MAXKLEN			2
+#define	MAXUTF8LEN		3
+#define	MAXNFLEN		4
 
 #ifdef	NOMULTIKANJI
 #define	_NOKANJICONV
@@ -292,7 +291,7 @@ K_EXTERN int kanjierrno K_INIT(0);
 K_EXTERN int defaultkcode K_INIT(NOCNV);
 #endif
 #ifdef	_NOKANJICONV
-#define	inputkcode	NOCNV
+#define	inputkcode		NOCNV
 #else
 K_EXTERN int inputkcode K_INIT(NOCNV);
 #endif
@@ -311,11 +310,11 @@ K_EXTERN int fnamekcode K_INIT(NOCNV);
 K_EXTERN int messagelang K_INIT(NOCNV);
 #endif
 
-#define	L_INPUT		0001
-#define	L_OUTPUT	0002
-#define	L_FNAME		0004
-#define	L_TERMINAL	0010
-#define	L_MESSAGE	0020
+#define	L_INPUT			0001
+#define	L_OUTPUT		0002
+#define	L_FNAME			0004
+#define	L_TERMINAL		0010
+#define	L_MESSAGE		0020
 
 K_EXTERN CONST char kanjiiomode[]
 # ifdef	K_INTERN
@@ -379,10 +378,10 @@ int *ip;
 # define	isinkanji2(c,k)	issjis2(c)
 # endif
 #else	/* !_NOKANJICONV */
-#define	isinkanji1(c,k)	(((k) == EUC) ? iseuc(c) : \
-			(((k) == SJIS) ? issjis1(c) : 0))
-#define	isinkanji2(c,k)	(((k) == EUC) ? iseuc(c) : \
-			(((k) == SJIS) ? issjis2(c) : 0))
+#define	isinkanji1(c,k)		(((k) == EUC) ? iseuc(c) : \
+				(((k) == SJIS) ? issjis1(c) : 0))
+#define	isinkanji2(c,k)		(((k) == EUC) ? iseuc(c) : \
+				(((k) == SJIS) ? issjis2(c) : 0))
 #endif	/* !_NOKANJICONV */
 
 #endif	/* !__KCTYPE_H_ */

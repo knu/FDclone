@@ -275,7 +275,7 @@ static CONST strtable linklist[] = {
 	{strsize(SYMLINKSTR), SYMLINKSTR},
 	{strsize(GNULINKSTR), GNULINKSTR},
 };
-#define	LINKLISTSIZ	arraysize(linklist)
+#define	LINKLISTSIZ		arraysize(linklist)
 #endif	/* !NOSYMLINK */
 #ifndef	OLDPARSE
 static CONST char *autoformat[] = {
@@ -306,7 +306,7 @@ static CONST char *autoformat[] = {
 	" %f %s %x %x %d-%m-%y %t %a",		/* RAR (l) */
 # endif	/* !MSDOS */
 };
-#define	AUTOFORMATSIZ	arraysize(autoformat)
+#define	AUTOFORMATSIZ		arraysize(autoformat)
 #endif	/* !OLDPARSE */
 
 

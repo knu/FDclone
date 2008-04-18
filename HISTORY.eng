@@ -1,3 +1,7 @@
+Ver. 2.09i	Failure to compile on Darwin 9.x (Mac OS X 10.5) is fixed.
+ (04/19/08)	Odd screen when displaying some long file names is fixed.
+		Failure to write directory for FAT file system is fixed.
+
 Ver. 2.09h	Bug that ATTR_FILE/ATTR_DIR have sometimes no effect is fixed.
  (03/15/08)	Unsuitable error message with no controlling terminal is fixed.
 		Odd completion choice list while shifting filename is fixed.

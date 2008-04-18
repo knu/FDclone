@@ -21,7 +21,7 @@ extern char *shortname __P_((CONST char *, char *));
 #endif
 
 #ifndef	O_TEXT
-#define	O_TEXT		0
+#define	O_TEXT			0
 #endif
 
 typedef struct _localetable {
@@ -41,10 +41,10 @@ extern int hideclock;
 extern int internal_status;
 
 #if	0
-#define	MACROMETA	((char)-1)
+#define	MACROMETA		((char)-1)
 #endif
 #if	defined (USESYSCONF) && defined (_SC_ARG_MAX)
-#define	MAXARGNUM	sysconf(_SC_ARG_MAX)
+#define	MAXARGNUM		sysconf(_SC_ARG_MAX)
 #else
 # ifdef	ARG_MAX
 # define	MAXARGNUM	ARG_MAX
@@ -111,7 +111,7 @@ static localetable localelist[] = {
 	{"LC_ALL", NULL, NULL},
 	{"LANG", "C", NULL},
 };
-#define	LOCALELISTSIZ	arraysize(localelist)
+#define	LOCALELISTSIZ		arraysize(localelist)
 
 
 static int NEAR checksc(buf, ptr, arg)

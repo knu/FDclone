@@ -9,12 +9,12 @@
 
 #ifndef	_NOROCKRIDGE
 
-#define	TRANSTBLFILE	"TRANS.TBL"
-#define	TRANSTBLVAR	1
-#define	RR_TRANS	001
-#define	RR_LOWER	002
-#define	RR_VERNO	004
-#define	RR_HYPHN	010
+#define	TRANSTBLFILE		"TRANS.TBL"
+#define	TRANSTBLVAR		1
+#define	RR_TRANS		001
+#define	RR_LOWER		002
+#define	RR_VERNO		004
+#define	RR_HYPHN		010
 
 #ifdef	USEMKDEVH
 #include <sys/mkdev.h>
@@ -38,9 +38,9 @@
 #endif
 
 #if	MSDOS
-typedef short	r_dev_t;
+typedef short			r_dev_t;
 #else
-typedef dev_t	r_dev_t;
+typedef dev_t			r_dev_t;
 #endif
 
 typedef struct _transtable {

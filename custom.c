@@ -553,7 +553,7 @@ static CONST envtable envlist[] = {
 # endif
 #endif	/* !_NOCUSTOMIZE */
 };
-#define	ENVLISTSIZ	arraysize(envlist)
+#define	ENVLISTSIZ		arraysize(envlist)
 #ifndef	_NOKANJIFCONV
 static pathtable pathlist[] = {
 	{fullpath, NULL, NOCNV, P_ISARRAY},
@@ -566,7 +566,7 @@ static pathtable pathlist[] = {
 	{&dicttblpath, NULL, NOCNV, P_STABLE},
 # endif
 };
-#define	PATHLISTSIZ	arraysize(pathlist)
+#define	PATHLISTSIZ		arraysize(pathlist)
 # ifndef	_NOSPLITWIN
 #  ifndef	_NOARCHIVE
 static pathtable archlist[MAXWINDOWS];
@@ -586,7 +586,7 @@ static CONST devinfo mediadescr[] = {
 	{0xf8, "HDD(PC98)", 'N', 98, 0},
 #  endif
 };
-#define	MEDIADESCRSIZ	arraysize(mediadescr)
+#define	MEDIADESCRSIZ		arraysize(mediadescr)
 # endif	/* _USEDOSEMU */
 static char basicenv[ENVLISTSIZ];
 static int nbasic = 0;

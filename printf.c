@@ -19,24 +19,24 @@
 #include "printf.h"
 #include "kctype.h"
 
-#define	PRINTBUFUNIT	16
-#define	THDIGIT		3
-#define	NULLSTR		"(null)"
+#define	PRINTBUFUNIT		16
+#define	THDIGIT			3
+#define	NULLSTR			"(null)"
 
 #ifdef	USEPID_T
-typedef pid_t	p_id_t;
+typedef pid_t			p_id_t;
 #else
 # if	MSDOS
-typedef int	p_id_t;
+typedef int			p_id_t;
 # else
-typedef long	p_id_t;
+typedef long			p_id_t;
 # endif
 #endif
 
 #ifdef	USELLSEEK
-typedef long long	l_off_t;
+typedef long long		l_off_t;
 #else
-typedef off_t		l_off_t;
+typedef off_t			l_off_t;
 #endif
 
 #ifdef	FD
@@ -54,7 +54,7 @@ extern int strlen2 __P_((CONST char *));
 static int NEAR strlen2 __P_((CONST char *));
 # endif
 #else	/* !CODEEUC */
-#define	strlen2		strlen
+#define	strlen2			strlen
 #endif	/* !CODEEUC */
 
 static int NEAR checkchar __P_((int, printbuf_t *));
@@ -631,15 +631,11 @@ va_dcl
 #endif
 {
 	va_list args;
-	printbuf_t pbuf;
 	int n;
 
-	if (!sp) return(-1);
-	pbuf.flags = VF_NEW;
 	VA_START(args, fmt);
-	n = commonprintf(&pbuf, fmt, args);
+	n = vasprintf2(sp, fmt, args);
 	va_end(args);
-	*sp = pbuf.buf;
 
 	return(n);
 }
@@ -673,15 +669,10 @@ va_dcl
 #endif
 {
 	va_list args;
-	printbuf_t pbuf;
 	int n;
 
-	if (size < 0) return(-1);
-	pbuf.buf = s;
-	pbuf.size = size;
-	pbuf.flags = 0;
 	VA_START(args, fmt);
-	n = commonprintf(&pbuf, fmt, args);
+	n = vsnprintf2(s, size, fmt, args);
 	va_end(args);
 
 	return(n);

@@ -29,9 +29,9 @@ extern int deletealias __P_((CONST char *));
 #endif
 
 #ifdef	_NOIME
-#define	MAXPTYMENU	4
+#define	MAXPTYMENU		4
 #else
-#define	MAXPTYMENU	5
+#define	MAXPTYMENU		5
 #endif
 
 extern CONST functable funclist[];
@@ -52,9 +52,6 @@ extern char *ptytmpfile;
 extern int ime_cont;
 #endif
 
-static int (*lastfunc)__P_((VOID_A)) = NULL;
-static u_long lockflags = 0;
-
 static int waitpty __P_((VOID_A));
 static int NEAR ptygetkey __P_((VOID_A));
 static int NEAR recvvar __P_((int, char ***));
@@ -66,6 +63,9 @@ static int NEAR recvstree __P_((int, syntaxtree **, syntaxtree *));
 #endif
 static VOID NEAR recvchild __P_((int));
 static VOID NEAR sendkey __P_((int));
+
+static int (*lastfunc)__P_((VOID_A)) = NULL;
+static u_long lockflags = 0;
 
 
 int waitstatus(pid, options, statusp)

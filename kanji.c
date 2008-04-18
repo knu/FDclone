@@ -17,7 +17,6 @@
 #ifndef	NOUNISTDH
 #include <unistd.h>
 #endif
-
 #ifndef	NOSTDLIBH
 #include <stdlib.h>
 #endif
@@ -36,7 +35,6 @@
 #ifdef	USETIMEH
 #include <time.h>
 #endif
-
 #if	MSDOS
 #include <io.h>
 #endif
@@ -62,43 +60,61 @@ extern char *malloc2 __P_((ALLOC_T));
 
 #ifndef	L_SET
 # ifdef	SEEK_SET
-# define	L_SET	SEEK_SET
+# define	L_SET		SEEK_SET
 # else
-# define	L_SET	0
+# define	L_SET		0
 # endif
 #endif	/* !L_SET */
 #ifndef	L_INCR
 # ifdef	SEEK_CUR
-# define	L_INCR	SEEK_CUR
+# define	L_INCR		SEEK_CUR
 # else
-# define	L_INCR	1
+# define	L_INCR		1
 # endif
 #endif	/* !L_INCR */
 
-#define	ASCII		000
-#define	KANA		001
-#define	KANJI		002
-#define	JKANA		004
-#define	J_UDEF		0x222e	/* GETA */
-#define	SJ_UDEF		0x81ac	/* GETA */
-#define	U2_UDEF		0x3013	/* GETA */
-#define	UNICODETBL	"fd-unicd.tbl"
-#define	MINUNICODE	0x00a7
-#define	MAXUNICODE	0xffe5
-#define	MINKANJI	0x8140
-#define	MAXKANJI	0xfc4b
-#define	jcnv(c, io)	((((io) == L_FNAME) && ((c) == '/')) ? ' ' : (c))
-#define	jdecnv(c, io)	((((io) == L_FNAME) && ((c) == ' ')) ? '/' : (c))
+#define	ASCII			000
+#define	KANA			001
+#define	KANJI			002
+#define	JKANA			004
+#define	J_UDEF			0x222e	/* GETA */
+#define	SJ_UDEF			0x81ac	/* GETA */
+#define	U2_UDEF			0x3013	/* GETA */
+#define	UNICODETBL		"fd-unicd.tbl"
+#define	MINUNICODE		0x00a7
+#define	MAXUNICODE		0xffe5
+#define	MINKANJI		0x8140
+#define	MAXKANJI		0xfc4b
+#define	jcnv(c, io)		((((io) == L_FNAME) \
+				&& ((c) == '/')) ? ' ' : (c))
+#define	jdecnv(c, io)		((((io) == L_FNAME) \
+				&& ((c) == ' ')) ? '/' : (c))
 #ifndef	O_BINARY
-#define	O_BINARY	0
+#define	O_BINARY		0
 #endif
 #ifdef	CODEEUC
-#define	kencode		ujis2sjis
-#define	kdecode		sjis2ujis
+#define	kencode			ujis2sjis
+#define	kdecode			sjis2ujis
 #else
-#define	kencode		sjis2ujis
-#define	kdecode		ujis2sjis
+#define	kencode			sjis2ujis
+#define	kdecode			ujis2sjis
 #endif
+#ifndef	_NOKANJICONV
+#define	HC_HEX			0001
+#define	HC_CAP			0002
+#define	tobin(c)		h2btable[(u_char)(c)]
+#define	tohexa(c)		b2htable[(u_char)(c)]
+#define	tobin2(s, i)		(u_char)((tobin((s)[i]) << 4) \
+				| (tobin((s)[(i) + 1])))
+#define	HEXTAG			':'
+#define	ishex(s, i)	(((s)[i] == HEXTAG) \
+			&& (hctypetable[(u_char)(s)[(i) + 1]] & HC_HEX) \
+			&& (hctypetable[(u_char)(s)[(i) + 2]] & HC_HEX))
+#define	CAPTAG			':'
+#define	iscap(s, i)	(((s)[i] == CAPTAG) \
+			&& (hctypetable[(u_char)(s)[(i) + 1]] & HC_CAP) \
+			&& (hctypetable[(u_char)(s)[(i) + 2]] & HC_HEX))
+#endif	/* !_NOKANJICONV */
 
 typedef struct _kconv_t {
 	u_short start;
@@ -133,9 +149,9 @@ static VOID NEAR j2sj __P_((char *, CONST u_char *));
 #ifdef	_USEUNICODE
 static int NEAR openunitbl __P_((CONST char *));
 static u_char *NEAR newunitbl __P_((ALLOC_T));
-#define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
-#define	skread(f,o,s,n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
-			&& sureread(f, s, n) == n)
+#define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
+#define	skread(f,o,s,n)		(Xlseek(f, o, L_SET) >= (off_t)0 \
+				&& sureread(f, s, n) == n)
 #endif
 #ifndef	_NOKANJICONV
 # ifdef	_USEUNICODE
@@ -216,7 +232,7 @@ static CONST langtable langlist[] = {
 	{"C", ENG},
 # endif	/* _NOENGMES */
 };
-#define	MAXLANGLIST	arraysize(langlist)
+#define	LANGLISTSIZ		arraysize(langlist)
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 
 #ifdef	_USEUNICODE
@@ -225,7 +241,7 @@ static u_int unitblent = 0;
 static CONST kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* Cyrillic small letters */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
-#define	EXCEPTRUSS	2
+#define	EXCEPTRUSS		2
 	{0x8754, 0xfa4a, 0x0a},		/* Roman numerals */
 	{0x8782, 0xfa59, 0x01},		/* numero sign */
 	{0x8784, 0xfa5a, 0x01},		/* telephone sign */
@@ -255,7 +271,7 @@ static CONST kconv_t rsjistable[] = {
 	{0xfa54, 0x81ca, 0x01},		/* full width not sign */
 	{0xfa5b, 0x81e6, 0x01},		/* because */
 };
-#define	RSJISTBLSIZ	arraysize(rsjistable)
+#define	RSJISTBLSIZ		arraysize(rsjistable)
 #endif	/* _USEUNICODE */
 #if	!defined (_NOKANJICONV) \
 || (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
@@ -279,7 +295,7 @@ static CONST kconv_t convtable[] = {
 	{0xfb9c, 0xee80, 0x61},		/* IBM extensions */
 	{0xfc40, 0xeee1, 0x0c}		/* IBM extensions */
 };
-#define	CNVTBLSIZ	arraysize(convtable)
+#define	CNVTBLSIZ		arraysize(convtable)
 static CONST u_char sj2jtable1[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
@@ -433,21 +449,6 @@ static CONST u_char b2htable[] = {
 	'0', '1', '2', '3', '4', '5', '6', '7',
 	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
 };
-#define	HC_HEX		0001
-#define	HC_CAP		0002
-
-#define	tobin(c)	h2btable[(u_char)(c)]
-#define	tohexa(c)	b2htable[(u_char)(c)]
-#define	tobin2(s, i)	(u_char)((tobin((s)[i]) << 4) | (tobin((s)[(i) + 1])))
-
-#define	HEXTAG		':'
-#define	ishex(s, i)	(((s)[i] == HEXTAG) \
-			&& (hctypetable[(u_char)(s)[(i) + 1]] & HC_HEX) \
-			&& (hctypetable[(u_char)(s)[(i) + 2]] & HC_HEX))
-#define	CAPTAG		':'
-#define	iscap(s, i)	(((s)[i] == CAPTAG) \
-			&& (hctypetable[(u_char)(s)[(i) + 1]] & HC_CAP) \
-			&& (hctypetable[(u_char)(s)[(i) + 2]] & HC_HEX))
 #endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
 static CONST kpathtable kpathlist[] = {
@@ -466,7 +467,7 @@ static CONST kpathtable kpathlist[] = {
 	{&utf8iconvpath, I_UTF8},
 	{&noconvpath, NOCNV},
 };
-#define	MAXKPATHLIST	arraysize(kpathlist)
+#define	KPATHLISTSIZ		arraysize(kpathlist)
 #endif	/* !_NOKANJIFCONV */
 
 #ifndef	FD
@@ -567,7 +568,7 @@ int io;
 	int i, ret;
 
 	ret = NOCNV;
-	if (s) for (i = 0; i < MAXLANGLIST; i++) {
+	if (s) for (i = 0; i < LANGLISTSIZ; i++) {
 		if (!(kanjiiomode[langlist[i].lang] & io)) continue;
 		if (strstr2(s, langlist[i].ident)) {
 			ret = langlist[i].lang;
@@ -773,6 +774,11 @@ ALLOC_T size;
 VOID readunitable(nf)
 int nf;
 {
+# ifndef	_NOKANJICONV
+	u_char buf[2], **tblbuf;
+	u_int *tblent;
+	int i;
+# endif
 	u_char *tbl;
 	ALLOC_T size;
 	int fd;
@@ -799,10 +805,6 @@ int nf;
 
 # ifndef	_NOKANJICONV
 	if (nf && !nftblbuf) {
-		u_char buf[2], **tblbuf;
-		u_int *tblent;
-		int i;
-
 		if (!skread(fd, (off_t)size + 2, buf, 2)) {
 			VOID_C openunitbl(NULL);
 			return;
@@ -847,14 +849,16 @@ int nf;
 
 VOID discardunitable(VOID_A)
 {
+# ifndef	_NOKANJICONV
+	int i;
+# endif
+
 	if (unitblbuf) {
 		free(unitblbuf);
 		unitblbuf = NULL;
 	}
 # ifndef	_NOKANJICONV
 	if (nftblbuf) {
-		int i;
-
 		for (i = 0; i < nftblnum; i++)
 			if (nftblbuf[i]) free(nftblbuf[i]);
 		free(nftblbuf);
@@ -2034,7 +2038,7 @@ CONST char *path;
 # ifdef	_USEDOSEMU
 	if (_dospath(path)) return(SJIS);
 # endif
-	for (i = 0; i < MAXKPATHLIST; i++) {
+	for (i = 0; i < KPATHLISTSIZ; i++) {
 		if (includepath(path, *(kpathlist[i].path)))
 			return(kpathlist[i].code);
 	}

@@ -462,10 +462,10 @@ static CONST int specialkeycode[] = {
 	K_F(11), K_F(12), K_F(13), K_F(14), K_F(15),
 	K_F(16), K_F(17), K_F(18), K_F(19), K_F(20), K_HELP
 };
-#define	SPECIALKEYSIZ	arraysize(specialkeycode)
+#define	SPECIALKEYSIZ		arraysize(specialkeycode)
 #else	/* !MSDOS */
 static CONST char *dumblist[] = {"dumb", "un", "unknown"};
-#define	DUMBLISTSIZE	arraysize(dumblist)
+#define	DUMBLISTSIZE		arraysize(dumblist)
 static keyseq_t keyseq[K_MAX - K_MIN + 1];
 static kstree_t *keyseqtree = NULL;
 static CONST char *defkeyseq[K_MAX - K_MIN + 1] = {

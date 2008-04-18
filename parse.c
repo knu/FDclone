@@ -92,7 +92,7 @@ CONST strtable keyidentlist[] = {
 	{K_HELP,	"HELP"},
 	{0,		NULL}
 };
-#define	KEYIDENTSIZ	(arraysize(keyidentlist) - 1)
+#define	KEYIDENTSIZ		(arraysize(keyidentlist) - 1)
 
 static CONST char escapechar[] = "abefnrtv";
 static CONST char escapevalue[] = {
@@ -582,7 +582,7 @@ VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
 
-	if (!(cp = getconstvar(ENVPATH))) return;
+	if (!(cp = (char *)getenv(ENVPATH))) return;
 
 	path = evalpaths(cp, PATHDELIM);
 	if (strpathcmp(path, cp)) setenv2(ENVPATH, path, 1);
@@ -721,6 +721,12 @@ CONST char *prompt;
 				line[1] = '\0';
 				break;
 #endif	/* !MSDOS */
+			case '~':
+				if (underhome(&(line[1]))) {
+					line[0] = '~';
+					break;
+				}
+/*FALLTHRU*/
 			case 'w':
 				if (!physical_path || !Xgetwd(line))
 					cp = fullpath;
@@ -735,11 +741,6 @@ CONST char *prompt;
 				cp = strrdelim(tmp, 0);
 				if (cp && (cp != tmp || cp[1])) cp++;
 				else cp = tmp;
-				break;
-			case '~':
-				if (underhome(&(line[1]))) line[0] = '~';
-				else if (!physical_path || !Xgetwd(line))
-					cp = fullpath;
 				break;
 			case 'e':
 				*line = '\033';
@@ -897,7 +898,7 @@ int identonly;
 CONST char *getkeysym(c, tenkey)
 int c, tenkey;
 {
-	static char buf[5];
+	static char buf[4 + 1];
 	int i;
 
 	for (i = 0; i < KEYIDENTSIZ; i++)
@@ -1002,11 +1003,16 @@ int len;
 				cp[j++] = '\\';
 				cp[j++] = escapechar[n];
 			}
-			else if (iscntrl2(s[i]))
-				j = snprintf2(&(cp[j]), len * 4 + 1 - j,
+			else if (iscntrl2(s[i])) {
+				snprintf2(&(cp[j]), len * 4 + 1 - j,
 					"^%c", (s[i] + '@') & 0x7f);
-			else j += snprintf2(&(cp[j]), len * 4 + 1 - j,
-				"\\%03o", s[i] & 0xff);
+				j += strlen(&(cp[j]));
+			}
+			else {
+				snprintf2(&(cp[j]), len * 4 + 1 - j,
+					"\\%03o", s[i] & 0xff);
+				j += strlen(&(cp[j]));
+			}
 			continue;
 		}
 		cp[j++] = s[i];

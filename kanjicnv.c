@@ -7,6 +7,7 @@
 #include "machine.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 
 #ifndef	NOUNISTDH
 #include <unistd.h>
@@ -15,13 +16,13 @@
 #include <stdlib.h>
 #endif
 
-#define	ASCII	000
-#define	KANA	001
-#define	KANJI	002
-#define	JKANA	004
+#define	ASCII			000
+#define	KANA			001
+#define	KANJI			002
+#define	JKANA			004
 
-#define	SJIS	010
-#define	EUC	020
+#define	SJIS			010
+#define	EUC			020
 
 static VOID NEAR fputc2 __P_((int, FILE *));
 static VOID NEAR convert __P_((int, int, FILE *));

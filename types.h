@@ -357,9 +357,9 @@ typedef struct _builtintable {
 #define	FSID_UFS		1
 #define	FSID_EFS		2
 #define	FSID_SYSV		3
-#define	FSID_FAT		4
-#define	FSID_LFN		5
-#define	FSID_LINUX		6
+#define	FSID_LINUX		4
+#define	FSID_FAT		5
+#define	FSID_LFN		6
 #define	FSID_DOSDRIVE		7
 
 #define	LCK_READ		0

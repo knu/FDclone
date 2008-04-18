@@ -25,6 +25,7 @@
 	(free)	NetBSD		(1.x, 2.x, 3.x)
 	(free)	OpenBSD		(2.x, 3.x)
 	ASCII	BSD on Windows	(1.0, 1.5)
+	Apple	Mac OS X	(10.x)
 
    また、以下の OS は、Ver. 2.09 での動作確認は行なわれてい
    ませんが、各 OS 用のコードが記述されていますので、多分変
@@ -43,7 +44,6 @@
 	DEC	OSF/1		(V1.2, V2.0, V3.2, V4.x, V5.x)
 	DEC	ULTRIX		(V4.x)
 	IBM	AIX		(3.x, 4.x)
-	Apple	Mac OS X	(10.x)
 	Apple	A/UX		(3.0)
 	DG	DG/UX		(5.4)
 	Fujitsu	UXP/M		(4.0, 4.1)

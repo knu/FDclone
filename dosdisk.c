@@ -513,10 +513,10 @@ static long lfn_offset = 0L;
 static int doserrno = 0;
 #if	!MSDOS
 static CONST short sectsizelist[] = SECTSIZE;
-#define	SLISTSIZ	arraysize(sectsizelist)
+#define	SLISTSIZ		arraysize(sectsizelist)
 #endif
 static CONST char *inhibitname[] = INHIBITNAME;
-#define	INHIBITNAMESIZ	arraysize(inhibitname)
+#define	INHIBITNAMESIZ		arraysize(inhibitname)
 #ifndef	FD
 typedef struct _kconv_t {
 	u_short start;
@@ -558,7 +558,7 @@ static CONST kconv_t rsjistable[] = {
 	{0xfa54, 0x81ca, 0x01},		/* full width not sign */
 	{0xfa5b, 0x81e6, 0x01},		/* because */
 };
-#define	RSJISTBLSIZ	arraysize(rsjistable)
+#define	RSJISTBLSIZ		arraysize(rsjistable)
 #endif	/* !FD */
 
 
@@ -1208,7 +1208,7 @@ int n;
 	duperrno = errno;
 #if	MSDOS
 	n = rawdiskio(devp -> drive, sect,
-		(char *)buf, n, devp -> sectsize, 1);
+		(u_char *)buf, n, devp -> sectsize, 1);
 	if (n < 0) {
 		doserrno = errno;
 		return(-1);
@@ -2178,7 +2178,7 @@ CONST bpb_t *bpbcache;
 		return(-1);
 	}
 	bpb = (bpb_t *)buf;
-	if (rawdiskio(drv, 0, buf, 1, MAXSECTSIZE, 0) < 0) {
+	if (rawdiskio(drv, 0, (u_char *)buf, 1, MAXSECTSIZE, 0) < 0) {
 		doserrno = errno;
 		free(buf);
 		errno = duperrno;

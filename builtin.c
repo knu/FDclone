@@ -191,7 +191,7 @@ static CONST char *CONST builtinerrstr[] = {
 #define	ER_NOTDUMBTERM		13
 	"Cannot execute on dumb term",
 };
-#define	BUILTINERRSIZ	arraysize(builtinerrstr)
+#define	BUILTINERRSIZ		arraysize(builtinerrstr)
 static CONST builtintable builtinlist[] = {
 #ifndef	_NOARCHIVE
 	{setlaunch,	BL_LAUNCH},
@@ -255,7 +255,7 @@ static CONST builtintable builtinlist[] = {
 # endif
 #endif	/* _NOORIGSHELL */
 };
-#define	BUILTINSIZ	arraysize(builtinlist)
+#define	BUILTINSIZ		arraysize(builtinlist)
 
 
 static VOID NEAR builtinerror(argv, s, n)
@@ -3068,7 +3068,7 @@ CONST char *ident;
 		i--;
 		n++;
 	}
-	if (re) regexp_free(re);
+	regexp_free(re);
 	if (!n) return(-1);
 # ifndef	_NOPTY
 	sendparent(TE_DELETEALIAS, ident);

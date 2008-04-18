@@ -451,7 +451,7 @@ static CONST char *doserrstr[] = {
 #define	ER_INVALIDSW		7
 	"Invalid switch",
 };
-#define	DOSERRSIZ	arraysize(doserrstr)
+#define	DOSERRSIZ		arraysize(doserrstr)
 static char dirsort[strsize(DIRSORTFLAG) * 2 + 1] = "";
 static char dirattr[strsize(DIRATTRFLAG) * 2 + 1] = "";
 static int dirline = 0;
@@ -1700,7 +1700,7 @@ char *CONST argv[];
 #if	defined (FD) && !defined (_NODOSDRIVE)
 	shutdrv(drv);
 #endif
-	if (re) regexp_free(re);
+	regexp_free(re);
 	if (n < 0) {
 		dosperror(dir);
 		return(RET_FAIL);

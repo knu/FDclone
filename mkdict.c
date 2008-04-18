@@ -22,22 +22,22 @@
 #include "roman.h"
 #include "hinsi.h"
 
-#define	MAXLINESTR	1023
-#define	DICTBUFUNIT	32
-#define	MAXHINSI	16
-#define	MAXBIAS		4
-#define	MAXHINSILEN	16
-#define	MAXFUZOKULEN	4
-#define	MAXRANGE	50
-#define	VERBOSECHAR	'.'
-#define	J_DAKUTEN	0x212b
-#define	J_U		0x2426
-#define	J_VU		0x2574
-#define	DIC_WNN		1
-#define	DIC_CANNA	2
-#define	DIC_SJ3		4
-#define	DIC_WNNSJ3	(DIC_WNN | DIC_SJ3)
-#define	getword(s, n)	(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
+#define	MAXLINESTR		1023
+#define	DICTBUFUNIT		32
+#define	MAXHINSI		16
+#define	MAXBIAS			4
+#define	MAXHINSILEN		16
+#define	MAXFUZOKULEN		4
+#define	MAXRANGE		50
+#define	VERBOSECHAR		'.'
+#define	J_DAKUTEN		0x212b
+#define	J_U			0x2426
+#define	J_VU			0x2574
+#define	DIC_WNN			1
+#define	DIC_CANNA		2
+#define	DIC_SJ3			4
+#define	DIC_WNNSJ3		(DIC_WNN | DIC_SJ3)
+#define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
 
 typedef struct _dicttable {
 	ALLOC_T ptr;
@@ -116,7 +116,7 @@ static CONST biastable biaslist[] = {
 	{HN_KU_KU, 2, {0x246b, 0x246c}},	/* ru, re */
 	{HN_SU_SU, 1, {0x246b}},		/* ru */
 };
-#define	BIASLISTSIZ	arraysize(biaslist)
+#define	BIASLISTSIZ		arraysize(biaslist)
 static CONST hinsisettable hinsisetlist[] = {
 	{HN_JINCHI, 2, {HN_JINMEI, HN_CHIMEI}},
 	{HN_KA5DAN, 2, {HN_KA5DOU, HN_KA5YOU}},
@@ -134,7 +134,7 @@ static CONST hinsisettable hinsisetlist[] = {
 	{HN_ZAHEN, 2, {HN_ZAHDOU, HN_ZAHDOU}},
 	{HN_KD_MEI, 2, {HN_KEIDOU, HN_MEISHI}},
 };
-#define	HINSISETLISTSIZ	arraysize(hinsisetlist)
+#define	HINSISETLISTSIZ		arraysize(hinsisetlist)
 static hinsitable hinsilist[] = {
 	{HN_SENTOU, DIC_WNN,		/* Sentou */
 	 2, {0x4068, 0x462c}},
@@ -924,7 +924,7 @@ static hinsitable hinsilist[] = {
 	{HN_MAX, DIC_SJ3,		/* SaHenMei1 */
 	 4, {0x2535, 0x4a51, 0x4c3f, 0x2331}},
 };
-#define	HINSILISTSIZ	arraysize(hinsilist)
+#define	HINSILISTSIZ		arraysize(hinsilist)
 static CONST contable jirconlist[] = {
 	/* Sentou */
 	{HN_SENTOU, 0, {0}, 1, {HN_SENTOU}},
@@ -1141,7 +1141,7 @@ static CONST contable jirconlist[] = {
 	  FZ_SHIME, FZ_JI2, FZ_SE4, FZ_CHI, FZ_DEKI, FZ_NI3, FZ_BI, FZ_MI,
 	  FZ_MI3, FZ_RARE, FZ_RI2, FZ_RE5}},
 };
-#define	JIRCONLISTSIZ	arraysize(jirconlist)
+#define	JIRCONLISTSIZ		arraysize(jirconlist)
 static CONST contable conlist[] = {
 	/* KeiDouTai-Na */
 	{FZ_NA, 1, {0x244a}, 7,
@@ -2886,7 +2886,7 @@ static CONST contable conlist[] = {
 	  FZ_RA, FZ_RARE, FZ_RI, FZ_RI2, FZ_RI3, FZ_RU, FZ_RU2, FZ_RU3, FZ_RE,
 	  FZ_RE2, FZ_RE5, FZ_RO4, FZ_WA3, FZ_WO, FZ_N}},
 };
-#define	CONLISTSIZ	arraysize(conlist)
+#define	CONLISTSIZ		arraysize(conlist)
 static CONST contable shuutanlist[] = {
 	/* svkanren */
 	{SH_svkanren, 0, {0}, 238,
@@ -2993,7 +2993,7 @@ static CONST contable shuutanlist[] = {
 	  FZ_YORI, FZ_YORI2, FZ_YORU, FZ_RA, FZ_RARE, FZ_RI, FZ_RI2, FZ_RI3,
 	  FZ_RU, FZ_RU2, FZ_RU3, FZ_RE5, FZ_WA3, FZ_WO, FZ_N}},
 };
-#define	SHUUTANLISTSIZ	arraysize(shuutanlist)
+#define	SHUUTANLISTSIZ		arraysize(shuutanlist)
 
 
 static u_char *NEAR realloc2(buf, size)

@@ -5,7 +5,7 @@
  */
 
 #ifndef	_TBL_
-#define	_TBL_(func, id, hlp, flg)	{func, id, hlp, BIN(flg)}
+#define	_TBL_(fn, id, hl, fl)	{fn, id, hl, BIN(fl)}
 #endif
 
 #define	BIN(oct)	( (((oct)      ) & 0001) \

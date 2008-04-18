@@ -9,7 +9,7 @@ extern int errno;
 #endif
 
 #if	!defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
-#define	ENOTEMPTY	ENFSNOTEMPTY
+#define	ENOTEMPTY		ENFSNOTEMPTY
 #endif
 
 #if	MSDOS
@@ -45,21 +45,22 @@ extern int errno;
 #define	gettimeofday2(tv, tz)	gettimeofday(tv, tz)
 #endif
 
-#define	BUFUNIT		32
-#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
-#define	b_realloc(ptr, n, type) \
-			(((n) % BUFUNIT) ? ((type *)(ptr)) \
-			: (type *)realloc2(ptr, b_size(n, type)))
+#define	BUFUNIT			32
+#define	b_size(n, type)		((((n) / BUFUNIT) + 1) \
+				* BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type)	(((n) % BUFUNIT) ? ((type *)(ptr)) \
+				: (type *)realloc2(ptr, b_size(n, type)))
 
-#define	getblock(c)	((((c) + blocksize - 1) / blocksize) * blocksize)
+#define	getblock(c)		((((c) + blocksize - 1) / blocksize) \
+				* blocksize)
 
-#define	isleftshift()	(n_column < WCOLUMNSTD)
-#define	isrightomit()	(n_column < WCOLUMNSTD - 1)
-#define	ispureshift()	(n_column == WCOLUMNSTD - 1)
-#define	isshortwid()	(n_column < WCOLUMNSTD - 1)
-#define	iswellomit()	(n_column < WCOLUMNSTD - 2)
-#define	ishardomit()	(n_column < WCOLUMNOMIT)
-#define	isbestomit()	(n_column < WCOLUMNHARD)
+#define	isleftshift()		(n_column < WCOLUMNSTD)
+#define	isrightomit()		(n_column < WCOLUMNSTD - 1)
+#define	ispureshift()		(n_column == WCOLUMNSTD - 1)
+#define	isshortwid()		(n_column < WCOLUMNSTD - 1)
+#define	iswellomit()		(n_column < WCOLUMNSTD - 2)
+#define	ishardomit()		(n_column < WCOLUMNOMIT)
+#define	isbestomit()		(n_column < WCOLUMNHARD)
 
 #ifdef	_NOORIGSHELL
 #define	getconstvar(s)		(char *)getenv(s)
@@ -144,8 +145,8 @@ extern int dospath __P_((CONST char *, char *));
 extern int dospath2 __P_((CONST char *));
 extern int dospath3 __P_((CONST char *));
 # else
-#define	dospath2(path)	dospath(path, NULL)
-#define	dospath3(path)	dospath(path, NULL)
+#define	dospath2(path)		dospath(path, NULL)
+#define	dospath3(path)		dospath(path, NULL)
 # endif
 #endif
 extern DIR *Xopendir __P_((CONST char *));
@@ -155,7 +156,7 @@ extern VOID Xrewinddir __P_((DIR *));
 #if	MSDOS
 extern int rawchdir __P_((CONST char *));
 #else
-#define	rawchdir(p)	((chdir(p)) ? -1 : 0)
+#define	rawchdir(p)		((chdir(p)) ? -1 : 0)
 #endif
 extern int Xchdir __P_((CONST char *));
 extern char *Xgetwd __P_((char *));
@@ -180,11 +181,11 @@ extern int Xunlink __P_((CONST char *));
 extern int Xrename __P_((CONST char *, CONST char *));
 extern int Xopen __P_((CONST char *, int, int));
 #ifdef	_NODOSDRIVE
-#define	Xclose(f)	((close(f)) ? -1 : 0)
-#define	Xread		read
-#define	Xwrite		write
-#define	Xlseek		lseek
-#define	Xftruncate	ftruncate
+#define	Xclose(f)		((close(f)) ? -1 : 0)
+#define	Xread			read
+#define	Xwrite			write
+#define	Xlseek			lseek
+#define	Xftruncate		ftruncate
 #else
 extern int Xclose __P_((int));
 extern int Xread __P_((int, char *, int));
@@ -193,8 +194,8 @@ extern off_t Xlseek __P_((int, off_t, int));
 extern int Xftruncate __P_((int, off_t));
 #endif
 #ifdef	_NODOSDRIVE
-#define	Xdup		safe_dup
-#define	Xdup2		safe_dup2
+#define	Xdup			safe_dup
+#define	Xdup2			safe_dup2
 #else
 extern int Xdup __P_((int));
 extern int Xdup2 __P_((int, int));
@@ -203,17 +204,17 @@ extern int Xmkdir __P_((CONST char *, int));
 extern int Xrmdir __P_((CONST char *));
 extern FILE *Xfopen __P_((CONST char *, CONST char *));
 #ifdef	_NODOSDRIVE
-#define	Xfdopen		fdopen
-#define	Xfclose		fclose
-#define	Xfileno		fileno
-#define	Xfeof		feof
-#define	Xfread		fread
-#define	Xfwrite		fwrite
-#define	Xfflush		fflush
-#define	Xfgetc		fgetc
-#define	Xfputc		fputc
-#define	Xfgets		fgets
-#define	Xfputs		fputs
+#define	Xfdopen			fdopen
+#define	Xfclose			fclose
+#define	Xfileno			fileno
+#define	Xfeof			feof
+#define	Xfread			fread
+#define	Xfwrite			fwrite
+#define	Xfflush			fflush
+#define	Xfgetc			fgetc
+#define	Xfputc			fputc
+#define	Xfgets			fgets
+#define	Xfputs			fputs
 #else
 extern FILE *Xfdopen __P_((int, CONST char *));
 extern int Xfclose __P_((FILE *));
@@ -262,9 +263,10 @@ extern VOID sendstring __P_((int, CONST char *));
 extern VOID sendparent __P_((int, ...));
 extern int ptymacro __P_((CONST char *, CONST char *, int));
 # ifdef	_NOORIGSHELL
-# define	ptyusercomm(c,a,f)	ptymacro(c, a, f | F_EVALMACRO)
+# define	ptyusercomm(c,a,f) \
+				ptymacro(c, a, f | F_EVALMACRO)
 # else
-# define	ptyusercomm		ptymacro
+# define	ptyusercomm	ptymacro
 # endif
 #define	ptysystem(c)		ptymacro(c, NULL, F_DOSYSTEM)
 extern VOID killpty __P_((int, int *));
@@ -345,7 +347,7 @@ extern int strncpy3 __P_((char *, CONST char *, int *, int));
 #ifdef	CODEEUC
 extern int strlen2 __P_((CONST char *));
 #else
-#define	strlen2	strlen
+#define	strlen2			strlen
 #endif
 extern int strlen3 __P_((CONST char *));
 extern int atoi2 __P_((CONST char *));
@@ -356,7 +358,7 @@ extern char *getenv2 __P_((CONST char *));
 #ifdef	USESIGACTION
 extern sigcst_t signal2 __P_((int, sigcst_t));
 #else
-#define	signal2	signal
+#define	signal2			signal
 #endif
 extern int system2 __P_((CONST char *, int));
 extern FILE *popen2 __P_((CONST char *));
@@ -370,7 +372,7 @@ extern char *fgets2 __P_((FILE *, int));
 #ifdef	_USEDOSEMU
 extern CONST char *nodospath __P_((char *, CONST char *));
 #else
-#define	nodospath(p, f)	(f)
+#define	nodospath(p, f)		(f)
 #endif
 #define	fnodospath(p, i)	nodospath(p, filelist[i].name)
 #ifdef	NOUID
@@ -379,7 +381,7 @@ extern int logical_access __P_((u_int));
 #else
 extern int logical_access __P_((u_int, uid_t, gid_t));
 #define	logical_access2(s)	logical_access((u_int)((s) -> st_mode), \
-					(s) -> st_uid, (s) -> st_gid)
+				(s) -> st_uid, (s) -> st_gid)
 #endif
 
 extern int getstatus __P_((namelist *));
@@ -395,7 +397,7 @@ extern lockbuf_t *lockfopen __P_((CONST char *, CONST char *, int));
 extern VOID lockclose __P_((lockbuf_t *));
 extern int touchfile __P_((CONST char *, struct stat *));
 #ifdef	_NODOSDRIVE
-#define	nodoslstat	Xlstat
+#define	nodoslstat		Xlstat
 #else
 extern int nodoslstat __P_((CONST char *, struct stat *));
 #endif
@@ -459,7 +461,7 @@ extern char *evalcomstr __P_((CONST char *, CONST char *));
 #endif
 extern char *evalpaths __P_((CONST char *, int));
 #if	MSDOS && defined (_NOORIGSHELL)
-#define	killmeta(s)	strdup2(s)
+#define	killmeta(s)		strdup2(s)
 #else
 extern char *killmeta __P_((CONST char *));
 #endif
@@ -548,39 +550,39 @@ extern int completeinternal __P_((CONST char *, int, int, char ***));
 extern VOID freedefine __P_((VOID_A));
 #endif
 
-#define	BL_SET		"set"
-#define	BL_UNSET	"unset"
-#define	BL_PENV		"printenv"
-#define	BL_LAUNCH	"launch"
-#define	BL_ARCH		"arch"
-#define	BL_BROWSE	"browse"
-#define	BL_PLAUNCH	"printlaunch"
-#define	BL_PARCH	"printarch"
-#define	BL_BIND		"bind"
-#define	BL_PBIND	"printbind"
-#define	BL_SDRIVE	"setdrv"
-#define	BL_UDRIVE	"unsetdrv"
-#define	BL_PDRIVE	"printdrv"
-#define	BL_KEYMAP	"keymap"
-#define	BL_GETKEY	"getkey"
-#define	BL_HISTORY	"history"
-#define	BL_FC		"fc"
-#define	BL_CHECKID	"checkid"
-#define	BL_EVALMACRO	"evalmacro"
-#define	BL_KCONV	"kconv"
-#define	BL_READLINE	"readline"
-#define	BL_YESNO	"yesno"
-#define	BL_SAVETTY	"savetty"
-#define	BL_SETROMAN	"setroman"
-#define	BL_PRINTROMAN	"printroman"
-#define	BL_ALIAS	"alias"
-#define	BL_UALIAS	"unalias"
-#define	BL_FUNCTION	"function"
-#define	BL_EXPORT	"export"
-#define	BL_CHDIR	"chdir"
-#define	BL_CD		"cd"
-#define	BL_SOURCE	"source"
-#define	BL_DOT		"."
+#define	BL_SET			"set"
+#define	BL_UNSET		"unset"
+#define	BL_PENV			"printenv"
+#define	BL_LAUNCH		"launch"
+#define	BL_ARCH			"arch"
+#define	BL_BROWSE		"browse"
+#define	BL_PLAUNCH		"printlaunch"
+#define	BL_PARCH		"printarch"
+#define	BL_BIND			"bind"
+#define	BL_PBIND		"printbind"
+#define	BL_SDRIVE		"setdrv"
+#define	BL_UDRIVE		"unsetdrv"
+#define	BL_PDRIVE		"printdrv"
+#define	BL_KEYMAP		"keymap"
+#define	BL_GETKEY		"getkey"
+#define	BL_HISTORY		"history"
+#define	BL_FC			"fc"
+#define	BL_CHECKID		"checkid"
+#define	BL_EVALMACRO		"evalmacro"
+#define	BL_KCONV		"kconv"
+#define	BL_READLINE		"readline"
+#define	BL_YESNO		"yesno"
+#define	BL_SAVETTY		"savetty"
+#define	BL_SETROMAN		"setroman"
+#define	BL_PRINTROMAN		"printroman"
+#define	BL_ALIAS		"alias"
+#define	BL_UALIAS		"unalias"
+#define	BL_FUNCTION		"function"
+#define	BL_EXPORT		"export"
+#define	BL_CHDIR		"chdir"
+#define	BL_CD			"cd"
+#define	BL_SOURCE		"source"
+#define	BL_DOT			"."
 
 /* shell.c */
 extern char *restorearg __P_((CONST char *));
@@ -596,7 +598,7 @@ extern FILE *popenmacro __P_((CONST char *, CONST char *, int));
 #ifdef	_NOORIGSHELL
 extern int execusercomm __P_((CONST char *, CONST char *, int));
 #else
-#define	execusercomm	execmacro
+#define	execusercomm		execmacro
 #endif
 extern int entryhist __P_((int, CONST char *, int));
 extern char *removehist __P_((int));

@@ -52,11 +52,32 @@ extern int Xstat __P_((CONST char *, struct stat *));
 # define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
 # define	Xlstat(p, s)	((lstat(p, s)) ? -1 : 0)
 # endif
-#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
+#define	Xaccess(p, m)		((access(p, m)) ? -1 : 0)
 #endif	/* !FD */
 
+#define	ALIASDELIMIT		"();&|<>"
+#define	BUFUNIT			32
+#define	getconstvar(s)		(getshellvar(s, strsize(s)))
+#define	ER_COMNOFOUND		1
+#define	ER_NOTFOUND		2
+#define	ER_NOTIDENT		4
+#define	ER_BADOPTIONS		13
+#define	ER_NUMOUTRANGE		18
+#define	ER_NOTALIAS		20
+#define	ER_MISSARG		21
+#define	ER_NOSUCHJOB		22
+#define	ER_TERMINATED		23
+#define	ER_UNKNOWNSIG		26
 #ifndef	EPERM
-#define	EPERM		EACCES
+#define	EPERM			EACCES
+#endif
+
+#if	!MSDOS
+typedef struct _mailpath_t {
+	char *path;
+	char *msg;
+	time_t mtime;
+} mailpath_t;
 #endif
 
 extern VOID error __P_((CONST char *));
@@ -85,28 +106,6 @@ static VOID NEAR addmailpath __P_((CONST char *, char *, time_t));
 static int NEAR testsub1 __P_((int, CONST char *, int *));
 static int NEAR testsub2 __P_((int, char *CONST *, int *));
 static int NEAR testsub3 __P_((int, char *CONST *, int *, int));
-
-#define	ALIASDELIMIT	"();&|<>"
-#define	BUFUNIT		32
-#define	getconstvar(s)	(getshellvar(s, strsize(s)))
-#define	ER_COMNOFOUND	1
-#define	ER_NOTFOUND	2
-#define	ER_NOTIDENT	4
-#define	ER_BADOPTIONS	13
-#define	ER_NUMOUTRANGE	18
-#define	ER_NOTALIAS	20
-#define	ER_MISSARG	21
-#define	ER_NOSUCHJOB	22
-#define	ER_TERMINATED	23
-#define	ER_UNKNOWNSIG	26
-
-#if	!MSDOS
-typedef struct _mailpath_t {
-	char *path;
-	char *msg;
-	time_t mtime;
-} mailpath_t;
-#endif
 
 #ifndef	NOJOB
 int gettermio __P_((p_id_t, int));
@@ -508,7 +507,7 @@ CONST char *ident;
 		i--;
 		n++;
 	}
-	if (re) regexp_free(re);
+	regexp_free(re);
 	if (!n) return(-1);
 # if	defined (FD) && !defined (_NOPTY)
 	sendparent(TE_DELETEALIAS, ident);

@@ -16,8 +16,8 @@
 #endif
 
 #define	USERDEFINE
-#define	MAXNFLEN	4
-#define	arraysize(a)	((int)((u_int)sizeof(a) / (u_int)sizeof(*(a))))
+#define	MAXNFLEN		4
+#define	arraysize(a)		((int)((u_int)sizeof(a) / (u_int)sizeof(*(a))))
 
 typedef struct _convtable {
 	u_short unicode;
@@ -9250,8 +9250,7 @@ static convtable unilist[] = {
 	{0xffe4, 0xfa55},
 	{0xffe5, 0x818f},
 };
-#define	UNILISTSIZ	arraysize(unilist)
-
+#define	UNILISTSIZ		arraysize(unilist)
 static nftable macunilist[] = {
 	{0x00c0, {0x0041, 0x0300, 0}},
 	{0x00c1, {0x0041, 0x0301, 0}},
@@ -10203,8 +10202,7 @@ static nftable macunilist[] = {
 	{0xffe1, {0x00a3, 0}},
 	{0xffe2, {0x00ac, 0}},
 };
-#define	MACUNILISTSIZ	arraysize(macunilist)
-
+#define	MACUNILISTSIZ		arraysize(macunilist)
 static nftable iconvunilist[] = {
 	{0x2225, {0x2016, 0}},
 	{0xff0d, {0x2212, 0}},
@@ -10213,7 +10211,7 @@ static nftable iconvunilist[] = {
 	{0xffe1, {0x00a3, 0}},
 	{0xffe2, {0x00ac, 0}},
 };
-#define	ICONVUNILISTSIZ	arraysize(iconvunilist)
+#define	ICONVUNILISTSIZ		arraysize(iconvunilist)
 
 
 static int cmpuni(vp1, vp2)

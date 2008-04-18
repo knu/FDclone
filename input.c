@@ -14,6 +14,20 @@
 #include "system.h"
 #endif
 
+#define	LIMITSELECTWARN		100
+#define	YESNOSTR		"[Y/N]"
+#define	YESNOSIZE		strsize(YESNOSTR)
+#define	WAITAFTERWARN		360	/* msec */
+#define	maxscr()		(maxcol * (maxline - minline) \
+				- plen - (n_column - n_lastcolumn))
+#define	within(n)		((n) < maxscr())
+#define	overflow(n)		((n) > maxscr())
+#define	ptr2col(n)		(((n) + plen) % maxcol)
+#define	ptr2line(n)		(((n) + plen) / maxcol)
+#define	iseol(n)		(within(n) && !(ptr2col(n)))
+#define	LEFTMARGIN		0
+#define	RIGHTMARGIN		2
+
 extern char **history[];
 extern short histsize[];
 extern int curcolumns;
@@ -36,22 +50,8 @@ extern int *ime_xposp;
 extern VOID (*ime_locate)__P_((int, int));
 #endif
 
-#define	LIMITSELECTWARN	100
-#define	YESNOSTR	"[Y/N]"
-#define	YESNOSIZE	strsize(YESNOSTR)
-#define	WAITAFTERWARN	360	/* msec */
-#define	maxscr()	(maxcol * (maxline - minline) \
-			- plen - (n_column - n_lastcolumn))
-#define	within(n)	((n) < maxscr())
-#define	overflow(n)	((n) > maxscr())
-#define	ptr2col(n)	(((n) + plen) % maxcol)
-#define	ptr2line(n)	(((n) + plen) / maxcol)
-#define	iseol(n)	(within(n) && !(ptr2col(n)))
-#define	LEFTMARGIN	0
-#define	RIGHTMARGIN	2
-
 #ifdef	_NOKANJICONV
-#define	getinkcode()	NOCNV
+#define	getinkcode()		NOCNV
 #else
 static int NEAR getinkcode __P_((VOID_A));
 #endif
@@ -63,7 +63,7 @@ static int NEAR getimebuf __P_((CONST char *, int *));
 static int NEAR getime __P_((int, int *, int));
 #endif
 #ifdef	_NOKANJICONV
-#define	getkey4(s)	getkey3(s, getinkcode())
+#define	getkey4(s)		getkey3(s, getinkcode())
 #else
 static int NEAR getkey4 __P_((int));
 #endif
@@ -168,7 +168,7 @@ static CONST int emulatekey[] = {
 	K_HOME, K_END, K_BEG, K_EOL,
 	K_PPAGE, K_NPAGE, K_ENTER, K_ESC
 };
-#define	EMULATEKEYSIZ	arraysize(emulatekey)
+#define	EMULATEKEYSIZ		arraysize(emulatekey)
 static CONST char emacskey[] = {
 	K_CTRL('P'), K_CTRL('N'), K_CTRL('F'), K_CTRL('B'),
 	K_ESC, K_CTRL('D'), K_CTRL('Q'), K_CTRL('K'),
@@ -188,11 +188,12 @@ static CONST char wordstarkey[] = {
 	K_CTRL('R'), K_CTRL('C'), K_CTRL('N'), K_ESC
 };
 static int vistat = 0;
-#define	VI_NEXT		001
-#define	VI_INSERT	002
-#define	VI_ONCE		004
-#define	VI_VIMODE	010
-#define	isvimode()	((vistat & (VI_VIMODE | VI_INSERT)) == VI_VIMODE)
+#define	VI_NEXT			001
+#define	VI_INSERT		002
+#define	VI_ONCE			004
+#define	VI_VIMODE		010
+#define	isvimode()		((vistat & (VI_VIMODE | VI_INSERT)) \
+				== VI_VIMODE)
 #endif	/* !_NOEDITMODE */
 
 static int plen = 0;

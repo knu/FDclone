@@ -19,10 +19,10 @@
 #ifdef	_NOORIGSHELL
 #include "termio.h"
 #include "wait.h"
-#define	isorgpid()	(1)
+#define	isorgpid()		(1)
 #else
 #include "system.h"
-#define	isorgpid()	(mypid == orgpid)
+#define	isorgpid()		(mypid == orgpid)
 #endif
 
 #if	!defined (_NOIME) && defined (DEBUG)
@@ -31,19 +31,20 @@
 
 #ifdef	__TURBOC__
 extern u_int _stklen = 0x5800;
-#define	harderr_t	void
+#define	harderr_t		void
 #else
-#define	harderr_t	int
+#define	harderr_t		int
 #endif
 
+#define	CLOCKUPDATE		10	/* sec */
 #ifndef	BINDIR
-#define	BINDIR		"/usr/local/bin"
+#define	BINDIR			"/usr/local/bin"
 #endif
 #ifndef	DATADIR
-#define	DATADIR		progpath
+#define	DATADIR			progpath
 #endif
 #ifndef	DEFPATH
-#define	DEFPATH		":/bin:/usr/bin"
+#define	DEFPATH			":/bin:/usr/bin"
 #endif
 
 #if	MSDOS
@@ -92,8 +93,6 @@ extern int ptymode;
 extern int ptyinternal;
 extern int parentfd;
 #endif
-
-#define	CLOCKUPDATE	10	/* sec */
 
 #if	MSDOS && !defined (PROTECTED_MODE)
 static harderr_t far criticalerror __P_((u_int, u_int, u_short far *));
@@ -910,7 +909,7 @@ char *CONST *argv;
 		len = snprintf2(cp, (int)sizeof(buf) - (cp - buf), "%s", tmp);
 		free(tmp);
 		if (len < 0) break;
-		cp += len;
+		cp += strlen(cp);
 	}
 	*cp = '\0';
 
@@ -1440,7 +1439,7 @@ char *CONST argv[], *CONST envp[];
 #endif	/* _USEDOSEMU */
 
 #ifdef	_NOORIGSHELL
-	for (i = 0; envp[i]; i++);
+	i = countvar(envp);
 	environ = (char **)malloc2((i + 1) * sizeof(char *));
 	for (i = 0; envp[i]; i++) environ[i] = strdup2(envp[i]);
 	environ[i] = NULL;

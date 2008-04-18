@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 2
-VERSION	= 2.09h
+VERSION	= 2.09i
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -1009,4 +1009,5 @@ troman$(OBJ): printf.h
 troman$(OBJ): kctype.h
 troman$(OBJ): roman.h
 tkanji$(OBJ): machine.h config.h
-tkanji$(OBJ): printf.h kctype.h
+tkanji$(OBJ): printf.h
+tkanji$(OBJ): kctype.h

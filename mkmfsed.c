@@ -21,7 +21,7 @@
 #endif
 
 #if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
-#define	MAXOPENFILE	sysconf(_SC_OPEN_MAX)
+#define	MAXOPENFILE		sysconf(_SC_OPEN_MAX)
 #else	/* !USESYSCONF || !_SC_OPEN_MAX */
 # ifdef	NOFILE
 # define	MAXOPENFILE	NOFILE
@@ -35,16 +35,16 @@
 #endif	/* !USESYSCONF || !_SC_OPEN_MAX */
 
 #ifndef	PREFIX
-#define	PREFIX		"/usr/local"
+#define	PREFIX			"/usr/local"
 #endif
 #ifndef	CONFDIR
-#define	CONFDIR		"/etc"
+#define	CONFDIR			"/etc"
 #endif
 #ifndef	CCCOMMAND
-#define	CCCOMMAND	"cc"
+#define	CCCOMMAND		"cc"
 #endif
 #ifndef	DICTSRC
-#define	DICTSRC		""
+#define	DICTSRC			""
 #endif
 
 int main __P_((int, char *CONST []));
@@ -138,7 +138,12 @@ char *CONST argv[];
 	printf("s:__LN__:ln:\n");
 
 	printf("s:__CC__:%s:\n", CCCOMMAND);
+#if	!defined (__GNUC__) || !defined (__GNUC_MINOR__) \
+|| __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 1)
 	printf("s:__CCOPTIONS__:%s:\n", EXTENDCCOPT);
+#else
+	printf("s:__CCOPTIONS__:%s -Wno-attributes:\n", EXTENDCCOPT);
+#endif
 #ifdef	HOSTCCCOMMAND
 	if (strcmp(CCCOMMAND, HOSTCCCOMMAND)) {
 		printf("s:__HOSTCC__:%s:\n", HOSTCCCOMMAND);

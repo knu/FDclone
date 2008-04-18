@@ -529,7 +529,10 @@ will be reflected in the next release.
 
   On the other hand, although the directory writing function
 should be available in your file system type, this function
-sometimes doesn't work well because of the trouble from OS.
+sometimes doesn't work well because of affairs from OS.
+  For example, in case of ext2/ext3 file systems, dir_index
+option will make the directory writing function ineffective.
+It is because of tune2fs(8).
   Or, some OS may be unable to write directory in any file
 system.
   In that case, you should defile UNKNOWNFS in compiling, to

@@ -18,9 +18,9 @@
 #include "kctype.h"
 #include "roman.h"
 
-#define	MAXKANASTR	255
-#define	DEFFREQ		0
-#define	DEFTK(s,c)	{s, strsize(s), c}
+#define	MAXKANASTR		255
+#define	DEFFREQ			0
+#define	DEFTK(s,c)		{s, strsize(s), c}
 
 typedef struct _tankantable {
 	CONST char *str;
@@ -652,7 +652,7 @@ static CONST tankantable tankanlist[] = {
 
 	DEFTK(NULL,	0x4f54),
 };
-#define	TANKANLISTSIZ	arraysize(tankanlist)
+#define	TANKANLISTSIZ		arraysize(tankanlist)
 
 
 static VOID NEAR roman2str(buf, s, size)

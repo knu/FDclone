@@ -11,12 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-# ifndef	NOUNISTDH
-# include <unistd.h>
-# endif
-# ifndef	NOSTDLIBH
-# include <stdlib.h>
-# endif
+#ifndef	NOUNISTDH
+#include <unistd.h>
+#endif
+#ifndef	NOSTDLIBH
+#include <stdlib.h>
+#endif
 #include "printf.h"
 #include "kctype.h"
 #include "pathname.h"
@@ -36,24 +36,25 @@
 # define	DS_IFDIR	020
 # define	DS_IARCHIVE	040
 # define	SEARCHATTRS	(DS_IRDONLY | DS_IHIDDEN | DS_IFSYSTEM \
-			| DS_IFDIR | DS_IARCHIVE)
+				| DS_IFDIR | DS_IARCHIVE)
 # endif	/* !FD */
 #define	EXTWIDTH	4
 # if	defined (__TURBOC__) || (defined (DJGPP) && DJGPP < 2)
 # include <dir.h>
 # endif
 # if	defined (DJGPP) && DJGPP < 2
-# define	find_t	ffblk
-# define	_dos_findfirst(p, a, f)	findfirst(p, f, a)
-# define	_dos_findnext		findnext
-# define	_ENOENT_		ENMFILE
+# define	find_t		ffblk
+# define	_dos_findfirst(p, a, f)	\
+				findfirst(p, f, a)
+# define	_dos_findnext	findnext
+# define	_ENOENT_	ENMFILE
 # else
-# define	ff_attrib		attrib
-# define	ff_ftime		wr_time
-# define	ff_fdate		wr_date
-# define	ff_fsize		size
-# define	ff_name			name
-# define	_ENOENT_		ENOENT
+# define	ff_attrib	attrib
+# define	ff_ftime	wr_time
+# define	ff_fdate	wr_date
+# define	ff_fsize	size
+# define	ff_name		name
+# define	_ENOENT_	ENOENT
 # endif
 #else	/* !MSDOS */
 #include <sys/file.h>
@@ -61,7 +62,7 @@
 #define	EXTWIDTH	0
 # ifdef	USEDIRECT
 # include <sys/dir.h>
-# define	dirent	direct
+# define	dirent		direct
 # else
 # include <dirent.h>
 # endif
@@ -163,7 +164,7 @@ char *Xgetwd __P_((char *));
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
 # endif	/* !DJGPP */
-#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
+#define	Xaccess(p, m)		((access(p, m)) ? -1 : 0)
 #endif	/* !FD */
 
 static char *NEAR getenvvar __P_((CONST char *, int));
@@ -217,14 +218,14 @@ static char *NEAR replacebackquote __P_((char *, int *, char *, int));
 static int NEAR evalhome __P_((char **, int, CONST char **));
 #endif
 
-#define	BUFUNIT		32
-#define	b_size(n, type)	((((n) / BUFUNIT) + 1) * BUFUNIT * sizeof(type))
-#define	b_realloc(ptr, n, type) \
-			(((n) % BUFUNIT) ? ((type *)(ptr)) \
-			: (type *)realloc2(ptr, b_size(n, type)))
-#define	getconstvar(s)	(getenvvar(s, sizeof(s) - 1))
+#define	BUFUNIT			32
+#define	b_size(n, type)		((((n) / BUFUNIT) + 1) \
+				* BUFUNIT * sizeof(type))
+#define	b_realloc(ptr, n, type)	(((n) % BUFUNIT) ? ((type *)(ptr)) \
+				: (type *)realloc2(ptr, b_size(n, type)))
+#define	getconstvar(s)		(getenvvar(s, sizeof(s) - 1))
 #ifdef	FD
-#define	STRFD		"FD"
+#define	FDSTR			"FD"
 #endif
 
 CONST char nullstr[] = "";
@@ -3413,7 +3414,7 @@ CONST char **argp;
 	len = ((cp = strdelim(top, 0))) ? (cp - top) : strlen(top);
 	if (!len) cp = gethomedir();
 # ifdef	FD
-	else if (len == strsize(STRFD) && !strnpathcmp(top, STRFD, len))
+	else if (len == strsize(FDSTR) && !strnpathcmp(top, FDSTR, len))
 		cp = progpath;
 # endif
 	else {

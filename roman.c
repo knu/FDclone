@@ -19,9 +19,10 @@
 #include "kctype.h"
 #include "roman.h"
 
-#define	R_MAXVOWEL	5
-#define	DEFRM(s,c)	{s, strsize(s), {((c) >> 8) & 0xff, (c) & 0xff}}
-#define	DEFRM2(s,c1,c2)	{s, strsize(s), {(c1), (c2)}}
+#define	R_MAXVOWEL		5
+#define	DEFRM(s,c)		{s, strsize(s), \
+				{((c) >> 8) & 0xff, (c) & 0xff}}
+#define	DEFRM2(s,c1,c2)		{s, strsize(s), {(c1), (c2)}}
 
 typedef struct _voweltable {
 	int key;
@@ -48,7 +49,7 @@ static CONST voweltable vowellist[] = {
 	{'l', {0x21, 0x23, 0x00, 0x27, 0x29}},
 	{'w', {0x21, 0x23, 0x25, 0x27, 0x29}},
 };
-#define	VOWELLISTSIZ	arraysize(vowellist)
+#define	VOWELLISTSIZ		arraysize(vowellist)
 static CONST romantable origromanlist[] = {
 	DEFRM("a", 0x2200),
 	DEFRM("i", 0x2400),
@@ -125,7 +126,7 @@ static CONST romantable origromanlist[] = {
 	DEFRM("ce", 0x3b00),
 	DEFRM("co", 0x3300),
 };
-#define	ROMANLISTSIZ	arraysize(origromanlist)
+#define	ROMANLISTSIZ		arraysize(origromanlist)
 static CONST romantable catromanlist[] = {
 	{"ky",	'y', {0x242d}},	{"gy",	'y', {0x242e}},
 	{"sy",	'y', {0x2437}},	{"zy",	'y', {0x2438}},
@@ -154,7 +155,7 @@ static CONST romantable catromanlist[] = {
 	{"hw",	'w', {0x2455}},	{"bw",	'w', {0x2456}},	{"pw",	'w', {0x2457}},
 	{"fw",	'w', {0x2455}},	{"vw",	'w', {0x2574}},
 };
-#define	CATROMANLISTSIZ	arraysize(catromanlist)
+#define	CATROMANLISTSIZ		arraysize(catromanlist)
 
 
 int code2kanji(buf, c)

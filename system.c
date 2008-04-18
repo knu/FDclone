@@ -183,26 +183,26 @@ FILE *ttyout = NULL;
 #endif
 
 #ifdef	GETPGRPVOID
-#define	getpgroup	getpgrp
+#define	getpgroup		getpgrp
 #else
-#define	getpgroup()	getpgrp(0)
+#define	getpgroup()		getpgrp(0)
 #endif
 #ifdef	USESETPGID
-#define	setpgroup	setpgid
+#define	setpgroup		setpgid
 #else
-#define	setpgroup	setpgrp
+#define	setpgroup		setpgrp
 #endif
 
 #ifdef	USESETVBUF
-#define	setnbuf(f)	setvbuf(f, NULL, _IONBF, 0)
-#define	setlbuf(f)	setvbuf(f, NULL, _IOLBF, 0)
+#define	setnbuf(f)		setvbuf(f, NULL, _IONBF, 0)
+#define	setlbuf(f)		setvbuf(f, NULL, _IOLBF, 0)
 #else
-#define	setnbuf(f)	setbuf(f, NULL)
-#define	setlbuf(f)	setlinebuf(f)
+#define	setnbuf(f)		setbuf(f, NULL)
+#define	setlbuf(f)		setlinebuf(f)
 #endif
 
 #if	MSDOS
-#define	havetty()	(1)
+#define	havetty()		(1)
 #else
 # ifdef	NOJOB
 # define	havetty()	(mypid == shellpid)
@@ -257,15 +257,15 @@ extern char *Xgetwd __P_((char *));
 #  define	Xgetwd(p)	(char *)getcwd(p, MAXPATHLEN)
 #  endif
 # endif	/* !DJGPP */
-#define	Xaccess(p, m)	((access(p, m)) ? -1 : 0)
-#define	Xunlink(p)	((unlink(p)) ? -1 : 0)
-#define	Xopen		open
-#define	Xclose(f)	((close(f)) ? -1 : 0)
-#define	Xdup		safe_dup
-#define	Xdup2		safe_dup2
-#define	Xfdopen		fdopen
-#define	Xfclose		fclose
-#define	Xfileno		fileno
+#define	Xaccess(p, m)		((access(p, m)) ? -1 : 0)
+#define	Xunlink(p)		((unlink(p)) ? -1 : 0)
+#define	Xopen			open
+#define	Xclose(f)		((close(f)) ? -1 : 0)
+#define	Xdup			safe_dup
+#define	Xdup2			safe_dup2
+#define	Xfdopen			fdopen
+#define	Xfclose			fclose
+#define	Xfileno			fileno
 # if	MSDOS
 #  ifdef	DJGPP
 #  define	Xmkdir(p, m)	((mkdir(p, m)) ? -1 : 0)
@@ -275,46 +275,46 @@ int Xmkdir __P_((CONST char *, int));
 # else
 # define	Xmkdir		((mkdir(p, m)) ? -1 : 0)
 # endif
-#define	Xrmdir(p)	((rmdir(p)) ? -1 : 0)
+#define	Xrmdir(p)		((rmdir(p)) ? -1 : 0)
 #endif	/* !FD */
 
 #ifndef	O_BINARY
-#define	O_BINARY	0
+#define	O_BINARY		0
 #endif
 #ifndef	O_TEXT
-#define	O_TEXT		0
+#define	O_TEXT			0
 #endif
 #ifndef	DEV_BSIZE
-#define	DEV_BSIZE	512
+#define	DEV_BSIZE		512
 #endif
 #ifndef	RLIM_INFINITY
-#define	RLIM_INFINITY	0x7fffffff
+#define	RLIM_INFINITY		0x7fffffff
 #endif
 #ifndef	RLIMIT_FSIZE
-#define	RLIMIT_FSIZE	255
+#define	RLIMIT_FSIZE		255
 #endif
 #ifndef	UL_GETFSIZE
-#define	UL_GETFSIZE	1
+#define	UL_GETFSIZE		1
 #endif
 #ifndef	UL_SETFSIZE
-#define	UL_SETFSIZE	2
+#define	UL_SETFSIZE		2
 #endif
 #ifndef	EPERM
-#define	EPERM		EACCES
+#define	EPERM			EACCES
 #endif
 
 #if	!defined (ENOTEMPTY) && defined (ENFSNOTEMPTY)
-#define	ENOTEMPTY	ENFSNOTEMPTY
+#define	ENOTEMPTY		ENFSNOTEMPTY
 #endif
 #if	!defined (RLIMIT_NOFILE) && defined (RLIMIT_OFILE)
-#define	RLIMIT_NOFILE	RLIMIT_OFILE
+#define	RLIMIT_NOFILE		RLIMIT_OFILE
 #endif
 #if	!defined (RLIMIT_VMEM) && defined (RLIMIT_AS)
-#define	RLIMIT_VMEM	RLIMIT_AS
+#define	RLIMIT_VMEM		RLIMIT_AS
 #endif
 
 #if	defined (USESYSCONF) && defined (_SC_CLK_TCK)
-#define	CLKPERSEC	sysconf(_SC_CLK_TCK)
+#define	CLKPERSEC		sysconf(_SC_CLK_TCK)
 #else
 # ifdef	CLK_TCK
 # define	CLKPERSEC	CLK_TCK
@@ -421,7 +421,7 @@ extern char *getenv2 __P_((CONST char *));
 # ifdef	USESIGACTION
 extern sigcst_t signal2 __P_((int, sigcst_t));
 # else
-# define	signal2	signal
+# define	signal2		signal
 # endif
 # if	MSDOS && !defined (BSPATHDELIM)
 extern char *adjustpname __P_((char *));
@@ -450,7 +450,7 @@ int setenv2 __P_((CONST char *, CONST char *, int));
 # ifdef	USESIGACTION
 static sigcst_t NEAR signal2 __P_((int, sigcst_t));
 # else
-# define	signal2	signal
+# define	signal2		signal
 # endif
 # if	MSDOS && !defined (BSPATHDELIM)
 static char *NEAR adjustpname __P_((char *));
@@ -575,12 +575,12 @@ static int trap_usr2 __P_((VOID_A));
 #ifdef	FD
 static VOID NEAR argfputs __P_((CONST char *, FILE *));
 #else
-#define	argfputs	fputs
+#define	argfputs		fputs
 #endif
 #if	defined (FD) && !defined (_NOKANJIFCONV)
 static int NEAR Kopen __P_((CONST char *, int, int));
 #else
-#define	Kopen		Xopen
+#define	Kopen			Xopen
 #endif
 static VOID NEAR syntaxerror __P_((CONST char *));
 #if	!MSDOS && defined (FD) && !defined (_NOPTY) && defined (CYGWIN)
@@ -846,33 +846,32 @@ static VOID NEAR adjustdelim __P_((char *CONST *));
 static VOID NEAR initrc __P_((int));
 
 #if	MSDOS
-#define	LSH_DEFRC	"\\etc\\profile"
-#define	LSH_RCFILE	"~\\profile.rc"
-#define	SH_RCFILE	"~\\fdsh.rc"
+#define	LSH_DEFRC		"\\etc\\profile"
+#define	LSH_RCFILE		"~\\profile.rc"
+#define	SH_RCFILE		"~\\fdsh.rc"
 #else	/* !MSDOS */
-#define	LSH_DEFRC	"/etc/profile"
-#define	LSH_RCFILE	"~/.profile"
-#define	SH_RCFILE	"~/.fdshrc"
+#define	LSH_DEFRC		"/etc/profile"
+#define	LSH_RCFILE		"~/.profile"
+#define	SH_RCFILE		"~/.fdshrc"
 #endif	/* !MSDOS */
 
-#define	PS1STR		"$ "
-#define	PS1ROOT		"# "
-#define	PS2STR		"> "
-#define	PS4STR		"+ "
-#define	UNLIMITED	"unlimited"
-#define	MAXTMPNAMLEN	8
-#define	BUFUNIT		32
-#define	getconstvar(s)	(getshellvar(s, strsize(s)))
-#define	constequal(s, c, l) \
-			((l) == strsize(c) && !strnenvcmp(s, c, l))
+#define	PS1STR			"$ "
+#define	PS1ROOT			"# "
+#define	PS2STR			"> "
+#define	PS4STR			"+ "
+#define	UNLIMITED		"unlimited"
+#define	MAXTMPNAMLEN		8
+#define	BUFUNIT			32
+#define	getconstvar(s)		(getshellvar(s, strsize(s)))
+#define	constequal(s, c, l)	((l) == strsize(c) && !strnenvcmp(s, c, l))
 #ifdef	USESTRERROR
 #define	strerror2		strerror
-#else
+#else	/* !USESTRERROR */
 # ifndef	DECLERRLIST
 extern CONST char *CONST sys_errlist[];
 # endif
 #define	strerror2(n)		(char *)sys_errlist[n]
-#endif
+#endif	/* !USESTRERROR */
 
 #ifdef	FDSH
 int main __P_((int, char *CONST [], char *CONST []));
@@ -887,7 +886,7 @@ int interactive = 0;
 int errorexit = 0;
 #if	defined (FD) && !defined (_NOPTY)
 int shptymode = 0;
-#define	isshptymode()	(!fdmode && shptymode)
+#define	isshptymode()		(!fdmode && shptymode)
 #endif
 #ifndef	NOJOB
 int lastjob = -1;
@@ -981,99 +980,99 @@ static p_id_t *mychildren = (p_id_t *)NULL;
 
 static CONST char *CONST syntaxerrstr[] = {
 	NULL,
-#define	ER_UNEXPTOK	1
+#define	ER_UNEXPTOK		1
 	"unexpected token",
-#define	ER_UNEXPNL	2
+#define	ER_UNEXPNL		2
 	"unexpected newline or `;'",
-#define	ER_UNEXPEOF	3
+#define	ER_UNEXPEOF		3
 	"unexpected end of file",
 };
-#define	SYNTAXERRSIZ	arraysize(syntaxerrstr)
+#define	SYNTAXERRSIZ		arraysize(syntaxerrstr)
 
 static CONST char *CONST execerrstr[] = {
 	NULL,
-#define	ER_COMNOFOUND	1
+#define	ER_COMNOFOUND		1
 	"command not found",
-#define	ER_NOTFOUND	2
+#define	ER_NOTFOUND		2
 	"not found",
-#define	ER_CANNOTEXE	3
+#define	ER_CANNOTEXE		3
 	"cannot execute",
-#define	ER_NOTIDENT	4
+#define	ER_NOTIDENT		4
 	"is not an identifier",
-#define	ER_BADSUBST	5
+#define	ER_BADSUBST		5
 	"bad substitution",
-#define	ER_BADNUMBER	6
+#define	ER_BADNUMBER		6
 	"bad number",
-#define	ER_BADDIR	7
+#define	ER_BADDIR		7
 	"bad directory",
-#define	ER_CANNOTRET	8
+#define	ER_CANNOTRET		8
 	"cannot return when not in function",
-#define	ER_CANNOTSTAT	9
+#define	ER_CANNOTSTAT		9
 	"cannot stat .",
-#define	ER_CANNOTUNSET	10
+#define	ER_CANNOTUNSET		10
 	"cannot unset",
-#define	ER_ISREADONLY	11
+#define	ER_ISREADONLY		11
 	"is read only",
-#define	ER_CANNOTSHIFT	12
+#define	ER_CANNOTSHIFT		12
 	"cannot shift",
-#define	ER_BADOPTIONS	13
+#define	ER_BADOPTIONS		13
 	"bad option(s)",
-#define	ER_PARAMNOTSET	14
+#define	ER_PARAMNOTSET		14
 	"parameter not set",
-#define	ER_RESTRICTED	15
+#define	ER_RESTRICTED		15
 	"restricted",
-#define	ER_BADULIMIT	16
+#define	ER_BADULIMIT		16
 	"bad ulimit",
-#define	ER_BADTRAP	17
+#define	ER_BADTRAP		17
 	"bad trap",
-#define	ER_NUMOUTRANGE	18
+#define	ER_NUMOUTRANGE		18
 	"number out of range",
-#define	ER_NOHOMEDIR	19
+#define	ER_NOHOMEDIR		19
 	"no home directory",
 #ifdef	NOALIAS
 	NULL,
 #else
-#define	ER_NOTALIAS	20
+#define	ER_NOTALIAS		20
 	"is not an alias",
 #endif
 #ifdef	NOPOSIXUTIL
 	NULL,
 #else
-#define	ER_MISSARG	21
+#define	ER_MISSARG		21
 	"missing argument",
 #endif
 #ifdef	NOJOB
 	NULL, NULL,
 #else
-#define	ER_NOSUCHJOB	22
+#define	ER_NOSUCHJOB		22
 	"no such job",
-#define	ER_TERMINATED	23
+#define	ER_TERMINATED		23
 	"job has terminated",
 #endif
 #ifdef	MINIMUMSHELL
 	NULL, NULL, NULL,
 #else
-#define	ER_NOTLOGINSH	24
+#define	ER_NOTLOGINSH		24
 	"not login shell",
-#define	ER_DIREMPTY	25
+#define	ER_DIREMPTY		25
 	"directory stack empty",
-#define	ER_UNKNOWNSIG	26
+#define	ER_UNKNOWNSIG		26
 	"unknown signal; kill -l lists signals",
 #endif
 #if	!MSDOS
 	NULL,
 #else
-#define	ER_INVALDRIVE	27
+#define	ER_INVALDRIVE		27
 	"invalid drive specification",
 #endif
 #ifdef	FD
-#define	ER_RECURSIVEFD	28
+#define	ER_RECURSIVEFD		28
 	"recursive call for FDclone",
-#define	ER_INVALTERMFD	29
+#define	ER_INVALTERMFD		29
 	"invalid terminal for FDclone",
 #endif
 };
-#define	EXECERRSIZ	arraysize(execerrstr)
+#define	EXECERRSIZ		arraysize(execerrstr)
 
 static CONST opetable opelist[] = {
 	{OP_FG, 4, ";"},
@@ -1088,7 +1087,7 @@ static CONST opetable opelist[] = {
 	{OP_NOT, 2, "!"},
 #endif
 };
-#define	OPELISTSIZ	arraysize(opelist)
+#define	OPELISTSIZ		arraysize(opelist)
 
 #if	!defined (BASHBUG) && !defined (MINIMUMSHELL)
 static CONST opetable delimlist[] = {
@@ -1120,7 +1119,7 @@ static CONST opetable delimlist[] = {
 	{OP_NONE, 0, ">|"},
 	{OP_NONE, 0, ">"},
 };
-#define	DELIMLISTSIZ	arraysize(delimlist)
+#define	DELIMLISTSIZ		arraysize(delimlist)
 #endif	/* !BASHBUG && !MINIMUMSHELL */
 
 static shbuiltintable shbuiltinlist[] = {
@@ -1211,7 +1210,7 @@ static shbuiltintable shbuiltinlist[] = {
 	{dofd, "fd", BT_FILENAME},
 #endif
 };
-#define	SHBUILTINSIZ	arraysize(shbuiltinlist)
+#define	SHBUILTINSIZ		arraysize(shbuiltinlist)
 
 CONST statementtable statementlist[] = {
 	{doif, "if", STT_NEEDLIST, {0, 0, 0, 0}},
@@ -1235,7 +1234,7 @@ CONST statementtable statementlist[] = {
 	{dolist, "{", STT_LIST | STT_NEEDLIST, {0, 0, 0, 0}},
 	{NULL, "}", STT_NEEDNONE, {SM_LIST, 0, 0, 0}},
 };
-#define	STATEMENTSIZ	arraysize(statementlist)
+#define	STATEMENTSIZ		arraysize(statementlist)
 
 static CONST char *primalvar[] = {
 	ENVPATH, ENVPS1, ENVPS2, ENVIFS,
@@ -1243,7 +1242,7 @@ static CONST char *primalvar[] = {
 	ENVMAILCHECK, ENVPPID,
 #endif
 };
-#define	PRIMALVARSIZ	arraysize(primalvar)
+#define	PRIMALVARSIZ		arraysize(primalvar)
 
 static CONST char *restrictvar[] = {
 	ENVPATH,
@@ -1256,7 +1255,7 @@ static CONST char *restrictvar[] = {
 	ENVENV,
 #endif
 };
-#define	RESTRICTVARSIZ	arraysize(restrictvar)
+#define	RESTRICTVARSIZ		arraysize(restrictvar)
 
 #if	MSDOS && !defined (BSPATHDELIM)
 static CONST char *adjustvar[] = {
@@ -1290,7 +1289,7 @@ static CONST char *adjustvar[] = {
 #  endif
 # endif	/* !FD */
 };
-#define	ADJUSTVARSIZ	arraysize(adjustvar)
+#define	ADJUSTVARSIZ		arraysize(adjustvar)
 #endif	/* MSDOS && !BSPATHDELIM */
 
 static CONST shflagtable shflaglist[] = {
@@ -1331,7 +1330,7 @@ static CONST shflagtable shflaglist[] = {
 	{NULL, &loginshell, 'l'},
 	{NULL, &noruncom, 'N'},
 };
-#define	FLAGSSIZ	arraysize(shflaglist)
+#define	FLAGSSIZ		arraysize(shflaglist)
 
 #ifdef	USERESOURCEH
 static CONST ulimittable ulimitlist[] = {
@@ -1366,83 +1365,83 @@ static CONST ulimittable ulimitlist[] = {
 	{'v', RLIMIT_VMEM, 1024, "virtual memory(kbytes)"},
 #endif
 };
-#define	ULIMITSIZ	arraysize(ulimitlist)
+#define	ULIMITSIZ		arraysize(ulimitlist)
 #endif	/* USERESOURCEH */
 
 #ifdef	PSIGNALSTYLE
-#define	MESHUP		"Hangup"
-#define	MESINT		"Interrupt"
-#define	MESQUIT		"Quit"
-#define	MESILL		"Illegal instruction"
-#define	MESTRAP		"Trace/BPT trap"
-#define	MESIOT		"IOT trap"
-#define	MESABRT		"Aborted"
-#define	MESEMT		"EMT trap"
-#define	MESFPE		"Floating point exception"
-#define	MESKILL		"Killed"
-#define	MESBUS		"Bus error"
-#define	MESSEGV		"Segmentation fault"
-#define	MESSYS		"Bad system call"
-#define	MESPIPE		"Broken pipe"
-#define	MESALRM		"Alarm clock"
-#define	MESTERM		"Terminated"
-#define	MESSTKFLT	"Stack fault"
-#define	MESURG		"Urgent I/O condition"
-#define	MESSTOP		"Stopped (signal)"
-#define	MESTSTP		"Stopped"
-#define	MESCONT		"Continued"
-#define	MESCHLD		"Child exited"
-#define	MESTTIN		"Stopped (tty input)"
-#define	MESTTOU		"Stopped (tty output)"
-#define	MESIO		"I/O possible"
-#define	MESPOLL		"Profiling alarm clock"
-#define	MESXCPU		"Cputime limit exceeded"
-#define	MESXFSZ		"Filesize limit exceeded"
-#define	MESVTALRM	"Virtual timer expired"
-#define	MESPROF		"Profiling timer expired"
-#define	MESWINCH	"Window changed"
-#define	MESLOST		"Resource lost"
-#define	MESINFO		"Information request"
-#define	MESPWR		"Power failure"
-#define	MESUSR1		"User defined signal 1"
-#define	MESUSR2		"User defined signal 2"
+#define	MESHUP			"Hangup"
+#define	MESINT			"Interrupt"
+#define	MESQUIT			"Quit"
+#define	MESILL			"Illegal instruction"
+#define	MESTRAP			"Trace/BPT trap"
+#define	MESIOT			"IOT trap"
+#define	MESABRT			"Aborted"
+#define	MESEMT			"EMT trap"
+#define	MESFPE			"Floating point exception"
+#define	MESKILL			"Killed"
+#define	MESBUS			"Bus error"
+#define	MESSEGV			"Segmentation fault"
+#define	MESSYS			"Bad system call"
+#define	MESPIPE			"Broken pipe"
+#define	MESALRM			"Alarm clock"
+#define	MESTERM			"Terminated"
+#define	MESSTKFLT		"Stack fault"
+#define	MESURG			"Urgent I/O condition"
+#define	MESSTOP			"Stopped (signal)"
+#define	MESTSTP			"Stopped"
+#define	MESCONT			"Continued"
+#define	MESCHLD			"Child exited"
+#define	MESTTIN			"Stopped (tty input)"
+#define	MESTTOU			"Stopped (tty output)"
+#define	MESIO			"I/O possible"
+#define	MESPOLL			"Profiling alarm clock"
+#define	MESXCPU			"Cputime limit exceeded"
+#define	MESXFSZ			"Filesize limit exceeded"
+#define	MESVTALRM		"Virtual timer expired"
+#define	MESPROF			"Profiling timer expired"
+#define	MESWINCH		"Window changed"
+#define	MESLOST			"Resource lost"
+#define	MESINFO			"Information request"
+#define	MESPWR			"Power failure"
+#define	MESUSR1			"User defined signal 1"
+#define	MESUSR2			"User defined signal 2"
 #else	/* !PSIGNALSTYLE */
-#define	MESHUP		"Hangup"
-#define	MESINT		""
-#define	MESQUIT		"Quit"
-#define	MESILL		"Illegal instruction"
-#define	MESTRAP		"Trace/BPT trap"
-#define	MESIOT		"IOT trap"
-#define	MESABRT		"Aborted"
-#define	MESEMT		"EMT trap"
-#define	MESFPE		"Floating exception"
-#define	MESKILL		"Killed"
-#define	MESBUS		"Bus error"
-#define	MESSEGV		"Memory fault"
-#define	MESSYS		"Bad system call"
-#define	MESPIPE		""
-#define	MESALRM		"Alarm call"
-#define	MESTERM		"Terminated"
-#define	MESSTKFLT	"Stack fault"
-#define	MESURG		"Urgent condition"
-#define	MESSTOP		"Stopped"
-#define	MESTSTP		"Stopped from terminal"
-#define	MESCONT		"Continued"
-#define	MESCHLD		"Child terminated"
-#define	MESTTIN		"Stopped on terminal input"
-#define	MESTTOU		"Stopped on terminal output"
-#define	MESIO		"Asynchronous I/O"
-#define	MESPOLL		"Profiling alarm clock"
-#define	MESXCPU		"Exceeded cpu time limit"
-#define	MESXFSZ		"Exceeded file size limit"
-#define	MESVTALRM	"Virtual time alarm"
-#define	MESPROF		"Profiling time alarm"
-#define	MESWINCH	"Window changed"
-#define	MESLOST		"Resource lost"
-#define	MESINFO		"Information request"
-#define	MESPWR		"Power failure"
-#define	MESUSR1		"User defined signal 1"
-#define	MESUSR2		"User defined signal 2"
+#define	MESHUP			"Hangup"
+#define	MESINT			""
+#define	MESQUIT			"Quit"
+#define	MESILL			"Illegal instruction"
+#define	MESTRAP			"Trace/BPT trap"
+#define	MESIOT			"IOT trap"
+#define	MESABRT			"Aborted"
+#define	MESEMT			"EMT trap"
+#define	MESFPE			"Floating exception"
+#define	MESKILL			"Killed"
+#define	MESBUS			"Bus error"
+#define	MESSEGV			"Memory fault"
+#define	MESSYS			"Bad system call"
+#define	MESPIPE			""
+#define	MESALRM			"Alarm call"
+#define	MESTERM			"Terminated"
+#define	MESSTKFLT		"Stack fault"
+#define	MESURG			"Urgent condition"
+#define	MESSTOP			"Stopped"
+#define	MESTSTP			"Stopped from terminal"
+#define	MESCONT			"Continued"
+#define	MESCHLD			"Child terminated"
+#define	MESTTIN			"Stopped on terminal input"
+#define	MESTTOU			"Stopped on terminal output"
+#define	MESIO			"Asynchronous I/O"
+#define	MESPOLL			"Profiling alarm clock"
+#define	MESXCPU			"Exceeded cpu time limit"
+#define	MESXFSZ			"Exceeded file size limit"
+#define	MESVTALRM		"Virtual time alarm"
+#define	MESPROF			"Profiling time alarm"
+#define	MESWINCH		"Window changed"
+#define	MESLOST			"Resource lost"
+#define	MESINFO			"Information request"
+#define	MESPWR			"Power failure"
+#define	MESUSR1			"User defined signal 1"
+#define	MESUSR2			"User defined signal 2"
 #endif	/* !PSIGNALSTYLE */
 
 CONST signaltable signallist[] = {
@@ -7467,8 +7466,14 @@ syntaxtree *trp;
 #if	MSDOS
 	char **svar, **evar, **elist, **rlist, cwd[MAXPATHLEN];
 	u_long esize;
-	int ret, blevel, clevel;
+	int blevel, clevel;
+#else
+	syntaxtree *body;
+	p_id_t pid;
+#endif
+	int ret;
 
+#if	MSDOS
 	if (!Xgetwd(cwd)) return(RET_FAIL);
 	svar = shellvar;
 	evar = exportvar;
@@ -7496,14 +7501,10 @@ syntaxtree *trp;
 	ronlylist = rlist;
 	breaklevel = blevel;
 	continuelevel = clevel;
-	if (chdir3(cwd, 1) < 0) return(RET_FAIL);
+	if (chdir3(cwd, 1) < 0) ret = RET_FAIL;
 
 	return(ret);
 #else	/* !MSDOS */
-	syntaxtree *body;
-	p_id_t pid;
-	int ret;
-
 	body = statementbody(trp);
 	if ((pid = makechild(1, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
 	else if (!pid) {
@@ -8037,7 +8038,8 @@ syntaxtree *trp;
 
 	ifs = getifs();
 	ret = RET_SUCCESS;
-	if ((buf = readline(STDIN_FILENO)) == vnullstr) ret = RET_FAIL;
+	buf = readline(STDIN_FILENO);
+	if (buf == vnullstr) ret = RET_FAIL;
 	else if (!buf) {
 		if (errno != EINTR) doperror((trp -> comm) -> argv[0], NULL);
 		ret = RET_FAIL;

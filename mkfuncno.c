@@ -7,7 +7,7 @@
 #define	__FD_PRIMAL__
 #include "fd.h"
 #include "types.h"
-#define	_TBL_(func, id, hlp, flg)	{NULL, id, NULL, 0}
+#define	_TBL_(fn, id, hl, fl)	{NULL, id, NULL, 0}
 #include "functabl.h"
 
 int main __P_((int, char *CONST []));
@@ -38,9 +38,9 @@ char *CONST argv[];
 		fprintf(fp, "#define\t%s\t", funclist[i].ident);
 		len = strlen(funclist[i].ident);
 		while ((len += 8) < 16) fputc('\t', fp);
-		fprintf(fp, "%d\n", i);
+		fprintf(fp, "\t%d\n", i);
 	}
-	fprintf(fp, "\n#define\tFUNCLISTSIZ\t%d\n", i);
+	fprintf(fp, "\n#define\tFUNCLISTSIZ\t\t%d\n", i);
 
 	if (fp != stdout) fclose(fp);
 

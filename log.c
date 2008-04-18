@@ -19,22 +19,22 @@
 #endif
 
 #ifndef	O_TEXT
-#define	O_TEXT		0
+#define	O_TEXT			0
 #endif
 #ifndef	LOG_PID
-#define	LOG_PID		0
+#define	LOG_PID			0
 #endif
 #ifndef	LOG_ERR
-#define	LOG_ERR		3
+#define	LOG_ERR			3
 #endif
 #ifndef	LOG_INFO
-#define	LOG_INFO	6
+#define	LOG_INFO		6
 #endif
 
 extern char *progname;
 
 static lockbuf_t *NEAR openlogfile __P_((VOID_A));
-static VOID NEAR writelog __P_((int, int, CONST char *, int));
+static VOID NEAR writelog __P_((int, int, CONST char *));
 
 char *logfile = NULL;
 int logsize = 0;
@@ -108,10 +108,9 @@ VOID logclose(VOID_A)
 }
 
 /*ARGSUSED*/
-static VOID NEAR writelog(lvl, p, buf, len)
+static VOID NEAR writelog(lvl, p, buf)
 int lvl, p;
 CONST char *buf;
-int len;
 {
 	static int logging = 0;
 	lockbuf_t *lck;
@@ -137,20 +136,20 @@ int len;
 		t = time(NULL);
 		tm = localtime(&t);
 #ifdef	NOUID
-		n = snprintf2(hbuf, sizeof(hbuf),
+		snprintf2(hbuf, sizeof(hbuf),
 			"%04u/%02u/%02u %02u:%02u:%02u %s[%d]:\n ",
 			tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			progname, getpid());
 #else
-		n = snprintf2(hbuf, sizeof(hbuf),
+		snprintf2(hbuf, sizeof(hbuf),
 			"%04u/%02u/%02u %02u:%02u:%02u uid=%d %s[%d]:\n ",
 			tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			getuid(), progname, getpid());
 #endif
-		VOID_C Xwrite(lck -> fd, hbuf, n);
-		VOID_C Xwrite(lck -> fd, buf, len);
+		VOID_C Xwrite(lck -> fd, hbuf, strlen(hbuf));
+		VOID_C Xwrite(lck -> fd, buf, strlen(buf));
 		uc = '\n';
 		VOID_C Xwrite(lck -> fd, (char *)&uc, sizeof(uc));
 		lockclose(lck);
@@ -193,13 +192,13 @@ va_dcl
 	va_end(args);
 
 	if (len >= 0) {
+		len = strlen(buf);
 		if (val >= 0) n = snprintf2(&(buf[len]),
 			(int)sizeof(buf) - len, " succeeded");
 		else n = snprintf2(&(buf[len]), (int)sizeof(buf) - len,
 			" -- FAILED -- (%k)", strerror2(duperrno));
 		if (n < 0) buf[len] = '\0';
-		else len += n;
-		writelog(lvl, (val < 0) ? LOG_ERR : LOG_INFO, buf, len);
+		writelog(lvl, (val < 0) ? LOG_ERR : LOG_INFO, buf);
 	}
 	errno = duperrno;
 }
@@ -224,7 +223,7 @@ va_dcl
 	len = vsnprintf2(buf, sizeof(buf), fmt, args);
 	va_end(args);
 
-	if (len >= 0) writelog(lvl, LOG_INFO, buf, len);
+	if (len >= 0) writelog(lvl, LOG_INFO, buf);
 	errno = duperrno;
 }
 #endif	/* !_NOLOGGING */

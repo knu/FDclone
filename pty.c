@@ -18,14 +18,14 @@
 #endif
 
 #ifdef	GETPGRPVOID
-#define	getpgroup	getpgrp
+#define	getpgroup		getpgrp
 #else
-#define	getpgroup()	getpgrp(0)
+#define	getpgroup()		getpgrp(0)
 #endif
 #ifdef	USESETPGID
-#define	setpgroup	setpgid
+#define	setpgroup		setpgid
 #else
-#define	setpgroup	setpgrp
+#define	setpgroup		setpgrp
 #endif
 
 #define	Xopen(p,f,m,e)		open(p, f, m)
@@ -37,24 +37,24 @@
 #define	term_safeclose(f,p)	safeclose(f)
 #define	term_loadtermio		loadtermio
 
-#define	TTY_GROUP	"tty"
+#define	TTY_GROUP		"tty"
 #ifndef	_PATH_DEVNULL
-#define	_PATH_DEVNULL	"/dev/null"
+#define	_PATH_DEVNULL		"/dev/null"
 #endif
 #ifndef	_PATH_PTY
-#define	_PATH_PTY	"/dev/pty"
+#define	_PATH_PTY		"/dev/pty"
 #endif
 #ifndef	_PATH_DEVPTMX
-#define	_PATH_DEVPTMX	"/dev/ptmx"
+#define	_PATH_DEVPTMX		"/dev/ptmx"
 #endif
 #ifndef	_PATH_DEVPTS
-#define	_PATH_DEVPTS	"/dev/pts"
+#define	_PATH_DEVPTS		"/dev/pts"
 #endif
 #ifndef	O_NOCTTY
-#define	O_NOCTTY	0
+#define	O_NOCTTY		0
 #endif
 #ifndef	EPERM
-#define	EPERM		EACCES
+#define	EPERM			EACCES
 #endif
 
 #ifndef	USEDEVPTMX

@@ -205,11 +205,11 @@ static CONST u_short typelist[] = {
 static CONST u_short modelist[] = {
 	S_IFDIR, S_IFLNK, S_IFSOCK, S_IFIFO, S_IFBLK, S_IFCHR
 };
-#define	MODELISTSIZ	arraysize(modelist)
+#define	MODELISTSIZ		arraysize(modelist)
 static CONST char suffixlist[] = {
 	'/', '@', '=', '|'
 };
-#define	SUFFIXLISTSIZ	arraysize(suffixlist)
+#define	SUFFIXLISTSIZ		arraysize(suffixlist)
 #ifndef	_NOCOLOR
 static CONST u_char colorlist[] = {
 	CL_DIR, CL_LINK, CL_SOCK, CL_FIFO, CL_BLOCK, CL_CHAR
