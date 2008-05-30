@@ -4,18 +4,8 @@
  *	function expander for the obsolete /bin/sh
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
+#include "headers.h"
 #include <ctype.h>
-#include <sys/types.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
 
 #define	MAXLINEBUF		255
 #define	MAXFUNCNO		32

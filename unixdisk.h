@@ -7,111 +7,96 @@
 #if	MSDOS && !defined __UNIXDISK_H_
 #define	__UNIXDISK_H_
 
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <time.h>
-
-#ifndef	__SYS_TYPES_STAT_H_
-#define	__SYS_TYPES_STAT_H_
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
-
+#include "depend.h"
 #include "termio.h"
 #include "unixemu.h"
 
-#ifndef	USEUTIME
-#include <sys/time.h>
-#endif
-
 #ifdef	DJGPP
-#define	NOP	0x00
-#define	RETF	0xc3
+#define	NOP			0x00
+#define	RETF			0xc3
 #else
-#define	NOP	0x90
-#define	RETF	0xcb
+#define	NOP			0x90
+#define	RETF			0xcb
 #endif
 
-#define	DATETIMEFORMAT	1
-#define	DS_IRDONLY	001
-#define	DS_IHIDDEN	002
-#define	DS_IFSYSTEM	004
-#define	DS_IFLABEL	010
-#define	DS_IFDIR	020
-#define	DS_IARCHIVE	040
-#define	SEARCHATTRS	(DS_IRDONLY | DS_IHIDDEN | DS_IFSYSTEM \
-			| DS_IFDIR | DS_IARCHIVE)
-#define	PSEUDOINTNO	0x80
-#define	MAXINTNO	0xff
+#define	DATETIMEFORMAT		1
+#define	DS_IRDONLY		001
+#define	DS_IHIDDEN		002
+#define	DS_IFSYSTEM		004
+#define	DS_IFLABEL		010
+#define	DS_IFDIR		020
+#define	DS_IARCHIVE		040
+#define	SEARCHATTRS		(DS_IRDONLY | DS_IHIDDEN | DS_IFSYSTEM \
+				| DS_IFDIR | DS_IARCHIVE)
+#define	PSEUDOINTNO		0x80
+#define	MAXINTNO		0xff
 
-#define	BOOTSECTSIZE	512
-#define	MAXSECTSIZE	4096
-#define	BIOSRETRY	4
-#define	VOL_FAT32	"FAT32"
+#define	BOOTSECTSIZE		512
+#define	MAXSECTSIZE		4096
+#define	BIOSRETRY		4
+#define	VOL_FAT32		"FAT32"
 
 #ifdef	PC98
-#define	DISKBIOS	0x1b
-#define	BIOS_READ	0x06
-#define	BIOS_WRITE	0x05
-#define	BIOS_VERIFY	0x01
-#define	BIOS_PARAM	0x84
-#define	BIOS_RESET	0x03
-#define	BIOS_HDD	0x80
-#define	BIOS_SCSI	0xa0
-#define	BIOS_DMAERR	0x20
-#define	MAX_HDD		4
-#define	MAX_SCSI	8
+#define	DISKBIOS		0x1b
+#define	BIOS_READ		0x06
+#define	BIOS_WRITE		0x05
+#define	BIOS_VERIFY		0x01
+#define	BIOS_PARAM		0x84
+#define	BIOS_RESET		0x03
+#define	BIOS_HDD		0x80
+#define	BIOS_SCSI		0xa0
+#define	BIOS_DMAERR		0x20
+#define	MAX_HDD			4
+#define	MAX_SCSI		8
 
-#define	PT_FAT12	0x81	/* 0x80 | 0x01 */
-#define	PT_FAT16	0x91	/* 0x80 | 0x11 */
-#define	PT_FREEBSD	0x94	/* 0x80 | 0x14 */
-#define	PT_FAT16X	0xa1	/* 0x80 | 0x21 */
-#define	PT_NTFS		0xb1	/* 0x80 | 0x31 */
-#define	PT_386BSD	0xc4	/* 0x80 | 0x44 */
-#define	PT_FAT32	0xe1	/* 0x80 | 0x61 */
-#define	PT_LINUX	0xe2	/* 0x80 | 0x62 */
+#define	PT_FAT12		0x81	/* 0x80 | 0x01 */
+#define	PT_FAT16		0x91	/* 0x80 | 0x11 */
+#define	PT_FREEBSD		0x94	/* 0x80 | 0x14 */
+#define	PT_FAT16X		0xa1	/* 0x80 | 0x21 */
+#define	PT_NTFS			0xb1	/* 0x80 | 0x31 */
+#define	PT_386BSD		0xc4	/* 0x80 | 0x44 */
+#define	PT_FAT32		0xe1	/* 0x80 | 0x61 */
+#define	PT_LINUX		0xe2	/* 0x80 | 0x62 */
 
-#define	PART_TABLE	0x0000
-#define	PART_NUM	16
+#define	PART_TABLE		0x0000
+#define	PART_NUM		16
 #else	/* !PC98 */
-#define	DISKBIOS	0x13
-#define	BIOS_READ	0x02
-#define	BIOS_WRITE	0x03
-#define	BIOS_VERIFY	0x04
-#define	BIOS_PARAM	0x08
-#define	BIOS_RESET	0x00
-#define	BIOS_TYPE	0x15
-#define	BIOS_XCHECK	0x41
-#define	BIOS_XREAD	0x42
-#define	BIOS_XWRITE	0x43
-#define	BIOS_XVERIFY	0x44
-#define	BIOS_XPARAM	0x48
-#define	BIOS_HDD	0x80
-#define	BIOS_DMAERR	0x09
+#define	DISKBIOS			0x13
+#define	BIOS_READ		0x02
+#define	BIOS_WRITE		0x03
+#define	BIOS_VERIFY		0x04
+#define	BIOS_PARAM		0x08
+#define	BIOS_RESET		0x00
+#define	BIOS_TYPE		0x15
+#define	BIOS_XCHECK		0x41
+#define	BIOS_XREAD		0x42
+#define	BIOS_XWRITE		0x43
+#define	BIOS_XVERIFY		0x44
+#define	BIOS_XPARAM		0x48
+#define	BIOS_HDD		0x80
+#define	BIOS_DMAERR		0x09
 
-#define	DT_NODRIVE	0x00
-#define	DT_FLOPPY	0x01
-#define	DT_FLOPPY_CL	0x02
-#define	DT_HARDDISK	0x03
+#define	DT_NODRIVE		0x00
+#define	DT_FLOPPY		0x01
+#define	DT_FLOPPY_CL		0x02
+#define	DT_HARDDISK		0x03
 
-#define	PT_FAT12	0x01
-#define	PT_FAT16	0x04
-#define	PT_EXTEND	0x05
-#define	PT_FAT16X	0x06
-#define	PT_NTFS		0x07
-#define	PT_FAT32	0x0b
-#define	PT_FAT32LBA	0x0c
-#define	PT_FAT16XLBA	0x0e
-#define	PT_EXTENDLBA	0x0f
-#define	PT_LINUX	0x83
-#define	PT_386BSD	0xa5
-#define	PT_OPENBSD	0xa6
-#define	PT_NETBSD	0xa9
+#define	PT_FAT12		0x01
+#define	PT_FAT16		0x04
+#define	PT_EXTEND		0x05
+#define	PT_FAT16X		0x06
+#define	PT_NTFS			0x07
+#define	PT_FAT32		0x0b
+#define	PT_FAT32LBA		0x0c
+#define	PT_FAT16XLBA		0x0e
+#define	PT_EXTENDLBA		0x0f
+#define	PT_LINUX		0x83
+#define	PT_386BSD		0xa5
+#define	PT_OPENBSD		0xa6
+#define	PT_NETBSD		0xa9
 
-#define	PART_TABLE	0x01be
-#define	PART_NUM	4
+#define	PART_TABLE		0x01be
+#define	PART_NUM		4
 #endif	/* !PC98 */
 
 typedef struct _partition_t {
@@ -190,15 +175,15 @@ typedef struct _drvinfo {
 	u_char filesys;
 } drvinfo;
 
-#define	DI_TYPE		0003
-#define	DI_NOPLOVED	0000
-#define	DI_FIXED	0001
-#define	DI_REMOVABLE	0002
-#define	DI_MISC		0003
-#define	DI_PSEUDO	0004
-#define	DI_CHECKED	0010
-#define	DI_LBA		0020
-#define	DI_INVALIDCHS	0040
+#define	DI_TYPE			0003
+#define	DI_NOPLOVED		0000
+#define	DI_FIXED		0001
+#define	DI_REMOVABLE		0002
+#define	DI_MISC			0003
+#define	DI_PSEUDO		0004
+#define	DI_CHECKED		0010
+#define	DI_LBA			0020
+#define	DI_INVALIDCHS		0040
 
 struct dosfind_t {
 	u_char keyattr __attribute__ ((packed));
@@ -251,7 +236,6 @@ typedef struct _statfs_t {
 	long f_files;
 } statfs_t;
 
-extern int intcall __P_((int, __dpmi_regs *, struct SREGS *));
 extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));
 #ifndef	_NOUSELFN
@@ -311,7 +295,6 @@ extern int unixutime __P_((CONST char *, CONST struct utimbuf *));
 extern int unixutimes __P_((CONST char *, CONST struct timeval *));
 # endif
 extern int unixopen __P_((CONST char *, int, int));
-extern FILE *unixfopen __P_((CONST char *, CONST char *));
 #endif	/* !_NOUSELFN */
 
 #endif	/* MSDOS && !__UNIXDISK_H_ */

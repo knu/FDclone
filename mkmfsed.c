@@ -6,16 +6,8 @@
 
 #define	__FD_PRIMAL__
 #include "fd.h"
-
-#include <sys/param.h>
 #include "version.h"
 
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
@@ -60,7 +52,7 @@ char *CONST argv[];
 
 	printf("s:__VERMAJ__:%d:\n", FD);
 #if	FD >= 2
-	printf("s:__RCVERSION__:%d:\n", FD);
+	printf("s:__RCVERSION__:%d:\n", 2);
 #else
 	printf("s:__RCVERSION__::\n");
 #endif
@@ -78,14 +70,9 @@ char *CONST argv[];
 	printf("s:__EXE__::g\n");
 #endif
 	printf("s:__OBJ__:.o:g\n");
-	printf("s:__EMUOBJS__:dosemu$(OBJ):\n");
-#ifdef	_NOIME
-	printf("s:__IMEOBJS__::\n");
-	printf("s:__DICTTBL__::\n");
-	printf("s:__DICTSRC__::\n");
-	printf("s:__MKDICTOPTION__::\n");
-#else	/* !_NOIME */
-	printf("s:__IMEOBJS__:ime$(OBJ) dict$(OBJ) roman$(OBJ):\n");
+	printf("s:__DOSOBJS__::\n");
+#ifdef	DEP_IME
+	printf("s:__IMEOBJS__:$(IMEOBJS):\n");
 	printf("s:__DICTTBL__:$(DICTTBL):\n");
 	if (DICTSRC[0]) {
 		printf("s:__DICTSRC__:%s:\n", DICTSRC);
@@ -95,17 +82,37 @@ char *CONST argv[];
 		printf("s:__DICTSRC__:$(DICTTXT):\n");
 		printf("s:__MKDICTOPTION__::\n");
 	}
-#endif	/* !_NOIME */
+#else	/* !DEP_IME */
+	printf("s:__IMEOBJS__::\n");
+	printf("s:__DICTTBL__::\n");
+	printf("s:__DICTSRC__::\n");
+	printf("s:__MKDICTOPTION__::\n");
+#endif	/* !DEP_IME */
+#ifdef	_NOCATALOG
+	printf("s:__CATTBL__::\n");
+#else
+	printf("s:__CATTBL__:$(CATTBL) $(ECATTBL):\n");
+#endif
+#ifdef	_NOSOCKET
+	printf("s:__SOCKETOBJS__::\n");
+	printf("s:__SOCKETLIBS__::\n");
+#else
+	printf("s:__SOCKETOBJS__:$(SCKOBJS):\n");
+	printf("s:__SOCKETLIBS__:%s:\n", SOCKETLIB);
+#endif
 	printf("s:__OBJLIST__:$(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6):\n");
 	printf("s:__SOBJLIST__:$(SOBJ1) $(SOBJ2):\n");
+	printf("s:__NOBJLIST__:$(NOBJ1) $(NOBJ2) $(NOBJ3):\n");
 	printf("s:__DEFRC__:'\"'$(DEFRC)'\"':\n");
 
 #ifdef	USEDATADIR
 	printf("s:__TBLPATH__:-DBINDIR='\"'$(BINDIR)'\"' -DDATADIR='\"'$(DATADIR)'\"':\n");
 	printf("s:__DATADIR__:$(DATADIR):g\n");
+	printf("s:__DATADIR2__:$(DATADIR)/$(VERSION):g\n");
 #else
 	printf("s:__TBLPATH__:-DBINDIR='\"'$(BINDIR)'\"':\n");
 	printf("s:__DATADIR__:$(BINDIR):g\n");
+	printf("s:__DATADIR2__:$(BINDIR):g\n");
 #endif
 
 	printf("s:	__RENAME__:#	mv:\n");
@@ -164,6 +171,7 @@ char *CONST argv[];
 	printf("s:__MEM__::\n");
 	printf("s:__SHMEM__::\n");
 	printf("s:__BSHMEM__::\n");
+	printf("s:__NSHMEM__::\n");
 #ifdef	CCOUTOPT
 	printf("s:__OUT__:%s:\n", CCOUTOPT);
 #else
@@ -207,7 +215,7 @@ char *CONST argv[];
 	printf("s:__PREFIXOPTION__:-c:\n");
 #endif
 	printf("s:[\t ]*$::\n");
-	printf("/^[\t ][\t ]*-*\\$(RM)$/d\n");
+	printf("/^[\t ][\t ]*-*\\$(RM) *$/d\n");
 
 	return(0);
 }

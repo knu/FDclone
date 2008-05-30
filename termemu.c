@@ -5,29 +5,27 @@
  */
 
 #include "fd.h"
-#ifndef	_NOPTY
-
-#include <fcntl.h>
-#include <sys/time.h>
+#include "wait.h"
+#include "termio.h"
 #include "func.h"
 #include "kanji.h"
-#include "termemu.h"
 
-#ifdef	_NOORIGSHELL
-#include <signal.h>
-#include "termio.h"
-#include "wait.h"
-#else
+#ifdef	DEP_ORIGSHELL
 #include "system.h"
-# ifndef	NOJOB
-extern jobtable *joblist;
-extern int maxjobs;
-# endif
 #endif
+#ifdef	DEP_PTY
+#include "termemu.h"
+#endif
+
+#ifdef	DEP_PTY
 
 extern char fullpath[];
 extern int hideclock;
 extern int fdmode;
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
+extern jobtable *joblist;
+extern int maxjobs;
+#endif
 
 int ptymode = 0;
 int ptyinternal = 0;
@@ -43,14 +41,14 @@ static VOID NEAR doscroll __P_((int, int, int, int));
 static VOID NEAR closeallpty __P_((int));
 static int NEAR genbackend __P_((VOID_A));
 static VOID NEAR sendvar __P_((int, char **));
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 static VOID NEAR sendheredoc __P_((int, heredoc_t *));
 static VOID NEAR sendrlist __P_((int, redirectlist *));
 static VOID NEAR sendcommand __P_((int, command_t *, syntaxtree *));
 static VOID NEAR sendstree __P_((int, syntaxtree *));
 #endif
 static VOID NEAR awakechild __P_((CONST char *, CONST char *, int));
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 static int trap_hup __P_((VOID_A));
 static int NEAR recvmacro __P_((char **, char **, int *));
 #endif
@@ -180,21 +178,21 @@ static int NEAR genbackend(VOID_A)
 		safeclose(fds[1]);
 		closeallpty(i);
 		while (--i >= 0) {
-			free(ptylist[i].path);
+			free2(ptylist[i].path);
 			ptylist[i].path = NULL;
 		}
 		return(-1);
 	}
 
 	if (!pid) {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 		mypid = getpid();
 #endif
 		safeclose(fds[1]);
 		emufd = fds[0];
 		emupid = (p_id_t)0;
 		for (i = 0; i < MAXWINDOWS; i++) {
-			free(ptylist[i].path);
+			free2(ptylist[i].path);
 			ptylist[i].path = NULL;
 			resetptyterm(i, 1);
 		}
@@ -239,7 +237,7 @@ int fd, cmd;
 	VOID_C getch2();
 	keyflush();
 	loadtermio(ttyio, tty, NULL);
-	if (tty) free(tty);
+	free2(tty);
 }
 
 int recvbuf(fd, buf, nbytes)
@@ -304,7 +302,7 @@ char **cpp;
 		if (recvbuf(fd, &len, sizeof(len)) < 0) return(-1);
 		cp = malloc2(len + 1);
 		if (recvbuf(fd, cp, len) < 0) {
-			free(cp);
+			free2(cp);
 			return(-1);
 		}
 		cp[len] = '\0';
@@ -342,7 +340,7 @@ char **var;
 	for (i = 0; i < c; i++) sendstring(fd, var[i]);
 }
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 static VOID NEAR sendheredoc(fd, hdp)
 int fd;
 heredoc_t *hdp;
@@ -400,7 +398,7 @@ syntaxtree *trp;
 	sendcommand(fd, trp -> comm, trp);
 	sendstree(fd, trp -> next);
 }
-#endif	/* !_NOORIGSHELL */
+#endif	/* DEP_ORIGSHELL */
 
 #ifdef	USESTDARGH
 /*VARARGS1*/
@@ -412,14 +410,14 @@ int cmd;
 va_dcl
 #endif
 {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	syntaxtree *trp;
 #endif
 #ifndef	_NOARCHIVE
-	launchtable *lp;
-	archivetable *ap;
+	lsparse_t *lp;
+	archive_t *ap;
 #endif
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	devinfo *devp;
 #endif
 	bindtable *bindp;
@@ -430,7 +428,7 @@ va_dcl
 	int n, fd, val;
 
 	if (parentfd < 0) return;
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (mypid != shellpid) return;
 #endif
 
@@ -458,35 +456,20 @@ va_dcl
 			sendbuf(fd, &varp, sizeof(varp));
 			break;
 		case TE_CHDIR:
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 		case TE_SETEXPORT:
 		case TE_SETRONLY:
 #endif
-#if	defined (_NOORIGSHELL) || !defined (NOALIAS)
+#if	!defined (DEP_ORIGSHELL) || !defined (NOALIAS)
 		case TE_DELETEALIAS:
 #endif
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 		case TE_DELETEFUNCTION:
 #endif
 			cp = va_arg(args, char *);
 			sendstring(fd, cp);
 			break;
-#ifdef	_NOORIGSHELL
-		case TE_PUTSHELLVAR:
-			cp = va_arg(args, char *);
-			func1 = va_arg(args, char *);
-			n = va_arg(args, int);
-			sendbuf(fd, &n, sizeof(n));
-			sendstring(fd, func1);
-			sendstring(fd, cp);
-			break;
-		case TE_ADDFUNCTION:
-			cp = va_arg(args, char *);
-			var = va_arg(args, char **);
-			sendvar(fd, var);
-			sendstring(fd, cp);
-			break;
-#else	/* !_NOORIGSHELL */
+#ifdef	DEP_ORIGSHELL
 		case TE_PUTEXPORTVAR:
 		case TE_PUTSHELLVAR:
 		case TE_UNSET:
@@ -508,21 +491,34 @@ va_dcl
 			sendstring(fd, cp);
 			sendstree(fd, trp);
 			break;
-#endif	/* !_NOORIGSHELL */
-#if	defined (_NOORIGSHELL) || !defined (NOALIAS)
+#else	/* !DEP_ORIGSHELL */
+		case TE_PUTSHELLVAR:
+			cp = va_arg(args, char *);
+			func1 = va_arg(args, char *);
+			n = va_arg(args, int);
+			sendbuf(fd, &n, sizeof(n));
+			sendstring(fd, func1);
+			sendstring(fd, cp);
+			break;
+		case TE_ADDFUNCTION:
+			cp = va_arg(args, char *);
+			var = va_arg(args, char **);
+			sendvar(fd, var);
+			sendstring(fd, cp);
+			break;
+#endif	/* !DEP_ORIGSHELL */
+#if	!defined (DEP_ORIGSHELL) || !defined (NOALIAS)
 		case TE_ADDALIAS:
 			cp = va_arg(args, char *);
 			func1 = va_arg(args, char *);
 			sendstring(fd, func1);
 			sendstring(fd, cp);
 			break;
-#endif	/* _NOORIGSHELL || !NOALIAS */
+#endif	/* !DEP_ORIGSHELL || !NOALIAS */
 		case TE_SETHISTORY:
-			n = va_arg(args, int);
 			cp = va_arg(args, char *);
-			val = va_arg(args, int);
+			n = va_arg(args, int);
 			sendbuf(fd, &n, sizeof(n));
-			sendbuf(fd, &val, sizeof(val));
 			sendstring(fd, cp);
 			break;
 		case TE_ADDKEYBIND:
@@ -542,13 +538,13 @@ va_dcl
 		case TE_DELETELAUNCH:
 		case TE_DELETEARCH:
 #endif
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 		case TE_DELETEDRV:
 #endif
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 		case TE_CHANGESTATUS:
 #endif
-#ifndef	_NOIME
+#ifdef	DEP_IME
 		case TE_FREEROMAN:
 #endif
 			n = va_arg(args, int);
@@ -563,7 +559,7 @@ va_dcl
 #ifndef	_NOARCHIVE
 		case TE_ADDLAUNCH:
 			n = va_arg(args, int);
-			lp = va_arg(args, launchtable *);
+			lp = va_arg(args, lsparse_t *);
 			sendbuf(fd, &n, sizeof(n));
 			sendbuf(fd, lp, sizeof(*lp));
 			sendstring(fd, lp -> ext);
@@ -574,7 +570,7 @@ va_dcl
 			break;
 		case TE_ADDARCH:
 			n = va_arg(args, int);
-			ap = va_arg(args, archivetable *);
+			ap = va_arg(args, archive_t *);
 			sendbuf(fd, &n, sizeof(n));
 			sendbuf(fd, &(ap -> flags), sizeof(ap -> flags));
 			sendstring(fd, ap -> ext);
@@ -582,7 +578,7 @@ va_dcl
 			sendstring(fd, ap -> u_comm);
 			break;
 #endif	/* !_NOARCHIVE */
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 		case TE_INSERTDRV:
 			n = va_arg(args, int);
 			devp = va_arg(args, devinfo *);
@@ -590,7 +586,7 @@ va_dcl
 			sendbuf(fd, devp, sizeof(*devp));
 			sendstring(fd, devp -> name);
 			break;
-#endif	/* _USEDOSEMU */
+#endif	/* DEP_DOSEMU */
 		case TE_SAVETTYIO:
 			n = va_arg(args, int);
 			val = (n >= 0 && duptty[n]) ? TIO_BUFSIZ : 0;
@@ -598,7 +594,7 @@ va_dcl
 			sendbuf(fd, &val, sizeof(val));
 			if (n >= 0 && duptty[n]) sendbuf(fd, duptty[n], val);
 			break;
-#ifndef	_NOIME
+#ifdef	DEP_IME
 		case TE_ADDROMAN:
 			cp = va_arg(args, char *);
 			func1 = va_arg(args, char *);
@@ -636,7 +632,7 @@ int flags;
 	sendstring(emufd, fullpath);
 }
 
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 static int trap_hup(VOID_A)
 {
 	int i;
@@ -668,27 +664,27 @@ int *flagsp;
 	|| recvstring(ttyio, &command) < 0)
 		return(-1);
 	if (recvstring(ttyio, &arg) < 0) {
-		if (command) free(command);
+		free2(command);
 		return(-1);
 	}
 	if (recvstring(ttyio, &cwd) >= 0 && cwd) {
 		VOID_C chdir2(cwd);
-		free(cwd);
+		free2(cwd);
 	}
 
 	keyflush();
 	if (!(flags & F_TTYIOMODE)) Xstdiomode();
 	else if (!(flags & F_TTYNL)) Xttyiomode(0);
 
-	if (*commandp) free(*commandp);
-	if (*argp) free(*argp);
+	free2(*commandp);
+	free2(*argp);
 	*commandp = command;
 	*argp = arg;
 	*flagsp = flags;
 
 	return(0);
 }
-#endif	/* !_NOORIGSHELL && !NOJOB */
+#endif	/* DEP_ORIGSHELL && !NOJOB */
 
 static int NEAR callmacro(command, arg, flags)
 CONST char *command, *arg;
@@ -712,7 +708,7 @@ int flags;
 	}
 
 	if (flags & F_DOSYSTEM) n = dosystem(command);
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 	else if (flags & F_EVALMACRO) n = execusercomm(command, arg, flags);
 #endif
 	else n = execmacro(command, arg, flags);
@@ -724,7 +720,7 @@ int ptymacro(command, arg, flags)
 CONST char *command, *arg;
 int flags;
 {
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 	char *command2, *arg2;
 #endif
 	p_id_t pid;
@@ -732,7 +728,7 @@ int flags;
 	u_char uc;
 	int i, n, fd, fds[2];
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (isshptymode()) n = (flags & F_DOSYSTEM) ? 0 : -1;
 	else
 #endif
@@ -747,12 +743,12 @@ int flags;
 	savetermio(ttyio, &tty, &ws);
 	if (tty) {
 		memcpy(buf, tty, TIO_BUFSIZ);
-		free(tty);
+		free2(tty);
 		tty = buf;
 	}
 	if (ws) {
 		memcpy(&(buf[TIO_BUFSIZ]), ws, TIO_WINSIZ);
-		free(ws);
+		free2(ws);
 		ws = &(buf[TIO_BUFSIZ]);
 	}
 
@@ -767,7 +763,7 @@ int flags;
 		VOID_C Xclose(fd);
 	}
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	changeinkcode();
 	changeoutkcode();
 #endif
@@ -776,7 +772,7 @@ int flags;
 	if ((pid = Xfork()) < (p_id_t)0) {
 		if (fd >= 0 && ptytmpfile) {
 			rmtmpfile(ptytmpfile);
-			free(ptytmpfile);
+			free2(ptytmpfile);
 			ptytmpfile = NULL;
 		}
 		sigvecset(n);
@@ -786,14 +782,14 @@ int flags;
 	}
 
 	if (!pid) {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 		mypid = getpid();
 #endif
 #ifdef	CYGWIN
 		closeallpty(MAXWINDOWS);
 #endif
 		if (Xlogin_tty(ptylist[win].path, tty, ws) < 0) _exit(1);
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 		if (isshptymode()) /*EMPTY*/;
 		else
 #endif
@@ -802,7 +798,7 @@ int flags;
 
 		for (i = 0; i < MAXWINDOWS; i++) {
 			ptylist[i].pid = (p_id_t)0;
-			free(ptylist[i].path);
+			free2(ptylist[i].path);
 			ptylist[i].path = NULL;
 			ptylist[i].pipe = -1;
 			ptylist[i].status = 0;
@@ -810,12 +806,12 @@ int flags;
 		emupid = (p_id_t)0;
 		safeclose(emufd);
 		emufd = -1;
-		if (fileno(ttyout) == ttyio) dup2(STDIN_FILENO, ttyio);
+		if (Xfileno(ttyout) == ttyio) Xdup2(STDIN_FILENO, ttyio);
 		else {
-			fd = fileno(ttyout);
+			fd = Xfileno(ttyout);
 			closetty(&fd, &ttyout);
 			opentty(&fd, &ttyout);
-			dup2(fd, ttyio);
+			Xdup2(fd, ttyio);
 			safeclose(fd);
 		}
 
@@ -828,16 +824,14 @@ int flags;
 		uc = '\n';
 		sendbuf(parentfd, &uc, sizeof(uc));
 
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 		command2 = arg2 = NULL;
 #endif
 		for (;;) {
 			syncptyout(-1, -1);
 			setlinecol();
 			n = evalstatus(callmacro(command, arg, flags));
-#if	defined (_NOORIGSHELL) || defined (NOJOB)
-			break;
-#else	/* !_NOORIGSHELL && !NOJOB */
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 			for (i = 0; i < maxjobs; i++)
 				if (joblist[i].pids) break;
 			if (i >= maxjobs) break;
@@ -846,7 +840,9 @@ int flags;
 			if (recvmacro(&command2, &arg2, &flags) < 0) break;
 			command = command2;
 			arg = arg2;
-#endif	/* !_NOORIGSHELL && !NOJOB */
+#else	/* !DEP_ORIGSHELL || NOJOB */
+			break;
+#endif	/* !DEP_ORIGSHELL || NOJOB */
 		}
 
 		safeclose(parentfd);
@@ -891,7 +887,7 @@ VOID killallpty(VOID_A)
 
 	for (i = 0; i < MAXWINDOWS; i++) {
 		killpty(i, NULL);
-		if (ptylist[i].path) free(ptylist[i].path);
+		free2(ptylist[i].path);
 		ptylist[i].path = NULL;
 	}
 
@@ -908,7 +904,7 @@ VOID killallpty(VOID_A)
 	}
 	if (ptytmpfile) {
 		rmtmpfile(ptytmpfile);
-		free(ptytmpfile);
+		free2(ptytmpfile);
 		ptytmpfile = NULL;
 	}
 
@@ -939,4 +935,4 @@ int checkallpty(VOID_A)
 
 	return(n);
 }
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */

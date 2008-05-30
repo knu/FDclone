@@ -4,20 +4,11 @@
  *	Unicode table generator
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <sys/types.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
+#include "headers.h"
+#include "typesize.h"
 
 #define	USERDEFINE
 #define	MAXNFLEN		4
-#define	arraysize(a)		((int)((u_int)sizeof(a) / (u_int)sizeof(*(a))))
 
 typedef struct _convtable {
 	u_short unicode;

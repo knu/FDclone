@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Tue Aug 22 00:00:00 2006
++++ _fdrc	Sat May 31 00:00:00 2008
 @@ -1,6 +1,11 @@
  # Initialize file for FD
  #
@@ -23,7 +23,7 @@
  
  # default display mode
  #	0: normal (Default)
-@@ -21,98 +27,282 @@
+@@ -21,98 +27,361 @@
  #	5: sym-link status &				invisible dot file
  #	6: 			file type symbol &	invisible dot file
  #	7: sym-link status &	file type symbol &	invisible dot file
@@ -104,15 +104,15 @@
  #	Default: 50
 -#DIRHIST		=	50
 +#DIRHIST=50
++
++# size of saved command history
++#	Default: 50
++#SAVEHIST=50
  
 -# size of saved history
-+# size of saved command history
++# size of saved directory history
  #	Default: 50
 -#SAVEHIST	=	50
-+#SAVEHIST=50
-+
-+# size of saved directory history
-+#	Default: 50
 +#SAVEDIRHIST=50
  
  # limit of counting files in directory, on tree mode
@@ -131,6 +131,11 @@
  #	>= 1: display
 -#SECOND		=	0
 +#SECOND=0
++
++# interval seconds to update browser automatically
++#	0: invalid (Default)
++#	>= 1: valid
++#AUTOUPDATE=0
 +
 +# whether if use the screen layout based on the traditional "FD"
 +#	0: original layout (Default)
@@ -286,6 +291,80 @@
 +#	>= 1: pass through
 +#THRUARGS=0
 +
++# whether if make URL drive effective
++#	0: not use (Default)
++#	>= 1: effective
++#URLDRIVE=0
++
++# timeout seconds for communications on URL drive
++#	0: invalid (Default)
++#	>= 1: valid
++#URLTIMEOUT=0
++
++# communication options for URL drive
++#	 0: normal (Default)
++#	 1: deny PASV
++#	 2: deny        PORT
++#	 3: deny PASV & PORT
++#	 4: deny               MDTM
++#	 5: deny PASV &        MDTM
++#	 6: deny        PORT & MDTM
++#	 7: deny PASV & PORT & MDTM
++#	 8: deny                      FEAT
++#	 9: deny PASV               & FEAT
++#	10: deny        PORT        & FEAT
++#	11: deny PASV & PORT        & FEAT
++#	12: deny               MDTM & FEAT
++#	13: deny PASV &        MDTM & FEAT
++#	14: deny        PORT & MDTM & FEAT
++#	15: deny PASV & PORT & MDTM & FEAT
++#	16:					  get HTTP detail status
++#	17: deny PASV				& get HTTP detail status
++#	18: deny        PORT			& get HTTP detail status
++#	19: deny PASV & PORT			& get HTTP detail status
++#	20: deny               MDTM		& get HTTP detail status
++#	21: deny PASV &        MDTM		& get HTTP detail status
++#	22: deny        PORT & MDTM		& get HTTP detail status
++#	23: deny PASV & PORT & MDTM		& get HTTP detail status
++#	24: deny                      FEAT	& get HTTP detail status
++#	25: deny PASV               & FEAT	& get HTTP detail status
++#	26: deny        PORT        & FEAT	& get HTTP detail status
++#	27: deny PASV & PORT        & FEAT	& get HTTP detail status
++#	28: deny               MDTM & FEAT	& get HTTP detail status
++#	29: deny PASV &        MDTM & FEAT	& get HTTP detail status
++#	30: deny        PORT & MDTM & FEAT	& get HTTP detail status
++#	31: deny PASV & PORT & MDTM & FEAT	& get HTTP detail status
++#URLOPTIONS=0
++
++# whether if suppress displaying '*' with password input
++#	0: display '*' (Default)
++#	>= 1: display none
++#HIDEPASSWD=0
++
++# mail address for anonymous FTP
++#	Default: "FDclone@"
++#FTPADDRESS="FDclone@"
++
++# FTP proxy address
++#	Default: none
++#FTPPROXY=""
++
++# filename for logging FTP communications
++#	Default: none
++#FTPLOGFILE=""
++
++# HTTP proxy address
++#	Default: none
++#HTTPPROXY=""
++
++# filename for logging HTTP communications
++#	Default: none
++#HTTPLOGFILE=""
++
++# filename for logging received HTML
++#	Default: none
++#HTMLLOGFILE=""
++
 +# whether if hold the UNICODE translation table on memory
 +#	0: not hold (Default)
 +#	>= 1: hold
@@ -328,17 +407,14 @@
  
  # Kanji code to be inputted
  #	Default: No convert
-@@ -120,49 +310,231 @@
+@@ -120,49 +389,249 @@
  #	sjis, SJIS: Shift JIS
  #	utf8, UTF8: UTF-8
  #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 -#INPUTKCODE	=	""
 +#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 +#INPUTKCODE=""
- 
--#PAGER	=	more%K
--#EDITOR	=	vi
--#SHELL	=	/bin/sh
++
 +# Kanji code to be inputted to the pseudo terminal
 +#	Default: No convert
 +#	euc, EUC: EUC-JP
@@ -347,7 +423,10 @@
 +#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 +#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 +#PTYINKCODE=""
-+
+ 
+-#PAGER	=	more%K
+-#EDITOR	=	vi
+-#SHELL	=	/bin/sh
 +# Kanji code to be outputted from the pseudo terminal
 +#	Default: No convert
 +#	euc, EUC: EUC-JP
@@ -374,9 +453,27 @@
 +#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 +#FNAMEKCODE=""
 +
-+# language code to be displayed
++# Kanji code in filename on URL drive
 +#	Default: No convert
++#	euc, EUC: EUC-JP
++#	sjis, SJIS: Shift JIS
++#	jis, JIS: 7bits JIS
++#	jis8, JIS8: 8bits JIS
++#	junet, JUNET: ISO-2022-JP
++#	ojis, OJIS: old 7bits JIS
++#	ojis8, OJIS8: old 8bits JIS
++#	ojunet, OJUNET: old ISO-2022-JP
++#	hex, HEX: HEX
++#	cap, CAP: CAP
++#	utf8, UTF8: UTF-8
++#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
++#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
++#URLKCODE=""
++
++# language code to be displayed
++#	Default: according to LANGUAGE
 +#	en, EN, C: English
++#	ja: Japanese
 +#MESSAGELANG=""
 +
 +# directories on which Kanji code in filename is SJIS
@@ -590,7 +687,7 @@
  
  # archiver definition
  #(Default)
-@@ -178,6 +550,7 @@
+@@ -178,6 +647,7 @@
  #(Examples)
  #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
  #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
@@ -598,7 +695,7 @@
  
  # examples for MS-DOS
  #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
-@@ -198,22 +571,52 @@
+@@ -198,22 +668,52 @@
  #bind '{'	ROLL_UP
  #bind '}'	ROLL_DOWN
  #bind '~'	"cd ~%N%K"
@@ -661,7 +758,7 @@
  #}
  
  # MS-DOS drive definition
-@@ -222,7 +625,7 @@
+@@ -222,7 +722,7 @@
  
  # alias definition
  #(Example)

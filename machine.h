@@ -37,7 +37,7 @@
 # define	USERESOURCEH
 # define	SIGFNCINT
 #  ifndef	DJGPP
-#  define	DJGPP	1
+#  define	DJGPP		1
 #  else
 #  define	USEREGCOMP
 #  endif
@@ -107,6 +107,7 @@ typedef long	off_t;
 # define	USEMNTTABH
 # define	USEMKTIME
 # define	SIGFNCINT
+# define	USEINETPTON
 # else	/* MAXHOSTNAMELEN && !USGr4 && !__svr4__ && !__SVR4 */
 # define	BSD43
 # define	OSTYPE		"SUN_OS"
@@ -229,6 +230,7 @@ typedef long	off_t;
 #define	NOTZFILEH
 #define	USETIMEH
 #define	NOTMGMTOFF
+#define	USEINSYSTMH
 #define	USEREGCOMP
 #define	NOTERMVAR
 #define	USEUTIME
@@ -494,6 +496,8 @@ typedef long	off_t;
 #define	USEMKTIME
 #define	DEFFDSETSIZE
 #define	SIGFNCINT
+#define	USESOCKLEN
+#define	USEINETATON
 #define	WAITKEYPAD		36
 #endif
 
@@ -548,6 +552,8 @@ typedef long	off_t;
 # define	USELLSEEK
 # endif
 #define	SIGFNCINT
+#define	USESOCKLEN
+#define	USEINETATON
 #endif
 
 #if	defined (__FreeBSD__) && defined (__powerpc__)
@@ -565,6 +571,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	SIGFNCINT
+#define	USEINETATON
 #endif
 
 #if	defined (__FreeBSD__) && !defined (OSTYPE) && !defined (__BOW__)
@@ -589,6 +596,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	SIGFNCINT
+#define	USEINETATON
 #endif
 
 #if	defined (__NetBSD__)
@@ -606,6 +614,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	SIGFNCINT
+#define	USEINETATON
 #include <sys/param.h>
 # if	defined (NetBSD1_0) && (NetBSD1_0 < 1)
 # define	USEFFSIZE
@@ -633,6 +642,7 @@ typedef long	off_t;
 #define	USERE_COMP
 #define	USESETENV
 #define	USEMKTIME
+#define	USEINETATON
 #include <sys/param.h>
 # if	!defined (BSD) || (BSD < 199306)
 # define	USEFFSIZE
@@ -660,6 +670,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	SIGFNCINT
+#define	USEINETATON
 #endif
 
 #if	defined (__OpenBSD__)
@@ -679,6 +690,7 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	SIGFNCINT
+#define	USEINETATON
 #endif
 
 #if	defined (__APPLE__) && defined (__MACH__) && !defined (OSTYPE)
@@ -699,6 +711,8 @@ typedef long	off_t;
 #define	SELECTRWONLY
 #define	USEMKTIME
 #define	SIGFNCINT
+#define	USESOCKLEN
+#define	USEINETATON
 #endif
 
 #if	defined (__386BSD__) && !defined (OSTYPE)
@@ -854,6 +868,8 @@ typedef long	off_t;
 /* #define DNAMESIZE	;size of 'd_name' in 'struct dirent' */
 /* #define HAVETIMEZONE	;have extern variable 'timezone' */
 /* #define NOTMGMTOFF	;'struct tm' hasn't 'tm_gmtoff' */
+/* #define USEINSYSTMH	;use <netinet/in_systm.h> for <netinet/ip.h> */
+/* #define NOHADDRLIST	;'struct hostent' hasn't 'h_addr_list' */
 
 /* following 5 items are exclusive */
 /* #define USESTATVFSH	;use <sys/statvfs.h> as header of the FS status */
@@ -919,7 +935,10 @@ typedef long	off_t;
 /* #define USESTRERROR	;use strerror() instead of sys_errlist[] */
 /* #define GETTODARGS	;the number of arguments in gettimeofday() */
 /* #define USESETSID	;use setsid() to set session ID */
+/* #define USEMMAP	;use mmap() to map files into memory */
 /* #define USESOCKLEN	;use socklen_t for bind()/connect()/accept() */
+/* #define USEINETATON	;use inet_aton() instead of inet_addr() */
+/* #define USEINETPTON	;use inet_pton() instead of inet_addr() */
 /* #define USESETREUID	;use setreuid() to set effective user ID */
 /* #define USESETRESUID	;use setresuid() to set effective user ID */
 /* #define USESETREGID	;use setregid() to set effective group ID */
@@ -967,10 +986,12 @@ typedef long	off_t;
 #define	USESETVBUF
 #define	USESTRERROR
 #define	USESETSID
+#define	USEMMAP
 #endif
 
 #ifdef	SVR4
 #define	SYSV
+#define	USESOCKLEN
 #endif
 
 #ifdef	SYSV
@@ -993,6 +1014,14 @@ typedef long	off_t;
 
 #if	defined (POSIX) || defined (SYSV)
 #define	USEFCNTLOCK
+#endif
+
+#if	defined (BSD4)
+#define	USEINSYSTMH
+#endif
+
+#if	defined (BSD4) && !defined (BSD43) && !defined (BSD44)
+#define	NOHADDRLIST
 #endif
 
 #if	defined (POSIX) || defined (BSD4)
@@ -1180,6 +1209,11 @@ typedef long	off_t;
 && !defined (USEMNTINFO) && !defined (USEGETMNT) && !defined (USEGETFSENT) \
 && !defined (USEMNTENTH)
 #define	USEMNTENTH
+#endif
+
+#if	MSDOS
+#undef	USEVFSH
+#undef	USEMNTENTH
 #endif
 
 

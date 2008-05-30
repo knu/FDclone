@@ -4,24 +4,18 @@
  *	shell command module
  */
 
-#include <fcntl.h>
 #include "fd.h"
+#include "realpath.h"
+#include "parse.h"
+#include "kconv.h"
 #include "func.h"
 #include "kanji.h"
 
-#if	MSDOS && !defined (_NOUSELFN)
-extern char *shortname __P_((CONST char *, char *));
-#endif
-
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 #include "system.h"
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 #include "termemu.h"
-#endif
-
-#ifndef	O_TEXT
-#define	O_TEXT			0
 #endif
 
 typedef struct _localetable {
@@ -29,16 +23,6 @@ typedef struct _localetable {
 	CONST char *val;
 	char *org;
 } localetable;
-
-extern int mark;
-extern off_t marksize;
-extern char fullpath[];
-#ifndef	_NOARCHIVE
-extern char archivedir[];
-#endif
-extern int lcmdline;
-extern int hideclock;
-extern int internal_status;
 
 #if	0
 #define	MACROMETA		((char)-1)
@@ -55,8 +39,22 @@ extern int internal_status;
 # endif
 #endif
 
+#ifdef	DEP_DOSLFN
+extern char *shortname __P_((CONST char *, char *));
+#endif
+
+extern int mark;
+extern off_t marksize;
+extern char fullpath[];
+#ifndef	_NOARCHIVE
+extern char archivedir[];
+#endif
+extern int lcmdline;
+extern int hideclock;
+extern int internal_status;
+
 static int NEAR checksc __P_((CONST char *, int, CONST char *));
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 static int NEAR extconv __P_((char **, int, int, ALLOC_T *, int));
 #endif
 static int NEAR isneedargs __P_((CONST char *, int, int *));
@@ -76,7 +74,7 @@ static char *NEAR insertarg __P_((CONST char *, CONST char *, int));
 static int NEAR _replaceargs __P_((int *, char ***, char *CONST *, int));
 #endif
 static char *NEAR addoption __P_((char *, CONST char *, macrostat *));
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static int NEAR system3 __P_((CONST char *, int));
 static char *NEAR evalargs __P_((CONST char *, int, char *CONST *));
 static char *NEAR evalalias __P_((CONST char *));
@@ -84,13 +82,13 @@ static char *NEAR evalalias __P_((CONST char *));
 #define	system3			system2
 #endif
 
-#ifdef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
+CONST char *promptstr2 = NULL;
+#else
 aliastable aliaslist[MAXALIASTABLE];
 int maxalias = 0;
 userfunctable userfunclist[MAXFUNCTABLE];
 int maxuserfunc = 0;
-#else
-CONST char *promptstr2 = NULL;
 #endif
 CONST char *promptstr = NULL;
 char **history[2] = {NULL, NULL};
@@ -129,31 +127,31 @@ CONST char *arg;
 	if (buf) {
 		if (ptr < 2) return(ptr);
 		if (buf[ptr - 1] != _SC_ || buf[ptr - 2] != '.') return(ptr);
-		if (ptr > 2 && !strchr(IFS_SET, buf[ptr - 3])) return(ptr);
+		if (ptr > 2 && !strchr2(IFS_SET, buf[ptr - 3])) return(ptr);
 	}
 
 	return(ptr - 2);
 }
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 static int NEAR extconv(bufp, ptr, eol, sizep, code)
 char **bufp;
 int ptr, eol;
 ALLOC_T *sizep;
 int code;
 {
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	char rpath[MAXPATHLEN];
 # endif
 	char *cp;
 	int len;
 
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	if (code < 0) {
 		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]),
 			EA_NOEVALQ | EA_NOUNIQDELIM);
-		realpath2(cp, rpath, 1);
-		free(cp);
+		realpath2(cp, rpath, RLP_READLINK);
+		free2(cp);
 		code = getkcode(rpath);
 	}
 # endif
@@ -164,11 +162,11 @@ int code;
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	memcpy(&((*bufp)[ptr]), cp, len);
-	free(cp);
+	free2(cp);
 
 	return(ptr + len);
 }
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 
 static int NEAR isneedargs(s, n, flagsp)
 CONST char *s;
@@ -224,7 +222,7 @@ int flags;
 
 	if (!arg || !*arg) return(checksc(*bufp, ptr, NULL) - ptr);
 	if (!dir) {
-#if	MSDOS && !defined (_NOUSELFN)
+#ifdef	DEP_DOSLFN
 		if ((flags & F_TOSFN) && shortname(arg, path) == path)
 			arg = path;
 		else
@@ -240,7 +238,7 @@ int flags;
 			if (path[len] == _SC_) path[len] = '/';
 		}
 #endif
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 		arg = kanjiconv2(conv, arg,
 			MAXPATHLEN - 1, DEFCODE, fnamekcode, L_FNAME);
 #endif
@@ -250,13 +248,13 @@ int flags;
 	ptr = checksc(*bufp, ptr, arg);
 	arg = new = killmeta(arg);
 
-	if ((flags & F_NOEXT) && (cp = strrchr(arg, '.')) && cp != arg)
+	if ((flags & F_NOEXT) && (cp = strrchr2(arg, '.')) && cp != arg)
 		len = cp - arg;
 	else len = strlen(arg);
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
-	strncpy(&((*bufp)[ptr]), arg, len);
-	free(new);
+	strncpy2(&((*bufp)[ptr]), arg, len);
+	free2(new);
 
 	return(len + ptr - optr);
 }
@@ -330,7 +328,7 @@ CONST char *s;
 # endif	/* !MACROMETA */
 	}
 	if (!flags) {
-		free(buf);
+		free2(buf);
 		return((char *)s);
 	}
 	buf[j] = '\0';
@@ -343,7 +341,7 @@ char *s;
 {
 	char *cp;
 
-	if ((cp = _restorearg(s)) != s && s) free(s);
+	if ((cp = _restorearg(s)) != s) free2(s);
 
 	return(cp);
 }
@@ -376,7 +374,7 @@ int flags;
 	tmp[len] = '\0';
 	cp = &(tmp[blen + mlen]);
 	for (s = cp; *s; s++) {
-		if (strchr(CMDLINE_DELIM, *s)) break;
+		if (strchr2(CMDLINE_DELIM, *s)) break;
 		if (iskanji1(s, 0)) s++;
 	}
 	flen = s - cp;
@@ -389,12 +387,12 @@ int flags;
 		ptr += len;
 # ifdef	MAXCOMMSTR
 		if (ptr + flen > MAXCOMMSTR) {
-			free(tmp);
+			free2(tmp);
 			return(-1);
 		}
 # endif
 		*bufp = c_realloc(*bufp, ptr + flen + 1, sizep);
-		strncpy(&((*bufp)[ptr]), cp, flen);
+		strncpy2(&((*bufp)[ptr]), cp, flen);
 		ptr += flen;
 	}
 	else for (i = n = 0; i < maxfile; i++) {
@@ -408,7 +406,7 @@ int flags;
 # endif
 			*bufp = c_realloc(*bufp, ptr + blen + 1 + 1, sizep);
 			(*bufp)[ptr++] = ' ';
-			strncpy(&((*bufp)[ptr]), tmp, blen);
+			strncpy2(&((*bufp)[ptr]), tmp, blen);
 			ptr += blen;
 		}
 		len = setarg(bufp, ptr, sizep, dir, filelist[i].name, flags);
@@ -416,7 +414,7 @@ int flags;
 # ifdef	MAXCOMMSTR
 		if (ptr + flen > MAXCOMMSTR) {
 			if (!n) {
-				free(tmp);
+				free2(tmp);
 				return(-1);
 			}
 			ptr = optr;
@@ -424,7 +422,7 @@ int flags;
 		}
 # endif
 		*bufp = c_realloc(*bufp, ptr + flen + 1, sizep);
-		strncpy(&((*bufp)[ptr]), cp, flen);
+		strncpy2(&((*bufp)[ptr]), cp, flen);
 		ptr += flen;
 		filelist[i].tmpflags &= ~F_ISARG;
 		n_args--;
@@ -450,7 +448,7 @@ int flags;
 	*bufp = c_realloc(*bufp, ptr + rlen + 1, sizep);
 	memcpy(&((*bufp)[ptr]), s, rlen);
 	ptr += rlen;
-	free(tmp);
+	free2(tmp);
 
 	return(ptr - eol);
 }
@@ -459,7 +457,7 @@ static char *NEAR insertarg(format, arg, needmark)
 CONST char *format, *arg;
 int needmark;
 {
-# if	MSDOS && !defined (_NOUSELFN)
+# ifdef	DEP_DOSLFN
 	CONST char *org;
 	char alias[MAXPATHLEN];
 # endif
@@ -468,7 +466,7 @@ int needmark;
 	ALLOC_T size;
 	int i, j, m, len, flags;
 
-# if	MSDOS && !defined (_NOUSELFN)
+# ifdef	DEP_DOSLFN
 	org = arg;
 	alias[0] = '\0';
 # endif
@@ -497,12 +495,12 @@ int needmark;
 		src = &(format[j + m]);
 		for (i = 0; i < needmark; i++) {
 			ins = arg;
-# if	MSDOS && !defined (_NOUSELFN)
+# ifdef	DEP_DOSLFN
 			if (flags & F_TOSFN) {
 				if (!alias[0]) {
 					if (shortname(org, alias) == alias)
 						org = alias;
-					else strcpy(alias, org);
+					else strcpy2(alias, org);
 				}
 				ins = alias;
 			}
@@ -510,15 +508,15 @@ int needmark;
 			j = checksc(buf, j, ins);
 			ins = new = killmeta(ins);
 
-			if ((flags & F_NOEXT) && (cp = strrchr(ins, '.')))
+			if ((flags & F_NOEXT) && (cp = strrchr2(ins, '.')))
 				len = cp - ins;
 			else len = strlen(ins);
 # ifdef	MAXCOMMSTR
 			if (j + len > MAXCOMMSTR) break;
 # endif
 			buf = c_realloc(buf, j + len + 1, &size);
-			strncpy(&(buf[j]), ins, len);
-			free(new);
+			strncpy2(&(buf[j]), ins, len);
+			free2(new);
 			j += len;
 			for (len = 0; src[len]; len++) {
 # ifndef	MACROMETA
@@ -540,7 +538,7 @@ int needmark;
 	}
 	buf[j] = '\0';
 	if (i < needmark) {
-		free(buf);
+		free2(buf);
 		return(NULL);
 	}
 
@@ -552,7 +550,7 @@ char *evalcommand(command, arg, stp)
 CONST char *command, *arg;
 macrostat *stp;
 {
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	int code, cnvcode, defcode, cnvptr;
 #endif
 #ifdef	_NOEXTRAMACRO
@@ -570,14 +568,14 @@ macrostat *stp;
 	}
 	stp -> addopt = -1;
 	stp -> needmark = stp -> needburst = 0;
-#ifndef	_NOKANJICONV
-# ifdef	_NOKANJIFCONV
-	cnvcode = defcode = NOCNV;
-# else
+#ifdef	DEP_KCONV
+# ifdef	DEP_FILECONV
 	cnvcode = defcode = (flags & F_NOKANJICONV) ? NOCNV : defaultkcode;
+# else
+	cnvcode = defcode = NOCNV;
 # endif
 	cnvptr = 0;
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 
 	line = c_realloc(NULL, 0, &size);
 	for (i = j = 0; command[i]; i++) {
@@ -594,7 +592,7 @@ macrostat *stp;
 			continue;
 		}
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 		if (cnvcode != NOCNV)
 			j = extconv(&line, cnvptr, j, &size, cnvcode);
 #endif
@@ -672,7 +670,7 @@ macrostat *stp;
 			case 'K':
 				if (!(flags & F_ISARCH)) flags ^= F_NOCONFIRM;
 				break;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 			case 'J':
 				c = command[i + 1];
 				if (c == 'S') code = SJIS;
@@ -688,7 +686,7 @@ macrostat *stp;
 				else if (c == 'U') code = UTF8;
 				else if (c == 'M') code = M_UTF8;
 				else if (c == 'I') code = I_UTF8;
-#  ifndef	_NOKANJIFCONV
+#  ifdef	DEP_FILECONV
 				else if (c == 'A') code = -1;
 #  endif
 # endif	/* FD >= 2 */
@@ -700,7 +698,7 @@ macrostat *stp;
 				i++;
 				cnvcode = (cnvcode == code) ? defcode : code;
 				break;
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 			case '%':
 #ifndef	MACROMETA
 				line[j++] = '%';
@@ -714,7 +712,7 @@ macrostat *stp;
 		}
 		if (!setflag) flags &= ~(F_NOEXT | F_TOSFN);
 		j += len;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 		cnvptr = j;
 #endif
 	}
@@ -725,12 +723,12 @@ macrostat *stp;
 			errno = E2BIG;
 			perror2(command);
 		}
-		free(line);
+		free2(line);
 		return(NULL);
 	}
 #endif
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	if (cnvcode != NOCNV) j = extconv(&line, cnvptr, j, &size, cnvcode);
 #endif
 
@@ -739,7 +737,7 @@ macrostat *stp;
 # ifndef	MACROMETA
 		if (skipquote(line, &i)) continue;
 # endif
-		if (strchr(CMDLINE_DELIM, line[i])) c = -1;
+		if (strchr2(CMDLINE_DELIM, line[i])) c = -1;
 		else if (c < 0) c = i;
 		if (!(m = isneedargs(line, i, &f))) continue;
 		else if (!(f & F_BURST)) {
@@ -781,11 +779,11 @@ macrostat *stp;
 			cp = malloc2(strlen(arg) + 2 + 1);
 			cp[0] = '.';
 			cp[1] = _SC_;
-			strcpy(&(cp[2]), arg);
+			strcpy2(&(cp[2]), arg);
 			arg = cp;
 		}
 		arg = new = killmeta(arg);
-		if (cp) free(cp);
+		free2(cp);
 
 		len = strlen(arg);
 #if	defined (_NOEXTRAMACRO) && defined (MAXCOMMSTR)
@@ -795,10 +793,10 @@ macrostat *stp;
 		{
 			line = c_realloc(line, j + len + 1, &size);
 			line[j++] = ' ';
-			strncpy(&(line[j]), arg, len);
+			strncpy2(&(line[j]), arg, len);
 			j += len;
 		}
-		free(new);
+		free2(new);
 	}
 	if (!(flags & F_IGNORELIST)
 	&& !(stp -> needburst) && !(stp -> needmark)) {
@@ -809,7 +807,7 @@ macrostat *stp;
 	stp -> flags = flags;
 
 	cp = strndup2(line, j);
-	free(line);
+	free2(line);
 
 	return(cp);
 }
@@ -888,19 +886,13 @@ int iscomm;
 	if (!i) return(ret);
 
 # ifdef	MAXCOMMSTR
-	if (iscomm > 0 && maxarg > MAXCOMMSTR) {
-		errno = E2BIG;
-		return(-1);
-	}
+	if (iscomm > 0 && maxarg > MAXCOMMSTR) return(seterrno(E2BIG));
 # else	/* !MAXCOMMSTR */
 #  ifdef	MAXARGNUM
 	maxarg = MAXARGNUM - 2048;
 	if (maxarg > 20 * 1024) maxarg = 20 * 1024;
 	maxarg -= countvar(env);
-	if (iscomm > 0 && argc > maxarg) {
-		errno = E2BIG;
-		return(-1);
-	}
+	if (iscomm > 0 && argc > maxarg) return(seterrno(E2BIG));
 #  endif
 # endif	/* !MAXCOMMSTR */
 
@@ -949,10 +941,9 @@ int iscomm;
 # ifdef	MAXCOMMSTR
 				maxarg += len;
 				if (iscomm > 0 && maxarg > MAXCOMMSTR) {
-					free(buf);
+					free2(buf);
 					freevar(argv2);
-					errno = E2BIG;
-					return(-1);
+					return(seterrno(E2BIG));
 				}
 # endif
 				j += len;
@@ -1030,7 +1021,7 @@ int iscomm;
 	*argvp = argv = argv2;
 
 	if (iscomm < 0) {
-		free(buf);
+		free2(buf);
 		return(ret);
 	}
 
@@ -1073,21 +1064,20 @@ int iscomm;
 # ifdef	MAXCOMMSTR
 				maxarg += len;
 				if (iscomm > 0 && maxarg > MAXCOMMSTR) {
-					free(buf);
+					free2(buf);
 					freevar(argv);
-					errno = E2BIG;
-					return(-1);
+					return(seterrno(E2BIG));
 				}
 # endif
 				j += len;
 			}
 		}
 		buf[j++] = '\0';
-		free(argv[n]);
+		free2(argv[n]);
 		argv[n] = strdup2(buf);
 	}
 	if (hit) lastptr = next;
-	free(buf);
+	free2(buf);
 
 	return(ret);
 }
@@ -1122,7 +1112,7 @@ char **argp;
 	argc = 1;
 	n = replaceargs(&argc, &argv, NULL, 0);
 	*argp = argv[0];
-	free(argv);
+	free2(argv);
 
 	return(n);
 }
@@ -1158,7 +1148,7 @@ CONST char *def;
 
 	duppromptstr = promptstr;
 	if (prompt) promptstr = prompt;
-	cp = inputstr(NULL, 0, ptr, def, HST_COM);
+	cp = inputstr(NULL, 0, ptr, def, HST_COMM);
 	promptstr = duppromptstr;
 	if (!cp) return(vnullstr);
 
@@ -1166,10 +1156,10 @@ CONST char *def;
 	tmp = evalhistory(cp);
 	if (wastty) Xttyiomode(wastty - 1);
 	if (!tmp) {
-		free(cp);
+		free2(cp);
 		return(NULL);
 	}
-	entryhist(0, tmp, 0);
+	entryhist(tmp, HST_COMM);
 
 	return(tmp);
 }
@@ -1178,7 +1168,7 @@ char *inputshellloop(ptr, def)
 int ptr;
 CONST char *def;
 {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	syntaxtree *trp, *stree;
 	char *buf;
 	int l, len;
@@ -1194,16 +1184,16 @@ CONST char *def;
 		return(NULL);
 	}
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	l = -1;
 	len = strlen(cp);
 	buf = malloc2(len + 1);
-	strcpy(buf, cp);
+	strcpy2(buf, cp);
 	trp = stree = newstree(NULL);
 	for (;;) {
 		if (cp) {
 			trp = analyze(cp, trp, 1);
-			free(cp);
+			free2(cp);
 			if (!trp || !(trp -> cont)) break;
 		}
 
@@ -1216,14 +1206,14 @@ CONST char *def;
 		l = strlen(cp);
 		buf = realloc2(buf, len + l + 1 + 1);
 		buf[len++] = '\n';
-		strcpy(&(buf[len]), cp);
+		strcpy2(&(buf[len]), cp);
 		len += l;
 	}
 	freestree(stree);
-	free(stree);
+	free2(stree);
 	cp = buf;
 	if (l >= 0) rewritefile(1);
-#endif	/* !_NOORIGSHELL */
+#endif	/* DEP_ORIGSHELL */
 
 	return(cp);
 }
@@ -1279,7 +1269,7 @@ macrostat *stp;
 		j = flag2str(line, j, flags);
 	}
 	line[j] = '\0';
-	free(command);
+	free2(command);
 
 	if (p < 0) p = strlen(line);
 	command = line;
@@ -1288,29 +1278,29 @@ macrostat *stp;
 #endif	/* MACROMETA */
 
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
-	cp = inputstr(nullstr, 0, p, command, HST_COM);
+	cp = inputstr(nullstr, 0, p, command, HST_COMM);
 	if (!wastty) Xstdiomode();
-	free(command);
+	free2(command);
 	if (!cp) {
-		if (!wastty) fputnl(stdout);
+		if (!wastty) fputnl(Xstdout);
 		return(NULL);
 	}
 	if (!*cp) {
-		free(cp);
+		free2(cp);
 		return(NULL);
 	}
 	command = evalcommand(cp, arg, stp);
-	free(cp);
+	free2(cp);
 	if (!command) return(NULL);
 	if (!*command) {
-		free(command);
+		free2(command);
 		return(NULL);
 	}
 
 	return(command);
 }
 
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static int NEAR system3(command, flags)
 CONST char *command;
 int flags;
@@ -1325,19 +1315,19 @@ int flags;
 	if ((ret = execpseudoshell(command, flags)) < 0) {
 		tmp = evalcomstr(command, CMDLINE_DELIM);
 		ret = system2(tmp, flags);
-		free(tmp);
+		free2(tmp);
 	}
 	sigvecset(n);
-	if (cp) free(cp);
+	free2(cp);
 
 	return(ret);
 }
-#endif	/* _NOORIGSHELL */
+#endif	/* !DEP_ORIGSHELL */
 
 int isinternalcomm(command)
 CONST char *command;
 {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	syntaxtree *stree;
 	char **subst;
 	int i, *len;
@@ -1346,10 +1336,7 @@ CONST char *command;
 	int ret;
 
 	ret = 1;
-#ifdef	_NOORIGSHELL
-	if (getargs(command, &argv) > 0 && checkinternal(argv[0]) < 0) ret = 0;
-	freevar(argv);
-#else	/* !_NOORIGSHELL */
+#ifdef	DEP_ORIGSHELL
 	stree = newstree(NULL);
 	if (analyze(command, stree, 1)) {
 		if ((argv = getsimpleargv(stree))) {
@@ -1359,12 +1346,15 @@ CONST char *command;
 			stripquote(argv[0], EA_STRIPQ);
 			if (argv[0] && checkinternal(argv[0]) < 0) ret = 0;
 			freevar(subst);
-			free(len);
+			free2(len);
 		}
 	}
 	freestree(stree);
-	free(stree);
-#endif	/* !_NOORIGSHELL */
+	free2(stree);
+#else	/* !DEP_ORIGSHELL */
+	if (getargs(command, &argv) > 0 && checkinternal(argv[0]) < 0) ret = 0;
+	freevar(argv);
+#endif	/* !DEP_ORIGSHELL */
 
 	return(ret);
 }
@@ -1419,7 +1409,7 @@ int flags;
 		tmp = _demacroarg(tmp);
 # endif
 		r = system3(tmp, st.flags);
-		free(tmp);
+		free2(tmp);
 		tmp = NULL;
 		if (!(flags & F_ARGSET)) st.flags &= ~F_ARGSET;
 
@@ -1440,7 +1430,7 @@ int flags;
 			buf = _demacroarg(buf);
 # endif
 			ret = system3(buf, st.flags);
-			free(buf);
+			free2(buf);
 			status = internal_status;
 		}
 	}
@@ -1451,7 +1441,7 @@ int flags;
 			buf = _demacroarg(buf);
 # endif
 			r = system3(buf, st.flags);
-			free(buf);
+			free2(buf);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 			else if (internal_status > status)
@@ -1464,7 +1454,7 @@ int flags;
 	if (internal_status <= FNC_FAIL) internal_status = FNC_EFFECT;
 #endif	/* !_NOEXTRAMACRO */
 
-	if (tmp) free(tmp);
+	free2(tmp);
 	if (haslist && internal_status <= FNC_FAIL) {
 		for (i = 0; i < maxfile; i++)
 			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
@@ -1476,12 +1466,12 @@ int flags;
 	return(ret);
 }
 
-FILE *popenmacro(command, arg, flags)
+XFILE *popenmacro(command, arg, flags)
 CONST char *command, *arg;
 int flags;
 {
 	macrostat st;
-	FILE *fp;
+	XFILE *fp;
 	char *tmp, *lang;
 	int i;
 
@@ -1504,14 +1494,14 @@ int flags;
 	fp = popen2(tmp);
 	for (i = 0; i < LOCALELISTSIZ; i++) {
 		setenv2(localelist[i].env, localelist[i].org, 1);
-		if (localelist[i].org) free(localelist[i].org);
+		free2(localelist[i].org);
 	}
-	free(tmp);
+	free2(tmp);
 
 	return(fp);
 }
 
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static char *NEAR evalargs(command, argc, argv)
 CONST char *command;
 int argc;
@@ -1565,7 +1555,7 @@ int flags;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
 			r = execmacro(cp, arg, flags);
-			free(cp);
+			free2(cp);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 			else if (internal_status > status)
@@ -1589,20 +1579,20 @@ CONST char *command;
 	if ((i = searchalias(command, len)) >= maxalias) return(NULL);
 	cp = malloc2((int)strlen(command) - len
 		+ strlen(aliaslist[i].comm) + 1);
-	strcpy(strcpy2(cp, aliaslist[i].comm), &(command[len]));
+	strcpy2(strcpy2(cp, aliaslist[i].comm), &(command[len]));
 
 	return(cp);
 }
-#endif	/* _NOORIGSHELL */
+#endif	/* !DEP_ORIGSHELL */
 
-int entryhist(n, s, uniq)
-int n;
+int entryhist(s, flags)
 CONST char *s;
-int uniq;
+int flags;
 {
 	char *new;
-	int i, size;
+	int i, n, size;
 
+	n = (flags & HST_TYPE);
 	size = (int)histsize[n];
 	if (!history[n]) {
 		history[n] = (char **)malloc2((size + 1) * sizeof(char *));
@@ -1623,10 +1613,10 @@ int uniq;
 
 	if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 
-	if (uniq) {
+	if (flags & HST_UNIQ) {
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
-#if	defined (PATHNOCASE) && defined (_USEDOSPATH)
+#if	defined (PATHNOCASE) && defined (DEP_DOSPATH)
 			if (n == 1 && *new != *(history[n][i])) continue;
 #endif
 			if (!strpathcmp(new, history[n][i])) break;
@@ -1634,11 +1624,11 @@ int uniq;
 		if (i < size) size = i;
 	}
 
-	if (history[n][size]) free(history[n][size]);
+	free2(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
 	*(history[n]) = new;
-#ifndef	_NOPTY
-	sendparent(TE_SETHISTORY, n, s, uniq);
+#ifdef	DEP_PTY
+	sendparent(TE_SETHISTORY, s, flags);
 #endif
 
 	return(1);
@@ -1680,10 +1670,11 @@ int n;
 	histno[n] = (short)0;
 
 	i = -1;
-	while ((line = fgets2(lck -> fp, 1))) {
+	Xsetflags(lck -> fp, XF_NULLCONV);
+	while ((line = Xfgets(lck -> fp))) {
 		if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 		if (i < size) i++;
-		else free(history[n][i]);
+		else free2(history[n][i]);
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		*(history[n]) = line;
 	}
@@ -1696,14 +1687,14 @@ int n;
 
 VOID convhistory(s, fp)
 CONST char *s;
-FILE *fp;
+XFILE *fp;
 {
 	char *eol;
 
 	if (!s || !*s) return;
 
-	while ((eol = strchr(s, '\n'))) {
-		VOID_C Xfwrite(s, sizeof(char), eol++ - s, fp);
+	while ((eol = strchr2(s, '\n'))) {
+		VOID_C Xfwrite(s, eol++ - s, fp);
 		VOID_C Xfputc('\0', fp);
 		s = eol;
 	}
@@ -1744,7 +1735,7 @@ int *ptrp, quote;
 	ptr = (ptrp) ? *ptrp : 0;
 	size = (int)histsize[0];
 	if (str[ptr] == '!') n = 0;
-	else if (str[ptr] == '=' || strchr(IFS_SET, str[ptr])) n = ptr = -1;
+	else if (str[ptr] == '=' || strchr2(IFS_SET, str[ptr])) n = ptr = -1;
 	else if ((cp = sscanf2(&(str[ptr]), "%-d", &n))) {
 		if (!n) n = -1;
 		else if (n < 0) {
@@ -1807,15 +1798,15 @@ char *command;
 					continue;
 				}
 				command[++i] = '\0';
-				fprintf2(stderr, "%k: Event not found.\n",
+				fprintf2(Xstderr, "%k: Event not found.\n",
 					&(command[len]));
-				free(cp);
+				free2(cp);
 				return(NULL);
 			}
 			hit++;
 			len = strlen(history[0][n]);
 			cp = c_realloc(cp, j + len + 1, &size);
-			strncpy(&cp[j], history[0][n], len);
+			strncpy2(&cp[j], history[0][n], len);
 			j += len;
 			continue;
 		}
@@ -1823,12 +1814,12 @@ char *command;
 	}
 	cp[j] = '\0';
 	if (hit) {
-		kanjifputs(cp, stderr);
-		fputnl(stderr);
-		free(command);
+		kanjifputs(cp, Xstderr);
+		fputnl(Xstderr);
+		free2(command);
 		return(cp);
 	}
-	free(cp);
+	free2(cp);
 
 	return(command);
 }
@@ -1840,13 +1831,12 @@ int n;
 	int i;
 
 	if (!history[n] || !*(history[n])) return;
-	for (i = 0; i <= histbufsize[n]; i++)
-		if (history[n][i]) free(history[n][i]);
-	free(history[n]);
+	for (i = 0; i <= histbufsize[n]; i++) free2(history[n][i]);
+	free2(history[n]);
 }
 #endif
 
-#if	!defined (_NOCOMPLETE) && defined (_NOORIGSHELL)
+#if	!defined (_NOCOMPLETE) && !defined (DEP_ORIGSHELL)
 int completealias(com, len, argc, argvp)
 CONST char *com;
 int len, argc;
@@ -1884,4 +1874,4 @@ char ***argvp;
 
 	return(argc);
 }
-#endif	/* !_NOCOMPLETE && _NOORIGSHELL */
+#endif	/* !_NOCOMPLETE && !DEP_ORIGSHELL */

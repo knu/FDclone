@@ -250,6 +250,10 @@ HAVETIMEZONE
 	value from GMT.
 NOTMGMTOFF
 	The structure tm doesn't have the member tm_gmtoff.
+USEINSYSTMH
+	<netinet/in_systm.h> is needed for <netinet/ip.h>.
+NOHADDRLIST
+	The structure hostent doesn't have the member h_addr_list.
 
 (The following 5 identifiers is exclusive. These can not be
 defined simultaneously.)
@@ -441,9 +445,17 @@ GETTODARGS
 	function gettimeofday(3). The default value is 2.
 USESETSID
 	The function setsid(2) can be used to control session.
+USEMMAP
+	The function mmap(2) can be used to map files.
 USESOCKLEN
 	The third argument of the socket function bind(2)/
 	connect(2)/accept(2) must be the type socklen_t.
+USEINETATON
+	The function inet_aton(3) is used instead of
+	inet_addr(3) to manipulate the Internet address.
+USEINETPTON
+	The function inet_pton(3) is used instead of
+	inet_addr(3) to manipulate the Internet address.
 USESETREUID
 	The function setreuid(2) is used instead of geteuid(2)
 	to set the user ID.
@@ -987,6 +999,12 @@ not implemented.
 	_NOEXTRAATTR	cannot use extra attribute changing command
 	_NOLOGGING	cannot use system logging
 	_NOIME		cannot use tiny Input Method Editor
+	_NOCATALOG	cannot use message calalog
+	_NODYNAMICLIST	cannot avoid limits of each registrations
+	_NOSOCKET	cannot use socket networking
+	_NOSOCKREDIR	cannot use socket redirections
+	_NOFTP		cannot use FTP connections
+	_NOHTTP		cannot use HTTP connections
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,
@@ -1343,3 +1361,49 @@ compile it.
   In this case, you can execute "make rmdict".  Then only
 the files related to the dictionary will be deleted, and
 the other compile results will be leaved as they were.
+
+
+12.Message Catalog
+
+  In the standard state, the included mkcat.c makes fd-cat.ja
+as the Japanese message catalog and fd-cat.C as the English
+message catalog, based on message strings written in kanji.hin.
+  If these message catalogs exist in the same directory as
+the executable binary of fd, you can specify its extension
+string for MESSAGELANG the internal variable to replace
+displaying messages to contents of the catalog.
+
+  If you want to use the original message catalog, you can
+edit the standard message catalog to make the new message
+catalog.
+  On the way to compile fd, _fd-cat.ja and _fd-cat.C as the
+text file will be auto-generated.  These are the source file
+for each message catalogs.
+  You must describe these source files in Shift JIS or EUC-
+JP.  EUC-JP is selected when CODEEUC the identifier is set,
+otherwise Shift JIS is selected.
+  If you make the message catalog with single byte characters,
+you need not care about its Kanji code.  The message catalog
+with multi byte characters except Japanese is not supported
+now.
+
+  You can use mkcat.c to generate the message catalog.  The
+following process will generate fd-cat.fr from the source of
+_fd-cat.fr for example.
+  You can execute the next command in the directory where fd
+was compiled.  And you will copy generated fd-cat.fr to the
+same directory as the executable binary of fd, to use it as
+an additional message catalog.
+	./mkcat _fd-cat.fr fd-cat.fr
+
+  But, you must be careful when USEDATADIR the identifier had
+been defined before fd was compiled.
+  In this case, the message catalog must be placed in not
+the same directory as the executable binary of fd, but the
+directory which is specified by DATADIR in Makefile.in.
+  You will make the directory under DATADIR for each fd
+versions.  Suppose DATADIR=/fd and version is 3.00, the
+directory name will be /fd/3.00.
+  This directory for message catalogs will be auto-generated
+with installation.  Then you should execute installation
+once.

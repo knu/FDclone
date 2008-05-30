@@ -4,33 +4,52 @@
  *	information module
  */
 
-#include <errno.h>
 #include "fd.h"
+#include "dirent.h"
+#include "sysemu.h"
 #include "pathname.h"
+#include "term.h"
+#include "types.h"
 #include "funcno.h"
 #include "kanji.h"
 
-#ifdef	NOERRNO
-extern int errno;
+#ifdef	USEMNTENTH
+#include <mntent.h>
 #endif
-
-#ifdef	USESYSDIRH
-#include <sys/dir.h>
+#ifdef	USEMNTTABH
+#include <sys/mnttab.h>
 #endif
-
-#if	MSDOS
-#undef	USEVFSH
-#undef	USEMNTENTH
-#include "unixemu.h"
-#else
-#include <sys/param.h>
-#include <sys/file.h>
+#ifdef	USEMNTCTL
+#include <fshelp.h>
+#include <sys/vfs.h>
+#include <sys/mntctl.h>
+#include <sys/vmount.h>
+#endif
+#if	(!defined (USEMOUNTH) && !defined (USEFSDATA) \
+&& (defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
+|| defined (USEMNTINFOR) || defined (USEMNTINFO))) \
+|| defined (USEMOUNTH) || defined (USEFSDATA)
+#include <sys/mount.h>
+#endif
+#if	defined (USEGETFSSTAT) || defined (USEGETMNT)
+#include <sys/fs_types.h>
+#endif
+#ifdef	USEGETFSENT
+#include <fstab.h>
+#endif
+#if	defined (USESTATVFSH) || defined (USEGETVFSTAT)
+#include <sys/statvfs.h>
+#endif
+#ifdef	USESTATFSH
+#include <sys/statfs.h>
+#endif
+#ifdef	USEVFSH
+#include <sys/vfs.h>
 #endif
 
 #define	KEYWID			7
 
 #ifdef	USEMNTENTH
-#include <mntent.h>
 typedef struct mntent		mnt_t;
 #define	setmntent2		setmntent
 #define	getmntent2(f,m)		getmntent(f)
@@ -39,7 +58,6 @@ typedef struct mntent		mnt_t;
 #endif
 
 #ifdef	USEMNTTABH
-#include <sys/mnttab.h>
 #define	MOUNTED			MNTTAB
 typedef struct mnttab		mnt_t;
 #define	setmntent2		fopen
@@ -54,23 +72,6 @@ typedef struct mnttab		mnt_t;
 # endif
 #endif	/* USEMNTTABH */
 
-#ifdef	USEMNTCTL
-#include <fshelp.h>
-#include <sys/vfs.h>
-#include <sys/mntctl.h>
-#include <sys/vmount.h>
-#endif
-
-#if	!defined (USEMOUNTH) && !defined (USEFSDATA) \
-&& (defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
-|| defined (USEMNTINFOR) || defined (USEMNTINFO))
-#include <sys/mount.h>
-#endif
-
-#if	defined (USEGETFSSTAT) || defined (USEGETMNT)
-#include <sys/fs_types.h>
-#endif
-
 #if	defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
 || defined (USEMNTCTL) || defined (USEMNTINFOR) || defined (USEMNTINFO) \
 || defined (USEGETMNT)
@@ -80,21 +81,16 @@ typedef struct _mnt_t {
 	CONST char *mnt_type;
 	CONST char *mnt_opts;
 } mnt_t;
-static FILE *NEAR setmntent2 __P_((CONST char *, CONST char *));
-static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
 #define	hasmntopt2(m,o)		strmntopt((m) -> mnt_opts, o)
 # if	defined (USEMNTINFO) || defined (USEGETMNT)
 # define	endmntent2(f)
 # else
-# define	endmntent2	free
+# define	endmntent2	free2
 # endif
-static int mnt_ptr = 0;
-static int mnt_size = 0;
 #endif	/* USEGETFSSTAT || USEGETVFSTAT || USEMNTCTL \
 || USEMNTINFOR || USEMNTINFO || USEGETMNT */
 
 #ifdef	USEGETFSENT
-#include <fstab.h>
 typedef struct fstab		mnt_t;
 #define	setmntent2(f,m)		(FILE *)(setfsent(), NULL)
 #define	getmntent2(f,m)		getfsent()
@@ -132,10 +128,6 @@ typedef struct _mnt_t {
 # endif
 #endif	/* MSDOS */
 
-#if	defined (USESTATVFSH) || defined (USEGETVFSTAT)
-#include <sys/statvfs.h>
-#endif
-
 #ifdef	USESTATVFSH
 # ifdef	USESTATVFS_T
 typedef statvfs_t		statfs_t;
@@ -147,26 +139,22 @@ typedef struct statvfs		statfs_t;
 #endif	/* USESTATVFSH */
 
 #ifdef	USESTATFSH
-#include <sys/statfs.h>
 #define	f_bavail		f_bfree
 typedef struct statfs		statfs_t;
 #define	blocksize(fs)		(fs).f_bsize
 #endif
 
 #ifdef	USEVFSH
-#include <sys/vfs.h>
 typedef struct statfs		statfs_t;
 #define	blocksize(fs)		(fs).f_bsize
 #endif
 
 #ifdef	USEMOUNTH
-#include <sys/mount.h>
 typedef struct statfs		statfs_t;
 #define	blocksize(fs)		(fs).f_bsize
 #endif
 
 #ifdef	USEFSDATA
-#include <sys/mount.h>
 typedef struct fs_data		statfs_t;
 #define	statfs2(p, b)		(statfs(p, b) - 1)
 #define	blocksize(fs)		1024
@@ -221,60 +209,9 @@ extern int unixstatfs __P_((CONST char *, statfs_t *));
 # endif
 #endif	/* NETBSD */
 
-extern VOID error __P_((CONST char *));
-extern int _chdir2 __P_((CONST char *));
-extern char *strcpy2 __P_((char *, CONST char *));
-extern char *strncpy2 __P_((char *, CONST char *, int));
-extern char *getwd2 __P_((VOID_A));
-extern VOID warning __P_((int, CONST char *));
-#ifdef	_USEDOSPATH
-extern int dospath __P_((CONST char *, char *));
-extern char *gendospath __P_((char *, int, int));
-#endif
-#if	MSDOS && !defined (_NOUSELFN)
-extern int supportLFN __P_((CONST char *));
-# ifndef	_NODOSDRIVE
-extern int checkdrive __P_((int));
-# endif
-#endif	/* MSDOS && !_NOUSELFN */
-#ifndef	_NODOSDRIVE
-extern int dosstatfs __P_((int, char *));
-#endif
-extern char *malloc2 __P_((ALLOC_T));
-extern char *realloc2 __P_((VOID_P, ALLOC_T));
-#if	!MSDOS || !defined (NOFLOCK)
-extern int Xstat __P_((CONST char *, struct stat *));
-#endif
-extern int Xaccess __P_((CONST char *, int));
-extern int filetop __P_((int));
-extern VOID cputspace __P_((int));
-extern VOID cputstr __P_((int, CONST char *));
-#ifdef	_NOPTY
-#define	Xlocate			locate
-#define	Xputterm		putterm
-#define	Xputch2			putch2
-#define	Xcputs2			cputs2
-#define	Xcprintf2		cprintf2
-#else
-extern VOID Xlocate __P_((int, int));
-extern VOID Xputterm __P_((int));
-extern VOID Xputch2 __P_((int));
-extern VOID Xcputs2 __P_((CONST char *));
-extern VOID Xcprintf2 __P_((CONST char *, ...));
-#endif
-
-extern bindtable bindlist[];
-extern CONST functable funclist[];
-extern char fullpath[];
-extern char *distributor;
-#ifndef	_NODOSDRIVE
-extern int needbavail;
-#endif
-
 #ifndef	MOUNTED
 #define	MOUNTED			"/etc/mtab"
 #endif
-
 #ifndef	MNTTYPE_43
 #define	MNTTYPE_43		"4.3"		/* NEWS-OS 3-4, HP-UX, HI-UX */
 #endif
@@ -349,9 +286,53 @@ extern int needbavail;
 #endif
 #define	MNTTYPE_XNFS		"nfs"		/* NFS */
 
+extern VOID error __P_((CONST char *));
+extern int _chdir2 __P_((CONST char *));
+extern VOID warning __P_((int, CONST char *));
+#ifdef	DEP_DOSLFN
+extern int supportLFN __P_((CONST char *));
+# ifdef	DEP_DOSDRIVE
+extern int checkdrive __P_((int));
+# endif
+#endif	/* DEP_DOSLFN */
+#ifdef	DEP_DOSDRIVE
+extern int dosstatfs __P_((int, char *));
+#endif
+extern int filetop __P_((int));
+extern VOID cputspace __P_((int));
+extern VOID cputstr __P_((int, CONST char *));
+#ifdef	DEP_PTY
+extern VOID Xlocate __P_((int, int));
+extern VOID Xputterm __P_((int));
+extern VOID Xputch2 __P_((int));
+extern VOID Xcputs2 __P_((CONST char *));
+extern VOID Xcprintf2 __P_((CONST char *, ...));
+#else
+#define	Xlocate			locate
+#define	Xputterm		putterm
+#define	Xputch2			putch2
+#define	Xcputs2			cputs2
+#define	Xcprintf2		cprintf2
+#endif
+
+extern bindlist_t bindlist;
+extern int maxbind;
+extern CONST functable funclist[];
+extern char fullpath[];
+extern char *distributor;
+#ifdef	DEP_DOSDRIVE
+extern int needbavail;
+#endif
+
 static int NEAR code2str __P_((char *, int));
 static int NEAR checkline __P_((int));
 VOID help __P_((int));
+#if	defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
+|| defined (USEMNTCTL) || defined (USEMNTINFOR) || defined (USEMNTINFO) \
+|| defined (USEGETMNT)
+static FILE *NEAR setmntent2 __P_((CONST char *, CONST char *));
+static mnt_t *NEAR getmntent2 __P_((FILE *, mnt_t *));
+#endif
 static int NEAR getfsinfo __P_((CONST char *, statfs_t *, mnt_t *));
 static CONST char *NEAR strmntopt __P_((CONST char *, CONST char *));
 #ifndef	NOFLOCK
@@ -382,7 +363,7 @@ static CONST strtable mntlist[] = {
 	{FSID_LFN, MNTTYPE_FAT32},
 	{FSID_LFN, MNTTYPE_SHARED},
 #if	MSDOS
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 	{FSID_FAT, MNTTYPE_FAT12},
 	{FSID_FAT, MNTTYPE_FAT16},
 	{FSID_FAT, MNTTYPE_FAT16X},
@@ -415,6 +396,12 @@ static CONST strtable mntlist[] = {
 #endif	/* !MSDOS */
 };
 #define	MNTLISTSIZ		arraysize(mntlist)
+#if	defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
+|| defined (USEMNTCTL) || defined (USEMNTINFOR) || defined (USEMNTINFO) \
+|| defined (USEGETMNT)
+static int mnt_ptr = 0;
+static int mnt_size = 0;
+#endif
 
 
 static int NEAR code2str(buf, code)
@@ -477,6 +464,7 @@ int y;
 VOID help(arch)
 int arch;
 {
+	CONST char *cp;
 	char buf[(KEYWID + 1 + 1) * 2 + 1];
 	int i, j, c, x, y, yy;
 
@@ -504,13 +492,12 @@ int arch;
 
 		c = 0;
 		buf[0] = '\0';
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++) {
+		for (j = 0; j < maxbind; j++) {
 			if (i != ffunc(j)) continue;
 			c += code2str(buf, (int)(bindlist[j].key));
 			if (c >= 2) break;
 		}
-		if (c < 2)
-		for (j = 0; j < MAXBINDTABLE && bindlist[j].key >= 0; j++) {
+		if (c < 2) for (j = 0; j < maxbind; j++) {
 			if (i != dfunc(j)) continue;
 			c += code2str(buf, (int)(bindlist[j].key));
 			if (c >= 2) break;
@@ -519,8 +506,9 @@ int arch;
 
 		Xcputs2("  ");
 		if (c < 2) cputspace(KEYWID);
-		Xcprintf2("%k: %k",
-			buf, mesconv(funclist[i].hmes, funclist[i].hmes_eng));
+		cp = mesconv2(funclist[i].hmes_no,
+			funclist[i].hmes, funclist[i].hmes_eng);
+		Xcprintf2("%k: %k", buf, cp);
 
 		y = checkline(y);
 	}
@@ -576,7 +564,7 @@ mnt_t *mntp;
 			+ vmntp -> vmt_data[VMT_HOSTNAME].vmt_off]);
 		len += strlen(host) + 1;
 		fsname = realloc2(fsname, len);
-		strcpy(strcpy2(strcpy2(fsname, host), ":"), cp);
+		strcpy2(strcpy2(strcpy2(fsname, host), ":"), cp);
 	}
 
 	cp = &(buf[mnt_ptr + vmntp -> vmt_data[VMT_STUB].vmt_off]);
@@ -592,7 +580,7 @@ mnt_t *mntp;
 		memcpy(type, cp, len);
 	}
 	else if (type) {
-		free(type);
+		free2(type);
 		type = NULL;
 	}
 
@@ -724,7 +712,7 @@ mnt_t *mntp;
 		memcpy(type, cp, len);
 	}
 	else if (type) {
-		free(type);
+		free2(type);
 		type = NULL;
 	}
 # ifdef	DEBUG
@@ -797,13 +785,13 @@ statfs_t *fsbuf;
 mnt_t *mntbuf;
 {
 #if	MSDOS
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 	int i;
 # endif
 	char buf[MAXPATHLEN];
 	int drive;
 #else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 	static char dosmntdir[4];
 	char buf[3 * sizeof(long) + 1];
 	int drv;
@@ -842,9 +830,7 @@ mnt_t *mntbuf;
 # endif
 	VOID_C gendospath(mntbuf -> mnt_dir, drive, _SC_);
 
-# ifdef	_NOUSELFN
-	mntbuf -> mnt_type = MNTTYPE_PC;
-# else	/* !_NOUSELFN */
+# ifdef	DEP_DOSLFN
 	switch (supportLFN(mntbuf -> mnt_dir)) {
 		case 3:
 			mntbuf -> mnt_type = MNTTYPE_SHARED;
@@ -855,7 +841,7 @@ mnt_t *mntbuf;
 		case 1:
 			mntbuf -> mnt_type = MNTTYPE_DOS7;
 			break;
-#  ifndef	_NODOSDRIVE
+#  ifdef	DEP_DOSDRIVE
 		case -1:
 			mntbuf -> mnt_fsname = "LFN emurate";
 			mntbuf -> mnt_type = MNTTYPE_DOS7;
@@ -872,15 +858,16 @@ mnt_t *mntbuf;
 			break;
 #  endif
 		case -4:
-			errno = ENOENT;
-			return(-1);
+			return(seterrno(ENOENT));
 /*NOTREACHED*/
 			break;
 		default:
 			mntbuf -> mnt_type = MNTTYPE_PC;
 			break;
 	}
-# endif	/* !_NOUSELFN */
+# else	/* !DEP_DOSLFN */
+	mntbuf -> mnt_type = MNTTYPE_PC;
+# endif	/* !DEP_DOSLFN */
 	mntbuf -> mnt_opts = nullstr;
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) < 0) return(-1);
@@ -893,12 +880,12 @@ mnt_t *mntbuf;
 		cp = getrealpath(path, dir, NULL);
 		if (cp != dir && cp != path) return(-1);
 	}
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 	else if ((drv = dospath(path, NULL))) {
 		mntbuf -> mnt_fsname = vnullstr;
 		mntbuf -> mnt_dir = dosmntdir;
 		dosmntdir[0] = drv;
-		strcpy(&(dosmntdir[1]), ":\\");
+		strcpy2(&(dosmntdir[1]), ":\\");
 		mntbuf -> mnt_type =
 			(islower2(drv)) ? MNTTYPE_DOS7 : MNTTYPE_PC;
 		mntbuf -> mnt_opts = vnullstr;
@@ -924,7 +911,7 @@ mnt_t *mntbuf;
 
 		return(0);
 	}
-# endif	/* !_NODOSDRIVE */
+# endif	/* DEP_DOSDRIVE */
 	else if ((cp = getrealpath(path, dir, NULL)) != dir) return(-1);
 
 	if (cp == dir) {
@@ -950,14 +937,11 @@ mnt_t *mntbuf;
 			&& dir[len] && dir[len] != _SC_))
 				continue;
 			match = len;
-			strcpy(fsname, mntp -> mnt_fsname);
+			strcpy2(fsname, mntp -> mnt_fsname);
 		}
 		endmntent2(fp);
 
-		if (!match) {
-			errno = ENOENT;
-			return(-1);
-		}
+		if (!match) return(seterrno(ENOENT));
 		cp = fsname;
 	}
 
@@ -965,10 +949,7 @@ mnt_t *mntbuf;
 	while ((mntp = getmntent2(fp, &mnt)))
 		if (!strcmp(cp, mntp -> mnt_fsname)) break;
 	endmntent2(fp);
-	if (!mntp) {
-		errno = ENOENT;
-		return(-1);
-	}
+	if (!mntp) return(seterrno(ENOENT));
 	memcpy((char *)mntbuf, (char *)mntp, sizeof(mnt_t));
 
 	if (statfs2(mntbuf -> mnt_dir, fsbuf) >= 0) /*EMPTY*/;
@@ -988,7 +969,7 @@ CONST char *s1, *s2;
 	for (cp = s1; cp && *cp;) {
 		if (!strncmp(cp, s2, len) && (!cp[len] || cp[len] == ','))
 			return(cp);
-		if ((cp = strchr(cp, ','))) cp++;
+		if ((cp = strchr2(cp, ','))) cp++;
 	}
 
 	return(NULL);
@@ -1019,14 +1000,14 @@ CONST char *path;
 int writablefs(path)
 CONST char *path;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	int drv;
 #endif
 	mnt_t mntbuf;
 	int i;
 
 	if (Xaccess(path, R_OK | W_OK | X_OK) < 0) return(-1);
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	if ((drv = dospath(path, NULL)))
 		return((isupper2(drv)) ? FSID_FAT : FSID_DOSDRIVE);
 #endif
@@ -1068,11 +1049,7 @@ CONST char *dir;
 		if (Xstat(dir, &st) >= 0) return((off_t)(st.st_blksize));
 	}
 
-# ifdef	DEV_BSIZE
 	return(DEV_BSIZE);
-# else
-	return((off_t)512);
-# endif
 #endif	/* !MSDOS */
 }
 
@@ -1120,11 +1097,11 @@ off_t *totalp, *freep, *bsizep;
 	statfs_t fsbuf;
 	int n;
 
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	needbavail++;
 #endif
 	n = getfsinfo(path, &fsbuf, NULL);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	needbavail--;
 #endif
 	if (n < 0) {
@@ -1146,12 +1123,12 @@ CONST char *path;
 	mnt_t mntbuf;
 	int y, yy;
 
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	needbavail++;
 #endif
 	if (getfsinfo(path, &fsbuf, &mntbuf) < 0) {
 		warning(ENOTDIR, path);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 		needbavail--;
 #endif
 		return(0);
@@ -1183,7 +1160,7 @@ CONST char *path;
 		}
 		warning(0, HITKY_K);
 	}
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	needbavail--;
 #endif
 

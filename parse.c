@@ -4,25 +4,53 @@
  *	command line parser
  */
 
+#ifdef	FD
 #include "fd.h"
-#include "func.h"
+#include "pathname.h"
+#include "term.h"
+#include "types.h"
+#include "kconv.h"
+#else
+#include "headers.h"
+#include "depend.h"
+#include "printf.h"
+#include "kctype.h"
+#include "string.h"
+#include "malloc.h"
+#endif
 
+#include "sysemu.h"
+#include "unixemu.h"
+#include "realpath.h"
+#include "parse.h"
+
+#ifdef	DEP_ORIGSHELL
+#include "system.h"
+#endif
 #ifdef	USEUNAME
 #include <sys/utsname.h>
 #endif
 
+#ifdef	FD
+# ifndef	DEP_ORIGSHELL
+extern int setenv2 __P_((CONST char *, CONST char *, int));
+# endif
+extern int underhome __P_((char *));
+#endif	/* !FD */
+
+#ifdef	FD
 extern char fullpath[];
 extern short histno[];
 extern int physical_path;
-
-static int NEAR asc2int __P_((int));
-#ifdef	_NOORIGSHELL
-static char *NEAR strtkbrk __P_((CONST char *, CONST char *, int));
-static char *NEAR geteostr __P_((CONST char **));
-#else
-#include "system.h"
 #endif
 
+static int NEAR asc2int __P_((int));
+#if	defined (FD) && !defined (DEP_ORIGSHELL)
+static char *NEAR strtkbrk __P_((CONST char *, CONST char *, int));
+static char *NEAR geteostr __P_((CONST char **));
+#endif
+
+#ifdef	FD
 CONST strtable keyidentlist[] = {
 	{K_DOWN,	"DOWN"},
 	{K_UP,		"UP"},
@@ -93,6 +121,7 @@ CONST strtable keyidentlist[] = {
 	{0,		NULL}
 };
 #define	KEYIDENTSIZ		(arraysize(keyidentlist) - 1)
+#endif	/* FD */
 
 static CONST char escapechar[] = "abefnrtv";
 static CONST char escapevalue[] = {
@@ -155,14 +184,14 @@ va_dcl
 		i++;
 		flags = 0;
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr(printfflagchar, fmt[i]))) break;
+			if (!(cp = strchr2(printfflagchar, fmt[i]))) break;
 			flags |= printfflag[cp - printfflagchar];
 		}
 		width = getnum(fmt, &i);
 
 		len = sizeof(int);
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr(printfsizechar, fmt[i]))) break;
+			if (!(cp = strchr2(printfsizechar, fmt[i]))) break;
 			len = printfsize[cp - printfsizechar];
 		}
 		if (fmt[i] == '*') {
@@ -322,7 +351,17 @@ va_dcl
 	return((char *)s);
 }
 
-#ifdef	_NOORIGSHELL
+int atoi2(s)
+CONST char *s;
+{
+	int n;
+
+	if (!sscanf2(s, "%<d%$", &n)) return(-1);
+
+	return(n);
+}
+
+#if	defined (FD) && !defined (DEP_ORIGSHELL)
 static char *NEAR strtkbrk(s, c, evaldq)
 CONST char *s, *c;
 int evaldq;
@@ -347,12 +386,12 @@ int evaldq;
 		}
 		else if (pc == PC_ESCAPE) {
 			cp++;
-			if (*cp == PMETA && strchr(c, *cp))
+			if (*cp == PMETA && strchr2(c, *cp))
 				return((char *)&(cp[-1]));
 			continue;
 		}
 
-		if (strchr(c, *cp)) return((char *)cp);
+		if (strchr2(c, *cp)) return((char *)cp);
 	}
 
 	return(NULL);
@@ -445,7 +484,7 @@ char *CONST argv[];
 char *evalcomstr(path, delim)
 CONST char *path, *delim;
 {
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	char *tmp;
 # endif
 	CONST char *cp, *next;
@@ -458,7 +497,7 @@ CONST char *path, *delim;
 		if ((next = strtkbrk(cp, delim, 0))) {
 			len = next - cp;
 			for (i = 1; next[i]; i++)
-				if (!strchr(delim, next[i])) break;
+				if (!strchr2(delim, next[i])) break;
 		}
 		else {
 			len = strlen(cp);
@@ -467,11 +506,11 @@ CONST char *path, *delim;
 		next = cp + len;
 		if (len) {
 			new = _evalpath(cp, next, EA_NOEVALQ | EA_NOUNIQDELIM);
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 			tmp = newkanjiconv(new,
 				DEFCODE, getkcode(new), L_FNAME);
 			if (new != tmp) {
-				free(new);
+				free2(new);
 				new = tmp;
 			}
 # endif
@@ -484,12 +523,12 @@ CONST char *path, *delim;
 
 		epath = realloc2(epath, size + len + i + 1);
 		if (len) {
-			strcpy(&(epath[size]), cp);
-			free(new);
+			strcpy2(&(epath[size]), cp);
+			free2(new);
 			size += len;
 		}
 		if (i) {
-			strncpy(&(epath[size]), next, i);
+			strncpy2(&(epath[size]), next, i);
 			size += i;
 			next += i;
 		}
@@ -500,7 +539,7 @@ CONST char *path, *delim;
 
 	return(epath);
 }
-#endif	/* _NOORIGSHELL */
+#endif	/* FD && !DEP_ORIGSHELL */
 
 char *evalpaths(paths, delim)
 CONST char *paths;
@@ -513,15 +552,16 @@ int delim;
 	next = epath = NULL;
 	size = 0;
 	for (cp = paths; cp; cp = next) {
-#ifdef	_USEDOSPATH
-		if (_dospath(cp)) next = strchr(&(cp[2]), delim);
+#ifdef	DEP_DOSPATH
+		if (_dospath(cp)) next = strchr2(&(cp[2]), delim);
 		else
 #endif
-		next = strchr(cp, delim);
+		next = strchr2(cp, delim);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if (len) {
 			new = _evalpath(cp, &(cp[len]), 0);
-			cp = (isrootdir(cp)) ? realpath2(new, buf, 1) : new;
+			cp = (isrootdir(cp))
+				? realpath2(new, buf, RLP_READLINK) : new;
 			len = strlen(cp);
 		}
 #ifdef	FAKEUNINIT
@@ -529,8 +569,8 @@ int delim;
 #endif
 		epath = realloc2(epath, size + len + 1 + 1);
 		if (len) {
-			strcpy(&(epath[size]), cp);
-			free(new);
+			strcpy2(&(epath[size]), cp);
+			free2(new);
 		}
 		size += len;
 		if (next) epath[size++] = delim;
@@ -542,7 +582,7 @@ int delim;
 	return(epath);
 }
 
-#if	!MSDOS || !defined (_NOORIGSHELL)
+#if	!MSDOS || !defined (FD) || defined (DEP_ORIGSHELL)
 char *killmeta(name)
 CONST char *name;
 {
@@ -559,11 +599,11 @@ CONST char *name;
 # endif
 		else if (*cp == PMETA) {
 			*buf = '"';
-			if (strchr(DQ_METACHAR, *(cp + 1))) buf[i++] = PMETA;
+			if (strchr2(DQ_METACHAR, *(cp + 1))) buf[i++] = PMETA;
 		}
-		else if (strchr(METACHAR, *cp)) {
+		else if (strchr2(METACHAR, *cp)) {
 			*buf = '"';
-			if (strchr(DQ_METACHAR, *cp)) buf[i++] = PMETA;
+			if (strchr2(DQ_METACHAR, *cp)) buf[i++] = PMETA;
 		}
 		buf[i] = *cp;
 	}
@@ -571,13 +611,13 @@ CONST char *name;
 	else cp++;
 	buf[i] = '\0';
 	new = strdup2(cp);
-	free(buf);
+	free2(buf);
 
 	return(new);
 }
-#endif	/* !MSDOS || !_NOORIGSHELL */
+#endif	/* !MSDOS || !FD || DEP_ORIGSHELL */
 
-#ifdef	_NOORIGSHELL
+#if	defined (FD) && !defined (DEP_ORIGSHELL)
 VOID adjustpath(VOID_A)
 {
 	char *cp, *path;
@@ -586,10 +626,11 @@ VOID adjustpath(VOID_A)
 
 	path = evalpaths(cp, PATHDELIM);
 	if (strpathcmp(path, cp)) setenv2(ENVPATH, path, 1);
-	free(path);
+	free2(path);
 }
-#endif	/* _NOORIGSHELL */
+#endif	/* FD && !DEP_ORIGSHELL */
 
+#ifdef	FD
 char *includepath(path, plist)
 CONST char *path, *plist;
 {
@@ -600,16 +641,17 @@ CONST char *path, *plist;
 	if (!plist || !*plist) return(NULL);
 	next = plist;
 	for (cp = next; cp && *cp; cp = next) {
-#ifdef	_USEDOSPATH
+# ifdef	DEP_DOSPATH
 		if (_dospath(cp)) next += 2;
-#endif
-		next = strchr(next, PATHDELIM);
+# endif
+		next = strchr2(next, PATHDELIM);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if ((tmp = underpath(path, cp, len))) return(tmp);
 	}
 
 	return(NULL);
 }
+#endif	/* FD */
 
 #if	defined (OLDPARSE) && !defined (_NOARCHIVE)
 char *getrange(cp, delim, fp, dp, wp)
@@ -664,11 +706,11 @@ CONST char *prompt;
 	int i, j, k, len, unprint;
 
 	cp = strdup2(prompt);
-#ifdef	_NOORIGSHELL
+#if	defined (FD) && !defined (DEP_ORIGSHELL)
 	prompt = new = evalpath(cp, EA_NOUNIQDELIM);
 #else
 	prompt = new = evalvararg(cp, '\0', EA_BACKQ | EA_KEEPMETA, 0);
-	free(cp);
+	free2(cp);
 #endif
 	unprint = 0;
 #ifdef	FAKEUNINIT
@@ -693,10 +735,12 @@ CONST char *prompt;
 				*line = META;
 				line[1] = '\0';
 				break;
+#ifdef	FD
 			case '!':
 				snprintf2(line, sizeof(line), "%d",
 					(int)histno[0] + 1);
 				break;
+#endif
 #ifndef	NOUID
 			case 'u':
 				if ((up = finduid(getuid(), NULL)))
@@ -708,12 +752,12 @@ CONST char *prompt;
 			case 'H':
 # ifdef	USEUNAME
 				uname(&uts);
-				strcpy(line, uts.nodename);
+				strcpy2(line, uts.nodename);
 # else
 				gethostname(line, MAXPATHLEN);
 # endif
 				if (prompt[i] == 'h'
-				&& (tmp = strchr(line, '.')))
+				&& (tmp = strchr2(line, '.')))
 					*tmp = '\0';
 				break;
 			case '$':
@@ -722,20 +766,30 @@ CONST char *prompt;
 				break;
 #endif	/* !MSDOS */
 			case '~':
+#ifdef	FD
 				if (underhome(&(line[1]))) {
 					line[0] = '~';
 					break;
 				}
+#endif
 /*FALLTHRU*/
 			case 'w':
+#ifdef	FD
 				if (!physical_path || !Xgetwd(line))
 					cp = fullpath;
+#else
+				if (!Xgetwd(line)) cp = vnullstr;
+#endif
 				break;
 			case 'W':
+#ifdef	FD
 				if (!physical_path || !Xgetwd(line))
 					tmp = fullpath;
+#else
+				if (!Xgetwd(line)) tmp = vnullstr;
+#endif
 				else tmp = line;
-#ifdef	_USEDOSPATH
+#ifdef	DEP_DOSPATH
 				if (_dospath(tmp)) tmp += 2;
 #endif
 				cp = strrdelim(tmp, 0);
@@ -790,12 +844,12 @@ CONST char *prompt;
 		}
 	}
 	(*bufp)[j] = '\0';
-	free(new);
+	free2(new);
 
 	return(len);
 }
 
-#ifndef	_NOARCHIVE
+#if	defined (FD) && !defined (_NOARCHIVE)
 char *getext(ext, flagsp)
 CONST char *ext;
 u_char *flagsp;
@@ -814,7 +868,7 @@ u_char *flagsp;
 	else {
 		tmp = malloc2(strlen(ext) + 2);
 		*tmp = '*';
-		strcpy(&(tmp[1]), ext);
+		strcpy2(&(tmp[1]), ext);
 	}
 
 	return(tmp);
@@ -837,8 +891,9 @@ int flags2, strict;
 
 	return(strpathcmp(ext1, ext2));
 }
-#endif	/* !_NOARCHIVE */
+#endif	/* FD && !_NOARCHIVE */
 
+#ifdef	FD
 int getkeycode(cp, identonly)
 CONST char *cp;
 int identonly;
@@ -873,12 +928,12 @@ int identonly;
 			if (identonly) return(-1);
 			ch = (isalpha2(*cp)) ? mkmetakey(*(cp++)) : -1;
 			break;
-#ifdef	CODEEUC
+# ifdef	CODEEUC
 		case C_EKANA:
 			if (identonly) return(-1);
 			ch = (iskana2(*cp)) ? mkekana(*(cp++)) : -1;
 			break;
-#endif
+# endif
 		case 'F':
 			if ((i = atoi2(cp)) >= 1 && i <= 20) return(K_F(i));
 /*FALLTHRU*/
@@ -916,14 +971,14 @@ int c, tenkey;
 		buf[i++] = '@';
 		buf[i++] = c & 0x7f;
 	}
-#ifdef	CODEEUC
+# ifdef	CODEEUC
 	else if (isekana2(c)) {
 		buf[i++] = (char)C_EKANA;
 		buf[i++] = c & 0xff;
 	}
-#else
+# else
 	else if (iskana2(c)) buf[i++] = c;
-#endif
+# endif
 	else if (c > (int)MAXUTYPE(u_char)) {
 		buf[i++] = '?';
 		buf[i++] = '?';
@@ -941,6 +996,7 @@ int c, tenkey;
 
 	return(buf);
 }
+#endif	/* FD */
 
 char *decodestr(s, lenp, evalhat)
 CONST char *s;
@@ -973,13 +1029,13 @@ int evalhat;
 	tmp = malloc2(j + 1);
 	memcpy(tmp, cp, j);
 	tmp[j] = '\0';
-	free(cp);
+	free2(cp);
 	if (lenp) *lenp = j;
 
 	return(tmp);
 }
 
-#ifndef	_NOKEYMAP
+#if	defined (FD) && !defined (_NOKEYMAP)
 char *encodestr(s, len)
 CONST char *s;
 int len;
@@ -1021,4 +1077,4 @@ int len;
 
 	return(cp);
 }
-#endif	/* !_NOKEYMAP */
+#endif	/* FD && !_NOKEYMAP */

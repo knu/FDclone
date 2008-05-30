@@ -5,33 +5,33 @@
  */
 
 #include "fd.h"
-#include "funcno.h"
-
-#ifndef	_NOPTY
-
+#include "wait.h"
+#include "parse.h"
 #include "func.h"
+#include "funcno.h"
 #include "kanji.h"
-#include "termemu.h"
 
-#ifndef	_NOIME
+#ifdef	DEP_ORIGSHELL
+#include "system.h"
+#endif
+#ifdef	DEP_PTY
+#include "termemu.h"
+#endif
+#ifdef	DEP_IME
 #include "roman.h"
 #endif
 
-#ifdef	_NOORIGSHELL
-#include "termio.h"
-#include "wait.h"
+#ifdef	DEP_IME
+#define	MAXPTYMENU		5
 #else
-#include "system.h"
-# ifndef	NOALIAS
-extern int addalias __P_((char *, char *));
-extern int deletealias __P_((CONST char *));
-# endif
+#define	MAXPTYMENU		4
 #endif
 
-#ifdef	_NOIME
-#define	MAXPTYMENU		4
-#else
-#define	MAXPTYMENU		5
+#ifdef	DEP_PTY
+
+#if	defined (DEP_ORIGSHELL) && !defined (NOALIAS)
+extern int addalias __P_((char *, char *));
+extern int deletealias __P_((CONST char *));
 #endif
 
 extern CONST functable funclist[];
@@ -41,21 +41,17 @@ extern int fdflags;
 extern int wheader;
 extern int lcmdline;
 extern int maxcmdline;
-extern int ptymode;
-extern int ptyinternal;
-extern int ptymenukey;
 extern p_id_t emupid;
 extern int emufd;
-extern int parentfd;
 extern char *ptytmpfile;
-#ifndef	_NOIME
+#ifdef	DEP_IME
 extern int ime_cont;
 #endif
 
 static int waitpty __P_((VOID_A));
 static int NEAR ptygetkey __P_((VOID_A));
 static int NEAR recvvar __P_((int, char ***));
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 static int NEAR recvheredoc __P_((int, heredoc_t **));
 static int NEAR recvrlist __P_((int, redirectlist **));
 static int NEAR recvcommand __P_((int, command_t **, syntaxtree *));
@@ -148,7 +144,7 @@ int init;
 	int mode, dupdumbterm;
 
 	dupdumbterm = dumbterm;
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (isshptymode()) dumbterm = 1;
 #endif
 	if (isptymode()) dumbterm = 1;
@@ -253,7 +249,7 @@ va_dcl
 	if (n < 0) error("malloc()");
 
 	Xcputs2(buf);
-	free(buf);
+	free2(buf);
 
 	return(n);
 }
@@ -363,7 +359,7 @@ int n, max;
 	sendword(emufd, max);
 }
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 VOID changekcode(VOID_A)
 {
 	if (!emupid) return;
@@ -392,11 +388,11 @@ VOID changeoutkcode(VOID_A)
 	sendword(emufd, win);
 	sendword(emufd, ptyoutkcode);
 }
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 
 static int NEAR ptygetkey(VOID_A)
 {
-#ifndef	_NOIME
+#ifdef	DEP_IME
 	static char buf[MAXKANJIBUF + 1] = "";
 	static int next = 0;
 	u_int w;
@@ -405,7 +401,7 @@ static int NEAR ptygetkey(VOID_A)
 	char *cp, *new;
 	int n, c, ch, val[MAXPTYMENU];
 
-#ifndef	_NOIME
+#ifdef	DEP_IME
 	if (next > 0) {
 		if (next >= sizeof(buf) || !(c = (u_char)(buf[next++])))
 			next = 0;
@@ -423,16 +419,16 @@ static int NEAR ptygetkey(VOID_A)
 			return(c);
 		}
 	}
-#endif	/* !_NOIME */
+#endif	/* DEP_IME */
 
 	for (;;) {
 		n = -1;
-		c = getkey2(sigalrm(1), inputkcode);
+		c = getkey2(sigalrm(1), inputkcode, 0);
 		while (lockflags & (1 << win)) {
 			kbhit2(1000000L / SENSEPERSEC);
 			waitpty();
 		}
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 		if (isshptymode()) break;
 #endif
 		if (c < 0 || ptymenukey < 0 || alternate(c) != ptymenukey)
@@ -441,14 +437,14 @@ static int NEAR ptygetkey(VOID_A)
 		str[0] = new = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
 		str[1] = PTYIC_K;
 		str[2] = PTYBR_K;
-#ifndef	_NOIME
+#ifdef	DEP_IME
 		str[3] = PTYKJ_K;
 #endif
 		str[MAXPTYMENU - 1] = PTYNW_K;
 		val[0] = 0;
 		val[1] = 1;
 		val[2] = 2;
-#ifndef	_NOIME
+#ifdef	DEP_IME
 		val[3] = 3;
 #endif
 		val[MAXPTYMENU - 1] = 4;
@@ -459,7 +455,7 @@ static int NEAR ptygetkey(VOID_A)
 			0, str, val);
 		movepos(filepos, 0);
 		changewin(win, (p_id_t)-1);
-		free(new);
+		free2(new);
 
 		if (ch != K_CR) continue;
 		else if (!n) break;
@@ -469,7 +465,7 @@ static int NEAR ptygetkey(VOID_A)
 			c = -1;
 			break;
 		}
-#ifndef	_NOIME
+#ifdef	DEP_IME
 		else if (n == 3) {
 			c = ime_inputkanji(sigalrm(1), buf);
 			if (c < 0 || !ime_cont) movepos(filepos, 0);
@@ -483,7 +479,7 @@ static int NEAR ptygetkey(VOID_A)
 				break;
 			}
 		}
-#endif	/* !_NOIME */
+#endif	/* DEP_IME */
 #ifndef	_NOSPLITWIN
 		else if (n == 4) {
 			VOID_C nextwin();
@@ -499,13 +495,9 @@ static int NEAR ptygetkey(VOID_A)
 			movepos(filepos, 0);
 			changewin(win, (p_id_t)-1);
 			if (!cp) continue;
-#ifdef	_NOIME
-			c = getkeycode(cp, 0);
-			free(cp);
-			if (c >= 0) break;
-#else	/* !_NOIME */
+#ifdef	DEP_IME
 			w = ime_getkeycode(cp);
-			free(cp);
+			free2(cp);
 			if (!w) /*EMPTY*/;
 			else if (!(w & ~01777)) {
 				c = w;
@@ -517,7 +509,11 @@ static int NEAR ptygetkey(VOID_A)
 				next = 1;
 				break;
 			}
-#endif	/* !_NOIME */
+#else	/* !DEP_IME */
+			c = getkeycode(cp, 0);
+			free2(cp);
+			if (c >= 0) break;
+#endif	/* !DEP_IME */
 
 			changewin(MAXWINDOWS, (p_id_t)-1);
 			warning(0, VALNG_K);
@@ -526,7 +522,7 @@ static int NEAR ptygetkey(VOID_A)
 		}
 	}
 
-#ifndef	_NOIME
+#ifdef	DEP_IME
 	if (c < 0) {
 		next = 0;
 		ime_inputkanji(0, NULL);
@@ -562,7 +558,7 @@ char ***varp;
 	return(0);
 }
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 static int NEAR recvheredoc(fd, hdpp)
 int fd;
 heredoc_t **hdpp;
@@ -574,7 +570,7 @@ heredoc_t **hdpp;
 	if (hdp) {
 		hdp = (heredoc_t *)malloc2(sizeof(heredoc_t));
 		if (recvbuf(fd, hdp, sizeof(*hdp)) < 0) {
-			free(hdp);
+			free2(hdp);
 			return(-1);
 		}
 		hdp -> eof = hdp -> filename = hdp -> buf = NULL;
@@ -602,7 +598,7 @@ redirectlist **rpp;
 	if (rp) {
 		rp = (redirectlist *)malloc2(sizeof(redirectlist));
 		if (recvbuf(fd, rp, sizeof(*rp)) < 0) {
-			free(rp);
+			free2(rp);
 			return(-1);
 		}
 		rp -> filename = NULL;
@@ -637,7 +633,7 @@ syntaxtree *trp;
 
 		comm = (command_t *)malloc2(sizeof(command_t));
 		if (recvbuf(fd, comm, sizeof(*comm)) < 0) {
-			free(comm);
+			free2(comm);
 			return(-1);
 		}
 		argv = comm -> argv;
@@ -667,7 +663,7 @@ syntaxtree **trpp, *parent;
 	if (trp) {
 		trp = newstree(parent);
 		if (recvbuf(fd, trp, sizeof(*trp)) < 0) {
-			free(trp);
+			free2(trp);
 			return(-1);
 		}
 		trp -> comm = NULL;
@@ -682,19 +678,19 @@ syntaxtree **trpp, *parent;
 
 	return(0);
 }
-#endif	/* !_NOORIGSHELL */
+#endif	/* DEP_ORIGSHELL */
 
 static VOID NEAR recvchild(w)
 int w;
 {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	syntaxtree *trp;
 #endif
 #ifndef	_NOARCHIVE
-	launchtable launch;
-	archivetable arch;
+	lsparse_t launch;
+	archive_t arch;
 #endif
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	devinfo dev;
 #endif
 	bindtable bind;
@@ -730,27 +726,79 @@ int w;
 			if (recvbuf(fd, &varp, sizeof(varp)) < 0
 			|| (n = countvar(*varp)) <= 0)
 				break;
-			free((*varp)[0]);
+			free2((*varp)[0]);
 			memmove((char *)&((*varp)[0]), (char *)&((*varp)[1]),
 				n * sizeof(char *));
 			break;
 		case TE_CHDIR:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C chdir2(cp);
-			free(cp);
+			free2(cp);
 			break;
-#ifdef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
+		case TE_PUTEXPORTVAR:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvstring(fd, &cp) < 0 || !cp)
+				break;
+			if (putexportvar(cp, n) < 0) free2(cp);
+			break;
+		case TE_PUTSHELLVAR:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvstring(fd, &cp) < 0 || !cp)
+				break;
+			if (putshellvar(cp, n) < 0) free2(cp);
+			break;
+		case TE_UNSET:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvstring(fd, &cp) < 0 || !cp)
+				break;
+			VOID_C unset(cp, n);
+			free2(cp);
+			break;
+		case TE_SETEXPORT:
+			if (recvstring(fd, &cp) < 0 || !cp) break;
+			VOID_C setexport(cp);
+			free2(cp);
+			break;
+		case TE_SETRONLY:
+			if (recvstring(fd, &cp) < 0 || !cp) break;
+			VOID_C setronly(cp);
+			free2(cp);
+			break;
+		case TE_SETSHFLAG:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvbuf(fd, &val, sizeof(val)) < 0)
+				break;
+			setshflag(n, val);
+			errorexit = tmperrorexit;
+			break;
+		case TE_ADDFUNCTION:
+			if (recvstring(fd, &cp) < 0) break;
+			if (recvstree(fd, &trp, NULL) < 0 || !trp) {
+				free2(cp);
+				break;
+			}
+			if (cp) setshfunc(cp, trp);
+			break;
+		case TE_DELETEFUNCTION:
+			if (recvbuf(fd, &n, sizeof(n)) < 0
+			|| recvstring(fd, &cp) < 0 || !cp)
+				break;
+			VOID_C unsetshfunc(cp, n);
+			free2(cp);
+			break;
+#else	/* !DEP_ORIGSHELL */
 		case TE_PUTSHELLVAR:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &func1) < 0)
 				break;
 			if (recvstring(fd, &cp) < 0 || !cp) {
-				if (func1) free(func1);
+				free2(func1);
 				break;
 			}
 			setenv2(cp, func1, n);
-			free(cp);
-			if (func1) free(func1);
+			free2(cp);
+			free2(func1);
 			break;
 		case TE_ADDFUNCTION:
 			if (recvvar(fd, &var) < 0) break;
@@ -763,66 +811,14 @@ int w;
 		case TE_DELETEFUNCTION:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C deletefunction(cp);
-			free(cp);
+			free2(cp);
 			break;
-#else	/* !_NOORIGSHELL */
-		case TE_PUTEXPORTVAR:
-			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvstring(fd, &cp) < 0 || !cp)
-				break;
-			if (putexportvar(cp, n) < 0) free(cp);
-			break;
-		case TE_PUTSHELLVAR:
-			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvstring(fd, &cp) < 0 || !cp)
-				break;
-			if (putshellvar(cp, n) < 0) free(cp);
-			break;
-		case TE_UNSET:
-			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvstring(fd, &cp) < 0 || !cp)
-				break;
-			VOID_C unset(cp, n);
-			free(cp);
-			break;
-		case TE_SETEXPORT:
-			if (recvstring(fd, &cp) < 0 || !cp) break;
-			VOID_C setexport(cp);
-			free(cp);
-			break;
-		case TE_SETRONLY:
-			if (recvstring(fd, &cp) < 0 || !cp) break;
-			VOID_C setronly(cp);
-			free(cp);
-			break;
-		case TE_SETSHFLAG:
-			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvbuf(fd, &val, sizeof(val)) < 0)
-				break;
-			setshflag(n, val);
-			errorexit = tmperrorexit;
-			break;
-		case TE_ADDFUNCTION:
-			if (recvstring(fd, &cp) < 0) break;
-			if (recvstree(fd, &trp, NULL) < 0 || !trp) {
-				if (cp) free(cp);
-				break;
-			}
-			if (cp) setshfunc(cp, trp);
-			break;
-		case TE_DELETEFUNCTION:
-			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvstring(fd, &cp) < 0 || !cp)
-				break;
-			VOID_C unsetshfunc(cp, n);
-			free(cp);
-			break;
-#endif	/* !_NOORIGSHELL */
-#if	defined (_NOORIGSHELL) || !defined (NOALIAS)
+#endif	/* !DEP_ORIGSHELL */
+#if	!defined (DEP_ORIGSHELL) || !defined (NOALIAS)
 		case TE_ADDALIAS:
 			if (recvstring(fd, &func1) < 0) break;
 			if (recvstring(fd, &cp) < 0 || !cp) {
-				if (func1) free(func1);
+				free2(func1);
 				break;
 			}
 			VOID_C addalias(cp, func1);
@@ -830,16 +826,15 @@ int w;
 		case TE_DELETEALIAS:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C deletealias(cp);
-			free(cp);
+			free2(cp);
 			break;
-#endif	/* _NOORIGSHELL || !NOALIAS */
+#endif	/* !DEP_ORIGSHELL || !NOALIAS */
 		case TE_SETHISTORY:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
-			|| recvbuf(fd, &val, sizeof(val)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
-			VOID_C entryhist(n, cp, val);
-			free(cp);
+			VOID_C entryhist(cp, n);
+			free2(cp);
 			break;
 		case TE_ADDKEYBIND:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
@@ -847,12 +842,12 @@ int w;
 			|| recvstring(fd, &func1) < 0)
 				break;
 			if (recvstring(fd, &func2) < 0) {
-				if (func1) free(func1);
+				free2(func1);
 				break;
 			}
 			if (recvstring(fd, &cp) < 0) {
-				if (func1) free(func1);
-				if (func2) free(func2);
+				free2(func1);
+				free2(func2);
 				break;
 			}
 			VOID_C addkeybind(n, &bind, func1, func2, cp);
@@ -905,7 +900,7 @@ int w;
 			deletearch(n);
 			break;
 #endif	/* !_NOARCHIVE */
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 		case TE_INSERTDRV:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvbuf(fd, &dev, sizeof(dev)) < 0
@@ -917,7 +912,7 @@ int w;
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
 			VOID_C deletedrv(n);
 			break;
-#endif	/* _USEDOSEMU */
+#endif	/* DEP_DOSEMU */
 		case TE_LOCKFRONT:
 			lockflags |= (1 << w);
 			if (!emupid) break;
@@ -938,21 +933,21 @@ int w;
 			else {
 				cp = malloc2(val);
 				if (recvbuf(fd, cp, val) < 0) {
-					free(cp);
+					free2(cp);
 					break;
 				}
 			}
 			if (n >= 0) {
-				if (duptty[n]) free(duptty[n]);
+				free2(duptty[n]);
 				duptty[n] = cp;
 			}
-			else if (cp) free(cp);
+			else free2(cp);
 			break;
-#ifndef	_NOIME
+#ifdef	DEP_IME
 		case TE_ADDROMAN:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			if (recvstring(fd, &func1) < 0) {
-				free(cp);
+				free2(cp);
 				break;
 			}
 			VOID_C addroman(cp, func1);
@@ -961,13 +956,13 @@ int w;
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
 			freeroman(n);
 			break;
-#endif	/* !_NOIME */
+#endif	/* DEP_IME */
 		case TE_INTERNAL:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0)
 				break;
 			if (n < 0 || n >= FUNCLISTSIZ) {
-				if (cp) free(cp);
+				free2(cp);
 				break;
 			}
 			keywaitfunc = lastfunc;
@@ -980,7 +975,7 @@ int w;
 			changewin(win, (p_id_t)-1);
 			rewritefile(0);
 			keywaitfunc = waitpty;
-			if (cp) free(cp);
+			free2(cp);
 			break;
 		case TE_CHANGESTATUS:
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
@@ -997,12 +992,12 @@ int c;
 	static char buf[MAXUTF8LEN * sizeof(short)];
 	static int index = 0;
 	static int max = 0;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	int code;
 #endif
 	short w;
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
 #endif
 	if (c >= 0) {
@@ -1012,14 +1007,7 @@ int c;
 
 	if (c < 0 || c & 0xff00) /*EMPTY*/;
 	else if (max && index >= max) /*EMPTY*/;
-#ifdef	_NOKANJICONV
-# ifdef	CODEEUC
-	else if (c == C_EKANA) {
-		max = 2;
-		return;
-	}
-# endif
-#else	/* !_NOKANJICONV */
+#ifdef	DEP_KCONV
 	else if (code == EUC && c == C_EKANA) {
 		max = 2;
 		return;
@@ -1033,7 +1021,14 @@ int c;
 			return;
 		}
 	}
-#endif	/* !_NOKANJICONV */
+#else	/* !DEP_KCONV */
+# ifdef	CODEEUC
+	else if (c == C_EKANA) {
+		max = 2;
+		return;
+	}
+# endif
+#endif	/* !DEP_KCONV */
 	else if (isinkanji1(c, code)) {
 		max = 2;
 		return;
@@ -1081,7 +1076,7 @@ int frontend(VOID_A)
 		changewin(win, (p_id_t)0);
 		if (!emupid && ptytmpfile) {
 			rmtmpfile(ptytmpfile);
-			free(ptytmpfile);
+			free2(ptytmpfile);
 			ptytmpfile = NULL;
 		}
 	}
@@ -1090,4 +1085,4 @@ int frontend(VOID_A)
 
 	return(status);
 }
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */

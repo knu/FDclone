@@ -3,16 +3,21 @@ s:__PREFIX__::
 s:__CONFDIR__::
 s:__EXE__:.exe:g
 s:__OBJ__:.o:g
-s:__EMUOBJS__:unixemu.o unixdisk.o:
+s:__DOSOBJS__:$(DOSOBJS):
 s:__IMEOBJS__::
 s:__DICTTBL__::
 s:__DICTSRC__::
 s:__MKDICTOPTION__::
+s:__CATTBL__:$(CATTBL) $(ECATTBL):
+s:__SOCKETOBJS__::
+s:__SOCKETLIBS__::
 s:__OBJLIST__:@$(ARGS):
 s:__SOBJLIST__:@$(SARGS):
+s:__NOBJLIST__:@$(NARGS):
 s:__DEFRC__:'"'$(DOSRC)'"':
 s:__TBLPATH__::
 s:__DATADIR__:$(BINDIR):g
+s:__DATADIR2__:$(BINDIR):g
 s:__RENAME__:@ren:
 s:__AOUT2EXE__:@aout2exe:
 s:__REMOVE__:@del:
@@ -31,6 +36,7 @@ s:__FDSETSIZE__::
 s:__MEM__::
 s:__SHMEM__::
 s:__BSHMEM__::
+s:__NSHMEM__::
 s:__OUT__:-o $@:
 s:__LNK__:-o $@:
 s:__TERMLIBS__::

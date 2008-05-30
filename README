@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 2.09 に関して
+#	FDclone Ver. 3.00 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Apr 19, 2008
+#	May 31, 2008
 #
 ############################################################
 
@@ -35,7 +35,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-2.09 のパッケージには、以下のファイルが含まれます。
+　FDclone-3.00 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 README.eng	このファイル (英文)
@@ -66,6 +66,8 @@ expfunc.c	sh 関数展開プログラム (旧式の /bin/sh 用)
 mkunitbl.c	UNICODE 変換テーブルファイル生成プログラム
 mkdict.c	かな漢字変換テーブルファイル変換プログラム
 mktankan.c	単漢字変換テーブルファイル生成プログラム
+mkkanji.c	kanji.h 変換プログラム
+mkcat.c		メッセージカタログ生成プログラム
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
 mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
 mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト
@@ -87,20 +89,33 @@ term.c		termcap ライブラリソース
 term.h		term.c 用のヘッダ
 printf.c	フォーマット出力関数モジュール
 printf.h	printf.c 用のヘッダ
+string.c	文字列操作関数の置換え
+string.h	string.c 用のヘッダ
+malloc.c	メモリ確保関数の置換え
+malloc.h	malloc.c 用のヘッダ
+stream.c	ストリーム入出力ライブラリソース
+stream.h	stream.c 用のヘッダ
+time.c		時間関数の置換え
+time.h		time.c 用のヘッダ
 pathname.c	パス名操作に関するモジュール
 pathname.h	pathname.c 用のヘッダ
 system.c	/bin/sh 互換の system(3) 相当モジュール
 system.h	system.c 用のヘッダ
 posixsh.c	system.c で使う POSIX 互換コマンド
+posixsh.h	posixsh.c 用のヘッダ
 doscom.c	system.c で使う COMMAND.COM 内部コマンド
 log.c		ログファイル関連
+log.h		log.c 用のヘッダ
 dosdisk.c	フロッピードライブドライバ部分
 dosdisk.h	dosdisk.c 用のヘッダ
-dosemu.c	システム関数群のフロッピードライブ対応版
+sysemu.c	システム関数群のフロッピードライブ対応版
+sysemu.h	sysemu.c 用のヘッダ
 unixdisk.c	MS-DOS 用ファイル制御関数群
 unixdisk.h	unixdisk.c 用のヘッダ
-unixemu.c	システム関数群の MS-DOS 版
-unixemu.h	unixemu.c 用のヘッダ
+realpath.c	絶対パスの正規化
+realpath.h	realpath.c 用のヘッダ
+encode.c	MD5 (RFC1321) 及び BASE64 (RFC3548) 関連
+encode.h	encode.c 用のヘッダ
 pty.c		疑似端末関連
 termemu.c	端末エミュレーション関連
 termemu.h	termemu.c 用のヘッダ
@@ -110,9 +125,25 @@ libc.c		cc の標準関数のアレンジ
 file.c		ファイル操作関連
 apply.c		ファイルへの連続適用関連
 parse.c		文字列解析関連
+parse.h		parse.c 用のヘッダ
 builtin.c	組込みコマンド関連
 shell.c		シェルコマンド関連
-kanji.c		漢字コードコンバート関連
+socket.c	ソケット関数関連
+socket.h	socket.c 用のヘッダ
+url.c		URL パーザ
+url.h		url.c 用のヘッダ
+auth.c		認証 (RFC2617) 関連
+auth.h		auth.c 用のヘッダ
+ftp.c		FTP (RFC959) 関連
+html.c		HTML (RFC2616) 関連
+html.h		html.c 用のヘッダ
+http.c		HTTP 関連
+urldisk.c	URL ドライブドライバ部分
+urldisk.h	urldisk.c 用のヘッダ
+catalog.c	メッセージカタログ関連
+catalog.h	catalog.c 用のヘッダ
+kconv.c		漢字コードコンバート関連
+kconv.h		kconv.c 用のヘッダ
 input.c		ユーザ入力関連
 ime.c		簡易日本語 IME
 roman.c		ローマ字かな変換関連
@@ -121,6 +152,8 @@ dict.c		漢字辞書検索関連
 hinsi.h		品詞文法用のヘッダ
 info.c		各種情報表示用
 rockridg.c	ISO 9660 RockRidge 拡張関連
+lsparse.c	ファイル一覧出力のパーザ
+lsparse.h	lsparse.c 用のヘッダ
 archive.c	アーカイバ関連
 tree.c		ツリー表示関連
 custom.c	設定変更関連
@@ -130,9 +163,16 @@ browse.c	ブラウザ画面関連
 fd.h		FDclone のカスタマイズ用ヘッダ
 machine.h	機種依存性を吸収するヘッダ
 config.hin	ダミーで用意してある環境設定用ヘッダ
+headers.h	基本的なヘッダをまとめたヘッダ
+depend.h	オプション識別子の依存関係をまとめたヘッダ
 types.h		各種型宣言
+namelist.h	ファイルリストに関するヘッダ
 kctype.h	漢字コードに関するヘッダ
+typesize.h	型サイズに関するヘッダ
 wait.h		子プロセス処理に関するヘッダ
+dirent.h	ディレクトリ操作関数用ヘッダ
+unixemu.h	MS-DOS での関数エミュレーション用のヘッダ
+device.h	デバイス ID 用ヘッダ
 func.h		プロトタイプ宣言
 functabl.h	内部コマンドの属性定義用
 kanji.hin	日本語文字列のソース (JIS版)
@@ -140,6 +180,7 @@ version.h	バージョン
 
 _fdrc		.fd2rc のお手本
 _fdrc.dif	.fd2rc に関する 1.03 からの変更点
+fd.spec		RPM 用スペックファイル
 
 
 --

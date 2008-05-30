@@ -4,21 +4,9 @@
  *	Kanji translation table converter
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
-#include "printf.h"
+#include "headers.h"
 #include "kctype.h"
+#include "typesize.h"
 #include "roman.h"
 #include "hinsi.h"
 

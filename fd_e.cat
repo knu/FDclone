@@ -836,11 +836,24 @@ DDEESSCCRRIIPPTTIIOONN
                   dard error output into the output to _f_i_l_e.  If
                   _f_i_l_e doesn't exist it is created, otherwise
                   output is appended to it.
-        _n<<>>_f_i_l_e
-        _n>><<_f_i_l_e   Redirect both the input/output indicated by the
+        _n<<>>_f_i_l_e   Redirect both the input/output indicated by the
                   file descriptor _n into the input/output from/to
                   _f_i_l_e.  If _n is omitted, it is regarded as the
                   standard input is specified.
+        _n>><<_f_i_l_e   Redirect both the input/output indicated by the
+                  file descriptor _n into the input/output from/to
+                  _f_i_l_e.  If _n is omitted, it is regarded as the
+                  standard output is specified.
+        _n_1<<>>&&_n_2   Redirect both the input/output indicated by the
+                  file descriptor _n_1 into the input/output indi-
+                  cated by the file descriptor _n_2.  If _n_1 is omit-
+                  ted, it is regarded as the standard input is
+                  specified.
+        _n_1>><<&&_n_2   Redirect both the input/output indicated by the
+                  file descriptor _n_1 into the input/output indi-
+                  cated by the file descriptor _n_2.  If _n_1 is omit-
+                  ted, it is regarded as the standard output is
+                  specified.
         _n<<--
         _n<<&&--      Close the input indicated by the file descrip-
                   tor _n.  If _n is omitted, it is regarded as the
@@ -849,6 +862,14 @@ DDEESSCCRRIIPPTTIIOONN
         _n>>&&--      Close the output indicated by the file descrip-
                   tor _n.  If _n is omitted, it is regarded as the
                   standard output is specified.
+        _n<<>>--
+        _n<<>>&&--     Close both the input/output indicated by the
+                  file descriptor _n.  If _n is omitted, it is re-
+                  garded as the standard input is specified.
+        _n>><<--
+        _n>><<&&--     Close both the input/output indicated by the
+                  file descriptor _n.  If _n is omitted, it is re-
+                  garded as the standard output is specified.
         _n<<<<[--]_w_o_r_d
                   Redirect the input indicated by the file
                   descriptor _n into the input which is read up to
@@ -860,6 +881,30 @@ DDEESSCCRRIIPPTTIIOONN
                   beginning of input lines is stripped to be send
                   to a command.  If _n is omitted, it is regarded
                   as the standard input is specified.
+
+     When you specify the file with each redirect, you can de-
+     scribe the filename as `_s_c_h_e_m_e::////_h_o_s_t::_p_o_r_t' form to open the
+     following TCP sockets, according to the string of _s_c_h_e_m_e.
+     The authentication of your OS will restrict specifying the
+     accepting port.  ((UUNNIIXX))
+        ccoonnnneecctt::////_h_o_s_t::_p_o_r_t
+                  This socket is connected to the remote host
+                  specified by _h_o_s_t with the TCP port number spec-
+                  ified by _p_o_r_t.
+        aacccceepptt::////[_h_o_s_t][::_p_o_r_t]
+                  This socket is accepted to the local host spec-
+                  ified by _h_o_s_t with the TCP port number specifi-
+                  ed by _p_o_r_t.  If _h_o_s_t is omitted, this socket
+                  will be accepted to any host.  If _p_o_r_t is omit-
+                  ted, the port within the range determined by
+                  the OS is used.
+        bbiinndd::////[_h_o_s_t][::_p_o_r_t]
+                  This socket is bound to the local host specifi-
+                  ed by _h_o_s_t with the TCP port number specified
+                  by _p_o_r_t, preparing aacccceepptt the builtin command.
+                  If _h_o_s_t is omitted, this socket will be accept-
+                  ed to any host.  If _p_o_r_t is omitted, the port
+                  within the range determined by the OS is used.
 
      On each command line, the string from '##' to the end of line
      and a null line are ignored.  When the line ends with '\\',
@@ -967,6 +1012,31 @@ DDEESSCCRRIIPPTTIIOONN
                    each line format is based on the format of
                    EEXXEECCUUTTEE_SSHH.  You can describe this in the file
                    as nesting.
+
+     aacccceepptt [_f_d]   Accept the connection with the file descriptor
+                   indicated by _f_d, and the connected socket will
+                   be assign to _f_d of the same file descriptor.
+                   At the same time, the accepted socket will be
+                   closed.  When fd is not the redirection as the
+                   form of bbiinndd::////, this command will be failed.
+                   In comparison with the redirection as the form
+                   of aacccceepptt::////, the shell can receive controls
+                   before establishing connection to negotiate
+                   the TCP port number with the remote host in ad-
+                   vance.  ((UUNNIIXX))
+
+                   If _f_d is omitted, the connection will be ac-
+                   cepted with the standard input.
+
+     aaddddccrr [--11] [_f_i_l_e]
+                   Output the string read from the file specified
+                   by _f_i_l_e, line by line.  The newline of each
+                   line is unified into CR-NL (\r\n).  It is use-
+                   ful to pipe the output to some socket.
+
+                   If _f_i_l_e is omitted, it is regarded as the stan-
+                   dard input is specified.  If --11 is specified,
+                   it will output just 1 line and exit.
 
      aalliiaass [_n_a_m_e[==_c_o_m]]
                    Define a alias whose body is _c_o_m, as the name
@@ -1254,10 +1324,12 @@ DDEESSCCRRIIPPTTIIOONN
      ddttyyppee _f_i_l_e    Display the contents of the file indicated by
                    _f_i_l_e.
 
-     eecchhoo [--nn] [_a_r_g ...]
+     eecchhoo [--nnNN] [_a_r_g ...]
                    Echo _a_r_g to the standard output.  When you
                    don't specify --nn, newline is added to output
-                   trailing after _a_r_g.  See eecchhoo(1) for details.
+                   trailing after _a_r_g.  When you specify --NN, the
+                   outputted newline becomes CR-NL (\r\n).  See
+                   eecchhoo(1) for details.
 
      eennaabbllee [--nn] [_a_r_g ...]
                    Enable _a_r_g as a builtin command.  When you
@@ -1630,7 +1702,7 @@ DDEESSCCRRIIPPTTIIOONN
                    displayed.  Otherwise, the pphhyyssiiccaall option for
                    sseett the builtin command is effective.
 
-     rreeaadd [_N_A_M_E ...]
+     rreeaadd [--NN] [_N_A_M_E ...]
                    Read one line from the standard input and sub-
                    stitute that string for _N_A_M_E the internal
                    variable.  The inputted string is separated
@@ -1641,6 +1713,9 @@ DDEESSCCRRIIPPTTIIOONN
                    number of words in inputted string is less
                    than the number of _N_A_M_E, a null is substituted
                    for the rest of _N_A_M_E.
+
+                   If --NN is specified, the newline of the line to
+                   be read is regarded as CR-NL (\r\n).
 
      rreeaaddlliinnee [_p_r_o_m_p_t]
                    Read one line from the terminal input and out-
@@ -1871,6 +1946,25 @@ DDEESSCCRRIIPPTTIIOONN
                    carded.  If _n is omitted, it is regard as 11 is
                    specified.
 
+     ssoocckkeettiinnffoo [--aappAAPP] [_f_d]
+                   If the file descriptor specified by _f_d is a
+                   socket, the IP address and the TCP port number
+                   of the connected remote host, and the IP ad-
+                   dress and the TCP port number of the connected
+                   local host, are outputted to the standard out-
+                   put.  If _f_d is not a socket, this command will
+                   be failed.  ((UUNNIIXX))
+
+                   If _f_d is omitted, it is regarded as the stan-
+                   dard input is specified.  If --aa is specified,
+                   only the IP address of the remote host will be
+                   outputted.  If --pp is specified, only the TCP
+                   port number of the remote host will be output-
+                   ted.  If --AA is specified, only the IP address
+                   of the local host will be outputted.  If --PP is
+                   specified, only the TCP port number of the
+                   local host will be outputted.
+
      tteesstt [_e_x_p_r]
      [[ _e_x_p_r ]]      Evaluate the conditional expression _e_x_p_r.  See
                    tteesstt(1) for details.
@@ -1970,9 +2064,35 @@ DDEESSCCRRIIPPTTIIOONN
 
      _C_O_M_M_A_N_D [_a_r_g] Execute the internal command _C_O_M_M_A_N_D of ffdd.
                    You can describe each command identifier in
-                   _C_O_M_M_A_N_D.  Some internal commands can take a
-                   parameter argument _a_r_g as the number of times
-                   or the destination directory.
+                   _C_O_M_M_A_N_D.  The following internal commands can
+                   take a parameter argument _a_r_g.
+                   CCUURR__UUPP
+                   CCUURR__DDOOWWNN
+                   CCUURR__RRIIGGHHTT
+                   CCUURR__LLEEFFTT
+                   RROOLLLL__UUPP
+                   RROOLLLL__DDOOWWNN
+                   WWIIDDEENN__WWIINNDDOOWW
+                   NNAARRRROOWW__WWIINNDDOOWW  The number of lines, columns,
+                                  or pages.
+                   RREENNAAMMEE__FFIILLEE
+                   PPAACCKK__FFIILLEE
+                   BBAACCKKUUPP__TTAAPPEE    The filename.
+                   LLOOGG__DDIIRR
+                   MMAAKKEE__DDIIRR
+                   IINNFFOO__FFIILLEESSYYSS
+                   UUNNPPAACCKK__FFIILLEE    The directory name.
+                   EEXXEECCUUTTEE__SSHH     The command string.
+                   MMAARRKK__FFIINNDD
+                   FFIINNDD__FFIILLEE
+                   FFIINNDD__DDIIRR       The wildcard string.
+                   MMAARRKK__AALLLL       00 will reset the mark of all
+                                  files, the other will mark all
+                                  files.
+                   SSOORRTT__DDIIRR       The number substituted for
+                                  SSOORRTTTTYYPPEE the internal variable.
+                   EEDDIITT__CCOONNFFIIGG    The name of internal variable
+                                  to be edited.
 
      ~~ and $$ in the previous registration string are expanded.
      But these expansions are restrained in the string quoted
@@ -2054,8 +2174,18 @@ DDEESSCCRRIIPPTTIIOONN
           %%mm        Field which indicates a file creation month
                     (No concerning if numeric or alphabetical)
           %%dd        Field which indicates a file creation day
+          %%ww        Field which indicates a file creation week (ignored)
           %%tt        Field which indicates a file creation time
                     ("HH:MM:SS" form, MM and SS can be lacking)
+          %%pp        Field which indicates a file creation am/pm
+          %%BB        Field which indicates a major device ID
+          %%bb        Field which indicates a minor device ID
+          %%//_s_t_r//    Field which indicates a type is directory
+                    when this field string is _s_t_r
+                    (case insensitive)
+          %%!!_s_t_r!!    0 or more continuous fields
+                    which consists of the string _s_t_r
+                    (case insensitive)
           %%ff        Field which indicates a filename
           %%xx        Field which is needless (ignored)
           %%%%        % itself
@@ -2146,6 +2276,26 @@ DDEESSCCRRIIPPTTIIOONN
      drive name, LFN is ignored and 8+3 formed filename is treat-
      ed.  MS-DOS version inherits this specification by the case
      of a drive name.
+
+     UURRLL DDrriivvee ((UUNNIIXX))
+     You can access remote services on the network, by represent-
+     ing the URL string as the directory name.  The URL format is
+     _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::_p_o_r_t]//_d_i_r_e_c_t_o_r_y//.  You can
+     specify ffttpp or hhttttpp as _s_c_h_e_m_e.  You can specify the name or
+     IP address of the remote host as _h_o_s_t.  You can specify the
+     TCP port number as _p_o_r_t.  If _p_o_r_t is omitted, the default
+     port number is used.  The default port number for ffttpp is 2211,
+     and the default port number for hhttttpp is 8800.  You can specify
+     account informations to connect the remote host as _u_s_e_r and
+     _p_a_s_s_w_o_r_d.  If _u_s_e_r is omitted, the anonymous FTP connection
+     will be used with ffttpp, or you will be queried as needed with
+     hhttttpp.  If _p_a_s_s_w_o_r_d is omitted, you will be queried as needed.
+     But, it is necessary to set UURRLLDDRRIIVVEE the internal variable
+     which makes this function effective, in advance.
+
+     Regrettably, some internal commands cannot support the URL
+     drive, for the sake of restrictions of the FTP and HTTP pro-
+     tocols or settings of the host side.
 
      SSttrriinngg IInnppuutt
      When you input the string, such as the pathname, the follow-
@@ -2788,6 +2938,14 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    standard color palette is described with the
                    above color number as 8899662244335511888888.
 
+     AAUUTTOOUUPPDDAATTEE    Specify the interval in seconds to update auto-
+                   matically the browser screen or the tree
+                   screen.  When the key input idles for the spec-
+                   ified seconds, the current information of file
+                   list will be updated.  If this value is 00, the
+                   screen will never updated automatically.  The
+                   default value is 00.
+
      BBAASSIICCCCUUSSTTOOMM   Limit the internal variables for configuration
                    only to basic variables in the customizer, to
                    hide advanced variables.  Any value except 00
@@ -2963,6 +3121,26 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        UUTTFF88--iiccoonnvv     UTF-8 for iconv
                        default        no convert
 
+     FFTTPPAADDDDRREESSSS    Specify the mail address used as the password
+                   for anonymous FTP, when the URL drive connects
+                   the FTP host.  The default value is FFDDcclloonnee@@.
+                   ((UUNNIIXX))
+
+     FFTTPPLLOOGGFFIILLEE    Specify the filename to which communication
+                   logs are outputted, when the URL drive communi-
+                   cates with the FTP host.  If it is not specifi-
+                   ed as fullpath nor you don't prepare the direc-
+                   tory in which the log file is stored, no log
+                   will be outputted.  ((UUNNIIXX))
+
+     FFTTPPPPRROOXXYY      Specify the URL used as the proxy server, when
+                   the URL drive connects the FTP host.  The URL
+                   format is _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::
+                   _p_o_r_t].  You can specify ffttpp or hhttttpp as _s_c_h_e_m_e.
+                   You can specify account informations to con-
+                   nect the proxy server as _u_s_e_r and _p_a_s_s_w_o_r_d.
+                   The default value is not specified.  ((UUNNIIXX))
+
      FFUUNNCCLLAAYYOOUUTT    Specify the layout of the function line, as
                    the form of _n * 100 + _s_i_z_e.  _N means the num-
                    ber of function keys to be displayed in the
@@ -2970,6 +3148,11 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    function keys to be displayed.  The default
                    value is 11000055.  (It means 10 function keys
                    will be displayed, 5 of which are grouped.)
+
+     HHIIDDEEPPAASSSSWWDD    Suppress displaying ** as a replacement for the
+                   inputted letter, when the URL drive requires
+                   you to input a password.  Any value except 00
+                   and null effects valid.  ((UUNNIIXX))
 
      HHIISSTTFFIILLEE      Specify the name of the command history file
                    which can be referred by EEXXEECCUUTTEE_FFIILLEE and EEXXEE--
@@ -2992,6 +3175,28 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    specified that directory becomes the current
                    directory, otherwise your home directory is
                    automatically defined as this value.
+
+     HHTTMMLLLLOOGGFFIILLEE   Specify the filename to which received HTML
+                   data log are outputted, when the URL drive com-
+                   municates with the HTTP host.  If it is not
+                   specified as fullpath nor you don't prepare
+                   the directory in which the log file is stored,
+                   no log will be outputted.  ((UUNNIIXX))
+
+     HHTTTTPPLLOOGGFFIILLEE   Specify the filename to which communication
+                   logs are outputted, when the URL drive communi-
+                   cates with the HTTP host.  If it is not speci-
+                   fied as fullpath nor you don't prepare the di-
+                   rectory in which the log file is stored, no
+                   log will be outputted.  ((UUNNIIXX))
+
+     HHTTTTPPPPRROOXXYY     Specify the URL used as the proxy server, when
+                   the URL drive connects the HTTP host.  The URL
+                   format is _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::
+                   _p_o_r_t].  You can specify hhttttpp as _s_c_h_e_m_e.  You
+                   can specify account informations to connect
+                   the proxy server as _u_s_e_r and _p_a_s_s_w_o_r_d.  The
+                   default value is not specified.  ((UUNNIIXX))
 
      IIFFSS*          Specify the internal field separators.  They
                    are used in EEXXEECCUUTTEE_SSHH to separate command and
@@ -3133,9 +3338,14 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    following is the kind of languages, it doesn't
                    have to be the string itself and is enough to
                    contain the string, the value of LLAANNGG the envi-
-                   ronment variable also can be used.
+                   ronment variable also can be used.  Otherwise,
+                   In case of some additional message catalogs
+                   are prepared, you can specify its extension as
+                   the catalog name for MMEESSSSAAGGEELLAANNGG to replace
+                   messages.
                        eenn, CC, PPOOSSIIXX   English
-                       default        no convert
+                       jjaa             Japanese
+                       default        the value of LLAANNGGUUAAGGEE
 
      MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
                    filename display area in the file list.  When
@@ -3440,6 +3650,83 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    this if you have enough memory.  Any value
                    except 00 and null effects valid.
 
+     UURRLLDDRRIIVVEE      Validate the function of the URL drive.  Any
+                   value except 00 and null effects valid.  ((UUNNIIXX))
+
+     UURRLLKKCCOODDEE      Specify the Kanji code for filename on the
+                   host with the URL drive.  JJIISS88, JJUUNNEETT, HHEEXX,
+                   CCAAPP, etc. among them are the Kanji codes used
+                   in Samba.  ((UUNNIIXX))
+                       SSJJIISS, ssjjiiss     Shift JIS
+                       EEUUCC, eeuucc       EUC-JP
+                       JJIISS, jjiiss       7bit JIS
+                       JJIISS88, jjiiss88     8bit JIS
+                       JJUUNNEETT, jjuunneett   ISO-2022-JP
+                       OOJJIISS, oojjiiss     7bit JIS (JIS C6226-1978 + roman)
+                       OOJJIISS88, oojjiiss88   8bit JIS (JIS C6226-1978 + roman)
+                       OOJJUUNNEETT, oojjuunneett ISO-2022-JP (JIS C6226-1978 + roman)
+                       HHEEXX, hheexx       HEX
+                       CCAAPP, ccaapp       CAP
+                       UUTTFF88, uuttff88     UTF-8
+                       UUTTFF88--mmaacc, mmaacc  UTF-8 for Mac OS X
+                       UUTTFF88--iiccoonnvv     UTF-8 for iconv
+                       default        no convert
+
+     UURRLLOOPPTTIIOONNSS    Specify communication options, when the URL
+                   drive communicates with the host.  You can se-
+                   lect individually whether if PASV, PORT, MDTM,
+                   FEAT each commands for the FTP communication
+                   are limited or not, or whether if the exact
+                   file informations are need or not.  On the
+                   HTTP protocol, you will get the timestamp and
+                   size of files with some rounding error in bulk.
+                   If you need the exact informations, the opera-
+                   tions by file will spend the more communica-
+                   tion time.  The default value is 00.  The fol-
+                   lowing are specifiable values.  ((UUNNIIXX))
+                       00    standard
+                       11    PASV
+                       22            PORT
+                       33    PASV &  PORT
+                       44                    MDTM
+                       55    PASV &          MDTM
+                       66            PORT &  MDTM
+                       77    PASV &  PORT &  MDTM
+                       88                            FEAT
+                       99    PASV &                  FEAT
+                       1100           PORT &          FEAT
+                       1111   PASV &  PORT &          FEAT
+                       1122                   MDTM &  FEAT
+                       1133   PASV &          MDTM &  FEAT
+                       1144           PORT &  MDTM &  FEAT
+                       1155   PASV &  PORT &  MDTM &  FEAT
+                       1166                                   HTTP
+                       1177   PASV &                          HTTP
+                       1188           PORT &                  HTTP
+                       1199   PASV &  PORT &                  HTTP
+                       2200                   MDTM &          HTTP
+                       2211   PASV &          MDTM &          HTTP
+                       2222           PORT &  MDTM &          HTTP
+                       2233   PASV &  PORT &  MDTM &          HTTP
+                       2244                           FEAT &  HTTP
+                       2255   PASV &                  FEAT &  HTTP
+                       2266           PORT &          FEAT &  HTTP
+                       2277   PASV &  PORT &          FEAT &  HTTP
+                       2288                   MDTM &  FEAT &  HTTP
+                       2299   PASV &          MDTM &  FEAT &  HTTP
+                       3300           PORT &  MDTM &  FEAT &  HTTP
+                       3311   PASV &  PORT &  MDTM &  FEAT &  HTTP
+
+     UURRLLTTIIMMEEOOUUTT    Specify the timeout in seconds, when the URL
+                   drive communicates with the host.  If the com-
+                   munication from the host is lost for the time
+                   specified, the communication is regarded as
+                   invalid and its connection will be shutdown
+                   forcedly.  If this value is 00 second, the time-
+                   out operation is invalid to continue waiting
+                   response forever.  The default value is 00 sec-
+                   ond.  ((UUNNIIXX))
+
      UUSSEEGGEETTCCUURRSSOORR  Use the VT100 compatible escape sequence get-
                    ting the cursor position in order to get the
                    terminal size.  When the screen size of ffdd
@@ -3459,6 +3746,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    priority is always LOG_INFO.  LOG_USER is used
                    as the facirity if it can be specified.  Any
                    value except 0 and null effects valid.  ((UUNNIIXX))
+
+     VVEERRSSIIOONN       A version string of the running ffdd.
 
      WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
                    is 11, the directory is written only when the
@@ -3560,13 +3849,6 @@ FFIILLEESS
                default
 
 LLIIMMIITTAATTIIOONNSS
-     The maximum key bindings which you can register is 225566, and
-     the maximum that with the user defined macro is 6644.  The
-     maximum launchers which you can register is 3322, including
-     archive browsers.  The maximum archive commands which you
-     can register is 1166 pairs, with pack and unpack in pairs.
-     These maximum values include default builtin definitions.
-
      Some terminals cannot send the input of certain function
      keys and special keys.  The sequence compatible with VVTT220000
      is assigned as the default sequence which is not registered

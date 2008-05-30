@@ -1,77 +1,33 @@
 /*
- *	kanji.c
+ *	kconv.c
  *
  *	Kanji convert functions
  */
 
 #define	K_EXTERN
-
-#include <fcntl.h>
 #ifdef	FD
 #include "fd.h"
-#else	/* !FD */
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
-#include "printf.h"
-#include "kctype.h"
-
-#if	MSDOS
-#include "unixemu.h"
+#include "termio.h"
+#include "realpath.h"
+#include "parse.h"
+#include "func.h"
 #else
-#include <sys/file.h>
-#include <sys/param.h>
+#include "headers.h"
+#include "depend.h"
+#include "kctype.h"
+#include "typesize.h"
+#include "string.h"
 #endif
-#endif	/* !FD */
 
-#ifdef	USETIMEH
-#include <time.h>
+#include "unixemu.h"
+#include "kconv.h"
+
+#ifdef	DEP_PTY
+#include "termemu.h"
 #endif
 #if	MSDOS
 #include <io.h>
 #endif
-
-#ifdef	FD
-#include "termio.h"
-#include "func.h"
-extern int norealpath;
-# ifndef	_NOROCKRIDGE
-extern int norockridge;
-# endif
-# if	!defined (_NOKANJICONV) && !defined (_NOPTY)
-extern int parentfd;
-# endif
-#else	/* !FD */
-# ifdef	_USEUNICODE
-extern char *malloc2 __P_((ALLOC_T));
-# define	Xopen		open
-# define	Xclose(f)	((close(f)) ? -1 : 0)
-# define	sureread	read
-# endif
-#endif	/* !FD */
-
-#ifndef	L_SET
-# ifdef	SEEK_SET
-# define	L_SET		SEEK_SET
-# else
-# define	L_SET		0
-# endif
-#endif	/* !L_SET */
-#ifndef	L_INCR
-# ifdef	SEEK_CUR
-# define	L_INCR		SEEK_CUR
-# else
-# define	L_INCR		1
-# endif
-#endif	/* !L_INCR */
 
 #define	ASCII			000
 #define	KANA			001
@@ -89,8 +45,8 @@ extern char *malloc2 __P_((ALLOC_T));
 				&& ((c) == '/')) ? ' ' : (c))
 #define	jdecnv(c, io)		((((io) == L_FNAME) \
 				&& ((c) == ' ')) ? '/' : (c))
-#ifndef	O_BINARY
-#define	O_BINARY		0
+#ifndef	FD
+#define	sureread		read
 #endif
 #ifdef	CODEEUC
 #define	kencode			ujis2sjis
@@ -103,7 +59,6 @@ extern char *malloc2 __P_((ALLOC_T));
 #define	HC_HEX			0001
 #define	HC_CAP			0002
 #define	tobin(c)		h2btable[(u_char)(c)]
-#define	tohexa(c)		b2htable[(u_char)(c)]
 #define	tobin2(s, i)		(u_char)((tobin((s)[i]) << 4) \
 				| (tobin((s)[(i) + 1])))
 #define	HEXTAG			':'
@@ -137,16 +92,19 @@ typedef struct _kpathtable {
 } kpathtable;
 #endif
 
+#if	defined (FD) && !defined (_NOROCKRIDGE)
+extern int norockridge;
+#endif
+
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 static CONST char *NEAR strstr2 __P_((CONST char *, CONST char *));
 #endif
-#if	!defined (_NOKANJICONV) \
-|| (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
+#if	!defined (_NOKANJICONV) || (defined (DEP_DOSEMU) && defined (CODEEUC))
 static VOID NEAR sj2j __P_((char *, CONST u_char *));
 static VOID NEAR j2sj __P_((char *, CONST u_char *));
 #endif
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 static int NEAR openunitbl __P_((CONST char *));
 static u_char *NEAR newunitbl __P_((ALLOC_T));
 #define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
@@ -154,7 +112,7 @@ static u_char *NEAR newunitbl __P_((ALLOC_T));
 				&& sureread(f, s, n) == n)
 #endif
 #ifndef	_NOKANJICONV
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 static int NEAR opennftbl __P_((CONST char *, int, u_int *));
 # endif
 static int NEAR toenglish __P_((char *, CONST u_char *, int));
@@ -162,14 +120,14 @@ static int NEAR tojis7 __P_((char *, CONST u_char *, int, int, int, int));
 static int NEAR fromjis __P_((char *, CONST u_char *, int, int));
 static int NEAR tojis8 __P_((char *, CONST u_char *, int, int, int, int));
 static int NEAR tojunet __P_((char *, CONST u_char *, int, int, int, int));
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 static u_int NEAR toucs2 __P_((CONST u_char *, int *));
 static VOID NEAR fromucs2 __P_((char *, int *, u_int));
 static int NEAR toutf8 __P_((char *, CONST u_char *, int));
 static int NEAR fromutf8 __P_((char *, CONST u_char *, int));
 static int NEAR toutf8nf __P_((char *, CONST u_char *, int, int));
 static int NEAR fromutf8nf __P_((char *, CONST u_char *, int, int));
-# endif	/* _USEUNICODE */
+# endif	/* DEP_UNICODE */
 static int NEAR bin2hex __P_((char *, int));
 static int NEAR tohex __P_((char *, CONST u_char *, int));
 static int NEAR fromhex __P_((char *, CONST u_char *, int));
@@ -200,7 +158,7 @@ char *utf8macpath = NULL;
 char *utf8iconvpath = NULL;
 char *noconvpath = NULL;
 #endif	/* !_NOKANJIFCONV */
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 char *unitblpath = NULL;
 int unicodebuffer = 0;
 #endif
@@ -234,8 +192,7 @@ static CONST langtable langlist[] = {
 };
 #define	LANGLISTSIZ		arraysize(langlist)
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
-
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 static u_char *unitblbuf = NULL;
 static u_int unitblent = 0;
 static CONST kconv_t rsjistable[] = {
@@ -272,9 +229,8 @@ static CONST kconv_t rsjistable[] = {
 	{0xfa5b, 0x81e6, 0x01},		/* because */
 };
 #define	RSJISTBLSIZ		arraysize(rsjistable)
-#endif	/* _USEUNICODE */
-#if	!defined (_NOKANJICONV) \
-|| (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
+#endif	/* DEP_UNICODE */
+#if	!defined (_NOKANJICONV) || (defined (DEP_DOSEMU) && defined (CODEEUC))
 static CONST kconv_t convtable[] = {
 	{0xfa40, 0xeeef, 0x0a},		/* small Roman numerals */
 	{0xfa4a, 0x8754, 0x0a},		/* Roman numerals */
@@ -396,9 +352,9 @@ static CONST u_char j2sjtable3[128] = {
 	0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5,	/* 0x70 */
 	0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc,    0
 };
-#endif	/* !_NOKANJICONV || (FD && _USEDOSEMU && CODEEUC) */
+#endif	/* !_NOKANJICONV || (DEP_DOSEMU && CODEEUC) */
 #ifndef	_NOKANJICONV
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 static u_int nftblnum = 0;
 static u_int nflen = 0;
 static u_char **nftblbuf = NULL;
@@ -445,10 +401,6 @@ static CONST u_char h2btable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0xe0 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0	/* 0xf0 */
 };
-static CONST u_char b2htable[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
-};
 #endif	/* !_NOKANJICONV */
 #ifndef	_NOKANJIFCONV
 static CONST kpathtable kpathlist[] = {
@@ -469,40 +421,6 @@ static CONST kpathtable kpathlist[] = {
 };
 #define	KPATHLISTSIZ		arraysize(kpathlist)
 #endif	/* !_NOKANJIFCONV */
-
-#ifndef	FD
-int onkanji1 __P_((CONST char *, int));
-# if	!defined (_NOKANJICONV) \
-|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
-int getlang __P_((CONST char *, int));
-# endif
-# if	!defined (_NOENGMES) && !defined (_NOJPNMES)
-CONST char *mesconv __P_((CONST char *, CONST char *));
-# endif
-# if	!defined (_NOKANJICONV) \
-|| (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
-int sjis2ujis __P_((char *, CONST u_char *, int));
-int ujis2sjis __P_((char *, CONST u_char *, int));
-# endif
-# ifdef	_USEUNICODE
-VOID readunitable __P_((int));
-VOID discardunitable __P_((VOID_A));
-u_int unifysjis __P_((u_int, int));
-u_int cnvunicode __P_((u_int, int));
-VOID ucs2normalization __P_((u_short *, int *, int, u_int, int));
-u_int ucs2denormalization __P_((CONST u_short *, int *, int));
-# endif
-# ifndef	_NOKANJICONV
-#  ifdef	_USEUNICODE
-int ucs2toutf8 __P_((char *, int, u_int));
-u_int ucs2fromutf8 __P_((CONST u_char *, int));
-#  endif
-int kanjiconv __P_((char *, CONST char *, int, int, int, int));
-CONST char *kanjiconv2 __P_((char *, CONST char *, int, int, int, int));
-char *newkanjiconv __P_((CONST char *, int, int, int));
-int getoutputkcode __P_((VOID_A));
-# endif	/* !_NOKANJICONV */
-#endif	/* !FD */
 
 
 int onkanji1(s, ptr)
@@ -584,19 +502,7 @@ int io;
 }
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 
-#if	!defined (_NOENGMES) && !defined (_NOJPNMES)
-CONST char *mesconv(jpn, eng)
-CONST char *jpn, *eng;
-{
-	int n;
-
-	n = (messagelang != NOCNV) ? messagelang : outputkcode;
-	return((n == ENG) ? eng : jpn);
-}
-#endif
-
-#if	!defined (_NOKANJICONV) \
-|| (defined (FD) && defined (_USEDOSEMU) && defined (CODEEUC))
+#if	!defined (_NOKANJICONV) || (defined (DEP_DOSEMU) && defined (CODEEUC))
 static VOID NEAR sj2j(buf, s)
 char *buf;
 CONST u_char *s;
@@ -719,9 +625,9 @@ int max;
 
 	return(j);
 }
-#endif	/* !_NOKANJICONV || (FD && _USEDOSEMU && CODEEUC) */
+#endif	/* !_NOKANJICONV || (DEP_DOSEMU && CODEEUC) */
 
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 static int NEAR openunitbl(file)
 CONST char *file;
 {
@@ -737,7 +643,7 @@ CONST char *file;
 
 	if (fd >= -1) return(fd);
 
-	if (!unitblpath || !*unitblpath) strcpy(path, file);
+	if (!unitblpath || !*unitblpath) strcpy2(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
 # ifdef	FD
@@ -796,7 +702,7 @@ int nf;
 	if (!unitblbuf) {
 		if (!(tbl = newunitbl(size))) return;
 		if (!skread(fd, (off_t)2, tbl, size)) {
-			free(tbl);
+			free2(tbl);
 			VOID_C openunitbl(NULL);
 			return;
 		}
@@ -816,9 +722,9 @@ int nf;
 
 		for (i = 0; i < nftblnum; i++) {
 			if (sureread(fd, buf, 2) != 2) {
-				while (i > 0) free(tblbuf[--i]);
-				free(tblbuf);
-				free(tblent);
+				while (i > 0) free2(tblbuf[--i]);
+				free2(tblbuf);
+				free2(tblent);
 				VOID_C openunitbl(NULL);
 				return;
 			}
@@ -826,15 +732,15 @@ int nf;
 			size = (ALLOC_T)tblent[i] * (2 + nflen * 2);
 
 			if (!(tblbuf[i] = newunitbl(size))) {
-				while (i > 0) free(tblbuf[--i]);
-				free(tblbuf);
-				free(tblent);
+				while (i > 0) free2(tblbuf[--i]);
+				free2(tblbuf);
+				free2(tblent);
 				return;
 			}
 			if (sureread(fd, tblbuf[i], size) != size) {
-				while (i >= 0) free(tblbuf[i--]);
-				free(tblbuf);
-				free(tblent);
+				while (i >= 0) free2(tblbuf[i--]);
+				free2(tblbuf);
+				free2(tblent);
 				VOID_C openunitbl(NULL);
 				return;
 			}
@@ -854,20 +760,17 @@ VOID discardunitable(VOID_A)
 # endif
 
 	if (unitblbuf) {
-		free(unitblbuf);
+		free2(unitblbuf);
 		unitblbuf = NULL;
 	}
 # ifndef	_NOKANJICONV
 	if (nftblbuf) {
-		for (i = 0; i < nftblnum; i++)
-			if (nftblbuf[i]) free(nftblbuf[i]);
-		free(nftblbuf);
+		for (i = 0; i < nftblnum; i++) free2(nftblbuf[i]);
+		free2(nftblbuf);
 		nftblbuf = NULL;
 	}
-	if (nftblent) {
-		free(nftblent);
-		nftblent = NULL;
-	}
+	free2(nftblent);
+	nftblent = NULL;
 # endif	/* !_NOKANJICONV */
 }
 
@@ -1018,10 +921,10 @@ int encode;
 
 	return(r);
 }
-#endif	/* _USEUNICODE */
+#endif	/* DEP_UNICODE */
 
 #ifndef	_NOKANJICONV
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 static int NEAR opennftbl(file, nf, entp)
 CONST char *file;
 int nf;
@@ -1051,7 +954,7 @@ u_int *entp;
 
 	return(fd);
 }
-# endif	/* _USEUNICODE */
+# endif	/* DEP_UNICODE */
 
 static int NEAR toenglish(buf, s, max)
 char *buf;
@@ -1357,7 +1260,7 @@ int max, knj, asc, io;
 	return(j);
 }
 
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 VOID ucs2normalization(buf, ptrp, max, wc, nf)
 u_short *buf;
 int *ptrp, max;
@@ -1404,7 +1307,7 @@ int nf;
 		if (!w) break;
 		buf[(*ptrp)++] = w;
 	}
-	if (new) free(new);
+	free2(new);
 }
 
 u_int ucs2denormalization(buf, ptrp, nf)
@@ -1473,7 +1376,7 @@ int *ptrp, nf;
 		w = getword(cp, 0);
 		*ptrp += i;
 	}
-	if (new) free(new);
+	free2(new);
 
 	return(w);
 }
@@ -1645,8 +1548,8 @@ int max, nf;
 		j = ucs2toutf8(buf, j, u2[i]);
 	}
 
-	free(u1);
-	free(u2);
+	free2(u1);
+	free2(u2);
 	cnvunicode(0, -1);
 	if (kanjierrno) kanjierrno = DEFCODE;
 
@@ -1671,13 +1574,13 @@ int max, nf;
 	u2[j] = (u_short)0;
 	for (i = j = 0; u2[i] && j + 1 < max; i++) fromucs2(buf, &j, u2[i]);
 
-	free(u1);
-	free(u2);
+	free2(u1);
+	free2(u2);
 	cnvunicode(0, -1);
 
 	return(j);
 }
-# endif	/* _USEUNICODE */
+# endif	/* DEP_UNICODE */
 
 static int NEAR bin2hex(buf, c)
 char *buf;
@@ -1918,7 +1821,7 @@ int max, in, out, *lenp, io;
 		case O_JUNET:
 			*lenp = tojunet(buf, (u_char *)s, max, '@', 'J', io);
 			break;
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 		case UTF8:
 			*lenp = toutf8(buf, (u_char *)s, max);
 			break;
@@ -1947,7 +1850,7 @@ int max, in, out, *lenp, io;
 					*lenp = fromjis(buf, (u_char *)s,
 						max, io);
 					break;
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 				case UTF8:
 					*lenp = fromutf8(buf, (u_char *)s,
 						max);
@@ -2035,7 +1938,7 @@ CONST char *path;
 {
 	int i;
 
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	if (_dospath(path)) return(SJIS);
 # endif
 	for (i = 0; i < KPATHLISTSIZ; i++) {
@@ -2050,7 +1953,7 @@ CONST char *path;
 #ifndef	_NOKANJICONV
 int getoutputkcode(VOID_A)
 {
-# if	defined (FD) && !defined (_NOPTY)
+# ifdef	DEP_PTY
 	if (parentfd >= 0 && ptyoutkcode != NOCNV) return(ptyoutkcode);
 # endif
 	return(outputkcode);
@@ -2059,15 +1962,15 @@ int getoutputkcode(VOID_A)
 
 #ifdef	FD
 /*ARGSUSED*/
-char *convget(buf, path, dos)
+char *convget(buf, path, drv)
 char *buf, *path;
-int dos;
+int drv;
 {
 # ifndef	_NOROCKRIDGE
 	char rbuf[MAXPATHLEN];
 # endif
 # ifndef	_NOKANJIFCONV
-	int fgetok;
+	int c, fgetok;
 # endif
 	CONST char *cp;
 
@@ -2085,8 +1988,8 @@ int dos;
 # ifndef	_NOROCKRIDGE
 	if (!norockridge) cp = transpath(cp, rbuf);
 # endif
-# ifdef	_USEDOSEMU
-	if (dos) {
+# ifdef	DEP_DOSEMU
+	if (drv == DEV_DOS) {
 #  ifdef	CODEEUC
 		buf[sjis2ujis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
 		cp = buf;
@@ -2095,15 +1998,20 @@ int dos;
 		fgetok = 0;
 #  endif
 	}
-# endif	/* _USEDOSEMU */
+# endif	/* DEP_DOSEMU */
 # ifndef	_NOKANJIFCONV
-	if (fgetok)
-		cp = kanjiconv2(buf, cp,
-			MAXPATHLEN - 1, getkcode(cp), DEFCODE, L_FNAME);
-# endif
+	if (fgetok) {
+#  ifdef	DEP_URLPATH
+		if (drv == DEV_URL) c = urlkcode;
+		else
+#  endif
+		c = getkcode(cp);
+		cp = kanjiconv2(buf, cp, MAXPATHLEN - 1, c, DEFCODE, L_FNAME);
+	}
+# endif	/* !_NOKANJIFCONV */
 # ifndef	_NOROCKRIDGE
 	if (cp == rbuf) {
-		strcpy(buf, rbuf);
+		strcpy2(buf, rbuf);
 		return(buf);
 	}
 # endif
@@ -2119,7 +2027,7 @@ int needfile, rdlink;
 char *rrreal;
 int *codep;
 {
-# if	!defined (_NOKANJIFCONV) || defined (_USEDOSEMU)
+# if	!defined (_NOKANJIFCONV) || defined (DEP_DOSEMU)
 	char kbuf[MAXPATHLEN];
 # endif
 # ifndef	_NOROCKRIDGE
@@ -2127,6 +2035,9 @@ int *codep;
 # endif
 # ifndef	_NOKANJIFCONV
 	int c, fputok;
+# endif
+# ifdef	DEP_URLPATH
+	int url;
 # endif
 	CONST char *cp, *file;
 	char *tmp, rpath[MAXPATHLEN];
@@ -2136,8 +2047,11 @@ int *codep;
 	if (codep) *codep = NOCNV;
 
 	if (noconv || isdotdir(path)) {
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 		if (dospath(path, buf)) return(buf);
+# endif
+# ifdef	DEP_URLPATH
+		if (urlpath(path, NULL, buf, NULL)) return(buf);
 # endif
 		return((char *)path);
 	}
@@ -2145,6 +2059,9 @@ int *codep;
 	fputok = (nokanjifconv) ? 0 : 1;
 # endif
 
+# ifdef	DEP_URLPATH
+	url = _urlpath(path, NULL, NULL);
+# endif
 	if (needfile && strdelim(path, 0)) needfile = 0;
 	if (norealpath) cp = path;
 	else {
@@ -2154,13 +2071,18 @@ int *codep;
 				file = &(path[n]);
 			else
 # endif
+# ifdef	DEP_URLPATH
+			if (url && file < &(path[url]))
+				file = &(path[n = url]);
+			else
+# endif
 			{
 				n = file - path;
 				if (file++ == isrootdir(path)) n++;
 			}
 			strncpy2(rpath, path, n);
 		}
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 		else if ((n = _dospath(path))) {
 			file = &(path[2]);
 			VOID_C gendospath(rpath, n, '.');
@@ -2170,13 +2092,13 @@ int *codep;
 			file = path;
 			copycurpath(rpath);
 		}
-		realpath2(rpath, rpath, 1);
+		realpath2(rpath, rpath, RLP_READLINK);
 		tmp = strcatdelim(rpath);
 		strncpy2(tmp, file, MAXPATHLEN - 1 - (tmp - rpath));
 		cp = rpath;
 	}
 
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	if ((n = dospath(cp, kbuf))) {
 		cp = kbuf;
 		if (codep) *codep = SJIS;
@@ -2184,17 +2106,21 @@ int *codep;
 		fputok = 0;
 #  endif
 	}
-# endif	/* _USEDOSEMU */
+# endif	/* DEP_DOSEMU */
 # ifndef	_NOKANJIFCONV
 	if (fputok) {
+#  ifdef	DEP_URLPATH
+		if (url) c = urlkcode;
+		else
+#  endif
 		c = getkcode(cp);
 		if (codep) *codep = c;
 		cp = kanjiconv2(kbuf, cp, MAXPATHLEN - 1, DEFCODE, c, L_FNAME);
 	}
-# endif
+# endif	/* !_NOKANJIFCONV */
 # ifndef	_NOROCKRIDGE
 	if (!norockridge && (cp = detranspath(cp, rbuf)) == rbuf) {
-		if (rrreal) strcpy(rrreal, rbuf);
+		if (rrreal) strcpy2(rrreal, rbuf);
 		if (rdlink && rrreadlink(cp, buf, MAXPATHLEN - 1) >= 0) {
 			if (needfile && strdelim(buf, 0)) needfile = 0;
 			if (*buf == _SC_ || !(tmp = strrdelim(rbuf, 0)))
@@ -2204,7 +2130,7 @@ int *codep;
 				strncpy2(tmp, buf, MAXPATHLEN - (tmp - rbuf));
 				cp = rbuf;
 			}
-			realpath2(cp, rpath, 1);
+			realpath2(cp, rpath, RLP_READLINK);
 			cp = detranspath(rpath, rbuf);
 		}
 	}
@@ -2213,12 +2139,12 @@ int *codep;
 	if (needfile && (file = strrdelim(cp, 0))) file++;
 	else file = cp;
 
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	if (isalpha2(n) && !_dospath(file)) tmp = gendospath(buf, n, '\0');
 	else
 # endif
 	tmp = buf;
-	strcpy(tmp, file);
+	strcpy2(tmp, file);
 
 	return(buf);
 }

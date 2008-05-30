@@ -5,14 +5,15 @@
  */
 
 #include "fd.h"
+#include "parse.h"
 #include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 #include "system.h"
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 #include "termemu.h"
 #endif
 
@@ -48,12 +49,8 @@ extern int sizeinfo;
 extern int wheader;
 extern char fullpath[];
 extern int hideclock;
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 extern int fdmode;
-#endif
-#ifndef	_NOPTY
-extern int ptymode;
-extern int ptyinternal;
 #endif
 
 static VOID NEAR replacefname __P_((char *));
@@ -106,7 +103,7 @@ static int help_message __P_((CONST char *));
 #ifndef	_NOCUSTOMIZE
 static int edit_config __P_((CONST char *));
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 static int NEAR confirmpty __P_((VOID_A));
 #endif
 static int quit_system __P_((CONST char *));
@@ -172,7 +169,20 @@ int writefs = 0;
 int loopcursor = 0;
 #endif
 int internal_status = FNC_FAIL;
-bindtable bindlist[MAXBINDTABLE] = {
+int maxbind = 0;
+#ifndef	_NOCUSTOMIZE
+int origmaxbind = 0;
+#endif
+#ifdef	DEP_DYNAMICLIST
+bindlist_t bindlist = NULL;
+origbindlist_t origbindlist
+#else	/* !DEP_DYNAMICLIST */
+# ifndef	_NOCUSTOMIZE
+origbindlist_t origbindlist = NULL;
+# endif
+bindlist_t bindlist
+#endif	/* !DEP_DYNAMICLIST */
+= {
 	{K_UP,		CUR_UP,		FNO_NONE},
 	{K_DOWN,	CUR_DOWN,	FNO_NONE},
 	{K_RIGHT,	CUR_RIGHT,	FNO_NONE},
@@ -321,7 +331,7 @@ bindtable bindlist[MAXBINDTABLE] = {
 static VOID NEAR replacefname(name)
 char *name;
 {
-	if (filepos < maxfile) free(filelist[filepos].name);
+	if (filepos < maxfile) free2(filelist[filepos].name);
 	else for (maxfile = 0; maxfile < filepos; maxfile++)
 		if (!filelist[maxfile].name)
 			filelist[maxfile].name = strdup2(nullstr);
@@ -519,7 +529,7 @@ static int fname_left(arg)
 CONST char *arg;
 {
 #ifndef	NOSYMLINK
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 # endif
 	char tmp[MAXPATHLEN];
@@ -534,7 +544,7 @@ CONST char *arg;
 			else {
 				i = strlen(filelist[filepos].linkname);
 				if (i > strsize(tmp)) i = strsize(tmp);
-				strncpy(tmp, filelist[filepos].linkname, i);
+				strncpy2(tmp, filelist[filepos].linkname, i);
 			}
 		}
 		else
@@ -713,12 +723,12 @@ CONST char *mes, *arg;
 	else if (!(wild = inputstr(mes, 0, 0, "*", -1))) return(NULL);
 	if (!*wild || strdelim(wild, 1)) {
 		warning(ENOENT, wild);
-		free(wild);
+		free2(wild);
 		return(NULL);
 	}
 
 	re = regexp_init(wild, -1);
-	free(wild);
+	free2(wild);
 
 	return(re);
 }
@@ -857,17 +867,17 @@ CONST char *arg;
 	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(path = evalpath(path, 0))) {
-		free(path);
+		free2(path);
 		return(FNC_CANCEL);
 	}
 #ifndef	_NOARCHIVE
 	if (archivefile && *path != '/') {
 		if (!(cp = archchdir(path))) {
 			warning(-1, path);
-			free(path);
+			free2(path);
 			return(FNC_CANCEL);
 		}
-		free(path);
+		free2(path);
 		if (cp != (char *)-1) filelist[filepos].name = (char *)cp;
 		else escapearch();
 		return(FNC_EFFECT);
@@ -876,13 +886,13 @@ CONST char *arg;
 #endif
 	if (chdir3(path, 0) < 0) {
 		warning(-1, path);
-		free(path);
+		free2(path);
 		return(FNC_CANCEL);
 	}
-	free(path);
+	free2(path);
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		strcpy(dupfullpath, fullpath);
+		strcpy2(dupfullpath, fullpath);
 		while (archivefile) {
 # ifdef	_NOBROWSE
 			escapearch();
@@ -892,7 +902,7 @@ CONST char *arg;
 			} while (browselist);
 # endif
 		}
-		strcpy(fullpath, dupfullpath);
+		strcpy2(fullpath, dupfullpath);
 	}
 #endif
 	replacefname(NULL);
@@ -915,7 +925,7 @@ CONST char *arg;
 
 static VOID NEAR clearscreen(VOID_A)
 {
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	int i, yy;
 
 	if (isptymode()) {
@@ -926,7 +936,7 @@ static VOID NEAR clearscreen(VOID_A)
 		}
 	}
 	else
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */
 	Xputterms(T_CLEAR);
 	Xtflush();
 }
@@ -935,7 +945,7 @@ static VOID NEAR clearscreen(VOID_A)
 static VOID NEAR dump(file)
 CONST char *file;
 {
-	FILE *fp;
+	XFILE *fp;
 	char *buf, *prompt;
 	int i, len, min, max;
 
@@ -947,7 +957,7 @@ CONST char *file;
 
 	min = 0;
 	max = n_line - 1;
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	if (isptymode()) {
 		min = filetop(win);
 		max = min + FILEPERROW;
@@ -964,11 +974,11 @@ CONST char *file;
 	strcat(prompt, buf);
 
 	i = min;
-	while ((buf = fgets2(fp, 0))) {
+	while ((buf = Xfgets(fp))) {
 		Xlocate(0, i);
 		Xputterm(L_CLEAR);
 		Xcprintf2("%.*k", n_column, buf);
-		free(buf);
+		free2(buf);
 		if (++i >= max) {
 			i = min;
 			hideclock = 1;
@@ -983,7 +993,7 @@ CONST char *file;
 		}
 	}
 	Xfclose(fp);
-	free(prompt);
+	free2(prompt);
 }
 #endif	/* !PAGER */
 
@@ -1004,7 +1014,7 @@ static int NEAR execshell(VOID_A)
 #if	MSDOS
 	char *sh2;
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	int x, y, min, max;
 #endif
 	char *sh;
@@ -1015,19 +1025,19 @@ static int NEAR execshell(VOID_A)
 #else
 	if (!(sh = getenv2("FD_SHELL"))) sh = "/bin/sh";
 #endif
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	else if (!strpathcmp(getshellname(sh, NULL, NULL), FDSHELL)) sh = NULL;
 #endif
 
 #if	MSDOS
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 	if (!sh) /*EMPTY*/;
 	else
 # endif
 	if ((sh2 = getenv2("FD_COMSPEC"))) sh = sh2;
 #endif	/* MSDOS */
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (!sh && !fdmode) {
 		warning(0, RECUR_K);
 		return(-1);
@@ -1038,7 +1048,7 @@ static int NEAR execshell(VOID_A)
 	mode = Xtermmode(0);
 	wastty = isttyiomode;
 	kanjiputs(SHEXT_K);
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	if (isptymode()) {
 		min = filetop(win);
 		max = min + FILEPERROW;
@@ -1048,12 +1058,12 @@ static int NEAR execshell(VOID_A)
 		regionscroll(C_SCROLLFORW, 1, 0, y, min, max - 1);
 	}
 	else
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */
 	Xcputnl();
 	Xtflush();
 	if (isttyiomode) Xstdiomode();
 	ret = ptysystem(sh);
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 	checkscreen(-1, -1);
 #endif
 	if (wastty) Xttyiomode(wastty - 1);
@@ -1067,17 +1077,17 @@ static int NEAR execshell(VOID_A)
 static int view_file(arg)
 CONST char *arg;
 {
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || defined (DEP_PSEUDOPATH)
 	char *dir;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	int drive;
 #endif
 
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || defined (DEP_PSEUDOPATH)
 	dir = NULL;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	drive = 0;
 #endif
 	if (isdir(&(filelist[filepos]))) return(FNC_CANCEL);
@@ -1086,7 +1096,7 @@ CONST char *arg;
 		if (!(dir = tmpunpack(1))) return(FNC_CANCEL);
 	}
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	else if ((drive = tmpdosdupl(nullstr, &dir, 1)) < 0)
 		return(FNC_CANCEL);
 #endif
@@ -1103,7 +1113,7 @@ CONST char *arg;
 #endif
 	}
 
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	if (drive) removetmp(dir, filelist[filepos].name);
 	else
 #endif
@@ -1119,7 +1129,7 @@ CONST char *arg;
 static int edit_file(arg)
 CONST char *arg;
 {
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	char *dir;
 	int drive;
 
@@ -1130,7 +1140,7 @@ CONST char *arg;
 #ifndef	_NOARCHIVE
 	if (archivefile) return(FNC_CANCEL);
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	if ((drive = tmpdosdupl(nullstr, &dir, 1)) < 0) return(FNC_CANCEL);
 #endif
 	if (!execenv("FD_EDITOR", filelist[filepos].name)) {
@@ -1139,7 +1149,7 @@ CONST char *arg;
 			F_NOCONFIRM | F_IGNORELIST);
 #endif
 	}
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	if (drive) {
 		if (tmpdosrestore(drive, filelist[filepos].name) < 0)
 			warning(-1, filelist[filepos].name);
@@ -1211,7 +1221,7 @@ CONST char *arg;
 			tmp1 = filelist[i].ent;
 			filelist[i].ent = dupl[tmp1];
 		}
-		free(dupl);
+		free2(dupl);
 		chgorder = 1;
 	}
 
@@ -1242,12 +1252,12 @@ CONST char *arg;
 static int reread_dir(arg)
 CONST char *arg;
 {
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	int drive;
 #endif
 
 	checkscreen(WCOLUMNMIN, WHEADERMAX + WFOOTER + WFILEMIN);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	if ((drive = dospath3(nullstr))) flushdrv(drive, NULL);
 #endif
 
@@ -1255,15 +1265,14 @@ CONST char *arg;
 }
 
 #ifndef	_NOCUSTOMIZE
-/*ARGSUSED*/
 static int edit_config(arg)
 CONST char *arg;
 {
-	if (FILEPERROW < WFILEMINCUSTOM) {
+	if (!arg && FILEPERROW < WFILEMINCUSTOM) {
 		warning(0, NOROW_K);
 		return(FNC_CANCEL);
 	}
-	customize();
+	if (customize(arg) <= 0) return(FNC_CANCEL);
 
 	return(FNC_EFFECT);
 }
@@ -1282,7 +1291,7 @@ CONST char *arg;
 	return(FNC_UPDATE);
 }
 
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 static int NEAR confirmpty(VOID_A)
 {
 	int i;
@@ -1293,13 +1302,13 @@ static int NEAR confirmpty(VOID_A)
 
 	return(0);
 }
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */
 
 /*ARGSUSED*/
 static int quit_system(arg)
 CONST char *arg;
 {
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	CONST char *str[3];
 	int val[3];
 #endif
@@ -1310,7 +1319,7 @@ CONST char *arg;
 #endif
 	n = 0;
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (!fdmode) {
 		Xlocate(0, L_MESLINE);
 		Xputterm(L_CLEAR);
@@ -1325,10 +1334,10 @@ CONST char *arg;
 			return(FNC_CANCEL);
 	}
 	else
-#endif	/* !_NOORIGSHELL */
+#endif	/* DEP_ORIGSHELL */
 	if (!yesno(QUIT_K)) return(FNC_CANCEL);
 
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	if (confirmpty()) return(FNC_CANCEL);
 #endif
 
@@ -1344,12 +1353,12 @@ CONST char *arg;
 	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(path = evalpath(path, 0))) {
-		free(path);
+		free2(path);
 		return(FNC_CANCEL);
 	}
 
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
-	free(path);
+	free2(path);
 
 	return(FNC_EFFECT);
 }
@@ -1387,7 +1396,7 @@ CONST char *arg;
 static int rename_file(arg)
 CONST char *arg;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 	char *file;
@@ -1398,7 +1407,7 @@ CONST char *arg;
 		errno = EEXIST;
 		if (Xaccess(file, F_OK) >= 0 || errno != ENOENT) {
 			warning(-1, file);
-			free(file);
+			free2(file);
 			return(FNC_CANCEL);
 		}
 	}
@@ -1410,16 +1419,16 @@ CONST char *arg;
 			warning(-1, file);
 		}
 		else warning(0, WRONG_K);
-		free(file);
+		free2(file);
 	}
 
 	if (Xrename(fnodospath(path, filepos), file) < 0) {
 		warning(-1, file);
-		free(file);
+		free2(file);
 		return(FNC_CANCEL);
 	}
 	if (strdelim(file, 0)) {
-		free(file);
+		free2(file);
 		file = strdup2(parentpath);
 	}
 	replacefname(file);
@@ -1455,7 +1464,7 @@ CONST char *arg;
 static int delete_dir(arg)
 CONST char *arg;
 {
-#if	!defined (NOSYMLINK) && !defined (_NODOSDRIVE)
+#if	!defined (NOSYMLINK) && defined (DEP_DOSEMU)
 	char path[MAXPATHLEN];
 #endif
 	CONST char *cp;
@@ -1501,13 +1510,13 @@ CONST char *arg;
 #endif
 	if (strdelim(wild, 1)) {
 		warning(ENOENT, wild);
-		free(wild);
+		free2(wild);
 		return(FNC_CANCEL);
 	}
-	if (findpattern) free(findpattern);
+	free2(findpattern);
 	if (*wild) findpattern = wild;
 	else {
-		free(wild);
+		free2(wild);
 		findpattern = NULL;
 	}
 
@@ -1535,7 +1544,7 @@ CONST char *arg;
 	}
 
 	replacefname(strdup2(tmp));
-	free(destpath);
+	free2(destpath);
 
 	return(FNC_EFFECT);
 }
@@ -1571,7 +1580,7 @@ CONST char *arg;
 		execshell();
 		ret = FNC_EFFECT;
 	}
-	free(com);
+	free2(com);
 
 	return(ret);
 }
@@ -1580,13 +1589,13 @@ CONST char *arg;
 static int execute_file(arg)
 CONST char *arg;
 {
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || defined (DEP_PSEUDOPATH)
 	char *dir;
 #endif
 #ifndef	CWDINPATH
 	char *tmp;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	int drive;
 #endif
 	char *com;
@@ -1596,10 +1605,10 @@ CONST char *arg;
 	if (browselist) return(warning_bell(arg));
 #endif
 
-#if	!defined (_NOARCHIVE) || !defined (_NODOSDRIVE)
+#if	!defined (_NOARCHIVE) || defined (DEP_PSEUDOPATH)
 	dir = NULL;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	drive = 0;
 #endif
 #ifdef	CWDINPATH
@@ -1618,17 +1627,17 @@ CONST char *arg;
 		tmp = malloc2(len + 1);
 		tmp[0] = '.';
 		tmp[1] = _SC_;
-		strcpy(&(tmp[2]), filelist[filepos].name);
+		strcpy2(&(tmp[2]), filelist[filepos].name);
 	}
 	Xttyiomode(1);
 	com = inputshellloop(len, tmp);
 	Xttyiomode(0);
-	if (tmp != filelist[filepos].name) free(tmp);
+	if (tmp != filelist[filepos].name) free2(tmp);
 #endif
 	if (!com) return(FNC_CANCEL);
 	if (!*com) {
 		execshell();
-		free(com);
+		free2(com);
 		return(FNC_EFFECT);
 	}
 
@@ -1643,7 +1652,7 @@ CONST char *arg;
 	}
 	else
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	if ((drive = tmpdosdupl(nullstr, &dir, 1)) < 0) ret = -1;
 	else if (drive) {
 		ret = ptyusercomm(com, filelist[filepos].name,
@@ -1656,7 +1665,7 @@ CONST char *arg;
 		ret = ptyusercomm(com, filelist[filepos].name, F_ARGSET);
 	}
 	ret = evalstatus(ret);
-	free(com);
+	free2(com);
 
 	return(ret);
 }
@@ -1680,12 +1689,12 @@ CONST char *arg;
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(file = evalpath(file, 0))) {
-		free(file);
+		free2(file);
 		return(FNC_CANCEL);
 	}
 
 	ret = pack(file);
-	free(file);
+	free2(file);
 	if (ret < 0) {
 		Xputterm(T_BELL);
 		return(FNC_CANCEL);
@@ -1698,7 +1707,7 @@ CONST char *arg;
 static int unpack_file(arg)
 CONST char *arg;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int ret;
@@ -1718,7 +1727,7 @@ CONST char *arg;
 static int unpack_tree(arg)
 CONST char *arg;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int ret;
@@ -1748,12 +1757,12 @@ CONST char *arg;
 	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(path = evalpath(path, 0))) {
-		free(path);
+		free2(path);
 		path = strdup2(curpath);
 	}
 
 	ret = infofs(path);
-	free(path);
+	free2(path);
 	if (!ret) return(FNC_CANCEL);
 
 	return(FNC_HELPSPOT);
@@ -1857,11 +1866,11 @@ CONST char *arg;
 	if (!(path = tree(0, NULL))) return(FNC_UPDATE);
 	if (chdir3(path, 1) < 0) {
 		warning(-1, path);
-		free(path);
+		free2(path);
 		return(FNC_UPDATE);
 	}
-	free(path);
-	if (findpattern) free(findpattern);
+	free2(path);
+	free2(findpattern);
 	findpattern = NULL;
 	replacefname(NULL);
 
@@ -1874,7 +1883,7 @@ static int backup_tape(arg)
 CONST char *arg;
 {
 	char *dir, *dev;
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	int drive;
 #endif
 	int ret;
@@ -1884,7 +1893,7 @@ CONST char *arg;
 #endif
 
 	dir = NULL;
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	drive = 0;
 #endif
 	if (arg && *arg) dev = strdup2(arg);
@@ -1896,30 +1905,30 @@ CONST char *arg;
 		return(FNC_CANCEL);
 #endif
 	else if (!*(dev = evalpath(dev, 0))) {
-		free(dev);
+		free2(dev);
 		return(FNC_CANCEL);
 	}
 	else if (archivefile) {
 		if (!(dir = tmpunpack(0))) {
-			free(dev);
+			free2(dev);
 			return(FNC_CANCEL);
 		}
 	}
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	else if ((drive = tmpdosdupl(nullstr, &dir, 0)) < 0) {
-		free(dev);
+		free2(dev);
 		return(FNC_CANCEL);
 	}
 #endif
 
 	ret = backup(dev);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	if (drive) removetmp(dir, NULL);
 	else
 #endif
 	if (archivefile) removetmp(dir, NULL);
 
-	free(dev);
+	free2(dev);
 	if (ret <= 0) return(FNC_CANCEL);
 
 	return(FNC_EFFECT);
@@ -1968,7 +1977,7 @@ int oldwin;
 	if (filelist) return;
 	maxfile = winvar[oldwin].v_maxfile;
 	i = ((maxfile) ? maxfile : 1) * sizeof(namelist);
-	addlist();
+	filelist = addlist(filelist, maxfile, &maxent);
 	memcpy((char *)filelist, (char *)(winvar[oldwin].v_filelist), i);
 	for (i = 0; i < winvar[oldwin].v_maxfile; i++)
 		filelist[i].name = strdup2(winvar[oldwin].v_filelist[i].name);
@@ -1980,14 +1989,14 @@ int oldwin;
 static VOID NEAR movewin(oldwin)
 int oldwin;
 {
-	if (winvar[oldwin].v_fullpath) free(winvar[oldwin].v_fullpath);
+	free2(winvar[oldwin].v_fullpath);
 	winvar[oldwin].v_fullpath = strdup2(fullpath);
-	if (winvar[win].v_fullpath) strcpy(fullpath, winvar[win].v_fullpath);
+	if (winvar[win].v_fullpath) strcpy2(fullpath, winvar[win].v_fullpath);
 # ifndef	_NOARCHIVE
-	if (winvar[oldwin].v_archivedir) free(winvar[oldwin].v_archivedir);
+	free2(winvar[oldwin].v_archivedir);
 	winvar[oldwin].v_archivedir = strdup2(archivedir);
 	if (winvar[win].v_archivedir)
-		strcpy(archivedir, winvar[win].v_archivedir);
+		strcpy2(archivedir, winvar[win].v_archivedir);
 # endif
 }
 
@@ -2015,7 +2024,7 @@ CONST char *arg;
 	oldwin = win;
 	if (windows >= MAXWINDOWS) {
 # ifdef	_NOEXTRAWIN
-#  ifndef	_NOPTY
+#  ifdef	DEP_PTY
 		if (confirmpty()) return(FNC_CANCEL);
 #  endif
 		if (win > 0) {
@@ -2024,7 +2033,7 @@ CONST char *arg;
 			duplwin(oldwin);
 		}
 		for (i = 1; i < windows; i++) shutwin(i);
-#  ifndef	_NOPTY
+#  ifdef	DEP_PTY
 		killallpty();
 #  endif
 		windows = 1;
@@ -2061,7 +2070,7 @@ CONST char *arg;
 		winvar[oldwin].v_fileperrow = i;
 # endif
 
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 		insertwin(win, windows);
 		changewsize(wheader, windows);
 # endif
@@ -2077,7 +2086,7 @@ static int next_window(arg)
 CONST char *arg;
 {
 	if (nextwin() < 0) return(FNC_NONE);
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	if (!ptyinternal && ptylist[win].pid && ptylist[win].status < 0) {
 		rewritefile(0);
 		VOID_C frontend();
@@ -2104,7 +2113,7 @@ CONST char *arg;
 
 	winvar[next].v_fileperrow -= n;
 	winvar[win].v_fileperrow += n;
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	changewsize(wheader, windows);
 # endif
 
@@ -2124,7 +2133,7 @@ CONST char *arg;
 
 	winvar[next].v_fileperrow += n;
 	winvar[win].v_fileperrow -= n;
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	changewsize(wheader, windows);
 # endif
 
@@ -2147,7 +2156,7 @@ CONST char *arg;
 	if ((prev = win - 1) < 0) prev = windows - 1;
 	winvar[prev].v_fileperrow += winvar[windows].v_fileperrow + 1;
 
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	deletewin(win, windows);
 	changewsize(wheader, windows);
 # endif
@@ -2158,7 +2167,7 @@ CONST char *arg;
 	shutwin(windows);
 	if (chdir3(fullpath, 1) < 0) lostcwd(fullpath);
 
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	if (!ptyinternal && ptylist[win].pid && ptylist[win].status < 0) {
 		rewritefile(0);
 		VOID_C frontend();

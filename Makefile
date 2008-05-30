@@ -2,7 +2,7 @@
 #	Makefile for fd
 #
 
-VERSION	= 2
+VERSION	= 3
 VERMAJ	= $(VERSION)
 PREFIX	= /usr/local
 CONFDIR	= /etc
@@ -90,11 +90,7 @@ mkmfsed: mkmfsed.c fd.h machine.h config.h version.h
 	$(HOSTCC) $(CFLAGS) $(CPPFLAGS) $(DEFCFLAGS) -o $@ mkmfsed.c
 
 fd.h:
-	-if [ ! -f $@ ]; then \
-		echo '#include <stdio.h>' > fd.h; \
-		echo '#include <string.h>' >> fd.h; \
-		echo '#include "machine.h"' >> fd.h; \
-	fi
+	-[ -f $@ ] || cp headers.h $@
 
 config.h: config.hin
 	cp config.hin config.h
@@ -103,7 +99,7 @@ install catman catman-b compman compman-b \
 jcatman jcatman-b jcompman jcompman-b: Makefile.tmp
 	$(MAKE) BUILD=$(BUILD) -f Makefile.tmp $@
 
-sh bsh \
+sh bsh nsh \
 fd.doc README.doc HISTORY.doc FAQ.doc LICENSES.doc \
 depend: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@

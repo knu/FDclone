@@ -7,13 +7,8 @@
 #ifndef	__KCTYPE_H_
 #define	__KCTYPE_H_
 
+#include "depend.h"
 #include <ctype.h>
-
-#ifndef	__SYS_TYPES_STAT_H_
-#define	__SYS_TYPES_STAT_H_
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
 
 #ifdef	K_EXTERN
 #define	K_INTERN
@@ -44,6 +39,11 @@
 #define	isspace2(c)		isspace((u_char)(c))
 #define	isprint2(c)		isprint((u_char)(c))
 #define	isblank2(c)		((c) == ' ' || (c) == '\t')
+#define	isutf2(c1, c2)		((((u_char)(c1) & 0xe0) == 0xc0) \
+				&& ((u_char)(c2) & 0xc0) == 0x80)
+#define	isutf3(c1, c2, c3)	(((u_char)(c1) & 0xf0) == 0xe0 \
+				&& ((u_char)(c2) & 0xc0) == 0x80 \
+				&& ((u_char)(c3) & 0xc0) == 0x80)
 #else	/* !LSI_C */
 K_EXTERN CONST u_char uppercase[256]
 #ifdef	K_INTERN
@@ -156,32 +156,32 @@ K_EXTERN CONST u_char kctypetable[256]
 = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
-	   0, 0060, 0060, 0060, 0060, 0060, 0060, 0060,	/* 0x20 */
-	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,
-	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,	/* 0x30 */
-	0060, 0060, 0060, 0060, 0060, 0060, 0060, 0060,
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,	/* 0x40 */
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,	/* 0x50 */
-	0062, 0062, 0062, 0062, 0062, 0062, 0062, 0062,
+	   0, 0020, 0020, 0020, 0020, 0020, 0020, 0020,	/* 0x20 */
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,	/* 0x30 */
+	0020, 0020, 0020, 0020, 0020, 0020, 0020, 0020,
+	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x40 */
+	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,
+	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x50 */
+	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,
 	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x60 */
 	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,
 	0022, 0022, 0022, 0022, 0022, 0022, 0022, 0022,	/* 0x70 */
 	0022, 0022, 0022, 0022, 0022, 0022, 0022,    0,
-	0002, 0003, 0003, 0003, 0003, 0003, 0003, 0003,	/* 0x80 */
-	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,
-	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,	/* 0x90 */
-	0003, 0003, 0003, 0003, 0003, 0003, 0003, 0003,
-	0002, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xa0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xb0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xc0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,	/* 0xd0 */
-	0016, 0016, 0016, 0016, 0016, 0016, 0016, 0016,
-	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,	/* 0xe0 */
-	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,
+	0042, 0043, 0043, 0043, 0043, 0043, 0043, 0043,	/* 0x80 */
+	0043, 0043, 0043, 0043, 0043, 0043, 0043, 0043,
+	0043, 0043, 0043, 0043, 0043, 0043, 0043, 0043,	/* 0x90 */
+	0043, 0043, 0043, 0043, 0043, 0043, 0043, 0043,
+	0042, 0056, 0056, 0056, 0056, 0056, 0056, 0056,	/* 0xa0 */
+	0056, 0056, 0056, 0056, 0056, 0056, 0056, 0056,
+	0056, 0056, 0056, 0056, 0056, 0056, 0056, 0056,	/* 0xb0 */
+	0056, 0056, 0056, 0056, 0056, 0056, 0056, 0056,
+	0116, 0116, 0116, 0116, 0116, 0116, 0116, 0116,	/* 0xc0 */
+	0116, 0116, 0116, 0116, 0116, 0116, 0116, 0116,
+	0116, 0116, 0116, 0116, 0116, 0116, 0116, 0116,	/* 0xd0 */
+	0116, 0116, 0116, 0116, 0116, 0116, 0116, 0116,
+	0213, 0213, 0213, 0213, 0213, 0213, 0213, 0213,	/* 0xe0 */
+	0213, 0213, 0213, 0213, 0213, 0213, 0213, 0213,
 	0013, 0013, 0013, 0013, 0013, 0013, 0013, 0013,	/* 0xf0 */
 	0013, 0013, 0013, 0013, 0013, 0010, 0010,    0
 }
@@ -213,7 +213,9 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	KC_KANA			0004
 #define	KC_EUCJP		0010
 #define	KC_JIS			0020
-#define	KC_JKANA		0040
+#define	KC_UTFN			0040
+#define	KC_UTF2			0100
+#define	KC_UTF3			0200
 #define	iskana2(c)		(kctypetable[(u_char)(c)] & KC_KANA)
 #ifndef	issjis1
 #define	issjis1(c)		(kctypetable[(u_char)(c)] & KC_SJIS1)
@@ -227,22 +229,32 @@ K_EXTERN CONST u_char kctypetable[256]
 #ifndef	isjis
 #define	isjis(c)		(kctypetable[(u_char)(c)] & KC_JIS)
 #endif
+#define	isutf2(c1, c2)		((kctypetable[(u_char)(c1)] & KC_UTF2) \
+				&& (kctypetable[(u_char)(c2)] & KC_UTFN))
+#define	isutf3(c1, c2, c3)	((kctypetable[(u_char)(c1)] & KC_UTF3) \
+				&& (kctypetable[(u_char)(c2)] & KC_UTFN) \
+				&& (kctypetable[(u_char)(c3)] & KC_UTFN))
 #endif	/* !LSI_C */
 
 #define	ismsb(c)		(((u_char)(c)) & 0x80)
 #define	isekana(s, i)		((u_char)((s)[i]) == C_EKANA \
 				&& iskana2((s)[(i) + 1]))
 #define	isskana(s, i)		iskana2((s)[i])
-#define	isjkana(s, i)		(kctypetable[(u_char)((s)[i])] & KC_JKANA)
-
-#define	isutf2(c1, c2)		((((u_char)(c1) & 0xe0) == 0xc0) \
-				&& ((u_char)(c2) & 0xc0) == 0x80)
-#define	isutf3(c1, c2, c3) \
-				(((u_char)(c1) & 0xf0) == 0xe0 \
-				&& ((u_char)(c2) & 0xc0) == 0x80 \
-				&& ((u_char)(c3) & 0xc0) == 0x80)
+#define	isjkana(s, i)		iskana2(((s)[i]) ^ 0x80)
 #define	iswucs2(u)		(((u) & 0xff00) \
 				&& ((u) < 0xff61 || (u) > 0xff9f))
+
+#ifndef	MINIMUMSHELL
+K_EXTERN CONST u_char b2htable[16]
+#ifdef	K_INTERN
+= {
+	'0', '1', '2', '3', '4', '5', '6', '7',
+	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+}
+#endif
+;
+#define	tohexa(c)		b2htable[(u_char)(c)]
+#endif	/* !MINIMUMSHELL */
 
 #define	NOCNV			0
 #define	ENG			1
@@ -275,15 +287,6 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	MAXUTF8LEN		3
 #define	MAXNFLEN		4
 
-#ifdef	NOMULTIKANJI
-#define	_NOKANJICONV
-#define	_NOKANJIFCONV
-#endif
-
-#if	defined (_NOKANJICONV) && !defined (_NOKANJIFCONV)
-#define	_NOKANJIFCONV
-#endif
-
 #if	!defined (_NOKANJICONV) || (defined (FD) && !defined (_NODOSDRIVE))
 K_EXTERN int kanjierrno K_INIT(0);
 #endif
@@ -299,7 +302,7 @@ K_EXTERN int inputkcode K_INIT(NOCNV);
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 K_EXTERN int outputkcode K_INIT(NOCNV);
 #endif
-#if	!defined (_NOKANJICONV) && !defined (_NOPTY)
+#if	!defined (_NOKANJICONV) && defined (DEP_PTY)
 K_EXTERN int ptyinkcode K_INIT(NOCNV);
 K_EXTERN int ptyoutkcode K_INIT(NOCNV);
 #endif

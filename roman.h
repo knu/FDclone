@@ -27,3 +27,6 @@ extern int jis2str __P_((char *, u_int));
 extern int str2jis __P_((u_short *, int, CONST char *));
 extern int addroman __P_((CONST char *, CONST char *));
 extern VOID freeroman __P_((int));
+
+extern romantable *romanlist;
+extern int maxromanlist;

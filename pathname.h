@@ -7,11 +7,8 @@
 #ifndef	__PATHNAME_H_
 #define	__PATHNAME_H_
 
-#ifndef	__SYS_TYPES_STAT_H_
-#define	__SYS_TYPES_STAT_H_
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
+#include "depend.h"
+#include "typesize.h"
 
 /* #define BASHSTYLE		; rather near to bash style */
 /* #define MINIMUMSHELL		; omit verbose extension from Bourne shell */
@@ -25,31 +22,9 @@
 #undef	DOUBLESLASH
 #endif
 
-#undef	S_IRUSR
-#undef	S_IWUSR
-#undef	S_IXUSR
-#undef	S_IRGRP
-#undef	S_IWGRP
-#undef	S_IXGRP
-#undef	S_IROTH
-#undef	S_IWOTH
-#undef	S_IXOTH
-#define	S_IRUSR			00400
-#define	S_IWUSR			00200
-#define	S_IXUSR			00100
-#define	S_IRGRP			00040
-#define	S_IWGRP			00020
-#define	S_IXGRP			00010
-#define	S_IROTH			00004
-#define	S_IWOTH			00002
-#define	S_IXOTH			00001
-#define	S_IREAD_ALL		(S_IRUSR | S_IRGRP | S_IROTH)
-#define	S_IWRITE_ALL		(S_IWUSR | S_IWGRP | S_IWOTH)
-#define	S_IEXEC_ALL		(S_IXUSR | S_IXGRP | S_IXOTH)
-
 #define	IFS_SET			" \t\n"
 #define	META			'\\'
-#if	MSDOS && defined (_NOORIGSHELL)
+#if	MSDOS && !defined (DEP_ORIGSHELL)
 #define	PATHDELIM		';'
 #else
 #define	PATHDELIM		':'
@@ -75,17 +50,17 @@
 # endif
 #define	DQ_METACHAR		"\"$\\`"
 #else	/* BSPATHDELIM */
-# ifdef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
+# define	PMETA		'%'
+# define	RMSUFFIX	'\\'
+# define	METACHAR	"\t\r\n !\"#$%&'()*;<=>?[]`|"
+# define	DQ_METACHAR	"\"$%`"
+# else
 # define	FAKEMETA
 # define	PMETA		'$'
 # define	RMSUFFIX	'%'
 # define	METACHAR	"\t\r\n !\"$'*<>?|"
 # define	DQ_METACHAR	"\"$"
-# else
-# define	PMETA		'%'
-# define	RMSUFFIX	'\\'
-# define	METACHAR	"\t\r\n !\"#$%&'()*;<=>?[]`|"
-# define	DQ_METACHAR	"\"$%`"
 # endif
 #endif	/* BSPATHDELIM */
 
@@ -183,12 +158,6 @@ typedef u_short			uid_t;
 typedef u_short			gid_t;
 #endif
 
-#ifdef	USEPID_T
-typedef pid_t			p_id_t;
-#else
-typedef long			p_id_t;
-#endif
-
 #ifdef	SIGARGINT
 typedef int			sigarg_t;
 #else
@@ -226,13 +195,15 @@ typedef struct _gidtable {
 	char ismem;
 } gidtable;
 
-#if	MSDOS || (defined (FD) && !defined (_NODOSDRIVE))
+#ifdef	DEP_DOSPATH
 extern char *gendospath __P_((char *, int, int));
+#endif
+#if	defined (DEP_DOSPATH) || defined (DEP_URLPATH)
 extern char *strdelim __P_((CONST char *, int));
 extern char *strrdelim __P_((CONST char *, int));
 #else
-#define	strdelim(s, d)		strchr(s, _SC_)
-#define	strrdelim(s, d)		strrchr(s, _SC_)
+#define	strdelim(s, d)		strchr2(s, _SC_)
+#define	strrdelim(s, d)		strrchr2(s, _SC_)
 #endif
 #ifdef	FD
 extern char *strrdelim2 __P_((CONST char *, CONST char *));
@@ -240,8 +211,6 @@ extern char *strrdelim2 __P_((CONST char *, CONST char *));
 extern int isdelim __P_((CONST char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
-extern int strcasecmp2 __P_((CONST char *, CONST char *));
-extern int strncasecmp2 __P_((CONST char *, CONST char *, int));
 #ifdef	PATHNOCASE
 #define	strpathcmp		strcasecmp2
 #define	strnpathcmp		strncasecmp2
@@ -310,15 +279,13 @@ extern char **duplvar __P_((char *CONST *, int));
 extern int parsechar __P_((CONST char *, int, int, int, int *, int *));
 #ifndef	NOUID
 extern VOID getlogininfo __P_((CONST char **, CONST char **));
-#endif
-#if	defined (FD) && !defined (NOUID)
 extern uidtable *finduid __P_((uid_t, CONST char *));
 extern gidtable *findgid __P_((gid_t, CONST char *));
 extern int isgroupmember __P_((gid_t));
 # ifdef	DEBUG
 extern VOID freeidlist __P_((VOID_A));
 # endif
-#endif	/* FD && !NOUID */
+#endif	/* !NOUID */
 extern CONST char *gethomedir __P_((VOID_A));
 extern CONST char *getrealpath __P_((CONST char *, char *, char *));
 extern char *evalarg __P_((char *, int, int));

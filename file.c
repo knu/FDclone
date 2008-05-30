@@ -4,19 +4,24 @@
  *	file accessing module
  */
 
-#include <fcntl.h>
 #include "fd.h"
+#include "time.h"
 #include "termio.h"
+#include "realpath.h"
+#include "kconv.h"
 #include "func.h"
 #include "kanji.h"
 
+#ifdef	DEP_URLPATH
+#include "urldisk.h"
+#endif
 #if	MSDOS
 #include <process.h>
 #endif
 
 #define	MAXTMPNAMLEN		8
 #define	LOCKEXT			"LCK"
-#ifdef	_NODOSDRIVE
+#ifndef	DEP_DOSDRIVE
 #define	DOSDIRENT		32
 #define	LFNENTSIZ		13
 #endif
@@ -28,33 +33,10 @@
 #define	FAT_LFN			2
 #define	FAT_DOSDRIVE		3
 
-#ifndef	O_BINARY
-#define	O_BINARY		0
-#endif
-#ifndef	O_ACCMODE
-#define	O_ACCMODE		(O_RDONLY | O_WRONLY | O_RDWR)
-#endif
-#ifndef	ENOSPC
-#define	ENOSPC			EACCES
-#endif
-#ifndef	EIO
-#define	EIO			ENODEV
-#endif
-#ifndef	ETIMEDOUT
-#define	ETIMEDOUT		EIO
-#endif
-#ifndef	L_SET
-# ifdef	SEEK_SET
-# define	L_SET		SEEK_SET
-# else
-# define	L_SET		0
-# endif
-#endif	/* !L_SET */
-
 #if	MSDOS
 extern int getcurdrv __P_((VOID_A));
 #endif
-#if	MSDOS && !defined (_NOUSELFN) && !defined (_NODOSDRIVE)
+#if	defined (DEP_DOSDRIVE) && defined (DEP_DOSLFN)
 extern int checkdrive __P_((int));
 #endif
 
@@ -62,25 +44,26 @@ extern int mark;
 extern char fullpath[];
 extern char *tmpfilename;
 extern int physical_path;
-extern int noconv;
-#ifndef	_NODOSDRIVE
-extern int dosdrive;
+#ifdef	DEP_PSEUDOPATH
+extern char *unixpath;
 #endif
 
 #ifndef	NOFLOCK
 static int NEAR fcntllock __P_((int, int));
 #endif
 static char *NEAR excllock __P_((CONST char *, int));
-#ifdef	_NODOSDRIVE
-#define	nodoschdir		Xchdir
-#define	nodosgetwd		Xgetwd
-#define	nodosmkdir		Xmkdir
-#define	nodosrmdir		Xrmdir
+#ifdef	DEP_PSEUDOPATH
+static int NEAR pushswap __P_((VOID_A));
+static VOID NEAR popswap __P_((int));
+static int NEAR realchdir __P_((CONST char *));
+static char *NEAR realgetwd __P_((char *));
+static int NEAR realmkdir __P_((CONST char *, int));
+static int NEAR realrmdir __P_((CONST char *));
 #else
-static int NEAR nodoschdir __P_((CONST char *));
-static char *NEAR nodosgetwd __P_((char *));
-static int NEAR nodosmkdir __P_((CONST char *, int));
-static int NEAR nodosrmdir __P_((CONST char *));
+#define	realchdir		Xchdir
+#define	realgetwd		Xgetwd
+#define	realmkdir		Xmkdir
+#define	realrmdir		Xrmdir
 #endif
 static int NEAR cpfile __P_((CONST char *, CONST char *,
 		struct stat *, struct stat *));
@@ -107,12 +90,21 @@ int inheritcopy = 0;
 #endif
 int tmpumask = TMPUMASK;
 
-#ifndef	_NODOSDRIVE
-static int dosdrv = -1;
-#endif
+#ifdef	DEP_PSEUDOPATH
+static int pseudodrv = -1;
+static int *swaplist[] = {
+# ifdef	DEP_DOSDRIVE
+	&dosdrive,
+# endif
+# ifdef	DEP_URLPATH
+	&urldrive,
+# endif
+};
+#define	SWAPLISTSIZ		arraysize(swaplist)
+#endif	/* DEP_PSEUDOPATH */
 
 
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 CONST char *nodospath(path, file)
 char *path;
 CONST char *file;
@@ -120,41 +112,16 @@ CONST char *file;
 	if (!_dospath(file)) return(file);
 	path[0] = '.';
 	path[1] = _SC_;
-	strcpy(&(path[2]), file);
+	strcpy2(&(path[2]), file);
 
 	return(path);
 }
-#endif	/* _USEDOSEMU */
-
-#ifdef	NOUID
-int logical_access(mode)
-u_int mode;
-#else
-int logical_access(mode, uid, gid)
-u_int mode;
-uid_t uid;
-gid_t gid;
-#endif
-{
-	int dir;
-
-	dir = ((mode & S_IFMT) == S_IFDIR);
-#ifdef	NOUID
-	mode >>= 6;
-#else	/* !NOUID */
-	if (uid == geteuid()) mode >>= 6;
-	else if (gid == getegid()) mode >>= 3;
-	else if (isgroupmember(gid)) mode >>= 3;
-#endif	/* !NOUID */
-	if (dir && !(mode & F_ISEXE)) mode &= ~(F_ISRED | F_ISWRI);
-
-	return(mode & 007);
-}
+#endif	/* DEP_DOSEMU */
 
 int getstatus(namep)
 namelist *namep;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 	struct stat st, lst;
@@ -169,9 +136,7 @@ namelist *namep;
 	if (isdisplnk(dispmode))
 		memcpy((char *)&lst, (char *)&st, sizeof(struct stat));
 #if	!MSDOS
-	if ((lst.st_mode & S_IFMT) == S_IFCHR
-	|| (lst.st_mode & S_IFMT) == S_IFBLK)
-		namep -> flags |= F_ISDEV;
+	if (s_ischr(&lst) || s_isblk(&lst)) namep -> flags |= F_ISDEV;
 #endif
 
 	namep -> st_mode = lst.st_mode;
@@ -295,9 +260,9 @@ CONST VOID_P vp2;
 			tmp = strpathcmp2(tp1 -> name, tp2 -> name);
 			break;
 		case 2:
-			if ((cp1 = strrchr(tp1 -> name, '.'))) cp1++;
+			if ((cp1 = strrchr2(tp1 -> name, '.'))) cp1++;
 			else cp1 = nullstr;
-			if ((cp2 = strrchr(tp2 -> name, '.'))) cp2++;
+			if ((cp2 = strrchr2(tp2 -> name, '.'))) cp2++;
 			else cp2 = nullstr;
 			tmp = strpathcmp2(cp1, cp2);
 			break;
@@ -363,14 +328,17 @@ char *buf;
 	}
 	if (!homedir) {
 		if (!(cp = gethomedir())) return(-1);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 		if (dospath2(cp)) return(-1);
+#endif
+#ifdef	DEP_URLPATH
+		if (urlpath(cp, NULL, NULL, NULL)) return(-1);
 #endif
 		if (getrealpath(cp, tmp, cwd) != tmp) return(-1);
 		homedir = strdup2(tmp);
 	}
 
-	if (buf && !physical_path) strcpy(cwd, fullpath);
+	if (buf && !physical_path) strcpy2(cwd, fullpath);
 	len = strlen(homedir);
 #if	MSDOS
 	if (len <= 3) cp = NULL;
@@ -379,9 +347,9 @@ char *buf;
 #endif
 	else cp = underpath(cwd, homedir, len);
 
-	if (buf) strcpy(buf, (cp) ? cp : nullstr);
+	if (buf) strcpy2(buf, (cp) ? cp : nullstr);
 #ifdef	DEBUG
-	free(homedir);
+	free2(homedir);
 	homedir = NULL;
 #endif
 
@@ -396,7 +364,7 @@ CONST char *dir;
 	CONST char *cp;
 
 	cp = dir;
-#ifdef	_USEDOSPATH
+#ifdef	DEP_DOSPATH
 	if (_dospath(dir)) cp += 2;
 #endif
 	if (!isdotdir(cp)) {
@@ -416,12 +384,9 @@ CONST char *dir;
 			}
 			else if (stat2(dir, &st) < 0) return(-1);
 		}
-		if (!s_isdir(&st)) {
-			errno = ENOTDIR;
-			return(-1);
-		}
+		if (!s_isdir(&st)) return(seterrno(ENOTDIR));
 	}
-	entryhist(1, realpath2(dir, tmp, 0), 1);
+	entryhist(realpath2(dir, tmp, 0), HST_PATH | HST_UNIQ);
 
 	return(0);
 }
@@ -446,8 +411,8 @@ int fd, mode;
 # endif
 	int i, n;
 
-# ifndef	_NODOSDRIVE
-	if (fd >= DOSFDOFFSET) return(0);
+# ifdef	DEP_PSEUDOPATH
+	if (chkopenfd(fd) != DEV_NORMAL) return(1);
 # endif
 
 	n = -1;
@@ -510,9 +475,9 @@ int mode;
 		if (locklist) {
 			for (i = 0; locklist[i]; i++) {
 				VOID_C unlink(locklist[i]);
-				free(locklist[i]);
+				free2(locklist[i]);
 			}
-			free(locklist);
+			free2(locklist);
 		}
 		return(NULL);
 	}
@@ -528,7 +493,7 @@ int mode;
 				locklist[i] = NULL;
 			}
 			if (!i) {
-				free(locklist);
+				free2(locklist);
 				locklist = NULL;
 			}
 		}
@@ -553,12 +518,8 @@ int mode;
 			fd = Xopen(path,
 				O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
 				0666 & ~tmpumask);
-		else if (Xlstat(path, &st) < 0)
-			fd = (errno == ENOENT) ? 0 : -1;
-		else {
-			errno = EEXIST;
-			fd = -1;
-		}
+		else if (Xlstat(path, &st) >= 0) fd = seterrno(EEXIST);
+		else fd = (errno == ENOENT) ? 0 : -1;
 		if (fd >= 0 || errno != EEXIST) break;
 
 		if (intrkey(-1)) {
@@ -639,7 +600,7 @@ int flags, mode;
 			duperrno = errno;
 			if (lckname) {
 				VOID_C excllock(lckname, LCK_UNLOCK);
-				free(lckname);
+				free2(lckname);
 			}
 			errno = duperrno;
 			return(NULL);
@@ -648,7 +609,7 @@ int flags, mode;
 
 	if (fd < 0) lckflags |= LCK_INVALID;
 	else if (err) {
-		fprintf2(stderr, "%k: %k\r\n", path, NOLCK_K);
+		fprintf2(Xstderr, "%k: %k\r\n", path, NOLCK_K);
 		if (isttyiomode) warning(0, HITKY_K);
 	}
 
@@ -666,7 +627,7 @@ CONST char *path, *type;
 int flags;
 {
 	lockbuf_t *lck;
-	FILE *fp;
+	XFILE *fp;
 
 	if (!(lck = lockopen(path, flags, 0666))) return(NULL);
 
@@ -688,7 +649,7 @@ lockbuf_t *lck;
 	if (lck) {
 		if (lck -> name) {
 			VOID_C excllock(lck -> name, LCK_UNLOCK);
-			free(lck -> name);
+			free2(lck -> name);
 		}
 		if (!(lck -> flags & LCK_INVALID)) {
 #ifndef	NOFLOCK
@@ -699,7 +660,7 @@ lockbuf_t *lck;
 			else Xclose(lck -> fd);
 		}
 
-		free(lck);
+		free2(lck);
 	}
 }
 
@@ -808,75 +769,95 @@ struct stat *stp;
 	return(ret);
 }
 
-#ifndef	_NODOSDRIVE
-static int NEAR nodoschdir(path)
+#ifdef	DEP_PSEUDOPATH
+static int NEAR pushswap(VOID_A)
+{
+	int i, flags;
+
+	flags = 0;
+	for (i = 0; i < SWAPLISTSIZ; i++) {
+		flags <<= 2;
+		flags |= (*(swaplist[i]) & 3);
+		*(swaplist[i]) = 0;
+	}
+
+	return(flags);
+}
+
+static VOID NEAR popswap(flags)
+int flags;
+{
+	int i;
+
+	for (i = SWAPLISTSIZ - 1; i >= 0; i--) {
+		*(swaplist[i]) = (flags & 3);
+		flags >>= 2;
+	}
+}
+
+static int NEAR realchdir(path)
 CONST char *path;
 {
-	int n, dupdosdrive;
+	int n, flags;
 
-	dupdosdrive = dosdrive;
-	dosdrive = 0;
+	flags = pushswap();
 	n = Xchdir(path);
-	dosdrive = dupdosdrive;
+	popswap(flags);
 
 	return(n);
 }
 
-static char *NEAR nodosgetwd(path)
+static char *NEAR realgetwd(path)
 char *path;
 {
 	char *cp;
-	int dupdosdrive;
+	int flags;
 
-	dupdosdrive = dosdrive;
-	dosdrive = 0;
+	flags = pushswap();
 	cp = Xgetwd(path);
-	dosdrive = dupdosdrive;
+	popswap(flags);
 
 	return(cp);
 }
 
-int nodoslstat(path, stp)
+int reallstat(path, stp)
 CONST char *path;
 struct stat *stp;
 {
-	int n, dupdosdrive;
+	int n, flags;
 
-	dupdosdrive = dosdrive;
-	dosdrive = 0;
+	flags = pushswap();
 	n = Xlstat(path, stp);
-	dosdrive = dupdosdrive;
+	popswap(flags);
 
 	return(n);
 }
 
-static int NEAR nodosmkdir(path, mode)
+static int NEAR realmkdir(path, mode)
 CONST char *path;
 int mode;
 {
-	int n, dupdosdrive;
+	int n, flags;
 
-	dupdosdrive = dosdrive;
-	dosdrive = 0;
+	flags = pushswap();
 	n = Xmkdir(path, mode);
-	dosdrive = dupdosdrive;
+	popswap(flags);
 
 	return(n);
 }
 
-static int NEAR nodosrmdir(path)
+static int NEAR realrmdir(path)
 CONST char *path;
 {
-	int n, dupdosdrive;
+	int n, flags;
 
-	dupdosdrive = dosdrive;
-	dosdrive = 0;
+	flags = pushswap();
 	n = Xrmdir(path);
-	dosdrive = dupdosdrive;
+	popswap(flags);
 
 	return(n);
 }
-#endif	/* !_NODOSDRIVE */
+#endif	/* DEP_PSEUDOPATH */
 
 VOID lostcwd(path)
 char *path;
@@ -888,12 +869,15 @@ char *path;
 	duperrno = errno;
 	if (!path) path = buf;
 
-	if (path != fullpath && nodoschdir(fullpath) >= 0 && nodosgetwd(path))
+	if (path != fullpath && realchdir(fullpath) >= 0 && realgetwd(path))
 		cp = NOCWD_K;
-	else if ((cp = gethomedir())
-	&& nodoschdir(cp) >= 0 && nodosgetwd(path))
+#ifdef	DEP_PSEUDOPATH
+	else if (unixpath && realchdir(unixpath) >= 0 && realgetwd(path))
+		cp = NOPSU_K;
+#endif
+	else if ((cp = gethomedir()) && realchdir(cp) >= 0 && realgetwd(path))
 		cp = GOHOM_K;
-	else if (nodoschdir(rootpath) >= 0 && nodosgetwd(path)) cp = GOROT_K;
+	else if (realchdir(rootpath) >= 0 && realgetwd(path)) cp = GOROT_K;
 	else error(rootpath);
 
 	if (path != fullpath) strncpy2(fullpath, path, MAXPATHLEN - 1);
@@ -912,6 +896,9 @@ CONST char *src, *dest;
 
 	if (Xstat(src, &st1) < 0 || Xstat(dest, &st2) < 0) return(0);
 	if (st1.st_dev != st2.st_dev || st1.st_ino != st2.st_ino) return(0);
+# ifdef	DEP_URLPATH
+	if (st1.st_dev == (dev_t)-1 || st1.st_ino == (ino_t)-1) return(0);
+# endif
 
 	return(1);
 }
@@ -952,7 +939,7 @@ struct stat *stp1, *stp2;
 #endif
 	char buf[BUFSIZ];
 	off_t total;
-	int n, fd1, fd2, tty, flags, mode, duperrno;
+	int n, fd1, fd2, tty, flags, mode, timeout, duperrno;
 
 #if	MSDOS
 	if (!stp2 && Xlstat(dest, &st) >= 0) stp2 = &st;
@@ -961,10 +948,18 @@ struct stat *stp1, *stp2;
 #endif
 #ifndef	NOSYMLINK
 	if (s_islnk(stp1)) {
+# ifdef	DEP_URLPATH
+		fd1 = urlpath(src, NULL, NULL, NULL);
+		fd2 = urlpath(dest, NULL, NULL, NULL);
+		if (fd1 != fd2) {
+			if (Xstat(src, stp1) < 0) return(-1);
+		}
+		else
+# endif
 		if (cpsymlink(src, dest) < 0) return(-1);
 		else return(0);
 	}
-#endif
+#endif	/* !NOSYMLINK */
 
 	flags = (O_BINARY | O_RDONLY);
 	mode = stp1 -> st_mode;
@@ -992,17 +987,29 @@ struct stat *stp1, *stp2;
 	}
 
 	tty = isatty(fd1);
+	timeout = 0;
+#ifdef	DEP_URLPATH
+	switch (chkopenfd(fd1)) {
+		case DEV_URL:
+		case DEV_HTTP:
+			timeout = urltimeout;
+			VOID_C urlfstat(fd1, stp1);
+			break;
+		default:
+			break;
+	}
+#endif
+
 	total = (off_t)0;
+	if (tty) stp1 -> st_size = (off_t)-1;
 	for (;;) {
-		if (!tty && total >= stp1 -> st_size) n = 0;
-		else n = sureread(fd1, buf, sizeof(buf));
+		if (stp1 -> st_size >= (off_t)0 && total >= stp1 -> st_size)
+			n = 0;
+		else n = checkread(fd1, buf, sizeof(buf), timeout);
 		if (n < 0) break;
 		total += (off_t)n;
 		if (!n) {
-			if (!tty && total < stp1 -> st_size) {
-				duperrno = ETIMEDOUT;
-				n = -1;
-			}
+			if (total < stp1 -> st_size) n = seterrno(ETIMEDOUT);
 			break;
 		}
 #ifndef	_NOEXTRACOPY
@@ -1044,7 +1051,7 @@ int safecpfile(src, dest, stp1, stp2)
 CONST char *src, *dest;
 struct stat *stp1, *stp2;
 {
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	int drive;
 #endif
 
@@ -1052,11 +1059,8 @@ struct stat *stp1, *stp2;
 		if (cpfile(src, dest, stp1, stp2) >= 0) break;
 		if (errno && errno != ENOSPC) return(-1);
 		for (;;) {
-			if (!yesno(NOSPC_K)) {
-				errno = ENOSPC;
-				return(-1);
-			}
-#ifndef	_NODOSDRIVE
+			if (!yesno(NOSPC_K)) return(seterrno(ENOSPC));
+#ifdef	DEP_DOSDRIVE
 			if ((drive = dospath3(dest))) {
 				if (flushdrv(drive, changemes) < 0) continue;
 			}
@@ -1151,14 +1155,11 @@ char *dir;
 	char *cp, path[MAXPATHLEN];
 	int n, len, mask;
 
-	if (!deftmpdir || !*deftmpdir || !dir) {
-		errno = ENOENT;
-		return(-1);
-	}
-	realpath2(deftmpdir, path, 1);
-	free(deftmpdir);
-#if	MSDOS && !defined (_NOUSELFN) && !defined (_NODOSDRIVE)
-	if (checkdrive(toupper2(path[0]) - 'A') && !nodosgetwd(path)) {
+	if (!deftmpdir || !*deftmpdir || !dir) return(seterrno(ENOENT));
+	realpath2(deftmpdir, path, RLP_READLINK);
+	free2(deftmpdir);
+#if	defined (DEP_DOSDRIVE) && defined (DEP_DOSLFN)
+	if (checkdrive(toupper2(path[0]) - 'A') && !realgetwd(path)) {
 		lostcwd(path);
 		deftmpdir = NULL;
 		return(-1);
@@ -1172,15 +1173,15 @@ char *dir;
 	mask = 0777 & ~tmpumask;
 	cp = strcatdelim(path);
 	if (tmpfilename) {
-		strcpy(cp, tmpfilename);
+		strcpy2(cp, tmpfilename);
 		if (Xaccess(path, R_OK | W_OK | X_OK) < 0) {
-			free(tmpfilename);
+			free2(tmpfilename);
 			tmpfilename = NULL;
 		}
 	}
 	if (!tmpfilename) {
 		n = strsize(TMPPREFIX);
-		strncpy(cp, TMPPREFIX, n);
+		strncpy2(cp, TMPPREFIX, n);
 		len = strsize(path) - (cp - path);
 		if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 		len -= n;
@@ -1188,18 +1189,18 @@ char *dir;
 
 		for (;;) {
 			genrandname(cp + n, len);
-			if (nodosmkdir(path, mask) >= 0) break;
+			if (realmkdir(path, mask) >= 0) break;
 			if (errno != EEXIST) return(-1);
 		}
 		tmpfilename = strdup2(cp);
 	}
 
 	if (!(n = strlen(dir))) {
-		strcpy(dir, path);
+		strcpy2(dir, path);
 		return(0);
 	}
 
-	strncpy((cp = strcatdelim(path)), dir, n);
+	strncpy2((cp = strcatdelim(path)), dir, n);
 	len = strsize(path) - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	len -= n;
@@ -1207,8 +1208,8 @@ char *dir;
 
 	for (;;) {
 		genrandname(cp + n, len);
-		if (nodosmkdir(path, mask) >= 0) {
-			strcpy(dir, path);
+		if (realmkdir(path, mask) >= 0) {
+			strcpy2(dir, path);
 			return(0);
 		}
 		if (errno != EEXIST) break;
@@ -1217,7 +1218,7 @@ char *dir;
 	if (cp > path) {
 		*(--cp) = '\0';
 		n = errno;
-		nodosrmdir(path);
+		realrmdir(path);
 		errno = n;
 	}
 
@@ -1229,14 +1230,12 @@ CONST char *dir;
 {
 	char path[MAXPATHLEN];
 
-	if (dir && *dir && nodosrmdir(dir) < 0) return(-1);
-	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename) {
-		errno = ENOENT;
-		return(-1);
-	}
+	if (dir && *dir && realrmdir(dir) < 0) return(-1);
+	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename)
+		return(seterrno(ENOENT));
 	strcatdelim2(path, deftmpdir, tmpfilename);
-	if (nodosrmdir(path) >= 0) {
-		free(tmpfilename);
+	if (realrmdir(path) >= 0) {
+		free2(tmpfilename);
 		tmpfilename = NULL;
 	}
 	else if (errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
@@ -1277,7 +1276,7 @@ char *file;
 	if (mktmpdir(path) < 0) return(-1);
 	VOID_C strcatdelim(path);
 	if ((fd = opentmpfile(path, 0666 & ~tmpumask)) >= 0) {
-		strcpy(file, path);
+		strcpy2(file, path);
 		return(fd);
 	}
 	duperrno = errno;
@@ -1317,7 +1316,7 @@ VOID removetmp(dir, file)
 char *dir;
 CONST char *file;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 
@@ -1331,13 +1330,13 @@ CONST char *file;
 	else if (Xunlink(nodospath(path, file)) < 0) warning(-1, file);
 
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
-#ifndef	_NODOSDRIVE
-	shutdrv(dosdrv);
-	dosdrv = -1;
+#ifdef	DEP_PSEUDOPATH
+	shutdrv(pseudodrv);
+	pseudodrv = -1;
 #endif
 	if (dir) {
 		if (*dir && rmtmpdir(dir) < 0) warning(-1, dir);
-		free(dir);
+		free2(dir);
 	}
 }
 
@@ -1370,7 +1369,7 @@ CONST char *dir, *file;
 	return(0);
 }
 
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 char *dostmpdir(drive)
 int drive;
 {
@@ -1389,25 +1388,33 @@ CONST char *dir;
 char **dirp;
 int single;
 {
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	char tmp[MAXPATHLEN];
 # endif
 	struct stat st;
 	char *cp, *tmpdir, path[MAXPATHLEN];
 	int i, drive;
 
-	if (!(drive = dospath2(dir))) return(0);
+# ifdef	DEP_DOSDRIVE
+	if ((drive = dospath2(dir))) /*EMPTY*/;
+	else
+# endif
+# ifdef	DEP_URLPATH
+	if (urlpath(dir, NULL, NULL, &drive)) drive += '0';
+	else
+# endif
+	return(0);
 	if (!(tmpdir = dostmpdir(drive))) {
 		warning(-1, dir);
 		return(-1);
 	}
 
-	strcpy(path, tmpdir);
+	strcpy2(path, tmpdir);
 	cp = strcatdelim(path);
 	waitmes();
 
 	if (single || mark <= 0) {
-		strcpy(cp, filelist[filepos].name);
+		strcpy2(cp, filelist[filepos].name);
 		st.st_mode = filelist[filepos].st_mode;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
 		st.st_size = filelist[filepos].st_size;
@@ -1419,7 +1426,7 @@ int single;
 	}
 	else for (i = 0; i < maxfile; i++) {
 		if (!ismark(&(filelist[i]))) continue;
-		strcpy(cp, filelist[i].name);
+		strcpy2(cp, filelist[i].name);
 		st.st_mode = filelist[i].st_mode;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
 		st.st_size = filelist[i].st_size;
@@ -1430,7 +1437,7 @@ int single;
 		}
 	}
 
-	if (preparedrv(dospath(fullpath, NULL), &dosdrv) < 0) {
+	if ((pseudodrv = preparedrv(fullpath, NULL, NULL)) < 0) {
 		warning(-1, fullpath);
 		removetmp(tmpdir, NULL);
 		return(-1);
@@ -1451,12 +1458,16 @@ CONST char *file;
 {
 	struct stat st;
 	char path[MAXPATHLEN];
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	char tmp[MAXPATHLEN];
 # endif
 
-	strcpy(gendospath(path, drive, '\0'), file);
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSDRIVE
+	if (isalpha(drive)) strcpy2(gendospath(path, drive, '\0'), file);
+	else
+# endif
+	strcatdelim2(path, fullpath, file);
+# ifdef	DEP_DOSEMU
 	file = nodospath(tmp, file);
 # endif
 	waitmes();
@@ -1465,7 +1476,7 @@ CONST char *file;
 
 	return(0);
 }
-#endif	/* !_NODOSDRIVE */
+#endif	/* DEP_PSEUDOPATH */
 
 #ifndef	_NOWRITEFS
 static int NEAR isexist(file)
@@ -1503,7 +1514,7 @@ int fat, boundary, dirsize, ofs;
 			}
 			else if (lfn) /*EMPTY*/;
 			else if (islower2(s[i])) lfn = 1;
-			else if (strchr(LFNONLY, s[i])) lfn = 1;
+			else if (strchr2(LFNONLY, s[i])) lfn = 1;
 		}
 		if (lfn) /*EMPTY*/;
 		else if (dot) {
@@ -1539,12 +1550,12 @@ int size, fat, boundary, dirsize, ofs;
 static int NEAR saferename(from, to)
 CONST char *from, *to;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char fpath[MAXPATHLEN], tpath[MAXPATHLEN];
 #endif
 
 	if (!strpathcmp2(from, to)) return(0);
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	from = nodospath(fpath, from);
 	to = nodospath(tpath, to);
 #endif
@@ -1579,7 +1590,7 @@ CONST char *tmpdir, *old;
 			fname[i] = toupper2(fname[i]);
 #endif
 		if (tmpdir) {
-			strcpy(&(path[l]), fname);
+			strcpy2(&(path[l]), fname);
 			if (!isexist(path)) {
 				if (old) {
 #if	!MSDOS
@@ -1610,7 +1621,7 @@ CONST char *tmpdir, *old;
 			if (errno != EEXIST) break;
 		}
 	}
-	free(fname);
+	free2(fname);
 
 	return(NULL);
 }
@@ -1642,11 +1653,11 @@ off_t bsiz;
 
 	for (i = 0; i < n; i++) {
 		if (Xlseek(fd, (off_t)(i * bsiz + 3), L_SET) < 0) {
-			free(tmp);
+			free2(tmp);
 			return(NULL);
 		}
 		if (sureread(fd, &ch, sizeof(ch)) < 0) {
-			free(tmp);
+			free2(tmp);
 			return(NULL);
 		}
 		tmp[i] = ch + 1;
@@ -1670,7 +1681,7 @@ int fnamp;
 		while ((dp = Xreaddir(dirp))) {
 			if (isdotdir(dp -> d_name)) continue;
 			else {
-				strcpy(&(path[fnamp]), dp -> d_name);
+				strcpy2(&(path[fnamp]), dp -> d_name);
 				if (saferename(path, dp -> d_name) < 0)
 					warning(-1, path);
 			}
@@ -1678,7 +1689,7 @@ int fnamp;
 		Xclosedir(dirp);
 	}
 	if (Xrmdir(dir) < 0) warning(-1, dir);
-	free(dir);
+	free2(dir);
 }
 
 VOID arrangedir(fs)
@@ -1723,7 +1734,7 @@ int fs;
 			dirsize = 4;	/* short + short */
 			namofs = 3;
 			break;
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 		case FSID_DOSDRIVE:	/* Windows95 File System on DOSDRIVE */
 			fat = FAT_DOSDRIVE;
 			headbyte = -1;
@@ -1770,7 +1781,7 @@ int fs;
 			if (top < 0) top = i;
 			cp = convput(path, filelist[i].name, 1, 0, NULL, NULL);
 		}
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 		if (_dospath(cp)) cp += 2;
 #endif
 		fnamelist[i] = strdup2(cp);
@@ -1820,7 +1831,7 @@ int fs;
 #if	MSDOS
 			if (!(dp -> d_alias[0])) len = DOSBODYLEN;
 #else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 			if (fat == FAT_DOSDRIVE
 			&& wrap_reclen(dp) == DOSDIRENT)
 				len = DOSBODYLEN;
@@ -1829,7 +1840,7 @@ int fs;
 			ent = i;
 		}
 		else {
-			strcpy(&(path[fnamp]), dp -> d_name);
+			strcpy2(&(path[fnamp]), dp -> d_name);
 			if (saferename(dp -> d_name, path) < 0) {
 				Xclosedir(dirp);
 				warning(-1, dp -> d_name);
@@ -1857,7 +1868,7 @@ int fs;
 			noconv--;
 			return;
 		}
-		free(tmpdir);
+		free2(tmpdir);
 		tmpdir = tmp;
 		fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	}
@@ -1916,7 +1927,7 @@ int fs;
 			if (entnum) totalptr = entnum[++block];
 		}
 #endif	/* !MSDOS */
-		strcpy(&(path[fnamp]), fnamelist[i]);
+		strcpy2(&(path[fnamp]), fnamelist[i]);
 		if (saferename(path, fnamelist[i]) < 0) {
 			warning(-1, path);
 			break;
@@ -1927,20 +1938,20 @@ int fs;
 #endif
 	}
 #if	!MSDOS
-	if (entnum) free(entnum);
+	free2(entnum);
 	if (tmpfiles) {
 		for (i = 0; i < tmpno; i++) if (tmpfiles[i]) {
 			if (Xunlink(tmpfiles[i]) < 0) warning(-1, tmpfiles[i]);
-			free(tmpfiles[i]);
+			free2(tmpfiles[i]);
 		}
-		free(tmpfiles);
+		free2(tmpfiles);
 	}
 #endif
 
 	if (!(tmp = maketmpfile(len, fat, tmpdir, tmpdir)))
 		warning(-1, tmpdir);
 	else {
-		free(tmpdir);
+		free2(tmpdir);
 		tmpdir = tmp;
 	}
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;

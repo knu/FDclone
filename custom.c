@@ -4,14 +4,21 @@
  *	customizer of configurations
  */
 
-#include <fcntl.h>
 #include "fd.h"
+#include "parse.h"
+#include "kconv.h"
 #include "func.h"
 #include "funcno.h"
 #include "kanji.h"
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 #include "system.h"
+#endif
+#ifdef	DEP_PTY
+#include "termemu.h"
+#endif
+#ifdef	DEP_URLPATH
+#include "urldisk.h"
 #endif
 
 #define	MAXCUSTOM		7
@@ -29,9 +36,6 @@
 #define	DEFPALETTE		"89624351888"
 #define	MAXPALETTE		11
 #define	MAXCOLOR		10
-#ifndef	O_TEXT
-#define	O_TEXT			0
-#endif
 
 typedef struct _envtable {
 	CONST char *env;
@@ -44,12 +48,16 @@ typedef struct _envtable {
 #else
 	CONST char *def;
 #endif
-#ifndef	_NOJPNMES
+#ifdef	_NOCATALOG
+# ifndef	_NOJPNMES
 	CONST char *hmes;
-#endif
-#ifndef	_NOENGMES
+# endif
+# ifndef	_NOENGMES
 	CONST char *hmes_eng;
-#endif
+# endif
+#else	/* !_NOCATALOG */
+	int hmes_no;
+#endif	/* !_NOCATALOG */
 	u_char type;
 } envtable;
 
@@ -98,9 +106,10 @@ typedef struct _envtable {
 #define	T_OCTAL			21
 #define	T_KEYCODE		22
 #define	T_HELP			23
-#define	T_NOVAR			24
+#define	T_URLOPT		24
+#define	T_NOVAR			25
 
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 typedef struct _pathtable {
 	VOID_P path;
 	char *last;
@@ -110,7 +119,7 @@ typedef struct _pathtable {
 
 #define	P_ISARRAY		0001
 #define	P_STABLE		0002
-#endif	/* !_NOKANJIFCONV */
+#endif	/* DEP_FILECONV */
 
 extern int sorttype;
 extern int displaymode;
@@ -139,10 +148,10 @@ extern short savehist[];
 #ifndef	_NOTREE
 extern int dircountlimit;
 #endif
-#ifndef	_NODOSDRIVE
-extern int dosdrive;
-#endif
 extern int showsecond;
+#if	FD >= 3
+extern int autoupdate;
+#endif
 #ifndef	_NOTRADLAYOUT
 extern int tradlayout;
 #endif
@@ -150,9 +159,12 @@ extern int sizeinfo;
 #if	FD >= 2
 extern int helplayout;
 #endif
-#ifndef	_NOIME
+#ifdef	DEP_IME
 extern int imekey;
 extern int imebuffer;
+#endif
+#ifdef	DEP_URLPATH
+extern int hidepasswd;
 #endif
 #ifndef	_NOCOLOR
 extern int ansicolor;
@@ -174,40 +186,16 @@ extern char *rockridgepath;
 extern char *precedepath;
 #endif
 extern CONST char *promptstr;
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 extern CONST char *promptstr2;
 #endif
-#ifdef	_USEUNICODE
-extern int unicodebuffer;
-#endif
-#ifndef	_NOKANJIFCONV
-extern char *sjispath;
-extern char *eucpath;
-extern char *jis7path;
-extern char *jis8path;
-extern char *junetpath;
-extern char *ojis7path;
-extern char *ojis8path;
-extern char *ojunetpath;
-extern char *hexpath;
-extern char *cappath;
-extern char *utf8path;
-extern char *utf8macpath;
-extern char *utf8iconvpath;
-extern char *noconvpath;
-#endif	/* !_NOKANJIFCONV */
 #if	FD >= 2
 extern int tmpumask;
 #endif
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 extern int dumbshell;
 #endif
-#ifndef	_NOPTY
-extern int ptymode;
-extern char *ptyterm;
-extern int ptymenukey;
-#endif
-#ifndef	_NOLOGGING
+#ifdef	DEP_LOGGING
 extern char *logfile;
 extern int logsize;
 # ifndef	NOSYSLOG
@@ -217,7 +205,7 @@ extern int loglevel;
 # ifndef	NOUID
 extern int rootloglevel;
 # endif
-#endif	/* !_NOLOGGING */
+#endif	/* DEP_LOGGING */
 #if	FD >= 2
 extern int thruargs;
 #endif
@@ -225,10 +213,7 @@ extern int wheader;
 extern char fullpath[];
 extern char *origpath;
 extern char *progpath;
-#ifdef	_USEUNICODE
-extern char *unitblpath;
-#endif
-#ifndef	_NOIME
+#ifdef	DEP_IME
 extern char *dicttblpath;
 #endif
 #ifndef	_NOCUSTOMIZE
@@ -242,28 +227,27 @@ extern int lcmdline;
 extern int calc_x;
 extern int calc_y;
 extern CONST functable funclist[];
-extern char *macrolist[];
+extern macrolist_t macrolist;
 extern int maxmacro;
-extern char *helpindex[];
-extern char **orighelpindex;
-extern bindtable bindlist[];
-extern bindtable *origbindlist;
+extern helpindex_t helpindex;
+extern orighelpindex_t orighelpindex;
+extern bindlist_t bindlist;
+extern origbindlist_t origbindlist;
+extern int maxbind;
+extern int origmaxbind;
 extern CONST strtable keyidentlist[];
 # ifndef	_NOKEYMAP
 extern keyseq_t *origkeymaplist;
 # endif
 # ifndef	_NOARCHIVE
-extern launchtable launchlist[];
-extern launchtable *origlaunchlist;
+extern launchlist_t launchlist;
+extern origlaunchlist_t origlaunchlist;
 extern int maxlaunch;
 extern int origmaxlaunch;
-extern archivetable archivelist[];
-extern archivetable *origarchivelist;
+extern archivelist_t archivelist;
+extern origarchivelist_t origarchivelist;
 extern int maxarchive;
 extern int origmaxarchive;
-# endif
-# ifdef	_USEDOSEMU
-extern devinfo *origfdtype;
 # endif
 extern int inruncom;
 #endif	/* !_NOCUSTOMIZE */
@@ -274,7 +258,7 @@ static int NEAR atooctal __P_((CONST char *));
 static int NEAR getenvid __P_((CONST char *, int, int *));
 static VOID NEAR _evalenv __P_((int));
 static VOID NEAR evalenvone __P_((int));
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 static char *NEAR pathlang __P_((pathtable *, int));
 static VOID NEAR pathconv __P_((pathtable *));
 static VOID NEAR savepathlang __P_((VOID_A));
@@ -299,26 +283,26 @@ static VOID NEAR cleanupenv __P_((VOID_A));
 # if	FD >= 2
 static char *NEAR ascoctal __P_((int, char *));
 # endif
-# ifndef	_NOORIGSHELL
-static VOID NEAR putargs __P_((CONST char *, int, CONST char *[], FILE *));
+# ifdef	DEP_ORIGSHELL
+static VOID NEAR putargs __P_((CONST char *, int, CONST char *[], XFILE *));
 # endif
 static char *NEAR int2str __P_((char *, int));
 static int NEAR inputkeycode __P_((CONST char *));
 static int NEAR dispenv __P_((int));
 static int NEAR editenv __P_((int));
-static int NEAR dumpenv __P_((CONST char *, FILE *));
-# ifndef	_NOORIGSHELL
-static int NEAR checkenv __P_((char *, char *CONST *, int *, FILE *));
-static int NEAR checkunset __P_((char *, int, char *CONST *, FILE *));
+static int NEAR dumpenv __P_((CONST char *, XFILE *));
+# ifdef	DEP_ORIGSHELL
+static int NEAR checkenv __P_((char *, char *CONST *, int *, XFILE *));
+static int NEAR checkunset __P_((char *, int, char *CONST *, XFILE *));
 # endif
 static VOID NEAR cleanupbind __P_((VOID_A));
 static int NEAR dispbind __P_((int));
 static int NEAR selectbind __P_((int, int, CONST char *));
 static int NEAR editbind __P_((int));
 static int NEAR issamebind __P_((CONST bindtable *, CONST bindtable *));
-static int NEAR dumpbind __P_((CONST char *, char *, FILE *));
-# ifndef	_NOORIGSHELL
-static int NEAR checkbind __P_((char *, char *, int, char *CONST *, FILE *));
+static int NEAR dumpbind __P_((CONST char *, char *, XFILE *));
+# ifdef	DEP_ORIGSHELL
+static int NEAR checkbind __P_((char *, char *, int, char *CONST *, XFILE *));
 # endif
 # ifndef	_NOKEYMAP
 static VOID NEAR cleanupkeymap __P_((VOID_A));
@@ -326,44 +310,46 @@ static int NEAR dispkeymap __P_((int));
 static int NEAR editkeymap __P_((int));
 static int NEAR searchkeymap __P_((CONST keyseq_t *, CONST keyseq_t *));
 static int NEAR issamekeymap __P_((CONST keyseq_t *, CONST keyseq_t *));
-static int NEAR dumpkeymap __P_((CONST char *, char *, FILE *));
-#  ifndef	_NOORIGSHELL
-static int NEAR checkkeymap __P_((char *, char *, int, char *CONST *, FILE *));
+static int NEAR dumpkeymap __P_((CONST char *, char *, XFILE *));
+#  ifdef	DEP_ORIGSHELL
+static int NEAR checkkeymap __P_((char *, char *,
+		int, char *CONST *, XFILE *));
 #  endif
 # endif
 # ifndef	_NOARCHIVE
 static VOID NEAR cleanuplaunch __P_((VOID_A));
 static int NEAR displaunch __P_((int));
-static VOID NEAR verboselaunch __P_((launchtable *));
+static VOID NEAR verboselaunch __P_((lsparse_t *));
 static char **NEAR editvar __P_((CONST char *, char **));
-static int NEAR editarchbrowser __P_((launchtable *));
+static int NEAR editarchbrowser __P_((lsparse_t *));
 static int NEAR editlaunch __P_((int));
-static int NEAR issamelaunch __P_((CONST launchtable *, CONST launchtable *));
-static int NEAR dumplaunch __P_((CONST char *, char *, FILE *));
-#  ifndef	_NOORIGSHELL
-static int NEAR checklaunch __P_((char *, char *, int, char *CONST *, FILE *));
+static int NEAR issamelaunch __P_((CONST lsparse_t *, CONST lsparse_t *));
+static int NEAR dumplaunch __P_((CONST char *, char *, XFILE *));
+#  ifdef	DEP_ORIGSHELL
+static int NEAR checklaunch __P_((char *, char *,
+		int, char *CONST *, XFILE *));
 #  endif
 static VOID NEAR cleanuparch __P_((VOID_A));
 static int NEAR disparch __P_((int));
 static int NEAR editarch __P_((int));
-static int NEAR issamearch __P_((CONST archivetable *, CONST archivetable *));
-static int NEAR dumparch __P_((CONST char *, char *, FILE *));
-#  ifndef	_NOORIGSHELL
-static int NEAR checkarch __P_((char *, char *, int, char *CONST *, FILE *));
+static int NEAR issamearch __P_((CONST archive_t *, CONST archive_t *));
+static int NEAR dumparch __P_((CONST char *, char *, XFILE *));
+#  ifdef	DEP_ORIGSHELL
+static int NEAR checkarch __P_((char *, char *, int, char *CONST *, XFILE *));
 #  endif
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 static VOID NEAR cleanupdosdrive __P_((VOID_A));
 static int NEAR dispdosdrive __P_((int));
 static int NEAR editdosdrive __P_((int));
-static int NEAR dumpdosdrive __P_((CONST char *, char *, FILE *));
-#  ifndef	_NOORIGSHELL
+static int NEAR dumpdosdrive __P_((CONST char *, char *, XFILE *));
+#  ifdef	DEP_ORIGSHELL
 static int NEAR checkdosdrive __P_((char *, char *,
-		int, char *CONST *, FILE *));
+		int, char *CONST *, XFILE *));
 #  endif
 # endif
 static int NEAR dispsave __P_((int));
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 static int NEAR overwriteconfig __P_((int *, CONST char *));
 # endif
 static int NEAR selectmulti __P_((int, CONST char *CONST [], int[]));
@@ -432,10 +418,13 @@ static CONST envtable envlist[] = {
 	{"FD_DIRCOUNTLIMIT", &dircountlimit,
 		DEFVAL(DIRCOUNTLIMIT), DCLM_E, T_INT},
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	{"FD_DOSDRIVE", &dosdrive, DEFVAL(DOSDRIVE), DOSD_E, T_DDRV},
 #endif
 	{"FD_SECOND", &showsecond, DEFVAL(SECOND), SCND_E, _B_(T_BOOL)},
+#if	FD >= 3
+	{"FD_AUTOUPDATE", &autoupdate, DEFVAL(AUTOUPDATE), ATUP_E, _B_(T_INT)},
+#endif
 #ifndef	_NOTRADLAYOUT
 	{"FD_TRADLAYOUT", &tradlayout, DEFVAL(TRADLAYOUT), TRLO_E, T_BOOL},
 #endif
@@ -443,7 +432,7 @@ static CONST envtable envlist[] = {
 #if	FD >= 2
 	{"FD_FUNCLAYOUT", &helplayout, DEFVAL(FUNCLAYOUT), FNLO_E, T_HELP},
 #endif
-#ifndef	_NOIME
+#ifdef	DEP_IME
 	{"FD_IMEKEY", &imekey, DEFVAL(IMEKEY), IMKY_E, T_KEYCODE},
 	{"FD_IMEBUFFER", &imebuffer, DEFVAL(IMEBUFFER), IMBF_E, T_BOOL},
 #endif
@@ -475,16 +464,16 @@ static CONST envtable envlist[] = {
 #else
 	{"FD_PROMPT", &promptstr, DEFVAL(PROMPT), PRMP_E, T_CHARP},
 #endif
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	{"FD_PS2", &promptstr2, DEFVAL(PROMPT2), PRM2_E, T_CHARP | T_PRIMAL},
 	{"FD_DUMBSHELL", &dumbshell, DEFVAL(DUMBSHELL), DMSHL_E, T_BOOL},
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	{"FD_PTYMODE", &ptymode, DEFVAL(PTYMODE), PTYMD_E, T_BOOL},
 	{"FD_PTYTERM", &ptyterm, DEFVAL(PTYTERM), PTYTM_E, T_CHARP},
 	{"FD_PTYMENUKEY", &ptymenukey, DEFVAL(PTYMENUKEY), PTYKY_E, T_KEYCODE},
 #endif
-#ifndef	_NOLOGGING
+#ifdef	DEP_LOGGING
 	{"FD_LOGFILE", &logfile, DEFVAL(LOGFILE), LGFIL_E, T_PATH},
 	{"FD_LOGSIZE", &logsize, DEFVAL(LOGSIZE), LGSIZ_E, T_INT},
 # ifndef	NOSYSLOG
@@ -495,35 +484,53 @@ static CONST envtable envlist[] = {
 	{"FD_ROOTLOGLEVEL", &rootloglevel,
 		DEFVAL(ROOTLOGLEVEL), RLGLV_E, T_INT},
 # endif
-#endif	/* !_NOLOGGING */
+#endif	/* DEP_LOGGING */
 #if	FD >= 2
 	{"FD_THRUARGS", &thruargs, DEFVAL(THRUARGS), THARG_E, T_BOOL},
 #endif
-#ifdef	_USEUNICODE
+#ifdef	DEP_URLPATH
+	{"FD_URLDRIVE", &urldrive, DEFVAL(URLDRIVE), URLD_E, T_BOOL},
+	{"FD_URLTIMEOUT", &urltimeout, DEFVAL(URLTIMEOUT), URLTO_E, T_INT},
+	{"FD_URLOPTIONS", &urloptions, DEFVAL(URLOPTIONS), URLOP_E, T_URLOPT},
+	{"FD_HIDEPASSWD", &hidepasswd, DEFVAL(HIDEPASSWD), HIDPW_E, T_BOOL},
+#endif
+#ifdef	DEP_FTPPATH
+	{"FD_FTPADDRESS", &ftpaddress, DEFVAL(FTPADDRESS), FTPAD_E, T_CHARP},
+	{"FD_FTPPROXY", &ftpproxy, DEFVAL(FTPPROXY), FTPPR_E, T_CHARP},
+	{"FD_FTPLOGFILE", &ftplogfile, DEFVAL(FTPLOGFILE), FTPLG_E, T_PATH},
+#endif
+#ifdef	DEP_HTTPPATH
+	{"FD_HTTPPROXY", &httpproxy, DEFVAL(HTTPPROXY), HTPPR_E, T_CHARP},
+	{"FD_HTTPLOGFILE", &httplogfile, DEFVAL(HTTPLOGFILE), HTPLG_E, T_PATH},
+	{"FD_HTMLLOGFILE", &htmllogfile, DEFVAL(HTMLLOGFILE), HTMLG_E, T_PATH},
+#endif
+#ifdef	DEP_UNICODE
 	{"FD_UNICODEBUFFER", &unicodebuffer,
 		DEFVAL(UNICODEBUFFER), UNBF_E, T_BOOL},
 #endif
-#if	!defined (_NOKANJICONV) \
-|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+#if	defined (DEP_KCONV) || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 	{"FD_LANGUAGE", &outputkcode, DEFVAL(NOCNV), LANG_E, _B_(T_KOUT)},
 #endif
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 	{"FD_DEFKCODE", &defaultkcode, DEFVAL(NOCNV), DFKC_E, T_KNAM},
 #endif
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	{"FD_INPUTKCODE", &inputkcode, DEFVAL(NOCNV), IPKC_E, _B_(T_KIN)},
 #endif
-#if	!defined (_NOKANJICONV) && !defined (_NOPTY)
+#if	defined (DEP_KCONV) && defined (DEP_PTY)
 	{"FD_PTYINKCODE", &ptyinkcode, DEFVAL(NOCNV), PIKC_E, T_KTERM},
 	{"FD_PTYOUTKCODE", &ptyoutkcode, DEFVAL(NOCNV), POKC_E, T_KTERM},
 #endif
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 	{"FD_FNAMEKCODE", &fnamekcode, DEFVAL(NOCNV), FNKC_E, T_KNAM},
+#endif
+#if	defined (DEP_FILECONV) && defined (DEP_URLPATH)
+	{"FD_URLKCODE", &urlkcode, DEFVAL(NOCNV), URLKC_E, T_KNAM},
 #endif
 #if	!defined (_NOENGMES) && !defined (_NOJPNMES)
 	{"FD_MESSAGELANG", &messagelang, DEFVAL(NOCNV), MESL_E, T_MESLANG},
 #endif
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 	{"FD_SJISPATH", &sjispath, DEFVAL(SJISPATH), SJSP_E, T_KPATHS},
 	{"FD_EUCPATH", &eucpath, DEFVAL(EUCPATH), EUCP_E, T_KPATHS},
 	{"FD_JISPATH", &jis7path, DEFVAL(JISPATH), JISP_E, T_KPATHS},
@@ -536,11 +543,11 @@ static CONST envtable envlist[] = {
 	{"FD_CAPPATH", &cappath, DEFVAL(CAPPATH), CAPP_E, T_KPATHS},
 	{"FD_UTF8PATH", &utf8path, DEFVAL(UTF8PATH), UTF8P_E, T_KPATHS},
 	{"FD_UTF8MACPATH", &utf8macpath,
-		DEFVAL(UTF8MACPATH), UTF8MACP_E, T_KPATHS},
+		DEFVAL(UTF8MACPATH), UTF8M_E, T_KPATHS},
 	{"FD_UTF8ICONVPATH", &utf8iconvpath,
-		DEFVAL(UTF8ICONVPATH), UTF8ICONVP_E, T_KPATHS},
+		DEFVAL(UTF8ICONVPATH), UTF8I_E, T_KPATHS},
 	{"FD_NOCONVPATH", &noconvpath, DEFVAL(NOCONVPATH), NCVP_E, T_KPATHS},
-#endif	/* !_NOKANJIFCONV */
+#endif	/* DEP_FILECONV */
 #ifndef	_NOCUSTOMIZE
 	{"FD_PAGER", NULL, DEFVAL(NULL), PAGR_E, T_NOVAR},
 	{"FD_EDITOR", NULL, DEFVAL(NULL), EDIT_E, T_NOVAR},
@@ -554,16 +561,19 @@ static CONST envtable envlist[] = {
 #endif	/* !_NOCUSTOMIZE */
 };
 #define	ENVLISTSIZ		arraysize(envlist)
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 static pathtable pathlist[] = {
 	{fullpath, NULL, NOCNV, P_ISARRAY},
 	{&origpath, NULL, NOCNV, P_STABLE},
 	{&progpath, NULL, NOCNV, P_STABLE},
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 	{&unitblpath, NULL, NOCNV, P_STABLE},
 # endif
-# ifndef	_NOIME
+# ifdef	DEP_IME
 	{&dicttblpath, NULL, NOCNV, P_STABLE},
+# endif
+# ifndef	_NOCATALOG
+	{&cattblpath, NULL, NOCNV, P_STABLE},
 # endif
 };
 #define	PATHLISTSIZ		arraysize(pathlist)
@@ -573,9 +583,9 @@ static pathtable archlist[MAXWINDOWS];
 #  endif
 static pathtable fulllist[MAXWINDOWS];
 # endif	/* !_NOSPLITWIN */
-#endif	/* !_NOKANJIFCONV */
+#endif	/* DEP_FILECONV */
 #ifndef	_NOCUSTOMIZE
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 static CONST devinfo mediadescr[] = {
 	{0xf0, "2HD(PC/AT)", 2, 18, 80},
 	{0xf9, "2HD(PC98)", 2, 15, 80},
@@ -587,7 +597,7 @@ static CONST devinfo mediadescr[] = {
 #  endif
 };
 #define	MEDIADESCRSIZ		arraysize(mediadescr)
-# endif	/* _USEDOSEMU */
+# endif	/* DEP_DOSEMU */
 static char basicenv[ENVLISTSIZ];
 static int nbasic = 0;
 static int cs_item = 0;
@@ -599,18 +609,20 @@ static char **tmpmacrolist = NULL;
 static int tmpmaxmacro = 0;
 static char **tmphelpindex = NULL;
 static bindtable *tmpbindlist = NULL;
+static int tmpmaxbind = 0;
 # ifndef	_NOKEYMAP
 static keyseq_t *tmpkeymaplist = NULL;
 static short *keyseqlist = NULL;
 # endif
 # ifndef	_NOARCHIVE
-static launchtable *tmplaunchlist = NULL;
+static lsparse_t *tmplaunchlist = NULL;
 static int tmpmaxlaunch = 0;
-static archivetable *tmparchivelist = NULL;
+static archive_t *tmparchivelist = NULL;
 static int tmpmaxarchive = 0;
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 static devinfo *tmpfdtype = NULL;
+static int tmpmaxfdtype = 0;
 # endif
 #endif	/* !_NOCUSTOMIZE */
 
@@ -694,7 +706,7 @@ int len, *envp;
 static VOID NEAR _evalenv(no)
 int no;
 {
-#if	MSDOS && !defined (_NODOSDRIVE)
+#if	MSDOS && defined (DEP_DOSDRIVE)
 	int i;
 #endif
 	CONST char *cp;
@@ -712,6 +724,10 @@ int no;
 			if ((n = atoi2(cp)) < 0) n = def_num(no);
 			*((short *)(envlist[no].var)) = n;
 			break;
+#ifdef	DEP_URLPATH
+		case T_URLOPT:
+/*FALLTHRU*/
+#endif
 		case T_INT:
 			if ((n = atoi2(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
@@ -723,16 +739,14 @@ int no;
 		case T_PATH:
 			if (!cp) cp = def_str(no);
 			new = evalpath(strdup2(cp), 0);
-			if (*((char **)(envlist[no].var)))
-				free(*((char **)(envlist[no].var)));
+			free2(*((char **)(envlist[no].var)));
 			*((char **)(envlist[no].var)) = new;
 			break;
 		case T_PATHS:
 		case T_KPATHS:
 			if (!cp) cp = def_str(no);
 			new = evalpaths(cp, ':');
-			if (*((char **)(envlist[no].var)))
-				free(*((char **)(envlist[no].var)));
+			free2(*((char **)(envlist[no].var)));
 			*((char **)(envlist[no].var)) = new;
 			break;
 		case T_SORT:
@@ -762,12 +776,12 @@ int no;
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
-#if	MSDOS && !defined (_NODOSDRIVE)
+#if	MSDOS && defined (DEP_DOSDRIVE)
 		case T_DDRV:
 			if (!cp) n = def_num(no);
 			else {
 				n = 0;
-				if (!(new = strchr(cp, ','))) {
+				if (!(new = strchr2(cp, ','))) {
 					if (*cp && atoi2(cp)) n |= 1;
 				}
 				else {
@@ -780,7 +794,7 @@ int no;
 			}
 			*((int *)(envlist[no].var)) = n;
 			break;
-#endif	/* MSDOS && !_NODOSDRIVE */
+#endif	/* MSDOS && DEP_DOSDRIVE */
 #ifndef	_NOCOLOR
 		case T_COLOR:
 			if ((n = atoi2(cp)) < 0 || n > 3) n = def_num(no);
@@ -797,24 +811,27 @@ int no;
 			*((char **)(envlist[no].var)) = (char *)cp;
 			break;
 #endif	/* !_NOEDITMODE */
-#if	!defined (_NOKANJICONV) \
-|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+#if	defined (DEP_KCONV) || (!defined (_NOENGMES) && !defined (_NOJPNMES))
+		case T_MESLANG:
+# ifndef	_NOCATALOG
+			catname = cp;
+/*FALLTHRU*/
+# endif
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
 		case T_KTERM:
-		case T_MESLANG:
 			n = (1 << (env_type(no) - T_KIN));
 			*((int *)(envlist[no].var)) = getlang(cp, n);
 			break;
-#endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
+#endif	/* DEP_KCONV || (!_NOENGMES && !NOJPNMES) */
 #if	FD >= 2
 		case T_OCTAL:
 			if ((n = atooctal(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
-#if	!defined (_NOPTY) || !defined (_NOIME)
+#if	defined (DEP_PTY) || defined (DEP_IME)
 		case T_KEYCODE:
 			if ((n = getkeycode(cp, 0)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
@@ -839,7 +856,7 @@ int no;
 	}
 }
 
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 static char *NEAR pathlang(pp, stable)
 pathtable *pp;
 int stable;
@@ -853,7 +870,7 @@ int stable;
 	if (!stable) /*EMPTY*/;
 	else if (pp -> lang == NOCNV) {
 		if (!(pp -> flags & P_STABLE)) {
-			if (pp -> last) free(pp -> last);
+			free2(pp -> last);
 			pp -> last = NULL;
 		}
 		stable = 0;
@@ -883,13 +900,13 @@ pathtable *pp;
 		else {
 			path = newkanjiconv(buf, pp -> lang, DEFCODE, L_FNAME);
 			if (path == buf) path = strdup2(buf);
-			free(*((char **)(pp -> path)));
+			free2(*((char **)(pp -> path)));
 			*((char **)(pp -> path)) = path;
 		}
 		if (kanjierrno) pp -> lang = DEFCODE;
 	}
 	if (!(pp -> flags & P_STABLE)) {
-		if (pp -> last) free(pp -> last);
+		free2(pp -> last);
 		pp -> last = strdup2(path);
 	}
 }
@@ -926,13 +943,13 @@ static VOID NEAR evalpathlang(VOID_A)
 		pathconv(&(fulllist[i]));
 	}
 # endif	/* !_NOSPLITWIN */
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 	changekcode();
 	changeinkcode();
 	changeoutkcode();
 # endif
 }
-#endif	/* !_NOKANJIFCONV */
+#endif	/* DEP_FILECONV */
 
 static VOID NEAR evalheader(VOID_A)
 {
@@ -954,7 +971,7 @@ static VOID NEAR evalheader(VOID_A)
 	if (i < windows) winvar[i].v_fileperrow += n;
 #endif
 
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	changewsize(wheader, windows);
 #endif
 }
@@ -962,18 +979,21 @@ static VOID NEAR evalheader(VOID_A)
 static VOID NEAR evalenvone(n)
 int n;
 {
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 	int type;
 #endif
 
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 	type = env_type(n);
 	if (type != T_KPATHS && (type < T_KIN || type > T_KTERM)) type = -1;
 	if (type >= 0) savepathlang();
 #endif
 	_evalenv(n);
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 	if (type >= 0) evalpathlang();
+#endif
+#ifndef	_NOCATALOG
+	if (env_type(n) == T_MESLANG || env_type(n) == T_KOUT) chkcatalog();
 #endif
 }
 
@@ -990,12 +1010,15 @@ int len;
 		evalenvone(i);
 	}
 	else {
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 		savepathlang();
 #endif
 		for (i = 0; i < ENVLISTSIZ; i++) _evalenv(i);
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 		evalpathlang();
+#endif
+#ifndef	_NOCATALOG
+		chkcatalog();
 #endif
 	}
 
@@ -1008,9 +1031,9 @@ VOID freeenvpath(VOID_A)
 {
 	int i;
 
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	for (i = 0; i < PATHLISTSIZ; i++) {
-		if (pathlist[i].last) free(pathlist[i].last);
+		free2(pathlist[i].last);
 		pathlist[i].last = NULL;
 	}
 # endif
@@ -1018,8 +1041,7 @@ VOID freeenvpath(VOID_A)
 		case T_PATH:
 		case T_PATHS:
 		case T_KPATHS:
-			if (*((char **)(envlist[i].var)))
-				free(*((char **)(envlist[i].var)));
+			free2(*((char **)(envlist[i].var)));
 			*((char **)(envlist[i].var)) = NULL;
 			break;
 		default:
@@ -1027,6 +1049,158 @@ VOID freeenvpath(VOID_A)
 	}
 }
 #endif	/* DEBUG */
+
+VOID freestrarray(list, max)
+char **list;
+int max;
+{
+	int i;
+
+	if (list) for (i = 0; i < max; i++) free2(list[i]);
+}
+
+char **copystrarray(dest, src, ndestp, nsrc)
+char **dest, *CONST *src;
+int *ndestp, nsrc;
+{
+	int i;
+
+	if (dest != src) freestrarray(dest, (ndestp) ? *ndestp : nsrc);
+	if (nsrc <= 0) /*EMPTY*/;
+# ifndef	DEP_DYNAMICLIST
+	else if (dest) /*EMPTY*/;
+# endif
+	else dest = (char **)realloc2(dest, nsrc * sizeof(*dest));
+	for (i = 0; i < nsrc; i++) dest[i] = strdup2(src[i]);
+	if (ndestp) *ndestp = nsrc;
+
+	return(dest);
+}
+
+#if	!defined (_NOCUSTOMIZE) || defined (DEP_DYNAMICLIST)
+bindtable *copybind(dest, src, ndestp, nsrc)
+bindtable *dest;
+CONST bindtable *src;
+int *ndestp, nsrc;
+{
+	if (nsrc <= 0) /*EMPTY*/;
+# ifndef	DEP_DYNAMICLIST
+	else if (dest) /*EMPTY*/;
+# endif
+	else dest = (bindtable *)realloc2(dest, nsrc * sizeof(*dest));
+	if (dest != src)
+		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
+	*ndestp = nsrc;
+
+	return(dest);
+}
+#endif	/* !_NOCUSTOMIZE || DEP_DYNAMICLIST */
+
+#ifndef	_NOARCHIVE
+VOID freelaunchlist(list, max)
+lsparse_t *list;
+int max;
+{
+	int i;
+
+	if (list) for (i = 0; i < max; i++) freelaunch(&(list[i]));
+}
+
+lsparse_t *copylaunch(dest, src, ndestp, nsrc)
+lsparse_t *dest;
+CONST lsparse_t *src;
+int *ndestp, nsrc;
+{
+	int i;
+
+	if (dest != src) freelaunchlist(dest, *ndestp);
+	if (nsrc <= 0) /*EMPTY*/;
+# ifndef	DEP_DYNAMICLIST
+	else if (dest) /*EMPTY*/;
+# endif
+	else dest = (lsparse_t *)realloc2(dest, nsrc * sizeof(*dest));
+	if (dest != src)
+		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
+	for (i = 0; i < nsrc; i++) {
+		dest[i].ext = strdup2(src[i].ext);
+		dest[i].comm = strdup2(src[i].comm);
+# ifndef	OLDPARSE
+		dest[i].format = duplvar(src[i].format, -1);
+		dest[i].lignore = duplvar(src[i].lignore, -1);
+		dest[i].lerror = duplvar(src[i].lerror, -1);
+# endif
+	}
+	*ndestp = nsrc;
+
+	return(dest);
+}
+
+VOID freearchlist(list, max)
+archive_t *list;
+int max;
+{
+	int i;
+
+	if (list) for (i = 0; i < max; i++) freearch(&(list[i]));
+}
+
+archive_t *copyarch(dest, src, ndestp, nsrc)
+archive_t *dest;
+CONST archive_t *src;
+int *ndestp, nsrc;
+{
+	int i;
+
+	if (dest != src) freearchlist(dest, *ndestp);
+	if (nsrc <= 0) /*EMPTY*/;
+# ifndef	DEP_DYNAMICLIST
+	else if (dest) /*EMPTY*/;
+# endif
+	else dest = (archive_t *)realloc2(dest, nsrc * sizeof(*dest));
+	if (dest != src)
+		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
+	for (i = 0; i < nsrc; i++) {
+		dest[i].ext = strdup2(src[i].ext);
+		dest[i].p_comm = strdup2(src[i].p_comm);
+		dest[i].u_comm = strdup2(src[i].u_comm);
+	}
+	*ndestp = nsrc;
+
+	return(dest);
+}
+#endif	/* !_NOARCHIVE */
+
+#ifdef	DEP_DOSEMU
+VOID freedosdrive(list, max)
+devinfo *list;
+int max;
+{
+	int i;
+
+	if (list) for (i = 0; i < max; i++) free2(list[i].name);
+}
+
+devinfo *copydosdrive(dest, src, ndestp, nsrc)
+devinfo *dest;
+CONST devinfo *src;
+int *ndestp, nsrc;
+{
+	int i;
+
+	if (dest != src) freedosdrive(dest, *ndestp);
+	if (nsrc <= 0) /*EMPTY*/;
+# ifndef	DEP_DYNAMICLIST
+	else if (dest) /*EMPTY*/;
+# endif
+	else dest = (devinfo *)realloc2(dest, nsrc * sizeof(*dest));
+	if (dest != src)
+		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
+	for (i = 0; i < nsrc; i++) dest[i].name = strdup2(src[i].name);
+	*ndestp = nsrc;
+
+	return(dest);
+}
+#endif	/* DEP_DOSEMU */
 
 #ifndef	_NOCUSTOMIZE
 static int NEAR custputs(s)
@@ -1084,7 +1258,7 @@ int h;
 
 	if (!(cp = inputcuststr(prompt, delsp, s, h))) return((char *)-1);
 	if (!*cp && yesno(USENV_K, prompt)) {
-		free(cp);
+		free2(cp);
 		return(NULL);
 	}
 
@@ -1133,9 +1307,9 @@ CONST char *def, *prompt, **mes;
 		Xlocate(win_x, win_y);
 		Xtflush();
 		keyflush();
-		Xgetkey(-1, 0);
-		ch = Xgetkey(1, 0);
-		Xgetkey(-1, 0);
+		Xgetkey(-1, 0, 0);
+		ch = Xgetkey(1, 0, 0);
+		Xgetkey(-1, 0, 0);
 
 		old = pos;
 		switch (ch) {
@@ -1250,11 +1424,12 @@ static VOID NEAR custtitle(VOID_A)
 static VOID NEAR calcmax(max, new)
 int max[], new;
 {
+# ifndef	_NOKEYMAP
 	int i;
+# endif
 
 	max[0] = ENVLISTSIZ;
-	for (i = 0; bindlist[i].key >= 0; i++) /*EMPTY*/;
-	max[1] = i + new;
+	max[1] = maxbind + new;
 # ifdef	_NOKEYMAP
 	max[2] = new;
 # else
@@ -1268,9 +1443,8 @@ int max[], new;
 	max[3] = maxlaunch + new;
 	max[4] = maxarchive + new;
 # endif
-# ifdef	_USEDOSEMU
-	for (i = 0; fdtype[i].name; i++) /*EMPTY*/;
-	max[5] = i + new;
+# ifdef	DEP_DOSEMU
+	max[5] = maxfdtype + new;
 # else
 	max[5] = new;
 # endif
@@ -1287,36 +1461,13 @@ CONST char *s;
 	Xputterm(END_STANDOUT);
 }
 
-VOID freestrarray(list, max)
-char **list;
-int max;
-{
-	int i;
-
-	if (list) for (i = 0; i < max; i++) free(list[i]);
-}
-
-char **copystrarray(dest, src, ndestp, nsrc)
-char **dest, *CONST *src;
-int *ndestp, nsrc;
-{
-	int i;
-
-	if (dest) freestrarray(dest, (ndestp) ? *ndestp : nsrc);
-	else if (nsrc > 0) dest = (char **)malloc2(nsrc * sizeof(*dest));
-	for (i = 0; i < nsrc; i++) dest[i] = strdup2(src[i]);
-	if (ndestp) *ndestp = nsrc;
-
-	return(dest);
-}
-
 static char **NEAR copyenv(list)
 char **list;
 {
 	int i;
 
 	if (list) {
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 		savepathlang();
 # endif
 		for (i = 0; i < ENVLISTSIZ; i++) {
@@ -1324,8 +1475,11 @@ char **list;
 			setenv2(env_str(i), list[i * 2 + 1], 0);
 			_evalenv(i);
 		}
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 		evalpathlang();
+# endif
+# ifndef	_NOCATALOG
+		chkcatalog();
 # endif
 		evalheader();
 	}
@@ -1345,7 +1499,7 @@ static VOID NEAR cleanupenv(VOID_A)
 	CONST char *cp;
 	int i;
 
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	savepathlang();
 # endif
 	for (i = 0; i < ENVLISTSIZ; i++) {
@@ -1354,8 +1508,11 @@ static VOID NEAR cleanupenv(VOID_A)
 		setenv2(env_str(i), cp, 0);
 		_evalenv(i);
 	}
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	evalpathlang();
+# endif
+# ifndef	_NOCATALOG
+	chkcatalog();
 # endif
 	evalheader();
 }
@@ -1375,22 +1532,22 @@ char *buf;
 }
 # endif	/* FD >= 2 */
 
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 static VOID NEAR putargs(s, argc, argv, fp)
 CONST char *s;
 int argc;
 CONST char *argv[];
-FILE *fp;
+XFILE *fp;
 {
 	int i;
 
 	if (!argc) return;
 
-	fputs(s, fp);
+	Xfputs(s, fp);
 	for (i = 0; i < argc; i++) fprintf2(fp, " %s", argv[i]);
 	fputnl(fp);
 }
-# endif	/* !_NOORIGSHELL */
+# endif	/* DEP_ORIGSHELL */
 
 static char *NEAR int2str(buf, n)
 char *buf;
@@ -1415,9 +1572,9 @@ CONST char *s;
 	Xlocate(win_x, win_y);
 	Xtflush();
 	keyflush();
-	Xgetkey(-1, 0);
-	c = Xgetkey(1, 0);
-	Xgetkey(-1, 0);
+	Xgetkey(-1, 0, 0);
+	c = Xgetkey(1, 0, 0);
+	Xgetkey(-1, 0, 0);
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 
@@ -1509,7 +1666,7 @@ int no;
 			cp = str[*((int *)(envlist[no].var))];
 			break;
 # endif
-# if	MSDOS && !defined (_NODOSDRIVE)
+# if	MSDOS && defined (DEP_DOSDRIVE)
 		case T_DDRV:
 			n = *((int *)(envlist[no].var));
 			str[0] = VBOL0_K;
@@ -1520,7 +1677,7 @@ int no;
 				cp = new = strcatalloc(new, VBIOS_K);
 			}
 			break;
-# endif	/* MSDOS && !_NODOSDRIVE */
+# endif	/* MSDOS && DEP_DOSDRIVE */
 # ifndef	_NOCOLOR
 		case T_COLOR:
 			str[0] = VBOL0_K;
@@ -1560,16 +1717,23 @@ int no;
 				cp = VNONE_K;
 			break;
 # endif	/* !_NOEDITMODE */
-# if	!defined (_NOKANJICONV) \
-|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+# if	defined (DEP_KCONV) || (!defined (_NOENGMES) && !defined (_NOJPNMES))
+		case T_MESLANG:
+#  ifndef	_NOCATALOG
+			if (*((int *)(envlist[no].var)) == NOCNV
+			&& catname && *catname) {
+				cp = catname;
+				break;
+			}
+/*FALLTHRU*/
+#  endif
 		case T_KIN:
 		case T_KOUT:
 		case T_KNAM:
 		case T_KTERM:
-		case T_MESLANG:
 			str[NOCNV] = VNCNV_K;
 			str[ENG] = VENG_K;
-#  ifndef	_NOKANJICONV
+#  ifdef	DEP_KCONV
 			str[SJIS] = "ShiftJIS";
 			str[EUC] = "EUC-JP";
 			str[JIS7] = "7bit-JIS";
@@ -1583,16 +1747,16 @@ int no;
 			str[UTF8] = "UTF-8";
 			str[M_UTF8] = "UTF-8 for Mac OS X";
 			str[I_UTF8] = "UTF-8 for iconv";
-#  endif	/* !_NOKANJICONV */
+#  endif	/* DEP_KCONV */
 			cp = str[*((int *)(envlist[no].var))];
 			break;
-# endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
+# endif	/* DEP_KCONV || (!_NOENGMES && !NOJPNMES) */
 # if	FD >= 2
 		case T_OCTAL:
 			cp = ascoctal(*((int *)(envlist[no].var)), buf);
 			break;
 # endif
-# if	!defined (_NOPTY) || !defined (_NOIME)
+# if	defined (DEP_PTY) || defined (DEP_IME)
 		case T_KEYCODE:
 			cp = getenv2(fdenv_str(no));
 			break;
@@ -1610,6 +1774,26 @@ int no;
 			cp = new;
 			break;
 # endif	/* FD >= 2 */
+# ifdef	DEP_URLPATH
+		case T_URLOPT:
+			n = *((int *)(envlist[no].var));
+			new = strdup2("PASV:");
+			str[0] = UOP00_K;
+			str[1] = UOP01_K;
+			new = strcatalloc(new, str[n & 1]);
+			new = strcatalloc(new, ", PORT:");
+			new = strcatalloc(new, str[(n >> 1) & 1]);
+			new = strcatalloc(new, ", MDTM:");
+			new = strcatalloc(new, str[(n >> 2) & 1]);
+			new = strcatalloc(new, ", FEAT:");
+			new = strcatalloc(new, str[(n >> 3) & 1]);
+			new = strcatalloc(new, ", HTTP:");
+			str[0] = UOP50_K;
+			str[1] = UOP51_K;
+			new = strcatalloc(new, str[(n >> 4) & 1]);
+			cp = new;
+			break;
+# endif	/* DEP_URLPATH */
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			break;
@@ -1621,7 +1805,7 @@ int no;
 	cputstr(MAXCUSTVAL, cp);
 	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
-	if (new) free(new);
+	free2(new);
 
 	return(n);
 }
@@ -1629,12 +1813,19 @@ int no;
 static int NEAR editenv(no)
 int no;
 {
+# ifndef	_NOCATALOG
+	char **argv;
+	int i, top;
+# endif
 	CONST char *cp, *env, *str[MAXSELECTSTRS];
 	char *s, *new, buf[MAXLONGWIDTH + 1];
 	int n, p, tmp, val[MAXSELECTSTRS];
 
 	for (n = 0; n < MAXSELECTSTRS; n++) val[n] = n;
 
+# ifndef	_NOCATALOG
+	argv = NULL;
+# endif
 	new = NULL;
 	env = env_str(no);
 	switch (env_type(no)) {
@@ -1654,7 +1845,7 @@ int no;
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atoi2(cp);
-			free(s);
+			free2(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -1668,7 +1859,7 @@ int no;
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atoi2(cp);
-			free(s);
+			free2(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -1780,7 +1971,7 @@ int no;
 			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			break;
 # endif	/* !_NOWRITEFS */
-# if	MSDOS && !defined (_NODOSDRIVE)
+# if	MSDOS && defined (DEP_DOSDRIVE)
 		case T_DDRV:
 			n = (*((int *)(envlist[no].var)) & 1);
 			str[0] = VBOL0_K;
@@ -1795,7 +1986,7 @@ int no;
 				cp = new = strcatalloc(new, ",BIOS");
 			}
 			break;
-# endif	/* MSDOS && !_NODOSDRIVE */
+# endif	/* MSDOS && DEP_DOSDRIVE */
 		case T_COLUMN:
 			n = *((int *)(envlist[no].var));
 			str[0] = "1";
@@ -1870,7 +2061,7 @@ int no;
 			str[8] = VFOR2_K;
 			str[9] = VBAK2_K;
 			if (noselect(&p, MAXCOLOR, 0, str, val)) {
-				free(new);
+				free2(new);
 				return(0);
 			}
 			new[n] = p + '0';
@@ -1894,8 +2085,7 @@ int no;
 			cp = (n >= 0) ? str[n] : NULL;
 			break;
 # endif	/* !_NOEDITMODE */
-# if	!defined (_NOKANJICONV) \
-|| (!defined (_NOENGMES) && !defined (_NOJPNMES))
+# if	defined (DEP_KCONV) || (!defined (_NOENGMES) && !defined (_NOJPNMES))
 		case T_KIN:
 		case T_KNAM:
 		case T_KOUT:
@@ -1908,7 +2098,7 @@ int no;
 			str[tmp] = VENG_K;
 			val[tmp++] = ENG;
 #  endif
-#  ifndef	_NOKANJICONV
+#  ifdef	DEP_KCONV
 			str[tmp] = "SJIS";
 			val[tmp++] = SJIS;
 			str[tmp] = "EUC";
@@ -1923,7 +2113,7 @@ int no;
 			val[tmp++] = HEX;
 			str[tmp] = "UTF-8";
 			val[tmp++] = UTF8;
-#  endif	/* !_NOKANJICONV */
+#  endif	/* DEP_KCONV */
 			str[tmp] = VUSET_K;
 			val[tmp++] = -1;
 			p = (1 << (env_type(no) - T_KIN));
@@ -1941,7 +2131,7 @@ int no;
 			}
 			if (!tmp) return(0);
 			n = *((int *)(envlist[no].var));
-#  ifndef	_NOKANJICONV
+#  ifdef	DEP_KCONV
 			switch (n) {
 				case O_JIS7:
 				case O_JIS8:
@@ -1959,14 +2149,39 @@ int no;
 					p = 0;
 					break;
 			}
-#  endif	/* !_NOKANJICONV */
+#  endif	/* DEP_KCONV */
+#  ifndef	_NOCATALOG
+			if (env_type(no) == T_MESLANG
+			&& (argv = listcatalog())) {
+				for (top = 0; top < tmp; top++)
+					if (val[top] < 0) break;
+				for (i = 0; argv[i]; i++) {
+					if (tmp >= MAXSELECTSTRS) break;
+					memmove((char *)&(str[top + 1]),
+						(char *)&(str[top]),
+						(tmp - top) * sizeof(*str));
+					memmove((char *)&(val[top + 1]),
+						(char *)&(val[top]),
+						(tmp - top) * sizeof(*val));
+					str[top] = argv[i];
+					val[top] = -2 - i;
+					tmp++;
+				}
+			}
+#  endif	/* !_NOCATALOG */
 			envcaption(env);
 			if (noselect(&n, tmp, 0, str, val)) return(0);
+#  ifndef	_NOCATALOG
+			if (argv && n < -1) {
+				cp = argv[-2 - n];
+				break;
+			}
+#  endif
 			if (n < 0) {
 				cp = NULL;
 				break;
 			}
-#  ifndef	_NOKANJICONV
+#  ifdef	DEP_KCONV
 			switch (n) {
 				case JIS7:
 				case JIS8:
@@ -1997,12 +2212,12 @@ int no;
 				if (noselect(&p, tmp, 64, str, val)) return(0);
 				n += p;
 			}
-#  endif	/* !_NOKANJICONV */
+#  endif	/* DEP_KCONV */
 			str[NOCNV] = nullstr;
 #  if	!defined (_NOENGMES) && !defined (_NOJPNMES)
 			str[ENG] = "C";
 #  endif
-#  ifndef	_NOKANJICONV
+#  ifdef	DEP_KCONV
 			str[SJIS] = "sjis";
 			str[EUC] = "euc";
 			str[JIS7] = "jis7";
@@ -2016,10 +2231,10 @@ int no;
 			str[UTF8] = "utf8";
 			str[M_UTF8] = "utf8-mac";
 			str[I_UTF8] = "utf8-iconv";
-#  endif	/* !_NOKANJICONV */
+#  endif	/* DEP_KCONV */
 			cp = str[n];
 			break;
-# endif	/* !_NOKANJICONV || (!_NOENGMES && !NOJPNMES) */
+# endif	/* DEP_KCONV || (!_NOENGMES && !NOJPNMES) */
 # if	FD >= 2
 		case T_OCTAL:
 			ascoctal(*((int *)(envlist[no].var)), buf);
@@ -2027,7 +2242,7 @@ int no;
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atooctal(cp);
-			free(s);
+			free2(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2035,11 +2250,11 @@ int no;
 			cp = ascoctal(n, buf);
 			break;
 # endif	/* FD >= 2 */
-# if	!defined (_NOPTY) || !defined (_NOIME)
+# if	defined (DEP_PTY) || defined (DEP_IME)
 		case T_KEYCODE:
 			cp = s = asprintf3(VKYCD_K, env);
 			n = inputkeycode(cp);
-			free(s);
+			free2(s);
 			if (n == K_ESC) {
 				if (!yesno(USENV_K, env)) return(0);
 				cp = NULL;
@@ -2048,7 +2263,7 @@ int no;
 			cp = getkeysym(n, 0);
 			if (!yesno(VKYOK_K, cp, env_str(no))) return(0);
 			break;
-# endif	/* !_NOPTY || !_NOIME */
+# endif	/* DEP_PTY || DEP_IME */
 # if	FD >= 2
 		case T_HELP:
 			n = *((int *)(envlist[no].var));
@@ -2061,7 +2276,7 @@ int no;
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			p = atoi2(cp);
-			free(s);
+			free2(s);
 			if (p < 0 || p > MAXHELPINDEX) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2074,7 +2289,7 @@ int no;
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atoi2(cp);
-			free(s);
+			free2(s);
 			if (n < 0 || n > p) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2082,6 +2297,28 @@ int no;
 			cp = int2str(buf, p * 100 + n);
 			break;
 # endif	/* FD >= 2 */
+# ifdef	DEP_URLPATH
+		case T_URLOPT:
+			tmp = *((int *)(envlist[no].var));
+			for (n = 0; n < 5; n++) {
+				val[n] = (tmp & 1);
+				tmp >>= 1;
+			}
+			str[0] = UOP1B_K;
+			str[1] = UOP2B_K;
+			str[2] = UOP3B_K;
+			str[3] = UOP4B_K;
+			str[4] = UOP5B_K;
+			envcaption(UOP0B_K);
+			if (noselect(NULL, 5, 0, str, val)) return(0);
+			tmp = 0;
+			for (n = 5 - 1; n >= 0; n--) {
+				tmp <<= 1;
+				if (val[n]) tmp |= 1;
+			}
+			cp = (tmp) ? int2str(buf, tmp) : NULL;
+			break;
+# endif	/* DEP_URLPATH */
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			cp = new = inputcustenvstr(env, 0, cp, -1);
@@ -2091,7 +2328,10 @@ int no;
 
 	if (getshellvar(fdenv_str(no), -1)) n = setenv2(fdenv_str(no), cp, 0);
 	else n = setenv2(env, cp, 0);
-	if (new) free(new);
+# ifndef	_NOCATALOG
+	freevar(argv);
+# endif
+	free2(new);
 	if (n < 0) warning(-1, env);
 
 	evalenvone(no);
@@ -2102,7 +2342,7 @@ int no;
 
 static int NEAR dumpenv(flaglist, fp)
 CONST char *flaglist;
-FILE *fp;
+XFILE *fp;
 {
 	char *cp;
 	int i, n;
@@ -2119,31 +2359,31 @@ FILE *fp;
 	if (!n || !fp) return(n);
 
 	fputnl(fp);
-	fputs("# shell variables definition\n", fp);
+	Xfputs("# shell variables definition\n", fp);
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
 		&& (cp = getshellvar(env_str(i), -1))
 		&& (env_type(i) != T_CHARP || strenvcmp(cp, def_str(i)))) {
 			cp = killmeta(cp);
 			fprintf2(fp, "%s=%s\n", env_str(i), cp);
-			free(cp);
+			free2(cp);
 		}
 		if ((!flaglist || !(flaglist[i] & 1))
 		&& (cp = getshellvar(fdenv_str(i), -1))) {
 			cp = killmeta(cp);
 			fprintf2(fp, "%s=%s\n", fdenv_str(i), cp);
-			free(cp);
+			free2(cp);
 		}
 	}
 
 	return(n);
 }
 
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 static int NEAR checkenv(flaglist, argv, len, fp)
 char *flaglist, *CONST *argv;
 int *len;
-FILE *fp;
+XFILE *fp;
 {
 	CONST char *ident, **unset, **trash;
 	char *cp;
@@ -2157,8 +2397,8 @@ FILE *fp;
 	ns = nu = nt = 0;
 	for (n = 0; argv[n]; n++) {
 		if ((i = getenvid(argv[n], len[n], &f)) < 0) {
-			if (ns++) fputc(' ', fp);
-			fputs(argv[n], fp);
+			if (ns++) Xfputc(' ', fp);
+			Xfputs(argv[n], fp);
 			continue;
 		}
 
@@ -2171,10 +2411,10 @@ FILE *fp;
 			if ((cp = getshellvar(ident, -1))
 			&& (env_type(i) != T_CHARP
 			|| strenvcmp(cp, def_str(i)))) {
-				if (ns++) fputc(' ', fp);
+				if (ns++) Xfputc(' ', fp);
 				cp = killmeta(cp);
 				fprintf2(fp, "%s=%s", ident, cp);
-				free(cp);
+				free2(cp);
 				continue;
 			}
 			else if (!(envlist[i].type & T_PRIMAL)) {
@@ -2193,11 +2433,11 @@ FILE *fp;
 
 	if (unset) {
 		putargs(BL_UNSET, nu, unset, fp);
-		free(unset);
+		free2(unset);
 	}
 	if (trash) {
 		putargs("#", nt, trash, fp);
-		free(trash);
+		free2(trash);
 	}
 
 	return(1);
@@ -2207,7 +2447,7 @@ static int NEAR checkunset(flaglist, argc, argv, fp)
 char *flaglist;
 int argc;
 char *CONST *argv;
-FILE *fp;
+XFILE *fp;
 {
 	CONST char *ident, **unset, **trash;
 	char *cp;
@@ -2238,10 +2478,10 @@ FILE *fp;
 			if ((cp = getshellvar(ident, -1))
 			&& (env_type(i) != T_CHARP
 			|| strenvcmp(cp, def_str(i)))) {
-				if (ns++) fputc(' ', fp);
+				if (ns++) Xfputc(' ', fp);
 				cp = killmeta(cp);
 				fprintf2(fp, "%s=%s", ident, cp);
-				free(cp);
+				free2(cp);
 				continue;
 			}
 			else if (!(envlist[i].type & T_PRIMAL)) {
@@ -2260,42 +2500,29 @@ FILE *fp;
 
 	if (unset) {
 		putargs(BL_UNSET, nu, unset, fp);
-		free(unset);
+		free2(unset);
 	}
 	if (trash) {
-		fputs("# ", fp);
+		Xfputs("# ", fp);
 		putargs(BL_UNSET, nt, trash, fp);
-		free(trash);
+		free2(trash);
 	}
 
 	return(1);
 }
-# endif	/* !_NOORIGSHELL */
-
-bindtable *copybind(dest, src)
-bindtable *dest;
-CONST bindtable *src;
-{
-	int i;
-
-	if (!src) {
-		if (dest) dest[0].key = -1;
-	}
-	else {
-		for (i = 0; src[i].key >= 0; i++);
-		if (dest);
-		else dest = (bindtable *)malloc2((i + 1) * sizeof(*dest));
-		memcpy((char *)dest, (char *)src, (i + 1) * sizeof(*dest));
-	}
-
-	return(dest);
-}
+# endif	/* DEP_ORIGSHELL */
 
 static VOID NEAR cleanupbind(VOID_A)
 {
 	freestrarray(macrolist, maxmacro);
 	maxmacro = 0;
-	copybind(bindlist, origbindlist);
+# ifdef	DEP_DYNAMICLIST
+	bindlist =
+# endif
+	copybind(bindlist, origbindlist, &maxbind, origmaxbind);
+# ifdef	DEP_DYNAMICLIST
+	helpindex =
+# endif
 	copystrarray(helpindex, orighelpindex, NULL, MAXHELPINDEX);
 }
 
@@ -2305,7 +2532,7 @@ int no;
 	CONST char *cp1, *cp2;
 	int len, width;
 
-	if (bindlist[no].key < 0) {
+	if (no >= maxbind) {
 		cputspace(MAXCUSTVAL);
 		return(0);
 	}
@@ -2353,15 +2580,16 @@ CONST char *prompt;
 	qsort(list, FUNCLISTSIZ, sizeof(namelist), cmplist);
 	sorton = dupsorton;
 	for (i = 0; i < FUNCLISTSIZ; i++)
-		mes[i] = mesconv(funclist[list[i].ent].hmes,
+		mes[i] = mesconv2(funclist[list[i].ent].hmes_no,
+			funclist[list[i].ent].hmes,
 			funclist[list[i].ent].hmes_eng);
 
 	cp = (n < FUNCLISTSIZ) ? funclist[n].ident : list[FUNCLISTSIZ].name;
 	n = browsenamelist(list, max, 5, cp, prompt, mes);
 
 	if (n >= 0) n = list[n].ent;
-	free(list);
-	free(mes);
+	free2(list);
+	free2(mes);
 
 	return (n);
 }
@@ -2374,17 +2602,17 @@ int no;
 	char *cp, *buf, *func1, *func2;
 	int i, n1, n2, key;
 
-	if ((key = bindlist[no].key) < 0) {
+	if (no < maxbind) key = bindlist[no].key;
+	else {
 		key = inputkeycode(BINDK_K);
-		for (no = 0; no < MAXBINDTABLE && bindlist[no].key >= 0; no++)
+		for (no = 0; no < maxbind; no++)
 			if (key == (int)(bindlist[no].key)) break;
+# ifndef	DEP_DYNAMICLIST
 		if (no >= MAXBINDTABLE - 1) {
 			warning(0, OVERF_K);
 			return(0);
 		}
-		if (bindlist[no].key < 0)
-			memcpy((char *)&(bindlist[no + 1]),
-				(char *)&(bindlist[no]), sizeof(*bindlist));
+# endif
 	}
 	if (key == K_ESC) {
 		warning(0, ESCNG_K);
@@ -2394,7 +2622,7 @@ int no;
 
 	func1 = func2 = NULL;
 	for (;;) {
-		if (bindlist[no].key < 0) {
+		if (no >= maxbind) {
 			n1 = FUNCLISTSIZ;
 			i = 1;
 		}
@@ -2404,7 +2632,7 @@ int no;
 		}
 		buf = asprintf3(BINDF_K, str);
 		n1 = selectbind(n1, i, buf);
-		free(buf);
+		free2(buf);
 		if (n1 < 0) return(-1);
 		else if (n1 < FUNCLISTSIZ) break;
 		else if (n1 == FUNCLISTSIZ + 1) {
@@ -2415,13 +2643,13 @@ int no;
 		}
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
-			i = (bindlist[no].key >= 0) ? ffunc(no) : -1;
+			i = (no < maxbind) ? ffunc(no) : -1;
 			buf = asprintf3(BNDFC_K, str);
-			cp = inputcuststr(buf, 0, getmacro(i), HST_COM);
-			free(buf);
+			cp = inputcuststr(buf, 0, getmacro(i), HST_COMM);
+			free2(buf);
 			if (!cp);
 			else if (!*cp) {
-				free(cp);
+				free2(cp);
 				n1 = NO_OPERATION;
 				break;
 			}
@@ -2435,11 +2663,11 @@ int no;
 
 	if (yesno(KBDIR_K)) n2 = FNO_NONE;
 	else for (;;) {
-		if (bindlist[no].key < 0) n2 = FUNCLISTSIZ;
+		if (no >= maxbind) n2 = FUNCLISTSIZ;
 		else if ((n2 = dfunc(no)) == FNO_NONE) n2 = ffunc(no);
 		buf = asprintf3(BINDD_K, str);
 		n2 = selectbind(i = n2, 1, buf);
-		free(buf);
+		free2(buf);
 		if (n2 < 0) {
 			freemacro(n1);
 			return(-1);
@@ -2450,13 +2678,13 @@ int no;
 		}
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
-			if (bindlist[no].key < 0) i = -1;
+			if (no >= maxbind) i = -1;
 			buf = asprintf3(BNDDC_K, str);
-			cp = inputcuststr(buf, 0, getmacro(i), HST_COM);
-			free(buf);
-			if (!cp);
+			cp = inputcuststr(buf, 0, getmacro(i), HST_COMM);
+			free2(buf);
+			if (!cp) /*EMPTY*/;
 			else if (!*cp) {
-				free(cp);
+				free2(cp);
 				n2 = FNO_NONE;
 				break;
 			}
@@ -2471,8 +2699,8 @@ int no;
 	if (key < K_F(1) || key > K_F(MAXHELPINDEX)) cp = NULL;
 	else cp = inputcuststr(FCOMM_K, 0, helpindex[key - K_F(1)], -1);
 	bind.key = (short)key;
-	bind.f_func = (u_char)n1;
-	bind.d_func = (u_char)n2;
+	bind.f_func = (funcno_t)n1;
+	bind.d_func = (funcno_t)n2;
 	VOID_C addkeybind(no, &bind, func1, func2, cp);
 
 	return(1);
@@ -2493,65 +2721,64 @@ CONST bindtable *bindp1, *bindp2;
 static int NEAR dumpbind(flaglist, origflaglist, fp)
 CONST char *flaglist;
 char *origflaglist;
-FILE *fp;
+XFILE *fp;
 {
 	char *new;
 	int i, j, n;
 
 	if (origflaglist) new = NULL;
 	else {
-		for (n = 0; origbindlist[n].key >= 0; n++);
-		origflaglist = new = malloc2(n * sizeof(char));
-		memset(origflaglist, 0, n * sizeof(char));
+		origflaglist = new = malloc2(origmaxbind * sizeof(char));
+		memset(origflaglist, 0, origmaxbind * sizeof(char));
 	}
 
-	for (i = n = 0; bindlist[i].key >= 0; i++) {
+	for (i = n = 0; i < maxbind; i++) {
 		if (flaglist && flaglist[i]) continue;
-		j = searchkeybind(&(bindlist[i]), origbindlist);
-		if (j < MAXBINDTABLE && origbindlist[j].key >= 0) {
+		j = searchkeybind(&(bindlist[i]), origbindlist, origmaxbind);
+		if (j < origmaxbind) {
 			origflaglist[j] = 1;
 			if (issamebind(&(bindlist[i]), &(origbindlist[j])))
 				continue;
 		}
 		n++;
 	}
-	for (i = 0; origbindlist[i].key >= 0; i++) {
+	for (i = 0; i < origmaxbind; i++) {
 		if (origflaglist[i]) continue;
 		n++;
 	}
 
 	if (!n || !fp) {
-		if (new) free(new);
+		free2(new);
 		return(n);
 	}
 
 	fputnl(fp);
-	fputs("# key bind definition\n", fp);
-	for (i = 0; bindlist[i].key >= 0; i++) {
+	Xfputs("# key bind definition\n", fp);
+	for (i = 0; i < maxbind; i++) {
 		if (flaglist && flaglist[i]) continue;
-		j = searchkeybind(&(bindlist[i]), origbindlist);
-		if (j < MAXBINDTABLE && origbindlist[j].key >= 0) {
+		j = searchkeybind(&(bindlist[i]), origbindlist, origmaxbind);
+		if (j < origmaxbind) {
 			if (issamebind(&(bindlist[i]), &(origbindlist[j])))
 				continue;
 		}
 
 		printmacro(bindlist, i, 1, fp);
 	}
-	for (i = 0; origbindlist[i].key >= 0; i++) {
+	for (i = 0; i < origmaxbind; i++) {
 		if (origflaglist[i]) continue;
 		printmacro(origbindlist, i, 0, fp);
 	}
-	if (new) free(new);
+	free2(new);
 
 	return(n);
 }
 
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 static int NEAR checkbind(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
 char *CONST *argv;
-FILE *fp;
+XFILE *fp;
 {
 	bindtable bind;
 	int i, j, n;
@@ -2560,11 +2787,11 @@ FILE *fp;
 	if (parsekeybind(argc, argv, &bind) < 0) return(-1);
 	n = (bind.d_func == FNO_NONE) ? 3 : 4;
 
-	i = searchkeybind(&bind, bindlist);
-	j = searchkeybind(&bind, origbindlist);
-	if (i < MAXBINDTABLE && bindlist[i].key >= 0) {
+	i = searchkeybind(&bind, bindlist, maxbind);
+	j = searchkeybind(&bind, origbindlist, origmaxbind);
+	if (i < maxbind) {
 		if (!flaglist || flaglist[i]) return(-1);
-		if (j < MAXBINDTABLE && origbindlist[j].key >= 0) {
+		if (j < origmaxbind) {
 			if (!origflaglist || origflaglist[j]) return(-1);
 			if (argc <= n
 			&& bind.f_func == origbindlist[j].f_func
@@ -2574,7 +2801,7 @@ FILE *fp;
 		}
 	}
 	else {
-		if (j >= MAXBINDTABLE || origbindlist[j].key < 0) return(-1);
+		if (j >= origmaxbind) return(-1);
 		if (!origflaglist || origflaglist[j]) return(-1);
 		origflaglist[j] = 1;
 		printmacro(origbindlist, j, 0, fp);
@@ -2586,7 +2813,7 @@ FILE *fp;
 
 	return(1);
 }
-# endif	/* !_NOORIGSHELL */
+# endif	/* DEP_ORIGSHELL */
 
 # ifndef	_NOKEYMAP
 static VOID NEAR cleanupkeymap(VOID_A)
@@ -2610,7 +2837,7 @@ int no;
 	cputstr(MAXCUSTVAL, cp);
 	len = strlen2(cp);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
-	free(cp);
+	free2(cp);
 
 	return(len);
 }
@@ -2636,7 +2863,7 @@ int no;
 	Xlocate(win_x, win_y);
 	Xtflush();
 	keyflush();
-	free(buf);
+	free2(buf);
 
 	while (!kbhit2(1000000L / SENSEPERSEC));
 	buf = c_realloc(NULL, 0, &size);
@@ -2654,7 +2881,7 @@ int no;
 	win_y = dupwin_y;
 
 	if (len == 1 && buf[0] == K_ESC) {
-		free(buf);
+		free2(buf);
 		if (!yesno(DELKM_K, cp)) return(0);
 		setkeyseq(key, NULL, 0);
 		return(1);
@@ -2662,9 +2889,9 @@ int no;
 
 	str = encodestr(buf, len);
 	i = yesno(SETKM_K, cp, str);
-	free(str);
+	free2(str);
 	if (!i) {
-		free(buf);
+		free2(buf);
 		return(0);
 	}
 	setkeyseq(key, buf, len);
@@ -2672,8 +2899,8 @@ int no;
 	return(1);
 }
 
-static int NEAR searchkeymap(list, kp)
-CONST keyseq_t *list, *kp;
+static int NEAR searchkeymap(kp, list)
+CONST keyseq_t *kp, *list;
 {
 	int i;
 
@@ -2698,7 +2925,7 @@ CONST keyseq_t *kp1, *kp2;
 static int NEAR dumpkeymap(flaglist, origflaglist, fp)
 CONST char *flaglist;
 char *origflaglist;
-FILE *fp;
+XFILE *fp;
 {
 	keyseq_t key;
 	char *new;
@@ -2715,7 +2942,7 @@ FILE *fp;
 		if (flaglist && flaglist[i]) continue;
 		key.code = keyseqlist[i];
 		if (getkeyseq(&key) < 0) continue;
-		j = searchkeymap(origkeymaplist, &key);
+		j = searchkeymap(&key, origkeymaplist);
 		if (j < K_MAX - K_MIN + 1) {
 			origflaglist[j] = 1;
 			if (issamekeymap(&key, &(origkeymaplist[j]))) continue;
@@ -2738,17 +2965,17 @@ FILE *fp;
 		n++;
 	}
 	if (!n || !fp) {
-		if (new) free(new);
+		free2(new);
 		return(n);
 	}
 
 	fputnl(fp);
-	fputs("# keymap definition\n", fp);
+	Xfputs("# keymap definition\n", fp);
 	for (i = 0; keyseqlist[i] >= 0; i++) {
 		if (flaglist && flaglist[i]) continue;
 		key.code = keyseqlist[i];
 		if (getkeyseq(&key) < 0) continue;
-		j = searchkeymap(origkeymaplist, &key);
+		j = searchkeymap(&key, origkeymaplist);
 		if (j < K_MAX - K_MIN + 1) {
 			if (issamekeymap(&key, &(origkeymaplist[j]))) continue;
 		}
@@ -2760,17 +2987,17 @@ FILE *fp;
 
 		printkeymap(&(origkeymaplist[i]), 1, fp);
 	}
-	if (new) free(new);
+	free2(new);
 
 	return(n);
 }
 
-#  ifndef	_NOORIGSHELL
+#  ifdef	DEP_ORIGSHELL
 static int NEAR checkkeymap(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
 char *CONST *argv;
-FILE *fp;
+XFILE *fp;
 {
 	keyseq_t key;
 	int i, j;
@@ -2781,23 +3008,23 @@ FILE *fp;
 
 	for (i = 0; keyseqlist[i] >= 0; i++)
 		if (key.code == keyseqlist[i]) break;
-	j = searchkeymap(origkeymaplist, &key);
+	j = searchkeymap(&key, origkeymaplist);
 	if (keyseqlist[i] >= 0) {
 		if (!flaglist || flaglist[i]) {
-			if (key.str) free(key.str);
+			free2(key.str);
 			return(-1);
 		}
 		if (j < K_MAX - K_MIN + 1) {
 			if (!origflaglist || origflaglist[j]
 			|| issamekeymap(&key, &(origkeymaplist[j]))) {
-				if (key.str) free(key.str);
+				free2(key.str);
 				return(-1);
 			}
 			origflaglist[j] = 1;
 		}
 	}
 	else {
-		if (key.str) free(key.str);
+		free2(key.str);
 		if (j >= K_MAX - K_MIN + 1) return(-1);
 		if (!origflaglist || origflaglist[j]) return(-1);
 		origflaglist[j] = 1;
@@ -2805,7 +3032,7 @@ FILE *fp;
 		return(1);
 	}
 
-	if (key.str) free(key.str);
+	free2(key.str);
 	if (getkeyseq(&key) < 0) return(-1);
 
 	flaglist[i] = 1;
@@ -2813,46 +3040,15 @@ FILE *fp;
 
 	return(1);
 }
-#  endif	/* !_NOORIGSHELL */
+#  endif	/* DEP_ORIGSHELL */
 # endif	/* !_NOKEYMAP */
 
 # ifndef	_NOARCHIVE
-VOID freelaunchlist(list, max)
-launchtable *list;
-int max;
-{
-	int i;
-
-	if (list) for (i = 0; i < max; i++) freelaunch(&(list[i]));
-}
-
-launchtable *copylaunch(dest, src, ndestp, nsrc)
-launchtable *dest;
-CONST launchtable *src;
-int *ndestp, nsrc;
-{
-	int i;
-
-	if (dest) freelaunchlist(dest, *ndestp);
-	else if (nsrc > 0)
-		dest = (launchtable *)malloc2(nsrc * sizeof(*dest));
-	for (i = 0; i < nsrc; i++) {
-		dest[i].ext = strdup2(src[i].ext);
-		dest[i].comm = strdup2(src[i].comm);
-		dest[i].format = duplvar(src[i].format, -1);
-		dest[i].lignore = duplvar(src[i].lignore, -1);
-		dest[i].lerror = duplvar(src[i].lerror, -1);
-		dest[i].topskip = src[i].topskip;
-		dest[i].bottomskip = src[i].bottomskip;
-		dest[i].flags = src[i].flags;
-	}
-	*ndestp = nsrc;
-
-	return(dest);
-}
-
 static VOID NEAR cleanuplaunch(VOID_A)
 {
+#  ifdef	DEP_DYNAMICLIST
+	launchlist =
+#  endif
 	copylaunch(launchlist, origlaunchlist, &maxlaunch, origmaxlaunch);
 }
 
@@ -2887,7 +3083,7 @@ int no;
 }
 
 static VOID NEAR verboselaunch(list)
-launchtable *list;
+lsparse_t *list;
 {
 	int y, yy, len, nf, ni, ne;
 
@@ -3012,7 +3208,7 @@ char **var;
 			if (!(tmp = inputcuststr(prompt, 1, NULL, -1)))
 				continue;
 			if (!*tmp) {
-				free(tmp);
+				free2(tmp);
 				continue;
 			}
 			list = (namelist *)realloc2(list,
@@ -3037,10 +3233,10 @@ char **var;
 			if (!(tmp = inputcuststr(prompt, 1, cp, -1)))
 				continue;
 			if (!*tmp) {
-				free(tmp);
+				free2(tmp);
 				continue;
 			}
-			free(cp);
+			free2(cp);
 			cp = list[n].name = tmp;
 		}
 		else if (i == 1) {
@@ -3053,7 +3249,7 @@ char **var;
 		}
 		else if (i == 3) {
 			if (!yesno(ADLOK_K)) continue;
-			free(cp);
+			free2(cp);
 			for (i = n; i < max; i++)
 				list[i].name = list[i + 1].name;
 			mes[--max] = NULL;
@@ -3061,21 +3257,21 @@ char **var;
 		}
 	}
 
-	if (var) free(var);
+	free2(var);
 	if (!max) var = NULL;
 	else {
 		var = (char **)malloc2((max + 1) * sizeof(*var));
 		for (i = 0; i < max; i++) var[i] = list[i].name;
 		var[i] = NULL;
 	}
-	free(list);
-	free(mes);
+	free2(list);
+	free2(mes);
 
 	return(var);
 }
 
 static int NEAR editarchbrowser(list)
-launchtable *list;
+lsparse_t *list;
 {
 	CONST char *cp, *str[6];
 	char *tmp, buf[MAXLONGWIDTH + 1];
@@ -3126,7 +3322,7 @@ launchtable *list;
 			int2str(buf, *skipp);
 			if (!(tmp = inputcuststr(cp, 1, buf, -1))) continue;
 			i = atoi2(tmp);
-			free(tmp);
+			free2(tmp);
 			if (i < 0) {
 				warning(0, VALNG_K);
 				continue;
@@ -3141,7 +3337,7 @@ launchtable *list;
 static int NEAR editlaunch(no)
 int no;
 {
-	launchtable list;
+	lsparse_t list;
 	char *cp;
 	int n;
 
@@ -3153,9 +3349,9 @@ int no;
 	else {
 		if (!(cp = inputcuststr(EXTLN_K, 1, NULL, -1))) return(0);
 		list.ext = getext(cp, &(list.flags));
-		free(cp);
+		free2(cp);
 		if (!(list.ext[0]) || !(list.ext[1])) {
-			free(list.ext);
+			free2(list.ext);
 			return(0);
 		}
 
@@ -3164,29 +3360,30 @@ int no;
 				launchlist[no].ext, launchlist[no].flags, 1);
 			if (!n) break;
 		}
+#  ifndef	DEP_DYNAMICLIST
 		if (no >= MAXLAUNCHTABLE) {
 			warning(0, OVERF_K);
 			return(0);
 		}
-		if (no >= maxlaunch) {
-			launchlist[no].comm = NULL;
-			launchlist[no].format =
-			launchlist[no].lignore = launchlist[no].lerror = NULL;
-			launchlist[no].topskip =
-			launchlist[no].bottomskip = (u_char)0;
-			launchlist[no].flags = list.flags;
-		}
+#  endif
 	}
 
 	for (;;) {
-		list.format = duplvar(launchlist[no].format, -1);
-		list.lignore = duplvar(launchlist[no].lignore, -1);
-		list.lerror = duplvar(launchlist[no].lerror, -1);
-		list.topskip = launchlist[no].topskip;
-		list.bottomskip = launchlist[no].bottomskip;
+		if (no < maxlaunch) {
+			list.comm = launchlist[no].comm;
+			list.format = duplvar(launchlist[no].format, -1);
+			list.lignore = duplvar(launchlist[no].lignore, -1);
+			list.lerror = duplvar(launchlist[no].lerror, -1);
+			list.topskip = launchlist[no].topskip;
+			list.bottomskip = launchlist[no].bottomskip;
+		}
+		else {
+			list.comm = NULL;
+			list.format = list.lignore = list.lerror = NULL;
+			list.topskip = list.bottomskip = (u_char)0;
+		}
 
-		list.comm = inputcuststr(LNCHC_K, 0,
-			launchlist[no].comm, HST_COM);
+		list.comm = inputcuststr(LNCHC_K, 0, list.comm, HST_COMM);
 		if (!(list.comm)) {
 			freelaunch(&list);
 			return(-1);
@@ -3209,7 +3406,7 @@ int no;
 		}
 
 		if (editarchbrowser(&list)) break;
-		free(list.comm);
+		free2(list.comm);
 		freevar(list.format);
 		freevar(list.lignore);
 		freevar(list.lerror);
@@ -3221,7 +3418,7 @@ int no;
 }
 
 static int NEAR issamelaunch(lp1, lp2)
-CONST launchtable *lp1, *lp2;
+CONST lsparse_t *lp1, *lp2;
 {
 	int i;
 
@@ -3268,7 +3465,7 @@ CONST launchtable *lp1, *lp2;
 static int NEAR dumplaunch(flaglist, origflaglist, fp)
 CONST char *flaglist;
 char *origflaglist;
-FILE *fp;
+XFILE *fp;
 {
 	char *new;
 	int i, j, n;
@@ -3296,12 +3493,12 @@ FILE *fp;
 		n++;
 	}
 	if (!n || !fp) {
-		if (new) free(new);
+		free2(new);
 		return(n);
 	}
 
 	fputnl(fp);
-	fputs("# launcher definition\n", fp);
+	Xfputs("# launcher definition\n", fp);
 	for (i = 0; i < maxlaunch; i++) {
 		if (flaglist && flaglist[i]) continue;
 		j = searchlaunch(&(launchlist[i]),
@@ -3319,19 +3516,19 @@ FILE *fp;
 
 		printlaunchcomm(origlaunchlist, i, 0, 0, fp);
 	}
-	if (new) free(new);
+	free2(new);
 
 	return(n);
 }
 
-#  ifndef	_NOORIGSHELL
+#  ifdef	DEP_ORIGSHELL
 static int NEAR checklaunch(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
 char *CONST *argv;
-FILE *fp;
+XFILE *fp;
 {
-	launchtable launch;
+	lsparse_t launch;
 	int i, j;
 
 	if (strcommcmp(argv[0], BL_LAUNCH)) return(0);
@@ -3368,40 +3565,13 @@ FILE *fp;
 
 	return(1);
 }
-#  endif	/* !_NOORIGSHELL */
-
-VOID freearchlist(list, max)
-archivetable *list;
-int max;
-{
-	int i;
-
-	if (list) for (i = 0; i < max; i++) freearch(&(list[i]));
-}
-
-archivetable *copyarch(dest, src, ndestp, nsrc)
-archivetable *dest;
-CONST archivetable *src;
-int *ndestp, nsrc;
-{
-	int i;
-
-	if (dest) freearchlist(dest, *ndestp);
-	else if (nsrc > 0)
-		dest = (archivetable *)malloc2(nsrc * sizeof(*dest));
-	for (i = 0; i < nsrc; i++) {
-		dest[i].ext = strdup2(src[i].ext);
-		dest[i].p_comm = strdup2(src[i].p_comm);
-		dest[i].u_comm = strdup2(src[i].u_comm);
-		dest[i].flags = src[i].flags;
-	}
-	*ndestp = nsrc;
-
-	return(dest);
-}
+#  endif	/* DEP_ORIGSHELL */
 
 static VOID NEAR cleanuparch(VOID_A)
 {
+#  ifdef	DEP_DYNAMICLIST
+	archivelist =
+#  endif
 	copyarch(archivelist, origarchivelist, &maxarchive, origmaxarchive);
 }
 
@@ -3427,7 +3597,7 @@ int no;
 static int NEAR editarch(no)
 int no;
 {
-	archivetable list;
+	archive_t list;
 	char *cp;
 	int n;
 
@@ -3438,9 +3608,9 @@ int no;
 	else {
 		if (!(cp = inputcuststr(EXTAR_K, 1, NULL, -1))) return(0);
 		list.ext = getext(cp, &(list.flags));
-		free(cp);
+		free2(cp);
 		if (!(list.ext[0]) || !(list.ext[1])) {
-			free(list.ext);
+			free2(list.ext);
 			return(0);
 		}
 
@@ -3449,43 +3619,47 @@ int no;
 				archivelist[no].ext, archivelist[no].flags, 1);
 			if (!n) break;
 		}
+#  ifndef	DEP_DYNAMICLIST
 		if (no >= MAXARCHIVETABLE) {
 			warning(0, OVERF_K);
 			return(0);
 		}
-		if (no >= maxarchive) {
-			archivelist[no].p_comm = archivelist[no].u_comm = NULL;
-			archivelist[no].flags = list.flags;
-		}
+#  endif
 	}
 
 	for (;;) {
-		list.p_comm = inputcuststr(PACKC_K, 0,
-			archivelist[no].p_comm, HST_COM);
+		if (no < maxarchive) {
+			list.p_comm = archivelist[no].p_comm;
+			list.u_comm = archivelist[no].u_comm;
+		}
+		else {
+			list.p_comm = list.u_comm = NULL;
+		}
+
+		list.p_comm = inputcuststr(PACKC_K, 0, list.p_comm, HST_COMM);
 		if (!(list.p_comm)) {
-			free(list.ext);
+			free2(list.ext);
 			return(0);
 		}
 		else if (!*(list.p_comm)) {
-			free(list.p_comm);
+			free2(list.p_comm);
 			list.p_comm = NULL;
 		}
 
-		list.u_comm = inputcuststr(UPCKC_K, 0,
-			archivelist[no].u_comm, HST_COM);
+		list.u_comm = inputcuststr(UPCKC_K, 0, list.u_comm, HST_COMM);
 		if (!(list.u_comm)) {
-			if (list.p_comm) free(list.p_comm);
+			free2(list.p_comm);
 			continue;
 		}
 		else if (!*(list.u_comm)) {
-			free(list.u_comm);
+			free2(list.u_comm);
 			list.u_comm = NULL;
 		}
 		break;
 	}
 
 	if (!(list.p_comm) && !(list.u_comm)) {
-		free(list.ext);
+		free2(list.ext);
 		if (no >= maxarchive) return(0);
 		if (!yesno(DLAOK_K, archivelist[no].ext)) return(0);
 		deletearch(no);
@@ -3499,7 +3673,7 @@ int no;
 }
 
 static int NEAR issamearch(ap1, ap2)
-CONST archivetable *ap1, *ap2;
+CONST archive_t *ap1, *ap2;
 {
 	if (!(ap1 -> p_comm)) {
 		if (ap2 -> p_comm) return(0);
@@ -3514,7 +3688,7 @@ CONST archivetable *ap1, *ap2;
 static int NEAR dumparch(flaglist, origflaglist, fp)
 CONST char *flaglist;
 char *origflaglist;
-FILE *fp;
+XFILE *fp;
 {
 	char *new;
 	int i, j, n;
@@ -3542,12 +3716,12 @@ FILE *fp;
 		n++;
 	}
 	if (!n || !fp) {
-		if (new) free(new);
+		free2(new);
 		return(n);
 	}
 
 	fputnl(fp);
-	fputs("# archiver definition\n", fp);
+	Xfputs("# archiver definition\n", fp);
 	for (i = 0; i < maxarchive; i++) {
 		if (flaglist && flaglist[i]) continue;
 		j = searcharch(&(archivelist[i]),
@@ -3565,19 +3739,19 @@ FILE *fp;
 
 		printarchcomm(origarchivelist, i, 0, fp);
 	}
-	if (new) free(new);
+	free2(new);
 
 	return(n);
 }
 
-#  ifndef	_NOORIGSHELL
+#  ifdef	DEP_ORIGSHELL
 static int NEAR checkarch(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
 char *CONST *argv;
-FILE *fp;
+XFILE *fp;
 {
-	archivetable arch;
+	archive_t arch;
 	int i, j;
 
 	if (strcommcmp(argv[0], BL_ARCH)) return(0);
@@ -3614,46 +3788,16 @@ FILE *fp;
 
 	return(1);
 }
-#  endif	/* !_NOORIGSHELL */
+#  endif	/* DEP_ORIGSHELL */
 # endif	/* !_NOARCHIVE */
 
-# ifdef	_USEDOSEMU
-VOID freedosdrive(list)
-devinfo *list;
-{
-	int i;
-
-	if (list) for (i = 0; list[i].name; i++) free(list[i].name);
-}
-
-devinfo *copydosdrive(dest, src)
-devinfo *dest;
-CONST devinfo *src;
-{
-	int i;
-
-	if (dest) freedosdrive(dest);
-	if (!src) {
-		if (dest) dest[0].name = NULL;
-	}
-	else {
-		for (i = 0; src[i].name; i++);
-		if (dest);
-		else dest = (devinfo *)malloc2((i + 1) * sizeof(*dest));
-		for (i = 0; src[i].name; i++) {
-			memcpy((char *)&(dest[i]), (char *)&(src[i]),
-				sizeof(*dest));
-			dest[i].name = strdup2(src[i].name);
-		}
-		dest[i].name = NULL;
-	}
-
-	return(dest);
-}
-
+# ifdef	DEP_DOSEMU
 static VOID NEAR cleanupdosdrive(VOID_A)
 {
-	copydosdrive(fdtype, origfdtype);
+#  ifdef	DEP_DYNAMICLIST
+	fdtype =
+#  endif
+	copydosdrive(fdtype, origfdtype, &maxfdtype, origmaxfdtype);
 }
 
 static int NEAR dispdosdrive(no)
@@ -3664,7 +3808,7 @@ int no;
 #  endif
 	int i, len, w1, w2, width;
 
-	if (!fdtype[no].name) {
+	if (no >= maxfdtype) {
 		cputspace(MAXCUSTVAL);
 		return(0);
 	}
@@ -3675,7 +3819,7 @@ int no;
 	w1 = MAXCUSTVAL - 1 - width;
 #  ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
-		strcpy(buf, "HDD");
+		strcpy2(buf, "HDD");
 		if (isupper2(fdtype[no].head)) strcat(buf, "98");
 		i = strlen(buf);
 		snprintf2(&(buf[i]), (int)sizeof(buf) - i, " #offset=%'Ld",
@@ -3726,20 +3870,22 @@ int no;
 	char *cp, buf[MAXLONGWIDTH + 1], sbuf['Z' - 'A' + 1][3];
 	int i, n, val['Z' - 'A' + 1];
 
-	if (fdtype[no].name) dev.drive = fdtype[no].drive;
+	if (no < maxfdtype) dev.drive = fdtype[no].drive;
 	else {
+#  ifndef	DEP_DYNAMICLIST
 		if (no >= MAXDRIVEENTRY - 1) {
 			warning(0, OVERF_K);
 			return(0);
 		}
+#  endif
 
 		for (dev.drive = n = 0; dev.drive <= 'Z' - 'A'; dev.drive++) {
 #  ifdef	HDDMOUNT
-			for (i = 0; fdtype[i].name; i++)
+			for (i = 0; i < maxfdtype; i++)
 				if (dev.drive == fdtype[i].drive
 				&& !(fdtype[i].cyl))
 					break;
-			if (fdtype[i].name) continue;
+			if (i < maxfdtype) continue;
 #  endif
 			VOID_C gendospath(sbuf[n], dev.drive + 'A', '\0');
 			str[n] = sbuf[n];
@@ -3750,8 +3896,6 @@ int no;
 		i = val[0];
 		if (noselect(&i, n, 0, str, val)) return(0);
 		dev.drive = i;
-
-		fdtype[no].name = NULL;
 	}
 
 	dev.name = NULL;
@@ -3761,13 +3905,13 @@ int no;
 	for (;;) {
 		if (!(dev.name)) {
 			cp = asprintf3(DRDEV_K, dev.drive);
-			dev.name = inputcuststr(cp, 1,
-				fdtype[no].name, HST_PATH);
-			free(cp);
+			if (no < maxfdtype) dev.name = fdtype[no].name;
+			dev.name = inputcuststr(cp, 1, dev.name, HST_PATH);
+			free2(cp);
 			if (!(dev.name)) return(0);
 			else if (!*(dev.name)) {
-				free(dev.name);
-				if (!(fdtype[no].name)) return(0);
+				free2(dev.name);
+				if (no >= maxfdtype) return(0);
 				if (!yesno(DLDOK_K, fdtype[no].drive))
 					return(0);
 				VOID_C deletedrv(no);
@@ -3779,11 +3923,11 @@ int no;
 		for (i = n = 0; i < MEDIADESCRSIZ; i++) {
 #  ifdef	HDDMOUNT
 			if (!mediadescr[i].cyl) {
-				if (fdtype[no].name) continue;
-				for (j = 0; fdtype[j].name; j++)
+				if (no < maxfdtype) continue;
+				for (j = 0; j < maxfdtype; j++)
 					if (dev.drive == fdtype[j].drive)
 						break;
-				if (fdtype[j].name) continue;
+				if (j < maxfdtype) continue;
 			}
 #  endif
 			str[n] = mediadescr[i].name;
@@ -3793,7 +3937,7 @@ int no;
 		val[n++] = i;
 		i = val[0];
 		if (noselect(&i, n, 0, str, val)) {
-			free(dev.name);
+			free2(dev.name);
 			dev.name = NULL;
 			continue;
 		}
@@ -3806,24 +3950,24 @@ int no;
 		}
 
 		for (;;) {
-			if (!(fdtype[no].name)) cp = NULL;
+			if (no >= maxfdtype) cp = NULL;
 			else cp = int2str(buf, fdtype[no].head);
 
 			if (!(cp = inputcuststr(DRHED_K, 1, cp, -1))) break;
 			dev.head = n = atoi2(cp);
-			free(cp);
+			free2(cp);
 			if (n > 0 && n <= MAXUTYPE(u_char)) break;
 			warning(0, VALNG_K);
 		}
 		if (!cp) continue;
 
 		for (;;) {
-			if (!(fdtype[no].name)) cp = NULL;
+			if (no >= maxfdtype) cp = NULL;
 			else cp = int2str(buf, fdtype[no].sect);
 
 			if (!(cp = inputcuststr(DRSCT_K, 1, cp, -1))) break;
 			dev.sect = n = atoi2(cp);
-			free(cp);
+			free2(cp);
 			if (dev.sect > 0) break;
 			if (n > 0 && n <= MAXUTYPE(u_short)) break;
 			warning(0, VALNG_K);
@@ -3831,30 +3975,30 @@ int no;
 		if (!cp) continue;
 
 		for (;;) {
-			if (!(fdtype[no].name)) cp = NULL;
+			if (no >= maxfdtype) cp = NULL;
 			else cp = int2str(buf, fdtype[no].cyl);
 
 			if (!(cp = inputcuststr(DRCYL_K, 1, cp, -1))) break;
 			dev.cyl = n = atoi2(cp);
-			free(cp);
+			free2(cp);
 			if (n > 0 && n <= MAXUTYPE(u_short)) break;
 			warning(0, VALNG_K);
 		}
 		if (cp) break;
 	}
 
-	n = searchdrv(&dev, fdtype, 1);
-	if (fdtype[n].name) {
+	n = searchdrv(&dev, fdtype, maxfdtype, 1);
+	if (n < maxfdtype) {
 		if (n != no) warning(0, DUPLD_K);
 		return(0);
 	}
 
-	if (fdtype[no].name) no = deletedrv(no);
+	if (no < maxfdtype) no = deletedrv(no);
 
 	if ((n = insertdrv(no, &dev)) < 0) {
 		if (n < -1) warning(0, OVERF_K);
 		else warning(ENODEV, dev.name);
-		free(dev.name);
+		free2(dev.name);
 		return(0);
 	}
 
@@ -3864,29 +4008,29 @@ int no;
 static int NEAR dumpdosdrive(flaglist, origflaglist, fp)
 CONST char *flaglist;
 char *origflaglist;
-FILE *fp;
+XFILE *fp;
 {
 	char *new;
 	int i, j, n;
 
 	if (origflaglist) new = NULL;
 	else {
-		for (n = 0; origfdtype[n].name; n++);
+		for (n = 0; n < origmaxfdtype; n++) /*EMPTY*/;
 		origflaglist = new = malloc2(n * sizeof(char));
 		memset(origflaglist, 0, n * sizeof(char));
 	}
 
-	for (i = n = 0; fdtype[i].name; i++) {
+	for (i = n = 0; i < maxfdtype; i++) {
 		if (flaglist && flaglist[i]) continue;
-		j = searchdrv(&(fdtype[i]), origfdtype, 1);
-		if (origfdtype[j].name) {
+		j = searchdrv(&(fdtype[i]), origfdtype, origmaxfdtype, 1);
+		if (j < origmaxfdtype) {
 			origflaglist[j] = 1;
 			continue;
 		}
 		n++;
 #  ifdef	HDDMOUNT
 		if (fdtype[i].cyl) continue;
-		for (; fdtype[i + 1].name; i++) {
+		for (; i + 1 < maxfdtype; i++) {
 			if (fdtype[i + 1].cyl
 			|| fdtype[i + 1].drive != fdtype[i].drive + 1
 			|| strpathcmp(fdtype[i + 1].name, fdtype[i].name))
@@ -3894,26 +4038,26 @@ FILE *fp;
 		}
 #  endif	/* HDDMOUNT */
 	}
-	for (i = 0; origfdtype[i].name; i++) {
+	for (i = 0; i < origmaxfdtype; i++) {
 		if (origflaglist[i]) continue;
 		n++;
 	}
 
 	if (!n || !fp) {
-		if (new) free(new);
+		free2(new);
 		return(n);
 	}
 
 	fputnl(fp);
-	fputs("# MS-DOS drive definition\n", fp);
-	for (i = 0; fdtype[i].name; i++) {
+	Xfputs("# MS-DOS drive definition\n", fp);
+	for (i = 0; i < maxfdtype; i++) {
 		if (flaglist && flaglist[i]) continue;
-		j = searchdrv(&(fdtype[i]), origfdtype, 1);
-		if (origfdtype[j].name) continue;
+		j = searchdrv(&(fdtype[i]), origfdtype, origmaxfdtype, 1);
+		if (j < origmaxfdtype) continue;
 		printsetdrv(fdtype, i, 1, 0, fp);
 #  ifdef	HDDMOUNT
 		if (fdtype[i].cyl) continue;
-		for (; fdtype[i + 1].name; i++) {
+		for (; i + 1 < maxfdtype; i++) {
 			if (fdtype[i + 1].cyl
 			|| fdtype[i + 1].drive != fdtype[i].drive + 1
 			|| strpathcmp(fdtype[i + 1].name, fdtype[i].name))
@@ -3921,21 +4065,21 @@ FILE *fp;
 		}
 #  endif	/* HDDMOUNT */
 	}
-	for (i = 0; origfdtype[i].name; i++) {
+	for (i = 0; i < origmaxfdtype; i++) {
 		if (origflaglist[i]) continue;
 		printsetdrv(origfdtype, i, 0, 0, fp);
 	}
-	if (new) free(new);
+	free2(new);
 
 	return(n);
 }
 
-#  ifndef	_NOORIGSHELL
+#  ifdef	DEP_ORIGSHELL
 static int NEAR checkdosdrive(flaglist, origflaglist, argc, argv, fp)
 char *flaglist, *origflaglist;
 int argc;
 char *CONST *argv;
-FILE *fp;
+XFILE *fp;
 {
 	devinfo dev;
 	int i, j;
@@ -3944,14 +4088,14 @@ FILE *fp;
 		return(0);
 	if (parsesetdrv(argc, argv, &dev) < 0) return(-1);
 
-	i = searchdrv(&dev, fdtype, 1);
-	j = searchdrv(&dev, origfdtype, 1);
-	if (fdtype[i].name) {
+	i = searchdrv(&dev, fdtype, maxfdtype, 1);
+	j = searchdrv(&dev, origfdtype, origmaxfdtype, 1);
+	if (i < maxfdtype) {
 		if (!flaglist || flaglist[i]) return(-1);
-		if (origfdtype[j].name) return(-1);
+		if (j < origmaxfdtype) return(-1);
 	}
 	else {
-		if (!(origfdtype[j].name)) return(-1);
+		if (j >= origmaxfdtype) return(-1);
 		if (!origflaglist || origflaglist[j]) return(-1);
 		origflaglist[j] = 1;
 		printsetdrv(origfdtype, j, 0, 0, fp);
@@ -3960,7 +4104,7 @@ FILE *fp;
 
 #   ifdef	HDDMOUNT
 	if (!(dev.cyl)) {
-		for (j = i + 1; fdtype[j].name; j++) {
+		for (j = i + 1; j < maxfdtype; j++) {
 			if (!flaglist || flaglist[j]) break;
 			if (fdtype[j].cyl
 			|| fdtype[j].drive != fdtype[j - 1].drive + 1
@@ -3984,8 +4128,8 @@ FILE *fp;
 
 	return(1);
 }
-#  endif	/* !_NOORIGSHELL */
-# endif	/* _USEDOSEMU */
+#  endif	/* DEP_ORIGSHELL */
+# endif	/* DEP_DOSEMU */
 
 static int NEAR dispsave(no)
 int no;
@@ -3997,10 +4141,10 @@ int no;
 	mes[1] = CCLEA_K;
 	mes[2] = CLOAD_K;
 	mes[3] = CSAVE_K;
-# ifdef	_NOORIGSHELL
-	mes[4] = NIMPL_K;
-# else
+# ifdef	DEP_ORIGSHELL
 	mes[4] = COVWR_K;
+# else
+	mes[4] = NIMPL_K;
 # endif
 	cputstr(MAXCUSTVAL, mes[no]);
 	len = strlen2(mes[no]);
@@ -4009,14 +4153,14 @@ int no;
 	return(len);
 }
 
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 static int NEAR overwriteconfig(val, file)
 int *val;
 CONST char *file;
 {
 	syntaxtree *trp, *stree;
 	lockbuf_t *lck;
-	FILE *fpin, *fpout;
+	XFILE *fpin, *fpout;
 	char *cp, *buf, **argv, **subst, path[MAXPATHLEN];
 	char *flaglist[MAXCUSTOM - 1], *origflaglist[MAXCUSTOM - 1];
 	int i, n, len, *slen, fd, argc, max[MAXCUSTOM], origmax[MAXCUSTOM - 1];
@@ -4026,7 +4170,7 @@ CONST char *file;
 		return(-1);
 	}
 
-	strcpy(path, file);
+	strcpy2(path, file);
 	if ((fpin = lck -> fp)) fd = opentmpfile(path, 0666);
 	else {
 		lockclose(lck);
@@ -4062,8 +4206,7 @@ CONST char *file;
 
 	calcmax(max, 0);
 	origmax[0] = 0;
-	for (i = 0; origbindlist[i].key >= 0; i++) /*EMPTY*/;
-	origmax[1] = i;
+	origmax[1] = origmaxbind;
 #  ifdef	_NOKEYMAP
 	origmax[2] = 0;
 #  else
@@ -4076,9 +4219,8 @@ CONST char *file;
 	origmax[3] = origmaxlaunch;
 	origmax[4] = origmaxarchive;
 #  endif
-#  ifdef	_USEDOSEMU
-	for (i = 0; origfdtype[i].name; i++) /*EMPTY*/;
-	origmax[5] = i;
+#  ifdef	DEP_DOSEMU
+	origmax[5] = origmaxfdtype;
 #  else
 	origmax[5] = 0;
 #  endif
@@ -4098,7 +4240,7 @@ CONST char *file;
 	buf = NULL;
 	len = 0;
 	trp = stree = newstree(NULL);
-	if (fpin) while ((cp = fgets2(fpin, 0))) {
+	if (fpin) while ((cp = Xfgets(fpin))) {
 		n = strlen(cp);
 		if (!buf) {
 			buf = strdup2(cp);
@@ -4107,11 +4249,11 @@ CONST char *file;
 		else {
 			buf = realloc2(buf, len + n + 1 + 1);
 			buf[len++] = '\n';
-			strcpy(&(buf[len]), cp);
+			strcpy2(&(buf[len]), cp);
 			len += n;
 		}
 		trp = analyze(cp, trp, 1);
-		free(cp);
+		free2(cp);
 
 		n = 0;
 		if (!trp);
@@ -4152,7 +4294,7 @@ CONST char *file;
 						origflaglist[4],
 						argc, argv, fpout);
 #  endif
-#  ifdef	_USEDOSEMU
+#  ifdef	DEP_DOSEMU
 				if (!n && val[5])
 					n = checkdosdrive(flaglist[5],
 						origflaglist[5],
@@ -4161,24 +4303,24 @@ CONST char *file;
 			}
 
 			freevar(subst);
-			free(slen);
+			free2(slen);
 		}
 
 		freestree(stree);
 		trp = stree;
 		if (n <= 0) {
-			if (n < 0) fputs("# ", fpout);
-			fputs(buf, fpout);
+			if (n < 0) Xfputs("# ", fpout);
+			Xfputs(buf, fpout);
 			fputnl(fpout);
 		}
-		free(buf);
+		free2(buf);
 		buf = NULL;
 		len = 0;
 	}
 	freestree(stree);
-	free(stree);
+	free2(stree);
 
-	if (!fpin) fputs("# configurations by customizer\n", fpout);
+	if (!fpin) Xfputs("# configurations by customizer\n", fpout);
 	else {
 		n = 0;
 		if (val[0] && flaglist[0])
@@ -4195,13 +4337,13 @@ CONST char *file;
 		if (!n && val[4] && flaglist[4])
 			n += dumparch(flaglist[4], origflaglist[4], NULL);
 #  endif
-#  ifdef	_USEDOSEMU
+#  ifdef	DEP_DOSEMU
 		if (!n && val[5] && flaglist[5])
 			n += dumpdosdrive(flaglist[5], origflaglist[5], NULL);
 #  endif
 		if (n) {
 			fputnl(fpout);
-			fputs("# additional configurations by customizer\n",
+			Xfputs("# additional configurations by customizer\n",
 				fpout);
 		}
 	}
@@ -4219,13 +4361,13 @@ CONST char *file;
 	if (val[4] && flaglist[4])
 		dumparch(flaglist[4], origflaglist[4], fpout);
 #  endif
-#  ifdef	_USEDOSEMU
+#  ifdef	DEP_DOSEMU
 	if (val[5] && flaglist[5])
 		dumpdosdrive(flaglist[5], origflaglist[5], fpout);
 #  endif
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
-		if (flaglist[i]) free(flaglist[i]);
-		if (origflaglist[i]) free(origflaglist[i]);
+		free2(flaglist[i]);
+		free2(origflaglist[i]);
 	}
 
 	if (!fpin) lockclose(lck);
@@ -4255,7 +4397,7 @@ CONST char *file;
 
 	return(0);
 }
-# endif	/* !_NOORIGSHELL */
+# endif	/* DEP_ORIGSHELL */
 
 static int NEAR selectmulti(max, str, val)
 int max;
@@ -4295,7 +4437,7 @@ int no;
 	str[3] = TLNCH_K;
 	str[4] = TARCH_K;
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 	str[5] = TSDRV_K;
 # endif
 
@@ -4307,24 +4449,50 @@ int no;
 			done = 1;
 			if (val[0]) copyenv(tmpenvlist);
 			if (val[1]) {
+# ifdef	DEP_DYNAMICLIST
+				macrolist =
+# endif
 				copystrarray(macrolist, tmpmacrolist,
 					&maxmacro, tmpmaxmacro);
+# ifdef	DEP_DYNAMICLIST
+				helpindex =
+# endif
 				copystrarray(helpindex, tmphelpindex,
 					NULL, MAXHELPINDEX);
-				copybind(bindlist, tmpbindlist);
+# ifdef	DEP_DYNAMICLIST
+				bindlist =
+# endif
+				copybind(bindlist, tmpbindlist,
+					&maxbind, tmpmaxbind);
 			}
 # ifndef	_NOKEYMAP
 			if (val[2]) copykeyseq(tmpkeymaplist);
 # endif
 # ifndef	_NOARCHIVE
-			if (val[3]) copylaunch(launchlist, tmplaunchlist,
+			if (val[3]) {
+#  ifdef	DEP_DYNAMICLIST
+				launchlist =
+#  endif
+				copylaunch(launchlist, tmplaunchlist,
 					&maxlaunch, tmpmaxlaunch);
-			if (val[4]) copyarch(archivelist, tmparchivelist,
+			}
+			if (val[4]) {
+#  ifdef	DEP_DYNAMICLIST
+				archivelist =
+#  endif
+				copyarch(archivelist, tmparchivelist,
 					&maxarchive, tmpmaxarchive);
-# endif
-# ifdef	_USEDOSEMU
-			if (val[5]) copydosdrive(fdtype, tmpfdtype);
-# endif
+			}
+# endif	/* !_NOARCHIVE */
+# ifdef	DEP_DOSEMU
+			if (val[5]) {
+#  ifdef	DEP_DYNAMICLIST
+				fdtype =
+#  endif
+				copydosdrive(fdtype, tmpfdtype,
+					&maxfdtype, tmpmaxfdtype);
+			}
+# endif	/* DEP_DOSEMU */
 			break;
 		case 1:
 			envcaption(SCLEA_K);
@@ -4339,7 +4507,7 @@ int no;
 			if (val[3]) cleanuplaunch();
 			if (val[4]) cleanuparch();
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 			if (val[5]) cleanupdosdrive();
 # endif
 			break;
@@ -4347,7 +4515,7 @@ int no;
 			file = inputcuststr(FLOAD_K, 1, FD_RCFILE, HST_PATH);
 			if (!file) break;
 			if (!*file) {
-				free(file);
+				free2(file);
 				break;
 			}
 			done = 1;
@@ -4355,7 +4523,7 @@ int no;
 			Xlocate(0, n_line - 1);
 			inruncom = 1;
 			i = loadruncom(file, 0);
-			free(file);
+			free2(file);
 			inruncom = 0;
 			sigvecset(n);
 			if (i < 0) {
@@ -4389,10 +4557,10 @@ int no;
 					}
 				}
 			}
-			free(file);
+			free2(file);
 
 			if (!done) break;
-			fputs("# configurations by customizer\n", lck -> fp);
+			Xfputs("# configurations by customizer\n", lck -> fp);
 			if (val[0]) dumpenv(NULL, lck -> fp);
 			if (val[1]) dumpbind(NULL, NULL, lck -> fp);
 # ifndef	_NOKEYMAP
@@ -4402,13 +4570,13 @@ int no;
 			if (val[3]) dumplaunch(NULL, NULL, lck -> fp);
 			if (val[4]) dumparch(NULL, NULL, lck -> fp);
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 			if (val[5]) dumpdosdrive(NULL, NULL, lck -> fp);
 # endif
 			lockclose(lck);
 			break;
 		case 4:
-# ifndef	_NOORIGSHELL
+# ifdef	DEP_ORIGSHELL
 			file = inputcuststr(FOVWR_K, 1, FD_RCFILE, HST_PATH);
 			if (!file) break;
 			done = 1;
@@ -4424,9 +4592,9 @@ int no;
 				else if (overwriteconfig(val, file) < 0)
 					done = 0;
 			}
-			free(file);
+			free2(file);
 			break;
-# endif	/* !_NOORIGSHELL */
+# endif	/* DEP_ORIGSHELL */
 		default:
 			break;
 	}
@@ -4437,7 +4605,7 @@ int no;
 static VOID NEAR dispname(no, y, isstandout)
 int no, y, isstandout;
 {
-# if	!defined (_NOARCHIVE) || defined (_USEDOSEMU)
+# if	!defined (_NOARCHIVE) || defined (DEP_DOSEMU)
 	char buf[MAXCUSTNAM * 2 + 1];
 # endif
 	CONST char *cp;
@@ -4451,8 +4619,7 @@ int no, y, isstandout;
 			cp = env_str(no);
 			break;
 		case 1:
-			if (bindlist[no].key >= 0)
-				cp = getkeysym(bindlist[no].key, 0);
+			if (no < maxbind) cp = getkeysym(bindlist[no].key, 0);
 			break;
 # ifndef	_NOKEYMAP
 		case 2:
@@ -4485,9 +4652,9 @@ int no, y, isstandout;
 			}
 			break;
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 		case 5:
-			if (fdtype[no].name) {
+			if (no < maxfdtype) {
 				VOID_C gendospath(buf, fdtype[no].drive, '\0');
 				cp = buf;
 			}
@@ -4553,7 +4720,7 @@ static VOID NEAR dispcust(VOID_A)
 				cs_len[i - start] = disparch(i);
 				break;
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 			case 5:
 				cs_len[i - start] = dispdosdrive(i);
 				break;
@@ -4601,7 +4768,8 @@ int old, all;
 		Xlocate(0, L_INFO);
 		Xputterm(L_CLEAR);
 		if (hmes[custno]) custputs(hmes[custno]);
-		else custputs(mesconv(envlist[cs_item].hmes,
+		else custputs(mesconv2(envlist[cs_item].hmes_no,
+			envlist[cs_item].hmes,
 			envlist[cs_item].hmes_eng));
 	}
 
@@ -4615,7 +4783,7 @@ int old, all;
 
 static int NEAR editcust(VOID_A)
 {
-	int i, n;
+	int n;
 
 	switch (custno) {
 		case 0:
@@ -4624,11 +4792,7 @@ static int NEAR editcust(VOID_A)
 			cs_max = (basiccustom) ? nbasic : ENVLISTSIZ;
 			break;
 		case 1:
-			if ((n = editbind(cs_item))) {
-				for (i = 0; bindlist[i].key >= 0; i++)
-					/*EMPTY*/;
-				cs_max = i + 1;
-			}
+			if ((n = editbind(cs_item))) cs_max = maxbind + 1;
 			break;
 # ifndef	_NOKEYMAP
 		case 2:
@@ -4643,12 +4807,10 @@ static int NEAR editcust(VOID_A)
 			if ((n = editarch(cs_item))) cs_max = maxarchive + 1;
 			break;
 # endif
-# ifdef	_USEDOSEMU
+# ifdef	DEP_DOSEMU
 		case 5:
-			if ((n = editdosdrive(cs_item))) {
-				for (i = 0; fdtype[i].name; i++) /*EMPTY*/;
-				cs_max = i + 1;
-			}
+			if ((n = editdosdrive(cs_item)))
+				cs_max = maxfdtype + 1;
 			break;
 # endif
 		case 6:
@@ -4666,12 +4828,26 @@ static int NEAR editcust(VOID_A)
 	return(n);
 }
 
-int customize(VOID_A)
+/*ARGSUSED*/
+int customize(env)
+CONST char *env;
 {
 # ifndef	_NOKEYMAP
 	int n;
 # endif
 	int i, yy, ch, old, changed, item[MAXCUSTOM], max[MAXCUSTOM];
+
+# if	FD >= 3
+	if (env) {
+		if ((i = getenvid(env, -1, NULL)) < 0) {
+			errno = EINVAL;
+			warning(-1, env);
+			return(-1);
+		}
+
+		return(editenv(i));
+	}
+# endif
 
 	yy = filetop(win);
 	for (i = 0; i < FILEPERROW; i++) {
@@ -4688,8 +4864,7 @@ int customize(VOID_A)
 	tmpenvlist = copyenv(NULL);
 	tmpmacrolist = copystrarray(NULL, macrolist, &tmpmaxmacro, maxmacro);
 	tmphelpindex = copystrarray(NULL, helpindex, NULL, MAXHELPINDEX);
-	tmpbindlist = copybind(NULL, bindlist);
-	for (i = 0; bindlist[i].key >= 0; i++) /*EMPTY*/;
+	tmpbindlist = copybind(NULL, bindlist, &tmpmaxbind, maxbind);
 # ifndef	_NOKEYMAP
 	tmpkeymaplist = copykeyseq(NULL);
 	for (n = 0; keyidentlist[n].no > 0; n++) /*EMPTY*/;
@@ -4714,8 +4889,8 @@ int customize(VOID_A)
 	tmparchivelist = copyarch(NULL, archivelist,
 		&tmpmaxarchive, maxarchive);
 # endif
-# ifdef	_USEDOSEMU
-	tmpfdtype = copydosdrive(NULL, fdtype);
+# ifdef	DEP_DOSEMU
+	tmpfdtype = copydosdrive(NULL, fdtype, &tmpmaxfdtype, maxfdtype);
 # endif
 	calcmax(max, 1);
 
@@ -4733,9 +4908,9 @@ int customize(VOID_A)
 		Xlocate(win_x, win_y);
 		Xtflush();
 		keyflush();
-		Xgetkey(-1, 0);
-		ch = Xgetkey(1, 0);
-		Xgetkey(-1, 0);
+		Xgetkey(-1, 0, 0);
+		ch = Xgetkey(1, 0, 0);
+		Xgetkey(-1, 0, 0);
 
 		old = cs_item;
 		switch (ch) {
@@ -4828,28 +5003,27 @@ int customize(VOID_A)
 	} while (ch != K_ESC);
 
 	custno = -1;
-	free(cs_len);
-	for (i = 0; i < ENVLISTSIZ * 2; i++)
-		if (tmpenvlist[i]) free(tmpenvlist[i]);
-	free(tmpenvlist);
+	free2(cs_len);
+	for (i = 0; i < ENVLISTSIZ * 2; i++) free2(tmpenvlist[i]);
+	free2(tmpenvlist);
 	freestrarray(tmpmacrolist, tmpmaxmacro);
-	if (tmpmacrolist) free(tmpmacrolist);
+	free2(tmpmacrolist);
 	freestrarray(tmphelpindex, MAXHELPINDEX);
-	if (tmphelpindex) free(tmphelpindex);
-	if (tmpbindlist) free(tmpbindlist);
+	free2(tmphelpindex);
+	free2(tmpbindlist);
 # ifndef	_NOKEYMAP
 	freekeyseq(tmpkeymaplist);
-	free(keyseqlist);
+	free2(keyseqlist);
 # endif
 # ifndef	_NOARCHIVE
 	freelaunchlist(tmplaunchlist, tmpmaxlaunch);
-	if (tmplaunchlist) free(tmplaunchlist);
+	free2(tmplaunchlist);
 	freearchlist(tmparchivelist, tmpmaxarchive);
-	if (tmparchivelist) free(tmparchivelist);
+	free2(tmparchivelist);
 # endif
-# ifdef	_USEDOSEMU
-	freedosdrive(tmpfdtype);
-	if (tmpfdtype) free(tmpfdtype);
+# ifdef	DEP_DOSEMU
+	freedosdrive(tmpfdtype, tmpmaxfdtype);
+	free2(tmpfdtype);
 # endif
 
 	return(1);

@@ -167,7 +167,7 @@ USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
 USESTDARGH USEMKDEVH USEMKNODH USELOCKFH \
 USESGTTY USETERMIO USETERMIOS HAVECLINE USEDEVPTMX \
 USEDIRECT SYSVDIRENT NODNAMLEN NODRECLEN DNAMESIZE \
-HAVETIMEZONE NOTMGMTOFF \
+HAVETIMEZONE NOTMGMTOFF USEINSYSTMH NOHADDRLIST \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USESTATVFS_T USEFFSIZE STATFSARGS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEGETVFSTAT USEMNTCTL \
@@ -180,8 +180,8 @@ USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
 USEWAITPID USESIGACTION USESIGPMASK \
 USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
 GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
-USESTRERROR GETTODARGS USESETSID \
-USESOCKLEN \
+USESTRERROR GETTODARGS USESETSID USEMMAP \
+USESOCKLEN USEINETATON USEINETPTON \
 USESETREUID USESETRESUID USESETREGID USESETRESGID USEGETGROUPS
 do
 	echo "#undef	$i"
@@ -463,6 +463,12 @@ if (noexist "t.tm_gmtoff" "sys/types sys/time" "struct tm t;" \
 && noexist "t.tm_gmtoff" "sys/types time" "struct tm t;"); then
 	echo "#define	NOTMGMTOFF"
 fi
+if useheader netinet/in_systm; then
+	echo "#define	USEINSYSTMH"
+fi
+if noexist "h.h_addr_list" "netdb" "struct hostent h;"; then
+	echo "#define	NOHADDRLIST"
+fi
 
 
 statvfs_t=
@@ -656,6 +662,14 @@ if isexist "setsid()"; then
 fi
 if inheader socklen_t "sys/types sys/socket"; then
 	echo "#define	USESOCKLEN"
+fi
+if isexist "mmap(0,0,0,0,0,0)" "sys/types sys/mman"; then
+	echo "#define	USEMMAP"
+fi
+if isexist "inet_aton(0,0)" "sys/socket netinet/in arpa/inet"; then
+	echo "#define	USEINETATON"
+elif isexist "inet_pton(0,0,0)" "sys/socket netinet/in arpa/inet"; then
+	echo "#define	USEINETPTON"
 fi
 if isexist "seteuid(0)"; then
 	:

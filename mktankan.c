@@ -4,18 +4,9 @@
  *	Tan-Kanji translation table generator
  */
 
-#include "machine.h"
-#include <stdio.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
-#include "printf.h"
+#include "headers.h"
 #include "kctype.h"
+#include "typesize.h"
 #include "roman.h"
 
 #define	MAXKANASTR		255

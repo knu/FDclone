@@ -7,7 +7,11 @@
 #define	__FD_PRIMAL__
 #include "fd.h"
 #include "types.h"
+#ifdef	_NOCATALOG
 #define	_TBL_(fn, id, hl, fl)	{NULL, id, NULL, 0}
+#else
+#define	_TBL_(fn, id, hl, fl)	{NULL, id, 0, 0}
+#endif
 #include "functabl.h"
 
 int main __P_((int, char *CONST []));

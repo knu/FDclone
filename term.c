@@ -4,14 +4,18 @@
  *	terminal module
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>
-#include <fcntl.h>
+#include "headers.h"
+#include "depend.h"
+#include "printf.h"
+#include "kctype.h"
+#include "typesize.h"
+#include "string.h"
+#include "termio.h"
+#include "term.h"
 
-#if	defined (DJGPP) && (DJGPP >= 2)
-#include <time.h>
+#ifdef	USETERMINFO
+#include <curses.h>
+#include <term.h>
 #endif
 
 #if	MSDOS
@@ -47,9 +51,6 @@ static int _asm_cli __P_((char *));
 #  endif
 # endif	/* !DJGPP */
 #else	/* !MSDOS */
-#include <sys/file.h>
-#include <sys/time.h>
-
 typedef struct _kstree_t {
 	u_char key;
 	u_char num;
@@ -57,289 +58,262 @@ typedef struct _kstree_t {
 } kstree_t;
 #endif	/* !MSDOS */
 
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
-#include <errno.h>
-#ifdef	NOERRNO
-extern int errno;
-#endif
-
-#include "printf.h"
-#include "kctype.h"
-#include "termio.h"
-#include "term.h"
-
 #define	WINTERMNAME		"iris"
-#ifdef	USESTRERROR
-#define	strerror2		strerror
-#else
-# ifndef	DECLERRLIST
-extern CONST char *CONST sys_errlist[];
-# endif
-#define	strerror2(n)		(char *)sys_errlist[n]
-#endif
-
 #ifdef	_POSIX_VDISABLE
-#define	K_UNDEF		_POSIX_VDISABLE
+#define	K_UNDEF			_POSIX_VDISABLE
 #else
-#define	K_UNDEF		0xff
+#define	K_UNDEF			0xff
 #endif
 
-#ifdef	DEBUG
-extern VOID muntrace __P_ ((VOID_A));
-extern char *_mtrace_file;
+#if	defined (USETERMINFO) && defined (SVR4)
+typedef char			tputs_t;
+#else
+typedef int			tputs_t;
 #endif
 
-#if	!MSDOS
-# if	defined (USETERMINFO) && defined (SVR4)
-typedef char	tputs_t;
+#ifdef	USETERMINFO
+#define	tgetnum2(s)		(s)
+#define	tgetflag2(s)		(s)
+#define	TERM_pc			pad_char
+#define	TERM_bc			NULL
+#define	TERM_co			columns
+#define	TERM_li			lines
+#define	TERM_xn			eat_newline_glitch
+#define	TERM_xs			ceol_standout_glitch
+#define	TERM_gn			generic_type
+#define	TERM_ti			enter_ca_mode
+#define	TERM_te			exit_ca_mode
+#define	TERM_mm			meta_on
+#define	TERM_mo			meta_off
+#define	TERM_cs			change_scroll_region
+#define	TERM_ks			keypad_xmit
+#define	TERM_ke			keypad_local
+#define	TERM_ve			cursor_normal
+#define	TERM_vs			cursor_visible
+#define	TERM_vi			cursor_invisible
+#define	TERM_sc			save_cursor
+#define	TERM_rc			restore_cursor
+#define	TERM_bl			bell
+#define	TERM_vb			flash_screen
+#define	TERM_cl			clear_screen
+#define	TERM_me			exit_attribute_mode
+#define	TERM_md			enter_bold_mode
+#define	TERM_mr			enter_reverse_mode
+#define	TERM_mh			enter_dim_mode
+#define	TERM_mb			enter_blink_mode
+#define	TERM_so			enter_standout_mode
+#define	TERM_us			enter_underline_mode
+#define	TERM_se			exit_standout_mode
+#define	TERM_ue			exit_underline_mode
+#define	TERM_ce			clr_eol
+#define	TERM_al			insert_line
+#define	TERM_dl			delete_line
+#define	TERM_ic			insert_character
+#define	TERM_IC			parm_ich
+#define	TERM_dc			delete_character
+#define	TERM_DC			parm_dch
+#define	TERM_cm			cursor_address
+#define	TERM_ho			cursor_home
+#define	TERM_cr			carriage_return
+#define	TERM_nl			NULL
+#define	TERM_sf			scroll_forward
+#define	TERM_sr			scroll_reverse
+#define	TERM_up			cursor_up
+#define	TERM_UP			parm_up_cursor
+#define	TERM_do			cursor_down
+#define	TERM_DO			parm_down_cursor
+#define	TERM_nd			cursor_right
+#define	TERM_RI			parm_right_cursor
+#define	TERM_le			cursor_left
+#define	TERM_LE			parm_left_cursor
+#define	TERM_AF			set_a_foreground
+#define	TERM_AB			set_a_background
+#define	TERM_Sf			set_foreground
+#define	TERM_Sb			set_background
+#define	TERM_cb			clr_bol
+#define	TERM_as			enter_alt_charset_mode
+#define	TERM_ae			exit_alt_charset_mode
+#define	TERM_ku			key_up
+#define	TERM_kd			key_down
+#define	TERM_kr			key_right
+#define	TERM_kl			key_left
+#define	TERM_kh			key_home
+#define	TERM_kb			key_backspace
+#define	TERM_l1			lab_f1
+#define	TERM_l2			lab_f2
+#define	TERM_l3			lab_f3
+#define	TERM_l4			lab_f4
+#define	TERM_l5			lab_f5
+#define	TERM_l6			lab_f6
+#define	TERM_l7			lab_f7
+#define	TERM_l8			lab_f8
+#define	TERM_l9			lab_f9
+#define	TERM_la			lab_f10
+#define	TERM_F1			key_f11
+#define	TERM_F2			key_f12
+#define	TERM_F3			key_f13
+#define	TERM_F4			key_f14
+#define	TERM_F5			key_f15
+#define	TERM_F6			key_f16
+#define	TERM_F7			key_f17
+#define	TERM_F8			key_f18
+#define	TERM_F9			key_f19
+#define	TERM_FA			key_f20
+#define	TERM_k1			key_f1
+#define	TERM_k2			key_f2
+#define	TERM_k3			key_f3
+#define	TERM_k4			key_f4
+#define	TERM_k5			key_f5
+#define	TERM_k6			key_f6
+#define	TERM_k7			key_f7
+#define	TERM_k8			key_f8
+#define	TERM_k9			key_f9
+#define	TERM_k10		key_f10
+#define	TERM_k0			key_f0
+#define	TERM_kL			key_dl
+#define	TERM_kA			key_il
+#define	TERM_kD			key_dc
+#define	TERM_kI			key_ic
+#define	TERM_kC			key_clear
+#define	TERM_kE			key_eol
+#define	TERM_kP			key_ppage
+#define	TERM_kN			key_npage
+#define	TERM_at8		key_enter
+#define	TERM_at1		key_beg
+#define	TERM_at7		key_end
+#else	/* !USETERMINFO */
+#define	tgetnum2		tgetnum
+#define	tgetflag2		tgetflag
+#define	TERM_pc			"pc"
+#define	TERM_bc			"bc"
+#define	TERM_co			"co"
+#define	TERM_li			"li"
+#define	TERM_xn			"xn"
+#define	TERM_xs			"xs"
+#define	TERM_gn			"gn"
+#define	TERM_ti			"ti"
+#define	TERM_te			"te"
+#define	TERM_mm			"mm"
+#define	TERM_mo			"mo"
+#define	TERM_cs			"cs"
+#define	TERM_ks			"ks"
+#define	TERM_ke			"ke"
+#define	TERM_ve			"ve"
+#define	TERM_vs			"vs"
+#define	TERM_vi			"vi"
+#define	TERM_sc			"sc"
+#define	TERM_rc			"rc"
+#define	TERM_bl			"bl"
+#define	TERM_vb			"vb"
+#define	TERM_cl			"cl"
+#define	TERM_me			"me"
+#define	TERM_md			"md"
+#define	TERM_mr			"mr"
+#define	TERM_mh			"mh"
+#define	TERM_mb			"mb"
+#define	TERM_so			"so"
+#define	TERM_us			"us"
+#define	TERM_se			"se"
+#define	TERM_ue			"ue"
+#define	TERM_ce			"ce"
+#define	TERM_al			"al"
+#define	TERM_dl			"dl"
+#define	TERM_ic			"ic"
+#define	TERM_IC			"IC"
+#define	TERM_dc			"dc"
+#define	TERM_DC			"DC"
+#define	TERM_cm			"cm"
+#define	TERM_ho			"ho"
+#define	TERM_cr			"cr"
+#define	TERM_nl			"nl"
+#define	TERM_sf			"sf"
+#define	TERM_sr			"sr"
+#define	TERM_up			"up"
+#define	TERM_UP			"UP"
+#define	TERM_do			"do"
+#define	TERM_DO			"DO"
+#define	TERM_nd			"nd"
+#define	TERM_RI			"RI"
+#define	TERM_le			"le"
+#define	TERM_LE			"LE"
+#define	TERM_AF			"AF"
+#define	TERM_AB			"AB"
+#define	TERM_Sf			"Sf"
+#define	TERM_Sb			"Sb"
+#define	TERM_cb			"cb"
+#define	TERM_as			"as"
+#define	TERM_ae			"ae"
+#define	TERM_ku			"ku"
+#define	TERM_kd			"kd"
+#define	TERM_kr			"kr"
+#define	TERM_kl			"kl"
+#define	TERM_kh			"kh"
+#define	TERM_kb			"kb"
+#define	TERM_l1			"l1"
+#define	TERM_l2			"l2"
+#define	TERM_l3			"l3"
+#define	TERM_l4			"l4"
+#define	TERM_l5			"l5"
+#define	TERM_l6			"l6"
+#define	TERM_l7			"l7"
+#define	TERM_l8			"l8"
+#define	TERM_l9			"l9"
+#define	TERM_la			"la"
+#define	TERM_F1			"F1"
+#define	TERM_F2			"F2"
+#define	TERM_F3			"F3"
+#define	TERM_F4			"F4"
+#define	TERM_F5			"F5"
+#define	TERM_F6			"F6"
+#define	TERM_F7			"F7"
+#define	TERM_F8			"F8"
+#define	TERM_F9			"F9"
+#define	TERM_FA			"FA"
+#define	TERM_k1			"k1"
+#define	TERM_k2			"k2"
+#define	TERM_k3			"k3"
+#define	TERM_k4			"k4"
+#define	TERM_k5			"k5"
+#define	TERM_k6			"k6"
+#define	TERM_k7			"k7"
+#define	TERM_k8			"k8"
+#define	TERM_k9			"k9"
+#define	TERM_k10		"k;"
+#define	TERM_k0			"k0"
+#define	TERM_kL			"kL"
+#define	TERM_kA			"kA"
+#define	TERM_kD			"kD"
+#define	TERM_kI			"kI"
+#define	TERM_kC			"kC"
+#define	TERM_kE			"kE"
+#define	TERM_kP			"kP"
+#define	TERM_kN			"kN"
+#define	TERM_at8		"@8"
+#define	TERM_at1		"@1"
+#define	TERM_at7		"@7"
+#endif	/* !USETERMINFO */
+
+#define	TERMCAPSIZE		2048
+
+#ifndef	FREAD
+# ifdef	_FREAD
+# define	FREAD		_FREAD
 # else
-typedef int	tputs_t;
+# define	FREAD		(O_RDONLY + 1)
 # endif
-# ifdef	USETERMINFO
-# include <curses.h>
-# include <term.h>
-# define	tgetnum2(s)		(s)
-# define	tgetflag2(s)		(s)
-# define	TERM_pc			pad_char
-# define	TERM_bc			NULL
-# define	TERM_co			columns
-# define	TERM_li			lines
-# define	TERM_xn			eat_newline_glitch
-# define	TERM_xs			ceol_standout_glitch
-# define	TERM_gn			generic_type
-# define	TERM_ti			enter_ca_mode
-# define	TERM_te			exit_ca_mode
-# define	TERM_mm			meta_on
-# define	TERM_mo			meta_off
-# define	TERM_cs			change_scroll_region
-# define	TERM_ks			keypad_xmit
-# define	TERM_ke			keypad_local
-# define	TERM_ve			cursor_normal
-# define	TERM_vs			cursor_visible
-# define	TERM_vi			cursor_invisible
-# define	TERM_sc			save_cursor
-# define	TERM_rc			restore_cursor
-# define	TERM_bl			bell
-# define	TERM_vb			flash_screen
-# define	TERM_cl			clear_screen
-# define	TERM_me			exit_attribute_mode
-# define	TERM_md			enter_bold_mode
-# define	TERM_mr			enter_reverse_mode
-# define	TERM_mh			enter_dim_mode
-# define	TERM_mb			enter_blink_mode
-# define	TERM_so			enter_standout_mode
-# define	TERM_us			enter_underline_mode
-# define	TERM_se			exit_standout_mode
-# define	TERM_ue			exit_underline_mode
-# define	TERM_ce			clr_eol
-# define	TERM_al			insert_line
-# define	TERM_dl			delete_line
-# define	TERM_ic			insert_character
-# define	TERM_IC			parm_ich
-# define	TERM_dc			delete_character
-# define	TERM_DC			parm_dch
-# define	TERM_cm			cursor_address
-# define	TERM_ho			cursor_home
-# define	TERM_cr			carriage_return
-# define	TERM_nl			NULL
-# define	TERM_sf			scroll_forward
-# define	TERM_sr			scroll_reverse
-# define	TERM_up			cursor_up
-# define	TERM_UP			parm_up_cursor
-# define	TERM_do			cursor_down
-# define	TERM_DO			parm_down_cursor
-# define	TERM_nd			cursor_right
-# define	TERM_RI			parm_right_cursor
-# define	TERM_le			cursor_left
-# define	TERM_LE			parm_left_cursor
-# define	TERM_AF			set_a_foreground
-# define	TERM_AB			set_a_background
-# define	TERM_Sf			set_foreground
-# define	TERM_Sb			set_background
-# define	TERM_cb			clr_bol
-# define	TERM_as			enter_alt_charset_mode
-# define	TERM_ae			exit_alt_charset_mode
-# define	TERM_ku			key_up
-# define	TERM_kd			key_down
-# define	TERM_kr			key_right
-# define	TERM_kl			key_left
-# define	TERM_kh			key_home
-# define	TERM_kb			key_backspace
-# define	TERM_l1			lab_f1
-# define	TERM_l2			lab_f2
-# define	TERM_l3			lab_f3
-# define	TERM_l4			lab_f4
-# define	TERM_l5			lab_f5
-# define	TERM_l6			lab_f6
-# define	TERM_l7			lab_f7
-# define	TERM_l8			lab_f8
-# define	TERM_l9			lab_f9
-# define	TERM_la			lab_f10
-# define	TERM_F1			key_f11
-# define	TERM_F2			key_f12
-# define	TERM_F3			key_f13
-# define	TERM_F4			key_f14
-# define	TERM_F5			key_f15
-# define	TERM_F6			key_f16
-# define	TERM_F7			key_f17
-# define	TERM_F8			key_f18
-# define	TERM_F9			key_f19
-# define	TERM_FA			key_f20
-# define	TERM_k1			key_f1
-# define	TERM_k2			key_f2
-# define	TERM_k3			key_f3
-# define	TERM_k4			key_f4
-# define	TERM_k5			key_f5
-# define	TERM_k6			key_f6
-# define	TERM_k7			key_f7
-# define	TERM_k8			key_f8
-# define	TERM_k9			key_f9
-# define	TERM_k10		key_f10
-# define	TERM_k0			key_f0
-# define	TERM_kL			key_dl
-# define	TERM_kA			key_il
-# define	TERM_kD			key_dc
-# define	TERM_kI			key_ic
-# define	TERM_kC			key_clear
-# define	TERM_kE			key_eol
-# define	TERM_kP			key_ppage
-# define	TERM_kN			key_npage
-# define	TERM_at8		key_enter
-# define	TERM_at1		key_beg
-# define	TERM_at7		key_end
-# else	/* !USETERMINFO */
+#endif
+
+#if	!MSDOS && !defined (USETERMINFO)
 extern int tgetent __P_((char *, CONST char *));
 extern int tgetnum __P_((CONST char *));
 extern int tgetflag __P_((CONST char *));
 extern char *tgetstr __P_((CONST char *, char **));
 extern int tputs __P_((CONST char *, int, int (*)__P_((tputs_t))));
-# define	tgetnum2		tgetnum
-# define	tgetflag2		tgetflag
-# define	TERM_pc			"pc"
-# define	TERM_bc			"bc"
-# define	TERM_co			"co"
-# define	TERM_li			"li"
-# define	TERM_xn			"xn"
-# define	TERM_xs			"xs"
-# define	TERM_gn			"gn"
-# define	TERM_ti			"ti"
-# define	TERM_te			"te"
-# define	TERM_mm			"mm"
-# define	TERM_mo			"mo"
-# define	TERM_cs			"cs"
-# define	TERM_ks			"ks"
-# define	TERM_ke			"ke"
-# define	TERM_ve			"ve"
-# define	TERM_vs			"vs"
-# define	TERM_vi			"vi"
-# define	TERM_sc			"sc"
-# define	TERM_rc			"rc"
-# define	TERM_bl			"bl"
-# define	TERM_vb			"vb"
-# define	TERM_cl			"cl"
-# define	TERM_me			"me"
-# define	TERM_md			"md"
-# define	TERM_mr			"mr"
-# define	TERM_mh			"mh"
-# define	TERM_mb			"mb"
-# define	TERM_so			"so"
-# define	TERM_us			"us"
-# define	TERM_se			"se"
-# define	TERM_ue			"ue"
-# define	TERM_ce			"ce"
-# define	TERM_al			"al"
-# define	TERM_dl			"dl"
-# define	TERM_ic			"ic"
-# define	TERM_IC			"IC"
-# define	TERM_dc			"dc"
-# define	TERM_DC			"DC"
-# define	TERM_cm			"cm"
-# define	TERM_ho			"ho"
-# define	TERM_cr			"cr"
-# define	TERM_nl			"nl"
-# define	TERM_sf			"sf"
-# define	TERM_sr			"sr"
-# define	TERM_up			"up"
-# define	TERM_UP			"UP"
-# define	TERM_do			"do"
-# define	TERM_DO			"DO"
-# define	TERM_nd			"nd"
-# define	TERM_RI			"RI"
-# define	TERM_le			"le"
-# define	TERM_LE			"LE"
-# define	TERM_AF			"AF"
-# define	TERM_AB			"AB"
-# define	TERM_Sf			"Sf"
-# define	TERM_Sb			"Sb"
-# define	TERM_cb			"cb"
-# define	TERM_as			"as"
-# define	TERM_ae			"ae"
-# define	TERM_ku			"ku"
-# define	TERM_kd			"kd"
-# define	TERM_kr			"kr"
-# define	TERM_kl			"kl"
-# define	TERM_kh			"kh"
-# define	TERM_kb			"kb"
-# define	TERM_l1			"l1"
-# define	TERM_l2			"l2"
-# define	TERM_l3			"l3"
-# define	TERM_l4			"l4"
-# define	TERM_l5			"l5"
-# define	TERM_l6			"l6"
-# define	TERM_l7			"l7"
-# define	TERM_l8			"l8"
-# define	TERM_l9			"l9"
-# define	TERM_la			"la"
-# define	TERM_F1			"F1"
-# define	TERM_F2			"F2"
-# define	TERM_F3			"F3"
-# define	TERM_F4			"F4"
-# define	TERM_F5			"F5"
-# define	TERM_F6			"F6"
-# define	TERM_F7			"F7"
-# define	TERM_F8			"F8"
-# define	TERM_F9			"F9"
-# define	TERM_FA			"FA"
-# define	TERM_k1			"k1"
-# define	TERM_k2			"k2"
-# define	TERM_k3			"k3"
-# define	TERM_k4			"k4"
-# define	TERM_k5			"k5"
-# define	TERM_k6			"k6"
-# define	TERM_k7			"k7"
-# define	TERM_k8			"k8"
-# define	TERM_k9			"k9"
-# define	TERM_k10		"k;"
-# define	TERM_k0			"k0"
-# define	TERM_kL			"kL"
-# define	TERM_kA			"kA"
-# define	TERM_kD			"kD"
-# define	TERM_kI			"kI"
-# define	TERM_kC			"kC"
-# define	TERM_kE			"kE"
-# define	TERM_kP			"kP"
-# define	TERM_kN			"kN"
-# define	TERM_at8		"@8"
-# define	TERM_at1		"@1"
-# define	TERM_at7		"@7"
-# endif	/* !USETERMINFO */
-
-#define	TERMCAPSIZE	2048
-
-#ifndef	FREAD
-# ifdef	_FREAD
-# define	FREAD	_FREAD
-# else
-# define	FREAD	(O_RDONLY + 1)
-# endif
 #endif
-#endif	/* !MSDOS */
+#ifdef	DEBUG
+extern VOID muntrace __P_ ((VOID_A));
+extern char *_mtrace_file;
+#endif
 
 #if	!MSDOS
 static int NEAR chkctrl __P_((int));
@@ -420,29 +394,29 @@ char *duptty[2] = {NULL, NULL};
 #endif
 int ttyio = -1;
 int isttyiomode = 0;
-FILE *ttyout = NULL;
+XFILE *ttyout = NULL;
 int dumbterm = 0;
 
 #if	MSDOS
 # ifdef	PC98
-#define	KEYBUFWORKSEG	0x00
-#define	KEYBUFWORKSIZ	0x20
-#define	KEYBUFWORKMIN	0x502
-#define	KEYBUFWORKMAX	0x522
-#define	KEYBUFWORKTOP	0x524
-#define	KEYBUFWORKEND	0x526
-#define	KEYBUFWORKCNT	0x528
+#define	KEYBUFWORKSEG		0x00
+#define	KEYBUFWORKSIZ		0x20
+#define	KEYBUFWORKMIN		0x502
+#define	KEYBUFWORKMAX		0x522
+#define	KEYBUFWORKTOP		0x524
+#define	KEYBUFWORKEND		0x526
+#define	KEYBUFWORKCNT		0x528
 static CONST u_char specialkey[] =
 	"\032:=<;89>\25667bcdefghijk\202\203\204\205\206\207\210\211\212\213?";
 static CONST u_char metakey[] =
 	"\035-+\037\022 !\"\027#$%/.\030\031\020\023\036\024\026,\021*\025)";
 # else	/* !PC98 */
-#define	KEYBUFWORKSEG	0x40
-#define	KEYBUFWORKSIZ	0x20
-#define	KEYBUFWORKMIN	getkeybuf(0x80)
-#define	KEYBUFWORKMAX	(KEYBUFWORKMIN + KEYBUFWORKSIZ)
-#define	KEYBUFWORKTOP	(KEYBUFWORKMIN - 4)
-#define	KEYBUFWORKEND	(KEYBUFWORKMIN - 2)
+#define	KEYBUFWORKSEG		0x40
+#define	KEYBUFWORKSIZ		0x20
+#define	KEYBUFWORKMIN		getkeybuf(0x80)
+#define	KEYBUFWORKMAX		(KEYBUFWORKMIN + KEYBUFWORKSIZ)
+#define	KEYBUFWORKTOP		(KEYBUFWORKMIN - 4)
+#define	KEYBUFWORKEND		(KEYBUFWORKMIN - 2)
 static CONST u_char specialkey[] = "\003HPMKRSGOIQ;<=>?@ABCDTUVWXYZ[\\]\206";
 static CONST u_char metakey[] =
 	"\0360. \022!\"#\027$%&21\030\031\020\023\037\024\026/\021-\025,";
@@ -588,12 +562,12 @@ static CONST char *defkeyseq[K_MAX - K_MIN + 1] = {
 static u_char ungetbuf[16];
 static int ungetnum = 0;
 static int termflags = 0;
-#define	F_INITTTY	001
-#define	F_TERMENT	002
-#define	F_INITTERM	004
-#define	F_TTYCHANGED	010
-#define	F_INPROGRESS	020
-#define	F_RESETTTY	(F_INITTTY | F_TTYCHANGED)
+#define	F_INITTTY		001
+#define	F_TERMENT		002
+#define	F_INITTERM		004
+#define	F_TTYCHANGED		010
+#define	F_INPROGRESS		020
+#define	F_RESETTTY		(F_INITTTY | F_TTYCHANGED)
 static CONST char *deftermstr[MAXTERMSTR] = {
 #ifdef	PC98
 	"\033[>1h",		/* T_INIT */
@@ -691,10 +665,10 @@ static CONST char *deftermstr[MAXTERMSTR] = {
 int inittty(reset)
 int reset;
 {
-#ifndef	DJGPP
+# ifndef	DJGPP
 	static u_char dupbrk;
 	union REGS reg;
-#endif
+# endif
 	static int dupin = -1;
 	static int dupout = -1;
 	int fd;
@@ -704,14 +678,14 @@ int reset;
 
 	if (!reset) {
 		if (opentty(&ttyio, &ttyout) < 0) err2("opentty()");
-#ifdef	NOTUSEBIOS
+# ifdef	NOTUSEBIOS
 		if (!keybuftop) keybuftop = getkeybuf(KEYBUFWORKTOP);
-#endif
-#ifndef	DJGPP
+# endif
+# ifndef	DJGPP
 		reg.x.ax = 0x3300;
 		int86(0x21, &reg, &reg);
 		dupbrk = reg.h.dl;
-#endif
+# endif
 		if (!isatty(STDIN_FILENO)) {
 			if (dupin < 0)
 				dupin = newdup(safe_dup(STDIN_FILENO));
@@ -727,11 +701,11 @@ int reset;
 		termflags |= F_INITTTY;
 	}
 	else if (termflags & F_INITTTY) {
-#ifndef	DJGPP
+# ifndef	DJGPP
 		reg.x.ax = 0x3301;
 		reg.h.dl = dupbrk;
 		int86(0x21, &reg, &reg);
-#endif
+# endif
 		if (dupin >= 0) {
 			fd = safe_dup2(dupin, STDIN_FILENO);
 			safeclose(dupin);
@@ -758,39 +732,39 @@ int reset;
 
 int cooked2(VOID_A)
 {
-#ifndef	DJGPP
+# ifndef	DJGPP
 	union REGS reg;
 
 	reg.x.ax = 0x3301;
 	reg.h.dl = 1;
 	int86(0x21, &reg, &reg);
-#endif
+# endif
 
 	return(0);
 }
 
 int cbreak2(VOID_A)
 {
-#ifndef	DJGPP
+# ifndef	DJGPP
 	union REGS reg;
 
 	reg.x.ax = 0x3301;
 	reg.h.dl = 0;
 	int86(0x21, &reg, &reg);
-#endif
+# endif
 
 	return(0);
 }
 
 int raw2(VOID_A)
 {
-#ifndef	DJGPP
+# ifndef	DJGPP
 	union REGS reg;
 
 	reg.x.ax = 0x3301;
 	reg.h.dl = 0;
 	int86(0x21, &reg, &reg);
-#endif
+# endif
 
 	return(0);
 }
@@ -833,9 +807,9 @@ int keyflush(VOID_A)
 	disable();
 	reg.x.ax = 0x0c00;
 	intdos2(&reg);
-#ifdef	NOTUSEBIOS
+# ifdef	NOTUSEBIOS
 	keybuftop = getkeybuf(KEYBUFWORKTOP);
-#endif
+# endif
 	enable();
 
 	return(0);
@@ -902,9 +876,9 @@ CONST char *buf, *ccbuf;
 int inittty(reset)
 int reset;
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	static int dupttyflag;
-#endif
+# endif
 	static termioctl_t dupttyio;
 	termioctl_t tty;
 	int n;
@@ -924,21 +898,21 @@ int reset;
 	if (tioctl(ttyio, REQGETP, &tty) < 0) n = -2;
 	else if (!reset) {
 		memcpy((char *)&dupttyio, (char *)&tty, sizeof(termioctl_t));
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 		if (Xioctl(ttyio, TIOCLGET, &dupttyflag) < 0) n = -1;
 		else
-#endif
+# endif
 		n = getctrl((CONST char *)&dupttyio, NULL);
-#ifndef	USETERMINFO
+# ifndef	USETERMINFO
 		ospeed = getspeed(dupttyio);
-#endif
+# endif
 		termflags |= F_INITTTY;
 	}
 	else {
 		if (tioctl(ttyio, REQSETP, &dupttyio) < 0) n = -2;
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 		else if (Xioctl(ttyio, TIOCLSET, &dupttyflag) < 0) n = -2;
-#endif
+# endif
 	}
 	if (n < 0) {
 		if (n < -1) {
@@ -953,31 +927,31 @@ int reset;
 	return(0);
 }
 
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 static int NEAR ttymode(set, reset, lset, lreset)
 int set, reset, lset, lreset;
-#else
+# else
 static int NEAR ttymode(set, reset, iset, ireset, oset, oreset, vmin, vtime)
 int set, reset, iset, ireset, oset, oreset, vmin, vtime;
-#endif
+# endif
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	int lflag;
-#endif
+# endif
 	termioctl_t tty;
 
 	if (!(termflags & F_INITTTY) || (termflags & F_INPROGRESS)) return(-1);
 	termflags |= F_INPROGRESS;
 
 	if (tioctl(ttyio, REQGETP, &tty) < 0) err2("ioctl()");
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	if (Xioctl(ttyio, TIOCLGET, &lflag) < 0) err2("ioctl()");
 	if (set) tty.sg_flags |= set;
 	if (reset) tty.sg_flags &= ~reset;
 	if (lset) lflag |= lset;
 	if (lreset) lflag &= ~lreset;
 	if (Xioctl(ttyio, TIOCLSET, &lflag) < 0) err2("ioctl()");
-#else	/* !USESGTTY */
+# else	/* !USESGTTY */
 	if (set) tty.c_lflag |= set;
 	if (reset) tty.c_lflag &= ~reset;
 	if (iset) tty.c_iflag |= iset;
@@ -988,7 +962,7 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 		tty.c_cc[VMIN] = vmin;
 		tty.c_cc[VTIME] = vtime;
 	}
-#endif	/* !USESGTTY */
+# endif	/* !USESGTTY */
 	if (tioctl(ttyio, REQSETP, &tty) < 0) err2("ioctl()");
 	termflags |= F_TTYCHANGED;
 	termflags &= ~F_INPROGRESS;
@@ -998,122 +972,122 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 
 int cooked2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(0, CBREAK | RAW, LPASS8, LLITOUT | LPENDIN);
-#else
+# else
 	ttymode(TIO_LCOOKED, PENDIN, TIO_ICOOKED, ~TIO_INOCOOKED,
 		OPOST, 0, VAL_VMIN, VAL_VTIME);
-#endif
+# endif
 
 	return(0);
 }
 
 int cbreak2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(CBREAK, 0, LLITOUT, 0);
-#else
+# else
 	ttymode(TIO_LCBREAK, ICANON, TIO_ICOOKED, IGNBRK, OPOST, 0, 1, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int raw2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(RAW, 0, LLITOUT, 0);
-#else
+# else
 	ttymode(0, TIO_LCOOKED, IGNBRK, TIO_ICOOKED, 0, OPOST, 1, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int echo2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
-#else
+# else
 	ttymode(TIO_LECHO, ECHONL, 0, 0, 0, 0, 0, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int noecho2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(0, ECHO, 0, LCRTBS | LCRTERA);
-#else
+# else
 	ttymode(0, ~TIO_LNOECHO, 0, 0, 0, 0, 0, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int nl2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(CRMOD, 0, 0, 0);
-#else
+# else
 	ttymode(0, 0, ICRNL, 0, ONLCR, ~TIO_ONONL, 0, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int nonl2(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(0, CRMOD, 0, 0);
-#else
+# else
 	ttymode(0, 0, 0, ICRNL, 0, ONLCR, 0, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int tabs(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(0, XTABS, 0, 0);
-#else
+# else
 	ttymode(0, 0, 0, 0, 0, TAB3, 0, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int notabs(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	ttymode(XTABS, 0, 0, 0);
-#else
+# else
 	ttymode(0, 0, 0, 0, TAB3, 0, 0, 0);
-#endif
+# endif
 
 	return(0);
 }
 
 int keyflush(VOID_A)
 {
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	int i;
-#endif
+# endif
 
 	ungetnum = 0;
 	if (ttyio < 0) return(-1);
-#ifdef	USESGTTY
+# ifdef	USESGTTY
 	i = FREAD;
 	VOID_C Xioctl(ttyio, TIOCFLUSH, &i);
-#else	/* !USESGTTY */
-# ifdef	USETERMIOS
+# else	/* !USESGTTY */
+#  ifdef	USETERMIOS
 	VOID_C Xtcflush(ttyio, TCIFLUSH);
-# else
+#  else
 	VOID_C Xioctl(ttyio, TCFLSH, 0);
-# endif
-#endif	/* !USESGTTY */
+#  endif
+# endif	/* !USESGTTY */
 
 	return(0);
 }
@@ -1272,12 +1246,12 @@ CONST char *mes;
 		nl2();
 		tabs();
 	}
-	if (dumbterm <= 2) fputc('\007', stderr);
-	fputnl(stderr);
-	fputs(mes, stderr);
+	if (dumbterm <= 2) Xfputc('\007', Xstderr);
+	fputnl(Xstderr);
+	Xfputs(mes, Xstderr);
 
-	if (duperrno) fprintf2(stderr, ": %s", strerror2(duperrno));
-	fputnl(stderr);
+	if (duperrno) fprintf2(Xstderr, ": %s", strerror2(duperrno));
+	fputnl(Xstderr);
 	inittty(1);
 	exit(2);
 
@@ -1293,7 +1267,7 @@ CONST char *s;
 
 	if (!s) s = "";
 	if (!(cp = (char *)malloc(strlen(s) + 1))) err2("malloc()");
-	strcpy(cp, s);
+	strcpy2(cp, s);
 
 	return(cp);
 }
@@ -1864,14 +1838,14 @@ CONST char *s;
 # ifdef	USETERMINFO
 #  ifdef	DEBUG
 		_mtrace_file = "setupterm(start)";
-		setupterm((char *)term, fileno(ttyout), &i);
+		setupterm((char *)term, Xfileno(ttyout), &i);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "setupterm(end)";
 			malloc(0);	/* dummy alloc */
 		}
 #  else
-		setupterm((char *)term, fileno(ttyout), &i);
+		setupterm((char *)term, Xfileno(ttyout), &i);
 #  endif
 		if (i == 1) break;
 # else	/* !USETERMINFO */
@@ -2714,17 +2688,17 @@ CONST char *s;
 int kbhit2(usec)
 long usec;
 {
-#if	defined (NOTUSEBIOS) || defined (NOSELECT)
+# if	defined (NOTUSEBIOS) || defined (NOSELECT)
 	union REGS reg;
-#else	/* !NOTUSEBIOS && !NOSELECT */
-# ifndef	PC98
+# else	/* !NOTUSEBIOS && !NOSELECT */
+#  ifndef	PC98
 	struct timeval tv;
 	int n;
-# endif
-#endif	/* !NOTUSEBIOS && !NOSELECT */
+#  endif
+# endif	/* !NOTUSEBIOS && !NOSELECT */
 
 	if (ungetnum > 0) return(1);
-#ifdef	NOTUSEBIOS
+# ifdef	NOTUSEBIOS
 	reg.x.ax = 0x4406;
 	reg.x.bx = ttyio;
 	putterm(T_METAMODE);
@@ -2732,57 +2706,57 @@ long usec;
 	putterm(T_NOMETAMODE);
 
 	return((reg.x.flags & 1) ? 0 : reg.h.al);
-#else	/* !NOTUSEBIOS */
-# ifdef	PC98
+# else	/* !NOTUSEBIOS */
+#  ifdef	PC98
 	reg.h.ah = 0x01;
 	int86(0x18, &reg, &reg);
 
 	return(reg.h.bh != 0);
-# else	/* !PC98 */
-#  ifdef	NOSELECT
+#  else	/* !PC98 */
+#   ifdef	NOSELECT
 	reg.h.ah = 0x01;
 	int86(0x16, &reg, &reg);
 
 	return((reg.x.flags & 0x40) ? 0 : 1);
-#  else	/* !NOSELECT */
+#   else	/* !NOSELECT */
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
 	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
 		err2("select()");
 
 	return(n);
-#  endif	/* !NOSELECT */
-# endif	/* !PC98 */
-#endif	/* !NOTUSEBIOS */
+#   endif	/* !NOSELECT */
+#  endif	/* !PC98 */
+# endif	/* !NOTUSEBIOS */
 }
 
 int getch2(VOID_A)
 {
-#ifdef	NOTUSEBIOS
+# ifdef	NOTUSEBIOS
 	u_short key, top;
-#endif
-#if	defined (PC98) && !defined (NOTUSEBIOS)
+# endif
+# if	defined (PC98) && !defined (NOTUSEBIOS)
 	union REGS reg;
-#endif
-#if	defined (PC98) || defined (NOTUSEBIOS)
+# endif
+# if	defined (PC98) || defined (NOTUSEBIOS)
 	int ch;
-#endif
+# endif
 
 	if (ttyio < 0) return(EOF);
 	if (ungetnum > 0) return((int)ungetbuf[--ungetnum]);
 
-#ifndef	NOTUSEBIOS
-# ifdef	PC98
+# ifndef	NOTUSEBIOS
+#  ifdef	PC98
 	reg.h.ah = 0x00;
 	int86(0x18, &reg, &reg);
 
 	if (!(ch = reg.h.al)) VOID_C ungetch2(reg.h.ah);
 
 	return(ch);
-# else	/* !PC98 */
+#  else	/* !PC98 */
 	return(bdos(0x07, 0x00, 0) & 0xff);
-# endif	/* !PC98 */
-#else	/* NOTUSEBIOS */
+#  endif	/* !PC98 */
+# else	/* NOTUSEBIOS */
 	disable();
 	top = keybuftop;
 	for (;;) {
@@ -2791,17 +2765,17 @@ int getch2(VOID_A)
 			break;
 		}
 		key = getkeybuf(top);
-# ifdef	PC98
+#  ifdef	PC98
 		if ((ch = (key & 0xff))) {
 			if (ch < 0x80 || (ch > 0x9f && ch < 0xe0)) break;
 			key &= 0xff00;
-			if (strchr(metakey, key >> 8)) break;
+			if (strchr2(metakey, key >> 8)) break;
 		}
-# else
+#  else
 		if ((ch = (key & 0xff)) && ch != 0xe0 && ch != 0xf0) break;
 		key &= 0xff00;
-# endif
-		if (strchr(specialkey, key >> 8)) break;
+#  endif
+		if (strchr2(specialkey, key >> 8)) break;
 		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
 	}
 	putterm(T_METAMODE);
@@ -2821,10 +2795,10 @@ int getch2(VOID_A)
 	enable();
 
 	return(ch);
-#endif	/* NOTUSEBIOS */
+# endif	/* NOTUSEBIOS */
 }
 
-#if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
+# if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 static int NEAR dosgettime(tbuf)
 u_char tbuf[];
 {
@@ -2838,46 +2812,48 @@ u_char tbuf[];
 
 	return(0);
 }
-#endif
+# endif
 
 /*ARGSUSED*/
-int getkey2(sig, code)
-int sig, code;
+int getkey2(sig, code, timeout)
+int sig, code, timeout;
 {
-#if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
+# if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
 	static u_char tbuf1[3] = {0xff, 0xff, 0xff};
 	u_char tbuf2[3];
-#endif
-#if	defined (DJGPP) && (DJGPP >= 2)
+# endif
+# if	defined (DJGPP) && (DJGPP >= 2)
 	static int count = SENSEPERSEC;
-#endif
+# endif
 	int i, ch;
 
-#if	defined (DJGPP) && !defined (NOTUSEBIOS) && !defined (PC98)
+	timeout *= SENSEPERSEC;
+# if	defined (DJGPP) && !defined (NOTUSEBIOS) && !defined (PC98)
 	do {
 		i = kbhit2(1000000L / SENSEPERSEC);
-# ifndef	NOSELECT
+#  ifndef	NOSELECT
 		if (sig && !(--count)) {
 			count = SENSEPERSEC;
 			raise(sig);
 		}
-# endif
+#  endif
+		if (timeout && !--timeout) return(K_TIMEOUT);
 		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	} while (!i);
 
-#else	/* !DJGPP || NOTUSEBIOS || PC98 */
+# else	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if (tbuf1[0] == 0xff) dosgettime(tbuf1);
 	while (!kbhit2(1000000L / SENSEPERSEC)) {
 		dosgettime(tbuf2);
 		if (memcmp((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1))) {
-# if	!defined (DJGPP) || (DJGPP >= 2)
+#  if	!defined (DJGPP) || (DJGPP >= 2)
 			if (sig) raise(sig);
-# endif
+#  endif
 			memcpy((char *)tbuf1, (char *)tbuf2, sizeof(tbuf1));
 		}
 		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	}
-#endif	/* !DJGPP || NOTUSEBIOS || PC98 */
+# endif	/* !DJGPP || NOTUSEBIOS || PC98 */
 	if ((ch = getch2()) == EOF) return(K_NOKEY);
 
 	if (ch) switch (ch) {
@@ -2890,9 +2866,9 @@ int sig, code;
 		default:
 			break;
 	}
-#if	defined (PC98) || defined (NOTUSEBIOS) || !defined (NOSELECT)
+# if	defined (PC98) || defined (NOTUSEBIOS) || !defined (NOSELECT)
 	else if (!kbhit2(WAITKEYPAD * 1000L)) /*EMPTY*/;
-#endif
+# endif
 	else if ((ch = getch2()) == EOF) ch = K_NOKEY;
 	else {
 		for (i = 0; i < SPECIALKEYSIZ; i++)
@@ -2972,7 +2948,7 @@ int fd, xmax, ymax;
 int putch2(c)
 int c;
 {
-	return(fputc(c, ttyout));
+	return(Xfputc(c, ttyout));
 }
 
 int cputs2(s)
@@ -2980,13 +2956,13 @@ CONST char *s;
 {
 	if (!s) return(0);
 
-	return(fputs(s, ttyout));
+	return(Xfputs(s, ttyout));
 }
 
 static int putch3(c)
 tputs_t c;
 {
-	return(fputc(c & 0x7f, ttyout));
+	return(Xfputc(c & 0x7f, ttyout));
 }
 
 int tputs2(s, n)
@@ -3065,33 +3041,35 @@ int ptr;
 }
 
 /*ARGSUSED*/
-int getkey2(sig, code)
-int sig, code;
+int getkey2(sig, code, timeout)
+int sig, code, timeout;
 {
 	static int count = SENSEPERSEC;
 	kstree_t *p;
 	keyseq_t *seq;
 	int n, ch, key, wasmeta;
 
+	timeout *= SENSEPERSEC;
 	do {
 		key = kbhit2(1000000L / SENSEPERSEC);
 		if (sig && !(--count)) {
 			count = SENSEPERSEC;
 			kill(getpid(), sig);
 		}
+		if (timeout && !--timeout) return(K_TIMEOUT);
 		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	} while (!key);
 
 	if ((key = ch = getch2()) == EOF) return(K_NOKEY);
-# if	!defined (_NOKANJICONV) || defined (CODEEUC)
+# if	defined (DEP_KCONV) || defined (CODEEUC)
 	else if (key != C_EKANA) /*EMPTY*/;
-#  if	!defined (_NOKANJICONV)
+#  ifdef	DEP_KCONV
 #   ifdef	CODEEUC
 	else if (code != EUC && code != NOCNV) /*EMPTY*/;
 #   else
 	else if (code != EUC) /*EMPTY*/;
 #   endif
-#  endif	/* !_NOKANJICONV */
+#  endif	/* DEP_KCONV */
 	else {
 		ch = (kbhit2(WAITKANJI * 1000L)) ? getch2() : EOF;
 		if (ch == EOF) return(key);
@@ -3099,7 +3077,7 @@ int sig, code;
 		VOID_C ungetch2(ch);
 		return(key);
 	}
-# endif	/* !_NOKANJICONV || CODEEUC */
+# endif	/* DEP_KCONV || CODEEUC */
 
 	if (cc_erase != K_UNDEF && key == cc_erase) return(K_BS);
 	n = wasmeta = 0;
@@ -3141,12 +3119,12 @@ int sig, code;
 	return(key);
 }
 
-int getkey3(sig, code)
-int sig, code;
+int getkey3(sig, code, timeout)
+int sig, code, timeout;
 {
 	int ch;
 
-	if ((ch = getkey2(sig, code)) < 0) return(ch);
+	if ((ch = getkey2(sig, code, timeout)) < 0) return(ch);
 	if (ch >= K_F('*') && ch < K_DL) {
 		if (ch == K_F('?')) ch = K_CR;
 		else ch -= K_F0;
@@ -3209,7 +3187,7 @@ int x, y;
 
 int tflush(VOID_A)
 {
-	fflush(ttyout);
+	Xfflush(ttyout);
 
 	return(0);
 }

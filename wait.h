@@ -7,49 +7,50 @@
 #ifndef	__WAIT_H_
 #define	__WAIT_H_
 
-#include <signal.h>
+#include "unixemu.h"
+
 #if	!MSDOS
 #include <sys/wait.h>
 #endif
 
 #ifdef	USESIGPMASK
-#define	sigmask_t	sigset_t
-#define	Xsigemptyset(m)	sigemptyset(&m)
-#define	Xsigfillset(m)	sigfillset(&m)
-#define	Xsigaddset(m,s)	sigaddset(&m, s)
-#define	Xsigdelset(m,s)	sigdelset(&m, s)
-#define	Xsigsetmask(m)	sigprocmask(SIG_SETMASK, &m, NULL)
-#define	Xsigblock(o,m)	sigprocmask(SIG_BLOCK, &m, &o)
+#define	sigmask_t		sigset_t
+#define	Xsigemptyset(m)		sigemptyset(&m)
+#define	Xsigfillset(m)		sigfillset(&m)
+#define	Xsigaddset(m,s)		sigaddset(&m, s)
+#define	Xsigdelset(m,s)		sigdelset(&m, s)
+#define	Xsigsetmask(m)		sigprocmask(SIG_SETMASK, &m, NULL)
+#define	Xsigblock(o,m)		sigprocmask(SIG_BLOCK, &m, &o)
 #else	/* !USESIGPMASK */
-typedef int		sigmask_t;
-#define	Xsigemptyset(m)	((m) = 0)
-#define	Xsigfillset(m)	((m) = ~0)
-#define	Xsigaddset(m,s)	((m) |= sigmask(s))
-#define	Xsigdelset(m,s)	((m) &= ~sigmask(s))
-#define	Xsigsetmask(m)	sigsetmask(m)
-#define	Xsigblock(o,m)	((o) = sigblock(m))
+typedef int			sigmask_t;
+#define	Xsigemptyset(m)		((m) = 0)
+#define	Xsigfillset(m)		((m) = ~0)
+#define	Xsigaddset(m,s)		((m) |= sigmask(s))
+#define	Xsigdelset(m,s)		((m) &= ~sigmask(s))
+#define	Xsigsetmask(m)		sigsetmask(m)
+#define	Xsigblock(o,m)		((o) = sigblock(m))
 #endif	/* !USESIGPMASK */
 
 #ifdef	SYSV
-#define	Xkillpg(p, s)	kill(-(p), s)
+#define	Xkillpg(p, s)		kill(-(p), s)
 #else
-#define	Xkillpg(p, s)	killpg(p, s)
+#define	Xkillpg(p, s)		killpg(p, s)
 #endif
 
 #ifdef	USEWAITPID
-typedef int		wait_pid_t;
+typedef int			wait_pid_t;
 #else
-#define	wait_pid_t	union wait
+#define	wait_pid_t		union wait
 #endif
 
 #ifndef	WSTOPPED
-#define	WSTOPPED	0177
+#define	WSTOPPED		0177
 #endif
 #ifndef	WNOHANG
-#define	WNOHANG		1
+#define	WNOHANG			1
 #endif
 #ifndef	WUNTRACED
-#define	WUNTRACED	2
+#define	WUNTRACED		2
 #endif
 
 #ifdef	USEWAITPID
@@ -107,33 +108,33 @@ typedef int		wait_pid_t;
 
 #ifndef	NSIG
 # ifdef	_NSIG
-# define	NSIG	_NSIG
+# define	NSIG		_NSIG
 # else
 #  ifdef	DJGPP
-#  define	NSIG	301
+#  define	NSIG		301
 #  else
-#  define	NSIG	64
+#  define	NSIG		64
 #  endif
 # endif
 #endif
 
 #ifndef	SIG_ERR
-#define	SIG_ERR		((sigcst_t)-1)
+#define	SIG_ERR			((sigcst_t)-1)
 #endif
 #ifndef	SIG_DFL
-#define	SIG_DFL		((sigcst_t)0)
+#define	SIG_DFL			((sigcst_t)0)
 #endif
 #ifndef	SIG_IGN
-#define	SIG_IGN		((sigcst_t)1)
+#define	SIG_IGN			((sigcst_t)1)
 #endif
 #if	!defined (SIGIOT) && defined (SIGABRT)
-#define	SIGIOT		SIGABRT
+#define	SIGIOT			SIGABRT
 #endif
 #if	!defined (SIGCHLD) && defined (SIGCLD)
-#define	SIGCHLD		SIGCLD
+#define	SIGCHLD			SIGCLD
 #endif
 #if	!defined (SIGWINCH) && defined (SIGWINDOW)
-#define	SIGWINCH	SIGWINDOW
+#define	SIGWINCH		SIGWINDOW
 #endif
 
 #ifdef	FD

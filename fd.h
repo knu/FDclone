@@ -4,13 +4,10 @@
  *	definitions for FD
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include "machine.h"
+#include "headers.h"
 
 #ifndef	FD
-#define	FD			2
+#define	FD			3
 #endif
 #ifndef	DEFRC
 #define	DEFRC			"/etc/fd2rc"
@@ -34,6 +31,15 @@
 #define	_NOLOGGING
 #define	_NOIME
 #endif	/* FD < 2 */
+
+#if	FD < 3
+#define	_NOCATALOG
+#define	_NODYNAMICLIST
+#define	_NOSOCKET
+#define	_NOSOCKREDIR
+#define	_NOFTP
+#define	_NOHTTP
+#endif	/* FD < 3 */
 
 #ifdef	DEBUG
 extern VOID mtrace __P_ ((VOID_A));
@@ -85,6 +91,7 @@ extern char *_mtrace_file;
 #define	FDSHELL			"fdsh"
 #define	FDENV			"FD_"
 #define	FDESIZ			strsize(FDENV)
+#define	FDVERSION		"FD_VERSION"
 
 /****************************************************************
  *	If you don't like the following tools as each uses,	*
@@ -128,6 +135,7 @@ extern char *_mtrace_file;
 #define	DIRCOUNTLIMIT		50
 #define	DOSDRIVE		0
 #define	SECOND			0
+#define	AUTOUPDATE		0
 #define	TRADLAYOUT		0
 #define	SIZEINFO		0
 #define	FUNCLAYOUT		1005
@@ -161,6 +169,16 @@ extern char *_mtrace_file;
 #define	LOGLEVEL		0
 #define	ROOTLOGLEVEL		1
 #define	THRUARGS		0
+#define	URLDRIVE		0
+#define	URLTIMEOUT		0
+#define	URLOPTIONS		0
+#define	HIDEPASSWD		0
+#define	FTPADDRESS		"FDclone@"
+#define	FTPPROXY		""
+#define	FTPLOGFILE		""
+#define	HTTPPROXY		""
+#define	HTTPLOGFILE		""
+#define	HTMLLOGFILE		""
 #define	UNICODEBUFFER		0
 #define	SJISPATH		""
 #define	EUCPATH			""
@@ -202,37 +220,12 @@ extern char *_mtrace_file;
 #define	MAXINVOKEARGS		MAXWINDOWS
 #define	MAXLOGLEN		255
 
-#ifdef	_NOSPLITWIN
-#undef	MAXWINDOWS
-#define	MAXWINDOWS	1
-#else
-# if	MAXWINDOWS <= 1
-# define	_NOSPLITWIN
-# endif
-#endif
-
-#ifdef	_NOSPLITWIN
-#define	_NOEXTRAWIN
-#endif
-
-#if	MSDOS && defined (_NOUSELFN) && !defined (_NODOSDRIVE)
-#define	_NODOSDRIVE
-#endif
-
-#if	defined (_NOENGMES) && defined (_NOJPNMES)
-#undef	_NOENGMES
-#endif
-
-#if	MSDOS || defined (NOSELECT)
-#define	_NOPTY
-#endif
-
+#include "depend.h"
 #ifndef	__FD_PRIMAL__
-#include "types.h"
 #include "printf.h"
 #include "kctype.h"
-#include "pathname.h"
-#include "term.h"
+#include "string.h"
+#include "malloc.h"
 #endif
 
 
@@ -419,33 +412,4 @@ extern char *_mtrace_file;
 #ifdef	UNKNOWNFS
 #undef	WRITEFS
 #define	WRITEFS			2
-#endif
-
-#if	MSDOS
-#define	_NOKEYMAP
-#endif
-
-#ifdef	_NOORIGSHELL
-#define	_NOEXTRAMACRO
-#endif
-
-#if	!MSDOS && !defined (_NODOSDRIVE)
-#define	_USEDOSEMU
-#endif
-
-#if	MSDOS || !defined (_NODOSDRIVE)
-#define	_USEDOSPATH
-#endif
-
-#if	!defined (_NOKANJICONV) && !defined (_NOUNICODE) \
-|| !defined (_NODOSDRIVE)
-#define	_USEUNICODE
-#endif
-
-#if	MSDOS
-#define	_USEDOSCOPY
-#endif
-
-#ifdef	_NOKANJICONV
-#define	_NOIME
 #endif

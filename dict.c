@@ -4,7 +4,6 @@
  *	dictionary accessing module
  */
 
-#include <fcntl.h>
 #include "fd.h"
 #include "termio.h"
 #include "roman.h"
@@ -23,24 +22,6 @@
 #define	skread(f,o,s,n)		(Xlseek(f, o, L_SET) >= (off_t)0 \
 				&& sureread(f, s, n) == n)
 
-#ifndef	O_BINARY
-#define	O_BINARY		0
-#endif
-#ifndef	L_SET
-# ifdef	SEEK_SET
-# define	L_SET		SEEK_SET
-# else
-# define	L_SET		0
-# endif
-#endif	/* !L_SET */
-#ifndef	L_INCR
-# ifdef	SEEK_CUR
-# define	L_INCR		SEEK_CUR
-# else
-# define	L_INCR		1
-# endif
-#endif	/* !L_INCR */
-
 typedef struct _kanjitable {
 	u_short *kbuf;
 	u_char klen;
@@ -52,7 +33,7 @@ typedef struct _kanjitable {
 	long ofs;
 } kanjitable;
 
-#ifndef	_NOIME
+#ifdef	DEP_IME
 
 static int NEAR fgetbyte __P_((u_char *, int));
 static int NEAR fgetword __P_((u_short *, int));
@@ -144,7 +125,7 @@ int fd;
 	kp -> klen = c;
 	kbuf = (u_short *)malloc2((kp -> klen + 1) * sizeof(u_short));
 	for (i = 0; i < kp -> klen; i++) if (fgetword(&(kbuf[i]), fd) < 0) {
-		free(kbuf);
+		free2(kbuf);
 		return(-1);
 	}
 	kbuf[i] = (short)0;
@@ -248,7 +229,7 @@ int fd;
 		if ((len = getword(buf, 0)) <= 0) return(MAXUTYPE(u_short));
 		cp = hbuf = (u_char *)malloc2(len * 2);
 		if (sureread(fd, hbuf, len * 2) != len * 2) {
-			free(hbuf);
+			free2(hbuf);
 			return(-1);
 		}
 	}
@@ -258,12 +239,12 @@ int fd;
 		for (j = 0; j < MAXHINSI; j++) {
 			if (hinsi[j] == MAXUTYPE(u_short)) break;
 			if (hinsi[j] == w) {
-				if (hbuf) free(hbuf);
+				free2(hbuf);
 				return(j);
 			}
 		}
 	}
-	if (hbuf) free(hbuf);
+	free2(hbuf);
 
 	return(MAXUTYPE(u_short));
 }
@@ -326,7 +307,7 @@ CONST char *file;
 
 	if (fd >= -1) return(fd);
 
-	if (!dicttblpath || !*dicttblpath) strcpy(path, file);
+	if (!dicttblpath || !*dicttblpath) strcpy2(path, file);
 	else strcatdelim2(path, dicttblpath, file);
 
 	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
@@ -368,7 +349,7 @@ int fd;
 		size = (ALLOC_T)hinsitblent * 2;
 		if (!(tbl = newhinsitbl(size))) return;
 		if (!skread(fd, hinsitblofs + 2, tbl, size)) {
-			free(tbl);
+			free2(tbl);
 			return;
 		}
 		hinsiindexbuf = tbl;
@@ -382,7 +363,7 @@ int fd;
 		size = getword(buf, 0);
 		if (!(tbl = newhinsitbl(size))) return;
 		if (sureread(fd, tbl, size) != size) {
-			free(tbl);
+			free2(tbl);
 			return;
 		}
 		hinsitblbuf = tbl;
@@ -391,9 +372,9 @@ int fd;
 
 VOID discarddicttable(VOID_A)
 {
-	if (hinsiindexbuf) free(hinsiindexbuf);
+	free2(hinsiindexbuf);
 	hinsiindexbuf = NULL;
-	if (hinsitblbuf) free(hinsitblbuf);
+	free2(hinsitblbuf);
 	hinsitblbuf = NULL;
 }
 
@@ -514,13 +495,13 @@ CONST kanjitable *kp2;
 		else if (fgetfreqbuf(&tmp, ofs, lck -> fd) < 0) return(-1);
 
 		n = cmpdict(kp1, &tmp);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (n > 0) min = ofs;
 		else if (n < 0) max = ofs;
 		else if (fgetstring(&tmp, lck -> fd) < 0) return(-1);
 		else {
 			n = cmpdict(kp2, &tmp);
-			free(tmp.kbuf);
+			free2(tmp.kbuf);
 			if (n > 0) min = ofs;
 			else if (n < 0) max = ofs;
 			else break;
@@ -586,18 +567,18 @@ int fdin, fdout;
 	for (ofs = 0; ofs < kp1 -> ofs; ofs++) {
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (fgetword(&(tmp.freq), fdin) < 0) return(-1);
 		if (fputword(tmp.freq, fdout) < 0) return(-1);
 	}
 	if (skip) {
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (fgetword(&(tmp.freq), fdin) < 0) return(-1);
 		ofs++;
 	}
@@ -607,10 +588,10 @@ int fdin, fdout;
 	for (; ofs < ent; ofs++) {
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free(tmp.kbuf);
+		free2(tmp.kbuf);
 		if (fgetword(&(tmp.freq), fdin) < 0) return(-1);
 		if (fputword(tmp.freq, fdout) < 0) return(-1);
 	}
@@ -636,7 +617,7 @@ CONST u_short *kana, *kbuf;
 	VOID_C openfreqtbl(NULL, 0);
 	if (!(lck = openfreqtbl(FREQFILE, O_BINARY | O_RDWR))) return;
 	cp = evalpath(strdup2(FREQFILE), 0);
-	strcpy(path, cp);
+	strcpy2(path, cp);
 	if ((fdin = lck -> fd) >= 0) fdout = opentmpfile(path, 0666);
 	else {
 		VOID_C openfreqtbl(NULL, 0);
@@ -648,7 +629,7 @@ CONST u_short *kana, *kbuf;
 	if (fdout < 0) {
 		VOID_C openfreqtbl(NULL, 0);
 		if (fdin < 0) lockclose(lck);
-		free(cp);
+		free2(cp);
 		return;
 	}
 
@@ -689,7 +670,7 @@ CONST u_short *kana, *kbuf;
 		if (n < 0) Xunlink(path);
 	}
 
-	free(cp);
+	free2(cp);
 }
 
 static int cmpdict(vp1, vp2)
@@ -754,8 +735,8 @@ kanjitable *argv;
 	long n;
 
 	if (argv) {
-		for (n = 0L; argv[n].kbuf; n++) free(argv[n].kbuf);
-		free(argv);
+		for (n = 0L; argv[n].kbuf; n++) free2(argv[n].kbuf);
+		free2(argv);
 	}
 }
 
@@ -775,7 +756,7 @@ int fd;
 	tmp1.klen = kp -> len;
 	if (fgetstring(&tmp2, fd) < 0 || fgetword(&(tmp2.freq), fd) < 0
 	|| fgethinsi(hinsi, fd) < 0) {
-		if (tmp2.kbuf) free(tmp2.kbuf);
+		free2(tmp2.kbuf);
 		return(argc);
 	}
 
@@ -820,7 +801,7 @@ int fd;
 					return(addkanji(argc, argvp, &tmp2));
 			}
 		}
-		free(tmp1.kbuf);
+		free2(tmp1.kbuf);
 		return(argc);
 	}
 
@@ -831,7 +812,7 @@ int fd;
 		for (tmp2.len = kp -> klen; tmp2.len > (u_char)0; tmp2.len--)
 			argc2 = _searchdict(argc2, &argv2, &tmp2, fd);
 		if (!argv2) {
-			free(tmp1.kbuf);
+			free2(tmp1.kbuf);
 			return(argc);
 		}
 	}
@@ -877,7 +858,7 @@ int fd;
 	}
 
 	if (!next) freekanji(argv2);
-	free(tmp1.kbuf);
+	free2(tmp1.kbuf);
 
 	return(argc);
 }
@@ -920,7 +901,7 @@ int fd;
 		|| (fgetjisbuf(&tmp2, ofs, fd)) < 0)
 			return(argc);
 		n = cmpdict(&tmp1, &tmp2);
-		free(tmp2.kbuf);
+		free2(tmp2.kbuf);
 		if (n > 0) min = ofs;
 		else if (n < 0) max = ofs;
 		else break;
@@ -968,7 +949,7 @@ kanjitable *argv;
 				(char *)(argv[i + j].kbuf),
 				argv[i].klen * sizeof(u_short));
 			if (c) break;
-			free(argv[i + j].kbuf);
+			free2(argv[i + j].kbuf);
 			if (argv[i + j].len > argv[i].len) {
 				argv[i].len = argv[j].len;
 				argv[i].freq = argv[j].freq;
@@ -1000,9 +981,9 @@ u_short **argv;
 						break;
 				if (kanjilist[n].kbuf) continue;
 			}
-			free(argv[argc]);
+			free2(argv[argc]);
 		}
-		free(argv);
+		free2(argv);
 	}
 	freekanji(kanjilist);
 	kanjilist = NULL;
@@ -1071,4 +1052,4 @@ int len;
 
 	return(list);
 }
-#endif	/* !_NOIME */
+#endif	/* DEP_IME */

@@ -4,14 +4,12 @@
  *	definitions & function prototype declarations for "dosdisk.c"
  */
 
+#include "depend.h"
+#include "typesize.h"
+#include "dirent.h"
+
 #if	!MSDOS
 #include <sys/param.h>
-#endif
-
-#ifndef	__SYS_TYPES_STAT_H_
-#define	__SYS_TYPES_STAT_H_
-#include <sys/types.h>
-#include <sys/stat.h>
 #endif
 
 #define	DOSDIRENT		32
@@ -44,35 +42,9 @@
 #define	DOSNOFILE		64
 #endif
 
-#ifndef	DEV_BSIZE
-#define	DEV_BSIZE		512
-#endif
-
 #ifdef	SYSVDIRENT
 #define	d_fileno		d_ino
 #endif
-
-#ifndef	L_SET
-# ifdef	SEEK_SET
-# define	L_SET		SEEK_SET
-# else
-# define	L_SET		0
-# endif
-#endif	/* !L_SET */
-#ifndef	L_INCR
-# ifdef	SEEK_CUR
-# define	L_INCR		SEEK_CUR
-# else
-# define	L_INCR		1
-# endif
-#endif	/* !L_INCR */
-#ifndef	L_XTND
-# ifdef	SEEK_END
-# define	L_XTND		SEEK_END
-# else
-# define	L_XTND		2
-# endif
-#endif	/* !L_XTND */
 
 #if	(defined (i386) || defined (__i386) || defined (__i386__)) \
 && (defined (SOLARIS) || defined (LINUX) \
@@ -80,12 +52,6 @@
 || defined (NETBSD) || defined (BSDOS) || defined (BOW) \
 || defined (OPENBSD) || defined (ORG_386BSD))
 #define	HDDMOUNT
-#endif
-
-#ifdef	USELLSEEK
-typedef long long		l_off_t;
-#else
-typedef off_t			l_off_t;
 #endif
 
 typedef struct _bpb_t {
@@ -159,6 +125,13 @@ typedef struct _devinfo {
 	l_off_t offset;
 # endif
 } devinfo;
+# ifdef	DEP_DYNAMICLIST
+typedef devinfo *		fdtype_t;
+typedef CONST devinfo		origfdtype_t[];
+# else
+typedef devinfo			fdtype_t[MAXDRIVEENTRY];
+typedef devinfo *		origfdtype_t;
+# endif
 #endif	/* !MSDOS */
 
 typedef struct _devstat {
@@ -309,14 +282,6 @@ typedef struct _partition98_t {
 #define	PT98_LINUX		0xe2	/* 0x80 | 0x62 */
 #endif	/* HDDMOUNT */
 
-#if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
-typedef struct _st_dirent {
-	char buf[(int)sizeof(struct dirent) - DNAMESIZE + MAXNAMLEN + 1];
-} st_dirent;
-#else
-typedef struct dirent		st_dirent;
-#endif
-
 #ifdef	NODRECLEN
 #define	wrap_reclen(dp)		(*(u_short *)(dp))
 #else
@@ -339,9 +304,14 @@ typedef struct dosdirent	st_dosdirent;
 #ifndef	_NODOSDRIVE
 #if	MSDOS
 extern int dependdosfunc;
-#else
-extern devinfo fdtype[];
-#endif
+#else	/* !MSDOS */
+extern fdtype_t fdtype;
+extern int maxfdtype;
+# if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
+extern origfdtype_t origfdtype;
+extern int origmaxfdtype;
+# endif
+#endif	/* !MSDOS */
 extern int lastdrive;
 extern int needbavail;
 #ifndef	FD
@@ -353,8 +323,8 @@ extern int (*dosintrfunc)__P_((VOID_A));
 #ifdef	HDDMOUNT
 extern l_off_t *readpt __P_((CONST char *, int));
 #endif
-extern int preparedrv __P_((int, int *));
-extern VOID shutdrv __P_((int));
+extern int dosopendev __P_((int));
+extern VOID dosclosedev __P_((int));
 extern int flushdrv __P_((int, VOID_T (*)__P_((VOID_A))));
 extern DIR *dosopendir __P_((CONST char *));
 extern int dosclosedir __P_((DIR *));
@@ -390,16 +360,6 @@ extern off_t doslseek __P_((int, off_t, int));
 extern int dosftruncate __P_((int, off_t));
 extern int dosmkdir __P_((CONST char *, int));
 extern int dosrmdir __P_((CONST char *));
-extern int dosfileno __P_((FILE *));
-extern FILE *dosfopen __P_((CONST char *, CONST char *));
-extern FILE *dosfdopen __P_((int, CONST char *));
-extern int dosfclose __P_((FILE *));
-extern int dosfread __P_((char *, int, int, FILE *));
-extern int dosfwrite __P_((CONST char *, int, int, FILE *));
-extern int dosfflush __P_((FILE *));
-extern int dosfgetc __P_((FILE *));
-extern int dosfputc __P_((int, FILE *));
-extern char *dosfgets __P_((char *, int, FILE *));
-extern int dosfputs __P_((CONST char *, FILE *));
+extern int dosflushbuf __P_((int));
 extern int dosallclose __P_((VOID_A));
 #endif	/* !_NODOSDRIVE */

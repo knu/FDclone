@@ -5,10 +5,6 @@
  */
 
 #include "fd.h"
-
-#ifndef	_NOLOGGING
-
-#include <fcntl.h>
 #include "func.h"
 
 #if	MSDOS
@@ -18,9 +14,6 @@
 #include <syslog.h>
 #endif
 
-#ifndef	O_TEXT
-#define	O_TEXT			0
-#endif
 #ifndef	LOG_PID
 #define	LOG_PID			0
 #endif
@@ -30,6 +23,8 @@
 #ifndef	LOG_INFO
 #define	LOG_INFO		6
 #endif
+
+#ifdef	DEP_LOGGING
 
 extern char *progname;
 
@@ -69,7 +64,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 		logfname = vnullstr;
 		top = logfile;
-#ifdef	_USEDOSPATH
+#ifdef	DEP_DOSPATH
 		if (_dospath(top)) top += 2;
 #endif
 		if (*top == _SC_) cp = logfile;
@@ -89,7 +84,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 	lck = lockopen(cp, O_TEXT | O_WRONLY | O_CREAT | O_APPEND, 0666);
 	if (!lck) {
-		free(cp);
+		free2(cp);
 		return(NULL);
 	}
 
@@ -99,7 +94,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 VOID logclose(VOID_A)
 {
-	if (logfname && logfname != vnullstr) free(logfname);
+	if (logfname != vnullstr) free2(logfname);
 	logfname = vnullstr;
 #ifndef	NOSYSLOG
 	if (syslogged > 0) closelog();
@@ -226,4 +221,4 @@ va_dcl
 	if (len >= 0) writelog(lvl, LOG_INFO, buf);
 	errno = duperrno;
 }
-#endif	/* !_NOLOGGING */
+#endif	/* DEP_LOGGING */

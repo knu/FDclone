@@ -1,3 +1,23 @@
+Ver. 3.00	Add the URL drive function.
+ (05/31/08)	Add scheme moditiers to access socket as redirect file.
+		Support the message catalog.
+		Abolish limits of each registrations.
+		Support argument of EDIT_CONFIG as environment variable name.
+		Add 'AUTOUPDATE' internal variable.
+		Add 'VERSION' internal variable.
+		Add 'URLDRIVE', 'URLKCODE', 'HIDEPASSWD' internal variables.
+		Add 'URLOPTIONS', 'URLTIMEOUT' internal variables.
+		Add 'FTPPROXY', 'FTPLOGFILE', 'FTPADDRESS' internal variables.
+		Add 'HTTPPROXY', 'HTTPLOGFILE' internal variables.
+		Add 'HTMLLOGFILE' internal variable.
+		Add 'accept', 'socketinfo', 'addcr' builtins.
+		Add -N option in 'echo' builtin.
+		Add -N option in 'read' builtin.
+		Add the formats of %w, %p, %B, %b, %/, %! for archive browser.
+		Add the redirectees of '<>&', '><&' for duplication.
+		Add the redirectees of '<>-', '<>&-', '><-', '><&-' for close.
+		Change default file descriptor of '><' redirectee to stdout.
+
 Ver. 2.09i	Failure to compile on Darwin 9.x (Mac OS X 10.5) is fixed.
  (04/19/08)	Odd screen when displaying some long file names is fixed.
 		Failure to write directory for FAT file system is fixed.
@@ -140,7 +160,7 @@ Ver. 2.07	Add 'PTYMODE', 'PTYTERM' and 'PTYMENUKEY' internal variables.
 		Support dynamic 'COLUMNS' and 'LINES' environment variables.
 
 Ver. 2.06d	The directory for /etc/fd2rc becomes specifiable in compile.
- (05/10/05)	Add the inhibit filenames COM5-COM9 in floppy drive.
+ (05/10/05)	Add the inhibited filenames COM5-COM9 in floppy drive.
 		Bug that here-document is unavailable in functions is fixed.
 		Bug that completion sometimes causes strange display is fixed.
 		Abortion of child process with pipe of builtin is fixed.

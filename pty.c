@@ -5,14 +5,13 @@
  */
 
 #include "fd.h"
-
-#ifndef	_NOPTY
-
-#include <fcntl.h>
-#include <sys/param.h>
-#include <grp.h>
+#include "sysemu.h"
+#include "pathname.h"
 #include "termio.h"
 
+#if	!MSDOS
+#include <grp.h>
+#endif
 #ifdef	SYSV
 #include <sys/stropts.h>
 #endif
@@ -28,15 +27,6 @@
 #define	setpgroup		setpgrp
 #endif
 
-#define	Xopen(p,f,m,e)		open(p, f, m)
-#define	Xclose(f,p)		VOID_C close(f)
-#define	Xread(f,b,s,t,p)	sureread(f, b, s)
-#define	Xwrite(f,b,s,t,p)	surewrite(f, b, s)
-#define	Xdup2(o,n,p)		dup2(o, n)
-#define	Xpipe			pipe
-#define	term_safeclose(f,p)	safeclose(f)
-#define	term_loadtermio		loadtermio
-
 #define	TTY_GROUP		"tty"
 #ifndef	_PATH_DEVNULL
 #define	_PATH_DEVNULL		"/dev/null"
@@ -50,22 +40,18 @@
 #ifndef	_PATH_DEVPTS
 #define	_PATH_DEVPTS		"/dev/pts"
 #endif
-#ifndef	O_NOCTTY
-#define	O_NOCTTY		0
-#endif
-#ifndef	EPERM
-#define	EPERM			EACCES
-#endif
 
-#ifndef	USEDEVPTMX
-static CONST char pty_char1[] = "pqrstuvwxyzPQRST";
-static CONST char pty_char2[] = "0123456789abcdefghijklmnopqrstuv";
-#endif
+#ifdef	DEP_PTY
 
 static p_id_t NEAR Xsetsid __P_((VOID_A));
 static VOID NEAR Xgrantpt __P_((int, CONST char *));
 static VOID NEAR Xunlockpt __P_((int, CONST char *));
 static int NEAR Xptsname __P_((int, CONST char *, char *, ALLOC_T));
+
+#ifndef	USEDEVPTMX
+static CONST char pty_char1[] = "pqrstuvwxyzPQRST";
+static CONST char pty_char2[] = "0123456789abcdefghijklmnopqrstuv";
+#endif
 
 
 static p_id_t NEAR Xsetsid(VOID_A)
@@ -86,16 +72,16 @@ static p_id_t NEAR Xsetsid(VOID_A)
 	if (setpgroup(0, pid) < 0) return((p_id_t)-1);
 
 # ifdef	TIOCNOTTY
-	if ((fd = Xopen(_PATH_TTY, O_RDWR, 0, XF_IGNOREERR)) >= 0) {
+	if ((fd = Xopen(_PATH_TTY, O_RDWR, 0)) >= 0) {
 		VOID_C Xioctl(fd, TIOCNOTTY, NULL);
-		term_safeclose(fd, _PATH_TTY);
+		safeclose(fd);
 	}
 # else
-	if ((fd = Xopen(_PATH_DEVNULL, O_RDWR, 0, XF_IGNOREERR)) >= 0) {
-		VOID_C Xdup2(fd, STDIN_FILENO, pathstdin);
-		VOID_C Xdup2(fd, STDOUT_FILENO, pathstdout);
-		VOID_C Xdup2(fd, STDERR_FILENO, pathstderr);
-		term_safeclose(fd, _PATH_DEVNULL);
+	if ((fd = Xopen(_PATH_DEVNULL, O_RDWR, 0)) >= 0) {
+		VOID_C Xdup2(fd, STDIN_FILENO);
+		VOID_C Xdup2(fd, STDOUT_FILENO);
+		VOID_C Xdup2(fd, STDERR_FILENO);
+		safeclose(fd);
 	}
 # endif
 
@@ -170,7 +156,7 @@ ALLOC_T size;
 # endif
 #else	/* !USEDEVPTMX */
 	snprintf2(spath, size, "%s", path);
-	if ((cp = strrchr(spath, '/'))) *(++cp) = 't';
+	if ((cp = strrchr2(spath, '/'))) *(++cp) = 't';
 #endif	/* !USEDEVPTMX */
 
 	return(0);
@@ -186,13 +172,13 @@ ALLOC_T size;
 
 #ifdef	USEDEVPTMX
 	snprintf2(path, sizeof(path), "%s", _PATH_DEVPTMX);
-	if ((master = Xopen(path, O_RDWR, 0, XF_IGNOREERR)) < 0) return(-1);
+	if ((master = Xopen(path, O_RDWR, 0)) < 0) return(-1);
 
 	Xgrantpt(master, path);
 	Xunlockpt(master, path);
 	if (Xptsname(master, path, spath, size) < 0
-	|| (slave = Xopen(spath, O_RDWR | O_NOCTTY, 0, XF_IGNOREERR)) < 0) {
-		term_safeclose(master, pathpty);
+	|| (slave = Xopen(spath, O_RDWR | O_NOCTTY, 0)) < 0) {
+		safeclose(master);
 		return(-1);
 	}
 #else	/* !USEDEVPTMX */
@@ -206,7 +192,7 @@ ALLOC_T size;
 		path[n] = *cp1;
 		for (cp2 = pty_char2; *cp2; cp2++) {
 			path[n + 1] = *cp2;
-			master = Xopen(path, O_RDWR, 0, XF_IGNOREERR);
+			master = Xopen(path, O_RDWR, 0);
 			if (master < 0) {
 				if (errno == ENOENT) break;
 				continue;
@@ -215,23 +201,20 @@ ALLOC_T size;
 			VOID_C Xptsname(master, path, spath, size);
 			Xgrantpt(master, spath);
 			Xunlockpt(master, spath);
-			slave = Xopen(spath, O_RDWR, 0, XF_IGNOREERR);
+			slave = Xopen(spath, O_RDWR, 0);
 			if (slave >= 0) break;
 
-			term_safeclose(master, pathpty);
+			safeclose(master);
 		}
 
 		if (master >= 0 && slave >= 0) break;
 	}
 
-	if (!*cp1) {
-		errno = ENOENT;
-		return(-1);
-	}
+	if (!*cp1) return(seterrno(ENOENT));
 #endif	/* !USEDEVPTMX */
 
 	*amaster = master;
-	term_safeclose(slave, pathpty);
+	safeclose(slave);
 
 	return(0);
 }
@@ -247,15 +230,15 @@ CONST char *path, *tty, *ws;
 
 	VOID_C Xsetsid();
 
-	Xclose(STDIN_FILENO, pathstdin);
-	Xclose(STDOUT_FILENO, pathstdout);
-	Xclose(STDERR_FILENO, pathstderr);
-	if ((fd = Xopen(path, O_RDWR, 0, XF_IGNOREERR)) < 0) return(-1);
+	Xclose(STDIN_FILENO);
+	Xclose(STDOUT_FILENO);
+	Xclose(STDERR_FILENO);
+	if ((fd = Xopen(path, O_RDWR, 0)) < 0) return(-1);
 
 #ifdef	I_PUSH
 	if (Xioctl(fd, I_PUSH, "ptem") < 0
 	|| Xioctl(fd, I_PUSH, "ldterm") < 0) {
-		Xclose(fd, path);
+		Xclose(fd);
 		return(-1);
 	}
 # if	defined (SOLARIS) || defined (NEWS_OS6)
@@ -264,16 +247,16 @@ CONST char *path, *tty, *ws;
 #endif	/* I_PUSH */
 #ifdef	TIOCSCTTY
 	if (Xioctl(fd, TIOCSCTTY, NULL) < 0) {
-		Xclose(fd, path);
+		Xclose(fd);
 		return(-1);
 	}
 #endif
 
-	VOID_C Xdup2(fd, STDIN_FILENO, pathstdin);
-	VOID_C Xdup2(fd, STDOUT_FILENO, pathstdout);
-	VOID_C Xdup2(fd, STDERR_FILENO, pathstderr);
-	term_loadtermio(fd, tty, ws);
-	term_safeclose(fd, path);
+	VOID_C Xdup2(fd, STDIN_FILENO);
+	VOID_C Xdup2(fd, STDOUT_FILENO);
+	VOID_C Xdup2(fd, STDERR_FILENO);
+	loadtermio(fd, tty, ws);
+	safeclose(fd);
 
 	return(0);
 }
@@ -287,24 +270,24 @@ CONST char *tty, *ws;
 	u_char uc;
 	int n, fds[2];
 
-	if (Xpipe(fds) < 0) return((p_id_t)-1);
+	if (pipe(fds) < 0) return((p_id_t)-1);
 
 	if (Xopenpty(fdp, path, sizeof(path)) < 0) {
 		pid = (p_id_t)-1;
 	}
-	else if ((pid = Xfork()) < (p_id_t)0) term_safeclose(*fdp, pathpty);
-	else if (pid) VOID_C Xread(fds[0], &uc, sizeof(uc), -1, NULL);
+	else if ((pid = Xfork()) < (p_id_t)0) safeclose(*fdp);
+	else if (pid) VOID_C sureread(fds[0], &uc, sizeof(uc));
 	else {
-		term_safeclose(*fdp, pathpty);
+		safeclose(*fdp);
 		n = Xlogin_tty(path, tty, ws);
 		uc = '\n';
-		VOID_C Xwrite(fds[1], &uc, sizeof(uc), -1, NULL);
+		VOID_C surewrite(fds[1], &uc, sizeof(uc));
 		if (n < 0) _exit(1);
 	}
 
-	term_safeclose(fds[0], NULL);
-	term_safeclose(fds[1], NULL);
+	safeclose(fds[0]);
+	safeclose(fds[1]);
 
 	return(pid);
 }
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */

@@ -4,18 +4,7 @@
  *	message strings on Kanji
  */
 
-#ifdef	_NOENGMES
-#define	mesconv(jpn, eng)	(jpn)
-#define	meslist(jpn, eng)	jpn
-#else
-# ifdef	_NOJPNMES
-# define	mesconv(jpn, eng)	(eng)
-# define	meslist(jpn, eng)	eng
-# else
-extern CONST char *mesconv __P_((CONST char *, CONST char *));
-# define	meslist(jpn, eng)	jpn, eng
-# endif
-#endif
+#include "catalog.h"
 
 #define	YESNO_K	mesconv("よろしいですか ?", "OK ?")
 #define	HITKY_K	mesconv("何かキーを押して下さい.", "Hit any key.")
@@ -31,6 +20,8 @@ extern CONST char *mesconv __P_((CONST char *, CONST char *));
 #define	RECUR_K	mesconv("再帰的に fdsh を起動することはできません.", "Recursive call for fdsh.")
 #define	SCRSZ_K	mesconv("ESC で終了するか画面サイズを広げて下さい.", "Terminate with the ESC key, or enlarge a screen.")
 #define	NTERM_K	mesconv("端末名が未登録のため FD を起動できません.", "Cannot invoke FD because of no terminal entry.")
+#define	USER_K	mesconv("ユーザ名:", "User:")
+#define	PASWD_K	mesconv("パスワード:", "Password:")
 
 #define	LOGD_K	mesconv("変更するディレクトリ名:", "New current directory:")
 #define	NEXT_K	mesconv(": 続きを読みますか ?", ": Next ?")
@@ -70,6 +61,7 @@ extern CONST char *mesconv __P_((CONST char *, CONST char *));
 #define	FRWDD_K	mesconv("古いファイルの転送先:", "Forwarding directory:")
 #define	NOSPC_K	mesconv("コピー先の空き容量が不足しています. ディスクを交換しますか？", "No space left on destination device. Do you change another disk?")
 #define	NOCWD_K	mesconv("作業ディレクトリを失ったので作業中断します.", "Working directory is lost, to abandon works.")
+#define	NOPSU_K	mesconv("疑似ディレクトリを失ったので作業中断して実ディレクトリに移動します.", "Pseudo directory is lost, to abandon works and move to the real directory.")
 #define	GOHOM_K	mesconv("カレントディレクトリを失ったので作業中断してホームディレクトリに移動します.", "Current directory is lost, to abandon works and move to the home directory.")
 #define	GOROT_K	mesconv("カレントディレクトリを失ったので作業中断してルートディレクトリに移動します.", "Current directory is lost, to abandon works and move to the root directory.")
 #define	CHGFD_K	mesconv("ディスク交換が済んだら何かキーを押して下さい.", "If new disk is ready, hit any key.")
@@ -217,227 +209,263 @@ extern CONST char *mesconv __P_((CONST char *, CONST char *));
 #define	RIGAR_K	mesconv("→", "Right")
 #define	LEFAR_K	mesconv("←", "Left")
 
-#define	BSCS_E \
-	meslist("カスタマイザの設定項目を基本的なものに絞ります.", \
+#define	BSCS_E	meslist( \
+		"カスタマイザの設定項目を基本的なものに絞ります.", \
 		"Limit the configurations to basic ones in the customizer.")
-#define	STTP_E \
-	meslist("ブラウザ画面のデフォルトのソートタイプを設定します.", \
+#define	STTP_E	meslist( \
+		"ブラウザ画面のデフォルトのソートタイプを設定します.", \
 		"Set the default sort type in browsing mode.")
-#define	DPMD_E \
-	meslist("起動時のファイル名表示形式を設定します.", \
+#define	DPMD_E	meslist( \
+		"起動時のファイル名表示形式を設定します.", \
 		"Set the default display mode at the start.")
-#define	STTR_E \
-	meslist("ツリー表示画面でソートします.", \
+#define	STTR_E	meslist( \
+		"ツリー表示画面でソートします.", \
 		"Do sort in tree mode.")
-#define	WRFS_E \
-	meslist("ディレクトリ書込み機能の使用を禁止します.", \
+#define	WRFS_E	meslist( \
+		"ディレクトリ書込み機能の使用を禁止します.", \
 		"Inhibit the function to write directory entries.")
-#define	IGNC_E \
-	meslist("ファイル名比較時に大文字小文字を無視します.", \
+#define	IGNC_E	meslist( \
+		"ファイル名比較時に大文字小文字を無視します.", \
 		"Ignore uppercase or lowercase in filename comparison.")
-#define	IHTM_E \
-	meslist("ファイルのコピー時にタイムスタンプを継承します.", \
+#define	IHTM_E	meslist( \
+		"ファイルのコピー時にタイムスタンプを継承します.", \
 		"Inherit the timestamp on copying files.")
-#define	PRGB_E \
-	meslist("ファイルのコピーや移動時に進捗状況を表示します.", \
+#define	PRGB_E	meslist( \
+		"ファイルのコピーや移動時に進捗状況を表示します.", \
 		"Display progress bar on copying/moving files.")
-#define	PCMN_E \
-	meslist("ファイルのコピーや移動前に予め上書き方針を問い合わせます.", \
+#define	PCMN_E	meslist( \
+		"ファイルのコピーや移動前に予め上書き方針を問い合わせます.", \
 		"Query overwriting policy in advance before copying/moving files.")
-#define	AJTY_E \
-	meslist("終了時に端末モードを強制的にリセットします.", \
+#define	AJTY_E	meslist( \
+		"終了時に端末モードを強制的にリセットします.", \
 		"Adjust the terminal mode when exiting.")
-#define	UGCS_E \
-	meslist("端末サイズ取得に VT100 互換エスケープシーケンスを使用します.", \
+#define	UGCS_E	meslist( \
+		"端末サイズ取得に VT100 互換エスケープシーケンスを使用します.", \
 		"Prioritize the VT100 escape sequence for getting terminal size.")
-#define	CLMN_E \
-	meslist("起動時の画面表示列を設定します.", \
+#define	CLMN_E	meslist( \
+		"起動時の画面表示列を設定します.", \
 		"Set the default columns in 1 line.")
-#define	MINF_E \
-	meslist("ファイル名表示領域の最小文字数を設定します.", \
+#define	MINF_E	meslist( \
+		"ファイル名表示領域の最小文字数を設定します.", \
 		"Set the minimum columns of filename field.")
-#define	HSFL_E \
-	meslist("コマンド履歴のセーブファイルを設定します.", \
+#define	HSFL_E	meslist( \
+		"コマンド履歴のセーブファイルを設定します.", \
 		"Define the name of command history file.")
-#define	DHFL_E \
-	meslist("ディレクトリ履歴のセーブファイルを設定します.", \
+#define	DHFL_E	meslist( \
+		"ディレクトリ履歴のセーブファイルを設定します.", \
 		"Define the name of directory history file.")
-#define	HSSZ_E \
-	meslist("コマンド履歴数の上限を設定します.", \
+#define	HSSZ_E	meslist( \
+		"コマンド履歴数の上限を設定します.", \
 		"Define the maximum size of command history.")
-#define	DRHS_E \
-	meslist("ディレクトリ履歴数の上限を設定します.", \
+#define	DRHS_E	meslist( \
+		"ディレクトリ履歴数の上限を設定します.", \
 		"Define the maximum size of directory history.")
-#define	SVHS_E \
-	meslist("コマンド履歴のセーブファイル保存数を設定します.", \
+#define	SVHS_E	meslist( \
+		"コマンド履歴のセーブファイル保存数を設定します.", \
 		"Define the maximum size of saved command history.")
-#define	SVDH_E \
-	meslist("ディレクトリ履歴のセーブファイル保存数を設定します.", \
+#define	SVDH_E	meslist( \
+		"ディレクトリ履歴のセーブファイル保存数を設定します.", \
 		"Define the maximum size of saved directory history.")
-#define	DCLM_E \
-	meslist("ツリー表示画面の表示ファイル数を設定します.", \
+#define	DCLM_E	meslist( \
+		"ツリー表示画面の表示ファイル数を設定します.", \
 		"Define the limit of displayed files, on tree mode.")
-#define	DOSD_E \
-	meslist("フロッピードライブ機能を有効にします.", \
+#define	DOSD_E	meslist( \
+		"フロッピードライブ機能を有効にします.", \
 		"Make MS-DOS floppy drive function effective.")
-#define	SCND_E \
-	meslist("タイトル行の時計に秒針を表示します.", \
+#define	SCND_E	meslist( \
+		"タイトル行の時計に秒針を表示します.", \
 		"Display the second hand of clock at title line.")
-#define	TRLO_E \
-	meslist("『ＦＤ』準拠の画面レイアウトにします.", \
+#define	ATUP_E	meslist( \
+		"ブラウザ画面を自動更新する間隔を秒数で設定します.", \
+		"Define the interval seconds to update browser automatically.")
+#define	TRLO_E	meslist( \
+		"『ＦＤ』準拠の画面レイアウトにします.", \
 		"Use the screen layout based on the traditional \"FD\"")
-#define	SZIF_E \
-	meslist("ファイルサイズ情報行を表示します.", \
+#define	SZIF_E	meslist( \
+		"ファイルサイズ情報行を表示します.", \
 		"Display the filesize information line.")
-#define	FNLO_E \
-	meslist("ファンクション行のレイアウトを指定します.", \
+#define	FNLO_E	meslist( \
+		"ファンクション行のレイアウトを指定します.", \
 		"Specify the function line layout.")
-#define	IMKY_E \
-	meslist("かな漢字変換入力モードの切替えキーを指定します.", \
+#define	IMKY_E	meslist( \
+		"かな漢字変換入力モードの切替えキーを指定します.", \
 		"Define the toggle key for the Kana-Kanji IME mode.")
-#define	IMBF_E \
-	meslist("かな漢字変換テーブルをオンメモリで持ち続けます.", \
+#define	IMBF_E	meslist( \
+		"かな漢字変換テーブルをオンメモリで持ち続けます.", \
 		"Hold the Kana-Kanji translation table on memory.")
-#define	ACOL_E \
-	meslist("ファイル表示をカラー化します.", \
+#define	ACOL_E	meslist( \
+		"ファイル表示をカラー化します.", \
 		"Display with the ANSI color escape sequence.")
-#define	APAL_E \
-	meslist("カラー表示時の各表示色を指定します.", \
+#define	APAL_E	meslist( \
+		"カラー表示時の各表示色を指定します.", \
 		"Specify color palette in the ANSI color mode.")
-#define	EDMD_E \
-	meslist("キー入力時の編集モードを設定します.", \
+#define	EDMD_E	meslist( \
+		"キー入力時の編集モードを設定します.", \
 		"Select the edit mode with your favorite editor type.")
-#define	LPCS_E \
-	meslist("カーソル移動を同一ページ内でループさせます.", \
+#define	LPCS_E	meslist( \
+		"カーソル移動を同一ページ内でループさせます.", \
 		"Loop cursor moving within the same page.")
-#define	TMPD_E \
-	meslist("一時的作業ディレクトリを指定します.", \
+#define	TMPD_E	meslist( \
+		"一時的作業ディレクトリを指定します.", \
 		"Define the temporary directory.")
-#define	TUMSK_E \
-	meslist("一時的作業ディレクトリ用のファイル生成マスク値を指定します.", \
+#define	TUMSK_E	meslist( \
+		"一時的作業ディレクトリ用のファイル生成マスク値を指定します.", \
 		"Define the file creation mask for temporary directories.")
-#define	RRPT_E \
-	meslist("疑似 RockRidge 拡張機能を使うディレクトリを指定します.", \
+#define	RRPT_E	meslist( \
+		"疑似 RockRidge 拡張機能を使うディレクトリを指定します.", \
 		"Define the directories of RockRidge formated CD-ROM.")
-#define	PCPT_E \
-	meslist("先行ファイル表示機能を使うディレクトリを指定します.", \
+#define	PCPT_E	meslist( \
+		"先行ファイル表示機能を使うディレクトリを指定します.", \
 		"Define the directories of preceded browsing function.")
-#define	PRMP_E \
-	meslist("コマンド入力時のプロンプト文字列を指定します.", \
+#define	PRMP_E	meslist( \
+		"コマンド入力時のプロンプト文字列を指定します.", \
 		"Define the prompt strings on command line.")
-#define	PRM2_E \
-	meslist("コマンド継続行入力時のプロンプト文字列を指定します.", \
+#define	PRM2_E	meslist( \
+		"コマンド継続行入力時のプロンプト文字列を指定します.", \
 		"Define the prompt strings on continuous command line.")
-#define	DMSHL_E \
-	meslist("内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
+#define	DMSHL_E	meslist( \
+		"内蔵シェルモードの入力行編集にコントロールシーケンスを使いません.", \
 		"Don't use control sequences to edit command line in the internal shell mode.")
-#define	PTYMD_E \
-	meslist("コマンド実行時に疑似端末を使用します.", \
+#define	PTYMD_E	meslist( \
+		"コマンド実行時に疑似端末を使用します.", \
 		"Use the pseudo terminal to execute commands.")
-#define	PTYTM_E \
-	meslist("疑似端末用に子プロセスに渡す環境変数 TERM の値を指定します.", \
+#define	PTYTM_E	meslist( \
+		"疑似端末用に子プロセスに渡す環境変数 TERM の値を指定します.", \
 		"Define the environment variavle TERM exported for pseudo terminal.")
-#define	PTYKY_E \
-	meslist("疑似端末メニューの起動キーを指定します.", \
+#define	PTYKY_E	meslist( \
+		"疑似端末メニューの起動キーを指定します.", \
 		"Define the start key for pseudo terminal menu.")
-#define	LGFIL_E \
-	meslist("ログファイル名を指定します.", \
+#define	LGFIL_E	meslist( \
+		"ログファイル名を指定します.", \
 		"Define the filename for logging.")
-#define	LGSIZ_E \
-	meslist("ログファイルの最大サイズを KB 単位で指定します.", \
+#define	LGSIZ_E	meslist( \
+		"ログファイルの最大サイズを KB 単位で指定します.", \
 		"Define the file size by KB for logging.")
-#define	USYLG_E \
-	meslist("システムロガー (syslog) を用いてログを取ります.", \
+#define	USYLG_E	meslist( \
+		"システムロガー (syslog) を用いてログを取ります.", \
 		"Use the system logger (syslog) for logging.")
-#define	LGLVL_E \
-	meslist("一般ユーザ用のログレベルを指定します.", \
+#define	LGLVL_E	meslist( \
+		"一般ユーザ用のログレベルを指定します.", \
 		"Define the logging level for normal users.")
-#define	RLGLV_E \
-	meslist("スーパユーザ用のログレベルを指定します.", \
+#define	RLGLV_E	meslist( \
+		"スーパユーザ用のログレベルを指定します.", \
 		"Define the logging level for the super user.")
-#define	THARG_E \
-	meslist("起動時引数のパス名を評価せず素通しします.", \
+#define	THARG_E	meslist( \
+		"起動時引数のパス名を評価せず素通しします.", \
 		"Pass through pathnames in the startup arguments as is.")
-#define	UNBF_E \
-	meslist("UNICODE の変換テーブルをオンメモリで持ち続けます.", \
+#define	URLD_E	meslist( \
+		"URL ドライブ機能を有効にします.", \
+		"Make URL drive function effective.")
+#define	URLTO_E	meslist( \
+		"URL ドライブ上の通信タイムアウト秒を指定します.", \
+		"Define the timeout second for communications on URL drive.")
+#define	URLOP_E	meslist( \
+		"URL ドライブ上の通信オプションを指定します.", \
+		"Define the options for communications on URL drive.")
+#define	HIDPW_E	meslist( \
+		"URL ドライブのパスワード入力時に画面に「*」を表示しません.", \
+		"Suppress displaying '*' on screen with password input on URL drive.")
+#define	FTPAD_E	meslist( \
+		"匿名 FTP 接続時のメールアドレスを指定します.", \
+		"Define the mail address for anonymous FTP.")
+#define	FTPPR_E	meslist( \
+		"FTP 通信時のプロキシアドレスを指定します.", \
+		"Define the FTP proxy address.")
+#define	FTPLG_E	meslist( \
+		"FTP 通信ログファイル名を指定します.", \
+		"Define the filename for logging FTP communications.")
+#define	HTPPR_E	meslist( \
+		"HTTP 通信時のプロキシアドレスを指定します.", \
+		"Define the HTTP proxy address.")
+#define	HTPLG_E	meslist( \
+		"HTTP 通信ログファイル名を指定します.", \
+		"Define the filename for logging HTTP communications.")
+#define	HTMLG_E	meslist( \
+		"受信 HTML ログファイル名を指定します.", \
+		"Define the filename for logging received HTML.")
+#define	UNBF_E	meslist( \
+		"UNICODE の変換テーブルをオンメモリで持ち続けます.", \
 		"Hold the UNICODE translation table on memory.")
-#define	LANG_E \
-	meslist("表示する文字の漢字コードまたは言語を設定します.", \
+#define	LANG_E	meslist( \
+		"表示する文字の漢字コードまたは言語を設定します.", \
 		"Set the language code to display.")
-#define	DFKC_E \
-	meslist("システム標準の漢字コードを設定します.", \
+#define	DFKC_E	meslist( \
+		"システム標準の漢字コードを設定します.", \
 		"Set the system default Kanji code.")
-#define	IPKC_E \
-	meslist("キーボード入力文字の漢字コードを設定します.", \
+#define	IPKC_E	meslist( \
+		"キーボード入力文字の漢字コードを設定します.", \
 		"Set the Kanji code to be inputted.")
-#define	PIKC_E \
-	meslist("疑似端末入力文字の漢字コードを設定します.", \
+#define	PIKC_E	meslist( \
+		"疑似端末入力文字の漢字コードを設定します.", \
 		"Set the Kanji code to be inputted to pty.")
-#define	POKC_E \
-	meslist("疑似端末出力文字の漢字コードを設定します.", \
+#define	POKC_E	meslist( \
+		"疑似端末出力文字の漢字コードを設定します.", \
 		"Set the Kanji code to be outputted from pty.")
-#define	FNKC_E \
-	meslist("ファイル名に用いる文字の漢字コードを設定します.", \
+#define	FNKC_E	meslist( \
+		"ファイル名に用いる文字の漢字コードを設定します.", \
 		"Set the Kanji code used in filename.")
-#define	MESL_E \
-	meslist("表示されるメッセージの言語を設定します.", \
+#define	URLKC_E	meslist( \
+		"URL ドライブ上のファイル名に用いる漢字コードを設定します.", \
+		"Set the Kanji code used in filename on URL drive.")
+#define	MESL_E	meslist( \
+		"表示されるメッセージの言語を設定します.", \
 		"Set the language of displayed messages.")
-#define	SJSP_E \
-	meslist("Shift JIS をファイル名に使うディレクトリを指定します.", \
+#define	SJSP_E	meslist( \
+		"Shift JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes Shift JIS filename.")
-#define	EUCP_E \
-	meslist("EUC 漢字をファイル名に使うディレクトリを指定します.", \
+#define	EUCP_E	meslist( \
+		"EUC 漢字をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes EUC-JP filename.")
-#define	JISP_E \
-	meslist("7bit JIS をファイル名に使うディレクトリを指定します.", \
+#define	JISP_E	meslist( \
+		"7bit JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes 7bit-JIS filename.")
-#define	OJSP_E \
-	meslist("7bit 旧 JIS をファイル名に使うディレクトリを指定します.", \
+#define	OJSP_E	meslist( \
+		"7bit 旧 JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes old 7bit-JIS filename.")
-#define	JS8P_E \
-	meslist("8bit JIS をファイル名に使うディレクトリを指定します.", \
+#define	JS8P_E	meslist( \
+		"8bit JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes 8bit-JIS filename.")
-#define	OJ8P_E \
-	meslist("8bit 旧 JIS をファイル名に使うディレクトリを指定します.", \
+#define	OJ8P_E	meslist( \
+		"8bit 旧 JIS をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes old 8bit-JIS filename.")
-#define	JNTP_E \
-	meslist("ISO-2022-JP をファイル名に使うディレクトリを指定します.", \
+#define	JNTP_E	meslist( \
+		"ISO-2022-JP をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes ISO-2022-JP filename.")
-#define	OJNP_E \
-	meslist("旧 ISO-2022-JP をファイル名に使うディレクトリを指定します.", \
+#define	OJNP_E	meslist( \
+		"旧 ISO-2022-JP をファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes old ISO-2022-JP filename.")
-#define	HEXP_E \
-	meslist("HEX コードをファイル名に使うディレクトリを指定します.", \
+#define	HEXP_E	meslist( \
+		"HEX コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes HEX code filename.")
-#define	CAPP_E \
-	meslist("CAP コードをファイル名に使うディレクトリを指定します.", \
+#define	CAPP_E	meslist( \
+		"CAP コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes CAP code filename.")
-#define	UTF8P_E \
-	meslist("UTF-8 コードをファイル名に使うディレクトリを指定します.", \
+#define	UTF8P_E	meslist( \
+		"UTF-8 コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes UTF-8 code filename.")
-#define	UTF8MACP_E \
-	meslist("Mac OS X 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
+#define	UTF8M_E	meslist( \
+		"Mac OS X 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes Mac OS X UTF-8 code filename.")
-#define	UTF8ICONVP_E \
-	meslist("iconv 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
+#define	UTF8I_E	meslist( \
+		"iconv 用 UTF-8 コードをファイル名に使うディレクトリを指定します.", \
 		"Define the directories includes iconv UTF-8 code filename.")
-#define	NCVP_E \
-	meslist("漢字コード変換したくないディレクトリを指定します.", \
+#define	NCVP_E	meslist( \
+		"漢字コード変換したくないディレクトリを指定します.", \
 		"Define the directories with no kanji conversion.")
-#define	PAGR_E \
-	meslist("ファイルの閲覧に用いるプログラムを指定します.", \
+#define	PAGR_E	meslist( \
+		"ファイルの閲覧に用いるプログラムを指定します.", \
 		"Define the program to view files.")
-#define	EDIT_E \
-	meslist("ファイルの編集に用いるプログラムを指定します.", \
+#define	EDIT_E	meslist( \
+		"ファイルの編集に用いるプログラムを指定します.", \
 		"Define the program to edit files.")
-#define	SHEL_E \
-	meslist("コマンドの実行に用いるシェルプログラムを指定します.", \
+#define	SHEL_E	meslist( \
+		"コマンドの実行に用いるシェルプログラムを指定します.", \
 		"Define the shell program to execute commands.")
-#define	FCED_E \
-	meslist("組込みコマンド fc でファイルの編集に用いるプログラムを指定します.", \
+#define	FCED_E	meslist( \
+		"組込みコマンド fc でファイルの編集に用いるプログラムを指定します.", \
 		"Define the program to edit files in fc the builtin command.")
-#define	CMSP_E \
-	meslist("バッチファイルの実行に用いるプログラムを指定します.", \
+#define	CMSP_E	meslist( \
+		"バッチファイルの実行に用いるプログラムを指定します.", \
 		"Define the program to execute batch files.")
 
 #define	TENV_K	mesconv("内部変数", "Variables")
@@ -529,6 +557,17 @@ extern CONST char *mesconv __P_((CONST char *, CONST char *));
 #define	VUTFI_K	mesconv("iconv用", "forIconv")
 #define	VFNMX_K	mesconv("最大数:", "Max:")
 #define	VFNBR_K	mesconv("ブロック単位:", "BlockSize:")
+#define	UOP0B_K	mesconv("URLドライブ設定を選んで下さい. (Space で反転.)", \
+			"Select the options for URL drive. (Inverse with Space.)")
+#define	UOP00_K	mesconv("可", "OK")
+#define	UOP01_K	mesconv("禁", "No")
+#define	UOP1B_K	mesconv("PASV禁止", "noPASV")
+#define	UOP2B_K	mesconv("PORT禁止", "noPORT")
+#define	UOP3B_K	mesconv("MDTM禁止", "noMDTM")
+#define	UOP4B_K	mesconv("FEAT禁止", "noFEAT")
+#define	UOP5B_K	mesconv("HTTP詳細情報", "HTTPdetail")
+#define	UOP50_K	mesconv("簡略", "Round")
+#define	UOP51_K	mesconv("詳細", "Detail")
 #define	VKYCD_K	mesconv("内部変数 %s に設定するキーを押して下さい:", \
 			"Push the key which you set to the variable %s:")
 #define	VKYOK_K	mesconv("[%s]を内部変数 %s に設定してよろしいですか ?", \

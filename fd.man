@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2008 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.09i 04/19/08
+.\" @(#)fd.1   3.00 05/31/08
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "April 19, 2008"
+.TH FD 1 "May 31, 2008"
 .de sh
 .br
 .PP
@@ -1052,7 +1052,6 @@ symbolic リンクファイルの場合には、
 が存在しない場合は新たに生成され、
 存在する場合はその後ろに追加されます。
 .IP "\fIn\fR\fB<\|>\fP\fIfile\fR"
-.IP "\fIn\fR\fB>\|<\fP\fIfile\fR"
 ファイルディスクリプタ
 .I " n"
 で表される入出力をともにファイル
@@ -1061,6 +1060,33 @@ symbolic リンクファイルの場合には、
 .I n
 を省略すると、
 標準入力を指定したものと見なされます。
+.IP "\fIn\fR\fB>\|<\fP\fIfile\fR"
+ファイルディスクリプタ
+.I " n"
+で表される入出力をともにファイル
+.I " file"
+の入出力に切替えます。
+.I n
+を省略すると、
+標準出力を指定したものと見なされます。
+.IP "\fIn1\fR\fB<\|>\|&\fP\fIn2\fR"
+ファイルディスクリプタ
+.I " n1"
+で表される入出力をファイルディスクリプタ
+.I " n2"
+で表される入出力に切替えます。
+.I n1
+を省略すると、
+標準入力を指定したものと見なされます。
+.IP "\fIn1\fR\fB>\|<\|&\fP\fIn2\fR"
+ファイルディスクリプタ
+.I " n1"
+で表される入出力をファイルディスクリプタ
+.I " n2"
+で表される入出力に切替えます。
+.I n1
+を省略すると、
+標準出力を指定したものと見なされます。
 .IP "\fIn\fR\fB<\|\-\fP"
 .IP "\fIn\fR\fB<\|&\|\-\fP"
 ファイルディスクリプタ
@@ -1074,6 +1100,22 @@ symbolic リンクファイルの場合には、
 ファイルディスクリプタ
 .I " n"
 で表される出力を閉じます。
+.I n
+を省略すると、
+標準出力を指定したものと見なされます。
+.IP "\fIn\fR\fB<\|>\|\-\fP"
+.IP "\fIn\fR\fB<\|>\|&\|\-\fP"
+ファイルディスクリプタ
+.I " n"
+で表される入出力を閉じます。
+.I n
+を省略すると、
+標準入力を指定したものと見なされます。
+.IP "\fIn\fR\fB>\|<\|\-\fP"
+.IP "\fIn\fR\fB>\|<\|&\|\-\fP"
+ファイルディスクリプタ
+.I " n"
+で表される入出力を閉じます。
 .I n
 を省略すると、
 標準出力を指定したものと見なされます。
@@ -1095,6 +1137,46 @@ symbolic リンクファイルの場合には、
 .I n
 を省略すると、
 標準入力を指定したものと見なされます。
+.PD
+.RE
+
+但し、
+それぞれのリダイレクトでファイルを指定する場合、
+ファイル名として
+.RI " `" scheme\fB://\fPhost\fB:\fPport '
+形式の文字列を指定すると、
+.I scheme
+文字列の内容に応じてそれぞれ下記のような TCP ソケットをオープンします。
+待受けポート番号の指定には OS 上の権限による制限があります。
+.B (UNIX)
+.RS 3
+.PD 0
+.IP "\fBconnect://\fP\fIhost\fR\fB:\fP\fIport\fR" 10
+.I host
+で示されるリモートホストの
+.I " port"
+で示される番号の TCP ポートに接続するソケットをオープンします。
+.IP "\fBaccept://\fP[\fIhost\fR][\fB:\fP\fIport\fR]"
+.I host
+で示されるローカルホストへの接続を、
+.I port
+で示される番号の TCP ポートで待受けるソケットをオープンします。
+.I host
+を省略すると任意のホストへの接続を受理します。
+.I " port"
+を省略すると OS の定めた範囲の任意ポートを用います。
+.IP "\fBbind://\fP[\fIhost\fR][\fB:\fP\fIport\fR]"
+.I host
+で示されるローカルホストへの接続を、
+.I port
+で示される番号の TCP ポートに束縛されたソケットをオープンし、
+組込みコマンド
+.B " accept"
+での待受けに備えます。
+.I host
+を省略すると任意のホストへの接続を受理します。
+.I " port"
+を省略すると OS の定めた範囲の任意ポートを用います。
 .PD
 .RE
 
@@ -1320,6 +1402,36 @@ symbolic リンクファイルの場合には、
 .B " EXECUTE_SH"
 コマンドの書式に準拠します。
 ファイル内で入れ子にしてファイルを読み込ませることもできます。
+.IP "\fBaccept\fP [\fIfd\fR]"
+.I fd
+で表されるファイルディスクリプタをソケットとして待受けを行ない、
+接続が確立すると接続ソケットを同じファイルディスクリプタ
+.I " fd"
+に割付けます。
+この時、
+待受けに用いたソケットはクローズされます。
+.I fd
+が
+.B " bind://"
+形式のリダイレクトでない場合は失敗します。
+.B accept://
+形式のリダイレクトと比べ、
+実際の接続を受ける前に一旦シェルに制御が戻るので、
+リモートホストとの間で事前に TCP ポート番号のネゴシエーションを行なう場合に利用することができます。
+.B (UNIX)
+
+.I fd
+を省略すると標準入力に対して待受けを行ないます。
+.IP "\fBaddcr\fP [\fB-1\fP] [\fIfile\fR]"
+.I file
+で示されるファイルから一行ずつ読込んで標準出力に出力します。
+各行の改行コードは CR-NL (\er\en) に統一されます。
+ソケットに対する出力を行なう際にパイプとして用いると有用です。
+
+.I file
+を省略すると標準入力を指定したものと見なされます。
+.B \-1
+を指定すると一行分だけ出力して終了します。
 .IP "\fBalias\fP [\fIname\fR[\fB=\fP\fIcom\fR]]"
 コマンド
 .I " com"
@@ -1807,13 +1919,15 @@ RFC1321 の MD5 アルゴリズムに従って、
 .IP "\fBdtype\fP \fIfile\fR"
 .I file
 で示されるファイルの内容を表示します。
-.IP "\fBecho\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
+.IP "\fBecho\fP [\fB\-nN\fP] [\fIarg\fR .\|.\|.]"
 .I arg
 を標準出力に出力します。
 .B \-n
 が指定されない場合は
 .I " arg"
 の最後に改行を出力します。
+.B \-N
+が指定された場合は出力する改行を CR-NL (\er\en) にします。
 .BR echo (1)
 を参照して下さい。
 .IP "\fBenable\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
@@ -2454,7 +2568,7 @@ symbolic リンクを含まない物理的なパス名を出力します。
 の
 .B " physical"
 オプションに従います。
-.IP "\fBread\fP [\fINAME .\|.\|.\fR]"
+.IP "\fBread\fP [\fB-N\fP] [\fINAME .\|.\|.\fR]"
 標準入力から一行読込み、
 その文字列を内部変数
 .I " NAME"
@@ -2474,6 +2588,10 @@ symbolic リンクを含まない物理的なパス名を出力します。
 余った
 .I " NAME"
 にはナルが定義されます。
+
+.B \-N
+が指定されると、
+改行を CR-NL (\er\en) と見なして一行読込みます。
 .IP "\fBreadline\fP [\fIprompt\fR]"
 端末入力から一行読込み、その文字列を標準出力に出力します。
 .I prompt
@@ -2818,6 +2936,25 @@ MS-DOS フロッピーではなく、
 を省略した場合は
 .B " 1"
 が指定されたものと見なされます。
+.IP "\fBsocketinfo\fP [\fB-apAP\fP] [\fIfd\fR]"
+.I fd
+で表されるファイルディスクリプタがソケットの場合、
+接続されているリモートホストの IP アドレスと TCP ポート番号、
+及び接続されているローカルホストの IP アドレスと TCP ポート番号を標準出力に出力します。
+.I fd
+がソケットでない場合は失敗します。
+.B (UNIX)
+
+.I fd
+を省略すると標準入力を指定したものと見なされます。
+.B \-a
+を指定するとリモートホストの IP アドレスのみを出力します。
+.B \-p
+を指定するとリモートホストの TCP ポート番号のみを出力します。
+.B \-A
+を指定するとローカルホストの IP アドレスのみを出力します。
+.B \-P
+を指定するとローカルホストの TCP ポート番号のみを出力します。
 .IP "\fBtest\fP [\fIexpr\fR]"
 .PD 0
 .IP "\fB[\fP \fIexpr\fR \fB]\fP"
@@ -3012,10 +3149,48 @@ MAILCHECK	PPID
 を実行します。
 .I COMMAND
 には、各コマンド識別子を記述します。
-一部の内部コマンドでは、
-実行回数や対象ディレクトリ等のパラメータを引数
+以下の内部コマンドでは、
+パラメータを引数
 .I " arg"
 として記述できます。
+.RS
+.PD 0
+.IP "\fBCUR_UP\fP" 15
+.IP "\fBCUR_DOWN\fP"
+.IP "\fBCUR_RIGHT\fP"
+.IP "\fBCUR_LEFT\fP"
+.IP "\fBROLL_UP\fP"
+.IP "\fBROLL_DOWN\fP"
+.IP "\fBWIDEN_WINDOW\fP"
+.IP "\fBNARROW_WINDOW\fP"
+行数、桁数またはページ数。
+.IP "\fBRENAME_FILE\fP"
+.IP "\fBPACK_FILE\fP"
+.IP "\fBBACKUP_TAPE\fP"
+ファイル名。
+.IP "\fBLOG_DIR\fP"
+.IP "\fBMAKE_DIR\fP"
+.IP "\fBINFO_FILESYS\fP"
+.IP "\fBUNPACK_FILE\fP"
+ディレクトリ名。
+.IP "\fBEXECUTE_SH\fP"
+コマンド文字列。
+.IP "\fBMARK_FIND\fP"
+.IP "\fBFIND_FILE\fP"
+.IP "\fBFIND_DIR\fP"
+検索文字列。
+.IP "\fBMARK_ALL\fP"
+.B 0
+で全ファイルのマークを解除、
+それ以外で全ファイルにマーク。
+.IP "\fBSORT_DIR\fP"
+内部変数
+.B " SORTTYPE"
+に使用する数値。
+.IP "\fBEDIT_CONFIG\fP"
+編集する内部変数名。
+.PD
+.RE
 .PP
 上記の各登録文字列内の
 .B " ~"
@@ -3129,8 +3304,18 @@ SYMLINK_MODE	DOTFILE_MODE	FILEFLG_MODE	SPLIT_WINDOW
 \fB%m\fP	ファイル作成月を表すフィールド
 	(表示は数値でも英字 3 文字表記でもどちらでも可。)
 \fB%d\fP	ファイル作成日を表すフィールド
+\fB%w\fP	ファイル作成曜日を表すフィールド (無視されます。)
 \fB%t\fP	ファイル作成時間を表すフィールド
 	(表示は "HH:MM:SS" 形式。分や秒はなくても可。)
+\fB%p\fP	ファイル作成午前午後を表すフィールド
+\fB%B\fP	デバイス ID のメジャー番号を表すフィールド
+\fB%b\fP	デバイス ID のマイナー番号を表すフィールド
+\fB%/\fP\fIstr\fR\fB/\fP	このフィールド文字列が \fIstr\fR のときに
+	ディレクトリであることを表すフィールド
+	(大文字小文字同一視。)
+\fB%!\fP\fIstr\fR\fB!\fP	文字列 \fIstr\fR から成るフィールドが
+	0 個以上連続したもの。
+	(大文字小文字同一視。)
 \fB%f\fP	ファイル名を表すフィールド
 \fB%x\fP	必要のないフィールド (無視されます。)
 \fB%%\fP	% 自身
@@ -3267,6 +3452,50 @@ MS-Windows format floppy の Long File Name (LFN) が扱える
 LFN を無視して 8+3 形式のファイル名を扱います。
 このドライブ名の大小による仕様は、
 MS-DOS 版にもそのまま継承されています。
+.SS "URL ドライブ (UNIX)"
+ディレクトリ名として URL 文字列を用いることで、
+ネットワーク上のリモートサービスにアクセスすることができます。
+URL の書式は \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\fP]\fIhost\fR[\fB:\fP\fIport\fR]\fB/\fP\fIdirectory\fR\fB/\fP です。
+.I scheme
+には
+.B " ftp"
+または
+.B " http"
+が指定できます。
+.I host
+にはリモートホストの名前または IP アドレスを指定します。
+.I port
+には TCP ポート番号を指定します。
+.I port
+を省略すると既定ポート番号を用います。
+.B ftp
+の既定ポート番号は
+.BR " 21" 、
+.B http
+の既定ポート番号は
+.B " 80"
+です。
+.I user
+及び
+.I " password"
+には、
+リモートホストに接続するためのアカウント情報を記述できます。
+.I user
+を省略すると、
+.B ftp
+の場合は anonymous FTP による接続を行ない、
+.B http
+の場合は必要に応じてユーザに問い合わせを行ないます。
+.I " password"
+を省略すると必要に応じてユーザに問い合わせを行ないます。
+但し、
+この機能を有効にするための内部変数
+.B " URLDRIVE"
+の設定を事前に行なっておくことが必要です。
+
+なお、
+FTP や HTTP のプロトコル上の制限もしくはホスト側の設定により、
+一部の内部コマンドは URL ドライブに対応していませんのでご了承下さい。
 .SS 文字列の入力
 パス名などの文字列を入力する場合には、
 以下のキー入力が有効です。
@@ -4220,6 +4449,15 @@ ANSI 規格のカラー制御エスケープシーケンス対応している場合、
 .B " 89624351888"
 になります。
 .RE
+.IP "\fBAUTOUPDATE\fP"
+ブラウザ画面またはツリー表示画面を自動的に更新する間隔を秒数で指定します。
+ここで指定した秒数の間キー入力が途絶えると、
+表示されているファイル一覧情報を最新のものに更新します。
+.B 0
+を指定すると自動更新しません。
+デフォルト値は
+.B " 0"
+です。
 .IP "\fBBASICCUSTOM\fP"
 カスタマイザで編集可能な設定用内部変数を基本的な変数のみに絞り、
 拡張的な変数を見えなくします。
@@ -4463,6 +4701,37 @@ OS を経由せずにディスク I/O を行なうため、
 デフォルト	変換しない
 .fi
 .RE
+.IP "\fBFTPADDRESS\fP"
+URL ドライブで FTP 接続を行なう際に、
+anonymous FTP 用パスワードとして用いるメールアドレスを指定します。
+デフォルト値は
+.B " FDclone@"
+です。
+.B (UNIX)
+.IP "\fBFTPLOGFILE\fP"
+URL ドライブで FTP 通信を行なう際に、
+通信ログを出力するファイル名を指定します。
+但し、
+フルパスで指定されなかった場合やログファイルを格納するディレクトリが用意されていない場合はログ出力を行ないません。
+デフォルト値は未指定です。
+.B (UNIX)
+.IP "\fBFTPPROXY\fP"
+URL ドライブで FTP 接続を行なう際に、
+プロキシサーバとして用いる URL を指定します。
+URL の書式は \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\fP]\fIhost\fR[\fB:\fP\fIport\fR] です。
+.I scheme
+には
+.B " ftp"
+または
+.B " http"
+が指定できます。
+.I user
+及び
+.I " password"
+には、
+プロキシサーバに接続するためのアカウント情報を記述できます。
+デフォルト値は未指定です。
+.B (UNIX)
 .IP "\fBFUNCLAYOUT\fP"
 ファンクション行のレイアウトを
 .I " n"
@@ -4476,6 +4745,15 @@ OS を経由せずにディスク I/O を行なうため、
 デフォルト値は
 .B 1005
 (10 個のファンクションキーを 5 個単位でまとめて表示) です。
+.IP "\fBHIDEPASSWD\fP"
+URL ドライブでパスワード入力を行なう際に、
+入力文字の代わりに
+.B " *"
+を表示するのを抑制し、
+何も表示しないようにします。
+.B 0
+かナル以外の値であれば、何を定義しても有効です。
+.B (UNIX)
 .IP "\fBHISTFILE\fP"
 .B EXECUTE_FILE
 や
@@ -4508,6 +4786,35 @@ OS を経由せずにディスク I/O を行なうため、
 ログインシェルとして起動された場合は、
 この変数が指定されているとそのディレクトリをカレントディレクトリとし、
 指定されていないとホームディレクトリの値を自動的に定義します。
+.IP "\fBHTMLLOGFILE\fP"
+URL ドライブで HTTP 通信を行なう際に、
+受信した HTML データのログを出力するファイル名を指定します。
+但し、
+フルパスで指定されなかった場合やログファイルを格納するディレクトリが用意されていない場合はログ出力を行ないません。
+デフォルト値は未指定です。
+.B (UNIX)
+.IP "\fBHTTPLOGFILE\fP"
+URL ドライブで HTTP 通信を行なう際に、
+通信ログを出力するファイル名を指定します。
+但し、
+フルパスで指定されなかった場合やログファイルを格納するディレクトリが用意されていない場合はログ出力を行ないません。
+デフォルト値は未指定です。
+.B (UNIX)
+.IP "\fBHTTPPROXY\fP"
+URL ドライブで HTTP 接続を行なう際に、
+プロキシサーバとして用いる URL を指定します。
+URL の書式は \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\fP]\fIhost\fR[\fB:\fP\fIport\fR] です。
+.I scheme
+には
+.B " http"
+が指定できます。
+.I user
+及び
+.I " password"
+には、
+プロキシサーバに接続するためのアカウント情報を記述できます。
+デフォルト値は未指定です。
+.B (UNIX)
 .IP "\fBIFS\fP\(**"
 フィールド区切り文字を指定します。
 .B EXECUTE_SH
@@ -4702,11 +5009,17 @@ OS を経由せずにディスク I/O を行なうため、
 環境変数
 .B " LANG"
 の値をそのまま用いても有効です。
+また、
+追加のメッセージカタログが用意されている場合は、
+そのファイルの拡張子をカタログ名として
+.B " MESSAGELANG"
+に設定することでメッセージの切替を行なうことができます。
 .RS 18
 .ta 1.5i
 .nf
 \fBen\fP, \fBC\fP, \fBPOSIX\fP	英語
-デフォルト	変換しない
+\fBja\fP	日本語
+デフォルト	\fBLANGUAGE\fP の設定値
 .fi
 .RE
 .IP "\fBMINFILENAME\fP"
@@ -5092,6 +5405,100 @@ UNICODE 変換テーブルをオンメモリで持ち続けるようにします。
 メモリ資源が潤沢にある環境では有用でしょう。
 .B 0
 かナル以外の値であれば、何を定義しても有効です。
+.IP "\fBURLDRIVE\fP"
+URL ドライブ機能を有効にします。
+.B 0
+かナル以外の値であれば、何を定義しても有効です。
+.B (UNIX)
+.IP "\fBURLKCODE\fP"
+URL ドライブでホスト側のファイル名に用いる漢字コードを指定します。
+このうち
+.BR " JIS8" ,
+.BR JUNET ,
+.BR HEX ,
+.B CAP
+等は Samba で用いられている漢字コードです。
+.B (UNIX)
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC 漢字
+\fBJIS\fP, \fBjis\fP	7bit JIS
+\fBJIS8\fP, \fBjis8\fP	8bit JIS
+\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
+\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
+\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
+\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
+\fBHEX\fP, \fBhex\fP	HEX
+\fBCAP\fP, \fBcap\fP	CAP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	Mac OS X 用 UTF-8
+\fBUTF8-iconv\fP	iconv 用 UTF-8
+デフォルト	変換しない
+.fi
+.RE
+.IP "\fBURLOPTIONS\fP"
+URL ドライブでホストと通信を行なう際の通信オプションを指定します。
+FTP 通信の際に PASV, PORT, MDTM, FEAT の各コマンドを禁止するか否か、
+また HTTP 通信の際に正確なファイル情報を取得するか否かを、
+それぞれ独立に選択できます。
+HTTP プロトコルでは、
+ファイル情報をまとめて取得すると時刻やサイズが丸め誤差を含む値になってしまいますが、
+正確な情報を取得するにはファイル一個ずつの処理が必要なので余分の通信時間を要します。
+デフォルト値は
+.B " 0"
+です。
+設定する値は以下のとおり。
+.B (UNIX)
+.RS 18
+.ta 0.5i 1.3i 2.1i 2.9i 3.7i
+.nf
+\fB0\fP	標準
+\fB1\fP	PASV
+\fB2\fP		PORT
+\fB3\fP	PASV &	PORT
+\fB4\fP			MDTM
+\fB5\fP	PASV &		MDTM
+\fB6\fP		PORT &	MDTM
+\fB7\fP	PASV &	PORT &	MDTM
+\fB8\fP				FEAT
+\fB9\fP	PASV &			FEAT
+\fB10\fP		PORT &		FEAT
+\fB11\fP	PASV &	PORT &		FEAT
+\fB12\fP			MDTM &	FEAT
+\fB13\fP	PASV &		MDTM &	FEAT
+\fB14\fP		PORT &	MDTM &	FEAT
+\fB15\fP	PASV &	PORT &	MDTM &	FEAT
+\fB16\fP					HTTP
+\fB17\fP	PASV &				HTTP
+\fB18\fP		PORT &			HTTP
+\fB19\fP	PASV &	PORT &			HTTP
+\fB20\fP			MDTM &		HTTP
+\fB21\fP	PASV &		MDTM &		HTTP
+\fB22\fP		PORT &	MDTM &		HTTP
+\fB23\fP	PASV &	PORT &	MDTM &		HTTP
+\fB24\fP				FEAT &	HTTP
+\fB25\fP	PASV &			FEAT &	HTTP
+\fB26\fP		PORT &		FEAT &	HTTP
+\fB27\fP	PASV &	PORT &		FEAT &	HTTP
+\fB28\fP			MDTM &	FEAT &	HTTP
+\fB29\fP	PASV &		MDTM &	FEAT &	HTTP
+\fB30\fP		PORT &	MDTM &	FEAT &	HTTP
+\fB31\fP	PASV &	PORT &	MDTM &	FEAT &	HTTP
+.fi
+.RE
+.IP "\fBURLTIMEOUT\fP"
+URL ドライブでホストと通信している際のタイムアウトを秒数で指定します。
+ここで指定した秒数の間ホストからの通信が途絶えると、
+通信が無効になったものと見なして強制的に接続を切断します。
+この値が
+.B " 0"
+秒の時にはタイムアウト処理をせずに永久に応答を待ち続けます。
+デフォルト値は
+.B " 0"
+秒です。
+.B (UNIX)
 .IP "\fBUSEGETCURSOR\fP"
 端末サイズ取得時に、
 VT100 互換のカーソル位置取得エスケープシーケンスを用います。
@@ -5118,6 +5525,10 @@ facility の指定できる環境では LOG_USER が用いられます。
 .B 0
 かナル以外の値であれば、何を定義しても有効です。
 .B (UNIX)
+.IP "\fBVERSION\fP"
+実行中の
+.B fd
+のバージョン文字列が代入されます。
 .IP "\fBWRITEFS\fP"
 .B WRITE_DIR
 コマンドの使用を禁止します。
@@ -5268,20 +5679,6 @@ MS-DOS 版での個人用の
 MS-DOS 版でのコマンド履歴のセーブファイル既定値
 .PD
 .SH 制限事項
-登録できるキー割当ては
-.B " 256"
-個までです。
-このうち、ユーザ定義マクロで割当てられるのは
-.B " 64"
-個までです。
-登録できるランチャは、アーカイブブラウザの登録を含めて
-.B " 32"
-個までです。
-登録できるアーカイブコマンドは、圧縮と伸長を一組として
-.B " 16"
-組までです。
-これらの上限値には、最初から組込み定義されているものを含みます。
-
 端末の種類によって、
 一部のファンクションキーや特殊キーの入力ができないことがあります。
 .BR termcap (5)

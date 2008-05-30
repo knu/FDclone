@@ -4,58 +4,24 @@
  *	formatted printing module
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
+#include "headers.h"
+#include "depend.h"
 #include "printf.h"
 #include "kctype.h"
+#include "typesize.h"
+#include "string.h"
+
+#ifdef	FD
+#include "kconv.h"
+#endif
 
 #define	PRINTBUFUNIT		16
 #define	THDIGIT			3
 #define	NULLSTR			"(null)"
 
-#ifdef	USEPID_T
-typedef pid_t			p_id_t;
-#else
-# if	MSDOS
-typedef int			p_id_t;
-# else
-typedef long			p_id_t;
-# endif
-#endif
-
-#ifdef	USELLSEEK
-typedef long long		l_off_t;
-#else
-typedef off_t			l_off_t;
-#endif
-
 #ifdef	FD
-# ifndef	_NOKANJICONV
-extern char *newkanjiconv __P_((CONST char *, int, int, int));
-extern int getoutputkcode __P_((VOID_A));
-# endif
 extern char *restorearg __P_((CONST char *));
-#endif	/* FD */
-
-#ifdef	CODEEUC
-# ifdef	FD
-extern int strlen2 __P_((CONST char *));
-# else
-static int NEAR strlen2 __P_((CONST char *));
-# endif
-#else	/* !CODEEUC */
-#define	strlen2			strlen
-#endif	/* !CODEEUC */
+#endif
 
 static int NEAR checkchar __P_((int, printbuf_t *));
 static int NEAR setint __P_((u_long_t, int, printbuf_t *, int, int));
@@ -89,18 +55,6 @@ CONST int printfsize[] = {
 #endif
 };
 
-
-#if	!defined (FD) && defined (CODEEUC)
-static int NEAR strlen2(s)
-CONST char *s;
-{
-	int i, len;
-
-	for (i = len = 0; s[i]; i++, len++) if (isekana(s, i)) i++;
-
-	return(len);
-}
-#endif	/* !FD && CODEEUC */
 
 int getnum(s, ptrp)
 CONST char *s;
@@ -139,7 +93,7 @@ printbuf_t *pbufp;
 	char *tmp;
 
 	if (pbufp -> flags & VF_FILE) {
-		if (pbufp -> buf && fputc(n, (FILE *)(pbufp -> buf)) == EOF)
+		if (pbufp -> buf && Xfputc(n, (XFILE *)(pbufp -> buf)) == EOF)
 			return(-1);
 		(pbufp -> ptr)++;
 		return(1);
@@ -224,9 +178,8 @@ int width, prec;
 #ifdef	MINIMUMSHELL
 			c += '0';
 #else
-			if (c < 10) c += '0';
-			else if (cap) c += 'A' - 10;
-			else c += 'a' - 10;
+			c = tohexa(c);
+			if (cap) c = toupper2(c);
 #endif
 		}
 		else {
@@ -315,7 +268,7 @@ CONST char *s;
 printbuf_t *pbufp;
 int width, prec;
 {
-#if	defined (FD) && !defined (_NOKANJICONV)
+#ifdef	DEP_KCONV
 	char *cp, *tmp;
 	int n;
 #endif
@@ -341,7 +294,7 @@ int width, prec;
 	}
 	total += len;
 
-#if	defined (FD) && !defined (_NOKANJICONV)
+#ifdef	DEP_KCONV
 	if (pbufp -> flags & VF_KANJI) {
 		if (!(tmp = (char *)malloc(len * KANAWID + 1))) return(-1);
 
@@ -388,7 +341,7 @@ int width, prec;
 		}
 	}
 	else
-#endif	/* FD && !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 	for (i = j = 0; i < len; i++, j++) {
 		c = s[j];
 		if (iskanji1(s, j)) {
@@ -451,7 +404,7 @@ va_list args;
 		pbufp -> flags &= (VF_NEW | VF_FILE);
 		width = prec = -1;
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr(printfflagchar, fmt[i]))) break;
+			if (!(cp = strchr2(printfflagchar, fmt[i]))) break;
 			pbufp -> flags |= printfflag[cp - printfflagchar];
 		}
 
@@ -472,7 +425,7 @@ va_list args;
 
 		len = sizeof(int);
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr(printfsizechar, fmt[i]))) break;
+			if (!(cp = strchr2(printfsizechar, fmt[i]))) break;
 			len = printfsize[cp - printfsizechar];
 		}
 
@@ -483,7 +436,7 @@ va_list args;
 				break;
 			case 'a':
 			case 'k':
-#if	defined (FD) && !defined (_NOKANJICONV)
+#ifdef	DEP_KCONV
 				pbufp -> flags |= VF_KANJI;
 #endif
 /*FALLTHRU*/
@@ -678,41 +631,51 @@ va_dcl
 	return(n);
 }
 
+int vfprintf2(fp, fmt, args)
+XFILE *fp;
+CONST char *fmt;
+va_list args;
+{
+	printbuf_t pbuf;
+
+	pbuf.buf = (char *)fp;
+	pbuf.flags = VF_FILE;
+
+	return(commonprintf(&pbuf, fmt, args));
+}
+
 #ifdef	USESTDARGH
 /*VARARGS2*/
-int fprintf2(FILE *fp, CONST char *fmt, ...)
+int fprintf2(XFILE *fp, CONST char *fmt, ...)
 #else
 /*VARARGS2*/
 int fprintf2(fp, fmt, va_alist)
-FILE *fp;
+XFILE *fp;
 CONST char *fmt;
 va_dcl
 #endif
 {
 	va_list args;
-	printbuf_t pbuf;
 	int n;
 
-	pbuf.buf = (char *)fp;
-	pbuf.flags = VF_FILE;
 	VA_START(args, fmt);
-	n = commonprintf(&pbuf, fmt, args);
+	n = vfprintf2(fp, fmt, args);
 	va_end(args);
 
 	return(n);
 }
 
 VOID fputnl(fp)
-FILE *fp;
+XFILE *fp;
 {
-	fputc('\n', fp);
-	fflush(fp);
+	Xfputc('\n', fp);
+	Xfflush(fp);
 }
 
 #ifdef	FD
 VOID kanjifputs(s, fp)
 CONST char *s;
-FILE *fp;
+XFILE *fp;
 {
 	fprintf2(fp, "%k", s);
 }

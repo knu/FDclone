@@ -4,17 +4,7 @@
  *	tiny Kanji code converter
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
+#include "headers.h"
 
 #define	ASCII			000
 #define	KANA			001

@@ -5,9 +5,28 @@
  */
 
 #include "fd.h"
+#include "time.h"
+#include "log.h"
+#include "termio.h"
+#include "realpath.h"
+#include "parse.h"
+#include "kconv.h"
 #include "func.h"
 #include "kanji.h"
 #include "version.h"
+
+#ifdef	DEP_ORIGSHELL
+#include "system.h"
+#endif
+#ifdef	DEP_PTY
+#include "termemu.h"
+#endif
+#ifdef	DEP_IME
+#include "roman.h"
+#endif
+#ifdef	DEP_URLPATH
+#include "urldisk.h"
+#endif
 
 #if	MSDOS
 #include <process.h>
@@ -15,26 +34,6 @@
 # include <dos.h>
 # endif
 #endif	/* !MSDOS */
-
-#ifdef	_NOORIGSHELL
-#include "termio.h"
-#include "wait.h"
-#define	isorgpid()		(1)
-#else
-#include "system.h"
-#define	isorgpid()		(mypid == orgpid)
-#endif
-
-#if	!defined (_NOIME) && defined (DEBUG)
-#include "roman.h"
-#endif
-
-#ifdef	__TURBOC__
-extern u_int _stklen = 0x5800;
-#define	harderr_t		void
-#else
-#define	harderr_t		int
-#endif
 
 #define	CLOCKUPDATE		10	/* sec */
 #ifndef	BINDIR
@@ -47,6 +46,19 @@ extern u_int _stklen = 0x5800;
 #define	DEFPATH			":/bin:/usr/bin"
 #endif
 
+#ifdef	DEP_ORIGSHELL
+#define	isorgpid()		(mypid == orgpid)
+#else
+#define	isorgpid()		(1)
+#endif
+
+#ifdef	__TURBOC__
+extern u_int _stklen = 0x5800;
+#define	harderr_t		void
+#else
+#define	harderr_t		int
+#endif
+
 #if	MSDOS
 # ifndef	BSPATHDELIM
 extern char *adjustpname __P_((char *));
@@ -56,25 +68,39 @@ extern char *adjustfname __P_((char *));
 # endif
 #endif	/* MSDOS */
 
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 extern VOID killjob __P_((VOID_A));
 #endif
 
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 extern char **environ;
 extern char **environ2;
 #endif
-extern bindtable bindlist[];
+extern bindlist_t bindlist;
+extern int maxbind;
+#if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
+extern origbindlist_t origbindlist;
+extern int origmaxbind;
+#endif
 #ifndef	_NOARCHIVE
-extern launchtable launchlist[];
+extern launchlist_t launchlist;
 extern int maxlaunch;
-extern archivetable archivelist[];
+extern archivelist_t archivelist;
 extern int maxarchive;
+# if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
+extern origlaunchlist_t origlaunchlist;
+extern int origmaxlaunch;
+extern origarchivelist_t origarchivelist;
+extern int origmaxarchive;
+# endif
+#endif	/* !_NOARCHIVE */
+extern helpindex_t helpindex;
+#ifndef	_NOCUSTOMIZE
+extern orighelpindex_t orighelpindex;
 #endif
 extern int wheader;
 extern char fullpath[];
 extern short savehist[];
-extern char *helpindex[];
 extern int subwindow;
 extern int win_x;
 extern int win_y;
@@ -82,22 +108,14 @@ extern int win_y;
 extern int custno;
 #endif
 extern char *deftmpdir;
-#ifdef	_USEUNICODE
-extern char *unitblpath;
-#endif
-#ifndef	_NOIME
+#ifdef	DEP_IME
 extern char *dicttblpath;
-#endif
-#ifndef	_NOPTY
-extern int ptymode;
-extern int ptyinternal;
-extern int parentfd;
 #endif
 
 #if	MSDOS && !defined (PROTECTED_MODE)
 static harderr_t far criticalerror __P_((u_int, u_int, u_short far *));
 #endif
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static VOID NEAR Xexit2 __P_((int));
 #endif
 static VOID NEAR signalexit __P_((int));
@@ -166,15 +184,15 @@ static VOID NEAR printtime __P_((int));
 #ifdef	SIGALRM
 static int trapalrm __P_((VOID_A));
 #endif
-#ifndef	_NODOSDRIVE
-static int wrap_intrkey __P_((VOID_A));
+#ifdef	DEP_DOSDRIVE
+static int dos_intrkey __P_((VOID_A));
 #endif
-static char *NEAR getversion __P_((int *));
-#ifndef	_NOLOGGING
+static int read_intrkey __P_((VOID_A));
+#ifdef	DEP_LOGGING
 static VOID NEAR startlog __P_((char *CONST *));
 static VOID NEAR endlog __P_((int));
 #endif
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static int NEAR execruncomline __P_((char *, CONST char *, int, CONST char *));
 #endif
 static int NEAR initoption __P_((int, char *CONST []));
@@ -203,24 +221,11 @@ int hideclock = 0;
 int noalrm = 1;
 #endif
 int fd_restricted = 0;
-#ifndef	_NOCUSTOMIZE
-char **orighelpindex = NULL;
-bindtable *origbindlist = NULL;
-# ifndef	_NOKEYMAP
+#if	!defined (_NOCUSTOMIZE) && !defined (_NOKEYMAP)
 keyseq_t *origkeymaplist = NULL;
-# endif
-# ifndef	_NOARCHIVE
-launchtable *origlaunchlist = NULL;
-int origmaxlaunch = 0;
-archivetable *origarchivelist = NULL;
-int origmaxarchive = 0;
-# endif
-# ifdef	_USEDOSEMU
-devinfo *origfdtype = NULL;
-# endif
-#endif	/* !_NOCUSTOMIZE */
+#endif
 int inruncom = 0;
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 int fdmode = 0;
 #endif
 
@@ -255,35 +260,38 @@ CONST char *s;
 	sigvecset(0);
 	if (isorgpid()) {
 		forcecleandir(deftmpdir, tmpfilename);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 		dosallclose();
+#endif
+#ifdef	DEP_URLPATH
+		urlallclose();
 #endif
 		Xstdiomode();
 		endterm();
 	}
 
 	if (!s) s = progname;
-	if (dumbterm <= 2) fputc('\007', stderr);
+	if (dumbterm <= 2) Xfputc('\007', Xstderr);
 	errno = duperrno;
 	if (errno) perror2(s);
 	else {
-		fputs(s, stderr);
-		fputnl(stderr);
+		Xfputs(s, Xstderr);
+		fputnl(Xstderr);
 	}
-	fclose(stderr);
+	Xfclose(Xstderr);
 	doing = 2;
 
 	if (isorgpid()) {
 		inittty(1);
 		keyflush();
 		prepareexitfd(2);
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 # ifndef	NOJOB
 		killjob();
 # endif
 		prepareexit(0);
-#endif	/* !_NOORIGSHELL */
-#ifndef	_NOPTY
+#endif	/* DEP_ORIGSHELL */
+#ifdef	DEP_PTY
 		killallpty();
 #endif
 #ifdef	DEBUG
@@ -298,14 +306,14 @@ CONST char *s;
 	exit(2);
 }
 
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static VOID NEAR Xexit2(n)
 int n;
 {
 	prepareexitfd(n);
 	exit2(n);
 }
-#endif	/* _NOORIGSHELL */
+#endif	/* !DEP_ORIGSHELL */
 
 static VOID NEAR signalexit(sig)
 int sig;
@@ -314,22 +322,25 @@ int sig;
 
 	if (isorgpid()) {
 		forcecleandir(deftmpdir, tmpfilename);
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 		dosallclose();
 #endif
-#ifndef	_NOLOGGING
+#ifdef	DEP_URLPATH
+		urlallclose();
+#endif
+#ifdef	DEP_LOGGING
 		endlog(sig + 128);
 #endif
 		endterm();
 		inittty(1);
 		keyflush();
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 # if	defined (SIGHUP) && !defined (NOJOB)
 		if (sig == SIGHUP) killjob();
 # endif
 		prepareexit(0);
-#endif	/* !_NOORIGSHELL */
-#ifndef	_NOPTY
+#endif	/* DEP_ORIGSHELL */
+#ifdef	DEP_PTY
 		killallpty();
 #endif
 #ifdef	DEBUG
@@ -406,7 +417,7 @@ static int ignore_cont(VOID_A)
 	signal2(SIGCONT, (sigcst_t)ignore_cont);
 # if	!MSDOS
 	suspended = 1;
-#  ifndef	_NOORIGSHELL
+#  ifdef	DEP_ORIGSHELL
 	sigconted = 1;
 #  endif
 # endif	/* !MSDOS */
@@ -592,7 +603,7 @@ int xmax, ymax;
 	nowinch++;
 #endif
 	dupn_line = -1;
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	if (parentfd >= 0) row = WFILEMIN;
 	else
 #endif
@@ -636,7 +647,7 @@ int xmax, ymax;
 		Xputterm(T_BELL);
 		Xcputnl();
 		Xtflush();
-		if (kbhit2(1000000L) && getkey3(0, inputkcode) == K_ESC) {
+		if (kbhit2(1000000L) && getkey3(0, inputkcode, 0) == K_ESC) {
 			errno = 0;
 			error(INTR_K);
 		}
@@ -644,7 +655,7 @@ int xmax, ymax;
 	dumbterm = dupdumbterm;
 	loadtermio(ttyio, tty, NULL);
 	isttyiomode = wastty;
-	if (tty) free(tty);
+	free2(tty);
 
 	setlinecol();
 	if (n_line != dupn_line) {
@@ -713,7 +724,7 @@ int hide;
 		timersec = CLOCKUPDATE;
 	}
 	if (timersec-- < CLOCKUPDATE && !showsecond) return;
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	if (checkallpty() < 0) rewritefile(0);
 	if (isptymode() && !ptyinternal && hide <= 1) hide = 0;
 #endif
@@ -751,7 +762,7 @@ static int trapalrm(VOID_A)
 
 	duperrno = errno;
 	signal2(SIGALRM, SIG_IGN);
-# if	!defined (_NOORIGSHELL) && !defined (_NOPTY)
+# if	defined (DEP_ORIGSHELL) && defined (DEP_PTY)
 	if (isshptymode()) {
 		if (mypid == shellpid) printtime(hideclock);
 	}
@@ -768,12 +779,19 @@ static int trapalrm(VOID_A)
 }
 #endif	/* SIGALRM */
 
-#ifndef	_NODOSDRIVE
-static int wrap_intrkey(VOID_A)
+#ifdef	DEP_DOSDRIVE
+static int dos_intrkey(VOID_A)
 {
 	return(intrkey(-1));
 }
-#endif	/* !_NODOSDRIVE */
+#endif
+
+static int read_intrkey(VOID_A)
+{
+	if (isttyiomode) return(intrkey(K_ESC));
+
+	return(0);
+}
 
 int sigvecset(set)
 int set;
@@ -794,9 +812,15 @@ int set;
 #ifdef	SIGWINCH
 		signal2(SIGWINCH, (sigcst_t)wintr);
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 		doswaitfunc = waitmes;
-		dosintrfunc = wrap_intrkey;
+		dosintrfunc = dos_intrkey;
+#endif
+#ifdef	DEP_LSPARSE
+		lsintrfunc = read_intrkey;
+#endif
+#ifndef	NOSELECT
+		readintrfunc = read_intrkey;
 #endif
 		status = 1;
 	}
@@ -811,7 +835,7 @@ int set;
 #ifdef	SIGWINCH
 		signal2(SIGWINCH, (sigcst_t)ignore_winch);
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 		doswaitfunc = NULL;
 		dosintrfunc = NULL;
 #endif
@@ -821,15 +845,15 @@ int set;
 	return(old);
 }
 
-static char *NEAR getversion(lenp)
+char *getversion(lenp)
 int *lenp;
 {
 	char *cp, *eol;
 
-	cp = strchr(version, ' ');
+	cp = strchr2(version, ' ');
 	while (*(++cp) == ' ');
 	if (lenp) {
-		if (!(eol = strchr(cp, ' '))) eol = cp + strlen(cp);
+		if (!(eol = strchr2(cp, ' '))) eol = cp + strlen(cp);
 		*lenp = eol - cp;
 	}
 
@@ -874,24 +898,38 @@ VOID title(VOID_A)
 #ifndef	_NOCUSTOMIZE
 VOID saveorigenviron(VOID_A)
 {
-	orighelpindex = copystrarray(NULL, helpindex, NULL, MAXHELPINDEX);
-	origbindlist = copybind(NULL, bindlist);
+# if	FD >= 3
+	char *cp;
+	int n;
+# endif
+
 # ifndef	_NOKEYMAP
 	origkeymaplist = copykeyseq(NULL);
 # endif
-# ifndef	_NOARCHIVE
+# ifndef	DEP_DYNAMICLIST
+	orighelpindex = copystrarray(NULL, helpindex, NULL, MAXHELPINDEX);
+	origbindlist = copybind(NULL, bindlist, &origmaxbind, maxbind);
+#  ifndef	_NOARCHIVE
 	origlaunchlist = copylaunch(NULL, launchlist,
 		&origmaxlaunch, maxlaunch);
 	origarchivelist = copyarch(NULL, archivelist,
 		&origmaxarchive, maxarchive);
-# endif
-# ifdef	_USEDOSEMU
-	origfdtype = copydosdrive(NULL, fdtype);
+#  endif
+#  ifdef	DEP_DOSEMU
+	origfdtype = copydosdrive(NULL, fdtype, &origmaxfdtype, maxfdtype);
+#  endif
+# endif	/* !DEP_DYNAMICLIST */
+
+# if	FD >= 3
+	cp = getversion(&n);
+	cp = strndup2(cp, n);
+	setenv2(FDVERSION, cp, 0);
+	free2(cp);
 # endif
 }
 #endif	/* !_NOCUSTOMIZE */
 
-#ifndef	_NOLOGGING
+#ifdef	DEP_LOGGING
 static VOID NEAR startlog(argv)
 char *CONST *argv;
 {
@@ -907,7 +945,7 @@ char *CONST *argv;
 		if (cp > buf) *(cp++) = ' ';
 		tmp = killmeta(argv[i]);
 		len = snprintf2(cp, (int)sizeof(buf) - (cp - buf), "%s", tmp);
-		free(tmp);
+		free2(tmp);
 		if (len < 0) break;
 		cp += strlen(cp);
 	}
@@ -933,7 +971,7 @@ int status;
 # endif
 	char cwd[MAXPATHLEN];
 
-	if (!Xgetwd(cwd)) strcpy(cwd, "?");
+	if (!Xgetwd(cwd)) strcpy2(cwd, "?");
 # ifdef	NOUID
 	logmessage(_LOG_DEBUG_, "%s ends; PWD=%k; STATUS=%d",
 		progname, cwd, status);
@@ -944,9 +982,9 @@ int status;
 # endif
 	logclose();
 }
-#endif	/* !_NOLOGGING */
+#endif	/* DEP_LOGGING */
 
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 static int NEAR execruncomline(command, file, n, line)
 char *command;
 CONST char *file;
@@ -966,36 +1004,40 @@ CONST char *line;
 		Xcprintf2("\t%s", line);
 		Xcputnl();
 	}
-	free(command);
+	free2(command);
 
 	return((i) ? -1 : 0);
 }
-#endif	/* _NOORIGSHELL */
+#endif	/* !DEP_ORIGSHELL */
 
 /*ARGSUSED*/
 int loadruncom(file, exist)
 CONST char *file;
 int exist;
 {
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 # if	!MSDOS
 	struct stat st;
 # endif
-	FILE *fp;
+	XFILE *fp;
 	char *cp, *tmp, *fold, *line;
 	int cont;
-#endif	/* _NOORIGSHELL */
+#endif	/* !DEP_ORIGSHELL */
 	int n, er;
 
-#ifdef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
+	if ((n = isttyiomode)) Xstdiomode();
+	er = execruncom(file, 1);
+	if (n) Xttyiomode(n - 1);
+#else	/* !DEP_ORIGSHELL */
 # if	!MSDOS
 	tmp = NULL;
 	if (!exist && (tmp = getconstvar(ENVTERM))) {
 		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
-		strcpy(strcpy2(strcpy2(cp, file), "."), tmp);
+		strcpy2(strcpy2(strcpy2(cp, file), "."), tmp);
 		tmp = evalpath(cp, 0);
 		if (stat2(tmp, &st) < 0 || !s_isreg(&st)) {
-			free(tmp);
+			free2(tmp);
 			tmp = NULL;
 		}
 	}
@@ -1005,21 +1047,21 @@ int exist;
 	fp = Xfopen(tmp, "r");
 	if (!fp) {
 		if (!exist) {
-			free(tmp);
+			free2(tmp);
 			return(0);
 		}
 		Xcprintf2("%s: Not found", tmp);
 		Xcputnl();
-		free(tmp);
+		free2(tmp);
 		return(-1);
 	}
 
 	fold = NULL;
 	n = er = 0;
-	while ((line = fgets2(fp, 0))) {
+	while ((line = Xfgets(fp))) {
 		n++;
 		if (*line == ';' || *line == '#') {
-			free(line);
+			free2(line);
 			continue;
 		}
 
@@ -1042,23 +1084,19 @@ int exist;
 		}
 
 		if (cont) {
-			if (fold != line) free(line);
+			if (fold != line) free2(line);
 			continue;
 		}
 
 		if (execruncomline(fold, tmp, n, line) < 0) er++;
-		if (fold != line) free(line);
+		if (fold != line) free2(line);
 		fold = NULL;
 	}
 
 	if (fold && execruncomline(fold, tmp, n, line) < 0) er++;
-	fclose(fp);
-	free(tmp);
-#else	/* !_NOORIGSHELL */
-	if ((n = isttyiomode)) Xstdiomode();
-	er = execruncom(file, 1);
-	if (n) Xttyiomode(n - 1);
-#endif	/* !_NOORIGSHELL */
+	Xfclose(fp);
+	free2(tmp);
+#endif	/* !DEP_ORIGSHELL */
 
 	return(er ? -1 : 0);
 }
@@ -1093,10 +1131,10 @@ char *CONST argv[];
 	}
 	optv[optc] = NULL;
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (initshell(optc, optv) < 0) Xexit2(RET_FAIL);
 #endif
-	free(optv);
+	free2(optv);
 
 	return(argc);
 }
@@ -1114,9 +1152,9 @@ char *CONST argv[];
 			break;
 		}
 		tmp = strdup2(&(argv[i][1]));
-		if ((cp = strchr(tmp, '='))) *(cp++) = '\0';
+		if ((cp = strchr2(tmp, '='))) *(cp++) = '\0';
 		setenv2(tmp, cp, 0);
-		free(tmp);
+		free2(tmp);
 	}
 
 	return(i);
@@ -1173,7 +1211,7 @@ CONST char *argv;
 
 	progname = getbasename(argv);
 #if	MSDOS || defined (CYGWIN)
-	if ((cp = strchr(progname, '.')) && cp > progname)
+	if ((cp = strchr2(progname, '.')) && cp > progname)
 		progname = strndup2(progname, cp - progname);
 	else
 #endif
@@ -1192,13 +1230,13 @@ char *CONST envp[];
 	if ((cp = searchenv(ENVPWD, envp))) {
 		*fullpath = '\0';
 		realpath2(cp, fullpath, 0);
-		realpath2(fullpath, buf, 1);
+		realpath2(fullpath, buf, RLP_READLINK);
 		if (!strpathcmp(origpath, buf)) {
-			free(origpath);
+			free2(origpath);
 			origpath = strdup2(fullpath);
 		}
 	}
-	strcpy(fullpath, origpath);
+	strcpy2(fullpath, origpath);
 
 	tmp = NULL;
 #if	MSDOS
@@ -1210,8 +1248,8 @@ char *CONST envp[];
 	else
 #endif
 	{
-		realpath2(cp, buf, 1);
-		if (tmp) free(tmp);
+		realpath2(cp, buf, RLP_READLINK);
+		free2(tmp);
 		if ((tmp = strrdelim(buf, 0))) *tmp = '\0';
 		progpath = strdup2(buf);
 	}
@@ -1223,7 +1261,7 @@ char *CONST *argv;
 {
 	int i;
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (!interactive) /*EMPTY*/;
 	else
 #endif
@@ -1236,9 +1274,9 @@ char *CONST *argv;
 		}
 #endif	/* !MSDOS */
 		for (i = 0; i < 2; i++) loadhistory(i);
-		entryhist(1, origpath, 1);
+		entryhist(origpath, HST_PATH | HST_UNIQ);
 	}
-#ifndef	_NOLOGGING
+#ifdef	DEP_LOGGING
 	startlog(argv);
 #endif
 }
@@ -1250,10 +1288,10 @@ int status;
 	char cwd[MAXPATHLEN];
 	int i;
 
-#ifndef	_NOLOGGING
+#ifdef	DEP_LOGGING
 	endlog(status);
 #endif
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 	if (!interactive) /*EMPTY*/;
 	else
 #endif
@@ -1265,44 +1303,50 @@ int status;
 		if (!Xgetwd(cwd)) *cwd = '\0';
 		rawchdir(rootpath);
 	}
-	free(origpath);
-	free(progname);
-#ifdef	_USEUNICODE
-	free(unitblpath);
+	free2(origpath);
+	free2(progname);
+#ifdef	DEP_UNICODE
+	free2(unitblpath);
 #endif
-#ifndef	_NOIME
-	free(dicttblpath);
+#ifdef	DEP_IME
+	free2(dicttblpath);
 #endif
-#ifndef	_NODOSDRIVE
+#ifndef	_NOCATALOG
+	free2(cattblpath);
+#endif
+#ifdef	DEP_DOSDRIVE
 	dosallclose();
 #endif
-	free(progpath);
+#ifdef	DEP_URLPATH
+	urlallclose();
+#endif
+	free2(progpath);
 
 #ifdef	DEBUG
-	if (tmpfilename) free(tmpfilename);
-# ifdef	_NOORIGSHELL
+	free2(tmpfilename);
+# ifndef	DEP_ORIGSHELL
 	freevar(environ);
 	freevar(environ2);
 # endif
 # ifndef	_NOCUSTOMIZE
-	freestrarray(orighelpindex, MAXHELPINDEX);
-	if (orighelpindex) free(orighelpindex);
-	free(origbindlist);
 #  ifndef	_NOKEYMAP
 	freekeyseq(origkeymaplist);
 #  endif
-#  ifndef	_NOARCHIVE
+#  ifndef	DEP_DYNAMICLIST
+	freestrarray(orighelpindex, MAXHELPINDEX);
+	free2(orighelpindex);
+	free2(origbindlist);
+#   ifndef	_NOARCHIVE
 	freelaunchlist(origlaunchlist, origmaxlaunch);
-	if (origlaunchlist) free(origlaunchlist);
+	free2(origlaunchlist);
 	freearchlist(origarchivelist, origmaxarchive);
-	if (origarchivelist) free(origarchivelist);
-#  endif
-#  ifdef	_USEDOSEMU
-	if (origfdtype) {
-		freedosdrive(origfdtype);
-		free(origfdtype);
-	}
-#  endif
+	free2(origarchivelist);
+#   endif
+#   ifdef	DEP_DOSEMU
+	freedosdrive(origfdtype, origmaxfdtype);
+	free2(origfdtype);
+#   endif
+#  endif	/* !DEP_DYNAMICLIST */
 # endif	/* !_NOCUSTOMIZE */
 	freeenvpath();
 	freehistory(0);
@@ -1312,21 +1356,24 @@ int status;
 	freeidlist();
 # endif
 	chdir2(NULL);
-# if	!defined (_NOUSEHASH) && defined (_NOORIGSHELL)
+# if	!defined (_NOUSEHASH) && !defined (DEP_ORIGSHELL)
 	searchhash(NULL, NULL, NULL);
 # endif
 # ifndef	_NOROCKRIDGE
 	detranspath(NULL, NULL);
 # endif
-# ifdef	_USEUNICODE
+# ifdef	DEP_UNICODE
 	discardunitable();
 # endif
-# ifndef	_NOIME
+# ifdef	DEP_IME
 	ime_freebuf();
 	freeroman(0);
 	discarddicttable();
 # endif
 #endif	/* DEBUG */
+#ifndef	_NOCATALOG
+	freecatalog();
+#endif
 	if (*cwd) rawchdir(cwd);
 }
 
@@ -1400,45 +1447,46 @@ char *CONST argv[], *CONST envp[];
 #endif
 	sigvecset(0);
 
-#ifndef	_NOARCHIVE
-	for (maxlaunch = 0; maxlaunch < MAXLAUNCHTABLE; maxlaunch++) {
-		if (!launchlist[maxlaunch].ext) break;
-		launchlist[maxlaunch].ext =
-			strdup2(launchlist[maxlaunch].ext);
-		launchlist[maxlaunch].comm =
-			strdup2(launchlist[maxlaunch].comm);
-# if	FD >= 2
-		launchlist[maxlaunch].format =
-			duplvar(launchlist[maxlaunch].format, -1);
-		launchlist[maxlaunch].lignore =
-			duplvar(launchlist[maxlaunch].lignore, -1);
-		launchlist[maxlaunch].lerror =
-			duplvar(launchlist[maxlaunch].lerror, -1);
+#ifdef	DEP_DYNAMICLIST
+	helpindex = copystrarray(NULL, orighelpindex, NULL, MAXHELPINDEX);
+	for (i = 0; origbindlist[i].key >= 0; i++) /*EMPTY*/;
+	origmaxbind = i;
+	bindlist = copybind(NULL, origbindlist, &maxbind, origmaxbind);
+# ifndef	_NOARCHIVE
+	for (i = 0; origlaunchlist[i].ext; i++) /*EMPTY*/;
+	origmaxlaunch = i;
+	launchlist = copylaunch(NULL, origlaunchlist,
+		&maxlaunch, origmaxlaunch);
+	for (i = 0; origarchivelist[i].ext; i++) /*EMPTY*/;
+	origmaxarchive = i;
+	archivelist = copyarch(NULL, origarchivelist,
+		&maxarchive, origmaxarchive);
 # endif
-	}
-	for (maxarchive = 0; maxarchive < MAXARCHIVETABLE; maxarchive++) {
-		if (!archivelist[maxarchive].ext) break;
-		archivelist[maxarchive].ext =
-			strdup2(archivelist[maxarchive].ext);
-		archivelist[maxarchive].p_comm =
-			strdup2(archivelist[maxarchive].p_comm);
-		archivelist[maxarchive].u_comm =
-			strdup2(archivelist[maxarchive].u_comm);
-	}
-#endif	/* !_NOARCHIVE */
-
-	for (i = 0; i < MAXHELPINDEX; i++)
-		helpindex[i] = strdup2(helpindex[i]);
-#ifdef	_USEDOSEMU
-	for (i = 0; fdtype[i].name; i++) {
-		fdtype[i].name = strdup2(fdtype[i].name);
-# ifdef	HDDMOUNT
-		fdtype[i].offset = 0;
+# ifdef	DEP_DOSEMU
+	for (i = 0; origfdtype[i].name; i++) /*EMPTY*/;
+	origmaxfdtype = i;
+	fdtype = copydosdrive(NULL, origfdtype, &maxfdtype, origmaxfdtype);
 # endif
-	}
-#endif	/* _USEDOSEMU */
+#else	/* !DEP_DYNAMICLIST */
+	copystrarray(helpindex, helpindex, NULL, MAXHELPINDEX);
+	for (i = 0; i < MAXBINDTABLE && bindlist[i].key >= 0; i++) /*EMPTY*/;
+	maxbind = i;
+# ifndef	_NOARCHIVE
+	for (i = 0; i < MAXLAUNCHTABLE && launchlist[i].ext; i++) /*EMPTY*/;
+	maxlaunch = i;
+	copylaunch(launchlist, launchlist, &maxlaunch, maxlaunch);
+	for (i = 0; i < MAXARCHIVETABLE && archivelist[i].ext; i++) /*EMPTY*/;
+	maxarchive = i;
+	copyarch(archivelist, archivelist, &maxarchive, maxarchive);
+# endif
+# ifdef	DEP_DOSEMU
+	for (i = 0; i < MAXDRIVEENTRY && fdtype[i].name; i++) /*EMPTY*/;
+	maxfdtype = i;
+	copydosdrive(fdtype, fdtype, &maxfdtype, maxfdtype);
+# endif
+#endif	/* !DEP_DYNAMICLIST */
 
-#ifdef	_NOORIGSHELL
+#ifndef	DEP_ORIGSHELL
 	i = countvar(envp);
 	environ = (char **)malloc2((i + 1) * sizeof(char *));
 	for (i = 0; envp[i]; i++) environ[i] = strdup2(envp[i]);
@@ -1446,23 +1494,28 @@ char *CONST argv[], *CONST envp[];
 #endif
 
 	setexecpath(argv[0], envp);
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 	unitblpath = strdup2(DATADIR);
 #endif
-#ifndef	_NOIME
+#ifdef	DEP_IME
 	dicttblpath = strdup2(DATADIR);
 #endif
+#ifndef	_NOCATALOG
+# ifdef	USEDATADIR
+	cp = getversion(&i);
+	cattblpath = malloc2(strsize(DATADIR) + 1 + i + 1);
+	snprintf2(cattblpath, strsize(DATADIR) + 1 + i + 1,
+		"%s%c%-.*s", DATADIR, _SC_, i, cp);
+# else
+	cattblpath = strdup2(DATADIR);
+# endif
+#endif	/* !_NOCATALOG */
 
-#ifdef	_NOORIGSHELL
-	inittty(0);
-	getterment(NULL);
-	argc = initoption(argc, argv);
-	adjustpath();
-#else	/* !_NOORIGSHELL */
+#ifdef	DEP_ORIGSHELL
 	cp = getshellname(progname, NULL, NULL);
 	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, "su")) {
 		i = main_shell(argc, argv, envp);
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 		killallpty();
 # endif
 		Xexit2(i);
@@ -1475,7 +1528,12 @@ char *CONST argv[], *CONST envp[];
 		errno = 0;
 		error(NTERM_K);
 	}
-#endif	/* !_NOORIGSHELL */
+#else	/* !DEP_ORIGSHELL */
+	inittty(0);
+	getterment(NULL);
+	argc = initoption(argc, argv);
+	adjustpath();
+#endif	/* !DEP_ORIGSHELL */
 	initenv();
 
 	Xttyiomode(0);
@@ -1519,10 +1577,10 @@ char *CONST argv[], *CONST envp[];
 	sigvecset(0);
 
 	Xstdiomode();
-#if	!defined (_NOORIGSHELL) && !defined (NOJOB)
+#if	defined (DEP_ORIGSHELL) && !defined (NOJOB)
 	killjob();
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	killallpty();
 #endif
 	Xexit2(0);

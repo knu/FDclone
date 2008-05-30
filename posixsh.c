@@ -4,59 +4,37 @@
  *	XSH command for POSIX
  */
 
-#include <fcntl.h>
 #ifdef	FD
 #include "fd.h"
-#else	/* !FD */
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-# ifndef	NOUNISTDH
-# include <unistd.h>
-# endif
-# ifndef	NOSTDLIBH
-# include <stdlib.h>
-# endif
+#else
+#include "headers.h"
+#include "depend.h"
 #include "printf.h"
 #include "kctype.h"
-#endif	/* !FD */
-
-#if	MSDOS
-#include "unixemu.h"
-#else
-#include <sys/param.h>
+#include "string.h"
+#include "malloc.h"
 #endif
 
+#include "sysemu.h"
+#include "unixemu.h"
+
+#if	!MSDOS
+#include "time.h"
+#endif
+#ifdef	DEP_ORIGSHELL
 #include "system.h"
-
-#if	!defined (MINIMUMSHELL) \
-&& (!defined (FD) || (FD >= 2 && !defined (_NOORIGSHELL)))
-
+#endif
+#if	defined (DEP_ORIGSHELL) && !defined (MINIMUMSHELL)
+#include "posixsh.h"
+#endif
 #ifdef	FD
 #include "term.h"
-extern int Xstat __P_((CONST char *, struct stat *));
-extern int Xlstat __P_((CONST char *, struct stat *));
-extern int Xaccess __P_((CONST char *, int));
-# ifndef	_NOPTY
+#endif
+#ifdef	DEP_PTY
 #include "termemu.h"
-extern VOID sendparent __P_((int, ...));
-# endif
-#else	/* !FD */
-extern int ttyio;
-extern FILE *ttyout;
-# if	MSDOS
-extern int Xstat __P_((CONST char *, struct stat *));
-# define	Xlstat		Xstat
-# else
-# define	Xstat(p, s)	((stat(p, s)) ? -1 : 0)
-# define	Xlstat(p, s)	((lstat(p, s)) ? -1 : 0)
-# endif
-#define	Xaccess(p, m)		((access(p, m)) ? -1 : 0)
-#endif	/* !FD */
+#endif
 
 #define	ALIASDELIMIT		"();&|<>"
-#define	BUFUNIT			32
 #define	getconstvar(s)		(getshellvar(s, strsize(s)))
 #define	ER_COMNOFOUND		1
 #define	ER_NOTFOUND		2
@@ -68,9 +46,6 @@ extern int Xstat __P_((CONST char *, struct stat *));
 #define	ER_NOSUCHJOB		22
 #define	ER_TERMINATED		23
 #define	ER_UNKNOWNSIG		26
-#ifndef	EPERM
-#define	EPERM			EACCES
-#endif
 
 #if	!MSDOS
 typedef struct _mailpath_t {
@@ -80,15 +55,17 @@ typedef struct _mailpath_t {
 } mailpath_t;
 #endif
 
-extern VOID error __P_((CONST char *));
-extern char *malloc2 __P_((ALLOC_T));
-extern char *realloc2 __P_((VOID_P, ALLOC_T));
-extern char *strdup2 __P_((CONST char *));
-extern char *strndup2 __P_((CONST char *, int));
-extern char *strchr2 __P_((CONST char *, int));
-extern char *strncpy2 __P_((char *, CONST char *, int));
+#if	defined (DEP_ORIGSHELL) && !defined (MINIMUMSHELL)
+
 extern int setenv2 __P_((CONST char *, CONST char *, int));
-extern time_t time2 __P_((VOID_A));
+#ifdef	DEP_PTY
+extern VOID sendparent __P_((int, ...));
+#endif
+
+#ifndef	FD
+extern int ttyio;
+extern XFILE *ttyout;
+#endif
 
 #ifndef	NOJOB
 static CONST char *NEAR headstree __P_((syntaxtree *));
@@ -106,43 +83,6 @@ static VOID NEAR addmailpath __P_((CONST char *, char *, time_t));
 static int NEAR testsub1 __P_((int, CONST char *, int *));
 static int NEAR testsub2 __P_((int, char *CONST *, int *));
 static int NEAR testsub3 __P_((int, char *CONST *, int *, int));
-
-#ifndef	NOJOB
-int gettermio __P_((p_id_t, int));
-VOID dispjob __P_((int, FILE *));
-int searchjob __P_((p_id_t, int *));
-int getjob __P_((CONST char *));
-int stackjob __P_((p_id_t, int, syntaxtree *));
-int stoppedjob __P_((p_id_t));
-VOID killjob __P_((VOID_A));
-VOID checkjob __P_((FILE *));
-#endif	/* !NOJOB */
-char *evalposixsubst __P_((CONST char *, int *));
-#if	!MSDOS
-VOID replacemailpath __P_((CONST char *, int));
-VOID checkmail __P_((int));
-#endif
-#ifndef	NOALIAS
-int addalias __P_((char *, char *));
-int deletealias __P_((CONST char *));
-VOID freealias __P_((shaliastable *));
-int checkalias __P_((syntaxtree *, char *, int, int));
-#endif
-#ifndef	NOJOB
-int posixjobs __P_((syntaxtree *));
-int posixfg __P_((syntaxtree *));
-int posixbg __P_((syntaxtree *));
-#endif
-#ifndef	NOALIAS
-int posixalias __P_((syntaxtree *));
-int posixunalias __P_((syntaxtree *));
-#endif
-int posixkill __P_((syntaxtree *));
-int posixtest __P_((syntaxtree *));
-#ifndef	NOPOSIXUTIL
-int posixcommand __P_((syntaxtree *));
-int posixgetopts __P_((syntaxtree *));
-#endif
 
 #ifndef	NOJOB
 jobtable *joblist = NULL;
@@ -226,7 +166,7 @@ syntaxtree *trp;
 
 VOID dispjob(n, fp)
 int n;
-FILE *fp;
+XFILE *fp;
 {
 	int i, sig;
 
@@ -402,7 +342,7 @@ p_id_t pid;
 }
 
 VOID checkjob(fp)
-FILE *fp;
+XFILE *fp;
 {
 	int i, j;
 
@@ -417,15 +357,15 @@ FILE *fp;
 		&& (isopbg(joblist[i].trp) || isopnown(joblist[i].trp)))
 			joblist[i].trp -> type = OP_NONE;
 		if (jobok && interactive && !nottyout) dispjob(i, fp);
-		free(joblist[i].pids);
-		free(joblist[i].stats);
+		free2(joblist[i].pids);
+		free2(joblist[i].stats);
 		if (joblist[i].trp) {
 			freestree(joblist[i].trp);
-			free(joblist[i].trp);
+			free2(joblist[i].trp);
 		}
-		if (joblist[i].tty) free(joblist[i].tty);
+		free2(joblist[i].tty);
 # ifdef	USESGTTY
-		if (joblist[i].ttyflag) free(joblist[i].ttyflag);
+		free2(joblist[i].ttyflag);
 # endif
 		joblist[i].pids = NULL;
 	}
@@ -468,8 +408,8 @@ char *ident, *comm;
 
 	i = searchalias(ident, -1);
 	if (shellalias[i].ident) {
-		free(shellalias[i].ident);
-		free(shellalias[i].comm);
+		free2(shellalias[i].ident);
+		free2(shellalias[i].comm);
 	}
 	else {
 		shellalias = (shaliastable *)realloc2(shellalias,
@@ -479,7 +419,7 @@ char *ident, *comm;
 
 	shellalias[i].ident = ident;
 	shellalias[i].comm = comm;
-# if	defined (FD) && !defined (_NOPTY)
+# ifdef	DEP_PTY
 	sendparent(TE_ADDALIAS, ident, comm);
 # endif
 
@@ -500,8 +440,8 @@ CONST char *ident;
 			if (!regexp_exec(re, shellalias[i].ident, 0)) continue;
 		}
 		else if (strcommcmp(ident, shellalias[i].ident)) continue;
-		free(shellalias[i].ident);
-		free(shellalias[i].comm);
+		free2(shellalias[i].ident);
+		free2(shellalias[i].comm);
 		memmove((char *)&(shellalias[i]), (char *)&(shellalias[i + 1]),
 			(max-- - i) * sizeof(shaliastable));
 		i--;
@@ -509,7 +449,7 @@ CONST char *ident;
 	}
 	regexp_free(re);
 	if (!n) return(-1);
-# if	defined (FD) && !defined (_NOPTY)
+# ifdef	DEP_PTY
 	sendparent(TE_DELETEALIAS, ident);
 # endif
 
@@ -541,10 +481,10 @@ shaliastable *alias;
 
 	if (alias) {
 		for (i = 0; alias[i].ident; i++) {
-			free(alias[i].ident);
-			free(alias[i].comm);
+			free2(alias[i].ident);
+			free2(alias[i].comm);
 		}
-		free(alias);
+		free2(alias);
 	}
 }
 
@@ -573,7 +513,7 @@ int len, delim;
 	&& !(statementlist[i].type & STT_NEEDLIST)))
 		return(-1);
 
-	if ((!strchr(IFS_SET, delim) && !strchr(ALIASDELIMIT, delim)))
+	if ((!strchr2(IFS_SET, delim) && !strchr2(ALIASDELIMIT, delim)))
 		return(-1);
 	i = searchalias(ident, len);
 	if (!(shellalias[i].ident) || (shellalias[i].flags & AL_USED))
@@ -594,7 +534,7 @@ long *resultp;
 	long n;
 	int i, c, base;
 
-	while (s[ptr] && strchr(IFS_SET, s[ptr])) ptr++;
+	while (s[ptr] && strchr2(IFS_SET, s[ptr])) ptr++;
 	if (!s[ptr]) return(-1);
 
 	if (s[ptr] == '+') {
@@ -619,7 +559,7 @@ long *resultp;
 	else if (s[ptr] == '(') {
 		if ((ptr = evalexpression(s, ptr + 1, resultp, 9)) < 0)
 			return(-1);
-		while (strchr(IFS_SET, s[ptr])) ptr++;
+		while (strchr2(IFS_SET, s[ptr])) ptr++;
 		if (s[ptr++] != ')') return(-1);
 	}
 	else if (isdigit2(s[ptr])) {
@@ -651,7 +591,7 @@ long *resultp;
 	}
 	else return(-1);
 
-	while (s[ptr] && strchr(IFS_SET, s[ptr])) ptr++;
+	while (s[ptr] && strchr2(IFS_SET, s[ptr])) ptr++;
 
 	return(ptr);
 }
@@ -830,7 +770,7 @@ int *ptrp;
 		trp = analyze(s, trp, -1);
 		if (trp && (trp -> cont & CN_SBST) != CN_CASE) trp = NULL;
 		freestree(stree);
-		free(stree);
+		free2(stree);
 		if (trp) cp = NULL;
 		else
 #endif	/* !BASHBUG */
@@ -841,18 +781,17 @@ int *ptrp;
 		if (!(cp = evalvararg(new, '\'', EA_BACKQ, 0))) *ptrp = -1;
 		else {
 			for (i = 0; cp[i]; i++)
-				if (!strchr(IFS_SET, cp[i])) break;
+				if (!strchr2(IFS_SET, cp[i])) break;
 			if (cp[i]) {
 				i = evalexpression(cp, i, &n, 9);
 				if (i < 0 || cp[i]) *ptrp = -1;
 			}
-			free(cp);
+			free2(cp);
 		}
 
-		if (*ptrp < 0) cp = NULL;
-		else if (asprintf2(&cp, "%ld", n) < 0) error("malloc()");
+		cp = (*ptrp < 0) ? NULL : asprintf3("%ld", n);
 	}
-	free(new);
+	free2(new);
 
 	return(cp);
 }
@@ -867,9 +806,7 @@ time_t mtime;
 
 	for (i = 0; i < maxmailpath; i++)
 		if (!strpathcmp(path, mailpathlist[i].path)) break;
-	if (i < maxmailpath) {
-		if (mailpathlist[i].msg) free(mailpathlist[i].msg);
-	}
+	if (i < maxmailpath) free2(mailpathlist[i].msg);
 	else {
 		mailpathlist = (mailpath_t *)realloc2(mailpathlist,
 			(i + 1) * sizeof(mailpath_t));
@@ -902,12 +839,12 @@ int multi;
 		addmailpath(s, NULL, mtime);
 	}
 	else while (*s) {
-		if ((cp = strchr(s, ':'))) len = (cp++) - s;
+		if ((cp = strchr2(s, ':'))) len = (cp++) - s;
 		else {
 			len = strlen(s);
 			cp = &(s[len]);
 		}
-		if ((msg = strchr(s, '%'))) {
+		if ((msg = strchr2(s, '%'))) {
 			if (msg > s + len) msg = NULL;
 			else {
 				i = s + len - (msg + 1);
@@ -924,10 +861,10 @@ int multi;
 	}
 
 	for (i = 0; i < max; i++) {
-		free(mailpath[i].path);
-		if (mailpath[i].msg) free(mailpath[i].msg);
+		free2(mailpath[i].path);
+		free2(mailpath[i].msg);
 	}
-	if (mailpath) free(mailpath);
+	free2(mailpath);
 }
 
 VOID checkmail(reset)
@@ -939,10 +876,10 @@ int reset;
 
 	if (reset) {
 		for (i = 0; i < maxmailpath; i++) {
-			free(mailpathlist[i].path);
-			if (mailpathlist[i].msg) free(mailpathlist[i].msg);
+			free2(mailpathlist[i].path);
+			free2(mailpathlist[i].msg);
 		}
-		if (mailpathlist) free(mailpathlist);
+		free2(mailpathlist);
 		mailpathlist = NULL;
 		maxmailpath = 0;
 		return;
@@ -974,16 +911,16 @@ syntaxtree *trp;
 		j = joblist[i].npipe;
 
 		if (joblist[i].stats[j] >= 0 && joblist[i].stats[j] < 128)
-			dispjob(i, stdout);
+			dispjob(i, Xstdout);
 		else {
 			if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
 				joblist[i].trp -> type = OP_NONE;
-			dispjob(i, stdout);
-			free(joblist[i].pids);
-			free(joblist[i].stats);
+			dispjob(i, Xstdout);
+			free2(joblist[i].pids);
+			free2(joblist[i].stats);
 			if (joblist[i].trp) {
 				freestree(joblist[i].trp);
-				free(joblist[i].trp);
+				free2(joblist[i].trp);
 			}
 			joblist[i].pids = NULL;
 		}
@@ -1003,7 +940,8 @@ syntaxtree *trp;
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
 	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
-		execerror((trp -> comm) -> argv[1],
+		execerror((trp -> comm) -> argv,
+			(trp -> comm) -> argv[1],
 			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
@@ -1013,8 +951,8 @@ syntaxtree *trp;
 		prepareexit(-1);
 		Xexit(RET_FATALERR);
 	}
-	fprintf2(stderr, "[%d] %id", i + 1, joblist[i].pids[n]);
-	fputnl(stderr);
+	fprintf2(Xstderr, "[%d] %id", i + 1, joblist[i].pids[n]);
+	fputnl(Xstderr);
 	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
 # ifdef	USESGTTY
 	if (joblist[i].ttyflag) ioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
@@ -1047,7 +985,8 @@ syntaxtree *trp;
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
 	checkjob(NULL);
 	if ((i = getjob(s)) < 0) {
-		execerror((trp -> comm) -> argv[1],
+		execerror((trp -> comm) -> argv,
+			(trp -> comm) -> argv[1],
 			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
@@ -1058,7 +997,7 @@ syntaxtree *trp;
 	}
 	if (!isopbg(joblist[i].trp) || !isopnown(joblist[i].trp))
 		joblist[i].trp -> type = OP_BG;
-	if (interactive && !nottyout) dispjob(i, stderr);
+	if (interactive && !nottyout) dispjob(i, Xstderr);
 	prevjob = lastjob;
 	lastjob = i;
 
@@ -1080,9 +1019,9 @@ syntaxtree *trp;
 		for (i = 0; alias[i].ident; i++) /*EMPTY*/;
 		if (i > 1) qsort(alias, i, sizeof(shaliastable), cmpalias);
 		for (i = 0; alias[i].ident; i++) {
-			fprintf2(stdout, "alias %k='%k'",
+			fprintf2(Xstdout, "alias %k='%k'",
 				alias[i].ident, alias[i].comm);
-			fputnl(stdout);
+			fputnl(Xstdout);
 		}
 		freealias(alias);
 		return(RET_SUCCESS);
@@ -1102,15 +1041,16 @@ syntaxtree *trp;
 			i = searchalias(argv[n], len);
 			if (!(shellalias[i].ident)) {
 				if (interactive) {
-					fputs("alias: ", stderr);
-					execerror(argv[n], ER_NOTFOUND, 2);
+					Xfputs("alias: ", Xstderr);
+					execerror(argv,
+						argv[n], ER_NOTFOUND, 2);
 				}
 				ret = RET_FAIL;
 				ERRBREAK;
 			}
-			fprintf2(stdout, "alias %k='%k'",
+			fprintf2(Xstdout, "alias %k='%k'",
 				shellalias[i].ident, shellalias[i].comm);
-			fputnl(stdout);
+			fputnl(Xstdout);
 		}
 	}
 
@@ -1128,8 +1068,8 @@ syntaxtree *trp;
 	for (n = 1; n < (trp -> comm) -> argc; n++) {
 		if (deletealias(argv[n]) < 0) {
 			if (interactive) {
-				fputs("alias: ", stderr);
-				execerror(argv[n], ER_NOTALIAS, 2);
+				Xfputs("alias: ", Xstderr);
+				execerror(argv, argv[n], ER_NOTALIAS, 2);
 			}
 			ret = RET_FAIL;
 			ERRBREAK;
@@ -1148,9 +1088,9 @@ syntaxtree *trp;
 	int i, n, sig;
 
 	if ((trp -> comm) -> argc <= 1) {
-		fputs("usage: kill [ -sig ] pid ...\n", stderr);
-		fputs("for a list of signals: kill -l", stderr);
-		fputnl(stderr);
+		Xfputs("usage: kill [ -sig ] pid ...\n", Xstderr);
+		Xfputs("for a list of signals: kill -l", Xstderr);
+		fputnl(Xstderr);
 		return(RET_SYNTAXERR);
 	}
 #ifdef	SIGTERM
@@ -1166,12 +1106,12 @@ syntaxtree *trp;
 				for (i = 0; signallist[i].sig >= 0; i++)
 					if (sig == signallist[i].sig) break;
 				if (signallist[i].sig < 0) continue;
-				fprintf2(stdout, "%s%c",
+				fprintf2(Xstdout, "%s%c",
 					signallist[i].ident,
 					(++n % 16) ? ' ' : '\n');
 			}
-			if (n % 16) fputnl(stdout);
-			fflush(stdout);
+			if (n % 16) fputnl(Xstdout);
+			Xfflush(Xstdout);
 			return(RET_SUCCESS);
 		}
 		if ((sig = isnumeric(&(s[1]))) < 0) {
@@ -1179,13 +1119,14 @@ syntaxtree *trp;
 				if (!strcmp(&(s[1]), signallist[i].ident))
 					break;
 			if (signallist[i].sig < 0) {
-				execerror(&(s[1]), ER_UNKNOWNSIG, 1);
+				execerror((trp -> comm) -> argv,
+					&(s[1]), ER_UNKNOWNSIG, 1);
 				return(RET_FAIL);
 			}
 			sig = signallist[i].sig;
 		}
 		if (sig < 0 || sig >= NSIG) {
-			execerror(s, ER_NUMOUTRANGE, 1);
+			execerror((trp -> comm) -> argv, s, ER_NUMOUTRANGE, 1);
 			return(RET_FAIL);
 		}
 		i = 2;
@@ -1199,7 +1140,9 @@ syntaxtree *trp;
 #ifndef	NOJOB
 		if (*s == '%') {
 			if ((n = getjob(s)) < 0) {
-				execerror(s, (n < -1)
+				execerror((trp -> comm) -> argv,
+					s,
+					(n < -1)
 					? ER_TERMINATED : ER_NOSUCHJOB, 2);
 				return(RET_FAIL);
 			}
@@ -1208,16 +1151,13 @@ syntaxtree *trp;
 		else
 #endif	/* !NOJOB */
 		if ((pid = isnumeric(s)) < (p_id_t)0) {
-			fputs("usage: kill [ -sig ] pid ...\n", stderr);
-			fputs("for a list of signals: kill -l", stderr);
-			fputnl(stderr);
+			Xfputs("usage: kill [ -sig ] pid ...\n", Xstderr);
+			Xfputs("for a list of signals: kill -l", Xstderr);
+			fputnl(Xstderr);
 			return(RET_SYNTAXERR);
 		}
 #if	MSDOS
-		else if (pid && pid != mypid) {
-			errno = EPERM;
-			n = -1;
-		}
+		else if (pid && pid != mypid) n = seterrno(EPERM);
 #endif
 		else n = kill(pid, sig);
 
@@ -1470,8 +1410,8 @@ syntaxtree *trp;
 	if (argc <= 0) return(RET_FAIL);
 	if (argv[0][0] == '[' && !argv[0][1]
 	&& (--argc <= 0 || argv[argc][0] != ']' || argv[argc][1])) {
-		fputs("] missing", stderr);
-		fputnl(stderr);
+		Xfputs("] missing", Xstderr);
+		fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 	if (argc <= 1) return(RET_FAIL);
@@ -1481,17 +1421,17 @@ syntaxtree *trp;
 	if (ret < 0) {
 		switch (ret) {
 			case -1:
-				fputs("argument expected", stderr);
+				Xfputs("argument expected", Xstderr);
 				break;
 			case -2:
-				fprintf2(stderr, "unknown operator %k",
+				fprintf2(Xstderr, "unknown operator %k",
 					argv[ptr]);
 				break;
 			default:
-				fputs("syntax error", stderr);
+				Xfputs("syntax error", Xstderr);
 				break;
 		}
-		fputnl(stderr);
+		fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 
@@ -1521,7 +1461,7 @@ syntaxtree *trp;
 # endif
 	if (flag == 'V') {
 		for (i = n; i < argc; i++) {
-			if (typeone(argv[i], stdout) >= 0) {
+			if (typeone(argv[i], Xstdout) >= 0) {
 # ifdef	BASHSTYLE
 				ret = RET_SUCCESS;
 # endif
@@ -1547,14 +1487,14 @@ syntaxtree *trp;
 # endif
 				if ((type & CM_NOTFOUND)
 				|| Xaccess(cp, X_OK) < 0) {
-					execerror(cp, ER_COMNOFOUND, 1);
+					execerror(argv, cp, ER_COMNOFOUND, 1);
 					cp = NULL;
 				}
 			}
 
 			if (cp) {
-				kanjifputs(cp, stdout);
-				fputnl(stdout);
+				kanjifputs(cp, Xstdout);
+				fputnl(Xstdout);
 # ifdef	BASHSTYLE
 				ret = RET_SUCCESS;
 # endif
@@ -1569,10 +1509,10 @@ syntaxtree *trp;
 	type = checktype(argv[n], &id, 0, 0);
 #endif
 	if (verboseexec) {
-		fprintf2(stderr, "+ %k", argv[n]);
+		fprintf2(Xstderr, "+ %k", argv[n]);
 		for (i = n + 1; i < argc; i++)
-			fprintf2(stderr, " %k", argv[i]);
-		fputnl(stderr);
+			fprintf2(Xstderr, " %k", argv[i]);
+		fputnl(Xstderr);
 	}
 
 	(trp -> comm) -> argc -= n;
@@ -1592,7 +1532,7 @@ syntaxtree *trp;
 		ret = exec_simplecom(trp, type, id, 0);
 #endif
 		setenv2(ENVPATH, path, 1);
-		if (path) free(path);
+		free2(path);
 	}
 	(trp -> comm) -> argc = argc;
 	(trp -> comm) -> argv = argv;
@@ -1611,11 +1551,11 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 
 	if (argc <= 2) {
-		execerror(NULL, ER_MISSARG, 1);
+		execerror(argv, NULL, ER_MISSARG, 1);
 		return(RET_FAIL);
 	}
 	if (identcheck(argv[2], '\0') <= 0) {
-		execerror(argv[2], ER_NOTIDENT, 0);
+		execerror(argv, argv[2], ER_NOTIDENT, 0);
 		return(RET_FAIL);
 	}
 
@@ -1668,7 +1608,8 @@ syntaxtree *trp;
 			buf[1] = '\0';
 			n = '?';
 			if (quiet) posixoptarg = buf;
-			else execerror(buf, ER_BADOPTIONS, 2);
+			else execerror((trp -> comm) -> argv,
+				buf, ER_BADOPTIONS, 2);
 		}
 		else if (*(cp + 1) == ':') {
 			if (argv[posixoptind][ptr])
@@ -1684,7 +1625,8 @@ syntaxtree *trp;
 				}
 				else {
 					n = '?';
-					execerror(buf, ER_MISSARG, 2);
+					execerror((trp -> comm) -> argv,
+						buf, ER_MISSARG, 2);
 				}
 			}
 			ptr = 0;
@@ -1706,4 +1648,4 @@ syntaxtree *trp;
 	return(ret);
 }
 #endif	/* NOPOSIXUTIL */
-#endif	/* !MINIMUMSHELL && (!FD || (FD >= 2 && !_NOORIGSHELL)) */
+#endif	/* DEP_ORIGSHELL && !MINIMUMSHELL */

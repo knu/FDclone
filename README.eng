@@ -1,9 +1,9 @@
 ############################################################
 #
-#	About FDclone Ver. 2.09
+#	About FDclone Ver. 3.00
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Apr 19, 2008
+#	May 31, 2008
 #
 ############################################################
 
@@ -33,7 +33,7 @@ I complete and release it. I dare say I'm happy.
 
 
 --
-  FDclone-2.09 package includes the following files.
+  FDclone-3.00 package includes the following files.
 
 README		this file (in Japanese)
 README.eng	this file
@@ -64,6 +64,8 @@ expfunc.c	shell function expander (for obsolete /bin/sh)
 mkunitbl.c	UNICODE translation table generator
 mkdict.c	Kana-Kanji translation table convertor
 mktankan.c	Tan-Kanji translation table generator
+mkkanji.c	kanji.h convertor
+mkcat.c		message catalog generator
 mkmfsedg.sed	sed script filtering Makefile for djgpp v1.xx
 mkmfsedd.sed	sed script filtering Makefile for djgpp v2.xx
 mkmfdosl.sed	sed script filtering Makefile for LSI C-86 3.5
@@ -85,20 +87,33 @@ term.c		termcap library source
 term.h		header for term.c
 printf.c	formatted printing module
 printf.h	header for printf.c
+string.c	alternative string functions
+string.h	header for string.c
+malloc.c	alternative memoly allocation functions
+malloc.h	header for malloc.c
+stream.c	stream I/O library source
+stream.h	header for stream.c
+time.c		alternative time functions
+time.h		header for time.c
 pathname.c	pathname operation module
 pathname.h	header for pathname.c
 system.c	/bin/sh compatible system(3) module
 system.h	header for system.c
 posixsh.c	POSIX based builtin commands used in system.c
+posixsh.h	header for posix.c
 doscom.c	COMMAND.COM builtin commands used in system.c
 log.c		system logging module
+log.h		header for log.c
 dosdisk.c	floppy drive driver
 dosdisk.h	header for dosdisk.c
-dosemu.c	system call wrapper for floppy drive
+sysemu.c	system call wrapper for floppy drive
+sysemu.h	header for sysemu.c
 unixdisk.c	file I/O functions for MS-DOS
 unixdisk.h	header for unixdisk.c
-unixemu.c	system call emulation on MS-DOS
-unixemu.h	header for unixemu.c
+realpath.c	canonicalization for absolute pathname
+realpath.h	header for realpath.c
+encode.c	MD5 (RFC1321) & BASE64 (RFC3548) module
+encode.h	header for encode.c
 pty.c		pseudo terminal module
 termemu.c	terminal emulation module
 termemu.h	header for termemu.c
@@ -108,9 +123,25 @@ libc.c		arrangement of C standard library
 file.c		file I/O module
 apply.c		applying one after another module
 parse.c		strings parser module
+parse.h		header for parse.c
 builtin.c	builtin command module
 shell.c		shell command module
-kanji.c		kanji code convert module
+socket.c	network socket functions
+socket.h	header for socket.c
+url.c		URL parser module
+url.h		header for url.c
+auth.c		authentication (RFC2617) module
+auth.h		header for auth,c
+ftp.c		FTP (RFC959) module
+html.c		HTML (RFC2616) module
+html.h		header for html.c
+http.c		HTTP module
+urldisk.c	URL drive driver
+urldisk.h	header for urldisk.c
+catalog.c	message catalog module
+catalog.h	header for catalog.c
+kconv.c		kanji code convert module
+kconv.h		header for kconv.c
 input.c		user input module
 ime.c		tiny Kanji Input Method Editor
 roman.c		Roman-Kana translation module
@@ -119,6 +150,8 @@ dict.c		Kanji dictionary searching module
 hinsi.h		header for Hinsi grammar
 info.c		various information module
 rockridg.c	ISO 9660 RockRidge extension module
+lsparse.c	parser for file list
+lsparse.h	header for lsparse.c
 archive.c	archiver module
 tree.c		tree screen module
 custom.c	customizer module
@@ -128,9 +161,16 @@ browse.c	browser screen module
 fd.h		header for customizing FDclone
 machine.h	header for machine dependency
 config.hin	dummy header for environment setting
+headers.h	basic headers
+depend.h	headers for dependency of option identifiers
 types.h		variable type declarations
+namelist.h	header for file list
 kctype.h	header for kanji code
+typesize.h	header for size of types
 wait.h		header for child processes
+dirent.h	header for directory entries
+unixemu.h	header for system call emulation on MS-DOS
+device.h	header for device ID
 func.h		prototype declarations
 functabl.h	header for attribute on internal command
 kanji.hin	Japanese strings
@@ -138,6 +178,7 @@ version.h	version
 
 _fdrc		template for .fd2rc
 _fdrc.dif	changes from 1.03 about .fd2rc
+fd.spec		spec file for RPM
 
 
 --

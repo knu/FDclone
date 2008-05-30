@@ -5,15 +5,14 @@
  */
 
 #include "fd.h"
-
-#ifndef	_NOIME
-
+#include "wait.h"
+#include "parse.h"
+#include "kconv.h"
+#include "roman.h"
 #include "func.h"
 #include "kanji.h"
-#include "wait.h"
-#include "roman.h"
 
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 #include "termemu.h"
 #endif
 
@@ -34,15 +33,14 @@ typedef struct _jisbuf {
 	int max;
 } jisbuf;
 
+#ifdef	DEP_IME
+
 extern int subwindow;
 extern int win_x;
 extern int win_y;
 extern int imekey;
 extern romantable *romanlist;
 extern int maxromanlist;
-#ifndef	_NOPTY
-extern int parentfd;
-#endif
 
 static int NEAR inkanjiconv __P_((char *, CONST char *));
 static u_int NEAR getdefcode __P_((u_int, int, int));
@@ -194,7 +192,7 @@ CONST char *s;
 	int code;
 
 	code = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	if (parentfd >= 0 && ptyinkcode != NOCNV) code = ptyinkcode;
 #endif
 	kanjiconv(buf, s, MAXKANJIBUF, DEFCODE, code, L_INPUT);
@@ -239,7 +237,7 @@ int type, kana;
 			buf[1] += 0xa0;
 			buf[2] = type = '\0';
 			break;
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 		case 'U':
 			code = UTF8;
 			i = ucs2toutf8(buf, 0, c);
@@ -261,7 +259,7 @@ int type, kana;
 	return(((u_char)(cp[0]) << 8) | (u_char)(cp[1]));
 }
 
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 u_int ime_getkeycode(s)
 CONST char *s;
 {
@@ -283,7 +281,7 @@ u_int c;
 	VOID_C code2kanji(tmp, c);
 	return(inkanjiconv(buf, tmp));
 }
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */
 
 static VOID NEAR imeputch(c, so)
 int c, so;
@@ -319,13 +317,12 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vasprintf2(&buf, fmt, args);
+	n = vasprintf3(&buf, fmt, args);
 	va_end(args);
-	if (n < 0) error("malloc()");
 
 	Xcputs2(buf);
 	if (ime_xposp) *ime_xposp += n;
-	free(buf);
+	free2(buf);
 
 	return(n);
 }
@@ -639,7 +636,7 @@ int type;
 			buf[1] = (((buf[1] / 10) << 4) | (buf[1] % 10));
 			cp = buf;
 			break;
-#ifdef	_USEUNICODE
+#ifdef	DEP_UNICODE
 		case 'U':
 			VOID_C jis2str(tmp, c);
 			cp = kanjiconv2(buf, tmp,
@@ -665,7 +662,7 @@ int xpos, n, so;
 	(*ime_locate)(xpos, ime_line);
 	n += (n < 10) ? '0' : 'A' - 10;
 	imeputch(n, so);
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 	if (ptylist[win].pid) /*EMPTY*/;
 	else
 #endif
@@ -744,7 +741,7 @@ int sig;
 	do {
 		imeputcursor(xpos[argc - min], argc - min, 1);
 
-		if ((ch = getkey3(sig, inputkcode)) < 0) break;
+		if ((ch = getkey3(sig, inputkcode, 0)) < 0) break;
 		old = argc;
 		switch (ch) {
 			case ' ':
@@ -890,7 +887,7 @@ int sig, type;
 		dispjiscode(c, type);
 		imeputcursor(jis_xpos(plen, c % col), c % col, 1);
 
-		if ((ch = getkey3(sig, inputkcode)) < 0) break;
+		if ((ch = getkey3(sig, inputkcode, 0)) < 0) break;
 		old = c;
 		switch (ch) {
 			case ' ':
@@ -1069,7 +1066,7 @@ int ptr, min, max, *lastp, sig;
 			kbuf[rjisbuf.max] = 0;
 			if ((argv = searchdict(kbuf, rjisbuf.max))) {
 				copyjisbuf(&kjisbuf, argv[argc], -1);
-				free(kbuf);
+				free2(kbuf);
 			}
 			else {
 				copyjisbuf(&kjisbuf, rjisbuf.buf, rjisbuf.max);
@@ -1138,13 +1135,13 @@ int sig;
 		else {
 			(*ime_locate)(plen + llen + ptr, ime_line);
 			imeputch(' ', 1);
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 			if (ptylist[win].pid) /*EMPTY*/;
 			else
 #endif
 			(*ime_locate)(imewin_x, imewin_y);
 			Xtflush();
-			if ((c = getkey3(sig, inputkcode)) < 0) break;
+			if ((c = getkey3(sig, inputkcode, 0)) < 0) break;
 			else if (c == imekey) {
 				ime_cont = kjisbuf.max = 0;
 				c = K_ESC;
@@ -1381,7 +1378,7 @@ char *buf;
 		}
 		win_x = imewin_x;
 		win_y = imewin_y;
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 		if (ptylist[win].pid) /*EMPTY*/;
 		else
 #endif
@@ -1400,11 +1397,11 @@ char *buf;
 VOID ime_freebuf(VOID_A)
 {
 	kjisbuf.max = 0;
-	if (kjisbuf.buf) free(kjisbuf.buf);
+	free2(kjisbuf.buf);
 	kjisbuf.buf = NULL;
 	rjisbuf.max = 0;
-	if (rjisbuf.buf) free(rjisbuf.buf);
+	free2(rjisbuf.buf);
 	rjisbuf.buf = NULL;
 }
 # endif	/* DEBUG */
-#endif	/* !_NOIME */
+#endif	/* DEP_IME */

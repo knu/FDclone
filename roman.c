@@ -4,19 +4,12 @@
  *	Roman translation
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
-
-#include "printf.h"
+#include "headers.h"
+#include "depend.h"
 #include "kctype.h"
+#include "typesize.h"
+#include "string.h"
+#include "kconv.h"
 #include "roman.h"
 
 #define	R_MAXVOWEL		5
@@ -28,10 +21,6 @@ typedef struct _voweltable {
 	int key;
 	u_char code[R_MAXVOWEL];
 } voweltable;
-
-#ifndef	CODEEUC
-extern CONST char *kanjiconv2 __P_((char *, CONST char *, int, int, int, int));
-#endif
 
 static int cmproman __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR chgroman __P_((CONST char *, int, CONST u_short *));
@@ -225,7 +214,7 @@ CONST u_short *kbuf;
 		return(0);
 	}
 
-	strcpy(romanlist[n].str, str);
+	strcpy2(romanlist[n].str, str);
 	romanlist[n].len = len;
 	memcpy((char *)romanlist[n].code, (char *)kbuf,
 		R_MAXKANA * sizeof(u_short));

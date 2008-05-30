@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2008 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   2.09i 04/19/08
+.\" @(#)fd.1   3.00 05/31/08
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "April 19, 2008"
+.TH FD 1 "May 31, 2008"
 .de sh
 .br
 .PP
@@ -1070,7 +1070,6 @@ If
 doesn't exist it is created,
 otherwise output is appended to it.
 .IP "\fIn\fR\fB<\|>\fP\fIfile\fR"
-.IP "\fIn\fR\fB>\|<\fP\fIfile\fR"
 Redirect both the input/output indicated by the file descriptor
 .I n
 into the input/output from/to
@@ -1079,6 +1078,33 @@ If
 .I n
 is omitted,
 it is regarded as the standard input is specified.
+.IP "\fIn\fR\fB>\|<\fP\fIfile\fR"
+Redirect both the input/output indicated by the file descriptor
+.I n
+into the input/output from/to
+.IR file .
+If
+.I n
+is omitted,
+it is regarded as the standard output is specified.
+.IP "\fIn1\fR\fB<\|>\|&\fP\fIn2\fR"
+Redirect both the input/output indicated by the file descriptor
+.I n1
+into the input/output indicated by the file descriptor
+.IR n2 .
+If
+.I n1
+is omitted,
+it is regarded as the standard input is specified.
+.IP "\fIn1\fR\fB>\|<\|&\fP\fIn2\fR"
+Redirect both the input/output indicated by the file descriptor
+.I n1
+into the input/output indicated by the file descriptor
+.IR n2 .
+If
+.I n1
+is omitted,
+it is regarded as the standard output is specified.
 .IP "\fIn\fR\fB<\|\-\fP"
 .IP "\fIn\fR\fB<\|&\|\-\fP"
 Close the input indicated by the file descriptor
@@ -1090,6 +1116,22 @@ it is regarded as the standard input is specified.
 .IP "\fIn\fR\fB>\|\-\fP"
 .IP "\fIn\fR\fB>\|&\|\-\fP"
 Close the output indicated by the file descriptor
+.IR n .
+If
+.I n
+is omitted,
+it is regarded as the standard output is specified.
+.IP "\fIn\fR\fB<\|>\|\-\fP"
+.IP "\fIn\fR\fB<\|>\|&\|\-\fP"
+Close both the input/output indicated by the file descriptor
+.IR n .
+If
+.I n
+is omitted,
+it is regarded as the standard input is specified.
+.IP "\fIn\fR\fB>\|<\|\-\fP"
+.IP "\fIn\fR\fB>\|<\|&\|\-\fP"
+Close both the input/output indicated by the file descriptor
 .IR n .
 If
 .I n
@@ -1114,6 +1156,53 @@ If
 .I n
 is omitted,
 it is regarded as the standard input is specified.
+.PD
+.RE
+
+When you specify the file with each redirect,
+you can describe the filename as 
+.RI ` scheme\fB://\fPhost\fB:\fPport '
+form to open the following TCP sockets,
+according to the string of
+.IR scheme .
+The authentication of your OS will restrict specifying the accepting port.
+.B (UNIX)
+.RS 3
+.PD 0
+.IP "\fBconnect://\fP\fIhost\fR\fB:\fP\fIport\fR" 10
+This socket is connected to the remote host specified by
+.I host
+with the TCP port number specified by
+.IR port .
+.IP "\fBaccept://\fP[\fIhost\fR][\fB:\fP\fIport\fR]"
+This socket is accepted to the local host specified by
+.I host
+with the TCP port number specified by
+.IR port .
+If
+.I host
+is omitted,
+this socket will be accepted to any host.
+If
+.I port
+is omitted,
+the port within the range determined by the OS is used.
+.IP "\fBbind://\fP[\fIhost\fR][\fB:\fP\fIport\fR]"
+This socket is bound to the local host specified by
+.I host
+with the TCP port number specified by
+.IR port ,
+preparing
+.B accept
+the builtin command.
+If
+.I host
+is omitted,
+this socket will be accepted to any host.
+If
+.I port
+is omitted,
+the port within the range determined by the OS is used.
 .PD
 .RE
 
@@ -1339,6 +1428,43 @@ or be described with pathname.
 The each line format is based on the format of
 .BR EXECUTE_SH .
 You can describe this in the file as nesting.
+.IP "\fBaccept\fP [\fIfd\fR]"
+Accept the connection with the file descriptor indicated by
+.IR fd ,
+and the connected socket will be assign to
+.I fd
+of the same file descriptor.
+At the same time,
+the accepted socket will be closed.
+When
+.I fd
+is not the redirection as the form of
+.BR bind:// ,
+this command will be failed.
+In comparison with the redirection as the form of
+.BR accept:// ,
+the shell can receive controls before establishing connection to negotiate the TCP port number with the remote host in advance.
+.B (UNIX)
+
+If
+.I fd
+is omitted,
+the connection will be accepted with the standard input.
+.IP "\fBaddcr\fP [\fB-1\fP] [\fIfile\fR]"
+Output the string read from the file specified by
+.IR file ,
+line by line.
+The newline of each line is unified into CR-NL (\er\en).
+It is useful to pipe the output to some socket.
+
+If
+.I file
+is omitted,
+it is regarded as the standard input is specified.
+If
+.B \-1
+is specified,
+it will output just 1 line and exit.
 .IP "\fBalias\fP [\fIname\fR[\fB=\fP\fIcom\fR]]"
 Define a alias whose body is
 .IR com ,
@@ -1871,7 +1997,7 @@ the current job is removed from the shell control.
 .IP "\fBdtype\fP \fIfile\fR"
 Display the contents of the file indicated by
 .IR file .
-.IP "\fBecho\fP [\fB\-n\fP] [\fIarg\fR .\|.\|.]"
+.IP "\fBecho\fP [\fB\-nN\fP] [\fIarg\fR .\|.\|.]"
 Echo
 .I arg
 to the standard output.
@@ -1879,6 +2005,9 @@ When you don't specify
 .BR \-n ,
 newline is added to output trailing after
 .IR arg .
+When you specify
+.BR \-N ,
+the outputted newline becomes CR-NL (\er\en).
 See
 .BR echo (1)
 for details.
@@ -2564,7 +2693,7 @@ the
 option for
 .B set
 the builtin command is effective.
-.IP "\fBread\fP [\fINAME .\|.\|.\fR]"
+.IP "\fBread\fP [\fB-N\fP] [\fINAME .\|.\|.\fR]"
 Read one line from the standard input
 and substitute that string for
 .I NAME
@@ -2582,6 +2711,11 @@ When the number of words in inputted string is less than the number of
 .IR NAME ,
 a null is substituted for the rest of
 .IR NAME .
+
+If
+.B \-N
+is specified,
+the newline of the line to be read is regarded as CR-NL (\er\en).
 .IP "\fBreadline\fP [\fIprompt\fR]"
 Read one line from the terminal input
 and output that string to the standard output.
@@ -2939,6 +3073,39 @@ is omitted,
 it is regard as
 .B 1
 is specified.
+.IP "\fBsocketinfo\fP [\fB-apAP\fP] [\fIfd\fR]"
+If the file descriptor specified by
+.I fd
+is a socket,
+the IP address and the TCP port number of the connected remote host,
+and the IP address and the TCP port number of the connected local host,
+are outputted to the standard output.
+If
+.I fd
+is not a socket,
+this command will be failed.
+.B (UNIX)
+
+If
+.I fd
+is omitted,
+it is regarded as the standard input is specified.
+If
+.B \-a
+is specified,
+only the IP address of the remote host will be outputted.
+If
+.B \-p
+is specified,
+only the TCP port number of the remote host will be outputted.
+If
+.B \-A
+is specified,
+only the IP address of the local host will be outputted.
+If
+.B \-P
+is specified,
+only the TCP port number of the local host will be outputted.
 .IP "\fBtest\fP [\fIexpr\fR]"
 .PD 0
 .IP "\fB[\fP \fIexpr\fR \fB]\fP"
@@ -3158,9 +3325,46 @@ of
 .BR fd .
 You can describe each command identifier in
 .IR COMMAND .
-Some internal commands can take a parameter argument
-.I arg
-as the number of times or the destination directory.
+The following internal commands can take a parameter argument
+.IR arg .
+.RS
+.PD 0
+.IP "\fBCUR_UP\fP" 15
+.IP "\fBCUR_DOWN\fP"
+.IP "\fBCUR_RIGHT\fP"
+.IP "\fBCUR_LEFT\fP"
+.IP "\fBROLL_UP\fP"
+.IP "\fBROLL_DOWN\fP"
+.IP "\fBWIDEN_WINDOW\fP"
+.IP "\fBNARROW_WINDOW\fP"
+The number of lines, columns, or pages.
+.IP "\fBRENAME_FILE\fP"
+.IP "\fBPACK_FILE\fP"
+.IP "\fBBACKUP_TAPE\fP"
+The filename.
+.IP "\fBLOG_DIR\fP"
+.IP "\fBMAKE_DIR\fP"
+.IP "\fBINFO_FILESYS\fP"
+.IP "\fBUNPACK_FILE\fP"
+The directory name.
+.IP "\fBEXECUTE_SH\fP"
+The command string.
+.IP "\fBMARK_FIND\fP"
+.IP "\fBFIND_FILE\fP"
+.IP "\fBFIND_DIR\fP"
+The wildcard string.
+.IP "\fBMARK_ALL\fP"
+.B 0
+will reset the mark of all files,
+the other will mark all files.
+.IP "\fBSORT_DIR\fP"
+The number substituted for
+.B SORTTYPE
+the internal variable.
+.IP "\fBEDIT_CONFIG\fP"
+The name of internal variable to be edited.
+.PD
+.RE
 .PP
 .B ~
 and
@@ -3275,8 +3479,18 @@ One format string represents the format for 1 file in the list.
 \fB%m\fP	Field which indicates a file creation month
 	(No concerning if numeric or alphabetical)
 \fB%d\fP	Field which indicates a file creation day
+\fB%w\fP	Field which indicates a file creation week (ignored)
 \fB%t\fP	Field which indicates a file creation time
 	("HH:MM:SS" form, MM and SS can be lacking)
+\fB%p\fP	Field which indicates a file creation am/pm
+\fB%B\fP	Field which indicates a major device ID
+\fB%b\fP	Field which indicates a minor device ID
+\fB%/\fP\fIstr\fR\fB/\fP	Field which indicates a type is directory
+	when this field string is \fIstr\fR
+	(case insensitive)
+\fB%!\fP\fIstr\fR\fB!\fP	0 or more continuous fields
+	which consists of the string \fIstr\fR
+	(case insensitive)
 \fB%f\fP	Field which indicates a filename
 \fB%x\fP	Field which is needless (ignored)
 \fB%%\fP	% itself
@@ -3415,6 +3629,55 @@ Reversely,
 when you use a uppercase letter as the drive name,
 LFN is ignored and 8+3 formed filename is treated.
 MS-DOS version inherits this specification by the case of a drive name.
+.SS URL Drive (UNIX)
+You can access remote services on the network,
+by representing the URL string as the directory name.
+The URL format is \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\fP]\fIhost\fR[\fB:\fP\fIport\fR]\fB/\fP\fIdirectory\fR\fB/\fP.
+You can specify
+.B ftp
+or
+.B http
+as
+.IR scheme .
+You can specify the name or IP address of the remote host as
+.IR host .
+You can specify the TCP port number as
+.IR port .
+If
+.I port
+is omitted,
+the default port number is used.
+The default port number for
+.B ftp
+is
+.BR 21 ,
+and the default port number for
+.B http
+is
+.BR 80 .
+You can specify account informations to connect the remote host as
+.I user
+and
+.IR password .
+If
+.I user
+is omitted,
+the anonymous FTP connection will be used with
+.BR ftp ,
+or you will be queried as needed with
+.BR http .
+If
+.I password
+is omitted,
+you will be queried as needed.
+But,
+it is necessary to set
+.B URLDRIVE
+the internal variable which makes this function effective, in advance.
+
+Regrettably,
+some internal commands cannot support the URL drive,
+for the sake of restrictions of the FTP and HTTP protocols or settings of the host side.
 .SS String Input
 When you input the string, such as the pathname,
 the following key inputs are available.
@@ -4397,6 +4660,15 @@ for the file type corresponding with the following columns.
 The standard color palette is described with the above color number as
 .BR 89624351888 .
 .RE
+.IP "\fBAUTOUPDATE\fP"
+Specify the interval in seconds to update automatically the browser screen or the tree screen.
+When the key input idles for the specified seconds,
+the current information of file list will be updated.
+If this value is
+.BR 0 ,
+the screen will never updated automatically.
+The default value is
+.BR 0 .
 .IP "\fBBASICCUSTOM\fP"
 Limit the internal variables for configuration only to basic variables in the customizer,
 to hide advanced variables.
@@ -4643,6 +4915,34 @@ etc. among them are the Kanji codes used in Samba.
 default	no convert
 .fi
 .RE
+.IP "\fBFTPADDRESS\fP"
+Specify the mail address used as the password for anonymous FTP,
+when the URL drive connects the FTP host.
+The default value is
+.BR FDclone@ .
+.B (UNIX)
+.IP "\fBFTPLOGFILE\fP"
+Specify the filename to which communication logs are outputted,
+when the URL drive communicates with the FTP host.
+If it is not specified as fullpath nor you don't prepare the directory in which the log file is stored,
+no log will be outputted.
+.B (UNIX)
+.IP "\fBFTPPROXY\fP"
+Specify the URL used as the proxy server,
+when the URL drive connects the FTP host.
+The URL format is \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\fP]\fIhost\fR[\fB:\fP\fIport\fR].
+You can specify
+.B ftp
+or
+.B http
+as
+.IR scheme .
+You can specify account informations to connect the proxy server as
+.I user
+and
+.IR password .
+The default value is not specified.
+.B (UNIX)
 .IP "\fBFUNCLAYOUT\fP"
 Specify the layout of the function line,
 as the form of
@@ -4657,6 +4957,15 @@ The default value is
 .BR 1005 .
 (It means 10 function keys will be displayed,
 5 of which are grouped.)
+.IP "\fBHIDEPASSWD\fP"
+Suppress displaying
+.B *
+as a replacement for the inputted letter,
+when the URL drive requires you to input a password.
+Any value except
+.B 0
+and null effects valid.
+.B (UNIX)
 .IP "\fBHISTFILE\fP"
 Specify the name of the command history file
 which can be referred by
@@ -4691,6 +5000,32 @@ When invoked as a login shell,
 if this variable is specified
 that directory becomes the current directory,
 otherwise your home directory is automatically defined as this value.
+.IP "\fBHTMLLOGFILE\fP"
+Specify the filename to which received HTML data log are outputted,
+when the URL drive communicates with the HTTP host.
+If it is not specified as fullpath nor you don't prepare the directory in which the log file is stored,
+no log will be outputted.
+.B (UNIX)
+.IP "\fBHTTPLOGFILE\fP"
+Specify the filename to which communication logs are outputted,
+when the URL drive communicates with the HTTP host.
+If it is not specified as fullpath nor you don't prepare the directory in which the log file is stored,
+no log will be outputted.
+.B (UNIX)
+.IP "\fBHTTPPROXY\fP"
+Specify the URL used as the proxy server,
+when the URL drive connects the HTTP host.
+The URL format is \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\fP]\fIhost\fR[\fB:\fP\fIport\fR].
+You can specify
+.B http
+as
+.IR scheme .
+You can specify account informations to connect the proxy server as
+.I user
+and
+.IR password .
+The default value is not specified.
+.B (UNIX)
 .IP "\fBIFS\fP\(**"
 Specify the internal field separators.
 They are used in
@@ -4889,11 +5224,17 @@ it doesn't have to be the string itself and is enough to contain the string,
 the value of
 .B LANG
 the environment variable also can be used.
+Otherwise,
+In case of some additional message catalogs are prepared,
+you can specify its extension as the catalog name for
+.B MESSAGELANG
+to replace messages.
 .RS 18
 .ta 1.5i
 .nf
 \fBen\fP, \fBC\fP, \fBPOSIX\fP	English
-default	no convert
+\fBja\fP	Japanese
+default	the value of \fBLANGUAGE\fP
 .fi
 .RE
 .IP "\fBMINFILENAME\fP"
@@ -5279,6 +5620,102 @@ You should set this if you have enough memory.
 Any value except
 .B 0
 and null effects valid.
+.IP "\fBURLDRIVE\fP"
+Validate the function of the URL drive.
+Any value except
+.B 0
+and null effects valid.
+.B (UNIX)
+.IP "\fBURLKCODE\fP"
+Specify the Kanji code for filename on the host with the URL drive.
+.BR JIS8 ,
+.BR JUNET ,
+.BR HEX ,
+.BR CAP ,
+etc. among them are the Kanji codes used in Samba.
+.B (UNIX)
+.RS 18
+.ta 1.5i
+.nf
+\fBSJIS\fP, \fBsjis\fP	Shift JIS
+\fBEUC\fP, \fBeuc\fP	EUC-JP
+\fBJIS\fP, \fBjis\fP	7bit JIS
+\fBJIS8\fP, \fBjis8\fP	8bit JIS
+\fBJUNET\fP, \fBjunet\fP	ISO-2022-JP
+\fBOJIS\fP, \fBojis\fP	7bit JIS (JIS C6226-1978 + roman)
+\fBOJIS8\fP, \fBojis8\fP	8bit JIS (JIS C6226-1978 + roman)
+\fBOJUNET\fP, \fBojunet\fP	ISO-2022-JP (JIS C6226-1978 + roman)
+\fBHEX\fP, \fBhex\fP	HEX
+\fBCAP\fP, \fBcap\fP	CAP
+\fBUTF8\fP, \fButf8\fP	UTF-8
+\fBUTF8-mac\fP, \fBmac\fP	UTF-8 for Mac OS X
+\fBUTF8-iconv\fP	UTF-8 for iconv
+default	no convert
+.fi
+.RE
+.IP "\fBURLOPTIONS\fP"
+Specify communication options,
+when the URL drive communicates with the host.
+You can select individually whether if PASV, PORT, MDTM, FEAT each commands for the FTP communication are limited or not,
+or whether if the exact file informations are need or not.
+On the HTTP protocol,
+you will get the timestamp and size of files with some rounding error in bulk.
+If you need the exact informations,
+the operations by file will spend the more communication time.
+The default value is
+.BR 0 .
+The following are specifiable values.
+.B (UNIX)
+.RS 18
+.ta 0.5i 1.3i 2.1i 2.9i 3.7i
+.nf
+\fB0\fP	standard
+\fB1\fP	PASV
+\fB2\fP		PORT
+\fB3\fP	PASV &	PORT
+\fB4\fP			MDTM
+\fB5\fP	PASV &		MDTM
+\fB6\fP		PORT &	MDTM
+\fB7\fP	PASV &	PORT &	MDTM
+\fB8\fP				FEAT
+\fB9\fP	PASV &			FEAT
+\fB10\fP		PORT &		FEAT
+\fB11\fP	PASV &	PORT &		FEAT
+\fB12\fP			MDTM &	FEAT
+\fB13\fP	PASV &		MDTM &	FEAT
+\fB14\fP		PORT &	MDTM &	FEAT
+\fB15\fP	PASV &	PORT &	MDTM &	FEAT
+\fB16\fP					HTTP
+\fB17\fP	PASV &				HTTP
+\fB18\fP		PORT &			HTTP
+\fB19\fP	PASV &	PORT &			HTTP
+\fB20\fP			MDTM &		HTTP
+\fB21\fP	PASV &		MDTM &		HTTP
+\fB22\fP		PORT &	MDTM &		HTTP
+\fB23\fP	PASV &	PORT &	MDTM &		HTTP
+\fB24\fP				FEAT &	HTTP
+\fB25\fP	PASV &			FEAT &	HTTP
+\fB26\fP		PORT &		FEAT &	HTTP
+\fB27\fP	PASV &	PORT &		FEAT &	HTTP
+\fB28\fP			MDTM &	FEAT &	HTTP
+\fB29\fP	PASV &		MDTM &	FEAT &	HTTP
+\fB30\fP		PORT &	MDTM &	FEAT &	HTTP
+\fB31\fP	PASV &	PORT &	MDTM &	FEAT &	HTTP
+.fi
+.RE
+.IP "\fBURLTIMEOUT\fP"
+Specify the timeout in seconds,
+when the URL drive communicates with the host.
+If the communication from the host is lost for the time specified,
+the communication is regarded as invalid and its connection will be shutdown forcedly.
+If this value is
+.B 0
+second,
+the timeout operation is invalid to continue waiting response forever.
+The default value is
+.B 0
+second.
+.B (UNIX)
 .IP "\fBUSEGETCURSOR\fP"
 Use the VT100 compatible escape sequence getting the cursor position
 in order to get the terminal size.
@@ -5309,6 +5746,9 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
+.IP "\fBVERSION\fP"
+A version string of the running
+.BR fd .
 .IP "\fBWRITEFS\fP"
 Forbid use of
 .B WRITE_DIR
@@ -5460,19 +5900,6 @@ on MS-DOS version
 The command history file on MS-DOS version by default
 .PD
 .SH LIMITATIONS
-The maximum key bindings which you can register is
-.BR 256 ,
-and the maximum that with the user defined macro is
-.BR 64 .
-The maximum launchers which you can register is
-.BR 32 ,
-including archive browsers.
-The maximum archive commands which you can register is
-.B 16
-pairs,
-with pack and unpack in pairs.
-These maximum values include default builtin definitions.
-
 Some terminals cannot send the input of certain function keys and special keys.
 The sequence compatible with
 .B VT200

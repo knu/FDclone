@@ -4,40 +4,33 @@
  *	terminal I/O
  */
 
-#include "machine.h"
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
+#include "headers.h"
+#include "depend.h"
+#include "typesize.h"
+#include "sysemu.h"
+#include "termio.h"
+#include "unixemu.h"
 
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
-#ifndef	NOUNISTDH
-#include <unistd.h>
-#endif
-#ifndef	NOSTDLIBH
-#include <stdlib.h>
-#endif
 
-#include "printf.h"
-#include "termio.h"
-
-#include <errno.h>
-#ifdef	NOERRNO
-extern int errno;
-#endif
-
-#ifdef	USERESOURCEH
-#include <sys/time.h>
-#include <sys/resource.h>
-#endif
-
-#ifdef	USEULIMITH
-#include <ulimit.h>
-#endif
+#if	MSDOS
+# ifdef	USERESOURCEH
+# include <sys/time.h>
+# include <sys/resource.h>
+# endif
+#else	/* !MSDOS */
+# ifdef	USERESOURCEH
+# include <sys/resource.h>
+# endif
+# ifdef	USEULIMITH
+# include <ulimit.h>
+# endif
+#endif	/* !MSDOS */
 
 #if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
-#define	MAXOPENFILE	sysconf(_SC_OPEN_MAX)
+#define	MAXOPENFILE		sysconf(_SC_OPEN_MAX)
 #else	/* !USESYSCONF || !_SC_OPEN_MAX */
 # ifdef	NOFILE
 # define	MAXOPENFILE	NOFILE
@@ -63,13 +56,13 @@ extern int errno;
 #endif	/* !_PATH_TTY */
 
 #ifndef	UL_GDESLIM
-#define	UL_GDESLIM	4
+#define	UL_GDESLIM		4
 #endif
 #ifndef	FD_CLOEXEC
-#define	FD_CLOEXEC	1
+#define	FD_CLOEXEC		1
 #endif
 #if	!defined (RLIMIT_NOFILE) && defined (RLIMIT_OFILE)
-#define	RLIMIT_NOFILE	RLIMIT_OFILE
+#define	RLIMIT_NOFILE		RLIMIT_OFILE
 #endif
 
 #ifdef	USETERMIO
@@ -77,9 +70,9 @@ extern int errno;
 #undef	VSTOP
 #endif
 
-#define	K_CTRL(c)	((c) & 037)
-#define	MAXFDSET	256
-#define	MAXSELECT	16
+#define	K_CTRL(c)		((c) & 037)
+#define	MAXFDSET		256
+#define	MAXSELECT		16
 
 #ifndef	FD_SET
 typedef struct fd_set {
@@ -92,31 +85,18 @@ typedef struct fd_set {
 # define	MAXFDSET	(BITSPERBYTE * sizeof(u_int))
 #endif	/* !FD_SET */
 
-#if	!defined (FD) || defined (_NODOSDRIVE)
-#define	Xread		read
-#define	Xwrite		write
-#else
-extern int Xread __P_((int, char *, int));
-extern int Xwrite __P_((int, CONST char *, int));
-#endif
-
 #if	!MSDOS && defined (FD) && !defined (NOSELECT)
 extern VOID checksuspend __P_((VOID));
 #endif
 
-#if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+#ifdef	DEP_ORIGSHELL
 extern int interrupted;
 #endif
 #ifdef	LSI_C
 extern u_char _openfile[];
 #endif
 
-#if	defined (FD) && !defined (_NODOSDRIVE)
-#define	DOSFDOFFSET	(1 << (8 * sizeof(int) - 2))
-#endif
-
 #if	MSDOS
-#include "unixemu.h"
 static CONST u_short doserrlist[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 17, 18, 65, 80
 };
@@ -126,7 +106,6 @@ static CONST int unixerrlist[] = {
 	EBADF, ENOMEM, ENOMEM, ENOMEM, ENODEV, EXDEV, 0, EACCES, EEXIST
 };
 #endif	/* MSDOS */
-
 #ifdef	CYGWIN
 static int save_ttyio = -1;
 #endif
@@ -282,14 +261,14 @@ int fd;
 	if (fd < 0
 	|| fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO)
 		return(fd);
-#if	defined (FD) && !defined (_NODOSDRIVE)
-	if (fd >= DOSFDOFFSET) return(fd);
+#ifdef	DEP_DOSDRIVE
+	if (chkopenfd(fd) == DEV_DOS) return(fd);
 #endif
 	n = Xgetdtablesize();
 
 	for (n--; n > fd; n--) if (isvalidfd(n) < 0) break;
-	if (n <= fd || safe_dup2(fd, n) < 0) return(fd);
-	close(fd);
+	if (n <= fd || Xdup2(fd, n) < 0) return(fd);
+	VOID_C Xclose(fd);
 
 	return(n);
 }
@@ -302,10 +281,9 @@ int nbytes;
 	int n;
 
 	for (;;) {
-#if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+#ifdef	DEP_ORIGSHELL
 		if (interrupted) {
-			errno = EINTR;
-			n = -1;
+			n = seterrno(EINTR);
 			break;
 		}
 #endif
@@ -335,10 +313,9 @@ int nbytes;
 
 	cp = (char *)buf;
 	for (;;) {
-#if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+#ifdef	DEP_ORIGSHELL
 		if (interrupted) {
-			errno = EINTR;
-			n = -1;
+			n = seterrno(EINTR);
 			break;
 		}
 #endif
@@ -376,15 +353,28 @@ int fd;
 	if (fd < 0) return;
 	duperrno = errno;
 	if (fd != STDIN_FILENO && fd != STDOUT_FILENO && fd != STDERR_FILENO)
-		VOID_C close(fd);
+		VOID_C Xclose(fd);
+	errno = duperrno;
+}
+
+VOID safefclose(fp)
+XFILE *fp;
+{
+	int fd, duperrno;
+
+	if (!fp) return;
+	duperrno = errno;
+	fd = Xfileno(fp);
+	if (fd != STDIN_FILENO && fd != STDOUT_FILENO && fd != STDERR_FILENO)
+		VOID_C Xfclose(fp);
 	errno = duperrno;
 }
 
 int opentty(fdp, fpp)
 int *fdp;
-FILE **fpp;
+XFILE **fpp;
 {
-	FILE *fp;
+	XFILE *fp;
 	int fd, flags;
 
 #ifdef	SELECTRWONLY
@@ -394,13 +384,13 @@ FILE **fpp;
 #endif
 
 	if (*fdp >= 0) fd = *fdp;
-	else if ((fd = newdup(open(_PATH_TTY, flags, 0666))) < 0) return(-1);
+	else if ((fd = newdup(Xopen(_PATH_TTY, flags, 0666))) < 0) return(-1);
 	if (*fpp) fp = *fpp;
 #ifndef	SELECTRWONLY
-	else if ((fp = fdopen(fd, "w+b"))) /*EMPTY*/;
+	else if ((fp = Xfdopen(fd, "w+b"))) /*EMPTY*/;
 #endif
-	else if (!(fp = fopen(_PATH_TTY, "w+b"))) {
-		close(fd);
+	else if (!(fp = Xfopen(_PATH_TTY, "w+b"))) {
+		VOID_C Xclose(fd);
 		return(-1);
 	}
 
@@ -415,13 +405,13 @@ FILE **fpp;
 
 VOID closetty(fdp, fpp)
 int *fdp;
-FILE **fpp;
+XFILE **fpp;
 {
 	if (*fpp) {
-		if (fileno(*fpp) == *fdp) *fdp = -1;
-		fclose(*fpp);
+		if (Xfileno(*fpp) == *fdp) *fdp = -1;
+		VOID_C Xfclose(*fpp);
 	}
-	if (*fdp >= 0) close(*fdp);
+	if (*fdp >= 0) VOID_C Xclose(*fdp);
 
 	*fdp = -1;
 	*fpp = NULL;
@@ -654,17 +644,24 @@ p_id_t Xfork(VOID_A)
 #endif	/* CYGWIN */
 
 #ifndef	NOSELECT
-/*ARGSUSED*/
 int sureselect(nfd, fds, result, vp, flags)
 int nfd, fds[];
 char result[];
 VOID_P vp;
 int flags;
 {
-	fd_set readfds;
+	fd_set *readfds, *writefds, set;
 	int i, n, max, dupfds[MAXSELECT];
 
-	FD_ZERO(&readfds);
+	if (flags & SEL_WRITE) {
+		readfds = NULL;
+		writefds = &set;
+	}
+	else {
+		readfds = &set;
+		writefds = NULL;
+	}
+	FD_ZERO(&set);
 	max = -1;
 	if (nfd > MAXSELECT) nfd = MAXSELECT;
 
@@ -675,23 +672,23 @@ int flags;
 		if (fds[i] >= MAXFDSET && (n = safe_dup(fds[i])) >= 0)
 			dupfds[i] = n;
 		if (dupfds[i] > max) max = dupfds[i];
-		FD_SET(dupfds[i], &readfds);
+		FD_SET(dupfds[i], &set);
 	}
 	if (max++ < 0) return(0);
 
 	for (;;) {
-# if	defined (FDSH) || (defined (FD) && FD >= 2 && !defined (_NOORIGSHELL))
+# ifdef	DEP_ORIGSHELL
 		if (interrupted) {
-			errno = EINTR;
-			n = -1;
+			n = seterrno(EINTR);
 			break;
 		}
 # endif
 # if	!MSDOS && defined (FD)
 		if (flags & SEL_TTYIO) checksuspend();
 # endif
-		n = select(max, &readfds, NULL, NULL, (struct timeval *)vp);
+		n = select(max, readfds, writefds, NULL, (struct timeval *)vp);
 		if (n >= 0 || errno != EINTR) break;
+		if (flags & SEL_NOINTR) break;
 	}
 	for (i = 0; i < nfd; i++)
 		if (dupfds[i] != fds[i]) safeclose(dupfds[i]);
@@ -699,7 +696,7 @@ int flags;
 
 	if (result) for (i = 0; i < nfd; i++) {
 		if (dupfds[i] < 0) continue;
-		if (FD_ISSET(dupfds[i], &readfds)) result[i] = 1;
+		if (FD_ISSET(dupfds[i], &set)) result[i] = 1;
 	}
 
 	return(n);

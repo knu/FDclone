@@ -5,9 +5,9 @@
  */
 
 #include "fd.h"
+#include "device.h"
+#include "parse.h"
 #include "func.h"
-
-#ifndef	_NOROCKRIDGE
 
 #define	TRANSTBLFILE		"TRANS.TBL"
 #define	TRANSTBLVAR		1
@@ -15,33 +15,6 @@
 #define	RR_LOWER		002
 #define	RR_VERNO		004
 #define	RR_HYPHN		010
-
-#ifdef	USEMKDEVH
-#include <sys/mkdev.h>
-#else
-# ifdef	USEMKNODH
-# include <sys/mknod.h>
-# else
-#  ifdef	SVR4
-#  include <sys/sysmacros.h>
-#   ifndef	makedev
-#   define	makedev(ma, mi)	(((((u_long)(ma)) & 0x3fff) << 18) \
-				| (((u_long)(mi)) & 0x3ffff))
-#   endif
-#  else
-#   ifndef	makedev
-#   define	makedev(ma, mi)	(((((u_int)(ma)) & 0xff) << 8) \
-				| (((u_int)(mi)) & 0xff))
-#   endif
-#  endif
-# endif
-#endif
-
-#if	MSDOS
-typedef short			r_dev_t;
-#else
-typedef dev_t			r_dev_t;
-#endif
 
 typedef struct _transtable {
 	char *org;
@@ -52,8 +25,10 @@ typedef struct _transtable {
 	struct _transtable *next;
 } transtable;
 
+#ifndef	_NOROCKRIDGE
+
 static char *NEAR getorgname __P_((char *, int));
-static FILE *NEAR opentranstbl __P_((CONST char *, int, int *));
+static XFILE *NEAR opentranstbl __P_((CONST char *, int, int *));
 static transtable *NEAR readtranstbl __P_((CONST char *, int));
 static VOID NEAR freetranstbl __P_((transtable *));
 static transtable *NEAR inittrans __P_((CONST char *, int));
@@ -88,11 +63,11 @@ int flags;
 	return(name);
 }
 
-static FILE *NEAR opentranstbl(path, len, flagsp)
+static XFILE *NEAR opentranstbl(path, len, flagsp)
 CONST char *path;
 int len, *flagsp;
 {
-	FILE *fp;
+	XFILE *fp;
 	char *cp, *file, buf[MAXPATHLEN];
 	int i;
 
@@ -135,7 +110,7 @@ CONST char *path;
 int len;
 {
 	transtable *top, **bottom, *new;
-	FILE *fp;
+	XFILE *fp;
 	r_dev_t maj, min;
 	char *cp, *eol, *org, *line;
 	int l1, l2, flags;
@@ -147,7 +122,7 @@ int len;
 
 	top = NULL;
 	bottom = &top;
-	while ((line = fgets2(fp, 0))) {
+	while ((line = Xfgets(fp))) {
 		cp = line;
 		switch (*cp) {
 			case 'F':
@@ -164,14 +139,14 @@ int len;
 				break;
 		}
 		if (!*(cp = skipspace(cp))) {
-			free(line);
+			free2(line);
 			continue;
 		}
 
 		for (eol = cp; *eol; eol++) if (isblank2(*eol)) break;
 		if (*eol) *(eol++) = '\0';
 		if (!*(eol = skipspace(eol))) {
-			free(line);
+			free2(line);
 			continue;
 		}
 
@@ -209,7 +184,7 @@ int len;
 		*bottom = new;
 		new -> next = NULL;
 		bottom = &(new -> next);
-		free(line);
+		free2(line);
 	}
 
 	if (top) *bottom = top;
@@ -229,10 +204,10 @@ transtable *tbl;
 		while (tp) {
 			tbl = tp;
 			tp = tbl -> next;
-			free(tbl -> org);
-			free(tbl -> alias);
-			if (tbl -> slink) free(tbl -> slink);
-			free(tbl);
+			free2(tbl -> org);
+			free2(tbl -> alias);
+			free2(tbl -> slink);
+			free2(tbl);
 		}
 	}
 }
@@ -250,9 +225,9 @@ int len;
 
 	freetranstbl(rr_curtbl);
 	rr_curtbl = tp;
-	if (rr_cwd) free(rr_cwd);
+	free2(rr_cwd);
 	rr_cwd = strndup2(path, len);
-	if (rr_transcwd) free(rr_transcwd);
+	free2(rr_transcwd);
 	rr_transcwd = NULL;
 
 	return(rr_curtbl);
@@ -276,7 +251,7 @@ CONST char *path, *trans;
 		cp2++;
 	}
 	if (strnpathcmp(path, rr_cwd, len)) return;
-	if (rr_transcwd) free(rr_transcwd);
+	free2(rr_transcwd);
 	rr_transcwd = strndup2(trans, cp2 - trans);
 }
 
@@ -320,7 +295,7 @@ char *buf;
 		strncpy2(buf, path, ptr);
 	}
 	else {
-		strcpy(buf, rr_transcwd);
+		strcpy2(buf, rr_transcwd);
 		if (!path[len]) return(buf);
 		ptr = strlen(buf);
 		cp = &(path[len]);
@@ -401,9 +376,9 @@ char *buf;
 	if (!path) {
 		freetranstbl(rr_curtbl);
 		rr_curtbl = NULL;
-		if (rr_cwd) free(rr_cwd);
+		free2(rr_cwd);
 		rr_cwd = NULL;
-		if (rr_transcwd) free(rr_transcwd);
+		free2(rr_transcwd);
 		rr_transcwd = NULL;
 		return(NULL);
 	}
@@ -417,7 +392,7 @@ char *buf;
 		strncpy2(buf, path, ptr);
 	}
 	else {
-		strcpy(buf, rr_cwd);
+		strcpy2(buf, rr_cwd);
 		if (!path[len]) return(buf);
 		ptr = strlen(buf);
 		cp = &(path[len + 1]);
@@ -477,7 +452,7 @@ int bufsiz;
 
 	if (tp -> type != 'L' || !(tp -> slink)) return(-1);
 	len = strlen(tp -> slink);
-	strncpy(buf, tp -> slink, bufsiz);
+	strncpy2(buf, tp -> slink, bufsiz);
 	if (len > bufsiz) len = bufsiz;
 
 	return(len);

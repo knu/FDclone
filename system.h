@@ -9,6 +9,9 @@
 #include <bsdtty.h>
 #endif
 
+#include "depend.h"
+#include "stream.h"
+
 /* #define BASHBUG		; keep bash's bug strictly */
 /* #define PSIGNALSTYLE		; based upon psignal(3) messages */
 /* #define NOJOB		; not use job control */
@@ -19,6 +22,9 @@
 /* #define SHOWSTREE		; show syntax tree with -n option */
 /* #define NOPOSIXUTIL		; not use POSIX utilities */
 /* #define STRICTPOSIX		; keep POSIX strictly */
+/* #define WITHNETWORK		; support network extensions */
+/* #define WITHSOCKET		; support network extensions with socket */
+/* #define WITHSOCKREDIR	; support network redirections with socket */
 
 #if	defined (BASHSTYLE) && !defined (BASHBUG)
 #define	BASHBUG
@@ -29,7 +35,8 @@
 #if	defined (MINIMUMSHELL) && !defined (NOALIAS)
 #define	NOALIAS
 #endif
-#if	(MSDOS || (defined (FD) && !defined (_NODOSCOMMAND))) \
+#if	(MSDOS \
+|| ((defined (FD) || defined (WITHNETWORK)) && !defined (_NODOSCOMMAND))) \
 && !defined (DOSCOMMAND)
 #define	DOSCOMMAND
 #endif
@@ -39,69 +46,75 @@
 #if	defined (MINIMUMSHELL) && !defined (NOPOSIXUTIL)
 #define	NOPOSIXUTIL
 #endif
+#if	defined (DEP_SOCKET) && !defined (WITHSOCKET)
+#define	WITHSOCKET
+#endif
+#if	defined (DEP_SOCKREDIR) && !defined (WITHSOCKREDIR)
+#define	WITHSOCKREDIR
+#endif
 
 #include "pathname.h"
 #include "termio.h"
 #include "wait.h"
 
 #ifdef	BASHSTYLE
-#define	ERRBREAK	continue
+#define	ERRBREAK		continue
 #else
-#define	ERRBREAK	break
+#define	ERRBREAK		break
 #endif
 
-#define	RET_SUCCESS	0
-#define	RET_FAIL	1
-#define	RET_SYNTAXERR	2
-#define	RET_FATALERR	2
+#define	RET_SUCCESS		0
+#define	RET_FAIL		1
+#define	RET_SYNTAXERR		2
+#define	RET_FATALERR		2
 #ifdef	SIGINT
-#define	RET_INTR	(SIGINT + 128)
+#define	RET_INTR		(SIGINT + 128)
 #else
-#define	RET_INTR	(2 + 128)
+#define	RET_INTR		(2 + 128)
 #endif
-#define	RET_NOTEXEC	126
-#define	RET_NOTFOUND	127
-#define	RET_NOTICE	255
-#define	RET_NULSYSTEM	256
-#define	READ_EOF	0x100
-#define	ENVPS1		"PS1"
-#define	ENVPS2		"PS2"
-#define	ENVPS4		"PS4"
-#define	ENVMAIL		"MAIL"
-#define	ENVMAILPATH	"MAILPATH"
-#define	ENVMAILCHECK	"MAILCHECK"
-#define	ENVLINENO	"LINENO"
-#define	ENVENV		"ENV"
-#define	ENVCDPATH	"CDPATH"
-#define	ENVPPID		"PPID"
-#define	ENVOPTARG	"OPTARG"
-#define	ENVOPTIND	"OPTIND"
-#define	ENVSHELL	"SHELL"
-#define	ENVCOMSPEC	"COMSPEC"
-#define	ENVREPLY	"REPLY"
+#define	RET_NOTEXEC		126
+#define	RET_NOTFOUND		127
+#define	RET_NOTICE		255
+#define	RET_NULSYSTEM		256
+#define	READ_EOF		0x100
+#define	ENVPS1			"PS1"
+#define	ENVPS2			"PS2"
+#define	ENVPS4			"PS4"
+#define	ENVMAIL			"MAIL"
+#define	ENVMAILPATH		"MAILPATH"
+#define	ENVMAILCHECK		"MAILCHECK"
+#define	ENVLINENO		"LINENO"
+#define	ENVENV			"ENV"
+#define	ENVCDPATH		"CDPATH"
+#define	ENVPPID			"PPID"
+#define	ENVOPTARG		"OPTARG"
+#define	ENVOPTIND		"OPTIND"
+#define	ENVSHELL		"SHELL"
+#define	ENVCOMSPEC		"COMSPEC"
+#define	ENVREPLY		"REPLY"
 
 #ifdef	TIOCGPGRP
-#define	gettcpgrp(f,g)	((ioctl(f, TIOCGPGRP, g) < 0) \
-			? (*(g) = (p_id_t)-1) : *(g))
+#define	gettcpgrp(f,g)		((ioctl(f, TIOCGPGRP, g) < 0) \
+				? (*(g) = (p_id_t)-1) : *(g))
 #else
-#define	gettcpgrp(f,g)	(*(g) = tcgetpgrp(f))
+#define	gettcpgrp(f,g)		(*(g) = tcgetpgrp(f))
 #endif
 #ifdef	TIOCSPGRP
-#define	settcpgrp(f,g)	ioctl(f, TIOCSPGRP, &(g))
+#define	settcpgrp(f,g)		ioctl(f, TIOCSPGRP, &(g))
 #else
-#define	settcpgrp	tcsetpgrp
+#define	settcpgrp		tcsetpgrp
 #endif
 
 #if	MSDOS
-#define	Xexit		exit
-#define	DEFPATH		":"
+#define	Xexit			exit
+#define	DEFPATH			":"
 # ifndef	_PATH_DEVNULL
 # define	_PATH_DEVNULL	"NULL"
 # endif
 #else
-#define	Xexit		_exit
-#define	DEFPATH		":/bin:/usr/bin"
-#define	DEFTERM		"dumb"
+#define	Xexit			_exit
+#define	DEFPATH			":/bin:/usr/bin"
+#define	DEFTERM			"dumb"
 # ifndef	_PATH_DEVNULL
 # define	_PATH_DEVNULL	"/dev/null"
 # endif
@@ -115,8 +128,8 @@ typedef struct _heredoc_t {
 	u_char flags;
 } heredoc_t;
 
-#define	HD_IGNORETAB	0001
-#define	HD_QUOTED	0002
+#define	HD_IGNORETAB		0001
+#define	HD_QUOTED		0002
 
 typedef struct _redirectlist {
 	int fd;
@@ -124,23 +137,23 @@ typedef struct _redirectlist {
 	u_char type;
 	int new;
 	int old;
-#if	defined (FD) && !defined (_NODOSDRIVE)
+#ifdef	DEP_DOSDRIVE
 	char *fakepipe;
 	int dosfd;
 #endif
 	struct _redirectlist *next;
 } redirectlist;
 
-#define	MD_NORMAL	0000
-#define	MD_READ		0001
-#define	MD_WRITE	0002
-#define	MD_RDWR		0003
-#define	MD_APPEND	0004
-#define	MD_FILEDESC	0010
-#define	MD_WITHERR	0020
-#define	MD_HEREDOC	0040
-#define	MD_FORCED	0100
-#define	MD_REST		0200
+#define	MD_NORMAL		0000
+#define	MD_READ			0001
+#define	MD_WRITE		0002
+#define	MD_RDWR			0003
+#define	MD_APPEND		0004
+#define	MD_FILEDESC		0010
+#define	MD_WITHERR		0020
+#define	MD_HEREDOC		0040
+#define	MD_FORCED		0100
+#define	MD_REST			0200
 
 typedef struct _command_t {
 	hashlist *hash;
@@ -151,41 +164,41 @@ typedef struct _command_t {
 	u_char id;
 } command_t;
 
-#define	CT_STATEMENT	0001
-#define	CT_NONE		0002
-#define	CT_BUILTIN	0003
-#define	CT_COMMAND	0004
-#define	CT_FUNCTION	0005
-#define	CT_ALIAS	0006
-#define	CT_LOGDRIVE	0007
+#define	CT_STATEMENT		0001
+#define	CT_NONE			0002
+#define	CT_BUILTIN		0003
+#define	CT_COMMAND		0004
+#define	CT_FUNCTION		0005
+#define	CT_ALIAS		0006
+#define	CT_LOGDRIVE		0007
 #ifdef	FD
-#define	CT_FDORIGINAL	0100
-#define	CT_FDINTERNAL	0200
+#define	CT_FDORIGINAL		0100
+#define	CT_FDINTERNAL		0200
 #endif
 
-#define	SM_IF		001
-#define	SM_THEN		002
-#define	SM_ELIF		003
-#define	SM_ELSE		004
-#define	SM_FI		005
-#define	SM_WHILE	006
-#define	SM_UNTIL	007
-#define	SM_DO		010
-#define	SM_DONE		011
-#define	SM_FOR		012
-#define	SM_IN		013
-#define	SM_CASE		014
-#define	SM_INCASE	015
-#define	SM_RPAREN	016
-#define	SM_CASEEND	017
-#define	SM_ESAC		020
-#define	SM_LPAREN	021
-#define	SM_FUNC		022
-#define	SM_LIST		023
-#define	SM_LISTEND	024
-#define	SM_ANOTHER	075
-#define	SM_CHILD	076
-#define	SM_STATEMENT	077
+#define	SM_IF			001
+#define	SM_THEN			002
+#define	SM_ELIF			003
+#define	SM_ELSE			004
+#define	SM_FI			005
+#define	SM_WHILE		006
+#define	SM_UNTIL		007
+#define	SM_DO			010
+#define	SM_DONE			011
+#define	SM_FOR			012
+#define	SM_IN			013
+#define	SM_CASE			014
+#define	SM_INCASE		015
+#define	SM_RPAREN		016
+#define	SM_CASEEND		017
+#define	SM_ESAC			020
+#define	SM_LPAREN		021
+#define	SM_FUNC			022
+#define	SM_LIST			023
+#define	SM_LISTEND		024
+#define	SM_ANOTHER		075
+#define	SM_CHILD		076
+#define	SM_STATEMENT		077
 
 #define	isstatement(comm)	((comm) && (comm) -> type == CT_STATEMENT)
 #define	notstatement(comm)	((comm) && (comm) -> type != CT_STATEMENT)
@@ -206,54 +219,54 @@ typedef struct _syntaxtree {
 	u_char flags;
 } syntaxtree;
 
-#define	OP_NONE	0
-#define	OP_FG	1
-#define	OP_BG	2
-#define	OP_AND	3
-#define	OP_OR	4
-#define	OP_PIPE	5
-#define	OP_NOT	6
-#define	OP_NOWN	7
+#define	OP_NONE			0
+#define	OP_FG			1
+#define	OP_BG			2
+#define	OP_AND			3
+#define	OP_OR			4
+#define	OP_PIPE			5
+#define	OP_NOT			6
+#define	OP_NOWN			7
 
-#define	CN_META	0001
-#define	CN_QUOT	0002
-#define	CN_STAT	0004
-#define	CN_INHR	0170
-#define	CN_SBST	0070
-#define	CN_VAR	0010
-#define	CN_COMM	0020
-#define	CN_EXPR	0030
-#define	CN_CASE	0040
-#define	CN_HDOC	0100
+#define	CN_META			0001
+#define	CN_QUOT			0002
+#define	CN_STAT			0004
+#define	CN_INHR			0170
+#define	CN_SBST			0070
+#define	CN_VAR			0010
+#define	CN_COMM			0020
+#define	CN_EXPR			0030
+#define	CN_CASE			0040
+#define	CN_HDOC			0100
 
-#define	ST_NODE	0001
-#define	ST_NEXT	0002
-#define	ST_TOP	0004
-#define	ST_NOWN	0010
-#define	ST_BUSY	0020
-#define	ST_HDOC	0040
+#define	ST_NODE			0001
+#define	ST_NEXT			0002
+#define	ST_TOP			0004
+#define	ST_NOWN			0010
+#define	ST_BUSY			0020
+#define	ST_HDOC			0040
 
 #ifdef	MINIMUMSHELL
-#define	hasparent(trp)	((trp) -> parent)
-#define	getparent(trp)	((trp) -> parent)
+#define	hasparent(trp)		((trp) -> parent)
+#define	getparent(trp)		((trp) -> parent)
 #else
-#define	hasparent(trp)	(!((trp) -> flags & ST_TOP) && (trp) -> parent)
-#define	getparent(trp)	(((trp) -> flags & ST_TOP) ? NULL : (trp) -> parent)
+#define	hasparent(trp)		(!((trp) -> flags & ST_TOP) && (trp) -> parent)
+#define	getparent(trp)		(((trp) -> flags & ST_TOP) \
+				? NULL : (trp) -> parent)
 #endif
-#define	statementbody(trp) \
-			((syntaxtree *)(((trp) -> comm) -> argv))
-#define	hascomm(trp)	((trp) -> comm && ((trp) -> comm) -> argc >= 0)
-#define	isopfg(trp)	((trp) -> type == OP_FG)
-#define	isopbg(trp)	((trp) -> type == OP_BG)
-#define	isopand(trp)	((trp) -> type == OP_AND)
-#define	isopor(trp)	((trp) -> type == OP_OR)
-#define	isoppipe(trp)	((trp) -> type == OP_PIPE)
+#define	statementbody(trp)	((syntaxtree *)(((trp) -> comm) -> argv))
+#define	hascomm(trp)		((trp) -> comm && ((trp) -> comm) -> argc >= 0)
+#define	isopfg(trp)		((trp) -> type == OP_FG)
+#define	isopbg(trp)		((trp) -> type == OP_BG)
+#define	isopand(trp)		((trp) -> type == OP_AND)
+#define	isopor(trp)		((trp) -> type == OP_OR)
+#define	isoppipe(trp)		((trp) -> type == OP_PIPE)
 #ifdef	MINIMUMSHELL
-#define	isopnot(trp)	(0)
-#define	isopnown(trp)	(0)
+#define	isopnot(trp)		(0)
+#define	isopnown(trp)		(0)
 #else
-#define	isopnot(trp)	((trp) -> type == OP_NOT)
-#define	isopnown(trp)	((trp) -> type == OP_NOWN)
+#define	isopnot(trp)		((trp) -> type == OP_NOT)
+#define	isopnown(trp)		((trp) -> type == OP_NOWN)
 #endif
 
 typedef struct _shbuiltintable {
@@ -262,14 +275,14 @@ typedef struct _shbuiltintable {
 	u_char flags;
 } shbuiltintable;
 
-#define	BT_NOGLOB	0001
-#define	BT_RESTRICT	0002
-#define	BT_POSIXSPECIAL	0004
-#define	BT_NOKANJIFGET	0010
-#define	BT_DISABLE	0020
-#define	BT_FILENAME	0040
+#define	BT_NOGLOB		0001
+#define	BT_RESTRICT		0002
+#define	BT_POSIXSPECIAL		0004
+#define	BT_NOKANJIFGET		0010
+#define	BT_DISABLE		0020
+#define	BT_FILENAME		0040
 
-#define	SMPREV	4
+#define	SMPREV			4
 typedef struct _statementtable {
 	int (NEAR *func)__P_((syntaxtree *));
 	CONST char *ident;
@@ -277,19 +290,19 @@ typedef struct _statementtable {
 	u_char prev[SMPREV];
 } statementtable;
 
-#define	STT_TYPE	0017
-#define	STT_FOR		0001
-#define	STT_CASE	0002
-#define	STT_IN		0003
-#define	STT_INCASE	0004
-#define	STT_CASEEND	0005
-#define	STT_LIST	0006
-#define	STT_LPAREN	0007
-#define	STT_FUNC	0010
-#define	STT_NEEDLIST	0020
-#define	STT_NEEDIDENT	0040
-#define	STT_NEEDNONE	0100
-#define	STT_NEEDCOMM	0200
+#define	STT_TYPE		0017
+#define	STT_FOR			0001
+#define	STT_CASE		0002
+#define	STT_IN			0003
+#define	STT_INCASE		0004
+#define	STT_CASEEND		0005
+#define	STT_LIST		0006
+#define	STT_LPAREN		0007
+#define	STT_FUNC		0010
+#define	STT_NEEDLIST		0020
+#define	STT_NEEDIDENT		0040
+#define	STT_NEEDNONE		0100
+#define	STT_NEEDCOMM		0200
 
 typedef struct _opetable {
 	u_char op;
@@ -299,7 +312,7 @@ typedef struct _opetable {
 
 typedef struct _pipelist {
 	char *file;
-	FILE *fp;
+	XFILE *fp;
 	int fd;
 	int new;
 	int old;
@@ -332,7 +345,7 @@ typedef struct _shaliastable {
 	u_char flags;
 } shaliastable;
 
-#define	AL_USED		0001
+#define	AL_USED			0001
 
 typedef struct _signaltable {
 	int sig;
@@ -342,15 +355,15 @@ typedef struct _signaltable {
 	u_char flags;
 } signaltable;
 
-#define	TR_STAT		0007
-#define	TR_IGN		0001
-#define	TR_TERM		0002
-#define	TR_STOP		0003
-#define	TR_TRAP		0004
-#define	TR_BLOCK	0010
-#define	TR_NOTRAP	0020
-#define	TR_CATCH	0040
-#define	TR_READBL	0100
+#define	TR_STAT			0007
+#define	TR_IGN			0001
+#define	TR_TERM			0002
+#define	TR_STOP			0003
+#define	TR_TRAP			0004
+#define	TR_BLOCK		0010
+#define	TR_NOTRAP		0020
+#define	TR_CATCH		0040
+#define	TR_READBL		0100
 
 typedef struct _ulimittable {
 	u_char opt;
@@ -413,7 +426,7 @@ extern int jobok;
 extern int emacsmode;
 extern int vimode;
 # endif
-# ifndef	_NOPTY
+# ifdef	DEP_PTY
 extern int shptymode;
 # endif
 # if	!MSDOS
@@ -428,11 +441,11 @@ extern CONST signaltable signallist[];
 
 extern VOID prepareexit __P_((int));
 extern VOID Xexit2 __P_((int));
-extern VOID execerror __P_((CONST char *, int, int));
+extern VOID execerror __P_((char *CONST *, CONST char *, int, int));
 extern VOID doperror __P_((CONST char *, CONST char *));
 extern int isnumeric __P_((CONST char *));
 #if	!MSDOS
-extern VOID dispsignal __P_((int, int, FILE *));
+extern VOID dispsignal __P_((int, int, XFILE *));
 extern int waitjob __P_((p_id_t, wait_pid_t *, int));
 extern int waitchild __P_((p_id_t, syntaxtree *));
 #endif
@@ -474,13 +487,11 @@ extern int completeshellvar __P_((CONST char *, int, int, char ***));
 extern int completeshellcomm __P_((CONST char *, int, int, char ***));
 #endif
 extern int getsubst __P_((int, char **, char ***, int **));
-extern VOID printstree __P_((syntaxtree *, int, FILE *));
-#if	defined (FD) || !defined (NOPOSIXUTIL)
+extern VOID printstree __P_((syntaxtree *, int, XFILE *));
 extern int tinygetopt __P_((syntaxtree *, CONST char *, int *));
-#endif
 extern int setexport __P_((CONST char *));
 extern int setronly __P_((CONST char *));
-extern int typeone __P_((CONST char *, FILE *));
+extern int typeone __P_((CONST char *, XFILE *));
 #ifndef	FDSH
 extern char **getsimpleargv __P_((syntaxtree *));
 #endif

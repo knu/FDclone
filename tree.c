@@ -8,17 +8,19 @@
 #include "func.h"
 #include "kanji.h"
 
+#define	DIRFIELD		3
+#define	TREEFIELD		(((dircountlimit > 0) \
+				? (n_column * 3) / 5 : n_column) - 2)
+#define	FILEFIELD		((dircountlimit > 0) \
+				? (n_column * 2) / 5 - 3 : 0)
+#define	bufptr(y)		(&(tr_scr[(y - 1) * (TREEFIELD + 1)]))
+
 #ifndef	_NOTREE
 
 extern char fullpath[];
+extern int autoupdate;
 extern int win_x;
 extern int win_y;
-
-#define	DIRFIELD	3
-#define	TREEFIELD	(((dircountlimit > 0) \
-			? (n_column * 3) / 5 : n_column) - 2)
-#define	FILEFIELD	((dircountlimit > 0) ? (n_column * 2) / 5 - 3 : 0)
-#define	bufptr(y)	(&(tr_scr[(y - 1) * (TREEFIELD + 1)]))
 
 static int NEAR evaldir __P_((CONST char *, int));
 static treelist *NEAR maketree __P_((CONST char *, treelist *, treelist *,
@@ -71,7 +73,7 @@ int disp;
 		Xputch2('|');
 		Xputterm(L_CLEAR);
 	}
-	strcpy(path, dir);
+	strcpy2(path, dir);
 #if	MSDOS
 	cp = path;
 	if (_dospath(cp)) cp += 2;
@@ -86,7 +88,7 @@ int disp;
 	if (!(dirp = Xopendir(dir))) return(0);
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		strcpy(&(path[len]), dp -> d_name);
+		strcpy2(&(path[len]), dp -> d_name);
 		if (limit-- <= 0 || (stat2(path, &st) >= 0 && s_isdir(&st))) {
 			if (!disp) {
 				i++;
@@ -119,7 +121,7 @@ CONST char *path;
 treelist *list, *parent;
 int level, *maxp;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char tmp[MAXPATHLEN];
 #endif
 #ifndef	NODIRLOOP
@@ -145,14 +147,21 @@ int level, *maxp;
 		return(NULL);
 	}
 
-	cp = path;
-#ifdef	_USEDOSPATH
-	if (_dospath(cp)) cp += 2;
-#endif
-#ifdef	DOUBLESLASH
-	if ((len = isdslash(path))) cp = &(path[len]);
+#ifdef	DEP_DOSPATH
+	if (_dospath(path)) len = 2;
 	else
 #endif
+#ifdef	DOUBLESLASH
+	if ((len = isdslash(path))) /*EMPTY*/;
+	else
+#endif
+#ifdef	DEP_URLPATH
+	if ((len = _urlpath(path, NULL, NULL))) /*EMPTY*/;
+	else
+#endif
+	len = 0;
+	cp = &(path[len]);
+
 	if (*cp == _SC_) cp++;
 	else cp = strdelim(path, 0);
 	len = (cp) ? cp - path : strlen(path);
@@ -168,7 +177,7 @@ int level, *maxp;
 
 	*maxp = 0;
 	i = _chdir2(dir);
-	free(dir);
+	free2(dir);
 	if (i < 0 || !(dirp = Xopendir(curpath))) return(NULL);
 
 	i = 0;
@@ -232,6 +241,10 @@ int level, *maxp;
 	if (list) for (i = 0; i < *maxp; i++) {
 #ifndef	NODIRLOOP
 		if (!(list[i].name)) lp = NULL;
+# ifdef	DEP_URLPATH
+		else if (list[i].dev == (dev_t)-1 || list[i].ino == (ino_t)-1)
+			lp = NULL;
+# endif
 		else for (lp = parent; lp; lp = lp -> parent)
 			if (lp -> dev == list[i].dev
 			&& lp -> ino == list[i].ino)
@@ -241,7 +254,7 @@ int level, *maxp;
 			list[i].max = 0;
 		}
 		else
-#endif
+#endif	/* !NODIRLOOP */
 		if (list[i].sub)
 			list[i].sub = maketree(subdir, NULL, &(list[i]),
 				level + 1, &(list[i].max));
@@ -256,10 +269,10 @@ int level, *maxp;
 #if	MSDOS
 	if (_dospath(path)) path += 2;
 #endif
-#if	MSDOS || defined (_NODOSDRIVE)
-	if (*path == _SC_)
-#else
+#ifdef	DEP_DOSEMU
 	if (*path == _SC_ || _dospath(path))
+#else
+	if (*path == _SC_)
 #endif
 	{
 		if (_chdir2(fullpath) < 0) error(fullpath);
@@ -366,7 +379,7 @@ int max, nest;
 		if (tr_bottom == tr_line) {
 			lp = tr_root;
 			tr_no = i;
-			if (list[i].name) strcpy(treepath, list[i].name);
+			if (list[i].name) strcpy2(treepath, list[i].name);
 			else *treepath = '\0';
 		}
 		tr_bottom++;
@@ -408,7 +421,7 @@ treelist *list;
 		memcpy((char *)lp, (char *)&(list -> sub[0]),
 			sizeof(treelist));
 		for (i = 1; i < list -> max; i++) {
-			if (list -> sub[i].name) free(list -> sub[i].name);
+			free2(list -> sub[i].name);
 			list -> sub[i].name = NULL;
 		}
 	}
@@ -418,7 +431,8 @@ treelist *list;
 		list -> max = 0;
 		return(1);
 	}
-	for (cp = treepath, i = 0; (cp = strdelim(cp, 0)); cp++, i++);
+	for (cp = treepath, i = 0; (cp = strdelim(cp, 0)); cp++, i++)
+		/*EMPTY*/;
 	lptmp = maketree(curpath, list -> sub, list, i, &(list -> max));
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
 	if (list -> max < 0) {
@@ -427,7 +441,7 @@ treelist *list;
 		else {
 			list -> max = 2;
 			list -> sub[1].name = NULL;
-			free(lp);
+			free2(lp);
 		}
 		return(i);
 	}
@@ -438,14 +452,14 @@ treelist *list;
 			&& !strpathcmp(lp -> name, lptmp[i].name))
 				break;
 		if (i < list -> max) {
-			free(lptmp[i].name);
+			free2(lptmp[i].name);
 			for (; i > 0; i--) memcpy((char *)&(lptmp[i]),
 					(char *)&(lptmp[i - 1]),
 					sizeof(treelist));
 			memcpy((char *)&(lptmp[0]), (char *)lp,
 				sizeof(treelist));
 		}
-		free(lp);
+		free2(lp);
 	}
 	list -> sub = lptmp;
 
@@ -467,7 +481,7 @@ treelist *list;
 		cp++;
 	}
 	for (i = 0; i < list -> max; i++) {
-		strcpy(cp, list -> sub[i].name);
+		strcpy2(cp, list -> sub[i].name);
 		if (!expandall(&(list -> sub[i]))) return(0);
 	}
 
@@ -511,6 +525,9 @@ static int NEAR treedown(VOID_A)
 #ifdef	DOUBLESLASH
 	else if (cp - treepath < isdslash(treepath)) cp++;
 #endif
+#ifdef	DEP_URLPATH
+	else if (cp - treepath < _urlpath(treepath, NULL, NULL)) cp++;
+#endif
 	*cp = '\0';
 	if (!expandtree(tr_cur)) {
 		tr_line = oy;
@@ -532,10 +549,10 @@ int max;
 
 	for (i = n = 0; i < max; i++) {
 		n++;
-		if (list[i].name) free(list[i].name);
+		free2(list[i].name);
 		if (list[i].sub) n += freetree(list[i].sub, list[i].max);
 	}
-	free(list);
+	free2(list);
 
 	return(n);
 }
@@ -565,9 +582,9 @@ static int NEAR _tree_input(VOID_A)
 	int ch, min, tmp, half;
 
 	keyflush();
-	Xgetkey(-1, 0);
-	ch = Xgetkey(1, 0);
-	Xgetkey(-1, 0);
+	Xgetkey(-1, 0, 0);
+	ch = Xgetkey(1, 0, autoupdate);
+	Xgetkey(-1, 0, 0);
 
 	old = tr_cur;
 	min = filetop(win);
@@ -667,14 +684,17 @@ static int NEAR _tree_input(VOID_A)
 			|| !*(cwd = evalpath(cwd, 0)))
 				break;
 			if (chdir2(cwd) >= 0) {
-				free(cwd);
+				free2(cwd);
 				break;
 			}
 			warning(-1, cwd);
 			ch = '\0';
-			free(cwd);
+			free2(cwd);
 			break;
 		case K_CTRL('L'):
+#if	FD >= 3
+		case K_TIMEOUT:
+#endif
 			rewritefile(1);
 			break;
 		case K_ESC:
@@ -698,7 +718,7 @@ static int NEAR _tree_input(VOID_A)
 static char *NEAR _tree(VOID_A)
 {
 #ifndef	NODIRLOOP
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 	char tmp[MAXPATHLEN];
 # endif
 	struct stat st;
@@ -718,7 +738,7 @@ static char *NEAR _tree(VOID_A)
 #endif
 	treepath = path;
 
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	if (dospath(nullstr, path)) len = 3;
 	else
 #endif
@@ -727,12 +747,16 @@ static char *NEAR _tree(VOID_A)
 		if ((len = isdslash(fullpath))) /*EMPTY*/;
 		else
 #endif
+#ifdef	DEP_URLPATH
+		if ((len = _urlpath(fullpath, NULL, NULL))) /*EMPTY*/;
+		else
+#endif
 #if	MSDOS
 		len = 3;
 #else
 		len = 1;
 #endif
-		strcpy(path, fullpath);
+		strcpy2(path, fullpath);
 	}
 	tr_cur[0].name = strndup2(path, len);
 
@@ -778,7 +802,7 @@ static char *NEAR _tree(VOID_A)
 		Xtflush();
 
 		if ((ch = _tree_input()) == 'l') {
-			free(tr_scr);
+			free2(tr_scr);
 			freetree(tr_root, 1);
 			return(fullpath);
 		}
@@ -796,7 +820,7 @@ static char *NEAR _tree(VOID_A)
 		}
 	} while (ch != K_ESC && ch != K_CR);
 
-	free(tr_scr);
+	free2(tr_scr);
 	freetree(tr_root, 1);
 	treepath = NULL;
 	if (ch == K_ESC) return(NULL);
@@ -808,7 +832,7 @@ static char *NEAR _tree(VOID_A)
 char *tree(cleanup, drvp)
 int cleanup, *drvp;
 {
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	int drv;
 #endif
 	char *path, *dupfullpath;
@@ -817,8 +841,8 @@ int cleanup, *drvp;
 		warning(0, NOROW_K);
 		return(NULL);
 	}
-#ifndef	_NODOSDRIVE
-	if (preparedrv(dospath(fullpath, NULL), &drv) < 0) {
+#ifdef	DEP_PSEUDOPATH
+	if ((drv = preparedrv(fullpath, NULL, NULL)) < 0) {
 		warning(-1, fullpath);
 		return(NULL);
 	}
@@ -827,16 +851,16 @@ int cleanup, *drvp;
 	do {
 		path = _tree();
 	} while (path == fullpath);
-#ifndef	_NODOSDRIVE
-	if (drvp && preparedrv(dospath(path, NULL), drvp) < 0) {
+#ifdef	DEP_PSEUDOPATH
+	if (drvp && (*drvp = preparedrv(path, NULL, NULL)) < 0) {
 		warning(-1, path);
-		free(path);
+		free2(path);
 		path = NULL;
 	}
 #endif
 	if (chdir2(dupfullpath) < 0) lostcwd(NULL);
-	free(dupfullpath);
-#ifndef	_NODOSDRIVE
+	free2(dupfullpath);
+#ifdef	DEP_PSEUDOPATH
 	shutdrv(drv);
 #endif
 	if (cleanup) rewritefile(1);

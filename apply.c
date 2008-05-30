@@ -4,14 +4,12 @@
  *	apply function to files
  */
 
-#include <fcntl.h>
 #include "fd.h"
+#include "time.h"
+#include "realpath.h"
+#include "parse.h"
 #include "func.h"
 #include "kanji.h"
-
-#ifndef	EISDIR
-#define	EISDIR			EACCES
-#endif
 
 #define	MAXTIMESTR		8
 #define	ATTRWIDTH		10
@@ -130,10 +128,10 @@ static time_t destatime = (time_t)-1;
 #ifndef	_NOEXTRACOPY
 static char *forwardpath = NULL;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 static int destdrive = -1;
 #endif
-#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+#if	!defined (_NOEXTRACOPY) && defined (DEP_DOSDRIVE)
 static int forwarddrive = -1;
 #endif
 #ifndef	_NOEXTRACOPY
@@ -153,7 +151,7 @@ CONST char *path, *org;
 
 	org = (org) ? getrealpath(org, org2, NULL) : Xgetwd(org2);
 	if (org != org2) return(0);
-#ifdef	_USEDOSPATH
+#ifdef	DEP_DOSPATH
 	if (dospath(path, NULL) != dospath(org2, NULL)) return(0);
 #endif
 	if (getrealpath(path, path2, NULL) != path2) return(0);
@@ -164,7 +162,7 @@ CONST char *path, *org;
 
 static int NEAR islowerdir(VOID_A)
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char orgpath[MAXPATHLEN];
 #endif
 	CONST char *org;
@@ -174,12 +172,12 @@ static int NEAR islowerdir(VOID_A)
 	if (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos])))
 		return(0);
 	org = filelist[filepos].name;
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	org = nodospath(orgpath, org);
 #endif
-	strcpy(path, destpath);
+	strcpy2(path, destpath);
 	top = path;
-#ifdef	_USEDOSPATH
+#ifdef	DEP_DOSPATH
 	if (dospath(path, NULL) != dospath(org, NULL)) return(0);
 	if (_dospath(path)) top += 2;
 #endif
@@ -210,7 +208,7 @@ CONST char *mes, *arg;
 		dir[0] = '.';
 		dir[1] = '\0';
 	}
-#ifdef	_USEDOSPATH
+#ifdef	DEP_DOSPATH
 	else if (_dospath(dir) && !dir[2]) {
 		dir = realloc2(dir, 4);
 		dir[2] = '.';
@@ -218,17 +216,17 @@ CONST char *mes, *arg;
 	}
 #endif
 
-#ifndef	_NODOSDRIVE
-	if (preparedrv(dospath3(dir), &destdrive) < 0) {
+#ifdef	DEP_PSEUDOPATH
+	if ((destdrive = preparedrv(dir, NULL, NULL)) < 0) {
 		warning(-1, dir);
-		free(dir);
+		free2(dir);
 		return(NULL);
 	}
 #endif
 	if (preparedir(dir) < 0) {
 		warning(-1, dir);
-		free(dir);
-#ifndef	_NODOSDRIVE
+		free2(dir);
+#ifdef	DEP_DOSDRIVE
 		shutdrv(destdrive);
 		destdrive = -1;
 #endif
@@ -247,16 +245,16 @@ struct stat *stp;
 	char *tmp;
 	int n;
 
-	strcpy(dest, destpath);
+	strcpy2(dest, destpath);
 	cp = file;
 	if (destdir) {
 		for (n = 0; (tmp = strdelim(cp, 0)); n++) cp = tmp + 1;
 		for (tmp = destdir; n > 0 && (tmp = strdelim(tmp, 0)); tmp++)
 			n--;
 		if (tmp) *tmp = '\0';
-		if (*destdir) strcpy(strcatdelim(dest), destdir);
+		if (*destdir) strcpy2(strcatdelim(dest), destdir);
 	}
-	strcpy(strcatdelim(dest), cp);
+	strcpy2(strcatdelim(dest), cp);
 
 	if (Xlstat(file, stp) < 0) {
 		warning(-1, file);
@@ -270,7 +268,7 @@ static int NEAR getcopypolicy(s)
 CONST char *s;
 {
 #ifndef	_NOEXTRACOPY
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_PSEUDOPATH
 	int dupdestdrive;
 # endif
 	char *cp;
@@ -307,19 +305,19 @@ CONST char *s;
 			val[0] = CPP_FORWUPDATE;
 			val[1] = CPP_FORWOVERWRITE;
 			if (selectstr(&n, 2, 0, str, val) != K_CR) continue;
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_PSEUDOPATH
 			dupdestdrive = destdrive;
 			destdrive = -1;
 # endif
 
 			if (!(cp = getdestdir(FRWDD_K, NULL))) continue;
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_PSEUDOPATH
 			forwarddrive = destdrive;
 			destdrive = dupdestdrive;
 # endif
 			if (issamedir(cp, NULL) || issamedir(cp, destpath)) {
 				warning(EINVAL, cp);
-				free(cp);
+				free2(cp);
 				continue;
 			}
 			forwardpath = cp;
@@ -415,7 +413,7 @@ struct stat *stp1, *stp2;
 				Xputterm(L_CLEAR);
 				Xkanjiputs(cp);
 			}
-			free(cp);
+			free2(cp);
 			if (n < 0) return(n);
 		}
 		switch (n) {
@@ -429,8 +427,8 @@ struct stat *stp1, *stp2;
 				lcmdline = L_INFO;
 				tmp = inputstr(NEWNM_K, 1, -1, NULL, -1);
 				if (!tmp) return(CHK_ERROR);
-				strcpy(getbasename(dest), tmp);
-				free(tmp);
+				strcpy2(getbasename(dest), tmp);
+				free2(tmp);
 				if (Xlstat(dest, stp2) < 0) {
 					stp2 -> st_mode = S_IWUSR;
 					if (errno == ENOENT) return(CHK_OK);
@@ -495,15 +493,22 @@ int mode;
 #if	MSDOS
 	if (Xaccess(path, mode) >= 0) return(CHK_OK);
 #else	/* !MSDOS */
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 	if (dospath2(path)) {
 		if (Xaccess(path, mode) >= 0) return(CHK_OK);
 		stp = NULL;
 	}
 	else
 # endif
+# ifdef	DEP_URLPATH
+	if (urlpath(path, NULL, NULL, NULL)) {
+		if (Xaccess(path, mode) >= 0) return(CHK_OK);
+		stp = NULL;
+	}
+	else
+# endif
 	{
-		if (nodoslstat(path, &st) < 0) {
+		if (reallstat(path, &st) < 0) {
 			warning(-1, path);
 			return(CHK_ERROR);
 		}
@@ -513,7 +518,7 @@ int mode;
 		else if (tmp == path) copyrootpath(dir);
 		else strncpy2(dir, path, tmp - path);
 
-		if (nodoslstat(dir, &st) < 0) {
+		if (reallstat(dir, &st) < 0) {
 			warning(-1, dir);
 			return(CHK_ERROR);
 		}
@@ -549,7 +554,7 @@ int mode;
 		copycolumn = -1;
 #endif
 		n = getremovepolicy(cp, 0);
-		free(cp);
+		free2(cp);
 	}
 	if (n > 0) n -= RMP_BIAS;
 
@@ -566,7 +571,7 @@ struct stat *stp;
 	struct stat st1, st2;
 # endif
 
-# ifdef	_USEDOSPATH
+# ifdef	DEP_DOSPATH
 	if (dospath(path, NULL) != dospath(destpath, NULL)) {
 		if (stp && Xlstat(path, stp) < 0) return(-1);
 		return(1);
@@ -720,7 +725,7 @@ int isdir, narg;
 		if (getcopypolicy(PRECP_K) < 0) return(-1);
 	if (prepareprogress(isdir, countcopysize)) return(-1);
 #endif	/* !_NOEXTRACOPY */
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_DOSDRIVE
 	if (dospath3(nullstr)) waitmes();
 #endif
 
@@ -814,7 +819,7 @@ CONST char *path;
 		if (touchfile(dest, &st1) >= 0) destnlink |= TCH_MODE;
 	}
 
-	if (destdir) free(destdir);
+	free2(destdir);
 	destdir = &(dest[strlen(destpath)]);
 	while (*destdir == _SC_) destdir++;
 	destdir = strdup2(destdir);
@@ -1146,11 +1151,11 @@ int yy;
 	else {
 		lcmdline = yy;
 		warning(ENOENT, s);
-		free(s);
+		free2(s);
 		return(-1);
 	}
 
-	free(s);
+	free2(s);
 	if (uid != attr -> uid) {
 		attr -> uid = uid;
 		attr -> nlink |= TCH_UID;
@@ -1182,11 +1187,11 @@ int yy;
 	else {
 		lcmdline = yy;
 		warning(ENOENT, s);
-		free(s);
+		free2(s);
 		return(-1);
 	}
 
-	free(s);
+	free2(s);
 	if (gid != attr -> gid) {
 		attr -> gid = gid;
 		attr -> nlink |= TCH_GID;
@@ -1214,7 +1219,7 @@ int flag;
 	dupwin_x = win_x;
 	dupwin_y = win_y;
 	subwindow = 1;
-	Xgetkey(-1, 0);
+	Xgetkey(-1, 0, 0);
 
 	yy = filetop(win);
 	while (yy + WMODELINE + 5 > n_line - 1) yy--;
@@ -1268,7 +1273,7 @@ int flag;
 		else
 #endif
 		mask = (1 << (8 - x));
-		switch (ch = Xgetkey(1, 0)) {
+		switch (ch = Xgetkey(1, 0, 0)) {
 			case K_UP:
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 				if (x > ATTRWIDTH) {
@@ -1500,7 +1505,7 @@ int flag;
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 	subwindow = 0;
-	Xgetkey(-1, 0);
+	Xgetkey(-1, 0, 0);
 
 	if (ch == K_ESC) return(0);
 
@@ -1595,7 +1600,7 @@ int applyfile(func, endmes)
 int (*func)__P_((CONST char *));
 CONST char *endmes;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int i, ret, old, dupfilepos;
@@ -1663,7 +1668,7 @@ int *maxp, depth;
 	cp = strcatdelim(dir);
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		strcpy(cp, dp -> d_name);
+		strcpy2(cp, dp -> d_name);
 
 		if (Xlstat(dir, &st) < 0 || !s_isdir(&st)) continue;
 		dirlist = b_realloc(dirlist, *maxp, char *);
@@ -1711,7 +1716,7 @@ int verbose;
 #endif
 
 	if (!funcd1) order = (funcd2) ? ORD_NOPREDIR : ORD_NODIR;
-	strcpy(path, dir);
+	strcpy2(path, dir);
 
 	ret = APL_OK;
 	max = 0;
@@ -1725,8 +1730,9 @@ int verbose;
 	&& (ret = (*funcd1)(dir)) < 0) {
 		if (ret == APL_ERROR) warning(-1, dir);
 		if (dirlist) {
-			for (ndir = 0; ndir < max; ndir++) free(dirlist[ndir]);
-			free(dirlist);
+			for (ndir = 0; ndir < max; ndir++)
+				free2(dirlist[ndir]);
+			free2(dirlist);
 		}
 		return(ret);
 	}
@@ -1746,11 +1752,11 @@ int verbose;
 		else ret = _applydir(dirlist[ndir], funcf,
 			funcd1, funcd2, ORD_NODIR, NULL, verbose);
 		if (ret == APL_CANCEL) {
-			for (; ndir < max; ndir++) free(dirlist[ndir]);
-			free(dirlist);
+			for (; ndir < max; ndir++) free2(dirlist[ndir]);
+			free2(dirlist);
 			return(ret);
 		}
-		free(dirlist[ndir]);
+		free2(dirlist[ndir]);
 
 		if (verbose) {
 			Xlocate(0, L_CMDLINE);
@@ -1759,7 +1765,7 @@ int verbose;
 			Xtflush();
 		}
 	}
-	if (dirlist) free(dirlist);
+	free2(dirlist);
 
 	if (!(dirp = Xopendir(dir))) warning(-1, dir);
 	else {
@@ -1769,7 +1775,7 @@ int verbose;
 				break;
 			}
 			if (isdotdir(dp -> d_name)) continue;
-			strcpy(fname, dp -> d_name);
+			strcpy2(fname, dp -> d_name);
 
 			if (Xlstat(path, &st) < 0) warning(-1, path);
 			else if (s_isdir(&st)) continue;
@@ -1820,7 +1826,7 @@ CONST char *endmes;
 		realpath2(dir, path, 0);
 		dir = path;
 	}
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	else dir = nodospath(path, dir);
 #endif
 
@@ -1841,10 +1847,10 @@ int tr;
 #ifdef	_NOTREE
 	destpath = getdestdir(COPYD_K, arg);
 #else
-# ifdef	_NODOSDRIVE
-	destpath = (tr) ? tree(1, NULL) : getdestdir(COPYD_K, arg);
-# else
+# ifdef	DEP_PSEUDOPATH
 	destpath = (tr) ? tree(1, &destdrive) : getdestdir(COPYD_K, arg);
+# else
+	destpath = (tr) ? tree(1, NULL) : getdestdir(COPYD_K, arg);
 # endif
 #endif	/* !_NOTREE */
 
@@ -1853,7 +1859,7 @@ int tr;
 	if (mark > 0
 	|| (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos])))) {
 		if (preparecopy(0, mark) < 0) {
-			free(destpath);
+			free2(destpath);
 			return(FNC_CANCEL);
 		}
 		VOID_C applyfile(safecopy, ENDCP_K);
@@ -1861,13 +1867,13 @@ int tr;
 #ifdef	_NOEXTRACOPY
 	else if (issamedir(destpath, NULL)) {
 		warning(EEXIST, filelist[filepos].name);
-		free(destpath);
+		free2(destpath);
 		return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	}
 #endif
 	else {
 		if (preparecopy(1, 1) < 0) {
-			free(destpath);
+			free2(destpath);
 			return(FNC_CANCEL);
 		}
 		order = (islowerdir()) ? ORD_LOWER : ORD_NORMAL;
@@ -1875,17 +1881,17 @@ int tr;
 			cpdir, touchdir, order, ENDCP_K);
 	}
 
-	free(destpath);
-	if (destdir) free(destdir);
+	free2(destpath);
+	free2(destdir);
 #ifndef	_NOEXTRACOPY
-	if (forwardpath) free(forwardpath);
+	free2(forwardpath);
 	forwardpath = NULL;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	shutdrv(destdrive);
 	destdrive = -1;
 #endif
-#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+#if	!defined (_NOEXTRACOPY) && defined (DEP_DOSDRIVE)
 	shutdrv(forwarddrive);
 	forwarddrive = -1;
 #endif
@@ -1898,7 +1904,7 @@ int movefile(arg, tr)
 CONST char *arg;
 int tr;
 {
-#ifdef	_USEDOSEMU
+#ifdef	DEP_DOSEMU
 	char path[MAXPATHLEN];
 #endif
 	int ret;
@@ -1910,22 +1916,22 @@ int tr;
 #ifdef	_NOTREE
 	destpath = getdestdir(MOVED_K, arg);
 #else
-# ifdef	_NODOSDRIVE
-	destpath = (tr) ? tree(1, NULL) : getdestdir(MOVED_K, arg);
-# else
+# ifdef	DEP_PSEUDOPATH
 	destpath = (tr) ? tree(1, &destdrive) : getdestdir(MOVED_K, arg);
+# else
+	destpath = (tr) ? tree(1, NULL) : getdestdir(MOVED_K, arg);
 # endif
 #endif	/* !_NOTREE */
 
 	if (!destpath) return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	if (issamedir(destpath, NULL)) {
-		free(destpath);
+		free2(destpath);
 		return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	}
 	destdir = NULL;
 	if (mark > 0) {
 		if (preparemove(0, mark) < 0) {
-			free(destpath);
+			free2(destpath);
 			return(FNC_CANCEL);
 		}
 		filepos = applyfile(safemove, ENDMV_K);
@@ -1940,10 +1946,10 @@ int tr;
 		if (ret < 0) warning(-1, filelist[filepos].name);
 		else if (ret) {
 			if (preparemove(1, 1) < 0) {
-				free(destpath);
+				free2(destpath);
 				return(FNC_CANCEL);
 			}
-# ifndef	_NODOSDRIVE
+# ifdef	DEP_DOSDRIVE
 			if (dospath3(nullstr)) waitmes();
 # endif
 			ret = applydir(filelist[filepos].name, safemove,
@@ -1953,7 +1959,7 @@ int tr;
 #endif	/* !_NOEXTRACOPY */
 		{
 			if (preparemove(0, 1) < 0) {
-				free(destpath);
+				free2(destpath);
 				return(FNC_CANCEL);
 			}
 			ret = safemove(fnodospath(path, filepos));
@@ -1964,17 +1970,17 @@ int tr;
 	}
 
 	if (filepos >= maxfile) filepos = maxfile - 1;
-	free(destpath);
-	if (destdir) free(destdir);
+	free2(destpath);
+	free2(destdir);
 #ifndef	_NOEXTRACOPY
-	if (forwardpath) free(forwardpath);
+	free2(forwardpath);
 	forwardpath = NULL;
 #endif
-#ifndef	_NODOSDRIVE
+#ifdef	DEP_PSEUDOPATH
 	shutdrv(destdrive);
 	destdrive = -1;
 #endif
-#if	!defined (_NOEXTRACOPY) && !defined (_NODOSDRIVE)
+#if	!defined (_NOEXTRACOPY) && defined (DEP_DOSDRIVE)
 	shutdrv(forwarddrive);
 	forwarddrive = -1;
 #endif

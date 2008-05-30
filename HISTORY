@@ -1,3 +1,23 @@
+Ver. 3.00	URL ドライブ機能の追加。
+ (05/31/08)	リダイレクトファイルとしてソケットを扱うスキーム修飾子の追加。
+		メッセージカタログ機能の追加。
+		各種設定登録数の上限を撤廃。
+		EDIT_CONFIG が引数に内部変数名を指定可能に。
+		内部変数 AUTOUPDATE の追加。
+		内部変数 VERSION の追加。
+		内部変数 URLDRIVE, URLKCODE, HIDEPASSWD の追加。
+		内部変数 URLOPTIONS, URLTIMEOUT の追加。
+		内部変数 FTPPROXY, FTPLOGFILE, FTPADDRESS の追加。
+		内部変数 HTTPPROXY, HTTPLOGFILE の追加。
+		内部変数 HTMLLOGFILE の追加。
+		組込みコマンド accept, socketinfo, addcr の追加。
+		組込みコマンド echo に -N オプションの追加。
+		組込みコマンド read に -N オプションの追加。
+		アーカイブブラウザフォーマット %w, %p, %B, %b, %/, %! の追加。
+		複製用リダイレクト記述子 <>&, ><& の追加。
+		クローズ用リダイレクト記述子 <>-, <>&-, ><-, ><&- の追加。
+		リダイレクト記述子 >< の既定ファイル記述子を標準出力に変更。
+
 Ver. 2.09i	Darwin 9.x (Mac OS X 10.5) でコンパイルに失敗する点を修正。
  (04/19/08)	長いファイル名の表示時に画面がおかしくなることがある点を修正。
 		FAT file system のディレクトリ書込み不具合を修正。

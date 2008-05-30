@@ -4,15 +4,15 @@
  *	backend of terminal emulation
  */
 
-#include <signal.h>
 #include "fd.h"
 #include "termio.h"
+#include "kconv.h"
 #include "func.h"
 
-#ifndef	_NOORIGSHELL
+#ifdef	DEP_ORIGSHELL
 #include "system.h"
 #endif
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 #include "termemu.h"
 #endif
 
@@ -36,7 +36,7 @@ typedef struct _ptyterm_t {
 	short escparam[MAXESCPARAM];
 	u_char escchar[MAXESCCHAR];
 	u_short tabstop[MAXTABSTOP];
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	u_short last_ucs2[MAXLASTUCS2];
 #endif
 	u_short attr;
@@ -58,7 +58,7 @@ typedef struct _ptyterm_t {
 #define	T_CODEALT		00020
 #define	T_LOCKED		00040
 
-#ifndef	_NOPTY
+#ifdef	DEP_PTY
 
 extern int hideclock;
 extern int fdmode;
@@ -78,11 +78,7 @@ static int wintr __P_((VOID_A));
 static VOID NEAR evalsignal __P_((VOID_A));
 #endif
 static int NEAR convkey __P_((int, keyseq_t *));
-#ifdef	_NOKANJICONV
-#define	ptyrecvbuf(b, n)	recvbuf(emufd, b, n)
-#define	ptyrecvword(n)		recvword(emufd, n)
-#define	ptyrecvstring(c)	recvstring(emufd, c)
-#else	/* !_NOKANJICONV */
+#ifdef	DEP_KCONV
 static int NEAR ptyrecvbuf __P_((VOID_P, int));
 static int NEAR ptyrecvword __P_((int *));
 static int NEAR ptyrecvstring __P_((char **));
@@ -92,7 +88,11 @@ static u_int NEAR ptygetucs2 __P_((int));
 static VOID NEAR getiocode __P_((int, int *, int *));
 static CONST char *NEAR ptykconv __P_((char *, char *, int, int));
 static u_int NEAR evalnf __P_((int, char *));
-#endif	/* !_NOKANJICONV */
+#else	/* !DEP_KCONV */
+#define	ptyrecvbuf(b, n)	recvbuf(emufd, b, n)
+#define	ptyrecvword(n)		recvword(emufd, n)
+#define	ptyrecvstring(c)	recvstring(emufd, c)
+#endif	/* !DEP_KCONV */
 static VOID NEAR evalscroll __P_((int, int, int));
 static VOID NEAR evallf __P_((int));
 static VOID NEAR outputnormal __P_((int, char *, int));
@@ -117,7 +117,7 @@ static char last_codeselect[MAXESCCHAR + 3] = "\033(B";
 #ifdef	SIGWINCH
 static int ptywinched = 0;
 #endif
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 static u_char ptyungetbuf[MAXUTF8LEN * MAXNFLEN * sizeof(short)];
 static int ptyungetnum = 0;
 #endif
@@ -141,7 +141,7 @@ static VOID NEAR resettermcode(w)
 int w;
 {
 	pty[w].termflags &= ~T_CODEALT;
-	strcpy(pty[w].codeselect, "(B");
+	strcpy2(pty[w].codeselect, "(B");
 }
 
 static VOID NEAR resettabstop(w)
@@ -159,7 +159,7 @@ int w;
 VOID resetptyterm(w, clean)
 int w, clean;
 {
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	int i;
 #endif
 	int min_x, min_y, max_y;
@@ -173,10 +173,10 @@ int w, clean;
 
 	pty[w].min_x = (short)0;
 	pty[w].max_x = n_column;
-#ifdef	_NOORIGSHELL
-	if (w == MAXWINDOWS)
-#else
+#ifdef	DEP_ORIGSHELL
 	if (w == MAXWINDOWS || isshptymode())
+#else
+	if (w == MAXWINDOWS)
 #endif
 	{
 		pty[w].min_y = (short)0;
@@ -194,7 +194,7 @@ int w, clean;
 		pty[w].max_scroll = pty[w].max_y - 1;
 		pty[w].escmode = '\0';
 		pty[w].last1 = pty[w].last2 = (short)-1;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 		for (i = 0; i < MAXLASTUCS2; i++)
 			pty[w].last_ucs2[i] = (u_short)0;
 #endif
@@ -255,7 +255,7 @@ int w;
 	if (last_fg != pty[w].fg && pty[w].fg >= (short)0) {
 		if ((cp = tparamstr(termstr[T_FGCOLOR], pty[w].fg, 0))) {
 			tputs2(cp, 1);
-			free(cp);
+			free2(cp);
 		}
 		else cprintf2("\033[%dm", pty[w].fg + ANSI_NORMAL);
 		last_fg = pty[w].fg;
@@ -263,7 +263,7 @@ int w;
 	if (last_bg != pty[w].bg && pty[w].bg >= (short)0) {
 		if ((cp = tparamstr(termstr[T_BGCOLOR], pty[w].bg, 0))) {
 			tputs2(cp, 1);
-			free(cp);
+			free2(cp);
 		}
 		else cprintf2("\033[%dm", pty[w].bg + ANSI_REVERSE);
 		last_bg = pty[w].bg;
@@ -285,7 +285,7 @@ int w;
 	}
 	if (strcmp(&(last_codeselect[1]), pty[w].codeselect)) {
 		last_codeselect[0] = '\033';
-		strcpy(&(last_codeselect[1]), pty[w].codeselect);
+		strcpy2(&(last_codeselect[1]), pty[w].codeselect);
 		tputs2(last_codeselect, 1);
 	}
 }
@@ -397,7 +397,7 @@ keyseq_t *kp;
 	return((getdefkeyseq(kp) < 0) ? getkeyseq(kp) : 0);
 }
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 static int NEAR ptyrecvbuf(buf, nbytes)
 VOID_P buf;
 int nbytes;
@@ -442,7 +442,7 @@ char **cpp;
 		if (ptyrecvbuf(&len, sizeof(len)) < 0) return(-1);
 		cp = malloc2(len + 1);
 		if (ptyrecvbuf(cp, len) < 0) {
-			free(cp);
+			free2(cp);
 			return(-1);
 		}
 		cp[len] = '\0';
@@ -574,7 +574,7 @@ char *buf;
 
 	return((u_int)0);
 }
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 
 static VOID NEAR evalscroll(w, n, c)
 int w, n, c;
@@ -601,7 +601,7 @@ int w;
 char *buf;
 int width;
 {
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	char buf2[MAXKANJIBUF + 1];
 	int incode, outcode;
 #endif
@@ -620,7 +620,7 @@ int width;
 		memset(buf, ' ', width);
 		buf[width] = '\0';
 	}
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	else if (!(pty[w].termflags & T_MULTIBYTE)) {
 		getiocode(w, &incode, &outcode);
 		if (incode != outcode)
@@ -642,14 +642,14 @@ int width;
 static VOID NEAR evalnormal(w, c)
 int w, c;
 {
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	u_int u;
 	int incode;
 #endif
 	char buf[MAXKANJIBUF + 1];
 	int i, width;
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	getiocode(w, &incode, NULL);
 #endif
 
@@ -662,11 +662,7 @@ int w, c;
 	if (pty[w].last1 >= (short)0) {
 		buf[i++] = pty[w].last1;
 		if (pty[w].termflags & T_MULTIBYTE) width++;
-#ifdef	_NOKANJICONV
-# ifdef	CODEEUC
-		else if (pty[w].last1 == C_EKANA) /*EMPTY*/;
-# endif
-#else	/* !_NOKANJICONV */
+#ifdef	DEP_KCONV
 		else if (incode == EUC) {
 			if (pty[w].last1 != C_EKANA) width++;
 		}
@@ -679,21 +675,25 @@ int w, c;
 				return;
 			}
 		}
-#endif	/* !_NOKANJICONV */
+#else	/* !DEP_KCONV */
+# ifdef	CODEEUC
+		else if (pty[w].last1 == C_EKANA) /*EMPTY*/;
+# endif
+#endif	/* !DEP_KCONV */
 		else width++;
 	}
-#ifdef	_NOKANJICONV
+#ifdef	DEP_KCONV
+	else if ((pty[w].termflags & T_MULTIBYTE)
+	|| (incode == EUC && (c == C_EKANA || iseuc(c)))
+	|| (incode == SJIS && issjis1(c))
+	|| (incode >= UTF8 && ismsb(c)))
+#else	/* !DEP_KCONV */
 # ifdef	CODEEUC
 	else if (c == C_EKANA || iseuc(c))
 # else
 	else if (issjis1(c))
 # endif
-#else	/* !_NOKANJICONV */
-	else if ((pty[w].termflags & T_MULTIBYTE)
-	|| (incode == EUC && (c == C_EKANA || iseuc(c)))
-	|| (incode == SJIS && issjis1(c))
-	|| (incode >= UTF8 && ismsb(c)))
-#endif	/* !_NOKANJICONV */
+#endif	/* !DEP_KCONV */
 	{
 		pty[w].last1 = c;
 		pty[w].last2 = (short)-1;
@@ -703,7 +703,7 @@ int w, c;
 	buf[i++] = c;
 	buf[i] = '\0';
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	if (incode >= UTF8) {
 		if (!(u = evalnf(w, buf))) return;
 		if (iswucs2(u)) width++;
@@ -712,7 +712,7 @@ int w, c;
 
 	outputnormal(w, buf, width);
 	pty[w].last1 = pty[w].last2 = (short)-1;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	for (i = 0; i < MAXLASTUCS2; i++) pty[w].last_ucs2[i] = (u_short)0;
 #endif
 }
@@ -1222,7 +1222,7 @@ int w;
 
 	switch (pty[w].escmode) {
 		case '\033':
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 			VOID_C evalnf(w, NULL);
 #endif
 			evalescape(w, uc);
@@ -1249,7 +1249,7 @@ int w;
 		default:
 			if (uc >= ' ' && uc != '\177') evalnormal(w, uc);
 			else {
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 				VOID_C evalnf(w, NULL);
 #endif
 				evalcontrol(w, uc);
@@ -1384,7 +1384,7 @@ int n;
 				last_x += i;
 				tflush();
 			}
-			free(s);
+			free2(s);
 			break;
 		case TE_PUTTERM:
 			if ((n = chgattr(w1, 1)) < 0) break;
@@ -1523,7 +1523,7 @@ int n;
 			pty[w1].termflags &= ~T_LOCKED;
 			sendbuf(ptylist[w1].fd, "\n", 1);
 			break;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 		case TE_CHANGEKCODE:
 			if (ptyrecvbuf(&w2, sizeof(w2)) < 0) break;
 			inputkcode = w1;
@@ -1537,13 +1537,13 @@ int n;
 			if (ptyrecvbuf(&w2, sizeof(w2)) < 0) break;
 			ptylist[w1].outcode = (u_char)w2;
 			break;
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 		case TE_AWAKECHILD:
 			if (ptyrecvbuf(&n, sizeof(n)) < 0
 			|| ptyrecvstring(&s) < 0)
 				break;
 			if (ptyrecvstring(&arg) < 0) {
-				if (s) free(s);
+				free2(s);
 				break;
 			}
 			if (ptyrecvstring(&cwd) < 0) cwd = NULL;
@@ -1553,9 +1553,9 @@ int n;
 			sendstring(ptylist[w1].fd, s);
 			sendstring(ptylist[w1].fd, arg);
 			sendstring(ptylist[w1].fd, cwd);
-			if (s) free(s);
-			if (arg) free(arg);
-			if (cwd) free(cwd);
+			free2(s);
+			free2(arg);
+			free2(cwd);
 			break;
 		default:
 			break;
@@ -1566,20 +1566,20 @@ int n;
 
 static int NEAR evalinput(VOID_A)
 {
-#ifdef	_NOKANJICONV
-	char buf[MAXKLEN];
-#else
+#ifdef	DEP_KCONV
 	u_short ubuf[MAXNFLEN];
 	char buf[MAXKANJIBUF + 1], buf2[MAXKANJIBUF + 1];
 	u_int u;
 	int i, ch, len, cnv, incode, outcode;
+#else
+	char buf[MAXKLEN];
 #endif
 	keyseq_t key;
 	int n;
 
 	if (ptyrecvbuf(&(key.code), sizeof((key.code))) < 0) return(0);
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	cnv = 0;
 	incode = (inputkcode != NOCNV) ? inputkcode : DEFCODE;
 	outcode = (win < MAXWINDOWS && ptylist[win].incode != NOCNV)
@@ -1592,7 +1592,15 @@ static int NEAR evalinput(VOID_A)
 		buf[0] = K_ESC;
 		buf[1] = (key.code & 0xff);
 	}
-#ifdef	_NOKANJICONV
+#ifdef	DEP_KCONV
+	else if (incode == EUC && isekana2(key.code)) {
+		if (incode != outcode) cnv++;
+		key.len = (u_char)2;
+		key.str = buf;
+		buf[0] = C_EKANA;
+		buf[1] = (key.code & 0xff);
+	}
+#else	/* !DEP_KCONV */
 # ifdef	CODEEUC
 	else if (isekana2(key.code)) {
 		key.len = (u_char)2;
@@ -1601,15 +1609,7 @@ static int NEAR evalinput(VOID_A)
 		buf[1] = (key.code & 0xff);
 	}
 # endif
-#else	/* !_NOKANJICONV */
-	else if (incode == EUC && isekana2(key.code)) {
-		if (incode != outcode) cnv++;
-		key.len = (u_char)2;
-		key.str = buf;
-		buf[0] = C_EKANA;
-		buf[1] = (key.code & 0xff);
-	}
-#endif	/* !_NOKANJICONV */
+#endif	/* !DEP_KCONV */
 	else if (!(key.code & K_ALTERNATE) && key.code > K_MAX) {
 		n = directoutput(key.code);
 		if (win < MAXWINDOWS) {
@@ -1624,7 +1624,7 @@ static int NEAR evalinput(VOID_A)
 		key.len = (u_char)1;
 		key.str = buf;
 		buf[0] = key.code;
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 		if (incode == outcode) /*EMPTY*/;
 		else if (incode == SJIS && iskana2(key.code)) cnv++;
 		else if (incode == EUC && key.code == C_EKANA
@@ -1672,10 +1672,10 @@ static int NEAR evalinput(VOID_A)
 			buf[1] = n;
 			(key.len)++;
 		}
-#endif	/* !_NOKANJICONV */
+#endif	/* DEP_KCONV */
 	}
 
-#ifndef	_NOKANJICONV
+#ifdef	DEP_KCONV
 	if (cnv) {
 		buf[key.len] = '\0';
 		key.str = (char *)ptykconv(buf, buf2, incode, outcode);
@@ -1736,4 +1736,4 @@ int backend(VOID_A)
 
 	return(0);
 }
-#endif	/* !_NOPTY */
+#endif	/* DEP_PTY */
