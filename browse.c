@@ -1518,6 +1518,9 @@ CONST char *arcre;
 
 		filelist = addlist(filelist, maxfile, &maxent);
 		filelist[maxfile].name = strdup2(buf);
+#ifndef	NOSYMLINK
+		filelist[maxfile].linkname = NULL;
+#endif
 		filelist[maxfile].ent = maxfile;
 		filelist[maxfile].tmpflags = 0;
 #ifndef	_NOPRECEDE
@@ -1580,6 +1583,9 @@ static VOID NEAR getfilelist(VOID_A)
 	if (!maxfile) {
 		filelist = addlist(filelist, maxfile, &maxent);
 		filelist[0].name = (char *)NOFIL_K;
+#ifndef	NOSYMLINK
+		filelist[0].linkname = NULL;
+#endif
 		filelist[0].tmpflags = 0;
 		filelist[0].st_nlink = -1;
 	}

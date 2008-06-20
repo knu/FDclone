@@ -93,7 +93,7 @@ static VOID NEAR fputsmeta __P_((CONST char *, XFILE *));
 static char **NEAR file2argv __P_((XFILE *, CONST char *, int));
 #endif
 #ifndef	_NOARCHIVE
-# if	FD >= 2
+# ifndef	OLDPARSE
 static int NEAR getlaunchopt __P_((int, char *CONST [],
 		CONST char *, lsparse_t *));
 # endif
@@ -395,7 +395,7 @@ int whole;
 #endif	/* (!_NOARCHIVE && !_NOBROWSE) || DEP_IME */
 
 #ifndef	_NOARCHIVE
-# if	FD >= 2
+# ifndef	OLDPARSE
 static int NEAR getlaunchopt(n, argv, opts, lp)
 int n;
 char *CONST argv[];

@@ -191,7 +191,7 @@ static long NEAR dosflsbuf __P_((int));
 int dependdosfunc = 0;
 #else	/* !MSDOS */
 int maxfdtype = 0;
-#ifndef	_NOCUSTOMIZE
+#if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
 int origmaxfdtype = 0;
 #endif
 #ifdef	DEP_DYNAMICLIST

@@ -513,7 +513,8 @@ int len, delim;
 	&& !(statementlist[i].type & STT_NEEDLIST)))
 		return(-1);
 
-	if ((!strchr2(IFS_SET, delim) && !strchr2(ALIASDELIMIT, delim)))
+	if (delim
+	&& (!strchr2(IFS_SET, delim) && !strchr2(ALIASDELIMIT, delim)))
 		return(-1);
 	i = searchalias(ident, len);
 	if (!(shellalias[i].ident) || (shellalias[i].flags & AL_USED))
@@ -559,7 +560,7 @@ long *resultp;
 	else if (s[ptr] == '(') {
 		if ((ptr = evalexpression(s, ptr + 1, resultp, 9)) < 0)
 			return(-1);
-		while (strchr2(IFS_SET, s[ptr])) ptr++;
+		while (s[ptr] && strchr2(IFS_SET, s[ptr])) ptr++;
 		if (s[ptr++] != ')') return(-1);
 	}
 	else if (isdigit2(s[ptr])) {

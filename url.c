@@ -15,7 +15,7 @@
 #include "pathname.h"
 #include "url.h"
 
-#ifdef	DEP_URLPATH
+#if	defined (DEP_URLPATH) || defined (DEP_SOCKREDIR)
 
 static scheme_t schemelist[] = {
 #define	DEFSCHEME(i, p, t)	{i, strsize(i), p, t}
@@ -304,4 +304,4 @@ urlpath_t *pp;
 
 	return(0);
 }
-#endif	/* DEP_URLPATH */
+#endif	/* DEP_URLPATH || DEP_SOCKREDIR */

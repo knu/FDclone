@@ -317,6 +317,7 @@ off_t *totalp, *freep, *bsizep;
 	int n;
 
 	n = 0;
+	*totalp = *freep = *bsizep = (off_t)0;
 # if	MSDOS
 #  ifdef	DOUBLESLASH
 	if ((len = isdslash(path))) {
@@ -389,12 +390,12 @@ off_t *totalp, *freep, *bsizep;
 # endif	/* !MSDOS */
 
 	if (n < 0) {
-#if	MSDOS
+# if	MSDOS
 		*bsizep = (off_t)1024;
-#else
+# else
 		if (Xstat(path, &st) < 0) *bsizep = (off_t)DEV_BSIZE;
 		else *bsizep = (off_t)(st.st_blksize);
-#endif
+# endif
 	}
 
 	return(n);

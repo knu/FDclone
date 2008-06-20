@@ -208,18 +208,21 @@ DEFCFLAGS = -DDEFRC=__DEFRC__
 all: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
 
 $(PROGRAM)$(EXE): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6) $(ARGS)
+__SLEEP__	@sleep 1
 	$(CC) __MEM__ __LNK__ __OBJLIST__ $(LDFLAGS)
-	__RENAME__ $@ $(PROGRAM)
-	__AOUT2EXE__ $(PROGRAM)
-	__REMOVE__ $(PROGRAM)
+__DJGPP1__	@ren $@ $(PROGRAM)
+__DJGPP1__	@aout2exe $(PROGRAM)
+__DJGPP1__	@del $(PROGRAM)
 
 $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6)
+__SLEEP__	@sleep 1
 	@$(ECHO) $(OBJ1) > $(ARGS)
 	@$(ECHO) $(OBJ2) >> $(ARGS)
 	@$(ECHO) $(OBJ3) >> $(ARGS)
 	@$(ECHO) $(OBJ4) >> $(ARGS)
 	@$(ECHO) $(OBJ5) >> $(ARGS)
 	@$(ECHO) $(OBJ6) >> $(ARGS)
+__SLEEP__	@sleep 1
 
 main$(OBJ): main.c
 	$(CC) $(FDCFLAGS) $(DEFCFLAGS) __TBLPATH__ -c __OUT__ $*.c
@@ -262,10 +265,12 @@ LICENSES.doc: kanjicnv$(EXE) LICENSES
 	./kanjicnv$(EXE) __KCODEOPTION__ LICENSES $@
 
 kanjicnv$(EXE): kanjicnv$(OBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ kanjicnv$(OBJ)
-	__RENAME__ $@ kanjicnv
-	__AOUT2EXE__ kanjicnv
-	__REMOVE__ kanjicnv
+__DJGPP1__	@ren $@ kanjicnv
+__DJGPP1__	@aout2exe kanjicnv
+__DJGPP1__	@del kanjicnv
+__SLEEP__	@sleep 1
 
 kanjicnv$(OBJ): kanjicnv.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
@@ -277,21 +282,26 @@ kanjicnv$(OBJ): kanjicnv.c
 kanji.h: mkkanji$(EXE) kanjicnv$(EXE) kanji.hin
 	./mkkanji$(EXE) kanji.hin | \
 	./kanjicnv$(EXE) __KCODEOPTION__ __PREFIXOPTION__ __MSBOPTION__ - $@
+__SLEEP__	@sleep 1
 
 mkkanji$(EXE): mkkanji$(OBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mkkanji$(OBJ)
-	__RENAME__ $@ mkkanji
-	__AOUT2EXE__ mkkanji
-	__REMOVE__ mkkanji
+__DJGPP1__	@ren $@ mkkanji
+__DJGPP1__	@aout2exe mkkanji
+__DJGPP1__	@del mkkanji
+__SLEEP__	@sleep 1
 
 mkkanji$(OBJ): mkkanji.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
 
 _fd-cat.ja: mkcat$(EXE) kanji.h
 	./mkcat$(EXE) -c 1 kanji.h $@
+__SLEEP__	@sleep 1
 
 _fd-cat.C: mkcat$(EXE) kanji.h
 	./mkcat$(EXE) -c 2 kanji.h $@
+__SLEEP__	@sleep 1
 
 fd-cat.ja: mkcat$(EXE) _fd-cat.ja
 	./mkcat$(EXE) _fd-cat.ja $@
@@ -300,10 +310,12 @@ fd-cat.C: mkcat$(EXE) _fd-cat.C
 	./mkcat$(EXE) _fd-cat.C $@
 
 mkcat$(EXE): mkcat$(OBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mkcat$(OBJ)
-	__RENAME__ $@ mkcat
-	__AOUT2EXE__ mkcat
-	__REMOVE__ mkcat
+__DJGPP1__	@ren $@ mkcat
+__DJGPP1__	@aout2exe mkcat
+__DJGPP1__	@del mkcat
+__SLEEP__	@sleep 1
 
 mkcat$(OBJ): mkcat.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
@@ -314,12 +326,15 @@ mkcat$(OBJ): mkcat.c
 
 funcno.h: mkfuncno$(EXE)
 	./mkfuncno$(EXE) $@
+__SLEEP__	@sleep 1
 
 mkfuncno$(EXE): mkfuncno$(OBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mkfuncno$(OBJ)
-	__RENAME__ $@ mkfuncno
-	__AOUT2EXE__ mkfuncno
-	__REMOVE__ mkfuncno
+__DJGPP1__	@ren $@ mkfuncno
+__DJGPP1__	@aout2exe mkfuncno
+__DJGPP1__	@del mkfuncno
+__SLEEP__	@sleep 1
 
 mkfuncno$(OBJ): mkfuncno.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERMAJ) -c __OUT__ $*.c
@@ -332,10 +347,12 @@ $(UNITBL): mkunitbl$(EXE)
 	./mkunitbl$(EXE) $@
 
 mkunitbl$(EXE): mkunitbl$(OBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mkunitbl$(OBJ)
-	__RENAME__ $@ mkunitbl
-	__AOUT2EXE__ mkunitbl
-	__REMOVE__ mkunitbl
+__DJGPP1__	@ren $@ mkunitbl
+__DJGPP1__	@aout2exe mkunitbl
+__DJGPP1__	@del mkunitbl
+__SLEEP__	@sleep 1
 
 mkunitbl$(OBJ): mkunitbl.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
@@ -348,16 +365,20 @@ $(DICTTBL): mkdict$(EXE) $(DICTSRC)
 	./mkdict$(EXE) __MKDICTOPTION__ $@ $(DICTSRC)
 
 mkdict$(EXE): mkdict$(OBJ) $(TOBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mkdict$(OBJ) $(TOBJ)
-	__RENAME__ $@ mkdict
-	__AOUT2EXE__ mkdict
-	__REMOVE__ mkdict
+__DJGPP1__	@ren $@ mkdict
+__DJGPP1__	@aout2exe mkdict
+__DJGPP1__	@del mkdict
+__SLEEP__	@sleep 1
 
 mktankan$(EXE): mktankan$(OBJ) $(TOBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mktankan$(OBJ) $(TOBJ)
-	__RENAME__ $@ mktankan
-	__AOUT2EXE__ mktankan
-	__REMOVE__ mktankan
+__DJGPP1__	@ren $@ mktankan
+__DJGPP1__	@aout2exe mktankan
+__DJGPP1__	@del mktankan
+__SLEEP__	@sleep 1
 
 mkdict$(OBJ): mkdict.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
@@ -379,6 +400,7 @@ rmdict:
 
 $(DICTTXT): mktankan$(EXE)
 	./mktankan$(EXE) $@
+__SLEEP__	@sleep 1
 
 
 ############################################################
@@ -586,15 +608,19 @@ config: Configur expfunc.c
 		$(SED) -e "2,3d" -e "s:__cc__:__CC__:" Configur \
 		| ./expfunc$(EXE) | $(SHELL) > config.h; \
 	fi
+__SLEEP__	@sleep 1
 
 config.h: config.hin
-	$(CP) config.hin config.h
+	$(CP) config.hin $@
+__SLEEP__	@sleep 1
 
 expfunc$(EXE): expfunc$(OBJ)
+__SLEEP__	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ expfunc$(OBJ)
-	__RENAME__ $@ expfunc
-	__AOUT2EXE__ expfunc
-	__REMOVE__ expfunc
+__DJGPP1__	@ren $@ expfunc
+__DJGPP1__	@aout2exe expfunc
+__DJGPP1__	@del expfunc
+__SLEEP__	@sleep 1
 
 expfunc$(OBJ): expfunc.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
@@ -606,14 +632,17 @@ expfunc$(OBJ): expfunc.c
 sh: fdsh$(EXE)
 
 fdsh$(EXE): $(SOBJ1) $(SOBJ2) $(SARGS)
+__SLEEP__	@sleep 1
 	$(CC) __SHMEM__ __LNK__ __SOBJLIST__ $(SLDFLAGS)
-	__RENAME__ $@ fdsh
-	__AOUT2EXE__ fdsh
-	__REMOVE__ fdsh
+__DJGPP1__	@ren $@ fdsh
+__DJGPP1__	@aout2exe fdsh
+__DJGPP1__	@del fdsh
 
 $(SARGS): $(SOBJ1) $(SOBJ2)
+__SLEEP__	@sleep 1
 	@$(ECHO) $(SOBJ1) > $(SARGS)
 	@$(ECHO) $(SOBJ2) >> $(SARGS)
+__SLEEP__	@sleep 1
 
 sprintf$(OBJ): printf.c
 	$(CC) $(SHCFLAGS) -c __OUT__ printf.c
@@ -655,10 +684,11 @@ ssysemu$(OBJ): sysemu.c
 bsh: fdbsh$(EXE)
 
 fdbsh$(EXE): $(BOBJ)
+__SLEEP__	@sleep 1
 	$(CC) __BSHMEM__ __LNK__ $(BOBJ) $(SLDFLAGS)
-	__RENAME__ $@ fdbsh
-	__AOUT2EXE__ fdbsh
-	__REMOVE__ fdbsh
+__DJGPP1__	@ren $@ fdbsh
+__DJGPP1__	@aout2exe fdbsh
+__DJGPP1__	@del fdbsh
 
 bprintf$(OBJ): printf.c
 	$(CC) $(BSHCFLAGS) -c __OUT__ printf.c
@@ -694,15 +724,18 @@ bsysemu$(OBJ): sysemu.c
 nsh: fdnsh$(EXE)
 
 fdnsh$(EXE): $(NOBJ1) $(NOBJ2) $(NOBJ3) $(NARGS)
+__SLEEP__	@sleep 1
 	$(CC) __NSHMEM__ __LNK__ __NOBJLIST__ $(NLDFLAGS)
-	__RENAME__ $@ fdnsh
-	__AOUT2EXE__ fdnsh
-	__REMOVE__ fdnsh
+__DJGPP1__	@ren $@ fdnsh
+__DJGPP1__	@aout2exe fdnsh
+__DJGPP1__	@del fdnsh
 
 $(NARGS): $(NOBJ1) $(NOBJ2) $(NOBJ3)
+__SLEEP__	@sleep 1
 	@$(ECHO) $(NOBJ1) > $(NARGS)
 	@$(ECHO) $(NOBJ2) >> $(NARGS)
 	@$(ECHO) $(NOBJ3) >> $(NARGS)
+__SLEEP__	@sleep 1
 
 nprintf$(OBJ): printf.c
 	$(CC) $(NSHCFLAGS) -c __OUT__ printf.c
@@ -923,6 +956,8 @@ clean:
 	-$(RM) $(PROGRAM).eng
 	-$(RM) $(PROGRAM).doc
 	-$(RM) $(ARGS)
+	-$(RM) $(SARGS)
+	-$(RM) $(NARGS)
 	-$(RM) $(UNITBL)
 	-$(RM) $(DICTTXT)
 	-$(RM) $(DICTTBL)

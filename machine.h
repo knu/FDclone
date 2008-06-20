@@ -102,6 +102,7 @@ typedef long	off_t;
 # define	NODNAMLEN
 # define	DNAMESIZE	1
 # define	NOTMGMTOFF
+# define	USEINSYSTMH
 # define	USESTATVFSH
 # define	USESTATVFS_T
 # define	USEMNTTABH
@@ -225,6 +226,7 @@ typedef long	off_t;
 # define	USETERMINFO
 # define	TERMCAPLIB	"-lcurses"
 # endif
+#define	BUGGYMAKE
 #define	USEPID_T
 #define	NOSIGLIST
 #define	NOTZFILEH
@@ -814,6 +816,7 @@ typedef long	off_t;
 /* #define BSDINSTCMD	;command name except "install" to install like BSD */
 /* #define TARUSESPACE	;tar(1) uses space to devide file mode from UID */
 /* #define TARFROMPAX	;tar(1) comes from pax(1) */
+/* #define BUGGYMAKE	;make(1) assumes the same timestamp as earlier */
 /* #define CPP7BIT	;cpp(1) cannot through 8bit */
 /* #define CCCOMMAND	;fullpath of suitable cc(1) */
 /* #define EXTENDCCOPT	;additional option on cc(1) */

@@ -114,7 +114,7 @@ ipk: Makefile.tmp
 	$(MAKE) STRIP=$(STRIP) -f Makefile.tmp $@
 
 everything: Makefile.tmp
-	$(MAKE) -f Makefile.tmp sh bsh all
+	$(MAKE) -f Makefile.tmp sh bsh nsh all
 
 tar gtar shtar lzh shar: Makefile.tmp \
 makefile.gpc makefile.g98 \

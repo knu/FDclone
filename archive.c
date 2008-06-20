@@ -180,7 +180,7 @@ static char *form_tar[] = {
 
 int maxlaunch = 0;
 int maxarchive = 0;
-#ifndef	_NOCUSTOMIZE
+#if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
 int origmaxlaunch = 0;
 int origmaxarchive = 0;
 #endif
@@ -330,9 +330,6 @@ static VOID NEAR pusharchdupl(VOID_A)
 #endif
 	new -> v_fullpath = NULL;
 	new -> v_findpattern = findpattern;
-	new -> v_filelist = filelist;
-	new -> v_maxfile = maxfile;
-	new -> v_maxent = maxent;
 	new -> v_filepos = filepos;
 	new -> v_sorton = sorton;
 	archduplp = new;
@@ -388,11 +385,7 @@ static VOID NEAR poparchdupl(VOID_A)
 	findpattern = old -> v_findpattern;
 	filepos = old -> v_filepos;
 	sorton = old -> v_sorton;
-
-	free2(filelist);
-	filelist = old -> v_filelist;
-	maxfile = old -> v_maxfile;
-	maxent = old -> v_maxent;
+	maxfile = 0;
 
 #ifndef	_NOBROWSE
 	if (browselist) {
@@ -922,9 +915,13 @@ int flags;
 	}
 	cp = (filelist && filepos < maxfile) ? filelist[filepos].name : NULL;
 	if (!cp) cp = nullstr;
-	archivefile = strdup2(cp);
+	if (archivefile) maxfile = 0;
 	*archivedir = '\0';
+	archivefile = strdup2(cp);
 	archtmpdir = tmpdir;
+	launchp = list;
+	arcflist = NULL;
+	maxarcf = 0;
 #ifdef	DEP_PSEUDOPATH
 	archdrive = drive;
 #endif
@@ -932,9 +929,7 @@ int flags;
 	treepath = NULL;
 #endif
 	findpattern = NULL;
-	launchp = list;
-	filelist = NULL;
-	maxent = 0;
+	while (maxfile > 0) free2(filelist[--maxfile].name);
 #if	FD >= 2
 	if (sorttype < 200) sorton = 0;
 #else

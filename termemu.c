@@ -564,9 +564,11 @@ va_dcl
 			sendbuf(fd, lp, sizeof(*lp));
 			sendstring(fd, lp -> ext);
 			sendstring(fd, lp -> comm);
+# ifndef	OLDPARSE
 			sendvar(fd, lp -> format);
 			sendvar(fd, lp -> lignore);
 			sendvar(fd, lp -> lerror);
+# endif
 			break;
 		case TE_ADDARCH:
 			n = va_arg(args, int);

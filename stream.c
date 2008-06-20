@@ -56,7 +56,7 @@ static XFILE *NEAR fmalloc __P_((int, int));
 static int NEAR checkfp __P_((XFILE *, int));
 static int NEAR fillbuf __P_((XFILE *));
 # ifdef	DEP_SOCKET
-static VOID NEAR replytelnet __P_((XFILE *));
+static int NEAR replytelnet __P_((XFILE *));
 # endif
 #endif	/* DEP_ORIGSTREAM */
 #if	!defined (FD) && !defined (DEP_ORIGSTREAM)
@@ -451,14 +451,14 @@ XFILE *fp;
 }
 
 #ifdef	DEP_SOCKET
-static VOID NEAR replytelnet(fp)
+static int NEAR replytelnet(fp)
 XFILE *fp;
 {
 	u_char buf[3];
 	int c, s;
 
 	s = Xfileno(fp);
-	if (issocket(s) < 0) return;
+	if (issocket(s) < 0) return(0);
 
 	c = Xfgetc(fp);
 	switch (c) {
@@ -466,7 +466,7 @@ XFILE *fp;
 		case TELNET_WONT:
 			c = Xfgetc(fp);
 			buf[0] = TELNET_IAC;
-			buf[1] = TELNET_WONT;
+			buf[1] = TELNET_DONT;
 			buf[2] = c;
 			VOID_C Xwrite(s, (char *)buf, sizeof(buf));
 			break;
@@ -474,13 +474,19 @@ XFILE *fp;
 		case TELNET_DONT:
 			c = Xfgetc(fp);
 			buf[0] = TELNET_IAC;
-			buf[1] = TELNET_DONT;
+			buf[1] = TELNET_WONT;
 			buf[2] = c;
 			VOID_C Xwrite(s, (char *)buf, sizeof(buf));
+			break;
+		case TELNET_IAC:
+			return(c);
+/*NOTREACHED*/
 			break;
 		default:
 			break;
 	}
+
+	return(0);
 }
 #endif	/* DEP_SOCKET */
 
@@ -504,8 +510,8 @@ XFILE *fp;
 		if (c == '\n') break;
 #ifdef	DEP_SOCKET
 		if ((fp -> flags & XF_TELNET) && c == TELNET_IAC) {
-			replytelnet(fp);
-			continue;
+			c = replytelnet(fp);
+			if (!c) continue;
 		}
 #endif
 		cp = c_realloc(cp, i, &size);

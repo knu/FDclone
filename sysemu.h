@@ -39,6 +39,11 @@ extern int dospath3 __P_((CONST char *));
 #define	dospath3(path)		dospath(path, NULL)
 # endif
 #endif	/* DEP_DOSDRIVE */
+#if	(defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+|| defined (DEP_PSEUDOPATH)) \
+&& defined (DEBUG)
+extern VOID freeopenlist(VOID_A);
+#endif
 #ifdef	DEP_PSEUDOPATH
 extern int checkdrv __P_((int, int *));
 extern int preparedrv __P_((CONST char *, int *, char *));

@@ -95,7 +95,7 @@ extern int origmaxarchive;
 # endif
 #endif	/* !_NOARCHIVE */
 extern helpindex_t helpindex;
-#ifndef	_NOCUSTOMIZE
+#if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
 extern orighelpindex_t orighelpindex;
 #endif
 extern int wheader;
@@ -1324,6 +1324,7 @@ int status;
 
 #ifdef	DEBUG
 	free2(tmpfilename);
+	tmpfilename = NULL;
 # ifndef	DEP_ORIGSHELL
 	freevar(environ);
 	freevar(environ2);

@@ -2243,6 +2243,10 @@ int noexit;
 		joblist = NULL;
 	}
 # endif	/* !NOJOB */
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+|| defined (DEP_PSEUDOPATH)
+	freeopenlist();
+# endif
 #endif	/* DEBUG */
 	errno = duperrno;
 }
@@ -2255,16 +2259,18 @@ int n;
 		if (loginshell && interactive_io) killjob();
 #endif
 #ifdef	FD
-		prepareexitfd(n);
 		if (havetty() && interactive && !nottyout) {
 			if (!dumbterm) putterm(T_NORMAL);
 			endterm();
 			inittty(1);
 			keyflush();
 		}
-#endif	/* !FD */
+#endif
 	}
 	prepareexit(0);
+#ifdef	FD
+	if (mypid == orgpid) prepareexitfd(n);
+#endif
 
 #ifdef	DEBUG
 	if (havetty() && mypid == orgpid) {
@@ -7726,10 +7732,10 @@ int errexit;
 #ifndef	NOJOB
 	if (loginshell && interactive_io) killjob();
 #endif
+	prepareexit(1);
 #ifdef	FD
 	prepareexitfd(0);
 #endif
-	prepareexit(1);
 #ifdef	DEBUG
 	Xexecve(path, comm -> argv, evar, 0);
 #else

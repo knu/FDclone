@@ -115,9 +115,12 @@ char *CONST argv[];
 	printf("s:__DATADIR2__:$(BINDIR):g\n");
 #endif
 
-	printf("s:	__RENAME__:#	mv:\n");
-	printf("s:	__AOUT2EXE__:#	aout2exe:\n");
-	printf("s:	__REMOVE__:#	rm -f:\n");
+#ifdef	BUGGYMAKE
+	printf("s:__SLEEP__::\n");
+#else
+	printf("s:__SLEEP__:#:\n");
+#endif
+	printf("s:__DJGPP1__:#:\n");
 	printf("s:__ECHO__:echo:\n");
 	printf("s:__COPY__:cp:\n");
 	printf("s:__RM__:rm -f:\n");

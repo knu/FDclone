@@ -170,7 +170,7 @@ int loopcursor = 0;
 #endif
 int internal_status = FNC_FAIL;
 int maxbind = 0;
-#ifndef	_NOCUSTOMIZE
+#if	defined (DEP_DYNAMICLIST) || !defined (_NOCUSTOMIZE)
 int origmaxbind = 0;
 #endif
 #ifdef	DEP_DYNAMICLIST

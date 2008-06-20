@@ -18,9 +18,8 @@ s:__DEFRC__:\\\\\\"$(DOSRC)\\\\\\":
 s:__TBLPATH__::
 s:__DATADIR__:$(BINDIR):g
 s:__DATADIR2__:$(BINDIR):g
-s:	__RENAME__:#	ren:
-s:	__AOUT2EXE__:#	aout2exe:
-s:	__REMOVE__:#	del:
+s:__SLEEP__:#:
+s:__DJGPP1__:#:
 s:__ECHO__:command /c echo:
 s:__COPY__:copy /y:
 s:__RM__:del:

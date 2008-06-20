@@ -1,4 +1,4 @@
-[FAQ FOR FDCLONE2]
+[FAQ FOR FDCLONE3]
 
 
 <1.UNIX Depended Problem>
@@ -108,7 +108,7 @@ A2-04.	You can change a display of the function key when
 
 	(You can set up the function line layout with the
 	internal variable (or the environment variable)
-	FUNCLAYOUT, from Ver. 2.09 downward.)
+	FUNCLAYOUT, in Ver. 2.09 or later.)
 
 Q2-05.	I want to confirm how it is customized.
 A2-05.	You can confirm with some builtin commands in EXECUTE_SH
@@ -117,7 +117,7 @@ A2-05.	You can confirm with some builtin commands in EXECUTE_SH
 	page for details.
 
 	(You can confirm and set up the configurations with
-	the customizer all at once, from Ver. 2.00 downward.)
+	the customizer all at once, in Ver. 2.00 or later.)
 
 Q2-06.	As a system administrator, I want to prepare a
 	configuration file common to users.
@@ -307,8 +307,8 @@ A3-05.	Perhaps it may be compiled at a wrong kanji code, or
 	with kanji filename or the Japanese man page.
 
 	(Kanji filename will also be converted dynamically
-	according to the internal variable FNAMEKCODE,
-	from Ver. 2.00 downward.)
+	according to the internal variable FNAMEKCODE, in
+	Ver. 2.00 or later.)
 
 Q3-06.	When I bring it to a machine with the different
 	environment, it works strangely.
@@ -368,7 +368,7 @@ A3-09.	Try to exit from FDclone and do manually "tar tvf
 	of "ARCHIVE BROWSER" in man page.
 
 	(The value of LANG will be changed automatically
-	before executing archivers, from Ver. 2.04c downward.)
+	before executing archivers, in Ver. 2.04c or later.)
 
 Q3-10.	I cannot read a file to the end.
 A3-10.	Some pager, e.g. "more" which is a standard command
@@ -447,8 +447,8 @@ A3-14.	Because there is a trouble in the installer of BSD
 
 Q3-15.	I've got a FDclone circulated as binary, but it is
 	not work well.
-A3-15.	For binary circulation, it is a rule to prepare the
-	circulation manager, by FDclone from 1.03 downward.
+A3-15.	It is a rule to prepare the circulation manager for
+	binary circulation, in FDclone Ver. 1.03 or later.
 	When you execute such a binary, the version number
 	in a title line must suffix the character of `#'.
 	The author guarantees no warranty for the binary
@@ -486,7 +486,7 @@ A3-17.	Is ANSI.SYS set up? A general MS-DOS screen except
 	"devicehigh=%SystemRoot%\system32\ansi.sys" in
 	\WINNT\SYSTEM32\CONFIG.NT.
 
-	(ANSI.SYS is not necessary, from Ver. 2.01 downward.)
+	(ANSI.SYS is not necessary, in Ver. 2.01 or later.)
 
 Q3-18.	On Fujitsu UXP/DS, I cannot refer to a tar file by
 	the archive browser.
@@ -584,13 +584,13 @@ A3-23.	PC-DOS (IBM-DOS) standard ANSI.SYS is inferior to
 	instead of standard ANSI.SYS.
 	http://hp.vector.co.jp/authors/VA003655/en/down.html
 
-	(ANSI.SYS is not necessary, from Ver. 2.01 downward.)
+	(ANSI.SYS is not necessary, in Ver. 2.01 or later.)
 
 
 <4.Specification Problem>
 
 Q4-01.	Can't I save the history of a pathname?
-A4-01.	Although I added the pathname history from Ver. 1.03,
+A4-01.	Although I added the pathname history in Ver. 1.03,
 	this is not the history of input lines but the
 	history of directories operated by commands.
 	Because of its feature, it should not be carried
@@ -601,7 +601,7 @@ A4-01.	Although I added the pathname history from Ver. 1.03,
 
 	(You can set up to save the history of a pathname with
 	the internal variables (or the environment variables)
-	SAVEDIRHIST and DIRHISTFILE, from Ver. 2.09 downward.)
+	SAVEDIRHIST and DIRHISTFILE, in Ver. 2.09 or later.)
 
 Q4-02.	Value by INFO_SYSTEM command may sometimes become "?".
 A4-02.	There is the case that it cannot get any file system
@@ -707,8 +707,8 @@ A4-11.	It is the first thing you should understand that
 	pathname will be logical one.
 
 	(The logical directory held with PWD will be refered
-	automatically without this description, from Ver. 2.04
-	downward.)
+	automatically without this description, in Ver. 2.04
+	or later.)
 
 	By the way, referring to each shell, Bourne shell
 	and ash cannot treat any logical directories. Korn

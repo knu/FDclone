@@ -110,7 +110,7 @@ static char *ign_ftp[] = {
 	NULL
 };
 static CONST lsparse_t ftpformat = {
-	NULL, NULL, form_ftp, ign_ftp, NULL, 0, 0, 0
+	NULL, NULL, form_ftp, ign_ftp, NULL, 0, 0, LF_NOTRAVERSE
 };
 static CONST ftpcmd_t ftpcmdlist[] = {
 	{FTP_QUIT, {"QUIT", NULL}, 0, 0},
@@ -531,7 +531,7 @@ namelist **listp;
 		return(-1);
 	}
 	Xsettimeout(fp, urltimeout);
-	Xsetflags(fp, XF_CRNL | XF_NONBLOCK | XF_TELNET);
+	Xsetflags(fp, XF_CRNL | XF_NONBLOCK);
 
 	*listp = NULL;
 	ftplog("<-- (data)\n");

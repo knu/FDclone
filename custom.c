@@ -1627,10 +1627,10 @@ int no;
 			}
 			if (p) {
 				new = strcatalloc(new, ", ");
-#if	FD >= 2
+# if	FD >= 2
 				if (p > 1) cp = VSARC_K;
 				else
-#endif
+# endif
 				cp = VSORT_K;
 				new = strcatalloc(new, cp);
 			}

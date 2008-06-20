@@ -1,3 +1,10 @@
+Ver. 3.00a	Failure to replace the alias with no argument is fixed.
+ (06/21/08)	Abortion with recursively invoked archive browser is fixed.
+		Resolve a directory traversal vulnerability on the URL drive.
+		Mis-implementation of telnet commands in FTP is fixed.
+		Failure to compile on Solaris 8 is fixed.
+		Adjust representations of each documents to Ver. 3.00.
+
 Ver. 3.00	Add the URL drive function.
  (05/31/08)	Add scheme moditiers to access socket as redirect file.
 		Support the message catalog.

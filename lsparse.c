@@ -63,7 +63,7 @@ static char *NEAR readfname __P_((CONST char *, int));
 static char *NEAR readlinkname __P_((CONST char *, int));
 # endif
 static int NEAR readfileent __P_((namelist *,
-		CONST char *, CONST char *, int));
+		CONST char *, CONST char *, int, int));
 #endif	/* !OLDPARSE */
 static int NEAR dircmp __P_((CONST char *, CONST char *));
 static char *NEAR pseudodir __P_((namelist *, namelist *, int));
@@ -509,7 +509,7 @@ int max;
 #  else
 	for (i = 0; buf[i]; i++) {
 		if (buf[i] == '\\') buf[i] = _SC_;
-		if (iskanji1(buf, i)) i++;
+		else if (iskanji1(buf, i)) i++;
 	}
 #  endif
 # endif	/* MSDOS */
@@ -650,10 +650,10 @@ int len;
 }
 # endif	/* !NOSYMLINK */
 
-static int NEAR readfileent(tmp, line, form, skip)
+static int NEAR readfileent(tmp, line, form, skip, flags)
 namelist *tmp;
 CONST char *line, *form;
-int skip;
+int skip, flags;
 {
 # ifndef	NOUID
 	uidtable *up;
@@ -894,7 +894,7 @@ int skip;
 # else	/* !BSPATHDELIM */
 #  if	MSDOS
 					if (*cp == '\\') *cp = _SC_;
-					if (iskanji1(rawbuf, n)) {
+					else if (iskanji1(rawbuf, n)) {
 						n++;
 						continue;
 					}
@@ -952,7 +952,7 @@ int skip;
 # else	/* !BSPATHDELIM */
 #  if	MSDOS
 					if (*cp == '\\') *cp = _SC_;
-					if (iskanji1(rawbuf, n)) {
+					else if (iskanji1(rawbuf, n)) {
 						n++;
 						continue;
 					}
@@ -980,6 +980,11 @@ int skip;
 				if (n <= 0) break;
 				free2(tmp -> name);
 				tmp -> name = readfname(rawbuf, n);
+				if (!(flags & LF_NOTRAVERSE)) /*EMPTY*/;
+				else if (strdelim(tmp -> name, 0)) {
+					hit = -1;
+					break;
+				}
 				hit++;
 				err = 0;
 # ifndef	NOSYMLINK
@@ -1176,7 +1181,7 @@ int max;
 		}
 	}
 
-	return(namep -> name);
+	return(vnullstr);
 }
 
 #ifndef	OLDPARSE
@@ -1391,7 +1396,7 @@ char *(*func)__P_((VOID_P));
 		break;
 /*NOTREACHED*/
 #else	/* !OLDPARSE */
-		score = readfileent(&tmp, cp, form, skip);
+		score = readfileent(&tmp, cp, form, skip, list -> flags);
 		free2(cp);
 
 		if (score < 0) {
@@ -1542,9 +1547,10 @@ char *(*func) __P_((VOID_P));
 		else if (score < 0) score = n;
 		else if (n > score) continue;
 
-		for (;;) {
+		if (list -> flags & LF_NOTRAVERSE) dir = vnullstr;
+		else for (;;) {
 			dir = pseudodir(&tmp, *listp, max);
-			if (!dir || dir == tmp.name) break;
+			if (!dir || dir == vnullstr) break;
 			*listp = addlist(*listp, max, &ent);
 			memcpy((char *)&((*listp)[max]),
 				(char *)&tmp, sizeof(**listp));

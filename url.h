@@ -39,6 +39,7 @@ typedef struct _urlpath_t {
 	char *fragment;
 } urlpath_t;
 
+#if	defined (DEP_URLPATH) || defined (DEP_SOCKREDIR)
 extern char *urldecode __P_((CONST char *, int));
 extern char *urlencode __P_((CONST char *, int, int));
 extern int urlparse __P_((CONST char *, scheme_t *, char **, int *));
@@ -47,5 +48,6 @@ extern CONST char *urlgetscheme __P_((int));
 extern VOID urlfreehost __P_((urlhost_t *));
 extern int urlgethost __P_((CONST char *, urlhost_t *));
 extern int urlgetpath __P_((CONST char *, urlpath_t *));
+#endif
 
 #endif	/* !__URL_H_ */

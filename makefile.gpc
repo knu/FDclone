@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00
+VERSION	= 3.00a
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -208,18 +208,21 @@ DEFCFLAGS = -DDEFRC='"'$(DOSRC)'"'
 all: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
 
 $(PROGRAM)$(EXE): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6) $(ARGS)
+#	@sleep 1
 	$(CC)  -o $@ @$(ARGS) $(LDFLAGS)
 	@ren $@ $(PROGRAM)
 	@aout2exe $(PROGRAM)
 	@del $(PROGRAM)
 
 $(ARGS): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6)
+#	@sleep 1
 	@$(ECHO) $(OBJ1) > $(ARGS)
 	@$(ECHO) $(OBJ2) >> $(ARGS)
 	@$(ECHO) $(OBJ3) >> $(ARGS)
 	@$(ECHO) $(OBJ4) >> $(ARGS)
 	@$(ECHO) $(OBJ5) >> $(ARGS)
 	@$(ECHO) $(OBJ6) >> $(ARGS)
+#	@sleep 1
 
 main$(OBJ): main.c
 	$(CC) $(FDCFLAGS) $(DEFCFLAGS)  -c -o $@ $*.c
@@ -262,10 +265,12 @@ LICENSES.doc: kanjicnv$(EXE) LICENSES
 	.\kanjicnv$(EXE) -s LICENSES $@
 
 kanjicnv$(EXE): kanjicnv$(OBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ kanjicnv$(OBJ)
 	@ren $@ kanjicnv
 	@aout2exe kanjicnv
 	@del kanjicnv
+#	@sleep 1
 
 kanjicnv$(OBJ): kanjicnv.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
@@ -277,21 +282,26 @@ kanjicnv$(OBJ): kanjicnv.c
 kanji.h: mkkanji$(EXE) kanjicnv$(EXE) kanji.hin
 	.\mkkanji$(EXE) kanji.hin | \
 	.\kanjicnv$(EXE) -s   - $@
+#	@sleep 1
 
 mkkanji$(EXE): mkkanji$(OBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkkanji$(OBJ)
 	@ren $@ mkkanji
 	@aout2exe mkkanji
 	@del mkkanji
+#	@sleep 1
 
 mkkanji$(OBJ): mkkanji.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
 
 _fd-cat.ja: mkcat$(EXE) kanji.h
 	.\mkcat$(EXE) -c 1 kanji.h $@
+#	@sleep 1
 
 _fd-cat.C: mkcat$(EXE) kanji.h
 	.\mkcat$(EXE) -c 2 kanji.h $@
+#	@sleep 1
 
 fd-cat.ja: mkcat$(EXE) _fd-cat.ja
 	.\mkcat$(EXE) _fd-cat.ja $@
@@ -300,10 +310,12 @@ fd-cat.C: mkcat$(EXE) _fd-cat.C
 	.\mkcat$(EXE) _fd-cat.C $@
 
 mkcat$(EXE): mkcat$(OBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkcat$(OBJ)
 	@ren $@ mkcat
 	@aout2exe mkcat
 	@del mkcat
+#	@sleep 1
 
 mkcat$(OBJ): mkcat.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
@@ -314,12 +326,15 @@ mkcat$(OBJ): mkcat.c
 
 funcno.h: mkfuncno$(EXE)
 	.\mkfuncno$(EXE) $@
+#	@sleep 1
 
 mkfuncno$(EXE): mkfuncno$(OBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkfuncno$(OBJ)
 	@ren $@ mkfuncno
 	@aout2exe mkfuncno
 	@del mkfuncno
+#	@sleep 1
 
 mkfuncno$(OBJ): mkfuncno.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERMAJ) -c -o $@ $*.c
@@ -332,10 +347,12 @@ $(UNITBL): mkunitbl$(EXE)
 	.\mkunitbl$(EXE) $@
 
 mkunitbl$(EXE): mkunitbl$(OBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkunitbl$(OBJ)
 	@ren $@ mkunitbl
 	@aout2exe mkunitbl
 	@del mkunitbl
+#	@sleep 1
 
 mkunitbl$(OBJ): mkunitbl.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
@@ -348,16 +365,20 @@ $(DICTTBL): mkdict$(EXE) $(DICTSRC)
 	.\mkdict$(EXE)  $@ $(DICTSRC)
 
 mkdict$(EXE): mkdict$(OBJ) $(TOBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkdict$(OBJ) $(TOBJ)
 	@ren $@ mkdict
 	@aout2exe mkdict
 	@del mkdict
+#	@sleep 1
 
 mktankan$(EXE): mktankan$(OBJ) $(TOBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mktankan$(OBJ) $(TOBJ)
 	@ren $@ mktankan
 	@aout2exe mktankan
 	@del mktankan
+#	@sleep 1
 
 mkdict$(OBJ): mkdict.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
@@ -379,6 +400,7 @@ rmdict:
 
 $(DICTTXT): mktankan$(EXE)
 	.\mktankan$(EXE) $@
+#	@sleep 1
 
 
 ############################################################
@@ -586,15 +608,19 @@ config: Configur expfunc.c
 		$(SED) -e "2,3d" -e "s:__cc__:gcc:" Configur \
 		| .\expfunc$(EXE) | $(SHELL) > config.h; \
 	fi
+#	@sleep 1
 
 config.h: config.hin
-	$(CP) config.hin config.h
+	$(CP) config.hin $@
+#	@sleep 1
 
 expfunc$(EXE): expfunc$(OBJ)
+#	@sleep 1
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ expfunc$(OBJ)
 	@ren $@ expfunc
 	@aout2exe expfunc
 	@del expfunc
+#	@sleep 1
 
 expfunc$(OBJ): expfunc.c
 	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
@@ -606,14 +632,17 @@ expfunc$(OBJ): expfunc.c
 sh: fdsh$(EXE)
 
 fdsh$(EXE): $(SOBJ1) $(SOBJ2) $(SARGS)
+#	@sleep 1
 	$(CC)  -o $@ @$(SARGS) $(SLDFLAGS)
 	@ren $@ fdsh
 	@aout2exe fdsh
 	@del fdsh
 
 $(SARGS): $(SOBJ1) $(SOBJ2)
+#	@sleep 1
 	@$(ECHO) $(SOBJ1) > $(SARGS)
 	@$(ECHO) $(SOBJ2) >> $(SARGS)
+#	@sleep 1
 
 sprintf$(OBJ): printf.c
 	$(CC) $(SHCFLAGS) -c -o $@ printf.c
@@ -655,6 +684,7 @@ ssysemu$(OBJ): sysemu.c
 bsh: fdbsh$(EXE)
 
 fdbsh$(EXE): $(BOBJ)
+#	@sleep 1
 	$(CC)  -o $@ $(BOBJ) $(SLDFLAGS)
 	@ren $@ fdbsh
 	@aout2exe fdbsh
@@ -694,15 +724,18 @@ bsysemu$(OBJ): sysemu.c
 nsh: fdnsh$(EXE)
 
 fdnsh$(EXE): $(NOBJ1) $(NOBJ2) $(NOBJ3) $(NARGS)
+#	@sleep 1
 	$(CC)  -o $@ @$(NARGS) $(NLDFLAGS)
 	@ren $@ fdnsh
 	@aout2exe fdnsh
 	@del fdnsh
 
 $(NARGS): $(NOBJ1) $(NOBJ2) $(NOBJ3)
+#	@sleep 1
 	@$(ECHO) $(NOBJ1) > $(NARGS)
 	@$(ECHO) $(NOBJ2) >> $(NARGS)
 	@$(ECHO) $(NOBJ3) >> $(NARGS)
+#	@sleep 1
 
 nprintf$(OBJ): printf.c
 	$(CC) $(NSHCFLAGS) -c -o $@ printf.c
@@ -923,6 +956,8 @@ clean:
 	-$(RM) $(PROGRAM).eng
 	-$(RM) $(PROGRAM).doc
 	-$(RM) $(ARGS)
+	-$(RM) $(SARGS)
+	-$(RM) $(NARGS)
 	-$(RM) $(UNITBL)
 	-$(RM) $(DICTTXT)
 	-$(RM) $(DICTTBL)

@@ -103,7 +103,7 @@ static char *form_http[] = {
 	NULL
 };
 static CONST lsparse_t httpformat = {
-	NULL, NULL, form_http, NULL, NULL, 0, 0, 0
+	NULL, NULL, form_http, NULL, NULL, 0, 0, LF_NOTRAVERSE
 };
 static CONST httpcmd_t cmdlist[] = {
 	{HTTP_OPTIONS, "OPTIONS"},

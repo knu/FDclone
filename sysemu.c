@@ -492,9 +492,9 @@ int type, dev;
 VOID_P bodyp;
 CONST char *path;
 {
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 	char conv[MAXPATHLEN];
-#endif
+# endif
 	int n;
 
 	if (!bodyp) return;
@@ -505,23 +505,23 @@ CONST char *path;
 		openlist = (openstat_t *)realloc2(openlist,
 			maxopenlist * sizeof(openstat_t));
 	}
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 	else free2(openlist[n].path);
-#endif
+# endif
 
 	openlist[n].type = type;
 	openlist[n].dev = dev;
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 	openlist[n].path = NULL;
-#endif
+# endif
 
 	switch (type) {
 		case OP_DIRP:
 			body_dirp(n) = (DIR *)bodyp;
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 			openlist[n].path =
 				strdup2(convput(conv, path, 0, 1, NULL, NULL));
-#endif
+# endif
 			break;
 		case OP_FD:
 			body_fd(n) = *((int *)bodyp);
@@ -550,9 +550,9 @@ VOID_P bodyp;
 
 	if ((n = getopenlist(type, bodyp)) < 0) return(-1);
 	dev = openlist[n].dev;
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 	free2(openlist[n].path);
-#endif
+# endif
 	memmove((char *)(&(openlist[n])), (char *)(&(openlist[n + 1])),
 		(--maxopenlist - n) * sizeof(openstat_t));
 	if (maxopenlist <= 0) {
@@ -563,6 +563,18 @@ VOID_P bodyp;
 
 	return(dev);
 }
+
+# ifdef	DEBUG
+VOID freeopenlist(VOID_A)
+{
+#  if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+	while (maxopenlist > 0) free2(openlist[--maxopenlist].path);
+#  endif
+	maxopenlist = 0;
+	free2(openlist);
+	openlist = NULL;
+}
+# endif	/* DEBUG */
 #endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE || DEP_PSEUDOPATH */
 
 #ifdef	DEP_PSEUDOPATH

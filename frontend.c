@@ -866,14 +866,19 @@ int w;
 #ifndef	_NOARCHIVE
 		case TE_ADDLAUNCH:
 			launch.ext = launch.comm = NULL;
+# ifndef	OLDPARSE
 			launch.format = launch.lignore = launch.lerror = NULL;
+# endif
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvbuf(fd, &launch, sizeof(launch)) < 0
 			|| recvstring(fd, &(launch.ext)) < 0
 			|| recvstring(fd, &(launch.comm)) < 0
+# ifndef	OLDPARSE
 			|| recvvar(fd, &(launch.format)) < 0
 			|| recvvar(fd, &(launch.lignore)) < 0
-			|| recvvar(fd, &(launch.lerror)) < 0) {
+			|| recvvar(fd, &(launch.lerror)) < 0
+# endif
+			) {
 				freelaunch(&launch);
 				break;
 			}

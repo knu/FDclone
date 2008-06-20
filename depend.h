@@ -41,6 +41,22 @@
 #define	_NOHTTP
 #endif
 
+#ifdef	WITHNETWORK
+#undef	OLDPARSE
+#endif
+#if	defined (OLDPARSE) && !defined (_NOCUSTOMIZE)
+#define	_NOCUSTOMIZE
+#endif
+#if	defined (OLDPARSE) && !defined (_NOBROWSE)
+#define	_NOBROWSE
+#endif
+#if	defined (OLDPARSE) && !defined (_NOFTP)
+#define	_NOFTP
+#endif
+#if	defined (OLDPARSE) && !defined (_NOHTTP)
+#define	_NOHTTP
+#endif
+
 #if	MSDOS && !defined (_NOKEYMAP)
 #define	_NOKEYMAP
 #endif
