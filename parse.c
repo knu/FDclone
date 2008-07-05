@@ -380,13 +380,13 @@ int evaldq;
 		else if (pc == PC_DQUOTE) {
 			if (!evaldq) continue;
 		}
-		else if (pc == PC_WORD) {
+		else if (pc == PC_WCHAR) {
 			cp++;
 			continue;
 		}
 		else if (pc == PC_ESCAPE) {
 			cp++;
-			if (*cp == PMETA && strchr2(c, *cp))
+			if (*cp == PESCAPE && strchr2(c, *cp))
 				return((char *)&(cp[-1]));
 			continue;
 		}
@@ -593,17 +593,15 @@ CONST char *name;
 	buf = malloc2(strlen(name) * 2 + 2 + 1);
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
-		if (iskanji1(cp, 0)) buf[i++] = *(cp++);
-# ifdef	CODEEUC
-		else if (isekana(cp, 0)) buf[i++] = *(cp++);
-# endif
-		else if (*cp == PMETA) {
+		if (iswchar(cp, 0)) buf[i++] = *(cp++);
+		else if (*cp == PESCAPE) {
 			*buf = '"';
-			if (strchr2(DQ_METACHAR, *(cp + 1))) buf[i++] = PMETA;
+			if (strchr2(DQ_METACHAR, *(cp + 1)))
+				buf[i++] = PESCAPE;
 		}
 		else if (strchr2(METACHAR, *cp)) {
 			*buf = '"';
-			if (strchr2(DQ_METACHAR, *cp)) buf[i++] = PMETA;
+			if (strchr2(DQ_METACHAR, *cp)) buf[i++] = PESCAPE;
 		}
 		buf[i] = *cp;
 	}
@@ -709,7 +707,7 @@ CONST char *prompt;
 #if	defined (FD) && !defined (DEP_ORIGSHELL)
 	prompt = new = evalpath(cp, EA_NOUNIQDELIM);
 #else
-	prompt = new = evalvararg(cp, '\0', EA_BACKQ | EA_KEEPMETA, 0);
+	prompt = new = evalvararg(cp, EA_BACKQ | EA_KEEPESCAPE, 0);
 	free2(cp);
 #endif
 	unprint = 0;
@@ -720,19 +718,16 @@ CONST char *prompt;
 	for (i = j = len = 0; prompt[i]; i++) {
 		cp = NULL;
 		line[0] = '\0';
-		if (prompt[i] != META) {
+		if (prompt[i] != ESCAPE) {
 			k = 0;
 			line[k++] = prompt[i];
-			if (iskanji1(prompt, i)) line[k++] = prompt[++i];
-#ifdef	CODEEUC
-			else if (isekana(prompt, i)) line[k++] = prompt[++i];
-#endif
+			if (iswchar(prompt, i)) line[k++] = prompt[++i];
 			line[k] = '\0';
 		}
 		else switch (prompt[++i]) {
 			case '\0':
 				i--;
-				*line = META;
+				*line = ESCAPE;
 				line[1] = '\0';
 				break;
 #ifdef	FD
@@ -1046,10 +1041,8 @@ int len;
 	cp = malloc2(len * 4 + 1);
 	j = 0;
 	if (s) for (i = 0; i < len; i++) {
-		if (iskanji1(s, i)) cp[j++] = s[i++];
-# ifdef	CODEEUC
-		else if (isekana(s, i)) cp[j++] = s[i++];
-# else
+		if (iswchar(s, i)) cp[j++] = s[i++];
+# ifndef	CODEEUC
 		else if (isskana(s, i)) /*EMPTY*/;
 # endif
 		else if (iscntrl2(s[i]) || ismsb(s[i])) {

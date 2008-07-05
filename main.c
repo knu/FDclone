@@ -1070,8 +1070,8 @@ int exist;
 		cp[1] = '\0';
 
 		cont = 0;
-		if (cp >= line && *cp == META
-		&& (cp - 1 < line || *(cp - 1) != META)
+		if (cp >= line && *cp == ESCAPE
+		&& (cp - 1 < line || *(cp - 1) != ESCAPE)
 		&& !onkanji1(line, cp - line - 1)) {
 			*cp = '\0';
 			cont = 1;

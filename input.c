@@ -1661,12 +1661,12 @@ int ins, qtop, *qp, *qedp;
 		if (*qp < '\0') pc = PC_NORMAL;
 		else pc = parsechar(&(strins[i]), ins - i,
 			'!', EA_FINDMETA, qp, NULL);
-		if (pc == PC_WORD) {
+		if (pc == PC_WCHAR) {
 			inputbuf[rptr] = strins[i++];
 			inputbuf[rptr + 1] = strins[i];
 			putstr(&rptr, &vptr, 2);
 		}
-#ifndef	FAKEMETA
+#ifndef	FAKEESCAPE
 		else if (pc == PC_EXMETA || pc == '!') {
 			if (*qp) {
 				n = 2;
@@ -1678,12 +1678,12 @@ int ins, qtop, *qp, *qedp;
 				ch = '\0';
 			}
 			if (insertcursor(&rptr, &vptr, n, ch) < 0) return(0);
-			inputbuf[rptr] = PMETA;
+			inputbuf[rptr] = PESCAPE;
 			inputbuf[rptr + 1] = strins[i];
 			putstr(&rptr, &vptr, 2);
 			qtop = rptr;
 		}
-#endif	/* !FAKEMETA */
+#endif	/* !FAKEESCAPE */
 		else if (pc == PC_META) {
 			n = quotemeta(&rptr, &vptr,
 				strins[i], &qtop, qp, qedp);
@@ -1694,10 +1694,10 @@ int ins, qtop, *qp, *qedp;
 				putstr(&rptr, &vptr, 1);
 			}
 			else {
-#ifdef	FAKEMETA
+#ifdef	FAKEESCAPE
 				ch = strins[i];
 #else
-				ch = PMETA;
+				ch = PESCAPE;
 #endif
 				if (insertcursor(&rptr, &vptr, 1, ch) < 0)
 					return(0);
@@ -1892,18 +1892,18 @@ int comline, cont, h;
 	else
 # endif
 	for (i = 0; i < rptr; i++) {
-# ifdef	FAKEMETA
+# ifdef	FAKEESCAPE
 		pc = parsechar(&(inputbuf[i]), rptr - i,
 			'$', EA_NOEVALQ, &quote, NULL);
 # else
 		pc = parsechar(&(inputbuf[i]), rptr - i,
 			'$', EA_BACKQ, &quote, NULL);
 # endif
-		if (pc == PC_WORD) i++;
+		if (pc == PC_WCHAR) i++;
 # ifdef	DEP_ORIGSHELL
 		else if (pc == '$') vartop = i + 1;
 # endif
-# ifndef	FAKEMETA
+# ifndef	FAKEESCAPE
 		else if (pc == PC_ESCAPE) i++;
 		else if (pc == PC_OPQUOTE) {
 			if (inputbuf[i] == '`') top = i + 1;
@@ -2061,12 +2061,12 @@ int comline, cont, h;
 	while (i < rptr) {
 		rw = 1;
 		pc = parsechar(&(inputbuf[i]), rptr - i, '!', 0, &quote, NULL);
-		if (pc == PC_WORD) rw = 2;
+		if (pc == PC_WCHAR) rw = 2;
 		else if (pc == PC_CLQUOTE) {
 			quoted = i;
 			qtop = i + 1;
 		}
-# ifndef	FAKEMETA
+# ifndef	FAKEESCAPE
 		else if (pc == PC_ESCAPE) {
 			rw = 2;
 			if (inputbuf[i + 1] == '!') qtop = i + 2;
@@ -2088,7 +2088,7 @@ int comline, cont, h;
 				rw = 0;
 			}
 		}
-# endif	/* !FAKEMETA */
+# endif	/* !FAKEESCAPE */
 		else if (pc == '!') {
 			if (quote) {
 				n = 2;
@@ -2103,7 +2103,7 @@ int comline, cont, h;
 				free2(cp);
 				return(0);
 			}
-			inputbuf[i] = PMETA;
+			inputbuf[i] = PESCAPE;
 			inputbuf[i + 1] = '!';
 			putstr(&i, &i2, 2);
 			rptr += n;
@@ -2113,7 +2113,7 @@ int comline, cont, h;
 		}
 		else if (pc == PC_OPQUOTE || pc == PC_SQUOTE) /*EMPTY*/;
 		else if (strchr2(DQ_METACHAR, inputbuf[i])) {
-			if (insertcursor(&i, &i2, 1, PMETA) < 0) {
+			if (insertcursor(&i, &i2, 1, PESCAPE) < 0) {
 				free2(cp);
 				return(0);
 			}
@@ -2518,11 +2518,7 @@ int upper;
 		ringbell();
 		return;
 	}
-	if (iskanji1(inputbuf, rptr));
-# ifdef	CODEEUC
-	else if (isekana(inputbuf, rptr));
-# endif
-	else {
+	if (!iswchar(inputbuf, rptr)) {
 		ch = (upper)
 			? toupper2(inputbuf[rptr]) : tolower2(inputbuf[rptr]);
 		if (ch != inputbuf[rptr]) {
@@ -3267,13 +3263,13 @@ int h;
 			insertbuf(3);
 			pc = parsechar(&(def[i]), -1,
 				'!', EA_FINDMETA, &quote, NULL);
-			if (pc == PC_WORD) {
+			if (pc == PC_WCHAR) {
 #ifdef	CODEEUC
 				if (ptr > inputlen && isekana(def, i)) ptr++;
 #endif
 				inputbuf[inputlen++] = def[i++];
 			}
-#ifndef	FAKEMETA
+#ifndef	FAKEESCAPE
 			else if (prompt) /*EMPTY*/;
 			else if (pc == PC_EXMETA || pc == '!') {
 				if (quote) {
@@ -3284,10 +3280,10 @@ int h;
 				else {
 					if (ptr > inputlen) ptr++;
 				}
-				inputbuf[inputlen++] = PMETA;
+				inputbuf[inputlen++] = PESCAPE;
 				qtop = inputlen + 1;
 			}
-#endif	/* !FAKEMETA */
+#endif	/* !FAKEESCAPE */
 			else if (pc == PC_META) {
 				if (ptr > inputlen) ptr++;
 				memmove(&(inputbuf[qtop + 1]),
@@ -3295,10 +3291,10 @@ int h;
 				inputbuf[qtop] = quote = '"';
 				if (strchr2(DQ_METACHAR, def[i])) {
 					if (ptr > inputlen) ptr++;
-#ifdef	FAKEMETA
+#ifdef	FAKEESCAPE
 					inputbuf[inputlen++] = def[i];
 #else
-					inputbuf[inputlen++] = PMETA;
+					inputbuf[inputlen++] = PESCAPE;
 #endif
 				}
 			}

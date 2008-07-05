@@ -1548,4 +1548,4 @@ VOID urlallclose(VOID_A)
 	logheader = NULL;
 	authfree();
 }
-#endif	/* DEP_FTPPATH */
+#endif	/* DEP_URLPATH */

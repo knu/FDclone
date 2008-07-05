@@ -276,10 +276,12 @@ K_EXTERN CONST u_char b2htable[16]
 #define	DEFCODE			EUC
 #define	SECCODE			SJIS
 #define	KANAWID			2
+#define	iswchar(s, i)		(iskanji1(s, i) || isekana(s, i))
 #else
 #define	DEFCODE			SJIS
 #define	SECCODE			EUC
 #define	KANAWID			1
+#define	iswchar(s, i)		iskanji1(s, i)
 #endif
 
 #define	MAXKANJIBUF		(3 + 2 + 3)

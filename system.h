@@ -125,6 +125,9 @@ typedef struct _heredoc_t {
 	char *filename;
 	char *buf;
 	int fd;
+#ifndef	USEFAKEPIPE
+	p_id_t pipein;
+#endif
 	u_char flags;
 } heredoc_t;
 
@@ -134,7 +137,7 @@ typedef struct _heredoc_t {
 typedef struct _redirectlist {
 	int fd;
 	char *filename;
-	u_char type;
+	u_short type;
 	int new;
 	int old;
 #ifdef	DEP_DOSDRIVE
@@ -154,6 +157,7 @@ typedef struct _redirectlist {
 #define	MD_HEREDOC		0040
 #define	MD_FORCED		0100
 #define	MD_REST			0200
+#define	MD_DUPL			0400
 
 typedef struct _command_t {
 	hashlist *hash;
@@ -176,29 +180,29 @@ typedef struct _command_t {
 #define	CT_FDINTERNAL		0200
 #endif
 
-#define	SM_IF			001
-#define	SM_THEN			002
-#define	SM_ELIF			003
-#define	SM_ELSE			004
-#define	SM_FI			005
-#define	SM_WHILE		006
-#define	SM_UNTIL		007
-#define	SM_DO			010
-#define	SM_DONE			011
-#define	SM_FOR			012
-#define	SM_IN			013
-#define	SM_CASE			014
-#define	SM_INCASE		015
-#define	SM_RPAREN		016
-#define	SM_CASEEND		017
-#define	SM_ESAC			020
-#define	SM_LPAREN		021
-#define	SM_FUNC			022
-#define	SM_LIST			023
-#define	SM_LISTEND		024
-#define	SM_ANOTHER		075
-#define	SM_CHILD		076
-#define	SM_STATEMENT		077
+#define	SM_IF			0001
+#define	SM_THEN			0002
+#define	SM_ELIF			0003
+#define	SM_ELSE			0004
+#define	SM_FI			0005
+#define	SM_WHILE		0006
+#define	SM_UNTIL		0007
+#define	SM_DO			0010
+#define	SM_DONE			0011
+#define	SM_FOR			0012
+#define	SM_IN			0013
+#define	SM_CASE			0014
+#define	SM_INCASE		0015
+#define	SM_RPAREN		0016
+#define	SM_CASEEND		0017
+#define	SM_ESAC			0020
+#define	SM_LPAREN		0021
+#define	SM_FUNC			0022
+#define	SM_LIST			0023
+#define	SM_LISTEND		0024
+#define	SM_ANOTHER		0075
+#define	SM_CHILD		0076
+#define	SM_STATEMENT		0077
 
 #define	isstatement(comm)	((comm) && (comm) -> type == CT_STATEMENT)
 #define	notstatement(comm)	((comm) && (comm) -> type != CT_STATEMENT)
@@ -228,7 +232,7 @@ typedef struct _syntaxtree {
 #define	OP_NOT			6
 #define	OP_NOWN			7
 
-#define	CN_META			0001
+#define	CN_ESCAPE		0001
 #define	CN_QUOT			0002
 #define	CN_STAT			0004
 #define	CN_INHR			0170
@@ -450,7 +454,7 @@ extern int waitjob __P_((p_id_t, wait_pid_t *, int));
 extern int waitchild __P_((p_id_t, syntaxtree *));
 #endif
 extern VOID setshflag __P_((int, int));
-extern char *evalvararg __P_((char *, int, int, int));
+extern char *evalvararg __P_((char *, int, int));
 extern VOID freeheredoc __P_((heredoc_t *, int));
 extern VOID freerlist __P_((redirectlist *, int));
 extern VOID freecomm __P_((command_t *, int));

@@ -1,3 +1,18 @@
+Ver. 3.00b	Failure to replace with $()/$(()) is fixed.
+ (07/06/08)	Bug that some temporary files may remain is fixed.
+		Freezing by here-document with huge size is fixed.
+		Mis-substitution of variables with exit status is fixed.
+		Failure to treat argument with '=' as substitution is fixed.
+		Buffer overflow with the undefined floppy drive is fixed.
+		Mis-operation for redirections with complex sentences is fixed.
+		Bug that trap on exit cannot be executed suitably is fixed.
+		Inaccurate value of 'LINENO' internal variable is fixed.
+		Bug that newline cannot be allowed in 'case' sentence is fixed.
+		Bug that ${} cannot include meta characters within "" is fixed.
+		Mis-replacement for meta characters in here-document is fixed.
+		Adjust representations for 'FD_VERSION' of each documents.
+		Bug that 'FD_VERSION' may not be set is fixed.
+
 Ver. 3.00a	Failure to replace the alias with no argument is fixed.
  (06/21/08)	Abortion with recursively invoked archive browser is fixed.
 		Resolve a directory traversal vulnerability on the URL drive.
@@ -115,7 +130,7 @@ Ver. 2.08b	Support Cygwin 1.5.19.
  (03/30/06)	Support internal commands with the command line on PTYMODE=1.
 		Bug that inputted key is dropped in some environments is fixed.
 		Abortion when "!string"-type history is not found is fixed.
-		Unsuitable filename completion with meta character is fixed.
+		Unsuitable filename completion with meta characters is fixed.
 		Bug that macros ignore any mark files on PTYMODE=1 is fixed.
 		Bug that ANSICOLOR=2 is ineffective on PTYMODE=1 is fixed.
 		Bug that current directory is not passed on PTYMODE=1 is fixed.
@@ -343,7 +358,7 @@ Ver. 2.02	Add 'pushd', 'popd' and 'dirs' builtins.
 		Expand the length of fdsh's command line into 255 characters.
 		Temporary filenames will be generated randomly for security.
 		Bug that '.' and '..' are invisible on floppy drives is fixed.
-		Bug that no here-documents can be used in statements is fixed.
+		Bug that no here-document can be used in statements is fixed.
 		Broken path when invoked with a floppy drive argument is fixed.
 		Bug that file preceding makes some commands illegal is fixed.
 		Evaluation for arguments in shell command line is revised.

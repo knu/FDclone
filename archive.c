@@ -147,7 +147,7 @@ static char *ign_lha[] = {
 	"Listing of archive : *",
 	"  Name          Original *",
 	"--------------*",
-#  if	defined (FAKEMETA) || !defined (BSPATHDELIM)
+#  if	defined (FAKEESCAPE) || !defined (BSPATHDELIM)
 	"* files * ???.?% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */
 #  else
 	"* files * ???.?%% ?\077-?\077-?? ??:??:??",	/* avoid trigraph */

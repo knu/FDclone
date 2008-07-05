@@ -116,11 +116,13 @@ static char *NEAR removeword __P_((CONST char *, CONST char *, int, int));
 static char **NEAR removevar __P_((char **, CONST char *, int, int));
 static char *NEAR evalshellparam __P_((int, int, CONST char *, int, int *));
 #endif	/* !MINIMUMSHELL */
-static int NEAR replacevar __P_((CONST char *, char **,
-		int, int, int, int, int));
+static int NEAR replacevar __P_((CONST char *, char **, int, int, int, int));
 static char *NEAR insertarg __P_((char *, int, CONST char *, int, int));
 static int NEAR evalvar __P_((char **, int, CONST char **, int));
-static char *NEAR replacebackquote __P_((char *, int *, char *, int));
+static char *NEAR replacebackquote __P_((char *, int *, char *, int, int));
+#ifdef	BASHSTYLE
+static VOID replaceifs __P_((char *, int));
+#endif
 #ifndef	MINIMUMSHELL
 static int NEAR evalhome __P_((char **, int, CONST char **));
 #endif
@@ -611,26 +613,17 @@ static int NEAR isescape(s, ptr, quote, len, flags)
 CONST char *s;
 int ptr, quote, len, flags;
 {
-#ifdef	FAKEMETA
+#ifdef	FAKEESCAPE
 	return(0);
-#else	/* !FAKEMETA */
-	if (s[ptr] != PMETA || quote == '\'') return(0);
+#else	/* !FAKEESCAPE */
+	if (s[ptr] != PESCAPE || quote == '\'') return(0);
 
-	if (len >= 0) {
-		if (!(flags & EA_EOLMETA) && ptr + 1 >= len) return(0);
-# ifndef	BASHSTYLE
-	/* bash does not treat "\" as \ */
-		if (quote == '"' && s[ptr + 1] == quote && ptr + 2 >= len)
-			return(0);
-# endif
+	if (flags & EA_EOLESCAPE) /*EMPTY*/;
+	else if (len >= 0) {
+		if (ptr + 1 >= len) return(0);
 	}
 	else {
-		if (!(flags & EA_EOLMETA) && !s[ptr + 1]) return(0);
-# ifndef	BASHSTYLE
-	/* bash does not treat "\" as \ */
-		if (quote == '"' && s[ptr + 1] == quote && !s[ptr + 2])
-			return(0);
-# endif
+		if (!s[ptr + 1]) return(0);
 	}
 
 # ifdef	BSPATHDELIM
@@ -643,7 +636,7 @@ int ptr, quote, len, flags;
 # endif
 
 	return(1);
-#endif	/* !FAKEMETA */
+#endif	/* !FAKEESCAPE */
 }
 
 #ifdef	_NOORIGGLOB
@@ -874,7 +867,7 @@ int len;
 			if (quote || metachar) {
 #ifdef	BASHSTYLE
 	/* bash treats a character quoted by \ in "[]" as a character itself */
-				paren[plen++] = PMETA;
+				paren[plen++] = PESCAPE;
 # ifndef	PATHNOCASE
 				if (!pathignorecase) paren[plen++] = s[i];
 				else
@@ -938,16 +931,10 @@ int len;
 #endif
 				else paren[plen++] = s[i];
 			}
-			else if (iskanji1(s, i)) {
+			else if (iswchar(s, i)) {
 				paren[plen++] = s[i++];
 				paren[plen++] = s[i];
 			}
-#ifdef	CODEEUC
-			else if (isekana(s, i)) {
-				paren[plen++] = s[i++];
-				paren[plen++] = s[i];
-			}
-#endif
 #ifndef	PATHNOCASE
 			else if (!pathignorecase) paren[plen++] = s[i];
 #endif
@@ -975,16 +962,10 @@ int len;
 		if (!cp) {
 			cp = malloc2(2 + 1);
 			j = 0;
-			if (iskanji1(s, i)) {
+			if (iswchar(s, i)) {
 				cp[j++] = s[i++];
 				cp[j++] = s[i];
 			}
-#ifdef	CODEEUC
-			else if (isekana(s, i)) {
-				cp[j++] = s[i++];
-				cp[j++] = s[i];
-			}
-#endif
 #ifndef	PATHNOCASE
 			else if (!pathignorecase) cp[j++] = s[i];
 #endif
@@ -1018,10 +999,7 @@ CONST char *s;
 
 	for (n1 = n2 = 0; re[n1] && s[n2]; n1++, n2++) {
 		c1 = (u_char)(s[i = n2]);
-		if (iskanji1(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
-#ifdef	CODEEUC
-		else if (isekana(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
-#endif
+		if (iswchar(s, n2)) c1 = (c1 << 8) + (u_char)(s[++n2]);
 #ifndef	PATHNOCASE
 		else if (!pathignorecase) /*EMPTY*/;
 #endif
@@ -1044,7 +1022,7 @@ CONST char *s;
 		for (; re[n1][i]; i++) {
 #ifdef	BASHSTYLE
 	/* bash treats a character quoted by \ in "[]" as a character itself */
-			if (re[n1][i] == PMETA && re[n1][i + 1]) i++;
+			if (re[n1][i] == PESCAPE && re[n1][i + 1]) i++;
 	/* bash treats "[a-]]" as "[a-]" + "]" */
 			else if (re[n1][i] == '-' && re[n1][i + 1] && c2)
 #else
@@ -1055,12 +1033,8 @@ CONST char *s;
 				i++;
 			}
 			c2 = (u_char)(re[n1][i]);
-			if (iskanji1(re[n1], i))
+			if (iswchar(re[n1], i))
 				c2 = (c2 << 8) + (u_char)(re[n1][++i]);
-#ifdef	CODEEUC
-			else if (isekana(re[n1], i))
-				c2 = (c2 << 8) + (u_char)(re[n1][++i]);
-#endif
 			if (beg >= 0) {
 				if (beg && c1 >= beg && c1 <= c2) break;
 				beg = -1;
@@ -1216,20 +1190,20 @@ wild_t *wp;
 				addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
 			continue;
 		}
-		else if (pc == PC_WORD) {
+		else if (pc == PC_WCHAR) {
 			addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
 			addstrbuf(&(wp -> path), &(wp -> s[i]), 1);
 			i++;
 		}
 		else if (pc == PC_ESCAPE) {
-			if (wp -> flags & EA_KEEPMETA)
+			if (wp -> flags & EA_KEEPESCAPE)
 				addstrbuf(&(wp -> fixed), &(wp -> s[i]), 1);
 			if (wp -> s[i + 1] == _SC_) continue;
 
 			if (wp -> quote == '\''
 			|| (wp -> quote == '"'
 			&& !strchr2(DQ_METACHAR, wp -> s[i + 1]))) {
-				if (!(wp -> flags & EA_KEEPMETA))
+				if (!(wp -> flags & EA_KEEPESCAPE))
 					addstrbuf(&(wp -> fixed),
 						&(wp -> s[i]), 1);
 				addstrbuf(&(wp -> path), &(wp -> s[i]), 1);
@@ -2048,27 +2022,29 @@ char *CONST *argv;
 }
 #endif	/* !FDSH && !_NOCOMPLETE */
 
-static int NEAR addmeta(s1, s2, quoted)
+static int NEAR addmeta(s1, s2, flags)
 char *s1;
 CONST char *s2;
-int quoted;
+int flags;
 {
-	int i, j, pc, quote;
+	int i, j, c;
 
 	if (!s2) return(0);
+	if (flags & EA_INQUOTE) flags |= EA_NOEVALQ;
 	for (i = j = 0; s2[i]; i++, j++) {
-		quote = quoted;
-		pc = parsechar(&(s2[i]), -1, '\0', EA_EOLMETA, &quote, NULL);
-		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_ESCAPE) {
-			if (s1) s1[j] = PMETA;
-			j++;
-		}
-		else if (pc == PC_WORD) {
-			if (s1) s1[j] = s2[i];
-			j++;
-			i++;
-		}
+		c = '\0';
+		if (s2[i] == '\'' && !(flags & EA_NOEVALQ)) c = PESCAPE;
+		else if (s2[i] == '"' && !(flags & EA_NOEVALDQ)) c = PESCAPE;
+#ifndef	FAKEESCAPE
+		else if (s2[i] == PESCAPE && !(flags & EA_STRIPESCAPE))
+			c = PESCAPE;
+#endif
+		else if (iswchar(s2, i)) c = s2[i++];
 
+		if (c) {
+			if (s1) s1[j] = c;
+			j++;
+		}
 		if (s1) s1[j] = s2[i];
 	}
 
@@ -2155,10 +2131,7 @@ int len, spc, flags, *qp, *pqp;
 		}
 		return(PC_CLQUOTE);
 	}
-	else if (iskanji1(s, 0)) return(PC_WORD);
-#ifdef	CODEEUC
-	else if (isekana(s, 0)) return(PC_WORD);
-#endif
+	else if (iswchar(s, 0)) return(PC_WCHAR);
 	else if (*qp == '\'') return(PC_SQUOTE);
 #ifdef	FD
 	else if ((flags & EA_FINDMETA) && strchr2(DQ_METACHAR, *s))
@@ -2184,7 +2157,7 @@ int len, spc, flags, *qp, *pqp;
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
-	else if (*s == '"') {
+	else if (!(flags & EA_NOEVALDQ) && *s == '"') {
 		*qp = *s;
 		return(PC_OPQUOTE);
 	}
@@ -2203,9 +2176,9 @@ int len, spc, flags, *qp, *pqp;
 	return(PC_NORMAL);
 }
 
-static int NEAR skipvar(bufp, eolp, ptrp, qed)
+static int NEAR skipvar(bufp, eolp, ptrp, flags)
 CONST char **bufp;
-int *eolp, *ptrp, qed;
+int *eolp, *ptrp, flags;
 {
 	int i, mode;
 
@@ -2223,12 +2196,12 @@ int *eolp, *ptrp, qed;
 #ifndef	MINIMUMSHELL
 	if ((*bufp)[*ptrp] == '(') {
 		if ((*bufp)[++(*ptrp)] != '(') {
-			if (skipvarvalue(*bufp, ptrp, ")", qed, 0, 1) < 0)
+			if (skipvarvalue(*bufp, ptrp, ")", flags, 0, 1) < 0)
 				return(-1);
 		}
 		else {
 			(*ptrp)++;
-			if (skipvarvalue(*bufp, ptrp, "))", qed, 0, 1) < 0)
+			if (skipvarvalue(*bufp, ptrp, "))", flags, 0, 1) < 0)
 				return(-1);
 		}
 		if (eolp) *eolp = *ptrp;
@@ -2237,7 +2210,7 @@ int *eolp, *ptrp, qed;
 #endif
 
 	if ((*bufp)[*ptrp] != '{') {
-		if ((*bufp)[*ptrp] != qed) (*ptrp)++;
+		if (!(flags & EA_INQUOTE) || (*bufp)[*ptrp] != '"') (*ptrp)++;
 		if (eolp) *eolp = *ptrp;
 		return(mode);
 	}
@@ -2279,43 +2252,41 @@ int *eolp, *ptrp, qed;
 #ifdef	BASHSTYLE
 	/* bash treats any meta character in ${} as just a character */
 # ifdef	MINIMUMSHELL
-	if (skipvarvalue(*bufp, ptrp, "}", qed, 0) < 0) return(-1);
+	if (skipvarvalue(*bufp, ptrp, "}", flags, 0) < 0) return(-1);
 # else
-	if (skipvarvalue(*bufp, ptrp, "}", qed, 0, 0) < 0) return(-1);
+	if (skipvarvalue(*bufp, ptrp, "}", flags, 0, 0) < 0) return(-1);
 # endif
-#else	/* BASHSTYLE */
+#else	/* !BASHSTYLE */
 # ifdef	MINIMUMSHELL
-	if (skipvarvalue(*bufp, ptrp, "}", qed, 1) < 0) return(-1);
+	if (skipvarvalue(*bufp, ptrp, "}", flags, 1) < 0) return(-1);
 # else
-	if (skipvarvalue(*bufp, ptrp, "}", qed, 1, 0) < 0) return(-1);
+	i = (flags & EA_INQUOTE) ? 0 : 1;
+	if (skipvarvalue(*bufp, ptrp, "}", flags, i, 0) < 0) return(-1);
 # endif
-#endif	/* BASHSTYLE */
+#endif	/* !BASHSTYLE */
 
 	return(mode);
 }
 
 #ifdef	MINIMUMSHELL
-static int NEAR skipvarvalue(s, ptrp, next, qed, nonl)
+static int NEAR skipvarvalue(s, ptrp, next, flags, nonl)
 CONST char *s;
 int *ptrp;
 CONST char *next;
-int qed, nonl;
+int flags, nonl;
 #else
-static int NEAR skipvarvalue(s, ptrp, next, qed, nonl, nest)
+static int NEAR skipvarvalue(s, ptrp, next, flags, nonl, nest)
 CONST char *s;
 int *ptrp;
 CONST char *next;
-int qed, nonl, nest;
+int flags, nonl, nest;
 #endif
 {
-#ifndef	MINIMUMSHELL
-	int tmpq;
-#endif
 #ifdef	NESTINGQUOTE
 	int pq;
 #endif
 	CONST char *cp;
-	int pc, q, len;
+	int pc, q, f, len;
 
 #ifdef	NESTINGQUOTE
 	pq = '\0';
@@ -2323,17 +2294,18 @@ int qed, nonl, nest;
 	q = '\0';
 	len = strlen(next);
 	while (s[*ptrp]) {
+		f = flags;
+		if (q == '"') f |= EA_INQUOTE;
 #ifdef	NESTINGQUOTE
 		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, &pq);
 #else
 		pc = parsechar(&(s[*ptrp]), -1, '$', EA_BACKQ, &q, NULL);
 #endif
-		if (pc == PC_WORD || pc == PC_ESCAPE) (*ptrp)++;
+		if (pc == PC_WCHAR || pc == PC_ESCAPE) (*ptrp)++;
 		else if (pc == '$') {
 			if (!s[++(*ptrp)]) return(0);
 			cp = s;
-			if (skipvar(&cp, NULL, ptrp, (q) ? q : qed) < 0)
-				return(-1);
+			if (skipvar(&cp, NULL, ptrp, f) < 0) return(-1);
 			*ptrp += (cp - s);
 			continue;
 		}
@@ -2341,9 +2313,8 @@ int qed, nonl, nest;
 		else if (nonl && s[*ptrp] == '\n') return(-1);
 #ifndef	MINIMUMSHELL
 		else if (nest && s[*ptrp] == '(') {
-			tmpq = (q) ? q : qed;
 			(*ptrp)++;
-			if (skipvarvalue(s, ptrp, ")", tmpq, nonl, nest) < 0)
+			if (skipvarvalue(s, ptrp, ")", f, nonl, nest) < 0)
 				return(-1);
 			continue;
 		}
@@ -2371,7 +2342,7 @@ int plen, mode;
 
 	if (!s || !*s) return(NULL);
 	tmp = strndup2(pattern, plen);
-	new = evalarg(tmp, '\0', EA_BACKQ);
+	new = evalarg(tmp, EA_BACKQ);
 	free2(tmp);
 	re = regexp_init(new, -1);
 	free2(new);
@@ -2443,11 +2414,11 @@ int plen, mode;
 #endif	/* !MINIMUMSHELL */
 
 #ifdef	MINIMUMSHELL
-static char *NEAR evalshellparam(c, quoted)
-int c, quoted;
+static char *NEAR evalshellparam(c, flags)
+int c, flags;
 #else
-static char *NEAR evalshellparam(c, quoted, pattern, plen, modep)
-int c, quoted;
+static char *NEAR evalshellparam(c, flags, pattern, plen, modep)
+int c, flags;
 CONST char *pattern;
 int plen, *modep;
 #endif
@@ -2475,7 +2446,7 @@ int plen, *modep;
 			}
 #endif
 			sp = ' ';
-			if (!quoted) {
+			if (!(flags & EA_INQUOTE)) {
 				cp = catvar(&(arglist[1]), sp);
 				break;
 			}
@@ -2486,18 +2457,18 @@ int plen, *modep;
 #endif
 
 			for (i = j = 0; arglist[i + 1]; i++)
-				j += addmeta(NULL, arglist[i + 1], quoted);
+				j += addmeta(NULL, arglist[i + 1], flags);
 			if (i <= 0) cp = strdup2(nullstr);
 			else {
 				j += (i - 1) * 3;
 				cp = malloc2(j + 1);
-				j = addmeta(cp, arglist[1], quoted);
+				j = addmeta(cp, arglist[1], flags);
 				for (i = 2; arglist[i]; i++) {
-					cp[j++] = quoted;
+					cp[j++] = '"';
 					cp[j++] = sp;
-					cp[j++] = quoted;
+					cp[j++] = '"';
 					j += addmeta(&(cp[j]), arglist[i],
-						quoted);
+						flags);
 				}
 				cp[j] = '\0';
 			}
@@ -2515,7 +2486,7 @@ int plen, *modep;
 			sp = ' ';
 #ifdef	BASHSTYLE
 	/* bash uses IFS instead of a space as a separator */
-			if (quoted && (cp = getconstvar(ENVIFS)))
+			if ((flags & EA_INQUOTE) && (cp = getconstvar(ENVIFS)))
 				sp = (*cp) ? *cp : '\0';
 #endif
 			cp = catvar(&(arglist[1]), sp);
@@ -2558,10 +2529,10 @@ int plen, *modep;
 	return(cp);
 }
 
-static int NEAR replacevar(arg, cpp, s, len, vlen, mode, quoted)
+static int NEAR replacevar(arg, cpp, s, len, vlen, mode)
 CONST char *arg;
 char **cpp;
-int s, len, vlen, mode, quoted;
+int s, len, vlen, mode;
 {
 	char *val;
 	int i;
@@ -2574,7 +2545,7 @@ int s, len, vlen, mode, quoted;
 	else if (mode == '=' && !isidentchar(*arg)) return(-1);
 
 	val = strndup2(&(arg[s]), vlen);
-	*cpp = evalarg(val, quoted,
+	*cpp = evalarg(val,
 		(mode == '=' || mode == '?')
 		? EA_STRIPQ | EA_BACKQ : EA_BACKQ);
 	free2(val);
@@ -2593,7 +2564,7 @@ int s, len, vlen, mode, quoted;
 	/* bash does not evaluates a quoted string in substitution itself */
 		free2(*cpp);
 		val = strndup2(&(arg[s]), vlen);
-		*cpp = evalarg(val, quoted, EA_BACKQ);
+		*cpp = evalarg(val, EA_BACKQ);
 		free2(val);
 		if (!*cpp) return(-1);
 # ifdef	FD
@@ -2630,11 +2601,11 @@ int olen, nlen;
 	return(buf);
 }
 
-static int NEAR evalvar(bufp, ptr, argp, quoted)
+static int NEAR evalvar(bufp, ptr, argp, flags)
 char **bufp;
 int ptr;
 CONST char **argp;
-int quoted;
+int flags;
 {
 #ifndef	MINIMUMSHELL
 	char tmp[MAXLONGWIDTH + 1];
@@ -2647,7 +2618,7 @@ int quoted;
 	arg = *argp;
 	top = &(arg[1]);
 	n = 0;
-	if ((mode = skipvar(&top, &s, &n, quoted)) < 0) return(-1);
+	if ((mode = skipvar(&top, &s, &n, flags)) < 0) return(-1);
 
 	*argp = &(top[n - 1]);
 	if (!(len = s)) {
@@ -2673,7 +2644,7 @@ int quoted;
 		for (;;) {
 			if ((new = (*posixsubstfunc)(top, &n))) break;
 			if (n < 0 || !top[n]) return(-1);
-			if (skipvarvalue(top, &n, ")", quoted, 0, 1) < 0)
+			if (skipvarvalue(top, &n, ")", flags, 0, 1) < 0)
 				return(-1);
 			*argp = top + n - 1;
 		}
@@ -2704,10 +2675,10 @@ int quoted;
 	else if (len == 1) {
 		c = *top;
 #ifdef	MINIMUMSHELL
-		cp = evalshellparam(c, quoted);
+		cp = evalshellparam(c, flags);
 #else
-		cp = evalshellparam(c, quoted,
-			top + s, vlen, (nul < 0) ? &mode : NULL);
+		cp = evalshellparam(c, flags,
+			&(top[s]), vlen, (nul < 0) ? &mode : NULL);
 #endif
 		if (cp) new = cp;
 		else {
@@ -2734,7 +2705,7 @@ int quoted;
 	}
 	else
 #endif	/* !MINIMUMSHELL */
-	if ((mode = replacevar(top, &cp, s, len, vlen, mode, quoted)) < 0) {
+	if ((mode = replacevar(top, &cp, s, len, vlen, mode)) < 0) {
 		free2(new);
 		return(mode);
 	}
@@ -2743,14 +2714,14 @@ int quoted;
 		new = cp;
 	}
 
-	if (!mode && (c != '@' || !quoted)) {
-		vlen = addmeta(NULL, cp, quoted);
+	if (!mode && (c != '@' || !(flags & EA_INQUOTE))) {
+		vlen = addmeta(NULL, cp, flags);
 		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
-		addmeta(&((*bufp)[ptr]), cp, quoted);
+		addmeta(&((*bufp)[ptr]), cp, flags);
 	}
 	else if (!cp) vlen = 0;
-	else if (c == '@' && !*cp && quoted
-	&& ptr > 0 && (*bufp)[ptr - 1] == quoted && *(*argp + 1) == quoted) {
+	else if (c == '@' && !*cp && (flags & EA_INQUOTE)
+	&& ptr > 0 && (*bufp)[ptr - 1] == '"' && *(*argp + 1) == '"') {
 		vlen = 0;
 		ptr--;
 		(*argp)++;
@@ -2960,21 +2931,21 @@ VOID freeidlist(VOID_A)
 # endif
 #endif	/* !NOUID */
 
-static char *NEAR replacebackquote(buf, ptrp, bbuf, rest)
+static char *NEAR replacebackquote(buf, ptrp, bbuf, rest, flags)
 char *buf;
 int *ptrp;
 char *bbuf;
-int rest;
+int rest, flags;
 {
 	char *tmp;
 	int len, size;
 
 	stripquote(bbuf, EA_BACKQ);
 	if (!(tmp = (*backquotefunc)(bbuf))) return(buf);
-	len = addmeta(NULL, tmp, '\0');
+	len = addmeta(NULL, tmp, flags);
 	size = *ptrp + len + rest + 1;
 	buf = realloc2(buf, size);
-	addmeta(&(buf[*ptrp]), tmp, '\0');
+	addmeta(&(buf[*ptrp]), tmp, flags);
 	*ptrp += len;
 	free2(tmp);
 
@@ -3037,6 +3008,22 @@ char *resolved, *cwd;
 
 	return(err);
 }
+
+#ifdef	BASHSTYLE
+static VOID replaceifs(s, len)
+char *s;
+int len;
+{
+	CONST char *ifs;
+	int i;
+
+	if (!(ifs = getconstvar(ENVIFS))) return;
+	for (i = 0; i < len; i++) {
+		if (strchr2(ifs, s[i]) && !strchr2(IFS_SET, s[i])) s[i] = ' ';
+		else if (iswchar(s, i)) i++;
+	}
+}
+#endif	/* BASHSTYLE */
 
 #ifndef	MINIMUMSHELL
 static int NEAR evalhome(bufp, ptr, argp)
@@ -3106,22 +3093,25 @@ CONST char **argp;
 }
 #endif	/* !MINIMUMSHELL */
 
-char *evalarg(arg, qed, flags)
+char *evalarg(arg, flags)
 char *arg;
-int qed, flags;
+int flags;
 {
 #ifdef	DEP_DOSLFN
 	char path[MAXPATHLEN], alias[MAXPATHLEN];
 #endif
 #ifndef	MINIMUMSHELL
-	int prev;
+	int q2, prev;
 #endif
 #ifdef	NESTINGQUOTE
 	int pq;
 #endif
+#ifdef	BASHSTYLE
+	int top;
+#endif
 	CONST char *cp;
 	char *buf, *bbuf;
-	int i, j, pc, q, tmpq;
+	int i, j, pc, q, f;
 
 #ifdef	DEP_DOSLFN
 	if (*arg == '"' && (i = strlen(arg)) > 2 && arg[i - 1] == '"') {
@@ -3145,7 +3135,7 @@ int qed, flags;
 	if (!backquotefunc) flags &= ~EA_BACKQ;
 	bbuf = (flags & EA_BACKQ) ? malloc2(i) : NULL;
 #ifndef	MINIMUMSHELL
-	prev =
+	q2 = prev =
 #endif
 #ifdef	NESTINGQUOTE
 	pq =
@@ -3155,6 +3145,9 @@ int qed, flags;
 	cp = arg;
 
 	while (*cp) {
+#ifdef	BASHSTYLE
+		top = i;
+#endif
 #ifdef	NESTINGQUOTE
 		pc = parsechar(cp, -1, '$', flags, &q, &pq);
 #else
@@ -3164,12 +3157,17 @@ int qed, flags;
 			if (*cp == '`') {
 				bbuf[j] = '\0';
 				buf = replacebackquote(buf, &i,
-					bbuf, strlen(&(cp[1])));
+					bbuf, strlen(&(cp[1])), flags);
+#ifdef	BASHSTYLE
+	/* bash replaces the IFS character to a space */
+				if (flags & EA_EVALIFS)
+					replaceifs(&(buf[top]), i - top);
+#endif
 				j = 0;
 			}
 			else if (!(flags & EA_STRIPQ)) buf[i++] = *cp;
 		}
-		else if (pc == PC_WORD) {
+		else if (pc == PC_WCHAR) {
 			if (q == '`') {
 				bbuf[j++] = *cp++;
 				bbuf[j++] = *cp;
@@ -3179,46 +3177,69 @@ int qed, flags;
 				buf[i++] = *cp;
 			}
 		}
-		else if (pc == PC_BQUOTE) bbuf[j++] = *cp;
+		else if (pc == PC_BQUOTE) {
+			bbuf[j++] = *cp;
+#ifndef	MINIMUMSHELL
+			parsechar(cp, -1, '\0', flags, &q2, NULL);
+#endif
+		}
 		else if (pc == PC_SQUOTE || pc == PC_DQUOTE) buf[i++] = *cp;
 		else if (pc == '$') {
-			tmpq = (q) ? q : qed;
+			f = flags;
+			if (q == '"') f |= EA_INQUOTE;
 			if (!cp[1]) buf[i++] = *cp;
-#ifdef	FAKEMETA
+#ifdef	FAKEESCAPE
 # ifdef	MINIMUMSHELL
 			else if (cp[1] == '$') cp++;
 # else
 			else if (cp[1] == '$' || cp[1] == '~') cp++;
 # endif
-#endif	/* FAKEMETA */
-			else if ((i = evalvar(&buf, i, &cp, tmpq)) < 0) {
+#endif	/* FAKEESCAPE */
+			else if ((i = evalvar(&buf, i, &cp, f)) < 0) {
 				free2(bbuf);
 				free2(buf);
 				if (i < -1) *arg = '\0';
 				return(NULL);
 			}
+#ifdef	BASHSTYLE
+	/* bash replaces the IFS character to a space */
+			else if (flags & EA_EVALIFS)
+				replaceifs(&(buf[top]), i - top);
+#endif
 		}
 		else if (pc == PC_ESCAPE) {
 			cp++;
-			if (flags & EA_KEEPMETA) pc = PC_NORMAL;
+			if (flags & EA_KEEPESCAPE) pc = PC_NORMAL;
 			else if (*cp == '$') /*EMPTY*/;
 			else if ((flags & EA_BACKQ) && *cp == '`') /*EMPTY*/;
 			else if ((flags & EA_STRIPQ)
 			&& (*cp == '\'' || *cp == '"'))
 				/*EMPTY*/;
+			else if ((flags & EA_STRIPESCAPE) && *cp == PESCAPE)
+				/*EMPTY*/;
 			else pc = PC_NORMAL;
 
 			if (q == '`') {
-				bbuf[j++] = PMETA;
+				if (*cp == '$') /*EMPTY*/;
+#ifndef	MINIMUMSHELL
+				else if (q2 == '\'' && *cp == PESCAPE)
+					/*EMPTY*/;
+#endif
+				else bbuf[j++] = PESCAPE;
 				bbuf[j++] = *cp;
 			}
 			else {
-				if (pc != PC_ESCAPE) buf[i++] = PMETA;
+				if (pc != PC_ESCAPE) buf[i++] = PESCAPE;
 				buf[i++] = *cp;
 			}
 		}
 		else if (pc == PC_OPQUOTE) {
-			if (*cp == '`') j = 0;
+			if (*cp == '`') {
+				j = 0;
+#ifndef	MINIMUMSHELL
+				q2 = '\0';
+#endif
+			}
 			else if (!(flags & EA_STRIPQ)) buf[i++] = *cp;
 		}
 		else if (pc != PC_NORMAL) /*EMPTY*/;
@@ -3238,7 +3259,7 @@ int qed, flags;
 	/* bash does not allow unclosed quote */
 	if ((flags & EA_BACKQ) && q == '`') {
 		bbuf[j] = '\0';
-		buf = replacebackquote(buf, &i, bbuf, 0);
+		buf = replacebackquote(buf, &i, bbuf, 0, flags);
 	}
 #endif
 	free2(bbuf);
@@ -3261,7 +3282,7 @@ CONST char *ifs;
 		for (i = 0, quote = '\0'; (*argvp)[n][i]; i++) {
 			pc = parsechar(&((*argvp)[n][i]), -1,
 				'\0', 0, &quote, NULL);
-			if (pc == PC_WORD || pc == PC_ESCAPE) i++;
+			if (pc == PC_WCHAR || pc == PC_ESCAPE) i++;
 			else if (pc != PC_NORMAL) /*EMPTY*/;
 			else if (strchr2(ifs, (*argvp)[n][i])) {
 				for (j = i + 1; (*argvp)[n][j]; j++)
@@ -3345,14 +3366,14 @@ int flags;
 			stripped++;
 			if (flags & EA_STRIPQ) continue;
 		}
-		else if (pc == PC_WORD) arg[j++] = arg[i++];
+		else if (pc == PC_WCHAR) arg[j++] = arg[i++];
 		else if (pc == PC_ESCAPE) {
 			i++;
-			if (flags & EA_KEEPMETA) pc = PC_NORMAL;
+			if (flags & EA_KEEPESCAPE) pc = PC_NORMAL;
 			else if (!quote && !(flags & EA_BACKQ)) /*EMPTY*/;
 			else if (!strchr2(DQ_METACHAR, arg[i])) pc = PC_NORMAL;
 
-			if (pc != PC_ESCAPE) arg[j++] = PMETA;
+			if (pc != PC_ESCAPE) arg[j++] = PESCAPE;
 			else stripped++;
 		}
 
@@ -3384,7 +3405,8 @@ int flags;
 	else i = strlen(path);
 	cp = strndup2(path, i);
 
-	if (!(tmp = evalarg(cp, '\'', EA_KEEPMETA))) {
+	tmp = evalarg(cp, EA_NOEVALQ | EA_NOEVALDQ | EA_KEEPESCAPE);
+	if (!tmp) {
 		*cp = '\0';
 		return(cp);
 	}
@@ -3422,12 +3444,12 @@ int flags;
 #endif
 			if (!(flags & EA_NOEVALQ)) continue;
 		}
-		else if (pc == PC_WORD) tmp[j++] = cp[i++];
+		else if (pc == PC_WCHAR) tmp[j++] = cp[i++];
 		else if (pc == PC_ESCAPE) {
 			i++;
-			if ((flags & EA_KEEPMETA)
+			if ((flags & EA_KEEPESCAPE)
 			|| (quote && !strchr2(DQ_METACHAR, cp[i])))
-				tmp[j++] = PMETA;
+				tmp[j++] = PESCAPE;
 		}
 		else if (pc == PC_OPQUOTE) {
 #ifdef	DEP_DOSLFN

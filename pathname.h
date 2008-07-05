@@ -23,7 +23,7 @@
 #endif
 
 #define	IFS_SET			" \t\n"
-#define	META			'\\'
+#define	ESCAPE			'\\'
 #if	MSDOS && !defined (DEP_ORIGSHELL)
 #define	PATHDELIM		';'
 #else
@@ -40,7 +40,7 @@
 #define	EXTBAT			"BAT"
 
 #ifndef	BSPATHDELIM
-#define	PMETA			META
+#define	PESCAPE			ESCAPE
 #define	RMSUFFIX		'%'
 # ifdef	BASHSTYLE
 	/* bash treats '\r' as just a character */
@@ -51,13 +51,13 @@
 #define	DQ_METACHAR		"\"$\\`"
 #else	/* BSPATHDELIM */
 # ifdef	DEP_ORIGSHELL
-# define	PMETA		'%'
+# define	PESCAPE		'%'
 # define	RMSUFFIX	'\\'
 # define	METACHAR	"\t\r\n !\"#$%&'()*;<=>?[]`|"
 # define	DQ_METACHAR	"\"$%`"
 # else
-# define	FAKEMETA
-# define	PMETA		'$'
+# define	FAKEESCAPE
+# define	PESCAPE		'$'
 # define	RMSUFFIX	'%'
 # define	METACHAR	"\t\r\n !\"$'*<>?|"
 # define	DQ_METACHAR	"\"$"
@@ -70,7 +70,7 @@
 #define	PC_SQUOTE		3
 #define	PC_DQUOTE		4
 #define	PC_BQUOTE		5
-#define	PC_WORD			6
+#define	PC_WCHAR		6
 #define	PC_ESCAPE		7
 #define	PC_META			8
 #define	PC_EXMETA		9
@@ -143,15 +143,19 @@ typedef struct _wild_t {
 	u_char flags;
 } wild_t;
 
-#define	EA_STRIPQ		0001
-#define	EA_BACKQ		0002
-#define	EA_KEEPMETA		0004
-#define	EA_NOEVALQ		0010
-#define	EA_STRIPQLATER		0020
-#define	EA_NOUNIQDELIM		0040
-#define	EA_EOLMETA		0100
-#define	EA_FINDMETA		0200
-#define	EA_FINDDELIM		0400
+#define	EA_STRIPQ		000001
+#define	EA_STRIPESCAPE		000002
+#define	EA_KEEPESCAPE		000004
+#define	EA_NOEVALQ		000010
+#define	EA_NOEVALDQ		000020
+#define	EA_BACKQ		000040
+#define	EA_STRIPQLATER		000100
+#define	EA_NOUNIQDELIM		000200
+#define	EA_EOLESCAPE		000400
+#define	EA_FINDMETA		001000
+#define	EA_FINDDELIM		002000
+#define	EA_EVALIFS		004000
+#define	EA_INQUOTE		010000
 
 #ifdef	NOUID_T
 typedef u_short			uid_t;
@@ -288,7 +292,7 @@ extern VOID freeidlist __P_((VOID_A));
 #endif	/* !NOUID */
 extern CONST char *gethomedir __P_((VOID_A));
 extern CONST char *getrealpath __P_((CONST char *, char *, char *));
-extern char *evalarg __P_((char *, int, int));
+extern char *evalarg __P_((char *, int));
 extern int evalifs __P_((int, char ***, CONST char *));
 extern int evalglob __P_((int, char ***, int));
 extern int stripquote __P_((char *, int));

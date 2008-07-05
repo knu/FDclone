@@ -1638,7 +1638,7 @@ int drv;
 		if ((n = _readbpb(devp, &bpb)) < 0) return(-1);
 		if (n > 0) break;
 	}
-	if (i > maxfdtype) {
+	if (i >= maxfdtype) {
 		if ((devp -> fd) >= 0) close(devp -> fd);
 		doserrno = ENODEV;
 		return(-1);

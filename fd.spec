@@ -3,7 +3,7 @@
 
 Summary: a file & directory maintenance tool.
 Name: FDclone
-Version: 3.00a
+Version: 3.00b
 Release: 1
 Group: System Environment/Shells
 URL: http://hp.vector.co.jp/authors/VA012337/soft/fd/index.html
@@ -48,7 +48,7 @@ mkdir -p $RPM_BUILD_ROOT/%{_mandir}/man%{mansec}
 mkdir -p $RPM_BUILD_ROOT/%{_mandir}/%{lang}/man%{mansec}
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}
 make BUILD=$RPM_BUILD_ROOT \
-	BINTOP=%{_bindir} MANTOP=%{_mandir} \
+	BINTOP=%{_bindir} MANTOP=%{_mandir} LANG=%{lang} \
 	install
 
 %clean
@@ -73,6 +73,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.eng HISTORY.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
 
 %changelog
+* Sun Jul  6 2008 Takashi SHIRAI <shirai@unixusers.net>
+- for 3.00b
+
 * Sat Jun 21 2008 Takashi SHIRAI <shirai@unixusers.net>
 - for 3.00a
 

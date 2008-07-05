@@ -339,9 +339,9 @@ int whole;
 		for (i = 0; line[i]; i++) {
 			cp = c_realloc(cp, j + 2, &size);
 			pc = parsechar(&(line[i]), -1,
-				'\0', EA_EOLMETA, &quote, &pqoute);
+				'\0', EA_EOLESCAPE, &quote, &pqoute);
 			if (pc == PC_CLQUOTE) quoted = line[i];
-			else if (pc == PC_WORD) {
+			else if (pc == PC_WCHAR) {
 				cp[j++] = line[i++];
 				cp[j++] = line[i];
 			}

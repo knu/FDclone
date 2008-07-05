@@ -2801,6 +2801,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      FFCCEEDDIITT        組込みコマンド ffcc で使用するエディタコマンドを
                    指定します。
 
+     FFDD_VVEERRSSIIOONN    実行中の ffdd のバージョン文字列が代入されます。
+
      FFNNAAMMEEKKCCOODDEE    ファイル名に用いる漢字コードを指定します。ファ
                    イルアクセスを行なう時点でここで設定した漢字コ
                    ードにコンバートされますので、ネットワーク上の
@@ -3405,8 +3407,6 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    の指定できる環境では LOG_USER が用いられます。
                    00 かナル以外の値であれば、何を定義しても有効で
                    す。 ((UUNNIIXX))
-
-     VVEERRSSIIOONN       実行中の ffdd のバージョン文字列が代入されます。
 
      WWRRIITTEEFFSS       WWRRIITTEE_DDIIRR コマンドの使用を禁止します。値を 11
                    にすると、明示的にコマンドが実行された時のみデ

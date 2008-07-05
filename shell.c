@@ -288,7 +288,7 @@ int *ptrp;
 	if (!*ptrp) q = '\0';
 	pc = parsechar(&(s[*ptrp]), -1, '\0', 0, &q, NULL);
 	if (pc == PC_NORMAL) return(0);
-	if (pc == PC_WORD || pc == PC_ESCAPE) {
+	if (pc == PC_WCHAR || pc == PC_ESCAPE) {
 		(*ptrp)++;
 		return(2);
 	}
@@ -318,14 +318,14 @@ CONST char *s;
 			i += m - 1;
 			j = flag2str(buf, j, flags);
 		}
-# else	/* !MACROMETA */
+# else
 		if ((m = skipquote(s, &i)) == 2) buf[j++] = s[i - 1];
 		else if (!m && s[i] == '%' && s[i + 1] == '%') {
 			i++;
 			flags++;
 		}
 		buf[j++] = s[i];
-# endif	/* !MACROMETA */
+# endif
 	}
 	if (!flags) {
 		free2(buf);
@@ -1087,17 +1087,18 @@ int *argcp;
 char ***argvp, *CONST *env;
 int iscomm;
 {
+# ifndef	MACROMETA
+	int n, ret;
+# endif
+
 # ifdef	MACROMETA
 	return(_replaceargs(argcp, argvp, env, iscomm));
-# else	/* !MACROMETA */
-	int n, ret;
-
+# else
 	if ((ret = _replaceargs(argcp, argvp, env, iscomm)) < 0) return(-1);
-
 	for (n = 0; n < *argcp; n++) (*argvp)[n] = _demacroarg((*argvp)[n]);
 
 	return(ret);
-# endif	/* !MACROMETA */
+# endif
 }
 
 int replacearg(argp)
@@ -1750,7 +1751,7 @@ int *ptrp, quote;
 		for (i = 0; str[ptr + i]; i++) {
 			pc = parsechar(&(str[ptr + i]), -1,
 				'!', EA_FINDDELIM, &quote, NULL);
-			if (pc == PC_WORD || pc == PC_ESCAPE) i++;
+			if (pc == PC_WCHAR || pc == PC_ESCAPE) i++;
 			else if (pc != PC_NORMAL && pc != PC_DQUOTE) break;
 		}
 		if (!i) n = ptr = -1;
@@ -1788,7 +1789,7 @@ char *command;
 	for (i = j = 0, quote = '\0'; command[i]; i++) {
 		cp = c_realloc(cp, j + 1, &size);
 		pc = parsechar(&(command[i]), -1, '!', 0, &quote, NULL);
-		if (pc == PC_WORD || pc == PC_ESCAPE) cp[j++] = command[i++];
+		if (pc == PC_WCHAR || pc == PC_ESCAPE) cp[j++] = command[i++];
 		else if (pc == '!') {
 			len = i++;
 			if ((n = parsehist(command, &i, quote)) < 0) {

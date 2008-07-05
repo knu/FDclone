@@ -15,10 +15,7 @@ int c;
 {
 	for (; *s != c; s++) {
 		if (!*s) return(NULL);
-		if (iskanji1(s, 0)) s++;
-#ifdef	CODEEUC
-		else if (isekana(s, 0)) s++;
-#endif
+		else if (iswchar(s, 0)) s++;
 	}
 
 	return((char *)s);
@@ -33,10 +30,7 @@ int c;
 	cp = NULL;
 	for (; *s; s++) {
 		if (*s == c) cp = (char *)s;
-		if (iskanji1(s, 0)) s++;
-#ifdef	CODEEUC
-		else if (isekana(s, 0)) s++;
-#endif
+		else if (iswchar(s, 0)) s++;
 	}
 	if (!c) cp = (char *)s;
 
@@ -52,10 +46,7 @@ int c, n;
 
 	for (i = 0; i < n && s[i]; i++) {
 		if (s[i] == c) return((char *)&(s[i]));
-		if (iskanji1(s, i)) i++;
-# ifdef	CODEEUC
-		else if (isekana(s, i)) i++;
-# endif
+		else if (iswchar(s, i)) i++;
 	}
 
 	return(NULL);

@@ -3096,6 +3096,8 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      FFCCEEDDIITT        Specify the editor command used for ffcc the
                    builtin command.
 
+     FFDD_VVEERRSSIIOONN    A version string of the running ffdd.
+
      FFNNAAMMEEKKCCOODDEE    Specify the Kanji code for filename.  Any
                    filename is converted into the specified Kanji
                    code at the point of accessing the file, then
@@ -3746,8 +3748,6 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    priority is always LOG_INFO.  LOG_USER is used
                    as the facirity if it can be specified.  Any
                    value except 0 and null effects valid.  ((UUNNIIXX))
-
-     VVEERRSSIIOONN       A version string of the running ffdd.
 
      WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
                    is 11, the directory is written only when the

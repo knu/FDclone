@@ -336,11 +336,6 @@ extern u_int _stklen = 0x8000;
 # endif
 int ttyio = -1;
 XFILE *ttyout = NULL;
-# ifdef	DEBUG
-# define	exit2(n)	(muntrace(), exit(n))
-# else
-# define	exit2		exit
-# endif
 #endif	/* !FD */
 
 #ifndef	MINIMUMSHELL
@@ -656,7 +651,10 @@ static int NEAR closepipe __P_((int));
 #ifndef	_NOUSEHASH
 static VOID NEAR disphash __P_((VOID_A));
 #endif
-static int NEAR substvar __P_((char **));
+#ifdef	BASHSTYLE
+static char *NEAR quotemeta __P_((char *));
+#endif
+static int NEAR substvar __P_((char **, int));
 static int NEAR evalargv __P_((command_t *, int *, int *));
 static char *NEAR evalexternal __P_((command_t *));
 static VOID NEAR printindent __P_((int, XFILE *));
@@ -1818,7 +1816,7 @@ int sig;
 
 	if (trapped > 0) {
 		trapmode[sig] |= TR_CATCH;
-		if (havetty() && duptrapok > 0) exectrapcomm();
+		if (duptrapok > 0) exectrapcomm();
 	}
 	else if (trapped < 0 && *(signallist[i].mes)) {
 		Xfputs(signallist[i].mes, Xstderr);
@@ -2171,13 +2169,10 @@ int noexit;
 		return;
 	}
 	duperrno = errno;
-	if (havetty()) {
-		exectrapcomm();
-		if (!noexit && (trapmode[0] & TR_STAT) == TR_TRAP) {
-			trapmode[0] = 0;
-			if (trapcomm[0] && *(trapcomm[0]))
-				_dosystem(trapcomm[0]);
-		}
+	exectrapcomm();
+	if (mypid == orgpid && !noexit && (trapmode[0] & TR_STAT) == TR_TRAP) {
+		trapmode[0] = 0;
+		if (trapcomm[0] && *(trapcomm[0])) _dosystem(trapcomm[0]);
 	}
 #ifndef	NOJOB
 	if (ttyio >= 0 && ttypgrp >= (p_id_t)0 && oldttypgrp >= (p_id_t)0)
@@ -2266,6 +2261,8 @@ int n;
 			keyflush();
 		}
 #endif
+		exec_line(NULL);
+		_dosystem(NULL);
 	}
 	prepareexit(0);
 #ifdef	FD
@@ -2328,6 +2325,10 @@ CONST char *s;
 	else
 #endif
 	if (argvar && argvar[0]) fprintf2(Xstderr, "%k: ", argvar[0]);
+#ifndef	MINIMUMSHELL
+	if (!interactive && shlineno > 0L)
+		fprintf2(Xstderr, "%ld: ", shlineno);
+#endif
 	if (s) fprintf2(Xstderr, "%a: ",
 		(*s && syntaxerrno != ER_UNEXPNL) ? s : "syntax error");
 	if (syntaxerrstr[syntaxerrno])
@@ -2355,6 +2356,10 @@ int n, noexit;
 	else
 #endif
 	if (argvar && argvar[0]) fprintf2(Xstderr, "%k: ", argvar[0]);
+#ifndef	MINIMUMSHELL
+	if (!interactive && shlineno > 0L)
+		fprintf2(Xstderr, "%ld: ", shlineno);
+#endif
 	if (argv && argv[0]) fprintf2(Xstderr, "%k: ", argv[0]);
 	if (s) fprintf2(Xstderr, "%a: ", s);
 	if (execerrstr[n]) Xfputs(execerrstr[n], Xstderr);
@@ -2997,13 +3002,13 @@ ALLOC_T *lenp;
 	return(realloc2(cp, i));
 }
 
-char *evalvararg(arg, quoted, flags, noexit)
+char *evalvararg(arg, flags, noexit)
 char *arg;
-int quoted, flags, noexit;
+int flags, noexit;
 {
 	char *tmp;
 
-	if ((tmp = evalarg(arg, quoted, flags))) return(tmp);
+	if ((tmp = evalarg(arg, flags))) return(tmp);
 #if	defined (BASHSTYLE) && defined (STRICTPOSIX)
 	if (!noexit) noexit = -1;
 #endif
@@ -3023,6 +3028,9 @@ int fd, flags;
 	new -> filename = path;
 	new -> buf = NULL;
 	new -> fd = fd;
+#ifndef	USEFAKEPIPE
+	new -> pipein = (p_id_t)-1;
+#endif
 	new -> flags = flags;
 
 	return(new);
@@ -3054,7 +3062,7 @@ redirectlist *next;
 	new = (redirectlist *)malloc2(sizeof(redirectlist));
 	new -> fd = fd;
 	new -> filename = filename;
-	new -> type = (u_char)type;
+	new -> type = (u_short)type;
 	new -> new = new -> old = -1;
 #ifdef	DEP_DOSDRIVE
 	new -> fakepipe = NULL;
@@ -3170,7 +3178,7 @@ syntaxtree *trp;
 		}
 		else
 #endif
-		if (!(trp -> cont & (CN_QUOT | CN_META)))
+		if (!(trp -> cont & (CN_QUOT | CN_ESCAPE)))
 			freestree(trp -> next);
 		else free2(((redirectlist *)(trp -> next)) -> filename);
 		free2(trp -> next);
@@ -3452,8 +3460,13 @@ redirectlist *rp;
 static VOID NEAR closeredirect(rp)
 redirectlist *rp;
 {
+#ifndef	USEFAKEPIPE
+	heredoc_t *hdp;
+#endif
+
 	if (!rp) return;
 	closeredirect(rp -> next);
+	if (rp -> type & MD_DUPL) return;
 
 	if ((rp -> type & MD_WITHERR) && rp -> fd != STDOUT_FILENO) {
 		if (rp -> fd != STDERR_FILENO) {
@@ -3468,7 +3481,14 @@ redirectlist *rp;
 		safeclose(rp -> old);
 	}
 	if (rp -> new >= 0) {
-		if (rp -> type & MD_HEREDOC) closepipe2(rp -> new, -1);
+		if (rp -> type & MD_HEREDOC) {
+#ifndef	USEFAKEPIPE
+			hdp = (heredoc_t *)(rp -> filename);
+			if (hdp -> pipein >= (p_id_t)0)
+				VOID_C waitchild(hdp -> pipein, NULL);
+#endif
+			closepipe2(rp -> new, -1);
+		}
 		else if (!(rp -> type & MD_FILEDESC)) safeclose(rp -> new);
 	}
 #ifdef	DEP_DOSDRIVE
@@ -3547,11 +3567,11 @@ syntaxtree *trp;
 	if (cp) {
 		if (!(hdp -> flags & HD_QUOTED)) {
 			for (i = 0; cp[i]; i++) {
-				if (cp[i] == PMETA && !cp[i + 1]) break;
-				else if (iskanji1(cp, i)) i++;
-#ifdef	CODEEUC
-				else if (isekana(cp, i)) i++;
-#endif
+				if (cp[i] == PESCAPE) {
+					if (!cp[i + 1]) break;
+					i++;
+				}
+				else if (iswchar(cp, i)) i++;
 			}
 			if (cp[i]) {
 				cp[i] = '\0';
@@ -3617,10 +3637,7 @@ int old;
 
 	if (pipein > (p_id_t)0) {
 #ifndef	USEFAKEPIPE
-		if (waitchild(pipein, NULL) != RET_SUCCESS) {
-			closepipe2(fd, -1);
-			return(seterrno(-1));
-		}
+		hdp -> pipein = pipein;
 #endif
 		safeclose(fdin);
 		return(fd);
@@ -3635,7 +3652,9 @@ int old;
 		}
 
 		if (!(hdp -> flags & HD_QUOTED) && ret == RET_SUCCESS) {
-			cp = evalvararg(buf, '\'', EA_BACKQ, 1);
+			cp = evalvararg(buf,
+				EA_STRIPESCAPE
+				| EA_NOEVALQ | EA_NOEVALDQ | EA_BACKQ, 1);
 			if (!cp) ret = RET_FAIL;
 			free2(buf);
 			buf = cp;
@@ -3837,8 +3856,7 @@ redirectlist *rp;
 	if (!(rp -> filename)) tmp = NULL;
 	else if (type & MD_HEREDOC) tmp = rp -> filename;
 	else {
-		tmp = evalvararg(rp -> filename, '\0',
-			EA_BACKQ | EA_STRIPQLATER, 0);
+		tmp = evalvararg(rp -> filename, EA_BACKQ | EA_STRIPQLATER, 0);
 		if (!tmp) {
 			errno = -1;
 			return(rp);
@@ -3985,7 +4003,7 @@ int ignoretab;
 #ifndef	BASHSTYLE
 	/* bash allows no variables as the EOF identifier */
 	free2(cp);
-	if (!(cp = evalvararg(eof, '\0', EA_STRIPQLATER, 0))) {
+	if (!(cp = evalvararg(eof, EA_STRIPQLATER, 0))) {
 		errno = -1;
 		return(NULL);
 	}
@@ -4492,7 +4510,7 @@ redirectlist *rp;
 	if (rp -> type & MD_HEREDOC)
 		filename = (char *)duplheredoc((heredoc_t *)(rp -> filename));
 	else filename = strdup2(rp -> filename);
-	new = newrlist(rp -> fd, filename, rp -> type, next);
+	new = newrlist(rp -> fd, filename, rp -> type | MD_DUPL, next);
 	new -> new = rp -> new;
 	new -> old = rp -> old;
 #ifdef	DEP_DOSDRIVE
@@ -4555,7 +4573,7 @@ long top;
 		}
 	}
 	if (trp -> next) {
-		if (!(trp -> cont & (CN_QUOT | CN_META)))
+		if (!(trp -> cont & (CN_QUOT | CN_ESCAPE)))
 #ifdef	MINIMUMSHELL
 			new -> next = duplstree(trp -> next, new);
 #else
@@ -5208,7 +5226,7 @@ int n;
 	size = c_allocsize(len + *tptrp + n + 2);
 	if (size > *sp) cp = realloc2(cp, *sp = size);
 	memmove(&(cp[len]), cp, *tptrp);
-	strncpy2(cp, rp -> filename, len);
+	memcpy(cp, rp -> filename, len);
 	*tptrp += len;
 	strncpy2(&(cp[*tptrp]), &(s[*ptrp]), n);
 	*tptrp += n;
@@ -5527,9 +5545,12 @@ int *ptrp, *tptrp;
 				if ((stype = getparenttype(trp)) != STT_INCASE
 				&& stype != STT_CASEEND)
 					(*ptrp)--;
-				else if (!(s[*ptrp]) || s[*ptrp] == '\n')
+				else if (!s[*ptrp] || s[*ptrp] == '\n')
 					syntaxerrno = ER_UNEXPNL;
 				else if (s[*ptrp] == ')' || s[*ptrp] == '|')
+					(*ptrp)--;
+				else if (s[*ptrp] == PESCAPE
+				&& (!s[*ptrp + 1] || s[*ptrp] == '\n'))
 					(*ptrp)--;
 				else syntaxerrno = ER_UNEXPTOK;
 			}
@@ -5626,6 +5647,9 @@ redirectlist *rp;
 CONST char *s;
 int quiet;
 {
+#if	!defined (BASHSTYLE) && !defined (MINIMUMSHELL)
+	syntaxtree *tmptr;
+#endif
 	char *cp;
 	ALLOC_T size;
 	int i, j, n, pc, stype, hdoc;
@@ -5671,7 +5695,7 @@ int quiet;
 			}
 		}
 
-		pc = parsechar(&(s[i]), -1, '$', EA_BACKQ | EA_EOLMETA,
+		pc = parsechar(&(s[i]), -1, '$', EA_BACKQ | EA_EOLESCAPE,
 #ifdef	NESTINGQUOTE
 			&(rp -> new), &(rp -> old));
 #else
@@ -5680,16 +5704,19 @@ int quiet;
 
 		if (pc == PC_OPQUOTE || pc == PC_CLQUOTE || pc == PC_SQUOTE)
 			rp -> filename[j++] = s[i];
-		else if (pc == PC_WORD) {
+#ifdef	BASHSTYLE
+		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
+#endif
+		else if (pc == PC_WCHAR) {
 			rp -> filename[j++] = s[i++];
 			rp -> filename[j++] = s[i];
 		}
 		else if (pc == PC_ESCAPE) {
 			if (s[++i] != '\n' || rp -> new) {
-				rp -> filename[j++] = PMETA;
+				rp -> filename[j++] = PESCAPE;
 				if (s[i]) rp -> filename[j++] = s[i];
 				else {
-					trp -> cont |= CN_META;
+					trp -> cont |= CN_ESCAPE;
 					break;
 				}
 			}
@@ -5699,10 +5726,17 @@ int quiet;
 #ifdef	BASHSTYLE
 	/* bash treats any meta character in ${} as just a character */
 				trp = startvar(trp, rp, s, &i, &j, 2);
-#else
-				rp -> filename[j++] = s[i++];
-				rp -> filename[j++] = s[i];
-#endif
+#else	/* !BASHSTYLE */
+# ifndef	MINIMUMSHELL
+				if (rp -> new == '"')
+					trp = startvar(trp, rp, s, &i, &j, 2);
+				else
+# endif
+				{
+					rp -> filename[j++] = s[i++];
+					rp -> filename[j++] = s[i];
+				}
+#endif	/* !BASHSTYLE */
 				trp -> cont = CN_VAR;
 			}
 #ifndef	MINIMUMSHELL
@@ -5723,18 +5757,28 @@ int quiet;
 #ifdef	BASHSTYLE
 	/* bash treats any meta character in ${} as just a character */
 			trp = endvar(trp, rp, s, &i, &j, &size, 1);
-#else
-			rp -> filename[j++] = s[i];
-			trp -> cont &= ~CN_VAR;
-#endif
+#else	/* !BASHSTYLE */
+# ifndef	MINIMUMSHELL
+			tmptr = trp -> parent;
+			if (tmptr) tmptr = tmptr -> next;
+			if (tmptr && ((redirectlist *)tmptr) -> new == '"')
+				trp = endvar(trp, rp, s, &i, &j, &size, 1);
+			else
+# endif
+			{
+				rp -> filename[j++] = s[i];
+				trp -> cont &= ~CN_VAR;
+			}
+#endif	/* !BASHSTYLE */
 		}
-#ifdef	BASHSTYLE
-	/* bash treats any meta character in ${} as just a character */
+#ifndef	MINIMUMSHELL
 		else if ((trp -> cont & CN_SBST) == CN_VAR)
 			rp -> filename[j++] = s[i];
 #endif
-		else if (pc == PC_DQUOTE || pc == PC_BQUOTE)
-			rp -> filename[j++] = s[i];
+#ifndef	BASHSTYLE
+		else if (pc == PC_BQUOTE) rp -> filename[j++] = s[i];
+#endif
+		else if (pc == PC_DQUOTE) rp -> filename[j++] = s[i];
 #ifndef	MINIMUMSHELL
 # ifdef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
@@ -5790,10 +5834,7 @@ int quiet;
 			}
 			for (j = i + 1; s[j]; j++) {
 				if (strchr2(IFS_SET, s[j])) break;
-				else if (iskanji1(s, j)) j++;
-#ifdef	CODEEUC
-				else if (isekana(s, j)) j++;
-#endif
+				else if (iswchar(s, j)) j++;
 			}
 			cp = strndup2(&(s[i]), j - i);
 			syntaxerror(cp);
@@ -5818,7 +5859,7 @@ int quiet;
 		trp = analyzeloop(trp, rp, shellalias[n].comm, quiet);
 		shellalias[n].flags &= ~AL_USED;
 	}
-#endif	/* !NOALIAS */
+#endif
 
 	return(trp);
 }
@@ -5843,13 +5884,13 @@ int quiet;
 #endif
 	red.next = NULL;
 
-	if (trp -> cont & (CN_QUOT | CN_META)) {
+	if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
 		memcpy((char *)&red, (char *)(trp -> next), sizeof(red));
 		free2(trp -> next);
 
 		i = strlen(red.filename);
 		if (i > 0) {
-			if ((trp -> cont & CN_META) && red.new != '\'') i--;
+			if ((trp -> cont & CN_ESCAPE) && red.new != '\'') i--;
 			else if (s) red.filename[i++] = '\n';
 		}
 #ifndef	BASHSTYLE
@@ -5893,7 +5934,7 @@ int quiet;
 	i = (red.filename) ? strlen(red.filename) : 0;
 	if (red.new) trp -> cont |= CN_QUOT;
 
-	if (trp -> cont & (CN_QUOT | CN_META)) {
+	if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
 		rp = (redirectlist *)malloc2(sizeof(redirectlist));
 		memcpy((char *)rp, (char *)&red, sizeof(red));
 		trp -> next = (syntaxtree *)rp;
@@ -5939,7 +5980,7 @@ syntaxtree *trp;
 		if (trp -> cont & CN_HDOC) trp = analyze(NULL, trp, 0);
 #else
 	/* bash does not allow unclosed quote */
-		if (trp -> cont & (CN_META | CN_QUOT | CN_HDOC))
+		if (trp -> cont & (CN_ESCAPE | CN_QUOT | CN_HDOC))
 			trp = analyze(NULL, trp, 0);
 	/* bash does not allow the format like as "foo |" */
 		else if ((trp -> flags & ST_NEXT) && hasparent(trp)
@@ -6691,6 +6732,39 @@ char ***argvp;
 }
 #endif	/* !FDSH && !_NOCOMPLETE */
 
+#ifdef	BASHSTYLE
+static char *NEAR quotemeta(s)
+char *s;
+{
+	char *cp, *buf;
+	ALLOC_T ptr, len;
+
+	cp = strchr(s, '=');
+	if (!cp || !strpbrk(++cp, METACHAR)) return(s);
+	len = strlen(s) + 2;
+	buf = malloc2(len + 1);
+	ptr = cp - s;
+	memcpy(buf, s, ptr);
+	buf[ptr++] = '\'';
+	while (*cp) {
+		if (*cp != '\'') buf[ptr++] = *(cp++);
+		else {
+			len += 3;
+			buf = realloc2(buf, len + 1);
+			buf[ptr++] = '\'';
+			buf[ptr++] = PESCAPE;
+			buf[ptr++] = *(cp++);
+			buf[ptr++] = '\'';
+		}
+	}
+	buf[ptr++] = '\'';
+	buf[ptr] = '\0';
+	free2(s);
+
+	return(buf);
+}
+#endif	/* BASHSTYLE */
+
 int getsubst(argc, argv, substp, lenp)
 int argc;
 char **argv, ***substp;
@@ -6701,8 +6775,9 @@ int **lenp;
 	*substp = (char **)malloc2((argc + 1) * sizeof(char *));
 	*lenp = (int *)malloc2(argc * sizeof(int));
 
+	len = 1;
 	for (i = n = 0; i < argc; i++) {
-		len = (freeenviron || n >= i) ? identcheck(argv[i], '=') : -1;
+		len = (freeenviron || len > 0) ? identcheck(argv[i], '=') : 0;
 		if (len > 0) {
 			(*substp)[n] = argv[i];
 			(*lenp)[n] = len;
@@ -6718,23 +6793,28 @@ int **lenp;
 	return(argc);
 }
 
-static int NEAR substvar(argv)
+static int NEAR substvar(argv, flags)
 char **argv;
+int flags;
 {
 	char *tmp, *arg;
 	int i;
 
 	for (i = 0; argv[i]; i++) {
 		if (trapok >= 0) trapok = 1;
-		tmp = evalarg(argv[i], '\0', EA_BACKQ);
+		tmp = evalarg(argv[i], flags);
 		if (trapok >= 0) trapok = 0;
-		if (!tmp && i && *(argv[i])) {
+		if (!tmp) {
 			arg = argv[i];
-			while (argv[i]) i++;
-			freevar(checkshellbuiltinargv(i, duplvar(argv, 2)));
+			if (i && *arg && (flags & EA_EVALIFS)) {
+				while (argv[i]) i++;
+				argv = duplvar(argv, 2);
+				argv = checkshellbuiltinargv(i, argv);
+				freevar(argv);
+			}
 			execerror(NULL, arg, ER_BADSUBST, 0);
+			return(-1);
 		}
-		if (!tmp) return(-1);
 		free2(argv[i]);
 		argv[i] = tmp;
 	}
@@ -6755,12 +6835,13 @@ int *typep, *contp;
 		return(comm -> id);
 	}
 
-	if (contp && substvar(comm -> argv) < 0) return(-1);
+	if (contp && substvar(comm -> argv, EA_BACKQ | EA_EVALIFS) < 0)
+		return(-1);
 
 	if (trapok >= 0) trapok = 1;
 #ifdef	BASHSTYLE
 	/* bash does not use IFS as a command separator */
-	comm -> argc = evalifs(comm -> argc, &(comm -> argv), " \t");
+	comm -> argc = evalifs(comm -> argc, &(comm -> argv), IFS_SET);
 #else
 	comm -> argc = evalifs(comm -> argc, &(comm -> argv), getifs());
 #endif
@@ -7270,11 +7351,17 @@ CONST char *opt;
 int *nump;
 {
 	char **argv;
-	int i, n, f, argc;
+	int i, n, f, argc, noopt;
 
 	argv = (trp -> comm) -> argv;
 	argc = (trp -> comm) -> argc;
 	f = '\0';
+	noopt = 0;
+	if (*opt == '-') {
+		opt++;
+		noopt++;
+	}
+
 	for (n = 1; n < argc; n++) {
 		if (!argv[n] || argv[n][0] != '-') break;
 		if (argv[n][1] == '-' && !(argv[n][2])) {
@@ -7283,12 +7370,15 @@ int *nump;
 		}
 
 		for (i = 1; argv[n][i]; i++) {
-			if (!strchr2(opt, argv[n][i])) {
+			if (strchr2(opt, argv[n][i])) /*EMPTY*/;
+			else if (noopt) break;
+			else {
 				execerror(argv, argv[n], ER_BADOPTIONS, 2);
 				return(-1);
 			}
 			f = argv[n][i];
 		}
+		if (!f) break;
 	}
 	if (nump) *nump = n;
 
@@ -7509,7 +7599,7 @@ syntaxtree *trp;
 
 		argv = (char **)malloc2((comm -> argc + 1) * sizeof(char *));
 		for (i = 0; i < comm -> argc; i++) {
-			tmp = evalvararg(comm -> argv[i], '\0', EA_BACKQ, 0);
+			tmp = evalvararg(comm -> argv[i], EA_BACKQ, 0);
 			if (!tmp) {
 				while (--i >= 0) free2(argv[i]);
 				free2(argv);
@@ -7578,7 +7668,7 @@ syntaxtree *trp;
 
 	var = statementbody(trp);
 	comm = var -> comm;
-	key = evalvararg(comm -> argv[0], '\0', EA_BACKQ | EA_STRIPQLATER, 0);
+	key = evalvararg(comm -> argv[0], EA_BACKQ | EA_STRIPQLATER, 0);
 	if (!key) return(RET_FAIL);
 #ifdef	FD
 	demacroarg(&key);
@@ -7599,7 +7689,7 @@ syntaxtree *trp;
 		if (!(comm = var -> comm)) break;
 		ret = -1;
 		for (i = 0; i < comm -> argc; i++) {
-			tmp = evalvararg(comm -> argv[i], '\0', EA_BACKQ, 0);
+			tmp = evalvararg(comm -> argv[i], EA_BACKQ, 0);
 			if (!tmp) {
 				ret = RET_FAIL;
 				break;
@@ -7964,6 +8054,10 @@ syntaxtree *trp;
 		i = countvar(var);
 		if (i > 1) qsort(var, i, sizeof(char *), cmppath);
 		for (i = 0; var[i]; i++) {
+#ifdef	BASHSTYLE
+	/* bash's "set" quotes the value which includes any meta chacters */
+			var[i] = quotemeta(var[i]);
+#endif
 			kanjifputs(var[i], Xstdout);
 			fputnl(Xstdout);
 		}
@@ -8928,7 +9022,7 @@ syntaxtree *trp;
 {
 	int i, n, opt;
 
-	if ((opt = tinygetopt(trp, "nN", &n)) < 0) return(RET_FAIL);
+	if ((opt = tinygetopt(trp, "-nN", &n)) < 0) return(RET_FAIL);
 
 	for (i = n; i < (trp -> comm) -> argc; i++) {
 		if (i > n) Xfputc(' ', Xstdout);
@@ -9464,7 +9558,7 @@ int lvl;
 		}
 	}
 	if (trp -> next) {
-		if (trp -> cont & (CN_QUOT | CN_META)) {
+		if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
 			rp = (redirectlist *)(trp -> next);
 			printindent(lvl, Xstdout);
 			fprintf2(Xstdout, "continuing...\"%a\"",
@@ -9746,7 +9840,7 @@ syntaxtree *trp;
 	argv = duplvar((trp -> comm) -> argv, 2);
 	argc = getsubst((trp -> comm) -> argc, argv, &subst, &len);
 
-	if (substvar(argv) < 0) ret = -1;
+	if (substvar(argv, EA_BACKQ | EA_EVALIFS) < 0) ret = -1;
 	else {
 		argv = checkshellbuiltinargv(argc, argv);
 		ret = 0;
@@ -9779,9 +9873,6 @@ int *contp, bg;
 	u_long esize;
 	int i, ret, id, type, argc, nsubst, keepvar, *len;
 
-#ifndef	MINIMUMSHELL
-	if (shfunclevel) setshlineno(trp -> lineno);
-#endif
 	isshellbuiltin = execerrno = 0;
 	comm = trp -> comm;
 	argc = comm -> argc;
@@ -9794,9 +9885,7 @@ int *contp, bg;
 	comm -> argc = getsubst(comm -> argc, comm -> argv, &subst, &len);
 
 	id = evalargv(comm, &type, contp);
-	if (subst[0] && type == CT_NONE) ret_status = RET_SUCCESS;
-
-	if (id < 0 || (nsubst = substvar(subst)) < 0) {
+	if (id < 0 || (nsubst = substvar(subst, EA_BACKQ)) < 0) {
 		freevar(subst);
 		free2(len);
 		comm -> argc = argc;
@@ -9804,6 +9893,7 @@ int *contp, bg;
 		comm -> argv = argv;
 		return(RET_FAIL);
 	}
+	if (nsubst > 0 && type == CT_NONE) ret_status = RET_SUCCESS;
 
 	keepvar = 0;
 #ifdef	BASHSTYLE
@@ -9858,7 +9948,7 @@ int *contp, bg;
 # ifdef	FD
 	if ((ps = getconstvar(ENVPS4))) evalprompt(&ps, ps);
 # else
-	if ((ps = getconstvar(ENVPS4))) ps = evalvararg(ps, '\0', EA_BACKQ, 0);
+	if ((ps = getconstvar(ENVPS4))) ps = evalvararg(ps, EA_BACKQ, 0);
 # endif
 #endif	/* !MINIMUMSHELL */
 	while (nsubst--) {
@@ -9882,10 +9972,13 @@ int *contp, bg;
 #ifdef	BASHSTYLE
 	/* bash displays "+ " with substitutions, in -x mode */
 			if (ps) Xfputs(ps, Xstderr);
-#endif
+			argfputs(subst[nsubst], Xstderr);
+#else
 			argfputs(subst[nsubst], Xstderr);
 			if (nsubst) Xfputc(' ', Xstderr);
-			else fputnl(Xstderr);
+			else
+#endif
+			fputnl(Xstderr);
 		}
 	}
 	free2(subst);
@@ -9951,6 +10044,9 @@ p_id_t pipein;
 	p_id_t pid;
 	int bg, sub, stop;
 #endif
+#ifndef	MINIMUMSHELL
+	long dupshlineno;
+#endif
 	syntaxtree *next;
 	int cont, ret;
 
@@ -10012,8 +10108,12 @@ p_id_t pipein;
 	else if (next) ret = dosetshfunc((trp -> comm) -> argv[0], next);
 	else for (;;) {
 		cont = 0;
+#ifndef	MINIMUMSHELL
+		dupshlineno = shlineno;
+		setshlineno(trp -> lineno);
+#endif
 #if	MSDOS
-		if ((ret = exec_command(trp, &cont)) < 0) break;
+		ret = exec_command(trp, &cont);
 #else	/* !MSDOS */
 		if (sub) bg = 1;
 # ifndef	USEFAKEPIPE
@@ -10024,8 +10124,12 @@ p_id_t pipein;
 # endif
 		else bg = 0;
 
-		if ((ret = exec_command(trp, &cont, bg)) < 0) break;
+		ret = exec_command(trp, &cont, bg);
 #endif	/* !MSDOS */
+#ifndef	MINIMUMSHELL
+		setshlineno(dupshlineno);
+#endif
+		if (ret < 0) break;
 #ifdef	FD
 		if (cont) continue;
 #endif
@@ -10169,7 +10273,7 @@ int cond;
 				doperror(NULL, NULL);
 			else {
 				if (!(errp -> filename)) tmp = strdup2("-");
-				else tmp = evalvararg(errp -> filename, '\0',
+				else tmp = evalvararg(errp -> filename,
 					EA_BACKQ | EA_STRIPQLATER, 0);
 				if (tmp && !*tmp && *(errp -> filename)) {
 					free2(tmp);
@@ -10287,11 +10391,9 @@ CONST char *command;
 	int ret;
 
 	if (!command) {
-		if (stree) {
-			freestree(stree);
-			free2(stree);
-			stree = trp = NULL;
-		}
+		freestree(stree);
+		free2(stree);
+		stree = trp = NULL;
 		return(0);
 	}
 
@@ -10319,10 +10421,11 @@ CONST char *command;
 static int NEAR _dosystem(command)
 CONST char *command;
 {
-	syntaxtree *trp;
+	static syntaxtree *trp = NULL;
 	int ret;
 
-	if (!(trp = analyzeline(command))) ret = RET_SYNTAXERR;
+	if (!command) ret = 0;
+	else if (!(trp = analyzeline(command))) ret = RET_SYNTAXERR;
 	else {
 		if (notexec) {
 			ret = RET_SUCCESS;
@@ -10335,10 +10438,11 @@ CONST char *command;
 			ret = RET_FAIL;
 #endif
 		else ret = exec_stree(trp, 0);
-		freestree(trp);
-		free2(trp);
+		errorexit = tmperrorexit;
 	}
-	errorexit = tmperrorexit;
+	freestree(trp);
+	free2(trp);
+	trp = NULL;
 
 	return((ret >= 0) ? ret : RET_FAIL);
 }
@@ -10392,9 +10496,9 @@ CONST char *command;
 		tv.tv_usec = 500000L;	/* maybe enough waiting limit */
 		VOID_C readselect(1, &fd, NULL, &tv);
 #endif
-		nownstree(trp);
 	}
 	else {
+		nownstree(trp);
 		if (!trp) ret_status = RET_SYNTAXERR;
 		else if (!(trp -> comm)) ret_status = RET_SUCCESS;
 		else if (notexec) {
@@ -10940,10 +11044,13 @@ char *CONST *argv;
 	if (n > 2) {
 #ifdef	FD
 		initenv();
-#endif
-#ifdef	DEP_PTY
+# ifdef	DEP_PTY
 		if (isshptymode()) checkscreen(0, 0);
-#endif
+# endif
+# ifndef	_NOCUSTOMIZE
+		saveorigenviron();
+# endif
+#endif	/* FD */
 		initrc(0);
 #ifdef	FD
 		initfd(argv);

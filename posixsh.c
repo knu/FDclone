@@ -779,7 +779,10 @@ int *ptrp;
 	}
 	else {
 		n = 0L;
-		if (!(cp = evalvararg(new, '\'', EA_BACKQ, 0))) *ptrp = -1;
+		cp = evalvararg(new,
+			EA_STRIPESCAPE
+			| EA_NOEVALQ | EA_NOEVALDQ | EA_BACKQ, 0);
+		if (!cp) *ptrp = -1;
 		else {
 			for (i = 0; cp[i]; i++)
 				if (!strchr2(IFS_SET, cp[i])) break;
@@ -1194,8 +1197,14 @@ int *ptrp;
 				? RET_SUCCESS : RET_FAIL;
 			break;
 		case 'f':
+#if	defined (BASHSTYLE) || defined (STRICTPOSIX)
+	/* "test" on bash & POSIX regards -f as checking if regular file. */
+			if (s) ret = (*s && Xstat(s, &st) >= 0
+			&& (st.st_mode & S_IFMT) == S_IFREG)
+#else
 			if (s) ret = (*s && Xstat(s, &st) >= 0
 			&& (st.st_mode & S_IFMT) != S_IFDIR)
+#endif
 				? RET_SUCCESS : RET_FAIL;
 			break;
 		case 'd':
@@ -1314,6 +1323,11 @@ int *ptrp;
 
 		if (s[0] == '!' && s[1] == '=' && !s[2])
 			ret = (strcmp(a1, a2)) ? RET_SUCCESS : RET_FAIL;
+#ifdef	BASHSTYLE
+	/* bash's "test" allows "==" as same as "=" */
+		else if (s[0] == '=' && s[1] == '=' && !s[2])
+			ret = (!strcmp(a1, a2)) ? RET_SUCCESS : RET_FAIL;
+#endif
 		else if (s[0] == '=' && !s[1])
 			ret = (!strcmp(a1, a2)) ? RET_SUCCESS : RET_FAIL;
 		else if (s[0] == '-') {
