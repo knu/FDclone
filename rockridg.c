@@ -452,8 +452,8 @@ int bufsiz;
 
 	if (tp -> type != 'L' || !(tp -> slink)) return(-1);
 	len = strlen(tp -> slink);
-	strncpy2(buf, tp -> slink, bufsiz);
 	if (len > bufsiz) len = bufsiz;
+	memcpy(buf, tp -> slink, len);
 
 	return(len);
 }

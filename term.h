@@ -214,7 +214,7 @@ extern int getkey2 __P_((int, int, int));
 #else
 extern int getkey3 __P_((int, int, int));
 #endif
-extern int ungetkey2 __P_((int));
+extern int ungetkey2 __P_((int, int));
 extern int setscroll __P_((int, int));
 extern int locate __P_((int, int));
 extern int tflush __P_((VOID_A));

@@ -208,7 +208,7 @@ va_list args;
 	}
 
 	n = vfprintf2(fp, fmt, args);
-	if (n < 0 || Xfputs("\r\n", fp) == EOF || Xfflush(fp) == EOF) n = -1;
+	if (n >= 0) n = fputnl(fp);
 
 	return(n);
 }

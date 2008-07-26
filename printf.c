@@ -556,6 +556,7 @@ va_list args;
 	return(total);
 }
 
+#ifndef	MINIMUMSHELL
 int vasprintf2(sp, fmt, args)
 char **sp;
 CONST char *fmt;
@@ -572,16 +573,16 @@ va_list args;
 	return(n);
 }
 
-#ifdef	USESTDARGH
+# ifdef	USESTDARGH
 /*VARARGS2*/
 int asprintf2(char **sp, CONST char *fmt, ...)
-#else
+# else
 /*VARARGS2*/
 int asprintf2(sp, fmt, va_alist)
 char **sp;
 CONST char *fmt;
 va_dcl
-#endif
+# endif
 {
 	va_list args;
 	int n;
@@ -592,6 +593,7 @@ va_dcl
 
 	return(n);
 }
+#endif	/* !MINIMUMSHELL */
 
 int vsnprintf2(s, size, fmt, args)
 char *s;
@@ -665,11 +667,12 @@ va_dcl
 	return(n);
 }
 
-VOID fputnl(fp)
+int fputnl(fp)
 XFILE *fp;
 {
-	Xfputc('\n', fp);
-	Xfflush(fp);
+	if (Xfputc('\n', fp) == EOF || Xfflush(fp) == EOF) return(-1);
+
+	return(0);
 }
 
 #ifdef	FD

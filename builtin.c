@@ -262,7 +262,7 @@ int n;
 	fprintf2(Xstderr, "%s.",
 		(n >= 0 && builtinerrstr[n])
 			? builtinerrstr[n] : strerror2(duperrno));
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 }
 
 #ifndef	DEP_ORIGSHELL
@@ -957,8 +957,7 @@ XFILE *fp;
 		break;
 /*NOTREACHED*/
 	}
-
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 static int NEAR printlaunch(argc, argv)
@@ -1014,7 +1013,7 @@ XFILE *fp;
 		Xfputc('\t', fp);
 		fputsmeta(list[n].u_comm, fp);
 	}
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 static int NEAR printarch(argc, argv)
@@ -1485,7 +1484,7 @@ XFILE *fp;
 		if ((cp = gethelp(&(list[n]))))
 			fprintf2(fp, "\t%c%k", BINDCOMMENT, cp);
 	}
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 static int NEAR printbind(argc, argv)
@@ -1932,7 +1931,7 @@ XFILE *fp;
 # endif	/* HDDMOUNT */
 	fprintf2(fp, "%d%c%d%c%d", (int)(fdlist[n].head), DRIVESEP,
 		(int)(fdlist[n].sect), DRIVESEP, (int)(fdlist[n].cyl));
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 static int NEAR printdrive(argc, argv)
@@ -1984,7 +1983,7 @@ XFILE *fp;
 		fputsmeta(cp, fp);
 		free2(cp);
 	}
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 int parsekeymap(argc, argv, kp)
@@ -2163,7 +2162,7 @@ char *CONST argv[];
 	hitkey(2);
 	for (i = max; i >= 0; i--) {
 		fprintf2(Xstdout, "%5d  %k", n + 1, history[0][i]);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		if (n++ >= (int)MAXHISTNO) n = 0;
 		hitkey(0);
 	}
@@ -2230,7 +2229,7 @@ char *CONST argv[];
 		fprintf2(Xstderr,
 	"%k: usage: %k [-ls] [-nr] [-e editor] [old=new] [first] [last]",
 			argv[0], argv[0]);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(-1);
 	}
 
@@ -2266,10 +2265,10 @@ char *CONST argv[];
 			}
 			memmove(&(cp[l2]), &(cp[l1]),
 				&(s[len]) - &(cp[l2]) + 1);
-			strncpy2(cp, r, l2);
+			memcpy(cp, r, l2);
 		}
 		kanjifputs(s, Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		entryhist(s, HST_COMM);
 		n = execmacro(s, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
@@ -2335,7 +2334,7 @@ char *CONST argv[];
 				if (n++ >= (int)MAXHISTNO) n = 0;
 			}
 			kanjifputs(history[0][i], fp);
-			fputnl(fp);
+			VOID_C fputnl(fp);
 #  ifndef	DEP_ORIGSHELL
 			if (list) hitkey(0);
 #  endif
@@ -2348,7 +2347,7 @@ char *CONST argv[];
 				if (--n < 0) n = (int)MAXHISTNO;
 			}
 			kanjifputs(history[0][i], fp);
-			fputnl(fp);
+			VOID_C fputnl(fp);
 #  ifndef	DEP_ORIGSHELL
 			if (list) hitkey(0);
 #  endif
@@ -2383,7 +2382,7 @@ char *CONST argv[];
 	for (; (cp = Xfgets(fp)); free2(cp)) {
 		if (!*cp) continue;
 		kanjifputs(cp, Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		entryhist(cp, HST_COMM);
 		n = execmacro(cp, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
@@ -2412,9 +2411,8 @@ XFILE *fp;
 
 	fprintf2(fp, "MD5 (%k) = ", path);
 	for (i = 0; i < size; i++) fprintf2(fp, "%02x", buf[i]);
-	fputnl(fp);
 
-	return(0);
+	return(fputnl(fp));
 }
 
 static int NEAR md5sum(argc, argv)
@@ -2510,7 +2508,7 @@ char *CONST argv[];
 			fprintf2(Xstderr,
 		"Usage: %s [-i inputcode] [-o outputcode] [filename]",
 				argv[0]);
-			fputnl(Xstderr);
+			VOID_C fputnl(Xstderr);
 			return(-1);
 		}
 	}
@@ -2542,7 +2540,7 @@ char *CONST argv[];
 		tmp = newkanjiconv(cp, DEFCODE, out, L_OUTPUT);
 		if (cp != tmp) free2(cp);
 		Xfputs(tmp, fpout);
-		fputnl(fpout);
+		VOID_C fputnl(fpout);
 		free2(tmp);
 	}
 
@@ -2579,7 +2577,7 @@ char *CONST argv[];
 	if (!s) return(-1);
 
 	kanjifputs(s, Xstdout);
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 	free2(s);
 
 	return(0);
@@ -2691,7 +2689,7 @@ char *CONST argv[];
 		fprintf2(Xstderr,
 			"%k: usage: %k [-c] [-r] [-f file] [roman [kanji]]]",
 			argv[0], argv[0]);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(-1);
 	}
 
@@ -2752,7 +2750,7 @@ XFILE *fp;
 		fprintf2(fp, "%k", buf);
 	}
 	Xfputc('"', fp);
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 static int NEAR printroman(argc, argv)
@@ -2816,7 +2814,7 @@ char *CONST argv[];
 			return(-1);
 		}
 		kanjifputs(environ2[i], Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		return(0);
 	}
 # endif
@@ -2824,13 +2822,13 @@ char *CONST argv[];
 	hitkey(2);
 	if (environ2) for (i = 0; environ2[i]; i++) {
 		kanjifputs(environ2[i], Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		hitkey(0);
 	}
 # if	FD >= 2
 	for (i = 0; i < maxuserfunc; i++) {
 		printfunction(i, 0, Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		hitkey(0);
 	}
 # endif
@@ -2941,7 +2939,7 @@ char *CONST argv[];
 		hitkey(2);
 		for (i = 0; i < maxalias; i++) {
 			printalias(i, Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 			hitkey(0);
 		}
 		return(0);
@@ -2973,8 +2971,7 @@ char *CONST argv[];
 		}
 		hitkey(2);
 		printalias(i, Xstdout);
-		fputnl(Xstdout);
-
+		VOID_C fputnl(Xstdout);
 		return(0);
 	}
 
@@ -3071,7 +3068,7 @@ XFILE *fp;
 	fprintf2(fp, "%s ", BL_FUNCTION);
 # endif
 	fprintf2(fp, "%k() {", userfunclist[no].func);
-	if (verbose) fputnl(fp);
+	if (verbose) VOID_C fputnl(fp);
 	for (i = 0; userfunclist[no].comm[i]; i++) {
 		if (verbose) fprintf2(fp, "\t%k;\n", userfunclist[no].comm[i]);
 		else fprintf2(fp, " %k;", userfunclist[no].comm[i]);
@@ -3125,7 +3122,7 @@ char *CONST argv[];
 		hitkey(2);
 		for (i = 0; i < maxuserfunc; i++) {
 			printfunction(i, 0, Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 			hitkey(0);
 		}
 		return(0);
@@ -3147,7 +3144,7 @@ char *CONST argv[];
 		}
 		hitkey(2);
 		printfunction(i, 1, Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		return(0);
 	}
 # endif	/* FD < 2 */
@@ -3297,12 +3294,12 @@ char *CONST argv[];
 	}
 	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
 		fprintf2(Xstderr, "%s: %k", argv[0], RESTR_K);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 	if (argc > 2 || !filelist || maxfile <= 0) {
 		fprintf2(Xstderr, "%s: %k", argv[0], ILFNC_K);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 #ifdef	DEP_PTY

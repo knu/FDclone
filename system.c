@@ -1697,7 +1697,7 @@ int forced;
 #endif	/* !MSDOS */
 	if (havetty() && interrupted && interactive && !nottyout) {
 		Xfflush(Xstdout);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	interrupted = 0;
 	if (setsigflag) {
@@ -1820,7 +1820,7 @@ int sig;
 	}
 	else if (trapped < 0 && *(signallist[i].mes)) {
 		Xfputs(signallist[i].mes, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 
 #if	!MSDOS && defined (DEP_PTY) && defined (CYGWIN)
@@ -2333,7 +2333,7 @@ CONST char *s;
 		(*s && syntaxerrno != ER_UNEXPNL) ? s : "syntax error");
 	if (syntaxerrstr[syntaxerrno])
 		Xfputs(syntaxerrstr[syntaxerrno], Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	ret_status = RET_SYNTAXERR;
 	if (errorexit) Xexit2(RET_SYNTAXERR);
 	safeexit();
@@ -2363,7 +2363,7 @@ int n, noexit;
 	if (argv && argv[0]) fprintf2(Xstderr, "%k: ", argv[0]);
 	if (s) fprintf2(Xstderr, "%a: ", s);
 	if (execerrstr[n]) Xfputs(execerrstr[n], Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	execerrno = n;
 #ifndef	BASHSTYLE
 	/* bash does not break any statement on error */
@@ -2393,7 +2393,7 @@ CONST char *command, *s;
 	fprintf2(Xstderr, "%k: ", command);
 	if (s) fprintf2(Xstderr, "%a: ", s);
 	Xfputs(strerror2(duperrno), Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	errno = 0;
 
 #ifndef	BASHSTYLE
@@ -2785,7 +2785,7 @@ syntaxtree *trp;
 			if (!interactive && argvar && argvar[0])
 				fprintf2(Xstderr, "%k: %id ", argvar[0], pid);
 			dispsignal(ret, 0, Xstderr);
-			fputnl(Xstderr);
+			VOID_C fputnl(Xstderr);
 		}
 		ret += 128;
 	}
@@ -3661,7 +3661,7 @@ int old;
 		}
 		if (ret == RET_SUCCESS) {
 			Xfputs(buf, Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		free2(buf);
 	}
@@ -4066,7 +4066,7 @@ time_t *mtimep;
 # else
 		kanjifputs((msg) ? msg : "you have mail", Xstderr);
 # endif
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	*mtimep = st.st_mtime;
 }
@@ -6524,7 +6524,7 @@ static VOID NEAR disphash(VOID_A)
 	int i, j;
 
 	Xfputs("hits    cost    command", Xstdout);
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 	if (hashtable) for (i = 0; i < MAXHASH; i++)
 		for (hp = hashtable[i]; hp; hp = hp -> next) {
 			snprintf2(buf, sizeof(buf), "%d", hp -> hits);
@@ -6534,7 +6534,7 @@ static VOID NEAR disphash(VOID_A)
 			buf[j] = '\0';
 			fprintf2(Xstdout, "%s %-7d %k",
 				buf, hp -> cost, hp -> path);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 }
 #endif	/* !_NOUSEHASH */
@@ -6965,7 +6965,7 @@ XFILE *fp;
 {
 	if (n < 0) Xfputc(' ', fp);
 	else {
-		fputnl(fp);
+		VOID_C fputnl(fp);
 		printindent(n, fp);
 	}
 }
@@ -7059,11 +7059,11 @@ XFILE *fp;
 	hdp = (heredoc_t *)(rp -> filename);
 	fd = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
 	if (fd >= 0) {
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		while ((buf = readline(fd, '\0')) != vnullstr) {
 			if (!buf) break;
 			Xfputs(buf, Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 			free2(buf);
 		}
 		safeclose(fd);
@@ -7273,7 +7273,7 @@ XFILE *fp;
 	if (trp -> next && (trp -> next) -> comm) {
 #ifndef	MINIMUMSHELL
 		if (nl) {
-			fputnl(fp);
+			VOID_C fputnl(fp);
 			printindent(indent, fp);
 		}
 		else
@@ -7286,7 +7286,7 @@ XFILE *fp;
 #else
 			if (indent < 0) Xfputc(';', fp);
 			else {
-				fputnl(fp);
+				VOID_C fputnl(fp);
 				printindent(indent, fp);
 			}
 #endif
@@ -7916,7 +7916,7 @@ syntaxtree *trp;
 	/* bash displays arguments of "eval", in -v mode */
 	if (verboseinput) {
 		argfputs(cp, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 #endif
 #ifndef	MINIMUMSHELL
@@ -8059,7 +8059,7 @@ syntaxtree *trp;
 			var[i] = quotemeta(var[i]);
 #endif
 			kanjifputs(var[i], Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		freevar(var);
 
@@ -8068,7 +8068,7 @@ syntaxtree *trp;
 		if (i > 1) qsort(func, i, sizeof(shfunctable), cmpfunc);
 		for (i = 0; func[i].ident; i++) {
 			printshfunc(&(func[i]), Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		freefunc(func);
 		return(RET_SUCCESS);
@@ -8086,7 +8086,7 @@ syntaxtree *trp;
 				fprintf2(Xstdout, "%-16.16s%s",
 					shflaglist[i].ident,
 					(*(shflaglist[i].var)) ? "on" : "off");
-				fputnl(Xstdout);
+				VOID_C fputnl(Xstdout);
 			}
 		}
 		else {
@@ -8256,7 +8256,7 @@ syntaxtree *trp;
 			strncpy2(&(path[dlen]), dir, len);
 			if (chdir3(path, 1) >= 0) {
 				kanjifputs(path, Xstdout);
-				fputnl(Xstdout);
+				VOID_C fputnl(Xstdout);
 				free2(path);
 #ifdef	FD
 				physical_path = dupphysical_path;
@@ -8293,7 +8293,7 @@ syntaxtree *trp;
 		return(RET_FAIL);
 	}
 	kanjifputs(buf, Xstdout);
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 
 	return(RET_SUCCESS);
 }
@@ -8410,7 +8410,7 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; exportlist[i]; i++) {
 			fprintf2(Xstdout, "export %k", exportlist[i]);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		return(RET_SUCCESS);
 	}
@@ -8439,7 +8439,7 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; ronlylist[i]; i++) {
 			fprintf2(Xstdout, "readonly %k", ronlylist[i]);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		return(RET_SUCCESS);
 	}
@@ -8487,7 +8487,7 @@ syntaxtree *trp;
 	fprintf2(Xstdout, "%dm%ds %dm%ds",
 		(int)(usrtime / 60), (int)(usrtime % 60),
 		(int)(systime / 60), (int)(systime % 60));
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 
 	return(RET_SUCCESS);
 }
@@ -8574,7 +8574,7 @@ syntaxtree *trp;
 #else
 		fprintf2(Xstdout, "%04o", n & 0777);
 #endif
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 	else {
 		s = (trp -> comm) -> argv[1];
@@ -8691,7 +8691,7 @@ syntaxtree *trp;
 		for (j = 0; j < ULIMITSIZ; j++)
 			Xfputc(ulimitlist[j].opt, fp);
 		Xfputs(" ] [ limit ]", fp);
-		fputnl(fp);
+		VOID_C fputnl(fp);
 #  ifdef	BASHSTYLE
 		return(RET_SYNTAXERR);
 #  else
@@ -8720,7 +8720,7 @@ syntaxtree *trp;
 				else if (lim.rlim_max) fprintf2(Xstdout, "%ld",
 					lim.rlim_max / ulimitlist[i].unit);
 			}
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 	}
 	else {
@@ -8743,7 +8743,7 @@ syntaxtree *trp;
 		}
 		if (val == RLIM_INFINITY) Xfputs(UNLIMITED, Xstdout);
 		else fprintf2(Xstdout, "%ld", val * 512L);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 	else {
 		if (!strcmp(argv[1], UNLIMITED)) val = RLIM_INFINITY;
@@ -8776,7 +8776,7 @@ syntaxtree *trp;
 		for (i = 0; i < NSIG; i++) {
 			if ((trapmode[i] & TR_STAT) != TR_TRAP) continue;
 			fprintf2(Xstdout, "%d: %k", i, trapcomm[i]);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		return(RET_SUCCESS);
 	}
@@ -8918,12 +8918,12 @@ XFILE *fp;
 			Xfputs(": restricted", fp);
 		else if ((type & CM_NOTFOUND) || Xaccess(s, X_OK) < 0) {
 			Xfputs(" not found", fp);
-			fputnl(fp);
+			VOID_C fputnl(fp);
 			return(-1);
 		}
 		else fprintf2(fp, " is %k", s);
 	}
-	fputnl(fp);
+	VOID_C fputnl(fp);
 
 	return(0);
 }
@@ -9031,7 +9031,7 @@ syntaxtree *trp;
 	}
 	if (opt == 'n') /*EMPTY*/;
 	else if (opt == 'N') Xfputs("\r\n", Xstdout);
-	else fputnl(Xstdout);
+	else VOID_C fputnl(Xstdout);
 	Xfflush(Xstdout);
 
 	return(RET_SUCCESS);
@@ -9198,7 +9198,7 @@ syntaxtree *trp;
 	if (dirstack)
 		for (i = 0; dirstack[i]; i++)
 			fprintf2(Xstdout, " %k", dirstack[i]);
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 
 	return(RET_SUCCESS);
 }
@@ -9433,7 +9433,7 @@ syntaxtree *trp;
 		shellmode = 1;
 		termmode(mode);
 		stdiomode();
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		sigvecset(n);
 	}
 
@@ -9498,7 +9498,7 @@ int lvl;
 	if (!trp) {
 		printindent(lvl, Xstdout);
 		Xfputs("(null):", Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		return;
 	}
 
@@ -9510,7 +9510,7 @@ int lvl;
 	else if (!(trp -> comm)) {
 		printindent(lvl, Xstdout);
 		Xfputs("body: NULL", Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 	else {
 		printindent(lvl, Xstdout);
@@ -9545,7 +9545,7 @@ int lvl;
 						-> eof);
 			else fprintf2(Xstdout, "> \"%a\": ", rp -> filename);
 			fprintf2(Xstdout, "%06o", (int)(rp -> type));
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 	}
 	if (trp -> type) {
@@ -9554,7 +9554,7 @@ int lvl;
 		if (i < OPELISTSIZ) {
 			printindent(lvl, Xstdout);
 			Xfputs(opelist[i].symbol, Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 	}
 	if (trp -> next) {
@@ -9563,7 +9563,7 @@ int lvl;
 			printindent(lvl, Xstdout);
 			fprintf2(Xstdout, "continuing...\"%a\"",
 				rp -> filename);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 # ifndef	MINIMUMSHELL
 		else if (trp -> flags & ST_BUSY);
@@ -9978,7 +9978,7 @@ int *contp, bg;
 			if (nsubst) Xfputc(' ', Xstderr);
 			else
 #endif
-			fputnl(Xstderr);
+			VOID_C fputnl(Xstderr);
 		}
 	}
 	free2(subst);
@@ -9989,7 +9989,7 @@ int *contp, bg;
 		argfputs(comm -> argv[0], Xstderr);
 		for (i = 1; i < comm -> argc; i++)
 			fprintf2(Xstderr, " %a", comm -> argv[i]);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 #ifndef	MINIMUMSHELL
 	free2(ps);
@@ -10212,14 +10212,14 @@ int cond;
 				if (mypid == orgpgrp) {
 					fprintf2(Xstderr, "[%d] %id",
 						lastjob + 1, pid);
-					fputnl(Xstderr);
+					VOID_C fputnl(Xstderr);
 				}
 			}
 			else
 # endif	/* !NOJOB */
 			{
 				fprintf2(Xstderr, "%id", pid);
-				fputnl(Xstderr);
+				VOID_C fputnl(Xstderr);
 			}
 		}
 		lastpid = pid;
@@ -10400,7 +10400,7 @@ CONST char *command;
 	setsignal();
 	if (verboseinput && command != (char *)-1) {
 		argfputs(command, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	if (!stree) trp = stree = newstree(NULL);
 
@@ -10596,7 +10596,7 @@ int verbose;
 			ret++;
 			if (verbose) {
 				fprintf2(Xstderr, "%k:%ld: %s", fname, n, buf);
-				fputnl(Xstderr);
+				VOID_C fputnl(Xstderr);
 			}
 			ret_status = RET_FAIL;
 		}
@@ -10837,7 +10837,7 @@ char *CONST *argv;
 		definput = newdup(Xopen(argv[n], O_BINARY | O_RDONLY, 0666));
 		if (definput < 0) {
 			fprintf2(Xstderr, "%k: cannot open", argv[n]);
-			fputnl(Xstderr);
+			VOID_C fputnl(Xstderr);
 			return(-1);
 		}
 		if (!interactive_io || !isatty(definput)) {
@@ -10849,7 +10849,7 @@ char *CONST *argv;
 		else {
 			if (Xdup2(definput, STDIN_FILENO) < 0) {
 				fprintf2(Xstderr, "%k: cannot open", argv[n]);
-				fputnl(Xstderr);
+				VOID_C fputnl(Xstderr);
 				return(-1);
 			}
 			safeclose(definput);
@@ -11059,7 +11059,7 @@ char *CONST *argv;
 			kanjifputs(argv[2], Xstderr);
 #ifdef	BASHSTYLE
 	/* bash displays a newline with single string command, in -v mode */
-			fputnl(Xstderr);
+			VOID_C fputnl(Xstderr);
 #endif
 			Xfflush(Xstderr);
 		}
@@ -11090,7 +11090,7 @@ char *CONST *argv;
 		initfd(argv);
 #endif
 		Xfputs("No directory", Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		Xexit2(RET_FAIL);
 	}
 
@@ -11171,7 +11171,7 @@ int pseudoexit;
 					"Use \"%s\" to leave to the shell.",
 						(loginshell)
 							? "logout" : "exit");
-					fputnl(Xstderr);
+					VOID_C fputnl(Xstderr);
 				}
 				cont = 0;
 				continue;

@@ -117,7 +117,7 @@ int *drvp;
 
 	if (drvp) *drvp = 0;
 
-# ifdef	DEP_DOSEMU
+# ifdef	DEP_DOSPATH
 	if ((n = _dospath(path))) {
 		if (drvp) *drvp = n;
 		n = 2;

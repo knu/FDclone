@@ -25,6 +25,11 @@
 
 #define	PIPEDIR			"PIPE_DIR"
 #define	PIPEFILE		"FAKEPIPE"
+#ifdef	USECRNL
+#define	ISCRNL(fp)		(!((fp) -> flags & XF_BINARY))
+#else
+#define	ISCRNL(fp)		((fp) -> flags & XF_CRNL)
+#endif
 
 #if	defined (FD) && !defined (DEP_ORIGSHELL)
 # ifdef	USESIGACTION
@@ -51,8 +56,8 @@ extern char *tmpfilename;
 #endif
 
 #ifdef	DEP_ORIGSTREAM
-static int NEAR mode2flags __P_((CONST char *));
-static XFILE *NEAR fmalloc __P_((int, int));
+static int NEAR mode2flags __P_((CONST char *, int *));
+static XFILE *NEAR fmalloc __P_((int, int, int));
 static int NEAR checkfp __P_((XFILE *, int));
 static int NEAR fillbuf __P_((XFILE *));
 # ifdef	DEP_SOCKET
@@ -89,8 +94,9 @@ XFILE *Xstderr = &(stdiobuf[2]);
 
 
 #ifdef	DEP_ORIGSTREAM
-static int NEAR mode2flags(mode)
+static int NEAR mode2flags(mode, isbinp)
 CONST char *mode;
+int *isbinp;
 {
 	int flags;
 
@@ -117,13 +123,14 @@ CONST char *mode;
 		flags |= O_RDWR;
 		mode++;
 	}
-	flags |= (*mode == 'b') ? O_BINARY : O_TEXT;
+	if (isbinp) *isbinp = (*mode == 'b');
+	flags |= O_BINARY;
 
 	return(flags);
 }
 
-static XFILE *NEAR fmalloc(fd, flags)
-int fd, flags;
+static XFILE *NEAR fmalloc(fd, flags, isbin)
+int fd, flags, isbin;
 {
 	XFILE *fp;
 
@@ -146,6 +153,7 @@ int fd, flags;
 		default:
 			break;
 	}
+	if (isbin) fp -> flags |= XF_BINARY;
 
 	return(fp);
 }
@@ -154,11 +162,11 @@ XFILE *Xfopen(path, mode)
 CONST char *path, *mode;
 {
 	XFILE *fp;
-	int fd, flags;
+	int fd, flags, isbin;
 
-	flags = mode2flags(mode);
+	flags = mode2flags(mode, &isbin);
 	if ((fd = Xopen(path, flags, 0666)) < 0) return(NULL);
-	if (!(fp = fmalloc(fd, flags))) {
+	if (!(fp = fmalloc(fd, flags, isbin))) {
 		VOID_C Xclose(fd);
 		return(NULL);
 	}
@@ -173,9 +181,9 @@ CONST char *mode;
 #if	!MSDOS
 	int n;
 #endif
-	int flags;
+	int flags, isbin;
 
-	flags = mode2flags(mode);
+	flags = mode2flags(mode, &isbin);
 #if	!MSDOS
 	n = fcntl(fd, F_GETFL);
 	if (n < 0) /*EMPYU*/;
@@ -195,7 +203,7 @@ CONST char *mode;
 	if (n < 0) return(NULL);
 #endif
 
-	return(fmalloc(fd, flags));
+	return(fmalloc(fd, flags, isbin));
 }
 
 int Xfclose(fp)
@@ -288,7 +296,6 @@ XFILE *fp;
 	int n;
 
 	if (checkfp(fp, XF_RDONLY) < 0) return(-1);
-	if ((fp -> flags & XF_WRITTEN) && Xfflush(fp) == EOF) return(-1);
 	if (fp == Xstdin) {
 		if (Xstdout -> flags & XF_LINEBUF) VOID_C Xfflush(Xstdout);
 		if (Xstderr -> flags & XF_LINEBUF) VOID_C Xfflush(Xstderr);
@@ -322,8 +329,7 @@ XFILE *fp;
 	if (fp -> flags & XF_RDONLY) return(0);
 
 	len = fp -> ptr;
-	fp -> ptr = (ALLOC_T)0;
-	fp -> count = (fp -> flags & XF_NOBUF) ? 1 : XF_BUFSIZ;
+	fp -> ptr = fp -> count = (ALLOC_T)0;
 	if (!len || (fp -> flags & XF_CLOSED)) return(0);
 
 	if (Xwrite(fp -> fd, fp -> buf, len) != len) {
@@ -345,23 +351,57 @@ char *buf;
 ALLOC_T size;
 XFILE *fp;
 {
-	ALLOC_T len;
-	int total;
+	ALLOC_T ptr, len;
+	int nl, total;
 
 	if (checkfp(fp, XF_RDONLY) < 0) return(-1);
-	total = 0;
+	if ((fp -> flags & XF_WRITTEN) && Xfflush(fp) == EOF) return(-1);
+	if (!(fp -> flags & XF_READ)) fp -> ptr = fp -> count = (ALLOC_T)0;
+	nl = total = 0;
 
 	while (size > (ALLOC_T)0) {
 		if (fp -> flags & (XF_EOF | XF_CLOSED)) break;
 		if (!(fp -> count) && fillbuf(fp) < 0) break;
+		if (nl && fp -> buf[fp -> ptr] != '\n') {
+			*(buf++) = '\r';
+			size--;
+			total++;
+		}
 		len = fp -> count;
 		if (len > size) len = size;
+
+		nl = 0;
+		if (!ISCRNL(fp)) ptr = len;
+		else for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
+#ifdef	USECRNL
+			if (fp -> buf[fp -> ptr + ptr] == CH_EOF) {
+				fp -> flags |= XF_EOF;
+				break;
+			}
+#endif
+			if (fp -> buf[fp -> ptr + ptr] == '\r') {
+				nl++;
+				len = ptr;
+				break;
+			}
+		}
+
 		memcpy(buf, &(fp -> buf[fp -> ptr]), len);
 		fp -> ptr += len;
 		buf += len;
 		size -= len;
 		fp -> count -= len;
 		total += len;
+
+#ifdef	USECRNL
+		if (fp -> flags & XF_EOF)
+			fp -> ptr = fp -> count = (ALLOC_T)0;
+		else
+#endif
+		if (nl) {
+			(fp -> ptr)++;
+			(fp -> count)--;
+		}
 	}
 
 	return((fp -> flags & XF_ERROR) ? -1 : total);
@@ -372,22 +412,49 @@ CONST char *buf;
 ALLOC_T size;
 XFILE *fp;
 {
-	ALLOC_T len;
+	ALLOC_T ptr, len, max;
+	int nl, prev;
 
 	if (checkfp(fp, XF_WRONLY) < 0) return(-1);
-	if (fp -> flags & XF_READ) fp -> flags &= ~(XF_EOF | XF_READ);
+	if (fp -> flags & XF_READ) {
+		fp -> flags &= ~(XF_EOF | XF_READ);
+		fp -> ptr = fp -> count = (ALLOC_T)0;
+	}
 	if (fp -> flags & XF_CLOSED) return(0);
+	max = (fp -> flags & XF_NOBUF) ? (ALLOC_T)1 : XF_BUFSIZ;
+	prev = '\0';
 
 	while (size > (ALLOC_T)0) {
-		len = fp -> count;
+		len = max - fp -> count;
 		if (len > size) len = size;
+
+		nl = 0;
+		if (!ISCRNL(fp)) ptr = len;
+		else for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
+			if (buf[ptr] == '\n' && prev != '\r') {
+				nl++;
+				len = ptr;
+				break;
+			}
+			prev = buf[ptr];
+		}
+
 		memcpy(&(fp -> buf[fp -> ptr]), buf, len);
+		if (nl) fp -> buf[fp -> ptr + len++] = '\r';
 		fp -> ptr += len;
 		buf += len;
 		size -= len;
-		fp -> count -= len;
+		fp -> count += len;
 		fp -> flags |= XF_WRITTEN;
-		if (fp -> count <= (ALLOC_T)0 && Xfflush(fp) == EOF) break;
+		if (fp -> count >= max && Xfflush(fp) == EOF) break;
+
+		if (nl) {
+			fp -> buf[(fp -> ptr)++] = '\n';
+			(fp -> count)++;
+			fp -> flags |= XF_WRITTEN;
+			if (fp -> count >= max && Xfflush(fp) == EOF)
+				break;
+		}
 	}
 
 	if (fp -> flags & XF_ERROR) return(-1);
@@ -518,11 +585,11 @@ XFILE *fp;
 		if ((fp -> flags & XF_NULLCONV) && !c) c = '\n';
 		cp[i] = c;
 	}
-#ifndef	USECRNL
-	if (!(fp -> flags & XF_CRNL)) /*EMPTY*/;
-	else
+
+#if	defined (DEP_URLPATH) && !defined (NOSELECT)
+	if (!(fp -> flags & XF_NONBLOCK) || !ISCRNL(fp)) /*EMPTY*/;
+	else if (i > 0 && cp[i - 1] == '\r') i--;
 #endif
-	if (i > 0 && cp[i - 1] == '\r') i--;
 	cp[i++] = '\0';
 
 	return(realloc2(cp, i));
@@ -718,7 +785,7 @@ CONST char *prompt;
 # ifdef	DEP_ORIGSTREAM
 #  ifdef	DEP_ORIGSHELL
 	fd = safe_dup(ttyio);
-	fp = (fd >= 0) ? Xfdopen(fd, "rb") : NULL;
+	fp = (fd >= 0) ? Xfdopen(fd, "r") : NULL;
 	if (fp) /*EMPTY*/;
 	else
 #  endif

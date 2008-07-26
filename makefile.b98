@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00b
+VERSION	= 3.00c
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -866,7 +866,7 @@ ipk: $(PROGRAM)$(EXE) $(TABLES)
 		-e '\# archiver definition\,\^$$\ {' \
 		-e  '\^$$\ {' \
 		-e   'i \' \
-		-e   'arch ".tar.Z"	"echo ERROR; false" 		"gzip -cd %C|tar xf - %TA"' \
+		-e   'arch ".tar.Z"	"echo ERROR; false"		"gzip -cd %C|tar xf - %TA"' \
 		-e   'i \' \
 		-e   'arch ".taZ"	"echo ERROR; false"		"gzip -cd %C|tar xf - %TA"' \
 		-e   'i \' \

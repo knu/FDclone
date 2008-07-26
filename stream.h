@@ -13,6 +13,12 @@
 #define	XF_BUFSIZ		((ALLOC_T)BUFSIZ)
 #endif
 
+#if	MSDOS
+#define	CH_EOF			'\032'
+#else
+#define	CH_EOF			'\004'
+#endif
+
 #ifdef	DEP_ORIGSTREAM
 typedef struct _XFILE {
 	int fd;
@@ -41,6 +47,7 @@ typedef struct _XFILE {
 #define	XF_NONBLOCK		002000
 #define	XF_TELNET		004000
 #define	XF_NULLCONV		010000
+#define	XF_BINARY		020000
 
 #ifdef	DEP_ORIGSTREAM
 extern XFILE *Xfopen __P_((CONST char *, CONST char *));

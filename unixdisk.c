@@ -23,6 +23,9 @@
 #define	int21call(reg, sreg)	intcall(0x21, reg, sreg)
 
 static char *NEAR duplpath __P_((CONST char *));
+#ifndef	_NOUSELFN
+static int NEAR isreserved __P_((CONST char *));
+#endif
 #ifndef	_NODOSDRIVE
 static char *NEAR regpath __P_((CONST char *, char *));
 static VOID NEAR biosreset __P_((int));
@@ -67,6 +70,7 @@ static int maxdrive = -1;
 static int dos7access = 0;
 #define	D7_DOSVER		017
 #define	D7_CAPITAL		020
+#define	D7_NTARCH		040
 #if	!defined (DJGPP) && !defined (_NODOSDRIVE)
 static u_char int25bin[] = {
 	0x1e,				/* 0000: push ds */
@@ -105,6 +109,10 @@ static int (far *doint25)__P_((VOID_A)) = NULL;
 #endif	/* !DJGPP && !_NODOSDRIVE */
 #ifdef	DOUBLESLASH
 static int dsdrive = 0;
+#endif
+#ifndef	_NOUSELFN
+static CONST char *inhibitname[] = INHIBITNAME;
+#define	INHIBITNAMESIZ		arraysize(inhibitname)
 #endif
 
 
@@ -232,6 +240,35 @@ int drive, nodir;
 }
 
 #ifndef	_NOUSELFN
+static int NEAR isreserved(path)
+CONST char *path;
+{
+	int i, len;
+
+	if (strdelim(path, 0)) return(0);
+	len = strlen(path);
+	for (i = 0; i < INHIBITNAMESIZ; i++) {
+		if (strnpathcmp(path, inhibitname[i], len)) continue;
+		if (!inhibitname[i][len] || inhibitname[i][len] == ' ')
+			return(1);
+	}
+
+	if (!strnpathcmp(path, INHIBITCOM, strsize(INHIBITCOM))) {
+		if (path[strsize(INHIBITCOM)] > '0'
+		&& path[strsize(INHIBITCOM)] <= '0' + INHIBITCOMMAX
+		&& !path[strsize(INHIBITCOM) + 1])
+			return(1);
+	}
+	else if (!strnpathcmp(path, INHIBITLPT, strsize(INHIBITLPT))) {
+		if (path[strsize(INHIBITLPT)] > '0'
+		&& path[strsize(INHIBITLPT)] <= '0' + INHIBITLPTMAX
+		&& !path[strsize(INHIBITLPT) + 1])
+			return(1);
+	}
+
+	return(0);
+}
+
 int getdosver(VOID_A)
 {
 	struct SREGS sreg;
@@ -248,6 +285,7 @@ int getdosver(VOID_A)
 			if (reg.h.al != 0xff && reg.x.bx == 0x3205) {
 				/* Windows NT/2000/XP command prompt */
 				ver = 7;
+				dos7access |= D7_NTARCH;
 			}
 		}
 		dos7access |= (ver & D7_DOSVER);
@@ -274,20 +312,23 @@ CONST char *path;
 	__dpmi_regs reg;
 	char drive, drv[4], buf[128];
 
-#ifdef	DOUBLESLASH
-	if (isdslash(path)) return(3);
-#endif
-	if (!path || !(drive = _dospath(path))) drive = getcurdrv();
-#ifdef	DOUBLESLASH
+	if (!path) drive = 0;
+# ifdef	DOUBLESLASH
+	else if (isdslash(path)) return(3);
+# endif
+	else drive = _dospath(path);
+	if (!drive) drive = getcurdrv();
+
+# ifdef	DOUBLESLASH
 	if (drive == '_') return(3);
-#endif
-#ifndef	_NODOSDRIVE
+# endif
+# ifndef	_NODOSDRIVE
 	if (checkdrive(toupper2(drive) - 'A') > 0) return(-2);
-#endif
+# endif
 	if (getdosver() < 7) {
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 		if ((dosdrive & 1) && islower2(drive)) return(-1);
-#endif
+# endif
 		return(-3);
 	}
 	if (isupper2(drive)) return(0);
@@ -296,23 +337,23 @@ CONST char *path;
 	reg.x.ax = 0x71a0;
 	reg.x.bx = 0;
 	reg.x.cx = sizeof(buf);
-#ifdef	DJGPP
+# ifdef	DJGPP
 	dos_putpath(drv, 0);
-#endif
+# endif
 	sreg.ds = PTR_SEG(drv);
 	reg.x.dx = PTR_OFF(drv, 0);
 	sreg.es = PTR_SEG(buf);
 	reg.x.di = PTR_OFF(buf, sizeof(drv));
 	if (int21call(&reg, &sreg) < 0 || !(reg.x.bx & 0x4000)) {
 		if (reg.x.ax == 15) return(-4);
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 		if (dosdrive & 1) return(-1);
-#endif
+# endif
 		return(-3);
 	}
-#ifdef	DJGPP
+# ifdef	DJGPP
 	dosmemget(__tb + sizeof(drv), sizeof(buf), buf);
-#endif
+# endif
 	if (!strcmp(buf, VOL_FAT32)) return(2);
 
 	return(1);
@@ -395,7 +436,12 @@ char *alias;
 	reg.x.si = PTR_OFF(path, 0);
 	sreg.es = PTR_SEG(alias);
 	reg.x.di = PTR_OFF(alias, i);
-	if (int21call(&reg, &sreg) < 0) return(NULL);
+	if (int21call(&reg, &sreg) < 0) {
+		/* Windows NT/2000/XP cannot support reserved filenames */
+		if ((dos7access & D7_NTARCH) && isreserved(path))
+			return((char *)path);
+		return(NULL);
+	}
 # ifdef	DJGPP
 	dosmemget(__tb + i, MAXPATHLEN, alias);
 # endif
@@ -465,7 +511,15 @@ char *resolved;
 	reg.x.si = PTR_OFF(path, 0);
 	sreg.es = PTR_SEG(resolved);
 	reg.x.di = PTR_OFF(resolved, i);
-	if (int21call(&reg, &sreg) < 0) return(NULL);
+	if (int21call(&reg, &sreg) < 0) {
+		/* Windows NT/2000/XP cannot support reserved filenames */
+		if ((dos7access & D7_NTARCH) && isreserved(path)) {
+			strcpy2(resolved, path);
+			return(resolved);
+		}
+		return(NULL);
+	}
+
 #ifdef	DJGPP
 	dosmemget(__tb + i, MAXPATHLEN, resolved);
 #endif

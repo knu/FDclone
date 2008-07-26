@@ -212,7 +212,9 @@ extern char *strrdelim __P_((CONST char *, int));
 #ifdef	FD
 extern char *strrdelim2 __P_((CONST char *, CONST char *));
 #endif
+#ifndef	MINIMUMSHELL
 extern int isdelim __P_((CONST char *, int));
+#endif
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
 #ifdef	PATHNOCASE
@@ -247,8 +249,10 @@ extern int isidentchar __P_((int));
 extern int isidentchar2 __P_((int));
 extern int isdotdir __P_((CONST char *));
 extern char *isrootdir __P_((CONST char *));
+#ifndef	MINIMUMSHELL
 extern int isrootpath __P_((CONST char *));
 extern VOID copyrootpath __P_((char *));
+#endif
 extern VOID copycurpath __P_((char *));
 #ifdef	DOUBLESLASH
 extern int isdslash __P_((CONST char *));
@@ -290,7 +294,9 @@ extern int isgroupmember __P_((gid_t));
 extern VOID freeidlist __P_((VOID_A));
 # endif
 #endif	/* !NOUID */
+#ifndef	MINIMUMSHELL
 extern CONST char *gethomedir __P_((VOID_A));
+#endif
 extern CONST char *getrealpath __P_((CONST char *, char *, char *));
 extern char *evalarg __P_((char *, int));
 extern int evalifs __P_((int, char ***, CONST char *));

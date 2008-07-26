@@ -258,7 +258,7 @@ int key;
 	else if ((c = getch2()) == EOF) /*EMPTY*/;
 	else if (c != K_ESC) /*EMPTY*/;
 	else if (kbhit2(WAITKEYPAD * 1000L)) {
-		ungetkey2(c);
+		ungetkey2(c, 0);
 		c = EOF;
 	}
 
@@ -268,7 +268,7 @@ int key;
 		else fprintf2(Xstderr, "%k\n", INTR_K);
 	}
 	else {
-		ungetkey2(c);
+		ungetkey2(c, 0);
 		c = EOF;
 	}
 	errno = duperrno;
@@ -374,7 +374,7 @@ int sig, timeout;
 {
 	int n;
 
-	for (n = ungetnum3 - 1; n >= 0; n--) ungetkey2((int)ungetbuf3[n]);
+	for (n = 0; n < ungetnum3; n++) ungetkey2((int)ungetbuf3[n], 0);
 # ifdef	DEP_IME
 	if (imemode && !ungetnum3 && getime(sig, &n, 0) >= 0) /*EMPTY*/;
 	else
@@ -3937,7 +3937,7 @@ char *inputpass(VOID_A)
 		Xtflush();
 	}
 	else {
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		Xfflush(Xstderr);
 	}
 

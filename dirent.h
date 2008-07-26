@@ -16,7 +16,7 @@
 # if	defined (__TURBOC__) || (defined (DJGPP) && DJGPP < 2)
 # include <dir.h>
 # endif
-#else	 /* !MSDOS */
+#else	/* !MSDOS */
 # ifndef	USEDIRECT
 # include <dirent.h>
 # endif

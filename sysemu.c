@@ -82,7 +82,7 @@
 #define	unixrmdir(p)		((rmdir(p)) ? -1 : 0);
 #endif	/* !MSDOS */
 #if	MSDOS && !defined (DJGPP) && !defined (FD)
-#define	unixmkdir(p, m) 	((mkdir(p)) ? -1 : 0);
+#define	unixmkdir(p, m)		((mkdir(p)) ? -1 : 0);
 #endif
 #if	!MSDOS || (defined (DJGPP) && !defined (FD))
 #define	unixmkdir(p, m)		((mkdir(p,m)) ? -1 : 0);

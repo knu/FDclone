@@ -253,7 +253,7 @@ int flags;
 	else len = strlen(arg);
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
-	strncpy2(&((*bufp)[ptr]), arg, len);
+	memcpy(&((*bufp)[ptr]), arg, len);
 	free2(new);
 
 	return(len + ptr - optr);
@@ -392,7 +392,7 @@ int flags;
 		}
 # endif
 		*bufp = c_realloc(*bufp, ptr + flen + 1, sizep);
-		strncpy2(&((*bufp)[ptr]), cp, flen);
+		memcpy(&((*bufp)[ptr]), cp, flen);
 		ptr += flen;
 	}
 	else for (i = n = 0; i < maxfile; i++) {
@@ -406,7 +406,7 @@ int flags;
 # endif
 			*bufp = c_realloc(*bufp, ptr + blen + 1 + 1, sizep);
 			(*bufp)[ptr++] = ' ';
-			strncpy2(&((*bufp)[ptr]), tmp, blen);
+			memcpy(&((*bufp)[ptr]), tmp, blen);
 			ptr += blen;
 		}
 		len = setarg(bufp, ptr, sizep, dir, filelist[i].name, flags);
@@ -422,7 +422,7 @@ int flags;
 		}
 # endif
 		*bufp = c_realloc(*bufp, ptr + flen + 1, sizep);
-		strncpy2(&((*bufp)[ptr]), cp, flen);
+		memcpy(&((*bufp)[ptr]), cp, flen);
 		ptr += flen;
 		filelist[i].tmpflags &= ~F_ISARG;
 		n_args--;
@@ -1283,7 +1283,7 @@ macrostat *stp;
 	if (!wastty) Xstdiomode();
 	free2(command);
 	if (!cp) {
-		if (!wastty) fputnl(Xstdout);
+		if (!wastty) VOID_C fputnl(Xstdout);
 		return(NULL);
 	}
 	if (!*cp) {
@@ -1659,7 +1659,7 @@ int n;
 	int i, j, size;
 
 	if (!histfile[n] || !*(histfile[n])) return(0);
-	lck = lockfopen(histfile[n], "r", O_TEXT | O_RDONLY);
+	lck = lockfopen(histfile[n], "r", O_BINARY | O_RDONLY);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);
@@ -1712,7 +1712,7 @@ int n;
 	if (!histfile[n] || !*(histfile[n]) || savehist[n] <= 0) return(0);
 	if (!history[n] || !*(history[n])) return(-1);
 	lck = lockfopen(histfile[n], "w",
-		O_TEXT | O_WRONLY | O_CREAT | O_TRUNC);
+		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);
@@ -1816,7 +1816,7 @@ char *command;
 	cp[j] = '\0';
 	if (hit) {
 		kanjifputs(cp, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		free2(command);
 		return(cp);
 	}

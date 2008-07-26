@@ -516,10 +516,10 @@ int n;
 	if (!n || n >= DOSERRSIZ) return;
 	if (s) {
 		kanjifputs(s, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	if (doserrstr[n]) Xfputs(doserrstr[n], Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 }
 
 static VOID NEAR dosperror(s)
@@ -531,10 +531,10 @@ CONST char *s;
 	if (errno < 0) return;
 	if (s) {
 		kanjifputs(s, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	Xfputs(strerror2(duperrno), Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	errno = 0;
 }
 
@@ -565,7 +565,7 @@ static int NEAR inputkey(VOID_A)
 	if (c == EOF) c = -1;
 	else if (c == cc_intr) {
 		Xfputs("^C", Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		c = -1;
 	}
 
@@ -937,7 +937,7 @@ int verbose;
 #ifndef	NOSYMLINK
 	if (dirp -> lnam) fprintf2(Xstdout, " -> %s", dirp -> lnam);
 #endif
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 }
 
 static VOID NEAR showfnamew(dirp)
@@ -993,7 +993,7 @@ struct filestat_t *dirp;
 		for (i = 0; dirp -> nam[i]; i++)
 			dirp -> nam[i] = tolower2(dirp -> nam[i]);
 	kanjifputs(dirp -> nam, Xstdout);
-	fputnl(Xstdout);
+	VOID_C fputnl(Xstdout);
 }
 
 #ifdef	MINIMUMSHELL
@@ -1008,7 +1008,7 @@ int n_incline;
 	if (dirflag & DF_CANCEL) return(-1);
 	if ((dirline += n_incline) >= n_line - 2) {
 		Xfputs("Press any key to continue . . .", Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		if (inputkey() < 0) {
 			dirflag |= DF_CANCEL;
 			return(-1);
@@ -1025,7 +1025,7 @@ static VOID NEAR dosdirheader(VOID_A)
 	if (dirtype != 'B') {
 		if (checkline(1) < 0) return;
 		if (dirflag & DF_SUBDIR) {
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 			if (checkline(1) < 0) return;
 		}
 		else Xfputc(' ', Xstdout);
@@ -1038,14 +1038,14 @@ static VOID NEAR dosdirheader(VOID_A)
 			Xstdout);
 		Xfputs("Modified      Accessed  Attrib\n", Xstdout);
 		if (checkline(1) < 0) return;
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 		if (checkline(1) < 0) return;
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 #endif	/* !MINIMUMSHELL */
 	if (dirtype != 'B') {
 		if (checkline(1) < 0) return;
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 }
 
@@ -1071,7 +1071,7 @@ off_t *sump, *bsump, *fp, *tp;
 	else {
 		if (fp && (dirflag & DF_SUBDIR)) {
 			if (checkline(1) < 0) return;
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 			if (checkline(1) < 0) return;
 			Xfputs("Total files listed:\n", Xstdout);
 		}
@@ -1244,7 +1244,7 @@ off_t *sump, *bsump;
 				showfnamew(&(dirlist[n]));
 				if (c != (nf + nd - 1) && (c % 5) != 5 - 1)
 					Xfputc('\t', Xstdout);
-				else fputnl(Xstdout);
+				else VOID_C fputnl(Xstdout);
 				break;
 			case 'B':
 				if (isdotdir(dirlist[n].nam)) break;
@@ -1395,7 +1395,7 @@ char *CONST argv[];
 	}
 	if (getinfofs(wd, &total, &fre, &bsize) < 0) total = fre = (off_t)-1;
 
-	if (dirtype != 'B') fputnl(Xstdout);
+	if (dirtype != 'B') VOID_C fputnl(Xstdout);
 
 	dirline = nf = nd = 0;
 #ifndef	MINIMUMSHELL
@@ -1510,7 +1510,7 @@ char *CONST argv[];
 		do {
 			Xfputs("All files in directory will be deleted!",
 				Xstdout);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 #ifdef	FD
 			ttyiomode(1);
 			buf = inputstr("Are you sure (Y/N)?", 0, 0, NULL, -1);
@@ -1519,7 +1519,7 @@ char *CONST argv[];
 			buf = gets2("Are you sure (Y/N)?");
 #endif
 			if (!buf) return(RET_SUCCESS);
-			if (!isatty(STDIN_FILENO)) fputnl(Xstdout);
+			if (!isatty(STDIN_FILENO)) VOID_C fputnl(Xstdout);
 			c = *buf;
 			free2(buf);
 		} while (!strchr2("ynYN", c));
@@ -1542,7 +1542,7 @@ char *CONST argv[];
 				}
 				if (c <= (int)MAXUTYPE(u_char) && isprint2(c))
 					Xfputc(c, Xstdout);
-				fputnl(Xstdout);
+				VOID_C fputnl(Xstdout);
 			} while (!strchr2("ynYN", c));
 			if (c == 'n' || c == 'N') continue;
 		}
@@ -1729,13 +1729,13 @@ CONST char *file, *src;
 			fprintf2(Xstderr, "%c%s", c, c_left);
 			Xfflush(Xstderr);
 		}
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		if (key == 'N') return(0);
 		else if (key == 'A') copyflag |= CF_NOCONFIRM;
 	}
 	else if (src && (copyflag & CF_VERBOSE)) {
 		kanjifputs(src, Xstdout);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 
 	flags = (copyflag & CF_VERIFY) ? O_RDWR : O_WRONLY;
@@ -2120,7 +2120,7 @@ char *CONST argv[];
 	}
 	if (!(copyflag & CF_CANCEL)) {
 		fprintf2(Xstdout, "%9d file(s) copied", nc);
-		fputnl(Xstdout);
+		VOID_C fputnl(Xstdout);
 	}
 
 	return(ret);
@@ -2138,7 +2138,7 @@ char *CONST argv[];
 	Xfputs(t_clear, Xstdout);
 	Xfflush(Xstdout);
 #endif
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 
 	return(RET_SUCCESS);
 }

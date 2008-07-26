@@ -1,3 +1,9 @@
+Ver. 3.00c	Bug to garble the pasted string when INPUTKCODE=utf8 is fixed.
+ (07/27/08)	Failure to access the root directory is fixed. (MS-DOS)
+		Failure to be invoked on Windows NT is fixed. (MS-DOS)
+		Illegal newline code for input/output is fixed. (MS-DOS)
+		Failure to replace some strings in 'fc' builtin is fixed.
+
 Ver. 3.00b	Failure to replace with $()/$(()) is fixed.
  (07/06/08)	Bug that some temporary files may remain is fixed.
 		Freezing by here-document with huge size is fixed.

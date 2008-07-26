@@ -1545,7 +1545,7 @@ XFILE *fp;
 
 	Xfputs(s, fp);
 	for (i = 0; i < argc; i++) fprintf2(fp, " %s", argv[i]);
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 # endif	/* DEP_ORIGSHELL */
 
@@ -2358,7 +2358,7 @@ XFILE *fp;
 	}
 	if (!n || !fp) return(n);
 
-	fputnl(fp);
+	VOID_C fputnl(fp);
 	Xfputs("# shell variables definition\n", fp);
 	for (i = 0; i < ENVLISTSIZ; i++) {
 		if ((!flaglist || !(flaglist[i] & 2))
@@ -2429,7 +2429,7 @@ XFILE *fp;
 			(nt + 1) * sizeof(*trash));
 		trash[nt++] = argv[n];
 	}
-	if (ns) fputnl(fp);
+	if (ns) VOID_C fputnl(fp);
 
 	if (unset) {
 		putargs(BL_UNSET, nu, unset, fp);
@@ -2496,7 +2496,7 @@ XFILE *fp;
 			(nt + 1) * sizeof(*trash));
 		trash[nt++] = ident;
 	}
-	if (ns) fputnl(fp);
+	if (ns) VOID_C fputnl(fp);
 
 	if (unset) {
 		putargs(BL_UNSET, nu, unset, fp);
@@ -2752,7 +2752,7 @@ XFILE *fp;
 		return(n);
 	}
 
-	fputnl(fp);
+	VOID_C fputnl(fp);
 	Xfputs("# key bind definition\n", fp);
 	for (i = 0; i < maxbind; i++) {
 		if (flaglist && flaglist[i]) continue;
@@ -2969,7 +2969,7 @@ XFILE *fp;
 		return(n);
 	}
 
-	fputnl(fp);
+	VOID_C fputnl(fp);
 	Xfputs("# keymap definition\n", fp);
 	for (i = 0; keyseqlist[i] >= 0; i++) {
 		if (flaglist && flaglist[i]) continue;
@@ -3497,7 +3497,7 @@ XFILE *fp;
 		return(n);
 	}
 
-	fputnl(fp);
+	VOID_C fputnl(fp);
 	Xfputs("# launcher definition\n", fp);
 	for (i = 0; i < maxlaunch; i++) {
 		if (flaglist && flaglist[i]) continue;
@@ -3720,7 +3720,7 @@ XFILE *fp;
 		return(n);
 	}
 
-	fputnl(fp);
+	VOID_C fputnl(fp);
 	Xfputs("# archiver definition\n", fp);
 	for (i = 0; i < maxarchive; i++) {
 		if (flaglist && flaglist[i]) continue;
@@ -4048,7 +4048,7 @@ XFILE *fp;
 		return(n);
 	}
 
-	fputnl(fp);
+	VOID_C fputnl(fp);
 	Xfputs("# MS-DOS drive definition\n", fp);
 	for (i = 0; i < maxfdtype; i++) {
 		if (flaglist && flaglist[i]) continue;
@@ -4165,7 +4165,7 @@ CONST char *file;
 	char *flaglist[MAXCUSTOM - 1], *origflaglist[MAXCUSTOM - 1];
 	int i, n, len, *slen, fd, argc, max[MAXCUSTOM], origmax[MAXCUSTOM - 1];
 
-	if (!(lck = lockfopen(file, "r", O_TEXT | O_RDWR))) {
+	if (!(lck = lockfopen(file, "r", O_BINARY | O_RDWR))) {
 		warning(-1, file);
 		return(-1);
 	}
@@ -4175,7 +4175,7 @@ CONST char *file;
 	else {
 		lockclose(lck);
 		lck = lockopen(path,
-			O_TEXT | O_WRONLY | O_CREAT | O_EXCL, 0666);
+			O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0666);
 		fd = (lck) ? lck -> fd : -1;
 	}
 	fpout = (fd >= 0) ? Xfdopen(fd, "w") : NULL;
@@ -4311,7 +4311,7 @@ CONST char *file;
 		if (n <= 0) {
 			if (n < 0) Xfputs("# ", fpout);
 			Xfputs(buf, fpout);
-			fputnl(fpout);
+			VOID_C fputnl(fpout);
 		}
 		free2(buf);
 		buf = NULL;
@@ -4342,7 +4342,7 @@ CONST char *file;
 			n += dumpdosdrive(flaglist[5], origflaglist[5], NULL);
 #  endif
 		if (n) {
-			fputnl(fpout);
+			VOID_C fputnl(fpout);
 			Xfputs("# additional configurations by customizer\n",
 				fpout);
 		}
@@ -4548,7 +4548,7 @@ int no;
 					done = 0;
 				else {
 					lck = lockfopen(file, "w",
-						O_TEXT | O_WRONLY
+						O_BINARY | O_WRONLY
 						| O_CREAT | O_TRUNC);
 					if (!lck || !(lck -> fp)) {
 						warning(-1, file);

@@ -136,7 +136,7 @@ int job;
 
 #ifdef	JOBVERBOSE
 	fprintf2(ttyout, "gettermio: %id: %id -> %id", mypid, ttypgrp, pgrp);
-	fputnl(ttyout);
+	VOID_C fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
 	Xsigsetmask(omask);
@@ -189,7 +189,7 @@ XFILE *fp;
 			joblist[n].trp -> type = OP_NONE;
 		printstree(joblist[n].trp, -1, fp);
 	}
-	fputnl(fp);
+	VOID_C fputnl(fp);
 }
 
 int searchjob(pid, np)
@@ -318,7 +318,7 @@ syntaxtree *trp;
 	fprintf2(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
 	for (j = 0; j <= joblist[i].npipe; j++)
 		fprintf2(ttyout, "%id ", joblist[i].pids[j]);
-	fputnl(ttyout);
+	VOID_C fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 
 	return(i);
@@ -956,7 +956,7 @@ syntaxtree *trp;
 		Xexit(RET_FATALERR);
 	}
 	fprintf2(Xstderr, "[%d] %id", i + 1, joblist[i].pids[n]);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
 # ifdef	USESGTTY
 	if (joblist[i].ttyflag) ioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
@@ -1025,7 +1025,7 @@ syntaxtree *trp;
 		for (i = 0; alias[i].ident; i++) {
 			fprintf2(Xstdout, "alias %k='%k'",
 				alias[i].ident, alias[i].comm);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 		freealias(alias);
 		return(RET_SUCCESS);
@@ -1054,7 +1054,7 @@ syntaxtree *trp;
 			}
 			fprintf2(Xstdout, "alias %k='%k'",
 				shellalias[i].ident, shellalias[i].comm);
-			fputnl(Xstdout);
+			VOID_C fputnl(Xstdout);
 		}
 	}
 
@@ -1094,7 +1094,7 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		Xfputs("usage: kill [ -sig ] pid ...\n", Xstderr);
 		Xfputs("for a list of signals: kill -l", Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(RET_SYNTAXERR);
 	}
 #ifdef	SIGTERM
@@ -1114,7 +1114,7 @@ syntaxtree *trp;
 					signallist[i].ident,
 					(++n % 16) ? ' ' : '\n');
 			}
-			if (n % 16) fputnl(Xstdout);
+			if (n % 16) VOID_C fputnl(Xstdout);
 			Xfflush(Xstdout);
 			return(RET_SUCCESS);
 		}
@@ -1157,7 +1157,7 @@ syntaxtree *trp;
 		if ((pid = isnumeric(s)) < (p_id_t)0) {
 			Xfputs("usage: kill [ -sig ] pid ...\n", Xstderr);
 			Xfputs("for a list of signals: kill -l", Xstderr);
-			fputnl(Xstderr);
+			VOID_C fputnl(Xstderr);
 			return(RET_SYNTAXERR);
 		}
 #if	MSDOS
@@ -1426,7 +1426,7 @@ syntaxtree *trp;
 	if (argv[0][0] == '[' && !argv[0][1]
 	&& (--argc <= 0 || argv[argc][0] != ']' || argv[argc][1])) {
 		Xfputs("] missing", Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 	if (argc <= 1) return(RET_FAIL);
@@ -1446,7 +1446,7 @@ syntaxtree *trp;
 				Xfputs("syntax error", Xstderr);
 				break;
 		}
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 
@@ -1509,7 +1509,7 @@ syntaxtree *trp;
 
 			if (cp) {
 				kanjifputs(cp, Xstdout);
-				fputnl(Xstdout);
+				VOID_C fputnl(Xstdout);
 # ifdef	BASHSTYLE
 				ret = RET_SUCCESS;
 # endif
@@ -1527,7 +1527,7 @@ syntaxtree *trp;
 		fprintf2(Xstderr, "+ %k", argv[n]);
 		for (i = n + 1; i < argc; i++)
 			fprintf2(Xstderr, " %k", argv[i]);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 
 	(trp -> comm) -> argc -= n;

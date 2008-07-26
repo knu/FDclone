@@ -1188,7 +1188,7 @@ char *dir;
 		genrandname(NULL, 0);
 
 		for (;;) {
-			genrandname(cp + n, len);
+			genrandname(&(cp[n]), len);
 			if (realmkdir(path, mask) >= 0) break;
 			if (errno != EEXIST) return(-1);
 		}
@@ -1207,7 +1207,7 @@ char *dir;
 	genrandname(NULL, 0);
 
 	for (;;) {
-		genrandname(cp + n, len);
+		genrandname(&(cp[n]), len);
 		if (realmkdir(path, mask) >= 0) {
 			strcpy2(dir, path);
 			return(0);

@@ -21,7 +21,7 @@ static VOID NEAR error(s)
 CONST char *s;
 {
 	fprintf2(Xstderr, "%s: memory allocation error", s);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 
 	exit(2);
 }

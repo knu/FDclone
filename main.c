@@ -276,7 +276,7 @@ CONST char *s;
 	if (errno) perror2(s);
 	else {
 		Xfputs(s, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	Xfclose(Xstderr);
 	doing = 2;
@@ -692,7 +692,7 @@ int forced;
 		checkscreen(-1, -1);
 		if (isorgpid()) {
 			if (x != n_column || y != n_line) rewritefile(1);
-			if (subwindow) ungetkey2(K_CTRL('L'));
+			if (subwindow) ungetkey2(K_CTRL('L'), 1);
 		}
 	}
 }

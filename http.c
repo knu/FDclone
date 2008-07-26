@@ -204,7 +204,7 @@ va_dcl
 	n = snprintf2(buf, sizeof(buf), "--> \"%s\"\n", fmt);
 	if (n >= 0) vhttplog(buf, args);
 	n = vfprintf2(fp, fmt, args);
-	if (n < 0 || Xfputs("\r\n", fp) == EOF || Xfflush(fp) == EOF) n = -1;
+	if (n >= 0) n = fputnl(fp);
 	va_end(args);
 
 	return(n);
@@ -620,7 +620,7 @@ CONST char *path;
 		/* Some buggy Apache cannot authorize except with GET method */
 		if (!(urlhostlist[uh].flags & UFL_PROXIED)
 		&& http -> digest && cmd == HTTP_HEAD)
-			 cmd = HTTP_GET;
+			cmd = HTTP_GET;
 
 		if (n == 401) {
 			hp = &(urlhostlist[uh].host);

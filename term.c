@@ -1247,11 +1247,11 @@ CONST char *mes;
 		tabs();
 	}
 	if (dumbterm <= 2) Xfputc('\007', Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	Xfputs(mes, Xstderr);
 
 	if (duperrno) fprintf2(Xstderr, ": %s", strerror2(duperrno));
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 	inittty(1);
 	exit(2);
 
@@ -2881,14 +2881,17 @@ int sig, code, timeout;
 	return(ch);
 }
 
-int ungetkey2(c)
-int c;
+int ungetkey2(c, desc)
+int c, desc;
 {
 	if (c == EOF || ttyio < 0) return(EOF);
 	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
-	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),
-		ungetnum * sizeof(u_char));
-	ungetbuf[0] = (u_char)c;
+	if (!desc) ungetbuf[ungetnum] = (u_char)c;
+	else {
+		memmove((char *)&(ungetbuf[1]),
+			(char *)&(ungetbuf[0]), ungetnum * sizeof(u_char));
+		ungetbuf[0] = (u_char)c;
+	}
 	ungetnum++;
 
 	return(c);
@@ -3133,14 +3136,15 @@ int sig, code, timeout;
 	return(alternate(ch));
 }
 
-int ungetkey2(c)
-int c;
+int ungetkey2(c, desc)
+int c, desc;
 {
 # ifdef	TIOCSTI
 	u_char ch;
 # endif
 
 	if (c == EOF || ttyio < 0) return(EOF);
+	if (!desc) return(ungetch2(c));
 # ifdef	TIOCSTI
 	ch = c;
 	Xioctl(ttyio, TIOCSTI, &ch);

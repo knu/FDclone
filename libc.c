@@ -379,7 +379,7 @@ CONST char *s;
 	if (s) fprintf2(Xstderr, "%k: ", s);
 	Xfputs(strerror2(duperrno), Xstderr);
 	if (isttyiomode) Xfputc('\r', Xstderr);
-	fputnl(Xstderr);
+	VOID_C fputnl(Xstderr);
 }
 
 #ifndef	DEP_ORIGSHELL
@@ -557,7 +557,7 @@ int flags;
 		keyflush();
 		getkey3(0, inputkcode, 0);
 		Xstdiomode();
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 
 	if (wastty) {
@@ -598,14 +598,14 @@ CONST char *command;
 	}
 	else {
 		if (dumbterm <= 2) Xfputc('\007', Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		perror2(command);
 		Xfflush(Xstderr);
 		Xttyiomode(1);
 		keyflush();
 		getkey3(0, inputkcode, 0);
 		Xstdiomode();
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		if (wasttyflags & F_TTYIOMODE)
 			Xttyiomode((wasttyflags & F_TTYNL) ? 1 : 0);
 	}

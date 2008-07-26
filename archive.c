@@ -521,7 +521,7 @@ static VOID NEAR unpackerror(VOID_A)
 {
 	if (!isttyiomode) {
 		kanjifputs(UNPNG_K, Xstderr);
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 	}
 	else {
 		Xlocate(0, n_line - 1);

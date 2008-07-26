@@ -285,16 +285,17 @@ CONST char *s, *eol;
 }
 #endif	/* FD */
 
+#ifndef	MINIMUMSHELL
 int isdelim(s, ptr)
 CONST char *s;
 int ptr;
 {
-#ifdef	BSPATHDELIM
+# ifdef	BSPATHDELIM
 	int i;
-#endif
+# endif
 
 	if (ptr < 0 || s[ptr] != _SC_) return(0);
-#ifdef	BSPATHDELIM
+# ifdef	BSPATHDELIM
 	if (--ptr < 0) return(1);
 	if (!ptr) return(!iskanji1(s, 0));
 
@@ -302,10 +303,11 @@ int ptr;
 	if (!s[i] || i > ptr) return(1);
 
 	return(!iskanji1(s, i));
-#else
+# else
 	return(1);
-#endif
+# endif
 }
+#endif	/* !MINIMUMSHELL */
 
 char *strcatdelim(s)
 char *s;
@@ -539,6 +541,7 @@ CONST char *s;
 	return((char *)s);
 }
 
+#ifndef	MINIMUMSHELL
 int isrootpath(s)
 CONST char *s;
 {
@@ -551,6 +554,7 @@ char *s;
 	*(s++) = _SC_;
 	*s = '\0';
 }
+#endif	/* !MINIMUMSHELL */
 
 VOID copycurpath(s)
 char *s;
@@ -2579,7 +2583,7 @@ int s, len, vlen, mode;
 		for (i = 0; i < len; i++) Xfputc(arg[i], Xstderr);
 		fprintf2(Xstderr, ": %k",
 			(vlen > 0) ? *cpp : "parameter null or not set");
-		fputnl(Xstderr);
+		VOID_C fputnl(Xstderr);
 		free2(*cpp);
 		*cpp = NULL;
 		if (exitfunc) (*exitfunc)();
@@ -2952,27 +2956,29 @@ int rest, flags;
 	return(buf);
 }
 
+#ifndef	MINIMUMSHELL
 CONST char *gethomedir(VOID_A)
 {
-#ifndef	NOUID
-# ifdef	FD
+# ifndef	NOUID
+#  ifdef	FD
 	uidtable *up;
-# endif
-#endif	/* !NOUID */
+#  endif
+# endif	/* !NOUID */
 	CONST char *cp;
 
 	if (!(cp = getconstvar(ENVHOME))) {
-#ifndef	NOUID
-# ifdef	FD
+# ifndef	NOUID
+#  ifdef	FD
 		if ((up = finduid(getuid(), NULL))) cp = up -> home;
-# else
+#  else
 		getlogininfo(&cp, NULL);
-# endif
-#endif	/* !NOUID */
+#  endif
+# endif	/* !NOUID */
 	}
 
 	return(cp);
 }
+#endif	/* !MINIMUMSHELL */
 
 CONST char *getrealpath(path, resolved, cwd)
 CONST char *path;

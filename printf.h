@@ -29,13 +29,15 @@ typedef struct _printbuf_t {
 
 extern int getnum __P_((CONST char *, int *));
 extern int setchar __P_((int, printbuf_t *));
+#ifndef	MINIMUMSHELL
 extern int vasprintf2 __P_((char **, CONST char *, va_list));
 extern int asprintf2 __P_((char **, CONST char *, ...));
+#endif
 extern int vsnprintf2 __P_((char *, int, CONST char *, va_list));
 extern int snprintf2 __P_((char *, int, CONST char *, ...));
 extern int vfprintf2 __P_((XFILE *, CONST char *, va_list));
 extern int fprintf2 __P_((XFILE *, CONST char *, ...));
-extern VOID fputnl __P_((XFILE *));
+extern int fputnl __P_((XFILE *));
 #ifdef	FD
 extern VOID kanjifputs __P_((CONST char *, XFILE *));
 #else
