@@ -373,6 +373,9 @@ USEUTIME
 USEGETWD
 	The function getcwd(3) is unavailable to get the
 	current directory, and getwd(3) is used instead.
+ULONGIOCTL
+	The second argument of the I/O control function
+	inctl(2) must be the type of unsigned long.
 USEFCNTLOCK
 	The function fnctl(2) is used instead of flock(2) to
 	lock files.

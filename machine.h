@@ -571,6 +571,7 @@ typedef long	off_t;
 #define	USEMNTINFO
 #define	USERE_COMP
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	SIGFNCINT
 #define	USEINETATON
@@ -596,6 +597,7 @@ typedef long	off_t;
 # endif
 #define	USERE_COMP
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	SIGFNCINT
 #define	USEINETATON
@@ -614,6 +616,7 @@ typedef long	off_t;
 #define	USEFFSTYPE
 #define	USERE_COMP
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	SIGFNCINT
 #define	USEINETATON
@@ -643,6 +646,7 @@ typedef long	off_t;
 #define	USEMNTINFO
 #define	USERE_COMP
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	USEINETATON
 #include <sys/param.h>
@@ -670,6 +674,7 @@ typedef long	off_t;
 # endif	/* __FreeBSD__ */
 #define	USEREGCOMP
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	SIGFNCINT
 #define	USEINETATON
@@ -690,6 +695,7 @@ typedef long	off_t;
 #define	USEFFSTYPE
 #define	USERE_COMP
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	SIGFNCINT
 #define	USEINETATON
@@ -711,6 +717,7 @@ typedef long	off_t;
 #define	USEREGCOMP
 #define	USESETENV
 #define	SELECTRWONLY
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	SIGFNCINT
 #define	USESOCKLEN
@@ -728,6 +735,7 @@ typedef long	off_t;
 #define	USEMOUNTH
 #define	USEMNTINFO
 #define	USESETENV
+#define	ULONGIOCTL
 #define	USEMKTIME
 #define	USEWAITPID
 #define	USESIGPMASK
@@ -914,6 +922,7 @@ typedef long	off_t;
 /* #define NOTERMVAR	;have not termcap variables such as PC, ospeed, etc. */
 /* #define USEUTIME	;use utime() instead of utimes() */
 /* #define USEGETWD	;use getwd() instead of getcwd() */
+/* #define ULONGIOCTL	;the 2nd argument of ioctl() is unsigned long */
 /* #define USEFCNTLOCK	;use fcntl() lock instead of flock() */
 /* #define USELOCKF	;use lockf() instead of flock() */
 /* #define NOFLOCK	;have neither flock() nor lockf() */

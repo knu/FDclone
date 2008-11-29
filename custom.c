@@ -722,6 +722,7 @@ int no;
 			break;
 		case T_SHORT:
 			if ((n = atoi2(cp)) < 0) n = def_num(no);
+			if (n > MAXTYPE(short)) n = MAXTYPE(short);
 			*((short *)(envlist[no].var)) = n;
 			break;
 #ifdef	DEP_URLPATH
@@ -1846,7 +1847,7 @@ int no;
 			if (!cp) break;
 			n = atoi2(cp);
 			free2(s);
-			if (n < 0) {
+			if (n < 0 || n > MAXTYPE(short)) {
 				warning(0, VALNG_K);
 				return(0);
 			}

@@ -1312,9 +1312,15 @@ static int NEAR defaultterm(VOID_A)
 	}
 
 #if	!MSDOS
-	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
-	for (i = 21; i <= 30; i++)
-		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | K_ALTERNATE;
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
+		keyseq[i].code = K_MIN + i;
+		keyseq[i].flags = 0;
+	}
+	for (i = 1; i <= 10; i++) {
+		keyseq[K_F(i) - K_MIN].flags |= KF_HASALTER;
+		keyseq[K_F(i + 20) - K_MIN].code = K_F(i) | K_ALTERNATE;
+		keyseq[K_F(i + 20) - K_MIN].flags |= KF_HASALTER;
+	}
 #endif
 
 	return(0);
@@ -1694,21 +1700,33 @@ CONST char *s;
 	if (!tgetstr2(&cp, s)) return(NULL);
 	if ((keyseq[n].code & K_ALTERNATE) && *cp != '\033') return(NULL);
 	for (i = 0; i <= K_MAX - K_MIN; i++) {
-		if (i == n || !(keyseq[i].str)) continue;
+		if (!(keyseq[i].str)) continue;
 		for (j = 0; cp[j]; j++)
 			if ((cp[j] & 0x7f) != (keyseq[i].str[j] & 0x7f))
 				break;
 		if (cp[j]) continue;
 		free(keyseq[i].str);
-		if (alternate(keyseq[n].code) != alternate(keyseq[i].code))
-			keyseq[i].str = NULL;
-		else {
-			keyseq[i].str = keyseq[n].str;
-			keyseq[n].str = NULL;
-		}
+		keyseq[i].str = NULL;
+		keyseq[i].flags &= ~KF_DEFINED;
 	}
+
+	if (!(keyseq[n].str) || !(keyseq[n].flags & KF_HASALTER)) i = -1;
+	else for (i = K_MAX - K_MIN; i >= 0; i--) {
+		if (i == n) continue;
+		if (alternate(keyseq[n].code) == alternate(keyseq[i].code))
+			break;
+	}
+	if (i < 0 || (keyseq[i].flags & KF_DEFINED)) /*EMPTY*/;
+	else if (!(keyseq[n].code & K_ALTERNATE) || !(keyseq[i].str)) {
+		if (keyseq[i].str) free(keyseq[i].str);
+		keyseq[i].str = keyseq[n].str;
+		keyseq[i].flags = keyseq[n].flags;
+		keyseq[n].str = NULL;
+	}
+
 	if (keyseq[n].str) free(keyseq[n].str);
 	keyseq[n].str = cp;
+	keyseq[n].flags |= KF_DEFINED;
 
 	return(cp);
 }
@@ -2079,8 +2097,11 @@ int freeterment(VOID_A)
 		free(termstr[i]);
 		termstr[i] = NULL;
 	}
-	for (i = 0; i <= K_MAX - K_MIN; i++)
+	for (i = 0; i <= K_MAX - K_MIN; i++) {
 		if (keyseq[i].str) free(keyseq[i].str);
+		keyseq[i].str = NULL;
+		keyseq[i].len = keyseq[i].flags = 0;
+	}
 	if (keyseqtree) {
 		freekeyseqtree(keyseqtree, 0);
 		keyseqtree = NULL;
@@ -2128,10 +2149,14 @@ int setdefkeyseq(VOID_A)
 			keyseq[i].str = tstrdup(defkeyseq[i]);
 			keyseq[i].len = strlen(keyseq[i].str);
 		}
+		keyseq[i].code = K_MIN + i;
+		keyseq[i].flags = 0;
 	}
-	for (i = 0; i <= K_MAX - K_MIN; i++) keyseq[i].code = K_MIN + i;
-	for (i = 21; i <= 30; i++)
-		keyseq[K_F(i) - K_MIN].code = K_F(i - 20) | K_ALTERNATE;
+	for (i = 1; i <= 10; i++) {
+		keyseq[K_F(i) - K_MIN].flags |= KF_HASALTER;
+		keyseq[K_F(i + 20) - K_MIN].code = K_F(i) | K_ALTERNATE;
+		keyseq[K_F(i + 20) - K_MIN].flags |= KF_HASALTER;
+	}
 	sortkeyseq();
 
 	return(0);
@@ -2165,6 +2190,7 @@ int len;
 		if (keyseq[i].str) free(keyseq[i].str);
 		keyseq[i].str = str;
 		keyseq[i].len = len;
+		keyseq[i].flags |= KF_DEFINED;
 		break;
 	}
 	if (i > K_MAX - K_MIN) {
@@ -2181,6 +2207,7 @@ int len;
 				free(keyseq[i].str);
 				keyseq[i].str = NULL;
 				keyseq[i].len = 0;
+				keyseq[i].flags &= ~KF_DEFINED;
 			}
 		}
 		if (str[0] == cc_erase && !(str[1])) cc_erase = K_UNDEF;
@@ -2216,6 +2243,7 @@ keyseq_t *list;
 		for (i = 0; i <= K_MAX - K_MIN; i++) {
 			keyseq[i].code = list[i].code;
 			keyseq[i].len = list[i].len;
+			keyseq[i].flags = list[i].flags;
 			if (keyseq[i].str) free(keyseq[i].str);
 			if (!(list[i].len)) keyseq[i].str = NULL;
 			else {
@@ -2235,6 +2263,7 @@ keyseq_t *list;
 		for (i = 0; i <= K_MAX - K_MIN; i++) {
 			list[i].code = keyseq[i].code;
 			list[i].len = keyseq[i].len;
+			list[i].flags = keyseq[i].flags;
 			if (!(keyseq[i].len)) list[i].str = NULL;
 			else {
 				list[i].str =

@@ -10,10 +10,14 @@
 #include "stream.h"
 
 typedef struct _keyseq_t {
+	char *str;
 	short code;
 	u_char len;
-	char *str;
+	u_char flags;
 } keyseq_t;
+
+#define	KF_DEFINED		0001
+#define	KF_HASALTER		0002
 
 #define	GETSIZE			"\033[6n"
 #define	SIZEFMT			"\033[%d;%dR"

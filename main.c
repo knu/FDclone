@@ -36,6 +36,7 @@
 #endif	/* !MSDOS */
 
 #define	CLOCKUPDATE		10	/* sec */
+#define	SWITCHUSER		"su"
 #ifndef	BINDIR
 #define	BINDIR			"/usr/local/bin"
 #endif
@@ -1179,26 +1180,30 @@ static char *NEAR searchexecname(argv, envp)
 CONST char *argv;
 char *CONST envp[];
 {
-	CONST char *env;
+	CONST char *s, *env;
 	char *cp;
 	int n;
 
 	n = 0;
 	if (!(env = searchenv(ENVPATH, envp))) env = DEFPATH;
-	if ((cp = searchexecpath(argv, env))) return(cp);
-	if (*argv == '-') {
-		if ((cp = searchexecpath(++argv, env))) return(cp);
-		n++;
-	}
-	if (*argv == 'r' && (cp = searchexecpath(++argv, env))) return(cp);
-	if ((cp = searchexecpath(FDSHELL, env))) return(cp);
-	if ((cp = searchexecpath(FDPROG, env))) return(cp);
-	if (n) {
-		getlogininfo(NULL, &env);
-		cp = strdup2(env);
+	s = progname;
+	if (*s == '-') s++;
+	if (strpathcmp(s, SWITCHUSER)) {
+		if ((cp = searchexecpath(argv, env))) return(cp);
+		if (*argv == '-') {
+			if ((cp = searchexecpath(++argv, env))) return(cp);
+			n++;
+		}
+		if (*argv == 'r' && (cp = searchexecpath(++argv, env)))
+			return(cp);
+		if ((cp = searchexecpath(FDSHELL, env))) return(cp);
+		if ((cp = searchexecpath(FDPROG, env))) return(cp);
+
+		if (!n) return(NULL);
 	}
 
-	return(cp);
+	getlogininfo(NULL, &s);
+	return(strdup2(s));
 }
 #endif	/* !MSDOS */
 
@@ -1514,7 +1519,7 @@ char *CONST argv[], *CONST envp[];
 
 #ifdef	DEP_ORIGSHELL
 	cp = getshellname(progname, NULL, NULL);
-	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, "su")) {
+	if (!strpathcmp(cp, FDSHELL) || !strpathcmp(cp, SWITCHUSER)) {
 		i = main_shell(argc, argv, envp);
 # ifdef	DEP_PTY
 		killallpty();

@@ -1,3 +1,10 @@
+Ver. 3.00d	Freezing by filename completion on some environments is fixed.
+ (11/30/08)	Mis-identified path invoked as login shell via su(1) is fixed.
+		Freezing by the large value set as 'HISTSIZE' is fixed.
+		Bug that 'echo' builtin ignores anyone starts with - is fixed.
+		Support function keys with some VT100 compatible terminals.
+		Warning by ioctl() on 64bits BSDs is fixed.
+
 Ver. 3.00c	Bug to garble the pasted string when INPUTKCODE=utf8 is fixed.
  (07/27/08)	Failure to access the root directory is fixed. (MS-DOS)
 		Failure to be invoked on Windows NT is fixed. (MS-DOS)

@@ -428,7 +428,8 @@ int fd;
 }
 
 int Xioctl(fd, request, argp)
-int fd, request;
+int fd;
+ioctlreq_t request;
 VOID_P argp;
 {
 	for (;;) {

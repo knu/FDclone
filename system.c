@@ -9022,7 +9022,9 @@ syntaxtree *trp;
 {
 	int i, n, opt;
 
-	if ((opt = tinygetopt(trp, "-nN", &n)) < 0) return(RET_FAIL);
+	n = 1;
+	if ((opt = tinygetopt(trp, "-nN", NULL)) < 0) return(RET_FAIL);
+	if (opt) n++;
 
 	for (i = n; i < (trp -> comm) -> argc; i++) {
 		if (i > n) Xfputc(' ', Xstdout);

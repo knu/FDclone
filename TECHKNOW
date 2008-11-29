@@ -352,6 +352,9 @@ USEUTIME
 USEGETWD
 	カレントディレクトリ検査関数として、getcwd(3) を用い
 	られず、代わりに getwd(3) を用います。
+ULONGIOCTL
+	入出力制御関数 ioctl(2) の第 2 引数として、unsigned
+	long 型を用います。
 USEFCNTLOCK
 	ファイル制御関数 fcntl(2) を flock(2) の代わりに用い
 	ます。

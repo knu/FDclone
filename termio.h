@@ -55,6 +55,12 @@
 #define	STDERR_FILENO		2
 #endif
 
+#ifdef	ULONGIOCTL
+typedef unsigned long		ioctlreq_t;
+#else
+typedef int			ioctlreq_t;
+#endif
+
 #ifdef	USETERMIOS
 typedef struct termios		termioctl_t;
 typedef struct termios		ldiscioctl_t;
@@ -266,7 +272,7 @@ extern int opentty __P_((int *, XFILE **));
 extern VOID closetty __P_((int *, XFILE **));
 #if	!MSDOS
 extern VOID closeonexec __P_((int));
-extern int Xioctl __P_((int, int, VOID_P));
+extern int Xioctl __P_((int, ioctlreq_t, VOID_P));
 # ifdef	USETERMIOS
 extern int Xtcgetattr __P_((int, termioctl_t *));
 extern int Xtcsetattr __P_((int, int, CONST termioctl_t *));

@@ -97,7 +97,7 @@
 #define	opendir_saw_s_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 3))
 #endif
 
-typedef	struct _openstat_t {
+typedef struct _openstat_t {
 	u_char type;
 	u_char dev;
 #ifdef	FORCEDSTDC
@@ -492,9 +492,6 @@ int type, dev;
 VOID_P bodyp;
 CONST char *path;
 {
-# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-	char conv[MAXPATHLEN];
-# endif
 	int n;
 
 	if (!bodyp) return;
@@ -512,16 +509,12 @@ CONST char *path;
 	openlist[n].type = type;
 	openlist[n].dev = dev;
 # if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-	openlist[n].path = NULL;
+	openlist[n].path = strdup2(path);
 # endif
 
 	switch (type) {
 		case OP_DIRP:
 			body_dirp(n) = (DIR *)bodyp;
-# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-			openlist[n].path =
-				strdup2(convput(conv, path, 0, 1, NULL, NULL));
-# endif
 			break;
 		case OP_FD:
 			body_fd(n) = *((int *)bodyp);
@@ -939,7 +932,7 @@ CONST char *path;
 #endif
 #if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
 ||	defined (DEP_DOSEMU) || defined (DEP_URLPATH)
-	putopenlist(OP_DIRP, dev, dirp, cp);
+	putopenlist(OP_DIRP, dev, dirp, convput(conv, cp, 0, 1, NULL, NULL));
 #endif
 
 	return(dirp);
