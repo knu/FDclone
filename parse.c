@@ -132,7 +132,7 @@ static CONST char escapevalue[] = {
 char *skipspace(cp)
 CONST char *cp;
 {
-	while (isblank2(*cp)) cp++;
+	while (Xisblank(*cp)) cp++;
 
 	return((char *)cp);
 }
@@ -141,19 +141,19 @@ static int NEAR asc2int(c)
 int c;
 {
 	if (c < 0) return(-1);
-	else if (isdigit2(c)) return(c - '0');
-	else if (islower2(c)) return(c - 'a' + 10);
-	else if (isupper2(c)) return(c - 'A' + 10);
+	else if (Xisdigit(c)) return(c - '0');
+	else if (Xislower(c)) return(c - 'a' + 10);
+	else if (Xisupper(c)) return(c - 'A' + 10);
 
 	return(-1);
 }
 
 #ifdef	USESTDARGH
 /*VARARGS2*/
-char *sscanf2(CONST char *s, CONST char *fmt, ...)
+char *Xsscanf(CONST char *s, CONST char *fmt, ...)
 #else
 /*VARARGS2*/
-char *sscanf2(s, fmt, va_alist)
+char *Xsscanf(s, fmt, va_alist)
 CONST char *s, *fmt;
 va_dcl
 #endif
@@ -184,14 +184,14 @@ va_dcl
 		i++;
 		flags = 0;
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr2(printfflagchar, fmt[i]))) break;
+			if (!(cp = Xstrchr(printfflagchar, fmt[i]))) break;
 			flags |= printfflag[cp - printfflagchar];
 		}
 		width = getnum(fmt, &i);
 
 		len = sizeof(int);
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr2(printfsizechar, fmt[i]))) break;
+			if (!(cp = Xstrchr(printfsizechar, fmt[i]))) break;
 			len = printfsize[cp - printfsizechar];
 		}
 		if (fmt[i] == '*') {
@@ -351,12 +351,12 @@ va_dcl
 	return((char *)s);
 }
 
-int atoi2(s)
+int Xatoi(s)
 CONST char *s;
 {
 	int n;
 
-	if (!sscanf2(s, "%<d%$", &n)) return(-1);
+	if (!Xsscanf(s, "%<d%$", &n)) return(-1);
 
 	return(n);
 }
@@ -386,12 +386,12 @@ int evaldq;
 		}
 		else if (pc == PC_ESCAPE) {
 			cp++;
-			if (*cp == PESCAPE && strchr2(c, *cp))
+			if (*cp == PESCAPE && Xstrchr(c, *cp))
 				return((char *)&(cp[-1]));
 			continue;
 		}
 
-		if (strchr2(c, *cp)) return((char *)cp);
+		if (Xstrchr(c, *cp)) return((char *)cp);
 	}
 
 	return(NULL);
@@ -421,7 +421,7 @@ CONST char **strp;
 	else len = strlen(*strp);
 	*strp += len;
 
-	return(strndup2(cp, len));
+	return(Xstrndup(cp, len));
 }
 
 int getargs(s, argvp)
@@ -431,10 +431,10 @@ char ***argvp;
 	CONST char *cp;
 	int i;
 
-	*argvp = (char **)malloc2(1 * sizeof(char *));
+	*argvp = (char **)Xmalloc(1 * sizeof(char *));
 	cp = skipspace(s);
 	for (i = 0; *cp; i++) {
-		*argvp = (char **)realloc2(*argvp, (i + 2) * sizeof(char *));
+		*argvp = (char **)Xrealloc(*argvp, (i + 2) * sizeof(char *));
 		(*argvp)[i] = evalpath(geteostr(&cp), EA_NOUNIQDELIM);
 		cp = skipspace(cp);
 	}
@@ -478,7 +478,7 @@ char *CONST argv[];
 	}
 	*argcp = i + 1;
 
-	return(evalpath(strdup2(cp), EA_NOUNIQDELIM));
+	return(evalpath(Xstrdup(cp), EA_NOUNIQDELIM));
 }
 
 char *evalcomstr(path, delim)
@@ -497,7 +497,7 @@ CONST char *path, *delim;
 		if ((next = strtkbrk(cp, delim, 0))) {
 			len = next - cp;
 			for (i = 1; next[i]; i++)
-				if (!strchr2(delim, next[i])) break;
+				if (!Xstrchr(delim, next[i])) break;
 		}
 		else {
 			len = strlen(cp);
@@ -510,7 +510,7 @@ CONST char *path, *delim;
 			tmp = newkanjiconv(new,
 				DEFCODE, getkcode(new), L_FNAME);
 			if (new != tmp) {
-				free2(new);
+				Xfree(new);
 				new = tmp;
 			}
 # endif
@@ -521,20 +521,20 @@ CONST char *path, *delim;
 		else new = NULL;	/* fake for -Wuninitialized */
 # endif
 
-		epath = realloc2(epath, size + len + i + 1);
+		epath = Xrealloc(epath, size + len + i + 1);
 		if (len) {
-			strcpy2(&(epath[size]), cp);
-			free2(new);
+			Xstrcpy(&(epath[size]), cp);
+			Xfree(new);
 			size += len;
 		}
 		if (i) {
-			strncpy2(&(epath[size]), next, i);
+			Xstrncpy(&(epath[size]), next, i);
 			size += i;
 			next += i;
 		}
 	}
 
-	if (!epath) return(strdup2(nullstr));
+	if (!epath) return(Xstrdup(nullstr));
 	epath[size] = '\0';
 
 	return(epath);
@@ -553,30 +553,30 @@ int delim;
 	size = 0;
 	for (cp = paths; cp; cp = next) {
 #ifdef	DEP_DOSPATH
-		if (_dospath(cp)) next = strchr2(&(cp[2]), delim);
+		if (_dospath(cp)) next = Xstrchr(&(cp[2]), delim);
 		else
 #endif
-		next = strchr2(cp, delim);
+		next = Xstrchr(cp, delim);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if (len) {
 			new = _evalpath(cp, &(cp[len]), 0);
 			cp = (isrootdir(cp))
-				? realpath2(new, buf, RLP_READLINK) : new;
+				? Xrealpath(new, buf, RLP_READLINK) : new;
 			len = strlen(cp);
 		}
 #ifdef	FAKEUNINIT
 		else new = NULL;	/* fake for -Wuninitialized */
 #endif
-		epath = realloc2(epath, size + len + 1 + 1);
+		epath = Xrealloc(epath, size + len + 1 + 1);
 		if (len) {
-			strcpy2(&(epath[size]), cp);
-			free2(new);
+			Xstrcpy(&(epath[size]), cp);
+			Xfree(new);
 		}
 		size += len;
 		if (next) epath[size++] = delim;
 	}
 
-	if (!epath) return(strdup2(nullstr));
+	if (!epath) return(Xstrdup(nullstr));
 	epath[size] = '\0';
 
 	return(epath);
@@ -590,26 +590,26 @@ CONST char *name;
 	char *buf, *new;
 	int i;
 
-	buf = malloc2(strlen(name) * 2 + 2 + 1);
+	buf = Xmalloc(strlen(name) * 2 + 2 + 1);
 	*buf = (*name == '~') ? '"' : '\0';
 	for (cp = name, i = 1; *cp; cp++, i++) {
 		if (iswchar(cp, 0)) buf[i++] = *(cp++);
 		else if (*cp == PESCAPE) {
 			*buf = '"';
-			if (strchr2(DQ_METACHAR, *(cp + 1)))
+			if (Xstrchr(DQ_METACHAR, *(cp + 1)))
 				buf[i++] = PESCAPE;
 		}
-		else if (strchr2(METACHAR, *cp)) {
+		else if (Xstrchr(METACHAR, *cp)) {
 			*buf = '"';
-			if (strchr2(DQ_METACHAR, *cp)) buf[i++] = PESCAPE;
+			if (Xstrchr(DQ_METACHAR, *cp)) buf[i++] = PESCAPE;
 		}
 		buf[i] = *cp;
 	}
 	if (*(cp = buf)) buf[i++] = *cp;
 	else cp++;
 	buf[i] = '\0';
-	new = strdup2(cp);
-	free2(buf);
+	new = Xstrdup(cp);
+	Xfree(buf);
 
 	return(new);
 }
@@ -624,7 +624,7 @@ VOID adjustpath(VOID_A)
 
 	path = evalpaths(cp, PATHDELIM);
 	if (strpathcmp(path, cp)) setenv2(ENVPATH, path, 1);
-	free2(path);
+	Xfree(path);
 }
 #endif	/* FD && !DEP_ORIGSHELL */
 
@@ -642,7 +642,7 @@ CONST char *path, *plist;
 # ifdef	DEP_DOSPATH
 		if (_dospath(cp)) next += 2;
 # endif
-		next = strchr2(next, PATHDELIM);
+		next = Xstrchr(next, PATHDELIM);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if ((tmp = underpath(path, cp, len))) return(tmp);
 	}
@@ -662,11 +662,11 @@ u_char *fp, *dp, *wp;
 
 	*fp = *dp = *wp = 0;
 
-	if (!(cp = sscanf2(cp, "%c%Cu", delim, &c))) return(NULL);
+	if (!(cp = Xsscanf(cp, "%c%Cu", delim, &c))) return(NULL);
 	*fp = (c) ? c - 1 : FLD_NONE;
 
 	if (*cp == '[') {
-		if (!(cp = sscanf2(++cp, "%Cu]", &c))) return(NULL);
+		if (!(cp = Xsscanf(++cp, "%Cu]", &c))) return(NULL);
 		if (c && c <= MAXUTYPE(u_char) - 128 + 1) *dp = c - 1 + 128;
 	}
 	else if (*cp == '-') {
@@ -677,7 +677,7 @@ u_char *fp, *dp, *wp;
 	else if (*cp && *cp != ',' && *cp != ':') *dp = *(cp++);
 
 	if (*cp == '-') {
-		if ((tmp = sscanf2(++cp, "%Cu", &c))) {
+		if ((tmp = Xsscanf(++cp, "%Cu", &c))) {
 			cp = tmp;
 			if (c && c <= MAXUTYPE(u_char) - 128) *wp = c + 128;
 		}
@@ -703,12 +703,12 @@ CONST char *prompt;
 	ALLOC_T size;
 	int i, j, k, len, unprint;
 
-	cp = strdup2(prompt);
+	cp = Xstrdup(prompt);
 #if	defined (FD) && !defined (DEP_ORIGSHELL)
 	prompt = new = evalpath(cp, EA_NOUNIQDELIM);
 #else
 	prompt = new = evalvararg(cp, EA_BACKQ | EA_KEEPESCAPE, 0);
-	free2(cp);
+	Xfree(cp);
 #endif
 	unprint = 0;
 #ifdef	FAKEUNINIT
@@ -732,7 +732,7 @@ CONST char *prompt;
 				break;
 #ifdef	FD
 			case '!':
-				snprintf2(line, sizeof(line), "%d",
+				Xsnprintf(line, sizeof(line), "%d",
 					(int)histno[0] + 1);
 				break;
 #endif
@@ -747,12 +747,12 @@ CONST char *prompt;
 			case 'H':
 # ifdef	USEUNAME
 				uname(&uts);
-				strcpy2(line, uts.nodename);
+				Xstrcpy(line, uts.nodename);
 # else
 				gethostname(line, MAXPATHLEN);
 # endif
 				if (prompt[i] == 'h'
-				&& (tmp = strchr2(line, '.')))
+				&& (tmp = Xstrchr(line, '.')))
 					*tmp = '\0';
 				break;
 			case '$':
@@ -802,7 +802,7 @@ CONST char *prompt;
 				unprint = 0;
 				break;
 			default:
-				tmp = sscanf2(&(prompt[i]), "%<3Co", line);
+				tmp = Xsscanf(&(prompt[i]), "%<3Co", line);
 				if (tmp) i = (tmp - prompt) - 1;
 				else *line = prompt[i];
 				line[1] = '\0';
@@ -825,7 +825,7 @@ CONST char *prompt;
 				len++;
 			}
 #endif
-			else if (!iscntrl2(*cp)) {
+			else if (!Xiscntrl(*cp)) {
 				(*bufp)[j] = *cp;
 				len++;
 			}
@@ -839,7 +839,7 @@ CONST char *prompt;
 		}
 	}
 	(*bufp)[j] = '\0';
-	free2(new);
+	Xfree(new);
 
 	return(len);
 }
@@ -859,11 +859,11 @@ u_char *flagsp;
 	}
 # endif
 
-	if (*ext == '*') tmp = strdup2(ext);
+	if (*ext == '*') tmp = Xstrdup(ext);
 	else {
-		tmp = malloc2(strlen(ext) + 2);
+		tmp = Xmalloc(strlen(ext) + 2);
 		*tmp = '*';
-		strcpy2(&(tmp[1]), ext);
+		Xstrcpy(&(tmp[1]), ext);
 	}
 
 	return(tmp);
@@ -881,7 +881,7 @@ int flags2, strict;
 	if (!strict && *ext1 != '.' && *ext2 == '.') ext2++;
 # ifndef	PATHNOCASE
 	if ((flags1 & LF_IGNORECASE) || (flags2 & LF_IGNORECASE))
-		return(strcasecmp2(ext1, ext2));
+		return(Xstrcasecmp(ext1, ext2));
 # endif
 
 	return(strpathcmp(ext1, ext2));
@@ -905,7 +905,7 @@ int identonly;
 	switch (ch) {
 		case '\\':
 			if (identonly) return(-1);
-			if ((tmp = sscanf2(cp, "%3o", &ch))) cp = tmp;
+			if ((tmp = Xsscanf(cp, "%3o", &ch))) cp = tmp;
 			else {
 				for (i = 0; escapechar[i]; i++)
 					if (*cp == escapechar[i]) break;
@@ -915,22 +915,22 @@ int identonly;
 			break;
 		case '^':
 			if (identonly) return(-1);
-			ch = toupper2(*(cp++));
+			ch = Xtoupper(*(cp++));
 			if (ch < '?' || ch > '_') return(-1);
 			ch = ((ch - '@') & 0x7f);
 			break;
 		case '@':
 			if (identonly) return(-1);
-			ch = (isalpha2(*cp)) ? mkmetakey(*(cp++)) : -1;
+			ch = (Xisalpha(*cp)) ? mkmetakey(*(cp++)) : -1;
 			break;
 # ifdef	CODEEUC
 		case C_EKANA:
 			if (identonly) return(-1);
-			ch = (iskana2(*cp)) ? mkekana(*(cp++)) : -1;
+			ch = (Xiskana(*cp)) ? mkekana(*(cp++)) : -1;
 			break;
 # endif
 		case 'F':
-			if ((i = atoi2(cp)) >= 1 && i <= 20) return(K_F(i));
+			if ((i = Xatoi(cp)) >= 1 && i <= 20) return(K_F(i));
 /*FALLTHRU*/
 		default:
 			cp--;
@@ -955,13 +955,13 @@ int c, tenkey;
 		if ((u_short)(c) == keyidentlist[i].no) break;
 	if (i < KEYIDENTSIZ) {
 		if (c > (int)MAXUTYPE(u_char)
-		|| tenkey || c == ' ' || iscntrl2(c))
+		|| tenkey || c == ' ' || Xiscntrl(c))
 			return(keyidentlist[i].str);
 	}
 
 	i = 0;
 	if (c >= K_F(1) && c <= K_F(20))
-		i = snprintf2(buf, sizeof(buf), "F%d", c - K_F0);
+		i = Xsnprintf(buf, sizeof(buf), "F%d", c - K_F0);
 	else if (ismetakey(c)) {
 		buf[i++] = '@';
 		buf[i++] = c & 0x7f;
@@ -972,20 +972,20 @@ int c, tenkey;
 		buf[i++] = c & 0xff;
 	}
 # else
-	else if (iskana2(c)) buf[i++] = c;
+	else if (Xiskana(c)) buf[i++] = c;
 # endif
 	else if (c > (int)MAXUTYPE(u_char)) {
 		buf[i++] = '?';
 		buf[i++] = '?';
 	}
-	else if (iscntrl2(c)) {
+	else if (Xiscntrl(c)) {
 		for (i = 0; escapechar[i]; i++)
 			if (c == escapevalue[i]) break;
 		if (escapechar[i])
-			i = snprintf2(buf, sizeof(buf), "\\%c", escapechar[i]);
-		else i = snprintf2(buf, sizeof(buf), "^%c", (c + '@') & 0x7f);
+			i = Xsnprintf(buf, sizeof(buf), "\\%c", escapechar[i]);
+		else i = Xsnprintf(buf, sizeof(buf), "^%c", (c + '@') & 0x7f);
 	}
-	else if (ismsb(c)) i = snprintf2(buf, sizeof(buf), "\\%03o", c);
+	else if (ismsb(c)) i = Xsnprintf(buf, sizeof(buf), "\\%03o", c);
 	else buf[i++] = c;
 	buf[i] = '\0';
 
@@ -1001,11 +1001,11 @@ int evalhat;
 	char *cp, *tmp;
 	int i, j, n;
 
-	cp = malloc2(strlen(s) + 1);
+	cp = Xmalloc(strlen(s) + 1);
 	for (i = j = 0; s[i]; i++, j++) {
 		if (s[i] == '\\') {
 			i++;
-			if ((tmp = sscanf2(&(s[i]), "%<3Co", &(cp[j])))) {
+			if ((tmp = Xsscanf(&(s[i]), "%<3Co", &(cp[j])))) {
 				i = (tmp - s) - 1;
 				continue;
 			}
@@ -1014,17 +1014,17 @@ int evalhat;
 			cp[j] = (escapechar[n]) ? escapevalue[n] : s[i];
 		}
 		else if (evalhat && s[i] == '^'
-		&& (n = toupper2(s[i + 1])) >= '?' && n <= '_') {
+		&& (n = Xtoupper(s[i + 1])) >= '?' && n <= '_') {
 			i++;
 			cp[j] = ((n - '@') & 0x7f);
 		}
 		else cp[j] = s[i];
 	}
 
-	tmp = malloc2(j + 1);
+	tmp = Xmalloc(j + 1);
 	memcpy(tmp, cp, j);
 	tmp[j] = '\0';
-	free2(cp);
+	Xfree(cp);
 	if (lenp) *lenp = j;
 
 	return(tmp);
@@ -1038,27 +1038,27 @@ int len;
 	char *cp;
 	int i, j, n;
 
-	cp = malloc2(len * 4 + 1);
+	cp = Xmalloc(len * 4 + 1);
 	j = 0;
 	if (s) for (i = 0; i < len; i++) {
 		if (iswchar(s, i)) cp[j++] = s[i++];
 # ifndef	CODEEUC
 		else if (isskana(s, i)) /*EMPTY*/;
 # endif
-		else if (iscntrl2(s[i]) || ismsb(s[i])) {
+		else if (Xiscntrl(s[i]) || ismsb(s[i])) {
 			for (n = 0; escapechar[n]; n++)
 				if (s[i] == escapevalue[n]) break;
 			if (escapechar[n]) {
 				cp[j++] = '\\';
 				cp[j++] = escapechar[n];
 			}
-			else if (iscntrl2(s[i])) {
-				snprintf2(&(cp[j]), len * 4 + 1 - j,
+			else if (Xiscntrl(s[i])) {
+				Xsnprintf(&(cp[j]), len * 4 + 1 - j,
 					"^%c", (s[i] + '@') & 0x7f);
 				j += strlen(&(cp[j]));
 			}
 			else {
-				snprintf2(&(cp[j]), len * 4 + 1 - j,
+				Xsnprintf(&(cp[j]), len * 4 + 1 - j,
 					"\\%03o", s[i] & 0xff);
 				j += strlen(&(cp[j]));
 			}

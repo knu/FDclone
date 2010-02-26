@@ -25,7 +25,7 @@
 #define	HREFSTR			"HREF"
 #define	DEFTAG(s, l, n, f)	{s, strsize(s), l, n, f}
 #define	DEFAMP(s, c)		{s, strsize(s), c}
-#define	constequal(s, c)	(!strncasecmp2(s, c, strsize(c)))
+#define	constequal(s, c)	(!Xstrncasecmp(s, c, strsize(c)))
 #define	iswcin(s)		((s)[0] == '\033' && (s)[1] == '$' && (s)[2])
 #define	iswcout(s)		((s)[0] == '\033' && (s)[1] == '(' && (s)[2])
 
@@ -179,8 +179,8 @@ va_list args;
 
 	if (!htmllogfile || !isrootdir(htmllogfile)) return;
 	if (!(fp = Xfopen(htmllogfile, "a"))) return;
-	VOID_C vfprintf2(fp, fmt, args);
-	Xfclose(fp);
+	VOID_C Xvfprintf(fp, fmt, args);
+	VOID_C Xfclose(fp);
 }
 
 #ifdef	USESTDARGH
@@ -212,14 +212,14 @@ htmlstat_t *hp;
 
 	len = strlen(buf);
 	if (!(hp -> max)) {
-		free2(hp -> buf);
+		Xfree(hp -> buf);
 		hp -> buf = buf;
 	}
 	else {
-		hp -> buf = realloc2(hp -> buf, hp -> max + 1 + len + 1);
+		hp -> buf = Xrealloc(hp -> buf, hp -> max + 1 + len + 1);
 		hp -> buf[hp -> max++] = ' ';
-		strncpy2(&(hp -> buf[hp -> max]), buf, len);
-		free2(buf);
+		Xstrncpy(&(hp -> buf[hp -> max]), buf, len);
+		Xfree(buf);
 		buf = &(hp -> buf[hp -> max]);
 	}
 	hp -> max += len;
@@ -302,7 +302,7 @@ htmlstat_t *hp;
 	hp -> flags &= HTML_LVL;
 
 	if (hp -> buf && !(hp -> buf[hp -> ptr])) {
-		free2(hp -> buf);
+		Xfree(hp -> buf);
 		hp -> buf = NULL;
 		hp -> ptr = (ALLOC_T)0;
 	}
@@ -324,7 +324,7 @@ htmlstat_t *hp;
 	if (constequal(&(hp -> buf[top]), "!--")) {
 		cp = searchstr(hp, top, "-->");
 		if (!cp) {
-			free2(hp -> buf);
+			Xfree(hp -> buf);
 			hp -> buf = NULL;
 			hp -> max = (ALLOC_T)0;
 			return(NULL);
@@ -358,13 +358,13 @@ ALLOC_T len;
 	int quote, wc, argc;
 	ALLOC_T ptr, top;
 
-	argv = (char **)malloc2(sizeof(*argv));
+	argv = (char **)Xmalloc(sizeof(*argv));
 	argc = 0;
 
 	for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
-		for (; ptr < len; ptr++) if (!isblank2(s[ptr])) break;
+		for (; ptr < len; ptr++) if (!Xisblank(s[ptr])) break;
 		if (ptr >= len) break;
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(*argv));
+		argv = (char **)Xrealloc(argv, (argc + 2) * sizeof(*argv));
 		top = ptr;
 		quote = '\0';
 		wc = 0;
@@ -382,9 +382,9 @@ ALLOC_T len;
 			else if (quote) /*EMPTY*/;
 			else if (s[ptr] == '"' || s[ptr] == '\'')
 				quote = s[ptr];
-			else if (isblank2(s[ptr])) break;
+			else if (Xisblank(s[ptr])) break;
 		}
-		argv[argc++] = strndup2(&(s[top]), ptr - top);
+		argv[argc++] = Xstrndup(&(s[top]), ptr - top);
 	}
 	argv[argc] = NULL;
 
@@ -400,22 +400,22 @@ int delim;
 	int quote, argc;
 
 	len = strlen(name);
-	if (strncasecmp2(s, name, len)) return(NULL);
+	if (Xstrncasecmp(s, name, len)) return(NULL);
 	s += len;
 	if (*(s++) != '=') return(NULL);
 
-	argv = (char **)malloc2(sizeof(*argv));
+	argv = (char **)Xmalloc(sizeof(*argv));
 	argc = 0;
 
 	quote = (*s == '"' || *s == '\'') ? *(s++) : '\0';
 	for (ptr = (ALLOC_T)0; s[ptr]; ptr++) {
-		while (isblank2(s[ptr])) ptr++;
+		while (Xisblank(s[ptr])) ptr++;
 		if (!s[ptr]) break;
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(*argv));
+		argv = (char **)Xrealloc(argv, (argc + 2) * sizeof(*argv));
 		top = ptr;
 		for (; s[ptr]; ptr++)
 			if (s[ptr] == delim || s[ptr] == quote) break;
-		argv[argc++] = strndup2(&(s[top]), ptr - top);
+		argv[argc++] = Xstrndup(&(s[top]), ptr - top);
 		if (!s[ptr] || s[ptr] == quote) break;
 	}
 	argv[argc] = NULL;
@@ -430,9 +430,9 @@ ALLOC_T len;
 	int n;
 
 	for (n = 0; n < TAGLISTSIZ; n++) {
-		if (strncasecmp2(s, taglist[n].ident, taglist[n].len))
+		if (Xstrncasecmp(s, taglist[n].ident, taglist[n].len))
 			continue;
-		if (len == taglist[n].len || isblank2(s[taglist[n].len]))
+		if (len == taglist[n].len || Xisblank(s[taglist[n].len]))
 			return(n);
 	}
 
@@ -513,7 +513,7 @@ char *s;
 		else {
 			c = 0;
 			for (ptr = (ALLOC_T)1; ptr <= (ALLOC_T)3; ptr++) {
-				if (!isdigit2(tmp[ptr] )) break;
+				if (!Xisdigit(tmp[ptr] )) break;
 				c = c * 10 + tmp[ptr] - '0';
 			}
 		}
@@ -532,14 +532,14 @@ char *CONST *argv;
 
 	cp = NULL;
 	for (n = 0; argv[n]; n++) if (constequal(argv[n], CHARSETSTR)) {
-		cp = strdup2(&(argv[n][strsize(CHARSETSTR)]));
+		cp = Xstrdup(&(argv[n][strsize(CHARSETSTR)]));
 		break;
 	}
 	if (!cp) return(-1);
 
 	for (n = 0; n < LANGLISTSIZ; n++)
-		if (!strcasecmp2(cp, langlist[n].ident)) break;
-	free2(cp);
+		if (!Xstrcasecmp(cp, langlist[n].ident)) break;
+	Xfree(cp);
 	if (n >= LANGLISTSIZ) return(-1);
 
 	return((int)(langlist[n].lang));
@@ -558,7 +558,7 @@ char **argv;
 	if (!var) return(NULL);
 
 	cp = NULL;
-	for (n = 0; var[n]; n++) if (!strcasecmp2(var[n], CONTENTTYPESTR)) {
+	for (n = 0; var[n]; n++) if (!Xstrcasecmp(var[n], CONTENTTYPESTR)) {
 		cp = var[n];
 		break;
 	}
@@ -604,11 +604,11 @@ char **argv;
 		return(NULL);
 	}
 
-	if (!(cp = searchchar(var[0], '#'))) new = strdup2(var[0]);
-	else new = strndup2(var[0], cp - var[0]);
+	if (!(cp = searchchar(var[0], '#'))) new = Xstrdup(var[0]);
+	else new = Xstrndup(var[0], cp - var[0]);
 	decodeamp(new);
 	cp = urldecode(new, -1);
-	free2(new);
+	Xfree(new);
 	freevar(var);
 
 	return(cp);
@@ -623,7 +623,7 @@ CONST char *path;
 
 	hp -> fp = fp;
 	hp -> buf = NULL;
-	hp -> path = strdup2(path);
+	hp -> path = Xstrdup(path);
 	hp -> ptr = hp -> len = hp -> max = (ALLOC_T)0;
 	hp -> charset = NOCNV;
 	hp -> flags = 0;
@@ -633,9 +633,9 @@ VOID htmlfree(hp)
 htmlstat_t *hp;
 {
 	hp -> fp = NULL;
-	free2(hp -> buf);
+	Xfree(hp -> buf);
 	hp -> buf = NULL;
-	free2(hp -> path);
+	Xfree(hp -> path);
 	hp -> path = NULL;
 	hp -> max = (ALLOC_T)0;
 }
@@ -717,7 +717,7 @@ htmlstat_t *hp;
 			len = hp -> len - (cp - top);
 
 			if (len) {
-				new = strndup2(cp, len);
+				new = Xstrndup(cp, len);
 				n = isanchor(hp, new, url);
 				if (n >= 0) cp = new;
 				else {
@@ -732,47 +732,47 @@ htmlstat_t *hp;
 				}
 				else {
 					cp = urlencode(cp, -1, URL_UNSAFEPATH);
-					free2(new);
+					Xfree(new);
 					new = cp;
 					dir = n;
 					anchored++;
 				}
-				free2(url);
+				Xfree(url);
 				url = NULL;
 
 				if (size) buf[size++] = '\t';
 				len = strlen(cp);
-				buf = realloc2(buf, size + len + dir + 1);
+				buf = Xrealloc(buf, size + len + dir + 1);
 				memcpy(&(buf[size]), cp, len);
 				size += len;
 				if (dir) buf[size++] = _SC_;
 				buf[size] = '\0';
-				free2(new);
+				Xfree(new);
 			}
 		}
 		else {
 			if (hp -> flags & HTML_ANCHOR) {
-				free2(url);
+				Xfree(url);
 				url = NULL;
 				if (cp == vnullstr) /*EMPTY*/;
 				else if (urlparse(cp, NULL, NULL, NULL))
-					free2(cp);
+					Xfree(cp);
 				else url = cp;
 			}
 		}
 
 		if (!(hp -> flags & (HTML_BREAK | HTML_NEWLINE))) continue;
 		if (buf && anchored) break;
-		free2(buf);
-		free2(url);
+		Xfree(buf);
+		Xfree(url);
 		buf = url = NULL;
 		size = (ALLOC_T)0;
 	}
 
-	free2(url);
+	Xfree(url);
 	decodeamp(buf);
 	if (!anchored) {
-		free2(buf);
+		Xfree(buf);
 		buf = NULL;
 	}
 

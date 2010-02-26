@@ -127,7 +127,7 @@ CONST char *arg;
 	if (buf) {
 		if (ptr < 2) return(ptr);
 		if (buf[ptr - 1] != _SC_ || buf[ptr - 2] != '.') return(ptr);
-		if (ptr > 2 && !strchr2(IFS_SET, buf[ptr - 3])) return(ptr);
+		if (ptr > 2 && !Xstrchr(IFS_SET, buf[ptr - 3])) return(ptr);
 	}
 
 	return(ptr - 2);
@@ -150,8 +150,8 @@ int code;
 	if (code < 0) {
 		cp = _evalpath(&((*bufp)[ptr]), &((*bufp)[eol]),
 			EA_NOEVALQ | EA_NOUNIQDELIM);
-		realpath2(cp, rpath, RLP_READLINK);
-		free2(cp);
+		Xrealpath(cp, rpath, RLP_READLINK);
+		Xfree(cp);
 		code = getkcode(rpath);
 	}
 # endif
@@ -162,7 +162,7 @@ int code;
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	memcpy(&((*bufp)[ptr]), cp, len);
-	free2(cp);
+	Xfree(cp);
 
 	return(ptr + len);
 }
@@ -248,13 +248,13 @@ int flags;
 	ptr = checksc(*bufp, ptr, arg);
 	arg = new = killmeta(arg);
 
-	if ((flags & F_NOEXT) && (cp = strrchr2(arg, '.')) && cp != arg)
+	if ((flags & F_NOEXT) && (cp = Xstrrchr(arg, '.')) && cp != arg)
 		len = cp - arg;
 	else len = strlen(arg);
 
 	*bufp = c_realloc(*bufp, ptr + len + 1, sizep);
 	memcpy(&((*bufp)[ptr]), arg, len);
-	free2(new);
+	Xfree(new);
 
 	return(len + ptr - optr);
 }
@@ -306,9 +306,9 @@ CONST char *s;
 	if (!s) return(NULL);
 	i = strlen(s);
 # ifdef	MACROMETA
-	buf = malloc2(i * 3 + 1);	/* MACROMETA+flags -> %XSTA (x2.5) */
+	buf = Xmalloc(i * 3 + 1);	/* MACROMETA+flags -> %XSTA (x2.5) */
 # else
-	buf = malloc2(i + 1);
+	buf = Xmalloc(i + 1);
 # endif
 	flags = 0;
 	for (i = j = 0; s[i]; i++) {
@@ -328,7 +328,7 @@ CONST char *s;
 # endif
 	}
 	if (!flags) {
-		free2(buf);
+		Xfree(buf);
 		return((char *)s);
 	}
 	buf[j] = '\0';
@@ -341,7 +341,7 @@ char *s;
 {
 	char *cp;
 
-	if ((cp = _restorearg(s)) != s) free2(s);
+	if ((cp = _restorearg(s)) != s) Xfree(s);
 
 	return(cp);
 }
@@ -370,11 +370,11 @@ int flags;
 # endif
 
 	len = eol - ptr;
-	tmp = strndup2(&((*bufp)[ptr]), len);
+	tmp = Xstrndup(&((*bufp)[ptr]), len);
 	tmp[len] = '\0';
 	cp = &(tmp[blen + mlen]);
 	for (s = cp; *s; s++) {
-		if (strchr2(CMDLINE_DELIM, *s)) break;
+		if (Xstrchr(CMDLINE_DELIM, *s)) break;
 		if (iskanji1(s, 0)) s++;
 	}
 	flen = s - cp;
@@ -387,7 +387,7 @@ int flags;
 		ptr += len;
 # ifdef	MAXCOMMSTR
 		if (ptr + flen > MAXCOMMSTR) {
-			free2(tmp);
+			Xfree(tmp);
 			return(-1);
 		}
 # endif
@@ -414,7 +414,7 @@ int flags;
 # ifdef	MAXCOMMSTR
 		if (ptr + flen > MAXCOMMSTR) {
 			if (!n) {
-				free2(tmp);
+				Xfree(tmp);
 				return(-1);
 			}
 			ptr = optr;
@@ -448,7 +448,7 @@ int flags;
 	*bufp = c_realloc(*bufp, ptr + rlen + 1, sizep);
 	memcpy(&((*bufp)[ptr]), s, rlen);
 	ptr += rlen;
-	free2(tmp);
+	Xfree(tmp);
 
 	return(ptr - eol);
 }
@@ -483,7 +483,7 @@ int needmark;
 			j += m - 1;
 		}
 	}
-	if (!(format[j])) return(strdup2(format));
+	if (!(format[j])) return(Xstrdup(format));
 	buf = c_realloc(NULL, 0, &size);
 # ifdef	MAXCOMMSTR
 	if (j > MAXCOMMSTR) i = j = 0;
@@ -500,7 +500,7 @@ int needmark;
 				if (!alias[0]) {
 					if (shortname(org, alias) == alias)
 						org = alias;
-					else strcpy2(alias, org);
+					else Xstrcpy(alias, org);
 				}
 				ins = alias;
 			}
@@ -508,15 +508,15 @@ int needmark;
 			j = checksc(buf, j, ins);
 			ins = new = killmeta(ins);
 
-			if ((flags & F_NOEXT) && (cp = strrchr2(ins, '.')))
+			if ((flags & F_NOEXT) && (cp = Xstrrchr(ins, '.')))
 				len = cp - ins;
 			else len = strlen(ins);
 # ifdef	MAXCOMMSTR
 			if (j + len > MAXCOMMSTR) break;
 # endif
 			buf = c_realloc(buf, j + len + 1, &size);
-			strncpy2(&(buf[j]), ins, len);
-			free2(new);
+			Xstrncpy(&(buf[j]), ins, len);
+			Xfree(new);
 			j += len;
 			for (len = 0; src[len]; len++) {
 # ifndef	MACROMETA
@@ -538,7 +538,7 @@ int needmark;
 	}
 	buf[j] = '\0';
 	if (i < needmark) {
-		free2(buf);
+		Xfree(buf);
 		return(NULL);
 	}
 
@@ -723,7 +723,7 @@ macrostat *stp;
 			errno = E2BIG;
 			perror2(command);
 		}
-		free2(line);
+		Xfree(line);
 		return(NULL);
 	}
 #endif
@@ -737,7 +737,7 @@ macrostat *stp;
 # ifndef	MACROMETA
 		if (skipquote(line, &i)) continue;
 # endif
-		if (strchr2(CMDLINE_DELIM, line[i])) c = -1;
+		if (Xstrchr(CMDLINE_DELIM, line[i])) c = -1;
 		else if (c < 0) c = i;
 		if (!(m = isneedargs(line, i, &f))) continue;
 		else if (!(f & F_BURST)) {
@@ -776,14 +776,14 @@ macrostat *stp;
 		arg = convput(conv, arg, 1, 1, NULL, NULL);
 		if (checksc(NULL, 0, arg) < 0) cp = NULL;
 		else {
-			cp = malloc2(strlen(arg) + 2 + 1);
+			cp = Xmalloc(strlen(arg) + 2 + 1);
 			cp[0] = '.';
 			cp[1] = _SC_;
-			strcpy2(&(cp[2]), arg);
+			Xstrcpy(&(cp[2]), arg);
 			arg = cp;
 		}
 		arg = new = killmeta(arg);
-		free2(cp);
+		Xfree(cp);
 
 		len = strlen(arg);
 #if	defined (_NOEXTRAMACRO) && defined (MAXCOMMSTR)
@@ -793,10 +793,10 @@ macrostat *stp;
 		{
 			line = c_realloc(line, j + len + 1, &size);
 			line[j++] = ' ';
-			strncpy2(&(line[j]), arg, len);
+			Xstrncpy(&(line[j]), arg, len);
 			j += len;
 		}
-		free2(new);
+		Xfree(new);
 	}
 	if (!(flags & F_IGNORELIST)
 	&& !(stp -> needburst) && !(stp -> needmark)) {
@@ -806,8 +806,8 @@ macrostat *stp;
 	if ((flags & F_REMAIN) && !n_args) flags &= ~F_REMAIN;
 	stp -> flags = flags;
 
-	cp = strndup2(line, j);
-	free2(line);
+	cp = Xstrndup(line, j);
+	Xfree(line);
 
 	return(cp);
 }
@@ -941,7 +941,7 @@ int iscomm;
 # ifdef	MAXCOMMSTR
 				maxarg += len;
 				if (iscomm > 0 && maxarg > MAXCOMMSTR) {
-					free2(buf);
+					Xfree(buf);
 					freevar(argv2);
 					return(seterrno(E2BIG));
 				}
@@ -950,8 +950,8 @@ int iscomm;
 			}
 		}
 		buf[j++] = '\0';
-		argv2 = (char **)realloc2(argv2, (argc2 + 2) * sizeof(char *));
-		argv2[argc2++] = strdup2(buf);
+		argv2 = (char **)Xrealloc(argv2, (argc2 + 2) * sizeof(char *));
+		argv2[argc2++] = Xstrdup(buf);
 		argv2[argc2] = NULL;
 		if (min < 0 || !hit || (iscomm >= 0 && !n)) continue;
 
@@ -1007,9 +1007,9 @@ int iscomm;
 			}
 # endif
 			buf[j++] = '\0';
-			argv2 = (char **)realloc2(argv2,
+			argv2 = (char **)Xrealloc(argv2,
 				(argc2 + 2) * sizeof(char *));
-			argv2[argc2++] = strdup2(buf);
+			argv2[argc2++] = Xstrdup(buf);
 			argv2[argc2] = NULL;
 			for (next++; next < maxfile; next++)
 				if (isarg(&(filelist[next]))) break;
@@ -1021,7 +1021,7 @@ int iscomm;
 	*argvp = argv = argv2;
 
 	if (iscomm < 0) {
-		free2(buf);
+		Xfree(buf);
 		return(ret);
 	}
 
@@ -1064,7 +1064,7 @@ int iscomm;
 # ifdef	MAXCOMMSTR
 				maxarg += len;
 				if (iscomm > 0 && maxarg > MAXCOMMSTR) {
-					free2(buf);
+					Xfree(buf);
 					freevar(argv);
 					return(seterrno(E2BIG));
 				}
@@ -1073,11 +1073,11 @@ int iscomm;
 			}
 		}
 		buf[j++] = '\0';
-		free2(argv[n]);
-		argv[n] = strdup2(buf);
+		Xfree(argv[n]);
+		argv[n] = Xstrdup(buf);
 	}
 	if (hit) lastptr = next;
-	free2(buf);
+	Xfree(buf);
 
 	return(ret);
 }
@@ -1107,13 +1107,13 @@ char **argp;
 	char **argv;
 	int n, argc;
 
-	argv = (char **)malloc2(2 * sizeof(char *));
+	argv = (char **)Xmalloc(2 * sizeof(char *));
 	argv[0] = *argp;
 	argv[1] = NULL;
 	argc = 1;
 	n = replaceargs(&argc, &argv, NULL, 0);
 	*argp = argv[0];
-	free2(argv);
+	Xfree(argv);
 
 	return(n);
 }
@@ -1157,7 +1157,7 @@ CONST char *def;
 	tmp = evalhistory(cp);
 	if (wastty) Xttyiomode(wastty - 1);
 	if (!tmp) {
-		free2(cp);
+		Xfree(cp);
 		return(NULL);
 	}
 	entryhist(tmp, HST_COMM);
@@ -1188,13 +1188,13 @@ CONST char *def;
 #ifdef	DEP_ORIGSHELL
 	l = -1;
 	len = strlen(cp);
-	buf = malloc2(len + 1);
-	strcpy2(buf, cp);
+	buf = Xmalloc(len + 1);
+	Xstrcpy(buf, cp);
 	trp = stree = newstree(NULL);
 	for (;;) {
 		if (cp) {
 			trp = analyze(cp, trp, 1);
-			free2(cp);
+			Xfree(cp);
 			if (!trp || !(trp -> cont)) break;
 		}
 
@@ -1205,13 +1205,13 @@ CONST char *def;
 		else if (!cp) continue;
 
 		l = strlen(cp);
-		buf = realloc2(buf, len + l + 1 + 1);
+		buf = Xrealloc(buf, len + l + 1 + 1);
 		buf[len++] = '\n';
-		strcpy2(&(buf[len]), cp);
+		Xstrcpy(&(buf[len]), cp);
 		len += l;
 	}
 	freestree(stree);
-	free2(stree);
+	Xfree(stree);
 	cp = buf;
 	if (l >= 0) rewritefile(1);
 #endif	/* DEP_ORIGSHELL */
@@ -1270,7 +1270,7 @@ macrostat *stp;
 		j = flag2str(line, j, flags);
 	}
 	line[j] = '\0';
-	free2(command);
+	Xfree(command);
 
 	if (p < 0) p = strlen(line);
 	command = line;
@@ -1281,20 +1281,20 @@ macrostat *stp;
 	if (!(wastty = isttyiomode)) Xttyiomode(1);
 	cp = inputstr(nullstr, 0, p, command, HST_COMM);
 	if (!wastty) Xstdiomode();
-	free2(command);
+	Xfree(command);
 	if (!cp) {
 		if (!wastty) VOID_C fputnl(Xstdout);
 		return(NULL);
 	}
 	if (!*cp) {
-		free2(cp);
+		Xfree(cp);
 		return(NULL);
 	}
 	command = evalcommand(cp, arg, stp);
-	free2(cp);
+	Xfree(cp);
 	if (!command) return(NULL);
 	if (!*command) {
-		free2(command);
+		Xfree(command);
 		return(NULL);
 	}
 
@@ -1316,10 +1316,10 @@ int flags;
 	if ((ret = execpseudoshell(command, flags)) < 0) {
 		tmp = evalcomstr(command, CMDLINE_DELIM);
 		ret = system2(tmp, flags);
-		free2(tmp);
+		Xfree(tmp);
 	}
 	sigvecset(n);
-	free2(cp);
+	Xfree(cp);
 
 	return(ret);
 }
@@ -1347,11 +1347,11 @@ CONST char *command;
 			stripquote(argv[0], EA_STRIPQ);
 			if (argv[0] && checkinternal(argv[0]) < 0) ret = 0;
 			freevar(subst);
-			free2(len);
+			Xfree(len);
 		}
 	}
 	freestree(stree);
-	free2(stree);
+	Xfree(stree);
 #else	/* !DEP_ORIGSHELL */
 	if (getargs(command, &argv) > 0 && checkinternal(argv[0]) < 0) ret = 0;
 	freevar(argv);
@@ -1410,7 +1410,7 @@ int flags;
 		tmp = _demacroarg(tmp);
 # endif
 		r = system3(tmp, st.flags);
-		free2(tmp);
+		Xfree(tmp);
 		tmp = NULL;
 		if (!(flags & F_ARGSET)) st.flags &= ~F_ARGSET;
 
@@ -1431,7 +1431,7 @@ int flags;
 			buf = _demacroarg(buf);
 # endif
 			ret = system3(buf, st.flags);
-			free2(buf);
+			Xfree(buf);
 			status = internal_status;
 		}
 	}
@@ -1442,7 +1442,7 @@ int flags;
 			buf = _demacroarg(buf);
 # endif
 			r = system3(buf, st.flags);
-			free2(buf);
+			Xfree(buf);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 			else if (internal_status > status)
@@ -1455,7 +1455,7 @@ int flags;
 	if (internal_status <= FNC_FAIL) internal_status = FNC_EFFECT;
 #endif	/* !_NOEXTRAMACRO */
 
-	free2(tmp);
+	Xfree(tmp);
 	if (haslist && internal_status <= FNC_FAIL) {
 		for (i = 0; i < maxfile; i++)
 			filelist[i].tmpflags &= ~(F_ISARG | F_ISMRK);
@@ -1482,7 +1482,7 @@ int flags;
 
 	if (!(tmp = evalcommand(command, arg, &st))) return(NULL);
 	for (i = 0; i < LOCALELISTSIZ; i++) {
-		localelist[i].org = strdup2(getenv2(localelist[i].env));
+		localelist[i].org = Xstrdup(getenv2(localelist[i].env));
 		if (!(localelist[i].val) || *(localelist[i].val)) {
 			setenv2(localelist[i].env, localelist[i].val, 1);
 			continue;
@@ -1495,9 +1495,9 @@ int flags;
 	fp = popen2(tmp);
 	for (i = 0; i < LOCALELISTSIZ; i++) {
 		setenv2(localelist[i].env, localelist[i].org, 1);
-		free2(localelist[i].org);
+		Xfree(localelist[i].org);
 	}
-	free2(tmp);
+	Xfree(tmp);
 
 	return(fp);
 }
@@ -1520,7 +1520,7 @@ char *CONST *argv;
 		memcpy(&(line[j]), &(command[i]), len);
 		i += len + 1;
 		j += len;
-		if (!isdigit2(command[i])) {
+		if (!Xisdigit(command[i])) {
 			line[j++] = '$';
 			line[j++] = command[i++];
 		}
@@ -1556,7 +1556,7 @@ int flags;
 		for (j = 0; userfunclist[i].comm[j]; j++) {
 			cp = evalargs(userfunclist[i].comm[j], argc, argv);
 			r = execmacro(cp, arg, flags);
-			free2(cp);
+			Xfree(cp);
 			if (r > ret && (ret = r) >= 127) break;
 			if (internal_status <= FNC_FAIL) status = FNC_EFFECT;
 			else if (internal_status > status)
@@ -1578,9 +1578,9 @@ CONST char *command;
 	len = (cp = strpbrk(command, " \t")) ? cp - command : strlen(command);
 
 	if ((i = searchalias(command, len)) >= maxalias) return(NULL);
-	cp = malloc2((int)strlen(command) - len
+	cp = Xmalloc((int)strlen(command) - len
 		+ strlen(aliaslist[i].comm) + 1);
-	strcpy2(strcpy2(cp, aliaslist[i].comm), &(command[len]));
+	Xstrcpy(Xstrcpy(cp, aliaslist[i].comm), &(command[len]));
 
 	return(cp);
 }
@@ -1596,13 +1596,13 @@ int flags;
 	n = (flags & HST_TYPE);
 	size = (int)histsize[n];
 	if (!history[n]) {
-		history[n] = (char **)malloc2((size + 1) * sizeof(char *));
+		history[n] = (char **)Xmalloc((size + 1) * sizeof(char *));
 		for (i = 0; i <= size; i++) history[n][i] = NULL;
 		histbufsize[n] = size;
 		histno[n] = (short)0;
 	}
 	else if (size > histbufsize[n]) {
-		history[n] = (char **)realloc2(history[n],
+		history[n] = (char **)Xrealloc(history[n],
 			(size + 1) * sizeof(char *));
 		for (i = histbufsize[n] + 1; i <= size; i++)
 			history[n][i] = NULL;
@@ -1610,7 +1610,7 @@ int flags;
 	}
 
 	if (!s || !*s) return(0);
-	new = (n == 1) ? killmeta(s) : strdup2(s);
+	new = (n == 1) ? killmeta(s) : Xstrdup(s);
 
 	if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 
@@ -1625,7 +1625,7 @@ int flags;
 		if (i < size) size = i;
 	}
 
-	free2(history[n][size]);
+	Xfree(history[n][size]);
 	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
 	*(history[n]) = new;
 #ifdef	DEP_PTY
@@ -1666,7 +1666,7 @@ int n;
 	}
 
 	size = (int)histsize[n];
-	history[n] = (char **)malloc2((size + 1) * sizeof(char *));
+	history[n] = (char **)Xmalloc((size + 1) * sizeof(char *));
 	histbufsize[n] = size;
 	histno[n] = (short)0;
 
@@ -1675,7 +1675,7 @@ int n;
 	while ((line = Xfgets(lck -> fp))) {
 		if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 		if (i < size) i++;
-		else free2(history[n][i]);
+		else Xfree(history[n][i]);
 		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
 		*(history[n]) = line;
 	}
@@ -1694,7 +1694,7 @@ XFILE *fp;
 
 	if (!s || !*s) return;
 
-	while ((eol = strchr2(s, '\n'))) {
+	while ((eol = Xstrchr(s, '\n'))) {
 		VOID_C Xfwrite(s, eol++ - s, fp);
 		VOID_C Xfputc('\0', fp);
 		s = eol;
@@ -1736,8 +1736,8 @@ int *ptrp, quote;
 	ptr = (ptrp) ? *ptrp : 0;
 	size = (int)histsize[0];
 	if (str[ptr] == '!') n = 0;
-	else if (str[ptr] == '=' || strchr2(IFS_SET, str[ptr])) n = ptr = -1;
-	else if ((cp = sscanf2(&(str[ptr]), "%-d", &n))) {
+	else if (str[ptr] == '=' || Xstrchr(IFS_SET, str[ptr])) n = ptr = -1;
+	else if ((cp = Xsscanf(&(str[ptr]), "%-d", &n))) {
 		if (!n) n = -1;
 		else if (n < 0) {
 			if ((n = -1 - n) > (int)MAXHISTNO) n = -1;
@@ -1799,15 +1799,15 @@ char *command;
 					continue;
 				}
 				command[++i] = '\0';
-				fprintf2(Xstderr, "%k: Event not found.\n",
+				Xfprintf(Xstderr, "%k: Event not found.\n",
 					&(command[len]));
-				free2(cp);
+				Xfree(cp);
 				return(NULL);
 			}
 			hit++;
 			len = strlen(history[0][n]);
 			cp = c_realloc(cp, j + len + 1, &size);
-			strncpy2(&cp[j], history[0][n], len);
+			Xstrncpy(&cp[j], history[0][n], len);
 			j += len;
 			continue;
 		}
@@ -1817,10 +1817,10 @@ char *command;
 	if (hit) {
 		kanjifputs(cp, Xstderr);
 		VOID_C fputnl(Xstderr);
-		free2(command);
+		Xfree(command);
 		return(cp);
 	}
-	free2(cp);
+	Xfree(cp);
 
 	return(command);
 }
@@ -1832,8 +1832,8 @@ int n;
 	int i;
 
 	if (!history[n] || !*(history[n])) return;
-	for (i = 0; i <= histbufsize[n]; i++) free2(history[n][i]);
-	free2(history[n]);
+	for (i = 0; i <= histbufsize[n]; i++) Xfree(history[n][i]);
+	Xfree(history[n]);
 }
 #endif
 
@@ -1849,9 +1849,9 @@ char ***argvp;
 		if (strncommcmp(com, aliaslist[i].alias, len)
 		|| finddupl(aliaslist[i].alias, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = strdup2(aliaslist[i].alias);
+		(*argvp)[argc++] = Xstrdup(aliaslist[i].alias);
 	}
 
 	return(argc);
@@ -1868,9 +1868,9 @@ char ***argvp;
 		if (strncommcmp(com, userfunclist[i].func, len)
 		|| finddupl(userfunclist[i].func, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = strdup2(userfunclist[i].func);
+		(*argvp)[argc++] = Xstrdup(userfunclist[i].func);
 	}
 
 	return(argc);

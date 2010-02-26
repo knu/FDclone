@@ -24,7 +24,7 @@
 #define	BEGINSTR		"#begin\t"
 #define	ENDSTR			"#end"
 
-static VOID_P NEAR realloc2 __P_((VOID_P, ALLOC_T));
+static VOID_P NEAR Xrealloc __P_((VOID_P, ALLOC_T));
 static char *NEAR fgets2 __P_((FILE *));
 static char *NEAR getversion __P_((VOID_A));
 static CONST char *NEAR getnum __P_((CONST char *, u_int *));
@@ -46,7 +46,7 @@ static CONST char escapevalue[] = {
 };
 
 
-static VOID_P NEAR realloc2(ptr, size)
+static VOID_P NEAR Xrealloc(ptr, size)
 VOID_P ptr;
 ALLOC_T size;
 {
@@ -72,7 +72,7 @@ FILE *fp;
 			len--;
 		}
 
-		if (!(tmp = (char *)realloc2(cp, size + len + 1))) {
+		if (!(tmp = (char *)Xrealloc(cp, size + len + 1))) {
 			free(cp);
 			return(NULL);
 		}
@@ -114,7 +114,7 @@ u_int *wp;
 	long n;
 	char *tmp;
 
-	if (!isdigit2(*cp)) return(NULL);
+	if (!Xisdigit(*cp)) return(NULL);
 	n = strtol(cp, &tmp, 10);
 	if (n < 0L || n >= MAXUTYPE(u_int) || !tmp || tmp <= cp) return(NULL);
 	if (wp) *wp = (u_int)n;
@@ -186,17 +186,17 @@ FILE *fpin, *fpout;
 	for (; (buf = fgets2(fpin)); free(buf)) {
 		cp = buf;
 		if (*(cp++) != '#') continue;
-		while (isblank2(*cp)) cp++;
+		while (Xisblank(*cp)) cp++;
 		if (strncmp(cp, DEFINESTR, strsize(DEFINESTR))) continue;
 		cp += strsize(DEFINESTR);
-		if (!isblank2(*cp)) continue;
-		for (cp++; isblank2(*cp); cp++) /*EMPTY*/;
+		if (!Xisblank(*cp)) continue;
+		for (cp++; Xisblank(*cp); cp++) /*EMPTY*/;
 		tmp = cp;
-		if (!isalpha2(*(cp++))) continue;
-		while (isalnum2(*cp) || *cp == '_') cp++;
-		if (!isblank2(*cp)) continue;
+		if (!Xisalpha(*(cp++))) continue;
+		while (Xisalnum(*cp) || *cp == '_') cp++;
+		if (!Xisblank(*cp)) continue;
 		i = cp - tmp;
-		for (cp++; isblank2(*cp); cp++) /*EMPTY*/;
+		for (cp++; Xisblank(*cp); cp++) /*EMPTY*/;
 		if (i == strsize(CATSUMSTR) && !strncmp(tmp, CATSUMSTR, i)) {
 			if (!(cp = getnum(cp, &w)) || *cp) continue;
 			fprintf(fpout, "%s%u\n", SUMSTR, w);
@@ -209,18 +209,18 @@ FILE *fpin, *fpout;
 			cp += strsize(MESLISTSTR);
 		else continue;
 
-		while (isblank2(*cp)) cp++;
+		while (Xisblank(*cp)) cp++;
 		if (*(cp++) != '(') continue;
-		while (isblank2(*cp)) cp++;
+		while (Xisblank(*cp)) cp++;
 		if (!(cp = getnum(cp, &w)) || *(cp++) != ',') continue;
 
 		for (i = 0; i < MAXCATALOG; i++) {
-			while (isblank2(*cp)) cp++;
+			while (Xisblank(*cp)) cp++;
 			if (*(cp++) != '"') break;
 			if ((len[i] = geteol(cp)) < 0) break;
 			ptr[i] = cp;
 			cp += len[i] + 1;
-			while (isblank2(*cp)) cp++;
+			while (Xisblank(*cp)) cp++;
 			c = (i < MAXCATALOG - 1) ? ',' : ')';
 			if (*(cp++) != c) break;
 		}
@@ -242,7 +242,7 @@ CONST char *s;
 	ALLOC_T len, size;
 
 	if (n >= maxmes) {
-		tmp = (char **)realloc2(meslist, (n + 1) * sizeof(char *));
+		tmp = (char **)Xrealloc(meslist, (n + 1) * sizeof(char *));
 		if (!tmp) return(-1);
 		meslist = tmp;
 		while (maxmes <= n) meslist[maxmes++] = NULL;
@@ -256,7 +256,7 @@ CONST char *s;
 	}
 	else {
 		size = strlen(meslist[n]);
-		cp = (char *)realloc2(meslist[n], size + 1 + len + 1);
+		cp = (char *)Xrealloc(meslist[n], size + 1 + len + 1);
 		if (!cp) return(-1);
 		cp[size++] = '\n';
 	}
@@ -445,14 +445,14 @@ char *CONST argv[];
 	if (n + 1 >= argc) fpout = stdout;
 	else if (!(fpout = fopen(argv[n + 1], "wb"))) {
 		fprintf(stderr, "%s: cannot open.\n", argv[n + 1]);
-		fclose(fpin);
+		VOID_C fclose(fpin);
 		return(1);
 	}
 
 	if (col) n = mkcat(col - 1, fpin, fpout);
 	else n = cnvcat(fpin, fpout);
-	fclose(fpin);
-	fclose(fpout);
+	VOID_C fclose(fpin);
+	VOID_C fclose(fpout);
 	if (n < 0) return(1);
 
 	return(0);

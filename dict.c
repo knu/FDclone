@@ -94,7 +94,7 @@ int fd;
 {
 	u_char buf[2];
 
-	if (sureread(fd, buf, 2) != 2) return(-1);
+	if (sureread(fd, buf, sizeof(buf)) != sizeof(buf)) return(-1);
 	*wp = getword(buf, 0);
 
 	return(0);
@@ -106,7 +106,7 @@ int fd;
 {
 	u_char buf[4];
 
-	if (sureread(fd, buf, 4) != 4) return(-1);
+	if (sureread(fd, buf, sizeof(buf)) != sizeof(buf)) return(-1);
 	*lp = getdword(buf, 0);
 
 	return(0);
@@ -123,9 +123,9 @@ int fd;
 	kp -> kbuf = NULL;
 	if (fgetbyte(&c, fd) < 0) return(-1);
 	kp -> klen = c;
-	kbuf = (u_short *)malloc2((kp -> klen + 1) * sizeof(u_short));
+	kbuf = (u_short *)Xmalloc((kp -> klen + 1) * sizeof(u_short));
 	for (i = 0; i < kp -> klen; i++) if (fgetword(&(kbuf[i]), fd) < 0) {
-		free2(kbuf);
+		Xfree(kbuf);
 		return(-1);
 	}
 	kbuf[i] = (short)0;
@@ -142,7 +142,7 @@ int fd;
 	off_t ofs;
 
 	ofs = (off_t)n * 4 + 4;
-	if (!skread(fd, ofs, buf, 4)) return((off_t)-1);
+	if (!skread(fd, ofs, buf, sizeof(buf))) return((off_t)-1);
 	ofs = (off_t)(dicttblent + 1) * 4 + 4 + getdword(buf, 0);
 
 	return(ofs);
@@ -189,7 +189,7 @@ int fd;
 	off_t ofs;
 
 	ofs = (off_t)n * 4 + 4 + 4;
-	if (!skread(fd, ofs, buf, 4)) return(-1);
+	if (!skread(fd, ofs, buf, sizeof(buf))) return(-1);
 	ofs = (off_t)(freqtblent + 1) * 4 + 4 + 4 + getdword(buf, 0);
 	if (Xlseek(fd, ofs, L_SET) < (off_t)0) return(-1);
 
@@ -213,7 +213,7 @@ int fd;
 	if (hinsiindexbuf) ofs = getword(hinsiindexbuf, ofs);
 	else {
 		ofs += hinsitblofs + 2;
-		if (!skread(fd, ofs, buf, 2)) return(-1);
+		if (!skread(fd, ofs, buf, sizeof(buf))) return(-1);
 		ofs = getword(buf, 0);
 	}
 
@@ -227,9 +227,9 @@ int fd;
 		ofs += hinsitblofs + (off_t)(hinsitblent + 1) * 2 + 2;
 		if (!skread(fd, ofs, buf, 2)) return(-1);
 		if ((len = getword(buf, 0)) <= 0) return(MAXUTYPE(u_short));
-		cp = hbuf = (u_char *)malloc2(len * 2);
+		cp = hbuf = (u_char *)Xmalloc(len * 2);
 		if (sureread(fd, hbuf, len * 2) != len * 2) {
-			free2(hbuf);
+			Xfree(hbuf);
 			return(-1);
 		}
 	}
@@ -239,12 +239,12 @@ int fd;
 		for (j = 0; j < MAXHINSI; j++) {
 			if (hinsi[j] == MAXUTYPE(u_short)) break;
 			if (hinsi[j] == w) {
-				free2(hbuf);
+				Xfree(hbuf);
 				return(j);
 			}
 		}
 	}
-	free2(hbuf);
+	Xfree(hbuf);
 
 	return(MAXUTYPE(u_short));
 }
@@ -300,24 +300,24 @@ CONST char *file;
 	char path[MAXPATHLEN];
 
 	if (!file) {
-		if (fd >= 0) Xclose(fd);
+		if (fd >= 0) VOID_C Xclose(fd);
 		fd = -2;
 		return(0);
 	}
 
 	if (fd >= -1) return(fd);
 
-	if (!dicttblpath || !*dicttblpath) strcpy2(path, file);
+	if (!dicttblpath || !*dicttblpath) Xstrcpy(path, file);
 	else strcatdelim2(path, dicttblpath, file);
 
 	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
 	else if (!dicttblent && fgetdword(&dicttblent, fd) < 0) {
-		Xclose(fd);
+		VOID_C Xclose(fd);
 		fd = -1;
 	}
 	else if (!hinsitblent) {
 		if ((hinsitblofs = fgetoffset(dicttblent, fd)) < (off_t)0
-		|| !skread(fd, hinsitblofs, buf, 2))
+		|| !skread(fd, hinsitblofs, buf, sizeof(buf)))
 			hinsitblent = -1;
 		else hinsitblent = getword(buf, 0);
 	}
@@ -349,7 +349,7 @@ int fd;
 		size = (ALLOC_T)hinsitblent * 2;
 		if (!(tbl = newhinsitbl(size))) return;
 		if (!skread(fd, hinsitblofs + 2, tbl, size)) {
-			free2(tbl);
+			Xfree(tbl);
 			return;
 		}
 		hinsiindexbuf = tbl;
@@ -359,11 +359,11 @@ int fd;
 
 	if (!hinsitblbuf) {
 		ofs = (off_t)hinsitblent * 2 + 2;
-		if (!skread(fd, hinsitblofs + ofs, buf, 2)) return;
+		if (!skread(fd, hinsitblofs + ofs, buf, sizeof(buf))) return;
 		size = getword(buf, 0);
 		if (!(tbl = newhinsitbl(size))) return;
 		if (sureread(fd, tbl, size) != size) {
-			free2(tbl);
+			Xfree(tbl);
 			return;
 		}
 		hinsitblbuf = tbl;
@@ -372,9 +372,9 @@ int fd;
 
 VOID discarddicttable(VOID_A)
 {
-	free2(hinsiindexbuf);
+	Xfree(hinsiindexbuf);
 	hinsiindexbuf = NULL;
-	free2(hinsitblbuf);
+	Xfree(hinsitblbuf);
 	hinsitblbuf = NULL;
 }
 
@@ -444,7 +444,7 @@ int flags;
 	}
 
 	if (lck) return(lck);
-	file = evalpath(strdup2(file), 0);
+	file = evalpath(Xstrdup(file), 0);
 
 	freqtblent = 0L;
 	lck = lockopen(file, flags, 0666);
@@ -457,7 +457,7 @@ int flags;
 	}
 
 	if (!lck) {
-		lck = (lockbuf_t *)malloc2(sizeof(lockbuf_t));
+		lck = (lockbuf_t *)Xmalloc(sizeof(lockbuf_t));
 		lck -> fd = -1;
 		lck -> fp = NULL;
 		lck -> name = NULL;
@@ -495,13 +495,13 @@ CONST kanjitable *kp2;
 		else if (fgetfreqbuf(&tmp, ofs, lck -> fd) < 0) return(-1);
 
 		n = cmpdict(kp1, &tmp);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (n > 0) min = ofs;
 		else if (n < 0) max = ofs;
 		else if (fgetstring(&tmp, lck -> fd) < 0) return(-1);
 		else {
 			n = cmpdict(kp2, &tmp);
-			free2(tmp.kbuf);
+			Xfree(tmp.kbuf);
 			if (n > 0) min = ofs;
 			else if (n < 0) max = ofs;
 			else break;
@@ -567,18 +567,18 @@ int fdin, fdout;
 	for (ofs = 0; ofs < kp1 -> ofs; ofs++) {
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (fgetword(&(tmp.freq), fdin) < 0) return(-1);
 		if (fputword(tmp.freq, fdout) < 0) return(-1);
 	}
 	if (skip) {
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (fgetword(&(tmp.freq), fdin) < 0) return(-1);
 		ofs++;
 	}
@@ -588,10 +588,10 @@ int fdin, fdout;
 	for (; ofs < ent; ofs++) {
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (fgetstring(&tmp, fdin) < 0) return(-1);
 		if (fputstring(&tmp, fdout) < 0) return(-1);
-		free2(tmp.kbuf);
+		Xfree(tmp.kbuf);
 		if (fgetword(&(tmp.freq), fdin) < 0) return(-1);
 		if (fputword(tmp.freq, fdout) < 0) return(-1);
 	}
@@ -616,8 +616,8 @@ CONST u_short *kana, *kbuf;
 
 	VOID_C openfreqtbl(NULL, 0);
 	if (!(lck = openfreqtbl(FREQFILE, O_BINARY | O_RDWR))) return;
-	cp = evalpath(strdup2(FREQFILE), 0);
-	strcpy2(path, cp);
+	cp = evalpath(Xstrdup(FREQFILE), 0);
+	Xstrcpy(path, cp);
 	if ((fdin = lck -> fd) >= 0) fdout = opentmpfile(path, 0666);
 	else {
 		VOID_C openfreqtbl(NULL, 0);
@@ -629,7 +629,7 @@ CONST u_short *kana, *kbuf;
 	if (fdout < 0) {
 		VOID_C openfreqtbl(NULL, 0);
 		if (fdin < 0) lockclose(lck);
-		free2(cp);
+		Xfree(cp);
 		return;
 	}
 
@@ -641,21 +641,21 @@ CONST u_short *kana, *kbuf;
 	n = copyuserfreq(&tmp1, &tmp2, fdin, fdout);
 	if (fdin < 0) {
 #if	!MSDOS && !defined (CYGWIN)
-		if (n < 0) Xunlink(path);
+		if (n < 0) VOID_C Xunlink(path);
 		lockclose(lck);
 #else
 		lockclose(lck);
-		if (n < 0) Xunlink(path);
+		if (n < 0) VOID_C Xunlink(path);
 #endif
 	}
 	else {
 #if	!MSDOS && !defined (CYGWIN)
 		if (n >= 0) n = Xrename(path, cp);
 		VOID_C openfreqtbl(NULL, 0);
-		Xclose(fdout);
+		VOID_C Xclose(fdout);
 #else	/* MSDOS || CYGWIN */
 		VOID_C openfreqtbl(NULL, 0);
-		Xclose(fdout);
+		VOID_C Xclose(fdout);
 		if (n >= 0) {
 # if	MSDOS
 			n = Xrename(path, cp);
@@ -667,10 +667,10 @@ CONST u_short *kana, *kbuf;
 # endif
 		}
 #endif	/* MSDOS || CYGWIN */
-		if (n < 0) Xunlink(path);
+		if (n < 0) VOID_C Xunlink(path);
 	}
 
-	free2(cp);
+	Xfree(cp);
 }
 
 static int cmpdict(vp1, vp2)
@@ -721,7 +721,7 @@ long argc;
 kanjitable **argvp;
 CONST kanjitable *tmp;
 {
-	*argvp = (kanjitable *)realloc2(*argvp,
+	*argvp = (kanjitable *)Xrealloc(*argvp,
 		(argc + 2) * sizeof(kanjitable));
 	memcpy((char *)&((*argvp)[argc++]), tmp, sizeof(kanjitable));
 	(*argvp)[argc].kbuf = NULL;
@@ -735,8 +735,8 @@ kanjitable *argv;
 	long n;
 
 	if (argv) {
-		for (n = 0L; argv[n].kbuf; n++) free2(argv[n].kbuf);
-		free2(argv);
+		for (n = 0L; argv[n].kbuf; n++) Xfree(argv[n].kbuf);
+		Xfree(argv);
 	}
 }
 
@@ -756,7 +756,7 @@ int fd;
 	tmp1.klen = kp -> len;
 	if (fgetstring(&tmp2, fd) < 0 || fgetword(&(tmp2.freq), fd) < 0
 	|| fgethinsi(hinsi, fd) < 0) {
-		free2(tmp2.kbuf);
+		Xfree(tmp2.kbuf);
 		return(argc);
 	}
 
@@ -775,7 +775,7 @@ int fd;
 	if (hinsitblent <= 0) {
 		if (kp -> len < kp -> klen) {
 			tmp2.klen += kp -> klen - kp -> len;
-			tmp2.kbuf = (u_short *)realloc2(tmp2.kbuf,
+			tmp2.kbuf = (u_short *)Xrealloc(tmp2.kbuf,
 				(tmp2.klen + 1) * sizeof(u_short));
 			memcpy((char *)&(tmp2.kbuf[tmp1.klen]),
 				(char *)&(kp -> kbuf[kp -> len]),
@@ -801,7 +801,7 @@ int fd;
 					return(addkanji(argc, argvp, &tmp2));
 			}
 		}
-		free2(tmp1.kbuf);
+		Xfree(tmp1.kbuf);
 		return(argc);
 	}
 
@@ -812,7 +812,7 @@ int fd;
 		for (tmp2.len = kp -> klen; tmp2.len > (u_char)0; tmp2.len--)
 			argc2 = _searchdict(argc2, &argv2, &tmp2, fd);
 		if (!argv2) {
-			free2(tmp1.kbuf);
+			Xfree(tmp1.kbuf);
 			return(argc);
 		}
 	}
@@ -824,7 +824,7 @@ int fd;
 
 		tmp2.klen = tmp1.klen + argv2[n].klen;
 		tmp2.kbuf =
-			(u_short *)malloc2((tmp2.klen + 1) * sizeof(u_short));
+			(u_short *)Xmalloc((tmp2.klen + 1) * sizeof(u_short));
 		memcpy((char *)(tmp2.kbuf), (char *)(tmp1.kbuf),
 			tmp1.klen * sizeof(u_short));
 		memcpy((char *)&(tmp2.kbuf[tmp1.klen]),
@@ -858,7 +858,7 @@ int fd;
 	}
 
 	if (!next) freekanji(argv2);
-	free2(tmp1.kbuf);
+	Xfree(tmp1.kbuf);
 
 	return(argc);
 }
@@ -901,7 +901,7 @@ int fd;
 		|| (fgetjisbuf(&tmp2, ofs, fd)) < 0)
 			return(argc);
 		n = cmpdict(&tmp1, &tmp2);
-		free2(tmp2.kbuf);
+		Xfree(tmp2.kbuf);
 		if (n > 0) min = ofs;
 		else if (n < 0) max = ofs;
 		else break;
@@ -949,7 +949,7 @@ kanjitable *argv;
 				(char *)(argv[i + j].kbuf),
 				argv[i].klen * sizeof(u_short));
 			if (c) break;
-			free2(argv[i + j].kbuf);
+			Xfree(argv[i + j].kbuf);
 			if (argv[i + j].len > argv[i].len) {
 				argv[i].len = argv[j].len;
 				argv[i].freq = argv[j].freq;
@@ -981,9 +981,9 @@ u_short **argv;
 						break;
 				if (kanjilist[n].kbuf) continue;
 			}
-			free2(argv[argc]);
+			Xfree(argv[argc]);
 		}
-		free2(argv);
+		Xfree(argv);
 	}
 	freekanji(kanjilist);
 	kanjilist = NULL;
@@ -1025,12 +1025,12 @@ int len;
 	tmp.hinsi[1] = MAXUTYPE(u_short);
 	tmp.ofs = dicttblent;
 
-	tmp.kbuf = (u_short *)malloc2((len + 1) * sizeof(u_short));
+	tmp.kbuf = (u_short *)Xmalloc((len + 1) * sizeof(u_short));
 	for (i = 0; i < len; i++) tmp.kbuf[i] = kana[i];
 	tmp.kbuf[len] = (u_short)0;
 	argc = addkanji(argc, &kanjilist, &tmp);
 
-	tmp.kbuf = (u_short *)malloc2((len + 1) * sizeof(u_short));
+	tmp.kbuf = (u_short *)Xmalloc((len + 1) * sizeof(u_short));
 	for (i = 0; i < len; i++) {
 		if ((kana[i] & 0xff00) != 0x2400) tmp.kbuf[i] = kana[i];
 		else tmp.kbuf[i] = (0x2500 | (kana[i] & 0xff));
@@ -1044,7 +1044,7 @@ int len;
 		qsort(kanjilist, argc, sizeof(kanjitable), cmpdict);
 		argc = uniqkanji(argc, kanjilist);
 		qsort(kanjilist, argc, sizeof(kanjitable), cmpfreq);
-		list = (u_short **)malloc2((argc + 1) * sizeof(u_short *));
+		list = (u_short **)Xmalloc((argc + 1) * sizeof(u_short *));
 		for (n = 0L; n < argc; n++) list[n] = kanjilist[n].kbuf;
 		list[n] = NULL;
 	}

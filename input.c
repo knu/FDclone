@@ -255,20 +255,20 @@ int key;
 
 	duperrno = errno;
 	if (!kbhit2(0L)) c = EOF;
-	else if ((c = getch2()) == EOF) /*EMPTY*/;
+	else if ((c = Xgetch()) == EOF) /*EMPTY*/;
 	else if (c != K_ESC) /*EMPTY*/;
 	else if (kbhit2(WAITKEYPAD * 1000L)) {
-		ungetkey2(c, 0);
+		VOID_C ungetkey2(c, 0);
 		c = EOF;
 	}
 
 	if (c == EOF) /*EMPTY*/;
 	else if (c == cc_intr || (key >= 0 && c == key)) {
 		if (isttyiomode) warning(0, INTR_K);
-		else fprintf2(Xstderr, "%k\n", INTR_K);
+		else Xfprintf(Xstderr, "%k\n", INTR_K);
 	}
 	else {
-		ungetkey2(c, 0);
+		VOID_C ungetkey2(c, 0);
 		c = EOF;
 	}
 	errno = duperrno;
@@ -374,7 +374,7 @@ int sig, timeout;
 {
 	int n;
 
-	for (n = 0; n < ungetnum3; n++) ungetkey2((int)ungetbuf3[n], 0);
+	for (n = 0; n < ungetnum3; n++) VOID_C ungetkey2((int)ungetbuf3[n], 0);
 # ifdef	DEP_IME
 	if (imemode && !ungetnum3 && getime(sig, &n, 0) >= 0) /*EMPTY*/;
 	else
@@ -517,13 +517,13 @@ int *cxp, len;
 #else
 	else if (isskana(s, *cxp)) /*EMPTY*/;
 #endif
-	else if (iscntrl2(s[*cxp])) {
+	else if (Xiscntrl(s[*cxp])) {
 		*((*sp)++) = '^';
 		*((*sp)++) = (s[(*cxp)++] + '@') & 0x7f;
 		return(2);
 	}
 	else if (ismsb(s[*cxp])) {
-		*sp += snprintf2(*sp, 4 + 1, "\\%03o", s[(*cxp)++] & 0xff);
+		*sp += Xsnprintf(*sp, 4 + 1, "\\%03o", s[(*cxp)++] & 0xff);
 		return(4);
 	}
 
@@ -538,7 +538,7 @@ int len, *widthp;
 	char *cp, *buf;
 	int cx, vw;
 
-	cp = buf = malloc2(len * 4 + 1);
+	cp = buf = Xmalloc(len * 4 + 1);
 	cx = vw = 0;
 	while (cx < len) vw += trquoteone(&cp, s, &cx, len);
 	*cp = '\0';
@@ -564,7 +564,7 @@ int cx;
 #else
 		else if (isskana(s, r)) rw = vw = 1;
 #endif
-		else if (iscntrl2(s[r])) {
+		else if (Xiscntrl(s[r])) {
 			rw = 1;
 			vw = 2;
 		}
@@ -598,7 +598,7 @@ int cx2;
 #else
 		else if (isskana(s, r)) rw = vw = 1;
 #endif
-		else if (v + 1 < cx2 && iscntrl2(s[r])) {
+		else if (v + 1 < cx2 && Xiscntrl(s[r])) {
 			rw = 1;
 			vw = 2;
 		}
@@ -632,7 +632,7 @@ int cx2;
 #else
 		else if (isskana(s, r)) rw = vw = 1;
 #endif
-		else if (iscntrl2(s[r])) {
+		else if (Xiscntrl(s[r])) {
 			rw = 1;
 			vw = 2;
 		}
@@ -658,15 +658,15 @@ int len, ptr;
 	int n;
 
 	if (len < 0) return(0);
-	buf = malloc2(len * KANAWID + 1);
-	strncpy3(buf, s, &len, ptr);
+	buf = Xmalloc(len * KANAWID + 1);
+	strncpy2(buf, s, &len, ptr);
 #ifdef	DEP_KCONV
 	n = Xkanjiputs(buf);
 #else
-	Xcputs2(buf);
+	XXcputs(buf);
 	n = strlen2(buf);
 #endif
-	free2(buf);
+	Xfree(buf);
 
 	return(n);
 }
@@ -679,7 +679,7 @@ int cx2, len2, ptr, top;
 	int n, width;
 
 	if (!searchmode || ptr + len2 <= top || ptr >= cx2) {
-		kanjiputs2(s, len2, ptr);
+		VOID_C kanjiputs2(s, len2, ptr);
 		return;
 	}
 
@@ -687,23 +687,23 @@ int cx2, len2, ptr, top;
 	n = top - ptr;
 	if (n <= 0) width += n;
 	else {
-		kanjiputs2(s, n, ptr);
+		VOID_C kanjiputs2(s, n, ptr);
 		ptr += n;
 		len2 -= n;
 	}
 	Xputterm(T_STANDOUT);
-	kanjiputs2(s, width, ptr);
+	VOID_C kanjiputs2(s, width, ptr);
 	ptr += width;
 	len2 -= width;
 	Xputterm(END_STANDOUT);
-	if (len2 > 0) kanjiputs2(s, len2, ptr);
+	if (len2 > 0) VOID_C kanjiputs2(s, len2, ptr);
 }
 #endif	/* FD >= 2 */
 
 VOID cputspace(n)
 int n;
 {
-	Xcprintf2("%*s", n, nullstr);
+	VOID_C XXcprintf("%*s", n, nullstr);
 }
 
 VOID cputstr(n, s)
@@ -711,19 +711,19 @@ int n;
 CONST char *s;
 {
 	if (!s) cputspace(n);
-	else Xcprintf2("%-*.*k", n, n, s);
+	else VOID_C XXcprintf("%-*.*k", n, n, s);
 }
 
 static VOID NEAR putcursor(c, n)
 int c, n;
 {
 	win_x += n;
-	while (n--) Xputch2(c);
+	while (n--) VOID_C XXputch(c);
 #ifdef	DEP_ORIGSHELL
 	if (dumbmode);
 	else if (shellmode && win_x >= n_column) {
-		Xputch2(' ');
-		Xputch2('\r');
+		VOID_C XXputch(' ');
+		VOID_C XXputch('\r');
 		win_x = 0;
 		win_y++;
 	}
@@ -759,7 +759,7 @@ static VOID NEAR forwcursor(x)
 int x;
 {
 	while (win_x < x) {
-		Xputch2(' ');
+		VOID_C XXputch(' ');
 		win_x++;
 	}
 }
@@ -768,7 +768,7 @@ static VOID NEAR backcursor(x)
 int x;
 {
 	while (win_x > x) {
-		Xputch2(C_BS);
+		VOID_C XXputch(C_BS);
 		win_x--;
 	}
 }
@@ -785,8 +785,8 @@ int x;
 			win_x -= n_column;
 			win_y++;
 		}
-		Xputch2(' ');
-		Xputch2('\r');
+		VOID_C XXputch(' ');
+		VOID_C XXputch('\r');
 	}
 	win_x = 0;
 	forwcursor(x);
@@ -800,12 +800,12 @@ int cx2, len2, max, ptr;
 	if (max <= 0) clearline();
 	else {
 		if (len2 < max) {
-			kanjiputs2(s, len2, ptr);
+			VOID_C kanjiputs2(s, len2, ptr);
 			win_x += len2;
 		}
 		else {
 			if (vonkanji1(s, ptr + max - 1)) max++;
-			kanjiputs2(s, max, ptr);
+			VOID_C kanjiputs2(s, max, ptr);
 			win_x += max;
 			putcursor('>', 1);
 		}
@@ -829,7 +829,7 @@ int cx, cx2;
 		ocx = rlen(inputbuf, ocx2);
 		dupl = trquote(&(inputbuf[ocx]), cx - ocx, NULL);
 		win_x += Xkanjiputs(dupl);
-		free2(dupl);
+		Xfree(dupl);
 	}
 }
 
@@ -879,7 +879,7 @@ int x, y;
 		if (y < win_y) Xmovecursor(C_NUP, C_UP, win_y - y);
 		else if (y > win_y) {
 			Xmovecursor(-1, C_SCROLLFORW, y - win_y);
-			Xputch2('\r');
+			VOID_C XXputch('\r');
 			win_x = 0;
 		}
 		if (x < win_x) Xmovecursor(C_NLEFT, C_LEFT, win_x - x);
@@ -941,7 +941,7 @@ int *cxp, *cxp2, ins;
 		cp = tmp;
 		while (*cp) {
 			vw = (iskanji1(cp, 0)) ? 2 : 1;
-			Xcprintf2("%.*k", vw, cp);
+			VOID_C XXcprintf("%.*k", vw, cp);
 			cp += vw;
 			win_x += vw;
 			*cxp2 += vw;
@@ -960,7 +960,7 @@ int *cxp, *cxp2, ins;
 static VOID NEAR ringbell(VOID_A)
 {
 #ifdef	DEP_ORIGSHELL
-	if (dumbmode && dumbterm <= 2) Xputch2('\007');
+	if (dumbmode && dumbterm <= 2) VOID_C XXputch('\007');
 	else
 #endif
 	Xputterm(T_BELL);
@@ -976,8 +976,8 @@ static VOID NEAR clearline(VOID_A)
 #ifdef	DEP_ORIGSHELL
 	if (dumbmode) {
 		/* abandon last 1 char because of auto newline */
-		for (x = win_x; x < n_column - 1; x++) Xputch2(' ');
-		for (x = win_x; x < n_column - 1; x++) Xputch2(C_BS);
+		for (x = win_x; x < n_column - 1; x++) VOID_C XXputch(' ');
+		for (x = win_x; x < n_column - 1; x++) VOID_C XXputch(C_BS);
 	}
 	else
 #endif
@@ -1008,7 +1008,7 @@ static VOID NEAR rightchar(VOID_A)
 #else
 	else if (isskana(inputbuf, rptr)) rw = vw = 1;
 #endif
-	else if (iscntrl2(inputbuf[rptr])) {
+	else if (Xiscntrl(inputbuf[rptr])) {
 		rw = 1;
 		vw = 2;
 	}
@@ -1045,7 +1045,7 @@ static VOID NEAR leftchar(VOID_A)
 #else
 	else if (isskana(inputbuf, rptr - 1)) rw = vw = 1;
 #endif
-	else if (iscntrl2(inputbuf[rptr - 1])) {
+	else if (Xiscntrl(inputbuf[rptr - 1])) {
 		rw = 1;
 		vw = 2;
 	}
@@ -1156,7 +1156,7 @@ int cx, cx2, ins;
 					if (f2) l++;
 				}
 				if (ptr + l > nlen - cx2) l = nlen - cx2 - ptr;
-				kanjiputs2(dupl, l, ptr);
+				VOID_C kanjiputs2(dupl, l, ptr);
 				win_x += l;
 				i += maxcol;
 			}
@@ -1191,7 +1191,7 @@ int cx, cx2, ins;
 			}
 			if (f1) l++;
 			if (l > 0) {
-				kanjiputs2(dupl, l, j);
+				VOID_C kanjiputs2(dupl, l, j);
 				win_x += l;
 			}
 
@@ -1222,7 +1222,7 @@ int cx, cx2, ins;
 
 		l = len2 - cx2 - j;
 		if (l > 0) {
-			kanjiputs2(dupl, l, j);
+			VOID_C kanjiputs2(dupl, l, j);
 			win_x += l;
 		}
 		setcursor(cx, cx2);
@@ -1242,7 +1242,7 @@ int cx, cx2, ins;
 		while (ypos + dy >= maxline - 1) scrollup();
 		setcursor(cx, cx2);
 	}
-	free2(dupl);
+	Xfree(dupl);
 }
 
 static VOID NEAR deletechar(cx, cx2, del)
@@ -1298,7 +1298,7 @@ int cx, cx2, del;
 				locate2(j, dy);
 				if (ptr + l > len2) l = len2 - ptr;
 				if (l > 0) {
-					kanjiputs2(dupl, l, ptr);
+					VOID_C kanjiputs2(dupl, l, ptr);
 					win_x += l;
 				}
 				if (!f1) putcursor(' ', 1);
@@ -1327,7 +1327,7 @@ int cx, cx2, del;
 			else f1 = vonkanji1(dupl, ptr + del);
 			if (f1) l++;
 			if (l > 0) {
-				kanjiputs2(dupl, l, j);
+				VOID_C kanjiputs2(dupl, l, j);
 				win_x += l;
 			}
 
@@ -1348,13 +1348,13 @@ int cx, cx2, del;
 
 		l = len2 - cx2 - j;
 		if (l > 0) {
-			kanjiputs2(dupl, l, j);
+			VOID_C kanjiputs2(dupl, l, j);
 			win_x += l;
 		}
 		clearline();
 		setcursor(cx, cx2);
 	}
-	free2(dupl);
+	Xfree(dupl);
 }
 
 static VOID NEAR insshift(cx, ins)
@@ -1444,7 +1444,7 @@ static VOID NEAR displaystr(VOID_A)
 		}
 		dumbputs(dupl, i + vptr, len2, maxcol - i, lastofs2);
 		Xtflush();
-		free2(dupl);
+		Xfree(dupl);
 		return;
 	}
 #endif	/* DEP_ORIGSHELL */
@@ -1515,7 +1515,7 @@ static VOID NEAR displaystr(VOID_A)
 	if (vi) Xputterm(T_NORMALCURSOR);
 	setcursor(rptr, vptr);
 	Xtflush();
-	free2(dupl);
+	Xfree(dupl);
 }
 
 static VOID NEAR insertbuf(ins)
@@ -1549,7 +1549,7 @@ int rins, vins;
 #else
 	else if (isskana(inputbuf, rptr)) rw = vw = 1;
 #endif
-	else if (iscntrl2(inputbuf[rptr])) {
+	else if (Xiscntrl(inputbuf[rptr])) {
 		rw = 1;
 		vw = 2;
 	}
@@ -1689,7 +1689,7 @@ int ins, qtop, *qp, *qedp;
 				strins[i], &qtop, qp, qedp);
 			if (n < -1) return(0);
 			setcursor(rptr, vptr);
-			if (*qp == '\'' || !strchr2(DQ_METACHAR, strins[i])) {
+			if (*qp == '\'' || !Xstrchr(DQ_METACHAR, strins[i])) {
 				inputbuf[rptr] = strins[i];
 				putstr(&rptr, &vptr, 1);
 			}
@@ -1733,7 +1733,7 @@ char *CONST *argv;
 	fnameofs = 0;
 
 	if (argv) {
-		selectlist = (namelist *)malloc2(argc * sizeof(namelist));
+		selectlist = (namelist *)Xmalloc(argc * sizeof(namelist));
 		maxlen = 0;
 		for (i = 0; i < argc; i++) {
 			memset((char *)&(selectlist[i]), 0, sizeof(namelist));
@@ -1744,7 +1744,7 @@ char *CONST *argv;
 				cp = NULL;
 			}
 
-			selectlist[i].name = strndup2(argv[i], len);
+			selectlist[i].name = Xstrndup(argv[i], len);
 			selectlist[i].flags = (F_ISRED | F_ISWRI);
 			selectlist[i].st_mode = (cp) ? S_IFDIR : S_IFREG;
 			selectlist[i].tmpflags = F_STAT;
@@ -1761,15 +1761,16 @@ char *CONST *argv;
 			Xcputnl();
 			if (argc < LIMITSELECTWARN) i = 'Y';
 			else {
-				Xcprintf2("There are %d possibilities.", argc);
-				Xcputs2("  Do you really");
+				VOID_C XXcprintf("There are %d possibilities.",
+					argc);
+				XXcputs("  Do you really");
 				Xcputnl();
-				Xcputs2("wish to see them all? (y or n)");
+				XXcputs("wish to see them all? (y or n)");
 				Xtflush();
 				for (;;) {
 					i = getkey3(0, getinkcode(), 0);
 					if (i < K_MIN) {
-						i = toupper2(i);
+						i = Xtoupper(i);
 						if (i == 'Y' || i == 'N')
 							break;
 					}
@@ -1783,7 +1784,7 @@ char *CONST *argv;
 			else if (n_column < maxlen + 2) {
 				n += argc;
 				for (i = 0; i < argc; i++) {
-					Xkanjiputs(selectlist[i].name);
+					VOID_C Xkanjiputs(selectlist[i].name);
 					Xcputnl();
 				}
 			}
@@ -1808,8 +1809,8 @@ char *CONST *argv;
 # endif
 			if (ypos + n < maxline - 1) ypos += n;
 			else ypos = maxline - 1;
-			for (i = 0; i < argc; i++) free2(selectlist[i].name);
-			free2(selectlist);
+			for (i = 0; i < argc; i++) Xfree(selectlist[i].name);
+			Xfree(selectlist);
 			selectlist = NULL;
 			FILEPERROW = duprow;
 			minfilename = dupminfilename;
@@ -1837,8 +1838,8 @@ char *CONST *argv;
 		maxselect = argc;
 	}
 	else if (argc < 0) {
-		for (i = 0; i < maxselect; i++) free2(selectlist[i].name);
-		free2(selectlist);
+		for (i = 0; i < maxselect; i++) Xfree(selectlist[i].name);
+		Xfree(selectlist);
 		selectlist = NULL;
 	}
 	else {
@@ -1919,13 +1920,13 @@ int comline, cont, h;
 			i += n - 1;
 # endif
 		else if (inputbuf[i] == ':' || inputbuf[i] == '='
-		|| strchr2(CMDLINE_DELIM, inputbuf[i]))
+		|| Xstrchr(CMDLINE_DELIM, inputbuf[i]))
 			top = i + 1;
 	}
 	if (comline && top > 0) {
 		for (i = top - 1; i >= 0; i--)
-			if (!isblank2(inputbuf[i])) break;
-		if (i >= 0 && !strchr2(SHELL_OPERAND, inputbuf[i]))
+			if (!Xisblank(inputbuf[i])) break;
+		if (i >= 0 && !Xstrchr(SHELL_OPERAND, inputbuf[i]))
 			comline = 0;
 	}
 # ifdef	DEP_ORIGSHELL
@@ -1944,7 +1945,7 @@ int comline, cont, h;
 	}
 # endif	/* DEP_ORIGSHELL */
 
-	cp = strndup2(&(inputbuf[top]), rptr - top);
+	cp = Xstrndup(&(inputbuf[top]), rptr - top);
 # ifdef	DEP_ORIGSHELL
 	if (vartop) /*EMPTY*/;
 	else
@@ -1956,10 +1957,10 @@ int comline, cont, h;
 	cp = evalpath(cp, 0);
 
 	if (selectlist && cont < 0) {
-		argv = (char **)malloc2(1 * sizeof(char *));
+		argv = (char **)Xmalloc(1 * sizeof(char *));
 		n = strlen(selectlist[tmpfilepos].name);
 		i = (s_isdir(&(selectlist[tmpfilepos]))) ? 1 : 0;
-		argv[0] = (char *)malloc2(n + i + 1);
+		argv[0] = (char *)Xmalloc(n + i + 1);
 		memcpy(argv[0], selectlist[tmpfilepos].name, n);
 		if (i) argv[0][n] = _SC_;
 		argv[0][n + i] = '\0';
@@ -2009,9 +2010,9 @@ int comline, cont, h;
 	}
 
 	ins = strlen(getbasename(cp));
-	free2(cp);
+	Xfree(cp);
 	if (!argc) {
-		free2(argv);
+		Xfree(argv);
 		ringbell();
 		return(-1);
 	}
@@ -2030,17 +2031,17 @@ int comline, cont, h;
 			if (lcmdline < 0) displaystr();
 			setcursor(rptr, vptr);
 		}
-		for (i = 0; i < argc; i++) free2(argv[i]);
-		free2(argv);
-		free2(cp);
+		for (i = 0; i < argc; i++) Xfree(argv[i]);
+		Xfree(argv);
+		Xfree(cp);
 		return(-1);
 	}
-	for (i = 0; i < argc; i++) free2(argv[i]);
-	free2(argv);
+	for (i = 0; i < argc; i++) Xfree(argv[i]);
+	Xfree(argv);
 
 	qtop = top;
 	if (!quote && inputbuf[top] == '~') {
-		tmp = strchr2(&(inputbuf[top + 1]), _SC_);
+		tmp = Xstrchr(&(inputbuf[top + 1]), _SC_);
 		if (tmp) qtop = tmp - inputbuf + 1;
 	}
 
@@ -2049,7 +2050,7 @@ int comline, cont, h;
 # ifndef	NOUID
 	if (h == HST_USER || h == HST_GROUP) {
 		VOID_C insertstr(tmp, ins, qtop, &quote, NULL);
-		free2(cp);
+		Xfree(cp);
 		return(0);
 	}
 # endif
@@ -2070,11 +2071,11 @@ int comline, cont, h;
 		else if (pc == PC_ESCAPE) {
 			rw = 2;
 			if (inputbuf[i + 1] == '!') qtop = i + 2;
-			else if (strchr2(DQ_METACHAR, inputbuf[i + 1])) {
+			else if (Xstrchr(DQ_METACHAR, inputbuf[i + 1])) {
 				n = quotemeta(&i, &i2,
 					'\0', &qtop, &quote, &quoted);
 				if (n < 0) {
-					free2(cp);
+					Xfree(cp);
 					return(0);
 				}
 			}
@@ -2100,7 +2101,7 @@ int comline, cont, h;
 				ch = '\0';
 			}
 			if (insertcursor(&i, &i2, n, ch) < 0) {
-				free2(cp);
+				Xfree(cp);
 				return(0);
 			}
 			inputbuf[i] = PESCAPE;
@@ -2112,9 +2113,9 @@ int comline, cont, h;
 			rw = 0;
 		}
 		else if (pc == PC_OPQUOTE || pc == PC_SQUOTE) /*EMPTY*/;
-		else if (strchr2(DQ_METACHAR, inputbuf[i])) {
+		else if (Xstrchr(DQ_METACHAR, inputbuf[i])) {
 			if (insertcursor(&i, &i2, 1, PESCAPE) < 0) {
-				free2(cp);
+				Xfree(cp);
 				return(0);
 			}
 			rptr++;
@@ -2122,11 +2123,11 @@ int comline, cont, h;
 			qtop = i + 1;
 		}
 		else if (pc != PC_NORMAL) /*EMPTY*/;
-		else if (strchr2(METACHAR, inputbuf[i])) {
+		else if (Xstrchr(METACHAR, inputbuf[i])) {
 			n = quotemeta(&i, &i2,
 				inputbuf[i], &qtop, &quote, &quoted);
 			if (n < 0) {
-				free2(cp);
+				Xfree(cp);
 				return(0);
 			}
 		}
@@ -2136,7 +2137,7 @@ int comline, cont, h;
 	setcursor(rptr, vptr);
 
 	n = insertstr(tmp, ins, qtop, &quote, &quoted);
-	free2(cp);
+	Xfree(cp);
 	if (n < 0) return(0);
 	if (fix) {
 		if (quote > '\0' && (fix != _SC_ || quoted < 0)) {
@@ -2200,7 +2201,7 @@ static int NEAR getch3(VOID_A)
 	if (imemode) return((getime(0, &c, 1) >= 0) ? c : EOF);
 #endif
 	if (!kbhit2(WAITKANJI * 1000L)) return(EOF);
-	return(getch2());
+	return(Xgetch());
 }
 
 static int NEAR getkanjikey(buf, ch)
@@ -2224,7 +2225,7 @@ int ch;
 		kanjiconv(buf, tmp, MAXKLEN, code, DEFCODE, L_INPUT);
 		return(1);
 	}
-	if (code == SJIS && iskana2(ch)) {
+	if (code == SJIS && Xiskana(ch)) {
 		tmp[0] = ch;
 		tmp[1] = '\0';
 		kanjiconv(buf, tmp, MAXKLEN, code, DEFCODE, L_INPUT);
@@ -2268,7 +2269,7 @@ int ch;
 		return(1);
 	}
 # else
-	if (iskana2(ch)) {
+	if (Xiskana(ch)) {
 		buf[0] = ch;
 		buf[1] = '\0';
 		return(1);
@@ -2302,7 +2303,7 @@ int ch;
 	buf[0] = ch;
 	buf[1] = '\0';
 
-	return((iscntrl2(ch) || ismsb(ch)) ? 0 : 1);
+	return((Xiscntrl(ch) || ismsb(ch)) ? 0 : 1);
 }
 
 static VOID NEAR copyhist(hist, keep)
@@ -2373,7 +2374,7 @@ char **tmp;
 
 		if (!*tmp) {
 			inputbuf[inputlen] = '\0';
-			*tmp = strdup2(inputbuf);
+			*tmp = Xstrdup(inputbuf);
 		}
 		rptr = -1;
 		copyhist(history[h][(*histnop)++], 0);
@@ -2426,7 +2427,7 @@ char **tmp;
 		if (--(*histnop) > 0) copyhist(history[h][*histnop - 1], 0);
 		else {
 			copyhist(*tmp, 0);
-			free2(*tmp);
+			Xfree(*tmp);
 			*tmp = NULL;
 		}
 	}
@@ -2470,7 +2471,7 @@ static VOID NEAR _inputstr_delete(VOID_A)
 #else
 	else if (isskana(inputbuf, rptr)) rw = vw = 1;
 #endif
-	else if (iscntrl2(inputbuf[rptr])) {
+	else if (Xiscntrl(inputbuf[rptr])) {
 		rw = 1;
 		vw = 2;
 	}
@@ -2520,7 +2521,7 @@ int upper;
 	}
 	if (!iswchar(inputbuf, rptr)) {
 		ch = (upper)
-			? toupper2(inputbuf[rptr]) : tolower2(inputbuf[rptr]);
+			? Xtoupper(inputbuf[rptr]) : Xtolower(inputbuf[rptr]);
 		if (ch != inputbuf[rptr]) {
 			inputbuf[rptr++] = ch;
 			vptr++;
@@ -2587,7 +2588,7 @@ char **tmp;
 
 			if (!*tmp) {
 				inputbuf[inputlen] = '\0';
-				*tmp = strdup2(inputbuf);
+				*tmp = Xstrdup(inputbuf);
 			}
 			rptr = cx + slen;
 			vptr = vlen(history[h][n], rptr);
@@ -2672,7 +2673,7 @@ int vw;
 	}
 	memcpy(&(inputbuf[rptr]), buf, rw);
 	rptr += rw;
-	Xcprintf2("%.*k", vw, buf);
+	VOID_C XXcprintf("%.*k", vw, buf);
 	win_x += vw;
 	vptr = vlen(inputbuf, rptr);
 #ifdef	DEP_ORIGSHELL
@@ -2763,7 +2764,7 @@ int def, comline, h;
 			ch = '\0';
 			if (!*buf) continue;
 
-			n = (iscntrl2(buf[0])) ? 2 : 4;
+			n = (Xiscntrl(buf[0])) ? 2 : 4;
 			if (preparestr(1, n) < 0) {
 				ringbell();
 				continue;
@@ -2815,7 +2816,7 @@ int def, comline, h;
 					if (i <= 0) {
 						keyflush();
 						searchmode = 0;
-						free2(searchstr);
+						Xfree(searchstr);
 						searchstr = NULL;
 						searchsize = (ALLOC_T)0;
 						break;
@@ -3009,7 +3010,7 @@ int def, comline, h;
 					break;
 				}
 				searchmode = 1;
-				free2(searchstr);
+				Xfree(searchstr);
 				searchstr = NULL;
 				searchsize = (ALLOC_T)0;
 				copyhist(NULL, 1);
@@ -3021,7 +3022,7 @@ int def, comline, h;
 					break;
 				}
 				searchmode = -1;
-				free2(searchstr);
+				Xfree(searchstr);
 				searchstr = NULL;
 				searchsize = (ALLOC_T)0;
 				copyhist(NULL, 1);
@@ -3096,7 +3097,7 @@ int def, comline, h;
 	setcursor(inputlen, -1);
 	subwindow = 0;
 	Xgetkey(-1, 0, 0);
-	free2(tmphist);
+	Xfree(tmphist);
 
 	i = 0;
 #ifdef	DEP_ORIGSHELL
@@ -3136,7 +3137,7 @@ int set;
 
 	if (set < 0) {
 		if (s && *s) {
-			plen = fprintf2(NULL, "%k", s);
+			plen = Xfprintf(NULL, "%k", s);
 #ifdef	DEP_ORIGSHELL
 			if (dumbmode || shellmode) /*EMPTY*/;
 			else
@@ -3145,7 +3146,7 @@ int set;
 		}
 		else {
 			plen = evalprompt(&buf, promptstr);
-			free2(buf);
+			Xfree(buf);
 #ifndef	DEP_ORIGSHELL
 			plen++;
 #endif
@@ -3169,7 +3170,7 @@ int set;
 		else
 #endif
 		{
-			Xputch2(' ');
+			VOID_C XXputch(' ');
 			Xputterm(T_STANDOUT);
 			plen = 1 + Xkanjiputs(s);
 			Xputterm(END_STANDOUT);
@@ -3177,12 +3178,12 @@ int set;
 	}
 	else {
 #ifndef	DEP_ORIGSHELL
-		Xputch2(' ');
+		VOID_C XXputch(' ');
 		Xputterm(T_STANDOUT);
 #endif
 		plen = evalprompt(&buf, promptstr);
-		Xkanjiputs(buf);
-		free2(buf);
+		VOID_C Xkanjiputs(buf);
+		Xfree(buf);
 #ifdef	DEP_ORIGSHELL
 		if (dumbmode);
 		else
@@ -3289,7 +3290,7 @@ int h;
 				memmove(&(inputbuf[qtop + 1]),
 					&(inputbuf[qtop]), inputlen++ - qtop);
 				inputbuf[qtop] = quote = '"';
-				if (strchr2(DQ_METACHAR, def[i])) {
+				if (Xstrchr(DQ_METACHAR, def[i])) {
 					if (ptr > inputlen) ptr++;
 #ifdef	FAKEESCAPE
 					inputbuf[inputlen++] = def[i];
@@ -3331,7 +3332,7 @@ int h;
 	if (!prompt || !*prompt) {
 		if (ch != K_ESC) {
 			if (ch == cc_intr) {
-				Xcputs2("^C");
+				XXcputs("^C");
 				ch = K_ESC;
 			}
 #ifdef	DEP_PTY
@@ -3359,7 +3360,7 @@ int h;
 	lcmdline = maxcmdline = 0;
 
 	if (ch == K_ESC) {
-		free2(inputbuf);
+		Xfree(inputbuf);
 		return(NULL);
 	}
 
@@ -3379,7 +3380,7 @@ CONST char *s;
 	char *cp, *tmp;
 
 	if ((len = strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
-	|| !(cp = strchr2(s, '[')) || !(tmp = strchr2(cp, ']')))
+	|| !(cp = Xstrchr(s, '[')) || !(tmp = Xstrchr(cp, ']')))
 		return;
 
 	cp++;
@@ -3389,7 +3390,7 @@ CONST char *s;
 #ifdef	CODEEUC
 	else if (isekana(cp, len - 1)) len--;
 #endif
-	strcpy2(&(cp[len]), tmp);
+	Xstrcpy(&(cp[len]), tmp);
 }
 
 static int NEAR yesnomes(mes)
@@ -3413,7 +3414,7 @@ CONST char *mes;
 	}
 	len = kanjiputs2(mes, n_lastcolumn - YESNOSIZE, -1);
 	win_x += len;
-	Xcputs2(YESNOSTR);
+	XXcputs(YESNOSTR);
 	win_x += YESNOSIZE;
 #ifdef	DEP_ORIGSHELL
 	if (dumbmode) /*EMPTY*/;
@@ -3440,7 +3441,7 @@ va_dcl
 	char *buf;
 
 	VA_START(args, fmt);
-	VOID_C vasprintf3(&buf, fmt, args);
+	VOID_C vasprintf2(&buf, fmt, args);
 	va_end(args);
 
 	dupwin_x = win_x;
@@ -3481,7 +3482,7 @@ va_dcl
 		if (dumbmode) {
 			if (xpos + x < win_x) backcursor(xpos + x);
 			else while (xpos + x > win_x) {
-				Xputch2(YESNOSTR[win_x - xpos - len]);
+				VOID_C XXputch(YESNOSTR[win_x - xpos - len]);
 				win_x++;
 			}
 		}
@@ -3520,7 +3521,7 @@ va_dcl
 		}
 		x = len + 1 + (1 - ret) * 2;
 	} while (ch != K_CR);
-	free2(buf);
+	Xfree(buf);
 
 #ifdef	DEP_ORIGSHELL
 	if (dumbmode) Xcputnl();
@@ -3528,7 +3529,7 @@ va_dcl
 #endif
 	if (lcmdline) {
 		locate2(x, 0);
-		Xputch2((ret) ? 'Y' : 'N');
+		VOID_C XXputch((ret) ? 'Y' : 'N');
 		Xcputnl();
 	}
 	else {
@@ -3561,13 +3562,13 @@ CONST char *s;
 	dupwin_y = win_y;
 	subwindow = 1;
 
-	err = strerror2((no < 0) ? errno : no);
+	err = Xstrerror((no < 0) ? errno : no);
 	tmp = NULL;
 	if (!s) s = err;
 	else if (no) {
 		len = n_lastcolumn - strlen2(err) - 3;
-		tmp = malloc2(n_lastcolumn * KANAWID + 1);
-		strncpy3(tmp, s, &len, -1);
+		tmp = Xmalloc(n_lastcolumn * KANAWID + 1);
+		strncpy2(tmp, s, &len, -1);
 		strcat(tmp, ": ");
 		strcat(tmp, err);
 		s = tmp;
@@ -3604,7 +3605,7 @@ CONST char *s;
 		Xtflush();
 	}
 
-	free2(tmp);
+	Xfree(tmp);
 	hideclock = lcmdline = 0;
 }
 
@@ -3633,8 +3634,8 @@ int *xx, multi;
 	int i, len, maxlen;
 
 	for (i = 0; i < max; i++) {
-		free2(tmpstr[i]);
-		tmpstr[i] = strdup2(str[i]);
+		Xfree(tmpstr[i]);
+		tmpstr[i] = Xstrdup(str[i]);
 	}
 	len = selectcnt(max, tmpstr, multi);
 
@@ -3642,29 +3643,29 @@ int *xx, multi;
 	else if ((x = n_lastcolumn - 1 - len) >= 0) /*EMPTY*/;
 	else {
 		x = maxlen = 0;
-		new = (char **)malloc2(max * sizeof(char *));
+		new = (char **)Xmalloc(max * sizeof(char *));
 		for (i = 0; i < max; i++) {
 			if (!(cp = tmpstr[i])) {
 				new[i] = NULL;
 				continue;
 			}
-			if (isupper2(*cp) && cp[1] == ':')
+			if (Xisupper(*cp) && cp[1] == ':')
 				for (cp += 2; *cp == ' '; cp++) /*EMPTY*/;
 			len = strlen3(cp);
 			if (len > maxlen) maxlen = len;
-			new[i] = strdup2(cp);
+			new[i] = Xstrdup(cp);
 		}
 
 		for (; maxlen > 0; maxlen--) {
 			for (i = 0; i < max; i++) if (new[i]) {
 				len = maxlen;
-				strncpy3(tmpstr[i], new[i], &len, -1);
+				strncpy2(tmpstr[i], new[i], &len, -1);
 			}
 			if (x + selectcnt(max, tmpstr, multi) < n_lastcolumn)
 				break;
 		}
-		for (i = 0; i < max; i++) free2(new[i]);
-		free2(new);
+		for (i = 0; i < max; i++) Xfree(new[i]);
+		Xfree(new);
 		if (maxlen <= 0) return(-1);
 	}
 
@@ -3693,11 +3694,11 @@ int val[], *xx, multi;
 	for (i = 0; i < max; i++) {
 		if (!str[i]) continue;
 		Xlocate(x + xx[i] + 1, L_MESLINE);
-		if (multi) Xputch2((val[i]) ? '*' : ' ');
-		if (i != num) Xkanjiputs(str[i]);
+		if (multi) VOID_C XXputch((val[i]) ? '*' : ' ');
+		if (i != num) VOID_C Xkanjiputs(str[i]);
 		else {
 			Xputterm(T_STANDOUT);
-			Xkanjiputs(str[i]);
+			VOID_C Xkanjiputs(str[i]);
 			Xputterm(END_STANDOUT);
 		}
 	}
@@ -3716,15 +3717,15 @@ int val[];
 	subwindow = 1;
 	Xgetkey(-1, 0, 0);
 
-	xx = (int *)malloc2((max + 1) * sizeof(int));
-	initial = (int *)malloc2(max * sizeof(int));
-	tmpstr = (char **)malloc2(max * sizeof(char *));
+	xx = (int *)Xmalloc((max + 1) * sizeof(int));
+	initial = (int *)Xmalloc(max * sizeof(int));
+	tmpstr = (char **)Xmalloc(max * sizeof(char *));
 
 	new = 0;
 	multi = (num) ? 0 : 1;
 	for (i = 0; i < max; i++) {
 		tmpstr[i] = NULL;
-		initial[i] = (str[i] && isupper2(*(str[i]))) ? *str[i] : -1;
+		initial[i] = (str[i] && Xisupper(*(str[i]))) ? *str[i] : -1;
 		if (num && val[i] == *num) new = i;
 	}
 	tmpx = selectadj(max, x, str, tmpstr, xx, multi);
@@ -3762,11 +3763,11 @@ int val[];
 				if (num) break;
 				val[new] = (val[new]) ? 0 : 1;
 				Xlocate(tmpx + xx[new] + 1, L_MESLINE);
-				Xputch2((val[new]) ? '*' : ' ');
+				VOID_C XXputch((val[new]) ? '*' : ' ');
 				break;
 			default:
-				if (!isalpha2(ch)) break;
-				ch = toupper2(ch);
+				if (!Xisalpha(ch)) break;
+				ch = Xtoupper(ch);
 				for (i = 0; i < max; i++)
 					if (ch == initial[i]) break;
 				if (i >= max) break;
@@ -3777,7 +3778,7 @@ int val[];
 				}
 				val[new] = (val[new]) ? 0 : 1;
 				Xlocate(tmpx + xx[new] + 1, L_MESLINE);
-				Xputch2((val[new]) ? '*' : ' ');
+				VOID_C XXputch((val[new]) ? '*' : ' ');
 				break;
 		}
 		if (new != old) {
@@ -3785,11 +3786,11 @@ int val[];
 			if (!num) i++;
 			Xlocate(i + xx[new], L_MESLINE);
 			Xputterm(T_STANDOUT);
-			Xkanjiputs(tmpstr[new]);
+			VOID_C Xkanjiputs(tmpstr[new]);
 			Xputterm(END_STANDOUT);
 			Xlocate(i + xx[old], L_MESLINE);
 			if (stable_standout) Xputterm(END_STANDOUT);
-			else Xkanjiputs(tmpstr[old]);
+			else VOID_C Xkanjiputs(tmpstr[old]);
 		}
 	} while (ch != K_ESC && ch != K_CR && ch != cc_intr);
 
@@ -3808,7 +3809,7 @@ int val[];
 		for (i = 0; i < max; i++) {
 			if (!tmpstr[i]) continue;
 			Xlocate(tmpx + xx[i] + 1, L_MESLINE);
-			if (i == new) Xkanjiputs(tmpstr[i]);
+			if (i == new) VOID_C Xkanjiputs(tmpstr[i]);
 			else cputspace(strlen2(tmpstr[i]));
 		}
 	}
@@ -3817,17 +3818,17 @@ int val[];
 		for (i = 0; i < max; i++) {
 			if (!tmpstr[i]) continue;
 			Xlocate(tmpx + xx[i] + 1, L_MESLINE);
-			Xputch2(' ');
-			if (val[i]) Xkanjiputs(tmpstr[i]);
+			VOID_C XXputch(' ');
+			if (val[i]) VOID_C Xkanjiputs(tmpstr[i]);
 			else cputspace(strlen2(tmpstr[i]));
 		}
 	}
 	Xlocate(win_x, win_y);
 	Xtflush();
-	free2(xx);
-	free2(initial);
-	for (i = 0; i < max; i++) free2(tmpstr[i]);
-	free2(tmpstr);
+	Xfree(xx);
+	Xfree(initial);
+	for (i = 0; i < max; i++) Xfree(tmpstr[i]);
+	Xfree(tmpstr);
 
 	return(ch);
 }
@@ -3849,13 +3850,13 @@ char *inputpass(VOID_A)
 	cp = PASWD_K;
 	if (!(wastty = isttyiomode)) {
 		x = strlen2(cp);
-		fprintf2(Xstderr, "%k", cp);
+		Xfprintf(Xstderr, "%k", cp);
 		Xfflush(Xstderr);
 	}
 	else {
 		Xlocate(0, y);
 		Xputterm(L_CLEAR);
-		Xputch2(' ');
+		VOID_C XXputch(' ');
 		Xputterm(T_STANDOUT);
 		x = 1 + kanjiputs2(cp, n_column, -1);
 		Xputterm(END_STANDOUT);
@@ -3881,7 +3882,8 @@ char *inputpass(VOID_A)
 				len--;
 				if (!hidepasswd) {
 					if (wastty) {
-						Xcprintf2("%c %c", C_BS, C_BS);
+						VOID_C XXcprintf("%c %c",
+							C_BS, C_BS);
 						Xtflush();
 						win_x--;
 					}
@@ -3904,7 +3906,7 @@ char *inputpass(VOID_A)
 			if (!hidepasswd) {
 				ch = '*';
 				if (wastty) {
-					Xputch2(ch);
+					VOID_C XXputch(ch);
 					Xtflush();
 					win_x++;
 				}
@@ -3941,7 +3943,7 @@ char *inputpass(VOID_A)
 		Xfflush(Xstderr);
 	}
 
-	buf = realloc2(buf, len + 1);
+	buf = Xrealloc(buf, len + 1);
 	buf[len] = '\0';
 
 	return(buf);

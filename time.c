@@ -38,22 +38,25 @@ static long NEAR gettimezone __P_((CONST struct tm *, time_t));
 #endif
 
 
-time_t time2(VOID_A)
+time_t Xtime(tp)
+time_t *tp;
 {
+	time_t t;
 #if	MSDOS
 	struct timeb buffer;
 
-	ftime(&buffer);
-
-	return((time_t)(buffer.time));
+	VOID_C ftime(&buffer);
+	t = (time_t)(buffer.time);
 #else
 	struct timeval t_val;
 	struct timezone tz;
 
-	gettimeofday2(&t_val, &tz);
-
-	return((time_t)(t_val.tv_sec));
+	VOID_C Xgettimeofday(&t_val, &tz);
+	t = (time_t)(t_val.tv_sec);
 #endif
+	if (tp) *tp = t;
+
+	return(t);
 }
 
 #if	!MSDOS && !defined (NOTZFILEH) \
@@ -126,7 +129,7 @@ int mon, year;
 	return(mday);
 }
 
-time_t timegm2(tm)
+time_t Xtimegm(tm)
 CONST struct tm *tm;
 {
 	time_t t;
@@ -179,7 +182,7 @@ time_t t;
 	memcpy((char *)&tmbuf, (char *)tm, sizeof(struct tm));
 
 #  ifdef	NOTMGMTOFF
-	tz = (long)t - (long)timegm2(localtime(&t));
+	tz = (long)t - (long)Xtimegm(localtime(&t));
 #  else
 	tz = -(localtime(&t) -> tm_gmtoff);
 #  endif
@@ -187,11 +190,11 @@ time_t t;
 #  ifndef	NOTZFILEH
 	cp = getenv("TZ");
 	if (!cp || !*cp) cp = TZDEFAULT;
-	if (cp[0] == _SC_) strcpy2(buf, cp);
+	if (cp[0] == _SC_) Xstrcpy(buf, cp);
 	else strcatdelim2(buf, TZDIR, cp);
 	if (!(fp = Xfopen(buf, "rb"))) return(tz);
 	if (Xfread((char *)&head, sizeof(head), fp) != sizeof(head)) {
-		Xfclose(fp);
+		VOID_C Xfclose(fp);
 		return(tz);
 	}
 #   ifdef	USELEAPCNT
@@ -205,7 +208,7 @@ time_t t;
 
 	for (i = 0; i < ntime; i++) {
 		if (Xfread(buf, 4, fp) != 4) {
-			Xfclose(fp);
+			VOID_C Xfclose(fp);
 			return(tz);
 		}
 		tmp = char2long(buf);
@@ -216,7 +219,7 @@ time_t t;
 		i *= (int)sizeof(char);
 		i += (int)sizeof(struct tzhead) + ntime * 4 * sizeof(char);
 		if (Xfseek(fp, i, 0) < 0 || Xfread((char *)&c, 1, fp) != 1) {
-			Xfclose(fp);
+			VOID_C Xfclose(fp);
 			return(tz);
 		}
 		i = c;
@@ -224,7 +227,7 @@ time_t t;
 	i *= (4 + 1 + 1) * sizeof(char);
 	i += (int)sizeof(struct tzhead) + ntime * (4 + 1) * sizeof(char);
 	if (Xfseek(fp, i, 0) < 0 || Xfread(buf, 4, fp) != 4) {
-		Xfclose(fp);
+		VOID_C Xfclose(fp);
 		return(tz);
 	}
 	tmp = char2long(buf);
@@ -234,26 +237,26 @@ time_t t;
 		+ ntype * (4 + 1 + 1) * sizeof(char)
 		+ nchar * sizeof(char);
 	if (Xfseek(fp, i, 0) < 0) {
-		Xfclose(fp);
+		VOID_C Xfclose(fp);
 		return(tz);
 	}
 	leap = 0;
 	for (i = 0; i < nleap; i++) {
 		if (Xfread(buf, 4, fp) != 4) {
-			Xfclose(fp);
+			VOID_C Xfclose(fp);
 			return(tz);
 		}
 		tmp = char2long(buf);
 		if (tmcmp(&tmbuf, localtime(&tmp)) <= 0) break;
 		if (Xfread(buf, 4, fp) != 4) {
-			Xfclose(fp);
+			VOID_C Xfclose(fp);
 			return(tz);
 		}
 		leap = char2long(buf);
 	}
 
 	tz += leap;
-	Xfclose(fp);
+	VOID_C Xfclose(fp);
 #  endif	/* !NOTZFILEH */
 
 	return(tz);
@@ -261,7 +264,7 @@ time_t t;
 }
 #endif	/* !USEMKTIME && !USETIMELOCAL */
 
-time_t timelocal2(tm)
+time_t Xtimelocal(tm)
 struct tm *tm;
 {
 #ifdef	USEMKTIME
@@ -273,7 +276,7 @@ struct tm *tm;
 # else	/* !USETIMELOCAL */
 	time_t t;
 
-	t = timegm2(tm);
+	t = Xtimegm(tm);
 	if (t == (time_t)-1) return(t);
 	t += gettimezone(tm, t);
 

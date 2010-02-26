@@ -168,7 +168,7 @@ static int NEAR genbackend(VOID_A)
 	for (i = 0; i < MAXWINDOWS; i++) {
 		if (Xopenpty(&(ptylist[i].fd), path, sizeof(path)) < 0) break;
 		ptylist[i].pid = (p_id_t)0;
-		ptylist[i].path = strdup2(path);
+		ptylist[i].path = Xstrdup(path);
 		ptylist[i].pipe = -1;
 		ptylist[i].status = 0;
 	}
@@ -178,7 +178,7 @@ static int NEAR genbackend(VOID_A)
 		safeclose(fds[1]);
 		closeallpty(i);
 		while (--i >= 0) {
-			free2(ptylist[i].path);
+			Xfree(ptylist[i].path);
 			ptylist[i].path = NULL;
 		}
 		return(-1);
@@ -192,7 +192,7 @@ static int NEAR genbackend(VOID_A)
 		emufd = fds[0];
 		emupid = (p_id_t)0;
 		for (i = 0; i < MAXWINDOWS; i++) {
-			free2(ptylist[i].path);
+			Xfree(ptylist[i].path);
 			ptylist[i].path = NULL;
 			resetptyterm(i, 1);
 		}
@@ -225,7 +225,7 @@ int fd, cmd;
 
 	savetermio(ttyio, &tty, NULL);
 	keyflush();
-	noecho2();
+	Xnoecho();
 	if (fd < 0) {
 		tputs2("\033[99n", 1);
 		tflush();
@@ -234,10 +234,10 @@ int fd, cmd;
 		uc = cmd;
 		sendbuf(fd, &uc, sizeof(uc));
 	}
-	VOID_C getch2();
+	VOID_C Xgetch();
 	keyflush();
 	loadtermio(ttyio, tty, NULL);
-	free2(tty);
+	Xfree(tty);
 }
 
 int recvbuf(fd, buf, nbytes)
@@ -300,9 +300,9 @@ char **cpp;
 	if (recvbuf(fd, &cp, sizeof(cp)) < 0) return(-1);
 	if (cp) {
 		if (recvbuf(fd, &len, sizeof(len)) < 0) return(-1);
-		cp = malloc2(len + 1);
+		cp = Xmalloc(len + 1);
 		if (recvbuf(fd, cp, len) < 0) {
-			free2(cp);
+			Xfree(cp);
 			return(-1);
 		}
 		cp[len] = '\0';
@@ -666,20 +666,20 @@ int *flagsp;
 	|| recvstring(ttyio, &command) < 0)
 		return(-1);
 	if (recvstring(ttyio, &arg) < 0) {
-		free2(command);
+		Xfree(command);
 		return(-1);
 	}
 	if (recvstring(ttyio, &cwd) >= 0 && cwd) {
 		VOID_C chdir2(cwd);
-		free2(cwd);
+		Xfree(cwd);
 	}
 
 	keyflush();
 	if (!(flags & F_TTYIOMODE)) Xstdiomode();
 	else if (!(flags & F_TTYNL)) Xttyiomode(0);
 
-	free2(*commandp);
-	free2(*argp);
+	Xfree(*commandp);
+	Xfree(*argp);
 	*commandp = command;
 	*argp = arg;
 	*flagsp = flags;
@@ -745,12 +745,12 @@ int flags;
 	savetermio(ttyio, &tty, &ws);
 	if (tty) {
 		memcpy(buf, tty, TIO_BUFSIZ);
-		free2(tty);
+		Xfree(tty);
 		tty = buf;
 	}
 	if (ws) {
 		memcpy(&(buf[TIO_BUFSIZ]), ws, TIO_WINSIZ);
-		free2(ws);
+		Xfree(ws);
 		ws = &(buf[TIO_BUFSIZ]);
 	}
 
@@ -761,7 +761,7 @@ int flags;
 
 	if (ptytmpfile) fd = -1;
 	else if ((fd = mktmpfile(path)) >= 0) {
-		ptytmpfile = strdup2(path);
+		ptytmpfile = Xstrdup(path);
 		VOID_C Xclose(fd);
 	}
 
@@ -774,7 +774,7 @@ int flags;
 	if ((pid = Xfork()) < (p_id_t)0) {
 		if (fd >= 0 && ptytmpfile) {
 			rmtmpfile(ptytmpfile);
-			free2(ptytmpfile);
+			Xfree(ptytmpfile);
 			ptytmpfile = NULL;
 		}
 		sigvecset(n);
@@ -796,11 +796,11 @@ int flags;
 		else
 #endif
 		n_line = FILEPERROW;
-		VOID_C setwsize(STDIN_FILENO, n_column, n_line);
+		setwsize(STDIN_FILENO, n_column, n_line);
 
 		for (i = 0; i < MAXWINDOWS; i++) {
 			ptylist[i].pid = (p_id_t)0;
-			free2(ptylist[i].path);
+			Xfree(ptylist[i].path);
 			ptylist[i].path = NULL;
 			ptylist[i].pipe = -1;
 			ptylist[i].status = 0;
@@ -889,7 +889,7 @@ VOID killallpty(VOID_A)
 
 	for (i = 0; i < MAXWINDOWS; i++) {
 		killpty(i, NULL);
-		free2(ptylist[i].path);
+		Xfree(ptylist[i].path);
 		ptylist[i].path = NULL;
 	}
 
@@ -906,7 +906,7 @@ VOID killallpty(VOID_A)
 	}
 	if (ptytmpfile) {
 		rmtmpfile(ptytmpfile);
-		free2(ptytmpfile);
+		Xfree(ptytmpfile);
 		ptytmpfile = NULL;
 	}
 

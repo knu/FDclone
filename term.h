@@ -77,14 +77,14 @@ typedef struct _keyseq_t {
 #define	K_METAKEY		01000
 #define	K_ALTERNATE		02000
 #if	MSDOS
-#define	mkmetakey(c)		(K_METAKEY | (tolower2(c) & 0x7f))
-#define	ismetakey(c)		(((c) & K_METAKEY) && islower2((c) & 0xff))
+#define	mkmetakey(c)		(K_METAKEY | (Xtolower(c) & 0x7f))
+#define	ismetakey(c)		(((c) & K_METAKEY) && Xislower((c) & 0xff))
 #else
 #define	mkmetakey(c)		(K_METAKEY | ((c) & 0x7f))
-#define	ismetakey(c)		(((c) & K_METAKEY) && isalpha2((c) & 0xff))
+#define	ismetakey(c)		(((c) & K_METAKEY) && Xisalpha((c) & 0xff))
 #endif
 #define	mkekana(c)		(K_METAKEY | ((c) & 0xff))
-#define	isekana2(c)		(((c) & K_METAKEY) && iskana2((c) & 0xff))
+#define	isekana2(c)		(((c) & K_METAKEY) && Xiskana((c) & 0xff))
 #define	alternate(c)		((c) & ~K_ALTERNATE)
 
 #ifndef	K_CTRL
@@ -165,53 +165,53 @@ extern int isttyiomode;
 extern XFILE *ttyout;
 extern int dumbterm;
 
-extern int inittty __P_((int));
-extern int cooked2 __P_((VOID_A));
-extern int cbreak2 __P_((VOID_A));
-extern int raw2 __P_((VOID_A));
-extern int echo2 __P_((VOID_A));
-extern int noecho2 __P_((VOID_A));
-extern int nl2 __P_((VOID_A));
-extern int nonl2 __P_((VOID_A));
-extern int tabs __P_((VOID_A));
-extern int notabs __P_((VOID_A));
-extern int keyflush __P_((VOID_A));
+extern VOID inittty __P_((int));
+extern VOID Xcooked __P_((VOID_A));
+extern VOID Xcbreak __P_((VOID_A));
+extern VOID Xraw __P_((VOID_A));
+extern VOID Xecho __P_((VOID_A));
+extern VOID Xnoecho __P_((VOID_A));
+extern VOID Xnl __P_((VOID_A));
+extern VOID Xnonl __P_((VOID_A));
+extern VOID tabs __P_((VOID_A));
+extern VOID notabs __P_((VOID_A));
+extern VOID keyflush __P_((VOID_A));
 #if	!MSDOS
 extern int savettyio __P_((int));
 #endif
-extern int ttyiomode __P_((int));
-extern int stdiomode __P_((VOID_A));
+extern VOID ttyiomode __P_((int));
+extern VOID stdiomode __P_((VOID_A));
 extern int termmode __P_((int));
-extern int exit2 __P_((int));
+extern VOID exit2 __P_((int));
 extern int getxy __P_((int *, int *));
 extern char *tparamstr __P_((CONST char *, int, int));
-extern int getterment __P_((CONST char *));
+extern VOID getterment __P_((CONST char *));
 #if	!MSDOS
-extern int freeterment __P_((VOID_A));
-extern int regetterment __P_((CONST char *, int));
-extern int setdefterment __P_((VOID_A));
-extern int setdefkeyseq __P_((VOID_A));
+extern VOID freeterment __P_((VOID_A));
+extern VOID regetterment __P_((CONST char *, int));
+extern VOID setdefterment __P_((VOID_A));
+extern VOID setdefkeyseq __P_((VOID_A));
 extern int getdefkeyseq __P_((keyseq_t *));
-extern int setkeyseq __P_((int, char *, int));
+extern VOID setkeyseq __P_((int, char *, int));
 extern int getkeyseq __P_((keyseq_t *));
 extern keyseq_t *copykeyseq __P_((keyseq_t *));
-extern int freekeyseq __P_((keyseq_t *));
+extern VOID freekeyseq __P_((keyseq_t *));
 #endif
-extern int initterm __P_((VOID_A));
-extern int endterm __P_((VOID_A));
-extern int putterm __P_((int));
-extern int putch2 __P_((int));
-extern int cputs2 __P_((CONST char *));
+extern VOID initterm __P_((VOID_A));
+extern VOID endterm __P_((VOID_A));
+extern VOID putterm __P_((int));
+extern int Xputch __P_((int));
+extern VOID Xcputs __P_((CONST char *));
 #if	MSDOS
-#define	tputs2(s,n)		cputs2(s)
+#define	tputs2(s,n)		Xcputs(s)
 #define	putterms		putterm
 #else
-extern int tputs2 __P_((CONST char *, int));
-extern int putterms __P_((int));
+extern VOID tputs2 __P_((CONST char *, int));
+extern VOID putterms __P_((int));
 extern VOID checksuspend __P_((VOID_A));
 #endif
 extern int kbhit2 __P_((long));
-extern int getch2 __P_((VOID_A));
+extern int Xgetch __P_((VOID_A));
 extern int getkey2 __P_((int, int, int));
 #if	MSDOS
 #define	getkey3			getkey2
@@ -220,15 +220,15 @@ extern int getkey3 __P_((int, int, int));
 #endif
 extern int ungetkey2 __P_((int, int));
 extern int setscroll __P_((int, int));
-extern int locate __P_((int, int));
-extern int tflush __P_((VOID_A));
+extern VOID locate __P_((int, int));
+extern VOID tflush __P_((VOID_A));
 extern char *getwsize __P_((int, int));
-extern int setwsize __P_((int, int, int));
-extern int cprintf2 __P_((CONST char *, ...));
-extern int cputnl __P_((VOID_A));
+extern VOID setwsize __P_((int, int, int));
+extern int Xcprintf __P_((CONST char *, ...));
+extern VOID cputnl __P_((VOID_A));
 extern int kanjiputs __P_((CONST char *));
-extern int chgcolor __P_((int, int));
-extern int movecursor __P_((int, int, int));
+extern VOID chgcolor __P_((int, int));
+extern VOID movecursor __P_((int, int, int));
 
 #ifndef	SENSEPERSEC
 #define	SENSEPERSEC		50

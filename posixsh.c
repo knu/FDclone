@@ -135,7 +135,7 @@ int job;
 	Xsigblock(omask, mask);
 
 #ifdef	JOBVERBOSE
-	fprintf2(ttyout, "gettermio: %id: %id -> %id", mypid, ttypgrp, pgrp);
+	Xfprintf(ttyout, "gettermio: %id: %id -> %id", mypid, ttypgrp, pgrp);
 	VOID_C fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
@@ -172,13 +172,13 @@ XFILE *fp;
 
 	if (n < 0 || n >= maxjobs || !(joblist[n].pids)) return;
 	i = joblist[n].npipe;
-	fprintf2(fp, "[%d]%c %id ",
+	Xfprintf(fp, "[%d]%c %id ",
 		n + 1, (n == lastjob) ? '+' : ((n == prevjob) ? '-' : ' '),
 		joblist[n].pids[i]);
 	sig = joblist[n].stats[i];
 
 	if (sig <= 0)
-		fprintf2(fp, "%-28.28s", (sig) ? "Done" : "Running");
+		Xfprintf(fp, "%-28.28s", (sig) ? "Done" : "Running");
 	else {
 		if (sig >= 128) sig -= 128;
 		dispsignal(sig, 28, fp);
@@ -253,7 +253,7 @@ syntaxtree *trp;
 	j = 0;	/* fake for -Wuninitialized */
 #endif
 	if (!joblist) {
-		joblist = (jobtable *)malloc2(BUFUNIT * sizeof(jobtable));
+		joblist = (jobtable *)Xmalloc(BUFUNIT * sizeof(jobtable));
 		maxjobs = BUFUNIT;
 		i = 0;
 		for (n = 0; n < maxjobs; n++) joblist[n].pids = NULL;
@@ -276,7 +276,7 @@ syntaxtree *trp;
 		if (i < maxjobs) /*EMPTY*/;
 		else if (n >= 0) i = n;
 		else {
-			joblist = (jobtable *)realloc2(joblist,
+			joblist = (jobtable *)Xrealloc(joblist,
 				(maxjobs + BUFUNIT) * sizeof(jobtable));
 			maxjobs += BUFUNIT;
 			for (n = i; n < maxjobs; n++) joblist[n].pids = NULL;
@@ -284,8 +284,8 @@ syntaxtree *trp;
 	}
 
 	if (!(joblist[i].pids)) {
-		joblist[i].pids = (p_id_t *)malloc2(BUFUNIT * sizeof(p_id_t));
-		joblist[i].stats = (int *)malloc2(BUFUNIT * sizeof(int));
+		joblist[i].pids = (p_id_t *)Xmalloc(BUFUNIT * sizeof(p_id_t));
+		joblist[i].stats = (int *)Xmalloc(BUFUNIT * sizeof(int));
 		joblist[i].npipe = 0;
 		joblist[i].trp = NULL;
 		joblist[i].tty = NULL;
@@ -296,9 +296,9 @@ syntaxtree *trp;
 	}
 	else if (j > joblist[i].npipe) {
 		if (!(j % BUFUNIT)) {
-			joblist[i].pids = (p_id_t *)realloc2(joblist[i].pids,
+			joblist[i].pids = (p_id_t *)Xrealloc(joblist[i].pids,
 				(j + BUFUNIT) * sizeof(p_id_t));
-			joblist[i].stats = (int *)realloc2(joblist[i].stats,
+			joblist[i].stats = (int *)Xrealloc(joblist[i].stats,
 				(j + BUFUNIT) * sizeof(int));
 		}
 		joblist[i].npipe = j;
@@ -315,9 +315,9 @@ syntaxtree *trp;
 	}
 
 #ifdef	JOBVERBOSE
-	fprintf2(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
+	Xfprintf(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
 	for (j = 0; j <= joblist[i].npipe; j++)
-		fprintf2(ttyout, "%id ", joblist[i].pids[j]);
+		Xfprintf(ttyout, "%id ", joblist[i].pids[j]);
 	VOID_C fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 
@@ -357,15 +357,15 @@ XFILE *fp;
 		&& (isopbg(joblist[i].trp) || isopnown(joblist[i].trp)))
 			joblist[i].trp -> type = OP_NONE;
 		if (jobok && interactive && !nottyout) dispjob(i, fp);
-		free2(joblist[i].pids);
-		free2(joblist[i].stats);
+		Xfree(joblist[i].pids);
+		Xfree(joblist[i].stats);
 		if (joblist[i].trp) {
 			freestree(joblist[i].trp);
-			free2(joblist[i].trp);
+			Xfree(joblist[i].trp);
 		}
-		free2(joblist[i].tty);
+		Xfree(joblist[i].tty);
 # ifdef	USESGTTY
-		free2(joblist[i].ttyflag);
+		Xfree(joblist[i].ttyflag);
 # endif
 		joblist[i].pids = NULL;
 	}
@@ -408,11 +408,11 @@ char *ident, *comm;
 
 	i = searchalias(ident, -1);
 	if (shellalias[i].ident) {
-		free2(shellalias[i].ident);
-		free2(shellalias[i].comm);
+		Xfree(shellalias[i].ident);
+		Xfree(shellalias[i].comm);
 	}
 	else {
-		shellalias = (shaliastable *)realloc2(shellalias,
+		shellalias = (shaliastable *)Xrealloc(shellalias,
 			(i + 2) * sizeof(shaliastable));
 		shellalias[i + 1].ident = NULL;
 	}
@@ -440,8 +440,8 @@ CONST char *ident;
 			if (!regexp_exec(re, shellalias[i].ident, 0)) continue;
 		}
 		else if (strcommcmp(ident, shellalias[i].ident)) continue;
-		free2(shellalias[i].ident);
-		free2(shellalias[i].comm);
+		Xfree(shellalias[i].ident);
+		Xfree(shellalias[i].comm);
 		memmove((char *)&(shellalias[i]), (char *)&(shellalias[i + 1]),
 			(max-- - i) * sizeof(shaliastable));
 		i--;
@@ -464,10 +464,10 @@ shaliastable *alias;
 
 	if (!alias) n = 0;
 	else for (n = 0; alias[n].ident; n++) /*EMPTY*/;
-	dupl = (shaliastable *)malloc2((n + 1) * sizeof(shaliastable));
+	dupl = (shaliastable *)Xmalloc((n + 1) * sizeof(shaliastable));
 	for (i = 0; i < n; i++) {
-		dupl[i].ident = strdup2(alias[i].ident);
-		dupl[i].comm = strdup2(alias[i].comm);
+		dupl[i].ident = Xstrdup(alias[i].ident);
+		dupl[i].comm = Xstrdup(alias[i].comm);
 	}
 	dupl[i].ident = NULL;
 
@@ -481,10 +481,10 @@ shaliastable *alias;
 
 	if (alias) {
 		for (i = 0; alias[i].ident; i++) {
-			free2(alias[i].ident);
-			free2(alias[i].comm);
+			Xfree(alias[i].ident);
+			Xfree(alias[i].comm);
 		}
-		free2(alias);
+		Xfree(alias);
 	}
 }
 
@@ -514,7 +514,7 @@ int len, delim;
 		return(-1);
 
 	if (delim
-	&& (!strchr2(IFS_SET, delim) && !strchr2(ALIASDELIMIT, delim)))
+	&& (!Xstrchr(IFS_SET, delim) && !Xstrchr(ALIASDELIMIT, delim)))
 		return(-1);
 	i = searchalias(ident, len);
 	if (!(shellalias[i].ident) || (shellalias[i].flags & AL_USED))
@@ -535,7 +535,7 @@ long *resultp;
 	long n;
 	int i, c, base;
 
-	while (s[ptr] && strchr2(IFS_SET, s[ptr])) ptr++;
+	while (s[ptr] && Xstrchr(IFS_SET, s[ptr])) ptr++;
 	if (!s[ptr]) return(-1);
 
 	if (s[ptr] == '+') {
@@ -560,12 +560,12 @@ long *resultp;
 	else if (s[ptr] == '(') {
 		if ((ptr = evalexpression(s, ptr + 1, resultp, 9)) < 0)
 			return(-1);
-		while (s[ptr] && strchr2(IFS_SET, s[ptr])) ptr++;
+		while (s[ptr] && Xstrchr(IFS_SET, s[ptr])) ptr++;
 		if (s[ptr++] != ')') return(-1);
 	}
-	else if (isdigit2(s[ptr])) {
+	else if (Xisdigit(s[ptr])) {
 		if (s[ptr] != '0') base = 10;
-		else if (toupper2(s[++ptr]) != 'X') base = 8;
+		else if (Xtoupper(s[++ptr]) != 'X') base = 8;
 		else {
 			base = 16;
 			ptr++;
@@ -574,9 +574,9 @@ long *resultp;
 		n = 0;
 		for (i = ptr; s[i]; i++) {
 			c = s[i];
-			if (isdigit2(c)) c -= '0';
-			else if (islower2(c)) c -= 'a' - 10;
-			else if (isupper2(c)) c -= 'A' - 10;
+			if (Xisdigit(c)) c -= '0';
+			else if (Xislower(c)) c -= 'a' - 10;
+			else if (Xisupper(c)) c -= 'A' - 10;
 			else c = -1;
 			if (c < 0 || c >= base) break;
 
@@ -592,7 +592,7 @@ long *resultp;
 	}
 	else return(-1);
 
-	while (s[ptr] && strchr2(IFS_SET, s[ptr])) ptr++;
+	while (s[ptr] && Xstrchr(IFS_SET, s[ptr])) ptr++;
 
 	return(ptr);
 }
@@ -758,7 +758,7 @@ int *ptrp;
 
 	s += i;
 	len = *ptrp - i * 2;
-	s = new = strndup2(s, len);
+	s = new = Xstrndup(s, len);
 	if (i <= 1) {
 #ifndef	BASHBUG
 	/* bash cannot include 'case' statement within $() */
@@ -771,7 +771,7 @@ int *ptrp;
 		trp = analyze(s, trp, -1);
 		if (trp && (trp -> cont & CN_SBST) != CN_CASE) trp = NULL;
 		freestree(stree);
-		free2(stree);
+		Xfree(stree);
 		if (trp) cp = NULL;
 		else
 #endif	/* !BASHBUG */
@@ -785,17 +785,17 @@ int *ptrp;
 		if (!cp) *ptrp = -1;
 		else {
 			for (i = 0; cp[i]; i++)
-				if (!strchr2(IFS_SET, cp[i])) break;
+				if (!Xstrchr(IFS_SET, cp[i])) break;
 			if (cp[i]) {
 				i = evalexpression(cp, i, &n, 9);
 				if (i < 0 || cp[i]) *ptrp = -1;
 			}
-			free2(cp);
+			Xfree(cp);
 		}
 
-		cp = (*ptrp < 0) ? NULL : asprintf3("%ld", n);
+		cp = (*ptrp < 0) ? NULL : asprintf2("%ld", n);
 	}
-	free2(new);
+	Xfree(new);
 
 	return(cp);
 }
@@ -810,12 +810,12 @@ time_t mtime;
 
 	for (i = 0; i < maxmailpath; i++)
 		if (!strpathcmp(path, mailpathlist[i].path)) break;
-	if (i < maxmailpath) free2(mailpathlist[i].msg);
+	if (i < maxmailpath) Xfree(mailpathlist[i].msg);
 	else {
-		mailpathlist = (mailpath_t *)realloc2(mailpathlist,
+		mailpathlist = (mailpath_t *)Xrealloc(mailpathlist,
 			(i + 1) * sizeof(mailpath_t));
 		maxmailpath = i + 1;
-		mailpathlist[i].path = strdup2(path);
+		mailpathlist[i].path = Xstrdup(path);
 	}
 	mailpathlist[i].msg = msg;
 	mailpathlist[i].mtime = mtime;
@@ -843,20 +843,20 @@ int multi;
 		addmailpath(s, NULL, mtime);
 	}
 	else while (*s) {
-		if ((cp = strchr2(s, ':'))) len = (cp++) - s;
+		if ((cp = Xstrchr(s, ':'))) len = (cp++) - s;
 		else {
 			len = strlen(s);
 			cp = &(s[len]);
 		}
-		if ((msg = strchr2(s, '%'))) {
+		if ((msg = Xstrchr(s, '%'))) {
 			if (msg > s + len) msg = NULL;
 			else {
 				i = s + len - (msg + 1);
 				len = msg - s;
-				msg = strndup2(&(s[len + 1]), i);
+				msg = Xstrndup(&(s[len + 1]), i);
 			}
 		}
-		strncpy2(path, s, len);
+		Xstrncpy(path, s, len);
 		s = cp;
 		for (i = 0; i < max; i++)
 			if (!strpathcmp(path, mailpath[i].path)) break;
@@ -865,10 +865,10 @@ int multi;
 	}
 
 	for (i = 0; i < max; i++) {
-		free2(mailpath[i].path);
-		free2(mailpath[i].msg);
+		Xfree(mailpath[i].path);
+		Xfree(mailpath[i].msg);
 	}
-	free2(mailpath);
+	Xfree(mailpath);
 }
 
 VOID checkmail(reset)
@@ -880,17 +880,17 @@ int reset;
 
 	if (reset) {
 		for (i = 0; i < maxmailpath; i++) {
-			free2(mailpathlist[i].path);
-			free2(mailpathlist[i].msg);
+			Xfree(mailpathlist[i].path);
+			Xfree(mailpathlist[i].msg);
 		}
-		free2(mailpathlist);
+		Xfree(mailpathlist);
 		mailpathlist = NULL;
 		maxmailpath = 0;
 		return;
 	}
 
 	if (mailcheck > 0) {
-		now = time2();
+		now = Xtime(NULL);
 		if (now < lastchecked + mailcheck) return;
 		lastchecked = now;
 	}
@@ -920,11 +920,11 @@ syntaxtree *trp;
 			if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
 				joblist[i].trp -> type = OP_NONE;
 			dispjob(i, Xstdout);
-			free2(joblist[i].pids);
-			free2(joblist[i].stats);
+			Xfree(joblist[i].pids);
+			Xfree(joblist[i].stats);
 			if (joblist[i].trp) {
 				freestree(joblist[i].trp);
-				free2(joblist[i].trp);
+				Xfree(joblist[i].trp);
 			}
 			joblist[i].pids = NULL;
 		}
@@ -955,7 +955,7 @@ syntaxtree *trp;
 		prepareexit(-1);
 		Xexit(RET_FATALERR);
 	}
-	fprintf2(Xstderr, "[%d] %id", i + 1, joblist[i].pids[n]);
+	Xfprintf(Xstderr, "[%d] %id", i + 1, joblist[i].pids[n]);
 	VOID_C fputnl(Xstderr);
 	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
 # ifdef	USESGTTY
@@ -1023,7 +1023,7 @@ syntaxtree *trp;
 		for (i = 0; alias[i].ident; i++) /*EMPTY*/;
 		if (i > 1) qsort(alias, i, sizeof(shaliastable), cmpalias);
 		for (i = 0; alias[i].ident; i++) {
-			fprintf2(Xstdout, "alias %k='%k'",
+			Xfprintf(Xstdout, "alias %k='%k'",
 				alias[i].ident, alias[i].comm);
 			VOID_C fputnl(Xstdout);
 		}
@@ -1039,8 +1039,8 @@ syntaxtree *trp;
 			break;
 		}
 
-		if (set) VOID_C addalias(strndup2(argv[n], len),
-			strdup2(&(argv[n][len + 1])));
+		if (set) VOID_C addalias(Xstrndup(argv[n], len),
+			Xstrdup(&(argv[n][len + 1])));
 		else {
 			i = searchalias(argv[n], len);
 			if (!(shellalias[i].ident)) {
@@ -1052,7 +1052,7 @@ syntaxtree *trp;
 				ret = RET_FAIL;
 				ERRBREAK;
 			}
-			fprintf2(Xstdout, "alias %k='%k'",
+			Xfprintf(Xstdout, "alias %k='%k'",
 				shellalias[i].ident, shellalias[i].comm);
 			VOID_C fputnl(Xstdout);
 		}
@@ -1110,7 +1110,7 @@ syntaxtree *trp;
 				for (i = 0; signallist[i].sig >= 0; i++)
 					if (sig == signallist[i].sig) break;
 				if (signallist[i].sig < 0) continue;
-				fprintf2(Xstdout, "%s%c",
+				Xfprintf(Xstdout, "%s%c",
 					signallist[i].ident,
 					(++n % 16) ? ' ' : '\n');
 			}
@@ -1439,7 +1439,7 @@ syntaxtree *trp;
 				Xfputs("argument expected", Xstderr);
 				break;
 			case -2:
-				fprintf2(Xstderr, "unknown operator %k",
+				Xfprintf(Xstderr, "unknown operator %k",
 					argv[ptr]);
 				break;
 			default:
@@ -1524,9 +1524,9 @@ syntaxtree *trp;
 	type = checktype(argv[n], &id, 0, 0);
 #endif
 	if (verboseexec) {
-		fprintf2(Xstderr, "+ %k", argv[n]);
+		Xfprintf(Xstderr, "+ %k", argv[n]);
 		for (i = n + 1; i < argc; i++)
-			fprintf2(Xstderr, " %k", argv[i]);
+			Xfprintf(Xstderr, " %k", argv[i]);
 		VOID_C fputnl(Xstderr);
 	}
 
@@ -1539,7 +1539,7 @@ syntaxtree *trp;
 		ret = exec_simplecom(trp, type, id, 0);
 #endif
 	else {
-		path = strdup2(getconstvar(ENVPATH));
+		path = Xstrdup(getconstvar(ENVPATH));
 		setenv2(ENVPATH, DEFPATH, 1);
 #if	MSDOS
 		ret = exec_simplecom(trp, type, id);
@@ -1547,7 +1547,7 @@ syntaxtree *trp;
 		ret = exec_simplecom(trp, type, id, 0);
 #endif
 		setenv2(ENVPATH, path, 1);
-		free2(path);
+		Xfree(path);
 	}
 	(trp -> comm) -> argc = argc;
 	(trp -> comm) -> argv = argv;
@@ -1618,7 +1618,7 @@ syntaxtree *trp;
 	if (ret != RET_SUCCESS) n = '?';
 	else {
 		n = argv[posixoptind][ptr++];
-		if (n == ':' || ismsb(n) || !(cp = strchr2(optstr, n))) {
+		if (n == ':' || ismsb(n) || !(cp = Xstrchr(optstr, n))) {
 			buf[0] = n;
 			buf[1] = '\0';
 			n = '?';
@@ -1656,7 +1656,7 @@ syntaxtree *trp;
 	setenv2(name, buf, 0);
 
 	n = posixoptind;
-	snprintf2(buf, sizeof(buf), "%d", n);
+	Xsnprintf(buf, sizeof(buf), "%d", n);
 	setenv2(ENVOPTIND, buf, 0);
 	posixoptind = n;
 

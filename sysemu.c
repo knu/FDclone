@@ -75,17 +75,17 @@
 #define	unixstat2(p, s)		((stat(p, s)) ? -1 : 0)
 #define	unixlstat2(p, s)	((lstat(p, s)) ? -1 : 0)
 #define	unixchmod(p, m)		((chmod(p, m)) ? -1 : 0)
-#define	unixutime(p, t)		((utime(p, t)) ? -1 : 0);
-#define	unixutimes(p, t)	((utimes(p, t)) ? -1 : 0);
-#define	unixunlink(p)		((unlink(p)) ? -1 : 0);
-#define	unixrename(f, t)	((rename(f,t)) ? -1 : 0);
-#define	unixrmdir(p)		((rmdir(p)) ? -1 : 0);
+#define	unixutime(p, t)		((utime(p, t)) ? -1 : 0)
+#define	unixutimes(p, t)	((utimes(p, t)) ? -1 : 0)
+#define	unixunlink(p)		((unlink(p)) ? -1 : 0)
+#define	unixrename(f, t)	((rename(f,t)) ? -1 : 0)
+#define	unixrmdir(p)		((rmdir(p)) ? -1 : 0)
 #endif	/* !MSDOS */
 #if	MSDOS && !defined (DJGPP) && !defined (FD)
-#define	unixmkdir(p, m)		((mkdir(p)) ? -1 : 0);
+#define	unixmkdir(p, m)		((mkdir(p)) ? -1 : 0)
 #endif
 #if	!MSDOS || (defined (DJGPP) && !defined (FD))
-#define	unixmkdir(p, m)		((mkdir(p,m)) ? -1 : 0);
+#define	unixmkdir(p, m)		((mkdir(p,m)) ? -1 : 0)
 #endif
 
 #ifndef	FD
@@ -251,7 +251,7 @@ int drive, nodir;
 {
 	int drv, olddrv;
 
-	drv = toupper2(drive) - 'A';
+	drv = Xtoupper(drive) - 'A';
 	olddrv = (bdos(0x19, 0, 0) & 0xff);
 	if ((bdos(0x0e, drv, 0) & 0xff) < drv
 	&& (bdos(0x19, 0, 0) & 0xff) != drv) {
@@ -298,7 +298,7 @@ CONST char *path;
 	if (!dosdrive) return(0);
 # endif
 
-	return((isalpha2(*path) && path[1] == ':') ? *path : 0);
+	return((Xisalpha(*path) && path[1] == ':') ? *path : 0);
 }
 
 int dospath(path, buf)
@@ -327,7 +327,7 @@ char *buf;
 
 	if (!buf) return(drive);
 	if (cp == buf) {
-		snprintf2(tmp, sizeof(tmp), cp);
+		Xsnprintf(tmp, sizeof(tmp), cp);
 		cp = tmp;
 	}
 
@@ -343,7 +343,7 @@ char *buf;
 		buf[ujis2sjis(buf, (u_char *)cp, sizeof(tmp) - 1)] = '\0';
 	else
 # endif
-	snprintf2(buf, MAXPATHLEN, cp);
+	Xsnprintf(buf, MAXPATHLEN, cp);
 	if (cp == cachecwd && *path) {
 		s = strcatdelim(buf);
 		len = MAXPATHLEN - (s - buf);
@@ -351,7 +351,7 @@ char *buf;
 		if (!noconv) s[ujis2sjis(s, (u_char *)path, len - 1)] = '\0';
 		else
 # endif
-		snprintf2(s, MAXPATHLEN - (s - buf), path);
+		Xsnprintf(s, MAXPATHLEN - (s - buf), path);
 	}
 # endif	/* !MSDOS */
 
@@ -366,7 +366,7 @@ CONST char *path;
 	int drv, drive;
 
 	if (!(drive = _dospath(path))) drive = getcurdrv();
-	drv = toupper2(drive) - 'A';
+	drv = Xtoupper(drive) - 'A';
 	if (drv < 0 || drv > 'Z' - 'A' || checkdrive(drv) <= 0) return(0);
 
 	return(drive);
@@ -398,12 +398,12 @@ char *buf;
 		cp = path;
 		drive = getcurdrv();
 	}
-	i = toupper2(drive) - 'A';
+	i = Xtoupper(drive) - 'A';
 	if (i < 0 || i > 'Z' - 'A' || checkdrive(i) <= 0) return(0);
 	if (!buf) return(drive);
 
 	if (path == buf) {
-		strcpy2(tmp, cp);
+		Xstrcpy(tmp, cp);
 		cp = tmp;
 	}
 	if (*cp == _SC_) buf = gendospath(buf, drive, '\0');
@@ -411,7 +411,7 @@ char *buf;
 		if (!dosgetcwd(buf, MAXPATHLEN)) return(0);
 		buf = strcatdelim(buf);
 	}
-	strcpy2(buf, cp);
+	Xstrcpy(buf, cp);
 
 	return(drive);
 }
@@ -444,18 +444,18 @@ int *typep;
 
 	if (!buf) return(n);
 	if (cp == buf) {
-		snprintf2(tmp, sizeof(tmp), cp);
+		Xsnprintf(tmp, sizeof(tmp), cp);
 		cp = tmp;
 	}
-	if (cp[n]) snprintf2(buf, MAXPATHLEN, &(cp[n]));
+	if (cp[n]) Xsnprintf(buf, MAXPATHLEN, &(cp[n]));
 	else copyrootpath(buf);
 
 	if (cp == cachecwd && *path) {
 		s = strcatdelim(buf);
-		snprintf2(s, MAXPATHLEN - (s - buf), path);
+		Xsnprintf(s, MAXPATHLEN - (s - buf), path);
 	}
-	realpath2(buf, tmp, RLP_PSEUDOPATH);
-	snprintf2(buf, MAXPATHLEN, "%.*s%s", n, cp, tmp);
+	Xrealpath(buf, tmp, RLP_PSEUDOPATH);
+	Xsnprintf(buf, MAXPATHLEN, "%.*s%s", n, cp, tmp);
 
 	return(n);
 }
@@ -499,17 +499,17 @@ CONST char *path;
 
 	if ((n = getopenlist(type, bodyp)) < 0) {
 		n = maxopenlist++;
-		openlist = (openstat_t *)realloc2(openlist,
+		openlist = (openstat_t *)Xrealloc(openlist,
 			maxopenlist * sizeof(openstat_t));
 	}
 # if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-	else free2(openlist[n].path);
+	else Xfree(openlist[n].path);
 # endif
 
 	openlist[n].type = type;
 	openlist[n].dev = dev;
 # if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-	openlist[n].path = strdup2(path);
+	openlist[n].path = Xstrdup(path);
 # endif
 
 	switch (type) {
@@ -544,13 +544,13 @@ VOID_P bodyp;
 	if ((n = getopenlist(type, bodyp)) < 0) return(-1);
 	dev = openlist[n].dev;
 # if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-	free2(openlist[n].path);
+	Xfree(openlist[n].path);
 # endif
 	memmove((char *)(&(openlist[n])), (char *)(&(openlist[n + 1])),
 		(--maxopenlist - n) * sizeof(openstat_t));
 	if (maxopenlist <= 0) {
 		maxopenlist = 0;
-		free2(openlist);
+		Xfree(openlist);
 		openlist = NULL;
 	}
 
@@ -561,10 +561,10 @@ VOID_P bodyp;
 VOID freeopenlist(VOID_A)
 {
 #  if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
-	while (maxopenlist > 0) free2(openlist[--maxopenlist].path);
+	while (maxopenlist > 0) Xfree(openlist[--maxopenlist].path);
 #  endif
 	maxopenlist = 0;
-	free2(openlist);
+	Xfree(openlist);
 	openlist = NULL;
 }
 # endif	/* DEBUG */
@@ -627,7 +627,7 @@ char *buf;
 	if ((n = urlpath(path, &host, buf, &type))) {
 		dev = DEV_URL;
 		drv = urlopendev(host, type);
-		free2(host);
+		Xfree(host);
 		if (drv < 0) return(-1);
 		if (drivep) *drivep = n;
 		drv += DEVOFS_URL;
@@ -671,14 +671,14 @@ CONST char *path;
 	char *cp;
 	int n;
 
-	dirp = (DIR *)malloc2(sizeof(DIR));
+	dirp = (DIR *)Xmalloc(sizeof(DIR));
 	dirp -> dd_off = 0;
-	dirp -> dd_buf = malloc2(sizeof(struct find_t));
-	dirp -> dd_path = malloc2(strlen(path) + 1 + 3 + 1);
+	dirp -> dd_buf = Xmalloc(sizeof(struct find_t));
+	dirp -> dd_path = Xmalloc(strlen(path) + 1 + 3 + 1);
 	cp = strcatdelim2(dirp -> dd_path, path, NULL);
 
 	dirp -> dd_id = DID_IFNORMAL;
-	strcpy2(cp, "*.*");
+	Xstrcpy(cp, "*.*");
 	if (&(cp[-1]) > &(path[3])) n = -1;
 	else n = _dos_findfirst(dirp -> dd_path, DS_IFLABEL,
 		(struct find_t *)(dirp -> dd_buf));
@@ -689,7 +689,7 @@ CONST char *path;
 	if (n < 0) {
 		if (!errno || errno == _ENOENT_) dirp -> dd_off = -1;
 		else {
-			unixclosedir(dirp);
+			VOID_C unixclosedir(dirp);
 			return(NULL);
 		}
 	}
@@ -700,9 +700,9 @@ CONST char *path;
 static int NEAR unixclosedir(dirp)
 DIR *dirp;
 {
-	free2(dirp -> dd_buf);
-	free2(dirp -> dd_path);
-	free2(dirp);
+	Xfree(dirp -> dd_buf);
+	Xfree(dirp -> dd_path);
+	Xfree(dirp);
 
 	return(0);
 }
@@ -718,7 +718,7 @@ DIR *dirp;
 	d.d_off = dirp -> dd_off;
 
 	findp = (struct find_t *)(dirp -> dd_buf);
-	strcpy2(d.d_name, findp -> ff_name);
+	Xstrcpy(d.d_name, findp -> ff_name);
 
 	if (!(dirp -> dd_id & DID_IFLABEL)) n = _dos_findnext(findp);
 	else n = _dos_findfirst(dirp -> dd_path, SEARCHATTRS, findp);
@@ -856,7 +856,7 @@ CONST struct utimbuf *times;
 	reg.x.bx = fd;
 	putdostime(&(reg.x.dx), &(reg.x.cx), t);
 	n = intcall(0x21, &reg, &sreg);
-	close(fd);
+	VOID_C close(fd);
 
 	return(n);
 }
@@ -876,7 +876,7 @@ CONST struct timeval *tvp;
 	reg.x.bx = fd;
 	putdostime(&(reg.x.dx), &(reg.x.cx), t);
 	n = intcall(0x21, &reg, &sreg);
-	close(fd);
+	VOID_C close(fd);
 
 	return(n);
 }
@@ -915,7 +915,7 @@ CONST char *path;
 	if ((n = urlpath(cp, &host, tmp, &type))) {
 		dev = DEV_URL;
 		dirp = urlopendir(host, type, &(tmp[n]));
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -923,7 +923,7 @@ CONST char *path;
 	if (!dirp) return(NULL);
 
 #if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) || defined (CYGWIN)
-	cp = realpath2(path, tmp, RLP_READLINK);
+	cp = Xrealpath(path, tmp, RLP_READLINK);
 #endif
 #ifdef	CYGWIN
 	if (tmp[0] != _SC_ || tmp[1])
@@ -979,13 +979,13 @@ DIR *dirp;
 # ifdef	DEBUG
 		_mtrace_file = "pseudoreaddir(upath)";
 # endif
-		upath = strdup2(upath);
+		upath = Xstrdup(upath);
 		for (spath = sbuf; *spath == _SC_; spath++);
 		if (*upath && !strpathcmp(spath, upath)) *spath = '\0';
 # ifdef	DEBUG
 		_mtrace_file = "pseudoreaddir(spath)";
 # endif
-		spath = strdup2(spath);
+		spath = Xstrdup(spath);
 	}
 
 	dp = readdir(dirp);
@@ -1005,13 +1005,13 @@ DIR *dirp;
 	else {
 		if (!(dirp -> __flags & opendir_saw_u_cygdrive)) {
 			dp = dirp -> __d_dirent;
-			strcpy2(dp -> d_name, upath);
+			Xstrcpy(dp -> d_name, upath);
 			dirp -> __flags |= opendir_saw_u_cygdrive;
 			dirp -> __d_position++;
 		}
 		else if (!(dirp -> __flags & opendir_saw_s_cygdrive)) {
 			dp = dirp -> __d_dirent;
-			strcpy2(dp -> d_name, spath);
+			Xstrcpy(dp -> d_name, spath);
 			dirp -> __flags |= opendir_saw_s_cygdrive;
 			dirp -> __d_position++;
 		}
@@ -1073,7 +1073,7 @@ DIR *dirp;
 # endif
 
 	if (isdotdir(src)) {
-		strcpy2(dest, src);
+		Xstrcpy(dest, src);
 		return((struct dirent *)&buf);
 	}
 # if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
@@ -1083,7 +1083,7 @@ DIR *dirp;
 			if ((src = strrdelim(conv, 0))) src++;
 			else src = conv;
 		}
-		strcpy2(dest, src);
+		Xstrcpy(dest, src);
 	}
 	else
 # endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE */
@@ -1092,7 +1092,7 @@ DIR *dirp;
 		dest[sjis2ujis(dest, (u_char *)src, MAXNAMLEN)] = '\0';
 	else
 # endif
-	strcpy2(dest, src);
+	Xstrcpy(dest, src);
 
 	return((struct dirent *)&buf);
 #endif	/* DEP_DOSEMU || DEP_URLPATH || DEP_KANJIPATH || DEP_ROCKRIDGE */
@@ -1224,7 +1224,7 @@ CONST char *path;
 		n = -1;
 	}
 # if	defined (FD) && defined (DEP_URLPATH)
-	else if (dev == DEV_URL) strcpy2(fullpath, cachecwd);
+	else if (dev == DEV_URL) Xstrcpy(fullpath, cachecwd);
 # endif
 #endif	/* DEP_DOSEMU || DEP_URLPATH */
 
@@ -1251,7 +1251,7 @@ char *path;
 	else if (_dospath(cachecwd)) /*EMPTY*/;
 # endif
 	else {
-		strcpy2(path, cachecwd);
+		Xstrcpy(path, cachecwd);
 		return(path);
 	}
 #endif	/* DEP_DOSEMU || DEP_URLPATH */
@@ -1259,10 +1259,10 @@ char *path;
 #ifdef	DEP_DOSEMU
 	if (dosdrive && checkdrv(lastdrv, NULL) == DEV_DOS) {
 		if (!(cp = dosgetcwd(path, MAXPATHLEN))) return(NULL);
-		if (isupper2(cp[0])) {
+		if (Xisupper(cp[0])) {
 			for (i = 2; cp[i]; i++) {
 				if (issjis1((u_char)(cp[i]))) i++;
-				else cp[i] = tolower2(cp[i]);
+				else cp[i] = Xtolower(cp[i]);
 			}
 		}
 		cp = convget(conv, cp, DEV_DOS);
@@ -1280,7 +1280,7 @@ char *path;
 	else cp = convget(conv, cp, DEV_NORMAL);
 
 	if (cp == path) return(cp);
-	strcpy2(path, cp);
+	Xstrcpy(path, cp);
 
 	return(path);
 }
@@ -1297,10 +1297,10 @@ struct stat *stp;
 
 	mode = (u_short)(stp -> st_mode);
 	if ((mode & S_IFMT) != S_IFDIR
-	&& (cp = strrchr2(path, '.')) && strlen(++cp) == 3) {
-		if (!stricmp(cp, EXTCOM)
-		|| !stricmp(cp, EXTEXE)
-		|| !stricmp(cp, EXTBAT))
+	&& (cp = Xstrrchr(path, '.')) && strlen(++cp) == 3) {
+		if (!Xstrcasecmp(cp, EXTCOM)
+		|| !Xstrcasecmp(cp, EXTEXE)
+		|| !Xstrcasecmp(cp, EXTBAT))
 			mode |= S_IXUSR;
 	}
 	mode &= (S_IRUSR | S_IWUSR | S_IXUSR);
@@ -1333,7 +1333,7 @@ struct stat *stp;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urlstat(host, type, &(tmp[n]), stp);
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -1370,7 +1370,7 @@ struct stat *stp;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urllstat(host, type, &(tmp[n]), stp);
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -1412,7 +1412,7 @@ int mode;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(cp, &host, tmp, &type))) {
 		n = urlaccess(host, type, &(tmp[n]), mode);
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -1491,7 +1491,7 @@ int bufsiz;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urlreadlink(host, type, &(tmp[n]), lbuf, sizeof(lbuf) - 1);
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -1536,7 +1536,7 @@ int mode;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urlchmod(host, type, &(tmp[n]), mode);
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -1681,7 +1681,7 @@ CONST char *path;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urlunlink(host, type, &(tmp[n]));
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -1727,10 +1727,10 @@ CONST char *from, *to;
 				n = seterrno(EXDEV);
 			else n = urlrename(host1,
 				type1, &(tmp1[n]), &(tmp2[n2]));
-			free2(host2);
+			Xfree(host2);
 		}
 		else n = seterrno(EXDEV);
-		free2(host1);
+		Xfree(host1);
 	}
 	else if (urlpath(to, NULL, NULL, NULL)) n = seterrno(EXDEV);
 	else
@@ -1779,7 +1779,7 @@ int flags, mode;
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		dev = DEV_URL;
 		fd = urlopen(host, type, &(tmp[n]), flags);
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -2067,7 +2067,7 @@ int mode;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urlmkdir(host, type, &(tmp[n]));
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -2102,7 +2102,7 @@ CONST char *path;
 #ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, tmp, &type))) {
 		n = urlrmdir(host, type, &(tmp[n]));
-		free2(host);
+		Xfree(host);
 	}
 	else
 #endif
@@ -2112,6 +2112,61 @@ CONST char *path;
 	return(n);
 }
 #endif	/* DEP_BIASPATH */
+
+#ifndef	NOFLOCK
+int Xflock(fd, operation)
+int fd, operation;
+{
+# ifdef	USEFCNTLOCK
+	struct flock lock;
+	int cmd;
+# endif
+	int n;
+
+# ifdef	USEFCNTLOCK
+	switch (operation & (LOCK_SH | LOCK_EX | LOCK_UN)) {
+		case LOCK_SH:
+			lock.l_type = F_RDLCK;
+			break;
+		case LOCK_EX:
+			lock.l_type = F_WRLCK;
+			break;
+		default:
+			lock.l_type = F_UNLCK;
+			break;
+	}
+	cmd = (operation & LOCK_NB) ? F_SETLK : F_SETLKW;
+	lock.l_start = lock.l_len = (off_t)0;
+	lock.l_whence = SEEK_SET;
+
+	n = fcntl(fd, cmd, &lock);
+# else	/* !USEFCNTLOCK */
+#  ifdef	USELOCKF
+	switch (operation & (LOCK_SH | LOCK_EX | LOCK_UN)) {
+		case LOCK_SH:
+			operation = F_TEST;
+			break;
+		case LOCK_EX:
+			operation = (operation & LOCK_NB) ? F_TLOCK : F_LOCK;
+			break;
+		default:
+			operation = F_ULOCK;
+			break;
+	}
+	n = lockf(fd, operation, (off_t)0);
+#  else	/* !USELOCKF */
+	n = flock(fd, operation);
+#  endif	/* !USELOCKF */
+# endif	/* !USEFCNTLOCK */
+
+	if (n >= 0) {
+		errno = 0;
+		return(0);
+	}
+
+	return(-1);
+}
+#endif	/* !NOFLOCK */
 
 #ifndef	NOSELECT
 int checkread(fd, buf, nbytes, timeout)

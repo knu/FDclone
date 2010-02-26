@@ -164,7 +164,7 @@ int getcurdrv(VOID_A)
 #endif
 	drive = (dos7access & D7_CAPITAL) ? 'A' : 'a';
 #ifndef	_NODOSDRIVE
-	if (lastdrive >= 0) drive += toupper2(lastdrive) - 'A';
+	if (lastdrive >= 0) drive += Xtoupper(lastdrive) - 'A';
 	else
 #endif
 	drive += (bdos(0x19, 0, 0) & 0xff);
@@ -192,7 +192,7 @@ int drive, nodir;
 #endif
 
 	errno = EINVAL;
-	if (islower2(drive)) {
+	if (Xislower(drive)) {
 		drv = drive - 'a';
 		dos7access &= ~D7_CAPITAL;
 	}
@@ -323,15 +323,15 @@ CONST char *path;
 	if (drive == '_') return(3);
 # endif
 # ifndef	_NODOSDRIVE
-	if (checkdrive(toupper2(drive) - 'A') > 0) return(-2);
+	if (checkdrive(Xtoupper(drive) - 'A') > 0) return(-2);
 # endif
 	if (getdosver() < 7) {
 # ifndef	_NODOSDRIVE
-		if ((dosdrive & 1) && islower2(drive)) return(-1);
+		if ((dosdrive & 1) && Xislower(drive)) return(-1);
 # endif
 		return(-3);
 	}
-	if (isupper2(drive)) return(0);
+	if (Xisupper(drive)) return(0);
 
 	VOID_C gendospath(drv, drive, _SC_);
 	reg.x.ax = 0x71a0;
@@ -398,7 +398,7 @@ char *buf;
 	cp = path;
 	if (!(drive = _dospath(path))) drive = getcurdrv();
 	else if (*(cp += 2)) return((char *)path);
-	strcpy2(gendospath(buf, drive, (*cp) ? '\0' : '.'), cp);
+	Xstrcpy(gendospath(buf, drive, (*cp) ? '\0' : '.'), cp);
 
 	return(buf);
 }
@@ -453,7 +453,7 @@ char *alias;
 # endif
 
 	if (!path || !(i = _dospath(path))) i = getcurdrv();
-	if (islower2(i)) *alias = tolower2(*alias);
+	if (Xislower(i)) *alias = Xtolower(*alias);
 
 	return(alias);
 }
@@ -493,7 +493,7 @@ char *resolved;
 			if (doslongname(regpath(path, buf), resolved))
 				return(resolved);
 			else if (!dependdosfunc) {
-				strcpy2(resolved, path);
+				Xstrcpy(resolved, path);
 				return(resolved);
 			}
 /*FALLTHRU*/
@@ -514,7 +514,7 @@ char *resolved;
 	if (int21call(&reg, &sreg) < 0) {
 		/* Windows NT/2000/XP cannot support reserved filenames */
 		if ((dos7access & D7_NTARCH) && isreserved(path)) {
-			strcpy2(resolved, path);
+			Xstrcpy(resolved, path);
 			return(resolved);
 		}
 		return(NULL);
@@ -537,7 +537,7 @@ char *resolved;
 			resolved[0] = i;
 			resolved[1] = ':';
 			i = 2;
-			if (isalpha2(resolved[2])
+			if (Xisalpha(resolved[2])
 			&& resolved[3] == '.' && resolved[4] == _SC_)
 				i = 5;
 			while (resolved[i]) if (resolved[i++] == _SC_) break;
@@ -549,11 +549,11 @@ char *resolved;
 		else {
 			VOID_C gendospath(resolved, i, _SC_);
 			if (path && *path == _SC_)
-				strcpy2(&(resolved[2]), path);
+				Xstrcpy(&(resolved[2]), path);
 		}
 	}
-	else *resolved = (isupper2(i))
-		? toupper2(*resolved) : tolower2(*resolved);
+	else *resolved = (Xisupper(i))
+		? Xtoupper(*resolved) : Xtolower(*resolved);
 
 	return(resolved);
 }
@@ -584,7 +584,7 @@ char *path;
 
 # ifndef	_NOUSELFN
 	if (supportLFN(path) > 0 && unixrealpath(path, tmp))
-		strcpy2(path, tmp);
+		Xstrcpy(path, tmp);
 	else
 # endif
 	for (i = (_dospath(path)) ? 2 : 0; path[i]; i++) {
@@ -594,7 +594,7 @@ char *path;
 		if (path[i] == '\\') path[i] = _SC_;
 		else if (iskanji1(path, i)) i++;
 # endif
-		else path[i] = toupper2(path[i]);
+		else path[i] = Xtoupper(path[i]);
 	}
 
 	return(path);
@@ -1349,7 +1349,7 @@ int n, size, iswrite;
 {
 	int drv, ret, level;
 
-	drv = toupper2(drive) - 'A';
+	drv = Xtoupper(drive) - 'A';
 	if (drv < 0 || drv > 'Z' - 'A') return(seterrno(EINVAL));
 
 	ret = 0;
@@ -1537,7 +1537,7 @@ CONST char *dir;
 #ifndef	_NOUSELFN
 	if (supportLFN(path) > 0) {
 		dirp -> dd_id = DID_IFLFN;
-		strcpy2(cp, "*");
+		Xstrcpy(cp, "*");
 		dirp -> dd_buf = (char *)malloc(sizeof(struct lfnfind_t));
 		if (!dirp -> dd_buf) {
 			free(dirp);
@@ -1560,7 +1560,7 @@ CONST char *dir;
 #endif	/* !_NOUSELFN */
 	{
 		dirp -> dd_id = DID_IFNORMAL;
-		strcpy2(cp, "*.*");
+		Xstrcpy(cp, "*.*");
 		dirp -> dd_buf = (char *)malloc(sizeof(struct dosfind_t));
 		if (!dirp -> dd_buf) {
 			free(dirp);
@@ -1579,7 +1579,7 @@ CONST char *dir;
 		else {
 #ifndef	_NOUSELFN
 			if (dirp -> dd_id & DID_IFLFN)
-				lfn_findclose(dirp -> dd_fd);
+				VOID_C lfn_findclose(dirp -> dd_fd);
 #endif
 			free(dirp -> dd_buf);
 			free(dirp);
@@ -1588,13 +1588,14 @@ CONST char *dir;
 	}
 	if (!(dirp -> dd_path = (char *)malloc(strlen(dir) + 1))) {
 #ifndef	_NOUSELFN
-		if (dirp -> dd_id & DID_IFLFN) lfn_findclose(dirp -> dd_fd);
+		if (dirp -> dd_id & DID_IFLFN)
+			VOID_C lfn_findclose(dirp -> dd_fd);
 #endif
 		free(dirp -> dd_buf);
 		free(dirp);
 		return(NULL);
 	}
-	strcpy2(dirp -> dd_path, dir);
+	Xstrcpy(dirp -> dd_path, dir);
 
 	return(dirp);
 }
@@ -1606,7 +1607,7 @@ DIR *dirp;
 	if (dirp -> dd_id == DID_IFDOSDRIVE) return(dosclosedir(dirp));
 #endif
 #ifndef	_NOUSELFN
-	if (dirp -> dd_id & DID_IFLFN) lfn_findclose(dirp -> dd_fd);
+	if (dirp -> dd_id & DID_IFLFN) VOID_C lfn_findclose(dirp -> dd_fd);
 #endif
 	free(dirp -> dd_buf);
 	free(dirp -> dd_path);
@@ -1620,6 +1621,7 @@ DIR *dirp;
 {
 #ifndef	_NOUSELFN
 	struct lfnfind_t *lbufp;
+	u_int fd;
 #endif
 	struct dosfind_t *dbufp;
 	static struct dirent d;
@@ -1635,14 +1637,14 @@ DIR *dirp;
 #ifndef	_NOUSELFN
 	if ((dirp -> dd_id & DID_IFLFN) && !(dirp -> dd_id & DID_IFLABEL)) {
 		lbufp = (struct lfnfind_t *)(dirp -> dd_buf);
-		strcpy2(d.d_name, lbufp -> name);
-		strcpy2(d.d_alias, lbufp -> alias);
+		Xstrcpy(d.d_name, lbufp -> name);
+		Xstrcpy(d.d_alias, lbufp -> alias);
 	}
 	else
 #endif	/* !_NOUSELFN */
 	{
 		dbufp = (struct dosfind_t *)(dirp -> dd_buf);
-		strcpy2(d.d_name, dbufp -> name);
+		Xstrcpy(d.d_name, dbufp -> name);
 		d.d_alias[0] = '\0';
 	}
 
@@ -1660,9 +1662,7 @@ DIR *dirp;
 
 #ifndef	_NOUSELFN
 		if (dirp -> dd_id & DID_IFLFN) {
-			u_int fd;
-
-			strcpy2(cp, "*");
+			Xstrcpy(cp, "*");
 			i = lfn_findfirst(&fd, path, SEARCHATTRS,
 				(struct lfnfind_t *)(dirp -> dd_buf));
 			if (i >= 0) dirp -> dd_fd = fd;
@@ -1671,7 +1671,7 @@ DIR *dirp;
 		else
 #endif	/* !_NOUSELFN */
 		{
-			strcpy2(cp, "*.*");
+			Xstrcpy(cp, "*.*");
 			i = dos_findfirst(path, SEARCHATTRS,
 				(struct dosfind_t *)(dirp -> dd_buf));
 		}
@@ -1698,7 +1698,7 @@ DIR *dirp;
 	if (dirp -> dd_id == DID_IFDOSDRIVE) return(dosrewinddir(dirp));
 #endif
 #ifndef	_NOUSELFN
-	if (dirp -> dd_id & DID_IFLFN) lfn_findclose(dirp -> dd_fd);
+	if (dirp -> dd_id & DID_IFLFN) VOID_C lfn_findclose(dirp -> dd_fd);
 #endif
 	if (!(dupdirp = unixopendir(dirp -> dd_path))) return(-1);
 
@@ -1770,19 +1770,19 @@ char *s;
 	for (i = 0; i < 8 && s[i]; i++) {
 		if (s[i] == ' ') return(0);
 		if (s[i] == '.') break;
-		s[i] = toupper2(s[i]);
+		s[i] = Xtoupper(s[i]);
 	}
 	if (!i) return(-1);
 
 	s += i;
 	if (!*s) return(1);
 	if (*s == '.') cp = s + 1;
-	else if ((cp = strchr2(&(s[1]), '.'))) cp++;
+	else if ((cp = Xstrchr(&(s[1]), '.'))) cp++;
 
 	for (i = 0; i < 3 && cp && cp[i]; i++) {
 		if (cp[i] == ' ') return(0);
 		if (cp[i] == '.') return(-1);
-		s[i + 1] = toupper2(cp[i]);
+		s[i + 1] = Xtoupper(cp[i]);
 	}
 	if (i) *(s++) = '.';
 	s[i] = '\0';
@@ -1799,10 +1799,10 @@ CONST char *from, *to;
 	char *fp, *tp, fbuf[MAXPATHLEN], tbuf[MAXPATHLEN];
 	int i;
 
-	strcpy2(fbuf, to);
+	Xstrcpy(fbuf, to);
 	if (!(tp = strrdelim(fbuf, 1))) {
 		cp = to;
-		strcpy2(fbuf, curpath);
+		Xstrcpy(fbuf, curpath);
 	}
 	else {
 		if (*tp == _SC_) tp++;
@@ -1812,7 +1812,7 @@ CONST char *from, *to;
 	if (!(to = unixrealpath(fbuf, tbuf))
 	|| !(from = unixrealpath(from, fbuf)))
 		return(-1);
-	strcpy2(strcatdelim(tbuf), cp);
+	Xstrcpy(strcatdelim(tbuf), cp);
 
 	for (i = 0; from[i]; i++) if (from[i] != to[i]) break;
 	if (!strdelim(&(from[i]), 0) && !strdelim(&(to[i]), 0)) return(-1);
@@ -1827,14 +1827,14 @@ CONST char *from, *to;
 	tp = strcatdelim(tbuf);
 	while ((dp = unixreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		strcpy2(fp, dp -> d_name);
-		strcpy2(tp, dp -> d_name);
+		Xstrcpy(fp, dp -> d_name);
+		Xstrcpy(tp, dp -> d_name);
 		if (unixrename(from, to) < 0) {
-			unixclosedir(dirp);
+			VOID_C unixclosedir(dirp);
 			return(-1);
 		}
 	}
-	unixclosedir(dirp);
+	VOID_C unixclosedir(dirp);
 	fbuf[i] = '\0';
 	if (unixrmdir(from) < 0) return(-1);
 
@@ -1853,9 +1853,9 @@ CONST char *from, *to;
 	char fbuf[MAXPATHLEN], tbuf[MAXPATHLEN];
 	int i, ax, f, t;
 
-	strcpy2(fbuf, duplpath(from));
+	Xstrcpy(fbuf, duplpath(from));
 	from = fbuf;
-	strcpy2(tbuf, duplpath(to));
+	Xstrcpy(tbuf, duplpath(to));
 	to = tbuf;
 	f = supportLFN(from);
 	t = supportLFN(to);
@@ -2006,7 +2006,7 @@ int size;
 
 	drive = getcurdrv();
 #ifndef	_NODOSDRIVE
-	if (checkdrive(toupper2(drive) - 'A') > 0) {
+	if (checkdrive(Xtoupper(drive) - 'A') > 0) {
 		if (!dosgetcwd(pathname, size)) return(NULL);
 	}
 	else
@@ -2022,9 +2022,9 @@ int size;
 	}
 
 	*pathname = (dos7access & D7_CAPITAL)
-		? toupper2(*pathname) : tolower2(*pathname);
+		? Xtoupper(*pathname) : Xtolower(*pathname);
 #ifdef	DJGPP
-	if (unixrealpath(pathname, tmp)) strcpy2(pathname, tmp);
+	if (unixrealpath(pathname, tmp)) Xstrcpy(pathname, tmp);
 #endif
 
 	return(pathname);
@@ -2114,7 +2114,7 @@ statfs_t *buf;
 	int drv, drive;
 
 	if (!path || !(drive = _dospath(path))) drive = getcurdrv();
-	drv = toupper2(drive) - 'A';
+	drv = Xtoupper(drive) - 'A';
 
 	if (drv < 0 || drv > 'Z' - 'A') return(seterrno(ENOENT));
 
@@ -2198,7 +2198,7 @@ struct lfnfind_t *lbuf;
 	if (isdotdir(cp) == 1) {
 		len = cp - path;
 		memcpy(tmp, path, len);
-		strcpy2(&(tmp[len]), curpath);
+		Xstrcpy(&(tmp[len]), curpath);
 #ifndef	_NOUSELFN
 		if (fdp) n = lfn_findfirst(fdp, tmp, SEARCHATTRS, lbuf);
 		else
@@ -2254,7 +2254,7 @@ struct stat *stp;
 		stp -> st_mode = getdosmode(lbuf.attr);
 		stp -> st_mtime = getdostime(lbuf.wrdate, lbuf.wrtime);
 		stp -> st_size = lbuf.size_l;
-		lfn_findclose(fd);
+		VOID_C lfn_findclose(fd);
 	}
 	else
 #endif	/* !_NOUSELFN */
@@ -2359,7 +2359,7 @@ CONST struct timeval *tvp;
 			reg.x.bx = (u_short)fd;
 			putdostime(&(reg.x.dx), &(reg.x.cx), t);
 			i = int21call(&reg, &sreg);
-			close(fd);
+			VOID_C close(fd);
 			return(i);
 		}
 		if (i || errno != EACCES) return(-1);

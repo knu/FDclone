@@ -10320,7 +10320,7 @@ char *CONST argv[];
 	if (fputnflist(macunilist, MACUNILISTSIZ, fp) < 0) return(1);
 	if (fputnflist(iconvunilist, ICONVUNILISTSIZ, fp) < 0) return(1);
 
-	fclose(fp);
+	VOID_C fclose(fp);
 
 	return(0);
 }

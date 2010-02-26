@@ -175,7 +175,7 @@ static int NEAR islowerdir(VOID_A)
 #ifdef	DEP_DOSEMU
 	org = nodospath(orgpath, org);
 #endif
-	strcpy2(path, destpath);
+	Xstrcpy(path, destpath);
 	top = path;
 #ifdef	DEP_DOSPATH
 	if (dospath(path, NULL) != dospath(org, NULL)) return(0);
@@ -201,16 +201,16 @@ CONST char *mes, *arg;
 {
 	char *dir;
 
-	if (arg && *arg) dir = strdup2(arg);
+	if (arg && *arg) dir = Xstrdup(arg);
 	else if (!(dir = inputstr(mes, 1, -1, NULL, HST_PATH))) return(NULL);
 	else if (!*(dir = evalpath(dir, 0))) {
-		dir = realloc2(dir, 2);
+		dir = Xrealloc(dir, 2);
 		dir[0] = '.';
 		dir[1] = '\0';
 	}
 #ifdef	DEP_DOSPATH
 	else if (_dospath(dir) && !dir[2]) {
-		dir = realloc2(dir, 4);
+		dir = Xrealloc(dir, 4);
 		dir[2] = '.';
 		dir[3] = '\0';
 	}
@@ -219,13 +219,13 @@ CONST char *mes, *arg;
 #ifdef	DEP_PSEUDOPATH
 	if ((destdrive = preparedrv(dir, NULL, NULL)) < 0) {
 		warning(-1, dir);
-		free2(dir);
+		Xfree(dir);
 		return(NULL);
 	}
 #endif
 	if (preparedir(dir) < 0) {
 		warning(-1, dir);
-		free2(dir);
+		Xfree(dir);
 #ifdef	DEP_DOSDRIVE
 		shutdrv(destdrive);
 		destdrive = -1;
@@ -245,16 +245,16 @@ struct stat *stp;
 	char *tmp;
 	int n;
 
-	strcpy2(dest, destpath);
+	Xstrcpy(dest, destpath);
 	cp = file;
 	if (destdir) {
 		for (n = 0; (tmp = strdelim(cp, 0)); n++) cp = tmp + 1;
 		for (tmp = destdir; n > 0 && (tmp = strdelim(tmp, 0)); tmp++)
 			n--;
 		if (tmp) *tmp = '\0';
-		if (*destdir) strcpy2(strcatdelim(dest), destdir);
+		if (*destdir) Xstrcpy(strcatdelim(dest), destdir);
 	}
-	strcpy2(strcatdelim(dest), cp);
+	Xstrcpy(strcatdelim(dest), cp);
 
 	if (Xlstat(file, stp) < 0) {
 		warning(-1, file);
@@ -279,7 +279,7 @@ CONST char *s;
 	for (;;) {
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
-		Xkanjiputs(s);
+		VOID_C Xkanjiputs(s);
 
 		str[0] = UPDAT_K;
 		val[0] = CPP_UPDATE;
@@ -317,7 +317,7 @@ CONST char *s;
 # endif
 			if (issamedir(cp, NULL) || issamedir(cp, destpath)) {
 				warning(EINVAL, cp);
-				free2(cp);
+				Xfree(cp);
 				continue;
 			}
 			forwardpath = cp;
@@ -340,7 +340,7 @@ int pre;
 
 	Xlocate(0, L_CMDLINE);
 	Xputterm(L_CLEAR);
-	Xkanjiputs(s);
+	VOID_C Xkanjiputs(s);
 
 	i = 0;
 	if (pre) {
@@ -402,7 +402,7 @@ struct stat *stp1, *stp2;
 		if (!n || n == CPP_RENAME) {
 			s = SAMEF_K;
 			i = strlen2(s) - strsize("%.*s");
-			cp = asprintf3(s, n_column - i, dest);
+			cp = asprintf2(s, n_column - i, dest);
 
 #ifndef	_NOEXTRACOPY
 			copycolumn = -1;
@@ -411,9 +411,9 @@ struct stat *stp1, *stp2;
 			else {
 				Xlocate(0, L_CMDLINE);
 				Xputterm(L_CLEAR);
-				Xkanjiputs(cp);
+				VOID_C Xkanjiputs(cp);
 			}
-			free2(cp);
+			Xfree(cp);
 			if (n < 0) return(n);
 		}
 		switch (n) {
@@ -427,8 +427,8 @@ struct stat *stp1, *stp2;
 				lcmdline = L_INFO;
 				tmp = inputstr(NEWNM_K, 1, -1, NULL, -1);
 				if (!tmp) return(CHK_ERROR);
-				strcpy2(getbasename(dest), tmp);
-				free2(tmp);
+				Xstrcpy(getbasename(dest), tmp);
+				Xfree(tmp);
 				if (Xlstat(dest, stp2) < 0) {
 					stp2 -> st_mode = S_IWUSR;
 					if (errno == ENOENT) return(CHK_OK);
@@ -516,7 +516,7 @@ int mode;
 
 		if (!(tmp = strrdelim(path, 0))) copycurpath(dir);
 		else if (tmp == path) copyrootpath(dir);
-		else strncpy2(dir, path, tmp - path);
+		else Xstrncpy(dir, path, tmp - path);
 
 		if (reallstat(dir, &st) < 0) {
 			warning(-1, dir);
@@ -549,12 +549,12 @@ int mode;
 	else {
 		s = DELPM_K;
 		len = strlen2(s) - strsize("%.*s");
-		cp = asprintf3(s, n_column - len, path);
+		cp = asprintf2(s, n_column - len, path);
 #ifndef	_NOEXTRACOPY
 		copycolumn = -1;
 #endif
 		n = getremovepolicy(cp, 0);
-		free2(cp);
+		Xfree(cp);
 	}
 	if (n > 0) n -= RMP_BIAS;
 
@@ -605,8 +605,8 @@ int n;
 	duperrno = errno;
 	max = n_column - 1;
 	Xlocate(0, copyline);
-	for (i = 0; i < n; i++) Xputch2('o');
-	for (; i < max; i++) Xputch2('.');
+	for (i = 0; i < n; i++) VOID_C XXputch('o');
+	for (; i < max; i++) VOID_C XXputch('.');
 	Xlocate(n, copyline);
 	Xtflush();
 	errno = duperrno;
@@ -819,10 +819,10 @@ CONST char *path;
 		if (touchfile(dest, &st1) >= 0) destnlink |= TCH_MODE;
 	}
 
-	free2(destdir);
+	Xfree(destdir);
 	destdir = &(dest[strlen(destpath)]);
 	while (*destdir == _SC_) destdir++;
-	destdir = strdup2(destdir);
+	destdir = Xstrdup(destdir);
 
 	return(APL_OK);
 }
@@ -956,9 +956,9 @@ CONST char *path;
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
-		Xcprintf2("[%.*k]", n_column - 2, path);
+		VOID_C XXcprintf("[%.*k]", n_column - 2, path);
 		if (yesno(FOUND_K)) {
-			destpath = strdup2(path);
+			destpath = Xstrdup(path);
 			return(APL_CANCEL);
 		}
 	}
@@ -971,7 +971,7 @@ CONST char *path;
 {
 	if (regexp_exec(findregexp, getbasename(path), 1)) {
 		if (yesno(FOUND_K)) {
-			destpath = strdup2(path);
+			destpath = Xstrdup(path);
 			return(APL_CANCEL);
 		}
 	}
@@ -1009,7 +1009,7 @@ int x, y;
 # endif
 	}
 #endif	/* !_NOEXTRAATTR */
-	Xcputs2(buf);
+	XXcputs(buf);
 }
 
 static VOID NEAR showattr(namep, attr, yy)
@@ -1046,53 +1046,53 @@ int yy;
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
 	Xlocate(x1, y);
-	Xcprintf2("[%-*.*k]", w, w, namep -> name);
+	VOID_C XXcprintf("[%-*.*k]", w, w, namep -> name);
 	Xlocate(x2 + 3, y);
-	Xkanjiputs(TOLD_K);
+	VOID_C Xkanjiputs(TOLD_K);
 	Xlocate(x2 + 13, y);
-	Xkanjiputs(TNEW_K);
+	VOID_C Xkanjiputs(TNEW_K);
 
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
 	Xlocate(x1, y);
-	Xkanjiputs(TMODE_K);
+	VOID_C Xkanjiputs(TMODE_K);
 	Xlocate(x2, y);
 	putmode(buf, namep -> st_mode, 1);
-	Xcputs2(buf);
+	XXcputs(buf);
 	showmode(attr, x2 + ATTRWIDTH, y);
 
 #ifdef	HAVEFLAGS
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
 	Xlocate(x1, y);
-	Xkanjiputs(TFLAG_K);
+	VOID_C Xkanjiputs(TFLAG_K);
 	Xlocate(x2, y);
 	putflags(buf, namep -> st_flags);
-	Xcputs2(buf);
+	XXcputs(buf);
 	Xlocate(x2 + ATTRWIDTH, y);
 	putflags(buf, attr -> flags);
-	Xcputs2(buf);
+	XXcputs(buf);
 #endif
 
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
 	Xlocate(x1, y);
-	Xkanjiputs(TDATE_K);
+	VOID_C Xkanjiputs(TDATE_K);
 	Xlocate(x2, y);
-	Xcprintf2("%02d-%02d-%02d",
+	VOID_C XXcprintf("%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 	Xlocate(x2 + ATTRWIDTH, y);
-	Xcputs2(attr -> timestr[0]);
+	XXcputs(attr -> timestr[0]);
 
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
 	Xlocate(x1, y);
-	Xkanjiputs(TTIME_K);
+	VOID_C Xkanjiputs(TTIME_K);
 	Xlocate(x2, y);
-	Xcprintf2("%02d:%02d:%02d",
+	VOID_C XXcprintf("%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	Xlocate(x2 + ATTRWIDTH, y);
-	Xcputs2(attr -> timestr[1]);
+	XXcputs(attr -> timestr[1]);
 
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
@@ -1103,26 +1103,26 @@ int yy;
 	y = yy + 1;
 	x2 += 20;
 	Xlocate(x2, y++);
-	Xkanjiputs(TOWN_K);
+	VOID_C Xkanjiputs(TOWN_K);
 	Xlocate(x2, y++);
 	putowner(buf, attr -> uid);
-	Xputch2('<');
+	VOID_C XXputch('<');
 	if (attr -> nlink & TCH_UID) Xputterm(T_STANDOUT);
-	Xkanjiputs(buf);
+	VOID_C Xkanjiputs(buf);
 	if (attr -> nlink & TCH_UID) Xputterm(END_STANDOUT);
-	Xputch2('>');
+	VOID_C XXputch('>');
 # ifdef	HAVEFLAGS
 	y++;
 # endif
 	Xlocate(x2, y++);
-	Xkanjiputs(TGRP_K);
+	VOID_C Xkanjiputs(TGRP_K);
 	Xlocate(x2, y++);
 	putgroup(buf, attr -> gid);
-	Xputch2('<');
+	VOID_C XXputch('<');
 	if (attr -> nlink & TCH_GID) Xputterm(T_STANDOUT);
-	Xkanjiputs(buf);
+	VOID_C Xkanjiputs(buf);
 	if (attr -> nlink & TCH_GID) Xputterm(END_STANDOUT);
-	Xputch2('>');
+	VOID_C XXputch('>');
 #endif	/* !_NOEXTRAATTR && !NOUID */
 }
 
@@ -1138,7 +1138,7 @@ int yy;
 	up = finduid(attr -> uid, NULL);
 	if (up) cp = up -> name;
 	else {
-		snprintf2(buf, sizeof(buf), "%-d", (int)(attr -> uid));
+		Xsnprintf(buf, sizeof(buf), "%-d", (int)(attr -> uid));
 		cp = buf;
 	}
 
@@ -1146,16 +1146,16 @@ int yy;
 	lcmdline = yy;
 	maxcmdline = 1;
 	if (!(s = inputstr(AOWNR_K, 0, -1, cp, HST_USER))) return(-1);
-	if ((cp = sscanf2(s, "%-<*d%$", sizeof(uid_t), &uid))) /*EMPTY*/;
+	if ((cp = Xsscanf(s, "%-<*d%$", sizeof(uid_t), &uid))) /*EMPTY*/;
 	else if ((up = finduid(0, s))) uid = up -> uid;
 	else {
 		lcmdline = yy;
 		warning(ENOENT, s);
-		free2(s);
+		Xfree(s);
 		return(-1);
 	}
 
-	free2(s);
+	Xfree(s);
 	if (uid != attr -> uid) {
 		attr -> uid = uid;
 		attr -> nlink |= TCH_UID;
@@ -1174,7 +1174,7 @@ int yy;
 	gp = findgid(attr -> gid, NULL);
 	if (gp) cp = gp -> name;
 	else {
-		snprintf2(buf, sizeof(buf), "%-d", (int)(attr -> gid));
+		Xsnprintf(buf, sizeof(buf), "%-d", (int)(attr -> gid));
 		cp = buf;
 	}
 
@@ -1182,16 +1182,16 @@ int yy;
 	lcmdline = yy;
 	maxcmdline = 1;
 	if (!(s = inputstr(AGRUP_K, 0, -1, cp, HST_GROUP))) return(-1);
-	if ((cp = sscanf2(s, "%-<*d%$", sizeof(gid_t), &gid))) /*EMPTY*/;
+	if ((cp = Xsscanf(s, "%-<*d%$", sizeof(gid_t), &gid))) /*EMPTY*/;
 	else if ((gp = findgid(0, s))) gid = gp -> gid;
 	else {
 		lcmdline = yy;
 		warning(ENOENT, s);
-		free2(s);
+		Xfree(s);
 		return(-1);
 	}
 
-	free2(s);
+	Xfree(s);
 	if (gid != attr -> gid) {
 		attr -> gid = gid;
 		attr -> nlink |= TCH_GID;
@@ -1248,9 +1248,9 @@ int flag;
 	attr.flags = namep -> st_flags;
 #endif
 	tm = localtime(&(namep -> st_mtim));
-	snprintf2(attr.timestr[0], sizeof(attr.timestr[0]), "%02d-%02d-%02d",
+	Xsnprintf(attr.timestr[0], sizeof(attr.timestr[0]), "%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	snprintf2(attr.timestr[1], sizeof(attr.timestr[1]), "%02d:%02d:%02d",
+	Xsnprintf(attr.timestr[1], sizeof(attr.timestr[1]), "%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(namep, &attr, yy);
 	y = ymin = (excl == ATR_TIMEONLY) ? WMODELINE : 0;
@@ -1350,7 +1350,7 @@ int flag;
 			case '8':
 			case '9':
 				if (y < WMODELINE) break;
-				Xputch2(ch);
+				VOID_C XXputch(ch);
 				attr.timestr[y - WMODELINE][x] = ch;
 				attr.nlink |= TCH_MTIME;
 /*FALLTHRU*/
@@ -1437,7 +1437,7 @@ int flag;
 					attr.flags ^= fflaglist[x];
 					Xlocate(xx, yy + y + 2);
 					putflags(buf, attr.flags);
-					Xcputs2(buf);
+					XXcputs(buf);
 					attr.nlink |= TCH_FLAGS;
 					break;
 				}
@@ -1528,7 +1528,7 @@ int flag;
 	|| tm -> tm_mday < 1 || tm -> tm_mday > 31
 	|| tm -> tm_hour > 23 || tm -> tm_min > 59 || tm -> tm_sec > 60)
 		return(-1);
-	if ((t = timelocal2(tm)) == (time_t)-1) return(-1);
+	if ((t = Xtimelocal(tm)) == (time_t)-1) return(-1);
 
 	mask = (TCH_CHANGE | TCH_MASK | TCH_MODEEXE);
 	switch (excl) {
@@ -1668,18 +1668,18 @@ int *maxp, depth;
 	cp = strcatdelim(dir);
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		strcpy2(cp, dp -> d_name);
+		Xstrcpy(cp, dp -> d_name);
 
 		if (Xlstat(dir, &st) < 0 || !s_isdir(&st)) continue;
 		dirlist = b_realloc(dirlist, *maxp, char *);
-		dirlist[(*maxp)++] = strdup2(dir);
+		dirlist[(*maxp)++] = Xstrdup(dir);
 		if (!(d = depth)) /*EMPTY*/;
 		else if (d > 1) d--;
 		else continue;
 		dirlist = getdirtree(dir, dirlist, maxp, d);
 	}
 	if (cp > dir) *(cp - 1) = '\0';
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 
 	return(dirlist);
 }
@@ -1708,7 +1708,7 @@ int verbose;
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
 		cp = (dir[0] == '.' && dir[1] == _SC_) ? &(dir[2]) : dir;
-		Xcprintf2("[%.*k]", n_column - 2, cp);
+		VOID_C XXcprintf("[%.*k]", n_column - 2, cp);
 		Xtflush();
 	}
 #ifdef	FAKEUNINIT
@@ -1716,7 +1716,7 @@ int verbose;
 #endif
 
 	if (!funcd1) order = (funcd2) ? ORD_NOPREDIR : ORD_NODIR;
-	strcpy2(path, dir);
+	Xstrcpy(path, dir);
 
 	ret = APL_OK;
 	max = 0;
@@ -1731,8 +1731,8 @@ int verbose;
 		if (ret == APL_ERROR) warning(-1, dir);
 		if (dirlist) {
 			for (ndir = 0; ndir < max; ndir++)
-				free2(dirlist[ndir]);
-			free2(dirlist);
+				Xfree(dirlist[ndir]);
+			Xfree(dirlist);
 		}
 		return(ret);
 	}
@@ -1752,20 +1752,20 @@ int verbose;
 		else ret = _applydir(dirlist[ndir], funcf,
 			funcd1, funcd2, ORD_NODIR, NULL, verbose);
 		if (ret == APL_CANCEL) {
-			for (; ndir < max; ndir++) free2(dirlist[ndir]);
-			free2(dirlist);
+			for (; ndir < max; ndir++) Xfree(dirlist[ndir]);
+			Xfree(dirlist);
 			return(ret);
 		}
-		free2(dirlist[ndir]);
+		Xfree(dirlist[ndir]);
 
 		if (verbose) {
 			Xlocate(0, L_CMDLINE);
 			Xputterm(L_CLEAR);
-			Xcprintf2("[%.*k]", n_column - 2, cp);
+			VOID_C XXcprintf("[%.*k]", n_column - 2, cp);
 			Xtflush();
 		}
 	}
-	free2(dirlist);
+	Xfree(dirlist);
 
 	if (!(dirp = Xopendir(dir))) warning(-1, dir);
 	else {
@@ -1775,7 +1775,7 @@ int verbose;
 				break;
 			}
 			if (isdotdir(dp -> d_name)) continue;
-			strcpy2(fname, dp -> d_name);
+			Xstrcpy(fname, dp -> d_name);
 
 			if (Xlstat(path, &st) < 0) warning(-1, path);
 			else if (s_isdir(&st)) continue;
@@ -1784,7 +1784,7 @@ int verbose;
 				warning(-1, path);
 			}
 		}
-		Xclosedir(dirp);
+		VOID_C Xclosedir(dirp);
 		if (ret == APL_CANCEL) return(ret);
 	}
 
@@ -1823,7 +1823,7 @@ CONST char *endmes;
 		verbose = 0;
 	}
 	else if (isdotdir(dir) == 1) {
-		realpath2(dir, path, 0);
+		Xrealpath(dir, path, 0);
 		dir = path;
 	}
 #ifdef	DEP_DOSEMU
@@ -1859,7 +1859,7 @@ int tr;
 	if (mark > 0
 	|| (!isdir(&(filelist[filepos])) || islink(&(filelist[filepos])))) {
 		if (preparecopy(0, mark) < 0) {
-			free2(destpath);
+			Xfree(destpath);
 			return(FNC_CANCEL);
 		}
 		VOID_C applyfile(safecopy, ENDCP_K);
@@ -1867,13 +1867,13 @@ int tr;
 #ifdef	_NOEXTRACOPY
 	else if (issamedir(destpath, NULL)) {
 		warning(EEXIST, filelist[filepos].name);
-		free2(destpath);
+		Xfree(destpath);
 		return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	}
 #endif
 	else {
 		if (preparecopy(1, 1) < 0) {
-			free2(destpath);
+			Xfree(destpath);
 			return(FNC_CANCEL);
 		}
 		order = (islowerdir()) ? ORD_LOWER : ORD_NORMAL;
@@ -1881,10 +1881,10 @@ int tr;
 			cpdir, touchdir, order, ENDCP_K);
 	}
 
-	free2(destpath);
-	free2(destdir);
+	Xfree(destpath);
+	Xfree(destdir);
 #ifndef	_NOEXTRACOPY
-	free2(forwardpath);
+	Xfree(forwardpath);
 	forwardpath = NULL;
 #endif
 #ifdef	DEP_PSEUDOPATH
@@ -1925,13 +1925,13 @@ int tr;
 
 	if (!destpath) return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	if (issamedir(destpath, NULL)) {
-		free2(destpath);
+		Xfree(destpath);
 		return((tr) ? FNC_UPDATE : FNC_CANCEL);
 	}
 	destdir = NULL;
 	if (mark > 0) {
 		if (preparemove(0, mark) < 0) {
-			free2(destpath);
+			Xfree(destpath);
 			return(FNC_CANCEL);
 		}
 		filepos = applyfile(safemove, ENDMV_K);
@@ -1946,7 +1946,7 @@ int tr;
 		if (ret < 0) warning(-1, filelist[filepos].name);
 		else if (ret) {
 			if (preparemove(1, 1) < 0) {
-				free2(destpath);
+				Xfree(destpath);
 				return(FNC_CANCEL);
 			}
 # ifdef	DEP_DOSDRIVE
@@ -1959,7 +1959,7 @@ int tr;
 #endif	/* !_NOEXTRACOPY */
 		{
 			if (preparemove(0, 1) < 0) {
-				free2(destpath);
+				Xfree(destpath);
 				return(FNC_CANCEL);
 			}
 			ret = safemove(fnodospath(path, filepos));
@@ -1970,10 +1970,10 @@ int tr;
 	}
 
 	if (filepos >= maxfile) filepos = maxfile - 1;
-	free2(destpath);
-	free2(destdir);
+	Xfree(destpath);
+	Xfree(destdir);
 #ifndef	_NOEXTRACOPY
-	free2(forwardpath);
+	Xfree(forwardpath);
 	forwardpath = NULL;
 #endif
 #ifdef	DEP_PSEUDOPATH

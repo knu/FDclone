@@ -31,7 +31,12 @@
 #include <varargs.h>
 #endif
 
-#if	!MSDOS
+#if	MSDOS
+#undef	MAXPATHLEN
+#define	MAXPATHLEN		260
+#undef	MAXNAMLEN
+#define	MAXNAMLEN		255
+#else	/* !MSDOS */
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/file.h>
@@ -86,7 +91,7 @@
 #undef	ENXIO
 #undef	ENOTDIR
 #undef	EISDIR
-#endif
+#endif	/* __TURBOC__ */
 
 #ifndef	ENOSPC
 #define	ENOSPC			EACCES
@@ -133,18 +138,44 @@
 extern int errno;
 #endif
 #ifdef	USESTRERROR
-#define	strerror2		strerror
+#define	Xstrerror		strerror
 #else	/* !USESTRERROR */
 # ifndef	DECLERRLIST
 extern CONST char *CONST sys_errlist[];
 # endif
-#define	strerror2(n)		(char *)sys_errlist[n]
+#define	Xstrerror(n)		(char *)sys_errlist[n]
 #endif	/* !USESTRERROR */
 
 #ifdef	USESTDARGH
 #define	VA_START(a, f)		va_start(a, f)
 #else
 #define	VA_START(a, f)		va_start(a)
+#endif
+
+#ifndef	R_OK
+#define	R_OK			4
+#endif
+#ifndef	W_OK
+#define	W_OK			2
+#endif
+#ifndef	X_OK
+#define	X_OK			1
+#endif
+#ifndef	F_OK
+#define	F_OK			0
+#endif
+
+#ifndef	LOCK_SH
+#define	LOCK_SH			1
+#endif
+#ifndef	LOCK_EX
+#define	LOCK_EX			2
+#endif
+#ifndef	LOCK_NB
+#define	LOCK_NB			4
+#endif
+#ifndef	LOCK_UN
+#define	LOCK_UN			8
 #endif
 
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
@@ -172,6 +203,19 @@ extern CONST char *CONST sys_errlist[];
 #define	S_IREAD_ALL		(S_IRUSR | S_IRGRP | S_IROTH)
 #define	S_IWRITE_ALL		(S_IWUSR | S_IWGRP | S_IWOTH)
 #define	S_IEXEC_ALL		(S_IXUSR | S_IXGRP | S_IXOTH)
+
+#undef	S_IFLNK
+#undef	S_IFSOCK
+#undef	S_IFIFO
+#undef	S_ISUID
+#undef	S_ISGID
+#undef	S_ISVTX
+#define	S_IFLNK			0120000
+#define	S_IFSOCK		0140000
+#define	S_IFIFO			0010000
+#define	S_ISUID			0004000
+#define	S_ISGID			0002000
+#define	S_ISVTX			0001000
 
 #ifdef	HAVEFLAGS
 # ifndef	UF_NODUMP

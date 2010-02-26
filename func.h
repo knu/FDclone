@@ -77,7 +77,7 @@ extern int _chdir2 __P_((CONST char *));
 extern int chdir2 __P_((CONST char *));
 extern int chdir3 __P_((CONST char *, int));
 extern int mkdir2 __P_((char *, int));
-extern int strncpy3 __P_((char *, CONST char *, int *, int));
+extern int strncpy2 __P_((char *, CONST char *, int *, int));
 extern int strlen3 __P_((CONST char *));
 extern VOID perror2 __P_((CONST char *));
 extern int setenv2 __P_((CONST char *, CONST char *, int));
@@ -191,14 +191,14 @@ extern int waitstatus __P_((p_id_t, int, int *));
 extern VOID Xttyiomode __P_((int));
 extern VOID Xstdiomode __P_((VOID_A));
 extern int Xtermmode __P_((int));
-extern VOID Xputch2 __P_((int));
-extern VOID Xcputs2 __P_((CONST char *));
+extern int XXputch __P_((int));
+extern VOID XXcputs __P_((CONST char *));
 extern VOID Xputterm __P_((int));
 extern VOID Xputterms __P_((int));
 extern int Xsetscroll __P_((int, int));
 extern VOID Xlocate __P_((int, int));
 extern VOID Xtflush __P_((VOID_A));
-extern int Xcprintf2 __P_((CONST char *, ...));
+extern int XXcprintf __P_((CONST char *, ...));
 extern VOID Xcputnl __P_((VOID_A));
 extern int Xkanjiputs __P_((CONST char *));
 extern VOID Xchgcolor __P_((int, int));
@@ -217,14 +217,14 @@ extern int frontend __P_((VOID_A));
 #define	Xttyiomode		ttyiomode
 #define	Xstdiomode		stdiomode
 #define	Xtermmode		termmode
-#define	Xputch2			putch2
-#define	Xcputs2			cputs2
+#define	XXputch			Xputch
+#define	XXcputs			Xcputs
 #define	Xputterm		putterm
 #define	Xputterms		putterms
 #define	Xsetscroll		setscroll
 #define	Xlocate			locate
 #define	Xtflush			tflush
-#define	Xcprintf2		cprintf2
+#define	XXcprintf		Xcprintf
 #define	Xcputnl			cputnl
 #define	Xkanjiputs		kanjiputs
 #define	Xchgcolor		chgcolor

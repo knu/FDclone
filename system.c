@@ -1444,7 +1444,7 @@ int flags, mode;
 
 	if ((fd = newdup(Xopen(path, flags, mode))) >= 0) /*EMPTY*/;
 	else if (errno != ENOENT) return(NULL);
-	lck = (lockbuf_t *)malloc2(sizeof(lockbuf_t));
+	lck = (lockbuf_t *)Xmalloc(sizeof(lockbuf_t));
 	lck -> fd = fd;
 
 	return(lck);
@@ -1455,7 +1455,7 @@ lockbuf_t *lck;
 {
 	if (lck) {
 		if (lck -> fd >= 0) VOID_C Xclose(lck -> fd);
-		free2(lck);
+		Xfree(lck);
 	}
 }
 
@@ -1478,7 +1478,7 @@ int max;
 	time_t now;
 
 	if (last < 0L) {
-		now = time2();
+		now = Xtime(NULL);
 		last = ((now & 0xff) << 16) + (now & ~0xff) + getpid();
 	}
 
@@ -1534,10 +1534,10 @@ char *file;
 	char *cp, path[MAXPATHLEN];
 	int fd, n, len;
 
-	strcpy2(path, deftmpdir);
+	Xstrcpy(path, deftmpdir);
 	cp = strcatdelim(path);
 	n = strsize(TMPPREFIX);
-	strncpy2(cp, TMPPREFIX, n);
+	Xstrncpy(cp, TMPPREFIX, n);
 	len = strsize(path) - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	len -= n;
@@ -1547,7 +1547,7 @@ char *file;
 		genrandname(cp + n, len);
 		fd = Xopen(path, O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0644);
 		if (fd >= 0) {
-			strcpy2(file, path);
+			Xstrcpy(file, path);
 			return(fd);
 		}
 		if (errno != EEXIST) break;
@@ -1587,13 +1587,13 @@ int export;
 	len = strlen(name);
 	if (!value) return(unset(name, len));
 	else {
-		cp = malloc2(len + strlen(value) + 2);
+		cp = Xmalloc(len + strlen(value) + 2);
 		memcpy(cp, name, len);
 		cp[len] = '=';
-		strcpy2(&(cp[len + 1]), value);
+		Xstrcpy(&(cp[len + 1]), value);
 	}
 	if (((export) ? putexportvar(cp, len) : putshellvar(cp, len)) < 0) {
-		free2(cp);
+		Xfree(cp);
 		return(-1);
 	}
 
@@ -1831,7 +1831,7 @@ int sig;
 			VOID_C kill(mychildren[n], SIGCONT);
 # endif
 		}
-		free2(mychildren);
+		Xfree(mychildren);
 		mychildren = NULL;
 	}
 #endif	/* !MSDOS && DEP_PTY && CYGWIN */
@@ -2179,7 +2179,7 @@ int noexit;
 		settcpgrp(ttyio, oldttypgrp);
 #endif
 #ifdef	DEP_URLPATH
-	urlallclose();
+	VOID_C urlallclose();
 #endif
 
 	resetsignal(1);
@@ -2217,7 +2217,7 @@ int noexit;
 # endif
 	for (i = 0; i < NSIG; i++) {
 		signal2(i, SIG_IGN);
-		free2(trapcomm[i]);
+		Xfree(trapcomm[i]);
 		trapcomm[i] = NULL;
 		signal2(i, oldsigfunc[i]);
 	}
@@ -2225,16 +2225,16 @@ int noexit;
 	if (joblist) {
 		for (i = 0; i < maxjobs; i++) {
 			if (!(joblist[i].pids)) continue;
-			free2(joblist[i].pids);
-			free2(joblist[i].stats);
+			Xfree(joblist[i].pids);
+			Xfree(joblist[i].stats);
 			if (joblist[i].trp) {
 				freestree(joblist[i].trp);
-				free2(joblist[i].trp);
+				Xfree(joblist[i].trp);
 			}
 			joblist[i].pids = NULL;
 		}
 		maxjobs = 0;
-		free2(joblist);
+		Xfree(joblist);
 		joblist = NULL;
 	}
 # endif	/* !NOJOB */
@@ -2293,10 +2293,10 @@ XFILE *fp;
 
 # ifdef	DEP_FILECONV
 	cp = newkanjiconv(s, defaultkcode, DEFCODE, L_FNAME);
-	fprintf2(fp, "%a", cp);
-	if (cp != s) free2(cp);
+	Xfprintf(fp, "%a", cp);
+	if (cp != s) Xfree(cp);
 # else
-	fprintf2(fp, "%a", s);
+	Xfprintf(fp, "%a", s);
 # endif
 }
 #endif	/* FD */
@@ -2324,12 +2324,12 @@ CONST char *s;
 	if (interactive) /*EMPTY*/;
 	else
 #endif
-	if (argvar && argvar[0]) fprintf2(Xstderr, "%k: ", argvar[0]);
+	if (argvar && argvar[0]) Xfprintf(Xstderr, "%k: ", argvar[0]);
 #ifndef	MINIMUMSHELL
 	if (!interactive && shlineno > 0L)
-		fprintf2(Xstderr, "%ld: ", shlineno);
+		Xfprintf(Xstderr, "%ld: ", shlineno);
 #endif
-	if (s) fprintf2(Xstderr, "%a: ",
+	if (s) Xfprintf(Xstderr, "%a: ",
 		(*s && syntaxerrno != ER_UNEXPNL) ? s : "syntax error");
 	if (syntaxerrstr[syntaxerrno])
 		Xfputs(syntaxerrstr[syntaxerrno], Xstderr);
@@ -2355,13 +2355,13 @@ int n, noexit;
 	if (interactive) /*EMPTY*/;
 	else
 #endif
-	if (argvar && argvar[0]) fprintf2(Xstderr, "%k: ", argvar[0]);
+	if (argvar && argvar[0]) Xfprintf(Xstderr, "%k: ", argvar[0]);
 #ifndef	MINIMUMSHELL
 	if (!interactive && shlineno > 0L)
-		fprintf2(Xstderr, "%ld: ", shlineno);
+		Xfprintf(Xstderr, "%ld: ", shlineno);
 #endif
-	if (argv && argv[0]) fprintf2(Xstderr, "%k: ", argv[0]);
-	if (s) fprintf2(Xstderr, "%a: ", s);
+	if (argv && argv[0]) Xfprintf(Xstderr, "%k: ", argv[0]);
+	if (s) Xfprintf(Xstderr, "%a: ", s);
 	if (execerrstr[n]) Xfputs(execerrstr[n], Xstderr);
 	VOID_C fputnl(Xstderr);
 	execerrno = n;
@@ -2390,9 +2390,9 @@ CONST char *command, *s;
 	duperrno = errno;
 	if (errno < 0) return;
 	if (!command) command = (argvar && argvar[0]) ? argvar[0] : shellname;
-	fprintf2(Xstderr, "%k: ", command);
-	if (s) fprintf2(Xstderr, "%a: ", s);
-	Xfputs(strerror2(duperrno), Xstderr);
+	Xfprintf(Xstderr, "%k: ", command);
+	if (s) Xfprintf(Xstderr, "%a: ", s);
+	Xfputs(Xstrerror(duperrno), Xstderr);
 	VOID_C fputnl(Xstderr);
 	errno = 0;
 
@@ -2437,10 +2437,10 @@ XFILE *fp;
 		if (sig == signallist[i].sig) break;
 	if (signallist[i].sig < 0) {
 		if ((width -= strsize("Signal ")) < 0) width = 0;
-		fprintf2(fp, "Signal %-*d", width, sig);
+		Xfprintf(fp, "Signal %-*d", width, sig);
 	}
 	else if (!width) Xfputs(signallist[i].mes, fp);
-	else fprintf2(fp, "%-*.*s", width, width, signallist[i].mes);
+	else Xfprintf(fp, "%-*.*s", width, width, signallist[i].mes);
 }
 
 int waitjob(pid, wp, opt)
@@ -2506,16 +2506,16 @@ int opt;
 				break;
 			}
 		}
-		free2(waitlist);
+		Xfree(waitlist);
 		waitlist = NULL;
-		free2(pidlist);
+		Xfree(pidlist);
 		pidlist = NULL;
 		maxtrap = 0;
 	}
 	else if (tmp >= (p_id_t)0) {
-		waitlist = (wait_pid_t *)realloc2(waitlist,
+		waitlist = (wait_pid_t *)Xrealloc(waitlist,
 			(maxtrap + 1) * sizeof(wait_pid_t));
-		pidlist = (p_id_t *)realloc2(pidlist,
+		pidlist = (p_id_t *)Xrealloc(pidlist,
 			(maxtrap + 1) * sizeof(p_id_t));
 		pidlist[maxtrap] = tmp;
 		waitlist[maxtrap] = w;
@@ -2555,7 +2555,7 @@ p_id_t pid;
 
 	n = 0;
 	if (mychildren) while (mychildren[n] >= (p_id_t)0) n++;
-	mychildren = (p_id_t *)realloc2(mychildren, (n + 2) * sizeof(p_id_t));
+	mychildren = (p_id_t *)Xrealloc(mychildren, (n + 2) * sizeof(p_id_t));
 	mychildren[n++] = pid;
 	mychildren[n] = (p_id_t)-1;
 }
@@ -2638,7 +2638,7 @@ int stop;
 		}
 		if (tty) gettermio(childpgrp, jobok);
 #  if	defined (DEP_PTY) && defined (CYGWIN)
-		free2(mychildren);
+		Xfree(mychildren);
 		mychildren = NULL;
 #  endif
 	}
@@ -2708,9 +2708,9 @@ syntaxtree *trp;
 		stopped = 1;
 		if (!jobok) return(RET_SUCCESS);
 		if (tioctl(ttyio, REQGETP, &tty) >= 0) {
-			free2(joblist[lastjob].tty);
+			Xfree(joblist[lastjob].tty);
 			joblist[lastjob].tty =
-				(termioctl_t *)malloc2(sizeof(tty));
+				(termioctl_t *)Xmalloc(sizeof(tty));
 			memcpy((char *)(joblist[lastjob].tty), (char *)&tty,
 				sizeof(tty));
 #  ifndef	FD
@@ -2730,9 +2730,9 @@ syntaxtree *trp;
 		}
 #  ifdef	USESGTTY
 		if (ioctl(ttyio, TIOCLGET, &lflag) >= 0) {
-			free2(joblist[lastjob].ttyflag);
+			Xfree(joblist[lastjob].ttyflag);
 			joblist[lastjob].ttyflag =
-				(int *)malloc2(sizeof(lflag));
+				(int *)Xmalloc(sizeof(lflag));
 			memcpy((char *)(joblist[lastjob].ttyflag),
 				(char *)&lflag, sizeof(lflag));
 #   ifndef	FD
@@ -2783,7 +2783,7 @@ syntaxtree *trp;
 # endif
 		if (!nottyout) {
 			if (!interactive && argvar && argvar[0])
-				fprintf2(Xstderr, "%k: %id ", argvar[0], pid);
+				Xfprintf(Xstderr, "%k: %id ", argvar[0], pid);
 			dispsignal(ret, 0, Xstderr);
 			VOID_C fputnl(Xstderr);
 		}
@@ -2794,11 +2794,11 @@ syntaxtree *trp;
 	if (ret < 0) return(-1);
 # ifndef	NOJOB
 	if ((i = searchjob(pid, &j)) >= 0 && j == joblist[i].npipe) {
-		free2(joblist[i].pids);
-		free2(joblist[i].stats);
+		Xfree(joblist[i].pids);
+		Xfree(joblist[i].stats);
 		if (joblist[i].trp) {
 			freestree(joblist[i].trp);
-			free2(joblist[i].trp);
+			Xfree(joblist[i].trp);
 		}
 		joblist[i].pids = NULL;
 	}
@@ -2955,12 +2955,12 @@ int fd, opt;
 	cp = c_realloc(NULL, 0, &size);
 	for (i = 0; (c = readchar(fd)) != '\n'; i++) {
 		if (c < 0) {
-			free2(cp);
+			Xfree(cp);
 			return(NULL);
 		}
 		if (c == READ_EOF) {
 			if (i) break;
-			free2(cp);
+			Xfree(cp);
 			return(vnullstr);
 		}
 		cp = c_realloc(cp, i, &size);
@@ -2973,7 +2973,7 @@ int fd, opt;
 	if (c == '\n' && i > 0 && cp[i - 1] == '\r') i--;
 	cp[i++] = '\0';
 
-	return(realloc2(cp, i));
+	return(Xrealloc(cp, i));
 }
 
 static char *NEAR readfile(fd, lenp)
@@ -2987,7 +2987,7 @@ ALLOC_T *lenp;
 	cp = c_realloc(NULL, 0, &size);
 	for (i = 0; (c = readchar(fd)) != READ_EOF; i++) {
 		if (c < 0) {
-			free2(cp);
+			Xfree(cp);
 			return(NULL);
 		}
 #ifdef	USECRNL
@@ -2999,7 +2999,7 @@ ALLOC_T *lenp;
 	if (lenp) *lenp = i;
 	cp[i++] = '\0';
 
-	return(realloc2(cp, i));
+	return(Xrealloc(cp, i));
 }
 
 char *evalvararg(arg, flags, noexit)
@@ -3023,7 +3023,7 @@ int fd, flags;
 {
 	heredoc_t *new;
 
-	new = (heredoc_t *)malloc2(sizeof(heredoc_t));
+	new = (heredoc_t *)Xmalloc(sizeof(heredoc_t));
 	new -> eof = eof;
 	new -> filename = path;
 	new -> buf = NULL;
@@ -3041,14 +3041,14 @@ heredoc_t *hdp;
 int nown;
 {
 	if (!hdp) return;
-	free2(hdp -> eof);
+	Xfree(hdp -> eof);
 	safeclose(hdp -> fd);
 	if (hdp -> filename) {
 		if (!nown) safermtmpfile(hdp -> filename);
-		free2(hdp -> filename);
+		Xfree(hdp -> filename);
 	}
-	free2(hdp -> buf);
-	free2(hdp);
+	Xfree(hdp -> buf);
+	Xfree(hdp);
 }
 
 static redirectlist *NEAR newrlist(fd, filename, type, next)
@@ -3059,7 +3059,7 @@ redirectlist *next;
 {
 	redirectlist *new;
 
-	new = (redirectlist *)malloc2(sizeof(redirectlist));
+	new = (redirectlist *)Xmalloc(sizeof(redirectlist));
 	new -> fd = fd;
 	new -> filename = filename;
 	new -> type = (u_short)type;
@@ -3082,15 +3082,15 @@ int nown;
 
 	if (rp -> type & MD_HEREDOC)
 		freeheredoc((heredoc_t *)(rp -> filename), nown);
-	else free2(rp -> filename);
-	free2(rp);
+	else Xfree(rp -> filename);
+	Xfree(rp);
 }
 
 static command_t *NEAR newcomm()
 {
 	command_t *new;
 
-	new = (command_t *)malloc2(sizeof(command_t));
+	new = (command_t *)Xmalloc(sizeof(command_t));
 	new -> hash = NULL;
 	new -> argc = -1;
 	new -> argv = NULL;
@@ -3112,14 +3112,14 @@ int nown;
 		if (isstatement(comm))
 			freestree((syntaxtree *)(comm -> argv));
 		else for (i = 0; i <= comm -> argc; i++)
-			free2(comm -> argv[i]);
-		free2(comm -> argv);
+			Xfree(comm -> argv[i]);
+		Xfree(comm -> argv);
 	}
 	if (comm -> redp) {
 		closeredirect(comm -> redp);
 		freerlist(comm -> redp, nown);
 	}
-	free2(comm);
+	Xfree(comm);
 }
 
 syntaxtree *newstree(parent)
@@ -3127,7 +3127,7 @@ syntaxtree *parent;
 {
 	syntaxtree *new;
 
-	new = (syntaxtree *)malloc2(sizeof(syntaxtree));
+	new = (syntaxtree *)Xmalloc(sizeof(syntaxtree));
 	new -> comm = NULL;
 	new -> parent = parent;
 	new -> next = NULL;
@@ -3163,7 +3163,7 @@ syntaxtree *trp;
 			freecomm(trp -> comm, trp -> flags & ST_NOWN);
 		else {
 			freestree((syntaxtree *)(trp -> comm));
-			free2(trp -> comm);
+			Xfree(trp -> comm);
 		}
 		trp -> comm = NULL;
 	}
@@ -3172,16 +3172,16 @@ syntaxtree *trp;
 #ifndef	MINIMUMSHELL
 		if (trp -> flags & ST_BUSY) {
 			rp = (redirectlist *)(trp -> next);
-			free2(rp -> filename);
+			Xfree(rp -> filename);
 			freestree((syntaxtree *)(rp -> next));
-			free2(rp -> next);
+			Xfree(rp -> next);
 		}
 		else
 #endif
 		if (!(trp -> cont & (CN_QUOT | CN_ESCAPE)))
 			freestree(trp -> next);
-		else free2(((redirectlist *)(trp -> next)) -> filename);
-		free2(trp -> next);
+		else Xfree(((redirectlist *)(trp -> next)) -> filename);
+		Xfree(trp -> next);
 		trp -> next = NULL;
 	}
 	trp -> type = OP_NONE;
@@ -3446,11 +3446,12 @@ redirectlist *rp;
 
 	if (rp -> old >= 0) safeclose(rp -> old);
 	if (rp -> new >= 0) {
-		if (rp -> type & MD_HEREDOC) closepipe2(rp -> new, rp -> fd);
+		if (rp -> type & MD_HEREDOC)
+			VOID_C closepipe2(rp -> new, rp -> fd);
 		else if (!(rp -> type & MD_FILEDESC)) safeclose(rp -> new);
 	}
 #ifdef	DEP_DOSDRIVE
-	closepseudofd(rp);
+	VOID_C closepseudofd(rp);
 #endif
 	rp -> old = rp -> new = -1;
 
@@ -3487,12 +3488,12 @@ redirectlist *rp;
 			if (hdp -> pipein >= (p_id_t)0)
 				VOID_C waitchild(hdp -> pipein, NULL);
 #endif
-			closepipe2(rp -> new, -1);
+			VOID_C closepipe2(rp -> new, -1);
 		}
 		else if (!(rp -> type & MD_FILEDESC)) safeclose(rp -> new);
 	}
 #ifdef	DEP_DOSDRIVE
-	closepseudofd(rp);
+	VOID_C closepseudofd(rp);
 #endif
 	rp -> old = rp -> new = -1;
 }
@@ -3529,7 +3530,7 @@ int rm;
 			}
 			else if (hdp -> filename) {
 				safermtmpfile(hdp -> filename);
-				free2(hdp -> filename);
+				Xfree(hdp -> filename);
 				hdp -> filename = NULL;
 			}
 		}
@@ -3555,12 +3556,12 @@ syntaxtree *trp;
 
 	cp = hdp -> buf;
 	hdp -> buf = NULL;
-	if (!cp) cp = strdup2(s);
+	if (!cp) cp = Xstrdup(s);
 	else {
 		len = strlen(cp);
 		if (s) {
-			cp = realloc2(cp, len + strlen(s) + 1);
-			strcpy2(&(cp[len]), s);
+			cp = Xrealloc(cp, len + strlen(s) + 1);
+			Xstrcpy(&(cp[len]), s);
 		}
 	}
 
@@ -3584,7 +3585,7 @@ syntaxtree *trp;
 		i = 0;
 		if (hdp -> flags & HD_IGNORETAB) while (cp[i] == '\t') i++;
 		if (!strcmp(&(cp[i]), hdp -> eof)) {
-			free2(cp);
+			Xfree(cp);
 			s = cp = NULL;
 		}
 	}
@@ -3601,7 +3602,7 @@ syntaxtree *trp;
 		cp[len++] = '\n';
 		len -= i;
 		if (surewrite(hdp -> fd, &(cp[i]), len) < 0) ret = -1;
-		free2(cp);
+		Xfree(cp);
 	}
 	if (!s) {
 		safeclose(hdp -> fd);
@@ -3646,7 +3647,7 @@ int old;
 	ret = RET_SUCCESS;
 	while ((buf = readline(fdin, '\0')) != vnullstr) {
 		if (!buf) {
-			closepipe2(fd, -1);
+			VOID_C closepipe2(fd, -1);
 			safeclose(fdin);
 			return(-1);
 		}
@@ -3656,20 +3657,20 @@ int old;
 				EA_STRIPESCAPE
 				| EA_NOEVALQ | EA_NOEVALDQ | EA_BACKQ, 1);
 			if (!cp) ret = RET_FAIL;
-			free2(buf);
+			Xfree(buf);
 			buf = cp;
 		}
 		if (ret == RET_SUCCESS) {
 			Xfputs(buf, Xstdout);
 			VOID_C fputnl(Xstdout);
 		}
-		free2(buf);
+		Xfree(buf);
 	}
 	safeclose(fdin);
 	Xfflush(Xstdout);
 	if ((fd = reopenpipe(fd, ret)) < 0) return(-1);
 	if (ret != RET_SUCCESS) {
-		closepipe2(fd, -1);
+		VOID_C closepipe2(fd, -1);
 		return(seterrno(-1));
 	}
 
@@ -3757,7 +3758,7 @@ redirectlist *rp;
 		}
 	}
 	rp -> new = fd;
-	rp -> fakepipe = strdup2(pfile);
+	rp -> fakepipe = Xstrdup(pfile);
 
 	return(0);
 }
@@ -3777,7 +3778,7 @@ redirectlist *rp;
 		safeclose(rp -> dosfd);
 	}
 	safermtmpfile(rp -> fakepipe);
-	free2(rp -> fakepipe);
+	Xfree(rp -> fakepipe);
 	rp -> fakepipe = NULL;
 	rp -> dosfd = -1;
 
@@ -3798,11 +3799,11 @@ int *portp;
 	if (!(n = urlparse(s, schemelist, &cp, &scheme))) return(0);
 	if (s[n] == '/') n++;
 	if (s[n]) {
-		free2(cp);
+		Xfree(cp);
 		return(0);
 	}
 	n = urlgethost(cp, &host);
-	free2(cp);
+	Xfree(cp);
 	if (n < 0) return(-1);
 
 	if (host.user || host.pass) n = -1;
@@ -3862,13 +3863,13 @@ redirectlist *rp;
 			return(rp);
 		}
 		else if ((type & MD_FILEDESC) && tmp[0] == '-' && !tmp[1]) {
-			free2(tmp);
+			Xfree(tmp);
 			tmp = NULL;
 			type &= ~MD_FILEDESC;
 		}
 #ifdef	FD
 		else if ((n = replacearg(&tmp)) < 0) {
-			free2(tmp);
+			Xfree(tmp);
 			return(rp);
 		}
 		else if (n) rp -> type |= MD_REST;
@@ -3882,7 +3883,7 @@ redirectlist *rp;
 	}
 	else if (type & MD_FILEDESC) {
 		rp -> new = evalfiledesc(tmp);
-		free2(tmp);
+		Xfree(tmp);
 		if (rp -> new < 0) {
 			errno = EBADF;
 			return(rp);
@@ -3901,7 +3902,7 @@ redirectlist *rp;
 		}
 	}
 	else if (restricted && (type & MD_WRITE)) {
-		free2(tmp);
+		Xfree(tmp);
 		errno = 0;
 		return(rp);
 	}
@@ -3927,13 +3928,13 @@ redirectlist *rp;
 					break;
 			}
 			rp -> new = s;
-			free2(addr);
+			Xfree(addr);
 		}
 		else
 #endif	/* WITHSOCKREDIR */
 		rp -> new = Kopen(tmp, redmode(type), 0666);
 		rp -> new = newdup(rp -> new);
-		free2(tmp);
+		Xfree(tmp);
 		if (rp -> new < 0) return(rp);
 #if	MSDOS && !defined (LSI_C)
 # ifdef	DJGPP
@@ -3998,11 +3999,11 @@ int ignoretab;
 
 	flags = (ignoretab) ? HD_IGNORETAB : 0;
 
-	cp = strdup2(eof);
+	cp = Xstrdup(eof);
 	if (stripquote(cp, EA_STRIPQ)) flags |= HD_QUOTED;
 #ifndef	BASHSTYLE
 	/* bash allows no variables as the EOF identifier */
-	free2(cp);
+	Xfree(cp);
 	if (!(cp = evalvararg(eof, EA_STRIPQLATER, 0))) {
 		errno = -1;
 		return(NULL);
@@ -4013,11 +4014,11 @@ int ignoretab;
 #endif
 
 	if ((fd = newdup(mktmpfile(path))) < 0) {
-		free2(cp);
+		Xfree(cp);
 		return(NULL);
 	}
 
-	return(newheredoc(cp, strdup2(path), fd, flags));
+	return(newheredoc(cp, Xstrdup(path), fd, flags));
 }
 
 static int NEAR redirect(trp, from, to, type)
@@ -4034,7 +4035,7 @@ int type;
 		return(-1);
 	}
 
-	if (!(type & MD_HEREDOC)) cp = strdup2(to);
+	if (!(type & MD_HEREDOC)) cp = Xstrdup(to);
 	else {
 		if (!(cp = (char *)heredoc(to, type & MD_APPEND))) {
 			doperror(NULL, deftmpdir);
@@ -4142,8 +4143,8 @@ int len;
 
 	if (searchvar(var, ident, len, '\0') >= 0) return(var);
 	i = countvar(var);
-	var = (char **)realloc2(var, (i + 2) * sizeof(char *));
-	var[i] = strndup2(ident, len);
+	var = (char **)Xrealloc(var, (i + 2) * sizeof(char *));
+	var[i] = Xstrndup(ident, len);
 	var[++i] = NULL;
 
 	return(var);
@@ -4188,7 +4189,7 @@ int len;
 			if (size >= exportsize) exportsize = (u_long)0;
 			else exportsize -= size;
 		}
-		free2(var[i]);
+		Xfree(var[i]);
 		if (!s[len]) {
 			for (; var[i + 1]; i++) var[i] = var[i + 1];
 			var[i] = NULL;
@@ -4198,13 +4199,13 @@ int len;
 	else if (!s[len]) return(var);
 	else {
 		i = countvar(var);
-		var = (char **)realloc2(var, (i + 2) * sizeof(char *));
+		var = (char **)Xrealloc(var, (i + 2) * sizeof(char *));
 		var[i + 1] = NULL;
 	}
 
 	var[i] = s;
 #ifdef	ENVNOCASE
-	for (i = 0; i < len; i++) s[i] = toupper2(s[i]);
+	for (i = 0; i < len; i++) s[i] = Xtoupper(s[i]);
 #endif
 	if (export) {
 		exportsize += (u_long)strlen(s) + 1;
@@ -4367,13 +4368,13 @@ int len;
 	char *cp;
 
 	if (len < 0) {
-		if (!(cp = strchr2(s, '='))) return(0);
+		if (!(cp = Xstrchr(s, '='))) return(0);
 		len = cp - s;
 	}
 
 	if (_putshellvar(s, len) < 0) return(-1);
 	exportlist = expandvar(exportlist, s, len);
-	exportvar = putvar(exportvar, strdup2(s), len);
+	exportvar = putvar(exportvar, Xstrdup(s), len);
 #ifdef	DEP_PTY
 	sendparent(TE_PUTEXPORTVAR, s, len);
 #endif
@@ -4389,13 +4390,13 @@ int len;
 
 	if (autoexport) return(putexportvar(s, len));
 	if (len < 0) {
-		if (!(cp = strchr2(s, '='))) return(0);
+		if (!(cp = Xstrchr(s, '='))) return(0);
 		len = cp - s;
 	}
 
 	if (_putshellvar(s, len) < 0) return(-1);
 	if (searchvar(exportlist, s, len, '\0') >= 0)
-		exportvar = putvar(exportvar, strdup2(s), len);
+		exportvar = putvar(exportvar, Xstrdup(s), len);
 #ifdef	DEP_PTY
 	sendparent(TE_PUTSHELLVAR, s, len);
 #endif
@@ -4457,7 +4458,7 @@ int len;
 	exportvar = putvar(exportvar, (char *)ident, len);
 
 	if ((i = searchvar(exportlist, ident, len, '\0')) >= 0) {
-		free2(exportlist[i]);
+		Xfree(exportlist[i]);
 		for (; exportlist[i + 1]; i++)
 			exportlist[i] = exportlist[i + 1];
 		exportlist[i] = NULL;
@@ -4481,8 +4482,8 @@ long n;
 	if (shlineno < 0L) return;
 
 	shlineno = n;
-	snprintf2(tmp, sizeof(tmp), "%s=%ld", ENVLINENO, n);
-	shellvar = putvar(shellvar, strdup2(tmp), strsize(ENVLINENO));
+	Xsnprintf(tmp, sizeof(tmp), "%s=%ld", ENVLINENO, n);
+	shellvar = putvar(shellvar, Xstrdup(tmp), strsize(ENVLINENO));
 }
 #endif	/* !MINIMUMSHELL */
 
@@ -4492,9 +4493,9 @@ heredoc_t *hdp;
 	heredoc_t *new;
 
 	if (!hdp) return(NULL);
-	new = newheredoc(strdup2(hdp -> eof), strdup2(hdp -> filename),
+	new = newheredoc(Xstrdup(hdp -> eof), Xstrdup(hdp -> filename),
 		hdp -> fd, hdp -> flags);
-	new -> buf = strdup2(hdp -> buf);
+	new -> buf = Xstrdup(hdp -> buf);
 
 	return(new);
 }
@@ -4509,7 +4510,7 @@ redirectlist *rp;
 	next = duplrlist(rp -> next);
 	if (rp -> type & MD_HEREDOC)
 		filename = (char *)duplheredoc((heredoc_t *)(rp -> filename));
-	else filename = strdup2(rp -> filename);
+	else filename = Xstrdup(rp -> filename);
 	new = newrlist(rp -> fd, filename, rp -> type | MD_DUPL, next);
 	new -> new = rp -> new;
 	new -> old = rp -> old;
@@ -4580,10 +4581,10 @@ long top;
 			new -> next = duplstree(trp -> next, new, top);
 #endif
 		else {
-			rp = (redirectlist *)malloc2(sizeof(redirectlist));
+			rp = (redirectlist *)Xmalloc(sizeof(redirectlist));
 			memcpy((char *)rp, (char *)(trp -> next),
 				sizeof(redirectlist));
-			rp -> filename = strdup2(rp -> filename);
+			rp -> filename = Xstrdup(rp -> filename);
 			new -> next = (syntaxtree *)rp;
 		}
 	}
@@ -4599,9 +4600,9 @@ shfunctable *func;
 
 	if (!func) n = 0;
 	else for (n = 0; func[n].ident; n++) /*EMPTY*/;
-	dupl = (shfunctable *)malloc2((n + 1) * sizeof(shfunctable));
+	dupl = (shfunctable *)Xmalloc((n + 1) * sizeof(shfunctable));
 	for (i = 0; i < n; i++) {
-		dupl[i].ident = strdup2(func[i].ident);
+		dupl[i].ident = Xstrdup(func[i].ident);
 #ifdef	MINIMUMSHELL
 		dupl[i].func = duplstree(func[i].func, NULL);
 #else
@@ -4620,11 +4621,11 @@ shfunctable *func;
 
 	if (func) {
 		for (i = 0; func[i].ident; i++) {
-			free2(func[i].ident);
+			Xfree(func[i].ident);
 			freestree(func[i].func);
-			free2(func[i].func);
+			Xfree(func[i].func);
 		}
-		free2(func);
+		Xfree(func);
 	}
 }
 
@@ -4667,7 +4668,7 @@ static char *getflagstr(VOID_A)
 	char *cp;
 	int i, j;
 
-	cp = malloc2(FLAGSSIZ + 1);
+	cp = Xmalloc(FLAGSSIZ + 1);
 	for (i = j = 0; i < FLAGSSIZ; i++)
 		if (*(shflaglist[i].var) && shflaglist[i].letter)
 			cp[j++] = shflaglist[i].letter;
@@ -4683,9 +4684,9 @@ int len;
 	char *new;
 
 	if (cp || !undeferror) return(0);
-	new = strndup2(arg, len);
+	new = Xstrndup(arg, len);
 	execerror(NULL, new, ER_PARAMNOTSET, 0);
-	free2(new);
+	Xfree(new);
 
 	return(-1);
 }
@@ -4795,9 +4796,9 @@ CONST char *arg;
 		if (isstatement(comm)) return(trp);
 		comm -> argc++;
 		if (arg) {
-			comm -> argv = (char **)realloc2(comm -> argv,
+			comm -> argv = (char **)Xrealloc(comm -> argv,
 					(comm -> argc + 2) * sizeof(char *));
-			comm -> argv[comm -> argc] = strdup2(arg);
+			comm -> argv[comm -> argc] = Xstrdup(arg);
 			comm -> argv[comm -> argc + 1] = NULL;
 		}
 	}
@@ -4811,8 +4812,8 @@ CONST char *arg;
 
 		comm = trp -> comm = newcomm();
 		comm -> argc = 0;
-		comm -> argv = (char **)malloc2(2 * sizeof(char *));
-		comm -> argv[0] = strdup2(arg);
+		comm -> argv = (char **)Xmalloc(2 * sizeof(char *));
+		comm -> argv[0] = Xstrdup(arg);
 		comm -> argv[1] = NULL;
 	}
 
@@ -4824,7 +4825,7 @@ CONST char *arg;
 				syntaxerrno = ER_UNEXPNL;
 				return(trp);
 			}
-			comm -> argv = (char **)realloc2(comm -> argv,
+			comm -> argv = (char **)Xrealloc(comm -> argv,
 					2 * sizeof(char *));
 			comm -> argv[1] = NULL;
 			comm -> argc = 1;
@@ -5176,15 +5177,15 @@ int *ptrp, *tptrp, n;
 	redirectlist *newrp;
 	char *cp;
 
-	cp = malloc2(*tptrp + n + 1);
-	strncpy2(cp, rp -> filename, *tptrp);
-	strncpy2(&(cp[*tptrp]), &(s[*ptrp]), n);
+	cp = Xmalloc(*tptrp + n + 1);
+	Xstrncpy(cp, rp -> filename, *tptrp);
+	Xstrncpy(&(cp[*tptrp]), &(s[*ptrp]), n);
 	*tptrp = 0;
 	*ptrp += n - 1;
 
 	new = newstree(NULL);
 	new -> parent = trp;
-	newrp = (redirectlist *)malloc2(sizeof(redirectlist));
+	newrp = (redirectlist *)Xmalloc(sizeof(redirectlist));
 	memcpy((char *)newrp, (char *)rp, sizeof(redirectlist));
 	newrp -> filename = cp;
 	newrp -> next = (redirectlist *)new;
@@ -5224,19 +5225,19 @@ int n;
 	memcpy((char *)rp, (char *)tmptr, sizeof(redirectlist));
 	len = strlen(rp -> filename);
 	size = c_allocsize(len + *tptrp + n + 2);
-	if (size > *sp) cp = realloc2(cp, *sp = size);
+	if (size > *sp) cp = Xrealloc(cp, *sp = size);
 	memmove(&(cp[len]), cp, *tptrp);
 	memcpy(cp, rp -> filename, len);
 	*tptrp += len;
-	strncpy2(&(cp[*tptrp]), &(s[*ptrp]), n);
+	Xstrncpy(&(cp[*tptrp]), &(s[*ptrp]), n);
 	*tptrp += n;
 	*ptrp += n - 1;
-	free2(rp -> filename);
+	Xfree(rp -> filename);
 	rp -> filename = cp;
 
-	free2(rp -> next);
+	Xfree(rp -> next);
 	rp -> next = NULL;
-	free2(tmptr);
+	Xfree(tmptr);
 
 	return(trp);
 }
@@ -5259,12 +5260,12 @@ int *tptrp, n;
 	}
 
 	len = strlen(rp -> filename);
-	rp -> filename = realloc2(rp -> filename, len + *tptrp + n + 1);
-	strncpy2(&(rp -> filename[len]), tok, *tptrp);
+	rp -> filename = Xrealloc(rp -> filename, len + *tptrp + n + 1);
+	Xstrncpy(&(rp -> filename[len]), tok, *tptrp);
 	len += *tptrp;
 	*tptrp = 0;
 	if (n > 0) {
-		strncpy2(&(rp -> filename[len]), &(s[*ptrp]), n);
+		Xstrncpy(&(rp -> filename[len]), &(s[*ptrp]), n);
 		len += n;
 		*ptrp += n - 1;
 	}
@@ -5287,7 +5288,7 @@ ALLOC_T *sp;
 
 	switch (s[*ptrp]) {
 		case '{':
-			if (!strchr2(IFS_SET, s[*ptrp + 1])) {
+			if (!Xstrchr(IFS_SET, s[*ptrp + 1])) {
 				rp -> filename[(*tptrp)++] = s[*ptrp];
 				break;
 			}
@@ -5425,9 +5426,9 @@ ALLOC_T *sp;
 				size = c_allocsize(*tptrp + 2);
 				if (size > *sp)
 					rp -> filename =
-						realloc2(rp -> filename,
+						Xrealloc(rp -> filename,
 							*sp = size);
-				strncpy2(rp -> filename, &(s[i]), *tptrp);
+				Xstrncpy(rp -> filename, &(s[i]), *tptrp);
 				trp -> flags |= ST_HDOC;
 			}
 			break;
@@ -5445,7 +5446,7 @@ ALLOC_T *sp;
 			}
 			break;
 		default:
-			if (!strchr2(IFS_SET, s[*ptrp]))
+			if (!Xstrchr(IFS_SET, s[*ptrp]))
 				rp -> filename[(*tptrp)++] = s[*ptrp];
 			else addarg(&trp, rp, NULL, tptrp, 0);
 			break;
@@ -5533,13 +5534,13 @@ int *ptrp, *tptrp;
 			}
 			break;
 		default:
-			if (!strchr2(IFS_SET, s[*ptrp]))
+			if (!Xstrchr(IFS_SET, s[*ptrp]))
 				rp -> filename[(*tptrp)++] = s[*ptrp];
 			else if (*tptrp > 0) {
 				addarg(&trp, rp, NULL, tptrp, 0);
 				do {
 					(*ptrp)++;
-				} while (isblank2(s[*ptrp]));
+				} while (Xisblank(s[*ptrp]));
 
 				/* for "esac " */
 				if ((stype = getparenttype(trp)) != STT_INCASE
@@ -5585,21 +5586,21 @@ ALLOC_T *sp;
 
 	if (!*tptrp) {
 		if ((len = cmpstatement(&(s[*ptrp]), SM_CASE)) >= 0
-		&& (!s[*ptrp + len] || strchr2(IFS_SET, s[*ptrp + len]))) {
+		&& (!s[*ptrp + len] || Xstrchr(IFS_SET, s[*ptrp + len]))) {
 			trp = startvar(trp, rp, s, ptrp, tptrp, len);
 			trp -> cont = CN_CASE;
 			return(trp);
 		}
 		if ((trp -> cont & CN_SBST) == CN_CASE
 		&& (len = cmpstatement(&(s[*ptrp]), SM_ESAC)) >= 0
-		&& (!s[*ptrp + len] || strchr2(IFS_SET, s[*ptrp + len])
+		&& (!s[*ptrp + len] || Xstrchr(IFS_SET, s[*ptrp + len])
 		|| s[*ptrp + len] == ';' || s[*ptrp + len] == ')')) {
 			trp = endvar(trp, rp, s, ptrp, tptrp, sp, len);
 			return(trp);
 		}
-		if (strchr2(IFS_SET, s[*ptrp])) {
+		if (Xstrchr(IFS_SET, s[*ptrp])) {
 			for (len = 1; s[*ptrp + len]; len++)
-				if (!strchr2(IFS_SET, s[*ptrp + len])) break;
+				if (!Xstrchr(IFS_SET, s[*ptrp + len])) break;
 			trp = addvar(trp, s, ptrp, rp -> filename, tptrp, len);
 			return(trp);
 		}
@@ -5631,7 +5632,7 @@ ALLOC_T *sp;
 		else if (delimlist[i].level)
 			trp = addvar(trp, s, ptrp, rp -> filename, tptrp, len);
 		else {
-			strncpy2(&(rp -> filename[*tptrp]), &(s[*ptrp]), len);
+			Xstrncpy(&(rp -> filename[*tptrp]), &(s[*ptrp]), len);
 			*tptrp += len;
 			*ptrp += len - 1;
 		}
@@ -5826,19 +5827,19 @@ int quiet;
 
 		if (syntaxerrno) {
 			if (quiet) return(NULL);
-			if (strchr2(IFS_SET, s[i])) {
+			if (Xstrchr(IFS_SET, s[i])) {
 				if (j < 0) j = 0;
 				rp -> filename[j] = '\0';
 				syntaxerror(rp -> filename);
 				return(NULL);
 			}
 			for (j = i + 1; s[j]; j++) {
-				if (strchr2(IFS_SET, s[j])) break;
+				if (Xstrchr(IFS_SET, s[j])) break;
 				else if (iswchar(s, j)) j++;
 			}
-			cp = strndup2(&(s[i]), j - i);
+			cp = Xstrndup(&(s[i]), j - i);
 			syntaxerror(cp);
-			free2(cp);
+			Xfree(cp);
 			return(NULL);
 		}
 	}
@@ -5886,7 +5887,7 @@ int quiet;
 
 	if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
 		memcpy((char *)&red, (char *)(trp -> next), sizeof(red));
-		free2(trp -> next);
+		Xfree(trp -> next);
 
 		i = strlen(red.filename);
 		if (i > 0) {
@@ -5926,7 +5927,7 @@ int quiet;
 			shellalias[i].flags &= ~AL_USED;
 #endif
 		if (!(trp = analyzeloop(trp, &red, s, quiet))) {
-			free2(red.filename);
+			Xfree(red.filename);
 			return(NULL);
 		}
 	}
@@ -5935,7 +5936,7 @@ int quiet;
 	if (red.new) trp -> cont |= CN_QUOT;
 
 	if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
-		rp = (redirectlist *)malloc2(sizeof(redirectlist));
+		rp = (redirectlist *)Xmalloc(sizeof(redirectlist));
 		memcpy((char *)rp, (char *)&red, sizeof(red));
 		trp -> next = (syntaxtree *)rp;
 		red.filename = NULL;
@@ -5962,10 +5963,10 @@ int quiet;
 	}
 	if (syntaxerrno) {
 		if (!quiet) syntaxerror(red.filename);
-		free2(red.filename);
+		Xfree(red.filename);
 		return(NULL);
 	}
-	free2(red.filename);
+	Xfree(red.filename);
 	if ((parent = parentstree(trp)) && isstatement(parent -> comm))
 		trp -> cont |= CN_STAT;
 
@@ -6068,7 +6069,7 @@ syntaxtree *trp;
 	if ((id = evalargv(comm, &type, NULL)) >= 0 && type == CT_COMMAND)
 		id = searchhash(&(comm -> hash), comm -> argv[0], NULL);
 	freevar(subst);
-	free2(len);
+	Xfree(len);
 	comm -> argc = argc;
 	freevar(comm -> argv);
 	comm -> argv = argv;
@@ -6134,7 +6135,7 @@ CONST char *command;
 #endif
 	if (!trp) {
 		freestree(stree);
-		free2(stree);
+		Xfree(stree);
 		stree = NULL;
 	}
 #ifndef	MINIMUMSHELL
@@ -6164,10 +6165,10 @@ char *argv[], *envp[];
 #ifdef	DEP_PTY
 	if (parentfd >= 0 && ptyterm && *ptyterm) {
 		len = strsize(ENVTERM);
-		cp = malloc2(len + strlen(ptyterm) + 2);
+		cp = Xmalloc(len + strlen(ptyterm) + 2);
 		memcpy(cp, ENVTERM, len);
 		cp[len] = '=';
-		strcpy2(&(cp[len + 1]), ptyterm);
+		Xstrcpy(&(cp[len + 1]), ptyterm);
 		envp = putvar(envp, cp, len);
 	}
 #endif	/* DEP_PTY */
@@ -6209,11 +6210,11 @@ int ext;
 	int len;
 
 	len = strlen(path);
-	path = realloc2(path, len + 1 + 3 + 1);
+	path = Xrealloc(path, len + 1 + 3 + 1);
 	path[len++] = '.';
-	if (ext & CM_BATCH) strcpy2(&(path[len]), EXTBAT);
-	else if (ext & CM_EXE) strcpy2(&(path[len]), EXTEXE);
-	else strcpy2(&(path[len]), EXTCOM);
+	if (ext & CM_BATCH) Xstrcpy(&(path[len]), EXTBAT);
+	else if (ext & CM_EXE) Xstrcpy(&(path[len]), EXTEXE);
+	else Xstrcpy(&(path[len]), EXTCOM);
 
 	return(path);
 }
@@ -6238,10 +6239,10 @@ char **pathp, **argv;
 	i = countvar(argv);
 	memmove((char *)(&(argv[i + 2])), (char *)(&(argv[i])),
 		(i + 1) * sizeof(char *));
-	free2(argv[2]);
-	argv[2] = strdup2(*pathp);
-	argv[1] = strdup2("/C");
-	argv[0] = *pathp = strdup2(com);
+	Xfree(argv[2]);
+	argv[2] = Xstrdup(*pathp);
+	argv[1] = Xstrdup("/C");
+	argv[0] = *pathp = Xstrdup(com);
 
 	return(argv);
 }
@@ -6266,7 +6267,7 @@ p_id_t ppid;
 	char pfile[MAXPATHLEN];
 	int fd, dupl;
 
-	pl = (pipelist *)malloc2(sizeof(pipelist));
+	pl = (pipelist *)Xmalloc(sizeof(pipelist));
 	pl -> file = NULL;
 	pl -> fp = NULL;
 	pl -> fd = fdin;
@@ -6334,12 +6335,12 @@ p_id_t ppid;
 #endif	/* !USEFAKEPIPE */
 
 	if ((dupl = newdup(Xdup(STDOUT_FILENO))) < 0) {
-		free2(pl);
+		Xfree(pl);
 		return(-1);
 	}
 	if ((fd = newdup(mktmpfile(pfile))) < 0
 	|| fd == STDOUT_FILENO || Xdup2(fd, STDOUT_FILENO) < 0) {
-		free2(pl);
+		Xfree(pl);
 		safeclose(fd);
 		safeclose(dupl);
 		return(-1);
@@ -6347,7 +6348,7 @@ p_id_t ppid;
 	safeclose(fd);
 
 	if (new) pl -> fd = -1;
-	pl -> file = strdup2(pfile);
+	pl -> file = Xstrdup(pfile);
 	pl -> new = pl -> old = dupl;
 	pl -> pid = *pidp = (p_id_t)0;
 	pl -> next = pipetop;
@@ -6395,9 +6396,9 @@ int fd, ret;
 	pl -> ret = ret;
 	if ((fd = newdup(Xopen(pl -> file, O_BINARY | O_RDONLY, 0666))) < 0) {
 		safermtmpfile(pl -> file);
-		free2(pl -> file);
+		Xfree(pl -> file);
 		*prevp = pl -> next;
-		free2(pl);
+		Xfree(pl);
 		return(-1);
 	}
 	if (pl -> fd >= 0) {
@@ -6405,9 +6406,9 @@ int fd, ret;
 		|| fd == pl -> fd || Xdup2(fd, pl -> fd) < 0) {
 			safeclose(fd);
 			safermtmpfile(pl -> file);
-			free2(pl -> file);
+			Xfree(pl -> file);
 			*prevp = pl -> next;
-			free2(pl);
+			Xfree(pl);
 			return(-1);
 		}
 		safeclose(fd);
@@ -6429,9 +6430,9 @@ int fd;
 	if (!(fp = Xfdopen(fd, "rb"))) {
 		safeclose(fd);
 		safermtmpfile(pl -> file);
-		free2(pl -> file);
+		Xfree(pl -> file);
 		*prevp = pl -> next;
-		free2(pl);
+		Xfree(pl);
 		return(NULL);
 	}
 	pl -> fp = fp;
@@ -6481,7 +6482,7 @@ int fd;
 #endif
 			doperror(NULL, pl -> file);
 		}
-		free2(pl -> file);
+		Xfree(pl -> file);
 		ret = pl -> ret;
 	}
 #if	!MSDOS
@@ -6510,7 +6511,7 @@ int fd;
 #endif	/* !MSDOS */
 
 	*prevp = pl -> next;
-	free2(pl);
+	Xfree(pl);
 	errno = duperrno;
 
 	return(ret);
@@ -6527,12 +6528,12 @@ static VOID NEAR disphash(VOID_A)
 	VOID_C fputnl(Xstdout);
 	if (hashtable) for (i = 0; i < MAXHASH; i++)
 		for (hp = hashtable[i]; hp; hp = hp -> next) {
-			snprintf2(buf, sizeof(buf), "%d", hp -> hits);
+			Xsnprintf(buf, sizeof(buf), "%d", hp -> hits);
 			j = strlen(buf);
 			buf[j++] = (hp -> type & CM_RECALC) ? '*' : ' ';
 			while (j < 7) buf[j++] = ' ';
 			buf[j] = '\0';
-			fprintf2(Xstdout, "%s %-7d %k",
+			Xfprintf(Xstdout, "%s %-7d %k",
 				buf, hp -> cost, hp -> path);
 			VOID_C fputnl(Xstdout);
 		}
@@ -6665,12 +6666,12 @@ char ***argvp;
 
 	if (shellvar) for (i = 0; shellvar[i]; i++) {
 		if (strnenvcmp(s, shellvar[i], len)
-		|| !(cp = strchr2(shellvar[i], '=')))
+		|| !(cp = Xstrchr(shellvar[i], '=')))
 			continue;
-		cp = strndup2(shellvar[i], cp - shellvar[i]);
-		if (finddupl(cp, argc, *argvp)) free2(cp);
+		cp = Xstrndup(shellvar[i], cp - shellvar[i]);
+		if (finddupl(cp, argc, *argvp)) Xfree(cp);
 		else {
-			*argvp = (char **)realloc2(*argvp,
+			*argvp = (char **)Xrealloc(*argvp,
 				(argc + 1) * sizeof(char *));
 			(*argvp)[argc++] = cp;
 		}
@@ -6691,18 +6692,18 @@ char ***argvp;
 		if (strncommcmp(s, shellalias[i].ident, len)
 		|| finddupl(shellalias[i].ident, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = strdup2(shellalias[i].ident);
+		(*argvp)[argc++] = Xstrdup(shellalias[i].ident);
 	}
 # endif	/* !NOALIAS */
 	for (i = 0; i < STATEMENTSIZ; i++) {
 		if (strncommcmp(s, statementlist[i].ident, len)
 		|| finddupl(statementlist[i].ident, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = strdup2(statementlist[i].ident);
+		(*argvp)[argc++] = Xstrdup(statementlist[i].ident);
 	}
 	for (i = 0; i < SHBUILTINSIZ; i++) {
 # ifndef	MINIMUMSHELL
@@ -6711,9 +6712,9 @@ char ***argvp;
 		if (strncommcmp(s, shbuiltinlist[i].ident, len)
 		|| finddupl(shbuiltinlist[i].ident, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = strdup2(shbuiltinlist[i].ident);
+		(*argvp)[argc++] = Xstrdup(shbuiltinlist[i].ident);
 	}
 # ifdef	FD
 	argc = completebuiltin(s, len, argc, argvp);
@@ -6723,9 +6724,9 @@ char ***argvp;
 		if (strncommcmp(s, shellfunc[i].ident, len)
 		|| finddupl(shellfunc[i].ident, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = strdup2(shellfunc[i].ident);
+		(*argvp)[argc++] = Xstrdup(shellfunc[i].ident);
 	}
 
 	return(argc);
@@ -6739,10 +6740,10 @@ char *s;
 	char *cp, *buf;
 	ALLOC_T ptr, len;
 
-	cp = strchr(s, '=');
+	cp = Xstrchr(s, '=');
 	if (!cp || !strpbrk(++cp, METACHAR)) return(s);
 	len = strlen(s) + 2;
-	buf = malloc2(len + 1);
+	buf = Xmalloc(len + 1);
 	ptr = cp - s;
 	memcpy(buf, s, ptr);
 	buf[ptr++] = '\'';
@@ -6750,7 +6751,7 @@ char *s;
 		if (*cp != '\'') buf[ptr++] = *(cp++);
 		else {
 			len += 3;
-			buf = realloc2(buf, len + 1);
+			buf = Xrealloc(buf, len + 1);
 			buf[ptr++] = '\'';
 			buf[ptr++] = PESCAPE;
 			buf[ptr++] = *(cp++);
@@ -6759,7 +6760,7 @@ char *s;
 	}
 	buf[ptr++] = '\'';
 	buf[ptr] = '\0';
-	free2(s);
+	Xfree(s);
 
 	return(buf);
 }
@@ -6772,8 +6773,8 @@ int **lenp;
 {
 	int i, n, len;
 
-	*substp = (char **)malloc2((argc + 1) * sizeof(char *));
-	*lenp = (int *)malloc2(argc * sizeof(int));
+	*substp = (char **)Xmalloc((argc + 1) * sizeof(char *));
+	*lenp = (int *)Xmalloc(argc * sizeof(int));
 
 	len = 1;
 	for (i = n = 0; i < argc; i++) {
@@ -6815,7 +6816,7 @@ int flags;
 			execerror(NULL, arg, ER_BADSUBST, 0);
 			return(-1);
 		}
-		free2(argv[i]);
+		Xfree(argv[i]);
 		argv[i] = tmp;
 	}
 
@@ -6850,13 +6851,13 @@ int *typep, *contp;
 		id = 0;
 	}
 	else {
-		stripquote(tmp = strdup2(comm -> argv[0]), EA_STRIPQ);
+		stripquote(tmp = Xstrdup(comm -> argv[0]), EA_STRIPQ);
 #ifdef	NOALIAS
 		*typep = checktype(tmp, &id, 1);
 #else
 		*typep = checktype(tmp, &id, 0, 1);
 #endif
-		free2(tmp);
+		Xfree(tmp);
 	}
 
 #ifdef	FD
@@ -6984,7 +6985,7 @@ XFILE *fp;
 	switch (rp -> type & MD_RDWR) {
 		case MD_READ:
 			if (rp -> fd != STDIN_FILENO)
-				fprintf2(fp, "%d", rp -> fd);
+				Xfprintf(fp, "%d", rp -> fd);
 			Xfputc('<', fp);
 			if (rp -> type & MD_HEREDOC) {
 				Xfputc('<', fp);
@@ -6993,7 +6994,7 @@ XFILE *fp;
 			break;
 		case MD_WRITE:
 			if (rp -> fd != STDOUT_FILENO)
-				fprintf2(fp, "%d", rp -> fd);
+				Xfprintf(fp, "%d", rp -> fd);
 			if (rp -> type & MD_WITHERR) Xfputc('&', fp);
 			Xfputc('>', fp);
 			if (rp -> type & MD_APPEND) Xfputc('>', fp);
@@ -7003,7 +7004,7 @@ XFILE *fp;
 			break;
 		case MD_RDWR:
 			if (rp -> fd != STDOUT_FILENO)
-				fprintf2(fp, "%d", rp -> fd);
+				Xfprintf(fp, "%d", rp -> fd);
 			Xfputs("<>", fp);
 			break;
 		default:
@@ -7040,7 +7041,7 @@ XFILE *fp;
 	rlist = _printstree(trp, NULL, indent, fp);
 	if (rlist) {
 		for (i = 0; rlist[i]; i++) printheredoc(rlist[i], fp);
-		free2(rlist);
+		Xfree(rlist);
 	}
 }
 
@@ -7064,7 +7065,7 @@ XFILE *fp;
 			if (!buf) break;
 			Xfputs(buf, Xstdout);
 			VOID_C fputnl(Xstdout);
-			free2(buf);
+			Xfree(buf);
 		}
 		safeclose(fd);
 		argfputs(hdp -> eof, fp);
@@ -7235,7 +7236,7 @@ XFILE *fp;
 		if (printredirect((trp -> comm) -> redp, fp)) {
 			if (!rlist) i = 0;
 			else for (i = 0; rlist[i]; i++) /*EMPTY*/;
-			rlist = (redirectlist **)realloc2(rlist,
+			rlist = (redirectlist **)Xrealloc(rlist,
 				(i + 2) * sizeof(redirectlist *));
 			rlist[i++] = (trp -> comm) -> redp;
 			rlist[i] = NULL;
@@ -7248,23 +7249,23 @@ XFILE *fp;
 		if (!rlist) i = 0;
 		else for (i = 0; rlist[i]; i++) /*EMPTY*/;
 		for (j = 0; rlist2[j]; j++) /*EMPTY*/;
-		rlist = (redirectlist **)realloc2(rlist,
+		rlist = (redirectlist **)Xrealloc(rlist,
 			(i + j + 1) * sizeof(redirectlist *));
 		for (j = 0; rlist2[j]; j++) rlist[i + j] = rlist2[j];
 		rlist[i + j] = NULL;
-		free2(rlist2);
+		Xfree(rlist2);
 	}
 #endif
 
 	for (id = 0; id < OPELISTSIZ; id++)
 		if (trp -> type == opelist[id].op) break;
 	if (id < OPELISTSIZ && !isopfg(trp))
-		fprintf2(fp, " %s", opelist[id].symbol);
+		Xfprintf(fp, " %s", opelist[id].symbol);
 #ifndef	MINIMUMSHELL
 	if (!rlist || opelist[id].level < 4) nl = 0;
 	else {
 		for (i = 0; rlist[i]; i++) printheredoc(rlist[i], fp);
-		free2(rlist);
+		Xfree(rlist);
 		rlist = NULL;
 		nl = 1;
 	}
@@ -7329,9 +7330,9 @@ XFILE *fp;
 {
 #ifdef	BASHSTYLE
 	/* bash type pretty print */
-	fprintf2(fp, "%k ()\n", f -> ident);
+	Xfprintf(fp, "%k ()\n", f -> ident);
 #else
-	fprintf2(fp, "%k()", f -> ident);
+	Xfprintf(fp, "%k()", f -> ident);
 #endif
 	if (getstatid(statementcheck(f -> func, SM_STATEMENT)) == SM_LIST - 1)
 		printstree(f -> func, 0, fp);
@@ -7370,7 +7371,7 @@ int *nump;
 		}
 
 		for (i = 1; argv[n][i]; i++) {
-			if (strchr2(opt, argv[n][i])) /*EMPTY*/;
+			if (Xstrchr(opt, argv[n][i])) /*EMPTY*/;
 			else if (noopt) break;
 			else {
 				execerror(argv, argv[n], ER_BADOPTIONS, 2);
@@ -7597,12 +7598,12 @@ syntaxtree *trp;
 		if (!(comm = body -> comm)) return(seterrno(EINVAL));
 		trp = trp -> next;
 
-		argv = (char **)malloc2((comm -> argc + 1) * sizeof(char *));
+		argv = (char **)Xmalloc((comm -> argc + 1) * sizeof(char *));
 		for (i = 0; i < comm -> argc; i++) {
 			tmp = evalvararg(comm -> argv[i], EA_BACKQ, 0);
 			if (!tmp) {
-				while (--i >= 0) free2(argv[i]);
-				free2(argv);
+				while (--i >= 0) Xfree(argv[i]);
+				Xfree(argv);
 				return(RET_FAIL);
 			}
 			argv[i] = tmp;
@@ -7698,7 +7699,7 @@ syntaxtree *trp;
 			demacroarg(&tmp);
 #endif
 			re = regexp_init(tmp, -1);
-			free2(tmp);
+			Xfree(tmp);
 			if (!re) continue;
 			n = regexp_exec(re, key, 0);
 			regexp_free(re);
@@ -7714,7 +7715,7 @@ syntaxtree *trp;
 		if (ret >= 0) break;
 		ret = RET_SUCCESS;
 	}
-	free2(key);
+	Xfree(key);
 
 	return(ret);
 }
@@ -7808,7 +7809,7 @@ int errexit;
 
 	path = evalexternal(comm);
 	if (!errexit && !path) return(RET_NOTFOUND);
-	path = strdup2(path);
+	path = Xstrdup(path);
 	evar = exportvar;
 	exportvar = NULL;
 
@@ -7848,7 +7849,7 @@ syntaxtree *trp;
 				comm -> argv[1], ER_RESTRICTED, 2);
 			return(RET_FAIL);
 		}
-		free2(comm -> argv[0]);
+		Xfree(comm -> argv[0]);
 		memmove((char *)(&(comm -> argv[0])),
 			(char *)(&(comm -> argv[1])),
 			(comm -> argc)-- * sizeof(char *));
@@ -7931,8 +7932,8 @@ syntaxtree *trp;
 	trp = execline(cp, stree, trp, 1);
 	execline((char *)-1, stree, trp, 1);
 	ret = (syntaxerrno) ? RET_SYNTAXERR : ret_status;
-	free2(stree);
-	free2(cp);
+	Xfree(stree);
+	Xfree(cp);
 #ifndef	MINIMUMSHELL
 	setshlineno(dupshlineno);
 #endif
@@ -7993,7 +7994,7 @@ syntaxtree *trp;
 				next = cp + strlen(cp);
 			else do {
 				*(next++) = '\0';
-			} while (strchr2(ifs, *next));
+			} while (Xstrchr(ifs, *next));
 			if (setenv2((trp -> comm) -> argv[n], cp, 0) < 0) {
 				ret = RET_FAIL;
 				cp = NULL;
@@ -8008,7 +8009,7 @@ syntaxtree *trp;
 	/* bash set the variable REPLY without any argument */
 	else if (setenv2(ENVREPLY, buf, 0) < 0) ret = RET_FAIL;
 #endif
-	if (buf != vnullstr) free2(buf);
+	if (buf != vnullstr) Xfree(buf);
 
 	return(ret);
 }
@@ -8028,7 +8029,7 @@ syntaxtree *trp;
 
 	for (i = 0; i < n; i++) {
 		if (!argvar[i + 1]) break;
-		free2(argvar[i + 1]);
+		Xfree(argvar[i + 1]);
 	}
 	ret = (i >= n) ? RET_SUCCESS : RET_FAIL;
 	n = i;
@@ -8083,7 +8084,7 @@ syntaxtree *trp;
 		if (argc <= 2) {
 			for (i = 0; i < FLAGSSIZ; i++) {
 				if (!(shflaglist[i].ident)) continue;
-				fprintf2(Xstdout, "%-16.16s%s",
+				Xfprintf(Xstdout, "%-16.16s%s",
 					shflaglist[i].ident,
 					(*(shflaglist[i].var)) ? "on" : "off");
 				VOID_C fputnl(Xstdout);
@@ -8107,9 +8108,9 @@ syntaxtree *trp;
 	if (n >= argc) return(RET_SUCCESS);
 
 	var = argvar;
-	argvar = (char **)malloc2((argc - n + 2) * sizeof(char *));
-	argvar[0] = strdup2(var[0]);
-	for (i = 1; n < argc; i++, n++) argvar[i] = strdup2(argv[n]);
+	argvar = (char **)Xmalloc((argc - n + 2) * sizeof(char *));
+	argvar[0] = Xstrdup(var[0]);
+	for (i = 1; n < argc; i++, n++) argvar[i] = Xstrdup(argv[n]);
 	argvar[i] = NULL;
 	freevar(var);
 #ifdef	DEP_PTY
@@ -8208,16 +8209,16 @@ syntaxtree *trp;
 #endif
 #ifdef	FD
 # ifdef	DEP_DOSDRIVE
-	else if (dir[0] && !dir[1] && strchr2(".?-@", dir[0])) next = NULL;
+	else if (dir[0] && !dir[1] && Xstrchr(".?-@", dir[0])) next = NULL;
 # else
-	else if (dir[0] && !dir[1] && strchr2(".?-", dir[0])) next = NULL;
+	else if (dir[0] && !dir[1] && Xstrchr(".?-", dir[0])) next = NULL;
 # endif
 #endif	/* FD */
 	else if ((next = getconstvar(ENVCDPATH))) {
 		tmp = ((cp = strdelim(dir, 0)))
-			? strndup2(dir, cp - dir) : dir;
+			? Xstrndup(dir, cp - dir) : dir;
 		if (isdotdir(tmp)) next = NULL;
-		if (tmp != dir) free2(tmp);
+		if (tmp != dir) Xfree(tmp);
 	}
 
 	if (!next) {
@@ -8234,10 +8235,10 @@ syntaxtree *trp;
 		path = NULL;
 		for (cp = next; cp; cp = next) {
 #ifdef	DEP_DOSPATH
-			if (_dospath(cp)) next = strchr2(&(cp[2]), PATHDELIM);
+			if (_dospath(cp)) next = Xstrchr(&(cp[2]), PATHDELIM);
 			else
 #endif
-			next = strchr2(cp, PATHDELIM);
+			next = Xstrchr(cp, PATHDELIM);
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;
 			else {
@@ -8246,25 +8247,25 @@ syntaxtree *trp;
 			}
 			if (dlen + len + 1 + 1 > size) {
 				size = dlen + len + 1 + 1;
-				path = realloc2(path, size);
+				path = Xrealloc(path, size);
 			}
 			if (tmp) {
-				strncpy2(path, tmp, dlen);
-				free2(tmp);
+				Xstrncpy(path, tmp, dlen);
+				Xfree(tmp);
 				dlen = strcatdelim(path) - path;
 			}
-			strncpy2(&(path[dlen]), dir, len);
+			Xstrncpy(&(path[dlen]), dir, len);
 			if (chdir3(path, 1) >= 0) {
 				kanjifputs(path, Xstdout);
 				VOID_C fputnl(Xstdout);
-				free2(path);
+				Xfree(path);
 #ifdef	FD
 				physical_path = dupphysical_path;
 #endif
 				return(RET_SUCCESS);
 			}
 		}
-		free2(path);
+		Xfree(path);
 	}
 	execerror((trp -> comm) -> argv, dir, ER_BADDIR, 0);
 #ifdef	FD
@@ -8285,7 +8286,7 @@ syntaxtree *trp;
 #ifdef	FD
 	if ((opt = tinygetopt(trp, "LP", NULL)) < 0) return(RET_FAIL);
 
-	if (!((opt) ? (opt == 'P') : physical_path)) strcpy2(buf, fullpath);
+	if (!((opt) ? (opt == 'P') : physical_path)) Xstrcpy(buf, fullpath);
 	else
 #endif
 	if (!Xgetwd(buf)) {
@@ -8327,11 +8328,11 @@ syntaxtree *trp;
 	/* bash sets positional parameters with source arguments */
 	if ((trp -> comm) -> argc > 2) {
 		dupargvar = argvar;
-		argvar = (char **)malloc2((trp -> comm) -> argc
+		argvar = (char **)Xmalloc((trp -> comm) -> argc
 			* sizeof(char *));
-		argvar[0] = strdup2(dupargvar[0]);
+		argvar[0] = Xstrdup(dupargvar[0]);
 		for (n = 1; n < (trp -> comm) -> argc - 1; n++)
-			argvar[n] = strdup2((trp -> comm) -> argv[n + 1]);
+			argvar[n] = Xstrdup((trp -> comm) -> argv[n + 1]);
 		argvar[n] = NULL;
 		var = argvar;
 		sourcefile(fd, fname, 0);
@@ -8372,8 +8373,8 @@ CONST char *ident;
 	}
 #ifndef	MINIMUMSHELL
 	else if (len < 0) len = -len;
-	else if (_putshellvar(cp = strdup2(ident), len) < 0) {
-		free2(cp);
+	else if (_putshellvar(cp = Xstrdup(ident), len) < 0) {
+		Xfree(cp);
 		return(-1);
 	}
 #endif
@@ -8389,7 +8390,7 @@ CONST char *ident;
 
 	if ((len = expandlist(&exportlist, ident)) < 0) return(-1);
 	if ((i = searchvar(shellvar, ident, len, '=')) >= 0)
-		exportvar = putvar(exportvar, strdup2(shellvar[i]), len);
+		exportvar = putvar(exportvar, Xstrdup(shellvar[i]), len);
 
 	return(len);
 }
@@ -8409,7 +8410,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; exportlist[i]; i++) {
-			fprintf2(Xstdout, "export %k", exportlist[i]);
+			Xfprintf(Xstdout, "export %k", exportlist[i]);
 			VOID_C fputnl(Xstdout);
 		}
 		return(RET_SUCCESS);
@@ -8438,7 +8439,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; ronlylist[i]; i++) {
-			fprintf2(Xstdout, "readonly %k", ronlylist[i]);
+			Xfprintf(Xstdout, "readonly %k", ronlylist[i]);
 			VOID_C fputnl(Xstdout);
 		}
 		return(RET_SUCCESS);
@@ -8484,7 +8485,7 @@ syntaxtree *trp;
 	usrtime = systime = (time_t)0;
 # endif
 #endif	/* !USEGETRUSAGE */
-	fprintf2(Xstdout, "%dm%ds %dm%ds",
+	Xfprintf(Xstdout, "%dm%ds %dm%ds",
 		(int)(usrtime / 60), (int)(usrtime % 60),
 		(int)(systime / 60), (int)(systime % 60));
 	VOID_C fputnl(Xstdout);
@@ -8570,9 +8571,9 @@ syntaxtree *trp;
 		n = umask(022);
 		umask(n);
 #ifdef	BASHSTYLE
-		fprintf2(Xstdout, "%03o", n & 0777);
+		Xfprintf(Xstdout, "%03o", n & 0777);
 #else
-		fprintf2(Xstdout, "%04o", n & 0777);
+		Xfprintf(Xstdout, "%04o", n & 0777);
 #endif
 		VOID_C fputnl(Xstdout);
 	}
@@ -8687,7 +8688,7 @@ syntaxtree *trp;
 #  else
 		fp = Xstdout;
 #  endif
-		fprintf2(fp, "usage: %k [ -HSa", argv[0]);
+		Xfprintf(fp, "usage: %k [ -HSa", argv[0]);
 		for (j = 0; j < ULIMITSIZ; j++)
 			Xfputc(ulimitlist[j].opt, fp);
 		Xfputs(" ] [ limit ]", fp);
@@ -8702,7 +8703,7 @@ syntaxtree *trp;
 	if (n >= argc) {
 		for (i = 0; i < ULIMITSIZ; i++) if (flags & ((u_long)1 << i)) {
 			if (res < 0)
-				fprintf2(Xstdout, "%s ", ulimitlist[i].mes);
+				Xfprintf(Xstdout, "%s ", ulimitlist[i].mes);
 			if (getrlimit(ulimitlist[i].res, &lim) < 0) {
 				execerror(argv, NULL, ER_BADULIMIT, 1);
 				return(RET_FAIL);
@@ -8710,14 +8711,14 @@ syntaxtree *trp;
 			if (hs & 2) {
 				if (lim.rlim_cur == RLIM_INFINITY)
 					Xfputs(UNLIMITED, Xstdout);
-				else if (lim.rlim_cur) fprintf2(Xstdout, "%ld",
+				else if (lim.rlim_cur) Xfprintf(Xstdout, "%ld",
 					lim.rlim_cur / ulimitlist[i].unit);
 			}
 			if (hs & 1) {
 				if (hs & 2) Xfputc(':', Xstdout);
 				if (lim.rlim_max == RLIM_INFINITY)
 					Xfputs(UNLIMITED, Xstdout);
-				else if (lim.rlim_max) fprintf2(Xstdout, "%ld",
+				else if (lim.rlim_max) Xfprintf(Xstdout, "%ld",
 					lim.rlim_max / ulimitlist[i].unit);
 			}
 			VOID_C fputnl(Xstdout);
@@ -8742,7 +8743,7 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		if (val == RLIM_INFINITY) Xfputs(UNLIMITED, Xstdout);
-		else fprintf2(Xstdout, "%ld", val * 512L);
+		else Xfprintf(Xstdout, "%ld", val * 512L);
 		VOID_C fputnl(Xstdout);
 	}
 	else {
@@ -8775,7 +8776,7 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; i < NSIG; i++) {
 			if ((trapmode[i] & TR_STAT) != TR_TRAP) continue;
-			fprintf2(Xstdout, "%d: %k", i, trapcomm[i]);
+			Xfprintf(Xstdout, "%d: %k", i, trapcomm[i]);
 			VOID_C fputnl(Xstdout);
 		}
 		return(RET_SUCCESS);
@@ -8796,8 +8797,8 @@ syntaxtree *trp;
 
 		if (!sig) {
 			trapmode[0] = (comm) ? TR_TRAP : 0;
-			free2(trapcomm[0]);
-			trapcomm[0] = strdup2(comm);
+			Xfree(trapcomm[0]);
+			trapcomm[0] = Xstrdup(comm);
 			continue;
 		}
 
@@ -8810,7 +8811,7 @@ syntaxtree *trp;
 		}
 
 		signal2(sig, SIG_IGN);
-		free2(trapcomm[sig]);
+		Xfree(trapcomm[sig]);
 		if (!comm) {
 			trapmode[sig] = signallist[i].flags;
 			if (trapmode[sig] & TR_BLOCK)
@@ -8820,7 +8821,7 @@ syntaxtree *trp;
 		}
 		else {
 			trapmode[sig] = TR_TRAP;
-			trapcomm[sig] = strdup2(comm);
+			trapcomm[sig] = Xstrdup(comm);
 			if ((signallist[i].flags & TR_STAT) == TR_STOP)
 				signal2(sig, SIG_DFL);
 			else signal2(sig, (sigcst_t)(signallist[i].func));
@@ -8863,11 +8864,11 @@ syntaxtree *trp;
 			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
-	free2(joblist[i].pids);
-	free2(joblist[i].stats);
+	Xfree(joblist[i].pids);
+	Xfree(joblist[i].stats);
 	if (joblist[i].trp) {
 		freestree(joblist[i].trp);
-		free2(joblist[i].trp);
+		Xfree(joblist[i].trp);
 	}
 	joblist[i].pids = NULL;
 
@@ -8905,7 +8906,7 @@ XFILE *fp;
 	}
 #ifndef	NOALIAS
 	else if (type == CT_ALIAS)
-		fprintf2(fp, " is a aliased to `%k'", shellalias[id].comm);
+		Xfprintf(fp, " is a aliased to `%k'", shellalias[id].comm);
 #endif
 	else {
 		type = searchhash(&hp, s, NULL);
@@ -8921,7 +8922,7 @@ XFILE *fp;
 			VOID_C fputnl(fp);
 			return(-1);
 		}
-		else fprintf2(fp, " is %k", s);
+		else Xfprintf(fp, " is %k", s);
 	}
 	VOID_C fputnl(fp);
 
@@ -9101,7 +9102,7 @@ char *path;
 {
 # ifdef	FD
 	if (underhome(&(path[1]))) path[0] = '~';
-	else strcpy2(path, fullpath);
+	else Xstrcpy(path, fullpath);
 # else
 	if (!Xgetwd(path)) {
 		execerror(NULL, NULL, ER_CANNOTSTAT, 0);
@@ -9124,15 +9125,15 @@ syntaxtree *trp;
 			execerror((trp -> comm) -> argv, NULL, ER_DIREMPTY, 2);
 			return(RET_FAIL);
 		}
-		cp = evalpath(strdup2(dirstack[0]), 0);
+		cp = evalpath(Xstrdup(dirstack[0]), 0);
 		i = chdir3(cp, 1);
-		free2(cp);
+		Xfree(cp);
 		if (i < 0) {
 			execerror((trp -> comm) -> argv,
 				dirstack[0], ER_BADDIR, 0);
 			return(RET_FAIL);
 		}
-		free2(dirstack[0]);
+		Xfree(dirstack[0]);
 # ifdef	DEP_PTY
 		sendparent(TE_POPVAR, &dirstack);
 # endif
@@ -9144,13 +9145,13 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		i = countvar(dirstack);
-		dirstack = (char **)realloc2(dirstack,
+		dirstack = (char **)Xrealloc(dirstack,
 			(i + 1 + 1) * sizeof(char *));
 		memmove((char *)&(dirstack[1]), (char *)&(dirstack[0]),
 			i * sizeof(char *));
 		dirstack[i + 1] = NULL;
 	}
-	dirstack[0] = strdup2(path);
+	dirstack[0] = Xstrdup(path);
 	dodirs(trp);
 # ifdef	DEP_PTY
 	sendparent(TE_PUSHVAR, &dirstack, path);
@@ -9169,15 +9170,15 @@ syntaxtree *trp;
 		execerror((trp -> comm) -> argv, NULL, ER_DIREMPTY, 2);
 		return(RET_FAIL);
 	}
-	cp = evalpath(strdup2(dirstack[0]), 0);
+	cp = evalpath(Xstrdup(dirstack[0]), 0);
 	i = chdir3(cp, 1);
-	free2(cp);
+	Xfree(cp);
 	if (i < 0) {
 		execerror((trp -> comm) -> argv, dirstack[0], ER_BADDIR, 0);
 		return(RET_FAIL);
 	}
 	i = countvar(dirstack);
-	free2(dirstack[0]);
+	Xfree(dirstack[0]);
 	memmove((char *)&(dirstack[0]), (char *)&(dirstack[1]),
 		i * sizeof(char *));
 	dodirs(trp);
@@ -9199,7 +9200,7 @@ syntaxtree *trp;
 	kanjifputs(path, Xstdout);
 	if (dirstack)
 		for (i = 0; dirstack[i]; i++)
-			fprintf2(Xstdout, " %k", dirstack[i]);
+			Xfprintf(Xstdout, " %k", dirstack[i]);
 	VOID_C fputnl(Xstdout);
 
 	return(RET_SUCCESS);
@@ -9227,8 +9228,8 @@ syntaxtree *trp;
 		}
 
 		for (i = 0; i < (trp -> comm) -> argc; i++)
-			fprintf2(Xstdout, "%k ", argv[i]);
-		fprintf2(Xstdout, "%k\n", shbuiltinlist[j].ident);
+			Xfprintf(Xstdout, "%k ", argv[i]);
+		Xfprintf(Xstdout, "%k\n", shbuiltinlist[j].ident);
 	}
 	else for (i = n; i < (trp -> comm) -> argc; i++) {
 		for (j = 0; j < SHBUILTINSIZ; j++)
@@ -9310,7 +9311,7 @@ syntaxtree *trp;
 		}
 
 		Xfputs(buf, Xstdout);
-		free2(buf);
+		Xfree(buf);
 		Xfputs("\r\n", Xstdout);
 		Xfflush(Xstdout);
 
@@ -9372,16 +9373,16 @@ syntaxtree *trp;
 		execerror((trp -> comm) -> argv, NULL, ER_NOTSOCKET, 2);
 		return(RET_FAIL);
 	}
-	if (!isupper2(opt)) {
+	if (!Xisupper(opt)) {
 		if (getsockinfo(s, addr, sizeof(addr), &port, 1) >= 0) {
-			if (opt == 'a') fprintf2(Xstdout, "%s\n", addr);
-			else if (opt == 'p') fprintf2(Xstdout, "%d\n", port);
-			else fprintf2(Xstdout, "Remote: %s:%d\n", addr, port);
+			if (opt == 'a') Xfprintf(Xstdout, "%s\n", addr);
+			else if (opt == 'p') Xfprintf(Xstdout, "%d\n", port);
+			else Xfprintf(Xstdout, "Remote: %s:%d\n", addr, port);
 		}
 # ifdef	ENOTCONN
 		else if (errno == ENOTCONN) {
-			if (opt) fprintf2(Xstdout, "%s\n", nullstr);
-			else fprintf2(Xstdout, "Remote: (not connected)\n");
+			if (opt) Xfprintf(Xstdout, "%s\n", nullstr);
+			else Xfprintf(Xstdout, "Remote: (not connected)\n");
 		}
 # endif
 		else {
@@ -9390,11 +9391,11 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 	}
-	if (!islower2(opt)) {
+	if (!Xislower(opt)) {
 		if (getsockinfo(s, addr, sizeof(addr), &port, 0) >= 0) {
-			if (opt == 'A') fprintf2(Xstdout, "%s\n", addr);
-			else if (opt == 'P') fprintf2(Xstdout, "%d\n", port);
-			else fprintf2(Xstdout, "Local: %s:%d\n", addr, port);
+			if (opt == 'A') Xfprintf(Xstdout, "%s\n", addr);
+			else if (opt == 'P') Xfprintf(Xstdout, "%d\n", port);
+			else Xfprintf(Xstdout, "Local: %s:%d\n", addr, port);
 		}
 		else {
 			execerror((trp -> comm) -> argv,
@@ -9433,7 +9434,7 @@ syntaxtree *trp;
 		shellmode = 0;
 		main_fd(&((trp -> comm) -> argv[1]), 1);
 		shellmode = 1;
-		termmode(mode);
+		VOID_C termmode(mode);
 		stdiomode();
 		VOID_C fputnl(Xstderr);
 		sigvecset(n);
@@ -9532,21 +9533,21 @@ int lvl;
 				Xfputs("NULL", Xstdout);
 			else if (!i && isbuiltin(trp -> comm))
 				argfputs((trp -> comm) -> argv[i], Xstdout);
-			else fprintf2(Xstdout, "\"%a\"",
+			else Xfprintf(Xstdout, "\"%a\"",
 				(trp -> comm) -> argv[i]);
 			Xfputc((i < (trp -> comm) -> argc) ? ' ' : '\n',
 				Xstdout);
 		}
 		for (rp = (trp -> comm) -> redp; rp; rp = rp -> next) {
 			printindent(lvl, Xstdout);
-			fprintf2(Xstdout, "redirect %d", rp -> fd);
+			Xfprintf(Xstdout, "redirect %d", rp -> fd);
 			if (!(rp -> filename)) Xfputs(">-: ", Xstdout);
 			else if (rp -> type & MD_HEREDOC)
-				fprintf2(Xstdout, ">> \"%a\": ",
+				Xfprintf(Xstdout, ">> \"%a\": ",
 					((heredoc_t *)(rp -> filename))
 						-> eof);
-			else fprintf2(Xstdout, "> \"%a\": ", rp -> filename);
-			fprintf2(Xstdout, "%06o", (int)(rp -> type));
+			else Xfprintf(Xstdout, "> \"%a\": ", rp -> filename);
+			Xfprintf(Xstdout, "%06o", (int)(rp -> type));
 			VOID_C fputnl(Xstdout);
 		}
 	}
@@ -9563,7 +9564,7 @@ int lvl;
 		if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
 			rp = (redirectlist *)(trp -> next);
 			printindent(lvl, Xstdout);
-			fprintf2(Xstdout, "continuing...\"%a\"",
+			Xfprintf(Xstdout, "continuing...\"%a\"",
 				rp -> filename);
 			VOID_C fputnl(Xstdout);
 		}
@@ -9584,12 +9585,12 @@ syntaxtree *trp;
 	for (i = 0; shellfunc && shellfunc[i].ident; i++)
 		if (!strcommcmp(ident, shellfunc[i].ident)) break;
 	if (shellfunc && shellfunc[i].ident) {
-		free2(shellfunc[i].ident);
+		Xfree(shellfunc[i].ident);
 		freestree(shellfunc[i].func);
-		free2(shellfunc[i].func);
+		Xfree(shellfunc[i].func);
 	}
 	else {
-		shellfunc = (shfunctable *)realloc2(shellfunc,
+		shellfunc = (shfunctable *)Xrealloc(shellfunc,
 			(i + 2) * sizeof(shfunctable));
 		shellfunc[i + 1].ident = NULL;
 	}
@@ -9615,20 +9616,20 @@ syntaxtree *trp;
 		return(-1);
 	}
 #endif
-	new = strdup2(ident);
+	new = Xstrdup(ident);
 	stripquote(new, EA_STRIPQ);
 	len = strlen(new);
 #ifndef	BASHSTYLE
 	/* bash distinguishes the same named function and variable */
 	if (unset(new, len) < 0) {
-		free2(new);
+		Xfree(new);
 		return(RET_FAIL);
 	}
 #endif
 
 	trp = trp -> next;
 	if (!(functr = statementbody(trp))) {
-		free2(new);
+		Xfree(new);
 		return(RET_FAIL);
 	}
 #ifdef	MINIMUMSHELL
@@ -9662,9 +9663,9 @@ int len;
 		&& !shellfunc[i].ident[len])
 			break;
 	if (!shellfunc[i].ident) return(0);
-	free2(shellfunc[i].ident);
+	Xfree(shellfunc[i].ident);
 	freestree(shellfunc[i].func);
-	free2(shellfunc[i].func);
+	Xfree(shellfunc[i].func);
 	for (; shellfunc[i + 1].ident; i++) {
 		shellfunc[i].ident = shellfunc[i + 1].ident;
 		shellfunc[i].func = shellfunc[i + 1].func;
@@ -9718,7 +9719,7 @@ int type, id, bg;
 		for (i = 1; i < comm -> argc; i++) {
 			cp = newkanjiconv(comm -> argv[i],
 				defaultkcode, DEFCODE, L_FNAME);
-			if (cp != comm -> argv[i]) free2(comm -> argv[i]);
+			if (cp != comm -> argv[i]) Xfree(comm -> argv[i]);
 			comm -> argv[i] = cp;
 		}
 	}
@@ -9806,13 +9807,13 @@ char **argv;
 #endif
 	if (!argc) return(argv);
 
-	stripquote(tmp = strdup2(argv[0]), EA_STRIPQ);
+	stripquote(tmp = Xstrdup(argv[0]), EA_STRIPQ);
 #ifdef	NOALIAS
 	type = checktype(tmp, &id, 1);
 #else
 	type = checktype(tmp, &id, 0, 1);
 #endif
-	free2(tmp);
+	Xfree(tmp);
 #ifdef	STRICTPOSIX
 	if (type == CT_BUILTIN && (shbuiltinlist[id].flags & BT_POSIXSPECIAL))
 		isshellbuiltin = 1;
@@ -9849,7 +9850,7 @@ syntaxtree *trp;
 	}
 
 	freevar(subst);
-	free2(len);
+	Xfree(len);
 	freevar(argv);
 	errno = duperrno;
 
@@ -9889,7 +9890,7 @@ int *contp, bg;
 	id = evalargv(comm, &type, contp);
 	if (id < 0 || (nsubst = substvar(subst, EA_BACKQ)) < 0) {
 		freevar(subst);
-		free2(len);
+		Xfree(len);
 		comm -> argc = argc;
 		freevar(comm -> argv);
 		comm -> argv = argv;
@@ -9918,7 +9919,7 @@ int *contp, bg;
 #endif
 
 	if (keepvar < 0) {
-		for (i = 0; subst[i]; i++) free2(subst[i]);
+		for (i = 0; subst[i]; i++) Xfree(subst[i]);
 		subst[0] = NULL;
 		keepvar = nsubst = 0;
 	}
@@ -9959,9 +9960,9 @@ int *contp, bg;
 #endif
 		stripquote(subst[nsubst], EA_STRIPQ);
 		if (putshellvar(subst[nsubst], len[nsubst]) < 0) {
-			while (nsubst >= 0) free2(subst[nsubst--]);
-			free2(subst);
-			free2(len);
+			while (nsubst >= 0) Xfree(subst[nsubst--]);
+			Xfree(subst);
+			Xfree(len);
 			comm -> argc = argc;
 			freevar(comm -> argv);
 			comm -> argv = argv;
@@ -9969,7 +9970,7 @@ int *contp, bg;
 		}
 		if (type == CT_COMMAND)
 			exportvar = putvar(exportvar,
-				strdup2(subst[nsubst]), len[nsubst]);
+				Xstrdup(subst[nsubst]), len[nsubst]);
 		if (verboseexec) {
 #ifdef	BASHSTYLE
 	/* bash displays "+ " with substitutions, in -x mode */
@@ -9983,18 +9984,18 @@ int *contp, bg;
 			VOID_C fputnl(Xstderr);
 		}
 	}
-	free2(subst);
-	free2(len);
+	Xfree(subst);
+	Xfree(len);
 
 	if (verboseexec && comm -> argc) {
 		if (ps) Xfputs(ps, Xstderr);
 		argfputs(comm -> argv[0], Xstderr);
 		for (i = 1; i < comm -> argc; i++)
-			fprintf2(Xstderr, " %a", comm -> argv[i]);
+			Xfprintf(Xstderr, " %a", comm -> argv[i]);
 		VOID_C fputnl(Xstderr);
 	}
 #ifndef	MINIMUMSHELL
-	free2(ps);
+	Xfree(ps);
 #endif
 
 #if	MSDOS
@@ -10212,7 +10213,7 @@ int cond;
 # ifndef	NOJOB
 			if (jobok && !isopnown(trp)) {
 				if (mypid == orgpgrp) {
-					fprintf2(Xstderr, "[%d] %id",
+					Xfprintf(Xstderr, "[%d] %id",
 						lastjob + 1, pid);
 					VOID_C fputnl(Xstderr);
 				}
@@ -10220,7 +10221,7 @@ int cond;
 			else
 # endif	/* !NOJOB */
 			{
-				fprintf2(Xstderr, "%id", pid);
+				Xfprintf(Xstderr, "%id", pid);
 				VOID_C fputnl(Xstderr);
 			}
 		}
@@ -10274,18 +10275,18 @@ int cond;
 			else if (errp -> type & MD_HEREDOC)
 				doperror(NULL, NULL);
 			else {
-				if (!(errp -> filename)) tmp = strdup2("-");
+				if (!(errp -> filename)) tmp = Xstrdup("-");
 				else tmp = evalvararg(errp -> filename,
 					EA_BACKQ | EA_STRIPQLATER, 0);
 				if (tmp && !*tmp && *(errp -> filename)) {
-					free2(tmp);
-					tmp = strdup2(errp -> filename);
+					Xfree(tmp);
+					tmp = Xstrdup(errp -> filename);
 				}
 				if (tmp) {
 					if (errno) doperror(NULL, tmp);
 					else execerror(NULL,
 						tmp, ER_RESTRICTED, 2);
-					free2(tmp);
+					Xfree(tmp);
 				}
 			}
 			ret = RET_FAIL;
@@ -10331,7 +10332,7 @@ int cond;
 		else if (isopor(trp) && !ret_status) /*EMPTY*/;
 		else ret = exec_stree(trp -> next, cond);
 	}
-	if (pipein >= (p_id_t)0) closepipe2(fd, -1);
+	if (pipein >= (p_id_t)0) VOID_C closepipe2(fd, -1);
 	exectrapcomm();
 
 	return(ret);
@@ -10354,7 +10355,7 @@ int noexit;
 		if (!(trp = analyze(command, trp, 0))) {
 			freestree(stree);
 			if (errorexit && !noexit) {
-				free2(stree);
+				Xfree(stree);
 				Xexit2(RET_SYNTAXERR);
 			}
 			return(NULL);
@@ -10378,7 +10379,7 @@ int noexit;
 
 	if (ret < 0 && errno) doperror(NULL, NULL);
 	if ((errorexit && ret && !noexit) || terminated) {
-		free2(stree);
+		Xfree(stree);
 		Xexit2(ret);
 	}
 
@@ -10394,7 +10395,7 @@ CONST char *command;
 
 	if (!command) {
 		freestree(stree);
-		free2(stree);
+		Xfree(stree);
 		stree = trp = NULL;
 		return(0);
 	}
@@ -10411,7 +10412,7 @@ CONST char *command;
 #endif
 	if ((trp = execline(command, stree, trp, 0))) ret = trp -> cont;
 	else {
-		free2(stree);
+		Xfree(stree);
 		stree = trp = NULL;
 		ret = 0;
 	}
@@ -10443,7 +10444,7 @@ CONST char *command;
 		errorexit = tmperrorexit;
 	}
 	freestree(trp);
-	free2(trp);
+	Xfree(trp);
 	trp = NULL;
 
 	return((ret >= 0) ? ret : RET_FAIL);
@@ -10518,14 +10519,14 @@ CONST char *command;
 		searchheredoc(trp, 1);
 		if (pipein >= (p_id_t)0) fd = reopenpipe(fd, ret_status);
 		else {
-			closepipe2(fd, -1);
+			VOID_C closepipe2(fd, -1);
 			fd = -1;
 		}
 	}
 
 	if (trp) {
 		freestree(trp);
-		free2(trp);
+		Xfree(trp);
 	}
 	errorexit = tmperrorexit;
 	nottyout--;
@@ -10597,12 +10598,12 @@ int verbose;
 		if (ret_status == RET_NOTICE || syntaxerrno || execerrno) {
 			ret++;
 			if (verbose) {
-				fprintf2(Xstderr, "%k:%ld: %s", fname, n, buf);
+				Xfprintf(Xstderr, "%k:%ld: %s", fname, n, buf);
 				VOID_C fputnl(Xstderr);
 			}
 			ret_status = RET_FAIL;
 		}
-		free2(buf);
+		Xfree(buf);
 		if (syntaxerrno) break;
 #ifndef	BASHSTYLE
 		if (execerrno) break;
@@ -10614,7 +10615,7 @@ int verbose;
 
 	execline((char *)-1, stree, trp, 1);
 	if (syntaxerrno) ret_status = RET_SYNTAXERR;
-	free2(stree);
+	Xfree(stree);
 	interactive = dupinteractive;
 #ifndef	MINIMUMSHELL
 	setshlineno(dupshlineno);
@@ -10641,7 +10642,7 @@ int verbose;
 		fname = path;
 	}
 #endif
-	new = strdup2(fname);
+	new = Xstrdup(fname);
 #if	MSDOS && !defined (BSPATHDELIM)
 	new = adjustpname(new);
 #endif
@@ -10659,8 +10660,8 @@ int verbose;
 		duprestricted = restricted;
 		restricted = 0;
 		dupargvar = argvar;
-		argvar = (char **)malloc2(2 * sizeof(char *));
-		argvar[0] = strdup2(fname);
+		argvar = (char **)Xmalloc(2 * sizeof(char *));
+		argvar[0] = Xstrdup(fname);
 		argvar[1] = NULL;
 		ret = sourcefile(lck -> fd, fname, verbose);
 		freevar(argvar);
@@ -10672,7 +10673,7 @@ int verbose;
 	}
 	lockclose(lck);
 	resetsignal(0);
-	free2(new);
+	Xfree(new);
 
 	return(ret);
 }
@@ -10686,7 +10687,7 @@ char *CONST *var;
 
 	if (!var) return;
 	for (i = 0; var[i]; i++) {
-		if (!(cp = strchr2(var[i], '='))) continue;
+		if (!(cp = Xstrchr(var[i], '='))) continue;
 		if (searchvar2(ADJUSTVARSIZ, adjustvar, var[i], cp - var[i]))
 			adjustpname(cp);
 	}
@@ -10708,11 +10709,11 @@ char *CONST *envp;
 	exportsize = (u_long)0;
 	for (i = 0; exportvar[i]; i++)
 		exportsize += (u_long)strlen(exportvar[i]) + 1;
-	exportlist = (char **)malloc2((i + 1) * sizeof(char *));
+	exportlist = (char **)Xmalloc((i + 1) * sizeof(char *));
 	for (i = 0; exportvar[i]; i++) {
-		len = ((cp = strchr2(exportvar[i], '=')))
+		len = ((cp = Xstrchr(exportvar[i], '=')))
 			? cp - exportvar[i] : strlen(exportvar[i]);
-		exportlist[i] = strndup2(exportvar[i], len);
+		exportlist[i] = Xstrndup(exportvar[i], len);
 	}
 	exportlist[i] = NULL;
 	ronlylist = duplvar(NULL, 0);
@@ -10838,7 +10839,7 @@ char *CONST *argv;
 	else {
 		definput = newdup(Xopen(argv[n], O_BINARY | O_RDONLY, 0666));
 		if (definput < 0) {
-			fprintf2(Xstderr, "%k: cannot open", argv[n]);
+			Xfprintf(Xstderr, "%k: cannot open", argv[n]);
 			VOID_C fputnl(Xstderr);
 			return(-1);
 		}
@@ -10850,7 +10851,7 @@ char *CONST *argv;
 		}
 		else {
 			if (Xdup2(definput, STDIN_FILENO) < 0) {
-				fprintf2(Xstderr, "%k: cannot open", argv[n]);
+				Xfprintf(Xstderr, "%k: cannot open", argv[n]);
 				VOID_C fputnl(Xstderr);
 				return(-1);
 			}
@@ -10891,25 +10892,25 @@ char *CONST *argv;
 #ifndef	MINIMUMSHELL
 	posixsubstfunc = evalposixsubst;
 #endif
-	shellfunc = (shfunctable *)malloc2(1 * sizeof(shfunctable));
+	shellfunc = (shfunctable *)Xmalloc(1 * sizeof(shfunctable));
 	shellfunc[0].ident = NULL;
 #ifndef	NOALIAS
-	shellalias = (shaliastable *)malloc2(1 * sizeof(shaliastable));
+	shellalias = (shaliastable *)Xmalloc(1 * sizeof(shaliastable));
 	shellalias[0].ident = NULL;
 #endif
 #ifndef	_NOUSEHASH
 	searchhash(NULL, NULL, NULL);
 #endif
 	if ((!interactive || isstdin) && n < argc) {
-		argvar = (char **)malloc2((argc - n + 1 + isstdin)
+		argvar = (char **)Xmalloc((argc - n + 1 + isstdin)
 			* sizeof(char *));
 		for (i = 0; i < argc - n + 1; i++)
-			argvar[i + isstdin] = strdup2(argv[i + n]);
-		if (isstdin) argvar[0] = strdup2(argv[0]);
+			argvar[i + isstdin] = Xstrdup(argv[i + n]);
+		if (isstdin) argvar[0] = Xstrdup(argv[0]);
 	}
 	else {
-		argvar = (char **)malloc2(2 * sizeof(char *));
-		argvar[0] = strdup2(argv[0]);
+		argvar = (char **)Xmalloc(2 * sizeof(char *));
+		argvar[0] = Xstrdup(argv[0]);
 		argvar[1] = NULL;
 	}
 
@@ -10940,7 +10941,7 @@ char *CONST *argv;
 	if (!getconstvar(ENVPS4)) setenv2(ENVPS4, PS4STR, 0);
 	setshlineno(1L);
 # if	!MSDOS
-	snprintf2(buf, sizeof(buf), "%id", getppid());
+	Xsnprintf(buf, sizeof(buf), "%id", getppid());
 	setenv2(ENVPPID, buf, 0);
 # endif
 #endif
@@ -11138,7 +11139,7 @@ int pseudoexit;
 			if (dumbterm > 1) {
 				evalprompt(&buf, ps);
 				kanjifputs(buf, Xstderr);
-				free2(buf);
+				Xfree(buf);
 				Xfflush(Xstderr);
 				buf = readline(definput, '\0');
 			}
@@ -11169,7 +11170,7 @@ int pseudoexit;
 					syntaxerror(nullstr);
 				}
 				else {
-					fprintf2(Xstderr,
+					Xfprintf(Xstderr,
 					"Use \"%s\" to leave to the shell.",
 						(loginshell)
 							? "logout" : "exit");
@@ -11187,11 +11188,11 @@ int pseudoexit;
 
 #ifdef	DEP_FILECONV
 		cp = newkanjiconv(buf, DEFCODE, defaultkcode, L_FNAME);
-		if (cp != buf) free2(buf);
+		if (cp != buf) Xfree(buf);
 		buf = cp;
 #endif
 		cont = exec_line(buf);
-		free2(buf);
+		Xfree(buf);
 		if (pseudoexit && exit_status >= 0) break;
 #ifndef	MINIMUMSHELL
 		setshlineno(shlineno + 1L);

@@ -11,8 +11,8 @@
 #endif
 
 extern char *skipspace __P_((CONST char *));
-extern char *sscanf2 __P_((CONST char *, CONST char *, ...));
-extern int atoi2 __P_((CONST char *));
+extern char *Xsscanf __P_((CONST char *, CONST char *, ...));
+extern int Xatoi __P_((CONST char *));
 #if	defined (FD) && !defined (DEP_ORIGSHELL)
 extern char *strtkchr __P_((CONST char *, int, int));
 extern int getargs __P_((CONST char *, char ***));
@@ -22,7 +22,7 @@ extern char *evalcomstr __P_((CONST char *, CONST char *));
 #endif
 extern char *evalpaths __P_((CONST char *, int));
 #if	MSDOS && defined (FD) && !defined (DEP_ORIGSHELL)
-#define	killmeta(s)		strdup2(s)
+#define	killmeta(s)		Xstrdup(s)
 #else
 extern char *killmeta __P_((CONST char *));
 #endif

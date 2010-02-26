@@ -26,7 +26,7 @@
 #define	MAXCUSTVAL		(n_column - MAXCUSTNAM - 3)
 #define	noselect(n, m, x, s, v)	(selectstr(n, m, x, s, v) != K_CR)
 #define	getmax(m, n)		do { \
-					cs_max = ((!(n) & basiccustom) \
+					cs_max = ((!(n) && basiccustom) \
 						? nbasic : (m)[n]); \
 				} while (0)
 #define	setmax(m, n)		do { \
@@ -675,7 +675,7 @@ CONST char *s;
 {
 	int n;
 
-	if (!sscanf2(s, "%<o%$", &n)) return(-1);
+	if (!Xsscanf(s, "%<o%$", &n)) return(-1);
 	n &= 0777;
 
 	return(n);
@@ -717,11 +717,11 @@ int no;
 	switch (env_type(no)) {
 		case T_BOOL:
 			if (!cp) n = def_num(no);
-			else n = (*cp && atoi2(cp)) ? 1 : 0;
+			else n = (*cp && Xatoi(cp)) ? 1 : 0;
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_SHORT:
-			if ((n = atoi2(cp)) < 0) n = def_num(no);
+			if ((n = Xatoi(cp)) < 0) n = def_num(no);
 			if (n > MAXTYPE(short)) n = MAXTYPE(short);
 			*((short *)(envlist[no].var)) = n;
 			break;
@@ -730,28 +730,28 @@ int no;
 /*FALLTHRU*/
 #endif
 		case T_INT:
-			if ((n = atoi2(cp)) < 0) n = def_num(no);
+			if ((n = Xatoi(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_NATURAL:
-			if ((n = atoi2(cp)) < 0) n = def_num(no);
+			if ((n = Xatoi(cp)) < 0) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 		case T_PATH:
 			if (!cp) cp = def_str(no);
-			new = evalpath(strdup2(cp), 0);
-			free2(*((char **)(envlist[no].var)));
+			new = evalpath(Xstrdup(cp), 0);
+			Xfree(*((char **)(envlist[no].var)));
 			*((char **)(envlist[no].var)) = new;
 			break;
 		case T_PATHS:
 		case T_KPATHS:
 			if (!cp) cp = def_str(no);
 			new = evalpaths(cp, ':');
-			free2(*((char **)(envlist[no].var)));
+			Xfree(*((char **)(envlist[no].var)));
 			*((char **)(envlist[no].var)) = new;
 			break;
 		case T_SORT:
-			if ((n = atoi2(cp)) < 0 || (n / 100) > MAXSORTINHERIT
+			if ((n = Xatoi(cp)) < 0 || (n / 100) > MAXSORTINHERIT
 			|| ((n % 100) & ~15) || ((n % 100) & 7) > MAXSORTTYPE)
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
@@ -759,21 +759,21 @@ int no;
 			break;
 		case T_DISP:
 #ifdef	HAVEFLAGS
-			if ((n = atoi2(cp)) < 0 || n > 15)
+			if ((n = Xatoi(cp)) < 0 || n > 15)
 #else
-			if ((n = atoi2(cp)) < 0 || n > 7)
+			if ((n = Xatoi(cp)) < 0 || n > 7)
 #endif
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #ifndef	_NOWRITEFS
 		case T_WRFS:
-			if ((n = atoi2(cp)) < 0 || n > 2) n = def_num(no);
+			if ((n = Xatoi(cp)) < 0 || n > 2) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
 		case T_COLUMN:
-			if ((n = atoi2(cp)) <= 0 || n > 5 || n == 4)
+			if ((n = Xatoi(cp)) <= 0 || n > 5 || n == 4)
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
@@ -782,13 +782,13 @@ int no;
 			if (!cp) n = def_num(no);
 			else {
 				n = 0;
-				if (!(new = strchr2(cp, ','))) {
-					if (*cp && atoi2(cp)) n |= 1;
+				if (!(new = Xstrchr(cp, ','))) {
+					if (*cp && Xatoi(cp)) n |= 1;
 				}
 				else {
 					if (!strcmp(&(new[1]), "BIOS")) n |= 2;
 					if (new <= cp) /*EMPTY*/;
-					else if (sscanf2(cp, "%<d", &i) != new)
+					else if (Xsscanf(cp, "%<d", &i) != new)
 						n |= 1;
 					else if (i) n |= 1;
 				}
@@ -798,7 +798,7 @@ int no;
 #endif	/* MSDOS && DEP_DOSDRIVE */
 #ifndef	_NOCOLOR
 		case T_COLOR:
-			if ((n = atoi2(cp)) < 0 || n > 3) n = def_num(no);
+			if ((n = Xatoi(cp)) < 0 || n > 3) n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
@@ -840,7 +840,7 @@ int no;
 #endif
 #if	FD >= 2
 		case T_HELP:
-			if ((n = atoi2(cp)) < 0 || (n / 100) > MAXHELPINDEX
+			if ((n = Xatoi(cp)) < 0 || (n / 100) > MAXHELPINDEX
 			|| (n % 100) > (n / 100))
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
@@ -871,7 +871,7 @@ int stable;
 	if (!stable) /*EMPTY*/;
 	else if (pp -> lang == NOCNV) {
 		if (!(pp -> flags & P_STABLE)) {
-			free2(pp -> last);
+			Xfree(pp -> last);
 			pp -> last = NULL;
 		}
 		stable = 0;
@@ -900,15 +900,15 @@ pathtable *pp;
 				MAXPATHLEN - 1, pp -> lang, DEFCODE, L_FNAME);
 		else {
 			path = newkanjiconv(buf, pp -> lang, DEFCODE, L_FNAME);
-			if (path == buf) path = strdup2(buf);
-			free2(*((char **)(pp -> path)));
+			if (path == buf) path = Xstrdup(buf);
+			Xfree(*((char **)(pp -> path)));
 			*((char **)(pp -> path)) = path;
 		}
 		if (kanjierrno) pp -> lang = DEFCODE;
 	}
 	if (!(pp -> flags & P_STABLE)) {
-		free2(pp -> last);
-		pp -> last = strdup2(path);
+		Xfree(pp -> last);
+		pp -> last = Xstrdup(path);
 	}
 }
 
@@ -1034,7 +1034,7 @@ VOID freeenvpath(VOID_A)
 
 # ifdef	DEP_FILECONV
 	for (i = 0; i < PATHLISTSIZ; i++) {
-		free2(pathlist[i].last);
+		Xfree(pathlist[i].last);
 		pathlist[i].last = NULL;
 	}
 # endif
@@ -1042,7 +1042,7 @@ VOID freeenvpath(VOID_A)
 		case T_PATH:
 		case T_PATHS:
 		case T_KPATHS:
-			free2(*((char **)(envlist[i].var)));
+			Xfree(*((char **)(envlist[i].var)));
 			*((char **)(envlist[i].var)) = NULL;
 			break;
 		default:
@@ -1057,7 +1057,7 @@ int max;
 {
 	int i;
 
-	if (list) for (i = 0; i < max; i++) free2(list[i]);
+	if (list) for (i = 0; i < max; i++) Xfree(list[i]);
 }
 
 char **copystrarray(dest, src, ndestp, nsrc)
@@ -1071,8 +1071,8 @@ int *ndestp, nsrc;
 # ifndef	DEP_DYNAMICLIST
 	else if (dest) /*EMPTY*/;
 # endif
-	else dest = (char **)realloc2(dest, nsrc * sizeof(*dest));
-	for (i = 0; i < nsrc; i++) dest[i] = strdup2(src[i]);
+	else dest = (char **)Xrealloc(dest, nsrc * sizeof(*dest));
+	for (i = 0; i < nsrc; i++) dest[i] = Xstrdup(src[i]);
 	if (ndestp) *ndestp = nsrc;
 
 	return(dest);
@@ -1088,7 +1088,7 @@ int *ndestp, nsrc;
 # ifndef	DEP_DYNAMICLIST
 	else if (dest) /*EMPTY*/;
 # endif
-	else dest = (bindtable *)realloc2(dest, nsrc * sizeof(*dest));
+	else dest = (bindtable *)Xrealloc(dest, nsrc * sizeof(*dest));
 	if (dest != src)
 		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
 	*ndestp = nsrc;
@@ -1119,12 +1119,12 @@ int *ndestp, nsrc;
 # ifndef	DEP_DYNAMICLIST
 	else if (dest) /*EMPTY*/;
 # endif
-	else dest = (lsparse_t *)realloc2(dest, nsrc * sizeof(*dest));
+	else dest = (lsparse_t *)Xrealloc(dest, nsrc * sizeof(*dest));
 	if (dest != src)
 		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
 	for (i = 0; i < nsrc; i++) {
-		dest[i].ext = strdup2(src[i].ext);
-		dest[i].comm = strdup2(src[i].comm);
+		dest[i].ext = Xstrdup(src[i].ext);
+		dest[i].comm = Xstrdup(src[i].comm);
 # ifndef	OLDPARSE
 		dest[i].format = duplvar(src[i].format, -1);
 		dest[i].lignore = duplvar(src[i].lignore, -1);
@@ -1157,13 +1157,13 @@ int *ndestp, nsrc;
 # ifndef	DEP_DYNAMICLIST
 	else if (dest) /*EMPTY*/;
 # endif
-	else dest = (archive_t *)realloc2(dest, nsrc * sizeof(*dest));
+	else dest = (archive_t *)Xrealloc(dest, nsrc * sizeof(*dest));
 	if (dest != src)
 		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
 	for (i = 0; i < nsrc; i++) {
-		dest[i].ext = strdup2(src[i].ext);
-		dest[i].p_comm = strdup2(src[i].p_comm);
-		dest[i].u_comm = strdup2(src[i].u_comm);
+		dest[i].ext = Xstrdup(src[i].ext);
+		dest[i].p_comm = Xstrdup(src[i].p_comm);
+		dest[i].u_comm = Xstrdup(src[i].u_comm);
 	}
 	*ndestp = nsrc;
 
@@ -1178,7 +1178,7 @@ int max;
 {
 	int i;
 
-	if (list) for (i = 0; i < max; i++) free2(list[i].name);
+	if (list) for (i = 0; i < max; i++) Xfree(list[i].name);
 }
 
 devinfo *copydosdrive(dest, src, ndestp, nsrc)
@@ -1193,10 +1193,10 @@ int *ndestp, nsrc;
 # ifndef	DEP_DYNAMICLIST
 	else if (dest) /*EMPTY*/;
 # endif
-	else dest = (devinfo *)realloc2(dest, nsrc * sizeof(*dest));
+	else dest = (devinfo *)Xrealloc(dest, nsrc * sizeof(*dest));
 	if (dest != src)
 		memcpy((char *)dest, (char *)src, nsrc * sizeof(*dest));
-	for (i = 0; i < nsrc; i++) dest[i].name = strdup2(src[i].name);
+	for (i = 0; i < nsrc; i++) dest[i].name = Xstrdup(src[i].name);
 	*ndestp = nsrc;
 
 	return(dest);
@@ -1207,7 +1207,7 @@ int *ndestp, nsrc;
 static int NEAR custputs(s)
 CONST char *s;
 {
-	return(Xcprintf2("%.*k", n_lastcolumn, s));
+	return(XXcprintf("%.*k", n_lastcolumn, s));
 }
 
 static char *NEAR strcatalloc(s1, s2)
@@ -1218,8 +1218,8 @@ CONST char *s2;
 
 	l1 = (s1) ? strlen(s1) : 0;
 	l2 = strlen(s2);
-	s1 = realloc2(s1, l1 + l2 + 1);
-	strncpy2(&(s1[l1]), s2, l2);
+	s1 = Xrealloc(s1, l1 + l2 + 1);
+	Xstrncpy(&(s1[l1]), s2, l2);
 
 	return(s1);
 }
@@ -1227,7 +1227,7 @@ CONST char *s2;
 static VOID NEAR putsep(VOID_A)
 {
 	Xputterm(T_STANDOUT);
-	Xputch2(' ');
+	VOID_C XXputch(' ');
 	Xputterm(END_STANDOUT);
 }
 
@@ -1259,7 +1259,7 @@ int h;
 
 	if (!(cp = inputcuststr(prompt, delsp, s, h))) return((char *)-1);
 	if (!*cp && yesno(USENV_K, prompt)) {
-		free2(cp);
+		Xfree(cp);
 		return(NULL);
 	}
 
@@ -1302,8 +1302,8 @@ CONST char *def, *prompt, **mes;
 	do {
 		Xlocate(0, L_INFO);
 		Xputterm(L_CLEAR);
-		custputs(mes[pos] ? mes[pos] : list[pos].name);
-		Xputch2('.');
+		VOID_C custputs(mes[pos] ? mes[pos] : list[pos].name);
+		VOID_C XXputch('.');
 
 		Xlocate(win_x, win_y);
 		Xtflush();
@@ -1410,13 +1410,13 @@ static VOID NEAR custtitle(VOID_A)
 	Xlocate(0, filetop(win));
 	Xputterm(L_CLEAR);
 	for (i = 0; i < MAXCUSTOM; i++) {
-		if (i != custno) Xcprintf2("/%.*k", width, str[i]);
+		if (i != custno) VOID_C XXcprintf("/%.*k", width, str[i]);
 		else {
 			Xputterm(T_STANDOUT);
-			Xcprintf2("/%.*k", width, str[i]);
+			VOID_C XXcprintf("/%.*k", width, str[i]);
 			Xputterm(END_STANDOUT);
 		}
-		if (len) Xputch2(' ');
+		if (len) VOID_C XXputch(' ');
 	}
 
 	fillline(filetop(win) + 1, n_column);
@@ -1458,7 +1458,7 @@ CONST char *s;
 	Xlocate(0, L_HELP);
 	Xputterm(L_CLEAR);
 	Xputterm(T_STANDOUT);
-	Xcprintf2("%.*k", n_column, s);
+	VOID_C XXcprintf("%.*k", n_column, s);
 	Xputterm(END_STANDOUT);
 }
 
@@ -1485,10 +1485,10 @@ char **list;
 		evalheader();
 	}
 	else {
-		list = (char **)malloc2(ENVLISTSIZ * 2 * sizeof(*list));
+		list = (char **)Xmalloc(ENVLISTSIZ * 2 * sizeof(*list));
 		for (i = 0; i < ENVLISTSIZ; i++) {
-			list[i * 2] = strdup2(getshellvar(fdenv_str(i), -1));
-			list[i * 2 + 1] = strdup2(getshellvar(env_str(i), -1));
+			list[i * 2] = Xstrdup(getshellvar(fdenv_str(i), -1));
+			list[i * 2 + 1] = Xstrdup(getshellvar(env_str(i), -1));
 		}
 	}
 
@@ -1524,9 +1524,9 @@ int n;
 char *buf;
 {
 # ifdef	BASHSTYLE
-	snprintf2(buf, MAXLONGWIDTH + 1, "%03o", n & 0777);
+	Xsnprintf(buf, MAXLONGWIDTH + 1, "%03o", n & 0777);
 # else
-	snprintf2(buf, MAXLONGWIDTH + 1, "%04o", n & 0777);
+	Xsnprintf(buf, MAXLONGWIDTH + 1, "%04o", n & 0777);
 # endif
 
 	return(buf);
@@ -1545,7 +1545,7 @@ XFILE *fp;
 	if (!argc) return;
 
 	Xfputs(s, fp);
-	for (i = 0; i < argc; i++) fprintf2(fp, " %s", argv[i]);
+	for (i = 0; i < argc; i++) Xfprintf(fp, " %s", argv[i]);
 	VOID_C fputnl(fp);
 }
 # endif	/* DEP_ORIGSHELL */
@@ -1554,7 +1554,7 @@ static char *NEAR int2str(buf, n)
 char *buf;
 int n;
 {
-	snprintf2(buf, MAXLONGWIDTH + 1, "%d", n);
+	Xsnprintf(buf, MAXLONGWIDTH + 1, "%d", n);
 
 	return(buf);
 }
@@ -1617,7 +1617,7 @@ int no;
 			n %= 100;
 			if ((n & 7) > MAXSORTTYPE)
 				n = ((n & ~7) | MAXSORTTYPE);
-			new = strdup2(&(str[n & 7][3]));
+			new = Xstrdup(&(str[n & 7][3]));
 
 			if (n & 7) {
 				str[0] = OINC_K;
@@ -1639,7 +1639,7 @@ int no;
 			break;
 		case T_DISP:
 			n = *((int *)(envlist[no].var));
-			new = strdup2(VDS1A_K);
+			new = Xstrdup(VDS1A_K);
 			str[0] = VDS10_K;
 			str[1] = VDS11_K;
 			new = strcatalloc(new, str[n & 1]);
@@ -1674,7 +1674,7 @@ int no;
 			str[1] = VBOL1_K;
 			cp = str[n & 1];
 			if (n & 2) {
-				new = strdup2(cp);
+				new = Xstrdup(cp);
 				cp = new = strcatalloc(new, VBIOS_K);
 			}
 			break;
@@ -1703,7 +1703,7 @@ int no;
 			new = NULL;
 			for (n = 0; n < MAXPALETTE; n++) {
 				if (n) new = strcatalloc(new, "/");
-				p = (isdigit2(cp[n])) ? cp[n] : DEFPALETTE[n];
+				p = (Xisdigit(cp[n])) ? cp[n] : DEFPALETTE[n];
 				p -= '0';
 				new = strcatalloc(new, str[p]);
 				if (!cp[n]) cp--;
@@ -1767,7 +1767,7 @@ int no;
 			n = *((int *)(envlist[no].var));
 			p = n / 100;
 			n %= 100;
-			new = strdup2(VFNMX_K);
+			new = Xstrdup(VFNMX_K);
 			new = strcatalloc(new, int2str(buf, p));
 			new = strcatalloc(new, ", ");
 			new = strcatalloc(new, VFNBR_K);
@@ -1778,7 +1778,7 @@ int no;
 # ifdef	DEP_URLPATH
 		case T_URLOPT:
 			n = *((int *)(envlist[no].var));
-			new = strdup2("PASV:");
+			new = Xstrdup("PASV:");
 			str[0] = UOP00_K;
 			str[1] = UOP01_K;
 			new = strcatalloc(new, str[n & 1]);
@@ -1801,12 +1801,12 @@ int no;
 	}
 
 	if (!getenv2(fdenv_str(no)))
-		cp = new = strcatalloc(strdup2(cp),
+		cp = new = strcatalloc(Xstrdup(cp),
 			(cp && *cp) ? VDEF_K : VUDEF_K);
 	cputstr(MAXCUSTVAL, cp);
 	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -1845,8 +1845,8 @@ int no;
 			cp = s = inputcustenvstr(env, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
-			n = atoi2(cp);
-			free2(s);
+			n = Xatoi(cp);
+			Xfree(s);
 			if (n < 0 || n > MAXTYPE(short)) {
 				warning(0, VALNG_K);
 				return(0);
@@ -1859,8 +1859,8 @@ int no;
 			cp = s = inputcustenvstr(env, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
-			n = atoi2(cp);
-			free2(s);
+			n = Xatoi(cp);
+			Xfree(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -1983,7 +1983,7 @@ int no;
 			if (noselect(&n, 3, 0, str, val)) return(0);
 			cp = (n >= 0) ? int2str(buf, n) : NULL;
 			if (cp && *((int *)(envlist[no].var)) & 2) {
-				new = strdup2(cp);
+				new = Xstrdup(cp);
 				cp = new = strcatalloc(new, ",BIOS");
 			}
 			break;
@@ -2043,12 +2043,12 @@ int no;
 			cp = *((char **)(envlist[no].var));
 			p = (cp) ? strlen(cp) : 0;
 			if (p < MAXPALETTE) p = MAXPALETTE;
-			new = malloc2(p + 1);
+			new = Xmalloc(p + 1);
 			p = 0;
 			if (cp) for (; cp[p]; p++) new[p] = cp[p];
 			for (; p < MAXPALETTE; p++) new[p] = DEFPALETTE[p];
 			new[p] = '\0';
-			p = (isdigit2(new[n])) ? new[n] : DEFPALETTE[n];
+			p = (Xisdigit(new[n])) ? new[n] : DEFPALETTE[n];
 			p -= '0';
 			envcaption(str[n]);
 			str[0] = VBLK2_K;
@@ -2062,7 +2062,7 @@ int no;
 			str[8] = VFOR2_K;
 			str[9] = VBAK2_K;
 			if (noselect(&p, MAXCOLOR, 0, str, val)) {
-				free2(new);
+				Xfree(new);
 				return(0);
 			}
 			new[n] = p + '0';
@@ -2243,7 +2243,7 @@ int no;
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
 			n = atooctal(cp);
-			free2(s);
+			Xfree(s);
 			if (n < 0) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2253,9 +2253,9 @@ int no;
 # endif	/* FD >= 2 */
 # if	defined (DEP_PTY) || defined (DEP_IME)
 		case T_KEYCODE:
-			cp = s = asprintf3(VKYCD_K, env);
+			cp = s = asprintf2(VKYCD_K, env);
 			n = inputkeycode(cp);
-			free2(s);
+			Xfree(s);
 			if (n == K_ESC) {
 				if (!yesno(USENV_K, env)) return(0);
 				cp = NULL;
@@ -2276,8 +2276,8 @@ int no;
 			cp = s = inputcustenvstr(VFNMX_K, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
-			p = atoi2(cp);
-			free2(s);
+			p = Xatoi(cp);
+			Xfree(s);
 			if (p < 0 || p > MAXHELPINDEX) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2289,8 +2289,8 @@ int no;
 			cp = s = inputcustenvstr(VFNBR_K, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
-			n = atoi2(cp);
-			free2(s);
+			n = Xatoi(cp);
+			Xfree(s);
 			if (n < 0 || n > p) {
 				warning(0, VALNG_K);
 				return(0);
@@ -2332,7 +2332,7 @@ int no;
 # ifndef	_NOCATALOG
 	freevar(argv);
 # endif
-	free2(new);
+	Xfree(new);
 	if (n < 0) warning(-1, env);
 
 	evalenvone(no);
@@ -2366,14 +2366,14 @@ XFILE *fp;
 		&& (cp = getshellvar(env_str(i), -1))
 		&& (env_type(i) != T_CHARP || strenvcmp(cp, def_str(i)))) {
 			cp = killmeta(cp);
-			fprintf2(fp, "%s=%s\n", env_str(i), cp);
-			free2(cp);
+			Xfprintf(fp, "%s=%s\n", env_str(i), cp);
+			Xfree(cp);
 		}
 		if ((!flaglist || !(flaglist[i] & 1))
 		&& (cp = getshellvar(fdenv_str(i), -1))) {
 			cp = killmeta(cp);
-			fprintf2(fp, "%s=%s\n", fdenv_str(i), cp);
-			free2(cp);
+			Xfprintf(fp, "%s=%s\n", fdenv_str(i), cp);
+			Xfree(cp);
 		}
 	}
 
@@ -2414,19 +2414,19 @@ XFILE *fp;
 			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) Xfputc(' ', fp);
 				cp = killmeta(cp);
-				fprintf2(fp, "%s=%s", ident, cp);
-				free2(cp);
+				Xfprintf(fp, "%s=%s", ident, cp);
+				Xfree(cp);
 				continue;
 			}
 			else if (!(envlist[i].type & T_PRIMAL)) {
-				unset = (CONST char **)realloc2(unset,
+				unset = (CONST char **)Xrealloc(unset,
 					(nu + 1) * sizeof(*unset));
 				unset[nu++] = ident;
 				continue;
 			}
 		}
 
-		trash = (CONST char **)realloc2(trash,
+		trash = (CONST char **)Xrealloc(trash,
 			(nt + 1) * sizeof(*trash));
 		trash[nt++] = argv[n];
 	}
@@ -2434,11 +2434,11 @@ XFILE *fp;
 
 	if (unset) {
 		putargs(BL_UNSET, nu, unset, fp);
-		free2(unset);
+		Xfree(unset);
 	}
 	if (trash) {
 		putargs("#", nt, trash, fp);
-		free2(trash);
+		Xfree(trash);
 	}
 
 	return(1);
@@ -2464,7 +2464,7 @@ XFILE *fp;
 	ns = nu = nt = 0;
 	for (n = 1; n < argc; n++) {
 		if ((i = getenvid(argv[n], -1, &f)) < 0) {
-			unset = (CONST char **)realloc2(unset,
+			unset = (CONST char **)Xrealloc(unset,
 				(nu + 1) * sizeof(*unset));
 			unset[nu++] = argv[n];
 			continue;
@@ -2481,19 +2481,19 @@ XFILE *fp;
 			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) Xfputc(' ', fp);
 				cp = killmeta(cp);
-				fprintf2(fp, "%s=%s", ident, cp);
-				free2(cp);
+				Xfprintf(fp, "%s=%s", ident, cp);
+				Xfree(cp);
 				continue;
 			}
 			else if (!(envlist[i].type & T_PRIMAL)) {
-				unset = (CONST char **)realloc2(unset,
+				unset = (CONST char **)Xrealloc(unset,
 					(nu + 1) * sizeof(*unset));
 				unset[nu++] = ident;
 				continue;
 			}
 		}
 
-		trash = (CONST char **)realloc2(trash,
+		trash = (CONST char **)Xrealloc(trash,
 			(nt + 1) * sizeof(*trash));
 		trash[nt++] = ident;
 	}
@@ -2501,12 +2501,12 @@ XFILE *fp;
 
 	if (unset) {
 		putargs(BL_UNSET, nu, unset, fp);
-		free2(unset);
+		Xfree(unset);
 	}
 	if (trash) {
 		Xfputs("# ", fp);
 		putargs(BL_UNSET, nt, trash, fp);
-		free2(trash);
+		Xfree(trash);
 	}
 
 	return(1);
@@ -2567,8 +2567,8 @@ CONST char *prompt;
 
 	max += FUNCLISTSIZ;
 
-	list = (namelist *)malloc2((FUNCLISTSIZ + 2) * sizeof(namelist));
-	mes = (CONST char **)malloc2((FUNCLISTSIZ + 2) * sizeof(char *));
+	list = (namelist *)Xmalloc((FUNCLISTSIZ + 2) * sizeof(namelist));
+	mes = (CONST char **)Xmalloc((FUNCLISTSIZ + 2) * sizeof(char *));
 	for (i = 0; i < FUNCLISTSIZ; i++)
 		setnamelist(i, list, funclist[i].ident);
 	setnamelist(i, list, USRDF_K);
@@ -2589,8 +2589,8 @@ CONST char *prompt;
 	n = browsenamelist(list, max, 5, cp, prompt, mes);
 
 	if (n >= 0) n = list[n].ent;
-	free2(list);
-	free2(mes);
+	Xfree(list);
+	Xfree(mes);
 
 	return (n);
 }
@@ -2631,9 +2631,9 @@ int no;
 			n1 = ffunc(no);
 			i = 2;
 		}
-		buf = asprintf3(BINDF_K, str);
+		buf = asprintf2(BINDF_K, str);
 		n1 = selectbind(n1, i, buf);
-		free2(buf);
+		Xfree(buf);
 		if (n1 < 0) return(-1);
 		else if (n1 < FUNCLISTSIZ) break;
 		else if (n1 == FUNCLISTSIZ + 1) {
@@ -2645,12 +2645,12 @@ int no;
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
 			i = (no < maxbind) ? ffunc(no) : -1;
-			buf = asprintf3(BNDFC_K, str);
+			buf = asprintf2(BNDFC_K, str);
 			cp = inputcuststr(buf, 0, getmacro(i), HST_COMM);
-			free2(buf);
+			Xfree(buf);
 			if (!cp);
 			else if (!*cp) {
-				free2(cp);
+				Xfree(cp);
 				n1 = NO_OPERATION;
 				break;
 			}
@@ -2666,9 +2666,9 @@ int no;
 	else for (;;) {
 		if (no >= maxbind) n2 = FUNCLISTSIZ;
 		else if ((n2 = dfunc(no)) == FNO_NONE) n2 = ffunc(no);
-		buf = asprintf3(BINDD_K, str);
+		buf = asprintf2(BINDD_K, str);
 		n2 = selectbind(i = n2, 1, buf);
-		free2(buf);
+		Xfree(buf);
 		if (n2 < 0) {
 			freemacro(n1);
 			return(-1);
@@ -2680,12 +2680,12 @@ int no;
 		else if (maxmacro >= MAXMACROTABLE) warning(0, OVERF_K);
 		else {
 			if (no >= maxbind) i = -1;
-			buf = asprintf3(BNDDC_K, str);
+			buf = asprintf2(BNDDC_K, str);
 			cp = inputcuststr(buf, 0, getmacro(i), HST_COMM);
-			free2(buf);
+			Xfree(buf);
 			if (!cp) /*EMPTY*/;
 			else if (!*cp) {
-				free2(cp);
+				Xfree(cp);
 				n2 = FNO_NONE;
 				break;
 			}
@@ -2729,7 +2729,7 @@ XFILE *fp;
 
 	if (origflaglist) new = NULL;
 	else {
-		origflaglist = new = malloc2(origmaxbind * sizeof(char));
+		origflaglist = new = Xmalloc(origmaxbind * sizeof(char));
 		memset(origflaglist, 0, origmaxbind * sizeof(char));
 	}
 
@@ -2749,7 +2749,7 @@ XFILE *fp;
 	}
 
 	if (!n || !fp) {
-		free2(new);
+		Xfree(new);
 		return(n);
 	}
 
@@ -2769,7 +2769,7 @@ XFILE *fp;
 		if (origflaglist[i]) continue;
 		printmacro(origbindlist, i, 0, fp);
 	}
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -2838,7 +2838,7 @@ int no;
 	cputstr(MAXCUSTVAL, cp);
 	len = strlen2(cp);
 	if (len > MAXCUSTVAL - 1) len = MAXCUSTVAL - 1;
-	free2(cp);
+	Xfree(cp);
 
 	return(len);
 }
@@ -2858,31 +2858,31 @@ int no;
 	dupwin_y = win_y;
 	Xlocate(0, L_INFO);
 	Xputterm(L_CLEAR);
-	buf = asprintf3(KYMPK_K, cp);
+	buf = asprintf2(KYMPK_K, cp);
 	win_x = Xkanjiputs(buf);
 	win_y = L_INFO;
 	Xlocate(win_x, win_y);
 	Xtflush();
 	keyflush();
-	free2(buf);
+	Xfree(buf);
 
 	while (!kbhit2(1000000L / SENSEPERSEC));
 	buf = c_realloc(NULL, 0, &size);
 	len = 0;
 	for (;;) {
 		buf = c_realloc(buf, len, &size);
-		if ((i = getch2()) == EOF) break;
+		if ((i = Xgetch()) == EOF) break;
 		buf[len++] = i;
 		if (!kbhit2(WAITKEYPAD * 1000L)) break;
 	}
-	buf = realloc2(buf, len + 1);
+	buf = Xrealloc(buf, len + 1);
 	buf[len] = '\0';
 
 	win_x = dupwin_x;
 	win_y = dupwin_y;
 
 	if (len == 1 && buf[0] == K_ESC) {
-		free2(buf);
+		Xfree(buf);
 		if (!yesno(DELKM_K, cp)) return(0);
 		setkeyseq(key, NULL, 0);
 		return(1);
@@ -2890,9 +2890,9 @@ int no;
 
 	str = encodestr(buf, len);
 	i = yesno(SETKM_K, cp, str);
-	free2(str);
+	Xfree(str);
 	if (!i) {
-		free2(buf);
+		Xfree(buf);
 		return(0);
 	}
 	setkeyseq(key, buf, len);
@@ -2935,7 +2935,7 @@ XFILE *fp;
 	if (origflaglist) new = NULL;
 	else {
 		origflaglist =
-			new = malloc2((K_MAX - K_MIN + 1) * sizeof(char));
+			new = Xmalloc((K_MAX - K_MIN + 1) * sizeof(char));
 		memset(origflaglist, 0, (K_MAX - K_MIN + 1) * sizeof(char));
 	}
 
@@ -2966,7 +2966,7 @@ XFILE *fp;
 		n++;
 	}
 	if (!n || !fp) {
-		free2(new);
+		Xfree(new);
 		return(n);
 	}
 
@@ -2988,7 +2988,7 @@ XFILE *fp;
 
 		printkeymap(&(origkeymaplist[i]), 1, fp);
 	}
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -3012,20 +3012,20 @@ XFILE *fp;
 	j = searchkeymap(&key, origkeymaplist);
 	if (keyseqlist[i] >= 0) {
 		if (!flaglist || flaglist[i]) {
-			free2(key.str);
+			Xfree(key.str);
 			return(-1);
 		}
 		if (j < K_MAX - K_MIN + 1) {
 			if (!origflaglist || origflaglist[j]
 			|| issamekeymap(&key, &(origkeymaplist[j]))) {
-				free2(key.str);
+				Xfree(key.str);
 				return(-1);
 			}
 			origflaglist[j] = 1;
 		}
 	}
 	else {
-		free2(key.str);
+		Xfree(key.str);
 		if (j >= K_MAX - K_MIN + 1) return(-1);
 		if (!origflaglist || origflaglist[j]) return(-1);
 		origflaglist[j] = 1;
@@ -3033,7 +3033,7 @@ XFILE *fp;
 		return(1);
 	}
 
-	free2(key.str);
+	Xfree(key.str);
 	if (getkeyseq(&key) < 0) return(-1);
 
 	flaglist[i] = 1;
@@ -3073,9 +3073,9 @@ int no;
 		width = MAXCUSTVAL - 1 - 6 - width;
 		cputstr(width, launchlist[no].format[0]);
 		putsep();
-		Xcprintf2("%-2d", (int)(launchlist[no].topskip));
+		VOID_C XXcprintf("%-2d", (int)(launchlist[no].topskip));
 		putsep();
-		Xcprintf2("%-2d", (int)(launchlist[no].bottomskip));
+		VOID_C XXcprintf("%-2d", (int)(launchlist[no].bottomskip));
 	}
 	len = strlen2(launchlist[no].comm);
 	if (len > --width) len = width;
@@ -3098,10 +3098,10 @@ lsparse_t *list;
 	fillline(yy + y++, MAXCUSTNAM + 1 - len);
 	Xputterm(L_CLEAR);
 	if (list -> flags & LF_IGNORECASE) {
-		Xputch2('/');
+		VOID_C XXputch('/');
 		len--;
 	}
-	Xcprintf2("%.*k", len, list -> ext + 1);
+	VOID_C XXcprintf("%.*k", len, list -> ext + 1);
 	putsep();
 	cputstr(MAXCUSTVAL, list -> comm);
 	putsep();
@@ -3119,17 +3119,19 @@ lsparse_t *list;
 				Xlocate(0, yy + y);
 				putsep();
 				Xputterm(T_STANDOUT);
-				Xcputs2("-t");
+				XXcputs("-t");
 				Xputterm(END_STANDOUT);
-				Xcprintf2("%3d", (int)(list -> topskip));
+				VOID_C XXcprintf("%3d",
+					(int)(list -> topskip));
 				putsep();
 				Xputterm(T_STANDOUT);
-				Xcputs2("-b");
+				XXcputs("-b");
 				Xputterm(END_STANDOUT);
-				Xcprintf2("%3d", (int)(list -> bottomskip));
+				VOID_C XXcprintf("%3d",
+					(int)(list -> bottomskip));
 				putsep();
 				Xputterm(T_STANDOUT);
-				Xcputs2("-f");
+				XXcputs("-f");
 				Xputterm(END_STANDOUT);
 				putsep();
 			}
@@ -3147,7 +3149,7 @@ lsparse_t *list;
 			else {
 				fillline(yy + y, MAXCUSTNAM - 2 + 1);
 				Xputterm(T_STANDOUT);
-				Xcputs2("-i");
+				XXcputs("-i");
 				Xputterm(END_STANDOUT);
 				putsep();
 			}
@@ -3165,7 +3167,7 @@ lsparse_t *list;
 			else {
 				fillline(yy + y, MAXCUSTNAM - 2 + 1);
 				Xputterm(T_STANDOUT);
-				Xcputs2("-e");
+				XXcputs("-e");
 				Xputterm(END_STANDOUT);
 				putsep();
 			}
@@ -3190,8 +3192,8 @@ char **var;
 	max = countvar(var);
 	for (i = 0; i < arraysize(val); i++) val[i] = i;
 
-	list = (namelist *)malloc2((max + 1) * sizeof(namelist));
-	mes = (CONST char **)malloc2((max + 1) * sizeof(char *));
+	list = (namelist *)Xmalloc((max + 1) * sizeof(namelist));
+	mes = (CONST char **)Xmalloc((max + 1) * sizeof(char *));
 	usg = ARUSG_K;
 	for (i = 0; i < max; i++) {
 		setnamelist(i, list, var[i]);
@@ -3209,12 +3211,12 @@ char **var;
 			if (!(tmp = inputcuststr(prompt, 1, NULL, -1)))
 				continue;
 			if (!*tmp) {
-				free2(tmp);
+				Xfree(tmp);
 				continue;
 			}
-			list = (namelist *)realloc2(list,
+			list = (namelist *)Xrealloc(list,
 				(max + 2) * sizeof(*list));
-			mes = (CONST char **)realloc2(mes,
+			mes = (CONST char **)Xrealloc(mes,
 				(max + 2) * sizeof(*mes));
 			setnamelist(max, list, tmp);
 			mes[max++] = usg;
@@ -3234,10 +3236,10 @@ char **var;
 			if (!(tmp = inputcuststr(prompt, 1, cp, -1)))
 				continue;
 			if (!*tmp) {
-				free2(tmp);
+				Xfree(tmp);
 				continue;
 			}
-			free2(cp);
+			Xfree(cp);
 			cp = list[n].name = tmp;
 		}
 		else if (i == 1) {
@@ -3250,7 +3252,7 @@ char **var;
 		}
 		else if (i == 3) {
 			if (!yesno(ADLOK_K)) continue;
-			free2(cp);
+			Xfree(cp);
 			for (i = n; i < max; i++)
 				list[i].name = list[i + 1].name;
 			mes[--max] = NULL;
@@ -3258,15 +3260,15 @@ char **var;
 		}
 	}
 
-	free2(var);
+	Xfree(var);
 	if (!max) var = NULL;
 	else {
-		var = (char **)malloc2((max + 1) * sizeof(*var));
+		var = (char **)Xmalloc((max + 1) * sizeof(*var));
 		for (i = 0; i < max; i++) var[i] = list[i].name;
 		var[i] = NULL;
 	}
-	free2(list);
-	free2(mes);
+	Xfree(list);
+	Xfree(mes);
 
 	return(var);
 }
@@ -3322,8 +3324,8 @@ lsparse_t *list;
 			}
 			int2str(buf, *skipp);
 			if (!(tmp = inputcuststr(cp, 1, buf, -1))) continue;
-			i = atoi2(tmp);
-			free2(tmp);
+			i = Xatoi(tmp);
+			Xfree(tmp);
 			if (i < 0) {
 				warning(0, VALNG_K);
 				continue;
@@ -3343,16 +3345,16 @@ int no;
 	int n;
 
 	if (no < maxlaunch) {
-		list.ext = strdup2(launchlist[no].ext);
+		list.ext = Xstrdup(launchlist[no].ext);
 		list.flags = launchlist[no].flags;
 		verboselaunch(&(launchlist[no]));
 	}
 	else {
 		if (!(cp = inputcuststr(EXTLN_K, 1, NULL, -1))) return(0);
 		list.ext = getext(cp, &(list.flags));
-		free2(cp);
+		Xfree(cp);
 		if (!(list.ext[0]) || !(list.ext[1])) {
-			free2(list.ext);
+			Xfree(list.ext);
 			return(0);
 		}
 
@@ -3407,7 +3409,7 @@ int no;
 		}
 
 		if (editarchbrowser(&list)) break;
-		free2(list.comm);
+		Xfree(list.comm);
 		freevar(list.format);
 		freevar(list.lignore);
 		freevar(list.lerror);
@@ -3473,7 +3475,7 @@ XFILE *fp;
 
 	if (origflaglist) new = NULL;
 	else {
-		origflaglist = new = malloc2(origmaxlaunch * sizeof(char));
+		origflaglist = new = Xmalloc(origmaxlaunch * sizeof(char));
 		memset(origflaglist, 0, origmaxlaunch * sizeof(char));
 	}
 
@@ -3494,7 +3496,7 @@ XFILE *fp;
 		n++;
 	}
 	if (!n || !fp) {
-		free2(new);
+		Xfree(new);
 		return(n);
 	}
 
@@ -3517,7 +3519,7 @@ XFILE *fp;
 
 		printlaunchcomm(origlaunchlist, i, 0, 0, fp);
 	}
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -3603,15 +3605,15 @@ int no;
 	int n;
 
 	if (no < maxarchive) {
-		list.ext = strdup2(archivelist[no].ext);
+		list.ext = Xstrdup(archivelist[no].ext);
 		list.flags = archivelist[no].flags;
 	}
 	else {
 		if (!(cp = inputcuststr(EXTAR_K, 1, NULL, -1))) return(0);
 		list.ext = getext(cp, &(list.flags));
-		free2(cp);
+		Xfree(cp);
 		if (!(list.ext[0]) || !(list.ext[1])) {
-			free2(list.ext);
+			Xfree(list.ext);
 			return(0);
 		}
 
@@ -3639,28 +3641,28 @@ int no;
 
 		list.p_comm = inputcuststr(PACKC_K, 0, list.p_comm, HST_COMM);
 		if (!(list.p_comm)) {
-			free2(list.ext);
+			Xfree(list.ext);
 			return(0);
 		}
 		else if (!*(list.p_comm)) {
-			free2(list.p_comm);
+			Xfree(list.p_comm);
 			list.p_comm = NULL;
 		}
 
 		list.u_comm = inputcuststr(UPCKC_K, 0, list.u_comm, HST_COMM);
 		if (!(list.u_comm)) {
-			free2(list.p_comm);
+			Xfree(list.p_comm);
 			continue;
 		}
 		else if (!*(list.u_comm)) {
-			free2(list.u_comm);
+			Xfree(list.u_comm);
 			list.u_comm = NULL;
 		}
 		break;
 	}
 
 	if (!(list.p_comm) && !(list.u_comm)) {
-		free2(list.ext);
+		Xfree(list.ext);
 		if (no >= maxarchive) return(0);
 		if (!yesno(DLAOK_K, archivelist[no].ext)) return(0);
 		deletearch(no);
@@ -3696,7 +3698,7 @@ XFILE *fp;
 
 	if (origflaglist) new = NULL;
 	else {
-		origflaglist = new = malloc2(origmaxarchive * sizeof(char));
+		origflaglist = new = Xmalloc(origmaxarchive * sizeof(char));
 		memset(origflaglist, 0, origmaxarchive * sizeof(char));
 	}
 
@@ -3717,7 +3719,7 @@ XFILE *fp;
 		n++;
 	}
 	if (!n || !fp) {
-		free2(new);
+		Xfree(new);
 		return(n);
 	}
 
@@ -3740,7 +3742,7 @@ XFILE *fp;
 
 		printarchcomm(origarchivelist, i, 0, fp);
 	}
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -3820,10 +3822,10 @@ int no;
 	w1 = MAXCUSTVAL - 1 - width;
 #  ifdef	HDDMOUNT
 	if (!fdtype[no].cyl) {
-		strcpy2(buf, "HDD");
-		if (isupper2(fdtype[no].head)) strcat(buf, "98");
+		Xstrcpy(buf, "HDD");
+		if (Xisupper(fdtype[no].head)) strcat(buf, "98");
 		i = strlen(buf);
-		snprintf2(&(buf[i]), (int)sizeof(buf) - i, " #offset=%'Ld",
+		Xsnprintf(&(buf[i]), (int)sizeof(buf) - i, " #offset=%'Ld",
 			fdtype[no].offset / fdtype[no].sect);
 		cputstr(w1, buf);
 	}
@@ -3838,11 +3840,11 @@ int no;
 
 		w2 = (w1 - len) / 3 - 1;
 		if (w2 <= 0) w2 = 1;
-		Xcprintf2("%-*d", w2, (int)(fdtype[no].head));
+		VOID_C XXcprintf("%-*d", w2, (int)(fdtype[no].head));
 		putsep();
-		Xcprintf2("%-*d", w2, (int)(fdtype[no].sect));
+		VOID_C XXcprintf("%-*d", w2, (int)(fdtype[no].sect));
 		putsep();
-		Xcprintf2("%-*d", w2, (int)(fdtype[no].cyl));
+		VOID_C XXcprintf("%-*d", w2, (int)(fdtype[no].cyl));
 		putsep();
 
 		for (i = 0; i < MEDIADESCRSIZ; i++) {
@@ -3905,13 +3907,13 @@ int no;
 #  endif
 	for (;;) {
 		if (!(dev.name)) {
-			cp = asprintf3(DRDEV_K, dev.drive);
+			cp = asprintf2(DRDEV_K, dev.drive);
 			if (no < maxfdtype) dev.name = fdtype[no].name;
 			dev.name = inputcuststr(cp, 1, dev.name, HST_PATH);
-			free2(cp);
+			Xfree(cp);
 			if (!(dev.name)) return(0);
 			else if (!*(dev.name)) {
-				free2(dev.name);
+				Xfree(dev.name);
 				if (no >= maxfdtype) return(0);
 				if (!yesno(DLDOK_K, fdtype[no].drive))
 					return(0);
@@ -3938,7 +3940,7 @@ int no;
 		val[n++] = i;
 		i = val[0];
 		if (noselect(&i, n, 0, str, val)) {
-			free2(dev.name);
+			Xfree(dev.name);
 			dev.name = NULL;
 			continue;
 		}
@@ -3955,8 +3957,8 @@ int no;
 			else cp = int2str(buf, fdtype[no].head);
 
 			if (!(cp = inputcuststr(DRHED_K, 1, cp, -1))) break;
-			dev.head = n = atoi2(cp);
-			free2(cp);
+			dev.head = n = Xatoi(cp);
+			Xfree(cp);
 			if (n > 0 && n <= MAXUTYPE(u_char)) break;
 			warning(0, VALNG_K);
 		}
@@ -3967,8 +3969,8 @@ int no;
 			else cp = int2str(buf, fdtype[no].sect);
 
 			if (!(cp = inputcuststr(DRSCT_K, 1, cp, -1))) break;
-			dev.sect = n = atoi2(cp);
-			free2(cp);
+			dev.sect = n = Xatoi(cp);
+			Xfree(cp);
 			if (dev.sect > 0) break;
 			if (n > 0 && n <= MAXUTYPE(u_short)) break;
 			warning(0, VALNG_K);
@@ -3980,8 +3982,8 @@ int no;
 			else cp = int2str(buf, fdtype[no].cyl);
 
 			if (!(cp = inputcuststr(DRCYL_K, 1, cp, -1))) break;
-			dev.cyl = n = atoi2(cp);
-			free2(cp);
+			dev.cyl = n = Xatoi(cp);
+			Xfree(cp);
 			if (n > 0 && n <= MAXUTYPE(u_short)) break;
 			warning(0, VALNG_K);
 		}
@@ -3999,7 +4001,7 @@ int no;
 	if ((n = insertdrv(no, &dev)) < 0) {
 		if (n < -1) warning(0, OVERF_K);
 		else warning(ENODEV, dev.name);
-		free2(dev.name);
+		Xfree(dev.name);
 		return(0);
 	}
 
@@ -4017,7 +4019,7 @@ XFILE *fp;
 	if (origflaglist) new = NULL;
 	else {
 		for (n = 0; n < origmaxfdtype; n++) /*EMPTY*/;
-		origflaglist = new = malloc2(n * sizeof(char));
+		origflaglist = new = Xmalloc(n * sizeof(char));
 		memset(origflaglist, 0, n * sizeof(char));
 	}
 
@@ -4045,7 +4047,7 @@ XFILE *fp;
 	}
 
 	if (!n || !fp) {
-		free2(new);
+		Xfree(new);
 		return(n);
 	}
 
@@ -4070,7 +4072,7 @@ XFILE *fp;
 		if (origflaglist[i]) continue;
 		printsetdrv(origfdtype, i, 0, 0, fp);
 	}
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -4171,7 +4173,7 @@ CONST char *file;
 		return(-1);
 	}
 
-	strcpy2(path, file);
+	Xstrcpy(path, file);
 	if ((fpin = lck -> fp)) fd = opentmpfile(path, 0666);
 	else {
 		lockclose(lck);
@@ -4191,7 +4193,7 @@ CONST char *file;
 		warning(-1, path);
 #  if	!MSDOS && !defined (CYGWIN)
 		if (fd >= 0) {
-			Xunlink(path);
+			VOID_C Xunlink(path);
 			if (fpin) VOID_C Xclose(fd);
 		}
 		lockclose(lck);
@@ -4199,7 +4201,7 @@ CONST char *file;
 		lockclose(lck);
 		if (fd >= 0) {
 			if (fpin) VOID_C Xclose(fd);
-			Xunlink(path);
+			VOID_C Xunlink(path);
 		}
 #  endif
 		return(-1);
@@ -4228,12 +4230,12 @@ CONST char *file;
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
 		if (!max[i]) flaglist[i] = NULL;
 		else {
-			flaglist[i] = malloc2(max[i] * sizeof(char));
+			flaglist[i] = Xmalloc(max[i] * sizeof(char));
 			memset(flaglist[i], 0, max[i] * sizeof(char));
 		}
 		if (!origmax[i]) origflaglist[i] = NULL;
 		else {
-			origflaglist[i] = malloc2(origmax[i] * sizeof(char));
+			origflaglist[i] = Xmalloc(origmax[i] * sizeof(char));
 			memset(origflaglist[i], 0, origmax[i] * sizeof(char));
 		}
 	}
@@ -4244,17 +4246,17 @@ CONST char *file;
 	if (fpin) while ((cp = Xfgets(fpin))) {
 		n = strlen(cp);
 		if (!buf) {
-			buf = strdup2(cp);
+			buf = Xstrdup(cp);
 			len = n;
 		}
 		else {
-			buf = realloc2(buf, len + n + 1 + 1);
+			buf = Xrealloc(buf, len + n + 1 + 1);
 			buf[len++] = '\n';
-			strcpy2(&(buf[len]), cp);
+			Xstrcpy(&(buf[len]), cp);
 			len += n;
 		}
 		trp = analyze(cp, trp, 1);
-		free2(cp);
+		Xfree(cp);
 
 		n = 0;
 		if (!trp);
@@ -4304,7 +4306,7 @@ CONST char *file;
 			}
 
 			freevar(subst);
-			free2(slen);
+			Xfree(slen);
 		}
 
 		freestree(stree);
@@ -4314,12 +4316,12 @@ CONST char *file;
 			Xfputs(buf, fpout);
 			VOID_C fputnl(fpout);
 		}
-		free2(buf);
+		Xfree(buf);
 		buf = NULL;
 		len = 0;
 	}
 	freestree(stree);
-	free2(stree);
+	Xfree(stree);
 
 	if (!fpin) Xfputs("# configurations by customizer\n", fpout);
 	else {
@@ -4367,8 +4369,8 @@ CONST char *file;
 		dumpdosdrive(flaglist[5], origflaglist[5], fpout);
 #  endif
 	for (i = 0; i < MAXCUSTOM - 1; i++) {
-		free2(flaglist[i]);
-		free2(origflaglist[i]);
+		Xfree(flaglist[i]);
+		Xfree(origflaglist[i]);
 	}
 
 	if (!fpin) lockclose(lck);
@@ -4376,10 +4378,10 @@ CONST char *file;
 #  if	!MSDOS && !defined (CYGWIN)
 		n = Xrename(path, file);
 		lockclose(lck);
-		Xfclose(fpout);
+		VOID_C Xfclose(fpout);
 #  else	/* MSDOS || CYGWIN */
 		lockclose(lck);
-		Xfclose(fpout);
+		VOID_C Xfclose(fpout);
 #   if	MSDOS
 		n = Xrename(path, file);
 #   else
@@ -4391,7 +4393,7 @@ CONST char *file;
 #  endif	/* MSDOS || CYGWIN */
 		if (n < 0) {
 			warning(-1, file);
-			Xunlink(path);
+			VOID_C Xunlink(path);
 			return(-1);
 		}
 	}
@@ -4516,7 +4518,7 @@ int no;
 			file = inputcuststr(FLOAD_K, 1, FD_RCFILE, HST_PATH);
 			if (!file) break;
 			if (!*file) {
-				free2(file);
+				Xfree(file);
 				break;
 			}
 			done = 1;
@@ -4524,7 +4526,7 @@ int no;
 			Xlocate(0, n_line - 1);
 			inruncom = 1;
 			i = loadruncom(file, 0);
-			free2(file);
+			Xfree(file);
 			inruncom = 0;
 			sigvecset(n);
 			if (i < 0) {
@@ -4558,7 +4560,7 @@ int no;
 					}
 				}
 			}
-			free2(file);
+			Xfree(file);
 
 			if (!done) break;
 			Xfputs("# configurations by customizer\n", lck -> fp);
@@ -4593,7 +4595,7 @@ int no;
 				else if (overwriteconfig(val, file) < 0)
 					done = 0;
 			}
-			free2(file);
+			Xfree(file);
 			break;
 # endif	/* DEP_ORIGSHELL */
 		default:
@@ -4633,7 +4635,7 @@ int no, y, isstandout;
 				if (!(launchlist[no].flags & LF_IGNORECASE))
 					cp = launchlist[no].ext + 1;
 				else {
-					strncpy2(buf, launchlist[no].ext,
+					Xstrncpy(buf, launchlist[no].ext,
 						MAXCUSTNAM * 2);
 					buf[0] = '/';
 					cp = buf;
@@ -4645,7 +4647,7 @@ int no, y, isstandout;
 				if (!(archivelist[no].flags & AF_IGNORECASE))
 					cp = archivelist[no].ext + 1;
 				else {
-					strncpy2(buf, archivelist[no].ext,
+					Xstrncpy(buf, archivelist[no].ext,
 						MAXCUSTNAM * 2);
 					buf[0] = '/';
 					cp = buf;
@@ -4679,11 +4681,11 @@ int no, y, isstandout;
 	fillline(y, MAXCUSTNAM + 1 - len);
 	if (isstandout) {
 		Xputterm(T_STANDOUT);
-		Xcprintf2("%.*k", MAXCUSTNAM, cp);
+		VOID_C XXcprintf("%.*k", MAXCUSTNAM, cp);
 		Xputterm(END_STANDOUT);
 	}
 	else if (stable_standout) Xlocate(MAXCUSTNAM + 1, y);
-	else Xcprintf2("%.*k", MAXCUSTNAM, cp);
+	else VOID_C XXcprintf("%.*k", MAXCUSTNAM, cp);
 	putsep();
 }
 
@@ -4731,7 +4733,7 @@ static VOID NEAR dispcust(VOID_A)
 				break;
 			default:
 				cs_len[i - start] =
-					Xcprintf2("%.*k", MAXCUSTVAL, NIMPL_K);
+					XXcprintf("%.*k", MAXCUSTVAL, NIMPL_K);
 				if (cs_len[i - start] > MAXCUSTVAL - 1)
 					cs_len[i - start] = MAXCUSTVAL - 1;
 				else cputspace(MAXCUSTVAL - cs_len[i - start]);
@@ -4746,7 +4748,7 @@ static VOID NEAR dispcust(VOID_A)
 VOID rewritecust(VOID_A)
 {
 	cs_row = (FILEPERROW - 2) / 2;
-	cs_len = (int *)realloc2(cs_len, cs_row * sizeof(*cs_len));
+	cs_len = (int *)Xrealloc(cs_len, cs_row * sizeof(*cs_len));
 	dispcust();
 	movecust(-1, 1);
 	custtitle();
@@ -4768,8 +4770,8 @@ int old, all;
 		hmes[6] = HSAVE_K;
 		Xlocate(0, L_INFO);
 		Xputterm(L_CLEAR);
-		if (hmes[custno]) custputs(hmes[custno]);
-		else custputs(mesconv2(envlist[cs_item].hmes_no,
+		if (hmes[custno]) VOID_C custputs(hmes[custno]);
+		else VOID_C custputs(mesconv2(envlist[cs_item].hmes_no,
 			envlist[cs_item].hmes,
 			envlist[cs_item].hmes_eng));
 	}
@@ -4869,7 +4871,7 @@ CONST char *env;
 # ifndef	_NOKEYMAP
 	tmpkeymaplist = copykeyseq(NULL);
 	for (n = 0; keyidentlist[n].no > 0; n++) /*EMPTY*/;
-	keyseqlist = (short *)malloc2((n + 20 + 1) * sizeof(*keyseqlist));
+	keyseqlist = (short *)Xmalloc((n + 20 + 1) * sizeof(*keyseqlist));
 	n = 0;
 	for (i = 1; i <= 20; i++) {
 		for (ch = 0; ch <= K_MAX - K_MIN; ch++)
@@ -4900,7 +4902,7 @@ CONST char *env;
 	cs_item = item[custno];
 	getmax(max, custno);
 	cs_row = (FILEPERROW - 2) / 2;
-	cs_len = (int *)malloc2(cs_row * sizeof(*cs_len));
+	cs_len = (int *)Xmalloc(cs_row * sizeof(*cs_len));
 	custtitle();
 	old = -1;
 	do {
@@ -5004,27 +5006,27 @@ CONST char *env;
 	} while (ch != K_ESC);
 
 	custno = -1;
-	free2(cs_len);
-	for (i = 0; i < ENVLISTSIZ * 2; i++) free2(tmpenvlist[i]);
-	free2(tmpenvlist);
+	Xfree(cs_len);
+	for (i = 0; i < ENVLISTSIZ * 2; i++) Xfree(tmpenvlist[i]);
+	Xfree(tmpenvlist);
 	freestrarray(tmpmacrolist, tmpmaxmacro);
-	free2(tmpmacrolist);
+	Xfree(tmpmacrolist);
 	freestrarray(tmphelpindex, MAXHELPINDEX);
-	free2(tmphelpindex);
-	free2(tmpbindlist);
+	Xfree(tmphelpindex);
+	Xfree(tmpbindlist);
 # ifndef	_NOKEYMAP
 	freekeyseq(tmpkeymaplist);
-	free2(keyseqlist);
+	Xfree(keyseqlist);
 # endif
 # ifndef	_NOARCHIVE
 	freelaunchlist(tmplaunchlist, tmpmaxlaunch);
-	free2(tmplaunchlist);
+	Xfree(tmplaunchlist);
 	freearchlist(tmparchivelist, tmpmaxarchive);
-	free2(tmparchivelist);
+	Xfree(tmparchivelist);
 # endif
 # ifdef	DEP_DOSEMU
 	freedosdrive(tmpfdtype, tmpmaxfdtype);
-	free2(tmpfdtype);
+	Xfree(tmpfdtype);
 # endif
 
 	return(1);

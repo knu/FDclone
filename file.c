@@ -112,7 +112,7 @@ CONST char *file;
 	if (!_dospath(file)) return(file);
 	path[0] = '.';
 	path[1] = _SC_;
-	strcpy2(&(path[2]), file);
+	Xstrcpy(&(path[2]), file);
 
 	return(path);
 }
@@ -260,9 +260,9 @@ CONST VOID_P vp2;
 			tmp = strpathcmp2(tp1 -> name, tp2 -> name);
 			break;
 		case 2:
-			if ((cp1 = strrchr2(tp1 -> name, '.'))) cp1++;
+			if ((cp1 = Xstrrchr(tp1 -> name, '.'))) cp1++;
 			else cp1 = nullstr;
-			if ((cp2 = strrchr2(tp2 -> name, '.'))) cp2++;
+			if ((cp2 = Xstrrchr(tp2 -> name, '.'))) cp2++;
 			else cp2 = nullstr;
 			tmp = strpathcmp2(cp1, cp2);
 			break;
@@ -335,10 +335,10 @@ char *buf;
 		if (urlpath(cp, NULL, NULL, NULL)) return(-1);
 #endif
 		if (getrealpath(cp, tmp, cwd) != tmp) return(-1);
-		homedir = strdup2(tmp);
+		homedir = Xstrdup(tmp);
 	}
 
-	if (buf && !physical_path) strcpy2(cwd, fullpath);
+	if (buf && !physical_path) Xstrcpy(cwd, fullpath);
 	len = strlen(homedir);
 #if	MSDOS
 	if (len <= 3) cp = NULL;
@@ -347,9 +347,9 @@ char *buf;
 #endif
 	else cp = underpath(cwd, homedir, len);
 
-	if (buf) strcpy2(buf, (cp) ? cp : nullstr);
+	if (buf) Xstrcpy(buf, (cp) ? cp : nullstr);
 #ifdef	DEBUG
-	free2(homedir);
+	Xfree(homedir);
 	homedir = NULL;
 #endif
 
@@ -386,29 +386,15 @@ CONST char *dir;
 		}
 		if (!s_isdir(&st)) return(seterrno(ENOTDIR));
 	}
-	entryhist(realpath2(dir, tmp, 0), HST_PATH | HST_UNIQ);
+	entryhist(Xrealpath(dir, tmp, 0), HST_PATH | HST_UNIQ);
 
 	return(0);
 }
 
 #ifndef	NOFLOCK
-static int NEAR fcntllock(fd, mode)
-int fd, mode;
+static int NEAR fcntllock(fd, operation)
+int fd, operation;
 {
-	static int lockmode[] = {
-# ifdef	USEFCNTLOCK
-		F_RDLCK, F_WRLCK, F_UNLCK,
-# else	/* !USEFCNTLOCK */
-#  ifdef	USELOCKF
-		F_TLOCK, F_TLOCK, F_ULOCK,
-#  else
-		LOCK_SH | LOCK_NB, LOCK_EX | LOCK_NB, LOCK_UN,
-#  endif
-# endif	/* !USEFCNTLOCK */
-	};
-# ifdef	USEFCNTLOCK
-	struct flock lock;
-# endif
 	int i, n;
 
 # ifdef	DEP_PSEUDOPATH
@@ -418,18 +404,7 @@ int fd, mode;
 	n = -1;
 	errno = 0;
 	for (i = 0; i < LCK_MAXRETRY; i++) {
-# ifdef	USEFCNTLOCK
-		lock.l_type = lockmode[mode];
-		lock.l_start = lock.l_len = (off_t)0;
-		lock.l_whence = SEEK_SET;
-		n = fcntl(fd, F_SETLK, &lock);
-# else	/* !USEFCNTLOCK */
-#  ifdef	USELOCKF
-		n = lockf(fd, lockmode[mode], (off_t)0);
-#  else
-		n = flock(fd, lockmode[mode]);
-#  endif
-# endif	/* !USEFCNTLOCK */
+		n = Xflock(fd, operation);
 		if (n >= 0) {
 			n = 1;
 			break;
@@ -459,9 +434,9 @@ int fd, mode;
 }
 #endif	/* !NOFLOCK */
 
-static char *NEAR excllock(file, mode)
+static char *NEAR excllock(file, operation)
 CONST char *file;
-int mode;
+int operation;
 {
 #if	MSDOS
 	char *ext;
@@ -475,14 +450,14 @@ int mode;
 		if (locklist) {
 			for (i = 0; locklist[i]; i++) {
 				VOID_C unlink(locklist[i]);
-				free2(locklist[i]);
+				Xfree(locklist[i]);
 			}
-			free2(locklist);
+			Xfree(locklist);
 		}
 		return(NULL);
 	}
 
-	if (mode == LCK_UNLOCK) {
+	if (operation & LOCK_UN) {
 		VOID_C Xunlink(file);
 		if (locklist) {
 			for (i = 0; locklist[i]; i++)
@@ -493,7 +468,7 @@ int mode;
 				locklist[i] = NULL;
 			}
 			if (!i) {
-				free2(locklist);
+				Xfree(locklist);
 				locklist = NULL;
 			}
 		}
@@ -507,14 +482,14 @@ int mode;
 	if (i > DOSBODYLEN - strsize(LOCKEXT))
 		i = DOSBODYLEN - strsize(LOCKEXT);
 	i += cp - file;
-	snprintf2(path, sizeof(path), "%-.*s%s%s", i, file, LOCKEXT, ext);
+	Xsnprintf(path, sizeof(path), "%-.*s%s%s", i, file, LOCKEXT, ext);
 #else
-	snprintf2(path, sizeof(path), "%s.%s", file, LOCKEXT);
+	Xsnprintf(path, sizeof(path), "%s.%s", file, LOCKEXT);
 #endif
 
 	fd = -1;
 	for (i = 0; i < LCK_MAXRETRY; i++) {
-		if (mode != LCK_READ)
+		if (!(operation & LOCK_SH))
 			fd = Xopen(path,
 				O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
 				0666 & ~tmpumask);
@@ -532,12 +507,12 @@ int mode;
 	}
 	if (i >= LCK_MAXRETRY) return(vnullstr);
 	if (fd < 0) return(NULL);
-	if (mode == LCK_READ) return((char *)file);
+	if (operation & LOCK_SH) return((char *)file);
 
-	Xclose(fd);
-	cp = strdup2(path);
+	VOID_C Xclose(fd);
+	cp = Xstrdup(path);
 	i = countvar(locklist);
-	locklist = (char **)realloc2(locklist, (i + 2) * sizeof(char *));
+	locklist = (char **)Xrealloc(locklist, (i + 2) * sizeof(char *));
 	locklist[i] = cp;
 	locklist[++i] = NULL;
 
@@ -553,14 +528,15 @@ int flags, mode;
 #endif
 	char *lckname;
 	lockbuf_t *lck;
-	int fd, err, lckflags, lckmode, duperrno;
+	int fd, err, lckflags, operation, duperrno;
 
 #ifdef	FAKEUNINIT
 	fd = -1;	/* fake for -Wuninitialized */
 #endif
 	lckname = NULL;
 	lckflags = 0;
-	lckmode = ((flags & O_ACCMODE) == O_RDONLY) ? LCK_READ : LCK_WRITE;
+	operation = ((flags & O_ACCMODE) == O_RDONLY) ? LOCK_SH : LOCK_EX;
+	operation |= LOCK_NB;
 	err = 0;
 
 #ifndef	NOFLOCK
@@ -571,16 +547,16 @@ int flags, mode;
 			if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT)
 				return(NULL);
 		}
-		else if ((n = fcntllock(fd, lckmode)) <= 0) {
-			Xclose(fd);
+		else if ((n = fcntllock(fd, operation)) <= 0) {
+			VOID_C Xclose(fd);
 			if (n < 0) return(NULL);
 			err++;
 			lckflags &= ~LCK_FLOCK;
 		}
 		else if ((flags & O_TRUNC) && Xftruncate(fd, (off_t)0) < 0) {
 			duperrno = errno;
-			VOID_C fcntllock(fd, LCK_UNLOCK);
-			Xclose(fd);
+			VOID_C fcntllock(fd, LOCK_UN);
+			VOID_C Xclose(fd);
 			errno = duperrno;
 			return(NULL);
 		}
@@ -588,8 +564,8 @@ int flags, mode;
 #endif	/* !NOFLOCK */
 
 	if (!(lckflags & LCK_FLOCK)) {
-		if (!(lckname = excllock(path, lckmode))) return(NULL);
-		else if (lckmode == LCK_READ) {
+		if (!(lckname = excllock(path, operation))) return(NULL);
+		else if (operation & LOCK_SH) {
 			if (lckname == vnullstr) err++;
 			lckname = NULL;
 		}
@@ -599,8 +575,8 @@ int flags, mode;
 		else if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT) {
 			duperrno = errno;
 			if (lckname) {
-				VOID_C excllock(lckname, LCK_UNLOCK);
-				free2(lckname);
+				VOID_C excllock(lckname, LOCK_UN);
+				Xfree(lckname);
 			}
 			errno = duperrno;
 			return(NULL);
@@ -609,11 +585,11 @@ int flags, mode;
 
 	if (fd < 0) lckflags |= LCK_INVALID;
 	else if (err) {
-		fprintf2(Xstderr, "%k: %k\r\n", path, NOLCK_K);
+		Xfprintf(Xstderr, "%k: %k\r\n", path, NOLCK_K);
 		if (isttyiomode) warning(0, HITKY_K);
 	}
 
-	lck = (lockbuf_t *)malloc2(sizeof(lockbuf_t));
+	lck = (lockbuf_t *)Xmalloc(sizeof(lockbuf_t));
 	lck -> fd = fd;
 	lck -> fp = NULL;
 	lck -> name = lckname;
@@ -648,19 +624,20 @@ lockbuf_t *lck;
 {
 	if (lck) {
 		if (lck -> name) {
-			VOID_C excllock(lck -> name, LCK_UNLOCK);
-			free2(lck -> name);
+			VOID_C excllock(lck -> name, LOCK_UN);
+			Xfree(lck -> name);
 		}
 		if (!(lck -> flags & LCK_INVALID)) {
 #ifndef	NOFLOCK
 			if (lck -> flags & LCK_FLOCK)
-				VOID_C fcntllock(lck -> fd, LCK_UNLOCK);
+				VOID_C fcntllock(lck -> fd, LOCK_UN);
 #endif
-			if (lck -> flags & LCK_STREAM) Xfclose(lck -> fp);
-			else Xclose(lck -> fd);
+			if (lck -> flags & LCK_STREAM)
+				VOID_C Xfclose(lck -> fp);
+			else VOID_C Xclose(lck -> fd);
 		}
 
-		free2(lck);
+		Xfree(lck);
 	}
 }
 
@@ -880,7 +857,7 @@ char *path;
 	else if (realchdir(rootpath) >= 0 && realgetwd(path)) cp = GOROT_K;
 	else error(rootpath);
 
-	if (path != fullpath) strncpy2(fullpath, path, MAXPATHLEN - 1);
+	if (path != fullpath) Xstrncpy(fullpath, path, MAXPATHLEN - 1);
 	warning(0, cp);
 #ifndef	_NOUSEHASH
 	searchhash(NULL, nullstr, nullstr);
@@ -1100,7 +1077,7 @@ int max;
 	time_t now;
 
 	if (last < 0L) {
-		now = time2();
+		now = Xtime(NULL);
 		last = ((now & 0xff) << 16) + (now & ~0xff) + getpid();
 	}
 
@@ -1156,32 +1133,32 @@ char *dir;
 	int n, len, mask;
 
 	if (!deftmpdir || !*deftmpdir || !dir) return(seterrno(ENOENT));
-	realpath2(deftmpdir, path, RLP_READLINK);
-	free2(deftmpdir);
+	Xrealpath(deftmpdir, path, RLP_READLINK);
+	Xfree(deftmpdir);
 #if	defined (DEP_DOSDRIVE) && defined (DEP_DOSLFN)
-	if (checkdrive(toupper2(path[0]) - 'A') && !realgetwd(path)) {
+	if (checkdrive(Xtoupper(path[0]) - 'A') && !realgetwd(path)) {
 		lostcwd(path);
 		deftmpdir = NULL;
 		return(-1);
 	}
 #endif
-	deftmpdir = strdup2(path);
+	deftmpdir = Xstrdup(path);
 #if	MSDOS
-	*path = (isupper2(getcurdrv())) ? toupper2(*path) : tolower2(*path);
+	*path = (Xisupper(getcurdrv())) ? Xtoupper(*path) : Xtolower(*path);
 #endif
 
 	mask = 0777 & ~tmpumask;
 	cp = strcatdelim(path);
 	if (tmpfilename) {
-		strcpy2(cp, tmpfilename);
+		Xstrcpy(cp, tmpfilename);
 		if (Xaccess(path, R_OK | W_OK | X_OK) < 0) {
-			free2(tmpfilename);
+			Xfree(tmpfilename);
 			tmpfilename = NULL;
 		}
 	}
 	if (!tmpfilename) {
 		n = strsize(TMPPREFIX);
-		strncpy2(cp, TMPPREFIX, n);
+		Xstrncpy(cp, TMPPREFIX, n);
 		len = strsize(path) - (cp - path);
 		if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 		len -= n;
@@ -1192,15 +1169,15 @@ char *dir;
 			if (realmkdir(path, mask) >= 0) break;
 			if (errno != EEXIST) return(-1);
 		}
-		tmpfilename = strdup2(cp);
+		tmpfilename = Xstrdup(cp);
 	}
 
 	if (!(n = strlen(dir))) {
-		strcpy2(dir, path);
+		Xstrcpy(dir, path);
 		return(0);
 	}
 
-	strncpy2((cp = strcatdelim(path)), dir, n);
+	Xstrncpy((cp = strcatdelim(path)), dir, n);
 	len = strsize(path) - (cp - path);
 	if (len > MAXTMPNAMLEN) len = MAXTMPNAMLEN;
 	len -= n;
@@ -1209,7 +1186,7 @@ char *dir;
 	for (;;) {
 		genrandname(&(cp[n]), len);
 		if (realmkdir(path, mask) >= 0) {
-			strcpy2(dir, path);
+			Xstrcpy(dir, path);
 			return(0);
 		}
 		if (errno != EEXIST) break;
@@ -1235,7 +1212,7 @@ CONST char *dir;
 		return(seterrno(ENOENT));
 	strcatdelim2(path, deftmpdir, tmpfilename);
 	if (realrmdir(path) >= 0) {
-		free2(tmpfilename);
+		Xfree(tmpfilename);
 		tmpfilename = NULL;
 	}
 	else if (errno != ENOTEMPTY && errno != EEXIST && errno != EACCES)
@@ -1276,7 +1253,7 @@ char *file;
 	if (mktmpdir(path) < 0) return(-1);
 	VOID_C strcatdelim(path);
 	if ((fd = opentmpfile(path, 0666 & ~tmpumask)) >= 0) {
-		strcpy2(file, path);
+		Xstrcpy(file, path);
 		return(fd);
 	}
 	duperrno = errno;
@@ -1336,7 +1313,7 @@ CONST char *file;
 #endif
 	if (dir) {
 		if (*dir && rmtmpdir(dir) < 0) warning(-1, dir);
-		free2(dir);
+		Xfree(dir);
 	}
 }
 
@@ -1349,7 +1326,7 @@ CONST char *dir, *file;
 	extern char **environ;
 	char buf[MAXPATHLEN];
 
-	VOID_C excllock(NULL, LCK_UNLOCK);
+	VOID_C excllock(NULL, LOCK_UN);
 
 	if (!dir || !*dir || !file || !*file) return(0);
 	strcatdelim2(buf, dir, file);
@@ -1380,7 +1357,7 @@ int drive;
 	path[2] = '\0';
 	if (mktmpdir(path) < 0) return(NULL);
 
-	return(strdup2(path));
+	return(Xstrdup(path));
 }
 
 int tmpdosdupl(dir, dirp, single)
@@ -1409,12 +1386,12 @@ int single;
 		return(-1);
 	}
 
-	strcpy2(path, tmpdir);
+	Xstrcpy(path, tmpdir);
 	cp = strcatdelim(path);
 	waitmes();
 
 	if (single || mark <= 0) {
-		strcpy2(cp, filelist[filepos].name);
+		Xstrcpy(cp, filelist[filepos].name);
 		st.st_mode = filelist[filepos].st_mode;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
 		st.st_size = filelist[filepos].st_size;
@@ -1426,7 +1403,7 @@ int single;
 	}
 	else for (i = 0; i < maxfile; i++) {
 		if (!ismark(&(filelist[i]))) continue;
-		strcpy2(cp, filelist[i].name);
+		Xstrcpy(cp, filelist[i].name);
 		st.st_mode = filelist[i].st_mode;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
 		st.st_size = filelist[i].st_size;
@@ -1463,7 +1440,7 @@ CONST char *file;
 # endif
 
 # ifdef	DEP_DOSDRIVE
-	if (isalpha(drive)) strcpy2(gendospath(path, drive, '\0'), file);
+	if (isalpha(drive)) Xstrcpy(gendospath(path, drive, '\0'), file);
 	else
 # endif
 	strcatdelim2(path, fullpath, file);
@@ -1513,8 +1490,8 @@ int fat, boundary, dirsize, ofs;
 				lfn = 1;
 			}
 			else if (lfn) /*EMPTY*/;
-			else if (islower2(s[i])) lfn = 1;
-			else if (strchr2(LFNONLY, s[i])) lfn = 1;
+			else if (Xislower(s[i])) lfn = 1;
+			else if (Xstrchr(LFNONLY, s[i])) lfn = 1;
 		}
 		if (lfn) /*EMPTY*/;
 		else if (dot) {
@@ -1575,7 +1552,7 @@ CONST char *tmpdir, *old;
 	int l, fd;
 
 	if (len < 0) return(NULL);
-	fname = malloc2(len + 1);
+	fname = Xmalloc(len + 1);
 	genrandname(NULL, 0);
 
 	if (tmpdir) l = strcatdelim2(path, tmpdir, NULL) - path;
@@ -1587,10 +1564,10 @@ CONST char *tmpdir, *old;
 		genrandname(fname, len);
 #ifndef	PATHNOCASE
 		if (fat != FAT_NONE) for (i = 0; fname[i]; i++)
-			fname[i] = toupper2(fname[i]);
+			fname[i] = Xtoupper(fname[i]);
 #endif
 		if (tmpdir) {
-			strcpy2(&(path[l]), fname);
+			Xstrcpy(&(path[l]), fname);
 			if (!isexist(path)) {
 				if (old) {
 #if	!MSDOS
@@ -1621,7 +1598,7 @@ CONST char *tmpdir, *old;
 			if (errno != EEXIST) break;
 		}
 	}
-	free2(fname);
+	Xfree(fname);
 
 	return(NULL);
 }
@@ -1649,15 +1626,15 @@ off_t bsiz;
 	|| (fd = Xopen(dir, O_BINARY | O_RDONLY, 0666)) < 0)
 		return(NULL);
 	n = (off_t)(st.st_size) / bsiz;
-	tmp = (u_char *)malloc2(n + 1);
+	tmp = (u_char *)Xmalloc(n + 1);
 
 	for (i = 0; i < n; i++) {
 		if (Xlseek(fd, (off_t)(i * bsiz + 3), L_SET) < 0) {
-			free2(tmp);
+			Xfree(tmp);
 			return(NULL);
 		}
 		if (sureread(fd, &ch, sizeof(ch)) < 0) {
-			free2(tmp);
+			Xfree(tmp);
 			return(NULL);
 		}
 		tmp[i] = ch + 1;
@@ -1681,15 +1658,15 @@ int fnamp;
 		while ((dp = Xreaddir(dirp))) {
 			if (isdotdir(dp -> d_name)) continue;
 			else {
-				strcpy2(&(path[fnamp]), dp -> d_name);
+				Xstrcpy(&(path[fnamp]), dp -> d_name);
 				if (saferename(path, dp -> d_name) < 0)
 					warning(-1, path);
 			}
 		}
-		Xclosedir(dirp);
+		VOID_C Xclosedir(dirp);
 	}
 	if (Xrmdir(dir) < 0) warning(-1, dir);
-	free2(dir);
+	Xfree(dir);
 }
 
 VOID arrangedir(fs)
@@ -1774,7 +1751,7 @@ int fs;
 	}
 
 	top = -1;
-	fnamelist = (char **)malloc2((maxfile + 1) * sizeof(char *));
+	fnamelist = (char **)Xmalloc((maxfile + 1) * sizeof(char *));
 	for (i = 0; i < maxfile; i++) {
 		if (isdotdir(filelist[i].name)) cp = filelist[i].name;
 		else {
@@ -1784,7 +1761,7 @@ int fs;
 #ifdef	DEP_DOSEMU
 		if (_dospath(cp)) cp += 2;
 #endif
-		fnamelist[i] = strdup2(cp);
+		fnamelist[i] = Xstrdup(cp);
 	}
 	fnamelist[i] = NULL;
 	if (top < 0) {
@@ -1840,9 +1817,9 @@ int fs;
 			ent = i;
 		}
 		else {
-			strcpy2(&(path[fnamp]), dp -> d_name);
+			Xstrcpy(&(path[fnamp]), dp -> d_name);
 			if (saferename(dp -> d_name, path) < 0) {
-				Xclosedir(dirp);
+				VOID_C Xclosedir(dirp);
 				warning(-1, dp -> d_name);
 				restorefile(tmpdir, path, fnamp);
 				freevar(fnamelist);
@@ -1855,7 +1832,7 @@ int fs;
 		}
 		i++;
 	}
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 
 	if (ent > 0) {
 		if (!(tmp = maketmpfile(len, fat, tmpdir, tmpdir))) {
@@ -1868,7 +1845,7 @@ int fs;
 			noconv--;
 			return;
 		}
-		free2(tmpdir);
+		Xfree(tmpdir);
 		tmpdir = tmp;
 		fnamp = strcatdelim2(path, tmpdir, NULL) - path;
 	}
@@ -1927,7 +1904,7 @@ int fs;
 			if (entnum) totalptr = entnum[++block];
 		}
 #endif	/* !MSDOS */
-		strcpy2(&(path[fnamp]), fnamelist[i]);
+		Xstrcpy(&(path[fnamp]), fnamelist[i]);
 		if (saferename(path, fnamelist[i]) < 0) {
 			warning(-1, path);
 			break;
@@ -1938,24 +1915,24 @@ int fs;
 #endif
 	}
 #if	!MSDOS
-	free2(entnum);
+	Xfree(entnum);
 	if (tmpfiles) {
 		for (i = 0; i < tmpno; i++) if (tmpfiles[i]) {
 			if (Xunlink(tmpfiles[i]) < 0) warning(-1, tmpfiles[i]);
-			free2(tmpfiles[i]);
+			Xfree(tmpfiles[i]);
 		}
-		free2(tmpfiles);
+		Xfree(tmpfiles);
 	}
 #endif
 
 	if (!(tmp = maketmpfile(len, fat, tmpdir, tmpdir)))
 		warning(-1, tmpdir);
 	else {
-		free2(tmpdir);
+		Xfree(tmpdir);
 		tmpdir = tmp;
 	}
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
-	snprintf2(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);
+	Xsnprintf(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);
 	if (saferename(path, fnamelist[top]) < 0) warning(-1, path);
 	restorefile(tmpdir, path, fnamp);
 

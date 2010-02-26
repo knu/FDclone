@@ -257,11 +257,11 @@ int n;
 
 	duperrno = errno;
 	if (n >= BUILTINERRSIZ || (n < 0 && !errno)) return;
-	if (argv && argv[0]) fprintf2(Xstderr, "%k: ", argv[0]);
-	if (s) fprintf2(Xstderr, "%k: ", s);
-	fprintf2(Xstderr, "%s.",
+	if (argv && argv[0]) Xfprintf(Xstderr, "%k: ", argv[0]);
+	if (s) Xfprintf(Xstderr, "%k: ", s);
+	Xfprintf(Xstderr, "%s.",
 		(n >= 0 && builtinerrstr[n])
-			? builtinerrstr[n] : strerror2(duperrno));
+			? builtinerrstr[n] : Xstrerror(duperrno));
 	VOID_C fputnl(Xstderr);
 }
 
@@ -309,7 +309,7 @@ XFILE *fp;
 	else {
 		cp = killmeta(arg);
 		kanjifputs(cp, fp);
-		free2(cp);
+		Xfree(cp);
 	}
 }
 
@@ -324,15 +324,15 @@ int whole;
 	int i, j, pc, argc, escape, quote, pqoute, quoted;
 
 	argc = 1;
-	argv = (char **)malloc2(2 * sizeof(char *));
-	argv[0] = strdup2(s);
+	argv = (char **)Xmalloc(2 * sizeof(char *));
+	argv[0] = Xstrdup(s);
 	argv[1] = NULL;
 	j = escape = 0;
 	quote = pqoute = quoted = '\0';
 	cp = c_realloc(NULL, 0, &size);
 	while ((line = Xfgets(fp))) {
 		if (!escape && !quote && *line == '#') {
-			free2(line);
+			Xfree(line);
 			continue;
 		}
 		escape = 0;
@@ -356,12 +356,12 @@ int whole;
 			}
 			else if (pc == PC_OPQUOTE) quoted = '\0';
 			else if (pc != PC_NORMAL) /*EMPTY*/;
-			else if (!strchr2(IFS_SET, line[i])) cp[j++] = line[i];
+			else if (!Xstrchr(IFS_SET, line[i])) cp[j++] = line[i];
 			else if (j || quoted) {
 				quoted = cp[j] = '\0';
-				argv = (char **)realloc2(argv,
+				argv = (char **)Xrealloc(argv,
 					(argc + 2) * sizeof(*argv));
-				argv[argc++] = strdup2(cp);
+				argv[argc++] = Xstrdup(cp);
 				argv[argc] = NULL;
 				j = 0;
 			}
@@ -371,24 +371,24 @@ int whole;
 		else if (quote) cp[j++] = '\n';
 		else if (j || quoted) {
 			quoted = cp[j] = '\0';
-			argv = (char **)realloc2(argv,
+			argv = (char **)Xrealloc(argv,
 				(argc + 2) * sizeof(*argv));
-			argv[argc++] = strdup2(cp);
+			argv[argc++] = Xstrdup(cp);
 			argv[argc] = NULL;
 			j = 0;
 		}
-		free2(line);
+		Xfree(line);
 
 		if (!whole && !escape && !quote) break;
 	}
 
 	if (j) {
 		cp[j] = '\0';
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(*argv));
-		argv[argc++] = strdup2(cp);
+		argv = (char **)Xrealloc(argv, (argc + 2) * sizeof(*argv));
+		argv[argc++] = Xstrdup(cp);
 		argv[argc] = NULL;
 	}
-	free2(cp);
+	Xfree(cp);
 
 	return(argv);
 }
@@ -408,7 +408,7 @@ lsparse_t *lp;
 	if (argv[n][0] != '-') return(0);
 	c = argv[n][1];
 	if (!c || c == '-') return(++n);
-	else if (!strchr2(opts, c)) {
+	else if (!Xstrchr(opts, c)) {
 		lp -> topskip = ER_UNKNOWNOPT;
 		lp -> bottomskip = n;
 		return(-1);
@@ -424,27 +424,27 @@ lsparse_t *lp;
 
 	if (c == 'f') {
 		i = countvar(lp -> format);
-		lp -> format = (char **)realloc2(lp -> format,
+		lp -> format = (char **)Xrealloc(lp -> format,
 			(i + 2) * sizeof(*(lp -> format)));
-		lp -> format[i++] = strdup2(cp);
+		lp -> format[i++] = Xstrdup(cp);
 		lp -> format[i] = NULL;
 	}
 	else if (c == 'i') {
 		i = countvar(lp -> lignore);
-		lp -> lignore = (char **)realloc2(lp -> lignore,
+		lp -> lignore = (char **)Xrealloc(lp -> lignore,
 			(i + 2) * sizeof(*(lp -> lignore)));
-		lp -> lignore[i++] = strdup2(cp);
+		lp -> lignore[i++] = Xstrdup(cp);
 		lp -> lignore[i] = NULL;
 	}
 	else if (c == 'e') {
 		i = countvar(lp -> lerror);
-		lp -> lerror = (char **)realloc2(lp -> lerror,
+		lp -> lerror = (char **)Xrealloc(lp -> lerror,
 			(i + 2) * sizeof(*(lp -> lerror)));
-		lp -> lerror[i++] = strdup2(cp);
+		lp -> lerror[i++] = Xstrdup(cp);
 		lp -> lerror[i] = NULL;
 	}
 	else if (c == 't' || c == 'b') {
-		if ((i = atoi2(cp)) < 0) {
+		if ((i = Xatoi(cp)) < 0) {
 			lp -> topskip = ER_SYNTAXERR;
 			lp -> bottomskip = n;
 			return(-1);
@@ -453,8 +453,8 @@ lsparse_t *lp;
 		else lp -> bottomskip = i;
 	}
 	else if (c == 'p') {
-		free2(lp -> ext);
-		lp -> ext = strdup2(cp);
+		Xfree(lp -> ext);
+		lp -> ext = Xstrdup(cp);
 	}
 	else {
 		if (!strcmp(cp, "loop"))
@@ -477,8 +477,8 @@ lsparse_t *lp;
 VOID freelaunch(lp)
 lsparse_t *lp;
 {
-	free2(lp -> ext);
-	free2(lp -> comm);
+	Xfree(lp -> ext);
+	Xfree(lp -> comm);
 # ifndef	OLDPARSE
 	freevar(lp -> format);
 	freevar(lp -> lignore);
@@ -531,7 +531,7 @@ lsparse_t *lp;
 	n = searchlaunch(lp, launchlist, maxlaunch);
 # ifndef	DEP_DYNAMICLIST
 	if (n >= MAXLAUNCHTABLE) {
-		free2(lp -> ext);
+		Xfree(lp -> ext);
 		lp -> topskip = ER_OUTOFLIMIT;
 		lp -> bottomskip = 0;
 		return(-1);
@@ -541,24 +541,24 @@ lsparse_t *lp;
 	if (argc < 3) return(n);
 
 # ifdef	OLDPARSE
-	lp -> comm = strdup2(argv[2]);
+	lp -> comm = Xstrdup(argv[2]);
 	if (argc <= 3) lp -> topskip = lp -> bottomskip = SKP_NONE;
 	else {
 		cp = tmp = catvar(&(argv[3]), '\0');
-		if (!(cp = sscanf2(cp, "%Cu,", &c))) {
+		if (!(cp = Xsscanf(cp, "%Cu,", &c))) {
 			lp -> topskip = ER_SYNTAXERR;
 			lp -> bottomskip = SKP_NONE;
-			free2(lp -> ext);
-			free2(lp -> comm);
+			Xfree(lp -> ext);
+			Xfree(lp -> comm);
 			lp -> ext = tmp;
 			return(-1);
 		}
 		lp -> topskip = c;
-		if (!(cp = sscanf2(cp, "%Cu", &c))) {
+		if (!(cp = Xsscanf(cp, "%Cu", &c))) {
 			lp -> topskip = ER_SYNTAXERR;
 			lp -> bottomskip = SKP_NONE;
-			free2(lp -> ext);
-			free2(lp -> comm);
+			Xfree(lp -> ext);
+			Xfree(lp -> comm);
 			lp -> ext = tmp;
 			return(-1);
 		}
@@ -571,8 +571,8 @@ lsparse_t *lp;
 			if (!cp) {
 				lp -> topskip = ER_SYNTAXERR;
 				lp -> bottomskip = SKP_NONE;
-				free2(lp -> ext);
-				free2(lp -> comm);
+				Xfree(lp -> ext);
+				Xfree(lp -> comm);
 				lp -> ext = tmp;
 				return(-1);
 			}
@@ -582,11 +582,11 @@ lsparse_t *lp;
 		ch = ':';
 		for (i = 0; i < MAXLSPARSESEP; i++) {
 			if (*cp != ch) break;
-			if (!(cp = sscanf2(++cp, "%Cu", &c))) {
+			if (!(cp = Xsscanf(++cp, "%Cu", &c))) {
 				lp -> topskip = ER_SYNTAXERR;
 				lp -> bottomskip = SKP_NONE;
-				free2(lp -> ext);
-				free2(lp -> comm);
+				Xfree(lp -> ext);
+				Xfree(lp -> comm);
 				lp -> ext = tmp;
 				return(-1);
 			}
@@ -597,18 +597,18 @@ lsparse_t *lp;
 
 		if (!*cp) lp -> lines = 1;
 		else {
-			if (!sscanf2(cp, ":%Cu%$", &c)) {
+			if (!Xsscanf(cp, ":%Cu%$", &c)) {
 				lp -> topskip = ER_SYNTAXERR;
 				lp -> bottomskip = SKP_NONE;
-				free2(lp -> ext);
-				free2(lp -> comm);
+				Xfree(lp -> ext);
+				Xfree(lp -> comm);
 				lp -> ext = tmp;
 				return(-1);
 			}
 			lp -> lines = (c) ? c : 1;
 		}
 
-		free2(tmp);
+		Xfree(tmp);
 	}
 # else	/* !OLDPARSE */
 	lp -> topskip = lp -> bottomskip = 0;
@@ -617,7 +617,7 @@ lsparse_t *lp;
 		j = getlaunchopt(i, argv, "fietb", lp);
 		if (!j) {
 			if (lp -> comm) break;
-			lp -> comm = strdup2(argv[i]);
+			lp -> comm = Xstrdup(argv[i]);
 		}
 		else if (j > 0) {
 			opt++;
@@ -651,13 +651,13 @@ lsparse_t *lp;
 	}
 
 	if (i < argc) {
-		lp -> format = (char **)malloc2(2 * sizeof(*(lp -> format)));
-		lp -> format[0] = strdup2(argv[i]);
+		lp -> format = (char **)Xmalloc(2 * sizeof(*(lp -> format)));
+		lp -> format[0] = Xstrdup(argv[i]);
 		lp -> format[1] = NULL;
 	}
 
 	if (i + 1 >= argc) /*EMPTY*/;
-	else if ((j = atoi2(argv[i + 1])) >= 0) lp -> topskip = j;
+	else if ((j = Xatoi(argv[i + 1])) >= 0) lp -> topskip = j;
 	else {
 		lp -> topskip = ER_SYNTAXERR;
 		lp -> bottomskip = i + 1;
@@ -666,7 +666,7 @@ lsparse_t *lp;
 	}
 
 	if (i + 2 >= argc) /*EMPTY*/;
-	else if ((j = atoi2(argv[i + 2])) >= 0) lp -> bottomskip = j;
+	else if ((j = Xatoi(argv[i + 2])) >= 0) lp -> bottomskip = j;
 	else {
 		lp -> topskip = ER_SYNTAXERR;
 		lp -> bottomskip = i + 2;
@@ -686,7 +686,7 @@ lsparse_t *lp;
 	else {
 		maxlaunch = n + 1;
 # ifdef	DEP_DYNAMICLIST
-		launchlist = (launchlist_t)realloc2(launchlist,
+		launchlist = (launchlist_t)Xrealloc(launchlist,
 			maxlaunch * sizeof(*launchlist));
 # endif
 	}
@@ -713,7 +713,7 @@ char *CONST argv[];
 # ifdef	OLDPARSE
 		if (launch.bottomskip == SKP_NONE) {
 			builtinerror(argv, launch.ext, launch.topskip);
-			free2(launch.ext);
+			Xfree(launch.ext);
 		}
 		else
 # endif
@@ -724,7 +724,7 @@ char *CONST argv[];
 	}
 
 	if (!(launch.comm)) {
-		free2(launch.ext);
+		Xfree(launch.ext);
 		if (n >= maxlaunch) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -748,9 +748,9 @@ char *CONST argv[];
 VOID freearch(ap)
 archive_t *ap;
 {
-	free2(ap -> ext);
-	free2(ap -> p_comm);
-	free2(ap -> u_comm);
+	Xfree(ap -> ext);
+	Xfree(ap -> p_comm);
+	Xfree(ap -> u_comm);
 }
 
 int searcharch(ap, list, max)
@@ -788,7 +788,7 @@ archive_t *ap;
 	n = searcharch(ap, archivelist, maxarchive);
 # ifndef	DEP_DYNAMICLIST
 	if (n >= MAXARCHIVETABLE) {
-		free2(ap -> ext);
+		Xfree(ap -> ext);
 		ap -> flags = ER_OUTOFLIMIT;
 		ap -> ext = NULL;
 		return(-1);
@@ -797,10 +797,10 @@ archive_t *ap;
 
 	if (argc < 3) return(n);
 
-	if (argv[2][0]) ap -> p_comm = strdup2(argv[2]);
-	if (argc > 3 && argv[3][0]) ap -> u_comm = strdup2(argv[3]);
+	if (argv[2][0]) ap -> p_comm = Xstrdup(argv[2]);
+	if (argc > 3 && argv[3][0]) ap -> u_comm = Xstrdup(argv[3]);
 	if (!(ap -> p_comm) && !(ap -> u_comm)) {
-		free2(ap -> ext);
+		Xfree(ap -> ext);
 		ap -> flags = ER_FEWMANYARG;
 		ap -> ext = NULL;
 		return(-1);
@@ -817,7 +817,7 @@ archive_t *ap;
 	else {
 		maxarchive = n + 1;
 # ifdef	DEP_DYNAMICLIST
-		archivelist = (archivelist_t)realloc2(archivelist,
+		archivelist = (archivelist_t)Xrealloc(archivelist,
 			maxarchive * sizeof(*archivelist));
 # endif
 	}
@@ -846,7 +846,7 @@ char *CONST argv[];
 	}
 
 	if (!(arch.p_comm) && !(arch.u_comm)) {
-		free2(arch.ext);
+		Xfree(arch.ext);
 		if (n >= maxarchive) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -875,7 +875,7 @@ XFILE *fp;
 {
 	int i, ch;
 
-	fprintf2(fp, "%s ", BL_LAUNCH);
+	Xfprintf(fp, "%s ", BL_LAUNCH);
 # ifndef	OLDPARSE
 	if (list[n].flags & LF_IGNORECASE) Xfputc('/', fp);
 # endif
@@ -890,34 +890,34 @@ XFILE *fp;
 			Xfputs("\t(Arch)", fp);
 			break;
 		}
-		fprintf2(fp, "\t%d,%d",
+		Xfprintf(fp, "\t%d,%d",
 			(int)(list[n].topskip), (int)(list[n].bottomskip));
 		ch = ':';
 		for (i = 0; i < MAXLSPARSEFIELD; i++) {
 			Xfputc(ch, fp);
 			if (list[n].field[i] == FLD_NONE) Xfputc('0', fp);
-			else fprintf2(fp, "%d", (int)(list[n].field[i]) + 1);
+			else Xfprintf(fp, "%d", (int)(list[n].field[i]) + 1);
 			if (list[n].delim[i] >= 128)
-				fprintf2(fp, "[%d]",
+				Xfprintf(fp, "[%d]",
 					(int)(list[n].delim[i]) - 128 + 1);
 			else if (list[n].delim[i])
-				fprintf2(fp, "'%c'", (int)(list[n].delim[i]));
+				Xfprintf(fp, "'%c'", (int)(list[n].delim[i]));
 			if (!(list[n].width[i])) /*EMPTY*/;
 			else if (list[n].width[i] >= 128)
-				fprintf2(fp, "-%d",
+				Xfprintf(fp, "-%d",
 					(int)(list[n].width[i]) - 128);
-			else fprintf2(fp, "-'%c'", (int)(list[n].width[i]));
+			else Xfprintf(fp, "-'%c'", (int)(list[n].width[i]));
 			ch = ',';
 		}
 		ch = ':';
 		for (i = 0; i < MAXLSPARSESEP; i++) {
 			if (list[n].sep[i] == SEP_NONE) break;
-			fprintf2(fp, "%c%d", ch, (int)(list[n].sep[i]) + 1);
+			Xfprintf(fp, "%c%d", ch, (int)(list[n].sep[i]) + 1);
 			ch = ',';
 		}
 		if (list[n].lines > 1) {
 			if (!i) Xfputc(':', fp);
-			fprintf2(fp, "%d", (int)(list[n].lines));
+			Xfprintf(fp, "%d", (int)(list[n].lines));
 		}
 # else	/* !OLDPARSE */
 		if (!list[n].format) break;
@@ -945,13 +945,13 @@ XFILE *fp;
 
 		if (list[n].topskip) {
 			if (ch) Xfputs(" \\\n", fp);
-			fprintf2(fp, "\t-t %d", (int)(list[n].topskip));
+			Xfprintf(fp, "\t-t %d", (int)(list[n].topskip));
 		}
 		if (list[n].bottomskip) {
 			if (list[n].topskip) Xfputc(' ', fp);
 			else if (ch) Xfputs(" \\\n\t", fp);
 			else Xfputc('\t', fp);
-			fprintf2(fp, "-b %d", (int)(list[n].bottomskip));
+			Xfprintf(fp, "-b %d", (int)(list[n].bottomskip));
 		}
 # endif	/* !OLDPARSE */
 		break;
@@ -984,7 +984,7 @@ char *CONST argv[];
 				launchlist[i].ext, launchlist[i].flags, 0);
 			if (!n) break;
 		}
-		free2(ext);
+		Xfree(ext);
 		if (i >= maxlaunch) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -1000,7 +1000,7 @@ CONST archive_t *list;
 int n, isset;
 XFILE *fp;
 {
-	fprintf2(fp, "%s ", BL_ARCH);
+	Xfprintf(fp, "%s ", BL_ARCH);
 # ifndef	OLDPARSE
 	if (list[n].flags & LF_IGNORECASE) Xfputc('/', fp);
 # endif
@@ -1040,7 +1040,7 @@ char *CONST argv[];
 				archivelist[i].ext, archivelist[i].flags, 0);
 			if (!n) break;
 		}
-		free2(ext);
+		Xfree(ext);
 		if (i >= maxarchive) {
 			builtinerror(argv, argv[1], ER_NOENTRY);
 			return(-1);
@@ -1063,9 +1063,9 @@ char *CONST *sargv, **dargv;
 	dargc = countvar(dargv);
 	for (n = 1; sargv[n]; n++) {
 		if (sargv[n][0] != '-' || sargv[n][1] != '@') {
-			dargv = (char **)realloc2(dargv,
+			dargv = (char **)Xrealloc(dargv,
 				(dargc + 2) * sizeof(*dargv));
-			dargv[dargc++] = strdup2(sargv[n]);
+			dargv[dargc++] = Xstrdup(sargv[n]);
 			dargv[dargc] = NULL;
 			continue;
 		}
@@ -1084,7 +1084,7 @@ char *CONST *sargv, **dargv;
 		}
 
 		argv = file2argv(fp, sargv[0], 1);
-		if (fp != Xstdin) Xfclose(fp);
+		if (fp != Xstdin) VOID_C Xfclose(fp);
 		else Xclearerr(fp);
 
 		dargv = readargv(argv, dargv);
@@ -1106,13 +1106,13 @@ lsparse_t *list;
 	browsevar = NULL;
 	if (argvar) {
 		for (i = 1; argvar[i]; i++) {
-			free2(argvar[i]);
+			Xfree(argvar[i]);
 			argvar[i] = NULL;
 		}
 	}
 	if (!list) return;
 	for (i = 0; list[i].comm; i++) freelaunch(&(list[i]));
-	free2(list);
+	Xfree(list);
 }
 
 static int NEAR custbrowse(argc, argv)
@@ -1137,8 +1137,8 @@ char *CONST argv[];
 		builtinerror(argv, NULL, ER_NOTRECURSE);
 		return(-1);
 	}
-	argv2 = (char **)malloc2(2 * sizeof(char *));
-	argv2[0] = strdup2(argv[0]);
+	argv2 = (char **)Xmalloc(2 * sizeof(char *));
+	argv2[0] = Xstrdup(argv[0]);
 	argv2[1] = NULL;
 	if (!(argv2 = readargv(argv, argv2))) return(-1);
 
@@ -1146,9 +1146,9 @@ char *CONST argv[];
 	lvl = 0;
 	n = 1;
 	while (argv2[n]) {
-		list = (lsparse_t *)realloc2(list, (lvl + 2) * sizeof(*list));
+		list = (lsparse_t *)Xrealloc(list, (lvl + 2) * sizeof(*list));
 		list[lvl].topskip = list[lvl].bottomskip = 0;
-		list[lvl].comm = strdup2(argv2[n++]);
+		list[lvl].comm = Xstrdup(argv2[n++]);
 		list[lvl].flags = 0;
 		list[lvl].ext = list[lvl + 1].comm = NULL;
 		list[lvl].format = list[lvl].lignore = list[lvl].lerror = NULL;
@@ -1215,7 +1215,7 @@ static int NEAR setmacro(cp)
 char *cp;
 {
 #ifdef	DEP_DYNAMICLIST
-	macrolist = (macrolist_t)realloc2(macrolist,
+	macrolist = (macrolist_t)Xrealloc(macrolist,
 		(maxmacro + 1) * sizeof(*macrolist));
 #else
 	if (maxmacro >= MAXMACROTABLE) return(-1);
@@ -1232,7 +1232,7 @@ int n;
 
 	if (!ismacro(n)) return(-1);
 
-	free2(macrolist[n - FUNCLISTSIZ]);
+	Xfree(macrolist[n - FUNCLISTSIZ]);
 	memmove((char *)&(macrolist[n - FUNCLISTSIZ]),
 		(char *)&(macrolist[n - FUNCLISTSIZ + 1]),
 		(--maxmacro - (n - FUNCLISTSIZ)) * sizeof(*macrolist));
@@ -1331,37 +1331,37 @@ char *func1, *func2, *cp;
 	int n1, n2;
 
 	memcpy((char *)&bind, (char *)bindp, sizeof(bind));
-	if (bind.f_func != FNO_SETMACRO) free2(func1);
+	if (bind.f_func != FNO_SETMACRO) Xfree(func1);
 	else {
 		n1 = setmacro(func1);
 #ifndef	DEP_DYNAMICLIST
 		if (n1 < 0) {
-			free2(func1);
-			free2(func2);
-			free2(cp);
+			Xfree(func1);
+			Xfree(func2);
+			Xfree(cp);
 			return(-1);
 		}
 #endif
 		bind.f_func = (funcno_t)n1;
 	}
 
-	if (bind.d_func != FNO_SETMACRO) free2(func2);
+	if (bind.d_func != FNO_SETMACRO) Xfree(func2);
 	else {
 		n2 = setmacro(func2);
 #ifndef	DEP_DYNAMICLIST
 		if (n2 < 0) {
 			freemacro(bind.f_func);
-			free2(func2);
-			free2(cp);
+			Xfree(func2);
+			Xfree(cp);
 			return(-2);
 		}
 #endif
 		bind.d_func = (funcno_t)n2;
 	}
 
-	if (bind.key < K_F(1) || bind.key > K_F(MAXHELPINDEX)) free2(cp);
+	if (bind.key < K_F(1) || bind.key > K_F(MAXHELPINDEX)) Xfree(cp);
 	else if (cp) {
-		free2(helpindex[bind.key - K_F(1)]);
+		Xfree(helpindex[bind.key - K_F(1)]);
 		helpindex[bind.key - K_F(1)] = cp;
 	}
 
@@ -1372,7 +1372,7 @@ char *func1, *func2, *cp;
 	else {
 		maxbind = n + 1;
 #ifdef	DEP_DYNAMICLIST
-		bindlist = (bindlist_t)realloc2(bindlist,
+		bindlist = (bindlist_t)Xrealloc(bindlist,
 			maxbind * sizeof(*bindlist));
 #endif
 		n1 = n2 = -1;
@@ -1393,8 +1393,8 @@ int n;
 	freemacro(dfunc(n));
 	if (bindlist[n].key >= K_F(1)
 	&& bindlist[n].key <= K_F(MAXHELPINDEX)) {
-		free2(helpindex[bindlist[n].key - K_F(1)]);
-		helpindex[bindlist[n].key - K_F(1)] = strdup2(nullstr);
+		Xfree(helpindex[bindlist[n].key - K_F(1)]);
+		helpindex[bindlist[n].key - K_F(1)] = Xstrdup(nullstr);
 	}
 	memmove((char *)&(bindlist[n]), (char *)&(bindlist[n + 1]),
 		(--maxbind - n) * sizeof(*bindlist));
@@ -1427,10 +1427,10 @@ char *CONST argv[];
 		return(0);
 	}
 
-	func1 = (bind.f_func == FNO_SETMACRO) ? strdup2(argv[2]) : NULL;
-	func2 = (bind.d_func == FNO_SETMACRO) ? strdup2(argv[3]) : NULL;
+	func1 = (bind.f_func == FNO_SETMACRO) ? Xstrdup(argv[2]) : NULL;
+	func2 = (bind.d_func == FNO_SETMACRO) ? Xstrdup(argv[3]) : NULL;
 	n = (bind.d_func == FNO_NONE) ? 3 : 4;
-	cp = (argc > n) ? strdup2(&(argv[n][1])) : NULL;
+	cp = (argc > n) ? Xstrdup(&(argv[n][1])) : NULL;
 
 	if ((n = addkeybind(no, &bind, func1, func2, cp)) < 0) {
 		builtinerror(argv, argv[1 - n], ER_OUTOFLIMIT);
@@ -1465,7 +1465,7 @@ XFILE *fp;
 {
 	char *cp;
 
-	fprintf2(fp, "%s ", BL_BIND);
+	Xfprintf(fp, "%s ", BL_BIND);
 	fputsmeta(getkeysym(list[n].key, 0), fp);
 	if (isset) {
 		Xfputc('\t', fp);
@@ -1476,13 +1476,13 @@ XFILE *fp;
 			fputsmeta(getmacro(list[n].f_func), fp);
 		else Xfputs("\"\"", fp);
 		if (list[n].d_func < FUNCLISTSIZ)
-			fprintf2(fp, "\t%s", funclist[list[n].d_func].ident);
+			Xfprintf(fp, "\t%s", funclist[list[n].d_func].ident);
 		else if (ismacro(list[n].d_func)) {
 			Xfputc('\t', fp);
 			fputsmeta(getmacro(list[n].d_func), fp);
 		}
 		if ((cp = gethelp(&(list[n]))))
-			fprintf2(fp, "\t%c%k", BINDCOMMENT, cp);
+			Xfprintf(fp, "\t%c%k", BINDCOMMENT, cp);
 	}
 	VOID_C fputnl(fp);
 }
@@ -1573,7 +1573,7 @@ int no;
 		n += s;
 	}
 # endif	/* HDDMOUNT */
-	for (i = 0; i < n; i++) free2(fdtype[no + i].name);
+	for (i = 0; i < n; i++) Xfree(fdtype[no + i].name);
 	memmove((char *)&(fdtype[no]), (char *)&(fdtype[no + n]),
 		(--maxfdtype - no - n) * sizeof(*fdtype));
 
@@ -1615,18 +1615,18 @@ devinfo *devp;
 		if (!(sp = readpt(devp -> name, devp -> sect))) return(-1);
 		for (n = 0; sp[n + 1]; n++) /*EMPTY*/;
 		if (!n) {
-			free2(sp);
+			Xfree(sp);
 			return(-1);
 		}
 #  ifndef	DEP_DYNAMICLIST
 		else if (n >= MAXDRIVEENTRY - no) {
-			free2(sp);
+			Xfree(sp);
 			return(-2);
 		}
 #  endif
 		devp -> sect = sp[0];
 
-		drvlist = malloc2(n);
+		drvlist = Xmalloc(n);
 		drvlist[0] = devp -> drive;
 		for (i = 0; i < n - 1; i++) {
 			for (drive = drvlist[i] + 1; drive <= 'Z'; drive++) {
@@ -1638,8 +1638,8 @@ devinfo *devp;
 			drvlist[i + 1] = drive;
 		}
 		if (i < n - 1) {
-			free2(sp);
-			free2(drvlist);
+			Xfree(sp);
+			Xfree(drvlist);
 			return(-2);
 		}
 	}
@@ -1650,7 +1650,7 @@ devinfo *devp;
 
 	maxfdtype += n;
 # ifdef	DEP_DYNAMICLIST
-	fdtype = (fdtype_t)realloc2(fdtype, maxfdtype * sizeof(*fdtype));
+	fdtype = (fdtype_t)Xrealloc(fdtype, maxfdtype * sizeof(*fdtype));
 # endif
 	memmove((char *)&(fdtype[maxfdtype - 1]),
 		(char *)&(fdtype[maxfdtype - n - 1]),
@@ -1662,12 +1662,12 @@ devinfo *devp;
 			memcpy((char *)&(fdtype[no + i]), (char *)devp,
 				sizeof(*fdtype));
 			fdtype[no + i].drive = drvlist[i];
-			fdtype[no + i].name = strdup2(devp -> name);
+			fdtype[no + i].name = Xstrdup(devp -> name);
 			fdtype[no + i].offset = sp[i + 1];
 		}
-		free2(sp);
-		free2(drvlist);
-		free2(devp -> name);
+		Xfree(sp);
+		Xfree(drvlist);
+		Xfree(devp -> name);
 		return(no);
 	}
 	fdtype[no].offset = 0;
@@ -1702,9 +1702,9 @@ devinfo *devp;
 	}
 # endif
 
-	devp -> drive = toupper2(argv[1][0]);
+	devp -> drive = Xtoupper(argv[1][0]);
 	devp -> name = argv[2];
-	if (!isalpha2(devp -> drive)) {
+	if (!Xisalpha(devp -> drive)) {
 		devp -> drive = ER_SYNTAXERR;
 		devp -> head = 1;
 		return(-1);
@@ -1733,7 +1733,7 @@ devinfo *devp;
 			devp -> head = 4;
 			return(-1);
 		}
-		if (sect) head = toupper2(head);
+		if (sect) head = Xtoupper(head);
 	}
 	else
 # endif	/* HDDMOUNT */
@@ -1743,7 +1743,7 @@ devinfo *devp;
 		devp -> head = 0;
 		return(-1);
 	}
-	else if ((head = atoi2(argv[3])) <= 0) {
+	else if ((head = Xatoi(argv[3])) <= 0) {
 		devp -> drive = ER_SYNTAXERR;
 		devp -> head = 3;
 		return(-1);
@@ -1753,7 +1753,7 @@ devinfo *devp;
 		devp -> head = 3;
 		return(-1);
 	}
-	else if ((sect = atoi2(argv[4])) <= 0) {
+	else if ((sect = Xatoi(argv[4])) <= 0) {
 		devp -> drive = ER_SYNTAXERR;
 		devp -> head = 4;
 		return(-1);
@@ -1763,7 +1763,7 @@ devinfo *devp;
 		devp -> head = 4;
 		return(-1);
 	}
-	else if ((cyl = atoi2(argv[5])) <= 0) {
+	else if ((cyl = Xatoi(argv[5])) <= 0) {
 		devp -> drive = ER_SYNTAXERR;
 		devp -> head = 5;
 		return(-1);
@@ -1777,21 +1777,21 @@ devinfo *devp;
 	{
 		cp = tmp = catvar(&(argv[3]), '\0');
 
-		if (!(cp = sscanf2(cp, "%+Cu%c", &c, DRIVESEP))) {
+		if (!(cp = Xsscanf(cp, "%+Cu%c", &c, DRIVESEP))) {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = (u_char)-1;
 			devp -> name = tmp;
 			return(-1);
 		}
 		head = c;
-		if (!(cp = sscanf2(cp, "%+Cu%c", &c, DRIVESEP))) {
+		if (!(cp = Xsscanf(cp, "%+Cu%c", &c, DRIVESEP))) {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = (u_char)-1;
 			devp -> name = tmp;
 			return(-1);
 		}
 		sect = c;
-		if (!sscanf2(cp, "%+Cu%$", &c)) {
+		if (!Xsscanf(cp, "%+Cu%$", &c)) {
 			devp -> drive = ER_SYNTAXERR;
 			devp -> head = (u_char)-1;
 			devp -> name = tmp;
@@ -1806,7 +1806,7 @@ devinfo *devp;
 			devp -> name = tmp;
 			return(-1);
 		}
-		free2(tmp);
+		Xfree(tmp);
 	}
 # endif	/* FD < 2 */
 	devp -> head = head;
@@ -1828,7 +1828,7 @@ int isset;
 # if	FD < 2
 		if (dev.head == (u_char)-1) {
 			builtinerror(argv, dev.name, dev.drive);
-			free2(dev.name);
+			Xfree(dev.name);
 		}
 		else
 # endif
@@ -1875,16 +1875,16 @@ int isset;
 		}
 # endif
 
-		dev.name = strdup2(dev.name);
+		dev.name = Xstrdup(dev.name);
 		n = insertdrv(i, &dev);
 		if (n < -1) {
 			builtinerror(argv, NULL, ER_OUTOFLIMIT);
-			free2(dev.name);
+			Xfree(dev.name);
 			return(-1);
 		}
 		if (!inruncom && n < 0) {
 			builtinerror(argv, argv[2], ER_INVALDEV);
-			free2(dev.name);
+			Xfree(dev.name);
 			return(-1);
 		}
 # ifdef	DEP_PTY
@@ -1915,7 +1915,7 @@ CONST devinfo *fdlist;
 int n, isset, verbose;
 XFILE *fp;
 {
-	fprintf2(fp, "%s %c\t",
+	Xfprintf(fp, "%s %c\t",
 		(isset) ? BL_SDRIVE : BL_UDRIVE, fdlist[n].drive);
 
 	fputsmeta(fdlist[n].name, fp);
@@ -1923,13 +1923,13 @@ XFILE *fp;
 # ifdef	HDDMOUNT
 	if (!fdlist[n].cyl) {
 		Xfputs(STRHDD, fp);
-		if (isupper2(fdlist[n].head)) Xfputs(STRHDD98, fp);
-		if (verbose) fprintf2(fp, " #offset=%'Ld",
+		if (Xisupper(fdlist[n].head)) Xfputs(STRHDD98, fp);
+		if (verbose) Xfprintf(fp, " #offset=%'Ld",
 			fdlist[n].offset / fdlist[n].sect);
 	}
 	else
 # endif	/* HDDMOUNT */
-	fprintf2(fp, "%d%c%d%c%d", (int)(fdlist[n].head), DRIVESEP,
+	Xfprintf(fp, "%d%c%d%c%d", (int)(fdlist[n].head), DRIVESEP,
 		(int)(fdlist[n].sect), DRIVESEP, (int)(fdlist[n].cyl));
 	VOID_C fputnl(fp);
 }
@@ -1951,7 +1951,7 @@ char *CONST argv[];
 	}
 	else {
 		for (i = n = 0; i < maxfdtype; i++)
-		if (toupper2(argv[1][0]) == fdtype[i].drive) {
+		if (Xtoupper(argv[1][0]) == fdtype[i].drive) {
 			n++;
 			printsetdrv(fdtype, i, 1, 1, Xstdout);
 			hitkey(0);
@@ -1974,14 +1974,14 @@ XFILE *fp;
 {
 	char *cp;
 
-	fprintf2(fp, "%s ", BL_KEYMAP);
+	Xfprintf(fp, "%s ", BL_KEYMAP);
 	fputsmeta(getkeysym(kp -> code, 1), fp);
 	if (isset) {
 		Xfputc('\t', fp);
 
 		cp = encodestr(kp -> str, kp -> len);
 		fputsmeta(cp, fp);
-		free2(cp);
+		Xfree(cp);
 	}
 	VOID_C fputnl(fp);
 }
@@ -2016,7 +2016,7 @@ keyseq_t *kp;
 
 	kp -> str = decodestr(argv[2], &(kp -> len), 1);
 	if (!(kp -> len)) {
-		free2(kp -> str);
+		Xfree(kp -> str);
 		kp -> code = ER_SYNTAXERR;
 		kp -> len = (u_char)2;
 		return(-1);
@@ -2095,7 +2095,7 @@ char *CONST argv[];
 		return(-1);
 	}
 
-	n = (argc >= 2) ? atoi2(argv[1]) : 1;
+	n = (argc >= 2) ? Xatoi(argv[1]) : 1;
 	if (n < 0) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
@@ -2111,18 +2111,18 @@ char *CONST argv[];
 
 		next = 0;
 		while (!kbhit2(1000000L / SENSEPERSEC));
-		cputs2("\r\"");
+		Xcputs("\r\"");
 		putterm(L_CLEAR);
 		buf[1] = '\0';
 		do {
-			if ((ch = getch2()) == EOF) break;
+			if ((ch = Xgetch()) == EOF) break;
 			next = kbhit2(WAITKEYPAD * 1000L);
 			buf[0] = ch;
 			cp = encodestr(buf, 1);
-			cputs2(cp);
-			free2(cp);
+			Xcputs(cp);
+			Xfree(cp);
 		} while (next);
-		VOID_C putch2('"');
+		VOID_C Xputch('"');
 		cputnl();
 		if (n) {
 			if (++i >= n) break;
@@ -2147,7 +2147,7 @@ char *CONST argv[];
 	}
 	size = (int)histsize[0];
 	if (argc < 2) n = size;
-	else if ((n = atoi2(argv[1])) < 1) {
+	else if ((n = Xatoi(argv[1])) < 1) {
 		builtinerror(argv, argv[1], ER_SYNTAXERR);
 		return(-1);
 	}
@@ -2161,7 +2161,7 @@ char *CONST argv[];
 
 	hitkey(2);
 	for (i = max; i >= 0; i--) {
-		fprintf2(Xstdout, "%5d  %k", n + 1, history[0][i]);
+		Xfprintf(Xstdout, "%5d  %k", n + 1, history[0][i]);
 		VOID_C fputnl(Xstdout);
 		if (n++ >= (int)MAXHISTNO) n = 0;
 		hitkey(0);
@@ -2226,7 +2226,7 @@ char *CONST argv[];
 		}
 	}
 	if (skip) {
-		fprintf2(Xstderr,
+		Xfprintf(Xstderr,
 	"%k: usage: %k [-ls] [-nr] [-e editor] [old=new] [first] [last]",
 			argv[0], argv[0]);
 		VOID_C fputnl(Xstderr);
@@ -2237,21 +2237,21 @@ char *CONST argv[];
 	tmp = removehist(0);
 	if (exe) {
 		i = n;
-		for (; n < argc; n++) if (!strchr2(argv[n], '=')) break;
+		for (; n < argc; n++) if (!Xstrchr(argv[n], '=')) break;
 		f = parsehist((n < argc) ? argv[n] : "!", NULL, '\0');
 		if (f < 0) {
 			builtinerror(argv, argv[n], ER_EVENTNOFOUND);
 			entryhist(tmp, HST_COMM);
-			free2(tmp);
+			Xfree(tmp);
 			return(-1);
 		}
-		free2(tmp);
-		s = strdup2(history[0][f]);
+		Xfree(tmp);
+		s = Xstrdup(history[0][f]);
 		max = len = strlen(s);
 		for (; i < n; i++) {
-			if (!(r = strchr2(argv[i], '='))) continue;
+			if (!(r = Xstrchr(argv[i], '='))) continue;
 			l1 = r - argv[i];
-			for (cp = s; (cp = strchr2(cp, argv[i][0])); cp++)
+			for (cp = s; (cp = Xstrchr(cp, argv[i][0])); cp++)
 				if (!strncmp(cp, argv[i], l1)) break;
 			if (!cp) continue;
 			r++;
@@ -2260,7 +2260,7 @@ char *CONST argv[];
 			if (len > max) {
 				max = len;
 				j = cp - s;
-				s = realloc2(s, max + 1);
+				s = Xrealloc(s, max + 1);
 				cp = s + j;
 			}
 			memmove(&(cp[l2]), &(cp[l1]),
@@ -2273,7 +2273,7 @@ char *CONST argv[];
 		n = execmacro(s, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
 		if (n < 0) n = 0;
-		free2(s);
+		Xfree(s);
 		return(n);
 	}
 
@@ -2294,7 +2294,7 @@ char *CONST argv[];
 		else builtinerror(argv,
 			(n + 1 < argc) ? argv[n + 1] : NULL, ER_EVENTNOFOUND);
 		entryhist(tmp, HST_COMM);
-		free2(tmp);
+		Xfree(tmp);
 		return(-1);
 	}
 
@@ -2314,14 +2314,14 @@ char *CONST argv[];
 	else {
 		if ((fd = mktmpfile(path)) < 0) {
 			builtinerror(argv, argv[0], -1);
-			free2(tmp);
+			Xfree(tmp);
 			return(-1);
 		}
 		if (!(fp = Xfdopen(fd, "w"))) {
 			builtinerror(argv, path, -1);
 			VOID_C Xclose(fd);
 			rmtmpfile(path);
-			free2(tmp);
+			Xfree(tmp);
 			return(-1);
 		}
 		nonum = 1;
@@ -2330,7 +2330,7 @@ char *CONST argv[];
 	if (f >= l) for (i = f; i >= l; i--) {
 		if (history[0][i]) {
 			if (!nonum) {
-				fprintf2(fp, "%5d  ", n + 1);
+				Xfprintf(fp, "%5d  ", n + 1);
 				if (n++ >= (int)MAXHISTNO) n = 0;
 			}
 			kanjifputs(history[0][i], fp);
@@ -2343,7 +2343,7 @@ char *CONST argv[];
 	else for (i = f; i <= l; i++) {
 		if (history[0][i]) {
 			if (!nonum) {
-				fprintf2(fp, "%5d  ", n + 1);
+				Xfprintf(fp, "%5d  ", n + 1);
 				if (--n < 0) n = (int)MAXHISTNO;
 			}
 			kanjifputs(history[0][i], fp);
@@ -2357,29 +2357,29 @@ char *CONST argv[];
 	if (list) {
 		Xfflush(Xstdout);
 		entryhist(tmp, HST_COMM);
-		free2(tmp);
+		Xfree(tmp);
 		return(0);
 	}
 
-	Xfclose(fp);
+	VOID_C Xfclose(fp);
 	n = execmacro(editor, path, F_NOCONFIRM | F_IGNORELIST);
 	if (n < 0) n = 0;
 	if (n) {
 		builtinerror(argv, editor, -1);
 		rmtmpfile(path);
-		free2(tmp);
+		Xfree(tmp);
 		return(-1);
 	}
 
 	if (!(fp = Xfopen(path, "r"))) {
 		builtinerror(argv, path, -1);
 		rmtmpfile(path);
-		free2(tmp);
+		Xfree(tmp);
 		return(-1);
 	}
-	free2(tmp);
+	Xfree(tmp);
 
-	for (; (cp = Xfgets(fp)); free2(cp)) {
+	for (; (cp = Xfgets(fp)); Xfree(cp)) {
 		if (!*cp) continue;
 		kanjifputs(cp, Xstdout);
 		VOID_C fputnl(Xstdout);
@@ -2387,7 +2387,7 @@ char *CONST argv[];
 		n = execmacro(cp, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
 	}
-	Xfclose(fp);
+	VOID_C Xfclose(fp);
 	rmtmpfile(path);
 
 	return(n);
@@ -2406,11 +2406,11 @@ XFILE *fp;
 	if (!(fpin = Xfopen(path, "rb"))) return(-1);
 	size = sizeof(buf);
 	n = md5fencode(buf, &size, fpin);
-	Xfclose(fpin);
+	VOID_C Xfclose(fpin);
 	if (n < 0) return(-1);
 
-	fprintf2(fp, "MD5 (%k) = ", path);
-	for (i = 0; i < size; i++) fprintf2(fp, "%02x", buf[i]);
+	Xfprintf(fp, "MD5 (%k) = ", path);
+	for (i = 0; i < size; i++) Xfprintf(fp, "%02x", buf[i]);
 
 	return(fputnl(fp));
 }
@@ -2425,7 +2425,7 @@ char *CONST argv[];
 	hitkey(2);
 	if (argc < 2) {
 # if	MSDOS || defined (CYGWIN)
-		strcpy2(strcatdelim2(path, progpath, progname), ".EXE");
+		Xstrcpy(strcatdelim2(path, progpath, progname), ".EXE");
 # else
 		strcatdelim2(path, progpath, progname);
 # endif
@@ -2459,7 +2459,7 @@ char *CONST argv[];
 	if (argc <= 1 || !(cp = catvar(&(argv[1]), ' '))) return(0);
 	n = execmacro(cp, NULL, F_NOCONFIRM | F_ARGSET | F_NOKANJICONV);
 	if (n < 0) n = 0;
-	free2(cp);
+	Xfree(cp);
 
 	return(n);
 }
@@ -2505,7 +2505,7 @@ char *CONST argv[];
 				break;
 		}
 		if (err) {
-			fprintf2(Xstderr,
+			Xfprintf(Xstderr,
 		"Usage: %s [-i inputcode] [-o outputcode] [filename]",
 				argv[0]);
 			VOID_C fputnl(Xstderr);
@@ -2524,7 +2524,7 @@ char *CONST argv[];
 	else if (i + 1 >= argc || !*(argv[i + 1])) fpout = Xstdout;
 	else if (!(fpout = Xfopen(argv[i + 1], "w"))) {
 		builtinerror(argv, argv[i + 1], -1);
-		Xfclose(fpin);
+		VOID_C Xfclose(fpin);
 		return(-1);
 	}
 
@@ -2534,22 +2534,22 @@ char *CONST argv[];
 	while ((cp = Xfgets(fpin))) {
 		if (in != DEFCODE) {
 			tmp = newkanjiconv(cp, in, DEFCODE, L_OUTPUT);
-			if (cp != tmp) free2(cp);
+			if (cp != tmp) Xfree(cp);
 			cp = tmp;
 		}
 		tmp = newkanjiconv(cp, DEFCODE, out, L_OUTPUT);
-		if (cp != tmp) free2(cp);
+		if (cp != tmp) Xfree(cp);
 		Xfputs(tmp, fpout);
 		VOID_C fputnl(fpout);
-		free2(tmp);
+		Xfree(tmp);
 	}
 
 #  ifdef	DEP_UNICODE
 	if (!unicodebuffer) discardunitable();
 #  endif
-	if (fpin != Xstdin) Xfclose(fpin);
+	if (fpin != Xstdin) VOID_C Xfclose(fpin);
 	else Xclearerr(fpin);
-	if (fpout != Xstdout) Xfclose(fpout);
+	if (fpout != Xstdout) VOID_C Xfclose(fpout);
 
 	return(0);
 }
@@ -2578,7 +2578,7 @@ char *CONST argv[];
 
 	kanjifputs(s, Xstdout);
 	VOID_C fputnl(Xstdout);
-	free2(s);
+	Xfree(s);
 
 	return(0);
 }
@@ -2686,7 +2686,7 @@ char *CONST argv[];
 		}
 	}
 	if (skip || (!file && !clean && n >= argc)) {
-		fprintf2(Xstderr,
+		Xfprintf(Xstderr,
 			"%k: usage: %k [-c] [-r] [-f file] [roman [kanji]]]",
 			argv[0], argv[0]);
 		VOID_C fputnl(Xstderr);
@@ -2720,7 +2720,7 @@ char *CONST argv[];
 
 		if (Xfeof(fp)) break;
 	}
-	if (fp) Xfclose(fp);
+	if (fp) VOID_C Xfclose(fp);
 
 	if (n >= argc) /*EMPTY*/;
 	else if (addroman(argv[n], argv[n + 1]) < 0) {
@@ -2742,12 +2742,12 @@ XFILE *fp;
 	char buf[2 + 1];
 	int i;
 
-	if (s && *s) fprintf2(fp, "%s ", s);
-	fprintf2(fp, "%s \"", romanlist[n].str);
+	if (s && *s) Xfprintf(fp, "%s ", s);
+	Xfprintf(fp, "%s \"", romanlist[n].str);
 	for (i = 0; i < R_MAXKANA; i++) {
 		if (!romanlist[n].code[i]) break;
 		VOID_C jis2str(buf, romanlist[n].code[i]);
-		fprintf2(fp, "%k", buf);
+		Xfprintf(fp, "%k", buf);
 	}
 	Xfputc('"', fp);
 	VOID_C fputnl(fp);
@@ -2857,20 +2857,20 @@ char *ident, *comm;
 	int i;
 
 	if ((i = searchalias(ident, -1)) >= MAXALIASTABLE) {
-		free2(ident);
-		free2(comm);
+		Xfree(ident);
+		Xfree(comm);
 		return(-1);
 	}
 	else if (i < maxalias) {
-		free2(aliaslist[i].alias);
-		free2(aliaslist[i].comm);
+		Xfree(aliaslist[i].alias);
+		Xfree(aliaslist[i].comm);
 	}
 	else maxalias++;
 
 	aliaslist[i].alias = ident;
 	aliaslist[i].comm = comm;
 # ifdef	COMMNOCASE
-	if (ident) for (i = 0; ident[i]; i++) ident[i] = tolower2(ident[i]);
+	if (ident) for (i = 0; ident[i]; i++) ident[i] = Xtolower(ident[i]);
 # endif
 # ifdef	DEP_PTY
 	sendparent(TE_ADDALIAS, ident, comm);
@@ -2892,8 +2892,8 @@ CONST char *ident;
 			if (!regexp_exec(re, aliaslist[i].alias, 0)) continue;
 		}
 		else if (strcommcmp(ident, aliaslist[i].alias)) continue;
-		free2(aliaslist[i].alias);
-		free2(aliaslist[i].comm);
+		Xfree(aliaslist[i].alias);
+		Xfree(aliaslist[i].comm);
 		memmove((char *)&(aliaslist[i]), (char *)&(aliaslist[i + 1]),
 			(--maxalias - i) * sizeof(*aliaslist));
 		i--;
@@ -2912,7 +2912,7 @@ VOID printalias(n, fp)
 int n;
 XFILE *fp;
 {
-	fprintf2(fp, "%s %k%c", BL_ALIAS, aliaslist[n].alias, ALIASSEP);
+	Xfprintf(fp, "%s %k%c", BL_ALIAS, aliaslist[n].alias, ALIASSEP);
 	fputsmeta(aliaslist[n].comm, fp);
 }
 
@@ -2975,7 +2975,7 @@ char *CONST argv[];
 		return(0);
 	}
 
-	if (addalias(strndup2(argv[1], len), strdup2(cp)) < 0) {
+	if (addalias(Xstrndup(argv[1], len), Xstrdup(cp)) < 0) {
 		builtinerror(argv, NULL, ER_OUTOFLIMIT);
 		return(-1);
 	}
@@ -3017,12 +3017,12 @@ char *ident, **comm;
 	int i;
 
 	if ((i = searchfunction(ident)) >= MAXFUNCTABLE) {
-		free2(ident);
+		Xfree(ident);
 		freevar(comm);
 		return(-1);
 	}
 	else if (i < maxuserfunc) {
-		free2(userfunclist[i].func);
+		Xfree(userfunclist[i].func);
 		freevar(userfunclist[i].comm);
 	}
 	else maxuserfunc++;
@@ -3030,7 +3030,7 @@ char *ident, **comm;
 	userfunclist[i].func = ident;
 	userfunclist[i].comm = comm;
 # ifdef	COMMNOCASE
-	if (ident) for (i = 0; ident[i]; i++) ident[i] = tolower2(ident[i]);
+	if (ident) for (i = 0; ident[i]; i++) ident[i] = Xtolower(ident[i]);
 # endif
 # ifdef	DEP_PTY
 	sendparent(TE_ADDFUNCTION, ident, comm);
@@ -3046,7 +3046,7 @@ CONST char *ident;
 
 	if ((i = searchfunction(ident)) >= maxuserfunc) return(-1);
 
-	free2(userfunclist[i].func);
+	Xfree(userfunclist[i].func);
 	freevar(userfunclist[i].comm);
 	memmove((char *)&(userfunclist[i]),
 		(char *)&(userfunclist[i + 1]),
@@ -3065,13 +3065,13 @@ XFILE *fp;
 	int i;
 
 # if	FD < 2
-	fprintf2(fp, "%s ", BL_FUNCTION);
+	Xfprintf(fp, "%s ", BL_FUNCTION);
 # endif
-	fprintf2(fp, "%k() {", userfunclist[no].func);
+	Xfprintf(fp, "%k() {", userfunclist[no].func);
 	if (verbose) VOID_C fputnl(fp);
 	for (i = 0; userfunclist[no].comm[i]; i++) {
-		if (verbose) fprintf2(fp, "\t%k;\n", userfunclist[no].comm[i]);
-		else fprintf2(fp, " %k;", userfunclist[no].comm[i]);
+		if (verbose) Xfprintf(fp, "\t%k;\n", userfunclist[no].comm[i]);
+		else Xfprintf(fp, " %k;", userfunclist[no].comm[i]);
 	}
 	Xfputs(" }", fp);
 }
@@ -3099,7 +3099,7 @@ char *CONST argv[];
 	if (*(cp++) != '{' || *cp) return(-2);
 
 	if (n > 0) {
-		for (i = 1; i <= n; i++) free2(argv[i]);
+		for (i = 1; i <= n; i++) Xfree(argv[i]);
 		memmove((char *)&(argv[1]), (char *)&(argv[n + 1]),
 			(argc -= n) * sizeof(*argv));
 	}
@@ -3153,22 +3153,22 @@ char *CONST argv[];
 	for (n = 0; n < MAXFUNCLINES && *cp; n++) {
 		if (!(tmp = strtkchr(cp, ';', 0))) break;
 		*(tmp++) = '\0';
-		list[n] = strdup2(cp);
+		list[n] = Xstrdup(cp);
 		cp = skipspace(tmp);
 	}
 	if (!(tmp = strtkchr(cp, '}', 0)) || *(tmp + 1)) {
 		builtinerror(argv, line, ER_SYNTAXERR);
-		for (j = 0; j < n; j++) free2(list[j]);
-		free2(line);
+		for (j = 0; j < n; j++) Xfree(list[j]);
+		Xfree(line);
 		return(-1);
 	}
 
 	if (tmp > cp) {
 		*tmp = '\0';
-		list[n++] = strdup2(cp);
+		list[n++] = Xstrdup(cp);
 	}
 	else if (!n) {
-		free2(line);
+		Xfree(line);
 		if (deletefunction(argv[FUNCNAME]) < 0) {
 			builtinerror(argv, argv[FUNCNAME], ER_NOENTRY);
 			return(-1);
@@ -3176,12 +3176,12 @@ char *CONST argv[];
 
 		return(0);
 	}
-	free2(line);
+	Xfree(line);
 
-	var = (char **)malloc2((n + 1) * sizeof(*var));
+	var = (char **)Xmalloc((n + 1) * sizeof(*var));
 	for (i = 0; i < n; i++) var[i] = list[i];
 	var[i] = NULL;
-	if (addfunction(strdup2(argv[FUNCNAME]), var) < 0) {
+	if (addfunction(Xstrdup(argv[FUNCNAME]), var) < 0) {
 		builtinerror(argv, NULL, ER_OUTOFLIMIT);
 		return(-1);
 	}
@@ -3210,7 +3210,7 @@ char *CONST argv[];
 		return(-1);
 	}
 	setenv2(argv[1], cp, 1);
-	free2(cp);
+	Xfree(cp);
 	adjustpath();
 
 	return(0);
@@ -3293,12 +3293,12 @@ char *CONST argv[];
 		return(-1);
 	}
 	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
-		fprintf2(Xstderr, "%s: %k", argv[0], RESTR_K);
+		Xfprintf(Xstderr, "%s: %k", argv[0], RESTR_K);
 		VOID_C fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
 	if (argc > 2 || !filelist || maxfile <= 0) {
-		fprintf2(Xstderr, "%s: %k", argv[0], ILFNC_K);
+		Xfprintf(Xstderr, "%s: %k", argv[0], ILFNC_K);
 		VOID_C fputnl(Xstderr);
 		return(RET_NOTICE);
 	}
@@ -3382,7 +3382,7 @@ int flags;
 		i = argc;
 		if ((cp = getenvval(&i, argv)) != vnullstr && i == argc) {
 			if (setenv2(argv[0], cp, 0) < 0) error(argv[0]);
-			free2(cp);
+			Xfree(cp);
 			n = RET_SUCCESS;
 		}
 	}
@@ -3405,9 +3405,9 @@ char ***argvp;
 		if (strncommcmp(com, builtinlist[i].ident, len)
 		|| finddupl(builtinlist[i].ident, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(**argvp));
-		(*argvp)[argc++] = strdup2(builtinlist[i].ident);
+		(*argvp)[argc++] = Xstrdup(builtinlist[i].ident);
 	}
 
 	return(argc);
@@ -3424,9 +3424,9 @@ char ***argvp;
 		if (strncommcmp(com, funclist[i].ident, len)
 		|| finddupl(funclist[i].ident, argc, *argvp))
 			continue;
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(**argvp));
-		(*argvp)[argc++] = strdup2(funclist[i].ident);
+		(*argvp)[argc++] = Xstrdup(funclist[i].ident);
 	}
 
 	return(argc);
@@ -3443,34 +3443,34 @@ VOID freedefine(VOID_A)
 	freestrarray(macrolist, maxmacro);
 	freestrarray(helpindex, MAXHELPINDEX);
 # ifdef	DEP_DYNAMICLIST
-	free2(macrolist);
-	free2(helpindex);
-	free2(bindlist);
+	Xfree(macrolist);
+	Xfree(helpindex);
+	Xfree(bindlist);
 # endif
 # ifndef	_NOARCHIVE
 	freelaunchlist(launchlist, maxlaunch);
 	freearchlist(archivelist, maxarchive);
 #  ifdef	DEP_DYNAMICLIST
-	free2(launchlist);
-	free2(archivelist);
+	Xfree(launchlist);
+	Xfree(archivelist);
 #  endif
 # endif	/* !_NOARCHIVE */
 # ifdef	DEP_DOSEMU
 	freedosdrive(fdtype, maxfdtype);
 #  ifdef	DEP_DYNAMICLIST
-	free2(fdtype);
+	Xfree(fdtype);
 #  endif
 # endif	/* DEP_DOSEMU */
 # ifndef	DEP_ORIGSHELL
 	for (i = 0; i < maxalias; i++) {
-		free2(aliaslist[i].alias);
-		free2(aliaslist[i].comm);
+		Xfree(aliaslist[i].alias);
+		Xfree(aliaslist[i].comm);
 	}
 	for (i = 0; i < maxuserfunc; i++) {
-		free2(userfunclist[i].func);
+		Xfree(userfunclist[i].func);
 		for (j = 0; userfunclist[i].comm[j]; j++)
-			free2(userfunclist[i].comm[j]);
-		free2(userfunclist[i].comm);
+			Xfree(userfunclist[i].comm[j]);
+		Xfree(userfunclist[i].comm);
 	}
 # endif	/* !DEP_ORIGSHELL */
 }

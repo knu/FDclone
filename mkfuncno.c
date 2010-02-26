@@ -46,7 +46,7 @@ char *CONST argv[];
 	}
 	fprintf(fp, "\n#define\tFUNCLISTSIZ\t\t%d\n", i);
 
-	if (fp != stdout) fclose(fp);
+	if (fp != stdout) VOID_C fclose(fp);
 
 	return(0);
 }

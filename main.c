@@ -262,10 +262,10 @@ CONST char *s;
 	if (isorgpid()) {
 		forcecleandir(deftmpdir, tmpfilename);
 #ifdef	DEP_DOSDRIVE
-		dosallclose();
+		VOID_C dosallclose();
 #endif
 #ifdef	DEP_URLPATH
-		urlallclose();
+		VOID_C urlallclose();
 #endif
 		Xstdiomode();
 		endterm();
@@ -279,7 +279,7 @@ CONST char *s;
 		Xfputs(s, Xstderr);
 		VOID_C fputnl(Xstderr);
 	}
-	Xfclose(Xstderr);
+	VOID_C Xfclose(Xstderr);
 	doing = 2;
 
 	if (isorgpid()) {
@@ -324,10 +324,10 @@ int sig;
 	if (isorgpid()) {
 		forcecleandir(deftmpdir, tmpfilename);
 #ifdef	DEP_DOSDRIVE
-		dosallclose();
+		VOID_C dosallclose();
 #endif
 #ifdef	DEP_URLPATH
-		urlallclose();
+		VOID_C urlallclose();
 #endif
 #ifdef	DEP_LOGGING
 		endlog(sig + 128);
@@ -550,11 +550,11 @@ VOID setlinecol(VOID_A)
 	char buf[MAXLONGWIDTH + 1];
 
 	if (getconstvar(ENVLINES)) {
-		snprintf2(buf, sizeof(buf), "%d", n_line);
+		Xsnprintf(buf, sizeof(buf), "%d", n_line);
 		setenv2(ENVLINES, buf, 1);
 	}
 	if (getconstvar(ENVCOLUMNS)) {
-		snprintf2(buf, sizeof(buf), "%d", n_column);
+		Xsnprintf(buf, sizeof(buf), "%d", n_column);
 		setenv2(ENVCOLUMNS, buf, 1);
 	}
 }
@@ -639,10 +639,10 @@ int xmax, ymax;
 			keyflush();
 		}
 
-		if (i & 1) Xcputs2(SCRSZ_K);
+		if (i & 1) XXcputs(SCRSZ_K);
 		else {
 			Xputterm(T_STANDOUT);
-			Xcputs2(cp);
+			XXcputs(cp);
 			Xputterm(END_STANDOUT);
 		}
 		Xputterm(T_BELL);
@@ -656,7 +656,7 @@ int xmax, ymax;
 	dumbterm = dupdumbterm;
 	loadtermio(ttyio, tty, NULL);
 	isttyiomode = wastty;
-	free2(tty);
+	Xfree(tty);
 
 	setlinecol();
 	if (n_line != dupn_line) {
@@ -693,7 +693,7 @@ int forced;
 		checkscreen(-1, -1);
 		if (isorgpid()) {
 			if (x != n_column || y != n_line) rewritefile(1);
-			if (subwindow) ungetkey2(K_CTRL('L'), 1);
+			if (subwindow) VOID_C ungetkey2(K_CTRL('L'), 1);
 		}
 	}
 }
@@ -721,7 +721,7 @@ int hide;
 
 	if (timersec) now++;
 	else {
-		now = time2();
+		now = Xtime(NULL);
 		timersec = CLOCKUPDATE;
 	}
 	if (timersec-- < CLOCKUPDATE && !showsecond) return;
@@ -746,11 +746,11 @@ int hide;
 	if (!isleftshift()) x--;
 	Xlocate(x, L_TITLE);
 	Xputterm(T_STANDOUT);
-	Xcprintf2("%02d-%02d-%02d %02d:%02d",
+	VOID_C XXcprintf("%02d-%02d-%02d %02d:%02d",
 		tm -> tm_year % 100,
 		tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
-	if (showsecond) Xcprintf2(":%02d", tm -> tm_sec);
+	if (showsecond) VOID_C XXcprintf(":%02d", tm -> tm_sec);
 	Xputterm(END_STANDOUT);
 	Xlocate(win_x, win_y);
 	Xtflush();
@@ -851,10 +851,10 @@ int *lenp;
 {
 	char *cp, *eol;
 
-	cp = strchr2(version, ' ');
+	cp = Xstrchr(version, ' ');
 	while (*(++cp) == ' ');
 	if (lenp) {
-		if (!(eol = strchr2(cp, ' '))) eol = cp + strlen(cp);
+		if (!(eol = Xstrchr(cp, ' '))) eol = cp + strlen(cp);
 		*lenp = eol - cp;
 	}
 
@@ -870,27 +870,27 @@ VOID title(VOID_A)
 	Xputterm(T_STANDOUT);
 	len = 0;
 	if (!isleftshift()) {
-		Xputch2(' ');
+		VOID_C XXputch(' ');
 		len++;
 	}
-	Xcputs2(" FD");
+	XXcputs(" FD");
 	len += 3;
 	if (!ishardomit()) {
-		Xcputs2("(File & Directory tool)");
+		XXcputs("(File & Directory tool)");
 		len += 23;
 	}
-	Xcputs2(" Ver.");
+	XXcputs(" Ver.");
 	len += 5;
 	cp = getversion(&n);
 	cputstr(n, cp);
 	if (distributor) {
-		Xputch2('#');
+		VOID_C XXputch('#');
 		n++;
 	}
-	cp = (iswellomit()) ? nullstr : " (c)1995-2008 T.Shirai  ";
-	Xcputs2(cp);
+	cp = (iswellomit()) ? nullstr : " (c)1995-2010 T.Shirai  ";
+	XXcputs(cp);
 	n = n_column - len - strlen2(cp) - n;
-	while (n-- > 0) Xputch2(' ');
+	while (n-- > 0) VOID_C XXputch(' ');
 	Xputterm(END_STANDOUT);
 	timersec = 0;
 	printtime(0);
@@ -923,9 +923,9 @@ VOID saveorigenviron(VOID_A)
 
 # if	FD >= 3
 	cp = getversion(&n);
-	cp = strndup2(cp, n);
+	cp = Xstrndup(cp, n);
 	setenv2(FDVERSION, cp, 0);
-	free2(cp);
+	Xfree(cp);
 # endif
 }
 #endif	/* !_NOCUSTOMIZE */
@@ -945,8 +945,8 @@ char *CONST *argv;
 	for (i = 1; argv && argv[i]; i++) {
 		if (cp > buf) *(cp++) = ' ';
 		tmp = killmeta(argv[i]);
-		len = snprintf2(cp, (int)sizeof(buf) - (cp - buf), "%s", tmp);
-		free2(tmp);
+		len = Xsnprintf(cp, (int)sizeof(buf) - (cp - buf), "%s", tmp);
+		Xfree(tmp);
 		if (len < 0) break;
 		cp += strlen(cp);
 	}
@@ -972,7 +972,7 @@ int status;
 # endif
 	char cwd[MAXPATHLEN];
 
-	if (!Xgetwd(cwd)) strcpy2(cwd, "?");
+	if (!Xgetwd(cwd)) Xstrcpy(cwd, "?");
 # ifdef	NOUID
 	logmessage(_LOG_DEBUG_, "%s ends; PWD=%k; STATUS=%d",
 		progname, cwd, status);
@@ -999,13 +999,13 @@ CONST char *line;
 	else i = execpseudoshell(cp, F_IGNORELIST | F_NOCOMLINE);
 	if (i) {
 		Xputterm(L_CLEAR);
-		Xcprintf2("%s, line %d: %s", file, n, ILFNC_K);
+		VOID_C XXcprintf("%s, line %d: %s", file, n, ILFNC_K);
 		Xcputnl();
 		Xputterm(L_CLEAR);
-		Xcprintf2("\t%s", line);
+		VOID_C XXcprintf("\t%s", line);
 		Xcputnl();
 	}
-	free2(command);
+	Xfree(command);
 
 	return((i) ? -1 : 0);
 }
@@ -1034,26 +1034,26 @@ int exist;
 # if	!MSDOS
 	tmp = NULL;
 	if (!exist && (tmp = getconstvar(ENVTERM))) {
-		cp = malloc2(strlen(file) + strlen(tmp) + 1 + 1);
-		strcpy2(strcpy2(strcpy2(cp, file), "."), tmp);
+		cp = Xmalloc(strlen(file) + strlen(tmp) + 1 + 1);
+		Xstrcpy(Xstrcpy(Xstrcpy(cp, file), "."), tmp);
 		tmp = evalpath(cp, 0);
 		if (stat2(tmp, &st) < 0 || !s_isreg(&st)) {
-			free2(tmp);
+			Xfree(tmp);
 			tmp = NULL;
 		}
 	}
 	if (!tmp)
 # endif	/* !MSDOS */
-	tmp = evalpath(strdup2(file), 0);
+	tmp = evalpath(Xstrdup(file), 0);
 	fp = Xfopen(tmp, "r");
 	if (!fp) {
 		if (!exist) {
-			free2(tmp);
+			Xfree(tmp);
 			return(0);
 		}
-		Xcprintf2("%s: Not found", tmp);
+		VOID_C XXcprintf("%s: Not found", tmp);
 		Xcputnl();
-		free2(tmp);
+		Xfree(tmp);
 		return(-1);
 	}
 
@@ -1062,12 +1062,12 @@ int exist;
 	while ((line = Xfgets(fp))) {
 		n++;
 		if (*line == ';' || *line == '#') {
-			free2(line);
+			Xfree(line);
 			continue;
 		}
 
 		cp = line + strlen(line);
-		for (cp--; cp >= line; cp--) if (!isblank2(*cp)) break;
+		for (cp--; cp >= line; cp--) if (!Xisblank(*cp)) break;
 		cp[1] = '\0';
 
 		cont = 0;
@@ -1080,23 +1080,23 @@ int exist;
 
 		if (!fold) fold = line;
 		else if (*line) {
-			fold = realloc2(fold, strlen(fold) + strlen(line) + 1);
+			fold = Xrealloc(fold, strlen(fold) + strlen(line) + 1);
 			strcat(fold, line);
 		}
 
 		if (cont) {
-			if (fold != line) free2(line);
+			if (fold != line) Xfree(line);
 			continue;
 		}
 
 		if (execruncomline(fold, tmp, n, line) < 0) er++;
-		if (fold != line) free2(line);
+		if (fold != line) Xfree(line);
 		fold = NULL;
 	}
 
 	if (fold && execruncomline(fold, tmp, n, line) < 0) er++;
-	Xfclose(fp);
-	free2(tmp);
+	VOID_C Xfclose(fp);
+	Xfree(tmp);
 #endif	/* !DEP_ORIGSHELL */
 
 	return(er ? -1 : 0);
@@ -1110,7 +1110,7 @@ char *CONST argv[];
 	int i, optc;
 
 	optc = 1;
-	optv = (char **)malloc2((argc + 1) * sizeof(char *));
+	optv = (char **)Xmalloc((argc + 1) * sizeof(char *));
 	optv[0] = argv[0];
 
 	for (i = 1; i < argc; i++) {
@@ -1135,7 +1135,7 @@ char *CONST argv[];
 #ifdef	DEP_ORIGSHELL
 	if (initshell(optc, optv) < 0) Xexit2(RET_FAIL);
 #endif
-	free2(optv);
+	Xfree(optv);
 
 	return(argc);
 }
@@ -1152,10 +1152,10 @@ char *CONST argv[];
 			i++;
 			break;
 		}
-		tmp = strdup2(&(argv[i][1]));
-		if ((cp = strchr2(tmp, '='))) *(cp++) = '\0';
+		tmp = Xstrdup(&(argv[i][1]));
+		if ((cp = Xstrchr(tmp, '='))) *(cp++) = '\0';
 		setenv2(tmp, cp, 0);
-		free2(tmp);
+		Xfree(tmp);
 	}
 
 	return(i);
@@ -1203,7 +1203,7 @@ char *CONST envp[];
 	}
 
 	getlogininfo(NULL, &s);
-	return(strdup2(s));
+	return(Xstrdup(s));
 }
 #endif	/* !MSDOS */
 
@@ -1216,11 +1216,11 @@ CONST char *argv;
 
 	progname = getbasename(argv);
 #if	MSDOS || defined (CYGWIN)
-	if ((cp = strchr2(progname, '.')) && cp > progname)
-		progname = strndup2(progname, cp - progname);
+	if ((cp = Xstrchr(progname, '.')) && cp > progname)
+		progname = Xstrndup(progname, cp - progname);
 	else
 #endif
-	progname = strdup2(progname);
+	progname = Xstrdup(progname);
 }
 
 static VOID NEAR setexecpath(argv, envp)
@@ -1231,17 +1231,17 @@ char *CONST envp[];
 	char *tmp, buf[MAXPATHLEN];
 
 	if (!Xgetwd(buf)) error(NOCWD_K);
-	origpath = strdup2(buf);
+	origpath = Xstrdup(buf);
 	if ((cp = searchenv(ENVPWD, envp))) {
 		*fullpath = '\0';
-		realpath2(cp, fullpath, 0);
-		realpath2(fullpath, buf, RLP_READLINK);
+		Xrealpath(cp, fullpath, 0);
+		Xrealpath(fullpath, buf, RLP_READLINK);
 		if (!strpathcmp(origpath, buf)) {
-			free2(origpath);
-			origpath = strdup2(fullpath);
+			Xfree(origpath);
+			origpath = Xstrdup(fullpath);
 		}
 	}
-	strcpy2(fullpath, origpath);
+	Xstrcpy(fullpath, origpath);
 
 	tmp = NULL;
 #if	MSDOS
@@ -1249,14 +1249,14 @@ char *CONST envp[];
 #else
 	if (strdelim(argv, 0)) cp = argv;
 	else cp = tmp = searchexecname(argv, envp);
-	if (!cp) progpath = strdup2(BINDIR);
+	if (!cp) progpath = Xstrdup(BINDIR);
 	else
 #endif
 	{
-		realpath2(cp, buf, RLP_READLINK);
-		free2(tmp);
+		Xrealpath(cp, buf, RLP_READLINK);
+		Xfree(tmp);
 		if ((tmp = strrdelim(buf, 0))) *tmp = '\0';
-		progpath = strdup2(buf);
+		progpath = Xstrdup(buf);
 	}
 }
 
@@ -1308,27 +1308,27 @@ int status;
 		if (!Xgetwd(cwd)) *cwd = '\0';
 		rawchdir(rootpath);
 	}
-	free2(origpath);
-	free2(progname);
+	Xfree(origpath);
+	Xfree(progname);
 #ifdef	DEP_UNICODE
-	free2(unitblpath);
+	Xfree(unitblpath);
 #endif
 #ifdef	DEP_IME
-	free2(dicttblpath);
+	Xfree(dicttblpath);
 #endif
 #ifndef	_NOCATALOG
-	free2(cattblpath);
+	Xfree(cattblpath);
 #endif
 #ifdef	DEP_DOSDRIVE
-	dosallclose();
+	VOID_C dosallclose();
 #endif
 #ifdef	DEP_URLPATH
-	urlallclose();
+	VOID_C urlallclose();
 #endif
-	free2(progpath);
+	Xfree(progpath);
 
 #ifdef	DEBUG
-	free2(tmpfilename);
+	Xfree(tmpfilename);
 	tmpfilename = NULL;
 # ifndef	DEP_ORIGSHELL
 	freevar(environ);
@@ -1340,17 +1340,17 @@ int status;
 #  endif
 #  ifndef	DEP_DYNAMICLIST
 	freestrarray(orighelpindex, MAXHELPINDEX);
-	free2(orighelpindex);
-	free2(origbindlist);
+	Xfree(orighelpindex);
+	Xfree(origbindlist);
 #   ifndef	_NOARCHIVE
 	freelaunchlist(origlaunchlist, origmaxlaunch);
-	free2(origlaunchlist);
+	Xfree(origlaunchlist);
 	freearchlist(origarchivelist, origmaxarchive);
-	free2(origarchivelist);
+	Xfree(origarchivelist);
 #   endif
 #   ifdef	DEP_DOSEMU
 	freedosdrive(origfdtype, origmaxfdtype);
-	free2(origfdtype);
+	Xfree(origfdtype);
 #   endif
 #  endif	/* !DEP_DYNAMICLIST */
 # endif	/* !_NOCUSTOMIZE */
@@ -1390,6 +1390,9 @@ char *CONST argv[], *CONST envp[];
 	char *cp;
 	int i;
 
+#ifndef	NOFLOCK
+	stream_isnfsfunc = isnfs;
+#endif
 #ifdef	DEBUG
 	mtrace();
 #endif
@@ -1494,26 +1497,26 @@ char *CONST argv[], *CONST envp[];
 
 #ifndef	DEP_ORIGSHELL
 	i = countvar(envp);
-	environ = (char **)malloc2((i + 1) * sizeof(char *));
-	for (i = 0; envp[i]; i++) environ[i] = strdup2(envp[i]);
+	environ = (char **)Xmalloc((i + 1) * sizeof(char *));
+	for (i = 0; envp[i]; i++) environ[i] = Xstrdup(envp[i]);
 	environ[i] = NULL;
 #endif
 
 	setexecpath(argv[0], envp);
 #ifdef	DEP_UNICODE
-	unitblpath = strdup2(DATADIR);
+	unitblpath = Xstrdup(DATADIR);
 #endif
 #ifdef	DEP_IME
-	dicttblpath = strdup2(DATADIR);
+	dicttblpath = Xstrdup(DATADIR);
 #endif
 #ifndef	_NOCATALOG
 # ifdef	USEDATADIR
 	cp = getversion(&i);
-	cattblpath = malloc2(strsize(DATADIR) + 1 + i + 1);
-	snprintf2(cattblpath, strsize(DATADIR) + 1 + i + 1,
+	cattblpath = Xmalloc(strsize(DATADIR) + 1 + i + 1);
+	Xsnprintf(cattblpath, strsize(DATADIR) + 1 + i + 1,
 		"%s%c%-.*s", DATADIR, _SC_, i, cp);
 # else
-	cattblpath = strdup2(DATADIR);
+	cattblpath = Xstrdup(DATADIR);
 # endif
 #endif	/* !_NOCATALOG */
 

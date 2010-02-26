@@ -251,7 +251,7 @@ int id;
 	if (!ansipalette || id >= strlen(ansipalette)) color = defpalette[id];
 	else {
 		color = ansipalette[id];
-		if (isdigit2(color)) color -= '0';
+		if (Xisdigit(color)) color -= '0';
 		else color = defpalette[id];
 	}
 
@@ -268,16 +268,16 @@ static VOID NEAR pathbar(VOID_A)
 
 		Xlocate(TC_PATH, TL_PATH);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_PATH);
+		XXcputs(TS_PATH);
 		Xputterm(END_STANDOUT);
 		cputstr(TD_PATH, fullpath);
 
 		Xlocate(TC_MARK, TL_PATH);
-		Xcprintf2("%<*d", TD_MARK, mark);
+		VOID_C XXcprintf("%<*d", TD_MARK, mark);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_MARK);
+		XXcputs(TS_MARK);
 		Xputterm(END_STANDOUT);
-		Xcprintf2("%<'*qd", TD_SIZE, marksize);
+		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		Xtflush();
 		return;
@@ -289,7 +289,7 @@ static VOID NEAR pathbar(VOID_A)
 
 	Xlocate(C_PATH, L_PATH);
 	Xputterm(T_STANDOUT);
-	Xcputs2(S_PATH);
+	XXcputs(S_PATH);
 	Xputterm(END_STANDOUT);
 	cputstr(D_PATH, fullpath);
 
@@ -344,11 +344,11 @@ VOID helpbar(VOID_A)
 
 	Xlocate(0, L_HELP);
 	Xputterm(L_CLEAR);
-	Xputch2(isdisplnk(dispmode) ? 'S' : ' ');
-	Xputch2(isdisptyp(dispmode) ? 'T' : ' ');
-	Xputch2(ishidedot(dispmode) ? 'H' : ' ');
+	VOID_C XXputch(isdisplnk(dispmode) ? 'S' : ' ');
+	VOID_C XXputch(isdisptyp(dispmode) ? 'T' : ' ');
+	VOID_C XXputch(ishidedot(dispmode) ? 'H' : ' ');
 #ifdef	HAVEFLAGS
-	Xputch2(isfileflg(dispmode) ? 'F' : ' ');
+	VOID_C XXputch(isfileflg(dispmode) ? 'F' : ' ');
 #endif
 
 	for (i = 0; i < max; i++) {
@@ -356,7 +356,7 @@ VOID helpbar(VOID_A)
 		len = (width - strlen2(helpindex[i]) + 1) / 2;
 		if (len < 0) len = 0;
 		Xputterm(T_STANDOUT);
-		for (j = 0; j < len; j++) Xputch2(' ');
+		for (j = 0; j < len; j++) VOID_C XXputch(' ');
 		cputstr(width - len, helpindex[i]);
 		Xputterm(END_STANDOUT);
 	}
@@ -385,15 +385,15 @@ static VOID NEAR statusbar(VOID_A)
 
 		Xlocate(TC_INFO, TL_STATUS);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_INFO);
+		XXcputs(TS_INFO);
 		Xputterm(END_STANDOUT);
 
 		Xlocate(TC_SIZE, TL_STATUS);
-		Xcprintf2("%<*d", TD_MARK, maxfile);
+		VOID_C XXcprintf("%<*d", TD_MARK, maxfile);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_SIZE);
+		XXcputs(TS_SIZE);
 		Xputterm(END_STANDOUT);
-		Xcprintf2("%<'*qd", TD_SIZE, totalsize);
+		VOID_C XXcprintf("%<'*qd", TD_SIZE, totalsize);
 
 		return;
 	}
@@ -404,45 +404,45 @@ static VOID NEAR statusbar(VOID_A)
 
 	Xlocate(C_PAGE, L_STATUS);
 	Xputterm(T_STANDOUT);
-	Xcputs2(S_PAGE);
+	XXcputs(S_PAGE);
 	Xputterm(END_STANDOUT);
-	Xcprintf2("%<*d/%<*d", D_PAGE, filepos / FILEPERPAGE + 1,
+	VOID_C XXcprintf("%<*d/%<*d", D_PAGE, filepos / FILEPERPAGE + 1,
 		D_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
 	Xlocate(C_MARK, L_STATUS);
 	Xputterm(T_STANDOUT);
-	Xcputs2(S_MARK);
+	XXcputs(S_MARK);
 	Xputterm(END_STANDOUT);
-	Xcprintf2("%<*d/%<*d", D_MARK, mark, D_MARK, maxfile);
+	VOID_C XXcprintf("%<*d/%<*d", D_MARK, mark, D_MARK, maxfile);
 
 	if (!ishardomit()) {
 		Xlocate(C_SORT, L_STATUS);
 		Xputterm(T_STANDOUT);
-		Xcputs2(S_SORT);
+		XXcputs(S_SORT);
 		Xputterm(END_STANDOUT);
 
 #ifndef	_NOPRECEDE
-		if (haste) Xkanjiputs(OMIT_K);
+		if (haste) VOID_C Xkanjiputs(OMIT_K);
 		else
 #endif
-		if (!(sorton & 7)) Xkanjiputs(skipstr(ORAW_K, 3));
+		if (!(sorton & 7)) VOID_C Xkanjiputs(skipstr(ORAW_K, 3));
 		else {
 			str[0] = ONAME_K;
 			str[1] = OEXT_K;
 			str[2] = OSIZE_K;
 			str[3] = ODATE_K;
 			str[4] = OLEN_K;
-			Xkanjiputs(skipstr(str[(sorton & 7) - 1], 3));
+			VOID_C Xkanjiputs(skipstr(str[(sorton & 7) - 1], 3));
 
 			str[0] = OINC_K;
 			str[1] = ODEC_K;
-			Xcprintf2("(%k)", skipstr(str[sorton / 8], 3));
+			VOID_C XXcprintf("(%k)", skipstr(str[sorton / 8], 3));
 		}
 	}
 
 	Xlocate(C_FIND, L_STATUS);
 	Xputterm(T_STANDOUT);
-	Xcputs2(S_FIND);
+	XXcputs(S_FIND);
 	Xputterm(END_STANDOUT);
 	if (findpattern) cputstr(D_FIND, findpattern);
 
@@ -468,7 +468,7 @@ static VOID NEAR stackbar(VOID_A)
 	for (i = 0; i < stackdepth; i++) {
 #ifndef	_NOCOLOR
 		if (ansicolor == 2)
-			for (; x < width * i + 1; x++) Xputch2(' ');
+			for (; x < width * i + 1; x++) VOID_C XXputch(' ');
 		else
 #endif
 		Xlocate(width * i + 1, L_STACK);
@@ -489,7 +489,7 @@ static VOID NEAR stackbar(VOID_A)
 	}
 #ifndef	_NOCOLOR
 	if (bgcolor >= 0) {
-		for (; x < n_column; x++) Xputch2(' ');
+		for (; x < n_column; x++) VOID_C XXputch(' ');
 		Xputterm(T_NORMAL);
 	}
 #endif
@@ -503,12 +503,13 @@ int width;
 {
 	off_t kb;
 
-	if (size < (off_t)0) Xcprintf2("%*s", width, "?");
+	if (size < (off_t)0) VOID_C XXcprintf("%*s", width, "?");
 	else if (size < (off_t)10000000 / bsize)
-		Xcprintf2("%<'*qd%s", width - W_BYTES, size * bsize, S_BYTES);
+		VOID_C XXcprintf("%<'*qd%s",
+			width - W_BYTES, size * bsize, S_BYTES);
 	else if ((kb = calcKB(size, bsize)) < (off_t)1000000000)
-		Xcprintf2("%<'*qd%s", width - W_KBYTES, kb, S_KBYTES);
-	else Xcprintf2("%<'*qd%s",
+		VOID_C XXcprintf("%<'*qd%s", width - W_KBYTES, kb, S_KBYTES);
+	else VOID_C XXcprintf("%<'*qd%s",
 		width - W_MBYTES, kb / (off_t)1024, S_MBYTES);
 }
 
@@ -527,26 +528,27 @@ static VOID NEAR sizebar(VOID_A)
 
 		Xlocate(TC_PAGE, TL_SIZE);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_PAGE);
+		XXcputs(TS_PAGE);
 		Xputterm(END_STANDOUT);
-		Xcprintf2("%<*d/%<*d", TD_PAGE, filepos / FILEPERPAGE + 1,
+		VOID_C XXcprintf("%<*d/%<*d",
+			TD_PAGE, filepos / FILEPERPAGE + 1,
 			TD_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
 		Xlocate(TC_TOTAL, TL_SIZE);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_TOTAL);
+		XXcputs(TS_TOTAL);
 		Xputterm(END_STANDOUT);
 		cputbytes(total, bsize, TD_TOTAL);
 
 		Xlocate(TC_USED, TL_SIZE);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_USED);
+		XXcputs(TS_USED);
 		Xputterm(END_STANDOUT);
 		cputbytes(total - fre, bsize, TD_USED);
 
 		Xlocate(TC_FREE, TL_SIZE);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_FREE);
+		XXcputs(TS_FREE);
 		Xputterm(END_STANDOUT);
 		cputbytes(fre, bsize, TD_FREE);
 
@@ -559,14 +561,14 @@ static VOID NEAR sizebar(VOID_A)
 
 	Xlocate(C_SIZE, L_SIZE);
 	Xputterm(T_STANDOUT);
-	Xcputs2(S_SIZE);
+	XXcputs(S_SIZE);
 	Xputterm(END_STANDOUT);
-	Xcprintf2("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
+	VOID_C XXcprintf("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
 
 	if (!ishardomit()) {
 		Xlocate(C_TOTAL, L_SIZE);
 		Xputterm(T_STANDOUT);
-		Xcputs2(S_TOTAL);
+		XXcputs(S_TOTAL);
 		Xputterm(END_STANDOUT);
 		cputbytes(total, bsize, D_TOTAL);
 	}
@@ -574,7 +576,7 @@ static VOID NEAR sizebar(VOID_A)
 	if (!iswellomit()) {
 		Xlocate(C_FREE, L_SIZE);
 		Xputterm(T_STANDOUT);
-		Xcputs2(S_FREE);
+		XXcputs(S_FREE);
 		Xputterm(END_STANDOUT);
 		cputbytes(fre, bsize, D_FREE);
 	}
@@ -642,8 +644,8 @@ uid_t uid;
 
 	i = len = (iswellomit()) ? WOWNERMIN : WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((up = finduid(uid, NULL))) strncpy3(buf, up -> name, &len, 0);
-	else snprintf2(buf, len + 1, "%-*d", len, (int)uid);
+	else if ((up = finduid(uid, NULL))) strncpy2(buf, up -> name, &len, 0);
+	else Xsnprintf(buf, len + 1, "%-*d", len, (int)uid);
 
 	return(len);
 }
@@ -657,8 +659,8 @@ gid_t gid;
 
 	i = len = (iswellomit()) ? WGROUPMIN : WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((gp = findgid(gid, NULL))) strncpy3(buf, gp -> name, &len, 0);
-	else snprintf2(buf, len + 1, "%-*d", len, (int)gid);
+	else if ((gp = findgid(gid, NULL))) strncpy2(buf, gp -> name, &len, 0);
+	else Xsnprintf(buf, len + 1, "%-*d", len, (int)gid);
 
 	return(len);
 }
@@ -673,10 +675,10 @@ int width, max;
 	int i, len;
 
 	if (max > MAXLONGWIDTH) max = MAXLONGWIDTH;
-	snprintf2(tmp, sizeof(tmp), "%<*qd", max, n);
+	Xsnprintf(tmp, sizeof(tmp), "%<*qd", max, n);
 	for (i = max - width; i > 0; i--) if (tmp[i - 1] == ' ') break;
 	len = max - i;
-	strncpy2(buf, &(tmp[i]), len);
+	Xstrncpy(buf, &(tmp[i]), len);
 
 	return(len);
 }
@@ -687,23 +689,23 @@ namelist *namep;
 int width;
 {
 	if (isdir(namep))
-		snprintf2(buf, width + 1, "%*.*s", width, width, "<DIR>");
+		Xsnprintf(buf, width + 1, "%*.*s", width, width, "<DIR>");
 #if	MSDOS
 	else if (s_isfifo(namep))
-		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
+		Xsnprintf(buf, width + 1, "%*.*s", width, width, "<VOL>");
 #else	/* !MSDOS */
 # ifdef	DEP_DOSDRIVE
 	else if (dospath2(nullstr) && s_isfifo(namep))
-		snprintf2(buf, width + 1, "%*.*s", width, width, "<VOL>");
+		Xsnprintf(buf, width + 1, "%*.*s", width, width, "<VOL>");
 # endif
 	else if (isdev(namep))
-		snprintf2(buf, width + 1, "%<*lu,%<*lu",
+		Xsnprintf(buf, width + 1, "%<*lu,%<*lu",
 			width / 2,
 			(u_long)major((u_long)(namep -> st_size)),
 			width - (width / 2) - 1,
 			(u_long)minor((u_long)(namep -> st_size)));
 #endif	/* !MSDOS */
-	else snprintf2(buf, width + 1, "%<*qd", width, namep -> st_size);
+	else Xsnprintf(buf, width + 1, "%<*qd", width, namep -> st_size);
 
 	return(width);
 }
@@ -714,7 +716,7 @@ namelist *namep;
 int width;
 {
 #ifdef	NOSYMLINK
-	strncpy3(buf, namep -> name, &width, fnameofs);
+	strncpy2(buf, namep -> name, &width, fnameofs);
 #else	/* !NOSYMLINK */
 # ifdef	DEP_DOSDRIVE
 	char path[MAXPATHLEN];
@@ -722,7 +724,7 @@ int width;
 	char *tmp;
 	int i, w, len;
 
-	i = strncpy3(buf, namep -> name, &width, fnameofs);
+	i = strncpy2(buf, namep -> name, &width, fnameofs);
 	if (!islink(namep)) return(width);
 
 	len = fnameofs - strlen3(namep -> name);
@@ -739,18 +741,18 @@ int width;
 # ifndef	_NOARCHIVE
 	else if (archivefile) {
 		if (namep -> linkname)
-			strncpy3(buf, namep -> linkname, &w, len);
+			strncpy2(buf, namep -> linkname, &w, len);
 	}
 # endif
 	else {
-		tmp = malloc2(width * 2 + len + 1);
+		tmp = Xmalloc(width * 2 + len + 1);
 		i = Xreadlink(nodospath(path, namep -> name),
 			tmp, width * 2 + len);
 		if (i >= 0) {
 			tmp[i] = '\0';
-			strncpy3(buf, tmp, &w, len);
+			strncpy2(buf, tmp, &w, len);
 		}
-		free2(tmp);
+		Xfree(tmp);
 	}
 #endif	/* !NOSYMLINK */
 
@@ -776,7 +778,7 @@ static VOID NEAR infobar(VOID_A)
 		Xlocate(TC_INFO + TW_INFO, TL_STATUS);
 		if (filepos >= maxfile) {
 			if (filelist[0].st_nlink < 0 && filelist[0].name)
-				Xkanjiputs(filelist[0].name);
+				VOID_C Xkanjiputs(filelist[0].name);
 			Xtflush();
 			return;
 		}
@@ -784,13 +786,14 @@ static VOID NEAR infobar(VOID_A)
 			- (1 + TWSIZE2 + 1 + WDATE + 1 + WTIME + 1 + TWMODE);
 # ifndef	_NOPRECEDE
 		if (!havestat(&(filelist[filepos]))) {
-			kanjiputs2(filelist[filepos].name, len, fnameofs);
+			VOID_C kanjiputs2(filelist[filepos].name,
+				len, fnameofs);
 			Xtflush();
 			return;
 		}
 # endif
 
-		buf = malloc2(TD_INFO * KANAWID + 1);
+		buf = Xmalloc(TD_INFO * KANAWID + 1);
 		tm = localtime(&(filelist[filepos].st_mtim));
 
 		len = putfilename(buf, &(filelist[filepos]), len);
@@ -799,7 +802,7 @@ static VOID NEAR infobar(VOID_A)
 		len += putsize2(&(buf[len]), &(filelist[filepos]), TWSIZE2);
 		buf[len++] = ' ';
 
-		snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
+		Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
 			"%02d-%02d-%02d %2d:%02d ",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
@@ -817,8 +820,8 @@ static VOID NEAR infobar(VOID_A)
 			(!isdisplnk(dispmode) && islink(&(filelist[filepos])))
 			? (S_IFLNK | 0777) : filelist[filepos].st_mode, 1);
 
-		Xkanjiputs(buf);
-		free2(buf);
+		VOID_C Xkanjiputs(buf);
+		Xfree(buf);
 		Xtflush();
 		return;
 	}
@@ -829,7 +832,7 @@ static VOID NEAR infobar(VOID_A)
 	if (filepos >= maxfile) {
 		Xputterm(L_CLEAR);
 		if (filelist[0].st_nlink < 0 && filelist[0].name)
-			Xkanjiputs(filelist[0].name);
+			VOID_C Xkanjiputs(filelist[0].name);
 		Xtflush();
 		return;
 	}
@@ -846,14 +849,14 @@ static VOID NEAR infobar(VOID_A)
 # endif
 		}
 		Xlocate(len, L_INFO);
-		kanjiputs2(filelist[filepos].name,
+		VOID_C kanjiputs2(filelist[filepos].name,
 			n_lastcolumn - len, fnameofs);
 		Xtflush();
 		return;
 	}
 #endif
 
-	buf = malloc2(n_lastcolumn * KANAWID + 1);
+	buf = Xmalloc(n_lastcolumn * KANAWID + 1);
 	tm = localtime(&(filelist[filepos].st_mtim));
 
 	if (isbestomit()) len = 0;
@@ -868,7 +871,7 @@ static VOID NEAR infobar(VOID_A)
 		? (S_IFLNK | 0777) : filelist[filepos].st_mode, 0);
 
 	if (!ishardomit()) {
-		snprintf2(&(buf[len]), 1 + WNLINK + 1 + 1, " %<*d ",
+		Xsnprintf(&(buf[len]), 1 + WNLINK + 1 + 1, " %<*d ",
 			WNLINK, (int)(filelist[filepos].st_nlink));
 		len += 1 + WNLINK + 1;
 
@@ -897,15 +900,15 @@ static VOID NEAR infobar(VOID_A)
 		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len);
 	buf[len++] = ' ';
 
-	snprintf2(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
+	Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
 		"%02d-%02d-%02d %02d:%02d ",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	len += WDATE + 1 + WTIME + 1;
 
 	putfilename(&(buf[len]), &(filelist[filepos]), n_lastcolumn - len);
-	Xkanjiputs(buf);
-	free2(buf);
+	VOID_C Xkanjiputs(buf);
+	Xfree(buf);
 	Xtflush();
 }
 
@@ -914,7 +917,7 @@ VOID waitmes(VOID_A)
 	helpbar();
 	Xlocate(0, L_MESLINE);
 	Xputterm(L_CLEAR);
-	Xkanjiputs(WAIT_K);
+	VOID_C Xkanjiputs(WAIT_K);
 	if (win_x >= 0 && win_y >= 0) Xlocate(win_x, win_y);
 	Xtflush();
 }
@@ -949,7 +952,7 @@ int i;
 		Xchgcolor(bgcolor, 1);
 		Xlocate(calc_x, calc_y);
 		if (!isleftshift()) {
-			Xputch2(' ');
+			VOID_C XXputch(' ');
 			calc_x++;
 		}
 	}
@@ -1004,7 +1007,7 @@ int no, isstandout;
 
 	col = calclocate(no) - 2 - 1 + ((isshortwid()) ? 1 : 0);
 	width = calcwidth();
-	Xputch2(ismark(&(list[no])) ? '*' : ' ');
+	VOID_C XXputch(ismark(&(list[no])) ? '*' : ' ');
 
 	if (list != filelist) {
 		len = strlen3(list[no].name);
@@ -1022,16 +1025,16 @@ int no, isstandout;
 		return(col);
 	}
 
-	buf = malloc2(col * KANAWID + 1);
+	buf = Xmalloc(col * KANAWID + 1);
 	i = (isstandout && fnameofs > 0) ? fnameofs : 0;
 	wid = width;
-	i = strncpy3(buf, list[no].name, &width, i);
+	i = strncpy2(buf, list[no].name, &width, i);
 
 #ifndef	_NOPRECEDE
 	if (!havestat(&(list[no]))) {
 		if (isstandout > 0) Xputterm(T_STANDOUT);
-		Xkanjiputs(buf);
-		free2(buf);
+		VOID_C Xkanjiputs(buf);
+		Xfree(buf);
 		if (isstandout > 0) Xputterm(END_STANDOUT);
 		return(wid);
 	}
@@ -1059,14 +1062,14 @@ int no, isstandout;
 	}
 	if (curcolumns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&(list[no].st_mtim));
-		snprintf2(&(buf[len]), WIDTH2 + 1, " %02d-%02d-%02d %2d:%02d",
+		Xsnprintf(&(buf[len]), WIDTH2 + 1, " %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		len += WIDTH2;
 	}
 	if (curcolumns < 2 && len + WIDTH1 <= width) {
 		if (!tm) tm = localtime(&(list[no].st_mtim));
-		snprintf2(&(buf[len]), 1 + WSECOND + 1, ":%02d", tm -> tm_sec);
+		Xsnprintf(&(buf[len]), 1 + WSECOND + 1, ":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
 #ifndef	NOUID
@@ -1095,12 +1098,12 @@ int no, isstandout;
 	else
 #endif
 	if (isstandout > 0) Xputterm(T_STANDOUT);
-	Xkanjiputs(buf);
-	free2(buf);
+	VOID_C Xkanjiputs(buf);
+	Xfree(buf);
 #ifndef	_NOCOLOR
 	if ((bgcolor = getcolor(CL_BACK)) >= 0) {
 		Xchgcolor(bgcolor, 1);
-		Xputch2(' ');
+		VOID_C XXputch(' ');
 	}
 	if (ansicolor) Xputterm(T_NORMAL);
 	else
@@ -1143,7 +1146,7 @@ int isstandout;
 	if (!list || max <= 0) {
 		i = (n_column / FILEPERLINE) - 2 - 1;
 		Xlocate(1, filetop(win));
-		Xputch2(' ');
+		VOID_C XXputch(' ');
 		if (isstandout) Xputterm(T_STANDOUT);
 		cp = NOFIL_K;
 		if (i <= strlen2(cp)) cp = "NoFiles";
@@ -1160,13 +1163,15 @@ int isstandout;
 #ifndef	_NOTRADLAYOUT
 		if (istradlayout()) {
 			Xlocate(TC_PAGE + TW_PAGE, TL_SIZE);
-			Xcprintf2("%<*d", TD_PAGE, pos / FILEPERPAGE + 1);
+			VOID_C XXcprintf("%<*d",
+				TD_PAGE, pos / FILEPERPAGE + 1);
 		}
 		else
 #endif
 		{
 			Xlocate(C_PAGE + W_PAGE, L_STATUS);
-			Xcprintf2("%<*d", D_PAGE, pos / FILEPERPAGE + 1);
+			VOID_C XXcprintf("%<*d",
+				D_PAGE, pos / FILEPERPAGE + 1);
 		}
 	}
 
@@ -1219,8 +1224,8 @@ CONST char *def;
 	for (n = 1; n < windows; n++) {
 		Xlocate(0, y);
 		Xputterm(L_CLEAR);
-		Xputch2(' ');
-		for (i = 2; i < n_column; i++) Xputch2('-');
+		VOID_C XXputch(' ');
+		for (i = 2; i < n_column; i++) VOID_C XXputch('-');
 		y += winvar[n].v_fileperrow + 1;
 	}
 	for (; y < L_STACK; y++) {
@@ -1271,18 +1276,18 @@ int n;
 		} while (browselist);
 #  endif
 	}
-	free2(winvar[win].v_archivedir);
+	Xfree(winvar[win].v_archivedir);
 	winvar[win].v_archivedir = NULL;
 # endif	/* !_NOARCHIVE */
-	free2(winvar[win].v_fullpath);
+	Xfree(winvar[win].v_fullpath);
 	winvar[win].v_fullpath = NULL;
 	if (filelist) {
-		for (i = 0; i < maxfile; i++) free2(filelist[i].name);
-		free2(filelist);
+		for (i = 0; i < maxfile; i++) Xfree(filelist[i].name);
+		Xfree(filelist);
 		filelist = NULL;
 	}
 	maxfile = maxent = filepos = sorton = dispmode = 0;
-	free2(findpattern);
+	Xfree(findpattern);
 	findpattern = NULL;
 # ifdef	DEP_PTY
 	killpty(win, NULL);
@@ -1408,7 +1413,7 @@ char *buf;
 	}
 	else {
 		if (n == 1) buf[len = 0] = '\0';
-		if (iscntrl2(ch) || ch >= K_MIN) isearch = 0;
+		if (Xiscntrl(ch) || ch >= K_MIN) isearch = 0;
 		else if (len < MAXNAMLEN - 1) {
 			buf[len++] = ch;
 			buf[len] = '\0';
@@ -1511,13 +1516,13 @@ CONST char *arcre;
 		if (ishidedot(dispmode) && *(dp -> d_name) == '.'
 		&& !isdotdir(dp -> d_name))
 			continue;
-		strcpy2(buf, dp -> d_name);
+		Xstrcpy(buf, dp -> d_name);
 		for (i = 0; i < stackdepth; i++)
 			if (!strcmp(buf, filestack[i].name)) break;
 		if (i < stackdepth) continue;
 
 		filelist = addlist(filelist, maxfile, &maxent);
-		filelist[maxfile].name = strdup2(buf);
+		filelist[maxfile].name = Xstrdup(buf);
 #ifndef	NOSYMLINK
 		filelist[maxfile].linkname = NULL;
 #endif
@@ -1533,13 +1538,13 @@ CONST char *arcre;
 		else
 #endif
 		if (getstatus(&(filelist[maxfile])) < 0) {
-			free2(filelist[maxfile].name);
+			Xfree(filelist[maxfile].name);
 			continue;
 		}
 
 		maxfile++;
 	}
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 
 	return(n);
 }
@@ -1801,24 +1806,24 @@ CONST char *def;
 				escapearch();
 			} while (browselist);
 # endif
-			strcpy2(file, filelist[filepos].name);
+			Xstrcpy(file, filelist[filepos].name);
 		}
 		else if (no == FNC_CHDIR) {
 			tmp = (filepos >= 0) ? filelist[filepos].name : NULL;
 			if (!(cp = archchdir(tmp))) {
 				if (!tmp) tmp = parentpath;
 				warning(-1, tmp);
-				strcpy2(file, tmp);
+				Xstrcpy(file, tmp);
 			}
-			else if (cp != (char *)-1) strcpy2(file, cp);
+			else if (cp != (char *)-1) Xstrcpy(file, cp);
 			else {
 				escapearch();
-				strcpy2(file, filelist[filepos].name);
+				Xstrcpy(file, filelist[filepos].name);
 			}
 		}
 		else if (no == FNC_EFFECT) {
 			if (filepos < 0) *file = '\0';
-			else strcpy2(file, filelist[filepos].name);
+			else Xstrcpy(file, filelist[filepos].name);
 		}
 		no = FNC_NONE;
 	}
@@ -1828,7 +1833,7 @@ CONST char *def;
 		no -= FNC_EFFECT;
 		if (!maxfile && !ischgdir(&(filelist[filepos]))) cp = curpath;
 		else cp = filelist[filepos].name;
-		strcpy2(file, cp);
+		Xstrcpy(file, cp);
 	}
 
 #ifndef	_NOARCHIVE
@@ -1837,7 +1842,7 @@ CONST char *def;
 #endif
 	i = (maxfile || !ischgdir(&(filelist[0]))) ? maxfile : 1;
 	while (i-- > 0) {
-		free2(filelist[i].name);
+		Xfree(filelist[i].name);
 		filelist[i].name = NULL;
 	}
 	maxfile = filepos = 0;
@@ -1858,7 +1863,7 @@ int evaled;
 
 	if (!path) return(NULL);
 
-	cp = strdup2(path);
+	cp = Xstrdup(path);
 	if (!evaled) cp = evalpath(cp, 0);
 #if	MSDOS
 	if (_dospath(cp)) {
@@ -1887,18 +1892,18 @@ int evaled;
 				hideclock = 2;
 				warning(-1, cp);
 #if	MSDOS
-				strcpy2(fullpath, origpath);
+				Xstrcpy(fullpath, origpath);
 #endif
-				free2(cp);
+				Xfree(cp);
 				return(NULL);
 			}
 			if (i == _SC_) file++;
 			else *file = i;
 		}
-		strcpy2(buf, file);
+		Xstrcpy(buf, file);
 		file = buf;
 	}
-	free2(cp);
+	Xfree(cp);
 
 	return(file);
 }
@@ -1967,7 +1972,7 @@ int evaled;
 		def = initcwd(pathlist[n], prev, evaled);
 
 #ifndef	_NOSPLITWIN
-		winvar[n].v_fullpath = strdup2(fullpath);
+		winvar[n].v_fullpath = Xstrdup(fullpath);
 		if (n) {
 			getfilelist();
 			sorton = sorttype % 100;
@@ -1996,7 +2001,7 @@ int evaled;
 
 	for (;;) {
 		if (!def && isdotdir(file) == 1) {
-			strcpy2(prev, getbasename(fullpath));
+			Xstrcpy(prev, getbasename(fullpath));
 			if (*prev) def = prev;
 			else copycurpath(file);
 		}
@@ -2005,7 +2010,7 @@ int evaled;
 		&& chdir3(nodospath(buf, file), 1) < 0) {
 			hideclock = 2;
 			warning(-1, file);
-			strcpy2(prev, file);
+			Xstrcpy(prev, file);
 			def = prev;
 		}
 
@@ -2023,16 +2028,16 @@ int evaled;
 		}
 		if (ischgdir) def = NULL;
 		else {
-			strcpy2(prev, file);
+			Xstrcpy(prev, file);
 			copycurpath(file);
 			def = prev;
 		}
 	}
 
-	free2(cwd);
+	Xfree(cwd);
 #ifdef	_NOSPLITWIN
-	free2(filelist);
-	free2(findpattern);
+	Xfree(filelist);
+	Xfree(findpattern);
 #else
 	for (n = 0; n < MAXWINDOWS; n++) shutwin(n);
 	windows = 1;

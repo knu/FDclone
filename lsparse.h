@@ -75,7 +75,7 @@ extern namelist *addlist __P_((namelist *, int, int *));
 extern VOID freelist __P_((namelist *, int));
 extern int lsparse __P_((VOID_P, CONST lsparse_t *,
 		namelist **, char *(*)__P_((VOID_P))));
-extern int strptime2 __P_((CONST char *, CONST char *, struct tm *, int *));
+extern int Xstrptime __P_((CONST char *, CONST char *, struct tm *, int *));
 #endif
 
 extern int (*lsintrfunc)__P_((VOID_A));

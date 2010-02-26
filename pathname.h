@@ -206,8 +206,8 @@ extern char *gendospath __P_((char *, int, int));
 extern char *strdelim __P_((CONST char *, int));
 extern char *strrdelim __P_((CONST char *, int));
 #else
-#define	strdelim(s, d)		strchr2(s, _SC_)
-#define	strrdelim(s, d)		strrchr2(s, _SC_)
+#define	strdelim(s, d)		Xstrchr(s, _SC_)
+#define	strrdelim(s, d)		Xstrrchr(s, _SC_)
 #endif
 #ifdef	FD
 extern char *strrdelim2 __P_((CONST char *, CONST char *));
@@ -218,10 +218,10 @@ extern int isdelim __P_((CONST char *, int));
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
 #ifdef	PATHNOCASE
-#define	strpathcmp		strcasecmp2
-#define	strnpathcmp		strncasecmp2
-#define	strpathcmp2		strcasecmp2
-#define	strnpathcmp2		strncasecmp2
+#define	strpathcmp		Xstrcasecmp
+#define	strnpathcmp		Xstrncasecmp
+#define	strpathcmp2		Xstrcasecmp
+#define	strnpathcmp2		Xstrncasecmp
 #else
 #define	strpathcmp		strcmp
 #define	strnpathcmp		strncmp
@@ -229,15 +229,15 @@ extern int strpathcmp2 __P_((CONST char *, CONST char *));
 extern int strnpathcmp2 __P_((CONST char *, CONST char *, int));
 #endif
 #ifdef	COMMNOCASE
-#define	strcommcmp		strcasecmp2
-#define	strncommcmp		strncasecmp2
+#define	strcommcmp		Xstrcasecmp
+#define	strncommcmp		Xstrncasecmp
 #else
 #define	strcommcmp		strcmp
 #define	strncommcmp		strncmp
 #endif
 #ifdef	ENVNOCASE
-#define	strenvcmp		strcasecmp2
-#define	strnenvcmp		strncasecmp2
+#define	strenvcmp		Xstrcasecmp
+#define	strnenvcmp		Xstrncasecmp
 #else
 #define	strenvcmp		strcmp
 #define	strnenvcmp		strncmp
@@ -321,7 +321,7 @@ extern p_id_t (*getpidfunc)__P_((VOID_A));
 extern p_id_t (*getlastpidfunc)__P_((VOID_A));
 extern char *(*getflagfunc)__P_((VOID_A));
 extern int (*checkundeffunc)__P_((CONST char *, CONST char *, int));
-extern VOID (*exitfunc)__P_((VOID_A));
+extern VOID_T (*exitfunc)__P_((VOID_A));
 extern char *(*backquotefunc)__P_((CONST char *));
 #ifndef	MINIMUMSHELL
 extern char *(*posixsubstfunc)__P_((CONST char *, int *));

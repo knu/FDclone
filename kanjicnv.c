@@ -14,7 +14,7 @@
 #define	SJIS			010
 #define	EUC			020
 
-static VOID NEAR fputc2 __P_((int, FILE *));
+static VOID NEAR Xfputc __P_((int, FILE *));
 static VOID NEAR convert __P_((int, int, FILE *));
 static VOID NEAR output __P_((FILE *, int, int));
 int main __P_((int, char *CONST []));
@@ -25,7 +25,7 @@ static int removebs = 0;
 static int kanjicode = SJIS;
 
 
-static VOID NEAR fputc2(c, fp)
+static VOID NEAR Xfputc(c, fp)
 int c;
 FILE *fp;
 {
@@ -41,26 +41,26 @@ FILE *fp;
 
 	if (kanjicode == EUC) {
 		if (j1) {
-			fputc2(j1 | 0x80, fp);
-			fputc2(j2 | 0x80, fp);
+			Xfputc(j1 | 0x80, fp);
+			Xfputc(j2 | 0x80, fp);
 		}
-		else if (j2 <= 0x20 || j2 >= 0x60) fputc2(j2, fp);
+		else if (j2 <= 0x20 || j2 >= 0x60) Xfputc(j2, fp);
 		else {
-			fputc2(0x8e, fp);
-			fputc2(j2 | 0x80, fp);
+			Xfputc(0x8e, fp);
+			Xfputc(j2 | 0x80, fp);
 		}
 	}
 	else {
 		if (j1) {
 			c = ((j1 - 1) >> 1) + ((j1 < 0x5f) ? 0x71 : 0xb1);
-			fputc2(c, fp);
+			Xfputc(c, fp);
 			c = j2 + ((j1 & 1)
 				? ((j2 < 0x60) ? 0x1f : 0x20) : 0x7e);
-			fputc2(c, fp);
-			if (c == '\\' && (prefix || msboff)) fputc2('\\', fp);
+			Xfputc(c, fp);
+			if (c == '\\' && (prefix || msboff)) Xfputc('\\', fp);
 		}
-		else if (j2 <= 0x20 || j2 >= 0x60) fputc2(j2, fp);
-		else fputc2(j2 | 0x80, fp);
+		else if (j2 <= 0x20 || j2 >= 0x60) Xfputc(j2, fp);
+		else Xfputc(j2 | 0x80, fp);
 	}
 }
 
@@ -87,7 +87,7 @@ int c, mode;
 		bufp = 0;
 	}
 	else if (!(kanji1 & KANJI)) {
-		fputc2(buf[0], fp);
+		Xfputc(buf[0], fp);
 		bufp = 0;
 	}
 	kanji1 = mode;
@@ -142,7 +142,7 @@ char *CONST argv[];
 	if (n + 1 >= argc) fpout = stdout;
 	else if (!(fpout = fopen(argv[n + 1], "w"))) {
 		fprintf(stderr, "%s: cannot open.\n", argv[n + 1]);
-		fclose(fpin);
+		VOID_C fclose(fpin);
 		return(1);
 	}
 
@@ -240,8 +240,8 @@ char *CONST argv[];
 	}
 	output(fpout, EOF, mode);
 
-	fclose(fpout);
-	fclose(fpin);
+	VOID_C fclose(fpout);
+	VOID_C fclose(fpin);
 
 	return(0);
 }

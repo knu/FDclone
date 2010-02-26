@@ -98,7 +98,7 @@ extern int norockridge;
 
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-static CONST char *NEAR strstr2 __P_((CONST char *, CONST char *));
+static CONST char *NEAR Xstrstr __P_((CONST char *, CONST char *));
 #endif
 #if	!defined (_NOKANJICONV) || (defined (DEP_DOSEMU) && defined (CODEEUC))
 static VOID NEAR sj2j __P_((char *, CONST u_char *));
@@ -446,7 +446,7 @@ int ptr;
 
 #if	!defined (_NOKANJICONV) \
 || (!defined (_NOENGMES) && !defined (_NOJPNMES))
-static CONST char *NEAR strstr2(s1, s2)
+static CONST char *NEAR Xstrstr(s1, s2)
 CONST char *s1, *s2;
 {
 	int i, c1, c2;
@@ -456,9 +456,9 @@ CONST char *s1, *s2;
 			if (!s2[i]) return(s1);
 			c1 = s1[i];
 			c2 = s2[i];
-			if (islower2(c2)) {
-				c1 = toupper2(c1);
-				c2 = toupper2(c2);
+			if (Xislower(c2)) {
+				c1 = Xtoupper(c1);
+				c2 = Xtoupper(c2);
 			}
 			if (c1 != c2) break;
 #ifndef	CODEEUC
@@ -488,7 +488,7 @@ int io;
 	ret = NOCNV;
 	if (s) for (i = 0; i < LANGLISTSIZ; i++) {
 		if (!(kanjiiomode[langlist[i].lang] & io)) continue;
-		if (strstr2(s, langlist[i].ident)) {
+		if (Xstrstr(s, langlist[i].ident)) {
 			ret = langlist[i].lang;
 			break;
 		}
@@ -636,14 +636,14 @@ CONST char *file;
 	char path[MAXPATHLEN];
 
 	if (!file) {
-		if (fd >= 0) Xclose(fd);
+		if (fd >= 0) VOID_C Xclose(fd);
 		fd = -2;
 		return(0);
 	}
 
 	if (fd >= -1) return(fd);
 
-	if (!unitblpath || !*unitblpath) strcpy2(path, file);
+	if (!unitblpath || !*unitblpath) Xstrcpy(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
 # ifdef	FD
@@ -654,7 +654,7 @@ CONST char *file;
 	else if (unitblent) /*EMPTY*/;
 	else if (sureread(fd, buf, 2) == 2) unitblent = getword(buf, 0);
 	else {
-		Xclose(fd);
+		VOID_C Xclose(fd);
 		fd = -1;
 	}
 # ifdef	FD
@@ -702,7 +702,7 @@ int nf;
 	if (!unitblbuf) {
 		if (!(tbl = newunitbl(size))) return;
 		if (!skread(fd, (off_t)2, tbl, size)) {
-			free2(tbl);
+			Xfree(tbl);
 			VOID_C openunitbl(NULL);
 			return;
 		}
@@ -717,14 +717,14 @@ int nf;
 		}
 		nftblnum = buf[0];
 		nflen = buf[1];
-		tblbuf = (u_char **)malloc2(nftblnum * sizeof(u_char *));
-		tblent = (u_int *)malloc2(nftblnum * sizeof(u_int));
+		tblbuf = (u_char **)Xmalloc(nftblnum * sizeof(u_char *));
+		tblent = (u_int *)Xmalloc(nftblnum * sizeof(u_int));
 
 		for (i = 0; i < nftblnum; i++) {
 			if (sureread(fd, buf, 2) != 2) {
-				while (i > 0) free2(tblbuf[--i]);
-				free2(tblbuf);
-				free2(tblent);
+				while (i > 0) Xfree(tblbuf[--i]);
+				Xfree(tblbuf);
+				Xfree(tblent);
 				VOID_C openunitbl(NULL);
 				return;
 			}
@@ -732,15 +732,15 @@ int nf;
 			size = (ALLOC_T)tblent[i] * (2 + nflen * 2);
 
 			if (!(tblbuf[i] = newunitbl(size))) {
-				while (i > 0) free2(tblbuf[--i]);
-				free2(tblbuf);
-				free2(tblent);
+				while (i > 0) Xfree(tblbuf[--i]);
+				Xfree(tblbuf);
+				Xfree(tblent);
 				return;
 			}
 			if (sureread(fd, tblbuf[i], size) != size) {
-				while (i >= 0) free2(tblbuf[i--]);
-				free2(tblbuf);
-				free2(tblent);
+				while (i >= 0) Xfree(tblbuf[i--]);
+				Xfree(tblbuf);
+				Xfree(tblent);
 				VOID_C openunitbl(NULL);
 				return;
 			}
@@ -760,16 +760,16 @@ VOID discardunitable(VOID_A)
 # endif
 
 	if (unitblbuf) {
-		free2(unitblbuf);
+		Xfree(unitblbuf);
 		unitblbuf = NULL;
 	}
 # ifndef	_NOKANJICONV
 	if (nftblbuf) {
-		for (i = 0; i < nftblnum; i++) free2(nftblbuf[i]);
-		free2(nftblbuf);
+		for (i = 0; i < nftblnum; i++) Xfree(nftblbuf[i]);
+		Xfree(nftblbuf);
 		nftblbuf = NULL;
 	}
-	free2(nftblent);
+	Xfree(nftblent);
 	nftblent = NULL;
 # endif	/* !_NOKANJICONV */
 }
@@ -1133,7 +1133,7 @@ int max, io;
 				}
 			}
 # ifdef	CODEEUC
-			else if (iskana2(s[i])) {
+			else if (Xiskana(s[i])) {
 				if (j + 2 > max) break;
 				buf[j++] = (char)C_EKANA;
 				buf[j++] = s[i];
@@ -1289,7 +1289,7 @@ int nf;
 	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0) ent = 0;
 	else {
 		n = 2 + nflen * 2;
-		cp = new = (u_char *)malloc2(n);
+		cp = new = (u_char *)Xmalloc(n);
 		for (ofs = 0; ofs < ent; ofs++) {
 			if (sureread(fd, cp, n) != n) {
 				ofs = ent;
@@ -1307,7 +1307,7 @@ int nf;
 		if (!w) break;
 		buf[(*ptrp)++] = w;
 	}
-	free2(new);
+	Xfree(new);
 }
 
 u_int ucs2denormalization(buf, ptrp, nf)
@@ -1349,7 +1349,7 @@ int *ptrp, nf;
 		/*EMPTY*/;
 	else {
 		n = 2 + nflen * 2;
-		cp = new = (u_char *)malloc2(n);
+		cp = new = (u_char *)Xmalloc(n);
 		min = 0;
 		max = ent + 1;
 		for (;;) {
@@ -1376,7 +1376,7 @@ int *ptrp, nf;
 		w = getword(cp, 0);
 		*ptrp += i;
 	}
-	free2(new);
+	Xfree(new);
 
 	return(w);
 }
@@ -1532,8 +1532,8 @@ int max, nf;
 	u_short *u1, *u2;
 	int i, j, len;
 
-	u1 = (u_short *)malloc2((max + 1) * sizeof(u_short));
-	u2 = (u_short *)malloc2((max + 1) * sizeof(u_short));
+	u1 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
+	u2 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
 
 	for (i = j = 0; s[i] && j < max; j++) u1[j] = toucs2(s, &i);
 	u1[j] = (u_short)0;
@@ -1548,8 +1548,8 @@ int max, nf;
 		j = ucs2toutf8(buf, j, u2[i]);
 	}
 
-	free2(u1);
-	free2(u2);
+	Xfree(u1);
+	Xfree(u2);
 	cnvunicode(0, -1);
 	if (kanjierrno) kanjierrno = DEFCODE;
 
@@ -1564,8 +1564,8 @@ int max, nf;
 	u_short *u1, *u2;
 	int i, j;
 
-	u1 = (u_short *)malloc2((max + 1) * sizeof(u_short));
-	u2 = (u_short *)malloc2((max + 1) * sizeof(u_short));
+	u1 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
+	u2 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
 
 	for (i = j = 0; s[i] && j < max; j++) u1[j] = ucs2fromutf8(s, &i);
 	u1[j] = (u_short)0;
@@ -1574,8 +1574,8 @@ int max, nf;
 	u2[j] = (u_short)0;
 	for (i = j = 0; u2[i] && j + 1 < max; i++) fromucs2(buf, &j, u2[i]);
 
-	free2(u1);
-	free2(u2);
+	Xfree(u1);
+	Xfree(u2);
 	cnvunicode(0, -1);
 
 	return(j);
@@ -1644,7 +1644,7 @@ int max;
 		else {
 			c1 = tobin2(s, i + 1);
 			i += 2;
-			if (iskana2(c1)) {
+			if (Xiskana(c1)) {
 # ifdef	CODEEUC
 				if (j + 2 > max) break;
 				buf[j++] = (char)C_EKANA;
@@ -1752,7 +1752,7 @@ int max;
 		else {
 			c1 = tobin2(s, i + 1);
 			i += 2;
-			if (iskana2(c1)) {
+			if (Xiskana(c1)) {
 # ifdef	CODEEUC
 				if (j + 2 > max) break;
 				buf[j++] = (char)C_EKANA;
@@ -2011,7 +2011,7 @@ int drv;
 # endif	/* !_NOKANJIFCONV */
 # ifndef	_NOROCKRIDGE
 	if (cp == rbuf) {
-		strcpy2(buf, rbuf);
+		Xstrcpy(buf, rbuf);
 		return(buf);
 	}
 # endif
@@ -2080,7 +2080,7 @@ int *codep;
 				n = file - path;
 				if (file++ == isrootdir(path)) n++;
 			}
-			strncpy2(rpath, path, n);
+			Xstrncpy(rpath, path, n);
 		}
 # ifdef	DEP_DOSEMU
 		else if ((n = _dospath(path))) {
@@ -2092,9 +2092,9 @@ int *codep;
 			file = path;
 			copycurpath(rpath);
 		}
-		realpath2(rpath, rpath, RLP_READLINK);
+		Xrealpath(rpath, rpath, RLP_READLINK);
 		tmp = strcatdelim(rpath);
-		strncpy2(tmp, file, MAXPATHLEN - 1 - (tmp - rpath));
+		Xstrncpy(tmp, file, MAXPATHLEN - 1 - (tmp - rpath));
 		cp = rpath;
 	}
 
@@ -2120,17 +2120,17 @@ int *codep;
 # endif	/* !_NOKANJIFCONV */
 # ifndef	_NOROCKRIDGE
 	if (!norockridge && (cp = detranspath(cp, rbuf)) == rbuf) {
-		if (rrreal) strcpy2(rrreal, rbuf);
+		if (rrreal) Xstrcpy(rrreal, rbuf);
 		if (rdlink && rrreadlink(cp, buf, MAXPATHLEN - 1) >= 0) {
 			if (needfile && strdelim(buf, 0)) needfile = 0;
 			if (*buf == _SC_ || !(tmp = strrdelim(rbuf, 0)))
 				cp = buf;
 			else {
 				tmp++;
-				strncpy2(tmp, buf, MAXPATHLEN - (tmp - rbuf));
+				Xstrncpy(tmp, buf, MAXPATHLEN - (tmp - rbuf));
 				cp = rbuf;
 			}
-			realpath2(cp, rpath, RLP_READLINK);
+			Xrealpath(cp, rpath, RLP_READLINK);
 			cp = detranspath(rpath, rbuf);
 		}
 	}
@@ -2140,11 +2140,11 @@ int *codep;
 	else file = cp;
 
 # ifdef	DEP_DOSEMU
-	if (isalpha2(n) && !_dospath(file)) tmp = gendospath(buf, n, '\0');
+	if (Xisalpha(n) && !_dospath(file)) tmp = gendospath(buf, n, '\0');
 	else
 # endif
 	tmp = buf;
-	strcpy2(tmp, file);
+	Xstrcpy(tmp, file);
 
 	return(buf);
 }

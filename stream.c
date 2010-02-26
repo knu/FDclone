@@ -9,10 +9,11 @@
 #include "typesize.h"
 #include "malloc.h"
 #include "sysemu.h"
+#include "pathname.h"
 #include "termio.h"
 #include "stream.h"
 
-#ifdef	DEP_SOCKET
+#ifdef	DEP_STREAMSOCKET
 #include "socket.h"
 #endif
 #if	defined (FD) && !defined (DEP_ORIGSHELL)
@@ -26,7 +27,8 @@
 #define	PIPEDIR			"PIPE_DIR"
 #define	PIPEFILE		"FAKEPIPE"
 #ifdef	USECRNL
-#define	ISCRNL(fp)		(!((fp) -> flags & XF_BINARY))
+#define	ISCRNL(fp)		(!((fp) -> status & XS_BINARY) \
+				|| ((fp) -> flags & XF_CRNL))
 #else
 #define	ISCRNL(fp)		((fp) -> flags & XF_CRNL)
 #endif
@@ -57,10 +59,18 @@ extern char *tmpfilename;
 
 #ifdef	DEP_ORIGSTREAM
 static int NEAR mode2flags __P_((CONST char *, int *));
+# ifdef	DEP_STREAMLOG
+static XFILE *NEAR fmalloc __P_((int, int, int, int, CONST char *));
+# else
 static XFILE *NEAR fmalloc __P_((int, int, int));
+# endif
 static int NEAR checkfp __P_((XFILE *, int));
+# ifdef	DEP_STREAMLOG
+static VOID NEAR dumplog __P_((CONST char *, ALLOC_T, XFILE *));
+# endif
 static int NEAR fillbuf __P_((XFILE *));
-# ifdef	DEP_SOCKET
+static int NEAR flushbuf __P_((XFILE *));
+# ifdef	DEP_STREAMSOCKET
 static int NEAR replytelnet __P_((XFILE *));
 # endif
 #endif	/* DEP_ORIGSTREAM */
@@ -70,12 +80,9 @@ static char *NEAR fgets2 __P_((int));
 
 #ifdef	DEP_ORIGSTREAM
 static XFILE stdiobuf[] = {
-	{STDIN_FILENO, "", (ALLOC_T)0, (ALLOC_T)0,
-		XF_RDONLY},
-	{STDOUT_FILENO, "", (ALLOC_T)0, (ALLOC_T)0,
-		XF_WRONLY | XF_LINEBUF},
-	{STDERR_FILENO, "", (ALLOC_T)0, (ALLOC_T)0,
-		XF_WRONLY | XF_NOBUF},
+	{STDIN_FILENO, XS_RDONLY, 0},
+	{STDOUT_FILENO, XS_WRONLY, XF_LINEBUF},
+	{STDERR_FILENO, XS_WRONLY, XF_NOBUF},
 };
 #define	STDIOBUFSIZ		arraysize(stdiobuf)
 #endif	/* DEP_ORIGSTREAM */
@@ -87,6 +94,7 @@ static int popenstat = 0;
 #endif	/* FD && !DEP_ORIGSHELL */
 
 #ifdef	DEP_ORIGSTREAM
+int (*stream_isnfsfunc)__P_((CONST char *)) = NULL;
 XFILE *Xstdin = &(stdiobuf[0]);
 XFILE *Xstdout = &(stdiobuf[1]);
 XFILE *Xstderr = &(stdiobuf[2]);
@@ -94,14 +102,18 @@ XFILE *Xstderr = &(stdiobuf[2]);
 
 
 #ifdef	DEP_ORIGSTREAM
-static int NEAR mode2flags(mode, isbinp)
+static int NEAR mode2flags(mode, flagsp)
 CONST char *mode;
-int *isbinp;
+int *flagsp;
 {
 	int flags;
 
-	if (!mode) return(0);
+	if (!mode) {
+		errno = EINVAL;
+		return(-1);
+	}
 	flags = 0;
+	if (flagsp) flags |= (*flagsp & ~O_ACCMODE);
 
 	switch (*(mode++)) {
 		case 'r':
@@ -114,7 +126,8 @@ int *isbinp;
 			flags |= (O_WRONLY | O_APPEND | O_CREAT);
 			break;
 		default:
-			return(0);
+			errno = EINVAL;
+			return(-1);
 /*NOTREACHED*/
 			break;
 	}
@@ -123,37 +136,59 @@ int *isbinp;
 		flags |= O_RDWR;
 		mode++;
 	}
-	if (isbinp) *isbinp = (*mode == 'b');
 	flags |= O_BINARY;
+	if (flagsp) *flagsp = flags;
 
-	return(flags);
+	return((*mode == 'b') ? 1 : 0);
 }
 
+# ifdef	DEP_STREAMLOG
+static XFILE *NEAR fmalloc(fd, flags, isbin, timeout, path)
+int fd, flags, isbin, timeout;
+CONST char *path;
+# else
 static XFILE *NEAR fmalloc(fd, flags, isbin)
 int fd, flags, isbin;
+# endif
 {
 	XFILE *fp;
+	ALLOC_T len;
 
-	fp = (XFILE *)malloc2(sizeof(XFILE));
+	len = sizeof(XFILE);
+# ifdef	DEP_STREAMLOG
+	if (!path) path = nullstr;
+	len += strlen(path);
+# endif
+	fp = (XFILE *)Xmalloc(len);
 
 	fp -> fd = fd;
-#if	defined (DEP_URLPATH) && !defined (NOSELECT)
+# ifdef	DEP_STREAMTIMEOUT
+#  ifdef	DEP_STREAMLOG
+	fp -> timeout = timeout;
+#  else
 	fp -> timeout = -1;
-#endif
+#  endif
+# endif	/* DEP_STREAMTIMEOUT */
 	fp -> ptr = fp -> count = (ALLOC_T)0;
-	fp -> flags = 0;
+	fp -> status = fp -> flags = 0;
+# ifdef	DEP_STREAMLOG
+	fp -> dumpfunc = NULL;
+	fp -> debuglvl = 0;
+	fp -> debugmes = NULL;
+	Xstrcpy(fp -> path, path);
+# endif
 
 	switch (flags & O_ACCMODE) {
 		case O_RDONLY:
-			fp -> flags |= XF_RDONLY;
+			fp -> status |= XS_RDONLY;
 			break;
 		case O_WRONLY:
-			fp -> flags |= XF_WRONLY;
+			fp -> status |= XS_WRONLY;
 			break;
 		default:
 			break;
 	}
-	if (isbin) fp -> flags |= XF_BINARY;
+	if (isbin) fp -> status |= XS_BINARY;
 
 	return(fp);
 }
@@ -161,15 +196,50 @@ int fd, flags, isbin;
 XFILE *Xfopen(path, mode)
 CONST char *path, *mode;
 {
+# ifdef	DEP_STREAMLOCK
+	int isnfs, trunc, operation;
+# endif
 	XFILE *fp;
 	int fd, flags, isbin;
 
-	flags = mode2flags(mode, &isbin);
-	if ((fd = Xopen(path, flags, 0666)) < 0) return(NULL);
-	if (!(fp = fmalloc(fd, flags, isbin))) {
+	flags = 0;
+	if ((isbin = mode2flags(mode, &flags)) < 0) return(NULL);
+# ifdef	DEP_STREAMLOCK
+	isnfs = (stream_isnfsfunc) ? (*stream_isnfsfunc)(path) : 1;
+	if (isnfs) trunc = 0;
+	else {
+		trunc = (flags & O_TRUNC);
+		flags &= ~O_TRUNC;
+	}
+# endif
+	fd = Xopen(path, flags, 0666);
+	if (fd < 0) return(NULL);
+
+# ifdef	DEP_STREAMLOG
+	fp = fmalloc(fd, flags, isbin, -1, path);
+# else
+	fp = fmalloc(fd, flags, isbin);
+# endif
+	if (!fp) {
 		VOID_C Xclose(fd);
 		return(NULL);
 	}
+
+# ifdef	DEP_STREAMLOCK
+	if (!isnfs) {
+		operation = ((flags & O_ACCMODE) == O_RDONLY)
+			? LOCK_SH : LOCK_EX;
+		if (Xflock(fd, operation | LOCK_NB) < 0) {
+			VOID_C Xfclose(fp);
+			return(NULL);
+		}
+		fp -> status |= XS_LOCKED;
+		if (trunc && Xftruncate(fd, (off_t)0) < 0) {
+			VOID_C Xfclose(fp);
+			return(NULL);
+		}
+	}
+# endif	/* DEP_STREAMLOCK */
 
 	return(fp);
 }
@@ -178,116 +248,171 @@ XFILE *Xfdopen(fd, mode)
 int fd;
 CONST char *mode;
 {
-#if	!MSDOS
+# if	!MSDOS
 	int n;
-#endif
+# endif
+	XFILE *fp;
 	int flags, isbin;
 
-	flags = mode2flags(mode, &isbin);
-#if	!MSDOS
+	flags = 0;
+	if ((isbin = mode2flags(mode, &flags)) < 0) return(NULL);
+# if	!MSDOS
 	n = fcntl(fd, F_GETFL);
-	if (n < 0) /*EMPYU*/;
-	else if ((flags & O_APPEND) != (n & O_APPEND)) n = seterrno(EINVAL);
-	else switch (n & O_ACCMODE) {
+	if (n < 0) return(NULL);
+	if ((flags & O_APPEND) != (n & O_APPEND)) {
+		errno = ENOENT;
+		return(NULL);
+	}
+	switch (n & O_ACCMODE) {
 		case O_RDONLY:
-			if ((flags & O_ACCMODE) != O_RDONLY)
-				n = seterrno(EINVAL);
+			if ((flags & O_ACCMODE) != O_RDONLY) {
+				errno = EINVAL;
+				return(NULL);
+			}
 			break;
 		case O_WRONLY:
-			if ((flags & O_ACCMODE) == O_RDONLY)
-				n = seterrno(EINVAL);
+			if ((flags & O_ACCMODE) != O_WRONLY) {
+				errno = EINVAL;
+				return(NULL);
+			}
 			break;
 		default:
 			break;
 	}
-	if (n < 0) return(NULL);
-#endif
+# endif	/* !MSDOS */
 
-	return(fmalloc(fd, flags, isbin));
+# ifdef	DEP_STREAMLOG
+	fp = fmalloc(fd, flags, isbin, -1, NULL);
+# else
+	fp = fmalloc(fd, flags, isbin);
+# endif
+	if (!fp) return(NULL);
+
+	return(fp);
 }
 
 int Xfclose(fp)
 XFILE *fp;
 {
-	int i, n, duperrno;
+	int i, duperrno;
 
 	if (!fp) {
 		errno = EINVAL;
 		return(EOF);
 	}
-	if (fp -> flags & XF_CLOSED) return(0);
+	if (fp -> status & XS_CLOSED) return(0);
 
 	duperrno = errno;
-	if ((n = Xfflush(fp)) == EOF) duperrno = errno;
-	if (Xclose(fp -> fd) < 0) {
-		n = EOF;
-		duperrno = errno;
+	if (flushbuf(fp) < 0) return(EOF);
+
+# ifdef	DEP_STREAMLOCK
+	if (fp -> status & XS_LOCKED) {
+		VOID_C Xlseek(fp -> fd, (off_t)0, SEEK_END);
+		VOID_C Xflock(fp -> fd, LOCK_UN);
+	}
+# endif	/* DEP_STREAMLOCK */
+	if (!(fp -> flags & XF_NOCLOSE)) {
+# ifdef	DEP_STREAMSOCKET
+		if (fp -> flags & XF_CONNECTED) shutdown(fp -> fd, SHUT_RDWR);
+# endif
+		if (Xclose(fp -> fd) < 0) return(EOF);
 	}
 	for (i = 0; i < STDIOBUFSIZ; i++) if (fp == &(stdiobuf[i])) break;
-	if (i >= STDIOBUFSIZ) free2(fp);
+	if (i >= STDIOBUFSIZ) Xfree(fp);
 	else {
-		fp -> flags |= XF_CLOSED;
-		fp -> flags &= ~(XF_EOF | XF_ERROR | XF_READ | XF_WRITTEN);
+		fp -> status |= XS_CLOSED;
+		fp -> status &= ~(XS_EOF | XS_ERROR | XS_READ | XS_WRITTEN);
 		fp -> ptr = fp -> count = (ALLOC_T)0;
 	}
 	errno = duperrno;
 
-	return(n);
+	return(0);
+}
+
+static int NEAR checkfp(fp, status)
+XFILE *fp;
+int status;
+{
+	if (!fp) {
+		errno = EINVAL;
+		return(-1);
+	}
+	if ((status & XS_ERROR) && (fp -> status & XS_ERROR)) return(-1);
+	if ((status & XS_RDONLY) && (fp -> status & XS_WRONLY)) {
+		errno = EBADF;
+		fp -> status |= XS_ERROR;
+		return(-1);
+	}
+	if ((status & XS_WRONLY) && (fp -> status & XS_RDONLY)) {
+		errno = EBADF;
+		fp -> status |= XS_ERROR;
+		return(-1);
+	}
+
+	return(0);
 }
 
 VOID Xclearerr(fp)
 XFILE *fp;
 {
-	if (fp) fp -> flags &= ~(XF_EOF | XF_ERROR);
+	if (checkfp(fp, 0) < 0) return;
+	fp -> status &= ~(XS_EOF | XS_ERROR);
 }
 
 int Xfeof(fp)
 XFILE *fp;
 {
-	return((fp) ? fp -> flags & (XF_EOF | XF_CLOSED) : 0);
+	if (checkfp(fp, 0) < 0) return(-1);
+
+	return(fp -> status & (XS_EOF | XS_CLOSED));
 }
 
 int Xferror(fp)
 XFILE *fp;
 {
-	return((fp) ? fp -> flags & XF_ERROR : 0);
+	if (checkfp(fp, 0) < 0) return(-1);
+
+	return(fp -> status & XS_ERROR);
 }
 
 int Xfileno(fp)
 XFILE *fp;
 {
-	return((fp) ? fp -> fd : seterrno(EBADF));
+	if (checkfp(fp, 0) < 0) return(-1);
+
+	return(fp -> fd);
 }
 
 VOID Xsetflags(fp, flags)
 XFILE *fp;
 int flags;
 {
-	if (fp) fp -> flags |= flags;
+	if (checkfp(fp, 0) < 0) return;
+	fp -> flags |= flags;
 }
 
-#if	defined (DEP_URLPATH) && !defined (NOSELECT)
+# ifdef	DEP_STREAMTIMEOUT
 VOID Xsettimeout(fp, timeout)
 XFILE *fp;
 int timeout;
 {
-	if (fp) fp -> timeout = timeout;
+	if (checkfp(fp, 0) < 0) return;
+	fp -> timeout = timeout;
 }
-#endif
+# endif	/* DEP_STREAMTIMEOUT */
 
-static int NEAR checkfp(fp, flags)
+# ifdef	DEP_STREAMLOG
+static VOID NEAR dumplog(buf, size, fp)
+CONST char *buf;
+ALLOC_T size;
 XFILE *fp;
-int flags;
 {
-	if (!fp) return(seterrno(EINVAL));
-	if (((flags & XF_RDONLY) && (fp -> flags & XF_WRONLY))
-	|| ((flags & XF_WRONLY) && (fp -> flags & XF_RDONLY))) {
-		fp -> flags |= XF_ERROR;
-		return(seterrno(EBADF));
-	}
+	if (!(fp -> dumpfunc) || !(fp -> debuglvl)) return;
+	if (debuglevel < fp -> debuglvl - 1) return;
 
-	return(0);
+	(*(fp -> dumpfunc))((CONST u_char *)buf, size, fp -> debugmes);
 }
+# endif	/* DEP_STREAMLOG */
 
 static int NEAR fillbuf(fp)
 XFILE *fp;
@@ -295,55 +420,101 @@ XFILE *fp;
 	ALLOC_T len;
 	int n;
 
-	if (checkfp(fp, XF_RDONLY) < 0) return(-1);
+	if (checkfp(fp, XS_ERROR | XS_RDONLY) < 0) return(-1);
 	if (fp == Xstdin) {
-		if (Xstdout -> flags & XF_LINEBUF) VOID_C Xfflush(Xstdout);
-		if (Xstderr -> flags & XF_LINEBUF) VOID_C Xfflush(Xstderr);
+		if (Xstdout -> flags & XF_LINEBUF) VOID_C flushbuf(Xstdout);
+		if (Xstderr -> flags & XF_LINEBUF) VOID_C flushbuf(Xstderr);
 	}
 
-	fp -> ptr = (ALLOC_T)0;
-	len = (fp -> flags & XF_NOBUF) ? 1 : XF_BUFSIZ;
-	n = Xread(fp -> fd, fp -> buf, len);
+# ifdef	DEP_STREAMTIMEOUT
+	if (fp -> status & XS_NOAHEAD) {
+#  ifdef	DEP_STREAMLOG
+		if (fp -> status & XS_CLEARBUF) {
+			fp -> status &= ~XS_CLEARBUF;
+			fp -> ptr = (ALLOC_T)0;
+		}
+		else
+#  endif
+		if (fp -> ptr >= XF_BUFSIZ) {
+#  ifdef	DEP_STREAMLOG
+			dumplog(fp -> buf, XF_BUFSIZ, fp);
+#  endif
+			fp -> ptr = (ALLOC_T)0;
+		}
+		n = checkread(fp -> fd, &(fp -> buf[fp -> ptr]),
+			(ALLOC_T)1, fp -> timeout);
+	}
+	else
+# endif	/* DEP_STREAMTIMEOUT */
+	{
+		fp -> ptr = (ALLOC_T)0;
+		len = (fp -> flags & XF_NOBUF) ? (ALLOC_T)1 : XF_BUFSIZ;
+		n = Xread(fp -> fd, fp -> buf, len);
+	}
 	if (n <= 0) {
-		if (n < 0) fp -> flags |= XF_ERROR;
+		if (n < 0) fp -> status |= XS_ERROR;
 		else {
-			fp -> flags |= XF_EOF;
-			fp -> flags &= ~XF_READ;
+			fp -> status |= XS_EOF;
+			fp -> status &= ~XS_READ;
 		}
 		fp -> count = (ALLOC_T)0;
 		return(-1);
 	}
 
 	fp -> count = (ALLOC_T)n;
-	fp -> flags |= XF_READ;
+	fp -> status |= XS_READ;
+# ifdef	DEP_STREAMLOG
+#  ifdef	DEP_STREAMTIMEOUT
+	if (fp -> status & XS_NOAHEAD) {
+		if (fp -> buf[fp -> ptr] == '\n') {
+			fp -> status |= XS_CLEARBUF;
+			dumplog(fp -> buf, fp -> ptr + 1, fp);
+		}
+	}
+	else
+#  endif
+	dumplog(fp -> buf, (ALLOC_T)n, fp);
+# endif	/* DEP_STREAMLOG */
 
 	return(0);
+}
+
+static int NEAR flushbuf(fp)
+XFILE *fp;
+{
+	ALLOC_T len;
+	int n;
+
+	if (checkfp(fp, XS_ERROR) < 0) return(-1);
+	fp -> status &= ~XS_WRITTEN;
+	if (fp -> status & XS_RDONLY) return(0);
+
+	len = fp -> ptr;
+	fp -> ptr = fp -> count = (ALLOC_T)0;
+	if (!len || (fp -> status & XS_CLOSED)) return(0);
+
+	n = Xwrite(fp -> fd, fp -> buf, len);
+	if (n < (int)len) {
+		fp -> status |= XS_ERROR;
+		return(-1);
+	}
+# ifdef	DEP_DOSDRIVE
+	if (chkopenfd(fp -> fd) == DEV_DOS && dosflushbuf(fp -> fd) < 0) {
+		fp -> status |= XS_ERROR;
+		return(-1);
+	}
+# endif
+# ifdef	DEP_STREAMLOG
+	dumplog(fp -> buf, (ALLOC_T)n, fp);
+# endif
+
+	return(n);
 }
 
 int Xfflush(fp)
 XFILE *fp;
 {
-	ALLOC_T len;
-
-	fp -> flags &= ~XF_WRITTEN;
-	if (fp -> flags & XF_RDONLY) return(0);
-
-	len = fp -> ptr;
-	fp -> ptr = fp -> count = (ALLOC_T)0;
-	if (!len || (fp -> flags & XF_CLOSED)) return(0);
-
-	if (Xwrite(fp -> fd, fp -> buf, len) != len) {
-		fp -> flags |= XF_ERROR;
-		return(EOF);
-	}
-#ifdef	DEP_DOSDRIVE
-	if (chkopenfd(fp -> fd) == DEV_DOS && dosflushbuf(fp -> fd) < 0) {
-		fp -> flags |= XF_ERROR;
-		return(EOF);
-	}
-#endif
-
-	return(0);
+	return((flushbuf(fp) < 0) ? EOF : 0);
 }
 
 int Xfread(buf, size, fp)
@@ -354,13 +525,13 @@ XFILE *fp;
 	ALLOC_T ptr, len;
 	int nl, total;
 
-	if (checkfp(fp, XF_RDONLY) < 0) return(-1);
-	if ((fp -> flags & XF_WRITTEN) && Xfflush(fp) == EOF) return(-1);
-	if (!(fp -> flags & XF_READ)) fp -> ptr = fp -> count = (ALLOC_T)0;
+	if (checkfp(fp, XS_ERROR | XS_RDONLY) < 0) return(-1);
+	if ((fp -> status & XS_WRITTEN) && flushbuf(fp) < 0) return(-1);
+	if (!(fp -> status & XS_READ)) fp -> ptr = fp -> count = (ALLOC_T)0;
 	nl = total = 0;
 
 	while (size > (ALLOC_T)0) {
-		if (fp -> flags & (XF_EOF | XF_CLOSED)) break;
+		if (fp -> status & (XS_EOF | XS_CLOSED)) break;
 		if (!(fp -> count) && fillbuf(fp) < 0) break;
 		if (nl && fp -> buf[fp -> ptr] != '\n') {
 			*(buf++) = '\r';
@@ -371,14 +542,13 @@ XFILE *fp;
 		if (len > size) len = size;
 
 		nl = 0;
-		if (!ISCRNL(fp)) ptr = len;
-		else for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
-#ifdef	USECRNL
+		if (ISCRNL(fp)) for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
+# ifdef	USECRNL
 			if (fp -> buf[fp -> ptr + ptr] == CH_EOF) {
-				fp -> flags |= XF_EOF;
+				fp -> status |= XS_EOF;
 				break;
 			}
-#endif
+# endif
 			if (fp -> buf[fp -> ptr + ptr] == '\r') {
 				nl++;
 				len = ptr;
@@ -393,18 +563,18 @@ XFILE *fp;
 		fp -> count -= len;
 		total += len;
 
-#ifdef	USECRNL
-		if (fp -> flags & XF_EOF)
+# ifdef	USECRNL
+		if (fp -> status & XS_EOF)
 			fp -> ptr = fp -> count = (ALLOC_T)0;
 		else
-#endif
+# endif
 		if (nl) {
 			(fp -> ptr)++;
 			(fp -> count)--;
 		}
 	}
 
-	return((fp -> flags & XF_ERROR) ? -1 : total);
+	return((fp -> status & XS_ERROR) ? -1 : total);
 }
 
 int Xfwrite(buf, size, fp)
@@ -413,15 +583,16 @@ ALLOC_T size;
 XFILE *fp;
 {
 	ALLOC_T ptr, len, max;
-	int nl, prev;
+	int n, nl, prev, total;
 
-	if (checkfp(fp, XF_WRONLY) < 0) return(-1);
-	if (fp -> flags & XF_READ) {
-		fp -> flags &= ~(XF_EOF | XF_READ);
+	if (checkfp(fp, XS_ERROR | XS_WRONLY) < 0) return(-1);
+	if (fp -> status & XS_READ) {
+		fp -> status &= ~(XS_EOF | XS_READ);
 		fp -> ptr = fp -> count = (ALLOC_T)0;
 	}
-	if (fp -> flags & XF_CLOSED) return(0);
+	if (fp -> status & XS_CLOSED) return(0);
 	max = (fp -> flags & XF_NOBUF) ? (ALLOC_T)1 : XF_BUFSIZ;
+	total = 0;
 	prev = '\0';
 
 	while (size > (ALLOC_T)0) {
@@ -429,8 +600,7 @@ XFILE *fp;
 		if (len > size) len = size;
 
 		nl = 0;
-		if (!ISCRNL(fp)) ptr = len;
-		else for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
+		if (ISCRNL(fp)) for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
 			if (buf[ptr] == '\n' && prev != '\r') {
 				nl++;
 				len = ptr;
@@ -441,68 +611,55 @@ XFILE *fp;
 
 		memcpy(&(fp -> buf[fp -> ptr]), buf, len);
 		if (nl) fp -> buf[fp -> ptr + len++] = '\r';
+		total += len;
 		fp -> ptr += len;
 		buf += len;
 		size -= len;
 		fp -> count += len;
-		fp -> flags |= XF_WRITTEN;
-		if (fp -> count >= max && Xfflush(fp) == EOF) break;
+		fp -> status |= XS_WRITTEN;
+		if (fp -> count >= max && flushbuf(fp) < 0) break;
 
 		if (nl) {
 			fp -> buf[(fp -> ptr)++] = '\n';
 			(fp -> count)++;
-			fp -> flags |= XF_WRITTEN;
-			if (fp -> count >= max && Xfflush(fp) == EOF)
-				break;
+			fp -> status |= XS_WRITTEN;
+			if (fp -> count >= max && flushbuf(fp) < 0) break;
 		}
 	}
 
-	if (fp -> flags & XF_ERROR) return(-1);
-	if (fp -> flags & XF_LINEBUF) {
-		for (len = fp -> ptr; len > (ALLOC_T)0; len--)
-			if (fp -> buf[len - 1] == '\n') break;
-		if (len <= (ALLOC_T)0) /*EMPTY*/;
-		else if (Xwrite(fp -> fd, fp -> buf, len) < 0) {
-			fp -> flags |= XF_ERROR;
-			return(-1);
-		}
-		else {
-			fp -> ptr -= len;
-			memmove(fp -> buf, &(fp -> buf[len]), fp -> ptr);
-		}
-	}
+	if (fp -> status & XS_ERROR) return(total);
+	if (!(fp -> flags & XF_LINEBUF)) return(total);
 
-	return(0);
+	for (len = fp -> ptr; len > (ALLOC_T)0; len--)
+		if (fp -> buf[len - 1] == '\n') break;
+	if (len <= (ALLOC_T)0) return(total);
+	n = Xwrite(fp -> fd, fp -> buf, len);
+	if (n < (int)len) {
+		fp -> status |= XS_ERROR;
+		total -= (int)len - n;
+		return(total);
+	}
+	fp -> ptr -= len;
+	memmove(fp -> buf, &(fp -> buf[len]), fp -> ptr);
+
+	return(total);
 }
 
 int Xfgetc(fp)
 XFILE *fp;
 {
-# if	defined (DEP_URLPATH) && !defined (NOSELECT)
-	int n;
-# endif
 	u_char uc;
+	int n;
 
-# if	defined (DEP_URLPATH) && !defined (NOSELECT)
-	if (fp -> flags & XF_NONBLOCK) {
-		if (checkfp(fp, XF_RDONLY) < 0) return(EOF);
-		if (fp -> flags & (XF_EOF | XF_CLOSED)) return(EOF);
-		n = checkread(fp -> fd, &uc, sizeof(uc), fp -> timeout);
-		if (n <= 0) {
-			if (n < 0) fp -> flags |= XF_ERROR;
-			else {
-				fp -> flags |= XF_EOF;
-				fp -> flags &= ~XF_READ;
-			}
-			fp -> ptr = fp -> count = (ALLOC_T)0;
-			return(EOF);
-		}
-	}
-	else
-# endif	/* DEP_URLPATH && !NOSELECT */
-	if (Xfread((char *)&uc, sizeof(uc), fp) <= 0) return(EOF);
+# ifdef	DEP_STREAMTIMEOUT
+	if (fp -> flags & XF_NONBLOCK) fp -> status |= XS_NOAHEAD;
+# endif
+	n = Xfread((char *)&uc, sizeof(uc), fp);
+# ifdef	DEP_STREAMTIMEOUT
+	fp -> status &= ~XS_NOAHEAD;
+# endif
 
-	return((int)uc);
+	return((n > 0) ? (int)uc : EOF);
 }
 
 int Xfputc(c, fp)
@@ -512,12 +669,13 @@ XFILE *fp;
 	u_char uc;
 
 	uc = (u_char)c;
-	if (Xfwrite((char *)&uc, sizeof(uc), fp) < 0) return(EOF);
+	if (Xfwrite((char *)&uc, sizeof(uc), fp) < (int)sizeof(uc))
+		return(EOF);
 
 	return(c);
 }
 
-#ifdef	DEP_SOCKET
+# ifdef	DEP_STREAMSOCKET
 static int NEAR replytelnet(fp)
 XFILE *fp;
 {
@@ -555,53 +713,65 @@ XFILE *fp;
 
 	return(0);
 }
-#endif	/* DEP_SOCKET */
+# endif	/* DEP_STREAMSOCKET */
 
 char *Xfgets(fp)
 XFILE *fp;
 {
-	char *cp;
-	ALLOC_T i, size;
+# ifdef	DEP_STREAMLOG
+	int dupdebuglvl;
+# endif
+	char *buf;
+	ALLOC_T len, size;
 	int c;
 
-	cp = c_realloc(NULL, 0, &size);
-	for (i = 0;; i++) {
+	if (checkfp(fp, XS_ERROR | XS_RDONLY) < 0) return(NULL);
+	buf = c_realloc(NULL, 0, &size);
+
+	len = (ALLOC_T)0;
+	for (;;) {
+# ifdef	DEP_STREAMLOG
+		dupdebuglvl = fp -> debuglvl;
+		if (fp -> flags & XF_NONBLOCK) fp -> debuglvl = 0;
+# endif
 		c = Xfgetc(fp);
+# ifdef	DEP_STREAMLOG
+		fp -> debuglvl = dupdebuglvl;
+# endif
 		if (c == EOF) {
-			if (!i || (fp -> flags & XF_ERROR)) {
-				free2(cp);
-				return(NULL);
-			}
-			break;
+			if (!len || (fp -> status & XS_ERROR)) /*EMPTY*/;
+			else break;
+			Xfree(buf);
+			return(NULL);
 		}
-		if (c == '\n') break;
-#ifdef	DEP_SOCKET
+# ifdef	DEP_STREAMSOCKET
 		if ((fp -> flags & XF_TELNET) && c == TELNET_IAC) {
 			c = replytelnet(fp);
 			if (!c) continue;
 		}
-#endif
-		cp = c_realloc(cp, i, &size);
+# endif
+		buf = c_realloc(buf, len, &size);
 		if ((fp -> flags & XF_NULLCONV) && !c) c = '\n';
-		cp[i] = c;
+
+		buf[len++] = c;
+		if (c == '\n') break;
 	}
 
-#if	defined (DEP_URLPATH) && !defined (NOSELECT)
-	if (!(fp -> flags & XF_NONBLOCK) || !ISCRNL(fp)) /*EMPTY*/;
-	else if (i > 0 && cp[i - 1] == '\r') i--;
-#endif
-	cp[i++] = '\0';
+	if (len > 0 && buf[len - 1] == '\n') len--;
+	buf[len++] = '\0';
+	buf = Xrealloc(buf, len);
 
-	return(realloc2(cp, i));
+	return(buf);
 }
 
 int Xfputs(s, fp)
 CONST char *s;
 XFILE *fp;
 {
-	if (Xfwrite(s, strlen(s), fp) < 0) return(EOF);
+	ALLOC_T len;
 
-	return(0);
+	len = strlen(s);
+	return((Xfwrite(s, len, fp) < (int)len) ? EOF : 0);
 }
 
 VOID Xsetbuf(fp)
@@ -618,7 +788,7 @@ VOID Xsetlinebuf(fp)
 XFILE *fp;
 {
 	if (fp && (fp == Xstdout || fp == Xstderr)) {
-		VOID_C Xfflush(fp);
+		VOID_C flushbuf(fp);
 		fp -> flags |= XF_LINEBUF;
 		fp -> flags &= ~XF_NOBUF;
 	}
@@ -658,21 +828,21 @@ CONST char *command, *mode;
 	}
 # endif	/* !MSDOS */
 
-	strcpy2(path, PIPEDIR);
+	Xstrcpy(path, PIPEDIR);
 	if (mktmpdir(path) < 0) return(NULL);
 # ifdef	DEP_DOSLFN
 	if (!(cp = preparefile(path, tmp))) return(NULL);
-	else if (cp == tmp) strcpy2(path, tmp);
+	else if (cp == tmp) Xstrcpy(path, tmp);
 # endif
-	strcpy2(strcatdelim(path), PIPEFILE);
+	Xstrcpy(strcatdelim(path), PIPEFILE);
 
 	l1 = strlen(command);
 	l2 = strlen(path);
-	cmdline = malloc2(l1 + l2 + 3 + 1);
-	strncpy2(cmdline, command, l1);
-	strcpy2(&(cmdline[l1]), " > ");
+	cmdline = Xmalloc(l1 + l2 + 3 + 1);
+	Xstrncpy(cmdline, command, l1);
+	Xstrcpy(&(cmdline[l1]), " > ");
 	l1 += 3;
-	strcpy2(&(cmdline[l1]), path);
+	Xstrcpy(&(cmdline[l1]), path);
 	popenstat = system(cmdline);
 
 	return(Xfopen(path, mode));
@@ -725,8 +895,8 @@ XFILE *fp;
 	if (!deftmpdir || !*deftmpdir || !tmpfilename || !*tmpfilename)
 		return(seterrno(ENOENT));
 	strcatdelim2(path, deftmpdir, tmpfilename);
-	strcpy2(strcatdelim(path), PIPEDIR);
-	strcpy2((cp = strcatdelim(path)), PIPEFILE);
+	Xstrcpy(strcatdelim(path), PIPEDIR);
+	Xstrcpy((cp = strcatdelim(path)), PIPEFILE);
 
 	if (Xunlink(path) < 0) duperrno = errno;
 	*(--cp) = '\0';
@@ -742,28 +912,30 @@ XFILE *fp;
 static char *NEAR fgets2(fd)
 int fd;
 {
-	char *cp;
-	ALLOC_T i, size;
+	char *buf;
+	ALLOC_T len, size;
 	u_char uc;
 	int n;
 
-	cp = c_realloc(NULL, 0, &size);
-	for (i = 0;; i++) {
+	buf = c_realloc(NULL, 0, &size);
+
+	len = (ALLOC_T)0;
+	for (;;) {
 		n = read(fd, &uc, sizeof(uc));
 		if (n <= 0) {
-			if (!i || n < 0) {
-				free2(cp);
+			if (!len || n < 0) {
+				Xfree(buf);
 				return(NULL);
 			}
 			break;
 		}
 		if (uc == '\n') break;
-		cp = c_realloc(cp, i, &size);
-		cp[i] = uc;
+		buf = c_realloc(buf, len, &size);
+		buf[len++] = uc;
 	}
-	cp[i++] = '\0';
+	buf[len++] = '\0';
 
-	return(realloc2(cp, i));
+	return(Xrealloc(buf, len));
 }
 # endif	/* !DEP_ORIGSTREAM */
 
@@ -777,7 +949,7 @@ CONST char *prompt;
 #  endif
 	XFILE *fp;
 # endif	/* DEP_ORIGSTREAM */
-	char *cp;
+	char *buf;
 
 	Xfputs(prompt, Xstderr);
 	VOID_C Xfflush(Xstderr);
@@ -790,12 +962,12 @@ CONST char *prompt;
 	else
 #  endif
 	fp = Xstdin;
-	cp = Xfgets(fp);
+	buf = Xfgets(fp);
 	safefclose(fp);
 # else	/* !DEP_ORIGSTREAM */
-	cp = fgets2(STDIN_FILENO);
+	buf = fgets2(STDIN_FILENO);
 # endif	/* !DEP_ORIGSTREAM */
 
-	return(cp);
+	return(buf);
 }
 #endif	/* !FD */

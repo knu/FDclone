@@ -22,32 +22,44 @@
 #ifdef	DEP_ORIGSTREAM
 typedef struct _XFILE {
 	int fd;
-	char buf[XF_BUFSIZ];
+	int status;
+	int flags;
 	ALLOC_T ptr;
 	ALLOC_T count;
-	int flags;
-#if	defined (DEP_URLPATH) && !defined (NOSELECT)
+	char buf[XF_BUFSIZ];
+# ifdef	DEP_STREAMTIMEOUT
 	int timeout;
-#endif
+# endif
+# ifdef	DEP_STREAMLOG
+	VOID_T (*dumpfunc)__P_((CONST u_char *, ALLOC_T, CONST char *));
+	int debuglvl;
+	CONST char *debugmes;
+	char path[1];
+# endif
 } XFILE;
-#else
+#else	/* !DEP_ORIGSTREAM */
 #define	XFILE			FILE
-#endif
+#endif	/* !DEP_ORIGSTREAM */
 
-#define	XF_EOF			000001
-#define	XF_ERROR		000002
-#define	XF_CLOSED		000004
-#define	XF_READ			000010
-#define	XF_WRITTEN		000020
-#define	XF_RDONLY		000040
-#define	XF_WRONLY		000100
-#define	XF_NOBUF		000200
-#define	XF_LINEBUF		000400
-#define	XF_CRNL			001000
-#define	XF_NONBLOCK		002000
-#define	XF_TELNET		004000
-#define	XF_NULLCONV		010000
-#define	XF_BINARY		020000
+#define	XS_EOF			000001
+#define	XS_ERROR		000002
+#define	XS_CLOSED		000004
+#define	XS_READ			000010
+#define	XS_WRITTEN		000020
+#define	XS_BINARY		000040
+#define	XS_RDONLY		000100
+#define	XS_WRONLY		000200
+#define	XS_LOCKED		000400
+#define	XS_NOAHEAD		001000
+#define	XS_CLEARBUF		002000
+#define	XF_NOBUF		000001
+#define	XF_LINEBUF		000002
+#define	XF_CRNL			000004
+#define	XF_NOCLOSE		000010
+#define	XF_NONBLOCK		000020
+#define	XF_CONNECTED		000040
+#define	XF_TELNET		000100
+#define	XF_NULLCONV		000200
 
 #ifdef	DEP_ORIGSTREAM
 extern XFILE *Xfopen __P_((CONST char *, CONST char *));
@@ -58,7 +70,7 @@ extern int Xfeof __P_((XFILE *));
 extern int Xferror __P_((XFILE *));
 extern int Xfileno __P_((XFILE *));
 extern VOID Xsetflags __P_((XFILE *, int));
-# if	defined (DEP_URLPATH) && !defined (NOSELECT)
+# ifdef	DEP_STREAMTIMEOUT
 extern VOID Xsettimeout __P_((XFILE *, int));
 # endif
 extern int Xfflush __P_((XFILE *));
@@ -106,6 +118,7 @@ extern char *gets2 __P_((CONST char *));
 #endif
 
 #ifdef	DEP_ORIGSTREAM
+extern int (*stream_isnfsfunc)__P_((CONST char *));
 extern XFILE *Xstdin;
 extern XFILE *Xstdout;
 extern XFILE *Xstderr;

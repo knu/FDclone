@@ -69,15 +69,15 @@ int len;
 
 	if (!s) return(NULL);
 	if (len < 0) len = strlen(s);
-	cp = malloc2(len + 1);
+	cp = Xmalloc(len + 1);
 
 	for (i = j = 0; i < len; i++, j++) {
 		if (s[i] == '%') {
 			cp[j] = '\0';
 			for (n = 1; n <= 2; n++) {
-				c = tolower2(s[i + n]);
-				if (isdigit2(c)) c -= '0';
-				else if (isxdigit2(c)) c -= 'a' - 10;
+				c = Xtolower(s[i + n]);
+				if (Xisdigit(c)) c -= '0';
+				else if (Xisxdigit(c)) c -= 'a' - 10;
 				else break;
 				cp[j] = ((cp[j]) << 4) + c;
 			}
@@ -89,7 +89,7 @@ int len;
 		cp[j] = s[i];
 	}
 	cp[j++] = '\0';
-	cp = realloc2(cp, j);
+	cp = Xrealloc(cp, j);
 
 	return(cp);
 }
@@ -103,19 +103,19 @@ int len, mask;
 
 	if (!s) return(NULL);
 	if (len < 0) len = strlen(s);
-	cp = malloc2(len * 3 + 1);
+	cp = Xmalloc(len * 3 + 1);
 
 	for (i = j = 0; i < len; i++, j++) {
 		if (uctypetable[(u_char)(s[i])] & mask) {
 			cp[j++] = '%';
-			cp[j++] = toupper2(tohexa((s[i] >> 4) & 0xf));
-			cp[j] = toupper2(tohexa(s[i] & 0xf));
+			cp[j++] = Xtoupper(tohexa((s[i] >> 4) & 0xf));
+			cp[j] = Xtoupper(tohexa(s[i] & 0xf));
 			continue;
 		}
 		cp[j] = s[i];
 	}
 	cp[j++] = '\0';
-	cp = realloc2(cp, j);
+	cp = Xrealloc(cp, j);
 
 	return(cp);
 }
@@ -141,12 +141,12 @@ int *typep;
 
 	if (scheme == (scheme_t *)nullstr) {
 		for (cp = s; *cp; cp++)
-			if (!isalnum2(*cp) && *cp != '-' && *cp != '-') break;
+			if (!Xisalnum(*cp) && *cp != '-' && *cp != '-') break;
 		if (cp <= s) return(0);
 	}
 	else {
 		for (i = 0; scheme[i].ident; i++)
-			if (!strncasecmp2(s, scheme[i].ident, scheme[i].len))
+			if (!Xstrncasecmp(s, scheme[i].ident, scheme[i].len))
 				break;
 		if (!(scheme[i].ident)) return(0);
 		cp = &(s[scheme[i].len]);
@@ -154,13 +154,13 @@ int *typep;
 	}
 	if (*(cp++) != ':' || *(cp++) != '/' || *(cp++) != '/') return(0);
 
-	if ((path = strchr2(cp, _SC_))) {
+	if ((path = Xstrchr(cp, _SC_))) {
 		if (path == cp) return(0);
-		if (hostp) *hostp = strndup2(cp, path - cp);
+		if (hostp) *hostp = Xstrndup(cp, path - cp);
 		n = path - s;
 	}
 	else {
-		if (hostp) *hostp = strdup2(cp);
+		if (hostp) *hostp = Xstrdup(cp);
 		n = strlen(s);
 	}
 	if (typep) *typep = type;
@@ -197,9 +197,9 @@ urlhost_t *hp;
 {
 	if (!hp) return;
 
-	free2(hp -> user);
-	free2(hp -> pass);
-	free2(hp -> host);
+	Xfree(hp -> user);
+	Xfree(hp -> pass);
+	Xfree(hp -> host);
 	hp -> user = hp -> pass = hp -> host = NULL;
 	hp -> port = -1;
 }
@@ -213,7 +213,7 @@ urlhost_t *hp;
 
 	if (!s) return(0);
 
-	if ((host = strchr2(s, '@'))) {
+	if ((host = Xstrchr(s, '@'))) {
 		user = s;
 		ulen = host++ - s;
 	}
@@ -224,7 +224,7 @@ urlhost_t *hp;
 	}
 
 	n = 0;
-	cp = (user) ? memchr2(user, ':', ulen) : NULL;
+	cp = (user) ? Xmemchr(user, ':', ulen) : NULL;
 	if (!cp) hp -> pass = NULL;
 	else {
 		len = ulen - (cp - user) - 1;
@@ -233,7 +233,7 @@ urlhost_t *hp;
 		else if (!(hp -> pass = urldecode(++cp, len))) n = -1;
 	}
 
-	if (!(cp = strchr2(host, ':'))) {
+	if (!(cp = Xstrchr(host, ':'))) {
 		hlen = strlen(host);
 		hp -> port = -1;
 	}
@@ -270,37 +270,37 @@ urlpath_t *pp;
 	pp -> params = pp -> query = pp -> fragment = NULL;
 
 	if (!(cp = strpbrk(s, ";?#"))) {
-		pp -> path = strdup2(s);
+		pp -> path = Xstrdup(s);
 		pp -> params = pp -> query = pp -> fragment = NULL;
 		return(0);
 	}
-	pp -> path = strndup2(s, cp - s);
+	pp -> path = Xstrndup(s, cp - s);
 	s = &(cp[1]);
 
 	if (*cp != ';') pp -> params = NULL;
 	else {
 		if (!(cp = strpbrk(s, "?#"))) {
-			pp -> params = strdup2(s);
+			pp -> params = Xstrdup(s);
 			pp -> query = pp -> fragment = NULL;
 			return(0);
 		}
-		pp -> params = strndup2(s, cp - s);
+		pp -> params = Xstrndup(s, cp - s);
 		s = &(cp[1]);
 	}
 
 	if (*cp != '?') pp -> query = NULL;
 	else {
-		if (!(cp = strchr2(s, '#'))) {
-			pp -> query = strdup2(s);
+		if (!(cp = Xstrchr(s, '#'))) {
+			pp -> query = Xstrdup(s);
 			pp -> fragment = NULL;
 			return(0);
 		}
-		pp -> query = strndup2(s, cp - s);
+		pp -> query = Xstrndup(s, cp - s);
 		s = &(cp[1]);
 	}
 
 	if (*cp != '#') pp -> fragment = NULL;
-	else pp -> fragment = strdup2(s);
+	else pp -> fragment = Xstrdup(s);
 
 	return(0);
 }

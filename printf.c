@@ -63,7 +63,7 @@ int *ptrp;
 	int i, n;
 
 	n = 0;
-	for (i = *ptrp; isdigit2(s[i]); i++) {
+	for (i = *ptrp; Xisdigit(s[i]); i++) {
 		if (n > MAXTYPE(int) / 10
 		|| (n == MAXTYPE(int) / 10
 		&& s[i] > (char)(MAXTYPE(int) % 10) + '0'))
@@ -179,7 +179,7 @@ int width, prec;
 			c += '0';
 #else
 			c = tohexa(c);
-			if (cap) c = toupper2(c);
+			if (cap) c = Xtoupper(c);
 #endif
 		}
 		else {
@@ -404,7 +404,7 @@ va_list args;
 		pbufp -> flags &= (VF_NEW | VF_FILE);
 		width = prec = -1;
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr2(printfflagchar, fmt[i]))) break;
+			if (!(cp = Xstrchr(printfflagchar, fmt[i]))) break;
 			pbufp -> flags |= printfflag[cp - printfflagchar];
 		}
 
@@ -425,7 +425,7 @@ va_list args;
 
 		len = sizeof(int);
 		for (; fmt[i]; i++) {
-			if (!(cp = strchr2(printfsizechar, fmt[i]))) break;
+			if (!(cp = Xstrchr(printfsizechar, fmt[i]))) break;
 			len = printfsize[cp - printfsizechar];
 		}
 
@@ -557,7 +557,7 @@ va_list args;
 }
 
 #ifndef	MINIMUMSHELL
-int vasprintf2(sp, fmt, args)
+int Xvasprintf(sp, fmt, args)
 char **sp;
 CONST char *fmt;
 va_list args;
@@ -575,10 +575,10 @@ va_list args;
 
 # ifdef	USESTDARGH
 /*VARARGS2*/
-int asprintf2(char **sp, CONST char *fmt, ...)
+int Xasprintf(char **sp, CONST char *fmt, ...)
 # else
 /*VARARGS2*/
-int asprintf2(sp, fmt, va_alist)
+int Xasprintf(sp, fmt, va_alist)
 char **sp;
 CONST char *fmt;
 va_dcl
@@ -588,14 +588,14 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vasprintf2(sp, fmt, args);
+	n = Xvasprintf(sp, fmt, args);
 	va_end(args);
 
 	return(n);
 }
 #endif	/* !MINIMUMSHELL */
 
-int vsnprintf2(s, size, fmt, args)
+int Xvsnprintf(s, size, fmt, args)
 char *s;
 int size;
 CONST char *fmt;
@@ -613,10 +613,10 @@ va_list args;
 
 #ifdef	USESTDARGH
 /*VARARGS3*/
-int snprintf2(char *s, int size, CONST char *fmt, ...)
+int Xsnprintf(char *s, int size, CONST char *fmt, ...)
 #else
 /*VARARGS3*/
-int snprintf2(s, size, fmt, va_alist)
+int Xsnprintf(s, size, fmt, va_alist)
 char *s;
 int size;
 CONST char *fmt;
@@ -627,13 +627,13 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vsnprintf2(s, size, fmt, args);
+	n = Xvsnprintf(s, size, fmt, args);
 	va_end(args);
 
 	return(n);
 }
 
-int vfprintf2(fp, fmt, args)
+int Xvfprintf(fp, fmt, args)
 XFILE *fp;
 CONST char *fmt;
 va_list args;
@@ -648,10 +648,10 @@ va_list args;
 
 #ifdef	USESTDARGH
 /*VARARGS2*/
-int fprintf2(XFILE *fp, CONST char *fmt, ...)
+int Xfprintf(XFILE *fp, CONST char *fmt, ...)
 #else
 /*VARARGS2*/
-int fprintf2(fp, fmt, va_alist)
+int Xfprintf(fp, fmt, va_alist)
 XFILE *fp;
 CONST char *fmt;
 va_dcl
@@ -661,7 +661,7 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vfprintf2(fp, fmt, args);
+	n = Xvfprintf(fp, fmt, args);
 	va_end(args);
 
 	return(n);
@@ -680,6 +680,6 @@ VOID kanjifputs(s, fp)
 CONST char *s;
 XFILE *fp;
 {
-	fprintf2(fp, "%k", s);
+	Xfprintf(fp, "%k", s);
 }
 #endif	/* FD */

@@ -127,7 +127,7 @@ extern int urlwrite __P_((int, CONST char *, int));
 extern int urldup2 __P_((int, int));
 extern int urlmkdir __P_((CONST char *, int, CONST char *));
 extern int urlrmdir __P_((CONST char *, int, CONST char *));
-extern VOID urlallclose __P_((VOID_A));
+extern int urlallclose __P_((VOID_A));
 #ifdef	DEP_FTPPATH
 extern int ftpgetreply __P_((XFILE *, char **));
 extern int ftpseterrno __P_((int));

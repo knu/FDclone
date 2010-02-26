@@ -1,3 +1,7 @@
+Ver. 3.00e	Add mkdir_p.c for installation.
+ (02/27/10)	Support Cygwin 1.7.1.
+		Failure to compile with some non-ANSI C compilers is fixed.
+
 Ver. 3.00d	Freezing by filename completion on some environments is fixed.
  (11/30/08)	Mis-identified path invoked as login shell via su(1) is fixed.
 		Freezing by the large value set as 'HISTSIZE' is fixed.

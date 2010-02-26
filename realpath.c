@@ -58,7 +58,7 @@ static int NEAR evallink __P_((char *, int, int));
 #if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
 static int NEAR getpathtop __P_((CONST char *, int *));
 #endif
-static int NEAR _realpath2 __P_((CONST char *, int, char *, int, int, int));
+static int NEAR _Xrealpath __P_((CONST char *, int, char *, int, int, int));
 
 int norealpath = 0;
 
@@ -67,7 +67,7 @@ int norealpath = 0;
 static VOID NEAR error(s)
 CONST char *s;
 {
-	fprintf2(Xstderr, "%s: Error(%d).\n", errno);
+	Xfprintf(Xstderr, "%s: Error(%d).\n", errno);
 	exit(2);
 }
 #endif	/* MSDOS && !FD */
@@ -101,7 +101,7 @@ int tlen, rlen;
 		copyrootpath(&(path[tlen]));
 		rlen = tlen + 1;
 	}
-	rlen = _realpath2(buf, n, path, tlen, rlen, RLP_READLINK);
+	rlen = _Xrealpath(buf, n, path, tlen, rlen, RLP_READLINK);
 	errno = duperrno;
 
 	return(rlen);
@@ -139,7 +139,7 @@ int *drvp;
 #endif	/* DEP_DOSEMU || DOUBLESLASH || DEP_URLPATH */
 
 /*ARGSUSED*/
-static int NEAR _realpath2(path, plen, resolved, tlen, rlen, flags)
+static int NEAR _Xrealpath(path, plen, resolved, tlen, rlen, flags)
 CONST char *path;
 int plen;
 char *resolved;
@@ -166,14 +166,14 @@ int tlen, rlen, flags;
 		return(cp - top);
 	}
 
-	if ((cp = memchr2(path, _SC_, plen))) {
+	if ((cp = Xmemchr(path, _SC_, plen))) {
 		len = cp++ - path;
-		rlen = _realpath2(path, len, resolved, tlen, rlen, flags);
+		rlen = _Xrealpath(path, len, resolved, tlen, rlen, flags);
 		plen -= ++len;
-		return(_realpath2(cp, plen, resolved, tlen, rlen, flags));
+		return(_Xrealpath(cp, plen, resolved, tlen, rlen, flags));
 	}
 
-	len = snprintf2(&(resolved[rlen]), MAXPATHLEN - rlen,
+	len = Xsnprintf(&(resolved[rlen]), MAXPATHLEN - rlen,
 		"%s%-.*s", (rlen > tlen + 1) ? _SS_ : nullstr, plen, path);
 #ifndef	NOSYMLINK
 	if ((flags & RLP_READLINK)
@@ -187,7 +187,7 @@ int tlen, rlen, flags;
 	return(rlen);
 }
 
-char *realpath2(path, resolved, flags)
+char *Xrealpath(path, resolved, flags)
 CONST char *path;
 char *resolved;
 int flags;
@@ -204,7 +204,7 @@ int flags;
 	char *cp, tmp[MAXPATHLEN];
 	int tlen, rlen;
 
-	strcpy2(tmp, path);
+	Xstrcpy(tmp, path);
 	path = tmp;
 
 	cp = NULL;
@@ -225,7 +225,7 @@ int flags;
 		}
 		else
 # endif
-		rlen = snprintf2(resolved, MAXPATHLEN,
+		rlen = Xsnprintf(resolved, MAXPATHLEN,
 			"%-.*s%c", tlen, path, _SC_);
 		path += tlen;
 		flags &= ~RLP_READLINK;
@@ -242,7 +242,7 @@ int flags;
 
 		if (*path == _SC_) /*EMPTY*/;
 #if	MSDOS
-		else if (toupper2(drv) != toupper2(drive)) {
+		else if (Xtoupper(drv) != Xtoupper(drive)) {
 			if (setcurdrv(drv, 0) >= 0) {
 				cp = Xgetwd(resolved);
 				if (setcurdrv(drive, 0) < 0)
@@ -260,7 +260,7 @@ int flags;
 #ifdef	FD
 		else if (!(flags & RLP_READLINK)
 		&& resolved != fullpath && *fullpath) {
-			cp = strcpy2(resolved, fullpath);
+			cp = Xstrcpy(resolved, fullpath);
 # if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
 			tlen = getpathtop(resolved, NULL);
 # endif
@@ -283,7 +283,7 @@ int flags;
 	}
 
 	norealpath++;
-	VOID_C _realpath2(path, strlen(path),
+	VOID_C _Xrealpath(path, strlen(path),
 		resolved, tlen, strlen(resolved), flags);
 	norealpath--;
 

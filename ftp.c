@@ -148,11 +148,11 @@ va_list args;
 	if (!(fp = Xfopen(ftplogfile, "a"))) return;
 	if (logheader) {
 		Xfputs(logheader, fp);
-		free2(logheader);
+		Xfree(logheader);
 		logheader = NULL;
 	}
-	VOID_C vfprintf2(fp, fmt, args);
-	Xfclose(fp);
+	VOID_C Xvfprintf(fp, fmt, args);
+	VOID_C Xfclose(fp);
 }
 
 #ifdef	USESTDARGH
@@ -194,7 +194,7 @@ va_list args;
 	char buf[URLMAXCMDLINE + 1];
 	int n;
 
-	n = snprintf2(buf, sizeof(buf), "--> \"%s\"\n", fmt);
+	n = Xsnprintf(buf, sizeof(buf), "--> \"%s\"\n", fmt);
 	if (n < 0) /*EMPTY*/;
 	else if (cmd == FTP_PASS) ftplog(buf, "????");
 	else vftplog(buf, args);
@@ -207,7 +207,7 @@ va_list args;
 		if (n >= 0) VOID_C Xfputc(TELNET_DM, fp);
 	}
 
-	n = vfprintf2(fp, fmt, args);
+	n = Xvfprintf(fp, fmt, args);
 	if (n >= 0) n = fputnl(fp);
 
 	return(n);
@@ -223,41 +223,41 @@ char **sp;
 
 	if (!(buf = ftprecv(fp))) return(-1);
 	for (i = n = 0; i < 3; i++) {
-		if (!isdigit2(buf[i])) break;
+		if (!Xisdigit(buf[i])) break;
 		n *= 10;
 		n += buf[i] - '0';
 	}
 	code = n;
 
 	if (i < 3) {
-		free2(buf);
+		Xfree(buf);
 		return(seterrno(EINVAL));
 	}
 	if (buf[3] == '-') {
 		size = strlen(buf);
 		for (;;) {
 			if (!(cp = ftprecv(fp))) {
-				free2(buf);
+				Xfree(buf);
 				return(-1);
 			}
 			for (i = n = 0; i < 3; i++) {
-				if (!isdigit2(cp[i])) break;
+				if (!Xisdigit(cp[i])) break;
 				n *= 10;
 				n += cp[i] - '0';
 			}
 			if (i < 3 || cp[3] != ' ') n = -1;
 
 			len = strlen(cp);
-			buf = realloc2(buf, size + 1 + len + 1);
+			buf = Xrealloc(buf, size + 1 + len + 1);
 			buf[size++] = '\n';
 			memcpy(&(buf[size]), cp, len + 1);
 			size += len;
-			free2(cp);
+			Xfree(cp);
 			if (n == code) break;
 		}
 	}
 	if (sp) *sp = buf;
-	else free2(buf);
+	else Xfree(buf);
 
 	return(code);
 }
@@ -292,13 +292,13 @@ va_list args;
 
 		/* Some FTP proxy cannot allow option arguments */
 		if (urlhostlist[uh].flags & UFL_PROXIED) {
-			cp = strchr2(ftpcmdlist[cmd].cmd[i], ' ');
+			cp = Xstrchr(ftpcmdlist[cmd].cmd[i], ' ');
 			if (cp && *skipspace(++cp) == '-') continue;
 		}
 
 		cp = buf;
 		size = sizeof(buf);
-		n = snprintf2(cp, size, "%s", ftpcmdlist[cmd].cmd[i]);
+		n = Xsnprintf(cp, size, "%s", ftpcmdlist[cmd].cmd[i]);
 		if (n < 0) break;
 
 		delim = ' ';
@@ -306,7 +306,7 @@ va_list args;
 		for (j = 0; j < ftpcmdlist[cmd].argc; j++) {
 			cp += n;
 			size -= n;
-			n = snprintf2(cp, size, "%c%%%c", delim, c);
+			n = Xsnprintf(cp, size, "%c%%%c", delim, c);
 			if (n < 0) break;
 			if (ftpcmdlist[cmd].flags & FFL_COMMA) delim = ',';
 		}
@@ -374,11 +374,11 @@ int uh;
 
 		n = urlcommand(uh, NULL, FTP_PASS, pass);
 		if (n == 530) {
-			if (anon) fprintf2(Xstderr,
+			if (anon) Xfprintf(Xstderr,
 				"%s: Invalid address.\r\n", pass);
-			else fprintf2(Xstderr,
+			else Xfprintf(Xstderr,
 				"%s: Login incorrect.\r\n", buf);
-			free2(urlhostlist[uh].host.pass);
+			Xfree(urlhostlist[uh].host.pass);
 			urlhostlist[uh].host.pass = NULL;
 		}
 	}
@@ -398,16 +398,16 @@ int uh;
 
 	n = urlcommand(uh, &buf, FTP_PASV);
 	if (ftpseterrno(n) < 0) {
-		free2(buf);
+		Xfree(buf);
 		return(-1);
 	}
-	if ((cp = strchr2(buf, '(')))
-		cp = sscanf2(cp, "(%Cu,%Cu,%Cu,%Cu,%Cu,%Cu)",
+	if ((cp = Xstrchr(buf, '(')))
+		cp = Xsscanf(cp, "(%Cu,%Cu,%Cu,%Cu,%Cu,%Cu)",
 			&(addr[0]), &(addr[1]), &(addr[2]), &(addr[3]),
 			&(port[0]), &(port[1]));
-	free2(buf);
+	Xfree(buf);
 	if (!cp) return(seterrno(EINVAL));
-	n = snprintf2(host, sizeof(host),
+	n = Xsnprintf(host, sizeof(host),
 		"%u.%u.%u.%u", addr[0], addr[1], addr[2], addr[3]);
 	if (n < 0) return(seterrno(EINVAL));
 	n = (port[0] << 8 | port[1]);
@@ -439,7 +439,7 @@ int uh;
 		safeclose(s);
 		return(-1);
 	}
-	cp = sscanf2(host, "%Cu.%Cu.%Cu.%Cu%$",
+	cp = Xsscanf(host, "%Cu.%Cu.%Cu.%Cu%$",
 		&(addr[0]), &(addr[1]), &(addr[2]), &(addr[3]));
 	if (!cp) return(seterrno(EINVAL));
 
@@ -582,11 +582,11 @@ ALLOC_T size;
 
 	if ((n = urlcommand(uh, &buf, FTP_PWD)) < 0) return(-1);
 	if (n != 257) {
-		free2(buf);
+		Xfree(buf);
 		return(seterrno(EACCES));
 	}
 
-	for (i = 4; isblank2(buf[i]); i++) /*EMPTY*/;
+	for (i = 4; Xisblank(buf[i]); i++) /*EMPTY*/;
 	quote = '\0';
 	for (j = 0; buf[i]; i++) {
 		if (buf[i] == quote) {
@@ -597,7 +597,7 @@ ALLOC_T size;
 			i++;
 		}
 		else if (quote) /*EMPTY*/;
-		else if (isblank2(buf[i])) break;
+		else if (Xisblank(buf[i])) break;
 		else if (buf[i] == '"') {
 			quote = buf[i];
 			continue;
@@ -607,7 +607,7 @@ ALLOC_T size;
 		path[j++] = buf[i];
 	}
 	path[j] = '\0';
-	free2(buf);
+	Xfree(buf);
 
 	return(0);
 }
@@ -624,23 +624,23 @@ int uh;
 	if (ftpseterrno(n) < 0) {
 		if (n == 500 || n == 502)
 			urlhostlist[uh].options |= UOP_NOFEAT;
-		free2(buf);
+		Xfree(buf);
 		return(-1);
 	}
 
 	next = NULL;
 	mdtm = 0;
 	for (cp = buf; cp && *cp; cp = next) {
-		while (isblank2(*cp)) cp++;
-		if (!(next = strchr2(cp, '\n'))) n = strlen(cp);
+		while (Xisblank(*cp)) cp++;
+		if (!(next = Xstrchr(cp, '\n'))) n = strlen(cp);
 		else {
 			n = next - cp;
 			*(next++) = '\0';
 		}
-		if (!strcasecmp2(cp, "MDTM")) mdtm++;
+		if (!Xstrcasecmp(cp, "MDTM")) mdtm++;
 	}
 	if (!mdtm) urlhostlist[uh].options |= UOP_NOMDTM;
-	free2(buf);
+	Xfree(buf);
 
 	return(0);
 }
@@ -669,15 +669,15 @@ int st, ent;
 	if (ftpseterrno(n) < 0) {
 		if (n == 500 || n == 502)
 			urlhostlist[uh].options |= UOP_NOMDTM;
-		free2(buf);
+		Xfree(buf);
 		return(-1);
 	}
-	if ((cp = strchr2(buf, ' '))) {
+	if ((cp = Xstrchr(buf, ' '))) {
 		cp = skipspace(&(cp[1]));
-		cp = sscanf2(cp, "%04u%02u%02u%02u%02u%02u",
+		cp = Xsscanf(cp, "%04u%02u%02u%02u%02u%02u",
 			&year, &mon, &day, &hour, &min, &sec);
 	}
-	free2(buf);
+	Xfree(buf);
 	if (!cp) return(seterrno(EINVAL));
 	tm.tm_year = year - 1900;
 	tm.tm_mon = mon - 1;
@@ -686,7 +686,7 @@ int st, ent;
 	tm.tm_min = min;
 	tm.tm_sec = sec;
 
-	t = timegm2(&tm);
+	t = Xtimegm(&tm);
 	if (t == (time_t)-1) return(seterrno(EINVAL));
 	namep -> st_mtim = t;
 	if (tmp) tmp -> st_mtim = t;
@@ -737,7 +737,7 @@ int mode;
 	int n;
 
 	mode &= 0777;
-	if (snprintf2(buf, sizeof(buf), "%03o", mode) < 0) return(-1);
+	if (Xsnprintf(buf, sizeof(buf), "%03o", mode) < 0) return(-1);
 	n = urlcommand(uh, NULL, FTP_CHMOD, buf, path);
 
 	return(ftpseterrno(n));

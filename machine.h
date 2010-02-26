@@ -484,7 +484,23 @@ typedef long	off_t;
 #define	USEMANLANG
 #define	BSDINSTALL
 #define	TARUSESPACE
-#define	TERMCAPLIB		"-ltermcap"
+/*
+ *	This is a fake '#if' for obsolete version of Cygwin.
+ *	Will you please define 'OldCygwin' manually on Cygwin.
+ *
+ *	Some old Cygwin has no libncurses, to use libtermcap.
+ *	Latest distribution has no libtermcap, to use libncurses.
+ *	If you use older Cygwin without libncurses,
+ *	you should try to define 'OldCygwin' here and to re-compile.
+ *
+#define	OldCygwin
+ *
+ */
+# if	defined (OldCygwin)
+# define	TERMCAPLIB	"-ltermcap"
+# else
+# define	TERMCAPLIB	"-lncurses"
+# endif
 #define	NOSIGLIST
 #define	DECLERRLIST
 #define	HAVECLINE

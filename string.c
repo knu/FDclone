@@ -9,7 +9,7 @@
 #include "string.h"
 
 
-char *strchr2(s, c)
+char *Xstrchr(s, c)
 CONST char *s;
 int c;
 {
@@ -21,7 +21,7 @@ int c;
 	return((char *)s);
 }
 
-char *strrchr2(s, c)
+char *Xstrrchr(s, c)
 CONST char *s;
 int c;
 {
@@ -38,7 +38,7 @@ int c;
 }
 
 #ifndef	MINIMUMSHELL
-char *memchr2(s, c, n)
+char *Xmemchr(s, c, n)
 CONST char *s;
 int c, n;
 {
@@ -53,7 +53,7 @@ int c, n;
 }
 #endif	/* !MINIMUMSHELL */
 
-char *strcpy2(s1, s2)
+char *Xstrcpy(s1, s2)
 char *s1;
 CONST char *s2;
 {
@@ -65,7 +65,7 @@ CONST char *s2;
 	return(&(s1[i]));
 }
 
-char *strncpy2(s1, s2, n)
+char *Xstrncpy(s1, s2, n)
 char *s1;
 CONST char *s2;
 int n;
@@ -78,14 +78,14 @@ int n;
 	return(&(s1[i]));
 }
 
-int strcasecmp2(s1, s2)
+int Xstrcasecmp(s1, s2)
 CONST char *s1, *s2;
 {
 	int c1, c2;
 
 	for (;;) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
+		c1 = Xtoupper(*s1);
+		c2 = Xtoupper(*s2);
 		if (c1 != c2) return(c1 - c2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {
@@ -102,15 +102,15 @@ CONST char *s1, *s2;
 	return(0);
 }
 
-int strncasecmp2(s1, s2, n)
+int Xstrncasecmp(s1, s2, n)
 CONST char *s1, *s2;
 int n;
 {
 	int c1, c2;
 
 	while (n-- > 0) {
-		c1 = toupper2(*s1);
-		c2 = toupper2(*s2);
+		c1 = Xtoupper(*s1);
+		c2 = Xtoupper(*s2);
 		if (c1 != c2) return(c1 - c2);
 #ifndef	CODEEUC
 		if (issjis1(*s1)) {

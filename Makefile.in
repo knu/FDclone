@@ -49,7 +49,7 @@ SRC	= main.c printf.c termio.c term.c stream.c \
 	lsparse.c archive.c \
 	custom.c command.c browse.c \
 	mkunitbl.c mkdict.c mktankan.c \
-	mkkanji.c mkcat.c \
+	mkkanji.c mkcat.c mkdir_p.c \
 	kanjicnv.c expfunc.c mkmfsed.c \
 	mkfuncno.c
 HEADER	= fd.h \
@@ -404,22 +404,56 @@ __SLEEP__	@sleep 1
 
 
 ############################################################
+# Directory generating module
+
+mkdir_p$(EXE): mkdir_p$(OBJ)
+__SLEEP__	@sleep 1
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) __LNK__ mkdir_p$(OBJ)
+__DJGPP1__	@ren $@ mkdir_p
+__DJGPP1__	@aout2exe mkdir_p
+__DJGPP1__	@del mkdir_p
+__SLEEP__	@sleep 1
+
+mkdir_p$(OBJ): mkdir_p.c
+	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c __OUT__ $*.c
+
+
+############################################################
 # to install all
 
-install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
-	[ -d $(BINDIR) ] || mkdir $(BINDIR)
+install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES) mkdir_p$(EXE)
+	[ -d $(BINDIR) ] || ./mkdir_p$(EXE) $(BINDIR)
 	$(INSTALL) __INSTSTRIP__ $(PROGRAM)$(EXE) $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)/$(PROGRAM)$(EXE)
 	-$(RM) $(BINDIR)/$(ALIAS)$(EXE)
 	$(LN) $(BINDIR)/$(PROGRAM)$(EXE) $(BINDIR)/$(ALIAS)$(EXE)
 	$(CHMOD) a+rx $(BINDIR)/$(ALIAS)$(EXE)
-	[ -d $(JMANDIR) ] || mkdir $(JMANDIR)
+	[ -d __DATADIR__ ] || ./mkdir_p$(EXE) __DATADIR__
+	-if [ -f $(UNITBL) ]; then \
+		$(INSTALL) $(UNITBL) __DATADIR__; \
+		$(CHMOD) a+r-x __DATADIR__/$(UNITBL); \
+	fi
+	-if [ -f $(CATTBL) ]; then \
+		[ -d __DATADIR2__ ] || ./mkdir_p$(EXE) __DATADIR2__; \
+		$(INSTALL) $(CATTBL) __DATADIR2__; \
+		$(CHMOD) a+r-x __DATADIR2__/$(CATTBL); \
+	fi
+	-if [ -f $(ECATTBL) ]; then \
+		[ -d __DATADIR2__ ] || ./mkdir_p$(EXE) __DATADIR2__; \
+		$(INSTALL) $(ECATTBL) __DATADIR2__; \
+		$(CHMOD) a+r-x __DATADIR2__/$(ECATTBL); \
+	fi
+	-if [ -f $(DICTTBL) ]; then \
+		$(INSTALL) $(DICTTBL) __DATADIR__; \
+		$(CHMOD) a+r-x __DATADIR__/$(DICTTBL); \
+	fi
+	[ -d $(JMANDIR) ] || ./mkdir_p$(EXE) $(JMANDIR)
 	$(INSTALL) $(PROGRAM).$(MANSEC) $(JMANDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JMANDIR)/$(PROGRAM).$(MANSEC)
 	-$(RM) $(JMANDIR)/$(ALIAS).$(MANSEC)
 	$(LN) $(JMANDIR)/$(PROGRAM).$(MANSEC) $(JMANDIR)/$(ALIAS).$(MANSEC)
 	$(CHMOD) a+r-x $(JMANDIR)/$(ALIAS).$(MANSEC)
-	[ -d $(MANDIR) ] || mkdir $(MANDIR)
+	[ -d $(MANDIR) ] || ./mkdir_p$(EXE) $(MANDIR)
 	$(INSTALL) $(MANSRC) $(MANDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(MANDIR)/$(PROGRAM).$(MANSEC)
 	-$(RM) $(MANDIR)/$(ALIAS).$(MANSEC)
@@ -429,34 +463,17 @@ install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
 		$(INSTALL) $(RUNCOM) $(BLDRC); \
 		$(CHMOD) a+r-x $(BLDRC); \
 	fi
-	[ -d __DATADIR__ ] || mkdir __DATADIR__
-	-if [ -f $(UNITBL) ]; then \
-		$(INSTALL) $(UNITBL) __DATADIR__; \
-		$(CHMOD) a+r-x __DATADIR__/$(UNITBL); \
-	fi
-	-if [ -f $(DICTTBL) ]; then \
-		$(INSTALL) $(DICTTBL) __DATADIR__; \
-		$(CHMOD) a+r-x __DATADIR__/$(DICTTBL); \
-	fi
-	-if [ -f $(CATTBL) ]; then \
-		[ -d __DATADIR2__ ] || mkdir __DATADIR2__; \
-		$(INSTALL) $(CATTBL) __DATADIR2__; \
-		$(CHMOD) a+r-x __DATADIR2__/$(CATTBL); \
-	fi
-	-if [ -f $(ECATTBL) ]; then \
-		[ -d __DATADIR2__ ] || mkdir __DATADIR2__; \
-		$(INSTALL) $(ECATTBL) __DATADIR2__; \
-		$(CHMOD) a+r-x __DATADIR2__/$(ECATTBL); \
-	fi
 
-catman: $(MANCAT)
+catman: $(MANCAT) mkdir_p$(EXE)
+	[ -d $(CATDIR) ] || ./mkdir_p$(EXE) $(CATDIR)
 	$(INSTALL) $(MANCAT) $(CATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(CATDIR)/$(PROGRAM).$(MANSEC)
 	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC)
 	$(LN) $(CATDIR)/$(PROGRAM).$(MANSEC) $(CATDIR)/$(ALIAS).$(MANSEC)
 	$(CHMOD) a+r-x $(CATDIR)/$(ALIAS).$(MANSEC)
 
-catman-b: $(PROGRAM).eng
+catman-b: $(PROGRAM).eng mkdir_p$(EXE)
+	[ -d $(CATDIR) ] || ./mkdir_p$(EXE) $(CATDIR)
 	$(INSTALL) $(PROGRAM).eng $(CATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(CATDIR)/$(PROGRAM).$(MANSEC)
 	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC)
@@ -475,14 +492,16 @@ compman-b: catman-b
 	-$(RM) $(CATDIR)/$(ALIAS).$(MANSEC).Z
 	$(LN) $(CATDIR)/$(PROGRAM).$(MANSEC).Z $(CATDIR)/$(ALIAS).$(MANSEC).Z
 
-jcatman: catman $(PROGRAM).$(MANSEC)c
+jcatman: catman $(PROGRAM).$(MANSEC)c mkdir_p$(EXE)
+	[ -d $(JCATDIR) ] || ./mkdir_p$(EXE) $(JCATDIR)
 	$(INSTALL) $(PROGRAM).$(MANSEC)c $(JCATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JCATDIR)/$(PROGRAM).$(MANSEC)
 	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC)
 	$(LN) $(JCATDIR)/$(PROGRAM).$(MANSEC) $(JCATDIR)/$(ALIAS).$(MANSEC)
 	$(CHMOD) a+r-x $(JCATDIR)/$(ALIAS).$(MANSEC)
 
-jcatman-b: catman-b $(PROGRAM).doc
+jcatman-b: catman-b $(PROGRAM).doc mkdir_p$(EXE)
+	[ -d $(JCATDIR) ] || ./mkdir_p$(EXE) $(JCATDIR)
 	$(INSTALL) $(PROGRAM).doc $(JCATDIR)/$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(JCATDIR)/$(PROGRAM).$(MANSEC)
 	-$(RM) $(JCATDIR)/$(ALIAS).$(MANSEC)
@@ -829,13 +848,13 @@ shar: $(SOURCES)
 	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
-ipk: $(PROGRAM)$(EXE) $(TABLES)
-	-[ -d $(IPKWDIR)/$(BINDIR) ] || mkdir -p $(IPKWDIR)/$(BINDIR)
-	-[ -d $(IPKWDIR)/__DATADIR__ ] || mkdir -p $(IPKWDIR)/__DATADIR__
-	-[ -d $(IPKWDIR)/__DATADIR2__ ] || mkdir -p $(IPKWDIR)/__DATADIR2__
-	-[ -d $(IPKWDIR)/$(CONFDIR) ] || mkdir -p $(IPKWDIR)/$(CONFDIR)
-	-[ -d $(IPKWDIR)/CONTROL ] || mkdir -p $(IPKWDIR)/CONTROL
-	-[ -d $(IPKTDIR) ] || mkdir -p $(IPKTDIR)
+ipk: $(PROGRAM)$(EXE) $(TABLES) mkdir_p$(EXE)
+	-[ -d $(IPKWDIR)/$(BINDIR) ] || ./mkdir_p$(EXE) $(IPKWDIR)/$(BINDIR)
+	-[ -d $(IPKWDIR)/__DATADIR__ ] || ./mkdir_p$(EXE) $(IPKWDIR)/__DATADIR__
+	-[ -d $(IPKWDIR)/__DATADIR2__ ] || ./mkdir_p$(EXE) $(IPKWDIR)/__DATADIR2__
+	-[ -d $(IPKWDIR)/$(CONFDIR) ] || ./mkdir_p$(EXE) $(IPKWDIR)/$(CONFDIR)
+	-[ -d $(IPKWDIR)/CONTROL ] || ./mkdir_p$(EXE) $(IPKWDIR)/CONTROL
+	-[ -d $(IPKTDIR) ] || ./mkdir_p$(EXE) $(IPKTDIR)
 	$(CP) -p $(PROGRAM)$(EXE) $(IPKWDIR)/$(BINDIR)
 	-[ -z "$(STRIP)" ] || $(STRIP) $(IPKWDIR)/$(BINDIR)/$(PROGRAM)$(EXE)
 	$(CHMOD) a+rx $(IPKWDIR)/$(BINDIR)/$(PROGRAM)$(EXE)
@@ -943,6 +962,7 @@ clean:
 	-$(RM) fd_cat.*
 	-$(RM) kanjicnv$(EXE)
 	-$(RM) expfunc$(EXE)
+	-$(RM) mkdir_p$(EXE)
 	-$(RM) mkfuncno$(EXE)
 	-$(RM) mkunitbl$(EXE)
 	-$(RM) mkdict$(EXE)
@@ -990,7 +1010,7 @@ term$(OBJ): term.h
 stream$(OBJ): headers.h machine.h config.h
 stream$(OBJ): depend.h typesize.h malloc.h sysemu.h
 stream$(OBJ): dirent.h unixemu.h
-stream$(OBJ): stream.h termio.h
+stream$(OBJ): stream.h pathname.h termio.h
 stream$(OBJ): socket.h
 string$(OBJ): headers.h machine.h config.h
 string$(OBJ): kctype.h depend.h
@@ -1014,7 +1034,8 @@ system$(OBJ): term.h types.h typesize.h lsparse.h namelist.h kconv.h
 system$(OBJ): dirent.h unixemu.h
 system$(OBJ): sysemu.h system.h pathname.h termio.h
 system$(OBJ): wait.h
-system$(OBJ): posixsh.h termemu.h socket.h url.h urldisk.h auth.h
+system$(OBJ): posixsh.h termemu.h socket.h url.h
+system$(OBJ): urldisk.h auth.h
 posixsh$(OBJ): fd.h headers.h machine.h config.h
 posixsh$(OBJ): depend.h printf.h stream.h kctype.h
 posixsh$(OBJ): string.h malloc.h
@@ -1044,7 +1065,8 @@ sysemu$(OBJ): term.h dosdisk.h typesize.h dirent.h unixemu.h
 sysemu$(OBJ): kconv.h sysemu.h
 sysemu$(OBJ): log.h pathname.h termio.h
 sysemu$(OBJ): realpath.h
-sysemu$(OBJ): socket.h urldisk.h namelist.h url.h auth.h
+sysemu$(OBJ): socket.h urldisk.h namelist.h url.h
+sysemu$(OBJ): auth.h
 dosdisk$(OBJ): headers.h machine.h config.h
 dosdisk$(OBJ): depend.h kctype.h
 dosdisk$(OBJ): string.h time.h sysemu.h dirent.h
@@ -1164,9 +1186,10 @@ url$(OBJ): pathname.h url.h
 auth$(OBJ): headers.h machine.h config.h
 auth$(OBJ): depend.h printf.h
 auth$(OBJ): stream.h string.h malloc.h time.h pathname.h typesize.h
-auth$(OBJ): encode.h parse.h socket.h auth.h url.h system.h termio.h
-auth$(OBJ): wait.h unixemu.h
-auth$(OBJ): kanji.h catalog.h
+auth$(OBJ): encode.h parse.h socket.h auth.h url.h
+auth$(OBJ): system.h termio.h
+auth$(OBJ): wait.h
+auth$(OBJ): unixemu.h kanji.h catalog.h
 ftp$(OBJ): headers.h machine.h config.h
 ftp$(OBJ): depend.h printf.h
 ftp$(OBJ): stream.h kctype.h
@@ -1174,7 +1197,8 @@ ftp$(OBJ): string.h malloc.h time.h sysemu.h dirent.h unixemu.h
 ftp$(OBJ): pathname.h
 ftp$(OBJ): typesize.h termio.h
 ftp$(OBJ): parse.h
-ftp$(OBJ): lsparse.h namelist.h socket.h auth.h url.h urldisk.h
+ftp$(OBJ): lsparse.h namelist.h socket.h auth.h
+ftp$(OBJ): url.h urldisk.h
 html$(OBJ): headers.h machine.h config.h
 html$(OBJ): depend.h printf.h
 html$(OBJ): stream.h kctype.h
@@ -1189,14 +1213,16 @@ http$(OBJ): string.h malloc.h time.h sysemu.h dirent.h unixemu.h
 http$(OBJ): pathname.h
 http$(OBJ): typesize.h termio.h
 http$(OBJ): parse.h
-http$(OBJ): lsparse.h namelist.h socket.h auth.h url.h html.h urldisk.h
+http$(OBJ): lsparse.h namelist.h socket.h auth.h
+http$(OBJ): url.h html.h urldisk.h
 urldisk$(OBJ): headers.h machine.h config.h
 urldisk$(OBJ): depend.h printf.h stream.h string.h
 urldisk$(OBJ): malloc.h time.h sysemu.h dirent.h unixemu.h
 urldisk$(OBJ): pathname.h
 urldisk$(OBJ): typesize.h termio.h
 urldisk$(OBJ): realpath.h
-urldisk$(OBJ): lsparse.h namelist.h socket.h urldisk.h url.h auth.h
+urldisk$(OBJ): lsparse.h namelist.h socket.h
+urldisk$(OBJ): urldisk.h url.h auth.h
 catalog$(OBJ): fd.h headers.h machine.h config.h
 catalog$(OBJ): depend.h printf.h stream.h kctype.h
 catalog$(OBJ): string.h malloc.h
@@ -1312,6 +1338,9 @@ mkkanji$(OBJ): typesize.h
 mkcat$(OBJ): headers.h machine.h config.h
 mkcat$(OBJ): kctype.h depend.h
 mkcat$(OBJ): typesize.h version.h
+mkdir_p$(OBJ): headers.h machine.h config.h
+mkdir_p$(OBJ): kctype.h depend.h
+mkdir_p$(OBJ): typesize.h
 kanjicnv$(OBJ): headers.h machine.h config.h
 expfunc$(OBJ): headers.h machine.h config.h
 mkmfsed$(OBJ): fd.h headers.h machine.h config.h
@@ -1333,7 +1362,7 @@ stermio$(OBJ): stream.h termio.h
 sstream$(OBJ): headers.h machine.h config.h
 sstream$(OBJ): depend.h typesize.h malloc.h sysemu.h
 sstream$(OBJ): dirent.h unixemu.h
-sstream$(OBJ): stream.h termio.h
+sstream$(OBJ): stream.h pathname.h termio.h
 sstring$(OBJ): headers.h machine.h config.h
 sstring$(OBJ): kctype.h depend.h
 sstring$(OBJ): string.h
@@ -1388,7 +1417,7 @@ btermio$(OBJ): stream.h termio.h
 bstream$(OBJ): headers.h machine.h config.h
 bstream$(OBJ): depend.h typesize.h malloc.h sysemu.h
 bstream$(OBJ): dirent.h unixemu.h
-bstream$(OBJ): stream.h termio.h
+bstream$(OBJ): stream.h pathname.h termio.h
 bstring$(OBJ): headers.h machine.h config.h
 bstring$(OBJ): kctype.h depend.h
 bstring$(OBJ): string.h
@@ -1432,7 +1461,7 @@ ntermio$(OBJ): stream.h termio.h
 nstream$(OBJ): headers.h machine.h config.h
 nstream$(OBJ): depend.h typesize.h malloc.h sysemu.h
 nstream$(OBJ): dirent.h unixemu.h
-nstream$(OBJ): stream.h termio.h
+nstream$(OBJ): stream.h pathname.h termio.h
 nstream$(OBJ): socket.h
 nstring$(OBJ): headers.h machine.h config.h
 nstring$(OBJ): kctype.h depend.h
@@ -1455,8 +1484,8 @@ nsystem$(OBJ): dirent.h unixemu.h
 nsystem$(OBJ): sysemu.h time.h system.h pathname.h
 nsystem$(OBJ): typesize.h termio.h
 nsystem$(OBJ): wait.h
-nsystem$(OBJ): posixsh.h socket.h url.h urldisk.h
-nsystem$(OBJ): namelist.h auth.h
+nsystem$(OBJ): posixsh.h socket.h
+nsystem$(OBJ): url.h urldisk.h namelist.h auth.h
 nposixsh$(OBJ): headers.h machine.h config.h
 nposixsh$(OBJ): depend.h printf.h stream.h kctype.h
 nposixsh$(OBJ): string.h malloc.h
@@ -1479,8 +1508,8 @@ nsysemu$(OBJ): depend.h printf.h stream.h kctype.h
 nsysemu$(OBJ): string.h malloc.h
 nsysemu$(OBJ): sysemu.h dirent.h unixemu.h
 nsysemu$(OBJ): log.h pathname.h typesize.h termio.h
-nsysemu$(OBJ): realpath.h socket.h urldisk.h
-nsysemu$(OBJ): namelist.h url.h auth.h
+nsysemu$(OBJ): realpath.h socket.h
+nsysemu$(OBJ): urldisk.h namelist.h url.h auth.h
 nrealpat$(OBJ): headers.h machine.h config.h
 nrealpat$(OBJ): depend.h
 nrealpat$(OBJ): printf.h stream.h kctype.h
@@ -1513,7 +1542,8 @@ nurl$(OBJ): pathname.h url.h
 nauth$(OBJ): headers.h machine.h config.h
 nauth$(OBJ): depend.h printf.h stream.h string.h
 nauth$(OBJ): malloc.h time.h pathname.h typesize.h encode.h parse.h
-nauth$(OBJ): socket.h auth.h url.h sysemu.h dirent.h unixemu.h
+nauth$(OBJ): socket.h auth.h url.h sysemu.h
+nauth$(OBJ): dirent.h unixemu.h
 nauth$(OBJ): system.h termio.h
 nauth$(OBJ): wait.h
 nftp$(OBJ): headers.h machine.h config.h
@@ -1523,7 +1553,8 @@ nftp$(OBJ): string.h malloc.h time.h sysemu.h dirent.h unixemu.h
 nftp$(OBJ): pathname.h
 nftp$(OBJ): typesize.h termio.h
 nftp$(OBJ): parse.h
-nftp$(OBJ): lsparse.h namelist.h socket.h auth.h url.h urldisk.h
+nftp$(OBJ): lsparse.h namelist.h socket.h auth.h
+nftp$(OBJ): url.h urldisk.h
 nhtml$(OBJ): headers.h machine.h config.h
 nhtml$(OBJ): depend.h printf.h stream.h kctype.h
 nhtml$(OBJ): typesize.h string.h
@@ -1537,14 +1568,16 @@ nhttp$(OBJ): string.h malloc.h
 nhttp$(OBJ): time.h sysemu.h dirent.h unixemu.h
 nhttp$(OBJ): pathname.h typesize.h termio.h
 nhttp$(OBJ): parse.h lsparse.h namelist.h
-nhttp$(OBJ): socket.h auth.h url.h html.h urldisk.h
+nhttp$(OBJ): socket.h auth.h url.h html.h
+nhttp$(OBJ): urldisk.h
 nurldisk$(OBJ): headers.h machine.h config.h
 nurldisk$(OBJ): depend.h printf.h stream.h string.h
 nurldisk$(OBJ): malloc.h time.h sysemu.h dirent.h unixemu.h
 nurldisk$(OBJ): pathname.h
 nurldisk$(OBJ): typesize.h termio.h
 nurldisk$(OBJ): realpath.h
-nurldisk$(OBJ): lsparse.h namelist.h socket.h urldisk.h url.h auth.h
+nurldisk$(OBJ): lsparse.h namelist.h socket.h
+nurldisk$(OBJ): urldisk.h url.h auth.h
 nlsparse$(OBJ): headers.h machine.h config.h
 nlsparse$(OBJ): depend.h kctype.h
 nlsparse$(OBJ): string.h malloc.h time.h dirent.h

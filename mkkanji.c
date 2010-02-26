@@ -38,7 +38,7 @@ char *CONST argv[];
 	if (argc <= 2) fpout = stdout;
 	else if (!(fpout = fopen(argv[2], "w"))) {
 		fprintf(stderr, "%s: cannot open.\n", argv[2]);
-		fclose(fpin);
+		VOID_C fclose(fpin);
 		return(1);
 	}
 
@@ -75,8 +75,8 @@ char *CONST argv[];
 		if (!s) fputs(buf, fpout);
 		else if (++n >= MAXUTYPE(u_short)) {
 			fprintf(stderr, "too many entries.\n");
-			fclose(fpin);
-			fclose(fpout);
+			VOID_C fclose(fpin);
+			VOID_C fclose(fpout);
 			return(1);
 		}
 		else {

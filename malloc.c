@@ -20,14 +20,14 @@ static VOID NEAR error __P_((CONST char *));
 static VOID NEAR error(s)
 CONST char *s;
 {
-	fprintf2(Xstderr, "%s: memory allocation error", s);
+	Xfprintf(Xstderr, "%s: memory allocation error", s);
 	VOID_C fputnl(Xstderr);
 
 	exit(2);
 }
 #endif	/* !FD */
 
-char *malloc2(size)
+char *Xmalloc(size)
 ALLOC_T size;
 {
 	char *tmp;
@@ -42,7 +42,7 @@ ALLOC_T size;
 	return(tmp);
 }
 
-char *realloc2(ptr, size)
+char *Xrealloc(ptr, size)
 VOID_P ptr;
 ALLOC_T size;
 {
@@ -60,7 +60,7 @@ ALLOC_T size;
 	return(tmp);
 }
 
-VOID free2(ptr)
+VOID Xfree(ptr)
 VOID_P ptr;
 {
 	int duperrno;
@@ -77,14 +77,14 @@ ALLOC_T n, *sizep;
 {
 	if (!ptr) {
 		*sizep = BUFUNIT;
-		return(malloc2(*sizep));
+		return(Xmalloc(*sizep));
 	}
 	while (n + 1 >= *sizep) *sizep *= 2;
 
-	return(realloc2(ptr, *sizep));
+	return(Xrealloc(ptr, *sizep));
 }
 
-char *strdup2(s)
+char *Xstrdup(s)
 CONST char *s;
 {
 	char *tmp;
@@ -98,7 +98,7 @@ CONST char *s;
 	return(tmp);
 }
 
-char *strndup2(s, n)
+char *Xstrndup(s, n)
 CONST char *s;
 int n;
 {
@@ -115,14 +115,14 @@ int n;
 }
 
 #ifndef	MINIMUMSHELL
-int vasprintf3(sp, fmt, args)
+int vasprintf2(sp, fmt, args)
 char **sp;
 CONST char *fmt;
 va_list args;
 {
 	int n;
 
-	n = vasprintf2(sp, fmt, args);
+	n = Xvasprintf(sp, fmt, args);
 	if (n < 0) error("malloc()");
 
 	return(n);
@@ -130,10 +130,10 @@ va_list args;
 
 #ifdef	USESTDARGH
 /*VARARGS1*/
-char *asprintf3(CONST char *fmt, ...)
+char *asprintf2(CONST char *fmt, ...)
 #else
 /*VARARGS1*/
-char *asprintf3(fmt, va_alist)
+char *asprintf2(fmt, va_alist)
 CONST char *fmt;
 va_dcl
 #endif
@@ -142,7 +142,7 @@ va_dcl
 	char *cp;
 
 	VA_START(args, fmt);
-	VOID_C vasprintf3(&cp, fmt, args);
+	VOID_C vasprintf2(&cp, fmt, args);
 	va_end(args);
 
 	return(cp);

@@ -57,7 +57,7 @@ static char *NEAR checkspace __P_((CONST char *, int *));
 # ifdef	DEP_FILECONV
 static char *NEAR readfname __P_((CONST char *, int));
 # else
-#define	readfname		strndup2
+#define	readfname		Xstrndup
 # endif
 # ifndef	NOSYMLINK
 static char *NEAR readlinkname __P_((CONST char *, int));
@@ -164,18 +164,18 @@ static CONST name_t tzlist[] = {
 	{"UCT", 0},
 	{"UTC", 0},
 	{"WET", 0},
-	{"BST", +1 * 60},
-	{"CET", +1 * 60},
-	{"MET", +1 * 60},
-	{"EET", +2 * 60},
-	{"IST", +3 * 60 + 30},
-	{"IDT", +4 * 60 + 30},
-	{"SST", +8 * 60},
-	{"HKT", +8 * 60},
-	{"KST", +9 * 60},
-	{"JST", +9 * 60},
-	{"KDT", +10 * 60},
-	{"NZST", +12 * 60},
+	{"BST", 1 * 60},
+	{"CET", 1 * 60},
+	{"MET", 1 * 60},
+	{"EET", 2 * 60},
+	{"IST", 3 * 60 + 30},
+	{"IDT", 4 * 60 + 30},
+	{"SST", 8 * 60},
+	{"HKT", 8 * 60},
+	{"KST", 9 * 60},
+	{"JST", 9 * 60},
+	{"KDT", 10 * 60},
+	{"NZST", 12 * 60},
 };
 #define	TZLISTSIZ		arraysize(tzlist)
 #endif	/* DEP_LSPARSE */
@@ -186,7 +186,7 @@ int c;
 {
 	int i;
 
-	c = tolower2(c);
+	c = Xtolower(c);
 	for (i = 0; typesymlist[i]; i++)
 		if (c == typesymlist[i]) return(typelist[i]);
 
@@ -244,7 +244,7 @@ CONST char *buf;
 				mode &= ~S_IFMT;
 				mode |= n;
 			}
-			else switch (tolower2(buf[len])) {
+			else switch (Xtolower(buf[len])) {
 				case 'a':
 					mode |= S_ISVTX;
 					break;
@@ -311,7 +311,7 @@ CONST char *buf;
 		else if (buf[i] == 'T') mode |= S_ISVTX;
 		else if (buf[i] != '-') return(0);
 
-		if (len >= 10 && !strchr2(IGNORETYPESYM, buf[len - 10])) {
+		if (len >= 10 && !Xstrchr(IGNORETYPESYM, buf[len - 10])) {
 			n = getfmode(buf[len - 10]);
 			if (n == (u_int)-1) return(0);
 			mode &= ~S_IFMT;
@@ -329,7 +329,7 @@ int max;
 {
 	int i;
 
-	for (i = 0; i < max; i++) if (!strncasecmp2(s, list[i], 3)) return(i);
+	for (i = 0; i < max; i++) if (!Xstrncasecmp(s, list[i], 3)) return(i);
 
 	return(-1);
 }
@@ -340,9 +340,9 @@ CONST char *s;
 	int i;
 
 	for (i = 0; i < AMLISTSIZ; i++)
-		if (!strcasecmp2(s, amlist[i])) return(0);
+		if (!Xstrcasecmp(s, amlist[i])) return(0);
 	for (i = 0; i < PMLISTSIZ; i++)
-		if (!strcasecmp2(s, pmlist[i])) return(1);
+		if (!Xstrcasecmp(s, pmlist[i])) return(1);
 
 	return(-1);
 }
@@ -351,7 +351,7 @@ VOID initlist(namep, name)
 namelist *namep;
 CONST char *name;
 {
-	namep -> name = strdup2(name);
+	namep -> name = Xstrdup(name);
 	namep -> ent = 0;
 	namep -> st_mode = (S_IREAD_ALL | S_IWUSR | S_IFREG);
 	namep -> st_nlink = 1;
@@ -404,12 +404,12 @@ int field, *eolp;
 			j++;
 			sp = (j < MAXLSPARSESEP) ? (int)sep[j] : SEP_NONE;
 			for (; sp == SEP_NONE || i < sp; i++)
-				if (!isblank2(line[i])) break;
+				if (!Xisblank(line[i])) break;
 			if (f < 0) f = 1;
 			else f++;
 			s = 0;
 		}
-		else if (isblank2(line[i])) s = 1;
+		else if (Xisblank(line[i])) s = 1;
 		else if (s) {
 			f++;
 			s = 0;
@@ -421,7 +421,7 @@ int field, *eolp;
 			if (eolp) {
 				for (j = i; line[j]; j++) {
 					if ((sp != SEP_NONE && j >= sp)
-					|| isblank2(line[j]))
+					|| Xisblank(line[j]))
 						break;
 				}
 				*eolp = j;
@@ -458,17 +458,17 @@ int no;
 		if (&(cp[i]) < &(line[eol])) cp += i;
 		else return(buf);
 	}
-	else if (i && (!(cp = strchr2(cp, i)) || ++cp >= &(line[eol])))
+	else if (i && (!(cp = Xstrchr(cp, i)) || ++cp >= &(line[eol])))
 		return(buf);
 
 	i = (int)(list -> width[no]);
 	if (i >= 128) i -= 128;
 	else if (i) {
-		if ((tmp = strchr2(cp, i))) i = tmp - cp;
+		if ((tmp = Xstrchr(cp, i))) i = tmp - cp;
 		else i = &(line[eol]) - cp;
 	}
 	if (!i || &(cp[i]) > &(line[eol])) i = &(line[eol]) - cp;
-	strncpy2(buf, cp, i);
+	Xstrncpy(buf, cp, i);
 
 	return(buf);
 }
@@ -493,14 +493,14 @@ int max;
 
 	i = countfield(line, list -> sep, -1, NULL);
 	skip = (max > i) ? max - i : 0;
-	buf = malloc2(strlen(line) + 1);
+	buf = Xmalloc(strlen(line) + 1);
 
 	initlist(tmp, NULL);
 	tmp -> st_mode = 0;
 	tmp -> flags = 0;
 	getfield(buf, line, skip, list, F_NAME);
 	if (!*buf) {
-		free2(buf);
+		Xfree(buf);
 		return(-1);
 	}
 # if	MSDOS
@@ -517,7 +517,7 @@ int max;
 		if (i > 0) buf[i] = '\0';
 		tmp -> st_mode |= S_IFDIR;
 	}
-	tmp -> name = strdup2(buf);
+	tmp -> name = Xstrdup(buf);
 
 	getfield(buf, line, skip, list, F_MODE);
 	readattr(tmp, buf);
@@ -528,28 +528,28 @@ int max;
 
 # ifndef	NOUID
 	getfield(buf, line, skip, list, F_UID);
-	if (sscanf2(buf, "%-<*d%$", sizeof(uid), &uid)) tmp -> st_uid = uid;
+	if (Xsscanf(buf, "%-<*d%$", sizeof(uid), &uid)) tmp -> st_uid = uid;
 	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
 	getfield(buf, line, skip, list, F_GID);
-	if (sscanf2(buf, "%-<*d%$", sizeof(gid), &gid)) tmp -> st_gid = gid;
+	if (Xsscanf(buf, "%-<*d%$", sizeof(gid), &gid)) tmp -> st_gid = gid;
 	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
 # endif
 	getfield(buf, line, skip, list, F_SIZE);
-	tmp -> st_size = (sscanf2(buf, "%qd%$", &n)) ? n : (off_t)0;
+	tmp -> st_size = (Xsscanf(buf, "%qd%$", &n)) ? n : (off_t)0;
 
 	getfield(buf, line, skip, list, F_MON);
 	if ((i = readdatestr(buf, monthlist, MONTHLISTSIZ)) >= 0)
 		tm.tm_mon = i;
-	else if ((i = atoi2(buf)) >= 1 && i < 12) tm.tm_mon = i - 1;
+	else if ((i = Xatoi(buf)) >= 1 && i < 12) tm.tm_mon = i - 1;
 	else tm.tm_mon = 0;
 	getfield(buf, line, skip, list, F_DAY);
-	tm.tm_mday = ((i = atoi2(buf)) >= 1 && i < 31) ? i : 1;
+	tm.tm_mday = ((i = Xatoi(buf)) >= 1 && i < 31) ? i : 1;
 	getfield(buf, line, skip, list, F_YEAR);
 	if (!*buf) tm.tm_year = 1970;
-	else if ((i = atoi2(buf)) >= 0) tm.tm_year = i;
+	else if ((i = Xatoi(buf)) >= 0) tm.tm_year = i;
 	else if (list -> field[F_YEAR] == list -> field[F_TIME]
-	&& strchr2(buf, ':')) {
-		t = time2();
+	&& Xstrchr(buf, ':')) {
+		t = Xtime(NULL);
 # ifdef	DEBUG
 		_mtrace_file = "localtime(start)";
 		tp = localtime(&t);
@@ -572,22 +572,22 @@ int max;
 	tm.tm_year -= 1900;
 
 	getfield(buf, line, skip, list, F_TIME);
-	if (!(cp = sscanf2(buf, "%d", &i)) || i > 23)
+	if (!(cp = Xsscanf(buf, "%d", &i)) || i > 23)
 		tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
 	else {
 		tm.tm_hour = i;
-		if (!(cp = sscanf2(cp, ":%d", &i)) || i > 59)
+		if (!(cp = Xsscanf(cp, ":%d", &i)) || i > 59)
 			tm.tm_min = tm.tm_sec = 0;
 		else {
 			tm.tm_min = i;
-			if (!sscanf2(cp, ":%d%$", &i) || i > 60) tm.tm_sec = 0;
+			if (!Xsscanf(cp, ":%d%$", &i) || i > 60) tm.tm_sec = 0;
 			else tm.tm_sec = i;
 		}
 	}
 
-	tmp -> st_mtim = timelocal2(&tm);
+	tmp -> st_mtim = Xtimelocal(&tm);
 	tmp -> flags |= logical_access2(tmp);
-	free2(buf);
+	Xfree(buf);
 
 	return(0);
 }
@@ -600,20 +600,20 @@ int *scorep;
 {
 	int i;
 
-	if (isblank2(*s)) {
+	if (Xisblank(*s)) {
 		(*scorep)++;
 		s = skipspace(&(s[1]));
 	}
 	for (i = 0; s[i]; i++) {
-		if (isblank2(s[i])) {
+		if (Xisblank(s[i])) {
 			(*scorep)++;
-			for (i++; isblank2(s[i]); i++) /*EMPTY*/;
+			for (i++; Xisblank(s[i]); i++) /*EMPTY*/;
 			if (!s[i]) break;
 			*scorep += 4;
 		}
 	}
 
-	return(strndup2(s, i));
+	return(Xstrndup(s, i));
 }
 
 # ifdef	DEP_FILECONV
@@ -623,9 +623,9 @@ int len;
 {
 	char *cp, *tmp;
 
-	cp = strndup2(s, len);
+	cp = Xstrndup(s, len);
 	tmp = newkanjiconv(cp, fnamekcode, DEFCODE, L_FNAME);
-	if (tmp != cp) free2(cp);
+	if (tmp != cp) Xfree(cp);
 
 	return(tmp);
 }
@@ -683,7 +683,7 @@ int skip, flags;
 	mode = (u_int)-1;
 	score = 0;
 
-	while (*(lastform = form)) if (isblank2(*form)) {
+	while (*(lastform = form)) if (Xisblank(*form)) {
 		line = skipspace(line);
 		form++;
 	}
@@ -708,7 +708,7 @@ int skip, flags;
 			for (i = 0; line[i]; i++) if (line[i] == '\n') break;
 			len = i;
 		}
-		else if (!(cp = sscanf2(form, "%+d", &len))) len = -1;
+		else if (!(cp = Xsscanf(form, "%+d", &len))) len = -1;
 		else {
 			form = cp;
 			for (i = 0; i < len; i++) if (!line[i]) break;
@@ -722,11 +722,11 @@ int skip, flags;
 		s = form++;
 		if (n >= strsize(sympairlist)) l = 1;
 		else {
-			form = strchr2(form, sympairlist[n]);
+			form = Xstrchr(form, sympairlist[n]);
 			if (!form || form <= &(s[1])) {
-				free2(tmp -> name);
+				Xfree(tmp -> name);
 # ifndef	NOSYMLINK
-				free2(tmp -> linkname);
+				Xfree(tmp -> linkname);
 # endif
 				return(-1);
 			}
@@ -743,18 +743,18 @@ int skip, flags;
 		}
 
 		if (len < 0) {
-			if (!isblank2(*form)
+			if (!Xisblank(*form)
 			&& (*form != '%' || form[1] == '%'))
 				ch = *form;
 			for (len = 0; line[len]; len++) {
 				if (ch) {
 					if (ch == line[len]) break;
 				}
-				else if (isblank2(line[len])) break;
+				else if (Xisblank(line[len])) break;
 			}
 		}
 
-		rawbuf = strndup2(line, len);
+		rawbuf = Xstrndup(line, len);
 		hit = err = err2 = retr = 0;
 		buf = checkspace(rawbuf, &err);
 		for (i = 0; i < l; i++) switch (s[i]) {
@@ -765,13 +765,13 @@ int skip, flags;
 				}
 				break;
 			case 'l':
-				if ((n = atoi2(buf)) < 0) break;
+				if ((n = Xatoi(buf)) < 0) break;
 				tmp -> st_nlink = n;
 				hit++;
 				break;
 			case 'u':
 # ifndef	NOUID
-				cp = sscanf2(buf, "%-<*d%$",
+				cp = Xsscanf(buf, "%-<*d%$",
 					sizeof(uid), &uid);
 				if (cp) tmp -> st_uid = uid;
 				else if ((up = finduid(0, buf)))
@@ -781,7 +781,7 @@ int skip, flags;
 				break;
 			case 'g':
 # ifndef	NOUID
-				cp = sscanf2(buf, "%-<*d%$",
+				cp = Xsscanf(buf, "%-<*d%$",
 					sizeof(gid), &gid);
 				if (cp) tmp -> st_gid = gid;
 				else if ((gp = findgid(0, buf)))
@@ -794,16 +794,16 @@ int skip, flags;
 					hit++;
 					break;
 				}
-				if (!(cp = sscanf2(buf, "%qd", &size))) break;
+				if (!(cp = Xsscanf(buf, "%qd", &size))) break;
 				unit = (off_t)1024 * (off_t)1024 * (off_t)1024;
 				frac = (off_t)0;
 				if (*cp == '.') {
-					for (cp++; isdigit2(*cp); cp++) {
+					for (cp++; Xisdigit(*cp); cp++) {
 						unit /= (off_t)10;
 						frac += unit * (*cp - '0');
 					}
 				}
-				n = toupper2(*cp);
+				n = Xtoupper(*cp);
 				if (n == 'K') {
 					size *= (off_t)1024;
 					size += frac /
@@ -819,26 +819,26 @@ int skip, flags;
 					size += frac;
 				}
 				else n = '\0';
-				if (n && toupper2(*(++cp)) == 'B') cp++;
+				if (n && Xtoupper(*(++cp)) == 'B') cp++;
 				if (*cp) err2++;
 				tmp -> st_size = size;
 				hit++;
 				break;
 			case 'y':
-				if ((n = atoi2(buf)) < 0) break;
+				if ((n = Xatoi(buf)) < 0) break;
 				tm.tm_year = n;
 				hit++;
 				break;
 			case 'm':
 				n = readdatestr(buf, monthlist, MONTHLISTSIZ);
 				if (n >= 0) tm.tm_mon = n;
-				else if ((n = atoi2(buf)) >= 1 && n <= 12)
+				else if ((n = Xatoi(buf)) >= 1 && n <= 12)
 					tm.tm_mon = n - 1;
 				else break;
 				hit++;
 				break;
 			case 'd':
-				if ((n = atoi2(buf)) < 1 || n > 31) break;
+				if ((n = Xatoi(buf)) < 1 || n > 31) break;
 				tm.tm_mday = n;
 				hit++;
 				break;
@@ -848,18 +848,18 @@ int skip, flags;
 				hit++;
 				break;
 			case 't':
-				if (!(cp = sscanf2(buf, "%d", &n)) || n > 23)
+				if (!(cp = Xsscanf(buf, "%d", &n)) || n > 23)
 					break;
 				tm.tm_hour = n;
 				hit++;
-				if (!(cp = sscanf2(cp, ":%d", &n)) || n > 59) {
+				if (!(cp = Xsscanf(cp, ":%d", &n)) || n > 59) {
 					tm.tm_min = tm.tm_sec = 0;
 					err2++;
 					break;
 				}
 				tm.tm_min = n;
 				if (*cp != ':') n = 0;
-				else if (!(cp = sscanf2(&(cp[1]), "%d", &n))
+				else if (!(cp = Xsscanf(&(cp[1]), "%d", &n))
 				|| n > 60) {
 					tm.tm_sec = 0;
 					break;
@@ -875,12 +875,12 @@ int skip, flags;
 				hit++;
 				break;
 			case 'B':
-				if ((n = atoi2(buf)) < 0) break;
+				if ((n = Xatoi(buf)) < 0) break;
 				maj = n;
 				hit++;
 				break;
 			case 'b':
-				if ((n = atoi2(buf)) < 0) break;
+				if ((n = Xatoi(buf)) < 0) break;
 				min = n;
 				hit++;
 				break;
@@ -900,7 +900,7 @@ int skip, flags;
 					}
 #  endif
 # endif	/* !BSPATHDELIM */
-					if (!isblank2(*cp)) continue;
+					if (!Xisblank(*cp)) continue;
 					cp = skipspace(&(cp[1]));
 					if (cp >= eol) {
 						if (!ch) n = len;
@@ -910,7 +910,7 @@ int skip, flags;
 				while (isdelim(rawbuf, n - 1)) n--;
 				if (n <= 0) break;
 # ifndef	NOSYMLINK
-				free2(tmp -> linkname);
+				Xfree(tmp -> linkname);
 				tmp -> linkname = readfname(rawbuf, n);
 # endif
 				tmp -> st_mode &= ~S_IFMT;
@@ -920,9 +920,9 @@ int skip, flags;
 				break;
 			case '/':
 				n = l - ++i;
-				if ((cp = memchr2(&(s[i]), '/', n)))
+				if ((cp = Xmemchr(&(s[i]), '/', n)))
 					n = cp - &(s[i]);
-				if (strncasecmp2(buf, &(s[i]), n) || buf[n])
+				if (Xstrncasecmp(buf, &(s[i]), n) || buf[n])
 					/*EMPTY*/;
 				else {
 					todirlist(tmp, mode);
@@ -932,9 +932,9 @@ int skip, flags;
 				break;
 			case '!':
 				n = l - ++i;
-				if ((cp = memchr2(&(s[i]), '!', n)))
+				if ((cp = Xmemchr(&(s[i]), '!', n)))
 					n = cp - &(s[i]);
-				if (strncasecmp2(buf, &(s[i]), n) || buf[n])
+				if (Xstrncasecmp(buf, &(s[i]), n) || buf[n])
 					retr++;
 				else form = lastform;
 				hit++;
@@ -958,7 +958,7 @@ int skip, flags;
 					}
 #  endif
 # endif	/* !BSPATHDELIM */
-					if (!isblank2(*cp)) continue;
+					if (!Xisblank(*cp)) continue;
 					cp = skipspace(&(cp[1]));
 					if (cp >= eol) {
 						if (!ch) n = len;
@@ -978,7 +978,7 @@ int skip, flags;
 						/*EMPTY*/;
 				}
 				if (n <= 0) break;
-				free2(tmp -> name);
+				Xfree(tmp -> name);
 				tmp -> name = readfname(rawbuf, n);
 				if (!(flags & LF_NOTRAVERSE)) /*EMPTY*/;
 				else if (strdelim(tmp -> name, 0)) {
@@ -993,9 +993,9 @@ int skip, flags;
 				if (ch && line2 >= &(line[len])) break;
 				lname = &(line[lname - rawbuf]);
 				for (n = 0; lname[n]; n++)
-					if (isblank2(lname[n])) break;
+					if (Xisblank(lname[n])) break;
 				if (n) {
-					free2(tmp -> linkname);
+					Xfree(tmp -> linkname);
 					tmp -> linkname = readfname(lname, n);
 					tmp -> st_mode &= ~S_IFMT;
 					tmp -> st_mode |= S_IFLNK;
@@ -1013,13 +1013,13 @@ int skip, flags;
 				break;
 		}
 
-		free2(buf);
-		free2(rawbuf);
+		Xfree(buf);
+		Xfree(rawbuf);
 
 		if (hit < 0) {
-			free2(tmp -> name);
+			Xfree(tmp -> name);
 # ifndef	NOSYMLINK
-			free2(tmp -> linkname);
+			Xfree(tmp -> linkname);
 # endif
 			return(hit);
 		}
@@ -1034,9 +1034,9 @@ int skip, flags;
 	}
 
 	if (score >= MAXSCORE || !(tmp -> name) || !*(tmp -> name)) {
-		free2(tmp -> name);
+		Xfree(tmp -> name);
 # ifndef	NOSYMLINK
-		free2(tmp -> linkname);
+		Xfree(tmp -> linkname);
 # endif
 		return(MAXSCORE);
 	}
@@ -1054,7 +1054,7 @@ int skip, flags;
 	}
 
 	if (tm.tm_year < 0) {
-		t = time2();
+		t = Xtime(NULL);
 # ifdef	DEBUG
 		_mtrace_file = "localtime(start)";
 		tp = localtime(&t);
@@ -1084,7 +1084,7 @@ int skip, flags;
 	else if (!pm) tm.tm_hour %= 12;
 	if (tm.tm_min < 0) tm.tm_min = 0;
 	if (tm.tm_sec < 0) tm.tm_sec = 0;
-	tmp -> st_mtim = timelocal2(&tm);
+	tmp -> st_mtim = Xtimelocal(&tm);
 	tmp -> flags |= logical_access2(tmp);
 
 	return(score);
@@ -1160,10 +1160,10 @@ int max;
 			&& len == dirmatchlen(list[i].name, namep -> name))
 				break;
 		}
-		if (i >= max) return(strndup2(namep -> name, len));
+		if (i >= max) return(Xstrndup(namep -> name, len));
 		if (strncmp(list[i].name, namep -> name, len)) {
-			list[i].name = realloc2(list[i].name, len + 1);
-			strncpy2(list[i].name, namep -> name, len);
+			list[i].name = Xrealloc(list[i].name, len + 1);
+			Xstrncpy(list[i].name, namep -> name, len);
 		}
 	}
 
@@ -1192,7 +1192,7 @@ char *CONST *argv;
 	int n, max;
 
 	max = countvar(argv);
-	new = (char **)malloc2((max + 1) * sizeof(char *));
+	new = (char **)Xmalloc((max + 1) * sizeof(char *));
 	for (n = 0; n < max; n++) new[n] = decodestr(argv[n], NULL, 0);
 	new[n] = NULL;
 
@@ -1221,18 +1221,18 @@ char *CONST *argv;
 	for (i = 0; !ret && argv[i]; i++) {
 		s1 = argv[i];
 		s2 = s;
-		if (!isblank2(s1[0])) s2 = skipspace(s2);
+		if (!Xisblank(s1[0])) s2 = skipspace(s2);
 		len = strlen(s1);
-		if (!len || isblank2(s1[len - 1])) new = strdup2(s2);
+		if (!len || Xisblank(s1[len - 1])) new = Xstrdup(s2);
 		else {
 			len = strlen(s2);
 			for (len--; len >= 0; len--)
-				if (!isblank2(s2[len])) break;
-			new = strndup2(s2, ++len);
+				if (!Xisblank(s2[len])) break;
+			new = Xstrndup(s2, ++len);
 		}
 		re = regexp_init(s1, -1);
 		ret = regexp_exec(re, new, 0);
-		free2(new);
+		Xfree(new);
 		regexp_free(re);
 	}
 # ifndef	PATHNOCASE
@@ -1287,7 +1287,7 @@ char *(*func)__P_((VOID_P));
 	if (!formlist || !*formlist) return(-3);
 #endif
 	if (!(nline = countvar(lvar))) {
-		lvar = (char **)realloc2(lvar, (nline + 2) * sizeof(char *));
+		lvar = (char **)Xrealloc(lvar, (nline + 2) * sizeof(char *));
 		if (!(lvar[nline] = (*func)(vp))) return(-1);
 		lvar[++nline] = NULL;
 	}
@@ -1295,7 +1295,7 @@ char *(*func)__P_((VOID_P));
 	if (lsintrfunc && (*lsintrfunc)()) return(-2);
 #ifndef	OLDPARSE
 	if (matchlist(lvar[0], lign)) {
-		free2(lvar[0]);
+		Xfree(lvar[0]);
 		memmove((char *)(&(lvar[0])),
 			(char *)(&(lvar[1])), nline * sizeof(*lvar));
 		(*linenop)++;
@@ -1313,7 +1313,7 @@ char *(*func)__P_((VOID_P));
 	}
 #else
 	nf = countvar(formlist);
-	scorelist = (short *)malloc2(nf * sizeof(short));
+	scorelist = (short *)Xmalloc(nf * sizeof(short));
 	for (i = 0; i < nf; i++) scorelist[i] = MAXSCORE;
 	nf = na = skip = 0;
 	form0 = NULL;
@@ -1351,7 +1351,7 @@ char *(*func)__P_((VOID_P));
 #endif	/* !OLDPARSE */
 
 		if (nline < needline) {
-			lvar = (char **)realloc2(lvar,
+			lvar = (char **)Xrealloc(lvar,
 				(needline + 1) * sizeof(char *));
 			for (; nline < needline; nline++)
 				if (!(lvar[nline] = (*func)(vp))) break;
@@ -1360,19 +1360,19 @@ char *(*func)__P_((VOID_P));
 #ifndef	OLDPARSE
 				if (needline > 1 && na < AUTOFORMATSIZ) {
 					if (!formlist[nf]) continue;
-					free2(formlist[nf]);
+					Xfree(formlist[nf]);
 					for (i = nf; formlist[i]; i++)
 						formlist[i] = formlist[i + 1];
 					continue;
 				}
-				free2(namep -> name);
+				Xfree(namep -> name);
 				namep -> name = NULL;
 # ifndef	NOSYMLINK
-				free2(namep -> linkname);
+				Xfree(namep -> linkname);
 				namep -> linkname = NULL;
 # endif
-				free2(form0);
-				free2(scorelist);
+				Xfree(form0);
+				Xfree(scorelist);
 #endif	/* !OLDPARSE */
 				*linenop += nline;
 				return(-1);
@@ -1381,9 +1381,9 @@ char *(*func)__P_((VOID_P));
 
 		for (i = len = 0; i < needline; i++)
 			len += strlen(lvar[i]) + 1;
-		cp = malloc2(len + 1);
+		cp = Xmalloc(len + 1);
 		for (i = len = 0; i < needline; i++) {
-			strcpy2(&(cp[len]), lvar[i]);
+			Xstrcpy(&(cp[len]), lvar[i]);
 			len += strlen(lvar[i]);
 			cp[len++] = LINESEP;
 		}
@@ -1392,16 +1392,16 @@ char *(*func)__P_((VOID_P));
 
 #ifdef	OLDPARSE
 		score = readfileent(namep, cp, list, max);
-		free2(cp);
+		Xfree(cp);
 		break;
 /*NOTREACHED*/
 #else	/* !OLDPARSE */
 		score = readfileent(&tmp, cp, form, skip, list -> flags);
-		free2(cp);
+		Xfree(cp);
 
 		if (score < 0) {
 			if (formlist[nf]) {
-				free2(formlist[nf]);
+				Xfree(formlist[nf]);
 				for (i = nf; formlist[i]; i++)
 					formlist[i] = formlist[i + 1];
 			}
@@ -1429,16 +1429,16 @@ char *(*func)__P_((VOID_P));
 
 		if (score >= MAXSCORE);
 		else if (!i) {
-			free2(namep -> name);
+			Xfree(namep -> name);
 # ifndef	NOSYMLINK
-			free2(namep -> linkname);
+			Xfree(namep -> linkname);
 # endif
 			memcpy((char *)namep, (char *)&tmp, sizeof(*namep));
 		}
 		else {
-			free2(tmp.name);
+			Xfree(tmp.name);
 # ifndef	NOSYMLINK
-			free2(tmp.linkname);
+			Xfree(tmp.linkname);
 # endif
 		}
 
@@ -1448,16 +1448,16 @@ char *(*func)__P_((VOID_P));
 
 #ifndef	OLDPARSE
 	if (score < 0) {
-		free2(namep -> name);
+		Xfree(namep -> name);
 		namep -> name = NULL;
 # ifndef	NOSYMLINK
-		free2(namep -> linkname);
+		Xfree(namep -> linkname);
 		namep -> linkname = NULL;
 # endif
 	}
 #endif	/* !OLDPARSE */
 	if (lvar) {
-		for (i = 0; i < needline; i++) free2(lvar[i]);
+		for (i = 0; i < needline; i++) Xfree(lvar[i]);
 		if (nline + 1 > needline)
 			memmove((char *)(&(lvar[0])),
 				(char *)(&(lvar[needline])),
@@ -1468,8 +1468,8 @@ char *(*func)__P_((VOID_P));
 #ifdef	OLDPARSE
 	return((score) ? 0 : 1);
 #else
-	free2(form0);
-	free2(scorelist);
+	Xfree(form0);
+	Xfree(scorelist);
 	return((score) ? 0 : ret);
 #endif
 }
@@ -1485,7 +1485,7 @@ int max, *entp;
 		if (max < *entp) return(list);
 		ent = *entp = ((max + 1) / BUFUNIT + 1) * BUFUNIT;
 	}
-	list = (namelist *)realloc2(list, ent * sizeof(namelist));
+	list = (namelist *)Xrealloc(list, ent * sizeof(namelist));
 
 	return(list);
 }
@@ -1498,12 +1498,12 @@ int max;
 
 	if (list) {
 		for (i = 0; i < max; i++) {
-			free2(list[i].name);
+			Xfree(list[i].name);
 #ifndef	NOSYMLINK
-			free2(list[i].linkname);
+			Xfree(list[i].linkname);
 #endif
 		}
-		free2(list);
+		Xfree(list);
 	}
 }
 
@@ -1519,7 +1519,7 @@ char *(*func) __P_((VOID_P));
 
 	for (n = 0; n < (int)(list -> topskip); n++) {
 		if (!(cp = (*func)(vp))) break;
-		free2(cp);
+		Xfree(cp);
 	}
 
 	max = ent = 0;
@@ -1563,9 +1563,9 @@ char *(*func) __P_((VOID_P));
 			max++;
 		}
 		if (!dir) {
-			free2(tmp.name);
+			Xfree(tmp.name);
 #ifndef	NOSYMLINK
-			free2(tmp.linkname);
+			Xfree(tmp.linkname);
 #endif
 			continue;
 		}
@@ -1574,9 +1574,9 @@ char *(*func) __P_((VOID_P));
 		|| max <= 0 || isdotdir((*listp)[0].name) != 1)
 			*listp = addlist(*listp, max, &ent);
 		else {
-			free2((*listp)[0].name);
+			Xfree((*listp)[0].name);
 #ifndef	NOSYMLINK
-			free2((*listp)[0].linkname);
+			Xfree((*listp)[0].linkname);
 #endif
 			memmove((char *)&((*listp)[0]),
 				(char *)&((*listp)[1]),
@@ -1593,9 +1593,9 @@ char *(*func) __P_((VOID_P));
 	no -= (int)(list -> bottomskip);
 	for (n = max - 1; n > 0; n--) {
 		if ((*listp)[n].ent <= no) break;
-		free2((*listp)[n].name);
+		Xfree((*listp)[n].name);
 #ifndef	NOSYMLINK
-		free2((*listp)[n].linkname);
+		Xfree((*listp)[n].linkname);
 #endif
 	}
 	max = n + 1;
@@ -1604,7 +1604,7 @@ char *(*func) __P_((VOID_P));
 	return(max);
 }
 
-int strptime2(s, fmt, tm, tzp)
+int Xstrptime(s, fmt, tm, tzp)
 CONST char *s, *fmt;
 struct tm *tm;
 int *tzp;
@@ -1629,7 +1629,7 @@ int *tzp;
 
 		c = (fmt[1] != '%' || fmt[2] == '%') ? fmt[1] : ' ';
 		for (len = 0; s[len]; len++) if (s[len] == c) break;
-		cp = strndup2(s, len);
+		cp = Xstrndup(s, len);
 		s += len;
 		n = 0;
 		switch (*fmt) {
@@ -1647,28 +1647,28 @@ int *tzp;
 				if (n >= 0) tm -> tm_mon = n;
 				break;
 			case 'C':
-				if ((n = atoi2(cp)) < 19 || n > 99) n = -1;
+				if ((n = Xatoi(cp)) < 19 || n > 99) n = -1;
 				else cent = n;
 				break;
 			case 'd':
 			case 'e':
-				if ((n = atoi2(cp)) < 0 || n > 31) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 31) n = -1;
 				else tm -> tm_mday = n;
 				break;
 			case 'H':
-				if ((n = atoi2(cp)) < 0 || n > 23) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 23) n = -1;
 				else tm -> tm_hour = n;
 				break;
 			case 'I':
-				if ((n = atoi2(cp)) < 1 || n > 12) n = -1;
+				if ((n = Xatoi(cp)) < 1 || n > 12) n = -1;
 				else hour = n;
 				break;
 			case 'm':
-				if ((n = atoi2(cp)) < 1 || n > 12) n = -1;
+				if ((n = Xatoi(cp)) < 1 || n > 12) n = -1;
 				else tm -> tm_mon = n - 1;
 				break;
 			case 'M':
-				if ((n = atoi2(cp)) < 0 || n > 59) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 59) n = -1;
 				else tm -> tm_min = n;
 				break;
 			case 'p':
@@ -1676,30 +1676,30 @@ int *tzp;
 				if (n >= 0) pm = n;
 				break;
 			case 'S':
-				if ((n = atoi2(cp)) < 0 || n > 60) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 60) n = -1;
 				else tm -> tm_sec = n;
 				break;
 			case 'u':
-				if ((n = atoi2(cp)) < 1 || n > 7) n = -1;
+				if ((n = Xatoi(cp)) < 1 || n > 7) n = -1;
 #if	0
 				else tm -> tm_wday = n % 7;
 #endif
 				break;
 			case 'w':
-				if ((n = atoi2(cp)) < 0 || n > 6) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 6) n = -1;
 #if	0
 				else tm -> tm_wday = n;
 #endif
 				break;
 			case 'y':
-				if ((n = atoi2(cp)) < 0 || n > 99) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 99) n = -1;
 				else {
 					if (n < 69) n += 100;
 					tm -> tm_year = n;
 				}
 				break;
 			case 'Y':
-				if ((n = atoi2(cp)) < 0 || n > 9999) n = -1;
+				if ((n = Xatoi(cp)) < 0 || n > 9999) n = -1;
 				else tm -> tm_year = n - 1900;
 				break;
 			case 'Z':
@@ -1707,7 +1707,7 @@ int *tzp;
 				if (*cp == '-') tz = -1;
 				else if (*cp == '+') tz = 1;
 				if (tz) {
-					if ((n = atoi2(&(cp[1]))) < 0) break;
+					if ((n = Xatoi(&(cp[1]))) < 0) break;
 					n = (n / 100) * 60 + (n % 100);
 					tz *= n;
 					break;
@@ -1722,7 +1722,7 @@ int *tzp;
 						break;
 					}
 					n++;
-					if ((n = atoi2(&(cp[n]))) < 0) break;
+					if ((n = Xatoi(&(cp[n]))) < 0) break;
 					tz *= n * 60;
 					break;
 				}
@@ -1738,7 +1738,7 @@ int *tzp;
 				n = -1;
 				break;
 		}
-		free2(cp);
+		Xfree(cp);
 		if (n < 0) return(-1);
 	}
 

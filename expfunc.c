@@ -14,7 +14,7 @@
 extern VOID exit __P_((int));
 
 static char *NEAR skipspace __P_((char *));
-static char *NEAR strndup2 __P_((CONST char *, int));
+static char *NEAR Xstrndup __P_((CONST char *, int));
 static char *NEAR isfunction __P_((char *));
 static int NEAR entryfunc __P_((char *));
 static char *NEAR checkhere __P_((char *));
@@ -39,7 +39,7 @@ char *s;
 	return(s);
 }
 
-static char *NEAR strndup2(s, n)
+static char *NEAR Xstrndup(s, n)
 CONST char *s;
 int n;
 {
@@ -76,7 +76,7 @@ char *line;
 	cp = skipspace(&(cp[1]));
 	if (*cp != '{') return(NULL);
 
-	func[funcno] = strndup2(line, len);
+	func[funcno] = Xstrndup(line, len);
 	funclen[funcno] = len;
 	funcbody[funcno] = NULL;
 
@@ -148,7 +148,7 @@ char *line;
 	for (len = 0; cp[len]; len++)
 		if (cp[len] == ' ' || cp[len] == '\t') break;
 
-	return(strndup2(cp, len));
+	return(Xstrndup(cp, len));
 }
 
 static int NEAR getargs(linep, args)
@@ -227,7 +227,7 @@ char **linep, *args[];
 				if (*(cp - 1) == *line) n--;
 				line++;
 			}
-			args[i] = strndup2(line, n);
+			args[i] = Xstrndup(line, n);
 		}
 		if (buf) free(buf);
 
@@ -252,7 +252,7 @@ char *args[];
 	int i, len, alen, vlen, rlen, quote;
 
 	len = strlen(line);
-	buf = strndup2(line, len);
+	buf = Xstrndup(line, len);
 
 	quote = '\0';
 	cp = buf;

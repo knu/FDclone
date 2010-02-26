@@ -104,6 +104,10 @@
 #undef	DEP_FTPPATH
 #undef	DEP_HTTPPATH
 #undef	DEP_URLPATH
+#undef	DEP_STREAMTIMEOUT
+#undef	DEP_STREAMLOCK
+#undef	DEP_STREAMSOCKET
+#undef	DEP_STREAMLOG
 #undef	DEP_LSPARSE
 #undef	DEP_PSEUDOPATH
 #undef	DEP_BIASPATH
@@ -175,6 +179,18 @@
 #endif
 #if	defined (DEP_FTPPATH) || defined (DEP_HTTPPATH)
 #define	DEP_URLPATH
+#endif
+#if	defined (MH) || (defined (DEP_URLPATH) && !defined (NOSELECT))
+#define	DEP_STREAMTIMEOUT
+#endif
+#if	defined (MH) && !defined (NOFLOCK)
+#define	DEP_STREAMLOCK
+#endif
+#if	defined (MH) || defined (DEP_SOCKET)
+#define	DEP_STREAMSOCKET
+#endif
+#ifdef	MH
+#define	DEP_STREAMLOG
 #endif
 
 #if	!defined (FD) || !defined (_NOARCHIVE) || defined (DEP_FTPPATH)

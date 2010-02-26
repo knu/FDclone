@@ -149,11 +149,11 @@ va_list args;
 	if (!(fp = Xfopen(httplogfile, "a"))) return;
 	if (logheader) {
 		Xfputs(logheader, fp);
-		free2(logheader);
+		Xfree(logheader);
 		logheader = NULL;
 	}
-	VOID_C vfprintf2(fp, fmt, args);
-	Xfclose(fp);
+	VOID_C Xvfprintf(fp, fmt, args);
+	VOID_C Xfclose(fp);
 }
 
 #ifdef	USESTDARGH
@@ -201,9 +201,9 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = snprintf2(buf, sizeof(buf), "--> \"%s\"\n", fmt);
+	n = Xsnprintf(buf, sizeof(buf), "--> \"%s\"\n", fmt);
 	if (n >= 0) vhttplog(buf, args);
-	n = vfprintf2(fp, fmt, args);
+	n = Xvfprintf(fp, fmt, args);
 	if (n >= 0) n = fputnl(fp);
 	va_end(args);
 
@@ -216,15 +216,15 @@ int *verp;
 {
 	int i, n;
 
-	if (strncasecmp2(s, HTTPSTR, strsize(HTTPSTR))) return(-1);
+	if (Xstrncasecmp(s, HTTPSTR, strsize(HTTPSTR))) return(-1);
 	s += strsize(HTTPSTR);
-	if (!(s = sscanf2(s, "%<d.%<d", &n, &i))) return(-1);
-	if (!isblank2(*(s++))) return(-1);
+	if (!(s = Xsscanf(s, "%<d.%<d", &n, &i))) return(-1);
+	if (!Xisblank(*(s++))) return(-1);
 	if (verp) *verp = n * 100 + i % 100;
 	s = skipspace(s);
 
 	for (i = n = 0; i < 3; i++) {
-		if (!isdigit2(s[i])) return(-1);
+		if (!Xisdigit(s[i])) return(-1);
 		n *= 10;
 		n += s[i] - '0';
 	}
@@ -258,7 +258,7 @@ int uh;
 	for (;;) {
 		cp = httprecv(urlhostlist[uh].fp);
 		if (!cp) break;
-		free2(cp);
+		Xfree(cp);
 	}
 	Xsettimeout(urlhostlist[uh].fp, urltimeout);
 	VOID_C delopenfd(fd);
@@ -273,8 +273,8 @@ CONST char *s;
 	char *cp;
 	ALLOC_T len;
 
-	len = ((cp = strchr2(s, '/'))) ? cp - s : strlen(s);
-	(urlhostlist[uh].http) -> server = strndup2(s, len);
+	len = ((cp = Xstrchr(s, '/'))) ? cp - s : strlen(s);
+	(urlhostlist[uh].http) -> server = Xstrndup(s, len);
 
 	return(0);
 }
@@ -285,7 +285,7 @@ CONST char *s;
 {
 	off_t len;
 
-	if (!sscanf2(s, "%<*d%$", sizeof(len), &len)) return(-1);
+	if (!Xsscanf(s, "%<*d%$", sizeof(len), &len)) return(-1);
 	(urlhostlist[uh].http) -> clength = len;
 	(urlhostlist[uh].http) -> flags |= HFL_CLENGTH;
 
@@ -300,15 +300,15 @@ CONST char *s;
 	ALLOC_T ptr, top;
 	int n, argc;
 
-	argv = (char **)malloc2(sizeof(*argv));
+	argv = (char **)Xmalloc(sizeof(*argv));
 	argc = 0;
 	for (ptr = (ALLOC_T)0; s[ptr]; ptr++) {
-		while (isblank2(s[ptr])) ptr++;
+		while (Xisblank(s[ptr])) ptr++;
 		if (!s[ptr]) break;
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(*argv));
+		argv = (char **)Xrealloc(argv, (argc + 2) * sizeof(*argv));
 		top = ptr;
 		for (; s[ptr]; ptr++) if (s[ptr] == ';') break;
-		argv[argc++] = strndup2(&(s[top]), ptr - top);
+		argv[argc++] = Xstrndup(&(s[top]), ptr - top);
 		if (!s[ptr]) break;
 	}
 	argv[argc] = NULL;
@@ -329,8 +329,8 @@ CONST char *s;
 	int i, tz;
 
 	for (i = 0; i < DATELISTSIZ; i++)
-		if (strptime2(s, datelist[i], &tm, &tz) >= 0) break;
-	if (i >= DATELISTSIZ || (t = timegm2(&tm)) == (time_t)-1)
+		if (Xstrptime(s, datelist[i], &tm, &tz) >= 0) break;
+	if (i >= DATELISTSIZ || (t = Xtimegm(&tm)) == (time_t)-1)
 		return(seterrno(EINVAL));
 	(urlhostlist[uh].http) -> mtim = t + tz * 60;
 	(urlhostlist[uh].http) -> flags |= HFL_MTIME;
@@ -349,7 +349,7 @@ CONST char *s;
 	if ((ptr = urlparse(s, NULL, &cp, &type)) < 0) return(-1);
 	if (ptr > 0) {
 		n = urlgethost(cp, &tmp);
-		free2(cp);
+		Xfree(cp);
 		if (n < 0 || !(tmp.host)) return(-1);
 		if (tmp.port < 0) tmp.port = urlgetport(type);
 
@@ -360,7 +360,7 @@ CONST char *s;
 
 	if (ptr >= 0) s += ptr;
 	else (urlhostlist[uh].http) -> flags |= HFL_OTHERHOST;
-	(urlhostlist[uh].http) -> location = strdup2(s);
+	(urlhostlist[uh].http) -> location = Xstrdup(s);
 	(urlhostlist[uh].http) -> flags |= HFL_LOCATION;
 
 	return(0);
@@ -370,7 +370,7 @@ static int NEAR connection(uh, s)
 int uh;
 CONST char *s;
 {
-	if (strcasecmp2(s, CLOSESTR)) return(0);
+	if (Xstrcasecmp(s, CLOSESTR)) return(0);
 	(urlhostlist[uh].http) -> flags |= HFL_DISCONNECT;
 
 	return(0);
@@ -383,11 +383,11 @@ int flags;
 {
 	CONST char *cp;
 
-	for (cp = s; *cp && !isblank2(*cp); cp++) /*EMPTY*/;
-	if (!strncasecmp2(s, AUTHBASIC, cp - s))
+	for (cp = s; *cp && !Xisblank(*cp); cp++) /*EMPTY*/;
+	if (!Xstrncasecmp(s, AUTHBASIC, cp - s))
 		(urlhostlist[uh].http) -> digest = NULL;
-	else if (!strncasecmp2(s, AUTHDIGEST, cp - s))
-		(urlhostlist[uh].http) -> digest = strdup2(skipspace(++cp));
+	else if (!Xstrncasecmp(s, AUTHDIGEST, cp - s))
+		(urlhostlist[uh].http) -> digest = Xstrdup(skipspace(++cp));
 	else return(0);
 	(urlhostlist[uh].http) -> flags |= flags;
 
@@ -412,7 +412,7 @@ static int NEAR chunked(uh, s)
 int uh;
 CONST char *s;
 {
-	if (strcasecmp2(s, CHUNKEDSTR)) return(0);
+	if (Xstrcasecmp(s, CHUNKEDSTR)) return(0);
 	(urlhostlist[uh].http) -> chunk = 0;
 	(urlhostlist[uh].http) -> flags |= HFL_CHUNKED;
 
@@ -424,9 +424,9 @@ int uh, level;
 {
 	if (!(urlhostlist[uh].http)) return;
 	if (level > 0) {
-		free2((urlhostlist[uh].http) -> server);
-		free2((urlhostlist[uh].http) -> location);
-		free2((urlhostlist[uh].http) -> digest);
+		Xfree((urlhostlist[uh].http) -> server);
+		Xfree((urlhostlist[uh].http) -> location);
+		Xfree((urlhostlist[uh].http) -> digest);
 	}
 	(urlhostlist[uh].http) -> version = -1;
 	(urlhostlist[uh].http) -> clength = (off_t)0;
@@ -437,7 +437,7 @@ int uh, level;
 	(urlhostlist[uh].http) -> chunk = -1;
 	(urlhostlist[uh].http) -> flags = 0;
 	if (level > 1) {
-		free2(urlhostlist[uh].http);
+		Xfree(urlhostlist[uh].http);
 		urlhostlist[uh].http = NULL;
 	}
 }
@@ -459,7 +459,7 @@ char **sp;
 		return(-1);
 	}
 	if ((code = getcode(buf, &i)) < 0) {
-		free2(buf);
+		Xfree(buf);
 		return(seterrno(EINVAL));
 	}
 	(urlhostlist[uh].http) -> version = i;
@@ -468,18 +468,18 @@ char **sp;
 	for (;;) {
 		cp = httprecv(urlhostlist[uh].fp);
 		if (!cp) {
-			free2(buf);
+			Xfree(buf);
 			if (!urlferror(urlhostlist[uh].fp))
 				return(HTTP_NOREPLY);
 			return(-1);
 		}
 		if (!*cp) {
-			free2(cp);
+			Xfree(cp);
 			break;
 		}
 
 		for (i = 0; i < FLDLISTSIZ; i++) {
-			if (strncasecmp2(cp, fldlist[i].ident, fldlist[i].len))
+			if (Xstrncasecmp(cp, fldlist[i].ident, fldlist[i].len))
 				continue;
 			if (cp[fldlist[i].len] == ':') break;
 		}
@@ -489,15 +489,15 @@ char **sp;
 		}
 
 		len = strlen(cp);
-		buf = realloc2(buf, size + 1 + len + 1);
+		buf = Xrealloc(buf, size + 1 + len + 1);
 		buf[size++] = '\n';
 		memcpy(&(buf[size]), cp, len + 1);
 		size += len;
 
-		free2(cp);
+		Xfree(cp);
 	}
 	if (sp) *sp = buf;
-	else free2(buf);
+	else Xfree(buf);
 
 	return(code);
 }
@@ -534,12 +534,12 @@ va_list args;
 		if (urlhostlist[uh].type == TYPE_FTP) flags |= UGP_USER;
 		n = urlgenpath(uh, buf, sizeof(buf), flags);
 		if (n < 0) return(-1);
-		n = asprintf2(&new, "%s%s", buf, path);
+		n = Xasprintf(&new, "%s%s", buf, path);
 		if (n < 0) return(-1);
 		path = new;
 	}
 	if (urlgenpath(uh, buf, sizeof(buf), UGP_HOST | UGP_ENCODE) < 0) {
-		free2(new);
+		Xfree(new);
 		return(-1);
 	}
 
@@ -585,7 +585,7 @@ va_list args;
 
 		if (urlreconnect(uh) < 0) break;
 	}
-	free2(new);
+	Xfree(new);
 
 	return(n);
 }
@@ -611,10 +611,10 @@ CONST char *path;
 		if (n >= 0 && n != 401 && hp == &(urlhostlist[uh].host))
 			authentry(hp, urlhostlist[uh].type);
 		if (urlhostlist[uh].type != TYPE_FTP) {
-			free2(urlhostlist[uh].host.user);
+			Xfree(urlhostlist[uh].host.user);
 			urlhostlist[uh].host.user = NULL;
 		}
-		free2(urlhostlist[uh].host.pass);
+		Xfree(urlhostlist[uh].host.pass);
 		urlhostlist[uh].host.pass = NULL;
 
 		/* Some buggy Apache cannot authorize except with GET method */
@@ -638,7 +638,7 @@ CONST char *path;
 					else if (cnt++ > 0) break;
 				}
 			}
-			free2(auth);
+			Xfree(auth);
 			auth = authencode(&(urlhostlist[uh].host),
 				http -> digest, cmdlist[cmd].cmd, path2);
 			if (!auth) break;
@@ -660,9 +660,9 @@ CONST char *path;
 		httpflush(uh);
 	}
 	if (n >= 0 && dupcmd == HTTP_HEAD && cmd == HTTP_GET) httpflush(uh);
-	free2(path2);
-	free2(auth);
-	free2(proxyauth);
+	Xfree(path2);
+	Xfree(auth);
+	Xfree(proxyauth);
 
 	return(n);
 }
@@ -762,7 +762,7 @@ namelist **listp;
 		cp = (*listp)[n].name;
 		if (!cp) continue;
 		(*listp)[n].name = urldecode(cp, -1);
-		free2(cp);
+		Xfree(cp);
 	}
 
 	/*
@@ -883,10 +883,10 @@ CONST char *path;
 	if (n < 0) return(-1);
 	if (--n >= 0) urlfreestatlist(n);
 #ifndef	NOSYMLINK
-	free2(tmp.linkname);
+	Xfree(tmp.linkname);
 #endif
 	if (!isdir(&tmp)) return(seterrno(ENOTDIR));
-	strncpy2((urlhostlist[uh].http) -> cwd, path, MAXPATHLEN - 1);
+	Xstrncpy((urlhostlist[uh].http) -> cwd, path, MAXPATHLEN - 1);
 
 	return(0);
 }
@@ -1046,9 +1046,9 @@ int uh, fd;
 		}
 		if (c == ';') ext++;
 		if (!ext) {
-			c = tolower2(c);
-			if (isdigit2(c)) c -= '0';
-			else if (isxdigit2(c)) c -= 'a' - 10;
+			c = Xtolower(c);
+			if (Xisdigit(c)) c -= '0';
+			else if (Xisxdigit(c)) c -= 'a' - 10;
 			else return(seterrno(EINVAL));
 			chunk = (chunk << 4) + c;
 			n++;

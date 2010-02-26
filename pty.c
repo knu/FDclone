@@ -149,14 +149,14 @@ ALLOC_T size;
 #ifdef	USEDEVPTMX
 # ifdef	TIOCGPTN
 	if (Xioctl(fd, TIOCGPTN, &n) < 0) return(-1);
-	snprintf2(spath, size, "%s/%d", _PATH_DEVPTS, n);
+	Xsnprintf(spath, size, "%s/%d", _PATH_DEVPTS, n);
 # else
 	if (!(cp = ptsname(fd))) return(-1);
-	snprintf2(spath, size, "%s", cp);
+	Xsnprintf(spath, size, "%s", cp);
 # endif
 #else	/* !USEDEVPTMX */
-	snprintf2(spath, size, "%s", path);
-	if ((cp = strrchr2(spath, '/'))) *(++cp) = 't';
+	Xsnprintf(spath, size, "%s", path);
+	if ((cp = Xstrrchr(spath, '/'))) *(++cp) = 't';
 #endif	/* !USEDEVPTMX */
 
 	return(0);
@@ -171,7 +171,7 @@ ALLOC_T size;
 	int master, slave;
 
 #ifdef	USEDEVPTMX
-	snprintf2(path, sizeof(path), "%s", _PATH_DEVPTMX);
+	Xsnprintf(path, sizeof(path), "%s", _PATH_DEVPTMX);
 	if ((master = Xopen(path, O_RDWR, 0)) < 0) return(-1);
 
 	Xgrantpt(master, path);
@@ -185,7 +185,7 @@ ALLOC_T size;
 	CONST char *cp1, *cp2;
 	int n;
 
-	n = snprintf2(path, sizeof(path), "%sXX", _PATH_PTY);
+	n = Xsnprintf(path, sizeof(path), "%sXX", _PATH_PTY);
 	n -= 2;
 	master = slave = -1;
 	for (cp1 = pty_char1; *cp1; cp1++) {
@@ -230,15 +230,15 @@ CONST char *path, *tty, *ws;
 
 	VOID_C Xsetsid();
 
-	Xclose(STDIN_FILENO);
-	Xclose(STDOUT_FILENO);
-	Xclose(STDERR_FILENO);
+	VOID_C Xclose(STDIN_FILENO);
+	VOID_C Xclose(STDOUT_FILENO);
+	VOID_C Xclose(STDERR_FILENO);
 	if ((fd = Xopen(path, O_RDWR, 0)) < 0) return(-1);
 
 #ifdef	I_PUSH
 	if (Xioctl(fd, I_PUSH, "ptem") < 0
 	|| Xioctl(fd, I_PUSH, "ldterm") < 0) {
-		Xclose(fd);
+		VOID_C Xclose(fd);
 		return(-1);
 	}
 # if	defined (SOLARIS) || defined (NEWS_OS6)
@@ -247,7 +247,7 @@ CONST char *path, *tty, *ws;
 #endif	/* I_PUSH */
 #ifdef	TIOCSCTTY
 	if (Xioctl(fd, TIOCSCTTY, NULL) < 0) {
-		Xclose(fd);
+		VOID_C Xclose(fd);
 		return(-1);
 	}
 #endif

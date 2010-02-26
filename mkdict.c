@@ -61,7 +61,7 @@ typedef struct _contable {
 	u_short next[SH_MAX];
 } contable;
 
-static u_char *NEAR realloc2 __P_((VOID_P, ALLOC_T));
+static u_char *NEAR Xrealloc __P_((VOID_P, ALLOC_T));
 static int NEAR addstrbuf __P_((ALLOC_T));
 static int NEAR adddictlist __P_((ALLOC_T, ALLOC_T, ALLOC_T));
 static int NEAR setkbuf __P_((int, CONST u_short *));
@@ -191,7 +191,7 @@ static hinsitable hinsilist[] = {
 	 2, {0x4c3e, 0x2336}},
 	{HN_MEISHI, DIC_SJ3,		/* Mei7 */
 	 2, {0x4c3e, 0x2337}},
-	{HN_MEISHI, DIC_SJ3,		/* Mei8 */
+	{HN_MEISHI, DIC_SJ3,		/* Mei9 */
 	 2, {0x4c3e, 0x2339}},
 	{HN_MEISHI, DIC_SJ3,		/* Mei10 */
 	 3, {0x4c3e, 0x2331, 0x2330}},
@@ -222,7 +222,7 @@ static hinsitable hinsilist[] = {
 	{HN_CHIMEI, DIC_SJ3,		/* Kenku */
 	 2, {0x3829, 0x3668}},
 
-	{HN_JINCHI, DIC_WNN,		/* Jimmei&Chimei */
+	{HN_JINCHI, DIC_WNN,		/* Jinmei&Chimei */
 	 5, {0x3f4d, 0x4c3e, '&', 0x434f, 0x4c3e}},
 	{HN_JINCHI, DIC_CANNA,		/* #JCN */
 	 4, {'#', 'J', 'C', 'N'}},
@@ -516,13 +516,13 @@ static hinsitable hinsilist[] = {
 	 2, {0x306c, 0x434a}},
 	{HN_1DAN, DIC_CANNA,		/* #KS */
 	 3, {'#', 'K', 'S'}},
-	{HN_1DAN, DIC_SJ3,		/* Ippan1 */
+	{HN_1DAN, DIC_SJ3,		/* 1Dan1 */
 	 3, {0x306c, 0x434a, 0x2331}},
-	{HN_1DAN, DIC_SJ3,		/* Ippan2 */
+	{HN_1DAN, DIC_SJ3,		/* 1Dan2 */
 	 3, {0x306c, 0x434a, 0x2332}},
-	{HN_1DAN, DIC_SJ3,		/* Ippan3 */
+	{HN_1DAN, DIC_SJ3,		/* 1Dan3 */
 	 3, {0x306c, 0x434a, 0x2333}},
-	{HN_1DAN, DIC_SJ3,		/* Ippan4 */
+	{HN_1DAN, DIC_SJ3,		/* 1Dan4 */
 	 3, {0x306c, 0x434a, 0x2334}},
 
 	{HN_1_MEI, DIC_WNN,		/* 1Dan&Meishi */
@@ -775,7 +775,7 @@ static hinsitable hinsilist[] = {
 	 7, {0x405c, 0x4233, 0x3b6c, ',', 0x3436, 0x4630, 0x3b6c}},
 	{HN_SETKAN, DIC_CANNA,		/* #CJ */
 	 3, {'#', 'C', 'J'}},
-	{HN_SETKAN, DIC_SJ3,		/* AiSatzu */
+	{HN_SETKAN, DIC_SJ3,		/* Aisatsu */
 	 2, {0x3027, 0x3b22}},
 	{HN_SETKAN, DIC_SJ3,		/* Kandou */
 	 2, {0x3436, 0x4630}},
@@ -845,7 +845,7 @@ static hinsitable hinsilist[] = {
 	{HN_SETUJO, DIC_CANNA,		/* #JSSUC */
 	 6, {'#', 'J', 'S', 'S', 'U', 'C'}},
 
-	{HN_SETUJN, DIC_WNN,		/* SetsubJinmei */
+	{HN_SETUJN, DIC_WNN,		/* SetsubiJinmei */
 	 4, {0x405c, 0x4878, 0x3f4d, 0x4c3e}},
 	{HN_SETUJN, DIC_CANNA,		/* #JNSUC */
 	 6, {'#', 'J', 'N', 'S', 'U', 'C'}},
@@ -883,7 +883,7 @@ static hinsitable hinsilist[] = {
 	{HN_KD_STB, DIC_SJ3,		/* Setsubi6 */
 	 3, {0x405c, 0x4878, 0x2336}},
 
-	{HN_SA_M_S, DIC_WNN,		/* Sagyou(Suru)&MeishiKaSetsubigo */
+	{HN_SA_M_S, DIC_WNN,		/* SaGyou(Suru)&MeishiKaSetsubigo */
 	 13, {0x2535, 0x3954, '(', 0x2439, 0x246b, ')',
 	 '&', 0x4c3e, 0x3b6c, 0x323d, 0x405c, 0x4878, 0x386c}},
 	{HN_SA_M_S, DIC_CANNA,		/* #N2T30 */
@@ -1092,7 +1092,7 @@ static CONST contable jirconlist[] = {
 	/* SetsubiJoSuushi */
 	{HN_SETUJO, 0, {0}, 3, {HN_SUUJI, HN_SUUSHI, HN_JOSUU}},
 
-	/* SetsubJinmei */
+	/* SetsubiJinmei */
 	{HN_SETUJN, 0, {0}, 1, {HN_JINMEI}},
 
 	/* SettouChimei */
@@ -1111,7 +1111,7 @@ static CONST contable jirconlist[] = {
 	{HN_KD_STB, 0, {0}, 5,
 	 {HN_KANA, HN_EISUU, HN_MEISHI, HN_KOYUU, HN_SA_MEI}},
 
-	/* Sagyou(Suru)&MeishiKaSetsubigo */
+	/* SaGyou(Suru)&MeishiKaSetsubigo */
 	{HN_SA_M_S, 0, {0}, 5,
 	 {HN_KANA, HN_EISUU, HN_MEISHI, HN_KOYUU, HN_SA_MEI}},
 
@@ -1199,7 +1199,7 @@ static CONST contable conlist[] = {
 	  FZ_NOMI, FZ_BAKARI, FZ_BI, FZ_BI2, FZ_HODO, FZ_MADE, FZ_MI, FZ_MI2,
 	  FZ_MI4, FZ_MITAI, FZ_ME2, FZ_YUE, FZ_YOU2, FZ_RI2, FZ_RI3}},
 
-	/* DoDou-Desu-ShiTai */
+	/* JoDou-Desu-ShiTai */
 	{FZ_SU, 1, {0x2439}, 1, {FZ_DE3}},
 
 	/* Tari-KeiDou,JoDou-Taru,Aru-Mi */
@@ -1215,7 +1215,7 @@ static CONST contable conlist[] = {
 	/* Tari-KeiDouYouShi */
 	{FZ_TARI, 2, {0x243f, 0x246a}, 1, {HN_KD_TAR}},
 
-	/* Tari-KeiDou,JoDou-NaruTaru-MiMei */
+	/* Tari-KeiDou,JoDou-Narutaru-IMei */
 	{FZ_NARE, 2, {0x244a, 0x246c}, 35,
 	 {HN_SUUJI, HN_KANA, HN_EISUU, HN_KIGOU, HN_HEIKAKKO, HN_GIJI,
 	  HN_MEISHI, HN_JINMEI, HN_CHIMEI, HN_KOYUU, HN_SUUSHI, HN_SA_MEI,
@@ -1287,7 +1287,7 @@ static CONST contable conlist[] = {
 	  FZ_BE, FZ_MA, FZ_MI3, FZ_ME, FZ_YARA, FZ_YARE, FZ_YORA, FZ_RA2,
 	  FZ_RA3, FZ_RARE, FZ_RE2, FZ_RE5, FZ_WA}},
 
-	/* JoDou-N-You2-Tai1 */
+	/* JoDou-N-You2Tai1 */
 	{FZ_N, 1, {0x2473}, 53,
 	 {HN_1DOU, HN_KO_KO, HN_SE_SE, FZ_I8, FZ_IKA, FZ_IKE, FZ_E, FZ_OKA,
 	  FZ_OKE, FZ_ORA, FZ_ORE, FZ_KA, FZ_KANE, FZ_GA, FZ_GARA, FZ_GARE,
@@ -1311,11 +1311,11 @@ static CONST contable conlist[] = {
 	  FZ_YAXTSU, FZ_YARE, FZ_YOXTSU, FZ_RARE, FZ_RE2, FZ_RE5}},
 	{FZ_DA2, 1, {0x2440}, 2, {FZ_I2, FZ_N2}},
 
-	/* JoDouDenBun-Soudesu,Denbun-Souda-Shi */
+	/* JoDouDenbun-Soudesu,Denbun-Souda-Shi */
 	{FZ_DESU, 2, {0x2447, 0x2439}, 1, {FZ_SOU}},
 	{FZ_DA3, 1, {0x2440}, 1, {FZ_SOU}},
 
-	/* Denbun-Souda-You1-Soude */
+	/* DenbunJoDou-Souda-You1-Soude */
 	{FZ_DE2, 1, {0x2447}, 1, {FZ_SOU}},
 
 	/* JoDou-Zu-YouShiKa-Zu */
@@ -1390,7 +1390,7 @@ static CONST contable conlist[] = {
 	  FZ_KI6, FZ_GI, FZ_KO2, FZ_SHI4, FZ_SE3, FZ_ZE, FZ_TARI, FZ_CHI,
 	  FZ_NI3, FZ_BI, FZ_MI, FZ_RI2}},
 
-	/* 5DanSaHenTouShiTai */
+	/* 5Dan-Sa-HenTouShiTai */
 	{FZ_U3, 1, {0x2426}, 1, {HN_WA5DOU}},
 	{FZ_RU2, 1, {0x246b}, 4, {HN_RA5DOU, HN_KU_KU, HN_SU_SU, HN_RA_KUD}},
 	{FZ_MU, 1, {0x2460}, 1, {HN_MA5DOU}},
@@ -1419,7 +1419,7 @@ static CONST contable conlist[] = {
 	{FZ_SHIMAU, 3, {0x2437, 0x245e, 0x2426}, 2, {FZ_TE2, FZ_DE4}},
 	{FZ_GARU, 2, {0x242c, 0x246b}, 2, {HN_KEIYOU, FZ_TA4}},
 
-	/* SaHenMi3Se */
+	/* Sa-HenMi3-Se */
 	{FZ_SE3, 1, {0x243b}, 11,
 	 {HN_KANA, HN_SAHDOU, HN_SA_MEI, HN_SA_M_S, FZ_KU4, FZ_KU5, FZ_TO,
 	  FZ_TO3, FZ_TO4, FZ_NI, FZ_NI6}},
@@ -1445,7 +1445,7 @@ static CONST contable conlist[] = {
 	{FZ_SHIMAE, 3, {0x2437, 0x245e, 0x2428}, 2, {FZ_TE2, FZ_DE4}},
 	{FZ_GARE, 2, {0x242c, 0x246c}, 2, {HN_KEIYOU, FZ_TA4}},
 
-	/* 5IBin2 */
+	/* 5-I-Bin2 */
 	{FZ_N2, 1, {0x2473}, 3, {HN_NA5DOU, HN_BA5DOU, HN_MA5DOU}},
 	{FZ_I2, 1, {0x2424}, 1, {HN_GA5DOU}},
 
@@ -1632,7 +1632,7 @@ static CONST contable conlist[] = {
 	/* Kuru-You */
 	{FZ_KI6, 1, {0x242d}, 2, {FZ_TE2, FZ_DE4}},
 
-	/* SaHenMi1You-Shi */
+	/* Sa-HenMi1You-Shi */
 	{FZ_SHI7, 1, {0x2437}, 24,
 	 {HN_KANA, HN_SAHDOU, HN_1YOU, HN_SA_MEI, HN_SA_M_S, FZ_I5, FZ_GARI2,
 	  FZ_KI5, FZ_GI2, FZ_KU4, FZ_KU5, FZ_SHI5, FZ_SHI6, FZ_JI, FZ_CHI2,
@@ -1724,7 +1724,7 @@ static CONST contable conlist[] = {
 	{FZ_KU4, 1, {0x242f}, 4, {HN_KEIYOU, HN_KE_SED, FZ_TA4, FZ_RASHI}},
 	{FZ_KU5, 1, {0x242f}, 2, {FZ_NA5, FZ_YASHINA}},
 
-	/* KeiYou3-Yuu */
+	/* KeiYou3-Xyuu */
 	{FZ_XYUU, 2, {0x2465, 0x2426}, 1, {FZ_RASHI}},
 
 	/* KeiTaiShi */
@@ -1800,14 +1800,14 @@ static CONST contable conlist[] = {
 	  FZ_TA2, FZ_TARA, FZ_NA3, FZ_NARA2, FZ_BA, FZ_MA, FZ_YARA, FZ_YORA,
 	  FZ_RA2, FZ_RA3, FZ_WA}},
 
-	/* DenBunJoDou-Souda,Soudesu-Kan */
+	/* DenbunJoDou-Souda,Soudesu-Kan */
 	{FZ_SOU, 2, {0x243d, 0x2426}, 29,
 	 {FZ_I, FZ_I7, FZ_IKU, FZ_U3, FZ_OKU, FZ_ORU, FZ_GARU, FZ_KU3, FZ_KURU,
 	  FZ_GU, FZ_SHIMAU, FZ_JIRU, FZ_SU2, FZ_SU3, FZ_SURU, FZ_ZURU, FZ_TA,
 	  FZ_DA, FZ_DA2, FZ_TSU, FZ_NARU2, FZ_NU2, FZ_BU, FZ_MU, FZ_YARU,
 	  FZ_YORU, FZ_RU, FZ_RU2, FZ_RU3}},
 
-	/* YouTaiJoDou-Souda,Soudesu-Kan */
+	/* YoutaiJoDou-Souda,Soudesu-Kan */
 	{FZ_SOU2, 2, {0x243d, 0x2426}, 38,
 	 {HN_1DOU, HN_KI_KI, HN_SI_SI, HN_KEIYOU, HN_KEIDOU, HN_KE_SED, FZ_I4,
 	  FZ_I8, FZ_IKI, FZ_OKI, FZ_ORI, FZ_KANE, FZ_GARI, FZ_KI4, FZ_KI6,
@@ -1893,7 +1893,7 @@ static CONST contable conlist[] = {
 	  FZ_BU, FZ_HODO, FZ_MADE, FZ_MI, FZ_MI4, FZ_MU, FZ_ME2, FZ_YARU,
 	  FZ_YUE, FZ_YORU, FZ_RI2, FZ_RU, FZ_RU2, FZ_RU3}},
 
-	/* RaHenShi */
+	/* Ra-HenShi */
 	{FZ_I9, 1, {0x2424}, 1, {HN_RA_KUD}},
 
 	/* JunJo-Sa */
@@ -2019,7 +2019,7 @@ static CONST contable conlist[] = {
 	  FZ_NE2, FZ_BE, FZ_ME, FZ_YARE, FZ_YORE, FZ_RA, FZ_RA2, FZ_RE, FZ_RE2,
 	  FZ_RE3, FZ_RE4}},
 
-	/* SetsuJo-Shi,Kakujoshi-Tte */
+	/* SetsuJo-Shi,KakuJoshi-Xtsute */
 	{FZ_SHI9, 1, {0x2437}, 36,
 	 {FZ_I, FZ_I7, FZ_IKU, FZ_U2, FZ_U3, FZ_OKU, FZ_ORU, FZ_GARU, FZ_KU3,
 	  FZ_KURU, FZ_GU, FZ_SHIMAU, FZ_JIRU, FZ_SU, FZ_SU2, FZ_SU3, FZ_SURU,
@@ -2984,7 +2984,7 @@ static CONST contable shuutanlist[] = {
 #define	SHUUTANLISTSIZ		arraysize(shuutanlist)
 
 
-static u_char *NEAR realloc2(buf, size)
+static u_char *NEAR Xrealloc(buf, size)
 VOID_P buf;
 ALLOC_T size;
 {
@@ -3001,7 +3001,7 @@ ALLOC_T len;
 	size = (strbufsize) ? strbufsize : DICTBUFUNIT;
 	while (size < len) size *= 2;
 	if (size <= strbufsize) return(0);
-	if (!(cp = realloc2(strbuf, size))) return(-1);
+	if (!(cp = Xrealloc(strbuf, size))) return(-1);
 	strbuf = cp;
 	strbufsize = size;
 
@@ -3014,7 +3014,7 @@ ALLOC_T ptr, klen, size;
 	dicttable *new;
 
 	if (maxdict >= dictlistsize) {
-		new = (dicttable *)realloc2(dictlist,
+		new = (dicttable *)Xrealloc(dictlist,
 			(dictlistsize + DICTBUFUNIT) * sizeof(dicttable));
 		if (!new) return(-1);
 		dictlist = new;
@@ -3275,14 +3275,14 @@ char *buf;
 	cp = NULL;
 	for (ptr = 1; buf[ptr]; ptr++) {
 		if (buf[ptr] == '*') cp = &(buf[ptr]);
-		else if (isspace2(buf[ptr])) break;
-		else if (!isalnum2(buf[ptr])) return(0);
+		else if (Xisspace(buf[ptr])) break;
+		else if (!Xisalnum(buf[ptr])) return(0);
 	}
 	if (ptr <= 1) return(0);
 	buf[ptr++] = '\0';
 
 	freq = getfreq(cp);
-	while (buf[ptr] && isspace2(buf[ptr])) ptr++;
+	while (buf[ptr] && Xisspace(buf[ptr])) ptr++;
 
 	for (n = 0; buf[ptr]; n++) {
 		if (buf[ptr] == '#') {
@@ -3291,7 +3291,7 @@ char *buf;
 		}
 
 		kstr = &(buf[ptr]);
-		while (buf[ptr] && !isspace2(buf[ptr])) ptr++;
+		while (buf[ptr] && !Xisspace(buf[ptr])) ptr++;
 		buf[ptr++] = '\0';
 		if (*kstr == '@') kstr = str;
 		if (adddict(str, kstr, buf, freq) < 0) return(-1);
@@ -3318,7 +3318,7 @@ FILE *fp;
 		}
 
 		ptr = 0;
-		while (buf[ptr] && isspace2(buf[ptr])) ptr++;
+		while (buf[ptr] && Xisspace(buf[ptr])) ptr++;
 		if (!buf[ptr]) continue;
 
 		str = &(buf[ptr]);
@@ -3326,10 +3326,10 @@ FILE *fp;
 			if (iskanji1(buf, ptr)) ptr++;
 			else if (!iskana1(buf, &ptr)) break;
 		}
-		if (!buf[ptr] || !isspace2(buf[ptr])) continue;
+		if (!buf[ptr] || !Xisspace(buf[ptr])) continue;
 
 		buf[ptr++] = '\0';
-		while (buf[ptr] && isspace2(buf[ptr])) ptr++;
+		while (buf[ptr] && Xisspace(buf[ptr])) ptr++;
 		if (!buf[ptr]) continue;
 
 		if (buf[ptr] == '#'
@@ -3339,16 +3339,16 @@ FILE *fp;
 		}
 
 		kstr = &(buf[ptr++]);
-		while (buf[ptr] && !isspace2(buf[ptr])) ptr++;
+		while (buf[ptr] && !Xisspace(buf[ptr])) ptr++;
 
 		if (!(buf[ptr])) hstr = NULL;
 		else {
 			buf[ptr++] = '\0';
-			while (buf[ptr] && isspace2(buf[ptr])) ptr++;
+			while (buf[ptr] && Xisspace(buf[ptr])) ptr++;
 			if (!buf[ptr]) hstr = NULL;
 			else {
 				hstr = &(buf[ptr++]);
-				while (buf[ptr] && !isspace2(buf[ptr])) ptr++;
+				while (buf[ptr] && !Xisspace(buf[ptr])) ptr++;
 			}
 		}
 
@@ -3676,7 +3676,7 @@ char *CONST argv[];
 			continue;
 		}
 		c = convdict(size, fpin);
-		fclose(fpin);
+		VOID_C fclose(fpin);
 		if (c < 0) break;
 	}
 
@@ -3713,7 +3713,7 @@ char *CONST argv[];
 		}
 	}
 
-	fclose(fpout);
+	VOID_C fclose(fpout);
 	if (verbose) fputs("  done.\n", stdout);
 
 	return(0);

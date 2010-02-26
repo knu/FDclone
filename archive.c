@@ -272,9 +272,9 @@ char *CONST *argv;
 {
 	int i;
 
-	if (argvar && argvar[0]) for (i = 1; argvar[i]; i++) free2(argvar[i]);
-	argvar = (char **)realloc2(argvar, (argc + 2) * sizeof(char *));
-	for (i = 0; i < argc; i++) argvar[i + 1] = strdup2(argv[i]);
+	if (argvar && argvar[0]) for (i = 1; argvar[i]; i++) Xfree(argvar[i]);
+	argvar = (char **)Xrealloc(argvar, (argc + 2) * sizeof(char *));
+	for (i = 0; i < argc; i++) argvar[i + 1] = Xstrdup(argv[i]);
 	argvar[i + 1] = NULL;
 }
 
@@ -284,11 +284,11 @@ CONST char *s;
 	int i;
 
 	i = countvar(browsevar);
-	browsevar = (char **)realloc2(browsevar, (i + 2) * sizeof(char *));
+	browsevar = (char **)Xrealloc(browsevar, (i + 2) * sizeof(char *));
 	if (!i) browsevar[1] = NULL;
 	else memmove((char *)&(browsevar[1]), (char *)&(browsevar[0]),
 		(i + 1) * sizeof(char *));
-	browsevar[0] = strdup2(s);
+	browsevar[0] = Xstrdup(s);
 	copyargvar(i + 1, browsevar);
 }
 
@@ -298,7 +298,7 @@ static VOID NEAR popbrowsevar(VOID_A)
 
 	i = countvar(browsevar);
 	if (i <= 0) return;
-	free2(browsevar[0]);
+	Xfree(browsevar[0]);
 	memmove((char *)&(browsevar[0]), (char *)&(browsevar[1]),
 		i * sizeof(char *));
 	copyargvar(i - 1, browsevar);
@@ -309,7 +309,7 @@ static VOID NEAR pusharchdupl(VOID_A)
 {
 	winvartable *new;
 
-	new = (winvartable *)malloc2(sizeof(winvartable));
+	new = (winvartable *)Xmalloc(sizeof(winvartable));
 
 	new -> v_archduplp = archduplp;
 	new -> v_archivedir = NULL;
@@ -364,8 +364,8 @@ static VOID NEAR poparchdupl(VOID_A)
 	archduplp = old -> v_archduplp;
 	if (!(old -> v_archivedir)) *archivedir = '\0';
 	else {
-		strcpy2(archivedir, old -> v_archivedir);
-		free2(old -> v_archivedir);
+		Xstrcpy(archivedir, old -> v_archivedir);
+		Xfree(old -> v_archivedir);
 	}
 	archivefile = old -> v_archivefile;
 	archtmpdir = old -> v_archtmpdir;
@@ -381,7 +381,7 @@ static VOID NEAR poparchdupl(VOID_A)
 #ifndef	_NOTREE
 	treepath = old -> v_treepath;
 #endif
-	free2(findpattern);
+	Xfree(findpattern);
 	findpattern = old -> v_findpattern;
 	filepos = old -> v_filepos;
 	sorton = old -> v_sorton;
@@ -398,20 +398,20 @@ static VOID NEAR poparchdupl(VOID_A)
 #endif
 #ifdef	DEP_PSEUDOPATH
 	if (drive > 0) {
-		strcpy2(fullpath, old -> v_fullpath);
-		free2(old -> v_fullpath);
+		Xstrcpy(fullpath, old -> v_fullpath);
+		Xfree(old -> v_fullpath);
 		removetmp(dir, cp);
 	}
 	else
 #endif
 	if (archivefile) {
-		strcpy2(fullpath, old -> v_fullpath);
-		free2(old -> v_fullpath);
+		Xstrcpy(fullpath, old -> v_fullpath);
+		Xfree(old -> v_fullpath);
 		removetmp(dir, NULL);
 	}
 
-	free2(cp);
-	free2(old);
+	Xfree(cp);
+	Xfree(old);
 }
 
 VOID archbar(file, dir)
@@ -425,15 +425,15 @@ CONST char *file, *dir;
 
 #ifndef	_NOBROWSE
 	if (browselist) {
-		if (!browsevar) arch = strdup2(nullstr);
+		if (!browsevar) arch = Xstrdup(nullstr);
 		else {
 			len = 0;
 			for (i = 0; browsevar[i]; i++)
 				len += strlen(browsevar[i]) + 1;
-			arch = malloc2(len + 1);
+			arch = Xmalloc(len + 1);
 			len = 0;
 			for (i--; i >= 0; i--) {
-				strcpy2(&(arch[len]), browsevar[i]);
+				Xstrcpy(&(arch[len]), browsevar[i]);
 				len += strlen(browsevar[i]);
 				if (i > 0) arch[len++] = '>';
 			}
@@ -443,9 +443,9 @@ CONST char *file, *dir;
 	else
 #endif	/* !_NOBROWSE */
 	{
-		arch = malloc2(strlen(fullpath)
+		arch = Xmalloc(strlen(fullpath)
 			+ strlen(file) + strlen(dir) + 3);
-		strcpy2(strcpy2(strcatdelim2(arch, fullpath, file), ":"), dir);
+		Xstrcpy(Xstrcpy(strcatdelim2(arch, fullpath, file), ":"), dir);
 	}
 
 #ifndef	_NOTRADLAYOUT
@@ -457,25 +457,25 @@ CONST char *file, *dir;
 		Xputterm(T_STANDOUT);
 # ifndef	_NOBROWSE
 		if (browselist) {
-			Xcputs2(TS_BROWSE);
+			XXcputs(TS_BROWSE);
 			len = TD_BROWSE;
 		}
 		else
 # endif
 		{
-			Xcputs2(TS_ARCH);
+			XXcputs(TS_ARCH);
 			len = TD_ARCH;
 		}
 		Xputterm(END_STANDOUT);
 		cputstr(len, arch);
-		free2(arch);
+		Xfree(arch);
 
 		Xlocate(TC_MARK, TL_PATH);
-		Xcprintf2("%<*d", TD_MARK, mark);
+		VOID_C XXcprintf("%<*d", TD_MARK, mark);
 		Xputterm(T_STANDOUT);
-		Xcputs2(TS_MARK);
+		XXcputs(TS_MARK);
 		Xputterm(END_STANDOUT);
-		Xcprintf2("%<'*qd", TD_SIZE, marksize);
+		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		Xtflush();
 		return;
@@ -489,18 +489,18 @@ CONST char *file, *dir;
 	Xputterm(T_STANDOUT);
 #ifndef	_NOBROWSE
 	if (browselist) {
-		Xcputs2(S_BROWSE);
+		XXcputs(S_BROWSE);
 		len = D_BROWSE;
 	}
 	else
 #endif
 	{
-		Xcputs2(S_ARCH);
+		XXcputs(S_ARCH);
 		len = D_ARCH;
 	}
 	Xputterm(END_STANDOUT);
 	cputstr(len, arch);
-	free2(arch);
+	Xfree(arch);
 
 	Xtflush();
 }
@@ -559,10 +559,10 @@ int flags;
 	}
 	if (maxarcf <= 1) {
 		maxarcf = 0;
-		free2(arcflist[0].name);
+		Xfree(arcflist[0].name);
 		arcflist[0].name = (char *)NOFIL_K;
 #ifndef	NOSYMLINK
-		free2(arcflist[0].linkname);
+		Xfree(arcflist[0].linkname);
 		arcflist[0].linkname = NULL;
 #endif
 		arcflist[0].st_nlink = -1;
@@ -694,7 +694,7 @@ static char *NEAR archoutdir(VOID_A)
 	if (!cp) *archivedir = '\0';
 	else {
 		if (cp == file) copyrootpath(archivedir);
-		else strncpy2(archivedir, file, cp - file);
+		else Xstrncpy(archivedir, file, cp - file);
 		file = ++cp;
 	}
 
@@ -711,7 +711,7 @@ CONST char *path;
 	char *tmp, duparcdir[MAXPATHLEN];
 	int len;
 
-	free2(findpattern);
+	Xfree(findpattern);
 	findpattern = NULL;
 #ifndef	_NOBROWSE
 	if (browselist) {
@@ -722,7 +722,7 @@ CONST char *path;
 				errno = ENOENT;
 				return(NULL);
 			}
-			strncpy2(duparcdir, path, (cp - path));
+			Xstrncpy(duparcdir, path, (cp - path));
 			path = duparcdir;
 		}
 
@@ -763,7 +763,7 @@ CONST char *path;
 #endif	/* !_NOBROWSE */
 
 	if (!path) return(archoutdir());
-	strcpy2(duparcdir, archivedir);
+	Xstrcpy(duparcdir, archivedir);
 	do {
 		if (*path == _SC_) len = 1;
 		else if ((cp = strdelim(path, 0))) len = cp - path;
@@ -773,11 +773,11 @@ CONST char *path;
 		if (len == 2 && path[0] == '.' && path[1] == '.') cp = nullstr;
 		if (searcharcdir(cp, len)) {
 			if (*(tmp = archivedir)) tmp = strcatdelim(archivedir);
-			strncpy2(tmp, path, len);
+			Xstrncpy(tmp, path, len);
 			file = parentpath;
 		}
 		else if (*cp || !(file = archoutdir())) {
-			strcpy2(archivedir, duparcdir);
+			Xstrcpy(archivedir, duparcdir);
 			errno = ENOENT;
 			return(NULL);
 		}
@@ -804,15 +804,15 @@ char ***argvp;
 	if (_dospath(path)) return(argc);
 # endif
 
-	strcpy2(duparcdir, archivedir);
+	Xstrcpy(duparcdir, archivedir);
 	if (!(file = strrdelim(path, 0))) file = path;
 # ifndef	_NOBROWSE
 	else if (browselist) return(argc);
 # endif
 	else {
-		strncpy2(dir, path, (file == path) ? 1 : file - path);
+		Xstrncpy(dir, path, (file == path) ? 1 : file - path);
 		if (!(cp = archchdir(dir)) || cp == (char *)-1) {
-			strcpy2(archivedir, duparcdir);
+			Xstrcpy(archivedir, duparcdir);
 			return(argc);
 		}
 		flen -= ++file - path;
@@ -839,20 +839,20 @@ char ***argvp;
 		else if (tmp && *tmp) continue;
 		if (strnpathcmp(file, cp, flen)) continue;
 
-		new = malloc2(len + 1 + 1);
-		strncpy2(new, cp, len);
+		new = Xmalloc(len + 1 + 1);
+		Xstrncpy(new, cp, len);
 		if (parent || isdir(&(arcflist[i]))) new[len++] = _SC_;
 		new[len] = '\0';
 		if (finddupl(new, argc, *argvp)) {
-			free2(new);
+			Xfree(new);
 			continue;
 		}
 
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = new;
 	}
-	strcpy2(archivedir, duparcdir);
+	Xstrcpy(archivedir, duparcdir);
 
 	return(argc);
 }
@@ -901,23 +901,23 @@ int flags;
 	if (flags & F_ARGSET) /*EMPTY*/;
 #ifdef	DEP_PSEUDOPATH
 	else if (drive) {
-		archduplp -> v_fullpath = strdup2(fullpath);
-		strcpy2(fullpath, tmpdir);
+		archduplp -> v_fullpath = Xstrdup(fullpath);
+		Xstrcpy(fullpath, tmpdir);
 	}
 #endif
 	else if (archivefile) {
-		archduplp -> v_fullpath = strdup2(fullpath);
-		strcpy2(fullpath, tmpdir);
+		archduplp -> v_fullpath = Xstrdup(fullpath);
+		Xstrcpy(fullpath, tmpdir);
 		if (*archivedir) {
-			strcpy2(strcatdelim(fullpath), archivedir);
-			archduplp -> v_archivedir = strdup2(archivedir);
+			Xstrcpy(strcatdelim(fullpath), archivedir);
+			archduplp -> v_archivedir = Xstrdup(archivedir);
 		}
 	}
 	cp = (filelist && filepos < maxfile) ? filelist[filepos].name : NULL;
 	if (!cp) cp = nullstr;
 	if (archivefile) maxfile = 0;
 	*archivedir = '\0';
-	archivefile = strdup2(cp);
+	archivefile = Xstrdup(cp);
 	archtmpdir = tmpdir;
 	launchp = list;
 	arcflist = NULL;
@@ -929,7 +929,7 @@ int flags;
 	treepath = NULL;
 #endif
 	findpattern = NULL;
-	while (maxfile > 0) free2(filelist[--maxfile].name);
+	while (maxfile > 0) Xfree(filelist[--maxfile].name);
 #if	FD >= 2
 	if (sorttype < 200) sorton = 0;
 #else
@@ -1003,10 +1003,10 @@ CONST char *path;
 	char *full, rpath[MAXPATHLEN], dir[MAXPATHLEN];
 
 	full = fullpath;
-	realpath2(path, rpath, RLP_READLINK);
+	Xrealpath(path, rpath, RLP_READLINK);
 	for (wvp = archduplp; wvp; wvp = wvp -> v_archduplp) {
 		if (!(wvp -> v_fullpath)) continue;
-		realpath2(full, dir, RLP_READLINK);
+		Xrealpath(full, dir, RLP_READLINK);
 		if (underpath(rpath, dir, -1)) return(1);
 		full = wvp -> v_fullpath;
 	}
@@ -1039,11 +1039,11 @@ CONST char *file, *full;
 #endif
 
 #ifdef	DEP_PSEUDOPATH
-	if (tmpdir) strcpy2(path, tmpdir);
+	if (tmpdir) Xstrcpy(path, tmpdir);
 	else
 #endif
 	if (*cp == _SC_) {
-		strcpy2(path, file);
+		Xstrcpy(path, file);
 		return(path);
 	}
 	else if (!full || !*full) {
@@ -1053,13 +1053,13 @@ CONST char *file, *full;
 #if	MSDOS
 	else if (drive) {
 		tmp = gendospath(path, drive, _SC_);
-		drive = toupper2(drive);
-		if (drive == toupper2(*full)) strcpy2(tmp, &(full[3]));
+		drive = Xtoupper(drive);
+		if (drive == Xtoupper(*full)) Xstrcpy(tmp, &(full[3]));
 		else if (!unixgetcurdir(tmp, drive - 'A' + 1)) return(NULL);
 	}
 #endif
-	else strcpy2(path, full);
-	strcpy2(strcatdelim(path), cp);
+	else Xstrcpy(path, full);
+	Xstrcpy(strcatdelim(path), cp);
 
 	return(path);
 }
@@ -1072,9 +1072,9 @@ CONST char *full;
 	char *cp, dupfullpath[MAXPATHLEN];
 	int drive;
 
-	strcpy2(dupfullpath, fullpath);
+	Xstrcpy(dupfullpath, fullpath);
 	if (full != fullpath) {
-		strcpy2(fullpath, full);
+		Xstrcpy(fullpath, full);
 		if (_chdir2(fullpath) < 0) full = NULL;
 	}
 # ifdef	DEP_DOSDRIVE
@@ -1086,7 +1086,7 @@ CONST char *full;
 	else
 # endif
 	drive = 0;
-	strcpy2(fullpath, dupfullpath);
+	Xstrcpy(fullpath, dupfullpath);
 	if (full != fullpath && _chdir2(fullpath) < 0) {
 		lostcwd(fullpath);
 		return(-1);
@@ -1097,10 +1097,10 @@ CONST char *full;
 # ifdef	DEP_DOSPATH
 	if (_dospath(cp)) cp += 2;
 # endif
-	if (full) strcpy2(fullpath, full);
+	if (full) Xstrcpy(fullpath, full);
 	else if (*cp != _SC_) return(-1);
-	realpath2(path, path, RLP_READLINK);
-	strcpy2(fullpath, dupfullpath);
+	Xrealpath(path, path, RLP_READLINK);
+	Xstrcpy(fullpath, dupfullpath);
 
 	if (!(cp = dostmpdir(drive))) return(-1);
 	*dirp = cp;
@@ -1146,27 +1146,27 @@ CONST char *arc;
 	tmpdest = NULL;
 	drive = 0;
 
-	strcpy2(path, arc);
+	Xstrcpy(path, arc);
 	if ((dest = strrdelim(path, 1))) *(++dest) = '\0';
 	else copycurpath(path);
 	if ((n = archdostmpdir(path, &tmpdest, full)) < 0) {
 		warning(ENOENT, arc);
 		return(0);
 	}
-	if (n) dest = strdup2(path);
+	if (n) dest = Xstrdup(path);
 #endif	/* DEP_PSEUDOPATH */
 
 	if (archivefile) {
 		if (!(tmpdir = tmpunpack(0))) {
 #ifdef	DEP_PSEUDOPATH
-			free2(dest);
+			Xfree(dest);
 #endif
 			return(0);
 		}
 	}
 #ifdef	DEP_PSEUDOPATH
 	else if ((drive = tmpdosdupl(nullstr, &tmpdir, 0)) < 0) {
-		free2(dest);
+		Xfree(dest);
 		return(0);
 	}
 #endif
@@ -1197,7 +1197,7 @@ CONST char *arc;
 			if (_chdir2(tmpdest) < 0) ret = 1;
 			else VOID_C forcemovefile(dest);
 		}
-		free2(dest);
+		Xfree(dest);
 		removetmp(tmpdest, NULL);
 	}
 	if (drive) removetmp(tmpdir, NULL);
@@ -1244,32 +1244,32 @@ int tr, flags;
 	}
 	if (i >= maxarchive) return(-1);
 
-	if (dir) strcpy2(path, dir);
+	if (dir) Xstrcpy(path, dir);
 	else for (;;) {
 #ifndef	_NOTREE
 		if (tr) dir = new = tree(0, NULL);
 		else
 #endif	/* !_NOTREE */
 		{
-			if (arg && *arg) new = strdup2(arg);
+			if (arg && *arg) new = Xstrdup(arg);
 			else new = inputstr(UNPAC_K, 1, -1, NULL, HST_PATH);
 			dir = new = evalpath(new, 0);
 		}
 		if (!dir) return(0);
 		if (!*dir) copycurpath(path);
 		else {
-			cp = strcpy2(path, dir);
+			cp = Xstrcpy(path, dir);
 #ifdef	DEP_DOSPATH
 			if (_dospath(dir) && !dir[2]) copycurpath(cp);
 #endif
 		}
-		free2(new);
+		Xfree(new);
 		dir = NULL;
 
 		if (!undertmp(path)) break;
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
-		Xcprintf2("[%.*s]", n_column - 2, path);
+		VOID_C XXcprintf("[%.*s]", n_column - 2, path);
 		if (yesno(UNPTM_K)) break;
 	}
 
@@ -1288,7 +1288,7 @@ int tr, flags;
 		return(0);
 	}
 	if (n) {
-		dest = strdup2(path);
+		dest = Xstrdup(path);
 		cp = tmpdest;
 	}
 # ifdef	FAKEUNINIT
@@ -1336,7 +1336,7 @@ int tr, flags;
 #ifdef	DEP_PSEUDOPATH
 	if (tmpdest) {
 		if (!ret) VOID_C forcemovefile(dest);
-		free2(dest);
+		Xfree(dest);
 		removetmp(tmpdest, NULL);
 	}
 	if (tmpdir) removetmp(tmpdir, arc);
@@ -1361,13 +1361,13 @@ char *path, *resolved;
 		*cp = '\0';
 	}
 	else if ((cp = strdelim(path, 0))) {
-		strncpy2(tmp, path, cp - path);
+		Xstrncpy(tmp, path, cp - path);
 		if (archrealpath(tmp, resolved) < 0) return(-1);
 		if (archrealpath(++cp, resolved) < 0) return(-1);
 	}
 	else {
 		cp = strcatdelim(resolved);
-		strncpy2(cp, path, MAXPATHLEN - 1 - (cp - resolved));
+		Xstrncpy(cp, path, MAXPATHLEN - 1 - (cp - resolved));
 	}
 
 	return(0);
@@ -1400,19 +1400,19 @@ CONST char *dir;
 
 	if (unpacklink(&(arcflist[i]), dir) < 0) return(-1);
 
-	strcpy2(duparcdir, archivedir);
+	Xstrcpy(duparcdir, archivedir);
 	memcpy(&duplist, &(filelist[filepos]), sizeof(namelist));
 	memcpy(&(filelist[filepos]), &(arcflist[i]), sizeof(namelist));
 	if (!(cp = strrdelim(filelist[filepos].name, 0))) *archivedir = '\0';
 	else {
-		strncpy2(archivedir,
+		Xstrncpy(archivedir,
 			filelist[filepos].name, cp - filelist[filepos].name);
 		filelist[filepos].name = ++cp;
 	}
 	ret = unpack(archivefile, dir, NULL,
 		0, F_ARGSET | F_ISARCH | F_NOADDOPT);
 	memcpy(&(filelist[filepos]), &duplist, sizeof(namelist));
-	strcpy2(archivedir, duparcdir);
+	Xstrcpy(archivedir, duparcdir);
 
 	return(ret);
 }
@@ -1430,12 +1430,12 @@ int single;
 
 	for (i = 0, wvp = archduplp; wvp; i++, wvp = wvp -> v_archduplp)
 		/*EMPTY*/;
-	strcpy2(path, ARCHTMPPREFIX);
+	Xstrcpy(path, ARCHTMPPREFIX);
 	if (mktmpdir(path) < 0) {
 		warning(-1, path);
 		return(NULL);
 	}
-	tmpdir = strdup2(path);
+	tmpdir = Xstrdup(path);
 
 	for (i = 0; i < maxfile; i++)
 		if (ismark(&(filelist[i]))) filelist[i].tmpflags |= F_WSMRK;
@@ -1513,7 +1513,7 @@ CONST char *dev;
 #ifdef	_NOEXTRAMACRO
 	if (filelist) for (;;) {
 		system2(tmp, -1);
-		free2(tmp);
+		Xfree(tmp);
 
 		if (!(st.flags & F_REMAIN)
 		|| !(tmp = evalcommand("tar rf %C %TA", dev, NULL)))
@@ -1523,7 +1523,7 @@ CONST char *dev;
 #endif
 	{
 		system2(tmp, -1);
-		free2(tmp);
+		Xfree(tmp);
 	}
 
 	if (filelist) {
@@ -1601,14 +1601,14 @@ int maxf, n;
 	Xlocate(0, L_MESLINE);
 	Xputterm(L_CLEAR);
 	Xputterm(T_STANDOUT);
-	Xkanjiputs(SEACH_K);
+	VOID_C Xkanjiputs(SEACH_K);
 	Xputterm(END_STANDOUT);
-	Xkanjiputs(file);
+	VOID_C Xkanjiputs(file);
 	Xtflush();
 
 	for (i = 0; i < (int)(list -> topskip); i++) {
 		if (!(cp = Xfgets(fp))) break;
-		free2(cp);
+		Xfree(cp);
 	}
 
 	no = match = 0;
@@ -1619,7 +1619,7 @@ int maxf, n;
 		i = parsefilelist(fp, list, &tmp, &no, archfgets);
 		if (i < 0) {
 			if (i == -1) break;
-			pclose2(fp);
+			VOID_C pclose2(fp);
 			parsefilelist(NULL, NULL, NULL, NULL, NULL);
 			regexp_free(re);
 			if (n >= 0) removetmp(tmpdir, file);
@@ -1634,9 +1634,9 @@ int maxf, n;
 			cp = next;
 		}
 		if (cp) match = no;
-		free2(tmp.name);
+		Xfree(tmp.name);
 #ifndef	NOSYMLINK
-		free2(tmp.linkname);
+		Xfree(tmp.linkname);
 #endif
 	}
 	parsefilelist(NULL, NULL, NULL, NULL, NULL);

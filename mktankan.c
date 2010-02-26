@@ -710,7 +710,7 @@ char *CONST argv[];
 			while (!VALIDJIS(code)) if (++code >= J_MAX) break;
 		}
 	}
-	fclose(fp);
+	VOID_C fclose(fp);
 
 	return(0);
 }

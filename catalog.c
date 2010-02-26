@@ -71,8 +71,8 @@ CONST char *lang;
 	u_short w, flags;
 	int n, fd;
 
-	snprintf2(file, sizeof(file), "%s%s", CATTBL, lang);
-	if (!cattblpath || !*cattblpath) strcpy2(path, file);
+	Xsnprintf(file, sizeof(file), "%s%s", CATTBL, lang);
+	if (!cattblpath || !*cattblpath) Xstrcpy(path, file);
 	else strcatdelim2(path, cattblpath, file);
 
 	if ((fd = open(path, O_BINARY | O_RDONLY, 0666)) < 0) return(-1);
@@ -83,7 +83,7 @@ CONST char *lang;
 	|| ((flags & CF_KANJI) && outputkcode == ENG)
 	|| fgetword(&w, fd) < 0 || w != CAT_SUM
 	|| fgetword(&w, fd) < 0) {
-		close(fd);
+		VOID_C close(fd);
 		return(-1);
 	}
 
@@ -94,20 +94,20 @@ CONST char *lang;
 		if (munmap(catbuf, catsize) < 0) error("munmap()");
 	}
 #endif
-	else free2(catbuf);
+	else Xfree(catbuf);
 	catbuf = NULL;
 	catsize = (ALLOC_T)0;
 	catofs = (off_t)0;
-	catindex = (u_short *)realloc2(catindex, w * sizeof(u_short));
+	catindex = (u_short *)Xrealloc(catindex, w * sizeof(u_short));
 	catmax = w;
 
 	catindex[0] = (u_short)0;
 	for (w = 1; w < catmax; w++) if (fgetword(&(catindex[w]), fd) < 0) {
-		close(fd);
+		VOID_C close(fd);
 		return(-1);
 	}
 	if (fgetword(&w, fd) < 0) {
-		close(fd);
+		VOID_C close(fd);
 		return(-1);
 	}
 	size = w;
@@ -122,19 +122,19 @@ CONST char *lang;
 	else
 #endif
 	{
-		catbuf = (u_char *)malloc2(size);
+		catbuf = (u_char *)Xmalloc(size);
 		if (lseek(fd, ofs, L_SET) < (off_t)0
 		|| sureread(fd, catbuf, size) != size) {
-			close(fd);
-			free2(catbuf);
-			free2(catindex);
+			VOID_C close(fd);
+			Xfree(catbuf);
+			Xfree(catindex);
 			catbuf = NULL;
 			catindex = NULL;
 			catmax = 0;
 			return(-1);
 		}
 	}
-	close(fd);
+	VOID_C close(fd);
 
 	return(0);
 }
@@ -146,8 +146,8 @@ VOID freecatalog(VOID_A)
 	else if (catbuf == (u_char *)MAP_FAILED) /*EMPTY*/;
 	else if (catsize) VOID_C munmap(catbuf, catsize);
 #endif
-	else free2(catbuf);
-	free2(catindex);
+	else Xfree(catbuf);
+	Xfree(catindex);
 
 	catbuf = NULL;
 	catsize = (ALLOC_T)0;
@@ -176,11 +176,11 @@ char **listcatalog(VOID_A)
 		cp += strsize(CATTBL);
 		if (!strpathcmp(cp, cat_ja)) continue;
 		if (!strpathcmp(cp, cat_C)) continue;
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(char *));
-		argv[argc++] = strdup2(cp);
+		argv = (char **)Xrealloc(argv, (argc + 2) * sizeof(char *));
+		argv[argc++] = Xstrdup(cp);
 		argv[argc] = NULL;
 	}
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 
 	return(argv);
 }

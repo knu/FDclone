@@ -214,7 +214,7 @@ CONST u_short *kbuf;
 		return(0);
 	}
 
-	strcpy2(romanlist[n].str, str);
+	Xstrcpy(romanlist[n].str, str);
 	romanlist[n].len = len;
 	memcpy((char *)romanlist[n].code, (char *)kbuf,
 		R_MAXKANA * sizeof(u_short));
@@ -291,7 +291,7 @@ u_int c;
 
 	if (!(c & ~0xff)) {
 #ifdef	CODEEUC
-		if (iskana2(c)) c |= (C_EKANA << 8);
+		if (Xiskana(c)) c |= (C_EKANA << 8);
 #endif
 		return(c);
 	}
@@ -366,9 +366,9 @@ CONST char *s, *buf;
 
 	if (!s) return(-1);
 	for (i = j = 0; s[i]; i++) {
-		if (!isprint2(s[i])) continue;
+		if (!Xisprint(s[i])) continue;
 		if (j >= sizeof(str) - 1) break;
-		str[j++] = tolower2(s[i]);
+		str[j++] = Xtolower(s[i]);
 	}
 	if (!j) return(-1);
 	str[j] = '\0';

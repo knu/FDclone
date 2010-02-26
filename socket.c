@@ -18,7 +18,6 @@
 #include <netinet/in_systm.h>
 #endif
 #if	!MSDOS
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
@@ -91,7 +90,7 @@ struct in_addr **listp;
 #endif
 	}
 
-	new = (struct in_addr *)malloc2(naddr * sizeof(struct in_addr));
+	new = (struct in_addr *)Xmalloc(naddr * sizeof(struct in_addr));
 	for (n = 0; n < naddr; n++)
 		memcpy((char *)&(new[n]), addr[n], sizeof(struct in_addr));
 	*listp = new;
@@ -118,8 +117,8 @@ CONST char *s1, *s2;
 		}
 		if (!n) break;
 	}
-	free2(addr1);
-	free2(addr2);
+	Xfree(addr1);
+	Xfree(addr2);
 
 	return(n);
 }
@@ -155,7 +154,7 @@ int *portp, peer;
 	n = (peer) ? getpeername(s, sp, &len) : getsockname(s, sp, &len);
 	if (n < 0) return(-1);
 	cp = (u_char *)&(sin.sin_addr.s_addr);
-	n = snprintf2(buf, size, "%u.%u.%u.%u", cp[0], cp[1], cp[2], cp[3]);
+	n = Xsnprintf(buf, size, "%u.%u.%u.%u", cp[0], cp[1], cp[2], cp[3]);
 	if (n < 0) return(-1);
 	if (portp) *portp = ntohs(sin.sin_port);
 
@@ -352,7 +351,7 @@ int port, timeout, opt;
 		safeclose(s);
 		s = -1;
 	}
-	free2(addr);
+	Xfree(addr);
 
 	return(s);
 }
@@ -371,7 +370,7 @@ int port, opt;
 		if (getaddr(host, &addr) < 0) return(-1);
 		memcpy((char *)&(sin.sin_addr.s_addr), (char *)&(addr[0]),
 			sizeof(struct in_addr));
-		free2(addr);
+		Xfree(addr);
 	}
 	else sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	sin.sin_family = AF_INET;

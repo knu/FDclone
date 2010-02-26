@@ -141,7 +141,7 @@ static VOID NEAR resettermcode(w)
 int w;
 {
 	pty[w].termflags &= ~T_CODEALT;
-	strcpy2(pty[w].codeselect, "(B");
+	Xstrcpy(pty[w].codeselect, "(B");
 }
 
 static VOID NEAR resettabstop(w)
@@ -255,17 +255,17 @@ int w;
 	if (last_fg != pty[w].fg && pty[w].fg >= (short)0) {
 		if ((cp = tparamstr(termstr[T_FGCOLOR], pty[w].fg, 0))) {
 			tputs2(cp, 1);
-			free2(cp);
+			Xfree(cp);
 		}
-		else cprintf2("\033[%dm", pty[w].fg + ANSI_NORMAL);
+		else VOID_C Xcprintf("\033[%dm", pty[w].fg + ANSI_NORMAL);
 		last_fg = pty[w].fg;
 	}
 	if (last_bg != pty[w].bg && pty[w].bg >= (short)0) {
 		if ((cp = tparamstr(termstr[T_BGCOLOR], pty[w].bg, 0))) {
 			tputs2(cp, 1);
-			free2(cp);
+			Xfree(cp);
 		}
-		else cprintf2("\033[%dm", pty[w].bg + ANSI_REVERSE);
+		else VOID_C Xcprintf("\033[%dm", pty[w].bg + ANSI_REVERSE);
 		last_bg = pty[w].bg;
 	}
 }
@@ -275,17 +275,17 @@ int w;
 {
 	if ((last_termflags & T_CODEALT) != (pty[w].termflags & T_CODEALT)) {
 		if (pty[w].termflags & T_CODEALT) {
-			VOID_C putch2('\016');
+			VOID_C Xputch('\016');
 			last_termflags |= T_CODEALT;
 		}
 		else {
-			VOID_C putch2('\017');
+			VOID_C Xputch('\017');
 			last_termflags &= ~T_CODEALT;
 		}
 	}
 	if (strcmp(&(last_codeselect[1]), pty[w].codeselect)) {
 		last_codeselect[0] = '\033';
-		strcpy2(&(last_codeselect[1]), pty[w].codeselect);
+		Xstrcpy(&(last_codeselect[1]), pty[w].codeselect);
 		tputs2(last_codeselect, 1);
 	}
 }
@@ -344,7 +344,7 @@ static VOID NEAR evalsignal(VOID_A)
 		xmax = pty[i].max_x - pty[i].min_x;
 		ymax = pty[i].max_y - pty[i].min_y;
 		resetptyterm(i, 0);
-		VOID_C setwsize(ptylist[i].fd,
+		setwsize(ptylist[i].fd,
 			pty[i].max_x - pty[i].min_x,
 			pty[i].max_y - pty[i].min_y);
 
@@ -440,9 +440,9 @@ char **cpp;
 	if (ptyrecvbuf(&cp, sizeof(cp)) < 0) return(-1);
 	if (cp) {
 		if (ptyrecvbuf(&len, sizeof(len)) < 0) return(-1);
-		cp = malloc2(len + 1);
+		cp = Xmalloc(len + 1);
 		if (ptyrecvbuf(cp, len) < 0) {
-			free2(cp);
+			Xfree(cp);
 			return(-1);
 		}
 		cp[len] = '\0';
@@ -628,7 +628,7 @@ int width;
 	}
 #endif
 
-	cputs2(cp);
+	Xcputs(cp);
 	tflush();
 	pty[w].cur_x += width;
 	last_x += width;
@@ -1133,11 +1133,11 @@ int w, c, fd;
 			i = 0;
 			switch (pty[w].escparam[0]) {
 				case 5:
-					i = snprintf2(buf, sizeof(buf),
+					i = Xsnprintf(buf, sizeof(buf),
 						"\033[0n");
 					break;
 				case 6:
-					i = snprintf2(buf, sizeof(buf),
+					i = Xsnprintf(buf, sizeof(buf),
 						SIZEFMT,
 						pty[w].cur_y
 						- pty[w].min_y + 1,
@@ -1367,24 +1367,24 @@ int n;
 			surelocate(MAXWINDOWS, 0);
 			settermattr(MAXWINDOWS);
 			settermcode(MAXWINDOWS);
-			i = cprintf2("%c", w1);
+			i = Xcprintf("%c", w1);
 			pty[MAXWINDOWS].cur_x += i;
 			last_x += i;
 			tflush();
 			break;
 		case TE_CPUTS2:
-			s = malloc2(w1 + 1);
+			s = Xmalloc(w1 + 1);
 			if (ptyrecvbuf(s, w1) >= 0) {
 				surelocate(MAXWINDOWS, 0);
 				settermattr(MAXWINDOWS);
 				settermcode(MAXWINDOWS);
 				s[w1] = '\0';
-				i = cprintf2("%s", s);
+				i = Xcprintf("%s", s);
 				pty[MAXWINDOWS].cur_x += i;
 				last_x += i;
 				tflush();
 			}
-			free2(s);
+			Xfree(s);
 			break;
 		case TE_PUTTERM:
 			if ((n = chgattr(w1, 1)) < 0) break;
@@ -1457,7 +1457,7 @@ int n;
 			surelocate(win, 1);
 			tflush();
 			if (pid) {
-				VOID_C setwsize(ptylist[win].fd,
+				setwsize(ptylist[win].fd,
 					pty[win].max_x - pty[win].min_x,
 					pty[win].max_y - pty[win].min_y);
 				break;
@@ -1481,7 +1481,7 @@ int n;
 			for (i = 0; i < n; i++) {
 				winvar[i].v_fileperrow = row[i];
 				resetptyterm(i, 0);
-				VOID_C setwsize(ptylist[i].fd,
+				setwsize(ptylist[i].fd,
 					pty[i].max_x - pty[i].min_x,
 					pty[i].max_y - pty[i].min_y);
 			}
@@ -1543,7 +1543,7 @@ int n;
 			|| ptyrecvstring(&s) < 0)
 				break;
 			if (ptyrecvstring(&arg) < 0) {
-				free2(s);
+				Xfree(s);
 				break;
 			}
 			if (ptyrecvstring(&cwd) < 0) cwd = NULL;
@@ -1553,9 +1553,9 @@ int n;
 			sendstring(ptylist[w1].fd, s);
 			sendstring(ptylist[w1].fd, arg);
 			sendstring(ptylist[w1].fd, cwd);
-			free2(s);
-			free2(arg);
-			free2(cwd);
+			Xfree(s);
+			Xfree(arg);
+			Xfree(cwd);
 			break;
 		default:
 			break;
@@ -1626,10 +1626,10 @@ static int NEAR evalinput(VOID_A)
 		buf[0] = key.code;
 #ifdef	DEP_KCONV
 		if (incode == outcode) /*EMPTY*/;
-		else if (incode == SJIS && iskana2(key.code)) cnv++;
+		else if (incode == SJIS && Xiskana(key.code)) cnv++;
 		else if (incode == EUC && key.code == C_EKANA
 		&& (n = ptygetch()) >= 0) {
-			if (!iskana2(n)) ptyungetch((u_char)n);
+			if (!Xiskana(n)) ptyungetch((u_char)n);
 			else {
 				cnv++;
 				buf[1] = n;

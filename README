@@ -3,7 +3,7 @@
 #	FDclone Ver. 3.00 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Nov 30, 2008
+#	Feb 27, 2010
 #
 ############################################################
 
@@ -68,6 +68,7 @@ mkdict.c	かな漢字変換テーブルファイル変換プログラム
 mktankan.c	単漢字変換テーブルファイル生成プログラム
 mkkanji.c	kanji.h 変換プログラム
 mkcat.c		メッセージカタログ生成プログラム
+mkdir_p.c	ディレクトリ生成プログラム
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
 mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
 mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト

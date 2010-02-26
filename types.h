@@ -260,10 +260,6 @@ typedef char **			orighelpindex_t;
 #define	FSID_LFN		6
 #define	FSID_DOSDRIVE		7
 
-#define	LCK_READ		0
-#define	LCK_WRITE		1
-#define	LCK_UNLOCK		2
-
 #define	CHK_OK			0
 #define	CHK_EXIST		1
 #define	CHK_OVERWRITE		2

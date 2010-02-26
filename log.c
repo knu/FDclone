@@ -72,19 +72,19 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 			if (!(home = gethomedir())) return(NULL);
 			strcatdelim2(path, home, top);
 			if (!*path) return(NULL);
-			cp = strdup2(path);
+			cp = Xstrdup(path);
 		}
 	}
 
 	size = (ALLOC_T)logsize * (ALLOC_T)1024;
 	if (size > 0 && Xstat(cp, &st) >= 0 && st.st_size > size) {
-		snprintf2(path, sizeof(path), "%s.old", cp);
-		if (Xrename(cp, path) < 0) Xunlink(cp);
+		Xsnprintf(path, sizeof(path), "%s.old", cp);
+		if (Xrename(cp, path) < 0) VOID_C Xunlink(cp);
 	}
 
 	lck = lockopen(cp, O_TEXT | O_WRONLY | O_CREAT | O_APPEND, 0666);
 	if (!lck) {
-		free2(cp);
+		Xfree(cp);
 		return(NULL);
 	}
 
@@ -94,7 +94,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 VOID logclose(VOID_A)
 {
-	if (logfname != vnullstr) free2(logfname);
+	if (logfname != vnullstr) Xfree(logfname);
 	logfname = vnullstr;
 #ifndef	NOSYSLOG
 	if (syslogged > 0) closelog();
@@ -131,13 +131,13 @@ CONST char *buf;
 		t = time(NULL);
 		tm = localtime(&t);
 #ifdef	NOUID
-		snprintf2(hbuf, sizeof(hbuf),
+		Xsnprintf(hbuf, sizeof(hbuf),
 			"%04u/%02u/%02u %02u:%02u:%02u %s[%d]:\n ",
 			tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			progname, getpid());
 #else
-		snprintf2(hbuf, sizeof(hbuf),
+		Xsnprintf(hbuf, sizeof(hbuf),
 			"%04u/%02u/%02u %02u:%02u:%02u uid=%d %s[%d]:\n ",
 			tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
@@ -183,15 +183,15 @@ va_dcl
 	duperrno = errno;
 	if (val >= 0) lvl++;
 	VA_START(args, fmt);
-	len = vsnprintf2(buf, sizeof(buf), fmt, args);
+	len = Xvsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 
 	if (len >= 0) {
 		len = strlen(buf);
-		if (val >= 0) n = snprintf2(&(buf[len]),
+		if (val >= 0) n = Xsnprintf(&(buf[len]),
 			(int)sizeof(buf) - len, " succeeded");
-		else n = snprintf2(&(buf[len]), (int)sizeof(buf) - len,
-			" -- FAILED -- (%k)", strerror2(duperrno));
+		else n = Xsnprintf(&(buf[len]), (int)sizeof(buf) - len,
+			" -- FAILED -- (%k)", Xstrerror(duperrno));
 		if (n < 0) buf[len] = '\0';
 		writelog(lvl, (val < 0) ? LOG_ERR : LOG_INFO, buf);
 	}
@@ -215,7 +215,7 @@ va_dcl
 
 	duperrno = errno;
 	VA_START(args, fmt);
-	len = vsnprintf2(buf, sizeof(buf), fmt, args);
+	len = Xvsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 
 	if (len >= 0) writelog(lvl, LOG_INFO, buf);

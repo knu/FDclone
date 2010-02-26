@@ -7,10 +7,26 @@
 #ifndef	__SOCKET_H_
 #define	__SOCKET_H_
 
+#include "depend.h"
+
+#if	!MSDOS
+#include <sys/socket.h>
+#endif
+
 #ifdef	USESOCKLEN
 #define	sock_len_t		socklen_t
 #else
 typedef int			sock_len_t;
+#endif
+
+#ifndef	SHUT_RD
+#define	SHUT_RD			0
+#endif
+#ifndef	SHUT_WR
+#define	SHUT_WR			1
+#endif
+#ifndef	SHUT_RDWR
+#define	SHUT_RDWR		2
 #endif
 
 #define	SCK_BACKLOG		5

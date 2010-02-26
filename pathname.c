@@ -142,7 +142,7 @@ p_id_t (*getpidfunc)__P_((VOID_A)) = NULL;
 p_id_t (*getlastpidfunc)__P_((VOID_A)) = NULL;
 char *(*getflagfunc)__P_((VOID_A)) = NULL;
 int (*checkundeffunc)__P_((CONST char *, CONST char *, int)) = NULL;
-VOID (*exitfunc)__P_((VOID_A)) = NULL;
+VOID_T (*exitfunc)__P_((VOID_A)) = NULL;
 char *(*backquotefunc)__P_((CONST char *)) = NULL;
 #ifndef	MINIMUMSHELL
 char *(*posixsubstfunc)__P_((CONST char *, int *)) = NULL;
@@ -432,7 +432,7 @@ CONST char *s1, *s2;
 int strpathcmp2(s1, s2)
 CONST char *s1, *s2;
 {
-	if (pathignorecase) return(strcasecmp2(s1, s2));
+	if (pathignorecase) return(Xstrcasecmp(s1, s2));
 
 	return(strcmp(s1, s2));
 }
@@ -441,7 +441,7 @@ int strnpathcmp2(s1, s2, n)
 CONST char *s1, *s2;
 int n;
 {
-	if (pathignorecase) return(strncasecmp2(s1, s2, n));
+	if (pathignorecase) return(Xstrncasecmp(s1, s2, n));
 
 	return(strncmp(s1, s2, n));
 }
@@ -476,9 +476,9 @@ int len;
 	return(NULL);
 #else
 	if (len < 0) len = strlen(ident);
-	cp = strndup2(ident, len);
+	cp = Xstrndup(ident, len);
 	env = getenv2(cp);
-	free2(cp);
+	Xfree(cp);
 
 	return(env);
 #endif
@@ -492,17 +492,17 @@ int len;
 	int ret, vlen;
 
 	vlen = strlen(value);
-	cp = malloc2(len + 1 + vlen + 1);
-	strncpy2(cp, ident, len);
+	cp = Xmalloc(len + 1 + vlen + 1);
+	Xstrncpy(cp, ident, len);
 	cp[len] = '=';
-	strncpy2(&(cp[len + 1]), value, vlen);
+	Xstrncpy(&(cp[len + 1]), value, vlen);
 
 #if	defined (FD) || defined (FDSH)
 	ret = (putvarfunc) ? (*putvarfunc)(cp, len) : -1;
 #else
 	ret = (putvarfunc) ? (*putvarfunc)(cp, len) : putenv(cp);
 #endif
-	if (ret < 0) free2(cp);
+	if (ret < 0) Xfree(cp);
 
 	return(ret);
 }
@@ -510,13 +510,13 @@ int len;
 int isidentchar(c)
 int c;
 {
-	return(c == '_' || isalpha2(c));
+	return(c == '_' || Xisalpha(c));
 }
 
 int isidentchar2(c)
 int c;
 {
-	return(c == '_' || isalnum2(c));
+	return(c == '_' || Xisalnum(c));
 }
 
 int isdotdir(s)
@@ -601,7 +601,7 @@ int *loginp, *restrictedp;
 		if (loginp) *loginp = 1;
 	}
 #ifdef	PATHNOCASE
-	if (tolower2(*s) == 'r')
+	if (Xtolower(*s) == 'r')
 #else
 	if (*s == 'r')
 #endif
@@ -632,10 +632,10 @@ int ptr, quote, len, flags;
 
 # ifdef	BSPATHDELIM
 	if (quote == '"') {
-		if (!strchr2(DQ_METACHAR, s[ptr + 1])) return(0);
+		if (!Xstrchr(DQ_METACHAR, s[ptr + 1])) return(0);
 	}
 	else {	/* if (!quote || quote == '`') */
-		if (!strchr2(METACHAR, s[ptr + 1])) return(0);
+		if (!Xstrchr(METACHAR, s[ptr + 1])) return(0);
 	}
 # endif
 
@@ -731,7 +731,7 @@ int len;
 # else
 	re_comp(new);
 # endif
-	free2(new);
+	Xfree(new);
 
 	return((reg_t *)1);
 }
@@ -767,17 +767,17 @@ int len;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = new = cnvregexp(s, len);
-	re = (reg_t *)malloc2(sizeof(reg_t));
+	re = (reg_t *)Xmalloc(sizeof(reg_t));
 # ifdef	PATHNOCASE
 	n = regcomp(re, s, REG_EXTENDED | REG_ICASE);
 # else
 	n = regcomp(re, s, REG_EXTENDED | (pathignorecase) ? REG_ICASE : 0);
 # endif
 	if (n) {
-		free2(re);
+		Xfree(re);
 		re = NULL;
 	}
-	free2(new);
+	Xfree(new);
 
 	return(re);
 }
@@ -797,7 +797,7 @@ reg_t *re;
 {
 	if (re) {
 		regfree(re);
-		free2(re);
+		Xfree(re);
 	}
 }
 
@@ -816,7 +816,7 @@ int len;
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	new = cnvregexp(s, len);
 	re = regcmp(new, 0);
-	free2(new);
+	Xfree(new);
 
 	return(re);
 }
@@ -834,7 +834,7 @@ int fname;
 VOID regexp_free(re)
 reg_t *re;
 {
-	free2(re);
+	Xfree(re);
 }
 #  else	/* !USEREGCMP */
 
@@ -876,12 +876,12 @@ int len;
 				if (!pathignorecase) paren[plen++] = s[i];
 				else
 # endif
-				paren[plen++] = toupper2(s[i]);
+				paren[plen++] = Xtoupper(s[i]);
 #endif
 			}
 			else if (s[i] == ']') {
 				if (!plen) {
-					free2(paren);
+					Xfree(paren);
 					regexp_free(re);
 					return(NULL);
 				}
@@ -893,7 +893,7 @@ int len;
 				}
 #endif
 				paren[plen] = '\0';
-				cp = realloc2(paren, plen + 1);
+				cp = Xrealloc(paren, plen + 1);
 				paren = NULL;
 			}
 #ifdef	BASHSTYLE
@@ -908,13 +908,13 @@ int len;
 #ifndef	PATHNOCASE
 				else if (!pathignorecase) j = s[i + 1];
 #endif
-				else j = toupper2(s[i + 1]);
+				else j = Xtoupper(s[i + 1]);
 
 #ifdef	BASHSTYLE
 	/* bash does not allow "[b-a]" */
 				if (plen && j && j != ']'
 				&& j < paren[plen - 1]) {
-					free2(paren);
+					Xfree(paren);
 					regexp_free(re);
 					return(NULL);
 				}
@@ -928,7 +928,7 @@ int len;
 				}
 	/* Bourne shell does not allow "[-a]" */
 				else if ((!plen && j != '-')) {
-					free2(paren);
+					Xfree(paren);
 					regexp_free(re);
 					return(NULL);
 				}
@@ -942,7 +942,7 @@ int len;
 #ifndef	PATHNOCASE
 			else if (!pathignorecase) paren[plen++] = s[i];
 #endif
-			else paren[plen++] = toupper2(s[i]);
+			else paren[plen++] = Xtoupper(s[i]);
 		}
 		else if (!quote && !metachar) switch (s[i]) {
 			case '?':
@@ -964,7 +964,7 @@ int len;
 
 		if (paren) continue;
 		if (!cp) {
-			cp = malloc2(2 + 1);
+			cp = Xmalloc(2 + 1);
 			j = 0;
 			if (iswchar(s, i)) {
 				cp[j++] = s[i++];
@@ -973,7 +973,7 @@ int len;
 #ifndef	PATHNOCASE
 			else if (!pathignorecase) cp[j++] = s[i];
 #endif
-			else cp[j++] = toupper2(s[i]);
+			else cp[j++] = Xtoupper(s[i]);
 			cp[j] = '\0';
 		}
 		re[n++] = cp;
@@ -981,18 +981,18 @@ int len;
 		re[n] = NULL;
 	}
 	if (paren) {
-		free2(paren);
+		Xfree(paren);
 		if (plen) {
 			regexp_free(re);
 			return(NULL);
 		}
-		cp = strdup2("[");
+		cp = Xstrdup("[");
 		re[n++] = cp;
 		re = b_realloc(re, n, reg_t);
 		re[n] = NULL;
 	}
 
-	return((reg_t *)realloc2(re, (n + 1) * sizeof(reg_t)));
+	return((reg_t *)Xrealloc(re, (n + 1) * sizeof(reg_t)));
 }
 
 static int NEAR _regexp_exec(re, s)
@@ -1007,7 +1007,7 @@ CONST char *s;
 #ifndef	PATHNOCASE
 		else if (!pathignorecase) /*EMPTY*/;
 #endif
-		else c1 = toupper2(c1);
+		else c1 = Xtoupper(c1);
 
 		if (re[n1] == wildsymbol1) continue;
 		if (re[n1] == wildsymbol2) {
@@ -1076,8 +1076,8 @@ reg_t *re;
 	if (re) {
 		for (i = 0; re[i]; i++)
 			if (re[i] != wildsymbol1 && re[i] != wildsymbol2)
-				free2(re[i]);
-		free2(re);
+				Xfree(re[i]);
+		Xfree(re);
 	}
 }
 #  endif	/* !USEREGCMP */
@@ -1100,14 +1100,14 @@ wild_t *dst;
 CONST wild_t *src;
 {
 	memcpy((char *)dst, (char *)src, sizeof(wild_t));
-	dst -> fixed.s = (char *)malloc2(src -> fixed.size);
+	dst -> fixed.s = Xmalloc(src -> fixed.size);
 	memcpy(dst -> fixed.s, src -> fixed.s, src -> fixed.len + 1);
-	dst -> path.s = (char *)malloc2(src -> path.size);
+	dst -> path.s = Xmalloc(src -> path.size);
 	memcpy(dst -> path.s, src -> path.s, src -> path.len + 1);
 
 #ifndef	NODIRLOOP
 	if (src -> ino) {
-		dst -> ino = (devino_t *)malloc2(src -> nino
+		dst -> ino = (devino_t *)Xmalloc(src -> nino
 			* sizeof(devino_t));
 		memcpy((char *)(dst -> ino), (char *)(src -> ino),
 			src -> nino * sizeof(devino_t));
@@ -1118,10 +1118,10 @@ CONST wild_t *src;
 static void NEAR freewild(wp)
 wild_t *wp;
 {
-	free2(wp -> fixed.s);
-	free2(wp -> path.s);
+	Xfree(wp -> fixed.s);
+	Xfree(wp -> path.s);
 #ifndef	NODIRLOOP
-	free2(wp -> ino);
+	Xfree(wp -> ino);
 #endif
 }
 
@@ -1148,7 +1148,7 @@ wild_t *wp;
 
 	if (!*(wp -> s)) {
 		if (!(wp -> fixed.len)) return(argc);
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 2) * sizeof(char *));
 		(*argvp)[argc++] = wp -> fixed.s;
 		wp -> fixed.s = NULL;
@@ -1206,7 +1206,7 @@ wild_t *wp;
 
 			if (wp -> quote == '\''
 			|| (wp -> quote == '"'
-			&& !strchr2(DQ_METACHAR, wp -> s[i + 1]))) {
+			&& !Xstrchr(DQ_METACHAR, wp -> s[i + 1]))) {
 				if (!(wp -> flags & EA_KEEPESCAPE))
 					addstrbuf(&(wp -> fixed),
 						&(wp -> s[i]), 1);
@@ -1214,7 +1214,7 @@ wild_t *wp;
 			}
 			i++;
 		}
-		else if (pc == PC_NORMAL && strchr2("?*[", wp -> s[i])) {
+		else if (pc == PC_NORMAL && Xstrchr("?*[", wp -> s[i])) {
 			if (w >= 0 && wp -> s[i] == '*') w++;
 			else w = -1;
 		}
@@ -1256,7 +1256,7 @@ wild_t *wp;
 		else
 # endif
 		if (!w) {
-			wp -> ino = (devino_t *)realloc2(wp -> ino,
+			wp -> ino = (devino_t *)Xrealloc(wp -> ino,
 				(wp -> nino + 1) * sizeof(devino_t));
 			wp -> ino[wp -> nino].dev = st.st_dev;
 			wp -> ino[(wp -> nino)++].ino = st.st_ino;
@@ -1278,14 +1278,14 @@ wild_t *wp;
 		re = NULL;
 	}
 	else {
-		new = malloc2(i + 2);
+		new = Xmalloc(i + 2);
 		n = 0;
 		if (quote) new[n++] = quote;
 		memcpy(&(new[n]), wp -> s, i);
 		n += i;
 		if (wp -> quote) new[n++] = wp -> quote;
 		re = regexp_init(new, n);
-		free2(new);
+		Xfree(new);
 		if (!re) return(argc);
 		wp -> s += i + 1;
 	}
@@ -1331,7 +1331,7 @@ wild_t *wp;
 				}
 			}
 
-			dupl.ino = (devino_t *)realloc2(dupl.ino,
+			dupl.ino = (devino_t *)Xrealloc(dupl.ino,
 				(dupl.nino + 1) * sizeof(devino_t));
 			dupl.ino[dupl.nino].dev = st.st_dev;
 			dupl.ino[(dupl.nino)++].ino = st.st_ino;
@@ -1341,7 +1341,7 @@ wild_t *wp;
 			argc = _evalwild(argc, argvp, &dupl);
 		}
 		else if (regexp_exec(re, dp -> d_name, 1)) {
-			*argvp = (char **)realloc2(*argvp,
+			*argvp = (char **)Xrealloc(*argvp,
 				(argc + 2) * sizeof(char *));
 			(*argvp)[argc++] = dupl.fixed.s;
 			dupl.fixed.s = NULL;
@@ -1349,7 +1349,7 @@ wild_t *wp;
 
 		freewild(&dupl);
 	}
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 	regexp_free(re);
 
 	return(argc);
@@ -1370,7 +1370,7 @@ int flags;
 	char **argv;
 	int argc;
 
-	argv = (char **)malloc2(1 * sizeof(char *));
+	argv = (char **)Xmalloc(1 * sizeof(char *));
 	w.s = s;
 	w.fixed.s = c_realloc(NULL, 0, &(w.fixed.size));
 	w.path.s = c_realloc(NULL, 0, &(w.path.size));
@@ -1386,7 +1386,7 @@ int flags;
 	freewild(&w);
 
 	if (!argc) {
-		free2(argv);
+		Xfree(argv);
 		return(NULL);
 	}
 
@@ -1413,7 +1413,7 @@ static VOID NEAR inithash(VOID_A)
 	int i;
 
 	if (hashtable) return;
-	hashtable = (hashlist **)malloc2(MAXHASH * sizeof(hashlist *));
+	hashtable = (hashlist **)Xmalloc(MAXHASH * sizeof(hashlist *));
 	for (i = 0; i < MAXHASH; i++) hashtable[i] = NULL;
 }
 
@@ -1425,8 +1425,8 @@ hashlist *next;
 {
 	hashlist *new;
 
-	new = (hashlist *)malloc2(sizeof(hashlist));
-	new -> command = strdup2(com);
+	new = (hashlist *)Xmalloc(sizeof(hashlist));
+	new -> command = Xstrdup(com);
 	new -> path = path;
 	new -> hits = 0;
 	new -> cost = cost;
@@ -1449,13 +1449,13 @@ hashlist **htable;
 		next = NULL;
 		for (hp = htable[i]; hp; hp = next) {
 			next = hp -> next;
-			free2(hp -> command);
-			free2(hp -> path);
-			free2(hp);
+			Xfree(hp -> command);
+			Xfree(hp -> path);
+			Xfree(hp);
 		}
 		htable[i] = NULL;
 	}
-	free2(htable);
+	Xfree(htable);
 	if (htable == hashtable) hashtable = NULL;
 }
 
@@ -1467,13 +1467,13 @@ hashlist **htable;
 	int i;
 
 	if (!htable) return(NULL);
-	new = (hashlist **)malloc2(MAXHASH * sizeof(hashlist *));
+	new = (hashlist **)Xmalloc(MAXHASH * sizeof(hashlist *));
 
 	for (i = 0; i < MAXHASH; i++) {
 		*(nextp = &(new[i])) = NULL;
 		for (hp = htable[i]; hp; hp = hp -> next) {
 			*nextp = newhash(hp -> command,
-				strdup2(hp -> path), hp -> cost, NULL);
+				Xstrdup(hp -> path), hp -> cost, NULL);
 			(*nextp) -> type = hp -> type;
 			(*nextp) -> hits = hp -> hits;
 			nextp = &((*nextp) -> next);
@@ -1506,9 +1506,9 @@ int n;
 		if (!strpathcmp(com, hp -> command)) {
 			if (!prev) hashtable[n] = hp -> next;
 			else prev -> next = hp -> next;
-			free2(hp -> command);
-			free2(hp -> path);
-			free2(hp);
+			Xfree(hp -> command);
+			Xfree(hp -> path);
+			Xfree(hp);
 			return;
 		}
 		prev = hp;
@@ -1546,11 +1546,11 @@ int len, exe;
 	}
 	else {
 		path[len++] = '.';
-		strcpy2(&(path[len]), EXTCOM);
+		Xstrcpy(&(path[len]), EXTCOM);
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT);
-		strcpy2(&(path[len]), EXTEXE);
+		Xstrcpy(&(path[len]), EXTEXE);
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_EXE);
-		strcpy2(&(path[len]), EXTBAT);
+		Xstrcpy(&(path[len]), EXTBAT);
 		if (isexecute(path, 0, exe) >= 0) return(CM_ADDEXT | CM_BATCH);
 	}
 
@@ -1586,15 +1586,15 @@ CONST char *com, *search;
 #endif
 
 #if	MSDOS
-	if ((ext = strrchr2(com, '.')) && strdelim(++ext, 0)) ext = NULL;
+	if ((ext = Xstrrchr(com, '.')) && strdelim(++ext, 0)) ext = NULL;
 #endif
 	if (strdelim(com, 1)) {
 #if	MSDOS
 		len = strlen(com);
-		path = malloc2(len + EXTWIDTH + 1);
-		strcpy2(path, com);
+		path = Xmalloc(len + EXTWIDTH + 1);
+		Xstrcpy(path, com);
 		ret = extaccess(path, ext, len, 0);
-		free2(path);
+		Xfree(path);
 		if (ret >= 0) return(ret | CM_FULLPATH);
 #else
 		if (isexecute(com, 0, 0) >= 0) return(CM_FULLPATH);
@@ -1615,14 +1615,14 @@ CONST char *com, *search;
 
 #ifdef	CWDINPATH
 	len = strlen(com);
-	path = malloc2(len + 2 + EXTWIDTH + 1);
+	path = Xmalloc(len + 2 + EXTWIDTH + 1);
 	path[0] = '.';
 	path[1] = _SC_;
-	strcpy2(&(path[2]), com);
+	Xstrcpy(&(path[2]), com);
 # if	MSDOS
-	if ((ret = extaccess(path, ext, len + 2, 1)) < 0) free2(path);
+	if ((ret = extaccess(path, ext, len + 2, 1)) < 0) Xfree(path);
 # else
-	if ((ret = isexecute(path, 0, 0)) < 0) free2(path);
+	if ((ret = isexecute(path, 0, 0)) < 0) Xfree(path);
 # endif
 	else {
 # ifdef	_NOUSEHASH
@@ -1652,7 +1652,7 @@ CONST char *com, *search;
 #ifndef	_NOUSEHASH
 			if (*next != _SC_) recalc = CM_RECALC;
 #endif
-			next = strchr2(next, PATHDELIM);
+			next = Xstrchr(next, PATHDELIM);
 			dlen = (next) ? (next++) - cp : strlen(cp);
 			if (!dlen) tmp = NULL;
 			else {
@@ -1661,14 +1661,14 @@ CONST char *com, *search;
 			}
 			if (dlen + len + 1 + EXTWIDTH + 1 > size) {
 				size = dlen + len + 1 + EXTWIDTH + 1;
-				path = realloc2(path, size);
+				path = Xrealloc(path, size);
 			}
 			if (tmp) {
-				strncpy2(path, tmp, dlen);
-				free2(tmp);
+				Xstrncpy(path, tmp, dlen);
+				Xfree(tmp);
 				dlen = strcatdelim(path) - path;
 			}
-			strncpy2(&(path[dlen]), com, len);
+			Xstrncpy(&(path[dlen]), com, len);
 			dlen += len;
 #if	MSDOS
 			if ((ret = extaccess(path, ext, dlen, 1)) >= 0) break;
@@ -1687,7 +1687,7 @@ CONST char *com, *search;
 #endif
 			return(ret);
 		}
-		free2(path);
+		Xfree(path);
 	}
 
 	return(CM_NOTFOUND);
@@ -1701,11 +1701,11 @@ CONST char *path, *search;
 	int type;
 
 	if ((type = searchhash(&hp, path, search)) & CM_NOTFOUND) return(NULL);
-	if (type & CM_FULLPATH) return(strdup2(path));
+	if (type & CM_FULLPATH) return(Xstrdup(path));
 # ifdef	_NOUSEHASH
 	return((char *)hp);
 # else
-	return(strdup2(hp -> path));
+	return(Xstrdup(hp -> path));
 # endif
 }
 #endif	/* FD */
@@ -1754,19 +1754,19 @@ int home;
 		}
 		if (!pwd) break;
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
-		if (!home) new = strdup2(pwd -> pw_name);
+		if (!home) new = Xstrdup(pwd -> pw_name);
 		else {
 			size = strlen(pwd -> pw_name);
-			new = malloc2(size + 2 + 1);
+			new = Xmalloc(size + 2 + 1);
 			new[0] = '~';
 			VOID_C strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
 		}
 		if (finddupl(new, argc, *argvp)) {
-			free2(new);
+			Xfree(new);
 			continue;
 		}
 
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = new;
 	}
@@ -1781,19 +1781,19 @@ int home;
 	setpwent();
 	while ((pwd = getpwent())) {
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
-		if (!home) new = strdup2(pwd -> pw_name);
+		if (!home) new = Xstrdup(pwd -> pw_name);
 		else {
 			size = strlen(pwd -> pw_name);
-			new = malloc2(size + 2 + 1);
+			new = Xmalloc(size + 2 + 1);
 			new[0] = '~';
 			VOID_C strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
 		}
 		if (finddupl(new, argc, *argvp)) {
-			free2(new);
+			Xfree(new);
 			continue;
 		}
 
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = new;
 	}
@@ -1830,13 +1830,13 @@ char ***argvp;
 		}
 		if (!grp) break;
 		if (strnpathcmp(name, grp -> gr_name, len)) continue;
-		new = strdup2(grp -> gr_name);
+		new = Xstrdup(grp -> gr_name);
 		if (finddupl(new, argc, *argvp)) {
-			free2(new);
+			Xfree(new);
 			continue;
 		}
 
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = new;
 	}
@@ -1851,13 +1851,13 @@ char ***argvp;
 	setgrent();
 	while ((grp = getgrent())) {
 		if (strnpathcmp(name, grp -> gr_name, len)) continue;
-		new = strdup2(grp -> gr_name);
+		new = Xstrdup(grp -> gr_name);
 		if (finddupl(new, argc, *argvp)) {
-			free2(new);
+			Xfree(new);
 			continue;
 		}
 
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = new;
 	}
@@ -1881,7 +1881,7 @@ int dlen, exe;
 	int d, size, dirok;
 
 	if (dlen >= MAXPATHLEN - 2) return(argc);
-	strncpy2(path, dir, dlen);
+	Xstrncpy(path, dir, dlen);
 	if (!(dirp = Xopendir(path))) return(argc);
 	cp = strcatdelim(path);
 
@@ -1892,25 +1892,25 @@ int dlen, exe;
 			continue;
 		size = strlen(dp -> d_name);
 		if (size + (cp - path) >= MAXPATHLEN) continue;
-		strncpy2(cp, dp -> d_name, size);
+		Xstrncpy(cp, dp -> d_name, size);
 
 		if (isdotdir(dp -> d_name)) d = 1;
 		else if ((d = isexecute(path, dirok, exe)) < 0) continue;
 
-		new = malloc2(size + 1 + 1);
-		strncpy2(new, dp -> d_name, size);
+		new = Xmalloc(size + 1 + 1);
+		Xstrncpy(new, dp -> d_name, size);
 		if (d) new[size++] = _SC_;
 		new[size] = '\0';
 		if (finddupl(new, argc, *argvp)) {
-			free2(new);
+			Xfree(new);
 			continue;
 		}
 
-		*argvp = (char **)realloc2(*argvp,
+		*argvp = (char **)Xrealloc(*argvp,
 			(argc + 1) * sizeof(char *));
 		(*argvp)[argc++] = new;
 	}
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 
 	return(argc);
 }
@@ -1929,15 +1929,15 @@ char ***argvp;
 	if (!(next = getconstvar(ENVPATH))) return(argc);
 	for (cp = next; cp; cp = next) {
 # ifdef	DEP_DOSPATH
-		if (_dospath(cp)) next = strchr2(&(cp[2]), PATHDELIM);
+		if (_dospath(cp)) next = Xstrchr(&(cp[2]), PATHDELIM);
 		else
 # endif
-		next = strchr2(cp, PATHDELIM);
+		next = Xstrchr(cp, PATHDELIM);
 		dlen = (next) ? (next++) - cp : strlen(cp);
 		tmp = _evalpath(cp, &(cp[dlen]), 0);
 		dlen = strlen(tmp);
 		argc = completefile(file, len, argc, argvp, tmp, dlen, 2);
-		free2(tmp);
+		Xfree(tmp);
 	}
 
 	return(argc);
@@ -2010,7 +2010,7 @@ char *CONST *argv;
 	int i, n;
 
 	if (!argv || !argv[0]) return(NULL);
-	common = strdup2(argv[0]);
+	common = Xstrdup(argv[0]);
 
 	for (n = 1; n < argc; n++) {
 		for (i = 0; common[i]; i++) if (common[i] != argv[n][i]) break;
@@ -2018,7 +2018,7 @@ char *CONST *argv;
 	}
 
 	if (!common[0]) {
-		free2(common);
+		Xfree(common);
 		return(NULL);
 	}
 
@@ -2064,13 +2064,13 @@ int delim;
 
 	if (!argv) return(NULL);
 	for (i = len = 0; argv[i]; i++) len += strlen(argv[i]);
-	if (i < 1) return(strdup2(nullstr));
+	if (i < 1) return(Xstrdup(nullstr));
 	len += (delim) ? i - 1 : 0;
-	cp = malloc2(len + 1);
-	len = strcpy2(cp, argv[0]) - cp;
+	cp = Xmalloc(len + 1);
+	len = Xstrcpy(cp, argv[0]) - cp;
 	for (i = 1; argv[i]; i++) {
 		if (delim) cp[len++] = delim;
-		len = strcpy2(&(cp[len]), argv[i]) - cp;
+		len = Xstrcpy(&(cp[len]), argv[i]) - cp;
 	}
 
 	return(cp);
@@ -2094,8 +2094,8 @@ char **var;
 
 	duperrno = errno;
 	if (var) {
-		for (i = 0; var[i]; i++) free2(var[i]);
-		free2(var);
+		for (i = 0; var[i]; i++) Xfree(var[i]);
+		Xfree(var);
 	}
 	errno = duperrno;
 }
@@ -2112,8 +2112,8 @@ int margin;
 		margin = 0;
 	}
 	n = countvar(var);
-	dupl = (char **)malloc2((n + margin + 1) * sizeof(char *));
-	for (i = 0; i < n; i++) dupl[i] = strdup2(var[i]);
+	dupl = (char **)Xmalloc((n + margin + 1) * sizeof(char *));
+	for (i = 0; i < n; i++) dupl[i] = Xstrdup(var[i]);
 	dupl[i] = NULL;
 
 	return(dupl);
@@ -2138,9 +2138,9 @@ int len, spc, flags, *qp, *pqp;
 	else if (iswchar(s, 0)) return(PC_WCHAR);
 	else if (*qp == '\'') return(PC_SQUOTE);
 #ifdef	FD
-	else if ((flags & EA_FINDMETA) && strchr2(DQ_METACHAR, *s))
+	else if ((flags & EA_FINDMETA) && Xstrchr(DQ_METACHAR, *s))
 		return(PC_META);
-	else if ((flags & EA_FINDDELIM) && strchr2(CMDLINE_DELIM, *s))
+	else if ((flags & EA_FINDDELIM) && Xstrchr(CMDLINE_DELIM, *s))
 		return(PC_DELIM);
 #endif
 	else if (isescape(s, 0, *qp, len, flags)) return(PC_ESCAPE);
@@ -2173,7 +2173,7 @@ int len, spc, flags, *qp, *pqp;
 	}
 #endif
 #ifdef	FD
-	else if ((flags & EA_FINDMETA) && strchr2(METACHAR, *s))
+	else if ((flags & EA_FINDMETA) && Xstrchr(METACHAR, *s))
 		return(PC_META);
 #endif
 
@@ -2240,10 +2240,10 @@ int *eolp, *ptrp, flags;
 
 	if (i == ':') {
 		mode = (*bufp)[(*ptrp)++];
-		if (!strchr2("-=?+", mode)) return(-1);
+		if (!Xstrchr("-=?+", mode)) return(-1);
 		mode |= 0x80;
 	}
-	else if (strchr2("-=?+", i)) mode = i;
+	else if (Xstrchr("-=?+", i)) mode = i;
 #ifndef	MINIMUMSHELL
 	else if (i != RMSUFFIX && i != '#') return(-1);
 	else if ((*bufp)[*ptrp] != i) mode = i;
@@ -2345,11 +2345,11 @@ int plen, mode;
 	int c, n, len;
 
 	if (!s || !*s) return(NULL);
-	tmp = strndup2(pattern, plen);
+	tmp = Xstrndup(pattern, plen);
 	new = evalarg(tmp, EA_BACKQ);
-	free2(tmp);
+	Xfree(tmp);
 	re = regexp_init(new, -1);
-	free2(new);
+	Xfree(new);
 	if (!re) return(NULL);
 	ret = NULL;
 	len = strlen(s);
@@ -2367,10 +2367,10 @@ int plen, mode;
 				break;
 			}
 		}
-		if (n >= 0) ret = strndup2(s, n);
+		if (n >= 0) ret = Xstrndup(s, n);
 	}
 	else {
-		new = strdup2(s);
+		new = Xstrdup(s);
 		if (mode & 0x80)
 		for (tmp = &(new[len]); tmp >= new; tmp--) {
 			*tmp = '\0';
@@ -2388,8 +2388,8 @@ int plen, mode;
 			}
 			*tmp = c;
 		}
-		if (n >= 0) ret = strdup2(&(s[n]));
-		free2(new);
+		if (n >= 0) ret = Xstrdup(&(s[n]));
+		Xfree(new);
 	}
 	regexp_free(re);
 
@@ -2405,11 +2405,11 @@ int plen, mode;
 	int i, n;
 
 	n = countvar(var);
-	new = (char **)malloc2((n + 1) * sizeof(char *));
+	new = (char **)Xmalloc((n + 1) * sizeof(char *));
 	for (i = 0; i < n; i++) {
 		if ((cp = removeword(var[i], pattern, plen, mode)))
 			new[i] = cp;
-		else new[i] = strdup2(var[i]);
+		else new[i] = Xstrdup(var[i]);
 	}
 	new[i] = NULL;
 
@@ -2462,10 +2462,10 @@ int plen, *modep;
 
 			for (i = j = 0; arglist[i + 1]; i++)
 				j += addmeta(NULL, arglist[i + 1], flags);
-			if (i <= 0) cp = strdup2(nullstr);
+			if (i <= 0) cp = Xstrdup(nullstr);
 			else {
 				j += (i - 1) * 3;
-				cp = malloc2(j + 1);
+				cp = Xmalloc(j + 1);
 				j = addmeta(cp, arglist[1], flags);
 				for (i = 2; arglist[i]; i++) {
 					cp[j++] = '"';
@@ -2497,25 +2497,25 @@ int plen, *modep;
 			break;
 		case '#':
 			if (!argvar) break;
-			snprintf2(tmp, sizeof(tmp), "%d",
+			Xsnprintf(tmp, sizeof(tmp), "%d",
 				countvar(argvar + 1));
 			cp = tmp;
 			break;
 		case '?':
-			snprintf2(tmp, sizeof(tmp), "%d",
+			Xsnprintf(tmp, sizeof(tmp), "%d",
 				(getretvalfunc) ? (*getretvalfunc)() : 0);
 			cp = tmp;
 			break;
 		case '$':
 			if (!getpidfunc) pid = getpid();
 			else pid = (*getpidfunc)();
-			snprintf2(tmp, sizeof(tmp), "%id", pid);
+			Xsnprintf(tmp, sizeof(tmp), "%id", pid);
 			cp = tmp;
 			break;
 		case '!':
 			if (getlastpidfunc
 			&& (pid = (*getlastpidfunc)()) >= 0) {
-				snprintf2(tmp, sizeof(tmp), "%id", pid);
+				Xsnprintf(tmp, sizeof(tmp), "%id", pid);
 				cp = tmp;
 			}
 			break;
@@ -2525,7 +2525,7 @@ int plen, *modep;
 		default:
 			break;
 	}
-	if (cp == tmp) cp = strdup2(tmp);
+	if (cp == tmp) cp = Xstrdup(tmp);
 #ifndef	MINIMUMSHELL
 	freevar(new);
 #endif
@@ -2548,11 +2548,11 @@ int s, len, vlen, mode;
 	else if (*cpp) return(0);
 	else if (mode == '=' && !isidentchar(*arg)) return(-1);
 
-	val = strndup2(&(arg[s]), vlen);
+	val = Xstrndup(&(arg[s]), vlen);
 	*cpp = evalarg(val,
 		(mode == '=' || mode == '?')
 		? EA_STRIPQ | EA_BACKQ : EA_BACKQ);
-	free2(val);
+	Xfree(val);
 	if (!*cpp) return(-1);
 
 	if (mode == '=') {
@@ -2560,16 +2560,16 @@ int s, len, vlen, mode;
 		demacroarg(cpp);
 #endif
 		if (setvar(arg, *cpp, len) < 0) {
-			free2(*cpp);
+			Xfree(*cpp);
 			*cpp = NULL;
 			return(-1);
 		}
 #ifdef	BASHSTYLE
 	/* bash does not evaluates a quoted string in substitution itself */
-		free2(*cpp);
-		val = strndup2(&(arg[s]), vlen);
+		Xfree(*cpp);
+		val = Xstrndup(&(arg[s]), vlen);
 		*cpp = evalarg(val, EA_BACKQ);
-		free2(val);
+		Xfree(val);
 		if (!*cpp) return(-1);
 # ifdef	FD
 		demacroarg(cpp);
@@ -2581,10 +2581,10 @@ int s, len, vlen, mode;
 		demacroarg(cpp);
 #endif
 		for (i = 0; i < len; i++) Xfputc(arg[i], Xstderr);
-		fprintf2(Xstderr, ": %k",
+		Xfprintf(Xstderr, ": %k",
 			(vlen > 0) ? *cpp : "parameter null or not set");
 		VOID_C fputnl(Xstderr);
-		free2(*cpp);
+		Xfree(*cpp);
 		*cpp = NULL;
 		if (exitfunc) (*exitfunc)();
 		return(-2);
@@ -2600,7 +2600,7 @@ CONST char *arg;
 int olen, nlen;
 {
 	if (nlen <= olen) return(buf);
-	buf = realloc2(buf, ptr + nlen + (int)strlen(arg) - olen + 1);
+	buf = Xrealloc(buf, ptr + nlen + (int)strlen(arg) - olen + 1);
 
 	return(buf);
 }
@@ -2642,7 +2642,7 @@ int flags;
 #ifdef	MINIMUMSHELL
 	mode &= ~0x80;
 #else
-	if (strchr2("-=?+", mode & ~0x80)) mode &= ~0x80;
+	if (Xstrchr("-=?+", mode & ~0x80)) mode &= ~0x80;
 	else if (mode == '(') {
 		if (!posixsubstfunc) return(-1);
 		for (;;) {
@@ -2666,7 +2666,7 @@ int flags;
 	c = '\0';
 	if ((cp = new)) /*EMPTY*/;
 	else if (isidentchar(*top)) cp = getenvvar(top, len);
-	else if (isdigit2(*top)) {
+	else if (Xisdigit(*top)) {
 		if (len > 1) return(-1);
 		if (!argvar) {
 			(*bufp)[ptr++] = '$';
@@ -2699,7 +2699,7 @@ int flags;
 
 #ifndef	MINIMUMSHELL
 	if (mode == 'n') {
-		snprintf2(tmp, sizeof(tmp), "%d",
+		Xsnprintf(tmp, sizeof(tmp), "%d",
 			(cp) ? strlen(cp) : 0);
 		cp = tmp;
 	}
@@ -2710,11 +2710,11 @@ int flags;
 	else
 #endif	/* !MINIMUMSHELL */
 	if ((mode = replacevar(top, &cp, s, len, vlen, mode)) < 0) {
-		free2(new);
+		Xfree(new);
 		return(mode);
 	}
 	else if (mode) {
-		free2(new);
+		Xfree(new);
 		new = cp;
 	}
 
@@ -2733,11 +2733,11 @@ int flags;
 	else {
 		vlen = strlen(cp);
 		*bufp = insertarg(*bufp, ptr, arg, *argp - arg + 1, vlen);
-		strncpy2(&((*bufp)[ptr]), cp, vlen);
+		Xstrncpy(&((*bufp)[ptr]), cp, vlen);
 	}
 
 	ptr += vlen;
-	free2(new);
+	Xfree(new);
 
 	return(ptr);
 }
@@ -2809,8 +2809,8 @@ CONST char *name;
 	if (!pwd) return(NULL);
 	uidlist = b_realloc(uidlist, maxuid, uidtable);
 	uidlist[maxuid].uid = pwd -> pw_uid;
-	uidlist[maxuid].name = strdup2(pwd -> pw_name);
-	uidlist[maxuid].home = strdup2(pwd -> pw_dir);
+	uidlist[maxuid].name = Xstrdup(pwd -> pw_name);
+	uidlist[maxuid].home = Xstrdup(pwd -> pw_dir);
 
 	return(&(uidlist[maxuid++]));
 }
@@ -2857,7 +2857,7 @@ CONST char *name;
 	if (!grp) return(NULL);
 	gidlist = b_realloc(gidlist, maxgid, gidtable);
 	gidlist[maxgid].gid = grp -> gr_gid;
-	gidlist[maxgid].name = strdup2(grp -> gr_name);
+	gidlist[maxgid].name = Xstrdup(grp -> gr_name);
 # ifndef	USEGETGROUPS
 	gidlist[maxgid].gr_mem = duplvar(grp -> gr_mem, -1);
 # endif
@@ -2883,13 +2883,13 @@ gid_t gid;
 		gp -> ismem++;
 # ifdef	USEGETGROUPS
 		if ((n = getgroups(0, NULL)) > 0) {
-			gidset = (gid_t *)malloc2(n * sizeof(*gidset));
+			gidset = (gid_t *)Xmalloc(n * sizeof(*gidset));
 			n = getgroups(n, gidset);
 			for (i = 0; i < n; i++) if (gidset[i] == gp -> gid) {
 				gp -> ismem++;
 				break;
 			}
-			free2(gidset);
+			Xfree(gidset);
 		}
 # else	/* !USEGETGROUPS */
 		if (gp -> gr_mem && (up = finduid(geteuid(), NULL)))
@@ -2914,19 +2914,19 @@ VOID freeidlist(VOID_A)
 
 	if (uidlist) {
 		for (i = 0; i < maxuid; i++) {
-			free2(uidlist[i].name);
-			free2(uidlist[i].home);
+			Xfree(uidlist[i].name);
+			Xfree(uidlist[i].home);
 		}
-		free2(uidlist);
+		Xfree(uidlist);
 	}
 	if (gidlist) {
 		for (i = 0; i < maxgid; i++) {
-			free2(gidlist[i].name);
+			Xfree(gidlist[i].name);
 #  ifndef	USEGETGROUPS
 			freevar(gidlist[i].gr_mem);
 #  endif
 		}
-		free2(gidlist);
+		Xfree(gidlist);
 	}
 	uidlist = NULL;
 	gidlist = NULL;
@@ -2948,10 +2948,10 @@ int rest, flags;
 	if (!(tmp = (*backquotefunc)(bbuf))) return(buf);
 	len = addmeta(NULL, tmp, flags);
 	size = *ptrp + len + rest + 1;
-	buf = realloc2(buf, size);
+	buf = Xrealloc(buf, size);
 	addmeta(&(buf[*ptrp]), tmp, flags);
 	*ptrp += len;
-	free2(tmp);
+	Xfree(tmp);
 
 	return(buf);
 }
@@ -3025,7 +3025,7 @@ int len;
 
 	if (!(ifs = getconstvar(ENVIFS))) return;
 	for (i = 0; i < len; i++) {
-		if (strchr2(ifs, s[i]) && !strchr2(IFS_SET, s[i])) s[i] = ' ';
+		if (Xstrchr(ifs, s[i]) && !Xstrchr(IFS_SET, s[i])) s[i] = ' ';
 		else if (iswchar(s, i)) i++;
 	}
 }
@@ -3060,7 +3060,7 @@ CONST char **argp;
 # ifdef	NOUID
 		cp = NULL;
 # else	/* !NOUID */
-		tmp = strndup2(top, len);
+		tmp = Xstrndup(top, len);
 #  ifdef	FD
 		up = finduid(0, tmp);
 		cp = (up) ? up -> home : NULL;
@@ -3078,7 +3078,7 @@ CONST char **argp;
 #   endif
 		cp = (pwd) ? pwd -> pw_dir : NULL;
 #  endif	/* !FD */
-		free2(tmp);
+		Xfree(tmp);
 # endif	/* !NOUID */
 	}
 
@@ -3091,7 +3091,7 @@ CONST char **argp;
 		vlen = strlen(top);
 		*bufp = insertarg(*bufp, ptr, *argp, len + 1, vlen);
 	}
-	strncpy2(&((*bufp)[ptr]), top, vlen);
+	Xstrncpy(&((*bufp)[ptr]), top, vlen);
 	ptr += vlen;
 	*argp += len;
 
@@ -3121,12 +3121,12 @@ int flags;
 
 #ifdef	DEP_DOSLFN
 	if (*arg == '"' && (i = strlen(arg)) > 2 && arg[i - 1] == '"') {
-		strncpy2(path, &(arg[1]), i - 2);
+		Xstrncpy(path, &(arg[1]), i - 2);
 		if (shortname(path, alias) == alias) {
 			if (flags & (EA_STRIPQ | EA_STRIPQLATER))
-				return(strdup2(alias));
+				return(Xstrdup(alias));
 			i = strlen(alias);
-			buf = malloc2(i + 2 + 1);
+			buf = Xmalloc(i + 2 + 1);
 			buf[0] = '"';
 			memcpy(&(buf[1]), alias, i);
 			buf[++i] = '"';
@@ -3137,9 +3137,9 @@ int flags;
 #endif
 
 	i = strlen(arg) + 1;
-	buf = malloc2(i);
+	buf = Xmalloc(i);
 	if (!backquotefunc) flags &= ~EA_BACKQ;
-	bbuf = (flags & EA_BACKQ) ? malloc2(i) : NULL;
+	bbuf = (flags & EA_BACKQ) ? Xmalloc(i) : NULL;
 #ifndef	MINIMUMSHELL
 	q2 = prev =
 #endif
@@ -3202,8 +3202,8 @@ int flags;
 # endif
 #endif	/* FAKEESCAPE */
 			else if ((i = evalvar(&buf, i, &cp, f)) < 0) {
-				free2(bbuf);
-				free2(buf);
+				Xfree(bbuf);
+				Xfree(buf);
 				if (i < -1) *arg = '\0';
 				return(NULL);
 			}
@@ -3268,7 +3268,7 @@ int flags;
 		buf = replacebackquote(buf, &i, bbuf, 0, flags);
 	}
 #endif
-	free2(bbuf);
+	Xfree(bbuf);
 	buf[i] = '\0';
 
 	if (flags & EA_STRIPQLATER) stripquote(buf, EA_STRIPQ);
@@ -3290,9 +3290,9 @@ CONST char *ifs;
 				'\0', 0, &quote, NULL);
 			if (pc == PC_WCHAR || pc == PC_ESCAPE) i++;
 			else if (pc != PC_NORMAL) /*EMPTY*/;
-			else if (strchr2(ifs, (*argvp)[n][i])) {
+			else if (Xstrchr(ifs, (*argvp)[n][i])) {
 				for (j = i + 1; (*argvp)[n][j]; j++)
-					if (!strchr2(ifs, (*argvp)[n][j]))
+					if (!Xstrchr(ifs, (*argvp)[n][j]))
 						break;
 				if (!i) {
 					for (i = 0; (*argvp)[n][i + j]; i++)
@@ -3304,8 +3304,8 @@ CONST char *ifs;
 				}
 				(*argvp)[n][i] = '\0';
 				if (!(*argvp)[n][j]) break;
-				cp = strdup2(&((*argvp)[n][j]));
-				*argvp = (char **)realloc2(*argvp,
+				cp = Xstrdup(&((*argvp)[n][j]));
+				*argvp = (char **)Xrealloc(*argvp,
 					(argc + 2) * sizeof(char *));
 				memmove((char *)(&((*argvp)[n + 2])),
 					(char *)(&((*argvp)[n + 1])),
@@ -3315,7 +3315,7 @@ CONST char *ifs;
 			}
 		}
 		if (!i) {
-			free2((*argvp)[n--]);
+			Xfree((*argvp)[n--]);
 			memmove((char *)(&((*argvp)[n + 1])),
 				(char *)(&((*argvp)[n + 2])),
 				(argc-- - n) * sizeof(char *));
@@ -3341,17 +3341,17 @@ int flags;
 
 		i = countvar(wild);
 		if (i > 1) {
-			*argvp = (char **)realloc2(*argvp,
+			*argvp = (char **)Xrealloc(*argvp,
 				(argc + i) * sizeof(char *));
 			memmove((char *)(&((*argvp)[n + i])),
 				(char *)(&((*argvp)[n + 1])),
 				(argc - n) * sizeof(char *));
 			argc += i - 1;
 		}
-		free2((*argvp)[n]);
+		Xfree((*argvp)[n]);
 		memmove((char *)(&((*argvp)[n])),
 			(char *)wild, i * sizeof(char *));
-		free2(wild);
+		Xfree(wild);
 		n += i - 1;
 	}
 
@@ -3377,7 +3377,7 @@ int flags;
 			i++;
 			if (flags & EA_KEEPESCAPE) pc = PC_NORMAL;
 			else if (!quote && !(flags & EA_BACKQ)) /*EMPTY*/;
-			else if (!strchr2(DQ_METACHAR, arg[i])) pc = PC_NORMAL;
+			else if (!Xstrchr(DQ_METACHAR, arg[i])) pc = PC_NORMAL;
 
 			if (pc != PC_ESCAPE) arg[j++] = PESCAPE;
 			else stripped++;
@@ -3409,14 +3409,14 @@ int flags;
 
 	if (eol) i = eol - path;
 	else i = strlen(path);
-	cp = strndup2(path, i);
+	cp = Xstrndup(path, i);
 
 	tmp = evalarg(cp, EA_NOEVALQ | EA_NOEVALDQ | EA_KEEPESCAPE);
 	if (!tmp) {
 		*cp = '\0';
 		return(cp);
 	}
-	free2(cp);
+	Xfree(cp);
 	cp = tmp;
 
 #ifdef	DEP_DOSLFN
@@ -3429,7 +3429,7 @@ int flags;
 	url = urlparse(cp, NULL, NULL, NULL);
 #endif
 	size = strlen(cp) + 1;
-	tmp = malloc2(size);
+	tmp = Xmalloc(size);
 	quote = '\0';
 
 	for (i = j = c = 0; cp[i]; c = cp[i++]) {
@@ -3442,8 +3442,8 @@ int flags;
 					len = strlen(alias);
 					size += top + len - j;
 					j = top + len;
-					tmp = realloc2(tmp, size);
-					strncpy2(&(tmp[top]), alias, len);
+					tmp = Xrealloc(tmp, size);
+					Xstrncpy(&(tmp[top]), alias, len);
 				}
 			}
 			top = -1;
@@ -3454,7 +3454,7 @@ int flags;
 		else if (pc == PC_ESCAPE) {
 			i++;
 			if ((flags & EA_KEEPESCAPE)
-			|| (quote && !strchr2(DQ_METACHAR, cp[i])))
+			|| (quote && !Xstrchr(DQ_METACHAR, cp[i])))
 				tmp[j++] = PESCAPE;
 		}
 		else if (pc == PC_OPQUOTE) {
@@ -3476,7 +3476,7 @@ int flags;
 		tmp[j++] = cp[i];
 	}
 	tmp[j] = '\0';
-	free2(cp);
+	Xfree(cp);
 
 	return(tmp);
 }
@@ -3488,9 +3488,9 @@ int flags;
 	char *cp;
 
 	if (!path || !*path) return(path);
-	for (cp = path; isblank2(*cp); cp++) /*EMPTY*/;
+	for (cp = path; Xisblank(*cp); cp++) /*EMPTY*/;
 	cp = _evalpath(cp, NULL, flags);
-	free2(path);
+	Xfree(path);
 
 	return(cp);
 }

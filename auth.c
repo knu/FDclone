@@ -81,7 +81,7 @@ char *authgetuser(VOID_A)
 #endif
 
 	if (cp && !*cp) {
-		free2(cp);
+		Xfree(cp);
 		cp = NULL;
 	}
 
@@ -96,7 +96,7 @@ char *authgetpass(VOID_A)
 	cp = inputpass();
 #else
 	if (!(cp = getpass("Password:"))) cp = vnullstr;
-	cp = strdup2(cp);
+	cp = Xstrdup(cp);
 #endif
 
 	return(cp);
@@ -113,11 +113,11 @@ int type, index;
 		if (type != authlist[i].type) continue;
 		if (hp -> port != authlist[i].host.port) continue;
 		if (cmpsockaddr(hp -> host, authlist[i].host.host)) continue;
-		if (!(hp -> user)) hp -> user = strdup2(authlist[i].host.user);
+		if (!(hp -> user)) hp -> user = Xstrdup(authlist[i].host.user);
 		else if (strcmp(hp -> user, authlist[i].host.user)) continue;
 
-		free2(hp -> pass);
-		hp -> pass = strdup2(authlist[i].host.pass);
+		Xfree(hp -> pass);
+		hp -> pass = Xstrdup(authlist[i].host.pass);
 		break;
 	}
 
@@ -162,9 +162,9 @@ int type;
 		i = maxauth - 1;
 	}
 
-	authlist[i].host.user = strdup2(hp -> user);
-	authlist[i].host.pass = strdup2(hp -> pass);
-	authlist[i].host.host = strdup2(hp -> host);
+	authlist[i].host.user = Xstrdup(hp -> user);
+	authlist[i].host.pass = Xstrdup(hp -> pass);
+	authlist[i].host.host = Xstrdup(hp -> host);
 	authlist[i].host.port = hp -> port;
 	authlist[i].type = type;
 }
@@ -184,13 +184,13 @@ CONST char *s;
 	char **argv;
 	int quote, argc;
 
-	argv = (char **)malloc2(sizeof(*argv));
+	argv = (char **)Xmalloc(sizeof(*argv));
 	argc = 0;
 
 	for (;;) {
 		s = skipspace(s);
 		if (!*s) break;
-		argv = (char **)realloc2(argv, (argc + 2) * sizeof(*argv));
+		argv = (char **)Xrealloc(argv, (argc + 2) * sizeof(*argv));
 		quote = '\0';
 		for (cp = s; *cp; cp++) {
 			if (*cp == quote) quote = '\0';
@@ -198,7 +198,7 @@ CONST char *s;
 			else if (*cp == '"') quote = *cp;
 			else if (*cp == ',') break;
 		}
-		argv[argc++] = strndup2(s, cp - s);
+		argv[argc++] = Xstrndup(s, cp - s);
 		if (*cp) cp++;
 		s = cp;
 	}
@@ -217,14 +217,14 @@ CONST char *s, *name;
 
 	if (!valp || *valp) return;
 	len = strlen(name);
-	if (strncasecmp2(s, name, len)) return;
+	if (Xstrncasecmp(s, name, len)) return;
 	s += len;
 	if (*(s++) != '=') return;
 
 	quote = (*s == '"') ? *(s++) : '\0';
 	for (cp = s; *cp; cp++) if (*cp == quote) break;
 
-	*valp = strndup2(s, cp - s);
+	*valp = Xstrndup(s, cp - s);
 }
 
 static VOID NEAR freedigest(dp)
@@ -235,12 +235,12 @@ digest_t *dp;
 	if (!dp) return;
 
 	duperrno = errno;
-	free2(dp -> realm);
-	free2(dp -> nonce);
-	free2(dp -> algorithm);
-	free2(dp -> qop);
-	free2(dp -> opaque);
-	free2(dp -> cnonce);
+	Xfree(dp -> realm);
+	Xfree(dp -> nonce);
+	Xfree(dp -> algorithm);
+	Xfree(dp -> qop);
+	Xfree(dp -> opaque);
+	Xfree(dp -> cnonce);
 	errno = duperrno;
 }
 
@@ -263,17 +263,17 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vasprintf2(&cp, fmt, args);
+	n = Xvasprintf(&cp, fmt, args);
 	va_end(args);
 	if (n < 0) return(-1);
 
 	len = sizeof(md5);
 	md5encode(md5, &len, (u_char *)cp, n);
-	free2(cp);
+	Xfree(cp);
 	cp = buf;
 	*buf = '\0';
 	for (ptr = (ALLOC_T)0; ptr < len; ptr++) {
-		n = snprintf2(cp, size, "%<02x", (int)(md5[ptr]));
+		n = Xsnprintf(cp, size, "%<02x", (int)(md5[ptr]));
 		if (n < 0) break;
 		cp += n;
 		size -= n;
@@ -300,19 +300,19 @@ va_dcl
 
 	if (len < 0) return(-1);
 	VA_START(args, fmt);
-	n = vasprintf2(&cp, fmt, args);
+	n = Xvasprintf(&cp, fmt, args);
 	va_end(args);
 	if (n < 0) {
-		free2(*sp);
+		Xfree(*sp);
 		*sp = NULL;
 		return(-1);
 	}
 
-	*sp = realloc2(*sp, len + n + 1);
+	*sp = Xrealloc(*sp, len + n + 1);
 	memcpy(&((*sp)[len]), cp, n);
 	len += n;
 	(*sp)[len] = '\0';
-	free2(cp);
+	Xfree(cp);
 
 	return(len);
 }
@@ -329,18 +329,18 @@ CONST char *digest, *method, *path;
 	int n;
 
 	if (!digest) {
-		n = asprintf2(&cp, "%s:%s", hp -> user, hp -> pass);
+		n = Xasprintf(&cp, "%s:%s", hp -> user, hp -> pass);
 		if (n < 0) return(NULL);
 		size = ((n - 1) / BASE64_ORGSIZ + 1)
 			* BASE64_ENCSIZ;
-		buf = malloc2(strsize(AUTHBASIC) + 1 + size + 1);
+		buf = Xmalloc(strsize(AUTHBASIC) + 1 + size + 1);
 		memcpy(buf, AUTHBASIC, strsize(AUTHBASIC));
 		buf[strsize(AUTHBASIC)] = ' ';
 		n = base64encode(&(buf[strsize(AUTHBASIC) + 1]), size + 1,
 			(u_char *)cp, n);
-		free2(cp);
+		Xfree(cp);
 		if (n < 0) {
-			free2(buf);
+			Xfree(buf);
 			return(NULL);
 		}
 		return(buf);
@@ -379,7 +379,7 @@ CONST char *digest, *method, *path;
 		n = genhash(res, sizeof(res), "%s:%s:%s", a1, auth.nonce, a2);
 	else {
 		n = genhash(cnonce, sizeof(cnonce),
-			"%s:%d", hp -> host, time2());
+			"%s:%d", hp -> host, Xtime(NULL));
 		if (n < 0) {
 			freedigest(&auth);
 			return(NULL);

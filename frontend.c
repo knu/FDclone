@@ -110,12 +110,12 @@ int isnl;
 
 	if (!emupid) {
 		syncptyout(-1, -1);
-		VOID_C ttyiomode(isnl);
+		ttyiomode(isnl);
 	}
 	else {
 		dupdumbterm = dumbterm;
 		dumbterm = 1;
-		VOID_C ttyiomode(isnl);
+		ttyiomode(isnl);
 		dumbterm = dupdumbterm;
 		if (!dumbterm) Xputterm(T_KEYPAD);
 	}
@@ -127,12 +127,12 @@ VOID Xstdiomode(VOID_A)
 
 	if (!emupid) {
 		syncptyout(-1, -1);
-		VOID_C stdiomode();
+		stdiomode();
 	}
 	else {
 		dupdumbterm = dumbterm;
 		dumbterm = 1;
-		VOID_C stdiomode();
+		stdiomode();
 		dumbterm = dupdumbterm;
 		if (!dumbterm) Xputterm(T_NOKEYPAD);
 	}
@@ -155,24 +155,26 @@ int init;
 }
 
 
-VOID Xputch2(c)
+int XXputch(c)
 int c;
 {
-	if (!emupid) VOID_C putch2(c);
+	if (!emupid) return(Xputch(c));
 	else {
 		sendword(emufd, TE_PUTCH2);
 		sendword(emufd, c);
+
+		return(c);
 	}
 }
 
-VOID Xcputs2(s)
+VOID XXcputs(s)
 CONST char *s;
 {
 	int len;
 
-	if (!emupid) VOID_C cputs2(s);
-	else if (!s) return;
+	if (!emupid) Xcputs(s);
 	else {
+		if (!s) return;
 		sendword(emufd, TE_CPUTS2);
 		len = strlen(s);
 		sendword(emufd, len);
@@ -183,7 +185,7 @@ CONST char *s;
 VOID Xputterm(n)
 int n;
 {
-	if (!emupid) VOID_C putterm(n);
+	if (!emupid) putterm(n);
 	else {
 		sendword(emufd, TE_PUTTERM);
 		sendword(emufd, n);
@@ -193,7 +195,7 @@ int n;
 VOID Xputterms(n)
 int n;
 {
-	if (!emupid) VOID_C putterms(n);
+	if (!emupid) putterms(n);
 	else {
 		sendword(emufd, TE_PUTTERMS);
 		sendword(emufd, n);
@@ -216,7 +218,7 @@ int min, max;
 VOID Xlocate(x, y)
 int x, y;
 {
-	if (!emupid) VOID_C locate(x, y);
+	if (!emupid) locate(x, y);
 	else {
 		sendword(emufd, TE_LOCATE);
 		sendword(emufd, x);
@@ -226,15 +228,15 @@ int x, y;
 
 VOID Xtflush(VOID_A)
 {
-	if (!emupid) VOID_C tflush();
+	if (!emupid) tflush();
 }
 
 #ifdef	USESTDARGH
 /*VARARGS1*/
-int Xcprintf2(CONST char *fmt, ...)
+int XXcprintf(CONST char *fmt, ...)
 #else
 /*VARARGS1*/
-int Xcprintf2(fmt, va_alist)
+int XXcprintf(fmt, va_alist)
 CONST char *fmt;
 va_dcl
 #endif
@@ -244,19 +246,19 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vasprintf2(&buf, fmt, args);
+	n = Xvasprintf(&buf, fmt, args);
 	va_end(args);
 	if (n < 0) error("malloc()");
 
-	Xcputs2(buf);
-	free2(buf);
+	XXcputs(buf);
+	Xfree(buf);
 
 	return(n);
 }
 
 VOID Xcputnl(VOID_A)
 {
-	if (!emupid) VOID_C cputnl();
+	if (!emupid) cputnl();
 	else {
 		sendword(emufd, TE_CPUTNL);
 		sendword(emufd, 0);
@@ -266,13 +268,13 @@ VOID Xcputnl(VOID_A)
 int Xkanjiputs(s)
 CONST char *s;
 {
-	return(Xcprintf2("%k", s));
+	return(XXcprintf("%k", s));
 }
 
 VOID Xchgcolor(color, reverse)
 int color, reverse;
 {
-	if (!emupid) VOID_C chgcolor(color, reverse);
+	if (!emupid) chgcolor(color, reverse);
 	else {
 		sendword(emufd, TE_CHGCOLOR);
 		sendword(emufd, color);
@@ -283,7 +285,7 @@ int color, reverse;
 VOID Xmovecursor(n1, n2, c)
 int n1, n2, c;
 {
-	if (!emupid) VOID_C movecursor(n1, n2, c);
+	if (!emupid) movecursor(n1, n2, c);
 	else {
 		sendword(emufd, TE_MOVECURSOR);
 		sendword(emufd, n1);
@@ -434,7 +436,7 @@ static int NEAR ptygetkey(VOID_A)
 		if (c < 0 || ptymenukey < 0 || alternate(c) != ptymenukey)
 			break;
 
-		str[0] = new = asprintf3(PTYAI_K, getkeysym(ptymenukey, 0));
+		str[0] = new = asprintf2(PTYAI_K, getkeysym(ptymenukey, 0));
 		str[1] = PTYIC_K;
 		str[2] = PTYBR_K;
 #ifdef	DEP_IME
@@ -455,7 +457,7 @@ static int NEAR ptygetkey(VOID_A)
 			0, str, val);
 		movepos(filepos, 0);
 		changewin(win, (p_id_t)-1);
-		free2(new);
+		Xfree(new);
 
 		if (ch != K_CR) continue;
 		else if (!n) break;
@@ -497,7 +499,7 @@ static int NEAR ptygetkey(VOID_A)
 			if (!cp) continue;
 #ifdef	DEP_IME
 			w = ime_getkeycode(cp);
-			free2(cp);
+			Xfree(cp);
 			if (!w) /*EMPTY*/;
 			else if (!(w & ~01777)) {
 				c = w;
@@ -511,7 +513,7 @@ static int NEAR ptygetkey(VOID_A)
 			}
 #else	/* !DEP_IME */
 			c = getkeycode(cp, 0);
-			free2(cp);
+			Xfree(cp);
 			if (c >= 0) break;
 #endif	/* !DEP_IME */
 
@@ -542,7 +544,7 @@ char ***varp;
 	if (recvbuf(fd, &var, sizeof(var)) < 0) return(-1);
 	if (var) {
 		if (recvbuf(fd, &c, sizeof(c)) < 0) return(-1);
-		var = (char **)malloc2((c + 1) * sizeof(char *));
+		var = (char **)Xmalloc((c + 1) * sizeof(char *));
 		for (i = 0; i < c; i++) {
 			if (recvstring(fd, &cp) < 0) {
 				var[i] = NULL;
@@ -568,9 +570,9 @@ heredoc_t **hdpp;
 	if (recvbuf(fd, &hdp, sizeof(hdp)) < 0) return(-1);
 
 	if (hdp) {
-		hdp = (heredoc_t *)malloc2(sizeof(heredoc_t));
+		hdp = (heredoc_t *)Xmalloc(sizeof(heredoc_t));
 		if (recvbuf(fd, hdp, sizeof(*hdp)) < 0) {
-			free2(hdp);
+			Xfree(hdp);
 			return(-1);
 		}
 		hdp -> eof = hdp -> filename = hdp -> buf = NULL;
@@ -596,9 +598,9 @@ redirectlist **rpp;
 	if (recvbuf(fd, &rp, sizeof(rp)) < 0) return(-1);
 
 	if (rp) {
-		rp = (redirectlist *)malloc2(sizeof(redirectlist));
+		rp = (redirectlist *)Xmalloc(sizeof(redirectlist));
 		if (recvbuf(fd, rp, sizeof(*rp)) < 0) {
-			free2(rp);
+			Xfree(rp);
 			return(-1);
 		}
 		rp -> filename = NULL;
@@ -631,9 +633,9 @@ syntaxtree *trp;
 		if (trp -> flags & ST_NODE)
 			return(recvstree(fd, (syntaxtree **)commp, trp));
 
-		comm = (command_t *)malloc2(sizeof(command_t));
+		comm = (command_t *)Xmalloc(sizeof(command_t));
 		if (recvbuf(fd, comm, sizeof(*comm)) < 0) {
-			free2(comm);
+			Xfree(comm);
 			return(-1);
 		}
 		argv = comm -> argv;
@@ -663,7 +665,7 @@ syntaxtree **trpp, *parent;
 	if (trp) {
 		trp = newstree(parent);
 		if (recvbuf(fd, trp, sizeof(*trp)) < 0) {
-			free2(trp);
+			Xfree(trp);
 			return(-1);
 		}
 		trp -> comm = NULL;
@@ -715,7 +717,7 @@ int w;
 			|| recvstring(fd, &cp) < 0)
 				break;
 			n = countvar(*varp);
-			(*varp) = (char **)realloc2(*varp,
+			(*varp) = (char **)Xrealloc(*varp,
 				(n + 1 + 1) * sizeof(char *));
 			memmove((char *)&((*varp)[1]), (char *)&((*varp)[0]),
 				n * sizeof(char *));
@@ -726,44 +728,44 @@ int w;
 			if (recvbuf(fd, &varp, sizeof(varp)) < 0
 			|| (n = countvar(*varp)) <= 0)
 				break;
-			free2((*varp)[0]);
+			Xfree((*varp)[0]);
 			memmove((char *)&((*varp)[0]), (char *)&((*varp)[1]),
 				n * sizeof(char *));
 			break;
 		case TE_CHDIR:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C chdir2(cp);
-			free2(cp);
+			Xfree(cp);
 			break;
 #ifdef	DEP_ORIGSHELL
 		case TE_PUTEXPORTVAR:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
-			if (putexportvar(cp, n) < 0) free2(cp);
+			if (putexportvar(cp, n) < 0) Xfree(cp);
 			break;
 		case TE_PUTSHELLVAR:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
-			if (putshellvar(cp, n) < 0) free2(cp);
+			if (putshellvar(cp, n) < 0) Xfree(cp);
 			break;
 		case TE_UNSET:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
 			VOID_C unset(cp, n);
-			free2(cp);
+			Xfree(cp);
 			break;
 		case TE_SETEXPORT:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C setexport(cp);
-			free2(cp);
+			Xfree(cp);
 			break;
 		case TE_SETRONLY:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C setronly(cp);
-			free2(cp);
+			Xfree(cp);
 			break;
 		case TE_SETSHFLAG:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
@@ -775,7 +777,7 @@ int w;
 		case TE_ADDFUNCTION:
 			if (recvstring(fd, &cp) < 0) break;
 			if (recvstree(fd, &trp, NULL) < 0 || !trp) {
-				free2(cp);
+				Xfree(cp);
 				break;
 			}
 			if (cp) setshfunc(cp, trp);
@@ -785,7 +787,7 @@ int w;
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
 			VOID_C unsetshfunc(cp, n);
-			free2(cp);
+			Xfree(cp);
 			break;
 #else	/* !DEP_ORIGSHELL */
 		case TE_PUTSHELLVAR:
@@ -793,12 +795,12 @@ int w;
 			|| recvstring(fd, &func1) < 0)
 				break;
 			if (recvstring(fd, &cp) < 0 || !cp) {
-				free2(func1);
+				Xfree(func1);
 				break;
 			}
 			setenv2(cp, func1, n);
-			free2(cp);
-			free2(func1);
+			Xfree(cp);
+			Xfree(func1);
 			break;
 		case TE_ADDFUNCTION:
 			if (recvvar(fd, &var) < 0) break;
@@ -811,14 +813,14 @@ int w;
 		case TE_DELETEFUNCTION:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C deletefunction(cp);
-			free2(cp);
+			Xfree(cp);
 			break;
 #endif	/* !DEP_ORIGSHELL */
 #if	!defined (DEP_ORIGSHELL) || !defined (NOALIAS)
 		case TE_ADDALIAS:
 			if (recvstring(fd, &func1) < 0) break;
 			if (recvstring(fd, &cp) < 0 || !cp) {
-				free2(func1);
+				Xfree(func1);
 				break;
 			}
 			VOID_C addalias(cp, func1);
@@ -826,7 +828,7 @@ int w;
 		case TE_DELETEALIAS:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			VOID_C deletealias(cp);
-			free2(cp);
+			Xfree(cp);
 			break;
 #endif	/* !DEP_ORIGSHELL || !NOALIAS */
 		case TE_SETHISTORY:
@@ -834,7 +836,7 @@ int w;
 			|| recvstring(fd, &cp) < 0 || !cp)
 				break;
 			VOID_C entryhist(cp, n);
-			free2(cp);
+			Xfree(cp);
 			break;
 		case TE_ADDKEYBIND:
 			if (recvbuf(fd, &n, sizeof(n)) < 0
@@ -842,12 +844,12 @@ int w;
 			|| recvstring(fd, &func1) < 0)
 				break;
 			if (recvstring(fd, &func2) < 0) {
-				free2(func1);
+				Xfree(func1);
 				break;
 			}
 			if (recvstring(fd, &cp) < 0) {
-				free2(func1);
-				free2(func2);
+				Xfree(func1);
+				Xfree(func2);
 				break;
 			}
 			VOID_C addkeybind(n, &bind, func1, func2, cp);
@@ -861,7 +863,7 @@ int w;
 			|| recvbuf(fd, &(key.len), sizeof(key.len)) < 0
 			|| recvstring(fd, &(key.str)) < 0)
 				break;
-			VOID_C setkeyseq(key.code, key.str, key.len);
+			setkeyseq(key.code, key.str, key.len);
 			break;
 #ifndef	_NOARCHIVE
 		case TE_ADDLAUNCH:
@@ -936,23 +938,23 @@ int w;
 				break;
 			if (!val) cp = NULL;
 			else {
-				cp = malloc2(val);
+				cp = Xmalloc(val);
 				if (recvbuf(fd, cp, val) < 0) {
-					free2(cp);
+					Xfree(cp);
 					break;
 				}
 			}
 			if (n >= 0) {
-				free2(duptty[n]);
+				Xfree(duptty[n]);
 				duptty[n] = cp;
 			}
-			else free2(cp);
+			else Xfree(cp);
 			break;
 #ifdef	DEP_IME
 		case TE_ADDROMAN:
 			if (recvstring(fd, &cp) < 0 || !cp) break;
 			if (recvstring(fd, &func1) < 0) {
-				free2(cp);
+				Xfree(cp);
 				break;
 			}
 			VOID_C addroman(cp, func1);
@@ -967,7 +969,7 @@ int w;
 			|| recvstring(fd, &cp) < 0)
 				break;
 			if (n < 0 || n >= FUNCLISTSIZ) {
-				free2(cp);
+				Xfree(cp);
 				break;
 			}
 			keywaitfunc = lastfunc;
@@ -980,7 +982,7 @@ int w;
 			changewin(win, (p_id_t)-1);
 			rewritefile(0);
 			keywaitfunc = waitpty;
-			free2(cp);
+			Xfree(cp);
 			break;
 		case TE_CHANGESTATUS:
 			if (recvbuf(fd, &n, sizeof(n)) < 0) break;
@@ -1081,7 +1083,7 @@ int frontend(VOID_A)
 		changewin(win, (p_id_t)0);
 		if (!emupid && ptytmpfile) {
 			rmtmpfile(ptytmpfile);
-			free2(ptytmpfile);
+			Xfree(ptytmpfile);
 			ptytmpfile = NULL;
 		}
 	}

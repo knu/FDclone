@@ -319,41 +319,41 @@ extern char *_mtrace_file;
 static int NEAR chkctrl __P_((int));
 static int NEAR getctrl __P_((CONST char *, CONST char *));
 # ifdef	USESGTTY
-static int NEAR ttymode __P_((int, int, int, int));
+static VOID NEAR ttymode __P_((int, int, int, int));
 # else
-static int NEAR ttymode __P_((int, int, int, int, int, int, int, int));
+static VOID NEAR ttymode __P_((int, int, int, int, int, int, int, int));
 # endif
 #endif	/* !MSDOS */
-static int NEAR err2 __P_((CONST char *));
+static VOID NEAR terror __P_((CONST char *));
 #if	!MSDOS
 static char *NEAR tstrdup __P_((CONST char *));
 #endif
-static int NEAR defaultterm __P_((VOID_A));
+static VOID NEAR defaultterm __P_((VOID_A));
 #if	!MSDOS || defined (PC98) || defined (NOTUSEBIOS)
-static int NEAR ungetch2 __P_((int));
+static int NEAR Xungetch __P_((int));
 #endif
 static int NEAR maxlocate __P_((int *, int *));
 #if	MSDOS
 # ifdef	USEVIDEOBIOS
-static int NEAR bioslocate __P_((int, int));
-static int NEAR biosscroll __P_((int, int, int, int, int));
-static int NEAR biosputch __P_((int, int));
-static int NEAR bioscurstype __P_((int));
-static int NEAR chgattr __P_((int));
+static VOID NEAR bioslocate __P_((int, int));
+static VOID NEAR biosscroll __P_((int, int, int, int, int));
+static VOID NEAR biosputch __P_((int, int));
+static VOID NEAR bioscurstype __P_((int));
+static VOID NEAR chgattr __P_((int));
 static int NEAR evalcsi __P_((CONST char *));
 # endif
 # if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
-static int NEAR dosgettime __P_((u_char []));
+static VOID NEAR dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
 static char *NEAR tgetstr2 __P_((char **, CONST char *));
 static char *NEAR tgetstr3 __P_((char **, CONST char *, CONST char *));
 static char *NEAR tgetkeyseq __P_((int, CONST char *));
 static kstree_t *NEAR newkeyseqtree __P_((kstree_t *, int));
-static int NEAR freekeyseqtree __P_((kstree_t *, int));
+static VOID NEAR freekeyseqtree __P_((kstree_t *, int));
 static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
-static int NEAR sortkeyseq __P_((VOID_A));
-static int putch3 __P_((tputs_t));
+static VOID NEAR sortkeyseq __P_((VOID_A));
+static int putch2 __P_((tputs_t));
 static kstree_t *NEAR searchkeyseq __P_((int, kstree_t *, int));
 #endif	/* !MSDOS */
 
@@ -662,7 +662,7 @@ static CONST char *deftermstr[MAXTERMSTR] = {
 
 
 #if	MSDOS
-int inittty(reset)
+VOID inittty(reset)
 int reset;
 {
 # ifndef	DJGPP
@@ -673,11 +673,11 @@ int reset;
 	static int dupout = -1;
 	int fd;
 
-	if (termflags & F_INPROGRESS) return(-1);
+	if (termflags & F_INPROGRESS) return;
 	termflags |= F_INPROGRESS;
 
 	if (!reset) {
-		if (opentty(&ttyio, &ttyout) < 0) err2("opentty()");
+		if (opentty(&ttyio, &ttyout) < 0) terror("opentty()");
 # ifdef	NOTUSEBIOS
 		if (!keybuftop) keybuftop = getkeybuf(KEYBUFWORKTOP);
 # endif
@@ -690,13 +690,13 @@ int reset;
 			if (dupin < 0)
 				dupin = newdup(safe_dup(STDIN_FILENO));
 			if (dupin < 0 || safe_dup2(ttyio, STDIN_FILENO) < 0)
-				err2("dup2()");
+				terror("dup2()");
 		}
 		if (!isatty(STDOUT_FILENO)) {
 			if (dupout < 0)
 				dupout = newdup(safe_dup(STDOUT_FILENO));
 			if (dupout < 0 || safe_dup2(ttyio, STDOUT_FILENO) < 0)
-				err2("dup2()");
+				terror("dup2()");
 		}
 		termflags |= F_INITTTY;
 	}
@@ -712,7 +712,7 @@ int reset;
 			dupin = -1;
 			if (fd < 0) {
 				termflags &= ~F_INITTTY;
-				err2("dup2()");
+				terror("dup2()");
 			}
 		}
 		if (dupout >= 0) {
@@ -721,16 +721,14 @@ int reset;
 			dupout = -1;
 			if (fd < 0) {
 				termflags &= ~F_INITTTY;
-				err2("dup2()");
+				terror("dup2()");
 			}
 		}
 	}
 	termflags &= ~F_INPROGRESS;
-
-	return(0);
 }
 
-int cooked2(VOID_A)
+VOID Xcooked(VOID_A)
 {
 # ifndef	DJGPP
 	union REGS reg;
@@ -739,11 +737,9 @@ int cooked2(VOID_A)
 	reg.h.dl = 1;
 	int86(0x21, &reg, &reg);
 # endif
-
-	return(0);
 }
 
-int cbreak2(VOID_A)
+VOID Xcbreak(VOID_A)
 {
 # ifndef	DJGPP
 	union REGS reg;
@@ -752,11 +748,9 @@ int cbreak2(VOID_A)
 	reg.h.dl = 0;
 	int86(0x21, &reg, &reg);
 # endif
-
-	return(0);
 }
 
-int raw2(VOID_A)
+VOID Xraw(VOID_A)
 {
 # ifndef	DJGPP
 	union REGS reg;
@@ -765,41 +759,33 @@ int raw2(VOID_A)
 	reg.h.dl = 0;
 	int86(0x21, &reg, &reg);
 # endif
-
-	return(0);
 }
 
-int echo2(VOID_A)
+VOID Xecho(VOID_A)
 {
-	return(0);
 }
 
-int noecho2(VOID_A)
+VOID Xnoecho(VOID_A)
 {
-	return(0);
 }
 
-int nl2(VOID_A)
+VOID Xnl(VOID_A)
 {
-	return(0);
 }
 
-int nonl2(VOID_A)
+VOID Xnonl(VOID_A)
 {
-	return(0);
 }
 
-int tabs(VOID_A)
+VOID tabs(VOID_A)
 {
-	return(0);
 }
 
-int notabs(VOID_A)
+VOID notabs(VOID_A)
 {
-	return(0);
 }
 
-int keyflush(VOID_A)
+VOID keyflush(VOID_A)
 {
 	__term_regs reg;
 
@@ -811,8 +797,6 @@ int keyflush(VOID_A)
 	keybuftop = getkeybuf(KEYBUFWORKTOP);
 # endif
 	enable();
-
-	return(0);
 }
 
 #else	/* !MSDOS */
@@ -873,7 +857,7 @@ CONST char *buf, *ccbuf;
 	return(0);
 }
 
-int inittty(reset)
+VOID inittty(reset)
 int reset;
 {
 # ifdef	USESGTTY
@@ -883,15 +867,15 @@ int reset;
 	termioctl_t tty;
 	int n;
 
-	if (termflags & F_INPROGRESS) return(-1);
+	if (termflags & F_INPROGRESS) return;
 	termflags |= F_INPROGRESS;
 
 	if (!reset) {
-		if (opentty(&ttyio, &ttyout) < 0) err2("opentty()");
+		if (opentty(&ttyio, &ttyout) < 0) terror("opentty()");
 	}
 	else if (ttyio < 0 || (termflags & F_RESETTTY) != F_RESETTTY) {
 		termflags &= ~F_INPROGRESS;
-		return(-1);
+		return;
 	}
 
 	n = 0;
@@ -920,18 +904,16 @@ int reset;
 			ttyio = -1;
 		}
 		termflags &= ~F_INITTTY;
-		err2("ioctl()");
+		terror("ioctl()");
 	}
 	termflags &= ~F_INPROGRESS;
-
-	return(0);
 }
 
 # ifdef	USESGTTY
-static int NEAR ttymode(set, reset, lset, lreset)
+static VOID NEAR ttymode(set, reset, lset, lreset)
 int set, reset, lset, lreset;
 # else
-static int NEAR ttymode(set, reset, iset, ireset, oset, oreset, vmin, vtime)
+static VOID NEAR ttymode(set, reset, iset, ireset, oset, oreset, vmin, vtime)
 int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 # endif
 {
@@ -940,17 +922,17 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 # endif
 	termioctl_t tty;
 
-	if (!(termflags & F_INITTTY) || (termflags & F_INPROGRESS)) return(-1);
+	if (!(termflags & F_INITTTY) || (termflags & F_INPROGRESS)) return;
 	termflags |= F_INPROGRESS;
 
-	if (tioctl(ttyio, REQGETP, &tty) < 0) err2("ioctl()");
+	if (tioctl(ttyio, REQGETP, &tty) < 0) terror("ioctl()");
 # ifdef	USESGTTY
-	if (Xioctl(ttyio, TIOCLGET, &lflag) < 0) err2("ioctl()");
+	if (Xioctl(ttyio, TIOCLGET, &lflag) < 0) terror("ioctl()");
 	if (set) tty.sg_flags |= set;
 	if (reset) tty.sg_flags &= ~reset;
 	if (lset) lflag |= lset;
 	if (lreset) lflag &= ~lreset;
-	if (Xioctl(ttyio, TIOCLSET, &lflag) < 0) err2("ioctl()");
+	if (Xioctl(ttyio, TIOCLSET, &lflag) < 0) terror("ioctl()");
 # else	/* !USESGTTY */
 	if (set) tty.c_lflag |= set;
 	if (reset) tty.c_lflag &= ~reset;
@@ -963,14 +945,12 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 		tty.c_cc[VTIME] = vtime;
 	}
 # endif	/* !USESGTTY */
-	if (tioctl(ttyio, REQSETP, &tty) < 0) err2("ioctl()");
+	if (tioctl(ttyio, REQSETP, &tty) < 0) terror("ioctl()");
 	termflags |= F_TTYCHANGED;
 	termflags &= ~F_INPROGRESS;
-
-	return(0);
 }
 
-int cooked2(VOID_A)
+VOID Xcooked(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(0, CBREAK | RAW, LPASS8, LLITOUT | LPENDIN);
@@ -978,106 +958,88 @@ int cooked2(VOID_A)
 	ttymode(TIO_LCOOKED, PENDIN, TIO_ICOOKED, ~TIO_INOCOOKED,
 		OPOST, 0, VAL_VMIN, VAL_VTIME);
 # endif
-
-	return(0);
 }
 
-int cbreak2(VOID_A)
+VOID Xcbreak(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(CBREAK, 0, LLITOUT, 0);
 # else
 	ttymode(TIO_LCBREAK, ICANON, TIO_ICOOKED, IGNBRK, OPOST, 0, 1, 0);
 # endif
-
-	return(0);
 }
 
-int raw2(VOID_A)
+VOID Xraw(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(RAW, 0, LLITOUT, 0);
 # else
 	ttymode(0, TIO_LCOOKED, IGNBRK, TIO_ICOOKED, 0, OPOST, 1, 0);
 # endif
-
-	return(0);
 }
 
-int echo2(VOID_A)
+VOID Xecho(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(ECHO, 0, LCRTBS | LCRTERA | LCRTKIL | LCTLECH, 0);
 # else
 	ttymode(TIO_LECHO, ECHONL, 0, 0, 0, 0, 0, 0);
 # endif
-
-	return(0);
 }
 
-int noecho2(VOID_A)
+VOID Xnoecho(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(0, ECHO, 0, LCRTBS | LCRTERA);
 # else
 	ttymode(0, ~TIO_LNOECHO, 0, 0, 0, 0, 0, 0);
 # endif
-
-	return(0);
 }
 
-int nl2(VOID_A)
+VOID Xnl(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(CRMOD, 0, 0, 0);
 # else
 	ttymode(0, 0, ICRNL, 0, ONLCR, ~TIO_ONONL, 0, 0);
 # endif
-
-	return(0);
 }
 
-int nonl2(VOID_A)
+VOID Xnonl(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(0, CRMOD, 0, 0);
 # else
 	ttymode(0, 0, 0, ICRNL, 0, ONLCR, 0, 0);
 # endif
-
-	return(0);
 }
 
-int tabs(VOID_A)
+VOID tabs(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(0, XTABS, 0, 0);
 # else
 	ttymode(0, 0, 0, 0, 0, TAB3, 0, 0);
 # endif
-
-	return(0);
 }
 
-int notabs(VOID_A)
+VOID notabs(VOID_A)
 {
 # ifdef	USESGTTY
 	ttymode(XTABS, 0, 0, 0);
 # else
 	ttymode(0, 0, 0, 0, TAB3, 0, 0, 0);
 # endif
-
-	return(0);
 }
 
-int keyflush(VOID_A)
+VOID keyflush(VOID_A)
 {
 # ifdef	USESGTTY
 	int i;
 # endif
 
 	ungetnum = 0;
-	if (ttyio < 0) return(-1);
+	if (ttyio < 0) return;
 # ifdef	USESGTTY
 	i = FREAD;
 	VOID_C Xioctl(ttyio, TIOCFLUSH, &i);
@@ -1088,8 +1050,6 @@ int keyflush(VOID_A)
 	VOID_C Xioctl(ttyio, TCFLSH, 0);
 #  endif
 # endif	/* !USESGTTY */
-
-	return(0);
 }
 
 int savettyio(reset)
@@ -1117,7 +1077,7 @@ int reset;
 }
 #endif	/* !MSDOS */
 
-int ttyiomode(isnl)
+VOID ttyiomode(isnl)
 int isnl;
 {
 	if (ttyio < 0) /*EMPTY*/;
@@ -1126,12 +1086,12 @@ int isnl;
 #endif
 	else {
 #if	MSDOS
-		raw2();
+		Xraw();
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-		raw2();
-		noecho2();
-		nonl2();
+		Xraw();
+		Xnoecho();
+		Xnonl();
 		notabs();
 		if (dumbterm > 1) ttymode(ECHO | CRMOD, 0, 0, 0);
 # else	/* !USESGTTY */
@@ -1144,16 +1104,14 @@ int isnl;
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	}
-	if (!dumbterm) {
+	if ((termflags & F_TERMENT) && !dumbterm) {
 		putterm(T_KEYPAD);
 		tflush();
 	}
 	isttyiomode = isnl + 1;
-
-	return(0);
 }
 
-int stdiomode(VOID_A)
+VOID stdiomode(VOID_A)
 {
 	int isnl;
 
@@ -1164,12 +1122,12 @@ int stdiomode(VOID_A)
 #endif
 	else {
 #if	MSDOS
-		cooked2();
+		Xcooked();
 #else	/* !MSDOS */
 # ifdef	USESGTTY
-		cooked2();
-		echo2();
-		nl2();
+		Xcooked();
+		Xecho();
+		Xnl();
 		tabs();
 		if (dumbterm > 2) ttymode(0, ECHO | CRMOD, 0, 0);
 # else	/* !USESGTTY */
@@ -1185,13 +1143,11 @@ int stdiomode(VOID_A)
 # endif	/* !USESGTTY */
 #endif	/* !MSDOS */
 	}
-	if (!dumbterm) {
+	if ((termflags & F_TERMENT) && !dumbterm) {
 		putterm(T_NOKEYPAD);
 		tflush();
 	}
 	isttyiomode = 0;
-
-	return(0);
 }
 
 int termmode(init)
@@ -1202,7 +1158,7 @@ int init;
 
 	oldmode = mode;
 	if (init >= 0 && mode != init) {
-		if (!dumbterm) {
+		if ((termflags & F_TERMENT) && !dumbterm) {
 			putterms((init) ? T_INIT : T_END);
 			tflush();
 		}
@@ -1212,10 +1168,10 @@ int init;
 	return(oldmode);
 }
 
-int exit2(no)
+VOID exit2(no)
 int no;
 {
-	if (!dumbterm && (termflags & F_TERMENT)) putterm(T_NORMAL);
+	if ((termflags & F_TERMENT) && !dumbterm) putterm(T_NORMAL);
 	endterm();
 	inittty(1);
 	keyflush();
@@ -1227,36 +1183,30 @@ int no;
 	muntrace();
 #endif	/* DEBUG */
 	exit(no);
-
-/*NOTREACHED*/
-	return(0);
 }
 
-static int NEAR err2(mes)
+static VOID NEAR terror(mes)
 CONST char *mes;
 {
 	int duperrno;
 
 	duperrno = errno;
 	if (termflags & F_INITTTY) {
-		if (!dumbterm && (termflags & F_TERMENT)) putterm(T_NORMAL);
+		if ((termflags & F_TERMENT) && !dumbterm) putterm(T_NORMAL);
 		endterm();
-		cooked2();
-		echo2();
-		nl2();
+		Xcooked();
+		Xecho();
+		Xnl();
 		tabs();
 	}
-	if (dumbterm <= 2) Xfputc('\007', Xstderr);
+	if ((termflags & F_TERMENT) && dumbterm <= 2) Xfputc('\007', Xstderr);
 	VOID_C fputnl(Xstderr);
 	Xfputs(mes, Xstderr);
 
-	if (duperrno) fprintf2(Xstderr, ": %s", strerror2(duperrno));
+	if (duperrno) Xfprintf(Xstderr, ": %s", Xstrerror(duperrno));
 	VOID_C fputnl(Xstderr);
 	inittty(1);
 	exit(2);
-
-/*NOTREACHED*/
-	return(0);
 }
 
 #if	!MSDOS
@@ -1266,14 +1216,14 @@ CONST char *s;
 	char *cp;
 
 	if (!s) s = "";
-	if (!(cp = (char *)malloc(strlen(s) + 1))) err2("malloc()");
-	strcpy2(cp, s);
+	if (!(cp = (char *)malloc(strlen(s) + 1))) terror("malloc()");
+	Xstrcpy(cp, s);
 
 	return(cp);
 }
 #endif	/* !MSDOS */
 
-static int NEAR defaultterm(VOID_A)
+static VOID NEAR defaultterm(VOID_A)
 {
 	int i;
 
@@ -1322,12 +1272,10 @@ static int NEAR defaultterm(VOID_A)
 		keyseq[K_F(i + 20) - K_MIN].flags |= KF_HASALTER;
 	}
 #endif
-
-	return(0);
 }
 
 #if	!MSDOS || defined (PC98) || defined (NOTUSEBIOS)
-static int NEAR ungetch2(c)
+static int NEAR Xungetch(c)
 int c;
 {
 	if (c == EOF || ungetnum >= arraysize(ungetbuf)) return(EOF);
@@ -1416,7 +1364,7 @@ int *xp, *yp;
 # if	MSDOS
 		buf[0] = bdos(0x07, 0x00, 0);
 # else
-		if ((tmp = getch2()) == EOF) break;
+		if ((tmp = Xgetch()) == EOF) break;
 		buf[0] = tmp;
 # endif
 	} while (buf[0] != format[0]);
@@ -1427,13 +1375,13 @@ int *xp, *yp;
 # if	MSDOS
 		buf[i] = bdos(0x07, 0x00, 0);
 # else
-		if ((tmp = getch2()) == EOF) break;
+		if ((tmp = Xgetch()) == EOF) break;
 		buf[i] = tmp;
 # endif
 		if (buf[i] == format[strsize(SIZEFMT) - 1]) break;
 	}
 	keyflush();
-	while (kbhit2(WAITKEYPAD * 1000L)) VOID_C getch2();
+	while (kbhit2(WAITKEYPAD * 1000L)) VOID_C Xgetch();
 	if (!i || buf[i++] != format[strsize(SIZEFMT) - 1]) return(-1);
 	buf[i] = '\0';
 
@@ -1462,16 +1410,16 @@ int arg1, arg2;
 {
 	char *cp;
 
-	if (asprintf2(&cp, s, arg1, arg2) < 0) return(NULL);
+	if (Xasprintf(&cp, s, arg1, arg2) < 0) return(NULL);
 
 	return(cp);
 }
 
 /*ARGSUSED*/
-int getterment(s)
+VOID getterment(s)
 CONST char *s;
 {
-	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return(-1);
+	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return;
 	termflags |= F_INPROGRESS;
 
 	defaultterm();
@@ -1480,8 +1428,6 @@ CONST char *s;
 	if (n_line < 0) n_line = 25;
 	termflags |= F_TERMENT;
 	termflags &= ~F_INPROGRESS;
-
-	return(0);
 }
 
 #else	/* !MSDOS */
@@ -1530,24 +1476,24 @@ int arg1, arg2;
 		else if (n >= 2) err++;
 		else switch (s[i]) {
 			case 'd':
-				if (asprintf2(&tmp, "%d", args[n++]) < 0)
+				if (Xasprintf(&tmp, "%d", args[n++]) < 0)
 					err++;
 				break;
 			case '2':
-				if (asprintf2(&tmp, "%02d", args[n++]) < 0)
+				if (Xasprintf(&tmp, "%02d", args[n++]) < 0)
 					err++;
 				break;
 			case '3':
-				if (asprintf2(&tmp, "%03d", args[n++]) < 0)
+				if (Xasprintf(&tmp, "%03d", args[n++]) < 0)
 					err++;
 				break;
 			case '.':
-				if (asprintf2(&tmp, "%c", args[n++]) < 0)
+				if (Xasprintf(&tmp, "%c", args[n++]) < 0)
 					err++;
 				break;
 			case '+':
 				if (!s[++i]
-				|| asprintf2(&tmp, "%c", args[n++] + s[i]) < 0)
+				|| Xasprintf(&tmp, "%c", args[n++] + s[i]) < 0)
 					err++;
 				break;
 			case '>':
@@ -1741,7 +1687,7 @@ int num;
 	if (!parent || !(parent -> next))
 		new = (kstree_t *)malloc(num * sizeof(kstree_t));
 	else new = (kstree_t *)realloc(parent -> next, num * sizeof(kstree_t));
-	if (!new) err2("realloc()");
+	if (!new) terror("realloc()");
 
 	if (!parent) n = 0;
 	else {
@@ -1759,18 +1705,16 @@ int num;
 	return(new);
 }
 
-static int NEAR freekeyseqtree(list, n)
+static VOID NEAR freekeyseqtree(list, n)
 kstree_t *list;
 int n;
 {
 	int i;
 
-	if (!list) return(-1);
+	if (!list) return;
 	for (i = (int)(list[n].num) - 1; i >= 0; i--)
 		freekeyseqtree(list[n].next, i);
 	if (!n) free(list);
-
-	return(0);
 }
 
 static int cmpkeyseq(vp1, vp2)
@@ -1790,7 +1734,7 @@ CONST VOID_P vp2;
 	return((int)(kp1 -> len) - (int)(kp2 -> len));
 }
 
-static int NEAR sortkeyseq(VOID_A)
+static VOID NEAR sortkeyseq(VOID_A)
 {
 	kstree_t *p;
 	int i, j, k;
@@ -1815,11 +1759,9 @@ static int NEAR sortkeyseq(VOID_A)
 			p = &(p -> next[k]);
 		}
 	}
-
-	return(0);
 }
 
-int getterment(s)
+VOID getterment(s)
 CONST char *s;
 {
 # ifdef	IRIX
@@ -1832,7 +1774,7 @@ CONST char *s;
 	char *cp;
 	int i, j, dumb, dupdumbterm;
 
-	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return(-1);
+	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return;
 	termflags |= F_INPROGRESS;
 
 	dupdumbterm = dumbterm;
@@ -1888,9 +1830,9 @@ CONST char *s;
 		else {
 			errno = 0;
 # ifdef	USETERMINFO
-			err2("No TERMINFO is prepared");
+			terror("No TERMINFO is prepared");
 # else
-			err2("No TERMCAP is prepared");
+			terror("No TERMCAP is prepared");
 # endif
 		}
 	}
@@ -1907,7 +1849,7 @@ CONST char *s;
 				? strlen(keyseq[i].str) : 0;
 		sortkeyseq();
 		termflags &= ~F_INPROGRESS;
-		return(-1);
+		return;
 	}
 
 # ifndef	USETERMINFO
@@ -2079,15 +2021,13 @@ CONST char *s;
 	}
 	sortkeyseq();
 	termflags &= ~F_INPROGRESS;
-
-	return(0);
 }
 
-int freeterment(VOID_A)
+VOID freeterment(VOID_A)
 {
 	int i;
 
-	if (!(termflags & F_TERMENT)) return(-1);
+	if (!(termflags & F_TERMENT)) return;
 
 # ifndef	USETERMINFO
 	if (BC) free(BC);
@@ -2107,35 +2047,27 @@ int freeterment(VOID_A)
 		keyseqtree = NULL;
 	}
 	termflags &= ~F_TERMENT;
-
-	return(0);
 }
 
-int regetterment(s, tty)
+VOID regetterment(s, tty)
 CONST char *s;
 int tty;
 {
-	int n, wastty;
+	int wastty;
 
 	if ((wastty = isttyiomode) && tty) stdiomode();
-	n = freeterment();
-	if (getterment(s) < 0) n = -1;
+	freeterment();
+	getterment(s);
 	if (wastty && tty) ttyiomode(wastty - 1);
-
-	return(n);
 }
 
-int setdefterment(VOID_A)
+VOID setdefterment(VOID_A)
 {
-	int n;
-
-	n = freeterment();
+	freeterment();
 	defaultterm();
-
-	return(n);
 }
 
-int setdefkeyseq(VOID_A)
+VOID setdefkeyseq(VOID_A)
 {
 	int i;
 
@@ -2158,8 +2090,6 @@ int setdefkeyseq(VOID_A)
 		keyseq[K_F(i + 20) - K_MIN].flags |= KF_HASALTER;
 	}
 	sortkeyseq();
-
-	return(0);
 }
 
 int getdefkeyseq(kp)
@@ -2179,7 +2109,7 @@ keyseq_t *kp;
 	return(-1);
 }
 
-int setkeyseq(n, str, len)
+VOID setkeyseq(n, str, len)
 int n;
 char *str;
 int len;
@@ -2195,7 +2125,7 @@ int len;
 	}
 	if (i > K_MAX - K_MIN) {
 		free(str);
-		return(-1);
+		return;
 	}
 
 	if (str) {
@@ -2213,8 +2143,6 @@ int len;
 		if (str[0] == cc_erase && !(str[1])) cc_erase = K_UNDEF;
 	}
 	sortkeyseq();
-
-	return(0);
 }
 
 int getkeyseq(kp)
@@ -2249,7 +2177,7 @@ keyseq_t *list;
 			else {
 				keyseq[i].str =
 					(char *)malloc(list[i].len + 1);
-				if (!keyseq[i].str) err2("malloc()");
+				if (!keyseq[i].str) terror("malloc()");
 				memcpy(keyseq[i].str, list[i].str,
 					list[i].len);
 			}
@@ -2259,7 +2187,7 @@ keyseq_t *list;
 	else {
 		list = (keyseq_t *)malloc((K_MAX - K_MIN + 1)
 			* sizeof(keyseq_t));
-		if (!list) err2("malloc()");
+		if (!list) terror("malloc()");
 		for (i = 0; i <= K_MAX - K_MIN; i++) {
 			list[i].code = keyseq[i].code;
 			list[i].len = keyseq[i].len;
@@ -2268,7 +2196,7 @@ keyseq_t *list;
 			else {
 				list[i].str =
 					(char *)malloc(keyseq[i].len + 1);
-				if (!list[i].str) err2("malloc()");
+				if (!list[i].str) terror("malloc()");
 				memcpy(list[i].str, keyseq[i].str,
 					keyseq[i].len);
 			}
@@ -2278,61 +2206,50 @@ keyseq_t *list;
 	return(list);
 }
 
-int freekeyseq(list)
+VOID freekeyseq(list)
 keyseq_t *list;
 {
 	int i;
 
-	if (!list) return(-1);
+	if (!list) return;
 	for (i = 0; i <= K_MAX - K_MIN; i++)
 		if (list[i].str) free(list[i].str);
 	free(list);
-
-	return(0);
 }
 #endif	/* !MSDOS */
 
-int initterm(VOID_A)
+VOID initterm(VOID_A)
 {
-	int n;
-
-	n = 0;
-	if (!(termflags & F_TERMENT)) n = getterment(NULL);
-	termmode(1);
-	if (!dumbterm) {
+	if (!(termflags & F_TERMENT)) getterment(NULL);
+	VOID_C termmode(1);
+	if ((termflags & F_TERMENT) && !dumbterm) {
 		putterm(T_KEYPAD);
 		tflush();
 	}
 	termflags |= F_INITTERM;
-
-	return(n);
 }
 
-int endterm(VOID_A)
+VOID endterm(VOID_A)
 {
-	if (!(termflags & F_INITTERM)) return(-1);
-	termmode(0);
-	if (!dumbterm) {
+	if (!(termflags & F_INITTERM)) return;
+	VOID_C termmode(0);
+	if ((termflags & F_TERMENT) && !dumbterm) {
 		putterm(T_NOKEYPAD);
 		tflush();
 	}
 	termflags &= ~F_INITTERM;
-
-	return(0);
 }
 
-int putterm(n)
+VOID putterm(n)
 int n;
 {
-	if (n < 0 || n >= MAXTERMSTR) return(-1);
-	if (!termstr[n]) return(0);
-
-	return(tputs2(termstr[n], 1));
+	if (n < 0 || n >= MAXTERMSTR) return;
+	if (termstr[n]) tputs2(termstr[n], 1);
 }
 
 #if	MSDOS
 # ifdef	USEVIDEOBIOS
-static int NEAR bioslocate(x, y)
+static VOID NEAR bioslocate(x, y)
 int x, y;
 {
 	__term_regs reg;
@@ -2342,16 +2259,14 @@ int x, y;
 	reg.h.dh = y - 1;
 	reg.h.dl = x - 1;
 	intbios(VIDEOBIOS, &reg);
-
-	return(0);
 }
 
-static int NEAR biosscroll(d, sx, sy, ex, ey)
+static VOID NEAR biosscroll(d, sx, sy, ex, ey)
 int d, sx, sy, ex, ey;
 {
 	__term_regs reg;
 
-	if (sx > ex || sy > ey) return(0);
+	if (sx > ex || sy > ey) return;
 	if (d >= 0) {
 		reg.h.ah = 0x06;
 		reg.h.al = d;
@@ -2366,11 +2281,9 @@ int d, sx, sy, ex, ey;
 	reg.h.dh = ey - 1;
 	reg.h.dl = ex - 1;
 	intbios(VIDEOBIOS, &reg);
-
-	return(0);
 }
 
-static int NEAR biosputch(c, n)
+static VOID NEAR biosputch(c, n)
 int c, n;
 {
 	__term_regs reg;
@@ -2381,11 +2294,9 @@ int c, n;
 	reg.h.bl = videoattr;
 	reg.x.cx = n;
 	intbios(VIDEOBIOS, &reg);
-
-	return(c);
 }
 
-static int NEAR bioscurstype(n)
+static VOID NEAR bioscurstype(n)
 int n;
 {
 	__term_regs reg;
@@ -2397,11 +2308,9 @@ int n;
 	reg.x.cx &= 0x1f1f;
 	reg.x.cx |= (n & 0x6000);
 	intbios(VIDEOBIOS, &reg);
-
-	return(0);
 }
 
-int putch2(c)
+int Xputch(c)
 int c;
 {
 	static int needscroll = 0;
@@ -2474,7 +2383,7 @@ int c;
 	return(c);
 }
 
-static int NEAR chgattr(n)
+static VOID NEAR chgattr(n)
 int n;
 {
 	switch (n) {
@@ -2528,8 +2437,6 @@ int n;
 		default:
 			break;
 	}
-
-	return(videoattr);
 }
 
 static int NEAR evalcsi(s)
@@ -2669,21 +2576,19 @@ CONST char *s;
 	return(i);
 }
 
-int cputs2(s)
+VOID Xcputs(s)
 CONST char *s;
 {
 	int i, n;
 
 	if (s) for (i = 0; s[i]; i++) {
-		if (s[i] != '\033' || s[i + 1] != '[') VOID_C putch2(s[i]);
+		if (s[i] != '\033' || s[i + 1] != '[') VOID_C Xputch(s[i]);
 		else if ((n = evalcsi(&s[i + 2])) >= 0) i += n + 2;
 	}
-
-	return(0);
 }
 # else	/* !USEVIDEOBIOS */
 
-int putch2(c)
+int Xputch(c)
 int c;
 {
 	bdos(0x06, c & 0xff, 0);
@@ -2691,7 +2596,7 @@ int c;
 	return(c);
 }
 
-int cputs2(s)
+VOID Xcputs(s)
 CONST char *s;
 {
 	int i, x, y;
@@ -2708,8 +2613,6 @@ CONST char *s;
 			bdos(0x06, ' ', 0);
 		} while (x++ % 8);
 	}
-
-	return(0);
 }
 # endif	/* !USEVIDEOBIOS */
 
@@ -2751,7 +2654,7 @@ long usec;
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
 	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
-		err2("select()");
+		terror("select()");
 
 	return(n);
 #   endif	/* !NOSELECT */
@@ -2759,7 +2662,7 @@ long usec;
 # endif	/* !NOTUSEBIOS */
 }
 
-int getch2(VOID_A)
+int Xgetch(VOID_A)
 {
 # ifdef	NOTUSEBIOS
 	u_short key, top;
@@ -2779,7 +2682,7 @@ int getch2(VOID_A)
 	reg.h.ah = 0x00;
 	int86(0x18, &reg, &reg);
 
-	if (!(ch = reg.h.al)) VOID_C ungetch2(reg.h.ah);
+	if (!(ch = reg.h.al)) VOID_C Xungetch(reg.h.ah);
 
 	return(ch);
 #  else	/* !PC98 */
@@ -2798,13 +2701,13 @@ int getch2(VOID_A)
 		if ((ch = (key & 0xff))) {
 			if (ch < 0x80 || (ch > 0x9f && ch < 0xe0)) break;
 			key &= 0xff00;
-			if (strchr2(metakey, key >> 8)) break;
+			if (Xstrchr(metakey, key >> 8)) break;
 		}
 #  else
 		if ((ch = (key & 0xff)) && ch != 0xe0 && ch != 0xf0) break;
 		key &= 0xff00;
 #  endif
-		if (strchr2(specialkey, key >> 8)) break;
+		if (Xstrchr(specialkey, key >> 8)) break;
 		if ((top += 2) >= KEYBUFWORKMAX) top = KEYBUFWORKMIN;
 	}
 	putterm(T_METAMODE);
@@ -2819,7 +2722,7 @@ int getch2(VOID_A)
 			putterm(T_NOMETAMODE);
 		}
 		ch = '\0';
-		VOID_C ungetch2(key >> 8);
+		VOID_C Xungetch(key >> 8);
 	}
 	enable();
 
@@ -2828,7 +2731,7 @@ int getch2(VOID_A)
 }
 
 # if	!defined (DJGPP) || defined (NOTUSEBIOS) || defined (PC98)
-static int NEAR dosgettime(tbuf)
+static VOID NEAR dosgettime(tbuf)
 u_char tbuf[];
 {
 	union REGS reg;
@@ -2838,8 +2741,6 @@ u_char tbuf[];
 	tbuf[0] = reg.h.ch;
 	tbuf[1] = reg.h.cl;
 	tbuf[2] = reg.h.dh;
-
-	return(0);
 }
 # endif
 
@@ -2883,7 +2784,7 @@ int sig, code, timeout;
 		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	}
 # endif	/* !DJGPP || NOTUSEBIOS || PC98 */
-	if ((ch = getch2()) == EOF) return(K_NOKEY);
+	if ((ch = Xgetch()) == EOF) return(K_NOKEY);
 
 	if (ch) switch (ch) {
 		case '\010':
@@ -2898,7 +2799,7 @@ int sig, code, timeout;
 # if	defined (PC98) || defined (NOTUSEBIOS) || !defined (NOSELECT)
 	else if (!kbhit2(WAITKEYPAD * 1000L)) /*EMPTY*/;
 # endif
-	else if ((ch = getch2()) == EOF) ch = K_NOKEY;
+	else if ((ch = Xgetch()) == EOF) ch = K_NOKEY;
 	else {
 		for (i = 0; i < SPECIALKEYSIZ; i++)
 			if (ch == specialkey[i]) return(specialkeycode[i]);
@@ -2933,17 +2834,14 @@ int s, e;
 	return(0);
 }
 
-int locate(x, y)
+VOID locate(x, y)
 int x, y;
 {
-	cprintf2(termstr[C_LOCATE], ++y, ++x);
-
-	return(0);
+	VOID_C Xcprintf(termstr[C_LOCATE], ++y, ++x);
 }
 
-int tflush(VOID_A)
+VOID tflush(VOID_A)
 {
-	return(0);
 }
 
 char *getwsize(xmax, ymax)
@@ -2969,48 +2867,46 @@ int xmax, ymax;
 }
 
 /*ARGSUSED*/
-int setwsize(fd, xmax, ymax)
+VOID setwsize(fd, xmax, ymax)
 int fd, xmax, ymax;
 {
-	return(0);
 }
 
 #else	/* !MSDOS */
 
-int putch2(c)
+int Xputch(c)
 int c;
 {
-	return(Xfputc(c, ttyout));
+	c = Xfputc(c, ttyout);
+	if (c == EOF) return(-1);
+
+	return(c);
 }
 
-int cputs2(s)
+VOID Xcputs(s)
 CONST char *s;
 {
-	if (!s) return(0);
-
-	return(Xfputs(s, ttyout));
+	if (s) VOID_C Xfputs(s, ttyout);
 }
 
-static int putch3(c)
+static int putch2(c)
 tputs_t c;
 {
 	return(Xfputc(c & 0x7f, ttyout));
 }
 
-int tputs2(s, n)
+VOID tputs2(s, n)
 CONST char *s;
 int n;
 {
-	return(tputs(s, n, putch3));
+	tputs(s, n, putch2);
 }
 
-int putterms(n)
+VOID putterms(n)
 int n;
 {
-	if (n < 0 || n >= MAXTERMSTR) return(-1);
-	if (!termstr[n]) return(0);
-
-	return(tputs2(termstr[n], n_line));
+	if (n < 0 || n >= MAXTERMSTR) return;
+	if (termstr[n]) tputs2(termstr[n], n_line);
 }
 
 VOID checksuspend(VOID_A)
@@ -3035,13 +2931,13 @@ long usec;
 	tv.tv_sec = (time_t)usec / (time_t)1000000;
 	tv.tv_usec = (time_t)usec % (time_t)1000000;
 	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
-		err2("select()");
+		terror("select()");
 
 	return(n);
 # endif
 }
 
-int getch2(VOID_A)
+int Xgetch(VOID_A)
 {
 	u_char ch;
 	int n;
@@ -3092,7 +2988,7 @@ int sig, code, timeout;
 		if (keywaitfunc && (ch = (*keywaitfunc)()) < 0) return(ch);
 	} while (!key);
 
-	if ((key = ch = getch2()) == EOF) return(K_NOKEY);
+	if ((key = ch = Xgetch()) == EOF) return(K_NOKEY);
 # if	defined (DEP_KCONV) || defined (CODEEUC)
 	else if (key != C_EKANA) /*EMPTY*/;
 #  ifdef	DEP_KCONV
@@ -3103,10 +2999,10 @@ int sig, code, timeout;
 #   endif
 #  endif	/* DEP_KCONV */
 	else {
-		ch = (kbhit2(WAITKANJI * 1000L)) ? getch2() : EOF;
+		ch = (kbhit2(WAITKANJI * 1000L)) ? Xgetch() : EOF;
 		if (ch == EOF) return(key);
-		if (iskana2(ch)) return(mkekana(ch));
-		VOID_C ungetch2(ch);
+		if (Xiskana(ch)) return(mkekana(ch));
+		VOID_C Xungetch(ch);
 		return(key);
 	}
 # endif	/* DEP_KCONV || CODEEUC */
@@ -3115,12 +3011,12 @@ int sig, code, timeout;
 	n = wasmeta = 0;
 
 	if (key == K_ESC) {
-		ch = (kbhit2(WAITKEYPAD * 1000L)) ? getch2() : EOF;
+		ch = (kbhit2(WAITKEYPAD * 1000L)) ? Xgetch() : EOF;
 		if (ch == EOF) return(key);
-		if (isalpha2(ch)) wasmeta = mkmetakey(ch);
+		if (Xisalpha(ch)) wasmeta = mkmetakey(ch);
 		if (!(p = searchkeyseq(key, keyseqtree, n))) {
 			if (wasmeta) return(wasmeta);
-			VOID_C ungetch2(ch);
+			VOID_C Xungetch(ch);
 			return(key);
 		}
 		seq = &(keyseq[p -> key]);
@@ -3130,19 +3026,19 @@ int sig, code, timeout;
 		if (!(p = searchkeyseq(key, keyseqtree, n))) return(key);
 		seq = &(keyseq[p -> key]);
 		if (++n >= seq -> len) return(seq -> code);
-		ch = (kbhit2(WAITKEYPAD * 1000L)) ? getch2() : EOF;
+		ch = (kbhit2(WAITKEYPAD * 1000L)) ? Xgetch() : EOF;
 		if (ch == EOF) return(key);
 	}
 
 	while ((p = searchkeyseq(ch, p, n))) {
 		seq = &(keyseq[p -> key]);
 		if (++n >= seq -> len) return(seq -> code);
-		ch = (kbhit2(WAITKEYPAD * 1000L)) ? getch2() : EOF;
+		ch = (kbhit2(WAITKEYPAD * 1000L)) ? Xgetch() : EOF;
 		if (ch == EOF) break;
 	}
 
-	VOID_C ungetch2(ch);
-	while (--n > 0) VOID_C ungetch2(seq -> str[n]);
+	VOID_C Xungetch(ch);
+	while (--n > 0) VOID_C Xungetch(seq -> str[n]);
 	if (wasmeta) {
 		if (ungetnum) ungetnum--;
 		return(wasmeta);
@@ -3173,7 +3069,7 @@ int c, desc;
 # endif
 
 	if (c == EOF || ttyio < 0) return(EOF);
-	if (!desc) return(ungetch2(c));
+	if (!desc) return(Xungetch(c));
 # ifdef	TIOCSTI
 	ch = c;
 	Xioctl(ttyio, TIOCSTI, &ch);
@@ -3203,26 +3099,22 @@ int s, e;
 	return(0);
 }
 
-int locate(x, y)
+VOID locate(x, y)
 int x, y;
 {
 	char *cp;
 
 	if (!(cp = tparamstr(termstr[C_LOCATE], y, x)) || !*cp) {
 		if (cp) free(cp);
-		return(-1);
+		return;
 	}
 	tputs2(cp, 1);
 	free(cp);
-
-	return(0);
 }
 
-int tflush(VOID_A)
+VOID tflush(VOID_A)
 {
-	Xfflush(ttyout);
-
-	return(0);
+	VOID_C Xfflush(ttyout);
 }
 
 char *getwsize(xmax, ymax)
@@ -3263,7 +3155,7 @@ int xmax, ymax;
 		if (maxlocate(&ty, &tx) >= 0 && (tx > x || ty > y)) {
 			if (tx > x) x = tx;
 			if (ty > y) y = ty;
-			VOID_C setwsize(ttyio, x, y);
+			setwsize(ttyio, x, y);
 		}
 	}
 
@@ -3283,16 +3175,12 @@ int xmax, ymax;
 	return(NULL);
 }
 
-int setwsize(fd, xmax, ymax)
+VOID setwsize(fd, xmax, ymax)
 int fd, xmax, ymax;
 {
 # ifndef	NOTERMWSIZE
 	termwsize_t ws;
-# endif
 
-# ifdef	NOTERMWSIZE
-	return(0);
-# else	/* !NOTERMWSIZE */
 	memset((char *)&ws, 0, sizeof(ws));
 	VOID_C Xioctl(fd, REQGETWS, &ws);
 
@@ -3305,7 +3193,7 @@ int fd, xmax, ymax;
 	ws.ws_row = ymax;
 #  else	/* !TIOCGWINSZ */
 #   ifdef	WIOCGETD
-	if (ws.uw_hs <= 0 || ws.uw_vs <= 0) return(-1);
+	if (ws.uw_hs <= 0 || ws.uw_vs <= 0) return;
 	ws.uw_width = xmax * ws.uw_hs;
 	ws.uw_height = ymax * ws.uw_vs;
 #   else	/* !WIOCGETD */
@@ -3316,17 +3204,17 @@ int fd, xmax, ymax;
 #   endif	/* !WIOCGETD */
 #  endif	/* !TIOCGWINSZ */
 
-	return(Xioctl(fd, REQSETWS, &ws));
+	VOID_C Xioctl(fd, REQSETWS, &ws);
 # endif	/* !NOTERMWSIZE */
 }
 #endif	/* !MSDOS */
 
 #ifdef	USESTDARGH
 /*VARARGS1*/
-int cprintf2(CONST char *fmt, ...)
+int Xcprintf(CONST char *fmt, ...)
 #else
 /*VARARGS1*/
-int cprintf2(fmt, va_alist)
+int Xcprintf(fmt, va_alist)
 CONST char *fmt;
 va_dcl
 #endif
@@ -3336,31 +3224,29 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vasprintf2(&buf, fmt, args);
+	n = Xvasprintf(&buf, fmt, args);
 	va_end(args);
-	if (n < 0) err2("malloc()");
+	if (n < 0) terror("malloc()");
 
-	cputs2(buf);
+	Xcputs(buf);
 	free(buf);
 
 	return(n);
 }
 
-int cputnl(VOID_A)
+VOID cputnl(VOID_A)
 {
-	cputs2("\r\n");
+	Xcputs("\r\n");
 	tflush();
-
-	return(0);
 }
 
 int kanjiputs(s)
 CONST char *s;
 {
-	return(cprintf2("%k", s));
+	return(Xcprintf("%k", s));
 }
 
-int chgcolor(color, reverse)
+VOID chgcolor(color, reverse)
 int color, reverse;
 {
 	char *cp;
@@ -3379,19 +3265,17 @@ int color, reverse;
 		tputs2(cp, 1);
 		free(cp);
 	}
-	else cprintf2("\033[%dm", fg + ANSI_NORMAL);
+	else VOID_C Xcprintf("\033[%dm", fg + ANSI_NORMAL);
 
 	if (bg < 0) /*EMPTY*/;
 	else if ((cp = tparamstr(termstr[T_BGCOLOR], bg, 0))) {
 		tputs2(cp, 1);
 		free(cp);
 	}
-	else cprintf2("\033[%dm", bg + ANSI_REVERSE);
-
-	return(0);
+	else VOID_C Xcprintf("\033[%dm", bg + ANSI_REVERSE);
 }
 
-int movecursor(n1, n2, c)
+VOID movecursor(n1, n2, c)
 int n1, n2, c;
 {
 	char *cp;
@@ -3402,6 +3286,4 @@ int n1, n2, c;
 		tputs2(cp, n_line);
 		free(cp);
 	}
-
-	return(0);
 }

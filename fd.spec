@@ -3,7 +3,7 @@
 
 Summary: a file & directory maintenance tool.
 Name: FDclone
-Version: 3.00d
+Version: 3.00e
 Release: 1
 Group: System Environment/Shells
 URL: http://hp.vector.co.jp/authors/VA012337/soft/fd/index.html
@@ -12,7 +12,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Requires: ncurses
 License: Freeware
 
-%description 
+%description
 FDclone is a file & directory maintenance tool for the UNIX
 based OS.  It is a clone of "FD" for MS-DOS, made by Mr.
 A.Idei <SDI00544@niftyserve.or.jp> in 1989.
@@ -73,6 +73,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.eng HISTORY.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
 
 %changelog
+* Sat Feb 27 2010 Takashi SHIRAI <shirai@unixusers.net>
+- for 3.00e
+
 * Sun Nov 30 2008 Takashi SHIRAI <shirai@unixusers.net>
 - for 3.00d
 

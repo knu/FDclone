@@ -5,11 +5,11 @@
  */
 
 #if	(GETTODARGS == 1)
-#define	gettimeofday2(tv, tz)	gettimeofday(tv)
+#define	Xgettimeofday(tv, tz)	gettimeofday(tv)
 #else
-#define	gettimeofday2(tv, tz)	gettimeofday(tv, tz)
+#define	Xgettimeofday(tv, tz)	gettimeofday(tv, tz)
 #endif
 
-extern time_t time2 __P_((VOID_A));
-extern time_t timegm2 __P_((CONST struct tm *));
-extern time_t timelocal2 __P_((struct tm *));
+extern time_t Xtime __P_((time_t *));
+extern time_t Xtimegm __P_((CONST struct tm *));
+extern time_t Xtimelocal __P_((struct tm *));

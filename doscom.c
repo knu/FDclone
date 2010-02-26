@@ -58,10 +58,10 @@
 
 #if	!defined (FD) && !defined (WITHNETWORK)
 # if	MSDOS
-# define	realpath2(p, r, f) \
+# define	Xrealpath(p, r, f) \
 				unixrealpath(p, r)
 # else
-# define	realpath2(p, r, f) \
+# define	Xrealpath(p, r, f) \
 				realpath(p, r)
 # endif
 #endif	/* !FD && !WITHNETWORK */
@@ -327,11 +327,11 @@ off_t *totalp, *freep, *bsizep;
 				cp += strlen(cp);
 			len = cp - path;
 		}
-		strncpy2(drv, path, len);
+		Xstrncpy(drv, path, len);
 	}
 	else
 #  endif
-	VOID_C gendospath(drv, toupper2(path[0]), _SC_);
+	VOID_C gendospath(drv, Xtoupper(path[0]), _SC_);
 
 	reg.x.ax = 0x71a0;
 	reg.x.bx = 0;
@@ -533,7 +533,7 @@ CONST char *s;
 		kanjifputs(s, Xstderr);
 		VOID_C fputnl(Xstderr);
 	}
-	Xfputs(strerror2(duperrno), Xstderr);
+	Xfputs(Xstrerror(duperrno), Xstderr);
 	VOID_C fputnl(Xstderr);
 	errno = 0;
 }
@@ -544,14 +544,14 @@ off_t *np, *bsizep;
 	off_t s, mb;
 
 	if (*np < (off_t)0 || !*bsizep) {
-		fprintf2(Xstdout, "%15.15s bytes", "?");
+		Xfprintf(Xstdout, "%15.15s bytes", "?");
 		return;
 	}
 
 	s = ((off_t)1024 * (off_t)1024 + (*bsizep / 2)) / *bsizep;
 	mb = *np / s;
-	if (mb < (off_t)1024) fprintf2(Xstdout, "%'15qd bytes", *np * *bsizep);
-	else fprintf2(Xstdout, "%'12qd.%02qd MB",
+	if (mb < (off_t)1024) Xfprintf(Xstdout, "%'15qd bytes", *np * *bsizep);
+	else Xfprintf(Xstdout, "%'12qd.%02qd MB",
 		mb, ((*np - mb * s) * (off_t)100) / s);
 }
 
@@ -582,10 +582,10 @@ CONST VOID_P vp2;
 
 	sp1 = (struct filestat_t *)vp1;
 	sp2 = (struct filestat_t *)vp2;
-	if (!strchr2(dirsort, 'E')) cp1 = cp2 = NULL;
+	if (!Xstrchr(dirsort, 'E')) cp1 = cp2 = NULL;
 	else {
-		if ((cp1 = strrchr2(sp1 -> nam, '.'))) *cp1 = '\0';
-		if ((cp2 = strrchr2(sp2 -> nam, '.'))) *cp2 = '\0';
+		if ((cp1 = Xstrrchr(sp1 -> nam, '.'))) *cp1 = '\0';
+		if ((cp2 = Xstrrchr(sp2 -> nam, '.'))) *cp2 = '\0';
 	}
 
 	ret = 0;
@@ -641,10 +641,10 @@ int (NEAR *getoptcmd)__P_((int, char *CONST []));
 	int n, er, argc;
 
 	if (!(cp = getshellvar(env, -1)) || !*cp) return;
-	argv = (char **)malloc2(3 * sizeof(char *));
+	argv = (char **)Xmalloc(3 * sizeof(char *));
 	argc = 2;
-	argv[0] = strdup2(cmd);
-	argv[1] = strdup2(cp);
+	argv[0] = Xstrdup(cmd);
+	argv[1] = Xstrdup(cp);
 	argv[2] = NULL;
 	argc = evalifs(argc, &argv, IFS_SET);
 
@@ -669,7 +669,7 @@ char *CONST argv[];
 	for (i = 1; i < argc; i++) {
 		arg = argv[i];
 		if (arg[0] != DOSCOMOPT) break;
-		for (j = 1; arg[j]; j++) arg[j] = toupper2(arg[j]);
+		for (j = 1; arg[j]; j++) arg[j] = Xtoupper(arg[j]);
 		rr = (arg[1] == '-') ? 1 : 0;
 		switch (arg[1 + rr]) {
 			case 'P':
@@ -685,15 +685,15 @@ char *CONST argv[];
 				break;
 			case 'A':
 				if (rr) {
-					strcpy2(dirattr, "hs");
+					Xstrcpy(dirattr, "hs");
 					break;
 				}
 				n = r = 0;
 				arg += 2;
 				for (j = 0; arg[j]; j++) {
-					if (strchr2(DIRATTRFLAG, arg[j])) {
+					if (Xstrchr(DIRATTRFLAG, arg[j])) {
 						dirattr[n] = '\0';
-						if (!strchr2(dirattr, arg[j]))
+						if (!Xstrchr(dirattr, arg[j]))
 							dirattr[n++] = arg[j];
 						r = 0;
 					}
@@ -707,7 +707,7 @@ char *CONST argv[];
 					}
 				}
 				if (n) dirattr[n] = '\0';
-				else strcpy2(dirattr, DIRATTRFLAG);
+				else Xstrcpy(dirattr, DIRATTRFLAG);
 				if (r) {
 					doserror(arg, ER_INVALIDSW);
 					return(-1);
@@ -722,9 +722,9 @@ char *CONST argv[];
 				n = r = 0;
 				arg += 2;
 				for (j = 0; arg[j]; j++) {
-					if (strchr2(DIRSORTFLAG, arg[j])) {
+					if (Xstrchr(DIRSORTFLAG, arg[j])) {
 						dirsort[n] = '\0';
-						if (!strchr2(dirsort, arg[j]))
+						if (!Xstrchr(dirsort, arg[j]))
 							dirsort[n++] = arg[j];
 						r = 0;
 					}
@@ -813,8 +813,8 @@ int len, lower;
 	if (olen >= 0) while (len-- > 0) s[i++] = ' ';
 	else olen = -olen - len;
 	s[i] = '\0';
-	if (lower) for (i = 0; s[i]; i++) s[i] = tolower2(s[i]);
-	else for (i = 0; s[i]; i++) s[i] = toupper2(s[i]);
+	if (lower) for (i = 0; s[i]; i++) s[i] = Xtolower(s[i]);
+	else for (i = 0; s[i]; i++) s[i] = Xtoupper(s[i]);
 	kanjifputs(s, Xstdout);
 
 	return(olen);
@@ -835,12 +835,12 @@ int verbose;
 	char *ext, buf[MAXNAMLEN + 1];
 	int i;
 
-	strcpy2(buf, dirp -> d_alias);
+	Xstrcpy(buf, dirp -> d_alias);
 	if (isdotdir(buf)) ext = NULL;
-	else if ((ext = strrchr2(buf, '.'))) {
+	else if ((ext = Xstrrchr(buf, '.'))) {
 		if (ext == buf) {
 			ext = NULL;
-			strcpy2(buf, &(dirp -> d_alias[1]));
+			Xstrcpy(buf, &(dirp -> d_alias[1]));
 		}
 		else {
 			*(ext++) = '\0';
@@ -853,7 +853,7 @@ int verbose;
 
 	if (!ext) Xfputs("   ", Xstdout);
 	else {
-		strcpy2(buf, ext);
+		Xstrcpy(buf, ext);
 		showstr(buf, 3, (dirflag & DF_LOWER));
 	}
 	Xfputc(' ', Xstdout);
@@ -863,7 +863,7 @@ int verbose;
 #ifndef	NOSYMLINK
 		case S_IFLNK:
 #endif
-			fprintf2(Xstdout, "%'13qd", dirp -> siz);
+			Xfprintf(Xstdout, "%'13qd", dirp -> siz);
 			break;
 		case S_IFDIR:
 			Xfputs("  <DIR>      ", Xstdout);
@@ -880,7 +880,7 @@ int verbose;
 		else {
 			dirp -> siz = ((dirp -> siz + *bsizep - 1) / *bsizep)
 				* *bsizep;
-			fprintf2(Xstdout, "%'14qd", dirp -> siz);
+			Xfprintf(Xstdout, "%'14qd", dirp -> siz);
 		}
 	}
 #endif	/* !MINIMUMSHELL */
@@ -898,12 +898,12 @@ int verbose;
 #endif
 	Xfputs("  ", Xstdout);
 #ifndef	MINIMUMSHELL
-	if (verbose < 0) fprintf2(Xstdout, "%04d-%02d-%02d  %2d:%02d ",
+	if (verbose < 0) Xfprintf(Xstdout, "%04d-%02d-%02d  %2d:%02d ",
 		tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	else
 #endif
-	fprintf2(Xstdout, "%02d-%02d-%02d  %2d:%02d ",
+	Xfprintf(Xstdout, "%02d-%02d-%02d  %2d:%02d ",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 
@@ -920,9 +920,9 @@ int verbose;
 # else
 		tm = localtime(&(dirp -> atim));
 # endif
-		fprintf2(Xstdout, " %02d-%02d-%02d  ",
+		Xfprintf(Xstdout, " %02d-%02d-%02d  ",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-		strcpy2(buf, "           ");
+		Xstrcpy(buf, "           ");
 		if (!(dirp -> mod & S_IWUSR)) buf[0] = 'R';
 		if (!(dirp -> mod & S_IRUSR)) buf[1] = 'H';
 		if ((dirp -> mod & S_IFMT) == S_IFSOCK) buf[2] = 'S';
@@ -935,7 +935,7 @@ int verbose;
 
 	kanjifputs(dirp -> nam, Xstdout);
 #ifndef	NOSYMLINK
-	if (dirp -> lnam) fprintf2(Xstdout, " -> %s", dirp -> lnam);
+	if (dirp -> lnam) Xfprintf(Xstdout, " -> %s", dirp -> lnam);
 #endif
 	VOID_C fputnl(Xstdout);
 }
@@ -947,12 +947,12 @@ struct filestat_t *dirp;
 	int i, len;
 
 	if (dir_isdir(dirp)) Xfputc('[', Xstdout);
-	strcpy2(buf, dirp -> d_alias);
+	Xstrcpy(buf, dirp -> d_alias);
 	if (isdotdir(buf)) ext = NULL;
-	else if ((ext = strrchr2(buf, '.'))) {
+	else if ((ext = Xstrrchr(buf, '.'))) {
 		if (ext == buf) {
 			ext = NULL;
-			strcpy2(buf, &(dirp -> d_alias[1]));
+			Xstrcpy(buf, &(dirp -> d_alias[1]));
 		}
 		else {
 			*(ext++) = '\0';
@@ -965,7 +965,7 @@ struct filestat_t *dirp;
 	if (ext) {
 		Xfputc('.', Xstdout);
 		len++;
-		strcpy2(buf, ext);
+		Xstrcpy(buf, ext);
 		len += showstr(buf, -3, (dirflag & DF_LOWER));
 	}
 
@@ -982,16 +982,16 @@ struct filestat_t *dirp;
 	if (dirflag & DF_SUBDIR) {
 		cp = dirwd;
 		if (dirflag & DF_LOWER) {
-			for (i = 0; dirwd[i]; i++) buf[i] = tolower2(dirwd[i]);
+			for (i = 0; dirwd[i]; i++) buf[i] = Xtolower(dirwd[i]);
 			buf[i] = '\0';
 			cp = buf;
 		}
-		fprintf2(Xstdout, "%k%c", cp, _SC_);
+		Xfprintf(Xstdout, "%k%c", cp, _SC_);
 	}
 
 	if (dirflag & DF_LOWER)
 		for (i = 0; dirp -> nam[i]; i++)
-			dirp -> nam[i] = tolower2(dirp -> nam[i]);
+			dirp -> nam[i] = Xtolower(dirp -> nam[i]);
 	kanjifputs(dirp -> nam, Xstdout);
 	VOID_C fputnl(Xstdout);
 }
@@ -1013,7 +1013,7 @@ int n_incline;
 			dirflag |= DF_CANCEL;
 			return(-1);
 		}
-		fprintf2(Xstdout, "\n(continuing %k)\n", dirwd);
+		Xfprintf(Xstdout, "\n(continuing %k)\n", dirwd);
 		dirline = n_incline;
 	}
 
@@ -1029,7 +1029,7 @@ static VOID NEAR dosdirheader(VOID_A)
 			if (checkline(1) < 0) return;
 		}
 		else Xfputc(' ', Xstdout);
-		fprintf2(Xstdout, "Directory of %k\n", dirwd);
+		Xfprintf(Xstdout, "Directory of %k\n", dirwd);
 	}
 #ifndef	MINIMUMSHELL
 	if (dirtype == 'V') {
@@ -1076,11 +1076,11 @@ off_t *sump, *bsump, *fp, *tp;
 			Xfputs("Total files listed:\n", Xstdout);
 		}
 		if (checkline(1) < 0) return;
-		fprintf2(Xstdout, "%10d file(s)%'15qd bytes\n", nf, *sump);
+		Xfprintf(Xstdout, "%10d file(s)%'15qd bytes\n", nf, *sump);
 #ifndef	MINIMUMSHELL
 		if (dirtype == 'V') {
 			if (checkline(1) < 0) return;
-			fprintf2(Xstdout, "%10d dir(s) ", nd);
+			Xfprintf(Xstdout, "%10d dir(s) ", nd);
 			fputsize(bsump, bsizep);
 			Xfputs(" allocated\n", Xstdout);
 			nd = -1;
@@ -1091,7 +1091,7 @@ off_t *sump, *bsump, *fp, *tp;
 
 	if (checkline(1) < 0) return;
 	if (nd < 0) Xfputs("                  ", Xstdout);
-	else fprintf2(Xstdout, "%10d dir(s) ", nd);
+	else Xfprintf(Xstdout, "%10d dir(s) ", nd);
 
 	fputsize(fp, bsizep);
 	Xfputs(" free\n", Xstdout);
@@ -1101,7 +1101,7 @@ off_t *sump, *bsump, *fp, *tp;
 		if (checkline(1) < 0) return;
 		Xfputs("                  ", Xstdout);
 		fputsize(tp, bsizep);
-		fprintf2(Xstdout, " total disk space, %3d%% in use\n",
+		Xfprintf(Xstdout, " total disk space, %3d%% in use\n",
 			(int)(((*tp - *fp) * (off_t)100) / *tp));
 	}
 #endif	/* !MINIMUMSHELL */
@@ -1146,7 +1146,7 @@ off_t *sump, *bsump;
 	file = strcatdelim(dirwd);
 	dirlist = NULL;
 	while ((dp = Xreaddir(dirp))) {
-		strcpy2(file, dp -> d_name);
+		Xstrcpy(file, dp -> d_name);
 #ifndef	NOSYMLINK
 		if (Xlstat(dirwd, &st) < 0 || (st.st_mode & S_IFMT) != S_IFLNK)
 			i = -1;
@@ -1155,16 +1155,16 @@ off_t *sump, *bsump;
 		if (Xstat(dirwd, &st) < 0) continue;
 
 		dirlist = b_realloc(dirlist, n, struct filestat_t);
-		dirlist[n].nam = strdup2(dp -> d_name);
+		dirlist[n].nam = Xstrdup(dp -> d_name);
 #ifdef	DEP_DOSLFN
 		dirlist[n].d_alias = (dp -> d_alias[0])
-			? strdup2(dp -> d_alias) : dirlist[n].nam;
+			? Xstrdup(dp -> d_alias) : dirlist[n].nam;
 #endif
 #ifndef	NOSYMLINK
 		if (i < 0) dirlist[n].lnam = NULL;
 		else {
 			tmp[i] = '\0';
-			dirlist[n].lnam = strdup2(tmp);
+			dirlist[n].lnam = Xstrdup(tmp);
 		}
 #endif
 		dirlist[n].mod = st.st_mode;
@@ -1187,7 +1187,7 @@ off_t *sump, *bsump;
 		}
 		n++;
 	}
-	Xclosedir(dirp);
+	VOID_C Xclosedir(dirp);
 	dirwd[len] = '\0';
 	max = n;
 	if (*dirsort)
@@ -1282,7 +1282,7 @@ off_t *sump, *bsump;
 			if (!dir_isdir(&(dirlist[n]))
 			|| isdotdir(dirlist[n].nam))
 				continue;
-			strcpy2(file, dirlist[n].nam);
+			Xstrcpy(file, dirlist[n].nam);
 #ifdef	MINIMUMSHELL
 			c = dosdir(re, bsizep, nfp, ndp, sump);
 #else
@@ -1299,16 +1299,16 @@ off_t *sump, *bsump;
 	dirwd[len] = '\0';
 
 	for (n = 0; n < max; n++) {
-		free2(dirlist[n].nam);
+		Xfree(dirlist[n].nam);
 #ifdef	DEP_DOSLFN
 		if (dirlist[n].d_alias != dirlist[n].nam)
-			free2(dirlist[n].d_alias);
+			Xfree(dirlist[n].d_alias);
 #endif
 #ifndef	NOSYMLINK
-		free2(dirlist[n].lnam);
+		Xfree(dirlist[n].lnam);
 #endif
 	}
-	free2(dirlist);
+	Xfree(dirlist);
 
 	return(max);
 }
@@ -1330,7 +1330,7 @@ char *CONST argv[];
 	off_t sum, total, fre, bsize;
 	int i, n, nf, nd;
 
-	strcpy2(dirattr, "hs");
+	Xstrcpy(dirattr, "hs");
 	dirsort[0] = dirtype = '\0';
 	dirflag = 0;
 	evalenvopt(argv[0], "DIRCMD", getdiropt);
@@ -1348,7 +1348,7 @@ char *CONST argv[];
 		return(RET_FAIL);
 	}
 	else {
-		strcpy2(buf, argv[n]);
+		Xstrcpy(buf, argv[n]);
 #ifdef	DEP_PSEUDOPATH
 		if ((drv = preparedrv(buf, NULL, NULL)) < 0) {
 			dosperror(buf);
@@ -1365,7 +1365,7 @@ char *CONST argv[];
 		}
 #ifdef	DEP_URLPATH
 		else if (checkdrv(drv, NULL) == DEV_URL)
-			realpath2(buf, buf, 0);
+			Xrealpath(buf, buf, 0);
 #endif
 		else {
 			dir = curpath;
@@ -1381,10 +1381,10 @@ char *CONST argv[];
 		return(RET_FAIL);
 	}
 
-	if (dir != buf) strcpy2(wd, cwd);
+	if (dir != buf) Xstrcpy(wd, cwd);
 	else if ((cp = getrealpath(buf, wd, cwd)) == wd) /*EMPTY*/;
 #ifdef	DOUBLESLASH
-	else if (cp == buf && isdslash(buf)) realpath2(buf, wd, RLP_READLINK);
+	else if (cp == buf && isdslash(buf)) Xrealpath(buf, wd, RLP_READLINK);
 #endif
 	else {
 #ifdef	DEP_PSEUDOPATH
@@ -1521,8 +1521,8 @@ char *CONST argv[];
 			if (!buf) return(RET_SUCCESS);
 			if (!isatty(STDIN_FILENO)) VOID_C fputnl(Xstdout);
 			c = *buf;
-			free2(buf);
-		} while (!strchr2("ynYN", c));
+			Xfree(buf);
+		} while (!Xstrchr("ynYN", c));
 		if (c == 'n' || c == 'N') return(RET_SUCCESS);
 	}
 	if (!(wild = evalwild(argv[n], 0))) {
@@ -1533,17 +1533,17 @@ char *CONST argv[];
 	for (i = 0; wild[i]; i++) {
 		if (flag) {
 			do {
-				fprintf2(Xstdout,
+				Xfprintf(Xstdout,
 					"%k,    Delete (Y/N)?", wild[i]);
 				Xfflush(Xstdout);
 				if ((c = inputkey()) < 0) {
 					freevar(wild);
 					return(ret);
 				}
-				if (c <= (int)MAXUTYPE(u_char) && isprint2(c))
+				if (c <= (int)MAXUTYPE(u_char) && Xisprint(c))
 					Xfputc(c, Xstdout);
 				VOID_C fputnl(Xstdout);
-			} while (!strchr2("ynYN", c));
+			} while (!Xstrchr("ynYN", c));
 			if (c == 'n' || c == 'N') continue;
 		}
 		if (Xunlink(wild[i]) < 0) {
@@ -1613,7 +1613,7 @@ char *CONST argv[];
 	}
 	ret = RET_SUCCESS;
 	for (i = 0; wild[i]; i++) {
-		strcpy2(new, wild[i]);
+		Xstrcpy(new, wild[i]);
 		cp = getbasename(new);
 		j = cp - new;
 		convwild(cp, &(wild[i][j]), argv[2], argv[1]);
@@ -1643,7 +1643,7 @@ char *CONST argv[];
 	for (i = 1; i < argc; i++) {
 		arg = argv[i];
 		if (arg[0] != DOSCOMOPT) break;
-		for (j = 1; arg[j]; j++) arg[j] = toupper2(arg[j]);
+		for (j = 1; arg[j]; j++) arg[j] = Xtoupper(arg[j]);
 		if (!arg[1] || (arg[2] && arg[3])) {
 			doserror(arg, ER_INVALIDSW);
 			return(-1);
@@ -1688,9 +1688,9 @@ int bin;
 	char *cp;
 
 	if (bin < 0) return(-1);
-	if (!(cp = strchr2(name, DOSCOMOPT)) || !cp[1] || cp[2]) /*EMPTY*/;
-	else if (toupper2(*cp) == 'B') bin = CF_BINARY;
-	else if (toupper2(*cp) == 'A') bin = CF_TEXT;
+	if (!(cp = Xstrchr(name, DOSCOMOPT)) || !cp[1] || cp[2]) /*EMPTY*/;
+	else if (Xtoupper(*cp) == 'B') bin = CF_BINARY;
+	else if (Xtoupper(*cp) == 'A') bin = CF_TEXT;
 
 	return(bin);
 }
@@ -1705,17 +1705,17 @@ CONST char *file, *src;
 	if ((copyflag & CF_NOCONFIRM) || Xstat(file, &st) < 0) c = 0;
 	else {
 		if (src
-		&& realpath2(src, buf, RLP_READLINK)
-		&& realpath2(file, buf2, RLP_READLINK)
+		&& Xrealpath(src, buf, RLP_READLINK)
+		&& Xrealpath(file, buf2, RLP_READLINK)
 		&& !strpathcmp(buf, buf2))
 			return(seterrno(0));
 		if ((fd = Xopen(file, O_RDONLY, 0666)) < 0) return(fd);
 		c = (isatty(fd)) ? 0 : 1;
-		close(fd);
+		VOID_C Xclose(fd);
 	}
 
 	if (c) {
-		fprintf2(Xstderr, "Overwrite %k (Yes/No/All)?", file);
+		Xfprintf(Xstderr, "Overwrite %k (Yes/No/All)?", file);
 		Xfflush(Xstderr);
 		key = -1;
 		for (;;) {
@@ -1724,9 +1724,9 @@ CONST char *file, *src;
 				return(0);
 			}
 			if (c == K_CR && key >= 0) break;
-			if (!strchr2("ynaYNA", c)) continue;
-			key = toupper2(c);
-			fprintf2(Xstderr, "%c%s", c, c_left);
+			if (!Xstrchr("ynaYNA", c)) continue;
+			key = Xtoupper(c);
+			Xfprintf(Xstderr, "%c%s", c, c_left);
 			Xfflush(Xstderr);
 		}
 		VOID_C fputnl(Xstderr);
@@ -1979,31 +1979,31 @@ char *CONST argv[];
 	}
 
 	size = strlen(argv[n]) + 1;
-	src = malloc2(size);
-	strcpy2(src, argv[n]);
+	src = Xmalloc(size);
+	Xstrcpy(src, argv[n]);
 	for (n++; n < argc; n++) {
-		if ((cp = strchr2(&(argv[n - 1][1]), '+')) && !*(++cp))
+		if ((cp = Xstrchr(&(argv[n - 1][1]), '+')) && !*(++cp))
 			/*EMPTY*/;
 		else if (argv[n][0] != '+' && argv[n][0] != DOSCOMOPT) break;
 		j = strlen(argv[n]);
-		src = realloc2(src, size + j);
-		strcpy2(&(src[size - 1]), argv[n]);
+		src = Xrealloc(src, size + j);
+		Xstrcpy(&(src[size - 1]), argv[n]);
 		size += j;
 	}
 
 	for (cp = src, nf = 0; cp; nf++) {
-		if ((cp = strchr2(cp, '+'))) {
+		if ((cp = Xstrchr(cp, '+'))) {
 			*(cp++) = '\0';
 			if (!*cp) {
 				if (nf++) break;
 				doserror(src, ER_COPIEDITSELF);
-				free2(src);
+				Xfree(src);
 				return(RET_FAIL);
 			}
 		}
 	}
-	arg = (char **)malloc2(nf * sizeof(char *));
-	sbin = (int *)malloc2(nf * sizeof(int));
+	arg = (char **)Xmalloc(nf * sizeof(char *));
+	sbin = (int *)Xmalloc(nf * sizeof(int));
 
 	arg[0] = src;
 	sbin[0] = copyflag;
@@ -2021,21 +2021,21 @@ char *CONST argv[];
 #if	0
 	else if (n + 1 < argc) {
 		doserror(argv[n + 1], ER_TOOMANYPARAM);
-		free2(arg[0]);
-		free2(arg);
-		free2(sbin);
+		Xfree(arg[0]);
+		Xfree(arg);
+		Xfree(sbin);
 		return(RET_FAIL);
 	}
 #endif
 	else {
-		strcpy2(dest, argv[n]);
+		Xstrcpy(dest, argv[n]);
 		dbin = getbinmode(dest, sbin[i - 1]);
 	}
 
 	if (dbin < 0) {
-		free2(arg[0]);
-		free2(arg);
-		free2(sbin);
+		Xfree(arg[0]);
+		Xfree(arg);
+		Xfree(sbin);
 		return(RET_FAIL);
 	}
 
@@ -2054,14 +2054,14 @@ char *CONST argv[];
 	if (nf <= 1) {
 		if (Xlstat(arg[0], &sst) < 0) /*EMPTY*/;
 		else if ((sst.st_mode & S_IFMT) == S_IFDIR) {
-			arg[0] = realloc2(arg[0], size + 2);
-			strcpy2(strcatdelim(arg[0]), "*");
+			arg[0] = Xrealloc(arg[0], size + 2);
+			Xstrcpy(strcatdelim(arg[0]), "*");
 		}
 		else if (!*dest) {
 			doserror(arg[0], ER_COPIEDITSELF);
-			free2(arg[0]);
-			free2(arg);
-			free2(sbin);
+			Xfree(arg[0]);
+			Xfree(arg);
+			Xfree(sbin);
 			return(RET_FAIL);
 		}
 	}
@@ -2097,7 +2097,7 @@ char *CONST argv[];
 
 			src = getbasename(wild[i]);
 			if (form) convwild(file, src, form, arg[n]);
-			else if (!n && file) strcpy2(file, src);
+			else if (!n && file) Xstrcpy(file, src);
 			j = doscopy(wild[i], dest, &sst, sbin[n], dbin, fd);
 			if (j < 0) {
 				if (errno) dosperror(wild[i]);
@@ -2111,15 +2111,15 @@ char *CONST argv[];
 		freevar(wild);
 		if (ret == RET_FAIL) ERRBREAK;
 	}
-	free2(arg[0]);
-	free2(arg);
-	free2(sbin);
+	Xfree(arg[0]);
+	Xfree(arg);
+	Xfree(sbin);
 	if (fd >= 0) {
 		if (fd > 0) textclose(fd, dbin);
 		if (nc > 0) nc = 1;
 	}
 	if (!(copyflag & CF_CANCEL)) {
-		fprintf2(Xstdout, "%9d file(s) copied", nc);
+		Xfprintf(Xstdout, "%9d file(s) copied", nc);
 		VOID_C fputnl(Xstdout);
 	}
 
@@ -2208,7 +2208,7 @@ char *CONST argv[];
 			cp[i++] = uc;
 		}
 	}
-	free2(cp);
+	Xfree(cp);
 	safeclose(fd);
 #if	MSDOS && !defined (LSI_C)
 	if (omode >= 0) setmode(STDOUT_FILENO, omode);

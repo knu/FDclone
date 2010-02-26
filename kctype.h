@@ -24,21 +24,21 @@
 
 #ifdef	LSI_C
 #include <jctype.h>
-#define	toupper2(c)		toupper((u_char)(c))
-#define	tolower2(c)		tolower((u_char)(c))
-#define	isalnum2(c)		isalnum((u_char)(c))
-#define	isalpha2(c)		isalpha((u_char)(c))
-#define	iscntrl2(c)		iscntrl((u_char)(c))
-#define	isdigit2(c)		isdigit((u_char)(c))
-#define	isupper2(c)		isupper((u_char)(c))
-#define	islower2(c)		islower((u_char)(c))
-#define	isxdigit2(c)		isxdigit((u_char)(c))
+#define	Xtoupper(c)		toupper((u_char)(c))
+#define	Xtolower(c)		tolower((u_char)(c))
+#define	Xisalnum(c)		isalnum((u_char)(c))
+#define	Xisalpha(c)		isalpha((u_char)(c))
+#define	Xiscntrl(c)		iscntrl((u_char)(c))
+#define	Xisdigit(c)		isdigit((u_char)(c))
+#define	Xisupper(c)		isupper((u_char)(c))
+#define	Xislower(c)		islower((u_char)(c))
+#define	Xisxdigit(c)		isxdigit((u_char)(c))
+#define	Xisspace(c)		isspace((u_char)(c))
+#define	Xisprint(c)		isprint((u_char)(c))
+#define	Xisblank(c)		((c) == ' ' || (c) == '\t')
+#define	Xiskana(c)		iskana((u_char)(c))
 #define	issjis1(c)		iskanji((u_char)(c))
 #define	issjis2(c)		iskanji2((u_char)(c))
-#define	iskana2(c)		iskana((u_char)(c))
-#define	isspace2(c)		isspace((u_char)(c))
-#define	isprint2(c)		isprint((u_char)(c))
-#define	isblank2(c)		((c) == ' ' || (c) == '\t')
 #define	isutf2(c1, c2)		((((u_char)(c1) & 0xe0) == 0xc0) \
 				&& ((u_char)(c2) & 0xc0) == 0x80)
 #define	isutf3(c1, c2, c3)	(((u_char)(c1) & 0xf0) == 0xe0 \
@@ -187,8 +187,8 @@ K_EXTERN CONST u_char kctypetable[256]
 }
 #endif	/* K_INTERN */
 ;
-#define	toupper2(c)		(uppercase[(u_char)(c)])
-#define	tolower2(c)		(lowercase[(u_char)(c)])
+#define	Xtoupper(c)		(uppercase[(u_char)(c)])
+#define	Xtolower(c)		(lowercase[(u_char)(c)])
 #define	C_DIGIT			0001
 #define	C_UPPER			0002
 #define	C_LOWER			0004
@@ -197,17 +197,17 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	C_SPACE			0040
 #define	C_PRINT			0100
 #define	C_BLANK			0200
-#define	isalnum2(c)		(ctypetable[(u_char)(c)] \
+#define	Xisalnum(c)		(ctypetable[(u_char)(c)] \
 				& (C_DIGIT | C_UPPER | C_LOWER))
-#define	isalpha2(c)		(ctypetable[(u_char)(c)] & (C_UPPER | C_LOWER))
-#define	iscntrl2(c)		(ctypetable[(u_char)(c)] & C_CNTRL)
-#define	isdigit2(c)		(ctypetable[(u_char)(c)] & C_DIGIT)
-#define	isupper2(c)		(ctypetable[(u_char)(c)] & C_UPPER)
-#define	islower2(c)		(ctypetable[(u_char)(c)] & C_LOWER)
-#define	isxdigit2(c)		(ctypetable[(u_char)(c)] & (C_DIGIT | C_HEX))
-#define	isspace2(c)		(ctypetable[(u_char)(c)] & C_SPACE)
-#define	isprint2(c)		(ctypetable[(u_char)(c)] & C_PRINT)
-#define	isblank2(c)		(ctypetable[(u_char)(c)] & C_BLANK)
+#define	Xisalpha(c)		(ctypetable[(u_char)(c)] & (C_UPPER | C_LOWER))
+#define	Xiscntrl(c)		(ctypetable[(u_char)(c)] & C_CNTRL)
+#define	Xisdigit(c)		(ctypetable[(u_char)(c)] & C_DIGIT)
+#define	Xisupper(c)		(ctypetable[(u_char)(c)] & C_UPPER)
+#define	Xislower(c)		(ctypetable[(u_char)(c)] & C_LOWER)
+#define	Xisxdigit(c)		(ctypetable[(u_char)(c)] & (C_DIGIT | C_HEX))
+#define	Xisspace(c)		(ctypetable[(u_char)(c)] & C_SPACE)
+#define	Xisprint(c)		(ctypetable[(u_char)(c)] & C_PRINT)
+#define	Xisblank(c)		(ctypetable[(u_char)(c)] & C_BLANK)
 #define	KC_SJIS1		0001
 #define	KC_SJIS2		0002
 #define	KC_KANA			0004
@@ -216,7 +216,7 @@ K_EXTERN CONST u_char kctypetable[256]
 #define	KC_UTFN			0040
 #define	KC_UTF2			0100
 #define	KC_UTF3			0200
-#define	iskana2(c)		(kctypetable[(u_char)(c)] & KC_KANA)
+#define	Xiskana(c)		(kctypetable[(u_char)(c)] & KC_KANA)
 #ifndef	issjis1
 #define	issjis1(c)		(kctypetable[(u_char)(c)] & KC_SJIS1)
 #endif
@@ -238,9 +238,9 @@ K_EXTERN CONST u_char kctypetable[256]
 
 #define	ismsb(c)		(((u_char)(c)) & 0x80)
 #define	isekana(s, i)		((u_char)((s)[i]) == C_EKANA \
-				&& iskana2((s)[(i) + 1]))
-#define	isskana(s, i)		iskana2((s)[i])
-#define	isjkana(s, i)		iskana2(((s)[i]) ^ 0x80)
+				&& Xiskana((s)[(i) + 1]))
+#define	isskana(s, i)		Xiskana((s)[i])
+#define	isjkana(s, i)		Xiskana(((s)[i]) ^ 0x80)
 #define	iswucs2(u)		(((u) & 0xff00) \
 				&& ((u) < 0xff61 || (u) > 0xff9f))
 

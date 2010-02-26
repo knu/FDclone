@@ -7,44 +7,6 @@
 #if	MSDOS && !defined (__UNIXEMU_H_)
 #define	__UNIXEMU_H_
 
-#undef	MAXPATHLEN
-#define	MAXPATHLEN		260
-
-#undef	MAXNAMLEN
-#define	MAXNAMLEN		255
-
-#ifndef	R_OK
-#define	R_OK			4
-#endif
-#ifndef	W_OK
-#define	W_OK			2
-#endif
-#ifndef	X_OK
-#define	X_OK			1
-#endif
-#ifndef	F_OK
-#define	F_OK			0
-#endif
-
-#ifndef	S_IFLNK
-#define	S_IFLNK			0120000
-#endif
-#ifndef	S_IFSOCK
-#define	S_IFSOCK		0140000
-#endif
-#ifndef	S_IFIFO
-#define	S_IFIFO			0010000
-#endif
-#ifndef	S_ISUID
-#define	S_ISUID			0004000
-#endif
-#ifndef	S_ISGID
-#define	S_ISGID			0002000
-#endif
-#ifndef	S_ISVTX
-#define	S_ISVTX			0001000
-#endif
-
 #ifndef	DJGPP
 # ifndef	random
 # define	random()	rand()

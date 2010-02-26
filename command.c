@@ -331,11 +331,11 @@ bindlist_t bindlist
 static VOID NEAR replacefname(name)
 char *name;
 {
-	if (filepos < maxfile) free2(filelist[filepos].name);
+	if (filepos < maxfile) Xfree(filelist[filepos].name);
 	else for (maxfile = 0; maxfile < filepos; maxfile++)
 		if (!filelist[maxfile].name)
-			filelist[maxfile].name = strdup2(nullstr);
-	filelist[filepos].name = (name) ? name : strdup2(parentpath);
+			filelist[maxfile].name = Xstrdup(nullstr);
+	filelist[filepos].name = (name) ? name : Xstrdup(parentpath);
 	filelist[filepos].tmpflags |= F_ISCHGDIR;
 }
 
@@ -348,7 +348,7 @@ CONST char *arg;
 	int n, old;
 
 	old = filepos;
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	filepos -= n;
 #if	FD >= 2
 	if (loopcursor) {
@@ -373,7 +373,7 @@ CONST char *arg;
 	int n, old;
 
 	old = filepos;
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	filepos += n;
 #if	FD >= 2
 	if (loopcursor) {
@@ -398,7 +398,7 @@ CONST char *arg;
 	int n, r, p, old;
 
 	old = filepos;
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	r = FILEPERROW;
 	p = FILEPERPAGE;
 	filepos += r * n;
@@ -438,7 +438,7 @@ CONST char *arg;
 	int n, r, old;
 
 	old = filepos;
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	r = FILEPERROW;
 	filepos -= r * n;
 
@@ -466,7 +466,7 @@ CONST char *arg;
 	int n, p, old;
 
 	old = filepos;
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	p = FILEPERPAGE;
 	filepos = (filepos / p + n) * p;
 	if (filepos >= maxfile) {
@@ -483,7 +483,7 @@ CONST char *arg;
 	int n, p, old;
 
 	old = filepos;
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	p = FILEPERPAGE;
 	filepos = (filepos / p - n) * p;
 	if (filepos < 0) {
@@ -544,7 +544,7 @@ CONST char *arg;
 			else {
 				i = strlen(filelist[filepos].linkname);
 				if (i > strsize(tmp)) i = strsize(tmp);
-				strncpy2(tmp, filelist[filepos].linkname, i);
+				Xstrncpy(tmp, filelist[filepos].linkname, i);
 			}
 		}
 		else
@@ -612,18 +612,18 @@ static VOID NEAR markcount(VOID_A)
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
 		Xlocate(TC_MARK, TL_PATH);
-		Xcprintf2("%<*d", TD_MARK, mark);
+		VOID_C XXcprintf("%<*d", TD_MARK, mark);
 		Xlocate(TC_MARK + TD_MARK + TW_MARK, TL_PATH);
-		Xcprintf2("%<'*qd", TD_SIZE, marksize);
+		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		return;
 	}
 #endif
 	Xlocate(C_MARK + W_MARK, L_STATUS);
-	Xcprintf2("%<*d", D_MARK, mark);
+	VOID_C XXcprintf("%<*d", D_MARK, mark);
 	if (sizeinfo) {
 		Xlocate(C_SIZE + W_SIZE, L_SIZE);
-		Xcprintf2("%<'*qd", D_SIZE, marksize);
+		VOID_C XXcprintf("%<'*qd", D_SIZE, marksize);
 	}
 }
 
@@ -674,7 +674,7 @@ CONST char *arg;
 {
 	int i;
 
-	if ((arg && atoi2(arg) == 0) || (!arg && mark)) {
+	if ((arg && Xatoi(arg) == 0) || (!arg && mark)) {
 		for (i = 0; i < maxfile; i++) filelist[i].tmpflags &= ~F_ISMRK;
 		mark = 0;
 		marksize = (off_t)0;
@@ -719,16 +719,16 @@ CONST char *mes, *arg;
 	reg_t *re;
 	char *wild;
 
-	if (arg && *arg) wild = strdup2(arg);
+	if (arg && *arg) wild = Xstrdup(arg);
 	else if (!(wild = inputstr(mes, 0, 0, "*", -1))) return(NULL);
 	if (!*wild || strdelim(wild, 1)) {
 		warning(ENOENT, wild);
-		free2(wild);
+		Xfree(wild);
 		return(NULL);
 	}
 
 	re = regexp_init(wild, -1);
-	free2(wild);
+	Xfree(wild);
 
 	return(re);
 }
@@ -863,21 +863,21 @@ CONST char *arg;
 #endif
 	char *path;
 
-	if (arg && *arg) path = strdup2(arg);
+	if (arg && *arg) path = Xstrdup(arg);
 	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(path = evalpath(path, 0))) {
-		free2(path);
+		Xfree(path);
 		return(FNC_CANCEL);
 	}
 #ifndef	_NOARCHIVE
 	if (archivefile && *path != '/') {
 		if (!(cp = archchdir(path))) {
 			warning(-1, path);
-			free2(path);
+			Xfree(path);
 			return(FNC_CANCEL);
 		}
-		free2(path);
+		Xfree(path);
 		if (cp != (char *)-1) filelist[filepos].name = (char *)cp;
 		else escapearch();
 		return(FNC_EFFECT);
@@ -886,13 +886,13 @@ CONST char *arg;
 #endif
 	if (chdir3(path, 0) < 0) {
 		warning(-1, path);
-		free2(path);
+		Xfree(path);
 		return(FNC_CANCEL);
 	}
-	free2(path);
+	Xfree(path);
 #ifndef	_NOARCHIVE
 	if (archivefile) {
-		strcpy2(dupfullpath, fullpath);
+		Xstrcpy(dupfullpath, fullpath);
 		while (archivefile) {
 # ifdef	_NOBROWSE
 			escapearch();
@@ -902,7 +902,7 @@ CONST char *arg;
 			} while (browselist);
 # endif
 		}
-		strcpy2(fullpath, dupfullpath);
+		Xstrcpy(fullpath, dupfullpath);
 	}
 #endif
 	replacefname(NULL);
@@ -916,7 +916,7 @@ CONST char *arg;
 {
 	char *path;
 
-	path = strdup2(rootpath);
+	path = Xstrdup(rootpath);
 	if (chdir3(path, 1) < 0) error(path);
 	replacefname(path);
 
@@ -969,16 +969,16 @@ CONST char *file;
 	i = strlen3(file);
 	len = strlen2(buf);
 	if (i + len > n_lastcolumn) i = n_lastcolumn - len;
-	prompt = malloc2(i * KANAWID + strlen(buf) + 1);
-	strncpy3(prompt, file, &i, 0);
+	prompt = Xmalloc(i * KANAWID + strlen(buf) + 1);
+	strncpy2(prompt, file, &i, 0);
 	strcat(prompt, buf);
 
 	i = min;
 	while ((buf = Xfgets(fp))) {
 		Xlocate(0, i);
 		Xputterm(L_CLEAR);
-		Xcprintf2("%.*k", n_column, buf);
-		free2(buf);
+		VOID_C XXcprintf("%.*k", n_column, buf);
+		Xfree(buf);
 		if (++i >= max) {
 			i = min;
 			hideclock = 1;
@@ -992,8 +992,8 @@ CONST char *file;
 			Xputterm(L_CLEAR);
 		}
 	}
-	Xfclose(fp);
-	free2(prompt);
+	VOID_C Xfclose(fp);
+	Xfree(prompt);
 }
 #endif	/* !PAGER */
 
@@ -1047,7 +1047,7 @@ static int NEAR execshell(VOID_A)
 	sigvecset(0);
 	mode = Xtermmode(0);
 	wastty = isttyiomode;
-	kanjiputs(SHEXT_K);
+	VOID_C Xkanjiputs(SHEXT_K);
 #ifdef	DEP_PTY
 	if (isptymode()) {
 		min = filetop(win);
@@ -1067,7 +1067,7 @@ static int NEAR execshell(VOID_A)
 	checkscreen(-1, -1);
 #endif
 	if (wastty) Xttyiomode(wastty - 1);
-	Xtermmode(mode);
+	VOID_C Xtermmode(mode);
 	sigvecset(1);
 
 	return(ret);
@@ -1182,7 +1182,7 @@ CONST char *arg;
 	tmp1 = sorton & 7;
 	tmp2 = sorton & ~7;
 	if (arg && *arg) {
-		i = atoi2(arg);
+		i = Xatoi(arg);
 		if ((i >= 0 && i <= 13) || (i & 7) <= 5) {
 			tmp1 = i & 7;
 			tmp2 = i & ~7;
@@ -1210,7 +1210,7 @@ CONST char *arg;
 		if (selectstr(&tmp2, 2, 56, str, val) != K_CR)
 			return(FNC_CANCEL);
 		sorton = tmp1 + tmp2;
-		dupl = (int *)malloc2(maxfile * sizeof(int));
+		dupl = (int *)Xmalloc(maxfile * sizeof(int));
 		for (i = 0; i < maxfile; i++) {
 			dupl[i] = filelist[i].ent;
 			filelist[i].ent = i;
@@ -1221,7 +1221,7 @@ CONST char *arg;
 			tmp1 = filelist[i].ent;
 			filelist[i].ent = dupl[tmp1];
 		}
-		free2(dupl);
+		Xfree(dupl);
 		chgorder = 1;
 	}
 
@@ -1323,7 +1323,7 @@ CONST char *arg;
 	if (!fdmode) {
 		Xlocate(0, L_MESLINE);
 		Xputterm(L_CLEAR);
-		Xkanjiputs(QUIT_K);
+		VOID_C Xkanjiputs(QUIT_K);
 		val[0] = 0;
 		val[1] = 1;
 		val[2] = 2;
@@ -1349,16 +1349,16 @@ CONST char *arg;
 {
 	char *path;
 
-	if (arg && *arg) path = strdup2(arg);
+	if (arg && *arg) path = Xstrdup(arg);
 	else if (!(path = inputstr(MAKED_K, 1, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(path = evalpath(path, 0))) {
-		free2(path);
+		Xfree(path);
 		return(FNC_CANCEL);
 	}
 
 	if (mkdir2(path, 0777) < 0) warning(-1, path);
-	free2(path);
+	Xfree(path);
 
 	return(FNC_EFFECT);
 }
@@ -1403,11 +1403,11 @@ CONST char *arg;
 
 	if (isdotdir(filelist[filepos].name)) return(warning_bell(arg));
 	if (arg && *arg) {
-		file = strdup2(arg);
+		file = Xstrdup(arg);
 		errno = EEXIST;
 		if (Xaccess(file, F_OK) >= 0 || errno != ENOENT) {
 			warning(-1, file);
-			free2(file);
+			Xfree(file);
 			return(FNC_CANCEL);
 		}
 	}
@@ -1419,17 +1419,17 @@ CONST char *arg;
 			warning(-1, file);
 		}
 		else warning(0, WRONG_K);
-		free2(file);
+		Xfree(file);
 	}
 
 	if (Xrename(fnodospath(path, filepos), file) < 0) {
 		warning(-1, file);
-		free2(file);
+		Xfree(file);
 		return(FNC_CANCEL);
 	}
 	if (strdelim(file, 0)) {
-		free2(file);
-		file = strdup2(parentpath);
+		Xfree(file);
+		file = Xstrdup(parentpath);
 	}
 	replacefname(file);
 
@@ -1500,7 +1500,7 @@ CONST char *arg;
 {
 	char *wild;
 
-	if (arg && *arg) wild = strdup2(arg);
+	if (arg && *arg) wild = Xstrdup(arg);
 	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", -1)))
 		return(FNC_CANCEL);
 
@@ -1510,13 +1510,13 @@ CONST char *arg;
 #endif
 	if (strdelim(wild, 1)) {
 		warning(ENOENT, wild);
-		free2(wild);
+		Xfree(wild);
 		return(FNC_CANCEL);
 	}
-	free2(findpattern);
+	Xfree(findpattern);
 	if (*wild) findpattern = wild;
 	else {
-		free2(wild);
+		Xfree(wild);
 		findpattern = NULL;
 	}
 
@@ -1543,8 +1543,8 @@ CONST char *arg;
 		chdir3(destpath, 1);
 	}
 
-	replacefname(strdup2(tmp));
-	free2(destpath);
+	replacefname(Xstrdup(tmp));
+	Xfree(destpath);
 
 	return(FNC_EFFECT);
 }
@@ -1565,7 +1565,7 @@ CONST char *arg;
 	char *com;
 	int ret;
 
-	if (arg) com = strdup2(arg);
+	if (arg) com = Xstrdup(arg);
 	else {
 		Xttyiomode(1);
 		com = inputshellloop(-1, NULL);
@@ -1580,7 +1580,7 @@ CONST char *arg;
 		execshell();
 		ret = FNC_EFFECT;
 	}
-	free2(com);
+	Xfree(com);
 
 	return(ret);
 }
@@ -1624,20 +1624,20 @@ CONST char *arg;
 	}
 	else {
 		len = strlen(filelist[filepos].name) + 2 + 1;
-		tmp = malloc2(len + 1);
+		tmp = Xmalloc(len + 1);
 		tmp[0] = '.';
 		tmp[1] = _SC_;
-		strcpy2(&(tmp[2]), filelist[filepos].name);
+		Xstrcpy(&(tmp[2]), filelist[filepos].name);
 	}
 	Xttyiomode(1);
 	com = inputshellloop(len, tmp);
 	Xttyiomode(0);
-	if (tmp != filelist[filepos].name) free2(tmp);
+	if (tmp != filelist[filepos].name) Xfree(tmp);
 #endif
 	if (!com) return(FNC_CANCEL);
 	if (!*com) {
 		execshell();
-		free2(com);
+		Xfree(com);
 		return(FNC_EFFECT);
 	}
 
@@ -1665,7 +1665,7 @@ CONST char *arg;
 		ret = ptyusercomm(com, filelist[filepos].name, F_ARGSET);
 	}
 	ret = evalstatus(ret);
-	free2(com);
+	Xfree(com);
 
 	return(ret);
 }
@@ -1685,16 +1685,16 @@ CONST char *arg;
 	char *file;
 	int ret;
 
-	if (arg && *arg) file = strdup2(arg);
+	if (arg && *arg) file = Xstrdup(arg);
 	else if (!(file = inputstr(PACK_K, 1, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(file = evalpath(file, 0))) {
-		free2(file);
+		Xfree(file);
 		return(FNC_CANCEL);
 	}
 
 	ret = pack(file);
-	free2(file);
+	Xfree(file);
 	if (ret < 0) {
 		Xputterm(T_BELL);
 		return(FNC_CANCEL);
@@ -1753,16 +1753,16 @@ CONST char *arg;
 	char *path;
 	int ret;
 
-	if (arg && *arg) path = strdup2(arg);
+	if (arg && *arg) path = Xstrdup(arg);
 	else if (!(path = inputstr(FSDIR_K, 0, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
 	else if (!*(path = evalpath(path, 0))) {
-		free2(path);
-		path = strdup2(curpath);
+		Xfree(path);
+		path = Xstrdup(curpath);
 	}
 
 	ret = infofs(path);
-	free2(path);
+	Xfree(path);
 	if (!ret) return(FNC_CANCEL);
 
 	return(FNC_HELPSPOT);
@@ -1789,7 +1789,7 @@ CONST char *s;
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 	Xputterm(T_STANDOUT);
 #endif
-	Xkanjiputs(s);
+	VOID_C Xkanjiputs(s);
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 	Xputterm(END_STANDOUT);
 #endif
@@ -1866,11 +1866,11 @@ CONST char *arg;
 	if (!(path = tree(0, NULL))) return(FNC_UPDATE);
 	if (chdir3(path, 1) < 0) {
 		warning(-1, path);
-		free2(path);
+		Xfree(path);
 		return(FNC_UPDATE);
 	}
-	free2(path);
-	free2(findpattern);
+	Xfree(path);
+	Xfree(findpattern);
 	findpattern = NULL;
 	replacefname(NULL);
 
@@ -1896,7 +1896,7 @@ CONST char *arg;
 #ifdef	DEP_PSEUDOPATH
 	drive = 0;
 #endif
-	if (arg && *arg) dev = strdup2(arg);
+	if (arg && *arg) dev = Xstrdup(arg);
 #if	MSDOS
 	else if (!(dev = inputstr(BKUP_K, 1, -1, NULL, HST_PATH)))
 		return(FNC_CANCEL);
@@ -1905,18 +1905,18 @@ CONST char *arg;
 		return(FNC_CANCEL);
 #endif
 	else if (!*(dev = evalpath(dev, 0))) {
-		free2(dev);
+		Xfree(dev);
 		return(FNC_CANCEL);
 	}
 	else if (archivefile) {
 		if (!(dir = tmpunpack(0))) {
-			free2(dev);
+			Xfree(dev);
 			return(FNC_CANCEL);
 		}
 	}
 #ifdef	DEP_PSEUDOPATH
 	else if ((drive = tmpdosdupl(nullstr, &dir, 0)) < 0) {
-		free2(dev);
+		Xfree(dev);
 		return(FNC_CANCEL);
 	}
 #endif
@@ -1928,7 +1928,7 @@ CONST char *arg;
 #endif
 	if (archivefile) removetmp(dir, NULL);
 
-	free2(dev);
+	Xfree(dev);
 	if (ret <= 0) return(FNC_CANCEL);
 
 	return(FNC_EFFECT);
@@ -1980,7 +1980,7 @@ int oldwin;
 	filelist = addlist(filelist, maxfile, &maxent);
 	memcpy((char *)filelist, (char *)(winvar[oldwin].v_filelist), i);
 	for (i = 0; i < winvar[oldwin].v_maxfile; i++)
-		filelist[i].name = strdup2(winvar[oldwin].v_filelist[i].name);
+		filelist[i].name = Xstrdup(winvar[oldwin].v_filelist[i].name);
 	filepos = winvar[oldwin].v_filepos;
 	sorton = winvar[oldwin].v_sorton;
 	dispmode = winvar[oldwin].v_dispmode;
@@ -1989,14 +1989,14 @@ int oldwin;
 static VOID NEAR movewin(oldwin)
 int oldwin;
 {
-	free2(winvar[oldwin].v_fullpath);
-	winvar[oldwin].v_fullpath = strdup2(fullpath);
-	if (winvar[win].v_fullpath) strcpy2(fullpath, winvar[win].v_fullpath);
+	Xfree(winvar[oldwin].v_fullpath);
+	winvar[oldwin].v_fullpath = Xstrdup(fullpath);
+	if (winvar[win].v_fullpath) Xstrcpy(fullpath, winvar[win].v_fullpath);
 # ifndef	_NOARCHIVE
-	free2(winvar[oldwin].v_archivedir);
-	winvar[oldwin].v_archivedir = strdup2(archivedir);
+	Xfree(winvar[oldwin].v_archivedir);
+	winvar[oldwin].v_archivedir = Xstrdup(archivedir);
 	if (winvar[win].v_archivedir)
-		strcpy2(archivedir, winvar[win].v_archivedir);
+		Xstrcpy(archivedir, winvar[win].v_archivedir);
 # endif
 }
 
@@ -2105,7 +2105,7 @@ CONST char *arg;
 	int n, next;
 
 	if (windows <= 1) return(FNC_NONE);
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	if ((next = win + 1) >= windows) next = 0;
 	if (winvar[next].v_fileperrow - n < WFILEMIN)
 		n = winvar[next].v_fileperrow - WFILEMIN;
@@ -2126,7 +2126,7 @@ CONST char *arg;
 	int n, next;
 
 	if (windows <= 1) return(FNC_NONE);
-	if (!arg || (n = atoi2(arg)) <= 0) n = 1;
+	if (!arg || (n = Xatoi(arg)) <= 0) n = 1;
 	if ((next = win + 1) >= windows) next = 0;
 	if (FILEPERROW - n < WFILEMIN) n = FILEPERROW - WFILEMIN;
 	if (n <= 0) return(warning_bell(arg));

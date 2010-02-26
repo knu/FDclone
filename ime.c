@@ -266,7 +266,7 @@ CONST char *s;
 	int n, c;
 
 	if ((n = getkeycode(s, 0)) >= 0) return((u_int)n);
-	if (!(n = *(s++)) || !sscanf2(s, "%<0*x%$", JIS_DIGIT, &c))
+	if (!(n = *(s++)) || !Xsscanf(s, "%<0*x%$", JIS_DIGIT, &c))
 		return((u_int)0);
 
 	return(getdefcode(c, n, 1));
@@ -287,7 +287,7 @@ static VOID NEAR imeputch(c, so)
 int c, so;
 {
 	if (so) Xputterm(T_STANDOUT);
-	Xputch2(c);
+	VOID_C XXputch(c);
 	if (ime_xposp) (*ime_xposp)++;
 	if (so) Xputterm(END_STANDOUT);
 }
@@ -317,12 +317,12 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = vasprintf3(&buf, fmt, args);
+	n = vasprintf2(&buf, fmt, args);
 	va_end(args);
 
-	Xcputs2(buf);
+	XXcputs(buf);
 	if (ime_xposp) *ime_xposp += n;
-	free2(buf);
+	Xfree(buf);
 
 	return(n);
 }
@@ -369,7 +369,7 @@ u_int c;
 {
 	if (!(jp -> buf) || jp -> max + 1 >= jp -> size) {
 		jp -> size += BUFUNIT;
-		jp -> buf = (u_short *)realloc2(jp -> buf,
+		jp -> buf = (u_short *)Xrealloc(jp -> buf,
 			jp -> size * sizeof(u_short));
 	}
 
@@ -596,9 +596,9 @@ jisbuf *jp;
 	n = (u_int)0;
 	for (i = 1; i <= JIS_DIGIT; i++) {
 		if ((c = zen2han(jp -> buf[i])) & ~0xff) return((u_int)0);
-		c = tolower2(c);
-		if (isdigit2(c)) c -= '0';
-		else if (isxdigit2(c)) c -= 'a' - 10;
+		c = Xtolower(c);
+		if (Xisdigit(c)) c -= '0';
+		else if (Xisxdigit(c)) c -= 'a' - 10;
 		else return((u_int)0);
 		n = (n << 4) + c;
 	}
@@ -803,11 +803,11 @@ int sig;
 				if (plen < 0) return(-1);
 				break;
 			default:
-				if (isdigit2(ch)) ch -= '0';
-				else if (isupper2(ch) && isxdigit2(ch))
+				if (Xisdigit(ch)) ch -= '0';
+				else if (Xisupper(ch) && Xisxdigit(ch))
 					ch -= 'A' - 10;
 				else {
-					if (!(ch & ~0xff) && isprint2(ch)) {
+					if (!(ch & ~0xff) && Xisprint(ch)) {
 						last = ch;
 						ch = K_CR;
 					}
@@ -980,11 +980,11 @@ int sig, type;
 					ch = K_ESC;
 				break;
 			default:
-				if (isdigit2(ch)) ch -= '0';
-				else if (isupper2(ch) && isxdigit2(ch))
+				if (Xisdigit(ch)) ch -= '0';
+				else if (Xisupper(ch) && Xisxdigit(ch))
 					ch -= 'A' - 10;
 				else {
-					if (!(ch & ~0xff) && isprint2(ch)) {
+					if (!(ch & ~0xff) && Xisprint(ch)) {
 						last = ch;
 						ch = K_CR;
 					}
@@ -1052,7 +1052,7 @@ int ptr, min, max, *lastp, sig;
 			else if (i > 0) *lastp = i;
 		}
 		else {
-			kbuf = (u_short *)malloc2((rjisbuf.max + 1)
+			kbuf = (u_short *)Xmalloc((rjisbuf.max + 1)
 				* sizeof(u_short));
 			for (i = 0; i < rjisbuf.max; i++) {
 				c = rjisbuf.buf[i];
@@ -1066,12 +1066,12 @@ int ptr, min, max, *lastp, sig;
 			kbuf[rjisbuf.max] = 0;
 			if ((argv = searchdict(kbuf, rjisbuf.max))) {
 				copyjisbuf(&kjisbuf, argv[argc], -1);
-				free2(kbuf);
+				Xfree(kbuf);
 			}
 			else {
 				copyjisbuf(&kjisbuf, rjisbuf.buf, rjisbuf.max);
-				argv = (u_short **)malloc2(2
-					* sizeof(short *));
+				argv = (u_short **)
+					Xmalloc(2 * sizeof(short *));
 				argv[0] = kbuf;
 				argv[1] = NULL;
 			}
@@ -1247,7 +1247,7 @@ int sig;
 			}
 			if (cont < 0) break;
 			else if (cont > 0) continue;
-			else if (!(c & ~0xff) && isprint2(c)) /*EMPTY*/;
+			else if (!(c & ~0xff) && Xisprint(c)) /*EMPTY*/;
 			else if (!ptr
 			&& !isvalidbuf(kjisbuf) && !isvalidbuf(rjisbuf))
 				break;
@@ -1397,10 +1397,10 @@ char *buf;
 VOID ime_freebuf(VOID_A)
 {
 	kjisbuf.max = 0;
-	free2(kjisbuf.buf);
+	Xfree(kjisbuf.buf);
 	kjisbuf.buf = NULL;
 	rjisbuf.max = 0;
-	free2(rjisbuf.buf);
+	Xfree(rjisbuf.buf);
 	rjisbuf.buf = NULL;
 }
 # endif	/* DEBUG */

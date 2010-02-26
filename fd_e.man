@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (C) 1995-2008 Takashi SHIRAI
+.\" Copyright (C) 1995-2010 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   3.00d 11/30/08
+.\" @(#)fd.1   3.00e 02/27/10
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "November 30, 2008"
+.TH FD 1 "February 27, 2010"
 .de sh
 .br
 .PP
@@ -1160,7 +1160,7 @@ it is regarded as the standard input is specified.
 .RE
 
 When you specify the file with each redirect,
-you can describe the filename as 
+you can describe the filename as
 .RI ` scheme\fB://\fPhost\fB:\fPport '
 form to open the following TCP sockets,
 according to the string of
@@ -5934,4 +5934,4 @@ The symbolic links in an archive file cannot be unpacked individually.
 
 The user interface is cheap.
 .SH COPYRIGHT
-Copyright (C) 1995-2008 by Takashi SHIRAI
+Copyright (C) 1995-2010 by Takashi SHIRAI

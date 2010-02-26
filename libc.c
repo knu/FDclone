@@ -132,7 +132,7 @@ CONST char *path;
 			errno = duperrno;
 			return(-1);
 		}
-		close(fd);
+		VOID_C close(fd);
 	}
 #endif	/* !MSDOS */
 
@@ -147,52 +147,52 @@ CONST char *path;
 
 #ifdef	DEBUG
 	if (!path) {
-		free2(lastpath);
+		Xfree(lastpath);
 		lastpath = NULL;
 # ifdef	DEP_PSEUDOPATH
-		free2(unixpath);
+		Xfree(unixpath);
 		unixpath = NULL;
 # endif
 		return(0);
 	}
 #endif	/* DEBUG */
 
-	realpath2(path, tmp, (physical_path) ? RLP_READLINK : 0);
-	strcpy2(cwd, fullpath);
-	strcpy2(fullpath, tmp);
+	Xrealpath(path, tmp, (physical_path) ? RLP_READLINK : 0);
+	Xstrcpy(cwd, fullpath);
+	Xstrcpy(fullpath, tmp);
 
 	if (_chdir2(fullpath) < 0) {
 		duperrno = errno;
 		if (_chdir2(cwd) < 0) lostcwd(fullpath);
-		else strcpy2(fullpath, cwd);
+		else Xstrcpy(fullpath, cwd);
 		errno = duperrno;
 		return(-1);
 	}
-	free2(lastpath);
-	lastpath = strdup2(cwd);
+	Xfree(lastpath);
+	lastpath = Xstrdup(cwd);
 #ifdef	DEP_PSEUDOPATH
 	switch (checkdrv(lastdrv, NULL)) {
 # ifdef	DEP_DOSDRIVE
 		case DEV_DOS:
-			if (!unixpath) unixpath = strdup2(cwd);
-			if (Xgetwd(cwd)) strcpy2(fullpath, cwd);
-			realpath2(fullpath, fullpath, 0);
+			if (!unixpath) unixpath = Xstrdup(cwd);
+			if (Xgetwd(cwd)) Xstrcpy(fullpath, cwd);
+			Xrealpath(fullpath, fullpath, 0);
 			break;
 # endif
 # ifdef	DEP_URLPATH
 		case DEV_URL:
-			if (!unixpath) unixpath = strdup2(cwd);
+			if (!unixpath) unixpath = Xstrdup(cwd);
 			break;
 # endif
 		default:
-			free2(unixpath);
+			Xfree(unixpath);
 			unixpath = NULL;
 			break;
 	}
 #endif	/* DEP_PSEUDOPATH */
 	if (getconstvar(ENVPWD)) setenv2(ENVPWD, fullpath, 1);
 #if	MSDOS
-	if (unixrealpath(fullpath, tmp)) strcpy2(fullpath, tmp);
+	if (unixrealpath(fullpath, tmp)) Xstrcpy(fullpath, tmp);
 #endif
 	entryhist(fullpath, HST_PATH | HST_UNIQ);
 #ifdef	DEP_PTY
@@ -240,7 +240,7 @@ int raw;
 		if (!Xgetwd(fullpath)) lostcwd(fullpath);
 	}
 	else {
-		free2(findpattern);
+		Xfree(findpattern);
 		findpattern = NULL;
 #ifndef	_NOUSEHASH
 		searchhash(NULL, nullstr, nullstr);
@@ -286,10 +286,10 @@ int mode;
 }
 
 /*
- *	strncpy3(buf, s, &(x), 0): same as sprintf(buf, "%-*.*s", x, x, s);
- *	strncpy3(buf, s, &(-x), 0): same as sprintf(buf, "%s", s);
+ *	strncpy2(buf, s, &(x), 0): same as sprintf(buf, "%-*.*s", x, x, s);
+ *	strncpy2(buf, s, &(-x), 0): same as sprintf(buf, "%s", s);
  */
-int strncpy3(s1, s2, lenp, ptr)
+int strncpy2(s1, s2, lenp, ptr)
 char *s1;
 CONST char *s2;
 int *lenp, ptr;
@@ -313,7 +313,7 @@ int *lenp, ptr;
 
 	while (i < *lenp && s2[j]) {
 		if (iskanji1(s2, j)) {
-			snprintf2(&(s1[i]), *lenp - i + 1, "%.2s", &(s2[j]));
+			Xsnprintf(&(s1[i]), *lenp - i + 1, "%.2s", &(s2[j]));
 			i += strlen(&(s1[i]));
 			j += 2;
 			continue;
@@ -326,14 +326,14 @@ int *lenp, ptr;
 #else
 		else if (isskana(s2, j)) /*EMPTY*/;
 #endif
-		else if (iscntrl2(s2[j])) {
-			snprintf2(&(s1[i]), *lenp - i + 1,
+		else if (Xiscntrl(s2[j])) {
+			Xsnprintf(&(s1[i]), *lenp - i + 1,
 				"^%c", (s2[j++] + '@') & 0x7f);
 			i += strlen(&(s1[i]));
 			continue;
 		}
 		else if (ismsb(s2[j])) {
-			snprintf2(&(s1[i]), *lenp - i + 1,
+			Xsnprintf(&(s1[i]), *lenp - i + 1,
 				"\\%03o", s2[j++] & 0xff);
 			i += strlen(&(s1[i]));
 			continue;
@@ -363,7 +363,7 @@ CONST char *s;
 #else
 		else if (isskana(s, i)) /*EMPTY*/;
 #endif
-		else if (iscntrl2(s[i])) len++;
+		else if (Xiscntrl(s[i])) len++;
 		else if (ismsb(s[i])) len += 3;
 	}
 
@@ -376,8 +376,8 @@ CONST char *s;
 	int duperrno;
 
 	duperrno = errno;
-	if (s) fprintf2(Xstderr, "%k: ", s);
-	Xfputs(strerror2(duperrno), Xstderr);
+	if (s) Xfprintf(Xstderr, "%k: ", s);
+	Xfputs(Xstrerror(duperrno), Xstderr);
 	if (isttyiomode) Xfputc('\r', Xstderr);
 	VOID_C fputnl(Xstderr);
 }
@@ -405,19 +405,19 @@ char *s, **envp;
 	char *cp, **new;
 	int i, n, len;
 
-	if ((cp = strchr2(s, '='))) len = (int)(cp - s);
+	if ((cp = Xstrchr(s, '='))) len = (int)(cp - s);
 	else len = strlen(s);
 
 	if ((n = _getenv2(s, len, envp)) < 0) n = 0;
 	else if (envp[n]) {
-		free2(envp[n]);
+		Xfree(envp[n]);
 		if (cp) envp[n] = s;
 		else for (i = n; envp[i]; i++) envp[i] = envp[i + 1];
 		return(envp);
 	}
 	if (!cp) return(envp);
 
-	new = (char **)realloc2(envp, (n + 2) * sizeof(char *));
+	new = (char **)Xrealloc(envp, (n + 2) * sizeof(char *));
 	new[n] = s;
 	new[n + 1] = (char *)NULL;
 
@@ -477,17 +477,17 @@ int export;
 #endif
 	}
 	else {
-		cp = malloc2(len + strlen(value) + 2);
+		cp = Xmalloc(len + strlen(value) + 2);
 		memcpy(cp, name, len);
 #if	defined (ENVNOCASE) && !defined (DEP_ORIGSHELL)
-		for (i = 0; i < len ; i++) cp[i] = toupper2(cp[i]);
+		for (i = 0; i < len ; i++) cp[i] = Xtoupper(cp[i]);
 #endif
 		cp[len] = '=';
-		strcpy2(&(cp[len + 1]), value);
+		Xstrcpy(&(cp[len + 1]), value);
 	}
 #ifdef	DEP_ORIGSHELL
 	if (((export) ? putexportvar(cp, len) : putshellvar(cp, len)) < 0) {
-		free2(cp);
+		Xfree(cp);
 		return(-1);
 	}
 #else	/* !DEP_ORIGSHELL */
@@ -551,7 +551,7 @@ int flags;
 	sigvecset(n);
 	if (ret >= 127 && (flags & F_NOCONFIRM)) {
 		if (dumbterm <= 2) Xfputc('\007', Xstderr);
-		fprintf2(Xstderr, "\n%k", HITKY_K);
+		Xfprintf(Xstderr, "\n%k", HITKY_K);
 		Xfflush(Xstderr);
 		Xttyiomode(1);
 		keyflush();
@@ -562,7 +562,7 @@ int flags;
 
 	if (wastty) {
 		Xttyiomode(wastty - 1);
-		if (n && (flags & F_NOCONFIRM)) Xtermmode(mode);
+		if (n && (flags & F_NOCONFIRM)) VOID_C Xtermmode(mode);
 		if (!(flags & (F_NOCONFIRM | F_ISARCH))
 		|| ((flags & F_ISARCH) && ret >= 127)) {
 			hideclock = 1;
@@ -631,5 +631,5 @@ char *getwd2(VOID_A)
 
 	if (!Xgetwd(cwd)) lostcwd(cwd);
 
-	return(strdup2(cwd));
+	return(Xstrdup(cwd));
 }

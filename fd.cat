@@ -843,10 +843,10 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    れ、その終了ステータスが 00 ならば対応する tthheenn
                    節の _l_i_s_t が実行され、その時点で後続の eelliiff 節
                    は無視されます。もしどの iiff 節や eelliiff 節の
-                   _l_i_s_t も 00 で終了しなかった場合、 eellssee 節の
-                   _l_i_s_t が実行されます。どの tthheenn 節や eellssee 節の
-                   _l_i_s_t も実行されなかった場合は、iiff は終了ステー
-                   タス 00 を返します。
+                   _l_i_s_t も 00 で終了しなかった場合、eellssee 節の _l_i_s_t
+                   が実行されます。どの tthheenn 節や eellssee 節の _l_i_s_t
+                   も実行されなかった場合は、iiff は終了ステータス
+                   00 を返します。
 
      wwhhiillee _l_i_s_t ddoo _l_i_s_t ddoonnee
                    wwhhiillee 節の _l_i_s_t が繰返し実行され、その終了ステ
@@ -1142,7 +1142,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    ー入力待ちをしません。----YY を指定するとコピー先
                    の上書き確認のキー入力待ちをします。
 
-                   (MS-DOS 版では COMMAND.COM との互換性 のために、
+                   (MS-DOS 版では COMMAND.COM との互換性のために、
                    オプション識別用文字として -- の代わりに // を用
                    います。)
 
@@ -1154,7 +1154,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    --PP を指定すると削除する前に確認のキー入力待ち
                    をします。
 
-                   (MS-DOS 版では COMMAND.COM との互換性 のために、
+                   (MS-DOS 版では COMMAND.COM との互換性のために、
                    オプション識別用文字として -- の代わりに // を用
                    います。)
 
@@ -1184,7 +1184,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    す。また、これらのオプション文字の前に -- を冠
                    すると、そのオプションを上書きして無効にします。
 
-                   (MS-DOS 版では COMMAND.COM との互換性 のために、
+                   (MS-DOS 版では COMMAND.COM との互換性のために、
                    オプション識別用文字として -- の代わりに // を用
                    います。)
 
@@ -2695,8 +2695,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    指定した漢字コードに変換されます。但し、%%CC や
                    %%JJJJ などの各種マクロを用いた場合は、それぞれの
                    マクロに応じた漢字コードが用いられます。このう
-                   ち JJIISS88, JJUUNNEETT, HHEEXX, CCAAPP 等は  Samba で用いら
-                   れている漢字コードです。((UUNNIIXX))
+                   ち JJIISS88, JJUUNNEETT, HHEEXX, CCAAPP 等は Samba で用いられ
+                   ている漢字コードです。((UUNNIIXX))
                        SSJJIISS, ssjjiiss     Shift JIS
                        EEUUCC, eeuucc       EUC 漢字
                        JJIISS, jjiiss       7bit JIS
@@ -3513,4 +3513,4 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      ユーザインタフェースが稚拙です。
 
 著著作作権権
-     Copyright (C) 1995-2008 by Takashi SHIRAI
+     Copyright (C) 1995-2010 by Takashi SHIRAI

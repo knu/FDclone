@@ -138,6 +138,11 @@ extern int Xrmdir __P_((CONST char *));
 #else
 #define	Xrmdir(p)		((rmdir(p)) ? -1 : 0)
 #endif
+#ifdef	NOFLOCK
+#define	Xflock(f, o)		(0)
+#else
+extern int Xflock __P_((int, int));
+#endif
 #ifdef	NOSELECT
 #define	checkread(f, b, n, t)	sureread(f, b, n)
 #else

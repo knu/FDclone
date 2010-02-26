@@ -72,20 +72,20 @@ va_dcl
 	char *cp;
 	int n;
 
-	free2(logheader);
+	Xfree(logheader);
 	logheader = NULL;
 
-	t = time2();
+	t = Xtime(NULL);
 	tm = localtime(&t);
-	n = asprintf2(&cp, "[%04d/%02d/%02d %02d:%02d:%02d]: %s",
+	n = Xasprintf(&cp, "[%04d/%02d/%02d %02d:%02d:%02d]: %s",
 		tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec, fmt);
 	if (n < 0) return;
 
 	VA_START(args, fmt);
-	VOID_C vasprintf2(&logheader, cp, args);
+	VOID_C Xvasprintf(&logheader, cp, args);
 	va_end(args);
-	free2(cp);
+	Xfree(cp);
 }
 
 VOID urlfreestatlist(n)
@@ -94,7 +94,7 @@ int n;
 	if (n < 0 || n >= maxurlstat) return;
 	if (urlstatlist[n].nlink > 0 && --(urlstatlist[n].nlink)) return;
 	freelist(urlstatlist[n].list, urlstatlist[n].max);
-	free2(urlstatlist[n].path);
+	Xfree(urlstatlist[n].path);
 	urlstatlist[n].uh = -1;
 	urlstatlist[n].max = -1;
 	urlstatlist[n].list = NULL;
@@ -103,7 +103,7 @@ int n;
 	while (maxurlstat > 0 && urlstatlist[maxurlstat - 1].uh < 0)
 		maxurlstat--;
 	if (!maxurlstat) {
-		free2(urlstatlist);
+		Xfree(urlstatlist);
 		urlstatlist = NULL;
 	}
 }
@@ -287,7 +287,7 @@ urldev_t *devp;
 			devp -> flags |= UFL_PROXIED;
 			if (hp -> port < 0) hp -> port = urlgetport(type);
 		}
-		free2(cp);
+		Xfree(cp);
 	}
 
 	s = sockconnect(hp -> host, hp -> port, urltimeout, SCK_LOWDELAY);
@@ -324,13 +324,13 @@ CONST char *path;
 
 	for (i = 0; i < maxurlstat; i++) if (urlstatlist[i].uh < 0) break;
 	if (i >= maxurlstat)
-		urlstatlist = (urlstat_t *)realloc2(urlstatlist,
+		urlstatlist = (urlstat_t *)Xrealloc(urlstatlist,
 			++maxurlstat * sizeof(*urlstatlist));
 	urlstatlist[i].list = list;
 	urlstatlist[i].max = max;
 	urlstatlist[i].uh = uh;
 	urlstatlist[i].nlink = 1;
-	urlstatlist[i].path = strdup2(path);
+	urlstatlist[i].path = Xstrdup(path);
 	urlstatlist[i].flags = 0;
 
 	return(i);
@@ -422,7 +422,7 @@ CONST char *path;
 		if (buf) copyrootpath(buf);
 		cp = (path[1]) ? &(path[1]) : curpath;
 	}
-	else if (buf && snprintf2(buf, size, "%-.*s", cp - path, path) < 0)
+	else if (buf && Xsnprintf(buf, size, "%-.*s", cp - path, path) < 0)
 		return(NULL);
 	else if (!*(++cp)) cp = curpath;
 
@@ -473,7 +473,7 @@ int *entp, cacheonly;
 		memcpy((char *)namep,
 			(char *)&(urlstatlist[n].list[i]), sizeof(*namep));
 #ifndef	NOSYMLINK
-		namep -> linkname = strdup2(urlstatlist[n].list[i].linkname);
+		namep -> linkname = Xstrdup(urlstatlist[n].list[i].linkname);
 #endif
 	}
 
@@ -523,12 +523,12 @@ int *entp;
 			n = 1;
 		}
 		cp = (n) ? _SS_ : nullstr;
-		n = snprintf2(buf, sizeof(buf),
+		n = Xsnprintf(buf, sizeof(buf),
 			"%-.*s%s%s", n, path, cp, namep -> linkname);
 		if (n < 0) return(-1);
-		VOID_C realpath2(buf, resolved, RLP_PSEUDOPATH);
+		VOID_C Xrealpath(buf, resolved, RLP_PSEUDOPATH);
 		path = resolved;
-		free2(namep -> linkname);
+		Xfree(namep -> linkname);
 #endif	/* !NOSYMLINK */
 	}
 
@@ -602,9 +602,9 @@ int type;
 #endif
 #ifdef	DEP_HTTPPATH
 			case TYPE_HTTP:
-				free2(tmp.host.user);
+				Xfree(tmp.host.user);
 				tmp.host.user = NULL;
-				free2(tmp.host.pass);
+				Xfree(tmp.host.pass);
 				tmp.host.pass = NULL;
 				break;
 #endif
@@ -666,7 +666,7 @@ int type;
 #ifdef	DEP_HTTPPATH
 		case TYPE_HTTP:
 			urlhostlist[uh].http =
-				(httpstat_t *)malloc2(sizeof(httpstat_t));
+				(httpstat_t *)Xmalloc(sizeof(httpstat_t));
 			copyrootpath((urlhostlist[uh].http) -> cwd);
 			httpreset(uh, 0);
 			break;
@@ -750,7 +750,7 @@ int flags;
 	if (flags & UGP_SCHEME) {
 		s = urlgetscheme(urlhostlist[uh].type);
 		if (!s) return(seterrno(EINVAL));
-		n = snprintf2(buf, size, "%s://", s);
+		n = Xsnprintf(buf, size, "%s://", s);
 		if (n < 0) return(-1);
 		len += n;
 	}
@@ -769,11 +769,11 @@ int flags;
 		}
 		if (!cp) n = 0;
 		else if ((flags & UGP_PASS) && pass)
-			n = snprintf2(buf, size, "%s:%s", cp, pass);
-		else n = snprintf2(buf, size, "%s", cp);
+			n = Xsnprintf(buf, size, "%s:%s", cp, pass);
+		else n = Xsnprintf(buf, size, "%s", cp);
 		if (flags & UGP_ENCODE) {
-			free2(cp);
-			free2(pass);
+			Xfree(cp);
+			Xfree(pass);
 		}
 		if (n < 0) return(-1);
 		len += n;
@@ -781,7 +781,7 @@ int flags;
 		if ((flags & UGP_HOST) && n) {
 			buf += n;
 			size -= n;
-			n = snprintf2(buf, size, "@");
+			n = Xsnprintf(buf, size, "@");
 			if (n < 0) return(-1);
 			len += n;
 		}
@@ -796,9 +796,9 @@ int flags;
 		size -= n;
 		if (flags & UGP_ENCODE) cp = urlencode(cp, -1, URL_UNSAFEHOST);
 		if (port == urlgetport(urlhostlist[uh].type))
-			n = snprintf2(buf, size, "%s", cp);
-		else n = snprintf2(buf, size, "%s:%d", cp, port);
-		if (flags & UGP_ENCODE) free2(cp);
+			n = Xsnprintf(buf, size, "%s", cp);
+		else n = Xsnprintf(buf, size, "%s:%d", cp, port);
+		if (flags & UGP_ENCODE) Xfree(cp);
 		if (n < 0) return(-1);
 		len += n;
 	}
@@ -810,7 +810,7 @@ int flags;
 
 		buf += n;
 		size -= n;
-		n = snprintf2(buf, size, "%s", s);
+		n = Xsnprintf(buf, size, "%s", s);
 		if (n < 0) return(-1);
 		len += n;
 	}
@@ -894,10 +894,10 @@ CONST char *path;
 	}
 	if ((uh = urlopendev(host, type)) < 0) return(NULL);
 	if ((n = recvlist(uh, path, 0)) < 0) {
-		_urlclosedev(uh, -1);
+		VOID_C _urlclosedev(uh, -1);
 		return(NULL);
 	}
-	sockdirp = (sockDIR *)malloc2(sizeof(*sockdirp));
+	sockdirp = (sockDIR *)Xmalloc(sizeof(*sockdirp));
 	sockdirp -> dd_id = SID_IFURLDRIVE;
 	sockdirp -> dd_fd = uh;
 	sockdirp -> dd_loc = 0L;
@@ -917,7 +917,7 @@ DIR *dirp;
 	if (validdir(sockdirp) < 0) return(-1);
 	uh = sockdirp -> dd_fd;
 	urlfreestatlist(sockdirp -> dd_size);
-	free2(sockdirp);
+	Xfree(sockdirp);
 	urlclosedev(uh);
 
 	return(0);
@@ -943,7 +943,7 @@ DIR *dirp;
 
 	memset((char *)&buf, 0, sizeof(buf));
 	n = (sockdirp -> dd_loc)++;
-	strncpy2(((struct dirent *)&buf) -> d_name, list[n].name, MAXNAMLEN);
+	Xstrncpy(((struct dirent *)&buf) -> d_name, list[n].name, MAXNAMLEN);
 
 	return((struct dirent *)&buf);
 }
@@ -1026,7 +1026,7 @@ struct stat *stp;
 
 	copystat(stp, &tmp);
 #ifndef	NOSYMLINK
-	free2(tmp.linkname);
+	Xfree(tmp.linkname);
 #endif
 	urlclosedev(uh);
 
@@ -1066,7 +1066,7 @@ struct stat *stp;
 
 	copystat(stp, &tmp);
 #ifndef	NOSYMLINK
-	free2(tmp.linkname);
+	Xfree(tmp.linkname);
 #endif
 	urlclosedev(uh);
 
@@ -1088,7 +1088,7 @@ int mode;
 		return(_urlclosedev(uh, -1));
 	if (--n >= 0) urlfreestatlist(n);
 #ifndef	NOSYMLINK
-	free2(tmp.linkname);
+	Xfree(tmp.linkname);
 #endif
 	urlclosedev(uh);
 
@@ -1126,7 +1126,7 @@ int bufsiz;
 	}
 
 #ifndef	NOSYMLINK
-	free2(tmp.linkname);
+	Xfree(tmp.linkname);
 #endif
 	urlclosedev(uh);
 
@@ -1239,16 +1239,16 @@ int flags;
 {
 	int n;
 
-	if ((n = urlgetopenlist(fd)) >= 0) free2(urlopenlist[n].path);
+	if ((n = urlgetopenlist(fd)) >= 0) Xfree(urlopenlist[n].path);
 	else {
 		n = maxurlopen++;
-		urlopenlist = (urlopen_t *)realloc2(urlopenlist,
+		urlopenlist = (urlopen_t *)Xrealloc(urlopenlist,
 			maxurlopen * sizeof(*urlopenlist));
 	}
 
 	urlopenlist[n].fd = fd;
 	urlopenlist[n].uh = uh;
-	urlopenlist[n].path = strdup2(path);
+	urlopenlist[n].path = Xstrdup(path);
 	urlopenlist[n].flags = flags;
 
 	if (validhost(uh, 0) >= 0) urlhostlist[uh].flags |= UFL_LOCKED;
@@ -1261,12 +1261,12 @@ int fd;
 
 	if ((n = urlgetopenlist(fd)) < 0) return(-1);
 	uh = urlopenlist[n].uh;
-	free2(urlopenlist[n].path);
+	Xfree(urlopenlist[n].path);
 	memmove((char *)&(urlopenlist[n]), (char *)&(urlopenlist[n + 1]),
 		(--maxurlopen - n) * sizeof(*urlopenlist));
 	if (maxurlopen <= 0) {
 		maxurlopen = 0;
-		free2(urlopenlist);
+		Xfree(urlopenlist);
 		urlopenlist = NULL;
 	}
 
@@ -1534,18 +1534,21 @@ CONST char *path;
 	return(n);
 }
 
-VOID urlallclose(VOID_A)
+int urlallclose(VOID_A)
 {
-	int uh;
+	int uh, n;
 
+	n = 0;
 	for (uh = maxurlhost - 1; uh >= 0; uh--) {
 		if (urlhostlist[uh].flags & UFL_CLOSED) continue;
 		urlhostlist[uh].nlink = 0;
-		urlclosedev(uh);
+		if (_urlclosedev(uh, 0) < 0) n = -1;
 	}
 	maxurlhost = 0;
-	free2(logheader);
+	Xfree(logheader);
 	logheader = NULL;
 	authfree();
+
+	return(n);
 }
 #endif	/* DEP_URLPATH */
