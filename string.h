@@ -6,9 +6,7 @@
 
 extern char *Xstrchr __P_((CONST char *, int));
 extern char *Xstrrchr __P_((CONST char *, int));
-#ifndef	MINIMUMSHELL
 extern char *Xmemchr __P_((CONST char *, int, int));
-#endif
 extern char *Xstrcpy __P_((char *, CONST char *));
 extern char *Xstrncpy __P_((char *, CONST char *, int));
 extern int Xstrcasecmp __P_((CONST char *, CONST char *));

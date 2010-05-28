@@ -28,30 +28,26 @@ int c;
 	char *cp;
 
 	cp = NULL;
-	for (; *s; s++) {
+	for (;; s++) {
 		if (*s == c) cp = (char *)s;
 		else if (iswchar(s, 0)) s++;
+		if (!*s) break;
 	}
-	if (!c) cp = (char *)s;
 
 	return(cp);
 }
 
-#ifndef	MINIMUMSHELL
 char *Xmemchr(s, c, n)
 CONST char *s;
 int c, n;
 {
-	int i;
-
-	for (i = 0; i < n && s[i]; i++) {
-		if (s[i] == c) return((char *)&(s[i]));
-		else if (iswchar(s, i)) i++;
+	for (; n-- > 0; s++) {
+		if (*s == c) return((char *)s);
+		else if (iswchar(s, 0)) s++;
 	}
 
 	return(NULL);
 }
-#endif	/* !MINIMUMSHELL */
 
 char *Xstrcpy(s1, s2)
 char *s1;

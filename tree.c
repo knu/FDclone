@@ -852,7 +852,7 @@ int cleanup, *drvp;
 		path = _tree();
 	} while (path == fullpath);
 #ifdef	DEP_PSEUDOPATH
-	if (drvp && (*drvp = preparedrv(path, NULL, NULL)) < 0) {
+	if (path && drvp && (*drvp = preparedrv(path, NULL, NULL)) < 0) {
 		warning(-1, path);
 		Xfree(path);
 		path = NULL;

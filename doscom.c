@@ -54,6 +54,7 @@
 #define	COPYRETRY		10
 #define	DIRSORTFLAG		"NSEDGA"
 #define	DIRATTRFLAG		"DRHSA"
+#define	DEFDIRATTR		"-H-S"
 #define	dir_isdir(sp)		(((((sp) -> mod) & S_IFMT) == S_IFDIR) ? 1 : 0)
 
 #if	!defined (FD) && !defined (WITHNETWORK)
@@ -84,6 +85,7 @@ struct filestat_t {
 };
 
 #define	FS_NOTMATCH		0001
+#define	FS_BADATTR		0002
 
 #if	defined (DOSCOMMAND) && defined (DEP_ORIGSHELL)
 
@@ -213,8 +215,10 @@ static VOID NEAR dosperror __P_((CONST char *));
 static VOID NEAR fputsize __P_((off_t *, off_t *));
 static int NEAR inputkey __P_((VOID_A));
 static int cmpdirent __P_((CONST VOID_P, CONST VOID_P));
+static int NEAR filterattr __P_((CONST struct filestat_t *));
 static VOID NEAR evalenvopt __P_((CONST char *, CONST char *,
 		int (NEAR *)__P_((int, char *CONST []))));
+static int NEAR adddirflag __P_((char *, CONST char *, CONST char *));
 static int NEAR getdiropt __P_((int, char *CONST []));
 static int NEAR showstr __P_((char *, int, int));
 #ifdef	MINIMUMSHELL
@@ -633,6 +637,44 @@ CONST VOID_P vp2;
 	return(ret);
 }
 
+static int NEAR filterattr(dp)
+CONST struct filestat_t *dp;
+{
+	int i, f;
+
+	for (i = 0; dirattr[i]; i++) {
+		f = 0;
+		if (dirattr[i] == '-') {
+			i++;
+			f++;
+		}
+
+		switch (dirattr[i]) {
+			case 'D':
+				if (!(dir_isdir(dp))) f ^= 1;
+				break;
+			case 'R':
+				if (dp -> mod & S_IWUSR) f ^= 1;
+				break;
+			case 'H':
+				if (dp -> mod & S_IRUSR) f ^= 1;
+				break;
+			case 'S':
+				if ((dp -> mod & S_IFMT) != S_IFSOCK) f ^= 1;
+				break;
+			case 'A':
+				if (!(dp -> mod & S_ISVTX)) f ^= 1;
+				break;
+			default:
+				break;
+		}
+
+		if (f) return(-1);
+	}
+
+	return(0);
+}
+
 static VOID NEAR evalenvopt(cmd, env, getoptcmd)
 CONST char *cmd, *env;
 int (NEAR *getoptcmd)__P_((int, char *CONST []));
@@ -659,117 +701,110 @@ int (NEAR *getoptcmd)__P_((int, char *CONST []));
 	freevar(argv);
 }
 
+static int NEAR adddirflag(buf, arg, flags)
+char *buf;
+const char *arg, *flags;
+{
+	int i, n, r;
+
+	n = r = 0;
+	arg += 2;
+	for (i = 0; arg[i]; i++) {
+		if (Xstrchr(flags, arg[i])) {
+			if (!Xmemchr(buf, arg[i], n))
+			buf[n++] = arg[i];
+			r = 0;
+		}
+		else if (arg[i] == '-' && !r) {
+			buf[n++] = '-';
+			r = 1;
+		}
+		else {
+			doserror(arg, ER_INVALIDSW);
+			return(-1);
+		}
+	}
+
+	if (r) {
+		doserror(arg, ER_INVALIDSW);
+		return(-1);
+	}
+
+	return(n);
+}
+
 static int NEAR getdiropt(argc, argv)
 int argc;
 char *CONST argv[];
 {
 	char *arg;
-	int i, j, n, r, rr;
+	int i, j, n, r;
 
 	for (i = 1; i < argc; i++) {
 		arg = argv[i];
 		if (arg[0] != DOSCOMOPT) break;
 		for (j = 1; arg[j]; j++) arg[j] = Xtoupper(arg[j]);
-		rr = (arg[1] == '-') ? 1 : 0;
-		switch (arg[1 + rr]) {
+		r = (arg[1] == '-') ? 1 : 0;
+		switch (arg[1 + r]) {
 			case 'P':
-				if (rr) dirflag &= ~DF_PAUSE;
+				if (r) dirflag &= ~DF_PAUSE;
 				else dirflag |= DF_PAUSE;
 				break;
 			case 'W':
-				if (rr) {
+				if (r) {
 					if (dirtype == 'W') dirtype = '\0';
 					break;
 				}
 				if (dirtype != 'B') dirtype = 'W';
 				break;
 			case 'A':
-				if (rr) {
-					Xstrcpy(dirattr, "hs");
+				if (r) {
+					Xstrcpy(dirattr, DEFDIRATTR);
 					break;
 				}
-				n = r = 0;
-				arg += 2;
-				for (j = 0; arg[j]; j++) {
-					if (Xstrchr(DIRATTRFLAG, arg[j])) {
-						dirattr[n] = '\0';
-						if (!Xstrchr(dirattr, arg[j]))
-							dirattr[n++] = arg[j];
-						r = 0;
-					}
-					else if (arg[j] == '-' && !r) {
-						dirattr[n++] = '-';
-						r = 1;
-					}
-					else {
-						doserror(arg, ER_INVALIDSW);
-						return(-1);
-					}
-				}
-				if (n) dirattr[n] = '\0';
-				else Xstrcpy(dirattr, DIRATTRFLAG);
-				if (r) {
-					doserror(arg, ER_INVALIDSW);
-					return(-1);
-				}
-				arg += j - 2;
+				n = adddirflag(dirattr, arg, DIRATTRFLAG);
+				if (n < 0) return(-1);
+				dirattr[n] = '\0';
+				continue;
+/*NOTREACHED*/
 				break;
 			case 'O':
-				if (rr) {
+				if (r) {
 					dirsort[0] = '\0';
 					break;
 				}
-				n = r = 0;
-				arg += 2;
-				for (j = 0; arg[j]; j++) {
-					if (Xstrchr(DIRSORTFLAG, arg[j])) {
-						dirsort[n] = '\0';
-						if (!Xstrchr(dirsort, arg[j]))
-							dirsort[n++] = arg[j];
-						r = 0;
-					}
-					else if (arg[j] == '-' && !r) {
-						dirsort[n++] = '-';
-						r = 1;
-					}
-					else {
-						doserror(arg, ER_INVALIDSW);
-						return(-1);
-					}
-				}
+				n = adddirflag(dirsort, arg, DIRSORTFLAG);
+				if (n < 0) return(-1);
 				if (!n) dirsort[n++] = 'N';
 				dirsort[n] = '\0';
-				if (r) {
-					doserror(arg, ER_INVALIDSW);
-					return(-1);
-				}
-				arg += j - 2;
+				continue;
+/*NOTREACHED*/
 				break;
 			case 'S':
-				if (rr) dirflag &= ~DF_SUBDIR;
+				if (r) dirflag &= ~DF_SUBDIR;
 				else dirflag |= DF_SUBDIR;
 				break;
 			case 'B':
-				if (rr) {
+				if (r) {
 					if (dirtype == 'B') dirtype = '\0';
 					break;
 				}
 				dirtype = 'B';
 				break;
 			case 'L':
-				if (rr) dirflag &= ~DF_LOWER;
+				if (r) dirflag &= ~DF_LOWER;
 				else dirflag |= DF_LOWER;
 				break;
 #ifndef	MINIMUMSHELL
 			case 'V':
-				if (rr) {
+				if (r) {
 					if (dirtype == 'V') dirtype = '\0';
 					break;
 				}
 				if (!dirtype) dirtype = 'V';
 				break;
 			case '4':
-				if (rr) {
+				if (r) {
 					if (dirtype == '4') dirtype = '\0';
 					break;
 				}
@@ -782,7 +817,7 @@ char *CONST argv[];
 /*NOTREACHED*/
 				break;
 		}
-		if (*(arg += 2 + rr)) {
+		if (*(arg += 2 + r)) {
 			doserror(arg, ER_INVALIDSW);
 			return(-1);
 		}
@@ -1125,7 +1160,8 @@ off_t *sump, *bsump;
 	off_t bsum;
 #endif
 #ifndef	NOSYMLINK
-	char tmp[MAXPATHLEN];
+	char lnam[MAXPATHLEN];
+	int llen;
 #endif
 	struct filestat_t *dirlist;
 	DIR *dirp;
@@ -1133,7 +1169,7 @@ off_t *sump, *bsump;
 	struct stat st;
 	char *file;
 	off_t sum;
-	int i, c, n, nf, nd, f, len, max;
+	int c, n, nf, nd, len, max;
 
 	if (!(dirp = Xopendir(dirwd))) return(-1);
 
@@ -1149,8 +1185,8 @@ off_t *sump, *bsump;
 		Xstrcpy(file, dp -> d_name);
 #ifndef	NOSYMLINK
 		if (Xlstat(dirwd, &st) < 0 || (st.st_mode & S_IFMT) != S_IFLNK)
-			i = -1;
-		else i = Xreadlink(dirwd, tmp, sizeof(tmp) - 1);
+			llen = -1;
+		else llen = Xreadlink(dirwd, lnam, sizeof(lnam) - 1);
 #endif
 		if (Xstat(dirwd, &st) < 0) continue;
 
@@ -1161,10 +1197,10 @@ off_t *sump, *bsump;
 			? Xstrdup(dp -> d_alias) : dirlist[n].nam;
 #endif
 #ifndef	NOSYMLINK
-		if (i < 0) dirlist[n].lnam = NULL;
+		if (llen < 0) dirlist[n].lnam = NULL;
 		else {
-			tmp[i] = '\0';
-			dirlist[n].lnam = Xstrdup(tmp);
+			lnam[llen] = '\0';
+			dirlist[n].lnam = Xstrdup(lnam);
 		}
 #endif
 		dirlist[n].mod = st.st_mode;
@@ -1172,7 +1208,9 @@ off_t *sump, *bsump;
 		dirlist[n].mtim = st.st_mtime;
 		dirlist[n].atim = st.st_atime;
 		dirlist[n].flags = 0;
-		if (re && !regexp_exec(re, dirlist[n].nam, 0))
+		if (filterattr(&(dirlist[n])) < 0)
+			dirlist[n].flags |= FS_BADATTR;
+		else if (re && !regexp_exec(re, dirlist[n].nam, 0))
 			dirlist[n].flags |= FS_NOTMATCH;
 		else if ((st.st_mode & S_IFMT) == S_IFDIR) nd++;
 		else {
@@ -1190,53 +1228,19 @@ off_t *sump, *bsump;
 	VOID_C Xclosedir(dirp);
 	dirwd[len] = '\0';
 	max = n;
-	if (*dirsort)
-		qsort(dirlist, max, sizeof(*dirlist), cmpdirent);
+	if (*dirsort) qsort(dirlist, max, sizeof(*dirlist), cmpdirent);
 
-	if (nf || nd) {
-		*nfp += nf;
-		*ndp += nd;
-		*sump += sum;
+	*nfp += nf;
+	*ndp += nd;
+	*sump += sum;
 #ifndef	MINIMUMSHELL
-		*bsump += bsum;
+	*bsump += bsum;
 #endif
-		dosdirheader();
-	}
+	dosdirheader();
 
 	for (n = c = 0; n < max; n++) {
 		if (dirflag & DF_CANCEL) break;
-		if (dirlist[n].flags & FS_NOTMATCH) continue;
-		for (i = 0; dirattr[i]; i++) {
-			f = 0;
-			if (dirattr[i] == '-') {
-				i++;
-				f = 1;
-			}
-			switch (dirattr[i]) {
-				case 'D':
-					if (!dir_isdir(&(dirlist[n]))) f ^= 1;
-					break;
-				case 'R':
-					if (dirlist[n].mod & S_IWUSR) f ^= 1;
-					break;
-				case 'H':
-					if (dirlist[n].mod & S_IRUSR) f ^= 1;
-					break;
-				case 'S':
-					if ((dirlist[n].mod & S_IFMT)
-					!= S_IFSOCK)
-						f ^= 1;
-					break;
-				case 'A':
-					if (!(dirlist[n].mod & S_ISVTX))
-						f ^= 1;
-					break;
-				default:
-					break;
-			}
-			if (!f) break;
-		}
-		if (!dirattr[i]) continue;
+		if (dirlist[n].flags & (FS_NOTMATCH | FS_BADATTR)) continue;
 
 		switch (dirtype) {
 			case 'W':
@@ -1330,7 +1334,7 @@ char *CONST argv[];
 	off_t sum, total, fre, bsize;
 	int i, n, nf, nd;
 
-	Xstrcpy(dirattr, "hs");
+	Xstrcpy(dirattr, DEFDIRATTR);
 	dirsort[0] = dirtype = '\0';
 	dirflag = 0;
 	evalenvopt(argv[0], "DIRCMD", getdiropt);
