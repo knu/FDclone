@@ -67,7 +67,6 @@ static int NEAR getkey4 __P_((int, int));
 #else
 #define	getkey4(s, t)		getkey3(s, getinkcode(), t)
 #endif
-static int NEAR trquoteone __P_((char **, CONST char *, int *, int));
 static char *NEAR trquote __P_((CONST char *, int, int *));
 static int NEAR vlen __P_((CONST char *, int));
 static int NEAR rlen __P_((CONST char *, int));
@@ -137,7 +136,7 @@ static char *NEAR search_down __P_((int, int *, int, char **));
 static VOID NEAR _inputstr_input __P_((CONST char *, int));
 static int NEAR _inputstr __P_((int, int, int));
 static VOID NEAR dispprompt __P_((CONST char *, int));
-static VOID NEAR truncstr __P_((CONST char *));
+static int NEAR truncstr __P_((CONST char *));
 static int NEAR yesnomes __P_((CONST char *));
 static int NEAR selectcnt __P_((int, char *CONST *, int));
 static int NEAR selectadj __P_((int, int, CONST char *CONST *,
@@ -265,7 +264,7 @@ int key;
 	if (c == EOF) /*EMPTY*/;
 	else if (c == cc_intr || (key >= 0 && c == key)) {
 		if (isttyiomode) warning(0, INTR_K);
-		else Xfprintf(Xstderr, "%k\n", INTR_K);
+		else VOID_C Xfprintf(Xstderr, "%k\n", INTR_K);
 	}
 	else {
 		VOID_C ungetkey2(c, 0);
@@ -500,48 +499,18 @@ int sig, eof, timeout;
 	return((ch >= 0) ? ch : K_ESC);
 }
 
-static int NEAR trquoteone(sp, s, cxp, len)
-char **sp;
-CONST char *s;
-int *cxp, len;
-{
-	int vw;
-
-	vw = 1;
-	if (*cxp + 1 < len && iskanji1(s, *cxp)) {
-		*((*sp)++) = s[(*cxp)++];
-		vw++;
-	}
-#ifdef	CODEEUC
-	else if (*cxp + 1 < len && isekana(s, *cxp)) *((*sp)++) = s[(*cxp)++];
-#else
-	else if (isskana(s, *cxp)) /*EMPTY*/;
-#endif
-	else if (Xiscntrl(s[*cxp])) {
-		*((*sp)++) = '^';
-		*((*sp)++) = (s[(*cxp)++] + '@') & 0x7f;
-		return(2);
-	}
-	else if (ismsb(s[*cxp])) {
-		*sp += Xsnprintf(*sp, 4 + 1, "\\%03o", s[(*cxp)++] & 0xff);
-		return(4);
-	}
-
-	*((*sp)++) = s[(*cxp)++];
-	return(vw);
-}
-
 static char *NEAR trquote(s, len, widthp)
 CONST char *s;
 int len, *widthp;
 {
 	char *cp, *buf;
-	int cx, vw;
+	int vw;
 
-	cp = buf = Xmalloc(len * 4 + 1);
-	cx = vw = 0;
-	while (cx < len) vw += trquoteone(&cp, s, &cx, len);
-	*cp = '\0';
+	cp = Xstrndup(s, len);
+	buf = Xmalloc(len * MAXCHARWID + 1);
+
+	vw = Xsnprintf(buf, len * MAXCHARWID + 1, "%^s", cp);
+	Xfree(cp);
 	if (widthp) *widthp = vw;
 
 	return(buf);
@@ -555,25 +524,8 @@ int cx;
 
 	v = r = 0;
 	while (r < cx) {
-		if (r + 1 < cx && iskanji1(s, r)) rw = vw = 2;
-#ifdef	CODEEUC
-		else if (r + 1 < cx && isekana(s, r)) {
-			rw = 2;
-			vw = 1;
-		}
-#else
-		else if (isskana(s, r)) rw = vw = 1;
-#endif
-		else if (Xiscntrl(s[r])) {
-			rw = 1;
-			vw = 2;
-		}
-		else if (ismsb(s[r])) {
-			rw = 1;
-			vw = 4;
-		}
-		else rw = vw = 1;
-
+		getcharwidth(s, r, &rw, &vw);
+		if (r + rw > cx) break;
 		r += rw;
 		v += vw;
 	}
@@ -589,25 +541,8 @@ int cx2;
 
 	v = r = 0;
 	while (v < cx2) {
-		if (v + 1 < cx2 && iskanji1(s, r)) rw = vw = 2;
-#ifdef	CODEEUC
-		else if (isekana(s, r)) {
-			rw = 2;
-			vw = 1;
-		}
-#else
-		else if (isskana(s, r)) rw = vw = 1;
-#endif
-		else if (v + 1 < cx2 && Xiscntrl(s[r])) {
-			rw = 1;
-			vw = 2;
-		}
-		else if (v + 3 < cx2 && ismsb(s[r])) {
-			rw = 1;
-			vw = 4;
-		}
-		else rw = vw = 1;
-
+		getcharwidth(s, r, &rw, &vw);
+		if (v + vw > cx2) break;
 		r += rw;
 		v += vw;
 	}
@@ -623,29 +558,11 @@ int cx2;
 
 	v = r = 0;
 	while (v < cx2) {
-		if (iskanji1(s, r)) rw = vw = 2;
-#ifdef	CODEEUC
-		else if (isekana(s, r)) {
-			rw = 2;
-			vw = 1;
-		}
-#else
-		else if (isskana(s, r)) rw = vw = 1;
-#endif
-		else if (Xiscntrl(s[r])) {
-			rw = 1;
-			vw = 2;
-		}
-		else if (ismsb(s[r])) {
-			rw = 1;
-			vw = 4;
-		}
-		else rw = vw = 1;
-
+		getcharwidth(s, r, &rw, &vw);
+		if (v + vw > cx2) return(0);
 		r += rw;
 		v += vw;
 	}
-	if (v > cx2) return(0);
 
 	return(iskanji1(s, r) ? r + 1 : 0);
 }
@@ -659,7 +576,7 @@ int len, ptr;
 
 	if (len < 0) return(0);
 	buf = Xmalloc(len * KANAWID + 1);
-	strncpy2(buf, s, &len, ptr);
+	VOID_C strncpy2(buf, s, &len, ptr);
 #ifdef	DEP_KCONV
 	n = Xkanjiputs(buf);
 #else
@@ -930,30 +847,27 @@ int cx, cx2;
 static VOID NEAR putstr(cxp, cxp2, ins)
 int *cxp, *cxp2, ins;
 {
-	char *cp, tmp[4 + 1];
-	int cx, vw;
+	char *cp, tmp[MAXCHARWID + 1];
+	int rw, vw;
 
 	while (ins > 0) {
-		cp = tmp;
-		cx = *cxp;
-		VOID_C trquoteone(&cp, inputbuf, &cx, inputlen);
-		*cp = '\0';
+		VOID_C getprintable(tmp, sizeof(tmp), inputbuf, *cxp, &rw);
+		*cxp += rw;
+		ins -= rw;
 		cp = tmp;
 		while (*cp) {
-			vw = (iskanji1(cp, 0)) ? 2 : 1;
+			getcharwidth(cp, (ALLOC_T)0, &rw, &vw);
 			VOID_C XXcprintf("%.*k", vw, cp);
-			cp += vw;
+			cp += rw;
 			win_x += vw;
 			*cxp2 += vw;
 #ifdef	DEP_ORIGSHELL
-			if (dumbmode) VOID_C checkcursor(cx, *cxp2);
+			if (dumbmode) VOID_C checkcursor(*cxp, *cxp2);
 			else
 #endif
 			if (within(*cxp2) && ptr2col(*cxp2) < vw)
-				setcursor(cx, *cxp2);
+				setcursor(*cxp, *cxp2);
 		}
-		ins -= cx - *cxp;
-		*cxp = cx;
 	}
 }
 
@@ -999,25 +913,7 @@ static VOID NEAR rightchar(VOID_A)
 {
 	int rw, vw;
 
-	if (rptr + 1 < inputlen && iskanji1(inputbuf, rptr)) rw = vw = 2;
-#ifdef	CODEEUC
-	else if (rptr + 1 < inputlen && isekana(inputbuf, rptr)) {
-		rw = 2;
-		vw = 1;
-	}
-#else
-	else if (isskana(inputbuf, rptr)) rw = vw = 1;
-#endif
-	else if (Xiscntrl(inputbuf[rptr])) {
-		rw = 1;
-		vw = 2;
-	}
-	else if (ismsb(inputbuf[rptr])) {
-		rw = 1;
-		vw = 4;
-	}
-	else rw = vw = 1;
-
+	getcharwidth(inputbuf, rptr, &rw, &vw);
 	if (rptr + rw > inputlen) {
 		ringbell();
 		return;
@@ -1036,24 +932,15 @@ static VOID NEAR leftchar(VOID_A)
 {
 	int rw, vw, ovptr;
 
+	rw = vw = 1;
 	if (rptr >= 2 && onkanji1(inputbuf, rptr - 2)) rw = vw = 2;
 #ifdef	CODEEUC
-	else if (rptr >= 2 && isekana(inputbuf, rptr - 2)) {
-		rw = 2;
-		vw = 1;
-	}
+	else if (rptr >= 2 && isekana(inputbuf, rptr - 2)) rw++;
 #else
-	else if (isskana(inputbuf, rptr - 1)) rw = vw = 1;
+	else if (isskana(inputbuf, rptr - 1)) /*EMPTY*/;
 #endif
-	else if (Xiscntrl(inputbuf[rptr - 1])) {
-		rw = 1;
-		vw = 2;
-	}
-	else if (ismsb(inputbuf[rptr - 1])) {
-		rw = 1;
-		vw = 4;
-	}
-	else rw = vw = 1;
+	else if (Xiscntrl(inputbuf[rptr - 1])) vw++;
+	else if (ismsb(inputbuf[rptr - 1])) vw = 4;
 
 	ovptr = vptr;
 	rptr -= rw;
@@ -1540,24 +1427,7 @@ int rins, vins;
 	}
 
 	if (rptr >= inputlen) rw = vw = 0;
-	else if (rptr + 1 < inputlen && iskanji1(inputbuf, rptr)) rw = vw = 2;
-#ifdef	CODEEUC
-	else if (rptr + 1 < inputlen && isekana(inputbuf, rptr)) {
-		rw = 2;
-		vw = 1;
-	}
-#else
-	else if (isskana(inputbuf, rptr)) rw = vw = 1;
-#endif
-	else if (Xiscntrl(inputbuf[rptr])) {
-		rw = 1;
-		vw = 2;
-	}
-	else if (ismsb(inputbuf[rptr])) {
-		rw = 1;
-		vw = 4;
-	}
-	else rw = vw = 1;
+	else getcharwidth(inputbuf, rptr, &rw, &vw);
 
 	if (!vw) /*EMPTY*/;
 	else if (vins > vw) insertchar(rptr, vptr, vins - vw);
@@ -2062,14 +1932,14 @@ int comline, cont, h;
 	while (i < rptr) {
 		rw = 1;
 		pc = parsechar(&(inputbuf[i]), rptr - i, '!', 0, &quote, NULL);
-		if (pc == PC_WCHAR) rw = 2;
+		if (pc == PC_WCHAR) rw++;
 		else if (pc == PC_CLQUOTE) {
 			quoted = i;
 			qtop = i + 1;
 		}
 # ifndef	FAKEESCAPE
 		else if (pc == PC_ESCAPE) {
-			rw = 2;
+			rw++;
 			if (inputbuf[i + 1] == '!') qtop = i + 2;
 			else if (Xstrchr(DQ_METACHAR, inputbuf[i + 1])) {
 				n = quotemeta(&i, &i2,
@@ -2452,34 +2322,11 @@ static VOID NEAR _inputstr_delete(VOID_A)
 		return;
 	}
 
-	if (iskanji1(inputbuf, rptr)) {
-		if (rptr + 1 >= inputlen) {
-			ringbell();
-			return;
-		}
-		rw = vw = 2;
+	getcharwidth(inputbuf, rptr, &rw, &vw);
+	if (rptr + rw > inputlen) {
+		ringbell();
+		return;
 	}
-#ifdef	CODEEUC
-	else if (isekana(inputbuf, rptr)) {
-		if (rptr + 1 >= inputlen) {
-			ringbell();
-			return;
-		}
-		rw = 2;
-		vw = 1;
-	}
-#else
-	else if (isskana(inputbuf, rptr)) rw = vw = 1;
-#endif
-	else if (Xiscntrl(inputbuf[rptr])) {
-		rw = 1;
-		vw = 2;
-	}
-	else if (ismsb(inputbuf[rptr])) {
-		rw = 1;
-		vw = 4;
-	}
-	else rw = vw = 1;
 
 	deletechar(rptr, vptr, vw);
 	delshift(rptr, rw);
@@ -3137,7 +2984,7 @@ int set;
 
 	if (set < 0) {
 		if (s && *s) {
-			plen = Xfprintf(NULL, "%k", s);
+			plen = strlen2(s);
 #ifdef	DEP_ORIGSHELL
 			if (dumbmode || shellmode) /*EMPTY*/;
 			else
@@ -3264,12 +3111,7 @@ int h;
 			insertbuf(3);
 			pc = parsechar(&(def[i]), -1,
 				'!', EA_FINDMETA, &quote, NULL);
-			if (pc == PC_WCHAR) {
-#ifdef	CODEEUC
-				if (ptr > inputlen && isekana(def, i)) ptr++;
-#endif
-				inputbuf[inputlen++] = def[i++];
-			}
+			if (pc == PC_WCHAR) inputbuf[inputlen++] = def[i++];
 #ifndef	FAKEESCAPE
 			else if (prompt) /*EMPTY*/;
 			else if (pc == PC_EXMETA || pc == '!') {
@@ -3373,15 +3215,16 @@ int h;
 	return(inputbuf);
 }
 
-static VOID NEAR truncstr(s)
+static int NEAR truncstr(s)
 CONST char *s;
 {
-	int len;
 	char *cp, *tmp;
+	int n, len;
 
-	if ((len = strlen2(s) + YESNOSIZE - n_lastcolumn) <= 0
+	n = strlen2(s);
+	if ((len = n + YESNOSIZE - n_lastcolumn) <= 0
 	|| !(cp = Xstrchr(s, '[')) || !(tmp = Xstrchr(cp, ']')))
-		return;
+		return(n);
 
 	cp++;
 	len = tmp - cp - len;
@@ -3391,6 +3234,8 @@ CONST char *s;
 	else if (isekana(cp, len - 1)) len--;
 #endif
 	Xstrcpy(&(cp[len]), tmp);
+
+	return(n);
 }
 
 static int NEAR yesnomes(mes)
@@ -3465,8 +3310,7 @@ va_dcl
 #endif
 	win_y = ypos;
 
-	truncstr(buf);
-	len = strlen2(buf);
+	len = truncstr(buf);
 	ret = yesnomes(buf);
 	if (ret < len) len = ret;
 	if (win_x >= n_column) win_x = n_column - 1;
@@ -3568,7 +3412,7 @@ CONST char *s;
 	else if (no) {
 		len = n_lastcolumn - strlen2(err) - 3;
 		tmp = Xmalloc(n_lastcolumn * KANAWID + 1);
-		strncpy2(tmp, s, &len, -1);
+		VOID_C strncpy2(tmp, s, &len, -1);
 		strcat(tmp, ": ");
 		strcat(tmp, err);
 		s = tmp;
@@ -3659,7 +3503,9 @@ int *xx, multi;
 		for (; maxlen > 0; maxlen--) {
 			for (i = 0; i < max; i++) if (new[i]) {
 				len = maxlen;
-				strncpy2(tmpstr[i], new[i], &len, -1);
+				tmpstr[i] = Xrealloc(tmpstr[i],
+					len * KANAWID + 1);
+				VOID_C strncpy2(tmpstr[i], new[i], &len, -1);
 			}
 			if (x + selectcnt(max, tmpstr, multi) < n_lastcolumn)
 				break;
@@ -3850,7 +3696,7 @@ char *inputpass(VOID_A)
 	cp = PASWD_K;
 	if (!(wastty = isttyiomode)) {
 		x = strlen2(cp);
-		Xfprintf(Xstderr, "%k", cp);
+		VOID_C Xfprintf(Xstderr, "%k", cp);
 		Xfflush(Xstderr);
 	}
 	else {

@@ -43,7 +43,10 @@ int c, n;
 {
 	for (; n-- > 0; s++) {
 		if (*s == c) return((char *)s);
-		else if (iswchar(s, 0)) s++;
+		else if (iswchar(s, 0)) {
+			if (n-- <= 0) break;
+			s++;
+		}
 	}
 
 	return(NULL);

@@ -81,7 +81,8 @@ int len, *flagsp;
 
 	len = cp - buf;
 	if (len + 1 >= MAXPATHLEN - 1) return(NULL);
-	Xsnprintf(&(buf[len]), (int)sizeof(buf) - len, ";%d", TRANSTBLVAR);
+	VOID_C Xsnprintf(&(buf[len]), (int)sizeof(buf) - len,
+		";%d", TRANSTBLVAR);
 	*flagsp |= RR_VERNO;
 	if ((fp = Xfopen(buf, "r"))) return(fp);
 

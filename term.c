@@ -1203,7 +1203,7 @@ CONST char *mes;
 	VOID_C fputnl(Xstderr);
 	Xfputs(mes, Xstderr);
 
-	if (duperrno) Xfprintf(Xstderr, ": %s", Xstrerror(duperrno));
+	if (duperrno) VOID_C Xfprintf(Xstderr, ": %s", Xstrerror(duperrno));
 	VOID_C fputnl(Xstderr);
 	inittty(1);
 	exit(2);

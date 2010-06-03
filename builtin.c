@@ -257,12 +257,12 @@ int n;
 
 	duperrno = errno;
 	if (n >= BUILTINERRSIZ || (n < 0 && !errno)) return;
-	if (argv && argv[0]) Xfprintf(Xstderr, "%k: ", argv[0]);
-	if (s) Xfprintf(Xstderr, "%k: ", s);
-	Xfprintf(Xstderr, "%s.",
+	if (argv && argv[0]) VOID_C Xfprintf(Xstderr, "%k: ", argv[0]);
+	if (s) VOID_C Xfprintf(Xstderr, "%k: ", s);
+	VOID_C Xfprintf(Xstderr,
+		"%s.\n",
 		(n >= 0 && builtinerrstr[n])
 			? builtinerrstr[n] : Xstrerror(duperrno));
-	VOID_C fputnl(Xstderr);
 }
 
 #ifndef	DEP_ORIGSHELL
@@ -875,7 +875,7 @@ XFILE *fp;
 {
 	int i, ch;
 
-	Xfprintf(fp, "%s ", BL_LAUNCH);
+	VOID_C Xfprintf(fp, "%s ", BL_LAUNCH);
 # ifndef	OLDPARSE
 	if (list[n].flags & LF_IGNORECASE) Xfputc('/', fp);
 # endif
@@ -890,34 +890,40 @@ XFILE *fp;
 			Xfputs("\t(Arch)", fp);
 			break;
 		}
-		Xfprintf(fp, "\t%d,%d",
+		VOID_C Xfprintf(fp,
+			"\t%d,%d",
 			(int)(list[n].topskip), (int)(list[n].bottomskip));
 		ch = ':';
 		for (i = 0; i < MAXLSPARSEFIELD; i++) {
 			Xfputc(ch, fp);
 			if (list[n].field[i] == FLD_NONE) Xfputc('0', fp);
-			else Xfprintf(fp, "%d", (int)(list[n].field[i]) + 1);
+			else VOID_C Xfprintf(fp,
+				"%d", (int)(list[n].field[i]) + 1);
 			if (list[n].delim[i] >= 128)
-				Xfprintf(fp, "[%d]",
+				VOID_C Xfprintf(fp,
+					"[%d]",
 					(int)(list[n].delim[i]) - 128 + 1);
 			else if (list[n].delim[i])
-				Xfprintf(fp, "'%c'", (int)(list[n].delim[i]));
+				VOID_C Xfprintf(fp,
+					"'%c'", (int)(list[n].delim[i]));
 			if (!(list[n].width[i])) /*EMPTY*/;
 			else if (list[n].width[i] >= 128)
-				Xfprintf(fp, "-%d",
-					(int)(list[n].width[i]) - 128);
-			else Xfprintf(fp, "-'%c'", (int)(list[n].width[i]));
+				VOID_C Xfprintf(fp,
+					"-%d", (int)(list[n].width[i]) - 128);
+			else VOID_C Xfprintf(fp,
+				"-'%c'", (int)(list[n].width[i]));
 			ch = ',';
 		}
 		ch = ':';
 		for (i = 0; i < MAXLSPARSESEP; i++) {
 			if (list[n].sep[i] == SEP_NONE) break;
-			Xfprintf(fp, "%c%d", ch, (int)(list[n].sep[i]) + 1);
+			VOID_C Xfprintf(fp,
+				"%c%d", ch, (int)(list[n].sep[i]) + 1);
 			ch = ',';
 		}
 		if (list[n].lines > 1) {
 			if (!i) Xfputc(':', fp);
-			Xfprintf(fp, "%d", (int)(list[n].lines));
+			VOID_C Xfprintf(fp, "%d", (int)(list[n].lines));
 		}
 # else	/* !OLDPARSE */
 		if (!list[n].format) break;
@@ -945,13 +951,14 @@ XFILE *fp;
 
 		if (list[n].topskip) {
 			if (ch) Xfputs(" \\\n", fp);
-			Xfprintf(fp, "\t-t %d", (int)(list[n].topskip));
+			VOID_C Xfprintf(fp, "\t-t %d", (int)(list[n].topskip));
 		}
 		if (list[n].bottomskip) {
 			if (list[n].topskip) Xfputc(' ', fp);
 			else if (ch) Xfputs(" \\\n\t", fp);
 			else Xfputc('\t', fp);
-			Xfprintf(fp, "-b %d", (int)(list[n].bottomskip));
+			VOID_C Xfprintf(fp,
+				"-b %d", (int)(list[n].bottomskip));
 		}
 # endif	/* !OLDPARSE */
 		break;
@@ -1000,7 +1007,7 @@ CONST archive_t *list;
 int n, isset;
 XFILE *fp;
 {
-	Xfprintf(fp, "%s ", BL_ARCH);
+	VOID_C Xfprintf(fp, "%s ", BL_ARCH);
 # ifndef	OLDPARSE
 	if (list[n].flags & LF_IGNORECASE) Xfputc('/', fp);
 # endif
@@ -1465,7 +1472,7 @@ XFILE *fp;
 {
 	char *cp;
 
-	Xfprintf(fp, "%s ", BL_BIND);
+	VOID_C Xfprintf(fp, "%s ", BL_BIND);
 	fputsmeta(getkeysym(list[n].key, 0), fp);
 	if (isset) {
 		Xfputc('\t', fp);
@@ -1476,13 +1483,14 @@ XFILE *fp;
 			fputsmeta(getmacro(list[n].f_func), fp);
 		else Xfputs("\"\"", fp);
 		if (list[n].d_func < FUNCLISTSIZ)
-			Xfprintf(fp, "\t%s", funclist[list[n].d_func].ident);
+			VOID_C Xfprintf(fp,
+				"\t%s", funclist[list[n].d_func].ident);
 		else if (ismacro(list[n].d_func)) {
 			Xfputc('\t', fp);
 			fputsmeta(getmacro(list[n].d_func), fp);
 		}
 		if ((cp = gethelp(&(list[n]))))
-			Xfprintf(fp, "\t%c%k", BINDCOMMENT, cp);
+			VOID_C Xfprintf(fp, "\t%c%k", BINDCOMMENT, cp);
 	}
 	VOID_C fputnl(fp);
 }
@@ -1915,8 +1923,8 @@ CONST devinfo *fdlist;
 int n, isset, verbose;
 XFILE *fp;
 {
-	Xfprintf(fp, "%s %c\t",
-		(isset) ? BL_SDRIVE : BL_UDRIVE, fdlist[n].drive);
+	VOID_C Xfprintf(fp,
+		"%s %c\t", (isset) ? BL_SDRIVE : BL_UDRIVE, fdlist[n].drive);
 
 	fputsmeta(fdlist[n].name, fp);
 	Xfputc('\t', fp);
@@ -1924,14 +1932,15 @@ XFILE *fp;
 	if (!fdlist[n].cyl) {
 		Xfputs(STRHDD, fp);
 		if (Xisupper(fdlist[n].head)) Xfputs(STRHDD98, fp);
-		if (verbose) Xfprintf(fp, " #offset=%'Ld",
-			fdlist[n].offset / fdlist[n].sect);
+		if (verbose) VOID_C Xfprintf(fp,
+			" #offset=%'Ld", fdlist[n].offset / fdlist[n].sect);
 	}
 	else
 # endif	/* HDDMOUNT */
-	Xfprintf(fp, "%d%c%d%c%d", (int)(fdlist[n].head), DRIVESEP,
+	VOID_C Xfprintf(fp,
+		"%d%c%d%c%d\n",
+		(int)(fdlist[n].head), DRIVESEP,
 		(int)(fdlist[n].sect), DRIVESEP, (int)(fdlist[n].cyl));
-	VOID_C fputnl(fp);
 }
 
 static int NEAR printdrive(argc, argv)
@@ -1974,7 +1983,7 @@ XFILE *fp;
 {
 	char *cp;
 
-	Xfprintf(fp, "%s ", BL_KEYMAP);
+	VOID_C Xfprintf(fp, "%s ", BL_KEYMAP);
 	fputsmeta(getkeysym(kp -> code, 1), fp);
 	if (isset) {
 		Xfputc('\t', fp);
@@ -2161,8 +2170,7 @@ char *CONST argv[];
 
 	hitkey(2);
 	for (i = max; i >= 0; i--) {
-		Xfprintf(Xstdout, "%5d  %k", n + 1, history[0][i]);
-		VOID_C fputnl(Xstdout);
+		VOID_C Xprintf("%5d  %k\n", n + 1, history[0][i]);
 		if (n++ >= (int)MAXHISTNO) n = 0;
 		hitkey(0);
 	}
@@ -2226,10 +2234,9 @@ char *CONST argv[];
 		}
 	}
 	if (skip) {
-		Xfprintf(Xstderr,
-	"%k: usage: %k [-ls] [-nr] [-e editor] [old=new] [first] [last]",
+		VOID_C Xfprintf(Xstderr,
+	"%k: usage: %k [-ls] [-nr] [-e editor] [old=new] [first] [last]\n",
 			argv[0], argv[0]);
-		VOID_C fputnl(Xstderr);
 		return(-1);
 	}
 
@@ -2330,7 +2337,7 @@ char *CONST argv[];
 	if (f >= l) for (i = f; i >= l; i--) {
 		if (history[0][i]) {
 			if (!nonum) {
-				Xfprintf(fp, "%5d  ", n + 1);
+				VOID_C Xfprintf(fp, "%5d  ", n + 1);
 				if (n++ >= (int)MAXHISTNO) n = 0;
 			}
 			kanjifputs(history[0][i], fp);
@@ -2343,7 +2350,7 @@ char *CONST argv[];
 	else for (i = f; i <= l; i++) {
 		if (history[0][i]) {
 			if (!nonum) {
-				Xfprintf(fp, "%5d  ", n + 1);
+				VOID_C Xfprintf(fp, "%5d  ", n + 1);
 				if (--n < 0) n = (int)MAXHISTNO;
 			}
 			kanjifputs(history[0][i], fp);
@@ -2409,8 +2416,8 @@ XFILE *fp;
 	VOID_C Xfclose(fpin);
 	if (n < 0) return(-1);
 
-	Xfprintf(fp, "MD5 (%k) = ", path);
-	for (i = 0; i < size; i++) Xfprintf(fp, "%02x", buf[i]);
+	VOID_C Xfprintf(fp, "MD5 (%k) = ", path);
+	for (i = 0; i < size; i++) VOID_C Xfprintf(fp, "%02x", buf[i]);
 
 	return(fputnl(fp));
 }
@@ -2505,10 +2512,9 @@ char *CONST argv[];
 				break;
 		}
 		if (err) {
-			Xfprintf(Xstderr,
-		"Usage: %s [-i inputcode] [-o outputcode] [filename]",
+			VOID_C Xfprintf(Xstderr,
+		"Usage: %s [-i inputcode] [-o outputcode] [filename]\n",
 				argv[0]);
-			VOID_C fputnl(Xstderr);
 			return(-1);
 		}
 	}
@@ -2686,10 +2692,9 @@ char *CONST argv[];
 		}
 	}
 	if (skip || (!file && !clean && n >= argc)) {
-		Xfprintf(Xstderr,
-			"%k: usage: %k [-c] [-r] [-f file] [roman [kanji]]]",
+		VOID_C Xfprintf(Xstderr,
+			"%k: usage: %k [-c] [-r] [-f file] [roman [kanji]]]\n",
 			argv[0], argv[0]);
-		VOID_C fputnl(Xstderr);
 		return(-1);
 	}
 
@@ -2742,12 +2747,12 @@ XFILE *fp;
 	char buf[2 + 1];
 	int i;
 
-	if (s && *s) Xfprintf(fp, "%s ", s);
-	Xfprintf(fp, "%s \"", romanlist[n].str);
+	if (s && *s) VOID_C Xfprintf(fp, "%s ", s);
+	VOID_C Xfprintf(fp, "%s \"", romanlist[n].str);
 	for (i = 0; i < R_MAXKANA; i++) {
 		if (!romanlist[n].code[i]) break;
 		VOID_C jis2str(buf, romanlist[n].code[i]);
-		Xfprintf(fp, "%k", buf);
+		VOID_C Xfprintf(fp, "%k", buf);
 	}
 	Xfputc('"', fp);
 	VOID_C fputnl(fp);
@@ -2912,7 +2917,7 @@ VOID printalias(n, fp)
 int n;
 XFILE *fp;
 {
-	Xfprintf(fp, "%s %k%c", BL_ALIAS, aliaslist[n].alias, ALIASSEP);
+	VOID_C Xfprintf(fp, "%s %k%c", BL_ALIAS, aliaslist[n].alias, ALIASSEP);
 	fputsmeta(aliaslist[n].comm, fp);
 }
 
@@ -3065,13 +3070,14 @@ XFILE *fp;
 	int i;
 
 # if	FD < 2
-	Xfprintf(fp, "%s ", BL_FUNCTION);
+	VOID_C Xfprintf(fp, "%s ", BL_FUNCTION);
 # endif
-	Xfprintf(fp, "%k() {", userfunclist[no].func);
+	VOID_C Xfprintf(fp, "%k() {", userfunclist[no].func);
 	if (verbose) VOID_C fputnl(fp);
 	for (i = 0; userfunclist[no].comm[i]; i++) {
-		if (verbose) Xfprintf(fp, "\t%k;\n", userfunclist[no].comm[i]);
-		else Xfprintf(fp, " %k;", userfunclist[no].comm[i]);
+		if (verbose) VOID_C Xfprintf(fp,
+			"\t%k;\n", userfunclist[no].comm[i]);
+		else VOID_C Xfprintf(fp, " %k;", userfunclist[no].comm[i]);
 	}
 	Xfputs(" }", fp);
 }
@@ -3293,13 +3299,11 @@ char *CONST argv[];
 		return(-1);
 	}
 	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
-		Xfprintf(Xstderr, "%s: %k", argv[0], RESTR_K);
-		VOID_C fputnl(Xstderr);
+		VOID_C Xfprintf(Xstderr, "%s: %k\n", argv[0], RESTR_K);
 		return(RET_NOTICE);
 	}
 	if (argc > 2 || !filelist || maxfile <= 0) {
-		Xfprintf(Xstderr, "%s: %k", argv[0], ILFNC_K);
-		VOID_C fputnl(Xstderr);
+		VOID_C Xfprintf(Xstderr, "%s: %k\n", argv[0], ILFNC_K);
 		return(RET_NOTICE);
 	}
 #ifdef	DEP_PTY

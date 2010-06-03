@@ -548,14 +548,14 @@ off_t *np, *bsizep;
 	off_t s, mb;
 
 	if (*np < (off_t)0 || !*bsizep) {
-		Xfprintf(Xstdout, "%15.15s bytes", "?");
+		VOID_C Xprintf("%15.15s bytes", "?");
 		return;
 	}
 
 	s = ((off_t)1024 * (off_t)1024 + (*bsizep / 2)) / *bsizep;
 	mb = *np / s;
-	if (mb < (off_t)1024) Xfprintf(Xstdout, "%'15qd bytes", *np * *bsizep);
-	else Xfprintf(Xstdout, "%'12qd.%02qd MB",
+	if (mb < (off_t)1024) VOID_C Xprintf("%'15qd bytes", *np * *bsizep);
+	else VOID_C Xprintf("%'12qd.%02qd MB",
 		mb, ((*np - mb * s) * (off_t)100) / s);
 }
 
@@ -898,7 +898,7 @@ int verbose;
 #ifndef	NOSYMLINK
 		case S_IFLNK:
 #endif
-			Xfprintf(Xstdout, "%'13qd", dirp -> siz);
+			VOID_C Xprintf("%'13qd", dirp -> siz);
 			break;
 		case S_IFDIR:
 			Xfputs("  <DIR>      ", Xstdout);
@@ -915,7 +915,7 @@ int verbose;
 		else {
 			dirp -> siz = ((dirp -> siz + *bsizep - 1) / *bsizep)
 				* *bsizep;
-			Xfprintf(Xstdout, "%'14qd", dirp -> siz);
+			VOID_C Xprintf("%'14qd", dirp -> siz);
 		}
 	}
 #endif	/* !MINIMUMSHELL */
@@ -933,12 +933,12 @@ int verbose;
 #endif
 	Xfputs("  ", Xstdout);
 #ifndef	MINIMUMSHELL
-	if (verbose < 0) Xfprintf(Xstdout, "%04d-%02d-%02d  %2d:%02d ",
+	if (verbose < 0) VOID_C Xprintf("%04d-%02d-%02d  %2d:%02d ",
 		tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 	else
 #endif
-	Xfprintf(Xstdout, "%02d-%02d-%02d  %2d:%02d ",
+	VOID_C Xprintf("%02d-%02d-%02d  %2d:%02d ",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
 
@@ -955,7 +955,7 @@ int verbose;
 # else
 		tm = localtime(&(dirp -> atim));
 # endif
-		Xfprintf(Xstdout, " %02d-%02d-%02d  ",
+		VOID_C Xprintf(" %02d-%02d-%02d  ",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
 		Xstrcpy(buf, "           ");
 		if (!(dirp -> mod & S_IWUSR)) buf[0] = 'R';
@@ -970,7 +970,7 @@ int verbose;
 
 	kanjifputs(dirp -> nam, Xstdout);
 #ifndef	NOSYMLINK
-	if (dirp -> lnam) Xfprintf(Xstdout, " -> %s", dirp -> lnam);
+	if (dirp -> lnam) VOID_C Xprintf(" -> %s", dirp -> lnam);
 #endif
 	VOID_C fputnl(Xstdout);
 }
@@ -1021,7 +1021,7 @@ struct filestat_t *dirp;
 			buf[i] = '\0';
 			cp = buf;
 		}
-		Xfprintf(Xstdout, "%k%c", cp, _SC_);
+		VOID_C Xprintf("%k%c", cp, _SC_);
 	}
 
 	if (dirflag & DF_LOWER)
@@ -1048,7 +1048,7 @@ int n_incline;
 			dirflag |= DF_CANCEL;
 			return(-1);
 		}
-		Xfprintf(Xstdout, "\n(continuing %k)\n", dirwd);
+		VOID_C Xprintf("\n(continuing %k)\n", dirwd);
 		dirline = n_incline;
 	}
 
@@ -1064,7 +1064,7 @@ static VOID NEAR dosdirheader(VOID_A)
 			if (checkline(1) < 0) return;
 		}
 		else Xfputc(' ', Xstdout);
-		Xfprintf(Xstdout, "Directory of %k\n", dirwd);
+		VOID_C Xprintf("Directory of %k\n", dirwd);
 	}
 #ifndef	MINIMUMSHELL
 	if (dirtype == 'V') {
@@ -1111,11 +1111,11 @@ off_t *sump, *bsump, *fp, *tp;
 			Xfputs("Total files listed:\n", Xstdout);
 		}
 		if (checkline(1) < 0) return;
-		Xfprintf(Xstdout, "%10d file(s)%'15qd bytes\n", nf, *sump);
+		VOID_C Xprintf("%10d file(s)%'15qd bytes\n", nf, *sump);
 #ifndef	MINIMUMSHELL
 		if (dirtype == 'V') {
 			if (checkline(1) < 0) return;
-			Xfprintf(Xstdout, "%10d dir(s) ", nd);
+			VOID_C Xprintf("%10d dir(s) ", nd);
 			fputsize(bsump, bsizep);
 			Xfputs(" allocated\n", Xstdout);
 			nd = -1;
@@ -1126,7 +1126,7 @@ off_t *sump, *bsump, *fp, *tp;
 
 	if (checkline(1) < 0) return;
 	if (nd < 0) Xfputs("                  ", Xstdout);
-	else Xfprintf(Xstdout, "%10d dir(s) ", nd);
+	else VOID_C Xprintf("%10d dir(s) ", nd);
 
 	fputsize(fp, bsizep);
 	Xfputs(" free\n", Xstdout);
@@ -1136,7 +1136,7 @@ off_t *sump, *bsump, *fp, *tp;
 		if (checkline(1) < 0) return;
 		Xfputs("                  ", Xstdout);
 		fputsize(tp, bsizep);
-		Xfprintf(Xstdout, " total disk space, %3d%% in use\n",
+		VOID_C Xprintf(" total disk space, %3d%% in use\n",
 			(int)(((*tp - *fp) * (off_t)100) / *tp));
 	}
 #endif	/* !MINIMUMSHELL */
@@ -1537,8 +1537,8 @@ char *CONST argv[];
 	for (i = 0; wild[i]; i++) {
 		if (flag) {
 			do {
-				Xfprintf(Xstdout,
-					"%k,    Delete (Y/N)?", wild[i]);
+				VOID_C Xprintf("%k,    Delete (Y/N)?",
+					wild[i]);
 				Xfflush(Xstdout);
 				if ((c = inputkey()) < 0) {
 					freevar(wild);
@@ -1719,7 +1719,7 @@ CONST char *file, *src;
 	}
 
 	if (c) {
-		Xfprintf(Xstderr, "Overwrite %k (Yes/No/All)?", file);
+		VOID_C Xfprintf(Xstderr, "Overwrite %k (Yes/No/All)?", file);
 		Xfflush(Xstderr);
 		key = -1;
 		for (;;) {
@@ -1730,7 +1730,7 @@ CONST char *file, *src;
 			if (c == K_CR && key >= 0) break;
 			if (!Xstrchr("ynaYNA", c)) continue;
 			key = Xtoupper(c);
-			Xfprintf(Xstderr, "%c%s", c, c_left);
+			VOID_C Xfprintf(Xstderr, "%c%s", c, c_left);
 			Xfflush(Xstderr);
 		}
 		VOID_C fputnl(Xstderr);
@@ -2122,10 +2122,8 @@ char *CONST argv[];
 		if (fd > 0) textclose(fd, dbin);
 		if (nc > 0) nc = 1;
 	}
-	if (!(copyflag & CF_CANCEL)) {
-		Xfprintf(Xstdout, "%9d file(s) copied", nc);
-		VOID_C fputnl(Xstdout);
-	}
+	if (!(copyflag & CF_CANCEL))
+		VOID_C Xprintf("%9d file(s) copied\n", nc);
 
 	return(ret);
 }

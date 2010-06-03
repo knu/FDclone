@@ -35,6 +35,7 @@ extern char *includepath __P_((CONST char *, CONST char *));
 #if	defined (OLDPARSE) && !defined (_NOARCHIVE)
 extern char *getrange __P_((CONST char *, int, u_char *, u_char *, u_char *));
 #endif
+extern int getprintable __P_((char *, ALLOC_T, CONST char *, ALLOC_T, int *));
 extern int evalprompt __P_((char **, CONST char *));
 #if	defined (FD) && !defined (_NOARCHIVE)
 extern char *getext __P_((CONST char *, u_char *));

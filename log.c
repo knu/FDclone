@@ -78,7 +78,7 @@ static lockbuf_t *NEAR openlogfile(VOID_A)
 
 	size = (ALLOC_T)logsize * (ALLOC_T)1024;
 	if (size > 0 && Xstat(cp, &st) >= 0 && st.st_size > size) {
-		Xsnprintf(path, sizeof(path), "%s.old", cp);
+		VOID_C Xsnprintf(path, sizeof(path), "%s.old", cp);
 		if (Xrename(cp, path) < 0) VOID_C Xunlink(cp);
 	}
 
@@ -131,13 +131,13 @@ CONST char *buf;
 		t = time(NULL);
 		tm = localtime(&t);
 #ifdef	NOUID
-		Xsnprintf(hbuf, sizeof(hbuf),
+		VOID_C Xsnprintf(hbuf, sizeof(hbuf),
 			"%04u/%02u/%02u %02u:%02u:%02u %s[%d]:\n ",
 			tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
 			progname, getpid());
 #else
-		Xsnprintf(hbuf, sizeof(hbuf),
+		VOID_C Xsnprintf(hbuf, sizeof(hbuf),
 			"%04u/%02u/%02u %02u:%02u:%02u uid=%d %s[%d]:\n ",
 			tm -> tm_year + 1900, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min, tm -> tm_sec,
@@ -187,7 +187,9 @@ va_dcl
 	va_end(args);
 
 	if (len >= 0) {
+#ifdef	CODEEUC
 		len = strlen(buf);
+#endif
 		if (val >= 0) n = Xsnprintf(&(buf[len]),
 			(int)sizeof(buf) - len, " succeeded");
 		else n = Xsnprintf(&(buf[len]), (int)sizeof(buf) - len,

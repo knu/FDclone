@@ -406,7 +406,8 @@ static VOID NEAR statusbar(VOID_A)
 	Xputterm(T_STANDOUT);
 	XXcputs(S_PAGE);
 	Xputterm(END_STANDOUT);
-	VOID_C XXcprintf("%<*d/%<*d", D_PAGE, filepos / FILEPERPAGE + 1,
+	VOID_C XXcprintf("%<*d/%<*d",
+		D_PAGE, filepos / FILEPERPAGE + 1,
 		D_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
 	Xlocate(C_MARK, L_STATUS);
@@ -644,8 +645,9 @@ uid_t uid;
 
 	i = len = (iswellomit()) ? WOWNERMIN : WOWNER;
 	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((up = finduid(uid, NULL))) strncpy2(buf, up -> name, &len, 0);
-	else Xsnprintf(buf, len + 1, "%-*d", len, (int)uid);
+	else if ((up = finduid(uid, NULL)))
+		VOID_C strncpy2(buf, up -> name, &len, 0);
+	else VOID_C Xsnprintf(buf, len + 1, "%-*d", len, (int)uid);
 
 	return(len);
 }
@@ -659,8 +661,9 @@ gid_t gid;
 
 	i = len = (iswellomit()) ? WGROUPMIN : WGROUP;
 	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
-	else if ((gp = findgid(gid, NULL))) strncpy2(buf, gp -> name, &len, 0);
-	else Xsnprintf(buf, len + 1, "%-*d", len, (int)gid);
+	else if ((gp = findgid(gid, NULL)))
+		VOID_C strncpy2(buf, gp -> name, &len, 0);
+	else VOID_C Xsnprintf(buf, len + 1, "%-*d", len, (int)gid);
 
 	return(len);
 }
@@ -675,7 +678,7 @@ int width, max;
 	int i, len;
 
 	if (max > MAXLONGWIDTH) max = MAXLONGWIDTH;
-	Xsnprintf(tmp, sizeof(tmp), "%<*qd", max, n);
+	VOID_C Xsnprintf(tmp, sizeof(tmp), "%<*qd", max, n);
 	for (i = max - width; i > 0; i--) if (tmp[i - 1] == ' ') break;
 	len = max - i;
 	Xstrncpy(buf, &(tmp[i]), len);
@@ -689,23 +692,28 @@ namelist *namep;
 int width;
 {
 	if (isdir(namep))
-		Xsnprintf(buf, width + 1, "%*.*s", width, width, "<DIR>");
+		VOID_C Xsnprintf(buf, width + 1,
+			"%*.*s", width, width, "<DIR>");
 #if	MSDOS
 	else if (s_isfifo(namep))
-		Xsnprintf(buf, width + 1, "%*.*s", width, width, "<VOL>");
+		VOID_C Xsnprintf(buf, width + 1,
+			"%*.*s", width, width, "<VOL>");
 #else	/* !MSDOS */
 # ifdef	DEP_DOSDRIVE
 	else if (dospath2(nullstr) && s_isfifo(namep))
-		Xsnprintf(buf, width + 1, "%*.*s", width, width, "<VOL>");
+		VOID_C Xsnprintf(buf, width + 1,
+			"%*.*s", width, width, "<VOL>");
 # endif
 	else if (isdev(namep))
-		Xsnprintf(buf, width + 1, "%<*lu,%<*lu",
+		VOID_C Xsnprintf(buf, width + 1,
+			"%<*lu,%<*lu",
 			width / 2,
 			(u_long)major((u_long)(namep -> st_size)),
 			width - (width / 2) - 1,
 			(u_long)minor((u_long)(namep -> st_size)));
 #endif	/* !MSDOS */
-	else Xsnprintf(buf, width + 1, "%<*qd", width, namep -> st_size);
+	else VOID_C Xsnprintf(buf, width + 1,
+		"%<*qd", width, namep -> st_size);
 
 	return(width);
 }
@@ -716,7 +724,7 @@ namelist *namep;
 int width;
 {
 #ifdef	NOSYMLINK
-	strncpy2(buf, namep -> name, &width, fnameofs);
+	VOID_C strncpy2(buf, namep -> name, &width, fnameofs);
 #else	/* !NOSYMLINK */
 # ifdef	DEP_DOSDRIVE
 	char path[MAXPATHLEN];
@@ -741,7 +749,7 @@ int width;
 # ifndef	_NOARCHIVE
 	else if (archivefile) {
 		if (namep -> linkname)
-			strncpy2(buf, namep -> linkname, &w, len);
+			VOID_C strncpy2(buf, namep -> linkname, &w, len);
 	}
 # endif
 	else {
@@ -750,7 +758,7 @@ int width;
 			tmp, width * 2 + len);
 		if (i >= 0) {
 			tmp[i] = '\0';
-			strncpy2(buf, tmp, &w, len);
+			VOID_C strncpy2(buf, tmp, &w, len);
 		}
 		Xfree(tmp);
 	}
@@ -802,7 +810,7 @@ static VOID NEAR infobar(VOID_A)
 		len += putsize2(&(buf[len]), &(filelist[filepos]), TWSIZE2);
 		buf[len++] = ' ';
 
-		Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
+		VOID_C Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
 			"%02d-%02d-%02d %2d:%02d ",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
@@ -871,8 +879,8 @@ static VOID NEAR infobar(VOID_A)
 		? (S_IFLNK | 0777) : filelist[filepos].st_mode, 0);
 
 	if (!ishardomit()) {
-		Xsnprintf(&(buf[len]), 1 + WNLINK + 1 + 1, " %<*d ",
-			WNLINK, (int)(filelist[filepos].st_nlink));
+		VOID_C Xsnprintf(&(buf[len]), 1 + WNLINK + 1 + 1,
+			" %<*d ", WNLINK, (int)(filelist[filepos].st_nlink));
 		len += 1 + WNLINK + 1;
 
 #ifndef	NOUID
@@ -900,7 +908,7 @@ static VOID NEAR infobar(VOID_A)
 		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len);
 	buf[len++] = ' ';
 
-	Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
+	VOID_C Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
 		"%02d-%02d-%02d %02d:%02d ",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 		tm -> tm_hour, tm -> tm_min);
@@ -1062,14 +1070,16 @@ int no, isstandout;
 	}
 	if (curcolumns < 3 && len + WIDTH2 <= width) {
 		tm = localtime(&(list[no].st_mtim));
-		Xsnprintf(&(buf[len]), WIDTH2 + 1, " %02d-%02d-%02d %2d:%02d",
+		VOID_C Xsnprintf(&(buf[len]), WIDTH2 + 1,
+			" %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
 			tm -> tm_hour, tm -> tm_min);
 		len += WIDTH2;
 	}
 	if (curcolumns < 2 && len + WIDTH1 <= width) {
 		if (!tm) tm = localtime(&(list[no].st_mtim));
-		Xsnprintf(&(buf[len]), 1 + WSECOND + 1, ":%02d", tm -> tm_sec);
+		VOID_C Xsnprintf(&(buf[len]), 1 + WSECOND + 1,
+			":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
 #ifndef	NOUID

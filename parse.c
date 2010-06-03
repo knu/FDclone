@@ -689,6 +689,24 @@ u_char *fp, *dp, *wp;
 }
 #endif	/* OLDPARSE && !_NOARCHIVE */
 
+int getprintable(buf, size, s, ptr, rwp)
+char *buf;
+ALLOC_T size;
+CONST char *s;
+ALLOC_T ptr;
+int *rwp;
+{
+	char tmp[2 + 1];
+	int rw;
+
+	getcharwidth(s, ptr, &rw, NULL);
+	memcpy(tmp, &(s[ptr]), rw);
+	tmp[rw] = '\0';
+	if (rwp) *rwp = rw;
+
+	return(Xsnprintf(buf, size, "%^s", tmp));
+}
+
 int evalprompt(bufp, prompt)
 char **bufp;
 CONST char *prompt;
@@ -701,7 +719,7 @@ CONST char *prompt;
 #endif
 	char *cp, *tmp, *new, line[MAXPATHLEN];
 	ALLOC_T size;
-	int i, j, k, len, unprint;
+	int i, j, k, rw, v, len, unprint;
 
 	cp = Xstrdup(prompt);
 #if	defined (FD) && !defined (DEP_ORIGSHELL)
@@ -732,7 +750,7 @@ CONST char *prompt;
 				break;
 #ifdef	FD
 			case '!':
-				Xsnprintf(line, sizeof(line), "%d",
+				VOID_C Xsnprintf(line, sizeof(line), "%d",
 					(int)histno[0] + 1);
 				break;
 #endif
@@ -811,31 +829,21 @@ CONST char *prompt;
 		if (!cp) cp = line;
 
 		while (*cp) {
-			*bufp = c_realloc(*bufp, j + 1, &size);
-			if (unprint) (*bufp)[j] = *cp;
-			else if (iskanji1(cp, 0)) {
-				(*bufp)[j++] = *(cp++);
+			*bufp = c_realloc(*bufp, j + MAXCHARWID - 1, &size);
+			if (unprint) {
 				(*bufp)[j] = *cp;
-				len += 2;
+				continue;
 			}
+
+			v = getprintable(&((*bufp)[j]), MAXCHARWID + 1,
+				cp, 0, &rw);
 #ifdef	CODEEUC
-			else if (isekana(cp, 0)) {
-				(*bufp)[j++] = *(cp++);
-				(*bufp)[j] = *cp;
-				len++;
-			}
+			j += strlen(&((*bufp)[j]));
+#else
+			j += v;
 #endif
-			else if (!Xiscntrl(*cp)) {
-				(*bufp)[j] = *cp;
-				len++;
-			}
-			else {
-				(*bufp)[j++] = '^';
-				(*bufp)[j] = ((*cp + '@') & 0x7f);
-				len += 2;
-			}
-			cp++;
-			j++;
+			cp += rw;
+			len += v;
 		}
 	}
 	(*bufp)[j] = '\0';
@@ -948,7 +956,7 @@ int identonly;
 CONST char *getkeysym(c, tenkey)
 int c, tenkey;
 {
-	static char buf[4 + 1];
+	static char buf[MAXCHARWID + 1];
 	int i;
 
 	for (i = 0; i < KEYIDENTSIZ; i++)
@@ -961,7 +969,7 @@ int c, tenkey;
 
 	i = 0;
 	if (c >= K_F(1) && c <= K_F(20))
-		i = Xsnprintf(buf, sizeof(buf), "F%d", c - K_F0);
+		VOID_C Xsnprintf(buf, sizeof(buf), "F%d", c - K_F0);
 	else if (ismetakey(c)) {
 		buf[i++] = '@';
 		buf[i++] = c & 0x7f;
@@ -978,16 +986,16 @@ int c, tenkey;
 		buf[i++] = '?';
 		buf[i++] = '?';
 	}
-	else if (Xiscntrl(c)) {
+	else if (Xiscntrl(c) || ismsb(c)) {
 		for (i = 0; escapechar[i]; i++)
 			if (c == escapevalue[i]) break;
 		if (escapechar[i])
-			i = Xsnprintf(buf, sizeof(buf), "\\%c", escapechar[i]);
-		else i = Xsnprintf(buf, sizeof(buf), "^%c", (c + '@') & 0x7f);
+			VOID_C Xsnprintf(buf, sizeof(buf),
+				"\\%c", escapechar[i]);
+		else VOID_C Xsnprintf(buf, sizeof(buf), "%^c", c);
 	}
-	else if (ismsb(c)) i = Xsnprintf(buf, sizeof(buf), "\\%03o", c);
 	else buf[i++] = c;
-	buf[i] = '\0';
+	if (i > 0) buf[i] = '\0';
 
 	return(buf);
 }
@@ -1035,13 +1043,17 @@ char *encodestr(s, len)
 CONST char *s;
 int len;
 {
-	char *cp;
-	int i, j, n;
+	char *cp, *tmp;
+	ALLOC_T size;
+	int i, n;
 
-	cp = Xmalloc(len * 4 + 1);
-	j = 0;
+	size = len * MAXCHARWID + 1;
+	cp = tmp = Xmalloc(size);
 	if (s) for (i = 0; i < len; i++) {
-		if (iswchar(s, i)) cp[j++] = s[i++];
+		if (iswchar(s, i)) {
+			*(cp++) = s[i++];
+			size--;
+		}
 # ifndef	CODEEUC
 		else if (isskana(s, i)) /*EMPTY*/;
 # endif
@@ -1049,25 +1061,25 @@ int len;
 			for (n = 0; escapechar[n]; n++)
 				if (s[i] == escapevalue[n]) break;
 			if (escapechar[n]) {
-				cp[j++] = '\\';
-				cp[j++] = escapechar[n];
-			}
-			else if (Xiscntrl(s[i])) {
-				Xsnprintf(&(cp[j]), len * 4 + 1 - j,
-					"^%c", (s[i] + '@') & 0x7f);
-				j += strlen(&(cp[j]));
+				*(cp++) = '\\';
+				*(cp++) = escapechar[n];
+				size -= 2;
 			}
 			else {
-				Xsnprintf(&(cp[j]), len * 4 + 1 - j,
-					"\\%03o", s[i] & 0xff);
-				j += strlen(&(cp[j]));
+				n = Xsnprintf(cp, size, "%^c", s[i]);
+#ifdef	CODEEUC
+				n = strlen(cp);
+#endif
+				cp += n;
+				size -= n;
 			}
 			continue;
 		}
-		cp[j++] = s[i];
+		*(cp++) = s[i++];
+		size--;
 	}
-	cp[j] = '\0';
+	*cp = '\0';
 
-	return(cp);
+	return(tmp);
 }
 #endif	/* FD && !_NOKEYMAP */

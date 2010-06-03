@@ -78,7 +78,6 @@ extern int chdir2 __P_((CONST char *));
 extern int chdir3 __P_((CONST char *, int));
 extern int mkdir2 __P_((char *, int));
 extern int strncpy2 __P_((char *, CONST char *, int *, int));
-extern int strlen3 __P_((CONST char *));
 extern VOID perror2 __P_((CONST char *));
 extern int setenv2 __P_((CONST char *, CONST char *, int));
 extern char *getenv2 __P_((CONST char *));

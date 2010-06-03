@@ -374,9 +374,9 @@ int uh;
 
 		n = urlcommand(uh, NULL, FTP_PASS, pass);
 		if (n == 530) {
-			if (anon) Xfprintf(Xstderr,
+			if (anon) VOID_C Xfprintf(Xstderr,
 				"%s: Invalid address.\r\n", pass);
-			else Xfprintf(Xstderr,
+			else VOID_C Xfprintf(Xstderr,
 				"%s: Login incorrect.\r\n", buf);
 			Xfree(urlhostlist[uh].host.pass);
 			urlhostlist[uh].host.pass = NULL;

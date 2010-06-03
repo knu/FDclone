@@ -20,7 +20,7 @@ static VOID NEAR error __P_((CONST char *));
 static VOID NEAR error(s)
 CONST char *s;
 {
-	Xfprintf(Xstderr, "%s: memory allocation error", s);
+	VOID_C Xfprintf(Xstderr, "%s: memory allocation error", s);
 	VOID_C fputnl(Xstderr);
 
 	exit(2);

@@ -268,7 +268,7 @@ va_dcl
 	if (n < 0) return(-1);
 
 	len = sizeof(md5);
-	md5encode(md5, &len, (u_char *)cp, n);
+	md5encode(md5, &len, (u_char *)cp, (ALLOC_T)-1);
 	Xfree(cp);
 	cp = buf;
 	*buf = '\0';
@@ -308,6 +308,9 @@ va_dcl
 		return(-1);
 	}
 
+#ifdef	CODEEUC
+	n = strlen(cp);
+#endif
 	*sp = Xrealloc(*sp, len + n + 1);
 	memcpy(&((*sp)[len]), cp, n);
 	len += n;
@@ -331,6 +334,9 @@ CONST char *digest, *method, *path;
 	if (!digest) {
 		n = Xasprintf(&cp, "%s:%s", hp -> user, hp -> pass);
 		if (n < 0) return(NULL);
+#ifdef	CODEEUC
+		n = strlen(cp);
+#endif
 		size = ((n - 1) / BASE64_ORGSIZ + 1)
 			* BASE64_ENCSIZ;
 		buf = Xmalloc(strsize(AUTHBASIC) + 1 + size + 1);

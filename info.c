@@ -306,7 +306,7 @@ extern VOID Xlocate __P_((int, int));
 extern VOID Xputterm __P_((int));
 extern VOID XXputch __P_((int));
 extern VOID XXcputs __P_((CONST char *));
-extern VOID XXcprintf __P_((CONST char *, ...));
+extern int XXcprintf __P_((CONST char *, ...));
 #else
 #define	Xlocate			locate
 #define	Xputterm		putterm
@@ -412,38 +412,42 @@ int code;
 
 	buf = buf + strlen(buf);
 	if (code >= K_F(1) && code <= K_F(20))
-		Xsnprintf(buf, KEYWID + 1, "F%-6d", code - K_F0);
+		VOID_C Xsnprintf(buf, KEYWID + 1, "F%-6d", code - K_F0);
 	else if ((code & ~0x7f) == 0x80 && Xisalpha(code & 0x7f))
-		Xsnprintf(buf, KEYWID + 1, "Alt-%c  ", code & 0x7f);
+		VOID_C Xsnprintf(buf, KEYWID + 1, "Alt-%c  ", code & 0x7f);
 	else if (code == K_UP)
-		Xsnprintf(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, UPAR_K);
+		VOID_C Xsnprintf(buf, KEYWID + 1,
+			"%-*.*s", KEYWID, KEYWID, UPAR_K);
 	else if (code == K_DOWN)
-		Xsnprintf(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, DWNAR_K);
+		VOID_C Xsnprintf(buf, KEYWID + 1,
+			"%-*.*s", KEYWID, KEYWID, DWNAR_K);
 	else if (code == K_RIGHT)
-		Xsnprintf(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, RIGAR_K);
+		VOID_C Xsnprintf(buf, KEYWID + 1,
+			"%-*.*s", KEYWID, KEYWID, RIGAR_K);
 	else if (code == K_LEFT)
-		Xsnprintf(buf, KEYWID + 1, "%-*.*s", KEYWID, KEYWID, LEFAR_K);
+		VOID_C Xsnprintf(buf, KEYWID + 1,
+			"%-*.*s", KEYWID, KEYWID, LEFAR_K);
 	else {
 		for (i = 0; i < KEYCODESIZ; i++)
 			if (code == keycodelist[i]) break;
 		if (i < KEYCODESIZ)
-			Xsnprintf(buf, KEYWID + 1, "%-*.*s",
-				KEYWID, KEYWID, keystrlist[i]);
+			VOID_C Xsnprintf(buf, KEYWID + 1,
+				"%-*.*s", KEYWID, KEYWID, keystrlist[i]);
 #ifdef	CODEEUC
 		else if (isekana2(code))
-			Xsnprintf(buf, KEYWID + 1 + 1,
+			VOID_C Xsnprintf(buf, KEYWID + 1 + 1,
 				"'%c%c'    ", C_EKANA, code & 0xff);
 #endif
 		else if (code > MAXUTYPE(u_char)) return(0);
 #ifndef	CODEEUC
 		else if (Xiskana(code))
-			Xsnprintf(buf, KEYWID + 1, "'%c'    ", code);
+			VOID_C Xsnprintf(buf, KEYWID + 1, "'%c'    ", code);
 #endif
 		else if (Xiscntrl(code))
-			Xsnprintf(buf, KEYWID + 1,
+			VOID_C Xsnprintf(buf, KEYWID + 1,
 				"Ctrl-%c ", (code + '@') & 0x7f);
 		else if (!ismsb(code))
-			Xsnprintf(buf, KEYWID + 1, "'%c'    ", code);
+			VOID_C Xsnprintf(buf, KEYWID + 1, "'%c'    ", code);
 		else return(0);
 	}
 

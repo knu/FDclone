@@ -1,3 +1,7 @@
+Ver. 3.00g	Broken tree screen with unprintable directory name is fixed.
+ (06/04/10)	Abortion when accessing directory with Japanese is fixed.
+		Buffer overflow in Japanese string parser is fixed.
+
 Ver. 3.00f	Mis-action of 'dir' builtin which differs from MS-DOS is fixed.
  (05/29/10)	Invalidated default attribute mask of 'dir' builtin is fixed.
 		Abortion when canceling in COPY_TREE/MOVE_TREE is fixed.

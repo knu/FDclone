@@ -1138,7 +1138,7 @@ int yy;
 	up = finduid(attr -> uid, NULL);
 	if (up) cp = up -> name;
 	else {
-		Xsnprintf(buf, sizeof(buf), "%-d", (int)(attr -> uid));
+		VOID_C Xsnprintf(buf, sizeof(buf), "%-d", (int)(attr -> uid));
 		cp = buf;
 	}
 
@@ -1174,7 +1174,7 @@ int yy;
 	gp = findgid(attr -> gid, NULL);
 	if (gp) cp = gp -> name;
 	else {
-		Xsnprintf(buf, sizeof(buf), "%-d", (int)(attr -> gid));
+		VOID_C Xsnprintf(buf, sizeof(buf), "%-d", (int)(attr -> gid));
 		cp = buf;
 	}
 
@@ -1248,9 +1248,11 @@ int flag;
 	attr.flags = namep -> st_flags;
 #endif
 	tm = localtime(&(namep -> st_mtim));
-	Xsnprintf(attr.timestr[0], sizeof(attr.timestr[0]), "%02d-%02d-%02d",
+	VOID_C Xsnprintf(attr.timestr[0], sizeof(attr.timestr[0]),
+		"%02d-%02d-%02d",
 		tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday);
-	Xsnprintf(attr.timestr[1], sizeof(attr.timestr[1]), "%02d:%02d:%02d",
+	VOID_C Xsnprintf(attr.timestr[1], sizeof(attr.timestr[1]),
+		"%02d:%02d:%02d",
 		tm -> tm_hour, tm -> tm_min, tm -> tm_sec);
 	showattr(namep, &attr, yy);
 	y = ymin = (excl == ATR_TIMEONLY) ? WMODELINE : 0;

@@ -67,7 +67,7 @@ int norealpath = 0;
 static VOID NEAR error(s)
 CONST char *s;
 {
-	Xfprintf(Xstderr, "%s: Error(%d).\n", errno);
+	VOID_C Xfprintf(Xstderr, "%s: Error(%d).\n", errno);
 	exit(2);
 }
 #endif	/* MSDOS && !FD */
@@ -175,6 +175,9 @@ int tlen, rlen, flags;
 
 	len = Xsnprintf(&(resolved[rlen]), MAXPATHLEN - rlen,
 		"%s%-.*s", (rlen > tlen + 1) ? _SS_ : nullstr, plen, path);
+#ifdef	CODEEUC
+	len = strlen(&(resolved[rlen]));
+#endif
 #ifndef	NOSYMLINK
 	if ((flags & RLP_READLINK)
 	&& (n = evallink(resolved, tlen, rlen)) > 0) {
@@ -269,7 +272,13 @@ int flags;
 		else cp = Xgetwd(resolved);
 	}
 
-	if (rlen > 0) /*EMPTY*/;
+	if (rlen > 0) {
+#ifdef	CODEEUC
+		rlen = strlen(resolved);
+#else
+		/*EMPTY*/;
+#endif
+	}
 	else if (cp) rlen = strlen(cp);
 #ifdef	DEP_DOSPATH
 	else if (drv) {

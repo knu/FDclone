@@ -1524,9 +1524,9 @@ int n;
 char *buf;
 {
 # ifdef	BASHSTYLE
-	Xsnprintf(buf, MAXLONGWIDTH + 1, "%03o", n & 0777);
+	VOID_C Xsnprintf(buf, MAXLONGWIDTH + 1, "%03o", n & 0777);
 # else
-	Xsnprintf(buf, MAXLONGWIDTH + 1, "%04o", n & 0777);
+	VOID_C Xsnprintf(buf, MAXLONGWIDTH + 1, "%04o", n & 0777);
 # endif
 
 	return(buf);
@@ -1545,7 +1545,7 @@ XFILE *fp;
 	if (!argc) return;
 
 	Xfputs(s, fp);
-	for (i = 0; i < argc; i++) Xfprintf(fp, " %s", argv[i]);
+	for (i = 0; i < argc; i++) VOID_C Xfprintf(fp, " %s", argv[i]);
 	VOID_C fputnl(fp);
 }
 # endif	/* DEP_ORIGSHELL */
@@ -1554,7 +1554,7 @@ static char *NEAR int2str(buf, n)
 char *buf;
 int n;
 {
-	Xsnprintf(buf, MAXLONGWIDTH + 1, "%d", n);
+	VOID_C Xsnprintf(buf, MAXLONGWIDTH + 1, "%d", n);
 
 	return(buf);
 }
@@ -2366,13 +2366,13 @@ XFILE *fp;
 		&& (cp = getshellvar(env_str(i), -1))
 		&& (env_type(i) != T_CHARP || strenvcmp(cp, def_str(i)))) {
 			cp = killmeta(cp);
-			Xfprintf(fp, "%s=%s\n", env_str(i), cp);
+			VOID_C Xfprintf(fp, "%s=%s\n", env_str(i), cp);
 			Xfree(cp);
 		}
 		if ((!flaglist || !(flaglist[i] & 1))
 		&& (cp = getshellvar(fdenv_str(i), -1))) {
 			cp = killmeta(cp);
-			Xfprintf(fp, "%s=%s\n", fdenv_str(i), cp);
+			VOID_C Xfprintf(fp, "%s=%s\n", fdenv_str(i), cp);
 			Xfree(cp);
 		}
 	}
@@ -2414,7 +2414,7 @@ XFILE *fp;
 			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) Xfputc(' ', fp);
 				cp = killmeta(cp);
-				Xfprintf(fp, "%s=%s", ident, cp);
+				VOID_C Xfprintf(fp, "%s=%s", ident, cp);
 				Xfree(cp);
 				continue;
 			}
@@ -2481,7 +2481,7 @@ XFILE *fp;
 			|| strenvcmp(cp, def_str(i)))) {
 				if (ns++) Xfputc(' ', fp);
 				cp = killmeta(cp);
-				Xfprintf(fp, "%s=%s", ident, cp);
+				VOID_C Xfprintf(fp, "%s=%s", ident, cp);
 				Xfree(cp);
 				continue;
 			}
@@ -3092,7 +3092,7 @@ lsparse_t *list;
 	yy = filetop(win);
 	y = 1;
 	fillline(yy + y++, n_column);
-	len = strlen2(list -> ext + 1);
+	len = strlen2(&(list -> ext[1]));
 	if (list -> flags & LF_IGNORECASE) len++;
 	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
 	fillline(yy + y++, MAXCUSTNAM + 1 - len);
@@ -3101,7 +3101,7 @@ lsparse_t *list;
 		VOID_C XXputch('/');
 		len--;
 	}
-	VOID_C XXcprintf("%.*k", len, list -> ext + 1);
+	VOID_C XXcprintf("%.*k", len, &(list -> ext[1]));
 	putsep();
 	cputstr(MAXCUSTVAL, list -> comm);
 	putsep();
@@ -3825,8 +3825,8 @@ int no;
 		Xstrcpy(buf, "HDD");
 		if (Xisupper(fdtype[no].head)) strcat(buf, "98");
 		i = strlen(buf);
-		Xsnprintf(&(buf[i]), (int)sizeof(buf) - i, " #offset=%'Ld",
-			fdtype[no].offset / fdtype[no].sect);
+		VOID_C Xsnprintf(&(buf[i]), (int)sizeof(buf) - i,
+			" #offset=%'Ld", fdtype[no].offset / fdtype[no].sect);
 		cputstr(w1, buf);
 	}
 	else
@@ -4633,7 +4633,7 @@ int no, y, isstandout;
 		case 3:
 			if (no < maxlaunch) {
 				if (!(launchlist[no].flags & LF_IGNORECASE))
-					cp = launchlist[no].ext + 1;
+					cp = &(launchlist[no].ext[1]);
 				else {
 					Xstrncpy(buf, launchlist[no].ext,
 						MAXCUSTNAM * 2);
@@ -4645,7 +4645,7 @@ int no, y, isstandout;
 		case 4:
 			if (no < maxarchive) {
 				if (!(archivelist[no].flags & AF_IGNORECASE))
-					cp = archivelist[no].ext + 1;
+					cp = &(archivelist[no].ext[1]);
 				else {
 					Xstrncpy(buf, archivelist[no].ext,
 						MAXCUSTNAM * 2);

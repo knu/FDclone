@@ -149,13 +149,13 @@ ALLOC_T size;
 #ifdef	USEDEVPTMX
 # ifdef	TIOCGPTN
 	if (Xioctl(fd, TIOCGPTN, &n) < 0) return(-1);
-	Xsnprintf(spath, size, "%s/%d", _PATH_DEVPTS, n);
+	VOID_C Xsnprintf(spath, size, "%s/%d", _PATH_DEVPTS, n);
 # else
 	if (!(cp = ptsname(fd))) return(-1);
-	Xsnprintf(spath, size, "%s", cp);
+	VOID_C Xsnprintf(spath, size, "%s", cp);
 # endif
 #else	/* !USEDEVPTMX */
-	Xsnprintf(spath, size, "%s", path);
+	VOID_C Xsnprintf(spath, size, "%s", path);
 	if ((cp = Xstrrchr(spath, '/'))) *(++cp) = 't';
 #endif	/* !USEDEVPTMX */
 
@@ -171,7 +171,7 @@ ALLOC_T size;
 	int master, slave;
 
 #ifdef	USEDEVPTMX
-	Xsnprintf(path, sizeof(path), "%s", _PATH_DEVPTMX);
+	VOID_C Xsnprintf(path, sizeof(path), "%s", _PATH_DEVPTMX);
 	if ((master = Xopen(path, O_RDWR, 0)) < 0) return(-1);
 
 	Xgrantpt(master, path);
@@ -185,8 +185,8 @@ ALLOC_T size;
 	CONST char *cp1, *cp2;
 	int n;
 
-	n = Xsnprintf(path, sizeof(path), "%sXX", _PATH_PTY);
-	n -= 2;
+	VOID_C Xsnprintf(path, sizeof(path), "%sXX", _PATH_PTY);
+	n = strlen(path) - 2;
 	master = slave = -1;
 	for (cp1 = pty_char1; *cp1; cp1++) {
 		path[n] = *cp1;

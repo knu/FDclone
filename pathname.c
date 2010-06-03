@@ -2497,25 +2497,26 @@ int plen, *modep;
 			break;
 		case '#':
 			if (!argvar) break;
-			Xsnprintf(tmp, sizeof(tmp), "%d",
-				countvar(argvar + 1));
+			VOID_C Xsnprintf(tmp, sizeof(tmp),
+				"%d", countvar(argvar + 1));
 			cp = tmp;
 			break;
 		case '?':
-			Xsnprintf(tmp, sizeof(tmp), "%d",
+			VOID_C Xsnprintf(tmp, sizeof(tmp),
+				"%d",
 				(getretvalfunc) ? (*getretvalfunc)() : 0);
 			cp = tmp;
 			break;
 		case '$':
 			if (!getpidfunc) pid = getpid();
 			else pid = (*getpidfunc)();
-			Xsnprintf(tmp, sizeof(tmp), "%id", pid);
+			VOID_C Xsnprintf(tmp, sizeof(tmp), "%id", pid);
 			cp = tmp;
 			break;
 		case '!':
 			if (getlastpidfunc
 			&& (pid = (*getlastpidfunc)()) >= 0) {
-				Xsnprintf(tmp, sizeof(tmp), "%id", pid);
+				VOID_C Xsnprintf(tmp, sizeof(tmp), "%id", pid);
 				cp = tmp;
 			}
 			break;
@@ -2581,7 +2582,8 @@ int s, len, vlen, mode;
 		demacroarg(cpp);
 #endif
 		for (i = 0; i < len; i++) Xfputc(arg[i], Xstderr);
-		Xfprintf(Xstderr, ": %k",
+		VOID_C Xfprintf(Xstderr,
+			": %k",
 			(vlen > 0) ? *cpp : "parameter null or not set");
 		VOID_C fputnl(Xstderr);
 		Xfree(*cpp);
@@ -2699,8 +2701,8 @@ int flags;
 
 #ifndef	MINIMUMSHELL
 	if (mode == 'n') {
-		Xsnprintf(tmp, sizeof(tmp), "%d",
-			(cp) ? strlen(cp) : 0);
+		VOID_C Xsnprintf(tmp, sizeof(tmp),
+			"%d", (cp) ? strlen(cp) : 0);
 		cp = tmp;
 	}
 	else if (nul == -1) {

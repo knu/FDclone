@@ -482,9 +482,10 @@ int operation;
 	if (i > DOSBODYLEN - strsize(LOCKEXT))
 		i = DOSBODYLEN - strsize(LOCKEXT);
 	i += cp - file;
-	Xsnprintf(path, sizeof(path), "%-.*s%s%s", i, file, LOCKEXT, ext);
+	VOID_C Xsnprintf(path, sizeof(path),
+		"%-.*s%s%s", i, file, LOCKEXT, ext);
 #else
-	Xsnprintf(path, sizeof(path), "%s.%s", file, LOCKEXT);
+	VOID_C Xsnprintf(path, sizeof(path), "%s.%s", file, LOCKEXT);
 #endif
 
 	fd = -1;
@@ -585,7 +586,7 @@ int flags, mode;
 
 	if (fd < 0) lckflags |= LCK_INVALID;
 	else if (err) {
-		Xfprintf(Xstderr, "%k: %k\r\n", path, NOLCK_K);
+		VOID_C Xfprintf(Xstderr, "%k: %k\r\n", path, NOLCK_K);
 		if (isttyiomode) warning(0, HITKY_K);
 	}
 
@@ -1932,7 +1933,7 @@ int fs;
 		tmpdir = tmp;
 	}
 	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
-	Xsnprintf(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);
+	VOID_C Xsnprintf(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);
 	if (saferename(path, fnamelist[top]) < 0) warning(-1, path);
 	restorefile(tmpdir, path, fnamp);
 

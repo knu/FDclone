@@ -1799,7 +1799,8 @@ char *command;
 					continue;
 				}
 				command[++i] = '\0';
-				Xfprintf(Xstderr, "%k: Event not found.\n",
+				VOID_C Xfprintf(Xstderr,
+					"%k: Event not found.\n",
 					&(command[len]));
 				Xfree(cp);
 				return(NULL);

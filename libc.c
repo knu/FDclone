@@ -286,15 +286,15 @@ int mode;
 }
 
 /*
- *	strncpy2(buf, s, &(x), 0): same as sprintf(buf, "%-*.*s", x, x, s);
- *	strncpy2(buf, s, &(-x), 0): same as sprintf(buf, "%s", s);
+ *	strncpy2(buf, s, &(x), n): like as sprintf(buf + n, "%-*.*s", x, x, s);
+ *	strncpy2(buf, s, &(-x), n): like as sprintf(buf + n, "%s", s);
  */
 int strncpy2(s1, s2, lenp, ptr)
 char *s1;
 CONST char *s2;
 int *lenp, ptr;
 {
-	int i, j, len;
+	int i, j, r, v;
 
 	for (i = j = 0; i < ptr && s2[j]; i++, j++) {
 		if (iskanji1(s2, j)) {
@@ -311,63 +311,23 @@ int *lenp, ptr;
 		i = 1;
 	}
 
-	while (i < *lenp && s2[j]) {
-		if (iskanji1(s2, j)) {
-			Xsnprintf(&(s1[i]), *lenp - i + 1, "%.2s", &(s2[j]));
-			i += strlen(&(s1[i]));
-			j += 2;
-			continue;
-		}
+	v = Xsnprintf(&(s1[i]), *lenp * KANAWID + 1 - i,
+		"%^.*s", *lenp, &(s2[j]));
 #ifdef	CODEEUC
-		else if (isekana(s2, j)) {
-			(*lenp)++;
-			s1[i++] = s2[j++];
-		}
+	r = strlen(&(s1[i]));
 #else
-		else if (isskana(s2, j)) /*EMPTY*/;
+	r = v;
 #endif
-		else if (Xiscntrl(s2[j])) {
-			Xsnprintf(&(s1[i]), *lenp - i + 1,
-				"^%c", (s2[j++] + '@') & 0x7f);
-			i += strlen(&(s1[i]));
-			continue;
-		}
-		else if (ismsb(s2[j])) {
-			Xsnprintf(&(s1[i]), *lenp - i + 1,
-				"\\%03o", s2[j++] & 0xff);
-			i += strlen(&(s1[i]));
-			continue;
-		}
-		s1[i++] = s2[j++];
+	v += i;
+	r += i;
+
+	if (ptr >= 0) {
+		*lenp += r - v;
+		for (i = r; i < *lenp; i++) s1[i] = ' ';
+		s1[i] = '\0';
 	}
 
-	len = i;
-	if (ptr >= 0) while (i < *lenp) s1[i++] = ' ';
-	s1[i] = '\0';
-
-	return(len);
-}
-
-int strlen3(s)
-CONST char *s;
-{
-	int i, len;
-
-	for (i = len = 0; s[i]; i++, len++) {
-		if (iskanji1(s, i)) {
-			i++;
-			len++;
-		}
-#ifdef	CODEEUC
-		else if (isekana(s, i)) i++;
-#else
-		else if (isskana(s, i)) /*EMPTY*/;
-#endif
-		else if (Xiscntrl(s[i])) len++;
-		else if (ismsb(s[i])) len += 3;
-	}
-
-	return(len);
+	return(r);
 }
 
 VOID perror2(s)
@@ -376,7 +336,7 @@ CONST char *s;
 	int duperrno;
 
 	duperrno = errno;
-	if (s) Xfprintf(Xstderr, "%k: ", s);
+	if (s) VOID_C Xfprintf(Xstderr, "%k: ", s);
 	Xfputs(Xstrerror(duperrno), Xstderr);
 	if (isttyiomode) Xfputc('\r', Xstderr);
 	VOID_C fputnl(Xstderr);
@@ -551,7 +511,7 @@ int flags;
 	sigvecset(n);
 	if (ret >= 127 && (flags & F_NOCONFIRM)) {
 		if (dumbterm <= 2) Xfputc('\007', Xstderr);
-		Xfprintf(Xstderr, "\n%k", HITKY_K);
+		VOID_C Xfprintf(Xstderr, "\n%k", HITKY_K);
 		Xfflush(Xstderr);
 		Xttyiomode(1);
 		keyflush();

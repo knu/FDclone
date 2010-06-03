@@ -970,7 +970,7 @@ CONST char *file;
 	len = strlen2(buf);
 	if (i + len > n_lastcolumn) i = n_lastcolumn - len;
 	prompt = Xmalloc(i * KANAWID + strlen(buf) + 1);
-	strncpy2(prompt, file, &i, 0);
+	VOID_C strncpy2(prompt, file, &i, 0);
 	strcat(prompt, buf);
 
 	i = min;

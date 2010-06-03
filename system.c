@@ -2293,10 +2293,10 @@ XFILE *fp;
 
 # ifdef	DEP_FILECONV
 	cp = newkanjiconv(s, defaultkcode, DEFCODE, L_FNAME);
-	Xfprintf(fp, "%a", cp);
+	VOID_C Xfprintf(fp, "%a", cp);
 	if (cp != s) Xfree(cp);
 # else
-	Xfprintf(fp, "%a", s);
+	VOID_C Xfprintf(fp, "%a", s);
 # endif
 }
 #endif	/* FD */
@@ -2324,12 +2324,13 @@ CONST char *s;
 	if (interactive) /*EMPTY*/;
 	else
 #endif
-	if (argvar && argvar[0]) Xfprintf(Xstderr, "%k: ", argvar[0]);
+	if (argvar && argvar[0]) VOID_C Xfprintf(Xstderr, "%k: ", argvar[0]);
 #ifndef	MINIMUMSHELL
 	if (!interactive && shlineno > 0L)
-		Xfprintf(Xstderr, "%ld: ", shlineno);
+		VOID_C Xfprintf(Xstderr, "%ld: ", shlineno);
 #endif
-	if (s) Xfprintf(Xstderr, "%a: ",
+	if (s) VOID_C Xfprintf(Xstderr,
+		"%a: ",
 		(*s && syntaxerrno != ER_UNEXPNL) ? s : "syntax error");
 	if (syntaxerrstr[syntaxerrno])
 		Xfputs(syntaxerrstr[syntaxerrno], Xstderr);
@@ -2355,13 +2356,13 @@ int n, noexit;
 	if (interactive) /*EMPTY*/;
 	else
 #endif
-	if (argvar && argvar[0]) Xfprintf(Xstderr, "%k: ", argvar[0]);
+	if (argvar && argvar[0]) VOID_C Xfprintf(Xstderr, "%k: ", argvar[0]);
 #ifndef	MINIMUMSHELL
 	if (!interactive && shlineno > 0L)
-		Xfprintf(Xstderr, "%ld: ", shlineno);
+		VOID_C Xfprintf(Xstderr, "%ld: ", shlineno);
 #endif
-	if (argv && argv[0]) Xfprintf(Xstderr, "%k: ", argv[0]);
-	if (s) Xfprintf(Xstderr, "%a: ", s);
+	if (argv && argv[0]) VOID_C Xfprintf(Xstderr, "%k: ", argv[0]);
+	if (s) VOID_C Xfprintf(Xstderr, "%a: ", s);
 	if (execerrstr[n]) Xfputs(execerrstr[n], Xstderr);
 	VOID_C fputnl(Xstderr);
 	execerrno = n;
@@ -2390,8 +2391,8 @@ CONST char *command, *s;
 	duperrno = errno;
 	if (errno < 0) return;
 	if (!command) command = (argvar && argvar[0]) ? argvar[0] : shellname;
-	Xfprintf(Xstderr, "%k: ", command);
-	if (s) Xfprintf(Xstderr, "%a: ", s);
+	VOID_C Xfprintf(Xstderr, "%k: ", command);
+	if (s) VOID_C Xfprintf(Xstderr, "%a: ", s);
 	Xfputs(Xstrerror(duperrno), Xstderr);
 	VOID_C fputnl(Xstderr);
 	errno = 0;
@@ -2437,10 +2438,10 @@ XFILE *fp;
 		if (sig == signallist[i].sig) break;
 	if (signallist[i].sig < 0) {
 		if ((width -= strsize("Signal ")) < 0) width = 0;
-		Xfprintf(fp, "Signal %-*d", width, sig);
+		VOID_C Xfprintf(fp, "Signal %-*d", width, sig);
 	}
 	else if (!width) Xfputs(signallist[i].mes, fp);
-	else Xfprintf(fp, "%-*.*s", width, width, signallist[i].mes);
+	else VOID_C Xfprintf(fp, "%-*.*s", width, width, signallist[i].mes);
 }
 
 int waitjob(pid, wp, opt)
@@ -2783,7 +2784,8 @@ syntaxtree *trp;
 # endif
 		if (!nottyout) {
 			if (!interactive && argvar && argvar[0])
-				Xfprintf(Xstderr, "%k: %id ", argvar[0], pid);
+				VOID_C Xfprintf(Xstderr,
+					"%k: %id ", argvar[0], pid);
 			dispsignal(ret, 0, Xstderr);
 			VOID_C fputnl(Xstderr);
 		}
@@ -4482,7 +4484,7 @@ long n;
 	if (shlineno < 0L) return;
 
 	shlineno = n;
-	Xsnprintf(tmp, sizeof(tmp), "%s=%ld", ENVLINENO, n);
+	VOID_C Xsnprintf(tmp, sizeof(tmp), "%s=%ld", ENVLINENO, n);
 	shellvar = putvar(shellvar, Xstrdup(tmp), strsize(ENVLINENO));
 }
 #endif	/* !MINIMUMSHELL */
@@ -6528,14 +6530,15 @@ static VOID NEAR disphash(VOID_A)
 	VOID_C fputnl(Xstdout);
 	if (hashtable) for (i = 0; i < MAXHASH; i++)
 		for (hp = hashtable[i]; hp; hp = hp -> next) {
-			Xsnprintf(buf, sizeof(buf), "%d", hp -> hits);
+			j = Xsnprintf(buf, sizeof(buf), "%d", hp -> hits);
+#ifdef	CODEEUC
 			j = strlen(buf);
+#endif
 			buf[j++] = (hp -> type & CM_RECALC) ? '*' : ' ';
 			while (j < 7) buf[j++] = ' ';
 			buf[j] = '\0';
-			Xfprintf(Xstdout, "%s %-7d %k",
+			VOID_C Xprintf("%s %-7d %k\n",
 				buf, hp -> cost, hp -> path);
-			VOID_C fputnl(Xstdout);
 		}
 }
 #endif	/* !_NOUSEHASH */
@@ -6985,7 +6988,7 @@ XFILE *fp;
 	switch (rp -> type & MD_RDWR) {
 		case MD_READ:
 			if (rp -> fd != STDIN_FILENO)
-				Xfprintf(fp, "%d", rp -> fd);
+				VOID_C Xfprintf(fp, "%d", rp -> fd);
 			Xfputc('<', fp);
 			if (rp -> type & MD_HEREDOC) {
 				Xfputc('<', fp);
@@ -6994,7 +6997,7 @@ XFILE *fp;
 			break;
 		case MD_WRITE:
 			if (rp -> fd != STDOUT_FILENO)
-				Xfprintf(fp, "%d", rp -> fd);
+				VOID_C Xfprintf(fp, "%d", rp -> fd);
 			if (rp -> type & MD_WITHERR) Xfputc('&', fp);
 			Xfputc('>', fp);
 			if (rp -> type & MD_APPEND) Xfputc('>', fp);
@@ -7004,7 +7007,7 @@ XFILE *fp;
 			break;
 		case MD_RDWR:
 			if (rp -> fd != STDOUT_FILENO)
-				Xfprintf(fp, "%d", rp -> fd);
+				VOID_C Xfprintf(fp, "%d", rp -> fd);
 			Xfputs("<>", fp);
 			break;
 		default:
@@ -7260,7 +7263,7 @@ XFILE *fp;
 	for (id = 0; id < OPELISTSIZ; id++)
 		if (trp -> type == opelist[id].op) break;
 	if (id < OPELISTSIZ && !isopfg(trp))
-		Xfprintf(fp, " %s", opelist[id].symbol);
+		VOID_C Xfprintf(fp, " %s", opelist[id].symbol);
 #ifndef	MINIMUMSHELL
 	if (!rlist || opelist[id].level < 4) nl = 0;
 	else {
@@ -7330,9 +7333,9 @@ XFILE *fp;
 {
 #ifdef	BASHSTYLE
 	/* bash type pretty print */
-	Xfprintf(fp, "%k ()\n", f -> ident);
+	VOID_C Xfprintf(fp, "%k ()\n", f -> ident);
 #else
-	Xfprintf(fp, "%k()", f -> ident);
+	VOID_C Xfprintf(fp, "%k()", f -> ident);
 #endif
 	if (getstatid(statementcheck(f -> func, SM_STATEMENT)) == SM_LIST - 1)
 		printstree(f -> func, 0, fp);
@@ -8084,10 +8087,9 @@ syntaxtree *trp;
 		if (argc <= 2) {
 			for (i = 0; i < FLAGSSIZ; i++) {
 				if (!(shflaglist[i].ident)) continue;
-				Xfprintf(Xstdout, "%-16.16s%s",
+				VOID_C Xprintf("%-16.16s%s\n",
 					shflaglist[i].ident,
 					(*(shflaglist[i].var)) ? "on" : "off");
-				VOID_C fputnl(Xstdout);
 			}
 		}
 		else {
@@ -8409,10 +8411,8 @@ syntaxtree *trp;
 
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
-		for (i = 0; exportlist[i]; i++) {
-			Xfprintf(Xstdout, "export %k", exportlist[i]);
-			VOID_C fputnl(Xstdout);
-		}
+		for (i = 0; exportlist[i]; i++)
+			VOID_C Xprintf("export %k\n", exportlist[i]);
 		return(RET_SUCCESS);
 	}
 
@@ -8439,8 +8439,7 @@ syntaxtree *trp;
 	argv = (trp -> comm) -> argv;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; ronlylist[i]; i++) {
-			Xfprintf(Xstdout, "readonly %k", ronlylist[i]);
-			VOID_C fputnl(Xstdout);
+			VOID_C Xprintf("readonly %k\n", ronlylist[i]);
 		}
 		return(RET_SUCCESS);
 	}
@@ -8485,10 +8484,9 @@ syntaxtree *trp;
 	usrtime = systime = (time_t)0;
 # endif
 #endif	/* !USEGETRUSAGE */
-	Xfprintf(Xstdout, "%dm%ds %dm%ds",
+	VOID_C Xprintf("%dm%ds %dm%ds\n",
 		(int)(usrtime / 60), (int)(usrtime % 60),
 		(int)(systime / 60), (int)(systime % 60));
-	VOID_C fputnl(Xstdout);
 
 	return(RET_SUCCESS);
 }
@@ -8571,11 +8569,10 @@ syntaxtree *trp;
 		n = umask(022);
 		umask(n);
 #ifdef	BASHSTYLE
-		Xfprintf(Xstdout, "%03o", n & 0777);
+		VOID_C Xprintf("%03o\n", n & 0777);
 #else
-		Xfprintf(Xstdout, "%04o", n & 0777);
+		VOID_C Xprintf("%04o\n", n & 0777);
 #endif
-		VOID_C fputnl(Xstdout);
 	}
 	else {
 		s = (trp -> comm) -> argv[1];
@@ -8688,7 +8685,7 @@ syntaxtree *trp;
 #  else
 		fp = Xstdout;
 #  endif
-		Xfprintf(fp, "usage: %k [ -HSa", argv[0]);
+		VOID_C Xfprintf(fp, "usage: %k [ -HSa", argv[0]);
 		for (j = 0; j < ULIMITSIZ; j++)
 			Xfputc(ulimitlist[j].opt, fp);
 		Xfputs(" ] [ limit ]", fp);
@@ -8703,7 +8700,7 @@ syntaxtree *trp;
 	if (n >= argc) {
 		for (i = 0; i < ULIMITSIZ; i++) if (flags & ((u_long)1 << i)) {
 			if (res < 0)
-				Xfprintf(Xstdout, "%s ", ulimitlist[i].mes);
+				VOID_C Xprintf("%s ", ulimitlist[i].mes);
 			if (getrlimit(ulimitlist[i].res, &lim) < 0) {
 				execerror(argv, NULL, ER_BADULIMIT, 1);
 				return(RET_FAIL);
@@ -8711,14 +8708,14 @@ syntaxtree *trp;
 			if (hs & 2) {
 				if (lim.rlim_cur == RLIM_INFINITY)
 					Xfputs(UNLIMITED, Xstdout);
-				else if (lim.rlim_cur) Xfprintf(Xstdout, "%ld",
+				else if (lim.rlim_cur) VOID_C Xprintf("%ld",
 					lim.rlim_cur / ulimitlist[i].unit);
 			}
 			if (hs & 1) {
 				if (hs & 2) Xfputc(':', Xstdout);
 				if (lim.rlim_max == RLIM_INFINITY)
 					Xfputs(UNLIMITED, Xstdout);
-				else if (lim.rlim_max) Xfprintf(Xstdout, "%ld",
+				else if (lim.rlim_max) VOID_C Xprintf("%ld",
 					lim.rlim_max / ulimitlist[i].unit);
 			}
 			VOID_C fputnl(Xstdout);
@@ -8743,7 +8740,7 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		if (val == RLIM_INFINITY) Xfputs(UNLIMITED, Xstdout);
-		else Xfprintf(Xstdout, "%ld", val * 512L);
+		else VOID_C Xprintf("%ld", val * 512L);
 		VOID_C fputnl(Xstdout);
 	}
 	else {
@@ -8776,8 +8773,7 @@ syntaxtree *trp;
 	if ((trp -> comm) -> argc <= 1) {
 		for (i = 0; i < NSIG; i++) {
 			if ((trapmode[i] & TR_STAT) != TR_TRAP) continue;
-			Xfprintf(Xstdout, "%d: %k", i, trapcomm[i]);
-			VOID_C fputnl(Xstdout);
+			VOID_C Xprintf("%d: %k\n", i, trapcomm[i]);
 		}
 		return(RET_SUCCESS);
 	}
@@ -8906,7 +8902,8 @@ XFILE *fp;
 	}
 #ifndef	NOALIAS
 	else if (type == CT_ALIAS)
-		Xfprintf(fp, " is a aliased to `%k'", shellalias[id].comm);
+		VOID_C Xfprintf(fp,
+			" is a aliased to `%k'", shellalias[id].comm);
 #endif
 	else {
 		type = searchhash(&hp, s, NULL);
@@ -8922,7 +8919,7 @@ XFILE *fp;
 			VOID_C fputnl(fp);
 			return(-1);
 		}
-		else Xfprintf(fp, " is %k", s);
+		else VOID_C Xfprintf(fp, " is %k", s);
 	}
 	VOID_C fputnl(fp);
 
@@ -9200,7 +9197,7 @@ syntaxtree *trp;
 	kanjifputs(path, Xstdout);
 	if (dirstack)
 		for (i = 0; dirstack[i]; i++)
-			Xfprintf(Xstdout, " %k", dirstack[i]);
+			VOID_C Xprintf(" %k", dirstack[i]);
 	VOID_C fputnl(Xstdout);
 
 	return(RET_SUCCESS);
@@ -9228,8 +9225,8 @@ syntaxtree *trp;
 		}
 
 		for (i = 0; i < (trp -> comm) -> argc; i++)
-			Xfprintf(Xstdout, "%k ", argv[i]);
-		Xfprintf(Xstdout, "%k\n", shbuiltinlist[j].ident);
+			VOID_C Xprintf("%k ", argv[i]);
+		VOID_C Xprintf("%k\n", shbuiltinlist[j].ident);
 	}
 	else for (i = n; i < (trp -> comm) -> argc; i++) {
 		for (j = 0; j < SHBUILTINSIZ; j++)
@@ -9375,14 +9372,14 @@ syntaxtree *trp;
 	}
 	if (!Xisupper(opt)) {
 		if (getsockinfo(s, addr, sizeof(addr), &port, 1) >= 0) {
-			if (opt == 'a') Xfprintf(Xstdout, "%s\n", addr);
-			else if (opt == 'p') Xfprintf(Xstdout, "%d\n", port);
-			else Xfprintf(Xstdout, "Remote: %s:%d\n", addr, port);
+			if (opt == 'a') VOID_C Xprintf("%s\n", addr);
+			else if (opt == 'p') VOID_C Xprintf("%d\n", port);
+			else VOID_C Xprintf("Remote: %s:%d\n", addr, port);
 		}
 # ifdef	ENOTCONN
 		else if (errno == ENOTCONN) {
-			if (opt) Xfprintf(Xstdout, "%s\n", nullstr);
-			else Xfprintf(Xstdout, "Remote: (not connected)\n");
+			if (opt) VOID_C Xprintf("%s\n", nullstr);
+			else VOID_C Xprintf("Remote: (not connected)\n");
 		}
 # endif
 		else {
@@ -9393,9 +9390,9 @@ syntaxtree *trp;
 	}
 	if (!Xislower(opt)) {
 		if (getsockinfo(s, addr, sizeof(addr), &port, 0) >= 0) {
-			if (opt == 'A') Xfprintf(Xstdout, "%s\n", addr);
-			else if (opt == 'P') Xfprintf(Xstdout, "%d\n", port);
-			else Xfprintf(Xstdout, "Local: %s:%d\n", addr, port);
+			if (opt == 'A') VOID_C Xprintf("%s\n", addr);
+			else if (opt == 'P') VOID_C Xprintf("%d\n", port);
+			else VOID_C Xprintf("Local: %s:%d\n", addr, port);
 		}
 		else {
 			execerror((trp -> comm) -> argv,
@@ -9533,22 +9530,21 @@ int lvl;
 				Xfputs("NULL", Xstdout);
 			else if (!i && isbuiltin(trp -> comm))
 				argfputs((trp -> comm) -> argv[i], Xstdout);
-			else Xfprintf(Xstdout, "\"%a\"",
+			else VOID_C Xprintf("\"%a\"",
 				(trp -> comm) -> argv[i]);
 			Xfputc((i < (trp -> comm) -> argc) ? ' ' : '\n',
 				Xstdout);
 		}
 		for (rp = (trp -> comm) -> redp; rp; rp = rp -> next) {
 			printindent(lvl, Xstdout);
-			Xfprintf(Xstdout, "redirect %d", rp -> fd);
+			VOID_C Xprintf("redirect %d", rp -> fd);
 			if (!(rp -> filename)) Xfputs(">-: ", Xstdout);
 			else if (rp -> type & MD_HEREDOC)
-				Xfprintf(Xstdout, ">> \"%a\": ",
+				VOID_C Xprintf(">> \"%a\": ",
 					((heredoc_t *)(rp -> filename))
 						-> eof);
-			else Xfprintf(Xstdout, "> \"%a\": ", rp -> filename);
-			Xfprintf(Xstdout, "%06o", (int)(rp -> type));
-			VOID_C fputnl(Xstdout);
+			else VOID_C Xprintf("> \"%a\": ", rp -> filename);
+			VOID_C Xprintf("%06o\n", (int)(rp -> type));
 		}
 	}
 	if (trp -> type) {
@@ -9564,9 +9560,8 @@ int lvl;
 		if (trp -> cont & (CN_QUOT | CN_ESCAPE)) {
 			rp = (redirectlist *)(trp -> next);
 			printindent(lvl, Xstdout);
-			Xfprintf(Xstdout, "continuing...\"%a\"",
+			VOID_C Xprintf("continuing...\"%a\"\n",
 				rp -> filename);
-			VOID_C fputnl(Xstdout);
 		}
 # ifndef	MINIMUMSHELL
 		else if (trp -> flags & ST_BUSY);
@@ -9991,7 +9986,7 @@ int *contp, bg;
 		if (ps) Xfputs(ps, Xstderr);
 		argfputs(comm -> argv[0], Xstderr);
 		for (i = 1; i < comm -> argc; i++)
-			Xfprintf(Xstderr, " %a", comm -> argv[i]);
+			VOID_C Xfprintf(Xstderr, " %a", comm -> argv[i]);
 		VOID_C fputnl(Xstderr);
 	}
 #ifndef	MINIMUMSHELL
@@ -10212,18 +10207,14 @@ int cond;
 		if (interactive && !nottyout) {
 # ifndef	NOJOB
 			if (jobok && !isopnown(trp)) {
-				if (mypid == orgpgrp) {
-					Xfprintf(Xstderr, "[%d] %id",
+				if (mypid == orgpgrp)
+					VOID_C Xfprintf(Xstderr,
+						"[%d] %id\n",
 						lastjob + 1, pid);
-					VOID_C fputnl(Xstderr);
-				}
 			}
 			else
 # endif	/* !NOJOB */
-			{
-				Xfprintf(Xstderr, "%id", pid);
-				VOID_C fputnl(Xstderr);
-			}
+			VOID_C Xfprintf(Xstderr, "%id\n", pid);
 		}
 		lastpid = pid;
 		trp = skipfuncbody(trp);
@@ -10597,10 +10588,9 @@ int verbose;
 		n++;
 		if (ret_status == RET_NOTICE || syntaxerrno || execerrno) {
 			ret++;
-			if (verbose) {
-				Xfprintf(Xstderr, "%k:%ld: %s", fname, n, buf);
-				VOID_C fputnl(Xstderr);
-			}
+			if (verbose)
+				VOID_C Xfprintf(Xstderr,
+					"%k:%ld: %s\n", fname, n, buf);
 			ret_status = RET_FAIL;
 		}
 		Xfree(buf);
@@ -10839,8 +10829,7 @@ char *CONST *argv;
 	else {
 		definput = newdup(Xopen(argv[n], O_BINARY | O_RDONLY, 0666));
 		if (definput < 0) {
-			Xfprintf(Xstderr, "%k: cannot open", argv[n]);
-			VOID_C fputnl(Xstderr);
+			VOID_C Xfprintf(Xstderr, "%k: cannot open\n", argv[n]);
 			return(-1);
 		}
 		if (!interactive_io || !isatty(definput)) {
@@ -10851,8 +10840,8 @@ char *CONST *argv;
 		}
 		else {
 			if (Xdup2(definput, STDIN_FILENO) < 0) {
-				Xfprintf(Xstderr, "%k: cannot open", argv[n]);
-				VOID_C fputnl(Xstderr);
+				VOID_C Xfprintf(Xstderr,
+					"%k: cannot open\n", argv[n]);
 				return(-1);
 			}
 			safeclose(definput);
@@ -10941,7 +10930,7 @@ char *CONST *argv;
 	if (!getconstvar(ENVPS4)) setenv2(ENVPS4, PS4STR, 0);
 	setshlineno(1L);
 # if	!MSDOS
-	Xsnprintf(buf, sizeof(buf), "%id", getppid());
+	VOID_C Xsnprintf(buf, sizeof(buf), "%id", getppid());
 	setenv2(ENVPPID, buf, 0);
 # endif
 #endif
@@ -11169,13 +11158,9 @@ int pseudoexit;
 					syntaxerrno = ER_UNEXPEOF;
 					syntaxerror(nullstr);
 				}
-				else {
-					Xfprintf(Xstderr,
-					"Use \"%s\" to leave to the shell.",
-						(loginshell)
-							? "logout" : "exit");
-					VOID_C fputnl(Xstderr);
-				}
+				else VOID_C Xfprintf(Xstderr,
+					"Use \"%s\" to leave to the shell.\n",
+					(loginshell) ? "logout" : "exit");
 				cont = 0;
 				continue;
 			}

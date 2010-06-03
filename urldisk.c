@@ -752,6 +752,9 @@ int flags;
 		if (!s) return(seterrno(EINVAL));
 		n = Xsnprintf(buf, size, "%s://", s);
 		if (n < 0) return(-1);
+#ifdef	CODEEUC
+		n = strlen(buf);
+#endif
 		len += n;
 	}
 
@@ -767,15 +770,19 @@ int flags;
 			cp = urlencode(cp, -1, URL_UNSAFEUSER);
 			pass = urlencode(pass, -1, URL_UNSAFEUSER);
 		}
-		if (!cp) n = 0;
+		if (!cp) buf[n = 0] = '\0';
 		else if ((flags & UGP_PASS) && pass)
 			n = Xsnprintf(buf, size, "%s:%s", cp, pass);
 		else n = Xsnprintf(buf, size, "%s", cp);
+
 		if (flags & UGP_ENCODE) {
 			Xfree(cp);
 			Xfree(pass);
 		}
 		if (n < 0) return(-1);
+#ifdef	CODEEUC
+		n = strlen(buf);
+#endif
 		len += n;
 
 		if ((flags & UGP_HOST) && n) {
@@ -783,6 +790,9 @@ int flags;
 			size -= n;
 			n = Xsnprintf(buf, size, "@");
 			if (n < 0) return(-1);
+#ifdef	CODEEUC
+			n = strlen(buf);
+#endif
 			len += n;
 		}
 	}
@@ -798,8 +808,12 @@ int flags;
 		if (port == urlgetport(urlhostlist[uh].type))
 			n = Xsnprintf(buf, size, "%s", cp);
 		else n = Xsnprintf(buf, size, "%s:%d", cp, port);
+
 		if (flags & UGP_ENCODE) Xfree(cp);
 		if (n < 0) return(-1);
+#ifdef	CODEEUC
+		n = strlen(buf);
+#endif
 		len += n;
 	}
 
@@ -812,6 +826,9 @@ int flags;
 		size -= n;
 		n = Xsnprintf(buf, size, "%s", s);
 		if (n < 0) return(-1);
+#ifdef	CODEEUC
+		n = strlen(buf);
+#endif
 		len += n;
 	}
 #endif

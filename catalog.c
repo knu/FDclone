@@ -71,7 +71,7 @@ CONST char *lang;
 	u_short w, flags;
 	int n, fd;
 
-	Xsnprintf(file, sizeof(file), "%s%s", CATTBL, lang);
+	VOID_C Xsnprintf(file, sizeof(file), "%s%s", CATTBL, lang);
 	if (!cattblpath || !*cattblpath) Xstrcpy(path, file);
 	else strcatdelim2(path, cattblpath, file);
 

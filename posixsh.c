@@ -135,8 +135,8 @@ int job;
 	Xsigblock(omask, mask);
 
 #ifdef	JOBVERBOSE
-	Xfprintf(ttyout, "gettermio: %id: %id -> %id", mypid, ttypgrp, pgrp);
-	VOID_C fputnl(ttyout);
+	VOID_C Xfprintf(ttyout,
+		"gettermio: %id: %id -> %id\n", mypid, ttypgrp, pgrp);
 #endif	/* JOBVERBOSE */
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
 	Xsigsetmask(omask);
@@ -172,13 +172,14 @@ XFILE *fp;
 
 	if (n < 0 || n >= maxjobs || !(joblist[n].pids)) return;
 	i = joblist[n].npipe;
-	Xfprintf(fp, "[%d]%c %id ",
+	VOID_C Xfprintf(fp,
+		"[%d]%c %id ",
 		n + 1, (n == lastjob) ? '+' : ((n == prevjob) ? '-' : ' '),
 		joblist[n].pids[i]);
 	sig = joblist[n].stats[i];
 
 	if (sig <= 0)
-		Xfprintf(fp, "%-28.28s", (sig) ? "Done" : "Running");
+		VOID_C Xfprintf(fp, "%-28.28s", (sig) ? "Done" : "Running");
 	else {
 		if (sig >= 128) sig -= 128;
 		dispsignal(sig, 28, fp);
@@ -315,9 +316,9 @@ syntaxtree *trp;
 	}
 
 #ifdef	JOBVERBOSE
-	Xfprintf(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
+	VOID_C Xfprintf(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
 	for (j = 0; j <= joblist[i].npipe; j++)
-		Xfprintf(ttyout, "%id ", joblist[i].pids[j]);
+		VOID_C Xfprintf(ttyout, "%id ", joblist[i].pids[j]);
 	VOID_C fputnl(ttyout);
 #endif	/* JOBVERBOSE */
 
@@ -955,8 +956,7 @@ syntaxtree *trp;
 		prepareexit(-1);
 		Xexit(RET_FATALERR);
 	}
-	Xfprintf(Xstderr, "[%d] %id", i + 1, joblist[i].pids[n]);
-	VOID_C fputnl(Xstderr);
+	VOID_C Xfprintf(Xstderr, "[%d] %id\n", i + 1, joblist[i].pids[n]);
 	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
 # ifdef	USESGTTY
 	if (joblist[i].ttyflag) ioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
@@ -1022,11 +1022,9 @@ syntaxtree *trp;
 		alias = duplalias(shellalias);
 		for (i = 0; alias[i].ident; i++) /*EMPTY*/;
 		if (i > 1) qsort(alias, i, sizeof(shaliastable), cmpalias);
-		for (i = 0; alias[i].ident; i++) {
-			Xfprintf(Xstdout, "alias %k='%k'",
+		for (i = 0; alias[i].ident; i++)
+			VOID_C Xprintf("alias %k='%k'\n",
 				alias[i].ident, alias[i].comm);
-			VOID_C fputnl(Xstdout);
-		}
 		freealias(alias);
 		return(RET_SUCCESS);
 	}
@@ -1052,9 +1050,8 @@ syntaxtree *trp;
 				ret = RET_FAIL;
 				ERRBREAK;
 			}
-			Xfprintf(Xstdout, "alias %k='%k'",
+			VOID_C Xprintf("alias %k='%k'\n",
 				shellalias[i].ident, shellalias[i].comm);
-			VOID_C fputnl(Xstdout);
 		}
 	}
 
@@ -1110,7 +1107,7 @@ syntaxtree *trp;
 				for (i = 0; signallist[i].sig >= 0; i++)
 					if (sig == signallist[i].sig) break;
 				if (signallist[i].sig < 0) continue;
-				Xfprintf(Xstdout, "%s%c",
+				VOID_C Xprintf("%s%c",
 					signallist[i].ident,
 					(++n % 16) ? ' ' : '\n');
 			}
@@ -1439,7 +1436,8 @@ syntaxtree *trp;
 				Xfputs("argument expected", Xstderr);
 				break;
 			case -2:
-				Xfprintf(Xstderr, "unknown operator %k",
+				VOID_C Xfprintf(Xstderr,
+					"unknown operator %k",
 					argv[ptr]);
 				break;
 			default:
@@ -1524,9 +1522,9 @@ syntaxtree *trp;
 	type = checktype(argv[n], &id, 0, 0);
 #endif
 	if (verboseexec) {
-		Xfprintf(Xstderr, "+ %k", argv[n]);
+		VOID_C Xfprintf(Xstderr, "+ %k", argv[n]);
 		for (i = n + 1; i < argc; i++)
-			Xfprintf(Xstderr, " %k", argv[i]);
+			VOID_C Xfprintf(Xstderr, " %k", argv[i]);
 		VOID_C fputnl(Xstderr);
 	}
 
@@ -1656,7 +1654,7 @@ syntaxtree *trp;
 	setenv2(name, buf, 0);
 
 	n = posixoptind;
-	Xsnprintf(buf, sizeof(buf), "%d", n);
+	VOID_C Xsnprintf(buf, sizeof(buf), "%d", n);
 	setenv2(ENVOPTIND, buf, 0);
 	posixoptind = n;
 

@@ -327,7 +327,7 @@ char *buf;
 
 	if (!buf) return(drive);
 	if (cp == buf) {
-		Xsnprintf(tmp, sizeof(tmp), cp);
+		VOID_C Xsnprintf(tmp, sizeof(tmp), cp);
 		cp = tmp;
 	}
 
@@ -343,7 +343,7 @@ char *buf;
 		buf[ujis2sjis(buf, (u_char *)cp, sizeof(tmp) - 1)] = '\0';
 	else
 # endif
-	Xsnprintf(buf, MAXPATHLEN, cp);
+	VOID_C Xsnprintf(buf, MAXPATHLEN, cp);
 	if (cp == cachecwd && *path) {
 		s = strcatdelim(buf);
 		len = MAXPATHLEN - (s - buf);
@@ -351,7 +351,7 @@ char *buf;
 		if (!noconv) s[ujis2sjis(s, (u_char *)path, len - 1)] = '\0';
 		else
 # endif
-		Xsnprintf(s, MAXPATHLEN - (s - buf), path);
+		VOID_C Xsnprintf(s, MAXPATHLEN - (s - buf), path);
 	}
 # endif	/* !MSDOS */
 
@@ -444,18 +444,18 @@ int *typep;
 
 	if (!buf) return(n);
 	if (cp == buf) {
-		Xsnprintf(tmp, sizeof(tmp), cp);
+		VOID_C Xsnprintf(tmp, sizeof(tmp), cp);
 		cp = tmp;
 	}
-	if (cp[n]) Xsnprintf(buf, MAXPATHLEN, &(cp[n]));
+	if (cp[n]) VOID_C Xsnprintf(buf, MAXPATHLEN, &(cp[n]));
 	else copyrootpath(buf);
 
 	if (cp == cachecwd && *path) {
 		s = strcatdelim(buf);
-		Xsnprintf(s, MAXPATHLEN - (s - buf), path);
+		VOID_C Xsnprintf(s, MAXPATHLEN - (s - buf), path);
 	}
 	Xrealpath(buf, tmp, RLP_PSEUDOPATH);
-	Xsnprintf(buf, MAXPATHLEN, "%.*s%s", n, cp, tmp);
+	VOID_C Xsnprintf(buf, MAXPATHLEN, "%.*s%s", n, cp, tmp);
 
 	return(n);
 }

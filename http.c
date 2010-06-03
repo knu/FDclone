@@ -203,6 +203,7 @@ va_dcl
 	VA_START(args, fmt);
 	n = Xsnprintf(buf, sizeof(buf), "--> \"%s\"\n", fmt);
 	if (n >= 0) vhttplog(buf, args);
+
 	n = Xvfprintf(fp, fmt, args);
 	if (n >= 0) n = fputnl(fp);
 	va_end(args);

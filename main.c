@@ -550,11 +550,11 @@ VOID setlinecol(VOID_A)
 	char buf[MAXLONGWIDTH + 1];
 
 	if (getconstvar(ENVLINES)) {
-		Xsnprintf(buf, sizeof(buf), "%d", n_line);
+		VOID_C Xsnprintf(buf, sizeof(buf), "%d", n_line);
 		setenv2(ENVLINES, buf, 1);
 	}
 	if (getconstvar(ENVCOLUMNS)) {
-		Xsnprintf(buf, sizeof(buf), "%d", n_column);
+		VOID_C Xsnprintf(buf, sizeof(buf), "%d", n_column);
 		setenv2(ENVCOLUMNS, buf, 1);
 	}
 }
@@ -948,7 +948,11 @@ char *CONST *argv;
 		len = Xsnprintf(cp, (int)sizeof(buf) - (cp - buf), "%s", tmp);
 		Xfree(tmp);
 		if (len < 0) break;
+#ifdef	CODEEUC
 		cp += strlen(cp);
+#else
+		cp += len;
+#endif
 	}
 	*cp = '\0';
 
@@ -1513,7 +1517,7 @@ char *CONST argv[], *CONST envp[];
 # ifdef	USEDATADIR
 	cp = getversion(&i);
 	cattblpath = Xmalloc(strsize(DATADIR) + 1 + i + 1);
-	Xsnprintf(cattblpath, strsize(DATADIR) + 1 + i + 1,
+	VOID_C Xsnprintf(cattblpath, strsize(DATADIR) + 1 + i + 1,
 		"%s%c%-.*s", DATADIR, _SC_, i, cp);
 # else
 	cattblpath = Xstrdup(DATADIR);
