@@ -843,14 +843,7 @@ char ***argvp;
 		Xstrncpy(new, cp, len);
 		if (parent || isdir(&(arcflist[i]))) new[len++] = _SC_;
 		new[len] = '\0';
-		if (finddupl(new, argc, *argvp)) {
-			Xfree(new);
-			continue;
-		}
-
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = new;
+		argc = addcompletion(NULL, new, argc, argvp);
 	}
 	Xstrcpy(archivedir, duparcdir);
 

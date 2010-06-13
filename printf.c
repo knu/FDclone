@@ -58,6 +58,7 @@ CONST int printfsize[] = {
 	sizeof(l_off_t), sizeof(char), sizeof(short),
 #endif
 };
+int printf_urgent = 0;
 
 
 #ifndef	MINIMUMSHELL
@@ -555,13 +556,14 @@ va_list args;
 			case 'a':
 			case 'k':
 #ifdef	DEP_KCONV
-				pbufp -> flags |= VF_KANJI;
+				if (!printf_urgent) pbufp -> flags |= VF_KANJI;
 #endif
 /*FALLTHRU*/
 			case 's':
 				cp = s = va_arg(args, char *);
 #ifdef	FD
-				if (fmt[i] == 'a') s = restorearg(cp);
+				if (!printf_urgent && fmt[i] == 'a')
+					s = restorearg(cp);
 #endif
 				len = setstr(s, pbufp, width, prec);
 				if (cp != s) free(s);
@@ -794,7 +796,7 @@ va_dcl
 int Xprintf(CONST char *fmt, ...)
 #else
 /*VARARGS2*/
-int Xfprintf(fmt, va_alist)
+int Xprintf(fmt, va_alist)
 CONST char *fmt;
 va_dcl
 #endif

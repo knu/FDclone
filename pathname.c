@@ -1711,17 +1711,29 @@ CONST char *path, *search;
 #endif	/* FD */
 
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
-char *finddupl(target, argc, argv)
-CONST char *target;
+int addcompletion(s, cp, argc, argvp)
+CONST char *s;
+char *cp;
 int argc;
-char *CONST *argv;
+char ***argvp;
 {
-	int i;
+	int n;
 
-	for (i = 0; i < argc; i++)
-		if (!strpathcmp(argv[i], target)) return(argv[i]);
+	if (!s) {
+		if (!cp) return(argc);
+		s = cp;
+	}
 
-	return(NULL);
+	for (n = 0; n < argc; n++)
+		if (!strpathcmp(s, (*argvp)[n])) break;
+
+	if (n < argc) Xfree(cp);
+	else {
+		*argvp = (char **)Xrealloc(*argvp, ++argc * sizeof(char *));
+		(*argvp)[n] = (cp) ? cp : Xstrdup(s);
+	}
+
+	return(argc);
 }
 
 # ifndef	NOUID
@@ -1761,14 +1773,7 @@ int home;
 			new[0] = '~';
 			VOID_C strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
 		}
-		if (finddupl(new, argc, *argvp)) {
-			Xfree(new);
-			continue;
-		}
-
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = new;
+		argc = addcompletion(NULL, new, argc, argvp);
 	}
 	_mtrace_file = "endpwent(start)";
 	endpwent();
@@ -1788,14 +1793,7 @@ int home;
 			new[0] = '~';
 			VOID_C strcatdelim2(&(new[1]), pwd -> pw_name, NULL);
 		}
-		if (finddupl(new, argc, *argvp)) {
-			Xfree(new);
-			continue;
-		}
-
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = new;
+		argc = addcompletion(NULL, new, argc, argvp);
 	}
 	endpwent();
 #  endif	/* !DEBUG */
@@ -1809,7 +1807,6 @@ int len, argc;
 char ***argvp;
 {
 	struct group *grp;
-	char *new;
 
 	len = strlen(name);
 #  ifdef	DEBUG
@@ -1830,15 +1827,7 @@ char ***argvp;
 		}
 		if (!grp) break;
 		if (strnpathcmp(name, grp -> gr_name, len)) continue;
-		new = Xstrdup(grp -> gr_name);
-		if (finddupl(new, argc, *argvp)) {
-			Xfree(new);
-			continue;
-		}
-
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = new;
+		argc = addcompletion(grp -> gr_name, NULL, argc, argvp);
 	}
 	_mtrace_file = "endgrent(start)";
 	endgrent();
@@ -1851,15 +1840,7 @@ char ***argvp;
 	setgrent();
 	while ((grp = getgrent())) {
 		if (strnpathcmp(name, grp -> gr_name, len)) continue;
-		new = Xstrdup(grp -> gr_name);
-		if (finddupl(new, argc, *argvp)) {
-			Xfree(new);
-			continue;
-		}
-
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = new;
+		argc = addcompletion(grp -> gr_name, NULL, argc, argvp);
 	}
 	endgrent();
 #  endif	/* !DEBUG */
@@ -1901,14 +1882,7 @@ int dlen, exe;
 		Xstrncpy(new, dp -> d_name, size);
 		if (d) new[size++] = _SC_;
 		new[size] = '\0';
-		if (finddupl(new, argc, *argvp)) {
-			Xfree(new);
-			continue;
-		}
-
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = new;
+		argc = addcompletion(NULL, new, argc, argvp);
 	}
 	VOID_C Xclosedir(dirp);
 

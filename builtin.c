@@ -3406,12 +3406,8 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < BUILTINSIZ; i++) {
-		if (strncommcmp(com, builtinlist[i].ident, len)
-		|| finddupl(builtinlist[i].ident, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(**argvp));
-		(*argvp)[argc++] = Xstrdup(builtinlist[i].ident);
+		if (strncommcmp(com, builtinlist[i].ident, len)) continue;
+		argc = addcompletion(builtinlist[i].ident, NULL, argc, argvp);
 	}
 
 	return(argc);
@@ -3425,12 +3421,8 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < FUNCLISTSIZ; i++) {
-		if (strncommcmp(com, funclist[i].ident, len)
-		|| finddupl(funclist[i].ident, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(**argvp));
-		(*argvp)[argc++] = Xstrdup(funclist[i].ident);
+		if (strncommcmp(com, funclist[i].ident, len)) continue;
+		argc = addcompletion(funclist[i].ident, NULL, argc, argvp);
 	}
 
 	return(argc);

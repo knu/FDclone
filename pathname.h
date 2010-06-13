@@ -272,7 +272,7 @@ extern int searchhash __P_((hashlist **, CONST char *, CONST char *));
 extern char *searchexecpath __P_((CONST char *, CONST char *));
 #endif
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
-extern char *finddupl __P_((CONST char *, int, char *CONST *));
+extern int addcompletion __P_((CONST char *, char *, int, char ***));
 # ifndef	NOUID
 extern int completeuser __P_((CONST char *, int, int, char ***, int));
 extern int completegroup __P_((CONST char *, int, int, char ***));

@@ -58,5 +58,6 @@ extern CONST char printfflagchar[];
 extern CONST int printfflag[];
 extern CONST char printfsizechar[];
 extern CONST int printfsize[];
+extern int printf_urgent;
 
 #endif	/* !__PRINTF_H_ */

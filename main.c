@@ -322,6 +322,7 @@ int sig;
 	signal2(sig, SIG_IGN);
 
 	if (isorgpid()) {
+		printf_urgent++;
 		forcecleandir(deftmpdir, tmpfilename);
 #ifdef	DEP_DOSDRIVE
 		VOID_C dosallclose();
@@ -351,6 +352,7 @@ int sig;
 		closetty(&ttyio, &ttyout);
 		muntrace();
 #endif	/* DEBUG */
+		printf_urgent--;
 	}
 
 	signal2(sig, SIG_DFL);
@@ -1310,7 +1312,7 @@ int status;
 	if (origpath && _chdir2(origpath) < 0) {
 		perror2(origpath);
 		if (!Xgetwd(cwd)) *cwd = '\0';
-		rawchdir(rootpath);
+		VOID_C rawchdir(rootpath);
 	}
 	Xfree(origpath);
 	Xfree(progname);
@@ -1384,7 +1386,7 @@ int status;
 #ifndef	_NOCATALOG
 	freecatalog();
 #endif
-	if (*cwd) rawchdir(cwd);
+	if (*cwd) VOID_C rawchdir(cwd);
 }
 
 int main(argc, argv, envp)

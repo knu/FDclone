@@ -832,18 +832,19 @@ CONST char *prompt;
 			*bufp = c_realloc(*bufp, j + MAXCHARWID - 1, &size);
 			if (unprint) {
 				(*bufp)[j] = *cp;
-				continue;
+				rw = v = 1;
 			}
+			else {
 
-			v = getprintable(&((*bufp)[j]), MAXCHARWID + 1,
-				cp, 0, &rw);
+				v = getprintable(&((*bufp)[j]), MAXCHARWID + 1,
+					cp, 0, &rw);
+				len += v;
 #ifdef	CODEEUC
-			j += strlen(&((*bufp)[j]));
-#else
-			j += v;
+				v = strlen(&((*bufp)[j]));
 #endif
+			}
 			cp += rw;
-			len += v;
+			j += v;
 		}
 	}
 	(*bufp)[j] = '\0';

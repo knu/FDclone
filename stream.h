@@ -74,6 +74,7 @@ extern VOID Xsetflags __P_((XFILE *, int));
 extern VOID Xsettimeout __P_((XFILE *, int));
 # endif
 extern int Xfflush __P_((XFILE *));
+extern int Xfpurge __P_((XFILE *));
 extern int Xfread __P_((char *, ALLOC_T, XFILE *));
 extern int Xfwrite __P_((CONST char *, ALLOC_T, XFILE *));
 extern int Xfgetc __P_((XFILE *));
@@ -91,6 +92,7 @@ extern VOID Xsetlinebuf __P_((XFILE *));
 #define	Xferror			ferror
 #define	Xfileno			fileno
 #define	Xfflush			fflush
+#define	Xfpurge(f)
 #define	Xfread(p, s, f)		fread(p, 1, s, f)
 #define	Xfwrite(p, s, f)	fwrite(p, 1, s, f)
 #define	Xfgetc			fgetc

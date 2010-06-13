@@ -1847,12 +1847,8 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < maxalias; i++) {
-		if (strncommcmp(com, aliaslist[i].alias, len)
-		|| finddupl(aliaslist[i].alias, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = Xstrdup(aliaslist[i].alias);
+		if (strncommcmp(com, aliaslist[i].alias, len)) continue;
+		argc = addcompletion(aliaslist[i].alias, NULL, argc, argvp);
 	}
 
 	return(argc);
@@ -1866,12 +1862,8 @@ char ***argvp;
 	int i;
 
 	for (i = 0; i < maxuserfunc; i++) {
-		if (strncommcmp(com, userfunclist[i].func, len)
-		|| finddupl(userfunclist[i].func, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = Xstrdup(userfunclist[i].func);
+		if (strncommcmp(com, userfunclist[i].func, len)) continue;
+		argc = addcompletion(userfunclist[i].func, NULL, argc, argvp);
 	}
 
 	return(argc);

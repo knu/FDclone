@@ -1763,7 +1763,10 @@ static VOID NEAR exectrapcomm(VOID_A)
 static VOID NEAR killmyself(sig)
 int sig;
 {
+	printf_urgent++;
 	prepareexit(0);
+	printf_urgent--;
+
 	signal2(sig, SIG_DFL);
 	VOID_C kill(mypid, sig);
 
@@ -2645,7 +2648,7 @@ int stop;
 	}
 # endif	/* !NOJOB */
 
-	if (!pid && shellfunc) for (i = 0; shellfunc[i].ident; i++)
+	if (!pid) for (i = 0; shellfunc[i].ident; i++)
 		nownstree(shellfunc[i].func);
 
 	return(pid);
@@ -6589,7 +6592,7 @@ int *idp, alias, func;
 {
 	int i;
 
-	if (!s) {
+	if (!s || !*s) {
 		if (idp) *idp = 0;
 		return(CT_NONE);
 	}
@@ -6616,7 +6619,7 @@ int *idp, alias, func;
 			}
 		}
 #endif
-		if (func && shellfunc) {
+		if (func) {
 			for (i = 0; shellfunc[i].ident; i++)
 			if (!strcommcmp(s, shellfunc[i].ident)) {
 				if (idp) *idp = i;
@@ -6671,13 +6674,8 @@ char ***argvp;
 		if (strnenvcmp(s, shellvar[i], len)
 		|| !(cp = Xstrchr(shellvar[i], '=')))
 			continue;
-		cp = Xstrndup(shellvar[i], cp - shellvar[i]);
-		if (finddupl(cp, argc, *argvp)) Xfree(cp);
-		else {
-			*argvp = (char **)Xrealloc(*argvp,
-				(argc + 1) * sizeof(char *));
-			(*argvp)[argc++] = cp;
-		}
+		argc = addcompletion(NULL,
+			Xstrndup(shellvar[i], cp - shellvar[i]), argc, argvp);
 	}
 
 	return(argc);
@@ -6692,44 +6690,30 @@ char ***argvp;
 
 # ifndef	NOALIAS
 	for (i = 0; shellalias[i].ident; i++) {
-		if (strncommcmp(s, shellalias[i].ident, len)
-		|| finddupl(shellalias[i].ident, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = Xstrdup(shellalias[i].ident);
+		if (strncommcmp(s, shellalias[i].ident, len)) continue;
+		argc = addcompletion(shellalias[i].ident, NULL, argc, argvp);
 	}
 # endif	/* !NOALIAS */
-	for (i = 0; i < STATEMENTSIZ; i++) {
-		if (strncommcmp(s, statementlist[i].ident, len)
-		|| finddupl(statementlist[i].ident, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = Xstrdup(statementlist[i].ident);
+	for (i = 0; shellfunc[i].ident; i++) {
+		if (strncommcmp(s, shellfunc[i].ident, len)) continue;
+		argc = addcompletion(shellfunc[i].ident, NULL, argc, argvp);
 	}
 	for (i = 0; i < SHBUILTINSIZ; i++) {
 # ifndef	MINIMUMSHELL
 		if (shbuiltinlist[i].flags & BT_DISABLE) continue;
 # endif
-		if (strncommcmp(s, shbuiltinlist[i].ident, len)
-		|| finddupl(shbuiltinlist[i].ident, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = Xstrdup(shbuiltinlist[i].ident);
+		if (strncommcmp(s, shbuiltinlist[i].ident, len)) continue;
+		argc = addcompletion(shbuiltinlist[i].ident,
+			NULL, argc, argvp);
 	}
 # ifdef	FD
 	argc = completebuiltin(s, len, argc, argvp);
 	if (!shellmode) argc = completeinternal(s, len, argc, argvp);
 # endif
-	if (shellfunc) for (i = 0; shellfunc[i].ident; i++) {
-		if (strncommcmp(s, shellfunc[i].ident, len)
-		|| finddupl(shellfunc[i].ident, argc, *argvp))
-			continue;
-		*argvp = (char **)Xrealloc(*argvp,
-			(argc + 1) * sizeof(char *));
-		(*argvp)[argc++] = Xstrdup(shellfunc[i].ident);
+	for (i = 0; i < STATEMENTSIZ; i++) {
+		if (strncommcmp(s, statementlist[i].ident, len)) continue;
+		argc = addcompletion(statementlist[i].ident,
+			NULL, argc, argvp);
 	}
 
 	return(argc);
@@ -9577,9 +9561,9 @@ syntaxtree *trp;
 {
 	int i;
 
-	for (i = 0; shellfunc && shellfunc[i].ident; i++)
+	for (i = 0; shellfunc[i].ident; i++)
 		if (!strcommcmp(ident, shellfunc[i].ident)) break;
-	if (shellfunc && shellfunc[i].ident) {
+	if (shellfunc[i].ident) {
 		Xfree(shellfunc[i].ident);
 		freestree(shellfunc[i].func);
 		Xfree(shellfunc[i].func);
@@ -9652,7 +9636,6 @@ int len;
 	int i;
 
 	if (checkronly(ident, len) < 0) return(-1);
-	if (!shellfunc) return(0);
 	for (i = 0; shellfunc[i].ident; i++)
 		if (!strncommcmp(ident, shellfunc[i].ident, len)
 		&& !shellfunc[i].ident[len])
@@ -9998,6 +9981,9 @@ int *contp, bg;
 #else
 	ret = exec_simplecom(trp, type, id, bg);
 #endif
+	Xfpurge(Xstdin);
+	Xfflush(Xstdout);
+	Xfflush(Xstderr);
 
 	if (keepvar) {
 #ifndef	_NOUSEHASH

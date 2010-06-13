@@ -1325,21 +1325,32 @@ CONST char *dir, *file;
 	p_id_t pid;
 #endif
 	extern char **environ;
-	char buf[MAXPATHLEN];
+	char *argv[4], buf[MAXPATHLEN];
 
 	VOID_C excllock(NULL, LOCK_UN);
 
 	if (!dir || !*dir || !file || !*file) return(0);
 	strcatdelim2(buf, dir, file);
 
-	if (rawchdir(buf) != 0) return(0);
-	rawchdir(rootpath);
+	if (rawchdir(buf) < 0) return(0);
+	VOID_C rawchdir(rootpath);
+
 #if	MSDOS
-	spawnlpe(P_WAIT, "DELTREE.EXE", "DELTREE", "/Y", buf, NULL, environ);
+	argv[0] = "DELTREE";
+	argv[1] = "/Y";
+#else
+	argv[0] = "rm";
+	argv[1] = "-rf";
+#endif
+	argv[2] = buf;
+	argv[3] = NULL;
+
+#if	MSDOS
+	spawnve(P_WAIT, "DELTREE.EXE", argv, environ);
 #else
 	if ((pid = fork()) < (p_id_t)0) return(-1);
 	else if (!pid) {
-		execle("/bin/rm", "rm", "-rf", buf, NULL, environ);
+		execve("/bin/rm", argv, environ);
 		_exit(1);
 	}
 #endif

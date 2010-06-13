@@ -2030,6 +2030,7 @@ int old, new;
 	ndev = chkopenfd(old);
 # ifdef	DEP_DOSDRIVE
 	if (odev == DEV_DOS || ndev == DEV_DOS) fd = seterrno(EBADF);
+	else
 # endif
 	fd = safe_dup2(old, new);
 

@@ -1,3 +1,7 @@
+Ver. 3.00h	Hang-up when 'PS1' internal variable includes \[...\] is fixed.
+ (06/14/10)	Failure to compile with non-standard C compiler is fixed.
+		Recursive call of malloc() in abortion is fixed.
+
 Ver. 3.00g	Broken tree screen with unprintable directory name is fixed.
  (06/04/10)	Abortion when accessing directory with Japanese is fixed.
 		Buffer overflow in Japanese string parser is fixed.
