@@ -86,13 +86,11 @@ CONST char *s1, *s2;
 		c1 = Xtoupper(*s1);
 		c2 = Xtoupper(*s2);
 		if (c1 != c2) return(c1 - c2);
-#ifndef	CODEEUC
-		if (issjis1(*s1)) {
+		if (iswchar(s1, 0)) {
 			s1++;
 			s2++;
 			if (*s1 != *s2) return((u_char)*s1 - (u_char)*s2);
 		}
-#endif
 		if (!*s1) break;
 		s1++;
 		s2++;
@@ -111,14 +109,12 @@ int n;
 		c1 = Xtoupper(*s1);
 		c2 = Xtoupper(*s2);
 		if (c1 != c2) return(c1 - c2);
-#ifndef	CODEEUC
-		if (issjis1(*s1)) {
+		if (iswchar(s1, 0)) {
 			if (n-- <= 0) break;
 			s1++;
 			s2++;
 			if (*s1 != *s2) return((u_char)*s1 - (u_char)*s2);
 		}
-#endif
 		if (!*s1) break;
 		s1++;
 		s2++;
@@ -138,3 +134,41 @@ CONST char *s;
 	return(len);
 }
 #endif	/* CODEEUC */
+
+VOID Xstrtolower(s)
+char *s;
+{
+	if (s) for (; *s; s++) {
+		if (iswchar(s, 0)) s++;
+		else *s = Xtolower(*s);
+	}
+}
+
+VOID Xstrtoupper(s)
+char *s;
+{
+	if (s) for (; *s; s++) {
+		if (iswchar(s, 0)) s++;
+		else *s = Xtoupper(*s);
+	}
+}
+
+VOID Xstrntolower(s, n)
+char *s;
+int n;
+{
+	if (s) for (; n-- > 0 && *s; s++) {
+		if (iswchar(s, 0)) s++;
+		else *s = Xtolower(*s);
+	}
+}
+
+VOID Xstrntoupper(s, n)
+char *s;
+int n;
+{
+	if (s) for (; n-- > 0 && *s; s++) {
+		if (iswchar(s, 0)) s++;
+		else *s = Xtoupper(*s);
+	}
+}

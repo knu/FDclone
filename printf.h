@@ -22,6 +22,7 @@ typedef struct _printbuf_t {
 #define	VF_FILE			000002
 #define	VF_KANJI		000010
 #define	VF_UNSIGNED		000020
+#define	VF_ARGUMENT		000040
 #define	VF_PLUS			000100
 #define	VF_MINUS		000200
 #define	VF_SPACE		000400
@@ -59,5 +60,8 @@ extern CONST int printfflag[];
 extern CONST char printfsizechar[];
 extern CONST int printfsize[];
 extern int printf_urgent;
+#ifdef	DEP_FILECONV
+extern int printf_defkanji;
+#endif
 
 #endif	/* !__PRINTF_H_ */

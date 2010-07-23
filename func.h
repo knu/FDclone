@@ -87,7 +87,7 @@ extern sigcst_t signal2 __P_((int, sigcst_t));
 #define	signal2			signal
 #endif
 extern int system2 __P_((CONST char *, int));
-extern XFILE *popen2 __P_((CONST char *));
+extern XFILE *popen2 __P_((CONST char *, int));
 extern int pclose2 __P_((XFILE *));
 extern char *getwd2 __P_((VOID_A));
 
@@ -165,7 +165,7 @@ extern int forcemovefile __P_((char *));
 
 /* pty.c */
 #ifdef	DEP_PTY
-extern int Xopenpty __P_((int *, char *, ALLOC_T));
+extern int Xopenpty __P_((int *, int *, char *, ALLOC_T));
 extern int Xlogin_tty __P_((CONST char *, CONST char *, CONST char *));
 extern p_id_t Xforkpty __P_((int *, CONST char *, CONST char *));
 #endif
@@ -484,8 +484,8 @@ extern int putmode __P_((char *, u_int, int));
 extern int putflags __P_((char *, u_long));
 #endif
 #ifndef	NOUID
-extern int putowner __P_((char *, uid_t));
-extern int putgroup __P_((char *, gid_t));
+extern int putowner __P_((char *, u_id_t));
+extern int putgroup __P_((char *, g_id_t));
 #endif
 extern VOID waitmes __P_((VOID_A));
 extern int filetop __P_((int));

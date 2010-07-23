@@ -8,7 +8,11 @@
 #define	__MACHINE_H_
 
 #undef	MSDOS
-#define	MSDOS			(DOSV || PC98 || J3100)
+#if	(DOSV || PC98 || J3100)
+#define	MSDOS			1
+#else
+#define	MSDOS			0
+#endif
 
 #if	MSDOS
 #define	NOMULTIKANJI
@@ -740,6 +744,58 @@ typedef long	off_t;
 #define	USEINETATON
 #endif
 
+#if	defined (__minix)
+#define	OSTYPE			"MINIX"
+#ifndef	_MINIX
+#define	_MINIX			1
+#endif
+#define	CODEEUC
+#define	CPP7BIT
+#define	OLDARGINT
+#define	EXTENDCCOPT		"-O -D_MINIX=1"
+#define	TERMCAPLIB		"-lcurses"
+#define	NOFUNCMACRO
+#define	NOLONGLONG
+#define	USEPID_T
+#define	NOSIGLIST
+#define	NOTZFILEH
+#define	USESELECTH
+#define	USETIMEH
+#define	USETERMIOS
+#define	USEDEVPTY
+#define	SYSVDIRENT
+#define	NODNAMLEN
+#define	DNAMESIZE		1
+#define	NOTMGMTOFF
+#define	NOSTBLKSIZE
+#define	USESTATFSH
+#define	NOFBLOCKS
+#define	NOFBFREE
+#define	NOFFILES
+#define	USEFSTATFS
+#define	USESETENV
+#define	NOTERMVAR
+#define	USEUTIME
+#define	NOFTRUNCATE
+#define	USEFCNTLOCK
+#define	NOSYSLOG
+#define	USEMKTIME
+#define	USESYSCONF
+#define	NOKILLPG
+#define	USEWAITPID
+#define	USESIGACTION
+#define	USESIGPMASK
+#define	USETIMES
+#define	GETPGRPVOID
+#define	USESETVBUF
+#define	USESTRERROR
+#define	USESETSID
+#define	SIGFNCINT
+#define	USESOCKLEN
+#define	USEINETATON
+#define	USEGETGROUPS
+#endif
+
 #if	defined (__386BSD__) && !defined (OSTYPE)
 #define	BSD43
 #define	OSTYPE			"ORG_386BSD"
@@ -820,6 +876,7 @@ typedef long	off_t;
 /*	BOW		;BSD on Windows (ASCII) */
 /*	OPENBSD		;OpenBSD */
 /*	DARWIN		;Darwin (Apple) */
+/*	MINIX		;MINIX */
 /*	ORG_386BSD	;386BSD */
 
 /* #define CODEEUC	;kanji code type is EUC */
@@ -838,10 +895,11 @@ typedef long	off_t;
 /* #define SUPPORTSJIS	;cc(1) or man(1) supports Shift JIS perfectly */
 /* #define BSDINSTALL	;install(1) with option -c is valid like BSD */
 /* #define BSDINSTCMD	;command name except "install" to install like BSD */
-/* #define TARUSESPACE	;tar(1) uses space to devide file mode from UID */
+/* #define TARUSESPACE	;tar(1) uses space to divide file mode from UID */
 /* #define TARFROMPAX	;tar(1) comes from pax(1) */
 /* #define BUGGYMAKE	;make(1) assumes the same timestamp as earlier */
 /* #define CPP7BIT	;cpp(1) cannot through 8bit */
+/* #define OLDARGINT	;cc(1) treats any old-fashioned argument as integer */
 /* #define CCCOMMAND	;fullpath of suitable cc(1) */
 /* #define EXTENDCCOPT	;additional option on cc(1) */
 /* #define CCOUTOPT	;option for output file name on cc(1) with -c */
@@ -888,6 +946,7 @@ typedef long	off_t;
 /* #define USETERMIOS	;use termios interface */
 /* #define HAVECLINE	;'struct termios' has 'c_line' */
 /* #define USEDEVPTMX	;use /dev/ptmx and /dev/pts/? for pseudo terminal */
+/* #define USEDEVPTY	;use /dev/pty for pseudo terminal */
 /* #define USEDIRECT	;use 'struct direct' instead of dirent */
 /* #define SYSVDIRENT	;dirent interface behaves as System V */
 /* #define NODNAMLEN	;'struct dirent' hasn't 'd_namlen' */
@@ -895,6 +954,7 @@ typedef long	off_t;
 /* #define DNAMESIZE	;size of 'd_name' in 'struct dirent' */
 /* #define HAVETIMEZONE	;have extern variable 'timezone' */
 /* #define NOTMGMTOFF	;'struct tm' hasn't 'tm_gmtoff' */
+/* #define NOSTBLKSIZE	;'struct stat' hasn't 'st_blksize' */
 /* #define USEINSYSTMH	;use <netinet/in_systm.h> for <netinet/ip.h> */
 /* #define NOHADDRLIST	;'struct hostent' hasn't 'h_addr_list' */
 
@@ -905,9 +965,13 @@ typedef long	off_t;
 /* #define USEMOUNTH	;use <sys/mount.h> as header of the FS status */
 /* #define USEFSDATA	;use 'struct fs_data' as structure of hte FS status */
 
-/* #define USESTATVFS_T	;use 'statvfs_t' instead of 'struct statvfs' */
 /* #define USEFFSIZE	;'struct statfs' has 'f_fsize' as block size */
+/* #define NOFBLOCKS	;'struct statfs' hasn't 'f_blocks' */
+/* #define NOFBFREE	;'struct statfs' hasn't 'f_bfree' */
+/* #define NOFFILES	;'struct statfs' hasn't 'f_files' */
+/* #define USESTATVFS_T	;use 'statvfs_t' instead of 'struct statvfs' */
 /* #define STATFSARGS	;the number of arguments in statfs() */
+/* #define USEFSTATFS	;the fstatfs() instead of statfs() */
 
 /* following 9 items are exclusive */
 /* #define USEMNTENTH	;use <mntent.h> as header of the mount entry */
@@ -939,6 +1003,7 @@ typedef long	off_t;
 /* #define USEUTIME	;use utime() instead of utimes() */
 /* #define USEGETWD	;use getwd() instead of getcwd() */
 /* #define ULONGIOCTL	;the 2nd argument of ioctl() is unsigned long */
+/* #define NOFTRUNCATE	;have not ftruncate() */
 /* #define USEFCNTLOCK	;use fcntl() lock instead of flock() */
 /* #define USELOCKF	;use lockf() instead of flock() */
 /* #define NOFLOCK	;have neither flock() nor lockf() */
@@ -948,6 +1013,7 @@ typedef long	off_t;
 /* #define USESYSCONF	;use sysconf() for getting system configuration */
 /* #define USELLSEEK	;use _llseek() for 64bits width instead of lseek() */
 /* #define USEUNAME	;use uname() instead of gethostname() */
+/* #define NOKILLPG	;have not killpg() */
 /* #define USEWAITPID	;use waitpid() instead of wait3() */
 /* #define USESIGACTION	;use sigaction() instead of signal() */
 /* #define USESIGPMASK	;use sigprocmask() instead of sigsetmask() */
@@ -1031,12 +1097,17 @@ typedef long	off_t;
 #define	HAVETIMEZONE
 #define	USERAND48
 #define	USEUNAME
+#define	NOKILLPG
 # if	!defined (USERE_COMP) && !defined (USEREGCOMP)
 # define	USEREGCMP
 # endif
 #endif
 
-#ifndef	BSD4
+#if	defined (BSD4) && !defined (USEDEVPTY)
+#define	USEDEVPTY
+#endif
+
+#ifndef	USEDEVPTY
 #define	USEDEVPTMX
 #endif
 
@@ -1241,6 +1312,8 @@ typedef long	off_t;
 
 #if	MSDOS
 #undef	USEVFSH
+#endif
+#if	MSDOS || defined (MINIX)
 #undef	USEMNTENTH
 #endif
 

@@ -1500,12 +1500,12 @@ CONST char *dev;
 		n_args = mark;
 	}
 
-	st.flags = 0;
+	st.flags = (F_NOCONFIRM | F_ISARCH);
 	if (!(tmp = evalcommand("tar cf %C %TA", dev, &st))) return(0);
 
 #ifdef	_NOEXTRAMACRO
 	if (filelist) for (;;) {
-		system2(tmp, -1);
+		system2(tmp, st.flags);
 		Xfree(tmp);
 
 		if (!(st.flags & F_REMAIN)
@@ -1515,7 +1515,7 @@ CONST char *dev;
 	else
 #endif
 	{
-		system2(tmp, -1);
+		system2(tmp, st.flags);
 		Xfree(tmp);
 	}
 

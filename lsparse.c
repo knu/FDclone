@@ -210,8 +210,8 @@ u_int mode;
 #else
 int logical_access(mode, uid, gid)
 u_int mode;
-uid_t uid;
-gid_t gid;
+u_id_t uid;
+g_id_t gid;
 #endif
 {
 	int dir;
@@ -220,8 +220,8 @@ gid_t gid;
 #ifdef	NOUID
 	mode >>= 6;
 #else
-	if (uid == geteuid()) mode >>= 6;
-	else if (gid == getegid() || isgroupmember(gid)) mode >>= 3;
+	if ((uid_t)uid == geteuid()) mode >>= 6;
+	else if ((gid_t)gid == getegid() || isgroupmember(gid)) mode >>= 3;
 #endif
 	if (dir && !(mode & F_ISEXE)) mode &= ~(F_ISRED | F_ISWRI);
 
@@ -356,8 +356,8 @@ CONST char *name;
 	namep -> st_mode = (S_IREAD_ALL | S_IWUSR | S_IFREG);
 	namep -> st_nlink = 1;
 #ifndef	NOUID
-	namep -> st_uid = (uid_t)-1;
-	namep -> st_gid = (gid_t)-1;
+	namep -> st_uid = (u_id_t)-1;
+	namep -> st_gid = (g_id_t)-1;
 #endif
 #ifndef	NOSYMLINK
 	namep -> linkname = NULL;
@@ -482,8 +482,8 @@ int max;
 # ifndef	NOUID
 	uidtable *up;
 	gidtable *gp;
-	uid_t uid;
-	gid_t gid;
+	u_id_t uid;
+	g_id_t gid;
 # endif
 	struct tm tm, *tp;
 	time_t t;
@@ -529,10 +529,10 @@ int max;
 # ifndef	NOUID
 	getfield(buf, line, skip, list, F_UID);
 	if (Xsscanf(buf, "%-<*d%$", sizeof(uid), &uid)) tmp -> st_uid = uid;
-	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (uid_t)-1;
+	else tmp -> st_uid = ((up = finduid(0, buf))) ? up -> uid : (u_id_t)-1;
 	getfield(buf, line, skip, list, F_GID);
 	if (Xsscanf(buf, "%-<*d%$", sizeof(gid), &gid)) tmp -> st_gid = gid;
-	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (gid_t)-1;
+	else tmp -> st_gid = ((gp = findgid(0, buf))) ? gp -> gid : (g_id_t)-1;
 # endif
 	getfield(buf, line, skip, list, F_SIZE);
 	tmp -> st_size = (Xsscanf(buf, "%qd%$", &n)) ? n : (off_t)0;
@@ -621,13 +621,12 @@ static char *NEAR readfname(s, len)
 CONST char *s;
 int len;
 {
-	char *cp, *tmp;
+	char *cp;
 
 	cp = Xstrndup(s, len);
-	tmp = newkanjiconv(cp, fnamekcode, DEFCODE, L_FNAME);
-	if (tmp != cp) Xfree(cp);
+	renewkanjiconv(&cp, fnamekcode, DEFCODE, L_FNAME);
 
-	return(tmp);
+	return(cp);
 }
 # endif	/* DEP_FILECONV */
 
@@ -658,8 +657,8 @@ int skip, flags;
 # ifndef	NOUID
 	uidtable *up;
 	gidtable *gp;
-	uid_t uid;
-	gid_t gid;
+	u_id_t uid;
+	g_id_t gid;
 # endif
 # ifndef	NOSYMLINK
 	CONST char *line2, *lname;

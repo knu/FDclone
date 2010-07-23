@@ -47,15 +47,4 @@ struct dirent {
 	char d_alias[14];
 };
 
-struct utimbuf {
-	time_t actime;
-	time_t modtime;
-};
-
-#ifdef	LSI_C
-extern int utime __P_((CONST char *, CONST time_t[]));
-#else
-extern int utime __P_((CONST char *, CONST struct utimbuf *));
-#endif
-
 #endif	/* MSDOS && !__UNIXEMU_H_ */

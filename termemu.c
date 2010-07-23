@@ -38,7 +38,9 @@ int parentfd = -1;
 char *ptytmpfile = NULL;
 
 static VOID NEAR doscroll __P_((int, int, int, int));
-static VOID NEAR closeallpty __P_((int));
+#ifdef	CYGWIN
+static VOID NEAR closeallpty __P_((VOID_A));
+#endif
 static int NEAR genbackend __P_((VOID_A));
 static VOID NEAR sendvar __P_((int, char **));
 #ifdef	DEP_ORIGSHELL
@@ -123,41 +125,42 @@ int n, c, x, y, min, max;
 int selectpty(max, fds, result, timeout)
 int max, fds[];
 char result[];
-int timeout;
+long timeout;
 {
 	struct timeval tv, *t;
 
-	if (timeout < 0) t = NULL;
+	if (timeout < 0L) t = NULL;
 	else if (!timeout) {
 		tv.tv_sec = 0L;
 		tv.tv_usec = 1L;
 		t = &tv;
 	}
 	else {
-		tv.tv_sec = (long)timeout;
-		tv.tv_usec = 0L;
+		tv.tv_sec = timeout / 1000000L;
+		tv.tv_usec = timeout % 1000000L;
 		t = &tv;
 	}
 
 	return(readselect(max, fds, result, t));
 }
 
-static VOID NEAR closeallpty(n)
-int n;
+#ifdef	CYGWIN
+static VOID NEAR closeallpty(VOID_A)
 {
 	int i;
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < MAXWINDOWS; i++) {
 		safeclose(ptylist[i].fd);
 		ptylist[i].fd = -1;
 	}
 }
+#endif	/* CYGWIN */
 
 static int NEAR genbackend(VOID_A)
 {
 	char path[MAXPATHLEN];
 	p_id_t pid;
-	int i, fds[2];
+	int i, n, fds[2], slave[MAXWINDOWS];
 
 	if (emupid) return(0);
 
@@ -166,7 +169,9 @@ static int NEAR genbackend(VOID_A)
 	VOID_C fcntl(fds[1], F_SETFL, O_NONBLOCK);
 
 	for (i = 0; i < MAXWINDOWS; i++) {
-		if (Xopenpty(&(ptylist[i].fd), path, sizeof(path)) < 0) break;
+		n = Xopenpty(&(ptylist[i].fd),
+			&(slave[i]), path, sizeof(path));
+		if (n < 0) break;
 		ptylist[i].pid = (p_id_t)0;
 		ptylist[i].path = Xstrdup(path);
 		ptylist[i].pipe = -1;
@@ -176,8 +181,10 @@ static int NEAR genbackend(VOID_A)
 	if (i < MAXWINDOWS || (pid = Xfork()) < (p_id_t)0) {
 		safeclose(fds[0]);
 		safeclose(fds[1]);
-		closeallpty(i);
 		while (--i >= 0) {
+			safeclose(ptylist[i].fd);
+			ptylist[i].fd = -1;
+			safeclose(slave[i]);
 			Xfree(ptylist[i].path);
 			ptylist[i].path = NULL;
 		}
@@ -199,18 +206,26 @@ static int NEAR genbackend(VOID_A)
 		resetptyterm(i, 1);
 
 		backend();
-		closeallpty(MAXWINDOWS);
+		for (i = 0; i < MAXWINDOWS; i++) {
+			safeclose(ptylist[i].fd);
+			ptylist[i].fd = -1;
+			safeclose(slave[i]);
+		}
 		_exit(0);
 	}
 
 	safeclose(fds[0]);
 	emufd = newdup(fds[1]);
 	emupid = pid;
+	for (i = 0; i < MAXWINDOWS; i++) {
 #ifdef	CYGWIN
-	for (i = 0; i < MAXWINDOWS; i++) ptylist[i].fd = newdup(ptylist[i].fd);
+		ptylist[i].fd = newdup(ptylist[i].fd);
 #else
-	closeallpty(MAXWINDOWS);
+		safeclose(ptylist[i].fd);
+		ptylist[i].fd = -1;
 #endif
+		safeclose(slave[i]);
+	}
 
 	return(0);
 }
@@ -788,7 +803,7 @@ int flags;
 		mypid = getpid();
 #endif
 #ifdef	CYGWIN
-		closeallpty(MAXWINDOWS);
+		closeallpty();
 #endif
 		if (Xlogin_tty(ptylist[win].path, tty, ws) < 0) _exit(1);
 #ifdef	DEP_ORIGSHELL
@@ -894,7 +909,7 @@ VOID killallpty(VOID_A)
 	}
 
 #ifdef	CYGWIN
-	closeallpty(MAXWINDOWS);
+	closeallpty();
 #endif
 	if (emupid) {
 		VOID_C kill(emupid, SIGHUP);

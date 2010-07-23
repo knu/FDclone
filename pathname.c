@@ -29,9 +29,6 @@
 # include <dos.h>
 # include <io.h>
 # endif
-#else	/* !MSDOS */
-#include <sys/file.h>
-#include <sys/param.h>
 #endif	/* !MSDOS */
 #ifndef	NOUID
 #include <pwd.h>
@@ -872,12 +869,15 @@ int len;
 #ifdef	BASHSTYLE
 	/* bash treats a character quoted by \ in "[]" as a character itself */
 				paren[plen++] = PESCAPE;
+				if (iswchar(s, i)) {
+					paren[plen++] = s[i++];
+					paren[plen++] = s[i];
+				}
 # ifndef	PATHNOCASE
-				if (!pathignorecase) paren[plen++] = s[i];
-				else
+				else if (!pathignorecase) paren[plen++] = s[i];
 # endif
 				paren[plen++] = Xtoupper(s[i]);
-#endif
+#endif	/* BASHSTYLE */
 			}
 			else if (s[i] == ']') {
 				if (!plen) {
@@ -2744,7 +2744,7 @@ CONST char **homep, **shellp;
 }
 
 uidtable *finduid(uid, name)
-uid_t uid;
+u_id_t uid;
 CONST char *name;
 {
 	struct passwd *pwd;
@@ -2771,20 +2771,20 @@ CONST char *name;
 			if (uid == uidlist[i].uid) return(&(uidlist[i]));
 # ifdef	DEBUG
 		_mtrace_file = "getpwuid(start)";
-		pwd = getpwuid(uid);
+		pwd = getpwuid((uid_t)uid);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "getpwuid(end)";
 			malloc(0);	/* dummy alloc */
 		}
 # else
-		pwd = getpwuid(uid);
+		pwd = getpwuid((uid_t)uid);
 # endif
 	}
 
 	if (!pwd) return(NULL);
 	uidlist = b_realloc(uidlist, maxuid, uidtable);
-	uidlist[maxuid].uid = pwd -> pw_uid;
+	uidlist[maxuid].uid = convuid(pwd -> pw_uid);
 	uidlist[maxuid].name = Xstrdup(pwd -> pw_name);
 	uidlist[maxuid].home = Xstrdup(pwd -> pw_dir);
 
@@ -2792,7 +2792,7 @@ CONST char *name;
 }
 
 gidtable *findgid(gid, name)
-gid_t gid;
+g_id_t gid;
 CONST char *name;
 {
 	struct group *grp;
@@ -2819,20 +2819,20 @@ CONST char *name;
 			if (gid == gidlist[i].gid) return(&(gidlist[i]));
 # ifdef	DEBUG
 		_mtrace_file = "getgrgid(start)";
-		grp = getgrgid(gid);
+		grp = getgrgid((gid_t)gid);
 		if (_mtrace_file) _mtrace_file = NULL;
 		else {
 			_mtrace_file = "getgrgid(end)";
 			malloc(0);	/* dummy alloc */
 		}
 # else
-		grp = getgrgid(gid);
+		grp = getgrgid((gid_t)gid);
 # endif
 	}
 
 	if (!grp) return(NULL);
 	gidlist = b_realloc(gidlist, maxgid, gidtable);
-	gidlist[maxgid].gid = grp -> gr_gid;
+	gidlist[maxgid].gid = convgid(grp -> gr_gid);
 	gidlist[maxgid].name = Xstrdup(grp -> gr_name);
 # ifndef	USEGETGROUPS
 	gidlist[maxgid].gr_mem = duplvar(grp -> gr_mem, -1);
@@ -2843,7 +2843,7 @@ CONST char *name;
 }
 
 int isgroupmember(gid)
-gid_t gid;
+g_id_t gid;
 {
 # ifdef	USEGETGROUPS
 	gid_t *gidset;
@@ -2861,7 +2861,8 @@ gid_t gid;
 		if ((n = getgroups(0, NULL)) > 0) {
 			gidset = (gid_t *)Xmalloc(n * sizeof(*gidset));
 			n = getgroups(n, gidset);
-			for (i = 0; i < n; i++) if (gidset[i] == gp -> gid) {
+			for (i = 0; i < n; i++) {
+				if (gidset[i] != (gid_t)(gp -> gid)) continue;
 				gp -> ismem++;
 				break;
 			}

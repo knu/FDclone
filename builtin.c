@@ -2477,7 +2477,7 @@ int argc;
 char *CONST argv[];
 {
 	XFILE *fpin, *fpout;
-	char *cp, *tmp;
+	char *cp;
 	int i, in, out, err;
 
 	err = 0;
@@ -2538,16 +2538,11 @@ char *CONST argv[];
 	if ((i = (in > out) ? in : out) >= UTF8) readunitable(i - UTF8);
 #  endif
 	while ((cp = Xfgets(fpin))) {
-		if (in != DEFCODE) {
-			tmp = newkanjiconv(cp, in, DEFCODE, L_OUTPUT);
-			if (cp != tmp) Xfree(cp);
-			cp = tmp;
-		}
-		tmp = newkanjiconv(cp, DEFCODE, out, L_OUTPUT);
-		if (cp != tmp) Xfree(cp);
-		Xfputs(tmp, fpout);
+		if (in != DEFCODE) renewkanjiconv(&cp, in, DEFCODE, L_OUTPUT);
+		renewkanjiconv(&cp, DEFCODE, out, L_OUTPUT);
+		Xfputs(cp, fpout);
 		VOID_C fputnl(fpout);
-		Xfree(tmp);
+		Xfree(cp);
 	}
 
 #  ifdef	DEP_UNICODE
@@ -2752,7 +2747,7 @@ XFILE *fp;
 	for (i = 0; i < R_MAXKANA; i++) {
 		if (!romanlist[n].code[i]) break;
 		VOID_C jis2str(buf, romanlist[n].code[i]);
-		VOID_C Xfprintf(fp, "%k", buf);
+		VOID_C Xfprintf(fp, "%K", buf);
 	}
 	Xfputc('"', fp);
 	VOID_C fputnl(fp);
@@ -2875,7 +2870,7 @@ char *ident, *comm;
 	aliaslist[i].alias = ident;
 	aliaslist[i].comm = comm;
 # ifdef	COMMNOCASE
-	if (ident) for (i = 0; ident[i]; i++) ident[i] = Xtolower(ident[i]);
+	Xstrtolower(ident);
 # endif
 # ifdef	DEP_PTY
 	sendparent(TE_ADDALIAS, ident, comm);
@@ -3035,7 +3030,7 @@ char *ident, **comm;
 	userfunclist[i].func = ident;
 	userfunclist[i].comm = comm;
 # ifdef	COMMNOCASE
-	if (ident) for (i = 0; ident[i]; i++) ident[i] = Xtolower(ident[i]);
+	Xstrtolower(ident);
 # endif
 # ifdef	DEP_PTY
 	sendparent(TE_ADDFUNCTION, ident, comm);
@@ -3299,11 +3294,11 @@ char *CONST argv[];
 		return(-1);
 	}
 	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
-		VOID_C Xfprintf(Xstderr, "%s: %k\n", argv[0], RESTR_K);
+		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], RESTR_K);
 		return(RET_NOTICE);
 	}
 	if (argc > 2 || !filelist || maxfile <= 0) {
-		VOID_C Xfprintf(Xstderr, "%s: %k\n", argv[0], ILFNC_K);
+		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], ILFNC_K);
 		return(RET_NOTICE);
 	}
 #ifdef	DEP_PTY
@@ -3335,6 +3330,11 @@ int flags;
 		freevar(argv);
 		return(-1);
 	}
+
+# ifdef	DEP_FILECONV
+	if (!(flags & F_NOKANJICONV)) printf_defkanji++;
+# endif
+
 	if ((i = checkbuiltin(argv[0])) >= 0) {
 		if (!(flags & F_NOCOMLINE)) {
 			locate(0, n_line - 1);
@@ -3391,6 +3391,9 @@ int flags;
 		}
 	}
 
+# ifdef	DEP_FILECONV
+	if (!(flags & F_NOKANJICONV)) printf_defkanji--;
+# endif
 	freevar(argv);
 
 	return(n);

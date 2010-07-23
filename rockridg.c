@@ -49,16 +49,18 @@ static char *NEAR getorgname(name, flags)
 char *name;
 int flags;
 {
-	int i;
+	char *cp;
+	int len;
 
-	for (i = 0; name[i] && name[i] != ';'; i++)
-		if (flags & RR_LOWER) name[i] = Xtolower(name[i]);
+	cp = Xstrchr(name, ';');
+	len = (cp) ? cp - name : strlen(name);
+	if (flags & RR_LOWER) Xstrntolower(name, len);
 
-	if ((flags & RR_VERNO) && name[i] == ';') {
-		if (flags & RR_HYPHN) name[i] = '-';
-		i += 2;
+	if ((flags & RR_VERNO) && cp) {
+		if (flags & RR_HYPHN) *cp = '-';
+		cp += 2;
 	}
-	name[i] = '\0';
+	*cp = '\0';
 
 	return(name);
 }
@@ -69,7 +71,6 @@ int len, *flagsp;
 {
 	XFILE *fp;
 	char *cp, *file, buf[MAXPATHLEN];
-	int i;
 
 	if (len + 1 >= MAXPATHLEN - 1) return(NULL);
 	Xstrncpy(buf, path, len);
@@ -91,7 +92,7 @@ int len, *flagsp;
 	if ((fp = Xfopen(buf, "r"))) return(fp);
 
 	buf[len] = '\0';
-	for (i = 0; file[i]; i++) file[i] = Xtolower(file[i]);
+	Xstrtolower(file);
 	*flagsp = RR_TRANS | RR_LOWER;
 	if ((fp = Xfopen(buf, "r"))) return(fp);
 

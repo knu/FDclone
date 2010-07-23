@@ -312,7 +312,7 @@ int *lenp, ptr;
 	}
 
 	v = Xsnprintf(&(s1[i]), *lenp * KANAWID + 1 - i,
-		"%^.*s", *lenp, &(s2[j]));
+		"%^.*s", *lenp - i, &(s2[j]));
 #ifdef	CODEEUC
 	r = strlen(&(s1[i]));
 #else
@@ -424,9 +424,6 @@ int export;
 {
 	char *cp;
 	int len;
-#if	defined (ENVNOCASE) && !defined (DEP_ORIGSHELL)
-	int i;
-#endif
 
 	len = strlen(name);
 	if (!value) {
@@ -440,7 +437,7 @@ int export;
 		cp = Xmalloc(len + strlen(value) + 2);
 		memcpy(cp, name, len);
 #if	defined (ENVNOCASE) && !defined (DEP_ORIGSHELL)
-		for (i = 0; i < len ; i++) cp[i] = Xtoupper(cp[i]);
+		Xstrntoupper(cp, len);
 #endif
 		cp[len] = '=';
 		Xstrcpy(&(cp[len + 1]), value);
@@ -503,7 +500,14 @@ int flags;
 		Xstdiomode();
 	}
 
+#ifdef	DEP_FILECONV
+	if (!(flags & F_NOKANJICONV)) printf_defkanji++;
+#endif
 	ret = dosystem(command);
+#ifdef	DEP_FILECONV
+	if (!(flags & F_NOKANJICONV)) printf_defkanji--;
+#endif
+
 	LOG1(_LOG_NOTICE_, ret, "system(\"%s\");", command);
 #ifndef	DEP_ORIGSHELL
 	checkscreen(-1, -1);
@@ -533,8 +537,9 @@ int flags;
 	return(ret);
 }
 
-XFILE *popen2(command)
+XFILE *popen2(command, flags)
 CONST char *command;
+int flags;
 {
 	XFILE *fp;
 	int n;
@@ -548,7 +553,14 @@ CONST char *command;
 		Xstdiomode();
 	}
 
+#ifdef	DEP_FILECONV
+	if (!(flags & F_NOKANJICONV)) printf_defkanji++;
+#endif
 	fp = dopopen(command);
+#ifdef	DEP_FILECONV
+	if (!(flags & F_NOKANJICONV)) printf_defkanji--;
+#endif
+
 	sigvecset(n);
 	if (fp) {
 		if (wasttyflags & F_TTYIOMODE) {

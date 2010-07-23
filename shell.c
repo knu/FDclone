@@ -1492,7 +1492,7 @@ int flags;
 		if (!lang || !*lang) lang = getenv2("LANG");
 		setenv2(localelist[i].env, lang, 1);
 	}
-	fp = popen2(tmp);
+	fp = popen2(tmp, flags);
 	for (i = 0; i < LOCALELISTSIZ; i++) {
 		setenv2(localelist[i].env, localelist[i].org, 1);
 		Xfree(localelist[i].org);

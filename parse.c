@@ -484,9 +484,6 @@ char *CONST argv[];
 char *evalcomstr(path, delim)
 CONST char *path, *delim;
 {
-# ifdef	DEP_FILECONV
-	char *tmp;
-# endif
 	CONST char *cp, *next;
 	char *new, *epath;
 	int i, len, size;
@@ -507,12 +504,7 @@ CONST char *path, *delim;
 		if (len) {
 			new = _evalpath(cp, next, EA_NOEVALQ | EA_NOUNIQDELIM);
 # ifdef	DEP_FILECONV
-			tmp = newkanjiconv(new,
-				DEFCODE, getkcode(new), L_FNAME);
-			if (new != tmp) {
-				Xfree(new);
-				new = tmp;
-			}
+			renewkanjiconv(&new, DEFCODE, getkcode(new), L_FNAME);
 # endif
 			cp = new;
 			len = strlen(cp);
@@ -1076,7 +1068,7 @@ int len;
 			}
 			continue;
 		}
-		*(cp++) = s[i++];
+		*(cp++) = s[i];
 		size--;
 	}
 	*cp = '\0';

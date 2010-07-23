@@ -22,6 +22,12 @@
 #include <sys/timeb.h>
 #endif
 
+#ifdef	MINIX
+#define	timezonep(t)		NULL
+#else
+#define	timezonep(t)		&(t)
+#endif
+
 #if	!MSDOS && !defined (NOTZFILEH) \
 && !defined (USEMKTIME) && !defined (USETIMELOCAL)
 static long NEAR char2long __P_((CONST u_char *));
@@ -41,20 +47,25 @@ static long NEAR gettimezone __P_((CONST struct tm *, time_t));
 time_t Xtime(tp)
 time_t *tp;
 {
-	time_t t;
 #if	MSDOS
 	struct timeb buffer;
+#else	/* !MSDOS */
+# ifndef	MINIX
+	struct timezone tz;
+# endif
+	struct timeval tv;
+#endif	/* !MSDOS */
+	time_t t;
 
+#if	MSDOS
 	VOID_C ftime(&buffer);
 	t = (time_t)(buffer.time);
+	if (tp) *tp = (time_t)(buffer.millitm);
 #else
-	struct timeval t_val;
-	struct timezone tz;
-
-	VOID_C Xgettimeofday(&t_val, &tz);
-	t = (time_t)(t_val.tv_sec);
+	VOID_C Xgettimeofday(&tv, timezonep(tz));
+	t = (time_t)(tv.tv_sec);
+	if (tp) *tp = (time_t)(tv.tv_usec / 1000L);
 #endif
-	if (tp) *tp = t;
 
 	return(t);
 }

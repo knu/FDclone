@@ -89,7 +89,7 @@ static int waitpty(VOID_A)
 	oldwin = win;
 	for (i = 0; i < MAXWINDOWS; i++)
 		fds[i] = (ptylist[i].pid) ? ptylist[i].pipe : -1;
-	if (selectpty(MAXWINDOWS, fds, result, 0) > 0) {
+	if (selectpty(MAXWINDOWS, fds, result, 0L) > 0) {
 		for (i = 0; i < MAXWINDOWS; i++)
 			if (result[i] && ptylist[i].pid) recvchild(i);
 	}

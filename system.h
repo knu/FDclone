@@ -29,7 +29,8 @@
 #if	defined (BASHSTYLE) && !defined (BASHBUG)
 #define	BASHBUG
 #endif
-#if	(MSDOS || defined (MINIMUMSHELL)) && !defined (NOJOB)
+#if	(MSDOS || defined (MINIX) || defined (MINIMUMSHELL)) \
+&& !defined (NOJOB)
 #define	NOJOB
 #endif
 #if	defined (MINIMUMSHELL) && !defined (NOALIAS)
@@ -317,6 +318,9 @@ typedef struct _opetable {
 typedef struct _pipelist {
 	char *file;
 	XFILE *fp;
+#ifndef	USEFAKEPIPE
+	syntaxtree *trp;
+#endif
 	int fd;
 	int new;
 	int old;

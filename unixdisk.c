@@ -54,12 +54,6 @@ static int NEAR lfn_findclose __P_((u_int));
 static int NEAR gendosname __P_((char *));
 static int NEAR unixrenamedir __P_((CONST char *, CONST char *));
 #endif
-static u_int NEAR getdosmode __P_((u_int));
-static u_int NEAR putdosmode __P_((u_int));
-static time_t NEAR getdostime __P_((u_int, u_int));
-#ifndef	_NOUSELFN
-static int NEAR putdostime __P_((u_short *, u_short *, time_t));
-#endif
 static int NEAR alter_findfirst __P_((CONST char *, u_int *,
 		struct dosfind_t *, struct lfnfind_t *));
 
@@ -583,18 +577,21 @@ char *path;
 	int i;
 
 # ifndef	_NOUSELFN
-	if (supportLFN(path) > 0 && unixrealpath(path, tmp))
+	if (supportLFN(path) > 0 && unixrealpath(path, tmp)) {
 		Xstrcpy(path, tmp);
-	else
+		return(path);
+	}
 # endif
-	for (i = (_dospath(path)) ? 2 : 0; path[i]; i++) {
+
+	i = (_dospath(path)) ? 2 : 0;
+	Xstrtoupper(&(path[i]));
+	for (; path[i]; i++) {
 # ifdef	BSPATHDELIM
 		if (path[i] == '/') path[i] = _SC_;
 # else
 		if (path[i] == '\\') path[i] = _SC_;
-		else if (iskanji1(path, i)) i++;
 # endif
-		else path[i] = Xtoupper(path[i]);
+		if (iswchar(path, i)) i++;
 	}
 
 	return(path);
@@ -1765,27 +1762,36 @@ char *s;
 	char *cp;
 	int i;
 
-	if ((cp = strrdelim(s, 1))) s = cp + 1;
+	if ((cp = strrdelim(s, 1))) s = &(cp[1]);
 
 	for (i = 0; i < 8 && s[i]; i++) {
 		if (s[i] == ' ') return(0);
 		if (s[i] == '.') break;
-		s[i] = Xtoupper(s[i]);
+		if (iswchar(s, i)) {
+			if (i + 1 >= 8) break;
+			i++;
+		}
 	}
 	if (!i) return(-1);
 
 	s += i;
 	if (!*s) return(1);
-	if (*s == '.') cp = s + 1;
+	if (*s == '.') cp = &(s[1]);
 	else if ((cp = Xstrchr(&(s[1]), '.'))) cp++;
 
 	for (i = 0; i < 3 && cp && cp[i]; i++) {
 		if (cp[i] == ' ') return(0);
 		if (cp[i] == '.') return(-1);
-		s[i + 1] = Xtoupper(cp[i]);
+		if (iswchar(cp, i)) {
+			if (i + 1 >= 3) break;
+			s[i + 1] = cp[i];
+			i++;
+		}
+		s[i + 1] = cp[i];
 	}
 	if (i) *(s++) = '.';
 	s[i] = '\0';
+	Xstrtoupper(s);
 
 	return(1);
 }
@@ -2030,74 +2036,6 @@ int size;
 	return(pathname);
 }
 
-static u_int NEAR getdosmode(attr)
-u_int attr;
-{
-	u_int mode;
-
-	mode = 0;
-	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
-	if (!(attr & DS_IHIDDEN)) mode |= S_IRUSR;
-	if (!(attr & DS_IRDONLY)) mode |= S_IWUSR;
-	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IXUSR);
-	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
-	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
-	else mode |= S_IFREG;
-
-	return(mode);
-}
-
-static u_int NEAR putdosmode(mode)
-u_int mode;
-{
-	u_int attr;
-
-	attr = 0;
-	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
-	if (!(mode & S_IRUSR)) attr |= DS_IHIDDEN;
-	if (!(mode & S_IWUSR)) attr |= DS_IRDONLY;
-	if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
-	else if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
-
-	return(attr);
-}
-
-static time_t NEAR getdostime(d, t)
-u_int d, t;
-{
-	struct tm tm;
-
-	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
-	tm.tm_year -= 1900;
-	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
-	tm.tm_mday = (d & 0x1f);
-	tm.tm_hour = ((t >> 11) & 0x1f);
-	tm.tm_min = ((t >> 5) & 0x3f);
-	tm.tm_sec = ((t << 1) & 0x3e);
-	tm.tm_isdst = -1;
-
-	return(mktime(&tm));
-}
-
-#ifndef	_NOUSELFN
-static int NEAR putdostime(dp, tp, tim)
-u_short *dp, *tp;
-time_t tim;
-{
-	struct tm *tm;
-
-	tm = localtime(&tim);
-	*dp = (((tm -> tm_year - 80) & 0x7f) << 9)
-		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
-		+ (tm -> tm_mday & 0x1f);
-	*tp = ((tm -> tm_hour & 0x1f) << 11)
-		+ ((tm -> tm_min & 0x3f) << 5)
-		+ ((tm -> tm_sec & 0x3e) >> 1);
-
-	return(*tp);
-}
-#endif	/* !_NOUSELFN */
-
 int unixstatfs(path, buf)
 CONST char *path;
 statfs_t *buf;
@@ -2229,11 +2167,11 @@ struct stat *stp;
 	u_int fd;
 #endif	/* !_NOUSELFN */
 	struct dosfind_t dbuf;
-	int i;
+	int i, n;
 
 	if (strpbrk(path, "*?")) return(seterrno(ENOENT));
 #ifdef	_NOUSELFN
-	i = alter_findfirst(path, NULL, &dbuf, NULL);
+	n = alter_findfirst(path, NULL, &dbuf, NULL);
 #else	/* !_NOUSELFN */
 	fd = (u_int)-1;
 	i = supportLFN(path);
@@ -2244,23 +2182,23 @@ struct stat *stp;
 		else if (!dependdosfunc) return(-1);
 	}
 # endif
-	if (i <= 0) i = alter_findfirst(path, NULL, &dbuf, &lbuf);
-	else i = alter_findfirst(path, &fd, &dbuf, &lbuf);
+	if (i <= 0) n = alter_findfirst(path, NULL, &dbuf, &lbuf);
+	else n = alter_findfirst(path, &fd, &dbuf, &lbuf);
 #endif	/* !_NOUSELFN */
-	if (i < 0) return(-1);
+	if (n < 0) return(-1);
 
 #ifndef	_NOUSELFN
 	if (fd != (u_int)-1) {
-		stp -> st_mode = getdosmode(lbuf.attr);
-		stp -> st_mtime = getdostime(lbuf.wrdate, lbuf.wrtime);
+		stp -> st_mode = getunixmode(lbuf.attr);
+		stp -> st_mtime = getunixtime(lbuf.wrdate, lbuf.wrtime);
 		stp -> st_size = lbuf.size_l;
 		VOID_C lfn_findclose(fd);
 	}
 	else
 #endif	/* !_NOUSELFN */
 	{
-		stp -> st_mode = getdosmode(dbuf.attr);
-		stp -> st_mtime = getdostime(dbuf.wrdate, dbuf.wrtime);
+		stp -> st_mode = getunixmode(dbuf.attr);
+		stp -> st_mtime = getunixtime(dbuf.wrdate, dbuf.wrtime);
 		stp -> st_size = dbuf.size_l;
 	}
 	stp -> st_ctime = stp -> st_atime = stp -> st_mtime;
@@ -2299,7 +2237,7 @@ int mode;
 		reg.h.bl = 0x01;
 	}
 #endif	/* !_NOUSELFN */
-	reg.x.cx = putdosmode(mode);
+	reg.x.cx = getdosmode(mode);
 #ifdef	DJGPP
 	dos_putpath(path, 0);
 #endif
@@ -2310,10 +2248,9 @@ int mode;
 }
 
 #ifndef	_NOUSELFN
-#ifdef	USEUTIME
-int unixutime(path, times)
+int unixutimes(path, utp)
 CONST char *path;
-CONST struct utimbuf *times;
+CONST struct utimes_t *utp;
 {
 	time_t t;
 	__dpmi_regs reg;
@@ -2321,43 +2258,21 @@ CONST struct utimbuf *times;
 	char buf[MAXPATHLEN];
 	int i, fd;
 
-	t = times -> modtime;
+	t = utp -> modtime;
 	path = duplpath(path);
 	i = supportLFN(path);
 	if (i < 0 && i > -3) {
 # ifndef	_NODOSDRIVE
-		return(dosutime(regpath(path, buf), times));
+		return(dosutimes(regpath(path, buf), utp));
 # else
 		if (!(path = preparefile(path, buf))) return(-1);
 # endif
 	}
-#else	/* !USEUTIME */
-int unixutimes(path, tvp)
-CONST char *path;
-CONST struct timeval *tvp;
-{
-	time_t t;
-	__dpmi_regs reg;
-	struct SREGS sreg;
-	char buf[MAXPATHLEN];
-	int i, fd;
-
-	t = tvp[1].tv_sec;
-	path = duplpath(path);
-	i = supportLFN(path);
-	if (i < 0 && i > -3) {
-# ifndef	_NODOSDRIVE
-		return(dosutimes(regpath(path, buf), tvp));
-# else
-		if (!(path = preparefile(path, buf))) return(-1);
-# endif
-	}
-#endif	/* !USEUTIME */
 	if (i <= 0) {
 		if ((fd = open(path, O_RDONLY, 0666)) >= 0) {
 			reg.x.ax = 0x5701;
 			reg.x.bx = (u_short)fd;
-			putdostime(&(reg.x.dx), &(reg.x.cx), t);
+			getdostime(&(reg.x.dx), &(reg.x.cx), t);
 			i = int21call(&reg, &sreg);
 			VOID_C close(fd);
 			return(i);
@@ -2367,10 +2282,10 @@ CONST struct timeval *tvp;
 
 	reg.x.ax = 0x7143;
 	reg.h.bl = 0x03;
-	putdostime(&(reg.x.di), &(reg.x.cx), t);
-#ifdef	DJGPP
+	getdostime(&(reg.x.di), &(reg.x.cx), t);
+# ifdef	DJGPP
 	dos_putpath(path, 0);
-#endif
+# endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.dx = PTR_OFF(path, 0);
 
@@ -2388,21 +2303,21 @@ int flags, mode;
 
 	path = duplpath(path);
 	i = supportLFN(path);
-#ifndef	_NODOSDRIVE
+# ifndef	_NODOSDRIVE
 	if (i < 0 && i > -3) {
 		dependdosfunc = 0;
 		if ((i = dosopen(regpath(path, buf), flags, mode)) >= 0)
 			return(i);
 		else if (!dependdosfunc) return(-1);
 	}
-#endif	/* !_NODOSDRIVE */
+# endif	/* !_NODOSDRIVE */
 	if (i <= 0) return(open(path, flags, mode));
 
 	reg.x.ax = 0x716c;
 	reg.x.bx = 0x0110;	/* SH_DENYRW | NO_BUFFER */
 	if ((flags & O_ACCMODE) == O_WRONLY) reg.x.bx |= 0x0001;
 	else if ((flags & O_ACCMODE) == O_RDWR) reg.x.bx |= 0x0002;
-	reg.x.cx = (u_short)putdosmode(mode);
+	reg.x.cx = getdosmode(mode);
 	if (flags & O_CREAT) {
 		if (flags & O_EXCL) {
 			reg.x.dx = 0x0010;
@@ -2413,9 +2328,9 @@ int flags, mode;
 	}
 	else if (flags & O_TRUNC) reg.x.dx = 0x0002;
 	else reg.x.dx = 0x0001;
-#ifdef	DJGPP
+# ifdef	DJGPP
 	dos_putpath(path, 0);
-#endif
+# endif
 	sreg.ds = PTR_SEG(path);
 	reg.x.si = PTR_OFF(path, 0);
 	if (int21call(&reg, &sreg) < 0) return(-1);

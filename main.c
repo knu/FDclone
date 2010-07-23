@@ -214,9 +214,6 @@ char *tmpfilename = NULL;
 int adjtty = 0;
 #endif
 int showsecond = 0;
-#if	FD >= 2
-int thruargs = 0;
-#endif
 int hideclock = 0;
 #ifdef	SIGALRM
 int noalrm = 1;
@@ -951,10 +948,9 @@ char *CONST *argv;
 		Xfree(tmp);
 		if (len < 0) break;
 #ifdef	CODEEUC
-		cp += strlen(cp);
-#else
-		cp += len;
+		len = strlen(cp);
 #endif
+		cp += len;
 	}
 	*cp = '\0';
 
@@ -965,7 +961,7 @@ char *CONST *argv;
 # else
 	lvl = ((uid = getuid())) ? _LOG_DEBUG_ : _LOG_WARNING_;
 	logmessage(lvl, "%s (%-*.*s) starts; UID=%d; PWD=%k; ARGS=%k",
-		progname, len, len, cp, uid, origpath, buf);
+		progname, len, len, cp, (int)uid, origpath, buf);
 # endif
 }
 
@@ -985,7 +981,7 @@ int status;
 # else
 	lvl = ((uid = getuid())) ? _LOG_DEBUG_ : _LOG_WARNING_;
 	logmessage(lvl, "%s ends; UID=%d; PWD=%k; STATUS=%d",
-		progname, uid, cwd, status);
+		progname, (int)uid, cwd, status);
 # endif
 	logclose();
 }
@@ -1236,7 +1232,10 @@ char *CONST envp[];
 	CONST char *cp;
 	char *tmp, buf[MAXPATHLEN];
 
-	if (!Xgetwd(buf)) error(NOCWD_K);
+	if (!Xgetwd(buf)) {
+		errno = 0;
+		error("No current working directory.");
+	}
 	origpath = Xstrdup(buf);
 	if ((cp = searchenv(ENVPWD, envp))) {
 		*fullpath = '\0';
@@ -1584,11 +1583,7 @@ char *CONST argv[], *CONST envp[];
 #ifdef	SIGWINCH
 	nowinch = 0;
 #endif
-#if	FD >= 2
-	main_fd(&(argv[i]), (thruargs) ? 1 : 0);
-#else
 	main_fd(&(argv[i]), 0);
-#endif
 	sigvecset(0);
 
 	Xstdiomode();

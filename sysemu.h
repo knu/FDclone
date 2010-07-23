@@ -13,6 +13,11 @@
 #define	DEV_URL			2
 #define	DEV_HTTP		3
 
+struct utimes_t {
+	time_t actime;
+	time_t modtime;
+};
+
 extern int seterrno __P_((int));
 #if	MSDOS && defined (DJGPP)
 extern int dos_putpath __P_((CONST char *, int));
@@ -48,6 +53,12 @@ extern VOID freeopenlist(VOID_A);
 extern int checkdrv __P_((int, int *));
 extern int preparedrv __P_((CONST char *, int *, char *));
 extern VOID shutdrv __P_((int));
+#endif
+#ifdef	DEP_DOSPATH
+extern u_int getunixmode __P_((u_int));
+extern time_t getunixtime __P_((u_int, u_int));
+extern u_short getdosmode __P_((u_int));
+extern VOID getdostime __P_((u_short *, u_short *, time_t));
 #endif
 #if	defined (DEP_DIRENT)
 extern DIR *Xopendir __P_((CONST char *));
@@ -85,22 +96,14 @@ extern int Xchmod __P_((CONST char *, int));
 #define	Xreadlink		readlink
 #define	Xchmod(p, m)		((chmod(p, m)) ? -1 : 0)
 #endif
-#ifdef	DEP_DIRENT
-# ifdef	USEUTIME
-extern int Xutime __P_((CONST char *, CONST struct utimbuf *));
-# else
-extern int Xutimes __P_((CONST char *, CONST struct timeval *));
-# endif
-#else
-#define	Xutime(p, t)		((utime(p, t)) ? -1 : 0)
-#define	Xutimes(p, t)		((utimes(p, t)) ? -1 : 0)
-#endif
+extern int rawutimes __P_((CONST char *, CONST struct utimes_t *));
+extern int Xutimes __P_((CONST char *, CONST struct utimes_t *));
 #ifdef	DEP_BIASPATH
 # ifdef	HAVEFLAGS
 extern int Xchflags __P_((CONST char *, u_long));
 # endif
 # ifndef	NOUID
-extern int Xchown __P_((CONST char *, uid_t, gid_t));
+extern int Xchown __P_((CONST char *, u_id_t, g_id_t));
 # endif
 extern int Xunlink __P_((CONST char *));
 extern int Xrename __P_((CONST char *, CONST char *));
@@ -120,7 +123,9 @@ extern int Xclose __P_((int));
 extern int Xread __P_((int, char *, int));
 extern int Xwrite __P_((int, CONST char *, int));
 extern off_t Xlseek __P_((int, off_t, int));
+#ifndef	NOFTRUNCATE
 extern int Xftruncate __P_((int, off_t));
+#endif
 extern int Xdup __P_((int));
 extern int Xdup2 __P_((int, int));
 #else

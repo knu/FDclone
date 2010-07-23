@@ -286,14 +286,9 @@ extern int unixstatfs __P_((CONST char *, statfs_t *));
 extern int unixstat __P_((CONST char *, struct stat *));
 extern int unixchmod __P_((CONST char *, int));
 #ifdef	_NOUSELFN
-#define	unixutime(p, t)		((utime(p, t)) ? -1 : 0)
-#define	unixutimes(p, t)	((utimes(p, t)) ? -1 : 0)
+#define	unixutimes		rawutimes
 #else	/* !_NOUSELFN */
-# ifdef	USEUTIME
-extern int unixutime __P_((CONST char *, CONST struct utimbuf *));
-# else
-extern int unixutimes __P_((CONST char *, CONST struct timeval *));
-# endif
+extern int unixutimes __P_((CONST char *, CONST struct utimes_t *));
 extern int unixopen __P_((CONST char *, int, int));
 #endif	/* !_NOUSELFN */
 

@@ -47,6 +47,9 @@ static p_id_t NEAR Xsetsid __P_((VOID_A));
 static VOID NEAR Xgrantpt __P_((int, CONST char *));
 static VOID NEAR Xunlockpt __P_((int, CONST char *));
 static int NEAR Xptsname __P_((int, CONST char *, char *, ALLOC_T));
+int Xopenpty __P_((int *, int *, char *, ALLOC_T));
+int Xlogin_tty __P_((CONST char *, CONST char *, CONST char *));
+p_id_t Xforkpty __P_((int *, CONST char *, CONST char *));
 
 #ifndef	USEDEVPTMX
 static CONST char pty_char1[] = "pqrstuvwxyzPQRST";
@@ -59,10 +62,8 @@ static p_id_t NEAR Xsetsid(VOID_A)
 #ifdef	USESETSID
 	return(setsid());
 #else	/* USESETSID */
-# ifdef	TIOCNOTTY
-	int fd;
-# endif
 	p_id_t pid;
+	int fd;
 
 	pid = getpid();
 	if (pid == getpgroup()) {
@@ -96,17 +97,19 @@ CONST char *path;
 {
 #ifdef	USEDEVPTMX
 	extern int grantpt __P_((int));		/* for Linux */
-
-	VOID_C grantpt(fd);
-#else	/* !USEDEVPTMX */
+#else
 	struct group *grp;
 	gid_t gid;
+#endif
 
+#ifdef	USEDEVPTMX
+	VOID_C grantpt(fd);
+#else
 	gid = ((grp = getgrnam(TTY_GROUP))) ? grp -> gr_gid : (gid_t)-1;
 
 	VOID_C chown(path, getuid(), gid);
 	VOID_C chmod(path, 0620);
-#endif	/* !USEDEVPTMX */
+#endif
 }
 
 /*ARGSUSED*/
@@ -162,11 +165,15 @@ ALLOC_T size;
 	return(0);
 }
 
-int Xopenpty(amaster, spath, size)
-int *amaster;
+int Xopenpty(amaster, aslave, spath, size)
+int *amaster, *aslave;
 char *spath;
 ALLOC_T size;
 {
+#ifndef	USEDEVPTMX
+	CONST char *cp1, *cp2;
+	int n;
+#endif
 	char path[MAXPATHLEN];
 	int master, slave;
 
@@ -182,11 +189,8 @@ ALLOC_T size;
 		return(-1);
 	}
 #else	/* !USEDEVPTMX */
-	CONST char *cp1, *cp2;
-	int n;
-
-	VOID_C Xsnprintf(path, sizeof(path), "%sXX", _PATH_PTY);
-	n = strlen(path) - 2;
+	n = Xsnprintf(path, sizeof(path), "%sXX", _PATH_PTY);
+	n -= 2;
 	master = slave = -1;
 	for (cp1 = pty_char1; *cp1; cp1++) {
 		path[n] = *cp1;
@@ -214,7 +218,7 @@ ALLOC_T size;
 #endif	/* !USEDEVPTMX */
 
 	*amaster = master;
-	safeclose(slave);
+	*aslave = slave;
 
 	return(0);
 }
@@ -261,24 +265,33 @@ CONST char *path, *tty, *ws;
 	return(0);
 }
 
-p_id_t Xforkpty(fdp, tty, ws)
-int *fdp;
+p_id_t Xforkpty(amaster, tty, ws)
+int *amaster;
 CONST char *tty, *ws;
 {
 	char path[MAXPATHLEN];
 	p_id_t pid;
 	u_char uc;
-	int n, fds[2];
+	int n, master, slave, fds[2];
 
 	if (pipe(fds) < 0) return((p_id_t)-1);
 
-	if (Xopenpty(fdp, path, sizeof(path)) < 0) {
+	if (Xopenpty(&master, &slave, path, sizeof(path)) < 0) {
 		pid = (p_id_t)-1;
 	}
-	else if ((pid = Xfork()) < (p_id_t)0) safeclose(*fdp);
-	else if (pid) VOID_C sureread(fds[0], &uc, sizeof(uc));
+	else if ((pid = Xfork()) < (p_id_t)0) {
+		safeclose(master);
+		safeclose(slave);
+		master = -1;
+	}
+	else if (pid) {
+		VOID_C sureread(fds[0], &uc, sizeof(uc));
+		safeclose(slave);
+	}
 	else {
-		safeclose(*fdp);
+		safeclose(master);
+		safeclose(slave);
+		master = -1;
 		n = Xlogin_tty(path, tty, ws);
 		uc = '\n';
 		VOID_C surewrite(fds[1], &uc, sizeof(uc));
@@ -287,6 +300,7 @@ CONST char *tty, *ws;
 
 	safeclose(fds[0]);
 	safeclose(fds[1]);
+	*amaster = master;
 
 	return(pid);
 }

@@ -4,7 +4,6 @@
  *	MSDOS disk accessing module
  */
 
-#define	DEP_UNICODE
 #include "headers.h"
 #include "depend.h"
 #include "kctype.h"
@@ -164,9 +163,6 @@ static int NEAR sfntranschar __P_((int));
 static int NEAR cmpdospath __P_((CONST char *, CONST char *, int, int));
 static char *NEAR getdosname __P_((char *, CONST u_char *, CONST u_char *));
 static u_char *NEAR putdosname __P_((u_char *, CONST char *, int));
-static u_int NEAR getdosmode __P_((u_int));
-static u_int NEAR putdosmode __P_((u_int));
-static time_t NEAR getdostime __P_((u_int, u_int));
 static int NEAR putdostime __P_((u_char *, time_t));
 static int NEAR getdrive __P_((CONST char *));
 static char *NEAR addpath __P_((char *, int, CONST char *, int));
@@ -308,6 +304,13 @@ fdtype_t fdtype
 	{'A', "/dev/rfd0Bc", 2, 18, 80},
 	{'A', "/dev/rfd0Fc", 2, 9, 80},
 	{'A', "/dev/rfd0Fc", 2, 8 + 100, 80},
+#endif
+#if	defined (MINIX)
+# if	defined (i386)
+	{'A', "/dev/rfd0", 2, 18, 80},
+	{'A', "/dev/rfd0", 2, 9, 80},
+	{'A', "/dev/rfd0", 2, 8 + 100, 80},
+# endif
 #endif
 #if	defined (ORG_386BSD)
 # if	defined (i386)
@@ -2183,7 +2186,7 @@ int vol;
 	cnv = 0;
 	for (i = 0; i < 8; i++) {
 		if (file == cp || file == eol || !*file) buf[i] = ' ';
-		else if (issjis1(*file) && issjis2(file[1])) {
+		else if (iswsjis(file, 0)) {
 			w = ((u_int)(*file) << 8) | (u_char)(file[1]);
 			w = unifysjis(w, vol);
 			buf[i++] = (w >> 8) & 0xff;
@@ -2216,7 +2219,7 @@ int vol;
 	if (cp) cp++;
 	for (i = 8; i < 11; i++) {
 		if (!cp || cp == eol || !*cp) buf[i] = ' ';
-		else if (issjis1(*cp) && issjis2(cp[1])) {
+		else if (iswsjis(cp, 0)) {
 			buf[i++] = *((u_char *)(cp++));
 			buf[i] = *((u_char *)(cp++));
 		}
@@ -2260,110 +2263,29 @@ int vol;
 	return(buf);
 }
 
-static u_int NEAR getdosmode(attr)
-u_int attr;
-{
-	u_int mode;
-
-	mode = 0;
-	if (!(attr & DS_IHIDDEN)) mode |= S_IRUSR;
-	if (!(attr & DS_IRDONLY)) mode |= S_IWUSR;
-	mode |= (mode >> 3) | (mode >> 6);
-#if	MSDOS
-	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
-#endif
-	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IEXEC_ALL);
-	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
-	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
-	else mode |= S_IFREG;
-
-	return(mode);
-}
-
-static u_int NEAR putdosmode(mode)
-u_int mode;
-{
-	u_int attr;
-
-	attr = 0;
-#if	MSDOS
-	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
-#endif
-	if (!(mode & S_IRUSR)) attr |= DS_IHIDDEN;
-	if (!(mode & S_IWUSR)) attr |= DS_IRDONLY;
-	if ((mode & S_IFMT) == S_IFDIR) attr |= DS_IFDIR;
-	else {
-#if	!MSDOS
-		attr |= DS_IARCHIVE;
-#endif
-		if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
-		else if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
-	}
-
-	return(attr);
-}
-
-static time_t NEAR getdostime(d, t)
-u_int d, t;
-{
-	struct tm tm;
-
-	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
-	tm.tm_year -= 1900;
-	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
-	tm.tm_mday = (d & 0x1f);
-	tm.tm_hour = ((t >> 11) & 0x1f);
-	tm.tm_min = ((t >> 5) & 0x3f);
-	tm.tm_sec = ((t << 1) & 0x3e);
-
-	return(Xtimelocal(&tm));
-}
-
-static int NEAR putdostime(buf, tim)
+static int NEAR putdostime(buf, t)
 u_char *buf;
-time_t tim;
+time_t t;
 {
-#if	MSDOS
-	struct timeb buffer;
-#else
-	struct timeval t_val;
-	struct timezone tz;
-#endif
-	struct tm *tm;
-	time_t tmp;
-	u_int d, t;
-	int mt;
+	time_t mt;
+	u_short date, time;
+	int isnow;
 
-	if (tim != (time_t)-1) {
-		tmp = tim;
-		mt = 0;
+	mt = (time_t)0;
+	isnow = 0;
+	if (t == (time_t)-1) {
+		t = Xtime(&mt);
+		isnow++;
 	}
-	else {
-#if	MSDOS
-		ftime(&buffer);
-		tmp = (time_t)(buffer.time);
-		mt = (int)(buffer.millitm);
-#else
-		Xgettimeofday(&t_val, &tz);
-		tmp = (time_t)(t_val.tv_sec);
-		mt = (int)(t_val.tv_usec / 1000);
-#endif
-	}
-	tm = localtime(&tmp);
-	d = (((tm -> tm_year - 80) & 0x7f) << 9)
-		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
-		+ (tm -> tm_mday & 0x1f);
-	t = ((tm -> tm_hour & 0x1f) << 11)
-		+ ((tm -> tm_min & 0x3f) << 5)
-		+ ((tm -> tm_sec & 0x3e) >> 1);
+	getdostime(&date, &time, t);
 
-	if (!t && tim == (time_t)-1) t = 0x0001;
-	buf[0] = t & 0xff;
-	buf[1] = (t >> 8) & 0xff;
-	buf[2] = d & 0xff;
-	buf[3] = (d >> 8) & 0xff;
+	if (!time && isnow) time = 0x0001;
+	buf[0] = time & 0xff;
+	buf[1] = (time >> 8) & 0xff;
+	buf[2] = date & 0xff;
+	buf[3] = (date >> 8) & 0xff;
 
-	return(mt);
+	return((int)mt);
 }
 
 static int NEAR getdrive(path)
@@ -2435,7 +2357,7 @@ int class;
 
 	while (*path) {
 		for (i = 0; path[i] && path[i] != '/' && path[i] != '\\'; i++)
-			if (issjis1(path[i]) && issjis2(path[i + 1])) i++;
+			if (iswsjis(path, i)) i++;
 		if (class && !path[i]) {
 			if ((i == 1 && path[0] == '.')
 			|| (i == 2 && path[0] == '.' && path[1] == '.')) {
@@ -2808,9 +2730,7 @@ DIR *dirp;
 	}
 	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
 		for (i = 0; dp -> d_name[i]; i++) {
-			if (issjis1(dp -> d_name[i])
-			&& issjis2(dp -> d_name[i + 1]))
-				i++;
+			if (iswsjis(dp -> d_name, i)) i++;
 #if	!MSDOS
 			else if ((c = detranschar(dp -> d_name[i])))
 				dp -> d_name[i] = c;
@@ -2940,7 +2860,7 @@ int needlfn;
 
 	Xstrcpy(dir, *pathp);
 	for (i = 1, j = 2; dir[j]; j++) {
-		if (issjis1(dir[j]) && issjis2(dir[j + 1])) j++;
+		if (iswsjis(dir, j)) j++;
 		else if (dir[j] == '/' || dir[j] == '\\') i = j;
 	}
 
@@ -3111,8 +3031,7 @@ int mode;
 		for (i = j = 0; file[i]; i++, j += 2) {
 			if (!Xstrchr(PACKINALIAS, file[i])) n = -1;
 			else if (n < 0) n = i;
-			if (!issjis1(file[i]) || !issjis2(file[i + 1]))
-				c = lfnencode(0, file[i]);
+			if (!iswsjis(file, i)) c = lfnencode(0, file[i]);
 			else {
 				c = lfnencode(file[i], file[i + 1]);
 				lfn = 2;
@@ -3247,8 +3166,8 @@ int mode;
 
 	memset((char *)dentp, 0, sizeof(*dentp));
 	memcpy(dentp -> name, (char *)fname, 8 + 3);
-	dentp -> attr = putdosmode((u_short)mode) | DS_IARCHIVE;
-	i = putdostime(dentp -> time, -1);
+	dentp -> attr = getdosmode((u_int)mode) | DS_IARCHIVE;
+	i = putdostime(dentp -> time, (time_t)-1);
 	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
 		dentp -> checksum = i / 10;
 		dentp -> ctime[0] = dentp -> time[0];
@@ -3428,14 +3347,14 @@ struct stat *stp;
 	if ((dd = getdent(path, NULL)) < 0) return(seterrno(doserrno));
 	stp -> st_dev = dd;
 	stp -> st_ino = clust32(&(devlist[dd]), dd2dentp(dd));
-	stp -> st_mode = getdosmode(dd2dentp(dd) -> attr);
+	stp -> st_mode = getunixmode(dd2dentp(dd) -> attr);
 	stp -> st_nlink = 1;
 	stp -> st_uid = (uid_t)-1;
 	stp -> st_gid = (gid_t)-1;
 	stp -> st_size = byte2dword(dd2dentp(dd) -> size);
 	stp -> st_atime =
 	stp -> st_mtime =
-	stp -> st_ctime = getdostime(byte2word(dd2dentp(dd) -> date),
+	stp -> st_ctime = getunixtime(byte2word(dd2dentp(dd) -> date),
 		byte2word(dd2dentp(dd) -> time));
 #if	!MSDOS && defined (UF_SETTABLE) && defined (SF_SETTABLE)
 	stp -> st_flags = (u_long)0;
@@ -3514,28 +3433,21 @@ int mode;
 	int n, dd;
 
 	if ((dd = getdent(path, NULL)) < 0) return(seterrno(doserrno));
-	dd2dentp(dd) -> attr = putdosmode((u_short)mode);
+	dd2dentp(dd) -> attr = getdosmode((u_int)mode);
 	if ((n = writedent(dd)) < 0) errno = doserrno;
 	dosclosedev(dd);
 
 	return(n);
 }
 
-#ifdef	USEUTIME
-int dosutime(path, times)
+int dosutimes(path, utp)
 CONST char *path;
-CONST struct utimbuf *times;
+CONST struct utimes_t *utp;
 {
-	time_t t = times -> modtime;
-#else
-int dosutimes(path, tvp)
-CONST char *path;
-CONST struct timeval *tvp;
-{
-	time_t t = tvp[1].tv_sec;
-#endif
+	time_t t;
 	int n, dd;
 
+	t = utp -> modtime;
 	if ((dd = getdent(path, NULL)) < 0) return(seterrno(doserrno));
 	putdostime(dd2dentp(dd) -> time, t);
 	if ((n = writedent(dd)) < 0) errno = doserrno;
@@ -3730,7 +3642,7 @@ int fd;
 		dosflist[fd]._dent.size[3] = (dosflist[fd]._size >> 24) & 0xff;
 
 		if (!(dosflist[fd]._dent.attr & DS_IFDIR))
-			putdostime(dosflist[fd]._dent.time, -1);
+			putdostime(dosflist[fd]._dent.time, (time_t)-1);
 		memcpy((char *)fd2dentp(fd),
 			(char *)&(dosflist[fd]._dent), sizeof(dent_t));
 		fd2clust(fd) = dosflist[fd]._clust;

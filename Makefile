@@ -13,6 +13,9 @@ CC	= cc
 HOSTCC	= $(CC)
 SED	= sed
 RM	= rm -f
+TAR	= tar
+LHA	= lha
+SHAR	= shar
 DICTSRC	=
 
 DEFCFLAGS = -DPREFIX='"'$(PREFIX)'"' \
@@ -21,6 +24,9 @@ DEFCFLAGS = -DPREFIX='"'$(PREFIX)'"' \
 	-DFD=$(VERMAJ) \
 	-DCCCOMMAND='"'$(CC)'"' \
 	-DHOSTCCCOMMAND='"'$(HOSTCC)'"'
+DEFAR	= TAR=$(TAR) \
+	LHA=$(LHA) \
+	SHAR=$(SHAR)
 
 all: Makefile.tmp
 	$(MAKE) -f Makefile.tmp
@@ -121,7 +127,7 @@ makefile.gpc makefile.g98 \
 makefile.dpc makefile.d98 \
 makefile.lpc makefile.l98 \
 makefile.bpc makefile.b98
-	$(MAKE) -f Makefile.tmp $@
+	$(MAKE) $(DEFAR) -f Makefile.tmp $@
 
 clean rmdict: Makefile.tmp
 	$(MAKE) -f Makefile.tmp $@

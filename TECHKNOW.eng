@@ -100,6 +100,8 @@ BUGGYMAKE
 	between the files created continuously within 1 second.
 CPP7BIT	cpp(1) cannot pass through any 8bit character, such
 	as the Kanji.
+OLDARGINT
+	cc(1) treats any old-fashioned argument as integer.
 CCCOMMAND
 	This indicates the fullpath of the C compiler which
 	you want to use as standard. In some OS, both of BSD
@@ -234,8 +236,10 @@ HAVECLINE
 	The structure termios has the member c_line.
 USEDEVPTMX
 	The device file /dev/ptmx and /dev/pts/? are used for
-	the pseudo terminal. If undefined, /dev/ptyXX and
-	/dev/ttyXX are used.
+	the pseudo terminal.
+USEDEVPTY
+	The device file /dev/ptyXX and /dev/ttyXX are used for
+	the pseudo terminal.
 USEDIRECT
 	The structure direct is used instead of dirent.
 SYSVDIRENT
@@ -253,6 +257,8 @@ HAVETIMEZONE
 	value from GMT.
 NOTMGMTOFF
 	The structure tm doesn't have the member tm_gmtoff.
+NOSTBLKSIZE
+	The structure stat doesn't have the member st_blksize.
 USEINSYSTMH
 	<netinet/in_systm.h> is needed for <netinet/ip.h>.
 NOHADDRLIST
@@ -282,11 +288,22 @@ USEFFSIZE
 	member f_bsize is referred.
 	In case of that USESTATVFSH, USEFSDATA is defined,
 	this is meaningless.
+NOFBLOCKS
+	The structure statfs doesn't have the member f_blocks.
+NOFBFREE
+	The structure statfs doesn't have the member f_bfree.
+NOFFILES
+	The structure statfs doesn't have the member f_files.
+USESTATVFS_T
+	The structure statvfs_t is used instead of statvfs.
 STATFSARGS
 	This indicates the number of arguments used by
 	function statfs(2).
 	In case of that USESTATVFSH, USEFSDATA is defined,
 	this is meaningless.
+USEFSTATFS
+	The function statfs(2) is unavailable to get the
+	filesystem information, and fstatfs(2) is used instead.
 
 (The following 9 identifiers is exclusive. These can not be
 defined simultaneously.)
@@ -376,6 +393,9 @@ USEGETWD
 ULONGIOCTL
 	The second argument of the I/O control function
 	inctl(2) must be the type of unsigned long.
+NOFTRUNCATE
+	The function ftruncate(2) is unavailable to resize
+	files.
 USEFCNTLOCK
 	The function fnctl(2) is used instead of flock(2) to
 	lock files.
@@ -405,6 +425,9 @@ USELLSEEK
 USEUNAME
 	The function uname(2) is used instead of gethostname(2)
 	to get the hostname.
+NOKILLPG
+	The function killpg(2) is unavailable to manage the
+	process group.
 USEWAITPID
 	The function waitpid(2) is used instead of wait3(2)
 	to wait the software signals.
@@ -430,7 +453,7 @@ GETPGRPVOID
 	The function getpgrp(2) has no argument, to get the
 	process group.
 USESETPGID
-	The function setpgid(2) is used instead of getpgrp(2)
+	The function setpgid(2) is used instead of setpgrp(2)
 	to set the process group.
 USESETVBUF
 	The function setvbuf(3) is used instead of setlinebuf(3)

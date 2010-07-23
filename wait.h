@@ -31,7 +31,7 @@ typedef int			sigmask_t;
 #define	Xsigblock(o,m)		((o) = sigblock(m))
 #endif	/* !USESIGPMASK */
 
-#ifdef	SYSV
+#ifdef	NOKILLPG
 #define	Xkillpg(p, s)		kill(-(p), s)
 #else
 #define	Xkillpg(p, s)		killpg(p, s)

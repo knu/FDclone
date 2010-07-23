@@ -1713,7 +1713,7 @@ int backend(VOID_A)
 		for (i = 0; i < MAXWINDOWS; i++)
 			fds[i] = (ptylist[i].pid) ? ptylist[i].fd : -1;
 		fds[i] = emufd;
-		if (selectpty(MAXWINDOWS + 1, fds, result, -1) <= 0) continue;
+		if (selectpty(MAXWINDOWS + 1, fds, result, -1L) <= 0) continue;
 
 		if (result[MAXWINDOWS] && (n = evalinput()) > 0) continue;
 

@@ -163,13 +163,17 @@ typedef struct fs_data		statfs_t;
 #  if	defined (USESTATFSH) || defined (USEVFSH) || defined (USEMOUNTH)
 #   if	(STATFSARGS >= 4)
 #   define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t), 0)
-#   else
+#   else	/* STATFSARGS < 4 */
 #    if	(STATFSARGS == 3)
 #    define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t))
-#    else
-#    define	statfs2		statfs
-#    endif
-#   endif
+#    else	/* STATFSARGS != 3 */
+#     ifdef	USEFSTATFS
+static int NEAR statfs2 __P_((CONST char *, statfs_t *));
+#     else
+#     define	statfs2		statfs
+#     endif
+#    endif	/* STATFSARGS != 3 */
+#   endif	/* STATFSARGS < 4 */
 #  endif	/* USESTATFSH || USEVFSH || USEMOUNTH */
 # endif	/* !MSDOS */
 #endif	/* !FD */
@@ -302,6 +306,21 @@ static int copyflag = 0;
 
 
 #ifndef	FD
+# ifdef	USEFSTATFS
+static int NEAR statfs2(path, buf)
+CONST char *path;
+statfs_t *buf;
+{
+	int n, fd;
+
+	if ((fd = Xopen(path, O_RDONLY, 0666)) < 0) return(-1);
+	n = fstatfs(fd, buf);
+	Xclose(fd);
+
+	return(n);
+}
+# endif	/* USEFSTATFS */
+
 static int NEAR getinfofs(path, totalp, freep, bsizep)
 CONST char *path;
 off_t *totalp, *freep, *bsizep;
@@ -387,8 +406,12 @@ off_t *totalp, *freep, *bsizep;
 # else	/* !MSDOS */
 	if (statfs2(path, &fsbuf) < 0) n = -1;
 	else {
+#  ifndef	NOFBLOCKS
 		*totalp = fsbuf.f_blocks;
+#  endif
+#  ifndef	NOFBFREE
 		*freep = fsbuf.f_bavail;
+#  endif
 		*bsizep = blocksize(fsbuf);
 	}
 # endif	/* !MSDOS */
@@ -396,10 +419,13 @@ off_t *totalp, *freep, *bsizep;
 	if (n < 0) {
 # if	MSDOS
 		*bsizep = (off_t)1024;
-# else
-		if (Xstat(path, &st) < 0) *bsizep = (off_t)DEV_BSIZE;
-		else *bsizep = (off_t)(st.st_blksize);
-# endif
+# else	/* !MSDOS */
+#  ifndef	NOSTBLKSIZE
+		if (Xstat(path, &st) >= 0) *bsizep = (off_t)(st.st_blksize);
+		else
+#  endif
+		*bsizep = (off_t)DEV_BSIZE;
+# endif	/* !MSDOS */
 	}
 
 	return(n);
@@ -455,23 +481,12 @@ static int NEAR touchfile(path, stp)
 CONST char *path;
 struct stat *stp;
 {
-# ifdef	USEUTIME
-	struct utimbuf times;
+	struct utimes_t ut;
 
-	times.actime = stp -> st_atime;
-	times.modtime = stp -> st_mtime;
+	ut.actime = stp -> st_atime;
+	ut.modtime = stp -> st_mtime;
 
-	return(Xutime(path, &times));
-# else
-	struct timeval tvp[2];
-
-	tvp[0].tv_sec = stp -> st_atime;
-	tvp[0].tv_usec = 0;
-	tvp[1].tv_sec = stp -> st_mtime;
-	tvp[1].tv_usec = 0;
-
-	return(Xutimes(path, tvp));
-# endif
+	return(Xutimes(path, &ut));
 }
 
 # ifndef	NODIRLOOP
@@ -738,12 +753,12 @@ int argc;
 char *CONST argv[];
 {
 	char *arg;
-	int i, j, n, r;
+	int i, n, r;
 
 	for (i = 1; i < argc; i++) {
 		arg = argv[i];
 		if (arg[0] != DOSCOMOPT) break;
-		for (j = 1; arg[j]; j++) arg[j] = Xtoupper(arg[j]);
+		Xstrtoupper(&(arg[1]));
 		r = (arg[1] == '-') ? 1 : 0;
 		switch (arg[1 + r]) {
 			case 'P':
@@ -848,9 +863,9 @@ int len, lower;
 	if (olen >= 0) while (len-- > 0) s[i++] = ' ';
 	else olen = -olen - len;
 	s[i] = '\0';
-	if (lower) for (i = 0; s[i]; i++) s[i] = Xtolower(s[i]);
-	else for (i = 0; s[i]; i++) s[i] = Xtoupper(s[i]);
-	kanjifputs(s, Xstdout);
+	if (lower) Xstrtolower(s);
+	else Xstrtoupper(s);
+	Xprintf("%K", s);
 
 	return(olen);
 }
@@ -968,7 +983,7 @@ int verbose;
 	}
 #endif	/* !MINIMUMSHELL */
 
-	kanjifputs(dirp -> nam, Xstdout);
+	Xprintf("%K", dirp -> nam);
 #ifndef	NOSYMLINK
 	if (dirp -> lnam) VOID_C Xprintf(" -> %s", dirp -> lnam);
 #endif
@@ -1012,23 +1027,19 @@ static VOID NEAR showfnameb(dirp)
 struct filestat_t *dirp;
 {
 	char *cp, buf[MAXPATHLEN];
-	int i;
 
 	if (dirflag & DF_SUBDIR) {
 		cp = dirwd;
 		if (dirflag & DF_LOWER) {
-			for (i = 0; dirwd[i]; i++) buf[i] = Xtolower(dirwd[i]);
-			buf[i] = '\0';
+			Xstrcpy(buf, dirwd);
+			Xstrtolower(buf);
 			cp = buf;
 		}
-		VOID_C Xprintf("%k%c", cp, _SC_);
+		VOID_C Xprintf("%K%c", cp, _SC_);
 	}
 
-	if (dirflag & DF_LOWER)
-		for (i = 0; dirp -> nam[i]; i++)
-			dirp -> nam[i] = Xtolower(dirp -> nam[i]);
-	kanjifputs(dirp -> nam, Xstdout);
-	VOID_C fputnl(Xstdout);
+	if (dirflag & DF_LOWER) Xstrtolower(dirp -> nam);
+	Xprintf("%K\n", dirp -> nam);
 }
 
 #ifdef	MINIMUMSHELL
@@ -1048,7 +1059,7 @@ int n_incline;
 			dirflag |= DF_CANCEL;
 			return(-1);
 		}
-		VOID_C Xprintf("\n(continuing %k)\n", dirwd);
+		VOID_C Xprintf("\n(continuing %K)\n", dirwd);
 		dirline = n_incline;
 	}
 
@@ -1064,7 +1075,7 @@ static VOID NEAR dosdirheader(VOID_A)
 			if (checkline(1) < 0) return;
 		}
 		else Xfputc(' ', Xstdout);
-		VOID_C Xprintf("Directory of %k\n", dirwd);
+		VOID_C Xprintf("Directory of %K\n", dirwd);
 	}
 #ifndef	MINIMUMSHELL
 	if (dirtype == 'V') {
@@ -1537,7 +1548,7 @@ char *CONST argv[];
 	for (i = 0; wild[i]; i++) {
 		if (flag) {
 			do {
-				VOID_C Xprintf("%k,    Delete (Y/N)?",
+				VOID_C Xprintf("%K,    Delete (Y/N)?",
 					wild[i]);
 				Xfflush(Xstdout);
 				if ((c = inputkey()) < 0) {
@@ -1642,12 +1653,12 @@ int argc;
 char *CONST argv[];
 {
 	char *arg;
-	int i, j;
+	int i;
 
 	for (i = 1; i < argc; i++) {
 		arg = argv[i];
 		if (arg[0] != DOSCOMOPT) break;
-		for (j = 1; arg[j]; j++) arg[j] = Xtoupper(arg[j]);
+		Xstrtoupper(&(arg[1]));
 		if (!arg[1] || (arg[2] && arg[3])) {
 			doserror(arg, ER_INVALIDSW);
 			return(-1);
@@ -1719,7 +1730,7 @@ CONST char *file, *src;
 	}
 
 	if (c) {
-		VOID_C Xfprintf(Xstderr, "Overwrite %k (Yes/No/All)?", file);
+		VOID_C Xfprintf(Xstderr, "Overwrite %K (Yes/No/All)?", file);
 		Xfflush(Xstderr);
 		key = -1;
 		for (;;) {
@@ -1737,10 +1748,7 @@ CONST char *file, *src;
 		if (key == 'N') return(0);
 		else if (key == 'A') copyflag |= CF_NOCONFIRM;
 	}
-	else if (src && (copyflag & CF_VERBOSE)) {
-		kanjifputs(src, Xstdout);
-		VOID_C fputnl(Xstdout);
-	}
+	else if (src && (copyflag & CF_VERBOSE)) Xprintf("%K\n", src);
 
 	flags = (copyflag & CF_VERIFY) ? O_RDWR : O_WRONLY;
 	flags |= (O_BINARY | O_CREAT | O_TRUNC);

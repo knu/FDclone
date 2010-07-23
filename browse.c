@@ -7,6 +7,7 @@
 #include "fd.h"
 #include "device.h"
 #include "parse.h"
+#include "kconv.h"
 #include "func.h"
 #include "funcno.h"
 #include "kanji.h"
@@ -94,6 +95,9 @@ int chgorder = 0;
 int stackdepth = 0;
 #ifndef	_NOTRADLAYOUT
 int tradlayout = 0;
+#endif
+#if	FD >= 2
+int thruargs = 0;
 #endif
 int sizeinfo = 0;
 int wheader = WHEADERMIN;
@@ -638,13 +642,13 @@ u_long flags;
 #ifndef	NOUID
 int putowner(buf, uid)
 char *buf;
-uid_t uid;
+u_id_t uid;
 {
 	uidtable *up;
 	int i, len;
 
 	i = len = (iswellomit()) ? WOWNERMIN : WOWNER;
-	if (uid == (uid_t)-1) while (--i >= 0) buf[i] = '?';
+	if (uid == (u_id_t)-1) while (--i >= 0) buf[i] = '?';
 	else if ((up = finduid(uid, NULL)))
 		VOID_C strncpy2(buf, up -> name, &len, 0);
 	else VOID_C Xsnprintf(buf, len + 1, "%-*d", len, (int)uid);
@@ -654,13 +658,13 @@ uid_t uid;
 
 int putgroup(buf, gid)
 char *buf;
-gid_t gid;
+g_id_t gid;
 {
 	gidtable *gp;
 	int i, len;
 
 	i = len = (iswellomit()) ? WGROUPMIN : WGROUP;
-	if (gid == (gid_t)-1) while (--i >= 0) buf[i] = '?';
+	if (gid == (g_id_t)-1) while (--i >= 0) buf[i] = '?';
 	else if ((gp = findgid(gid, NULL)))
 		VOID_C strncpy2(buf, gp -> name, &len, 0);
 	else VOID_C Xsnprintf(buf, len + 1, "%-*d", len, (int)gid);
@@ -1809,6 +1813,7 @@ CONST char *def;
 #ifndef	_NOARCHIVE
 	if (archivefile) {
 		if (no < 0) {
+			Xstrcpy(file, archivefile);
 # ifdef	_NOBROWSE
 			escapearch();
 # else
@@ -1816,7 +1821,6 @@ CONST char *def;
 				escapearch();
 			} while (browselist);
 # endif
-			Xstrcpy(file, filelist[filepos].name);
 		}
 		else if (no == FNC_CHDIR) {
 			tmp = (filepos >= 0) ? filelist[filepos].name : NULL;
@@ -1827,8 +1831,8 @@ CONST char *def;
 			}
 			else if (cp != (char *)-1) Xstrcpy(file, cp);
 			else {
+				Xstrcpy(file, archivefile);
 				escapearch();
-				Xstrcpy(file, filelist[filepos].name);
 			}
 		}
 		else if (no == FNC_EFFECT) {
@@ -1863,10 +1867,10 @@ CONST char *def;
 	return(no);
 }
 
-static char *NEAR initcwd(path, buf, evaled)
+static char *NEAR initcwd(path, buf, internal)
 CONST char *path;
 char *buf;
-int evaled;
+int internal;
 {
 	char *cp, *file;
 	int i;
@@ -1874,7 +1878,14 @@ int evaled;
 	if (!path) return(NULL);
 
 	cp = Xstrdup(path);
-	if (!evaled) cp = evalpath(cp, 0);
+#ifdef	DEP_FILECONV
+	if (!internal) renewkanjiconv(&cp, getkcode(cp), DEFCODE, L_FNAME);
+#endif
+#if	FD >= 2
+	if (thruargs) /*EMPTY*/;
+	else
+#endif
+	if (!internal) cp = evalpath(cp, 0);
 #if	MSDOS
 	if (_dospath(cp)) {
 		if (setcurdrv(*cp, 0) >= 0 && !Xgetwd(fullpath))
@@ -1918,9 +1929,9 @@ int evaled;
 	return(file);
 }
 
-VOID main_fd(pathlist, evaled)
+VOID main_fd(pathlist, internal)
 char *CONST *pathlist;
-int evaled;
+int internal;
 {
 #ifdef	DEP_DOSEMU
 	char buf[MAXPATHLEN];
@@ -1979,7 +1990,7 @@ int evaled;
 		if (n >= argc) continue;
 
 		chdir2(cwd);
-		def = initcwd(pathlist[n], prev, evaled);
+		def = initcwd(pathlist[n], prev, internal);
 
 #ifndef	_NOSPLITWIN
 		winvar[n].v_fullpath = Xstrdup(fullpath);

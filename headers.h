@@ -41,7 +41,13 @@
 #include <sys/param.h>
 #include <sys/file.h>
 # ifdef	USEUTIME
-# include <utime.h>
+#include <utime.h>
+# endif
+# ifdef	MINIX
+#include <limits.h>
+# endif
+# if	!defined (MAXPATHLEN) && defined (PATH_MAX)
+# define	MAXPATHLEN		PATH_MAX
 # endif
 #endif	/* !MSDOS */
 
@@ -243,3 +249,19 @@ extern CONST char *CONST sys_errlist[];
 # define	SF_NOUNLINK	0x00080000
 # endif
 #endif	/* HAVEFLAGS */
+
+#ifdef	NOUID_T
+typedef u_short			uid_t;
+typedef u_short			gid_t;
+#endif
+#ifdef	OLDARGINT
+typedef int			u_id_t;
+typedef int			g_id_t;
+#define	convuid(u)		(((u) == (uid_t)-1) ? (u_id_t)-1 : (u_id_t)(u))
+#define	convgid(g)		(((g) == (gid_t)-1) ? (g_id_t)-1 : (g_id_t)(g))
+#else
+typedef uid_t			u_id_t;
+typedef gid_t			g_id_t;
+#define	convuid(u)		(u)
+#define	convgid(g)		(g)
+#endif

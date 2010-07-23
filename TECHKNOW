@@ -96,6 +96,8 @@ BUGGYMAKE
 	存関係を正しく判断できません。
 CPP7BIT	cpp(1) が、漢字などの 8bit 文字を通すことができませ
 	ん。
+OLDARGINT
+	cc(1) が、古典タイプの関数引数を int 型と見なします。
 CCCOMMAND
 	標準として用いるべき c コンパイラのフルパスを定義し
 	ます。一部の OS では、BSD 版 cc と SYSV 版 cc が混在
@@ -226,7 +228,9 @@ HAVECLINE
 	構造体 termios がメンバ c_line を持ちます。
 USEDEVPTMX
 	擬似端末用デバイスとして /dev/ptmx と /dev/pts/? を
-	用います。未定義の場合は /dev/ptyXX と /dev/ttyXX を
+	用います。
+USEDEVPTY
+	擬似端末用デバイスとして /dev/ptyXX と /dev/ttyXX を
 	用います。
 USEDIRECT
 	構造体 dirent の代わりに direct を用います。
@@ -245,6 +249,8 @@ HAVETIMEZONE
 	す。
 NOTMGMTOFF
 	構造体 tm がメンバ tm_gmtoff を持ちません。
+NOSTBLKSIZE
+	構造体 stat がメンバ st_blksize を持ちません。
 USEINSYSTMH
 	<netinet/in_systm.h> が <netinet/ip.h> を使用するた
 	めに必要です。
@@ -274,10 +280,21 @@ USEFFSIZE
 	は f_bsize を参照します。
 	USESTATVFSH, USEFSDATA を定義した場合は意味を持ちま
 	せん。
+NOFBLOCKS
+	構造体 statfs がメンバ f_blocks を持ちません。
+NOFBFREE
+	構造体 statfs がメンバ f_bfree を持ちません。
+NOFFILES
+	構造体 statfs がメンバ f_files を持ちません。
+USESTATVFS_T
+	構造体 statvfs の代わりに statvfs_t を用います。
 STATFSARGS
 	関数 statfs(2) の用いる引数の数を定義します。
 	USESTATVFSH, USEFSDATA を定義した場合は意味を持ちま
 	せん。
+USEFSTATFS
+	ファイルシステム情報取得関数として statfs(2) を用い
+	られず、代わりに fstatfs(2) を用います。
 
 (以下の 9 つは排他的です。同時に複数定義できません。)
 USEMNTENTH
@@ -355,6 +372,9 @@ USEGETWD
 ULONGIOCTL
 	入出力制御関数 ioctl(2) の第 2 引数として、unsigned
 	long 型を用います。
+NOFTRUNCATE
+	ファイルサイズ制御関数 ftruncate(2) を使うことができ
+	ません。
 USEFCNTLOCK
 	ファイル制御関数 fcntl(2) を flock(2) の代わりに用い
 	ます。
@@ -382,6 +402,9 @@ USELLSEEK
 USEUNAME
 	ホスト名取得関数 uname(2) を gethostname(2) の代わり
 	に用います。
+NOKILLPG
+	プロセスグループ管理関数 killpg(2) を使うことができ
+	ません。
 USEWAITPID
 	ソフトウェアシグナル待ち関数 waitpid(2) を wait3(2)
 	の代わりに用います。
@@ -406,7 +429,7 @@ GETPGRPVOID
 	プロセスグループ取得関数 getpgrp(2) が引数を持ちませ
 	ん。
 USESETPGID
-	プロセスグループ設定関数 setpgid(2) を getpgrp(2) の
+	プロセスグループ設定関数 setpgid(2) を setpgrp(2) の
 	代わりに用います。
 USESETVBUF
 	バッファリング関数 setvbuf(3) を setlinebuf(3) の代

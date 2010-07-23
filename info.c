@@ -74,7 +74,7 @@ typedef struct mnttab		mnt_t;
 
 #if	defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
 || defined (USEMNTCTL) || defined (USEMNTINFOR) || defined (USEMNTINFO) \
-|| defined (USEGETMNT)
+|| defined (USEGETMNT) || defined (MINIX)
 typedef struct _mnt_t {
 	CONST char *mnt_fsname;
 	CONST char *mnt_dir;
@@ -82,13 +82,17 @@ typedef struct _mnt_t {
 	CONST char *mnt_opts;
 } mnt_t;
 #define	Xhasmntopt(m,o)		strmntopt((m) -> mnt_opts, o)
-# if	defined (USEMNTINFO) || defined (USEGETMNT)
-# define	Xendmntent(f)
-# else
-# define	Xendmntent	Xfree
-# endif
+# ifdef	MINIX
+# define	Xendmntent	fclose
+# else	/* !MINIX */
+#  if	defined (USEMNTINFO) || defined (USEGETMNT)
+#  define	Xendmntent(f)
+#  else
+#  define	Xendmntent	Xfree
+#  endif
+# endif	/* !MINIX */
 #endif	/* USEGETFSSTAT || USEGETVFSTAT || USEMNTCTL \
-|| USEMNTINFOR || USEMNTINFO || USEGETMNT */
+|| USEMNTINFOR || USEMNTINFO || USEGETMNT || MINIX */
 
 #ifdef	USEGETFSENT
 typedef struct fstab		mnt_t;
@@ -175,9 +179,13 @@ typedef struct fs_data		statfs_t;
 # else	/* STATFSARGS < 4 */
 #  if	(STATFSARGS == 3)
 #  define	statfs2(p, b)	statfs(p, b, sizeof(statfs_t))
-#  else
-#  define	statfs2		statfs
-#  endif
+#  else	/* STATFSARGS != 3 */
+#   ifdef	USEFSTATFS
+static int NEAR statfs2 __P_((CONST char *, statfs_t *));
+#   else
+#   define	statfs2		statfs
+#   endif
+#  endif	/* STATFSARGS != 3 */
 # endif	/* STATFSARGS < 4 */
 #endif	/* USESTATFSH || USEVFSH || USEMOUNTH */
 
@@ -329,9 +337,12 @@ static int NEAR checkline __P_((int));
 VOID help __P_((int));
 #if	defined (USEGETFSSTAT) || defined (USEGETVFSTAT) \
 || defined (USEMNTCTL) || defined (USEMNTINFOR) || defined (USEMNTINFO) \
-|| defined (USEGETMNT)
+|| defined (USEGETMNT) || MINIX
 static FILE *NEAR Xsetmntent __P_((CONST char *, CONST char *));
 static mnt_t *NEAR Xgetmntent __P_((FILE *, mnt_t *));
+#endif
+#ifdef	MINIX
+static char *NEAR getmntfield __P_((char **));
 #endif
 static int NEAR getfsinfo __P_((CONST char *, statfs_t *, mnt_t *));
 static CONST char *NEAR strmntopt __P_((CONST char *, CONST char *));
@@ -602,18 +613,18 @@ mnt_t *mntp;
 #if	defined (USEMNTINFOR) || defined (USEMNTINFO) \
 || defined (USEGETFSSTAT) || defined (USEGETVFSTAT)
 
-#ifdef	USEGETVFSTAT
-#define	f_flags			f_flag
-#define	getfsstat2		getvfsstat
+# ifdef	USEGETVFSTAT
+# define	f_flags			f_flag
+# define	getfsstat2		getvfsstat
 typedef struct statvfs		mntinfo_t;
-#else
-#define	getfsstat2		getfsstat
+# else
+# define	getfsstat2		getfsstat
 typedef struct statfs		mntinfo_t;
-#endif
+# endif
 
-#if	!defined (MNT_RDONLY) && defined (M_RDONLY)
-#define	MNT_RDONLY		M_RDONLY
-#endif
+# if	!defined (MNT_RDONLY) && defined (M_RDONLY)
+# define	MNT_RDONLY		M_RDONLY
+# endif
 
 /*ARGSUSED*/
 static FILE *NEAR Xsetmntent(file, mode)
@@ -783,6 +794,66 @@ mnt_t *mntp;
 }
 #endif	/* USEGETMNT */
 
+#ifdef	MINIX
+static FILE *NEAR Xsetmntent(file, mode)
+CONST char *file, *mode;
+{
+	return(fopen(file, mode));
+}
+
+static char *NEAR getmntfield(cpp)
+char **cpp;
+{
+	char *s;
+
+	if (!cpp || !*cpp || !**cpp) return(vnullstr);
+
+	while (**cpp && !Xisprint(**cpp)) (*cpp)++;
+	if (!**cpp) return(vnullstr);
+	s = *cpp;
+
+	while (**cpp && Xisprint(**cpp)) (*cpp)++;
+	if (**cpp) *((*cpp)++) = '\0';
+
+	return(s);
+}
+
+static mnt_t *NEAR Xgetmntent(fp, mntp)
+FILE *fp;
+mnt_t *mntp;
+{
+	static char buf[BUFSIZ];
+	char *cp;
+
+	if (!(cp = fgets(buf, sizeof(buf), fp))) return(NULL);
+
+	mntp -> mnt_fsname = mntp -> mnt_dir =
+	mntp -> mnt_type = mntp -> mnt_opts = NULL;
+
+	mntp -> mnt_fsname = getmntfield(&cp);
+	mntp -> mnt_dir = getmntfield(&cp);
+	mntp -> mnt_type = getmntfield(&cp);
+	mntp -> mnt_opts = getmntfield(&cp);
+
+	return(mntp);
+}
+#endif	/* MINIX */
+
+#ifdef	USEFSTATFS
+static int NEAR statfs2(path, buf)
+CONST char *path;
+statfs_t *buf;
+{
+	int n, fd;
+
+	if ((fd = Xopen(path, O_RDONLY, 0666)) < 0) return(-1);
+	n = fstatfs(fd, buf);
+	Xclose(fd);
+
+	return(n);
+}
+#endif	/* USEFSTATFS */
+
 static int NEAR getfsinfo(path, fsbuf, mntbuf)
 CONST char *path;
 statfs_t *fsbuf;
@@ -907,11 +978,17 @@ mnt_t *mntbuf;
 #   ifdef	USESTATVFSH
 		fsbuf -> f_frsize = 0L;
 #   endif
+#   ifndef	NOFBLOCKS
 		fsbuf -> f_blocks = *((long *)&(buf[1 * sizeof(long)]));
+#   endif
+#   ifndef	NOFBFREE
 		fsbuf -> f_bfree =
 		fsbuf -> f_bavail = *((long *)&(buf[2 * sizeof(long)]));
+#   endif
 #  endif	/* !USEFSDATA */
+#  ifndef	NOFFILES
 		fsbuf -> f_files = -1L;
+#  endif
 
 		return(0);
 	}
@@ -1050,7 +1127,9 @@ CONST char *dir;
 		if (getfsinfo(dir, &fsbuf, NULL) >= 0)
 # endif
 			return((off_t)blocksize(fsbuf));
+# ifndef	NOSTBLKSIZE
 		if (Xstat(dir, &st) >= 0) return((off_t)(st.st_blksize));
+# endif
 	}
 
 	return(DEV_BSIZE);
@@ -1113,8 +1192,16 @@ off_t *totalp, *freep, *bsizep;
 		return(-1);
 	}
 
+#ifdef	NOFBLOCKS
+	*totalp = (off_t)0;
+#else
 	*totalp = fsbuf.f_blocks;
+#endif
+#ifdef	NOFBFREE
+	*freep = (off_t)0;
+#else
 	*freep = fsbuf.f_bavail;
+#endif
 	*bsizep = blocksize(fsbuf);
 
 	return(0);
@@ -1145,9 +1232,12 @@ CONST char *path;
 	y = info1line(yy, y, FSNAM_K, (off_t)0, mntbuf.mnt_fsname, NULL);
 	y = info1line(yy, y, FSMNT_K, (off_t)0, mntbuf.mnt_dir, NULL);
 	y = info1line(yy, y, FSTYP_K, (off_t)0, mntbuf.mnt_type, NULL);
+#ifndef	NOFBLOCKS
 	y = info1line(yy, y, FSTTL_K,
 		calcKB((off_t)(fsbuf.f_blocks), (off_t)blocksize(fsbuf)),
 		NULL, "Kbytes");
+#endif
+#ifndef	NOFBFREE
 	y = info1line(yy, y, FSUSE_K,
 		calcKB((off_t)(fsbuf.f_blocks - fsbuf.f_bfree),
 			(off_t)blocksize(fsbuf)),
@@ -1155,8 +1245,11 @@ CONST char *path;
 	y = info1line(yy, y, FSAVL_K,
 		calcKB((off_t)(fsbuf.f_bavail), (off_t)blocksize(fsbuf)),
 		NULL, "Kbytes");
+#endif
 	y = info1line(yy, y, FSBSZ_K, (off_t)(fsbuf.f_bsize), NULL, "bytes");
+#ifndef	NOFFILES
 	y = info1line(yy, y, FSINO_K, (off_t)(fsbuf.f_files), NULL, UNIT_K);
+#endif
 	if (y > 1) {
 		for (; y < FILEPERROW; y++) {
 			Xlocate(0, yy + y);

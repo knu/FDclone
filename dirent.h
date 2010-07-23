@@ -30,6 +30,9 @@
 #ifndef	DEV_BSIZE
 #define	DEV_BSIZE		512
 #endif
+#if	!defined (MAXNAMLEN) && defined (FILENAME_MAX)
+#define	MAXNAMLEN		FILENAME_MAX
+#endif
 
 #if	defined (DNAMESIZE) && DNAMESIZE < (MAXNAMLEN + 1)
 typedef struct _st_dirent {

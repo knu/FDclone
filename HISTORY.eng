@@ -1,3 +1,19 @@
+Ver. 3.00i	Support MINIX 3.
+ (07/24/10)	Support NetBSD 5.0.
+		Changing to directory on some pseudo file system is allowed.
+		Freezing of pseudo terminal with utf8-mac is fixed.
+		Failure to convert Kanji code of startup argument is fixed.
+		Broken shell output string with effective DEFKCODE is fixed.
+		Failure to convert case letter on ShiftJIS is fixed.
+		Miscount of items on customizer when changing tab is fixed.
+		Misprint of string to map key code is fixed.
+		Column overflow of Japanese filename on status line is fixed.
+		Wrong cursor position when closing archive browser is fixed.
+		Failed archive browser with here-document is fixed.
+		Illegal newline code with archive browser is fixed. (MS-DOS)
+		Invalid terminal input with internal shell on DJGPP is fixed.
+		Unloadable newline (^J) from command history file is fixed.
+
 Ver. 3.00h	Hang-up when 'PS1' internal variable includes \[...\] is fixed.
  (06/14/10)	Failure to compile with non-standard C compiler is fixed.
 		Recursive call of malloc() in abortion is fixed.

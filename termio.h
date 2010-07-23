@@ -66,6 +66,7 @@ typedef struct termios		termioctl_t;
 typedef struct termios		ldiscioctl_t;
 #define	tioctl(d, r, a)		((r) \
 				? Xtcsetattr(d, (r) - 1, a) : Xtcgetattr(d, a))
+#define	ttyflush(f, a)		Xtcflush(f, a)
 #define	getspeed(t)		cfgetospeed(&t)
 # ifdef	HAVECLINE
 # define	ldisc(a)	((a).c_line)
@@ -75,12 +76,16 @@ typedef struct termios		ldiscioctl_t;
 #define	REQSETP			(TCSAFLUSH + 1)
 #define	REQSETD			(TCSADRAIN + 1)
 #define	REQSETN			(TCSANOW + 1)
+#define	FLSHIN			TCIFLUSH
+#define	FLSHOUT			TCOFLUSH
+#define	FLSHIO			TCIOFLUSH
 #endif	/* !USETERMIOS */
 
 #ifdef	USETERMIO
 typedef struct termio		termioctl_t;
 typedef struct termio		ldiscioctl_t;
 #define	tioctl			Xioctl
+#define	ttyflush(f, a)		Xioctl(f, TCFLSH, a)
 #define	getspeed(t)		((t).c_cflag & CBAUD)
 #define	ldisc(a)		((a).c_line)
 #define	REQGETP			TCGETA
@@ -88,12 +93,16 @@ typedef struct termio		ldiscioctl_t;
 #define	REQSETP			TCSETAF
 #define	REQSETD			TCSETAW
 #define	REQSETN			TCSETA
+#define	FLSHIN			TCIFLUSH
+#define	FLSHOUT			TCOFLUSH
+#define	FLSHIO			TCIOFLUSH
 #endif	/* !USETERMIO */
 
 #ifdef	USESGTTY
 typedef struct sgttyb		termioctl_t;
 typedef int			ldiscioctl_t;
 #define	tioctl			Xioctl
+#define	ttyflush(f, a)		Xioctl(f, TIOCFLUSH, &(a))
 #define	getspeed(t)		((t).sg_ospeed)
 #define	ldisc(a)		(a)
 #define	REQGETP			TIOCGETP
@@ -101,6 +110,9 @@ typedef int			ldiscioctl_t;
 #define	REQSETP			TIOCSETP
 #define	REQSETD			TIOCSETD
 #define	REQSETN			TIOCSETN
+#define	FLSHIN			FREAD
+#define	FLSHOUT			FWRITE
+#define	FLSHIO			(FREAD | FWRITE)
 #endif	/* !USESGTTY */
 
 #ifdef	TIOCGWINSZ
@@ -143,6 +155,9 @@ typedef struct ttysize		termwsize_t;
 #endif
 #ifndef	ONLRET
 #define	ONLRET			0
+#endif
+#ifndef	OXTABS
+#define	OXTABS			XTABS
 #endif
 #ifndef	TAB3
 #define	TAB3			OXTABS

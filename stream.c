@@ -197,8 +197,11 @@ XFILE *Xfopen(path, mode)
 CONST char *path, *mode;
 {
 # ifdef	DEP_STREAMLOCK
-	int isnfs, trunc, operation;
-# endif
+#  ifndef	NOFTRUNCATE
+	int trunc;
+#  endif
+	int isnfs, operation;
+# endif	/* DEP_STREAMLOCK */
 	XFILE *fp;
 	int fd, flags, isbin;
 
@@ -206,12 +209,14 @@ CONST char *path, *mode;
 	if ((isbin = mode2flags(mode, &flags)) < 0) return(NULL);
 # ifdef	DEP_STREAMLOCK
 	isnfs = (stream_isnfsfunc) ? (*stream_isnfsfunc)(path) : 1;
+#  ifndef	NOFTRUNCATE
 	if (isnfs) trunc = 0;
 	else {
 		trunc = (flags & O_TRUNC);
 		flags &= ~O_TRUNC;
 	}
-# endif
+#  endif
+# endif	/* DEP_STREAMLOCK */
 	fd = Xopen(path, flags, 0666);
 	if (fd < 0) return(NULL);
 
@@ -234,10 +239,12 @@ CONST char *path, *mode;
 			return(NULL);
 		}
 		fp -> status |= XS_LOCKED;
+#  ifndef	NOFTRUNCATE
 		if (trunc && Xftruncate(fd, (off_t)0) < 0) {
 			VOID_C Xfclose(fp);
 			return(NULL);
 		}
+#  endif
 	}
 # endif	/* DEP_STREAMLOCK */
 
@@ -260,7 +267,7 @@ CONST char *mode;
 	n = fcntl(fd, F_GETFL);
 	if (n < 0) return(NULL);
 	if ((flags & O_APPEND) != (n & O_APPEND)) {
-		errno = ENOENT;
+		errno = EINVAL;
 		return(NULL);
 	}
 	switch (n & O_ACCMODE) {
@@ -307,7 +314,7 @@ XFILE *fp;
 
 # ifdef	DEP_STREAMLOCK
 	if (fp -> status & XS_LOCKED) {
-		VOID_C Xlseek(fp -> fd, (off_t)0, SEEK_END);
+		VOID_C Xlseek(fp -> fd, (off_t)0, L_XTND);
 		VOID_C Xflock(fp -> fd, LOCK_UN);
 	}
 # endif	/* DEP_STREAMLOCK */
@@ -734,7 +741,7 @@ XFILE *fp;
 # endif
 	char *buf;
 	ALLOC_T len, size;
-	int c;
+	int n, c;
 
 	if (checkfp(fp, XS_ERROR | XS_RDONLY) < 0) return(NULL);
 	buf = c_realloc(NULL, 0, &size);
@@ -745,7 +752,7 @@ XFILE *fp;
 		dupdebuglvl = fp -> debuglvl;
 		if (fp -> flags & XF_NONBLOCK) fp -> debuglvl = 0;
 # endif
-		c = Xfgetc(fp);
+		n = c = Xfgetc(fp);
 # ifdef	DEP_STREAMLOG
 		fp -> debuglvl = dupdebuglvl;
 # endif
@@ -765,7 +772,7 @@ XFILE *fp;
 		if ((fp -> flags & XF_NULLCONV) && !c) c = '\n';
 
 		buf[len++] = c;
-		if (c == '\n') break;
+		if (n == '\n') break;
 	}
 
 	if (len > 0 && buf[len - 1] == '\n') len--;

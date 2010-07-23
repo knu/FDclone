@@ -19,10 +19,12 @@
 #endif
 #if	!MSDOS
 #include <netinet/in.h>
+# ifndef	MINIX
 #include <netinet/ip.h>
+# endif
 #include <arpa/inet.h>
 #include <netdb.h>
-#endif
+#endif	/* !MSDOS */
 
 #define	PROTONAME_TCP		"tcp"
 
@@ -412,8 +414,12 @@ ALLOC_T size;
 {
 	int n;
 
+#ifdef	MINIX
+	n = seterrno(EIO);
+#else
 	n = send(s, buf, size, MSG_OOB);
 	if (n >= 0 && (ALLOC_T)n < size) n = seterrno(EIO);
+#endif
 
 	return(n);
 }

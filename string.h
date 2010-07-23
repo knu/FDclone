@@ -16,3 +16,7 @@ extern int strlen2 __P_((CONST char *));
 #else
 #define	strlen2			strlen
 #endif
+extern VOID Xstrtolower __P_((char *));
+extern VOID Xstrtoupper __P_((char *));
+extern VOID Xstrntolower __P_((char *, int));
+extern VOID Xstrntoupper __P_((char *, int));

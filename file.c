@@ -543,7 +543,11 @@ int flags, mode;
 #ifndef	NOFLOCK
 	if (isnfs(path) <= 0) {
 		lckflags |= LCK_FLOCK;
+# ifdef	NOFTRUNCATE
+		fd = newdup(Xopen(path, flags, mode));
+# else
 		fd = newdup(Xopen(path, flags & ~O_TRUNC, mode));
+# endif
 		if (fd < 0) {
 			if ((flags & O_ACCMODE) == O_WRONLY || errno != ENOENT)
 				return(NULL);
@@ -554,6 +558,7 @@ int flags, mode;
 			err++;
 			lckflags &= ~LCK_FLOCK;
 		}
+# ifndef	NOFTRUNCATE
 		else if ((flags & O_TRUNC) && Xftruncate(fd, (off_t)0) < 0) {
 			duperrno = errno;
 			VOID_C fcntllock(fd, LOCK_UN);
@@ -561,6 +566,7 @@ int flags, mode;
 			errno = duperrno;
 			return(NULL);
 		}
+# endif
 	}
 #endif	/* !NOFLOCK */
 
@@ -646,14 +652,14 @@ int touchfile(path, stp)
 CONST char *path;
 struct stat *stp;
 {
-#ifdef	USEUTIME
-	struct utimbuf times;
-#else
-	struct timeval tvp[2];
-#endif
 #ifndef	_NOEXTRAATTR
 	int i;
 #endif
+#ifndef	NOUID
+	u_id_t uid;
+	g_id_t gid;
+#endif
+	struct utimes_t ut;
 	struct stat st;
 	u_int mode;
 	int ret, duperrno;
@@ -672,21 +678,11 @@ struct stat *stp;
 			stp -> st_atime = st.st_atime;
 		if (!(stp -> st_nlink & TCH_MTIME))
 			stp -> st_mtime = st.st_mtime;
-#ifdef	USEUTIME
-		times.actime = stp -> st_atime;
-		times.modtime = stp -> st_mtime;
+		ut.actime = stp -> st_atime;
+		ut.modtime = stp -> st_mtime;
 		duperrno = errno;
-		if (Xutime(path, &times) >= 0) errno = duperrno;
+		if (Xutimes(path, &ut) >= 0) errno = duperrno;
 		else ret = -1;
-#else
-		tvp[0].tv_sec = stp -> st_atime;
-		tvp[0].tv_usec = 0;
-		tvp[1].tv_sec = stp -> st_mtime;
-		tvp[1].tv_usec = 0;
-		duperrno = errno;
-		if (Xutimes(path, tvp) >= 0) errno = duperrno;
-		else ret = -1;
-#endif
 	}
 
 #ifdef	HAVEFLAGS
@@ -732,11 +728,12 @@ struct stat *stp;
 	if (stp -> st_nlink & (TCH_UID | TCH_GID)) {
 		if (!(stp -> st_nlink & TCH_UID)) stp -> st_uid = (uid_t)-1;
 		if (!(stp -> st_nlink & TCH_GID)) stp -> st_gid = (gid_t)-1;
+		uid = convuid(stp -> st_uid);
+		gid = convgid(stp -> st_gid);
 		duperrno = errno;
-		if (Xchown(path, stp -> st_uid, stp -> st_gid) >= 0)
-			errno = duperrno;
+		if (Xchown(path, uid, gid) >= 0) errno = duperrno;
 		else if (!(stp -> st_nlink & TCH_CHANGE)) {
-			Xchown(path, (uid_t)-1, stp -> st_gid);
+			Xchown(path, (u_id_t)-1, gid);
 			errno = duperrno;
 		}
 		else ret = -1;
@@ -1497,7 +1494,7 @@ int fat, boundary, dirsize, ofs;
 				if (dot || !i || i > DOSBODYLEN) lfn = 1;
 				dot = i + 1;
 			}
-			else if (issjis1(s[i]) && issjis2(s[i + 1])) {
+			else if (iswsjis(s, i)) {
 				i++;
 				lfn = 1;
 			}
@@ -1557,9 +1554,6 @@ static char *NEAR maketmpfile(len, fat, tmpdir, old)
 int len, fat;
 CONST char *tmpdir, *old;
 {
-#ifndef	PATHNOCASE
-	int i;
-#endif
 	char *fname, path[MAXPATHLEN];
 	int l, fd;
 
@@ -1575,8 +1569,7 @@ CONST char *tmpdir, *old;
 	for (;;) {
 		genrandname(fname, len);
 #ifndef	PATHNOCASE
-		if (fat != FAT_NONE) for (i = 0; fname[i]; i++)
-			fname[i] = Xtoupper(fname[i]);
+		if (fat != FAT_NONE) Xstrtoupper(fname);
 #endif
 		if (tmpdir) {
 			Xstrcpy(&(path[l]), fname);

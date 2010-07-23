@@ -36,8 +36,8 @@ typedef struct _attrib_t {
 #ifndef	_NOEXTRAATTR
 	u_int mask;
 # ifndef	NOUID
-	uid_t uid;
-	gid_t gid;
+	u_id_t uid;
+	g_id_t gid;
 # endif
 #endif	/* !_NOEXTRAATTR */
 	char timestr[2][MAXTIMESTR + 1];
@@ -115,8 +115,8 @@ static u_long attrflags = 0;
 #ifndef	_NOEXTRAATTR
 static u_short attrmask = 0;
 # ifndef	NOUID
-static uid_t attruid = (uid_t)-1;
-static gid_t attrgid = (gid_t)-1;
+static u_id_t attruid = (u_id_t)-1;
+static g_id_t attrgid = (g_id_t)-1;
 # endif
 #endif	/* !_NOEXTRAATTR */
 static time_t attrtime = (time_t)0;
@@ -312,9 +312,11 @@ CONST char *s;
 
 			if (!(cp = getdestdir(FRWDD_K, NULL))) continue;
 # ifdef	DEP_PSEUDOPATH
+#  if	!defined (_NOEXTRACOPY) && defined (DEP_DOSDRIVE)
 			forwarddrive = destdrive;
+#  endif
 			destdrive = dupdestdrive;
-# endif
+# endif	/* DEP_PSEUDOPATH */
 			if (issamedir(cp, NULL) || issamedir(cp, destpath)) {
 				warning(EINVAL, cp);
 				Xfree(cp);
@@ -1133,7 +1135,7 @@ int yy;
 {
 	uidtable *up;
 	char *cp, *s, buf[MAXLONGWIDTH + 1];
-	uid_t uid;
+	u_id_t uid;
 
 	up = finduid(attr -> uid, NULL);
 	if (up) cp = up -> name;
@@ -1146,8 +1148,8 @@ int yy;
 	lcmdline = yy;
 	maxcmdline = 1;
 	if (!(s = inputstr(AOWNR_K, 0, -1, cp, HST_USER))) return(-1);
-	if ((cp = Xsscanf(s, "%-<*d%$", sizeof(uid_t), &uid))) /*EMPTY*/;
-	else if ((up = finduid(0, s))) uid = up -> uid;
+	if ((cp = Xsscanf(s, "%-<*d%$", sizeof(u_id_t), &uid))) /*EMPTY*/;
+	else if ((up = finduid((u_id_t)0, s))) uid = up -> uid;
 	else {
 		lcmdline = yy;
 		warning(ENOENT, s);
@@ -1169,7 +1171,7 @@ int yy;
 {
 	gidtable *gp;
 	char *cp, *s, buf[MAXLONGWIDTH + 1];
-	gid_t gid;
+	g_id_t gid;
 
 	gp = findgid(attr -> gid, NULL);
 	if (gp) cp = gp -> name;
@@ -1182,8 +1184,8 @@ int yy;
 	lcmdline = yy;
 	maxcmdline = 1;
 	if (!(s = inputstr(AGRUP_K, 0, -1, cp, HST_GROUP))) return(-1);
-	if ((cp = Xsscanf(s, "%-<*d%$", sizeof(gid_t), &gid))) /*EMPTY*/;
-	else if ((gp = findgid(0, s))) gid = gp -> gid;
+	if ((cp = Xsscanf(s, "%-<*d%$", sizeof(g_id_t), &gid))) /*EMPTY*/;
+	else if ((gp = findgid((g_id_t)0, s))) gid = gp -> gid;
 	else {
 		lcmdline = yy;
 		warning(ENOENT, s);

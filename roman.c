@@ -19,8 +19,14 @@
 
 typedef struct _voweltable {
 	int key;
-	u_char code[R_MAXVOWEL];
+	CONST u_char code[R_MAXVOWEL];
 } voweltable;
+
+typedef struct _catromantable {
+	CONST char str[R_MAXROMAN + 1];
+	int key;
+	CONST u_short code;
+} catromantable;
 
 static int cmproman __P_((CONST VOID_P, CONST VOID_P));
 static int NEAR chgroman __P_((CONST char *, int, CONST u_short *));
@@ -116,33 +122,33 @@ static CONST romantable origromanlist[] = {
 	DEFRM("co", 0x3300),
 };
 #define	ROMANLISTSIZ		arraysize(origromanlist)
-static CONST romantable catromanlist[] = {
-	{"ky",	'y', {0x242d}},	{"gy",	'y', {0x242e}},
-	{"sy",	'y', {0x2437}},	{"zy",	'y', {0x2438}},
-	{"ty",	'y', {0x2441}},	{"dy",	'y', {0x2442}},
-	{"ny",	'y', {0x244b}},
-	{"hy",	'y', {0x2452}},	{"by",	'y', {0x2453}},	{"py",	'y', {0x2454}},
-	{"my",	'y', {0x245f}},
-	{"xy",	'y', {0x0000}},	{"ly",	'y', {0x0000}},
-	{"ry",	'y', {0x246a}},
-	{"sh",	'h', {0x2437}},	{"j",	'h', {0x2438}},
-	{"jy",	'y', {0x2438}},
-	{"ch",	'h', {0x2441}},
-	{"cy",	'y', {0x2441}},
-	{"ts",	'l', {0x2444}},
-	{"th",	'y', {0x2446}},	{"dh",	'y', {0x2447}},
-	{"wh",	'l', {0x2426}},
-	{"f",	'l', {0x2455}},	{"v",	'l', {0x2574}},
-	{"fy",	'y', {0x2455}},	{"vy",	'y', {0x2574}},
-	{"q",	'l', {0x242f}},
-	{"qy",	'y', {0x242f}},
-	{"x",	'w', {0x0000}},	{"l",	'w', {0x0000}},
-	{"kw",	'w', {0x242f}},	{"gw",	'w', {0x2430}},
-	{"qw",	'w', {0x242f}},
-	{"sw",	'w', {0x2439}},	{"zw",	'w', {0x243a}},
-	{"tw",	'w', {0x2448}},	{"dw",	'w', {0x2449}},
-	{"hw",	'w', {0x2455}},	{"bw",	'w', {0x2456}},	{"pw",	'w', {0x2457}},
-	{"fw",	'w', {0x2455}},	{"vw",	'w', {0x2574}},
+static CONST catromantable catromanlist[] = {
+	{"ky",	'y', 0x242d},	{"gy",	'y', 0x242e},
+	{"sy",	'y', 0x2437},	{"zy",	'y', 0x2438},
+	{"ty",	'y', 0x2441},	{"dy",	'y', 0x2442},
+	{"ny",	'y', 0x244b},
+	{"hy",	'y', 0x2452},	{"by",	'y', 0x2453},	{"py",	'y', 0x2454},
+	{"my",	'y', 0x245f},
+	{"xy",	'y', 0x0000},	{"ly",	'y', 0x0000},
+	{"ry",	'y', 0x246a},
+	{"sh",	'h', 0x2437},	{"j",	'h', 0x2438},
+	{"jy",	'y', 0x2438},
+	{"ch",	'h', 0x2441},
+	{"cy",	'y', 0x2441},
+	{"ts",	'l', 0x2444},
+	{"th",	'y', 0x2446},	{"dh",	'y', 0x2447},
+	{"wh",	'l', 0x2426},
+	{"f",	'l', 0x2455},	{"v",	'l', 0x2574},
+	{"fy",	'y', 0x2455},	{"vy",	'y', 0x2574},
+	{"q",	'l', 0x242f},
+	{"qy",	'y', 0x242f},
+	{"x",	'w', 0x0000},	{"l",	'w', 0x0000},
+	{"kw",	'w', 0x242f},	{"gw",	'w', 0x2430},
+	{"qw",	'w', 0x242f},
+	{"sw",	'w', 0x2439},	{"zw",	'w', 0x243a},
+	{"tw",	'w', 0x2448},	{"dw",	'w', 0x2449},
+	{"hw",	'w', 0x2455},	{"bw",	'w', 0x2456},	{"pw",	'w', 0x2457},
+	{"fw",	'w', 0x2455},	{"vw",	'w', 0x2574},
 };
 #define	CATROMANLISTSIZ		arraysize(catromanlist)
 
@@ -234,7 +240,7 @@ CONST char *s;
 	if (n >= VOWELLISTSIZ) return(-1);
 
 	for (i = 0; s[i]; i++) {
-		if (i >= sizeof(str) - 2) break;
+		if (i >= strsize(str) - 1) break;
 		str[i] = s[i];
 	}
 	len = i;
@@ -273,8 +279,8 @@ VOID initroman(VOID_A)
 
 	maxromanlist = ROMANLISTSIZ;
 	for (i = 0; i < CATROMANLISTSIZ; i++) {
-		n = catroman(catromanlist[i].len,
-			catromanlist[i].code[0], catromanlist[i].str);
+		n = catroman(catromanlist[i].key,
+			catromanlist[i].code, catromanlist[i].str);
 		if (n < 0) break;
 	}
 
@@ -358,6 +364,9 @@ CONST char *buf;
 int addroman(s, buf)
 CONST char *s, *buf;
 {
+#ifdef	DEP_FILECONV
+	char tmp[R_MAXKANA * 3 + 1];
+#endif
 	char str[R_MAXROMAN + 1];
 	u_short kbuf[R_MAXKANA];
 	int i, j, len;
@@ -367,7 +376,8 @@ CONST char *s, *buf;
 	if (!s) return(-1);
 	for (i = j = 0; s[i]; i++) {
 		if (!Xisprint(s[i])) continue;
-		if (j >= sizeof(str) - 1) break;
+		if (ismsb(s[i])) return(-1);
+		if (j >= strsize(str)) break;
 		str[j++] = Xtolower(s[i]);
 	}
 	if (!j) return(-1);
@@ -376,12 +386,16 @@ CONST char *s, *buf;
 
 	if (!buf) chgroman(str, len, NULL);
 	else {
+#ifdef	DEP_FILECONV
+		buf = kanjiconv2(tmp, buf,
+			strsize(tmp), defaultkcode, DEFCODE, L_FNAME);
+#endif
 		memset((char *)kbuf, 0, sizeof(kbuf));
 		if (!str2jis(kbuf, arraysize(kbuf), buf)) return(-1);
 		chgroman(str, len, kbuf);
 	}
-
 	qsort(romanlist, maxromanlist, sizeof(romantable), cmproman);
+
 	return(0);
 }
 

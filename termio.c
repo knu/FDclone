@@ -218,7 +218,7 @@ int Xgetdtablesize(VOID_A)
 # endif	/* SYSV */
 #endif	/* !MSDOS */
 
-#if	!MSDOS
+#if	!MSDOS && !defined (MINIX)
 # ifndef	SYSV
 	if ((n = getdtablesize()) >= 0) return(n);
 # else	/* SYSV */
@@ -384,9 +384,15 @@ XFILE **fpp;
 #endif
 
 	if (*fdp >= 0) fd = *fdp;
+#ifdef	MINIX
+	else if (!isatty(STDIN_FILENO)) return(seterrno(ENOTTY));
+	else if ((fd = newdup(Xdup(STDIN_FILENO))) < 0) return(-1);
+#else
 	else if ((fd = newdup(Xopen(_PATH_TTY, flags, 0666))) < 0) return(-1);
+#endif
+
 	if (*fpp) fp = *fpp;
-#ifndef	SELECTRWONLY
+#if	!defined (MINIX) && !defined (SELECTRWONLY)
 	else if ((fp = Xfdopen(fd, "w+b"))) /*EMPTY*/;
 #endif
 	else if (!(fp = Xfopen(_PATH_TTY, "w+b"))) {

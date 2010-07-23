@@ -50,7 +50,7 @@
 && (defined (SOLARIS) || defined (LINUX) \
 || defined (JCCBSD) || defined (FREEBSD) \
 || defined (NETBSD) || defined (BSDOS) || defined (BOW) \
-|| defined (OPENBSD) || defined (ORG_386BSD))
+|| defined (OPENBSD) || defined (MINIX) || defined (ORG_386BSD))
 #define	HDDMOUNT
 #endif
 
@@ -345,11 +345,7 @@ extern int dossymlink __P_((CONST char *, CONST char *));
 extern int dosreadlink __P_((CONST char *, char *, int));
 #endif
 extern int doschmod __P_((CONST char *, int));
-#ifdef	USEUTIME
-extern int dosutime __P_((CONST char *, CONST struct utimbuf *));
-#else
-extern int dosutimes __P_((CONST char *, CONST struct timeval *));
-#endif
+extern int dosutimes __P_((CONST char *, CONST struct utimes_t *));
 extern int dosunlink __P_((CONST char *));
 extern int dosrename __P_((CONST char *, CONST char *));
 extern int dosopen __P_((CONST char *, int, int));

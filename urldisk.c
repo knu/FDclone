@@ -1002,7 +1002,9 @@ namelist *namep;
 		(char *)&(namep -> st_mtim), sizeof(stp -> st_mtime));
 	memcpy((char *)&(stp -> st_ctime),
 		(char *)&(namep -> st_mtim), sizeof(stp -> st_ctime));
+#ifndef	NOSTBLKSIZE
 	stp -> st_blksize = DEV_BSIZE;
+#endif
 
 	if (isdev(namep)) {
 		stp -> st_size = (off_t)0;

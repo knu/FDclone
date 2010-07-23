@@ -504,6 +504,7 @@ char **sp;
 }
 
 int httpseterrno(n)
+int n;
 {
 	if (n < 0) return(-1);
 	if (n / 100 != HTTP_SUCCESS) return(seterrno(EACCES));

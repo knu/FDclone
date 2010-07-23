@@ -206,10 +206,10 @@ char *CONST argv[];
 	printf("s:__MSBOPTION__::\n");
 #endif
 
-#ifdef	_NODOSDRIVE
-	printf("s:__UNITBL__::\n");
-#else
+#ifdef	DEP_UNICODE
 	printf("s:__UNITBL__:$(UNITBL):\n");
+#else
+	printf("s:__UNITBL__::\n");
 #endif
 
 #ifdef	SUPPORTSJIS

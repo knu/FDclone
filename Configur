@@ -40,16 +40,33 @@ catheader() {
 
 prettyfunc() {
 	case "$1" in
-		*" "*)
-			echo "\"$1\""
+		*"("*")"|*"("*");")
+			IDENT=`echo "$1" | tr -d ",0;"`
 		;;
-		*"("*")")
-			echo "$1" | tr -d ",0"
+		*";")
+			OIFS="$IFS"
+			IFS=" "
+			set - $1
+			IFS="$OIFS"
+			IDENT=
+			SEP=\"
+			while [ "$#" -gt 1 ]; do
+				IDENT="$IDENT$SEP$1"
+				SEP=" "
+				shift
+			done
+			case "$1" in
+				"*"*)
+					IDENT="$IDENT$SEP*"
+				;;
+			esac
+			IDENT="$IDENT\""
 		;;
 		*)
-			echo "$1"
+			IDENT="$1"
 		;;
 	esac
+	echo "$IDENT"
 }
 
 setheader() {
@@ -62,7 +79,7 @@ setheader() {
 compile() {
 	(setheader "$2")
 	case "$1" in
-		*" "*)
+		*";")
 			decl="$1"
 			ret=0
 		;;
@@ -157,7 +174,7 @@ havelib() {
 
 cat ./config.hin
 
-for i in TARUSESPACE CPP7BIT USETERMINFO \
+for i in TARUSESPACE CPP7BIT OLDARGINT USETERMINFO \
 TERMCAPLIB REGEXPLIB SOCKETLIB EXTENDLIB \
 NOFILEMACRO NOFUNCMACRO NOLINEMACRO \
 FORCEDSTDC STRICTSTDC NOSTDC NOCONST NOVOID NOLONGLONG HAVELONGLONG \
@@ -165,19 +182,21 @@ NOUID_T USEPID_T DECLSIGLIST NOSIGLIST \
 DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
 USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
 USESTDARGH USEMKDEVH USEMKNODH USELOCKFH \
-USESGTTY USETERMIO USETERMIOS HAVECLINE USEDEVPTMX \
+USESGTTY USETERMIO USETERMIOS HAVECLINE USEDEVPTMX USEDEVPTY \
 USEDIRECT SYSVDIRENT NODNAMLEN NODRECLEN DNAMESIZE \
-HAVETIMEZONE NOTMGMTOFF USEINSYSTMH NOHADDRLIST \
+HAVETIMEZONE NOTMGMTOFF NOSTBLKSIZE USEINSYSTMH NOHADDRLIST \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
-USESTATVFS_T USEFFSIZE STATFSARGS \
+USEFFSIZE NOFBLOCKS NOFBFREE NOFFILES \
+USESTATVFS_T STATFSARGS USEFSTATFS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEGETVFSTAT USEMNTCTL \
 USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
 USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT DEFFDSETSIZE SELECTRWONLY NOVSPRINTF NOTERMVAR \
-USEUTIME USEGETWD ULONGIOCTL USEFCNTLOCK USELOCKF NOFLOCK NOSYSLOG \
+USEUTIME USEGETWD ULONGIOCTL \
+NOFTRUNCATE USEFCNTLOCK USELOCKF NOFLOCK NOSYSLOG \
 USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
-USEWAITPID USESIGACTION USESIGPMASK \
+NOKILLPG USEWAITPID USESIGACTION USESIGPMASK \
 USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
 GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
 USESTRERROR GETTODARGS USESETSID USEMMAP \
@@ -263,6 +282,19 @@ fi
 (ok $ret) 1>&2
 rm -f $TMPEXE
 
+echo "Checking for NON-int argument..." 1>&2
+echo "int test(short x);" > $TMPSRC
+echo "int test(x) short x; { return(0); }" >> $TMPSRC
+echo "int main(argc, argv)" >> $TMPSRC
+echo "int argc; char *argv[];" >> $TMPSRC
+echo "{ return(0); }" >> $TMPSRC
+if eval $docc; then ret=0; else ret=1; fi
+if [ "$ret" != 0 ]; then
+	echo "#define	OLDARGINT"
+fi
+(ok $ret) 1>&2
+rm -f $TMPEXE
+
 lib=
 if havelib termlib "tgetent(b,\"T\")" "" "char b[1024];"; then
 	lib=-ltermlib
@@ -344,13 +376,13 @@ fi
 if [ -z "$K_R" ]; then
 	echo "#define	STRICTSTDC"
 fi
-if noexist "const int n"; then
+if noexist "const int n;"; then
 	echo "#define	NOCONST"
 fi
-if noexist "void *p"; then
+if noexist "void *p;"; then
 	echo "#define	NOVOID"
 fi
-if isexist "long long n"; then
+if isexist "long long n;"; then
 	if [ -z "$STDC" ]; then
 		echo "#define	HAVELONGLONG"
 	fi
@@ -394,19 +426,19 @@ elif isexist "t.tzh_leapcnt" tzfile "struct tzhead t;"; then
 	echo "#define	USELEAPCNT"
 fi
 
-if noexist "fd_set fds" sys/types \
-&& isexist "fd_set fds" sys/select; then
+if isexist "fd_set fds;" "sys/types sys/select" \
+&& noexist "fd_set fds;" sys/types; then
 	echo "#define	USESELECTH"
 fi
 if noinheader " *0*x*[0-9a-fA-F ]* *" sys/param DEV_BSIZE \
 && inheader " *0*x*[0-9a-fA-F ]* *" sys/dir DEV_BSIZE; then
 	echo "#define	USESYSDIRH"
 fi
-if isexist "struct tm t" "sys/types sys/time time" \
-&& noexist "struct tm t" "sys/types sys/time"; then
+if isexist "struct tm t;" "sys/types sys/time time" \
+&& noexist "struct tm t;" "sys/types sys/time"; then
 	echo "#define	USETIMEH"
 fi
-if isexist "va_list args" stdarg "extern int dummyprintf(int, int, ...);"; then
+if isexist "va_list args;" stdarg "extern int Xprintf(int, int, ...);"; then
 	echo "#define	USESTDARGH"
 fi
 if isexist "major(0)" sys/sysmacros; then
@@ -431,6 +463,8 @@ if isexist "t.c_line" termios "struct termios t;"; then
 fi
 if [ -c /dev/ptmx -a -d /dev/pts ]; then
 	echo "#define	USEDEVPTMX"
+elif [ -c /dev/ptyp0 -a -c /dev/ttyp0 ]; then
+	echo "#define	USEDEVPTY"
 fi
 if useheader dirent; then
 	if isexist "d.d_ino" "sys/types dirent" "struct dirent d;" \
@@ -463,6 +497,9 @@ if (noexist "t.tm_gmtoff" "sys/types sys/time" "struct tm t;" \
 && noexist "t.tm_gmtoff" "sys/types time" "struct tm t;"); then
 	echo "#define	NOTMGMTOFF"
 fi
+if noexist "s.st_blksize" "sys/types sys/stat" "struct stat s;"; then
+	echo "#define	NOSTBLKSIZE"
+fi
 if useheader netinet/in_systm; then
 	echo "#define	USEINSYSTMH"
 fi
@@ -473,16 +510,18 @@ fi
 
 statvfs_t=
 arg=2
+fstatfs=
 if inheader "struct.*[^a-zA-Z0-9_]fs_data[^a-zA-Z0-9_]" sys/mount; then
 	echo "#define	USEFSDATA"
 elif inheader "struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]" sys/vfs; then
 	echo "#define	USEVFSH"
-elif inheader "struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]" sys/mount; then {
+elif inheader "struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]" sys/mount; then
 	echo "#define	USEMOUNTH"
 	if inheader MOUNT_UFS sys/mount; then
 		echo "#define	USEFFSIZE"
-	elif isexist "statfs(0,0,0)" sys/mount; then arg=3; fi
-}
+	elif isexist "statfs(0,0,0)" sys/mount; then
+		arg=3
+	fi
 elif inheader "struct.*[^a-zA-Z0-9_]statvfs[^a-zA-Z0-9_]" \
 "sys/types sys/statvfs" \
 && { { isexist "statvfs(0,&f)" "sys/types sys/statvfs" "statvfs_t f;" \
@@ -493,14 +532,28 @@ elif inheader "struct.*[^a-zA-Z0-9_]statfs[^a-zA-Z0-9_]" \
 "sys/types sys/statfs" \
 && { { isexist "statfs(0,&f,0,0)" "sys/types sys/statfs" "struct statfs f;" \
 && arg=4; } \
-|| isexist "statfs(0,&f)" "sys/types sys/statfs" "struct statfs f;"; }; then
+|| isexist "statfs(0,&f)" "sys/types sys/statfs" "struct statfs f;" \
+|| { isexist "fstatfs(0,&f)" "sys/types sys/statfs" "struct statfs f;" \
+&& fstatfs=1; } }; then
 	echo "#define	USESTATFSH"
+	if noexist "f.f_blocks" "sys/types sys/statfs" "struct statfs f;"; then
+		echo "#define	NOFBLOCKS"
+	fi
+	if noexist "f.f_bfree" "sys/types sys/statfs" "struct statfs f;"; then
+		echo "#define	NOFBFREE"
+	fi
+	if noexist "f.f_files" "sys/types sys/statfs" "struct statfs f;"; then
+		echo "#define	NOFFILES"
+	fi
 fi
 if [ -n "$statvfs_t" ]; then
 	echo "#define	USESTATVFS_T"
 fi
 if [ "$arg" != "2" ]; then
 	echo "#define	STATFSARGS	$arg"
+fi
+if [ -n "$fstatfs" ]; then
+	echo "#define	USEFSTATFS"
 fi
 
 statfs=
@@ -583,6 +636,9 @@ fi
 if inheader "[^a-zA-Z0-9_]ioctl([^,]*, *unsigned long *,.*) *;" sys/ioctl; then
 	echo "#define	ULONGIOCTL"
 fi
+if noexist "ftruncate(0,0)"; then
+	echo "#define	NOFTRUNCATE"
+fi
 if isexist "fcntl(0,F_SETLKW,0)" fcntl; then
 	echo "#define	USEFCNTLOCK"
 elif isexist "flock(0,0)" sys/file; then
@@ -595,7 +651,7 @@ elif isexist "lockf(0,0,0)" sys/lockf; then
 else
 	echo "#define	NOFLOCK"
 fi
-if noexist "syslog(0,0,0)" syslog; then
+if noexist "syslog(0,0,0);" syslog; then
 	echo "#define	NOSYSLOG"
 fi
 if isexist "mktime(0)" time; then
@@ -618,6 +674,9 @@ fi
 if noexist "gethostname(0,0)" && isexist "uname(0)" sys/utsname; then
 	echo "#define	USEUNAME"
 fi
+if noexist "killpg(0,0)" "sys/types signal"; then
+	echo "#define	NOKILLPG"
+fi
 if isexist "waitpid(0,0,0)" sys/wait; then
 	echo "#define	USEWAITPID"
 fi
@@ -627,7 +686,8 @@ fi
 if isexist "sigprocmask(0,0,0)" signal; then
 	echo "#define	USESIGPMASK"
 fi
-if isexist "getrlimit(0,0)" "sys/types sys/time sys/resource"; then
+if isexist "getrlimit(0,0)" "sys/types sys/time sys/resource" \
+&& isexist "setrlimit(0,0)" "sys/types sys/time sys/resource"; then
 	echo "#define	USERESOURCEH"
 elif isexist "ulimit(0,0)" ulimit; then
 	echo "#define	USEULIMITH"

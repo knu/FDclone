@@ -1034,22 +1034,12 @@ VOID notabs(VOID_A)
 
 VOID keyflush(VOID_A)
 {
-# ifdef	USESGTTY
-	int i;
-# endif
+	int arg;
 
 	ungetnum = 0;
 	if (ttyio < 0) return;
-# ifdef	USESGTTY
-	i = FREAD;
-	VOID_C Xioctl(ttyio, TIOCFLUSH, &i);
-# else	/* !USESGTTY */
-#  ifdef	USETERMIOS
-	VOID_C Xtcflush(ttyio, TCIFLUSH);
-#  else
-	VOID_C Xioctl(ttyio, TCFLSH, 0);
-#  endif
-# endif	/* !USESGTTY */
+	arg = FLSHIN;
+	VOID_C ttyflush(ttyio, arg);
 }
 
 int savettyio(reset)
@@ -2651,8 +2641,8 @@ long usec;
 
 	return((reg.x.flags & 0x40) ? 0 : 1);
 #   else	/* !NOSELECT */
-	tv.tv_sec = (time_t)usec / (time_t)1000000;
-	tv.tv_usec = (time_t)usec % (time_t)1000000;
+	tv.tv_sec = usec / 1000000L;
+	tv.tv_usec = usec % 1000000L;
 	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
 		terror("select()");
 
@@ -2928,8 +2918,8 @@ long usec;
 # ifdef	NOSELECT
 	return((usec) ? 1 : 0);
 # else
-	tv.tv_sec = (time_t)usec / (time_t)1000000;
-	tv.tv_usec = (time_t)usec % (time_t)1000000;
+	tv.tv_sec = usec / 1000000L;
+	tv.tv_usec = usec % 1000000L;
 	if ((n = sureselect(1, &ttyio, NULL, &tv, SEL_TTYIO)) < 0)
 		terror("select()");
 

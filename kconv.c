@@ -92,7 +92,7 @@ typedef struct _kpathtable {
 } kpathtable;
 #endif
 
-#if	defined (FD) && !defined (_NOROCKRIDGE)
+#ifdef	DEP_ROCKRIDGE
 extern int norockridge;
 #endif
 
@@ -461,17 +461,13 @@ CONST char *s1, *s2;
 				c2 = Xtoupper(c2);
 			}
 			if (c1 != c2) break;
-#ifndef	CODEEUC
-			if (issjis1(c1)) {
+			if (iswchar(s1, 0)) {
 				if (!s2[++i]) return(s1);
 				if (s1[i] != s2[i]) break;
 			}
-#endif
 			if (!s1[i]) break;
 		}
-#ifndef	CODEEUC
-		if (issjis1(*s1)) s1++;
-#endif
+		if (iswchar(s1, 0)) s1++;
 		s1++;
 	}
 
@@ -589,7 +585,7 @@ int max;
 	int i, j;
 
 	for (i = j = 0; s[i] && j < max; i++, j++) {
-		if (issjis1(s[i]) && issjis2(s[i + 1])) {
+		if (iswsjis((CONST char *)s, i)) {
 			if (j + 2 > max) break;
 			sj2j(&(buf[j]), &(s[i++]));
 			buf[j++] |= 0x80;
@@ -614,7 +610,7 @@ int max;
 	int i, j;
 
 	for (i = j = 0; s[i] && j < max; i++, j++) {
-		if (iseuc(s[i]) && iseuc(s[i + 1])) {
+		if (isweuc((CONST char *)s, i)) {
 			if (j + 2 > max) break;
 			j2sj(&(buf[j++]), &(s[i++]));
 		}
@@ -702,7 +698,7 @@ int nf;
 	if (!unitblbuf) {
 		if (!(tbl = newunitbl(size))) return;
 		if (!skread(fd, (off_t)2, tbl, size)) {
-			Xfree(tbl);
+			free(tbl);
 			VOID_C openunitbl(NULL);
 			return;
 		}
@@ -717,14 +713,23 @@ int nf;
 		}
 		nftblnum = buf[0];
 		nflen = buf[1];
-		tblbuf = (u_char **)Xmalloc(nftblnum * sizeof(u_char *));
-		tblent = (u_int *)Xmalloc(nftblnum * sizeof(u_int));
+		tblbuf = (u_char **)malloc(nftblnum * sizeof(u_char *));
+		if (!tblbuf) {
+			VOID_C openunitbl(NULL);
+			return;
+		}
+		tblent = (u_int *)malloc(nftblnum * sizeof(u_int));
+		if (!tblent) {
+			free(tblbuf);
+			VOID_C openunitbl(NULL);
+			return;
+		}
 
 		for (i = 0; i < nftblnum; i++) {
 			if (sureread(fd, buf, 2) != 2) {
-				while (i > 0) Xfree(tblbuf[--i]);
-				Xfree(tblbuf);
-				Xfree(tblent);
+				while (i > 0) free(tblbuf[--i]);
+				free(tblbuf);
+				free(tblent);
 				VOID_C openunitbl(NULL);
 				return;
 			}
@@ -732,15 +737,15 @@ int nf;
 			size = (ALLOC_T)tblent[i] * (2 + nflen * 2);
 
 			if (!(tblbuf[i] = newunitbl(size))) {
-				while (i > 0) Xfree(tblbuf[--i]);
-				Xfree(tblbuf);
-				Xfree(tblent);
+				while (i > 0) free(tblbuf[--i]);
+				free(tblbuf);
+				free(tblent);
 				return;
 			}
 			if (sureread(fd, tblbuf[i], size) != size) {
-				while (i >= 0) Xfree(tblbuf[i--]);
-				Xfree(tblbuf);
-				Xfree(tblent);
+				while (i >= 0) free(tblbuf[i--]);
+				free(tblbuf);
+				free(tblent);
 				VOID_C openunitbl(NULL);
 				return;
 			}
@@ -760,16 +765,16 @@ VOID discardunitable(VOID_A)
 # endif
 
 	if (unitblbuf) {
-		Xfree(unitblbuf);
+		free(unitblbuf);
 		unitblbuf = NULL;
 	}
 # ifndef	_NOKANJICONV
 	if (nftblbuf) {
-		for (i = 0; i < nftblnum; i++) Xfree(nftblbuf[i]);
-		Xfree(nftblbuf);
+		for (i = 0; i < nftblnum; i++) free(nftblbuf[i]);
+		free(nftblbuf);
 		nftblbuf = NULL;
 	}
-	Xfree(nftblent);
+	if (nftblent) free(nftblent);
 	nftblent = NULL;
 # endif	/* !_NOKANJICONV */
 }
@@ -1272,7 +1277,7 @@ int nf;
 	int n, fd;
 
 	cp = new = NULL;
-	ofs = ent = 0;
+	ofs = ent = (u_int)0;
 	if (unicodebuffer && !nftblbuf) readunitable(1);
 
 	if (wc < MINUNICODE || wc > MAXUNICODE) /*EMPTY*/;
@@ -1286,11 +1291,12 @@ int nf;
 			cp += n;
 		}
 	}
-	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0) ent = 0;
+	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0) ent = (u_int)0;
 	else {
 		n = 2 + nflen * 2;
-		cp = new = (u_char *)Xmalloc(n);
-		for (ofs = 0; ofs < ent; ofs++) {
+		cp = new = (u_char *)malloc(n);
+		if (!new) ent = (u_int)0;
+		else for (ofs = 0; ofs < ent; ofs++) {
 			if (sureread(fd, cp, n) != n) {
 				ofs = ent;
 				break;
@@ -1307,7 +1313,7 @@ int nf;
 		if (!w) break;
 		buf[(*ptrp)++] = w;
 	}
-	Xfree(new);
+	if (new) free(new);
 }
 
 u_int ucs2denormalization(buf, ptrp, nf)
@@ -1320,14 +1326,13 @@ int *ptrp, nf;
 	int i, j, n, fd;
 
 	cp = new = NULL;
-	ofs = min = max = 0;
+	ofs = min = max = (u_int)0;
 	i = 0;
 	if (unicodebuffer && !nftblbuf) readunitable(1);
 
 	if (buf[*ptrp] < MINUNICODE || buf[*ptrp] > MAXUNICODE) /*EMPTY*/;
 	else if (nftblbuf && nf <= nftblnum) {
 		n = 2 + nflen * 2;
-		min = 0;
 		max = nftblent[nf - 1] + 1;
 		for (;;) {
 			ofs = (min + max) / 2;
@@ -1349,14 +1354,14 @@ int *ptrp, nf;
 		/*EMPTY*/;
 	else {
 		n = 2 + nflen * 2;
-		cp = new = (u_char *)Xmalloc(n);
-		min = 0;
 		max = ent + 1;
-		for (;;) {
+		cp = new = (u_char *)malloc(n);
+		if (!new) max = (u_int)0;
+		else for (;;) {
 			ofs = (min + max) / 2;
 			if (ofs <= min || ofs >= max) break;
 			if (!skread(fd, (off_t)(ofs - 1) * n + top, cp, n)) {
-				ofs = min = max = 0;
+				ofs = min = max = (u_int)0;
 				break;
 			}
 			w = 0xffff;
@@ -1376,7 +1381,7 @@ int *ptrp, nf;
 		w = getword(cp, 0);
 		*ptrp += i;
 	}
-	Xfree(new);
+	if (new) free(new);
 
 	return(w);
 }
@@ -1532,8 +1537,12 @@ int max, nf;
 	u_short *u1, *u2;
 	int i, j, len;
 
-	u1 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
-	u2 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
+	if (!(u1 = (u_short *)malloc((max + 1) * sizeof(u_short))))
+		return(toutf8(buf, s, max));
+	if (!(u2 = (u_short *)malloc((max + 1) * sizeof(u_short)))) {
+		free(u1);
+		return(toutf8(buf, s, max));
+	}
 
 	for (i = j = 0; s[i] && j < max; j++) u1[j] = toucs2(s, &i);
 	u1[j] = (u_short)0;
@@ -1548,8 +1557,8 @@ int max, nf;
 		j = ucs2toutf8(buf, j, u2[i]);
 	}
 
-	Xfree(u1);
-	Xfree(u2);
+	free(u1);
+	free(u2);
 	cnvunicode(0, -1);
 	if (kanjierrno) kanjierrno = DEFCODE;
 
@@ -1564,8 +1573,12 @@ int max, nf;
 	u_short *u1, *u2;
 	int i, j;
 
-	u1 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
-	u2 = (u_short *)Xmalloc((max + 1) * sizeof(u_short));
+	if (!(u1 = (u_short *)malloc((max + 1) * sizeof(u_short))))
+		return(fromutf8(buf, s, max));
+	if (!(u2 = (u_short *)malloc((max + 1) * sizeof(u_short)))) {
+		free(u1);
+		return(fromutf8(buf, s, max));
+	}
 
 	for (i = j = 0; s[i] && j < max; j++) u1[j] = ucs2fromutf8(s, &i);
 	u1[j] = (u_short)0;
@@ -1574,8 +1587,8 @@ int max, nf;
 	u2[j] = (u_short)0;
 	for (i = j = 0; u2[i] && j + 1 < max; i++) fromucs2(buf, &j, u2[i]);
 
-	Xfree(u1);
-	Xfree(u2);
+	free(u1);
+	free(u2);
 	cnvunicode(0, -1);
 
 	return(j);
@@ -1930,9 +1943,22 @@ int in, out, io;
 
 	return(buf);
 }
+
+VOID renewkanjiconv(sp, in, out, io)
+char **sp;
+int in, out, io;
+{
+	char *buf;
+
+	buf = newkanjiconv(*sp, in, out, in);
+	if (buf != *sp) {
+		free(*sp);
+		*sp = buf;
+	}
+}
 #endif	/* !_NOKANJICONV */
 
-#if	defined (FD) && !defined (_NOKANJIFCONV)
+#ifdef	DEP_FILECONV
 int getkcode(path)
 CONST char *path;
 {
@@ -1948,7 +1974,7 @@ CONST char *path;
 
 	return(fnamekcode);
 }
-#endif	/* FD && !_NOKANJIFCONV */
+#endif	/* DEP_FILECONV */
 
 #ifndef	_NOKANJICONV
 int getoutputkcode(VOID_A)
@@ -1966,26 +1992,26 @@ char *convget(buf, path, drv)
 char *buf, *path;
 int drv;
 {
-# ifndef	_NOROCKRIDGE
+# ifdef	DEP_ROCKRIDGE
 	char rbuf[MAXPATHLEN];
 # endif
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	int c, fgetok;
 # endif
 	CONST char *cp;
 
-#ifdef	DOUBLESLASH
+# ifdef	DOUBLESLASH
 	if (path[0] == _SC_ && path[1] == _SC_ && !isdslash(path))
 		memmove(path, &(path[1]), strlen(&(path[1])) + 1);
-#endif
+# endif
 
 	if (noconv) return(path);
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	fgetok = (nokanjifconv) ? 0 : 1;
 # endif
 
 	cp = path;
-# ifndef	_NOROCKRIDGE
+# ifdef	DEP_ROCKRIDGE
 	if (!norockridge) cp = transpath(cp, rbuf);
 # endif
 # ifdef	DEP_DOSEMU
@@ -1994,12 +2020,12 @@ int drv;
 		buf[sjis2ujis(buf, (u_char *)cp, MAXPATHLEN - 1)] = '\0';
 		cp = buf;
 #  endif
-#  ifndef	_NOKANJIFCONV
+#  ifdef	DEP_FILECONV
 		fgetok = 0;
 #  endif
 	}
 # endif	/* DEP_DOSEMU */
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	if (fgetok) {
 #  ifdef	DEP_URLPATH
 		if (drv == DEV_URL) c = urlkcode;
@@ -2008,8 +2034,8 @@ int drv;
 		c = getkcode(cp);
 		cp = kanjiconv2(buf, cp, MAXPATHLEN - 1, c, DEFCODE, L_FNAME);
 	}
-# endif	/* !_NOKANJIFCONV */
-# ifndef	_NOROCKRIDGE
+# endif	/* DEP_FILECONV */
+# ifdef	DEP_ROCKRIDGE
 	if (cp == rbuf) {
 		Xstrcpy(buf, rbuf);
 		return(buf);
@@ -2027,13 +2053,13 @@ int needfile, rdlink;
 char *rrreal;
 int *codep;
 {
-# if	!defined (_NOKANJIFCONV) || defined (DEP_DOSEMU)
+# if	defined (DEP_FILECONV) || defined (DEP_DOSEMU)
 	char kbuf[MAXPATHLEN];
 # endif
-# ifndef	_NOROCKRIDGE
+# ifdef	DEP_ROCKRIDGE
 	char rbuf[MAXPATHLEN];
 # endif
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	int c, fputok;
 # endif
 # ifdef	DEP_URLPATH
@@ -2055,7 +2081,7 @@ int *codep;
 # endif
 		return((char *)path);
 	}
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	fputok = (nokanjifconv) ? 0 : 1;
 # endif
 
@@ -2102,12 +2128,12 @@ int *codep;
 	if ((n = dospath(cp, kbuf))) {
 		cp = kbuf;
 		if (codep) *codep = SJIS;
-#  ifndef	_NOKANJIFCONV
+#  ifdef	DEP_FILECONV
 		fputok = 0;
 #  endif
 	}
 # endif	/* DEP_DOSEMU */
-# ifndef	_NOKANJIFCONV
+# ifdef	DEP_FILECONV
 	if (fputok) {
 #  ifdef	DEP_URLPATH
 		if (url) c = urlkcode;
@@ -2117,8 +2143,8 @@ int *codep;
 		if (codep) *codep = c;
 		cp = kanjiconv2(kbuf, cp, MAXPATHLEN - 1, DEFCODE, c, L_FNAME);
 	}
-# endif	/* !_NOKANJIFCONV */
-# ifndef	_NOROCKRIDGE
+# endif	/* DEP_FILECONV */
+# ifdef	DEP_ROCKRIDGE
 	if (!norockridge && (cp = detranspath(cp, rbuf)) == rbuf) {
 		if (rrreal) Xstrcpy(rrreal, rbuf);
 		if (rdlink && rrreadlink(cp, buf, MAXPATHLEN - 1) >= 0) {

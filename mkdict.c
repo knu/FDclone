@@ -37,7 +37,7 @@ typedef struct _dicttable {
 typedef struct _biastable {
 	u_short id;
 	u_short klen;
-	u_short kbuf[MAXBIAS];
+	CONST u_short kbuf[MAXBIAS];
 } biastable;
 
 typedef struct _hinsitable {
@@ -50,15 +50,15 @@ typedef struct _hinsitable {
 typedef struct _hinsisettable {
 	u_short id;
 	u_short klen;
-	u_short set[MAXHINSI];
+	CONST u_short set[MAXHINSI];
 } hinsisettable;
 
 typedef struct _contable {
 	u_short id;
 	u_short klen;
-	u_short kbuf[MAXFUZOKULEN];
+	CONST u_short kbuf[MAXFUZOKULEN];
 	u_short nlen;
-	u_short next[SH_MAX];
+	CONST u_short next[SH_MAX];
 } contable;
 
 static u_char *NEAR Xrealloc __P_((VOID_P, ALLOC_T));
@@ -87,6 +87,7 @@ static int NEAR fputword __P_((u_int, FILE *));
 static int NEAR fputdword __P_((long, FILE *));
 static int NEAR writeindex __P_((FILE *));
 static int NEAR writehinsiindex __P_((FILE *));
+static int NEAR writehinsidict __P_((FILE *));
 static int NEAR writedict __P_((FILE *));
 int main __P_((int, char *CONST []));
 
@@ -3104,7 +3105,7 @@ CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
 	hinsitable *hp1, *hp2;
-	u_short *buf1, *buf2;
+	CONST u_short *buf1, *buf2;
 	int i, klen1, klen2;
 
 	hp1 = (hinsitable *)vp1;

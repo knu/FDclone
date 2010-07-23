@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00h
+VERSION	= 3.00i
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -145,6 +145,9 @@ CP	= copy /y
 RM	= del
 LN	= copy /y
 CHMOD	= chmod
+TAR	= tar
+LHA	= lha
+SHAR	= shar
 EXE	= .exe
 OBJ	= .obj
 PROGRAM	= fd
@@ -527,7 +530,7 @@ jcompman-b: compman-b jcatman-b
 depend: $(SRC) config.h kanji.h funcno.h
 	[ -d $(DEPDIR) ] || mkdir $(DEPDIR)
 	for f in $(SRC); do \
-		sed -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
+		$(SED) -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
 		$${f} > $(DEPDIR)\$${f}; \
 	done
 	for f in $(SSRC); do \
@@ -547,7 +550,7 @@ depend: $(SRC) config.h kanji.h funcno.h
 		$(LN) $(DEPDIR)\$${f} $(DEPDIR)\t$${f}; \
 	done
 	for f in $(HEADER) config.h kanji.h funcno.h version.h; do \
-		sed -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
+		$(SED) -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
 		$${f} > $(DEPDIR)\_$${f}; \
 	done
 	$(CP) Makefile.in Makefile.tmp $(DEPDIR)
@@ -827,25 +830,25 @@ nlsparse$(OBJ): lsparse.c
 # for programer's maintenance
 
 tar: $(SOURCES)
-	tar cvf $(TITLE)$(VERSION).tar $(SOURCES)
+	$(TAR) cvf $(TITLE)$(VERSION).tar $(SOURCES)
 	compress -f $(TITLE)$(VERSION).tar
 
 gtar: $(SOURCES)
-	tar cvf $(TITLE)$(VERSION).tar $(SOURCES)
+	$(TAR) cvf $(TITLE)$(VERSION).tar $(SOURCES)
 	gzip -f $(TITLE)$(VERSION).tar
 
 shtar: $(SHSOURCES)
 	(VER=`date '+%y%m%d'`; \
-	tar cvf $(TITLE)sh-$$VER.tar $(SHSOURCES); \
+	$(TAR) cvf $(TITLE)sh-$$VER.tar $(SHSOURCES); \
 	gzip -f $(TITLE)sh-$$VER.tar)
 
 lzh: $(SOURCES)
 	-$(RM) $(TITLE)$(VERSION).lzh
-	lha a $(TITLE)$(VERSION).lzh $(SOURCES)
+	$(LHA) a $(TITLE)$(VERSION).lzh $(SOURCES)
 
 shar: $(SOURCES)
 	-$(RM) $(TITLE)$(VERSION).shar.[0-9][0-9]
-	shar -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
+	$(SHAR) -L50 -apc -n $(TITLE)$(VERSION) -o $(TITLE)$(VERSION).shar \
 	-T $(SRCS) -C $(JSRCS)
 
 ipk: $(PROGRAM)$(EXE) $(TABLES) mkdir_p$(EXE)
@@ -959,7 +962,7 @@ clean:
 	-$(RM) kanji.h
 	-$(RM) _fd-cat.ja
 	-$(RM) _fd-cat.C
-	-$(RM) fd_cat.*
+	-$(RM) fd-cat.*
 	-$(RM) kanjicnv$(EXE)
 	-$(RM) expfunc$(EXE)
 	-$(RM) mkdir_p$(EXE)
@@ -967,6 +970,8 @@ clean:
 	-$(RM) mkunitbl$(EXE)
 	-$(RM) mkdict$(EXE)
 	-$(RM) mktankan$(EXE)
+	-$(RM) mkkanji$(EXE)
+	-$(RM) mkcat$(EXE)
 	-$(RM) fdsh$(EXE)
 	-$(RM) fdbsh$(EXE)
 	-$(RM) fdnsh$(EXE)
@@ -1061,12 +1066,10 @@ log$(OBJ): typesize.h term.h types.h lsparse.h namelist.h dosdisk.h
 sysemu$(OBJ): fd.h headers.h machine.h config.h
 sysemu$(OBJ): depend.h printf.h stream.h kctype.h
 sysemu$(OBJ): string.h malloc.h
-sysemu$(OBJ): term.h dosdisk.h typesize.h dirent.h unixemu.h
-sysemu$(OBJ): kconv.h sysemu.h
-sysemu$(OBJ): log.h pathname.h termio.h
-sysemu$(OBJ): realpath.h
-sysemu$(OBJ): socket.h urldisk.h namelist.h url.h
-sysemu$(OBJ): auth.h
+sysemu$(OBJ): kconv.h sysemu.h dirent.h unixemu.h
+sysemu$(OBJ): log.h pathname.h typesize.h termio.h
+sysemu$(OBJ): realpath.h dosdisk.h socket.h
+sysemu$(OBJ): urldisk.h namelist.h url.h auth.h
 dosdisk$(OBJ): headers.h machine.h config.h
 dosdisk$(OBJ): depend.h kctype.h
 dosdisk$(OBJ): string.h time.h sysemu.h dirent.h
@@ -1321,7 +1324,7 @@ command$(OBJ): termemu.h functabl.h
 browse$(OBJ): fd.h headers.h machine.h config.h
 browse$(OBJ): depend.h printf.h stream.h kctype.h
 browse$(OBJ): string.h malloc.h
-browse$(OBJ): device.h parse.h func.h sysemu.h dirent.h unixemu.h
+browse$(OBJ): device.h parse.h kconv.h func.h sysemu.h dirent.h unixemu.h
 browse$(OBJ): pathname.h
 browse$(OBJ): typesize.h term.h types.h lsparse.h namelist.h dosdisk.h
 browse$(OBJ): funcno.h kanji.h catalog.h termemu.h

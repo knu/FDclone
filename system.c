@@ -52,6 +52,9 @@
 # ifdef	USERESOURCEH
 # include <sys/resource.h>
 # endif
+# ifdef	USETIMES
+# include <sys/times.h>
+# endif
 # ifdef	USEULIMITH
 # include <ulimit.h>
 # endif
@@ -538,7 +541,9 @@ static syntaxtree *NEAR childstree __P_((syntaxtree *, int));
 static syntaxtree *NEAR skipfuncbody __P_((syntaxtree *));
 static syntaxtree *NEAR insertstree __P_((syntaxtree *, syntaxtree *, int));
 static syntaxtree *NEAR linkstree __P_((syntaxtree *, int));
+#if	!MSDOS || defined (DEP_PTY) || !defined (USEFAKEPIPE)
 static VOID NEAR nownstree __P_((syntaxtree *));
+#endif
 static int NEAR evalfiledesc __P_((CONST char *));
 static int NEAR redmode __P_((int));
 static int NEAR cancelredirect __P_((redirectlist *));
@@ -2551,7 +2556,7 @@ int opt;
 	return(ret);
 }
 
-#if	!MSDOS && defined (DEP_PTY) && defined (CYGWIN)
+# if	!MSDOS && defined (DEP_PTY) && defined (CYGWIN)
 static VOID NEAR addmychild(pid)
 p_id_t pid;
 {
@@ -2563,7 +2568,7 @@ p_id_t pid;
 	mychildren[n++] = pid;
 	mychildren[n] = (p_id_t)-1;
 }
-#endif	/* !MSDOS && DEP_PTY && CYGWIN */
+# endif	/* !MSDOS && DEP_PTY && CYGWIN */
 
 static VOID NEAR setstopsig(valid)
 int valid;
@@ -3373,6 +3378,7 @@ int type;
 	return(new);
 }
 
+#if	!MSDOS || defined (DEP_PTY) || !defined (USEFAKEPIPE)
 static VOID NEAR nownstree(trp)
 syntaxtree *trp;
 {
@@ -3386,6 +3392,7 @@ syntaxtree *trp;
 	trp -> flags |= ST_NOWN;
 	nownstree(trp -> next);
 }
+#endif
 
 static int NEAR evalfiledesc(s)
 CONST char *s;
@@ -4210,7 +4217,7 @@ int len;
 
 	var[i] = s;
 #ifdef	ENVNOCASE
-	for (i = 0; i < len; i++) s[i] = Xtoupper(s[i]);
+	Xstrntoupper(s, len);
 #endif
 	if (export) {
 		exportsize += (u_long)strlen(s) + 1;
@@ -6275,6 +6282,9 @@ p_id_t ppid;
 	pl = (pipelist *)Xmalloc(sizeof(pipelist));
 	pl -> file = NULL;
 	pl -> fp = NULL;
+#ifndef	USEFAKEPIPE
+	pl -> trp = NULL;
+#endif
 	pl -> fd = fdin;
 	pl -> old = -1;
 
@@ -6432,7 +6442,7 @@ int fd;
 
 	if (!(prevp = searchpipe(fd))) return(NULL);
 	pl = *prevp;
-	if (!(fp = Xfdopen(fd, "rb"))) {
+	if (!(fp = Xfdopen(fd, "r"))) {
 		safeclose(fd);
 		safermtmpfile(pl -> file);
 		Xfree(pl -> file);
@@ -6459,6 +6469,10 @@ int fd;
 	if (!(prevp = searchpipe(fd))) return(-1);
 	duperrno = errno;
 	pl = *prevp;
+#ifndef	USEFAKEPIPE
+	freestree(pl -> trp);
+	Xfree(pl -> trp);
+#endif
 #ifndef	NOJOB
 	if (pl -> pid > (p_id_t)0 && stoppedjob(pl -> pid) > 0) {
 		errno = duperrno;
@@ -6534,9 +6548,6 @@ static VOID NEAR disphash(VOID_A)
 	if (hashtable) for (i = 0; i < MAXHASH; i++)
 		for (hp = hashtable[i]; hp; hp = hp -> next) {
 			j = Xsnprintf(buf, sizeof(buf), "%d", hp -> hits);
-#ifdef	CODEEUC
-			j = strlen(buf);
-#endif
 			buf[j++] = (hp -> type & CM_RECALC) ? '*' : ' ';
 			while (j < 7) buf[j++] = ' ';
 			buf[j] = '\0';
@@ -9678,7 +9689,6 @@ int type, id, bg;
 #endif
 {
 #ifdef	DEP_FILECONV
-	char *cp;
 	int i;
 #endif
 #if	!MSDOS
@@ -9694,12 +9704,9 @@ int type, id, bg;
 	if (defaultkcode == NOCNV || defaultkcode == DEFCODE) /*EMPTY*/;
 	else if (type == CT_FDORIGINAL || type == CT_FDINTERNAL
 	|| (type == CT_BUILTIN && (shbuiltinlist[id].flags & BT_FILENAME))) {
-		for (i = 1; i < comm -> argc; i++) {
-			cp = newkanjiconv(comm -> argv[i],
+		for (i = 1; i < comm -> argc; i++)
+			renewkanjiconv(&(comm -> argv[i]),
 				defaultkcode, DEFCODE, L_FNAME);
-			if (cp != comm -> argv[i]) Xfree(comm -> argv[i]);
-			comm -> argv[i] = cp;
-		}
 	}
 #endif
 
@@ -10454,6 +10461,9 @@ CONST char *command;
 static XFILE *NEAR _dopopen(command)
 CONST char *command;
 {
+#ifndef	USEFAKEPIPE
+	pipelist **prevp;
+#endif
 #ifdef	CYGWIN
 	struct timeval tv;
 #endif
@@ -10465,20 +10475,26 @@ CONST char *command;
 
 	nottyout++;
 #ifdef	USEFAKEPIPE
-	if ((fd = openpipe(&pipein, STDIN_FILENO, 1)) < 0) /*EMPTY*/;
+	fd = openpipe(&pipein, STDIN_FILENO, 1);
 #else
-	if ((fd = openpipe(&pipein, STDIN_FILENO, 1, 1, mypid)) < 0) /*EMPTY*/;
+	fd = openpipe(&pipein, STDIN_FILENO, 1, 1, mypid);
+	prevp = searchpipe(fd);
 #endif
+
+	if (fd < 0) /*EMPTY*/;
 	else if (pipein) {
 #ifdef	CYGWIN
 	/* a trick for buggy terminal emulation */
-		tv.tv_sec = 0;
+		tv.tv_sec = 0L;
 		tv.tv_usec = 500000L;	/* maybe enough waiting limit */
 		VOID_C readselect(1, &fd, NULL, &tv);
 #endif
 	}
 	else {
-		nownstree(trp);
+#ifndef	USEFAKEPIPE
+		if (prevp && !((*prevp) -> file)) nownstree(trp);
+		prevp = NULL;
+#endif
 		if (!trp) ret_status = RET_SYNTAXERR;
 		else if (!(trp -> comm)) ret_status = RET_SUCCESS;
 		else if (notexec) {
@@ -10501,7 +10517,11 @@ CONST char *command;
 		}
 	}
 
-	if (trp) {
+#ifndef	USEFAKEPIPE
+	if (prevp) (*prevp) -> trp = trp;
+	else
+#endif
+	{
 		freestree(trp);
 		Xfree(trp);
 	}
@@ -11091,9 +11111,6 @@ char *CONST *argv;
 int shell_loop(pseudoexit)
 int pseudoexit;
 {
-#ifdef	DEP_FILECONV
-	char *cp;
-#endif
 	char *ps, *buf;
 	int cont;
 
@@ -11158,11 +11175,13 @@ int pseudoexit;
 		}
 
 #ifdef	DEP_FILECONV
-		cp = newkanjiconv(buf, DEFCODE, defaultkcode, L_FNAME);
-		if (cp != buf) Xfree(buf);
-		buf = cp;
+		renewkanjiconv(&buf, DEFCODE, defaultkcode, L_FNAME);
+		printf_defkanji++;
 #endif
 		cont = exec_line(buf);
+#ifdef	DEP_FILECONV
+		printf_defkanji--;
+#endif
 		Xfree(buf);
 		if (pseudoexit && exit_status >= 0) break;
 #ifndef	MINIMUMSHELL

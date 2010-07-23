@@ -157,11 +157,6 @@ typedef struct _wild_t {
 #define	EA_EVALIFS		004000
 #define	EA_INQUOTE		010000
 
-#ifdef	NOUID_T
-typedef u_short			uid_t;
-typedef u_short			gid_t;
-#endif
-
 #ifdef	SIGARGINT
 typedef int			sigarg_t;
 #else
@@ -185,13 +180,13 @@ typedef void			sigfnc_t;
 typedef sigarg_t (*sigcst_t)__P_((sigfnc_t));
 
 typedef struct _uidtable {
-	uid_t uid;
+	u_id_t uid;
 	char *name;
 	char *home;
 } uidtable;
 
 typedef struct _gidtable {
-	gid_t gid;
+	g_id_t gid;
 	char *name;
 #ifndef	USEGETGROUPS
 	char **gr_mem;
@@ -287,9 +282,9 @@ extern char **duplvar __P_((char *CONST *, int));
 extern int parsechar __P_((CONST char *, int, int, int, int *, int *));
 #ifndef	NOUID
 extern VOID getlogininfo __P_((CONST char **, CONST char **));
-extern uidtable *finduid __P_((uid_t, CONST char *));
-extern gidtable *findgid __P_((gid_t, CONST char *));
-extern int isgroupmember __P_((gid_t));
+extern uidtable *finduid __P_((u_id_t, CONST char *));
+extern gidtable *findgid __P_((g_id_t, CONST char *));
+extern int isgroupmember __P_((g_id_t));
 # ifdef	DEBUG
 extern VOID freeidlist __P_((VOID_A));
 # endif

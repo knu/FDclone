@@ -6,8 +6,6 @@
 
 #ifdef	FD
 #include "fd.h"
-#include "term.h"
-#include "dosdisk.h"
 #include "kconv.h"
 #else
 #include "headers.h"
@@ -21,9 +19,16 @@
 #include "sysemu.h"
 #include "log.h"
 #include "pathname.h"
+#include "unixemu.h"
 #include "termio.h"
 #include "realpath.h"
 
+#if	MSDOS
+#include <io.h>
+#endif
+#ifdef	DEP_DOSDRIVE
+#include "dosdisk.h"
+#endif
 #if	MSDOS && defined (FD)
 #include "unixdisk.h"
 #endif
@@ -75,8 +80,7 @@
 #define	unixstat2(p, s)		((stat(p, s)) ? -1 : 0)
 #define	unixlstat2(p, s)	((lstat(p, s)) ? -1 : 0)
 #define	unixchmod(p, m)		((chmod(p, m)) ? -1 : 0)
-#define	unixutime(p, t)		((utime(p, t)) ? -1 : 0)
-#define	unixutimes(p, t)	((utimes(p, t)) ? -1 : 0)
+#define	unixutimes		rawutimes
 #define	unixunlink(p)		((unlink(p)) ? -1 : 0)
 #define	unixrename(f, t)	((rename(f,t)) ? -1 : 0)
 #define	unixrmdir(p)		((rmdir(p)) ? -1 : 0)
@@ -143,9 +147,7 @@ extern int rrlstat __P_((CONST char *, struct stat *));
 extern int rrreadlink __P_((CONST char *, char *, int));
 #endif
 
-#ifdef	FD
-extern int win_x;
-extern int win_y;
+#if	defined (FD) && defined (DEP_URLPATH)
 extern char fullpath[];
 #endif
 
@@ -171,15 +173,8 @@ static struct dirent *NEAR unixreaddir __P_((DIR *));
 static int NEAR unixrewinddir __P_((DIR *));
 static int NEAR unixchdir __P_((CONST char *));
 static char *NEAR unixgetcwd __P_((char *, ALLOC_T));
-static u_int NEAR getdosmode __P_((u_int));
-static time_t NEAR getdostime __P_((u_int, u_int));
 static int NEAR unixstat __P_((CONST char *, struct stat *));
-static VOID NEAR putdostime __P_((u_short *, u_short *, time_t));
-# ifdef	USEUTIME
-static int NEAR unixutime __P_((CONST char *, CONST struct utimbuf *));
-# else
-static int NEAR unixutimes __P_((CONST char *, CONST struct timeval *));
-# endif
+#define	unixutimes		rawutimes
 #endif	/* MSDOS && !FD */
 #ifdef	DEP_DOSDRIVE
 static int NEAR checkchdir __P_((int, CONST char *));
@@ -663,6 +658,81 @@ int drv;
 }
 #endif	/* DEP_PSEUDOPATH */
 
+#ifdef	DEP_DOSPATH
+u_int getunixmode(attr)
+u_int attr;
+{
+	u_int mode;
+
+	mode = 0;
+	if (!(attr & DS_IHIDDEN)) mode |= S_IRUSR;
+	if (!(attr & DS_IRDONLY)) mode |= S_IWUSR;
+	mode |= (mode >> 3) | (mode >> 6);
+# if	MSDOS
+	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
+# endif
+	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IEXEC_ALL);
+	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
+	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
+	else mode |= S_IFREG;
+
+	return(mode);
+}
+
+time_t getunixtime(d, t)
+u_int d, t;
+{
+	struct tm tm;
+
+	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
+	tm.tm_year -= 1900;
+	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
+	tm.tm_mday = (d & 0x1f);
+	tm.tm_hour = ((t >> 11) & 0x1f);
+	tm.tm_min = ((t >> 5) & 0x3f);
+	tm.tm_sec = ((t << 1) & 0x3e);
+	tm.tm_isdst = -1;
+
+	return(mktime(&tm));
+}
+
+u_short getdosmode(mode)
+u_int mode;
+{
+	u_short attr;
+
+	attr = (u_short)0;
+#if	MSDOS
+	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
+#endif
+	if (!(mode & S_IRUSR)) attr |= DS_IHIDDEN;
+	if (!(mode & S_IWUSR)) attr |= DS_IRDONLY;
+	if ((mode & S_IFMT) == S_IFDIR) attr |= DS_IFDIR;
+	else {
+		attr |= DS_IARCHIVE;
+		if ((mode & S_IFMT) == S_IFIFO) attr |= DS_IFLABEL;
+		else if ((mode & S_IFMT) == S_IFSOCK) attr |= DS_IFSYSTEM;
+	}
+
+	return(attr);
+}
+
+VOID getdostime(dp, tp, t)
+u_short *dp, *tp;
+time_t t;
+{
+	struct tm *tm;
+
+	tm = localtime(&t);
+	*dp = (((tm -> tm_year - 80) & 0x7f) << 9)
+		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
+		+ (tm -> tm_mday & 0x1f);
+	*tp = ((tm -> tm_hour & 0x1f) << 11)
+		+ ((tm -> tm_min & 0x3f) << 5)
+		+ ((tm -> tm_sec & 0x3e) >> 1);
+}
+#endif	/* DEP_DOSPATH */
+
 #if	MSDOS && !defined (FD)
 static DIR *NEAR unixopendir(path)
 CONST char *path;
@@ -773,40 +843,6 @@ ALLOC_T size;
 	return(cp);
 }
 
-static u_int NEAR getdosmode(attr)
-u_int attr;
-{
-	u_int mode;
-
-	mode = 0;
-	if (attr & DS_IARCHIVE) mode |= S_ISVTX;
-	if (!(attr & DS_IHIDDEN)) mode |= S_IRUSR;
-	if (!(attr & DS_IRDONLY)) mode |= S_IWUSR;
-	if (attr & DS_IFDIR) mode |= (S_IFDIR | S_IXUSR);
-	else if (attr & DS_IFLABEL) mode |= S_IFIFO;
-	else if (attr & DS_IFSYSTEM) mode |= S_IFSOCK;
-	else mode |= S_IFREG;
-
-	return(mode);
-}
-
-static time_t NEAR getdostime(d, t)
-u_int d, t;
-{
-	struct tm tm;
-
-	tm.tm_year = 1980 + ((d >> 9) & 0x7f);
-	tm.tm_year -= 1900;
-	tm.tm_mon = ((d >> 5) & 0x0f) - 1;
-	tm.tm_mday = (d & 0x1f);
-	tm.tm_hour = ((t >> 11) & 0x1f);
-	tm.tm_min = ((t >> 5) & 0x3f);
-	tm.tm_sec = ((t << 1) & 0x3e);
-	tm.tm_isdst = -1;
-
-	return(mktime(&tm));
-}
-
 static int NEAR unixstat(path, stp)
 CONST char *path;
 struct stat *stp;
@@ -814,73 +850,17 @@ struct stat *stp;
 	struct find_t find;
 
 	if (_dos_findfirst(path, SEARCHATTRS, &find) != 0) return(-1);
-	stp -> st_mode = getdosmode(find.ff_attrib);
-	stp -> st_mtime = getdostime(find.ff_fdate, find.ff_ftime);
+	stp -> st_mode = getunixmode(find.ff_attrib);
+	stp -> st_mtime = getunixtime(find.ff_fdate, find.ff_ftime);
 	stp -> st_size = find.ff_fsize;
 	stp -> st_ctime = stp -> st_atime = stp -> st_mtime;
 	stp -> st_dev = stp -> st_ino = 0;
 	stp -> st_nlink = 1;
-	stp -> st_uid = stp -> st_gid = -1;
+	stp -> st_uid = (uid_t)-1;
+	stp -> st_gid = (gid_t)-1;
 
 	return(0);
 }
-
-static VOID NEAR putdostime(dp, tp, t)
-u_short *dp, *tp;
-time_t t;
-{
-	struct tm *tm;
-
-	tm = localtime(&t);
-	*dp = (((tm -> tm_year - 80) & 0x7f) << 9)
-		+ (((tm -> tm_mon + 1) & 0x0f) << 5)
-		+ (tm -> tm_mday & 0x1f);
-	*tp = ((tm -> tm_hour & 0x1f) << 11)
-		+ ((tm -> tm_min & 0x3f) << 5)
-		+ ((tm -> tm_sec & 0x3e) >> 1);
-}
-
-# ifdef	USEUTIME
-static int NEAR unixutime(path, times)
-CONST char *path;
-CONST struct utimbuf *times;
-{
-	time_t t;
-	__dpmi_regs reg;
-	struct SREGS sreg;
-	int n, fd;
-
-	t = times -> modtime;
-	if ((fd = open(path, O_RDONLY, 0666)) < 0) return(-1);
-	reg.x.ax = 0x5701;
-	reg.x.bx = fd;
-	putdostime(&(reg.x.dx), &(reg.x.cx), t);
-	n = intcall(0x21, &reg, &sreg);
-	VOID_C close(fd);
-
-	return(n);
-}
-# else
-static int NEAR unixutimes(path, tvp)
-CONST char *path;
-CONST struct timeval *tvp;
-{
-	time_t t;
-	__dpmi_regs reg;
-	struct SREGS sreg;
-	int n, fd;
-
-	t = tvp[1].tv_sec;
-	if ((fd = open(path, O_RDONLY, 0666)) < 0) return(-1);
-	reg.x.ax = 0x5701;
-	reg.x.bx = fd;
-	putdostime(&(reg.x.dx), &(reg.x.cx), t);
-	n = intcall(0x21, &reg, &sreg);
-	VOID_C close(fd);
-
-	return(n);
-}
-# endif
 #endif	/* MSDOS && !FD */
 
 #ifdef	DEP_DIRENT
@@ -1200,14 +1180,8 @@ CONST char *path;
 				break;
 			default:
 # if	!MSDOS
-				switch (dev) {
-					case DEV_DOS:
-					case DEV_URL:
-						VOID_C rawchdir(rootpath);
-						break;
-					default:
-						break;
-				}
+				if (dev != DEV_NORMAL)
+					VOID_C rawchdir(rootpath);
 # endif
 				break;
 		}
@@ -1221,7 +1195,7 @@ CONST char *path;
 	else if (n) /*EMPTY*/;
 	else if (!Xgetwd(cachecwd)) {
 		*cachecwd = '\0';
-		n = -1;
+		if (dev != DEV_NORMAL) n = -1;
 	}
 # if	defined (FD) && defined (DEP_URLPATH)
 	else if (dev == DEV_URL) Xstrcpy(fullpath, cachecwd);
@@ -1234,9 +1208,6 @@ CONST char *path;
 char *Xgetwd(path)
 char *path;
 {
-#ifdef	DEP_DOSEMU
-	int i;
-#endif
 #ifdef	DEP_URLPATH
 	int drv;
 #endif
@@ -1259,12 +1230,7 @@ char *path;
 #ifdef	DEP_DOSEMU
 	if (dosdrive && checkdrv(lastdrv, NULL) == DEV_DOS) {
 		if (!(cp = dosgetcwd(path, MAXPATHLEN))) return(NULL);
-		if (Xisupper(cp[0])) {
-			for (i = 2; cp[i]; i++) {
-				if (issjis1((u_char)(cp[i]))) i++;
-				else cp[i] = Xtolower(cp[i]);
-			}
-		}
+		if (Xisupper(cp[0])) Xstrtolower(&(cp[2]));
 		cp = convget(conv, cp, DEV_DOS);
 	}
 	else
@@ -1547,57 +1513,73 @@ int mode;
 }
 #endif	/* DEP_BIASPATH */
 
-#ifdef	DEP_DIRENT
-#ifdef	USEUTIME
-int Xutime(path, times)
+int rawutimes(path, utp)
 CONST char *path;
-CONST struct utimbuf *times;
+CONST struct utimes_t *utp;
 {
-# ifdef	FD
-	char conv[MAXPATHLEN];
-# endif
+# if	MSDOS
+	__dpmi_regs reg;
+	struct SREGS sreg;
+	time_t t;
+	int fd;
+# else	/* !MSDOS */
+#  ifdef	USEUTIME
+	struct utimbuf times;
+#  else
+	struct timeval tvp[2];
+#  endif
+# endif	/* !MSDOS */
 	int n;
 
-	path = convput(conv, path, 1, 1, NULL, NULL);
-# ifdef	DEP_DOSEMU
-	if (_dospath(path)) n = dosutime(path, times);
-	else
-# endif
-# ifdef	DEP_URLPATH
-	if (urlpath(path, NULL, NULL, NULL)) n = seterrno(EACCES);
-	else
-# endif
-	n = unixutime(path, times);
-	LOG1(_LOG_NOTICE_, n, "utime(\"%k\");", path);
+# if	MSDOS
+	t = utp -> modtime;
+	if ((fd = open(path, O_RDONLY, 0666)) < 0) return(-1);
+	reg.x.ax = 0x5701;
+	reg.x.bx = fd;
+	getdostime(&(reg.x.dx), &(reg.x.cx), t);
+	n = intcall(0x21, &reg, &sreg);
+	VOID_C close(fd);
+# else	/* !MSDOS */
+#  ifdef	USEUTIME
+	times.actime = utp -> actime;
+	times.modtime = utp -> modtime;
+	n = utime(path, &times);
+#  else
+	tvp[0].tv_sec = utp -> actime;
+	tvp[0].tv_usec = 0L;
+	tvp[1].tv_sec = utp -> modtime;
+	tvp[1].tv_usec = 0L;
+	n = utimes(path, tvp);
+#  endif
+	if (n != 0) n = -1;
+# endif	/* !MSDOS */
 
 	return(n);
 }
-#else	/* !USEUTIME */
-int Xutimes(path, tvp)
+
+int Xutimes(path, utp)
 CONST char *path;
-CONST struct timeval *tvp;
+CONST struct utimes_t *utp;
 {
-# ifdef	FD
+#ifdef	FD
 	char conv[MAXPATHLEN];
-# endif
+#endif
 	int n;
 
 	path = convput(conv, path, 1, 1, NULL, NULL);
-# ifdef	DEP_DOSEMU
-	if (_dospath(path)) n = dosutimes(path, tvp);
+#ifdef	DEP_DOSEMU
+	if (_dospath(path)) n = dosutimes(path, utp);
 	else
-# endif
-# ifdef	DEP_URLPATH
+#endif
+#ifdef	DEP_URLPATH
 	if (urlpath(path, NULL, NULL, NULL)) n = seterrno(EACCES);
 	else
-# endif
-	n = unixutimes(path, tvp);
+#endif
+	n = unixutimes(path, utp);
 	LOG1(_LOG_NOTICE_, n, "utimes(\"%k\");", path);
 
 	return(n);
 }
-#endif	/* !USEUTIME */
-#endif	/* DEP_DIRENT */
 
 #ifdef	DEP_BIASPATH
 #ifdef	HAVEFLAGS
@@ -1633,8 +1615,8 @@ u_long flags;
 #ifndef	NOUID
 int Xchown(path, uid, gid)
 CONST char *path;
-uid_t uid;
-gid_t gid;
+u_id_t uid;
+g_id_t gid;
 {
 # ifdef	FD
 	char conv[MAXPATHLEN];
@@ -1653,9 +1635,10 @@ gid_t gid;
 # if	MSDOS
 	n = seterrno(EACCES);
 # else
-	n = (chown(path, uid, gid)) ? -1 : 0;
+	n = (chown(path, (uid_t)uid, (gid_t)gid)) ? -1 : 0;
 # endif
-	LOG3(_LOG_WARNING_, n, "chown(\"%k\", %d, %d);", path, uid, gid);
+	LOG3(_LOG_WARNING_, n,
+		"chown(\"%k\", %d, %d);", path, (int)uid, (int)gid);
 
 	return(n);
 }
@@ -1940,15 +1923,16 @@ int whence;
 	return(ofs);
 }
 
+#ifndef	NOFTRUNCATE
 int Xftruncate(fd, len)
 int fd;
 off_t len;
 {
-#ifdef	__TURBOC__
+# ifdef	__TURBOC__
 	char buf[BUFSIZ];
 	off_t ofs, eofs;
 	int size, duperrno;
-#endif
+# endif
 	int n;
 
 	switch (chkopenfd(fd)) {
@@ -1958,39 +1942,38 @@ off_t len;
 			break;
 # endif
 		default:
-#ifndef	__TURBOC__
-			n = ftruncate(fd, len);
-#else	/* __TURBOC__ */
+# ifdef	__TURBOC__
 			if ((ofs = lseek(fd, 0L, L_INCR)) < (off_t)0) {
 				n = -1;
 				break;
 			}
 			memset(buf, 0, sizeof(buf));
+			n = 0;
 			if ((eofs = lseek(fd, 0L, L_XTND)) < (off_t)0) n = -1;
-			else if (eofs < len) {
-				while (eofs < len) {
-					size = sizeof(buf);
-					if (eofs + size > len)
-						size = len - eofs;
-					if (write(fd, buf, size) < 0) break;
-				}
-				n = (eofs < len) ? -1 : 0;
-			}
 			else if (eofs > len) {
 				eofs = lseek(fd, len, L_SET);
-				if (eofs == (off_t)-1) n = -1;
+				if (eofs < (off_t)0) n = -1;
 				else if (eofs != len) n = seterrno(EIO);
 				else n = write(fd, buf, 0);
+			}
+			else while (eofs < len) {
+				size = sizeof(buf);
+				if (eofs + size > len) size = len - eofs;
+				if ((n = write(fd, buf, size)) < 0) break;
+				eofs += len;
 			}
 			duperrno = errno;
 			VOID_C lseek(fd, ofs, L_SET);
 			errno = duperrno;
-#endif	/* __TURBOC__ */
+# else	/* !__TURBOC__ */
+			n = ftruncate(fd, len);
+# endif	/* !__TURBOC__ */
 			break;
 	}
 
 	return(n);
 }
+#endif	/* !NOFTRUNCATE */
 
 int Xdup(old)
 int old;
@@ -2138,7 +2121,7 @@ int fd, operation;
 	}
 	cmd = (operation & LOCK_NB) ? F_SETLK : F_SETLKW;
 	lock.l_start = lock.l_len = (off_t)0;
-	lock.l_whence = SEEK_SET;
+	lock.l_whence = L_SET;
 
 	n = fcntl(fd, cmd, &lock);
 # else	/* !USEFCNTLOCK */
@@ -2179,23 +2162,26 @@ int nbytes, timeout;
 	int i, n;
 
 	n = 1;
-#ifdef	DEP_PSEUDOPATH
+# ifdef	DEP_PSEUDOPATH
 	switch (chkopenfd(fd)) {
-# ifdef	DEP_DOSDRIVE
+#  ifdef	DEP_DOSDRIVE
 		case DEV_DOS:
 			n = 0;
 			break;
-# endif
-# ifdef	DEP_URLPATH
+#  endif
+#  ifdef	DEP_URLPATH
 		case DEV_URL:
 		case DEV_HTTP:
 			if ((n = urlselect(fd)) <= 0) return(n);
 			break;
-# endif
+#  endif
 		default:
 			break;
 	}
-#endif	/* DEP_PSEUDOPATH */
+# endif	/* DEP_PSEUDOPATH */
+# if	MSDOS
+	if (n && isatty(fd)) n = 0;
+# endif
 
 	if (!n) i = timeout = 0;
 	else for (i = 0; timeout <= 0 || i < timeout * 10; i++) {

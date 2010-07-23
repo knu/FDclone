@@ -71,7 +71,7 @@ typedef struct _ptyinfo_t {
 #define	TE_CHANGESTATUS		99
 
 extern VOID regionscroll __P_((int, int, int, int, int, int));
-extern int selectpty __P_((int, int [], char [], int));
+extern int selectpty __P_((int, int [], char [], long));
 extern VOID syncptyout __P_((int, int));
 extern int recvbuf __P_((int, VOID_P, int));
 extern VOID sendbuf __P_((int, CONST VOID_P, int));

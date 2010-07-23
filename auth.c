@@ -16,6 +16,9 @@
 #include "socket.h"
 #include "auth.h"
 
+#ifdef	MINIX
+#include <minix/minlib.h>
+#endif
 #ifdef	FDSH
 #include "sysemu.h"
 #endif

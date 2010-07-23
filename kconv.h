@@ -31,6 +31,7 @@ extern u_int ucs2fromutf8 __P_((CONST u_char *, int *));
 extern int kanjiconv __P_((char *, CONST char *, int, int, int, int));
 extern CONST char *kanjiconv2 __P_((char *, CONST char *, int, int, int, int));
 extern char *newkanjiconv __P_((CONST char *, int, int, int));
+extern VOID renewkanjiconv __P_((char **, int, int, int));
 #endif	/* !_NOKANJICONV */
 #if	defined (FD) && !defined (_NOKANJIFCONV)
 extern int getkcode __P_((CONST char *));

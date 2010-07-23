@@ -30,7 +30,7 @@
 						? nbasic : (m)[n]); \
 				} while (0)
 #define	setmax(m, n)		do { \
-					if (!(n)) (m)[n] = cs_max; \
+					if ((n)) (m)[n] = cs_max; \
 				} while (0)
 #define	MAXSAVEMENU		5
 #define	DEFPALETTE		"89624351888"
@@ -899,8 +899,8 @@ pathtable *pp;
 			kanjiconv(path, buf,
 				MAXPATHLEN - 1, pp -> lang, DEFCODE, L_FNAME);
 		else {
-			path = newkanjiconv(buf, pp -> lang, DEFCODE, L_FNAME);
-			if (path == buf) path = Xstrdup(buf);
+			path = Xstrdup(buf);
+			renewkanjiconv(&path, pp -> lang, DEFCODE, L_FNAME);
 			Xfree(*((char **)(pp -> path)));
 			*((char **)(pp -> path)) = path;
 		}

@@ -61,7 +61,7 @@ extern int getfsymbol __P_((u_int));
 extern int logical_access __P_((u_int));
 #define	logical_access2(s)	logical_access((u_int)((s) -> st_mode))
 #else
-extern int logical_access __P_((u_int, uid_t, gid_t));
+extern int logical_access __P_((u_int, u_id_t, g_id_t));
 #define	logical_access2(s)	logical_access((u_int)((s) -> st_mode), \
 					(s) -> st_uid, (s) -> st_gid)
 #endif

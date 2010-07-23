@@ -59,6 +59,9 @@ CONST int printfsize[] = {
 #endif
 };
 int printf_urgent = 0;
+#ifdef	DEP_FILECONV
+int printf_defkanji = 0;
+#endif
 
 
 #ifndef	MINIMUMSHELL
@@ -501,6 +504,9 @@ va_list args;
 	u_long_t tmp;
 	int hi;
 #endif
+#ifdef	DEP_FILECONV
+	char *s2;
+#endif
 	u_long_t u, mask;
 	CONST char *cp;
 	char *s;
@@ -554,7 +560,13 @@ va_list args;
 				base = 10;
 				break;
 			case 'a':
+#ifdef	FD
+				if (!printf_urgent)
+					pbufp -> flags |= VF_ARGUMENT;
+#endif
+/*FALLTHRU*/
 			case 'k':
+			case 'K':
 #ifdef	DEP_KCONV
 				if (!printf_urgent) pbufp -> flags |= VF_KANJI;
 #endif
@@ -562,8 +574,18 @@ va_list args;
 			case 's':
 				cp = s = va_arg(args, char *);
 #ifdef	FD
-				if (!printf_urgent && fmt[i] == 'a')
+				if (pbufp -> flags & VF_ARGUMENT)
 					s = restorearg(cp);
+#endif
+#ifdef	DEP_FILECONV
+				if ((pbufp -> flags & VF_KANJI)
+				&& printf_defkanji && Xislower(fmt[i])) {
+					s2 = newkanjiconv(s,
+						defaultkcode, DEFCODE,
+						L_FNAME);
+					if (s != s2 && s != cp) free(s);
+					s = s2;
+				}
 #endif
 				len = setstr(s, pbufp, width, prec);
 				if (cp != s) free(s);

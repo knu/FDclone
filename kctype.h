@@ -276,12 +276,14 @@ K_EXTERN CONST u_char b2htable[16]
 #define	DEFCODE			EUC
 #define	SECCODE			SJIS
 #define	KANAWID			2
-#define	iswchar(s, i)		(iskanji1(s, i) || isekana(s, i))
+#define	iskanji1(s, i)		isweuc(s, i)
+#define	iswchar(s, i)		(isweuc(s, i) || isekana(s, i))
 #else
 #define	DEFCODE			SJIS
 #define	SECCODE			EUC
 #define	KANAWID			1
-#define	iswchar(s, i)		iskanji1(s, i)
+#define	iskanji1(s, i)		iswsjis(s, i)
+#define	iswchar(s, i)		iswsjis(s, i)
 #endif
 
 #define	MAXKANJIBUF		(3 + 2 + 3)
@@ -343,22 +345,29 @@ K_EXTERN CONST char kanjiiomode[]
 # endif	/* K_INTERN */
 ;
 
-K_EXTERN int iskanji1 __P_((CONST char *, int));
+K_EXTERN int iswsjis __P_((CONST char *, int));
+#ifndef	LSI_C
+K_EXTERN int isweuc __P_((CONST char *, int));
+#endif
+K_EXTERN int iskana1 __P_((CONST char *, int *));
+
 #ifdef	K_INTERN
-int iskanji1(s, i)
+int iswsjis(s, i)
 CONST char *s;
 int i;
 {
-# ifdef	CODEEUC
-	return(iseuc(s[i]) && iseuc(s[++i]));
-# else
 	return(issjis1(s[i]) && issjis2(s[++i]));
-# endif
 }
-#endif	/* K_INTERN */
 
-K_EXTERN int iskana1 __P_((CONST char *, int *));
-#ifdef	K_INTERN
+# ifndef	LSI_C
+int isweuc(s, i)
+CONST char *s;
+int i;
+{
+	return(iseuc(s[i]) && iseuc(s[++i]));
+}
+# endif
+
 int iskana1(s, ip)
 CONST char *s;
 int *ip;

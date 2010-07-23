@@ -15,8 +15,8 @@ typedef struct _namelist {
 	u_short st_mode;
 	short st_nlink;
 #ifndef	NOUID
-	uid_t st_uid;
-	gid_t st_gid;
+	u_id_t st_uid;
+	g_id_t st_gid;
 #endif
 #if	!defined (NOSYMLINK) && defined (DEP_LSPARSE)
 	char *linkname;
