@@ -51,6 +51,7 @@ typedef struct _lsparse_t {
 #define	LF_FILELOOP		0010
 #define	LF_FILENOPREP		0020
 #define	LF_NOTRAVERSE		0040
+#define	LF_BASENAME		0100
 #define	SKP_NONE		MAXUTYPE(u_char)
 #define	FLD_NONE		MAXUTYPE(u_char)
 #define	SEP_NONE		MAXUTYPE(u_char)

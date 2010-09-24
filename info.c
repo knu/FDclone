@@ -808,11 +808,11 @@ char **cpp;
 
 	if (!cpp || !*cpp || !**cpp) return(vnullstr);
 
-	while (**cpp && !Xisprint(**cpp)) (*cpp)++;
+	while (Xisspace(**cpp)) (*cpp)++;
 	if (!**cpp) return(vnullstr);
 	s = *cpp;
 
-	while (**cpp && Xisprint(**cpp)) (*cpp)++;
+	while (**cpp && !Xisspace(**cpp)) (*cpp)++;
 	if (**cpp) *((*cpp)++) = '\0';
 
 	return(s);

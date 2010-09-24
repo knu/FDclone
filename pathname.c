@@ -1130,11 +1130,8 @@ int argc;
 char ***argvp;
 wild_t *wp;
 {
-#ifdef	DOUBLESLASH
-	int ds;
-#endif
-#ifdef	DEP_URLPATH
-	int url;
+#if	defined (DOUBLESLASH) || defined (DEP_URLPATH)
+	int prefix;
 #endif
 	DIR *dirp;
 	struct dirent *dp;
@@ -1162,26 +1159,21 @@ wild_t *wp;
 	if (wp -> fixed.len) addstrbuf(&(wp -> path), rootpath, 1);
 
 #if	defined (DOUBLESLASH) || defined (DEP_URLPATH)
-	if (wp -> path.len) {
+	if (wp -> path.len) prefix = 0;
 # ifdef	DOUBLESLASH
-		ds = 0;
-# endif
-# ifdef	DEP_URLPATH
-		url = 0;
-# endif
-	}
-# ifdef	DOUBLESLASH
-	else if ((ds = isdslash(wp -> s))) {
-		addstrbuf(&(wp -> fixed), wp -> s, ds);
-		addstrbuf(&(wp -> path), wp -> s, ds);
-		wp -> s += ds;
+	else if ((prefix = isdslash(wp -> s))) {
+		addstrbuf(&(wp -> fixed), wp -> s, prefix);
+		addstrbuf(&(wp -> path), wp -> s, prefix);
+		wp -> s += prefix;
+		wp -> type = WT_DOUBLESLASH;
 	}
 # endif
 # ifdef	DEP_URLPATH
-	else if ((url = urlparse(wp -> s, NULL, NULL, NULL))) {
-		addstrbuf(&(wp -> fixed), wp -> s, url);
-		addstrbuf(&(wp -> path), wp -> s, url);
-		wp -> s += url;
+	else if ((prefix = isurl(wp -> s, 0))) {
+		addstrbuf(&(wp -> fixed), wp -> s, prefix);
+		addstrbuf(&(wp -> path), wp -> s, prefix);
+		wp -> s += prefix;
+		wp -> type = WT_URLPATH;
 	}
 # endif
 #endif	/* DOUBLESLASH || DEP_URLPATH */
@@ -1231,11 +1223,8 @@ wild_t *wp;
 
 	if (!w) {
 		if (wp -> path.len <= plen) w++;
-#ifdef	DOUBLESLASH
-		else if (ds) st.st_mode = S_IFDIR;
-#endif
-#ifdef	DEP_URLPATH
-		else if (url) st.st_mode = S_IFDIR;
+#if	defined (DOUBLESLASH) || defined (DEP_URLPATH)
+		else if (prefix || wp -> type == WT_URLPATH) w++;
 #endif
 		else if (stat2(wp -> path.s, &st) < 0) return(argc);
 
@@ -1247,21 +1236,14 @@ wild_t *wp;
 		}
 
 #ifndef	NODIRLOOP
-# ifdef	DOUBLESLASH
-		if (ds) /*EMPTY*/;
-		else
-# endif
-# ifdef	DEP_URLPATH
-		if (url) /*EMPTY*/;
-		else
-# endif
 		if (!w) {
 			wp -> ino = (devino_t *)Xrealloc(wp -> ino,
 				(wp -> nino + 1) * sizeof(devino_t));
 			wp -> ino[wp -> nino].dev = st.st_dev;
 			wp -> ino[(wp -> nino)++].ino = st.st_ino;
 		}
-#endif	/* !NODIRLOOP */
+#endif
+
 		return(_evalwild(argc, argvp, wp));
 	}
 
@@ -1379,6 +1361,9 @@ int flags;
 #ifndef	NODIRLOOP
 	w.nino = 0;
 	w.ino = NULL;
+#endif
+#if	defined (DOUBLESLASH) || defined (DEP_URLPATH)
+	w.type = WT_NORMAL;
 #endif
 	w.flags = flags;
 
@@ -3403,7 +3388,7 @@ int flags;
 	ds = isdslash(cp);
 #endif
 #ifdef	DEP_URLPATH
-	url = urlparse(cp, NULL, NULL, NULL);
+	url = isurl(cp, 0);
 #endif
 	size = strlen(cp) + 1;
 	tmp = Xmalloc(size);

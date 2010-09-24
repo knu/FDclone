@@ -84,12 +84,15 @@ static int NEAR recvhead __P_((int, CONST char *, int *));
 static int NEAR chunkgetc __P_((int));
 static int NEAR getchunk __P_((int, int));
 static int NEAR gettrailer __P_((int));
+static int NEAR isredirect __P_((int));
+static int NEAR reopendev __P_((int));
 
 char *httpproxy = NULL;
 char *httplogfile = NULL;
 
 static char *form_http[] = {
 	"%f %d-%m-%y %t %s %*x",			/* Apache */
+	"%f %s %d-%m-%y %t",				/* Nginx */
 	"%f %!.! %m %d %{yt} %{sx} %!->! %*{Lx}",	/* FTP via squid */
 	"%s %m %d %{yt} %*f",				/* FTP via delegate */
 	"%f %m %d %{yt} %*{sLx}",			/* FTP via i-FILTER */
@@ -344,24 +347,36 @@ int uh;
 CONST char *s;
 {
 	urlhost_t tmp;
-	char *cp;
+	char *host;
 	int n, ptr, type;
 
-	if ((ptr = urlparse(s, NULL, &cp, &type)) < 0) return(-1);
-	if (ptr > 0) {
-		n = urlgethost(cp, &tmp);
-		Xfree(cp);
-		if (n < 0 || !(tmp.host)) return(-1);
+	ptr = urlparse(s, NULL, &host, &type,
+		UPF_ALLOWNONURL | UPF_ALLOWABSPATH);
+	if (ptr < 0) return(-1);
+	if (host) {
+		n = urlgethost(host, &tmp);
+		if (n < 0 || !(tmp.host)) {
+			Xfree(host);
+			urlfreehost(&tmp);
+			return(-1);
+		}
 		if (tmp.port < 0) tmp.port = urlgetport(type);
 
-		if (tmp.port != urlhostlist[uh].host.port) ptr = -1;
-		else if (cmpsockaddr(tmp.host, urlhostlist[uh].host.host))
-			ptr = -1;
+		if (tmp.port == urlhostlist[uh].host.port
+		&& type == urlhostlist[uh].type
+		&& !cmpsockaddr(tmp.host, urlhostlist[uh].host.host))
+			Xfree(host);
+		else {
+			(urlhostlist[uh].http) -> flags |= HFL_OTHERHOST;
+			Xfree((urlhostlist[uh].http) -> location.host);
+			(urlhostlist[uh].http) -> location.host = host;
+			(urlhostlist[uh].http) -> location.type = type;
+		}
+		urlfreehost(&tmp);
 	}
 
-	if (ptr >= 0) s += ptr;
-	else (urlhostlist[uh].http) -> flags |= HFL_OTHERHOST;
-	(urlhostlist[uh].http) -> location = Xstrdup(s);
+	Xfree((urlhostlist[uh].http) -> location.path);
+	(urlhostlist[uh].http) -> location.path = Xstrdup(&(s[ptr]));
 	(urlhostlist[uh].http) -> flags |= HFL_LOCATION;
 
 	return(0);
@@ -426,14 +441,17 @@ int uh, level;
 	if (!(urlhostlist[uh].http)) return;
 	if (level > 0) {
 		Xfree((urlhostlist[uh].http) -> server);
-		Xfree((urlhostlist[uh].http) -> location);
+		Xfree((urlhostlist[uh].http) -> location.host);
+		Xfree((urlhostlist[uh].http) -> location.path);
 		Xfree((urlhostlist[uh].http) -> digest);
 	}
 	(urlhostlist[uh].http) -> version = -1;
 	(urlhostlist[uh].http) -> clength = (off_t)0;
 	(urlhostlist[uh].http) -> server =
-	(urlhostlist[uh].http) -> location =
+	(urlhostlist[uh].http) -> location.host =
+	(urlhostlist[uh].http) -> location.path =
 	(urlhostlist[uh].http) -> digest = NULL;
+	(urlhostlist[uh].http) -> location.type = TYPE_UNKNOWN;
 	(urlhostlist[uh].http) -> charset = NOCNV;
 	(urlhostlist[uh].http) -> chunk = -1;
 	(urlhostlist[uh].http) -> flags = 0;
@@ -507,9 +525,40 @@ int httpseterrno(n)
 int n;
 {
 	if (n < 0) return(-1);
-	if (n / 100 != HTTP_SUCCESS) return(seterrno(EACCES));
 
-	return(0);
+	switch (n / 100) {
+		case HTTP_SUCCESS:
+			n = 0;
+			break;
+		case HTTP_REDIRECT:
+			n = seterrno(ENOENT);
+			break;
+		case HTTP_CLIERROR:
+			switch (n) {
+				case 401:
+				case 403:
+				case 405:
+				case 406:
+				case 407:
+					n = seterrno(EACCES);
+					break;
+				case 404:
+					n = seterrno(ENOENT);
+					break;
+				case 408:
+					n = seterrno(ETIMEDOUT);
+					break;
+				default:
+					n = seterrno(EINVAL);
+					break;
+			}
+			break;
+		default:
+			n = seterrno(EIO);
+			break;
+	}
+
+	return(n);
 }
 
 int vhttpcommand(uh, sp, cmd, args)
@@ -531,7 +580,7 @@ va_list args;
 
 	new = NULL;
 	if ((urlhostlist[uh].flags & UFL_PROXIED)
-	&& !urlparse(path, (scheme_t *)nullstr, NULL, NULL)) {
+	&& !isurl(path, UPF_ALLOWANYSCHEME)) {
 		flags = (UGP_SCHEME | UGP_HOST | UGP_ENCODE);
 		if (urlhostlist[uh].type == TYPE_FTP) flags |= UGP_USER;
 		n = urlgenpath(uh, buf, sizeof(buf), flags);
@@ -676,14 +725,19 @@ int *isdirp;
 {
 	CONST char *cp, *s;
 	char buf[MAXPATHLEN];
-	int n;
+	int n, isdir;
+
+	isdir = (isdirp) ? *isdirp : -1;
 
 	for (;;) {
 		s = path;
 		if (isdirp) {
 			if (*isdirp < 1 && (cp = strrdelim(path, 0))
 			&& (!*(++cp) || isdotdir(cp))) {
-				if (!*isdirp) return(seterrno(EISDIR));
+				if (!*isdirp) {
+					(urlhostlist[uh].http) -> flags = 0;
+					return(seterrno(EISDIR));
+				}
 				*isdirp = 1;
 			}
 			if (*isdirp) {
@@ -692,27 +746,25 @@ int *isdirp;
 			}
 		}
 
-		n = _httpcommand(uh, cmd, s);
+		if ((n = _httpcommand(uh, cmd, s)) < 0) break;
 		if (n / 100 == HTTP_SUCCESS) {
 			if (isdirp && s == buf && !lazyproxy(uh)) *isdirp = 1;
 			break;
 		}
-		if (n == 404 && isdirp && s == buf) {
-			if (*isdirp > 0) break;
+		if (n == 404 && isdirp && *isdirp < 0 && s == buf) {
 			httpflush(uh);
-			if ((n = _httpcommand(uh, cmd, path)) < 0)
-				return(-1);
-			if (n / 100 == HTTP_SUCCESS) {
-				*isdirp = 0;
-				break;
-			}
+			*isdirp = 0;
+			continue;
 		}
-		if (n != 301 && n != 302) break;
+		if (n / 100 != HTTP_REDIRECT || n == 305) break;
 		if (!((urlhostlist[uh].http) -> flags & HFL_LOCATION)) break;
-		if ((urlhostlist[uh].http) -> flags & HFL_OTHERHOST) break;
-		path = (urlhostlist[uh].http) -> location;
+		if ((urlhostlist[uh].http) -> flags & HFL_OTHERHOST) return(n);
+		path = (urlhostlist[uh].http) -> location.path;
 		httpflush(uh);
+		if (isdirp) *isdirp = isdir;
 	}
+
+	(urlhostlist[uh].http) -> flags &= ~HFL_OTHERHOST;
 
 	return(n);
 }
@@ -879,9 +931,10 @@ CONST char *path;
 	namelist tmp;
 	int n;
 
-	if (!urlhostlist[uh].http) return(seterrno(EINVAL));
-	if (!strpathcmp(path, (urlhostlist[uh].http) -> cwd)) return(0);
-	n = urltracelink(uh, path, &tmp, NULL);
+	if (!(urlhostlist[uh].http)) return(seterrno(EINVAL));
+	if (!strpathcmp(path, (urlhostlist[uh].http) -> cwd)) return(uh);
+	n = urltracelink(&uh, path, &tmp, NULL);
+	if (urlhostlist[uh].redirect) path = urlhostlist[uh].redirect;
 	if (n < 0) return(-1);
 	if (--n >= 0) urlfreestatlist(n);
 #ifndef	NOSYMLINK
@@ -890,7 +943,7 @@ CONST char *path;
 	if (!isdir(&tmp)) return(seterrno(ENOTDIR));
 	Xstrncpy((urlhostlist[uh].http) -> cwd, path, MAXPATHLEN - 1);
 
-	return(0);
+	return(uh);
 }
 
 char *httpgetcwd(uh, path, size)
@@ -900,7 +953,7 @@ ALLOC_T size;
 {
 	int n, flags;
 
-	if (!urlhostlist[uh].http) {
+	if (!(urlhostlist[uh].http)) {
 		errno = EINVAL;
 		return(NULL);
 	}
@@ -946,7 +999,7 @@ int flags;
 {
 	int n, fd, isdir;
 
-	if (!urlhostlist[uh].http) return(seterrno(EINVAL));
+	if (!(urlhostlist[uh].http)) return(seterrno(EINVAL));
 	switch (flags & O_ACCMODE) {
 		case O_RDONLY:
 			break;
@@ -973,7 +1026,7 @@ int uh, fd;
 	char buf[BUFSIZ];
 	int n;
 
-	if (!urlhostlist[uh].http) return(seterrno(EINVAL));
+	if (!(urlhostlist[uh].http)) return(seterrno(EINVAL));
 	if (!(urlhostlist[uh].fp)) return(0);
 
 	n = 0;
@@ -999,7 +1052,7 @@ int httpfstat(uh, stp)
 int uh;
 struct stat *stp;
 {
-	if (!urlhostlist[uh].http) return(seterrno(EINVAL));
+	if (!(urlhostlist[uh].http)) return(seterrno(EINVAL));
 	if ((urlhostlist[uh].http) -> flags & HFL_CLENGTH)
 		stp -> st_size = (urlhostlist[uh].http) -> clength;
 	else stp -> st_size = (off_t)-1;
@@ -1090,7 +1143,7 @@ int nbytes;
 {
 	int n;
 
-	if (!urlhostlist[uh].http) return(seterrno(EINVAL));
+	if (!(urlhostlist[uh].http)) return(seterrno(EINVAL));
 	if ((urlhostlist[uh].http) -> flags & HFL_CHUNKED) {
 		if ((urlhostlist[uh].http) -> chunk < 0) return(0);
 		if (getchunk(uh, fd) < 0) return(-1);
@@ -1133,7 +1186,7 @@ int uh, fd;
 CONST char *buf;
 int nbytes;
 {
-	if (!urlhostlist[uh].http) return(seterrno(EINVAL));
+	if (!(urlhostlist[uh].http)) return(seterrno(EINVAL));
 
 	return(seterrno(EACCES));
 }
@@ -1152,5 +1205,100 @@ int uh;
 CONST char *path;
 {
 	return(seterrno(EACCES));
+}
+
+static int NEAR isredirect(uh)
+int uh;
+{
+	if (uh < 0 || uh >= maxurlhost) return(-1);
+	if (urlhostlist[uh].prototype != TYPE_HTTP) return(-1);
+	if (!(urlhostlist[uh].http)) return(-1);
+	if (!((urlhostlist[uh].http) -> flags & HFL_LOCATION)) return(-1);
+	if (!((urlhostlist[uh].http) -> flags & HFL_OTHERHOST)) return(-1);
+	if (!((urlhostlist[uh].http) -> location.host)) return(-1);
+	if (!((urlhostlist[uh].http) -> location.path)) return(-1);
+
+	return(0);
+}
+
+static int NEAR reopendev(uh)
+int uh;
+{
+	httpstat_t *http;
+	int duperrno;
+
+	if (isredirect(uh) < 0) return(-1);
+
+	duperrno = errno;
+	http = urlhostlist[uh].http;
+	uh = urlopendev(http -> location.host, http -> location.type);
+	if (uh >= 0) {
+		Xfree(urlhostlist[uh].redirect);
+		urlhostlist[uh].redirect = Xstrdup(http -> location.path);
+	}
+	errno = duperrno;
+
+	return(uh);
+}
+
+int httpreopen(uh, flags)
+int uh, flags;
+{
+	httpstat_t *http;
+	int fd, duperrno;
+
+	if (isredirect(uh) < 0) return(-1);
+
+	duperrno = errno;
+	http = urlhostlist[uh].http;
+	fd = urlopen(http -> location.host,
+		http -> location.type, http -> location.path, flags);
+	if (fd > 0) urlclosedev(uh);
+	errno = duperrno;
+
+	return(fd);
+}
+
+int httprerecvlist(uhp, listp)
+int *uhp;
+namelist **listp;
+{
+	int n, uh, duperrno;
+
+	if (!uhp) return(-1);
+	if ((uh = reopendev(*uhp)) < 0) return(-1);
+
+	duperrno = errno;
+	n = urlrecvlist(&uh, urlhostlist[uh].redirect, 0);
+	if (n < 0) urlclosedev(uh);
+	else {
+		urlclosedev(*uhp);
+		*uhp = uh;
+	}
+	errno = duperrno;
+
+	return(n);
+}
+
+int httprerecvstatus(uhp, namep, entp)
+int *uhp;
+namelist *namep;
+int *entp;
+{
+	int n, uh, duperrno;
+
+	if (!uhp) return(-1);
+	if ((uh = reopendev(*uhp)) < 0) return(-1);
+
+	duperrno = errno;
+	n = urlrecvstatus(&uh, urlhostlist[uh].redirect, namep, entp, 1);
+	if (n < 0) urlclosedev(uh);
+	else {
+		urlclosedev(*uhp);
+		*uhp = uh;
+	}
+	errno = duperrno;
+
+	return(n);
 }
 #endif	/* DEP_HTTPPATH */

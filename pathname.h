@@ -140,8 +140,15 @@ typedef struct _wild_t {
 	int nino;
 	devino_t *ino;
 #endif
+#if	defined (DOUBLESLASH) || defined (DEP_URLPATH)
+	u_char type;
+#endif
 	u_char flags;
 } wild_t;
+
+#define	WT_NORMAL		0
+#define	WT_DOUBLESLASH		1
+#define	WT_URLPATH		2
 
 #define	EA_STRIPQ		000001
 #define	EA_STRIPESCAPE		000002

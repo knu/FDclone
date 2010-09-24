@@ -418,9 +418,12 @@ CONST char *path;
 char **hostp;
 int *typep;
 {
-	if (!urldrive) return(0);
+	int n;
 
-	return(urlparse(path, NULL, hostp, typep));
+	if (!urldrive) return(0);
+	n = urlparse(path, NULL, hostp, typep, 0);
+
+	return((n > 0) ? n : 0);
 }
 
 int urlpath(path, hostp, buf, typep)
@@ -1161,6 +1164,13 @@ CONST char *path;
 # ifdef	DEP_URLPATH
 		case DEV_URL:
 			n = urlchdir(dd, &(tmp[drive]));
+			if (n >= 0) {
+				if (n != dd) {
+					shutdrv(drv);
+					drv = n + DEVOFS_URL;
+				}
+				n = 0;
+			}
 			break;
 # endif
 		case DEV_NORMAL:

@@ -3569,7 +3569,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    except 00 and null effects valid.
 
      SSOORRTTTTRREEEE      Sort directories in the tree screen.  The
-                   sorted type specified by SSOORRTT_TTYYPPEE is used,
+                   sorted type specified by SSOORRTT_DDIIRR is used,
                    but they can not be sorted when it is "by
                    size" or "by timestamp".  The directory
                    included in the current directory path is

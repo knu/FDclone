@@ -45,6 +45,7 @@
 #define	FTP_RMD			18
 #define	FTP_FEAT		19
 #define	FTP_ABOR		20
+#define	FTP_SIZE		21
 #define	FTP_ASCII		"A"
 #define	FTP_IMAGE		"I"
 
@@ -90,6 +91,7 @@ static int NEAR _ftprecvlist __P_((int, CONST char *, namelist **));
 static int NEAR recvpwd __P_((int, char *, ALLOC_T));
 static int NEAR ftpfeat __P_((int));
 static int NEAR ftpmdtm __P_((int, CONST char *, namelist *, int, int));
+static int NEAR ftpsize __P_((int, CONST char *, namelist *, int, int));
 
 char *ftpaddress = NULL;
 char *ftpproxy = NULL;
@@ -105,11 +107,15 @@ static char *form_ftp[] = {
 	"%s %m-%d-%y %t %*f",
 	NULL
 };
+static char *form_nlst[] = {
+	"%*f",
+	NULL
+};
 static char *ign_ftp[] = {
 	"total *",
 	NULL
 };
-static CONST lsparse_t ftpformat = {
+static lsparse_t ftpformat = {
 	NULL, NULL, form_ftp, ign_ftp, NULL, 0, 0, LF_NOTRAVERSE
 };
 static CONST ftpcmd_t ftpcmdlist[] = {
@@ -120,7 +126,7 @@ static CONST ftpcmd_t ftpcmdlist[] = {
 	{FTP_PWD, {"PWD", "XPWD"}, 0, 0},
 	{FTP_TYPE, {"TYPE", NULL}, 1, 0},
 	{FTP_LIST, {"LIST -la", "LIST"}, 1, FFL_LIST},
-	{FTP_NLST, {"NLST -la", "NLST"}, 1, FFL_LIST},
+	{FTP_NLST, {"NLST -a", "NLST"}, 1, FFL_LIST},
 	{FTP_PORT, {"PORT", NULL}, 6, FFL_INT | FFL_COMMA},
 	{FTP_PASV, {"PASV", NULL}, 0, 0},
 	{FTP_MDTM, {"MDTM", NULL}, 1, 0},
@@ -134,6 +140,7 @@ static CONST ftpcmd_t ftpcmdlist[] = {
 	{FTP_RMD, {"RMD", "XRMD"}, 1, 0},
 	{FTP_FEAT, {"FEAT", NULL}, 0, 0},
 	{FTP_ABOR, {"ABOR", NULL}, 0, 0},
+	{FTP_SIZE, {"SIZE", NULL}, 1, 0},
 };
 #define	FTPCMDLISTSIZ		arraysize(ftpcmdlist)
 
@@ -266,9 +273,33 @@ int ftpseterrno(n)
 int n;
 {
 	if (n < 0) return(-1);
-	if (n / 100 != COMPLETE) return(seterrno(EACCES));
 
-	return(0);
+	switch (n / 100) {
+		case COMPLETE:
+			n = 0;
+			break;
+		case PRELIM:
+			n = seterrno(EACCES);
+			break;
+		case CONTINUE:
+			n = seterrno(EACCES);
+			break;
+		case TRANSIENT:
+			n = seterrno(EIO);
+			break;
+		default:
+			switch (n) {
+				case 550:
+					n = seterrno(ENOENT);
+					break;
+				default:
+					n = seterrno(EINVAL);
+					break;
+			}
+			break;
+	}
+
+	return(n);
 }
 
 int vftpcommand(uh, sp, cmd, args)
@@ -524,7 +555,17 @@ namelist **listp;
 	XFILE *fp;
 	int n, fd, cmd, max;
 
-	cmd = (urlhostlist[uh].options & UOP_USENLST) ? FTP_NLST : FTP_LIST;
+	if (urlhostlist[uh].options & UOP_USENLST) {
+		cmd = FTP_NLST;
+		ftpformat.format = form_nlst;
+		ftpformat.flags |= LF_BASENAME;
+	}
+	else {
+		cmd = FTP_LIST;
+		ftpformat.format = form_ftp;
+		ftpformat.flags &= ~LF_BASENAME;
+	}
+
 	if ((fd = ftpopenport(uh, cmd, path, FTP_ASCII)) < 0) return(-1);
 	if (!(fp = Xfdopen(fd, "r"))) {
 		safeclose(fd);
@@ -616,7 +657,7 @@ static int NEAR ftpfeat(uh)
 int uh;
 {
 	char *cp, *next, *buf;
-	int n, mdtm;
+	int n, mdtm, size;
 
 	if (urlhostlist[uh].options & UOP_NOFEAT) return(0);
 
@@ -629,7 +670,7 @@ int uh;
 	}
 
 	next = NULL;
-	mdtm = 0;
+	mdtm = size = 0;
 	for (cp = buf; cp && *cp; cp = next) {
 		while (Xisblank(*cp)) cp++;
 		if (!(next = Xstrchr(cp, '\n'))) n = strlen(cp);
@@ -638,8 +679,10 @@ int uh;
 			*(next++) = '\0';
 		}
 		if (!Xstrcasecmp(cp, "MDTM")) mdtm++;
+		if (!Xstrcasecmp(cp, "SIZE")) size++;
 	}
 	if (!mdtm) urlhostlist[uh].options |= UOP_NOMDTM;
+	if (!size) urlhostlist[uh].options |= UOP_NOSIZE;
 	Xfree(buf);
 
 	return(0);
@@ -667,9 +710,14 @@ int st, ent;
 	n = urlcommand(uh, &buf, FTP_MDTM, path);
 	if (n >= 0 && tmp) tmp -> tmpflags |= F_ISMRK;
 	if (ftpseterrno(n) < 0) {
+		Xfree(buf);
 		if (n == 500 || n == 502)
 			urlhostlist[uh].options |= UOP_NOMDTM;
-		Xfree(buf);
+		if (n == 550) {
+			if (!isdir(namep)) todirlist(namep, (u_int)-1);
+			if (tmp && !isdir(tmp)) todirlist(tmp, (u_int)-1);
+			return(0);
+		}
 		return(-1);
 	}
 	if ((cp = Xstrchr(buf, ' '))) {
@@ -694,13 +742,61 @@ int st, ent;
 	return(0);
 }
 
+static int NEAR ftpsize(uh, path, namep, st, ent)
+int uh;
+CONST char *path;
+namelist *namep;
+int st, ent;
+{
+	namelist *tmp;
+	char *cp, *buf;
+	off_t size;
+	int n;
+
+	if (urlhostlist[uh].options & UOP_NOSIZE) return(0);
+	if (wasmark(namep)) return(0);
+	tmp = NULL;
+	if (st >= 0 && st < maxurlstat
+	&& ent >= 0 && ent < urlstatlist[st].max)
+		tmp = &(urlstatlist[st].list[ent]);
+
+	n = urlcommand(uh, &buf, FTP_SIZE, path);
+	if (n >= 0 && tmp) tmp -> tmpflags |= F_WSMRK;
+	if (ftpseterrno(n) < 0) {
+		Xfree(buf);
+		if (n == 500 || n == 502)
+			urlhostlist[uh].options |= UOP_NOSIZE;
+		if (n == 550) {
+			if (!isdir(namep)) todirlist(namep, (u_int)-1);
+			if (tmp && !isdir(tmp)) todirlist(tmp, (u_int)-1);
+			return(0);
+		}
+		return(-1);
+	}
+	if ((cp = Xstrchr(buf, ' '))) {
+		cp = skipspace(&(cp[1]));
+		cp = Xsscanf(cp, "%qu", &size);
+	}
+	Xfree(buf);
+	if (!cp) return(seterrno(EINVAL));
+
+	namep -> st_size = size;
+	if (tmp) tmp -> st_size = size;
+
+	return(0);
+}
+
 int ftprecvstatus(uh, path, namep, n, ent)
 int uh;
 CONST char *path;
 namelist *namep;
 int n, ent;
 {
-	return(ftpmdtm(uh, path, namep, n, ent));
+	if (ftpmdtm(uh, path, namep, n, ent) < 0) return(-1);
+	if (!(urlhostlist[uh].options & UOP_USENLST)) /*EMPTY*/;
+	else if (ftpsize(uh, path, namep, n, ent) < 0) return(-1);
+
+	return(0);
 }
 
 int ftpchdir(uh, path)

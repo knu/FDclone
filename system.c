@@ -3808,7 +3808,7 @@ int *portp;
 	char *cp;
 	int n, scheme;
 
-	if (!(n = urlparse(s, schemelist, &cp, &scheme))) return(0);
+	if ((n = urlparse(s, schemelist, &cp, &scheme, 0)) <= 0) return(0);
 	if (s[n] == '/') n++;
 	if (s[n]) {
 		Xfree(cp);

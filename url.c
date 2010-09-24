@@ -120,42 +120,51 @@ int len, mask;
 	return(cp);
 }
 
-int urlparse(s, scheme, hostp, typep)
+int urlparse(s, scheme, hostp, typep, flags)
 CONST char *s;
 scheme_t *scheme;
 char **hostp;
-int *typep;
+int *typep, flags;
 {
 	CONST char *cp, *path;
-	int i, n, type;
+	int i, n;
 
 	/*
 	 * scheme://user:passwd@host:port/path;params?query#fragment
+	 * scheme:/path;params?query#fragment
 	 */
 
-	type = TYPE_UNKNOWN;
 	if (!scheme) scheme = schemelist;
 	if (hostp) *hostp = NULL;
-	if (typep) *typep = type;
-	if (!s) return(0);
+	if (typep) *typep = TYPE_NONURL;
+	if (!s) return(-1);
 
-	if (scheme == (scheme_t *)nullstr) {
-		for (cp = s; *cp; cp++)
-			if (!Xisalnum(*cp) && *cp != '-' && *cp != '-') break;
-		if (cp <= s) return(0);
+	for (cp = s; *cp; cp++) {
+		if (Xisalnum(*cp)) continue;
+		if (!Xstrchr(SCHEME_SYMBOLCHAR, *cp)) break;
+	}
+	n = cp - s;
+	if (cp <= s || *(cp++) != ':' || *(cp++) != '/')
+		return((flags & UPF_ALLOWNONURL) ? 0 : -1);
+
+	for (i = 0; scheme[i].ident; i++) {
+		if (n != scheme[i].len) continue;
+		if (!Xstrncasecmp(s, scheme[i].ident, n)) break;
+	}
+	if (scheme[i].ident) {
+		if (typep) *typep = scheme[i].type;
 	}
 	else {
-		for (i = 0; scheme[i].ident; i++)
-			if (!Xstrncasecmp(s, scheme[i].ident, scheme[i].len))
-				break;
-		if (!(scheme[i].ident)) return(0);
-		cp = &(s[scheme[i].len]);
-		type = scheme[i].type;
+		if (typep) *typep = TYPE_UNKNOWN;
+		if (!(flags & UPF_ALLOWANYSCHEME)) return(-1);
 	}
-	if (*(cp++) != ':' || *(cp++) != '/' || *(cp++) != '/') return(0);
 
-	if ((path = Xstrchr(cp, _SC_))) {
-		if (path == cp) return(0);
+	if (*cp != '/') {
+		if (!(flags & UPF_ALLOWABSPATH)) return(-1);
+		n = --cp - s;
+	}
+	else if ((path = Xstrchr(++cp, _SC_))) {
+		if (path == cp) return(-1);
 		if (hostp) *hostp = Xstrndup(cp, path - cp);
 		n = path - s;
 	}
@@ -163,7 +172,6 @@ int *typep;
 		if (hostp) *hostp = Xstrdup(cp);
 		n = strlen(s);
 	}
-	if (typep) *typep = type;
 
 	return(n);
 }
@@ -190,6 +198,17 @@ int type;
 	if (!(schemelist[i].ident)) return(NULL);
 
 	return(schemelist[i].ident);
+}
+
+int isurl(s, flags)
+CONST char *s;
+int flags;
+{
+	int n;
+
+	n = urlparse(s, NULL, NULL, NULL, flags);
+
+	return((n > 0) ? n : 0);
 }
 
 VOID urlfreehost(hp)

@@ -107,6 +107,7 @@ static CONST htmltag_t taglist[] = {
 	DEFTAG("HR", HTML_BODY, HTML_NONE, breaktag),
 	DEFTAG("P", HTML_BODY, HTML_NONE, breaktag),
 	DEFTAG("TR", HTML_BODY, HTML_NONE, breaktag),
+	DEFTAG("LI", HTML_BODY, HTML_NONE, breaktag),
 	DEFTAG("A", HTML_BODY, HTML_NONE, anchortag),
 };
 #define	TAGLISTSIZ		arraysize(taglist)
@@ -755,7 +756,7 @@ htmlstat_t *hp;
 				Xfree(url);
 				url = NULL;
 				if (cp == vnullstr) /*EMPTY*/;
-				else if (urlparse(cp, NULL, NULL, NULL))
+				else if (isurl(cp, UPF_ALLOWANYSCHEME))
 					Xfree(cp);
 				else url = cp;
 			}

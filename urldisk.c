@@ -33,8 +33,6 @@ static VOID NEAR urlfreestat __P_((int));
 static int NEAR validdir __P_((sockDIR *));
 static VOID NEAR checkintr __P_((int, int));
 static int NEAR urlconnect __P_((urldev_t *));
-static int NEAR recvlist __P_((int, CONST char *, int));
-static int NEAR recvstatus __P_((int, CONST char *, namelist *, int *, int));
 static int NEAR entryorder __P_((int));
 static int NEAR _urlclosedev __P_((int, int));
 static VOID NEAR copystat __P_((struct stat *, namelist *));
@@ -257,8 +255,7 @@ urldev_t *devp;
 				break;
 		}
 
-		type = TYPE_UNKNOWN;
-		if (!urlparse(url, NULL, &cp, &type)
+		if (urlparse(url, NULL, &cp, &type, 0) <= 0
 		|| urlgethost(cp, &(devp -> proxy)) < 0
 		|| !(devp -> proxy.host)) {
 			hp = &(devp -> host);
@@ -337,13 +334,16 @@ CONST char *path;
 }
 
 /*ARGSUSED*/
-static int NEAR recvlist(uh, path, cacheonly)
-int uh;
+int urlrecvlist(uhp, path, cacheonly)
+int *uhp;
 CONST char *path;
 int cacheonly;
 {
 	namelist *tmp, *list;
-	int i, j, n, max;
+	int i, j, n, uh, max;
+
+	if (!uhp) return(seterrno(EINVAL));
+	uh = *uhp;
 
 	for (i = maxurlstat - 1; i >= 0; i--) {
 		if (urlstatlist[i].uh < 0) continue;
@@ -373,6 +373,7 @@ int cacheonly;
 			}
 			if (cacheonly) return(seterrno(ENOENT));
 			max = httprecvlist(uh, path, &list);
+			if (max < 0) return(httprerecvlist(uhp, &list));
 			break;
 #endif
 		default:
@@ -429,15 +430,17 @@ CONST char *path;
 	return(cp);
 }
 
-static int NEAR recvstatus(uh, path, namep, entp, cacheonly)
-int uh;
+int urlrecvstatus(uhp, path, namep, entp, cacheonly)
+int *uhp;
 CONST char *path;
 namelist *namep;
 int *entp, cacheonly;
 {
 	CONST char *cp;
 	char buf[MAXPATHLEN];
-	int i, n;
+	int i, n, uh;
+
+	if (!uhp) return(seterrno(EINVAL));
 
 	if (!(cp = urlsplitpath(buf, sizeof(buf), path))) return(-1);
 	if (namep) {
@@ -445,13 +448,15 @@ int *entp, cacheonly;
 		if (cp == curpath) todirlist(namep, (u_int)-1);
 	}
 
-	if ((n = recvlist(uh, buf, cacheonly)) < 0) i = -1;
+	if ((n = urlrecvlist(uhp, buf, cacheonly)) < 0) i = -1;
 	else {
 		for (i = 0; i < urlstatlist[n].max; i++)
 			if (!strpathcmp(cp, urlstatlist[n].list[i].name))
 				break;
 		if (i >= urlstatlist[n].max) i = seterrno(ENOENT);
 	}
+
+	uh = *uhp;
 	if (i < 0 && cp != curpath) {
 		if (n >= 0 && urlstatlist[n].flags & UFL_FULLLIST) {
 			urlfreestatlist(n);
@@ -460,7 +465,7 @@ int *entp, cacheonly;
 #ifdef	DEP_HTTPPATH
 		if (cacheonly && urlhostlist[uh].prototype == TYPE_HTTP) {
 			n = httprecvstatus(uh, path, namep, n, &i);
-			if (n < 0) return(-1);
+			if (n < 0) return(httprerecvstatus(uhp, namep, entp));
 			if (entp) *entp = i;
 			return(n + 1);
 		}
@@ -480,8 +485,8 @@ int *entp, cacheonly;
 	return((n >= 0) ? n + 1 : 0);
 }
 
-int urltracelink(uh, path, namep, entp)
-int uh;
+int urltracelink(uhp, path, namep, entp)
+int *uhp;
 CONST char *path;
 namelist *namep;
 int *entp;
@@ -490,14 +495,19 @@ int *entp;
 	CONST char *cp;
 	char buf[MAXPATHLEN], resolved[MAXPATHLEN];
 #endif
-	int n, cacheonly;
+	int n, uh, cacheonly;
+
+	if (!uhp) return(seterrno(EINVAL));
 
 	cacheonly = 1;
 	for (;;) {
-		n = recvstatus(uh, path, namep, entp, cacheonly);
+		n = urlrecvstatus(uhp, path, namep, entp, cacheonly);
 		if (n < 0) return(-1);
+		uh = *uhp;
 
 #ifdef	DEP_HTTPPATH
+		if (urlhostlist[uh].redirect) path = urlhostlist[uh].redirect;
+
 		/*
 		 * Some FTP proxy ignores any '/' at the end of pathname,
 		 * so that the additional '/' cannot tell if it is a directory.
@@ -618,6 +628,10 @@ int type;
 		if (urlhostlist[uh].flags & UFL_INTRED)
 			return(seterrno(EINTR));
 		if (!(urlhostlist[uh].fp) && urlreconnect(uh) < 0) return(-1);
+#ifdef	DEP_HTTPPATH
+		Xfree(urlhostlist[uh].redirect);
+		urlhostlist[uh].redirect = NULL;
+#endif
 		urlhostlist[uh].nlink++;
 		if (entryorder(uh) < 0) return(_urlclosedev(uh, -1));
 
@@ -641,6 +655,7 @@ int type;
 	tmp.flags = 0;
 #ifdef	DEP_HTTPPATH
 	tmp.http = NULL;
+	tmp.redirect = NULL;
 #endif
 	if (urlconnect(&tmp) < 0) {
 		urlfreehost(&(tmp.host));
@@ -690,6 +705,8 @@ int uh, ret;
 	urlhostlist[uh].flags &= ~UFL_LOCKED;
 #ifdef	DEP_HTTPPATH
 	httpreset(uh, 1);
+	Xfree(urlhostlist[uh].redirect);
+	urlhostlist[uh].redirect = NULL;
 #endif
 	if (urlhostlist[uh].nlink > 0 && --(urlhostlist[uh].nlink)) {
 		errno = duperrno;
@@ -853,6 +870,7 @@ CONST char *path;
 #ifdef	DEP_HTTPPATH
 		case TYPE_HTTP:
 			n = httpchdir(uh, path);
+			if (n >= 0) path = (urlhostlist[uh = n].http) -> cwd;
 			break;
 #endif
 		default:
@@ -860,12 +878,17 @@ CONST char *path;
 			break;
 	}
 	if (n < 0) return(-1);
-	if ((n = recvlist(uh, path, 0)) >= 0) {
+	if ((n = urlrecvlist(&uh, path, 0)) >= 0) {
 		if (lastst >= 0) urlfreestatlist(lastst);
 		lastst = n;
+#ifdef	DEP_HTTPPATH
+		if (urlhostlist[uh].redirect && urlhostlist[uh].http)
+			Xstrncpy((urlhostlist[uh].http) -> cwd,
+				urlhostlist[uh].redirect, MAXPATHLEN - 1);
+#endif
 	}
 
-	return(0);
+	return(uh);
 }
 
 char *urlgetcwd(uh, path, size)
@@ -910,7 +933,7 @@ CONST char *path;
 		return(NULL);
 	}
 	if ((uh = urlopendev(host, type)) < 0) return(NULL);
-	if ((n = recvlist(uh, path, 0)) < 0) {
+	if ((n = urlrecvlist(&uh, path, 0)) < 0) {
 		VOID_C _urlclosedev(uh, -1);
 		return(NULL);
 	}
@@ -1023,7 +1046,7 @@ struct stat *stp;
 
 	urllog("stat(\"%s\")\n", path);
 	if ((uh = urlopendev(host, type)) < 0) return(-1);
-	if ((n = urltracelink(uh, path, &tmp, &i)) < 0)
+	if ((n = urltracelink(&uh, path, &tmp, &i)) < 0)
 		return(_urlclosedev(uh, -1));
 	if (--n >= 0) {
 		switch (urlhostlist[uh].prototype) {
@@ -1063,7 +1086,7 @@ struct stat *stp;
 
 	urllog("lstat(\"%s\")\n", path);
 	if ((uh = urlopendev(host, type)) < 0) return(-1);
-	if ((n = recvstatus(uh, path, &tmp, &i, 1)) < 0)
+	if ((n = urlrecvstatus(&uh, path, &tmp, &i, 1)) < 0)
 		return(_urlclosedev(uh, -1));
 	if (--n >= 0) {
 		switch (urlhostlist[uh].prototype) {
@@ -1103,7 +1126,7 @@ int mode;
 
 	urllog("access(\"%s\")\n", path);
 	if ((uh = urlopendev(host, type)) < 0) return(-1);
-	if ((n = urltracelink(uh, path, &tmp, NULL)) < 0)
+	if ((n = urltracelink(&uh, path, &tmp, NULL)) < 0)
 		return(_urlclosedev(uh, -1));
 	if (--n >= 0) urlfreestatlist(n);
 #ifndef	NOSYMLINK
@@ -1131,7 +1154,7 @@ int bufsiz;
 
 	urllog("readlink(\"%s\")\n", path);
 	if ((uh = urlopendev(host, type)) < 0) return(-1);
-	if ((n = recvstatus(uh, path, &tmp, NULL, 0)) < 0)
+	if ((n = urlrecvstatus(&uh, path, &tmp, NULL, 0)) < 0)
 		return(_urlclosedev(uh, -1));
 	if (--n >= 0) urlfreestatlist(n);
 	if (!islink(&tmp)) n = seterrno(EINVAL);
@@ -1317,6 +1340,7 @@ int flags;
 #ifdef	DEP_HTTPPATH
 		case TYPE_HTTP:
 			fd = httpopen(uh, path, flags);
+			if (fd < 0) return(httpreopen(uh, flags));
 			break;
 #endif
 		default:

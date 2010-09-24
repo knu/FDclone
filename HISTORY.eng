@@ -1,3 +1,8 @@
+Ver. 3.00j	Failure of some HTTP redirection is fixed.
+ (09/25/10)	Needless network access when URLDRIVE=1 is suppressed.
+		Mis-parsing of the file list from some HTTP servers is fixed.
+		Failure of INFO_FILESYS on MINIX is fixed.
+
 Ver. 3.00i	Support MINIX 3.
  (07/24/10)	Support NetBSD 5.0.
 		Changing to directory on some pseudo file system is allowed.

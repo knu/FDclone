@@ -1405,7 +1405,7 @@ int single;
 		st.st_atime = st.st_mtime = filelist[filepos].st_mtim;
 		st.st_size = filelist[filepos].st_size;
 		if (cpfile(fnodospath(tmp, filepos), path, &st, NULL) < 0) {
-			warning(-1, path);
+			warning(-1, filelist[filepos].name);
 			removetmp(tmpdir, NULL);
 			return(-1);
 		}
@@ -1417,7 +1417,7 @@ int single;
 		st.st_atime = st.st_mtime = filelist[i].st_mtim;
 		st.st_size = filelist[i].st_size;
 		if (cpfile(fnodospath(tmp, i), path, &st, NULL) < 0) {
-			warning(-1, path);
+			warning(-1, filelist[i].name);
 			removetmp(tmpdir, NULL);
 			return(-1);
 		}

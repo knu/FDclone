@@ -57,7 +57,10 @@ static char *NEAR checkspace __P_((CONST char *, int *));
 # ifdef	DEP_FILECONV
 static char *NEAR readfname __P_((CONST char *, int));
 # else
-#define	readfname		Xstrndup
+# define	readfname		Xstrndup
+# endif
+# ifdef	DEP_FTPPATH
+static char *NEAR readbasename __P_((CONST char *, int));
 # endif
 # ifndef	NOSYMLINK
 static char *NEAR readlinkname __P_((CONST char *, int));
@@ -630,6 +633,30 @@ int len;
 }
 # endif	/* DEP_FILECONV */
 
+# ifdef	DEP_FTPPATH
+static char *NEAR readbasename(s, len)
+CONST char *s;
+int len;
+{
+	CONST char *cp;
+	int i;
+
+	if (!s) return(NULL);
+	cp = NULL;
+	for (i = 0; i < len; i++) {
+		if (s[i] == _SC_) cp = &(s[i]);
+		else if (iswchar(s, i)) i++;
+		if (!(s[i])) break;
+	}
+	if (cp) {
+		len -= ++cp - s;
+		s = cp;
+	}
+
+	return(readfname(s, len));
+}
+# endif	/* DEP_FTPPATH */
+
 # ifndef	NOSYMLINK
 static char *NEAR readlinkname(s, len)
 CONST char *s;
@@ -978,6 +1005,11 @@ int skip, flags;
 				}
 				if (n <= 0) break;
 				Xfree(tmp -> name);
+# ifdef	DEP_FTPPATH
+				if (flags & LF_BASENAME)
+					tmp -> name = readbasename(rawbuf, n);
+				else
+# endif
 				tmp -> name = readfname(rawbuf, n);
 				if (!(flags & LF_NOTRAVERSE)) /*EMPTY*/;
 				else if (strdelim(tmp -> name, 0)) {

@@ -27,7 +27,7 @@ typedef struct _httpstat_t {
 	off_t clength;
 	time_t mtim;
 	char *server;
-	char *location;
+	url_t location;
 	char *digest;
 	int charset;
 	int chunk;
@@ -52,6 +52,7 @@ typedef struct _urldev_t {
 	int prototype;
 #ifdef	DEP_HTTPPATH
 	httpstat_t *http;
+	char *redirect;
 #endif
 	int nlink;
 	int options;
@@ -65,6 +66,7 @@ typedef struct _urldev_t {
 #define	UOP_FULLSTAT		000020
 #define	UOP_NOLISTOPT		000040
 #define	UOP_USENLST		000100
+#define	UOP_NOSIZE		000200
 #define	UFL_LOCKED		000001
 #define	UFL_INTRED		000002
 #define	UFL_CLOSED		000004
@@ -97,8 +99,10 @@ extern int urlferror __P_((XFILE *));
 extern int urlgetreply __P_((int, char **));
 extern int urlcommand __P_((int, char **, int, ...));
 extern int urlnewstatlist __P_((int, namelist *, int, CONST char *));
+extern int urlrecvlist __P_((int *, CONST char *, int));
 extern CONST char *urlsplitpath __P_((char *, ALLOC_T, CONST char *));
-extern int urltracelink __P_((int, CONST char *, namelist *, int *));
+extern int urlrecvstatus __P_((int *, CONST char *, namelist *, int *, int));
+extern int urltracelink __P_((int *, CONST char *, namelist *, int *));
 extern int urlreconnect __P_((int));
 extern int urlopendev __P_((CONST char *, int));
 extern VOID urlclosedev __P_((int));
@@ -169,6 +173,9 @@ extern int httpread __P_((int, int, char *, int));
 extern int httpwrite __P_((int, int, CONST char *, int));
 extern int httpmkdir __P_((int, CONST char *));
 extern int httprmdir __P_((int, CONST char *));
+extern int httpreopen __P_((int, int));
+extern int httprerecvlist __P_((int *, namelist **));
+extern int httprerecvstatus __P_((int *, namelist *, int *));
 #endif	/* DEP_HTTPPATH */
 
 extern int urloptions;
