@@ -720,7 +720,7 @@ u_int mode;
 	return(attr);
 }
 
-VOID getdostime(dp, tp, t)
+int getdostime(dp, tp, t)
 u_short *dp, *tp;
 time_t t;
 {
@@ -733,6 +733,8 @@ time_t t;
 	*tp = ((tm -> tm_hour & 0x1f) << 11)
 		+ ((tm -> tm_min & 0x3f) << 5)
 		+ ((tm -> tm_sec & 0x3e) >> 1);
+
+	return(tm -> tm_sec);
 }
 #endif	/* DEP_DOSPATH */
 

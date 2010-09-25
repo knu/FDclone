@@ -2269,7 +2269,7 @@ time_t t;
 {
 	time_t mt;
 	u_short date, time;
-	int isnow;
+	int sec, isnow;
 
 	mt = (time_t)0;
 	isnow = 0;
@@ -2277,9 +2277,12 @@ time_t t;
 		t = Xtime(&mt);
 		isnow++;
 	}
-	getdostime(&date, &time, t);
+	sec = getdostime(&date, &time, t);
 
-	if (!time && isnow) time = 0x0001;
+	if (isnow) {
+		if (!time) time = 0x0001;
+		mt += (sec & 0x01) * 1000L;
+	}
 	buf[0] = time & 0xff;
 	buf[1] = (time >> 8) & 0xff;
 	buf[2] = date & 0xff;

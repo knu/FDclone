@@ -58,7 +58,7 @@ extern VOID shutdrv __P_((int));
 extern u_int getunixmode __P_((u_int));
 extern time_t getunixtime __P_((u_int, u_int));
 extern u_short getdosmode __P_((u_int));
-extern VOID getdostime __P_((u_short *, u_short *, time_t));
+extern int getdostime __P_((u_short *, u_short *, time_t));
 #endif
 #if	defined (DEP_DIRENT)
 extern DIR *Xopendir __P_((CONST char *));
