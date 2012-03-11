@@ -517,10 +517,11 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	DEFFDSETSIZE
+#define	USETCGETPGRP
 #define	SIGFNCINT
 #define	USESOCKLEN
 #define	USEINETATON
-#define	WAITKEYPAD		36
+#define	WAITKEYPAD		720
 #endif
 
 #if	defined (linux)
@@ -1023,6 +1024,7 @@ typedef long	off_t;
 /* #define USETIMES	;use times() for getting process time */
 /* #define GETPGRPVOID	;getpgrp() needs void argument */
 /* #define USESETPGID	;use setpgid() instead of setpgrp() */
+/* #define USETCGETPGRP	;use tcgetpgrp()/tcsetpgrp() instead of ioctl() */
 /* #define USESETVBUF	;use setvbuf() instead of setbuf() or setlinebuf() */
 /* #define SIGARGINT	;the 2nd argument function of signal() returns int */
 /* #define SIGFNCINT	;the 2nd argument function of signal() needs int */

@@ -94,13 +94,13 @@
 #define	ENVCOMSPEC		"COMSPEC"
 #define	ENVREPLY		"REPLY"
 
-#ifdef	TIOCGPGRP
+#if	defined (TIOCGPGRP) && !defined (USETCGETPGRP)
 #define	gettcpgrp(f,g)		((ioctl(f, TIOCGPGRP, g) < 0) \
 				? (*(g) = (p_id_t)-1) : *(g))
 #else
 #define	gettcpgrp(f,g)		(*(g) = tcgetpgrp(f))
 #endif
-#ifdef	TIOCSPGRP
+#if	defined (TIOCSPGRP) && !defined (USETCGETPGRP)
 #define	settcpgrp(f,g)		ioctl(f, TIOCSPGRP, &(g))
 #else
 #define	settcpgrp		tcsetpgrp
