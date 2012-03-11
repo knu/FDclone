@@ -115,6 +115,11 @@ typedef int			ldiscioctl_t;
 #define	FLSHIO			(FREAD | FWRITE)
 #endif	/* !USESGTTY */
 
+#ifdef	CYGWIN
+#undef	ttyflush
+#define	ttyflush(f, a)		Xioctl(f, TCFLSH, (VOID_P)a)
+#endif
+
 #ifdef	TIOCGWINSZ
 typedef struct winsize		termwsize_t;
 #define	REQGETWS		TIOCGWINSZ
