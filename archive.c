@@ -385,7 +385,8 @@ static VOID NEAR poparchdupl(VOID_A)
 	findpattern = old -> v_findpattern;
 	filepos = old -> v_filepos;
 	sorton = old -> v_sorton;
-	maxfile = 0;
+	maxfile = maxent;
+	while (maxfile > 0) filelist[--maxfile].name = NULL;
 
 #ifndef	_NOBROWSE
 	if (browselist) {
