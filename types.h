@@ -117,6 +117,7 @@ typedef struct _winvartable {
 	char *v_treepath;
 #endif
 	char *v_fullpath;
+	char *v_lastfile;
 	char *v_findpattern;
 	namelist *v_filelist;
 	int v_maxfile;
@@ -156,6 +157,7 @@ extern int win;
 #ifndef	_NOTREE
 #define	treepath		(winvar[win].v_treepath)
 #endif
+#define	lastfile		(winvar[win].v_lastfile)
 #define	findpattern		(winvar[win].v_findpattern)
 #define	filelist		(winvar[win].v_filelist)
 #define	maxfile			(winvar[win].v_maxfile)
@@ -251,6 +253,9 @@ typedef char **			orighelpindex_t;
 #define	FNC_CHDIR		5
 #define	FNC_QUIT		(-1)
 #define	FNC_FAIL		(-2)
+
+#define	ICM_BINDKEY		0
+#define	ICM_CMDLINE		1
 
 #define	FSID_UFS		1
 #define	FSID_EFS		2

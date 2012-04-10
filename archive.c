@@ -116,6 +116,8 @@ static VOID NEAR Xwaitmes __P_((VOID_A));
 static VOID NEAR unpackerror __P_((VOID_A));
 static char *archfgets __P_((VOID_P));
 static int NEAR readarchive __P_((CONST char *, lsparse_t *, int));
+static CONST char *NEAR skiparchdir __P_((CONST char *));
+static int NEAR getarchdirlen __P_((CONST char *));
 static char *NEAR searcharcdir __P_((CONST char *, int));
 static char *NEAR archoutdir __P_((VOID_A));
 static int NEAR undertmp __P_((CONST char *));
@@ -328,7 +330,8 @@ static VOID NEAR pusharchdupl(VOID_A)
 #ifndef	_NOTREE
 	new -> v_treepath = treepath;
 #endif
-	new -> v_fullpath = NULL;
+	new -> v_fullpath =
+	new -> v_lastfile = NULL;
 	new -> v_findpattern = findpattern;
 	new -> v_filepos = filepos;
 	new -> v_sorton = sorton;
@@ -574,36 +577,61 @@ int flags;
 	return(0);
 }
 
+static CONST char *NEAR skiparchdir(file)
+CONST char *file;
+{
+	int len;
+
+	if (!*archivedir) len = 0;
+	else if ((len = dirmatchlen(archivedir, file))) file += len;
+	else return(NULL);
+
+	if (*file && len > 0 && (len > 1 || *archivedir != _SC_)) file++;
+
+	return(file);
+}
+
+static int NEAR getarchdirlen(file)
+CONST char *file;
+{
+	CONST char *tmp;
+	int len;
+
+	if (!(tmp = strdelim(file, 0))) len = strlen(file);
+	else {
+		len = (tmp == file) ? 1 : tmp - file;
+		while (*(++tmp) == _SC_) /*EMPTY*/;
+	}
+
+	if (len == 2 && file[0] == '.' && file[1] == '.') len = 0;
+	if (tmp && *tmp) return(-1 - len);
+
+	return(len);
+}
+
 VOID copyarcf(re, arcre)
 CONST reg_t *re;
 CONST char *arcre;
 {
-	char *cp, *tmp;
+	CONST char *cp;
 	int i, j, n, len, parent;
 
 	parent = (*archivedir) ? 0 : -1;
 	/* omit arcflist[0] as pseudo ".." */
 	for (i = 1; i < maxarcf; i++) {
-		if (!*archivedir) len = 0;
-		else if (!(len = dirmatchlen(archivedir, arcflist[i].name)))
-			continue;
-
-		cp = &(arcflist[i].name[len]);
-		if (*cp && len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
+		if (!(cp = skiparchdir(arcflist[i].name))) continue;
 		if (!*cp) {
 			parent = i;
 			continue;
 		}
 
-		if (!(tmp = strdelim(cp, 0))) len = strlen(cp);
-		else {
-			len = (tmp == cp) ? 1 : tmp - cp;
-			while (*(++tmp) == _SC_);
+		len = getarchdirlen(cp);
+		if (len >= -1 && len <= 0) {
+			if (parent <= 0) parent = i;
 		}
+		if (len < 0) continue;
+		if (re && !regexp_exec(re, cp, 1)) continue;
 
-		if (parent <= 0 && len == 2 && cp[0] == '.' && cp[1] == '.')
-			parent = i;
-		if ((tmp && *tmp) || (re && !regexp_exec(re, cp, 1))) continue;
 		if (arcre) {
 			if (!(n = searcharc(arcre, arcflist, maxarcf, i)))
 				continue;
@@ -617,7 +645,7 @@ CONST char *arcre;
 		filelist = addlist(filelist, maxfile, &maxent);
 		memcpy((char *)&(filelist[maxfile]),
 			(char *)&(arcflist[i]), sizeof(namelist));
-		filelist[maxfile].name = cp;
+		filelist[maxfile].name = (char *)cp;
 #ifndef	NOSYMLINK
 		filelist[maxfile].linkname = arcflist[i].linkname;
 #endif
@@ -642,37 +670,29 @@ static char *NEAR searcharcdir(file, flen)
 CONST char *file;
 int flen;
 {
-	char *cp, *tmp;
+	CONST char *cp;
 	int i, len;
 
 	errno = ENOENT;
-	for (i = 0; i < maxarcf; i++) {
-		if (!*archivedir) len = 0;
-		else if (!(len = dirmatchlen(archivedir, arcflist[i].name)))
-			continue;
+	/* omit arcflist[0] as pseudo ".." */
+	for (i = 1; i < maxarcf; i++) {
+		if (!(cp = skiparchdir(arcflist[i].name))) continue;
+		if (!file) return(arcflist[(*cp) ? 0 : i].name);
+		if (!*cp) continue;
 
-		cp = &(arcflist[i].name[len]);
-		if (*cp && len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
-		if (!*cp) {
-			if (file) continue;
+		len = getarchdirlen(cp);
+		if (len >= -1 && len <= 0) {
+			if (*file) continue;
+			return(arcflist[0].name);
 		}
-		else {
-			if (!file) continue;
-			if (!(tmp = strdelim(cp, 0))) len = strlen(cp);
-			else {
-				len = (tmp == cp) ? 1 : tmp - cp;
-				while (*(++tmp) == _SC_);
-			}
-			if (!*file && len == 2 && cp[0] == '.' && cp[1] == '.')
-				return(arcflist[0].name);
-			if ((tmp && *tmp) || len != flen
-			|| strnpathcmp(file, cp, flen))
-				continue;
-			if (!isdir(&(arcflist[i]))) {
-				errno = ENOTDIR;
-				continue;
-			}
+		if (len < 0) continue;
+		if (len != flen || strnpathcmp(file, cp, flen)) continue;
+
+		if (!isdir(&(arcflist[i]))) {
+			errno = ENOTDIR;
+			continue;
 		}
+
 		return(arcflist[i].name);
 	}
 
@@ -765,14 +785,19 @@ CONST char *path;
 
 	if (!path) return(archoutdir());
 	Xstrcpy(duparcdir, archivedir);
+	file = nullstr;
 	do {
 		if (*path == _SC_) len = 1;
 		else if ((cp = strdelim(path, 0))) len = cp - path;
 		else len = strlen(path);
 
 		cp = path;
-		if (len == 2 && path[0] == '.' && path[1] == '.') cp = nullstr;
-		if (searcharcdir(cp, len)) {
+		if (*cp != '.') /*EMPTY*/;
+		else if (len == 1) cp = NULL;
+		else if (len == 2 && cp[1] == '.') cp = nullstr;
+
+		if (!cp) /*EMPTY*/;
+		else if (searcharcdir(cp, len)) {
 			if (*(tmp = archivedir)) tmp = strcatdelim(archivedir);
 			Xstrncpy(tmp, path, len);
 			file = parentpath;
@@ -798,7 +823,7 @@ int flen, argc;
 char ***argvp;
 {
 	CONST char *cp, *file;
-	char *tmp, *new, dir[MAXPATHLEN], duparcdir[MAXPATHLEN];
+	char *new, dir[MAXPATHLEN], duparcdir[MAXPATHLEN];
 	int i, len, parent;
 
 # ifdef	DEP_DOSPATH
@@ -821,24 +846,17 @@ char ***argvp;
 
 	/* omit arcflist[0] as pseudo ".." */
 	for (i = 1; i < maxarcf; i++) {
-		if (!*archivedir) len = 0;
-		else if (!(len = dirmatchlen(archivedir, arcflist[i].name)))
-			continue;
-
-		cp = &(arcflist[i].name[len]);
-		if (*cp && len > 0 && (len > 1 || *archivedir != _SC_)) cp++;
+		if (!(cp = skiparchdir(arcflist[i].name))) continue;
 		if (!*cp) continue;
 
-		if (!(tmp = strdelim(cp, 0))) len = strlen(cp);
-		else {
-			len = (tmp == cp) ? 1 : tmp - cp;
-			while (*(++tmp) == _SC_);
-		}
-
 		parent = 0;
-		if (len == 2 && cp[0] == '.' && cp[1] == '.') parent++;
-		else if (tmp && *tmp) continue;
-		if (strnpathcmp(file, cp, flen)) continue;
+		len = getarchdirlen(cp);
+		if (len >= -1 && len <= 0) {
+			len = 2;
+			parent++;
+		}
+		if (len < 0) continue;
+		if (len != flen || strnpathcmp(file, cp, flen)) continue;
 
 		new = Xmalloc(len + 1 + 1);
 		Xstrncpy(new, cp, len);

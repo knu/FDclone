@@ -3293,10 +3293,7 @@ char *CONST argv[];
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
 		return(-1);
 	}
-	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
-		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], RESTR_K);
-		return(RET_NOTICE);
-	}
+
 	if (argc > 2 || !filelist || maxfile <= 0) {
 		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], ILFNC_K);
 		return(RET_NOTICE);
@@ -3308,9 +3305,10 @@ char *CONST argv[];
 	}
 #endif
 	ttyiomode(0);
-	internal_status = (*funclist[n].func)(argv[1]);
+	n = dointernal(n, argv[1], ICM_CMDLINE, NULL);
 	locate(0, n_line - 1);
 	stdiomode();
+	if (n == FNC_FAIL) return(RET_FAIL);
 
 	return(RET_SUCCESS);
 }

@@ -81,8 +81,9 @@ static int readstatus __P_((VOID_A));
 #endif
 static int NEAR readfilelist __P_((CONST reg_t *, CONST char *));
 static VOID NEAR getfilelist __P_((VOID_A));
-static int NEAR browsedir __P_((char *, CONST char *));
-static char *NEAR initcwd __P_((CONST char *, char *, int));
+static int NEAR getfuncno __P_((int));
+static int NEAR browsedir __P_((VOID_A));
+static VOID NEAR initcwd __P_((CONST char *, int));
 
 int curcolumns = 0;
 int defcolumns = 0;
@@ -1295,6 +1296,7 @@ int n;
 # endif	/* !_NOARCHIVE */
 	Xfree(winvar[win].v_fullpath);
 	winvar[win].v_fullpath = NULL;
+	setlastfile(NULL);
 	if (filelist) {
 		for (i = 0; i < maxfile; i++) Xfree(filelist[i].name);
 		Xfree(filelist);
@@ -1615,17 +1617,109 @@ static VOID NEAR getfilelist(VOID_A)
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
 }
 
-static int NEAR browsedir(file, def)
-char *file;
-CONST char *def;
+VOID setlastfile(cp)
+CONST char *cp;
 {
-#ifndef	_NOARCHIVE
-	CONST char *tmp;
+	Xfree(lastfile);
+	lastfile = Xstrdup(cp);
+}
+
+static int NEAR getfuncno(ch)
+int ch;
+{
+	int n;
+
+#if	FD >= 3
+	if (ch == K_TIMEOUT) return(REREAD_DIR);
 #endif
+
+	for (n = 0; n < maxbind; n++)
+		if (ch == (int)(bindlist[n].key)) break;
+	if (n >= maxbind) return(NO_OPERATION);
+
+#ifndef	_NOPRECEDE
+	if (haste && !havestat(&(filelist[filepos]))
+	&& (hasdfunc(n) || (funclist[ffunc(n)].status & FN_NEEDSTATUS))
+	&& getstatus(&(filelist[filepos])) < 0)
+		return(WARNING_BELL);
+#endif
+
+	if (hasdfunc(n) && isdir(&(filelist[filepos]))) return(dfunc(n));
+
+	return(ffunc(n));
+}
+
+int dointernal(no, arg, mode, statp)
+int no;
+CONST char *arg;
+int mode, *statp;
+{
+	int n, stat;
+
+	stat = (FN_KILLSTACK | FN_RESCREEN | FN_REWIN);
+	if (no < FUNCLISTSIZ) stat = funclist[no].status;
+	if (statp) *statp = stat;
+
+	if (maxfile <= 0 && !(stat & FN_NOFILE)) return(FNC_NONE);
+#ifndef	_NOARCHIVE
+	if (!archivefile) /*EMPTY*/;
+	else if (no >= FUNCLISTSIZ || !(stat & FN_ARCHIVE)) return(FNC_NONE);
+#endif
+	if (fd_restricted && (stat & FN_RESTRICT)) {
+		warning(0, RESTR_K);
+		return(FNC_NONE);
+	}
+
+	if (!(stat & FN_KILLSTACK)) /*EMPTY*/;
+	else if (stackdepth > 0) {
+		chgorder = 0;
+		if (!yesno(KILOK_K)) return(FNC_NONE);
+		for (n = maxfile - 1; n > filepos; n--)
+			memcpy((char *)&(filelist[n + stackdepth]),
+				(char *)&(filelist[n]), sizeof(namelist));
+		for (n = 0; n < stackdepth; n++)
+			memcpy((char *)&(filelist[n + filepos + 1]),
+				(char *)&(filestack[n]), sizeof(namelist));
+		maxfile += stackdepth;
+		stackdepth = 0;
+		filepos = listupfile(filelist, maxfile,
+			filelist[filepos].name, 1);
+		stackbar();
+	}
+#ifndef	_NOWRITEFS
+# ifndef	_NOARCHIVE
+	else if (archivefile) /*EMPTY*/;
+# endif
+	else if (!chgorder || writefs >= 1 || no == WRITE_DIR) /*EMPTY*/;
+	else if (fd_restricted) /*EMPTY*/;
+	else if ((n = writablefs(curpath)) > 0 && underhome(NULL) > 0) {
+		chgorder = 0;
+		if (yesno(WRTOK_K)) arrangedir(n);
+	}
+#endif	/* !_NOWRITEFS */
+
+	if (no < FUNCLISTSIZ) {
+		if (mode == ICM_BINDKEY) arg = NULL;
+		no = (*funclist[no].func)(arg);
+		if (mode != ICM_CMDLINE) /*EMPTY*/;
+		else if (no < FNC_NONE || no >= FNC_EFFECT)
+			internal_status = no;
+	}
+	else {
+		no = evalstatus(ptyusercomm(getmacro(no), arg, 0));
+#ifdef	DEP_PTY
+		if (ptymode && isearch) no = FNC_NONE;
+#endif
+	}
+
+	return(no);
+}
+
+static int NEAR browsedir(VOID_A)
+{
 #ifndef	_NOPRECEDE
 	int dupsorton;
 #endif
-	CONST char *cp;
 	char buf[MAXNAMLEN + 1];
 	int ch, i, no, old, funcstat;
 
@@ -1645,11 +1739,6 @@ CONST char *def;
 	win_x = win_y = 0;
 	waitmes();
 
-#ifndef	_NOARCHIVE
-	if (!archivefile) /*EMPTY*/;
-	else if (*file) def = file;
-	else def = nullstr;
-#endif
 	getfilelist();
 
 	for (i = 0; i < maxfile; i++) {
@@ -1663,9 +1752,9 @@ CONST char *def;
 	helpbar();
 	rewritefile(-1);
 #ifdef	_NOSPLITWIN
-	old = filepos = listupfile(filelist, maxfile, def, 1);
+	old = filepos = listupfile(filelist, maxfile, lastfile, 1);
 #else
-	old = filepos = listupwin(def);
+	old = filepos = listupwin(lastfile);
 #endif
 	funcstat = 0;
 	no = FNC_CANCEL;
@@ -1704,83 +1793,11 @@ CONST char *def;
 				continue;
 			}
 		}
-		for (i = 0; i < maxbind; i++)
-			if (ch == (int)(bindlist[i].key)) break;
-#if	FD >= 3
-		if (ch == K_TIMEOUT) return(REREAD_DIR);
-		else
-#endif
-		if (i >= maxbind) no = NO_OPERATION;
-#ifndef	_NOPRECEDE
-		else if (haste && !havestat(&(filelist[filepos]))
-		&& (hasdfunc(i) || (funclist[ffunc(i)].status & FN_NEEDSTATUS))
-		&& getstatus(&(filelist[filepos])) < 0)
-			no = WARNING_BELL;
-#endif
-		else no = (hasdfunc(i) && isdir(&(filelist[filepos])))
-			? dfunc(i) : ffunc(i);
-		if (no < FUNCLISTSIZ) funcstat = funclist[no].status;
-#ifndef	_NOARCHIVE
-		else if (archivefile) continue;
-#endif
-		else funcstat = (FN_KILLSTACK | FN_RESCREEN | FN_REWIN);
-
-		if (funcstat & FN_KILLSTACK) {
-			if (stackdepth > 0) {
-				chgorder = 0;
-				if (!yesno(KILOK_K)) continue;
-				for (i = maxfile - 1; i > filepos; i--)
-					memcpy((char *)&(filelist[i
-						+ stackdepth]),
-						(char *)&(filelist[i]),
-						sizeof(namelist));
-				for (i = 0; i < stackdepth; i++)
-					memcpy((char *)&(filelist[i
-						+ filepos + 1]),
-						(char *)&(filestack[i]),
-						sizeof(namelist));
-				maxfile += stackdepth;
-				stackdepth = 0;
-				filepos = listupfile(filelist, maxfile,
-					filelist[filepos].name, 1);
-				stackbar();
-			}
-#ifndef	_NOWRITEFS
-# ifndef	_NOARCHIVE
-			else if (archivefile) /*EMPTY*/;
-# endif
-			else if (chgorder && writefs < 1 && no != WRITE_DIR
-			&& !fd_restricted
-			&& (i = writablefs(curpath)) > 0
-			&& underhome(NULL) > 0) {
-				chgorder = 0;
-				if (yesno(WRTOK_K)) arrangedir(i);
-			}
-#endif	/* !_NOWRITEFS */
-		}
 
 		curfilename = filelist[filepos].name;
-		if (maxfile <= 0 && !(funcstat & FN_NOFILE)) no = FNC_NONE;
-#ifndef	_NOARCHIVE
-		else if (archivefile && !(funcstat & FN_ARCHIVE))
-			no = FNC_NONE;
-#endif
-		else if (no < FUNCLISTSIZ) {
-			if (!fd_restricted || !(funcstat & FN_RESTRICT))
-				no = (*funclist[no].func)(NULL);
-			else {
-				warning(0, RESTR_K);
-				no = FNC_NONE;
-			}
-		}
-		else {
-			no = ptyusercomm(getmacro(no),
-				filelist[filepos].name, 0);
-			no = evalstatus(no);
-#ifdef	DEP_PTY
-			if (ptymode && isearch) no = FNC_NONE;
-#endif
-		}
+		setlastfile(NULL);
+		no = dointernal(getfuncno(ch),
+			filelist[filepos].name, ICM_BINDKEY, &funcstat);
 
 #ifdef	DEP_PTY
 		while (ptylist[win].pid && ptylist[win].status < 0) {
@@ -1810,10 +1827,15 @@ CONST char *def;
 		}
 	}
 
+	if (no >= FNC_EFFECT) {
+		if (lastfile) /*EMPTY*/;
+		else if (!maxfile) setlastfile(curpath);
+		else setlastfile(filelist[filepos].name);
+	}
 #ifndef	_NOARCHIVE
-	if (archivefile) {
+	else if (archivefile) {
 		if (no < 0) {
-			Xstrcpy(file, archivefile);
+			setlastfile(archivefile);
 # ifdef	_NOBROWSE
 			escapearch();
 # else
@@ -1822,44 +1844,18 @@ CONST char *def;
 			} while (browselist);
 # endif
 		}
-		else if (no == FNC_CHDIR) {
-			tmp = (filepos >= 0) ? filelist[filepos].name : NULL;
-			if (!(cp = archchdir(tmp))) {
-				if (!tmp) tmp = parentpath;
-				warning(-1, tmp);
-				Xstrcpy(file, tmp);
-			}
-			else if (cp != (char *)-1) Xstrcpy(file, cp);
-			else {
-				Xstrcpy(file, archivefile);
-				escapearch();
-			}
-		}
-		else if (no == FNC_EFFECT) {
-			if (filepos < 0) *file = '\0';
-			else Xstrcpy(file, filelist[filepos].name);
-		}
 		no = FNC_NONE;
 	}
-	else
-#endif	/* !_NOARCHIVE */
-	if (no >= FNC_EFFECT) {
-		no -= FNC_EFFECT;
-		if (!maxfile && !ischgdir(&(filelist[filepos]))) cp = curpath;
-		else cp = filelist[filepos].name;
-		Xstrcpy(file, cp);
-	}
+#endif	/* _NOARCHIVE */
 
 #ifndef	_NOARCHIVE
-	if (archivefile) i = 0;
-	else
+	if (archivefile) maxfile = 0;
 #endif
-	i = (maxfile || !ischgdir(&(filelist[0]))) ? maxfile : 1;
-	while (i-- > 0) {
-		Xfree(filelist[i].name);
-		filelist[i].name = NULL;
+	while (maxfile > 0) {
+		Xfree(filelist[--maxfile].name);
+		filelist[maxfile].name = NULL;
 	}
-	maxfile = filepos = 0;
+	filepos = 0;
 #ifndef	_NOPRECEDE
 	if (haste && !sorton) sorton = dupsorton;
 #endif
@@ -1867,15 +1863,16 @@ CONST char *def;
 	return(no);
 }
 
-static char *NEAR initcwd(path, buf, internal)
+static VOID NEAR initcwd(path, internal)
 CONST char *path;
-char *buf;
 int internal;
 {
-	char *cp, *file;
+#if	MSDOS
 	int i;
+#endif
+	char *cp, *file, buf[MAXPATHLEN];
 
-	if (!path) return(NULL);
+	if (!path) return;
 
 	cp = Xstrdup(path);
 #ifdef	DEP_FILECONV
@@ -1895,48 +1892,45 @@ int internal;
 	}
 #endif	/* !MSDOS */
 
-	if (chdir2(cp) >= 0) file = NULL;
-	else {
-		file = strrdelim(cp, 0);
-#ifdef	DEP_DOSEMU
-		if (!file && dospath2(cp)) file = &(cp[2]);
-#endif
-
-		if (!file) file = cp;
-		else {
-			i = *file;
-			*file = '\0';
-			if (file == cp) {
-				if (chdir2(rootpath) < 0) error(rootpath);
-			}
-			else if (chdir2(cp) < 0) {
-				hideclock = 2;
-				warning(-1, cp);
-#if	MSDOS
-				Xstrcpy(fullpath, origpath);
-#endif
-				Xfree(cp);
-				return(NULL);
-			}
-			if (i == _SC_) file++;
-			else *file = i;
-		}
-		Xstrcpy(buf, file);
-		file = buf;
+	if (chdir2(cp) >= 0) {
+		Xfree(cp);
+		return;
 	}
-	Xfree(cp);
 
-	return(file);
+	file = strrdelim(cp, 0);
+#ifdef	DEP_DOSEMU
+	if (!file && dospath2(cp)) file = &(cp[2]);
+#endif
+
+	if (!file) {
+		setlastfile(cp);
+		Xfree(cp);
+		return;
+	}
+
+	if (file == cp) copyrootpath(buf);
+	else VOID_C Xstrncpy(buf, cp, file - cp);
+	if (*file == _SC_) file++;
+
+	if (chdir2(buf) < 0) {
+		hideclock = 2;
+		warning(-1, buf);
+#if	MSDOS
+		Xstrcpy(fullpath, origpath);
+#endif
+		Xfree(cp);
+		return;
+	}
+
+	setlastfile(file);
+	Xfree(cp);
 }
 
 VOID main_fd(pathlist, internal)
 char *CONST *pathlist;
 int internal;
 {
-#ifdef	DEP_DOSEMU
-	char buf[MAXPATHLEN];
-#endif
-	char *def, *cwd, file[MAXNAMLEN + 1], prev[MAXNAMLEN + 1];
+	char *cwd;
 	int n, argc, ischgdir;
 
 	if (!pathlist) argc = 0;
@@ -1944,7 +1938,6 @@ int internal;
 		if (!pathlist[argc]) break;
 
 	cwd = getwd2();
-	def = NULL;
 	for (n = MAXWINDOWS - 1; n >= 0; n--) {
 #ifndef	_NOSPLITWIN
 		win = n;
@@ -1979,6 +1972,7 @@ int internal;
 #ifndef	_NOTREE
 		treepath = NULL;
 #endif
+		lastfile = NULL;
 		findpattern = NULL;
 		filelist = NULL;
 		maxfile = maxent = filepos = 0;
@@ -1990,14 +1984,14 @@ int internal;
 		if (n >= argc) continue;
 
 		chdir2(cwd);
-		def = initcwd(pathlist[n], prev, internal);
+		initcwd(pathlist[n], internal);
 
 #ifndef	_NOSPLITWIN
 		winvar[n].v_fullpath = Xstrdup(fullpath);
 		if (n) {
 			getfilelist();
 			sorton = sorttype % 100;
-			filepos = calcfilepos(filelist, maxfile, def);
+			filepos = calcfilepos(filelist, maxfile, lastfile);
 		}
 #endif
 	}
@@ -2017,41 +2011,20 @@ int internal;
 #endif	/* !_NOSPLITWIN */
 	calcwin();
 
-	copycurpath(file);
 	_chdir2(fullpath);
 
 	for (;;) {
-		if (!def && isdotdir(file) == 1) {
-			Xstrcpy(prev, getbasename(fullpath));
-			if (*prev) def = prev;
-			else copycurpath(file);
-		}
-
-		if (isdotdir(file) != 2
-		&& chdir3(nodospath(buf, file), 1) < 0) {
-			hideclock = 2;
-			warning(-1, file);
-			Xstrcpy(prev, file);
-			def = prev;
-		}
-
 #ifdef	_NOARCHIVE
-		ischgdir = browsedir(file, def);
+		ischgdir = browsedir();
 #else
 		do {
-			ischgdir = browsedir(file, def);
+			ischgdir = browsedir();
 		} while (archivefile);
 #endif
 
 		if (ischgdir < 0) {
 			if (ischgdir > -2) chdir2(cwd);
 			break;
-		}
-		if (ischgdir) def = NULL;
-		else {
-			Xstrcpy(prev, file);
-			copycurpath(file);
-			def = prev;
 		}
 	}
 

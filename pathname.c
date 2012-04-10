@@ -453,7 +453,7 @@ int len;
 
 	if (len < 0) len = strlen(dir);
 	if ((cp = strrdelim2(dir, &(dir[len]))) && !cp[1]) len = cp - dir;
-	if (len <= 0 || strnpathcmp(path, dir, len)) return(NULL);
+	if (len > 0 && strnpathcmp(path, dir, len)) return(NULL);
 	if (path[len] && path[len] != _SC_) return(NULL);
 
 	return((char *)&(path[len]));
