@@ -3289,21 +3289,16 @@ int execinternal(n, argc, argv)
 int n, argc;
 char *CONST argv[];
 {
-	CONST char *cp;
-
 	if (dumbterm > 1) {
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
 		return(-1);
 	}
-
-	cp = RESTR_K;
-	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) /*EMPTY*/;
-	else if (archivefile && !(funclist[n].status & FN_ARCHIVE)) /*EMPTY*/;
-	else if (argc > 2 || !filelist || maxfile <= 0) cp = ILFNC_K;
-	else cp = NULL;
-
-	if (cp) {
-		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], cp);
+	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) {
+		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], RESTR_K);
+		return(RET_NOTICE);
+	}
+	if (argc > 2 || !filelist || maxfile <= 0) {
+		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], ILFNC_K);
 		return(RET_NOTICE);
 	}
 #ifdef	DEP_PTY

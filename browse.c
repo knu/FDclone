@@ -1621,7 +1621,6 @@ CONST char *def;
 {
 #ifndef	_NOARCHIVE
 	CONST char *tmp;
-	char *dupfullpath;
 #endif
 #ifndef	_NOPRECEDE
 	int dupsorton;
@@ -1760,11 +1759,7 @@ CONST char *def;
 #endif	/* !_NOWRITEFS */
 		}
 
-#ifndef	_NOARCHIVE
-		dupfullpath = (archivefile) ? Xstrdup(fullpath) : NULL;
-#endif
 		curfilename = filelist[filepos].name;
-
 		if (maxfile <= 0 && !(funcstat & FN_NOFILE)) no = FNC_NONE;
 #ifndef	_NOARCHIVE
 		else if (archivefile && !(funcstat & FN_ARCHIVE))
@@ -1799,11 +1794,6 @@ CONST char *def;
 #ifndef	_NOPRECEDE
 		if (sorton) haste = 0;
 #endif
-#ifndef	_NOARCHIVE
-		if (dupfullpath && no != FNC_CHDIR) VOID_C chdir2(dupfullpath);
-		Xfree(dupfullpath);
-#endif
-
 		if (no < FNC_NONE || no >= FNC_EFFECT) break;
 		if (no == FNC_CANCEL || no == FNC_HELPSPOT) helpbar();
 		if (no < FNC_UPDATE) {
