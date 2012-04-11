@@ -250,6 +250,63 @@ int raw;
 	return(0);
 }
 
+int chdir4(path, raw, arcf)
+CONST char *path;
+int raw;
+CONST char *arcf;
+{
+	char *eol, dupfullpath[MAXPATHLEN];
+	CONST char *cp;
+
+#ifndef	_NOARCHIVE
+	if (!arcf) /*EMPTY*/;
+	else if (!path || *path != _SC_) {
+		if (!(cp = archchdir(path))) return(-1);
+
+		if (cp != (char *)-1) {
+			if (*cp) setlastfile(cp);
+		}
+		else {
+			setlastfile(arcf);
+			escapearch();
+		}
+
+		return(0);
+	}
+#endif	/* !_NOARCHIVE */
+
+	if (!path) return(0);
+	Xstrcpy(dupfullpath, fullpath);
+	if (chdir3(path, raw) < 0) return(-1);
+
+	if (!filelist) return(0);
+	else if (!(cp = underpath(dupfullpath, fullpath, -1)))
+		setlastfile(parentpath);
+	else if (!*(cp++)) return(0);
+	else {
+		if ((eol = strdelim(cp, 0))) *eol = '\0';
+		setlastfile(cp);
+	}
+
+#ifndef	_NOARCHIVE
+	if (archivefile) {
+		Xstrcpy(dupfullpath, fullpath);
+		while (archivefile) {
+# ifdef	_NOBROWSE
+			escapearch();
+# else
+			do {
+				escapearch();
+			} while (browselist);
+# endif
+		}
+		Xstrcpy(fullpath, dupfullpath);
+	}
+#endif	/* !_NOARCHIVE */
+
+	return(0);
+}
+
 int mkdir2(path, mode)
 char *path;
 int mode;

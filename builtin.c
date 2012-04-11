@@ -3289,21 +3289,13 @@ int execinternal(n, argc, argv)
 int n, argc;
 char *CONST argv[];
 {
-	CONST char *cp;
-
 	if (dumbterm > 1) {
 		builtinerror(argv, NULL, ER_NOTDUMBTERM);
 		return(-1);
 	}
 
-	cp = RESTR_K;
-	if (fd_restricted && (funclist[n].status & FN_RESTRICT)) /*EMPTY*/;
-	else if (archivefile && !(funclist[n].status & FN_ARCHIVE)) /*EMPTY*/;
-	else if (argc > 2 || !filelist || maxfile <= 0) cp = ILFNC_K;
-	else cp = NULL;
-
-	if (cp) {
-		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], cp);
+	if (argc > 2 || !filelist || maxfile <= 0) {
+		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], ILFNC_K);
 		return(RET_NOTICE);
 	}
 #ifdef	DEP_PTY
@@ -3313,9 +3305,10 @@ char *CONST argv[];
 	}
 #endif
 	ttyiomode(0);
-	internal_status = (*funclist[n].func)(argv[1]);
+	n = dointernal(n, argv[1], ICM_CMDLINE, NULL);
 	locate(0, n_line - 1);
 	stdiomode();
+	if (n == FNC_FAIL) return(RET_FAIL);
 
 	return(RET_SUCCESS);
 }

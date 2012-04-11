@@ -976,7 +976,7 @@ int w;
 			changewin(MAXWINDOWS, (p_id_t)-1);
 			if (!(wastty = isttyiomode)) Xttyiomode(0);
 			ptyinternal++;
-			internal_status = (*funclist[n].func)(cp);
+			VOID_C dointernal(n, cp, ICM_CMDLINE, NULL);
 			ptyinternal--;
 			if (!wastty) Xstdiomode();
 			changewin(win, (p_id_t)-1);

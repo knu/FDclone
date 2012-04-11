@@ -204,12 +204,11 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = Xvsnprintf(buf, sizeof(buf), fmt, args);
-	if (n >= 0) {
-		httplog("--> \"%s\"\n", buf);
-		n = Xfputs(buf, fp);
-		if (n >= 0) n = fputnl(fp);
-	}
+	n = Xsnprintf(buf, sizeof(buf), "--> \"%s\"\n", fmt);
+	if (n >= 0) vhttplog(buf, args);
+
+	n = Xvfprintf(fp, fmt, args);
+	if (n >= 0) n = fputnl(fp);
 	va_end(args);
 
 	return(n);

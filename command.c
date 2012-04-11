@@ -53,7 +53,7 @@ extern int hideclock;
 extern int fdmode;
 #endif
 
-static VOID NEAR replacefname __P_((char *));
+static int NEAR dochdir4 __P_((CONST char *, int));
 static int cur_up __P_((CONST char *));
 static int cur_down __P_((CONST char *));
 static int cur_right __P_((CONST char *));
@@ -328,15 +328,16 @@ bindlist_t bindlist
 };
 
 
-static VOID NEAR replacefname(name)
-char *name;
+static int NEAR dochdir4(path, raw)
+CONST char *path;
+int raw;
 {
-	if (filepos < maxfile) Xfree(filelist[filepos].name);
-	else for (maxfile = 0; maxfile < filepos; maxfile++)
-		if (!filelist[maxfile].name)
-			filelist[maxfile].name = Xstrdup(nullstr);
-	filelist[filepos].name = (name) ? name : Xstrdup(parentpath);
-	filelist[filepos].tmpflags |= F_ISCHGDIR;
+	if (chdir4(path, raw, archivefile) < 0) {
+		warning(-1, path);
+		return(FNC_CANCEL);
+	}
+
+	return(FNC_EFFECT);
 }
 
 static int cur_up(arg)
@@ -757,28 +758,26 @@ CONST char *arg;
 static int in_dir(arg)
 CONST char *arg;
 {
-#ifndef	_NOARCHIVE
-	if (archivefile) /*EMPTY*/;
-	else
-#endif
 	if (!isdir(&(filelist[filepos]))
 	|| isdotdir(filelist[filepos].name) == 2)
 		return(warning_bell(arg));
 
-	return(FNC_CHDIR);
+	return(dochdir4(filelist[filepos].name, 1));
 }
 
 /*ARGSUSED*/
 static int out_dir(arg)
 CONST char *arg;
 {
+	CONST char *path;
+
 #ifndef	_NOARCHIVE
-	if (archivefile) filepos = -1;
+	if (archivefile) path = NULL;
 	else
 #endif
-	replacefname(NULL);
+	path = parentpath;
 
-	return(FNC_CHDIR);
+	return(dochdir4(path, 1));
 }
 
 /*ARGSUSED*/
@@ -857,11 +856,8 @@ CONST char *arg;
 static int log_dir(arg)
 CONST char *arg;
 {
-#ifndef	_NOARCHIVE
-	CONST char *cp;
-	char dupfullpath[MAXPATHLEN];
-#endif
 	char *path;
+	int no;
 
 	if (arg && *arg) path = Xstrdup(arg);
 	else if (!(path = inputstr(LOGD_K, 0, -1, NULL, HST_PATH)))
@@ -870,57 +866,18 @@ CONST char *arg;
 		Xfree(path);
 		return(FNC_CANCEL);
 	}
-#ifndef	_NOARCHIVE
-	if (archivefile && *path != '/') {
-		if (!(cp = archchdir(path))) {
-			warning(-1, path);
-			Xfree(path);
-			return(FNC_CANCEL);
-		}
-		Xfree(path);
-		if (cp != (char *)-1) filelist[filepos].name = (char *)cp;
-		else escapearch();
-		return(FNC_EFFECT);
-	}
-	else
-#endif
-	if (chdir3(path, 0) < 0) {
-		warning(-1, path);
-		Xfree(path);
-		return(FNC_CANCEL);
-	}
-	Xfree(path);
-#ifndef	_NOARCHIVE
-	if (archivefile) {
-		Xstrcpy(dupfullpath, fullpath);
-		while (archivefile) {
-# ifdef	_NOBROWSE
-			escapearch();
-# else
-			do {
-				escapearch();
-			} while (browselist);
-# endif
-		}
-		Xstrcpy(fullpath, dupfullpath);
-	}
-#endif
-	replacefname(NULL);
 
-	return(FNC_EFFECT);
+	no = dochdir4(path, 0);
+	Xfree(path);
+
+	return(no);
 }
 
 /*ARGSUSED*/
 static int log_top(arg)
 CONST char *arg;
 {
-	char *path;
-
-	path = Xstrdup(rootpath);
-	if (chdir3(path, 1) < 0) error(path);
-	replacefname(path);
-
-	return(FNC_EFFECT);
+	return(dochdir4(rootpath, 1));
 }
 
 static VOID NEAR clearscreen(VOID_A)
@@ -1431,7 +1388,7 @@ CONST char *arg;
 		Xfree(file);
 		file = Xstrdup(parentpath);
 	}
-	replacefname(file);
+	setlastfile(file);
 
 	return(FNC_EFFECT);
 }
@@ -1540,10 +1497,13 @@ CONST char *arg;
 	if (!(tmp = strrdelim(destpath, 0))) tmp = destpath;
 	else {
 		*(tmp++) = '\0';
-		chdir3(destpath, 1);
+		if (dochdir4(destpath, 1) == FNC_CANCEL) {
+			Xfree(destpath);
+			return(FNC_CANCEL);
+		}
 	}
 
-	replacefname(Xstrdup(tmp));
+	setlastfile(tmp);
 	Xfree(destpath);
 
 	return(FNC_EFFECT);
@@ -1862,19 +1822,14 @@ static int tree_dir(arg)
 CONST char *arg;
 {
 	char *path;
+	int no;
 
 	if (!(path = tree(0, NULL))) return(FNC_UPDATE);
-	if (chdir3(path, 1) < 0) {
-		warning(-1, path);
-		Xfree(path);
-		return(FNC_UPDATE);
-	}
+	no = dochdir4(path, 1);
+	if (no == FNC_CANCEL) no = FNC_UPDATE;
 	Xfree(path);
-	Xfree(findpattern);
-	findpattern = NULL;
-	replacefname(NULL);
 
-	return(FNC_EFFECT);
+	return(no);
 }
 #endif	/* !_NOTREE */
 
@@ -1981,6 +1936,7 @@ int oldwin;
 	memcpy((char *)filelist, (char *)(winvar[oldwin].v_filelist), i);
 	for (i = 0; i < winvar[oldwin].v_maxfile; i++)
 		filelist[i].name = Xstrdup(winvar[oldwin].v_filelist[i].name);
+	lastfile = Xstrdup(winvar[oldwin].v_lastfile);
 	filepos = winvar[oldwin].v_filepos;
 	sorton = winvar[oldwin].v_sorton;
 	dispmode = winvar[oldwin].v_dispmode;

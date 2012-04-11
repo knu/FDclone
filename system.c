@@ -364,6 +364,7 @@ extern int mktmpfile __P_((char *));
 extern int rmtmpfile __P_((CONST char *));
 extern int chdir2 __P_((CONST char *));
 extern int chdir3 __P_((CONST char *, int));
+extern int chdir4 __P_((CONST char *, int, CONST char *));
 extern int setenv2 __P_((CONST char *, CONST char *, int));
 extern char *getenv2 __P_((CONST char *));
 # ifdef	USESIGACTION
@@ -383,6 +384,7 @@ static int NEAR mktmpfile __P_((char *));
 static int NEAR rmtmpfile __P_((CONST char *));
 # define	chdir2		Xchdir
 int chdir3 __P_((CONST char *, int));
+# define	chdir4(p, r, a)	chdir3(p, r)
 int setenv2 __P_((CONST char *, CONST char *, int));
 # ifdef	USESIGACTION
 static sigcst_t NEAR signal2 __P_((int, sigcst_t));
@@ -8219,7 +8221,7 @@ syntaxtree *trp;
 	}
 
 	if (!next) {
-		if (chdir3(dir, 0) >= 0) {
+		if (chdir4(dir, 0, NULL) >= 0) {
 #ifdef	FD
 			physical_path = dupphysical_path;
 #endif
@@ -8252,7 +8254,7 @@ syntaxtree *trp;
 				dlen = strcatdelim(path) - path;
 			}
 			Xstrncpy(&(path[dlen]), dir, len);
-			if (chdir3(path, 1) >= 0) {
+			if (chdir4(path, 1, NULL) >= 0) {
 				kanjifputs(path, Xstdout);
 				VOID_C fputnl(Xstdout);
 				Xfree(path);
@@ -9118,7 +9120,7 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		cp = evalpath(Xstrdup(dirstack[0]), 0);
-		i = chdir3(cp, 1);
+		i = chdir4(cp, 1, NULL);
 		Xfree(cp);
 		if (i < 0) {
 			execerror((trp -> comm) -> argv,
@@ -9131,7 +9133,7 @@ syntaxtree *trp;
 # endif
 	}
 	else {
-		if (chdir3((trp -> comm) -> argv[1], 0) < 0) {
+		if (chdir4((trp -> comm) -> argv[1], 0, NULL) < 0) {
 			execerror((trp -> comm) -> argv,
 				(trp -> comm) -> argv[1], ER_BADDIR, 0);
 			return(RET_FAIL);
@@ -9163,7 +9165,7 @@ syntaxtree *trp;
 		return(RET_FAIL);
 	}
 	cp = evalpath(Xstrdup(dirstack[0]), 0);
-	i = chdir3(cp, 1);
+	i = chdir4(cp, 1, NULL);
 	Xfree(cp);
 	if (i < 0) {
 		execerror((trp -> comm) -> argv, dirstack[0], ER_BADDIR, 0);
