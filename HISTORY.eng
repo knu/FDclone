@@ -1,3 +1,16 @@
+Ver. 3.00k	Support Cygwin 1.7.13.
+ (04/21/12)	The cursor position after changing directory upward is changed.
+		Failure by PageUp/PageDown key on the tree screen is fixed.
+		Unsupported second resolution on the floppy drive is fixed.
+		Some abortions by Bs key on the tree screen is fixed.
+		Broken tree screen on the MS-DOS formed path is fixed.
+		Failure to get HTTP log on some environments is fixed.
+		Ineffective command result just before NEXT_WINDOW is fixed.
+		Abortion with LOG_DIR in archive browser is fixed.
+		Unexpected result of LOG_DIR in archive browser is fixed.
+		Overflow by the too long path name is suppressed.
+		Some commands in archive browser is restricted.
+
 Ver. 3.00j	Failure of some HTTP redirection is fixed.
  (09/25/10)	Needless network access when URLDRIVE=1 is suppressed.
 		Mis-parsing of the file list from some HTTP servers is fixed.

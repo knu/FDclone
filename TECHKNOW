@@ -431,6 +431,9 @@ GETPGRPVOID
 USESETPGID
 	プロセスグループ設定関数 setpgid(2) を setpgrp(2) の
 	代わりに用います。
+USETCGETPGRP
+	制御端末用関数として ioctl(2) ではなく tcgetpgrp(3)
+	及び tcsetpgrp(3) を用います。
 USESETVBUF
 	バッファリング関数 setvbuf(3) を setlinebuf(3) の代
 	わりに用います。
@@ -483,6 +486,10 @@ WAITKEYPAD
 	ESC キーコードの入力を受けてから待つ時間です。端末通
 	信速度の遅い場合に定義すると良いでしょう。デフォルト
 	は 360ms です。
+WAITTERMINAL
+	端末が応答するエスケープシーケンスの各文字を待つ時間
+	です。端末の反応が鈍い場合に定義すると良いでしょう。
+	デフォルトでは WAITKEYPAD の値を継承します。
 WAITKANJI
 	マルチバイト文字の入力中に次のキーコード入力を待つ時
 	間です。端末通信速度の遅い場合に定義すると良いでしょ

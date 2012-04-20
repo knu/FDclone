@@ -517,11 +517,12 @@ typedef long	off_t;
 #define	USESETENV
 #define	USEMKTIME
 #define	DEFFDSETSIZE
-#define	USETCGETPGRP
+#define	USETCGETPGRP		/* for Cygwin buggy ioctl */
 #define	SIGFNCINT
 #define	USESOCKLEN
 #define	USEINETATON
 #define	WAITKEYPAD		720
+#define	WAITTERMINAL		36
 #endif
 
 #if	defined (linux)
@@ -1043,6 +1044,7 @@ typedef long	off_t;
 
 /* #define SENSEPERSEC	;ratio of key sense per 1 second */
 /* #define WAITKEYPAD	;interval to wait after getting input of ESC [ms] */
+/* #define WAITTERMINAL	;interval to wait for terminal response [ms] */
 /* #define WAITKANJI	;interval to wait after getting input of Kanji [ms] */
 
 

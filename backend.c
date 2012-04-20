@@ -234,8 +234,6 @@ short *xp, *yp;
 static VOID NEAR settermattr(w)
 int w;
 {
-	char *cp;
-
 	if ((last_fg >= (short)0 && pty[w].fg < (short)0)
 	|| (last_bg >= (short)0 && pty[w].bg < (short)0))
 		resettermattr(-1);
@@ -253,19 +251,13 @@ int w;
 	}
 
 	if (last_fg != pty[w].fg && pty[w].fg >= (short)0) {
-		if ((cp = tparamstr(termstr[T_FGCOLOR], pty[w].fg, 0))) {
-			tputs2(cp, 1);
-			Xfree(cp);
-		}
-		else VOID_C Xcprintf("\033[%dm", pty[w].fg + ANSI_NORMAL);
+		if (tputparam(T_FGCOLOR, pty[w].fg, 0, 1) < 0)
+			tprintf("\033[%dm", 1, pty[w].fg + ANSI_NORMAL);
 		last_fg = pty[w].fg;
 	}
 	if (last_bg != pty[w].bg && pty[w].bg >= (short)0) {
-		if ((cp = tparamstr(termstr[T_BGCOLOR], pty[w].bg, 0))) {
-			tputs2(cp, 1);
-			Xfree(cp);
-		}
-		else VOID_C Xcprintf("\033[%dm", pty[w].bg + ANSI_REVERSE);
+		if (tputparam(T_BGCOLOR, pty[w].bg, 0, 1) < 0)
+			tprintf("\033[%dm", 1, pty[w].bg + ANSI_REVERSE);
 		last_bg = pty[w].bg;
 	}
 }
@@ -1363,7 +1355,7 @@ int n;
 	if (ptyrecvbuf(&w1, sizeof(w1)) < 0) return(0);
 
 	switch (n) {
-		case TE_PUTCH2:
+		case TE_XPUTCH:
 			surelocate(MAXWINDOWS, 0);
 			settermattr(MAXWINDOWS);
 			settermcode(MAXWINDOWS);
@@ -1372,7 +1364,7 @@ int n;
 			last_x += i;
 			tflush();
 			break;
-		case TE_CPUTS2:
+		case TE_XCPUTS:
 			s = Xmalloc(w1 + 1);
 			if (ptyrecvbuf(s, w1) >= 0) {
 				surelocate(MAXWINDOWS, 0);

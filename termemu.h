@@ -18,8 +18,8 @@ typedef struct _ptyinfo_t {
 #endif
 } ptyinfo_t;
 
-#define	TE_PUTCH2		(K_MAX + 1)
-#define	TE_CPUTS2		(K_MAX + 2)
+#define	TE_XPUTCH		(K_MAX + 1)
+#define	TE_XCPUTS		(K_MAX + 2)
 #define	TE_PUTTERM		(K_MAX + 3)
 #define	TE_PUTTERMS		(K_MAX + 4)
 #define	TE_SETSCROLL		(K_MAX + 5)

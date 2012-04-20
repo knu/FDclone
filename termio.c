@@ -47,14 +47,6 @@
 # endif	/* !NOFILE */
 #endif	/* !USESYSCONF || !_SC_OPEN_MAX */
 
-#ifndef	_PATH_TTY
-# if	MSDOS
-# define	_PATH_TTY	"CON"
-# else
-# define	_PATH_TTY	"/dev/tty"
-# endif
-#endif	/* !_PATH_TTY */
-
 #ifndef	UL_GDESLIM
 #define	UL_GDESLIM		4
 #endif

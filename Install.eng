@@ -19,14 +19,10 @@
    these two configurations. If you force to change anything,
    you will fail. So, you should go to the next step.
 	Sun	SunOS		(5.x)
-	HP	HP-UX		(11.x)
-	(free)	Cygwin		(1.5.x)
+	(free)	Cygwin		(1.5.x, 1.6.x, 1.7.x)
 	(free)	Linux		(2.x)
-	(free)	FreeBSD		(2.x, 3.x, 4.x, 5.x)
-	(free)	NetBSD		(1.x, 2.x, 3.x, 4.x, 5.x)
-	(free)	OpenBSD		(2.x, 3.x)
+	(free)	FreeBSD		(2.x, 3.x, 4.x, 5.x, 6.x)
 	(free)	MINIX		(3.x)
-	ASCII	BSD on Windows	(1.0, 1.5)
 	Apple	Mac OS X	(10.x)
 
    In the following OS, while it is not confirmed whether Ver.
@@ -37,7 +33,7 @@
 	Sun	SunOS		(4.1.x)
 	SONY	NEWS-OS		(3.2, 4.x, 6.x)
 	SGI	IRIX		(R4.0.5, R5.x, R6.x)
-	HP	HP-UX		(9.x, 10.01)
+	HP	HP-UX		(9.x, 10.01, 11.x)
 	HITACHI	HI-UX/WE2	(01-x, 02-01, 04-02)
 	NEC	EWS-UX/V(Rel4.x)(R5.3, R7.1, R8.1, R9.1, R10.1, R12.3, R13.1)
 	OMRON	UniOS-U		(Ver3.00)
@@ -53,8 +49,11 @@
 	Mips	RISC/os		(4.x, 5.0x)
 	NeXT	NEXTSTEP	(3.0)
 	(free)	386BSD		(R0.1)
+	(free)	NetBSD		(1.x, 2.x, 3.x, 4.x, 5.x)
+	(free)	OpenBSD		(2.x, 3.x, 4.x, 5.x)
 	BSDI	BSD/OS		(1.1, 2.x, 3.0)
 	JCC	4.4BSD-Lite	(v1.0)
+	ASCII	BSD on Windows	(1.0, 1.5)
 
    In the other OS which is not listed in both these lists,
    the program which judges the OS environment is prepared,

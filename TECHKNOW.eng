@@ -455,6 +455,9 @@ GETPGRPVOID
 USESETPGID
 	The function setpgid(2) is used instead of setpgrp(2)
 	to set the process group.
+USETCGETPGRP
+	The function tcgetpgrp(3)/tcsetpgrp(3) is used instead
+	of ioctl(2) to get/set the control terminal.
 USESETVBUF
 	The function setvbuf(3) is used instead of setlinebuf(3)
 	to buffer the stream.
@@ -508,9 +511,15 @@ SENSEPERSEC
 	per second.
 WAITKEYPAD
 	This indicates the time to wait after getting the
-	inputted keycode of ESC. It is suitable in case of
+	inputted keycode of ESC. It is suitable in case
 	that the terminal communication speed is slow. The
 	default value is 360ms.
+WAITTERMINAL
+	This indicates the time to wait for each characters
+	in the escape sequence received from the terminal.
+	It is suitable in case that the terminal response
+	is slow. The default value is inherited from the
+	value of WAITKEYPAD.
 WAITKANJI
 	This indicates the time to wait the next keycode
 	while some multi-byte character is inputted. It is
@@ -518,7 +527,7 @@ WAITKANJI
 	speed is slow. The default value is 120ms.
 HDDMOUNT
 	This causes the floppy drive function to support the
-	hard disk drive. It will be defined in case of that
+	hard disk drive. It will be defined in case that
 	you want this function on the environment except
 	PC-UNIX.
 

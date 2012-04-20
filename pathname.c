@@ -71,6 +71,10 @@ extern char *_mtrace_file;
 extern char *progpath;
 #endif
 
+#if	defined (DEP_PATHTOP) || defined (BSPATHDELIM) || defined (FD)
+static CONST char *NEAR topdelim __P_((CONST char *, int, int *, int *));
+#endif
+static CONST char *NEAR topdelim2 __P_((CONST char *, int *));
 static char *NEAR getenvvar __P_((CONST char *, int));
 static int NEAR setvar __P_((CONST char *, CONST char *, int));
 static int NEAR isescape __P_((CONST char *, int, int, int, int));
@@ -79,9 +83,9 @@ static char *NEAR cnvregexp __P_((CONST char *, int));
 #else
 static int NEAR _regexp_exec __P_((CONST reg_t *, CONST char *));
 #endif
-static void NEAR addstrbuf __P_((strbuf_t *, CONST char *, int));
-static void NEAR duplwild __P_((wild_t *, CONST wild_t *));
-static void NEAR freewild __P_((wild_t *));
+static VOID NEAR addstrbuf __P_((strbuf_t *, CONST char *, int));
+static VOID NEAR duplwild __P_((wild_t *, CONST wild_t *));
+static VOID NEAR freewild __P_((wild_t *));
 static int NEAR _evalwild __P_((int, char ***, wild_t *));
 #ifndef	_NOUSEHASH
 static int NEAR calchash __P_((CONST char *));
@@ -184,6 +188,35 @@ struct stat *stp;
 # endif	/* !NOSYMLINK */
 #endif	/* !FD */
 
+int getpathtop(s, drvp, typep)
+CONST char *s;
+int *drvp, *typep;
+{
+	int n, drv, type;
+
+	n = drv = 0;
+	type = PT_NONE;
+
+	if (!s) /*EMPTY*/;
+#ifdef	DEP_DOSPATH
+	else if ((drv = _dospath(s))) {
+		n = 2;
+		type = PT_DOS;
+	}
+#endif
+#ifdef	DOUBLESLASH
+	else if ((n = isdslash(s))) type = PT_DSLASH;
+#endif
+#ifdef	DEP_URLPATH
+	else if ((n = _urlpath(s, NULL, NULL))) type = PT_URL;
+#endif
+
+	if (drv) *drvp = drv;
+	if (typep) *typep = type;
+
+	return(n);
+}
+
 #ifdef	DEP_DOSPATH
 char *gendospath(path, drive, c)
 char *path;
@@ -198,87 +231,110 @@ int drive, c;
 }
 #endif	/* DEP_DOSPATH */
 
-#if	defined (DEP_DOSPATH) || defined (DEP_URLPATH)
-/*ARGSUSED*/
+#if	defined (DEP_PATHTOP) || defined (BSPATHDELIM) || defined (FD)
+static CONST char *NEAR topdelim(s, d, np, typep)
+CONST char *s;
+int d, *np, *typep;
+{
+	if (d) {
+		*np = getpathtop(s, NULL, typep);
+# ifdef	DEP_DOSPATH
+		if (*typep == PT_DOS) return(++s);
+# endif
+	}
+	else {
+		*np = 0;
+		*typep = PT_NONE;
+	}
+
+	return(NULL);
+}
+#endif	/* DEP_PATHTOP || BSPATHDELIM || defined FD */
+
+static CONST char *NEAR topdelim2(s, np)
+CONST char *s;
+int *np;
+{
+	int type;
+
+	*np = getpathtop(s, NULL, &type);
+	s += *np;
+
+	switch (type) {
+		case PT_NONE:
+		case PT_DOS:
+			if (!*s) return(s);
+			break;
+		default:
+			break;
+	}
+	if (*s == _SC_ && !s[1]) return(&(s[1]));
+
+	return(NULL);
+}
+
+#if	defined (DEP_PATHTOP) || defined (BSPATHDELIM)
 char *strdelim(s, d)
 CONST char *s;
 int d;
 {
-	int i;
+	CONST char *cp;
+	int n, type;
 
-# ifdef	DEP_DOSPATH
-	if (d && _dospath(s)) return((char *)&(s[1]));
-	else
-# endif
-# ifdef	DEP_URLPATH
-	if (d && (i = _urlpath(s, NULL, NULL))) /*EMPTY*/;
-	else
-# endif
-	i = 0;
+	if ((cp = topdelim(s, d, &n, &type))) return((char *)cp);
 
-	for (; s[i]; i++) {
-		if (s[i] == _SC_) return((char *)&(s[i]));
+	for (s += n; *s; s++) {
+		if (*s == _SC_) return((char *)s);
 # ifdef	BSPATHDELIM
-		if (iskanji1(s, i)) i++;
+		if (iskanji1(s, 0)) s++;
 # endif
 	}
 
 	return(NULL);
 }
 
-/*ARGSUSED*/
 char *strrdelim(s, d)
 CONST char *s;
 int d;
 {
 	CONST char *cp;
-	int i;
+	int n, type;
 
-	cp = NULL;
-# ifdef	DEP_DOSPATH
-	if (d && _dospath(s)) {
-		i = 2;
-		cp = &(s[1]);
-	}
-	else
-# endif
-# ifdef	DEP_URLPATH
-	if (d && (i = _urlpath(s, NULL, NULL))) /*EMPTY*/;
-	else
-# endif
-	i = 0;
+	cp = topdelim(s, d, &n, &type);
 
-	for (; s[i]; i++) {
-		if (s[i] == _SC_) cp = &(s[i]);
+	for (s += n; *s; s++) {
+		if (*s == _SC_) cp = s;
 # ifdef	BSPATHDELIM
-		if (iskanji1(s, i)) i++;
+		if (iskanji1(s, 0)) s++;
 # endif
 	}
 
 	return((char *)cp);
 }
-#endif	/* DEP_DOSPATH || DEP_URLPATH */
+#endif	/* DEP_PATHTOP || BSPATHDELIM */
 
 #ifdef	FD
-char *strrdelim2(s, eol)
-CONST char *s, *eol;
+char *strrdelim2(s, d, eol)
+CONST char *s;
+int d;
+CONST char *eol;
 {
-# ifdef	BSPATHDELIM
 	CONST char *cp;
-	int i;
+	int n, type;
 
-	cp = NULL;
-	for (i = 0; s[i] && &(s[i]) < eol; i++) {
-		if (s[i] == _SC_) cp = &(s[i]);
-		if (iskanji1(s, i)) i++;
+	cp = topdelim(s, d, &n, &type);
+
+# ifdef	BSPATHDELIM
+	for (s += n; *s && s < eol; s++) {
+		if (*s == _SC_) cp = s;
+		if (iskanji1(s, 0)) s++;
 	}
+# else
+	s += n;
+	for (eol--; eol >= s; eol--) if (*eol == _SC_) return((char *)eol);
+# endif
 
 	return((char *)cp);
-# else
-	for (eol--; eol >= s; eol--) if (*eol == _SC_) return((char *)eol);
-
-	return(NULL);
-# endif
 }
 #endif	/* FD */
 
@@ -309,41 +365,26 @@ int ptr;
 char *strcatdelim(s)
 char *s;
 {
-	char *cp;
-	int i;
+	char *cp, *eol;
+	int n;
 
-#ifdef	DEP_DOSPATH
-	if (_dospath(s)) i = 2;
-	else
-#endif
-#ifdef	DOUBLESLASH
-	if (isdslash(s)) i = 1;
-	else
-#endif
-#ifdef	DEP_URLPATH
-	if ((i = _urlpath(s, NULL, NULL))) {
-		if (!s[i]) i--;
-	}
-	else
-#endif
-	i = 0;
-	if (!s[i]) return(&(s[i]));
-	if (s[i] == _SC_ && !s[i + 1]) return(&(s[i + 1]));
+	eol = &(s[MAXPATHLEN - 1]);
+	if ((cp = (char *)topdelim2(s, &n))) return(cp);
 
-	cp = NULL;
-	for (; s[i]; i++) {
-		if (s[i] == _SC_) {
-			if (!cp) cp = &(s[i]);
+	for (s += n; *s; s++) {
+		if (*s == _SC_) {
+			if (!cp) cp = s;
 			continue;
 		}
 		cp = NULL;
 #ifdef	BSPATHDELIM
-		if (iskanji1(s, i)) i++;
+		if (iskanji1(s, 0)) s++;
 #endif
 	}
+
 	if (!cp) {
-		cp = &(s[i]);
-		if (i >= MAXPATHLEN - 1) return(cp);
+		cp = s;
+		if (cp >= eol) return(cp);
 		*cp = _SC_;
 	}
 	*(++cp) = '\0';
@@ -355,61 +396,45 @@ char *strcatdelim2(buf, s1, s2)
 char *buf;
 CONST char *s1, *s2;
 {
+	CONST char *s;
 	char *cp;
-	int i, len;
+	int n, len;
 
-#ifdef	DEP_DOSPATH
-	if (_dospath(s1)) {
-		buf[0] = s1[0];
-		buf[1] = s1[1];
-		i = 2;
+	s = topdelim2(s1, &n);
+	if (n > MAXPATHLEN - 1) {
+		n = MAXPATHLEN - 1;
+		Xstrncpy(buf, s1, n);
+		return(&(buf[n]));
 	}
-	else
-#endif
-#ifdef	DOUBLESLASH
-	if (isdslash(s1)) {
-		buf[0] = s1[0];
-		i = 1;
-	}
-	else
-#endif
-#ifdef	DEP_URLPATH
-	if ((i = _urlpath(s1, NULL, NULL))) {
-		if (!s1[i]) i--;
-		if (i >= MAXPATHLEN - 1) i = MAXPATHLEN - 2;
-		memcpy(buf, s1, i);
-	}
-	else
-#endif
-	i = 0;
-	if (!s1[i]) cp = &(buf[i]);
-	else if (s1[i] == _SC_ && !s1[i + 1]) {
-		cp = &(buf[i]);
-		*(cp++) = _SC_;
+
+	memcpy(buf, s1, n);
+	if (s) {
+		cp = &(buf[s - s1]);
+		memcpy(&(buf[n]), &(s1[n]), cp - &(buf[n]));
 	}
 	else {
 		cp = NULL;
-		for (; s1[i]; i++) {
-			if (i >= MAXPATHLEN - 1) {
-				buf[i] = '\0';
-				return(&(buf[i]));
+		for (; s1[n]; n++) {
+			if (n >= MAXPATHLEN - 1) {
+				buf[n] = '\0';
+				return(&(buf[n]));
 			}
-			buf[i] = s1[i];
-			if (s1[i] == _SC_) {
-				if (!cp) cp = &(buf[i]) + 1;
+			buf[n] = s1[n];
+			if (s1[n] == _SC_) {
+				if (!cp) cp = &(buf[n]) + 1;
 				continue;
 			}
 			cp = NULL;
 #ifdef	BSPATHDELIM
-			if (iskanji1(s1, i)) {
-				if (!s1[++i]) break;
-				buf[i] = s1[i];
+			if (iskanji1(s1, n)) {
+				if (!s1[++n]) break;
+				buf[n] = s1[n];
 			}
 #endif
 		}
 		if (!cp) {
-			cp = &(buf[i]);
-			if (i >= MAXPATHLEN - 1) {
+			cp = &(buf[n]);
+			if (n >= MAXPATHLEN - 1) {
 				*cp = '\0';
 				return(cp);
 			}
@@ -418,11 +443,27 @@ CONST char *s1, *s2;
 	}
 	if (s2) {
 		len = MAXPATHLEN - 1 - (cp - buf);
-		for (i = 0; s2[i] && i < len; i++) *(cp++) = s2[i];
+		for (n = 0; s2[n] && n < len; n++) *(cp++) = s2[n];
 	}
 	*cp = '\0';
 
 	return(cp);
+}
+
+int strcatpath(path, cp, name)
+char *path, *cp;
+CONST char *name;
+{
+	int len;
+
+	len = strlen(name);
+	if (len + (cp - path) >= MAXPATHLEN) {
+		errno = ENAMETOOLONG;
+		return(-1);
+	}
+	Xstrncpy(cp, name, len);
+
+	return(len);
 }
 
 #ifndef	PATHNOCASE
@@ -452,7 +493,7 @@ int len;
 	char *cp;
 
 	if (len < 0) len = strlen(dir);
-	if ((cp = strrdelim2(dir, &(dir[len]))) && !cp[1]) len = cp - dir;
+	if ((cp = strrdelim2(dir, 1, &(dir[len]))) && !cp[1]) len = cp - dir;
 	if (len > 0 && strnpathcmp(path, dir, len)) return(NULL);
 	if (path[len] && path[len] != _SC_) return(NULL);
 
@@ -1084,7 +1125,7 @@ reg_t *re;
 # endif		/* !USEREGCOMP */
 #endif		/* !USERE_COMP */
 
-static void NEAR addstrbuf(sp, s, len)
+static VOID NEAR addstrbuf(sp, s, len)
 strbuf_t *sp;
 CONST char *s;
 int len;
@@ -1095,7 +1136,7 @@ int len;
 	sp -> s[sp -> len] = '\0';
 }
 
-static void NEAR duplwild(dst, src)
+static VOID NEAR duplwild(dst, src)
 wild_t *dst;
 CONST wild_t *src;
 {
@@ -1115,7 +1156,7 @@ CONST wild_t *src;
 #endif	/* !NODIRLOOP */
 }
 
-static void NEAR freewild(wp)
+static VOID NEAR freewild(wp)
 wild_t *wp;
 {
 	Xfree(wp -> fixed.s);
@@ -1547,16 +1588,18 @@ int searchhash(hpp, com, search)
 hashlist **hpp;
 CONST char *com, *search;
 {
+#ifndef	_NOUSEHASH
+	hashlist *hp;
+	int n, recalc, duperrno;
+#endif
 #if	MSDOS
 	char *ext;
 #endif
 	CONST char *cp, *next;
 	char *tmp, *path;
 	int len, dlen, cost, size, ret;
-#ifndef	_NOUSEHASH
-	hashlist *hp;
-	int n, recalc, duperrno;
 
+#ifndef	_NOUSEHASH
 	if (!hpp || (!com && !search)) {
 		duperrno = errno;
 		if (!com && !search) freehash(hpp);
@@ -1568,7 +1611,7 @@ CONST char *com, *search;
 		errno = duperrno;
 		return(CM_NOTFOUND);
 	}
-#endif
+#endif	/* !_NOUSEHASH */
 
 #if	MSDOS
 	if ((ext = Xstrrchr(com, '.')) && strdelim(++ext, 0)) ext = NULL;
@@ -1856,9 +1899,8 @@ int dlen, exe;
 		if ((!len && isdotdir(dp -> d_name))
 		|| strnpathcmp(file, dp -> d_name, len))
 			continue;
-		size = strlen(dp -> d_name);
-		if (size + (cp - path) >= MAXPATHLEN) continue;
-		Xstrncpy(cp, dp -> d_name, size);
+		size = strcatpath(path, cp, dp -> d_name);
+		if (size < 0) continue;
 
 		if (isdotdir(dp -> d_name)) d = 1;
 		else if ((d = isexecute(path, dirok, exe)) < 0) continue;
@@ -1917,11 +1959,10 @@ int exe;
 	CONST char *dir, *file;
 	int dlen;
 
+	dlen = 0;
 # ifdef	DEP_DOSPATH
 	if (_dospath(path)) dlen = 2;
-	else
 # endif
-	dlen = 0;
 	dir = &(path[dlen]);
 
 	if ((file = strrdelim(dir, 0))) {

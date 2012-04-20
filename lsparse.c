@@ -436,26 +436,26 @@ int field, *eolp;
 	return((field < 0) ? f : -1);
 }
 
-static char *NEAR getfield(buf, line, skip, list, no)
+static char *NEAR getfield(buf, line, skip, list, n)
 char *buf;
 CONST char *line;
 int skip;
 CONST lsparse_t *list;
-int no;
+int n;
 {
 	CONST char *cp;
 	char *tmp;
 	int i, f, eol;
 
 	*buf = '\0';
-	f = (list -> field[no] != FLD_NONE)
-		? (int)(list -> field[no]) - skip : -1;
+	f = (list -> field[n] != FLD_NONE)
+		? (int)(list -> field[n]) - skip : -1;
 
 	if (f < 0 || (i = countfield(line, list -> sep, f, &eol)) < 0)
 		return(buf);
 	cp = &(line[i]);
 
-	i = (int)(list -> delim[no]);
+	i = (int)(list -> delim[n]);
 	if (i >= 128) {
 		i -= 128;
 		if (&(cp[i]) < &(line[eol])) cp += i;
@@ -464,7 +464,7 @@ int no;
 	else if (i && (!(cp = Xstrchr(cp, i)) || ++cp >= &(line[eol])))
 		return(buf);
 
-	i = (int)(list -> width[no]);
+	i = (int)(list -> width[n]);
 	if (i >= 128) i -= 128;
 	else if (i) {
 		if ((tmp = Xstrchr(cp, i))) i = tmp - cp;
@@ -1153,17 +1153,17 @@ CONST char *s1, *s2;
 #ifdef	BSPATHDELIM
 			if (iskanji1(s1, i)) {
 				if (s1[++i] != s2[++j]) return(0);
-				if (s1[i]) continue;
-				if (s2[j]) j++;
-				break;
+				if (!(s1[i])) break;
 			}
 #endif
 			continue;
 		}
+
 		if (s1[i] != _SC_ || s2[j] != _SC_) return(0);
 		while (s1[i + 1] == _SC_) i++;
 		while (s2[j + 1] == _SC_) j++;
 	}
+
 	if (s2[j] && s2[j] != _SC_) {
 		for (j = 0; s1[j] == _SC_; j++) /*EMPTY*/;
 		return((i == j) ? 1 : 0);
@@ -1274,11 +1274,11 @@ char *CONST *argv;
 }
 #endif	/* !OLDPARSE */
 
-int parsefilelist(vp, list, namep, linenop, func)
+int parsefilelist(vp, list, namep, nlinep, func)
 VOID_P vp;
 CONST lsparse_t *list;
 namelist *namep;
-int *linenop;
+int *nlinep;
 char *(*func)__P_((VOID_P));
 {
 #ifdef	OLDPARSE
@@ -1329,7 +1329,7 @@ char *(*func)__P_((VOID_P));
 		Xfree(lvar[0]);
 		memmove((char *)(&(lvar[0])),
 			(char *)(&(lvar[1])), nline * sizeof(*lvar));
-		(*linenop)++;
+		(*nlinep)++;
 		return(0);
 	}
 	if (matchlist(lvar[0], lerr)) return(-3);
@@ -1405,7 +1405,7 @@ char *(*func)__P_((VOID_P));
 				Xfree(form0);
 				Xfree(scorelist);
 #endif	/* !OLDPARSE */
-				*linenop += nline;
+				*nlinep += nline;
 				return(-1);
 			}
 		}
@@ -1494,7 +1494,7 @@ char *(*func)__P_((VOID_P));
 				(char *)(&(lvar[needline])),
 				(nline - needline + 1) * sizeof(*lvar));
 	}
-	*linenop += needline;
+	*nlinep += needline;
 
 #ifdef	OLDPARSE
 	return((score) ? 0 : 1);
@@ -1546,7 +1546,7 @@ char *(*func) __P_((VOID_P));
 {
 	namelist tmp;
 	char *cp, *dir;
-	int n, no, max, ent, score;
+	int n, nline, max, ent, score;
 
 	for (n = 0; n < (int)(list -> topskip); n++) {
 		if (!(cp = (*func)(vp))) break;
@@ -1559,14 +1559,14 @@ char *(*func) __P_((VOID_P));
 	todirlist(&((*listp)[0]), (u_int)-1);
 	max++;
 
-	no = 0;
+	nline = 0;
 #ifdef	HAVEFLAGS
 	tmp.st_flags = (u_long)0;
 #endif
 	score = -1;
 	parsefilelist(NULL, list, NULL, NULL, NULL);
 	for (;;) {
-		n = parsefilelist(vp, list, &tmp, &no, func);
+		n = parsefilelist(vp, list, &tmp, &nline, func);
 		if (n < 0) {
 			if (n == -1) break;
 			parsefilelist(NULL, NULL, NULL, NULL, NULL);
@@ -1590,7 +1590,7 @@ char *(*func) __P_((VOID_P));
 #ifndef	NOSYMLINK
 			(*listp)[max].linkname = NULL;
 #endif
-			(*listp)[max].ent = no;
+			(*listp)[max].ent = nline;
 			max++;
 		}
 		if (!dir) {
@@ -1616,14 +1616,14 @@ char *(*func) __P_((VOID_P));
 
 		memcpy((char *)&((*listp)[max]),
 			(char *)&tmp, sizeof(**listp));
-		(*listp)[max].ent = no;
+		(*listp)[max].ent = nline;
 		max++;
 	}
 	parsefilelist(NULL, NULL, NULL, NULL, NULL);
 
-	no -= (int)(list -> bottomskip);
+	nline -= (int)(list -> bottomskip);
 	for (n = max - 1; n > 0; n--) {
-		if ((*listp)[n].ent <= no) break;
+		if ((*listp)[n].ent <= nline) break;
 		Xfree((*listp)[n].name);
 #ifndef	NOSYMLINK
 		Xfree((*listp)[n].linkname);

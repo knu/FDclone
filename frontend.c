@@ -160,7 +160,7 @@ int c;
 {
 	if (!emupid) return(Xputch(c));
 	else {
-		sendword(emufd, TE_PUTCH2);
+		sendword(emufd, TE_XPUTCH);
 		sendword(emufd, c);
 
 		return(c);
@@ -175,7 +175,7 @@ CONST char *s;
 	if (!emupid) Xcputs(s);
 	else {
 		if (!s) return;
-		sendword(emufd, TE_CPUTS2);
+		sendword(emufd, TE_XCPUTS);
 		len = strlen(s);
 		sendword(emufd, len);
 		sendbuf(emufd, s, len);
@@ -269,6 +269,49 @@ int Xkanjiputs(s)
 CONST char *s;
 {
 	return(XXcprintf("%k", s));
+}
+
+VOID Xattrputs(s, isstandout)
+CONST char *s;
+int isstandout;
+{
+	if (!s || !*s) return;
+
+	if (isstandout) Xputterm(T_STANDOUT);
+	XXcputs(s);
+	if (isstandout) Xputterm(END_STANDOUT);
+}
+
+#ifdef	USESTDARGH
+/*VARARGS2*/
+int Xattrprintf(CONST char *fmt, int isstandout, ...)
+#else
+/*VARARGS2*/
+int Xattrprintf(fmt, isstandout, va_alist)
+CONST char *fmt;
+int isstandout;
+va_dcl
+#endif
+{
+	va_list args;
+	char *buf;
+	int n;
+
+	VA_START(args, isstandout);
+	n = cvasprintf(&buf, fmt, args);
+	va_end(args);
+
+	Xattrputs(buf, isstandout);
+	free(buf);
+
+	return(n);
+}
+
+int Xattrkanjiputs(s, isstandout)
+CONST char *s;
+int isstandout;
+{
+	return(Xattrprintf("%k", isstandout, s));
 }
 
 VOID Xchgcolor(color, reverse)

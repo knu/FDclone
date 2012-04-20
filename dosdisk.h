@@ -163,7 +163,7 @@ typedef struct _devstat {
 #define	F_DUPL			0010
 #define	F_CACHE			0020
 #define	F_WRFAT			0040
-#define	F_VFAT			0100
+#define	F_LFN			0100
 #define	F_FAT32			0200
 
 #define	ch_name			fatbuf

@@ -44,6 +44,13 @@ extern int dospath3 __P_((CONST char *));
 #define	dospath3(path)		dospath(path, NULL)
 # endif
 #endif	/* DEP_DOSDRIVE */
+#ifdef	CYGWIN
+char *getcygdrive_user __P_((VOID_A));
+char *getcygdrive_system __P_((VOID_A));
+# ifdef	DEBUG
+VOID freecygdrive __P_((VOID_A));
+# endif
+#endif	/* CYGWIN */
 #if	(defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
 || defined (DEP_PSEUDOPATH)) \
 && defined (DEBUG)
@@ -60,7 +67,7 @@ extern time_t getunixtime __P_((u_int, u_int));
 extern u_short getdosmode __P_((u_int));
 extern int getdostime __P_((u_short *, u_short *, time_t));
 #endif
-#if	defined (DEP_DIRENT)
+#ifdef	DEP_DIRENT
 extern DIR *Xopendir __P_((CONST char *));
 extern int Xclosedir __P_((DIR *));
 extern struct dirent *Xreaddir __P_((DIR *));

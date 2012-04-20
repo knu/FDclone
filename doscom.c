@@ -1193,7 +1193,7 @@ off_t *sump, *bsump;
 	file = strcatdelim(dirwd);
 	dirlist = NULL;
 	while ((dp = Xreaddir(dirp))) {
-		Xstrcpy(file, dp -> d_name);
+		if (strcatpath(dirwd, file, dp -> d_name) < 0) continue;
 #ifndef	NOSYMLINK
 		if (Xlstat(dirwd, &st) < 0 || (st.st_mode & S_IFMT) != S_IFLNK)
 			llen = -1;

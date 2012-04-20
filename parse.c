@@ -544,26 +544,23 @@ int delim;
 	next = epath = NULL;
 	size = 0;
 	for (cp = paths; cp; cp = next) {
+		new = NULL;
+		next = cp;
 #ifdef	DEP_DOSPATH
-		if (_dospath(cp)) next = Xstrchr(&(cp[2]), delim);
-		else
+		if (_dospath(next)) next += 2;
 #endif
-		next = Xstrchr(cp, delim);
+		next = Xstrchr(next, delim);
 		len = (next) ? (next++) - cp : strlen(cp);
 		if (len) {
 			new = _evalpath(cp, &(cp[len]), 0);
-			cp = (isrootdir(cp))
+			cp = (isrootdir(new))
 				? Xrealpath(new, buf, RLP_READLINK) : new;
 			len = strlen(cp);
 		}
-#ifdef	FAKEUNINIT
-		else new = NULL;	/* fake for -Wuninitialized */
-#endif
+
 		epath = Xrealloc(epath, size + len + 1 + 1);
-		if (len) {
-			Xstrcpy(&(epath[size]), cp);
-			Xfree(new);
-		}
+		memcpy(&(epath[size]), cp, len);
+		Xfree(new);
 		size += len;
 		if (next) epath[size++] = delim;
 	}

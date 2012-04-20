@@ -59,6 +59,7 @@ typedef struct _kstree_t {
 #endif	/* !MSDOS */
 
 #define	WINTERMNAME		"iris"
+#define	CYGTERMNAME		"cygwin"
 #ifdef	_POSIX_VDISABLE
 #define	K_UNDEF			_POSIX_VDISABLE
 #else
@@ -333,6 +334,19 @@ static VOID NEAR defaultterm __P_((VOID_A));
 static int NEAR Xungetch __P_((int));
 #endif
 static int NEAR maxlocate __P_((int *, int *));
+#if	!MSDOS || !defined (USEVIDEOBIOS)
+static int NEAR pollterm __P_((int));
+#endif
+static char *NEAR tparamstr __P_((CONST char *, int, int));
+#if	!MSDOS
+static char *NEAR tgetstr2 __P_((char **, CONST char *));
+static char *NEAR tgetstr3 __P_((char **, CONST char *, CONST char *));
+static char *NEAR tgetkeyseq __P_((int, CONST char *));
+static kstree_t *NEAR newkeyseqtree __P_((kstree_t *, int));
+static VOID NEAR freekeyseqtree __P_((kstree_t *, int));
+static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
+static VOID NEAR sortkeyseq __P_((VOID_A));
+#endif
 #if	MSDOS
 # ifdef	USEVIDEOBIOS
 static VOID NEAR bioslocate __P_((int, int));
@@ -346,13 +360,6 @@ static int NEAR evalcsi __P_((CONST char *));
 static VOID NEAR dosgettime __P_((u_char []));
 # endif
 #else	/* !MSDOS */
-static char *NEAR tgetstr2 __P_((char **, CONST char *));
-static char *NEAR tgetstr3 __P_((char **, CONST char *, CONST char *));
-static char *NEAR tgetkeyseq __P_((int, CONST char *));
-static kstree_t *NEAR newkeyseqtree __P_((kstree_t *, int));
-static VOID NEAR freekeyseqtree __P_((kstree_t *, int));
-static int cmpkeyseq __P_((CONST VOID_P, CONST VOID_P));
-static VOID NEAR sortkeyseq __P_((VOID_A));
 static int putch2 __P_((tputs_t));
 static kstree_t *NEAR searchkeyseq __P_((int, kstree_t *, int));
 #endif	/* !MSDOS */
@@ -568,6 +575,9 @@ static int termflags = 0;
 #define	F_TTYCHANGED		010
 #define	F_INPROGRESS		020
 #define	F_RESETTTY		(F_INITTTY | F_TTYCHANGED)
+#ifdef	CYGWIN
+static int cygterm = 0;
+#endif
 static CONST char *deftermstr[MAXTERMSTR] = {
 #ifdef	PC98
 	"\033[>1h",		/* T_INIT */
@@ -1103,9 +1113,10 @@ int isnl;
 
 VOID stdiomode(VOID_A)
 {
+#if	!MSDOS && !defined (USESGTTY)
 	int isnl;
+#endif
 
-	isnl = (isttyiomode) ? isttyiomode - 1 : 0;
 	if (ttyio < 0) /*EMPTY*/;
 #if	!MSDOS
 	else if (duptty[1]) loadtermio(ttyio, duptty[1], NULL);
@@ -1121,6 +1132,7 @@ VOID stdiomode(VOID_A)
 		tabs();
 		if (dumbterm > 2) ttymode(0, ECHO | CRMOD, 0, 0);
 # else	/* !USESGTTY */
+		isnl = (isttyiomode) ? isttyiomode - 1 : 0;
 		if (isnl) ttymode(TIO_LCOOKED | TIO_LECHO, PENDIN | ECHONL,
 			TIO_ICOOKED | ICRNL, ~TIO_INOCOOKED,
 			0, ~TIO_ONONL | TAB3, VAL_VMIN, VAL_VTIME);
@@ -1158,8 +1170,8 @@ int init;
 	return(oldmode);
 }
 
-VOID exit2(no)
-int no;
+VOID exit2(n)
+int n;
 {
 	if ((termflags & F_TERMENT) && !dumbterm) putterm(T_NORMAL);
 	endterm();
@@ -1172,7 +1184,7 @@ int no;
 	VOID_C closetty(&ttyio, &ttyout);
 	muntrace();
 #endif	/* DEBUG */
-	exit(no);
+	exit(n);
 }
 
 static VOID NEAR terror(mes)
@@ -1304,9 +1316,6 @@ int *xp, *yp;
 static int NEAR maxlocate(yp, xp)
 int *yp, *xp;
 {
-# if	MSDOS
-	char *cp;
-# endif
 	int i, x, y;
 
 # if	!MSDOS
@@ -1314,22 +1323,42 @@ int *yp, *xp;
 # endif
 	if (getxy(&x, &y) < 0) x = y = 0;
 # if	MSDOS
-	if ((cp = tparamstr(termstr[C_LOCATE], 0, 999))) {
-		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
-		free(cp);
+	VOID_C tputparam(C_LOCATE, 1, 999, 1);
+	VOID_C tputparam(C_NDOWN, 999, 999, n_line);
+# else	/* !MSDOS */
+#  if	defined (CYGWIN) && (CYGWIN > 1007009)
+	if (cygterm) {
+		locate(998, 0);
+		movecursor(-1, C_DOWN, 999);
 	}
-	if ((cp = tparamstr(termstr[C_NDOWN], 999, 999))) {
-		for (i = 0; cp[i]; i++) bdos(0x06, cp[i], 0);
-		free(cp);
-	}
-# else
+	else
+#  endif
 	locate(998, 998);
-	tflush();
-# endif
+# endif	/* !MSDOS */
 	i = getxy(xp, yp);
 	if (x > 0 && y > 0) locate(--x, --y);
 
 	return(i);
+}
+
+/*ARGSUSED*/
+static int NEAR pollterm(first)
+int first;
+{
+#if	!MSDOS
+	long usec;
+#endif
+
+#if	MSDOS
+	if (!(bdos(0x0b, 0, 0) & 0xff)) return(EOF);
+#else
+	usec = WAITTERMINAL * 1000L;
+	if (first) usec *= 10L;
+
+	if (!kbhit2(usec)) return(EOF);
+#endif
+
+	return(Xgetch());
 }
 
 int getxy(xp, yp)
@@ -1340,38 +1369,30 @@ int *xp, *yp;
 
 	format = SIZEFMT;
 	keyflush();
-# if	MSDOS
-	for (i = 0; i < strsize(GETSIZE); i++) bdos(0x06, GETSIZE[i], 0);
-# else
+# if	!MSDOS
 	if (!usegetcursor) return(-1);
+# endif
 	tputs2(GETSIZE, 1);
 	tflush();
-# endif
 
 	buf[0] = '\0';
 	do {
-		if (!kbhit2(WAITKEYPAD * 1000L * 10)) break;
-# if	MSDOS
-		buf[0] = bdos(0x07, 0x00, 0);
-# else
-		if ((tmp = Xgetch()) == EOF) break;
+		if ((tmp = pollterm(1)) == EOF) break;
 		buf[0] = tmp;
-# endif
 	} while (buf[0] != format[0]);
 
 	i = 0;
 	if (buf[0] == format[0]) for (i++; i < strsize(buf); i++) {
-		if (!kbhit2(WAITKEYPAD * 1000L)) break;
-# if	MSDOS
-		buf[i] = bdos(0x07, 0x00, 0);
-# else
-		if ((tmp = Xgetch()) == EOF) break;
+		if ((tmp = pollterm(0)) == EOF) break;
 		buf[i] = tmp;
-# endif
 		if (buf[i] == format[strsize(SIZEFMT) - 1]) break;
 	}
 	keyflush();
-	while (kbhit2(WAITKEYPAD * 1000L)) VOID_C Xgetch();
+# ifdef	CYGWIN
+	if (cygterm) /*EMPTY*/;
+	else
+# endif
+	for (;;) if (pollterm(0) == EOF) break;
 	if (!i || buf[i++] != format[strsize(SIZEFMT) - 1]) return(-1);
 	buf[i] = '\0';
 
@@ -1394,7 +1415,7 @@ int *xp, *yp;
 #endif	/* !MSDOS || !USEVIDEOBIOS */
 
 #if	MSDOS
-char *tparamstr(s, arg1, arg2)
+static char *NEAR tparamstr(s, arg1, arg2)
 CONST char *s;
 int arg1, arg2;
 {
@@ -1422,7 +1443,7 @@ CONST char *s;
 
 #else	/* !MSDOS */
 
-char *tparamstr(s, arg1, arg2)
+static char *NEAR tparamstr(s, arg1, arg2)
 CONST char *s;
 int arg1, arg2;
 {
@@ -1754,11 +1775,11 @@ static VOID NEAR sortkeyseq(VOID_A)
 VOID getterment(s)
 CONST char *s;
 {
-# ifdef	IRIX
-	int winterm;		/* for STUPID winterm entry */
-# endif
 # ifndef	USETERMINFO
 	char buf[TERMCAPSIZE];
+# endif
+# ifdef	IRIX
+	int winterm;		/* for STUPID winterm entry */
 # endif
 	CONST char *term;
 	char *cp;
@@ -1778,10 +1799,13 @@ CONST char *s;
 		for (i = 0; i < DUMBLISTSIZE; i++)
 			if (!strcmp(term, dumblist[i])) break;
 		if (i < DUMBLISTSIZE) dumbterm = 1;
-	}
 # ifdef	IRIX
-	winterm = !strncmp(term, WINTERMNAME, strsize(WINTERMNAME));
+		winterm = !strncmp(term, WINTERMNAME, strsize(WINTERMNAME));
 # endif
+# ifdef	CYGWIN
+		cygterm = !strcmp(term, CYGTERMNAME);
+# endif
+	}
 
 	for (;;) {
 		if (dumb) term = dumblist[--dumb];
@@ -1986,18 +2010,18 @@ CONST char *s;
 	tgetkeyseq(K_EOL, TERM_kE);
 	tgetkeyseq(K_PPAGE, TERM_kP);
 	tgetkeyseq(K_NPAGE, TERM_kN);
-# ifdef	IRIX
-	if (winterm);
-	else
-# endif
 
 # if	!defined (HPUX) || !defined (USETERMINFO) \
 || (defined (key_enter) && defined (key_beg) && defined (key_end))
 	/* Hack for HP-UX 10.20 */
+#  ifdef	IRIX
+	if (winterm);
+	else
+#  endif
 	tgetkeyseq(K_ENTER, TERM_at8);
 	tgetkeyseq(K_BEG, TERM_at1);
 	tgetkeyseq(K_END, TERM_at7);
-# endif
+# endif	/* !HPUX || !USETERMINFO || (key_enter && key_beg && key_end) */
 
 	for (i = 0; i <= K_MAX - K_MIN; i++) {
 		if (!(keyseq[i].str)) keyseq[i].len = 0;
@@ -2208,6 +2232,23 @@ keyseq_t *list;
 }
 #endif	/* !MSDOS */
 
+int tputparam(n, arg1, arg2, cnt)
+int n, arg1, arg2, cnt;
+{
+	char *cp;
+
+	if (n < 0 || n >= MAXTERMSTR) return(-1);
+	if (!(termstr[n])) return(-1);
+	if (!(cp = tparamstr(termstr[n], arg1, arg2))) return(-1);
+
+	n = 0;
+	if (!*cp) n = -1;
+	else tputs2(cp, cnt);
+	free(cp);
+
+	return(n);
+}
+
 VOID initterm(VOID_A)
 {
 	if (!(termflags & F_TERMENT)) getterment(NULL);
@@ -2234,11 +2275,12 @@ VOID putterm(n)
 int n;
 {
 	if (n < 0 || n >= MAXTERMSTR) return;
-	if (termstr[n]) tputs2(termstr[n], 1);
+	if (!(termstr[n])) return;
+
+	tputs2(termstr[n], 1);
 }
 
-#if	MSDOS
-# ifdef	USEVIDEOBIOS
+#if	MSDOS && defined (USEVIDEOBIOS)
 static VOID NEAR bioslocate(x, y)
 int x, y;
 {
@@ -2373,6 +2415,20 @@ int c;
 	return(c);
 }
 
+#else	/* !MSDOS || !USEVIDEOBIOS */
+
+int Xputch(c)
+int c;
+{
+	c = Xfputc(c, ttyout);
+	if (c == EOF) return(-1);
+
+	return(c);
+}
+#endif	/* !MSDOS || !USEVIDEOBIOS */
+
+#if	MSDOS
+# ifdef	USEVIDEOBIOS
 static VOID NEAR chgattr(n)
 int n;
 {
@@ -2569,40 +2625,60 @@ CONST char *s;
 VOID Xcputs(s)
 CONST char *s;
 {
-	int i, n;
+	if (!s) return;
 
-	if (s) for (i = 0; s[i]; i++) {
-		if (s[i] != '\033' || s[i + 1] != '[') VOID_C Xputch(s[i]);
-		else if ((n = evalcsi(&s[i + 2])) >= 0) i += n + 2;
+	for (; *s; s++) VOID_C Xputch(*s);
+}
+
+/*ARGSUSED*/
+VOID tputs2(s, n)
+CONST char *s;
+int n;
+{
+	if (!s) return;
+
+	for (; *s; s++) {
+		if (*s != '\033' || s[1] != '[') /*EMPTY*/;
+		else if ((n = evalcsi(&(s[2]))) >= 0) {
+			s += n + 2;
+			continue;
+		}
+
+		VOID_C Xputch(*s);
 	}
 }
+
 # else	/* !USEVIDEOBIOS */
-
-int Xputch(c)
-int c;
-{
-	bdos(0x06, c & 0xff, 0);
-
-	return(c);
-}
 
 VOID Xcputs(s)
 CONST char *s;
 {
-	int i, x, y;
+	int x, y;
 
-	if (s) for (i = 0; s[i]; i++) {
-		if (s[i] != '\t') {
-			bdos(0x06, s[i], 0);
+	if (!s) return;
+
+	for (; *s; s++) {
+		if (*s != '\t') {
+			VOID_C Xputch(*s);
 			continue;
 		}
 
 		keyflush();
 		if (getxy(&x, &y) < 0) x = 1;
 		do {
-			bdos(0x06, ' ', 0);
+			VOID_C Xputch(' ');
 		} while (x++ % 8);
 	}
+}
+
+/*ARGSUSED*/
+VOID tputs2(s, n)
+CONST char *s;
+int n;
+{
+	if (!s) return;
+
+	VOID_C Xfputs(s, ttyout);
 }
 # endif	/* !USEVIDEOBIOS */
 
@@ -2827,11 +2903,14 @@ int s, e;
 VOID locate(x, y)
 int x, y;
 {
-	VOID_C Xcprintf(termstr[C_LOCATE], ++y, ++x);
+	tprintf(termstr[C_LOCATE], 1, ++y, ++x);
 }
 
 VOID tflush(VOID_A)
 {
+#ifndef	USEVIDEOBIOS
+	VOID_C Xfflush(ttyout);
+#endif
 }
 
 char *getwsize(xmax, ymax)
@@ -2864,19 +2943,12 @@ int fd, xmax, ymax;
 
 #else	/* !MSDOS */
 
-int Xputch(c)
-int c;
-{
-	c = Xfputc(c, ttyout);
-	if (c == EOF) return(-1);
-
-	return(c);
-}
-
 VOID Xcputs(s)
 CONST char *s;
 {
-	if (s) VOID_C Xfputs(s, ttyout);
+	if (!s) return;
+
+	VOID_C Xfputs(s, ttyout);
 }
 
 static int putch2(c)
@@ -2896,7 +2968,9 @@ VOID putterms(n)
 int n;
 {
 	if (n < 0 || n >= MAXTERMSTR) return;
-	if (termstr[n]) tputs2(termstr[n], n_line);
+	if (!(termstr[n])) return;
+
+	tputs2(termstr[n], n_line);
 }
 
 VOID checksuspend(VOID_A)
@@ -3077,29 +3151,13 @@ int c, desc;
 int setscroll(s, e)
 int s, e;
 {
-	char *cp;
-
-	if (!(cp = tparamstr(termstr[T_SCROLL], s, e)) || !*cp) {
-		if (cp) free(cp);
-		return(-1);
-	}
-	tputs2(cp, 1);
-	free(cp);
-
-	return(0);
+	return tputparam(T_SCROLL, s, e, 1);
 }
 
 VOID locate(x, y)
 int x, y;
 {
-	char *cp;
-
-	if (!(cp = tparamstr(termstr[C_LOCATE], y, x)) || !*cp) {
-		if (cp) free(cp);
-		return;
-	}
-	tputs2(cp, 1);
-	free(cp);
+	VOID_C tputparam(C_LOCATE, y, x, 1);
 }
 
 VOID tflush(VOID_A)
@@ -3199,6 +3257,19 @@ int fd, xmax, ymax;
 }
 #endif	/* !MSDOS */
 
+int cvasprintf(sp, fmt, args)
+char **sp;
+CONST char *fmt;
+va_list args;
+{
+	int n;
+
+	n = Xvasprintf(sp, fmt, args);
+	if (n < 0) terror("malloc()");
+
+	return(n);
+}
+
 #ifdef	USESTDARGH
 /*VARARGS1*/
 int Xcprintf(CONST char *fmt, ...)
@@ -3214,14 +3285,35 @@ va_dcl
 	int n;
 
 	VA_START(args, fmt);
-	n = Xvasprintf(&buf, fmt, args);
+	n = cvasprintf(&buf, fmt, args);
 	va_end(args);
-	if (n < 0) terror("malloc()");
 
 	Xcputs(buf);
 	free(buf);
 
 	return(n);
+}
+
+#ifdef	USESTDARGH
+/*VARARGS2*/
+VOID tprintf(CONST char *fmt, int cnt, ...)
+#else
+/*VARARGS2*/
+VOID tprintf(fmt, cnt, va_alist)
+CONST char *fmt;
+int cnt;
+va_dcl
+#endif
+{
+	va_list args;
+	char *buf;
+
+	VA_START(args, cnt);
+	VOID_C cvasprintf(&buf, fmt, args);
+	va_end(args);
+
+	tputs2(buf, cnt);
+	free(buf);
 }
 
 VOID cputnl(VOID_A)
@@ -3236,10 +3328,52 @@ CONST char *s;
 	return(Xcprintf("%k", s));
 }
 
+VOID attrputs(s, isstandout)
+CONST char *s;
+int isstandout;
+{
+	if (!s || !*s) return;
+
+	if (isstandout) putterm(T_STANDOUT);
+	Xcputs(s);
+	if (isstandout) putterm(END_STANDOUT);
+}
+
+#ifdef	USESTDARGH
+/*VARARGS2*/
+int attrprintf(CONST char *fmt, int isstandout, ...)
+#else
+/*VARARGS2*/
+int attrprintf(fmt, isstandout, va_alist)
+CONST char *fmt;
+int isstandout;
+va_dcl
+#endif
+{
+	va_list args;
+	char *buf;
+	int n;
+
+	VA_START(args, isstandout);
+	n = cvasprintf(&buf, fmt, args);
+	va_end(args);
+
+	attrputs(buf, isstandout);
+	free(buf);
+
+	return(n);
+}
+
+int attrkanjiputs(s, isstandout)
+CONST char *s;
+int isstandout;
+{
+	return(attrprintf("%k", isstandout, s));
+}
+
 VOID chgcolor(color, reverse)
 int color, reverse;
 {
-	char *cp;
 	int fg, bg;
 
 	if (reverse) {
@@ -3251,29 +3385,16 @@ int color, reverse;
 		bg = -1;
 	}
 
-	if ((cp = tparamstr(termstr[T_FGCOLOR], fg, 0))) {
-		tputs2(cp, 1);
-		free(cp);
-	}
-	else VOID_C Xcprintf("\033[%dm", fg + ANSI_NORMAL);
+	if (tputparam(T_FGCOLOR, fg, 0, 1) < 0)
+		tprintf("\033[%dm", 1, fg + ANSI_NORMAL);
 
 	if (bg < 0) /*EMPTY*/;
-	else if ((cp = tparamstr(termstr[T_BGCOLOR], bg, 0))) {
-		tputs2(cp, 1);
-		free(cp);
-	}
-	else VOID_C Xcprintf("\033[%dm", bg + ANSI_REVERSE);
+	else if (tputparam(T_BGCOLOR, bg, 0, 1) < 0)
+		tprintf("\033[%dm", 1, bg + ANSI_REVERSE);
 }
 
 VOID movecursor(n1, n2, c)
 int n1, n2, c;
 {
-	char *cp;
-
-	if (n1 < 0 || !termstr[n1] || !(cp = tparamstr(termstr[n1], c, c)))
-		while (c--) putterms(n2);
-	else {
-		tputs2(cp, n_line);
-		free(cp);
-	}
+	if (tputparam(n1, c, c, n_line) < 0) while (c--) putterms(n2);
 }

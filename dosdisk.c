@@ -1860,8 +1860,8 @@ int drive;
 			return(-1);
 		}
 	}
-	if (Xislower(drive)) dev.flags |= F_VFAT;
-	else dev.flags &= ~F_VFAT;
+	if (Xislower(drive)) dev.flags |= F_LFN;
+	else dev.flags &= ~F_LFN;
 
 	memcpy((char *)&(devlist[new]), (char *)&dev, sizeof(*devlist));
 	devlist[new].nlink = 1;
@@ -2026,8 +2026,8 @@ VOID_T (*func)__P_((VOID_A));
 			return(-1);
 		}
 	}
-	if (Xislower(drive)) dev.flags |= F_VFAT;
-	else dev.flags &= ~F_VFAT;
+	if (Xislower(drive)) dev.flags |= F_LFN;
+	else dev.flags &= ~F_LFN;
 
 	memcpy((char *)&(devlist[dd]), (char *)&dev, sizeof(*devlist));
 	errno = duperrno;
@@ -2373,7 +2373,7 @@ int class;
 		}
 		else if (!i || (i == 1 && path[0] == '.')) /*EMPTY*/;
 		else if (i == 2 && path[0] == '.' && path[1] == '.') {
-			cp = strrdelim2(buf, cp);
+			cp = strrdelim2(buf, 0, cp);
 			if (!cp) cp = buf;
 		}
 		else if (!(cp = addpath(buf, cp - buf, path, i))) return(-1);
@@ -2663,7 +2663,7 @@ int all;
 			sum = dentp -> checksum;
 		}
 
-		if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) continue;
+		if (!(devlist[xdirp -> dd_fd].flags & F_LFN)) continue;
 
 		dp -> d_reclen += DOSDIRENT;
 		for (i = 1, j = 0; i < DOSDIRENT; i += 2, j++) {
@@ -2731,7 +2731,7 @@ DIR *dirp;
 		errno = doserrno;
 		return(NULL);
 	}
-	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
+	if (!(devlist[xdirp -> dd_fd].flags & F_LFN)) {
 		for (i = 0; dp -> d_name[i]; i++) {
 			if (iswsjis(dp -> d_name, i)) i++;
 #if	!MSDOS
@@ -2755,7 +2755,7 @@ int len, needlfn;
 	char tmp[8 + 1 + 3 + 1];
 
 	if (len <= 0) len = strlen(fname);
-	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
+	if (devlist[xdirp -> dd_fd].flags & F_LFN) {
 		if (needlfn) while ((dp = _dosreaddir(xdirp, 1))) {
 			getdosname(tmp, dd2dentp(xdirp -> dd_fd) -> name,
 				dd2dentp(xdirp -> dd_fd) -> ext);
@@ -3022,7 +3022,7 @@ int mode;
 		return(-1);
 	}
 
-	if (!(devlist[xdirp -> dd_fd].flags & F_VFAT)) {
+	if (!(devlist[xdirp -> dd_fd].flags & F_LFN)) {
 		lfn = 0;
 		n = 0;
 		cnt = 1;
@@ -3171,7 +3171,7 @@ int mode;
 	memcpy(dentp -> name, (char *)fname, 8 + 3);
 	dentp -> attr = getdosmode((u_int)mode) | DS_IARCHIVE;
 	i = putdostime(dentp -> time, (time_t)-1);
-	if (devlist[xdirp -> dd_fd].flags & F_VFAT) {
+	if (devlist[xdirp -> dd_fd].flags & F_LFN) {
 		dentp -> checksum = i / 10;
 		dentp -> ctime[0] = dentp -> time[0];
 		dentp -> ctime[1] = dentp -> time[1];
@@ -3452,7 +3452,7 @@ CONST struct utimes_t *utp;
 
 	t = utp -> modtime;
 	if ((dd = getdent(path, NULL)) < 0) return(seterrno(doserrno));
-	putdostime(dd2dentp(dd) -> time, t);
+	VOID_C putdostime(dd2dentp(dd) -> time, t);
 	if ((n = writedent(dd)) < 0) errno = doserrno;
 	dosclosedev(dd);
 
@@ -3645,7 +3645,7 @@ int fd;
 		dosflist[fd]._dent.size[3] = (dosflist[fd]._size >> 24) & 0xff;
 
 		if (!(dosflist[fd]._dent.attr & DS_IFDIR))
-			putdostime(dosflist[fd]._dent.time, (time_t)-1);
+			VOID_C putdostime(dosflist[fd]._dent.time, (time_t)-1);
 		memcpy((char *)fd2dentp(fd),
 			(char *)&(dosflist[fd]._dent), sizeof(dent_t));
 		fd2clust(fd) = dosflist[fd]._clust;
@@ -3948,11 +3948,12 @@ CONST char *path;
 	clust = lfn_clust;
 	offset = lfn_offset;
 
-	while ((dp = _dosreaddir(xdirp, 0)))
-		if (!isdotdir(dp -> d_name)) {
-			VOID_C _dosclosedir(xdirp);
-			return(seterrno(ENOTEMPTY));
-		}
+	while ((dp = _dosreaddir(xdirp, 0))) {
+		if (isdotdir(dp -> d_name)) continue;
+
+		VOID_C _dosclosedir(xdirp);
+		return(seterrno(ENOTEMPTY));
+	}
 
 	n = 0;
 	if (doserrno) {

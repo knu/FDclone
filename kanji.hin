@@ -18,7 +18,6 @@
 #define	DELSP_K	mesconv("行末に空白文字がありますが削除しますか ?", "Delete space characters on the end of line ?")
 #define	INTR_K	mesconv("中断キーにより作業を中止します.", "Interrupted by keyboard.")
 #define	RECUR_K	mesconv("再帰的に fdsh を起動することはできません.", "Recursive call for fdsh.")
-#define	SCRSZ_K	mesconv("ESC で終了するか画面サイズを広げて下さい.", "Terminate with the ESC key, or enlarge a screen.")
 #define	NTERM_K	mesconv("端末名が未登録のため FD を起動できません.", "Cannot invoke FD because of no terminal entry.")
 #define	USER_K	mesconv("ユーザ名:", "User:")
 #define	PASWD_K	mesconv("パスワード:", "Password:")

@@ -959,9 +959,9 @@ syntaxtree *trp;
 	VOID_C Xfprintf(Xstderr, "[%d] %id\n", i + 1, joblist[i].pids[n]);
 	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
 # ifdef	USESGTTY
-	if (joblist[i].ttyflag) ioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
+	if (joblist[i].ttyflag) Xioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
 # endif
-	gettermio(joblist[i].pids[0], jobok);
+	VOID_C gettermio(joblist[i].pids[0], jobok);
 	if ((j = joblist[i].stats[n]) > 0 && j < 128) {
 		Xkillpg(joblist[i].pids[0], SIGCONT);
 		for (j = 0; j <= n; j++) joblist[i].stats[j] = 0;
@@ -969,7 +969,7 @@ syntaxtree *trp;
 	if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
 		joblist[i].trp -> type = OP_NONE;
 	ret = waitchild(joblist[i].pids[n], NULL);
-	gettermio(orgpgrp, jobok);
+	VOID_C gettermio(orgpgrp, jobok);
 	if (tioctl(ttyio, REQSETP, &tty) < 0) {
 		doperror((trp -> comm) -> argv[0], "fatal error");
 		prepareexit(-1);

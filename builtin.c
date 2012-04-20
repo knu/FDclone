@@ -3225,7 +3225,7 @@ char *CONST argv[];
 		builtinerror(argv, NULL, ER_FEWMANYARG);
 		return(-1);
 	}
-	if (chdir3(argv[1], 0) < 0) {
+	if (chdir4(argv[1], 0, NULL) < 0) {
 		builtinerror(argv, argv[1], -1);
 		return(-1);
 	}
@@ -3294,7 +3294,7 @@ char *CONST argv[];
 		return(-1);
 	}
 
-	if (argc > 2 || !filelist || maxfile <= 0) {
+	if (argc > 2 || !filelist) {
 		VOID_C Xfprintf(Xstderr, "%s: %K\n", argv[0], ILFNC_K);
 		return(RET_NOTICE);
 	}

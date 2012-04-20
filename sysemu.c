@@ -155,12 +155,10 @@ extern char fullpath[];
 static int NEAR checkpath __P_((CONST char *, char *));
 #endif
 #ifdef	CYGWIN
-static struct dirent *NEAR pseudoreaddir __P_((DIR *));
-#else
-#define	pseudoreaddir		unixreaddir
+static VOID NEAR getcygdrive __P_((VOID_A));
 #endif
 #if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
-||	defined (DEP_PSEUDOPATH)
+|| defined (DEP_PSEUDOPATH)
 static int NEAR getopenlist __P_((int, VOID_P));
 static VOID NEAR putopenlist __P_((int, int, VOID_P, CONST char *));
 static int NEAR chkopenlist __P_((int, VOID_P));
@@ -176,6 +174,13 @@ static char *NEAR unixgetcwd __P_((char *, ALLOC_T));
 static int NEAR unixstat __P_((CONST char *, struct stat *));
 #define	unixutimes		rawutimes
 #endif	/* MSDOS && !FD */
+#ifdef	DEP_DIRENT
+# ifdef	CYGWIN
+static struct dirent *NEAR pseudoreaddir __P_((DIR *));
+# else
+#define	pseudoreaddir		unixreaddir
+# endif
+#endif	/* DEP_DIRENT */
 #ifdef	DEP_DOSDRIVE
 static int NEAR checkchdir __P_((int, CONST char *));
 #endif
@@ -206,9 +211,13 @@ int (*readintrfunc)__P_((VOID_A)) = NULL;
 static char cachecwd[MAXPATHLEN] = "";
 #endif
 #if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
-||	defined (DEP_PSEUDOPATH)
+|| defined (DEP_PSEUDOPATH)
 static openstat_t *openlist = NULL;
 static int maxopenlist = 0;
+#endif
+#ifdef	CYGWIN
+static char *cygdrive_user = NULL;
+static char *cygdrive_system = NULL;
 #endif
 
 
@@ -459,8 +468,44 @@ int *typep;
 }
 #endif	/* DEP_URLPATH */
 
+#ifdef	CYGWIN
+static VOID NEAR getcygdrive(VOID_A)
+{
+	char upath[MAXPATHLEN], spath[MAXPATHLEN];
+
+	cygwin_internal(CW_GET_CYGDRIVE_PREFIXES, upath, spath);
+	if (*upath && !strpathcmp(spath, upath)) *spath = '\0';
+	cygdrive_user = Xstrdup(upath);
+	cygdrive_system = Xstrdup(spath);
+}
+
+char *getcygdrive_user(VOID_A)
+{
+	if (!cygdrive_user) getcygdrive();
+
+	return(cygdrive_user);
+}
+
+char *getcygdrive_system(VOID_A)
+{
+	if (!cygdrive_system) getcygdrive();
+
+	return(cygdrive_system);
+}
+
+# ifdef	DEBUG
+VOID freecygdrive(VOID_A)
+{
+	Xfree(cygdrive_user);
+	cygdrive_system = NULL;
+	Xfree(cygdrive_system);
+	cygdrive_user = NULL;
+}
+# endif	/* DEBUG */
+#endif	/* CYGWIN */
+
 #if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
-||	defined (DEP_PSEUDOPATH)
+|| defined (DEP_PSEUDOPATH)
 static int NEAR getopenlist(type, bodyp)
 int type;
 VOID_P bodyp;
@@ -608,12 +653,10 @@ char *buf;
 	char *host;
 	int type;
 # endif
-	int n, dev, drv;
+	int n, drv;
 
-	dev = DEV_NORMAL;
 # ifdef	DEP_DOSDRIVE
 	if ((n = dospath3(path))) {
-		dev = DEV_DOS;
 		drv = dosopendev(n);
 		if (drv < 0) return(-1);
 		if (drivep) *drivep = n;
@@ -623,7 +666,6 @@ char *buf;
 # endif
 # ifdef	DEP_URLPATH
 	if ((n = urlpath(path, &host, buf, &type))) {
-		dev = DEV_URL;
 		drv = urlopendev(host, type);
 		Xfree(host);
 		if (drv < 0) return(-1);
@@ -705,9 +747,9 @@ u_int mode;
 	u_short attr;
 
 	attr = (u_short)0;
-#if	MSDOS
+# if	MSDOS
 	if (mode & S_ISVTX) attr |= DS_IARCHIVE;
-#endif
+# endif
 	if (!(mode & S_IRUSR)) attr |= DS_IHIDDEN;
 	if (!(mode & S_IWUSR)) attr |= DS_IRDONLY;
 	if ((mode & S_IFMT) == S_IFDIR) attr |= DS_IFDIR;
@@ -872,53 +914,59 @@ struct stat *stp;
 DIR *Xopendir(path)
 CONST char *path;
 {
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
 || defined (DEP_URLPATH) || defined (CYGWIN)
 	char tmp[MAXPATHLEN];
-#endif
-#ifdef	DEP_URLPATH
+# endif
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+|| defined (DEP_DOSEMU) || defined (DEP_URLPATH)
+	int dev;
+# endif
+# ifdef	DEP_URLPATH
 	char *host;
 	int n, type;
-#endif
-#ifdef	FD
+# endif
+# ifdef	FD
 	char conv[MAXPATHLEN];
-#endif
+# endif
 	DIR *dirp;
 	CONST char *cp;
-	int dev;
 
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+|| defined (DEP_DOSEMU) || defined (DEP_URLPATH)
 	dev = DEV_NORMAL;
+# endif
 	cp = convput(conv, path, 1, 1, NULL, NULL);
-#ifdef	DEP_DOSEMU
+# ifdef	DEP_DOSEMU
 	if (_dospath(cp)) {
 		dev = DEV_DOS;
 		dirp = dosopendir(cp);
 	}
 	else
-#endif
-#ifdef	DEP_URLPATH
+# endif
+# ifdef	DEP_URLPATH
 	if ((n = urlpath(cp, &host, tmp, &type))) {
 		dev = DEV_URL;
 		dirp = urlopendir(host, type, &(tmp[n]));
 		Xfree(host);
 	}
 	else
-#endif
+# endif
 	dirp = unixopendir(cp);
 	if (!dirp) return(NULL);
 
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) || defined (CYGWIN)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) || defined (CYGWIN)
 	cp = Xrealpath(path, tmp, RLP_READLINK);
-#endif
-#ifdef	CYGWIN
+#  ifdef	CYGWIN
 	if (tmp[0] != _SC_ || tmp[1])
 		dirp -> __flags |=
-			opendir_saw_u_cygdrive | opendir_saw_s_cygdrive;
-#endif
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
-||	defined (DEP_DOSEMU) || defined (DEP_URLPATH)
+			(opendir_saw_u_cygdrive | opendir_saw_s_cygdrive);
+#  endif
+# endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE || CYGWIN */
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+|| defined (DEP_DOSEMU) || defined (DEP_URLPATH)
 	putopenlist(OP_DIRP, dev, dirp, convput(conv, cp, 0, 1, NULL, NULL));
-#endif
+# endif
 
 	return(dirp);
 }
@@ -926,58 +974,51 @@ CONST char *path;
 int Xclosedir(dirp)
 DIR *dirp;
 {
-#if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
-||	defined (DEP_DOSEMU) || defined (DEP_URLPATH)
+# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
+|| defined (DEP_DOSEMU) || defined (DEP_URLPATH)
 	switch (delopenlist(OP_DIRP, dirp)) {
-# ifdef	DEP_DOSEMU
+#  ifdef	DEP_DOSEMU
 		case DEV_DOS:
 			return(dosclosedir(dirp));
 /*NOTREACHED*/
 			break;
-# endif
-# ifdef	DEP_URLPATH
+#  endif
+#  ifdef	DEP_URLPATH
 		case DEV_URL:
 			return(urlclosedir(dirp));
 /*NOTREACHED*/
 			break;
-# endif
+#  endif
 		default:
 			break;
 	}
-#endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE || DEP_DOSEMU || DEP_URLPATH */
+# endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE || DEP_DOSEMU || DEP_URLPATH */
 
 	return(unixclosedir(dirp));
 }
 
-#ifdef	CYGWIN
+# ifdef	CYGWIN
 static struct dirent *NEAR pseudoreaddir(dirp)
 DIR *dirp;
 {
 	static char *upath = NULL;
 	static char *spath = NULL;
 	struct dirent *dp;
-	char ubuf[MAXPATHLEN], sbuf[MAXPATHLEN];
 
 	if (!upath) {
-		cygwin_internal(CW_GET_CYGDRIVE_PREFIXES, ubuf, sbuf);
-		for (upath = ubuf; *upath == _SC_; upath++);
-# ifdef	DEBUG
-		_mtrace_file = "pseudoreaddir(upath)";
-# endif
-		upath = Xstrdup(upath);
-		for (spath = sbuf; *spath == _SC_; spath++);
-		if (*upath && !strpathcmp(spath, upath)) *spath = '\0';
-# ifdef	DEBUG
-		_mtrace_file = "pseudoreaddir(spath)";
-# endif
-		spath = Xstrdup(spath);
+		upath = getcygdrive_user();
+		while (*upath == _SC_) upath++;
+	}
+	if (!spath) {
+		spath = getcygdrive_system();
+		while (*spath == _SC_) spath++;
 	}
 
 	dp = readdir(dirp);
 	if (dirp -> __d_cookie != __DIRENT_COOKIE) return(dp);
 
-	if (!(*upath)) dirp -> __flags |= opendir_saw_u_cygdrive;
-	if (!(*spath)) dirp -> __flags |= opendir_saw_s_cygdrive;
+	if (!*upath) dirp -> __flags |= opendir_saw_u_cygdrive;
+	if (!*spath) dirp -> __flags |= opendir_saw_s_cygdrive;
 
 	if (dp) {
 		if (*upath && !(dirp -> __flags & opendir_saw_u_cygdrive)
@@ -1004,18 +1045,18 @@ DIR *dirp;
 
 	return(dp);
 }
-#endif	/* CYGWIN */
+# endif	/* CYGWIN */
 
 struct dirent *Xreaddir(dirp)
 DIR *dirp;
 {
-#if	!defined (DEP_DOSEMU) && !defined (DEP_URLPATH) \
+# if	!defined (DEP_DOSEMU) && !defined (DEP_URLPATH) \
 && !defined (DEP_KANJIPATH) && !defined (DEP_ROCKRIDGE)
 	return(pseudoreaddir(dirp));
-#else	/* DEP_DOSEMU || DEP_URLPATH || DEP_KANJIPATH || DEP_ROCKRIDGE */
-# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+# else	/* DEP_DOSEMU || DEP_URLPATH || DEP_KANJIPATH || DEP_ROCKRIDGE */
+#  if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 	char path[MAXPATHLEN], conv[MAXPATHLEN];
-# endif
+#  endif
 	static st_dirent buf;
 	struct dirent *dp;
 	char *src, *dest;
@@ -1024,16 +1065,16 @@ DIR *dirp;
 	n = getopenlist(OP_DIRP, dirp);
 	dev = (n >= 0) ? openlist[n].dev : DEV_NORMAL;
 	switch (dev) {
-# ifdef	DEP_DOSEMU
+#  ifdef	DEP_DOSEMU
 		case DEV_DOS:
 			dp = (struct dirent *)dosreaddir(dirp);
 			break;
-# endif
-# ifdef	DEP_URLPATH
+#  endif
+#  ifdef	DEP_URLPATH
 		case DEV_URL:
 			dp = urlreaddir(dirp);
 			break;
-# endif
+#  endif
 		default:
 			dp = pseudoreaddir(dirp);
 			break;
@@ -1041,27 +1082,27 @@ DIR *dirp;
 	if (!dp) return(NULL);
 
 	dest = ((struct dirent *)&buf) -> d_name;
-# if	defined (CYGWIN) && defined (DEP_DOSEMU)
+#  if	defined (CYGWIN) && defined (DEP_DOSEMU)
 	/* Some versions of Cygwin have neither d_fileno nor d_ino */
 	if (dev == DEV_DOS) {
 		src = ((struct dosdirent *)dp) -> d_name;
 		wrap_reclen(&buf) = ((struct dosdirent *)dp) -> d_reclen;
 	}
 	else
-# endif
+#  endif
 	{
 		src = dp -> d_name;
 		memcpy((char *)(&buf), (char *)dp, dest - (char *)&buf);
 	}
-# if	MSDOS && defined (FD)
+#  if	MSDOS && defined (FD)
 	memcpy(&(buf.d_alias), dp -> d_alias, sizeof(dp -> d_alias));
-# endif
+#  endif
 
 	if (isdotdir(src)) {
 		Xstrcpy(dest, src);
 		return((struct dirent *)&buf);
 	}
-# if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
+#  if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE)
 	if (n >= 0) {
 		strcatdelim2(path, openlist[n].path, src);
 		if (convget(conv, path, dev) == conv) {
@@ -1071,39 +1112,39 @@ DIR *dirp;
 		Xstrcpy(dest, src);
 	}
 	else
-# endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE */
-# if	defined (DEP_DOSEMU) && defined (CODEEUC)
+#  endif	/* DEP_KANJIPATH || DEP_ROCKRIDGE */
+#  if	defined (DEP_DOSEMU) && defined (CODEEUC)
 	if (dev == DEV_DOS && !noconv)
 		dest[sjis2ujis(dest, (u_char *)src, MAXNAMLEN)] = '\0';
 	else
-# endif
+#  endif
 	Xstrcpy(dest, src);
 
 	return((struct dirent *)&buf);
-#endif	/* DEP_DOSEMU || DEP_URLPATH || DEP_KANJIPATH || DEP_ROCKRIDGE */
+# endif	/* DEP_DOSEMU || DEP_URLPATH || DEP_KANJIPATH || DEP_ROCKRIDGE */
 }
 
 VOID Xrewinddir(dirp)
 DIR *dirp;
 {
-#if	defined (DEP_DOSEMU) || defined (DEP_URLPATH)
+# if	defined (DEP_DOSEMU) || defined (DEP_URLPATH)
 	switch (chkopenlist(OP_DIRP, dirp)) {
-# ifdef	DEP_DOSEMU
+#  ifdef	DEP_DOSEMU
 		case DEV_DOS:
 			dosrewinddir(dirp);
 			return;
 /*NOTREACHED*/
 			break;
-# endif
-# ifdef	DEP_URLPATH
+#  endif
+#  ifdef	DEP_URLPATH
 		case DEV_URL:
 			urlrewinddir(dirp);
 			return;
 /*NOTREACHED*/
 			break;
-# endif
+#  endif
 	}
-#endif	/* DEP_DOSEMU || DEP_URLPATH */
+# endif	/* DEP_DOSEMU || DEP_URLPATH */
 
 	unixrewinddir(dirp);
 }
@@ -1548,7 +1589,7 @@ CONST struct utimes_t *utp;
 	if ((fd = open(path, O_RDONLY, 0666)) < 0) return(-1);
 	reg.x.ax = 0x5701;
 	reg.x.bx = fd;
-	getdostime(&(reg.x.dx), &(reg.x.cx), t);
+	VOID_C getdostime(&(reg.x.dx), &(reg.x.cx), t);
 	n = intcall(0x21, &reg, &sreg);
 	VOID_C close(fd);
 # else	/* !MSDOS */

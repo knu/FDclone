@@ -934,7 +934,7 @@ CONST char *file;
 	while ((buf = Xfgets(fp))) {
 		Xlocate(0, i);
 		Xputterm(L_CLEAR);
-		VOID_C XXcprintf("%.*k", n_column, buf);
+		VOID_C XXcprintf("%^.*k", n_column, buf);
 		Xfree(buf);
 		if (++i >= max) {
 			i = min;
@@ -1457,7 +1457,7 @@ CONST char *arg;
 {
 	char *wild;
 
-	if (arg && *arg) wild = Xstrdup(arg);
+	if (arg) wild = Xstrdup(arg);
 	else if (!(wild = inputstr(FINDF_K, 0, 0, "*", -1)))
 		return(FNC_CANCEL);
 
@@ -1746,12 +1746,10 @@ CONST char *s;
 	n = ATR_MODEONLY;
 	Xlocate(0, ATTR_Y);
 	Xputterm(L_CLEAR);
-#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
-	Xputterm(T_STANDOUT);
-#endif
+#if	defined (_NOEXTRAATTR) || defined (NOUID)
 	VOID_C Xkanjiputs(s);
-#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
-	Xputterm(END_STANDOUT);
+#else
+	VOID_C Xattrkanjiputs(s, 1);
 #endif
 	if (selectstr(&n, MAXATTRSEL, ATTR_X, str, val) != K_CR) return(-1);
 
@@ -1897,10 +1895,8 @@ CONST char *arg;
 	isearch = 1;
 	Xlocate(0, L_HELP);
 	Xputterm(L_CLEAR);
-	Xputterm(T_STANDOUT);
-	win_x = Xkanjiputs(SEAF_K);
+	win_x = Xattrkanjiputs(SEAF_K, 1);
 	win_y = L_HELP;
-	Xputterm(END_STANDOUT);
 
 	return(FNC_NONE);
 }
@@ -1912,10 +1908,8 @@ CONST char *arg;
 	isearch = -1;
 	Xlocate(0, L_HELP);
 	Xputterm(L_CLEAR);
-	Xputterm(T_STANDOUT);
-	win_x = Xkanjiputs(SEAB_K);
+	win_x = Xattrkanjiputs(SEAB_K, 1);
 	win_y = L_HELP;
-	Xputterm(END_STANDOUT);
 
 	return(FNC_NONE);
 }
@@ -1961,6 +1955,8 @@ int nextwin(VOID_A)
 	int oldwin;
 
 	if (windows <= 1) return(-1);
+
+	if (lastfile || internal_status == FNC_EFFECT) getfilelist();
 	oldwin = win;
 	if (++win >= windows) win = 0;
 	duplwin(oldwin);
@@ -2002,7 +1998,7 @@ CONST char *arg;
 # ifdef	_NOEXTRAWIN
 	else if (fileperrow(windows + 1) < WFILEMIN)
 # else
-	else if (winvar[win].v_fileperrow < WFILEMIN * 2 + 1)
+	else if (FILEPERROW < WFILEMIN * 2 + 1)
 # endif
 	{
 		warning(0, NOROW_K);
@@ -2021,8 +2017,7 @@ CONST char *arg;
 		calcwin();
 # else
 		i = (winvar[oldwin].v_fileperrow - 1) / 2;
-		winvar[win].v_fileperrow =
-			(winvar[oldwin].v_fileperrow - 1) - i;
+		FILEPERROW = (winvar[oldwin].v_fileperrow - 1) - i;
 		winvar[oldwin].v_fileperrow = i;
 # endif
 

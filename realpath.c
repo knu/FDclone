@@ -55,9 +55,6 @@ extern int lastdrive;
 #ifndef	NOSYMLINK
 static int NEAR evallink __P_((char *, int, int));
 #endif
-#if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
-static int NEAR getpathtop __P_((CONST char *, int *));
-#endif
 static int NEAR _Xrealpath __P_((CONST char *, int, char *, int, int, int));
 
 int norealpath = 0;
@@ -107,36 +104,6 @@ int tlen, rlen;
 	return(rlen);
 }
 #endif	/* !NOSYMLINK */
-
-#if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
-static int NEAR getpathtop(path, drvp)
-CONST char *path;
-int *drvp;
-{
-	int n;
-
-	if (drvp) *drvp = 0;
-
-# ifdef	DEP_DOSPATH
-	if ((n = _dospath(path))) {
-		if (drvp) *drvp = n;
-		n = 2;
-	}
-	else
-# endif
-# ifdef	DOUBLESLASH
-	if ((n = isdslash(path))) /*EMPTY*/;
-	else
-# endif
-# ifdef	DEP_URLPATH
-	if ((n = _urlpath(path, NULL, NULL))) /*EMPTY*/;
-	else
-# endif
-	n = 0;
-
-	return(n);
-}
-#endif	/* DEP_DOSEMU || DOUBLESLASH || DEP_URLPATH */
 
 /*ARGSUSED*/
 static int NEAR _Xrealpath(path, plen, resolved, tlen, rlen, flags)
@@ -198,7 +165,7 @@ int flags;
 #ifdef	DEP_DOSEMU
 	int duplastdrive;
 #endif
-#if	defined (DEP_DOSPATH) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
+#ifdef	DEP_PATHTOP
 	int drv;
 #endif
 #if	MSDOS
@@ -215,8 +182,9 @@ int flags;
 #ifdef	DEP_DOSPATH
 	drv = 0;
 #endif
-#if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
-	if (!(flags & RLP_PSEUDOPATH) && (tlen = getpathtop(path, &drv))) {
+#ifdef	DEP_PATHTOP
+	if (!(flags & RLP_PSEUDOPATH)
+	&& (tlen = getpathtop(path, &drv, NULL))) {
 # ifdef	DEP_DOSEMU
 		if (drv) {
 			if (path[tlen] != _SC_) {
@@ -234,7 +202,7 @@ int flags;
 		flags &= ~RLP_READLINK;
 	}
 	else
-#endif	/* DEP_DOSEMU || DOUBLESLASH || DEP_URLPATH */
+#endif	/* DEP_PATHTOP */
 	{
 #if	MSDOS
 		tlen = 2;
@@ -264,8 +232,8 @@ int flags;
 		else if (!(flags & RLP_READLINK)
 		&& resolved != fullpath && *fullpath) {
 			cp = Xstrcpy(resolved, fullpath);
-# if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
-			tlen = getpathtop(resolved, NULL);
+# ifdef	DEP_PATHTOP
+			tlen = getpathtop(resolved, NULL, NULL);
 # endif
 		}
 #endif	/* FD */

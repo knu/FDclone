@@ -95,10 +95,10 @@
 #define	ENVREPLY		"REPLY"
 
 #if	defined (TIOCGPGRP) && !defined (USETCGETPGRP)
-#define	gettcpgrp(f,g)		((ioctl(f, TIOCGPGRP, g) < 0) \
-				? (*(g) = (p_id_t)-1) : *(g))
+#define	gettcpgrp(f,gp)		((ioctl(f, TIOCGPGRP, gp) < 0) \
+				? (*(gp) = (p_id_t)-1) : *(gp))
 #else
-#define	gettcpgrp(f,g)		(*(g) = tcgetpgrp(f))
+#define	gettcpgrp(f,gp)		(*(gp) = tcgetpgrp(f))
 #endif
 #if	defined (TIOCSPGRP) && !defined (USETCGETPGRP)
 #define	settcpgrp(f,g)		ioctl(f, TIOCSPGRP, &(g))

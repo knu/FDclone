@@ -71,6 +71,7 @@ static char *NEAR trquote __P_((CONST char *, int, int *));
 static int NEAR vlen __P_((CONST char *, int));
 static int NEAR rlen __P_((CONST char *, int));
 static int NEAR vonkanji1 __P_((CONST char *, int));
+static int NEAR attrkanjiputs2 __P_((CONST char *, int, int));
 #if	FD >= 2
 static VOID NEAR kanjiputs3 __P_((CONST char *, int, int, int, int));
 #else
@@ -588,6 +589,17 @@ int len, ptr;
 	return(n);
 }
 
+static int NEAR attrkanjiputs2(s, len, ptr)
+CONST char *s;
+int len, ptr;
+{
+	Xputterm(T_STANDOUT);
+	len = kanjiputs2(s, len, ptr);
+	Xputterm(END_STANDOUT);
+
+	return(len);
+}
+
 #if	FD >= 2
 static VOID NEAR kanjiputs3(s, cx2, len2, ptr, top)
 CONST char *s;
@@ -608,11 +620,9 @@ int cx2, len2, ptr, top;
 		ptr += n;
 		len2 -= n;
 	}
-	Xputterm(T_STANDOUT);
-	VOID_C kanjiputs2(s, width, ptr);
+	VOID_C attrkanjiputs2(s, width, ptr);
 	ptr += width;
 	len2 -= width;
-	Xputterm(END_STANDOUT);
 	if (len2 > 0) VOID_C kanjiputs2(s, len2, ptr);
 }
 #endif	/* FD >= 2 */
@@ -628,7 +638,17 @@ int n;
 CONST char *s;
 {
 	if (!s) cputspace(n);
-	else VOID_C XXcprintf("%-*.*k", n, n, s);
+	else VOID_C XXcprintf("%^-*.*k", n, n, s);
+}
+
+VOID attrputstr(n, s, isstandout)
+int n;
+CONST char *s;
+int isstandout;
+{
+	if (isstandout) putterm(T_STANDOUT);
+	cputstr(n, s);
+	if (isstandout) putterm(END_STANDOUT);
 }
 
 static VOID NEAR putcursor(c, n)
@@ -1781,14 +1801,9 @@ int comline, cont, h;
 		}
 # endif
 		else if (pc != PC_NORMAL) /*EMPTY*/;
-# ifdef	DEP_DOSPATH
-		else if (i == top && _dospath(&(inputbuf[i]))) i++;
-# endif
-# ifdef	DEP_URLPATH
 		else if (i == top
-		&& (n = _urlpath(&(inputbuf[i]), NULL, NULL)))
+		&& (n = getpathtop(&(inputbuf[i]), NULL, NULL)))
 			i += n - 1;
-# endif
 		else if (inputbuf[i] == ':' || inputbuf[i] == '='
 		|| Xstrchr(CMDLINE_DELIM, inputbuf[i]))
 			top = i + 1;
@@ -3018,9 +3033,7 @@ int set;
 #endif
 		{
 			VOID_C XXputch(' ');
-			Xputterm(T_STANDOUT);
-			plen = 1 + Xkanjiputs(s);
-			Xputterm(END_STANDOUT);
+			plen = 1 + Xattrkanjiputs(s, 1);
 		}
 	}
 	else {
@@ -3395,8 +3408,8 @@ va_dcl
 	return(ret);
 }
 
-VOID warning(no, s)
-int no;
+VOID warning(n, s)
+int n;
 CONST char *s;
 {
 	char *tmp, *err;
@@ -3406,10 +3419,10 @@ CONST char *s;
 	dupwin_y = win_y;
 	subwindow = 1;
 
-	err = Xstrerror((no < 0) ? errno : no);
+	err = Xstrerror((n < 0) ? errno : n);
 	tmp = NULL;
 	if (!s) s = err;
-	else if (no) {
+	else if (n) {
 		len = n_lastcolumn - strlen2(err) - 3;
 		tmp = Xmalloc(n_lastcolumn * KANAWID + 1);
 		VOID_C strncpy2(tmp, s, &len, -1);
@@ -3422,10 +3435,8 @@ CONST char *s;
 	y = (lcmdline) ? lcmdline : L_MESLINE;
 	Xlocate(0, y);
 	Xputterm(L_CLEAR);
-	Xputterm(T_STANDOUT);
-	win_x = kanjiputs2(s, n_lastcolumn, -1);
+	win_x = attrkanjiputs2(s, n_lastcolumn, -1);
 	win_y = y;
-	Xputterm(END_STANDOUT);
 	Xtflush();
 
 	if (win_x >= n_lastcolumn) win_x = n_lastcolumn - 1;
@@ -3441,7 +3452,7 @@ CONST char *s;
 	win_y = dupwin_y;
 	subwindow = 0;
 
-	if (no && !lcmdline) rewritefile(1);
+	if (n && !lcmdline) rewritefile(1);
 	else {
 		Xlocate(0, y);
 		Xputterm(L_CLEAR);
@@ -3541,12 +3552,7 @@ int val[], *xx, multi;
 		if (!str[i]) continue;
 		Xlocate(x + xx[i] + 1, L_MESLINE);
 		if (multi) VOID_C XXputch((val[i]) ? '*' : ' ');
-		if (i != num) VOID_C Xkanjiputs(str[i]);
-		else {
-			Xputterm(T_STANDOUT);
-			VOID_C Xkanjiputs(str[i]);
-			Xputterm(END_STANDOUT);
-		}
+		VOID_C Xattrkanjiputs(str[i], i == num);
 	}
 }
 
@@ -3631,9 +3637,7 @@ int val[];
 			i = tmpx + 1;
 			if (!num) i++;
 			Xlocate(i + xx[new], L_MESLINE);
-			Xputterm(T_STANDOUT);
-			VOID_C Xkanjiputs(tmpstr[new]);
-			Xputterm(END_STANDOUT);
+			VOID_C Xattrkanjiputs(tmpstr[new], 1);
 			Xlocate(i + xx[old], L_MESLINE);
 			if (stable_standout) Xputterm(END_STANDOUT);
 			else VOID_C Xkanjiputs(tmpstr[old]);
@@ -3703,9 +3707,7 @@ char *inputpass(VOID_A)
 		Xlocate(0, y);
 		Xputterm(L_CLEAR);
 		VOID_C XXputch(' ');
-		Xputterm(T_STANDOUT);
-		x = 1 + kanjiputs2(cp, n_column, -1);
-		Xputterm(END_STANDOUT);
+		x = 1 + attrkanjiputs2(cp, n_column, -1);
 		win_x = x;
 		win_y = y;
 		Xtflush();
