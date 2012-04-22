@@ -969,8 +969,7 @@ int flags;
 		poparchdupl();
 		return(-1);
 	}
-	maxfile = 0;
-	filepos = -1;
+	maxfile = filepos = 0;
 
 	return(1);
 }
